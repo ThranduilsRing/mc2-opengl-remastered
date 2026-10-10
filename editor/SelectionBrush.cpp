@@ -36,8 +36,8 @@ SelectionBrush::SelectionBrush( bool Area, int newRadius )
 	bPainting = false; 
 	bArea = Area; 
 	bDrag = false; 
-	pCurAction = NULL; 
-	pCurModifyBuildingAction = NULL;
+	pCurAction = nullptr; 
+	pCurModifyBuildingAction = nullptr;
 
 	lastPos.x = lastPos.y = lastPos.z = lastPos.w = 0.0f;		//Keep the FPU exception from going off!
 	m_lastDragScreen.x = m_lastDragScreen.y = 0.0f;			//Keep the FPU exception from going off!
@@ -47,7 +47,7 @@ SelectionBrush::SelectionBrush( bool Area, int newRadius )
 	smoothRadius = newRadius;
 	bFirstClick = false;
 
-	pDragBuilding = NULL;
+	pDragBuilding = nullptr;
 }
 
 SelectionBrush::~SelectionBrush()
@@ -71,20 +71,20 @@ bool SelectionBrush::beginPaint()
 Action* SelectionBrush::endPaint()
 {
 	bPainting = false;
-	Action* pRetAction = NULL;
+	Action* pRetAction = nullptr;
 	if ( pCurAction )
 	{
 		if ( pCurAction->vertexInfoList.Count() )
 		{
 			pRetAction = pCurAction;
-			pCurAction = NULL;
+			pCurAction = nullptr;
 			land->recalcWater();
 		}
 
 		else
 		{
 			delete pCurAction;
-			pCurAction = NULL;
+			pCurAction = nullptr;
 		}
 	}
 	else if ( pCurModifyBuildingAction )
@@ -96,13 +96,13 @@ Action* SelectionBrush::endPaint()
 			moved since we last noted the object's info*/
 			pCurModifyBuildingAction->updateNotedObjectPositions();
 			pRetAction = pCurModifyBuildingAction;
-			pCurModifyBuildingAction = NULL;
+			pCurModifyBuildingAction = nullptr;
 		}
 
 		else
 		{
 			delete pCurModifyBuildingAction;
-			pCurModifyBuildingAction = NULL;
+			pCurModifyBuildingAction = nullptr;
 		}
 	}
 
@@ -496,7 +496,7 @@ void SelectionBrush::render( int screenX, int screenY )
 	{
 		EditorInterface::instance()->ChangeCursor( IDC_MC2ARROW );
 		bDrag = false;
-		pDragBuilding = NULL;
+		pDragBuilding = nullptr;
 	}
 }
 
@@ -610,7 +610,7 @@ bool   SelectionBrush::paintSmoothArea( Stuff::Vector3D& worldPos, int screenX, 
 										float tmp = 1/a + tangent * tangent/b;
 										
 									
-										edge.x = (float)sqrt( 1/tmp );
+										edge.x = sqrt( 1/tmp );
 
 										if ( deltaX < 0 && edge.x > 0 )
 										{
@@ -626,8 +626,8 @@ bool   SelectionBrush::paintSmoothArea( Stuff::Vector3D& worldPos, int screenX, 
 									}
 									
 															
-									float r = (float)sqrt( edge.x * edge.x + edge.y * edge.y );
-									float delta = (float)sqrt( deltaX * deltaX + deltaY * deltaY );
+									float r = sqrt( edge.x * edge.x + edge.y * edge.y );
+									float delta = sqrt( deltaX * deltaX + deltaY * deltaY );
 									
 									
 									edge.x += midX;
@@ -640,7 +640,7 @@ bool   SelectionBrush::paintSmoothArea( Stuff::Vector3D& worldPos, int screenX, 
 
 									if ( deltaZ > .1 || deltaZ < -.1 )
 									{					
-										float z = (float)fabs(deltaZ/2) + (float)fabs(deltaZ/2) * (float)cos( PI * delta/r );
+										float z = fabs(deltaZ/2) + fabs(deltaZ/2) * cos( PI * delta/r );
 										if ( fabs( z ) > .1f )
 										{
 											if ( deltaZ <= 0 )

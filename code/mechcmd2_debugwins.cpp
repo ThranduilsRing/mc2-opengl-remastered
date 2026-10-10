@@ -48,7 +48,7 @@ void DEBUGWINS_destroy (void) {
 		if (DebugWindow[i]) {
 			DebugWindow[i]->destroy();
 			delete DebugWindow[i];
-			DebugWindow[i] = NULL;
+			DebugWindow[i] = nullptr;
 		}
 }	
 
@@ -117,25 +117,25 @@ void endDialogs()
 	if (LogisticsOKDialog::s_instance)
 	{
 		delete LogisticsOKDialog::s_instance;
-		LogisticsOKDialog::s_instance = NULL;
+		LogisticsOKDialog::s_instance = nullptr;
 	}
 
 	if (LogisticsSaveDialog::s_instance)
 	{
 		delete LogisticsSaveDialog::s_instance;
-		LogisticsSaveDialog::s_instance = NULL;
+		LogisticsSaveDialog::s_instance = nullptr;
 	}
 
 	if (LogisticsOneButtonDialog::s_instance)
 	{
 		delete LogisticsOneButtonDialog::s_instance;
-		LogisticsOneButtonDialog::s_instance = NULL;
+		LogisticsOneButtonDialog::s_instance = nullptr;
 	}
 
 	if (LogisticsLegalDialog::s_instance)
 	{
 		delete LogisticsLegalDialog::s_instance;
-		LogisticsLegalDialog::s_instance = NULL;
+		LogisticsLegalDialog::s_instance = nullptr;
 	}
 }
 
@@ -199,7 +199,7 @@ void DEBUGWINS_removeGameObject (GameObjectPtr obj) {
 
 	for (long i = 0; i < 3; i++)
 		if (DebugGameObject[i] == obj) {
-			DebugGameObject[i] = NULL;
+			DebugGameObject[i] = nullptr;
 			DebugWindow[1 + i]->clear();
 		}
 

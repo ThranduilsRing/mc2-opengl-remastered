@@ -78,7 +78,7 @@ namespace {
         const DWORD numLights = TG_Shape::s_numLights;
 
         for (DWORD iLight = 0; iLight < numLights; ++iLight) {
-            if ((listOfLights[iLight] != NULL) && listOfLights[iLight]->active) {
+            if ((listOfLights[iLight] != nullptr) && listOfLights[iLight]->active) {
                 const DWORD startLight = listOfLights[iLight]->GetaRGB();
                 lights->lightColor[0][0] = ((startLight >> 16) & 0x000000ff) / 255.0f;
                 lights->lightColor[0][1] = ((startLight >> 8) & 0x000000ff) / 255.0f;
@@ -99,7 +99,7 @@ namespace {
             return 0xFFFFFFFFu;
 
         for (DWORD iLight = 0; iLight < numLights; ++iLight) {
-            if ((listOfLights[iLight] != NULL) && listOfLights[iLight]->active)
+            if ((listOfLights[iLight] != nullptr) && listOfLights[iLight]->active)
                 return iLight;
         }
         return 0xFFFFFFFFu;
@@ -117,8 +117,8 @@ namespace {
         h = fnv1a_64_bytes(h, &listPtr, sizeof(listPtr));
 
         for (DWORD iLight = 0; iLight < numLights; ++iLight) {
-            const TG_LightPtr light = listOfLights ? listOfLights[iLight] : NULL;
-            h = fnv1a_64_bool(h, light != NULL);
+            const TG_LightPtr light = listOfLights ? listOfLights[iLight] : nullptr;
+            h = fnv1a_64_bool(h, light != nullptr);
             if (!light)
                 continue;
 

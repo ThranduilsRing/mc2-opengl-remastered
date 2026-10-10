@@ -179,7 +179,7 @@ void TreeAppearance::registerStatic() {
 		&& appearType && appearType->treeRenderShape[0];
 	if (seamProbe)
 		fprintf(stderr, "[SEAMPROBE] tree registerStatic ENTER name=%s registered=%d hasShape=%d enabled=%d renderShape=%p\n",
-			appearType->name, (int)staticReg[0].registered, (int)(treeShape!=NULL),
+			appearType->name, (int)staticReg[0].registered, (int)(treeShape!=nullptr),
 			(int)GpuStaticPropRegistry::isEnabled(), (void*)appearType->treeRenderShape[0]), fflush(stderr);
 	// TREE-OVERRIDE-LOD-MVP Task 2: registered-state is now per-LOD. LOD0 is
 	// the canonical "already done" gate (it always exists — override or stock).

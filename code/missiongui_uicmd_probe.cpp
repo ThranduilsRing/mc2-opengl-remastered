@@ -49,8 +49,8 @@ bool MissionInterfaceManager::uiCmdProbe(UiCmdCtx& c)
 		} else if (!eye) {
 			result = "blocked"; note = "no camera (world light list lives on it)";
 		} else {
-			GameObjectPtr obj = ObjectManager ? ObjectManager->findByPartId(pid) : NULL;
-			AppearancePtr ap = obj ? obj->getAppearance() : NULL;
+			GameObjectPtr obj = ObjectManager ? ObjectManager->findByPartId(pid) : nullptr;
+			AppearancePtr ap = obj ? obj->getAppearance() : nullptr;
 			if (!obj) {
 				result = "blocked"; note = "no such object";
 			} else if (!ap) {
@@ -58,7 +58,7 @@ bool MissionInterfaceManager::uiCmdProbe(UiCmdCtx& c)
 			} else {
 				const unsigned long cls = ap->getAppearanceClass();
 				const bool nullFeed = (cls == GENERIC_APPR_TYPE);
-				TG_LightPtr* srcList = nullFeed ? NULL : eye->getWorldLights();
+				TG_LightPtr* srcList = nullFeed ? nullptr : eye->getWorldLights();
 				const unsigned long srcCount = nullFeed ? 0UL : (unsigned long)eye->getNumLights();
 
 				static const char* kClsName[] = {
@@ -177,8 +177,8 @@ bool MissionInterfaceManager::uiCmdProbe(UiCmdCtx& c)
 		if (arg.empty() || !end || *end != '\0') {
 			note = "draw_path <partId>";
 		} else {
-			GameObjectPtr obj = ObjectManager ? ObjectManager->findByPartId(pid) : NULL;
-			AppearancePtr ap = obj ? obj->getAppearance() : NULL;
+			GameObjectPtr obj = ObjectManager ? ObjectManager->findByPartId(pid) : nullptr;
+			AppearancePtr ap = obj ? obj->getAppearance() : nullptr;
 			if (!obj) {
 				result = "blocked"; note = "no such object";
 			} else if (!ap) {
@@ -210,7 +210,7 @@ bool MissionInterfaceManager::uiCmdProbe(UiCmdCtx& c)
 					"  path: verdict=%s class=0x%02lx type=%s appearNum=%lu "
 					"inView=%d staticReg=%d staticNow=%d recipe=%d\n",
 					verdict, cls, (at && at->name) ? at->name : "?",
-					at ? (unsigned long)at->appearanceNum : 0UL,
+					at ? at->appearanceNum : 0UL,
 					ap->canBeSeen() ? 1 : 0, reg ? 1 : 0, statNow ? 1 : 0,
 					(int)recipe);
 				extra += b;
@@ -296,8 +296,8 @@ bool MissionInterfaceManager::uiCmdProbe(UiCmdCtx& c)
 		if (arg.empty() || !end || *end != '\0') {
 			note = "shadow_feed <partId>";
 		} else {
-			GameObjectPtr obj = ObjectManager ? ObjectManager->findByPartId(pid) : NULL;
-			AppearancePtr ap = obj ? obj->getAppearance() : NULL;
+			GameObjectPtr obj = ObjectManager ? ObjectManager->findByPartId(pid) : nullptr;
+			AppearancePtr ap = obj ? obj->getAppearance() : nullptr;
 			if (!obj) {
 				result = "blocked"; note = "no such object";
 			} else if (!ap) {
@@ -384,13 +384,13 @@ bool MissionInterfaceManager::uiCmdProbe(UiCmdCtx& c)
 			result = "blocked"; note = "no terrain loaded";
 		} else {
 			Stuff::Vector3D q; q.x = 0; q.y = 0; q.z = 0;
-			GameObjectPtr obj = NULL;
+			GameObjectPtr obj = nullptr;
 			bool haveQuery = false;
 			float fx = 0, fy = 0;
 			char* end = nullptr;
 			const long pid = strtol(arg.c_str(), &end, 10);
 			if (!arg.empty() && end && *end == '\0') {
-				obj = ObjectManager ? ObjectManager->findByPartId(pid) : NULL;
+				obj = ObjectManager ? ObjectManager->findByPartId(pid) : nullptr;
 				if (!obj) { result = "blocked"; note = "no such object"; }
 				else { q = obj->getPosition(); haveQuery = true; }
 			} else if (sscanf(arg.c_str(), "%f %f", &fx, &fy) == 2) {

@@ -41,7 +41,7 @@ void TreeAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
     for (long _l = 0; _l < MAX_LODS; ++_l)
         staticReg[_l] = StaticRegistration{};
     activeLOD = 0;  // pinned 0 until Task 5 adds distance selection
-    treeShape = NULL;
+    treeShape = nullptr;
 
 	if (appearType)
 	{
@@ -171,7 +171,7 @@ void TreeAppearance::setObjStatus (long oStatus)
 				{
 					treeShape->ClearAnimation();
 					delete treeShape;
-					treeShape = NULL;
+					treeShape = nullptr;
 				}
 				
 				treeShape = appearType->treeDmgShape->CreateFrom();
@@ -188,7 +188,7 @@ void TreeAppearance::setObjStatus (long oStatus)
 				{
 					treeShape->ClearAnimation();
 					delete treeShape;
-					treeShape = NULL;
+					treeShape = nullptr;
 				}
 
 				// MODEL-OVERRIDE dual-shape: restore per-instance RENDER shape
@@ -611,7 +611,7 @@ void TreeAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 	
 		treeShape->ClearAnimation();
 		delete treeShape;
-		treeShape = NULL;
+		treeShape = nullptr;
 	
 		treeShape = appearType->treeShape[currentLOD]->CreateFrom();
 	}
@@ -662,7 +662,7 @@ void TreeAppearance::markLOS (bool clearIt)
 	
 		treeShape->ClearAnimation();
 		delete treeShape;
-		treeShape = NULL;
+		treeShape = nullptr;
 	
 		treeShape = appearType->treeShape[currentLOD]->CreateFrom();
 	}
@@ -775,7 +775,7 @@ void TreeAppearance::destroy (void)
 	if ( treeShape )
 	{
 		delete treeShape;
-		treeShape = NULL;
+		treeShape = nullptr;
 	}
 
 	appearanceTypeList->removeAppearance(appearType);

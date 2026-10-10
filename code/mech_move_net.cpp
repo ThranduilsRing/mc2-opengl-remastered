@@ -556,7 +556,7 @@ void BattleMech::updatePlayerControl (void) {
 		appearance->hitLeft();
 		
  	if (userInput->getKeyDown(KEY_Z))
-		ObjectManager->getObjectType(typeHandle)->handleDestruction(this, NULL);		//Blow self up!!
+		ObjectManager->getObjectType(typeHandle)->handleDestruction(this, nullptr);		//Blow self up!!
 
 	if (userInput->getKeyDown(KEY_X))
 		control.settings.mech.blowLeftArm = true;

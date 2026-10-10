@@ -31,12 +31,12 @@
 
 
 #ifndef TEAM_H
-typedef enum {
+using Relation = enum {
 	RELATION_FRIENDLY,
 	RELATION_NEUTRAL,
 	RELATION_ENEMY,
 	NUM_RELATIONS
-} Relation;
+};
 #define	MAX_TEAMS						8
 #endif
 

@@ -28,7 +28,7 @@ void Mech3DAppearance::setObjStatus (long oStatus)
 					mechShape->ClearAnimation();
 					mc2mechanim::UnregisterImportedActor(mechShape);	// IMPORTED-ACTOR-STABLE-KEY-1
 					delete mechShape;
-					mechShape = NULL;
+					mechShape = nullptr;
 
 					mechShape = mechType->mechForwardDmgShape->CreateFrom();
 				}
@@ -40,7 +40,7 @@ void Mech3DAppearance::setObjStatus (long oStatus)
 					mechShape->ClearAnimation();
 					mc2mechanim::UnregisterImportedActor(mechShape);	// IMPORTED-ACTOR-STABLE-KEY-1
 					delete mechShape;
-					mechShape = NULL;
+					mechShape = nullptr;
 
 					mechShape = mechType->mechBackwardDmgShape->CreateFrom();
 				}
@@ -668,7 +668,7 @@ void Mech3DAppearance::updateGeometry (void)
 				shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 				shapeOrigin.BuildTranslation(rFootPosition[currentRightPoof]);
 				
-				gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,NULL);
+				gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
 				rightDustPoofEffect[currentRightPoof]->Start(&info);
 				rightFootPoofDraw[currentRightPoof] = true;
 				
@@ -698,7 +698,7 @@ void Mech3DAppearance::updateGeometry (void)
 				shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 				shapeOrigin.BuildTranslation(rFootPosition[currentRightPoof]);
 				
-				gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,NULL);
+				gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
 				rightDustPoofEffect[currentRightPoof]->Start(&info);
 				rightFootPoofDraw[currentRightPoof] = true;
 				
@@ -742,7 +742,7 @@ void Mech3DAppearance::updateGeometry (void)
 				shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 				shapeOrigin.BuildTranslation(lFootPosition[currentLeftPoof]);
 				
-				gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,NULL);
+				gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
 				leftDustPoofEffect[currentLeftPoof]->Start(&info);
 				leftFootPoofDraw[currentLeftPoof] = true;
 				
@@ -772,7 +772,7 @@ void Mech3DAppearance::updateGeometry (void)
 				shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 				shapeOrigin.BuildTranslation(lFootPosition[currentLeftPoof]);
 				
-				gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,NULL);
+				gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
 				leftDustPoofEffect[currentLeftPoof]->Start(&info);
 				leftFootPoofDraw[currentLeftPoof] = true;
 				
@@ -866,7 +866,7 @@ void Mech3DAppearance::updateGeometry (void)
 		localToWorld.Multiply(gosFX::Effect_Against_Motion,effectRot);
 		localResult.Multiply(localToWorld,shapeOrigin);
 					
- 		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&localResult,NULL);
+ 		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&localResult,nullptr);
 		jumpJetEffect->Start(&info);
 		
 		jumpFXSetup = true;
@@ -969,7 +969,7 @@ void Mech3DAppearance::updateGeometry (void)
 		{
 			leftShoulderBoom->Kill();
 			delete leftShoulderBoom;
-			leftShoulderBoom = NULL;
+			leftShoulderBoom = nullptr;
 		}
 	}
 	
@@ -1000,7 +1000,7 @@ void Mech3DAppearance::updateGeometry (void)
 		{
 			rightShoulderBoom->Kill();
 			delete rightShoulderBoom;
-			rightShoulderBoom = NULL;
+			rightShoulderBoom = nullptr;
 		}
 	}
 	

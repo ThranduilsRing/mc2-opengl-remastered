@@ -290,14 +290,14 @@ void gosRenderer::drawShadowBatchTessellated(gos_VERTEX* vertices, int numVerts,
     glBindBuffer(GL_ARRAY_BUFFER, terrain_extra_vb_);
 
     glEnableVertexAttribArray(4);  // worldPos
-    glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(gos_TERRAIN_EXTRA), (void*)0);
+    glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(gos_TERRAIN_EXTRA), (void*)nullptr);
     glEnableVertexAttribArray(5);  // worldNorm
     glVertexAttribPointer(5, 3, GL_FLOAT, GL_FALSE, sizeof(gos_TERRAIN_EXTRA), (void*)(3 * sizeof(float)));
 
     // Draw tessellated patches
     glPatchParameteri(GL_PATCH_VERTICES, 3);
     glDrawElements(GL_PATCHES, numIndices,
-        indexed_tris_->getIndexSizeBytes() == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT, NULL);
+        indexed_tris_->getIndexSizeBytes() == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT, nullptr);
 
     // Cleanup
     glDisableVertexAttribArray(4);
@@ -352,12 +352,12 @@ void gosRenderer::drawShadowObjectBatch(HGOSBUFFER vb, HGOSBUFFER ib,
     // Bind VB with position attribute at location 0 (TG_HWTypeVertex: pos at offset 0, stride 36)
     glBindBuffer(GL_ARRAY_BUFFER, vb->buffer_);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 36, (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 36, (void*)nullptr);
 
     // Bind IB and draw
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ib->buffer_);
     GLenum indexType = (ib->element_size_ == 2) ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT;
-    glDrawElements(GL_TRIANGLES, ib->count_, indexType, (void*)0);
+    glDrawElements(GL_TRIANGLES, ib->count_, indexType, (void*)nullptr);
 
     // Cleanup — disable the attribute we enabled
     glDisableVertexAttribArray(0);

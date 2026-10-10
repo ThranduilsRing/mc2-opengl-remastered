@@ -208,41 +208,41 @@ void Mission::initTGLForLogistics()
 		{
 			colorPool->destroy();
 			delete colorPool;
-			colorPool = NULL;
+			colorPool = nullptr;
 		}
 		
 		if (vertexPool)
 		{
 			vertexPool->destroy();
 			delete vertexPool;
-			vertexPool = NULL;
+			vertexPool = nullptr;
 		}
 
 		if (facePool)
 		{
 			facePool->destroy();
 			delete facePool;
-			facePool = NULL;
+			facePool = nullptr;
 		}
 
 		if (shadowPool)
 		{
 			shadowPool->destroy();
 			delete shadowPool;
-			shadowPool = NULL;
+			shadowPool = nullptr;
 		}
 
 		if (trianglePool)
 		{
 			trianglePool->destroy();
 			delete trianglePool;
-			trianglePool = NULL;
+			trianglePool = nullptr;
 		}
 		
 		TG_Shape::tglHeap->destroy();
 
 		delete TG_Shape::tglHeap;
-		TG_Shape::tglHeap = NULL;
+		TG_Shape::tglHeap = nullptr;
 	}
 
 	//------------------------------------------------------

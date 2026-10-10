@@ -8,25 +8,25 @@ sys.path.insert(0, HERE)
 import run_tidy_safe as rts  # noqa: E402
 
 
-def test_owner_comment_pass_files_are_excluded():
-    for rel in ("code/missiongui_input.cpp", "code/mission_update.cpp", "mclib/txmmgr_render.cpp",
-                "mclib/bdactor.cpp", "mclib/mech3d.cpp", "code/mech_move.cpp",
-                "GameOS/gameos/gos_postprocess_fbo.cpp", "GameOS/gameos/gos_terrain_indirect_pack.cpp",
-                "GameOS/gameos/gos_terrain_lod_chunk_matalbedo.cpp", "GameOS/gameos/gameos_graphics_draw.cpp",
-                "GameOS/gameos/gos_static_prop_batcher_state.cpp", "3rdparty/x/y.cpp"):
+def test_only_third_party_gates_and_lane2_files_are_excluded():
+    for rel in ("3rdparty/x/y.cpp", "Gates/gate.cpp", "code/gamecam.cpp", "code/mission_update.cpp", "code/missionbegin.cpp",
+                "mclib/mlr/mlrlightmap.cpp", "mclib/tgl_transform.cpp", "mclib/mlr/mlrclipper.cpp",
+                "GameOS/gameos/gos_terrain_indirect_dispatch.cpp", "editor/EditorInspector.cpp"):
         assert rts.is_excluded(rel), rel
-    assert not rts.is_excluded("mclib/crater.cpp")
+    for rel in ("mclib/crater.cpp", "code/missiongui_input.cpp", "mclib/txmmgr_render.cpp", "mclib/bdactor.cpp", "mclib/mech3d.cpp",
+                "code/mech_move.cpp", "GameOS/gameos/gos_postprocess_fbo.cpp", "GameOS/gameos/gameos_graphics_draw.cpp"):
+        assert not rts.is_excluded(rel), rel
 
 
 def test_select_skips_headers_dirty_unbuilt_and_excluded():
-    db = {"mclib/crater.cpp", "mclib/dir.cpp", "code/mission_update.cpp", "mclib/edited.cpp"}
+    db = {"mclib/crater.cpp", "mclib/dir.cpp", "code/gamecam.cpp", "mclib/edited.cpp"}
     paths = [os.path.join(rts.ROOT, p) for p in (
-        "mclib/crater.cpp", "mclib/dir.h", "code/mission_update.cpp", "mclib/edited.cpp", "mclib/unknown.cpp")]
+        "mclib/crater.cpp", "mclib/dir.h", "code/gamecam.cpp", "mclib/edited.cpp", "mclib/unknown.cpp")]
     kept, skipped = rts.select(paths, db, dirty={"mclib/edited.cpp"})
     assert kept == ["mclib/crater.cpp"]
     reasons = dict(skipped)
     assert "header" in reasons["mclib/dir.h"] or "translation unit" in reasons["mclib/dir.h"]
-    assert "excluded" in reasons["code/mission_update.cpp"]
+    assert "excluded" in reasons["code/gamecam.cpp"]
     assert "uncommitted" in reasons["mclib/edited.cpp"]
     assert "compile_commands" in reasons["mclib/unknown.cpp"]
 

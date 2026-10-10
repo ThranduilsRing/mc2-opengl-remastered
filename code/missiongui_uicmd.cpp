@@ -409,13 +409,13 @@ bool MissionInterfaceManager::uiCmdWorld(UiCmdCtx& c)
 			if (!sel) {
 				result = "blocked"; note = "no player unit selected (use select)";
 			} else {
-				LocationNode path; path.location = pos; path.run = !walk; path.next = NULL;
+				LocationNode path; path.location = pos; path.run = !walk; path.next = nullptr;
 				TacticalOrder tacOrder;
 				tacOrder.init(ORDER_ORIGIN_PLAYER, TACTICAL_ORDER_MOVETO_POINT, false);
 				tacOrder.initWayPath(&path);
 				tacOrder.moveParams.wait = false;
 				tacOrder.moveParams.wayPath.mode[0] = walk ? TRAVEL_MODE_SLOW : TRAVEL_MODE_FAST;
-				tacOrder.pack(NULL, NULL);
+				tacOrder.pack(nullptr, nullptr);
 				handleOrders(tacOrder);   // same dispatcher doMove() calls
 				result = "ok";
 				char b[96];
@@ -449,7 +449,7 @@ bool MissionInterfaceManager::uiCmdWorld(UiCmdCtx& c)
 					tacOrder.attackParams.range = FIRERANGE_OPTIMAL;
 					tacOrder.attackParams.pursue = true;
 					tacOrder.moveParams.wayPath.mode[0] = TRAVEL_MODE_FAST;
-					tacOrder.pack(NULL, NULL);
+					tacOrder.pack(nullptr, nullptr);
 					m->handleTacticalOrder(tacOrder);
 					sel++;
 				}
@@ -484,7 +484,7 @@ bool MissionInterfaceManager::uiCmdWorld(UiCmdCtx& c)
 				continue;
 			TacticalOrder tacOrder;
 			tacOrder.init(ORDER_ORIGIN_PLAYER, code);
-			tacOrder.pack(NULL, NULL);
+			tacOrder.pack(nullptr, nullptr);
 			m->handleTacticalOrder(tacOrder);
 			sel++;
 		}
@@ -772,7 +772,7 @@ bool MissionInterfaceManager::uiCmdReadback(UiCmdCtx& c)
 		if (arg.empty() || !end || *end != '\0') {
 			note = "unit <partId>";
 		} else {
-			GameObjectPtr obj = ObjectManager ? ObjectManager->findByPartId(pid) : NULL;
+			GameObjectPtr obj = ObjectManager ? ObjectManager->findByPartId(pid) : nullptr;
 			if (!obj) { result = "blocked"; note = "no such object"; }
 			else {
 				Stuff::Vector3D p = obj->getPosition();
@@ -818,7 +818,7 @@ bool MissionInterfaceManager::uiCmdReadback(UiCmdCtx& c)
 						"  draw: appearType=%s appearNum=%lu inView=%d "
 						"staticRecipe=%d screenPos=(%.1f,%.1f,%.3f,%.3f)\n",
 						(at && at->name) ? at->name : "?",
-						at ? (unsigned long)at->appearanceNum : 0UL,
+						at ? at->appearanceNum : 0UL,
 						ap->canBeSeen() ? 1 : 0,
 						(int)ap->getStaticRecipeIndex(),
 						sp.x, sp.y, sp.z, sp.w);
@@ -930,7 +930,7 @@ bool MissionInterfaceManager::uiCmdReadback(UiCmdCtx& c)
 				(unsigned)eye->ambientBlue,
 				(unsigned)eye->lightRed, (unsigned)eye->lightGreen,
 				(unsigned)eye->lightBlue,
-				(unsigned long)(eye->fogColor & 0xffffffUL),
+				(eye->fogColor & 0xffffffUL),
 				(double)eye->day2NightTransitionTime, (double)eye->dayLightTime);
 			extra += b;
 			result = "ok";

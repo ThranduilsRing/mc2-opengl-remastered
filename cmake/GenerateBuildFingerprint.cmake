@@ -20,6 +20,13 @@ if(NOT OUT OR NOT SRC_DIR)
     message(FATAL_ERROR "GenerateBuildFingerprint.cmake requires -DOUT=... -DSRC_DIR=...")
 endif()
 
+# MC2_FINGERPRINT_FREEZE=1 (set by tools/tidy/run_tidy_safe.py while it proves object identity): keep the existing header. A mechanical
+# rewrite dirties the tree, which would change the dirty flag and build time compiled into every TU that embeds them and read as a false
+# object difference.
+if(DEFINED ENV{MC2_FINGERPRINT_FREEZE} AND EXISTS "${OUT}")
+    return()
+endif()
+
 find_program(MC2_GIT_EXE git)
 
 set(_sha "unknown")

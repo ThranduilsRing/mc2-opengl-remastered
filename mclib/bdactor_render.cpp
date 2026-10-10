@@ -86,9 +86,9 @@ long BldgAppearance::render (long depthFixup)
 						appearType->name, (int)isnow, (int)staticReg.registered,
 						(int)(staticReg.shape == bldgShape), (int)needsFullBakeNextFrame,
 						(int)isStaticEligible(), staticReg.recipeIndex,
-						(int)(appearType?appearType->spinMe:-1),
-						(int)(drawFlash!=0), (int)(destructFX!=NULL),
-						(int)(activity!=0), (int)(activity1!=0),
+						(appearType?appearType->spinMe:-1),
+						(int)(drawFlash!=0), (int)(destructFX!=nullptr),
+						(int)(activity!=nullptr), (int)(activity1!=nullptr),
 						(int)bdAnimationState);
 					fflush(stderr);
 				}

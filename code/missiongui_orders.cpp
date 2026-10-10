@@ -135,7 +135,7 @@ void MissionInterfaceManager::doAttack()
 				tacOrder.attackParams.pursue = false;
 			else
 				tacOrder.attackParams.pursue = true;
-			tacOrder.pack(NULL, NULL);
+			tacOrder.pack(nullptr, nullptr);
 
 			if (MPlayer && !MPlayer->isServer())
 				MPlayer->sendPlayerOrder(&tacOrder, false, 1, &pMover);
@@ -234,7 +234,7 @@ void MissionInterfaceManager::doJump()
 			tacOrder.moveParams.wait = false;
 			tacOrder.moveParams.wayPath.mode[0] = TRAVEL_MODE_JUMP;
 			tacOrder.setWayPoint( 0, wPos );
-			tacOrder.pack(NULL, NULL);
+			tacOrder.pack(nullptr, nullptr);
 
 			handleOrders(tacOrder);
 
@@ -280,7 +280,7 @@ void MissionInterfaceManager::doGuard(GameObject* who)
 		TacticalOrder tacOrder;
 		tacOrder.init(ORDER_ORIGIN_PLAYER, TACTICAL_ORDER_GUARD);
 		tacOrder.targetWID = who->getWatchID();
-		tacOrder.pack(NULL, NULL);	
+		tacOrder.pack(nullptr, nullptr);	
 		handleOrders( tacOrder );
 
 		controlGui.setDefaultSpeed();
@@ -290,13 +290,13 @@ void MissionInterfaceManager::doGuard(GameObject* who)
 		LocationNode path;
 		path.location = wPos;
 		path.run = true;
-		path.next = NULL;
+		path.next = nullptr;
 
 		TacticalOrder tacOrder;
 		tacOrder.init(ORDER_ORIGIN_PLAYER, TACTICAL_ORDER_GUARD);
 		tacOrder.initWayPath( &path );
 		tacOrder.moveParams.wayPath.mode[0] = controlGui.getWalk() ?  TRAVEL_MODE_SLOW : TRAVEL_MODE_FAST;
-		tacOrder.pack(NULL, NULL);	
+		tacOrder.pack(nullptr, nullptr);	
 		handleOrders( tacOrder );
 
 		controlGui.setDefaultSpeed();
@@ -393,7 +393,7 @@ int MissionInterfaceManager::aimLeg()
 				
 				bool bRight = pMech->body[MECH_BODY_LOCATION_LLEG].damageState == IS_DAMAGE_DESTROYED;
 				tacOrder.attackParams.aimLocation = bRight ? MECH_BODY_LOCATION_RLEG :  MECH_BODY_LOCATION_LLEG;
-				tacOrder.pack( NULL, NULL);
+				tacOrder.pack( nullptr, nullptr);
 				handleOrders( tacOrder );
 
 				soundSystem->playDigitalSample(BUTTON5);
@@ -431,7 +431,7 @@ int MissionInterfaceManager::aimArm()
 			tacOrder.moveParams.wayPath.mode[0] = controlGui.getWalk() ?  TRAVEL_MODE_SLOW : TRAVEL_MODE_FAST;
 			bool bRight = pMech->body[MECH_BODY_LOCATION_LARM].damageState == IS_DAMAGE_DESTROYED;
 			tacOrder.attackParams.aimLocation = bRight ? MECH_BODY_LOCATION_RARM :  MECH_BODY_LOCATION_LARM;
-			tacOrder.pack( NULL, NULL);
+			tacOrder.pack( nullptr, nullptr);
 			handleOrders( tacOrder );
 
 			soundSystem->playDigitalSample(BUTTON5);
@@ -482,7 +482,7 @@ int MissionInterfaceManager::aimHead()
 				tacOrder.attackParams.range = FIRERANGE_OPTIMAL;
 				tacOrder.moveParams.wayPath.mode[0] = controlGui.getWalk() ?  TRAVEL_MODE_SLOW : TRAVEL_MODE_FAST;
 				tacOrder.attackParams.aimLocation = MECH_BODY_LOCATION_HEAD;
-				tacOrder.pack( NULL, NULL);
+				tacOrder.pack( nullptr, nullptr);
 				handleOrders( tacOrder );
 
 				bAimedShot = true;
@@ -526,7 +526,7 @@ int MissionInterfaceManager::powerUp()
 {
 	TacticalOrder tacOrder;
 	tacOrder.init(ORDER_ORIGIN_PLAYER, TACTICAL_ORDER_POWERUP, true);
-	tacOrder.pack(NULL, NULL);					
+	tacOrder.pack(nullptr, nullptr);					
 	handleOrders( tacOrder );
 	return 1;
 }
@@ -534,7 +534,7 @@ int MissionInterfaceManager::powerDown()
 {
 	TacticalOrder tacOrder;
 	tacOrder.init(ORDER_ORIGIN_PLAYER, TACTICAL_ORDER_POWERDOWN, true);
-	tacOrder.pack(NULL, NULL);
+	tacOrder.pack(nullptr, nullptr);
 	handleOrders( tacOrder );
 	return 1;
 					
@@ -573,7 +573,7 @@ int MissionInterfaceManager::bigAirStrike()
 {
 	Stuff::Vector3D v = makeAirStrikeTarget( wPos );
 
-	IfaceCallStrike (ARTILLERY_LARGE,&v,NULL);
+	IfaceCallStrike (ARTILLERY_LARGE,&v,nullptr);
 		soundSystem->playSupportSample(SUPPORT_AIRSTRIKE);
 	return 1;
 }
@@ -581,7 +581,7 @@ int MissionInterfaceManager::smlAirStrike()
 {
 	Stuff::Vector3D v = makeAirStrikeTarget( wPos );
 
-	IfaceCallStrike (ARTILLERY_SMALL,&v,NULL);
+	IfaceCallStrike (ARTILLERY_SMALL,&v,nullptr);
 		soundSystem->playSupportSample(SUPPORT_AIRSTRIKE);
 	return 1;
 }
@@ -589,7 +589,7 @@ int MissionInterfaceManager::snsAirStrike()
 {
 	Stuff::Vector3D v = makeAirStrikeTarget( wPos );
 
-	IfaceCallStrike (ARTILLERY_SENSOR,&v,NULL);
+	IfaceCallStrike (ARTILLERY_SENSOR,&v,nullptr);
 		soundSystem->playSupportSample(SUPPORT_PROBE);
 	return 1;
 }
@@ -722,7 +722,7 @@ int MissionInterfaceManager::handleOrders( TacticalOrder& order)
 			if (pMover->isSelected() && pMover->getCommander()->getId() == Commander::home->getId())
 				numMovers++;
 		}
-		MoverGroup::calcJumpGoals(order.getWayPoint(0), numMovers, moveGoals, NULL);
+		MoverGroup::calcJumpGoals(order.getWayPoint(0), numMovers, moveGoals, nullptr);
 		isMoveOrder = true;
 		}
 	else if (order.code == TACTICAL_ORDER_MOVETO_POINT) {
@@ -743,15 +743,15 @@ int MissionInterfaceManager::handleOrders( TacticalOrder& order)
 		{
 			if (isMoveOrder ) {
 				order.setWayPoint(0, moveGoals[numMovers++]);
-				order.pack(NULL, NULL);
+				order.pack(nullptr, nullptr);
 			}
 			if (MPlayer && !MPlayer->isServer()) {
-				MPlayer->sendPlayerOrder(&order, false, 1, &pMover, 0, NULL, userInput->getKeyDown(WAYPOINT_KEY));
+				MPlayer->sendPlayerOrder(&order, false, 1, &pMover, 0, nullptr, userInput->getKeyDown(WAYPOINT_KEY));
 				}
 			else
 			{
 				order.attackParams.range = (FireRangeType)pMover->attackRange;
-				order.pack( NULL, NULL );
+				order.pack( nullptr, nullptr );
 				if ( userInput->getKeyDown( WAYPOINT_KEY ) ) // way point one
 				{
 					pMover->getPilot()->setExecutingQueue(FALSE);
@@ -1075,7 +1075,7 @@ void MissionInterfaceManager::doMove(const Stuff::Vector3D& pos)
 	LocationNode path;
 	path.location = pos;
 	path.run = true;
-	path.next = NULL;
+	path.next = nullptr;
 
 	TacticalOrder tacOrder;
 	if ( controlGui.getJump() )
@@ -1090,7 +1090,7 @@ void MissionInterfaceManager::doMove(const Stuff::Vector3D& pos)
 	tacOrder.moveParams.wayPath.mode[0] =  controlGui.getWalk() ? TRAVEL_MODE_SLOW : TRAVEL_MODE_FAST;
 	if ( controlGui.getMines() )
 		tacOrder.moveParams.mode = MOVE_MODE_MINELAYING;
-	tacOrder.pack(NULL, NULL);
+	tacOrder.pack(nullptr, nullptr);
 
 
 	handleOrders(tacOrder);

@@ -48,8 +48,8 @@ float MissionInterfaceManager::pauseWndVelocity = -50.f;
 
 int MissionInterfaceManager::mouseX = 0;
 int MissionInterfaceManager::mouseY = 0;
-GameObject* MissionInterfaceManager::target = NULL;
-MissionInterfaceManager* MissionInterfaceManager::s_instance = NULL;
+GameObject* MissionInterfaceManager::target = nullptr;
+MissionInterfaceManager* MissionInterfaceManager::s_instance = nullptr;
 gosEnum_KeyIndex MissionInterfaceManager::WAYPOINT_KEY = (gosEnum_KeyIndex)-1;
 
 //--------------------------------------------------------------------------------------
@@ -93,111 +93,111 @@ MissionInterfaceManager::Command		MissionInterfaceManager::commands[MAX_COMMAND]
 		KEY_M,				mState_MEDRNG_ATTACK,  mState_MEDRNG_LOS,		false,		&MissionInterfaceManager::attackMedium, &MissionInterfaceManager::defaultAttack, 43201,
 		KEY_L,				mState_LONGRNG_ATTACK, mState_LONGRNG_LOS,		false,		&MissionInterfaceManager::attackLong, &MissionInterfaceManager::defaultAttack, 43202,
 		KEY_A,				mState_ENERGY_WEAPONS,	mState_ENERGY_WEAPONS_LOS,		false,		&MissionInterfaceManager::energyWeapons, &MissionInterfaceManager::energyWeapons, 43204,
-		KEY_D,				mState_GENERIC_ATTACK, mState_ATTACK_LOS,		false,		&MissionInterfaceManager::defaultAttack,0, -1,
+		KEY_D,				mState_GENERIC_ATTACK, mState_ATTACK_LOS,		false,		&MissionInterfaceManager::defaultAttack,nullptr, -1,
 		KEY_J,				mState_JUMP1, mState_JUMP_LOS,		false,		&MissionInterfaceManager::jump, &MissionInterfaceManager::stopJump, 43205,
 		KEY_J | WAYPT, 		mState_JUMPWAYPT,  mState_JUMPWAYPT_LOS,		false,		&MissionInterfaceManager::jump, &MissionInterfaceManager::stopJump, -1,
 		KEY_C,				mState_CURPOS_ATTACK, mState_CURPOS_ATTACK_LOS,		false,		&MissionInterfaceManager::fireFromCurrentPos, &MissionInterfaceManager::stopFireFromCurrentPos, 43206,
 		KEY_G,				mState_GUARD, mState_GUARD,				false,		&MissionInterfaceManager::guard, &MissionInterfaceManager::stopGuard, 43207,
-		KEY_W,				mState_ENERGY_WEAPONS,	mState_ENERGY_WEAPONS_LOS,	false,		&MissionInterfaceManager::conserveAmmo, 0, -1,
-		KEY_E,				-1,	-1,						false,		&MissionInterfaceManager::selectVisible, 0, 43209,
-		KEY_F,				-1,	-1,						false,		&MissionInterfaceManager::forceShot, 0, 43210,
-		KEY_HOME,				-1,	-1,						true,		&MissionInterfaceManager::cameraNormal,0, -1,
-		KEY_F2,				-1,		-1,					true,		&MissionInterfaceManager::cameraDefault,0, -1,
-		KEY_F3,				-1,		-1,					true,		&MissionInterfaceManager::cameraMaxIn,0, -1,
-		KEY_F4,				-1,		-1,					true,		&MissionInterfaceManager::cameraMaxOut,0, -1,
-		KEY_F5,				-1,		-1,					true,		&MissionInterfaceManager::cameraFour,0, -1,
-		KEY_F2 | CTRL,		-1,		-1,					true,		&MissionInterfaceManager::cameraAssign0,0, -1,
-		KEY_F3 | CTRL, 		-1,		-1,					true,		&MissionInterfaceManager::cameraAssign1,0, -1,
-		KEY_F4 | CTRL, 		-1,		-1,					true,		&MissionInterfaceManager::cameraAssign2,0, -1,
-		KEY_F5 | CTRL, 		-1,		-1,					true,		&MissionInterfaceManager::cameraAssign3,0, -1,
-		KEY_NUMPAD2,		mState_DONT, mState_AIMED_ATTACK_LOS,		false,		&MissionInterfaceManager::aimLeg, 0, 43211,
-		KEY_NUMPAD5,		mState_DONT,  mState_AIMED_ATTACK_LOS,		false,		&MissionInterfaceManager::aimArm, 0, 43212,
-		KEY_NUMPAD8,		mState_DONT,  mState_AIMED_ATTACK_LOS,		false,		&MissionInterfaceManager::aimHead, 0, 43213,
-		KEY_BACK,	-1, -1,							false,		&MissionInterfaceManager::removeCommand, 0, 43214,
-		KEY_NEXT | 0x100,	-1,	-1,						false,		&MissionInterfaceManager::powerDown, 0, 43215,
-		KEY_PRIOR| 0x100,	-1,	-1,						false,		&MissionInterfaceManager::powerUp, 0, 43216,
-		KEY_END| 0x100,	mState_EJECT, mState_EJECT,		false,		&MissionInterfaceManager::eject, 0, 43217,
+		KEY_W,				mState_ENERGY_WEAPONS,	mState_ENERGY_WEAPONS_LOS,	false,		&MissionInterfaceManager::conserveAmmo, nullptr, -1,
+		KEY_E,				-1,	-1,						false,		&MissionInterfaceManager::selectVisible, nullptr, 43209,
+		KEY_F,				-1,	-1,						false,		&MissionInterfaceManager::forceShot, nullptr, 43210,
+		KEY_HOME,				-1,	-1,						true,		&MissionInterfaceManager::cameraNormal,nullptr, -1,
+		KEY_F2,				-1,		-1,					true,		&MissionInterfaceManager::cameraDefault,nullptr, -1,
+		KEY_F3,				-1,		-1,					true,		&MissionInterfaceManager::cameraMaxIn,nullptr, -1,
+		KEY_F4,				-1,		-1,					true,		&MissionInterfaceManager::cameraMaxOut,nullptr, -1,
+		KEY_F5,				-1,		-1,					true,		&MissionInterfaceManager::cameraFour,nullptr, -1,
+		KEY_F2 | CTRL,		-1,		-1,					true,		&MissionInterfaceManager::cameraAssign0,nullptr, -1,
+		KEY_F3 | CTRL, 		-1,		-1,					true,		&MissionInterfaceManager::cameraAssign1,nullptr, -1,
+		KEY_F4 | CTRL, 		-1,		-1,					true,		&MissionInterfaceManager::cameraAssign2,nullptr, -1,
+		KEY_F5 | CTRL, 		-1,		-1,					true,		&MissionInterfaceManager::cameraAssign3,nullptr, -1,
+		KEY_NUMPAD2,		mState_DONT, mState_AIMED_ATTACK_LOS,		false,		&MissionInterfaceManager::aimLeg, nullptr, 43211,
+		KEY_NUMPAD5,		mState_DONT,  mState_AIMED_ATTACK_LOS,		false,		&MissionInterfaceManager::aimArm, nullptr, 43212,
+		KEY_NUMPAD8,		mState_DONT,  mState_AIMED_ATTACK_LOS,		false,		&MissionInterfaceManager::aimHead, nullptr, 43213,
+		KEY_BACK,	-1, -1,							false,		&MissionInterfaceManager::removeCommand, nullptr, 43214,
+		KEY_NEXT | 0x100,	-1,	-1,						false,		&MissionInterfaceManager::powerDown, nullptr, 43215,
+		KEY_PRIOR| 0x100,	-1,	-1,						false,		&MissionInterfaceManager::powerUp, nullptr, 43216,
+		KEY_END| 0x100,	mState_EJECT, mState_EJECT,		false,		&MissionInterfaceManager::eject, nullptr, 43217,
 		KEY_SPACE, 			mState_RUN,	 mState_RUN_LOS,				false,		&MissionInterfaceManager::changeSpeed, &MissionInterfaceManager::stopChangeSpeed, 43218,
 		KEY_SPACE | WAYPT, 	mState_RUNWAYPT, 	 mState_RUNWAYPT_LOS,					false,		&MissionInterfaceManager::changeSpeed, &MissionInterfaceManager::stopChangeSpeed, -1,
-		KEY_UP | 0x100,				-1,	-1,						false,		&MissionInterfaceManager::scrollUp, 0,  IDS_HOTKEY_TRACKU,
-		KEY_DOWN | 0x100,			-1,	-1,						false,		&MissionInterfaceManager::scrollDown, 0, IDS_HOTKEY_TRACKD,
-		KEY_LEFT | 0x100,			-1,	-1,						false,		&MissionInterfaceManager::scrollLeft, 0, IDS_HOTKEY_TRACKL,
-		KEY_RIGHT | 0x100,	 		-1,	-1,						false,		&MissionInterfaceManager::scrollRight, 0, IDS_HOTKEY_TRACKR,
-		KEY_SUBTRACT,		-1,	-1,						false,		&MissionInterfaceManager::zoomOut,0, 43225,
-		KEY_MINUS,			-1,	-1,						false,		&MissionInterfaceManager::zoomOut,0, -1,
-		KEY_ADD,			-1,	-1,						false,		&MissionInterfaceManager::zoomIn,0, 43224,
-		SHIFT | KEY_EQUALS,			-1,	-1,				false,		&MissionInterfaceManager::zoomIn,0, -1,
-		KEY_LEFT | SHIFT | 0x100, 	-1,	-1,						false,		&MissionInterfaceManager::rotateLeft, 0, IDS_HOTKEY_ROTATEL,
-		KEY_RIGHT | SHIFT | 0x100,	-1,	-1,						false,		&MissionInterfaceManager::rotateRight, 0, IDS_HOTKEY_ROTATER,
-		KEY_UP | SHIFT | 0x100,	-1,	-1,						false,		&MissionInterfaceManager::tiltUp, 0, IDS_HOTKEY_TILTU,
-		KEY_DOWN | SHIFT | 0x100,		-1,	-1,						false,		&MissionInterfaceManager::tiltDown, 0, IDS_HOTKEY_TILTD,
-		KEY_HOME | 0x100,			-1,	-1,						false,		&MissionInterfaceManager::centerCamera, 0, -1,
-		KEY_LEFT | CTRL,	-1,	-1,						false,		&MissionInterfaceManager::rotateLightLeft, 0, -1,
-		KEY_RIGHT | CTRL,	-1,	-1,						false,		&MissionInterfaceManager::rotateLightRight, 0, -1,
-		KEY_UP | CTRL,		-1,	-1,						false,		&MissionInterfaceManager::rotateLightUp, 0, -1,
-		KEY_DOWN | CTRL,	-1,	-1,						false,		&MissionInterfaceManager::rotateLightDown, 0, -1,
-		KEY_T | CTRL | ALT, -1,	-1,						true,		&MissionInterfaceManager::drawTerrain, 0, -1,
-		KEY_O | CTRL | ALT, -1,	-1,						true,		&MissionInterfaceManager::drawOverlays, 0, -1,
-		KEY_B | CTRL | ALT, -1,	-1,						true,		&MissionInterfaceManager::drawBuildings, 0, -1,
-		CTRL | ALT | KEY_G, -1,	-1,						true,		&MissionInterfaceManager::showGrid, 0, -1,
-		CTRL | ALT | KEY_Q, -1,	-1,						true,		&MissionInterfaceManager::recalcLights, 0, -1, 
-		CTRL | ALT | KEY_F, -1,	-1,						true,		&MissionInterfaceManager::drawFog, 0, -1,
-		CTRL | ALT | KEY_P, -1,	-1,						true,		&MissionInterfaceManager::usePerspective, 0, -1,
-		CTRL | ALT | KEY_S, -1,	-1,						true,		&MissionInterfaceManager::drawTGLShapes, 0, -1,
-		CTRL | ALT | KEY_V, -1,	-1,						true,		&MissionInterfaceManager::drawWaterEffects, 0, -1,
-		CTRL | ALT | KEY_W, -1,	-1,						true,		&MissionInterfaceManager::recalcWater, 0, -1,
-		CTRL | ALT | KEY_D, -1,	-1,						true,		&MissionInterfaceManager::drawShadows, 0,  -1,
-		CTRL | ALT | KEY_L, -1,	-1,						true,		&MissionInterfaceManager::changeLighting, 0, -1,
-		CTRL | ALT | KEY_Z, -1,	-1,						true,		&MissionInterfaceManager::toggleGUI, 0, -1,
-		KEY_V,				-1,	-1,						true,		&MissionInterfaceManager::vehicleCommand, 0, 43222,
-		KEY_F9,			-1,	-1,						true,		&MissionInterfaceManager::showObjectives, 0, 43226,
-		KEY_ESCAPE,			-1,	-1,						true,		&MissionInterfaceManager::togglePause, 0, 43234,
-		KEY_F1,				-1,	-1,					true,		&MissionInterfaceManager::toggleHotKeys, 0, -1,
-		KEY_P,			-1,	-1,						true,		&MissionInterfaceManager::togglePause, 0, -1,
-		KEY_TAB,			-1,	-1,						true,		&MissionInterfaceManager::switchTab, 0, -1,
-		KEY_TAB | SHIFT,	-1,	-1,						true,		&MissionInterfaceManager::reverseSwitchTab, 0, -1,
+		KEY_UP | 0x100,				-1,	-1,						false,		&MissionInterfaceManager::scrollUp, nullptr,  IDS_HOTKEY_TRACKU,
+		KEY_DOWN | 0x100,			-1,	-1,						false,		&MissionInterfaceManager::scrollDown, nullptr, IDS_HOTKEY_TRACKD,
+		KEY_LEFT | 0x100,			-1,	-1,						false,		&MissionInterfaceManager::scrollLeft, nullptr, IDS_HOTKEY_TRACKL,
+		KEY_RIGHT | 0x100,	 		-1,	-1,						false,		&MissionInterfaceManager::scrollRight, nullptr, IDS_HOTKEY_TRACKR,
+		KEY_SUBTRACT,		-1,	-1,						false,		&MissionInterfaceManager::zoomOut,nullptr, 43225,
+		KEY_MINUS,			-1,	-1,						false,		&MissionInterfaceManager::zoomOut,nullptr, -1,
+		KEY_ADD,			-1,	-1,						false,		&MissionInterfaceManager::zoomIn,nullptr, 43224,
+		SHIFT | KEY_EQUALS,			-1,	-1,				false,		&MissionInterfaceManager::zoomIn,nullptr, -1,
+		KEY_LEFT | SHIFT | 0x100, 	-1,	-1,						false,		&MissionInterfaceManager::rotateLeft, nullptr, IDS_HOTKEY_ROTATEL,
+		KEY_RIGHT | SHIFT | 0x100,	-1,	-1,						false,		&MissionInterfaceManager::rotateRight, nullptr, IDS_HOTKEY_ROTATER,
+		KEY_UP | SHIFT | 0x100,	-1,	-1,						false,		&MissionInterfaceManager::tiltUp, nullptr, IDS_HOTKEY_TILTU,
+		KEY_DOWN | SHIFT | 0x100,		-1,	-1,						false,		&MissionInterfaceManager::tiltDown, nullptr, IDS_HOTKEY_TILTD,
+		KEY_HOME | 0x100,			-1,	-1,						false,		&MissionInterfaceManager::centerCamera, nullptr, -1,
+		KEY_LEFT | CTRL,	-1,	-1,						false,		&MissionInterfaceManager::rotateLightLeft, nullptr, -1,
+		KEY_RIGHT | CTRL,	-1,	-1,						false,		&MissionInterfaceManager::rotateLightRight, nullptr, -1,
+		KEY_UP | CTRL,		-1,	-1,						false,		&MissionInterfaceManager::rotateLightUp, nullptr, -1,
+		KEY_DOWN | CTRL,	-1,	-1,						false,		&MissionInterfaceManager::rotateLightDown, nullptr, -1,
+		KEY_T | CTRL | ALT, -1,	-1,						true,		&MissionInterfaceManager::drawTerrain, nullptr, -1,
+		KEY_O | CTRL | ALT, -1,	-1,						true,		&MissionInterfaceManager::drawOverlays, nullptr, -1,
+		KEY_B | CTRL | ALT, -1,	-1,						true,		&MissionInterfaceManager::drawBuildings, nullptr, -1,
+		CTRL | ALT | KEY_G, -1,	-1,						true,		&MissionInterfaceManager::showGrid, nullptr, -1,
+		CTRL | ALT | KEY_Q, -1,	-1,						true,		&MissionInterfaceManager::recalcLights, nullptr, -1, 
+		CTRL | ALT | KEY_F, -1,	-1,						true,		&MissionInterfaceManager::drawFog, nullptr, -1,
+		CTRL | ALT | KEY_P, -1,	-1,						true,		&MissionInterfaceManager::usePerspective, nullptr, -1,
+		CTRL | ALT | KEY_S, -1,	-1,						true,		&MissionInterfaceManager::drawTGLShapes, nullptr, -1,
+		CTRL | ALT | KEY_V, -1,	-1,						true,		&MissionInterfaceManager::drawWaterEffects, nullptr, -1,
+		CTRL | ALT | KEY_W, -1,	-1,						true,		&MissionInterfaceManager::recalcWater, nullptr, -1,
+		CTRL | ALT | KEY_D, -1,	-1,						true,		&MissionInterfaceManager::drawShadows, nullptr,  -1,
+		CTRL | ALT | KEY_L, -1,	-1,						true,		&MissionInterfaceManager::changeLighting, nullptr, -1,
+		CTRL | ALT | KEY_Z, -1,	-1,						true,		&MissionInterfaceManager::toggleGUI, nullptr, -1,
+		KEY_V,				-1,	-1,						true,		&MissionInterfaceManager::vehicleCommand, nullptr, 43222,
+		KEY_F9,			-1,	-1,						true,		&MissionInterfaceManager::showObjectives, nullptr, 43226,
+		KEY_ESCAPE,			-1,	-1,						true,		&MissionInterfaceManager::togglePause, nullptr, 43234,
+		KEY_F1,				-1,	-1,					true,		&MissionInterfaceManager::toggleHotKeys, nullptr, -1,
+		KEY_P,			-1,	-1,						true,		&MissionInterfaceManager::togglePause, nullptr, -1,
+		KEY_TAB,			-1,	-1,						true,		&MissionInterfaceManager::switchTab, nullptr, -1,
+		KEY_TAB | SHIFT,	-1,	-1,						true,		&MissionInterfaceManager::reverseSwitchTab, nullptr, -1,
 		KEY_I,				-1, -1,						true,		&MissionInterfaceManager::infoCommand, &MissionInterfaceManager::infoButtonReleased, 43219,
-		KEY_N,				-1, -1,						true,		&MissionInterfaceManager::gotoNextNavMarker, 0, -1,
-		KEY_MULTIPLY,  mState_UNCERTAIN_AIRSTRIKE, mState_AIRSTRIKE, true, &MissionInterfaceManager::sendAirstrike, 0, 43220,
-		KEY_DIVIDE, 		mState_SENSORSTRIKE, mState_SENSORSTRIKE, true, &MissionInterfaceManager::sendSensorStrike, 0, 43221,
-		KEY_BACKSLASH,		-1, -1,				true,		&MissionInterfaceManager::toggleCompass, 0, 43223,
-		ALT | KEY_SLASH,	-1, -1,						false,		&MissionInterfaceManager::quickDebugInfo, 0, -1,
-		ALT | SHIFT | KEY_SLASH, -1, -1,				false,		&MissionInterfaceManager::setGameObjectWindow, 0, -1,
-		ALT | CTRL | KEY_1, -1, -1,					false,		&MissionInterfaceManager::pageGameObjectWindow1, 0, -1,
-		ALT | CTRL | KEY_2, -1, -1,					false,		&MissionInterfaceManager::pageGameObjectWindow2, 0, -1,
-		ALT | CTRL | KEY_3, -1, -1,					false,		&MissionInterfaceManager::pageGameObjectWindow3, 0, -1,
-		ALT | KEY_1,		-1,	-1,						false,		&MissionInterfaceManager::jumpToDebugGameObject1, 0, -1,
-		ALT | KEY_2,		-1,	-1,						false,		&MissionInterfaceManager::jumpToDebugGameObject2, 0, -1,
-		ALT | KEY_3,		-1,	-1,						false,		&MissionInterfaceManager::jumpToDebugGameObject3, 0, -1,
- 		ALT | KEY_T,		-1, -1,						false,		&MissionInterfaceManager::teleport, 0, -1,
-		ALT | KEY_W,		-1,	-1,						false,		&MissionInterfaceManager::toggleDebugWins, 0, -1,
-		ALT | KEY_M,		-1,	-1,						false,		&MissionInterfaceManager::showMovers, 0, -1,
-		ALT | KEY_C,		-1,	-1,						false,		&MissionInterfaceManager::cullPathAreas, 0, -1,
-		ALT | KEY_Z,		-1,	-1,						false,		&MissionInterfaceManager::zeroHPrime, 0, -1,
-		ALT | KEY_A,		-1,	-1,						false,		&MissionInterfaceManager::calcValidAreaTable, 0, -1,
-		ALT | KEY_G,		-1,	-1,						false,		&MissionInterfaceManager::globalMapLog, 0, -1,
-		ALT | KEY_B,		-1,	-1,						false,		&MissionInterfaceManager::brainDead, 0, -1,
-		ALT | KEY_P,		-1,	-1,						false,		&MissionInterfaceManager::goalPlan, 0, -1,
-		ALT | KEY_V,		-1,	-1,						false,		&MissionInterfaceManager::showVictim, 0, -1,
-		ALT | CTRL | KEY_P,	-1, -1,						false,		&MissionInterfaceManager::enemyGoalPlan, 0, -1,
-		ALT | KEY_4,	-1, -1,					false,		&MissionInterfaceManager::damageObject1, 0, -1,
-		ALT | KEY_5,	-1, -1,					false,		&MissionInterfaceManager::damageObject2, 0, -1,
-		ALT | KEY_6,	-1, -1,					false,		&MissionInterfaceManager::damageObject3, 0, -1,
-		ALT | KEY_7,	-1, -1,					false,		&MissionInterfaceManager::damageObject4, 0, -1,
-		ALT | KEY_8,	-1, -1,					false,		&MissionInterfaceManager::damageObject5, 0, -1,
-		ALT | KEY_9,	-1, -1,					false,		&MissionInterfaceManager::damageObject6, 0, -1,
-		ALT | KEY_0,	-1, -1,					false,		&MissionInterfaceManager::damageObject0, 0, -1,
+		KEY_N,				-1, -1,						true,		&MissionInterfaceManager::gotoNextNavMarker, nullptr, -1,
+		KEY_MULTIPLY,  mState_UNCERTAIN_AIRSTRIKE, mState_AIRSTRIKE, true, &MissionInterfaceManager::sendAirstrike, nullptr, 43220,
+		KEY_DIVIDE, 		mState_SENSORSTRIKE, mState_SENSORSTRIKE, true, &MissionInterfaceManager::sendSensorStrike, nullptr, 43221,
+		KEY_BACKSLASH,		-1, -1,				true,		&MissionInterfaceManager::toggleCompass, nullptr, 43223,
+		ALT | KEY_SLASH,	-1, -1,						false,		&MissionInterfaceManager::quickDebugInfo, nullptr, -1,
+		ALT | SHIFT | KEY_SLASH, -1, -1,				false,		&MissionInterfaceManager::setGameObjectWindow, nullptr, -1,
+		ALT | CTRL | KEY_1, -1, -1,					false,		&MissionInterfaceManager::pageGameObjectWindow1, nullptr, -1,
+		ALT | CTRL | KEY_2, -1, -1,					false,		&MissionInterfaceManager::pageGameObjectWindow2, nullptr, -1,
+		ALT | CTRL | KEY_3, -1, -1,					false,		&MissionInterfaceManager::pageGameObjectWindow3, nullptr, -1,
+		ALT | KEY_1,		-1,	-1,						false,		&MissionInterfaceManager::jumpToDebugGameObject1, nullptr, -1,
+		ALT | KEY_2,		-1,	-1,						false,		&MissionInterfaceManager::jumpToDebugGameObject2, nullptr, -1,
+		ALT | KEY_3,		-1,	-1,						false,		&MissionInterfaceManager::jumpToDebugGameObject3, nullptr, -1,
+ 		ALT | KEY_T,		-1, -1,						false,		&MissionInterfaceManager::teleport, nullptr, -1,
+		ALT | KEY_W,		-1,	-1,						false,		&MissionInterfaceManager::toggleDebugWins, nullptr, -1,
+		ALT | KEY_M,		-1,	-1,						false,		&MissionInterfaceManager::showMovers, nullptr, -1,
+		ALT | KEY_C,		-1,	-1,						false,		&MissionInterfaceManager::cullPathAreas, nullptr, -1,
+		ALT | KEY_Z,		-1,	-1,						false,		&MissionInterfaceManager::zeroHPrime, nullptr, -1,
+		ALT | KEY_A,		-1,	-1,						false,		&MissionInterfaceManager::calcValidAreaTable, nullptr, -1,
+		ALT | KEY_G,		-1,	-1,						false,		&MissionInterfaceManager::globalMapLog, nullptr, -1,
+		ALT | KEY_B,		-1,	-1,						false,		&MissionInterfaceManager::brainDead, nullptr, -1,
+		ALT | KEY_P,		-1,	-1,						false,		&MissionInterfaceManager::goalPlan, nullptr, -1,
+		ALT | KEY_V,		-1,	-1,						false,		&MissionInterfaceManager::showVictim, nullptr, -1,
+		ALT | CTRL | KEY_P,	-1, -1,						false,		&MissionInterfaceManager::enemyGoalPlan, nullptr, -1,
+		ALT | KEY_4,	-1, -1,					false,		&MissionInterfaceManager::damageObject1, nullptr, -1,
+		ALT | KEY_5,	-1, -1,					false,		&MissionInterfaceManager::damageObject2, nullptr, -1,
+		ALT | KEY_6,	-1, -1,					false,		&MissionInterfaceManager::damageObject3, nullptr, -1,
+		ALT | KEY_7,	-1, -1,					false,		&MissionInterfaceManager::damageObject4, nullptr, -1,
+		ALT | KEY_8,	-1, -1,					false,		&MissionInterfaceManager::damageObject5, nullptr, -1,
+		ALT | KEY_9,	-1, -1,					false,		&MissionInterfaceManager::damageObject6, nullptr, -1,
+		ALT | KEY_0,	-1, -1,					false,		&MissionInterfaceManager::damageObject0, nullptr, -1,
 		//ALT | KEY_8,	-1, -1,					false,		&MissionInterfaceManager::damageObject8, 0, -1,
 		//ALT | KEY_9,	-1, -1,					false,		&MissionInterfaceManager::damageObject9, 0, -1,
 		//ALT | KEY_0,	-1, -1,					false,		&MissionInterfaceManager::damageObject0, 0, -1,
-		KEY_H,				-1, -1,						true,		&MissionInterfaceManager::toggleHoldPosition, 0, -1,
-		KEY_RETURN,			-1, -1,						true,		&MissionInterfaceManager::handleChatKey, 0, IDS_HOTKEY_CHAT,
-		SHIFT | KEY_RETURN,	-1, -1,				true,		&MissionInterfaceManager::handleTeamChatKey, 0, IDS_HOTKEY_CHAT_TEAM,
-		KEY_E | SHIFT,				-1,	-1,						false,		&MissionInterfaceManager::addVisibleToSelection, 0, -1,
-		KEY_EQUALS,			-1,	-1,				false,		&MissionInterfaceManager::zoomIn,0, -1,
-		ALT | KEY_PERIOD, -1, -1,						false, &MissionInterfaceManager::rotateObjectLeft, 0, -1,
-		ALT | KEY_COMMA, -1, -1,				false,	&MissionInterfaceManager::rotateObjectRight, 0, -1,
-		KEY_PAUSE,		-1, -1,						true,		&MissionInterfaceManager::togglePause, 0, -1
+		KEY_H,				-1, -1,						true,		&MissionInterfaceManager::toggleHoldPosition, nullptr, -1,
+		KEY_RETURN,			-1, -1,						true,		&MissionInterfaceManager::handleChatKey, nullptr, IDS_HOTKEY_CHAT,
+		SHIFT | KEY_RETURN,	-1, -1,				true,		&MissionInterfaceManager::handleTeamChatKey, nullptr, IDS_HOTKEY_CHAT_TEAM,
+		KEY_E | SHIFT,				-1,	-1,						false,		&MissionInterfaceManager::addVisibleToSelection, nullptr, -1,
+		KEY_EQUALS,			-1,	-1,				false,		&MissionInterfaceManager::zoomIn,nullptr, -1,
+		ALT | KEY_PERIOD, -1, -1,						false, &MissionInterfaceManager::rotateObjectLeft, nullptr, -1,
+		ALT | KEY_COMMA, -1, -1,				false,	&MissionInterfaceManager::rotateObjectRight, nullptr, -1,
+		KEY_PAUSE,		-1, -1,						true,		&MissionInterfaceManager::togglePause, nullptr, -1
 
 };
 
@@ -217,13 +217,13 @@ void MissionInterfaceManager::init (void)
 	
 	for (long i=0;i<MAX_TEAMS;i++)
 	{
-		vTol[i] = 0;
+		vTol[i] = nullptr;
 		paintingVtol[i] = 0;
 		vTolTime[i] = 0.0f;
-		dustCloud[i] = NULL;
-		recoveryBeam[i] = NULL;
+		dustCloud[i] = nullptr;
+		recoveryBeam[i] = nullptr;
 		mechRecovered[i] = false;
-		mechToRecover[i] = 0;
+		mechToRecover[i] = nullptr;
 		vehicleID[i] = 0;
 	}
 	
@@ -247,7 +247,7 @@ void MissionInterfaceManager::init (void)
 	targetButtonId = -1;
 	buttonNumFlashes = 0;
 	guiFrozen = false;
-	reinforcement = NULL;
+	reinforcement = nullptr;
 	bForcedShot = false;
 	bAimedShot = false;
 
@@ -264,7 +264,7 @@ void MissionInterfaceManager::init (void)
 // this, picking is suppressed until armHoverTarget() declares the mission live.
 void MissionInterfaceManager::invalidateHoverTarget (void)
 {
-	target              = NULL;
+	target              = nullptr;
 	s_hoverCachedTarget = nullptr;
 	s_hoverCachedTargetWID = 0;
 	s_hoverCacheValid   = false;
@@ -405,7 +405,7 @@ void MissionInterfaceManager::destroy (void)
 	hotKeyHeaderFont.destroy();
 
 	delete keyboardRef;
-	keyboardRef = NULL;
+	keyboardRef = nullptr;
 }	
 
 //--------------------
@@ -707,10 +707,10 @@ void MissionInterfaceManager::initTacMap( PacketFile* file, int packet )
 
 	for ( int i = 0; i < MAX_ICONS; i++ )
 	{
-		oldTargets[i] = NULL;
+		oldTargets[i] = nullptr;
 	}
 
-	target = NULL;
+	target = nullptr;
 }
 
 void MissionInterfaceManager::printDebugInfo()

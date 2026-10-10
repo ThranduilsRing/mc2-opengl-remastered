@@ -57,10 +57,10 @@ char MechStateByGesture[MAX_MECH_ANIMATIONS] = {
 	BODYSTATE_FALLEN_FORWARD,	// GestureFallenBackward		24 -- Fallen Backward (Single Frame, mech on ground)
 };																
 
-PaintSchemataPtr	Mech3DAppearance::paintSchemata = NULL;
+PaintSchemataPtr	Mech3DAppearance::paintSchemata = nullptr;
 DWORD				Mech3DAppearance::numPaintSchemata = 0;
 
-TG_TypeMultiShapePtr Mech3DAppearanceType::SensorSquareShape = NULL;
+TG_TypeMultiShapePtr Mech3DAppearanceType::SensorSquareShape = nullptr;
 
 bool Mech3DAppearanceType::animationLoadingEnabled = true;
 
@@ -148,7 +148,7 @@ bool oneMechPlease = false;
 void Mech3DAppearance::destroy (void)
 {
 	AppearanceTypeList::appearanceHeap->Free(paintSchemata);
-	paintSchemata = NULL;
+	paintSchemata = nullptr;
 
 	// (E) T1.8: paired cleanup for SpotLight_-child illumination from T1.6.
 	// Walks CACHED state only (spotlightLights_/spotlightSlotIds_); does NOT
@@ -175,21 +175,21 @@ void Mech3DAppearance::destroy (void)
 		mc2mechanim::UnregisterImportedActor(mechShape);	// IMPORTED-ACTOR-STABLE-KEY-1: final teardown
 		delete mechShape;
 	}
-	mechShape = NULL;
+	mechShape = nullptr;
 
 	if (mechShadowShape)
 	{
 		delete mechShadowShape;
-		mechShadowShape = NULL;
+		mechShadowShape = nullptr;
 	}
 
 	if ( leftArm )
 		delete leftArm;
-	leftArm = NULL;
+	leftArm = nullptr;
 
 	if ( rightArm )
 		delete rightArm;
-	rightArm = NULL;
+	rightArm = nullptr;
 
 #ifdef _DEBUG
 	if (logFile )
@@ -206,14 +206,14 @@ void Mech3DAppearance::destroy (void)
 		{
 			rightDustPoofEffect[i]->Kill();
 			delete rightDustPoofEffect[i];
-			rightDustPoofEffect[i] = NULL;
+			rightDustPoofEffect[i] = nullptr;
 		}
 			
 		if (leftDustPoofEffect[i])
 		{
 			leftDustPoofEffect[i]->Kill();
 			delete leftDustPoofEffect[i];
-			leftDustPoofEffect[i] = NULL;
+			leftDustPoofEffect[i] = nullptr;
 		}
 	}
 
@@ -221,40 +221,40 @@ void Mech3DAppearance::destroy (void)
 	{
 		smokeEffect->Kill();
 		delete smokeEffect;
-		smokeEffect = NULL;
+		smokeEffect = nullptr;
 	}
 	
 	if (jumpJetEffect)
 	{
 		jumpJetEffect->Kill();
 		delete jumpJetEffect;
-		jumpJetEffect = NULL;
+		jumpJetEffect = nullptr;
 	}
 	
 	if (rightShoulderBoom)
 	{
 		rightShoulderBoom->Kill();
 		delete rightShoulderBoom;
-		rightShoulderBoom = NULL;
+		rightShoulderBoom = nullptr;
 	}
 	
 	if (leftShoulderBoom)
 	{
 		leftShoulderBoom->Kill();
 		delete leftShoulderBoom;
-		leftShoulderBoom = NULL;
+		leftShoulderBoom = nullptr;
 	}
 
 	if (sensorSquareShape)
 	{
 		delete sensorSquareShape;
-		sensorSquareShape = NULL;	
+		sensorSquareShape = nullptr;	
 	}
 		
 	if (sensorTriangleShape)
 	{
 		delete sensorTriangleShape;
-		sensorTriangleShape = NULL;	
+		sensorTriangleShape = nullptr;	
 	}
 	
 	appearanceTypeList->removeAppearance(mechType);
@@ -262,10 +262,10 @@ void Mech3DAppearance::destroy (void)
 	if (InEditor)
 	{
 		AppearanceTypeList::appearanceHeap->Free(nodeUsed); 
-		nodeUsed = NULL;
+		nodeUsed = nullptr;
 
 		AppearanceTypeList::appearanceHeap->Free(nodeRecycle);
-		nodeRecycle = NULL;
+		nodeRecycle = nullptr;
 	}
 }
 
@@ -387,7 +387,7 @@ void Mech3DAppearance::copyFrom (MechAppearanceData *data)
 		localToWorld.Multiply(gosFX::Effect_Against_Motion,effectRot);
 		localResult.Multiply(localToWorld,shapeOrigin);
 					
- 		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&localResult,NULL);
+ 		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&localResult,nullptr);
 		jumpJetEffect->Start(&info);
 	}
 

@@ -35,20 +35,20 @@ void MissionInterfaceManager::updateVTol()
 				{
 					paintingVtol[vtolNum] = 0;
 					delete vTol[vtolNum]; 
-					vTol[vtolNum] = NULL;
+					vTol[vtolNum] = nullptr;
 					
 					if (dustCloud[vtolNum])
 					{
 						dustCloud[vtolNum]->Kill();
 						delete dustCloud[vtolNum];
-						dustCloud[vtolNum] = NULL;
+						dustCloud[vtolNum] = nullptr;
 					}
 					
 					if (recoveryBeam[vtolNum])
 					{
 						recoveryBeam[vtolNum]->Kill();
 						delete recoveryBeam[vtolNum];
-						recoveryBeam[vtolNum] = NULL;
+						recoveryBeam[vtolNum] = nullptr;
 					}
 
 					//We should have set this when the helo was brought in.
@@ -62,7 +62,7 @@ void MissionInterfaceManager::updateVTol()
 						if (mover) {
 							TacticalOrder tacOrder;
 							tacOrder.init(ORDER_ORIGIN_PLAYER, TACTICAL_ORDER_POWERUP, true);
-							tacOrder.pack(NULL, NULL);					
+							tacOrder.pack(nullptr, nullptr);					
 							if (!MPlayer->isServer())
 								MPlayer->sendPlayerOrder(&tacOrder, false, 1, &mover);
 							else
@@ -73,7 +73,7 @@ void MissionInterfaceManager::updateVTol()
 					else if (reinforcement)
 					{
 						reinforcement->getPilot()->orderPowerUp(true, ORDER_ORIGIN_SELF);
-						reinforcement = NULL;
+						reinforcement = nullptr;
 					}
 
 					if ( !MPlayer || vtolNum == MPlayer->commanderID )
@@ -107,7 +107,7 @@ void MissionInterfaceManager::updateVTol()
 						shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 						shapeOrigin.BuildTranslation(wakePos);
 									
-						gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,NULL);
+						gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
 					
 						recoveryBeam[vtolNum]->SetLoopOff();
 						recoveryBeam[vtolNum]->SetExecuteOn();
@@ -140,17 +140,17 @@ void MissionInterfaceManager::updateVTol()
 							// -fs
 
 							//STAY in recover until its done.  I know it shouldn't be possible but trust me, its happening.
-							while (((MoverPtr)mechToRecover[vtolNum])->recover() == false)
+							while ((mechToRecover[vtolNum])->recover() == false)
 								;
 
 							if (mechToRecover[vtolNum]->isDisabled())
 							{
 								mechToRecover[vtolNum]->setStatus(OBJECT_STATUS_SHUTDOWN,true);
 								mechToRecover[vtolNum]->getSensorSystem()->broken = false;
-								((MoverPtr)mechToRecover[vtolNum])->timeLeft = 1.0f;
-								((MoverPtr)mechToRecover[vtolNum])->exploding = false;
+								(mechToRecover[vtolNum])->timeLeft = 1.0f;
+								(mechToRecover[vtolNum])->exploding = false;
 							}
-							char* newPilotName = NULL;
+							char* newPilotName = nullptr;
 							if (MPlayer)
 								newPilotName = MPlayer->reinforcementPilot[vtolNum];
 							else
@@ -172,20 +172,20 @@ void MissionInterfaceManager::updateVTol()
 				{
 					paintingVtol[vtolNum] = 0;
 					delete vTol[vtolNum];
-					vTol[vtolNum] = NULL;
+					vTol[vtolNum] = nullptr;
 					
 					if (dustCloud[vtolNum])
 					{
 						dustCloud[vtolNum]->Kill();
 						delete dustCloud[vtolNum];
-						dustCloud[vtolNum] = NULL;
+						dustCloud[vtolNum] = nullptr;
 					}
 					
 					if (recoveryBeam[vtolNum])
 					{
 						recoveryBeam[vtolNum]->Kill();
 						delete recoveryBeam[vtolNum];
-						recoveryBeam[vtolNum] = NULL;
+						recoveryBeam[vtolNum] = nullptr;
 					}
 
 					//Check if mech was recovered.  If not, restore the resource points!!!
@@ -377,7 +377,7 @@ void MissionInterfaceManager::updateOldStyle( bool shiftDn, bool altDn, bool ctr
 			// OR it doesn't matter because the canAddVehicle part of the beginVtol function doesn't reference it!
 			// Again, Its OK because we only use it for salvage craft.
 			// Need to pass this in so that Multiplayer can pass it in.
-			beginVtol(-1,commanderID,NULL,(MoverPtr)target);	//In Single player, this should always be zero?
+			beginVtol(-1,commanderID,nullptr,(MoverPtr)target);	//In Single player, this should always be zero?
 			return;
 		}
 		else if ( (controlGui.isAddingVehicle() && !paintingVtol[commanderID] && !canAddVehicle( wPos )) || 
@@ -732,7 +732,7 @@ void MissionInterfaceManager::updateAOEStyle(bool shiftDn, bool altDn, bool ctrl
 			// OR it doesn't matter because the canAddVehicle part of the beginVtol function doesn't reference it!
 			// Again, Its OK because we only use it for salvage craft.
 			// Need to pass this in so that Multiplayer can pass it in.
-			beginVtol(-1,commanderID,NULL,(MoverPtr)target);	//In Single player, this should always be zero?
+			beginVtol(-1,commanderID,nullptr,(MoverPtr)target);	//In Single player, this should always be zero?
 			return;
 		}
 		else if ( (controlGui.isAddingVehicle() && !paintingVtol[commanderID] && !canAddVehicle( wPos )) || 
@@ -762,7 +762,7 @@ void MissionInterfaceManager::updateAOEStyle(bool shiftDn, bool altDn, bool ctrl
 						doGuardTower();
 					else if ( controlGui.getGuard() )
 					{
-						doGuard(NULL);
+						doGuard(nullptr);
 					}
 					else				
 						doMove( wPos );
@@ -808,7 +808,7 @@ void MissionInterfaceManager::updateAOEStyle(bool shiftDn, bool altDn, bool ctrl
 			// OR it doesn't matter because the canAddVehicle part of the beginVtol function doesn't reference it!
 			// Again, Its OK because we only use it for salvage craft.
 			// Need to pass this in so that Multiplayer can pass it in.
-			beginVtol(-1,commanderID,NULL,(MoverPtr)target);	//In Single player, this should always be zero?
+			beginVtol(-1,commanderID,nullptr,(MoverPtr)target);	//In Single player, this should always be zero?
 			return;
 		}
 		else if ( (controlGui.isAddingVehicle() && !paintingVtol[commanderID] && !canAddVehicle( wPos )) || 
@@ -1063,7 +1063,7 @@ int MissionInterfaceManager::update( bool leftClickedClick, bool rightClickedCli
 				if (MPlayer && !MPlayer->isServer()) {
 					TacticalOrder tacOrder;
 					tacOrder.init(ORDER_ORIGIN_PLAYER, TACTICAL_ORDER_WAYPOINTS_DONE);
-					tacOrder.pack(NULL, NULL);					
+					tacOrder.pack(nullptr, nullptr);					
 					MPlayer->sendPlayerOrder(&tacOrder, false, 1, &pMover);
 					}
 				else {

@@ -18,7 +18,7 @@
 //------------------------------------------------------------------------------------------------------------
 // MechCmdr2 Global Instances of Things
 // NS3: systemHeap defined in mclib/heap.cpp (engine boundary).
-UserHeapPtr guiHeap = NULL;
+UserHeapPtr guiHeap = nullptr;
 
 
 // NS3: fastFiles/numFastFiles/maxFastFiles defined in mclib/fastfile.cpp (engine boundary).
@@ -38,15 +38,15 @@ bool useUnlimitedAmmo = true;
 bool useLeftRightMouseProfile = true; // if false, use old style commands
 bool gotBombData = false;
 
-TimerManagerPtr timerManager = NULL;
+TimerManagerPtr timerManager = nullptr;
 
 bool initGameLogs = false;
 bool initNetLog = false;
-GameLog* NetLog = NULL;
+GameLog* NetLog = nullptr;
 bool initCombatLog = false;
-GameLog* CombatLog = NULL;
+GameLog* CombatLog = nullptr;
 bool initBugLog = false;
-GameLog* BugLog = NULL;
+GameLog* BugLog = nullptr;
 bool initLRMoveLog = false;
 
 bool KillAmbientLight = false;
@@ -76,7 +76,7 @@ void __stdcall ExitGameOS();
 //extern HGOSFONT3D	FontHandle;
 HGOSFONT3D	FontHandle;
 
-FloatHelpPtr globalFloatHelp = NULL;
+FloatHelpPtr globalFloatHelp = nullptr;
 unsigned long currentFloatHelp = 0;
 float MaxMinUV = 8.0f;
 ProcType Processor = CPU_PENTIUM;		//Needs to be set when GameOS supports ProcessorID -- MECHCMDR2
@@ -87,7 +87,7 @@ bool EnemiesGoalPlan = false;
 bool inViewMode = false;
 unsigned long viewObject = 0x0;
 
-char* ExceptionGameMsg = NULL;
+char* ExceptionGameMsg = nullptr;
 
 char buildNumber[80];
 
@@ -146,12 +146,12 @@ Stuff::Vector3D pos[36] =
 long NumDisableAtStart = 0;
 long DisableAtStart[MAX_KILL_AT_START];
 
-OptionsScreenWrapper *optionsScreenWrapper = NULL;
+OptionsScreenWrapper *optionsScreenWrapper = nullptr;
 bool bInvokeOptionsScreenFlag = false;
 
 bool SnifferMode = false;
-gos_VERTEX *testVertex = NULL;
-WORD *indexArray = NULL;
+gos_VERTEX *testVertex = nullptr;
+WORD *indexArray = nullptr;
 DWORD testTextureHandle = 0xffffffff;
 float totalTime = 0;
 DWORD numIterations = 4;
@@ -165,8 +165,8 @@ float trisPerSecond[MAX_HARDWARE_CARDS] =
 
 bool checkedBomb = false;
 char DebugStatusBarString[256];
-GameDebugWindow* DebugWindow[NUM_DEBUG_WINDOWS] = {NULL, NULL, NULL, NULL};
-GameObjectPtr DebugGameObject[3] = {NULL, NULL, NULL};
+GameDebugWindow* DebugWindow[NUM_DEBUG_WINDOWS] = {nullptr, nullptr, nullptr, nullptr};
+GameObjectPtr DebugGameObject[3] = {nullptr, nullptr, nullptr};
 long GameObjectWindowList[3] = {0, 0, 0};
 long NumGameObjectsToDisplay = 0;
 bool DebugWindowOpen[NUM_DEBUG_WINDOWS] = {false, false, false, false};
@@ -189,7 +189,7 @@ DWORD endTime;
 
 //---------------------------------------------------------------------------
 #define GAME_REG_KEY	 	"Software\\Microsoft\\Microsoft Games\\MechCommander2\\1.0"
-typedef DWORD (*EBUPROC) (LPCTSTR lpRegKeyLocation, LPCTSTR lpEULAFileName, LPCSTR lpWarrantyFileName, BOOL fCheckForFirstRun);
+using EBUPROC = DWORD (*) (LPCTSTR lpRegKeyLocation, LPCTSTR lpEULAFileName, LPCSTR lpWarrantyFileName, BOOL fCheckForFirstRun);
 
 bool FirstRunEula(void)
 {
@@ -224,7 +224,7 @@ void __stdcall InitializeGameEngine()
 	{ ZoneScopedN("InitializeGameEngine resourceDLL");
 #ifdef PLATFORM_WINDOWS
 	#ifdef _WIN64
-		gosResourceHandle = gos_OpenResourceDLL("mc2res_64.dll", NULL, 0);
+		gosResourceHandle = gos_OpenResourceDLL("mc2res_64.dll", nullptr, 0);
 	#else
 		gosResourceHandle = gos_OpenResourceDLL("mc2res_32.dll", NULL, 0);
 	#endif
@@ -242,7 +242,7 @@ void __stdcall InitializeGameEngine()
 	// its swapfile at the get go to insure goodness and that
 	// the message does not come up during game run.
 	DWORD testMemLength = 123000000;
-	void *testMem = VirtualAlloc(NULL,testMemLength,MEM_COMMIT,PAGE_READWRITE);
+	void *testMem = VirtualAlloc(nullptr,testMemLength,MEM_COMMIT,PAGE_READWRITE);
 
 #ifndef LINUX_BUILD
    	MEMORYSTATUS ms;
@@ -657,7 +657,7 @@ void __stdcall InitializeGameEngine()
 	
 		systemFile->close();
 		delete systemFile;
-		systemFile = NULL;
+		systemFile = nullptr;
 		}
 	
 		if (initGameLogs) {
@@ -905,10 +905,10 @@ void __stdcall InitializeGameEngine()
 		optsFile->close();
 		
 		delete prefsFile;
-		prefsFile = NULL;
+		prefsFile = nullptr;
 		
 		delete optsFile;
-		optsFile = NULL;
+		optsFile = nullptr;
 		
 		//---------------------------------------------------------------------
 		//void __stdcall gos_SetScreenMode( DWORD Width, DWORD Height, DWORD bitDepth=16, DWORD Device=0, bool disableZBuffer=0, bool AntiAlias=0, bool RenderToVram=0, bool GotoFullScreen=0, int DirtyRectangle=0, bool GotoWindowMode=0, bool EnableStencil=0, DWORD Renderer=0 );
@@ -1014,7 +1014,7 @@ void __stdcall InitializeGameEngine()
 		MidLevelRenderer::MLRTexturePool::Instance = new MidLevelRenderer::MLRTexturePool(pool);
 	
 		MidLevelRenderer::MLRSortByOrder *cameraSorter = new MidLevelRenderer::MLRSortByOrder(MidLevelRenderer::MLRTexturePool::Instance);
-		theClipper = new MidLevelRenderer::MLRClipper(0, cameraSorter);
+		theClipper = new MidLevelRenderer::MLRClipper(nullptr, cameraSorter);
 		
 		gos_PopCurrentHeap();
 		}
@@ -1106,9 +1106,9 @@ void __stdcall InitializeGameEngine()
 		globalPane->x1 = Environment.screenWidth;
 		globalPane->y1 = Environment.screenHeight;
 	
-		globalWindow->buffer = NULL;			//This is set at the start of Renders.  For now we HOLD LOCK during entire old 2D render test.  This will go away once we hit 3D
-		globalWindow->shadow = NULL;
-		globalWindow->stencil = NULL;
+		globalWindow->buffer = nullptr;			//This is set at the start of Renders.  For now we HOLD LOCK during entire old 2D render test.  This will go away once we hit 3D
+		globalWindow->shadow = nullptr;
+		globalWindow->stencil = nullptr;
 		globalWindow->x_max = globalPane->x1 - globalPane->x0 - 1;
 		globalWindow->y_max = globalPane->y1 - globalPane->y0 - 1;
 		}
@@ -1152,7 +1152,7 @@ void __stdcall InitializeGameEngine()
 		{
 			logistics->setLogisticsState(log_STARTMISSIONFROMCMDLINE);
 			char commandersToLoad[MAX_MC_PLAYERS][3] = {{0, 0, 0}, {1, 1, 1}, {2, 0, 2}, {3, 3, 3}, {4, 4, 4}, {5, 5, 5}, {6, 6, 6}, {7, 7, 7}};
-			mission->init(missionName, MISSION_LOAD_SP_QUICKSTART, 0, NULL, commandersToLoad, 2);
+			mission->init(missionName, MISSION_LOAD_SP_QUICKSTART, 0, nullptr, commandersToLoad, 2);
 			eye->activate();
 			eye->update();
 			mission->start();
@@ -1284,8 +1284,8 @@ void __stdcall InitializeGameEngine()
 	}
 
 	//Make any directories we need which should be empty.
-	CreateDirectory(savePath,NULL);
-	CreateDirectory(transcriptsPath,NULL);
+	CreateDirectory(savePath,nullptr);
+	CreateDirectory(transcriptsPath,nullptr);
 
 	//Startup the Office Watson Handler.
 	InitDW();

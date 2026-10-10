@@ -51,7 +51,7 @@ static bool extractJsonNumber(const std::string& text, const char* key, float fa
 	p = text.find(':', p + needle.size());
 	if (p == std::string::npos)
 		return false;
-	char* end = NULL;
+	char* end = nullptr;
 	const char* start = text.c_str() + p + 1;
 	out = (float)strtod(start, &end);
 	return end != start;

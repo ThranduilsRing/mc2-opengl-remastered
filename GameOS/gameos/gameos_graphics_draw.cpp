@@ -109,7 +109,7 @@ void gosMesh::drawIndexed(gosRenderMaterial* material) const
         gosHudRingEnabled() ? const_cast<gosMesh*>(this)->ensureRing() : nullptr;
 
     GLint  baseVertex   = 0;
-    GLvoid* indexOffset = NULL;
+    GLvoid* indexOffset = nullptr;
     GLuint drawVb = vb_;
     GLuint drawIb = ib_;
     if (ring) {
@@ -193,7 +193,7 @@ void gosMesh::drawIndexed(HGOSBUFFER ib, HGOSBUFFER vb, HGOSVERTEXDECLARATION vd
 	CHECK_GL_ERROR;
 
 	GLenum pt = GL_TRIANGLES;
-	glDrawElements(pt, ib->count_, index_size == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT, NULL);
+	glDrawElements(pt, ib->count_, index_size == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT, nullptr);
 
 	vdecl->end();
 	material->end();
@@ -221,7 +221,7 @@ void gosMesh::drawIndexed(HGOSBUFFER ib, HGOSBUFFER vb, HGOSVERTEXDECLARATION vd
 	CHECK_GL_ERROR;
 
 	GLenum pt = GL_TRIANGLES;
-	glDrawElements(pt, ib->count_, index_size == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT, NULL);
+	glDrawElements(pt, ib->count_, index_size == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT, nullptr);
 
 	vdecl->end();
 
@@ -360,7 +360,7 @@ void gosRenderer::applyRenderStates() {
             for (int i = 0; i < 3 && equal; ++i) {
                 DWORD h = renderStates_[tex_states[i]];
                 gosTexture* tex = (h == INVALID_TEXTURE_ID) ? nullptr : this->getTexture(h);
-                uint32_t glId = tex ? (uint32_t)tex->getTextureId() : 0u;
+                uint32_t glId = tex ? tex->getTextureId() : 0u;
                 if (glId != cachedResolvedTexId_[i]) { equal = false; break; }
                 if (curStates_[tex_states[i]] != h) { equal = false; break; }
             }
@@ -477,9 +477,9 @@ void gosRenderer::applyRenderStates() {
 
        glActiveTexture(GL_TEXTURE0 + i);
 
-       gosTexture* tex = gosTextureHandle == INVALID_TEXTURE_ID ? 0 : this->getTexture(gosTextureHandle);
+       gosTexture* tex = gosTextureHandle == INVALID_TEXTURE_ID ? nullptr : this->getTexture(gosTextureHandle);
        if(tex) {
-           const uint32_t glId = (uint32_t)tex->getTextureId();
+           const uint32_t glId = tex->getTextureId();
            glBindTexture(GL_TEXTURE_2D, glId);
            setSamplerParams(tex->getTextureType(), address_mode, filter);
            cachedResolvedTexId_[i] = glId;

@@ -370,7 +370,7 @@ bool BattleMech::updateMovePath (float& newRotate, char& newThrottleSetting, lon
 
 	bool aheadOfPointVehicle = false;
 	bool stopForPointVehicle = false;
-	MoverPtr pointVehicle = (MoverPtr)pilot->getPoint();
+	MoverPtr pointVehicle = pilot->getPoint();
 	bool hasGroupMoveOrder = (curOrder->isGroupOrder() && curOrder->isMoveOrder());
 
 	if (!allowedToRun && !hustle && pointVehicle && !pointVehicle->isDisabled() && (pointVehicle != this) && hasGroupMoveOrder) {

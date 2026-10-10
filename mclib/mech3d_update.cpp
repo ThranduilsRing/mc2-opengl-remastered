@@ -281,7 +281,7 @@ long Mech3DAppearance::update (bool animate)
 					// disable with MC2_ANIM_CADENCE_FIX=0 to A/B the double-step.
 					static const bool s_animCadenceFix = mc2::gate::get<"MC2_ANIM_CADENCE_FIX">();
 					const bool _alreadyAdvanced = (s_animCadenceFix &&
-						lastAnimAdvanceFrame == (uint32_t)g_mc2FrameCounter);
+						lastAnimAdvanceFrame == g_mc2FrameCounter);
 					// VK-MECH-CAPTURE-DETERMINISM-1: during a frozen visual-capture
 					// sweep (sim paused) the render path still ticks this gait via the
 					// wall-clock frameLength, so a mech's pose drifted run-to-run and
@@ -305,7 +305,7 @@ long Mech3DAppearance::update (bool animate)
 							currentFrame -= frameInc;
 						else
 							currentFrame += frameInc;
-						lastAnimAdvanceFrame = (uint32_t)g_mc2FrameCounter;
+						lastAnimAdvanceFrame = g_mc2FrameCounter;
 					}
 				}
 
@@ -327,7 +327,7 @@ long Mech3DAppearance::update (bool animate)
 							static std::unordered_map<void*, uint32_t> s_lastAdvanceFrame;
 							static uint64_t s_ac_advances = 0, s_ac_doubles = 0;
 							++s_ac_advances;
-							const uint32_t _ac_frame = (uint32_t)g_mc2FrameCounter;
+							const uint32_t _ac_frame = g_mc2FrameCounter;
 							auto _ac_it = s_lastAdvanceFrame.find((void*)this);
 							const bool _ac_double = (_ac_it != s_lastAdvanceFrame.end() && _ac_it->second == _ac_frame);
 							s_lastAdvanceFrame[(void*)this] = _ac_frame;
@@ -587,7 +587,7 @@ long Mech3DAppearance::update (bool animate)
 			{
 				leftArmSmoke->Kill();
 				delete leftArmSmoke;
-				leftArmSmoke = NULL;
+				leftArmSmoke = nullptr;
 			}
 		}
 	}
@@ -665,7 +665,7 @@ long Mech3DAppearance::update (bool animate)
 			{
 				rightArmSmoke->Kill();
 				delete rightArmSmoke;
-				rightArmSmoke = NULL;
+				rightArmSmoke = nullptr;
 			}
 		}
 	}
@@ -737,7 +737,7 @@ void Mech3DAppearance::blowLeftArm (void)
 		localToWorld.Multiply(gosFX::Effect_Against_Motion,effectRot);
 		localResult.Multiply(localToWorld,shapeOrigin);
 		
- 		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&localResult,NULL);
+ 		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&localResult,nullptr);
 		leftShoulderBoom->Start(&info);
 	}
 
@@ -757,7 +757,7 @@ void Mech3DAppearance::blowLeftArm (void)
 		localToWorld.Multiply(gosFX::Effect_Against_Motion,effectRot);
 		localResult.Multiply(localToWorld,shapeOrigin);
 		
- 		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&localResult,NULL);
+ 		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&localResult,nullptr);
 		leftArmSmoke->Start(&info);
 	}
 	
@@ -852,7 +852,7 @@ void Mech3DAppearance::blowRightArm (void)
 		localToWorld.Multiply(gosFX::Effect_Against_Motion,effectRot);
 		localResult.Multiply(localToWorld,shapeOrigin);
 		
- 		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&localResult,NULL);
+ 		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&localResult,nullptr);
 		rightShoulderBoom->Start(&info);
 	}
 
@@ -872,7 +872,7 @@ void Mech3DAppearance::blowRightArm (void)
 		localToWorld.Multiply(gosFX::Effect_Against_Motion,effectRot);
 		localResult.Multiply(localToWorld,shapeOrigin);
 		
- 		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&localResult,NULL);
+ 		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&localResult,nullptr);
 		rightArmSmoke->Start(&info);
 	}
 
@@ -965,7 +965,7 @@ void Mech3DAppearance::startSmoking (long smokeLvl)
 			shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 			shapeOrigin.BuildTranslation(smokePos);
 
-			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,NULL);
+			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
 
 			if (smokeLvl > 0)
 				criticalSmoke->Start(&info);
@@ -1035,7 +1035,7 @@ void Mech3DAppearance::startWaterWake (void)
 			localToWorld.Multiply(gosFX::Effect_Into_Motion,effectRot);
 		localResult.Multiply(localToWorld,shapeOrigin);
 			
- 		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&localResult,NULL);
+ 		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&localResult,nullptr);
 
 		waterWake->Start(&info);
 		isWaking = true;
@@ -1088,7 +1088,7 @@ void Mech3DAppearance::playEjection (void)
 		shapeOrigin.BuildTranslation(wakePos);
 				
 			
- 		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,NULL);
+ 		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
 
 		helicopterDustCloud->Start(&info);
 		isDusting = true;

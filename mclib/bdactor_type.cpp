@@ -195,7 +195,7 @@ void BldgAppearanceType::init (const char * fileName)
 				long r = ImportGeometryFromFile(overridePath, bldgRenderShape, /*autoGround=*/false);
 				if (r != 0 || bldgRenderShape->GetNumShapes() == 0)
 				{
-					delete bldgRenderShape; bldgRenderShape = NULL;   // stock fallback
+					delete bldgRenderShape; bldgRenderShape = nullptr;   // stock fallback
 					fprintf(stderr, "[MODOVERRIDE] staticProp '%s': import failed (%s), using stock render\n",
 					        bldgBaseName, overridePath);
 					fflush(stderr);
@@ -227,7 +227,7 @@ void BldgAppearanceType::init (const char * fileName)
 			}
 			catch (...)
 			{
-				delete bldgRenderShape; bldgRenderShape = NULL;   // stock fallback
+				delete bldgRenderShape; bldgRenderShape = nullptr;   // stock fallback
 				fprintf(stderr, "[MODOVERRIDE] staticProp '%s': import threw (%s), using stock render\n",
 				        bldgBaseName, overridePath);
 				fflush(stderr);
@@ -257,7 +257,7 @@ void BldgAppearanceType::init (const char * fileName)
 		if (!bldgDmgShape->GetNumShapes())
 		{
 			delete bldgDmgShape;
-			bldgDmgShape = NULL;
+			bldgDmgShape = nullptr;
 		}
 		else
 		{
@@ -313,7 +313,7 @@ void BldgAppearanceType::init (const char * fileName)
 	}
 	else
 	{
-		bldgDmgShape = NULL;
+		bldgDmgShape = nullptr;
 	}
 
 	result = iniFile.seekBlock("TGLDestructEffect");
@@ -370,11 +370,11 @@ void BldgAppearanceType::init (const char * fileName)
 				bdAnimData[i]->LoadTGMultiShapeAnimationFromASE(animPath,bldgShape[0]);
 			}
 			else
-				bdAnimData[i] = NULL;
+				bdAnimData[i] = nullptr;
 		}
 		else
 		{
-			bdAnimData[i] = NULL;
+			bdAnimData[i] = nullptr;
 		}
 	}
 	
@@ -396,7 +396,7 @@ void BldgAppearanceType::init (const char * fileName)
 	}
 
 	numWeaponNodes = 0;
-	nodeData = NULL;
+	nodeData = nullptr;
 	result = iniFile.seekBlock("WeaponNode");
 	if (result == NO_ERR)
 	{
@@ -440,7 +440,7 @@ void BldgAppearanceType::destroy (void)
 		if (bldgShape[i])
 		{
 			delete bldgShape[i];
-			bldgShape[i] = NULL;
+			bldgShape[i] = nullptr;
 		}
 	}
 
@@ -448,7 +448,7 @@ void BldgAppearanceType::destroy (void)
 	if (bldgRenderShape)
 	{
 		delete bldgRenderShape;
-		bldgRenderShape = NULL;
+		bldgRenderShape = nullptr;
 	}
 	if (buildingPbrMaterialSsbo)
 	{
@@ -471,7 +471,7 @@ void BldgAppearanceType::destroy (void)
  	if (bldgDmgShape)
 	{
 		delete bldgDmgShape;
-		bldgDmgShape = NULL;
+		bldgDmgShape = nullptr;
 	}
 	
  	for (int i=0;i<MAX_BD_ANIMATIONS;i++)
@@ -479,7 +479,7 @@ void BldgAppearanceType::destroy (void)
 		if (bdAnimData[i])
 		{
 			delete bdAnimData[i];
-			bdAnimData[i] = NULL;
+			bdAnimData[i] = nullptr;
 		}
 	}
 }
@@ -642,7 +642,7 @@ void TreeAppearanceType::init (const char * fileName)
 				long r = ImportGeometryFromFile(overridePath, treeRenderShape[0]);
 				if (r != 0 || treeRenderShape[0]->GetNumShapes() == 0)
 				{
-					delete treeRenderShape[0]; treeRenderShape[0] = NULL;   // stock fallback
+					delete treeRenderShape[0]; treeRenderShape[0] = nullptr;   // stock fallback
 					treeRenderShapeLodCount = 0;
 					fprintf(stderr, "[MODOVERRIDE] tree '%s': import failed (%s), using stock render\n",
 					        treeBaseName, overridePath);
@@ -697,7 +697,7 @@ void TreeAppearanceType::init (const char * fileName)
 						try {
 							long lr = ImportGeometryFromFile(lodPath, treeRenderShape[li]);
 							if (lr != 0 || treeRenderShape[li]->GetNumShapes() == 0) {
-								delete treeRenderShape[li]; treeRenderShape[li] = NULL;
+								delete treeRenderShape[li]; treeRenderShape[li] = nullptr;
 								fprintf(stderr, "[MODOVERRIDE] tree '%s': lod %d import failed (%s), dropped\n",
 								        treeBaseName, li, lodPath);
 								fflush(stderr);
@@ -713,7 +713,7 @@ void TreeAppearanceType::init (const char * fileName)
 							fflush(stderr);
 						}
 						catch (...) {
-							delete treeRenderShape[li]; treeRenderShape[li] = NULL;
+							delete treeRenderShape[li]; treeRenderShape[li] = nullptr;
 							fprintf(stderr, "[MODOVERRIDE] tree '%s': lod %d import threw (%s), dropped\n",
 							        treeBaseName, li, lodPath);
 							fflush(stderr);
@@ -723,7 +723,7 @@ void TreeAppearanceType::init (const char * fileName)
 			}
 			catch (...)
 			{
-				delete treeRenderShape[0]; treeRenderShape[0] = NULL;   // stock fallback
+				delete treeRenderShape[0]; treeRenderShape[0] = nullptr;   // stock fallback
 				treeRenderShapeLodCount = 0;
 				fprintf(stderr, "[MODOVERRIDE] tree '%s': import threw (%s), using stock render\n",
 				        treeBaseName, overridePath);
@@ -754,13 +754,13 @@ void TreeAppearanceType::init (const char * fileName)
 		if (!treeDmgShape->GetNumShapes())
 		{
 			delete treeDmgShape;
-			treeDmgShape = NULL;
+			treeDmgShape = nullptr;
 		}
 		
 	}
 	else
 	{
-		treeDmgShape = NULL;
+		treeDmgShape = nullptr;
 	}
 
 }
@@ -774,7 +774,7 @@ void TreeAppearanceType::destroy (void)
 		if (treeShape[i])
 		{
 			delete treeShape[i];
-			treeShape[i] = NULL;
+			treeShape[i] = nullptr;
 		}
 	}
 
@@ -783,7 +783,7 @@ void TreeAppearanceType::destroy (void)
 		if (treeRenderShape[i])
 		{
 			delete treeRenderShape[i];
-			treeRenderShape[i] = NULL;
+			treeRenderShape[i] = nullptr;
 		}
 	}
 	treeRenderShapeLodCount = 0;
@@ -791,7 +791,7 @@ void TreeAppearanceType::destroy (void)
 	if (treeDmgShape)
 	{
 		delete treeDmgShape;
-		treeDmgShape = NULL;
+		treeDmgShape = nullptr;
 	}
 	
 }

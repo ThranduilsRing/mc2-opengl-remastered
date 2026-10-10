@@ -615,7 +615,7 @@ void MC_TextureManager::renderListsTerrainSolid ([[maybe_unused]] const RenderLi
 					}
 #endif
 					// LEGACY-MLR-DELETE-1: dead (terrain skipped above); non-terrain nodes never have terrain extras.
-					gos_SetTerrainBatchExtras(NULL, 0);
+					gos_SetTerrainBatchExtras(nullptr, 0);
 
 					if (totalVertices && (totalVertices < MAX_SENDDOWN))
 					{

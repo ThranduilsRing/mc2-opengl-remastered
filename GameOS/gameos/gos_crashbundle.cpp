@@ -131,11 +131,11 @@ static void sbuff(char* dst, size_t cap, size_t* pos, const char* fmt, ...)
 
 static BOOL write_file_all(const char* path, const void* data, DWORD len)
 {
-    HANDLE h = CreateFileA(path, GENERIC_WRITE, 0, NULL,
-                           CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    HANDLE h = CreateFileA(path, GENERIC_WRITE, 0, nullptr,
+                           CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
     if (h == INVALID_HANDLE_VALUE) return FALSE;
     DWORD wrote = 0;
-    BOOL ok = WriteFile(h, data, len, &wrote, NULL) && wrote == len;
+    BOOL ok = WriteFile(h, data, len, &wrote, nullptr) && wrote == len;
     CloseHandle(h);
     return ok;
 }
@@ -150,14 +150,14 @@ static void build_crash_folder(void)
     char crashes_root[MAX_PATH];
     _snprintf_s(crashes_root, _countof(crashes_root), _TRUNCATE,
                 "%s\\crashes", g_cfg.exe_dir);
-    CreateDirectoryA(crashes_root, NULL); // OK if exists
+    CreateDirectoryA(crashes_root, nullptr); // OK if exists
 
     _snprintf_s(g_crash_folderA, _countof(g_crash_folderA), _TRUNCATE,
                 "%s\\crash_%04u-%02u-%02u_%02u%02u%02u",
                 crashes_root,
                 st.wYear, st.wMonth, st.wDay,
                 st.wHour, st.wMinute, st.wSecond);
-    CreateDirectoryA(g_crash_folderA, NULL);
+    CreateDirectoryA(g_crash_folderA, nullptr);
 
     MultiByteToWideChar(CP_ACP, 0, g_crash_folderA, -1,
                         g_crash_folderW, MAX_PATH);
@@ -172,8 +172,8 @@ static void write_minidump(EXCEPTION_POINTERS* ep)
     char path[MAX_PATH];
     _snprintf_s(path, _countof(path), _TRUNCATE,
                 "%s\\minidump.dmp", g_crash_folderA);
-    HANDLE h = CreateFileA(path, GENERIC_WRITE, 0, NULL,
-                           CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    HANDLE h = CreateFileA(path, GENERIC_WRITE, 0, nullptr,
+                           CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
     if (h == INVALID_HANDLE_VALUE) return;
     MINIDUMP_EXCEPTION_INFORMATION mei;
     mei.ThreadId = GetCurrentThreadId();
@@ -182,7 +182,7 @@ static void write_minidump(EXCEPTION_POINTERS* ep)
     MINIDUMP_TYPE t = (MINIDUMP_TYPE)(
         MiniDumpNormal | MiniDumpWithIndirectlyReferencedMemory);
     MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(),
-                      h, t, &mei, NULL, NULL);
+                      h, t, &mei, nullptr, nullptr);
     CloseHandle(h);
 }
 
@@ -192,18 +192,18 @@ static void write_ring_snapshot(void)
     char path[MAX_PATH];
     _snprintf_s(path, _countof(path), _TRUNCATE,
                 "%s\\last_trace.txt", g_crash_folderA);
-    HANDLE h = CreateFileA(path, GENERIC_WRITE, 0, NULL,
-                           CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    HANDLE h = CreateFileA(path, GENERIC_WRITE, 0, nullptr,
+                           CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
     if (h == INVALID_HANDLE_VALUE) return;
     LONG64 cur = g_ring_cursor;
     DWORD wrote = 0;
     if (cur < (LONG64)kRingBytes) {
-        WriteFile(h, g_ring, (DWORD)cur, &wrote, NULL);
+        WriteFile(h, g_ring, (DWORD)cur, &wrote, nullptr);
     } else {
         // wrapped: oldest byte is at cur % kRingBytes
         DWORD start = (DWORD)(cur % kRingBytes);
-        WriteFile(h, g_ring + start, (DWORD)(kRingBytes - start), &wrote, NULL);
-        WriteFile(h, g_ring, start, &wrote, NULL);
+        WriteFile(h, g_ring + start, (DWORD)(kRingBytes - start), &wrote, nullptr);
+        WriteFile(h, g_ring, start, &wrote, nullptr);
     }
     CloseHandle(h);
 }
@@ -318,7 +318,7 @@ static size_t format_crash_txt(EXCEPTION_POINTERS* ep, char* out, size_t cap)
     SymSetOptions(SYMOPT_LOAD_LINES | SYMOPT_DEFERRED_LOADS | SYMOPT_UNDNAME);
     // SymInitialize may have already been called; that's fine — it's
     // idempotent with Invade=TRUE returning FALSE on second call.
-    SymInitialize(proc, NULL, TRUE);
+    SymInitialize(proc, nullptr, TRUE);
 
     CONTEXT ctx = *ep->ContextRecord;
     STACKFRAME64 frame_rec; ZeroMemory(&frame_rec, sizeof(frame_rec));
@@ -357,7 +357,7 @@ static size_t format_crash_txt(EXCEPTION_POINTERS* ep, char* out, size_t cap)
 
     for (int i = 0; i < 48; ++i) {
         if (!StackWalk64(machine, proc, GetCurrentThread(), &frame_rec, &ctx,
-                          NULL, SymFunctionTableAccess64, SymGetModuleBase64, NULL))
+                          nullptr, SymFunctionTableAccess64, SymGetModuleBase64, nullptr))
             break;
         if (frame_rec.AddrPC.Offset == 0) break;
 
@@ -399,15 +399,15 @@ enum {
 };
 
 // The crash.txt path for clipboard-copy from the dialog callback
-static const char* dialog_crash_txt_path = NULL;
-static const WCHAR* dialog_folder_path   = NULL;
+static const char* dialog_crash_txt_path = nullptr;
+static const WCHAR* dialog_folder_path   = nullptr;
 
 static void copy_file_to_clipboard(const char* path)
 {
-    HANDLE h = CreateFileA(path, GENERIC_READ, FILE_SHARE_READ, NULL,
-                           OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    HANDLE h = CreateFileA(path, GENERIC_READ, FILE_SHARE_READ, nullptr,
+                           OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
     if (h == INVALID_HANDLE_VALUE) return;
-    DWORD sz = GetFileSize(h, NULL);
+    DWORD sz = GetFileSize(h, nullptr);
     if (sz == INVALID_FILE_SIZE || sz == 0) { CloseHandle(h); return; }
     if (sz > 1024 * 1024) sz = 1024 * 1024; // sanity cap
 
@@ -416,15 +416,15 @@ static void copy_file_to_clipboard(const char* path)
     if (!hMemA) { CloseHandle(h); return; }
     char* bufA = (char*)GlobalLock(hMemA);
     DWORD got = 0;
-    ReadFile(h, bufA, sz, &got, NULL);
+    ReadFile(h, bufA, sz, &got, nullptr);
     bufA[got] = '\0';
     CloseHandle(h);
 
     // Convert to UTF-16 for CF_UNICODETEXT
-    int wlen = MultiByteToWideChar(CP_UTF8, 0, bufA, -1, NULL, 0);
+    int wlen = MultiByteToWideChar(CP_UTF8, 0, bufA, -1, nullptr, 0);
     if (wlen <= 0) {
         // fallback: treat as ACP
-        wlen = MultiByteToWideChar(CP_ACP, 0, bufA, -1, NULL, 0);
+        wlen = MultiByteToWideChar(CP_ACP, 0, bufA, -1, nullptr, 0);
     }
     HGLOBAL hMemW = GlobalAlloc(GMEM_MOVEABLE, (size_t)wlen * sizeof(WCHAR));
     if (hMemW) {
@@ -436,7 +436,7 @@ static void copy_file_to_clipboard(const char* path)
     GlobalUnlock(hMemA);
     GlobalFree(hMemA); // we didn't end up giving this to clipboard
 
-    if (hMemW && OpenClipboard(NULL)) {
+    if (hMemW && OpenClipboard(nullptr)) {
         EmptyClipboard();
         SetClipboardData(CF_UNICODETEXT, hMemW);
         CloseClipboard();
@@ -469,7 +469,7 @@ static INT_PTR CALLBACK dlg_proc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM /*lP
             return TRUE;
         case IDC_OPEN_BTN:
             if (dialog_folder_path)
-                ShellExecuteW(NULL, L"open", dialog_folder_path, NULL, NULL, SW_SHOWNORMAL);
+                ShellExecuteW(nullptr, L"open", dialog_folder_path, nullptr, nullptr, SW_SHOWNORMAL);
             return TRUE;
         case IDCANCEL:
         case IDOK:
@@ -598,9 +598,9 @@ static void show_crash_dialog(const char* crash_txt_path,
     p = write_wstr(p, L"Close");
     p = write_word(p, 0);
 
-    DialogBoxIndirectParamW(GetModuleHandleW(NULL),
+    DialogBoxIndirectParamW(GetModuleHandleW(nullptr),
                             (LPCDLGTEMPLATEW)tmpl,
-                            NULL, dlg_proc, 0);
+                            nullptr, dlg_proc, 0);
 }
 
 // ---------------------------------------------------------------------------
@@ -700,7 +700,7 @@ extern "C" void crashbundle_init(void)
         g_cfg.crash_fast_exit = 1;
 
     char exe_path[MAX_PATH];
-    DWORD got = GetModuleFileNameA(NULL, exe_path, MAX_PATH);
+    DWORD got = GetModuleFileNameA(nullptr, exe_path, MAX_PATH);
     if (got > 0 && got < MAX_PATH) {
         // strip to directory
         for (int i = (int)got - 1; i >= 0; --i) {
@@ -722,7 +722,7 @@ extern "C" void crashbundle_trigger_test_crash(void)
     fprintf(stderr, "[CRASHBUNDLE] RAlt+Shift+C test crash triggered\n");
     fflush(stderr);
     crashbundle_append("[CRASHBUNDLE] test crash triggered via RAlt+Shift+C");
-    volatile int* p = (volatile int*)0;
+    volatile int* p = (volatile int*)nullptr;
     *p = 0xDEADC0DE; // null write → SEH
 }
 

@@ -105,7 +105,7 @@ void
 
 			MLRLightMap *lm = light->GetLightMap();
 
-			if(lm==NULL)
+			if(lm==nullptr)
 			{
 				continue;
 			}

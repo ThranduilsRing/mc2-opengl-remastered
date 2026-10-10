@@ -63,7 +63,7 @@ int calcTextHeight(const char* text, const int count, const gosFont* font, int r
     int num_lines = 0;
     while(pos < count) {
 
-        int num_chars = findTextBreak(text + pos, count - pos, font, region_width, NULL);
+        int num_chars = findTextBreak(text + pos, count - pos, font, region_width, nullptr);
         pos += num_chars;
         num_lines++;
     }
@@ -215,7 +215,7 @@ void gosRenderer::drawText(const char* text) {
             float u1 = (float)iu1 * oo_tex_width;
             float v1 = (float)iv1 * oo_tex_height;
 
-            addCharacter(text_, u0, v0, u1, v1, (float)(x + char_off_x), (float)(y + char_off_y), (float)(x + char_off_x + char_w), (float)(y + char_off_y + char_h));
+            addCharacter(text_, u0, v0, u1, v1, (x + char_off_x), (y + char_off_y), (x + char_off_x + char_w), (y + char_off_y + char_h));
 
             x += font->getCharAdvance(c);
         }

@@ -138,7 +138,7 @@ void BattleMechType::init (void) {
 	objectTypeClass = BATTLEMECH_TYPE;
 	objectClass = BATTLEMECH;
 
-	anim = NULL;
+	anim = nullptr;
 			
 	rightArmDebrisId = -1;
 	leftArmDebrisId = -1;
@@ -440,15 +440,15 @@ bool BattleMechType::handleCollision (GameObjectPtr collidee, GameObjectPtr coll
 							shotInfo.init(collider->getWatchID(), -1, collider->getTonnage() / 100.0 + 0.5, hitLocation, collidee->relFacingTo(collider->getPosition()));
 						else
 							shotInfo.init(collider->getWatchID(), -1, collider->getTonnage() / 10.0 + 0.5, hitLocation, collidee->relFacingTo(collider->getPosition()));
-						collidee->handleWeaponHit(&shotInfo, (MPlayer != NULL));
+						collidee->handleWeaponHit(&shotInfo, (MPlayer != nullptr));
 						hitLocation = collider->calcHitLocation(collidee, -1, ATTACKSOURCE_DFA, 0);
 						if (sameTeam)
 							shotInfo.init(collidee->getWatchID(), -1, collider->getTonnage() / 100.0 + 0.5, hitLocation, collider->relFacingTo(collidee->getPosition()));
 						else
 							shotInfo.init(collidee->getWatchID(), -1, collider->getTonnage() / 10.0 + 0.5, hitLocation, collider->relFacingTo(collidee->getPosition()));
-						collider->handleWeaponHit(&shotInfo, (MPlayer != NULL));
+						collider->handleWeaponHit(&shotInfo, (MPlayer != nullptr));
 						Stuff::Vector3D tmpPosition = collider->getPosition();
-						ObjectManager->createExplosion(DFA_BOOM_EFFECT, NULL, tmpPosition);
+						ObjectManager->createExplosion(DFA_BOOM_EFFECT, nullptr, tmpPosition);
 					}
 				}
 				else 
@@ -458,8 +458,8 @@ bool BattleMechType::handleCollision (GameObjectPtr collidee, GameObjectPtr coll
 						long hitLocation = collidee->calcHitLocation(collider, -1, ATTACKSOURCE_COLLISION, 0);
 						WeaponShotInfo shotInfo;
 						shotInfo.init(collider->getWatchID(), -1, collider->getTonnage() / 10.0 + 0.5, hitLocation, collidee->relFacingTo(collider->getPosition()));
-						collidee->handleWeaponHit(&shotInfo, (MPlayer != NULL));
-						collidee->handleWeaponHit(&shotInfo, (MPlayer != NULL));
+						collidee->handleWeaponHit(&shotInfo, (MPlayer != nullptr));
+						collidee->handleWeaponHit(&shotInfo, (MPlayer != nullptr));
 					}
 				}
 
@@ -528,7 +528,7 @@ bool BattleMechType::handleDestruction (GameObjectPtr collidee, GameObjectPtr co
 		Fatal(0, " No Pilot in this mech! ");
 
 	if (mech->getPoint() == mech) {
-		mech->getGroup()->setPoint(NULL);
+		mech->getGroup()->setPoint(nullptr);
 		// If there is no new point, all units must be blown away.
 		// How do we want to handle this?
 	}
@@ -576,7 +576,7 @@ GameObjectPtr BattleMechType::createInstance (void) {
 
 	BattleMechPtr newMech = new BattleMech;
 	if (!newMech)
-		return(NULL);
+		return(nullptr);
 
 	newMech->init(true, this);
 

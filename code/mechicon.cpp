@@ -26,7 +26,7 @@ MechIcon.cpp			: Implementation of the MechIcon component.
 #include"multplyr.h"
 #endif
 
-TGAFileHeader *MechIcon::s_MechTextures = NULL;
+TGAFileHeader *MechIcon::s_MechTextures = nullptr;
 AssetScale::AssetKey MechIcon::s_MechTexturesKey;
 
 //---------------------------------------------------------------------------
@@ -75,15 +75,15 @@ static bool iconTileChecked(const char* site, long index,
 	}
 	return oob;
 }
-TGAFileHeader *VehicleIcon::s_VehicleTextures = NULL;
+TGAFileHeader *VehicleIcon::s_VehicleTextures = nullptr;
 AssetScale::AssetKey VehicleIcon::s_VehicleTexturesKey;
-TGAFileHeader* ForceGroupIcon::s_textureMemory = 0;
+TGAFileHeader* ForceGroupIcon::s_textureMemory = nullptr;
 
-StaticInfo*		ForceGroupIcon::jumpJetIcon = NULL;
+StaticInfo*		ForceGroupIcon::jumpJetIcon = nullptr;
 
-MC2MoviePtr	ForceGroupIcon::bMovie = NULL;
+MC2MoviePtr	ForceGroupIcon::bMovie = nullptr;
 DWORD ForceGroupIcon::pilotVideoTexture = 0;
-MechWarrior*	ForceGroupIcon::pilotVideoPilot = NULL;
+MechWarrior*	ForceGroupIcon::pilotVideoPilot = nullptr;
 
 
 #define HEALTH_BAROFFSET 12.0f * Environment.screenHeight/600.f
@@ -148,7 +148,7 @@ GUI_RECT ForceGroupIcon:: healthBar[17]  = {0};
 
 float ForceGroupIcon::	pilotLocation[17][4]  = {0};
 
-aFont* ForceGroupIcon::gosFontHandle = 0;
+aFont* ForceGroupIcon::gosFontHandle = nullptr;
 
 int ForceGroupIcon::curScreenWidth = 800;
 
@@ -156,7 +156,7 @@ int ForceGroupIcon::curScreenWidth = 800;
 
 ForceGroupIcon::ForceGroupIcon(  )
 {
-	unit = NULL;
+	unit = nullptr;
 	bDrawBack = 0;
 	backDamageIndex = -1;
 	damageIconIndex = 0;
@@ -208,10 +208,10 @@ void ForceGroupIcon::resetResolution(bool bForce)
 	if ( curScreenWidth !=  Environment.screenWidth || bForce )
 	{
 		delete [] MechIcon::s_MechTextures;
-		MechIcon::s_MechTextures = 0;
+		MechIcon::s_MechTextures = nullptr;
 
 		delete [] VehicleIcon::s_VehicleTextures;
-		VehicleIcon::s_VehicleTextures = 0;
+		VehicleIcon::s_VehicleTextures = nullptr;
 
 		setIconVariables();
 
@@ -235,10 +235,10 @@ ForceGroupIcon::~ForceGroupIcon()
 		if ( bMovie )
 		{
 			delete bMovie;
-			bMovie = NULL;
+			bMovie = nullptr;
 			pilotVideoTexture = 0;
 		}
-		pilotVideoPilot = NULL;
+		pilotVideoPilot = nullptr;
 	}
 	s_slotUsed[damageIconIndex] = 0;
 
@@ -417,7 +417,7 @@ void MechIcon::setDrawBack( bool bSet)
 		(void)AssetScale::nominalToActualRect(
 			MechIcon::s_MechTexturesKey, actualW, actualH,
 			(float)offsetX, (float)offsetY,
-			(float)unitIconX, (float)unitIconY,
+			unitIconX, unitIconY,
 			"mechicon.blit");
 
 		// META-FIX design B PART 3b: tile-level OOB check (log always;
@@ -652,7 +652,7 @@ bool MechIcon::init( long whichIndex )
 		(void)AssetScale::nominalToActualRect(
 			MechIcon::s_MechTexturesKey, actualW, actualH,
 			(float)offsetX, (float)offsetY,
-			(float)unitIconX, (float)unitIconY,
+			unitIconX, unitIconY,
 			"mechicon.blit");
 
 		// META-FIX design B PART 3b: tile-level OOB check (log always;
@@ -792,7 +792,7 @@ void MechIcon::update()
 		if (result)
 		{
 			delete bMovie;
-			bMovie = NULL;
+			bMovie = nullptr;
 		}
 	}
 
@@ -917,8 +917,8 @@ void MechIcon::update()
 			lratio = (float)unit->armor[MECH_ARMOR_LOCATION_RLTORSO].maxArmor/(float)unit->armor[MECH_ARMOR_LOCATION_RCTORSO].maxArmor;
 			rratio = (float)unit->armor[MECH_ARMOR_LOCATION_RRTORSO].maxArmor/(float)unit->armor[MECH_ARMOR_LOCATION_RCTORSO].maxArmor;
 		}
-		rearDamage[7] = .5 + (float)((rratio * rearDamage[4] + lratio * rearDamage[5] + rearDamage[6]))/(lratio + rratio + 1.f);
-		backDamage[7] = .5 + (float)((rratio * backDamage[4] + lratio * backDamage[5] + backDamage[6]))/(lratio + rratio + 1.f);
+		rearDamage[7] = .5 + (rratio * rearDamage[4] + lratio * rearDamage[5] + rearDamage[6])/(lratio + rratio + 1.f);
+		backDamage[7] = .5 + (rratio * backDamage[4] + lratio * backDamage[5] + backDamage[6])/(lratio + rratio + 1.f);
 		doDraw( rearDamage, backDamage, -1, backDamageIndex );
 	}
 
@@ -965,7 +965,7 @@ void MechIcon::doDraw( char* newDamage, char* oldDamage, unsigned long handle, u
 
 			int iLine = xIndex * unitIconX;
 
-			DWORD* pLine = (DWORD*)(pData + (jLine * textureData.Width) + iLine);
+			DWORD* pLine = (pData + (jLine * textureData.Width) + iLine);
 			DWORD* pChange = pLine;
 
 			DWORD oldColors[3];
@@ -1142,8 +1142,8 @@ void ForceGroupIcon::render()
 			{
 				bMovie->stop();
 				delete bMovie;
-				bMovie = NULL;
-				pilotVideoPilot = NULL;
+				bMovie = nullptr;
+				pilotVideoPilot = nullptr;
 			}
 			else
 			{
@@ -1246,11 +1246,11 @@ void ForceGroupIcon::renderUnitIconBack( float left, float top, float right, flo
 	int yIndex = backDamageIndex / iconsPerLine;
 	int xIndex = backDamageIndex % iconsPerLine;
 	
-	float u = xIndex * unitIconX/s_textureMemory->width+ (.1f / (float)256.f);
-	float v = yIndex * unitIconY/s_textureMemory->height+ (.1f / (float)256.f);
+	float u = xIndex * unitIconX/s_textureMemory->width+ (.1f / 256.f);
+	float v = yIndex * unitIconY/s_textureMemory->height+ (.1f / 256.f);
 
-	float uDelta = unitIconX/s_textureMemory->width + (.1f / (float)256.f );
-	float vDelta = unitIconY/s_textureMemory->height + (.1f / (float)256.f);
+	float uDelta = unitIconX/s_textureMemory->width + (.1f / 256.f );
+	float vDelta = unitIconY/s_textureMemory->height + (.1f / 256.f);
 
 	gos_SetRenderState( gos_State_Texture, s_textureHandle[0] );
 	gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha);
@@ -1468,7 +1468,7 @@ bool VehicleIcon::init( Mover* pMover )
 		(void)AssetScale::nominalToActualRect(
 			VehicleIcon::s_VehicleTexturesKey, actualW, actualH,
 			(float)offsetX, (float)offsetY,
-			(float)unitIconX, (float)unitIconY,
+			unitIconX, unitIconY,
 			"mechicon.blit");
 
 		// META-FIX design B PART 3b: tile-level OOB check (log always;
@@ -1612,7 +1612,7 @@ void VehicleIcon::update()
 
 			int iLine = xIndex * unitIconX;
 
-			DWORD* pLine = (DWORD*)(pData + (jLine * textureData.Width) + iLine);
+			DWORD* pLine = (pData + (jLine * textureData.Width) + iLine);
 			DWORD* pChange = pLine;
 
 			DWORD oldColors[3];

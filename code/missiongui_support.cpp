@@ -63,7 +63,7 @@ MoverPtr BringInReinforcement (long vehicleID, long rosterIndex, long commanderI
 		//Start the helicopters landed!!
 		MoverPtr newMover = (MoverPtr)ObjectManager->get(moverId);
 		if (!newMover)
-			return NULL;
+			return nullptr;
 
 		if (newMover->getMoveType() == MOVETYPE_AIR)
 			newMover->startShutDown();
@@ -77,7 +77,7 @@ MoverPtr BringInReinforcement (long vehicleID, long rosterIndex, long commanderI
 		return(newMover);
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 
@@ -296,7 +296,7 @@ void MissionInterfaceManager::beginVtol (long supportID, long commanderID, Stuff
 		shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 		shapeOrigin.BuildTranslation(wakePos);
 					
-		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,NULL);
+		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
 	
 		dustCloud[commanderID]->SetLoopOff();
 		dustCloud[commanderID]->SetExecuteOn();
@@ -626,7 +626,7 @@ int MissionInterfaceManager::gotoNextNavMarker()
 				LocationNode path;
 				path.location = pos;
 				path.run = true;
-				path.next = NULL;
+				path.next = nullptr;
 
 				TacticalOrder tacOrder;
 				tacOrder.init(ORDER_ORIGIN_PLAYER, TACTICAL_ORDER_MOVETO_POINT, false);
@@ -635,7 +635,7 @@ int MissionInterfaceManager::gotoNextNavMarker()
 				tacOrder.moveParams.wayPath.mode[0] =  controlGui.getWalk() ? TRAVEL_MODE_SLOW : TRAVEL_MODE_FAST;
 				if ( controlGui.getMines() )
 					tacOrder.moveParams.mode = MOVE_MODE_MINELAYING;
-				tacOrder.pack(NULL, NULL);
+				tacOrder.pack(nullptr, nullptr);
 
 
 				handleOrders(tacOrder);

@@ -8,7 +8,7 @@
 
 
 
-gosRenderer* g_gos_renderer = NULL;
+gosRenderer* g_gos_renderer = nullptr;
 
 static bool isAllConcreteTerrainBatch(const gos_VERTEX* vertices, int count) {
     if (!vertices || count <= 0)
@@ -303,7 +303,7 @@ void gosRenderer::init() {
     {
         ZoneScopedN("gosRenderer::init terrainExtra");
         terrain_extra_data_ = new gos_TERRAIN_EXTRA[terrain_extra_capacity_];
-        terrain_extra_vb_ = makeBuffer(GL_ARRAY_BUFFER, 0,
+        terrain_extra_vb_ = makeBuffer(GL_ARRAY_BUFFER, nullptr,
             sizeof(gos_TERRAIN_EXTRA) * terrain_extra_capacity_, GL_DYNAMIC_DRAW);
     }
     printf("[TESS] Extra VBO created: capacity=%d vb=%u\n", terrain_extra_capacity_, terrain_extra_vb_);
@@ -735,7 +735,7 @@ void gosRenderer::init() {
         glGenVertexArrays(1, &batch.vao);
         glBindVertexArray(batch.vao);
         glBindBuffer(GL_ARRAY_BUFFER, batch.vbo);
-        glVertexAttribPointer(0, 3, GL_FLOAT,         GL_FALSE, kStride, (void*)0);
+        glVertexAttribPointer(0, 3, GL_FLOAT,         GL_FALSE, kStride, (void*)nullptr);
         glVertexAttribPointer(1, 2, GL_FLOAT,         GL_FALSE, kStride, (void*)12);
         glVertexAttribPointer(2, 1, GL_FLOAT,         GL_FALSE, kStride, (void*)20);
         glVertexAttribPointer(3, 4, GL_UNSIGNED_BYTE, GL_TRUE,  kStride, (void*)24);

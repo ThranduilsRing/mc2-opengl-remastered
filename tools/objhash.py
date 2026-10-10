@@ -20,6 +20,7 @@ a warning.
 from __future__ import annotations
 
 import argparse
+import re
 import datetime
 import glob
 import hashlib
@@ -32,6 +33,14 @@ _DBG_PREFIX = ".debug"
 #: MSVC's incremental-link checksum section: a hash of the TU's source text/debug view, not of the code. It changes when only
 #: tokens such as NULL -> nullptr change while every code, data and relocation section stays identical.
 _NONCODE_SECTIONS = (".debug", ".chks")
+#: The build fingerprint literal (cmake/GenerateBuildFingerprint.cmake) carries the dirty flag and the build time, so any TU that embeds it
+#: differs between a clean and a dirty tree although no code changed. Its payload is masked (same length) before .rdata is hashed.
+_FP_LITERAL = re.compile(rb"MC2FP1\|[ -~]{1,600}?\|FP1END")
+_FP_FIXED = len(b"MC2FP1||FP1END")
+
+
+def _mask_fingerprint(data):
+    return _FP_LITERAL.sub(lambda m: b"MC2FP1|" + b"#" * (len(m.group(0)) - _FP_FIXED) + b"|FP1END", data)
 _SCN_BSS = 0x80
 _SCN_NRELOC_OVFL = 0x01000000
 _SOURCE_EXTS = (".cpp", ".cc", ".cxx", ".c")
@@ -119,6 +128,8 @@ def obj_digest(path):
     for k, (nm, chars, rawsz, data, rel) in enumerate(secs):
         if nm.startswith(_NONCODE_SECTIONS):
             continue
+        if nm.startswith(".rdata"):
+            data = _mask_fingerprint(data)
         sec_hashes["%d:%s" % (k, nm)] = _h(nm, str(chars), str(rawsz), data, rel)
     sym_part = _h(*["%s|%d|%d|%d|%s" % s for s in syms if not s[4].startswith(_DBG_PREFIX)])
     sec_hashes["symbols"] = sym_part

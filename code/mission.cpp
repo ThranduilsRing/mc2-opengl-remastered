@@ -61,7 +61,7 @@ float minFrameLength = 1.0/4.0;
 
 long MissionStartTime =	0;			//No Idea
 
-Mission *mission = NULL;
+Mission *mission = nullptr;
 unsigned long scenarioResult = mis_PLAYING;
 long scenarioEndTurn = -1;
 long MechSalvageChance = 100;
@@ -73,10 +73,10 @@ long globalEnemyWeapons[4];
 
 float globalMissionValues[MAX_GLOBAL_MISSION_VALUES];
 
-ByteFlag *VisibleBits = NULL;		//What can currently be seen
-ByteFlag *SeenBits = NULL;			//What HAS been seen
+ByteFlag *VisibleBits = nullptr;		//What can currently be seen
+ByteFlag *SeenBits = nullptr;			//What HAS been seen
 
-UserHeapPtr missionHeap = NULL;
+UserHeapPtr missionHeap = nullptr;
 
 unsigned int MultiPlayTeamId = 0xFFFFFFFF;
 unsigned int MultiPlayCommanderId = 0xFFFFFFFF;
@@ -392,7 +392,7 @@ void Mission::start (void)
 					continue;
 				scanned++;
 				AppearancePtr appear = obj->getAppearance();
-				const char* why = NULL;
+				const char* why = nullptr;
 				if (!appear)
 					why = "appearance_null";
 				else
@@ -408,7 +408,7 @@ void Mission::start (void)
 						mc2AuditLinef("[APPEAR_AUDIT v1] event=missing reason=%s "
 							"handle=%ld class=%d part=%ld",
 							why, h, (int)obj->getObjectClass(),
-							(long)obj->getPartId());
+							obj->getPartId());
 				}
 			}
 			mc2AuditLinef("[APPEAR_AUDIT v1] summary scanned=%ld missing=%ld",
@@ -453,41 +453,41 @@ void Mission::initTGLForMission()
 		{
 			colorPool->destroy();
 			delete colorPool;
-			colorPool = NULL;
+			colorPool = nullptr;
 		}
 		
 		if (vertexPool)
 		{
 			vertexPool->destroy();
 			delete vertexPool;
-			vertexPool = NULL;
+			vertexPool = nullptr;
 		}
 
 		if (facePool)
 		{
 			facePool->destroy();
 			delete facePool;
-			facePool = NULL;
+			facePool = nullptr;
 		}
 
 		if (shadowPool)
 		{
 			shadowPool->destroy();
 			delete shadowPool;
-			shadowPool = NULL;
+			shadowPool = nullptr;
 		}
 
 		if (trianglePool)
 		{
 			trianglePool->destroy();
 			delete trianglePool;
-			trianglePool = NULL;
+			trianglePool = nullptr;
 		}
 		
 		TG_Shape::tglHeap->destroy();
 
 		delete TG_Shape::tglHeap;
-		TG_Shape::tglHeap = NULL;
+		TG_Shape::tglHeap = nullptr;
 	}
 
 	loadProgress += 1.0f;
@@ -566,23 +566,23 @@ void Mission::resetTeamsAndCommanders()
 	for (long i = 0; i < numt; i++)
 		if (Team::teams[i]) {
 			delete Team::teams[i];
-			Team::teams[i] = NULL;
+			Team::teams[i] = nullptr;
 		}
 	Team::numTeams = 0;
 	// Null the raw alias into teams[] -- it pointed at a slot just freed above
 	// (or was already NULL). Leaving it dangling is the cross-cycle hazard the
 	// game-layer review flagged; readers (mission.cpp:659/930/... , update HUD /
 	// objectives) guard some but not all dereferences.
-	Team::home = NULL;
+	Team::home = nullptr;
 
 	long numC = Commander::numCommanders;
 	for (long i = 0; i < numC; i++)
 		if (Commander::commanders[i]) {
 			delete Commander::commanders[i];
-			Commander::commanders[i] = NULL;
+			Commander::commanders[i] = nullptr;
 		}
 	Commander::numCommanders = 0;
-	Commander::home = NULL;
+	Commander::home = nullptr;
 
 	// Post-condition: exactly one teardown authority left the statics empty.
 	// Silent when TRUE; only the cold path (a leftover live slot / stale count
@@ -636,14 +636,14 @@ void Mission::destroy (bool initLogistics)
 		missionInterface->destroy();
 
 		delete missionInterface;
-		missionInterface = NULL;
+		missionInterface = nullptr;
 	}
 	
 	delete missionBrain;
-	missionBrain = NULL;
+	missionBrain = nullptr;
 
 	delete missionBrainParams;
-	missionBrainParams = NULL;
+	missionBrainParams = nullptr;
 
 	//Team::home->objectives.Clear();
 
@@ -654,7 +654,7 @@ void Mission::destroy (bool initLogistics)
 		eye->destroy();
 
 		delete eye;
-		eye = NULL;
+		eye = nullptr;
 		// Null the static TG_Shape camera-matrix aliases that TG_Shape::
 		// SetCameraMatrices() (tgl.cpp:1619-1620) populated with raw pointers
 		// into the now-freed eye object. Both `s_cameraOrigin` and
@@ -667,21 +667,21 @@ void Mission::destroy (bool initLogistics)
 		// in Mission::init / Mission::load re-populates both via
 		// SetCameraMatrices(). quad.cpp:2008 carries the same dereference and
 		// is also covered by this nulling.
-		TG_Shape::s_cameraOrigin = NULL;
-		TG_Shape::s_cameraToClip = NULL;
+		TG_Shape::s_cameraOrigin = nullptr;
+		TG_Shape::s_cameraToClip = nullptr;
 	}
 
 	if (PathManager) {
 		PathManager->destroy();
 		delete PathManager;
-		PathManager = NULL;
+		PathManager = nullptr;
 	}
 	MOVE_cleanup();
 
 	MechWarrior::shutdown();
 	
 	delete weather;
-	weather = NULL;
+	weather = nullptr;
 
 	//------------------------------------------------------------
 	// End the Terrain System
@@ -690,7 +690,7 @@ void Mission::destroy (bool initLogistics)
 		land->destroy();
 
 		delete land;
-		land = NULL;
+		land = nullptr;
 	}
 
 	//--------------------------------------------------------------
@@ -704,37 +704,37 @@ void Mission::destroy (bool initLogistics)
 	{
 		ObjectManager->destroy();
 		delete ObjectManager;
-		ObjectManager = NULL;
+		ObjectManager = nullptr;
 	}
 	
 	if (Mover::sortList)
 	{
 		delete Mover::sortList;
-		Mover::sortList = NULL;
+		Mover::sortList = nullptr;
 	}
 
 	if (SensorSystem::sortList)
 	{
 		delete SensorSystem::sortList;
-		SensorSystem::sortList = NULL;
+		SensorSystem::sortList = nullptr;
 	}
 
 	if (GVAppearanceType::SensorTriangleShape)
 	{
 		delete GVAppearanceType::SensorTriangleShape;
-		GVAppearanceType::SensorTriangleShape = NULL;
+		GVAppearanceType::SensorTriangleShape = nullptr;
 	}
 	
 	if (GVAppearanceType::SensorCircleShape)
 	{
 		delete GVAppearanceType::SensorCircleShape;
-		GVAppearanceType::SensorCircleShape = NULL;
+		GVAppearanceType::SensorCircleShape = nullptr;
 	}
 
 	if (Mech3DAppearanceType::SensorSquareShape)
 	{
 		delete Mech3DAppearanceType::SensorSquareShape;
-		Mech3DAppearanceType::SensorSquareShape = NULL;
+		Mech3DAppearanceType::SensorSquareShape = nullptr;
 	}
 	
 	if (MasterComponent::masterList) 
@@ -748,13 +748,13 @@ void Mission::destroy (bool initLogistics)
 		weaponEffects->destroy();
 
 	delete weaponEffects;
-	weaponEffects = NULL;
+	weaponEffects = nullptr;
 
 	if ( craterManager )
 	{
 		craterManager->destroy();
 		missionHeap->Free( craterManager );
-		craterManager = NULL;
+		craterManager = nullptr;
 	}
 
 	//-----------------------------------
@@ -774,25 +774,25 @@ void Mission::destroy (bool initLogistics)
 
 	if (Mover::triggerAreaMgr) {
 		delete Mover::triggerAreaMgr;
-		Mover::triggerAreaMgr = NULL;
+		Mover::triggerAreaMgr = nullptr;
 	}
 
 	if (MoverGroup::goalMap)
 	{
 		systemHeap->Free(MoverGroup::goalMap);
-		MoverGroup::goalMap = NULL;
+		MoverGroup::goalMap = nullptr;
 	}
 
 	if (openList)
 	{
 		delete openList;
-		openList = NULL;
+		openList = nullptr;
 	}
 
 	if (Team::sortList)
 	{
 		delete Team::sortList;
-		Team::sortList = NULL;
+		Team::sortList = nullptr;
 	}
 
 	closeABL();
@@ -804,14 +804,14 @@ void Mission::destroy (bool initLogistics)
 		missionHeap->destroy();
 		
 		delete missionHeap;
-		missionHeap = NULL;
+		missionHeap = nullptr;
 	}
 	
 	if ( appearanceTypeList )
 	{
 		appearanceTypeList->destroy();
 		delete appearanceTypeList;
-		appearanceTypeList = NULL;
+		appearanceTypeList = nullptr;
 	}
 	
 	if (initLogistics)
@@ -828,41 +828,41 @@ void Mission::destroy (bool initLogistics)
 			{
 				colorPool->destroy();
 				delete colorPool;
-				colorPool = NULL;
+				colorPool = nullptr;
 			}
 
 			if (vertexPool)
 			{
 				vertexPool->destroy();
 				delete vertexPool;
-				vertexPool = NULL;
+				vertexPool = nullptr;
 			}
 
 			if (facePool)
 			{
 				facePool->destroy();
 				delete facePool;
-				facePool = NULL;
+				facePool = nullptr;
 			}
 
 			if (shadowPool)
 			{
 				shadowPool->destroy();
 				delete shadowPool;
-				shadowPool = NULL;
+				shadowPool = nullptr;
 			}
 
 			if (trianglePool)
 			{
 				trianglePool->destroy();
 				delete trianglePool;
-				trianglePool = NULL;
+				trianglePool = nullptr;
 			}
 
 			TG_Shape::tglHeap->destroy();
 
 			delete TG_Shape::tglHeap;
-			TG_Shape::tglHeap = NULL;
+			TG_Shape::tglHeap = nullptr;
 		}
 	}
 	
@@ -888,7 +888,7 @@ void Mission::destroy (bool initLogistics)
 	if (CObjective::s_markerFont)
 	{
 		delete CObjective::s_markerFont;
-		CObjective::s_markerFont = NULL;
+		CObjective::s_markerFont = nullptr;
 	}
 
 	//Heading back to logistics now.  Change screen back to 800x600
@@ -908,7 +908,7 @@ void Mission::handleMultiplayMessage (long code, long param1) {
 	if (missionBrainCallback) {
 		CurMultiplayCode = code;
 		CurMultiplayParam = param1;
-		missionBrain->execute(NULL, missionBrainCallback);
+		missionBrain->execute(nullptr, missionBrainCallback);
 		CurMultiplayCode = 0;
 		CurMultiplayParam = 0;
 	}

@@ -472,13 +472,13 @@ void MissionInterfaceManager::update (void)
 						LocationNode path;
 						path.location = slots[best];
 						path.run = true;
-						path.next = NULL;
+						path.next = nullptr;
 						TacticalOrder tacOrder;
 						tacOrder.init( ORDER_ORIGIN_PLAYER, TACTICAL_ORDER_MOVETO_POINT, false );
 						tacOrder.initWayPath( &path );
 						tacOrder.moveParams.wait = false;
 						tacOrder.moveParams.wayPath.mode[0] = TRAVEL_MODE_FAST;
-						tacOrder.pack( NULL, NULL );
+						tacOrder.pack( nullptr, nullptr );
 						// Single-unit dispatch on purpose: handleOrders/
 						// calcMoveGoals would re-cluster the slots.
 						pMover->handleTacticalOrder( tacOrder );
@@ -603,7 +603,7 @@ void MissionInterfaceManager::update (void)
 	{
 		keyboardRef->update();
 		//sebi: also check keys, otherwise no way to exit from keyboardref screen (when pressing F1)
-		update(false, false, -1, -1, 0,  false);
+		update(false, false, -1, -1, nullptr,  false);
 		return;
 	}
 
@@ -639,7 +639,7 @@ void MissionInterfaceManager::update (void)
 				py = userInput->getMouseY();
 			};
 
-			GameObjectPtr targetMover = NULL; float tcx = 0.f, tcy = 0.f;
+			GameObjectPtr targetMover = nullptr; float tcx = 0.f, tcy = 0.f;
 			if (Team::home)
 			{
 				for (long i = 0; i < Team::home->getRosterSize(); ++i)
@@ -1039,7 +1039,7 @@ void MissionInterfaceManager::updateTarget( bool bGui)
 			s_hoverSettleFrames--;
 		memset( oldTargets, 0, sizeof(GameObject*) * MAX_ICONS );
 		memset( s_oldTargetWatchID, 0, sizeof(s_oldTargetWatchID) );
-		target = NULL;
+		target = nullptr;
 		s_targetWatchID = 0;
 		return;
 	}
@@ -1050,14 +1050,14 @@ void MissionInterfaceManager::updateTarget( bool bGui)
 	// object is gone -> drop it silently (its draw-bars died with it).
 	if ( target && ObjectManager->getByWatchID( s_targetWatchID ) != target )
 	{
-		target = NULL;
+		target = nullptr;
 		s_targetWatchID = 0;
 	}
 	for ( int i = 0; i < MAX_ICONS; i++ )
 	{
 		if ( oldTargets[i] && ObjectManager->getByWatchID( s_oldTargetWatchID[i] ) != oldTargets[i] )
 		{
-			oldTargets[i] = 0;
+			oldTargets[i] = nullptr;
 			s_oldTargetWatchID[i] = 0;
 		}
 	}
@@ -1068,7 +1068,7 @@ void MissionInterfaceManager::updateTarget( bool bGui)
 		if ( oldTargets[i] )
 		{
 			oldTargets[i]->setDrawBars( 0 );
-			oldTargets[i] = 0;
+			oldTargets[i] = nullptr;
 			s_oldTargetWatchID[i] = 0;
 		}
 	}
@@ -1186,15 +1186,15 @@ void MissionInterfaceManager::updateTarget( bool bGui)
 		// mass-kill) leaves a dangling target whose first virtual call
 		// (isDisabled / getDescription) jumps through a freed vtable -> EXEC at 0x0.
 		if ( ObjectManager->getByWatchID( s_targetWatchID ) != target )
-			target = 0;
+			target = nullptr;
 		if ( target && bGui )
-			target = 0;
+			target = nullptr;
 		else if ( target && target->isMover() && !ShowMovers && !(MPlayer && MPlayer->allUnitsDestroyed[MPlayer->commanderID]))
 		{
 			if ((target->getTeamId() != Team::home->getId()) && 
 				!target->isDisabled() && 
 				(((Mover *)target)->conStat < CONTACT_SENSOR_QUALITY_1))
-				target = NULL;
+				target = nullptr;
 		}
 		
 		// STABILITY: a disabled mech may be mid-teardown (null/partial appearance,
@@ -1210,7 +1210,7 @@ void MissionInterfaceManager::updateTarget( bool bGui)
 		// already dropped by the watch-ID round-trip above; a LIVE disabled mech
 		// with an appearance is safe to hover (stock v0.4c behavior restored).
 		if ( target && target->isDisabled() && !target->getAppearance() )
-			target = 0;
+			target = nullptr;
 
 		if ( target )
 		{
@@ -1231,15 +1231,15 @@ void MissionInterfaceManager::updateTarget( bool bGui)
 			}
 			if ( target->isDestroyed() )
 			{
-				target = 0;
+				target = nullptr;
 			}
 			
 			else if ( target->isDisabled() && !target->isMover() )
-				target = 0;
+				target = nullptr;
 			else if ( !target->isSelectable())
 			{
 				if ( !target->isDisabled() && !target->isMover() )
-					target = NULL;
+					target = nullptr;
 			}
 		}
 	}

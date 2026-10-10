@@ -151,7 +151,7 @@ bool BattleMech::hitInventoryItem (long itemIndex, bool setupOnly) {
 		if (!setupOnly && !playedCriticalHit)
 		{
 			Stuff::Vector3D smokePos = appearance->getNodePosition(0);
-			ObjectManager->createExplosion(MECH_CRITICAL_HIT_ID,NULL,smokePos);
+			ObjectManager->createExplosion(MECH_CRITICAL_HIT_ID,nullptr,smokePos);
 
 			appearance->startSmoking(1);
 			playedCriticalHit = true;
@@ -190,7 +190,7 @@ void BattleMech::destroyBodyLocation (long bodyLocation) {
 		// For now, it's always exploding...
 		if ((scenarioTime <= centerTorsoBlowTime) || ((engineBlowTime > -1.0) && (scenarioTime <= engineBlowTime))) {
 			pilot->handleAlarm(PILOT_ALARM_VEHICLE_INCAPACITATED, 0);
-			ObjectManager->getObjectType(typeHandle)->handleDestruction(this, NULL);
+			ObjectManager->getObjectType(typeHandle)->handleDestruction(this, nullptr);
 			}
 		else {
 			disable(ENGINE_DEATH);
@@ -377,7 +377,7 @@ long BattleMech::handleStatusChunk (long updateAge, unsigned long chunk) {
 
 	if (pilot) {
 		if (lastTargetId == 0)
-			pilot->setLastTarget(NULL);
+			pilot->setLastTarget(nullptr);
 		else {
 			GameObjectPtr curTarget = pilot->getLastTarget();
 			if (!curTarget || (curTarget->getPartId() != lastTargetId)) {
@@ -417,7 +417,7 @@ long BattleMech::buildMoveChunk (void) {
 	// HACK!!!!!!!!!!!!!! If bad packet, no movechunk for you...
 	if (MoveChunk::err != 0) {
 		moveChunk.init();
-		moveChunk.build(this, NULL, NULL);
+		moveChunk.build(this, nullptr, nullptr);
 		moveChunk.pack(this);
 		return(NO_ERR); //Assert(0, " BAD PACKET! ");
 	}
@@ -473,7 +473,7 @@ bool BattleMech::injureBodyLocation (long bodyLocation, float damage) {
 	else
 		location->curInternalStructure -= damage;
 	if (location->curInternalStructure > 0) {
-		float damageLevel = (float)body[bodyLocation].curInternalStructure / body[bodyLocation].maxInternalStructure;
+		float damageLevel = body[bodyLocation].curInternalStructure / body[bodyLocation].maxInternalStructure;
 		if (damageLevel <= 0.5)
 			body[bodyLocation].damageState = IS_DAMAGE_PARTIAL;
 		else
