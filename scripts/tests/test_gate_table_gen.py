@@ -165,3 +165,25 @@ def test_exclusive_lower_bound_survives_the_json_round_trip_and_renders_as_range
     (row,) = tg.rows_from_json(doc)
     assert row["range"] == ("rangeAbove", 0, 1)
     assert "rangeAbove(0.0, 1.0)" in tg.row_line(row)
+
+
+def test_top_level_args_ignores_commas_in_strings_and_calls():
+    assert tg._top_level_args('G("MC2_X", Bool, false, "o", "", "a, b (c) d"') == 6
+    assert tg._top_level_args('L(Presence, "MC2_X", Bool, false, "o", "", "d", passthrough | range(0.0, 1.0)') == 8
+
+
+def test_verified_must_match_the_typed_readers(tmp_path):
+    (tmp_path / "code").mkdir()
+    (tmp_path / "code" / "a.cpp").write_text(
+        'int f() { return mc2::gate::get<"MC2_READ_ME">(); }\n// get<"MC2_IN_A_COMMENT">\n', encoding="utf-8")
+    (tmp_path / "Gates").mkdir()
+    (tmp_path / "Gates" / "g.cpp").write_text('get<"MC2_INSIDE_GATES">', encoding="utf-8")
+    assert tg.typed_readers(str(tmp_path)) == {"MC2_READ_ME"}
+
+
+def test_override_counter_matches_the_using_enum_spelling(tmp_path):
+    (tmp_path / "code").mkdir()
+    (tmp_path / "code" / "a.cpp").write_text(
+        'a = gate::get<"MC2_A", Rule::Presence>(); b = gate::get<"MC2_B", Presence>(); c = gate::get<"MC2_C">();\n',
+        encoding="utf-8")
+    assert tg.count_overrides(str(tmp_path)) == 2

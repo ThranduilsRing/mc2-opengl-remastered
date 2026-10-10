@@ -121,6 +121,9 @@ constexpr bool applyRule(Rule r, std::uint32_t f, bool dflt) noexcept {
     return dflt;
 }
 
+// The hot path relies on a plain load/store: a lock-based atomic would turn every read into a call.
+static_assert(std::atomic<std::uint64_t>::is_always_lock_free, "gate slots need lock-free 64-bit atomics");
+
 extern std::atomic<std::uint64_t> g_slot[kGateCount];
 
 // Parse the environment for gate `idx`, publish and return the slot. gate.cpp.

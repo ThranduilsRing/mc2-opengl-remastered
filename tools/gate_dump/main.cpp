@@ -124,6 +124,8 @@ int main() {
         out += r.divergent ? "true" : "false";
         out += ", \"smokePassthrough\": ";
         out += r.smokePassthrough ? "true" : "false";
+        out += ", \"verified\": ";
+        out += r.verified ? "true" : "false";
         out += ", \"logTopic\": ";
         str(out, r.logTopic);
         out += "}";

@@ -25,6 +25,7 @@ struct Opts {
     bool reread = false;
     bool divergent = false;
     bool passthrough = false;
+    bool verified = false;
     Range range;
     std::string_view tokens;
     std::string_view logTopic;
@@ -34,6 +35,7 @@ constexpr Opts operator|(Opts a, const Opts& b) {
     a.reread = a.reread || b.reread;
     a.divergent = a.divergent || b.divergent;
     a.passthrough = a.passthrough || b.passthrough;
+    a.verified = a.verified || b.verified;
     if (b.range.has) a.range = b.range;
     if (!b.tokens.empty()) a.tokens = b.tokens;
     if (!b.logTopic.empty()) a.logTopic = b.logTopic;
@@ -43,6 +45,7 @@ constexpr Opts operator|(Opts a, const Opts& b) {
 inline constexpr Opts reread{.reread = true};
 inline constexpr Opts divergent{.divergent = true};
 inline constexpr Opts passthrough{.passthrough = true};
+inline constexpr Opts verified{.verified = true};
 // Out-of-range values fall back to the default.
 constexpr Opts range(double lo, double hi) { return Opts{.range = Range{true, false, lo, hi}}; }
 // Same, with the lower bound exclusive: accepts (lo, hi]. For `f > lo && f <= hi` readers.
@@ -68,6 +71,7 @@ constexpr Row make(Rule rule, std::string_view name, Kind kind, std::string_view
     r.reread = o.reread;
     r.divergent = o.divergent;
     r.smokePassthrough = o.passthrough;
+    r.verified = o.verified;
     return r;
 }
 }  // namespace detail
@@ -123,6 +127,18 @@ constexpr bool nameIsSortedUnique(const Row* t, std::size_t n) {
     return true;
 }
 
+// Is `tok` one of the "a|b|c" entries of `list`?
+constexpr bool tokenListHas(std::string_view list, std::string_view tok) {
+    std::size_t start = 0;
+    while (start <= list.size()) {
+        std::size_t end = list.find('|', start);
+        if (end == std::string_view::npos) end = list.size();
+        if (list.substr(start, end - start) == tok) return true;
+        start = end + 1;
+    }
+    return false;
+}
+
 // Per-row sanity independent of the index.
 constexpr bool rowIsSane(const Row& r) {
     if (r.name.size() < 5 || r.name.substr(0, 4) != "MC2_") return false;
@@ -134,6 +150,7 @@ constexpr bool rowIsSane(const Row& r) {
     if (r.kind == Kind::Bool && r.rule == Rule::Prefix) return false;
     if ((r.kind == Kind::Int || r.kind == Kind::Float) && r.rule != Rule::Std && r.rule != Rule::Prefix) return false;
     if (r.kind == Kind::Enum && r.tokens.empty()) return false;
+    if (r.kind == Kind::Enum && !tokenListHas(r.tokens, r.defStr)) return false;  // the default must be a token
     if (r.kind != Kind::Enum && !r.tokens.empty()) return false;
     if (r.range.has && !(r.range.lo <= r.range.hi)) return false;
     if (r.range.has && r.range.loExcl && r.range.clamp) return false;  // an exclusive bound cannot clamp

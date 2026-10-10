@@ -65,8 +65,9 @@ struct DumpSummary {
     std::size_t set = 0;
     std::size_t nondefault = 0;
     std::size_t unregistered = 0;
-    std::size_t badvalue = 0;
+    std::size_t badvalue = 0;            // bad value on a verified row (fatal under strict)
     std::size_t premainStale = 0;
+    std::size_t badvalueUnverified = 0;  // bad value on a row no typed reader has proven yet (warning only)
 };
 
 // MC2_CONFIG_DUMP (default|all|none) and MC2_CONFIG_STRICT from the environment.

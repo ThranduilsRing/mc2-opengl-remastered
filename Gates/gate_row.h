@@ -40,6 +40,10 @@ struct Row {
     bool reread = false;         // read fresh after in-process _putenv (invalidate on write)
     bool divergent = false;      // readers deliberately disagree; owner decision pending
     bool smokePassthrough = false;  // run_smoke.py forwards it to the game
+    // A gate::get<> reader exists, so the row's kind, tokens and range have been proven against
+    // a real reader. MC2_CONFIG_STRICT fails on a bad value only for verified rows; the rest
+    // stay warnings because their kind is still the seed's guess.
+    bool verified = false;
 };
 
 inline constexpr std::size_t kMaxDocLen = 160;

@@ -1023,12 +1023,16 @@ def main(argv=None):
     ap.add_argument("--force", action="store_true", help="with --init-table: overwrite an existing table")
     ap.add_argument("--write", action="store_true", help="regenerate Gates/gate_index.gen.h from Gates/gate_table.json")
     ap.add_argument("--check", action="store_true", help="gate table checks (stage A; --rebuild adds stage B)")
+    ap.add_argument("--sync-verified", action="store_true",
+                    help="mark rows verified iff a gate::get<> reader exists, rebuild gate_dump, rewrite the JSON and index")
     ap.add_argument("--rebuild", action="store_true", help="with --check: rebuild tools/gate_dump and diff its JSON")
     args = ap.parse_args(argv)
-    if args.init_table or args.write or args.check:
+    if args.init_table or args.write or args.check or args.sync_verified:
         import gate_table_gen as tg  # noqa: E402
         if args.init_table:
             return tg.init_table(args.root, args.force)
+        if args.sync_verified:
+            return tg.sync_verified(args.root)
         if args.write:
             return tg.write_index(args.root)
         fails = tg.check(args.root, args.rebuild)
