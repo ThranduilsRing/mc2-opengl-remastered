@@ -39,6 +39,7 @@
 #endif
 
 #include "dynamic_decal_ring.h"  // MC2_DYNAMIC_DECALS runtime impact decals
+#include "../RenderCore/axis_convert.h"
 
 //---------------------------------------------------------------------
 // Static Globals
@@ -361,9 +362,7 @@ void CraterManager::render (void)
 				Stuff::Point3D Distance;
 				Stuff::Point3D objPosition;
 				Stuff::Point3D eyePosition(eye->getCameraOrigin());
-				objPosition.x = -currCrater->position[0].x;
-				objPosition.y = currCrater->position[0].z;
-				objPosition.z = currCrater->position[0].y;
+				mc2ToRender(objPosition, currCrater->position[0]);
 		
 				Distance.Subtract(objPosition,eyePosition);
 				float eyeDistance = Distance.GetApproximateLength();
