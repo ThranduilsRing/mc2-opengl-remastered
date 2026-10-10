@@ -66,8 +66,8 @@
    "LG16": 7,
    "LG17": 81,
    "LG18": 11,
-   "LG19": 50,
-   "LG20": 83
+   "LG19": 47,
+   "LG20": 80
   },
   "GuiRuntime": {
    "LG01": 1,
@@ -1022,9 +1022,7 @@
   },
   "GameOS/gameos/mc2_hitch_trace.cpp": {
    "LG09": 13,
-   "LG12a": 10,
-   "LG19": 3,
-   "LG20": 3
+   "LG12a": 10
   },
   "GameOS/gameos/mc2_hitch_trace.h": {
    "LG09": 6
@@ -5827,7 +5825,7 @@
    "LG20": 1
   }
  },
- "head": "f2ed0a020",
+ "head": "cde3b2181",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

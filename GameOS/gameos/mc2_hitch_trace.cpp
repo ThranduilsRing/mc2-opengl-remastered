@@ -8,6 +8,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <array>
+#include "Gates/gate.h"
 
 // ---------------------------------------------------------------------------
 // Globals (extern-declared in mc2_hitch_trace.h)
@@ -32,13 +33,10 @@ std::array<Clock::time_point, static_cast<size_t>(mc2_hitch::HitchSpanKind::kCou
 
 struct HitchInit {
     HitchInit() {
-        g_mc2HitchEnabled = (getenv("MC2_HITCH_TRACE") != nullptr);
+        g_mc2HitchEnabled = mc2::gate::get<"MC2_HITCH_TRACE">();
         if (g_mc2HitchEnabled) {
-            const char* e = getenv("MC2_HITCH_MS");
-            if (e && e[0]) {
-                double v = atof(e);
-                if (v > 0.0) s_thresholdMs = v;
-            }
+            const double v = mc2::gate::get<"MC2_HITCH_MS">();   // row default 0 = keep the built-in threshold
+            if (v > 0.0) s_thresholdMs = v;
             fprintf(stderr,
                 "[HITCH_INIT] enabled threshold=%.1fms\n", s_thresholdMs);
             fflush(stderr);
@@ -46,7 +44,7 @@ struct HitchInit {
         // GPU-UPDATE-BUFFER-COUNTER-1: independent default-OFF gate. OR-in the
         // shared accumulation flag so the orphan macros count under either gate
         // without forcing the rest of the hitch trace (threshold emit) on.
-        g_mc2GpuBufCounter = (getenv("MC2_GPUBUF_COUNTER") != nullptr);
+        g_mc2GpuBufCounter = mc2::gate::get<"MC2_GPUBUF_COUNTER">();
         g_mc2GpuBufAccumOn = g_mc2HitchEnabled || g_mc2GpuBufCounter;
         if (g_mc2GpuBufCounter) {
             fprintf(stderr, "[GPUBUF_INIT] enabled (per-frame orphan counter)\n");
