@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # TERRAIN-RUNTIME-API-RECON-1 — master consumer map
 
 Read-only recon. Goal: map every terrain-data consumer so a `TerrainRuntime`
@@ -21,11 +22,11 @@ Sub-docs (slice detail):
 
 **Every GPU height buffer is a COPY of `blocks[].elevation`:**
 - R32F height tex, unit 11 (`terrain.cpp:718`) — normals only.
-- SSBO binding 23 `heights[]` (`gos_terrain_lod_chunk.h:16`, fill `terrain.cpp:811`) — LOD-chunk render geometry.
-- Recipe SSBO `wz0..wz3` (`gos_terrain_indirect.cpp:653-656`).
+- SSBO binding 23 `heights[]` (`gos_terrain_lod_chunk.h:16`, fill `mclib/terrain_init.cpp:193`) — LOD-chunk render geometry.
+- Recipe SSBO `wz0..wz3` (`GameOS/gameos/gos_terrain_indirect_atlas.cpp:47-50`).
 
 **RENDER height == GAMEPLAY height TODAY.** Gameplay = `Terrain::getTerrainElevation`
-(`terrain.cpp:3638`) → `mapData->terrainElevation` (`mapdata.cpp:1407/2189`) →
+(`mclib/terrain_render.cpp:539`) → `mapData->terrainElevation` (`mapdata.cpp:1407/2189`) →
 same `blocks[].elevation`. No numeric split exists. There is only a *documentary*
 note (`terrain.cpp:711-716`) saying the height-tex is "visual-only, gameplay
 authoritative" — but the bytes are identical.
@@ -33,7 +34,7 @@ authoritative" — but the bytes are identical.
 **Material/overlay** = `PostcompVertex.textureData` DWORD (`vertex.h:46`):
 hi16 = overlay TXM, lo16 = base TXM (`mapdata.cpp:279/540`). `terrainType`
 (`vertex.h:50`) = material class. Cement-word is *derived* into recipe `_wp3`
-(`gos_terrain_indirect.cpp:846`), not stored.
+(`GameOS/gameos/gos_terrain_indirect_cement.cpp:67`), not stored.
 
 > **Consequence:** the compat API can wrap `getTerrainElevation` /
 > texture / terrainType over `blocks[]` and cover everyone with zero reconcile.
@@ -63,7 +64,7 @@ Break = risk if visual height diverges from gameplay height.
 |---|---|---|---|
 | `terrainElevation` (gameplay sample core) | mapdata.cpp:1407 | GPH | — (authoritative) |
 | LOD-chunk vert (SSBO@23 + mat@24/@25) | terrain_lod_chunk.vert:45 | VH+MAT | self-consistent |
-| indirect recipe `buildRecipeSlot` | gos_terrain_indirect.cpp:653 | VH+MAT(_wp3) | self-consistent |
+| indirect recipe `buildRecipeSlot` | GameOS/gameos/gos_terrain_indirect_atlas.cpp:47 | VH+MAT(_wp3) | self-consistent |
 | thin records | — | MAT/FM | — |
 | height R32F tex (normals) | terrain_height_normal.hglsl:59 | VH | low |
 | water fast path | water_fast.vert:198 | LDP (own VBO) | — |
@@ -72,21 +73,21 @@ Break = risk if visual height diverges from gameplay height.
 ### Render-adjacent grounding/sampling (slice 2)
 | consumer | file:line | class | break |
 |---|---|---|---|
-| baked self-shadow (colormap) | terrtxm2.cpp:609 (samp 443/449/475) | VH/FM | LOW cosmetic |
+| baked self-shadow (colormap) | mclib/terrtxm2_bake.cpp:228 (samp 443/449/475) | VH/FM | LOW cosmetic |
 | dynamic shadow map receiver | gameos_graphics.cpp:2490/2554 | VH | LOW (via grounding) |
 | craters (4-corner getTerrainElevation) | crater.cpp:257-260 | GPH/LDP | **HIGH z-fight** |
 | dynamic decal ring | dynamic_decal_ring.cpp:95 | GPH | **HIGH** |
 | cement/road/runway (shader/colormap baked) | — | MAT | SAFE |
-| mine overlay/decal (packet-4 state → terrain decal) | move.h:362-678; quad.cpp:455-921; objmgr.cpp:1329 | FM(packet-4)+LDP-decal | **HIGH z-fight** (rides visual mesh; see landmines §5) |
+| mine overlay/decal (packet-4 state → terrain decal) | move.h:362-678; quad.cpp:455-921; code/objmgr_io.cpp:97 | FM(packet-4)+LDP-decal | **HIGH z-fight** (rides visual mesh; see landmines §5) |
 | water plane + shore test + getWater | terrain.cpp:161/3539-3566/4074 | GPH-threshold+flat | **HIGH+SUBTLE** |
 | vegetation grounding/water-floor/material/slope | VegetationAdapter.cpp:253-470 | GPH+MAT+FM | **HIGH** place / MOD gates |
 | **prop/building/object grounding** | bldng.cpp:825-827; objmgr.cpp:4667/4695/4716/4743; gameobj.cpp:371/443/1866/2098 | GPH | **HIGH — LOAD-BEARING** (feeds shadow casters) |
-| picking / screenToTerrainApprox / editor rect | camera.cpp:927/979/1388+; terrain.cpp:3951 | GPH | MODERATE cursor offset |
+| picking / screenToTerrainApprox / editor rect | camera.cpp:927/979/1388+; mclib/terrain_geometry.cpp:212 | GPH | MODERATE cursor offset |
 
 ### Gameplay (slice 3) — ALL must stay GPH
 | category | representative file:line | hot? |
 |---|---|---|
-| **Unit grounding (per-frame Z)** | mech.cpp:6121; gvehicl.cpp:3684; warrior.cpp:2878; turret.cpp:1660-1774; gate.cpp:359 (~21 sites) | **HOT** |
+| **Unit grounding (per-frame Z)** | mech.cpp:6121; code/gvehicl_update.cpp:683; warrior.cpp:2878; turret.cpp:1660-1774; gate.cpp:359 (~21 sites) | **HOT** |
 | Pathfinding / passability | mover.cpp:3109-4419; move.cpp:473-5252; `GameMap->getPassable` (~40 sites) | cold |
 | LOS / sensor | mech.cpp:8107/8509-8645; gvehicl.cpp:3668/4933-5062 | cold |
 | Weapon/projectile impact Z | mover.cpp:3501-4886; turret.cpp:1660-1774 | hot-in-combat |
@@ -106,9 +107,9 @@ sourced from `GameMap`, not `blocks[]`.
 - `<mission>.pak`: PacketFile, magic `0xFEEDFACE`. **Packet 0** = terrain land grid
   (raw `PostcompVertex[side*side]`, side = `sqrt(pkt0bytes/sizeof(PostcompVertex))`,
   not stored). **Packet 1** = objects/buildings. **Packet 3** = TacMap. **Packet 4**
-  = MOVE/pathfinding. last = GUID. (`mission.cpp:2759-2797`, `EditorData.cpp:2178-2215`)
+  = MOVE/pathfinding. last = GUID. (`mission.cpp:2759-2797`, `editor/EditorData_save.cpp:441-478`)
 - Dims/elevation-range/water are in the **`.fit`**, not the `.pak`
-  (`terrain.cpp:3875-3899`). Spacing = 128 wu.
+  (`mclib/terrain_geometry.cpp:136-160`). Spacing = 128 wu.
 - **Sidecar precedent** = `<mission>.beauty/`: `sidecar.json` (baseHash = sha256 of
   `.pak`, grid_side, dtype) + `height_delta.r32` + optional `protected.r8`
   (`mission_sidecar.py:82-104`). Offline apply patches elevation@12+normal@0 into a

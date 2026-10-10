@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # TERRAIN-RUNTIME-API-RECON-1 — Four Terrain Landmines
 
 Read-only recon (2026-06-25). Worktree `nifty-mendeleev`. All file:line verified by reading code.
@@ -34,7 +35,7 @@ Classifies each landmine as: colormap-baked (CPU load) / shader-runtime / geomet
 **CLASS: SPLIT — solid cement = colormap-baked (CPU load); transition = shader-runtime mask, currently shader PASS-THROUGH.**
 
 - CPU bake (cement burned into composite colormap at load):
-  `TerrainTextures::combineOverlayTxm` — `mclib/terrtxm.cpp:986`. `isCementType()` gate at
+  `TerrainTextures::combineOverlayTxm` — `mclib/terrtxm.cpp:1131`. `isCementType()` gate at
   terrtxm.cpp:1116-1120; cement composites regenerated from source .tga (comment :110), per-corner
   cement routing at :1275/1305/1322/1337. This is where solid cement gets its flat authored tone
   baked into the colormap (the shader later "preserves authored colormap tone for runway/cement",
@@ -116,11 +117,11 @@ state drawn as a terrain decal. It is a SEPARATE data axis from height/material.
 - **RENDER = terrain decal/overlay riding the VISUAL mesh.** `TerrainQuad` samples
   `GameMap->getMine(cellR,cellC)` (`quad.cpp:455/824/903`) and enqueues per-quad
   mine state (`enqueueTerrainMineState`, `mineResult.setMine` `quad.cpp:463/833/912`);
-  textures via `TerrainQuad::initMineTextureHandles` (`quad.cpp:712`). Drawn onto
+  textures via `TerrainQuad::initMineTextureHandles` (`mclib/quad.cpp:129`). Drawn onto
   the terrain surface like the cement/road decals — **shares the overlay/decal
   render layer with the cement transition (landmine #2)**.
 - **Objects too:** `isLandMine(objTypeNum)` (`objmgr.cpp:1329/1697`) classifies
-  mine GameObjects; `MC2_TERRAIN_MINE_AB` (`terrain.cpp:2432-2514`) is a read-only
+  mine GameObjects; `MC2_TERRAIN_MINE_AB` (`mclib/terrain_update.cpp:243-325`) is a read-only
   legacy-vs-grid placement diagnostic.
 
 **Divergence break-risk:** HIGH z-fight — same class as craters / decal ring. If
@@ -140,8 +141,8 @@ layer must keep hosting the mine decal on that same layer.
 
 | # | Landmine | Primary file:line | Class |
 |---|----------|-------------------|-------|
-| 1 | matNormalArray (mat5 cliff) | gos_terrain.frag:56,720 + terrain_mat_layers.hglsl:10 + gameos_graphics.cpp:1962 | shader-runtime (additive to normal) |
-| 2 | cement bake + transition | terrtxm.cpp:986 (bake) + gos_terrain.frag:436-453 (transition pass-through) | bake=CPU-load; transition=shader-runtime but currently overlay-deferred |
+| 1 | matNormalArray (mat5 cliff) | gos_terrain.frag:56,720 + terrain_mat_layers.hglsl:10 + GameOS/gameos/gameos_graphics_renderer_internal.h:1090 | shader-runtime (additive to normal) |
+| 2 | cement bake + transition | mclib/terrtxm.cpp:1178 (bake) + gos_terrain.frag:436-453 (transition pass-through) | bake=CPU-load; transition=shader-runtime but currently overlay-deferred |
 | 3 | height resample | gos_terrain_height_tex.cpp:45-152 + terrain_height_normal.hglsl:59-90 | CPU-load resample → shader normal recompute; NO geometry |
 | 4 | shoreline | terrain.cpp:3545-3566 + gos_terrain_water_mdi.frag:175-180 | CPU quad-select + shader fade; dead-ish when alphaDepth=0 |
-| 5 | mine overlay/decal | move.h:362-678 (packet-4 state) + quad.cpp:455-921 (decal draw) + objmgr.cpp:1329 | packet-4 MOVE state axis + terrain decal on visual mesh; HIGH z-fight on height divergence |
+| 5 | mine overlay/decal | move.h:362-678 (packet-4 state) + quad.cpp:455-921 (decal draw) + code/objmgr_io.cpp:97 | packet-4 MOVE state axis + terrain decal on visual mesh; HIGH z-fight on height divergence |
