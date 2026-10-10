@@ -416,17 +416,11 @@ static void loadBuildingImportSourceWithSidecarAxis(TG_TypeMultiShape* shape, co
 		importSourceBase, failFlag);
 
 	if (hasYaw) {
-		if (!oldYawValue.empty())
-			_putenv_s("MC2_GLTF_YAW_DEG", oldYawValue.c_str());
-		else
-			_putenv_s("MC2_GLTF_YAW_DEG", "");
+		_putenv_s("MC2_GLTF_YAW_DEG", oldYawValue.c_str());   // "" removes the variable
 		mc2::gate::invalidate("MC2_GLTF_YAW_DEG");
 	}
 	if (hasAxis) {
-		if (!oldAxisValue.empty())
-			_putenv_s("MC2_GLTF_AXIS", oldAxisValue.c_str());
-		else
-			_putenv_s("MC2_GLTF_AXIS", "");
+		_putenv_s("MC2_GLTF_AXIS", oldAxisValue.c_str());
 		mc2::gate::invalidate("MC2_GLTF_AXIS");
 	}
 }

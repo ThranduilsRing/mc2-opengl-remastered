@@ -111,6 +111,8 @@ GETENV_RE = re.compile(
     r'(?:getenv|GetEnvironmentVariable[AW]?|_wgetenv|getenv_s'
     r'|envFlag|envFlagDefaultOn|envFlagOn)\s*\(\s*'
     r'L?"(MC2_[A-Z0-9_]+)"')
+# The typed gate registry (Gates/gate.h): gate::get<"MC2_X">() and its state/isSet/str/is siblings are readers.
+GATE_GET_RE = re.compile(r'(?<![A-Za-z_])(?:get|state|isSet|str|is)\s*<\s*"(MC2_[A-Z0-9_]+)"')
 
 
 def sweep_getenv():
@@ -136,6 +138,8 @@ def sweep_getenv():
                     with open(full, "r", encoding="utf-8", errors="replace") as f:
                         for line in f:
                             for m in GETENV_RE.finditer(line):
+                                refs.setdefault(m.group(1), set()).add(rel)
+                            for m in GATE_GET_RE.finditer(line):
                                 refs.setdefault(m.group(1), set()).add(rel)
                 except OSError:
                     continue
