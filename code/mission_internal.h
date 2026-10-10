@@ -307,4 +307,10 @@ extern float   OneOverProcessorSpeed;
 bool IsGateDisabled (int objectWID);
 bool IsGateOpen (int objectWID);
 
+// Mover-state bridge and coherence audit (mission_update_audit.cpp).
+extern const bool s_bridgeMoverState;
+void bridgeEmitMoverState(float scenarioTimeNow);
+extern const bool s_moverCoherenceAudit;
+void auditMoverCoherence(float scenarioTimeNow, MissionInterfaceManagerPtr mi);
+
 #endif // MISSION_INTERNAL_H

@@ -70,6 +70,7 @@ Split commit: `d9f3d13b6`.
 | `gos_terrain_indirect.cpp` | keeps the gate readers, N1 counters and cost-split roll-ups |
 | `gos_terrain_indirect_atlas.cpp` | gos_terrain_indirect: dense recipe storage, recipe slot build/flush, colormap atlas and cement catalog atlas upload. |
 | `gos_terrain_indirect_cement.cpp` | gos_terrain_indirect: cement and concrete classification, transition masks and PopulateRecipeCementWords. |
+| `gos_terrain_indirect_compute.cpp` | gos_terrain_indirect: the ComputeDispatch phases -- program build, ring fence wait and tripwires, counter clears, compute bindings and uniforms, the depth-transition probe and the post-dispatch probes. The orchestrator is in |
 | `gos_terrain_indirect_diag.cpp` | gos_terrain_indirect: parity printer, 600-frame summary and the recipe-versus-live parity comparison. |
 | `gos_terrain_indirect_dispatch.cpp` | gos_terrain_indirect: preflight arming, ComputeDispatch, DrawIndirect, the water reflection pass and the ring/MVP bridge accessors. |
 | `gos_terrain_indirect_mine_decal.cpp` | gos_terrain_indirect: mine static VBO and texture array, decal static VBO and their dirty tracking. |
@@ -189,6 +190,7 @@ Split commit: `e8aaccaa1`.
 | `mission_init_load.cpp` | Mission: the second half of the Mission::init load sequence -- warriors and brains, movers and parts, terrain objects, commanders, the HUD and the geometry finalize. The first half and the orchestrator are in mission_init.cpp. |
 | `mission_movers.cpp` | Mission: createPartObject, addMover, removeMover, tradeMover, drop zones and gate queries. |
 | `mission_update.cpp` | Mission: the per-frame Mission::update with its MC2_MISSION_SPLIT timing, mover bridge, soak hooks and coherence audit. |
+| `mission_update_audit.cpp` | Mission: the runtime-bridge mover.state emitter and the mover-registry coherence audit that Mission::update calls once per frame. Declared in mission_internal.h. |
 | `mission_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
 ## `code/missiongui.cpp`
@@ -404,6 +406,7 @@ Split commit: `e880b7520`.
 | `tgl_render.cpp` | TG shapes: TG_Shape::Render, per-poly selection and the render-shape PBR override. |
 | `tgl_shadows.cpp` | TG shapes: shadow transform and shadow rendering. |
 | `tgl_transform.cpp` | TG shapes: TG_Shape::MultiTransformShape and its positions-only variant, light gathering and billboard handling. |
+| `tgl_transform_light.cpp` | TG_Shape: the per-vertex and per-face lighting phases of MultiTransformShape -- hot-colour and base colour, vertex lights, fog and highlight, face lights and the triangle queue. The orchestrator is in tgl_transform.cpp. |
 | `tgl_types.cpp` | TG shapes: ASE number/name helpers and the TG_TypeNode / TG_TypeShape / TG_Shape lifecycle, binary copy and creation. |
 | `tgl_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 

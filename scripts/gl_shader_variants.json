@@ -2800,7 +2800,7 @@
    "key": "gpu_driven_terrain_solid",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_terrain_indirect_dispatch.cpp:272",
+   "source": "GameOS/gameos/gos_terrain_indirect_compute.cpp:13",
    "stages": {
     "comp": "shaders/gpu_driven_terrain_solid.comp"
    }

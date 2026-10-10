@@ -19,13 +19,17 @@
 #                              the include lines every piece (and the frame header) starts with
 #   PREFIX_EDITS               {line: text} comment lines before the function to rewrite (the file header)
 #   a phase tuple may end in {'file': path}: its helper is written to that file (heads in FILE_HEADS)
-#   a phase tuple may end in {'exits': True}: the helper returns bool (true = the original function returned) and
+#   a phase tuple may end in {'exits': True} or {'exits': '<value>'} (every exit is `return <value>;`): the helper returns bool (true = the original function returned) and
 #                              its bare `return;` statements become `return true;`
+#   PRIMARY_INCLUDE / PRIMARY_INCLUDE_AFTER   an include line added to the source file after the first line starting with the second
 #   ONLY                       {frame id: [phase names]} frames only those phases may alias (name clashes)
 #   FRAME_METHODS              single frame: helpers that use its members are methods of the struct (no alias lines);
 #                              a phase tuple may end in {'free': True} to stay a file-static function
 #   FRAME_GLOBAL               keep the frame struct out of an anonymous namespace (block-scope externs in its methods)
 #   ALIAS_PER_LINE             alias declarations packed per line (keeps identical alias runs short)
+#   {'exits': 'continue'}: the phase's `continue;` statements leave the enclosing loop iteration instead; the orchestrator call is `if (helper()) continue;`
+#   {'noparams': [names]}: PARAMS names the phase declares itself (a shadowing local) and must not receive
+#   FILE_NAMESPACE             namespace wrapped around the helper blocks written to other files (after their includes)
 #   a phase tuple may end in {'dedent': prefix} to strip a different indent from that helper body
 #   INDENT, DEDENT, ORCH_DOC   indentation unit, prefix stripped from helper bodies, comment above function
 import importlib.util
@@ -180,12 +184,14 @@ def main():
         frames = [fid for fid in structs if any(fr == fid for _n, fr in used)]
         as_method = frame_methods and bool(used) and not opts.get('free')
         exits = bool(opts.get('exits'))
+        exit_val = opts['exits'] if isinstance(opts.get('exits'), str) else ''
         if exits:
-            body = [re.sub(r'\breturn;', 'return true;', x) for x in body]
+            stmt_rx = r'\bcontinue\s*;' if exit_val == 'continue' else r'\breturn' + ((' ' + re.escape(exit_val)) if exit_val else '') + r'\s*;'
+            body = [re.sub(stmt_rx, 'return true;', x) for x in body]
             body = body + [indent + 'return false;']
-        code = '\n'.join(strip_code(x) for x in body)
-        uparams = [(n, t) for n, t in getattr(S, 'PARAMS', []) if re.search(r'\b' + n + r'\b', code)]
-        info.append(dict(exits=exits, file=opts.get('file'), name=name, a=a, doc=doc, guard=guard, body=body, used=used, frames=frames, as_method=as_method, uparams=uparams))
+        code = '\n'.join(strip_code(x) for x in body) + ' ' + ' '.join(opts.get('uses', ()))   # 'uses': names a macro in the body expands to
+        uparams = [(n, t) for n, t in getattr(S, 'PARAMS', []) if re.search(r'\b' + n + r'\b', code) and n not in opts.get('noparams', ())]
+        info.append(dict(exits=exits, exit_val=exit_val, file=opts.get('file'), name=name, a=a, doc=doc, guard=guard, body=body, used=used, frames=frames, as_method=as_method, uparams=uparams))
     H = []
     anon = not method and not getattr(S, 'FRAME_GLOBAL', False)
     if anon:
@@ -242,6 +248,8 @@ def main():
             calls[i['a']] = 'f.%s(%s);' % (name, ', '.join(n for n, _t in i['uparams']))
         else:
             head = ('void %s::%s(%s) {' if method else 'static void %s%s(%s) {') % ((method, name, params) if method else ('', name, params))
+            if not method and i['file']:
+                head = head.replace('static ', '', 1)      # defined in another file: external linkage, declared in the shared header
             if i['exits']:
                 head = head.replace('void ', 'bool ', 1)
             blk.append(head)
@@ -250,7 +258,7 @@ def main():
                 blk.append(indent + ' '.join('auto& %s = %s.%s;' % (ident(n), fr, ident(n)) for n, fr in used[k:k + per_line]))
             calls[i['a']] = '%s(%s);' % (name, ', '.join([n for n, _t in i['uparams']] + frames))
             if i['exits']:
-                calls[i['a']] = 'if (' + calls[i['a']][:-1] + ') return;'
+                calls[i['a']] = 'if (' + calls[i['a']][:-1] + ') ' + ('continue;' if i['exit_val'] == 'continue' else 'return' + (' ' + i['exit_val'] if i['exit_val'] else '') + ';')
         blk += i['body']
         blk.append('}')
         if guard:
@@ -274,7 +282,7 @@ def main():
             if in_ph[ln] == ln:
                 if ln in S.ORCH_BEFORE:
                     O.append(before(ln))
-                lead = re.match(r'\s*', L[ln - 1]).group(0) if method else indent
+                lead = re.match(r'\s*', L[ln - 1]).group(0) if not L[ln - 1].startswith('#') else indent
                 O.append(lead + calls[ln])
             continue
         if ln in S.ORCH_BEFORE:
@@ -287,8 +295,11 @@ def main():
         O.append(t)
 
     def is_call(x):
-        return re.match(r'^\s*[\w.]+\(.*\);$', x) is not None or re.match(r'^\s*(%s) \w+;$' % '|'.join(structs.values()), x) is not None
+        return re.match(r'^\s*[\w.]+\(.*\);$', x) is not None or (bool(structs) and re.match(r'^\s*(%s) \w+;$' % '|'.join(structs.values()), x) is not None)
     O = [x for i, x in enumerate(O) if not (x.strip() == '' and 0 < i < len(O) - 1 and is_call(O[i - 1]) and is_call(O[i + 1]))]
+    for ln, txt in getattr(S, 'PREFIX_EDITS', {}).items():
+        assert ln - 1 < fs, 'PREFIX_EDITS line %d is not before the function' % ln
+        L[ln - 1] = txt
     frame_lines = []
     if 'FRAME_HEADER' in S.__dict__:
         i0, i1 = H.index('\x00FRAME_BEGIN'), H.index('\x00FRAME_END')
@@ -313,15 +324,20 @@ def main():
         L = L[:j + 1] + [inc] + L[j + 1:]
         fs += 1
         fe += 1
+    if hasattr(S, 'PRIMARY_INCLUDE'):
+        j = next(k for k, l in enumerate(L[:fs]) if l.startswith(S.PRIMARY_INCLUDE_AFTER))
+        L = L[:j + 1] + [S.PRIMARY_INCLUDE] + L[j + 1:]
+        fs += 1
+        fe += 1
+    fns = getattr(S, 'FILE_NAMESPACE', None)
+    ns_open = ['namespace ' + fns + ' {', ''] if fns else []
+    ns_close = ['', '}  // namespace ' + fns] if fns else []
     for path, body in FILE_BLOCKS.items():
-        extra_inc = internal + ['#include "%s"' % S.FRAME_HEADER.split('/')[-1]]
-        open(path, 'wb').write(('\n'.join(list(S.FILE_HEADS[path]) + extra_inc + [''] + body) + '\n').encode('utf-8'))
+        extra_inc = internal + (['#include "%s"' % S.FRAME_HEADER.split('/')[-1]] if hasattr(S, 'FRAME_HEADER') else [])
+        open(path, 'wb').write(('\n'.join(list(S.FILE_HEADS[path]) + extra_inc + [''] + ns_open + body + ns_close) + '\n').encode('utf-8'))
     for (sn, sp, sh), body in zip(splits, pieces):
-        extra_inc = internal + ['#include "%s"' % S.FRAME_HEADER.split('/')[-1]]
-        open(sp, 'wb').write(('\n'.join(list(sh) + extra_inc + [''] + body) + '\n').encode('utf-8'))
-    for ln, txt in getattr(S, 'PREFIX_EDITS', {}).items():
-        assert ln - 1 < fs, 'PREFIX_EDITS line %d is not before the function' % ln
-        L[ln - 1] = txt
+        extra_inc = internal + (['#include "%s"' % S.FRAME_HEADER.split('/')[-1]] if hasattr(S, 'FRAME_HEADER') else [])
+        open(sp, 'wb').write(('\n'.join(list(sh) + extra_inc + [''] + ns_open + body + ns_close) + '\n').encode('utf-8'))
     new = L[:fs] + H + (S.ORCH_DOC.split('\n') if getattr(S, 'ORCH_DOC', '') else [])
     new = new + O + L[fe + 1:]
     out = '\n'.join(new)

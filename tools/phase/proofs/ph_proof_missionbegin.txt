@@ -1,0 +1,30 @@
+inline expansion: 906 statements, helpers 6, orchestrator lines 63
+declaration lifts / edits applied (0):
+scaffolding only in new (24 distinct):
+   + // Buy and deploy a mech so a purchase-required mission can launch under auto-advance. 
+   + // Dump the front-end state to the LOGISTICS diagnostic event when the screen changes. 
+   + // End the finished screen and begin the next or the previous one. 
+   + // Move the mouse and flash the target of the running tutorial callout. 
+   + // Per-frame front-end update. The screen lookup, the logistics brain call, the screen update, the soak gate a 
+   + // Run the main menu and leave it for the first screen or a restart. 
+   + // Walk the settled screen toward launch, through the optional screen-check detour. 
+   + // original order. A phase that leaves the update returns true and the orchestrator returns NULL. 
+   + // ready-to-load latch stay here; each other phase is a member helper declared in missionbegin.h, run in the 
+   + bool MissionBegin::updateSplash() { 
+   + if (updateSplash()) return NULL; 
+   + return false; 
+   + return true; 
+   + updateDumpFrontEndState(); 
+   + updateScreenAdvance(pCurScreen, soakForceNext); 
+   + updateSoakAutoPurchase(); 
+   + updateSoakScreenWalk(pCurScreen, soakForceNext); 
+   + updateTutorialAnimation(pCurScreen); 
+   + void MissionBegin::updateDumpFrontEndState() { 
+   + void MissionBegin::updateScreenAdvance(LogisticsScreen* pCurScreen, bool& soakForceNext) { 
+   + void MissionBegin::updateSoakAutoPurchase() { 
+   + void MissionBegin::updateSoakScreenWalk(LogisticsScreen* pCurScreen, bool& soakForceNext) { 
+   + void MissionBegin::updateTutorialAnimation(LogisticsScreen* pCurScreen) { 
+   + } x6
+statements only in old (1 distinct, all lifted declarations / hoisted-type lines):
+   - return NULL; 
+PASS: inline expansion of the new function equals the original body

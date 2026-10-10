@@ -1,0 +1,51 @@
+inline expansion: 900 statements, helpers 14, orchestrator lines 101
+declaration lifts / edits applied (0):
+scaffolding only in new (46 distinct):
+   + // Advance the scenario clock from the fixed timestep or the wall clock and handle the in-mission save. 
+   + // Begin the GPU cull frame and update the objects, or only their appearances while frozen. 
+   + // Clear the terrain object flags and process the terrain geometry. 
+   + // Decide whether the mission is over and start the termination countdown. 
+   + // Flush the ABL trace and emit the mover bridge, the identity hash and the coherence audit. 
+   + // Handle the developer hotkeys. 
+   + // Handle the frame-rate toggle and the cheat keys and show the frame rate. 
+   + // Issue the order-liveness fixture orders and report their outcome. 
+   + // Per-frame mission update. The timing scopes, the active guard, the Tracy zone, the mission brain call (its  
+   + // Promote a deployed pilot on the soak missions. 
+   + // Run the soak kill, salvage and load-bay phases. 
+   + // Update the craters and the mover visual-displacement damp. 
+   + // Update the interface, camera, terrain, weather, waypoints and the path manager. 
+   + // Update the texture manager, the sensors and the collisions. 
+   + // Win the mission after the soak delay. 
+   + // mission.h, run in the original order. 
+   + // result ends the update) and the LAB_ONLY timing sum stay here; each other phase is a member helper declared 
+   + updateCheatsAndFrameRate(); 
+   + updateCratersAndDamp(); 
+   + updateDevHotkeys(); 
+   + updateFrameClock(); 
+   + updateFrontEnd(); 
+   + updateObjectManager(); 
+   + updateOrderLiveness(); 
+   + updateSimSystems(); 
+   + updateSoakAutoWin(); 
+   + updateSoakKillEnemy(); 
+   + updateSoakPilotPromote(); 
+   + updateTermination(); 
+   + updateTerrainGeometry(); 
+   + updateTraceHooks(); 
+   + void Mission::updateCheatsAndFrameRate() { 
+   + void Mission::updateCratersAndDamp() { 
+   + void Mission::updateDevHotkeys() { 
+   + void Mission::updateFrameClock() { 
+   + void Mission::updateFrontEnd() { 
+   + void Mission::updateObjectManager() { 
+   + void Mission::updateOrderLiveness() { 
+   + void Mission::updateSimSystems() { 
+   + void Mission::updateSoakAutoWin() { 
+   + void Mission::updateSoakKillEnemy() { 
+   + void Mission::updateSoakPilotPromote() { 
+   + void Mission::updateTermination() { 
+   + void Mission::updateTerrainGeometry() { 
+   + void Mission::updateTraceHooks() { 
+   + } x14
+statements only in old (0 distinct, all lifted declarations / hoisted-type lines):
+PASS: inline expansion of the new function equals the original body

@@ -33,12 +33,12 @@ SCAN_DIRS = ("code", "mclib", "GameOS", "RenderCore", "GuiRuntime", "RenderWorld
 EXTS = (".cpp", ".h", ".hpp", ".cc", ".inl")
 # file -> max lines calling envText( ; why the name is truly dynamic there
 ENVTEXT_ALLOWED = {
-    "GameOS/gameos/gameosmain.cpp": 1,   # the launcher_env.json apply asks "did the shell already set this key?"
+    "GameOS/gameos/gameosmain_init.cpp": 1,   # the launcher_env.json apply asks "did the shell already set this key?"
     "GameOS/gameos/gos_dev_shell.cpp": 1,  # the dev shell's get_gate answers for a variable NAME the client sends
 }
 # file -> max lines calling boolState( ; every one is a status display driven by a table of gate names
 BOOLSTATE_ALLOWED = {
-    "GuiRuntime/EditorInspector.cpp": 3,           # the gate tables and the feature-bit display
+    "GuiRuntime/EditorInspector_sections.cpp": 3,  # the gate tables and the feature-bit display
     "GuiRuntime/GraphicsOptionsWindow_mech.cpp": 1,  # the mech options status column
     "RenderCore/RendererFeatureRegistry.h": 1,     # the generated registry dump, naming gates from its own table
 }
@@ -207,7 +207,7 @@ def selftest() -> int:
     expect("envText in an allowed file", launcher, 'if (mc2::gate::envText(key)) go();', False)
     expect("envText over budget", launcher, "envText(a);\nenvText(b);\nenvText(c);", True)
     expect("boolState elsewhere", "code/a.cpp", 'if (mc2::gate::boolState(name) == on) go();', True)
-    expect("boolState in a display table", "GuiRuntime/EditorInspector.cpp",
+    expect("boolState in a display table", "GuiRuntime/EditorInspector_sections.cpp",
            'const auto st = mc2::gate::boolState(d.envVar);', False)
     expect("boolState over budget", "GuiRuntime/GraphicsOptionsWindow_mech.cpp",
            'boolState(a);' + chr(10) + 'boolState(b);', True)

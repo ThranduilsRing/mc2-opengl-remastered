@@ -8,189 +8,8 @@
 // Copyright (C) Microsoft Corporation. All rights reserved.                 //
 //===========================================================================//
 
-//----------------------------------------------------------------------------------
-// Include Files
-#ifndef MCLIB_H
-#include"mclib.h"
-#include "cpu_proj_cost_split.h"  // F3 CPU projection cost-baseline (hard_reset)
-#endif
-
-#ifndef MISSION_H
-#include"mission.h"
-#endif
-
-#ifndef MOVEMGR_H
-#include"movemgr.h"
-#endif
-
-#ifndef GAMESOUND_H
-#include"gamesound.h"
-#endif
-
-#ifndef SOUNDS_H
-#include"sounds.h"
-#endif
-
-#ifndef COLLSN_H
-#include"collsn.h"
-#endif
-
-#ifndef CMPONENT_H
-#include"cmponent.h"
-#include"unitprofile.h"		// EQUIPMENT-REGISTRY-FACADE-1: gated registry build hook
-#endif
-
-#ifndef OBJMGR_H
-#include"objmgr.h"
-#endif
-
-#ifndef MOVER_H
-#include"mover.h"
-#endif
-
-#ifndef MECH_H
-#include"mech.h"
-#endif
-
-#ifndef GVEHICL_H
-#include"gvehicl.h"
-#endif
-
-#ifndef CONTACT_H
-#include"contact.h"
-#endif
-
-#ifndef TEAM_H
-#include"team.h"
-#endif
-
-#ifndef COMNDR_H
-#include"comndr.h"
-#endif
-
-#ifndef GROUP_H
-#include"group.h"
-#endif
-
-#ifndef GAMECAM_H
-#include"gamecam.h"
-#endif
-
-#ifndef MULTPLYR_H
-#include"multplyr.h"
-#endif
-
-#ifndef WEAPONFX_H
-#include"weaponfx.h"
-#endif
-
-#ifndef WEATHER_H
-#include"weather.h"
-#endif
-
-#ifndef GATE_H
-#include"gate.h"
-#endif
-
-#ifndef LOGISTICSDATA_H
-#include"logisticsdata.h"
-#endif
-
-#ifndef LOGISTICSPILOT_H
-#include"logisticspilot.h"
-#endif
-
-#ifndef GAMELOG_H
-#include"gamelog.h"
-#endif
-
-#ifndef CELLIP_H
-#include"cellip.h"
-#endif
-
-#ifndef LOADSCREEN_H
-#include"loadscreen.h"
-#endif
-
-#include "../resource.h"
-#include<gameos.hpp>
-
-// VPL-deferred item 11 fix: the in-mission-save load path (Mission::load)
-// bypasses Mission::init and must mirror its finalizeGeometry() tail, or
-// every mech of any type re-registered on restore stays invisible
-// (submitActor fast-rejects while !s_geometryFinalized).
-#include "../GameAdapters/StaticPropRenderAdapter.h"  // M1 CI-gate: resetForRestore() + finalizeGeometry()
-#include "gos_mech_batcher.h"
-#include "../GameOS/gameos/gpu_cull_compute.h"   // Stage 0.5 §0: mirror Init's compute_buildIndirectBuffer tail
-#include "../GameOS/gameos/gpu_cull_substrate.h"   // Stage 0.5 §0 (cont'd): mirror Init's per-mission substrate re-init (mission.cpp:2807)
-#include "../GameOS/gameos/gpu_cull_readback.h"    // Stage 0.5 §0 (cont'd): mirror Init's per-mission readback re-init (mission.cpp:2826)
-#include "../GameOS/gameos/gos_terrain_lighting.h" // Stage 0.5 §0 (cont'd): mirror Init's per-mission terrain-lighting re-init (mission.cpp:2817)
-#include "apprtype.h"
-#include "Gates/gate.h"
-#ifndef LINUX_BUILD
-#include<ddraw.h>
-#else
-struct DDSURFACEDESC2 {
-};
-#endif
-
-//----------------------------------------------------------------------------------------------------
-// Globals
-#define DEFAULT_SKY			1
-extern float loadProgress;
-
-void MouseTimerInit();
-void MouseTimerKill();
-void ProgressTimer(	RECT& WinRect,DDSURFACEDESC2& mouseSurfaceDesc );
-
-extern volatile bool mc2IsInDisplayBackBuffer;
-extern volatile bool mc2UseAsyncMouse;
-extern volatile bool mc2IsInMouseTimer;
-extern void (*AsynFunc)(RECT& WinRect,DDSURFACEDESC2& mouseSurfaceDesc );
-
-#define USE_ABL_LOAD
-
-void initABL (void);
-void closeABL (void);
-
-extern float WeaponRanges[NUM_WEAPON_RANGE_TYPES][2];
-extern float OptimalRangePoints[NUM_WEAPON_RANGE_TYPES];
-extern bool OptimalRangePointInRange[NUM_WEAPON_RANGE_TYPES][3];
-
-extern unsigned long missionHeapSize;
-
-//--------------------------------------------------
-// Game System Constants -- Declarations here.
-#include "mission_globals.h"
-extern GameObjectPtr DebugGameObject[];
-
-extern float BaseHeadShotElevation;
-
-#ifndef FINAL
-extern float CheatHitDamage;
-#endif
-
-void InitDifficultySettings (FitIniFile *gameSystemFile);
-
-extern long GameVisibleVertices;
-
-void GetBlockedDoorCells (int moveLevel, int door, char* openCells);
-void PlaceStationaryMovers (MoveMap* map);
-void PlaceMovers (void);
-
-extern GameObjectFootPrint* tempSpecialAreaFootPrints;
-extern long tempNumSpecialAreas;
-extern GameLog* CombatLog;
-
-bool IsGateDisabled (int objectWID);
-bool IsGateOpen (int objectWID);
-
-// META-FIX design E: dead, wrong-signature elfHash decl removed (was never
-// called from this TU; non-extern-"C" so it never even matched the real
-// symbol). The Tier-2 confinement grep (check-path-normalization.sh Rule 1)
-// starts from a clean baseline.
-
-extern char versionStamp[];
+#include "saveload_internal.h"
+#include "mission_load_frame.h"
 //----------------------------------------------------------------------------------------------------
 // Save.
 void Part::Save (FitIniFilePtr file, long partNum)
@@ -623,8 +442,11 @@ void Part::Load (FitIniFilePtr file, long partNum)
 
 }
 
-void Mission::load (const char *loadFileName)
-{
+
+// Trace the load, silence the mouse and start the loading-screen timer.
+void Mission::loadPrologue(MissionLoadFrame& f) {
+	auto& loadFileName = f.loadFileName; auto& oldXLoc = f.oldXLoc; auto& oldYLoc = f.oldYLoc;
+	auto& turnOffAsyncMouse = f.turnOffAsyncMouse;
 	saveloadTrace("load_begin_currentMission", loadFileName, missionFileName);
 	extern int g_lightProbeSetupPath; g_lightProbeSetupPath = 2; // [GPUPROPS v1]
 	// F3 CPU projection cost-baseline: flush previous-mission samples and
@@ -633,25 +455,29 @@ void Mission::load (const char *loadFileName)
 	userInput->mouseOff();
 	loadProgress = 0.0f;
 
-	DWORD oldXLoc = LoadScreen::xProgressLoc;
-	DWORD oldYLoc = LoadScreen::yProgressLoc;
+	oldXLoc = LoadScreen::xProgressLoc;
+	oldYLoc = LoadScreen::yProgressLoc;
 
 	LoadScreen::xProgressLoc = 0;
 	LoadScreen::yProgressLoc = 0;
 
-	bool turnOffAsyncMouse = mc2UseAsyncMouse;
+	turnOffAsyncMouse = mc2UseAsyncMouse;
 	if ( !mc2UseAsyncMouse )
 		MouseTimerInit();
 	mc2UseAsyncMouse = true;			
 	AsynFunc = ProgressTimer;
+}
 
+// Open the save packet file and reject a missing file or a wrong version stamp.
+bool Mission::openSaveFile(MissionLoadFrame& f) {
+	auto& loadFileName = f.loadFileName; auto& loadFile = f.loadFile; auto& result = f.result;
+	auto& currentPacket = f.currentPacket;
 	//Open the In-Mission Save packet file.
-	PacketFile loadFile;
-	long result = loadFile.open((char *)loadFileName);
+	result = loadFile.open((char *)loadFileName);
 	if (result != NO_ERR)
-		return;		//Can't load.  No File.  Dialog?  Probably not.
+		return true;		//Can't load.  No File.  Dialog?  Probably not.
 
-	DWORD currentPacket = 0;
+	currentPacket = 0;
 
 	char versionCheck[1024];
 	loadFile.readPacket(currentPacket,(MemoryPtr)versionCheck);
@@ -662,7 +488,7 @@ void Mission::load (const char *loadFileName)
 		char msg[2048];
 		cLoadString(IDS_QUICKSAVE_VERSION_WRONG,msg,2047);
 		PAUSE((msg));
-		return;
+		return true;
 	}
 
 	loadFile.seekPacket(currentPacket);
@@ -680,13 +506,17 @@ void Mission::load (const char *loadFileName)
 		char msg[2048];
 		cLoadString(IDS_QUICKSAVE_CAMPAIGN_WRONG,msg,2047);
 		PAUSE((msg,campName,cmpName));
-		return;
+		return true;
 	}
 	*/
 
 	delete [] campName;
 	campName = NULL;
+	return false;
+}
 
+// Tear down the running mission and reset the mech and static-prop batchers.
+void Mission::loadDestroyAndRestore() {
 	//Used to call this before the version check.  Wow.
 	destroy();
 
@@ -722,8 +552,11 @@ void Mission::load (const char *loadFileName)
 	GpuMechBatcher::instance().onMapLoad();
 
 	loadProgress = 1.0f;
+}
 
-	char tmpString[2048];
+// Reset the turn counters and bring up ABL, the TGL and the mission heap.
+void Mission::loadResetSimState(MissionLoadFrame& f) {
+	auto& tmpString = f.tmpString;
 	sprintf(tmpString,"%d",timeGetTime());
 
 	//-------------------------------------------
@@ -741,7 +574,11 @@ void Mission::load (const char *loadFileName)
 	initBareMinimum();
 	loadProgress = 4.0f;
 	initTGLForMission();
-	
+}
+
+// Open gamesys.fit and read the weapon ranges and the general visual / sensor settings.
+void Mission::loadGameSystemRanges(MissionLoadFrame& f) {
+	auto& result = f.result; auto& gameSystemFile = f.gameSystemFile; auto& forestMoveCost = f.forestMoveCost;
 	//--------------------------------------------------------------
 	// Start the Mission Heap
 	missionHeap = new UserHeap;
@@ -754,7 +591,7 @@ void Mission::load (const char *loadFileName)
 	FullPathFileName fullGameSystemName;
 	fullGameSystemName.init(missionPath, "gamesys", ".fit");
 	
-	FitIniFile* gameSystemFile = new FitIniFile;
+	gameSystemFile = new FitIniFile;
 	gosASSERT(gameSystemFile != NULL);
 		
 	result = gameSystemFile->open(fullGameSystemName);
@@ -817,10 +654,13 @@ void Mission::load (const char *loadFileName)
 	if (result != NO_ERR)
 		BaseHeadShotElevation = 1.0f;
 
-	long forestMoveCost;
 	result = gameSystemFile->readIdLong("ForestMoveCost", forestMoveCost);
 	gosASSERT(result == NO_ERR);
-		
+}
+
+// Read the component list, the god-mode / footprint flags and the mover game-system blocks.
+void Mission::loadGameSystemGeneral(MissionLoadFrame& f) {
+	auto& result = f.result; auto& gameSystemFile = f.gameSystemFile;
 	//----------------------------------------------------------------------
 	// Now that we have some base values, load the master component table...
 	if (!MasterComponent::masterList) {
@@ -881,7 +721,11 @@ void Mission::load (const char *loadFileName)
 	//--------------------------------------------------------------------
 	result = GroundVehicle::loadGameSystem(gameSystemFile);
 	gosASSERT(result == NO_ERR);
+}
 
+// Read the mine, smoke and fire settings.
+void Mission::loadGameSystemHazards(MissionLoadFrame& f) {
+	auto& result = f.result; auto& gameSystemFile = f.gameSystemFile;
 	result = gameSystemFile->seekBlock("Mine");
 	gosASSERT(result == NO_ERR);
 
@@ -931,7 +775,13 @@ void Mission::load (const char *loadFileName)
 	
 	result = gameSystemFile->readIdFloat("MaxFireBurnTime", maxFireBurnTime);
 	gosASSERT(result == NO_ERR);
+}
 
+// Unpack the saved mission .fti and read the mission settings, the sky and the script name.
+void Mission::loadMissionSettings(MissionLoadFrame& f) {
+	auto& loadFileName = f.loadFileName; auto& loadFile = f.loadFile; auto& result = f.result;
+	auto& currentPacket = f.currentPacket; auto& tmpString = f.tmpString; auto& tmpName = f.tmpName;
+	auto& missionFile = f.missionFile; auto& rps = f.rps;
 	//---------------------------------------------------------------------------------
 	// OK, load up the in_mission Save mission data
 	if (loadFile.seekPacket(currentPacket) != NO_ERR)
@@ -939,7 +789,6 @@ void Mission::load (const char *loadFileName)
 
 	duration = 60;
 	
-	FullPathFileName tmpName;
 	tmpName.init(savePath,tmpString,".fti");
 	{
 		//Create a dummy file to read the packet into.
@@ -957,7 +806,6 @@ void Mission::load (const char *loadFileName)
 		//---------------------------
 	}
 
-	FitIniFile missionFile;
 	result = missionFile.open(tmpName);
 	if (result != NO_ERR)
 		STOP(("Mission Data missing from IN-Mission Save 2"));
@@ -976,7 +824,6 @@ void Mission::load (const char *loadFileName)
 	if (result != NO_ERR)
 		STOP(("Time Limit  missing from IN-Mission Save"));
 
-	long rps;
 	result = missionFile.readIdLong( "ResourcePoints"					, rps );
 	if (result != NO_ERR)
 		STOP(("Resource Points missing from IN-Mission Save"));
@@ -1052,631 +899,37 @@ void Mission::load (const char *loadFileName)
 		if (result != NO_ERR)
 			missionScriptName[0] = 0;
 	}
-
-#ifndef USE_ABL_LOAD
-	//Start the scenario script the old fashion way for now.
-	//----------------------
-	// Load ABL Libraries...
-	long numErrors, numLinesProcessed;
-	FullPathFileName libraryFileName;
-	libraryFileName.init(missionPath, "orders", ".abx");
-	long err = ABLi_loadLibrary(libraryFileName, &numErrors, &numLinesProcessed);
-	gosASSERT(err == NO_ERR);
-
-	libraryFileName.init(missionPath, "miscfunc", ".abx");
-	err = ABLi_loadLibrary(libraryFileName, &numErrors, &numLinesProcessed);
-
-	libraryFileName.init(missionPath, "corebrain", ".abx");
-	err = ABLi_loadLibrary(libraryFileName, &numErrors, &numLinesProcessed);
-
-	FullPathFileName brainFileName;
-	brainFileName.init(missionPath, missionScriptName, ".abl");
-	
-	missionScriptHandle = ABLi_preProcess(brainFileName, &numErrors, &numLinesProcessed);
-	gosASSERT(missionScriptHandle >= 0);
-	
-	missionBrain = new ABLModule;
-	gosASSERT(missionBrain != NULL);
-		
-	missionBrain->init(missionScriptHandle);
-
-	missionBrain->setName("Mission");
-	//MissionBrain->setStep(TRUE);
-
-	missionBrainParams = new ABLParam;
-	gosASSERT(missionBrainParams != NULL);
-
-	missionBrainCallback = missionBrain->findFunction("handlemessage", TRUE);
-#endif
-
-	//-----------------------------
-	// Init Trigger Area Manager...
-	Mover::triggerAreaMgr = new TriggerAreaManager;
-	if (Mover::triggerAreaMgr == NULL)
-		STOP(("Mission.Load: unable to init triggerAreaMgr "));
-
-	//-----------------------------------------
-	// Startup the Crater Manager.
-	craterManager = (CraterManagerPtr)missionHeap->Malloc(sizeof(CraterManager));
-	gosASSERT(craterManager != NULL);
-		
-	result = craterManager->init(1000,20479,"feet");
-	gosASSERT(result == NO_ERR);
-	
-	//-----------------------------------------------------------------
-	// Start the object system next.	
-	ObjectManager = new GameObjectManager;
-	if (!ObjectManager)
-		Fatal(0, " Mission.init: unable to create ObjectManager ");
-	ObjectManager->init("object2", 716799, 3072000);
-	gosASSERT(result == NO_ERR);
-
-	//-----------------------------------------------------------------
-	// Start the collision detection system. -- Doesn't need objects?
-	ObjectManager->initCollisionSystem(&missionFile);
-
-	//------------------------------------------------------------
-	// Start the Terrain System
-	FullPathFileName terrainFileName;
-	terrainFileName.init( missionPath, missionFileName, ".pak" ); 
-
-	PacketFile pakFile;
-	result = pakFile.open( terrainFileName );
-	gosASSERT( result == NO_ERR );
-
-	land = new Terrain;
-	gosASSERT(land != NULL);
-
-	loadProgress = 15.0f;
-
-	long terrainInitResult = land->init(&pakFile, 0, GameVisibleVertices, loadProgress, 15.0 );
-
-	if (terrainInitResult != NO_ERR)
-	{
-		STOP(("Could not load terrain.  Probably size was wrong!"));
-	}
-
-	loadProgress = 35.0f;
-
-	land->load( &missionFile );
-
-	// Stage 0.5 §0 prereq (continued, Block A): mirror Mission::init's
-	// terrain-side per-mission init that Mission::destroy() tore down at the
-	// top of this function. Block B (gpu_cull substrate/compute/readback
-	// re-init) is deferred to after ObjectManager->Load below, because those
-	// subsystems size their SSBOs to ObjectManager->getMaxObjects() which
-	// returns 0 until Load populates the actor counts. Plan:
-	// docs/superpowers/plans/2026-05-20-mission-load-init-mirror-design.md.
-	loadProgress = 36.0f;
-	land->primeMissionTerrainCache(loadProgress, 4.0f);
-	loadProgress = 40.0f;
-	// Phase 1: terrain lighting GPU compute — per-mission init alongside
-	// gpu_cull (mirror mission.cpp:2817). Uses Terrain::realVerticesMapSide
-	// set during land->init() above.
-	gos_terrain_lighting::mission_init(
-		static_cast<uint32_t>(Terrain::realVerticesMapSide * Terrain::realVerticesMapSide),
-		64u);
-	// Static-shadow priming reset (process-scoped, mirror mission.cpp:2831-2832).
-	gos_ResetStaticShadowPriming();
-	mc_ResetTerrainShadowPrimed();
-
-	//----------------------------------------------------
-	// Start GameMap for Movement System
-	Assert(SimpleMovePathRange > 20, SimpleMovePathRange, " Simple MovePath Range too small ");
-	MOVE_init(SimpleMovePathRange);
-	if (loadFile.seekPacket(currentPacket) == NO_ERR)
-	{
-		if (loadFile.getPacketSize() != 0)
-		{
-			currentPacket += MOVE_readData(&loadFile, currentPacket);
-			if (GlobalMoveMap[0]->badLoad)
-				STOP((" Mission.Load: old version of move data In-Mission Save Obsolete."));
-
-			GameMap->placeMoversCallback = PlaceMovers;
-			GlobalMoveMap[0]->isGateDisabledCallback = IsGateDisabled;
-			GlobalMoveMap[1]->isGateDisabledCallback = IsGateDisabled;
-			GlobalMoveMap[2]->isGateDisabledCallback = IsGateDisabled;
-			GlobalMoveMap[0]->isGateOpenCallback = IsGateOpen;
-			GlobalMoveMap[1]->isGateOpenCallback = IsGateOpen;
-			GlobalMoveMap[2]->isGateOpenCallback = IsGateOpen;
-		}
-		else
-			STOP(("Mission has no movement Data.  QuickSaved Map"));
-	}
-
-	PathFindMap[SECTOR_PATHMAP]->blockedDoorCallback = GetBlockedDoorCells;
-	PathFindMap[SECTOR_PATHMAP]->placeStationaryMoversCallback = PlaceStationaryMovers;
-	PathFindMap[SIMPLE_PATHMAP]->placeStationaryMoversCallback = PlaceStationaryMovers;
-	PathFindMap[SECTOR_PATHMAP]->forestCost = forestMoveCost;
-	PathFindMap[SIMPLE_PATHMAP]->forestCost = forestMoveCost;
-	PathManager = new MovePathManager;
-
-	loadProgress = 40.0f;
-
-	//----------------------
-	// Load ABL Libraries...
-	// ASS U ME that these are loaded when I call ABLi_Load
-	
-	//---------------------------
-	// Load the mission script...
-	//Create a dummy file to read the packet into.
-	FullPathFileName dmpName;
-	dmpName.init(savePath,tmpString,".abl");
-
-	if (loadFile.seekPacket(currentPacket) != NO_ERR)
-		STOP(("ABL SaveData missing from IN-Mission Save"));
-
-	{
-		//Create a dummy file to read the packet into.
-		File dmyFile;
-		result = dmyFile.create(dmpName);
-		DWORD fileSz = loadFile.getPacketSize();
-		MemoryPtr tmpRAM = (MemoryPtr)malloc(fileSz);
-		loadFile.readPacket(currentPacket,tmpRAM);
-		dmyFile.write(tmpRAM,fileSz);
-	
-		currentPacket++;
-	
-		dmyFile.close();
-		free(tmpRAM);
-		//---------------------------
-	}
-
-	ABLFile ablFile;
-	ablFile.open(dmpName);
-
-#ifdef USE_ABL_LOAD
-	ABLi_loadEnvironment(&ablFile,true);
-#endif
-		
-	ablFile.close();
-	DeleteFile(dmpName);
-
-#ifdef USE_ABL_LOAD
-	missionBrain = ABLi_getModule(missionScriptHandle);
-	if (!missionBrain)
-		STOP(("Could not find mission brain in In-Mission Save"));
-
-	missionBrain->setName("Mission");
-
-	missionBrainParams = new ABLParam;
-	gosASSERT(missionBrainParams != NULL);
-
-	missionBrainCallback = missionBrain->findFunction("handlemessage", TRUE);
-#endif
-
-	loadProgress = 42.0f;
-
-	//-------------------------------------------
-	// Load all MechWarriors for this mission...
-	MechWarrior::setup();
-
-	currentPacket = MechWarrior::Load( &loadFile, currentPacket );
-
-	loadProgress = 45.0f;
-
-	//-----------------------------------------------------------------
-  	// All systems are GO if we reach this point.  Now we need to
-	// parse the scenario file for the Objects we need for this scenario
-	// We then create each object and place it in the world at the 
-	// position we read in with the frame we read in.
-	result = missionFile.seekBlock("Parts");
-	gosASSERT(result == NO_ERR);
-		
-	result = missionFile.readIdULong("NumParts",numParts);
-	gosASSERT(result == NO_ERR);
-
-	//--------------------------------------------------------------------------------
-	// IMPORTANT NOTE: mission parts should always start with Part 1.
-	// Part 0 is reserved as a "NULL" id for routines that reference the mission
-	// parts. AI routines, Brain keywords, etc. use PART ID 0 as an "object not found"
-	// error code. DO NOT USE PART 0!!!!!!! Start with Part 1...
-
-	loadProgress = 50.0f;
-
-	if (numParts)
-	{
-		//-----------------------------------------------------
-		// Since we leave part 0 unused, malloc numParts + 1...
-		parts = (PartPtr)missionHeap->Malloc(sizeof(Part) * (numParts + 1));
-		gosASSERT(parts != NULL);
-		
-		memset(parts,0,sizeof(Part) * (numParts + 1));
-
-		int i;
-
-		for (i = 1; i < numParts + 1; i++)
-		{
-			char partName[12];
-			sprintf(partName,"Part%d", i);
-			
-			//------------------------------------------------------------------
-			// Find the object to load
-			result = missionFile.seekBlock(partName);
-			gosASSERT(result == NO_ERR);
-
-			//------------------------------------------------------------------
-			// Find out what kind of object this is.
-			result = missionFile.readIdULong("ObjectNumber",parts[i].objNumber);
-			gosASSERT(result == NO_ERR);
-
-			//-------------------------------------------------
-			// Read in the data needed to control the object...
-			result = missionFile.readIdULong("ControlType", parts[i].controlType);
-			gosASSERT(result == NO_ERR);
-
-			result = missionFile.readIdULong("ControlDataType", parts[i].controlDataType);
-			gosASSERT(result == NO_ERR);
-
-			result = missionFile.readIdString("ObjectProfile", parts[i].profileName, 9);
-			gosASSERT(result == NO_ERR);
-				
-			result = missionFile.readIdULong("ObjectVariant", parts[i].variantNum);
-			if (result != NO_ERR)
-				parts[i].variantNum = 0;		//FOR NOW!!!!!!!!!!!!!!!!
-												//MAKE a REAL error when Heidi fixes editor.
-												//-fs 12/7/99
-
-			result = missionFile.readIdULong("Pilot", parts[i].pilot);
-			gosASSERT(result == NO_ERR);
-			
-			//------------------------------------------------------------------
-			// Read the object's position, initial velocity and rotation.
-			result = missionFile.readIdFloat("PositionX",parts[i].position.x);
-			gosASSERT(result == NO_ERR);
-				
-			result = missionFile.readIdFloat("PositionY",parts[i].position.y);
-			gosASSERT(result == NO_ERR);
-				
-			parts[i].position.z = -1.0;
-
-			result = missionFile.readIdFloat("Rotation",parts[i].rotation);
-			gosASSERT(result == NO_ERR);
-				
-			result = missionFile.readIdChar("TeamId",parts[i].teamId);
-			gosASSERT(result == NO_ERR);
-
-			char cmdId = 0;
-			result = missionFile.readIdChar("CommanderId", cmdId);
-			if (result != NO_ERR)
-			{
-				result = missionFile.readIdLong("CommanderId", parts[i].commanderID);
-				gosASSERT(result == NO_ERR);
-			}
-			else
-			{
-				parts[i].commanderID = cmdId;
-			}
-
-			parts[i].gestureId = 2; // this has never changed
-	
-			result = missionFile.readIdULong("BaseColor",parts[i].baseColor);
-			if (result != NO_ERR)
-				parts[i].baseColor = 0xffffffff;
-				
-			result = missionFile.readIdULong("HighlightColor1",parts[i].highlightColor1);
-			if (result != NO_ERR)
-				parts[i].highlightColor1 = 0xffffffff;
-				
-			result = missionFile.readIdULong("HighlightColor2",parts[i].highlightColor2);
-			if (result != NO_ERR)
-				parts[i].highlightColor2 = 0xffffffff;
-				
-  			parts[i].velocity = 0;
-			
-			result = missionFile.readIdLong("Active",parts[i].active);
-			gosASSERT(result == NO_ERR);
-
-			result = missionFile.readIdLong("Exists",parts[i].exists);
-			gosASSERT(result == NO_ERR);
-
-			float fDamage = 0.0f;
-			result = missionFile.readIdFloat("Damage",fDamage);
-			if (result == NO_ERR) {
-				if (fDamage >= 1.0) {
-					parts[i].destroyed = true;
-				};
-			}
-
-			result = missionFile.readIdChar("MyIcon", parts[i].myIcon);
-			gosASSERT(result == NO_ERR);
-
-			result = missionFile.readIdBoolean("Captureable", parts[i].captureable);
-			if (result != NO_ERR)
-				parts[i].captureable = FALSE;
-		}
-	}
-
-	loadProgress = 55.0f;
-
-	//----------------------------------------
-	//Team Manager
-	// Load Number of Teams
-	// Load which number is HOME
-	// Call Load for each team.
-	currentPacket = Team::Load( &loadFile, currentPacket );
-
-	//-----------------------------------
-	// Setup the Sensor System Manager...
-	SensorManager = new SensorSystemManager;
-	Assert(SensorManager != NULL, 0, " Unable to init sensor system manager ");
-	result = SensorManager->init(true);
-	Assert(result == NO_ERR, result, " could not start Sensor System Manager ");
-
-	//-----------------------------------------
-	//Object Manager
-	// Save numbers of objects in all object lists in game
-	// Save ClassID of objects IN the list.
-	// For each object in each list:
-	//		If NULL, save a magic Number to tell me this entry is NULL.
-	//		If NOT NULL, 
-	// 			Call Save DOWN the heirarchy.
-	//
-	currentPacket = ObjectManager->Load( &loadFile, currentPacket );
-
-	{
-		static const bool s_mechRestoreTrace = mc2::gate::get<"MC2_MECH_RESTORE_TRACE">();
-		if (s_mechRestoreTrace)
-			fprintf(stderr,
-				"[MECHRESTORE v1] event=saveload_phase phase=post_objmgr_load "
-				"mechFinalized=%d appearanceListNull=%d\n",
-				GpuMechBatcher::instance().isFinalized() ? 1 : 0,
-				(appearanceTypeList == NULL) ? 1 : 0);
-	}
-
-	// Stage 0.5 §0 prereq (continued, Block B): gpu_cull substrate/compute/readback
-	// re-init paired with Mission::destroy's *_shutdown calls (mission.cpp:3264-3269).
-	// Placed AFTER ObjectManager->Load above because substrate_init and readback_init
-	// size their SSBOs to ObjectManager->getMaxObjects(), which returns 0 until that
-	// Load call populates the actor counts. Mirror of Mission::init's order at
-	// mission.cpp:2796 setNumObjects -> :2807 substrate_init -> :2811 compute_init
-	// -> :2826 readback_init. Each *_init drops its prior state internally on re-init.
-	// Plan: docs/superpowers/plans/2026-05-20-mission-load-init-mirror-design.md.
-	{
-		const uint32_t maxActors = static_cast<uint32_t>(ObjectManager->getMaxObjects());
-		const uint32_t staticPropHeadroom = 8192u;  // visible static props at wolfman zoom
-		gpu_cull::substrate_init(maxActors + maxActors / 4u + staticPropHeadroom);
-	}
-	gpu_cull::compute_init();
-	{
-		const uint32_t maxActors = static_cast<uint32_t>(ObjectManager->getMaxObjects());
-		const uint32_t staticPropHeadroom = 8192u;
-		gpu_cull::readback_init(maxActors + maxActors / 4u + staticPropHeadroom);
-	}
-	{
-		static const bool s_mechRestoreTrace = mc2::gate::get<"MC2_MECH_RESTORE_TRACE">();
-		if (s_mechRestoreTrace)
-			fprintf(stderr,
-				"[MECHRESTORE v1] event=saveload_phase phase=post_init_mirror "
-				"maxActors=%u\n",
-				(uint32_t)ObjectManager->getMaxObjects());
-	}
-
-	ObjectManager->buildMoverLists();
-
-	//----------------------------------------------
-	// Read in the Objectives.  Safe to have none.
-	{
-		numObjectives = 0; // this refers to the number of *old* objectives
-		objectives = 0;
-
-		warning1 = FALSE;
-		warning2 = FALSE;
-
-		Team::home->objectives.Clear();
-		Team::home->objectives.Read(&missionFile);
-
-		Team::home->numPrimaryObjectives = 0;
-		CObjectives::EIterator it = Team::home->objectives.Begin();
-		while (!it.IsDone())
-		{
-			if (1 == (*it)->Priority())
-			{
-				Team::home->numPrimaryObjectives += 1;
-			}
-
-			it++;
-		}
-	}
-
-	//----------------------------
-	// Read in Nav Markers
-	// Not needed?  I saved EVERY Objective including the NavMarkers!
-
-	//----------------------------
-	//Commander Manager
-	// Save Number of Commanders.
-	// Save which number is HOME.
-	// Call save for each commander.
-	currentPacket = Commander::Load( &loadFile, currentPacket );
-
-	//---------------------------------------------------------------------------------
-	// If we're not playing multiplayer, make sure all home commander movers have their
-	// localMoverId set to 0, so the iface can at least check if a mover is player
-	// controlled...
-	//
-	// Should already be done but no harm in doing again?
-	if (!MPlayer)
-		Commander::home->setLocalMoverId(0);
-
-	//-----------------------------------------------------
-	// This tracks time since scenario started in seconds.
-	// ALREADY LOADED above.
-
-	gameSystemFile->close();
-	delete gameSystemFile;
-	gameSystemFile = NULL;
-
-	//----------------------------
-	// Create and load the Weather
-	loadProgress = 92.f;
-	weather = new Weather;
-	weather->init(&missionFile);
-	
-	loadProgress = 95.0;
- 	//---------------------------------------------------------------
-	// Start the Camera and Lists
-	eye = new GameCamera;
-	eye->init();
-	gosASSERT(eye != NULL);
-
-	result = eye->init(&missionFile);
-	gosASSERT(result == NO_ERR);
-
-	loadProgress = 96.0;
-
-	//----------------------------------------------------------------------------
-	// Start the Mission GUI
-
-	//MUST set this back to NULL to insure that the new gosHandle gets loaded for it!!
-	// ITS been flushed up top.  NO leakage!
-	PilotIcon::s_pilotTextureHandle = 0;
-
-	missionInterface = new MissionInterfaceManager;
-	gosASSERT(missionInterface != NULL);
-	
-	missionInterface->initTacMap( &pakFile, 2 );
-	
-	FullPathFileName missionScreenName;
-	missionScreenName.init(artPath,"missionScrn",".fit");
-	
-	FitIniFile missionLoader;
-	result = missionLoader.open(missionScreenName);
-	gosASSERT(result == NO_ERR);
-	
-	missionInterface->init(&missionLoader);
-	missionInterface->initMechs();
-	missionInterface->Load(&missionFile);
-	missionLoader.close();
-	
-	//----------------------------------------------------------------------------
-	userInput->setMouseCursor(mState_NORMAL);
-
-	loadProgress = 98.0;
-	
-	MechWarrior::initGoalManager(200);
-
-	if (tempSpecialAreaFootPrints) 
-	{
-		systemHeap->Free(tempSpecialAreaFootPrints);
-		tempSpecialAreaFootPrints = NULL;
-		tempNumSpecialAreas = 0;
-	}
-
-	Mover::initOptimalCells(32);
-
-	if (CombatLog)
-		MechWarrior::logPilots(CombatLog);
-
-	missionFile.close();
-	DeleteFile(tmpName);
-
-	if (loadFile.seekPacket(currentPacket) != NO_ERR)
-		STOP(("Logistics Data missing from IN-Mission Save"));
-
-	{
-		//Create a dummy file to read the packet into.
-		File dmyFile;
-		result = dmyFile.create(tmpName);
-		DWORD fileSz = loadFile.getPacketSize();
-		MemoryPtr tmpRAM = (MemoryPtr)malloc(fileSz);
-		loadFile.readPacket(currentPacket,tmpRAM);
-		dmyFile.write(tmpRAM,fileSz);
-	
-		currentPacket++;
-	
-		dmyFile.close();
-		free(tmpRAM);
-		//---------------------------
-	}
-
-	FitIniFile logisticsFile;
-	result = logisticsFile.open(tmpName);
-	if (result != NO_ERR)
-		STOP(("Logistics Data missing from IN-Mission Save 2"));
-
-	LogisticsData::instance->load(logisticsFile);
-	LogisticsData::instance->setResourcePoints(rps);
-
-	logisticsFile.close();
-
-	DeleteFile(tmpName);
-
-	//-------------------------------------------------------------------------------------------
-	// Load the CurrentMission number in logistics cause Heidi don't save it with logisticsData.
-	long currentMissionNum = 0;
-	loadFile.readPacket(currentPacket,(MemoryPtr)&currentMissionNum);
-
-	LogisticsData::instance->setCurrentMissionNum(currentMissionNum);
-	currentPacket++;
-	//-------------------------------------------------------------------------------------------
-	loadFile.close();
-
-	eye->activate();
-	eye->update();
-	loadProgress = 100.f;
-
-	DebugGameObject[0] = DebugGameObject[1] = DebugGameObject[2] = NULL;
-
-	// VPL-deferred item 11 FIX (a): Mission::load is a parallel mission-
-	// setup path that never routes through Mission::init, so it skips
-	// Init's unconditional finalizeGeometry() tail (mission.cpp:3114-3115).
-	// Mission::destroy() above ran onMapUnload() (s_geometryFinalized=
-	// false, s_typeLodIndex cleared); the mechs respawned via
-	// ObjectManager->Load re-ran registerTypeLod() while !finalized (OK),
-	// but without this call s_geometryFinalized stays false and
-	// GpuMechBatcher::submitActor() fast-rejects every actor -> mechs
-	// invisible from a savegame. Mirror Init's known-good tail exactly
-	// (both batchers; finalizeGeometry() is idempotent / early-returns if
-	// already finalized). GL context is live here (camera + mission
-	// interface already initialized above), same precondition as
-	// mission.cpp:3112-3115.
-	GameAdapters::StaticProp::finalizeGeometry();
-	GpuMechBatcher::instance().finalizeGeometry();
-
-	// Stage 0.5 §0 prerequisite: mirror Mission::init's compute_buildIndirectBuffer
-	// tail (mission.cpp:3134-3136). Without this, s_blockVisBuf inherits the
-	// previous mission's block-temporal stamps on savegame restore, breaking any
-	// future readback consumer that depends on block-vis correctness post-restore.
-	// Logistics::beginMission inherits this transitively via mission->init().
-	if (gpu_cull::compute_isEnabled()) {
-		gpu_cull::compute_buildIndirectBuffer(GameAdapters::StaticProp::typeCount());
-	}
-	{
-		static const bool s_mechRestoreTrace = mc2::gate::get<"MC2_MECH_RESTORE_TRACE">();
-		if (s_mechRestoreTrace)
-			fprintf(stderr,
-				"[MECHRESTORE v1] event=saveload_phase phase=post_finalize "
-				"mechFinalized=%d appearanceListNull=%d\n",
-				GpuMechBatcher::instance().isFinalized() ? 1 : 0,
-				(appearanceTypeList == NULL) ? 1 : 0);
-	}
-
-	//YIKES!!  We could be checking the if before the null and executing after!!  Block the thread!
-	//Wait for thread to finish.
-	while (mc2IsInMouseTimer)
-		;
-
-	//ONLY set the mouse BLT data at the end of each update.  NO MORE FLICKERING THEN!!!
-	// BLOCK THREAD WHILE THIS IS HAPPENING
-	mc2IsInDisplayBackBuffer = true;
-
-	AsynFunc = NULL;
-	mc2UseAsyncMouse = turnOffAsyncMouse;
-	if ( !mc2UseAsyncMouse)
-		MouseTimerKill();
-
-	mc2IsInDisplayBackBuffer = false;
-
-	LoadScreen::xProgressLoc = oldXLoc;
-	LoadScreen::yProgressLoc = oldYLoc;
-
-	userInput->mouseOn();
-
-	//Reset so the LastTimeGetTime is RIGHT NOW!!!
-	//  So quickLoad works!!
-	DWORD currentTimeGetTime = timeGetTime();
-	LastTimeGetTime = currentTimeGetTime;
+}
+// In-mission save restore. Each phase is a member helper declared in mission.h, run in the original order, so the
+// packets are read from the save file in the order Mission::save wrote them; the shared locals live in
+// MissionLoadFrame.
+void Mission::load (const char *loadFileName)
+{
+	MissionLoadFrame f;
+	f.loadFileName = loadFileName;
+	loadPrologue(f);
+
+	if (openSaveFile(f)) return;
+
+	loadDestroyAndRestore();
+	loadResetSimState(f);
+	loadGameSystemRanges(f);
+	loadGameSystemGeneral(f);
+	loadGameSystemHazards(f);
+	loadMissionSettings(f);
+	loadAblAndManagers(f);
+	loadTerrain(f);
+	loadMovement(f);
+	loadMissionScript(f);
+	loadWarriorsAndPartsHeader(f);
+	loadParts(f);
+	loadTeamsAndObjects(f);
+	loadObjectivesCommanders(f);
+	loadWeatherCamera(f);
+	loadInterface(f);
+	loadLogistics(f);
+	loadActivateAndFinalize();
+	loadRestoreInput(f);
 }
 
 //----------------------------------------------------------------------------------------------------

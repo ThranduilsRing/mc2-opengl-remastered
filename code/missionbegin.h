@@ -73,6 +73,14 @@ class MissionBegin
 
 	private:
 
+		// MissionBegin::update phases (missionbegin.cpp); callers use update().
+		void updateDumpFrontEndState();
+		bool updateSplash();
+		void updateTutorialAnimation(LogisticsScreen* pCurScreen);
+		void updateSoakAutoPurchase();
+		void updateSoakScreenWalk(LogisticsScreen* pCurScreen, bool& soakForceNext);
+		void updateScreenAdvance(LogisticsScreen* pCurScreen, bool& soakForceNext);
+
 		bool						bDone;
 		bool						bReadyToLoad;
 

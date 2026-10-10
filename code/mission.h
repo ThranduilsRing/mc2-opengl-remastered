@@ -161,6 +161,8 @@ void  simSpeedResetToSeed();
 // that's all she wrote.  update and render return the mission completion status.
 // Phase-helper state of Mission::init (defined in mission_init_frame.h).
 struct MissionInitFrame;
+// Phase-helper state of Mission::load (defined in mission_load_frame.h).
+struct MissionLoadFrame;
 
 class Mission
 {
@@ -332,6 +334,45 @@ class Mission
 		void initInterface(MissionInitFrame& f);
 		void initLabTimingAndClose();
 		void initFinalizeGeometry();
+
+	// Mission::load phases (saveload.cpp, saveload_load.cpp); callers use load().
+		void loadPrologue(MissionLoadFrame& f);
+		bool openSaveFile(MissionLoadFrame& f);
+		void loadDestroyAndRestore();
+		void loadResetSimState(MissionLoadFrame& f);
+		void loadGameSystemRanges(MissionLoadFrame& f);
+		void loadGameSystemGeneral(MissionLoadFrame& f);
+		void loadGameSystemHazards(MissionLoadFrame& f);
+		void loadMissionSettings(MissionLoadFrame& f);
+		void loadAblAndManagers(MissionLoadFrame& f);
+		void loadTerrain(MissionLoadFrame& f);
+		void loadMovement(MissionLoadFrame& f);
+		void loadMissionScript(MissionLoadFrame& f);
+		void loadWarriorsAndPartsHeader(MissionLoadFrame& f);
+		void loadParts(MissionLoadFrame& f);
+		void loadTeamsAndObjects(MissionLoadFrame& f);
+		void loadObjectivesCommanders(MissionLoadFrame& f);
+		void loadWeatherCamera(MissionLoadFrame& f);
+		void loadInterface(MissionLoadFrame& f);
+		void loadLogistics(MissionLoadFrame& f);
+		void loadActivateAndFinalize();
+		void loadRestoreInput(MissionLoadFrame& f);
+
+	// Mission::update phases (mission_update.cpp); callers use update().
+		void updateDevHotkeys();
+		void updateFrameClock();
+		void updateFrontEnd();
+		void updateTerrainGeometry();
+		void updateObjectManager();
+		void updateCratersAndDamp();
+		void updateSimSystems();
+		void updateTraceHooks();
+		void updateTermination();
+		void updateCheatsAndFrameRate();
+		void updateSoakAutoWin();
+		void updateSoakKillEnemy();
+		void updateOrderLiveness();
+		void updateSoakPilotPromote();
 	public:
 
 		// TEAM-COMMANDER-OWNERSHIP-1: single teardown authority for the

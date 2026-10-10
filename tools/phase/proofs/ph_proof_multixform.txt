@@ -1,0 +1,341 @@
+inline expansion: 855 statements, helpers 9, orchestrator lines 141
+declaration lifts / edits applied (8):
+  L293   edit DWORD redFinal=0, greenFinal=0, blueFinal=0;  =>  redFinal=0, greenFinal=0, blueFinal=0;
+  L294   edit DWORD redAmb = 0, greenAmb = 0, blueAmb = 0;  =>  redAmb = 0, greenAmb = 0, blueAmb = 0;
+  L295   edit DWORD redSpec=0, greenSpec=0, blueSpec=0;  =>  redSpec=0, greenSpec=0, blueSpec=0;
+  L302   lift DWORD startVLight = theShape->listOfTypeVertices[j].aRGBLight;  =>  startVLight = theShape->listOfTypeVertices[j].aRGBLight;
+  L417   edit bool doHotGreenTrace = (s_hotGreenLightTraceEnabled && !s_hotGreenLigh  =>  doHotGreenTrace = (s_hotGreenLightTraceEnabled && !s_hotGreenLightTrac
+  L864   edit DWORD redFinal = 0, greenFinal = 0, blueFinal = 0;  =>  redFinal = 0, greenFinal = 0, blueFinal = 0;
+  L865   edit DWORD redSpec=0, greenSpec=0, blueSpec=0;  =>  redSpec=0, greenSpec=0, blueSpec=0;
+  L866   edit DWORD redAmb=0, greenAmb=0, blueAmb=0;  =>  redAmb=0, greenAmb=0, blueAmb=0;
+scaffolding only in new (19 distinct):
+   + // Claim the hardware vertex slot of a GPU-only shape that has no software vertices. 
+   + // Project one vertex to screen space and track the on-screen flags and preview bounds. 
+   + // Queue the whole shape for the modern shader path. 
+   + // Transforms, lights and queues one shape. The timing scopes, the pool allocation, the per-vertex and per-fac 
+   + // headers with their colour frame, the face cull test and the result stay here; each phase body is a member 
+   + // helper declared in tgl.h. 
+   + TgXformFrame f; x2
+   + void TG_Shape::xformEmitShape(Stuff::Matrix4D* shapeToClip, bool isHudElement, BYTE alphaValue, bool isClamped 
+   + void TG_Shape::xformGpuOnlyShape(Stuff::Matrix4D* shapeToClip, bool isHudElement, BYTE alphaValue, bool isClam 
+   + void TG_Shape::xformVertexProject(Stuff::Matrix4D* shapeToClip, bool& oneOff, bool& oneOn, TG_TypeShapePtr the 
+   + xformEmitShape(shapeToClip, isHudElement, alphaValue, isClamped, theShape); 
+   + xformFaceCorners(alphaValue, theShape, j, f); 
+   + xformFaceLight(theShape, j, f); 
+   + xformFaceQueue(isHudElement, alphaValue, isClamped, theShape, j); 
+   + xformGpuOnlyShape(shapeToClip, isHudElement, alphaValue, isClamped); 
+   + xformVertexBaseColor(isHudElement, isNight, nightFactor, theShape, j, f); 
+   + xformVertexFog(parentNode, theShape, j, f); 
+   + xformVertexLights(theShape, j, f); 
+   + xformVertexProject(shapeToClip, oneOff, oneOn, theShape, j); 
+statements only in old (309 distinct, all lifted declarations / hoisted-type lines):
+   - "(before argb write: 0x%08X)\n", 
+   - "[PARITY_DIAG v2] CPU hot-green final: " 
+   - "[PARITY_DIAG v2] CPU hot-green vertex=%ld " 
+   - "[PARITY_DIAG v2] CPU light[%ld] AMBIENT " 
+   - "[PARITY_DIAG v2] CPU light[%ld] INFINITE " 
+   - "aRGB=0x%08X ambR=%u ambG=%u ambB=%u\n", 
+   - "aRGB=0x%08X lightDir=(%.4f,%.4f,%.4f) cosine=%.4f\n", 
+   - "normalShape=(%.4f,%.4f,%.4f) s_numLights=%d\n", 
+   - "redFinal=%u greenFinal=%u blueFinal=%u " 
+   - && (nightFactor <= Stuff::SMALL)); 
+   - && (startVLight == 0xff00ff00) && !isNight 
+   - (int)s_numLights); 
+   - (unsigned)((0xff << 24) + (redFinal << 16) + (greenFinal << 8) + blueFinal)); 
+   - */ 
+   - /* 
+   - // 
+   - // Add in the pre-calced or calced this frame terrain lights. 
+   - // Any sorting we need to do occurs in here as well! 
+   - // Defines the REAL direction of the spot light. 
+   - // Defines the actual spot of light on the ground 
+   - // For now, a shinyness of 1.0f.  Perfect reflection! 
+   - // MC2_OBJECT_PARITY_CHECK. Zero [PARITY_DIAG v2] output in production 
+   - // Mirror the Light vector. 
+   - // Mul Result by itself 4 times. 
+   - // Mul that result by shinyness. 
+   - // Multiplies will make specular positive! 
+   - // Multiply THAT through color and apply! 
+   - // NEW 
+   - // One frame of active is enough to store new values! 
+   - // Run Specular next. 
+   - // Set on the first daytime hot-green vertex when MC2_OBJECT_PARITY_TRACE=1. 
+   - // So, find out what texture this face is using and mark that texture as needing 3 more vertices. 
+   - // Stage 2.D.2.1 (m2): [PARITY_DIAG v2] is a SEPARATE diagnostic stream 
+   - // Stage 2.D.2: one-shot hot-green trace flag. 
+   - // Terrain lights will only be made ACTIVE when day/night changes. 
+   - // Then DOT with Camera vector. 
+   - // Traces s_lightDir, normal, cosine, and contributions — the CPU side 
+   - // from [OBJECT_PARITY v1]. The "v2" label is NOT a schema bump of the 
+   - // gated by MC2_OBJECT_PARITY_TRACE (see gameosmain.cpp), not by 
+   - // logs is expected and correct. 
+   - // parity system — it distinguishes this subsystem's trace stream. It is 
+   - // that should match GatherLightsParameters and the GPU dot product. 
+   - //----------------------- 
+   - //------------------------------------------------- x2
+   - //-------------------------------------------------- 
+   - //Light is already burned in! 
+   - //Object is in center of light.  BLOW IT OUT! 
+   - //Object is in center of light.  NOTHING HAPPENS WITH THIS KIND!!! 
+   - //specular = fabs(specular); 
+   - DWORD addFlags = 0; 
+   - DWORD argb = listOfVertices[j].argb; 
+   - DWORD argb = listOfVertices[theShape->listOfTypeTriangles[j].Vertices[i]].argb; 
+   - DWORD bFinal = (argb) & 0x000000ff; x2
+   - DWORD distFog = float2long(fogFactor * 255.0f); 
+   - DWORD fFinal = (argb>>24) & 0x000000ff; 
+   - DWORD fFinal = (frgb>>24) & 0x000000ff; 
+   - DWORD fogValue = (listOfVertices[j].frgb >> 24) & 0x000000ff; 
+   - DWORD frgb = listOfVertices[theShape->listOfTypeTriangles[j].Vertices[i]].frgb; 
+   - DWORD gFinal = (argb>>8) & 0x000000ff; x2
+   - DWORD rFinal = (argb>>16) & 0x000000ff; x2
+   - DWORD redAmb = 0, greenAmb = 0, blueAmb = 0; 
+   - DWORD redAmb=0, greenAmb=0, blueAmb=0; 
+   - DWORD redFinal = 0, greenFinal = 0, blueFinal = 0; 
+   - DWORD redFinal=0, greenFinal=0, blueFinal=0; 
+   - DWORD redSpec=0, greenSpec=0, blueSpec=0; x2
+   - DWORD startLight = s_listOfLights[i]->GetaRGB(); 
+   - DWORD startVLight = s_listOfLights[i]->GetaRGB(); 
+   - DWORD startVLight = theShape->listOfTypeVertices[j].aRGBLight; 
+   - MirrorVector *= mirrorScalar; 
+   - MirrorVector.Normalize(MirrorVector); 
+   - MirrorVector.Subtract(MirrorVector,s_lightDir[i]); 
+   - RotateLight(pos,yawRotation); 
+   - SpecPoint.Normalize(*backFacePoint); 
+   - Stuff::Point3D vertexToLight; x6
+   - Stuff::Vector3D MirrorVector(listOfVertices[i].normal); 
+   - Stuff::Vector3D SpecPoint; 
+   - Stuff::Vector3D pos = theShape->listOfTypeVertices[j].position; 
+   - TG_ShapeRecPtr curNode = parentNode; 
+   - addFlags |= MC2_ALPHATEST; 
+   - addFlags |= MC2_ISCOMPASS; 
+   - addFlags |= MC2_ISTERRAIN; 
+   - argb = (fFinal << 24) + (rFinal << 16) + (gFinal << 8) + (bFinal); 
+   - bFinal += (aRGBHighlight) & 0x000000ff;; 
+   - bFinal += (blueSpec) & 0x000000ff; 
+   - bFinal += blueFinal; 
+   - bFinal = (frgb) & 0x000000ff; 
+   - bFinal = 255; x3
+   - blue *= cosine; x6
+   - blue = float((startLight) & 0x000000ff) * falloff; x4
+   - blue = float((startLight) & 0x000000ff); 
+   - blue = float((startVLight) & 0x000000ff) * falloff; x2
+   - blueAmb = ((startLight) & 0x000000ff); 
+   - blueAmb = ((startVLight) & 0x000000ff); 
+   - blueFinal *= nightFactor; x3
+   - blueFinal += (BaseVertexColor & 0x000000ff); 
+   - blueFinal += (DWORD)blue; x2
+   - blueFinal += blueAmb; x2
+   - blueFinal += float2long(blue); x2
+   - blueFinal = (startVLight) & 0x000000ff; 
+   - blueFinal = (theShape->hotGreenRGB) & 0x000000ff; x2
+   - blueFinal = (theShape->hotPinkRGB) & 0x000000ff; x2
+   - blueFinal = (theShape->hotYellowRGB) & 0x000000ff; x2
+   - blueFinal = 0x2f; 
+   - blueFinal = 0xff; 
+   - blueFinal = 255; x2
+   - blueSpec += (DWORD)blue; x5
+   - blueSpec += listOfColors[j].blueSpec; 
+   - blueSpec = 255; x2
+   - bool doHotGreenTrace = (s_hotGreenLightTraceEnabled && !s_hotGreenLightTraceDone 
+   - break; x10
+   - case TG_LIGHT_AMBIENT: x2
+   - case TG_LIGHT_INFINITE: x2
+   - case TG_LIGHT_INFINITEWITHFALLOFF: x2
+   - case TG_LIGHT_POINT: x2
+   - case TG_LIGHT_SPOT: 
+   - case TG_LIGHT_TERRAIN: 
+   - cosine += s_lightDir[i].y * theShape->listOfTypeVertices[j].normal.y; 
+   - cosine += s_lightDir[i].z * theShape->listOfTypeVertices[j].normal.z; 
+   - cosine = fabs(cosine); x3
+   - cosine); 
+   - curNode = curNode->parentNode; 
+   - else x11
+   - else		//Its not night, paint windows dark grey 
+   - else if (isHudElement) 
+   - else if (isWindow) 
+   - else if (nightFactor > Stuff::SMALL) x2
+   - else if (startVLight & 0x00ffffff)		//Some other kind of light, just add it in. 
+   - else if (startVLight == 0xff0000ff)		//Hot Blue -- Blink this light. 
+   - else if (startVLight == 0xff00ff00)		//Hot Green -- Building Base Lights -- ONLY at NIGHT 
+   - else if (startVLight == 0xffff0000)		//Hot Red -- Blink this light. 
+   - else if (startVLight == 0xffffff00)		//Hot Yellow -- Outside Building Lights -- ONLY at NIGHT 
+   - float blue = float((startLight) & 0x000000ff) * cos; 
+   - float blue = float((startLight) & 0x000000ff) * specular; 
+   - float blue = float((startVLight) & 0x000000ff) * cosine; 
+   - float cos = fabs(cosine); 
+   - float cosine = -(s_lightDir[i] * (theShape->listOfTypeTriangles[j].faceNormal)); x2
+   - float cosine = -(s_lightDir[i] * (theShape->listOfTypeVertices[j].normal)); 
+   - float cosine = -(vertexToLight * (theShape->listOfTypeTriangles[j].faceNormal)); 
+   - float cosine = 1.0f; 
+   - float cosine = s_lightDir[i].x * theShape->listOfTypeVertices[j].normal.x; 
+   - float cosine = vertexToLight * (theShape->listOfTypeVertices[j].normal); x2
+   - float falloff = 1.0f; x6
+   - float fogFactor = 1.0 - Camera::HazeFactor; 
+   - float fogFactor = MAX_FOG_ELEVATION - relElevation; 
+   - float green = float((startLight>>8) & 0x000000ff) * cos; 
+   - float green = float((startLight>>8) & 0x000000ff) * specular; 
+   - float green = float((startVLight>>8) & 0x000000ff) * cosine; 
+   - float length = vertexToLight.GetApproximateLength(); x6
+   - float mirrorScalar = cosine * 2.0f; 
+   - float red = float((startLight>>16) & 0x000000ff) * cos; 
+   - float red = float((startLight>>16) & 0x000000ff) * specular; 
+   - float red = float((startVLight>>16) & 0x000000ff) * cosine; 
+   - float red,green,blue; x7
+   - float relElevation = theShape->listOfTypeVertices[j].position.y; 
+   - float specular = SpecPoint.x * MirrorVector.x; 
+   - fogFactor *= fogFactor; 
+   - fogFactor /= (MAX_FOG_ELEVATION); 
+   - fogFactor = 0.0; 
+   - fogFactor = 1.0 - fogFactor; 
+   - fogValue += float2long((0x000000ff - fogValue) * fogFactor); 
+   - fogValue = 0x000000ff; 
+   - fogValue = distFog; 
+   - for (long i=0;i<3;i++ ) 
+   - for (long i=0;i<s_numLights;i++) x2
+   - gFinal += (aRGBHighlight>>8) & 0x000000ff; 
+   - gFinal += (greenSpec>>8) & 0x000000ff; 
+   - gFinal += greenFinal; 
+   - gFinal = (frgb>>8) & 0x000000ff; 
+   - gFinal = 255; x3
+   - green *= cosine; x6
+   - green = float((startLight>>8) & 0x000000ff) * falloff; x4
+   - green = float((startLight>>8) & 0x000000ff); 
+   - green = float((startVLight>>8) & 0x000000ff) * falloff; x2
+   - greenAmb = ((startLight>>8) & 0x000000ff); 
+   - greenAmb = ((startVLight>>8) & 0x000000ff); 
+   - greenFinal *= nightFactor; x3
+   - greenFinal += ((BaseVertexColor>>8) & 0x000000ff); 
+   - greenFinal += (DWORD)green; x2
+   - greenFinal += float2long(green); x2
+   - greenFinal += greenAmb; x2
+   - greenFinal = (startVLight>>8) & 0x000000ff; 
+   - greenFinal = (theShape->hotGreenRGB>>8) & 0x000000ff; x2
+   - greenFinal = (theShape->hotPinkRGB>>8) & 0x000000ff; x2
+   - greenFinal = (theShape->hotYellowRGB>>8) & 0x000000ff; x2
+   - greenFinal = 0x2f; 
+   - greenFinal = 0xff; 
+   - greenFinal = 255; x2
+   - greenSpec += (DWORD)green; x5
+   - greenSpec += listOfColors[j].greenSpec; 
+   - greenSpec = 255; x2
+   - i, (unsigned)startLight, x2
+   - if (!isSpotlight && !isWindow) 
+   - if (!lightsOut) 
+   - if ((cosine > 0.0f) && s_listOfLights[i]->GetFalloff(length, falloff)) 
+   - if ((s_listOfLights[i] != NULL) && (s_listOfLights[i]->active)) 
+   - if (BaseVertexColor) 
+   - if (Environment.Renderer != 3) 
+   - if (aRGBHighlight) 
+   - if (bFinal > 255) x3
+   - if (blueFinal > 0xff) 
+   - if (blueFinal > 255) x2
+   - if (blueSpec > 255) x2
+   - if (cosine < 0.0f) x4
+   - if (cosine > 0.0f) x2
+   - if (distFog < fogValue) 
+   - if (doHotGreenTrace) { x4
+   - if (fogFactor <= 1.0) 
+   - if (fogFactor >= 0.0) 
+   - if (gFinal > 255) x3
+   - if (greenFinal > 0xff) 
+   - if (greenFinal > 255) x2
+   - if (greenSpec > 255) x2
+   - if (isClamped) 
+   - if (isHudElement) 
+   - if (isNight) x3
+   - if (isSpotlight) 
+   - if (length > Stuff::SMALL) x2
+   - if (lighteningLevel > 0) 
+   - if (nightFactor >= 0.75f) 
+   - if (rFinal > 255) x3
+   - if (redFinal > 0xff) 
+   - if (redFinal > 255) x2
+   - if (redSpec > 255) x2
+   - if (relElevation < MAX_FOG_ELEVATION) 
+   - if (s_lightDir[i].GetLength() > Stuff::SMALL) x2
+   - if (s_listOfLights[i] != NULL) 
+   - if (s_listOfLights[i]->GetFalloff(length, falloff)) x5
+   - if (specular < 0.0f) 
+   - if (startVLight == 0xffff00ff)			//Hot Pink -- Lit Windows -- ONLY at NIGHT 
+   - if (theShape->listOfTextures[theShape->listOfTypeTriangles[j].localTextureHandle].textureAlpha || (alphaValue  
+   - if (turn > 3) 
+   - if (useFaceLighting) 
+   - if (useFog && Camera::HazeFactor != 0.0f) 
+   - if (useFog) 
+   - if (useShadows) 
+   - if (useVertexLighting && (Environment.Renderer != 3)) 
+   - if (vertexToLight.GetApproximateLength() > Stuff::SMALL) 
+   - if(theShape->alphaTestOn) 
+   - j, 
+   - length = 99999999999999.0f; 
+   - listOfColors[j].blueSpec = (DWORD)blue; 
+   - listOfColors[j].greenSpec = (DWORD)green; 
+   - listOfColors[j].redSpec = (DWORD)red; 
+   - listOfTriangles[j].aRGBLight[i] = (alphaValue << 24) + (rFinal << 16) + (gFinal << 8) + (bFinal); 
+   - listOfTriangles[j].fRGBLight[i] = (fFinal << 24) + (rFinal << 16) + (gFinal << 8) + (bFinal); 
+   - listOfVertices[j].argb = (0xff << 24) + (redAmb << 16) + (greenAmb << 8) + (blueAmb); 
+   - listOfVertices[j].argb = (0xff << 24) + (redFinal << 16) + (greenFinal << 8) + (blueFinal); 
+   - listOfVertices[j].argb = argb; 
+   - listOfVertices[j].frgb = (0xff << 24) + (redSpec << 16) + (greenSpec << 8) + (blueSpec); x2
+   - listOfVertices[j].frgb = (fogValue << 24) + (redSpec << 16) + (greenSpec << 8) + (blueSpec); x2
+   - mcTextureManager->addTriangle(0xffffffff, MC2_DRAWALPHA); 
+   - mcTextureManager->addTriangle(0xffffffff,MC2_ISSPOTLGT); 
+   - mcTextureManager->addTriangle(theShape->listOfTextures[theShape->listOfTypeTriangles[j].localTextureHandle].mc 
+   - mcTextureManager->addTriangle(theShape->listOfTextures[theShape->listOfTypeTriangles[j].localTextureHandle].mc 
+   - rFinal += (aRGBHighlight>>16) & 0x000000ff; 
+   - rFinal += (redSpec>>16) & 0x000000ff; 
+   - rFinal += redFinal; 
+   - rFinal = (frgb>>16) & 0x000000ff; 
+   - rFinal = 255; x3
+   - red *= cosine; x6
+   - red = float((startLight>>16) & 0x000000ff) * falloff; x4
+   - red = float((startLight>>16) & 0x000000ff); 
+   - red = float((startVLight>>16) & 0x000000ff) * falloff; x2
+   - redAmb = ((startLight>>16) & 0x000000ff); 
+   - redAmb = ((startVLight>>16) & 0x000000ff); 
+   - redAmb, greenAmb, blueAmb); 
+   - redFinal *= nightFactor; x3
+   - redFinal += ((BaseVertexColor>>16) & 0x000000ff); 
+   - redFinal += (DWORD)red; x2
+   - redFinal += float2long(red); x2
+   - redFinal += redAmb; x2
+   - redFinal = (startVLight>>16) & 0x000000ff; 
+   - redFinal = (theShape->hotGreenRGB>>16) & 0x000000ff; x2
+   - redFinal = (theShape->hotPinkRGB>>16) & 0x000000ff; x2
+   - redFinal = (theShape->hotYellowRGB>>16) & 0x000000ff; x2
+   - redFinal = 0x2f; 
+   - redFinal = 0xff; 
+   - redFinal = 255; x2
+   - redFinal = blueFinal = greenFinal = 0xff;	//Just max out its light. 
+   - redFinal, greenFinal, blueFinal, 
+   - redSpec += (DWORD)red; x5
+   - redSpec += listOfColors[j].redSpec; 
+   - redSpec = 255; x2
+   - redSpec = blueSpec = greenSpec = lighteningLevel; 
+   - relElevation += curNode->node->myType->GetRelativeNodeCenter().y; 
+   - relElevation += theShape->relativeNodeCenter.y; 
+   - s_hotGreenLightTraceDone = true; 
+   - s_lightDir[i].Normalize(s_lightDir[i]); x2
+   - s_lightDir[i].x, s_lightDir[i].y, s_lightDir[i].z, 
+   - specular *= 1.0f; 
+   - specular *= specular; x4
+   - specular += SpecPoint.y * MirrorVector.y; 
+   - specular += SpecPoint.z * MirrorVector.z; 
+   - std::fflush(stderr); x4
+   - std::fprintf(stderr, x4
+   - switch (s_listOfLights[i]->lightType) x2
+   - theShape->listOfTypeVertices[j].normal.x, 
+   - theShape->listOfTypeVertices[j].normal.y, 
+   - theShape->listOfTypeVertices[j].normal.z, 
+   - vertexToLight -= theShape->listOfTypeVertices[j].position; 
+   - vertexToLight -= theShape->listOfTypeVertices[theShape->listOfTypeTriangles[j].Vertices[0]].position; x2
+   - vertexToLight = s_lightDir[i]; x2
+   - vertexToLight = s_lightToShape[i]; x3
+   - vertexToLight = s_spotDir[i]; 
+   - vertexToLight.Add(s_lightDir[i],pos); 
+   - vertexToLight.Normalize(vertexToLight); x3
+   - while (curNode && curNode->node) 
+   - { x77
+   - } x78
+PASS: inline expansion of the new function equals the original body

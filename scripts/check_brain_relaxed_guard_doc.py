@@ -34,6 +34,7 @@ import sys
 from pathlib import Path
 
 DISPATCH_CPP_REL = "code/brain_special_dispatch.cpp"
+APPLY_CPP_NAME = "brain_special_apply.cpp"
 
 
 def count_header_guard_verbs(lines):
@@ -132,6 +133,33 @@ def count_callsites_in_function(lines, func_pattern_str, needle="warrior->setGen
     return count
 
 
+def count_callsites_in_all_functions(lines, func_pattern_str, needle="warrior->setGeneralTacOrder("):
+    """Sum `needle` lines over every function whose opening line matches func_pattern_str."""
+    func_pattern = re.compile(func_pattern_str)
+    total = 0
+    in_func = False
+    depth = 0
+    started = False
+    for line in lines:
+        stripped = line.rstrip()
+        if not in_func:
+            if func_pattern.match(stripped):
+                in_func = True
+                depth = 0
+                started = False
+            else:
+                continue
+        depth += stripped.count('{') - stripped.count('}')
+        if not started and depth > 0:
+            started = True
+        if started and depth <= 0:
+            in_func = False
+            continue
+        if needle in stripped:
+            total += 1
+    return total
+
+
 def count_clearmove_total(lines):
     """Count `warrior->clearMoveOrders(` calls anywhere in the source (code lines only)."""
     return sum(1 for line in lines
@@ -165,6 +193,7 @@ def count_callsites_in_apply(lines):
     (inside 'else' branches); the gate-ON emit path does NOT call setGeneralTacOrder.
     The checker counts the gate-OFF branches which must still equal 6.
     """
+    # The effect handler bodies live in brain_special_apply.cpp; main() adds their callsites.
     return count_callsites_in_function(lines, r'^bool\s+executeSpecialBody_Apply\s*\(')
 
 
@@ -211,6 +240,11 @@ def main():
     header_count   = count_header_guard_verbs(lines)
     inline_count   = count_inline_guard_verbs(lines)
     callsite_count = count_callsites_in_apply(lines)
+    # The effect handlers of executeSpecialBody_Apply live in a sibling piece next to the source file.
+    apply_path = src_path.with_name(APPLY_CPP_NAME)
+    if apply_path.is_file():
+        with open(apply_path, "r", encoding="utf-8", errors="replace") as f:
+            callsite_count += count_callsites_in_all_functions(f.readlines(), r'^(?:static\s+)?(?:void|bool)\s+apply\w+\s*\(')
     commit_count   = count_callsites_in_commit(lines)
 
     # DISPATCH-INTENT-CLEARMOVEORDERS-1: clearMoveOrders() is a movement function and is

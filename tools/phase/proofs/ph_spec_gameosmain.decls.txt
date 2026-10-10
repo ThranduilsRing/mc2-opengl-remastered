@@ -1,0 +1,14 @@
+void initDpiAwareness();
+bool initLauncherBootstrap();
+void initLauncherEnv();
+void initInstrBanner();
+void initResolutionFromConfig();
+void initVulkanBackend(graphics::RenderWindowHandle win, int w, int h);
+void frameThrottleLogicEvents();
+void frameEmitDrawPackets(RenderSnapshot& snap);
+void frameScreenshotOracle();
+void frameLoadRaceVerdict();
+void frameLoadRaceProbes();
+void frameCameraPark(graphics::RenderWindowHandle win);
+void frameSwapWindow(graphics::RenderWindowHandle win);
+void frameFrameCap(bool s_vsync_active, int s_fps_cap_mission, int s_fps_cap_menu, uint64_t start_tick);

@@ -38,6 +38,9 @@ if hasattr(S, 'FRAME_HEADER'):
     inc = '#include "%s"' % S.FRAME_HEADER.split('/')[-1]
     assert inc in new, 'frame header include missing'
     new.remove(inc)
+if hasattr(S, 'PRIMARY_INCLUDE'):
+    assert S.PRIMARY_INCLUDE in new, 'primary include missing'
+    new.remove(S.PRIMARY_INCLUDE)
 extra_paths = [sp for _sn, sp, _sh in getattr(S, 'SPLITS', [])] + ([S.SPLIT_SRC] if hasattr(S, 'SPLIT_SRC') else []) + list(getattr(S, 'FILE_HEADS', {}))
 extra = []
 for _p in extra_paths:
@@ -70,7 +73,7 @@ for (name, a, b, doc, *_r) in S.PHASES:
     if method:
         sig_rx = re.compile(r'^(?:void|bool) ' + method + '::' + name + r'\(.*\) \{$')
     else:
-        sig_rx = re.compile(r'^(?:static void ' + name + r'\(.*\)|(?:void|bool) \w+::' + name + r'\(.*\)) \{$')
+        sig_rx = re.compile(r'^(?:(?:static )?(?:void|bool) ' + name + r'\(.*\)|(?:void|bool) \w+::' + name + r'\(.*\)) \{$')
     src_lines = new
     i = next((k for k, l in enumerate(src_lines) if sig_rx.match(l)), None)
     if i is None:
@@ -86,16 +89,18 @@ for (name, a, b, doc, *_r) in S.PHASES:
     for x in body:
         if alias_rx.match(x):
             fail.append('alias line inside body of ' + name)
-    if any(isinstance(r, dict) and r.get('exits') for r in _r):
+    _ex = next((r['exits'] for r in _r if isinstance(r, dict) and r.get('exits')), None)
+    if _ex:
         assert body and body[-1].strip() == 'return false;', 'exits helper must end in return false;'
-        body = [re.sub(r'\breturn true;', 'return;', x) for x in body[:-1]]
+        _rv = ('continue;' if _ex == 'continue' else 'return ' + _ex + ';') if isinstance(_ex, str) else 'return;'
+        body = [x.replace('return true;', _rv) for x in body[:-1]]
     helpers[name] = body
 
 # 3. expand the orchestrator
 orch = new[ns_ + 1:ne]
 fr = '|'.join(structs)
-call_rx = re.compile(r'^\s*(?:if \()?(?:f\.)?(\w+)\([\w, ]*\)(?:\) return)?;$')
-decl_rx = re.compile(r'^\s*(%s) \w+;$' % '|'.join(structs.values()))
+call_rx = re.compile(r'^\s*(?:if \()?(?:f\.)?(\w+)\([\w, ]*\)(?:\) (?:return[^;]*|continue))?;$')
+decl_rx = re.compile(r'^\s*(%s) \w+;$' % '|'.join(structs.values()) if structs else r'(?!)')
 expanded = []
 frame_decls = 0
 extra_seen = 0

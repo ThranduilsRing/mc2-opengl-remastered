@@ -14,8 +14,6 @@
  ],
  "files_over_1500": {
   "GameOS/gameos/engine_present_vk.cpp": 2749,
-  "GameOS/gameos/gameosmain.cpp": 2810,
-  "GameOS/gameos/gos_static_prop_registry.cpp": 2207,
   "GameOS/gameos/gos_terrain_lighting.cpp": 1697,
   "GameOS/gameos/gos_terrain_water_stream.cpp": 2455,
   "GameOS/gameos/gpu_cull_compute.cpp": 1557,
@@ -23,26 +21,24 @@
   "GameOS/gameos/vulkan_color_prop_island.cpp": 1785,
   "GameOS/gameos/vulkan_shadow_island_live.cpp": 1645,
   "GameOS/include/gameos.hpp": 3753,
-  "GuiRuntime/EditorInspector.cpp": 1652,
   "RenderCore/RendererFeatureRegistry.h": 2917,
   "code/artlry.cpp": 1816,
   "code/bldng.cpp": 1702,
-  "code/brain_special_dispatch.cpp": 3273,
-  "code/gamecam.cpp": 1564,
+  "code/brain_special_dispatch.cpp": 2772,
+  "code/gamecam.cpp": 1591,
   "code/gameobj.cpp": 2366,
   "code/infowindow.cpp": 1732,
   "code/logisticsdialog.cpp": 2149,
   "code/mechicon.cpp": 1967,
   "code/mechlabscreen.cpp": 1952,
   "code/mechlopedia.cpp": 1663,
-  "code/missionbegin.cpp": 2132,
+  "code/missionbegin.cpp": 2164,
   "code/mover.h": 1911,
   "code/mpparameterscreen.cpp": 2415,
   "code/multplyr.h": 1849,
   "code/objective.cpp": 2656,
   "code/optionsarea.cpp": 1842,
   "code/pilotreviewarea.cpp": 1845,
-  "code/saveload.cpp": 1683,
   "code/tacordr.cpp": 2072,
   "code/terrobj.cpp": 1740,
   "code/turret.cpp": 2346,
@@ -54,7 +50,6 @@
   "mclib/ablrtn.cpp": 1781,
   "mclib/assimp_importer.cpp": 1630,
   "mclib/camera.h": 1800,
-  "mclib/estring.cpp": 1596,
   "mclib/file.cpp": 2685,
   "mclib/gosfx/fcurve.cpp": 1923,
   "mclib/gosfx/tube.cpp": 1528,
@@ -66,10 +61,10 @@
   "mclib/render_contract.cpp": 1592,
   "mclib/stuff/rotation.cpp": 1672,
   "mclib/terrtxm.cpp": 1778,
-  "mclib/tgl.h": 1689,
+  "mclib/tgl.h": 1702,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "b08cf4c21",
+ "head": "77a6a7f21",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -78,16 +73,16 @@
    "max_lines": 523
   },
   "GameOS": {
-   "files": 311,
-   "files_over_1500": 10,
+   "files": 318,
+   "files_over_1500": 8,
    "files_over_3000": 1,
    "max_lines": 3753
   },
   "GuiRuntime": {
-   "files": 10,
-   "files_over_1500": 1,
+   "files": 12,
+   "files_over_1500": 0,
    "files_over_3000": 0,
-   "max_lines": 1652
+   "max_lines": 1365
   },
   "RenderCore": {
    "files": 55,
@@ -102,10 +97,10 @@
    "max_lines": 1159
   },
   "code": {
-   "files": 361,
-   "files_over_1500": 23,
-   "files_over_3000": 1,
-   "max_lines": 3273
+   "files": 368,
+   "files_over_1500": 22,
+   "files_over_3000": 0,
+   "max_lines": 2772
   },
   "editor": {
    "files": 225,
@@ -120,8 +115,8 @@
    "max_lines": 1513
   },
   "mclib": {
-   "files": 588,
-   "files_over_1500": 17,
+   "files": 590,
+   "files_over_1500": 16,
    "files_over_3000": 0,
    "max_lines": 2685
   },
@@ -142,16 +137,12 @@
    "lines": 3753
   },
   {
-   "file": "code/brain_special_dispatch.cpp",
-   "lines": 3273
-  },
-  {
    "file": "RenderCore/RendererFeatureRegistry.h",
    "lines": 2917
   },
   {
-   "file": "GameOS/gameos/gameosmain.cpp",
-   "lines": 2810
+   "file": "code/brain_special_dispatch.cpp",
+   "lines": 2772
   },
   {
    "file": "GameOS/gameos/engine_present_vk.cpp",
@@ -194,20 +185,16 @@
    "lines": 2346
   },
   {
-   "file": "GameOS/gameos/gos_static_prop_registry.cpp",
-   "lines": 2207
-  },
-  {
    "file": "code/warrior.h",
    "lines": 2171
   },
   {
-   "file": "code/logisticsdialog.cpp",
-   "lines": 2149
+   "file": "code/missionbegin.cpp",
+   "lines": 2164
   },
   {
-   "file": "code/missionbegin.cpp",
-   "lines": 2132
+   "file": "code/logisticsdialog.cpp",
+   "lines": 2149
   },
   {
    "file": "mclib/mlr/mlrtriangleclipping.hpp",
@@ -256,12 +243,20 @@
   {
    "file": "mclib/camera.h",
    "lines": 1800
+  },
+  {
+   "file": "GameOS/gameos/vulkan_color_prop_island.cpp",
+   "lines": 1785
+  },
+  {
+   "file": "mclib/ablrtn.cpp",
+   "lines": 1781
   }
  ],
  "total": {
-  "files": 1761,
-  "files_over_1500": 55,
-  "files_over_3000": 2,
+  "files": 1779,
+  "files_over_1500": 50,
+  "files_over_3000": 1,
   "max_lines": 3753
  },
  "version": 1

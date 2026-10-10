@@ -49,6 +49,8 @@ set(SOURCES ${SOURCES}
     gos_static_prop_batcher_shadow.cpp
     gos_static_prop_batcher_seam.cpp
     gos_static_prop_registry.cpp
+    gos_static_prop_registry_flush_range.cpp
+    gos_static_prop_registry_flush_tail.cpp
     gos_particle_bridge.cpp
     gos_vfx_mesh_bridge.cpp
     gos_cardcloud_sim.cpp
@@ -67,6 +69,7 @@ set(SOURCES ${SOURCES}
     gos_terrain_indirect_cement.cpp
     gos_terrain_indirect_pack.cpp
     gos_terrain_indirect_dispatch.cpp
+    gos_terrain_indirect_compute.cpp
     gos_terrain_indirect_mine_decal.cpp
     gos_terrain_surface.cpp
     gos_terrain_mask_dispatch.cpp
@@ -278,7 +281,7 @@ set_source_files_properties(
     PROPERTIES LANGUAGE C
 )
 
-set(MAIN_SRC gameosmain.cpp)
+set(MAIN_SRC gameosmain.cpp gameosmain_init.cpp gameosmain_frame.cpp)
 
 #find_package(SDL2 REQUIRED PATHS "/opt" NO_DEFAULT_PATH)
 #include_directories("${SDL2_PREFIX}/include")

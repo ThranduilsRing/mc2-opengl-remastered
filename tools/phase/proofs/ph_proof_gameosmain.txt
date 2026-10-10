@@ -1,0 +1,1103 @@
+inline expansion: 1682 statements, helpers 14, orchestrator lines 462
+declaration lifts / edits applied (0):
+scaffolding only in new (20 distinct):
+   + // Engine entry: gate / log / config bring-up, the window and render context, the frame loop and the shutdown. 
+   + // The early-exit checks, the gate invalidation, the [CONFIG v1] dump and every other ordering-critical statem 
+   + // here in their original order; the large self-contained blocks are the file-static helpers above, called at  
+   + // same points. 
+   + frameCameraPark(win); 
+   + frameEmitDrawPackets(snap); 
+   + frameFrameCap(s_vsync_active, s_fps_cap_mission, s_fps_cap_menu, start_tick); 
+   + frameLoadRaceProbes(); 
+   + frameLoadRaceVerdict(); 
+   + frameScreenshotOracle(); 
+   + frameSwapWindow(win); 
+   + frameThrottleLogicEvents(); 
+   + if (initLauncherBootstrap()) return 0; 
+   + initDpiAwareness(); 
+   + initInstrBanner(); 
+   + initLauncherEnv(); 
+   + initResolutionFromConfig(); 
+   + initVulkanBackend(win, w, h); 
+   + namespace { 
+   + }  // namespace 
+statements only in old (1078 distinct, all lifted declarations / hoisted-type lines):
+   - !g_loadRaceTerrainResidentNow; 
+   - " (finalizeGeometry not yet run, fallback kMaxPackets=4096)\n"); 
+   - " invalid=%u skipped=%u mat_mismatch=%u overflow=%d retired=%u\n", 
+   - " invalid_instance=%u overflow=%u" 
+   - " invalid_pipeline=%u pipeline_oor=%u invalid_index=%u" 
+   - " materialMismatches=%u\n", 
+   - " object_sentinel=%u light_sentinel=%u sorted_packet_cap=%u\n", 
+   - " old_expected=%u distinct_types=%u static_props=%u" 
+   - " skippedRanges=%u old_expected=%u new_expected=%u" 
+   - "GpuActorRecord layout corrupt, see log above.\n", gcFail); 
+   - "LOADRACE probe: frame=%u probeFrame=%ld scenarioTime=%.2f " 
+   - "LOADRACE verdict: frame=%u scenarioTime=%.2f " 
+   - "VK present active.\n", rdw, rdh); 
+   - "VK present init failed for ~60s with a " 
+   - "[DRAW_PACKET v1] WARNING: overflow=%d invalidRanges=%u" 
+   - "[DRAW_PACKET v1] frame=%llu emitted=%u expected=%u" 
+   - "[DRAW_PACKET v3] WARNING (once): totalPackets=0" 
+   - "[DRAW_PACKET v3] frame=%u input=%u emitted=%u" 
+   - "[HEARTBEAT] frames=%d elapsed_ms=%llu fps=%.1f", 
+   - "[INSTR v1] enabled: tgl_pool=%d destroy=%d gl_error_print=%d " 
+   - "[LAUNCHER_ENV v1] applied=%d shell_override=%d src=%s\n", 
+   - "[MATERIAL_GPU v4] enabled=%d sample=%d binding=5 (default-ON; MC2_MATERIAL_GPU=0 disables)\n", 
+   - "[PROJECTZ v1] enabled: trace=%d heatmap=%d summary=%d guard_px=%d", 
+   - "arm_first_frame=%ld terrain_first_resident_frame=%ld " 
+   - "atlas_texel[%s]=%u,%u,%u,%u\n"; 
+   - "build=%s", 
+   - "camera_motion=1 " 
+   - "degraded=%s\n"; 
+   - "frame loop (session stays VK; present-level failures " 
+   - "gpu_cull_substrate=%d gpu_cull_aabb_parity=%d " 
+   - "gpu_objects=%d obj_recon_tracy=%d " 
+   - "init (session stays VK).\n", 
+   - "mech_degrade=%ld mech_degrade_real=%ld " 
+   - "mech_ok_real=%ld mech_ok_preview=%ld appr_null=%ld " 
+   - "never force GL).\n", fr.c_str()); 
+   - "reverse_z_trace=%d " 
+   - "scene_px0=%u,%u,%u scene_px1=%u,%u,%u scene_px2=%u,%u,%u " 
+   - "shader_hot_reload=%d " 
+   - "shapeName size mismatch"); 
+   - "smoke=%d water_fp=%d water_parity=%d vp_fast=%d vp_parity=%d " 
+   - "static_prop_registry=%d " 
+   - "static_update_trace=%d static_update_skip=%d " 
+   - "terrain_indirect=%d terrain_indirect_parity=%d terrain_indirect_mine=%d " 
+   - "terrain_indirect_overlay=%d terrain_indirect_overlay_parity=%d " 
+   - "terrain_path=%s atlasTex=%u atlas_first_frame=%ld " 
+   - "terrain_resident=%s mech_degrade_real=%ld " 
+   - "terrain_resident=%s terrain_first_resident_frame=%ld " 
+   - "terrain_surface_trace=%d " 
+   - "transient: %s -- tearing down and retrying " 
+   - "visible drawable (deferred-retry budget)"); 
+   - "zero surface extent") != std::string::npos) { 
+   - #else x2
+   - #endif x4
+   - #endif // MC2_IMGUI 
+   - #ifdef MC2_IMGUI x2
+   - #ifdef MC2_VULKAN x2
+   - #ifdef PLATFORM_WINDOWS 
+   - && (found->texArrayLayer >= 0) 
+   - && (long)g_mc2FrameCounter >= s_ssFrame) { 
+   - && (mgAlbedoTex == static_cast<uint32_t>(found->texArrayLayer)); 
+   - && (stats.overflow 
+   - && batcher_getMaterialGpuEntry(found->materialIdx, &mg); 
+   - &baseVtx, &owningType)) { 
+   - ((mc2::gate::get<"MC2_VK_PRESENT_VERIFY">()) && 
+   - (double)SDL_GetPerformanceFrequency(); 
+   - (double)s_hb_frame * 1000.0 / (double)(now_ms - s_hb_last_ms)); 
+   - (firePin > 0 && 
+   - (g_mc2FrameCounter % 30 == 0)) {   // retry ~2x/s, not per frame (init logs each attempt) 
+   - (g_mc2FrameCounter < 600) || 
+   - (int)inMission, cap); 
+   - (int)matGpuOn, (int)matSampleOn); 
+   - (long)g_mc2FrameCounter >= s_probeFrames[s_nextProbe]) { 
+   - (s[1] == 'r' || s[1] == 'R') && 
+   - (s[2] == 'u' || s[2] == 'U') && 
+   - (s[3] == 'e' || s[3] == 'E'); 
+   - (s_ppmPinFrame > 0 && 
+   - (snap.terrainPass.flags & TerrainPassFacts::kFlagTessellationOn) != 0u; 
+   - (snap.terrainPass.flags & TerrainPassFacts::kFlagViewUniformsBound) != 0u; 
+   - ++s_nextProbe; 
+   - ++sel.rowCount; 
+   - // x5
+   - //   MC2_WIDTH=<px>   MC2_HEIGHT=<px> 
+   - // "b FullScreen = TRUE" -- match case-insensitively, or 
+   - // "x,y,rot,proj,alt[@frame]" hard-sets the live camera pose once at 
+   - // (Implementation lives in gos_visual_capture.cpp on this branch — 
+   - // (Leave kFlagViewUniformsBound clear.) 
+   - // (MC2_VK_PRESENT_DUMP_FRAME=N) needs a verify tick AT/after 
+   - // (NATIVE_WINDOW_IN_USE at resize; observed 
+   - // (No call needed here — readback_selftest() in readback.cpp is self-contained.) 
+   - // (b) Direct atlas-texel sample: attach the atlas to a scratch 
+   - // (b) Fixed-texel scene oracle: read 3 deterministic terrain 
+   - // (below) becomes a downstream consumer of snap.terrainPass. 
+   - // (comma list) but defaults to the confirmed transient window. 
+   - // (falls back to MC2_SCREENSHOT_AT_FRAME so the verdict + backbuffer 
+   - // (mech_degrade_real>0) or terrain never became resident. 
+   - // (not accessible cross-TU — Option A from MaterialGpu-2 spec §3). 
+   - // (same freezeScriptedCameraForCapture pin the bookmark replay uses) 
+   - // (streaking grey + pause-bobbing mechs). Instead: 
+   - // (water_skip_env field was tentatively added during the closed 
+   - // + gos_SetScreenMode run inside InitializeGameEngine — after the window 
+   - // -1 = no selection. Render thread only — no mutex needed. 
+   - // -> byte-identical GL behavior. 
+   - // 2026-05-04 default-on flip), any other value (including "1") 
+   - // 2026-05-11: MC2_STATIC_UPDATE_SKIP defaults ON; mirror in terrobj.cpp:88. 
+   - // 4096 before finalizeGeometry runs (returns 0 at that point). 
+   - // 64 KB bound keeps a corrupt/hostile file from ballooning. 
+   - // A run is "degraded" if a REAL world actor lost its shape 
+   - // Any new block ends the section we want 
+   - // Automation (smoke/diagnostic/visual) is detected via env signals + the 
+   - // C++-linkage helpers defined in gameos_graphics.cpp. C-linkage 
+   - // C2: readback ring buffer three-tier selftest is called from within 
+   - // CAMERA-PARK-1 (perf-capture fixture, 2026-07-18): MC2_CAMERA_PARK= 
+   - // Capture the offscreen post-process scene FBO, NOT the window 
+   - // Copy everything before '=' and find the last word (the key name) 
+   - // Counters reflect the prior frame's flush (this seam runs before 
+   - // DEFERRED-INIT retry path — the session stays VK 
+   - // DEV-SHELL-1: pending shell screenshot, same sceneFBO source. 
+   - // DPI-AWARE-1: FIRST statement of the process — the per-process DPI 
+   - // DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 == (HANDLE)-4 
+   - // Default ON; MC2_GPU_CULL_SUBSTRATE=0 opts out. 
+   - // DrawPacket v2: per-frame field compare. Set MC2_DRAW_PACKET_COMPARE=1 to enable. 
+   - // DrawPacket v3: candidate → RenderCore::DrawPacket[] ABI promotion. 
+   - // ENFORCE (logged coercion): if any postprocess-interop island gate is on, 
+   - // EndFrame), once, when the frame counter first reaches N. Default 
+   - // Env var overrides (highest priority, useful for CI/smoke/debugging): 
+   - // FBO and read one texel. Skips (reports unreadable) when the 
+   - // Fail-soft: force the whole session back to GL. renderBackend() stays 
+   - // Feed ImGui DrawPackets panel (read in GraphicsOptionsWindow::draw). 
+   - // FitIniFile booleans: "1" or "true". UI-DEFS-LOCKSTEP- 
+   - // Fix: read ResolutionX/Y (and FullScreen) from options.cfg here, before 
+   - // Frame cap: sleep to hold target frame time and reduce GPU thrashing. 
+   - // Frames to probe. Overridable via MC2_LOAD_RACE_PROBE_FRAMES 
+   - // Free-function accessors defined in gameos_graphics.cpp; full 
+   - // Full log line under MC2_RENDER_SNAPSHOT_LOG=1. 
+   - // GL for a present-level failure — DEFER and retry init from 
+   - // GL state touched, no VFX mutation, no object-IDs. 
+   - // GL_ERROR is default-on; the env var suppresses it. 
+   - // GL_UNSIGNED_BYTE clamps HDR->LDR in the driver — fine for a 
+   - // GPU cull record schema selftest. 
+   - // GetGameOSEnvironment (mechcmd2.cpp) hardcodes 800x600.  prefs.load() 
+   - // Grew 384 -> 512 -> 640 to absorb terrain_indirect{,_parity} 
+   - // Grew 640 -> 720 to absorb gpu_cull_substrate and gpu_cull_aabb_parity. 
+   - // Grew 720 -> 768 to absorb terrain_indirect_mine (PR2c Stage 0c). 
+   - // Grew 768 -> 832 to absorb terrain_indirect_overlay{,_parity} (PR2b). 
+   - // Grew 832 -> 896 to absorb reverse_z_trace (reverse-Z float depth). 
+   - // Grew 896 -> 960 to absorb terrain_surface_trace (PR-0 Wave 0). 
+   - // Grew 960 -> 1024 to absorb spotlight_real (T1.2, (E) SpotLight_ -> real). 
+   - // HARDEN-1 latent fix: the game itself writes 
+   - // Hard gate — REAL anomalies only, AND default-SILENT (set MC2_DRAW_PACKET_WARN=1 
+   - // Heartbeat: every ~1s emit a frame-count marker so we can tell 
+   - // If no env override, try options.cfg. 
+   - // Instrumentation Rule: demote, don't delete) for future diagnostics. 
+   - // Interop-capable device: request the external-memory/-semaphore exts so 
+   - // Kill-switch: MC2_LAUNCHER_ENV_JSON=0 restores the pure-shell-env launch. 
+   - // Lines look like: "lg ResolutionX = 1920" 
+   - // MC2_GPU_OBJECTS env override: "0" disables (opt-out from the 
+   - // MC2_HEARTBEAT so the default log is quiet — invaluable for 
+   - // MC2_LOAD_RACE_TRACE (S2b corrected transient probes): at a fixed 
+   - // MC2_LOAD_RACE_TRACE: one machine-parseable per-run verdict, emitted 
+   - // MC2_NO_LAUNCHER) are untouched, so smoke baselines cannot drift. 
+   - // MC2_RENDER_BACKEND=vulkan requested but this build has no Vulkan 
+   - // MC2_SCREENSHOT_AT_FRAME=N + MC2_SCREENSHOT_PATH=out.tga. Captures 
+   - // MC2_SCREENSHOT_SOURCE=backbuffer: capture FBO 0 (the real, finished 
+   - // MC2_VISUAL_CAPTURE_FRAME nor MC2_VISUAL_BOOKMARK_CAPTURE is set, 
+   - // MC2_VK_PRESENT_DUMP_ON_FIRE is set) — must be read per 
+   - // MaterialGpu lookup — per-type (all packets share same materialIdx). 
+   - // Mirrors the terrain block above. Read-only — no GL state touched. 
+   - // Module-static candidate buffer, resized on demand. 
+   - // NOT merely when it lacks keyboard focus. Plain focus loss happens 
+   - // No dispatch; legacy flush() unchanged. Set MC2_DRAW_PACKET_V3=1 to enable. 
+   - // OFF, zero cost when env unset. Lets the dynamic-pipeline oracle 
+   - // ONCE when the frame counter first reaches MC2_LOAD_RACE_VERDICT_FRAME 
+   - // ONLY when MC2_NO_LAUNCHER is set and MC2_LAUNCHED is not — launcher 
+   - // Oracle: deterministic backbuffer screenshot at a target frame. 
+   - // P13b: present onto the EXISTING visible GL game window (g_sdl_window) 
+   - // P6/P8/P14 can import/export shared images against this device. 
+   - // PR-0: dormant [TERRAIN_SURFACE v1] lifecycle channel gate. Trace-only, 
+   - // Per-packet rows. 
+   - // Phase 1: find the first snapshot entry with matching recipeIndex. 
+   - // Phase 2: count visible instances of the same typeId. 
+   - // Pre-window resolution bootstrap (ui-phase1: supersedes [HUD-RES-CLAMP v1]). 
+   - // Precedence: a var already set in the shell ALWAYS wins (never 
+   - // Preview-only degrades (obj==NULL) are benign and reported 
+   - // R2 INTERLOCK (plan §6/R2, landed here since the device is born here): 
+   - // Read a mid-atlas texel (content-bearing, not an edge). 
+   - // Read-only — no GL state touched, no mutation of any render path. 
+   - // Render-spine v1.1: legacy layer + MaterialGpu albedo + match flag. 
+   - // Requires a non-minimized window (driver only composites to FBO 0 
+   - // SHADOW-SPINE-0: pass-level snapshot of the shadow render spine. 
+   - // Selected-prop packet inspector (DrawPackets panel "Selected Prop" section). 
+   - // Setting g_useGpuObjects at startup here happens before any code 
+   - // Shrank back to 960 effective use post-T3.1 (spotlight_real field 
+   - // Size the candidate buffer to the exact total packet count. 
+   - // Skipped when vsync is active (vsync already owns pacing). 
+   - // Slice 1 invariant: mutually exclusive with legacy killswitch. 
+   - // Smoke mode: per-frame perf sample. 
+   - // Static storage reused every frame; contents are frame-local and invalid 
+   - // Std rule ("0"/"false"/"off"/"no" are false, anything else true) is the ParseEnvBool the terrobj.cpp 
+   - // Still minimized: the GL drawable reports a 
+   - // Strip CR/LF 
+   - // Stub: full self-test wired in Task 5 after buildRecipeFromShape 
+   - // SwapWindow split: env-gated glFinish probe attributes the present 
+   - // T3.1: (E) SpotLight_ -> real illumination. The 
+   - // T5 content verification: readback on a light cadence for 
+   - // TERRAIN-PASS-PACKET-0. Per-program ids + per-flush detail fields 
+   - // TERRAIN-PASS-PACKET-0: promote pass-level terrain facts from 
+   - // TERRAIN-SPINE-0: inspector filler. Now a downstream consumer of 
+   - // TRANSIENT (zero surface extent = window minimized right now; 
+   - // The key is the last whitespace-delimited token before '=' 
+   - // The old [HUD-RES-CLAMP v1] hardcoded 800x600 unconditionally to keep the 
+   - // The selftest emits [GPU_CULL v1] event=readback_selftest pass=3 fail=0 
+   - // The water island borrows the SHARED engine device (no second volkLoadDevice), 
+   - // This separates the three rival mechanisms for the "cool wash -> 
+   - // Throttle when the window is actually invisible (minimized / hidden), 
+   - // Tracy, Windows shifting focus to a notification) and the loop must 
+   - // Uses a simple line scanner to avoid pulling in the full FitIniFile stack 
+   - // Uses mission-state-aware cap: 90 FPS in menus, 165 FPS in missions. 
+   - // VFX-SPINE-0: pass-level snapshot of the GPU particle / VFX 
+   - // VK device that P6/P8/P9/P14 will reuse. Present is still GL swap (T3 wires 
+   - // VK-FAILSOFT-DISARM-1: present init was deferred on a zero 
+   - // VK-FAILSOFT-DISARM-2: a mid-run present failure is 
+   - // VK-FAILSOFT-DISARM-2: present-level init failures are 
+   - // VK-FAILSOFT-DISARM-2b: NEVER GL-swap while VK present init 
+   - // VK-FIELD-VFX-5: dynamic fire-event pin (armed at runtime 
+   - // VK-P13 T3: present intercept. When MC2_RENDER_BACKEND=vulkan AND 
+   - // VK-P13 T3: stand up the whole-frame GL->VK present intercept on the 
+   - // VK-P13-SELECTOR-1 / T2+T4: birth the standalone shared engine Vulkan 
+   - // VK-PARITY-F2: MC2_VISUAL_CAPTURE_POST=1 (default OFF = byte-identical) 
+   - // VK-VISUAL-CAPTURE-1: GL scene FBO is not the shown image; 
+   - // VK-WATER-TIER1 arms through the shared-GBuffer umbrella path; no raw water interop gate is listed here. 
+   - // WITHOUT freezing the sim — for Tracy captures that need a 
+   - // Warn once if finalizeGeometry hasn't run yet. Once-only to avoid per-frame log spam. 
+   - // [FRAME_PASS_STATS v1] frame-level aggregates + per-pass draw/ 
+   - // [LAUNCHER-BOOTSTRAP v1] If mc2.exe was started directly (double-click / 
+   - // [LAUNCHER_ENV v1] MC2_NO_LAUNCHER launches skip the launcher GUI — and 
+   - // [MATERIAL_GPU v4] startup banner — separate from [INSTR v1] to keep 
+   - // [OBJECT_RECON v1] read MC2_OBJECT_RECON_TRACY here so the gate is 
+   - // [VISUAL_CAPTURE v1] S9: deterministic PNG + capture-tuple sidecar, 
+   - // a game-written cfg boots windowed (fullscreen=0). 
+   - // a real offscreen RGBA16F target that always holds the rendered 
+   - // a single int/pointer check with no allocation when neither 
+   - // absent or the keys are missing. 
+   - // accessors declared at file scope (top of TU). 
+   - // after the current frame path. Sized to kMaxPackets on first resize, same 
+   - // all — the user-sighted half-grey/streaking + pause-bobbing 
+   - // almost always the transient swapchain flake 
+   - // and apply its MC2_* string keys to this process's environment. 
+   - // and bookmark teleport/settle/capture replay. Reuses the same 
+   - // and gpu_objects fields without truncation. 
+   - // and is retired now that the defs/ImGui UI drives real-resolution layout. 
+   - // and recovers when the surface frees up. The ONLY 
+   - // are UNTOUCHED (approach A'); this only additionally stands up the shared 
+   - // are comparable with VK captures (which read the presented image). 
+   - // as s_candidates — overflow is structurally impossible. 
+   - // atlas is a compressed (BC7) format -- not color-renderable. 
+   - // backbuffer (FBO 0) — when the window is minimized the driver 
+   - // batcher_getSortedPacketCount() returns s_sortedPacketOrder.size() — a 
+   - // before the GL context exists.  Falls back to 800x600 if the file is 
+   - // behavior. MC2_SPOTLIGHT_REAL_TRACE counters remain (Debug 
+   - // best-effort GL fail-soft rather than showing 
+   - // both clear on retry). Forcing GL for the session here is the 
+   - // briefly holds the HWND surface — both observed environmental, 
+   - // but oldExpected is a legacy comparison field that is ALWAYS 0 while 
+   - // but shaded pixels start cool). One-shot per listed frame, GL context 
+   - // by construction: source is FBO-0 at swap). Fail-soft: if present init 
+   - // by the MC2_FX_FORCE_SPAWN fixture when 
+   - // call sites (fog `static int state` latches, admission modes, 
+   - // candidateCount = stats.emitted, not kMaxPackets: only the v2-emitted slots are 
+   - // cannot help). 
+   - // capture always shows stale/unrelated mission terrain for them. 
+   - // capture_to() queues a VK present readback instead. 
+   - // closed — premise invalidated by Stage 0 M3 audit.) 
+   - // come up because GL swaps). Skipping the swap frees the HWND 
+   - // console stays quiet. 
+   - // constantly during normal play (clicking a chat window, opening 
+   - // content absent/wrong, (3) lighting/shading warm-up (atlas+arm early 
+   - // context + a valid maxActors count, so it cannot run at engine startup. 
+   - // context AND every postprocess-interop island load their own device into 
+   - // context is locked by the first window ANY subsystem creates (the VK 
+   - // context when MC2_RENDER_BACKEND=vulkan. The GL window + GL context above 
+   - // cost is GPU-completion backpressure (GPU draining terrain/shadows), 
+   - // could never fire (verify ticks stopped first), so the 
+   - // create_window, so the window is sized correctly from the first frame. 
+   - // decline (config plainly cannot composite; retry 
+   - // default-OFF, separate from the MC2_TERRAIN_SURFACE path-select switch. 
+   - // defer-forever-by-design case — never budget it. 
+   - // deferral deadlock: GL swaps because VK isn't up; VK can't 
+   - // desktop => 2x-desktop window, "zoomed" menus). MC2_DPI_UNAWARE=1 = 
+   - // device is the sole owner of the global table. (The alternative fail-soft 
+   - // diagnosing freezes on content-faulting mod loads when enabled. 
+   - // draw_screen); advisory, not gated. 
+   - // draws AND GuiRuntime::Render()'s ImGui compositing) instead of the 
+   - // enables. Unset leaves the compile-time default (true). 
+   - // environmental, clears in <1s). Forcing GL for the 
+   - // expectedPackets grows (68..71+), so it fired the warning EVERY frame on a 
+   - // explicit MC2_NO_LAUNCHER escape, so headless runs never pop the GUI. If the 
+   - // explicit MC2_NO_LAUNCHER path, read the same launcher_env.json directly 
+   - // fails, force GL -- the GL swap path is untouched. 
+   - // failures over 60s with GL swapping between attempts (the 
+   - // for context/device-level failures only (handled above). 
+   - // force it OFF before we volkLoadDevice the engine device, so the engine 
+   - // frame >= @frame (default 300) and pins it against scripted writers 
+   - // frame N — without the extra window below, a pin >= 600 
+   - // frame for the sub-second gap (or stays blank while 
+   - // frame was exactly that half-disarmed state. So: NEVER force 
+   - // frame while the drawable is non-zero; success promotes the 
+   - // frame, not memoized. 
+   - // from live accessors (no behavior change for those). 
+   - // g_dpSelectedRecipeIndex is written by EditorInspector on Ctrl+Shift+Click; 
+   - // gameplay keeps running. Default OFF = one static pointer check. 
+   - // gates here. 
+   - // gosRenderer type is private to that TU. 
+   - // gos_render.cpp create_window comment for the field evidence (4K/225% 
+   - // graphics::create_window), so this must precede everything. See the 
+   - // greps this single line. Default-OFF, zero cost when the gate unset. 
+   - // has callers and a registered type to test against. 
+   - // hold the frame: no GL present while VK retries the HWND 
+   - // hot-loop counting). OFF=zero cost (every Set* early-returns). 
+   - // initialized; trailing s_candidates entries are stale from prior frames. 
+   - // instance counts, pulled from already-computed counters (no 
+   - // is already created — so the window and all UI coordinate math start 
+   - // is deferred. A GL SwapBuffers on the shared HWND claims the 
+   - // keep running at full speed in those cases. g_focus_lost is still 
+   - // launcher is missing or fails to start, fall through and run the game. 
+   - // launcher_env.json is a small flat string map (<1 KB today); 
+   - // launches (MC2_SMOKE_MODE / MC2_DEBUG_STATE_DUMP / MC2_LOG without 
+   - // launches (which already injected + stripped) and smoke/diagnostic 
+   - // legacy 2D HUD's layout correct; that was a stopgap for the pre-ImGui HUD 
+   - // legacy virtualized behavior. 
+   - // live (post-render, pre-swap). Default-OFF; zero cost when gate unset. 
+   - // live accessors into the RenderSnapshot. Pass-level only — no 
+   - // live before any update kernel runs. drainPerFrame() lazy-inits 
+   - // logistics/menu UI (Mech Bay, Mechlopedia, etc.) headlessly -- those 
+   - // maxPackets == s_drawPackets.size() == kMaxPackets >= stats.emitted: overflow impossible 
+   - // mc2_10=417, mc2_17=312, mc2_24=753 (all well under 4096 fallback). 
+   - // mech routing) and a mid-flight disarm can never reach them 
+   - // minimized window). Default-OFF: onPostRenderFrame early-returns on 
+   - // minimized, where nothing is visible anyway). After the 
+   - // mission-only offscreen scene FBO below. Needed for validating 
+   - // never composites to FBO 0 (it reads black), but sceneFBO_ is 
+   - // new TG_Light registration path is the unconditional production 
+   - // non-MC2_ keys (tex_pack_mod / last_*) are ignored. Scope guards: runs 
+   - // not run yet) — gate on MC2_LOG so a plain double-click-style 
+   - // not vsync/CPU. SwapWindow.SDL isolates the bare SDL_GL_SwapWindow. 
+   - // off by default so a shipping/player build is silent. 
+   - // offscreen scene FBO source as [SCREENSHOT v1] above (robust to a 
+   - // oracle silently reported "PPM never wrote" on a healthy 
+   - // overflow/invalidRanges/materialMismatches are genuine but are now also gated 
+   - // overridden); empty values are skipped (launcher semantics: "" = unset); 
+   - // path can read it; legacy g_useGpuStaticProps starts false. 
+   - // path is available if coercion is ever undesirable.) 
+   - // per-tile identity, no new counters introduced. The inspector 
+   - // permutation over global s_packets[], same total count. Falls back to 
+   - // player gets the options front-end first. The launcher sets MC2_LAUNCHED=1 
+   - // player sees) instead of the pre-composite scene FBO, so GL captures 
+   - // plus fixed-texel scene readbacks and a direct atlas-texel sample. 
+   - // points from the offscreen scene FBO (robust to a minimized 
+   - // post-HUD/composite/pillarbox) through the hidden-window VK 
+   - // present path (the 2026-07-12 grey-regression red herring). 
+   - // present-ready framebuffer -- includes the legacy 2D HUD/logistics 
+   - // produce a real pixel image headlessly (TGA) for visual regression. 
+   - // queryable but now returns GL; the VK device is null; every consumer 
+   - // readback_init() (at mission load) — not here. readback_init() requires GL 
+   - // reader uses, so the banner reflects the actual gate state. 
+   - // reads the composited back buffer (post exposure/sunset grade, what the 
+   - // remaining forceGL is the structural not-VK-owned 
+   - // removed); buffer kept at 1024 for future absorbers. 
+   - // render spine. Mirrors the shadow block above. Read-only — no 
+   - // retry-budget forceGL, renderBackend() returns GL and the 
+   - // s_materialGpuEnabled is a private file-scope static in the batcher 
+   - // scene. endScene() samples it (does not clear it), so it is 
+   - // screens never touch sceneFBO_ at all, so the default sceneFBO 
+   - // screenshot are co-located at the same frame). The wave classifier 
+   - // separately. 
+   - // session here produced the torn half-disarmed scene 
+   - // session to the normal VK present path mid-run. 
+   - // set of verdict frames, dump the terrain-path / atlas / arm state 
+   - // shadow map size, fps cap, ...). Users following the CMD launch recipe 
+   - // shared device. Sized to the GL drawable (backbuffer, incl. pillarbox 
+   - // shortcut) and NOT by mc2-launcher.exe, hand off to the launcher so the 
+   - // size even for SW_SHOWMINNOACTIVE windows, but 
+   - // snap.terrainPass for the pass-level fields promoted in 
+   - // so it does NOT hit the global-dispatch collision and must NOT be coerced off — 
+   - // so the next retry succeeds; the window just holds its last 
+   - // so we resolve the FBO lazily only when one of them is active. 
+   - // sorted_packet_cap observed in tier1 smoke: mc2_01=134, mc2_03=359, 
+   - // source, but they want different predicates. 
+   - // stall. If MC2_PRESWAP_FINISH=1 moves the ~45ms into PreFinish, the 
+   - // stderr is still live here (the MC2_LOG NUL-redirect below has 
+   - // still intact here, just before swap. Reading RGBA16F as 
+   - // support compiled in (GL-only build). Fail-soft to GL. 
+   - // surface extent (window minimized at boot). Retry once per 
+   - // surface is not coming back — take the 
+   - // swap resumes. 
+   - // swapchain instead of SDL_GL_SwapWindow. Any hard error fail-softs 
+   - // swapchain probe's hidden SDL window boots video before 
+   - // takes the GL path. Present was never changed, so nothing to revert. 
+   - // tear the present stack down and re-enter the 
+   - // tessellationOn: hard-coded true (matches inspector field semantics). 
+   - // that buffer size stable. Duplicates the getenv check because 
+   - // that table -> whichever loaded last wins -> wrong function pointers. 
+   - // that were not promoted to the snapshot continue to read directly 
+   - // the VK present intercept later). On =gl/unset this whole block is skipped 
+   - // the VK present path is up, present the finished GL frame (FBO-0, 
+   - // the VK surface caps say zero. This is the 
+   - // the finished backbuffer just before present (after draw_screen + 
+   - // the first stretch (proves real, changing frame content 
+   - // the frame loop; the session stays VK. forceGLFallback remains 
+   - // the mclib Camera type is visible there, not in this TU.) 
+   - // then fails NATIVE_WINDOW_IN_USE — observed 120/120 re-init 
+   - // then re-launches this exe, which falls through and runs the game normally. 
+   - // then); the default (unset) sceneFBO path remains the robust 
+   - // therefore silently lost every launcher-curated gate. Fix: on the 
+   - // to GL for the rest of the session (never breaks the GL path). 
+   - // to re-enable). The old gate also tripped on `oldExpected != expectedPackets`, 
+   - // to the exe (CSM radius, cloud shadows, prop PBR/ambient, tex tier, 
+   - // to the mission log when MC2_GPU_CULL_READBACK=1 is set. 
+   - // too, but eager init avoids missing the very-first-frame data. 
+   - // torn frames forever. 
+   - // torn-scene trap: the umbrella family arms/latches across ~80 
+   - // totally benign mismatch -> console spam. Dropped that condition; the remaining 
+   - // used as the *input filter* below — different concern, same SDL event 
+   - // v0: population only — candidates are emitted but not dispatched. 
+   - // v1: VFX shaders do not consume ViewUniforms (binding=3). 
+   - // v1: shadow shaders do not consume ViewUniforms (binding=3). 
+   - // v5: MC2_MATERIAL_GPU defaults ON; set to "0" to disable. 
+   - // via raw vkCreateWin32SurfaceKHR on its HWND -- no hidden VK window. 
+   - // viewUniformsBound: terrain shaders don't consume ViewUniforms (binding=3) yet. 
+   - // visual oracle. 
+   - // vkCreateSwapchainKHR NATIVE_WINDOW_IN_USE = another consumer 
+   - // volkLoadDevice writes a PROCESS-GLOBAL dispatch table. Both the engine 
+   - // warms over ~20-40s" transient: (1) late indirect arming, (2) atlas 
+   - // water + present coexist on the one shared device. Only add SELF-CREATING-device 
+   - // water-projection-skip slice attempt; removed when the slice 
+   - // whether the render loop is alive or frozen. Gated behind 
+   - // window's WSI binding, and every VK swapchain re-creation 
+   - // window). Points are normalized so they track resolution. 
+   - // with it the launcher's env injection built from launcher_env.json next 
+   - // with the wrong dimensions. 
+   - // without a per-frame readback stall). A pinned PPM dump 
+   - // works-when-minimized oracle for mission/terrain visual diffs. 
+   - // worst-case view (map edge, max altitude, looking across) while 
+   - // ~60s of NON-minimized failed retries: the 
+   - : (g_loadRaceLastTerrainPath == 2) ? "cpu-thin" : "none"; 
+   - : mc2::gate::get<"MC2_SCREENSHOT_AT_FRAME">()); 
+   - : vkctx.health().fallbackReason.c_str()); 
+   - ? "engine Vulkan context did not come up" 
+   - ? (SetDpiCtxFn)GetProcAddress(u32, "SetProcessDpiAwarenessContext") : NULL; 
+   - ? 2u : 1u; 
+   - CloseHandle(pi.hProcess); 
+   - CloseHandle(pi.hThread); 
+   - DWORD n = GetModuleFileNameA(NULL, exePath, MAX_PATH); x2
+   - DrawPacketPropRow& row = sel.rows[sel.rowCount]; 
+   - DrawPacketSelectedPropSnapshot sel{}; 
+   - EditorInspector::ShadowPassSnapshot sp; 
+   - EditorInspector::TerrainPassSnapshot ts; 
+   - EditorInspector::VfxPassSnapshot vs; 
+   - EditorInspector::setShadowPassSnapshot(sp); 
+   - EditorInspector::setTerrainPassSnapshot(ts); 
+   - EditorInspector::setVfxPassSnapshot(vs); 
+   - Environment.DoGameLogic(); 
+   - Environment.fullScreen); 
+   - Environment.screenHeight = mc2::gate::get<"MC2_HEIGHT">(); 
+   - Environment.screenWidth = mc2::gate::get<"MC2_WIDTH">(); 
+   - Environment.screenWidth, Environment.screenHeight); x2
+   - Environment.screenWidth, Environment.screenHeight, 
+   - FILE* f = std::fopen("options.cfg", "r"); 
+   - FILE* jf = jsonPath[0] ? fopen(jsonPath, "rb") : NULL; 
+   - GL_TEXTURE_2D, atlasTex, 0); 
+   - GLint aw = 0, ah = 0; 
+   - GLint prevFbo = 0; 
+   - GLuint lrFbo = ppLr ? ppLr->getSceneFBO() : 0; 
+   - GLuint scratch = 0; 
+   - GLuint ssFbo = ppShot ? ppShot->getSceneFBO() : 0; 
+   - GLuint vcFbo = ppVc ? ppVc->getSceneFBO() : 0; 
+   - GpuStaticPropRegistry::isEnabled() ? 1 : 0, 
+   - GuiRuntime::NewFrame(); 
+   - HMODULE u32 = LoadLibraryA("user32.dll"); 
+   - MC2_DIAGFE(stderr, "[GPU_CULL v1] FATAL: selftest failed (%d); " 
+   - MC2_DIAG_FPUTS(buf, stderr); 
+   - PROCESS_INFORMATION pi = {}; 
+   - RenderCore::MaterialGpu mg{}; 
+   - STARTUPINFOA si = {}; si.cb = sizeof(si); 
+   - SetDpiCtxFn setCtx = u32 
+   - SetProcessDPIAware(); 
+   - SmokeMode::samplePerf(ms); 
+   - Uint32 flags = SDL_GetWindowFlags(g_sdl_window); 
+   - ZoneScopedN("EmitDrawPackets"); 
+   - ZoneScopedN("Frame.BackgroundThrottle"); 
+   - ZoneScopedN("Frame.FrameCap"); 
+   - ZoneScopedN("Frame.ProcessEvents"); 
+   - ZoneScopedN("Frame.RendererHandleEvents"); 
+   - ZoneScopedN("GameLogic"); 
+   - ZoneScopedN("SwapWindow"); 
+   - ZoneScopedN("SwapWindow.SDL"); 
+   - _snprintf(launcher, sizeof(launcher), "%smc2-launcher.exe", dir); 
+   - abort(); 
+   - agg.mechBatchInstances   = mechInst; 
+   - agg.staticPropBatches    = spSlots; 
+   - agg.vfxCount             = 0u; // per-frame VFX count deferred (VFX-SPINE-0) 
+   - agg.visibleTerrainChunks = 0u; // set by terrain flush producer 
+   - applied, shellWins, jsonPath); 
+   - atlasTexelStatus = "ok"; 
+   - atlasTexelStatus = "unreadable_compressed"; 
+   - atlasTexelStatus, atlasTexel[0],atlasTexel[1],atlasTexel[2],atlasTexel[3]); x2
+   - bool foundFS = false; 
+   - bool fullscreenVal = false; 
+   - bool gpuCullParity    = mc2::gate::get<"MC2_GPU_CULL_AABB_PARITY">(); 
+   - bool gpuCullSubstrate = mc2::gate::get<"MC2_GPU_CULL_SUBSTRATE">(); 
+   - bool inBlock = false; 
+   - bool inMission = SmokeMode::missionHasStarted(); 
+   - bool sawTrue = false; 
+   - bool vkPresented = false; 
+   - bool windowInvisible = false; 
+   - break; 
+   - bstats.inputCandidates, bstats.emitted, 
+   - bstats.invalidIndexCount, bstats.invalidInstanceCount, 
+   - bstats.invalidPipeline, bstats.pipelineOutOfRange, 
+   - bstats.objectIndexSentinelCount, bstats.lightIndexSentinelCount, 
+   - bstats.overflow, 
+   - build); 
+   - char _cbbuf[1024]; 
+   - char _cbbuf[192]; 
+   - char _pzbuf[256]; 
+   - char before[64] = {}; 
+   - char buf[96]; 
+   - char dir[MAX_PATH]; 
+   - char exePath[MAX_PATH] = {0}; x2
+   - char jsonPath[MAX_PATH] = {0}; 
+   - char key[128]; 
+   - char key[64] = {}; 
+   - char launcher[MAX_PATH]; 
+   - char line[256]; 
+   - char val[256]; 
+   - char* lastTok = tok; 
+   - char* nl = std::strrchr(line, '\n'); 
+   - char* slash = strrchr(dir, '\\'); 
+   - char* slash = strrchr(jsonPath, '\\'); 
+   - char* tok = std::strtok(before, " \t"); 
+   - comparePacketsToLegacy(s_candidates.data(), stats.emitted, 
+   - const DrawPacketBuildStats bstats = buildStaticPropDrawPackets( 
+   - const DrawPacketEmitStats stats = 
+   - const ExtractedStaticProp* found = nullptr; 
+   - const GLuint atlasTex = gos_terrain_indirect_getAtlasGLTex(); 
+   - const RenderCore::EngineView& view = RenderCore::getCurrentView(); x2
+   - const bool  fromLauncher = mc2::gate::isSet<"MC2_LAUNCHED">(); 
+   - const bool  noLauncher = mc2::gate::isSet<"MC2_NO_LAUNCHER">(); 
+   - const bool automation = 
+   - const bool degraded = (g_loadRaceMechDegradeReal > 0) || 
+   - const bool destr   = mc2::gate::get<"MC2_DESTROY_TRACE">(); 
+   - const bool envH = mc2::gate::isSet<"MC2_HEIGHT">(); 
+   - const bool envW = mc2::gate::isSet<"MC2_WIDTH">(); 
+   - const bool fromLauncher = mc2::gate::isSet<"MC2_LAUNCHED">(); 
+   - const bool glprint = !mc2::gate::get<"MC2_GL_ERROR_DRAIN_SILENT">(); 
+   - const bool gpuObj = g_useGpuObjects; 
+   - const bool inVerifyWindow = 
+   - const bool jsOff = !mc2::gate::get<"MC2_LAUNCHER_ENV_JSON">(); 
+   - const bool matGpuOn = mc2::gate::get<"MC2_MATERIAL_GPU">(); 
+   - const bool matSampleOn = mc2::gate::get<"MC2_MATERIAL_GPU_SAMPLE">(); 
+   - const bool mgOk = (found->materialIdx != 0xFFFFFFFFu) 
+   - const bool objRecon = mc2_object_recon::g_enabled; 
+   - const bool presok = vkpres.init(vkctx, g_sdl_window, (uint32_t)dw, (uint32_t)dh); 
+   - const bool revZ       = mc2::gate::get<"MC2_REVERSE_Z_TRACE">(); 
+   - const bool shrHR      = mc2::gate::get<"MC2_SHADER_HOT_RELOAD">(); 
+   - const bool smoke   = mc2::gate::get<"MC2_SMOKE_MODE">(); 
+   - const bool suSkip  = mc2::gate::get<"MC2_STATIC_UPDATE_SKIP">(); 
+   - const bool suTrace = mc2::gate::get<"MC2_STATIC_UPDATE_TRACE">(); 
+   - const bool tInd    = gos_terrain_indirect::IsEnabled(); 
+   - const bool tIndM   = gos_terrain_indirect::IsMineEnabled();   // PR2c 
+   - const bool tIndO   = gos_terrain_indirect::IsOverlayEnabled();  // PR2b 
+   - const bool tIndOP  = gos_terrain_indirect::IsOverlayParityCheckEnabled();  // PR2b 
+   - const bool tIndP   = gos_terrain_indirect::IsParityCheckEnabled(); 
+   - const bool tSurfTrc   = mc2_terrain_surface_trace::enabled(); 
+   - const bool tgl     = mc2::gate::get<"MC2_TGL_POOL_TRACE">(); 
+   - const bool verify = 
+   - const bool vkok = vkctx.init(/*wantPresent=*/true); 
+   - const bool vpFast  = mc2::gate::get<"MC2_VERTEX_PROJECT_FAST">(); 
+   - const bool vpPar   = mc2::gate::get<"MC2_VERTEX_PROJECT_PARITY">(); 
+   - const bool waterFp = mc2::gate::get<"MC2_RENDER_WATER_FASTPATH">(); 
+   - const bool waterPc = mc2::gate::get<"MC2_RENDER_WATER_PARITY_CHECK">(); 
+   - const char* atlasTexelStatus = "absent"; 
+   - const char* build  = MC2_BUILD_GIT_SHA; 
+   - const char* c = p; 
+   - const char* eq = std::strchr(line, '='); 
+   - const char* fmt = x2
+   - const char* keyEnd = strchr(keyStart, '"'); 
+   - const char* keyStart = p + 1; 
+   - const char* p = jbuf; 
+   - const char* p = probeList.c_str(); 
+   - const char* pathStr = (g_loadRaceLastTerrainPath == 1) ? "gpu-indirect" 
+   - const char* valEnd = strchr(valStart, '"'); 
+   - const char* valStart = c + 1; 
+   - const float ptsN[3][2] = {{0.5f,0.62f},{0.30f,0.72f},{0.70f,0.55f}}; 
+   - const int ssH = Environment.drawableHeight > 0 ? Environment.drawableHeight : Environment.screenHeight; 
+   - const int ssW = Environment.drawableWidth  > 0 ? Environment.drawableWidth  : Environment.screenWidth; 
+   - const int val = std::atoi(eq + 1); 
+   - const int32_t selRecipe = g_dpSelectedRecipeIndex; 
+   - const long pf = s_probeFrames[s_nextProbe]; 
+   - const std::string fr = vkpres.health().fallback_reason; 
+   - const std::string& fr = vkpres.health().fallback_reason; 
+   - const uint32_t kMaxPackets  = totalPackets > 0u ? totalPackets : 4096u; 
+   - const uint32_t mechInst = (uint32_t)batcher_getLastFlushSubmitCount(); 
+   - const uint32_t mgAlbedoTex = mgOk ? mg.albedoTex : 0xFFFFFFFFu; 
+   - const uint32_t pktEnd = found->firstPacket + found->packetCount; 
+   - const uint32_t rowCap = DrawPacketSelectedPropSnapshot::kMaxRows; 
+   - const uint32_t selTypeId = found->typeId; 
+   - const uint32_t spSlots  = batcher_getDrawSlotCount(); 
+   - const uint32_t totalPackets = batcher_getSortedPacketCount(); 
+   - const unsigned long firePin = 
+   - continue; x5
+   - crashbundle_append(_cbbuf); x2
+   - degraded ? "YES" : "no"); x2
+   - dir[0] ? dir : NULL, &si, &pi)) { 
+   - double ms = 1000.0 * (double)(now - s_lastFrameT) / 
+   - else x2
+   - else if (std::strcmp(lastTok, "FullScreen")  == 0) 
+   - else if (std::strcmp(lastTok, "ResolutionY") == 0 && val > 0) foundH = val; 
+   - emitStaticPropDrawPackets(snap, s_candidates.data(), kMaxPackets); 
+   - extern GLuint gos_terrain_indirect_getAtlasGLTex(); 
+   - extern bool     gos_StaticLightMatrixBuilt(); 
+   - extern bool     gos_getShadowsEnabled(); 
+   - extern bool  g_loadRaceTerrainResidentNow; x2
+   - extern bool g_loadRaceTrace; x2
+   - extern float scenarioTime; x2
+   - extern int      gos_getDynShadowMapSize(); 
+   - extern int      gos_getShadowMapSize(); 
+   - extern long  g_loadRaceApprNull; 
+   - extern long  g_loadRaceArmFirstFrame; 
+   - extern long  g_loadRaceAtlasFirstFrame; 
+   - extern long  g_loadRaceLastTerrainPath; 
+   - extern long  g_loadRaceMechDegrade; 
+   - extern long  g_loadRaceMechDegradeReal; x2
+   - extern long  g_loadRaceMechOkPreview; 
+   - extern long  g_loadRaceMechOkReal; 
+   - extern long  g_loadRaceTerrainFirstResidentFrame; x2
+   - extern uint32_t g_mc2FxFireCaptureFrame; 
+   - extern uint32_t gos_getStaticPropShadowProgramId(); 
+   - extern uint32_t gos_getTerrainOverlayProgramId(); 
+   - extern uint32_t gos_getTerrainShadowProgramId(); 
+   - extern uint32_t gos_getTerrainSurfaceProgramId(); 
+   - extern uint32_t gos_getThinTerrainProgramId(); 
+   - extern uint32_t gos_getWaterFastProgramId(); 
+   - extern uint64_t batcher_getLastFlushSubmitCount(); // gos_mech_batcher 
+   - fclose(jf); 
+   - fflush(stderr); x8
+   - fflush(stdout); x5
+   - flags |= TerrainPassFacts::kFlagOverflow; 
+   - flags |= TerrainPassFacts::kFlagTessellationOn; 
+   - for (const auto& sp : snap.staticProps) 
+   - for (const auto& sp : snap.staticProps) { 
+   - for (const char* s = eq + 1; *s && !sawTrue; ++s) 
+   - for (int i = 0; i < 3; ++i) { 
+   - for (uint32_t pi = found->firstPacket; 
+   - foundFS = true; 
+   - fprintf(stderr, 
+   - fprintf(stderr, "%s\n", _cbbuf); 
+   - fprintf(stderr, "[FRAMECAP] cap switched: inMission=%d cap=%d\n", 
+   - fprintf(stderr, "[SCREENSHOT v1] frame=%u wrote %s (%dx%d, backbuffer)\n", 
+   - fprintf(stderr, "[SCREENSHOT v1] frame=%u wrote %s (%dx%d, sceneFBO)\n", 
+   - fprintf(stderr, "[STATIC_PROP_BAKE v1] event=selftest_stub note=full_test_wired_task5\n"); 
+   - fprintf(stderr, fmt, x2
+   - fr.empty() ? "(unspecified)" : fr.c_str()); 
+   - fullscreenVal = (val != 0 || sawTrue); 
+   - g_dpSelProp = sel; 
+   - g_dpSnapshot.distinctTypes      = stats.distinctTypes; 
+   - g_dpSnapshot.emitted            = stats.emitted; 
+   - g_dpSnapshot.expected           = stats.expectedPackets; 
+   - g_dpSnapshot.frame              = snap.frameIndex; 
+   - g_dpSnapshot.invalidRanges      = stats.invalidRanges; 
+   - g_dpSnapshot.materialMismatches = stats.materialMismatches; 
+   - g_dpSnapshot.overflow           = stats.overflow; 
+   - g_dpSnapshot.skippedRanges      = stats.skippedRanges; 
+   - g_dpSnapshot.typeDescCount      = batcher_getStaticPropTypeDescCount(); 
+   - g_loadRaceApprNull, x2
+   - g_loadRaceArmFirstFrame, g_loadRaceTerrainFirstResidentFrame, x2
+   - g_loadRaceMechDegrade, g_loadRaceMechDegradeReal, x2
+   - g_loadRaceMechOkReal, g_loadRaceMechOkPreview, x2
+   - g_loadRaceTerrainFirstResidentFrame, x2
+   - g_loadRaceTerrainResidentNow ? "Y" : "N", x2
+   - g_loadRaceTerrainResidentNow ? "Y" : "N", g_loadRaceMechDegradeReal, x2
+   - g_mc2FrameCounter < firePin + 600); 
+   - g_mc2FrameCounter < s_ppmPinFrame + 600) || 
+   - g_mc2FrameCounter >= firePin && 
+   - g_mc2FrameCounter >= s_ppmPinFrame && 
+   - g_mc2FrameCounter, pf, scenarioTime, x2
+   - g_mc2FrameCounter, s_ssPath, ssW, ssH); x2
+   - g_mc2FrameCounter, scenarioTime, x2
+   - g_pzDoTrace ? 1 : 0, g_pzDoHeatmap ? 1 : 0, g_pzDoSummary ? 1 : 0, g_pzGuardPx); 
+   - g_useGpuObjects = mc2::gate::get<"MC2_GPU_OBJECTS">();   // Lead0Kill, default ON like the compile-time defaul 
+   - g_vkPresentInitDeferred = false; 
+   - g_vkPresentInitDeferred = true; x2
+   - g_vkPresentInitDeferred) { 
+   - g_vkPresentRetryFails = 0; 
+   - glBindFramebuffer(GL_READ_FRAMEBUFFER, 0); x5
+   - glBindFramebuffer(GL_READ_FRAMEBUFFER, lrFbo); 
+   - glBindFramebuffer(GL_READ_FRAMEBUFFER, prevFbo); 
+   - glBindFramebuffer(GL_READ_FRAMEBUFFER, scratch); 
+   - glBindFramebuffer(GL_READ_FRAMEBUFFER, ssFbo); 
+   - glBindFramebuffer(GL_READ_FRAMEBUFFER, vcFbo); 
+   - glBindTexture(GL_TEXTURE_2D, atlasTex); 
+   - glDeleteFramebuffers(1, &scratch); 
+   - glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, 
+   - glGenFramebuffers(1, &scratch); 
+   - glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &prevFbo); 
+   - glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &ah); 
+   - glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH,  &aw); 
+   - glReadBuffer(GL_BACK); x2
+   - glReadBuffer(GL_COLOR_ATTACHMENT0); x4
+   - glReadPixels(ax, ay, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, atlasTexel); 
+   - glReadPixels(sx, sy, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px[i]); 
+   - gos::screenshot::writeTGA(s_ssPath, ssW, ssH); x2
+   - gos::visual_capture::cameraParkTick(g_mc2FrameCounter); 
+   - gos::visual_capture::onPostRenderFrame(g_mc2FrameCounter, vcW, vcH); 
+   - gos::visual_capture::onPostRenderFrame(g_mc2FrameCounter, vkW, vkH); 
+   - gos::visual_capture::vkCapturePending();   // VK-VISUAL-CAPTURE-1 
+   - gosASSERT(false); 
+   - gosPostProcess* ppLr = getGosPostProcess(); 
+   - gosPostProcess* ppShot = getGosPostProcess(); 
+   - gosPostProcess* ppVc = getGosPostProcess(); 
+   - gos_RenderUpdateDebugInput(); 
+   - gos_RendererHandleEvents(); 
+   - gos_WindowOffscreenRequested() || gos_CursorControlSuppressed(); 
+   - gos_dev_shell::capturePendingScreenshot(g_mc2FrameCounter); 
+   - gos_frame_pass_stats::FrameAggregates agg; 
+   - gos_frame_pass_stats::SetFrameAggregates(agg); 
+   - gos_frame_pass_stats::SetPassCounts( x3
+   - gos_getMechShadowInstDrawn() + gos_getStaticPropShadowInstDrawn()); 
+   - gos_getMechShadowInstDrawn() + gos_getStaticPropShadowInstDrawn(), 
+   - gos_render_pass_timer::Pass_Mechs, mechInst, mechInst); 
+   - gos_render_pass_timer::Pass_ShadowDyn, 
+   - gos_render_pass_timer::Pass_SpColor, spSlots, spSlots); 
+   - gpuCullSubstrate ? 1 : 0, gpuCullParity ? 1 : 0, 
+   - gpuObj ? 1 : 0, objRecon ? 1 : 0, 
+   - graphics::get_drawable_size(win, &dw, &dh); 
+   - graphics::get_drawable_size(win, &pdw, &pdh); 
+   - graphics::get_drawable_size(win, &rdw, &rdh); 
+   - graphics::get_drawable_size(win, &vkW, &vkH); 
+   - graphics::swap_window(win); x2
+   - if      (std::strcmp(lastTok, "ResolutionX") == 0 && val > 0) foundW = val; 
+   - if (!envW && !envH) 
+   - if (!eq) 
+   - if (!fromLauncher && !automation) { 
+   - if (!inBlock) 
+   - if (!keyEnd) break; 
+   - if (!lastTok) 
+   - if (!mc2::gate::get<"MC2_DPI_UNAWARE">()) { 
+   - if (!presok || !vkpres.valid()) { 
+   - if (!s_first_frame_logged) { 
+   - if (!s_vsync_active) { 
+   - if (!setCtx || !setCtx((void*)-4)) 
+   - if (!slash) slash = strrchr(dir, '/'); 
+   - if (!slash) slash = strrchr(jsonPath, '/'); 
+   - if (!valEnd) break; 
+   - if (!val[0]) continue;        // "" = unset (launcher semantics) 
+   - if (!vkPresented) { 
+   - if (!vkok || !vkctx.valid()) { 
+   - if (!vkpres.valid() && g_vkPresentInitDeferred && 
+   - if ((s_vkHealthCadence++ % 300) == 0) vkpres.logHealth(); 
+   - if (*c != '"') continue;      // non-string value: skip 
+   - if (CreateProcessA(launcher, NULL, NULL, NULL, FALSE, 0, NULL, 
+   - if (TerrainPatchStream::wasLastFlushOverflowed()) 
+   - if (_putenv_s(key, val) == 0) applied++; 
+   - if (atlasTex != 0) { 
+   - if (batcher_getPacketDrawInfo(pi, &idxCount, &firstIdx, 
+   - if (batcher_getPacketMaterialFlags(pi, &matFlags)) { 
+   - if (beforeEq <= 0 || beforeEq >= 63) 
+   - if (cap > 0) { 
+   - if (const std::string probeList = mc2::gate::str<"MC2_LOAD_RACE_PROBE_FRAMES">(); !probeList.empty()) { 
+   - if (dh <= 0) dh = h; 
+   - if (dw <= 0) dw = w; 
+   - if (elapsed_ms < target_ms) { 
+   - if (envH && mc2::gate::get<"MC2_HEIGHT">() > 0) 
+   - if (envW && mc2::gate::get<"MC2_WIDTH">() > 0) 
+   - if (f) 
+   - if (found) { 
+   - if (foundFS)    Environment.fullScreen   = fullscreenVal ? 1 : 0; 
+   - if (foundH > 0) Environment.screenHeight = foundH; 
+   - if (foundW > 0) Environment.screenWidth  = foundW; 
+   - if (fr.find("not VK-owned") != std::string::npos) { 
+   - if (g_loadRaceTrace) { x2
+   - if (g_pzTrace) { 
+   - if (g_sdl_window) { 
+   - if (gcFail > 0) { 
+   - if (glCheckFramebufferStatus(GL_READ_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE) { 
+   - if (gos::visual_capture::active()) { 
+   - if (gos_frame_pass_stats::Enabled()) { 
+   - if (inBlock && line[0] == '[') 
+   - if (jf) { 
+   - if (klen == 0 || klen >= sizeof(key)) continue; 
+   - if (lrFbo && lrW > 0 && lrH > 0) { 
+   - if (mc2::gate::envText(key)) { shellWins++; continue; }  // shell wins 
+   - if (mc2::gate::get<"MC2_STATIC_PROP_BAKE_SELFTEST">()) { 
+   - if (mc2::gate::isSet<"MC2_LOG">()) { 
+   - if (mc2::renderBackend() == mc2::RenderBackend::Vulkan && 
+   - if (mc2::renderBackend() == mc2::RenderBackend::Vulkan) { x3
+   - if (n > 0 && n < MAX_PATH) { x2
+   - if (nl) *nl = '\0'; x2
+   - if (noLauncher && !fromLauncher && !jsOff) { 
+   - if (now_ms - s_hb_last_ms >= 1000) { 
+   - if (rctx.valid() && 
+   - if (rdw > 0 && rdh > 0) { 
+   - if (s_candidates.size() < static_cast<size_t>(kMaxPackets)) 
+   - if (s_capTrace && s_capTraceLast != inMission) { 
+   - if (s_dpCompareEnabled) { 
+   - if (s_drawPacketWarn 
+   - if (s_drawPackets.size() < static_cast<size_t>(kMaxPackets)) 
+   - if (s_hbTrace) { 
+   - if (s_hb_last_ms == 0) s_hb_last_ms = now_ms; 
+   - if (s_logEnabled) { 
+   - if (s_nextProbe < s_probeFrames.size() && 
+   - if (s_preSwapFinish) { ZoneScopedN("SwapWindow.PreFinish"); glFinish(); } 
+   - if (s_ssBackbuffer) { 
+   - if (s_ssPath && s_ssFrame >= 0 && !s_ssDone 
+   - if (s_v3Enabled) { 
+   - if (s_vFrame >= 0 && !s_vDone && (long)g_mc2FrameCounter >= s_vFrame) { 
+   - if (s_vcPost) { 
+   - if (selRecipe >= 0) { 
+   - if (slash) *(slash + 1) = '\0'; else dir[0] = '\0'; 
+   - if (slash) *(slash + 1) = '\0'; else jsonPath[0] = '\0'; 
+   - if (sp.recipeIndex == selRecipe) { found = &sp; break; } 
+   - if (sp.typeId == selTypeId) ++instCount; 
+   - if (ssFbo && ssW > 0 && ssH > 0) { 
+   - if (ssW > 0 && ssH > 0) { 
+   - if (std::strstr(line, "[MechCommander2]")) 
+   - if (totalPackets == 0 && !s_finalizeWarnedOnce) { 
+   - if (v.empty()) v = {600, 1300, 2600, 4000, 6000}; 
+   - if (vkW > 0 && vkH > 0) 
+   - if (vkpres.presentGLFrame((uint32_t)pdw, (uint32_t)pdh, verify)) { 
+   - if (vkpres.valid()) { 
+   - if (vlen >= sizeof(val)) continue; 
+   - if (windowInvisible) { 
+   - if(gos_RenderGetEnableDebugDrawCalls()) { 
+   - inBlock = true; 
+   - inVerifyWindow && (g_mc2FrameCounter % 60 == 0)) || 
+   - int applied = 0, shellWins = 0; 
+   - int ax = aw > 2 ? aw / 2 : 0; 
+   - int ay = ah > 2 ? ah / 2 : 0; 
+   - int cap = inMission ? s_fps_cap_mission : s_fps_cap_menu; 
+   - int dw = 0, dh = 0; 
+   - int foundW = 0, foundH = 0; 
+   - int gcFail = gpu_cull::gpu_cull_record_selftest(); 
+   - int lrH = ppLr ? ppLr->getHeight() : 0; 
+   - int lrW = ppLr ? ppLr->getWidth()  : 0; 
+   - int pdw = 0, pdh = 0; 
+   - int rdw = 0, rdh = 0; 
+   - int ssH = ppShot ? ppShot->getHeight() : 0; 
+   - int ssW = ppShot ? ppShot->getWidth()  : 0; 
+   - int sx = (int)(ptsN[i][0] * lrW); 
+   - int sy = (int)(ptsN[i][1] * lrH); 
+   - int vcH = ppVc ? ppVc->getHeight() : 0; 
+   - int vcW = ppVc ? ppVc->getWidth()  : 0; 
+   - int vkW = 0, vkH = 0; 
+   - int32_t  baseVtx = 0; 
+   - jbuf[got] = '\0'; 
+   - launcher[sizeof(launcher)-1] = '\0'; 
+   - mc2::forceGLFallback( 
+   - mc2::forceGLFallback("MC2_RENDER_BACKEND=vulkan but build has no MC2_VULKAN support"); 
+   - mc2::forceGLFallback(fr.c_str()); 
+   - mc2::forceGLFallback(vkctx.health().fallbackReason.empty() 
+   - mc2::gate::get<"MC2_DEBUG_STATE_DUMP">() || 
+   - mc2::gate::invalidateAll();   // the loop above putenv'd: re-read before asking about MC2_LOG 
+   - mc2::gate::isSet<"MC2_LOAD_RACE_VERDICT_FRAME">() ? mc2::gate::get<"MC2_LOAD_RACE_VERDICT_FRAME">() 
+   - mc2::gate::isSet<"MC2_LOG">() || 
+   - mc2::gate::isSet<"MC2_NO_LAUNCHER">()  || mc2::gate::isSet<"MC2_SMOKE_SEED">() || 
+   - mc2::gate::isSet<"MC2_SMOKE_MODE">()   || mc2::gate::isSet<"MC2_HEARTBEAT">()  || 
+   - mc2_hitch::HitchScope _hitchCap(mc2_hitch::HitchSpanKind::PhaseCap); 
+   - mc2_hitch::HitchScope _hitchLogic(mc2_hitch::HitchSpanKind::PhaseGameLogic); 
+   - mc2_hitch::HitchScope _hitchPresent(mc2_hitch::HitchSpanKind::PhasePresent); 
+   - mc2_object_recon::initFromEnv(); 
+   - mc2vk::EnginePresentVk& vkpres = mc2vk::getOrCreateEnginePresentVk(); x2
+   - mc2vk::VulkanContext& rctx = mc2vk::getOrCreateEngineVulkanContext(); 
+   - mc2vk::VulkanContext& vkctx = mc2vk::getOrCreateEngineVulkanContext(); 
+   - memcpy(key, keyStart, klen); key[klen] = '\0'; 
+   - memcpy(val, valStart, vlen); val[vlen] = '\0'; 
+   - nl = std::strrchr(line, '\r'); 
+   - p = keyEnd + 1; 
+   - p = valEnd + 1; 
+   - pathStr, (unsigned)atlasTex, g_loadRaceAtlasFirstFrame, x2
+   - pi < pktEnd && sel.rowCount < rowCap; ++pi) { 
+   - printf("[RESOLUTION] Pre-window: %dx%d (from MC2_WIDTH/MC2_HEIGHT env)\n", 
+   - printf("[RESOLUTION] Pre-window: %dx%d (options.cfg not found, using defaults)\n", 
+   - printf("[RESOLUTION] Pre-window: %dx%d fullscreen=%d (from options.cfg)\n", 
+   - printf("[VK_PRESENT] deferred init recovered: %dx%d — " 
+   - printf("[VK_PRESENT] init deferred: %s -- will retry from the " 
+   - printf("[VK_PRESENT] present failure treated as " 
+   - printf(fmt, x2
+   - process_events(); 
+   - puts(_cbbuf); 
+   - puts(_pzbuf); 
+   - px[0][0],px[0][1],px[0][2], px[1][0],px[1][1],px[1][2], px[2][0],px[2][1],px[2][2], x2
+   - render_contract::renderPassScopeFrameBoundary();   // ENFORCEMENT-1 missing-end flush 
+   - render_contract::renderPassTelemetryFrameTick();  // [RENDER_PASS v1] frame boundary 
+   - return 0;  // launcher will relaunch us with MC2_LAUNCHED=1 
+   - return v; 
+   - revZ ? 1 : 0, 
+   - row.albedoTex             = mgAlbedoTex; 
+   - row.baseVertex = baseVtx; 
+   - row.firstIndex = firstIdx; 
+   - row.globalPacketIdx = pi; 
+   - row.indexCount = idxCount; 
+   - row.materialFlags = matFlags; 
+   - row.materialMatchesLegacy = mgOk 
+   - row.pipelineId    = (matFlags & STATIC_PROP_FLAG_ALPHA_TEST) 
+   - row.texArrayLayer         = found->texArrayLayer; 
+   - s_candidates.data(), stats.emitted, 
+   - s_candidates.resize(kMaxPackets); 
+   - s_capTraceLast = inMission; 
+   - s_drawPackets.data(), static_cast<uint32_t>(s_drawPackets.size())); 
+   - s_drawPackets.resize(kMaxPackets); 
+   - s_dumpOnFire ? (unsigned long)g_mc2FxFireCaptureFrame : 0ul; 
+   - s_finalizeWarnedOnce = true; 
+   - s_first_frame_logged = true; 
+   - s_hb_frame = 0; 
+   - s_hb_frame++; 
+   - s_hb_frame, (unsigned long long)(now_ms - s_hb_last_ms), 
+   - s_hb_last_ms = now_ms; 
+   - s_lastFrameT = now; 
+   - s_ssDone = true; x2
+   - s_vDone = true; 
+   - sawTrue = (s[0] == 't' || s[0] == 'T') && 
+   - sel.alphaClass    = found->alphaClass; 
+   - sel.firstPacket   = found->firstPacket; 
+   - sel.instanceCount = instCount; 
+   - sel.materialIdx   = found->materialIdx; 
+   - sel.packetCount   = found->packetCount; 
+   - sel.recipeIndex   = selRecipe; 
+   - sel.shapeName[sizeof(sel.shapeName) - 1] = '\0'; 
+   - sel.typeId        = selTypeId; 
+   - sel.valid         = true; 
+   - shrHR ? 1 : 0, 
+   - size_t got = fread(jbuf, 1, sizeof(jbuf) - 1, jf); 
+   - size_t klen = (size_t)(keyEnd - keyStart); 
+   - size_t vlen = (size_t)(valEnd - valStart); 
+   - snap.spBuildRetired); 
+   - snap.terrainPass.drawCallCount   = TerrainPatchStream::getLastFlushBucketCount(); 
+   - snap.terrainPass.flags = flags; 
+   - snap.terrainPass.legacyProgramId = gos_getTerrainSurfaceProgramId(); 
+   - snap.terrainPass.viewId          = view.id; 
+   - snprintf(_cbbuf, sizeof(_cbbuf), x2
+   - snprintf(_pzbuf, sizeof(_pzbuf), 
+   - sp.dynShadowMapSize            = gos_getDynShadowMapSize(); 
+   - sp.mechShadowInstDrawn         = gos_getMechShadowInstDrawn(); 
+   - sp.mechShadowProgramId         = gos_getMechShadowProgramId(); 
+   - sp.mechShadowTypesDrawn        = gos_getMechShadowTypesDrawn(); 
+   - sp.shadowMapSize               = gos_getShadowMapSize(); 
+   - sp.shadowsEnabled              = gos_getShadowsEnabled(); 
+   - sp.staticLightMatrixBuilt      = gos_StaticLightMatrixBuilt(); 
+   - sp.staticPropShadowInstDrawn   = gos_getStaticPropShadowInstDrawn(); 
+   - sp.staticPropShadowProgramId   = gos_getStaticPropShadowProgramId(); 
+   - sp.staticPropShadowTypesDrawn  = gos_getStaticPropShadowTypesDrawn(); 
+   - sp.terrainShadowProgramId      = gos_getTerrainShadowProgramId(); 
+   - sp.viewUniformsBoundForShadow  = false; 
+   - startup_phase("first_frame_presented"); 
+   - static bool s_capTraceLast = !inMission; 
+   - static bool s_finalizeWarnedOnce = false; 
+   - static bool s_first_frame_logged = false; 
+   - static bool s_ssDone = false; 
+   - static bool s_vDone = false; 
+   - static char jbuf[65536]; 
+   - static const bool s_capTrace = mc2::gate::get<"MC2_FRAMECAP_TRACE">(); 
+   - static const bool s_dpCompareEnabled = mc2::gate::get<"MC2_DRAW_PACKET_COMPARE">(); 
+   - static const bool s_drawPacketWarn = mc2::gate::get<"MC2_DRAW_PACKET_WARN">(); 
+   - static const bool s_dumpOnFire = mc2::gate::get<"MC2_VK_PRESENT_DUMP_ON_FIRE">(); 
+   - static const bool s_hbTrace = mc2::gate::get<"MC2_HEARTBEAT">(); 
+   - static const bool s_logEnabled = mc2::gate::get<"MC2_RENDER_SNAPSHOT_LOG">(); 
+   - static const bool s_preSwapFinish = mc2::gate::get<"MC2_PRESWAP_FINISH">(); 
+   - static const bool s_ssBackbuffer = mc2::gate::is<"MC2_SCREENSHOT_SOURCE", "backbuffer">(); 
+   - static const bool s_v3Enabled = mc2::gate::get<"MC2_DRAW_PACKET_V3">(); 
+   - static const bool s_vcPost = mc2::gate::get<"MC2_VISUAL_CAPTURE_POST">(); 
+   - static const char* s_ssPath  = s_ssPathText.empty() ? nullptr : s_ssPathText.c_str(); 
+   - static const long s_ssFrame = static_cast<long>(mc2::gate::get<"MC2_SCREENSHOT_AT_FRAME">()); 
+   - static const long s_vFrame = static_cast<long>( 
+   - static const std::string s_ssPathText = mc2::gate::str<"MC2_SCREENSHOT_PATH">();   // "" when unset or empty 
+   - static const std::vector<long> s_probeFrames = []{ 
+   - static const unsigned long s_ppmPinFrame = static_cast<unsigned long>(mc2::gate::get<"MC2_VK_PRESENT_DUMP_FRAM 
+   - static int s_hb_frame = 0; 
+   - static size_t s_nextProbe = 0; 
+   - static std::vector<RenderCore::DrawPacket> s_drawPackets; 
+   - static std::vector<StaticPropDrawPacketCandidate> s_candidates; 
+   - static uint64_t s_hb_last_ms = 0; 
+   - static uint64_t s_lastFrameT = SDL_GetPerformanceCounter(); 
+   - static unsigned long s_vkHealthCadence = 0; 
+   - static_assert(sizeof(sel.shapeName) == sizeof(found->shapeName), 
+   - static_cast<uint32_t>(snap.frameIndex)); 
+   - static_cast<uint32_t>(snap.frameIndex), 
+   - static_cast<uint32_t>(snap.staticProps.size()), 
+   - static_cast<unsigned long long>(snap.frameIndex), 
+   - stats.distinctTypes, 
+   - stats.emitted, 
+   - stats.expectedPackets, x2
+   - stats.invalidRanges, x2
+   - stats.materialMismatches); 
+   - stats.materialMismatches, 
+   - stats.oldExpected, x2
+   - stats.overflow ? 1 : 0, x2
+   - stats.skippedRanges, x2
+   - std::fclose(f); 
+   - std::fprintf(stderr, x4
+   - std::memcpy(sel.shapeName, found->shapeName, sizeof(sel.shapeName)); 
+   - std::ptrdiff_t beforeEq = eq - line; 
+   - std::snprintf(buf, sizeof(buf), 
+   - std::strncpy(before, line, (size_t)beforeEq); 
+   - std::vector<long> v; 
+   - strncat(jsonPath, "launcher_env.json", MAX_PATH - strlen(jsonPath) - 1); 
+   - strncpy(dir, exePath, MAX_PATH); dir[MAX_PATH-1] = '\0'; 
+   - strncpy(jsonPath, exePath, MAX_PATH); jsonPath[MAX_PATH-1] = '\0'; 
+   - suTrace ? 1 : 0, suSkip ? 1 : 0, 
+   - tInd ? 1 : 0, tIndP ? 1 : 0, tIndM ? 1 : 0, 
+   - tIndO ? 1 : 0, tIndOP ? 1 : 0, 
+   - tSurfTrc ? 1 : 0, 
+   - tgl ? 1 : 0, destr ? 1 : 0, glprint ? 1 : 0, smoke ? 1 : 0, 
+   - timing::sleep((unsigned int)((target_ms - elapsed_ms) * 1000000u)); 
+   - timing::sleep(10 * 1000000); 
+   - totalPackets); 
+   - ts.bucketCount  = snap.terrainPass.drawCallCount; 
+   - ts.currentViewId   = snap.terrainPass.viewId; 
+   - ts.currentViewName = view.debugName ? view.debugName : ""; 
+   - ts.overflow     = (snap.terrainPass.flags & TerrainPassFacts::kFlagOverflow) != 0u; 
+   - ts.overlayProgramId   = gos_getTerrainOverlayProgramId(); 
+   - ts.recipeCount  = TerrainPatchStream::getLastFlushRecipeCount(); 
+   - ts.surfaceProgramId   = snap.terrainPass.legacyProgramId; 
+   - ts.tessellationOn  = 
+   - ts.thinProgramId      = gos_getThinTerrainProgramId(); 
+   - ts.thinRecCount = TerrainPatchStream::getLastFlushThinRecCount(); 
+   - ts.vertCount    = TerrainPatchStream::getLastFlushVertCount(); 
+   - ts.viewUniformsBoundForTerrain = 
+   - ts.waterFastProgramId = gos_getWaterFastProgramId(); 
+   - typedef BOOL (WINAPI *SetDpiCtxFn)(void*); 
+   - uint32_t flags = 0u; 
+   - uint32_t idxCount = 0u, firstIdx = 0u, owningType = 0u; 
+   - uint32_t instCount = 0u; 
+   - uint32_t matFlags = 0u; 
+   - uint64_t elapsed_ms = timing::ticks2ms(now - start_tick); 
+   - uint64_t now = SDL_GetPerformanceCounter(); 
+   - uint64_t now = timing::gettickcount(); 
+   - uint64_t now_ms = (uint64_t)(SDL_GetTicks64()); 
+   - uint64_t target_ms = 1000u / (uint64_t)cap; 
+   - unsigned char atlasTexel[4] = {0,0,0,0}; 
+   - unsigned char px[3][4] = {{0,0,0,0},{0,0,0,0},{0,0,0,0}}; 
+   - vkPresented = true; 
+   - vkctx.logHealth(); 
+   - vkpres.destroy(); 
+   - vkpres.init(rctx, g_sdl_window, (uint32_t)rdw, (uint32_t)rdh) && 
+   - vkpres.logHealth(); x3
+   - vkpres.valid()) { 
+   - vs.cameraSetThisFrame         = (gos_vfx_getCameraSetThisFrame() != 0); 
+   - vs.debugMode                  = gos_vfx_getDebugMode(); 
+   - vs.emitTotal                  = mc2_vfx_getEmitTotal(); 
+   - vs.flushTotal                 = mc2_vfx_getFlushTotal(); 
+   - vs.gpuParticlesEnabled        = (mc2_vfx_isEnabled() != 0); 
+   - vs.gpuParticlesLogEnabled     = (mc2_vfx_isLogEnabled() != 0); 
+   - vs.initFailed                 = (gos_vfx_getInitFailed() != 0); 
+   - vs.nonemptyFlushTotal         = mc2_vfx_getNonemptyFlushTotal(); 
+   - vs.overflowReported           = (mc2_vfx_getOverflowReported() != 0); 
+   - vs.particleProgramId          = (uint32_t)gos_vfx_getParticleProgramId(); 
+   - vs.perFrameBudget             = (uint32_t)mc2_vfx_getBudget(); 
+   - vs.recordsFlushedTotal        = mc2_vfx_getRecordsFlushedTotal(); 
+   - vs.recordsPerFlushMax         = (uint32_t)mc2_vfx_getRecordsPerFlushMax(); 
+   - vs.ssboCapacityRecords        = (uint32_t)gos_vfx_getSsboCapacity(); 
+   - vs.trailHeadTotal             = mc2_vfx_getTrailHeadTotal(); 
+   - vs.trailSpawnTotal            = mc2_vfx_getTrailSpawnTotal(); 
+   - vs.viewUniformsBoundForVfx    = false; 
+   - waterFp ? 1 : 0, waterPc ? 1 : 0, vpFast ? 1 : 0, vpPar ? 1 : 0, 
+   - while ((p = strstr(p, "\"MC2_")) != NULL) { 
+   - while (*c == ' ' || *c == '\t' || *c == ':') c++; 
+   - while (*p) { v.push_back(atol(p)); const char* c = strchr(p, ','); if (!c) break; p = c + 1; } 
+   - while (std::fgets(line, sizeof(line), f)) 
+   - while (tok) { lastTok = tok; tok = std::strtok(nullptr, " \t"); } 
+   - windowInvisible = (flags & (SDL_WINDOW_MINIMIZED | SDL_WINDOW_HIDDEN)) != 0; 
+   - { x31
+   - || stats.invalidRanges > 0 
+   - || stats.materialMismatches > 0)) { 
+   - } x93
+   - } else if (++g_vkPresentRetryFails >= 120) { 
+   - } else if (vcFbo && vcW > 0 && vcH > 0) { 
+   - } else if (vkpres.health().fallback_reason.find( 
+   - } else { x8
+   - }(); 
+PASS: inline expansion of the new function equals the original body
