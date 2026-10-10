@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""strip_if0.py [--apply] MIN FILE... -- remove '#if 0' blocks longer than MIN lines (nesting aware).
-An '#if 0 ... #else ... #endif' keeps the #else branch. Blocks with '#elif' are reported, not touched. Byte-preserving."""
+"""What: removes '#if 0' blocks longer than MIN lines (nesting aware); '#if 0 ... #else' keeps the #else branch; blocks with #elif are reported only.
+Why: dead '#if 0' code is deleted before a split so it is not carried into the new files; byte-preserving.
+Usage: py -3 tools/split/strip_if0.py [--apply] MIN FILE...   (dry run by default)"""
 import sys, re
 apply = "--apply" in sys.argv
 args = [a for a in sys.argv[1:] if a != "--apply"]

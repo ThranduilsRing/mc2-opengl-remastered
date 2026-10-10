@@ -34,7 +34,6 @@
   "GuiRuntime/EditorInspector.cpp": 1659,
   "GuiRuntime/GraphicsOptionsWindow.cpp": 2249,
   "RenderCore/RendererFeatureRegistry.h": 4052,
-  "code/ablmc2.cpp": 8497,
   "code/artlry.cpp": 1843,
   "code/bldng.cpp": 1707,
   "code/brain_special_dispatch.cpp": 3307,
@@ -53,7 +52,6 @@
   "code/mission.cpp": 5938,
   "code/missionbegin.cpp": 2136,
   "code/missiongui.cpp": 9979,
-  "code/mover.cpp": 7817,
   "code/mover.h": 1911,
   "code/mpparameterscreen.cpp": 2415,
   "code/multplyr.h": 1849,
@@ -113,7 +111,7 @@
   "mclib/vfxtile.cpp": 2944,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "43d26d7c0",
+ "head": "507aa9978",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -152,9 +150,9 @@
    "max_lines": 1168
   },
   "code": {
-   "files": 278,
-   "files_over_1500": 34,
-   "files_over_3000": 13,
+   "files": 295,
+   "files_over_1500": 32,
+   "files_over_3000": 11,
    "max_lines": 9979
   },
   "editor": {
@@ -208,16 +206,8 @@
    "lines": 9578
   },
   {
-   "file": "code/ablmc2.cpp",
-   "lines": 8497
-  },
-  {
    "file": "mclib/bdactor.cpp",
    "lines": 8282
-  },
-  {
-   "file": "code/mover.cpp",
-   "lines": 7817
   },
   {
    "file": "GameOS/gameos/gos_postprocess.cpp",
@@ -306,12 +296,20 @@
   {
    "file": "code/logisticsdata.cpp",
    "lines": 3442
+  },
+  {
+   "file": "GameOS/gameos/gos_mech_batcher.cpp",
+   "lines": 3414
+  },
+  {
+   "file": "code/brain_special_dispatch.cpp",
+   "lines": 3307
   }
  ],
  "total": {
-  "files": 1583,
-  "files_over_1500": 99,
-  "files_over_3000": 35,
+  "files": 1600,
+  "files_over_1500": 97,
+  "files_over_3000": 33,
   "max_lines": 11658
  },
  "version": 1

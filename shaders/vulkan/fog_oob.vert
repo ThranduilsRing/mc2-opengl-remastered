@@ -1,6 +1,6 @@
 // VULKAN-OOB-FOG-ISLAND-1 -- fullscreen-triangle vertex shader for the Vulkan
-// OOB-fog island. Byte-for-byte identical to shaders/vulkan/edge_fog.vert: emits a single oversized triangle covering the viewport with
-// no vertex buffer. The interpolated TexCoord is the [0,1] screen UV the GL
+// OOB-fog island. Byte-for-byte identical to shaders/vulkan/edge_fog.vert: emits a single
+// oversized triangle covering the viewport with no vertex buffer. The interpolated TexCoord is the [0,1] screen UV the GL
 // fog_oob.frag calls "TexCoord" (same as the GL postprocess.vert output), so the
 // ported fragment math sees bit-for-bit the same input as the GL path.
 #version 450
