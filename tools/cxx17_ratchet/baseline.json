@@ -181,8 +181,8 @@
    "LG16": 7,
    "LG17": 47,
    "LG18": 4,
-   "LG19": 117,
-   "LG20": 124
+   "LG19": 115,
+   "LG20": 122
   },
   "mclib": {
    "LG01": 2850,
@@ -1702,9 +1702,7 @@
   },
   "code/ablmc2_repro.cpp": {
    "LG09": 4,
-   "LG12a": 15,
-   "LG19": 2,
-   "LG20": 2
+   "LG12a": 15
   },
   "code/ablmc2_roster.cpp": {
    "LG01": 1,
@@ -5904,7 +5902,7 @@
    "LG20": 1
   }
  },
- "head": "91e156059",
+ "head": "f2afe3ad3",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
