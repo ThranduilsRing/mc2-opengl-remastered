@@ -52,7 +52,7 @@
    "LG03": 301,
    "LG04": 6,
    "LG05": 119,
-   "LG06": 518,
+   "LG06": 516,
    "LG07": 0,
    "LG08": 274,
    "LG09": 2163,
@@ -66,8 +66,8 @@
    "LG16": 7,
    "LG17": 81,
    "LG18": 11,
-   "LG19": 93,
-   "LG20": 127
+   "LG19": 88,
+   "LG20": 122
   },
   "GuiRuntime": {
    "LG01": 1,
@@ -707,9 +707,7 @@
    "LG09": 1
   },
   "GameOS/gameos/gos_rdoc_capture.cpp": {
-   "LG06": 4,
-   "LG19": 5,
-   "LG20": 5
+   "LG06": 2
   },
   "GameOS/gameos/gos_render.cpp": {
    "LG01": 15,
@@ -5851,7 +5849,7 @@
    "LG20": 1
   }
  },
- "head": "69de8d2a5",
+ "head": "273b6170a",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

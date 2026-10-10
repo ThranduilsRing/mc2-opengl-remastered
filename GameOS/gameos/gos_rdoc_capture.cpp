@@ -9,6 +9,8 @@
 #include <cstdio>
 #include <cstdlib>
 #include <string>
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"   // str<>()
 
 #if defined(_WIN32)
 #  ifndef WIN32_LEAN_AND_MEAN
@@ -40,12 +42,6 @@ struct State {
     std::string           capturePath;                 // expanded, validated
 };
 State s_state;
-
-int envInt(const char* name, int dflt) {
-    const char* v = std::getenv(name);
-    if (!v || !v[0]) return dflt;
-    return std::atoi(v);
-}
 
 // DISK-GUARD-3 (2026-07-29): MC2_RDC_CAPTURE_PATH used to be handed to
 // SetCaptureFilePathTemplate VERBATIM. That is how a 1,010,693,435-byte
@@ -83,8 +79,7 @@ std::string expandCaptureTemplate(const char* raw) {
 
     std::string mission = SmokeMode::state().mission;
     if (mission.empty()) {
-        const char* m = std::getenv("MC2_RDC_MISSION");
-        if (m && m[0]) mission = m;
+        mission = mc2::gate::str<"MC2_RDC_MISSION">();   // "" when unset or empty
     }
     if (!mission.empty()) replaceAll("{mission}", mission);
 
@@ -113,13 +108,12 @@ std::string expandCaptureTemplate(const char* raw) {
 void readEnvOnce() {
     if (s_state.readEnv) return;
     s_state.readEnv = true;
-    const char* f = std::getenv("MC2_RDC_CAPTURE_FRAME");
-    if (!f || !f[0]) { s_state.enabled = false; return; }
-    int n = std::atoi(f);
+    if (!mc2::gate::isNonEmpty<"MC2_RDC_CAPTURE_FRAME">()) { s_state.enabled = false; return; }
+    int n = mc2::gate::get<"MC2_RDC_CAPTURE_FRAME">();
     if (n < 0) { s_state.enabled = false; return; }
     s_state.enabled      = true;
     s_state.captureFrame = n;
-    s_state.exitAfter    = (std::getenv("MC2_RDC_EXIT_AFTER") != nullptr);
+    s_state.exitAfter    = mc2::gate::get<"MC2_RDC_EXIT_AFTER">();
 
     // Expand and VALIDATE the path template here, at arm time -- deliberately
     // NOT down in resolveApiOnce(). resolveApiOnce() early-returns whenever
@@ -128,8 +122,9 @@ void readEnvOnce() {
     // a gigabyte. Checking at arm time means the bad template is rejected
     // before a single frame is rendered, and it is reachable (and therefore
     // testable) without RenderDoc attached at all.
-    if (const char* tpl = std::getenv("MC2_RDC_CAPTURE_PATH")) {
-        if (tpl[0]) s_state.capturePath = expandCaptureTemplate(tpl);
+    {
+        const std::string tpl = mc2::gate::str<"MC2_RDC_CAPTURE_PATH">();   // "" when unset or empty
+        if (!tpl.empty()) s_state.capturePath = expandCaptureTemplate(tpl.c_str());
     }
 }
 
@@ -255,7 +250,7 @@ void onFrameTick() {
             std::exit(0);
         }
     } else if (s_state.phase == Phase::Armed &&
-               sinceArm > s_state.captureFrame + envInt("MC2_RDC_MAX_WAIT", 600)) {
+               sinceArm > s_state.captureFrame + mc2::gate::get<"MC2_RDC_MAX_WAIT">()) {
         std::fprintf(stderr,
             "[RDOC v1] event=capture_timeout local_frame=%d\n",
             s_state.localFrame);
