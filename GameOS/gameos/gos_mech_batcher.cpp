@@ -564,7 +564,7 @@ bool     s_lastFailWasLateReg      = false;
 // Map keyed by Mech3DAppearanceType* (the desc.mechType field on submitActor).
 // Value is the number of SpotLight_-prefixed TypeNodes seen during ANY LOD's
 // recipe build (max across LODs, since each instance only renders at one LOD).
-const bool s_spotlightRealTrace = mc2::gate::get<"MC2_SPOTLIGHT_REAL_TRACE">();
+const bool s_mechSpotlightRealTrace = mc2::gate::get<"MC2_SPOTLIGHT_REAL_TRACE">();
 std::unordered_map<const Mech3DAppearanceType*, uint32_t>
     s_spotlightRealTypeNodeCount;
 uint64_t s_spotlightReal_typeNodeEvents = 0;  // monotonic (a)
@@ -1386,7 +1386,7 @@ void GpuMechBatcher::registerTypeLod(const Mech3DAppearanceType* mechType, int l
                     (const void*)mechType, lod, nodeIdx, nodeName);
                 std::fflush(stderr);
             }
-            if (s_spotlightRealTrace) {
+            if (s_mechSpotlightRealTrace) {
                 MC2_DIAGFE(stderr,
                     "[SPOTLIGHT_REAL_TRACE v1] event=type_spotlight_node "
                     "type=%p lod=%d nodeIdx=%d name=%s type_node_count=%u\n",
@@ -1919,7 +1919,7 @@ void GpuMechBatcher::flush() {
     ++s_spotlightReal_drawFrameCount;
     const bool spotlightRealPeriodic =
         (s_spotlightReal_drawFrameCount % 600 == 0 && s_spotlightReal_drawFrameCount > 0);
-    if (s_spotlightRealTrace && spotlightRealPeriodic) {
+    if (s_mechSpotlightRealTrace && spotlightRealPeriodic) {
         MC2_DIAGFE(stderr,
             "[SPOTLIGHT_REAL_TRACE v1] event=summary site=mech_submit "
             "frames=%llu window_mech_spotlight_draws=%llu mono_mech_spotlight_draws=%llu "
