@@ -7,9 +7,6 @@
 Stuff::Vector3D GroundVehicle::getPositionFromHS (long nodeId) 
 {
 
-	// NEED TO IMPLEMENT PROPER HOTSPOTS FOR VEHICLES...
-	// How about now?
-	// -fs
 
 	Stuff::Vector3D hsPos = position;
 	if (appearance)
@@ -56,7 +53,6 @@ float GroundVehicle::getStatusRating (void) {
 }
 
 #define VEHICLEPILOT_ID		638
-//----------------------------------------------------------------------------------
 void GroundVehicle::createVehiclePilot (void)
 {
 	//We are ALREADY a vehicle pilot, stop breeding.
@@ -240,10 +236,6 @@ void GroundVehicle::updateDynamics (void) {
 
 	rotate(yawRate);
 
-	//------------------------------------------------------------------------
-	// The gesture is how we control speed.  So, at this point, check
-	// the vehicleControlData->gestureGoal and see if we need to change goals.
-	// See if throttle settings work.
 	float throttle = control.settings.groundVehicle.throttle;
 	throttle /= 100.0;
 

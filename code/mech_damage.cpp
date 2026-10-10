@@ -13,8 +13,6 @@ bool BattleMech::hitInventoryItem (long itemIndex, bool setupOnly) {
 	long masterID = inventory[itemIndex].masterID;
 	long bodyLocation = inventory[itemIndex].bodyLocation;
 
-	// First, apply any effects caused whenever this component is hit (regardless
-	// of whether it's been disabled or destroyed with this hit)...
 	switch (MasterComponent::masterList[masterID].getForm()) {
 		case COMPONENT_FORM_SIMPLE:
 			break;
@@ -169,13 +167,11 @@ void BattleMech::destroyBodyLocation (long bodyLocation) {
 		return;
 
 
-	// Effectively wipe out all critical spaces in the destroyed location...
 	body[bodyLocation].curInternalStructure = 0;
 	body[bodyLocation].damageState = IS_DAMAGE_DESTROYED;
 	armor[bodyLocation].curArmor = 0;
 	if ((bodyLocation == MECH_BODY_LOCATION_LLEG) || (bodyLocation == MECH_BODY_LOCATION_RLEG)) {
 		calcLegStatus();
-		// Force a fall...
 		pilotingCheck(PILOTCHECK_SITUATION_NONE, 100.0); //pilotCheckModifier += 1000;
 		}
 	else if (bodyLocation == MECH_BODY_LOCATION_CTORSO)
@@ -189,7 +185,6 @@ void BattleMech::destroyBodyLocation (long bodyLocation) {
 			}
 	}
 
-	// If the location is a side torso, destroy the attached arm, as well...
 	if (bodyLocation == MECH_BODY_LOCATION_CTORSO) {
 		// Mech essentially destroyed. Does it explode or simply shutdown?
 		// For now, it's always exploding...
@@ -218,7 +213,6 @@ void BattleMech::calcCriticalHit (long hitLocation) {
 	if (MPlayer && !MPlayer->isServer())
 		return;
 
-	// Cannot critically hit nothing.!!
 	if (body[hitLocation].totalSpaces == 0)
 		return;
 
@@ -260,7 +254,6 @@ void BattleMech::calcCriticalHit (long hitLocation) {
 					critHitRoll -= numSpaces;
 			}
 
-			//If we are out of range, no critical hit!
 			if (bodyLocation < 0 || bodyLocation > 7)
 				return;
 
@@ -394,7 +387,6 @@ long BattleMech::handleStatusChunk (long updateAge, unsigned long chunk) {
 		}
 
 		if (!ejectOrderGiven && statusChunk.ejectOrderGiven) {
-			// Just given eject order...
 			ejectOrderGiven = true;
 			handleEjection();
 		}
@@ -522,8 +514,6 @@ long BattleMech::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayC
 	if (mc2_diag::tagEnabled("COMBAT")) {
 		GameObjectPtr _cbAtk = ObjectManager->getByWatchID(shotInfo->attackerWID);
 		char _cbf[192];
-		// ISSUE-9 S3: "loc" = resolved hit location (mech body index; 0 = head)
-		// so called-shot location distribution is measurable headlessly.
 		snprintf(_cbf, sizeof(_cbf),
 			"{\"ev\":\"hit\",\"a_wid\":%u,\"a_team\":%ld,\"t_wid\":%lu,\"t_team\":%ld,\"dmg\":%.1f,\"loc\":%d}",
 			(unsigned)shotInfo->attackerWID, _cbAtk ? _cbAtk->getTeamId() : -1L,
@@ -538,11 +528,9 @@ long BattleMech::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayC
 	if (!MPlayer && CantTouchThis && pilot->onHomeTeam())
 		return(NO_ERR);
 
-	// FOR DEBUGGING...
 	GameObjectPtr attacker = ObjectManager->getByWatchID(shotInfo->attackerWID);
 	BadGuy = attacker;
 
-	// Is this possible? Just in case...
 	if ((shotInfo->damage <= 0) || (shotInfo->hitLocation == -1))
 		return(NO_ERR);
 
@@ -584,7 +572,6 @@ long BattleMech::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayC
 		}
 		else
 		{
-			//Its a helicopter.  Blow it up.  No salvage
 			setStatus(OBJECT_STATUS_DESTROYED);
 			exploding = false;
 			
@@ -592,7 +579,6 @@ long BattleMech::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayC
 				destroyBodyLocation(i);
 	
 	#ifdef USE_MOODMUSIC
-			// What heroic music should be played?
 			if (collidee->getAlignment() == Team::home->getAlignment())
 				friendlyDestroyed = true;
 			else
@@ -621,7 +607,6 @@ long BattleMech::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayC
 		isAmmoExplosion = (MasterComponent::masterList[shotInfo->masterId].getForm() == COMPONENT_FORM_AMMO);
 
 
-	// Tally the damage for rate check and pilot check...
 	damageRateTally += shotInfo->damage;
 	pilotCheckDamageTally += shotInfo->damage;
 
@@ -738,7 +723,6 @@ long BattleMech::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayC
 				{
 					if (isAmmoExplosion && body[bodyLocation].CASE) 
 					{
-						// Have CASE here, so vent the excess damage...
 						long armorLocation = MECH_ARMOR_LOCATION_RCTORSO;
 						switch (bodyLocation) 
 						{
@@ -801,7 +785,6 @@ long BattleMech::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayC
 		{
 			if (isAmmoExplosion && body[bodyLocation].CASE) 
 			{
-				// Have CASE here, so vent the excess damage...
 				long armorLocation = MECH_ARMOR_LOCATION_RCTORSO;
 				switch (bodyLocation) 
 				{
@@ -860,10 +843,8 @@ long BattleMech::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayC
 		switch (hitType)
 		{
 			case HIT_TYPE_WEAK:
-				// Torso twists are caused by the impact...
 				break;
 			case HIT_TYPE_MODERATE:
-				// A piloting roll should be made to check for possible fall...
 				break;
 		}
 	}

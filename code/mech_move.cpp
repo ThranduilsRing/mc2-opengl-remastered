@@ -274,8 +274,6 @@ long BattleMech::getSpeedState (void) {
 
 void BattleMech::updateMoveStateGoal (void) {
 
-	// Have we reached the destination? Make sure we're looking at the
-	// right step in the path...
 	MovePathPtr path = pilot->getMovePath();
 
 	Stuff::Vector3D targetPosition;
@@ -370,7 +368,6 @@ bool BattleMech::updateMovePath (float& newRotate, char& newThrottleSetting, lon
 	updateHustleTime();
 	bool hustle = (lastHustleTime + 2.0) > scenarioTime;
 
-	// Am I ahead of my point vehicle, if I have one?
 	bool aheadOfPointVehicle = false;
 	bool stopForPointVehicle = false;
 	MoverPtr pointVehicle = (MoverPtr)pilot->getPoint();
@@ -384,12 +381,10 @@ bool BattleMech::updateMovePath (float& newRotate, char& newThrottleSetting, lon
 		if (aheadOfPointVehicle) {
 			allowedToRun = false;
 			if (getSpeedState() == SPEED_STATE_MOVING_FAST) {
-				// Running. So, slow to a walk for a few seconds...
 				if (!pilot->isWaitingForPoint())
 					pilot->setMoveWaitForPointTime(scenarioTime + 5.0);
 				}
 			else {
-				// Already walking, so let's just stop until point catches up...
 				if (pilot->getMoveWaitForPointTime() < scenarioTime) {
 					stopForPointVehicle = true;
 					pilot->pausePath(); //path->numSteps = 0;
@@ -408,8 +403,6 @@ bool BattleMech::updateMovePath (float& newRotate, char& newThrottleSetting, lon
 		pilot->setMoveWaitForPointTime(-1.0);
 	}
 
-	// May want to call separate updateMovement() routines based upon the legStatus
-	// to begin with. For now, we'll handle all cases here...
 	bool goalReached = false;
 	
 	if ((legStatus == LEG_STATUS_NORMAL) || (legStatus == LEG_STATUS_HURTING) || (legStatus == LEG_STATUS_IMPAIRED_LEFT) || (legStatus == LEG_STATUS_IMPAIRED_RIGHT)) {
@@ -439,9 +432,6 @@ bool BattleMech::updateMovePath (float& newRotate, char& newThrottleSetting, lon
 
 				if (cushion < distanceThisFrame)
 				{
-					//We are going to move farther then the current cushion would allow for.
-					// Make the cushion larger.
-					// Maybe we should make cushion this value all of the time?
 					cushion = distanceThisFrame;
 				}
 
@@ -610,13 +600,11 @@ bool BattleMech::updateMovePath (float& newRotate, char& newThrottleSetting, lon
 		}
 		else 
 		{
-			// We better not be walking or running, then!
 			newGestureStateGoal = MECH_STATE_STANDING;
 		}
 	}
 	else 
 	{
-		// Cannot move, period!
 		newGestureStateGoal = MECH_STATE_STANDING;
 	}
 
@@ -626,9 +614,6 @@ bool BattleMech::updateMovePath (float& newRotate, char& newThrottleSetting, lon
 		{
 			if (pilot->getMovePathGlobalStep() < (pilot->getMoveNumGlobalSteps() - 1)) 
 			{
-				// We've reached the end of our current short-range path, but
-				// we have more to go before we've reached our long-range
-				// goal, so calc our next short-range path...
 				goalReached = false;
 			}
 		}
@@ -640,9 +625,6 @@ bool BattleMech::updateMovePath (float& newRotate, char& newThrottleSetting, lon
 
 void BattleMech::setNextMovePath (char& newThrottleSetting, long& newGestureStateGoal) {
 
-	// If this is only an intermediate path,
-	// let's check where we need to go next...
-	//pilot->clearMovePath(ORDER_CURRENT);
 
 	Stuff::Vector3D nextWayPoint;
 	bool haveWayPoint = pilot->getNextWayPoint(nextWayPoint, true);
@@ -802,10 +784,7 @@ void BattleMech::updateMovement (void) {
 		else if (hitFromFrontThisFrame)
 			fallGesture = MECH_STATE_FALLEN_BACKWARD;
 		appearance->setGestureGoal(fallGesture);
-		// If we just switched to running, we need to make sure the
-		// throttle is set to max...
 		disableThisFrame = false;
-		// In case we shut down this frame, as well, clear it...
 		shutDownThisFrame = false;
 		startUpThisFrame = false;
 		hitFromFrontThisFrame = false;

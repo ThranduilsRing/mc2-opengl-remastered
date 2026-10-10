@@ -713,9 +713,6 @@ int MissionInterfaceManager::handleOrders( TacticalOrder& order)
 {
 	Team* pTeam = Team::home;
 
-	//--------------------------------------------------------
-	// First, find out how many are jumping and calc a list of
-	// jump locations...
 	bool isMoveOrder = false;
 	Stuff::Vector3D moveGoals[MAX_MOVERS];
 	long numMovers = 0;

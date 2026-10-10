@@ -81,7 +81,7 @@ def run_oracle(oracle, exe, root, duration, quiet):
         env["MC2_MOD_DEPS"] = oracle["deps"]
 
     cmd = [sys.executable, os.path.join(root, "scripts", "run_smoke.py"),
-           "--exe", exe, "--no-lease", "--mission", mission,
+           "--exe", exe, "--mission", mission,
            "--duration", str(duration), "--keep-logs"]
     proc = subprocess.run(cmd, env=env, capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
     smoke_ok = (proc.returncode == 0)

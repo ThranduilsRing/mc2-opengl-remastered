@@ -10,9 +10,6 @@ void Mission::createPartObject (long partIndex, MoverPtr mover) {
 	//-----------------------------------
 	// All parts are movers in this game!
 	
-	//------------------------------------------------------------------
-	// Create the object -- If object is Not DESTROYED Already OR
-	// it doesn't exist yet.  (parts[i].object = NULL
 	//
 	// This could NEVER have worked.  Destroyeds still need to be created.  Otherwise,
 	// why is there code inside this IF which checks if destroyed?  I blame Glenn's Crazy Bracing Style!
@@ -92,9 +89,6 @@ void Mission::createPartObject (long partIndex, MoverPtr mover) {
 			case BATTLEMECH: {
 				((BattleMechPtr)mover)->captureable = parts[partIndex].captureable;
 
-				//-----------------------------------------
-				// Make sure the pilot paints his Mech!
-				// Use editor colors UNLESS this is on Commander::home
 				AppearancePtr myActor = mover->getAppearance();
 
 				if (MPlayer)
@@ -199,8 +193,6 @@ long Mission::addMover (MoverInitData* moverSpec) {
 	delete pilotFile;
 	pilotFile = NULL;
 
-	//Copy logistics data to pilot AFTER loading old data.
-	// ONLY if we overrode the data in logistics!!
 	if (moverSpec->overrideLoadedPilot)
 	{
 		pilot->skills[MWS_GUNNERY] = pilot->skillRank[MWS_GUNNERY] = moverSpec->gunnerySkill;
@@ -209,10 +201,6 @@ long Mission::addMover (MoverInitData* moverSpec) {
 		pilot->calcRank();
 	}
 
-	//*********************
-	// NOTE: Need to send packet to other players in MP with new pilot and
-	// mover data!
-	//*********************
 
 	long numErrors, numLinesProcessed;
 	FullPathFileName brainFullFileName;
@@ -323,8 +311,6 @@ typedef struct _MoverInitData {
 			switch (mover->getObjectClass()) {
 				case BATTLEMECH: {
 					((BattleMechPtr)mover)->captureable = moverSpec->capturable;
-					//-----------------------------------------
-					// Make sure the pilot paints his Mech!!			
 					AppearancePtr myActor = mover->getAppearance();
 					myActor->resetPaintScheme(moverSpec->highlightColor1,
 											moverSpec->highlightColor2,
@@ -356,10 +342,6 @@ typedef struct _MoverInitData {
 			else
 				MC2_DESTROY(mover, "mission_load_inactive");
 
-			//---------------------------------------------------------------------------------
-			// If we're not playing multiplayer, make sure all home commander movers have their
-			// localMoverId set to 0, so the iface can at least check if a mover is player
-			// controlled...
 			if (!MPlayer && (Commander::home->getId() == moverSpec->commanderID))
 				mover->setLocalMoverId(0);
 
@@ -630,8 +612,6 @@ bool Mission::calcComplexDropZones (char* missionName, char dropZoneCID[MAX_MC_P
 
 bool IsGateDisabled (int objectWID) {
 
-	//--------------------------------------------------------------
-	// Actually looks at the object and its parent, if it has one...
 	if (objectWID < 1)
 		return(false);
 	GameObjectPtr obj = ObjectManager->getByWatchID(objectWID);
@@ -648,8 +628,6 @@ bool IsGateDisabled (int objectWID) {
 
 bool IsGateOpen (int objectWID) {
 
-	//--------------------------------------------------------------
-	// Actually looks at the object and its parent, if it has one...
 	if (!objectWID)
 		return(false);
 	GameObjectPtr obj = ObjectManager->getByWatchID(objectWID);

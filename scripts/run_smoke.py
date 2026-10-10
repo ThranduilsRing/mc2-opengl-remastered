@@ -40,6 +40,7 @@ def _smoke_passthrough_names() -> frozenset:
 _SMOKE_PASSTHROUGH = _smoke_passthrough_names()
 
 from scripts.smoke_lib import baselines, manifest, nofocus, report
+from scripts.smoke_lib import exe_guard as _exe_guard
 from scripts.smoke_lib.gates import Verdict as _Verdict
 from scripts.smoke_lib.logparse import LogSummary as _LogSummary
 from scripts.smoke_lib.runner import RunConfig, run_one
@@ -604,10 +605,16 @@ def main():
                          "(0.4 / 0.4c / 0.4d-rc1 / 0.5.0 / 0.5-testing); "
                          "error if that folder is busy and not stale")
     ap.add_argument("--no-lease", action="store_true",
-                    help="skip the deploy-folder lease system entirely "
-                         "(no coordination; legacy single-session behavior)")
+                    help="OWNER ONLY (requires MC2_OWNER_NO_LEASE=1): skip the "
+                         "deploy-folder lease system entirely. Agents never use "
+                         "this; a stale lease is cleared with "
+                         "`py -3 -m scripts.smoke_lib.deploy_lease --clear-dead`")
     # Tier 1.2 (docs/testing-strategy.md): opt-in safety net that promotes
     # GL_DEBUG_SEVERITY_HIGH from a silent log to abort(). Off by default.
+    ap.add_argument("--resolve-only", action="store_true",
+                    help="resolve and vet the install (lease, exe guard), print the "
+                         "[SMOKE] exe=... src_commit=... line, then exit without "
+                         "launching anything")
     ap.add_argument("--gl-debug-fatal", action="store_true",
                     help="set MC2_GL_DEBUG_FATAL=1 (abort on GL_DEBUG_SEVERITY_HIGH)")
     # Deploy-coherence preflight (reuses deploy_payload.py --verify-only; does
@@ -700,6 +707,21 @@ def main():
     #   (nothing given)     : auto-select first available preferred folder
     _lease_folder: str | None = None  # the folder we hold a lease on (None = no-lease)
 
+    if args.no_lease and os.environ.get("MC2_OWNER_NO_LEASE") != "1":
+        print("[runner] ERROR: --no-lease is owner-only and MC2_OWNER_NO_LEASE=1 is not set. "
+              "Skipping the lease lets two smokes run on the host at once, which is what "
+              "stole the owner's desktop and mouse on 2026-10-10. If a lease is stuck "
+              "behind a dead run, clear it with "
+              "`py -3 -m scripts.smoke_lib.deploy_lease --clear-dead` (only dead-owner "
+              "leases are removed); if it is live, wait for that smoke to finish.",
+              file=sys.stderr)
+        sys.exit(6)
+    if args.tier == "tier1" and not (args.exe or args.deploy):
+        print("[runner] ERROR: --tier tier1 needs an explicit install: pass --deploy <name> "
+              "(normally --deploy 0.4) or --exe <path>/mc2.exe. The runner never picks an "
+              "install for a milestone tier on its own.", file=sys.stderr)
+        sys.exit(2)
+
     try:
         from scripts.smoke_lib import deploy_lease as _deploy_lease
         _lease_available = True
@@ -778,6 +800,19 @@ def main():
         print("[runner] ERROR: internal: args.exe is None after lease/exe resolution. "
               "This is a bug — pass --exe explicitly to work around.", file=sys.stderr)
         sys.exit(6)
+
+    # ----- Exe guard: never launch an exe that cannot stay off the desktop ----
+    # The first runner line names the exe and the commit it was built from, so
+    # a log always shows which install a verdict is about. --verify-only
+    # launches nothing and may inspect any install.
+    if not args.verify_only:
+        _exe_verdict = _exe_guard.check_exe(args.exe, purpose="smoke")
+        print(_exe_verdict.banner(), file=sys.stderr, flush=True)
+        if not _exe_verdict.ok:
+            print(_exe_verdict.refusal(), file=sys.stderr, flush=True)
+            sys.exit(7)
+        if args.resolve_only:
+            sys.exit(0)
 
     # ----- Deploy-coherence verify (preflight) ---------------------------
     # The target dir run_smoke would launch from = parent of --exe. We call

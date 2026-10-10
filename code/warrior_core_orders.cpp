@@ -232,7 +232,6 @@ long MechWarrior::coreMoveToObject (GameObjectPtr object, unsigned long params) 
 	if (!object)
 		return(1);
 
-	// Pick the best move goal based upon the object...
 	Stuff::Vector3D goal;
 	if (object->isMover())
 		goal = object->getPosition();
@@ -313,9 +312,7 @@ long MechWarrior::coreEject (void) {
 	if (curTacOrder.equals(&tacOrder))
 		return(0);
 
-	// Order has no move goal...
 	clearMoveOrders();
-	// Order has no attack target...
 	clearAttackOrders();
 
 	myVehicle->handleEjection();
@@ -336,12 +333,8 @@ long MechWarrior::corePower (bool powerUp) {
 	if (powerUp) {
 		if (myVehicle->getStatus() == OBJECT_STATUS_NORMAL)
 			return(1);
-		//if (myVehicle->getStatus() == OBJECT_STATUS_STARTING_UP)
-		//	return(0);
 	}
 	else {
-		//if (myVehicle->getStatus() == OBJECT_STATUS_SHUTTING_DOWN)
-		//	return(0);
 		if (myVehicle->getStatus() == OBJECT_STATUS_SHUTDOWN)
 			return(1);
 	}
@@ -359,7 +352,6 @@ long MechWarrior::corePower (bool powerUp) {
 	clearMoveOrders();
 	clearAttackOrders();
 
-	// Check if we've cooled enough to restart...
 	if (myVehicle) {
 		if (powerUp) {
 			if (myVehicle->canPowerUp())
@@ -489,9 +481,7 @@ long MechWarrior::coreAttack (GameObjectPtr target, unsigned long params) {
 
 	setSituationFireRange(getVehicle()->getOrderedFireRange(&attackRange));
 
-	// If we also want to pursue it, set up the move order here...
 	if (pursue) {
-		// Order moveToObject, making sure we face the object...
 		params |= TACORDER_PARAM_FACE_OBJECT;
 		}
 	else
@@ -503,7 +493,6 @@ long MechWarrior::coreAttack (GameObjectPtr target, unsigned long params) {
 	setAttackPursuit(pursue);
 	setSituationOpenFire(true);
 
-	// Remember the most recent target...
 	setLastTarget(target, obliterate);
 
 	setGeneralTacOrder(tacOrder);
@@ -566,8 +555,6 @@ long MechWarrior::coreCapture (GameObjectPtr object, unsigned long params) {
 long MechWarrior::coreScan (GameObjectPtr object, unsigned long params) {
 
 	if (object && object->getTeam()) {
-		// If this object is currently a contact, set myTarget to it and
-		// return true. Otherwise, return false.
 		if (object->isMover()) {
 			if (getTeam()->isContact(getVehicle(), (MoverPtr)object, (long)params)) {
 				coreScanTargetWID = object->getWatchID();
@@ -582,7 +569,6 @@ long MechWarrior::coreScan (GameObjectPtr object, unsigned long params) {
 		}
 		}
 	else {
-		// Scan for anything matching the criteria...
 		Stuff::Vector3D myPosition = getVehicle()->getPosition();
 		int32_t action = -1;
 		coreScanTargetWID = targetPriorityList.calcTarget(this, myPosition, params, action);

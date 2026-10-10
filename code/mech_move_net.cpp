@@ -380,7 +380,6 @@ bool BattleMech::crashAvoidanceSystem (void) {
 	Stuff::Vector3D newPosition;
 	newPosition.Add(position, relVelocity);
 
-	// Is this new position in a pathlocked area? If so, put on the brakes!
 	int cellR, cellC;
 	land->worldToCell(newPosition, cellR, cellC);
 	bool reachedEnd;
@@ -412,12 +411,7 @@ bool BattleMech::crashAvoidanceSystem (void) {
 	else {
 
 		if (pathLocked || pathBlocked || clippingCorner || stepIntoGate) {
-			// What exactly is wrong here? Is our goal currently occupied? If so,
-			// and it's our final goal, then stop!
 			if (reachedEnd || blockReachedEnd) {
-				// Since we're practically there, let's just kill the current move orders
-				// and let the pilot's movementDecision update decide whether a new
-				// one should be set...
 				/*
 				pilot->setMoveWayPath(ORDER_CURRENT, NULL, 0);
 				for (long i = 0; i < 2; i++)

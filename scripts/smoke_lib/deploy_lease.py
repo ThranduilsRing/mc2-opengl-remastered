@@ -57,9 +57,12 @@ _WRITE_RETRY_SLEEP = 0.05  # seconds
 
 # Canonical deploy folders in preference order.
 # (name -> absolute path string)
-# 2026-10-05 reset: one dev lane + the golden walk automatically; another builder lane (lane2) is leased only
-# by name (--deploy lane2), never picked by the walk. Older lanes are archived to E:/mc2-archive-2026-10/installs.
-_WALK_LANES = ("0.4", "0.4c")
+# 2026-10-05 reset: one dev lane walks automatically; another builder lane (lane2) is leased only by name
+# (--deploy lane2), never picked by the walk. Older lanes are archived to E:/mc2-archive-2026-10/installs.
+# The golden install (0.4c) is NOT walked: it is a visual-golden reference whose exe predates the
+# background-launch hardening, and an LRU walk that fell onto it put a fullscreen window on the owner's desktop
+# (2026-10-10). A busy dev lane is an error, never a reason to pick a different install.
+_WALK_LANES = ("0.4",)
 DEPLOY_FOLDERS: list[tuple[str, str]] = list(lane_model.install_paths())
 
 _NAME_TO_PATH: dict[str, str] = dict(DEPLOY_FOLDERS)
@@ -406,8 +409,67 @@ def auto_acquire(
 
     holders = "; ".join(busy_entries) if busy_entries else "all folders missing mc2.exe"
     raise NoFolderAvailable(
-        f"[LEASE] ERROR: all deploy folders busy or unavailable. Holders: {holders}"
+        f"[LEASE] ERROR: all deploy folders busy or unavailable. Holders: {holders}. "
+        f"Another smoke is running: wait for it. A lease left by a killed run is "
+        f"cleared with `py -3 -m scripts.smoke_lib.deploy_lease --clear-dead` "
+        f"(removes only leases whose owner pid is dead); never bypass with --no-lease."
     )
+
+
+def _pid_alive(pid: int) -> bool:
+    """True if a process with this pid exists on this host."""
+    if pid <= 0:
+        return False
+    if os.name == "nt":
+        import ctypes
+        PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+        STILL_ACTIVE = 259
+        k32 = ctypes.windll.kernel32
+        h = k32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, int(pid))
+        if not h:
+            return False
+        try:
+            code = ctypes.c_ulong(0)
+            if not k32.GetExitCodeProcess(h, ctypes.byref(code)):
+                return True
+            return code.value == STILL_ACTIVE
+        finally:
+            k32.CloseHandle(h)
+    try:
+        os.kill(int(pid), 0)
+    except ProcessLookupError:
+        return False
+    except OSError:
+        return True
+    return True
+
+
+def clear_dead_leases(pid_alive=_pid_alive, hostname: Optional[str] = None) -> list:
+    """Remove leases whose owning process is gone. Returns the removed folder keys.
+
+    This is the sanctioned recovery for a lease left behind by a killed run:
+    only an entry written by THIS host whose pid is no longer alive is removed.
+    A live owner's lease, and any lease from another host, is left alone -- a
+    busy lease means another smoke is running and the right move is to wait.
+    """
+    host = hostname if hostname is not None else socket.gethostname()
+    removed = []
+    with _registry_lock():
+        reg = _read_registry()
+        for key, entry in list(reg.items()):
+            try:
+                pid = int(entry.get("pid") or 0)
+            except (TypeError, ValueError):
+                pid = 0
+            if entry.get("hostname") != host:
+                continue
+            if pid_alive(pid):
+                continue
+            del reg[key]
+            removed.append(key)
+        if removed:
+            _write_registry(reg)
+    return removed
 
 
 def _short_name(folder: str) -> str:
@@ -425,3 +487,13 @@ def _log(msg: str) -> None:
     """Print a lease log line to stderr (same channel as runner messages)."""
     import sys
     print(f"[runner] {msg}", file=sys.stderr)
+
+
+if __name__ == "__main__":
+    import sys
+    if "--clear-dead" in sys.argv[1:]:
+        gone = clear_dead_leases()
+        print(f"[lease] cleared {len(gone)} dead-owner lease(s)" + (": " + ", ".join(gone) if gone else ""))
+        sys.exit(0)
+    print("usage: py -3 -m scripts.smoke_lib.deploy_lease --clear-dead", file=sys.stderr)
+    sys.exit(2)

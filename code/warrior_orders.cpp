@@ -325,7 +325,6 @@ long MechWarrior::orderPowerUp (bool unitOrder, long origin) {
 	clearMoveOrders();
 	clearAttackOrders();
 
-	// Check if we've cooled enough to restart...
 	if (myVehicle)
 		if (myVehicle->canPowerUp())
 			myVehicle->startUp();
@@ -467,7 +466,6 @@ long MechWarrior::orderAttackObject (bool unitOrder, long origin, GameObjectPtr 
 
 	setSituationFireRange(getVehicle()->getOrderedFireRange(&range));
 
-	// If we also want to pursue it, set up the move order here...
 	if (pursue) {
 		setMoveRun(run);
 		params |= TACORDER_PARAM_FACE_OBJECT;

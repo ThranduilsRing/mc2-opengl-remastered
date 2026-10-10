@@ -41,7 +41,8 @@
   "code/mechicon.cpp": 1967,
   "code/mechlabscreen.cpp": 1952,
   "code/mechlopedia.cpp": 1663,
-  "code/mission_init.cpp": 2196,
+  "code/mission_init.cpp": 2183,
+
   "code/missionbegin.cpp": 2132,
   "code/mover.h": 1911,
   "code/mpparameterscreen.cpp": 2415,
@@ -89,6 +90,7 @@
   "shaders/terrain_lod_chunk.frag": 2412
  },
  "head": "b9cc28a1f",
+
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -264,7 +266,8 @@
   },
   {
    "file": "code/mission_init.cpp",
-   "lines": 2196
+   "lines": 2183
+
   },
   {
    "file": "code/warrior.h",

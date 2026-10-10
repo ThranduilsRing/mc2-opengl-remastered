@@ -53,7 +53,6 @@ void MechWarrior::rethinkPath (unsigned long strategy) {
 	bool haveWayPoint = getNextWayPoint(nextWayPoint, false);
 
 	if (moveOrders.pathType == MOVEPATH_SIMPLE) {
-		// Since we're close to the end, just stop here...
 		if (!haveWayPoint) {
 			clearMoveOrders();
 			if (curTacOrder.isMoveOrder() || curTacOrder.isWayPathOrder())
@@ -62,7 +61,6 @@ void MechWarrior::rethinkPath (unsigned long strategy) {
 			}
 		else {
 			moveOrders.path[0]->numSteps = 0;
-			// If you got here, you care about pathlocking...
 			unsigned long params = MOVEPARAM_RECALC | MOVEPARAM_AVOID_PATHLOCKS | MOVEPARAM_FACE_TARGET;
 			if (curTacOrder.moveParams.jump)
 				params |= MOVEPARAM_JUMP;
@@ -79,18 +77,7 @@ void MechWarrior::rethinkPath (unsigned long strategy) {
 			}
 			}
 		else {
-/*			if (moveOrders[ORDER_CURRENT].yieldState == 5) {
-				// We've tried enough. Just kill it...
-				clearMoveOrders(ORDER_CURRENT);
-				if (curTacOrder.isMoveOrder() || curTacOrder.isWayPathOrder())
-					clearCurTacOrder();
-				triggerAlarm(PILOT_ALARM_NO_MOVEPATH, MOVEPATH_ERR_EARLY_STOP);
-				}
-			else {
-				moveOrders[ORDER_CURRENT].yieldState++;
-*/
 				moveOrders.path[0]->numSteps = 0;
-				// If you got here, you care about pathlocking...
 				unsigned long params = MOVEPARAM_RECALC | MOVEPARAM_AVOID_PATHLOCKS | MOVEPARAM_FACE_TARGET;
 				if (curTacOrder.moveParams.jump)
 					params |= MOVEPARAM_JUMP;
@@ -134,20 +121,6 @@ MovePathPtr MechWarrior::getMovePath (void) {
 		moveOrders.path[0] = moveOrders.path[1];
 		moveOrders.path[1] = temp;
 		if (moveOrders.path[0]->numStepsWhenNotPaused > 0) {
-/*			if (moveOrders.path[0]->numStepsWhenNotPaused > 1) {
-				MoverPtr myVehicle = getVehicle();
-				long lookAhead = moveOrders.path[0]->numStepsWhenNotPaused - 1;
-				if (lookAhead > 3)
-					lookAhead = 3;
-				for (long i = lookAhead; i > 0; i--) {
-					float distanceFromPt = myVehicle->distanceFrom(moveOrders.path[0]->stepList[i].destination);
-					if (distanceFromPt <= MapCellDiagonal)
-						break;
-				}
-				moveOrders.path[0]->curStep = i;
-			}
-*/			//-------------------------------------------------------------
-			// We have a new move path, so set move orders appropriately...
 			Stuff::Vector3D goal;
 			GameObjectPtr goalObject;
 			unsigned long goalType = getMoveGoal(&goal, &goalObject);
@@ -165,8 +138,6 @@ MovePathPtr MechWarrior::getMovePath (void) {
 				if (target)
 					moveOrders.path[0]->target = target->getPosition();
 				else {
-					// If the object no longer exists, we'll stay put...
-					//clearMovePath(ORDER_CURRENT, 0);
 					moveOrders.path[0]->numStepsWhenNotPaused = 0;
 					return(moveOrders.path[0]);
 				}
@@ -306,7 +277,6 @@ long MechWarrior::calcMovePath (long selectionIndex, unsigned long moveParams) {
 		else
 			target = ObjectManager->get(goalType);
 		if (!target) {
-			// If the object no longer exists, we'll stay put...
 			LastMoveCalcErr = MOVEPATH_ERR_GOALOBJ_DEAD;
 			triggerAlarm(PILOT_ALARM_NO_MOVEPATH, LastMoveCalcErr);
 			return(LastMoveCalcErr);
@@ -357,7 +327,6 @@ long MechWarrior::calcMovePath (long selectionIndex, unsigned long moveParams) {
 	}
 
 	__int64 startTime = 0;
-	// Before we do anything else, check if we already have a global path...
 	if (moveOrders.pathType == MOVEPATH_UNDEFINED/*numGlobalSteps == 0*/) {
 		// Must be a new move order, so let's first calc the actual
 		// move goal...
@@ -399,7 +368,6 @@ long MechWarrior::calcMovePath (long selectionIndex, unsigned long moveParams) {
 			RamObjectWID = 0;
 
 			if (numSteps > 0) {
-				// Found escape path from this BAD tile...
 				moveOrders.path[pathNum]->numSteps = numSteps;
 				moveOrders.path[pathNum]->numStepsWhenNotPaused = numSteps;
 				moveOrders.globalGoalLocation = moveOrders.path[pathNum]->stepList[numSteps - 1].destination;
@@ -485,7 +453,6 @@ long MechWarrior::calcMovePath (long selectionIndex, unsigned long moveParams) {
 				// We're supposed to stop early on this path...
 				numSteps -= (selectionIndex / GroupMoveTrailLen[1] * GroupMoveTrailLen[0]);
 				if (numSteps <= 0) {
-					// Found a path, but it's not far enough to even move!
 					clearMoveOrders();
 					LastMoveCalcErr = MOVEPATH_ERR_ALREADY_THERE;
 					triggerAlarm(PILOT_ALARM_NO_MOVEPATH, LastMoveCalcErr);
@@ -604,8 +571,6 @@ long MechWarrior::calcMovePath (long selectionIndex, unsigned long moveParams) {
 		long numGlobalSteps = moveOrders.numGlobalSteps;
 
 		if (curGlobalStep == numGlobalSteps) {
-			// We've finished the global path.
-			//triggerAlarm(PILOT_ALARM_NO_MOVEPATH, LastMoveCalcErr);
 			return(LastMoveCalcErr = NO_ERR);
 		}
 
@@ -691,7 +656,6 @@ long MechWarrior::calcMovePath (long selectionIndex, unsigned long moveParams) {
 					// We're supposed to stop early on this path...
 					numSteps -= (selectionIndex / GroupMoveTrailLen[1] * GroupMoveTrailLen[0]);
 					if (numSteps <= 0) {
-						// Found a path, but it's not far enough to even move!
 						clearMoveOrders();
 						LastMoveCalcErr = MOVEPATH_ERR_ALREADY_THERE;
 						triggerAlarm(PILOT_ALARM_NO_MOVEPATH, LastMoveCalcErr);
@@ -759,7 +723,6 @@ bool MechWarrior::getNextWayPoint (Stuff::Vector3D& nextPoint, bool incWayPoint)
 	// if curWayDir == 1, then loop through it forward. Once end is hit, loop back...
 	// if curWayDir == -1, then loop through it backward. Once start is hit, loop forward...
 	if (moveOrders.curWayDir == 0) {
-		// This is not a patrol path, so stop at the end...
 		long nextWayPt = moveOrders.curWayPt + 1;
 		if (nextWayPt < moveOrders.numWayPts)
 			nextPoint = moveOrders.wayPath[nextWayPt];
@@ -781,7 +744,6 @@ bool MechWarrior::getNextWayPoint (Stuff::Vector3D& nextPoint, bool incWayPoint)
 		long nextWayDir = moveOrders.curWayDir;
 		if (moveOrders.curWayDir == 1) {
 			if (moveOrders.curWayPt == (moveOrders.numWayPts - 1)) {
-				// Reached end, so turn around and start backtracking...
 				nextWayDir = -1;
 				nextWayPt = moveOrders.numWayPts - 2;
 				}
@@ -831,12 +793,10 @@ bool MechWarrior::movingOverBlownBridge (void) {
 			if (GlobalMoveMap->isClosedArea(bridgeArea))
 				return(true);
 		}
-		// If SR path will cross a blown bridge, return true...
 		long bridgeArea = getMovePath()->crossesBridge(-1, 3);
 		if (bridgeArea > -1)
 			if (GlobalMoveMap->isClosedArea(bridgeArea))
 				return(true);
-		// If LR path will cross a blown bridge, return true...
 		if (moveOrders.pathType == MOVEPATH_COMPLEX) {
 			long curGlobalStep = moveOrders.curGlobalStep;
 			long numGlobalSteps = moveOrders.numGlobalSteps;
@@ -859,7 +819,6 @@ bool MechWarrior::movementDecisionTree (void) {
 
 	if (moveOrders.timeOfLastStep > -1.0) {
 		if (moveOrders.timeOfLastStep < (scenarioTime - MoveTimeOut)) {
-			// Abort move order, 'cause we are unable to take a step!
 			clearMoveOrders();
 			if (curTacOrder.isMoveOrder() || curTacOrder.isWayPathOrder()) {
 				if (curTacOrder.time < (scenarioTime - MoveTimeOut)) {
@@ -906,8 +865,6 @@ bool MechWarrior::movementDecisionTree (void) {
 	}
 
 	if (getMovePathType() == MOVEPATH_COMPLEX) {
-		// Currently following a complex (LR) path--make sure we queue up the
-		// next path segment if we haven't already...
 		if (getMoveCurGlobalStep() < (getMoveNumGlobalSteps() - 1)) {
 			if (moveOrders.path[1]->numStepsWhenNotPaused == 0) {
 				// Currently, we don't have any paths queued up...
@@ -951,10 +908,7 @@ bool MechWarrior::movementDecisionTree (void) {
 	unsigned long goalType = getMoveGoal(NULL, &goalObject);
 
 	if (goalType == MOVEGOAL_NONE) {
-		// Are we currently pursuing an attack target?
-		// Is this what we really want?
 		if (curTacOrder.code == TACTICAL_ORDER_WITHDRAW) {
-			// We are on the run, so let's choose a new escape goal...
 			Stuff::Vector3D escapeGoal = calcWithdrawGoal();
 			setMoveGoal(MOVEGOAL_LOCATION, &escapeGoal);
 			unsigned long params = MOVEPARAM_INIT | MOVEPARAM_FACE_TARGET;
@@ -968,7 +922,6 @@ bool MechWarrior::movementDecisionTree (void) {
 			}
 		else if ((curTacOrder.code == TACTICAL_ORDER_MOVETO_OBJECT) || (curTacOrder.code == TACTICAL_ORDER_CAPTURE)) {
 			GameObjectPtr moveTarget = curTacOrder.getTarget();
-			// Pick the best move goal based upon the object...
 			Stuff::Vector3D targetPos = moveTarget->getPosition();
 			if (moveTarget->isMover())
 				targetPos = moveTarget->getPosition();
@@ -1038,7 +991,6 @@ bool MechWarrior::movementDecisionTree (void) {
 				float attackRangeDelta = distanceToTarget - desiredAttackRange;
 				float recalcDelta = Terrain::worldUnitsPerVertex * metersPerWorldUnit;
 				if ((curTacOrder.attackParams.tactic != TACTIC_STOP_AND_FIRE) && (curTacOrder.attackParams.tactic != TACTIC_TURRET) && ((attackRangeDelta > recalcDelta) || (attackRangeDelta < -recalcDelta))) {
-					// Try to maintain attack range...
 					recalcPath = true;
 					moveParams = MOVEPARAM_SOMEWHERE_ELSE;
 					}
@@ -1162,8 +1114,6 @@ bool MechWarrior::movementDecisionTree (void) {
 		}
 		}
 	else {
-		// Check if our target is still around. If not, clear our
-		// current move goal...
 		if (goalObject) {
 			// We may want to call a modified orderMoveToObject routine (but,
 			// we don't want to play with the tacOrders)...
@@ -1211,7 +1161,6 @@ bool MechWarrior::movementDecisionTree (void) {
 					float attackRangeDelta = distanceToTarget - desiredAttackRange;
 					float recalcDelta = Terrain::worldUnitsPerVertex * metersPerWorldUnit;
 					if ((curTacOrder.attackParams.tactic != TACTIC_STOP_AND_FIRE) && (curTacOrder.attackParams.tactic != TACTIC_TURRET) && ((attackRangeDelta > recalcDelta) || (attackRangeDelta < -recalcDelta))) {
-						// Try to maintain attack range...
 						recalcPath = true;
 						moveParams = MOVEPARAM_SOMEWHERE_ELSE;
 						}

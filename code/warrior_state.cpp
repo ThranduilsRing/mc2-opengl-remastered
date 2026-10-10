@@ -48,7 +48,6 @@ long MechWarrior::calcTacOrder (long goalAction,
 
 	bool canCapture = ((getVehicle()->getObjectClass() != GROUNDVEHICLE) && (getVehicle()->moveType != MOVETYPE_AIR));
 
-	// If we have no goal, we may want to at least assess turret threat...
 	bool alreadyAssessedTurrets = false;
 	if (goalWID == 0) {
 		if (turretRange > 0.0) {
@@ -82,7 +81,6 @@ long MechWarrior::calcTacOrder (long goalAction,
 		}
 	}
 
-	// Preserve our original goal, as it may change short-term...
 	long currentAction = goalAction;
 	long currentWID = goalWID;
 	Stuff::Vector3D currentLocation = goalLocation;
@@ -162,7 +160,6 @@ long MechWarrior::calcTacOrder (long goalAction,
 			for (long i = 0; i < numSteps; i++)
 				lastGoalPath[i] = globalPath[i].thruArea;
 		}
-		// What's the next subgoal to overcome before we can move on?
 		for (long i = 0; i < numSteps; i++) {
 			GlobalMapAreaPtr area = &GlobalMoveMap[getVehicle()->moveLevel]->areas[globalPath[i].thruArea];
 			if (area->type == AREA_TYPE_GATE) {
@@ -210,8 +207,6 @@ long MechWarrior::calcTacOrder (long goalAction,
 			}
 		}
 
-		// If we made it here, then there are no steps in the global path blocked. So, let's just go
-		// straight for the main goal location...
 		if (currentTarget) {
 			long fromArea = -1;	// change this?
 			Stuff::Vector3D goal;
@@ -271,7 +266,6 @@ long MechWarrior::calcTacOrder (long goalAction,
 			for (long i = 0; i < numSteps; i++)
 				lastGoalPath[i] = globalPath[i].thruArea;
 		}
-		// What's the next subgoal to overcome before we can move on?
 		for (long i = 0; i < numSteps; i++) {
 			GlobalMapAreaPtr area = &GlobalMoveMap[getVehicle()->moveLevel]->areas[globalPath[i].thruArea];
 			if (area->type == AREA_TYPE_GATE) {
@@ -319,8 +313,6 @@ long MechWarrior::calcTacOrder (long goalAction,
 			}
 		}
 
-		// If we made it here, then there are no steps in the global path blocked. So, let's just go
-		// straight for the main target...
 		if (currentTarget->isDisabled())
 			return(1);
 		newTacOrder.init(orderOrigin, TACTICAL_ORDER_ATTACK_OBJECT);
@@ -381,7 +373,6 @@ long MechWarrior::calcTacOrder (long goalAction,
 				for (long i = 0; i < numSteps; i++)
 					lastGoalPath[i] = globalPath[i].thruArea;
 			}
-			// What's the next subgoal to overcome before we can move on?
 			for (long i = 0; i < numSteps; i++) {
 				GlobalMapAreaPtr area = &GlobalMoveMap[getVehicle()->moveLevel]->areas[globalPath[i].thruArea];
 				if (area->type == AREA_TYPE_GATE) {
@@ -440,17 +431,14 @@ long MechWarrior::calcTacOrder (long goalAction,
 			newTacOrder.moveParams.keepMoving = newestTacOrder.moveParams.keepMoving;
 			}
 		else if (controlRadius > 0.0) {
-			// Main Goal has been captured, so focus on clearing out the area. First, look for turrets...
 			bool noTargetSelected = true;
 			GameObjectPtr nextTarget = getLastTarget();
-			// If our current target is a turret threat, then just keep attacking it.
 			if (nextTarget)
 				if (nextTarget->getObjectClass() == TURRET)
 					if (getVehicle()->isEnemy(nextTarget->getTeam()))
 						if (mainTarget/*getVehicle()*/->distanceFrom(nextTarget->getPosition()) <= ((Turret*)nextTarget)->maxRange)
 							noTargetSelected = false;
 			if (noTargetSelected) {
-				// Look for any turret threats around us.
 				long numTurrets = ObjectManager->getNumTurrets();
 				for (long i = 0; i < numTurrets; i++) {
 					Turret* turret = ObjectManager->getTurret(i);
@@ -464,14 +452,12 @@ long MechWarrior::calcTacOrder (long goalAction,
 				}
 			}
 			if (noTargetSelected) {
-				// Are we currently targeting an enemy mover that is within our control range?
 				if (nextTarget)
 					if (nextTarget->isMover())
 						if (mainTarget/*getVehicle()*/->distanceFrom(nextTarget->getPosition()) <= controlRadius)
 							noTargetSelected = false;
 			}
 			if (noTargetSelected) {
-				// Let's look at any enemy movers within our control range.
 				long numMovers = ObjectManager->getNumMovers();
 				MoverPtr biggestMoverThreat = NULL;
 				long biggestThreatRating = 0;

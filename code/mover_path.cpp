@@ -14,8 +14,6 @@ Stuff::Vector3D Mover::calcOffsetMoveGoal (Stuff::Vector3D target) {
 	target2d.x = target.x;
 	target2d.y = target.y;
 
-	// First, we need to calc the delta vector--how much we extend
-	// the ray everytime we check the map cell for clear placement.
 	Stuff::Vector2DOf<float> deltaVector;
 	deltaVector.Subtract(start2d, target2d);
 	if ((deltaVector.x == 0.0) && (deltaVector.y == 0.0)) {
@@ -32,9 +30,6 @@ Stuff::Vector3D Mover::calcOffsetMoveGoal (Stuff::Vector3D target) {
 	// Determine how far the ray must be cast...
 	float distanceToTarget = distance_from(start, target) /* * metersPerWorldUnit*/;
 
-	// We'll start at the target, and if it's blocked, we'll move
-	// toward our start location, looking for the first valid/open
-	// cell...
 	Stuff::Vector2DOf<float> curPoint;
 	curPoint.x = target.x;
 	curPoint.y = target.y;
@@ -88,10 +83,6 @@ inline bool inMapBounds (long r, long c, long mapHeight, long mapWidth) {
 long calcBestGoalFromTarget (int targetPos[2], int maxPos[2], float minRange, float bestRange, int* bestCell) {
 float startLocal = 40.0f;
 
-	// Within magic radius.  Check REAL LOS now.
-	// Check is really simple.
-	// Find deltaCellRow and deltaCellCol and iterate over them from source to dest.
-	// If the magic line ever goes BELOW the terrainElevation PLUS localElevation return false.
 	Stuff::Vector3D startPos, endPos;
 	startPos.Zero();
 	endPos.Zero();
@@ -187,7 +178,6 @@ float startLocal = 40.0f;
 			}
 
 			if (GameMap->inBounds(startCellR, startCellC) && GameMap->getCell(startCellR, startCellC)->getPassable()) {
-				// Save the last passable cell checked so far that has LOS...
 				lastCellR = startCellR;
 				lastCellC = startCellC;
 			}
@@ -292,18 +282,15 @@ long Mover::calcGlobalPath (GlobalPathStep* globalPath, GameObjectPtr obj, Stuff
 
 bool Mover::canMoveHere (Stuff::Vector3D worldPos) {
 
-	// If I'm a coptor, terrain doesn't matter...
 	if (moveLevel == 2)
 		return(true);
 
 	if (!GameMap->getPassable(worldPos))
 		return(false);
 
-	// If I'm a hovercraft and this cell is passable, I know I can...
 	if (moveLevel == 1)
 		return(true);
 
-	// Otherwise, I'm a ground mover and there may be water...
 	return(TerrainRuntime::sampleWaterClass(worldPos) < 2);
 }
 
@@ -342,8 +329,6 @@ long Mover::calcMoveGoal (GameObjectPtr target,
 	}
 
 	if (moveParams & MOVEPARAM_STEP_TOWARD_TARGET) {
-		// We want to pick a goal just a couple cells away from our position, but in
-		// the direction of our target...
 		Stuff::Vector3D aimVector;
 		aimVector.Subtract(moveGoal, position);
 		aimVector.z = 0;
@@ -362,8 +347,6 @@ long Mover::calcMoveGoal (GameObjectPtr target,
 	}
 
 	if (moveParams & MOVEPARAM_STEP_ADJACENT_TARGET) {
-		// We want to pick a goal just a couple cells away from our position, but in
-		// the direction of our target...
 		newGoal = calcOffsetMoveGoal(moveGoal);
 		return(NO_ERR);
 	}
@@ -417,7 +400,6 @@ long Mover::calcMoveGoal (GameObjectPtr target,
 		if (maxCellRange > (MAX_ATTACK_CELLRANGE - 1)/*(GOALMAP_CELL_DIM / 2)*/)
 			maxCellRange = (MAX_ATTACK_CELLRANGE - 1)/*(GOALMAP_CELL_DIM / 2)*/;
 
-		// Anything beyond our max range is bad...
 		long fireRange = (long)pilot->getCurTacOrder()->attackParams.range;
 		if (/*!playerMove && */(fireRange != FIRERANGE_SHORT) && (fireRange != FIRERANGE_MEDIUM) && (fireRange != FIRERANGE_LONG)) {
 			long firstIndex = rangedCellsIndices[maxCellRange + 1][0];
@@ -430,8 +412,6 @@ long Mover::calcMoveGoal (GameObjectPtr target,
 			}
 		}
 
-		// If we have a max move radius (i.e. guarding area),
-		// anything beyond our radius is bad...
 		startTime = GetCycles();
 		if (moveRadius > 0.0) {
 			long moveCellRange = moveRadius / metersPerCell;
@@ -448,9 +428,6 @@ long Mover::calcMoveGoal (GameObjectPtr target,
 					goalMap[goalMapRowStart[r] + c] -= 5000;
 			}
 		}
-		// If the pilot has a set fire range, let's use it in determining how far out
-		// we would consider attacking. If we're ramming, fireCellrange will stay at
-		// 0 since firerange would then be 0.0...
 		if (fireRangeInMeters > 0.0) {
 			// Due to new minimum range rule, we do NOT want to be within our
 			// min range...
@@ -468,7 +445,6 @@ long Mover::calcMoveGoal (GameObjectPtr target,
 			fireCellRange = 2;
 		optimalCellRange = fireCellRange;
 	}
-	// Optimal Range (based upon current fire range of pilot, if possible)...
 	if (moveParams & MOVEPARAM_RANDOM_OPTIMAL)
 		for (long i = 0; i < numOptimalIncrements; i++) {
 			long r = goalCell[0] - mapCellUL[0] + optimalCells[optimalCellRange][i][0];
@@ -510,8 +486,6 @@ long Mover::calcMoveGoal (GameObjectPtr target,
 	if (moveParams & MOVEPARAM_SOMEWHERE_ELSE)
 		goalMap[goalMapRowStart[startCell[0]] + startCell[1]] -= 10000;
 
-	// Cells closer to the start cell get a
-	// slight bonus...
 	for (int r = 0; r < GOALMAP_CELL_DIM; r++)
 		for (int c = 0; c < GOALMAP_CELL_DIM; c++) {
 			int dist = 0;
@@ -526,8 +500,6 @@ long Mover::calcMoveGoal (GameObjectPtr target,
 			goalMap[goalMapRowStart[r] + c] -= (dist * 1);
 		}
 
-	// If we're attacking this target, let's use a selectionIndex based upon
-	// the number of people in my unit attacking this target...
 	if (getGroup()) {
 		MoverPtr mates[MAX_MOVERGROUP_COUNT];
 		int numMates = getGroup()->getMovers(mates);
@@ -657,9 +629,6 @@ long Mover::calcMoveGoal (GameObjectPtr target,
 		}
 	}
 
-	// If we're attacking this target, let's use a selectionIndex based upon
-	// the number of people in my unit attacking this target...
-//#ifdef USE_GROUPS
 	if ((getObjectClass() == ELEMENTAL) && target && getGroup()) {
 		MoverPtr mates[MAX_MOVERGROUP_COUNT];
 		long numMates = getGroup()->getMovers(mates);
@@ -1004,7 +973,6 @@ int Mover::calcEscapePath (MovePathPtr path,
 							unsigned long moveParams,
 							Stuff::Vector3D& escapeGoal) {
 
-	// If nothing else, clear the escape goal...
 	escapeGoal.x = -999999.0;
 	escapeGoal.y = -999999.0;
 	escapeGoal.z = -999999.0;
@@ -1153,7 +1121,6 @@ void Mover::updatePathLock (bool set)
 		if (((BattleMechPtr)this)->inJump)
 			return;
 
-	//For movers which can be stepped on.
 	if (!pathLocks)
 		return;
 		
@@ -1183,7 +1150,6 @@ void Mover::updateHustleTime (void) {
 
 long Mover::bounceToAdjCell (void) {
 
-	// Bounces mover to an adjacent open cell. Convenient for collisions:)
 	for (long dir = 0; dir < 8; dir++) {
 		static long adjCellTable[8][2] = {
 			{-1, 0},
@@ -1283,7 +1249,6 @@ int Mover::calcMovePath (MovePathPtr path,
 									numOffsets,
 									moveParams);
 		if (result == -1) {
-			// Goal door is blocked. Can't get thru, at the moment...
 			JumpOnBlocked = false;
 			return(-999);
 		}

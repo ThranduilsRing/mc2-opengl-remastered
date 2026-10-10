@@ -202,9 +202,6 @@ long BattleMechType::init (FilePtr objFile, unsigned long fileSize)
 	if (result != NO_ERR)
 		return result;
 
-	// No splash damage until designers say they need it.		
-	//explRad = 0.0;
-	//explDmg = 0.0;
 
 	// Now, read in the max internal structure for each body location...
 	// Reader reads rows from 1 just like spreadsheet.
@@ -246,7 +243,6 @@ long BattleMechType::init (FilePtr objFile, unsigned long fileSize)
 	// read so a stock-declared [UnitProfile] block still overrides last.
 	sourceGeneratedChassisFacets(fileType, profile(), mechFile.getFilename());
 
-	// UNIT-PROFILE-SEAM-1: optional .fit [UnitProfile] data read (additive).
 	populateProfileFromFit(mechFile, profile());
 
 	// UNITPROFILE-VALIDATOR-1 (slice 6): report-only construction-rules check,
@@ -355,7 +351,6 @@ bool BattleMechType::handleCollision (GameObjectPtr collidee, GameObjectPtr coll
 */
 				((MoverPtr)collidee)->bounceToAdjCell();
 
-				// Train will take care of administering damage from this collision...
 				soundSystem->playDigitalSample(MECH_COLLIDE,collidee->getPosition());
 				return(false);
 			}
@@ -432,14 +427,9 @@ bool BattleMechType::handleCollision (GameObjectPtr collidee, GameObjectPtr coll
 */
 				if (jumpCollision) 
 				{
-					// Since we reset the jumping mech's lastJumpTime right here,
-					// we should apply the damage to the collider here, as well.
-					// If both are jumping...well then, double damage is taken!
 					if (collideeJumping && !sameTeam) 
 					{
 						WeaponShotInfo shotInfo;
-						// First, the collidee...
-						// I jumped on the below, therefore, my legs should be preferentially damaged!!!
 						long hitLocation = collidee->calcHitLocation(collider, -1, ATTACKSOURCE_MINE, 0);
 						if (sameTeam)
 							shotInfo.init(collider->getWatchID(), -1, collider->getTonnage() / 100.0 + 0.5, hitLocation, collidee->relFacingTo(collider->getPosition()));
@@ -527,21 +517,17 @@ bool BattleMechType::handleDestruction (GameObjectPtr collidee, GameObjectPtr co
 	// anything!!!!!!!!!!! Should also be fixed for other objects'
 	// handleDestruction().
 
-	// For now, a BattleMech will play a default explosion
-	// and disappear after the explosion is half way through
 	BattleMechPtr mech = (BattleMechPtr)collidee;
 
 	if (!mech->getPilot())
 		Fatal(0, " No Pilot in this mech! ");
 
-	// Let's let the unit know we're dying if we're a point...
 	if (mech->getPoint() == mech) {
 		mech->getGroup()->setPoint(NULL);
 		// If there is no new point, all units must be blown away.
 		// How do we want to handle this?
 	}
 
-	// Immediately lose contacts...
 	if (mech->sensorSystem)
 		mech->sensorSystem->disable();
 	

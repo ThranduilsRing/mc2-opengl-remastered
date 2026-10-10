@@ -30,7 +30,6 @@ void MissionInterfaceManager::Save (FitIniFilePtr file)
 
 void MissionInterfaceManager::Load (FitIniFilePtr file)
 {
-	//Is there any VTOL data here?  OK if not!
 	long vtolNum = Commander::home->getId();
 	long commanderID = vtolNum;
 
@@ -65,8 +64,6 @@ void MissionInterfaceManager::Load (FitIniFilePtr file)
 		file->readIdLong("VTOLGesture",gestureId);
 		vTol[vtolNum]->setGesture(gestureId);
 
-		//Now setup everything else.
-		// Pretty much same code as beginVtol
 		vehicleFile = controlGui.getVehicleNameFromID(vehicleID[vtolNum]);
 
 		{
@@ -135,8 +132,6 @@ void MissionInterfaceManager::Load (FitIniFilePtr file)
 			}
 		}
 
-		//Should we play another sample to let them know what is coming in after the load?
-		//For now, no!
 		/*
 		switch (vehicleID)
 		{
@@ -360,10 +355,6 @@ void MissionInterfaceManager::tryStaticPropPick(bool moverSelectedThisFrame,
     if (!RenderWorld::IsStaticPropPickEnabled())
         return;
 
-    // Build request from the 7 missiongui-side inputs. All shared
-    // machinery (substrate gate, gesture gates, mover gate, viewport
-    // query, off-screen guard, coord scaling, pixel readback) lives in
-    // the spine now.
     GameplayPickRequest req;
     req.mouseX                  = mouseX;
     req.mouseY                  = mouseY;
@@ -455,8 +446,6 @@ void MissionInterfaceManager::tryMechPick(bool moverSelectedThisFrame,
     if (!RenderWorld::IsMechPickEnabled())
         return;
 
-    // Build the same shape of request as tryStaticPropPick. The spine
-    // (tryGameplayPick) is shared and unchanged.
     GameplayPickRequest req;
     req.mouseX                  = mouseX;
     req.mouseY                  = mouseY;
@@ -536,7 +525,6 @@ void MissionInterfaceManager::tryMechPick(bool moverSelectedThisFrame,
             break;
         }
 
-        // Visible hit. Inspect-only: update unified debug state + log.
         RenderWorld::setLastGameplayPick(RenderWorld::RenderObjectKind::Mech,
                                          r.lookup,
                                          r.ctx.mouseX, r.ctx.mouseY,
@@ -575,8 +563,6 @@ void MissionInterfaceManager::tryMechPick(bool moverSelectedThisFrame,
     }
     case GameplayPickResult::Outcome::gated:
     case GameplayPickResult::Outcome::skipped:
-        // Mover-first short-circuit consumed the click (gated) or a
-        // gesture/substrate gate failed (skipped). No-op, no log.
         break;
     }
 }

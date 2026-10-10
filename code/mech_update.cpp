@@ -16,7 +16,6 @@ long BattleMech::update (void)
 
 	getPilot()->getIndex();
 
-	//Reset every frame to avoid multiples
 	playedCriticalHit = false;
 
 	if ( getTeam() == Team::home )
@@ -74,7 +73,6 @@ long BattleMech::update (void)
 		QueryPerformanceCounter(startCk);
 		#endif
 
-		//Be damned sure our legs are marked correctly!!
 		calcLegStatus();
 		
 		updatePathLock(false);
@@ -256,8 +254,6 @@ long BattleMech::update (void)
 
 		if (newMoveChunk) {
 			if (!statusChunk.jumpOrder) {
-				// If we're too far from where we should be, perhaps we should
-				// just warp to it...
 				Stuff::Vector3D correctPos;
 				land->cellToWorld(moveChunk.stepPos[0][0], moveChunk.stepPos[0][1], correctPos);
 				correctPos.z = 0.0;
@@ -348,7 +344,6 @@ long BattleMech::update (void)
 		updatePathLock(false);
 	
 		((ObjectAppearance*)appearance)->pilotNameID = IDS_NOPILOT;
-		//We are disabled now.  Stop trying to animate, dammit!
 		control.settings.mech.gestureGoal = -1;
 		updateDynamics();
 
@@ -407,7 +402,6 @@ long BattleMech::update (void)
 	}
 	else
 	{
-		//We are destroyed now.  Stop trying to animate, dammit!
 		control.settings.mech.gestureGoal = -1;
 		updateDynamics();
 
@@ -1007,11 +1001,9 @@ bool BattleMech::handleEjection (void) {
    			CombatLog->write(s);
    			CombatLog->write(" ");
    		}
-		// If we aren't already disabled, we are now...
 		disable(EJECTION_DEATH);
 
 #ifdef USE_IFACE
-		// The interface needs to know I'm not around anymore...
 		theInterface->RemoveMech(getPartId());
 #endif
 

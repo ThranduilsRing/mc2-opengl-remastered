@@ -137,7 +137,6 @@ struct UiElement {
     // all button interaction (click->message->press sync).
     enum class ButtonStyle { Normal, Checkbox, Radio } buttonStyle = ButtonStyle::Normal;
 
-    // Legacy button animation keyframes (parsed from legacyNormalAnimationTimeStamps etc.)
     struct AnimKeyframe { float time = 0.0f; unsigned int color = 0xffffffff; };
     static constexpr int kMaxAnimKF = 8;
 
@@ -161,14 +160,12 @@ struct UiElement {
     bool legacyDisabledAnimLoops   = false;
     AnimKeyframe legacyDisabledAnimKF[kMaxAnimKF];
 
-    // Per-state animation accumulators (advance only while that state is active).
     float animTimeNormal           = 0.0f;
     float animTimeHover            = 0.0f;
     float animTimePressed          = 0.0f;
     float animTimeHighlightPressed = 0.0f;
     float animTimeDisabled         = 0.0f;
 
-    // Per-state UV overrides (-1 = use base uvX/uvY)
     int uvPressedX  = -1, uvPressedY  = -1;
     int uvHoverX    = -1, uvHoverY    = -1;
     int uvDisabledX = -1, uvDisabledY = -1;
@@ -181,7 +178,6 @@ struct UiElement {
     enum class BtnState { Normal, Hover, Pressed, HighlightPressed, Disabled }
         btnState = BtnState::Normal;
 
-    // List (GuiList) runtime state.
     std::vector<std::string> items;
     // Optional per-item text color (ARGB). When an entry exists for a row it
     // overrides textColor; empty => every row uses textColor. Populated via
@@ -197,7 +193,6 @@ struct UiElement {
     int itemOffsetY = 2;
     int secondColumnX = 0;  // if >0, split item text on '\t': left part in [0..secondColumnX), right part starting at secondColumnX
 
-    // Combo (GuiCombo) runtime state.
     bool expanded = false;
     int popupHeight = 75;
     int hoverIndex = -1;   // row under the mouse while popup is open
@@ -208,8 +203,6 @@ struct UiElement {
     int  sliderMax    = 255;
     bool sliderActive = false;   // true while the thumb is being dragged
 
-    // EditBox (GuiEditBox) runtime state.
-    // editBuffer is owned here and handed directly to ImGui::InputText each frame.
     static constexpr int kEditBufSize = 256;
     char editBuffer[kEditBufSize] = {};
     int  maxLength     = kEditBufSize - 1;
@@ -238,7 +231,6 @@ struct FRect {
     float h = 0.0f;
 };
 
-// Helpers used by more than one translation unit.
 std::string toLower(std::string v);
 bool uiDefsTraceEnabled();
 void uiDefsTrace(const char* fmt, ...);

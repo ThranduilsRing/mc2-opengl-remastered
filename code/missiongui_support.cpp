@@ -27,7 +27,6 @@ MoverPtr BringInReinforcement (long vehicleID, long rosterIndex, long commanderI
 		char s[1024];
 		sprintf(s, "BringInReinforcement: null behicleFile (%d)", vehicleID);
 		STOP((s));
-		//return(NULL);
 	}
 	strcpy( data.pilotFileName, vehicleFile );
 	strcpy( data.brainFileName, "pbrain" );
@@ -647,7 +646,6 @@ int MissionInterfaceManager::gotoNextNavMarker()
 			}
 		}
 
-	// if we got here there weren't any valid markers, play bad sound
 	soundSystem->playDigitalSample( INVALID_GUI );
 	return 0;
 

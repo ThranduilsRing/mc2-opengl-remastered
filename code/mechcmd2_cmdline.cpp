@@ -92,8 +92,6 @@ void ParseCommandLine(const char *command_line)
 				inViewMode = false;
 				if (argv[i][0] == '"')
 				{
-					// They typed in a quote, keep reading argvs
-					// until you find the close quote
 					strcpy(missionName,&(argv[i][1]));
 					bool scanName = true;
 					while (scanName && (i < n_args))
@@ -112,7 +110,6 @@ void ParseCommandLine(const char *command_line)
 						}
 						else
 						{
-							//They put a quote on the line with no space.
 							//
 							scanName = false;
 							missionName[strlen(missionName)-1] = 0;
@@ -265,7 +262,6 @@ void ParseCommandLine(const char *command_line)
 bool notFirstTime = false;
 
 //
-// Setup the GameOS structure -- This tells GameOS what I am using
 //
 void __stdcall GetGameOSEnvironment(const char* CommandLine )
 {
@@ -286,7 +282,6 @@ void __stdcall GetGameOSEnvironment(const char* CommandLine )
 		SmokeMode::emitTiming("mission_load_start");
 	}
 
-	// Validate mode: auto-start mission and disable sound
 	if (getValidateConfig().enabled) {
 		if (!justStartMission) {
 			justStartMission = true;

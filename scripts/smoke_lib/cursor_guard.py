@@ -121,7 +121,68 @@ def get_cursor_pos() -> Optional[Point]:
     return (int(pt.x), int(pt.y))
 
 
+#: A pointer write is skipped when the user's last real input (keyboard or mouse,
+#: as the OS counts it) is younger than this. SetCursorPos itself is not counted
+#: as input, so the guard's own restores never make the user look active.
+USER_ACTIVE_WINDOW_S = 5.0
+
+_user_active_logged = False
+
+
+def user_idle_seconds() -> Optional[float]:
+    """Seconds since the user's last keyboard/mouse input, or None if unknown."""
+    u = _user32()
+    if u is None:
+        return None
+
+    class _LASTINPUTINFO(ctypes.Structure):
+        _fields_ = [("cbSize", ctypes.c_uint), ("dwTime", ctypes.c_uint)]
+
+    try:
+        info = _LASTINPUTINFO()
+        info.cbSize = ctypes.sizeof(_LASTINPUTINFO)
+        if not u.GetLastInputInfo(ctypes.byref(info)):
+            return None
+        now = int(ctypes.windll.kernel32.GetTickCount()) & 0xFFFFFFFF
+        return ((now - int(info.dwTime)) & 0xFFFFFFFF) / 1000.0
+    except Exception:
+        return None
+
+
+def user_is_active() -> bool:
+    """True when the user touched the keyboard or mouse within USER_ACTIVE_WINDOW_S.
+
+    Unknown idle time counts as inactive: a headless runner has no user to
+    protect, and a failed query must not turn every restore into a no-op.
+    """
+    idle = user_idle_seconds()
+    return idle is not None and idle < USER_ACTIVE_WINDOW_S
+
+
+def _note_user_active() -> None:
+    """Emit the skip line once per run; the watchdog samples every 20 ms."""
+    global _user_active_logged
+    if _user_active_logged:
+        return
+    _user_active_logged = True
+    try:
+        print("[CURSOR_GUARD] user active, restore skipped", file=sys.stderr, flush=True)
+    except Exception:
+        pass
+
+
 def set_cursor_pos(pos: Point) -> bool:
+    """The only place in the tree that writes the pointer position.
+
+    WHY: every harness pointer write -- the watchdog restore, the exit restore,
+    the edge park -- would otherwise yank the cursor out from under a user who is
+    using the machine (owner incident 2026-10-10). A restore exists to give the
+    pointer back to an absent user, so it is skipped while one is present. The
+    skip is reported once per run, not once per watchdog sample.
+    """
+    if user_is_active():
+        _note_user_active()
+        return False
     u = _user32()
     if u is None:
         return False
@@ -427,7 +488,7 @@ class CursorGuard:
         Returns True if the immediate read-back is the anchor, False if some
         other process discarded our write, None if undeterminable.
         """
-        if self.anchor is None:
+        if self.anchor is None or user_is_active():
             return None
         set_cursor_pos(self.anchor)
         back = get_cursor_pos()
@@ -465,6 +526,12 @@ class CursorGuard:
                     took = None
                     if pos == self.anchor:
                         pass
+                    elif user_is_active():
+                        # A person is at the machine: the pointer is theirs, so
+                        # follow it instead of fighting for it.
+                        _note_user_active()
+                        self.anchor = pos
+                        action = "user-active"
                     elif any(_near(pos, t) for t in self.warp_targets):
                         # Known machine warp target -- snap back.
                         took = self._restore_to_anchor()

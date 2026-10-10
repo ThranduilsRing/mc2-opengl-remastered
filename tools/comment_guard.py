@@ -10,15 +10,22 @@ only if a bad edit cannot land. This tool is the gate: it passes a file only whe
                     line, blank lines are ignored. The first divergent line pair is reported.
   b. Why survives   Comments that carry rationale or machine-read meaning are protected and must
                     reappear in the new text verbatim (whitespace-normalised, moves allowed):
-                    license header, event-format notes, gate names, lint pragmas, rationale
-                    words, dates, shas, TODO tags, doxygen tags, pragma/static_assert
-                    neighbours. Everything under Gates/ is wholly protected.
-  c. Only shrinks   New comment bytes may not exceed base comment bytes.
+                    license header, event-format notes, registered gate names (only names in
+                    Gates/gate_table.json; macros such as MC2_VERIFY and slice tags such as
+                    FOO-BAR-1 are history, not protective), lint pragmas, rationale words, dates,
+                    shas, TODO tags, doxygen tags, pragma/static_assert neighbours. Everything
+                    under Gates/ is wholly protected. A protected comment may instead be KEPT
+                    as a rewrite candidate: `// TODO(rewrite): <original text>`. A protected
+                    comment may be deleted only if a reviewer-written --allow file lists it.
+  c. Only shrinks   New comment bytes may not exceed base comment bytes (plus 16 B per new
+                    TODO(rewrite) tag).
 
   py -3 tools/comment_guard.py --check code/a.cpp code/b.h        # worktree vs HEAD (default)
   py -3 tools/comment_guard.py --check --staged                   # index vs HEAD, files from the index
   py -3 tools/comment_guard.py --check --base abc123 code/a.cpp   # vs another rev (--rev is an alias)
   py -3 tools/comment_guard.py --check --base-file orig.cpp copy.cpp   # vs a file outside git
+  py -3 tools/comment_guard.py --check --allow reviewed.json code/a.cpp   # reviewer-approved deletions
+  py -3 tools/comment_guard.py --rewrite-candidates [paths]       # list every TODO(rewrite) comment
   py -3 tools/comment_guard.py --selftest
 
 Optional object proof (a build, which the caller runs, sits between the two steps):
@@ -52,6 +59,7 @@ from collections import Counter
 
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scripts"))
 import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
+import gate_table_reader  # noqa: E402  (Gates/gate_table.json reader; scripts/gate_table_reader.py)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, ".."))
@@ -68,7 +76,6 @@ _CS = [
     ("clang-format", r"clang-format"),
     ("NOLINT", r"NOLINT"),
     ("NOSONAR", r"NOSONAR"),
-    ("gate-name", r"MC2_[A-Z]"),
     ("Co-Authored", r"Co-Authored"),
     ("SPDX", r"SPDX"),
     ("date", r"20[0-9]{2}-[0-9]{2}"),
@@ -86,6 +93,56 @@ _CI = [
 PROTECT = ([(n, re.compile(p)) for n, p in _CS] +
            [(n, re.compile(p, re.I)) for n, p in _CI])
 _PRAGMA_LINE = re.compile(r"^\s*#\s*pragma\b|\bstatic_assert\b|\b_Static_assert\b")
+
+# Gate names are protective only when the compiled gate table registers them: `MC2_VERIFY` and
+# friends are macros. Slice/phase tags (BUILDING-GLASS-1) are history, so they are masked out
+# before the keyword rules run (a date such as FOO-2026-10-09 is not masked).
+_MC2_TOKEN = re.compile(r"(?<![A-Za-z0-9_])MC2_[A-Z0-9_]*[A-Z0-9]")
+_SLICE_TAG = re.compile(r"(?<![A-Za-z0-9_-])[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+-\d+(?![A-Za-z0-9_])")
+_DATE_IN_TAG = re.compile(r"20[0-9]{2}-[0-9]{2}")
+_GATE_CACHE = []        # [set | None]; None = table unreadable -> every MC2_ token protects (fail closed)
+
+# `TODO(rewrite): ` right after the comment opener keeps a protected comment alive as a to-do.
+REWRITE_TAG = "TODO(rewrite):"
+TAG_GROWTH = 16
+_OPENER = re.compile(r"^(//[/!]?|/\*[*!]?)\s*(.*)$", re.S)
+_TAGGED = re.compile(r"^(//[/!]?|/\*[*!]?)\s*TODO\(rewrite\):\s*(.*)$", re.S)
+
+
+def registered_gates():
+    """Gate names from Gates/gate_table.json (loaded once); None when the table cannot be read."""
+    if not _GATE_CACHE:
+        try:
+            _GATE_CACHE.append(set(gate_table_reader.gates(ROOT)))
+        except gate_table_reader.GateTableError:
+            _GATE_CACHE.append(None)
+    return _GATE_CACHE[0]
+
+
+def set_gate_names(names):
+    """Override the registered set (tests); None restores lazy loading, False simulates an unreadable table."""
+    del _GATE_CACHE[:]
+    if names is not None:
+        _GATE_CACHE.append(None if names is False else set(names))
+
+
+def mask_slice_tags(txt):
+    return _SLICE_TAG.sub(lambda m: m.group(0) if _DATE_IN_TAG.search(m.group(0)) else " " * len(m.group(0)), txt)
+
+
+def _canon_line(line):
+    m = _OPENER.match(line)
+    return m.group(1) + " " + m.group(2) if m else line
+
+
+def _detag_line(line):
+    """-> (canonical line without the rewrite tag, True if it carried the tag)."""
+    m = _TAGGED.match(line)
+    return (m.group(1) + " " + m.group(2), True) if m else (_canon_line(line), False)
+
+
+def count_tags(lx):
+    return sum(1 for c in lx.comments if _TAGGED.match(c.text))
 
 
 # ------------------------------------------------------------------ lexer
@@ -352,8 +409,14 @@ def mark_protected(u, lx):
     txt = u.text()
     if u.header:
         u.reasons.append("file header")
+    gates = registered_gates()
+    for tok in _MC2_TOKEN.findall(txt):
+        if gates is None or tok in gates:
+            u.reasons.append("gate-name")
+            break
+    masked = mask_slice_tags(txt)
     for name, rx in PROTECT:
-        if rx.search(txt):
+        if rx.search(masked):
             u.reasons.append(name)
     for ln in range(u.start - 1, u.end + 2):
         code = "".join(lx.code_by_line.get(ln, []))
@@ -368,18 +431,40 @@ def _contains(hay, needle):
 
 
 def missing_protected(base_units, new_units):
-    """Protected base units with no verbatim home in the new text -> [Unit]."""
+    """Protected base units with no verbatim home in the new text -> [Unit].
+
+    A unit also survives as a rewrite candidate: the same text with `TODO(rewrite): ` inserted right
+    after the opener of its first line (whitespace after the opener is not significant).
+    """
     pool = Counter(u.lines for u in new_units)
     spare = [u.lines for u in new_units]
+    detagged = []                   # per new unit: ([canonical lines], [line carried the tag])
+    for lines in spare:
+        pairs = [_detag_line(l) for l in lines]
+        detagged.append(([p[0] for p in pairs], [p[1] for p in pairs]))
+    used_tags = set()
     lost = []
     for u in base_units:
         if not u.reasons:
             continue
         if pool[u.lines] > 0:
             pool[u.lines] -= 1
-        elif not any(_contains(s, u.lines) for s in spare):
+        elif any(_contains(s, u.lines) for s in spare):
+            continue
+        elif not _take_tagged(u.lines, detagged, used_tags):
             lost.append(u)
     return lost
+
+
+def _take_tagged(lines, detagged, used):
+    want = [_canon_line(l) for l in lines]
+    k = len(want)
+    for ui, (dl, tg) in enumerate(detagged):
+        for i in range(len(dl) - k + 1):
+            if tg[i] and (ui, i) not in used and dl[i:i + k] == want:
+                used.add((ui, i))
+                return True
+    return False
 
 
 # ------------------------------------------------------------------ per-file check
@@ -389,6 +474,7 @@ class Report:
         self.findings = []       # [(kind, message)]
         self.base_cb = None
         self.new_cb = None
+        self.allowed = []        # [(base line, reason)] protected comments deleted under --allow
 
     @property
     def ok(self):
@@ -418,7 +504,58 @@ def prep(data):
     return text.replace("\r\n", "\n"), bom, style
 
 
-def check_texts(rel, base, new):
+ALLOW_TOLERANCE = 2
+
+
+def _norm_rel(p):
+    p = str(p).replace("\\", "/")
+    while p.startswith("./"):
+        p = p[2:]
+    return p
+
+
+class Allowlist:
+    """Reviewer-written permission to delete named protected comments (never written by the editor).
+
+    Each entry covers at most one deleted comment: its file plus its base line, +-ALLOW_TOLERANCE.
+    """
+
+    def __init__(self, entries):
+        self.entries = [{"file": _norm_rel(e["file"]), "line": e["base_line"], "reason": e["reason"],
+                         "used": False} for e in entries]
+
+    @classmethod
+    def load(cls, path):
+        with open(path, "r", encoding="utf-8") as fh:
+            doc = json.load(fh)
+        if not isinstance(doc, list):
+            raise ValueError("allowlist must be a JSON list")
+        for i, e in enumerate(doc):
+            if (not isinstance(e, dict) or not isinstance(e.get("file"), str) or not e["file"]
+                    or isinstance(e.get("base_line"), bool) or not isinstance(e.get("base_line"), int)
+                    or not isinstance(e.get("reason"), str) or not e["reason"].strip()):
+                raise ValueError("entry %d needs file (str), base_line (int), reason (non-empty str)" % i)
+        return cls(doc)
+
+    def take(self, rel, line):
+        rel = _norm_rel(rel)
+        best = None
+        for e in self.entries:
+            if e["used"] or e["file"] != rel or abs(e["line"] - line) > ALLOW_TOLERANCE:
+                continue
+            if best is None or abs(e["line"] - line) < abs(best["line"] - line):
+                best = e
+        if best:
+            best["used"] = True
+        return best
+
+    def stale(self, checked_rels):
+        """Unmatched entries for files that were part of this run (entries for other files are not judged)."""
+        checked = set(_norm_rel(r) for r in checked_rels)
+        return [e for e in self.entries if not e["used"] and e["file"] in checked]
+
+
+def check_texts(rel, base, new, allow=None):
     """Grade one file. base/new are bytes (None = absent). Returns a Report."""
     rep = Report(rel)
     if not in_scope(rel):
@@ -462,14 +599,25 @@ def check_texts(rel, base, new):
             break
 
     lost = missing_protected(build_units(bl), build_units(nl))
+    if allow is not None:
+        kept = []
+        for u in lost:
+            hit = allow.take(rel, u.start)
+            if hit:
+                rep.allowed.append((u.start, hit["reason"]))
+            else:
+                kept.append(u)
+        lost = kept
     for u in lost[:6]:
         rep.add("protected", "protected comment (%s) missing at base line %d: %s" % (
             ", ".join(sorted(set(u.reasons))), u.start, show(u.text().replace("\n", " / "), 120)))
     if len(lost) > 6:
         rep.add("protected", "... and %d more protected comments missing" % (len(lost) - 6))
 
-    if rep.new_cb > rep.base_cb:
-        rep.add("grew", "comment bytes grew %d -> %d (this tool only shrinks)" % (rep.base_cb, rep.new_cb))
+    new_tags = max(0, count_tags(nl) - count_tags(bl))
+    if rep.new_cb > rep.base_cb + TAG_GROWTH * new_tags:
+        rep.add("grew", "comment bytes grew %d -> %d (this tool only shrinks; %d new TODO(rewrite) tag(s) allow +%d)" % (
+            rep.base_cb, rep.new_cb, new_tags, TAG_GROWTH * new_tags))
     return rep
 
 
@@ -518,13 +666,25 @@ def fmt_report(rep):
         size = ""
     lines = ["%-5s %s%s" % ("OK" if rep.ok else "FAIL", rep.rel, size)]
     lines += ["      - [%s] %s" % f for f in rep.findings]
+    lines += _allowed_lines(rep)
     return "\n".join(lines)
+
+
+def _allowed_lines(rep):
+    return ["ALLOWED-DELETE %s:%d %s" % (rep.rel, ln, why) for ln, why in rep.allowed]
 
 
 def run_check(args):
     repo = os.path.abspath(args.repo or ROOT)
     base_rev = args.base
     reports = []
+    allow = None
+    if args.allow:
+        try:
+            allow = Allowlist.load(args.allow)
+        except (OSError, ValueError) as e:
+            print("comment_guard: cannot use --allow %s: %s" % (args.allow, e), file=sys.stderr)
+            return 2
     paths = list(args.paths)
     if args.base_file:
         if len(paths) != 1:
@@ -535,7 +695,7 @@ def run_check(args):
             print("comment_guard: cannot read --base-file %s" % args.base_file, file=sys.stderr)
             return 2
         rel = rel_of(repo, paths[0]) or os.path.abspath(paths[0]).replace("\\", "/")
-        reports.append(check_texts(rel, base_bytes, read_file(paths[0])))
+        reports.append(check_texts(rel, base_bytes, read_file(paths[0]), allow))
     else:
         if not paths:
             names = changed_files(repo, base_rev, args.staged)
@@ -555,14 +715,62 @@ def run_check(args):
                 continue
             base = git_blob(repo, "%s:%s" % (base_rev, rel))
             new = git_blob(repo, ":" + rel) if args.staged else read_file(os.path.join(repo, rel))
-            reports.append(check_texts(rel, base, new))
+            reports.append(check_texts(rel, base, new, allow))
     bad = 0
     for rep in reports:
         if not args.quiet or not rep.ok:
             print(fmt_report(rep))
+        elif rep.allowed:
+            print("\n".join(_allowed_lines(rep)))
         bad += 0 if rep.ok else 1
     print("comment_guard: %d file(s) checked, %d ok, %d FAILED" % (len(reports), len(reports) - bad, bad))
+    stale = allow.stale(r.rel for r in reports) if allow else []
+    for e in stale:
+        print("STALE-ALLOW %s:%d %s (matched no missing protected comment)" % (e["file"], e["line"], e["reason"]),
+              file=sys.stderr)
+    if stale:
+        return 2
     return 1 if bad else 0
+
+
+# ------------------------------------------------------------------ rewrite candidates
+def rewrite_candidates(rel, data):
+    """-> ["rel:line: first 80 chars of the comment after the tag"] for every TODO(rewrite) comment."""
+    out = []
+    for c in lex(prep(data)[0]).comments:
+        m = _TAGGED.match(c.text)
+        if m:
+            body = collapse(m.group(2).replace("*/", " ").replace("\n", " "))
+            out.append("%s:%d: %s" % (rel, c.start, body[:80]))
+    return out
+
+
+def run_rewrite_candidates(args):
+    repo = os.path.abspath(args.repo or ROOT)
+    rels = []
+    if args.paths:
+        for p in args.paths:
+            r = rel_of(repo, p)
+            if r is None:
+                print("comment_guard: %s is outside the repo" % p, file=sys.stderr)
+                return 2
+            rels.append(r)
+    else:
+        rc, out = _git(repo, ["grep", "-l", "-F", REWRITE_TAG, "--"])
+        if rc not in (0, 1):
+            print("comment_guard: git grep failed", file=sys.stderr)
+            return 2
+        rels = [p for p in out.decode("utf-8", "replace").splitlines() if in_scope(p)]
+    n = 0
+    for rel in sorted(rels):
+        data = read_file(os.path.join(repo, rel))
+        if data is None or not in_scope(rel):
+            continue
+        for line in rewrite_candidates(rel, data):
+            print(line)
+            n += 1
+    print("comment_guard: %d rewrite candidate(s)" % n, file=sys.stderr)
+    return 0
 
 
 # ------------------------------------------------------------------ object proof
@@ -800,9 +1008,9 @@ def case(fn):
     return fn
 
 
-def R(base, new, rel="code/x.cpp"):
+def R(base, new, rel="code/x.cpp", allow=None):
     enc = lambda s: None if s is None else s.encode("utf-8") if isinstance(s, str) else s  # noqa: E731
-    return check_texts(rel, enc(base), enc(new))
+    return check_texts(rel, enc(base), enc(new), allow)
 
 
 def _kinds(rep):
@@ -999,6 +1207,104 @@ def st_glsl_extension_in_scope():
     assert R("#version 450\n// narration\nvoid main() {}\n", "#version 450\nvoid main() {}\n", rel="shaders/a.frag").ok
 
 
+class _gate_names:
+    """Fixture scope: pin the registered gate set, then restore lazy loading from the table."""
+
+    def __init__(self, names):
+        self.names = names
+
+    def __enter__(self):
+        set_gate_names(self.names)
+
+    def __exit__(self, *_exc):
+        set_gate_names(None)
+
+
+def _tagged(text):
+    return "// %s %s" % (REWRITE_TAG, text)
+
+
+@case
+def st_unregistered_mc2_token_is_not_protective():
+    base = "int a;\n// MC2_VERIFY (slice MISSION-DATA-DEREF-HARDEN-1) was added here\nint b;\n"
+    with _gate_names({"MC2_REAL_GATE"}):
+        assert R(base, "int a;\nint b;\n").ok
+        rep = R("int a;\n// MC2_REAL_GATE=1 turns this on\nint b;\n", "int a;\nint b;\n")
+        assert _kinds(rep) == ["protected"] and "gate-name" in _msgs(rep), _msgs(rep)
+    with _gate_names(False):        # unreadable table -> every MC2_ token protects
+        assert _kinds(R(base, "int a;\nint b;\n")) == ["protected"]
+
+
+@case
+def st_slice_tag_alone_is_not_protective():
+    with _gate_names(set()):
+        for tag in ("BUILDING-GLASS-1", "SHADOW-FRUSTUM-AUDIT-1", "P1-2"):
+            assert R("int a;\n// added by %s\nint b;\n" % tag, "int a;\nint b;\n").ok, tag
+        # a rationale word beside the tag still protects; a date inside a tag-shaped token still protects
+        assert _kinds(R("int a;\n// SHADOW-AUDIT-1: must stay\nint b;\n", "int a;\nint b;\n")) == ["protected"]
+        assert _kinds(R("int a;\n// REL-2026-10-09\nint b;\n", "int a;\nint b;\n")) == ["protected"]
+
+
+@case
+def st_tagged_protected_comment_survives():
+    base = "int a;\n// the lock must be held\nint b;\n"
+    assert R(base, "int a;\n" + _tagged("the lock must be held") + "\nint b;\n").ok
+    assert R(base, "int a;\n//TODO(rewrite):the lock must be held\nint b;\n").ok
+    blk = "int a;\n/* the lock must be held\n   across both calls */\nint b;\n"
+    assert R(blk, "int a;\n/* TODO(rewrite): the lock must be held\n   across both calls */\nint b;\n").ok
+
+
+@case
+def st_tag_with_altered_body_fails():
+    base = "int a;\n// the lock must be held\nint b;\n"
+    assert _kinds(R(base, "int a;\n" + _tagged("the lock is held") + "\nint b;\n")) == ["protected"]
+    # a tag that is not right after the opener is not a tag: the protected text is lost and the bytes grew
+    assert _kinds(R(base, "int a;\n// the lock must be held TODO(rewrite):\nint b;\n")) == ["grew", "protected"]
+
+
+@case
+def st_tag_growth_budget():
+    base = "int a;\n// the lock must be held\nint b;\n"
+    assert R(base, "int a;\n" + _tagged("the lock must be held") + "\nint b;\n").new_cb == len(base.split("\n")[1]) + 15
+    # one tag pays for itself only: padding elsewhere in the comment still counts as growth
+    fat = "int a;\n" + _tagged("the lock must be held") + "\nint b; // extra words here\n"
+    assert "grew" in _kinds(R(base, fat))
+
+
+@case
+def st_never_must_rules_unchanged():
+    for s in ("Guard 2: packet_oob - globalPktIdx must be valid index", "never null here", "do not reorder"):
+        assert _kinds(R("int a;\n// %s\nint b;\n" % s, "int a;\nint b;\n")) == ["protected"], s
+
+
+@case
+def st_rewrite_candidates_listing():
+    src = "int a;\n" + _tagged("legacy " + "x" * 100) + "\n/* TODO(rewrite): odd\n   block */\nint b; // TODO later\n"
+    got = rewrite_candidates("code/x.cpp", src.encode("utf-8"))
+    assert len(got) == 2, got
+    assert got[0].startswith("code/x.cpp:2: legacy xxxx") and len(got[0].split(": ", 1)[1]) == 80, got
+    assert got[1] == "code/x.cpp:3: odd block", got
+
+
+@case
+def st_allowlist_deletes_protected_comment():
+    base = "int a;\n// the lock must be held\nint b;\n"
+    al = Allowlist([{"file": "code/x.cpp", "base_line": 3, "reason": "restates the guard below"}])   # +1 off
+    rep = R(base, "int a;\nint b;\n", allow=al)
+    assert rep.ok and rep.allowed == [(2, "restates the guard below")], _msgs(rep)
+    assert "ALLOWED-DELETE code/x.cpp:2 restates the guard below" in fmt_report(rep)
+    assert not al.stale(["code/x.cpp"])
+
+
+@case
+def st_allowlist_wrong_line_or_stale_fails():
+    base = "int a;\n// the lock must be held\nint b;\n"
+    al = Allowlist([{"file": "code/x.cpp", "base_line": 9, "reason": "r"}])
+    rep = R(base, "int a;\nint b;\n", allow=al)
+    assert _kinds(rep) == ["protected"]
+    assert len(al.stale(["code/x.cpp"])) == 1 and not al.stale(["code/other.cpp"])
+
+
 def run_selftest():
     failed = 0
     for fn in SELFTEST_CASES:
@@ -1026,6 +1332,10 @@ def build_parser():
     ap.add_argument("--ignore-out-of-scope", action="store_true",
                     help="skip non-C/C++ files instead of failing them")
     ap.add_argument("-q", "--quiet", action="store_true", help="print failing files only")
+    ap.add_argument("--allow", metavar="JSON", help="reviewer-written list of protected comments that may be "
+                    "deleted: [{\"file\", \"base_line\", \"reason\"}]")
+    ap.add_argument("--rewrite-candidates", action="store_true",
+                    help="list every TODO(rewrite) comment as file:line: text (paths, or all tracked files)")
     ap.add_argument("--selftest", action="store_true", help="run the in-memory fixtures")
     ap.add_argument("--hash-objs", metavar="BUILD_DIR", help="print a JSON object-hash record for the paths")
     ap.add_argument("--compare-objs", metavar="BEFORE_JSON", help="compare current objects with a --hash-objs record")
@@ -1037,6 +1347,8 @@ def main(argv=None):
     args = ap.parse_intermixed_args(argv)
     if args.selftest:
         return run_selftest()
+    if args.rewrite_candidates:
+        return run_rewrite_candidates(args)
     if args.hash_objs:
         return run_hash_objs(args)
     if args.compare_objs:
