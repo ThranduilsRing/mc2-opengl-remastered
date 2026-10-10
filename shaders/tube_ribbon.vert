@@ -1,4 +1,5 @@
 //#version 430 (provided by makeProgram prefix)
+#include <include/axis.hglsl>
 //
 // MC2_VFX_ORACLE_TUBE slice 1: gosFX Tube swept-quad ribbon VS.
 //
@@ -34,7 +35,7 @@ void main() {
     // gl_VertexID indexes the bound element buffer -> per-vertex SSBO fetch.
     int base = gl_VertexID * 3;
     vec3 stuffPos = vec3(positions[base], positions[base + 1], positions[base + 2]);
-    vec3 glPos    = vec3(-stuffPos.x, stuffPos.z, stuffPos.y);
+    vec3 glPos    = mc2ToRender(stuffPos);
     gl_Position   = u_worldToClipGL * vec4(glPos, 1.0);
     v_uv    = uvs[gl_VertexID];
     v_color = colors[gl_VertexID];

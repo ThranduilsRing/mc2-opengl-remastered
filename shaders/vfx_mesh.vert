@@ -1,4 +1,5 @@
 //#version 430 (provided by makeProgram prefix)
+#include <include/axis.hglsl>
 //
 // VFX mesh substrate VS (MC2_VFX_ORACLE_SHAPE slice — gosFX::Shape only).
 //
@@ -31,7 +32,7 @@ void main() {
     vec3 stuffWorld = (u_modelToWorld * vec4(scaled, 1.0)).xyz;
 
     // Same axis swap the billboard path uses.
-    vec3 glWorld = vec3(-stuffWorld.x, stuffWorld.z, stuffWorld.y);
+    vec3 glWorld = mc2ToRender(stuffWorld);
 
     gl_Position = u_worldToClipGL * vec4(glWorld, 1.0);
 

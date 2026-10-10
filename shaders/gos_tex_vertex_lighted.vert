@@ -3,6 +3,7 @@
 //#version 420
 
 #include <include/lighting.hglsl>
+#include <include/axis.hglsl>
 
 layout(location = 0) in vec3 pos;
 layout(location = 1) in vec3 normal;
@@ -42,7 +43,7 @@ uniform mat4 u_worldToClipGL;  // world -> GL clip (kAxisSwapMC2toGL * worldToCl
 //   - mech.vert         : calc_light(idx, worldNormal /*MC2*/, worldMC2, base)
 //   - static_prop.vert  : worldPos is MC2-frame (Stuff->MC2 swap) and
 //                         STATIC-PROP-NORMAL-FRAME-FIX converts the normal via
-//                         normalize(vec3(-n.x, n.z, n.y)) for the same reason.
+//                         normalize(mc2ToRender(n)) for the same reason.
 // This shader — the legacy mcTextureManager/ShapeRenderer lit path, which is
 // what draws GROUND VEHICLES (GVAppearance::render -> gvShape->Render ->
 // TG_Shape::Render -> addRenderShape -> ShapeRenderer::render) — was the last
@@ -149,7 +150,7 @@ void main(void)
     WorldPos = (world_ * vec4(pos.xyz, 1.0)).xyz;
 
     // MC2 world coordinates (x=east, y=north, z=elev) for shadow sampling
-    MC2WorldPos = vec3(-WorldPos.x, WorldPos.z, WorldPos.y);
+    MC2WorldPos = mc2ToRender(WorldPos);
 
     if (gpuProjection != 0) {
         // GPU projection: transform to MC2 world space, then to clip via u_worldToClipGL
@@ -201,7 +202,7 @@ void main(void)
         // MC2-frame feed, matching mech.vert and static_prop.vert.
         // MC2WorldPos is already the Stuff->MC2 swap of WorldPos (line above);
         // apply the identical swap to the normal.
-        vec3 normalMC2 = normalize(vec3(-Normal.x, Normal.z, Normal.y));
+        vec3 normalMC2 = normalize(mc2ToRender(Normal));
         lit = calc_light(lights_index, normalMC2, MC2WorldPos, seed_light,
                          u_sunAxisMc2Fix);
     } else {

@@ -18,6 +18,8 @@
 //     radial falloff from v_corner (round soft blob). Textured sprite fidelity is
 //     the documented deferred remainder.
 #version 450
+#extension GL_GOOGLE_include_directive : require
+#include "../include/axis.hglsl"
 
 struct Particle {
     vec3  position;  float _pad0;   // 0
@@ -63,7 +65,7 @@ void main() {
     vec2 corner = mat2(cs, sn, -sn, cs) * (unitCorner * vec2(sX, sY));
 
     vec3 stuffCenter = p.position.xyz;
-    vec3 glCenter    = vec3(-stuffCenter.x, stuffCenter.z, stuffCenter.y);
+    vec3 glCenter    = mc2ToRender(stuffCenter);
     vec3 worldPos    = glCenter
                      + U.camRight.xyz * corner.x
                      + U.camUp.xyz    * corner.y;
