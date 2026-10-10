@@ -135,26 +135,6 @@ Shaders that carry sites, with their counterpart in the other backend. Twins mus
 - `mclib/gvactor.cpp:3012` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
 - `mclib/gvactor.cpp:3428` assign-triple: `wakePos.x = -nodePos.x; wakePos.y = nodePos.z; wakePos.z = nodePos.y;`
 
-### `code/weaponbolt.cpp` (17)
-
-- `code/weaponbolt.cpp:464` assign-triple: `actualPosition.x = -laserPosition.x; actualPosition.y = laserPosition.z; actualPosition.z = laserPosition.y;`
-- `code/weaponbolt.cpp:557` assign-triple: `mPosition.x = -position.x; mPosition.y = position.z; mPosition.z = position.y;`
-- `code/weaponbolt.cpp:731` assign-triple: `tPosition.x = -hotSpot.x; tPosition.y = hotSpot.z; tPosition.z = hotSpot.y;`
-- `code/weaponbolt.cpp:798` assign-triple: `tPosition.x = -hotSpot.x; tPosition.y = hotSpot.z; tPosition.z = hotSpot.y;`
-- `code/weaponbolt.cpp:1008` assign-triple: `tPosition.x = -hotSpot.x; tPosition.y = hotSpot.z; tPosition.z = hotSpot.y;`
-- `code/weaponbolt.cpp:1072` assign-triple: `tPosition.x = -hotSpot.x; tPosition.y = hotSpot.z; tPosition.z = hotSpot.y;`
-- `code/weaponbolt.cpp:1281` assign-triple: `actualPosition.x = -laserPosition.x; actualPosition.y = laserPosition.z; actualPosition.z = laserPosition.y;`
-- `code/weaponbolt.cpp:1315` assign-triple: `mPosition.x = -position.x; mPosition.y = position.z; mPosition.z = position.y;`
-- `code/weaponbolt.cpp:1444` assign-triple: `ourPosition.x = -laserPosition.x; ourPosition.y = laserPosition.z; ourPosition.z = laserPosition.y;`
-- `code/weaponbolt.cpp:1495` assign-triple: `tPosition.x = -hotSpot.x; tPosition.y = hotSpot.z; tPosition.z = hotSpot.y;`
-- `code/weaponbolt.cpp:1572` assign-triple: `tPosition.x = -hotSpot.x; tPosition.y = hotSpot.z; tPosition.z = hotSpot.y;`
-- `code/weaponbolt.cpp:1728` assign-triple: `swapped.x = -laserPosition.x; swapped.y = laserPosition.z; swapped.z = laserPosition.y;`
-- `code/weaponbolt.cpp:2356` assign-triple: `actualPosition.x = -hotSpot.x; actualPosition.y = hotSpot.z; actualPosition.z = hotSpot.y;`
-- `code/weaponbolt.cpp:2381` assign-triple: `actualPosition.x = -laserPosition.x; actualPosition.y = laserPosition.z; actualPosition.z = laserPosition.y;`
-- `code/weaponbolt.cpp:2406` assign-triple: `mPosition.x = -position.x; mPosition.y = position.z; mPosition.z = position.y;`
-- `code/weaponbolt.cpp:2457` assign-triple: `tPosition.x = -hotSpot.x; tPosition.y = hotSpot.z; tPosition.z = hotSpot.y;`
-- `code/weaponbolt.cpp:2482` assign-triple: `tPosition.x = -hotSpot.x; tPosition.y = hotSpot.z; tPosition.z = hotSpot.y;`
-
 ### `mclib/bdactor.cpp` (17)
 
 - `mclib/bdactor.cpp:1810` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
@@ -192,6 +172,21 @@ Shaders that carry sites, with their counterpart in the other backend. Twins mus
 - `code/artlry.cpp:1463` assign-triple: `actualPosition.x = -lPosition.x; actualPosition.y = lPosition.z; actualPosition.z = lPosition.y;`
 - `code/artlry.cpp:1801` assign-triple: `actualPosition.x = -position.x; actualPosition.y = position.z; actualPosition.z = position.y;`
 
+### `code/weaponbolt_update.cpp` (12)
+
+- `code/weaponbolt_update.cpp:63` assign-triple: `actualPosition.x = -laserPosition.x; actualPosition.y = laserPosition.z; actualPosition.z = laserPosition.y;`
+- `code/weaponbolt_update.cpp:156` assign-triple: `mPosition.x = -position.x; mPosition.y = position.z; mPosition.z = position.y;`
+- `code/weaponbolt_update.cpp:330` assign-triple: `tPosition.x = -hotSpot.x; tPosition.y = hotSpot.z; tPosition.z = hotSpot.y;`
+- `code/weaponbolt_update.cpp:397` assign-triple: `tPosition.x = -hotSpot.x; tPosition.y = hotSpot.z; tPosition.z = hotSpot.y;`
+- `code/weaponbolt_update.cpp:607` assign-triple: `tPosition.x = -hotSpot.x; tPosition.y = hotSpot.z; tPosition.z = hotSpot.y;`
+- `code/weaponbolt_update.cpp:671` assign-triple: `tPosition.x = -hotSpot.x; tPosition.y = hotSpot.z; tPosition.z = hotSpot.y;`
+- `code/weaponbolt_update.cpp:880` assign-triple: `actualPosition.x = -laserPosition.x; actualPosition.y = laserPosition.z; actualPosition.z = laserPosition.y;`
+- `code/weaponbolt_update.cpp:914` assign-triple: `mPosition.x = -position.x; mPosition.y = position.z; mPosition.z = position.y;`
+- `code/weaponbolt_update.cpp:1043` assign-triple: `ourPosition.x = -laserPosition.x; ourPosition.y = laserPosition.z; ourPosition.z = laserPosition.y;`
+- `code/weaponbolt_update.cpp:1094` assign-triple: `tPosition.x = -hotSpot.x; tPosition.y = hotSpot.z; tPosition.z = hotSpot.y;`
+- `code/weaponbolt_update.cpp:1171` assign-triple: `tPosition.x = -hotSpot.x; tPosition.y = hotSpot.z; tPosition.z = hotSpot.y;`
+- `code/weaponbolt_update.cpp:1327` assign-triple: `swapped.x = -laserPosition.x; swapped.y = laserPosition.z; swapped.z = laserPosition.y;`
+
 ### `code/missiongui.cpp` (8)
 
 - `code/missiongui.cpp:1881` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
@@ -202,6 +197,14 @@ Shaders that carry sites, with their counterpart in the other backend. Twins mus
 - `code/missiongui.cpp:4580` assign-triple: `objPosition.x = -wPos.x; objPosition.y = wPos.z; objPosition.z = wPos.y;`
 - `code/missiongui.cpp:6013` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
 - `code/missiongui.cpp:7521` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
+
+### `code/weaponbolt_render.cpp` (5)
+
+- `code/weaponbolt_render.cpp:629` assign-triple: `actualPosition.x = -hotSpot.x; actualPosition.y = hotSpot.z; actualPosition.z = hotSpot.y;`
+- `code/weaponbolt_render.cpp:654` assign-triple: `actualPosition.x = -laserPosition.x; actualPosition.y = laserPosition.z; actualPosition.z = laserPosition.y;`
+- `code/weaponbolt_render.cpp:679` assign-triple: `mPosition.x = -position.x; mPosition.y = position.z; mPosition.z = position.y;`
+- `code/weaponbolt_render.cpp:730` assign-triple: `tPosition.x = -hotSpot.x; tPosition.y = hotSpot.z; tPosition.z = hotSpot.y;`
+- `code/weaponbolt_render.cpp:755` assign-triple: `tPosition.x = -hotSpot.x; tPosition.y = hotSpot.z; tPosition.z = hotSpot.y;`
 
 ### `code/carnage.cpp` (4)
 

@@ -155,15 +155,15 @@
    "LG19": 2
   },
   "code": {
-   "LG01": 1808,
+   "LG01": 1805,
    "LG02": 232,
-   "LG03": 971,
+   "LG03": 970,
    "LG04": 21,
    "LG05": 202,
    "LG06": 465,
    "LG07": 0,
    "LG08": 15,
-   "LG09": 2475,
+   "LG09": 2474,
    "LG10": 22,
    "LG11": 101,
    "LG12a": 220,
@@ -1981,13 +1981,11 @@
    "LG13": 5
   },
   "code/gvehicl.cpp": {
-   "LG01": 37,
-   "LG03": 4,
-   "LG04": 1,
-   "LG09": 48,
-   "LG12b": 8,
-   "LG13": 4,
-   "LG19": 2
+   "LG01": 9,
+   "LG03": 3,
+   "LG09": 24,
+   "LG12b": 5,
+   "LG13": 2
   },
   "code/gvehicl.h": {
    "LG01": 2,
@@ -1995,6 +1993,29 @@
    "LG09": 1,
    "LG13": 15,
    "LG14": 3
+  },
+  "code/gvehicl_control.cpp": {
+   "LG01": 1,
+   "LG09": 2,
+   "LG13": 1
+  },
+  "code/gvehicl_internal.h": {
+   "LG13": 1
+  },
+  "code/gvehicl_move.cpp": {
+   "LG09": 2
+  },
+  "code/gvehicl_update.cpp": {
+   "LG01": 8,
+   "LG09": 8,
+   "LG19": 1
+  },
+  "code/gvehicl_weapons.cpp": {
+   "LG01": 16,
+   "LG04": 1,
+   "LG09": 11,
+   "LG12b": 3,
+   "LG19": 1
   },
   "code/hardpoint.h": {
    "LG02": 1,
@@ -3100,19 +3121,30 @@
    "LG09": 1
   },
   "code/weaponbolt.cpp": {
-   "LG01": 82,
-   "LG03": 50,
-   "LG09": 110,
-   "LG12a": 2,
-   "LG12b": 1,
-   "LG13": 5,
-   "LG19": 3
+   "LG01": 24,
+   "LG03": 14,
+   "LG09": 12,
+   "LG12b": 1
   },
   "code/weaponbolt.h": {
    "LG01": 10,
    "LG02": 1,
    "LG09": 7,
    "LG13": 1
+  },
+  "code/weaponbolt_internal.h": {
+   "LG13": 5
+  },
+  "code/weaponbolt_render.cpp": {
+   "LG09": 32,
+   "LG12a": 2,
+   "LG19": 1
+  },
+  "code/weaponbolt_update.cpp": {
+   "LG01": 58,
+   "LG03": 36,
+   "LG09": 66,
+   "LG19": 2
   },
   "code/weather.cpp": {
    "LG01": 3,
@@ -5457,7 +5489,7 @@
    "LG13": 31
   }
  },
- "head": "71cf0e206",
+ "head": "5f532058d",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

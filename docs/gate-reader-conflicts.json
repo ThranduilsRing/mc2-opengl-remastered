@@ -665,7 +665,7 @@
     "code/gamecam.cpp:843 Tri(inherit)",
     "code/gamecam.cpp:967 Tri(inherit)",
     "code/objmgr.cpp:2192 Tri(inherit)",
-    "code/weaponbolt.cpp:71 Tri(inherit)"
+    "code/weaponbolt_render.cpp:18 Tri(inherit)"
    ],
    "rule": "Tri (subGate): explicit 1/0 wins, else inherit the umbrella",
    "status": "resolved"
@@ -1830,7 +1830,7 @@
   "editor",
   "gui"
  ],
- "source": "commit 71cf0e206",
+ "source": "commit 5f532058d",
  "totals": {
   "conflict_gates": 6,
   "gates_with_literal": 1131,

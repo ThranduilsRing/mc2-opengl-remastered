@@ -846,7 +846,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "ISSUE-9 called-shot effectiveness (gameplay gate, default OFF = stock): (S1) Mover::calcAttackChance floors the aimed-shot modifiers at Head 0.30 / Arm 0.45 / Leg 0.50 (stock gamesys.fit 0.08/0.15/..."
     referenced_at:
-      - code/gvehicl.cpp
+      - code/gvehicl_weapons.cpp
       - code/mech_weapons.cpp
       - code/mover_attack.cpp
     registered: yes
@@ -1403,7 +1403,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "Direct-fire de-curve: PPC/autocannon/gauss bolts fly STRAIGHT instead of re-tracking the moving target every frame (the janky homing curve). Leads the aim once at spawn by target velocity over flig..."
     referenced_at:
-      - code/weaponbolt.cpp
+      - code/weaponbolt_update.cpp
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -2348,7 +2348,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - code/gvehicl.cpp
+      - code/gvehicl_update.cpp
       - code/mech_update.cpp
       - code/objmgr.cpp
     referenced_at_more: 2
@@ -4825,7 +4825,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "Direct-fire projectile speed multiplier (PPC/autocannon/gauss = non-arc bolts). Default 1.0 (stock); clamped (0,10]. ~2.0 = a good snappier feel. Excludes arcEffect (LRM) bolts. Scales velMag in We..."
     referenced_at:
-      - code/weaponbolt.cpp
+      - code/weaponbolt_update.cpp
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -9263,7 +9263,7 @@ flags:
     referenced_at:
       - GameOS/gameos/engine_present_vk.cpp
       - code/objmgr.cpp
-      - code/weaponbolt.cpp
+      - code/weaponbolt_render.cpp
     registered: yes
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
