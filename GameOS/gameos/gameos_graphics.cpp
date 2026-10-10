@@ -123,44 +123,18 @@ extern int g_terrainMaterialProfile;
 #include "../../RenderCore/RenderResourceRegistry.h"  // LIGHTDATA-SSBO-OWNER-1: registry + ids
 #include "../../RenderCore/GpuBufferOwner.h"           // LIGHTDATA-SSBO-OWNER-1: owner record
 #include "../../RenderCore/axis_convert.h"             // mc2ToRender: the one spelling of (x,y,z)->(-x,z,y)
+
+// Declarations, macros, constants and classes the split pieces share.
+bool terrainNormalArrayEnabled();   // defined below; the classes in this header call it
+bool mc2ShadowStaticBandFixEnabled();   // defined below; the classes in this header call it
+bool mc2ShadowStaticBandFixV2Enabled();   // defined below; the classes in this header call it
+GLenum getGLVertexAttribType(gosVERTEX_ATTRIB_TYPE type);   // defined below; the classes in this header call it
+
 extern const float*     gos_GetTerrainMVPMat4();
+
 
 static const DWORD INVALID_TEXTURE_ID = 0;
 
-static gosRenderer* g_gos_renderer = NULL;
-
-// `armed` is the canary gate's value (MC2_VK_*_GL_CANARY), read by the caller.
-static GLuint vkScopedGlCanaryBegin(bool armed) {
-    if (!armed)
-        return 0;
-    GLuint query = 0;
-    glGenQueries(1, &query);
-    glBeginQuery(GL_ANY_SAMPLES_PASSED, query);
-    return query;
-}
-
-static void vkScopedGlCanaryEnd(GLuint query, const char* tag, int draws) {
-    if (!query)
-        return;
-    glEndQuery(GL_ANY_SAMPLES_PASSED);
-    GLuint anySamples = 0;
-    glGetQueryObjectuiv(query, GL_QUERY_RESULT, &anySamples);
-    std::fprintf(stderr, "[VK_SCENE_GL_DRAW_CANARY v1] tag=%s any_samples=%u draws=%d\n",
-                 tag, (unsigned)anySamples, draws);
-    glDeleteQueries(1, &query);
-}
-
-static bool isAllConcreteTerrainBatch(const gos_VERTEX* vertices, int count) {
-    if (!vertices || count <= 0)
-        return false;
-
-    for (int i = 0; i < count; ++i) {
-        if ((vertices[i].frgb & 0x000000ffu) != 3u)
-            return false;
-    }
-
-    return true;
-}
 
 // TERRAIN-TEX-UNIT-MAP-1: canonical texture unit assignments for the terrain pass.
 // Never write raw integers for terrain units — use these names.
@@ -169,185 +143,40 @@ static bool isAllConcreteTerrainBatch(const gos_VERTEX* vertices, int count) {
 // overwrote unit 9, making snow normals always sample the shadow depth texture.
 // Fix: snow moved to unit 12. All terrain bind sites updated to use this table.
 static constexpr GLint kTerrainTexUnitStaticShadow  = 9;
+
 static constexpr GLint kTerrainTexUnitDynamicShadow = 10;
+
 static constexpr GLint kTerrainTexUnitHeight        = 11;
+
 // Per-cascade shadow resolution: separate full-map (last) cascade depth texture.
 // Free unit (terrain uses 5-12); under the 16-unit min-spec floor.
 static constexpr GLint kTerrainTexUnitDynFullMap    = 13;
+
 // matNormal0-3: units 5-8 (rock/grass/dirt/concrete); matNormal4 (snow): unit 12
 static constexpr GLint kTerrainMatNormalUnits[5]    = { 5, 6, 7, 8, 12 };
+
 // When MC2_TERRAIN_NORMAL_ARRAY=1 (future plan), the array texture occupies unit 5.
 static constexpr GLint kTerrainTexUnitNormalArray   = 5;
+
 static_assert(kTerrainMatNormalUnits[4] != kTerrainTexUnitStaticShadow,
               "matNormal4 collides with static shadow map unit");
+
 static_assert(kTerrainMatNormalUnits[4] != kTerrainTexUnitDynamicShadow,
               "matNormal4 collides with dynamic shadow map unit");
+
 static_assert(kTerrainMatNormalUnits[4] != kTerrainTexUnitHeight,
               "matNormal4 collides with height texture unit");
+
 static_assert(kTerrainMatNormalUnits[4] < 16,
               "matNormal4 exceeds OpenGL min-spec 16-unit floor");
 
-// TERRAIN-NORMAL-ARRAY: save/restore all GL pixel transfer, PBO, and texture
-// binding state that glGetTexImage / glTexSubImage3D are sensitive to.
-// Construct once, destructor restores. Use in any function that calls
-// glGetTexImage or bulk texture upload to avoid clobbering surrounding state.
-// GAMEOS-GRAPHICS-SPLIT-1 slice 2: GlPixelStoreGuard moved to
-// gameos_graphics_internal.h (used by gosTexture Lock/Unlock inline methods).
-
-// Single-source gate for the sampler2DArray terrain normal path.
-// Used by shader prefix injection AND all bind paths — must agree for the
-// lifetime of compiled programs. Evaluated once at startup via static.
-static bool terrainNormalArrayEnabled() {
-    // DEFAULT ON (was opt-in). The sampler2DArray path is the only one whose
-    // build runs at the clean terrain/shadow bind sites; the terrain LOD chunk
-    // renderer needs the array populated to apply material detail normals.
-    // Visual is identical to the legacy individual-sampler path by design
-    // (validated 5/5 ON). Explicit MC2_TERRAIN_NORMAL_ARRAY=0 forces the old
-    // individual-sampler path.
-    static const bool enabled = mc2::gate::get<"MC2_TERRAIN_NORMAL_ARRAY">();
-    return enabled;
-}
-
-// STATIC-SHADOW-BANDING-1: default ON (2026-07-18, was OFF). Raises the LOD-based static-shadow PCF
-// tap floor (gos_terrain.frag's `shadowTaps` ladder 16/8/4) to 16/12/8 so the
-// wide adaptive-radius PCF used on flat terrain (see shadow.hglsl's
-// gradient-adaptive `adaptiveScale`) doesn't undersample the Poisson disk at
-// mid/far LOD. Root cause: on FLAT terrain the radius widens toward 3.2x while
-// tap count drops to 8 (mid) or 4 (far) for perf — wide-radius + few-taps is
-// the textbook Poisson-disk banding/ring artifact, most visible on smoothly
-// varying receivers (rolling grass), NOT a shadow-map resolution or depth
-// issue. Killswitch "=0" => byte-identical legacy (shadowTaps stays 16/8/4).
-bool mc2ShadowStaticBandFixEnabled() {
-    // SHADOW-BANDING-DEFAULT-ON (2026-07-18): field bug report confirmed the
-    // banding persists in the shipped default config ("this was never
-    // fixed") — the fix existed but was left opt-in. DEFAULT ON now;
-    // killswitch: MC2_SHADOW_STATIC_BANDFIX=0 reverts to legacy taps.
-    static const bool enabled = mc2::gate::get<"MC2_SHADOW_STATIC_BANDFIX">();
-    return enabled;
-}
-
-// STATIC-SHADOW-BANDING-2: default ON (2026-07-18, was OFF). Round 1 (BANDFIX v1) was refuted by
-// field check as insufficient -- taps=16 still banded on TERRAIN (grass/dirt
-// slopes; v1 verified mostly on concrete, the wrong receiver). Measurement:
-// static map world-per-texel (~4.6 world units on mc2_01, 4096^2 ortho over
-// the whole map) divided by tan(slope) predicts ~25-90 world-unit-spaced
-// diagonal contour bands on gentle 3-10 deg slopes -- matches the user's
-// "smooth discrete diagonal contour bands", not Poisson-tap noise. Root
-// cause: calcShadow()'s NdotL/bias in shadow.hglsl was computed against a
-// FAKE flat-up shadowN (gos_terrain.frag), so slope-scaled bias never
-// adapted to real terrain tilt. v2 swaps in the height-derived slope normal
-// for shadow bias ONLY (lighting normal N is untouched). Independent gate,
-// typically paired with v1 (taps) but not required to be. Killswitch "=0" =>
-// byte-identical legacy (shadowN stays flat vec3(0,0,1)).
-bool mc2ShadowStaticBandFixV2Enabled() {
-    // SHADOW-BANDING-DEFAULT-ON (2026-07-18): field bug report (banding in
-    // and around mech shadows on terrain) verified A/B in-engine: default
-    // config shows diagonal contour striping across terrain
-    // (MC2_LIGHTING_DEBUG_VIEW=shadow, mc2_01 f1800: high-pass stripe
-    // amplitude 3.67 -> 1.12 with V2 on). DEFAULT ON now; killswitch:
-    // MC2_SHADOW_STATIC_BANDFIX_V2=0 reverts to flat-normal bias.
-    static const bool enabled = mc2::gate::get<"MC2_SHADOW_STATIC_BANDFIX_V2">();
-    return enabled;
-}
-
-// TERRAIN-SHADOW-GUARD-1 (MC2_TERRAIN_SHADOW_GUARD_CLAMPED_SUN, DEFAULT ON,
-// "=0" kills). The shadow MATRICES are built from an altitude-clamped sun
-// (mc2ClampShadowSunAltitude, gos_postprocess.cpp, 15deg min) but shadow.hglsl's
-// back-face guard `if (NdotL < 0.05) return 1.0;` dotted the RAW authored sun.
-// Under MC2_SHADOW_STATIC_BANDFIX_V2 (default ON) `normal` is reset to flat-up
-// immediately before that guard, so on terrain it reduces to
-// `terrainLightDir.z < 0.05`. mc2_10 authors LightDirPitch=180 -> z = 0 ->
-// EVERY terrain pixel early-outs fully lit while props/mechs keep their shadows
-// via the unguarded path. Feeding the guard the same clamped sun the matrices
-// used restores them. No-op wherever sin(authored altitude) >= sin(15deg)
-// (mc2_01=50deg, mc2_03=46deg, mc2_24=75deg -> byte-identical).
-bool mc2TerrainShadowGuardClampedSun() {
-    static const bool enabled = mc2::gate::get<"MC2_TERRAIN_SHADOW_GUARD_CLAMPED_SUN">();
-    return enabled;
-}
-
-// mc2ShadowMinSunAltDeg() is defined in gos_postprocess.cpp (declared in
-// gameos.hpp) so the GLSL clamp and the C++ matrix clamp can never drift apart.
-//
-// Emits "#define MC2_SHADOW_MIN_SUN_SIN <sin(minAlt)>" for shader prefixes whose
-// program consumes shadow.hglsl with the terrain sun. Returns "" when the gate is
-// off or the clamp is disabled -> shadow.hglsl's 0.0 default -> identity -> the
-// compiled shader is byte-identical to legacy.
-std::string mc2TerrainShadowSunDefine() {
-    if (!mc2TerrainShadowGuardClampedSun()) return std::string();
-    const float deg = mc2ShadowMinSunAltDeg();
-    if (deg <= 0.0f) return std::string();
-    char buf[80];
-    snprintf(buf, sizeof(buf), "#define MC2_SHADOW_MIN_SUN_SIN %.8f\n",
-             (double)sinf(deg * 0.01745329252f));
-    return std::string(buf);
-}
-
-// VK-PARITY-SHADOW-1: single producer of the terrain shadow knob set (see gameos.hpp).
-// Values are round-tripped through the SAME printf formats the #define injection uses
-// (%.1f wu, %.2f max, %.8f sin) so GL (compile-time literal) and VK (UBO float) agree.
-Mc2ShadowFadeKnobs mc2ShadowFadeKnobs() {
-    Mc2ShadowFadeKnobs k{};
-    char buf[64];
-    if (mc2ShadowDistFadeWu() > 0.0f) {
-        snprintf(buf, sizeof(buf), "%.1f", (double)mc2ShadowDistFadeWu());
-        k.distFadeWu = (float)atof(buf);
-        snprintf(buf, sizeof(buf), "%.2f", (double)mc2ShadowDistFadeMax());
-        k.distFadeMax = (float)atof(buf);
-        k.flags |= mc2ShadowFadeCont()  ? 1 : 0;
-        k.flags |= mc2ShadowFadeRamp0() ? 2 : 0;
-        k.flags |= mc2ShadowAltScale()  ? 4 : 0;
-    }
-    if (mc2TerrainShadowGuardClampedSun()) {
-        const float deg = mc2ShadowMinSunAltDeg();
-        if (deg > 0.0f) {
-            snprintf(buf, sizeof(buf), "%.8f", (double)sinf(deg * 0.01745329252f));
-            k.minSunSin = (float)atof(buf);
-        }
-    }
-    if (mc2ShadowStaticBandFixV2Enabled()) k.flags |= 8;
-    return k;
-}
-
-// WATER-BIAS-LINEARIZE-1: bias-mode selector for the FAST water regime.
-// Default 0 = distance-proportional bias (clip.z += F_REL*clip.z; world error
-// ~ linear in distance, kills the far-field water-over-ridge z-fight).
-// MC2_WATER_BIAS_LEGACY=1 -> 1 = legacy constant NDC offset
-// (clip.z += FUDGE*clip.w). Consumed by both fast water VS variants and the
-// gpu_driven_water.comp pzOk admission gate (all three MUST agree; see
-// mclib/terrain_depth_bias.h). Exported via gameos.hpp for the water-stream TU.
-int mc2WaterBiasLegacy() {
-    static const int mode = mc2::gate::get<"MC2_WATER_BIAS_LEGACY">();
-    return mode;
-}
-
-// OVERLAY-BIAS-LINEARIZE-1: bias-mode selector for the overlay/decal VS
-// (terrain_overlay.vert, shared by TerrainOverlayBatch + DecalBatch +
-// decal-static). Default 0 = distance-proportional bias (world error ~
-// linear -> no far-zoom overlay float). MC2_OVERLAY_BIAS_LEGACY=1 -> legacy
-// constant NDC offset. Single consumer is the VS (no compute admission gate
-// mirrors the overlay bias). See mclib/terrain_depth_bias.h.
-static int mc2OverlayBiasLegacy() {
-    static const int mode = mc2::gate::get<"MC2_OVERLAY_BIAS_LEGACY">();
-    return mode;
-}
-
-// TERRAIN-MATERIAL-LIB-1: default OFF. Drives u_useMaterialLib (chunk-path
-// roughness/AO branch). Evaluated once (static) -- matches terrainNormalArrayEnabled().
-static bool terrainMaterialLibEnabled() {
-    static const bool enabled = mc2::gate::get<"MC2_TERRAIN_MATERIAL_LIB">();
-    return enabled;
-}
-
-gosRenderer* getGosRenderer() {
-    return g_gos_renderer;
-}
 
 // Public helper for consumers outside this TU (e.g. gos_static_prop_batcher)
 // that need to turn a gosTextureHandle into a raw GL texture name. Declared
 // here so local code can reference it; defined at end of this file after
 // the gosRenderer / gosTexture class bodies are in scope.
 uint32_t gos_GetGLTextureId(uint32_t gosHandle);
+
 
 // SPLIT-1 slice 2: gosTextureInfo moved to gameos_graphics_internal.h.
 
@@ -362,23 +191,6 @@ public:
 	gosBUFFER_USAGE usage_;
 };
 
-GLenum getGLVertexAttribType(gosVERTEX_ATTRIB_TYPE type) {
-	GLenum t = -1;
-	switch (type)
-	{
-	case gosVERTEX_ATTRIB_TYPE::BYTE: return GL_BYTE;
-	case gosVERTEX_ATTRIB_TYPE::UNSIGNED_BYTE: return GL_UNSIGNED_BYTE;
-	case gosVERTEX_ATTRIB_TYPE::SHORT: return GL_SHORT;
-	case gosVERTEX_ATTRIB_TYPE::UNSIGNED_SHORT: return GL_UNSIGNED_SHORT;
-	case gosVERTEX_ATTRIB_TYPE::INT: return GL_INT;
-	case gosVERTEX_ATTRIB_TYPE::UNSIGNED_INT: return GL_UNSIGNED_INT;
-	case gosVERTEX_ATTRIB_TYPE::FLOAT: return GL_FLOAT;
-	default:
-		gosASSERT(0 && "unknows vertex attrib type");
-	}
-
-	return t;
-};
 
 ////////////////////////////////////////////////////////////////////////////////
 class gosVertexDeclaration {
@@ -434,7 +246,9 @@ public:
 
 };
 
+
 class gosMaterialVariationHelper;
+
 class gosMaterialVariation {
         friend class gosMaterialVariationHelper;
         char* defines_;
@@ -451,6 +265,7 @@ class gosMaterialVariation {
             delete[] unique_name_suffix_;
         }
 };
+
 
 class gosMaterialVariationHelper {
         std::vector<std::string> defines;
@@ -551,19 +366,18 @@ class gosMaterialVariationHelper {
         }
 };
 
+
 enum class gosGLOBAL_SHADER_FLAGS : unsigned int
 {
     ALPHA_TEST = 0,
     IS_OVERLAY = 1
 };
 
+
 #define SHADER_FLAG_INDEX_TO_MASK(x) (1 << ((uint32_t)x))
+
 #define SHADER_FLAG_MASK_TO_INDEX(x) (ffs(x)-1) // use __popcnt etc for windows, and move to platform_*.h
 
-static const char* const g_shader_flags[] = {
-    "ALPHA_TEST",
-    "IS_OVERLAY"
-};
 
 
 class gosRenderMaterial {
@@ -756,33 +570,6 @@ class gosRenderMaterial {
         GLint texcoord_loc;
 };
 
-const std::string gosRenderMaterial::s_mvp = std::string("mvp");
-const std::string gosRenderMaterial::s_fog_color = std::string("fog_color");
-
-// ---------------------------------------------------------------------------
-// GPU-BUFFER-WRAPPER-TIER0-HUD-1 — gate state (default OFF).
-//   MC2_GPUBUF_RING            : route gosMesh::draw/drawIndexed through the
-//                                persistent-coherent fenced ring instead of the
-//                                per-batch glBufferData orphan. OFF => legacy
-//                                path, byte-identical GL stream + output.
-//   MC2_GPUBUF_RING_FORCE_WRAP : negative test — deterministically advance the
-//                                ring twice without an intervening endFrame so
-//                                the one-endFrame-per-beginFrame invariant trips
-//                                (proves the fence-per-frame guard is live).
-//   MC2_GPUBUF_RESIDENCY       : list the live HUD ring buffers once per frame.
-// Cached once on first query (single predicted-false branch when unset).
-static bool gosHudRingEnabled() {
-    static const bool s_on = mc2::gate::get<"MC2_GPUBUF_RING">();
-    return s_on;
-}
-static bool gosHudRingForceWrap() {
-    static const bool s_on = mc2::gate::get<"MC2_GPUBUF_RING_FORCE_WRAP">();
-    return s_on;
-}
-static bool gosHudRingResidency() {
-    static const bool s_on = mc2::gate::get<"MC2_GPUBUF_RESIDENCY">();
-    return s_on;
-}
 
 // LIGHT-GROW-ONCE-SUBDATA-1 — gate state (default OFF). The AMD-safe
 // intermediate for the light SSBO orphan churn (NOT the full GpuStorageRing).
@@ -945,218 +732,13 @@ class gosMesh {
         mc2gpu::GpuMeshRing* ring_;
 };
 
-const std::string gosMesh::s_tex1 = std::string("tex1");
-
-void gosMesh::draw(gosRenderMaterial* material) const
-{
-    gosASSERT(material);
-
-    if(num_vertices_ == 0)
-        return;
-
-    // GPU-BUFFER-WRAPPER-TIER0-HUD-1: ring path (gate ON) vs legacy orphan (OFF).
-    // The two branches differ ONLY in (a) how the current frame's vertices reach
-    // the GPU (memcpy into a coherent map vs glBufferData orphan) and (b) the
-    // first-vertex of the draw (slot base vs 0). Same data, same count, same
-    // primitive, same bind-to-0 epilogue => byte-identical draw-visible result.
-    mc2gpu::GpuMeshRing* ring =
-        gosHudRingEnabled() ? const_cast<gosMesh*>(this)->ensureRing() : nullptr;
-
-    GLint firstVertex = 0;
-    GLuint drawVb = vb_;
-    if (ring) {
-        ring->beginFrame();
-        if (gosHudRingForceWrap()) {
-            // NEGATIVE TEST: advance again with no intervening endFrame so the
-            // one-endFrame-per-beginFrame invariant trips (proves the guard).
-            ring->beginFrame();
-        }
-        firstVertex = ring->writeVertices(pvertex_data_, (uint32_t)num_vertices_);
-        drawVb = ring->vb();
-    } else {
-        updateBuffer(vb_, GL_ARRAY_BUFFER, pvertex_data_, num_vertices_*sizeof(gos_VERTEX), GL_DYNAMIC_DRAW_ARB);
-    }
-
-    material->apply();
-
-    material->setSamplerUnit(s_tex1, 0);
-
-	glBindBuffer(GL_ARRAY_BUFFER, drawVb);
-    CHECK_GL_ERROR;
-
-    material->applyVertexDeclaration();
-    CHECK_GL_ERROR;
-
-    GLenum pt = GL_TRIANGLES;
-    switch(prim_type_) {
-        case PRIMITIVE_POINTLIST:
-            pt = GL_POINTS;
-            break;
-        case PRIMITIVE_LINELIST:
-            pt = GL_LINES;
-            break;
-        case PRIMITIVE_TRIANGLELIST:
-            pt = GL_TRIANGLES;
-            break;
-        default:
-            gosASSERT(0 && "Wrong primitive type");
-    }
-
-    glDrawArrays(pt, firstVertex, num_vertices_);
-
-    material->endVertexDeclaration();
-    material->end();
-
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-    if (ring)
-        ring->endFrame();   // fence the slot AFTER the draw consumes it.
-}
-
-void gosMesh::drawIndexed(gosRenderMaterial* material) const
-{
-    gosASSERT(material);
-
-    if(num_vertices_ == 0)
-        return;
-
-    // GPU-BUFFER-WRAPPER-TIER0-HUD-1: ring path (gate ON) vs legacy orphan (OFF).
-    // Ring path uses glDrawElementsBaseVertex so the same index data (offset 0
-    // relative to the slot) addresses the same vertices (shifted by baseVertex).
-    // The legacy branch is the EXACT original two-orphan + glDrawElements path.
-    mc2gpu::GpuMeshRing* ring =
-        gosHudRingEnabled() ? const_cast<gosMesh*>(this)->ensureRing() : nullptr;
-
-    GLint  baseVertex   = 0;
-    GLvoid* indexOffset = NULL;
-    GLuint drawVb = vb_;
-    GLuint drawIb = ib_;
-    if (ring) {
-        ring->beginFrame();
-        if (gosHudRingForceWrap()) {
-            // NEGATIVE TEST: see gosMesh::draw — trips the fence-per-frame guard.
-            ring->beginFrame();
-        }
-        baseVertex  = ring->writeVertices(pvertex_data_, (uint32_t)num_vertices_);
-        indexOffset = (GLvoid*)(uintptr_t)ring->writeIndices(pindex_data_, (uint32_t)num_indices_);
-        drawVb = ring->vb();
-        drawIb = ring->ib();
-    } else {
-        updateBuffer(vb_, GL_ARRAY_BUFFER, pvertex_data_, num_vertices_*sizeof(gos_VERTEX), GL_DYNAMIC_DRAW);
-        updateBuffer(ib_, GL_ELEMENT_ARRAY_BUFFER, pindex_data_, num_indices_*sizeof(INDEX_TYPE), GL_DYNAMIC_DRAW);
-    }
-
-    material->apply();
-
-    material->setSamplerUnit(s_tex1, 0);
-
-	glBindBuffer(GL_ARRAY_BUFFER, drawVb);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, drawIb);
-    CHECK_GL_ERROR;
-
-    material->applyVertexDeclaration();
-    CHECK_GL_ERROR;
-
-    GLenum pt = GL_TRIANGLES;
-    switch(prim_type_) {
-        case PRIMITIVE_POINTLIST:
-            pt = GL_POINTS;
-            break;
-        case PRIMITIVE_LINELIST:
-            pt = GL_LINES;
-            break;
-        case PRIMITIVE_TRIANGLELIST:
-            pt = GL_TRIANGLES;
-            break;
-        default:
-            gosASSERT(0 && "Wrong primitive type");
-    }
-
-    const GLenum idxType = getIndexSizeBytes()==2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT;
-    if (ring)
-        glDrawElementsBaseVertex(pt, num_indices_, idxType, indexOffset, baseVertex);
-    else
-        glDrawElements(pt, num_indices_, idxType, indexOffset);
-
-    material->endVertexDeclaration();
-    material->end();
-
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-    if (ring)
-        ring->endFrame();   // fence the slot AFTER the draw consumes it.
-}
-
-void gosMesh::drawIndexed(HGOSBUFFER ib, HGOSBUFFER vb, HGOSVERTEXDECLARATION vdecl, gosRenderMaterial* material)
-{
-	gosASSERT(material);
-
-	int index_size = ib->element_size_;
-	gosASSERT(index_size == 2 || index_size == 4);
-
-	if (ib->count_ == 0)
-		return;
-
-	material->apply();
-	CHECK_GL_ERROR;
-
-	material->setSamplerUnit(s_tex1, 0);
-	CHECK_GL_ERROR;
-
-	glBindBuffer(GL_ARRAY_BUFFER, vb->buffer_);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ib->buffer_);
-	CHECK_GL_ERROR;
-
-	vdecl->apply();
-	CHECK_GL_ERROR;
-
-	GLenum pt = GL_TRIANGLES;
-	glDrawElements(pt, ib->count_, index_size == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT, NULL);
-
-	vdecl->end();
-	material->end();
-
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-}
-
-void gosMesh::drawIndexed(HGOSBUFFER ib, HGOSBUFFER vb, HGOSVERTEXDECLARATION vdecl)
-{
-	int index_size = ib->element_size_;
-	gosASSERT(index_size == 2 || index_size == 4);
-
-	if (ib->count_ == 0)
-		return;
-
-	CHECK_GL_ERROR;
-
-	glBindBuffer(GL_ARRAY_BUFFER, vb->buffer_);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ib->buffer_);
-	CHECK_GL_ERROR;
-
-	vdecl->apply();
-	CHECK_GL_ERROR;
-
-	GLenum pt = GL_TRIANGLES;
-	glDrawElements(pt, ib->count_, index_size == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT, NULL);
-
-	vdecl->end();
-
-	//material->end();
-	glUseProgram(0);
-
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-}
 
 
 
 // GAMEOS-GRAPHICS-SPLIT-1 slice 2: gosTexture class definition moved to
 // gameos_graphics_internal.h (included here; also provides gosFont from slice 1).
 #include "gameos_graphics_internal.h"
+
 
 struct gosTextAttribs {
     HGOSFONT3D FontHandle;
@@ -1170,120 +752,6 @@ struct gosTextAttribs {
     bool DisableEmbeddedCodes;
 };
 
-// GAMEOS-GRAPHICS-SPLIT-1 slice 2: makeKindaSolid/doesLookLikeAlpha/
-// convertIfNecessary + gosTexture::createHardwareTexture moved to
-// gameos_graphics_texture.cpp.
-static gosTexture* lookupBatchTextureOrWarn(const std::vector<gosTexture*>& textureList,
-                                            DWORD textureId,
-                                            const char* batchName) {
-    if (textureId == INVALID_TEXTURE_ID)
-        return nullptr;
-
-    if (textureId >= textureList.size() || textureList[textureId] == nullptr) {
-        static unsigned int warnCount = 0;
-        if (warnCount < 16) {
-            printf("%s: dropping invalid texture handle %u (texture count=%zu)\n",
-                   batchName, textureId, textureList.size());
-            ++warnCount;
-        }
-        return nullptr;
-    }
-
-    return textureList[textureId];
-}
-
-// OMT-1-OVERLAY-MISSING-TEXTURE-GUARD ─────────────────────────────────────────
-// The overlay/decal batch draws previously did `glBindTexture(GL_TEXTURE_2D,
-// t ? id : 0)` — binding GL name 0 on a resolve-fail makes the sampler read an
-// INCOMPLETE texture, whose result is driver-defined (black on some GPUs,
-// garbage/magenta on others = a vendor-dependent mystery; cf. OMT recon). Route
-// resolve-fails to an explicit 1x1 magenta fallback + a deterministic
-// once-per-handle log + counters, so a missing overlay texture is visible AND
-// explained instead of undefined. NO bake/composite/cement/shader change — this
-// only hardens the per-draw texture BIND. Verbose summary: MC2_OVERLAY_TEXTURE_TRACE=1.
-namespace {
-struct OverlayTexStats {
-    uint64_t pushes = 0, resolved = 0, resolve_failed = 0,
-             bound_zero_prevented = 0, fallback_bound = 0;
-};
-OverlayTexStats g_overlayTexStats;
-GLuint g_overlayFallbackTex = 0;
-
-GLuint getOverlayFallbackTexture() {
-    if (g_overlayFallbackTex == 0) {
-        const unsigned char magenta[4] = { 255, 0, 255, 255 };  // 1x1 RGBA debug
-        // TEX-CLASS: asset-pool -- overlay magenta/fallback content texture
-        glGenTextures(1, &g_overlayFallbackTex);
-        glBindTexture(GL_TEXTURE_2D, g_overlayFallbackTex);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, magenta);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    }
-    return g_overlayFallbackTex;
-}
-
-bool overlayTexTraceOn() {
-    static int c = -1;
-    if (c < 0) c = (mc2::gate::get<"MC2_OVERLAY_TEXTURE_TRACE">()) ? 1 : 0;
-    return c != 0;
-}
-
-// Once-per-handle dedup without pulling in <set> (handles are few + bounded to 64).
-bool overlayHandleAlreadyLogged(DWORD h) {
-    static DWORD seen[64];
-    static int   seenCount = 0;
-    for (int i = 0; i < seenCount; ++i) if (seen[i] == h) return true;
-    if (seenCount < 64) { seen[seenCount++] = h; return false; }  // new → log + record
-    return true;  // table full → suppress (bounds log volume)
-}
-
-// Bind the resolved batch texture, or an explicit 1x1 magenta fallback on
-// resolve-fail. NEVER binds GL name 0 on the resolve-fail path. Logs once per
-// failing handle (deterministic, with reason) and counts every category.
-void bindBatchTextureOrFallback(gosTexture* t, DWORD texHandle, const char* batchName) {
-    ++g_overlayTexStats.pushes;
-    const GLuint id = t ? (GLuint)t->getTextureId() : 0u;
-    if (t && id != 0u) {
-        ++g_overlayTexStats.resolved;
-        glBindTexture(GL_TEXTURE_2D, id);
-        return;
-    }
-    ++g_overlayTexStats.resolve_failed;
-    ++g_overlayTexStats.bound_zero_prevented;   // the bug this guard prevents
-    ++g_overlayTexStats.fallback_bound;
-    if (!overlayHandleAlreadyLogged(texHandle)) {
-        fprintf(stderr,
-            "[OVERLAY_TEXTURE v1] event=resolve_fail batch=%s texHandle=%u "
-            "fallback_bound=1 texture=<1x1 magenta debug> reason=%s\n",
-            batchName, (unsigned)texHandle,
-            (t && id == 0u) ? "resolved_but_gl_id_0" : "null_or_invalid_handle");
-        fflush(stderr);
-    }
-    glBindTexture(GL_TEXTURE_2D, getOverlayFallbackTexture());
-}
-
-// Cumulative counter summary; rate-limited, gated by MC2_OVERLAY_TEXTURE_TRACE.
-// Uses an internal tick (this file has no g_mc2FrameCounter in scope); the tick
-// advances once per drawTerrainOverlays call ≈ once per overlay-active frame.
-void overlayTexTraceSummary() {
-    if (!overlayTexTraceOn()) return;
-    static uint64_t s_tick = 0;
-    ++s_tick;
-    if ((s_tick % 300u) != 1u) return;
-    fprintf(stderr,
-        "[OVERLAY_TEXTURE v1] event=summary tick=%llu pushes=%llu resolved=%llu "
-        "resolve_failed=%llu bound_zero_prevented=%llu fallback_bound=%llu\n",
-        (unsigned long long)s_tick,
-        (unsigned long long)g_overlayTexStats.pushes,
-        (unsigned long long)g_overlayTexStats.resolved,
-        (unsigned long long)g_overlayTexStats.resolve_failed,
-        (unsigned long long)g_overlayTexStats.bound_zero_prevented,
-        (unsigned long long)g_overlayTexStats.fallback_bound);
-    fflush(stderr);
-}
-} // anonymous namespace (OMT-1)
 
 ////////////////////////////////////////////////////////////////////////////////
 // GAMEOS-GRAPHICS-SPLIT-1 slice 1: gosFont class definition + implementation
@@ -1291,6 +759,7 @@ void overlayTexTraceSummary() {
 
 
 enum HudDrawKind { kHudQuadBatch, kHudLineBatch, kHudTriBatch, kHudTextQuadBatch };
+
 
 struct HudDrawCall {
     HudDrawKind              kind;
@@ -1302,6 +771,79 @@ struct HudDrawCall {
     bool                     scaleExempt = false; // skip s_hud_scale shrink (cursor, modal dialogs)
     bool                     canvasExempt = false; // skip 16:9 HUD-canvas remap (cursor, world-anchored overlays, dialogs)
 };
+
+
+// Probe 8: forward decls for cross-TU MVP fingerprint accessors (defined in
+// gos_terrain_indirect.cpp inside its extern "C" block).
+extern "C" uint32_t gos_terrain_indirect_getDispatchMvpFp();
+
+extern "C" uint64_t gos_terrain_indirect_getDispatchMvpFrameIdx();
+
+extern "C" void     gos_terrain_indirect_getDispatchMvpFloats4(float out[4]);
+
+
+// ---------------------------------------------------------------------------
+// SHADOW-STABILITY-1: explicit shadow-pass GL-state brackets + env-gated trace.
+//
+// The shadow passes are FORWARD-Z (glClearDepth(1), GL_LESS) bolted onto the
+// main REVERSE-Z scene (glClearDepth(0), GL_GEQUAL). The boundary is a manual
+// glClearDepth swap with no guard — same state-leak bug class as the
+// transparency depth-write fix and the 10.3 terrain-transparency saga. These
+// helpers capture the caller's GL state at pass entry, let the pass set what it
+// needs, then RESTORE the captured values at exit so nothing leaks into the
+// reverse-Z scene pass. They do NOT introduce a GlStateGuard framework — they
+// only read/restore via raw GL queries at the four pass boundaries.
+//
+// (declared in gos_static_prop_batcher.h; forward-declared here to avoid
+//  pulling that header into this TU)
+void gos_GetStaticBuildingShadowCounts(int& types, int& inst, int& draws);
+
+
+// ---------------------------------------------------------------------------
+// DEBUG-VIEW-SWEEP-1: one global debug-view selector fanned out to every lane's
+// existing per-lane debug channel. Deterministic full-scene diagnostic views
+// for pixel-comparable agent sweeps (tools/debug_view_sweep.py).
+//   0 = off (all lanes restored to their default channel; env values resume)
+//   1 = shadow factor    terrain 44 (raw shadow term grayscale); props 44
+//                        (constant no-shadow marker — props don't self-shadow
+//                        in-shader); mechs 3 (vertex light-only)
+//   2 = normalized depth 50-series: gl_FragCoord.z remapped over the 0.85..1.0
+//                        band the scene occupies, grayscale, all main lanes
+//   3 = unlit albedo     terrain/props 40, mechs 2, vfx 1 (raw texture color)
+//   4 = overdraw proxy   opaque lanes flat 0.12 gray (mode 51); VFX mode 4
+//                        (real additive accumulation on top)
+//   5 = world normals    terrain/props 41, mechs 4 (N*0.5+0.5 as RGB)
+//   6 = chunk/LOD tint   terrain 52 (hashed thin-record palette = real
+//                        GPU-indirect chunking); props materialIdx palette
+//                        (debugMaterialMode 2); mechs 52 (black; unsupported);
+//                        vfx 3 (per-kind palette)
+// Lanes NOT covered (render their normal output in every view): water, sky,
+// grass/vegetation cards, decals/overlays, legacy gos_vertex* draws, HUD.
+// Registered MC2_DEBUG_VIEW (boot seed); runtime via `debugview N` verb.
+void batcher_setDebugMaterialMode(int shaderMode);      // gos_static_prop_batcher.h
+
+extern "C" void batcher_setMechDebugMode(int shaderMode);   // gos_mech_batcher.cpp
+
+extern "C" void gos_vfx_setDebugMode(int mode);             // gos_particle_bridge.h
+
+
+// UI-PASS-DRAWCOUNT-AMBIENT-MEASURE-1: observe-only telemetry entry points, defined in
+// mclib/render_contract.cpp (GL-aware TU; reuses the ambient-probe sample helpers).
+extern "C" void mc2_ui_pass_sample_entry_ambient();
+
+extern "C" void mc2_ui_pass_note_draw(unsigned kind);
+
+extern "C" void mc2_ui_pass_check_ambient();
+
+
+// APPLY-STATE-TERRAINDECAL-1: forward-decl of the cross-TU apply-state counter bump
+// (defined in gos_postprocess.cpp). Bumps the SAME g_applyStatePasses that the
+// PostProcess apply-state islands use, so executor_apply_state_passes aggregates
+// top-level + sub-stage applies without a separate gauge.
+extern "C" void mc2_framegraph_executor_bump_apply_state(unsigned id);
+
+// The renderer class and the types only it uses.
+
 
 ////////////////////////////////////////////////////////////////////////////////
 class gosRenderer {
@@ -2614,6 +2156,570 @@ class gosRenderer {
         // ── End world-space overlay batch members ──────────────────────────────
 };
 
+gosRenderer* g_gos_renderer = NULL;
+
+// `armed` is the canary gate's value (MC2_VK_*_GL_CANARY), read by the caller.
+static GLuint vkScopedGlCanaryBegin(bool armed) {
+    if (!armed)
+        return 0;
+    GLuint query = 0;
+    glGenQueries(1, &query);
+    glBeginQuery(GL_ANY_SAMPLES_PASSED, query);
+    return query;
+}
+
+static void vkScopedGlCanaryEnd(GLuint query, const char* tag, int draws) {
+    if (!query)
+        return;
+    glEndQuery(GL_ANY_SAMPLES_PASSED);
+    GLuint anySamples = 0;
+    glGetQueryObjectuiv(query, GL_QUERY_RESULT, &anySamples);
+    std::fprintf(stderr, "[VK_SCENE_GL_DRAW_CANARY v1] tag=%s any_samples=%u draws=%d\n",
+                 tag, (unsigned)anySamples, draws);
+    glDeleteQueries(1, &query);
+}
+
+static bool isAllConcreteTerrainBatch(const gos_VERTEX* vertices, int count) {
+    if (!vertices || count <= 0)
+        return false;
+
+    for (int i = 0; i < count; ++i) {
+        if ((vertices[i].frgb & 0x000000ffu) != 3u)
+            return false;
+    }
+
+    return true;
+}
+
+// TERRAIN-NORMAL-ARRAY: save/restore all GL pixel transfer, PBO, and texture
+// binding state that glGetTexImage / glTexSubImage3D are sensitive to.
+// Construct once, destructor restores. Use in any function that calls
+// glGetTexImage or bulk texture upload to avoid clobbering surrounding state.
+// GAMEOS-GRAPHICS-SPLIT-1 slice 2: GlPixelStoreGuard moved to
+// gameos_graphics_internal.h (used by gosTexture Lock/Unlock inline methods).
+
+// Single-source gate for the sampler2DArray terrain normal path.
+// Used by shader prefix injection AND all bind paths — must agree for the
+// lifetime of compiled programs. Evaluated once at startup via static.
+bool terrainNormalArrayEnabled() {
+    // DEFAULT ON (was opt-in). The sampler2DArray path is the only one whose
+    // build runs at the clean terrain/shadow bind sites; the terrain LOD chunk
+    // renderer needs the array populated to apply material detail normals.
+    // Visual is identical to the legacy individual-sampler path by design
+    // (validated 5/5 ON). Explicit MC2_TERRAIN_NORMAL_ARRAY=0 forces the old
+    // individual-sampler path.
+    static const bool enabled = mc2::gate::get<"MC2_TERRAIN_NORMAL_ARRAY">();
+    return enabled;
+}
+
+// STATIC-SHADOW-BANDING-1: default ON (2026-07-18, was OFF). Raises the LOD-based static-shadow PCF
+// tap floor (gos_terrain.frag's `shadowTaps` ladder 16/8/4) to 16/12/8 so the
+// wide adaptive-radius PCF used on flat terrain (see shadow.hglsl's
+// gradient-adaptive `adaptiveScale`) doesn't undersample the Poisson disk at
+// mid/far LOD. Root cause: on FLAT terrain the radius widens toward 3.2x while
+// tap count drops to 8 (mid) or 4 (far) for perf — wide-radius + few-taps is
+// the textbook Poisson-disk banding/ring artifact, most visible on smoothly
+// varying receivers (rolling grass), NOT a shadow-map resolution or depth
+// issue. Killswitch "=0" => byte-identical legacy (shadowTaps stays 16/8/4).
+bool mc2ShadowStaticBandFixEnabled() {
+    // SHADOW-BANDING-DEFAULT-ON (2026-07-18): field bug report confirmed the
+    // banding persists in the shipped default config ("this was never
+    // fixed") — the fix existed but was left opt-in. DEFAULT ON now;
+    // killswitch: MC2_SHADOW_STATIC_BANDFIX=0 reverts to legacy taps.
+    static const bool enabled = mc2::gate::get<"MC2_SHADOW_STATIC_BANDFIX">();
+    return enabled;
+}
+
+// STATIC-SHADOW-BANDING-2: default ON (2026-07-18, was OFF). Round 1 (BANDFIX v1) was refuted by
+// field check as insufficient -- taps=16 still banded on TERRAIN (grass/dirt
+// slopes; v1 verified mostly on concrete, the wrong receiver). Measurement:
+// static map world-per-texel (~4.6 world units on mc2_01, 4096^2 ortho over
+// the whole map) divided by tan(slope) predicts ~25-90 world-unit-spaced
+// diagonal contour bands on gentle 3-10 deg slopes -- matches the user's
+// "smooth discrete diagonal contour bands", not Poisson-tap noise. Root
+// cause: calcShadow()'s NdotL/bias in shadow.hglsl was computed against a
+// FAKE flat-up shadowN (gos_terrain.frag), so slope-scaled bias never
+// adapted to real terrain tilt. v2 swaps in the height-derived slope normal
+// for shadow bias ONLY (lighting normal N is untouched). Independent gate,
+// typically paired with v1 (taps) but not required to be. Killswitch "=0" =>
+// byte-identical legacy (shadowN stays flat vec3(0,0,1)).
+bool mc2ShadowStaticBandFixV2Enabled() {
+    // SHADOW-BANDING-DEFAULT-ON (2026-07-18): field bug report (banding in
+    // and around mech shadows on terrain) verified A/B in-engine: default
+    // config shows diagonal contour striping across terrain
+    // (MC2_LIGHTING_DEBUG_VIEW=shadow, mc2_01 f1800: high-pass stripe
+    // amplitude 3.67 -> 1.12 with V2 on). DEFAULT ON now; killswitch:
+    // MC2_SHADOW_STATIC_BANDFIX_V2=0 reverts to flat-normal bias.
+    static const bool enabled = mc2::gate::get<"MC2_SHADOW_STATIC_BANDFIX_V2">();
+    return enabled;
+}
+
+// TERRAIN-SHADOW-GUARD-1 (MC2_TERRAIN_SHADOW_GUARD_CLAMPED_SUN, DEFAULT ON,
+// "=0" kills). The shadow MATRICES are built from an altitude-clamped sun
+// (mc2ClampShadowSunAltitude, gos_postprocess.cpp, 15deg min) but shadow.hglsl's
+// back-face guard `if (NdotL < 0.05) return 1.0;` dotted the RAW authored sun.
+// Under MC2_SHADOW_STATIC_BANDFIX_V2 (default ON) `normal` is reset to flat-up
+// immediately before that guard, so on terrain it reduces to
+// `terrainLightDir.z < 0.05`. mc2_10 authors LightDirPitch=180 -> z = 0 ->
+// EVERY terrain pixel early-outs fully lit while props/mechs keep their shadows
+// via the unguarded path. Feeding the guard the same clamped sun the matrices
+// used restores them. No-op wherever sin(authored altitude) >= sin(15deg)
+// (mc2_01=50deg, mc2_03=46deg, mc2_24=75deg -> byte-identical).
+bool mc2TerrainShadowGuardClampedSun() {
+    static const bool enabled = mc2::gate::get<"MC2_TERRAIN_SHADOW_GUARD_CLAMPED_SUN">();
+    return enabled;
+}
+
+// mc2ShadowMinSunAltDeg() is defined in gos_postprocess.cpp (declared in
+// gameos.hpp) so the GLSL clamp and the C++ matrix clamp can never drift apart.
+//
+// Emits "#define MC2_SHADOW_MIN_SUN_SIN <sin(minAlt)>" for shader prefixes whose
+// program consumes shadow.hglsl with the terrain sun. Returns "" when the gate is
+// off or the clamp is disabled -> shadow.hglsl's 0.0 default -> identity -> the
+// compiled shader is byte-identical to legacy.
+std::string mc2TerrainShadowSunDefine() {
+    if (!mc2TerrainShadowGuardClampedSun()) return std::string();
+    const float deg = mc2ShadowMinSunAltDeg();
+    if (deg <= 0.0f) return std::string();
+    char buf[80];
+    snprintf(buf, sizeof(buf), "#define MC2_SHADOW_MIN_SUN_SIN %.8f\n",
+             (double)sinf(deg * 0.01745329252f));
+    return std::string(buf);
+}
+
+// VK-PARITY-SHADOW-1: single producer of the terrain shadow knob set (see gameos.hpp).
+// Values are round-tripped through the SAME printf formats the #define injection uses
+// (%.1f wu, %.2f max, %.8f sin) so GL (compile-time literal) and VK (UBO float) agree.
+Mc2ShadowFadeKnobs mc2ShadowFadeKnobs() {
+    Mc2ShadowFadeKnobs k{};
+    char buf[64];
+    if (mc2ShadowDistFadeWu() > 0.0f) {
+        snprintf(buf, sizeof(buf), "%.1f", (double)mc2ShadowDistFadeWu());
+        k.distFadeWu = (float)atof(buf);
+        snprintf(buf, sizeof(buf), "%.2f", (double)mc2ShadowDistFadeMax());
+        k.distFadeMax = (float)atof(buf);
+        k.flags |= mc2ShadowFadeCont()  ? 1 : 0;
+        k.flags |= mc2ShadowFadeRamp0() ? 2 : 0;
+        k.flags |= mc2ShadowAltScale()  ? 4 : 0;
+    }
+    if (mc2TerrainShadowGuardClampedSun()) {
+        const float deg = mc2ShadowMinSunAltDeg();
+        if (deg > 0.0f) {
+            snprintf(buf, sizeof(buf), "%.8f", (double)sinf(deg * 0.01745329252f));
+            k.minSunSin = (float)atof(buf);
+        }
+    }
+    if (mc2ShadowStaticBandFixV2Enabled()) k.flags |= 8;
+    return k;
+}
+
+// WATER-BIAS-LINEARIZE-1: bias-mode selector for the FAST water regime.
+// Default 0 = distance-proportional bias (clip.z += F_REL*clip.z; world error
+// ~ linear in distance, kills the far-field water-over-ridge z-fight).
+// MC2_WATER_BIAS_LEGACY=1 -> 1 = legacy constant NDC offset
+// (clip.z += FUDGE*clip.w). Consumed by both fast water VS variants and the
+// gpu_driven_water.comp pzOk admission gate (all three MUST agree; see
+// mclib/terrain_depth_bias.h). Exported via gameos.hpp for the water-stream TU.
+int mc2WaterBiasLegacy() {
+    static const int mode = mc2::gate::get<"MC2_WATER_BIAS_LEGACY">();
+    return mode;
+}
+
+// OVERLAY-BIAS-LINEARIZE-1: bias-mode selector for the overlay/decal VS
+// (terrain_overlay.vert, shared by TerrainOverlayBatch + DecalBatch +
+// decal-static). Default 0 = distance-proportional bias (world error ~
+// linear -> no far-zoom overlay float). MC2_OVERLAY_BIAS_LEGACY=1 -> legacy
+// constant NDC offset. Single consumer is the VS (no compute admission gate
+// mirrors the overlay bias). See mclib/terrain_depth_bias.h.
+static int mc2OverlayBiasLegacy() {
+    static const int mode = mc2::gate::get<"MC2_OVERLAY_BIAS_LEGACY">();
+    return mode;
+}
+
+// TERRAIN-MATERIAL-LIB-1: default OFF. Drives u_useMaterialLib (chunk-path
+// roughness/AO branch). Evaluated once (static) -- matches terrainNormalArrayEnabled().
+static bool terrainMaterialLibEnabled() {
+    static const bool enabled = mc2::gate::get<"MC2_TERRAIN_MATERIAL_LIB">();
+    return enabled;
+}
+
+gosRenderer* getGosRenderer() {
+    return g_gos_renderer;
+}
+
+GLenum getGLVertexAttribType(gosVERTEX_ATTRIB_TYPE type) {
+	GLenum t = -1;
+	switch (type)
+	{
+	case gosVERTEX_ATTRIB_TYPE::BYTE: return GL_BYTE;
+	case gosVERTEX_ATTRIB_TYPE::UNSIGNED_BYTE: return GL_UNSIGNED_BYTE;
+	case gosVERTEX_ATTRIB_TYPE::SHORT: return GL_SHORT;
+	case gosVERTEX_ATTRIB_TYPE::UNSIGNED_SHORT: return GL_UNSIGNED_SHORT;
+	case gosVERTEX_ATTRIB_TYPE::INT: return GL_INT;
+	case gosVERTEX_ATTRIB_TYPE::UNSIGNED_INT: return GL_UNSIGNED_INT;
+	case gosVERTEX_ATTRIB_TYPE::FLOAT: return GL_FLOAT;
+	default:
+		gosASSERT(0 && "unknows vertex attrib type");
+	}
+
+	return t;
+};
+
+static const char* const g_shader_flags[] = {
+    "ALPHA_TEST",
+    "IS_OVERLAY"
+};
+
+const std::string gosRenderMaterial::s_mvp = std::string("mvp");
+const std::string gosRenderMaterial::s_fog_color = std::string("fog_color");
+
+// ---------------------------------------------------------------------------
+// GPU-BUFFER-WRAPPER-TIER0-HUD-1 — gate state (default OFF).
+//   MC2_GPUBUF_RING            : route gosMesh::draw/drawIndexed through the
+//                                persistent-coherent fenced ring instead of the
+//                                per-batch glBufferData orphan. OFF => legacy
+//                                path, byte-identical GL stream + output.
+//   MC2_GPUBUF_RING_FORCE_WRAP : negative test — deterministically advance the
+//                                ring twice without an intervening endFrame so
+//                                the one-endFrame-per-beginFrame invariant trips
+//                                (proves the fence-per-frame guard is live).
+//   MC2_GPUBUF_RESIDENCY       : list the live HUD ring buffers once per frame.
+// Cached once on first query (single predicted-false branch when unset).
+static bool gosHudRingEnabled() {
+    static const bool s_on = mc2::gate::get<"MC2_GPUBUF_RING">();
+    return s_on;
+}
+static bool gosHudRingForceWrap() {
+    static const bool s_on = mc2::gate::get<"MC2_GPUBUF_RING_FORCE_WRAP">();
+    return s_on;
+}
+static bool gosHudRingResidency() {
+    static const bool s_on = mc2::gate::get<"MC2_GPUBUF_RESIDENCY">();
+    return s_on;
+}
+
+const std::string gosMesh::s_tex1 = std::string("tex1");
+
+void gosMesh::draw(gosRenderMaterial* material) const
+{
+    gosASSERT(material);
+
+    if(num_vertices_ == 0)
+        return;
+
+    // GPU-BUFFER-WRAPPER-TIER0-HUD-1: ring path (gate ON) vs legacy orphan (OFF).
+    // The two branches differ ONLY in (a) how the current frame's vertices reach
+    // the GPU (memcpy into a coherent map vs glBufferData orphan) and (b) the
+    // first-vertex of the draw (slot base vs 0). Same data, same count, same
+    // primitive, same bind-to-0 epilogue => byte-identical draw-visible result.
+    mc2gpu::GpuMeshRing* ring =
+        gosHudRingEnabled() ? const_cast<gosMesh*>(this)->ensureRing() : nullptr;
+
+    GLint firstVertex = 0;
+    GLuint drawVb = vb_;
+    if (ring) {
+        ring->beginFrame();
+        if (gosHudRingForceWrap()) {
+            // NEGATIVE TEST: advance again with no intervening endFrame so the
+            // one-endFrame-per-beginFrame invariant trips (proves the guard).
+            ring->beginFrame();
+        }
+        firstVertex = ring->writeVertices(pvertex_data_, (uint32_t)num_vertices_);
+        drawVb = ring->vb();
+    } else {
+        updateBuffer(vb_, GL_ARRAY_BUFFER, pvertex_data_, num_vertices_*sizeof(gos_VERTEX), GL_DYNAMIC_DRAW_ARB);
+    }
+
+    material->apply();
+
+    material->setSamplerUnit(s_tex1, 0);
+
+	glBindBuffer(GL_ARRAY_BUFFER, drawVb);
+    CHECK_GL_ERROR;
+
+    material->applyVertexDeclaration();
+    CHECK_GL_ERROR;
+
+    GLenum pt = GL_TRIANGLES;
+    switch(prim_type_) {
+        case PRIMITIVE_POINTLIST:
+            pt = GL_POINTS;
+            break;
+        case PRIMITIVE_LINELIST:
+            pt = GL_LINES;
+            break;
+        case PRIMITIVE_TRIANGLELIST:
+            pt = GL_TRIANGLES;
+            break;
+        default:
+            gosASSERT(0 && "Wrong primitive type");
+    }
+
+    glDrawArrays(pt, firstVertex, num_vertices_);
+
+    material->endVertexDeclaration();
+    material->end();
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    if (ring)
+        ring->endFrame();   // fence the slot AFTER the draw consumes it.
+}
+
+void gosMesh::drawIndexed(gosRenderMaterial* material) const
+{
+    gosASSERT(material);
+
+    if(num_vertices_ == 0)
+        return;
+
+    // GPU-BUFFER-WRAPPER-TIER0-HUD-1: ring path (gate ON) vs legacy orphan (OFF).
+    // Ring path uses glDrawElementsBaseVertex so the same index data (offset 0
+    // relative to the slot) addresses the same vertices (shifted by baseVertex).
+    // The legacy branch is the EXACT original two-orphan + glDrawElements path.
+    mc2gpu::GpuMeshRing* ring =
+        gosHudRingEnabled() ? const_cast<gosMesh*>(this)->ensureRing() : nullptr;
+
+    GLint  baseVertex   = 0;
+    GLvoid* indexOffset = NULL;
+    GLuint drawVb = vb_;
+    GLuint drawIb = ib_;
+    if (ring) {
+        ring->beginFrame();
+        if (gosHudRingForceWrap()) {
+            // NEGATIVE TEST: see gosMesh::draw — trips the fence-per-frame guard.
+            ring->beginFrame();
+        }
+        baseVertex  = ring->writeVertices(pvertex_data_, (uint32_t)num_vertices_);
+        indexOffset = (GLvoid*)(uintptr_t)ring->writeIndices(pindex_data_, (uint32_t)num_indices_);
+        drawVb = ring->vb();
+        drawIb = ring->ib();
+    } else {
+        updateBuffer(vb_, GL_ARRAY_BUFFER, pvertex_data_, num_vertices_*sizeof(gos_VERTEX), GL_DYNAMIC_DRAW);
+        updateBuffer(ib_, GL_ELEMENT_ARRAY_BUFFER, pindex_data_, num_indices_*sizeof(INDEX_TYPE), GL_DYNAMIC_DRAW);
+    }
+
+    material->apply();
+
+    material->setSamplerUnit(s_tex1, 0);
+
+	glBindBuffer(GL_ARRAY_BUFFER, drawVb);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, drawIb);
+    CHECK_GL_ERROR;
+
+    material->applyVertexDeclaration();
+    CHECK_GL_ERROR;
+
+    GLenum pt = GL_TRIANGLES;
+    switch(prim_type_) {
+        case PRIMITIVE_POINTLIST:
+            pt = GL_POINTS;
+            break;
+        case PRIMITIVE_LINELIST:
+            pt = GL_LINES;
+            break;
+        case PRIMITIVE_TRIANGLELIST:
+            pt = GL_TRIANGLES;
+            break;
+        default:
+            gosASSERT(0 && "Wrong primitive type");
+    }
+
+    const GLenum idxType = getIndexSizeBytes()==2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT;
+    if (ring)
+        glDrawElementsBaseVertex(pt, num_indices_, idxType, indexOffset, baseVertex);
+    else
+        glDrawElements(pt, num_indices_, idxType, indexOffset);
+
+    material->endVertexDeclaration();
+    material->end();
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+    if (ring)
+        ring->endFrame();   // fence the slot AFTER the draw consumes it.
+}
+
+void gosMesh::drawIndexed(HGOSBUFFER ib, HGOSBUFFER vb, HGOSVERTEXDECLARATION vdecl, gosRenderMaterial* material)
+{
+	gosASSERT(material);
+
+	int index_size = ib->element_size_;
+	gosASSERT(index_size == 2 || index_size == 4);
+
+	if (ib->count_ == 0)
+		return;
+
+	material->apply();
+	CHECK_GL_ERROR;
+
+	material->setSamplerUnit(s_tex1, 0);
+	CHECK_GL_ERROR;
+
+	glBindBuffer(GL_ARRAY_BUFFER, vb->buffer_);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ib->buffer_);
+	CHECK_GL_ERROR;
+
+	vdecl->apply();
+	CHECK_GL_ERROR;
+
+	GLenum pt = GL_TRIANGLES;
+	glDrawElements(pt, ib->count_, index_size == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT, NULL);
+
+	vdecl->end();
+	material->end();
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+}
+
+void gosMesh::drawIndexed(HGOSBUFFER ib, HGOSBUFFER vb, HGOSVERTEXDECLARATION vdecl)
+{
+	int index_size = ib->element_size_;
+	gosASSERT(index_size == 2 || index_size == 4);
+
+	if (ib->count_ == 0)
+		return;
+
+	CHECK_GL_ERROR;
+
+	glBindBuffer(GL_ARRAY_BUFFER, vb->buffer_);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ib->buffer_);
+	CHECK_GL_ERROR;
+
+	vdecl->apply();
+	CHECK_GL_ERROR;
+
+	GLenum pt = GL_TRIANGLES;
+	glDrawElements(pt, ib->count_, index_size == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT, NULL);
+
+	vdecl->end();
+
+	//material->end();
+	glUseProgram(0);
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+}
+
+// GAMEOS-GRAPHICS-SPLIT-1 slice 2: makeKindaSolid/doesLookLikeAlpha/
+// convertIfNecessary + gosTexture::createHardwareTexture moved to
+// gameos_graphics_texture.cpp.
+static gosTexture* lookupBatchTextureOrWarn(const std::vector<gosTexture*>& textureList,
+                                            DWORD textureId,
+                                            const char* batchName) {
+    if (textureId == INVALID_TEXTURE_ID)
+        return nullptr;
+
+    if (textureId >= textureList.size() || textureList[textureId] == nullptr) {
+        static unsigned int warnCount = 0;
+        if (warnCount < 16) {
+            printf("%s: dropping invalid texture handle %u (texture count=%zu)\n",
+                   batchName, textureId, textureList.size());
+            ++warnCount;
+        }
+        return nullptr;
+    }
+
+    return textureList[textureId];
+}
+
+// OMT-1-OVERLAY-MISSING-TEXTURE-GUARD ─────────────────────────────────────────
+// The overlay/decal batch draws previously did `glBindTexture(GL_TEXTURE_2D,
+// t ? id : 0)` — binding GL name 0 on a resolve-fail makes the sampler read an
+// INCOMPLETE texture, whose result is driver-defined (black on some GPUs,
+// garbage/magenta on others = a vendor-dependent mystery; cf. OMT recon). Route
+// resolve-fails to an explicit 1x1 magenta fallback + a deterministic
+// once-per-handle log + counters, so a missing overlay texture is visible AND
+// explained instead of undefined. NO bake/composite/cement/shader change — this
+// only hardens the per-draw texture BIND. Verbose summary: MC2_OVERLAY_TEXTURE_TRACE=1.
+namespace {
+struct OverlayTexStats {
+    uint64_t pushes = 0, resolved = 0, resolve_failed = 0,
+             bound_zero_prevented = 0, fallback_bound = 0;
+};
+OverlayTexStats g_overlayTexStats;
+GLuint g_overlayFallbackTex = 0;
+
+GLuint getOverlayFallbackTexture() {
+    if (g_overlayFallbackTex == 0) {
+        const unsigned char magenta[4] = { 255, 0, 255, 255 };  // 1x1 RGBA debug
+        // TEX-CLASS: asset-pool -- overlay magenta/fallback content texture
+        glGenTextures(1, &g_overlayFallbackTex);
+        glBindTexture(GL_TEXTURE_2D, g_overlayFallbackTex);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, magenta);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    }
+    return g_overlayFallbackTex;
+}
+
+bool overlayTexTraceOn() {
+    static int c = -1;
+    if (c < 0) c = (mc2::gate::get<"MC2_OVERLAY_TEXTURE_TRACE">()) ? 1 : 0;
+    return c != 0;
+}
+
+// Once-per-handle dedup without pulling in <set> (handles are few + bounded to 64).
+bool overlayHandleAlreadyLogged(DWORD h) {
+    static DWORD seen[64];
+    static int   seenCount = 0;
+    for (int i = 0; i < seenCount; ++i) if (seen[i] == h) return true;
+    if (seenCount < 64) { seen[seenCount++] = h; return false; }  // new → log + record
+    return true;  // table full → suppress (bounds log volume)
+}
+
+// Bind the resolved batch texture, or an explicit 1x1 magenta fallback on
+// resolve-fail. NEVER binds GL name 0 on the resolve-fail path. Logs once per
+// failing handle (deterministic, with reason) and counts every category.
+void bindBatchTextureOrFallback(gosTexture* t, DWORD texHandle, const char* batchName) {
+    ++g_overlayTexStats.pushes;
+    const GLuint id = t ? (GLuint)t->getTextureId() : 0u;
+    if (t && id != 0u) {
+        ++g_overlayTexStats.resolved;
+        glBindTexture(GL_TEXTURE_2D, id);
+        return;
+    }
+    ++g_overlayTexStats.resolve_failed;
+    ++g_overlayTexStats.bound_zero_prevented;   // the bug this guard prevents
+    ++g_overlayTexStats.fallback_bound;
+    if (!overlayHandleAlreadyLogged(texHandle)) {
+        fprintf(stderr,
+            "[OVERLAY_TEXTURE v1] event=resolve_fail batch=%s texHandle=%u "
+            "fallback_bound=1 texture=<1x1 magenta debug> reason=%s\n",
+            batchName, (unsigned)texHandle,
+            (t && id == 0u) ? "resolved_but_gl_id_0" : "null_or_invalid_handle");
+        fflush(stderr);
+    }
+    glBindTexture(GL_TEXTURE_2D, getOverlayFallbackTexture());
+}
+
+// Cumulative counter summary; rate-limited, gated by MC2_OVERLAY_TEXTURE_TRACE.
+// Uses an internal tick (this file has no g_mc2FrameCounter in scope); the tick
+// advances once per drawTerrainOverlays call ≈ once per overlay-active frame.
+void overlayTexTraceSummary() {
+    if (!overlayTexTraceOn()) return;
+    static uint64_t s_tick = 0;
+    ++s_tick;
+    if ((s_tick % 300u) != 1u) return;
+    fprintf(stderr,
+        "[OVERLAY_TEXTURE v1] event=summary tick=%llu pushes=%llu resolved=%llu "
+        "resolve_failed=%llu bound_zero_prevented=%llu fallback_bound=%llu\n",
+        (unsigned long long)s_tick,
+        (unsigned long long)g_overlayTexStats.pushes,
+        (unsigned long long)g_overlayTexStats.resolved,
+        (unsigned long long)g_overlayTexStats.resolve_failed,
+        (unsigned long long)g_overlayTexStats.bound_zero_prevented,
+        (unsigned long long)g_overlayTexStats.fallback_bound);
+    fflush(stderr);
+}
+} // anonymous namespace (OMT-1)
+
 const std::string gosRenderer::s_Foreground = std::string("Foreground");
 
 // TERRAIN-SPINE-0: free-function program-id accessors for the read-only
@@ -3851,12 +3957,6 @@ void gosRenderer::renderWaterFastPath(
     // applyRenderStates cache is now stale. Force a full re-apply on next call.
     invalidateRenderStateCache();
 }
-
-// Probe 8: forward decls for cross-TU MVP fingerprint accessors (defined in
-// gos_terrain_indirect.cpp inside its extern "C" block).
-extern "C" uint32_t gos_terrain_indirect_getDispatchMvpFp();
-extern "C" uint64_t gos_terrain_indirect_getDispatchMvpFrameIdx();
-extern "C" void     gos_terrain_indirect_getDispatchMvpFloats4(float out[4]);
 // gos_terrain_indirect_getDispatchMvp16 and gos_GetTerrainMVPMat4 are declared
 // TU-wide near the top of this file (after g_terrainMaterialProfile) so that
 // renderWaterFastPath (which precedes this block) can see them.
@@ -5057,7 +5157,7 @@ bool gos_terrain_bridge_drawDecalStatic(unsigned int               vboGL,
 
 // ──────────────────────────────────────────────────────────────────────────
 
-static GLuint gVAO = 0;
+GLuint gVAO = 0;
 // GAMEOS-GRAPHICS-SPLIT-1 slice 5: the HUD-scale / UI-canvas state globals
 // moved to gameos_graphics_params.cpp (extern-declared in
 // gameos_graphics_internal.h; flushHUDBatch et al. still reference them
@@ -6451,22 +6551,6 @@ void gosRenderer::drawTris(gos_VERTEX* vertices, int count) {
 
     afterDrawCall();
 }
-
-// ---------------------------------------------------------------------------
-// SHADOW-STABILITY-1: explicit shadow-pass GL-state brackets + env-gated trace.
-//
-// The shadow passes are FORWARD-Z (glClearDepth(1), GL_LESS) bolted onto the
-// main REVERSE-Z scene (glClearDepth(0), GL_GEQUAL). The boundary is a manual
-// glClearDepth swap with no guard — same state-leak bug class as the
-// transparency depth-write fix and the 10.3 terrain-transparency saga. These
-// helpers capture the caller's GL state at pass entry, let the pass set what it
-// needs, then RESTORE the captured values at exit so nothing leaks into the
-// reverse-Z scene pass. They do NOT introduce a GlStateGuard framework — they
-// only read/restore via raw GL queries at the four pass boundaries.
-//
-// (declared in gos_static_prop_batcher.h; forward-declared here to avoid
-//  pulling that header into this TU)
-void gos_GetStaticBuildingShadowCounts(int& types, int& inst, int& draws);
 //
 // Trace is gated on MC2_SHADOW_STATE_TRACE=1: default OFF = zero lines, and the
 // capture/restore is a handful of glGetIntegerv/glIs* per pass (no hot-loop or
@@ -6994,7 +7078,7 @@ void gosRenderer::endDynamicShadowPass() {
 // mapping params and the cliff shadow floor. Caller is responsible for restoring
 // the active texture unit afterwards (existing sites already do glActiveTexture
 // (GL_TEXTURE0) immediately after this helper).
-static void bindTerrainHeightTexUniforms(GLint heightTexLoc, GLint paramsLoc,
+void bindTerrainHeightTexUniforms(GLint heightTexLoc, GLint paramsLoc,
                                          GLint cliffShadowFloorLoc,
                                          float cliffShadowFloor)
 {
@@ -7123,31 +7207,6 @@ int mc2LightingDebugMode()
     // DEBUG-VIEW-SWEEP-1: runtime override wins over the env-resolved value.
     return (g_mc2LightingDebugOverride >= 0) ? g_mc2LightingDebugOverride : s_mode;
 }
-
-// ---------------------------------------------------------------------------
-// DEBUG-VIEW-SWEEP-1: one global debug-view selector fanned out to every lane's
-// existing per-lane debug channel. Deterministic full-scene diagnostic views
-// for pixel-comparable agent sweeps (tools/debug_view_sweep.py).
-//   0 = off (all lanes restored to their default channel; env values resume)
-//   1 = shadow factor    terrain 44 (raw shadow term grayscale); props 44
-//                        (constant no-shadow marker — props don't self-shadow
-//                        in-shader); mechs 3 (vertex light-only)
-//   2 = normalized depth 50-series: gl_FragCoord.z remapped over the 0.85..1.0
-//                        band the scene occupies, grayscale, all main lanes
-//   3 = unlit albedo     terrain/props 40, mechs 2, vfx 1 (raw texture color)
-//   4 = overdraw proxy   opaque lanes flat 0.12 gray (mode 51); VFX mode 4
-//                        (real additive accumulation on top)
-//   5 = world normals    terrain/props 41, mechs 4 (N*0.5+0.5 as RGB)
-//   6 = chunk/LOD tint   terrain 52 (hashed thin-record palette = real
-//                        GPU-indirect chunking); props materialIdx palette
-//                        (debugMaterialMode 2); mechs 52 (black; unsupported);
-//                        vfx 3 (per-kind palette)
-// Lanes NOT covered (render their normal output in every view): water, sky,
-// grass/vegetation cards, decals/overlays, legacy gos_vertex* draws, HUD.
-// Registered MC2_DEBUG_VIEW (boot seed); runtime via `debugview N` verb.
-void batcher_setDebugMaterialMode(int shaderMode);      // gos_static_prop_batcher.h
-extern "C" void batcher_setMechDebugMode(int shaderMode);   // gos_mech_batcher.cpp
-extern "C" void gos_vfx_setDebugMode(int mode);             // gos_particle_bridge.h
 static int g_mc2GlobalDebugView = 0;
 extern "C" void gos_SetGlobalDebugView(int view)
 {
@@ -7974,12 +8033,6 @@ void gosRenderer::replayTextQuads(const HudDrawCall& call)
 
     setRenderState(gos_State_Texture, prev_texture);
 }
-
-// UI-PASS-DRAWCOUNT-AMBIENT-MEASURE-1: observe-only telemetry entry points, defined in
-// mclib/render_contract.cpp (GL-aware TU; reuses the ambient-probe sample helpers).
-extern "C" void mc2_ui_pass_sample_entry_ambient();
-extern "C" void mc2_ui_pass_note_draw(unsigned kind);
-extern "C" void mc2_ui_pass_check_ambient();
 
 static bool vkHudQueueEnabled()
 {
@@ -11316,12 +11369,6 @@ void gosRenderer::drawDecals()
     render_contract::endPassScope(render_contract::PassIdentity::TerrainDecal,
                                   "gosRenderer_drawDecals");
 }
-
-// APPLY-STATE-TERRAINDECAL-1: forward-decl of the cross-TU apply-state counter bump
-// (defined in gos_postprocess.cpp). Bumps the SAME g_applyStatePasses that the
-// PostProcess apply-state islands use, so executor_apply_state_passes aggregates
-// top-level + sub-stage applies without a separate gauge.
-extern "C" void mc2_framegraph_executor_bump_apply_state(unsigned id);
 
 // APPLY-STATE-TERRAINDECAL-1: pre-apply the declared TerrainDecal pipeline. This is
 // the top-level analog of gosPostProcess::executorApply<X>State() — it performs the
