@@ -1233,9 +1233,7 @@ int main(int argc, char** argv)
         // Slice 1 invariant: mutually exclusive with legacy killswitch.
         // Setting g_useGpuObjects at startup here happens before any code
         // path can read it; legacy g_useGpuStaticProps starts false.
-        if (mc2::gate::isSet<"MC2_GPU_OBJECTS">()) {
-            g_useGpuObjects = mc2::gate::get<"MC2_GPU_OBJECTS">();   // Lead0P: set and not a leading '0'
-        }
+        g_useGpuObjects = mc2::gate::get<"MC2_GPU_OBJECTS">();   // Lead0Kill, default ON like the compile-time default
         const bool gpuObj = g_useGpuObjects;
         // [OBJECT_RECON v1] read MC2_OBJECT_RECON_TRACY here so the gate is
         // live before any update kernel runs. drainPerFrame() lazy-inits

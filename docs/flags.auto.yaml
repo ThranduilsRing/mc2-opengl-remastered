@@ -2152,13 +2152,13 @@ flags:
     registry: {feature_id: MC2_FEATURE_GPU_MECH_SHADOW_FAST_TRANSFORM, kind: Feature, order: -1, default_on: true}
   - name: MC2_GPU_OBJECTS
     kind: Bool
-    default: false
-    rule: Lead0P
+    default: true
+    rule: Lead0Kill
     owner: unclassified
     doc: "[RETIRED] Indirect-draw static-prop batcher (gos_static_prop_batcher)."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_FEATURE_STATIC_PROP_INDIRECT, kind: Retired, order: 1, default_on: false}
+    registry: {feature_id: MC2_FEATURE_STATIC_PROP_INDIRECT, kind: Retired, order: 1, default_on: true}
   - name: MC2_GPU_PARTICLES
     kind: Bool
     default: false

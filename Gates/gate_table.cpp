@@ -431,7 +431,7 @@ L(Lead0Kill, "MC2_GPU_MECH_LEAF_SKIP", Bool, true, "mech", "", "Slice D-leaf-ski
 // history: docs/gate-history.md#MC2_GPU_MECH_SHADOW_FAST_TRANSFORM
 L(Lead0Kill, "MC2_GPU_MECH_SHADOW_FAST_TRANSFORM", Bool, true, "mech", "", "Slice C3-shadow (gos_mech_batcher.cpp): fast-transform variant for the mech shadow-caster callsite.", registry(Feature, "MC2_FEATURE_GPU_MECH_SHADOW_FAST_TRANSFORM", -1, true)),
 // history: docs/gate-history.md#MC2_GPU_OBJECTS
-L(Lead0P, "MC2_GPU_OBJECTS", Bool, false, "unclassified", "", "[RETIRED] Indirect-draw static-prop batcher (gos_static_prop_batcher).", passthrough | registry(Retired, "MC2_FEATURE_STATIC_PROP_INDIRECT", 1, false) | verified),
+L(Lead0Kill, "MC2_GPU_OBJECTS", Bool, true, "unclassified", "", "[RETIRED] Indirect-draw static-prop batcher (gos_static_prop_batcher).", passthrough | registry(Retired, "MC2_FEATURE_STATIC_PROP_INDIRECT", 1, true) | verified),
 // MC2_GPU_PARTICLES (master GPU-particle path; lives in kAuxEnvVars: kFeatureTable is indexed by RendererFeature; read in mclib/particles/batcher.cpp initialize_env)
 // history: docs/gate-history.md#MC2_GPU_PARTICLES
 L(Lead1, "MC2_GPU_PARTICLES", Bool, false, "code", "", "Master gate for GPU billboard particles (mclib/particles/batcher.cpp initialize_env).", passthrough | registry(Feature, "MC2_GPU_PARTICLES", -1, false) | verified),
