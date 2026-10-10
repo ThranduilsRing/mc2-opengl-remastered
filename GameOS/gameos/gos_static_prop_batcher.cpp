@@ -525,8 +525,8 @@ bool s_v6Disarmed = false;
 
 // v3 snapshot build: separate dispatch arrays for snapshot-built path.
 // Reused each flush via resize() — no heap alloc after first frame.
-static std::vector<RenderCore::DrawPacket> s_snapV6Packets;
-static std::vector<StaticPropDispatchMeta> s_snapV6Meta;
+std::vector<RenderCore::DrawPacket> s_snapV6Packets;
+std::vector<StaticPropDispatchMeta> s_snapV6Meta;
 
 // v3 env gate. File-local — not exported in header. Cached at process start.
 // DEFAULT ON (STATIC-PROP-V3-FLIP, 2026-05-27). Kill-switch: MC2_SNAPSHOT_STATIC_PROP_BUILD=0.
@@ -820,7 +820,7 @@ GLuint s_staticBldgShadowSsbo = 0;
 // OFF); s_blockVisSsbo (gos_vegetation.cpp, MC2_VEGETATION_CARDS, default OFF); particle
 // s_ssbo (gos_particle_bridge.cpp, MC2_GPU_PARTICLES, default OFF -- CPU/MLR is the stock
 // path) + s_tubePos/Col/UvSsbo (MC2_VFX_ORACLE_TUBE, default OFF/parked).
-static RenderCore::GpuBufferOwner s_dynamicPropShadowOwner{
+RenderCore::GpuBufferOwner s_dynamicPropShadowOwner{
     RenderCore::RenderResourceId::DynamicPropShadowSsbo,
     RenderCore::RenderResourceLifetime::Mission,
     "DynamicPropShadowSsbo",
@@ -828,7 +828,7 @@ static RenderCore::GpuBufferOwner s_dynamicPropShadowOwner{
 // typeIDs drawn into the static building shadow map. When the static building
 // shadow is active, flushShadow(skipStaticBuildingTypes=true) skips these in the
 // DYNAMIC pass so buildings don't cast a redundant (fuzzy) second shadow.
-static std::unordered_set<uint32_t> s_buildingShadowTypeIDs;
+std::unordered_set<uint32_t> s_buildingShadowTypeIDs;
 
 // Per-frame persistent-mapped rings.
 GLuint   s_instanceSsbo = 0;
@@ -838,12 +838,12 @@ GLuint   s_colorSsbo    = 0;
 // keeps its exact GL args/order; the owner's backendHandle is written from the freshly
 // gen'd handle (pattern (b), mirrors view_uniforms). Registered at create, invalidated
 // on destroy (grow-realloc). Lifetime Persistent: persistent-mapped ring, realloc-on-grow.
-static RenderCore::GpuBufferOwner s_instanceSsboOwner{
+RenderCore::GpuBufferOwner s_instanceSsboOwner{
     RenderCore::RenderResourceId::StaticPropInstanceRingSsbo,
     RenderCore::RenderResourceLifetime::Persistent,
     "StaticPropInstanceRingSsbo",
     0u};
-static RenderCore::GpuBufferOwner s_colorSsboOwner{
+RenderCore::GpuBufferOwner s_colorSsboOwner{
     RenderCore::RenderResourceId::StaticPropColorRingSsbo,
     RenderCore::RenderResourceLifetime::Persistent,
     "StaticPropColorRingSsbo",
@@ -888,7 +888,7 @@ static const bool s_bucketOrderTrace = mc2::gate::get<"MC2_BUCKET_ORDER_TRACE">(
 // instead of re-walking the registry per leaf — killing the per-leaf walk/push/
 // map overhead. Downstream (uploadAllBucketsIfNeeded + coalesce pool build) read
 // s_bucketsByType unchanged. Static blocks carry 0 colors (Stage 1).
-static std::unordered_map<uint32_t, std::vector<GpuStaticPropInstance>> s_persistentStaticStore;
+std::unordered_map<uint32_t, std::vector<GpuStaticPropInstance>> s_persistentStaticStore;
 uint64_t s_persistentStaticGen = 0xFFFFFFFFFFFFFFFFull;  // sentinel = never built
 
 // Stage 3.C: per-submitMultiShape batch accumulator. Cleared at the start
@@ -914,7 +914,7 @@ unsigned g_regLateDrop[4] = {0,0,0,0};
 // Peak instance count per typeID since mission load; resized lazily in the
 // per-frame flush loop. Slice-1: tracked but not consumed (foundation for
 // slice-2 GPU-emit, where peak[t] drives slot allocation).
-static std::vector<uint32_t> s_perTypePeak;
+std::vector<uint32_t> s_perTypePeak;
 
 // Coalesce ring frame slot — separate from legacy s_frameSlot (line ~:95).
 // Advanced inside batcher_prepareBaseInstanceTable() each frame under
@@ -1307,7 +1307,7 @@ static const bool s_pbrV1DiagSunFound = mc2::gate::get<"MC2_STATIC_PROP_PBR_V1_D
 //   - Optional env override MC2_STATIC_PROP_IBL_SH_SET=<name> wins over
 //     the registry when set + matches an existing set; unset/empty/typo
 //     -> registry. Resolved once at process start.
-static const RenderCore::IblShSet* s_currentShSet = &RenderCore::kIblShSets[0];
+extern const RenderCore::IblShSet* s_currentShSet = &RenderCore::kIblShSets[0];
 static const std::string s_iblShSetEnvOverrideText = mc2::gate::str<"MC2_STATIC_PROP_IBL_SH_SET">();   // "" when unset or empty
 extern const char* s_iblShSetEnvOverride = s_iblShSetEnvOverrideText.empty() ? nullptr : s_iblShSetEnvOverrideText.c_str();
 
@@ -1592,15 +1592,15 @@ static bool s_staticPropBc7Enabled = mc2::gate::get<"MC2_STATICPROP_BC7">(); // 
 // only after the sidecar loop completes with size == emitted count.
 // Initialized false: no table built yet.
 bool s_materialGpuSidecarValid = false;
-static std::vector<uint32_t>                s_packetMaterialIdx;  // per draw slot
-static std::vector<RenderCore::MaterialGpu> s_materialGpuTable;   // deduplicated
+std::vector<uint32_t>                s_packetMaterialIdx;  // per draw slot
+std::vector<RenderCore::MaterialGpu> s_materialGpuTable;   // deduplicated
 // V-MATERIAL-STATIC-0: inventory snapshot — one row per s_materialGpuTable entry.
 // Built in lockstep with s_materialGpuTable; cleared in onMapUnload. Read-only.
-static std::vector<StaticPropMaterialInventoryEntry> s_materialInventory;
+std::vector<StaticPropMaterialInventoryEntry> s_materialInventory;
 // v2: per-packet texArrayLayer sidecar. Indexed by global packet index.
 // Copied from layerForPacket[] in finalizeGeometry() before that local is discarded.
 // Valid until next finalizeGeometry() or onMapUnload(). -1 for unavailable packets.
-static std::vector<int32_t> s_packetTexArrayLayer;
+std::vector<int32_t> s_packetTexArrayLayer;
 // FENCE-UVSCALE-1: per-packet uvScaleX/Y sidecar, same indexing/lifetime as
 // s_packetTexArrayLayer above. Copied from uvScaleXByPacket/uvScaleYByPacket
 // in finalizeGeometry() (already computed there for the GL PerDrawEntry path,
@@ -1609,20 +1609,20 @@ static std::vector<int32_t> s_packetTexArrayLayer;
 // FOLLOW-UP fence residual: narrow/gapped panels vs GL's continuous ribbon).
 // Also consumed by SHADOW-PROP-ALPHA-ATLAS-1 (atlas-variant prop shadow bind:
 // shadow alpha-test samples the same array sub-region as the color pass).
-static std::vector<float> s_packetUvScaleX;
-static std::vector<float> s_packetUvScaleY;
+std::vector<float> s_packetUvScaleX;
+std::vector<float> s_packetUvScaleY;
 // VK-P11 STATIC-PROP MATERIAL: per-type group-relative albedo layer + alpha-class,
 // persisted for mc2_color_prop_island_get_material_feed (the VK island copy-once
 // imports s_texArrayOff and samples at typeAlbedoLayer[typeID]). Populated in
 // finalizeGeometry() from layerForType[] + s_types[t].alphaClass; cleared in
 // onMapUnload(). -1 = type has no alpha-OFF albedo texture.
-static std::vector<int32_t> s_typeAlbedoLayer;
-static std::vector<int32_t> s_typeAlphaClass;
+std::vector<int32_t> s_typeAlbedoLayer;
+std::vector<int32_t> s_typeAlphaClass;
 // v2.1: per-type instance count snapshot from the most recent flush().
 // Keyed by typeID. Cleared in onMapUnload().
 // Same prior-frame semantics as s_recipeHasSubstrateRecord / hasCullRecord:
 //   flush(frame N) snapshots -> extraction(frame N+1) reads -> 0 on frame 1.
-static std::unordered_map<uint32_t, uint32_t> s_typeInstanceCountPrevFrame;
+std::unordered_map<uint32_t, uint32_t> s_typeInstanceCountPrevFrame;
 bool s_reinjectedThisFrame = false;  // item-4 once-per-frame guard
 // STATICPROP-MATERIAL-SSBO-OWNER-1: static-prop MaterialGpu table SSBO (binding 5),
 // narrowed behind a GpuBufferOwner identity record (logical id + lifetime + debug
@@ -1630,7 +1630,7 @@ bool s_reinjectedThisFrame = false;  // item-4 once-per-frame guard
 // args/order/flags/slot; the raw handle is reached only via owner.backendHandle.
 // Lifetime Mission: created in finalizeGeometry(), torn down on onMapUnload();
 // rebuilt per map. Registered at create (upload), invalidated on destroy.
-static RenderCore::GpuBufferOwner           s_materialGpuSsbo{
+RenderCore::GpuBufferOwner           s_materialGpuSsbo{
     RenderCore::RenderResourceId::StaticPropMaterialGpuBuffer,
     RenderCore::RenderResourceLifetime::Mission,
     "StaticPropMaterialGpuBuffer",
@@ -1737,14 +1737,14 @@ extern const uint32_t s_globalInstanceCap = []() {
 
 // M2a POPULATION-SPLIT state (defined early so onMapUnload :1729 can tear the
 // SSBO down; the build/fill helpers + accessors live near s_baseInstanceForType).
-static std::vector<uint32_t> s_staticBaseInstanceForType;
+std::vector<uint32_t> s_staticBaseInstanceForType;
 uint64_t              s_staticBaseBuiltGen     = 0xFFFFFFFFFFFFFFFFull;
 GLuint                s_staticInstanceSsbo     = 0;
 void*                 s_staticInstanceMap      = nullptr;   // GL_MAP_PERSISTENT|COHERENT
 size_t                s_staticInstanceBytes    = 0;         // == cap * sizeof(instance)
 uint64_t              s_staticInstanceFillGen  = 0xFFFFFFFFFFFFFFFFull;
 GLuint                       s_staticIndirectCmdBuf = 0;
-static std::vector<StaticDrawCmd>   s_staticDrawCmds;          // CPU mirror
+std::vector<StaticDrawCmd>   s_staticDrawCmds;          // CPU mirror
 uint64_t                     s_staticCmdBuiltGen = 0xFFFFFFFFFFFFFFFFull;
 // Task 4 criterion 2: fence covering the last StaticPopulation draw. The single-
 // region s_staticInstanceSsbo is overwritten in place on a dirty fill; wait on
