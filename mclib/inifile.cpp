@@ -188,8 +188,10 @@ long FitIniFile::afterOpen (void)
 			if (currentBlockNum == totalBlocks)
 				return(TOO_MANY_BLOCKS);
 
+			// blockId is char[50]: stop copying at 49 characters, and at the end of the string, so a long or
+			// unterminated [block] header in a mod .fit cannot write past the node or read past the line buffer.
 			long count = 1;
-			while (line[count] != ']' && line[count] != '\n')
+			while (line[count] != ']' && line[count] != '\n' && line[count] != '\0' && count < 49)
 			{
 				fileBlocks[currentBlockNum].blockId[count-1] = line[count];
 				count++;
@@ -197,10 +199,10 @@ long FitIniFile::afterOpen (void)
 			if (count >= 49)
 				STOP(("BlockId To large in Fit File %s",fileName));
 
-			if (line[count] == '\n')
+			if (line[count] == '\n' || line[count] == '\0')
 			{
 				char error[256];
-				sprintf( error, "couldn't resolve block %s in file %s", line, getFilename() );
+				snprintf( error, sizeof(error), "couldn't resolve block %s in file %s", line, getFilename() );
 				Assert( 0, 0, error );
 				return SYNTAX_ERROR;
 			}
