@@ -59,6 +59,7 @@
 // Verified by inspection: no warrior pointer, no tac-order type, no slot writes.
 
 #include "brain_special_internal.h"
+#include "brain_special_frame.h"
 
 // ---------------------------------------------------------------------------
 // TECHSCRIPT-DISPATCH-1D-M: MissionVarStore global definition.
@@ -997,6 +998,13 @@ bool emitBrainTargetPolicyIntent(MechBrainRuntime* runtime, int warriorId,
 // CALL-CHAIN-1A NOTE: TechSpecial.Call verbs in the ROOT body are dispatched trace-only
 // (chained bodies traced without effects). Brain.CorePower false in a CALLED body is
 // traced but does NOT call setGeneralTacOrder. Chained-effect execution = CALL-CHAIN-1B.
+namespace {
+
+}  // namespace
+
+// Applies the effect verbs of one special body. The gates, the per-verb prelude and the effect chain skeleton stay
+// here; each effect handler body is a helper above, run in the original order. A handler that ends the body
+// returns true and the orchestrator returns appliedEffect.
 bool executeSpecialBody_Apply(const BrainSpecialBody& body, MechWarrior* warrior, int wid,
                                VarStore* varStore, const SpecialIndex* index,
                                const char* callerKey) {
@@ -1207,536 +1215,46 @@ bool executeSpecialBody_Apply(const BrainSpecialBody& body, MechWarrior* warrior
 
         // BRAINSPECIAL-ALIAS-1: compare via vpCanon (== verb text when no alias
         // resolution occurred — behavior-identical to the previous `verb ==` form).
+        BrainVerbFrame f;
+        f.vp = vp;
+        f.vpCanon = vpCanon;
         if (std::strcmp(vpCanon, "Brain.CorePower false") == 0) {
-            // BRAIN-DECISION-INTENT-QUEUE-1: gate ON → emit intent; gate OFF → direct call.
-            // NOTE: This fires only for the ROOT body. Chained-body POWERDOWN = 1B.
-            if (runtime) {
-                emitBrainIntent(runtime, wid, TACTICAL_ORDER_POWERDOWN, -1, 0,0,0, 0);
-                std::fprintf(stderr, "[BRAIN_INTENT_EMIT] verb=Brain.CorePower order=POWERDOWN tick=%u wid=%d\n",
-                             getBrainTickIndex(), wid);
-                std::fflush(stderr);
-            } else {
-                TacticalOrder pdOrder;
-                pdOrder.init(ORDER_ORIGIN_SELF, TACTICAL_ORDER_POWERDOWN);
-                warrior->setGeneralTacOrder(pdOrder);
-                std::fprintf(stderr, "[BRAIN_DISPATCH_APPLY] verb=Brain.CorePower effect=POWERDOWN wid=%d\n", wid);
-                std::fflush(stderr);
-            }
-            appliedEffect = true;
+            applyCorePower(warrior, wid, runtime, appliedEffect);
         } else if (std::strcmp(vpCanon, "Unit.Eject") == 0) {
-            // DISPATCH-EFFECT-UNITEJECT-1: Unit.Eject (or alias coreEject) → TACTICAL_ORDER_EJECT.
-            // ROOT BODY ONLY. Fires exactly once (ejectEffectApplied once-guard in warrior.cpp).
-            if (runtime) {
-                emitBrainIntent(runtime, wid, TACTICAL_ORDER_EJECT, -1, 0,0,0, 0);
-                std::fprintf(stderr, "[BRAIN_INTENT_EMIT] verb=Unit.Eject order=EJECT tick=%u wid=%d\n",
-                             getBrainTickIndex(), wid);
-                std::fflush(stderr);
-            } else {
-                TacticalOrder ejectOrder;
-                ejectOrder.init(ORDER_ORIGIN_SELF, TACTICAL_ORDER_EJECT);
-                warrior->setGeneralTacOrder(ejectOrder);
-                std::fprintf(stderr, "[BRAIN_DISPATCH_APPLY] verb=Unit.Eject effect=EJECT wid=%d\n", wid);
-                std::fflush(stderr);
-            }
-            appliedEffect = true;
+            applyUnitEject(warrior, wid, runtime, appliedEffect);
         } else if (std::strcmp(vpCanon, "OPORD.CoreGuard") == 0) {
-            // DISPATCH-EFFECT-COREGUARD-1: OPORD.CoreGuard (or alias coreGuard) → TACTICAL_ORDER_GUARD.
-            // ROOT BODY ONLY. Fires exactly once (guardEffectApplied once-guard in warrior.cpp).
-            if (runtime) {
-                emitBrainIntent(runtime, wid, TACTICAL_ORDER_GUARD, -1, 0,0,0, 0);
-                std::fprintf(stderr, "[BRAIN_INTENT_EMIT] verb=OPORD.CoreGuard order=GUARD tick=%u wid=%d\n",
-                             getBrainTickIndex(), wid);
-                std::fflush(stderr);
-            } else {
-                TacticalOrder guardOrder;
-                guardOrder.init(ORDER_ORIGIN_SELF, TACTICAL_ORDER_GUARD);
-                warrior->setGeneralTacOrder(guardOrder);
-                std::fprintf(stderr, "[BRAIN_DISPATCH_APPLY] verb=OPORD.CoreGuard effect=GUARD wid=%d\n", wid);
-                std::fflush(stderr);
-            }
-            appliedEffect = true;
+            applyCoreGuard(warrior, wid, runtime, appliedEffect);
         } else if (std::strncmp(vpCanon, "OPORD.CoreMoveTo", 16) == 0) {
-            // DISPATCH-EFFECT-COREMOVETO-1: OPORD.CoreMoveTo x y z [params=N]
-            //
-            // Arg parser — bare-numeric form only:
-            //   verb text after "OPORD.CoreMoveTo" is split by whitespace.
-            //   First three numeric tokens are x y z (float via std::strtof).
-            //   Optional trailing "params=N" token (int, default 0) is parsed but not
-            //   used this slice (reserved for future movement-mode expansion).
-            //   On any parse failure: soft-fail trace, skip order.
-            //   NaN guard: std::isnan(x||y||z) → soft-fail trace, skip order.
-            const char* args = vpCanon + 16; // points past "OPORD.CoreMoveTo"
-            while (*args == ' ') ++args;     // skip leading spaces
-            char* endp = nullptr;
-            float mx = std::strtof(args, &endp);
-            if (endp == args) {
-                std::fprintf(stderr, "[BRAIN_DISPATCH_MOVETO_PARSE_FAIL] verb=%s wid=%d\n", vp, wid);
-                std::fflush(stderr);
-            } else {
-                args = endp;
-                while (*args == ' ') ++args;
-                float my = std::strtof(args, &endp);
-                if (endp == args) {
-                    std::fprintf(stderr, "[BRAIN_DISPATCH_MOVETO_PARSE_FAIL] verb=%s wid=%d\n", vp, wid);
-                    std::fflush(stderr);
-                } else {
-                    args = endp;
-                    while (*args == ' ') ++args;
-                    float mz = std::strtof(args, &endp);
-                    if (endp == args) {
-                        std::fprintf(stderr, "[BRAIN_DISPATCH_MOVETO_PARSE_FAIL] verb=%s wid=%d\n", vp, wid);
-                        std::fflush(stderr);
-                    } else if (std::isnan(mx) || std::isnan(my) || std::isnan(mz)) {
-                        std::fprintf(stderr, "[BRAIN_DISPATCH_MOVETO_NAN] x=%g y=%g z=%g wid=%d\n", mx, my, mz, wid);
-                        std::fflush(stderr);
-                    } else if (runtime) {
-                        // Gate ON: emit intent; commitBrainIntents rebuilds the TacticalOrder.
-                        emitBrainIntent(runtime, wid, TACTICAL_ORDER_MOVETO_POINT, -1, mx, my, mz, 0);
-                        std::fprintf(stderr, "[BRAIN_INTENT_EMIT] verb=OPORD.CoreMoveTo order=MOVETO_POINT pos=(%g %g %g) tick=%u wid=%d\n",
-                                     mx, my, mz, getBrainTickIndex(), wid);
-                        std::fflush(stderr);
-                        appliedEffect = true;
-                    } else {
-                        // Gate OFF: build TacticalOrder following missiongui.cpp:4161 exactly.
-                        LocationNode moveNode;
-                        moveNode.location.x = mx;
-                        moveNode.location.y = my;
-                        moveNode.location.z = mz;
-                        moveNode.run  = true;
-                        moveNode.next = nullptr;
-                        TacticalOrder moveOrder;
-                        moveOrder.init(ORDER_ORIGIN_SELF, TACTICAL_ORDER_MOVETO_POINT, false);
-                        moveOrder.initWayPath(&moveNode);
-                        moveOrder.moveParams.wait = false;
-                        moveOrder.moveParams.wayPath.mode[0] = TRAVEL_MODE_FAST;
-                        moveOrder.pack(nullptr, nullptr);
-                        warrior->setGeneralTacOrder(moveOrder);
-                        std::fprintf(stderr, "[BRAIN_DISPATCH_APPLY] verb=OPORD.CoreMoveTo effect=MOVETO_POINT pos=(%g %g %g) wid=%d\n",
-                                     mx, my, mz, wid);
-                        std::fflush(stderr);
-                        appliedEffect = true;
-                    }
-                }
-            }
+            applyCoreMoveTo(warrior, wid, runtime, appliedEffect, f);
         } else if ((std::strncmp(vpCanon, "OPORD.CoreAttack", 16) == 0
                     || std::strncmp(vpCanon, "Brain.CoreAttack", 16) == 0)
                    && (vpCanon[16] == ' ' || vpCanon[16] == '\0')) {
-            // DISPATCH-EFFECT-COREATTACK-1: OPORD.CoreAttack <wid>
-            // BRAIN-ALIAS-COREVERBS-1: Brain.CoreAttack (carver_v_enhanced, 571 uses) shares
-            // this handler. Both prefixes are exactly 16 chars, so the vpCanon+16 arg parser
-            // below is identical for either spelling.
-            //
-            // Arg parser — bare-integer WID:
-            //   Token after "OPORD.CoreAttack" is the decimal WID (strtol).
-            //   Zero or negative WID → soft-fail [BRAIN_DISPATCH_ATTACK_BAD_WID].
-            //   Non-numeric token → soft-fail [BRAIN_DISPATCH_ATTACK_PARSE_FAIL].
-            // Triple guard (single lookup):
-            //   1. target not found → [BRAIN_DISPATCH_ATTACK_BAD_WID] reason=not_found
-            //   2. target WID == self WID → [BRAIN_DISPATCH_ATTACK_SELF]
-            //   3. target same team → [BRAIN_DISPATCH_ATTACK_FRIENDLY]
-            // ANTI-PATTERN: do NOT call orderAttackObject — it has forbidden side-effects.
-            // Construct TacticalOrder by hand mirroring missiongui.cpp:2805.
-            const char* aargs = vpCanon + 16;
-            while (*aargs == ' ') ++aargs;
-            char* aendp = nullptr;
-            long parsedWID = std::strtol(aargs, &aendp, 10);
-            if (aendp == aargs) {
-                std::fprintf(stderr, "[BRAIN_DISPATCH_ATTACK_PARSE_FAIL] verb=%s wid=%d\n", vp, wid);
-                std::fflush(stderr);
-            } else if (parsedWID <= 0) {
-                std::fprintf(stderr, "[BRAIN_DISPATCH_ATTACK_BAD_WID] wid=%ld wid=%d\n", parsedWID, wid);
-                std::fflush(stderr);
-            } else {
-                GameObjectPtr target = ObjectManager->getByWatchID((long)parsedWID);
-                if (!target) {
-                    std::fprintf(stderr, "[BRAIN_DISPATCH_ATTACK_BAD_WID] wid=%ld reason=not_found wid=%d\n", parsedWID, wid);
-                    std::fflush(stderr);
-                } else if (target->getWatchID() == (long)wid) {
-                    std::fprintf(stderr, "[BRAIN_DISPATCH_ATTACK_SELF] wid=%ld wid=%d\n", parsedWID, wid);
-                    std::fflush(stderr);
-                } else if (target->getTeam() == warrior->getTeam()) {
-                    std::fprintf(stderr, "[BRAIN_DISPATCH_ATTACK_FRIENDLY] wid=%ld wid=%d\n", parsedWID, wid);
-                    std::fflush(stderr);
-                } else if (runtime) {
-                    // Gate ON: emit intent; commitBrainIntents rebuilds the TacticalOrder.
-                    emitBrainIntent(runtime, wid, TACTICAL_ORDER_ATTACK_OBJECT, (int)parsedWID, 0,0,0, 0);
-                    std::fprintf(stderr, "[BRAIN_INTENT_EMIT] verb=OPORD.CoreAttack order=ATTACK_OBJECT targetWID=%ld tick=%u wid=%d\n",
-                                 parsedWID, getBrainTickIndex(), wid);
-                    std::fflush(stderr);
-                    appliedEffect = true;
-                } else {
-                    // Gate OFF: construct TacticalOrder by hand — mirror missiongui.cpp:2805.
-                    // FORBIDDEN: orderAttackObject, setAttackTarget, setSituationOpenFire.
-                    TacticalOrder attackOrder;
-                    attackOrder.init(ORDER_ORIGIN_SELF, TACTICAL_ORDER_ATTACK_OBJECT, false);
-                    attackOrder.targetWID = (long)parsedWID;
-                    attackOrder.attackParams.type   = ATTACK_TO_DESTROY;
-                    attackOrder.attackParams.method = ATTACKMETHOD_RANGED;
-                    attackOrder.attackParams.range  = FIRERANGE_OPTIMAL;
-                    attackOrder.attackParams.pursue = true;
-                    // TACTIC-WEIGHTS-B: wire selected tactic. Local `runtime` is null on this
-                    // gate-OFF path, so read selectedTactic via warrior->getBrainRuntime().
-                    if (s_tacticWeightsBEnabled()) {
-                        MechBrainRuntime* rtB = warrior->getBrainRuntime();
-                        if (rtB) {
-                            attackOrder.attackParams.tactic = (TacticType)rtB->selectedTactic;
-                            std::fprintf(stderr, "[BRAIN_TACTIC_B] applied tactic=%d wid=%d\n", rtB->selectedTactic, wid);
-                            std::fflush(stderr);
-                        }
-                    }
-                    attackOrder.moveParams.wayPath.mode[0] = TRAVEL_MODE_FAST;
-                    warrior->setGeneralTacOrder(attackOrder);
-                    std::fprintf(stderr, "[BRAIN_DISPATCH_APPLY] verb=OPORD.CoreAttack effect=ATTACK_OBJECT targetWID=%ld wid=%d\n",
-                                 parsedWID, wid);
-                    std::fflush(stderr);
-                    appliedEffect = true;
-                }
-            }
+            applyCoreAttack(warrior, wid, runtime, appliedEffect, f);
         } else if (std::strcmp(vpCanon, "Unit.Retreat") == 0) {
-            // DISPATCH-EFFECT-UNITRETREAT-1: Unit.Retreat (or alias coreRetreat) → TACTICAL_ORDER_WITHDRAW.
-            // ROOT BODY ONLY. Fires exactly once (retreatEffectApplied once-guard in warrior.cpp).
-            if (runtime) {
-                emitBrainIntent(runtime, wid, TACTICAL_ORDER_WITHDRAW, -1, 0,0,0, 0);
-                std::fprintf(stderr, "[BRAIN_INTENT_EMIT] verb=Unit.Retreat order=WITHDRAW tick=%u wid=%d\n",
-                             getBrainTickIndex(), wid);
-                std::fflush(stderr);
-            } else {
-                TacticalOrder retreatOrder;
-                retreatOrder.init(ORDER_ORIGIN_SELF, TACTICAL_ORDER_WITHDRAW, false);
-                warrior->setGeneralTacOrder(retreatOrder);
-                std::fprintf(stderr, "[BRAIN_DISPATCH_APPLY] verb=Unit.Retreat effect=WITHDRAW wid=%d\n", wid);
-                std::fflush(stderr);
-            }
-            appliedEffect = true;
+            applyUnitRetreat(warrior, wid, runtime, appliedEffect);
         } else if (std::strncmp(vpCanon, "Unit.ClearMoveOrders", 20) == 0 &&
                    (vpCanon[20] == ' ' || vpCanon[20] == '\0')) {
-            // DISPATCH-INTENT-CLEARMOVEORDERS-1: scrub the engine movement queue. Intent-ONLY.
-            // Prefix-match (20 chars): carver emits "Unit.ClearMoveOrders 1" — the trailing DO
-            // arg is ABL syntax noise; clearMoveOrders() takes no parameter.
-            // The warrior->clearMoveOrders() call lives in commitBrainIntents (the sole
-            // contract-permitted mutator); calling it here would violate the FORBIDDEN-CALL
-            // contract (unlisted movement function) and bypass the WID-ordered commit phase.
-            // Does NOT set appliedEffect — this is a prologue scrub, not a GENERAL-slot order, so
-            // it must not suppress the synthetic HOLD or claim the slot. patrolActive / FSM state /
-            // Vars / target are intentionally left UNTOUCHED (frozen scope: movement-only).
-            if (runtime) {
-                emitBrainClearMoveIntent(runtime, wid);
-                std::fprintf(stderr, "[BRAIN_INTENT_EMIT] verb=Unit.ClearMoveOrders order=CLEAR_MOVE tick=%u wid=%d\n",
-                             getBrainTickIndex(), wid);
-                std::fflush(stderr);
-            } else {
-                // Intent queue OFF: cannot scrub here (direct call forbidden). Trace + no-op,
-                // mirroring the patrol NO_QUEUE path. Live use requires MC2_BRAIN_INTENT_QUEUE=1.
-                std::fprintf(stderr, "[BRAIN_CLEARMOVE_NO_QUEUE] wid=%d: requires MC2_BRAIN_INTENT_QUEUE=1\n", wid);
-                std::fflush(stderr);
-            }
+            applyClearMoveOrders(wid, runtime);
         } else if (std::strncmp(vpCanon, "UnitQuery.SetTargetpriority", 27) == 0 &&
                    (vpCanon[27] == ' ' || vpCanon[27] == '\0')) {
-            // UNITQUERY-SETTARGETPRIORITY-1: per-warrior target-priority list write.
-            // Format: UnitQuery.SetTargetpriority <slot> <type-sym> <p1> <p2> <criteria-expr>
-            //   slot/p1/p2 = bare ints; type = TARGET_PRIORITY_* symbol; criteria = the rest
-            //   of the line, a '+'-joined CONTACT_CRITERIA_* expression (or bare -1).
-            // carver passes SYMBOLS (ABL pre-compiled them; our RawScan sees raw text), so the
-            // args are resolved by brain_symbol_resolve. Intent-ONLY: setTargetPriority() runs
-            // in commitBrainIntents (sole permitted mutator). Does NOT set appliedEffect — this
-            // is target-selection config, not a GENERAL-slot order; must not suppress HOLD.
-            const char* a = vpCanon + 27;
-            long args5[5] = {0, 0, 0, 0, 0};
-            bool parsed = true;
-            for (int fi = 0; fi < 4 && parsed; ++fi) {
-                while (*a == ' ' || *a == '\t') ++a;
-                const char* ts = a;
-                while (*a && *a != ' ' && *a != '\t') ++a;
-                size_t tl = (size_t)(a - ts);
-                char tok[64];
-                if (tl == 0 || tl >= sizeof(tok)) { parsed = false; break; }
-                std::memcpy(tok, ts, tl); tok[tl] = '\0';
-                long v = 0;
-                if (!brainResolveSymbolToken(tok, &v)) { parsed = false; break; }
-                args5[fi] = v;
-            }
-            if (parsed) {
-                while (*a == ' ' || *a == '\t') ++a;   // 5th field = rest-of-line expression
-                long crit = 0;
-                if (*a == '\0' || !brainResolveIntExpr(a, &crit)) parsed = false;
-                else args5[4] = crit;
-            }
-            if (!parsed) {
-                std::fprintf(stderr, "[BRAIN_DISPATCH_TARGETPRIORITY_PARSE_FAIL] verb=%s wid=%d\n", vp, wid);
-                std::fflush(stderr);
-            } else if (runtime) {
-                emitBrainTargetPolicyIntent(runtime, wid, args5[0], args5[1], args5[2], args5[3], args5[4]);
-                std::fprintf(stderr, "[BRAIN_INTENT_EMIT] verb=UnitQuery.SetTargetpriority order=TARGET_POLICY slot=%ld type=%ld p1=%ld p2=%ld crit=%ld tick=%u wid=%d\n",
-                             args5[0], args5[1], args5[2], args5[3], args5[4], getBrainTickIndex(), wid);
-                std::fflush(stderr);
-            } else {
-                std::fprintf(stderr, "[BRAIN_TARGETPRIORITY_NO_QUEUE] wid=%d: requires MC2_BRAIN_INTENT_QUEUE=1\n", wid);
-                std::fflush(stderr);
-            }
+            applySetTargetPriority(wid, runtime, f);
         } else if (s_brainPatrolGate() && std::strncmp(vpCanon, "OPORD.CorePatrol", 16) == 0 &&
                    (vpCanon[16] == ' ' || vpCanon[16] == '\0')) {
-            // BRAIN-OPORD-COREPATROL-1: OPORD.CorePatrol x1 y1 z1 x2 y2 z2 ... [loop|once]
-            //
-            // FIRST-DISPATCH only (patrolActive==false guard):
-            //   Parse up to 8 waypoint triples + optional trailing "loop"/"once" keyword.
-            //   Set patrolWaypointCount, patrolWaypointIndex=0, patrolLoop, patrolActive=true.
-            //   Emit MOVETO_POINT to waypoints[0] via emitBrainIntent (gate ON) or direct
-            //   setGeneralTacOrder (gate OFF).
-            //
-            // RE-EMIT BYPASS: patrol does NOT set/check moveToEffectApplied.  patrolActive +
-            // the per-tick tickPatrolAdvance cursor-advance are the re-emit guard.
-            //
-            // Emit path: emitBrainIntent (gate ON only).
-            // NOTE: patrol does NOT call setGeneralTacOrder() directly here —
-            //   this keeps the relaxed_guard_doc call-site count at 6 (unchanged).
-            //   Without MC2_BRAIN_INTENT_QUEUE=1, patrol emits a trace-only warning on first
-            //   dispatch.  Per-tick tickPatrolAdvance also uses emitBrainIntent exclusively.
-            if (!warrior) {
-                std::fprintf(stderr, "[BRAIN_PATROL_PARSE_FAIL] no warrior wid=%d\n", wid);
-                std::fflush(stderr);
-            } else {
-                MechBrainRuntime* prt = warrior->getBrainRuntime();
-                if (!prt) {
-                    std::fprintf(stderr, "[BRAIN_PATROL_PARSE_FAIL] no runtime wid=%d\n", wid);
-                    std::fflush(stderr);
-                } else if (prt->patrolActive) {
-                    // Already active — this is a re-tick of a body that has CorePatrol.
-                    // The per-tick advance is handled by tickPatrolAdvance() in warrior.cpp.
-                    // Do NOT re-parse; do NOT re-emit waypoint[0].  Trace only.
-                    std::fprintf(stderr, "[BRAIN_PATROL_ACTIVE] already running index=%u count=%u wid=%d\n",
-                                 (unsigned)prt->patrolWaypointIndex, (unsigned)prt->patrolWaypointCount, wid);
-                    std::fflush(stderr);
-                    appliedEffect = true;
-                } else {
-                    // First dispatch: parse waypoints.
-                    const char* pargs = vpCanon + 16;
-                    while (*pargs == ' ') ++pargs;
-                    uint8_t wpCount = 0;
-                    float wpBuf[8][3];
-                    bool parseOk = true;
-                    while (wpCount < 8) {
-                        // Try to parse a float triplet.
-                        char* ep0 = nullptr;
-                        float x = std::strtof(pargs, &ep0);
-                        if (ep0 == pargs) break;  // no more numeric tokens
-                        pargs = ep0; while (*pargs == ' ') ++pargs;
-                        char* ep1 = nullptr;
-                        float y = std::strtof(pargs, &ep1);
-                        if (ep1 == pargs) { parseOk = false; break; }
-                        pargs = ep1; while (*pargs == ' ') ++pargs;
-                        char* ep2 = nullptr;
-                        float z = std::strtof(pargs, &ep2);
-                        if (ep2 == pargs) { parseOk = false; break; }
-                        pargs = ep2; while (*pargs == ' ') ++pargs;
-                        if (std::isnan(x) || std::isnan(y) || std::isnan(z)) {
-                            std::fprintf(stderr, "[BRAIN_PATROL_NAN] wp=%u x=%g y=%g z=%g wid=%d (skipped)\n",
-                                         (unsigned)wpCount, x, y, z, wid);
-                            std::fflush(stderr);
-                            continue;
-                        }
-                        wpBuf[wpCount][0] = x;
-                        wpBuf[wpCount][1] = y;
-                        wpBuf[wpCount][2] = z;
-                        ++wpCount;
-                    }
-                    // Parse trailing loop/once keyword (default loop).
-                    bool loopMode = true;
-                    if (*pargs != '\0') {
-                        if (std::strncmp(pargs, "once", 4) == 0)
-                            loopMode = false;
-                        // "loop" or any other trailing token → default loop=true.
-                    }
-                    if (!parseOk || wpCount < 2) {
-                        std::fprintf(stderr, "[BRAIN_PATROL_PARSE_FAIL] count=%u parseOk=%d wid=%d (need >=2 waypoints)\n",
-                                     (unsigned)wpCount, (int)parseOk, wid);
-                        std::fflush(stderr);
-                    } else {
-                        // Commit parsed state to runtime.
-                        prt->patrolWaypointCount = wpCount;
-                        prt->patrolWaypointIndex = 0;
-                        for (uint8_t wi = 0; wi < wpCount; ++wi) {
-                            prt->patrolWaypoints[wi][0] = wpBuf[wi][0];
-                            prt->patrolWaypoints[wi][1] = wpBuf[wi][1];
-                            prt->patrolWaypoints[wi][2] = wpBuf[wi][2];
-                        }
-                        prt->patrolLoop   = loopMode;
-                        prt->patrolActive = true;
-                        prt->patrolStarted = true;  // PATROL-DRIVE-1: this path emits waypoint[0] below; skip the tickPatrolAdvance kick.
-                        std::fprintf(stderr, "[BRAIN_PATROL_START] count=%u loop=%d wid=%d\n",
-                                     (unsigned)wpCount, (int)loopMode, wid);
-                        std::fflush(stderr);
-                        // Emit MOVETO_POINT to waypoints[0].
-                        float wx = prt->patrolWaypoints[0][0];
-                        float wy = prt->patrolWaypoints[0][1];
-                        float wz = prt->patrolWaypoints[0][2];
-                        if (runtime) {
-                            // Gate ON: emit intent; commitBrainIntents builds the TacticalOrder.
-                            emitBrainIntent(runtime, wid, TACTICAL_ORDER_MOVETO_POINT, -1, wx, wy, wz, 0);
-                            std::fprintf(stderr, "[BRAIN_PATROL_EMIT] index=0 pos=(%g %g %g) tick=%u wid=%d\n",
-                                         wx, wy, wz, getBrainTickIndex(), wid);
-                            std::fflush(stderr);
-                        } else {
-                            // Gate OFF (no intent queue): patrol cannot issue MOVETO_POINT here
-                            // without adding a 7th setGeneralTacOrder call-site (relaxed_guard_doc
-                            // contract requires count=6).  Emit a one-time warning.
-                            // Live-engine usage requires MC2_BRAIN_INTENT_QUEUE=1 for patrol orders.
-                            std::fprintf(stderr, "[BRAIN_PATROL_NO_QUEUE] wid=%d: patrol requires MC2_BRAIN_INTENT_QUEUE=1 for order emission\n", wid);
-                            std::fflush(stderr);
-                        }
-                        appliedEffect = true;
-                    }
-                }
-            }
+            applyCorePatrol(warrior, wid, runtime, appliedEffect, f);
         } else if (fsmGate && std::strncmp(vpCanon, "Unit.SetState", 13) == 0 &&
                    (vpCanon[13] == ' ' || vpCanon[13] == '\t' || vpCanon[13] == '\0')) {
-            // BRAIN-FSM-1K-A: Unit.SetState "x" — explicit FSM transition.
-            // prevState←currentState; currentState←x; early return (no order call).
-            // NOTE: NOT an order call — relaxed_guard_doc setGeneralTacOrder count = 6 (unchanged).
-            MechBrainRuntime* fsm_rt = warrior ? warrior->getBrainRuntime() : nullptr;
-            if (fsm_rt) {
-                // Parse quoted state name: verb is "Unit.SetState \"stateName\""
-                const char* sp = vpCanon + 13;
-                while (*sp == ' ' || *sp == '\t') ++sp;
-                if (*sp == '"') ++sp;
-                char newState[32] = {};
-                int ni = 0;
-                while (*sp && *sp != '"' && ni < 31) newState[ni++] = *sp++;
-                newState[ni] = '\0';
-                std::strncpy(fsm_rt->prevState, fsm_rt->currentState, 31);
-                fsm_rt->prevState[31] = '\0';
-                std::strncpy(fsm_rt->currentState, newState, 31);
-                fsm_rt->currentState[31] = '\0';
-                std::fprintf(stderr, "[BRAIN_FSM_SETSTATE] from=%s to=%s wid=%d\n",
-                             fsm_rt->prevState, fsm_rt->currentState, wid);
-                std::fflush(stderr);
-            }
-            return appliedEffect;  // early exit — no subsequent verbs after SetState
+            if (applySetState(warrior, wid, f)) return appliedEffect;
         } else if (fsmGate && std::strcmp(vpCanon, "Unit.SetStatePrev") == 0) {
-            // BRAIN-FSM-1K-A: Unit.SetStatePrev — transBack equivalent, swaps currentState↔prevState.
-            // Early return (no order call).
-            MechBrainRuntime* fsm_rt = warrior ? warrior->getBrainRuntime() : nullptr;
-            if (fsm_rt) {
-                char tmp[32];
-                std::memcpy(tmp, fsm_rt->prevState, 32);
-                std::strncpy(fsm_rt->prevState, fsm_rt->currentState, 31);
-                fsm_rt->prevState[31] = '\0';
-                std::memcpy(fsm_rt->currentState, tmp, 32);
-                std::fprintf(stderr, "[BRAIN_FSM_SETSTATEPREV] now=%s wid=%d\n",
-                             fsm_rt->currentState, wid);
-                std::fflush(stderr);
-            }
-            return appliedEffect;  // early exit — no subsequent verbs after SetStatePrev
+            if (applySetStatePrev(warrior, wid)) return appliedEffect;
         } else if (fsmGate && std::strncmp(vpCanon, "Unit.InState", 12) == 0 &&
                    (vpCanon[12] == ' ' || vpCanon[12] == '\t' || vpCanon[12] == '\0')) {
-            // BRAIN-FSM-1K-A: Unit.InState "x" — guard verb; does NOT call any order function.
-            // If currentState != x, stateGateOpen←false; subsequent verbs in this body are skipped.
-            MechBrainRuntime* fsm_rt = warrior ? warrior->getBrainRuntime() : nullptr;
-            const char* sp = vpCanon + 12;
-            while (*sp == ' ' || *sp == '\t') ++sp;
-            if (*sp == '"') ++sp;
-            char testState[32] = {};
-            int ni = 0;
-            while (*sp && *sp != '"' && ni < 31) testState[ni++] = *sp++;
-            testState[ni] = '\0';
-            const char* cur = fsm_rt ? fsm_rt->currentState : "";
-            int match = (std::strcmp(cur, testState) == 0) ? 1 : 0;
-            if (!match) stateGateOpen = false;
-            std::fprintf(stderr, "[BRAIN_FSM_INSTATE] state=%s match=%d wid=%d\n", testState, match, wid);
-            std::fflush(stderr);
+            applyInState(warrior, wid, stateGateOpen, f);
         } else if (fsmGate && std::strncmp(vpCanon, "Unit.NotInState", 15) == 0 &&
                    (vpCanon[15] == ' ' || vpCanon[15] == '\t' || vpCanon[15] == '\0')) {
-            // BRAIN-FSM-1K-A: Unit.NotInState "x" — inverse guard; does NOT call any order function.
-            // If currentState == x, stateGateOpen←false; subsequent verbs in this body are skipped.
-            MechBrainRuntime* fsm_rt = warrior ? warrior->getBrainRuntime() : nullptr;
-            const char* sp = vpCanon + 15;
-            while (*sp == ' ' || *sp == '\t') ++sp;
-            if (*sp == '"') ++sp;
-            char testState[32] = {};
-            int ni = 0;
-            while (*sp && *sp != '"' && ni < 31) testState[ni++] = *sp++;
-            testState[ni] = '\0';
-            const char* cur = fsm_rt ? fsm_rt->currentState : "";
-            int match = (std::strcmp(cur, testState) == 0) ? 1 : 0;
-            if (match) stateGateOpen = false;
-            std::fprintf(stderr, "[BRAIN_FSM_NOTINSTATE] state=%s match=%d wid=%d\n", testState, match, wid);
-            std::fflush(stderr);
+            applyNotInState(warrior, wid, stateGateOpen, f);
         } else if (fsmGate && std::strncmp(vpCanon, "Unit.SetStateIf", 15) == 0 &&
                    (vpCanon[15] == ' ' || vpCanon[15] == '\t' || vpCanon[15] == '\0')) {
-            // BRAIN-FSM-1K-B: Unit.SetStateIf "stateName" "varKey" "varValue"
-            // If Var store (unit scope) varKey == varValue → SetState transition (prevState←currentState; currentState←stateName); early return.
-            // If no match → no-op; body continues.
-            // Requires MC2_BRAIN_DISPATCH_VAR=1. If VAR gate OFF, emits one-time warning and is INERT.
-            //
-            // Parse 3 quoted args: stateName, varKey, varValue.
-            MechBrainRuntime* fsm_rt = warrior ? warrior->getBrainRuntime() : nullptr;
-            // Requires-VAR guard (mirror 1D-M pattern): FSM ON but VAR OFF → inert + one-time warning.
-            if (!varGate) {
-                static bool s_setstateif_var_warn = false;
-                if (!s_setstateif_var_warn) {
-                    s_setstateif_var_warn = true;
-                    std::fprintf(stderr, "[BRAIN_FSM_SETSTATEIF] WARNING: Unit.SetStateIf requires MC2_BRAIN_DISPATCH_VAR=1 — verb is INERT\n");
-                    std::fflush(stderr);
-                }
-                // INERT: no transition, body continues.
-            } else {
-                // Parse three quoted args: "stateName" "varKey" "varValue"
-                const char* sp = vpCanon + 15;
-                while (*sp == ' ' || *sp == '\t') ++sp;
-
-                // Arg 1: stateName
-                char stateName[32] = {};
-                if (*sp == '"') ++sp;
-                int ni = 0;
-                while (*sp && *sp != '"' && ni < 31) stateName[ni++] = *sp++;
-                stateName[ni] = '\0';
-                if (*sp == '"') ++sp;
-                while (*sp == ' ' || *sp == '\t') ++sp;
-
-                // Arg 2: varKey
-                char varKey[32] = {};
-                if (*sp == '"') ++sp;
-                ni = 0;
-                while (*sp && *sp != '"' && ni < 31) varKey[ni++] = *sp++;
-                varKey[ni] = '\0';
-                if (*sp == '"') ++sp;
-                while (*sp == ' ' || *sp == '\t') ++sp;
-
-                // Arg 3: varValue (expected value)
-                char varValue[32] = {};
-                if (*sp == '"') ++sp;
-                ni = 0;
-                while (*sp && *sp != '"' && ni < 31) varValue[ni++] = *sp++;
-                varValue[ni] = '\0';
-
-                // Read unit-scope var (unit-scope only; mission-scope deferred to future slice).
-                const char* curVal = (varStore && varKey[0] != '\0')
-                    ? varStore->get(varKey, VarScope::Unit)
-                    : "0";
-
-                int match = (std::strcmp(curVal, varValue) == 0) ? 1 : 0;
-
-                if (match) {
-                    // Perform SetState transition: prevState←currentState; currentState←stateName.
-                    if (fsm_rt) {
-                        std::strncpy(fsm_rt->prevState, fsm_rt->currentState, 31);
-                        fsm_rt->prevState[31] = '\0';
-                        std::strncpy(fsm_rt->currentState, stateName, 31);
-                        fsm_rt->currentState[31] = '\0';
-                        std::fprintf(stderr, "[BRAIN_FSM_SETSTATEIF] var=%s cur=%s want=%s match=1 from=%s to=%s wid=%d\n",
-                                     varKey, curVal, varValue, fsm_rt->prevState, fsm_rt->currentState, wid);
-                    } else {
-                        std::fprintf(stderr, "[BRAIN_FSM_SETSTATEIF] var=%s cur=%s want=%s match=1 from=(no-rt) to=%s wid=%d\n",
-                                     varKey, curVal, varValue, stateName, wid);
-                    }
-                    std::fflush(stderr);
-                    return appliedEffect;  // early exit on match — same semantics as SetState
-                } else {
-                    std::fprintf(stderr, "[BRAIN_FSM_SETSTATEIF] var=%s cur=%s want=%s match=0 wid=%d\n",
-                                 varKey, curVal, varValue, wid);
-                    std::fflush(stderr);
-                    // No transition; body continues.
-                }
-            }
+            if (applySetStateIf(warrior, wid, varStore, varGate, f)) return appliedEffect;
         } else if (isRecognizedVerb(vpCanon)) {
             // Recognized but no effect implemented this slice — trace only.
             std::fprintf(stderr, "[BRAIN_DISPATCH] verb=%s wid=%d (apply-mode: no effect this verb)\n", vp, wid);

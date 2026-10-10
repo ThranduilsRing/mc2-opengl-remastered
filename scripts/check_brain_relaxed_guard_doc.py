@@ -34,6 +34,7 @@ import sys
 from pathlib import Path
 
 DISPATCH_CPP_REL = "code/brain_special_dispatch.cpp"
+APPLY_CPP_NAME = "brain_special_apply.cpp"
 
 
 def count_header_guard_verbs(lines):
@@ -192,9 +193,8 @@ def count_callsites_in_apply(lines):
     (inside 'else' branches); the gate-ON emit path does NOT call setGeneralTacOrder.
     The checker counts the gate-OFF branches which must still equal 6.
     """
-    # The effect handler bodies of executeSpecialBody_Apply are the file-static apply* helpers that precede it.
-    total = count_callsites_in_function(lines, r'^bool\s+executeSpecialBody_Apply\s*\(')
-    return total + count_callsites_in_all_functions(lines, r'^static\s+(?:void|bool)\s+apply\w+\s*\(')
+    # The effect handler bodies live in brain_special_apply.cpp; main() adds their callsites.
+    return count_callsites_in_function(lines, r'^bool\s+executeSpecialBody_Apply\s*\(')
 
 
 def count_callsites_in_commit(lines):
@@ -240,6 +240,11 @@ def main():
     header_count   = count_header_guard_verbs(lines)
     inline_count   = count_inline_guard_verbs(lines)
     callsite_count = count_callsites_in_apply(lines)
+    # The effect handlers of executeSpecialBody_Apply live in a sibling piece next to the source file.
+    apply_path = src_path.with_name(APPLY_CPP_NAME)
+    if apply_path.is_file():
+        with open(apply_path, "r", encoding="utf-8", errors="replace") as f:
+            callsite_count += count_callsites_in_all_functions(f.readlines(), r'^(?:static\s+)?(?:void|bool)\s+apply\w+\s*\(')
     commit_count   = count_callsites_in_commit(lines)
 
     # DISPATCH-INTENT-CLEARMOVEORDERS-1: clearMoveOrders() is a movement function and is

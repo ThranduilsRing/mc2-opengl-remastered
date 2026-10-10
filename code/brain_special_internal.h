@@ -32,4 +32,22 @@ bool emitBrainClearMoveIntent(MechBrainRuntime* runtime, int warriorId);
 bool emitBrainTargetPolicyIntent(MechBrainRuntime* runtime, int warriorId,
                                  long slot, long type, long p1, long p2, long p3);
 
+struct BrainVerbFrame;
+
+// Effect handlers of executeSpecialBody_Apply (brain_special_apply.cpp).
+void applyCorePower(MechWarrior* warrior, int wid, MechBrainRuntime* runtime, bool& appliedEffect);
+void applyUnitEject(MechWarrior* warrior, int wid, MechBrainRuntime* runtime, bool& appliedEffect);
+void applyCoreGuard(MechWarrior* warrior, int wid, MechBrainRuntime* runtime, bool& appliedEffect);
+void applyCoreMoveTo(MechWarrior* warrior, int wid, MechBrainRuntime* runtime, bool& appliedEffect, BrainVerbFrame& f);
+void applyCoreAttack(MechWarrior* warrior, int wid, MechBrainRuntime* runtime, bool& appliedEffect, BrainVerbFrame& f);
+void applyUnitRetreat(MechWarrior* warrior, int wid, MechBrainRuntime* runtime, bool& appliedEffect);
+void applyClearMoveOrders(int wid, MechBrainRuntime* runtime);
+void applySetTargetPriority(int wid, MechBrainRuntime* runtime, BrainVerbFrame& f);
+void applyCorePatrol(MechWarrior* warrior, int wid, MechBrainRuntime* runtime, bool& appliedEffect, BrainVerbFrame& f);
+bool applySetState(MechWarrior* warrior, int wid, BrainVerbFrame& f);
+bool applySetStatePrev(MechWarrior* warrior, int wid);
+void applyInState(MechWarrior* warrior, int wid, bool& stateGateOpen, BrainVerbFrame& f);
+void applyNotInState(MechWarrior* warrior, int wid, bool& stateGateOpen, BrainVerbFrame& f);
+bool applySetStateIf(MechWarrior* warrior, int wid, VarStore* varStore, bool varGate, BrainVerbFrame& f);
+
 #endif  // CODE_BRAIN_SPECIAL_INTERNAL_H
