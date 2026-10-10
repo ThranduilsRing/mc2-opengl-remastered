@@ -149,9 +149,78 @@ void GpuMechBatcher::executorApplyMechOpaqueState() {
     s_opaqueStateAppliedByExecutor = true;
 }
 
-void GpuMechBatcher::flush() {
-    finalizePending();
+namespace {
 
+struct BucketKey {
+    uint32_t typeLodIdx;
+    uint32_t globalPacketIdx;
+    uint32_t texHandle;
+    uint32_t materialFlags;
+    bool operator<(const BucketKey& o) const {
+        if (typeLodIdx      != o.typeLodIdx)      return typeLodIdx      < o.typeLodIdx;
+        if (globalPacketIdx != o.globalPacketIdx) return globalPacketIdx < o.globalPacketIdx;
+        if (texHandle       != o.texHandle)       return texHandle       < o.texHandle;
+        return materialFlags < o.materialFlags;
+    }
+};
+
+struct DrawCall {
+    uint32_t globalPacketIdx;
+    uint32_t texHandle;
+    uint32_t materialFlags;
+    uint32_t instanceBase;
+    uint32_t instanceCount;
+    uint32_t aoTexHandle;   // AO-1: AO mcTextureManager slot (0=none; per-type, so
+                            // consistent within a bucket). Bound to unit 6 at draw.
+    uint32_t normalTexHandle; // NORMALS-1: normal-map slot (0=none; per-type).
+                              // Bound to unit 7 at draw.
+};
+
+// Locals the flush phases hand to each other: the bucketed submits, the ring slice pointers,
+// the draw-call list and the GL state saved before the draw loop and restored after it.
+struct MechFlushFrame {
+    size_t totalBones;
+    std::map<BucketKey, std::vector<uint32_t>> buckets;  // key -> [submitIdx list]
+    size_t totalInstances;
+    GpuMechInstance* instDst;
+    GpuMechBone* boneDst;
+    std::vector<uint32_t> actorBoneBase;
+    std::vector<DrawCall> drawCalls;
+    std::optional<mc2gl::GlScopedSsboBinding> guardSsbo2;
+    GLint prevDepthFunc;
+    GLboolean prevDepthTest;
+    GLboolean prevDepthMask;
+    GLboolean prevBlend;
+    GLboolean prevCull;
+    GLint prevCullMode;
+    GLint prevProgram;
+    GLint prevVao;
+    GLint prevArrayBuf;
+    GLint prevElemBuf;
+    GLint prevActiveTex;
+    GLint prevSampler;
+    std::optional<mc2gl::GlScopedSsboBinding> guardSsbo0;
+    std::optional<mc2gl::GlScopedSsboBinding> guardSsbo1;
+    GLint prevTexUnit0;
+    GLint prevTexUnit1;
+    GLint prevSampler1;
+    GLint prevTexUnit2;
+    GLint prevSampler2;
+    GLint prevTexUnit3;
+    GLint prevSampler3;
+    GLint prevTexUnit4;
+    GLint prevSampler4;
+    GLint prevTexUnit6;
+    GLint prevSampler6;
+    GLint prevTexUnit7;
+    GLint prevSampler7;
+    uint32_t drawnCalls;
+};
+
+}  // namespace
+
+// Latch the submit count and run the periodic and boot-time trace setup.
+static void traceLatch() {
     // V1A: latch BEFORE any early-return guard clears s_pendingSubmits.
     // Counts GpuMechBatcher submits only (not MLR fallback, not alive count).
     s_lastFlushSubmitCount = static_cast<uint64_t>(s_pendingSubmits.size());
@@ -201,17 +270,10 @@ void GpuMechBatcher::flush() {
             "[LIGHTSSBO v1] event=mech_lightidx_max submitted=%zu maxIdx=%u (unbounded SSBO)\n",
             s_pendingSubmits.size(), maxIdx);
     }
+}
 
-    if (!g_useGpuMechs || !s_geometryFinalized || s_programLoadFailed ||
-        s_pendingSubmits.empty()) {
-        s_pendingSubmits.clear();
-        s_eligibleActorsThisFrame = 0;
-        std::memset(s_fallbacksThisFrame, 0, sizeof(s_fallbacksThisFrame));
-        // MECH-EXTRACTION-0: persist buffer is retained for frames with no pending submits;
-        // it will be cleared in onMapUnload() or repopulated in the normal flush() path.
-        return;
-    }
-
+// Resolve the named surface-material profile indices once, after the material tables exist.
+static void resolveSurfaceMaterial() {
     // Slice C1: resolve s_mechSurfaceMaterialIdx once after gos_materials::init() has run.
     // init() is called from finalizeGeometry() which always precedes the first flush().
     if (!s_mechSurfaceMaterialIdxResolved) {
@@ -225,29 +287,22 @@ void GpuMechBatcher::flush() {
         if (s_mechSurfaceMaterialIdx != 0u)
             s_mechPaintSurfaceMaterialIdx = gos_materials::getProfileIndex("paintedmetal003");
     }
+}
 
+// Count bones and group the pending submits into draw buckets keyed by packet, texture and flags.
+static void buildBuckets(MechFlushFrame& f) {
+    auto& totalBones = f.totalBones;
+    auto& buckets = f.buckets;
+    auto& totalInstances = f.totalInstances;
     // Step 1: Count total bones (one block per actor).
-    size_t totalBones = 0;
+    totalBones = 0;
     for (const auto& ps : s_pendingSubmits) totalBones += ps.bones.size();
 
     // Step 2: Build draw buckets.
     // Key: (typeLodIdx, globalPacketIdx, texHandle, materialFlags).
     // Each actor × packet produces one entry in the matching bucket.
     // Different per-actor paint schemes for the same packet -> different buckets.
-    struct BucketKey {
-        uint32_t typeLodIdx;
-        uint32_t globalPacketIdx;
-        uint32_t texHandle;
-        uint32_t materialFlags;
-        bool operator<(const BucketKey& o) const {
-            if (typeLodIdx      != o.typeLodIdx)      return typeLodIdx      < o.typeLodIdx;
-            if (globalPacketIdx != o.globalPacketIdx) return globalPacketIdx < o.globalPacketIdx;
-            if (texHandle       != o.texHandle)       return texHandle       < o.texHandle;
-            return materialFlags < o.materialFlags;
-        }
-    };
 
-    std::map<BucketKey, std::vector<uint32_t>> buckets;  // key -> [submitIdx list]
 
     for (uint32_t si = 0; si < (uint32_t)s_pendingSubmits.size(); ++si) {
         const PendingSubmit& ps = s_pendingSubmits[si];
@@ -263,15 +318,14 @@ void GpuMechBatcher::flush() {
         }
     }
 
-    size_t totalInstances = 0;
+    totalInstances = 0;
     for (const auto& kv : buckets) totalInstances += kv.second.size();
+}
 
-    ensureRingCapacity(totalInstances, totalBones);
-    if (!s_instanceMap || !s_boneMap) {
-        s_pendingSubmits.clear();
-        return;
-    }
-
+// Advance the ring slot, wait for its oldest fence and point at the slot slices.
+static void advanceRing(MechFlushFrame& f) {
+    auto& instDst = f.instDst;
+    auto& boneDst = f.boneDst;
     // Step 3: Advance ring slot and wait for oldest fence.
     s_frameSlot = (s_frameSlot + 1) % MECH_RING_FRAMES;
     if (s_fence[s_frameSlot]) {
@@ -280,18 +334,27 @@ void GpuMechBatcher::flush() {
         s_fence[s_frameSlot] = 0;
     }
 
-    GpuMechInstance* instDst = (GpuMechInstance*)s_instanceMap + s_frameSlot * s_instanceCapacity;
-    GpuMechBone*     boneDst = (GpuMechBone*)    s_boneMap     + s_frameSlot * s_boneCapacity;
+    instDst = (GpuMechInstance*)s_instanceMap + s_frameSlot * s_instanceCapacity;
+    boneDst = (GpuMechBone*)    s_boneMap     + s_frameSlot * s_boneCapacity;
+}
 
+// Write each actor bone palette into the bone ring and record its base offset.
+static void writeBones(MechFlushFrame& f) {
+    auto& boneDst = f.boneDst;
+    auto& actorBoneBase = f.actorBoneBase;
     // Step 4: Write bone SSBO once per actor; record each actor's boneBase offset.
-    std::vector<uint32_t> actorBoneBase(s_pendingSubmits.size());
+    actorBoneBase.assign(s_pendingSubmits.size(), 0u);
     uint32_t boneHead = 0;
     for (uint32_t si = 0; si < (uint32_t)s_pendingSubmits.size(); ++si) {
         actorBoneBase[si] = boneHead;
         for (const auto& b : s_pendingSubmits[si].bones)
             boneDst[boneHead++] = b;
     }
+}
 
+// Assign each bucket a material-table row and upload the table when it grew.
+static void buildMaterialTable(MechFlushFrame& f) {
+    auto& buckets = f.buckets;
     // Step 2.5: Build mech MaterialGpu table (same bucket iteration order as Step 5).
     // s_mechDrawMaterialIdx is per-draw (bucket-iteration order) — rebuilt every flush.
     // s_mechMaterialTable / s_mechHandleToMaterialIdx PERSIST within a mission
@@ -357,20 +420,15 @@ void GpuMechBatcher::flush() {
             static_cast<uint32_t>(s_mechMaterialTable.size()));
         MC2_DIAG_FPUTS(buf, stderr);
     }
+}
 
+// Write the instance ring in bucket order and collect the draw calls.
+static void writeInstances(MechFlushFrame& f) {
+    auto& buckets = f.buckets;
+    auto& instDst = f.instDst;
+    auto& actorBoneBase = f.actorBoneBase;
+    auto& drawCalls = f.drawCalls;
     // Step 5: Write instance SSBO in bucket order; collect draw calls.
-    struct DrawCall {
-        uint32_t globalPacketIdx;
-        uint32_t texHandle;
-        uint32_t materialFlags;
-        uint32_t instanceBase;
-        uint32_t instanceCount;
-        uint32_t aoTexHandle;   // AO-1: AO mcTextureManager slot (0=none; per-type, so
-                                // consistent within a bucket). Bound to unit 6 at draw.
-        uint32_t normalTexHandle; // NORMALS-1: normal-map slot (0=none; per-type).
-                                  // Bound to unit 7 at draw.
-    };
-    std::vector<DrawCall> drawCalls;
     drawCalls.reserve(buckets.size());
 
     auto unpack = [](uint32_t argb, float out[4]) {
@@ -441,7 +499,11 @@ void GpuMechBatcher::flush() {
         drawCalls.push_back(dc);
         ++dcIdx;
     }
+}
 
+// Check every draw call material row still names the bucket texture.
+static void validateMaterialTable(MechFlushFrame& f) {
+    auto& drawCalls = f.drawCalls;
     // Task 5: Compare validation — verify albedoTex == texHandle per draw call
     if (s_mechMaterialGpuEnabled) {
         int mismatches = 0;
@@ -471,7 +533,13 @@ void GpuMechBatcher::flush() {
             MC2_DIAG_FPUTS(buf, stderr);
         }
     }
+}
 
+// Bind the instance, bone and material SSBOs for the draw loop.
+static void bindSsbos(MechFlushFrame& f) {
+    auto& totalBones = f.totalBones;
+    auto& totalInstances = f.totalInstances;
+    auto& guardSsbo2 = f.guardSsbo2;
     // Mech-1: save binding 2 before Step 6 mutates it.
     // GLSTATE-GUARD-ADOPTION-3 (glstate-guard-epilogue-recon-1.md Site 1 — "the
     // one genuinely clean, behavior-preserving win"): restore-previous SSBO
@@ -485,7 +553,6 @@ void GpuMechBatcher::flush() {
     // between). Render-state (program/VAO/buffers/samplers/depth/blend/cull)
     // stays fully manual per the recon's recommendation — only SSBO 0/1/2
     // convert in this slice.
-    std::optional<mc2gl::GlScopedSsboBinding> guardSsbo2;
     guardSsbo2.emplace(2);
 
     // Step 6: Bind SSBOs (whole per-frame slices; shader indexes via u_instanceBase).
@@ -504,7 +571,37 @@ void GpuMechBatcher::flush() {
     // Slice C1: bind named material profile SSBO at binding 7.
     // No-op when MC2_MATERIAL_GPU=0, init() not called, or no textured profiles.
     gos_materials::bindMaterialTable();
+}
 
+// Save the GL state the draw loop changes so it can be restored afterwards.
+static void saveGlState(MechFlushFrame& f) {
+    auto& prevDepthFunc = f.prevDepthFunc;
+    auto& prevDepthTest = f.prevDepthTest;
+    auto& prevDepthMask = f.prevDepthMask;
+    auto& prevBlend = f.prevBlend;
+    auto& prevCull = f.prevCull;
+    auto& prevCullMode = f.prevCullMode;
+    auto& prevProgram = f.prevProgram;
+    auto& prevVao = f.prevVao;
+    auto& prevArrayBuf = f.prevArrayBuf;
+    auto& prevElemBuf = f.prevElemBuf;
+    auto& prevActiveTex = f.prevActiveTex;
+    auto& prevSampler = f.prevSampler;
+    auto& guardSsbo0 = f.guardSsbo0;
+    auto& guardSsbo1 = f.guardSsbo1;
+    auto& prevTexUnit0 = f.prevTexUnit0;
+    auto& prevTexUnit1 = f.prevTexUnit1;
+    auto& prevSampler1 = f.prevSampler1;
+    auto& prevTexUnit2 = f.prevTexUnit2;
+    auto& prevSampler2 = f.prevSampler2;
+    auto& prevTexUnit3 = f.prevTexUnit3;
+    auto& prevSampler3 = f.prevSampler3;
+    auto& prevTexUnit4 = f.prevTexUnit4;
+    auto& prevSampler4 = f.prevSampler4;
+    auto& prevTexUnit6 = f.prevTexUnit6;
+    auto& prevSampler6 = f.prevSampler6;
+    auto& prevTexUnit7 = f.prevTexUnit7;
+    auto& prevSampler7 = f.prevSampler7;
     // Save prior GL state. The mech flush bypasses applyRenderStates'
     // tracked slot set, so the engine's render-state cache becomes
     // out-of-sync after we mutate state directly. We save EVERYTHING the
@@ -514,52 +611,53 @@ void GpuMechBatcher::flush() {
     // to make subsequent draws (water, mechs themselves on later frames)
     // disappear after a few frames as the cache thinks GL is in state X
     // while reality is state Y.
-    GLint     prevDepthFunc;   glGetIntegerv(GL_DEPTH_FUNC,      &prevDepthFunc);
-    GLboolean prevDepthTest;   glGetBooleanv(GL_DEPTH_TEST,      &prevDepthTest);
-    GLboolean prevDepthMask;   glGetBooleanv(GL_DEPTH_WRITEMASK, &prevDepthMask);
-    GLboolean prevBlend;       glGetBooleanv(GL_BLEND,            &prevBlend);
-    GLboolean prevCull;        glGetBooleanv(GL_CULL_FACE,        &prevCull);
-    GLint     prevCullMode;    glGetIntegerv(GL_CULL_FACE_MODE,  &prevCullMode);
-    GLint     prevProgram;     glGetIntegerv(GL_CURRENT_PROGRAM,  &prevProgram);
-    GLint     prevVao;         glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &prevVao);
-    GLint     prevArrayBuf;    glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &prevArrayBuf);
-    GLint     prevElemBuf;     glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDING, &prevElemBuf);
-    GLint     prevActiveTex;   glGetIntegerv(GL_ACTIVE_TEXTURE,   &prevActiveTex);
-    GLint     prevSampler   = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 0, &prevSampler);
+    glGetIntegerv(GL_DEPTH_FUNC,      &prevDepthFunc);
+    glGetBooleanv(GL_DEPTH_TEST,      &prevDepthTest);
+    glGetBooleanv(GL_DEPTH_WRITEMASK, &prevDepthMask);
+    glGetBooleanv(GL_BLEND,            &prevBlend);
+    glGetBooleanv(GL_CULL_FACE,        &prevCull);
+    glGetIntegerv(GL_CULL_FACE_MODE,  &prevCullMode);
+    glGetIntegerv(GL_CURRENT_PROGRAM,  &prevProgram);
+    glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &prevVao);
+    glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &prevArrayBuf);
+    glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDING, &prevElemBuf);
+    glGetIntegerv(GL_ACTIVE_TEXTURE,   &prevActiveTex);
+    prevSampler = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 0, &prevSampler);
     // GLSTATE-GUARD-ADOPTION-3: SSBO 0/1 restore-previous, same pattern as
     // guardSsbo2 above (captured here, AFTER Step 6 already rebound slots 0/1
     // to s_instanceSsbo/s_boneSsbo — matching the exact pre-conversion capture
     // point/semantics unchanged, not "fixed").
-    std::optional<mc2gl::GlScopedSsboBinding> guardSsbo0;
     guardSsbo0.emplace(0);
-    std::optional<mc2gl::GlScopedSsboBinding> guardSsbo1;
     guardSsbo1.emplace(1);
     glActiveTexture(GL_TEXTURE0);
-    GLint     prevTexUnit0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTexUnit0);
+    glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTexUnit0);
     // Slice C2 + PBR-LAYERED-1: save PBR detail sampler units 1-4.
     glActiveTexture(GL_TEXTURE1);
-    GLint prevTexUnit1 = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTexUnit1);
-    GLint prevSampler1 = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 1, &prevSampler1);
+    prevTexUnit1 = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTexUnit1);
+    prevSampler1 = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 1, &prevSampler1);
     glActiveTexture(GL_TEXTURE2);
-    GLint prevTexUnit2 = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTexUnit2);
-    GLint prevSampler2 = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 2, &prevSampler2);
+    prevTexUnit2 = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTexUnit2);
+    prevSampler2 = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 2, &prevSampler2);
     glActiveTexture(GL_TEXTURE3);
-    GLint prevTexUnit3 = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTexUnit3);
-    GLint prevSampler3 = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 3, &prevSampler3);
+    prevTexUnit3 = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTexUnit3);
+    prevSampler3 = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 3, &prevSampler3);
     glActiveTexture(GL_TEXTURE4);
-    GLint prevTexUnit4 = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTexUnit4);
-    GLint prevSampler4 = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 4, &prevSampler4);
+    prevTexUnit4 = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTexUnit4);
+    prevSampler4 = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 4, &prevSampler4);
     // AO-1: save unit 6 (imported-mech AO). Paranoid leak guard — restored below.
     glActiveTexture(GL_TEXTURE6);
-    GLint prevTexUnit6 = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTexUnit6);
-    GLint prevSampler6 = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 6, &prevSampler6);
+    prevTexUnit6 = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTexUnit6);
+    prevSampler6 = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 6, &prevSampler6);
     // NORMALS-1: save unit 7 (imported-mech normal map). Same leak guard.
     glActiveTexture(GL_TEXTURE7);
-    GLint prevTexUnit7 = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTexUnit7);
-    GLint prevSampler7 = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 7, &prevSampler7);
+    prevTexUnit7 = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTexUnit7);
+    prevSampler7 = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 7, &prevSampler7);
     glActiveTexture(GL_TEXTURE0);
     glActiveTexture(GL_TEXTURE0);
+}
 
+// Apply the mech pipeline and bind the shared VAO, IBO, sampler and PBR detail textures.
+static void applyMechPipeline() {
     // MECH-PIPELINEDESC-1: program + fixed-function state (depth test+write+func
     // GEQUAL, blend Opaque, cull Back) from the registered MechOpaque PipelineDesc,
     // replacing the prior hand-set glUseProgram/glEnable/glDepthFunc/... block.
@@ -629,7 +727,10 @@ void GpuMechBatcher::flush() {
         if (s_loc_u_pbrPaintNormalTex >= 0) glUniform1i(s_loc_u_pbrPaintNormalTex, 3);
         if (s_loc_u_pbrPaintOrmTex    >= 0) glUniform1i(s_loc_u_pbrPaintOrmTex,    4);
     }
+}
 
+// Upload the per-flush shading, PBR and lighting uniforms.
+static void uploadShadingUniforms() {
     // VK-PARITY-MECH-1: default shading knobs from the shared producer (the VK
     // mech island's frame feed reads the same function). Values unchanged.
     GpuMechShadingParams shp{};
@@ -729,7 +830,10 @@ void GpuMechBatcher::flush() {
         glUniform3fv(s_loc_u_iblSh, 9, &RenderCore::kIblShCoeffs[0][0]);
     if (s_loc_u_iblShStrength >= 0)
         glUniform1f(s_loc_u_iblShStrength, s_mechIblShEnabled ? g_iblShStrength : 0.0f);
+}
 
+// Upload the light-pool and projection uniforms and run the view-uniform probe.
+static void uploadProjectionUniforms() {
     // POOL-CONSUMERS-1 (batch-6 item 6): bind + upload the night light-pool
     // SSBO/uniforms so movers receive pool light (their own headlights,
     // building pools). u_numPoolLights=0 when gated -> byte-identical.
@@ -813,7 +917,12 @@ void GpuMechBatcher::flush() {
             }
         }
     }
+}
 
+// Order the SSBO writes before the draws, then issue one instanced draw per bucket.
+static void drawBuckets(MechFlushFrame& f) {
+    auto& drawCalls = f.drawCalls;
+    auto& drawnCalls = f.drawnCalls;
     // GPU-SYNC-CONTRACT: the instance + bone SSBOs were just written through a
     // persistent GL_MAP_COHERENT_BIT mapping (Steps 4-5). Order those CPU writes
     // BEFORE the instanced draws below read them as SSBO. Without this, NVIDIA may
@@ -824,7 +933,7 @@ void GpuMechBatcher::flush() {
                    "mech_instance_bone");
 
     // Step 7: Issue one draw call per bucket.
-    uint32_t drawnCalls = 0;
+    drawnCalls = 0;
     static int s_texDiagPrinted = 0;
 #ifdef MC2_VULKAN_ISLAND
     // VK-P14 MECH TIER-1: when armed, capture each run (with its LIVE slot-0 paint
@@ -970,7 +1079,38 @@ void GpuMechBatcher::flush() {
 
         ++drawnCalls;
     }
+}
 
+// Restore the GL state saved before the draw loop.
+static void restoreGlState(MechFlushFrame& f) {
+    auto& guardSsbo2 = f.guardSsbo2;
+    auto& prevDepthFunc = f.prevDepthFunc;
+    auto& prevDepthTest = f.prevDepthTest;
+    auto& prevDepthMask = f.prevDepthMask;
+    auto& prevBlend = f.prevBlend;
+    auto& prevCull = f.prevCull;
+    auto& prevCullMode = f.prevCullMode;
+    auto& prevProgram = f.prevProgram;
+    auto& prevVao = f.prevVao;
+    auto& prevArrayBuf = f.prevArrayBuf;
+    auto& prevElemBuf = f.prevElemBuf;
+    auto& prevActiveTex = f.prevActiveTex;
+    auto& prevSampler = f.prevSampler;
+    auto& guardSsbo0 = f.guardSsbo0;
+    auto& guardSsbo1 = f.guardSsbo1;
+    auto& prevTexUnit0 = f.prevTexUnit0;
+    auto& prevTexUnit1 = f.prevTexUnit1;
+    auto& prevSampler1 = f.prevSampler1;
+    auto& prevTexUnit2 = f.prevTexUnit2;
+    auto& prevSampler2 = f.prevSampler2;
+    auto& prevTexUnit3 = f.prevTexUnit3;
+    auto& prevSampler3 = f.prevSampler3;
+    auto& prevTexUnit4 = f.prevTexUnit4;
+    auto& prevSampler4 = f.prevSampler4;
+    auto& prevTexUnit6 = f.prevTexUnit6;
+    auto& prevSampler6 = f.prevSampler6;
+    auto& prevTexUnit7 = f.prevTexUnit7;
+    auto& prevSampler7 = f.prevSampler7;
     // Restore prior state in reverse order of save.
     // GLSTATE-GUARD-ADOPTION-3: SSBO 0/1/2 restore via guard .reset() (runs the
     // dtor immediately, same glBindBufferBase(slot, prev) it replaces) — MUST
@@ -1014,7 +1154,10 @@ void GpuMechBatcher::flush() {
     if (prevCull)  { glEnable(GL_CULL_FACE); glCullFace((GLenum)prevCullMode); }
     else             glDisable(GL_CULL_FACE);
     if (prevBlend) glEnable(GL_BLEND); else glDisable(GL_BLEND);
+}
 
+// Fence the ring slot and invalidate the engine render-state cache.
+static void fenceAndInvalidate() {
     s_fence[s_frameSlot] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
 
     // RENDER_STATES v1: even with the explicit save/restore above, the
@@ -1024,7 +1167,13 @@ void GpuMechBatcher::flush() {
     // values while the actual texture binding / sampler / depth bits we
     // touched go unrechecked. Mirrors gos_static_prop_batcher.cpp:1791.
     gos_InvalidateRenderStateCache();
+}
 
+// Print the per-frame batcher and fallback summary.
+static void emitBatcherStats(MechFlushFrame& f) {
+    auto& buckets = f.buckets;
+    auto& totalInstances = f.totalInstances;
+    auto& drawnCalls = f.drawnCalls;
     // Per-reason stats output (MC2_MECH_BATCHER_STATS=1).
     if (s_mechBatcherTrace) {
         static const char* const kFallbackNames[] = {
@@ -1052,7 +1201,13 @@ void GpuMechBatcher::flush() {
             }
         }
     }
+}
 
+// Keep this frame draw-call list and SSBO sizes for the shadow pass.
+static void persistDrawCalls(MechFlushFrame& f) {
+    auto& totalBones = f.totalBones;
+    auto& totalInstances = f.totalInstances;
+    auto& drawCalls = f.drawCalls;
     // Persist this frame's draw-call list and SSBO sizes for flushShadow()
     // to consume on the NEXT frame (Option B: persisted drawCalls).
     s_lastDrawCalls.clear();
@@ -1066,8 +1221,15 @@ void GpuMechBatcher::flush() {
     }
     s_lastTotalInstances = totalInstances;
     s_lastTotalBones     = totalBones;
+}
 
+// Copy the instance and bone palettes and the view matrix out for the VK mech island.
 #ifdef MC2_VULKAN_ISLAND
+static void snapshotForVkIsland(MechFlushFrame& f) {
+    auto& totalBones = f.totalBones;
+    auto& totalInstances = f.totalInstances;
+    auto& instDst = f.instDst;
+    auto& boneDst = f.boneDst;
     // VK-P14 MECH TIER-1: snapshot this frame's instance + bone palette (host-visible
     // copies out of the mapped ring slot) + the world->clip / depth-bias the GL VS
     // uses, so the island can memcpy them into VK SSBOs without touching a fenced GL
@@ -1084,8 +1246,11 @@ void GpuMechBatcher::flush() {
     } else {
         s_vkMechFrameReady = false;
     }
+}
 #endif
 
+// Persist per-actor facts for the extract snapshot.
+static void persistExtraction() {
     // MECH-EXTRACTION-0: persist per-actor facts for batcher_getMechPendingCount/Entry.
     // Must run before s_pendingSubmits.clear() so ExtractRenderSnapshot can read this frame's data.
     static const bool s_mechExtractEnabled = mc2::gate::get<"MC2_SNAPSHOT_MECH_EXTRACT">();
@@ -1116,6 +1281,55 @@ void GpuMechBatcher::flush() {
             s_mechExtractPersist.push_back(pkt);
         }
     }
+}
+
+// Per-frame mech draw: bucket the pending submits, stream the instance + bone SSBOs, draw one instanced
+// call per bucket, restore GL state, then persist the frame for the shadow pass, the VK island and
+// the extract snapshot. Each phase is a helper above, in execution order.
+void GpuMechBatcher::flush() {
+    finalizePending();
+    traceLatch();
+
+    if (!g_useGpuMechs || !s_geometryFinalized || s_programLoadFailed ||
+        s_pendingSubmits.empty()) {
+        s_pendingSubmits.clear();
+        s_eligibleActorsThisFrame = 0;
+        std::memset(s_fallbacksThisFrame, 0, sizeof(s_fallbacksThisFrame));
+        // MECH-EXTRACTION-0: persist buffer is retained for frames with no pending submits;
+        // it will be cleared in onMapUnload() or repopulated in the normal flush() path.
+        return;
+    }
+
+    resolveSurfaceMaterial();
+    MechFlushFrame f;
+    buildBuckets(f);
+    ensureRingCapacity(f.totalInstances, f.totalBones);
+    if (!s_instanceMap || !s_boneMap) {
+        s_pendingSubmits.clear();
+        return;
+    }
+
+    advanceRing(f);
+    writeBones(f);
+    buildMaterialTable(f);
+    writeInstances(f);
+    validateMaterialTable(f);
+    bindSsbos(f);
+    saveGlState(f);
+    applyMechPipeline();
+    uploadShadingUniforms();
+    uploadProjectionUniforms();
+    drawBuckets(f);
+    restoreGlState(f);
+    fenceAndInvalidate();
+    emitBatcherStats(f);
+    persistDrawCalls(f);
+
+#ifdef MC2_VULKAN_ISLAND
+    snapshotForVkIsland(f);
+#endif
+
+    persistExtraction();
 
     s_pendingSubmits.clear();
     s_eligibleActorsThisFrame = 0;

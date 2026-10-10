@@ -1,0 +1,246 @@
+inline expansion: 893 statements, helpers 20, orchestrator lines 47
+declaration lifts / edits applied (37):
+  L230   lift size_t totalBones = 0;  =>  totalBones = 0;
+  L250   lift std::map<BucketKey, std::vector<uint32_t>> buckets;  // key -> [submit  =>  (declaration only)
+  L266   lift size_t totalInstances = 0;  =>  totalInstances = 0;
+  L269   edit ensureRingCapacity(totalInstances, totalBones);  =>  ensureRingCapacity(f.totalInstances, f.totalBones);
+  L283   lift GpuMechInstance* instDst = (GpuMechInstance*)s_instanceMap + s_frameSl  =>  instDst = (GpuMechInstance*)s_instanceMap + s_frameSlot * s_instanceCa
+  L284   lift GpuMechBone*     boneDst = (GpuMechBone*)    s_boneMap     + s_frameSl  =>  boneDst = (GpuMechBone*)    s_boneMap     + s_frameSlot * s_boneCapaci
+  L287   edit std::vector<uint32_t> actorBoneBase(s_pendingSubmits.size());  =>  actorBoneBase.assign(s_pendingSubmits.size(), 0u);
+  L373   lift std::vector<DrawCall> drawCalls;  =>  (declaration only)
+  L488   lift std::optional<mc2gl::GlScopedSsboBinding> guardSsbo2;  =>  (declaration only)
+  L517   lift GLint     prevDepthFunc;   glGetIntegerv(GL_DEPTH_FUNC,      &prevDept  =>  glGetIntegerv(GL_DEPTH_FUNC,      &prevDepthFunc);
+  L518   lift GLboolean prevDepthTest;   glGetBooleanv(GL_DEPTH_TEST,      &prevDept  =>  glGetBooleanv(GL_DEPTH_TEST,      &prevDepthTest);
+  L519   lift GLboolean prevDepthMask;   glGetBooleanv(GL_DEPTH_WRITEMASK, &prevDept  =>  glGetBooleanv(GL_DEPTH_WRITEMASK, &prevDepthMask);
+  L520   lift GLboolean prevBlend;       glGetBooleanv(GL_BLEND,            &prevBle  =>  glGetBooleanv(GL_BLEND,            &prevBlend);
+  L521   lift GLboolean prevCull;        glGetBooleanv(GL_CULL_FACE,        &prevCul  =>  glGetBooleanv(GL_CULL_FACE,        &prevCull);
+  L522   lift GLint     prevCullMode;    glGetIntegerv(GL_CULL_FACE_MODE,  &prevCull  =>  glGetIntegerv(GL_CULL_FACE_MODE,  &prevCullMode);
+  L523   lift GLint     prevProgram;     glGetIntegerv(GL_CURRENT_PROGRAM,  &prevPro  =>  glGetIntegerv(GL_CURRENT_PROGRAM,  &prevProgram);
+  L524   lift GLint     prevVao;         glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &pre  =>  glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &prevVao);
+  L525   lift GLint     prevArrayBuf;    glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &pre  =>  glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &prevArrayBuf);
+  L526   lift GLint     prevElemBuf;     glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDI  =>  glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDING, &prevElemBuf);
+  L527   lift GLint     prevActiveTex;   glGetIntegerv(GL_ACTIVE_TEXTURE,   &prevAct  =>  glGetIntegerv(GL_ACTIVE_TEXTURE,   &prevActiveTex);
+  L528   lift GLint     prevSampler   = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 0, &p  =>  prevSampler = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 0, &prevSampler);
+  L533   lift std::optional<mc2gl::GlScopedSsboBinding> guardSsbo0;  =>  (declaration only)
+  L535   lift std::optional<mc2gl::GlScopedSsboBinding> guardSsbo1;  =>  (declaration only)
+  L538   lift GLint     prevTexUnit0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTexU  =>  glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTexUnit0);
+  L541   lift GLint prevTexUnit1 = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTexU  =>  prevTexUnit1 = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTexUnit1);
+  L542   lift GLint prevSampler1 = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 1, &prevSa  =>  prevSampler1 = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 1, &prevSampler1
+  L544   lift GLint prevTexUnit2 = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTexU  =>  prevTexUnit2 = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTexUnit2);
+  L545   lift GLint prevSampler2 = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 2, &prevSa  =>  prevSampler2 = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 2, &prevSampler2
+  L547   lift GLint prevTexUnit3 = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTexU  =>  prevTexUnit3 = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTexUnit3);
+  L548   lift GLint prevSampler3 = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 3, &prevSa  =>  prevSampler3 = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 3, &prevSampler3
+  L550   lift GLint prevTexUnit4 = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTexU  =>  prevTexUnit4 = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTexUnit4);
+  L551   lift GLint prevSampler4 = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 4, &prevSa  =>  prevSampler4 = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 4, &prevSampler4
+  L554   lift GLint prevTexUnit6 = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTexU  =>  prevTexUnit6 = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTexUnit6);
+  L555   lift GLint prevSampler6 = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 6, &prevSa  =>  prevSampler6 = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 6, &prevSampler6
+  L558   lift GLint prevTexUnit7 = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTexU  =>  prevTexUnit7 = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTexUnit7);
+  L559   lift GLint prevSampler7 = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 7, &prevSa  =>  prevSampler7 = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 7, &prevSampler7
+  L827   lift uint32_t drawnCalls = 0;  =>  drawnCalls = 0;
+scaffolding only in new (172 distinct):
+   + #endif 
+   + #ifdef MC2_VULKAN_ISLAND 
+   + // Advance the ring slot, wait for its oldest fence and point at the slot slices. 
+   + // Apply the mech pipeline and bind the shared VAO, IBO, sampler and PBR detail textures. 
+   + // Assign each bucket a material-table row and upload the table when it grew. 
+   + // Bind the instance, bone and material SSBOs for the draw loop. 
+   + // Check every draw call material row still names the bucket texture. 
+   + // Copy the instance and bone palettes and the view matrix out for the VK mech island. 
+   + // Count bones and group the pending submits into draw buckets keyed by packet, texture and flags. 
+   + // Fence the ring slot and invalidate the engine render-state cache. 
+   + // Keep this frame draw-call list and SSBO sizes for the shadow pass. 
+   + // Latch the submit count and run the periodic and boot-time trace setup. 
+   + // Locals the flush phases hand to each other: the bucketed submits, the ring slice pointers, 
+   + // Order the SSBO writes before the draws, then issue one instanced draw per bucket. 
+   + // Per-frame mech draw: bucket the pending submits, stream the instance + bone SSBOs, draw one instanced 
+   + // Persist per-actor facts for the extract snapshot. 
+   + // Print the per-frame batcher and fallback summary. 
+   + // Resolve the named surface-material profile indices once, after the material tables exist. 
+   + // Restore the GL state saved before the draw loop. 
+   + // Save the GL state the draw loop changes so it can be restored afterwards. 
+   + // Upload the light-pool and projection uniforms and run the view-uniform probe. 
+   + // Upload the per-flush shading, PBR and lighting uniforms. 
+   + // Write each actor bone palette into the bone ring and record its base offset. 
+   + // Write the instance ring in bucket order and collect the draw calls. 
+   + // call per bucket, restore GL state, then persist the frame for the shadow pass, the VK island and 
+   + // the draw-call list and the GL state saved before the draw loop and restored after it. 
+   + // the extract snapshot. Each phase is a helper above, in execution order. 
+   + GLboolean prevBlend; 
+   + GLboolean prevCull; 
+   + GLboolean prevDepthMask; 
+   + GLboolean prevDepthTest; 
+   + GLint prevActiveTex; 
+   + GLint prevArrayBuf; 
+   + GLint prevCullMode; 
+   + GLint prevDepthFunc; 
+   + GLint prevElemBuf; 
+   + GLint prevProgram; 
+   + GLint prevSampler1; 
+   + GLint prevSampler2; 
+   + GLint prevSampler3; 
+   + GLint prevSampler4; 
+   + GLint prevSampler6; 
+   + GLint prevSampler7; 
+   + GLint prevSampler; 
+   + GLint prevTexUnit0; 
+   + GLint prevTexUnit1; 
+   + GLint prevTexUnit2; 
+   + GLint prevTexUnit3; 
+   + GLint prevTexUnit4; 
+   + GLint prevTexUnit6; 
+   + GLint prevTexUnit7; 
+   + GLint prevVao; 
+   + GpuMechBone* boneDst; 
+   + GpuMechInstance* instDst; 
+   + MechFlushFrame f; 
+   + actorBoneBase.assign(s_pendingSubmits.size(), 0u); 
+   + advanceRing(f); 
+   + applyMechPipeline(); 
+   + auto& actorBoneBase = f.actorBoneBase; x2
+   + auto& boneDst = f.boneDst; x3
+   + auto& buckets = f.buckets; x4
+   + auto& drawCalls = f.drawCalls; x4
+   + auto& drawnCalls = f.drawnCalls; x2
+   + auto& guardSsbo0 = f.guardSsbo0; x2
+   + auto& guardSsbo1 = f.guardSsbo1; x2
+   + auto& guardSsbo2 = f.guardSsbo2; x2
+   + auto& instDst = f.instDst; x3
+   + auto& prevActiveTex = f.prevActiveTex; x2
+   + auto& prevArrayBuf = f.prevArrayBuf; x2
+   + auto& prevBlend = f.prevBlend; x2
+   + auto& prevCull = f.prevCull; x2
+   + auto& prevCullMode = f.prevCullMode; x2
+   + auto& prevDepthFunc = f.prevDepthFunc; x2
+   + auto& prevDepthMask = f.prevDepthMask; x2
+   + auto& prevDepthTest = f.prevDepthTest; x2
+   + auto& prevElemBuf = f.prevElemBuf; x2
+   + auto& prevProgram = f.prevProgram; x2
+   + auto& prevSampler = f.prevSampler; x2
+   + auto& prevSampler1 = f.prevSampler1; x2
+   + auto& prevSampler2 = f.prevSampler2; x2
+   + auto& prevSampler3 = f.prevSampler3; x2
+   + auto& prevSampler4 = f.prevSampler4; x2
+   + auto& prevSampler6 = f.prevSampler6; x2
+   + auto& prevSampler7 = f.prevSampler7; x2
+   + auto& prevTexUnit0 = f.prevTexUnit0; x2
+   + auto& prevTexUnit1 = f.prevTexUnit1; x2
+   + auto& prevTexUnit2 = f.prevTexUnit2; x2
+   + auto& prevTexUnit3 = f.prevTexUnit3; x2
+   + auto& prevTexUnit4 = f.prevTexUnit4; x2
+   + auto& prevTexUnit6 = f.prevTexUnit6; x2
+   + auto& prevTexUnit7 = f.prevTexUnit7; x2
+   + auto& prevVao = f.prevVao; x2
+   + auto& totalBones = f.totalBones; x4
+   + auto& totalInstances = f.totalInstances; x5
+   + bindSsbos(f); 
+   + boneDst = (GpuMechBone*)    s_boneMap     + s_frameSlot * s_boneCapacity; 
+   + buildBuckets(f); 
+   + buildMaterialTable(f); 
+   + drawBuckets(f); 
+   + drawnCalls = 0; 
+   + emitBatcherStats(f); 
+   + ensureRingCapacity(f.totalInstances, f.totalBones); 
+   + fenceAndInvalidate(); 
+   + glGetBooleanv(GL_BLEND,            &prevBlend); 
+   + glGetBooleanv(GL_CULL_FACE,        &prevCull); 
+   + glGetBooleanv(GL_DEPTH_TEST,      &prevDepthTest); 
+   + glGetBooleanv(GL_DEPTH_WRITEMASK, &prevDepthMask); 
+   + glGetIntegerv(GL_ACTIVE_TEXTURE,   &prevActiveTex); 
+   + glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &prevArrayBuf); 
+   + glGetIntegerv(GL_CULL_FACE_MODE,  &prevCullMode); 
+   + glGetIntegerv(GL_CURRENT_PROGRAM,  &prevProgram); 
+   + glGetIntegerv(GL_DEPTH_FUNC,      &prevDepthFunc); 
+   + glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDING, &prevElemBuf); 
+   + glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTexUnit0); 
+   + glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &prevVao); 
+   + instDst = (GpuMechInstance*)s_instanceMap + s_frameSlot * s_instanceCapacity; 
+   + namespace { 
+   + persistDrawCalls(f); 
+   + persistExtraction(); 
+   + prevSampler = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 0, &prevSampler); 
+   + prevSampler1 = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 1, &prevSampler1); 
+   + prevSampler2 = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 2, &prevSampler2); 
+   + prevSampler3 = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 3, &prevSampler3); 
+   + prevSampler4 = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 4, &prevSampler4); 
+   + prevSampler6 = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 6, &prevSampler6); 
+   + prevSampler7 = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 7, &prevSampler7); 
+   + prevTexUnit1 = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTexUnit1); 
+   + prevTexUnit2 = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTexUnit2); 
+   + prevTexUnit3 = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTexUnit3); 
+   + prevTexUnit4 = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTexUnit4); 
+   + prevTexUnit6 = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTexUnit6); 
+   + prevTexUnit7 = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTexUnit7); 
+   + resolveSurfaceMaterial(); 
+   + restoreGlState(f); 
+   + saveGlState(f); 
+   + size_t totalBones; 
+   + size_t totalInstances; 
+   + snapshotForVkIsland(f); 
+   + static void advanceRing(MechFlushFrame& f) { 
+   + static void applyMechPipeline() { 
+   + static void bindSsbos(MechFlushFrame& f) { 
+   + static void buildBuckets(MechFlushFrame& f) { 
+   + static void buildMaterialTable(MechFlushFrame& f) { 
+   + static void drawBuckets(MechFlushFrame& f) { 
+   + static void emitBatcherStats(MechFlushFrame& f) { 
+   + static void fenceAndInvalidate() { 
+   + static void persistDrawCalls(MechFlushFrame& f) { 
+   + static void persistExtraction() { 
+   + static void resolveSurfaceMaterial() { 
+   + static void restoreGlState(MechFlushFrame& f) { 
+   + static void saveGlState(MechFlushFrame& f) { 
+   + static void snapshotForVkIsland(MechFlushFrame& f) { 
+   + static void traceLatch() { 
+   + static void uploadProjectionUniforms() { 
+   + static void uploadShadingUniforms() { 
+   + static void validateMaterialTable(MechFlushFrame& f) { 
+   + static void writeBones(MechFlushFrame& f) { 
+   + static void writeInstances(MechFlushFrame& f) { 
+   + std::vector<uint32_t> actorBoneBase; 
+   + struct MechFlushFrame { 
+   + totalBones = 0; 
+   + totalInstances = 0; 
+   + traceLatch(); 
+   + uint32_t drawnCalls; 
+   + uploadProjectionUniforms(); 
+   + uploadShadingUniforms(); 
+   + validateMaterialTable(f); 
+   + writeBones(f); 
+   + writeInstances(f); 
+   + } x20
+   + }  // namespace 
+   + }; 
+statements only in old (32 distinct, all lifted declarations / hoisted-type lines):
+   - GLboolean prevBlend;       glGetBooleanv(GL_BLEND,            &prevBlend); 
+   - GLboolean prevCull;        glGetBooleanv(GL_CULL_FACE,        &prevCull); 
+   - GLboolean prevDepthMask;   glGetBooleanv(GL_DEPTH_WRITEMASK, &prevDepthMask); 
+   - GLboolean prevDepthTest;   glGetBooleanv(GL_DEPTH_TEST,      &prevDepthTest); 
+   - GLint     prevActiveTex;   glGetIntegerv(GL_ACTIVE_TEXTURE,   &prevActiveTex); 
+   - GLint     prevArrayBuf;    glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &prevArrayBuf); 
+   - GLint     prevCullMode;    glGetIntegerv(GL_CULL_FACE_MODE,  &prevCullMode); 
+   - GLint     prevDepthFunc;   glGetIntegerv(GL_DEPTH_FUNC,      &prevDepthFunc); 
+   - GLint     prevElemBuf;     glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDING, &prevElemBuf); 
+   - GLint     prevProgram;     glGetIntegerv(GL_CURRENT_PROGRAM,  &prevProgram); 
+   - GLint     prevSampler   = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 0, &prevSampler); 
+   - GLint     prevTexUnit0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTexUnit0); 
+   - GLint     prevVao;         glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &prevVao); 
+   - GLint prevSampler1 = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 1, &prevSampler1); 
+   - GLint prevSampler2 = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 2, &prevSampler2); 
+   - GLint prevSampler3 = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 3, &prevSampler3); 
+   - GLint prevSampler4 = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 4, &prevSampler4); 
+   - GLint prevSampler6 = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 6, &prevSampler6); 
+   - GLint prevSampler7 = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 7, &prevSampler7); 
+   - GLint prevTexUnit1 = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTexUnit1); 
+   - GLint prevTexUnit2 = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTexUnit2); 
+   - GLint prevTexUnit3 = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTexUnit3); 
+   - GLint prevTexUnit4 = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTexUnit4); 
+   - GLint prevTexUnit6 = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTexUnit6); 
+   - GLint prevTexUnit7 = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTexUnit7); 
+   - GpuMechBone*     boneDst = (GpuMechBone*)    s_boneMap     + s_frameSlot * s_boneCapacity; 
+   - GpuMechInstance* instDst = (GpuMechInstance*)s_instanceMap + s_frameSlot * s_instanceCapacity; 
+   - ensureRingCapacity(totalInstances, totalBones); 
+   - size_t totalBones = 0; 
+   - size_t totalInstances = 0; 
+   - std::vector<uint32_t> actorBoneBase(s_pendingSubmits.size()); 
+   - uint32_t drawnCalls = 0; 
+PASS: inline expansion of the new function equals the original body
