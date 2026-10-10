@@ -26,7 +26,6 @@
 
 #include <cstdint>
 #include <cstdio>
-#include <cstdlib>
 #include "Gates/gate_cold.h"   // boolState(): the dump names gates from its own table
 
 namespace RenderCore {
