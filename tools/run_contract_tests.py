@@ -115,12 +115,17 @@ def find_exe(name, build_dirs, config):
     return found[0][1], [c for _, c in found[1:]]
 
 
+# class_light_band_harness takes 54-69 s on a loaded box, so 60 s made it a coin flip against the timeout; the
+# harnesses are offline and finish on their own, so the limit only exists to catch a hang.
+HARNESS_TIMEOUT_S = 120
+
+
 def run_harness(cmd):
     """Run a harness command (list) with --json, return (ok, parsed_or_raw).
     Works for native exes ([exe]) and Python harnesses ([python, script])."""
     try:
         proc = subprocess.run(list(cmd) + ["--json"], capture_output=True,
-                              text=True, timeout=60, **console_child.child_kwargs(redirected=True))
+                              text=True, timeout=HARNESS_TIMEOUT_S, **console_child.child_kwargs(redirected=True))
     except Exception as e:  # noqa: BLE001
         return False, {"error": str(e)}
     ok = proc.returncode == 0
