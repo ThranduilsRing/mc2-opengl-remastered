@@ -15,6 +15,6 @@
 1	mclib/fx_def_registry.cpp
 2	mclib/mlr/mlrloadobj.cpp
 2	mclib/model_override_registry.cpp
-8	mclib/terrain.cpp
+8	mclib/terrain_init.cpp
 2	mclib/terrtxm2.cpp
 1	mclib/txmmgr_texture.cpp
