@@ -58,13 +58,56 @@ def compile_one(glslang, opt, dis, root, rel, tmp, tag):
 
 
 def canonical(text):
-    """Global declarations (types, constants, decorations) in sorted order, then the function bodies verbatim.
+    """Module-scope declarations as a sorted set keyed by what they ARE, then the function bodies verbatim.
 
-    The helper call changes which declaration the compiler meets first, so the order of the module-scope section is not
-    meaningful; the instruction streams inside the functions are, and must match exactly."""
-    lines = text.splitlines()
+    The helper call changes which declaration the compiler meets first and the numeric ids it hands out, so
+    (1) each numeric id defined at module scope is renamed by the structural signature of its definition (its opcode and
+    the signatures of the ids it references), (2) ids first defined inside a function are renumbered in order of
+    appearance, (3) OpSourceExtension lines (an added #extension) are dropped. The instruction streams inside the
+    functions must then match exactly."""
+    import re
+    lines = [l for l in text.splitlines() if "OpSourceExtension" not in l]
     cut = next((i for i, l in enumerate(lines) if "OpFunction" in l), len(lines))
-    return chr(10).join(sorted(lines[:cut]) + ["---"] + lines[cut:])
+    head, body = lines[:cut], lines[cut:]
+    defs = {}
+    for l in head:
+        m = re.match(r"\s*(%\w+)\s*=\s*(.*)$", l)
+        if m:
+            defs[m.group(1)] = m.group(2)
+    sig = {}
+
+    def signature(idn, stack=()):
+        if idn in sig:
+            return sig[idn]
+        if not re.fullmatch(r"%\d+", idn):
+            return idn                      # named ids keep their name
+        if idn not in defs or idn in stack:
+            return "?"
+        rhs = re.sub(r"%\w+", lambda m: signature(m.group(0), stack + (idn,)), defs[idn])
+        sig[idn] = "[" + rhs + "]"
+        return sig[idn]
+
+    def rename_head(l):
+        m = re.match(r"(\s*)(%\w+)(\s*=\s*)(.*)$", l)
+        rest = lambda s: re.sub(r"%\w+", lambda k: signature(k.group(0)), s)
+        if m and re.fullmatch(r"%\d+", m.group(2)):
+            return m.group(1) + signature(m.group(2)) + m.group(3) + rest(m.group(4))
+        return rest(l)
+
+    head_out = sorted(rename_head(l) for l in head)
+    local = {}
+
+    def rename_body(l):
+        def sub(m):
+            idn = m.group(0)
+            if idn in defs:
+                return signature(idn)
+            if not re.fullmatch(r"%\d+", idn):
+                return idn
+            return local.setdefault(idn, "%L" + str(len(local)))
+        return re.sub(r"%\w+", sub, l)
+
+    return chr(10).join(head_out + ["---"] + [rename_body(l) for l in body])
 
 
 def main():

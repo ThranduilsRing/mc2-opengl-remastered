@@ -19,6 +19,7 @@ out vec2 v_uv;
 // Per-instance record (112B): generated from RenderCore/gpu_abi/GpuStaticPropInstance.h.
 // Only modelMatrix is read here.
 #include <include/gpu_abi_static_prop_instance.gen.hglsl>
+#include <include/axis.hglsl>
 layout(std430, binding=0) readonly buffer Instances { GpuStaticPropInstance i[]; } instances_;
 
 uniform mat4 lightSpaceMatrix;
@@ -33,7 +34,7 @@ uniform int u_instBase;
 void main() {
     GpuStaticPropInstance inst = instances_.i[u_instBase + gl_InstanceID];
     vec4 worldStuff = vec4(a_position, 1.0) * inst.modelMatrix;
-    vec3 worldMC2 = vec3(-worldStuff.x, worldStuff.z, worldStuff.y);
+    vec3 worldMC2 = mc2ToRender(worldStuff.xyz);
     gl_Position = lightSpaceMatrix * vec4(worldMC2, 1.0);
     v_uv = a_uv;
 }

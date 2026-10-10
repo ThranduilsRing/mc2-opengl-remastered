@@ -1,6 +1,8 @@
 // VK CSM port of shaders/shadow_screen.frag normal path.
 // Requires same-frame VK CSM array/full-map views from vulkan_shadow_island_live.
 #version 450
+#extension GL_GOOGLE_include_directive : require
+#include "../include/axis.hglsl"
 
 #define PREC highp
 #define MC2_SHADOW_CSM_MAX 3
@@ -136,7 +138,7 @@ void main()
 
     vec3 worldPos = reconstructWorldPos(TexCoord, depth);
     vec3 objN_stuff = normalize(normalData.rgb * 2.0 - 1.0);
-    vec3 objN = vec3(-objN_stuff.x, objN_stuff.z, objN_stuff.y);
+    vec3 objN = mc2ToRender(objN_stuff);
     bool isStaticProp = rc_isStaticPropNoSelfShadow(normalData);
 
     float shadow = 1.0;

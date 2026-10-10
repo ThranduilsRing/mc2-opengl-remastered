@@ -80,6 +80,7 @@ layout(push_constant) uniform PacketLayerPC {
 } uPacket;
 
 #include "../include/gpu_abi_static_prop_instance.gen.hglsl"
+#include "../include/axis.hglsl"
 layout(set = 0, binding = 1, std430) readonly buffer Instances {
     GpuStaticPropInstance i[];
 } uInstances;
@@ -108,7 +109,7 @@ void main() {
     // Row-vector * M — identical to the GL VS (Stuff std430 column-major convention).
     vec4 world_stuff = vec4(a_position, 1.0) * inst.modelMatrix;
     // POSITION: Stuff -> MC2 frame swizzle — identical to the GL VS.
-    vec3 world_mc2 = vec3(-world_stuff.x, world_stuff.z, world_stuff.y);
+    vec3 world_mc2 = mc2ToRender(world_stuff.xyz);
     vec4 clip = uFrame.worldToClipGL * vec4(world_mc2, 1.0);
     clip.z += uFrame.objectDepthBias * clip.w;
     gl_Position = clip;
@@ -189,8 +190,8 @@ void main() {
     seed = clamp(seed, vec3(0.0), vec3(1.0));                         // get_base_light clamps its return
 
     // NdotL vs terrain sun (both in MC2 world). static_prop.vert:363 maps the
-    // Stuff-space normal to MC2 world as normalize(vec3(-n.x, n.z, n.y)).
-    vec3  nMC2   = normalize(vec3(-worldNormalStuff.x, worldNormalStuff.z, worldNormalStuff.y));
+    // Stuff-space normal to MC2 world as normalize(mc2ToRender(n)).
+    vec3  nMC2   = normalize(mc2ToRender(worldNormalStuff));
     vec3  L      = normalize(uFrame.terrainSunMC2.xyz);
     // GL static_prop.vert:~730: ALPHA_TEST (tree cards/foliage) instances are two-sided,
     // so ndl uses abs(); solid props use max(.,0). The alpha-ON packet group IS the

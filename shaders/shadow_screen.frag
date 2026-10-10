@@ -44,6 +44,7 @@ PREC float fbm(PREC vec2 p, int octaves) {
 }
 
 #include <include/render_contract.hglsl>
+#include <include/axis.hglsl>
 
 // [RENDER_CONTRACT]
 //   Pass:           PostProcess
@@ -267,7 +268,7 @@ void main()
             vec3 worldPos = reconstructWorldPos(TexCoord, depth);
             // Decode GBuffer normal (stored Stuff-space n*0.5+0.5) -> GL world.
             vec3 N_stuff = normalize(normalData.rgb * 2.0 - 1.0);
-            vec3 N = vec3(-N_stuff.x, N_stuff.z, N_stuff.y);
+            vec3 N = mc2ToRender(N_stuff);
 
             bool isProp = rc_isStaticPropNoSelfShadow(normalData);
             float shadow = 1.0;
@@ -314,7 +315,7 @@ void main()
     // Decode GBuffer normal (stored Stuff-space n*0.5+0.5) -> GL world. Object
     // pixels only (terrain/grass/decals already took the early-out above).
     vec3 objN_stuff = normalize(normalData.rgb * 2.0 - 1.0);
-    vec3 objN = vec3(-objN_stuff.x, objN_stuff.z, objN_stuff.y);
+    vec3 objN = mc2ToRender(objN_stuff);
 
     // PER-OBJECT-TYPE self-shadow classification (GBuffer1.a mask):
     //   a > 0.5         -> terrain/decal (early-out above, never reaches here)

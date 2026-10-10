@@ -5,7 +5,7 @@
 //
 //   GL (shadow_static_prop.vert):
 //     vec4 worldStuff = vec4(a_position, 1.0) * inst.modelMatrix;   // row-vector * M
-//     vec3 worldMC2   = vec3(-worldStuff.x, worldStuff.z, worldStuff.y); // Stuff->MC2
+//     vec3 worldMC2   = mc2ToRender(worldStuff.xyz); // Stuff->MC2
 //     gl_Position     = lightSpaceMatrix * vec4(worldMC2, 1.0);
 //
 // LOCKSTEP with C++ GpuStaticPropInstance (gos_static_prop_batcher.h, 112B,
@@ -48,6 +48,7 @@ layout(set = 0, binding = 0, std140) uniform ShadowFrameUBO {
 // Only modelMatrix is read (the shadow VS ignores the rest), but the FULL 112-byte
 // layout is kept so gl_InstanceIndex strides match the memcpy'd POD exactly.
 #include "../include/gpu_abi_static_prop_instance.gen.hglsl"
+#include "../include/axis.hglsl"
 layout(set = 0, binding = 1, std430) readonly buffer Instances {
     GpuStaticPropInstance i[];
 } uInstances;
@@ -57,6 +58,6 @@ void main() {
     // Row-vector * M — identical to the GL VS (Stuff std430 column-major convention).
     vec4 worldStuff = vec4(a_position, 1.0) * inst.modelMatrix;
     // Stuff -> MC2 frame swizzle — identical to the GL VS.
-    vec3 worldMC2 = vec3(-worldStuff.x, worldStuff.z, worldStuff.y);
+    vec3 worldMC2 = mc2ToRender(worldStuff.xyz);
     gl_Position = uFrame.lightSpaceMatrix * vec4(worldMC2, 1.0);
 }
