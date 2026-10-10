@@ -21,6 +21,8 @@
 #include <unordered_set>
 #include <cstring>
 #include <time.h>
+#include <string>
+#include <string_view>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -162,7 +164,7 @@ extern void gos_DestroyAudio();
 extern SDL_Window* g_sdl_window;
 extern bool g_useGpuStaticProps;
 
-void startup_phase(const char* name);
+void startup_phase(std::string_view name);
 void process_events( void );
 extern bool g_vkPresentInitDeferred;
 extern unsigned g_vkPresentRetryFails;

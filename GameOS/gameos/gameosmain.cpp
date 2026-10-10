@@ -821,11 +821,12 @@ const char* getStringForSeverity(GLenum type)
         const double freq = (double)SDL_GetPerformanceFrequency();
         return (double)(now - g_startup_t0) / freq;
     }
-    void startup_phase(const char* name) {
-        printf("[TIME] t=%6.2fs  phase=%s\n", startup_elapsed(), name);
+    void startup_phase(std::string_view name) {
+        const std::string nameZ(name);   // printf / emitTiming take a NUL-terminated string
+        printf("[TIME] t=%6.2fs  phase=%s\n", startup_elapsed(), nameZ.c_str());
         if (SmokeMode::state().enabled) {
             // Emit canonical smoke-line for the same milestone.
-            SmokeMode::emitTiming(name);
+            SmokeMode::emitTiming(nameZ.c_str());
         }
     }
 // (end of the startup phase helpers)
