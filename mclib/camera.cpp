@@ -3390,7 +3390,9 @@ Stuff::Vector3D Camera::cameraOriginGL() const
     // kAxisSwapMC2toGL: x' = -x, y' = z, z' = y.
     // physicalPos holds the camera world position in MC2 space (set in updateCameraInfo
     // as physicalPos = translation).
-    return Stuff::Vector3D(-physicalPos.x, physicalPos.z, physicalPos.y);
+    Stuff::Vector3D renderPos;
+    mc2ToRender(renderPos, physicalPos);
+    return renderPos;
 }
 
 //---------------------------------------------------------------------------
