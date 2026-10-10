@@ -1,4 +1,4 @@
-<!-- doc-status: stale | reviewed:2026-10-11 -->
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Gate deletion audit (pre-G1) — 2026-10-09, read-only adversarial pass at HEAD 2f55cdddc
 
 Read-only. HEAD `2f55cdddc` on `claude/nifty-mendeleev`. The tree is dirty with the seam#2 agent's work: `GameOS/gameos/gos_mech_batcher.h`, `shaders/mech.vert`, `shaders/shadow_mech.vert`, `tools/gpu_abi_gen.py`, `shaders/spv/*`. Any edit batch must stage by path and leave those alone.

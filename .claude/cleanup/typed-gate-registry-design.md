@@ -1,4 +1,4 @@
-<!-- doc-status: stale | reviewed:2026-10-11 -->
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Typed gate registry design v2 (S2) — 2026-10-09, amendments from Opus review folded; status: ready for G0
 
 Supersedes v1 (`9b8e02f81`). Input: `.claude/cleanup/typed-gate-registry-review.md` (no-go as written; go if G1 is split). All 12 review amendments are accepted; one is narrowed with code evidence (see "Rejected amendments"). Re-measured at HEAD `3eeafcdf0`. File:line references are pre-edit; the review's line numbers were re-checked against source.
