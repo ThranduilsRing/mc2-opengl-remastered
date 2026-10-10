@@ -32,7 +32,6 @@
   "GameOS/include/gameos.hpp": 3753,
   "GameOS/include/imagehlp.h": 1799,
   "GuiRuntime/EditorInspector.cpp": 1659,
-  "GuiRuntime/GraphicsOptionsWindow.cpp": 2249,
   "RenderCore/RendererFeatureRegistry.h": 2917,
   "code/artlry.cpp": 1843,
   "code/bldng.cpp": 1707,
@@ -63,7 +62,6 @@
   "code/warrior.cpp": 2740,
   "code/warrior.h": 2171,
   "editor/ObjectiveDlg.cpp": 1517,
-  "gui/UiDefs.cpp": 2901,
   "gui/alistbox.cpp": 1513,
   "mclib/ablenv.cpp": 1552,
   "mclib/ablrtn.cpp": 1780,
@@ -94,14 +92,13 @@
   "mclib/terrain.cpp": 4895,
   "mclib/terrtxm.cpp": 1775,
   "mclib/terrtxm2.cpp": 2792,
-  "mclib/tgl.cpp": 4355,
   "mclib/tgl.h": 1689,
   "mclib/txmmgr.cpp": 6042,
   "mclib/vfx_translatedraw.cpp": 1742,
   "mclib/vfxtile.cpp": 2944,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "1f7c63c34",
+ "head": "f04cb3a9c",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -116,10 +113,10 @@
    "max_lines": 11658
   },
   "GuiRuntime": {
-   "files": 6,
-   "files_over_1500": 2,
+   "files": 10,
+   "files_over_1500": 1,
    "files_over_3000": 0,
-   "max_lines": 2249
+   "max_lines": 1659
   },
   "HostServices": {
    "files": 3,
@@ -152,15 +149,15 @@
    "max_lines": 1517
   },
   "gui": {
-   "files": 21,
-   "files_over_1500": 2,
+   "files": 25,
+   "files_over_1500": 1,
    "files_over_3000": 0,
-   "max_lines": 2901
+   "max_lines": 1513
   },
   "mclib": {
-   "files": 582,
-   "files_over_1500": 34,
-   "files_over_3000": 8,
+   "files": 588,
+   "files_over_1500": 33,
+   "files_over_3000": 7,
    "max_lines": 8281
   },
   "shaders": {
@@ -228,10 +225,6 @@
    "lines": 4642
   },
   {
-   "file": "mclib/tgl.cpp",
-   "lines": 4355
-  },
-  {
    "file": "mclib/quad.cpp",
    "lines": 4261
   },
@@ -272,10 +265,6 @@
    "lines": 2917
   },
   {
-   "file": "gui/UiDefs.cpp",
-   "lines": 2901
-  },
-  {
    "file": "mclib/inifile.cpp",
    "lines": 2876
   },
@@ -294,12 +283,20 @@
   {
    "file": "code/warrior.cpp",
    "lines": 2740
+  },
+  {
+   "file": "mclib/file.cpp",
+   "lines": 2681
+  },
+  {
+   "file": "code/objective.cpp",
+   "lines": 2657
   }
  ],
  "total": {
-  "files": 1664,
-  "files_over_1500": 87,
-  "files_over_3000": 22,
+  "files": 1678,
+  "files_over_1500": 84,
+  "files_over_3000": 21,
   "max_lines": 11658
  },
  "version": 1

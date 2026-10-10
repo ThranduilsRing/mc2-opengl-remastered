@@ -6,7 +6,7 @@ Probes: **U** unset, **E** `""`, **Z** `"0"`, **F** `"false"`, **O** `"1"`, **X*
 
 ## Totals
 
-Scanned: commit 1f7c63c34.
+Scanned: commit f04cb3a9c.
 
 | Measure | Count |
 |---|---|
@@ -33,7 +33,7 @@ Line numbers are checked against the scanned tree (see Totals for which); `corre
 |  |  | `GameOS/gameos/vulkan_post_screenfx_native.cpp:759` | corrected | `GameOS/gameos/vulkan_post_screenfx_native.cpp:749` | Lead0Kill |  |
 | MC2_DISABLE_GOSFX | **no** | `mclib/mlr/mlr_gate.cpp:37` | confirmed | `mclib/mlr/mlr_gate.cpp:37` | Lead1 |  |
 |  |  | `GameOS/gameos/gameosmain.cpp:1340` | not-found | `` |  |  |
-|  |  | `GuiRuntime/GraphicsOptionsWindow.cpp:1477` | corrected | `GuiRuntime/GraphicsOptionsWindow.cpp:1383` | Lead1 |  |
+|  |  | `GuiRuntime/GraphicsOptionsWindow.cpp:1477` | not-found | `` |  |  |
 | MC2_VK_TERRAIN_CSM | **no** | `GameOS/gameos/gos_terrain_lod_chunk.cpp:1858` | corrected | `GameOS/gameos/gos_terrain_lod_chunk.cpp:1765` | Tri(inherit) |  |
 |  |  | `GameOS/gameos/gos_terrain_lod_chunk.cpp:1900` | corrected | `GameOS/gameos/gos_terrain_lod_chunk.cpp:1765` | Tri(inherit) |  |
 | MC2_TERRAIN_HEIGHT_RESAMPLE_FACTOR | **no** | `GameOS/gameos/gos_terrain_height_tex.cpp:51` | corrected | `GameOS/gameos/gos_terrain_height_tex.cpp:53` | Typed(is) | one reader; the hazard is reader vs a proposed clamp row (accepts only 2 or 4), not reader vs reader |
@@ -69,7 +69,7 @@ Source: `tools/gate_g0_ledger.json`. `resolved` = the readers now agree; `enum` 
 | `MC2_DEBUG_RENDERER` | resolved | no | `GameOS/gameos/debug_renderer.cpp:41 Lead0`<br>`GuiRuntime/EditorInspector.cpp:1273 Lead0` | Lead0 (set, non-empty, not "0") | empty string off in the debug renderer helper | matches the editor inspector reader |
 | `MC2_DEBUG_STATE_DUMP` | resolved | no | `GameOS/gameos/debug_state_dump.cpp:1180 Lead0`<br>`GameOS/gameos/debug_state_dump.cpp:1211 Lead0`<br>`GameOS/gameos/gameosmain.cpp:1053 Lead0`<br>`GameOS/gameos/gameosmain.cpp:1053 Lead0`<br>`GameOS/gameos/gameosmain.cpp:1053 Lead0` | Lead0 | =0 / empty no longer flips the launcher-automation test or the VK present health dump on | matches the state-dump readers |
 | `MC2_DEV_SHELL` | resolved | no | `GameOS/gameos/gos_dev_shell.cpp:60 Lead1`<br>`code/missiongui_uicmd.cpp:287 Lead1` | Lead1 (=1) | values other than 1 no longer enable the shell | documented as =1 |
-| `MC2_DISABLE_GOSFX` | resolved | no | `GuiRuntime/GraphicsOptionsWindow.cpp:1383 Lead1`<br>`mclib/mlr/mlr_gate.cpp:37 Lead1` | Lead1 (=1 disables; unset = enabled) | options window shows [off] only for =1; a stale warning that fired for =0 is deleted | mlr_gate default is enabled; FX default unchanged |
+| `MC2_DISABLE_GOSFX` | resolved | no | `GuiRuntime/GraphicsOptionsWindow_passes.cpp:443 Lead1`<br>`mclib/mlr/mlr_gate.cpp:37 Lead1` | Lead1 (=1 disables; unset = enabled) | options window shows [off] only for =1; a stale warning that fired for =0 is deleted | mlr_gate default is enabled; FX default unchanged |
 | `MC2_FX_FORCE_SPAWN` | enum | yes | `code/warrior.cpp:2133 Lead0P`<br>`code/warrior.cpp:2133 Lead0P`<br>`code/warrior.cpp:2139 Custom[00000001]` | levels: 0 off, 1 fire once, loop/2-9 continuous | code unchanged | readers compare a leading character on purpose |
 | `MC2_GPU_PARTICLES` | resolved | no | `mclib/gosfx/effect.cpp:45 Lead1`<br>`mclib/particles/batcher.cpp:80 Lead1` | Lead1 (=1 enables) | empty / =0 / other no longer read as set by the batcher | registry: default off, =1 enables |
 | `MC2_LIGHT_GRID_DIM` | note | no | `GameOS/gameos/gos_terrain_lighting.cpp:266 Typed(get)` | Int with range=Reject (out of range falls back to the default) | code unchanged | single reader |
@@ -92,12 +92,12 @@ Source: `tools/gate_g0_ledger.json`. `resolved` = the readers now agree; `enum` 
 | `MC2_TERRAIN_MATERIAL_LIB` | resolved | no | `GameOS/gameos/gameos_graphics.cpp:364 Lead0`<br>`GameOS/gameos/terrain_material_lib.cpp:231 Lead0` | Lead0 | =0 now disables the material-library JSON load | matches the host reader |
 | `MC2_TERRAIN_MATERIAL_TEXTURES` | resolved | no | `GameOS/gameos/gos_terrain_lod_chunk.cpp:170 Lead0`<br>`GameOS/gameos/terrain_material_lib.cpp:196 Lead0`<br>`GameOS/gameos/terrain_material_lib.cpp:233 Lead0` | Lead0 | =0 now disables the material-texture config load | matches the chunk reader |
 | `MC2_TEXMGR_KTX_PRIMARY` | resolved | no | `mclib/bdactor.cpp:179 Num(atoi,raw)`<br>`mclib/gvactor.cpp:36 Num(atoi,raw)`<br>`mclib/mech3d.cpp:186 Num(atoi,raw)`<br>`mclib/txmmgr.cpp:5394 Num(atoi,raw)` | numeric mode via atoi, default 1 (0 tga only, 1 ktx fallback, 2 ktx first) | non-numeric values (false, yes) now read as mode 0 at the three sidecar readers, as they already did in the texture manager | txmmgr.cpp is the mode authority |
-| `MC2_UI_DEFS_TRACE` | resolved | no | `GuiRuntime/GuiRuntime.cpp:105 Lead0`<br>`gui/UiDefs.cpp:107 Lead0` | Lead0 | =false/off/no now read as on in the defs reader | matches the runtime reader |
+| `MC2_UI_DEFS_TRACE` | resolved | no | `GuiRuntime/GuiRuntime.cpp:105 Lead0`<br>`gui/UiDefs_parse.cpp:34 Lead0` | Lead0 | =false/off/no now read as on in the defs reader | matches the runtime reader |
 | `MC2_VK_PROP_DIRECT_CHAIN` | resolved | no | `GameOS/gameos/engine_present_vk.cpp:296 Tri(inherit)`<br>`GameOS/gameos/vk_shared_gbuffer_gate.h:146 Tri(inherit)` | Tri: explicit 1/0 wins, else inherit the umbrella | none: the island's deprecation-note reader is deleted (prop is unconditionally direct-chain) | owner ruling: the umbrella is canonical |
 | `MC2_VK_TERRAIN_CSM` | resolved | no | `GameOS/gameos/gos_terrain_lod_chunk.cpp:1723 Tri(inherit)`<br>`GameOS/gameos/gos_terrain_lod_chunk.cpp:1765 Tri(inherit)` | Tri (subGate): explicit 1/0 wins, else inherit the umbrella | the near-cascade subset check now inherits the umbrella; it still also requires MC2_VK_TERRAIN_CSM_FULLMAP_EXPERIMENTAL=1, so the default render is unchanged | owner ruling; VK captures unchanged |
 | `MC2_VK_VFX` | resolved | no | `GameOS/gameos/gameos_graphics.cpp:7591 Tri(inherit)`<br>`GameOS/gameos/gameos_graphics.cpp:8420 Tri(inherit)`<br>`GameOS/gameos/vulkan_vfx_island.cpp:434 Tri(inherit)`<br>`code/gamecam.cpp:732 Tri(inherit)`<br>`code/gamecam.cpp:843 Tri(inherit)`<br>`code/gamecam.cpp:967 Tri(inherit)`<br>`... +2 more` | Tri (subGate): explicit 1/0 wins, else inherit the umbrella | none: the HUD indexed-draw route now reads the same sub-gate through a named local | owner ruling |
 | `MC2_VK_WATER_DIRECT_CHAIN` | resolved | no | `GameOS/gameos/engine_present_vk.cpp:298 Tri(inherit)`<br>`GameOS/gameos/vk_shared_gbuffer_gate.h:148 Tri(inherit)` | Tri: explicit 1/0 wins, else inherit the umbrella | none: the island's deprecation-note reader is deleted (water is unconditionally direct-chain) | owner ruling: the umbrella is canonical |
-| `MC2_WATER_SKYTINT` | resolved | no | `GameOS/gameos/gameos_graphics.cpp:2839 Token/State`<br>`GameOS/gameos/visual_tuning_profile.cpp:175 Lead0`<br>`GuiRuntime/GraphicsOptionsWindow.cpp:863 Lead0` | Lead0 | =0 no longer blocks the profile's waterSkyTintStrength | matches the options-window reader |
+| `MC2_WATER_SKYTINT` | resolved | no | `GameOS/gameos/gameos_graphics.cpp:2839 Token/State`<br>`GameOS/gameos/visual_tuning_profile.cpp:175 Lead0`<br>`GuiRuntime/GraphicsOptionsWindow_terrain.cpp:676 Lead0` | Lead0 | =0 no longer blocks the profile's waterSkyTintStrength | matches the options-window reader |
 
 ## Reader idiom classes
 

@@ -1447,14 +1447,28 @@
    "LG19": 8,
    "LG20": 16
   },
-  "GuiRuntime/GraphicsOptionsWindow.cpp": {
+  "GuiRuntime/GraphicsOptionsWindow_internal.h": {
    "LG05": 1,
-   "LG06": 1,
-   "LG09": 18,
-   "LG10": 2,
-   "LG12b": 27,
-   "LG19": 9,
-   "LG20": 23
+   "LG06": 1
+  },
+  "GuiRuntime/GraphicsOptionsWindow_mech.cpp": {
+   "LG09": 1,
+   "LG19": 2,
+   "LG20": 16
+  },
+  "GuiRuntime/GraphicsOptionsWindow_passes.cpp": {
+   "LG09": 13,
+   "LG10": 1,
+   "LG12b": 25,
+   "LG19": 1,
+   "LG20": 1
+  },
+  "GuiRuntime/GraphicsOptionsWindow_terrain.cpp": {
+   "LG09": 4,
+   "LG10": 1,
+   "LG12b": 2,
+   "LG19": 6,
+   "LG20": 6
   },
   "GuiRuntime/GuiRuntime.cpp": {
    "LG01": 1,
@@ -5632,18 +5646,13 @@
    "LG14": 1
   },
   "mclib/tgl.cpp": {
-   "LG01": 101,
-   "LG03": 4,
-   "LG04": 3,
-   "LG06": 9,
-   "LG09": 149,
-   "LG12a": 14,
-   "LG12b": 28,
-   "LG13": 6,
-   "LG14": 1,
-   "LG17": 1,
-   "LG19": 7,
-   "LG20": 7
+   "LG01": 9,
+   "LG06": 2,
+   "LG09": 3,
+   "LG12a": 4,
+   "LG12b": 6,
+   "LG19": 1,
+   "LG20": 1
   },
   "mclib/tgl.h": {
    "LG01": 33,
@@ -5654,6 +5663,9 @@
    "LG13": 59,
    "LG17": 6
   },
+  "mclib/tgl_internal.h": {
+   "LG14": 1
+  },
   "mclib/tgl_load_guard.cpp": {
    "LG06": 5,
    "LG09": 4,
@@ -5662,6 +5674,42 @@
   },
   "mclib/tgl_load_guard.h": {
    "LG06": 2
+  },
+  "mclib/tgl_parse.cpp": {
+   "LG01": 36,
+   "LG06": 3,
+   "LG09": 74,
+   "LG12a": 1,
+   "LG12b": 22
+  },
+  "mclib/tgl_render.cpp": {
+   "LG01": 2,
+   "LG09": 12,
+   "LG12a": 8,
+   "LG13": 3,
+   "LG19": 4,
+   "LG20": 4
+  },
+  "mclib/tgl_shadows.cpp": {
+   "LG01": 1,
+   "LG04": 1,
+   "LG09": 2
+  },
+  "mclib/tgl_transform.cpp": {
+   "LG01": 5,
+   "LG04": 2,
+   "LG09": 25,
+   "LG13": 3,
+   "LG17": 1,
+   "LG19": 2,
+   "LG20": 2
+  },
+  "mclib/tgl_types.cpp": {
+   "LG01": 48,
+   "LG03": 4,
+   "LG06": 4,
+   "LG09": 33,
+   "LG12a": 1
   },
   "mclib/timing.cpp": {
    "LG09": 3
@@ -5813,7 +5861,7 @@
    "LG20": 1
   }
  },
- "head": "b03c80bd6",
+ "head": "f04cb3a9c",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

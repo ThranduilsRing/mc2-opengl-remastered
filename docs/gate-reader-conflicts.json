@@ -76,7 +76,7 @@
   },
   {
    "all_readers": [
-    "GuiRuntime/GraphicsOptionsWindow.cpp:1383 (Lead1)",
+    "GuiRuntime/GraphicsOptionsWindow_passes.cpp:443 (Lead1)",
     "mclib/mlr/mlr_gate.cpp:37 (Lead1)"
    ],
    "gate": "MC2_DISABLE_GOSFX",
@@ -96,10 +96,10 @@
      "verdict": "not-found"
     },
     {
-     "actual": "GuiRuntime/GraphicsOptionsWindow.cpp:1383",
+     "actual": "",
      "claim": "GuiRuntime/GraphicsOptionsWindow.cpp:1477",
-     "class": "Lead1",
-     "verdict": "corrected"
+     "class": "",
+     "verdict": "not-found"
     }
    ]
   },
@@ -327,7 +327,7 @@
    "gate": "MC2_DISABLE_GOSFX",
    "in_conflict": false,
    "readers": [
-    "GuiRuntime/GraphicsOptionsWindow.cpp:1383 Lead1",
+    "GuiRuntime/GraphicsOptionsWindow_passes.cpp:443 Lead1",
     "mclib/mlr/mlr_gate.cpp:37 Lead1"
    ],
    "rule": "Lead1 (=1 disables; unset = enabled)",
@@ -625,7 +625,7 @@
    "in_conflict": false,
    "readers": [
     "GuiRuntime/GuiRuntime.cpp:105 Lead0",
-    "gui/UiDefs.cpp:107 Lead0"
+    "gui/UiDefs_parse.cpp:34 Lead0"
    ],
    "rule": "Lead0",
    "status": "resolved"
@@ -692,7 +692,7 @@
    "readers": [
     "GameOS/gameos/gameos_graphics.cpp:2839 Token/State",
     "GameOS/gameos/visual_tuning_profile.cpp:175 Lead0",
-    "GuiRuntime/GraphicsOptionsWindow.cpp:863 Lead0"
+    "GuiRuntime/GraphicsOptionsWindow_terrain.cpp:676 Lead0"
    ],
    "rule": "Lead0",
    "status": "resolved"
@@ -1832,7 +1832,7 @@
   "editor",
   "gui"
  ],
- "source": "commit 1f7c63c34",
+ "source": "commit f04cb3a9c",
  "totals": {
   "conflict_gates": 6,
   "gates_with_literal": 1131,
