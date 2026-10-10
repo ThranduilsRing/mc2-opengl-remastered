@@ -490,9 +490,6 @@ MLRShape*
 		case MLR_I_L_DT_TMeshClassID:
 			return CreateIndexedTriIcosahedron_Color_Lit_2Tex(icoInfo, &(*states)[0], &(*states)[1]);
 		break;
-		case MLR_TerrainClassID:
-			return CreateIndexedTriIcosahedron_TerrainTest(icoInfo, &(*states)[0], &(*states)[1]);
-		break;
 	}
 	return NULL;
 }
@@ -560,9 +557,6 @@ const char *
 		break;
 		case MLR_I_L_DT_TMeshClassID:
 			return "colored, lit tri. mesh w/ 2 Tex";
-		break;
-		case MLR_TerrainClassID:
-			return "not colored, unlit terrain w/ DetTex";
 		break;
 	}
 	return "mesh";
