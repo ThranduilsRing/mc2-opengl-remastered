@@ -36,11 +36,11 @@ inline float CLAMP (float x, float min, float max)
 	return x;
 }
 
-typedef struct {
+using Image = struct {
 	long 	xSize;
 	long 	ySize;
 	float 	*data;
-} Image;
+};
 
 inline float getPixel (Image *image, long x, long y)
 {
@@ -210,15 +210,15 @@ inline double mitchellFilter (double t)
 	return 0.0;
 }
 
-typedef struct {
+using CONTRIB = struct {
 	long pixel;
 	double weight;
-} CONTRIB;
+};
 
-typedef struct {
+using CLIST = struct {
 	long n;
 	CONTRIB *p;
-} CLIST;
+};
 
 inline CLIST *contrib;
 
@@ -348,21 +348,21 @@ inline void zoom (Image *dst, Image *src, double (*filter)(double t), double fwi
 				weight += raster[contrib[i].p[j].pixel] * contrib[i].p[j].weight;
 			}
 			
-			putPixel(tmp,i,k,(float)CLAMP(weight,BLACK_PIXEL,WHITE_PIXEL));
+			putPixel(tmp,i,k,CLAMP(weight,BLACK_PIXEL,WHITE_PIXEL));
 		}
 	}
 	
 	free(raster);
-	raster = NULL;
+	raster = nullptr;
 	
 	for (i=0;i<tmp->xSize; ++i)
 	{
 		free(contrib[i].p);
-		contrib[i].p = NULL;
+		contrib[i].p = nullptr;
 	}
 	
 	free(contrib);
-	contrib = NULL;
+	contrib = nullptr;
 	
 	//pre-calculate filter contributions for horizontal filter weights
 	contrib = (CLIST *)malloc(dst->ySize * sizeof(CLIST));
@@ -454,7 +454,7 @@ inline void zoom (Image *dst, Image *src, double (*filter)(double t), double fwi
 				weight += raster[contrib[i].p[j].pixel] * contrib[i].p[j].weight;
 			}
 			
-			putPixel(dst,k,i,(float)CLAMP(weight,BLACK_PIXEL,WHITE_PIXEL));
+			putPixel(dst,k,i,CLAMP(weight,BLACK_PIXEL,WHITE_PIXEL));
 		}
 	}
 	
@@ -463,11 +463,11 @@ inline void zoom (Image *dst, Image *src, double (*filter)(double t), double fwi
 	for (i=0;i<dst->ySize; ++i)
 	{
 		free(contrib[i].p);
-		contrib[i].p = NULL;
+		contrib[i].p = nullptr;
 	}
 	
 	free(contrib);
-	contrib = NULL;
+	contrib = nullptr;
 	
 	freeImage(tmp);
 }

@@ -70,7 +70,7 @@ inline MemoryPtr tryLoadBurninJpg(const char* texturePath, const char* fileName,
 
 	// Kill-switch: prefer the .tga path entirely.
 	if (mc2::gate::get<"MC2_BURNIN_NO_JPG">())
-		return NULL;
+		return nullptr;
 
 	char jName[1024];
 	sprintf(jName, "%s.burnin", fileName);
@@ -80,14 +80,14 @@ inline MemoryPtr tryLoadBurninJpg(const char* texturePath, const char* fileName,
 	// Use File::open so the mod overlay (TryModOpen) is consulted — std::fopen bypasses it.
 	File jpgFile;
 	if (NO_ERR != jpgFile.open((const char*)burnInJpg))
-		return NULL; // sidecar absent -> caller uses .tga
+		return nullptr; // sidecar absent -> caller uses .tga
 
 	long jFileSize = jpgFile.fileSize();
 	if (jFileSize <= 0)
 	{
 		jpgFile.close();
 		printf("[BURNIN_JPG] fallback name=%s reason=empty-file\n", fileName);
-		return NULL;
+		return nullptr;
 	}
 
 	unsigned char* jpgBytes = (unsigned char*)malloc((size_t)jFileSize);
@@ -95,14 +95,14 @@ inline MemoryPtr tryLoadBurninJpg(const char* texturePath, const char* fileName,
 	{
 		jpgFile.close();
 		printf("[BURNIN_JPG] fallback name=%s reason=read-alloc-failed (%ld bytes)\n", fileName, jFileSize);
-		return NULL;
+		return nullptr;
 	}
 	if (jpgFile.read(jpgBytes, jFileSize) != jFileSize)
 	{
 		free(jpgBytes);
 		jpgFile.close();
 		printf("[BURNIN_JPG] fallback name=%s reason=read-failed\n", fileName);
-		return NULL;
+		return nullptr;
 	}
 	jpgFile.close();
 
@@ -112,13 +112,13 @@ inline MemoryPtr tryLoadBurninJpg(const char* texturePath, const char* fileName,
 	if (!rgb)
 	{
 		printf("[BURNIN_JPG] fallback name=%s reason=jpeg-decode-failed\n", fileName);
-		return NULL;
+		return nullptr;
 	}
 	if (w <= 0 || h <= 0 || w != h)
 	{
 		BurninJpeg_FreePixels(rgb);
 		printf("[BURNIN_JPG] fallback name=%s reason=bad-dims (%dx%d)\n", fileName, w, h);
-		return NULL;
+		return nullptr;
 	}
 
 	long cmapBytes = (long)w * (long)h * (long)sizeof(DWORD);
@@ -127,7 +127,7 @@ inline MemoryPtr tryLoadBurninJpg(const char* texturePath, const char* fileName,
 	{
 		BurninJpeg_FreePixels(rgb);
 		printf("[BURNIN_JPG] fallback name=%s reason=colormap-alloc-failed (%ld bytes)\n", fileName, cmapBytes);
-		return NULL;
+		return nullptr;
 	}
 
 	// Pack stb RGB -> ColorMap B,G,R,A (matches the 24-bit .burnin.tga path).
