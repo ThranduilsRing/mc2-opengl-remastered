@@ -74,7 +74,7 @@ static void EditorFreeObjectAppearance( ObjectAppearance*& app )
 	{
 		app->destroy();
 		delete app;
-		app = NULL;
+		app = nullptr;
 	}
 }
 #include "EditorResourceFallback.h"
@@ -85,14 +85,14 @@ extern IProviderEngine* armProvider;
 
 extern HSTRRES gameResourceHandle;
 
-Pilot::PilotInfo Pilot::s_BadPilots[MAX_PILOT] = { 0 };
-Pilot::PilotInfo Pilot::s_GoodPilots[MAX_PILOT] = { 0 };
+Pilot::PilotInfo Pilot::s_BadPilots[MAX_PILOT] = { nullptr };
+Pilot::PilotInfo Pilot::s_GoodPilots[MAX_PILOT] = { nullptr };
 long	Pilot::goodCount = 0;
 long	Pilot::badCount = 0;
 
 void *EditorObject::operator new (size_t mySize)
 {
-	void *result = NULL;
+	void *result = nullptr;
 	result = systemHeap->Malloc(mySize);
 	
 	return(result);
@@ -106,7 +106,7 @@ void EditorObject::operator delete (void *us)
 EditorObject::EditorObject()
 {
 	appearInfo = new AppearanceInfo();
-	appearInfo->appearance = 0;
+	appearInfo->appearance = nullptr;
 	appearInfo->refCount = 1;
 	cellColumn = cellRow = id = 0;
 	forestId = -1;
@@ -140,10 +140,10 @@ EditorObject& EditorObject::operator=( const EditorObject& src )
 			if ( appearInfo->refCount < 1 )
 			{
 				EditorFreeObjectAppearance(appearInfo->appearance);
-				appearInfo->appearance = NULL;
+				appearInfo->appearance = nullptr;
 
 				delete appearInfo;
-				appearInfo = NULL;
+				appearInfo = nullptr;
 			}
 		}
 
@@ -169,10 +169,10 @@ EditorObject::~EditorObject()
 		if ( appearInfo->refCount < 1 )
 		{
 			EditorFreeObjectAppearance(appearInfo->appearance);
-			appearInfo->appearance = NULL;
+			appearInfo->appearance = nullptr;
 
 			delete appearInfo;
-			appearInfo = NULL;
+			appearInfo = nullptr;
 		}
 	}
 }
@@ -241,10 +241,10 @@ void EditorObject::setAppearance( int Group, int indexInGroup )
 			if ( appearInfo->refCount < 1 )
 			{
 				EditorFreeObjectAppearance(appearInfo->appearance);
-				appearInfo->appearance = NULL;
+				appearInfo->appearance = nullptr;
 			
 				delete appearInfo;
-				appearInfo = NULL;
+				appearInfo = nullptr;
 			
 
 			}
@@ -380,7 +380,7 @@ Unit::Unit( const Unit& src ) : EditorObject( src )
 void Unit::CastAndCopy(const EditorObject &master)
 {
 	const Unit *pCastedMaster = dynamic_cast<const Unit *>(&master);
-	if (0 != pCastedMaster)
+	if (nullptr != pCastedMaster)
 	{
 		(*this) = (*pCastedMaster);
 	}
@@ -409,7 +409,7 @@ bool Unit::save( FitIniFile* file, int WarriorNumber, int controlDataType, const
 {
 	if (mechAsset)
 	{
-		const char * iniFilename = (const char *)EditorObjectMgr::instance()->getFileName( id );
+		const char * iniFilename = EditorObjectMgr::instance()->getFileName( id );
 		char buf[512] = {0};
 
 		if (iniFilename && iniFilename[0])
@@ -909,7 +909,7 @@ DropZone::DropZone( const Stuff::Vector3D& pos, int alignment, bool bvtol )
 void DropZone::CastAndCopy(const EditorObject &master)
 {
 	const DropZone *pCastedMaster = dynamic_cast<const DropZone *>(&master);
-	if (0 != pCastedMaster)
+	if (nullptr != pCastedMaster)
 	{
 		(*this) = (*pCastedMaster);
 	}
@@ -1014,9 +1014,9 @@ bool Brain::load( FitIniFile* file, int warriorNumber )
 	}
 	else
 	{
-		cellNum = (long *)0;
-		cellType = (long *)0; 
-		cellData = (float *)0;
+		cellNum = (long *)nullptr;
+		cellType = (long *)nullptr; 
+		cellData = (float *)nullptr;
 	}
 
 	char text[256];
@@ -1075,9 +1075,9 @@ Brain& Brain::operator=( const Brain& src )
 		}
 		else
 		{
-			cellNum = (long *)0;
-			cellType = (long *)0; 
-			cellData = (float *)0;
+			cellNum = (long *)nullptr;
+			cellType = (long *)nullptr; 
+			cellData = (float *)nullptr;
 		}
 	}
 
@@ -1098,7 +1098,7 @@ void Pilot::save( FitIniFile* file, int bGoodGuy )
 	// now with a loud warning.
 	bool dataLoss = false;
 	const char* profileName =
-		PilotProfileForSave( rawProfile, info ? info->fileName : 0, &dataLoss );
+		PilotProfileForSave( rawProfile, info ? info->fileName : nullptr, &dataLoss );
 	if ( dataLoss )
 		PilotDataLossWarn(
 			"Pilot::save: writing empty Profile (no raw string from load, no "

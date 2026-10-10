@@ -307,7 +307,7 @@ static std::string BuildRecipeJSON(bool preview) {
 static bool WriteRecipeFile(const std::string& json) {
     const char* dir  = "terrain_gen_out";
     const char* path = "terrain_gen_out\\genmap_recipe.json";
-    CreateDirectoryA(dir, NULL);
+    CreateDirectoryA(dir, nullptr);
     FILE* f = fopen(path, "w");
     if (!f) return false;
     fputs(json.c_str(), f);
@@ -794,7 +794,7 @@ static void RunFoliageGenerate() {
     }
 
     std::string rules = BuildFoliageRulesJSON(ReadRecipeBiomeIndex());
-    CreateDirectoryA("terrain_gen_out", NULL);
+    CreateDirectoryA("terrain_gen_out", nullptr);
     FILE* f = fopen(k_folRulesPath, "w");
     if (!f) {
         snprintf(s_fol.status, sizeof(s_fol.status), "Could not write foliage rules.");
@@ -1119,7 +1119,7 @@ void MapGeneratorDialog::ExecuteLoadPreset() {
     }
 
     // Ensure output directory exists
-    CreateDirectoryA("terrain_gen_out", NULL);
+    CreateDirectoryA("terrain_gen_out", nullptr);
 
     // Atomic copy: write both files to .tmp names first, then rename when both succeed.
     // This guarantees terrain_gen_out/ never holds a mixed old+new terrain pair.

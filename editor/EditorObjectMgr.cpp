@@ -33,7 +33,7 @@ void EditorObjMgrTrace(const char* fmt, ...)
 }
 
 
-EditorObjectMgr*	EditorObjectMgr::s_instance = NULL;
+EditorObjectMgr*	EditorObjectMgr::s_instance = nullptr;
 
 // by Methuselas: the legacy "mc2res.dll:N Not defined" sentinel means missing
 // Editor catalog text. Treat it as absent data and generate safe UI names;
@@ -43,8 +43,8 @@ static bool EditorObjectMgr_IsMissingEditorText(const char* text)
 	if (!text || !text[0])
 		return true;
 
-	return (strstr(text, "mc2res.dll:") != NULL) ||
-		   (strstr(text, "Not defined") != NULL);
+	return (strstr(text, "mc2res.dll:") != nullptr) ||
+		   (strstr(text, "Not defined") != nullptr);
 }
 
 static void EditorObjectMgr_CopySafeName(char* dst, long dstLen, const char* src, const char* fallbackPrefix, long fallbackValue)
@@ -82,7 +82,7 @@ EditorObjectMgr::~EditorObjectMgr()
 
 	if ( appearanceTypeList )
 		delete appearanceTypeList;
-	appearanceTypeList = NULL;
+	appearanceTypeList = nullptr;
 
 	for( GROUP_LIST::EIterator groupIter = groups.Begin();
 			!groupIter.IsDone(); groupIter++ )
@@ -100,18 +100,18 @@ EditorObjectMgr::~EditorObjectMgr()
 					if ( (*buildIter).varNames[i] )
 					{
 						free ( ( *buildIter).varNames[i] );
-						(*buildIter).varNames[i] = NULL;
+						(*buildIter).varNames[i] = nullptr;
 					}
 				}
 
 				//Kinda need to delete this OUTSIDE the above loop.
 				// Yum, Yum!
 				free ( ( *buildIter ).varNames );
-				( *buildIter ).varNames = NULL;
+				( *buildIter ).varNames = nullptr;
 			}
 		}
 	}
-	s_instance = 0;
+	s_instance = nullptr;
 }
 
 void EditorObjectMgr::clear()
@@ -152,7 +152,7 @@ void EditorObjectMgr::clear()
 	{
 		for( EList< Building, Building& >::EIterator buildIter = (*groupIter).buildings.Begin();!buildIter.IsDone(); buildIter++ )
 		{
-			(*buildIter).appearanceType = NULL;
+			(*buildIter).appearanceType = nullptr;
 		}
 	}
 
@@ -194,9 +194,9 @@ void EditorObjectMgr::init( const char* bldgListFileName, const char* objectFile
 		strcpy(bldg.name, "Unnamed_Object");
 		strcpy(bldg.fileName, "");
 		strcpy(bldg.tgaName, "NONE");
-		bldg.appearanceType = NULL;
+		bldg.appearanceType = nullptr;
 		bldg.specialType = UNSPECIAL;
-		bldg.varNames = 0;
+		bldg.varNames = nullptr;
 		bldg.forestId = 0;
 		bldg.scale = 1.0f;
 		
@@ -348,7 +348,7 @@ void EditorObjectMgr::init( const char* bldgListFileName, const char* objectFile
 					strcpy( bldg.varNames[i], varName );
 				}
 				else
-					bldg.varNames[i] = NULL;
+					bldg.varNames[i] = nullptr;
 
 			}
 		}
@@ -414,7 +414,7 @@ long textToLong (const char *num)
 	long result = 0;
 	
 	char *hexOffset = (char*)strstr(num,"0x");
-	if (hexOffset == NULL)
+	if (hexOffset == nullptr)
 	{
 		result = atol(num);
 	}
@@ -588,7 +588,7 @@ EditorObject* EditorObjectMgr::addBuilding( const Stuff::Vector3D& position, uns
 	int type = getType( group, indexWithinGroup );
 	int specialType = getSpecialType( getID( group, indexWithinGroup ) );
 	
-	EditorObject* info = NULL;
+	EditorObject* info = nullptr;
 	
 	if ( specialType == NAV_MARKER )
 	{
@@ -863,8 +863,8 @@ int	EditorObjectMgr::getFitID( int id ) const
 {
 	// EDITOR-CRASH-HARDENING-1: dropzone/unresolved id decodes OOB group/index.
 	// Mirror getType() guard (EditorObjectMgr.cpp:2857-2863).
-	if ( getGroup(id) >= (unsigned long)groups.Count()
-		|| getIndexInGroup(id) >= (unsigned long)groups[getGroup(id)].buildings.Count() )
+	if ( getGroup(id) >= groups.Count()
+		|| getIndexInGroup(id) >= groups[getGroup(id)].buildings.Count() )
 		return 0;
 	return groups[getGroup(id)].buildings[getIndexInGroup(id)].fitID;
 }
@@ -873,8 +873,8 @@ int	EditorObjectMgr::getFitID( int id ) const
 bool EditorObjectMgr::getBlocksLineOfFire( int id ) const
 {
 	// EDITOR-CRASH-HARDENING-1: dropzone/unresolved id decodes OOB group/index.
-	if ( getGroup(id) >= (unsigned long)groups.Count()
-		|| getIndexInGroup(id) >= (unsigned long)groups[getGroup(id)].buildings.Count() )
+	if ( getGroup(id) >= groups.Count()
+		|| getIndexInGroup(id) >= groups[getGroup(id)].buildings.Count() )
 		return false;
 	return groups[getGroup(id)].buildings[getIndexInGroup(id)].blocksLineOfFire;
 
@@ -882,8 +882,8 @@ bool EditorObjectMgr::getBlocksLineOfFire( int id ) const
 bool EditorObjectMgr::getIsHoverCraft( int id ) const
 {
 	// EDITOR-CRASH-HARDENING-1: dropzone/unresolved id decodes OOB group/index.
-	if ( getGroup(id) >= (unsigned long)groups.Count()
-		|| getIndexInGroup(id) >= (unsigned long)groups[getGroup(id)].buildings.Count() )
+	if ( getGroup(id) >= groups.Count()
+		|| getIndexInGroup(id) >= groups[getGroup(id)].buildings.Count() )
 		return false;
 	return groups[getGroup(id)].buildings[getIndexInGroup(id)].isHoverCraft;
 
@@ -891,8 +891,8 @@ bool EditorObjectMgr::getIsHoverCraft( int id ) const
 __int64	EditorObjectMgr::getImpassability( int id )
 {
 	// EDITOR-CRASH-HARDENING-1: dropzone/unresolved id decodes OOB group/index.
-	if ( getGroup(id) >= (unsigned long)groups.Count()
-		|| getIndexInGroup(id) >= (unsigned long)groups[getGroup(id)].buildings.Count() )
+	if ( getGroup(id) >= groups.Count()
+		|| getIndexInGroup(id) >= groups[getGroup(id)].buildings.Count() )
 		return 0;
 	return groups[getGroup(id)].buildings[getIndexInGroup(id)].impassability;
 }
@@ -902,12 +902,12 @@ int EditorObjectMgr::getType( unsigned long group, unsigned long indexWithinGrou
 	// gosASSERT is a no-op in this build, so it provides no real bounds
 	// protection; an unresolved mission object ID (caller passed past-the-end
 	// group/index) would OOB-deref here. Guard explicitly.
-	if ( group >= (unsigned long)groups.Count() )
+	if ( group >= groups.Count() )
 		return -1;
 	Group* pGroup = &groups[group];
 
 	gosASSERT( pGroup->buildings.Count() > indexWithinGroup );
-	if ( indexWithinGroup >= (unsigned long)pGroup->buildings.Count() )
+	if ( indexWithinGroup >= pGroup->buildings.Count() )
 		return -1;
 	Building* pBuilding = &pGroup->buildings[indexWithinGroup];
 
@@ -994,7 +994,7 @@ EditorObject* EditorObjectMgr::getObjectAtCell( long realCellJ, long realCellI )
 
 		}
 
-	return NULL;
+	return nullptr;
 
 }
 
@@ -1008,7 +1008,7 @@ EditorObject* EditorObjectMgr::getBuilding( const EditorObject &building )
 			return (*iter);
 		}
 	}
-	return NULL;
+	return nullptr;
 }
 
 BuildingLink* EditorObjectMgr::getLinkWithBuilding( const EditorObject* pObj )
@@ -1019,7 +1019,7 @@ BuildingLink* EditorObjectMgr::getLinkWithBuilding( const EditorObject* pObj )
 			return *iter;
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 BuildingLink* EditorObjectMgr::getLinkWithParent( const EditorObject* pObj )
@@ -1030,7 +1030,7 @@ BuildingLink* EditorObjectMgr::getLinkWithParent( const EditorObject* pObj )
 			return *iter;
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 BuildingLink* EditorObjectMgr::getLinkWithChild( const EditorObject* pObj )
@@ -1041,7 +1041,7 @@ BuildingLink* EditorObjectMgr::getLinkWithChild( const EditorObject* pObj )
 			return *iter;
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 void EditorObjectMgr::addLink( BuildingLink* pLink )
@@ -1074,10 +1074,10 @@ const char*	EditorObjectMgr::getObjectName( int ID ) const
 	unsigned long group = getGroup(ID);
 	unsigned long index = getIndexInGroup(ID);
 
-	if ( group >= (unsigned long)groups.Count() )
+	if ( group >= groups.Count() )
 		return "Unknown Object";
 
-	if ( index >= (unsigned long)groups[group].buildings.Count() )
+	if ( index >= groups[group].buildings.Count() )
 		return "Unknown Object";
 
 	const char* name = groups[group].buildings[index].name;

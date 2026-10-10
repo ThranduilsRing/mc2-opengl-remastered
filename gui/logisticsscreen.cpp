@@ -27,13 +27,13 @@ const char* (*gEquipmentUiTextHook)(long stringId) = nullptr;
 
 LogisticsScreen::LogisticsScreen()
 {
-	statics = 0;
-	rects = 0;
-	buttons = 0;
-	edits = 0;
-	textObjects = 0;
-	animObjects = 0;	
-	defsUiPage = 0;
+	statics = nullptr;
+	rects = nullptr;
+	buttons = nullptr;
+	edits = nullptr;
+	textObjects = nullptr;
+	animObjects = nullptr;	
+	defsUiPage = nullptr;
 	staticCount = rectCount = buttonCount = textCount = editCount = animObjectsCount = 0;
 
 	helpTextArrayID = -1;
@@ -78,15 +78,15 @@ void	LogisticsScreen::clear()
 	if ( animObjects )
 		delete [] animObjects;
 
-	statics = 0;
-	rects = 0;
-	buttons = 0;
-	edits = 0;
-	textObjects = 0;
-	animObjects = 0;
+	statics = nullptr;
+	rects = nullptr;
+	buttons = nullptr;
+	edits = nullptr;
+	textObjects = nullptr;
+	animObjects = nullptr;
 
 	delete defsUiPage;
-	defsUiPage = 0;
+	defsUiPage = nullptr;
 
 	staticCount = 0;
 	rectCount = 0;
@@ -281,7 +281,7 @@ void LogisticsScreen::init( FitIniFile& file, const char* staticName, const char
 			if (!defsUiPage->load(replacementPath.c_str()))
 			{
 				delete defsUiPage;
-				defsUiPage = 0;
+				defsUiPage = nullptr;
 			}
 		}
 	}
@@ -315,7 +315,7 @@ aButton* LogisticsScreen::getButton( long who )
 		}
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -324,7 +324,7 @@ aButton* LogisticsScreen::getButtonByIndex( long index )
 	if ( index >= 0 && index < buttonCount )
 		return &buttons[index];
 
-	return NULL;
+	return nullptr;
 }
 
 aRect* LogisticsScreen::getRect( long who )
@@ -334,7 +334,7 @@ aRect* LogisticsScreen::getRect( long who )
 		return &rects[who];
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -949,7 +949,7 @@ void LogisticsScreen::copyData( const LogisticsScreen& src )
 	if ( &src != this )
 	{
 		destroy();
-		defsUiPage = 0;
+		defsUiPage = nullptr;
 
 		rectCount = src.rectCount;
 		if ( rectCount )
