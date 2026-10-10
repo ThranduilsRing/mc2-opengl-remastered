@@ -140,6 +140,7 @@ set(SOURCES ${SOURCES}
     bdactor_update.cpp
     cliff_decal_tuning.cpp
     genactor.cpp
+    genactor_frame.cpp
     gvactor.cpp
     gvactor_geometry.cpp
     gvactor_render.cpp

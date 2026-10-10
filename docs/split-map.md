@@ -317,6 +317,14 @@ Split commit: `f4c986566`.
 | `camera_update.cpp` | Camera: the camera goal updates, Camera::update and render. |
 | `camera_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
+## `mclib/genactor.cpp`
+
+| Piece | What it holds |
+|---|---|
+| `genactor.cpp` | keeps the type loader, the appearance setup and the bounds recalculation |
+| `genactor_frame.cpp` | GenericAppearance: render, renderShadows, update and the appearance teardown. |
+| `genactor_internal.h` | shared include bundle, extern globals and declarations of the pieces |
+
 ## `mclib/gvactor.cpp`
 
 | Piece | What it holds |

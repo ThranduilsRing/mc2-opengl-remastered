@@ -1,0 +1,9 @@
+{
+ "base": "e3f5cebfb",
+ "src": "mclib/genactor.cpp",
+ "stem": "genactor",
+ "scripts": [
+  "scripts/counter-honesty-population-inventory.txt"
+ ],
+ "_scripts_reason": "Reviewed: the inventory cites genactor.cpp in a trailing comment only; the check reads the population keys."
+}
