@@ -9,7 +9,7 @@
 // exporting the gosRenderer class definition.
 DWORD gosRendererAddFontBmpTexture(const char* textureName)
 {
-    gosTexture* ptex = new gosTexture(gos_Texture_Alpha, textureName, 0, NULL, 0, false);
+    gosTexture* ptex = new gosTexture(gos_Texture_Alpha, textureName, 0, nullptr, 0, false);
     if(!ptex || !ptex->createHardwareTexture()) {
         STOP(("Failed to create font texture: %s\n", textureName));
     }
@@ -237,7 +237,7 @@ DWORD __stdcall gos_NewCompressedTexture2D( uint32_t glInternalFormat, int w, in
 
 DWORD __stdcall gos_NewTextureFromFile( gos_TextureFormat Format, const char* FileName, DWORD Hints/*=0*/, gos_RebuildFunction pFunc/*=0*/, void *pInstance/*=0*/)
 {
-    gosTexture* ptex = new gosTexture(Format, FileName, Hints, NULL, 0, false);
+    gosTexture* ptex = new gosTexture(Format, FileName, Hints, nullptr, 0, false);
     if(!ptex->createHardwareTexture()) {
         STOP(("Failed to create texture\n"));
         return INVALID_TEXTURE_ID;

@@ -67,11 +67,11 @@ gosFont* gosFont::load(const char* fontFile) {
     std::string requestedPath;
     int requestedPointSize = 0;
     if (!mc2SplitFontRequest(fontFile, requestedPath, requestedPointSize))
-        return NULL;
+        return nullptr;
 
     char fname[256];
     char dir[256];
-    _splitpath(requestedPath.c_str(), NULL, dir, fname, NULL);
+    _splitpath(requestedPath.c_str(), nullptr, dir, fname, nullptr);
 
     // Retail .d3f wins when present. .bmp + .glyph stays as the
     // permanent fallback for converted fonts and community content.
@@ -129,7 +129,7 @@ gosFont* gosFont::load(const char* fontFile) {
                     rgba[i] = (a) | (a << 8) | (a << 16) | (a << 24);
                 }
                 delete[] atlas.pixels;
-                atlas.pixels = NULL;
+                atlas.pixels = nullptr;
 
                 GLuint gl_id = gos_GetTextureGLId(tex_id);
                 glBindTexture(GL_TEXTURE_2D, gl_id);
@@ -198,7 +198,7 @@ gosFont* gosFont::load(const char* fontFile) {
     if(!gos_load_glyphs(glyphName, font->gi_)) {
         delete font;
         STOP(("Failed to load font glyphs: %s\n", glyphName));
-        return NULL;
+        return nullptr;
     }
 
     font->font_name_ = new char[strlen(fname) + 1];
