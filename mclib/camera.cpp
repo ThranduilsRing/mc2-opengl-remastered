@@ -95,14 +95,14 @@ char WindowTitle[1024];		// Global window title (GetWindowText is VERY slow)
 
 // Scroll-velocity momentum for adaptive zoom speed.
 // Bumped by ZoomIn/ZoomOut each call, decayed every frame by Camera::update().
-static float s_scrollMomentum = 0.0f;
+float s_scrollMomentum = 0.0f;
 
 // [CAMERA-SMOOTHING-1] frame-rate-independent gameplay-camera smoothing.
 // MC2_CAMERA_SMOOTH=<ms> — time constant of the exponential approach toward
 // the input-accumulated goal pose. 0 = off (legacy verbatim: hard per-frame
 // position steps, 11.25-degree rotation snaps, 20/s zoom lerp). Default 100ms:
 // tight, not floaty. Clamped to [0, 2000].
-static float camSmoothTau (void)
+float camSmoothTau (void)
 {
 	static const float s_tau = mc2::gate::get<"MC2_CAMERA_SMOOTH">() * 0.001f;
 	return s_tau;
@@ -110,7 +110,7 @@ static float camSmoothTau (void)
 
 // Exponential-approach blend factor for a step of dt seconds: identical
 // convergence fraction per unit time regardless of frame rate.
-static inline float camSmoothAlpha (float dt)
+float camSmoothAlpha (float dt)
 {
 	float tau = camSmoothTau();
 	if (tau <= 0.0f)
