@@ -955,7 +955,7 @@ static constexpr GLint kChunkTexUnitTransitionMask = 11;
 //   .y = LOD1 detail strength   .z = enable flag (>0.5)   .w = macro strength
 // Gate MC2_TERRAIN_DETAIL_ANTITILE; default OFF => {0,0,0} => byte-identical.
 // Read once. Returns pointer to a static float[3] {y,z,w}.
-static const float* mc2_chunkDetailAntiTileYZW()
+const float* mc2_chunkDetailAntiTileYZW()
 {
     static float s_yzw[3] = { 0.0f, 0.0f, 0.0f };
     static bool s_init = false;
@@ -1013,7 +1013,7 @@ static std::vector<int> makeSamplePositions(int quadCount, int lodStep)
 // worldQuadUVMode. parityX/parityY are blockOriginX&1 / blockOriginY&1.
 // Caller MUST only pass checkerDiag=true for lodStep==1 (and not the 4x
 // visualDisplace path) — coarse LOD per-cell parity is ill-defined.
-static const PatchShape& getOrBuildPatch(int qcX, int qcY, int lodStep,
+const PatchShape& getOrBuildPatch(int qcX, int qcY, int lodStep,
                                          bool checkerDiag, int parityX, int parityY)
 {
     // parity bits only meaningful when the checkerboard is active; keep the
