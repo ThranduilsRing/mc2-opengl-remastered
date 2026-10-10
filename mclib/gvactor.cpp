@@ -10,6 +10,7 @@
 
 #include "gvactor_internal.h"
 #include "Gates/gate.h"
+#include "../RenderCore/axis_convert.h"
 
 
 // C3: env-gated lifecycle routing killswitch (same env var as objmgr.cpp).
@@ -453,9 +454,7 @@ Stuff::Vector3D GVAppearance::getWeaponNodePosition (long nodeId)
    	qRotation = Stuff::EulerAngles(0.0f, yaw, 0.0f);
    
    	Stuff::Point3D xlatPosition;
-   	xlatPosition.x = -position.x;
-   	xlatPosition.y = position.z;
-   	xlatPosition.z = position.y;
+   	mc2ToRender(xlatPosition, position);
    
    	Stuff::UnitQuaternion torsoRot;
    	torsoRot = Stuff::EulerAngles(0.0f,(turretRotation * DEGREES_TO_RADS),0.0f);
@@ -506,9 +505,7 @@ Stuff::Vector3D GVAppearance::getSmokeNodePosition (long nodeId)
    	qRotation = Stuff::EulerAngles(0.0f, yaw, 0.0f);
    
    	Stuff::Point3D xlatPosition;
-   	xlatPosition.x = -position.x;
-   	xlatPosition.y = position.z;
-   	xlatPosition.z = position.y;
+   	mc2ToRender(xlatPosition, position);
    
    	Stuff::UnitQuaternion torsoRot;
    	torsoRot = Stuff::EulerAngles(0.0f,(turretRotation * DEGREES_TO_RADS),0.0f);
@@ -545,9 +542,7 @@ Stuff::Vector3D GVAppearance::getDustNodePosition (long nodeId)
    	qRotation = Stuff::EulerAngles(0.0f, yaw, 0.0f);
    
    	Stuff::Point3D xlatPosition;
-   	xlatPosition.x = -position.x;
-   	xlatPosition.y = position.z;
-   	xlatPosition.z = position.y;
+   	mc2ToRender(xlatPosition, position);
    
    	Stuff::UnitQuaternion torsoRot;
    	torsoRot = Stuff::EulerAngles(0.0f,(turretRotation * DEGREES_TO_RADS),0.0f);
