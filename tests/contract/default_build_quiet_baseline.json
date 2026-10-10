@@ -13,7 +13,11 @@
       "status": "keep",
       "reason": "scripts/smoke_lib/fingerprint.py parses this to prove the smoked exe matches the worktree HEAD. Silencing it disables DEPLOY_FINGERPRINT attribution -- the single strongest anti-'unverifiable work' control in the harness."
     },
-    "INSTR v1": {
+    "CONFIG v1": {
+    "status": "keep",
+    "reason": "Gates/gate.cpp dumpConfig: ONE summary line per start (set/nondefault/unregistered/badvalue counts) plus a line per env-set gate and each warning. The smoke runner forces MC2_CONFIG_STRICT=1 and reads these lines to prove which configuration was measured; per-row lines for unset gates only print under MC2_CONFIG_DUMP=all."
+  },
+  "INSTR v1": {
       "status": "keep",
       "reason": "scripts/whatran.py and smoke_lib/gates.py parse the 'enabled:' banner to record which gates were armed for a run. smoke_lib/gates.py reports '[INSTR v1] banner absent' as a failure."
     },
