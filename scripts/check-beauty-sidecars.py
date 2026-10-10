@@ -79,15 +79,15 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # "Mission Editor.exe" ships in the release, where no repo dir exists and the
 # fallback dies. Same silent-miss bug class, one step further from view.
 ENGINE_SOURCES = [
-    "mclib/terrain.cpp",
+    "mclib/terrain_init.cpp",
     "editor/BeautySidecarPreview.cpp",
 ]
 
 # Sidecars resolved by overwriting the basename of an already-built `.beauty`
 # path (see module docstring #2). name -> engine file that must contain it.
 SIBLING_SIDECARS = {
-    "visual_height_mips.r32": "mclib/terrain.cpp",
-    "visual_damp.r32": "mclib/terrain.cpp",
+    "visual_height_mips.r32": "mclib/terrain_init.cpp",
+    "visual_damp.r32": "mclib/terrain_init.cpp",
 }
 
 # Companion metadata files: required only when their principal is cooked.

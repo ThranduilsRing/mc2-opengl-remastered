@@ -93,6 +93,11 @@ set(SOURCES ${SOURCES}
     mapdata.cpp
     quad.cpp
     terrain.cpp
+    terrain_init.cpp
+    terrain_raycast.cpp
+    terrain_update.cpp
+    terrain_render.cpp
+    terrain_geometry.cpp
     terrain_runtime.cpp
     terrtxm.cpp
     terrtxm2.cpp

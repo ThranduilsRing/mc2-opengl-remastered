@@ -70,8 +70,16 @@ def build():
         src, stem = d.get("src"), d.get("stem")
         if not src or not stem:
             continue
-        g = groups.setdefault(src, {"stems": set(), "commits": []})
+        g = groups.setdefault(src, {"stems": set(), "commits": [], "pieces": set(), "headers": set()})
         g["stems"].add(stem)
+        skip = set(d.get("exclude_files", []))
+        base_dir = os.path.join(REPO, os.path.dirname(src))
+        for p in glob.glob(os.path.join(base_dir, stem + "_*.cpp")):
+            if os.path.basename(p) not in skip:
+                g["pieces"].add(os.path.basename(p))
+        for p in glob.glob(os.path.join(base_dir, stem + "_*internal.h")):
+            if os.path.basename(p) not in skip:
+                g["headers"].add(os.path.basename(p))
         if d.get("split_commit") and d["split_commit"] != "PENDING":
             g["commits"].append(d["split_commit"])
     out = ["# Split map", "",
@@ -82,13 +90,7 @@ def build():
         g = groups[src]
         d = os.path.dirname(src)
         base = os.path.basename(src)
-        stem0 = sorted(g["stems"])[0]
-        pieces, headers = set(), set()
-        for stem in g["stems"]:
-            for p in glob.glob(os.path.join(REPO, d, stem + "_*.cpp")):
-                pieces.add(os.path.basename(p))
-            for p in glob.glob(os.path.join(REPO, d, stem + "_*internal.h")):
-                headers.add(os.path.basename(p))
+        pieces, headers = g["pieces"], g["headers"]
         hdr_paths = [os.path.join(REPO, d, h) for h in sorted(headers)]
         out.append("## `%s`" % src)
         out.append("")

@@ -1,0 +1,44 @@
+{
+ "base": "7b152f1fc",
+ "src": "mclib/terrain.cpp",
+ "stem": "terrain",
+ "scripts": [
+  "scripts/check-beauty-sidecars.py",
+  "scripts/counter-honesty-allowlist.txt",
+  "scripts/mcp/mc2_render_state_server.py",
+  "scripts/terrain_height_audit.py",
+  "scripts/tests/test_fingerprint.py",
+  "scripts/tests/test_gate_codemod.py",
+  "tests/telemetry/tag-registry.json",
+  "tests/unit/test_terrain_material.cpp",
+  "tools/gate_codemod.py",
+  "tools/mc2_launcher/mc2_launcher.cpp",
+  "tools/repo_intel/mission_facts.py",
+  "tools/repo_intel/test_anti_churn.py",
+  "tools/terrain_beautify/control_map_tool.py",
+  "tools/terrain_beautify/cook_shoreline.py",
+  "tools/terrain_beautify/density_policy_sim.py",
+  "tools/terrain_beautify/mission_terrain_analyzer.py",
+  "tools/terrain_beautify/overlay_extract.py",
+  "tools/terrain_beautify/test_visual_heightfield_clipmap_bridge.py",
+  "tools/terrain_beautify/test_visual_heightfield_mips.py",
+  "tools/terrain_beautify/visual_heightfield.py"
+ ],
+ "_scripts_reason": "Reviewed: check-beauty-sidecars reads the .beauty sidecar names and the two sibling sidecars from terrain_init.cpp (the only piece that resolves them) and passes; counter-honesty keys the s_framesPrinted limiters to terrain_render.cpp and s_prodFrame to terrain_geometry.cpp; the other scripts, harnesses and registries cite terrain.cpp lines or the loader in comments and notes only; tools/gate_codemod.py, its test and tools/mc2_launcher (lane 1) are not edited here.",
+ "add": [
+  "",
+  "// Per-draw-command scratch the update and render pieces share (defined in terrain.cpp), and the AABB helpers init and update call.",
+  "extern std::vector<uint8_t> s_skirtEdgeMaskVec;",
+  "extern std::vector<uint32_t> s_stitchStepVec;",
+  "extern std::vector<int> s_shadowTierVec;",
+  "extern std::vector<float> s_morphFactorVec;",
+  "void recomputeBlockAabb(TerrainBlockMeta& bm);",
+  "void recomputeSuperchunkAabb(int scX, int scY);",
+  "void clearList (void);",
+  "void clearMoverList (void);"
+ ],
+ "split_commit": "PENDING",
+ "exclude_files": [
+  "terrain_runtime.cpp"
+ ]
+}
