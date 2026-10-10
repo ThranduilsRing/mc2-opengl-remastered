@@ -54,6 +54,9 @@ extern float worldUnitsPerMeter;   // sensor range is in world units; /this = me
 #include"imgui.h"           // OBJ-IMGUI-SLICE-1: ImGui objectives overlay
 #include"hud_imgui_font.h"  // FONT-IMGUI-SLICE-1: legacy bitmap-font text
 #include<cstdint>           // OBJ-IMGUI-SLICE-1: intptr_t (ImTextureID cast)
+#include <chrono>
+#include"hudimguipanel.h"
+#include "imgui.h"
 
 // ---- MISSION-INTERFACE-PERF-1 (MC2_IFACE_COST_SPLIT / MC2_MIF_SPLIT) ----
 // ControlGui::update sub-phase per-frame ns accumulators. DEFINED here;
@@ -62,7 +65,6 @@ extern float worldUnitsPerMeter;   // sensor range is in world units; /this = me
 // match the MF_CG_* tail of MifPhase in missiongui.cpp. chrono is fine:
 // once-per-frame per-phase brackets, not per-element probes. Zero chrono
 // calls when both envs unset. Default OFF.
-#include <chrono>
 unsigned long long g_ifaceCgFrameNs[8] = {0};
 namespace {
 	enum CgPhase { CG_PAUSE=0, CG_BTNHOVER, CG_ROSTER, CG_MOVERSTATE, CG_TACMAP, CG_INFOWND, CG_VEHTAB, CG_FGBAR };
@@ -76,8 +78,6 @@ namespace {
 }
 
 // ---- slice C: MC2_HUD_IMGUI_TABS data-driven tab registry (default OFF) ----
-#include"hudimguipanel.h"
-#include "imgui.h"
 extern bool g_imguiInitialized;
 extern long helpTextHeaderID;
 extern long helpTextID;
