@@ -879,6 +879,9 @@ run_check "axis_swizzle_ratchet"     "py -3 tools/axis_swizzle_ratchet.py --chec
 # may only fall, and no new file may enter the > 1500 set. Scans the COMMITTED tree. Selftest
 # lives in scripts/tests (scripts_tests row).
 run_check "file_size_ratchet"        "py -3 tools/file_size_ratchet.py --check"
+# Comment de-bloat guard (giant-file-split-plan.md, "Comment de-bloat pass"): proves the lexer, protection rules and
+# exit codes still hold. Fixtures are in-memory; pytest twin is tools/test_comment_guard.py (tools_tests row).
+run_check "comment_guard_selftest"   "py -3 tools/comment_guard.py --selftest"
 run_check "pipeline_desc"          "py -3 scripts/check-pipeline-desc.py --quiet"
 # DARK-TESTS-RUN-1 (2026-07-31): the sibling rows above arm the COUNT pins the
 # unrun binary cannot. These arm the tier itself. check-contract-coverage.py

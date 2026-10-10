@@ -668,3 +668,24 @@ function cannot be moved in pieces -- cutting it needs phase helpers, which is a
 Risks: `check-light-row-freshness.py` exempts nothing here but scans for the index read; `counter-honesty-allowlist.txt` keys
 name txmmgr.cpp; the `TEX_LC`/`EVICT_SKIPPED` macros span lines and are moved to the header; `mc2_asset_viewer` stubs define
 `mc2StaticLightHighWater` and friends by name.
+
+## Comment de-bloat pass (guarded)
+
+WHAT: giant files carry narration, dead history and commented-out code that cost read context. A cheap model may delete
+that, but only behind `tools/comment_guard.py`, which fails closed: a bad edit cannot land, a good one is proven comment-only.
+WHY: a model cannot be trusted to tell narration from rationale, so the guard protects rationale mechanically (header,
+`[X v1]` event notes, `MC2_*` gates, must/never/because/race/bug words, dates, shas, TODO, doxygen tags, pragma and
+static_assert neighbours, all of `Gates/`) and requires the code to be token-identical and comment bytes not to grow.
+
+Loop, one small piece at a time (one file or one paragraph-sized cut per edit):
+1. Cheap model edits comments only, in the worktree.
+2. `py -3 tools/comment_guard.py --check <paths>`; exit 1 means reject and revert that piece (the report names the first
+   divergent code line pair, or the protected comment that went missing).
+3. A reviewer samples the deletions for lost WHY the keyword list cannot see (a rationale with none of the guarded words
+   passes the guard), then commits by explicit pathspec.
+
+Batch proof with objects, for a stronger guarantee on a run of .cpp files:
+`py -3 tools/comment_guard.py --hash-objs build64-ninja <paths> > before.json` after a build at base; edit; rebuild;
+`py -3 tools/comment_guard.py --compare-objs before.json`. It hashes the behaviour-defining COFF sections and ignores the
+header timestamp and `.debug*`, since deleting lines legitimately moves line tables. A file using `__LINE__`/`__DATE__`/
+`__TIME__` downgrades a mismatch to WARN; headers cannot be hashed, so `--check` stays the primary proof.
