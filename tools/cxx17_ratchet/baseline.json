@@ -66,8 +66,8 @@
    "LG16": 7,
    "LG17": 81,
    "LG18": 11,
-   "LG19": 713,
-   "LG20": 842
+   "LG19": 707,
+   "LG20": 836
   },
   "GuiRuntime": {
    "LG01": 1,
@@ -755,9 +755,7 @@
   },
   "GameOS/gameos/gos_terrain_height_tex.cpp": {
    "LG09": 21,
-   "LG12a": 2,
-   "LG19": 1,
-   "LG20": 1
+   "LG12a": 2
   },
   "GameOS/gameos/gos_terrain_indirect.cpp": {
    "LG05": 3,
@@ -806,9 +804,7 @@
   },
   "GameOS/gameos/gos_terrain_mask_dispatch.cpp": {
    "LG09": 9,
-   "LG12a": 1,
-   "LG19": 5,
-   "LG20": 5
+   "LG12a": 1
   },
   "GameOS/gameos/gos_terrain_mask_dispatch.h": {
    "LG02": 1
@@ -5744,7 +5740,7 @@
    "LG20": 1
   }
  },
- "head": "ab9f52658",
+ "head": "efffdac47",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

@@ -33,7 +33,7 @@
   "GameOS/include/imagehlp.h": 1799,
   "GuiRuntime/EditorInspector.cpp": 1659,
   "GuiRuntime/GraphicsOptionsWindow.cpp": 2249,
-  "RenderCore/RendererFeatureRegistry.h": 2861,
+  "RenderCore/RendererFeatureRegistry.h": 2917,
   "code/artlry.cpp": 1843,
   "code/bldng.cpp": 1707,
   "code/brain_special_dispatch.cpp": 3307,
@@ -108,7 +108,7 @@
   "mclib/vfxtile.cpp": 2944,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "ab9f52658",
+ "head": "efffdac47",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -138,7 +138,7 @@
    "files": 54,
    "files_over_1500": 1,
    "files_over_3000": 0,
-   "max_lines": 2861
+   "max_lines": 2917
   },
   "RenderWorld": {
    "files": 6,
@@ -299,8 +299,8 @@
    "lines": 2944
   },
   {
-   "file": "gui/UiDefs.cpp",
-   "lines": 2901
+   "file": "RenderCore/RendererFeatureRegistry.h",
+   "lines": 2917
   }
  ],
  "total": {
