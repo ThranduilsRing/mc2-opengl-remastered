@@ -432,6 +432,8 @@ set(SOURCES
     "code/warrior_state.cpp"
     "code/warrior_target.cpp"
     "code/weaponbolt.cpp"
+    "code/weaponbolt_render.cpp"
+    "code/weaponbolt_update.cpp"
     "code/ablmc2.cpp"
     "code/ablmc2_camera.cpp"
     "code/ablmc2_misc.cpp"
