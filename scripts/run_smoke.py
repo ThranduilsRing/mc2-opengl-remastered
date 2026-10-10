@@ -3053,9 +3053,20 @@ def main():
         #       legitimate run configuration, not an error. RECORD it (so the
         #       manifest says what was actually measured) and proceed.
         _undriveable = _smoke_runner.undriveable_ambient(os.environ, cfg.env_extra)
+        # Harness-only knobs (MC2_CURSOR_NO_PARK, ...) and typos are not gates: the runner does not forward them
+        # (the engine runs under MC2_CONFIG_STRICT=1) and says so here.
+        _unregistered = _smoke_runner.unregistered_ambient(os.environ, cfg.env_extra)
+        if _unregistered:
+            _env_manifest["dropped_unregistered_env"] = dict(_unregistered)
+            print(
+                f"[runner] [ENV-DROPPED] {len(_unregistered)} ambient MC2_* name(s) are not gates in "
+                f"Gates/gate_table.json and are NOT forwarded to mc2.exe: "
+                + ", ".join(f"{k}={v}" for k, v in sorted(_unregistered.items())),
+                file=sys.stderr,
+            )
         _ambient_gates = sorted(
             k for k in os.environ
-            if k.startswith("MC2_") and k not in _undriveable
+            if k.startswith("MC2_") and k not in _undriveable and k not in _unregistered
         )
         if _ambient_gates:
             # Case (b). Not an error -- but never silent: an unrecorded ambient

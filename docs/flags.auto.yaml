@@ -3,7 +3,7 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 1155
+gate_count: 1139
 registry_entry_count: 354
 verified_count: 37
 flags:
@@ -905,24 +905,6 @@ flags:
     rule: Presence
     owner: gameos
     doc: "Headless crash fast-exit: write the bundle, then terminate WITHOUT the modal dialog so an automated soak/harness process exits immediately on crash (the..."
-  - name: MC2_CURSOR_EDGE_BAND
-    kind: Int
-    default: 100
-    rule: Std
-    owner: harness
-    doc: "smoke harness only (cursor_guard.py): pixels from the screen edge that count as edge-safe"
-  - name: MC2_CURSOR_NO_PARK
-    kind: Bool
-    default: false
-    rule: Exact1
-    owner: harness
-    doc: "smoke harness only (scripts/smoke_lib/cursor_guard.py, tools/visual_verify/ab.py): leave the pointer where it is"
-  - name: MC2_CURSOR_PARK
-    kind: Bool
-    default: false
-    rule: Exact1
-    owner: harness
-    doc: "smoke harness only (cursor_guard.py): park the pointer at the screen edge before a run"
   - name: MC2_CURSOR_TARGET_TRACE
     kind: Bool
     default: false
@@ -2093,18 +2075,6 @@ flags:
     doc: "VEHICLE-NIGHT-LIT-2: GVAppearance::update (mclib/gvactor.cpp) calls gvShape->SetLightsOut(true) when a ground vehicle is OBJECT_STATUS_DESTROYED or..."
     smoke_passthrough: true
     registry: {feature_id: MC2_GV_LIGHTSOUT_CLEAR, kind: Feature, order: 42, default_on: false}
-  - name: MC2_HARNESS_ALLOW_FOREGROUND
-    kind: Bool
-    default: false
-    rule: Lead0
-    owner: harness
-    doc: "smoke harness only (nofocus.py, isolation.py): a user-present session opts in to foreground launches"
-  - name: MC2_HARNESS_PARK
-    kind: Bool
-    default: false
-    rule: Lead0
-    owner: harness
-    doc: "smoke harness only (nofocus.py): park the launched window"
   - name: MC2_HAZE_PARITY
     kind: Bool
     default: false
@@ -2348,24 +2318,6 @@ flags:
     owner: code
     doc: "alpha-Stage 1 ?5 Stage 0: candidate-predicate disagreement probe."
     smoke_passthrough: true
-  - name: MC2_ISOLATION_DESKTOP
-    kind: String
-    default: ""
-    rule: Std
-    owner: harness
-    doc: "smoke harness only (isolation.py): name of the private desktop object"
-  - name: MC2_ISOLATION_MIN
-    kind: String
-    default: ""
-    rule: Std
-    owner: harness
-    doc: "smoke harness only (isolation.py): lowest acceptable isolation tier (winsta|desktop)"
-  - name: MC2_ISOLATION_WINSTA
-    kind: String
-    default: ""
-    rule: Std
-    owner: harness
-    doc: "smoke harness only (isolation.py): name of the private window-station object"
   - name: MC2_JUMPJETS_ALL
     kind: Bool
     default: false
@@ -3464,12 +3416,6 @@ flags:
     owner: gameos
     doc: "SMOKE-NO-CURSOR-STEAL-1: suppress ALL OS-cursor manipulation -- window mouse-grab, Win32 ClipCursor clamp, and gos_SetMousePosition warps -- plus window..."
     registry: {feature_id: MC2_TRACE_NO_CURSOR_GRAB, kind: Trace, order: -1, default_on: false}
-  - name: MC2_NO_CURSOR_GUARD
-    kind: Bool
-    default: false
-    rule: Exact1
-    owner: harness
-    doc: "smoke harness only (cursor_guard.py): do not start the cursor guard"
   - name: MC2_NO_LAUNCHER
     kind: Bool
     default: false
@@ -4788,12 +4734,6 @@ flags:
     owner: gameos
     doc: "S9D deterministic clock."
     smoke_passthrough: true
-  - name: MC2_SMOKE_LEASE_TTL_SECS
-    kind: Int
-    default: 3600
-    rule: Std
-    owner: harness
-    doc: "smoke harness only (deploy_lease.py): deploy-lease time-to-live in seconds"
   - name: MC2_SMOKE_MODE
     kind: Bool
     default: false
@@ -4807,30 +4747,6 @@ flags:
     rule: Prefix
     owner: gameos
     doc: ""
-  - name: MC2_SMOKE_REQUIRE_DIAG_STATE
-    kind: Bool
-    default: false
-    rule: Exact1
-    owner: harness
-    doc: "smoke harness only (run_smoke.py): a missing diagnostic state dump is a hard fail"
-  - name: MC2_SMOKE_REQUIRE_FINGERPRINT
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: harness
-    doc: "smoke harness only (run_smoke.py): =0 smokes an exe whose build fingerprint does not match HEAD"
-  - name: MC2_SMOKE_REQUIRE_FRESH
-    kind: Bool
-    default: false
-    rule: Exact1
-    owner: harness
-    doc: "smoke harness only (run_smoke.py): require a freshly built exe"
-  - name: MC2_SMOKE_REQUIRE_VISUAL
-    kind: Bool
-    default: false
-    rule: Exact1
-    owner: harness
-    doc: "smoke harness only (run_smoke.py): a non-PASS visual verdict is a hard fail"
   - name: MC2_SMOKE_SEED
     kind: Int
     default: 0
@@ -4838,18 +4754,6 @@ flags:
     owner: gameos
     doc: ""
     smoke_passthrough: true
-  - name: MC2_SMOKE_VISIBLE
-    kind: Bool
-    default: false
-    rule: NonEmpty
-    owner: harness
-    doc: "smoke harness only (runner.py): show the game window instead of launching it minimized"
-  - name: MC2_SMOKE_VISUAL_REPORT
-    kind: String
-    default: ""
-    rule: Std
-    owner: harness
-    doc: "smoke harness only (run_smoke.py): path of the visual compare report folded into the smoke verdict"
   - name: MC2_SNAPSHOT_MECH_EXTRACT
     kind: Bool
     default: false

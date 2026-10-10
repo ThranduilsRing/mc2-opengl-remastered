@@ -164,6 +164,40 @@ def undriveable_ambient(environ: dict, env_extra: "dict | None" = None) -> dict:
     return out
 
 
+_GATE_NAMES = None
+
+
+def known_gate_names() -> "frozenset | None":
+    """Every MC2_* name in the compiled gate table (Gates/gate_table.json), or None when it cannot be read."""
+    global _GATE_NAMES
+    if _GATE_NAMES is None:
+        try:
+            import sys as _sys
+            _sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+            import gate_table_reader
+            _GATE_NAMES = frozenset(g["name"] for g in gate_table_reader.load_table(
+                Path(__file__).resolve().parents[2])["gates"])
+        except Exception:                                              # noqa: BLE001
+            return None
+    return _GATE_NAMES
+
+
+def unregistered_ambient(environ: dict, env_extra: "dict | None" = None) -> dict:
+    """Ambient MC2_* variables that are not gates: {name: value}.
+
+    These are harness-only knobs (cursor_guard, nofocus, isolation, run_smoke require-flags) that Python reads
+    from its own environment, or typos. The engine runs under MC2_CONFIG_STRICT=1, where an unknown MC2_* name is
+    fatal, so the runner does not forward them. A name this run sets itself (env_extra, FORCED_ENV, SOFT_ENV) is
+    never dropped: a typo THERE must still fail at startup.
+    """
+    names = known_gate_names()
+    if names is None:
+        return {}
+    keep = set(env_extra or {}) | set(FORCED_ENV) | set(SOFT_ENV)
+    return {k: v for k, v in environ.items()
+            if k.startswith("MC2_") and k not in names and k not in keep}
+
+
 @dataclass
 class RunConfig:
     exe: List[str]                    # argv[0..n]; usually [exe_path, --profile, stock, --mission, stem, --duration, d]
@@ -210,6 +244,8 @@ def run_one(cfg: RunConfig) -> RunResult:
     argv = list(cfg.exe) if has_embedded else _build_argv(cfg.exe, cfg)
 
     env = os.environ.copy()
+    for _k in unregistered_ambient(env, cfg.env_extra):
+        env.pop(_k, None)
     for _k, _v in FORCED_ENV.items():
         env[_k] = _v
     for _k, _v in SOFT_ENV.items():
