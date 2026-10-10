@@ -326,7 +326,7 @@ if [ -f "$DEPLOY/Mission Editor.exe" ]; then
     done
 fi
 # Sanity: gamedata zip must carry the editor's Buildings.csv (v0.1.1 stock;
-# required by EditorInterface.cpp:596). Optional -- absent from game-only
+# required by the editor (EditorInterface*.cpp)). Optional -- absent from game-only
 # installs, but if it was in DEPLOY it must land in the zip.
 if [ -f "$DEPLOY/data/art/Buildings.csv" ]; then
     if ! "$SEVENZIP" l "$OUTDIR/mc2-gamedata.zip" | grep -q "Buildings\.csv\$"; then

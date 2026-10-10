@@ -59,7 +59,7 @@ for splash in esplash.bmp tacsplash.bmp; do
     fi
 done
 
-# Buildings.csv -- v0.1.1 stock; required by EditorInterface.cpp:596.
+# Buildings.csv -- v0.1.1 stock; required by the editor (EditorInterface*.cpp).
 # Source: $REPO/data/art/editor/Buildings.csv if present, else mc2srcdata stock.
 BLDGS_SRC=""
 for candidate in \
