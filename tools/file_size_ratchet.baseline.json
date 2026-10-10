@@ -13,11 +13,11 @@
   "gui"
  ],
  "files_over_1500": {
-  "GameOS/gameos/engine_present_vk.cpp": 2766,
+  "GameOS/gameos/engine_present_vk.cpp": 2757,
   "GameOS/gameos/gameos_graphics.cpp": 11659,
   "GameOS/gameos/gameosmain.cpp": 2850,
-  "GameOS/gameos/gos_mech_batcher.cpp": 3414,
-  "GameOS/gameos/gos_postprocess.cpp": 7349,
+  "GameOS/gameos/gos_mech_batcher.cpp": 3408,
+  "GameOS/gameos/gos_postprocess.cpp": 7344,
   "GameOS/gameos/gos_static_prop_batcher.cpp": 11198,
   "GameOS/gameos/gos_static_prop_registry.cpp": 2226,
   "GameOS/gameos/gos_terrain_indirect.cpp": 6205,
@@ -26,7 +26,7 @@
   "GameOS/gameos/gos_terrain_water_stream.cpp": 2455,
   "GameOS/gameos/gpu_cull_compute.cpp": 1558,
   "GameOS/gameos/utils/shader_builder.cpp": 1548,
-  "GameOS/gameos/vulkan_color_prop_island.cpp": 1810,
+  "GameOS/gameos/vulkan_color_prop_island.cpp": 1808,
   "GameOS/gameos/vulkan_shadow_island_live.cpp": 1670,
   "GameOS/gameos/vulkan_terrain_island.cpp": 3527,
   "GameOS/include/gameos.hpp": 3753,
@@ -104,7 +104,7 @@
   "mclib/vfxtile.cpp": 2944,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "bf46620a7",
+ "head": "225c12fba",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -196,7 +196,7 @@
   },
   {
    "file": "GameOS/gameos/gos_postprocess.cpp",
-   "lines": 7349
+   "lines": 7344
   },
   {
    "file": "mclib/mech3d.cpp",
@@ -264,7 +264,7 @@
   },
   {
    "file": "GameOS/gameos/gos_mech_batcher.cpp",
-   "lines": 3414
+   "lines": 3408
   },
   {
    "file": "code/brain_special_dispatch.cpp",

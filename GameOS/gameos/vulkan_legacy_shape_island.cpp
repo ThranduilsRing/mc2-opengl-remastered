@@ -71,9 +71,7 @@ void vlog(const char* fmt, ...) {
 bool gateRequested() {
     static int state = -1;
     if (state == -1) {
-        const bool on  = mc2vkgate::subGate("MC2_VK_MECH_TIER1");
-        const bool dep = mc2vkgate::subGate("MC2_VK_SHARED_SCENE_DEPTH");
-        state = (on && dep) ? 1 : 0;
+        state = mc2vkgate::regionTier1Armed<"MC2_VK_MECH_TIER1">() ? 1 : 0;
     }
     return state == 1;
 }

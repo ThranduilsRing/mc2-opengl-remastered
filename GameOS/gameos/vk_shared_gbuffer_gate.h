@@ -169,4 +169,10 @@ inline bool postDirectChainUpstreamOn()
            armed<"MC2_VK_WATER_DIRECT_CHAIN">();
 }
 
+// The native composite arms its direct chain: everything upstream plus the composite's own gate.
+inline bool compositeDirectChainOn()
+{
+    return postDirectChainUpstreamOn() && armed<"MC2_VK_POST_COMPOSITE_DIRECT_CHAIN">();
+}
+
 } // namespace mc2vkgate

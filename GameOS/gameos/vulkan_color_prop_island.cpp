@@ -117,9 +117,7 @@ bool propColorTier1Requested() {
     if (state == -1) {
         // Umbrella members: MC2_VK_SHARED_GBUFFER=1 arms both; explicit
         // MC2_VK_PROP_COLOR_TIER1 / MC2_VK_SHARED_SCENE_DEPTH =0/1 override.
-        const bool tier1 = mc2vkgate::subGate("MC2_VK_PROP_COLOR_TIER1");
-        const bool depth = mc2vkgate::subGate("MC2_VK_SHARED_SCENE_DEPTH");
-        state = (tier1 && depth) ? 1 : 0;  // require shared depth
+        state = mc2vkgate::regionTier1Armed<"MC2_VK_PROP_COLOR_TIER1">() ? 1 : 0;  // require shared depth
     }
     return state == 1;
 }
@@ -161,7 +159,7 @@ bool propMaterialRequested() {
     // MC2_VK_PROP_MATERIAL=0/1 overrides. (Precondition = propColorTier1Requested,
     // enforced at the call site.)
     static int state = -1;
-    if (state == -1) state = mc2vkgate::subGate("MC2_VK_PROP_MATERIAL") ? 1 : 0;
+    if (state == -1) state = mc2vkgate::armed<"MC2_VK_PROP_MATERIAL">() ? 1 : 0;
     return state == 1;
 }
 

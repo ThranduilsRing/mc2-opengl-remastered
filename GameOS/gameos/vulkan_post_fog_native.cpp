@@ -553,7 +553,7 @@ bool gosPostProcess::vkPostFogNativeEnabled()
         // fog still engages only when upstream is direct-chain (postDirectChainUpstreamOn),
         // so umbrella-arming it is safe: a degenerate forced-hybrid config still declines.
         // The strict proof armed MC2_VK_POST_FOG_NATIVE=1 and passed. Explicit "1"/"0" wins.
-        state = mc2vkgate::subGate("MC2_VK_POST_FOG_NATIVE") ? 1 : 0;
+        state = mc2vkgate::armed<"MC2_VK_POST_FOG_NATIVE">() ? 1 : 0;
         g_pf.runtimeGate = state;
         if (state == 1)
             vlog("MC2_VK_POST_FOG_NATIVE — rung-8.1 native fog pair gate ON "

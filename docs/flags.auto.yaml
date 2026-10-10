@@ -5,7 +5,7 @@
 generator_version: "3.0.0"
 gate_count: 1139
 registry_entry_count: 354
-verified_count: 202
+verified_count: 210
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -7169,6 +7169,7 @@ flags:
     rule: Is01
     owner: mech
     doc: ""
+    verified: true
   - name: MC2_VK_MECH_FENCE_DEFER
     kind: Bool
     default: true
@@ -7183,6 +7184,7 @@ flags:
     doc: "VK-MECH-MATERIAL-LIGHTING-1: presence-gated =1, default OFF; REQUIRES MC2_VK_MECH_TIER1 (visible only with MC2_VK_MECH_MATERIAL=1)."
     inherits: MC2_VK_SHARED_GBUFFER
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_VK_MECH_LIGHTING, kind: Feature, order: -1, default_on: false}
   - name: MC2_VK_MECH_MATERIAL
     kind: Tri
@@ -7192,6 +7194,7 @@ flags:
     doc: "VK-MECH-MATERIAL: presence-gated =1, default OFF (requires MC2_VK_MECH_TIER1)."
     inherits: MC2_VK_SHARED_GBUFFER
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_VK_MECH_MATERIAL, kind: Feature, order: -1, default_on: false}
   - name: MC2_VK_MECH_PERF
     kind: Bool
@@ -7208,6 +7211,7 @@ flags:
     doc: "VK-MECH-TIER1: presence-gated =1, default OFF (requires MC2_VK_SHARED_SCENE_DEPTH)."
     inherits: MC2_VK_SHARED_GBUFFER
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_VK_MECH_TIER1, kind: Feature, order: -1, default_on: false}
   - name: MC2_VK_NO_GL_INTEROP_RESOURCE_STRICT
     kind: Bool
@@ -7257,6 +7261,7 @@ flags:
     doc: "VK-POST-COMPOSITE-DIRECT-CHAIN: opt-in deletion-readiness proof gate, default OFF."
     inherits: MC2_VK_SHARED_GBUFFER
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_VK_POST_COMPOSITE_DIRECT_CHAIN, kind: Feature, order: -1, default_on: false}
   - name: MC2_VK_POST_FOG_NATIVE
     kind: Tri
@@ -7265,6 +7270,7 @@ flags:
     owner: vk
     doc: "VK-FIELD-ENV-CONTENT-STACK-ARM-1 (2026-07-11): now an umbrella family member (subGate)."
     inherits: MC2_VK_SHARED_GBUFFER
+    verified: true
   - name: MC2_VK_POST_HZB
     kind: Bool
     default: false
@@ -7378,6 +7384,7 @@ flags:
     doc: "VK-P11 TIER-1 PROP COLOR: presence-gated =1, default OFF; REQUIRES MC2_VK_SHARED_SCENE_DEPTH."
     inherits: MC2_VK_SHARED_GBUFFER
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_VK_PROP_COLOR_TIER1, kind: Feature, order: -1, default_on: false}
   - name: MC2_VK_PROP_DIRECT_CHAIN
     kind: Tri
@@ -7415,6 +7422,7 @@ flags:
     doc: "VK-PROP-MATERIAL: presence-gated =1, default OFF (requires MC2_VK_PROP_COLOR_TIER1)."
     inherits: MC2_VK_SHARED_GBUFFER
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_VK_PROP_MATERIAL, kind: Feature, order: -1, default_on: false}
   - name: MC2_VK_PROP_MATERIAL_DEBUG
     kind: Bool

@@ -1534,15 +1534,15 @@ G("MC2_VK_HUD_SKIP_GL", Tri, false, "gameos", "", "VK-FIELD-ENV-CONTENT-STACK-AR
 L(Lead1, "MC2_VK_IMGUI", Bool, false, "code", "", "VK-IMGUI-NATIVE-1 (rung 8.6): default-OFF ImGui Vulkan renderer gate.", passthrough | registry(Feature, "MC2_FEATURE_VK_IMGUI", -1, false)),
 L(Lead0Kill, "MC2_VK_LIGHTFEED_DEDUP", Bool, true, "vk", "", ""),
 L(Exact1, "MC2_VK_MECH_FEED_AUDIT", Bool, false, "vk", "", ""),
-L(Is01, "MC2_VK_MECH_FEED_NATIVE", Bool, false, "mech", "", ""),
+L(Is01, "MC2_VK_MECH_FEED_NATIVE", Bool, false, "mech", "", "", verified),
 L(Lead0Kill, "MC2_VK_MECH_FENCE_DEFER", Bool, true, "vk", "", ""),
 // history: docs/gate-history.md#MC2_VK_MECH_LIGHTING
-G("MC2_VK_MECH_LIGHTING", Tri, false, "vk", "", "VK-MECH-MATERIAL-LIGHTING-1: presence-gated =1, default OFF; REQUIRES MC2_VK_MECH_TIER1 (visible only with MC2_VK_MECH_MATERIAL=1).", passthrough | registry(Feature, "MC2_FEATURE_VK_MECH_LIGHTING", -1, false) | inherits("MC2_VK_SHARED_GBUFFER")),
+G("MC2_VK_MECH_LIGHTING", Tri, false, "vk", "", "VK-MECH-MATERIAL-LIGHTING-1: presence-gated =1, default OFF; REQUIRES MC2_VK_MECH_TIER1 (visible only with MC2_VK_MECH_MATERIAL=1).", passthrough | registry(Feature, "MC2_FEATURE_VK_MECH_LIGHTING", -1, false) | inherits("MC2_VK_SHARED_GBUFFER") | verified),
 // history: docs/gate-history.md#MC2_VK_MECH_MATERIAL
-G("MC2_VK_MECH_MATERIAL", Tri, false, "vk", "", "VK-MECH-MATERIAL: presence-gated =1, default OFF (requires MC2_VK_MECH_TIER1).", passthrough | registry(Feature, "MC2_FEATURE_VK_MECH_MATERIAL", -1, false) | inherits("MC2_VK_SHARED_GBUFFER")),
+G("MC2_VK_MECH_MATERIAL", Tri, false, "vk", "", "VK-MECH-MATERIAL: presence-gated =1, default OFF (requires MC2_VK_MECH_TIER1).", passthrough | registry(Feature, "MC2_FEATURE_VK_MECH_MATERIAL", -1, false) | inherits("MC2_VK_SHARED_GBUFFER") | verified),
 L(Lead1, "MC2_VK_MECH_PERF", Bool, false, "vk", "", "", passthrough),
 // history: docs/gate-history.md#MC2_VK_MECH_TIER1
-G("MC2_VK_MECH_TIER1", Tri, false, "vk", "", "VK-MECH-TIER1: presence-gated =1, default OFF (requires MC2_VK_SHARED_SCENE_DEPTH).", passthrough | registry(Feature, "MC2_FEATURE_VK_MECH_TIER1", -1, false) | inherits("MC2_VK_SHARED_GBUFFER")),
+G("MC2_VK_MECH_TIER1", Tri, false, "vk", "", "VK-MECH-TIER1: presence-gated =1, default OFF (requires MC2_VK_SHARED_SCENE_DEPTH).", passthrough | registry(Feature, "MC2_FEATURE_VK_MECH_TIER1", -1, false) | inherits("MC2_VK_SHARED_GBUFFER") | verified),
 // history: docs/gate-history.md#MC2_VK_NO_GL_INTEROP_RESOURCE_STRICT
 G("MC2_VK_NO_GL_INTEROP_RESOURCE_STRICT", Bool, false, "vk", "", "VK Metal-gate resource canary.", passthrough | registry(Trace, "MC2_TRACE_VK_NO_GL_INTEROP_RESOURCE_STRICT", -1, false)),
 // history: docs/gate-history.md#MC2_VK_NO_GL_INTEROP_STRICT
@@ -1553,8 +1553,8 @@ L(Lead1, "MC2_VK_OBJECTID_DIRECT_CHAIN", Bool, false, "vk", "", "", passthrough)
 L(Presence, "MC2_VK_PICK_PROBE", Bool, false, "code", "", "BUG-A pick regression fence: default-OFF.", passthrough | registry(Trace, "MC2_VK_PICK_PROBE", -1, false)),
 G("MC2_VK_POST_COMPOSITE", Tri, false, "vk", "", "VK-FIELD-ENV-COMPOSITE-ARM-1: arm from the umbrella (see directFboGateEnabled).", inherits("MC2_VK_SHARED_GBUFFER") | verified),
 // history: docs/gate-history.md#MC2_VK_POST_COMPOSITE_DIRECT_CHAIN
-G("MC2_VK_POST_COMPOSITE_DIRECT_CHAIN", Tri, false, "vk", "", "VK-POST-COMPOSITE-DIRECT-CHAIN: opt-in deletion-readiness proof gate, default OFF.", passthrough | registry(Feature, "MC2_FEATURE_VK_POST_COMPOSITE_DIRECT_CHAIN", -1, false) | inherits("MC2_VK_SHARED_GBUFFER")),
-G("MC2_VK_POST_FOG_NATIVE", Tri, false, "vk", "", "VK-FIELD-ENV-CONTENT-STACK-ARM-1 (2026-07-11): now an umbrella family member (subGate).", inherits("MC2_VK_SHARED_GBUFFER")),
+G("MC2_VK_POST_COMPOSITE_DIRECT_CHAIN", Tri, false, "vk", "", "VK-POST-COMPOSITE-DIRECT-CHAIN: opt-in deletion-readiness proof gate, default OFF.", passthrough | registry(Feature, "MC2_FEATURE_VK_POST_COMPOSITE_DIRECT_CHAIN", -1, false) | inherits("MC2_VK_SHARED_GBUFFER") | verified),
+G("MC2_VK_POST_FOG_NATIVE", Tri, false, "vk", "", "VK-FIELD-ENV-CONTENT-STACK-ARM-1 (2026-07-11): now an umbrella family member (subGate).", inherits("MC2_VK_SHARED_GBUFFER") | verified),
 L(Exact1, "MC2_VK_POST_HZB", Bool, false, "vk", "", ""),
 L(Exact1, "MC2_VK_POST_SCREENFX", Bool, false, "vk", "", ""),
 L(Lead0Kill, "MC2_VK_POST_SCREENFX_CLOUD", Bool, true, "vk", "", ""),
@@ -1578,7 +1578,7 @@ G("MC2_VK_PRESENT_TAIL_HOOK", Tri, false, "vk", "", "VK-TAIL-HOOK-1 (rung 8.6): 
 L(Presence, "MC2_VK_PRESENT_VERIFY", Bool, false, "gameos", "", "", passthrough),
 // VK-P11 TIER-1 PROP COLOR: in-place shared-GBuffer co-write (Tier-1, supersedes Tier-0).
 // history: docs/gate-history.md#MC2_VK_PROP_COLOR_TIER1
-G("MC2_VK_PROP_COLOR_TIER1", Tri, false, "vk", "", "VK-P11 TIER-1 PROP COLOR: presence-gated =1, default OFF; REQUIRES MC2_VK_SHARED_SCENE_DEPTH.", passthrough | registry(Feature, "MC2_FEATURE_VK_PROP_COLOR_TIER1", -1, false) | inherits("MC2_VK_SHARED_GBUFFER")),
+G("MC2_VK_PROP_COLOR_TIER1", Tri, false, "vk", "", "VK-P11 TIER-1 PROP COLOR: presence-gated =1, default OFF; REQUIRES MC2_VK_SHARED_SCENE_DEPTH.", passthrough | registry(Feature, "MC2_FEATURE_VK_PROP_COLOR_TIER1", -1, false) | inherits("MC2_VK_SHARED_GBUFFER") | verified),
 // VK-PROP-DIRECT-CHAIN: proof slice for keeping prop color on the Vulkan-owned shared GBuffer.
 // history: docs/gate-history.md#MC2_VK_PROP_DIRECT_CHAIN
 G("MC2_VK_PROP_DIRECT_CHAIN", Tri, false, "vk", "", "VK-PROP-DIRECT-CHAIN: opt-in deletion-readiness proof gate, default OFF.", passthrough | registry(Feature, "MC2_FEATURE_VK_PROP_DIRECT_CHAIN", -1, false) | inherits("MC2_VK_SHARED_GBUFFER") | verified),
@@ -1586,7 +1586,7 @@ L(Lead0Kill, "MC2_VK_PROP_FENCE_DEFER", Bool, true, "vk", "", ""),
 L(Presence, "MC2_VK_PROP_LIGHT_PROBE", Bool, false, "vk", "", ""),
 L(Presence, "MC2_VK_PROP_LIGHT_VERTEX_PROBE", Bool, false, "vk", "", ""),
 // history: docs/gate-history.md#MC2_VK_PROP_MATERIAL
-G("MC2_VK_PROP_MATERIAL", Tri, false, "vk", "", "VK-PROP-MATERIAL: presence-gated =1, default OFF (requires MC2_VK_PROP_COLOR_TIER1).", passthrough | registry(Feature, "MC2_FEATURE_VK_PROP_MATERIAL", -1, false) | inherits("MC2_VK_SHARED_GBUFFER")),
+G("MC2_VK_PROP_MATERIAL", Tri, false, "vk", "", "VK-PROP-MATERIAL: presence-gated =1, default OFF (requires MC2_VK_PROP_COLOR_TIER1).", passthrough | registry(Feature, "MC2_FEATURE_VK_PROP_MATERIAL", -1, false) | inherits("MC2_VK_SHARED_GBUFFER") | verified),
 // history: docs/gate-history.md#MC2_VK_PROP_MATERIAL_DEBUG
 L(Presence, "MC2_VK_PROP_MATERIAL_DEBUG", Bool, false, "props", "", "VK-PROP-MATERIAL-DEBUG: presence-gated =1, default OFF.", passthrough | registry(Feature, "MC2_FEATURE_VK_PROP_MATERIAL_DEBUG", -1, false)),
 L(Presence, "MC2_VK_PROP_MIP_PROBE", Bool, false, "vk", "", "ADJUDICATION-1 FENCE-RECON: one-shot mip-count-parity verdict."),

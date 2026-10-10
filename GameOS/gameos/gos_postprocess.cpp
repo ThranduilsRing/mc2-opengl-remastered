@@ -100,8 +100,7 @@ static bool mc2VkSharedSceneDepthEnabled()
 // or island not compiled) = byte-identical to today.
 static bool mc2VkPropColorTier1Enabled()
 {
-    static const bool s_on =
-        mc2vkgate::subGate("MC2_VK_PROP_COLOR_TIER1") && mc2VkSharedSceneDepthEnabled();
+    static const bool s_on = mc2vkgate::regionTier1Armed<"MC2_VK_PROP_COLOR_TIER1">();
     return s_on;
 }
 
@@ -114,16 +113,14 @@ static bool mc2VkPropColorTier1Enabled()
 // Gate OFF / require missing / island not compiled = byte-identical.
 static bool mc2VkTerrainTier1Enabled()
 {
-    static const bool s_on =
-        mc2vkgate::subGate("MC2_VK_TERRAIN_TIER1") && mc2VkSharedSceneDepthEnabled();
+    static const bool s_on = mc2vkgate::regionTier1Armed<"MC2_VK_TERRAIN_TIER1">();
     return s_on;
 }
 
 // VK mech Tier-1 in-place co-write also renders into the shared scene GBuffer.
 static bool mc2VkMechTier1Enabled()
 {
-    static const bool s_on =
-        mc2vkgate::subGate("MC2_VK_MECH_TIER1") && mc2VkSharedSceneDepthEnabled();
+    static const bool s_on = mc2vkgate::regionTier1Armed<"MC2_VK_MECH_TIER1">();
     return s_on;
 }
 
@@ -145,9 +142,7 @@ static bool mc2VkSharedSceneDirectResourceEnabled()
     // decline the whole shared scene to pure GL under the umbrella unless a user set two
     // retired gates. The shared scene now arms on the post/composite direct-chain stack
     // alone (default-ON under MC2_VK_SHARED_GBUFFER).
-    static const bool s_on =
-        mc2vkgate::postDirectChainUpstreamOn() &&
-        mc2vkgate::directChainGate("MC2_VK_POST_COMPOSITE_DIRECT_CHAIN");
+    static const bool s_on = mc2vkgate::compositeDirectChainOn();
     return s_on;
 }
 
