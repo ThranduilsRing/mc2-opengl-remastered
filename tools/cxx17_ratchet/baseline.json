@@ -66,8 +66,8 @@
    "LG16": 7,
    "LG17": 81,
    "LG18": 11,
-   "LG19": 24,
-   "LG20": 47
+   "LG19": 22,
+   "LG20": 45
   },
   "GuiRuntime": {
    "LG01": 1,
@@ -1207,9 +1207,7 @@
    "LG06": 1
   },
   "GameOS/gameos/vk_feed_dump.h": {
-   "LG06": 1,
-   "LG19": 2,
-   "LG20": 2
+   "LG06": 1
   },
   "GameOS/gameos/vk_gpu_timestamps.h": {
    "LG09": 2
@@ -5801,7 +5799,7 @@
    "LG20": 1
   }
  },
- "head": "e5ef18f0b",
+ "head": "888a9a460",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

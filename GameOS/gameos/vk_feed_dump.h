@@ -57,8 +57,8 @@ inline bool enabled() { return dumpPath() != nullptr && dumpPath()[0] != '\0'; }
 // current comparison MUST pair MC2_VK_FEED_DUMP with a bookmark capture.
 inline bool readyToDump() {
     const bool bookmarkConfigured =
-        (std::getenv("MC2_VISUAL_BOOKMARK_CAPTURE") != nullptr) ||
-        (std::getenv("MC2_VISUAL_CAPTURE_FRAME") != nullptr);
+        (mc2::gate::isSet<"MC2_VISUAL_BOOKMARK_CAPTURE">()) ||
+        mc2::gate::isSet<"MC2_VISUAL_CAPTURE_FRAME">();
     if (!bookmarkConfigured) {
         static bool warned = false;
         if (!warned) {
