@@ -5,9 +5,6 @@
 
 namespace GraphicsOptionsWindow {
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Terrain debug mode table — mirrors gos_terrain.frag branch logic exactly.
-// ─────────────────────────────────────────────────────────────────────────────
 struct TerrainMode {
     float       value;
     const char* name;
@@ -17,7 +14,6 @@ struct TerrainMode {
 static const TerrainMode kTerrainModes[] = {
     //  value    name                     channel breakdown
     {  0.0f, "OFF",               nullptr },
-    // ── Visual modes ──────────────────────────────────────────────────────────
     {  1.0f, "Depth Comparison",  "R = rasterized depth  |  G = undisplaced depth  (range 0.85–1.0)" },
     {  2.0f, "Raw Colormap",      "terrain colormap tex1, unlit" },
     {  3.0f, "Blurred Colormap",  "LOD-tiered blur: far=1-tap, mid=5-tap, near=9-tap disc" },
@@ -25,7 +21,6 @@ static const TerrainMode kTerrainModes[] = {
     {  5.0f, "Normal Lighting",   "diffuse contribution (0.35–1.20 remapped to 0–1)" },
     {  6.0f, "Shadow Factor",     "PCF static shadow × dynamic shadow" },
     {  7.0f, "Cloud Shadow (n/a)", "removed — cloud is now the fullscreen cloud.frag pass (see Render Passes > Cloud Shadows)" },
-    // ── Diagnostic modes ──────────────────────────────────────────────────────
     {  8.0f, "Cement Diagnostic", "R = layer valid  |  G = layer index/255  |  B = useCementAtlas==0" },
     {  9.0f, "Thin-Record",       "R = recipeIdx/255  |  G = flags/255  |  B = terrainHandle/255" },
     { 10.0f, "Height Normal",     "height-texture-derived normal as RGB (centered around 0.5)" },
@@ -34,7 +29,6 @@ static const TerrainMode kTerrainModes[] = {
 static const int kTerrainModeCount = (int)(sizeof(kTerrainModes) / sizeof(kTerrainModes[0]));
 static const int kDiagnosticStart  = 8; // index into kTerrainModes where diagnostics begin
 void drawTerrainSection() {
-    // ── Draw + wireframe ──────────────────────────────────────────────────────
     bool terrainDraw = gos_GetTerrainDrawEnabled();
     if (ImGui::Checkbox("Terrain Draw", &terrainDraw))
         gos_SetTerrainDrawEnabled(terrainDraw);
@@ -44,7 +38,6 @@ void drawTerrainSection() {
     if (ImGui::Checkbox("Terrain Wireframe", &s_terrainWire))
         gos_SetTerrainWireframe(s_terrainWire);
 
-    // ── Debug mode scrollable child ───────────────────────────────────────────
     ImGui::Spacing();
     ImGui::TextUnformatted("Surface Debug Mode");
     ImGui::SameLine();
@@ -116,7 +109,6 @@ void drawTerrainSection() {
     ImGui::EndChild();
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 
 void drawTerrainTuningSection() {
     // ── Tessellation ──────────────────────────────────────────────────────────
@@ -141,7 +133,6 @@ void drawTerrainTuningSection() {
         gos_SetTerrainTessParams(4.0f, 200.0f, 2000.0f);
     }
 
-    // ── Phong smoothing ───────────────────────────────────────────────────────
     ImGui::SeparatorText("Phong Smoothing");
     float phong = gos_GetTerrainPhongAlpha();
     if (ImGui::SliderFloat("Alpha##phong", &phong, 0.0f, 1.0f))
@@ -152,7 +143,6 @@ void drawTerrainTuningSection() {
     ImGui::SameLine();
     if (ImGui::SmallButton("Reset##phong")) gos_SetTerrainPhongAlpha(0.5f);
 
-    // ── Displacement ──────────────────────────────────────────────────────────
     ImGui::SeparatorText("Displacement");
     float disp = gos_GetTerrainDisplaceScale();
     if (ImGui::SliderFloat("Scale##disp", &disp, 0.0f, 8.0f))
@@ -164,7 +154,6 @@ void drawTerrainTuningSection() {
     ImGui::SameLine();
     if (ImGui::SmallButton("Reset##disp")) gos_SetTerrainDisplaceScale(2.0f);
 
-    // ── Normal / detail maps ──────────────────────────────────────────────────
     ImGui::SeparatorText("Normal Maps");
 
     float tiling   = gos_GetTerrainDetailTiling();
@@ -188,7 +177,6 @@ void drawTerrainTuningSection() {
         gos_SetTerrainDetailParams(1.0f, 1.0f);
     }
 
-    // ── Material tint colors ──────────────────────────────────────────────────
     ImGui::SeparatorText("Material Tint Colors");
     ImGui::TextDisabled("Base color per material. Mixed with colormap by Tint Strength above.");
 
@@ -227,7 +215,6 @@ void drawTerrainTuningSection() {
         gos_SetTerrainTintDirt(0.48f, 0.42f, 0.33f);
     }
 
-    // ── Per-material normal boost ─────────────────────────────────────────────
     ImGui::SeparatorText("Per-Material Normal Boost");
     ImGui::TextDisabled("Scales the shader's per-material normal strength (on top of global Strength above).");
 
@@ -254,7 +241,6 @@ void drawTerrainTuningSection() {
         gos_SetTerrainMatNormalBoost(0.9f, 1.1f, 1.1f, 2.5f);
     }
 
-    // ── Per-material tiling ───────────────────────────────────────────────────
     ImGui::SeparatorText("Per-Material Tiling");
     ImGui::TextDisabled("UV repeat multiplier per material. Grass default 2x (was 12x).");
 
@@ -284,7 +270,6 @@ void drawTerrainTuningSection() {
         gos_SetTerrainMatTiling(3.0f, 2.0f, 1.0f, 6.0f, 1.0f);
     }
 
-    // ── POM ───────────────────────────────────────────────────────────────────
     ImGui::SeparatorText("Parallax Occlusion Mapping");
 
     static float s_pomScale = 0.02f;
@@ -309,7 +294,6 @@ void drawTerrainTuningSection() {
         gos_SetTerrainPOMParams(0.02f, 8.0f, 32.0f);
     }
 
-    // ── Color tint ────────────────────────────────────────────────────────────
     ImGui::SeparatorText("Color / Tinting");
 
     float tintScale = gos_GetTerrainTintStrengthScale();
@@ -322,7 +306,6 @@ void drawTerrainTuningSection() {
     ImGui::SameLine();
     if (ImGui::SmallButton("Reset##cs")) gos_SetTerrainTintStrengthScale(1.0f);
 
-    // ── Shadow softness ───────────────────────────────────────────────────────
     ImGui::SeparatorText("Shadow");
 
     float softness = gos_GetTerrainShadowSoftness();
@@ -333,7 +316,6 @@ void drawTerrainTuningSection() {
     ImGui::SameLine();
     if (ImGui::SmallButton("Reset##ss")) gos_SetTerrainShadowSoftness(0.9f);
 
-    // ── Cell-bomb noise ───────────────────────────────────────────────────────
     ImGui::SeparatorText("Cell-Bomb Noise");
     ImGui::TextDisabled("Hash-based breakup applied on top of normal maps.");
 
@@ -358,7 +340,6 @@ void drawTerrainTuningSection() {
     // terrain tuning is in one window.
     ImGui::SeparatorText("Normals-from-Height");
 
-    // Height tex source/render readout + live resample combo.
     int srcSide = ::gos_terrainHeightSourceSide();
     int rndSide = ::gos_terrainHeightTexSide();
     int factor  = ::gos_terrainHeightResampleFactor();
@@ -381,7 +362,6 @@ void drawTerrainTuningSection() {
                           "1x = source grid only; 4x = 4× sub-grid (finer slope normals).\n"
                           "env MC2_TERRAIN_HEIGHT_RESAMPLE_FACTOR sets startup default.");
 
-    // Normals-from-Height strength.
     float nfh = ::gos_GetTerrainNormalsFromHeightStrength();
     if (ImGui::SliderFloat("NfH strength##tnfh", &nfh, 0.0f, 1.5f, "%.2f")) {
         ::gos_SetTerrainNormalsFromHeightStrength(nfh);
@@ -499,7 +479,6 @@ void drawTerrainTuningSection() {
     ImGui::TextDisabled("Debug Mode 4 = Material Weights (R=rock  G=grass  B=dirt)");
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 
 // Static-prop visual tuning. Previously lived in the Object Inspector PBR
 // block (selection-driven); consolidated here so the controls are reachable
@@ -750,7 +729,6 @@ void drawWaterSection() {
     ImGui::TextDisabled("MDI path only (MC2_GPU_DRIVEN_WATER=1). Defaults = byte-identical.");
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 
 
 } // namespace GraphicsOptionsWindow

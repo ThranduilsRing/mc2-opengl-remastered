@@ -6,7 +6,6 @@
 namespace GraphicsOptionsWindow {
 
 void drawDrawPacketsSection() {
-    // ── Frame health ──────────────────────────────────────────────────────────
     const bool anyError = (g_dpSnapshot.emitted != g_dpSnapshot.expected
                            || g_dpSnapshot.invalidRanges > 0
                            || g_dpSnapshot.overflow);
@@ -15,7 +14,6 @@ void drawDrawPacketsSection() {
 
     char buf[64];
 
-    // Top table: frame + emitted vs expected
     if (ImGui::BeginTable("##dphealth", 2,
             ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg)) {
         ImGui::TableSetupColumn("##dk",  ImGuiTableColumnFlags_WidthFixed, 140.f);
@@ -48,7 +46,6 @@ void drawDrawPacketsSection() {
 
     ImGui::Separator();
 
-    // Bottom table: diagnostic counters
     if (ImGui::BeginTable("##dpdiag", 2,
             ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg)) {
         ImGui::TableSetupColumn("##ddk", ImGuiTableColumnFlags_WidthFixed, 140.f);
@@ -97,7 +94,6 @@ void drawDrawPacketsSection() {
         ImGui::EndTable();
     }
 
-    // ── Type Inspector ────────────────────────────────────────────────────────
     ImGui::Spacing();
     ImGui::SeparatorText("Type Inspector");
 
@@ -171,7 +167,6 @@ void drawDrawPacketsSection() {
         ImGui::TextDisabled("(typeId %d out of range)", s_selTypeId);
     }
 
-    // ── Packet range minimap ──────────────────────────────────────────────────
     ImGui::Spacing();
     if (ImGui::CollapsingHeader("Packet Range Minimap##dp")) {
         const uint32_t total  = g_dpSnapshot.expected > 0u ? g_dpSnapshot.expected : 1u;
@@ -180,11 +175,9 @@ void drawDrawPacketsSection() {
         const ImVec2   p0     = ImGui::GetCursorScreenPos();
         ImDrawList*    dl     = ImGui::GetWindowDrawList();
 
-        // Background
         dl->AddRectFilled(p0, ImVec2(p0.x + availW, p0.y + barH),
                           IM_COL32(45, 45, 45, 255));
 
-        // Selected type range in yellow
         if (descOk && desc.packetCount > 0u) {
             const float x0 = p0.x + availW * ((float)desc.firstPacket / (float)total);
             float       x1 = p0.x + availW * ((float)(desc.firstPacket + desc.packetCount) / (float)total);
@@ -193,7 +186,6 @@ void drawDrawPacketsSection() {
                               IM_COL32(255, 220, 50, 200));
         }
 
-        // Border
         dl->AddRect(p0, ImVec2(p0.x + availW, p0.y + barH),
                     IM_COL32(110, 110, 110, 255));
         ImGui::Dummy(ImVec2(availW, barH));
@@ -217,7 +209,6 @@ void drawDrawPacketsSection() {
             ImGui::TextDisabled("(no static prop selected)");
             ImGui::TextDisabled("Ctrl+Shift+Click a prop in-game to inspect.");
         } else {
-            // Header line: shape | typeId | recipe
             const char* sname = sel.shapeName[0] ? sel.shapeName : "(unnamed)";
             ImGui::TextColored(ImVec4(0.9f, 0.85f, 0.4f, 1.f),
                 "%s", sname);
@@ -225,7 +216,6 @@ void drawDrawPacketsSection() {
             ImGui::TextDisabled("| typeId: %u | recipe: %d",
                 sel.typeId, sel.recipeIndex);
 
-            // Summary row: instances + materialIdx + alphaClass
             if (ImGui::BeginTable("##selpropsummary", 2,
                     ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg)) {
                 ImGui::TableSetupColumn("##spsk", ImGuiTableColumnFlags_WidthFixed, 130.f);
@@ -268,7 +258,6 @@ void drawDrawPacketsSection() {
                 ImGui::EndTable();
             }
 
-            // Per-packet table
             if (sel.rowCount > 0) {
                 ImGui::Spacing();
                 ImGui::TextUnformatted("Packets:");
@@ -330,11 +319,9 @@ void drawDrawPacketsSection() {
             }
 
             if (ImGui::SmallButton("Copy CSV##selp")) {
-                // Header
                 int n = snprintf(buf, sizeof(buf),
                     "pktIdx,firstIndex,idxCount,baseVertex,pipeline,matFlags\n");
                 ImGui::SetClipboardText(buf);
-                // Rows: build into a larger buffer
                 char cbuf[1024]; int cn = 0;
                 cn += snprintf(cbuf+cn, sizeof(cbuf)-cn,
                     "pktIdx,firstIndex,idxCount,baseVertex,pipeline,matFlags\n");
@@ -354,19 +341,16 @@ void drawDrawPacketsSection() {
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 
 void drawRenderPassesSection() {
     gosPostProcess* pp = getGosPostProcess();
 
-    // ── Shadow pass ───────────────────────────────────────────────────────────
     if (pp) {
         ImGui::Checkbox("Shadow Pass##rp", &pp->shadowsEnabled_);
         ImGui::SameLine();
         ImGui::TextDisabled("(also in Post-Process)");
     }
 
-    // ── Cloud shadows (fullscreen procedural pass) ────────────────────────────
     if (pp && ImGui::CollapsingHeader("Cloud Shadows##rp")) {
         bool cloudOn = pp->getCloudShadowEnabled();
         if (ImGui::Checkbox("Enable##cloud", &cloudOn))
@@ -428,7 +412,6 @@ void drawRenderPassesSection() {
                           "GPU Mechs OFF = CPU legacy path (older shading, dimmer).\n"
                           "Use 'Draw Mechs' to hide mechs entirely.");
 
-    // GPU objects (full GPU-driven batcher)
     if (g_useGpuObjects) {
         ImGui::Checkbox("GPU Objects##rp",  &g_useGpuObjects);
     } else {
@@ -474,7 +457,6 @@ void drawRenderPassesSection() {
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 
 void drawGBufferPreview() {
     gosPostProcess* pp = getGosPostProcess();
@@ -494,7 +476,6 @@ void drawGBufferPreview() {
     const ImVec2 uv1(1.0f, 0.0f);
     const ImVec2 sz(thumbW, thumbH);
 
-    // ── Scene Color (RGBA16F HDR) ─────────────────────────────────────────────
     {
         unsigned int tex = pp->getSceneColorTexture();
         if (tex) {
@@ -509,7 +490,6 @@ void drawGBufferPreview() {
 
     ImGui::SameLine();
 
-    // ── Scene Normals (RGBA16F world-space + shadow-skip) ─────────────────────
     {
         unsigned int tex = pp->getSceneNormalTexture();
         if (tex) {
@@ -526,13 +506,11 @@ void drawGBufferPreview() {
         }
     }
 
-    // ── Shadow maps ───────────────────────────────────────────────────────────
     ImGui::Spacing();
     ImGui::TextUnformatted("Shadow Maps  (DEPTH_COMPONENT24)");
     ImGui::TextDisabled("  Depth textures need GL_TEXTURE_COMPARE_MODE=GL_NONE to preview.");
     ImGui::TextDisabled("  Use the shadow debug overlay in Post-Process instead.");
 
-    // ── Object-ID buffer ──────────────────────────────────────────────────────
     {
         unsigned int tex = pp->getSceneObjectIdTex();
         if (tex) {
@@ -583,7 +561,6 @@ void drawGBufferPreview() {
             if (mips > 1)
                 ImGui::SliderInt("HZB mip##hzb", &s_hzbMip, 0, mips - 1);
 
-            // Level dimensions via the same ceil ladder the runtime uses.
             int lw = pp->getHzbWidth(), lh = pp->getHzbHeight();
             for (int k = 0; k < s_hzbMip; ++k) {
                 lw = (lw + 1) / 2; if (lw < 1) lw = 1;
@@ -605,7 +582,6 @@ void drawGBufferPreview() {
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 
 
 } // namespace GraphicsOptionsWindow
