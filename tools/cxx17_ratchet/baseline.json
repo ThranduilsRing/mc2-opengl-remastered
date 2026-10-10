@@ -66,8 +66,8 @@
    "LG16": 7,
    "LG17": 81,
    "LG18": 11,
-   "LG19": 40,
-   "LG20": 73
+   "LG19": 36,
+   "LG20": 69
   },
   "GuiRuntime": {
    "LG01": 1,
@@ -1063,9 +1063,7 @@
    "LG17": 1
   },
   "GameOS/gameos/render_snapshot.cpp": {
-   "LG17": 1,
-   "LG19": 4,
-   "LG20": 4
+   "LG17": 1
   },
   "GameOS/gameos/terrain_material_lib.cpp": {
    "LG06": 7,
@@ -5813,7 +5811,7 @@
    "LG20": 1
   }
  },
- "head": "3c1ea9db1",
+ "head": "1800a611e",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

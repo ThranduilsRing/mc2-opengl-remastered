@@ -22,6 +22,7 @@
 #include <cstdint>
 #include <cstring>
 #include <vector>
+#include "Gates/gate.h"
 
 // ---------------------------------------------------------------------------
 // Module-static ping-pong arenas (2 × 1 MiB in BSS, never freed).
@@ -33,19 +34,13 @@
 // STATICPROP-SNAPSHOT-BRIDGE-COMPARE-1: persistent cache for compare-only validation.
 // Built each frame from registry sources independently of the legacy propBuf path.
 // Gate: MC2_STATIC_PROP_SNAPSHOT_BRIDGE_COMPARE (default-off).
-static const bool s_bridgeCompareEnabled = []() -> bool {
-    const char* v = std::getenv("MC2_STATIC_PROP_SNAPSHOT_BRIDGE_COMPARE");
-    return v && v[0] == '1';
-}();
+static const bool s_bridgeCompareEnabled = mc2::gate::get<"MC2_STATIC_PROP_SNAPSHOT_BRIDGE_COMPARE">();
 // STATICPROP-SNAPSHOT-FILL-DIRTYONLY-1: on clean registry/cull generations, skip
 // fillStaticPropSlots + the per-prop WriteLoop and memcpy the cached rows into the
 // frame arena instead. Gate: MC2_STATIC_PROP_SNAPSHOT_FILL_DIRTYONLY (default-ON
 // after Tracy proof — ExtractRenderSnapshot ~1.68ms -> ~37us median, -97%;
 // unset/=1 = dirty-only fast path, =0 = legacy full rebuild kill-switch).
-static const bool s_dirtyOnlyEnabled = []() -> bool {
-    const char* v = std::getenv("MC2_STATIC_PROP_SNAPSHOT_FILL_DIRTYONLY");
-    return !(v && v[0] == '0');
-}();
+static const bool s_dirtyOnlyEnabled = mc2::gate::get<"MC2_STATIC_PROP_SNAPSHOT_FILL_DIRTYONLY">();
 // Production row cache (DIRTYONLY-1): a copy of the legacy propBuf rows from the last
 // dirty frame. Clean frames memcpy these into the frame arena; snap.staticProps NEVER
 // points at this persistent buffer directly.
@@ -241,10 +236,7 @@ RenderSnapshot ExtractRenderSnapshot()
     // Observational only — no GL mutation, no dispatch change.
     // materialIdx is 0xFFFFFFFFu sentinel in v0 (wired in Mech-1 follow-up).
     // -----------------------------------------------------------------------
-    static const bool s_mechExtractEnabled = [] {
-        const char* v = std::getenv("MC2_SNAPSHOT_MECH_EXTRACT");
-        return v && v[0] && v[0] != '0';
-    }();
+    static const bool s_mechExtractEnabled = mc2::gate::get<"MC2_SNAPSHOT_MECH_EXTRACT">();
     snap.mechPackets = Span<ExtractedMechPacket>(nullptr, 0);
     if (s_mechExtractEnabled) {
         const uint32_t mechCount = batcher_getMechPendingCount();
@@ -670,7 +662,7 @@ RenderSnapshot ExtractRenderSnapshot()
     // -----------------------------------------------------------------------
     // Per-frame log line (v1) — gated: MC2_RENDER_SNAPSHOT_LOG=1 to enable
     // -----------------------------------------------------------------------
-    static const bool s_logEnabled = []{ const char* v = std::getenv("MC2_RENDER_SNAPSHOT_LOG"); return v && v[0] == '1'; }();
+    static const bool s_logEnabled = mc2::gate::get<"MC2_RENDER_SNAPSHOT_LOG">();
     if (s_logEnabled) {
         std::fprintf(stderr,
             "[RENDER_SNAPSHOT v3+mech-extract] frame=%llu mechs=%u static_props=%u lights=%u "
