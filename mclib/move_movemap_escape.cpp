@@ -223,8 +223,8 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 	#endif
 
 	if (goalFound) {
-		long curRow = goalCell[0] = (long)bestRow;
-		long curCol = goalCell[1] = (long)bestCol;
+		long curRow = goalCell[0] = bestRow;
+		long curCol = goalCell[1] = bestCol;
 		long numCells = 0;
 		while ((curRow != startR) || (curCol != startC)) {
 			numCells += 1;
@@ -283,8 +283,8 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 #endif
 			path->target = target;
 			path->cost = map[bestRow * maxWidth + bestCol].g;
-			curRow = (long)bestRow;
-			curCol = (long)bestCol;
+			curRow = bestRow;
+			curCol = bestCol;
 			long curCell = numCells;
 			if (doorDirection == -1) {
 				if (goalWorldPos) {
@@ -490,25 +490,25 @@ void MoveMap::destroy (void) {
 	if (map) 
 	{
 		systemHeap->Free(map);
-		map = NULL;
+		map = nullptr;
 	}
 
 	if (mapRowStartTable)
 	{
 		systemHeap->Free(mapRowStartTable);
-		mapRowStartTable = NULL;
+		mapRowStartTable = nullptr;
 	}
 
 	if (mapRowTable)
 	{
 		systemHeap->Free(mapRowTable);
-		mapRowTable = NULL;
+		mapRowTable = nullptr;
 	}
 
 	if (mapColTable)
 	{
 		systemHeap->Free(mapColTable);
-		mapColTable = NULL;
+		mapColTable = nullptr;
 	}
 
 }

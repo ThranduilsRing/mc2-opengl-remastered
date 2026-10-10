@@ -157,7 +157,7 @@ long isAssignTypeCompatible (TypePtr type1, TypePtr type2) {
 
 TypePtr variable (SymTableNodePtr variableIdPtr) {
 
-	TypePtr typePtr = (TypePtr)(variableIdPtr->typePtr);
+	TypePtr typePtr = variableIdPtr->typePtr;
 	DefinitionType defnKey = variableIdPtr->defn.key;
 
 	crunchSymTableNodePtr(variableIdPtr);
@@ -199,9 +199,9 @@ TypePtr variable (SymTableNodePtr variableIdPtr) {
 
 TypePtr arraySubscriptList (TypePtr typePtr) {
 
-	TypePtr indexTypePtr = NULL;
-	TypePtr elementTypePtr = NULL;
-	TypePtr subscriptTypePtr = NULL;
+	TypePtr indexTypePtr = nullptr;
+	TypePtr elementTypePtr = nullptr;
+	TypePtr subscriptTypePtr = nullptr;
 
 	do {
 		if (typePtr->form == FRM_ARRAY) {
@@ -234,10 +234,10 @@ TypePtr arraySubscriptList (TypePtr typePtr) {
 
 TypePtr factor (void) {
 
-	TypePtr thisType = NULL;
+	TypePtr thisType = nullptr;
 	switch (curToken) {
 		case TKN_IDENTIFIER: {
-			SymTableNodePtr IdPtr = NULL;
+			SymTableNodePtr IdPtr = nullptr;
 			searchAndFindAllSymTables(IdPtr);
 			switch (IdPtr->defn.key) {
 				case DFN_FUNCTION:
@@ -248,10 +248,10 @@ TypePtr factor (void) {
 				case DFN_CONST:
 					crunchSymTableNodePtr(IdPtr);
 					getToken();
-					thisType = (TypePtr)(IdPtr->typePtr);
+					thisType = IdPtr->typePtr;
 					break;
 				default:
-					thisType = (TypePtr)variable(IdPtr);
+					thisType = variable(IdPtr);
 					break;
 			}
 			}
@@ -262,12 +262,12 @@ TypePtr factor (void) {
 				thisNode = enterSymTable(tokenString, &SymTableDisplay[1]);
 			if (curLiteral.type == LIT_INTEGER) {
 				thisNode->typePtr = IntegerTypePtr;
-				thisType = (TypePtr)(thisNode->typePtr);
+				thisType = thisNode->typePtr;
 				thisNode->defn.info.constant.value.integer = curLiteral.value.integer;
 				}
 			else {
 				thisNode->typePtr = RealTypePtr;
-				thisType = (TypePtr)(thisNode->typePtr);
+				thisType = thisNode->typePtr;
 				thisNode->defn.info.constant.value.real = curLiteral.value.real;
 			}
 			crunchSymTableNodePtr(thisNode);

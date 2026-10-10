@@ -39,7 +39,7 @@ void TG_Shape::MultiTransformShadows (Stuff::Point3D *pos, Stuff::LinearMatrix4D
 		// Use formula form Blinn-Trip Down the Graphics Pipeline-Chapter 6
 		for (long i=0;i<s_numLights;i++)
 		{
-			if ((s_listOfLights[i] != NULL) && (s_listOfLights[i]->active) && (shadowNum < MAX_SHADOWS))
+			if ((s_listOfLights[i] != nullptr) && (s_listOfLights[i]->active) && (shadowNum < MAX_SHADOWS))
 			{
 				switch (s_listOfLights[i]->lightType)
 				{

@@ -13,7 +13,7 @@
 //#############################################################################
 
 MLR_I_C_DT_PMesh::ClassData*
-	MLR_I_C_DT_PMesh::DefaultData = NULL;
+	MLR_I_C_DT_PMesh::DefaultData = nullptr;
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
@@ -44,7 +44,7 @@ void
 {
 	Unregister_Object(DefaultData);
 	delete DefaultData;
-	DefaultData = NULL;
+	DefaultData = nullptr;
 
 	#if defined(TRACE_ENABLED) && defined(MLR_TRACE)
 		Unregister_Object(MLR_I_C_DT_PMesh_Clip);
@@ -355,7 +355,7 @@ MLR_I_C_DT_PMesh*
 
 	ret->FindFacePlanes();
 
-	if(eightColors!=NULL)
+	if(eightColors!=nullptr)
 	{
 #if COLOR_AS_DWORD
 		DWORD *dwColor = new DWORD [8];
@@ -383,7 +383,7 @@ MLR_I_C_DT_PMesh*
 		texCoords[i] = Vector2DScalar(0.0f, 0.0f);
 	}
 
-	if(state != NULL)
+	if(state != nullptr)
 	{
 		ret->SetReferenceState(*state);
 		if(state->GetTextureHandle() > 0)
@@ -464,7 +464,7 @@ MLRShape*
 	Point3D *coords = new Point3D [nrTri*3];
 	Register_Pointer(coords);
 	
-	Point3D *collapsedCoords = NULL;
+	Point3D *collapsedCoords = nullptr;
 	if(icoInfo.indexed==true)
 	{
 		collapsedCoords = new Point3D [nrTri*3];
@@ -534,7 +534,7 @@ MLRShape*
 
 		mesh->FindFacePlanes();
 
-		if(state == NULL)
+		if(state == nullptr)
 		{
 			for(i=0;i<2*uniquePoints;i++)
 			{

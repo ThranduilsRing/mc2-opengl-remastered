@@ -615,7 +615,7 @@ long FitIniFile::readIdString (const char *varName, char *result, unsigned long 
 
 		
 
-		char* pFound = NULL;
+		char* pFound = nullptr;
 		char* pFirstEqual = strstr( equalSign, "\"" );
 		// strings can span more than one line, make sure there is another equal sign
 		if ( pFirstEqual && !strstr( pFirstEqual+1, "\"" ) ) 

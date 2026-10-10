@@ -67,7 +67,7 @@ void _TG_Animation::LoadBinaryCopy (File *binFile)
 		binFile->read((MemoryPtr)quat,quatRAM);	
 	}
 	else
-		quat = NULL;
+		quat = nullptr;
 		
 	if (posRAM)
 	{
@@ -75,7 +75,7 @@ void _TG_Animation::LoadBinaryCopy (File *binFile)
 		binFile->read((MemoryPtr)pos,posRAM);	
 	}
 	else
-		pos = NULL;
+		pos = nullptr;
 }
 
 //-------------------------------------------------------------------------------
@@ -100,7 +100,7 @@ long TG_AnimateShape::LoadBinaryCopy (const char *fileName)
 				listOfAnimation[i].LoadBinaryCopy(&binFile);
 		}
 		else
-			listOfAnimation = NULL;
+			listOfAnimation = nullptr;
 	}
 	else
 	{
@@ -148,20 +148,20 @@ void TG_AnimateShape::destroy (void)
 		for ( int i = 0; i < count; ++i )
 		{
 			TG_Shape::tglHeap->Free( listOfAnimation[i].pos );
-			listOfAnimation[i].pos = NULL;
+			listOfAnimation[i].pos = nullptr;
 
 			TG_Shape::tglHeap->Free( listOfAnimation[i].quat );
-			listOfAnimation[i].quat = NULL;
+			listOfAnimation[i].quat = nullptr;
 		}
 
 		if (listOfAnimation)
 			TG_Shape::tglHeap->Free(listOfAnimation);
 			
-		listOfAnimation = NULL;
+		listOfAnimation = nullptr;
 	}
 }	
 
-FilePtr tglLogFile = (FilePtr)NULL;
+FilePtr tglLogFile = (FilePtr)nullptr;
 
 //-------------------------------------------------------------------------------
 //This function loads the animation data contained in the file passed in.
@@ -330,7 +330,7 @@ long TG_AnimateShape::LoadTGMultiShapeAnimationFromASE (const char *fileName, TG
 	
 			char nodeName[512];
 			sprintf(nodeName,"*NODE_NAME \"%s\"",nodeId);
-			while (animScan != NULL)
+			while (animScan != nullptr)
 			{
 				animScan += strlen(ASE_ANIMATION)+1;
 	
@@ -340,7 +340,7 @@ long TG_AnimateShape::LoadTGMultiShapeAnimationFromASE (const char *fileName, TG
 				char nextLine[1024];
 				GetNextLine(animScan,nextLine);
 	
-				if (strstr(nextLine,nodeName) == NULL)
+				if (strstr(nextLine,nodeName) == nullptr)
 				{
 					animScan = strstr(animScan,ASE_ANIMATION);
 				}
@@ -351,15 +351,15 @@ long TG_AnimateShape::LoadTGMultiShapeAnimationFromASE (const char *fileName, TG
 				}
 			}
 	
-			if (animScan == NULL)
+			if (animScan == nullptr)
 			{
 				//No Animation Data for this Node.
 				strcpy(listOfAnimation[i].nodeId,"NONE");
 				listOfAnimation[i].numFrames = numFrames;
 				listOfAnimation[i].frameRate = frameRate;
 				listOfAnimation[i].tickRate = tickRate;
-				listOfAnimation[i].quat = NULL;
-				listOfAnimation[i].pos = NULL;
+				listOfAnimation[i].quat = nullptr;
+				listOfAnimation[i].pos = nullptr;
 				listOfAnimation[i].shapeId = 0xffffffff;
 			}
 			else
@@ -369,8 +369,8 @@ long TG_AnimateShape::LoadTGMultiShapeAnimationFromASE (const char *fileName, TG
 				listOfAnimation[i].numFrames = numFrames;
 				listOfAnimation[i].frameRate = frameRate;
 				listOfAnimation[i].tickRate = tickRate;
-				listOfAnimation[i].quat = NULL;
-				listOfAnimation[i].pos = NULL;
+				listOfAnimation[i].quat = nullptr;
+				listOfAnimation[i].pos = nullptr;
 				listOfAnimation[i].shapeId = 0xffffffff;
 
 				//---------------------------------
@@ -385,7 +385,7 @@ long TG_AnimateShape::LoadTGMultiShapeAnimationFromASE (const char *fileName, TG
 				// Then the very NEXT LINE most be POS_TRACK data OR
 				// there is ONLY rotational Data for this node.
 				GetNextLine(animScan,nextLine);
-				if (strstr(nextLine,ASE_ANIM_POS_HEADER) != NULL)
+				if (strstr(nextLine,ASE_ANIM_POS_HEADER) != nullptr)
 				{
 					animScan = strstr(animScan,ASE_ANIM_POS_HEADER);
 					if (animScan)
@@ -453,7 +453,7 @@ long TG_AnimateShape::LoadTGMultiShapeAnimationFromASE (const char *fileName, TG
 				// Then the very NEXT LINE most be POS_TRACK data OR
 				// there is ONLY rotational Data for this node.
 				GetNextLine(animScan,nextLine);
-				if (strstr(nextLine,ASE_ANIM_ROT_HEADER) != NULL)
+				if (strstr(nextLine,ASE_ANIM_ROT_HEADER) != nullptr)
 				{
 					animScan = scanStart;
 					timeStamp = firstFrame * tickRate;
@@ -517,10 +517,10 @@ long TG_AnimateShape::LoadTGMultiShapeAnimationFromASE (const char *fileName, TG
 								//--------------------------------------------
 								// MAX Writes out Quaternions as Angle, Axis.
 								// Must Convert to real quaternion here.
-								thisFrame.w = (float)cos(phi / 2.0f);
-								thisFrame.x = b * (float)sin(phi / 2.0f);
-								thisFrame.y = d * (float)sin(-phi / 2.0f);
-								thisFrame.z = c * (float)sin(-phi / 2.0f);
+								thisFrame.w = cos(phi / 2.0f);
+								thisFrame.x = b * sin(phi / 2.0f);
+								thisFrame.y = d * sin(-phi / 2.0f);
+								thisFrame.z = c * sin(-phi / 2.0f);
 							}
 							else
 							{
@@ -553,7 +553,7 @@ long TG_AnimateShape::LoadTGMultiShapeAnimationFromASE (const char *fileName, TG
 		}
 	
 		free(aseContents);
-		aseContents = NULL;
+		aseContents = nullptr;
 		
 		SaveBinaryCopy(binaryFileName);
 	}

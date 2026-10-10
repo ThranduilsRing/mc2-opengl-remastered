@@ -109,7 +109,7 @@ void GlobalMap::calcAreaDoors (void) {
 			getAreaDoors(area, areas_doors[area]);
 			}
 		else
-			areas_doors[area] = NULL;
+			areas_doors[area] = nullptr;
 	}
 }
 
@@ -194,7 +194,7 @@ long GlobalMap::calcLinkCost (long startDoor, long thruArea, long goalDoor) {
 					   SECTOR_DIM,
 					   SECTOR_DIM,
 					   hover ? 1 : 0,
-					   NULL,
+					   nullptr,
 					   startRow,
 					   startCol,
 					   goalWorldPos,
@@ -205,7 +205,7 @@ long GlobalMap::calcLinkCost (long startDoor, long thruArea, long goalDoor) {
 					   8,
 					   MOVEPARAM_NONE);
 		int goalCell[2];
-		PathFindMap[SECTOR_PATHMAP]->calcPath(&newPath, NULL, goalCell);
+		PathFindMap[SECTOR_PATHMAP]->calcPath(&newPath, nullptr, goalCell);
 		ClearBridgeTiles = false;
 	}
 
@@ -248,7 +248,7 @@ void GlobalMap::calcDoorLinks (void) {
 		DoorInfoLinksPtr& thisDoor_links = doors_links[d];
 		for (long s = 0; s < 2; s++) {
 			thisDoor->numLinks[s] = 0;
-			thisDoor_links[s] = NULL;
+			thisDoor_links[s] = nullptr;
 
 			long area = thisDoor->area[s];
 			long areaNumDoors = areas[area].numDoors;
@@ -393,7 +393,7 @@ bool GlobalMap::getAdjacentAreaCell (long area, long adjacentArea, long& cellRow
 		long doorSide = areas_doors[area][i].doorSide;
 		if (doors[doorIndex].area[doorSide % 1] == adjacentArea) {
 			if ((doors[doorIndex].area[0] != area) && (doors[doorIndex].area[1] != area))
-				STOP(("bad adjacent area door", 0));
+				STOP(("bad adjacent area door", nullptr));
 			long goalSide = (doors[doorIndex].area[1] == adjacentArea);
 			cellRow = doors[doorIndex].row;
 			cellCol = doors[doorIndex].col;
@@ -422,7 +422,7 @@ Stuff::Vector3D GlobalMap::getDoorWorldPos (long area, long door, long* prevGoal
 	pos.Zero();
 	pos.x = (float)cellC * Terrain::worldUnitsPerCell + Terrain::worldUnitsPerCell / 2 - Terrain::worldUnitsMapSide / 2;
 	pos.y = (Terrain::worldUnitsMapSide / 2) - ((float)cellR * Terrain::worldUnitsPerCell) - Terrain::worldUnitsPerCell / 2;
-	pos.z = (float)land->getTerrainElevation(pos); // How do we get the elevation for this point? Do we care?
+	pos.z = land->getTerrainElevation(pos); // How do we get the elevation for this point? Do we care?
 	return(pos);
 }
 
@@ -444,11 +444,11 @@ long GlobalMap::build (MissionMapCellInfo* mapData) {
 	numSpecialAreas = 0;
 	if (specialAreas) {
 		systemHeap->Free(specialAreas);
-		specialAreas = NULL;
+		specialAreas = nullptr;
 	}
 	if (mapData) {
 		specialAreas = (GlobalSpecialAreaInfo*)systemHeap->Malloc(sizeof(GlobalSpecialAreaInfo) * MAX_SPECIAL_AREAS);
-		if (specialAreas == NULL)
+		if (specialAreas == nullptr)
 			Fatal(0, " GlobalMap.build: unable to malloc specialAreas ");
 		calcSpecialAreas(mapData);
 	}
@@ -471,7 +471,7 @@ long GlobalMap::build (MissionMapCellInfo* mapData) {
 
 	if (specialAreas) {
 		systemHeap->Free(specialAreas);
-		specialAreas = NULL;
+		specialAreas = nullptr;
 	}
 
 	return(NO_ERR);	

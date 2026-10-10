@@ -83,7 +83,7 @@ void BitFlag::resetAll (unsigned long initialValue)
 void BitFlag::destroy (void)
 {
 	delete flagHeap;
-	flagHeap = NULL;
+	flagHeap = nullptr;
 	
 	init();
 }	
@@ -266,8 +266,8 @@ long ByteFlag::init (unsigned long numRows, unsigned long numColumns, unsigned l
 	flagWindow->buffer = flagHeap->getHeapPtr();
 	flagWindow->x_max = numColumns-1;
 	flagWindow->y_max = numRows-1;
-	flagWindow->stencil = NULL;
-	flagWindow->shadow = NULL;
+	flagWindow->stencil = nullptr;
+	flagWindow->shadow = nullptr;
 		
 	return(NO_ERR);
 }	
@@ -373,13 +373,13 @@ void ByteFlag::resetAll (unsigned long initialValue)
 void ByteFlag::destroy (void)
 {
 	delete flagHeap;
-	flagHeap = NULL;
+	flagHeap = nullptr;
 
 	delete flagPane;
 	delete flagWindow;
 
-	flagPane = NULL;
-	flagWindow = NULL;
+	flagPane = nullptr;
+	flagWindow = nullptr;
 	
 	init();
 }	

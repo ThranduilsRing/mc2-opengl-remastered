@@ -13,7 +13,7 @@
 //#############################################################################
 
 MLR_I_DT_PMesh::ClassData*
-	MLR_I_DT_PMesh::DefaultData = NULL;
+	MLR_I_DT_PMesh::DefaultData = nullptr;
 
 DynamicArrayOf<Vector2DScalar>
 	*MLR_I_DT_PMesh::clipExtraTexCoords2;
@@ -63,7 +63,7 @@ void
 
 	Unregister_Object(DefaultData);
 	delete DefaultData;
-	DefaultData = NULL;
+	DefaultData = nullptr;
 
 	#if defined(TRACE_ENABLED) && defined(MLR_TRACE)
 		Unregister_Object(MLR_I_DT_PMesh_Clip);
@@ -299,7 +299,7 @@ MLR_I_DT_PMesh*
 	// sebi: ORIG BUG FIX
 	//texCoords[16] = Vector2DScalar(0.0f, 0.0f);
 
-	if(state != NULL)
+	if(state != nullptr)
 	{
 		ret->SetReferenceState(*state);
 		if(state->GetTextureHandle() > 0)
@@ -316,7 +316,7 @@ MLR_I_DT_PMesh*
 		}
 	}
 
-	if(state2 != NULL)
+	if(state2 != nullptr)
 	{
 		ret->SetReferenceState(*state, 1);
 		if(state2->GetTextureHandle() > 0)
@@ -384,7 +384,7 @@ MLRShape*
 	Point3D *coords = new Point3D [nrTri*3];
 	Register_Pointer(coords);
 	
-	Point3D *collapsedCoords = NULL;
+	Point3D *collapsedCoords = nullptr;
 	if(icoInfo.indexed==true)
 	{
 		collapsedCoords = new Point3D [nrTri*3];
@@ -452,7 +452,7 @@ MLRShape*
 
 		mesh->FindFacePlanes();
 
-		if(state == NULL)
+		if(state == nullptr)
 		{
 			for(i=0;i<2*uniquePoints;i++)
 			{

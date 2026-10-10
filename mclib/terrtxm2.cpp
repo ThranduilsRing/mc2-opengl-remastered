@@ -29,23 +29,23 @@ DWORD			TerrainColorMap::terrainTypeIDs[ TOTAL_COLORMAP_TYPES ] =
 // Class TerrainColorMap
 void TerrainColorMap::init (void)
 {
-	ColorMap = NULL;
-	colorMapHeap = NULL;
-	colorMapRAMHeap = NULL;
+	ColorMap = nullptr;
+	colorMapHeap = nullptr;
+	colorMapRAMHeap = nullptr;
 	
 	numTextures = 0;
-	textures = NULL;
-	txmRAM = NULL;
+	textures = nullptr;
+	txmRAM = nullptr;
 	
 	numTexturesAcross = fractionPerTexture = 0.0f;
 	
 	colorMapStarted = false;
 	
-	detailTextureRAM = NULL;
+	detailTextureRAM = nullptr;
 	detailTextureNodeIndex = 0xffffffff;
 	detailTextureTilingFactor = 30.0f;
 
-	waterTextureRAM = NULL;
+	waterTextureRAM = nullptr;
 	waterTextureNodeIndex = 0xffffffff;
 	waterTextureTilingFactor = 48.0f;
 
@@ -61,14 +61,14 @@ void TerrainColorMap::init (void)
 	hGauss = 5.0f;
 	roughDistance = -1.0f;
 
-	normalMapTextures = NULL;
+	normalMapTextures = nullptr;
 	numNormalMapTextures = 0;
 	detailNormalNodeIndex = 0xffffffff;
 	hasNormalMap = false;
 	lastResultTexture = -1;
-	cpuDispAlpha = NULL;
+	cpuDispAlpha = nullptr;
 	cpuDispAlphaSize = 0;
-	cpuColorMap = NULL;
+	cpuColorMap = nullptr;
 	cpuColorMapSize = 0;
 	ktx2ColormapPath[0] = '\0';
 }
@@ -134,7 +134,7 @@ void TerrainColorMap::destroy (void)
 	if (textures)
 	{
 		colorMapHeap->Free(textures);
-		textures = NULL;
+		textures = nullptr;
 	}
 
 	if (txmRAM)
@@ -142,36 +142,36 @@ void TerrainColorMap::destroy (void)
 		for (unsigned long i=0;i<numTextures;i++)
 		{
 			colorMapRAMHeap->Free(txmRAM[i].ourRAM);
-			txmRAM[i].ourRAM = NULL;
+			txmRAM[i].ourRAM = nullptr;
 		}
 		
 		colorMapRAMHeap->Free(txmRAM);
-		txmRAM = NULL;
+		txmRAM = nullptr;
 	}
 
 	if (ColorMap)
 	{
 		colorMapRAMHeap->Free(ColorMap);
-		ColorMap = NULL;
+		ColorMap = nullptr;
 	}
 	
  	if (colorMapHeap)
 	{
 		delete colorMapHeap;
-		colorMapHeap = NULL;
+		colorMapHeap = nullptr;
 	}
 	
  	if (colorMapRAMHeap)
 	{
 		delete colorMapRAMHeap;
-		colorMapRAMHeap = NULL;
+		colorMapRAMHeap = nullptr;
 	}
 	
  	numTextures = 0;
 
-	if (cpuDispAlpha) { free(cpuDispAlpha); cpuDispAlpha = NULL; }
+	if (cpuDispAlpha) { free(cpuDispAlpha); cpuDispAlpha = nullptr; }
 	cpuDispAlphaSize = 0;
-	if (cpuColorMap) { free(cpuColorMap); cpuColorMap = NULL; }
+	if (cpuColorMap) { free(cpuColorMap); cpuColorMap = nullptr; }
 	cpuColorMapSize = 0;
 }
 
@@ -335,7 +335,7 @@ DWORD TerrainColorMap::resolveTextureHandle (VertexPtr vMin, VertexPtr vMax, Ter
 //---------------------------------------------------------------------------
 DWORD TerrainColorMap::getTextureHandle (VertexPtr vMin, VertexPtr vMax, TerrainUVData *uvData)
 {
-	return resolveTextureHandle(vMin, vMax, uvData, NULL, true);
+	return resolveTextureHandle(vMin, vMax, uvData, nullptr, true);
 }
 
 long TerrainColorMap::saveDetailTexture(const char *fileName)
