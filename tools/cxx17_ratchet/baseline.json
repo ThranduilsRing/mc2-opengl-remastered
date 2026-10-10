@@ -55,8 +55,8 @@
    "LG06": 509,
    "LG07": 0,
    "LG08": 274,
-   "LG09": 2162,
-   "LG10": 43,
+   "LG09": 2159,
+   "LG10": 40,
    "LG11": 107,
    "LG12a": 613,
    "LG12b": 115,
@@ -66,8 +66,8 @@
    "LG16": 7,
    "LG17": 81,
    "LG18": 11,
-   "LG19": 13,
-   "LG20": 36
+   "LG19": 8,
+   "LG20": 31
   },
   "GuiRuntime": {
    "LG01": 1,
@@ -1276,12 +1276,9 @@
   "GameOS/gameos/vulkan_post_screenfx_native.cpp": {
    "LG03": 3,
    "LG06": 3,
-   "LG09": 41,
-   "LG10": 3,
+   "LG09": 38,
    "LG11": 1,
-   "LG13": 2,
-   "LG19": 5,
-   "LG20": 5
+   "LG13": 2
   },
   "GameOS/gameos/vulkan_post_ssao_native.cpp": {
    "LG03": 2,
@@ -5787,7 +5784,7 @@
    "LG20": 1
   }
  },
- "head": "21a8866cb",
+ "head": "7a1eca591",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

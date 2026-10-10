@@ -47,6 +47,8 @@
 // The whole TU compiles to nothing unless MC2_VULKAN_ISLAND is defined.
 
 #include "gos_postprocess.h"
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"   // str<>()
 
 #ifdef MC2_VULKAN_ISLAND
 
@@ -128,19 +130,12 @@ void setFallback(const char* reason) {
 }
 
 float shadow_softness_default() {
-    static const float s_s = []() {
-        const char* v = std::getenv("MC2_SHADOW_CSM_SOFTNESS");
-        float s = (v && v[0]) ? (float)std::atof(v) : 0.9f;
-        if (s < 0.1f) s = 0.1f;
-        if (s > 6.0f) s = 6.0f;
-        return s;
-    }();
+    static const float s_s = mc2::gate::get<"MC2_SHADOW_CSM_SOFTNESS">();   // row: default 0.9, clamps to [0.1, 6]
     return s_s;
 }
 
 std::string spv_dir() {
-    const char* env = std::getenv("MC2_VULKAN_SPV_DIR");
-    std::string d = (env && *env) ? env : "shaders/vulkan";
+    std::string d = mc2::gate::str<"MC2_VULKAN_SPV_DIR">();   // row default shaders/vulkan, empty reads the default
     if (!d.empty() && d.back() != '/' && d.back() != '\\') d += '/';
     return d;
 }
@@ -744,8 +739,7 @@ static bool vkPostScreenFxDirectChainEnabled()
 
 bool gosPostProcess::runVkPostScreenShadowStaticNative()
 {
-    const char* shadowEnv = std::getenv("MC2_SHADOW_ENABLE");
-    const bool dynamicCasterActive = !(shadowEnv != nullptr && shadowEnv[0] == '0');   // DEFAULT ON; =0 kill-switch
+    const bool dynamicCasterActive = mc2::gate::get<"MC2_SHADOW_ENABLE">();   // DEFAULT ON; =0 kill-switch
     const bool csmActive = dynamicCasterActive && (dynShadowArrayTex_ != 0);
     const bool csmDirectReady = csmActive
         && mc2_vk_shadow_island_csm_array_ready()
@@ -796,20 +790,9 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
         p.csmDepthSpan = csmDepthSpan_;
         p.dynamicFullMapTexelWorld = dynamicFullMapTexelWorld_;
         p.enableDynamicShadows = 1;
-        p.objNormalBiasScale = []() {
-            const char* v = std::getenv("MC2_SHADOW_OBJ_NORMAL_BIAS");
-            float s = (v && v[0]) ? (float)std::atof(v) : 2.0f;
-            if (s < 0.0f) s = 0.0f;
-            if (s > 20.0f) s = 20.0f;
-            return s;
-        }();
-        p.mechSoft = []() {
-            const char* v = std::getenv("MC2_SHADOW_MECH_SOFT");
-            float s = (v && v[0]) ? (float)std::atof(v) : 1.0f;
-            if (s < 0.0f) s = 0.0f;
-            if (s > 4.0f) s = 4.0f;
-            return s;
-        }();
+        // Same rows as the GL path (gos_postprocess_gates.cpp): default 2, clamps to [0, 16] and default 1, [0, 4].
+        p.objNormalBiasScale = mc2::gate::get<"MC2_SHADOW_OBJ_NORMAL_BIAS">();
+        p.mechSoft = mc2::gate::get<"MC2_SHADOW_MECH_SOFT">();
         float lx = 0.0f, ly = 0.0f, lz = 1.0f;
         gos_GetTerrainLightDir(&lx, &ly, &lz);
         float len = sqrtf(lx*lx + ly*ly + lz*lz);
