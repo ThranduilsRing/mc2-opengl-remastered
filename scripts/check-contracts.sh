@@ -791,6 +791,10 @@ run_check "gate_default_agreement_selftest" "py -3 scripts/check-gate-default-ag
 # readers it cannot read. Both may only fall. Scans the COMMITTED tree so another lane's dirty
 # working tree cannot flap it. Idiom tests live in scripts/tests (scripts_tests row).
 run_check "gate_reader_conflicts"           "py -3 tools/gate_conflicts.py --check"
+# G4: the VK umbrella members are read only through mc2vkgate::armed<> (never a direct gate::effective<>, which
+# would skip the session fail-soft veto), and the per-call readers stay uncached so a mid-session fail-soft disarms them.
+run_check "vk_umbrella_readers"             "py -3 scripts/check-vk-umbrella-readers.py --quiet"
+run_check "vk_umbrella_readers_selftest"    "py -3 scripts/check-vk-umbrella-readers.py --selftest"
 # GATE-TABLE-G1A (typed-gate-registry G1a, 2026-10-09): the compiled gate table is the truth.
 # gate_gen --check proves Gates/gate_index.gen.h is what Gates/gate_table.json generates, every
 # seed gate is still a row, registered gates agree with the feature registry, and the per-site

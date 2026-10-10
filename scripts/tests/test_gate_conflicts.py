@@ -386,7 +386,7 @@ def test_committed_ledger_covers_every_baseline_conflict():
     for g in base["conflict_gates"]:
         assert ledger.get(g, {}).get("status") in gc.LEDGER_ACCEPTED, g
     for g, e in ledger.items():
-        assert e["status"] in ("resolved", "enum", "divergent", "note"), g
+        assert e["status"] in ("resolved", "enum", "divergent", "note", "intentional-optin"), g
 
 
 # ---------------------------------------------------------------------------
@@ -453,3 +453,48 @@ def test_typed_and_raw_readers_of_one_gate_are_compared(monkeypatch):
                    'bool b = (getenv("MC2_X") != nullptr);\n')
     analysis = gc.analyse_gate(sites)
     assert analysis["disagreements"], "a Presence reader and a Lead0Kill reader of one gate must conflict"
+
+
+# ---------------------------------------------------------------------------
+# VK umbrella members: Typed(effective) is the only allowed reader class
+# ---------------------------------------------------------------------------
+
+def _umbrella_tree(tmp_path, cpp):
+    import json
+    (tmp_path / "Gates").mkdir()
+    (tmp_path / "src").mkdir()
+    table = {"version": 1, "count": 2, "gates": [
+        {"name": "MC2_VK_MEMBER", "kind": "Tri", "inherits": "MC2_VK_UMB"},
+        {"name": "MC2_VK_UMB", "kind": "Bool"}]}
+    (tmp_path / "Gates" / "gate_table.json").write_text(json.dumps(table), encoding="utf-8")
+    (tmp_path / "src" / "a.cpp").write_text(cpp, encoding="utf-8")
+    return gc.Tree(str(tmp_path), None)
+
+
+def test_umbrella_member_read_through_the_adapter_is_typed(tmp_path):
+    t = _umbrella_tree(tmp_path, 'bool f() { return mc2vkgate::armed<"MC2_VK_MEMBER">() '
+                                 '&& mc2vkgate::regionTier1Armed<"MC2_VK_MEMBER">(); }\n')
+    r = gc.umbrella_report(t, ["src"])
+    assert r["members"] == ["MC2_VK_MEMBER"]
+    assert r["typed_sites"] == 2
+    assert r["violations"] == []
+
+
+@pytest.mark.parametrize("code", [
+    'bool f() { const char* v = getenv("MC2_VK_MEMBER"); return v && v[0] == \'1\'; }',
+    'bool f() { return mc2::gate::get<"MC2_VK_MEMBER">() == mc2::gate::Tri::On; }',
+    'bool f() { return mc2vkgate::subGate("MC2_VK_MEMBER"); }',
+])
+def test_umbrella_member_named_any_other_way_is_a_violation(tmp_path, code):
+    t = _umbrella_tree(tmp_path, code + "\n")
+    r = gc.umbrella_report(t, ["src"])
+    assert [v["gate"] for v in r["violations"]] == ["MC2_VK_MEMBER"]
+    rep = {"conflict_gates": [], "totals": {"unclassified_sites": 0, "unresolved_conflicts": 0},
+           "umbrella_violations": r["violations"]}
+    fails = gc.check(rep, {"conflict_gates": [], "unresolved_conflicts": 0, "unclassified_sites": 0})
+    assert any("MC2_VK_MEMBER" in f and "umbrella" in f for f in fails)
+
+
+def test_non_member_gates_are_not_umbrella_readers(tmp_path):
+    t = _umbrella_tree(tmp_path, 'bool f() { return getenv("MC2_VK_UMB") != nullptr; }\n')
+    assert gc.umbrella_report(t, ["src"])["violations"] == []

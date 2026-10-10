@@ -69,18 +69,23 @@ STRICT_ENV = {
     "MC2_VK_SCREENSHADOW_GL_CANARY": "1",
 }
 
-# VK-UMBRELLA-DIRECT-CHAIN-DEFAULT-1 (item-4 prerequisite): the direct-chain gates
-# now default ON under the MC2_VK_SHARED_GBUFFER umbrella. With --minimal-promotion the
-# runner DROPS these from the explicit env so the proof shows the umbrella arming them by
-# default (every island still reports direct_chain=1 used_interop=0). The hardened
-# checker's H5 reconciles the MC2_VK_*_INTEROP producer names via the umbrella
-# (MC2_VK_SHARED_GBUFFER=1). MC2_VK_OBJECTID_DIRECT_CHAIN is NOT a
-# default member (view-mode-only canary) and is retained.
-DIRECT_CHAIN_GATES = (
-    "MC2_VK_PROP_DIRECT_CHAIN",
-    "MC2_VK_WATER_DIRECT_CHAIN",
-    "MC2_VK_POST_COMPOSITE_DIRECT_CHAIN",
-)
+# --minimal-promotion drops every umbrella member from the explicit env, so the proof shows the
+# MC2_VK_SHARED_GBUFFER umbrella alone arming the whole family (every island still reports direct_chain=1
+# used_interop=0). The members are the Tri rows of Gates/gate_table.cpp that declare
+# inherits("MC2_VK_SHARED_GBUFFER"), read from the committed gate table JSON, so a new member is promoted
+# (and proven) without editing this list. The opt-ins (MC2_VK_POST_SSAO, _SCREENFX, _HZB, the *_INTEROP
+# shadow gates, MC2_VK_OBJECTID_DIRECT_CHAIN, ...) are not members and stay explicit. The hardened checker's
+# H5 reconciles the MC2_VK_*_INTEROP producer names via the umbrella (MC2_VK_SHARED_GBUFFER=1).
+
+
+def umbrella_members() -> tuple:
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import gate_table_reader
+    rows = gate_table_reader.gates(Path(__file__).resolve().parents[1])
+    return tuple(sorted(n for n, g in rows.items() if g.get("inherits")))
+
+
+DIRECT_CHAIN_GATES = umbrella_members()
 
 
 def repo_root() -> Path:
@@ -100,8 +105,8 @@ def main() -> int:
     ap.add_argument("--resource-strict", action="store_true",
                     help="Also abort on exportable Win32 resource creation / GL memory import.")
     ap.add_argument("--minimal-promotion", action="store_true",
-                    help="Drop the direct-chain gates from the explicit env so the run "
-                         "proves the MC2_VK_SHARED_GBUFFER umbrella arms them by default.")
+                    help="Drop every umbrella member (the gate table's inherits rows) from the explicit env so "
+                         "the run proves the MC2_VK_SHARED_GBUFFER umbrella alone arms the family.")
     ap.add_argument("--env", action="append", default=[],
                     help="Additional KEY=VALUE environment override. May be passed multiple times.")
     ap.add_argument("--headless", action="store_true")

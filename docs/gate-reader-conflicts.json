@@ -7,11 +7,11 @@
   "DefOnLead0": 1,
   "Exact1": 44,
   "Is01": 2,
-  "Lead0": 193,
+  "Lead0": 189,
   "Lead0Kill": 202,
   "Lead0P": 59,
-  "Lead1": 129,
-  "NonEmpty": 41,
+  "Lead1": 132,
+  "NonEmpty": 40,
   "Num(atof+atoi,raw)": 1,
   "Num(atof,guarded)": 11,
   "Num(atof,raw)": 111,
@@ -20,18 +20,16 @@
   "Num(atol,guarded)": 1,
   "Num(atol,raw)": 21,
   "Num(num,raw)": 2,
-  "Num(strtoul,guarded)": 5,
-  "Num(strtoul,raw)": 3,
+  "Num(strtoul,guarded)": 4,
+  "Num(strtoul,raw)": 2,
   "Partial[D,D,off,on,on,on,on,on]": 1,
   "Partial[D,off,off,off,off,off,off,on]": 1,
   "Partial[D,on,off,on,on,on,on,on]": 4,
-  "Presence": 479,
+  "Presence": 478,
   "Std(def=off)": 14,
   "Std(def=on)": 11,
   "Str[dflt,dflt]": 3,
-  "Str[null,null]": 1,
-  "Str[null,pass]": 1,
-  "Tri(inherit)": 50
+  "Str[null,null]": 1
  },
  "conflict_gates": [
   "MC2_FX_FORCE_SPAWN",
@@ -43,10 +41,10 @@
  "design_s4": [
   {
    "all_readers": [
-    "GameOS/gameos/gos_mech_batcher.cpp:1167 (Lead0Kill)",
-    "GameOS/gameos/gos_mech_batcher.cpp:1168 (Lead0Kill)",
-    "GameOS/gameos/gos_static_prop_batcher.cpp:9259 (Lead0Kill)",
+    "GameOS/gameos/gos_mech_batcher.cpp:1161 (Lead0Kill)",
+    "GameOS/gameos/gos_mech_batcher.cpp:1162 (Lead0Kill)",
     "GameOS/gameos/gos_static_prop_batcher.cpp:9260 (Lead0Kill)",
+    "GameOS/gameos/gos_static_prop_batcher.cpp:9261 (Lead0Kill)",
     "GameOS/gameos/vulkan_post_screenfx_native.cpp:749 (Lead0Kill)"
    ],
    "gate": "MC2_SHADOW_ENABLE",
@@ -54,13 +52,13 @@
    "note": "",
    "sites": [
     {
-     "actual": "GameOS/gameos/gos_mech_batcher.cpp:1167",
+     "actual": "GameOS/gameos/gos_mech_batcher.cpp:1162",
      "claim": "GameOS/gameos/gos_mech_batcher.cpp:1167",
      "class": "Lead0Kill",
-     "verdict": "confirmed"
+     "verdict": "corrected"
     },
     {
-     "actual": "GameOS/gameos/gos_static_prop_batcher.cpp:9260",
+     "actual": "GameOS/gameos/gos_static_prop_batcher.cpp:9261",
      "claim": "GameOS/gameos/gos_static_prop_batcher.cpp:9290",
      "class": "Lead0Kill",
      "verdict": "corrected"
@@ -103,25 +101,22 @@
    ]
   },
   {
-   "all_readers": [
-    "GameOS/gameos/gos_terrain_lod_chunk.cpp:1655 (Tri(inherit))",
-    "GameOS/gameos/gos_terrain_lod_chunk.cpp:1696 (Tri(inherit))"
-   ],
+   "all_readers": [],
    "gate": "MC2_VK_TERRAIN_CSM",
    "in_conflict": false,
    "note": "",
    "sites": [
     {
-     "actual": "GameOS/gameos/gos_terrain_lod_chunk.cpp:1696",
+     "actual": "",
      "claim": "GameOS/gameos/gos_terrain_lod_chunk.cpp:1858",
-     "class": "Tri(inherit)",
-     "verdict": "corrected"
+     "class": "",
+     "verdict": "not-found"
     },
     {
-     "actual": "GameOS/gameos/gos_terrain_lod_chunk.cpp:1696",
+     "actual": "",
      "claim": "GameOS/gameos/gos_terrain_lod_chunk.cpp:1900",
-     "class": "Tri(inherit)",
-     "verdict": "corrected"
+     "class": "",
+     "verdict": "not-found"
     }
    ]
   },
@@ -177,20 +172,20 @@
   {
    "all_readers": [
     "GameOS/gameos/debug_state_dump.cpp:482 (Lead0Kill)",
-    "GameOS/gameos/gos_static_prop_batcher.cpp:239 (Lead0Kill)"
+    "GameOS/gameos/gos_static_prop_batcher.cpp:240 (Lead0Kill)"
    ],
    "gate": "MC2_SNAPSHOT_STATIC_PROP_BUILD",
    "in_conflict": false,
    "note": "the editor's `!getenv(..)` write-guard counts as a Presence reader; the design's ordering hazard stands",
    "sites": [
     {
-     "actual": "GameOS/gameos/gos_static_prop_batcher.cpp:239",
+     "actual": "GameOS/gameos/gos_static_prop_batcher.cpp:240",
      "claim": "GameOS/gameos/gos_static_prop_batcher.cpp:246",
      "class": "Lead0Kill",
      "verdict": "corrected"
     },
     {
-     "actual": "GameOS/gameos/gos_static_prop_batcher.cpp:239",
+     "actual": "GameOS/gameos/gos_static_prop_batcher.cpp:240",
      "claim": "GameOS/gameos/gos_static_prop_batcher.cpp:247",
      "class": "Lead0Kill",
      "verdict": "corrected"
@@ -338,9 +333,9 @@
    "gate": "MC2_FX_FORCE_SPAWN",
    "in_conflict": true,
    "readers": [
-    "code/warrior.cpp:2133 Lead0P",
-    "code/warrior.cpp:2133 Lead0P",
-    "code/warrior.cpp:2139 Custom[00000001]"
+    "code/warrior.cpp:2134 Lead0P",
+    "code/warrior.cpp:2134 Lead0P",
+    "code/warrior.cpp:2140 Custom[00000001]"
    ],
    "rule": "levels: 0 off, 1 fire once, loop/2-9 continuous",
    "status": "enum"
@@ -388,8 +383,8 @@
     "GameOS/gameos/debug_state_dump.cpp:483 Lead0Kill",
     "GameOS/gameos/gameosmain.cpp:1334 Lead0Kill",
     "GameOS/gameos/gos_materials.cpp:46 Lead0Kill",
-    "GameOS/gameos/gos_mech_batcher.cpp:683 Lead0Kill",
-    "GameOS/gameos/gos_static_prop_batcher.cpp:813 Lead0Kill"
+    "GameOS/gameos/gos_mech_batcher.cpp:677 Lead0Kill",
+    "GameOS/gameos/gos_static_prop_batcher.cpp:814 Lead0Kill"
    ],
    "rule": "Lead0Kill (default ON, =0 disables)",
    "status": "resolved"
@@ -424,7 +419,7 @@
    "gate": "MC2_SHADER_HOT_RELOAD",
    "in_conflict": false,
    "readers": [
-    "GameOS/gameos/gameos_graphics.cpp:6068 Lead1",
+    "GameOS/gameos/gameos_graphics.cpp:6064 Lead1",
     "GameOS/gameos/gameosmain.cpp:1275 Lead1",
     "GameOS/gameos/gameosmain.cpp:1275 Lead1",
     "GameOS/gameos/utils/shader_builder.cpp:422 Lead1"
@@ -438,7 +433,7 @@
    "gate": "MC2_SHADOW_DYNAMIC_PROP_CASTERS",
    "in_conflict": true,
    "readers": [
-    "GameOS/gameos/gos_static_prop_batcher.cpp:9776 Custom[00000001]",
+    "GameOS/gameos/gos_static_prop_batcher.cpp:9777 Custom[00000001]",
     "mclib/txmmgr.cpp:3674 Lead0Kill",
     "mclib/txmmgr.cpp:3675 Lead0Kill"
    ],
@@ -451,10 +446,10 @@
    "gate": "MC2_SHADOW_ENABLE",
    "in_conflict": false,
    "readers": [
-    "GameOS/gameos/gos_mech_batcher.cpp:1167 Lead0Kill",
-    "GameOS/gameos/gos_mech_batcher.cpp:1168 Lead0Kill",
-    "GameOS/gameos/gos_static_prop_batcher.cpp:9259 Lead0Kill",
+    "GameOS/gameos/gos_mech_batcher.cpp:1161 Lead0Kill",
+    "GameOS/gameos/gos_mech_batcher.cpp:1162 Lead0Kill",
     "GameOS/gameos/gos_static_prop_batcher.cpp:9260 Lead0Kill",
+    "GameOS/gameos/gos_static_prop_batcher.cpp:9261 Lead0Kill",
     "GameOS/gameos/vulkan_post_screenfx_native.cpp:749 Lead0Kill"
    ],
    "rule": "Lead0Kill (default ON, =0 disables)",
@@ -467,7 +462,7 @@
    "in_conflict": false,
    "readers": [
     "GameOS/gameos/debug_state_dump.cpp:593 Lead0",
-    "GameOS/gameos/gos_mech_batcher.cpp:2958 Lead0",
+    "GameOS/gameos/gos_mech_batcher.cpp:2952 Lead0",
     "GameOS/gameos/render_snapshot.cpp:245 Lead0"
    ],
    "rule": "Lead0",
@@ -480,7 +475,7 @@
    "in_conflict": false,
    "readers": [
     "GameOS/gameos/debug_state_dump.cpp:482 Lead0Kill",
-    "GameOS/gameos/gos_static_prop_batcher.cpp:239 Lead0Kill"
+    "GameOS/gameos/gos_static_prop_batcher.cpp:240 Lead0Kill"
    ],
    "rule": "Lead0Kill (default ON, =0 disables)",
    "status": "resolved"
@@ -503,7 +498,7 @@
    "gate": "MC2_STATIC_PROP_BUILDING_SHADOW",
    "in_conflict": true,
    "readers": [
-    "GameOS/gameos/gos_static_prop_batcher.cpp:9568 Custom[00000001]",
+    "GameOS/gameos/gos_static_prop_batcher.cpp:9569 Custom[00000001]",
     "mclib/bdactor.cpp:5562 Lead0P",
     "mclib/txmmgr.cpp:3517 Lead0P",
     "mclib/txmmgr.cpp:3518 Lead0P",
@@ -533,9 +528,9 @@
    "gate": "MC2_STATIC_PROP_TRACE",
    "in_conflict": false,
    "readers": [
-    "GameOS/gameos/gos_static_prop_batcher.cpp:5896 Lead0",
     "GameOS/gameos/gos_static_prop_batcher.cpp:5897 Lead0",
     "GameOS/gameos/gos_static_prop_batcher.cpp:5898 Lead0",
+    "GameOS/gameos/gos_static_prop_batcher.cpp:5899 Lead0",
     "GameOS/gameos/gos_static_prop_registry.cpp:138 Lead0"
    ],
    "rule": "Lead0",
@@ -560,7 +555,7 @@
    "gate": "MC2_TERRAIN_DETAIL_MACRO_STRENGTH",
    "in_conflict": false,
    "readers": [
-    "GameOS/gameos/gameos_graphics.cpp:7269 Num(atof,raw)",
+    "GameOS/gameos/gameos_graphics.cpp:7264 Num(atof,raw)",
     "GameOS/gameos/gos_terrain_lod_chunk.cpp:876 Typed(get)"
    ],
    "rule": "owner decision: legacy path defaults 0.35, chunk path defaults 0.0",
@@ -584,7 +579,7 @@
    "gate": "MC2_TERRAIN_MATERIAL_LIB",
    "in_conflict": false,
    "readers": [
-    "GameOS/gameos/gameos_graphics.cpp:364 Lead0",
+    "GameOS/gameos/gameos_graphics.cpp:361 Lead0",
     "GameOS/gameos/terrain_material_lib.cpp:231 Lead0"
    ],
    "rule": "Lead0",
@@ -630,44 +625,128 @@
    "status": "resolved"
   },
   {
+   "delta": "none (the umbrella ruling covers the 25 inherits rows only)",
+   "evidence": "CSM array direct view; documented parity hazard, never armed by the umbrella",
+   "gate": "MC2_VK_CSM_ARRAY_INTEROP",
+   "in_conflict": false,
+   "readers": [
+    "GameOS/gameos/vulkan_shadow_island_live.cpp:147 Lead1"
+   ],
+   "rule": "Lead1 explicit opt-in",
+   "status": "intentional-optin"
+  },
+  {
+   "delta": "none (the umbrella ruling covers the 25 inherits rows only)",
+   "evidence": "CSM full-map direct view; documented parity hazard, never armed by the umbrella",
+   "gate": "MC2_VK_CSM_FULLMAP_INTEROP",
+   "in_conflict": false,
+   "readers": [
+    "GameOS/gameos/vulkan_shadow_island_live.cpp:139 Lead1"
+   ],
+   "rule": "Lead1 explicit opt-in",
+   "status": "intentional-optin"
+  },
+  {
+   "delta": "none (the umbrella ruling covers the 25 inherits rows only)",
+   "evidence": "ImGui Vulkan renderer: a tooling path, not scene content",
+   "gate": "MC2_VK_IMGUI",
+   "in_conflict": false,
+   "readers": [
+    "GuiRuntime/GuiRuntime.cpp:97 Lead1"
+   ],
+   "rule": "Lead1 explicit opt-in",
+   "status": "intentional-optin"
+  },
+  {
+   "delta": "none (the umbrella ruling covers the 25 inherits rows only)",
+   "evidence": "native HZB is an enhancement; absence leaves the GL build intact",
+   "gate": "MC2_VK_POST_HZB",
+   "in_conflict": false,
+   "readers": [
+    "GameOS/gameos/vulkan_post_hzb_native.cpp:604 Exact1"
+   ],
+   "rule": "Exact1 explicit opt-in",
+   "status": "intentional-optin"
+  },
+  {
+   "delta": "none (the umbrella ruling covers the 25 inherits rows only)",
+   "evidence": "native screenfx is an enhancement; absence leaves the GL chain intact",
+   "gate": "MC2_VK_POST_SCREENFX",
+   "in_conflict": false,
+   "readers": [
+    "GameOS/gameos/vulkan_post_screenfx_native.cpp:717 Exact1"
+   ],
+   "rule": "Exact1 explicit opt-in",
+   "status": "intentional-optin"
+  },
+  {
+   "delta": "none (the umbrella ruling covers the 25 inherits rows only)",
+   "evidence": "native SSAO is an enhancement; absence leaves the GL SSAO chain intact",
+   "gate": "MC2_VK_POST_SSAO",
+   "in_conflict": false,
+   "readers": [
+    "GameOS/gameos/vulkan_post_ssao_native.cpp:678 Exact1"
+   ],
+   "rule": "Exact1 explicit opt-in",
+   "status": "intentional-optin"
+  },
+  {
    "delta": "none: the island's deprecation-note reader is deleted (prop is unconditionally direct-chain)",
    "evidence": "owner ruling: the umbrella is canonical",
    "gate": "MC2_VK_PROP_DIRECT_CHAIN",
    "in_conflict": false,
-   "readers": [
-    "GameOS/gameos/engine_present_vk.cpp:296 Tri(inherit)",
-    "GameOS/gameos/vk_shared_gbuffer_gate.h:146 Tri(inherit)"
-   ],
+   "readers": [],
    "rule": "Tri: explicit 1/0 wins, else inherit the umbrella",
    "status": "resolved"
+  },
+  {
+   "delta": "none (the umbrella ruling covers the 25 inherits rows only)",
+   "evidence": "shadow island; documented parity hazard (mech shadows parked), never armed by the umbrella",
+   "gate": "MC2_VK_SHADOW_INTEROP",
+   "in_conflict": false,
+   "readers": [
+    "GameOS/gameos/vulkan_shadow_island_live.cpp:131 Lead1"
+   ],
+   "rule": "Lead1 explicit opt-in",
+   "status": "intentional-optin"
   },
   {
    "delta": "the near-cascade subset check now inherits the umbrella; it still also requires MC2_VK_TERRAIN_CSM_FULLMAP_EXPERIMENTAL=1, so the default render is unchanged",
    "evidence": "owner ruling; VK captures unchanged",
    "gate": "MC2_VK_TERRAIN_CSM",
    "in_conflict": false,
-   "readers": [
-    "GameOS/gameos/gos_terrain_lod_chunk.cpp:1655 Tri(inherit)",
-    "GameOS/gameos/gos_terrain_lod_chunk.cpp:1696 Tri(inherit)"
-   ],
+   "readers": [],
    "rule": "Tri (subGate): explicit 1/0 wins, else inherit the umbrella",
    "status": "resolved"
+  },
+  {
+   "delta": "none (the umbrella ruling covers the 25 inherits rows only)",
+   "evidence": "umbrella does not arm it: the GL chunk terrain has no distance detail fade, so the armed fade left VK ground ~15% darker (VK-PARITY-F3)",
+   "gate": "MC2_VK_TERRAIN_LODFADE",
+   "in_conflict": false,
+   "readers": [
+    "GameOS/gameos/gos_terrain_lod_chunk.cpp:1835 Exact1"
+   ],
+   "rule": "Exact1 explicit opt-in",
+   "status": "intentional-optin"
+  },
+  {
+   "delta": "none (the umbrella ruling covers the 25 inherits rows only)",
+   "evidence": "far-band displaced patches stay GL-owned unless asked for (absence leaves geometry intact)",
+   "gate": "MC2_VK_TERRAIN_VISUALDISPLACE_FAR",
+   "in_conflict": false,
+   "readers": [
+    "GameOS/gameos/vulkan_terrain_island.cpp:251 Exact1"
+   ],
+   "rule": "Exact1 explicit opt-in",
+   "status": "intentional-optin"
   },
   {
    "delta": "none: the HUD indexed-draw route now reads the same sub-gate through a named local",
    "evidence": "owner ruling",
    "gate": "MC2_VK_VFX",
    "in_conflict": false,
-   "readers": [
-    "GameOS/gameos/gameos_graphics.cpp:7591 Tri(inherit)",
-    "GameOS/gameos/gameos_graphics.cpp:8420 Tri(inherit)",
-    "GameOS/gameos/vulkan_vfx_island.cpp:434 Tri(inherit)",
-    "code/gamecam.cpp:732 Tri(inherit)",
-    "code/gamecam.cpp:843 Tri(inherit)",
-    "code/gamecam.cpp:967 Tri(inherit)",
-    "code/objmgr.cpp:2192 Tri(inherit)",
-    "code/weaponbolt_render.cpp:18 Tri(inherit)"
-   ],
+   "readers": [],
    "rule": "Tri (subGate): explicit 1/0 wins, else inherit the umbrella",
    "status": "resolved"
   },
@@ -676,10 +755,7 @@
    "evidence": "owner ruling: the umbrella is canonical",
    "gate": "MC2_VK_WATER_DIRECT_CHAIN",
    "in_conflict": false,
-   "readers": [
-    "GameOS/gameos/engine_present_vk.cpp:298 Tri(inherit)",
-    "GameOS/gameos/vk_shared_gbuffer_gate.h:148 Tri(inherit)"
-   ],
+   "readers": [],
    "rule": "Tri: explicit 1/0 wins, else inherit the umbrella",
    "status": "resolved"
   },
@@ -689,7 +765,7 @@
    "gate": "MC2_WATER_SKYTINT",
    "in_conflict": false,
    "readers": [
-    "GameOS/gameos/gameos_graphics.cpp:2839 Token/State",
+    "GameOS/gameos/gameos_graphics.cpp:2836 Token/State",
     "GameOS/gameos/visual_tuning_profile.cpp:175 Lead0",
     "GuiRuntime/GraphicsOptionsWindow.cpp:863 Lead0"
    ],
@@ -723,10 +799,10 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "code/warrior.cpp:2139"
+       "code/warrior.cpp:2140"
       ],
       "on": [
-       "code/warrior.cpp:2133"
+       "code/warrior.cpp:2134"
       ]
      },
      "probe": "E"
@@ -743,10 +819,10 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "code/warrior.cpp:2139"
+       "code/warrior.cpp:2140"
       ],
       "on": [
-       "code/warrior.cpp:2133"
+       "code/warrior.cpp:2134"
       ]
      },
      "probe": "F"
@@ -763,10 +839,10 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "code/warrior.cpp:2139"
+       "code/warrior.cpp:2140"
       ],
       "on": [
-       "code/warrior.cpp:2133"
+       "code/warrior.cpp:2134"
       ]
      },
      "probe": "O"
@@ -783,10 +859,10 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "code/warrior.cpp:2139"
+       "code/warrior.cpp:2140"
       ],
       "on": [
-       "code/warrior.cpp:2133"
+       "code/warrior.cpp:2134"
       ]
      },
      "probe": "X"
@@ -803,10 +879,10 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "code/warrior.cpp:2139"
+       "code/warrior.cpp:2140"
       ],
       "on": [
-       "code/warrior.cpp:2133"
+       "code/warrior.cpp:2134"
       ]
      },
      "probe": "X10"
@@ -826,7 +902,27 @@
    "set_in": [
     "scripts/pipeline_visual_gate.py",
     "tools/gate_g0_ledger.json",
-    "tools/gate_table.seed.json"
+    "tools/gate_table.seed.json",
+    "run/bushwacker_ppc_158/mc2_01_werewolf_fire.json",
+    "run/bushwacker_ppc_162/mc2_01_werewolf_fire.json",
+    "run/ppc_fixed_162/mc2_01_werewolf_fire.json",
+    "run/tube_combat_on/mc2_01_enemy_cluster_low.json",
+    "run/tube_combat_on/mc2_01_enemy_cluster_mid.json",
+    "run/tube_combat_on/mc2_01_player_werewolf.json",
+    "run/tube_cov_on/mc2_01_werewolf_fire.json",
+    "run/tube_legacy_off/mc2_17_highangle_wide.json",
+    "run/tube_legacy_off/mc2_17_overview_center.json",
+    "run/tube_legacy_off/mc2_17_ridge_lowangle.json",
+    "run/tube_oracle_on/mc2_17_highangle_wide.json",
+    "run/tube_oracle_on/mc2_17_overview_center.json",
+    "run/tube_oracle_on/mc2_17_ridge_lowangle.json",
+    "run/ww_f158/mc2_01_werewolf_fire.json",
+    "run/ww_f158_legacy/mc2_01_werewolf_fire.json",
+    "run/ww_f162/mc2_01_werewolf_fire.json",
+    "run/ww_legacy_off/mc2_01_werewolf_fire.json",
+    "run/ww_legacy_off2/mc2_01_werewolf_fire.json",
+    "run/ww_oracle_on/mc2_01_werewolf_fire.json",
+    "run/ww_zoom_on/mc2_01_ww_zoom.json"
    ],
    "sites": [
     {
@@ -835,7 +931,7 @@
      "family": "bool",
      "file": "code/warrior.cpp",
      "inverted": false,
-     "line": 2133,
+     "line": 2134,
      "vector": [
       "off",
       "on",
@@ -853,7 +949,7 @@
      "family": "bool",
      "file": "code/warrior.cpp",
      "inverted": false,
-     "line": 2133,
+     "line": 2134,
      "vector": [
       "off",
       "on",
@@ -871,7 +967,7 @@
      "family": "bool",
      "file": "code/warrior.cpp",
      "inverted": false,
-     "line": 2139,
+     "line": 2140,
      "vector": [
       "off",
       "off",
@@ -911,7 +1007,7 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9776"
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9777"
       ],
       "on": [
        "mclib/txmmgr.cpp:3674",
@@ -932,7 +1028,7 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9776"
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9777"
       ],
       "on": [
        "mclib/txmmgr.cpp:3674",
@@ -953,7 +1049,7 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9776"
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9777"
       ],
       "on": [
        "mclib/txmmgr.cpp:3674",
@@ -974,7 +1070,7 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9776"
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9777"
       ],
       "on": [
        "mclib/txmmgr.cpp:3674",
@@ -995,7 +1091,7 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9776"
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9777"
       ],
       "on": [
        "mclib/txmmgr.cpp:3674",
@@ -1016,7 +1112,7 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9776"
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9777"
       ],
       "on": [
        "mclib/txmmgr.cpp:3674",
@@ -1049,7 +1145,7 @@
      "family": "bool",
      "file": "GameOS/gameos/gos_static_prop_batcher.cpp",
      "inverted": false,
-     "line": 9776,
+     "line": 9777,
      "vector": [
       "off",
       "off",
@@ -1230,7 +1326,7 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9568",
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9569",
        "mclib/txmmgr.cpp:3521"
       ],
       "on": [
@@ -1256,7 +1352,7 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9568",
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9569",
        "mclib/txmmgr.cpp:3521"
       ],
       "on": [
@@ -1282,7 +1378,7 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9568",
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9569",
        "mclib/txmmgr.cpp:3521"
       ],
       "on": [
@@ -1308,7 +1404,7 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9568",
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9569",
        "mclib/txmmgr.cpp:3521"
       ],
       "on": [
@@ -1334,7 +1430,7 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9568",
+       "GameOS/gameos/gos_static_prop_batcher.cpp:9569",
        "mclib/txmmgr.cpp:3521"
       ],
       "on": [
@@ -1370,7 +1466,7 @@
      "family": "bool",
      "file": "GameOS/gameos/gos_static_prop_batcher.cpp",
      "inverted": false,
-     "line": 9568,
+     "line": 9569,
      "vector": [
       "off",
       "off",
@@ -1729,26 +1825,30 @@
   "editor",
   "gui"
  ],
- "source": "commit bbc1d2d63",
+ "source": "working tree",
  "totals": {
   "conflict_gates": 5,
   "gates_with_literal": 1131,
-  "gates_with_reader": 1118,
-  "literal_occurrences": 1708,
-  "non_call_literals": 47,
-  "nonreader_sites": 17,
-  "read_sites": 1661,
-  "reader_sites": 1510,
-  "token_sites": 113,
-  "unclassified_sites": 21,
+  "gates_with_reader": 1094,
+  "literal_occurrences": 1695,
+  "non_call_literals": 88,
+  "nonreader_sites": 16,
+  "read_sites": 1607,
+  "reader_sites": 1454,
+  "token_sites": 115,
+  "umbrella_members": 25,
+  "umbrella_typed_sites": 40,
+  "umbrella_violations": 0,
+  "unclassified_sites": 22,
   "unresolved_conflicts": 0
  },
+ "umbrella_violations": [],
  "unclassified": [
   {
    "callee": "getenv",
    "file": "GameOS/gameos/engine_present_vk.cpp",
    "gate": "MC2_VULKAN_SPV_DIR",
-   "line": 351,
+   "line": 337,
    "why": "unclassified:opaque"
   },
   {
@@ -1776,21 +1876,21 @@
    "callee": "getenv",
    "file": "GameOS/gameos/vulkan_color_prop_island.cpp",
    "gate": "MC2_VULKAN_SPV_DIR",
-   "line": 169,
+   "line": 167,
    "why": "unclassified:opaque"
   },
   {
    "callee": "getenv",
    "file": "GameOS/gameos/vulkan_legacy_shape_island.cpp",
    "gate": "MC2_VULKAN_SPV_DIR",
-   "line": 82,
+   "line": 80,
    "why": "unclassified:opaque"
   },
   {
    "callee": "getenv",
    "file": "GameOS/gameos/vulkan_mech_island.cpp",
    "gate": "MC2_VULKAN_SPV_DIR",
-   "line": 184,
+   "line": 182,
    "why": "unclassified:opaque"
   },
   {
@@ -1825,7 +1925,7 @@
    "callee": "getenv",
    "file": "GameOS/gameos/vulkan_shadow_island_live.cpp",
    "gate": "MC2_VULKAN_SPV_DIR",
-   "line": 159,
+   "line": 157,
    "why": "unclassified:opaque"
   },
   {
@@ -1869,6 +1969,13 @@
    "gate": "MC2_BRAIN_SPECIAL_FIT",
    "line": 4331,
    "why": "unclassified:opaque"
+  },
+  {
+   "callee": "getenv",
+   "file": "code/warrior.cpp",
+   "gate": "MC2_VISUAL_CAPTURE_ON_FIRE",
+   "line": 2175,
+   "why": "unclassified:unparsed-statement"
   },
   {
    "callee": "getenv",

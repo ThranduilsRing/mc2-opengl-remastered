@@ -2172,7 +2172,7 @@ void MechWarrior::updateActions (void) {
 				// capture the same fire-relative instant.
 				static const bool s_dumpOnFire =
 					(mc2::gate::get<"MC2_VK_PRESENT_DUMP_ON_FIRE">() ||
-					 getenv("MC2_VISUAL_CAPTURE_ON_FIRE") != NULL);
+					 mc2::gate::get<"MC2_VISUAL_CAPTURE_ON_FIRE">());
 				if (s_dumpOnFire && g_mc2FxFireCaptureFrame == 0) {
 					g_mc2FxFireCaptureFrame = g_mc2FrameCounter + 30u;
 					printf("[FX_FORCE_SPAWN loop] event=capture_armed frame=%u pin=%u\n",

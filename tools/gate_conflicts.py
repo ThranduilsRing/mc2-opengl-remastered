@@ -65,7 +65,7 @@ LEDGER = os.path.join("tools", "gate_g0_ledger.json")
 #: (the readers compare level characters on purpose) and `divergent` (the defaults
 #: differ and the owner has to choose). A conflicting gate with any other status, or
 #: none, is UNRESOLVED and counts against the ratchet.
-LEDGER_ACCEPTED = ("enum", "divergent")
+LEDGER_ACCEPTED = ("enum", "divergent", "intentional-optin")
 
 #: Where a gate being SET (rather than read) makes a reader disagreement visible
 #: in routine runs: harness/launcher configs, not source.
@@ -459,6 +459,50 @@ def load_ledger(tree_root):
         return json.load(fh).get("gates", {})
 
 
+# ---------------------------------------------------------------------------
+# VK umbrella members: the one allowed reader class is Typed(effective)
+# ---------------------------------------------------------------------------
+
+#: How a Tri row that inherits the umbrella may be named in C++: through the adapter (armed<>,
+#: regionTier1Armed<>), the raw state, or the adapter's own gate::effective<>. A getenv, a legacy helper
+#: or a plain get<> would read the member without the umbrella (or without the fail-soft veto).
+_UMBRELLA_TYPED_RE = re.compile(r'\b(?:armed|regionTier1Armed|effective|state|hasParent)\s*<\s*$')
+
+
+def umbrella_members(tree):
+    """Names of the gate-table rows that declare `inherits` (read from the committed JSON)."""
+    try:
+        doc = json.loads(tree.read("Gates/gate_table.json") or "{}")
+    except ValueError:
+        return []
+    return sorted(g["name"] for g in doc.get("gates", []) if g.get("inherits"))
+
+
+def umbrella_report(tree, scan_dirs=None):
+    """-> {members, typed_sites, violations}: every literal of an umbrella member in the scanned C++, split into
+    Typed(effective) sites and violations (any other way of naming it)."""
+    members = umbrella_members(tree)
+    scan_dirs = SCAN_DIRS if scan_dirs is None else scan_dirs
+    reg = REGISTRY.replace("\\", "/")   # the generated feature table names every gate
+    rels = [r for r in tree.list(scan_dirs, gi.SCAN_EXTS) if r != reg]
+    texts = tree.read_all(rels)
+    typed, bad = 0, []
+    for rel in rels:
+        if rel not in texts:
+            continue
+        code = gi.strip_comments(texts[rel])
+        for m in re.finditer(r'"(MC2_[A-Z0-9_]+)"', code):
+            if m.group(1) not in members:
+                continue
+            before = code[max(0, m.start() - 40):m.start()]
+            if _UMBRELLA_TYPED_RE.search(before):
+                typed += 1
+            else:
+                bad.append({"gate": m.group(1), "file": rel, "line": code.count(chr(10), 0, m.start()) + 1})
+    return {"members": members, "typed_sites": typed, "violations": bad}
+
+
+
 def build_report(tree, scan_dirs=None, with_config=True, ledger=None):
     sites, stats = scan_tree(tree, scan_dirs)
     reg = load_registry(tree)
@@ -516,6 +560,7 @@ def build_report(tree, scan_dirs=None, with_config=True, ledger=None):
             "readers": ["%s:%d %s" % (s["file"], s["line"], s["cls"])
                         for s in sorted(readers, key=lambda x: (x["file"], x["line"]))]})
     unclassified = [s for s in sites if s["status"].startswith("unclassified")]
+    umbrella = umbrella_report(tree, scan_dirs)
     report = {
         "version": 1,
         "source": tree.describe(),
@@ -533,7 +578,11 @@ def build_report(tree, scan_dirs=None, with_config=True, ledger=None):
             "unclassified_sites": len(unclassified),
             "conflict_gates": len(conflicts),
             "unresolved_conflicts": len(unresolved),
+            "umbrella_members": len(umbrella["members"]),
+            "umbrella_typed_sites": umbrella["typed_sites"],
+            "umbrella_violations": len(umbrella["violations"]),
         },
+        "umbrella_violations": umbrella["violations"],
         "conflict_gates": conflicts,
         "unresolved_gates": unresolved,
         "regressed_gates": regressed,
@@ -612,7 +661,10 @@ def render_md(rep):
                      ("nonreader_sites", "sites where the probe decides nothing (prints, paths)"),
                      ("unclassified_sites", "sites the tool could not classify"),
                      ("conflict_gates", "**gates with conflicting readers**"),
-                     ("unresolved_conflicts", "**of which unresolved** (not ledgered as `enum` or `divergent`)")]:
+                     ("unresolved_conflicts", "**of which unresolved** (not ledgered as `enum`, `divergent` or `intentional-optin`)"),
+                     ("umbrella_members", "VK umbrella members (`inherits` rows)"),
+                     ("umbrella_typed_sites", "Typed(effective) sites: a member named through `armed<>` / `regionTier1Armed<>` / `state<>`"),
+                     ("umbrella_violations", "**umbrella members named any other way** (each is a failure)")]:
         w("| %s | %d |" % (label, t[k]))
     w("")
     w("## Design section 4: confirmed or corrected\n")
@@ -724,6 +776,10 @@ def check(rep, base):
     old_unres = base.get("unresolved_conflicts", len(old))
     if cur_unres > old_unres:
         fails.append("unresolved conflicts rose: %d (baseline %d)" % (cur_unres, old_unres))
+    for v in rep.get("umbrella_violations", []):
+        fails.append("%s is a VK umbrella member (inherits) but %s:%d names it outside armed<>/regionTier1Armed<>/"
+                     "state<>/effective<> -- that reader ignores the umbrella or the fail-soft veto"
+                     % (v["gate"], v["file"], v["line"]))
     for g in rep.get("regressed_gates", []):
         fails.append("%s was resolved by G0 and its readers disagree again" % g)
     if rep["totals"]["unclassified_sites"] > base["unclassified_sites"]:

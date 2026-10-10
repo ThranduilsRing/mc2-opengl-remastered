@@ -353,7 +353,7 @@ L(Presence, "MC2_FX_COUNT_LOG", Bool, false, "mech", "", "MC2_FX_COUNT_LOG=1: en
 L(Presence, "MC2_FX_DEFS", Bool, false, "mech", "", "FX-DEFS-SIDECAR-1: per-effect JSON sidecar overlay for the gosFX spec catalog (mc2::particles::SpecLibrary).", passthrough | registry(Feature, "MC2_FX_DEFS", -1, false)),
 // FX-FORCE-SPAWN fixture (mech-fire tube)
 // history: docs/gate-history.md#MC2_FX_FORCE_SPAWN
-L(Lead0P, "MC2_FX_FORCE_SPAWN", Bool, false, "code", "", "FX-FORCE-SPAWN v1 fixture: default-OFF.", passthrough | registry(Feature, "MC2_FX_FORCE_SPAWN", -1, false)),
+G("MC2_FX_FORCE_SPAWN", Enum, "", "code", "", "FX-FORCE-SPAWN v1 fixture: default-OFF.", passthrough | registry(Feature, "MC2_FX_FORCE_SPAWN", -1, false) | tokens("|0|1|2|3|4|5|6|7|8|9|loop")),
 L(Lead1, "MC2_FX_TRACE", Bool, false, "code", "", "", passthrough),
 G("MC2_GAMEOS_UI_DEFS", Bool, true, "editor", "", "The data/defs GameOS UI path is the replacement path, not an opt-in demo."),
 L(Exact1, "MC2_GAMEPLAY_PICK_SELFTEST", Bool, false, "code", "", ""),
@@ -923,7 +923,7 @@ L(Presence, "MC2_SHADOW_DIAG", Bool, false, "props", "", ""),
 P("MC2_SHADOW_DIST_FADE", Float, 80.0, "post", "", "", passthrough | range(0.0, 100000.0)),
 P("MC2_SHADOW_DIST_FADE_MAX", Float, 0.65, "post", "", "", passthrough | range(0.0, 1.0)),
 // history: docs/gate-history.md#MC2_SHADOW_DYNAMIC_PROP_CASTERS
-L(Lead0Kill, "MC2_SHADOW_DYNAMIC_PROP_CASTERS", Bool, true, "props", "", "SHADOW-DYNAMIC-PROP-CASTERS-1: feed the per-frame DYNAMIC sun-shadow caster pass from the full registry (registered props, visibility-independent) instead...", passthrough | registry(Feature, "MC2_FEATURE_SHADOW_DYNAMIC_PROP_CASTERS", -1, true)),
+G("MC2_SHADOW_DYNAMIC_PROP_CASTERS", Enum, "", "props", "", "SHADOW-DYNAMIC-PROP-CASTERS-1: feed the per-frame DYNAMIC sun-shadow caster pass from the full registry (registered props, visibility-independent) instead...", passthrough | registry(Feature, "MC2_FEATURE_SHADOW_DYNAMIC_PROP_CASTERS", -1, true) | tokens("|0|1|2")),
 L(Lead0Kill, "MC2_SHADOW_DYNAMIC_PROP_DIRTY_ONLY", Bool, true, "code", "", "DEFAULT-ON since 2026-06-04 (smoke-clean mc2_24; proven s_registryGeneration dirty-only pattern, shadow pass reads only modelMatrix+typeID): only literal..."),
 // history: docs/gate-history.md#MC2_SHADOW_ENABLE
 L(Lead0Kill, "MC2_SHADOW_ENABLE", Bool, true, "unclassified", "", "Dynamic object shadow caster pass (GpuStaticPropBatcher + GpuMechBatcher flushShadow).", passthrough | registry(Feature, "MC2_FEATURE_SHADOW_MAPS", 5, true)),
@@ -1019,7 +1019,7 @@ P("MC2_SOAK_WIN_AFTER_SEC", Float, 5.0, "code", "", ""),
 // history: docs/gate-history.md#MC2_SPLIT_PATH_PARITY_TRACE
 L(Lead0, "MC2_SPLIT_PATH_PARITY_TRACE", Bool, false, "gameos", "", "META-FIX design C runtime tier (GameOS/gameos/gameos_graphics.cpp gosRenderer::init): =1 emits machine-parseable [SPLIT_PATH_PARITY] marker lines at...", passthrough | registry(Trace, "MC2_TRACE_SPLIT_PATH_PARITY", -1, false)),
 // history: docs/gate-history.md#MC2_SPOTLIGHT_DIRECTION_FIX
-L(AtoiNZ, "MC2_SPOTLIGHT_DIRECTION_FIX", Bool, false, "code", "", "SPOTLIGHT-DIRECTION-1: fixes two coordinate-space defects at the building/guard-tower spotlight registration site (mclib/bdactor.cpp).", passthrough | registry(Trace, "MC2_SPOTLIGHT_DIRECTION_FIX", -1, false)),
+G("MC2_SPOTLIGHT_DIRECTION_FIX", Enum, "", "code", "", "SPOTLIGHT-DIRECTION-1: fixes two coordinate-space defects at the building/guard-tower spotlight registration site (mclib/bdactor.cpp).", passthrough | registry(Trace, "MC2_SPOTLIGHT_DIRECTION_FIX", -1, false) | tokens("|0|1|2")),
 L(Presence, "MC2_SPOTLIGHT_REAL_TRACE", Bool, false, "unclassified", "", "[SPOTLIGHT_REAL_TRACE v1] (E) Stage 0 / T0.2 baseline."),
 L(Presence, "MC2_SPOT_DIAG", Bool, false, "mech", "", "T1.15 SpotLight_ illumination diagnostic - registration probe (bldg class)."),
 // SP-BATCHER-ALPHASCAN-GATE-1 (framebudget-2 perf).
@@ -1066,9 +1066,9 @@ L(Presence, "MC2_STATIC_POP_SPLIT_CMD_DIAG", Bool, false, "props", "", "Diag (en
 L(Lead0, "MC2_STATIC_PROP_AMBIENT_V1", Bool, false, "props", "", "V-AMBIENT-STATIC-1: hemisphere ambient fill on StaticPropOpaque lane (static_prop.vert).", passthrough | registry(Feature, "MC2_FEATURE_STATIC_PROP_AMBIENT_V1", 18, false)),
 L(Presence, "MC2_STATIC_PROP_BAKE_SELFTEST", Bool, false, "gameos", "", ""),
 // history: docs/gate-history.md#MC2_STATIC_PROP_BUILDING_SHADOW
-L(Lead0P, "MC2_STATIC_PROP_BUILDING_SHADOW", Bool, false, "props", "", "SHADOW-STATIC-BUILDINGS-2: replay ALL registered rigid-building recipes (full registry, visibility-independent) into the world-fixed static shadow map, once...", passthrough | registry(Feature, "MC2_FEATURE_SHADOW_STATIC_BUILDINGS", -1, false)),
+G("MC2_STATIC_PROP_BUILDING_SHADOW", Enum, "", "props", "", "SHADOW-STATIC-BUILDINGS-2: replay ALL registered rigid-building recipes (full registry, visibility-independent) into the world-fixed static shadow map, once...", passthrough | registry(Feature, "MC2_FEATURE_SHADOW_STATIC_BUILDINGS", -1, false) | tokens("|0|1|2")),
 // history: docs/gate-history.md#MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE
-L(Lead0Kill, "MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE", Bool, true, "props", "", "STATIC-BLDG-SHADOW-REBAKE-1: re-arm the one-shot world-fixed static-shadow latch (gos_ResetStaticLightMatrix) when a registered building is destroyed --...", passthrough | registry(Feature, "MC2_FEATURE_SHADOW_STATIC_BUILDINGS_REBAKE", -1, true)),
+G("MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE", Enum, "", "props", "", "STATIC-BLDG-SHADOW-REBAKE-1: re-arm the one-shot world-fixed static-shadow latch (gos_ResetStaticLightMatrix) when a registered building is destroyed --...", passthrough | registry(Feature, "MC2_FEATURE_SHADOW_STATIC_BUILDINGS_REBAKE", -1, true) | tokens("|0|1|2")),
 // history: docs/gate-history.md#MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE_TEST_DESTROY_AT_FRAME
 P("MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE_TEST_DESTROY_AT_FRAME", Int, -1, "code", "", "STATIC-BLDG-SHADOW-REBAKE-1: deterministic repro hook (test-only, no production callers).", passthrough | registry(Trace, "MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE_TEST_DESTROY_AT_FRAME", -1, false)),
 // history: docs/gate-history.md#MC2_STATIC_PROP_COLORS_FILL
@@ -1503,7 +1503,7 @@ L(Presence, "MC2_VISUAL_CAPTURE_DIR", Bool, false, "gameos", "", "", passthrough
 L(Presence, "MC2_VISUAL_CAPTURE_EXIT_AFTER", Bool, false, "gameos", "", "VK-NOINTEROP-STRICT-REVIEW: opt-in clean shutdown after the sweep so the VK island destroy lines (forbidden_* counters) + the final [VK_PRESENT] logHealth..."),
 P("MC2_VISUAL_CAPTURE_FRAME", Int, -1, "vk", "", "", passthrough),
 // history: docs/gate-history.md#MC2_VISUAL_CAPTURE_ON_FIRE
-L(Presence, "MC2_VISUAL_CAPTURE_ON_FIRE", Bool, false, "unclassified", "", "VK-FIELD-VFX-8: GL twin of MC2_VK_PRESENT_DUMP_ON_FIRE.", registry(Trace, "MC2_TRACE_VISUAL_CAPTURE_ON_FIRE", -1, false)),
+L(Presence, "MC2_VISUAL_CAPTURE_ON_FIRE", Bool, false, "unclassified", "", "VK-FIELD-VFX-8: GL twin of MC2_VK_PRESENT_DUMP_ON_FIRE.", registry(Trace, "MC2_TRACE_VISUAL_CAPTURE_ON_FIRE", -1, false) | verified),
 L(Lead0, "MC2_VISUAL_CAPTURE_POST", Bool, false, "gameos", "", "VK-PARITY-F2: MC2_VISUAL_CAPTURE_POST=1 (default OFF = byte-identical) reads the composited back buffer (post exposure/sunset grade, what the player sees)..."),
 L(Lead0, "MC2_VISUAL_DIFF_CAPTURE", Bool, false, "gameos", "", ""),
 P("MC2_VISUAL_DIFF_FRAME_N", Int, 90, "gameos", "", ""),

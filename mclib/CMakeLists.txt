@@ -27,6 +27,7 @@ set(SOURCES ${SOURCES}
     txmmgr.cpp
     tex_resolve_table.cpp
     userinput.cpp
+    vk_umbrella_gate.cpp
     vport.cpp
     weaponfx.cpp
     csvfile.cpp

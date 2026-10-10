@@ -44,7 +44,7 @@
 
 #include<gameos.hpp>
 #include "../mclib/particles/batcher.h"
-#include "vk_shared_gbuffer_gate.h"  // VK-FIELD-VFX-2: umbrella-route immediate-draw for bolts
+#include "vk_umbrella_light.h"  // VK-FIELD-VFX-2: umbrella-route immediate-draw for bolts
 
 #define BASE_EFFECT_SCALAR		1.0f
 #define EFFECT_LEFT_TIME		1.0f

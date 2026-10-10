@@ -5,7 +5,7 @@
 generator_version: "3.0.0"
 gate_count: 1139
 registry_entry_count: 354
-verified_count: 266
+verified_count: 267
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -1631,11 +1631,12 @@ flags:
     smoke_passthrough: true
     registry: {feature_id: MC2_FX_DEFS, kind: Feature, order: -1, default_on: false}
   - name: MC2_FX_FORCE_SPAWN
-    kind: Bool
-    default: false
-    rule: Lead0P
+    kind: Enum
+    default: ""
+    rule: Std
     owner: code
     doc: "FX-FORCE-SPAWN v1 fixture: default-OFF."
+    tokens: "|0|1|2|3|4|5|6|7|8|9|loop"
     smoke_passthrough: true
     registry: {feature_id: MC2_FX_FORCE_SPAWN, kind: Feature, order: -1, default_on: false}
   - name: MC2_FX_TRACE
@@ -4519,11 +4520,12 @@ flags:
     range: {lo: 0, hi: 1, style: reject}
     smoke_passthrough: true
   - name: MC2_SHADOW_DYNAMIC_PROP_CASTERS
-    kind: Bool
-    default: true
-    rule: Lead0Kill
+    kind: Enum
+    default: ""
+    rule: Std
     owner: props
     doc: "SHADOW-DYNAMIC-PROP-CASTERS-1: feed the per-frame DYNAMIC sun-shadow caster pass from the full registry (registered props, visibility-independent) instead..."
+    tokens: "|0|1|2"
     smoke_passthrough: true
     registry: {feature_id: MC2_FEATURE_SHADOW_DYNAMIC_PROP_CASTERS, kind: Feature, order: -1, default_on: true}
   - name: MC2_SHADOW_DYNAMIC_PROP_DIRTY_ONLY
@@ -4884,11 +4886,12 @@ flags:
     smoke_passthrough: true
     registry: {feature_id: MC2_TRACE_SPLIT_PATH_PARITY, kind: Trace, order: -1, default_on: false}
   - name: MC2_SPOTLIGHT_DIRECTION_FIX
-    kind: Bool
-    default: false
-    rule: AtoiNZ
+    kind: Enum
+    default: ""
+    rule: Std
     owner: code
     doc: "SPOTLIGHT-DIRECTION-1: fixes two coordinate-space defects at the building/guard-tower spotlight registration site (mclib/bdactor.cpp)."
+    tokens: "|0|1|2"
     smoke_passthrough: true
     registry: {feature_id: MC2_SPOTLIGHT_DIRECTION_FIX, kind: Trace, order: -1, default_on: false}
   - name: MC2_SPOTLIGHT_REAL_TRACE
@@ -5085,19 +5088,21 @@ flags:
     owner: gameos
     doc: ""
   - name: MC2_STATIC_PROP_BUILDING_SHADOW
-    kind: Bool
-    default: false
-    rule: Lead0P
+    kind: Enum
+    default: ""
+    rule: Std
     owner: props
     doc: "SHADOW-STATIC-BUILDINGS-2: replay ALL registered rigid-building recipes (full registry, visibility-independent) into the world-fixed static shadow map, once..."
+    tokens: "|0|1|2"
     smoke_passthrough: true
     registry: {feature_id: MC2_FEATURE_SHADOW_STATIC_BUILDINGS, kind: Feature, order: -1, default_on: false}
   - name: MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE
-    kind: Bool
-    default: true
-    rule: Lead0Kill
+    kind: Enum
+    default: ""
+    rule: Std
     owner: props
     doc: "STATIC-BLDG-SHADOW-REBAKE-1: re-arm the one-shot world-fixed static-shadow latch (gos_ResetStaticLightMatrix) when a registered building is destroyed --..."
+    tokens: "|0|1|2"
     smoke_passthrough: true
     registry: {feature_id: MC2_FEATURE_SHADOW_STATIC_BUILDINGS_REBAKE, kind: Feature, order: -1, default_on: true}
   - name: MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE_TEST_DESTROY_AT_FRAME
@@ -6999,6 +7004,7 @@ flags:
     rule: Presence
     owner: unclassified
     doc: "VK-FIELD-VFX-8: GL twin of MC2_VK_PRESENT_DUMP_ON_FIRE."
+    verified: true
     registry: {feature_id: MC2_TRACE_VISUAL_CAPTURE_ON_FIRE, kind: Trace, order: -1, default_on: false}
   - name: MC2_VISUAL_CAPTURE_POST
     kind: Bool

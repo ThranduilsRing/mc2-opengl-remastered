@@ -37,7 +37,7 @@
 #include "../GameOS/gameos/gpu_cull_readback.h"        // C3: per-actor GPU visibility snapshot
 #include "../GameOS/gameos/gos_static_prop_registry.h" // Task 5: mission-load bulk registration
 #include "move_recon.h"  // MC2_MOVE_RECON per-frame pathfinding cost instrumentation
-#include "vk_shared_gbuffer_gate.h"  // VK-FIELD-VFX-1: umbrella detection for the VFX HUD-tail route
+#include "vk_umbrella_light.h"  // VK-FIELD-VFX-1: umbrella detection for the VFX HUD-tail route
 #include "object_walk_trace.h"  // OBJECT-WALK-FACTS-1 (gated, default-OFF)
 #include "frame_jobs.h"  // FRAME-JOBS-1: parallelForRange worker pool
 #include "brain_special_dispatch.h"  // BRAIN-COMMIT-PHASE-1: commitAllBrainIntents
@@ -2189,10 +2189,10 @@ void GameObjectManager::render (bool terrain, bool movers, bool other) {
 		// Gated on the MC2_VK_VFX sub-gate (default-ON under MC2_VK_SHARED_GBUFFER;
 		// explicit =0 disables ALL VK VFX handling — this route AND the particle
 		// island — for A/B and safe-off). Umbrella OFF -> false -> byte-identical GL.
-		const bool vkVfxRoute = mc2vkgate::armed<"MC2_VK_VFX">();
+		const bool vkVfxRoute = mc2vkgate::vfxArmed();
 		const bool prevVfxExempt = vkVfxRoute ? gos_GetHudScaleExempt() : false;
 		// VK-FIELD-VFX-2 trace (MC2_VK_VFX_TRACE): confirm the route + live effect counts.
-		static const bool s_vfxRouteTrace = mc2::gate::get<"MC2_VK_VFX_TRACE">();
+		static const bool s_vfxRouteTrace = mc2vkgate::vfxTraceOn();
 		if (s_vfxRouteTrace) {
 			long liveW = 0;
 			if (weapons) for (long i = 0; i < numWeapons; i++) if (weapons[i] && weapons[i]->getExists()) liveW++;

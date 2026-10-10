@@ -37,7 +37,7 @@
 //#endif
 
 #include <gameos.hpp>
-#include "vk_shared_gbuffer_gate.h"   // VK-FIELD-SELECT-1: umbrella detection
+#include "vk_umbrella_light.h"   // VK-FIELD-SELECT-1: umbrella detection
 #include "gos_visual_capture.h"       // VISUAL-CAPTURE-CLEAN-1
 #include "gos_postprocess.h"   // VK-GL-LOST-DRAWS tags
 

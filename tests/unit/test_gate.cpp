@@ -1035,4 +1035,26 @@ TEST_CASE("the VK opt-in and kill-switch rows read like the envTriState expressi
     }
 }
 
+TEST_CASE("the five level-valued gates are Enum rows whose first token is the unset/unknown default") {
+    const char* names[] = {"MC2_FX_FORCE_SPAWN", "MC2_SHADOW_DYNAMIC_PROP_CASTERS", "MC2_SPOTLIGHT_DIRECTION_FIX",
+                           "MC2_STATIC_PROP_BUILDING_SHADOW", "MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE"};
+    for (const char* name : names) {
+        const gate::Row& row = g1b::rowNamed(name);
+        INFO(name);
+        CHECK(row.kind == Kind::Enum);
+        CHECK(row.defStr.empty());
+        CHECK(gate::rows::tokenListHas(row.tokens, "0"));
+        CHECK(gate::rows::tokenListHas(row.tokens, "1"));
+        CHECK(gate::rows::tokenListHas(row.tokens, "2"));
+        // unset, an unknown level and "2" resolve to three different answers, never to a bool
+        const std::int32_t unset = static_cast<std::int32_t>(static_cast<std::uint32_t>(gate::detail::parseRow(row, nullptr)));
+        const std::int32_t two = static_cast<std::int32_t>(static_cast<std::uint32_t>(gate::detail::parseRow(row, "2")));
+        const std::int32_t junk = static_cast<std::int32_t>(static_cast<std::uint32_t>(gate::detail::parseRow(row, "zz")));
+        CHECK(unset == 0);
+        CHECK(two > 0);
+        CHECK(junk == 0);
+    }
+    CHECK(gate::rows::tokenListHas(g1b::rowNamed("MC2_FX_FORCE_SPAWN").tokens, "loop"));
+}
+
 }  // TEST_SUITE
