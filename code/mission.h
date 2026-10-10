@@ -159,6 +159,9 @@ void  simSpeedResetToSeed();
 //----------------------------------------------------------------------------------
 // To operate, simply call init with the filename of the mission.
 // that's all she wrote.  update and render return the mission completion status.
+// Phase-helper state of Mission::init (defined in mission_init_frame.h).
+struct MissionInitFrame;
+
 class Mission
 {
 
@@ -291,6 +294,45 @@ class Mission
 		bool calcComplexDropZones (char* missionName, char dropZoneList[MAX_MC_PLAYERS]);
 
 		void init (const char *missionName, long loadType, long dropZoneID, Stuff::Vector3D* dropZoneList, char commandersToLoad[8][3], long numMoversPerCommander);
+
+	// Mission::init phases (mission_init.cpp, mission_init_load.cpp); callers use init().
+	private:
+		void initPrologue(MissionInitFrame& f);
+		void initTeamRelations(long loadType);
+		void initCoreSystems();
+		void initGameSystemRanges(MissionInitFrame& f);
+		void initGameSystemGeneral(MissionInitFrame& f);
+		void initGameSystemHazards(MissionInitFrame& f);
+		void initMissionFile(Stuff::Vector3D* dropZoneList, MissionInitFrame& f);
+		void initSkyAndTeamReset(MissionInitFrame& f);
+		void initTeamsAndCommanders(long loadType, Stuff::Vector3D* dropZoneList, char (*commandersToLoad)[3], MissionInitFrame& f);
+		void initTriggerAndDropZone(MissionInitFrame& f);
+		void initMissionSettings(MissionInitFrame& f);
+		void initTerrain(MissionInitFrame& f);
+		void initPathfinding(MissionInitFrame& f);
+		void initAblCoreLibs(MissionInitFrame& f);
+		void initMissionScript(MissionInitFrame& f);
+		void initWarriorsHeader(MissionInitFrame& f);
+		void loadWarriors(MissionInitFrame& f);
+		void soakAutowinCheck(MissionInitFrame& f);
+		void loadBrainParamsPhase(MissionInitFrame& f);
+		void loadMissionFitOpord(MissionInitFrame& f);
+		void loadBrainRuntime(MissionInitFrame& f);
+		void loadTacticWeights(MissionInitFrame& f);
+		void loadBrainDispatch(MissionInitFrame& f);
+		void initPartsHeader(MissionInitFrame& f);
+		void initPartsLoad(long loadType, long dropZoneID, Stuff::Vector3D* dropZoneList, char (*commandersToLoad)[3], long numMoversPerCommander, MissionInitFrame& f);
+		void initObjectCounts(long loadType, MissionInitFrame& f);
+		void initGpuAndLighting();
+		void initSpawnActors(long loadType);
+		void initTerrainObjectsLoad(char (*commandersToLoad)[3], MissionInitFrame& f);
+		void initDisableAndObjectives(MissionInitFrame& f);
+		void initCommanders(char (*commandersToLoad)[3], MissionInitFrame& f);
+		void initWeatherCamera(MissionInitFrame& f);
+		void initInterface(MissionInitFrame& f);
+		void initLabTimingAndClose();
+		void initFinalizeGeometry();
+	public:
 
 		// TEAM-COMMANDER-OWNERSHIP-1: single teardown authority for the
 		// Team::teams[]/Commander::commanders[] static arrays. Idempotent,

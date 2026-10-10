@@ -7,7 +7,8 @@
 # Spec fields:
 #   BASE, SRC, FUNC_SIG        commit to start from, source file, regex of the function's signature line
 #   STRUCTS                    {frame id: struct name}; FRAME_DOC: comment above the structs
-#   MEMBERS                    [(name, type[, frame id])] locals that live in a struct (default frame 'f')
+#   MEMBERS                    [(name, type[, frame id[, lines]])] locals that live in a struct (default frame 'f');
+#                              lines limits which original declaration lines are lifted (same name may be a local elsewhere)
 #   HOIST                      first lines of function-local types moved to file scope unchanged
 #   EDITS                      {line: (old, new)} statements the declaration-lift rule cannot rewrite
 #   ORCH_BEFORE                {line: text} glue lines inserted before that original line
@@ -30,6 +31,7 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '
 import console_child  # noqa: E402  (windowless console children without a conhost each)
 
 MEMBER_COMMENTS = {}
+MEMBER_LINES = {}     # member name -> original lines whose declaration is lifted (absent: any matching line)
 
 
 def load(path):
@@ -62,6 +64,8 @@ def transform(line, members, edits, lineno):
         assert old in line, (lineno, old)
         return line.replace(old, new)
     for name, typ, _fr in members:
+        if name in MEMBER_LINES and lineno not in MEMBER_LINES[name]:
+            continue
         m = member_rx(typ, name).match(line)
         if not m:
             continue
@@ -96,6 +100,9 @@ def main():
     print('function', fs + 1, fe + 1, 'CRLF' if crlf else 'LF')
     structs = S.STRUCTS if hasattr(S, 'STRUCTS') else {'f': S.STRUCT}
     members = [(m[0], m[1], m[2] if len(m) > 2 else 'f') for m in S.MEMBERS]
+    for m in S.MEMBERS:
+        if len(m) > 3:
+            MEMBER_LINES[m[0]] = set(m[3])
     edits = dict(S.EDITS)
     method = getattr(S, 'METHOD_CLASS', None)
     indent = getattr(S, 'INDENT', '    ')
@@ -113,6 +120,19 @@ def main():
     ph.sort(key=lambda p: p[1])
     for x, y in zip(ph, ph[1:]):
         assert x[2] < y[1], (x[0], y[0])
+    # every phase must be brace-balanced (a cut inside a block would not compile)
+    for (pn, a, b, *_r) in ph:
+        depth = 0
+        pp = 0
+        for ln in range(a, b + 1):
+            c = strip_code(L[ln - 1])
+            if c.lstrip().startswith('#'):
+                d = re.match(r'#\s*(\w+)', c.lstrip()).group(1)
+                pp += 1 if d in ('if', 'ifdef', 'ifndef') else (-1 if d == 'endif' else 0)
+                continue
+            depth += c.count('{') - c.count('}')
+        assert depth == 0, 'phase %s (lines %d-%d) is not brace-balanced (%+d)' % (pn, a, b, depth)
+        assert pp == 0, 'phase %s (lines %d-%d) splits a preprocessor conditional (%+d)' % (pn, a, b, pp)
 
     def body_for(a, b, dedent=dedent):
         out = []
@@ -156,6 +176,7 @@ def main():
             s = L[ln - 1]
             H.append(s[4:] if s.startswith('    ') else s)
         H.append('')
+    H.append('\x00FRAME_BEGIN')
     H += S.FRAME_DOC.split(chr(10)) if structs else []
     for fid, sname in structs.items():
         H.append('struct ' + sname + ' {')
@@ -173,12 +194,15 @@ def main():
                 H.append('#endif')
         H.append('};')
         H.append('')
+    H.append('\x00FRAME_END')
     if not method:
         H.append('}  // namespace')
     calls = {}
     decls = []
     for i in info:
         name, guard, used, frames = i['name'], i['guard'], i['used'], i['frames']
+        if name == getattr(S, 'SPLIT_AT', None):
+            H.append('\x00SPLIT')
         H.append('')
         for d in i['doc'].split('\n'):
             H.append('// ' + d)
@@ -232,6 +256,29 @@ def main():
     def is_call(x):
         return re.match(r'^\s*[\w.]+\(.*\);$', x) is not None or re.match(r'^\s*(%s) \w+;$' % '|'.join(structs.values()), x) is not None
     O = [x for i, x in enumerate(O) if not (x.strip() == '' and 0 < i < len(O) - 1 and is_call(O[i - 1]) and is_call(O[i + 1]))]
+    frame_lines = []
+    if 'FRAME_HEADER' in S.__dict__:
+        i0, i1 = H.index('\x00FRAME_BEGIN'), H.index('\x00FRAME_END')
+        frame_lines = H[i0 + 1:i1]
+        H = H[:i0] + H[i1 + 1:]
+    else:
+        H = [x for x in H if x not in ('\x00FRAME_BEGIN', '\x00FRAME_END')]
+    H2 = []
+    if '\x00SPLIT' in H:
+        k = H.index('\x00SPLIT')
+        H, H2 = H[:k], H[k + 1:]
+    if 'FRAME_HEADER' in S.__dict__:
+        guard_name = re.sub(r'\W', '_', S.FRAME_HEADER).upper()
+        hdr = ['// ' + S.FRAME_HEADER_DOC, '#ifndef ' + guard_name, '#define ' + guard_name, '', '#include "mission_internal.h"', ''] + frame_lines + ['#endif  // ' + guard_name]
+        open(S.FRAME_HEADER, 'wb').write(('\n'.join(hdr) + '\n').encode('utf-8'))
+        inc = '#include "%s"' % S.FRAME_HEADER.split('/')[-1]
+        j = next(k for k, l in enumerate(L[:fs]) if l.startswith('#include "mission_internal.h"'))
+        L = L[:j + 1] + [inc] + L[j + 1:]
+        fs += 1
+        fe += 1
+    if H2:
+        h2 = list(S.SPLIT_HEAD) + ['#include "mission_internal.h"', '#include "%s"' % S.FRAME_HEADER.split('/')[-1], ''] + H2
+        open(S.SPLIT_SRC, 'wb').write(('\n'.join(h2) + '\n').encode('utf-8'))
     new = L[:fs] + H + (S.ORCH_DOC.split('\n') if getattr(S, 'ORCH_DOC', '') else [])
     new = new + O + L[fe + 1:]
     out = '\n'.join(new)

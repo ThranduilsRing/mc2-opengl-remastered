@@ -183,6 +183,7 @@ Split commit: `e8aaccaa1`.
 |---|---|
 | `mission.cpp` | keeps the mission globals, render, difficulty setup, start/destroy and the objective timers |
 | `mission_init.cpp` | Mission: Mission::init, the mission load sequence. |
+| `mission_init_load.cpp` | Mission: the second half of the Mission::init load sequence -- warriors and brains, movers and parts, terrain objects, commanders, the HUD and the geometry finalize. The first half and the orchestrator are in mission_init.cpp. |
 | `mission_movers.cpp` | Mission: createPartObject, addMover, removeMover, tradeMover, drop zones and gate queries. |
 | `mission_update.cpp` | Mission: the per-frame Mission::update with its MC2_MISSION_SPLIT timing, mover bridge, soak hooks and coherence audit. |
 | `mission_internal.h` | shared include bundle, extern globals and declarations of the pieces |

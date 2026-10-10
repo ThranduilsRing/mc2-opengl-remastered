@@ -455,6 +455,7 @@ set(SOURCES
     "code/mission_update.cpp"
     "code/mission_movers.cpp"
     "code/mission_init.cpp"
+    "code/mission_init_load.cpp"
     "code/mission2.cpp"
     "code/sim_identity.cpp"
     "code/objective.cpp"

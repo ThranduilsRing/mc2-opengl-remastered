@@ -61,7 +61,7 @@ ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 # strip line-leading comments from grep -n output (house pattern).
 # The Mission implementation is split across mission.cpp and mission_{update,movers,init}.cpp; the S2 / S6 rules read it as one file.
 mission_all_to() {
-    cat "$ROOT/code/mission.cpp" "$ROOT/code/mission_update.cpp" "$ROOT/code/mission_movers.cpp" "$ROOT/code/mission_init.cpp" > "$1"
+    cat "$ROOT/code/mission.cpp" "$ROOT/code/mission_update.cpp" "$ROOT/code/mission_movers.cpp" "$ROOT/code/mission_init.cpp" "$ROOT/code/mission_init_load.cpp" > "$1"
 }
 
 strip_comments() {
