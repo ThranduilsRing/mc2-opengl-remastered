@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in gvactor_internal.h.
 #include "gvactor_internal.h"
 #include "Gates/gate.h"
+#include "../RenderCore/axis_convert.h"
 
 
 // Slice GV-shadow-skip (2026-05-09): skip gvShadowShape->TransformMultiShape
@@ -121,9 +122,7 @@ void GVAppearance::updateGeometry (void)
 		float fogFull = eye->fogFull;
 	
 		Stuff::Point3D xlatPosition;
-		xlatPosition.x = -position.x;
-		xlatPosition.y = position.z;
-		xlatPosition.z = position.y;
+		mc2ToRender(xlatPosition, position);
 	
 		if (xlatPosition.y < fogStart)
 		{
@@ -382,9 +381,7 @@ void GVAppearance::updateGeometry (void)
 		shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 		shapeOrigin.BuildTranslation(tPosition);
 
-		tPosition.x = -position.x;
-		tPosition.y = position.z;
-		tPosition.z = position.y;
+		mc2ToRender(tPosition, position);
 		
 		Stuff::OBB boundingBox;
 		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,&boundingBox);
@@ -447,9 +444,7 @@ void GVAppearance::updateGeometry (void)
 			Stuff::Vector3D dustPos = getNodeIdPosition(dustNodeIndex);
 
 			Stuff::Point3D wakePos;
-			wakePos.x = -dustPos.x;
-			wakePos.y = dustPos.z;
-			wakePos.z = dustPos.y;
+			mc2ToRender(wakePos, dustPos);
  			
 			shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 			shapeOrigin.BuildTranslation(wakePos);
@@ -475,9 +470,7 @@ void GVAppearance::updateGeometry (void)
 		Stuff::Vector3D dustPos = getNodeIdPosition(dustNodeIndex);
 
 		Stuff::Point3D wakePos;
-		wakePos.x = -dustPos.x;
-		wakePos.y = dustPos.z;
-		wakePos.z = dustPos.y;
+		mc2ToRender(wakePos, dustPos);
 		
  		shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 		shapeOrigin.BuildTranslation(wakePos);
@@ -505,9 +498,7 @@ void GVAppearance::updateGeometry (void)
 		Stuff::Vector3D dustPos = getNodeIdPosition(activityNodeIndex);
 
 		Stuff::Point3D wakePos;
-		wakePos.x = -dustPos.x;
-		wakePos.y = dustPos.z;
-		wakePos.z = dustPos.y;
+		mc2ToRender(wakePos, dustPos);
 		
  		shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 		shapeOrigin.BuildTranslation(wakePos);
@@ -920,9 +911,7 @@ void GVAppearance::startActivity (long effectId, bool loop)
 		Stuff::Vector3D nodePos = getNodeIdPosition(activityNodeIndex);
 
 		Stuff::Point3D wakePos;
-		wakePos.x = -nodePos.x;
-		wakePos.y = nodePos.z;	//Wake is at Water Level!
-		wakePos.z = nodePos.y;
+		mc2ToRender(wakePos, nodePos);	//Wake is at Water Level!
 		
  		shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 		shapeOrigin.BuildTranslation(wakePos);
