@@ -28,8 +28,8 @@
   "GameOS/gameos/vulkan_terrain_island.cpp": 3505,
   "GameOS/include/gameos.hpp": 3753,
   "GameOS/include/imagehlp.h": 1799,
-  "GuiRuntime/EditorInspector.cpp": 1652,
-  "RenderCore/RendererFeatureRegistry.h": 2918,
+  "GuiRuntime/EditorInspector.cpp": 1659,
+  "RenderCore/RendererFeatureRegistry.h": 2917,
   "code/artlry.cpp": 1816,
   "code/bldng.cpp": 1702,
   "code/brain_special_dispatch.cpp": 3273,
@@ -44,7 +44,6 @@
   "code/mechlopedia.cpp": 1663,
   "code/mission.cpp": 5867,
   "code/missionbegin.cpp": 2132,
-  "code/missiongui.cpp": 7888,
   "code/mover.h": 1911,
   "code/mpparameterscreen.cpp": 2415,
   "code/multplyr.h": 1849,
@@ -88,12 +87,11 @@
   "mclib/terrtxm.cpp": 1778,
   "mclib/terrtxm2.cpp": 2785,
   "mclib/tgl.h": 1689,
-  "mclib/txmmgr_render.cpp": 2328,
   "mclib/vfx_translatedraw.cpp": 1742,
   "mclib/vfxtile.cpp": 2944,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "edaa98816",
+ "head": "1af09dd12",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -111,19 +109,19 @@
    "files": 10,
    "files_over_1500": 1,
    "files_over_3000": 0,
-   "max_lines": 1652
+   "max_lines": 1659
   },
   "HostServices": {
    "files": 3,
    "files_over_1500": 0,
    "files_over_3000": 0,
-   "max_lines": 121
+   "max_lines": 120
   },
   "RenderCore": {
    "files": 55,
    "files_over_1500": 1,
    "files_over_3000": 0,
-   "max_lines": 2918
+   "max_lines": 2917
   },
   "RenderWorld": {
    "files": 6,
@@ -132,10 +130,10 @@
    "max_lines": 1159
   },
   "code": {
-   "files": 329,
-   "files_over_1500": 28,
-   "files_over_3000": 6,
-   "max_lines": 7888
+   "files": 338,
+   "files_over_1500": 27,
+   "files_over_3000": 5,
+   "max_lines": 5867
   },
   "editor": {
    "files": 225,
@@ -150,8 +148,8 @@
    "max_lines": 1513
   },
   "mclib": {
-   "files": 613,
-   "files_over_1500": 31,
+   "files": 617,
+   "files_over_1500": 30,
    "files_over_3000": 4,
    "max_lines": 4895
   },
@@ -167,10 +165,6 @@
   3000
  ],
  "top": [
-  {
-   "file": "code/missiongui.cpp",
-   "lines": 7888
-  },
   {
    "file": "code/mission.cpp",
    "lines": 5867
@@ -225,7 +219,7 @@
   },
   {
    "file": "RenderCore/RendererFeatureRegistry.h",
-   "lines": 2918
+   "lines": 2917
   },
   {
    "file": "mclib/inifile.cpp",
@@ -284,15 +278,19 @@
    "lines": 2346
   },
   {
-   "file": "mclib/txmmgr_render.cpp",
-   "lines": 2328
+   "file": "GameOS/gameos/gos_static_prop_registry.cpp",
+   "lines": 2207
+  },
+  {
+   "file": "code/warrior.h",
+   "lines": 2171
   }
  ],
  "total": {
-  "files": 1749,
-  "files_over_1500": 79,
-  "files_over_3000": 13,
-  "max_lines": 7888
+  "files": 1762,
+  "files_over_1500": 77,
+  "files_over_3000": 12,
+  "max_lines": 5867
  },
  "version": 1
 }

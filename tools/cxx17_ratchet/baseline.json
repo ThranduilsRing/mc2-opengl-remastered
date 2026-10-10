@@ -2658,17 +2658,13 @@
    "LG13": 3
   },
   "code/missiongui.cpp": {
-   "LG01": 73,
-   "LG03": 16,
-   "LG05": 4,
-   "LG06": 4,
-   "LG09": 120,
-   "LG11": 1,
-   "LG12a": 7,
-   "LG12b": 16,
-   "LG13": 20,
-   "LG14": 1,
-   "LG20": 1
+   "LG01": 11,
+   "LG03": 6,
+   "LG06": 1,
+   "LG09": 1,
+   "LG12a": 2,
+   "LG12b": 2,
+   "LG13": 2
   },
   "code/missiongui.h": {
    "LG01": 1,
@@ -2677,6 +2673,48 @@
    "LG06": 2,
    "LG13": 1,
    "LG14": 1
+  },
+  "code/missiongui_cursor.cpp": {
+   "LG01": 3,
+   "LG09": 4,
+   "LG13": 3
+  },
+  "code/missiongui_debugkeys.cpp": {
+   "LG01": 6,
+   "LG05": 2,
+   "LG06": 1,
+   "LG09": 15,
+   "LG12b": 6
+  },
+  "code/missiongui_diag.cpp": {
+   "LG09": 16
+  },
+  "code/missiongui_input.cpp": {
+   "LG01": 4,
+   "LG03": 2,
+   "LG09": 4
+  },
+  "code/missiongui_orders.cpp": {
+   "LG01": 19,
+   "LG09": 20,
+   "LG12b": 1
+  },
+  "code/missiongui_shared_internal.h": {
+   "LG06": 1,
+   "LG13": 4,
+   "LG14": 1
+  },
+  "code/missiongui_style.cpp": {
+   "LG01": 15,
+   "LG03": 6,
+   "LG09": 21
+  },
+  "code/missiongui_support.cpp": {
+   "LG01": 8,
+   "LG03": 2,
+   "LG05": 2,
+   "LG09": 6,
+   "LG12b": 2
   },
   "code/missiongui_uicmd.cpp": {
    "LG01": 5,
@@ -2694,6 +2732,15 @@
    "LG01": 9,
    "LG09": 17,
    "LG12b": 24
+  },
+  "code/missiongui_update.cpp": {
+   "LG01": 7,
+   "LG09": 33,
+   "LG11": 1,
+   "LG12a": 5,
+   "LG12b": 5,
+   "LG13": 11,
+   "LG20": 1
   },
   "code/missionresults.cpp": {
    "LG01": 3,

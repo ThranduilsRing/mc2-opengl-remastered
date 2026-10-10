@@ -8,10 +8,13 @@
 mclib/render_contract.cpp
 
 # MC2_CAMERA_MOVE_DIAG / MC2_FLUSH_PROBE diagnostic readback probe, default-OFF (TRACKV-CI-GATE-RESTORE-1)
-# Calls: glFinish (~2003, gated by s_finishProbe/MC2_FLUSH_PROBE),
-#        glMemoryBarrier (~2282), glGetNamedBufferSubData (~2286, ~2288, ~2294)
-#        (all gated by MC2_CAMERA_MOVE_DIAG, diagnostic-only, default-OFF)
-mclib/txmmgr_render.cpp
+# Calls: glFinish (static-prop registry flush, gated by s_finishProbe/MC2_FLUSH_PROBE; phases piece),
+#        glMemoryBarrier / glGetNamedBufferSubData / glIsEnabled / glGetIntegerv (GPU static prop
+#        cull probe, gated by MC2_CAMERA_MOVE_DIAG; passes piece), glBindBufferBase (building PBR
+#        override in ShapeRenderer::render; phases piece)
+#        (all diagnostic-only or opt-in, default-OFF)
+mclib/txmmgr_render_phases.cpp
+mclib/txmmgr_render_passes.cpp
 
 # MERGE-WAVE-2 reconcile (2026-07-22):
 # Diagnostic-only preview probes, all env-gated default-OFF (MC2_LOG_PREVIEW

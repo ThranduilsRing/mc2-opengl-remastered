@@ -1,0 +1,38 @@
+{
+ "base": "f9ae05d4b",
+ "src": "code/missiongui.cpp",
+ "stem": "missiongui",
+ "add": [
+  "",
+  "extern const char* terrainStr[NUM_TERRAIN_TYPES];   // defined in missiongui.cpp"
+ ],
+ "scripts": [
+  "scripts/camera_sweep_smoke.py",
+  "scripts/check-mover-registry-coherence.sh",
+  "scripts/counter-honesty-allowlist.txt",
+  "scripts/gate-defaults-allowlist.txt",
+  "scripts/run_visual_capture.py",
+  "scripts/smoke_lib/cursor_guard.py",
+  "tools/gate_codemod.py"
+ ],
+ "_scripts_reason": "Reviewed: check-mover-registry-coherence reads the select-all trio and the #42b hover guard from every missiongui*.cpp piece (guard now in missiongui_update.cpp; its self-test revert-simulation concatenates the pieces); counter-honesty keys the s_stage limiter to missiongui_update.cpp; camera_sweep_smoke, run_visual_capture, cursor_guard and gate-defaults-allowlist cite missiongui.cpp lines in comments only; tools/gate_codemod.py (lane 1 gate tooling) lists the file for its codemod and is not edited here.",
+ "split_commit": "1af09dd12",
+ "exclude_files": [
+  "missiongui_uicmd.cpp",
+  "missiongui_uicmd_fixture.cpp",
+  "missiongui_uicmd_probe.cpp",
+  "missiongui_internal.h"
+ ],
+ "header_name": "missiongui_shared_internal.h",
+ "edits": [
+  [
+   "\t\t\t(int)event.size(), event.data(), s_mfWinFrames, s_mfWinWalks, s_mfWinHits);",
+   "\t\t\tstatic_cast<int>(event.size()), event.data(), s_mfWinFrames, s_mfWinWalks, s_mfWinHits);"
+  ],
+  [
+   "\t\t\t\t(int)site.size(), site.data(), s_gpMissionTag, mouseX, mouseY, ctx.glX, ctx.glY,",
+   "\t\t\t\tstatic_cast<int>(site.size()), site.data(), s_gpMissionTag, mouseX, mouseY, ctx.glX, ctx.glY,"
+  ]
+ ],
+ "_edits_reason": "The two string_view label arguments of the diag printf calls use static_cast<int> (the cxx17 ratchet counts C-style casts); nothing else changes."
+}

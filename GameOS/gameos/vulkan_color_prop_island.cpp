@@ -167,7 +167,7 @@ std::string spv_dir() {
     return d;
 }
 
-VkShaderModule load_spv(VkDevice device, const std::string& path) {
+VkShaderModule load_spv(VkDevice device, std::string_view path) {
     return vk_island_util::loadSpv(device, path, vlog);
 }
 

@@ -75,7 +75,7 @@ GameOS/gameos/view_uniforms_gl.cpp::s_viewCount < kMaxRegisteredViews
 RenderCore/ResolutionContract.h::s_count < 16
 code/gamecam.cpp::s_vuCompareFrame <= 10
 code/ground_contact_blob.cpp::s_blobLogCount < 8
-code/missiongui.cpp::s_stage < 12
+code/missiongui_update.cpp::s_stage < 12
 code/objmgr.cpp::s_frames < 60
 code/warrior.cpp::s_firedMechs < 8
 editor/EditorInterface_mouse.cpp::s_clickTrace <= 5
@@ -111,7 +111,7 @@ mclib/tex_resolve_table.cpp::s_oobCount++ < kMaxOobPrints
 mclib/tgl_types.cpp::s_mslBoundsWarnings++ < 8
 mclib/tgl_render.cpp::s_pbrRenderTrace < 64
 mclib/tgl_render.cpp::s_seenCount < 64
-mclib/txmmgr_render.cpp::s_cullProbeFrames < 8
+mclib/txmmgr_render_passes.cpp::s_cullProbeFrames < 8
 mclib/txmmgr_render.cpp::s_frames < 60
 mclib/txmmgr_lights.cpp::s_lbFirstSeenIndex.size() <= 32
 mclib/txmmgr_lights.cpp::s_lbParityChecks <= 32
@@ -136,4 +136,4 @@ editor/EditorDebugOverlay.cpp::s_warned < 3
 editor/EditorDebugOverlay.cpp::s_logged < 3
 mclib/move_recon.cpp::s_pcBurstPrints < 30
 mclib/move_recon.cpp::s_chunkShadowSamplePrints < 40
-mclib/txmmgr_render.cpp::s_pbrRenderTrace < 64
+mclib/txmmgr_render_phases.cpp::s_pbrRenderTrace < 64

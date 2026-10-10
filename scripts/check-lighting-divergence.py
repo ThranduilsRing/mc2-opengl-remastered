@@ -179,7 +179,7 @@ RE_SPL_DEFINE = re.compile(r"^\s*#\s*define\s+MC2_STATIC_PROP_LIGHTING\b", re.M)
 CPP_FLOOR_GATES = (
     ("GameOS/gameos/gos_terrain_lod_chunk_upload.cpp", "MC2_TERRAIN_AMBIENT_FLOOR"),
     ("mclib/camera.cpp", "MC2_NIGHT_AMBIENT_FLOOR"),
-    ("mclib/txmmgr_render.cpp", "MC2_VEHICLE_AMBIENT_FLOOR"),
+    ("mclib/txmmgr_render_phases.cpp", "MC2_VEHICLE_AMBIENT_FLOOR"),
 )
 # A getenv("MC2_X") read or a typed gate::get<"MC2_X">() read: either names the gate the file still reads.
 RE_GETENV = re.compile(r'(?:getenv\(\s*|\b(?:get|state|isSet|isNonEmpty|str|is)\s*<\s*)"([A-Z0-9_]+)"')
@@ -345,7 +345,7 @@ BASELINE = {
     "cpp_floor_gate_readers": [
         ("GameOS/gameos/gos_terrain_lod_chunk_upload.cpp", "MC2_TERRAIN_AMBIENT_FLOOR", "present"),
         ("mclib/camera.cpp", "MC2_NIGHT_AMBIENT_FLOOR", "present"),
-        ("mclib/txmmgr_render.cpp", "MC2_VEHICLE_AMBIENT_FLOOR", "present"),
+        ("mclib/txmmgr_render_phases.cpp", "MC2_VEHICLE_AMBIENT_FLOOR", "present"),
     ],
 }
 
