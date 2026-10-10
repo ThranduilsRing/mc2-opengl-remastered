@@ -82,19 +82,6 @@ void initialize_env() {
     // REVERTED TO CPU/MLR DEFAULT (user request: GPU FX looked broken). Absent
     // env var → DISABLED (legacy CPU billboards). Opt back into GPU with "1".
     g_enabled_value = mc2::gate::get<"MC2_GPU_PARTICLES">();   // default OFF -> legacy CPU/MLR FX
-    if (mc2::gate::isSet<"MC2_GPU_PARTICLES">() && !g_enabled_value
-        && mc2::gate::state<"MC2_GPU_PARTICLES">() != mc2::gate::Tri::Off) {
-        // Unknown value — warn once if logging enabled.
-        if (g_log_value) {
-            static bool warned = false;
-            if (!warned) {
-                warned = true;
-                std::fprintf(stderr,
-                    "[GPU_PARTICLES] unknown MC2_GPU_PARTICLES value; disabling\n");
-                std::fflush(stderr);
-            }
-        }
-    }
     g_enabled_initialized = true;
     if (g_enabled_value) {
         std::fprintf(stderr, "[INSTR v1] enabled: gpu_particles log=%d\n",
