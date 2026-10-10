@@ -1016,7 +1016,9 @@ def _helper_definition(fns, callee, path):
                            _norm_ws(d.text[d.body_lo:d.body_hi], 420))
 
 
-_PP_LINE_RE = re.compile(r"[ \t\r\n]*#(?:[^\\\n]|\\[\s\S])*")
+# A byte-order mark at the top of a file counts as blank: without it the first statement of a BOM-led file would
+# start at offset 0 and swallow the whole preamble of includes and comments.
+_PP_LINE_RE = re.compile(r"[ \t\r\n﻿]*#(?:[^\\\n]|\\[\s\S])*")
 
 
 def _skip_pp(T, ss):
@@ -1607,6 +1609,8 @@ def apply_edits(raw, results):
     applied = applied + helper_calls
     raw, paired = _apply_paired_reads(raw, results)
     applied = applied + paired
+    # `x = (mc2::gate::get<"X">());` keeps no parentheses of its own
+    raw = re.sub(r'(=[ \t]*(?:\r?\n[ \t]*)?)\((mc2::gate::get<"[A-Z0-9_]+">\(\))\);', r'\1\2;', raw)
     if applied and "Gates/gate.h" not in raw and "Gates/gate_cold.h" not in raw:
         nl = "\r\n" if "\r\n" in raw else "\n"
         lines = raw.split(nl)
@@ -1620,6 +1624,19 @@ def apply_edits(raw, results):
                 depth = max(0, depth - 1)
             elif s.startswith("#include") and depth == 0:
                 last = i
+        # not inside an `extern "C" {` block (a template cannot have C linkage), and before the first use
+        extern_depth, safe = 0, -1
+        for i, ln in enumerate(lines[:300]):
+            if re.match(r'\s*extern\s+"C"\s*\{', ln):
+                extern_depth += 1
+            elif extern_depth and ln.strip() == "}":
+                extern_depth -= 1
+            elif ln.lstrip().startswith("#include") and not extern_depth and i <= last:
+                safe = i
+        last = safe if safe >= 0 else last
+        first_use = next((i for i, ln in enumerate(lines) if "mc2::gate::" in ln), len(lines))
+        if last + 1 > first_use:
+            last = next((i for i, ln in enumerate(lines[:300]) if ln.lstrip().startswith("#include")), -1)
         lines.insert(last + 1, GATE_INCLUDE)
         raw = nl.join(lines)
     return raw, applied, skipped
