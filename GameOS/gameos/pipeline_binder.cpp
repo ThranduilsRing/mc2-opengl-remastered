@@ -13,6 +13,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include "Gates/gate.h"
 
 namespace pipeline_binder {
 
@@ -20,8 +21,7 @@ namespace pipeline_binder {
 static bool pipelineBindTraceEnabled() {
     static int s_on = -1;
     if (s_on < 0) {
-        const char* v = std::getenv("MC2_PIPELINE_BIND_TRACE");
-        s_on = (v && v[0] && v[0] != '0') ? 1 : 0;
+        s_on = mc2::gate::get<"MC2_PIPELINE_BIND_TRACE">();
     }
     return s_on != 0;
 }
@@ -35,8 +35,7 @@ static bool pipelineBindTraceEnabled() {
 static bool pipelineColorMaskEnabled() {
     static int s_on = -1;
     if (s_on < 0) {
-        const char* v = std::getenv("MC2_PIPELINE_COLORMASK");
-        s_on = (v && v[0] && v[0] != '0') ? 1 : 0;
+        s_on = mc2::gate::get<"MC2_PIPELINE_COLORMASK">();
     }
     return s_on != 0;
 }

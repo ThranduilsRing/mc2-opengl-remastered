@@ -66,8 +66,8 @@
    "LG16": 7,
    "LG17": 81,
    "LG18": 11,
-   "LG19": 44,
-   "LG20": 77
+   "LG19": 42,
+   "LG20": 75
   },
   "GuiRuntime": {
    "LG01": 1,
@@ -1043,9 +1043,7 @@
    "LG09": 1
   },
   "GameOS/gameos/pipeline_binder.cpp": {
-   "LG06": 2,
-   "LG19": 2,
-   "LG20": 2
+   "LG06": 2
   },
   "GameOS/gameos/pipeline_binder.h": {
    "LG06": 1
@@ -5819,7 +5817,7 @@
    "LG20": 1
   }
  },
- "head": "b3a94d02b",
+ "head": "ac4e34c02",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
