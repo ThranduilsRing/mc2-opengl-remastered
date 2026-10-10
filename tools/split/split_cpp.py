@@ -59,7 +59,7 @@ def group_of(n):
 
 
 def moved_group(n):
-    for g, ranges in C.PREAMBLE_MOVES.items():
+    for g, ranges in getattr(C, "PREAMBLE_MOVES", {}).items():
         for a, b in ranges:
             if a <= n <= b:
                 return g
@@ -88,7 +88,7 @@ for u in units:
     joined = "\n".join(body)
     if re.search(r"^\s*#", joined, re.M):
         continue
-    if joined.lstrip().startswith(("static", "class", "struct", "typedef", "enum", "union")):
+    if joined.lstrip().startswith(("static", "class", "struct", "typedef", "enum", "union", "namespace", "/*")):
         continue
     if "::" in joined.split("=")[0].split("(")[0]:
         continue
@@ -157,7 +157,7 @@ open(os.path.join(OUT, "%s_internal.h" % C.STEM), "wb").write("\r\n".join(hdr).e
 
 # ---- groups ---------------------------------------------------------------------------------------------
 bodies = {g: [] for g, _ in C.GROUPS}
-pre_moves = {g: [] for g in C.PREAMBLE_MOVES}
+pre_moves = {g: [] for g in getattr(C, "PREAMBLE_MOVES", {})}
 core_pre = []
 for u in units:
     n = u["start"] + 1
