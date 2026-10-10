@@ -278,6 +278,8 @@ Split commit: `708c5e445`.
 
 ## `mclib/abldbug.cpp`
 
+Split commit: `dd946d83d`.
+
 | Piece | What it holds |
 |---|---|
 | `abldbug.cpp` | keeps the watch and breakpoint managers, the Debugger setup and the command loop |
@@ -318,6 +320,8 @@ Split commit: `f4c986566`.
 | `camera_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
 ## `mclib/genactor.cpp`
+
+Split commit: `0196b20c5`.
 
 | Piece | What it holds |
 |---|---|

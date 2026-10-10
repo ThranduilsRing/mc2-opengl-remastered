@@ -1,47 +1,39 @@
 # Lane 2 state (worktree A:/Games/mc2-lane2, branch claude/lane2-s3, build64-ninja, install mc2-win64-lane2)
 
-Updated at HEAD 975e3010d (clean tree); round 3 merged into nifty d1671eb91 (+847710634) by the coordinator.
+Rotated lane-2 agent #2 (started 2026-10-10 17:58). Phase-helper round 3 is merged into nifty; this lane now does the
+1000-1500 tier verbatim splits (code/ and mclib/ first, largest first). Read ORCHESTRATOR-HANDOFF.md Ground rules first.
 
-## Done in phase-helper round 3 (all committed, proofs in tools/phase/proofs/ph_proof_*.txt)
-main (156f640b4), Mission::load (09934337d; save-format check = packets 0..1905 of a load->resave byte-identical to pre-refactor),
-registry flush (e53d20f3e), MultiTransformShape (8268758ba), Mission::update (937dc76e6), MissionBegin::update (87c2073af),
-ComputeDispatch (f159b8143), GameCamera::render (e61f403f1), drawImGui (8604f07b7, new TU), executeSpecialBody_Apply (39a30a30e, new TU).
-The two MLR Clip functions no longer exist (lane 1 deleted mlrindexedpolymesh/mlrpolymesh in 3329e174d). Ratchet follow-ups committed
-(main ratchets f177c5f66, editor 77a6a7f21). Tier1 5/5 after each batch (last 17:06, HEAD 49e3cc42d); editor smoke 15/15 (17:23); doctest 704.
+## Done
+- Task 1: merged nifty, full tier1 on 055dacab9 (covers DrawLightMaps/drawImGui): 5/5 (mc2_01 113, mc2_03 79, mc2_10 102, mc2_17 118, mc2_24 113 fps).
+- Split 1 dd946d83d mclib/abldbug.cpp 1319 -> 753 + abldbug_print.cpp 488 + abldbug_internal.h.
+- Split 2 0196b20c5 mclib/genactor.cpp 1297 -> 730 + genactor_frame.cpp 498 + genactor_internal.h.
+- Pair 1 verified: build, doctest 704, harnesses 20/20, board 164/165 (doc_links only), smoke-lite 2/2, captures GL x2 + VK mc2_01/mc2_10
+  (before-vs-after DIFF the same size and place as before-vs-before noise). All-targets build owed once after the nifty merge (see below).
 
-## In flight / owed
-Nothing in flight. OWED: a full tier1 (5/5, background, ~12 min, explicit --exe) on the final tree: the last tier1 (17:06, HEAD 49e3cc42d)
-covers drawImGui (new TU) and executeSpecialBody_Apply (mc2_03/24) but NOT DrawLightMaps (975e3010d: lite smoke 2/2, doctest 704, harnesses 20/20 only).
-DrawLightMaps finding: instrumented tier1 (all five missions, 120 s, mc2_10 weapon fire) NEVER entered DrawLightMaps (callers need
-nrOfLightMaps>0); so no effects capture can exercise it - covered by proof + build + board only. Editor shadow run (scratch install without
-shaders/shadow_*): editor starts, smoke 15/15, "Can't open shaders/shadow_*" logged, no crash, no CPU-shadow path evidence. Install holds 975e3010d.
-Do NOT start the 1000-1500 tier splits.
+## Next (queue, largest first; each needs a census read before cutting)
+- code/logisticsmissioninfo.cpp 1316 (3 pieces: core 500 / progress 377 / query 411) - cfg .claude/l2cfg/lm_cfg.py, generated pieces parked in /tmp/l2/hold
+  (regenerate, they are cheap: `py -3 tools/split/split_cpp.py .claude/l2cfg/lm_cfg.py`; the root CMakeLists.txt list needs the two pieces).
+- code/logisticsvariant.cpp 1221 (core 548 / stats 645) - cfg .claude/l2cfg/lv_cfg.py; allow json must list tools/gate_codemod.py and
+  tools/mc2_modlint/modlint_variant_csv.h as reviewed script mentions. Gates in it are function-local lazy statics (stay lazy).
+- then mclib/cevfx.cpp 1217 (per-effect draw classes), code/mechbayscreen.cpp, code/group.cpp, code/team.cpp, mclib/userinput.cpp.
+- Survey verdict LEFT (skip): objmgr_update, contact, ablscan, soundsys, estring, quad_draw, mlr_i_pmesh. The survey only names the top 20 of the tier;
+  the cheap candidates above come from my own census (`/tmp/l2/census.py`-style: cpp_units funcs/largest/other per file).
+- tier1 owed after every four splits (next due after split 4 or 5).
 
-## Findings / caveats
-- Lease/foreign mc2.exe: lane 1's v0.4 mc2.exe was often live during my smokes/captures; run_smoke logs "ignoring foreign mc2.exe" and takes its
-  own lane2 lease, so I ran anyway (fps contention-skewed). The "never run while another mc2.exe is active" rule was NOT strictly followed - ask.
-- Lane 1 left check-contracts rows red at times (background_launch: tools/build_all_targets.py, tidy/pick_batch.py) - not mine, later green.
-- doc_links has 4 pre-existing broken refs (only row allowed red).
-- Ratchets: file_size per-DIR max_lines FAILS if a dir's largest file grows (EditorInspector.cpp, brain_special_dispatch.cpp forced new TUs);
-  a grown baselined file elsewhere only WARNs (tgl.h +13, missionbegin.cpp +32, gamecam.cpp +27). A new file >1500 FAILS.
-  cxx17: LG05 flags `bool` helpers whose name starts get/find/try/lookup/search/read/parse/load/fetch/query/resolve/pick (case-insens) AND whose last
-  param is a non-const ref named like a find-fn or a pointer p[A-Z]/out*/result/ret... (rename the helper, or keep the block in the orchestrator);
-  LG06 counts every `const char*` / `const std::string&` PARAM in declarations and definitions (use a frame member or recompute inside);
-  LG17 pointer+count pairs (count first); LG20 (MC2_ literal) is per-file drive-to-zero: a moved file needs its baseline entry moved by hand.
-  Moved code also needs: check-gate-echo-reads allowances, raw-glBindFramebuffer allowlist, res-aspect baseline, gl_shader_variants.json
-  (py -3 scripts/extract_gl_shader_variants.py), docs/split-map.md (tools/split/split_map.py --write), mover-registry script file list,
-  relaxed-guard checker file list (check_brain_relaxed_guard_doc.py), CMake source list.
+## Recipe per split (what worked)
+1. `git grep -n '<orig>.cpp' -- '*CMakeLists.txt' '*.cmake'` first: every list that compiled the original gets the new pieces.
+2. cfg (see .claude/l2cfg/*.py; INCLUDE_RAW = include bundle lines, PREAMBLE_END = first function unit, GROUPS by cpp_units line ranges) +
+   tools/split/allow/<stem>.json (base = HEAD sha; scripts[] for every script split_verify names). split_cpp.py runs split_verify itself.
+3. mv <src>.new over <src>; ninja_build; `py -3 tools/build_contract_harnesses.py --run --unit` (20 harnesses + doctest 704);
+   `py -3 tools/split/split_map.py --write`; `file_size_ratchet.py --check --tighten`; board `bash scripts/check-contracts.sh > file` (~2.5 min; only doc_links red);
+   plan-doc row in giant-file-split-plan.md; commit by pathspec; split_commit sha goes into the allow json with the next report commit.
+4. Per pair: `py -3 tools/build_all_targets.py` (15 min cold, run it in the background when no capture runs), deploy lane2, `run_smoke.py --lite --exe`, captures with
+   `bash .claude/rl_cap.sh <tag>` (BEFORE-set must be taken on the old install first; output .claude/l2cap/<tag>{1,2}-gl,<tag>-vk), compare with
+   `py -3 tools/visual_verify/montage_compact.py <before.png> <after.png> --out f` (before-vs-before gives the noise floor: mc2_01 ~6000 px at 1657,977).
+- Files are CRLF in the worktree; git warns and stores new files LF (autocrlf=input), ignore.
+- Bash tool: foreground `sleep` is blocked, use `until <cond>; do sleep N; done` with timeout; `findstr` under Git Bash fails, use PowerShell Get-Process.
 
-## Rules / tricks learned
-- Commit by pathspec; END message with Co-Authored-By line; commit BEFORE build+deploy (fingerprint); no commits while a smoke runs.
-- Merge nifty before each unit: git merge --no-ff -q claude/nifty-mendeleev -m "..."; baselines conflict -> take theirs then --tighten.
-- Deploy: scripts/deploy_payload.py --target game --ninja --allow-new-target <lane2 install>; editor: --target editor --build-dir build64-ninja/out/editor.
-- Smoke: scripts/run_smoke.py --tier tier1 --exe <install>/mc2.exe --keep-logs (>10 min: run in background); custom runs <=30 s.
-  Captures: bash .claude/rl_cap.sh <tag> then compare with .claude/g6cap pairs (runs are bimodal; judge against before-vs-before noise).
-- Board: bash scripts/check-contracts.sh (2 min) -> only doc_links may stay red. Then file_size_ratchet.py --check --tighten.
-- Splitter: tools/phase/ph_split.py/ph_verify.py (PYTHONIOENCODING=utf-8). Options I added: exits 'continue' (+ bare return; fix), noparams [names],
-  uses [names] (macro-expanded identifiers), FILE_NAMESPACE, nested phases keep original indent; existing: exits, file, dedent, FRAME_HEADER, PARAMS, MEMBERS. New TU = shared-state header + extern state; helpers inserted directly before the function's first line.
-- cxx17 LG05 flags bool helpers whose name starts get/find/load/... or whose last param is p[A-Z]/out*; LG06 counts const char* params
-  (pass through a frame struct member or recompute inside).
-- Bash heredocs collapse backslashes -> use the Write tool for scripts with regexes; sed -i strips CRLF (use python); py /tmp != bash /tmp.
-- Restore user savegame was done (testgame.ims identical to backup).
+## Caveats
+- Lane 1 holds a host-wide game lease now (12c1d7272); launches wait automatically.
+- The nifty background_launch row was red once (tools/test_git_util.py) - lane 1's, since fixed upstream or not mine.
+- Do not touch: gameosmain*, gos_static_prop_registry*, tgl_transform*, mission_update*, missionbegin*, gos_terrain_indirect_dispatch*, gamecam*, EditorInspector*, brain_special_dispatch*, mlrlightmap*; skip files dirty in A:/Games/mc2-main.
