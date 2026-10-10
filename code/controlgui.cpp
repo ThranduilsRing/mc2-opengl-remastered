@@ -84,6 +84,99 @@ extern long helpTextID;
 
 ControlGui* ControlGui::instance = 0;
 
+extern bool neverEndingStory;
+
+ButtonData*	ControlGui::buttonData = NULL;
+ButtonData* ControlGui::vehicleData = NULL;
+
+long ControlGui::hiResOffsetX = 0;
+long ControlGui::hiResOffsetY = 0;
+
+long ControlGui::OBJECTIVESTOP= 0;
+long ControlGui::OBJECTIVESLEFT= 0;
+long ControlGui::OBJECTIVESSKIP= 0;
+long ControlGui::OBJECTIVESTOTALRIGHT= 0;
+long ControlGui::OBJEECTIVESHEADERSKIP= 0;
+long ControlGui::OBJECTIVESHEADERTOP= 0;
+long ControlGui::OBJECTIVEBOXX= 0;
+long ControlGui::OBJECTIVEBOXSKIP= 0;
+long ControlGui::OBJECTIVECHECKSKIP= 0;
+long ControlGui::OBJECTIVEHEADERLEFT = 0;
+long ControlGui::HELPAREA_LEFT = 0;
+long ControlGui::HELPAREA_BOTTOM = 0;
+long ControlGui::RPLEFT = 0;
+long ControlGui::RPTOP = 0;
+
+extern bool useLeftRightMouseProfile;
+extern bool drawGUIOn;				//Used to shut off GUI for Screen Shots and Movie Mode
+extern bool paintingMyVtol;
+
+#define TEXT_SKIP 5.f * Environment.screenHeight/600.f
+#define CHAT_DISPLAY_TIME 30
+
+int __cdecl sortStats( const void* pPlayer1, const void* pPlayer2 );
+
+long ControlGui::vehicleCosts[LAST_VEHICLE] = 
+{
+	7000, 
+	8000,
+	2000,
+	6000,
+	2000,
+	4000,
+	10000,
+	0
+};
+
+const char* ControlGui::vehicleNames[5] = {
+	"repairTruck",
+	"scout",
+	"minelayer",
+	"pv20600",
+	"guardTower"// needs to be recovery
+
+};
+
+long ControlGui::vehicleIDs[5] = 
+{
+	182,
+	393,
+	120,
+	147,
+	415
+};
+
+const char* ControlGui::vehiclePilots[5] =
+{
+	"PMWRepair",
+	"PMWScout",
+	"PMWMinelayer",
+	"PMWRecover",
+	"PMWGuardTower"
+};
+
+
+unsigned long ControlGui::WALK =	0;
+unsigned long ControlGui::RUN =		0x01;
+unsigned long ControlGui::GUARD =	0x02;
+unsigned long ControlGui::JUMP =	0x04;
+
+MoveInfo ControlGui::objectiveMoveInfo[OBJECTVE_MOVE_COUNT] = 
+{
+	0.0f,-640,
+	0.0f, 0
+};
+
+ MoveInfo ControlGui::missionResultsMoveInfo[RESULTS_MOVE_COUNT] = 
+ {
+
+	0.0f, -65,
+	0.16f, 0,
+	0.24f, -10
+};
+
+
+
 bool ControlGui::hudTabsGateOn() const
 {
 	return mc2::gate::get<"MC2_HUD_IMGUI_TABS">() && !HudImGui::pinnedToLegacy();
@@ -325,97 +418,6 @@ void ControlGui::renderHudTabChromeImGui()
 		++slot;
 	}
 }
-
-extern bool neverEndingStory;
-
-ButtonData*	ControlGui::buttonData = NULL;
-ButtonData* ControlGui::vehicleData = NULL;
-
-long ControlGui::hiResOffsetX = 0;
-long ControlGui::hiResOffsetY = 0;
-
-long ControlGui::OBJECTIVESTOP= 0;
-long ControlGui::OBJECTIVESLEFT= 0;
-long ControlGui::OBJECTIVESSKIP= 0;
-long ControlGui::OBJECTIVESTOTALRIGHT= 0;
-long ControlGui::OBJEECTIVESHEADERSKIP= 0;
-long ControlGui::OBJECTIVESHEADERTOP= 0;
-long ControlGui::OBJECTIVEBOXX= 0;
-long ControlGui::OBJECTIVEBOXSKIP= 0;
-long ControlGui::OBJECTIVECHECKSKIP= 0;
-long ControlGui::OBJECTIVEHEADERLEFT = 0;
-long ControlGui::HELPAREA_LEFT = 0;
-long ControlGui::HELPAREA_BOTTOM = 0;
-long ControlGui::RPLEFT = 0;
-long ControlGui::RPTOP = 0;
-
-extern bool useLeftRightMouseProfile;
-extern bool drawGUIOn;				//Used to shut off GUI for Screen Shots and Movie Mode
-extern bool paintingMyVtol;
-
-#define TEXT_SKIP 5.f * Environment.screenHeight/600.f
-#define CHAT_DISPLAY_TIME 30
-
-int __cdecl sortStats( const void* pPlayer1, const void* pPlayer2 );
-
-long ControlGui::vehicleCosts[LAST_VEHICLE] = 
-{
-	7000, 
-	8000,
-	2000,
-	6000,
-	2000,
-	4000,
-	10000,
-	0
-};
-
-const char* ControlGui::vehicleNames[5] = {
-	"repairTruck",
-	"scout",
-	"minelayer",
-	"pv20600",
-	"guardTower"// needs to be recovery
-
-};
-
-long ControlGui::vehicleIDs[5] = 
-{
-	182,
-	393,
-	120,
-	147,
-	415
-};
-
-const char* ControlGui::vehiclePilots[5] =
-{
-	"PMWRepair",
-	"PMWScout",
-	"PMWMinelayer",
-	"PMWRecover",
-	"PMWGuardTower"
-};
-
-
-unsigned long ControlGui::WALK =	0;
-unsigned long ControlGui::RUN =		0x01;
-unsigned long ControlGui::GUARD =	0x02;
-unsigned long ControlGui::JUMP =	0x04;
-
-MoveInfo ControlGui::objectiveMoveInfo[OBJECTVE_MOVE_COUNT] = 
-{
-	0.0f,-640,
-	0.0f, 0
-};
-
- MoveInfo ControlGui::missionResultsMoveInfo[RESULTS_MOVE_COUNT] = 
- {
-
-	0.0f, -65,
-	0.16f, 0,
-	0.24f, -10
-};
 
 
 ControlGui::ControlGui()
