@@ -19,12 +19,14 @@
 #include <sstream>
 #include <string>
 #include <thread>
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"   // str<>()
 
 namespace {
 
 const char* tracePath() {
-    const char* p = std::getenv("MC2_DIAGNOSTIC_TRACE_FILE");
-    if (p && p[0] && std::strcmp(p, "off") != 0) return p;
+    static const std::string p = mc2::gate::str<"MC2_DIAGNOSTIC_TRACE_FILE">();   // "" when unset or empty
+    if (!p.empty() && p != "off") return p.c_str();
     return "debug_state/diagnostic_trace.jsonl";
 }
 
