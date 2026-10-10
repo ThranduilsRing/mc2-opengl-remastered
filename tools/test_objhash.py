@@ -60,3 +60,14 @@ def test_digest_ignores_the_incremental_link_checksum_section(tmp_path):
     c.write_bytes(make_obj(text=b"\x90\xc3", chks=b"\x01" * 8))   # real code change
     da, db, dc = (objhash.obj_digest(str(p)) for p in (a, b, c))
     assert da["code_sha256"] == db["code_sha256"] != dc["code_sha256"]
+
+
+def test_same_basename_in_two_directories_resolves_to_the_sources_own_object(tmp_path):
+    build = tmp_path / "build"
+    for d in ("out/mclib/CMakeFiles/mclib.dir", "out/mclib/stuff/CMakeFiles/stuff.dir"):
+        (build / d).mkdir(parents=True)
+        (build / d / "color.cpp.obj").write_bytes(make_obj())
+    own = objhash.find_objs(str(build), "mclib/color.cpp")
+    assert len(own) == 1 and own[0].replace("\\", "/").endswith("out/mclib/CMakeFiles/mclib.dir/color.cpp.obj")
+    nested = objhash.find_objs(str(build), "mclib/stuff/color.cpp")
+    assert len(nested) == 1 and "stuff.dir" in nested[0]

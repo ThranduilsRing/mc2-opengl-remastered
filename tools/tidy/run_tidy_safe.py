@@ -57,6 +57,10 @@ EXCLUDED = (
     "GameOS/gameos/gos_terrain_lod_chunk*", "GameOS/gameos/gameos_graphics*",
     "GameOS/gameos/gos_static_prop_batcher*",
     "3rdparty/*", "build*/*", "Gates/*",
+    # Lane 2 is refactoring these (phase helpers / splits); a fix-it would collide with its merge.
+    "*/gameosmain.cpp", "*/saveload.cpp", "*/gos_static_prop_registry.cpp", "*/tgl_transform.cpp",
+    "*/mission_update.cpp", "*/missionbegin.cpp", "*/gos_terrain_indirect_dispatch.cpp", "*/gamecam.cpp",
+    "*/EditorInspector.cpp", "*/mlrlightmap.cpp", "*/brain_special_dispatch*", "*clip*",
 )
 
 DEFAULT_TREE = "build64-ninja"

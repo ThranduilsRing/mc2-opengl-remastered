@@ -136,7 +136,16 @@ def find_objs(build_dir, rel):
         stem = glob.escape(os.path.splitext(os.path.basename(rel))[0])
         for pat in ("%s/**/%s.obj" % (bd, base), "%s/**/%s.obj" % (bd, stem)):
             hits += glob.glob(pat, recursive=True)
-    return sorted(set(os.path.abspath(h) for h in hits))
+    objs = sorted(set(os.path.abspath(h) for h in hits))
+    if len(objs) > 1:
+        # Two sources can share a basename (mclib/color.cpp, mclib/stuff/color.cpp): keep the object built in the
+        # source's own directory, i.e. the path in front of CMakeFiles/ ends with the source's directory.
+        want = os.path.dirname(rel).replace("\\", "/").rstrip("/")
+        own = [o for o in objs
+               if o.replace("\\", "/").split("/CMakeFiles/")[0].endswith("/" + want) or (not want)]
+        if own:
+            objs = own
+    return objs
 
 
 def stamp(path):
