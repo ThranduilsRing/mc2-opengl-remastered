@@ -65,7 +65,7 @@ for (name, a, b, doc, *_r) in S.PHASES:
     if method:
         sig_rx = re.compile(r'^void ' + method + '::' + name + r'\(.*\) \{$')
     else:
-        sig_rx = re.compile(r'^(?:static void ' + name + r'\(.*\)|void \w+::' + name + r'\(\)) \{$')
+        sig_rx = re.compile(r'^(?:static void ' + name + r'\(.*\)|void \w+::' + name + r'\(.*\)) \{$')
     src_lines = new
     i = next((k for k, l in enumerate(src_lines) if sig_rx.match(l)), None)
     if i is None:

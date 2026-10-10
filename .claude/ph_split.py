@@ -18,6 +18,7 @@
 #   ONLY                       {frame id: [phase names]} frames only those phases may alias (name clashes)
 #   FRAME_METHODS              single frame: helpers that use its members are methods of the struct (no alias lines);
 #                              a phase tuple may end in {'free': True} to stay a file-static function
+#   FRAME_GLOBAL               keep the frame struct out of an anonymous namespace (block-scope externs in its methods)
 #   ALIAS_PER_LINE             alias declarations packed per line (keeps identical alias runs short)
 #   a phase tuple may end in {'dedent': prefix} to strip a different indent from that helper body
 #   INDENT, DEDENT, ORCH_DOC   indentation unit, prefix stripped from helper bodies, comment above function
@@ -31,6 +32,7 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '
 import console_child  # noqa: E402  (windowless console children without a conhost each)
 
 MEMBER_COMMENTS = {}
+MEMBER_GUARDS = {}    # member name -> #ifdef guard around its struct declaration
 MEMBER_LINES = {}     # member name -> original lines whose declaration is lifted (absent: any matching line)
 
 
@@ -103,6 +105,8 @@ def main():
     for m in S.MEMBERS:
         if len(m) > 3:
             MEMBER_LINES[m[0]] = set(m[3])
+        if len(m) > 4 and m[4]:
+            MEMBER_GUARDS[m[0]] = m[4]
     edits = dict(S.EDITS)
     method = getattr(S, 'METHOD_CLASS', None)
     indent = getattr(S, 'INDENT', '    ')
@@ -168,7 +172,8 @@ def main():
         uparams = [(n, t) for n, t in getattr(S, 'PARAMS', []) if re.search(r'\b' + n + r'\b', code)]
         info.append(dict(name=name, a=a, doc=doc, guard=guard, body=body, used=used, frames=frames, as_method=as_method, uparams=uparams))
     H = []
-    if not method:
+    anon = not method and not getattr(S, 'FRAME_GLOBAL', False)
+    if anon:
         H.append('namespace {')
         H.append('')
     for a in sorted(hoist):
@@ -182,20 +187,25 @@ def main():
         H.append('struct ' + sname + ' {')
         for n, t, fr in members:
             if fr == fid:
+                g = MEMBER_GUARDS.get(n)
+                if g:
+                    H.append('#ifdef ' + g)
                 H.append(indent + t + ' ' + n + ';' + (('  ' + MEMBER_COMMENTS[n]) if n in MEMBER_COMMENTS else ''))
+                if g:
+                    H.append('#endif')
         meths = [i for i in info if i['as_method']]
         if meths:
             H.append('')
         for i in meths:
             if i['guard']:
                 H.append('#ifdef ' + i['guard'])
-            H.append(indent + 'void %s();' % i['name'])
+            H.append(indent + 'void %s(%s);' % (i['name'], ', '.join((t if re.search(r'\b' + n + r'\b', t) else '%s %s' % (t, n)) for n, t in i['uparams'])))
             if i['guard']:
                 H.append('#endif')
         H.append('};')
         H.append('')
     H.append('\x00FRAME_END')
-    if not method:
+    if anon:
         H.append('}  // namespace')
     calls = {}
     decls = []
@@ -210,8 +220,9 @@ def main():
             H.append('#ifdef ' + guard)
         params = ', '.join([(t if re.search(r'\b' + n + r'\b', t) else '%s %s' % (t, n)) for n, t in i['uparams']] +['%s& %s' % (structs[fid], fid) for fid in frames])
         if i['as_method']:
-            H.append('void %s::%s() {' % (structs['f'], name))
-            calls[i['a']] = 'f.%s();' % name
+            mparams = ', '.join((t if re.search(r'\b' + n + r'\b', t) else '%s %s' % (t, n)) for n, t in i['uparams'])
+            H.append('void %s::%s(%s) {' % (structs['f'], name, mparams))
+            calls[i['a']] = 'f.%s(%s);' % (name, ', '.join(n for n, _t in i['uparams']))
         else:
             head = ('void %s::%s(%s) {' if method else 'static void %s%s(%s) {') % ((method, name, params) if method else ('', name, params))
             H.append(head)

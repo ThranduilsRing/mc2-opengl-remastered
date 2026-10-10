@@ -36,67 +36,52 @@ bool terrainLodCheckerDiagEnabled()
     return s_on;
 }
 
-void gos_TerrainLodChunk_SubmitDrawCommands(
-    const TerrainDrawCommand* cmds,
-    const float*              skirtDepths,
-    const unsigned char*      skirtEdgeMasks,
-    const unsigned int*       edgeStitch,
-    const int*                shadowTiers,
-    const float*              morphFactors,
-    int                       count)
-{
-    if (count == 0) return;
-    if (s_terrainProgram == 0 || !s_heightSsbo.created()) return;
-    if (s_patchVao == 0) return;
+// Locals the terrain LOD-chunk submit phases share: the GL state saved for the restore, the RAII state guards
+// (destroyed after the restore, in reverse declaration order, as they were as locals) and the feature flags.
+struct TerrainLodSubmitFrame {
+    GLint prevProg;
+    GLint prevVAO;
+    bool useGuards;
+    std::optional<mc2gl::GlScopedCapability> gDepthTest;
+    std::optional<mc2gl::GlScopedCapability> gBlend;
+    std::optional<mc2gl::GlScopedCapability> gCull;
+    std::optional<mc2gl::GlScopedDepthState> gDepthState;
+    GLboolean prevCullFace;
+    GLboolean prevDepthTest;
+    GLboolean prevDepthMask;
+    GLboolean prevBlend;
+    GLint prevDepthFunc;
+    bool visualDisplaceActive;
+    bool visualDampActive;
+    bool geomorphActive;
+#ifdef MC2_VULKAN_ISLAND
+    bool s_vkTerrainEnabled;
+#endif
+#ifdef MC2_VULKAN_ISLAND
+    bool s_vkTerrainActive;
+#endif
+#ifdef MC2_VULKAN_ISLAND
+    TerrainGlFallbackAudit s_vkTerrainGlAudit;
+#endif
+#ifdef MC2_VULKAN_ISLAND
+    bool s_vkTerrainGlAuditOn;
+#endif
 
-    // CLIFF-TESS-PERF: reset the once/frame full-mirror guard. This entrypoint is
-    // called once per terrain draw (once/frame), so clearing it here means the
-    // first near-field tess patch does the full enumerate-and-copy mirror and
-    // every subsequent patch this frame takes the cheap targeted per-patch path.
-    // Inside the gate-ON path's effect only (the flag is unread when the gate is
-    // off), so gate-OFF remains byte-identical.
-    s_tessMirroredThisFrame = false;
+    void saveGlStateAndGuards();
+    void bindProgramAndVisualHeight(const float* mvp);
+    void countSubmitAndPrepVk(int count, const float* mvp, int& s_submitCount);
+    void drawChunks(int count, const TerrainDrawCommand* cmds, const float* skirtDepths, const unsigned char* skirtEdgeMasks, const unsigned int* edgeStitch, const int* shadowTiers, const float* morphFactors);
+    void auditAndMarkDrawn(const unsigned int* edgeStitch);
+    void restoreGlState();
+    void submitVkIsland(int& s_submitCount);
+};
 
-    // SAME-ORDER-EXECUTOR-VALIDATE-1: top-level validate-only wrapper (gate MC2_FRAMEGRAPH_EXECUTOR).
-    // No-op when gate unset (byte-identical). PIN INVARIANT: additive only — no GL state change,
-    // no reorder. markTerrainDrawn/g_dispatchMvp16/knownEarly undisturbed.
-    render_contract::executorOwnBeginTopLevel(render_contract::PassIdentity::TerrainBase,
-                                              "gos_TerrainLodChunk_SubmitDrawCommands");
-    struct TopLevelGuard_ {
-        ~TopLevelGuard_() {
-            render_contract::executorOwnEndTopLevel(render_contract::PassIdentity::TerrainBase,
-                                                    "gos_TerrainLodChunk_SubmitDrawCommands");
-        }
-    } _tlGuard;
 
-    // [RENDER_PASS v1] advisory telemetry (env-gated, rate-limited).
-    // Chunk path is the default-on production terrain draw (8z cutover).
-    render_contract::noteRenderPass(render_contract::PassIdentity::TerrainBase,
-                                    "gos_TerrainLodChunk_SubmitDrawCommands");
-
-    // Match the water-cull / decal frame-of-reference: use the baked dispatch MVP
-    // when the solid pass is armed (== what the legacy terrain draw used), else
-    // the live MVP. Eliminates the 1-frame offset that caused shore-water dropout
-    // + decal tearing under camera motion (greybeard META-FIX).
-    const float* mvp = gos_terrain_indirect::IsFrameSolidArmed()
-                       ? gos_terrain_indirect_getDispatchMvp16()
-                       : gos_GetTerrainMVPMat4();
-    if (!mvp) mvp = gos_GetTerrainMVPMat4();
-    {
-        // Diag 7.5: log every time mvp is null (causes silent bail-out).
-        static int s_mvpNullCount = 0;
-        if (!mvp) {
-            ++s_mvpNullCount;
-            if (s_mvpNullCount <= 5 || s_mvpNullCount % 300 == 0)
-                printf("[TerrainLOD submit] mvp=NULL bail count=%d (count=%d)\n",
-                    s_mvpNullCount, count);
-            return;
-        }
-    }
-
-    GLint prevProg = 0;
+// Save the GL state the draw changes and apply the terrain depth/blend/cull state.
+void TerrainLodSubmitFrame::saveGlStateAndGuards() {
+    prevProg = 0;
     glGetIntegerv(GL_CURRENT_PROGRAM, &prevProg);
-    GLint prevVAO = 0;
+    prevVAO = 0;
     glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &prevVAO);
 
     // Phase 10.3: chunk terrain is OPAQUE and must EXPLICITLY own depth/blend/
@@ -119,15 +104,14 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
     // an opaque heightfield so double-sided is free).
     static const bool s_depthAlways = mc2::gate::get<"MC2_TERRAIN_LOD_DEPTH_ALWAYS">();
     const GLenum s_wantDepthFunc = s_depthAlways ? GL_ALWAYS : GL_GEQUAL;
-    const bool useGuards = glStateGuardTerrainEnabled();
+    useGuards = glStateGuardTerrainEnabled();
 
-    std::optional<mc2gl::GlScopedCapability> gDepthTest, gBlend, gCull;
-    std::optional<mc2gl::GlScopedDepthState> gDepthState;
-    GLboolean prevCullFace  = glIsEnabled(GL_CULL_FACE);
-    GLboolean prevDepthTest = GL_FALSE;
-    GLboolean prevDepthMask = GL_TRUE;
-    GLboolean prevBlend     = GL_FALSE;
-    GLint     prevDepthFunc = GL_GEQUAL;
+    
+    prevCullFace = glIsEnabled(GL_CULL_FACE);
+    prevDepthTest = GL_FALSE;
+    prevDepthMask = GL_TRUE;
+    prevBlend = GL_FALSE;
+    prevDepthFunc = GL_GEQUAL;
 
     if (useGuards) {
         gDepthTest.emplace(GL_DEPTH_TEST, /*enable=*/true);
@@ -145,7 +129,10 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
         glDepthFunc(s_wantDepthFunc);   // reverse-Z opaque terrain
         glDisable(GL_CULL_FACE);        // double-sided (see comment above)
     }
+}
 
+// Apply the terrain pipeline, bind the program, VAO and height SSBOs and set the displacement uniforms.
+void TerrainLodSubmitFrame::bindProgramAndVisualHeight(const float* mvp) {
     // TERRAIN-LODCHUNK-APPLYPIPELINE-ROUTING-1: make the TerrainSolid pipeline row the
     // AUTHORITATIVE fixed-function state for the live terrain-solid path (this LOD-chunk
     // draw is the default; the bridge is suppressed by mc2TerrainLodChunkEnabled). Both
@@ -184,7 +171,7 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
 #else
     static const bool s_visualDisplaceGate = mc2::gate::get<"MC2_TERRAIN_VISUAL_DISPLACE">();
 #endif
-    const bool visualDisplaceActive = s_visualDisplaceGate && s_visualHeightSsbo.created() && s_visualSide > 0;
+    visualDisplaceActive = s_visualDisplaceGate && s_visualHeightSsbo.created() && s_visualSide > 0;
     if (visualDisplaceActive)
         s_visualHeightSsbo.bindBase(TERRAIN_VISUAL_HEIGHT_SSBO_BINDING);
     if (s_locVisualSide >= 0)
@@ -194,7 +181,7 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
     // it is the safety) AND a damp map for THIS map size was uploaded. Binds
     // binding 27 for the whole draw; u_visualDampOn=0 => shader never reads it.
     static const bool s_visualDampGate = mc2::gate::get<"MC2_TERRAIN_VISUAL_DISPLACE_OBJFADE">();
-    const bool visualDampActive = visualDisplaceActive && s_visualDampGate
+    visualDampActive = visualDisplaceActive && s_visualDampGate
                                   && s_visualDampSsbo.created()
                                   && s_visualDampSide == s_mapSide;
     if (visualDampActive)
@@ -218,7 +205,7 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
     // uploads 0 -> vert branch skipped (S2 behavior verbatim).
     // MC2_TERRAIN_LOD_GEOMORPH=0 is the killswitch when mips ARE present.
     static const bool s_geomorphKill = !mc2::gate::get<"MC2_TERRAIN_LOD_GEOMORPH">();
-    const bool geomorphActive =
+    geomorphActive =
         visualDisplaceActive && s_visualMipFloats > 0 && !s_geomorphKill;
     if (s_locGeomorphMips >= 0)
         glUniform1i(s_locGeomorphMips, geomorphActive ? 1 : 0);
@@ -267,7 +254,10 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
     // MC2_SHADER_PATH_TINT: solid GREEN for the chunk terrain path (default 0 = OFF).
     if (s_locPathTint >= 0)
         glUniform1i(s_locPathTint, mc2ShaderPathTint());
+}
 
+// Bind the colormap atlas (with its UV params), the shadow maps and the light matrices.
+static void bindAtlasAndShadowMaps() {
     // Phase 10 (Step 1a): bind the merged colormap atlas (tex1) on unit 0 and
     // feed the atlas-UV reconstruction params (same source as the legacy
     // gos_terrain.frag useAtlasColormap path). When the atlas is not yet built
@@ -441,7 +431,10 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
             if (s_locEnableDynShadows >= 0) glUniform1i(s_locEnableDynShadows, 0);
         }
     }
+}
 
+// Bind the material normal array, the cement atlas, the transition mask and the control map.
+static void bindAuxTextures() {
     // Phase 10 Step 5a: bind the merged material normal sampler2DArray (same
     // texture the legacy terrain uses) on its own unit. 0 until all 5 material
     // slots are populated -> the frag samples the default texture (flat-ish
@@ -511,7 +504,10 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
             glActiveTexture(GL_TEXTURE0);
         }
     }
+}
 
+// Bind the per-layer material albedo array and the overlay-v2 sidecar.
+static void bindMaterialAndOverlay() {
     // TERRAIN-MATERIAL-TEXTURES-1: per-layer PBR albedo array at unit 4. Lazy
     // load at first gate-ON bind; u_useMatAlbedo uploads 0 when the gate is
     // OFF or the load failed -> frag takes the verbatim colormap-tint path
@@ -567,7 +563,10 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
                             s_overlayBounds[2], s_overlayBounds[3]);
         }
     }
+}
 
+// Bind the shoreline mask and set the wet/foam band uniforms.
+static void bindShorelineMask() {
     // TERRAIN-SHORELINE-V3: elevation-placed wet/foam band. u_useShorelineMask
     // now gates the BAND ITSELF (MC2_TERRAIN_SHORELINE on), independent of
     // whether a mask sidecar was found -- v1/v2 required a loaded mask before
@@ -657,7 +656,10 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
                 glUniform1f(s_locShorelineEdgeJitter, s_shorelineEdgeJitter);
         }
     }
+}
 
+// Upload the material tiling, tint, lighting and shadow tuning uniforms.
+static void uploadTerrainTuning() {
     {
         float mt[5] = {3,2,1,6,1};  gos_GetTerrainMatTiling(&mt[0], &mt[1], &mt[2], &mt[3], &mt[4]);
         float nb[4] = {0.9f,1.1f,1.1f,2.5f}; gos_GetTerrainMatNormalBoost(&nb[0], &nb[1], &nb[2], &nb[3]);
@@ -935,7 +937,10 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
         }
         if (s_locMatProfile  >= 0) glUniform1i(s_locMatProfile,  g_terrainMaterialProfile);
     }
+}
 
+// Log the first non-empty submit and reset the zero-submit streak.
+static void noteFirstSubmit(int count) {
     {
         static bool s_firstSubmit = true;
         s_submitZeroStreak = 0;  // reset on any non-zero submit
@@ -945,8 +950,10 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
             s_firstSubmit = false;
         }
     }
+}
 
-    static int s_submitCount = 0;
+// Count the submit, reset the displaced-chunk counters and prepare the VK terrain island.
+void TerrainLodSubmitFrame::countSubmitAndPrepVk(int count, const float* mvp, int& s_submitCount) {
     ++s_submitCount;
     if (s_submitCount % 600 == 0) {
         printf("[TerrainLOD submit] count=%d cmds=%d\n", s_submitCount, count);
@@ -969,7 +976,7 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
     // enabled (even when we did NOT skip) so the island can BIRTH/heal — the first
     // successful run flips ready for the next frame (one-frame GL-draw then VK takeover,
     // never a hole).
-    const bool s_vkTerrainEnabled = (mc2_vk_terrain_island_enabled() != 0);
+    s_vkTerrainEnabled = (mc2_vk_terrain_island_enabled() != 0);
     // PREPARE the island NOW (GL context current) so the skip decision below can gate on
     // real readiness — this births the island independent of the feed, breaking the
     // skip<->ready<->feed deadlock. On any failure prepare()==0 -> GL draws LOD0.
@@ -980,7 +987,7 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
                 (mc2_vk_terrain_island_prepare(ppPrep->getWidth(), ppPrep->getHeight()) != 0);
         }
     }
-    const bool s_vkTerrainActive = s_vkTerrainEnabled && s_vkTerrainReady;
+    s_vkTerrainActive = s_vkTerrainEnabled && s_vkTerrainReady;
     static bool s_vkTerrainFailSoftLogged = false;
     if (s_vkTerrainEnabled && !s_vkTerrainActive && !s_vkTerrainFailSoftLogged) {
         fprintf(stderr, "[VK_TERRAIN_ISLAND] FAIL-SOFT: gate ON but island not ready this "
@@ -993,10 +1000,12 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
     if (s_vkTerrainActive) {
         std::memcpy(s_vkTerrainMvp, mvp, sizeof(s_vkTerrainMvp)); // same MVP the GL draw uses
     }
-    TerrainGlFallbackAudit s_vkTerrainGlAudit;
-    const bool s_vkTerrainGlAuditOn = terrainGlFallbackAuditEnabled();
+    s_vkTerrainGlAuditOn = terrainGlFallbackAuditEnabled();
 #endif
+}
 
+// Issue the draw for every queued command, then report the per-band displaced-chunk counts.
+void TerrainLodSubmitFrame::drawChunks(int count, const TerrainDrawCommand* cmds, const float* skirtDepths, const unsigned char* skirtEdgeMasks, const unsigned int* edgeStitch, const int* shadowTiers, const float* morphFactors) {
     for (int i = 0; i < count; ++i)
     {
         const TerrainDrawCommand& cmd = cmds[i];
@@ -1254,7 +1263,10 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
             fflush(stdout);
         }
     }
+}
 
+// Report the patches the VK island left to GL and mark terrain drawn for the post-process passes.
+void TerrainLodSubmitFrame::auditAndMarkDrawn(const unsigned int* edgeStitch) {
 #ifdef MC2_VULKAN_ISLAND
     if (s_vkTerrainGlAuditOn) {
         static unsigned long s_auditFrame = 0;
@@ -1320,6 +1332,10 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
         pp->setShorelineSuppressedByTerrainMask(
             gos_TerrainShorelineLegacySuppressOn());
     }
+}
+
+// Unbind the terrain buffers and restore the saved GL state.
+void TerrainLodSubmitFrame::restoreGlState() {
     RenderCore::framegraph::noteTerrainPath(RenderCore::framegraph::TerrainPath::LODChunk);  // TERRAIN-PATH-TELEMETRY-1
 
     glDisableVertexAttribArray(0);
@@ -1341,6 +1357,10 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
     glBindVertexArray((GLuint)prevVAO);
     glUseProgram((GLuint)prevProg);
 
+}
+
+// Hand the captured LOD0 patches to the VK island once GL state is restored.
+void TerrainLodSubmitFrame::submitVkIsland(int& s_submitCount) {
 #ifdef MC2_VULKAN_ISLAND
     // VK-P10 TERRAIN TIER-1: after the GL terrain bands drew (and GL state is fully
     // restored), the VK island co-writes the captured LOD0 patches into the SAME
@@ -1393,4 +1413,82 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
         }
     }
 #endif
+}
+
+// Submits the LOD chunk draw commands. The early bail-outs, the top-level pass guard and the MVP fetch stay here;
+// each phase below is a verbatim helper, run in the original order.
+void gos_TerrainLodChunk_SubmitDrawCommands(
+    const TerrainDrawCommand* cmds,
+    const float*              skirtDepths,
+    const unsigned char*      skirtEdgeMasks,
+    const unsigned int*       edgeStitch,
+    const int*                shadowTiers,
+    const float*              morphFactors,
+    int                       count)
+{
+    if (count == 0) return;
+    if (s_terrainProgram == 0 || !s_heightSsbo.created()) return;
+    if (s_patchVao == 0) return;
+
+    // CLIFF-TESS-PERF: reset the once/frame full-mirror guard. This entrypoint is
+    // called once per terrain draw (once/frame), so clearing it here means the
+    // first near-field tess patch does the full enumerate-and-copy mirror and
+    // every subsequent patch this frame takes the cheap targeted per-patch path.
+    // Inside the gate-ON path's effect only (the flag is unread when the gate is
+    // off), so gate-OFF remains byte-identical.
+    s_tessMirroredThisFrame = false;
+
+    // SAME-ORDER-EXECUTOR-VALIDATE-1: top-level validate-only wrapper (gate MC2_FRAMEGRAPH_EXECUTOR).
+    // No-op when gate unset (byte-identical). PIN INVARIANT: additive only — no GL state change,
+    // no reorder. markTerrainDrawn/g_dispatchMvp16/knownEarly undisturbed.
+    render_contract::executorOwnBeginTopLevel(render_contract::PassIdentity::TerrainBase,
+                                              "gos_TerrainLodChunk_SubmitDrawCommands");
+    struct TopLevelGuard_ {
+        ~TopLevelGuard_() {
+            render_contract::executorOwnEndTopLevel(render_contract::PassIdentity::TerrainBase,
+                                                    "gos_TerrainLodChunk_SubmitDrawCommands");
+        }
+    } _tlGuard;
+
+    // [RENDER_PASS v1] advisory telemetry (env-gated, rate-limited).
+    // Chunk path is the default-on production terrain draw (8z cutover).
+    render_contract::noteRenderPass(render_contract::PassIdentity::TerrainBase,
+                                    "gos_TerrainLodChunk_SubmitDrawCommands");
+
+    // Match the water-cull / decal frame-of-reference: use the baked dispatch MVP
+    // when the solid pass is armed (== what the legacy terrain draw used), else
+    // the live MVP. Eliminates the 1-frame offset that caused shore-water dropout
+    // + decal tearing under camera motion (greybeard META-FIX).
+    const float* mvp = gos_terrain_indirect::IsFrameSolidArmed()
+                       ? gos_terrain_indirect_getDispatchMvp16()
+                       : gos_GetTerrainMVPMat4();
+    if (!mvp) mvp = gos_GetTerrainMVPMat4();
+    {
+        // Diag 7.5: log every time mvp is null (causes silent bail-out).
+        static int s_mvpNullCount = 0;
+        if (!mvp) {
+            ++s_mvpNullCount;
+            if (s_mvpNullCount <= 5 || s_mvpNullCount % 300 == 0)
+                printf("[TerrainLOD submit] mvp=NULL bail count=%d (count=%d)\n",
+                    s_mvpNullCount, count);
+            return;
+        }
+    }
+
+    TerrainLodSubmitFrame f;
+    f.saveGlStateAndGuards();
+    f.bindProgramAndVisualHeight(mvp);
+    bindAtlasAndShadowMaps();
+    bindAuxTextures();
+    bindMaterialAndOverlay();
+    bindShorelineMask();
+    uploadTerrainTuning();
+    noteFirstSubmit(count);
+
+    static int s_submitCount = 0;
+    f.countSubmitAndPrepVk(count, mvp, s_submitCount);
+    f.drawChunks(count, cmds, skirtDepths, skirtEdgeMasks, edgeStitch, shadowTiers, morphFactors);
+    f.auditAndMarkDrawn(edgeStitch);
+    f.restoreGlState();
+    f.submitVkIsland(s_submitCount);
 }
