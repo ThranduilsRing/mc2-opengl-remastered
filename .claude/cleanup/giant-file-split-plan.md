@@ -621,3 +621,31 @@ Shared state / header: the only shared helper is `gvEnvFlagDefaultOn` (used by t
 Surface that must not change: `GVAppearance`/`GVAppearanceType` (gvactor.h), `counter-honesty-allowlist.txt` entry `mclib/gvactor.cpp::s_spotDiagGvActors <= 8`, `check-env-registry.sh` comment naming `gvEnvFlagDefaultOn`.
 Risks: the cache declarations are moved next to their users in the source BEFORE the split (text-identical lines, so `split_verify` sees only the one inline edit).
 First cut: pre-move the caches, then the four files in one commit.
+
+## 5b. mclib/txmmgr.cpp responsibility table (added 2026-10-10, HEAD after G6/bdactor/mech3d; 5,967 lines)
+
+Section 5 above is the 2026-10 outline; this table is the one the split was cut from. Line numbers are HEAD at the
+time of the cut; the generator anchors on unit boundaries, not on these numbers.
+
+| Lines | Responsibility | ~Lines |
+|---|---|---:|
+| 1-123 | include bundle (incl. `#ifdef MC2_VULKAN_ISLAND` block), `effectStream`/`mcTextureManager`/static members, `mc_ResetTerrainShadowPrimed` | 125 |
+| 124-443 | counters and cost accumulators: tex-lifecycle trace, spot-diag pack, light-clamp probe/fixture, light-row pure/census, `rlcost` spans, SPFLUSH, TXMMGR_BOUNDS, texture-audit leak counters | 320 |
+| 444-543 | `txmLeakKeyForName`, `EVICT_SKIPPED`, shadow-shape list (`addShadowShape`/`clearShadowShapes`), `isAllConcreteTerrainBatch` | 100 |
+| 544-606 | texture cache constants, `tryReadTgaLogicalSize` (KTX/compressed-upload size probe) | 65 |
+| 607-1187 | manager lifecycle: `freeVertices/Shapes`, `start`, `destroy`, `flush`, `removeTexture*`, `flushCache` | 580 |
+| 1188-1391 | `addRenderShape` | 205 |
+| 1392-2249 | baked static light slots: dedup map, LIGHTBAKE/LIGHTBRIDGE gates, `mc2*StaticLight*` API, `addLightDataStructure*`, `bakeStaticLightSlot`, parity check | 860 |
+| 2250-2497 | `gos2my` matrix helpers, `class ShapeRenderer` (used only by `renderLists`) | 250 |
+| 2498-3142 | pure object light row (`olr::` adapters, policy publish), `GatherLightsParameters`, `ProbeGatherLightsForList` | 645 |
+| 3143-5012 | `renderLists`: one 1,870-line function (the `bSkip` static spans its phases) | 1870 |
+| 5013-5101 | `pinNode`/`unpinNode`/`update` | 90 |
+| 5102-5965 | texture load/save/copy: `textureFromMemory(Raw)`, `loadTexture` (KTX route-2, compressed upload), `refreshTexturesByName`, `saveTexture`, `MC_TextureNode` | 865 |
+
+Split (6 files + header): `txmmgr_diag.cpp` (124-443), `txmmgr_lights.cpp` (1392-2249), `txmmgr_lightrow.cpp` (2498-3142),
+`txmmgr_render.cpp` (2250-2497 + 3143-5012: `renderLists` and its helper class; stays above 1,500 lines because the
+function cannot be moved in pieces -- cutting it needs phase helpers, which is a refactor, not a split),
+`txmmgr_texture.cpp` (544-606 + 5102-5965), core `txmmgr.cpp` (includes, globals, lifecycle, `addRenderShape`, pin/update).
+Risks: `check-light-row-freshness.py` exempts nothing here but scans for the index read; `counter-honesty-allowlist.txt` keys
+name txmmgr.cpp; the `TEX_LC`/`EVICT_SKIPPED` macros span lines and are moved to the header; `mc2_asset_viewer` stubs define
+`mc2StaticLightHighWater` and friends by name.

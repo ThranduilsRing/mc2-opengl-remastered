@@ -90,13 +90,10 @@ mc2_narrowing_errors(
     particles
 )
 
-# mclib: every file except the ones lane-1 is editing (txmmgr still carries 6 C4267).
+# mclib: every file except the ones lane-1 is editing.
 # Drop an entry from EXCEPT once the file is clean and no longer in flight.
 mc2_narrowing_errors_sources(mclib
     EXCEPT
-        mclib/bdactor.cpp
-        mclib/mech3d.cpp
-        mclib/txmmgr.cpp
         mclib/terrain.cpp)
 
 # gameos: only utils/ is clean; the gameos/*.cpp files are noisy or in flight.
