@@ -30,6 +30,10 @@ LogisticsData.cpp			: Implementation of the LogisticsData component.
 #include<future>
 #include"../GameOS/gameos/diagnostic_trace.h"   // LOGISTICS front-end state capture
 #include "Gates/gate.h"
+#ifndef VIEWER
+#include"multplyr.h"
+#include"chatwindow.h"
+#endif
 
 // Interactive cheat gates -- read once at startup, default OFF (unset = nullptr = false)
 // The launcher writes this into launcher_env.json, which main() applies after static initialization, so it
@@ -50,10 +54,7 @@ static const bool s_smartLoadTrace = mc2::gate::get<"MC2_SMART_LOAD_TRACE">();
     if (s_smartLoadTrace) { printf("[SMART_LOAD] " fmt "\n", ##__VA_ARGS__); fflush(stdout); } \
 } while(0)
 
-#ifndef VIEWER
-#include"multplyr.h"
-#include"chatwindow.h"
-#else
+#ifdef VIEWER
 	bool MissionResults::FirstTimeResults = false;
 #endif
 
