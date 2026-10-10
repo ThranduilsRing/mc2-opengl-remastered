@@ -472,6 +472,20 @@ TEST_CASE("dumpConfig warns about an unregistered MC2_ variable and a bad value"
     if (!verified) CHECK(sum.badvalue == 0);
 }
 
+TEST_CASE("a bad value on a verified row counts toward strict, with no verified=0 marker") {
+    constexpr std::size_t idx = gate::detail::indexOf("MC2_LIGHT_GRID_DIM");
+    REQUIRE(gate::tableData()[idx].verified);
+    EnvVar env("MC2_LIGHT_GRID_DIM");
+    env.set("abc");
+    gate::DumpSummary sum;
+    gate::DumpOptions opts;
+    opts.exitOnStrict = false;
+    opts.strict = true;
+    const std::string out = capture(opts, &sum);
+    CHECK(hasLine(out, "[CONFIG v1] warn=badvalue name=MC2_LIGHT_GRID_DIM kind=int raw=\"abc\""));
+    CHECK(sum.badvalue >= 1);
+}
+
 TEST_CASE("an Enum row's default must be one of its tokens") {
     using namespace gate::rows;
     CHECK(rowIsSane(G("MC2_UNITTEST_ENUM", Enum, "a", "test", "", "doc", tokens("a|b"))));
