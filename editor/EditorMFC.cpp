@@ -14,6 +14,7 @@
 #include <cstring>
 #include <vector>
 #include "../GameOS/gameos/gos_crashbundle.h"
+#include "Gates/gate_cold.h"  // gate reads below, and markMainEntered / invalidateAll / dumpConfig: EditRel has no gameosmain
 
 // ---------------------------------------------------------------------------
 // S-CLI: command-line flags for autonomous editor launches.
@@ -174,7 +175,7 @@ static void editor_set_default_env_vars()
     // Bake editor-preferred defaults so RenderDoc and other tools can launch
     // the exe directly without a .bat. Bat overrides still work because we
     // only set when unset.
-    if (!getenv("MC2_EDITOR_TRACE"))            _putenv_s("MC2_EDITOR_TRACE",              "1");
+    if (!mc2::gate::isSet<"MC2_EDITOR_TRACE">())            _putenv_s("MC2_EDITOR_TRACE",              "1");
     // S3 (2026-05-25): MC2_GPU_DRIVEN, MC2_EDITOR_BYPASS_BLDG_CULL, MC2_STATIC_PROP_REGISTRY
     // sidesteps retired -- editor now runs canonical default-ON chain.
 }
@@ -184,7 +185,7 @@ static void EarlyTrace(const char* msg)
 	// Always feed crash ring — visible in last_trace.txt on CTD.
 	crashbundle_append(msg);
 
-	if (getenv("MC2_EDITOR_TRACE") == NULL)
+	if (!mc2::gate::get<"MC2_EDITOR_TRACE">())
 		return;
 
     FILE* f = fopen("editor-startup.log", "a");
@@ -197,7 +198,7 @@ static void EarlyTrace(const char* msg)
 
 static void EarlyTraceBegin()
 {
-	if (getenv("MC2_EDITOR_TRACE") == NULL)
+	if (!mc2::gate::get<"MC2_EDITOR_TRACE">())
 		return;
 
     // Open with "w" exactly once at true process start to clear any stale log,
@@ -233,7 +234,6 @@ static void EarlyTraceBegin()
 #include "EditorPlaytest.h"   // -playtest end-to-end smoke
 #include "EditorTaskRunner.h" // ShutdownKillRunning() on editor exit
 #include "resource.h"   // ID_FOLIAGE_* for the -smoke-foliage-menu WM_COMMAND drive
-#include "Gates/gate_cold.h"  // markMainEntered / invalidateAll / dumpConfig: EditRel has no gameosmain
 
 // -- S-CLI parser ------------------------------------------------------------
 // Accepts: -mission/--mission PATH (or =PATH), -frames/--frames N (or =N),
@@ -454,9 +454,7 @@ static DWORD WINAPI s_smoke_thread(LPVOID);   // smoke driver: defined below
 bool EditorBackgroundLaunch()
 {
 	// Same truthiness as the engine's window_offscreen_requested(): set and not "0".
-	const char* noActivate = getenv("MC2_NO_ACTIVATE");
-	const char* offscreen  = getenv("MC2_WINDOW_OFFSCREEN");
-	return (noActivate && noActivate[0] && noActivate[0] != '0') || (offscreen && offscreen[0] && offscreen[0] != '0');
+	return mc2::gate::get<"MC2_NO_ACTIVATE">() || mc2::gate::get<"MC2_WINDOW_OFFSCREEN">();
 }
 
 BOOL EditorMFCApp::InitInstance()
