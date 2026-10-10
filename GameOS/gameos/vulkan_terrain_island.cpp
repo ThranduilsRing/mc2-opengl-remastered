@@ -2324,7 +2324,7 @@ extern "C" int mc2_vk_terrain_island_ready() {
 // LOD0 — without this the skip would gate on ready, ready would gate on a born island,
 // and the island would only be born from a non-empty feed produced by the skip
 // (chicken-egg deadlock -> island never births -> LOD0 always GL-drawn).
-static bool ensure_island_ready(int w, int h) {
+bool ensure_island_ready(int w, int h) {
     if (!terrainTier1Requested()) return false;
     if (w <= 0 || h <= 0) return false;
     // Item-2 boot-level native-or-decline: a prior PERMANENT init failure declined this
@@ -2373,7 +2373,7 @@ extern "C" int mc2_vk_terrain_island_prepare(int w, int h) {
 // per-frame cadence as GL's PackAndDispatch/BuildAndUploadLightGrid uploads). Any
 // staging failure degrades to "no pools" (numPoolLights=0), never a hole.
 // (Factored out of mc2_vk_terrain_island_run for VK-PARITY-OVERLAY-1 reuse.)
-static void stage_light_pool(TerrainIsland* s, uint32_t par, const Mc2TerrainTier1Feed& feed,
+void stage_light_pool(TerrainIsland* s, uint32_t par, const Mc2TerrainTier1Feed& feed,
                              int32_t& vkPoolLights, int32_t& vkGridDim) {
     {
         ZoneScopedN("VKIsl.Terrain.LightPoolStage");
@@ -2406,7 +2406,7 @@ static void stage_light_pool(TerrainIsland* s, uint32_t par, const Mc2TerrainTie
 // Fill one TerrainFrameUBO slot from the frame feed + one patch record (shared MVP /
 // lighting / shadow knobs; per-patch blockOrigin/lod fields). Factored out of
 // mc2_vk_terrain_island_run for VK-PARITY-OVERLAY-1 reuse (the overlay pass fills slot 0).
-static void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
+void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
                            const Mc2TerrainTier1Patch& patch,
                            int32_t vkPoolLights, int32_t vkGridDim, TerrainFrameUBO& u) {
     std::memcpy(u.worldToClipGL, feed.worldToClipGL, sizeof(u.worldToClipGL));
