@@ -66,8 +66,8 @@
    "LG16": 7,
    "LG17": 81,
    "LG18": 11,
-   "LG19": 59,
-   "LG20": 92
+   "LG19": 56,
+   "LG20": 89
   },
   "GuiRuntime": {
    "LG01": 1,
@@ -1010,9 +1010,7 @@
    "LG03": 4,
    "LG09": 2,
    "LG12b": 1,
-   "LG17": 1,
-   "LG19": 3,
-   "LG20": 3
+   "LG17": 1
   },
   "GameOS/gameos/gpu_cull_substrate.h": {
    "LG17": 1
@@ -5831,7 +5829,7 @@
    "LG20": 1
   }
  },
- "head": "ff417c694",
+ "head": "16563b828",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
