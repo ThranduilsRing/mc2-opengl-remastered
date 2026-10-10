@@ -1,12 +1,8 @@
-//***************************************************************************
-//
 //	move.cp - This file contains the Movement\Pathfinding routines
-//
 //---------------------------------------------------------------------------//
 // Copyright (C) Microsoft Corporation. All rights reserved.                 //
 //===========================================================================//
 
-//--------------
 // Include Files
 #ifndef MCLIB_H
 #include"mclib.h"
@@ -31,7 +27,6 @@
 #include"path_trace.h"  // PATHFINDING-FACTS-1 Stage 1 gated PATH telemetry
 #include"move_solvectx.h"  // PATHFINDING-SOLVER-ISOLATION-1 per-solve SolveContext
 
-//---------------------------------------------------------------------------
 // Bounded readPacket helper for GlobalMap::init — refuses to read a packet
 // whose unpacked size exceeds the caller's buffer. Fixes silent heap
 // corruption on mod content where the pak's move-data packet layout is
@@ -84,8 +79,6 @@ static int readDoorLinksMCO(PacketFilePtr packetFile, int packetNum,
     return result;
 }
 
-//***************************************************************************
-
 #define	USE_SEPARATE_WATER_MAPS	FALSE
 
 #ifndef TEAM_H
@@ -98,7 +91,6 @@ typedef enum {
 #define	MAX_TEAMS						8
 #endif
 
-//------------
 // EXTERN vars
 
 extern void memclear(void *Dest,int Length);
@@ -114,7 +106,6 @@ int GlobalMap::minCol = 0;
 int GlobalMap::maxCol = 0;
 GameLogPtr GlobalMap::log = NULL;
 bool GlobalMap::logEnabled = false;
-//------------
 // GLOBAL vars
 bool ZeroHPrime = false;
 bool CullPathAreas = false;
@@ -351,7 +342,6 @@ inline float agsqrt( float _a, float _b )
 	return sqrt(_a*_a + _b*_b);
 }
 
-//-------------------------------------------------
 // Only pattern 2 is used now.
 char mineLayout[4][MAPCELL_DIM * MAPCELL_DIM] = {
 	{0,0,0,0,0,0,0,0,0},
@@ -391,9 +381,7 @@ static const char* typeString[] = {
     "forest area"
 };
 
-//***************************************************************************
 // MISC routines
-//***************************************************************************
 
 inline void calcAdjNode (long& r, long& c, long direction) {
 
@@ -401,18 +389,13 @@ inline void calcAdjNode (long& r, long& c, long direction) {
 	c += colShift[direction];
 }
 
-//---------------------------------------------------------------------------
-
 inline bool inMapBounds (int r, int c, int mapHeight, int mapWidth) {
 
 	return((r >= 0) && (r < mapHeight) && (c >= 0) && (c < mapWidth));
 }
 
-//---------------------------------------------------------------------------
-
 Stuff::Vector3D relativePositionToPoint (Stuff::Vector3D point, float angle, float distance, unsigned long flags) {
 
-	//--------------------------------------------------------
 	// Note that the angle should be -180 <= angle <= 180, and
 	// the distance is in meters...
 
@@ -449,7 +432,6 @@ Stuff::Vector3D relativePositionToPoint (Stuff::Vector3D point, float angle, flo
 
 	deltaVector.Subtract(goal2d,start2d);
 
-	//-------------------------------------------------------------
 	// First, we need to calc the delta vector--how much we extend
 	// the ray everytime we check the map cell for clear placement.
 	deltaVector.Normalize(deltaVector);
@@ -457,11 +439,9 @@ Stuff::Vector3D relativePositionToPoint (Stuff::Vector3D point, float angle, flo
 	if (deltaVector.GetLength() == 0.0)
 		return(curPos);
 
-	//-------------------------------------------------
 	// Determine the max length the ray must be cast...
 	float maxLength = distance_from(goal2d,start2d);
 
-	//------------------------------------------------------------
 	// We'll start at the target, and if it's blocked, we'll move
 	// toward our start location, looking for the first valid/open
 	// cell...
@@ -505,7 +485,6 @@ Stuff::Vector3D relativePositionToPoint (Stuff::Vector3D point, float angle, flo
 			cellClear = GameMap->getPassable(cellR, cellC);
 		}
 
-	//----------------------------------------
 	// lastGoodPoint MUST be on Map or BOOM!!
 	// back on map if necessary
 	float maxMap = Terrain::worldUnitsMapSide / 2.0;
@@ -544,10 +523,7 @@ Stuff::Vector3D relativePositionToPoint (Stuff::Vector3D point, float angle, flo
 	return(curPoint3d);
 }
 
-//***************************************************************************
 // MISSION MAP class (new Game Map class)
-//***************************************************************************
-//#define DEBUG_GLOBALMAP_BUILD
 
 // PATHFINDING-SOLVER-ISOLATION-1: one-time build of the cellShiftDistance[]
 // table. Historically this was lazily initialized inside the solver via three
@@ -583,8 +559,6 @@ void MOVE_init (long moveRange) {
 		Fatal(0, " MOVE_Init: MoveRange TOO SMALL. Go see Glenn. ");
 	PathFindMap[SIMPLE_PATHMAP]->init(SimpleMovePathRange * 2 + 1, SimpleMovePathRange * 2 + 1);
 }
-
-//---------------------------------------------------------------------------
 
 bool EditorSave = false;
 long tempNumSpecialAreas = 0;
@@ -675,14 +649,12 @@ void MOVE_buildData (long height, long width, MissionMapCellInfo* mapData, long 
 
 	printf("[MOVE_BD] all GlobalMaps built OK\n"); fflush(stdout);
 
-	//-----------------------
 	// Just some debugging...
 	//for (r = 0; r < height; r++)
 	//	for (long c = 0; c < width; c++)
 	//		if (GameMap->getOffMap(r, c))
 	//			numOffMap++;
 
-	//-------------------------------------------------------------------------------------
 	// Since we use this bitfield during the globalmap build for something else, we can now
 	// reset it...
 	for (long row = 0; row < GameMap->height; row++)
@@ -693,8 +665,6 @@ void MOVE_buildData (long height, long width, MissionMapCellInfo* mapData, long 
 	EditorSave = false;
 }
 
-//---------------------------------------------------------------------------
-
 long MOVE_saveData (PacketFile* packetFile, long whichPacket) {
 
 	if (!GameMap)
@@ -704,7 +674,6 @@ long MOVE_saveData (PacketFile* packetFile, long whichPacket) {
 	if (!packetFile)
 		return(GameMap->write(NULL) + GlobalMoveMap[0]->write(NULL) + GlobalMoveMap[1]->write(NULL) + GlobalMoveMap[2]->write(NULL) + 2);
 
-	//-----------------------
 	// Just some debugging...
 	//long numOffMap = 0;
 	//for (long r = 0; r < GameMap->height; r++)
@@ -720,7 +689,6 @@ long MOVE_saveData (PacketFile* packetFile, long whichPacket) {
 	long result = packetFile->writePacket(whichPacket + numMissionMapPackets + numGlobalMap0Packets + numGlobalMap1Packets + numGlobalMap2Packets, (unsigned char*)&tempNumSpecialAreas, sizeof(long));
 	if (result <= 0)
 		Fatal(result, " MOVE_saveData: Unable to write num special area ");
-	//-------------------------------------------------------------------------------------------------
 	// If there are no special areas, we just write the specialArea count as a filler for the packet...
 	if (tempNumSpecialAreas == 0)
 		result = packetFile->writePacket(whichPacket + numMissionMapPackets + numGlobalMap0Packets + numGlobalMap1Packets + numGlobalMap2Packets + 1, (unsigned char*)&tempNumSpecialAreas, sizeof(long));
@@ -731,8 +699,6 @@ long MOVE_saveData (PacketFile* packetFile, long whichPacket) {
 
 	return(numMissionMapPackets + numGlobalMap0Packets + numGlobalMap1Packets + numGlobalMap2Packets + 2);
 }
-
-//---------------------------------------------------------------------------
 
 long MOVE_readData (PacketFile* packetFile, long whichPacket) {
 
@@ -754,7 +720,6 @@ long MOVE_readData (PacketFile* packetFile, long whichPacket) {
 	long numGlobalMap1Packets = 0;
 	long numGlobalMap2Packets = 0;
 	if (!GlobalMoveMap[0]->badLoad) {
-		//---------------------------------
 		// Let's read the hover move map...
 		if (GlobalMoveMap[1]) {
 			delete GlobalMoveMap[1];
@@ -766,7 +731,6 @@ long MOVE_readData (PacketFile* packetFile, long whichPacket) {
 		GlobalMoveMap[1]->hover = true;
 		numGlobalMap1Packets = GlobalMoveMap[1]->init(packetFile, whichPacket + numMissionMapPackets + numGlobalMap0Packets);
 
-		//--------------------------------------
 		// Let's read the helicoptor move map...
 		if (GlobalMoveMap[2]) {
 			delete GlobalMoveMap[2];
@@ -777,7 +741,6 @@ long MOVE_readData (PacketFile* packetFile, long whichPacket) {
 			Fatal(0, " MOVE_Init: Cannot initialize GlobalMoveMap2 ");
 		GlobalMoveMap[2]->blank = true;
 		numGlobalMap2Packets = GlobalMoveMap[2]->init(packetFile, whichPacket + numMissionMapPackets + numGlobalMap0Packets + numGlobalMap1Packets);
-		//------------------------------------------------------------------
 		// Delete the pathExistsTable for this one, since we don't use it...
 		systemHeap->Free(GlobalMoveMap[2]->pathExistsTable);
 		GlobalMoveMap[2]->pathExistsTable = NULL;
@@ -810,7 +773,6 @@ long MOVE_readData (PacketFile* packetFile, long whichPacket) {
 
 	}
 
-	//-----------------------
 	// Just some debugging...
 	//numOffMap[0] = 0;
 	//for (r = 0; r < GameMap->height; r++)
@@ -829,8 +791,6 @@ long MOVE_readData (PacketFile* packetFile, long whichPacket) {
 
 	return(numMissionMapPackets + numGlobalMap0Packets + numGlobalMap1Packets + numGlobalMap2Packets + 2);
 }
-
-//---------------------------------------------------------------------------
 
 void MOVE_cleanup (void) {
 
@@ -864,12 +824,7 @@ void MOVE_cleanup (void) {
 		delete PathFindMap[SIMPLE_PATHMAP];
 		PathFindMap[SIMPLE_PATHMAP] = NULL;
 	}
-#ifdef DEBUG_GLOBALMAP_BUILD
-	GameLog::cleanup();
-#endif
 }
-
-//---------------------------------------------------------------------------
 
 void* MissionMap::operator new (size_t ourSize) {
 
@@ -877,14 +832,10 @@ void* MissionMap::operator new (size_t ourSize) {
 	return(result);
 }
 
-//---------------------------------------------------------------------------
-
 void MissionMap::operator delete (void* us) {
 
 	systemHeap->Free(us);
 }	
-
-//---------------------------------------------------------------------------
 
 void MissionMap::init (long h, long w) {
 
@@ -940,8 +891,6 @@ void MissionMap::init (long h, long w) {
 	}
 }
 
-//---------------------------------------------------------------------------
-
 void MissionMap::rebuildTileMineCounts (void) {
 	if (!tileMineCount || !map) return;
 	const long tileMineHeight = height / MAPCELL_DIM;
@@ -960,8 +909,6 @@ void MissionMap::rebuildTileMineCounts (void) {
 	// geometry from the freshly-rebuilt cell state.
 	gos_terrain_indirect::MarkMineDirty();
 }
-
-//---------------------------------------------------------------------------
 
 #define	NUM_MISSIONMAP_PACKETS	4
 
@@ -986,11 +933,8 @@ long MissionMap::init (PacketFile* packetFile, long whichPacket) {
 	return(NUM_MISSIONMAP_PACKETS);
 }
 
-//---------------------------------------------------------------------------
-
 long MissionMap::write (PacketFile* packetFile, long whichPacket) {
 
-	//-------------------------------------------
 	// Return number of packets if !packetFile...
 	if (!packetFile)
 		return(NUM_MISSIONMAP_PACKETS);
@@ -1010,16 +954,12 @@ long MissionMap::write (PacketFile* packetFile, long whichPacket) {
 	return(NUM_MISSIONMAP_PACKETS);
 }
 
-//---------------------------------------------------------------------------
-
 bool MissionMap::getPassable (Stuff::Vector3D cellPosition) {
 
 	int row, col;
 	land->worldToCell(cellPosition, row, col);
 	return(getPassable(row, col));
 }
-
-//---------------------------------------------------------------------------
 
 long MissionMap::init (long cellHeight, long cellWidth, long curPlanet, MissionMapCellInfo* mapData) {
 
@@ -1028,7 +968,6 @@ long MissionMap::init (long cellHeight, long cellWidth, long curPlanet, MissionM
 
 	planet = curPlanet;
 
-	//---------------------------------------------------------------------------
 	// Be damned sure map is empty.  This is required or mines will NOT go away.
 	memset(map, 0, sizeof(MapCell) * width * height);
 
@@ -1097,8 +1036,6 @@ long MissionMap::init (long cellHeight, long cellWidth, long curPlanet, MissionM
 	return(0);
 }
 
-//---------------------------------------------------------------------------
-
 void MissionMap::setPassable (long row, long col, char* footPrint, bool passable) {
 
 	/* FootPrint Data format:
@@ -1126,15 +1063,11 @@ void MissionMap::setPassable (long row, long col, char* footPrint, bool passable
 	}
 }
 
-//---------------------------------------------------------------------------
-
 void MissionMap::spreadState (long cellRow, long cellCol, long radius) {
 
-	//---------------------------------------------------------------------------
 	// This does a simple depth-first spread from the center. The way it's coded,
 	// it essentially grows a box from the center cell.
 	if (inMapBounds(cellRow, cellCol, height, width) && (radius > 0)) {
-		//-------------------------------------------------------------------
 		// If we're placing moving objects for this frame only, we'll want to
 		// preserve the cell states of this tile...
 		if (!getPreserved(cellRow, cellCol))
@@ -1149,14 +1082,11 @@ void MissionMap::spreadState (long cellRow, long cellCol, long radius) {
 	}
 }
 
-//---------------------------------------------------------------------------
-
 long MissionMap::placeObject (Stuff::Vector3D position, float radius) {
 
 	int cellRow, cellCol;
 	land->worldToCell(position, cellRow, cellCol);
 
-	//---------------------------------------------------------
 	// Now, set the cell states based upon the object's size...
 	float cellRadius = (radius / (Terrain::worldUnitsPerCell  * metersPerWorldUnit));
 	if ((cellRadius > 0.5) && (cellRadius < 1.0))
@@ -1164,8 +1094,6 @@ long MissionMap::placeObject (Stuff::Vector3D position, float radius) {
 	spreadState(cellRow, cellCol, (long)cellRadius);
 	return(NO_ERR);
 }
-
-//---------------------------------------------------------------------------
 
 void MissionMap::placeTerrainObject(long objectClass,
 									 long objectTypeID,
@@ -1175,8 +1103,6 @@ void MissionMap::placeTerrainObject(long objectClass,
 									 bool blocksLineOfFire,
 									 long mineType) {
 }
-
-//---------------------------------------------------------------------------
 
 long MissionMap::getOverlayWeight (long cellR, long cellC, long moverOverlayWeightClass, long moverRelation) {
 
@@ -1202,8 +1128,6 @@ long MissionMap::getOverlayWeight (long cellR, long cellC, long moverOverlayWeig
   return(0);
 }
 
-//---------------------------------------------------------------------------
-
 void MissionMap::print (char* fileName) {
 
 	File* debugFile = new File;
@@ -1228,8 +1152,6 @@ void MissionMap::print (char* fileName) {
 	debugFile = NULL;
 }
 
-//---------------------------------------------------------------------------
-
 void MissionMap::destroy (void) {
 
 	if (map) {
@@ -1242,9 +1164,7 @@ void MissionMap::destroy (void) {
 	}
 }
 
-//***************************************************************************
 // MOVE PATH class
-//***************************************************************************
 
 void* MovePath::operator new (size_t ourSize) {
 
@@ -1253,14 +1173,10 @@ void* MovePath::operator new (size_t ourSize) {
 	return(result);
 }
 
-//---------------------------------------------------------------------------
-
 void MovePath::operator delete (void* us) {
 
 	systemHeap->Free(us);
 }	
-
-//---------------------------------------------------------------------------
 
 long MovePath::init (long numberOfSteps) {
 
@@ -1284,21 +1200,15 @@ long MovePath::init (long numberOfSteps) {
 	return(-1);
 }
 
-//---------------------------------------------------------------------------
-
 void MovePath::clear (void) {
 
 	init();
 }
 
-//---------------------------------------------------------------------------
-
 void MovePath::destroy (void) {
 
 	numSteps = 0;
 }
-
-//---------------------------------------------------------------------------
 
 float MovePath::getDistanceLeft (Stuff::Vector3D position, long stepNumber) {
 
@@ -1309,8 +1219,6 @@ float MovePath::getDistanceLeft (Stuff::Vector3D position, long stepNumber) {
 	distance += stepList[stepNumber].distanceToGoal;
 	return(distance);
 }
-
-//---------------------------------------------------------------------------
 
 void MovePath::lock (long level, long start, long range, bool setting) {
 
@@ -1327,8 +1235,6 @@ void MovePath::lock (long level, long start, long range, bool setting) {
 	for (long i = start; i < lastStep; i++)
 		GameMap->setPathlock(level, stepList[i].cell[0], stepList[i].cell[1], setting);
 }
-
-//---------------------------------------------------------------------------
 
 bool MovePath::isLocked (long level, long start, long range, bool* reachedEnd) {
 
@@ -1353,8 +1259,6 @@ bool MovePath::isLocked (long level, long start, long range, bool* reachedEnd) {
 	return(false);
 }
 
-//---------------------------------------------------------------------------
-
 bool MovePath::isBlocked (long start, long range, bool* reachedEnd) {
 
 	if (start == -1)
@@ -1373,8 +1277,6 @@ bool MovePath::isBlocked (long start, long range, bool* reachedEnd) {
 	return(false);
 }
 
-//---------------------------------------------------------------------------
-
 long MovePath::crossesBridge (long start, long range) {
 
 	if (start == -1)
@@ -1385,8 +1287,6 @@ long MovePath::crossesBridge (long start, long range) {
 	//We need to redo this code when bridges are in cause they are objects now!!
 	return(-1);
 }
-
-//---------------------------------------------------------------------------
 
 long MovePath::crossesCell (long start, long range, long cellR, long cellC) {
 
@@ -1402,21 +1302,15 @@ long MovePath::crossesCell (long start, long range, long cellR, long cellC) {
 	return(-1);
 }
 
-//---------------------------------------------------------------------------
-
 long MovePath::crossesClosedClanGate (long start, long range) {
 
 	return(-1);
 }
 
-//---------------------------------------------------------------------------
-
 long MovePath::crossesClosedISGate (long start, long range) {
 
 	return(-1);
 }
-
-//---------------------------------------------------------------------------
 
 long MovePath::crossesClosedGate (long start, long range) {
 
@@ -1429,9 +1323,7 @@ long MovePath::crossesClosedGate (long start, long range) {
 	return(-1);
 }
 
-//**********************************************************************************
 // GLOBAL MAP class
-//**********************************************************************************
 
 void* GlobalMap::operator new (size_t ourSize) {
 
@@ -1439,14 +1331,10 @@ void* GlobalMap::operator new (size_t ourSize) {
 	return(result);
 }
 
-//---------------------------------------------------------------------------
-
 void GlobalMap::operator delete (void* us) {
 
 	systemHeap->Free(us);
 }	
-
-//------------------------------------------------------------------------------------------
 
 void GlobalMap::init (long w, long h) {
 
@@ -1468,13 +1356,8 @@ void GlobalMap::init (long w, long h) {
 	doors = NULL;
 	doorBuildList = NULL;
 	pathExistsTable = NULL;
-#ifdef USE_PATH_COST_TABLE
-	pathCostTable = NULL;
-#endif
 	blank = false;
 }
-
-//------------------------------------------------------------------------------------------
 
 #define	GLOBALMAP_VERSION_NUMBER	0x022523	// My 51st birthday:)
 
@@ -1520,25 +1403,16 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 		Fatal(result, " GlobalMap.init: unable to read numDoorLinks packet ");
 
 	if (badVersion) {
-		//---------------------------------------------------------
 		// Bad version map, so return number of packets but bail...
 		badLoad = true;
-#ifdef USE_PATH_COST_TABLE
-		pathCostTable = NULL;
-		return(14 + numDoorInfos + (numDoors + NUM_DOOR_OFFSETS) * 2);
-#else
 		return(13 + numDoorInfos + (numDoors + NUM_DOOR_OFFSETS) * 2);
-#endif
 	}
 
-	//------------------------------------------------------------------------
 	// MCO wide-schema detection.
-	//
 	// MechCommander Gold (MCO) campaign mods (Wolf Dragoons / Clan Eagle /
 	// Exodus) write the same MC2 move graph but with every `short` field
 	// widened to `int` (same field order, char/bool/DWORD-ptr/trailing-int
 	// unchanged). Stock + MC2X paks are byte-for-byte the MC2 narrow schema.
-	//
 	// Detection is purely structural and disjoint from stock:
 	//   * Stock/MC2X areaMap packet is ZLIB-stored, unpacked size == 2*h*w
 	//     (sizeof(short) per cell).
@@ -1547,11 +1421,9 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 	// to unpack to exactly the MCO area stride (31 bytes) * numAreas; if that
 	// does not hold we leave the flag false and fall through to the existing
 	// (narrow) path — never misparse a hypothetical third variant.
-	//
 	// When the flag is true, each of the five alloc/read sites below reads a
 	// temp buffer at the MCO stride and widens field-by-field into the real
 	// narrow MC2 arrays, so all downstream code is untouched.
-	//------------------------------------------------------------------------
 	// MCO on-disk strides (#pragma pack(1)).
 	const size_t MCO_AREAMAP_CELL_SIZE  = 4;   // int      (MC2: short, 2)
 	const size_t MCO_AREA_SIZE          = 31;  // GlobalMapArea (MC2: 25)
@@ -1614,12 +1486,7 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 	}
 	if (result < 0) {
 		badLoad = true;
-#ifdef USE_PATH_COST_TABLE
-		pathCostTable = NULL;
-		return(14 + numDoorInfos + (numDoors + NUM_DOOR_OFFSETS) * 2);
-#else
 		return(13 + numDoorInfos + (numDoors + NUM_DOOR_OFFSETS) * 2);
-#endif
 	}
 	if (result == 0)
 		Fatal(result, " GlobalMap.init: unable to read areaMap packet ");
@@ -1686,12 +1553,7 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 	}
 	if (result < 0) {
 		badLoad = true;
-#ifdef USE_PATH_COST_TABLE
-		pathCostTable = NULL;
-		return(14 + numDoorInfos + (numDoors + NUM_DOOR_OFFSETS) * 2);
-#else
 		return(13 + numDoorInfos + (numDoors + NUM_DOOR_OFFSETS) * 2);
-#endif
 	}
 	if (result == 0)
 		Fatal(result, " GlobalMap.init: unable to read areas packet ");
@@ -1761,26 +1623,15 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 		}
 	if (doorInfoOverflow) {
 		badLoad = true;
-#ifdef USE_PATH_COST_TABLE
-		pathCostTable = NULL;
-		return(14 + numDoorInfos + (numDoors + NUM_DOOR_OFFSETS) * 2);
-#else
 		return(13 + numDoorInfos + (numDoors + NUM_DOOR_OFFSETS) * 2);
-#endif
 	}
 	Assert(numDoorInfos == curDoorInfo, 0, " GlobalMap.init: bad doorInfo count ");
 	if (numDoorInfos != curDoorInfo) {
 		PAUSE(("GlobalMap.init: doorInfo count mismatch (mod content) — bailing as bad load"));
 		badLoad = true;
-#ifdef USE_PATH_COST_TABLE
-		pathCostTable = NULL;
-		return(14 + numDoorInfos + (numDoors + NUM_DOOR_OFFSETS) * 2);
-#else
 		return(13 + numDoorInfos + (numDoors + NUM_DOOR_OFFSETS) * 2);
-#endif
 	}
 
-	//------------------------------------------------------------
 	// Set up the areas so they point to the correct door infos...
 	curDoorInfo = 0;
 	for (long curArea = 0; curArea < numAreas; curArea++) {
@@ -1882,17 +1733,11 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 	}
 	if (result < 0) {
 		badLoad = true;
-#ifdef USE_PATH_COST_TABLE
-		pathCostTable = NULL;
-		return(14 + numDoorInfos + (numDoors + NUM_DOOR_OFFSETS) * 2);
-#else
 		return(13 + numDoorInfos + (numDoors + NUM_DOOR_OFFSETS) * 2);
-#endif
 	}
 	if (result == 0)
 		Fatal(result, " GlobalMap.init: unable to read doors packet ");
 
-	//--------------
 	// Door Links...
 	doorLinks = (DoorLinkPtr)systemHeap->Malloc(sizeof(DoorLink) * numDoorLinks);
 	gosASSERT(doorLinks != NULL);
@@ -1945,23 +1790,13 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 	}
 	if (doorLinkOverflow) {
 		badLoad = true;
-#ifdef USE_PATH_COST_TABLE
-		pathCostTable = NULL;
-		return(14 + numDoorInfos + (numDoors + NUM_DOOR_OFFSETS) * 2);
-#else
 		return(13 + numDoorInfos + (numDoors + NUM_DOOR_OFFSETS) * 2);
-#endif
 	}
 	Assert(numLinksRead == numDoorLinks, 0, " GlobalMap.init: Incorrect Links count ");
 	if (numLinksRead != numDoorLinks) {
 		PAUSE(("GlobalMap.init: link count mismatch (mod content) — bailing as bad load"));
 		badLoad = true;
-#ifdef USE_PATH_COST_TABLE
-		pathCostTable = NULL;
-		return(14 + numDoorInfos + (numDoors + NUM_DOOR_OFFSETS) * 2);
-#else
 		return(13 + numDoorInfos + (numDoors + NUM_DOOR_OFFSETS) * 2);
-#endif
 	}
 
 	numOffMapAreas = 0;
@@ -1973,7 +1808,6 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 		}
 		else
 			openArea(i);
-	//--------------------------
 	// Create pathExistsTable...
 	pathExistsTable = (unsigned char*)systemHeap->Malloc(numAreas * (numAreas / 4 + 1));
 	if (!pathExistsTable)
@@ -2023,22 +1857,15 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 	return(whichPacket - startPacket);
 }
 
-//------------------------------------------------------------------------------------------
-
 long GlobalMap::write (PacketFilePtr packetFile, long whichPacket) {
 
-	//---------------------------------------------------------
 	// If mapFile NULL, return the number of packets we need...
 
 	long numDrInfos = 0;
 	for (long i = 0; i < numAreas; i++)
 		if (areas[i].numDoors)
 			numDrInfos++;
-#ifdef USE_PATH_COST_TABLE
-		long numPackets = 14 + numDrInfos + (numDoors + NUM_DOOR_OFFSETS) * 2;
-#else
 		long numPackets = 13 + numDrInfos + (numDoors + NUM_DOOR_OFFSETS) * 2;
-#endif
 
 	if (!packetFile)
 		return(numPackets);
@@ -2080,11 +1907,9 @@ long GlobalMap::write (PacketFilePtr packetFile, long whichPacket) {
 	if (result <= 0)
 		Fatal(result, " GlobalMap.write: Unable to write areaMap packet ");
 
-	//----------------------------------
 	// Write out the areas themselves...
 	DoorInfoPtr doorInfoSave[MAX_GLOBALMAP_AREAS];
 	for (int i = 0; i < numAreas; i++) {
-		//-------------------------
 		// clear it for the save...
 		//doorInfoSave[i] = areas[i].doors;
 		//areas[i].doors = NULL;
@@ -2098,14 +1923,12 @@ long GlobalMap::write (PacketFilePtr packetFile, long whichPacket) {
 	}
 	result = packetFile->writePacket(whichPacket++, (unsigned char*)areas, sizeof(GlobalMapArea) * numAreas);
 	for (int i = 0; i < numAreas; i++) {
-		//---------------------
 		// restore the doors...
 		areas_doors[i] = doorInfoSave[i];
 	}
 	if (result <= 0)
 		Fatal(result, " GlobalMap.write: Unable to write areas packet ");
 
-	//------------------------------------
 	// Now, write out all the DoorInfos...
 	long maxDoors = 0;
 	for (long d = 0; d < numDoors; d++) {
@@ -2138,7 +1961,6 @@ long GlobalMap::write (PacketFilePtr packetFile, long whichPacket) {
 
 	DoorLinkPtr doorLinkSave[MAX_GLOBALMAP_DOORS][2];
 	for (int i = 0; i < numDoors + NUM_DOOR_OFFSETS; i++) {
-		//-------------------------
 		// clear it for the save...
 		doorLinkSave[i][0] = doors_links[i][0];
 		doorLinkSave[i][1] = doors_links[i][1];
@@ -2154,7 +1976,6 @@ long GlobalMap::write (PacketFilePtr packetFile, long whichPacket) {
 	}
 	result = packetFile->writePacket(whichPacket++, (unsigned char*)doors, sizeof(GlobalMapDoor) * (numDoors + NUM_DOOR_OFFSETS));
 	for (int i = 0; i < (numDoors + NUM_DOOR_OFFSETS); i++) {
-		//---------------------
 		// restore the links...
 		doors_links[i][0] = doorLinkSave[i][0];
 		doors_links[i][1] = doorLinkSave[i][1];
@@ -2162,7 +1983,6 @@ long GlobalMap::write (PacketFilePtr packetFile, long whichPacket) {
 	if (result <= 0)
 		Fatal(result, " GlobalMap.write: Unable to write doors packet ");
 
-	//------------------------------------
 	// Now, write out all the DoorLinks...
 	
 	long numberL = 0;
@@ -2188,19 +2008,8 @@ long GlobalMap::write (PacketFilePtr packetFile, long whichPacket) {
 	if (numberL != numDoorLinks)
 		PAUSE(("Number of DoorLinks Calculated does not match numDoorLinks"));
 
-#ifdef USE_PATH_COST_TABLE
-	if (blank)
-		calcPathCostTable();
-	else
-		initPathCostTable();
-	result = packetFile->writePacket(whichPacket++, (unsigned char*)pathCostTable, numAreas * numAreas);
-	if (result <= 0)
-		Fatal(result, " GlobalMap.write: Unable to write doors packet ");
-#endif
 	return(numPackets);
 }
-
-//------------------------------------------------------------------------------------------
 
 void GlobalMap::calcSpecialAreas (MissionMapCellInfo* mapData) {
 
@@ -2278,8 +2087,6 @@ void GlobalMap::calcSpecialAreas (MissionMapCellInfo* mapData) {
 	}
 }
 
-//------------------------------------------------------------------------------------------
-
 long GlobalMap::setTempArea (long tileR, long tileC, long cost) {
 
 	long numStartDoors = 0;
@@ -2299,7 +2106,6 @@ long GlobalMap::setTempArea (long tileR, long tileC, long cost) {
 	}
 	areas[numAreas].numDoors = numStartDoors;
 
-	//----------------------------
 	// Now, setup the temp area...
 	areas[numAreas].sectorR = tileR / SECTOR_DIM;
 	areas[numAreas].sectorC = tileC / SECTOR_DIM;
@@ -2307,11 +2113,8 @@ long GlobalMap::setTempArea (long tileR, long tileC, long cost) {
 	return(numAreas);
 }
 
-//------------------------------------------------------------------------------------------
-
 bool GlobalMap::fillSpecialArea (long row, long col, long area, long specialID) {
 
-	//----------------------------------------------------------------------
 	// This is used to fill any dynamic or "special" areas. Currently, these
 	// are: wall, gate and forest.
 	areaMap[row * width + col] = area;
@@ -2328,21 +2131,17 @@ bool GlobalMap::fillSpecialArea (long row, long col, long area, long specialID) 
 	return(true);
 }
 
-//------------------------------------------------------------------------------------------
-
 bool GlobalMap::fillArea (long row, long col, long area, bool offMap) {
 
 	if ((row < minRow) || (row >= maxRow) || (col < minCol) || (col >= maxCol))
 		return(false);
 
-	//---------------------------------------------------------------------
 	// If we hit a special (wall/gate/forest) tile, politely stop expanding
 	// this area into it...
 	if (!blank)
 		if (GameMap->getBuildSpecial(row, col))
 			return(false);
 
-	//-----------------------------------------------------------------------------
 	// If we're processing an offMap area, then stop if we hit a non-offMap cell...
 	if (offMap) {
 		if (!GameMap->getOffMap(row, col))
@@ -2381,8 +2180,6 @@ bool GlobalMap::fillArea (long row, long col, long area, bool offMap) {
 	return(true);
 }
 
-//------------------------------------------------------------------------------------------
-
 void GlobalMap::calcSectorAreas (long sectorR, long sectorC) {
 
 	minRow = sectorR * SECTOR_DIM;
@@ -2405,14 +2202,12 @@ void GlobalMap::calcSectorAreas (long sectorR, long sectorC) {
 					if (GameMap->getBuildSpecial(r, c)) {
 						long specialHere = areaMap[r * width + c];
 						gosASSERT(specialHere > -1);
-						//-------------------------------------------------
 						// List this new area as part of the region covered
 						// by this gate or wall or forest...
 						if (specialAreas[specialHere].numSubAreas == MAX_SPECIAL_SUB_AREAS)
 							Fatal(MAX_SPECIAL_SUB_AREAS, " GlobalMap.calcSectorAreas: too many special subareas ");
 						specialAreas[specialHere].subAreas[specialAreas[specialHere].numSubAreas] = numAreas;
 						specialAreas[specialHere].numSubAreas++;
-						//-------------------
 						// Now, fill it in...
 						fillSpecialArea(r, c, numAreas++, specialHere);
 						}
@@ -2422,22 +2217,17 @@ void GlobalMap::calcSectorAreas (long sectorR, long sectorC) {
 	}
 }
 
-//------------------------------------------------------------------------------------------
-
 void GlobalMap::calcAreas (void) {
 
-	//----------------------------------------------------------------------
 	// Large area maps use -1 and -2 to indicate blocked area. CalcArea will
 	// always return -1 for blocked-area cells.
 
-	//-----------------------------------------
 	// First, process each sector's area map...
 
 	for (long r = 0; r < sectorHeight; r++)
 		for (long c = 0; c < sectorWidth; c++)
 			calcSectorAreas(r, c);
 
-	//-----------------------------------------------------------------------
 	// NOTE: We allocate one extra area--this is used by the calcPath routine
 	// as a "scratch" area in some cases...
 	gosASSERT(numAreas <= MAX_GLOBALMAP_AREAS);
@@ -2469,7 +2259,6 @@ void GlobalMap::calcAreas (void) {
 		areas_cellsCovered[i] = NULL;
 	}
 
-	//-----------------------------------------
 	// Set each area's sector row and column...
 	for (long sectorR = 0; sectorR < sectorHeight; sectorR++)
 		for (long sectorC = 0; sectorC < sectorWidth; sectorC++) {
@@ -2488,8 +2277,6 @@ void GlobalMap::calcAreas (void) {
 		}
 }
 
-//------------------------------------------------------------------------------------------
-
 void GlobalMap::calcCellsCovered (void) {
 
 /*	for (long r = 0; r < height; r++)
@@ -2499,8 +2286,6 @@ void GlobalMap::calcCellsCovered (void) {
 		}
 */
 }
-
-//------------------------------------------------------------------------------------------
 
 void GlobalMap::calcSpecialTypes (void) {
 
@@ -2530,8 +2315,6 @@ void GlobalMap::calcSpecialTypes (void) {
 //systemHeap->walkHeap();
 }
 
-//------------------------------------------------------------------------------------------
-
 void GlobalMap::beginDoorProcessing (void) {
 
 //systemHeap->walkHeap();
@@ -2548,8 +2331,6 @@ void GlobalMap::beginDoorProcessing (void) {
 	gosASSERT(doorBuildList != NULL);
 }
 
-//------------------------------------------------------------------------------------------
-
 void GlobalMap::addDoor (long area1, long area2, long row, long col, long length, long dir) {
 
 	/*
@@ -2561,7 +2342,6 @@ void GlobalMap::addDoor (long area1, long area2, long row, long col, long length
 	}
 	*/
 
-	//-------------------------------------------------------
 	// First, make sure the door isn't already in the list...
 	bool newDoor = true;
 	for (long curDoorIndex = 0; curDoorIndex < numDoors; curDoorIndex++) {
@@ -2574,7 +2354,6 @@ void GlobalMap::addDoor (long area1, long area2, long row, long col, long length
 	if (newDoor) {
 		/*
 		if (area1 > area2) {
-			//-----------------------------
 			// Smaller area number first...
 			long savedArea1 = area1;
 			area1 = area2;
@@ -2602,18 +2381,14 @@ void GlobalMap::addDoor (long area1, long area2, long row, long col, long length
 		STOP(("Too Many Doors %d", numDoors));
 }
 
-//------------------------------------------------------------------------------------------
-
 void GlobalMap::endDoorProcessing (void) {
 
 //	systemHeap->walkHeap();
 	if (doorBuildList) {
-		//-----------------------------------------------------------------------
 		// First, save the door list. Note that we make 2 extra doors, to be used
 		// by the pathfinder...
 		doors = (GlobalMapDoorPtr)systemHeap->Malloc(sizeof(GlobalMapDoor) * (numDoors + NUM_DOOR_OFFSETS));
 		memcpy(doors, doorBuildList, sizeof(GlobalMapDoor) * (numDoors + NUM_DOOR_OFFSETS));
-		//----------------------------
 		// Free the temp build list...
 		systemHeap->Free(doorBuildList);
 		doorBuildList = NULL;
@@ -2629,8 +2404,6 @@ void GlobalMap::endDoorProcessing (void) {
 //	systemHeap->walkHeap();
 }
 
-//------------------------------------------------------------------------------------------
-
 long GlobalMap::numAreaDoors (long area) {
 
 	long doorCount = 0;
@@ -2641,8 +2414,6 @@ long GlobalMap::numAreaDoors (long area) {
 		Fatal(doorCount, " Too many area doors ");
 	return(doorCount);
 }
-
-//------------------------------------------------------------------------------------------
 
 void GlobalMap::getAreaDoors (long area, DoorInfoPtr doorList) {
 
@@ -2656,8 +2427,6 @@ void GlobalMap::getAreaDoors (long area, DoorInfoPtr doorList) {
 		}
 }
 
-//------------------------------------------------------------------------------------------
-
 #define	MAX_DOORS_PER_SECTOR	500		// This should be WAY more than we'll ever need...
 
 long maxNumDoors = 0;
@@ -2665,7 +2434,6 @@ long maxNumDoors = 0;
 void GlobalMap::calcGlobalDoors (void) {
 
 	short doorMap[SECTOR_DIM][SECTOR_DIM];
-
 
 	beginDoorProcessing();
 
@@ -2681,17 +2449,14 @@ void GlobalMap::calcGlobalDoors (void) {
 				minCol = sectorC * SECTOR_DIM;
 				maxCol = minCol + SECTOR_DIM;
 
-				//-------------------------------------------
 				// First, find all doors in this direction...
 				for (long r = minRow; r < maxRow; r++)
 					for (long c = minCol; c < maxCol; c++) {
-						//-------------------------------------------------------
 						// First, check each cell in the sector to see if
 						// it's a "door" cell (is open and adjacent to an
 						// open cell in another area in the current direction)...
 						long curArea = areaMap[r * width + c];
 						if (curArea > -1) {
-							//---------------------------------------------------------
 							// The doorMap tracks, for each tile, what area is adjacent
 							// to it thru a door...
 							long adjR = r + adjTile[dir][0];
@@ -2711,7 +2476,6 @@ void GlobalMap::calcGlobalDoors (void) {
 						}
 					}
 		
-				//--------------------------------------------------------------------------
 				// Now, process the doors and add them to the global door list. The
 				// direction we're currently processing will dictate how to
 				// make our sweep across the sector map. So, we have a chunk a code for each
@@ -2724,14 +2488,12 @@ void GlobalMap::calcGlobalDoors (void) {
 							long adjArea = doorMap[r - minRow][c - minCol];
 							if (adjArea > -1) {
 								long curArea = areaMap[r * width + c];
-								//-----------------------------------
 								// We have a door. Calc its length...
 								long length = 0;
 								while ((r < maxRow) && (areaMap[r * width + c] == curArea) && (doorMap[r - minRow][c - minCol] == adjArea)) {
 									length++;
 									r++;
 								}
-								//---------------------------------------
 								// Now, add it to the global door list...
 								addDoor(curArea, adjArea, r - length, c, length, dir);
 								}
@@ -2747,14 +2509,12 @@ void GlobalMap::calcGlobalDoors (void) {
 							long adjArea = doorMap[r - minRow][c - minCol];
 							if (adjArea > -1) {
 								long curArea = areaMap[r * width + c];
-								//-----------------------------------
 								// We have a door. Calc its length...
 								long length = 0;
 								while ((c < maxCol) && (areaMap[r * width + c] == curArea) && (doorMap[r - minRow][c - minCol] == adjArea)) {
 									length++;
 									c++;
 								}
-								//-----------------------------------------
 								// Now, add it to the sector's door list...
 								addDoor(curArea, adjArea, r, c - length, length, dir);
 								}
@@ -2769,8 +2529,6 @@ void GlobalMap::calcGlobalDoors (void) {
 
 	endDoorProcessing();
 }
-
-//------------------------------------------------------------------------------------------
 
 void GlobalMap::calcAreaDoors (void) {
 
@@ -2787,8 +2545,6 @@ void GlobalMap::calcAreaDoors (void) {
 	}
 }
 
-//------------------------------------------------------------------------------------------
-
 long GlobalMap::calcLinkCost (long startDoor, long thruArea, long goalDoor) {
 
 	if ((doors[startDoor].area[0] != thruArea) && (doors[startDoor].area[1] != thruArea))
@@ -2798,7 +2554,6 @@ long GlobalMap::calcLinkCost (long startDoor, long thruArea, long goalDoor) {
 	long startRow = doors[startDoor].row;
 	long startCol = doors[startDoor].col;
 	if (doors[startDoor].direction[0] == 1) {
-		//-------------------------------------------------------------------------------
 		// Door goes from west to east
 		// For now, use the midpoint of the door for purposes of calcing the cost between
 		// doors...
@@ -2806,7 +2561,6 @@ long GlobalMap::calcLinkCost (long startDoor, long thruArea, long goalDoor) {
 		startCol += startSide;
 		}
 	else {
-		//------------------------------
 		// Door goes from north to south
 		// For now, use the midpoint of the door for purposes of calcing the cost between
 		// doors...
@@ -2821,14 +2575,12 @@ long GlobalMap::calcLinkCost (long startDoor, long thruArea, long goalDoor) {
 	long goalRow = doors[goalDoor].row;
 	long goalCol = doors[goalDoor].col;
 	if (doors[goalDoor].direction[0] == 1) {
-		//-------------------------------------------------------------------
 		// Door goes from west to east. For now, use the midpoint of the door
 		// for purposes of calcing the cost between doors...
 		goalRow += (doors[goalDoor].length / 2);
 		goalCol += goalSide;
 		}
 	else {
-		//------------------------------
 		// Door goes from north to south
 		goalRow += goalSide;
 		goalCol += (doors[goalDoor].length / 2);
@@ -2851,7 +2603,6 @@ long GlobalMap::calcLinkCost (long startDoor, long thruArea, long goalDoor) {
 		PathFindMap[SIMPLE_PATHMAP]->init(SimpleMovePathRange * 2 + 1, SimpleMovePathRange * 2 + 1);
 	}
 
-	//-------------------------------------------------------------------------
 	// Let's make sure the bridge tiles are NOT blocked here (since, during the
 	// game, they won't be, unless destroyed, in which case we won't care since
 	// they're their own area)...
@@ -2861,7 +2612,6 @@ long GlobalMap::calcLinkCost (long startDoor, long thruArea, long goalDoor) {
 		newPath.cost = 10;
 		}
 	else if ((areas[thruArea].type == AREA_TYPE_WALL) || (areas[thruArea].type == AREA_TYPE_GATE) || (areas[thruArea].type == AREA_TYPE_FOREST)) {
-		//---------------------------------------------
 		// These costs are for when the area is open...
 		newPath.numSteps = 10;
 		newPath.cost = 10;
@@ -2915,7 +2665,6 @@ long GlobalMap::calcLinkCost (long startDoor, long thruArea, long goalDoor) {
 		ClearBridgeTiles = false;
 	}
 
-	//-------------------------------------------------------------------------
 	// If there is no path, find out why! In theory, this should never occur...
 	if (newPath.numSteps == 0) {
 		/*
@@ -2926,7 +2675,6 @@ long GlobalMap::calcLinkCost (long startDoor, long thruArea, long goalDoor) {
 		delete pathDebugFile;
 		pathDebugFile = NULL;
 		*/
-		//--------------------------------------------------------------------------
 		// If the cost is 1, then our start and goal cells are the same. Thus, there
 		// is a path, it's just REALLY short :)
 		if (newPath.cost == 1)
@@ -2940,8 +2688,6 @@ long GlobalMap::calcLinkCost (long startDoor, long thruArea, long goalDoor) {
 	gosASSERT(cost != 0);
 	return(cost);
 }
-
-//------------------------------------------------------------------------------------------
 
 void GlobalMap::changeAreaLinkCost (long area, long cost) {
 
@@ -2959,8 +2705,6 @@ void GlobalMap::changeAreaLinkCost (long area, long cost) {
 	}
 }
 
-//------------------------------------------------------------------------------------------
-
 void GlobalMap::calcDoorLinks (void) {
 
 	numDoorLinks = 0;
@@ -2977,7 +2721,6 @@ void GlobalMap::calcDoorLinks (void) {
 			long areaNumDoors = areas[area].numDoors;
 			//if (areaNumDoors >= 0) {
 				thisDoor->numLinks[s] = areaNumDoors - 1;
-				//----------------------------------------------------------------
 				// Allocate enough links for all links to this door plus a scratch
 				// link used during path calc...
 				thisDoor_links[s] = (DoorLinkPtr)systemHeap->Malloc(sizeof(DoorLink) * (thisDoor->numLinks[s] + NUM_EXTRA_DOOR_LINKS));
@@ -3002,7 +2745,6 @@ void GlobalMap::calcDoorLinks (void) {
 		}
 	}
 
-	//----------------------------------------
 	// Now, set up the start and goal doors...
 	doors[numDoors + DOOR_OFFSET_START].numLinks[0] = maxDoors;
 	numDoorLinks += (doors[numDoors + DOOR_OFFSET_START].numLinks[0] + NUM_EXTRA_DOOR_LINKS);
@@ -3037,11 +2779,8 @@ void GlobalMap::calcDoorLinks (void) {
 	Assert(numberL == numDoorLinks, 0, " HUH ");
 }
 
-//------------------------------------------------------------------------------------------
-
 long GlobalMap::getPathCost (int startArea, int goalArea, bool withSpecialAreas, int& confidence, bool calcIt) {
 
-	//------------------------------------------------------------------------
 	// This could be cleaned up if we re-save this data, 0 being no path and 1
 	// indicating startArea == goalArea.
 	if (startArea < 0)
@@ -3129,154 +2868,6 @@ long GlobalMap::getPathCost (int startArea, int goalArea, bool withSpecialAreas,
 #endif
 }
 
-//---------------------------------------------------------------------------
-
-#if USE_PATH_COST_TABLE
-
-void GlobalMap::setPathFlag (long startArea, long goalArea, unsigned char flag, bool set) {
-
-	long index = startArea * numAreas + goalArea;
-	pathCostTable[index] &= (flag ^ 0xFF);
-	if (set)
-		pathCostTable[index] |= flag;
-}
-
-//---------------------------------------------------------------------------
-
-long GlobalMap::getPathFlag (long startArea, long goalArea, unsigned char flag) {
-
-	return(pathCostTable[startArea * numAreas + goalArea] & flag);
-}
-
-//---------------------------------------------------------------------------
-
-void GlobalMap::setPathCost (long startArea, long goalArea, bool withSpecialAreas, unsigned char cost) {
-
-	if (cost > 0) {
-		if (cost < 6) 
-			cost = 1;
-		else if (cost < 11)
-			cost = 2;
-		else
-			cost = 3;
-	}
-	long index = startArea * numAreas + goalArea;
-	if (withSpecialAreas) {
-		pathCostTable[index] &= 0xF3;
-		cost <<= 2;
-		}
-	else
-		pathCostTable[index] &= 0xFC;
-	pathCostTable[index] |= cost;
-}
-
-//------------------------------------------------------------------------------------------
-
-void GlobalMap::initPathCostTable (void) {
-
-	if (pathCostTable) {
-		systemHeap->Free(pathCostTable);
-		pathCostTable = NULL;
-	}
-
-	long oldNumAreas = numAreas;
-//	if (numAreas > 600)
-//		numAreas = 600;
-
-	pathCostTable = (unsigned char*)systemHeap->Malloc(numAreas * numAreas);
-	gosASSERT(pathCostTable != NULL);
-
-	for (long startArea = 0; startArea < numAreas; startArea++)
-		for (goalArea = 0; goalArea < numAreas; goalArea++) {
-			setPathCost(startArea, goalArea, false, 0);
-			setPathCost(startArea, goalArea, true, 0);
-			setPathFlag(startArea, goalArea, GLOBAL_FLAG_SPECIAL_IMPOSSIBLE, false);
-			setPathFlag(startArea, goalArea, GLOBAL_FLAG_SPECIAL_CALC, true);
-			setPathFlag(startArea, goalArea, GLOBAL_FLAG_NORMAL_OPENS, true);
-			setPathFlag(startArea, goalArea, GLOBAL_FLAG_NORMAL_CLOSES, true);
-		}
-	closes = false;
-	opens = false;
-
-	numAreas = oldNumAreas;
-}
-
-//------------------------------------------------------------------------------------------
-
-void GlobalMap::resetPathCostTable (void) {
-
-	if (!pathCostTable)
-		return;
-
-	if (!closes && !opens)
-		return;
-
-	for (long startArea = 0; startArea < numAreas; startArea++)
-		for (goalArea = 0; goalArea < numAreas; goalArea++) {
-			setPathFlag(startArea, goalArea, GLOBAL_FLAG_NORMAL_OPENS, opens);
-			setPathFlag(startArea, goalArea, GLOBAL_FLAG_NORMAL_CLOSES, closes);
-		}
-	closes = false;
-	opens = false;
-
-}
-
-//------------------------------------------------------------------------------------------
-
-void GlobalMap::calcPathCostTable (void) {
-
-	if (pathCostTable) {
-		systemHeap->Free(pathCostTable);
-		pathCostTable = NULL;
-	}
-	pathCostTable = (unsigned char*)systemHeap->Malloc(numAreas * numAreas);
-	gosASSERT(pathCostTable != NULL);
-
-	for (long i = 0; i < numAreas; i++)
-		openArea(i);
-
-	GlobalPathStep globalPath[MAX_GLOBAL_PATH];
-	for (long startArea = 0; startArea < numAreas; startArea++)
-		for (goalArea = 0; goalArea < numAreas; goalArea++) {
-
-			long numSteps = calcPath(startArea, goalArea, globalPath);
-			//----------------------------------------------------------
-			// For now, we'll just store the number of area steps in the
-			// table. If no path (or start and goal are the same), we'll store 0.
-			// 255 is reserved to mark the need to re-calc during the game...
-			setPathCost(startArea, goalArea, true, numSteps);
-			setPathFlag(startArea, goalArea, GLOBAL_FLAG_SPECIAL_IMPOSSIBLE, false);
-			setPathFlag(startArea, goalArea, GLOBAL_FLAG_SPECIAL_CALC, true);
-			setPathFlag(startArea, goalArea, GLOBAL_FLAG_NORMAL_OPENS, false);
-			setPathFlag(startArea, goalArea, GLOBAL_FLAG_NORMAL_CLOSES, false);
-		}
-
-	for (i = 0; i < numAreas; i++)
-		if ((areas[i].type == AREA_TYPE_WALL) || (areas[i].type == AREA_TYPE_GATE) || (areas[i].type == AREA_TYPE_FOREST))
-			openArea(i);
-
-	for (startArea = 0; startArea < numAreas; startArea++)
-		for (goalArea = 0; goalArea < numAreas; goalArea++) {
-
-			long numSteps = calcPath(startArea, goalArea, globalPath);
-			//----------------------------------------------------------
-			// For now, we'll just store the number of area steps in the
-			// table. If no path (or start and goal are the same), we'll store 0.
-			// 255 is reserved to mark the need to re-calc during the game...
-			setPathCost(startArea, goalArea, true, numSteps);
-		}
-
-	for (i = 0; i < numAreas; i++)
-		if ((areas[i].type == AREA_TYPE_WALL) || (areas[i].type == AREA_TYPE_GATE) || (areas[i].type == AREA_TYPE_FOREST))
-			closeArea(i);
-
-	closes = false;
-	opens = false;
-}
-
-#endif
-//------------------------------------------------------------------------------------------
-
 void GlobalMap::clearPathExistsTable (void) {
 
 	if (!pathExistsTable)
@@ -3284,8 +2875,6 @@ void GlobalMap::clearPathExistsTable (void) {
 	long tableSize = numAreas * (numAreas / 4 + 1);
 	memset(pathExistsTable, GLOBALPATH_EXISTS_UNKNOWN, tableSize);
 }
-
-//------------------------------------------------------------------------------------------
 
 void GlobalMap::setPathExists (long fromArea, long toArea, unsigned char set) {
 
@@ -3306,8 +2895,6 @@ void GlobalMap::setPathExists (long fromArea, long toArea, unsigned char set) {
 		*pathByte |= (set << pathShift);
 }
 
-//------------------------------------------------------------------------------------------
-
 unsigned char GlobalMap::getPathExists (long fromArea, long toArea) {
 
 	if (!pathExistsTable)
@@ -3325,8 +2912,6 @@ unsigned char GlobalMap::getPathExists (long fromArea, long toArea) {
 	return(*pathByte & pathBit);
 }
 
-//------------------------------------------------------------------------------------------
-
 long GlobalMap::exitDirection (long doorIndex, long fromArea) {
 
 	if (doors[doorIndex].area[0] == fromArea)
@@ -3336,15 +2921,10 @@ long GlobalMap::exitDirection (long doorIndex, long fromArea) {
 	return(-1);
 }
 
-//------------------------------------------------------------------------------------------
-
 void GlobalMap::getDoorTiles (long area, long door, GlobalMapDoorPtr areaDoor) {
 
-	
 	*areaDoor = doors[areas_doors[area][door].doorIndex];
 }
-
-//------------------------------------------------------------------------------------------
 
 bool GlobalMap::getAdjacentAreaCell (long area, long adjacentArea, long& cellRow, long& cellCol) {
 
@@ -3358,14 +2938,12 @@ bool GlobalMap::getAdjacentAreaCell (long area, long adjacentArea, long& cellRow
 			cellRow = doors[doorIndex].row;
 			cellCol = doors[doorIndex].col;
 			if (doors[doorIndex].direction[0] == 1) {
-				//-------------------------------------------------------------------
 				// Door goes from west to east. For now, use the midpoint of the door
 				// for purposes of calcing the cost between doors...
 				cellRow += (doors[doorIndex].length / 2);
 				cellCol += goalSide;
 				}
 			else {
-				//------------------------------
 				// Door goes from north to south
 				cellRow += goalSide;
 				cellCol += (doors[doorIndex].length / 2);
@@ -3375,8 +2953,6 @@ bool GlobalMap::getAdjacentAreaCell (long area, long adjacentArea, long& cellRow
 	}
 	return(false);
 }
-
-//------------------------------------------------------------------------------------------
 
 Stuff::Vector3D GlobalMap::getDoorWorldPos (long area, long door, long* prevGoalCell) {
 
@@ -3391,15 +2967,12 @@ Stuff::Vector3D GlobalMap::getDoorWorldPos (long area, long door, long* prevGoal
 	return(pos);
 }
 
-//------------------------------------------------------------------------------------------
-
 long GlobalMap::build (MissionMapCellInfo* mapData) {
 
 	#ifdef _DEBUG
 	//systemHeap->walkHeap(false,false,"GlobalMap BAD HEAP1\n");
 	#endif
 
-	//--------------------------------
 	// Note that h and w are in tiles.
 	bool wasBlank = blank;
 	init(GameMap->height, GameMap->width);
@@ -3434,7 +3007,6 @@ long GlobalMap::build (MissionMapCellInfo* mapData) {
 
 	calcDoorLinks();
 
-	//----------------------------------------------
 	// Now, build the path tables for each sector...
 /*	for (r = 0; r < tileHeight; r++)
 		for (long c = 0; c < tileWidth; c++)
@@ -3452,51 +3024,8 @@ long GlobalMap::build (MissionMapCellInfo* mapData) {
 		specialAreas = NULL;
 	}
 
-#ifdef DEBUG_GLOBALMAP_BUILD
-	if (logEnabled && !blank) {
-		char s[256];
-		for (long i = 0; i < numDoors; i++) {
-			sprintf(s, "door %05d, %s(%d), areas %d & %d", i, doors[i].open ? "opened" : "CLOSED", doors[i].teamID, doors[i].area[0], doors[i].area[1]);
-			log->write(s);
-			for (long side = 0; side < 2; side++) {
-				sprintf(s, "     side %d", side);
-				log->write(s); 
-				for (long j = 0; j < doors[i].numLinks[side]; j++) {
-					sprintf(s, "          link %03d, to door %05d, cost %d",
-						j,
-						doors[i].links[side][j].doorIndex,
-						doors[i].links[side][j].cost);
-					log->write(s); 
-				}
-			}
-		}
-		log->write(" "); 
-
-		for (int i = 0; i < numAreas; i++) {
-			sprintf(s, "area %05d, %s(%d)", i, areas[i].open ? "opened" : "CLOSED", areas[i].teamID);
-			log->write(s); 
-			if (areas[i].ownerWID > 0) {
-				sprintf(s, "     ownerWID is %d", areas[i].ownerWID);
-				log->write(s);
-			}
-			sprintf(s, "     %s", typeString[areas[i].type]);
-			log->write(s);
-			for (long d = 0; d < areas[i].numDoors; d++) {
-				sprintf(s, "     door %03d is %d (%d:%d & %d) ",
-					d, areas[i].doors[d].doorIndex, areas[i].doors[d].doorSide,
-					doors[areas[i].doors[d].doorIndex].area[0], doors[areas[i].doors[d].doorIndex].area[1]);
-				log->write(s);
-			}
-			
-		}
-		log->write(" ");
-	}
-#endif
-
 	return(NO_ERR);	
 }
-
-//---------------------------------------------------------------------------
 
 void GlobalMap::setStartDoor (long startArea) {
 
@@ -3518,7 +3047,6 @@ void GlobalMap::setStartDoor (long startArea) {
 	startDoor->fromAreaIndex = 1;
 
 	for (long curLink = 0; curLink < startDoor->numLinks[0]; curLink++) {
-		//---------------------------------------------
 		// Point the goal "door" to its area's doors...
 		const long doorIndex = areas_doors[startArea][curLink].doorIndex;
 		const long doorSide = areas_doors[startArea][curLink].doorSide;
@@ -3547,7 +3075,6 @@ void GlobalMap::setStartDoor (long startArea) {
 		startDoor_links[0][curLink].cost = costSum;
 		startDoor_links[0][curLink].openCost = costSum;
 		
-		//----------------------------------------------------
 		// Make sure this area door points to the goal door...
 		//curDoor->links[doorSide][curDoor->numLinks[doorSide]].doorIndex = numDoors + DOOR_OFFSET_START;
 		//curDoor->links[doorSide][curDoor->numLinks[doorSide]].doorSide = 0;
@@ -3564,8 +3091,6 @@ void GlobalMap::setStartDoor (long startArea) {
 
 }
 
-//---------------------------------------------------------------------------
-
 void GlobalMap::resetStartDoor (long startArea) {
 
 	GlobalMapDoorPtr startDoor = &doors[numDoors + DOOR_OFFSET_START];
@@ -3576,11 +3101,8 @@ void GlobalMap::resetStartDoor (long startArea) {
 	}
 }
 
-//---------------------------------------------------------------------------
-
 void GlobalMap::setAreaTeamID (long area, char teamID) {
 
-	//-----------------------------------------------------------------------
 	// NOTE: This assumes there won't be adjacent areas with team alignments.
 	// If there are, we should record two teamIDs for each door (to track
 	// the teamID for each "side" of the door).
@@ -3596,8 +3118,6 @@ void GlobalMap::setAreaTeamID (long area, char teamID) {
 	//opens = true;
 }
 
-//---------------------------------------------------------------------------
-
 void GlobalMap::setAreaOwnerWID (long area, long objWID) {
 
 	if (area < 0)
@@ -3605,8 +3125,6 @@ void GlobalMap::setAreaOwnerWID (long area, long objWID) {
 
 	areas[area].ownerWID = objWID;
 }
-
-//---------------------------------------------------------------------------
 
 void GlobalMap::setGoalDoor (long goalArea) {
 
@@ -3637,7 +3155,6 @@ void GlobalMap::setGoalDoor (long goalArea) {
 	goalDoor->numLinks[1] = 0;
 	
 	for (long curLink = 0; curLink < goalDoor->numLinks[0]; curLink++) {
-		//---------------------------------------------
 		// Point the goal "door" to its area's doors...
 		long doorIndex = areas_doors[goalArea][curLink].doorIndex;
 		long doorSide = areas_doors[goalArea][curLink].doorSide;
@@ -3661,7 +3178,6 @@ void GlobalMap::setGoalDoor (long goalArea) {
 		goalDoor_links[0][curLink].cost = costSum;
 		goalDoor_links[0][curLink].openCost = costSum;
 		
-		//----------------------------------------------------
 		// Make sure this area door points to the goal door...
 		curDoor_links[doorSide][curDoor->numLinks[doorSide]].doorIndex = numDoors + DOOR_OFFSET_GOAL;
 		curDoor_links[doorSide][curDoor->numLinks[doorSide]].doorSide = 0;
@@ -3670,8 +3186,6 @@ void GlobalMap::setGoalDoor (long goalArea) {
 		curDoor->numLinks[doorSide]++;
 	}
 }
-
-//---------------------------------------------------------------------------
 
 void GlobalMap::resetGoalDoor (long goalArea) {
 
@@ -3682,8 +3196,6 @@ void GlobalMap::resetGoalDoor (long goalArea) {
 		doors[areas_doors[goalArea][curLink].doorIndex].numLinks[doorSide]--;
 	}
 }
-
-//---------------------------------------------------------------------------
 
 #define	AREA_ID_BASE		1000000
 
@@ -3706,8 +3218,6 @@ long GlobalMap::calcHPrime (long door) {
 
 	return(sum);	
 }
-
-//---------------------------------------------------------------------------
 
 inline void GlobalMap::propogateCost (long door, long cost, long fromAreaIndex, long g) {
 
@@ -3742,7 +3252,6 @@ inline void GlobalMap::propogateCost (long door, long cost, long fromAreaIndex, 
 				else {
 					if ((succMapDoor->teamID > -1) && (succMapDoor->teamID != moverTeamID))
 						succDoorCost = COST_BLOCKED;
-					//--------------------------------------------------
 					// Whether the door is even open is another issue...
 					if (!succMapDoor->open)
 						succDoorCost = COST_BLOCKED;
@@ -3764,7 +3273,6 @@ inline void GlobalMap::propogateCost (long door, long cost, long fromAreaIndex, 
 	}
 }
 
-//---------------------------------------------------------------------------
 #ifdef TERRAINEDIT
 #define MAX_GLOBAL_PATH		50
 #endif
@@ -3800,15 +3308,12 @@ long GlobalMap::calcPath (long startArea,
 			log->write("     USE CLOSED AREAS");
 	}
 
-	//----------------------------------------------------------------------
 	// Door costs should be set here, if we want to modify them real-time...
 
-	//-------------------------------------------------------------------------
 	// We will not limit the search, as the global map should never be so big
 	// that we'd WANT to limit the search. If so, time to change the sectorDim,
 	// etc...
 
-	//-----------------------------------------------
 	// If we haven't already, create the OPEN list...
 	if (!openList) {
 		openList = new PriorityQueue;
@@ -3816,7 +3321,6 @@ long GlobalMap::calcPath (long startArea,
 		openList->init(5000);
 	}
 
-	//---------------------------------------------------------------
 	// NOTE: The last 6 doors are reserved for use by the pathfinder:
 	//			numDoors + 0 = startArea
 	//			numDoors + 1 = goalArea
@@ -3833,7 +3337,6 @@ long GlobalMap::calcPath (long startArea,
 		if ((uint64_t)numAreas > g_moveRecon_ag_maxNumAreas) g_moveRecon_ag_maxNumAreas = (uint64_t)numAreas;
 	}
 
-	//---------------------------------------------
 	// Clear the doors and prep 'em for the calc...
 	long initHPrime = ZeroHPrime ? 0 : HPRIME_NOT_CALCED;
 	for (long d = 0; d < numDoors + NUM_DOOR_OFFSETS; d++) {
@@ -3876,11 +3379,9 @@ long GlobalMap::calcPath (long startArea,
 				closeArea(i);
 		}
 
-	//-------------------------------------------------------------
 	// Start with the area we're in, and process the possible doors
 	// we can start thru...
 
-	//-----------------------------------------------
 	// Put the START vertex on the empty OPEN list...
 	// MC2_MOVE_RECON: close prologue, open search timer.
 	std::chrono::steady_clock::time_point _ag_srch0;
@@ -3903,14 +3404,11 @@ long GlobalMap::calcPath (long startArea,
 	gosASSERT(insertErr == NO_ERR);
 	doors[startDoor].flags |= MOVEFLAG_OPEN;
 
-	//******************
 	//THROW THE STARTING LINKS ON THE QUEUE...
-	//******************
 
 	bool goalFound = false;
 
 	while (!openList->isEmpty()) {
-		//----------------------
 		// Grab the best node...
 		PQNode bestPQNode;
 		openList->remove(bestPQNode);
@@ -3924,18 +3422,15 @@ long GlobalMap::calcPath (long startArea,
 
 		long fromAreaIndex = bestMapDoor->fromAreaIndex;
 
-		//----------------------------
 		// Now, close the best node...
 		bestMapDoor->flags |= MOVEFLAG_CLOSED;
 		
-		//--------------------------
 		// Have we found the goal...
 		if (bestDoor == goalDoor) {
 			goalFound = true;
 			break;
 		}
 
-		//-------------------------------------------
 		// Now, check the door links for this door...
 		long toAreaIndex = 1 - fromAreaIndex;
 		long thruArea = bestMapDoor->area[toAreaIndex];
@@ -3948,11 +3443,9 @@ long GlobalMap::calcPath (long startArea,
 		}
 		
 		for (long curLink = 0; curLink < numLinks; curLink++) {
-			//------------------------------------------------------
 			// If we want to limit the doors thru which the path may
 			// travel, we must check right here...
 			
-			//--------------------------
 			// Now, process this door...
 			long succDoor = bestMapDoor_links[toAreaIndex][curLink].doorIndex;
 			gosASSERT((succDoor >= 0) && (succDoor < numDoors + NUM_DOOR_OFFSETS));
@@ -3965,7 +3458,6 @@ long GlobalMap::calcPath (long startArea,
 			}
 
 			long succDoorCost = bestMapDoor_links[toAreaIndex][curLink].cost;
-			//----------------------------------------------------------------------------
 			// If this is an aligned door, make it more expensive for unfriendly movers...
 			if (useClosedAreas) {
 				if (succMapDoor->teamID > -1)
@@ -3977,7 +3469,6 @@ long GlobalMap::calcPath (long startArea,
 			else {
 				if ((succMapDoor->teamID > -1) && (succMapDoor->teamID != moverTeamID))
 					succDoorCost = COST_BLOCKED;
-				//--------------------------------------------------
 				// Whether the door is even open is another issue...
 				if (!succMapDoor->open)
 					succDoorCost = COST_BLOCKED;
@@ -3993,18 +3484,15 @@ long GlobalMap::calcPath (long startArea,
 				if (succMapDoor->hPrime == HPRIME_NOT_CALCED)
 					succMapDoor->hPrime = calcHPrime(succDoor);
 
-				//----------------------------------------------------
 				// What's our cost to go from START to this SUCCESSOR?
 				long succDoorG = bestDoorG + succDoorCost;
 
 				long succFromAreaIndex = (succMapDoor->area[1] == thruArea);
 				if (succMapDoor->flags & MOVEFLAG_OPEN) {
-					//----------------------------------------------
 					// This node is already in the OPEN queue to be
 					// be processed. Let's check if we have a better
 					// path thru this route...
 					if (succDoorG < succMapDoor->g) {
-						//----------------------------
 						// This new path is cheaper...
 						succMapDoor->cost = succDoorCost;
 						succMapDoor->parent = bestDoor;
@@ -4015,20 +3503,15 @@ long GlobalMap::calcPath (long startArea,
 						if (!openIndex) {
 							char s[128];
 							sprintf(s, "GlobalMap.calcPath: Cannot find globalmap door [%d, %d, %d, %d] for change\n", succDoor, curLink, succFromAreaIndex, succDoorCost);
-#ifdef USE_OBJECTS
-							DebugOpenList(s);
-#endif
 							gosASSERT(openIndex != 0);
 						}
 						openList->change(openIndex, succMapDoor->fPrime);
 					}
 					}
 				else if (succMapDoor->flags & MOVEFLAG_CLOSED) {
-					//-------------------------------------------------
 					// This path may be better than this node's current
 					// path. If so, we may have to propogate thru...
 					if (succDoorG < succMapDoor->g) {
-						//----------------------------------
 						// This new path is cheaper. We
 						// have to propogate the new cost...
 						succMapDoor->cost = succDoorCost;
@@ -4038,7 +3521,6 @@ long GlobalMap::calcPath (long startArea,
 					}
 					}
 				else {
-					//-------------------------------------------------
 					// This node is neither OPEN nor CLOSED, so toss it
 					// into the OPEN list...
 					succMapDoor->cost = succDoorCost;
@@ -4077,7 +3559,6 @@ long GlobalMap::calcPath (long startArea,
 		closeArea(goalArea);
 
 	if (goalFound) {
-		//-------------------------------------------
 		// First, let's count how long the path is...
 		long curDoor = goalDoor;
 		long numSteps = 1;
@@ -4086,18 +3567,15 @@ long GlobalMap::calcPath (long startArea,
 			curDoor = doors[curDoor].parent;
 		}
 		
-		//-----------------------------------------------------------------------
 		// Number of doors to travel to, including the "goal door". We don't care
 		// about the "start door" in the path...
 		long numDoors = numSteps - 1;
 		gosASSERT((numDoors < MAX_GLOBAL_PATH));
 
-		//-----------------------------
 		// Now, let's build the path...
 		curDoor = goalDoor;
 		long curPathDoor = numDoors;
 
-		//--------------------------------
 		// Do the doors leading to goal...
 		long costToGoal = 0;
 		while (curPathDoor > 0) {
@@ -4113,19 +3591,6 @@ long GlobalMap::calcPath (long startArea,
 		//systemHeap->walkHeap(false,false,"GlobalMap:calc BAD HEAP2\n");
 		#endif
 
-#ifdef USE_PATH_COST_TABLE
-		if (pathCostTable) {
-			setPathCost(startArea, goalArea, useClosedAreas, numDoors);
-			if (useClosedAreas) {
-				setPathFlag(startArea, goalArea, GLOBAL_FLAG_SPECIAL_IMPOSSIBLE, false);
-				setPathFlag(startArea, goalArea, GLOBAL_FLAG_SPECIAL_CALC, false);
-				}
-			else {
-				setPathFlag(startArea, goalArea, GLOBAL_FLAG_NORMAL_OPENS, false);
-				setPathFlag(startArea, goalArea, GLOBAL_FLAG_SPECIAL_CALC, false);
-			}
-		}
-#endif
 		if (logEnabled) {
 			char s[50];
 			sprintf(s, "     PATH FOUND: %d steps", numDoors);
@@ -4135,19 +3600,6 @@ long GlobalMap::calcPath (long startArea,
 		return(numDoors);
 		}
 	else {
-#ifdef USE_PATH_COST_TABLE
-		if (pathCostTable) {
-			setPathCost(startArea, goalArea, useClosedAreas, 0);
-			if (useClosedAreas) {
-				setPathFlag(startArea, goalArea, GLOBAL_FLAG_SPECIAL_IMPOSSIBLE, true);
-				setPathFlag(startArea, goalArea, GLOBAL_FLAG_SPECIAL_CALC, false);
-				}
-			else {
-				setPathFlag(startArea, goalArea, GLOBAL_FLAG_NORMAL_OPENS, false);
-				setPathFlag(startArea, goalArea, GLOBAL_FLAG_SPECIAL_CALC, false);
-			}
-		}
-#endif
 		if (logEnabled)
 			log->write("     NO PATH FOUND");
 	}
@@ -4155,8 +3607,6 @@ long GlobalMap::calcPath (long startArea,
 		log->write(" ");
 	return(0);
 }
-
-//------------------------------------------------------------------------------------------
 
 long GlobalMap::calcPath (Stuff::Vector3D start, Stuff::Vector3D goal, GlobalPathStepPtr path) {
 
@@ -4170,22 +3620,16 @@ long GlobalMap::calcPath (Stuff::Vector3D start, Stuff::Vector3D goal, GlobalPat
 	return(numSteps);
 }
 
-//---------------------------------------------------------------------------
-
 void GlobalMap::openDoor (long door) {
 
 	doors[door].cost = 10;
 	doors[door].open = true;
 }
 
-//---------------------------------------------------------------------------
-
 void GlobalMap::closeDoor (long door) {
 
 	doors[door].open = false;
 }
-
-//---------------------------------------------------------------------------
 
 void GlobalMap::closeArea (long area) {
 
@@ -4208,8 +3652,6 @@ void GlobalMap::closeArea (long area) {
 
 	closes = true;
 }
-
-//---------------------------------------------------------------------------
 
 void GlobalMap::openArea (long area) {
 
@@ -4237,8 +3679,6 @@ void GlobalMap::openArea (long area) {
 
 	opens = true;
 }
-
-//---------------------------------------------------------------------------
 
 void GlobalMap::print (char* fileName) {
 
@@ -4271,8 +3711,6 @@ void GlobalMap::print (char* fileName) {
 	delete debugFile;
 	debugFile = NULL;
 }
-
-//---------------------------------------------------------------------------
 
 void GlobalMap::destroy (void) {
 
@@ -4350,15 +3788,7 @@ void GlobalMap::destroy (void) {
 		pathExistsTable = NULL;
 	}
 
-#ifdef USE_PATH_COST_TABLE
-	if (pathCostTable) {
-		systemHeap->Free(pathCostTable);
-		pathCostTable = NULL;
-	}
-#endif
 }
-
-//----------------------------------------------------------------------------------
 
 bool GlobalMap::toggleLog (void) {
 
@@ -4417,17 +3847,13 @@ bool GlobalMap::toggleLog (void) {
 	return(logEnabled);
 }
 
-//----------------------------------------------------------------------------------
-
 void GlobalMap::writeLog (char* s) {
 
 	if (log)
 		log->write(s);
 }
 
-//**********************************************************************************
 // MOVE MAP class
-//**********************************************************************************
 
 void* MoveMap::operator new (size_t ourSize) {
 
@@ -4435,14 +3861,10 @@ void* MoveMap::operator new (size_t ourSize) {
 	return(result);
 }
 
-//---------------------------------------------------------------------------
-
 void MoveMap::operator delete (void* us) {
 
 	systemHeap->Free(us);
 }	
-
-//---------------------------------------------------------------------------
 
 void MoveMap::init (long maxW, long maxH) {
 
@@ -4482,7 +3904,6 @@ void MoveMap::init (long maxW, long maxH) {
 			}
 		}
 
-
 	float cellLength = Terrain::worldUnitsPerCell * metersPerWorldUnit;
 	for (long i = 0; i < DISTANCE_TABLE_DIM; i++)
 		for (long j = 0; j < DISTANCE_TABLE_DIM; j++) {
@@ -4493,15 +3914,12 @@ void MoveMap::init (long maxW, long maxH) {
 	clear();
 }
 
-//---------------------------------------------------------------------------
-
 void MoveMap::clear (void) {
 
 	int numMapCells = maxWidth * height;
 	int initHPrime = ZeroHPrime ? 0 : HPRIME_NOT_CALCED;
 	for (int i = 0; i < numMapCells; i++) {
 		MoveMapNodePtr node = &map[i];
-		//------------------------------------------------
 		// DON'T NEED TO SET THIS SINCE IS SET IN SETUP...
 		node->cost = COST_BLOCKED;
 		node->parent = -1;
@@ -4515,14 +3933,10 @@ void MoveMap::clear (void) {
 	target.z = -999999.0;
 }
 
-//---------------------------------------------------------------------------
-
 void MoveMap::setTarget (Stuff::Vector3D targetPos) {
 
 	target = targetPos;
 }
-
-//---------------------------------------------------------------------------
 
 void MoveMap::setStart (Stuff::Vector3D* startPos, long startRow, long startCol) {
 
@@ -4545,8 +3959,6 @@ void MoveMap::setStart (Stuff::Vector3D* startPos, long startRow, long startCol)
 	}
 }
 
-//---------------------------------------------------------------------------
-
 void MoveMap::setGoal (Stuff::Vector3D goalPos, long goalRow, long goalCol) {
 
 	goal = goalPos;
@@ -4563,8 +3975,6 @@ void MoveMap::setGoal (Stuff::Vector3D goalPos, long goalRow, long goalCol) {
 	GoalIsDoor = false;
 }
 
-//---------------------------------------------------------------------------
-
 inline void adjustMoveMapCellCost (MoveMapNodePtr cell, long costAdj) {
 
 	long cost = cell->cost + costAdj;
@@ -4573,11 +3983,8 @@ inline void adjustMoveMapCellCost (MoveMapNodePtr cell, long costAdj) {
 	cell->cost = cost;
 }
 
-//---------------------------------------------------------------------------
-
 void MoveMap::setGoal (long thruArea, long goalDoor) {
 
-	//------------------------------------------------------------------------------
 	// We need to set goalR, goalC for the calcHPrime routine (until we come up with
 	// a better one that uses the door range. If the global path's final goal is on
 	// the other side of this door, we should select THAT cell of the door...
@@ -4602,14 +4009,12 @@ void MoveMap::setGoal (long thruArea, long goalDoor) {
 	long doorLength = GlobalMoveMap[moveLevel]->doors[goalDoor].length;
 
 	if ((doorDirection == 0) || (doorDirection == 2)) {
-		//----------------------------------------------------------------
 		// We need to set goalR and goalC for the calcHPrime function used
 		// in pathfinding...
 		goalR = GlobalMoveMap[moveLevel]->doors[goalDoor].row + doorSide - ULr;
 		goalC = GlobalMoveMap[moveLevel]->doors[goalDoor].col + (doorLength / 2) - ULc;
 		}
 	else if ((doorDirection == 1) || (doorDirection == 3)) {
-		//----------------------------------------------------------------
 		// We need to set goalR and goalC for the calcHPrime function used
 		// in pathfinding...
 		goalR = GlobalMoveMap[moveLevel]->doors[goalDoor].row + (doorLength / 2) - ULr;
@@ -4617,11 +4022,8 @@ void MoveMap::setGoal (long thruArea, long goalDoor) {
 	}
 }
 
-//---------------------------------------------------------------------------
-
 inline long MoveMap::markGoals (Stuff::Vector3D finalGoal) {
 
-	//--------------------------------------
 	// First, mark the blocked goal cells...
 	// PATHFINDING-SOLVER-ISOLATION-1: was function-local static; made stack-
 	// local. Fully (re)initialized [0..length) each call before use, so this is
@@ -4633,12 +4035,10 @@ inline long MoveMap::markGoals (Stuff::Vector3D finalGoal) {
 	if (blockedDoorCallback)
 		(*blockedDoorCallback)(moveLevel, door, &doorCellState[0]);
 
-	//-------------------------------------------------------------------------
 	// Ultimately, we should do this conversion once for the finalGoal and then
 	// store it in the moveOrders data...
 	int finalGoalR, finalGoalC;
 	land->worldToCell(finalGoal, finalGoalR, finalGoalC);
-	//-----------------------------------------
 	// Localize the coords for this move map...
 	finalGoalR -= ULr;
 	finalGoalC -= ULc;
@@ -4647,7 +4047,6 @@ inline long MoveMap::markGoals (Stuff::Vector3D finalGoal) {
 
 	int numGoalCells = 0;
 	if ((doorDirection == 0) || (doorDirection == 2)) {
-		//--------------------------------
 		// Mark the door cells as goals...
 		int cellR = goalR;
 		int cellC = goalC - (doorLength / 2);
@@ -4656,7 +4055,6 @@ inline long MoveMap::markGoals (Stuff::Vector3D finalGoal) {
 			if (finalGoalR == (cellR + 1))
 //				if (!doorCellBlocked(cellR, cellC))
 					if ((finalGoalC >= cellC) && (finalGoalC < (cellC + doorLength))) {
-						//-----------------------------------------------------
 						// Our global goal is on the other side of this door...
 						map[cellR * width + finalGoalC].setFlag(MOVEFLAG_GOAL);
 						numGoalCells++;
@@ -4667,7 +4065,6 @@ inline long MoveMap::markGoals (Stuff::Vector3D finalGoal) {
 			if (finalGoalR == (cellR - 1))
 //				if (!doorCellBlocked(cellR, cellC)
 					if ((finalGoalC >= cellC) && (finalGoalC < (cellC + doorLength))) {
-						//-----------------------------------------------------
 						// Our global goal is on the other side of this door...
 						map[cellR * maxWidth + finalGoalC].setFlag(MOVEFLAG_GOAL);
 						numGoalCells++;
@@ -4708,7 +4105,6 @@ inline long MoveMap::markGoals (Stuff::Vector3D finalGoal) {
 		bool nextToGoal = false;
 		if (finalGoalC == (cellC + 1 - doorSide * 2))
 			if ((finalGoalR >= cellR) && (finalGoalR < (cellR + doorLength))) {
-				//-----------------------------------------------------
 				// Our global goal is on the other side of this door...
 				map[finalGoalR * maxWidth + cellC].setFlag(MOVEFLAG_GOAL);
 				numGoalCells++;
@@ -4748,20 +4144,16 @@ inline long MoveMap::markGoals (Stuff::Vector3D finalGoal) {
 	return(numGoalCells);
 }
 
-//---------------------------------------------------------------------------
-
 inline long MoveMap::markEscapeGoals (Stuff::Vector3D finalGoal) {
 
 	long numGoalCells = 0;
 
-	//-------------------------------------------------------------------------
 	// Ultimately, we should do this conversion once for the finalGoal and then
 	// store it in the moveOrders data...
 	int finalGoalR, finalGoalC;
 	land->worldToCell(finalGoal, finalGoalR, finalGoalC);
 	int finalGoalArea = GlobalMoveMap[moveLevel]->calcArea(finalGoalR, finalGoalC);
 
-	//------------------------------------------------------------------------
 	// For each tile, mark its cells as valid goals if:
 	//		1) the tile's areaId == the areaId of the finalGoal
 	//		2) OR, if a LR path exists between the tile and the finalGoal tile
@@ -4782,8 +4174,6 @@ inline long MoveMap::markEscapeGoals (Stuff::Vector3D finalGoal) {
 	return(numGoalCells);
 }
 
-//---------------------------------------------------------------------------
-
 long MoveMap::setUp (long mapULr,
 					 long mapULc,
 					 long mapWidth,
@@ -4802,7 +4192,6 @@ long MoveMap::setUp (long mapULr,
 
 	ZoneScopedN("GameLogic.PathManager.CalcPath1");
 
-	//-----------------------------------------------------------------------------
 	// If the map has not been allocated yet, then the tile height and width passed
 	// is used as both the max and current dimensions. Otherwise, they are only
 	// used as the current dimensions...
@@ -4824,7 +4213,6 @@ long MoveMap::setUp (long mapULr,
 	thruAreas[0] = -1;
 	thruAreas[1] = -1;
 
-	//---------------------------------------------
 	// First, gotta set some params for the calc...
 	ULr = mapULr;
 	ULc = mapULc;
@@ -4833,7 +4221,6 @@ long MoveMap::setUp (long mapULr,
 	maxRow = mapHeight - 1;
 	maxCol = mapWidth - 1;
 	moveLevel = level;
-
 
 	startRow -= ULr;
 	startCol -= ULc;
@@ -4861,11 +4248,9 @@ long MoveMap::setUp (long mapULr,
 	if (params & MOVEPARAM_SWEEP_MINES)
 		avoidMines = false;
 
-	//-------------------------------------------------
 	// Now that the params are set up, build the map...
 	long pathLockCost = clearCost << 3;
 
-	//--------------------------------------------------------------
 	// Set the map costs based upon the tiles in the scenario map...
 	bool groundMover = ((moveLevel == 0) || (moveLevel == 1));
 	for (long cellRow = 0; cellRow < height; cellRow++)
@@ -4879,7 +4264,6 @@ long MoveMap::setUp (long mapULr,
 				if (offMapCell)
 					map[moveMapIndex].setFlag(MOVEFLAG_OFFMAP);
 
-				//-----------------------
 				// Tile (terrain) type...
 				//long tileType = curTile.getTileType();
 				if (offMapCell && !travelOffMap)
@@ -4934,7 +4318,6 @@ long MoveMap::setUp (long mapULr,
 				}
 				map[moveMapIndex].cost = cost;
 
-				//---------------------------------------------------------------
 				// NOTE: With gates, we may want them to set the cell cost rather
 				// than just adjust it. Let's see how they play. Since they're
 				// set as an overlay, we'll just treat them as such for now.
@@ -4943,7 +4326,6 @@ long MoveMap::setUp (long mapULr,
 					adjustMoveMapCellCost(&map[cellRow * maxWidth + cellCol], pathLockCost);
 			}
 		}
-
 
 	if (FindingEscapePath)
 		markEscapeGoals(goalPos);
@@ -4956,8 +4338,6 @@ long MoveMap::setUp (long mapULr,
 
 	return(NO_ERR);
 }
-
-//---------------------------------------------------------------------------
 
 long MoveMap::setUp (long level,
 					 Stuff::Vector3D* startPos,
@@ -4973,7 +4353,6 @@ long MoveMap::setUp (long level,
 
 	ZoneScopedN("GameLogic.PathManager.CalcPath2");
 
-	//-----------------------------------------------------------------------------
 	// If the map has not been allocated yet, then the tile height and width passed
 	// is used as both the max and current dimensions. Otherwise, they are only
 	// used as the current dimensions...
@@ -4988,7 +4367,6 @@ long MoveMap::setUp (long level,
 	thruAreas[0] = thruArea[0];
 	thruAreas[1] = thruArea[1];
 
-	//---------------------------------------------
 	// First, gotta set some params for the calc...
 	long firstSectorRow = GlobalMoveMap[level]->areas[thruArea[0]].sectorR;
 	long firstSectorCol = GlobalMoveMap[level]->areas[thruArea[0]].sectorC;
@@ -5082,7 +4460,6 @@ long MoveMap::setUp (long level,
 		cannotEnterOffMap = false;
 	}
 
-	//-------------------------------------------------
 	// Now that the params are set up, build the map...
 	bool followRoads = ((params & MOVEPARAM_FOLLOW_ROADS) != 0);
 	bool traverseShallowWater = ((params & (MOVEPARAM_WATER_SHALLOW + MOVEPARAM_WATER_DEEP)) != 0);
@@ -5091,7 +4468,6 @@ long MoveMap::setUp (long level,
 	if (params & MOVEPARAM_SWEEP_MINES)
 		avoidMines = false;
 
-	//--------------------------------------------------------------
 	// Set the map costs based upon the tiles in the scenario map...
 	bool groundMover = ((moveLevel == 0) || (moveLevel == 1));
 	for (long cellRow = 0; cellRow < height; cellRow++)
@@ -5172,8 +4548,6 @@ long MoveMap::setUp (long level,
 	return(NO_ERR);
 }
 
-//---------------------------------------------------------------------------
-
 inline bool MoveMap::adjacentCellOpen (long mapCellIndex, long dir) {
 
 	long adjCellIndex = map[mapCellIndex].adjCells[dir];
@@ -5183,21 +4557,8 @@ inline bool MoveMap::adjacentCellOpen (long mapCellIndex, long dir) {
 	if (map[adjCellIndex].flags & MOVEFLAG_MOVER_HERE)
 		return(false);
 
-#ifdef USE_MINES_IN_MC2
-	if (moverRelation == RELATION_ENEMY) {
-		if (GameMap->getTile(adjRow,adjCol).getClanMineMove())
-			return(false);
-		}
-	else {
-		if (GameMap->getTile(adjRow,adjCol).getInnerSphereMineMove())
-			return(false);
-	}
-#endif
-
 	return(map[adjCellIndex].cost < COST_BLOCKED);
 }
-
-//---------------------------------------------------------------------------
 
 inline bool MoveMap::adjacentCellOpenJUMP (long r, long c, long dir) {
 
@@ -5211,21 +4572,8 @@ inline bool MoveMap::adjacentCellOpenJUMP (long r, long c, long dir) {
 	if (map[adjRow * maxWidth + adjCol].flags & MOVEFLAG_MOVER_HERE)
 		return(false);
 
-#ifdef USE_MINES_IN_MC2
-	if (moverRelation == RELATION_ENEMY) {
-		if (GameMap->getTile(adjRow,adjCol).getClanMineMove())
-			return(false);
-		}
-	else {
-		if (GameMap->getTile(adjRow,adjCol).getInnerSphereMineMove())
-			return(false);
-	}
-#endif
-
 	return(map[adjRow * maxWidth + adjCol].cost < COST_BLOCKED);
 }
-
-//---------------------------------------------------------------------------
 
 inline int MoveMap::calcHPrime (int r, int c) {
 	ZoneScopedN("GameLogic.PathManager.CalcPath3");
@@ -5243,8 +4591,6 @@ inline int MoveMap::calcHPrime (int r, int c) {
 }
 
 #define MAX_MAPWIDTH		1000
-
-//---------------------------------------------------------------------------
 
 inline void MoveMap::propogateCost (long mapCellIndex, long cost, long g) {
 
@@ -5267,7 +4613,6 @@ inline void MoveMap::propogateCost (long mapCellIndex, long cost, long g) {
 			}
 		else {
 			for (long dir = 0; dir < numOffsets; dir++) {
-				//------------------------------------------------------------
 				// First, make sure this is a legit direction to go. We do NOT
 				// want to clip corners, so we'll check that here...
 				bool isDiagonalWalk = IsDiagonalStep[dir];
@@ -5293,10 +4638,8 @@ inline void MoveMap::propogateCost (long mapCellIndex, long cost, long g) {
 					//	continue;
 				}
 
-				//----------------------------------------------------------
 				// Calc the cell we're checking, offset from current cell...
 				long succCellIndex = curMapNode->adjCells[dir];
-				//--------------------------------
 				// If it's on the map, check it...
 				if (succCellIndex > -1) {
 					MoveMapNodePtr succMapNode = &map[succCellIndex];
@@ -5304,7 +4647,6 @@ inline void MoveMap::propogateCost (long mapCellIndex, long cost, long g) {
 						if ((succMapNode->hPrime != HPRIME_NOT_CALCED) && (succMapNode->hPrime < MaxHPrime)) {
 							char dirToParent = reverseShift[dir];
 							long cost = succMapNode->cost;
-							//------------------------------------
 							// Diagonal movement is more costly...
 							gosASSERT(cost > 0);
 							if (isDiagonalWalk)
@@ -5321,8 +4663,6 @@ inline void MoveMap::propogateCost (long mapCellIndex, long cost, long g) {
 		}
 	}
 }
-
-//---------------------------------------------------------------------------
 
 inline void MoveMap::propogateCostJUMP (long r, long c, long cost, long g) {
 
@@ -5346,7 +4686,6 @@ inline void MoveMap::propogateCostJUMP (long r, long c, long cost, long g) {
 		else {
 			long cellOffsetIndex = 0;
 			for (long dir = 0; dir < numOffsets; dir++) {
-				//------------------------------------------------------------
 				// First, make sure this is a legit direction to go. We do NOT
 				// want to clip corners, so we'll check that here...
 				bool isDiagonalWalk = IsDiagonalStep[dir];
@@ -5357,11 +4696,9 @@ inline void MoveMap::propogateCostJUMP (long r, long c, long cost, long g) {
 					}
 				}
 
-				//----------------------------------------------------------
 				// Calc the cell we're checking, offset from current cell...
 				long succRow = r + cellShift[cellOffsetIndex++];
 				long succCol = c + cellShift[cellOffsetIndex++];
-				//--------------------------------
 				// If it's on the map, check it...
 				if (inMapBounds(succRow, succCol, height, width)) {
 					MoveMapNodePtr succMapNode = &map[succRow * maxWidth + succCol];
@@ -5372,7 +4709,6 @@ inline void MoveMap::propogateCostJUMP (long r, long c, long cost, long g) {
 							bool jumping = false;
 							long cost = succMapNode->cost;
 							
-							//------------------------------------
 							// Diagonal movement is more costly...
 							gosASSERT(cost > 0);
 							if (dir > 7) {
@@ -5397,8 +4733,6 @@ inline void MoveMap::propogateCostJUMP (long r, long c, long cost, long g) {
 		}
 	}
 }
-
-//---------------------------------------------------------------------------
 
 //#define DEBUG_PATH
 //#define BLOCKED_PATH_TEST
@@ -5457,13 +4791,11 @@ long MoveMap::calcPath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int* go
 		//gosASSERT((goalR >= 0) && (goalR < height) && (goalC >= 0) && (goalC < width));
 	}
 
-	//------------------------------------------------------------------
 	// Let's use their hPrime as a barrier for cutting off the search...
 	MaxHPrime = calcHPrime(startR, startC) * 2.5;
 	if (MaxHPrime < 500)
 		MaxHPrime = 500;
 	
-	//-----------------------------------------------
 	// If we haven't already, create the OPEN list...
 	// PATHFINDING-SOLVER-ISOLATION-1: OFF lazily owns the shared global exactly
 	// as before; ON uses the context's private per-solve queue. solveOpen/
@@ -5485,7 +4817,6 @@ long MoveMap::calcPath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int* go
 		curMapNode->hPrime = calcHPrime(curRow, curCol);
 	curMapNode->fPrime = curMapNode->hPrime;
 
-	//-----------------------------------------------
 	// Put the START vertex on the empty OPEN list...
 	PQNode initialVertex;
 	initialVertex.key = curMapNode->fPrime;
@@ -5532,7 +4863,6 @@ long MoveMap::calcPath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int* go
 			if (openN > _ptOpenPeak) _ptOpenPeak = openN;
 		}
 
-		//----------------------
 		// Grab the best node...
 		PQNode bestPQNode;
 		solveOpen->remove(bestPQNode);
@@ -5555,11 +4885,9 @@ long MoveMap::calcPath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int* go
 
 		int bestNodeG = bestMapNode->g;
 
-		//----------------------------
 		// Now, close the best node...
 		bestMapNode->setFlag(MOVEFLAG_CLOSED);
 
-		//--------------------------
 		// Have we found the goal...
 		if (bestMapNode->flags & MOVEFLAG_GOAL) {
 			goalFound = true;
@@ -5568,7 +4896,6 @@ long MoveMap::calcPath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int* go
 		}
 		
 		for (int dir = 0; dir < 8; dir++) {
-			//------------------------------------------------------------
 			// First, make sure this is a legit direction to go. We do NOT
 			// want to clip corners, so we'll check that here...
 			bool isDiagonalWalk = IsDiagonalStep[dir];
@@ -5594,11 +4921,9 @@ long MoveMap::calcPath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int* go
 				//	continue;
 			}
 
-			//-------------------------------
 			// Now, process this direction...
 			int succCellIndex = bestMapNode->adjCells[dir];
 
-			//-----------------------------------------------------------------------------------
 			// If we're doing offMapTravel, make sure we aren't going back into an offMap cell...
             
             // sebi: we do not want to address by negative offset
@@ -5609,7 +4934,6 @@ long MoveMap::calcPath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int* go
 			    			continue;
             }
 			
-			//--------------------------------
 			// If it's on the map, check it...
 			if (succCellIndex > -1) {
 				if (!inBounds(mapRowTable[succCellIndex], mapColTable[succCellIndex]))
@@ -5625,14 +4949,11 @@ long MoveMap::calcPath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int* go
 							numNodesVisited++;
 						#endif
 				
-						//--------------------------------------------------
 						// How can we get back to BESTNODE from SUCCESSOR...
 						char dirToParent = reverseShift[dir];
 
-						//----------------------------------------------------
 						// What's our cost to go from START to this SUCCESSOR?
 						int cost = succMapNode->cost;
-						//------------------------------------
 						// Diagonal movement is more costly...
 						gosASSERT(cost > 0);
 						if (isDiagonalWalk)
@@ -5642,12 +4963,10 @@ long MoveMap::calcPath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int* go
 						int succNodeG = bestNodeG + cost;
 
 						if (succMapNode->flags & MOVEFLAG_OPEN) {
-							//----------------------------------------------
 							// This node is already in the OPEN queue to be
 							// be processed. Let's check if we have a better
 							// path thru this route...
 							if (succNodeG < succMapNode->g) {
-								//----------------------------
 								// This new path is cheaper...
 								succMapNode->parent = dirToParent;
 								succMapNode->g = succNodeG;
@@ -5656,9 +4975,6 @@ long MoveMap::calcPath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int* go
 								if (!openIndex) {
 									char s[128];
 									sprintf(s, "MoveMap.calcPath: Cannot find movemap node [%d, %d] for change\n", succCellIndex, dir);
-#ifdef USE_OBJECTS
-									DebugOpenList(s);
-#endif
 									gosASSERT(openIndex != 0);
 									}
 								else
@@ -5666,21 +4982,17 @@ long MoveMap::calcPath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int* go
 							}
 							}
 						else if (succMapNode->flags & MOVEFLAG_CLOSED) {
-							//-------------------------------------------------
 							// This path may be better than this node's current
 							// path. If so, we may have to propogate thru...
 							if (succNodeG < succMapNode->g) {
-								//----------------------------
 								// This new path is cheaper...
 								succMapNode->parent = dirToParent;
 
-								//------------------------------------------
 								// Now, we have to propogate the new cost...
 								propogateCost(succCellIndex, cost, bestNodeG);
 							}
 							}
 						else {
-							//-------------------------------------------------
 							// This node is neither OPEN nor CLOSED, so toss it
 							// into the OPEN list...
 							succMapNode->parent = dirToParent;
@@ -5704,7 +5016,6 @@ long MoveMap::calcPath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int* go
 		}
 	}
 
-
 	#ifdef DEBUG_MOVE_MAP
 		if (debugMoveMap) {
 			File* pathDebugFile = new File;
@@ -5717,7 +5028,6 @@ long MoveMap::calcPath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int* go
 	#endif
 	
 	if (goalFound) {
-		//-------------------------------------------
 		// First, let's count how long the path is...
 		int curRow = goalCell[0] = bestRow;
 		int curCol = goalCell[1] = bestCol;
@@ -5756,7 +5066,6 @@ long MoveMap::calcPath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int* go
 				_shPathHash, _shMoverHash, g_moveRecon_frames);
 		}
 
-		//---------------------------------------------------------------
 		// If our goal is a door, the path will be one step longer, since
 		// we need to walk "thru" the door...
 		if (doorDirection != -1)
@@ -5787,10 +5096,8 @@ long MoveMap::calcPath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int* go
 			gosASSERT(numCells <= MAX_STEPS_PER_MOVEPATH);
 		}
 		#endif
-		//-----------------------------
 		// Now, let's build the path...
 
-		//-------------------------------
 		// Grab the path and return it...
 		path->init();
 		if (numCells) {
@@ -5830,7 +5137,6 @@ long MoveMap::calcPath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int* go
 					path->goal = goal;
 				}
 			else {
-				//--------------------------------------------------
 				// It's a door, so it's the last on the path list...
 				curCell--;
 				path->setDirection(curCell, /*reverseShift[*/doorDirection * 2/*]*/);
@@ -5848,14 +5154,12 @@ long MoveMap::calcPath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int* go
 				path->setCell(curCell, goalCell[0], goalCell[1]);
 				path->goal = stepDest;
 				if (goalWorldPos) {
-					//--------------------------------------------------------------------
 					// We didn't know the exact goal world pos coming into this, since are
 					// goal was an area door....
 					*goalWorldPos = stepDest;
 				}
 			}
 			
-			//---------------------------------------------------------
 			// We need to set this table up our first time thru here...
 			// PATHFINDING-SOLVER-ISOLATION-1: ON skips the lazy static guard
 			// (table built at MOVE_init). OFF unchanged.
@@ -5918,7 +5222,6 @@ long MoveMap::calcPath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int* go
 				}
 			
 			#ifdef BLOCKED_PATH_TEST
-				//---------------------------------------------------------------------
 				// Let's test every path point to make sure it is not a blocked cell...
 				for (int i = 0; i < path->numSteps; i++) {
 					int tile[2], cell[2];
@@ -5942,7 +5245,6 @@ long MoveMap::calcPath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int* go
 			}
 		#endif
 
-		//------------------------------------------------------------------------------------
 		// If we're starting on the goal cell, set the cost to 1 as an indicator that there is
 		// a path--it's just that we were already there!
 		if (numCells == 0)
@@ -5964,8 +5266,6 @@ long MoveMap::calcPath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int* go
 	return(0);
 }
 
-//---------------------------------------------------------------------------
-
 long MoveMap::calcPathJUMP (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int* goalCell) {
 
 	// PATHFINDING-SOLVER-ISOLATION-1: per-solve context (default-OFF).
@@ -5982,11 +5282,9 @@ long MoveMap::calcPathJUMP (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int
 		QueryPerformanceCounter(calcStart);
 	#endif
 
-	//------------------------------------------------------------------
 	// Clear the start cell, in case we're starting in a blocked cell...
 	//map[startR * maxCellWidth + startC].cost = clearCost;
 
-	//-------------------------------------------------------------------
 	// If the start tile is blocked, let's clear it so we may move off of
 	// it, at least. Change the blocked tiles to just barely passable...
 /*	long startULr = startR - 1;
@@ -6012,13 +5310,11 @@ long MoveMap::calcPathJUMP (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int
 		gosASSERT((goalR >= 0) && (goalR < height) && (goalC >= 0) && (goalC < width));
 	}
 
-	//------------------------------------------------------------------
 	// Let's use their hPrime as a barrier for cutting off the search...
 	MaxHPrime = calcHPrime(startR, startC) * 2.5;
 	if (MaxHPrime < 500)
 		MaxHPrime = 500;
 	
-	//-----------------------------------------------
 	// If we haven't already, create the OPEN list...
 	// PATHFINDING-SOLVER-ISOLATION-1: OFF owns/uses the shared global as before;
 	// ON uses the ctx private queue + flag snapshot via solveOpen/solveJumpOnBlocked.
@@ -6039,7 +5335,6 @@ long MoveMap::calcPathJUMP (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int
 		curMapNode->hPrime = calcHPrime(curRow, curCol);
 	curMapNode->fPrime = curMapNode->hPrime;
 
-	//-----------------------------------------------
 	// Put the START vertex on the empty OPEN list...
 	PQNode initialVertex;
 	initialVertex.key = curMapNode->fPrime;
@@ -6093,7 +5388,6 @@ long MoveMap::calcPathJUMP (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int
 			if (openN > _ptOpenPeak) _ptOpenPeak = openN;
 		}
 
-		//----------------------
 		// Grab the best node...
 		PQNode bestPQNode;
 		solveOpen->remove(bestPQNode);
@@ -6105,11 +5399,9 @@ long MoveMap::calcPathJUMP (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int
 
 		int bestNodeG = bestMapNode->g;
 
-		//----------------------------
 		// Now, close the best node...
 		bestMapNode->setFlag(MOVEFLAG_CLOSED);
 		
-		//--------------------------
 		// Have we found the goal...
 		if (bestMapNode->flags & MOVEFLAG_GOAL) {
 			goalFound = true;
@@ -6118,7 +5410,6 @@ long MoveMap::calcPathJUMP (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int
 		
 		int cellOffsetIndex = 0;
 		for (int dir = 0; dir < num_offsets_loc; dir++) {
-			//------------------------------------------------------------
 			// First, make sure this is a legit direction to go. We do NOT
 			// want to clip corners, so we'll check that here...
 			//bool isDiagonalWalk = IsDiagonalStep[dir];
@@ -6130,12 +5421,10 @@ long MoveMap::calcPathJUMP (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int
                 }
             }
 
-			//------------------------------------------------------------
 			// Now, process this direction. First, calc the cell to check,
 			// offset from the current cell...
 			int succRow = bestRow + cellShift[cellOffsetIndex++];
 			int succCol = bestCol + cellShift[cellOffsetIndex++];
-			//--------------------------------
 			// If it's on the map, check it...
 			if (succRow > 0 && succRow < height_loc && succCol > 0 && succCol < width_loc) {
 			//if (inMapBounds(succRow, succCol, height, width)) {
@@ -6152,14 +5441,11 @@ long MoveMap::calcPathJUMP (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int
 							numNodesVisited++;
 						#endif
 				
-						//--------------------------------------------------
 						// How can we get back to BESTNODE from SUCCESSOR...
 						char dirToParent = reverseShift[dir];
 
-						//----------------------------------------------------
 						// What's our cost to go from START to this SUCCESSOR?
 						bool jumping = false;
-						//------------------------------------
 						// Diagonal movement is more costly...
 						gosASSERT(cost > 0);
 						if (dir > 7) {
@@ -6178,12 +5464,10 @@ long MoveMap::calcPathJUMP (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int
 						int succNodeG = bestNodeG + cost;
 
 						if (succMapNode->flags & MOVEFLAG_OPEN) {
-							//----------------------------------------------
 							// This node is already in the OPEN queue to be
 							// be processed. Let's check if we have a better
 							// path thru this route...
 							if (succNodeG < succMapNode->g) {
-								//----------------------------
 								// This new path is cheaper...
 								succMapNode->parent = dirToParent;
 								succMapNode->g = succNodeG;
@@ -6192,9 +5476,6 @@ long MoveMap::calcPathJUMP (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int
 								if (!openIndex) {
 									char s[128];
 									sprintf(s, "MoveMap.calcPath: Cannot find movemap node [%d, %d, %d, %d] for change\n", succRow, succCol, succRow * MAX_MAPWIDTH + succCol, dir);
-#ifdef USE_OBJECTS
-									DebugOpenList(s);
-#endif
 									gosASSERT(openIndex != 0);
 									}
 								else
@@ -6202,21 +5483,17 @@ long MoveMap::calcPathJUMP (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int
 							}
 							}
 						else if (succMapNode->flags & MOVEFLAG_CLOSED) {
-							//-------------------------------------------------
 							// This path may be better than this node's current
 							// path. If so, we may have to propogate thru...
 							if (succNodeG < succMapNode->g) {
-								//----------------------------
 								// This new path is cheaper...
 								succMapNode->parent = dirToParent;
 
-								//------------------------------------------
 								// Now, we have to propogate the new cost...
 								propogateCostJUMP(succRow, succCol, cost, bestNodeG);
 							}
 							}
 						else {
-							//-------------------------------------------------
 							// This node is neither OPEN nor CLOSED, so toss it
 							// into the OPEN list...
 							succMapNode->parent = dirToParent;
@@ -6240,7 +5517,6 @@ long MoveMap::calcPathJUMP (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int
 		}
 	}
 
-
 	#ifdef DEBUG_MOVE_MAP
 		if (debugMoveMap) {
 			File* pathDebugFile = new File;
@@ -6253,7 +5529,6 @@ long MoveMap::calcPathJUMP (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int
 	#endif
 
 	if (goalFound) {
-		//-------------------------------------------
 		// First, let's count how long the path is...
 		int curRow = goalCell[0] = bestRow;
 		int curCol = goalCell[1] = bestCol;
@@ -6266,7 +5541,6 @@ long MoveMap::calcPathJUMP (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int
 			curRow += cellShift[cellOffsetIndex++];
 			curCol += cellShift[cellOffsetIndex];
 		}
-		//---------------------------------------------------------------
 		// If our goal is a door, the path will be one step longer, since
 		// we need to walk "thru" the door...
 		if (doorDirection != -1)
@@ -6297,10 +5571,8 @@ long MoveMap::calcPathJUMP (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int
 			gosASSERT(numCells <= MAX_STEPS_PER_MOVEPATH);
 		}
 #endif
-		//-----------------------------
 		// Now, let's build the path...
 
-		//-------------------------------
 		// Grab the path and return it...
 		path->init();
 		if (numCells) {
@@ -6339,7 +5611,6 @@ long MoveMap::calcPathJUMP (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int
 					path->goal = goal;
 				}
 			else {
-				//--------------------------------------------------
 				// It's a door, so it's the last on the path list...
 				curCell--;
 				path->setDirection(curCell, /*reverseShift[*/doorDirection * 2/*]*/);
@@ -6357,14 +5628,12 @@ long MoveMap::calcPathJUMP (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int
 				path->setCell(curCell, goalCell[0], goalCell[1]);
 				path->goal = stepDest;
 				if (goalWorldPos) {
-					//--------------------------------------------------------------------
 					// We didn't know the exact goal world pos coming into this, since are
 					// goal was an area door....
 					*goalWorldPos = stepDest;
 				}
 			}
 			
-			//---------------------------------------------------------
 			// We need to set this table up our first time thru here...
 			// PATHFINDING-SOLVER-ISOLATION-1: ON skips the lazy static guard
 			// (table built at MOVE_init). OFF unchanged.
@@ -6413,7 +5682,6 @@ long MoveMap::calcPathJUMP (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int
 			}
 			
 			#ifdef BLOCKED_PATH_TEST
-				//---------------------------------------------------------------------
 				// Let's test every path point to make sure it is not a blocked cell...
 				for (long i = 0; i < path->numSteps; i++) {
 					long tile[2], cell[2];
@@ -6453,8 +5721,6 @@ long MoveMap::calcPathJUMP (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int
 	return(0);
 }
 
-//---------------------------------------------------------------------------
-
 long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, long* goalCell) {
 
 	// PATHFINDING-SOLVER-ISOLATION-1: per-solve context (default-OFF).
@@ -6471,11 +5737,9 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 		QueryPerformanceCounter(calcStart);
 	#endif
 
-	//------------------------------------------------------------------
 	// Clear the start cell, in case we're starting in a blocked cell...
 	//map[startR * maxCellWidth + startC].cost = clearCost;
 
-	//-------------------------------------------------------------------
 	// If the start tile is blocked, let's clear it so we may move off of
 	// it, at least. Change the blocked tiles to just barely passable...
 /*	long startULr = startR - 1;
@@ -6503,13 +5767,11 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 	}
 */
 
-	//------------------------------------------------------------------
 	// Let's use their hPrime as a barrier for cutting off the search...
 	MaxHPrime = 500; //float2short(calcHPrime(startR, startC) * 2.5);
 	if (MaxHPrime < 500)
 		MaxHPrime = 500;
 	
-	//-----------------------------------------------
 	// If we haven't already, create the OPEN list...
 	// PATHFINDING-SOLVER-ISOLATION-1: OFF owns/uses the shared global as before;
 	// ON uses the ctx private queue + flag snapshot via solveOpen/solveJumpOnBlocked.
@@ -6529,7 +5791,6 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 	curMapNode->hPrime = 10; //calcHPrime(curRow, curCol);
 	curMapNode->fPrime = curMapNode->hPrime;
 
-	//-----------------------------------------------
 	// Put the START vertex on the empty OPEN list...
 	PQNode initialVertex;
 	initialVertex.key = curMapNode->fPrime;
@@ -6576,7 +5837,6 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 			if (openN > _ptOpenPeak) _ptOpenPeak = openN;
 		}
 
-		//----------------------
 		// Grab the best node...
 		PQNode bestPQNode;
 		solveOpen->remove(bestPQNode);
@@ -6588,11 +5848,9 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 
 		long bestNodeG = bestMapNode->g;
 
-		//----------------------------
 		// Now, close the best node...
 		bestMapNode->setFlag(MOVEFLAG_CLOSED);
 		
-		//--------------------------
 		// Have we found the goal...
 		if (bestMapNode->flags & MOVEFLAG_GOAL) {
 			goalFound = true;
@@ -6601,7 +5859,6 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 		
 		long cellOffsetIndex = 0;
 		for (long dir = 0; dir < numOffsets; dir++) {
-			//------------------------------------------------------------
 			// First, make sure this is a legit direction to go. We do NOT
 			// want to clip corners, so we'll check that here...
 			bool isDiagonalWalk = IsDiagonalStep[dir];
@@ -6612,12 +5869,10 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 				}
 			}
 
-			//------------------------------------------------------------
 			// Now, process this direction. First, calc the cell to check,
 			// offset from the current cell...
 			long succRow = bestRow + cellShift[cellOffsetIndex++];
 			long succCol = bestCol + cellShift[cellOffsetIndex++];
-			//--------------------------------
 			// If it's on the map, check it...
 			//if (inMapBounds(succRow, succCol, height, width)) {
 			if (succRow > 0 && succRow < height && succCol > 0 && succCol < width) {
@@ -6633,15 +5888,12 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 							numNodesVisited++;
 						#endif
 				
-						//--------------------------------------------------
 						// How can we get back to BESTNODE from SUCCESSOR...
 						char dirToParent = reverseShift[dir];
 
-						//----------------------------------------------------
 						// What's our cost to go from START to this SUCCESSOR?
 						bool jumping = false;
 						long cost = succMapNode->cost;
-						//------------------------------------
 						// Diagonal movement is more costly...
 						if (dir > 7) {
 							jumping = true;
@@ -6659,12 +5911,10 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 						long succNodeG = bestNodeG + cost;
 
 						if (succMapNode->flags & MOVEFLAG_OPEN) {
-							//----------------------------------------------
 							// This node is already in the OPEN queue to be
 							// be processed. Let's check if we have a better
 							// path thru this route...
 							if (succNodeG < succMapNode->g) {
-								//----------------------------
 								// This new path is cheaper...
 								succMapNode->parent = dirToParent;
 								succMapNode->g = succNodeG;
@@ -6673,9 +5923,6 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 								if (!openIndex) {
 									char s[128];
 									sprintf(s, "MoveMap.calcEscapePath: Cannot find movemap node [%d, %d, %d, %d] for change\n", succRow, succCol, succRow * MAX_MAPWIDTH + succCol, dir);
-#ifdef USE_OBJECTS
-									DebugOpenList(s);
-#endif
 									gosASSERT(openIndex != 0);
 									}
 								else
@@ -6683,21 +5930,17 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 							}
 							}
 						else if (succMapNode->flags & MOVEFLAG_CLOSED) {
-							//-------------------------------------------------
 							// This path may be better than this node's current
 							// path. If so, we may have to propogate thru...
 							if (succNodeG < succMapNode->g) {
-								//----------------------------
 								// This new path is cheaper...
 								succMapNode->parent = dirToParent;
 
-								//------------------------------------------
 								// Now, we have to propogate the new cost...
 								propogateCostJUMP(succRow, succCol, cost, bestNodeG);
 							}
 							}
 						else {
-							//-------------------------------------------------
 							// This node is neither OPEN nor CLOSED, so toss it
 							// into the OPEN list...
 							succMapNode->parent = dirToParent;
@@ -6721,7 +5964,6 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 		}
 	}
 
-
 	#ifdef DEBUG_MOVE_MAP
 		if (debugMoveMap) {
 			File* pathDebugFile = new File;
@@ -6734,7 +5976,6 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 	#endif
 
 	if (goalFound) {
-		//-------------------------------------------
 		// First, let's count how long the path is...
 		long curRow = goalCell[0] = (long)bestRow;
 		long curCol = goalCell[1] = (long)bestCol;
@@ -6747,7 +5988,6 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 			curRow += cellShift[cellOffsetIndex++];
 			curCol += cellShift[cellOffsetIndex];
 		}
-		//---------------------------------------------------------------
 		// If our goal is a door, the path will be one step longer, since
 		// we need to walk "thru" the door...
 		if (doorDirection != -1)
@@ -6778,10 +6018,8 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 			gosASSERT(numCells <= MAX_STEPS_PER_MOVEPATH);
 		}
 #endif
-		//-----------------------------
 		// Now, let's build the path...
 
-		//-------------------------------
 		// Grab the path and return it...
 		path->init();
 		if (numCells) {
@@ -6817,7 +6055,6 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 					path->goal = goal;
 				}
 			else {
-				//--------------------------------------------------
 				// It's a door, so it's the last on the path list...
 				curCell--;
 				path->setDirection(curCell, /*reverseShift[*/doorDirection * 2/*]*/);
@@ -6835,14 +6072,12 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 				path->setCell(curCell, goalCell[0], goalCell[1]);
 				path->goal = stepDest;
 				if (goalWorldPos) {
-					//--------------------------------------------------------------------
 					// We didn't know the exact goal world pos coming into this, since are
 					// goal was an area door....
 					*goalWorldPos = stepDest;
 				}
 			}
 			
-			//---------------------------------------------------------
 			// We need to set this table up our first time thru here...
 			// PATHFINDING-SOLVER-ISOLATION-1: ON skips the lazy static guard
 			// (table built at MOVE_init). OFF unchanged.
@@ -6888,7 +6123,6 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 			}
 			
 			#ifdef BLOCKED_PATH_TEST
-				//---------------------------------------------------------------------
 				// Let's test every path point to make sure it is not a blocked cell...
 				for (long i = 0; i < path->numSteps; i++) {
 					long tile[2], cell[2];
@@ -6927,8 +6161,6 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 	
 	return(0);
 }
-
-//---------------------------------------------------------------------------
 
 void MoveMap::writeDebug (File* debugFile) {
 
@@ -7016,8 +6248,6 @@ void MoveMap::writeDebug (File* debugFile) {
 
 }
 
-//---------------------------------------------------------------------------
-
 void MoveMap::destroy (void) {
 
 	if (map) 
@@ -7045,6 +6275,3 @@ void MoveMap::destroy (void) {
 	}
 
 }
-
-//***************************************************************************
-
