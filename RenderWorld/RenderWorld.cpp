@@ -12,6 +12,7 @@
 
 #include "RenderWorld.h"
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
+#include "Gates/gate.h"
 
 // C1 fix: this TU MUST NOT include gos_static_prop_batcher.h (it
 // transitively pulls GL + Stuff). All translation between
@@ -62,21 +63,11 @@ std::atomic<uint64_t> s_destroyCalls{0};
 std::atomic<uint64_t> s_markVisibleCalls{0};
 std::atomic<uint64_t> s_frameCounter{0};
 
-bool envFlag(const char* name) {
-    const char* v = std::getenv(name);
-    return v && v[0] && v[0] != '0';
-}
-
-bool envFlagDefaultOn(const char* name) {
-    const char* v = std::getenv(name);
-    return !v || (v[0] && v[0] != '0');
-}
-
 // M1.5: cached env-flag accessor. First call reads MC2_OBJECT_ID_BUFFER
 // from getenv(); subsequent calls return the cached bool. Default ON --
 // set MC2_OBJECT_ID_BUFFER=0 to disable.
 bool readObjectIdBufferEnv() {
-    return envFlagDefaultOn("MC2_OBJECT_ID_BUFFER");
+    return mc2::gate::get<"MC2_OBJECT_ID_BUFFER">();
 }
 
 uint32_t recipeIndexToHandleIndex(int32_t r) {
@@ -211,7 +202,7 @@ bool s_canaryRan = false;
 
 void runPassiveStableFrameCanary() {
     if (s_canaryRan) return;
-    if (!envFlag("MC2_OBJECT_ID_BUFFER_SELFTEST")) return;
+    if (!mc2::gate::get<"MC2_OBJECT_ID_BUFFER_SELFTEST">()) return;
     if (!RenderWorld::IsObjectIdBufferEnabled()) {
         std::fprintf(stderr,
             "[OBJECT_ID_SELFTEST v1] mode=passive_stable_frame result=SKIPPED reason=env_disabled\n");
@@ -304,7 +295,7 @@ void runPassiveStableFrameCanary() {
 // FAIL is a STOP: indicates the record table is corrupt or the
 // generation-bump logic is broken.
 void runSubstrateSelfTest() {
-    if (!envFlag("MC2_RENDER_WORLD_SELFTEST")) return;
+    if (!mc2::gate::get<"MC2_RENDER_WORLD_SELFTEST">()) return;
 
     // Use a high handle index unlikely to collide with real registrations.
     const uint32_t kTestIndex = 0xFFFFEu;  // 20-bit max minus one
@@ -417,7 +408,7 @@ void runSubstrateSelfTest() {
 // FAIL is a STOP: the mech substrate is broken; M2.6 pickup will be
 // unreliable.
 void RunMechObjectIdSelfTest() {
-    if (!envFlag("MC2_MECH_OBJECT_ID_SELFTEST")) {
+    if (!mc2::gate::get<"MC2_MECH_OBJECT_ID_SELFTEST">()) {
         MC2_DIAGFE(stderr,
             "[MECH_OBJECT_ID_SELFTEST v1] result=SKIPPED reason=env_disabled\n");
         return;
@@ -589,7 +580,7 @@ RenderCore::RenderObjectHandle upsertStaticProp(RenderCore::StaticPropDesc desc)
     const int32_t r = legacy::registerStaticPropRecipe(std::move(desc));
     if (r < 0) {
         s_upsertFail.fetch_add(1, std::memory_order_relaxed);
-        if (envFlag("MC2_RENDER_WORLD_TRACE")) {
+        if (mc2::gate::get<"MC2_RENDER_WORLD_TRACE">()) {
             MC2_DIAGFE(stderr,
                 "[RENDER_WORLD v1] event=upsert_fail recipe=-1\n");
         }
@@ -609,7 +600,7 @@ RenderCore::RenderObjectHandle upsertStaticProp(RenderCore::StaticPropDesc desc)
     populateRecord(h.index(),
                    static_cast<uint16_t>(h.generation()),
                    gameObjectId);
-    if (envFlag("MC2_RENDER_WORLD_TRACE")) {
+    if (mc2::gate::get<"MC2_RENDER_WORLD_TRACE">()) {
         MC2_DIAGFE(stderr,
             "[RENDER_WORLD v1] event=upsert_ok recipe=%d handle.index=%u\n",
             r, (unsigned)h.index());
@@ -641,7 +632,7 @@ void destroy(RenderCore::RenderObjectHandle h) {
     s_destroyCalls.fetch_add(1, std::memory_order_relaxed);
     // M1.5: retire the record (clears alive flag, bumps generation).
     retireRecord(h.index());
-    if (envFlag("MC2_RENDER_WORLD_TRACE")) {
+    if (mc2::gate::get<"MC2_RENDER_WORLD_TRACE">()) {
         MC2_DIAGFE(stderr,
             "[RENDER_WORLD v1] event=destroy handle.index=%u\n",
             (unsigned)h.index());
@@ -690,7 +681,7 @@ uint32_t MechHandleIndexBase() {
 // M1.6 + M2.6: master enable for the static-prop pick wiring (missiongui
 // Shift+click -> lookupAtPixel -> setLastGameplayPick). Default OFF.
 bool IsStaticPropPickEnabled() {
-    static const bool s_enabled = envFlag("MC2_STATIC_PROP_PICK");
+    static const bool s_enabled = mc2::gate::get<"MC2_STATIC_PROP_PICK">();
     return s_enabled;
 }
 
@@ -698,7 +689,7 @@ bool IsStaticPropPickEnabled() {
 // `[GAMEPLAY_PICK v1] miss kind=StaticProp` line only; the `hit` line
 // is unconditional.
 bool IsStaticPropPickDebugEnabled() {
-    static const bool s_enabled = envFlag("MC2_STATIC_PROP_PICK_DEBUG");
+    static const bool s_enabled = mc2::gate::get<"MC2_STATIC_PROP_PICK_DEBUG">();
     return s_enabled;
 }
 
@@ -706,32 +697,32 @@ bool IsStaticPropPickDebugEnabled() {
 // IsStaticPropPickEnabled / IsStaticPropPickDebugEnabled. Process-
 // lifetime cached; restart required to flip.
 bool IsMechPickEnabled() {
-    static const bool s_enabled = envFlag("MC2_MECH_PICK");
+    static const bool s_enabled = mc2::gate::get<"MC2_MECH_PICK">();
     return s_enabled;
 }
 
 bool IsMechPickDebugEnabled() {
-    static const bool s_enabled = envFlag("MC2_MECH_PICK_DEBUG");
+    static const bool s_enabled = mc2::gate::get<"MC2_MECH_PICK_DEBUG">();
     return s_enabled;
 }
 
 bool IsMechPickPierceFogEnabled() {
-    static const bool s_enabled = envFlag("MC2_MECH_PICK_PIERCE_FOG");
+    static const bool s_enabled = mc2::gate::get<"MC2_MECH_PICK_PIERCE_FOG">();
     return s_enabled;
 }
 
 bool IsGpuPickHoverEnabled() {
-    static const bool s_enabled = envFlag("MC2_GPU_PICK_HOVER");
+    static const bool s_enabled = mc2::gate::get<"MC2_GPU_PICK_HOVER">();
     return s_enabled;
 }
 
 bool IsGpuPickHoverTraceEnabled() {
-    static const bool s_enabled = envFlag("MC2_GPU_PICK_HOVER_TRACE");
+    static const bool s_enabled = mc2::gate::get<"MC2_GPU_PICK_HOVER_TRACE">();
     return s_enabled;
 }
 
 bool IsGpuGroundPickParityEnabled() {
-    static const bool s_enabled = envFlag("MC2_GPU_GROUND_PICK_PARITY");
+    static const bool s_enabled = mc2::gate::get<"MC2_GPU_GROUND_PICK_PARITY">();
     return s_enabled;
 }
 
@@ -774,7 +765,7 @@ void frameBannerTick() {
         runPassiveStableFrameCanary();
     }
 
-    const bool perFrame = envFlag("MC2_RENDER_WORLD_TRACE");
+    const bool perFrame = mc2::gate::get<"MC2_RENDER_WORLD_TRACE">();
     const bool summary  = (f % 600u) == 0u;
     if (!perFrame && !summary) return;
     // m4 fix: source the active prop count from the registry's own
@@ -1048,7 +1039,7 @@ RenderCore::RenderObjectHandle registerMech(RenderMechDesc desc) {
 
     s_mechs_alive_rw.fetch_add(1, std::memory_order_relaxed);
 
-    if (envFlag("MC2_RENDER_WORLD_TRACE")) {
+    if (mc2::gate::get<"MC2_RENDER_WORLD_TRACE">()) {
         MC2_DIAGFE(stderr,
             "[RENDER_WORLD v1] event=mech_register handle.index=%u mechTypeId=%u "
             "gameObjectId=%u debugCookie=%llu\n",
@@ -1079,7 +1070,7 @@ void destroyMech(RenderCore::RenderObjectHandle h) {
         // alone means "already retired" — return without decrementing
         // s_mechs_alive_rw (would underflow the uint64_t counter).
         if ((rec.flags & kRenderObjectFlagAlive) == 0u) {
-            if (envFlag("MC2_RENDER_WORLD_TRACE")) {
+            if (mc2::gate::get<"MC2_RENDER_WORLD_TRACE">()) {
                 MC2_DIAGFE(stderr,
                     "[RENDER_WORLD v1] event=mech_destroy_already_dead "
                     "handle.index=%u handle.gen=%u rec.gen=%u\n",
@@ -1089,7 +1080,7 @@ void destroyMech(RenderCore::RenderObjectHandle h) {
             return;
         }
         if (h.generation() != static_cast<uint32_t>(rec.generation)) {
-            if (envFlag("MC2_RENDER_WORLD_TRACE")) {
+            if (mc2::gate::get<"MC2_RENDER_WORLD_TRACE">()) {
                 MC2_DIAGFE(stderr,
                     "[RENDER_WORLD v1] event=mech_destroy_stale_generation "
                     "handle.index=%u handle.gen=%u rec.gen=%u\n",
@@ -1103,7 +1094,7 @@ void destroyMech(RenderCore::RenderObjectHandle h) {
     }
     s_mechs_alive_rw.fetch_sub(1, std::memory_order_relaxed);
 
-    if (envFlag("MC2_RENDER_WORLD_TRACE")) {
+    if (mc2::gate::get<"MC2_RENDER_WORLD_TRACE">()) {
         MC2_DIAGFE(stderr,
             "[RENDER_WORLD v1] event=mech_destroy handle.index=%u\n",
             (unsigned)idx);
