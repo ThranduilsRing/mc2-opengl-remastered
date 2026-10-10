@@ -30,11 +30,12 @@
 #include "gl_state_guard.h"      // GLSTATE-GUARD-ADOPTION-4: mc2gl::GlScoped* epilogue guards
 
 #include <cstdio>
-#include <cstdlib>   // std::getenv, std::atoi (MC2_VFX_DEBUG_MODE)
+#include <cstdlib>
 #include <unordered_set>
 #include <vector>    // MC2_VFX_ORACLE_TUBE: pos3->vec4 staging
 #include <tracy/Tracy.hpp>               // Q2-S0 coarse CPU zones (flush paths)
 #include "../../mclib/fx_trace/fx_cost_split.h"  // Q2-S0 FX cost-split + per-frame roll
+#include "Gates/gate.h"
 
 // terrainMVP getter — same accessor used by gos_terrain_bridge_renderWaterFast
 // at gameos_graphics.cpp:2171. C linkage upstream.
@@ -80,8 +81,7 @@ bool s_groupLog_initialized = false;
 bool s_groupLog_value       = false;
 bool groupLogEnabled() {
     if (!s_groupLog_initialized) {
-        const char* v = std::getenv("MC2_GOSFX_GROUP_LOG");
-        s_groupLog_value       = (v && v[0] == '1');
+        s_groupLog_value = mc2::gate::get<"MC2_GOSFX_GROUP_LOG">();
         s_groupLog_initialized = true;
     }
     return s_groupLog_value;
@@ -99,8 +99,7 @@ bool s_tubeCoverage_initialized = false;
 bool s_tubeCoverage_value       = false;
 bool tubeCoverageEnabled() {
     if (!s_tubeCoverage_initialized) {
-        const char* v = std::getenv("MC2_VFX_ORACLE_TUBE_COVERAGE");
-        s_tubeCoverage_value       = (v && v[0] == '1');
+        s_tubeCoverage_value = mc2::gate::get<"MC2_VFX_ORACLE_TUBE_COVERAGE">();
         s_tubeCoverage_initialized = true;
     }
     return s_tubeCoverage_value;
@@ -116,11 +115,7 @@ bool s_debugMode_initialized = false;
 int  s_debugMode_value       = 0;
 int  vfxDebugMode() {
     if (!s_debugMode_initialized) {
-        const char* v = std::getenv("MC2_VFX_DEBUG_MODE");
-        if (v && v[0] != '\0') {
-            int m = std::atoi(v);
-            if (m >= 0 && m <= 5) s_debugMode_value = m;  // 5=Age (VFX-SHADER-AGE-FADE-PARITY-1)
-        }
+        s_debugMode_value = mc2::gate::get<"MC2_VFX_DEBUG_MODE">();   // row: 0..5 (5=Age, VFX-SHADER-AGE-FADE-PARITY-1), else 0
         s_debugMode_initialized = true;
     }
     return s_debugMode_value;
@@ -138,22 +133,15 @@ float s_vfxBrightness         = 1.0f;
 float s_vfxAdditiveBrightness = 1.0f;
 float s_vfxAlphaScale         = 1.0f;
 float s_vfxAgeFade            = 0.0f;
-static float clampVfxScale(float v) { return v < 0.0f ? 0.0f : (v > 8.0f ? 8.0f : v); }
+static float clampVfxScale(float v) { return v < 0.0f ? 0.0f : (v > 8.0f ? 8.0f : v); }   // the runtime setters
 static float clampAgeFade(float v)  { return v < 0.0f ? 0.0f : (v > 1.0f ? 1.0f : v); }
-static float envVfxScale(const char* name, float dflt) {
-    const char* v = std::getenv(name);
-    if (!v || v[0] == '\0') return dflt;
-    return clampVfxScale((float)std::atof(v));
-}
 void vfxTuneInitIfNeeded() {
     if (s_vfxTune_initialized) return;
-    s_vfxBrightness         = envVfxScale("MC2_TUNE_VFX_BRIGHTNESS",          1.0f);
-    s_vfxAdditiveBrightness = envVfxScale("MC2_TUNE_VFX_ADDITIVE_BRIGHTNESS", 1.0f);
-    s_vfxAlphaScale         = envVfxScale("MC2_TUNE_VFX_ALPHA_SCALE",         1.0f);
-    {
-        const char* v = std::getenv("MC2_TUNE_VFX_AGE_FADE");
-        if (v && v[0] != '\0') s_vfxAgeFade = clampAgeFade((float)std::atof(v));
-    }
+    // The rows carry the defaults (1, 1, 1, 0) and the clamps ([0, 8] scales, [0, 1] age fade).
+    s_vfxBrightness         = mc2::gate::get<"MC2_TUNE_VFX_BRIGHTNESS">();
+    s_vfxAdditiveBrightness = mc2::gate::get<"MC2_TUNE_VFX_ADDITIVE_BRIGHTNESS">();
+    s_vfxAlphaScale         = mc2::gate::get<"MC2_TUNE_VFX_ALPHA_SCALE">();
+    s_vfxAgeFade            = mc2::gate::get<"MC2_TUNE_VFX_AGE_FADE">();
     s_vfxTune_initialized   = true;
 }
 
@@ -169,8 +157,7 @@ float s_softDistance     = 30.0f;   // world-unit fade band
 static float clampSoftDist(float v) { return v < 0.0f ? 0.0f : (v > 500.0f ? 500.0f : v); }
 void vfxSoftInitIfNeeded() {
     if (s_soft_initialized) return;
-    const char* v = std::getenv("MC2_VFX_SOFT_PARTICLES");
-    s_soft_enabled       = (v && v[0] == '1');
+    s_soft_enabled = mc2::gate::get<"MC2_VFX_SOFT_PARTICLES">();
     s_soft_initialized   = true;
 }
 
@@ -185,8 +172,7 @@ bool  s_scenecolor_initialized = false;
 bool  s_scenecolor_enabled     = false;
 void vfxSceneColorGrabInitIfNeeded() {
     if (s_scenecolor_initialized) return;
-    const char* v = std::getenv("MC2_VFX_SCENECOLOR_GRAB");
-    s_scenecolor_enabled     = (v && v[0] == '1');
+    s_scenecolor_enabled = mc2::gate::get<"MC2_VFX_SCENECOLOR_GRAB">();
     s_scenecolor_initialized = true;
 }
 
@@ -198,13 +184,11 @@ void vfxSceneColorGrabInitIfNeeded() {
 bool  s_lit_initialized = false;
 bool  s_lit_enabled     = false;
 float s_litStrength     = 0.7f;   // applied only while the gate is ON
-static float clampLit(float v) { return v < 0.0f ? 0.0f : (v > 1.0f ? 1.0f : v); }
+static float clampLit(float v) { return v < 0.0f ? 0.0f : (v > 1.0f ? 1.0f : v); }   // the runtime setter
 void vfxLitInitIfNeeded() {
     if (s_lit_initialized) return;
-    const char* en = std::getenv("MC2_VFX_LIT_PARTICLES");
-    s_lit_enabled  = (en && en[0] == '1');
-    const char* st = std::getenv("MC2_TUNE_VFX_LIT_STRENGTH");
-    if (st && st[0] != '\0') s_litStrength = clampLit((float)std::atof(st));
+    s_lit_enabled = mc2::gate::get<"MC2_VFX_LIT_PARTICLES">();
+    s_litStrength = mc2::gate::get<"MC2_TUNE_VFX_LIT_STRENGTH">();   // row: default 0.7, clamps to [0, 1]
     s_lit_initialized = true;
 }
 
@@ -218,8 +202,7 @@ bool  s_blackbody_initialized = false;
 bool  s_blackbody_enabled     = false;
 void vfxBlackbodyInitIfNeeded() {
     if (s_blackbody_initialized) return;
-    const char* v = std::getenv("MC2_VFX_BLACKBODY");
-    s_blackbody_enabled     = (v && v[0] == '1');
+    s_blackbody_enabled = mc2::gate::get<"MC2_VFX_BLACKBODY">();
     s_blackbody_initialized = true;
 }
 
@@ -238,15 +221,9 @@ bool  s_distort_fixture     = false;   // MC2_VFX_DISTORT_FIXTURE
 float s_distortAmp          = 0.04f;   // screen-UV wobble amplitude (small)
 void vfxDistortInitIfNeeded() {
     if (s_distort_initialized) return;
-    const char* en = std::getenv("MC2_VFX_DISTORTION");
-    s_distort_enabled = (en && en[0] == '1');
-    const char* fx = std::getenv("MC2_VFX_DISTORT_FIXTURE");
-    s_distort_fixture = (fx && fx[0] == '1');
-    const char* amp = std::getenv("MC2_VFX_DISTORT_AMP");
-    if (amp && amp[0] != '\0') {
-        float a = (float)std::atof(amp);
-        if (a > 0.0f && a < 0.5f) s_distortAmp = a;  // clamp to sane subtle range
-    }
+    s_distort_enabled = mc2::gate::get<"MC2_VFX_DISTORTION">();
+    s_distort_fixture = mc2::gate::get<"MC2_VFX_DISTORT_FIXTURE">();
+    s_distortAmp = mc2::gate::get<"MC2_VFX_DISTORT_AMP">();   // row: default 0.04, accepts (0, 0.5]
     s_distort_initialized = true;
 }
 
@@ -493,8 +470,7 @@ TubeUploadStats s_tubeStats;
 bool tubeUploadStatsEnabled() {
     static int cached = -1;
     if (cached < 0) {
-        const char* v = std::getenv("MC2_VFX_TUBE_UPLOAD_STATS");
-        cached = (v && v[0] && v[0] != '0') ? 1 : 0;
+        cached = mc2::gate::get<"MC2_VFX_TUBE_UPLOAD_STATS">();
     }
     return cached != 0;
 }
