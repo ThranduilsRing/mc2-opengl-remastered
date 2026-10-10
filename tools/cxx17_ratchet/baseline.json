@@ -66,8 +66,8 @@
    "LG16": 7,
    "LG17": 81,
    "LG18": 11,
-   "LG19": 105,
-   "LG20": 142
+   "LG19": 103,
+   "LG20": 140
   },
   "GuiRuntime": {
    "LG01": 1,
@@ -582,9 +582,7 @@
    "LG06": 1
   },
   "GameOS/gameos/gos_frame_pass_stats.cpp": {
-   "LG09": 5,
-   "LG19": 2,
-   "LG20": 2
+   "LG09": 5
   },
   "GameOS/gameos/gos_gpu_sync.cpp": {
    "LG06": 1,
@@ -5866,7 +5864,7 @@
    "LG20": 1
   }
  },
- "head": "5df0c0db7",
+ "head": "13e417a07",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
