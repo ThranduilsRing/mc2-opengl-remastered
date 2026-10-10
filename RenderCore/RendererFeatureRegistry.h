@@ -331,7 +331,7 @@ static constexpr EnvVarDesc kFeatureTable[] = {
         "MC2_FEATURE_STATIC_PROP_INDIRECT",
         "MC2_GPU_OBJECTS",
         EnvVarKind::Retired,
-        false,
+        true,
         "[RETIRED] Indirect-draw static-prop batcher (gos_static_prop_batcher)."
     },
     // [2] ObjectIdBuffer

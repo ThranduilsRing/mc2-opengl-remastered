@@ -14,11 +14,11 @@
  ],
  "files_over_1500": {
   "GameOS/gameos/engine_present_vk.cpp": 2750,
-  "GameOS/gameos/gameos_graphics.cpp": 11652,
-  "GameOS/gameos/gameosmain.cpp": 2846,
+  "GameOS/gameos/gameos_graphics.cpp": 11533,
+  "GameOS/gameos/gameosmain.cpp": 2810,
   "GameOS/gameos/gos_mech_batcher.cpp": 3408,
   "GameOS/gameos/gos_postprocess.cpp": 7187,
-  "GameOS/gameos/gos_static_prop_batcher.cpp": 11199,
+  "GameOS/gameos/gos_static_prop_batcher.cpp": 11002,
   "GameOS/gameos/gos_static_prop_registry.cpp": 2226,
   "GameOS/gameos/gos_terrain_indirect.cpp": 6205,
   "GameOS/gameos/gos_terrain_lighting.cpp": 1697,
@@ -96,7 +96,7 @@
   "mclib/vfxtile.cpp": 2944,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "0af692123",
+ "head": "def2125b9",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -108,7 +108,7 @@
    "files": 260,
    "files_over_1500": 18,
    "files_over_3000": 8,
-   "max_lines": 11652
+   "max_lines": 11533
   },
   "GuiRuntime": {
    "files": 10,
@@ -172,11 +172,11 @@
  "top": [
   {
    "file": "GameOS/gameos/gameos_graphics.cpp",
-   "lines": 11652
+   "lines": 11533
   },
   {
    "file": "GameOS/gameos/gos_static_prop_batcher.cpp",
-   "lines": 11199
+   "lines": 11002
   },
   {
    "file": "code/missiongui.cpp",
@@ -256,7 +256,7 @@
   },
   {
    "file": "GameOS/gameos/gameosmain.cpp",
-   "lines": 2846
+   "lines": 2810
   },
   {
    "file": "mclib/terrtxm2.cpp",
@@ -295,7 +295,7 @@
   "files": 1704,
   "files_over_1500": 82,
   "files_over_3000": 18,
-  "max_lines": 11652
+  "max_lines": 11533
  },
  "version": 1
 }

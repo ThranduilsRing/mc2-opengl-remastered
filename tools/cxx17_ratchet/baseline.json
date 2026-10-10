@@ -51,12 +51,12 @@
    "LG02": 265,
    "LG03": 301,
    "LG04": 6,
-   "LG05": 121,
-   "LG06": 542,
+   "LG05": 120,
+   "LG06": 530,
    "LG07": 0,
    "LG08": 274,
-   "LG09": 2208,
-   "LG10": 60,
+   "LG09": 2181,
+   "LG10": 50,
    "LG11": 107,
    "LG12a": 613,
    "LG12b": 115,
@@ -66,8 +66,8 @@
    "LG16": 7,
    "LG17": 81,
    "LG18": 11,
-   "LG19": 460,
-   "LG20": 525
+   "LG19": 240,
+   "LG20": 304
   },
   "GuiRuntime": {
    "LG01": 1,
@@ -402,10 +402,10 @@
    "LG02": 4,
    "LG03": 37,
    "LG04": 2,
-   "LG05": 13,
-   "LG06": 52,
+   "LG05": 12,
+   "LG06": 45,
    "LG08": 4,
-   "LG09": 240,
+   "LG09": 228,
    "LG10": 5,
    "LG11": 1,
    "LG12a": 59,
@@ -413,9 +413,7 @@
    "LG13": 3,
    "LG14": 1,
    "LG17": 24,
-   "LG18": 1,
-   "LG19": 72,
-   "LG20": 74
+   "LG18": 1
   },
   "GameOS/gameos/gameos_graphics_font.cpp": {
    "LG01": 4,
@@ -481,13 +479,12 @@
    "LG02": 1,
    "LG03": 2,
    "LG04": 1,
-   "LG06": 7,
+   "LG06": 3,
    "LG09": 46,
    "LG11": 4,
    "LG12a": 60,
    "LG12b": 11,
-   "LG19": 54,
-   "LG20": 54
+   "LG20": 1
   },
   "GameOS/gameos/gl_state_guard.h": {
    "LG19": 1,
@@ -722,17 +719,15 @@
   },
   "GameOS/gameos/gos_static_prop_batcher.cpp": {
    "LG05": 7,
-   "LG06": 5,
+   "LG06": 4,
    "LG08": 76,
-   "LG09": 168,
-   "LG10": 11,
+   "LG09": 153,
+   "LG10": 1,
    "LG11": 2,
    "LG12a": 13,
    "LG12b": 1,
    "LG13": 1,
-   "LG18": 6,
-   "LG19": 94,
-   "LG20": 94
+   "LG18": 6
   },
   "GameOS/gameos/gos_static_prop_batcher.h": {
    "LG05": 5,
@@ -4332,6 +4327,52 @@
    "LG13": 39,
    "LG14": 1
   },
+  "mclib/mech3d_geometry.cpp": {
+   "LG01": 10,
+   "LG03": 4,
+   "LG09": 7,
+   "LG12a": 1,
+   "LG12b": 1,
+   "LG13": 2
+  },
+  "mclib/mech3d_init.cpp": {
+   "LG01": 23,
+   "LG06": 1,
+   "LG09": 35,
+   "LG10": 1,
+   "LG12a": 3,
+   "LG12b": 8,
+   "LG13": 4
+  },
+  "mclib/mech3d_internal.h": {
+   "LG12a": 1,
+   "LG13": 5
+  },
+  "mclib/mech3d_render.cpp": {
+   "LG01": 2,
+   "LG03": 2,
+   "LG08": 1,
+   "LG09": 19,
+   "LG12a": 4,
+   "LG14": 1
+  },
+  "mclib/mech3d_type.cpp": {
+   "LG01": 37,
+   "LG03": 22,
+   "LG05": 4,
+   "LG06": 3,
+   "LG09": 8,
+   "LG12a": 2,
+   "LG12b": 13,
+   "LG13": 1
+  },
+  "mclib/mech3d_update.cpp": {
+   "LG01": 18,
+   "LG03": 4,
+   "LG08": 1,
+   "LG09": 9,
+   "LG12b": 2
+  },
   "mclib/mech_skel_import.cpp": {
    "LG06": 1,
    "LG08": 4,
@@ -5669,6 +5710,44 @@
    "LG13": 20,
    "LG14": 1
   },
+  "mclib/txmmgr_diag.cpp": {
+   "LG12a": 1
+  },
+  "mclib/txmmgr_internal.h": {
+   "LG06": 1
+  },
+  "mclib/txmmgr_lightrow.cpp": {
+   "LG01": 4,
+   "LG05": 1,
+   "LG06": 1,
+   "LG09": 23,
+   "LG17": 1
+  },
+  "mclib/txmmgr_lights.cpp": {
+   "LG01": 4,
+   "LG03": 4,
+   "LG05": 5,
+   "LG08": 10,
+   "LG09": 14,
+   "LG12b": 4
+  },
+  "mclib/txmmgr_render.cpp": {
+   "LG01": 2,
+   "LG09": 20,
+   "LG12a": 8,
+   "LG12b": 3,
+   "LG13": 1,
+   "LG14": 1
+  },
+  "mclib/txmmgr_texture.cpp": {
+   "LG01": 13,
+   "LG05": 2,
+   "LG06": 6,
+   "LG09": 34,
+   "LG11": 1,
+   "LG12a": 10,
+   "LG12b": 1
+  },
   "mclib/userinput.cpp": {
    "LG01": 4,
    "LG03": 4,
@@ -5776,93 +5855,9 @@
   },
   "tools/shader_contract_harness/shader_contract_harness.cpp": {
    "LG20": 1
-  },
-  "mclib/mech3d_geometry.cpp": {
-   "LG01": 10,
-   "LG03": 4,
-   "LG09": 7,
-   "LG12a": 1,
-   "LG12b": 1,
-   "LG13": 2
-  },
-  "mclib/mech3d_init.cpp": {
-   "LG01": 23,
-   "LG06": 1,
-   "LG09": 35,
-   "LG10": 1,
-   "LG12a": 3,
-   "LG12b": 8,
-   "LG13": 4
-  },
-  "mclib/mech3d_internal.h": {
-   "LG12a": 1,
-   "LG13": 5
-  },
-  "mclib/mech3d_render.cpp": {
-   "LG01": 2,
-   "LG03": 2,
-   "LG08": 1,
-   "LG09": 19,
-   "LG12a": 4,
-   "LG14": 1
-  },
-  "mclib/mech3d_type.cpp": {
-   "LG01": 37,
-   "LG03": 22,
-   "LG05": 4,
-   "LG06": 3,
-   "LG09": 8,
-   "LG12a": 2,
-   "LG12b": 13,
-   "LG13": 1
-  },
-  "mclib/mech3d_update.cpp": {
-   "LG01": 18,
-   "LG03": 4,
-   "LG08": 1,
-   "LG09": 9,
-   "LG12b": 2
-  },
-  "mclib/txmmgr_diag.cpp": {
-   "LG12a": 1
-  },
-  "mclib/txmmgr_internal.h": {
-   "LG06": 1
-  },
-  "mclib/txmmgr_lightrow.cpp": {
-   "LG01": 4,
-   "LG05": 1,
-   "LG06": 1,
-   "LG09": 23,
-   "LG17": 1
-  },
-  "mclib/txmmgr_lights.cpp": {
-   "LG01": 4,
-   "LG03": 4,
-   "LG05": 5,
-   "LG08": 10,
-   "LG09": 14,
-   "LG12b": 4
-  },
-  "mclib/txmmgr_render.cpp": {
-   "LG01": 2,
-   "LG09": 20,
-   "LG12a": 8,
-   "LG12b": 3,
-   "LG13": 1,
-   "LG14": 1
-  },
-  "mclib/txmmgr_texture.cpp": {
-   "LG01": 13,
-   "LG05": 2,
-   "LG06": 6,
-   "LG09": 34,
-   "LG11": 1,
-   "LG12a": 10,
-   "LG12b": 1
   }
  },
- "head": "b3e48799d",
+ "head": "def2125b9",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

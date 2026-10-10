@@ -1272,4 +1272,100 @@ TEST_CASE("G5 postprocess text rows and the backend selector") {
         CHECK(g1b::rowNamed(name).kind == Kind::String);
 }
 
+// ---------------------------------------------------------------------------
+// G5: gos_static_prop_batcher.cpp rows
+// ---------------------------------------------------------------------------
+
+TEST_CASE("G5 static-prop clamp rows reproduce the lambdas they replaced") {
+    auto fl = [&](const char* name, const char* text) { return asFloat(gate::detail::parseRow(g1b::rowNamed(name), text)); };
+    auto in = [&](const char* name, const char* text) {
+        return static_cast<std::int32_t>(static_cast<std::uint32_t>(gate::detail::parseRow(g1b::rowNamed(name), text)));
+    };
+    CHECK(fl("MC2_STATIC_PROP_IBL_SH_STRENGTH", nullptr) == 0.5f);
+    CHECK(fl("MC2_STATIC_PROP_IBL_SH_STRENGTH", "9") == 3.0f);
+    CHECK(fl("MC2_TERRAIN_DECAL_FILL", nullptr) == 0.2f);
+    CHECK(fl("MC2_TERRAIN_DECAL_FILL", "5") == 1.0f);
+    CHECK(fl("MC2_TERRAIN_DECAL_COLORBLEND", "-1") == 0.0f);
+    CHECK(fl("MC2_TERRAIN_DECAL_COLORBLEND", nullptr) == 0.35f);
+    CHECK(fl("MC2_STATIC_PROP_PBR_V1_STRENGTH", "10") == 3.0f);
+    CHECK(fl("MC2_PROP_BASE_LIGHT_DIR", "2") == 1.0f);
+    CHECK(fl("MC2_PROP_BASE_LIGHT_DIR", "") == 0.0f);
+    CHECK(in("MC2_STATIC_PROP_NIGHT_TAGS", "7") == 2);
+    CHECK(in("MC2_STATIC_PROP_NIGHT_TAGS", "-1") == 0);
+    CHECK(fl("MC2_STATIC_PROP_NIGHT_TAGS_SCALE", "99") == 16.0f);
+    CHECK(fl("MC2_STATIC_PROP_FIXTURE_LIGHTS", nullptr) == 1.0f);
+    CHECK(fl("MC2_STATIC_PROP_FIXTURE_LIGHTS", "100") == 16.0f);
+    CHECK(fl("MC2_STATIC_PROP_FIXTURE_GLOW", "100") == 8.0f);
+    CHECK(fl("MC2_STATIC_PROP_IBL_NIGHT_SCALE", "3") == 1.0f);
+    CHECK(fl("MC2_STATIC_PROP_IBL_SUN_ROTATE_FLOOR", nullptr) == 0.45f);
+    CHECK(fl("MC2_STATIC_PROP_IBL_SUN_ROTATE_FLOOR", "-1") == 0.0f);   // the old reader failed to 0, never to a lift
+    CHECK(fl("MC2_STATIC_PROP_IBL_SUN_ROTATE_FLOOR", "9") == 2.0f);
+    CHECK(fl("MC2_STATIC_PROP_IBL_SUN_ROTATE_FLOOR", "abc") == 0.0f);
+    CHECK(in("MC2_STATIC_PROP_DEBUG_MATERIAL", "9") == 6);
+    CHECK(in("MC2_STATIC_PROP_DEBUG_MATERIAL", "") == 0);
+    CHECK(fl("MC2_FAR_BACKDROP_LIT_NEAR", nullptr) == 700.0f);
+    CHECK(fl("MC2_FAR_BACKDROP_LIT_FAR", nullptr) == 960.0f);
+    CHECK(fl("MC2_OBJECT_POLY_OFFSET_FACTOR", nullptr) == -1.0f);
+    // texture tier and the billboard mode keep their snapping / first-character logic at the site
+    CHECK(in("MC2_STATICPROP_TEX_TIER", nullptr) == 512);
+    CHECK(in("MC2_STATICPROP_TEX_TIER", "300") == 300);
+    CHECK(g1b::rowNamed("MC2_LIGHT_BILLBOARD_FACING").kind == Kind::String);
+    CHECK(g1b::rowNamed("MC2_FAR_BACKDROP_LIT_TINT").kind == Kind::String);
+}
+
+// ---------------------------------------------------------------------------
+// G5: gameos_graphics.cpp rows
+// ---------------------------------------------------------------------------
+
+TEST_CASE("G5 graphics rows reproduce the lambdas and helpers they replaced") {
+    auto fl = [&](const char* name, const char* text) { return asFloat(gate::detail::parseRow(g1b::rowNamed(name), text)); };
+    // `v > 0 ? v : default` readers: a non-positive value falls back to the default
+    CHECK(fl("MC2_WATER_SHORE_FEATHER_WU", nullptr) == 7.0f);
+    CHECK(fl("MC2_WATER_SHORE_FEATHER_WU", "0") == 7.0f);
+    CHECK(fl("MC2_WATER_SHORE_FEATHER_WU", "-3") == 7.0f);
+    CHECK(fl("MC2_WATER_SHORE_FEATHER_WU", "12") == 12.0f);
+    CHECK(fl("MC2_WATER_EDGE_FEATHER_STRENGTH", "0") == 1.0f);
+    CHECK(fl("MC2_WATER_EDGE_FEATHER_STRENGTH", "2.5") == 2.5f);
+    CHECK(fl("MC2_WATER_SHORE3_DEPTH_K", nullptr) == 0.03f);
+    CHECK(fl("MC2_TERRAIN_SNOW_BRIGHTNESS_DAMPEN", nullptr) == 0.78f);
+    CHECK(fl("MC2_TERRAIN_DETAIL_FADE_START", nullptr) == 1000.0f);
+    CHECK(fl("MC2_TERRAIN_DETAIL_FADE_END", nullptr) == 3000.0f);
+    CHECK(fl("MC2_TERRAIN_DETAIL_FADE_END", "") == 3000.0f);
+    // out of range -> default (the old `f >= 0 && f <= 1 ? f : 0.25f`)
+    CHECK(fl("MC2_LIGHT_POOL_MOVER_DIM", "2") == 0.25f);
+    CHECK(fl("MC2_LIGHT_POOL_MOVER_DIM", "0.5") == 0.5f);
+    const gate::Row& dv = g1b::rowNamed("MC2_LIGHTING_DEBUG_VIEW");
+    CHECK(dv.kind == Kind::Enum);
+    for (const char* t : {"off", "0", "albedo", "normal", "sun", "ambient", "shadow", "final", "overbright", "lightcount", "lightindex"})
+        CHECK(gate::rows::tokenListHas(dv.tokens, t));
+    CHECK(g1b::rowNamed("MC2_WATER_SHINE").kind == Kind::String);
+}
+
+// ---------------------------------------------------------------------------
+// G5: gameosmain.cpp rows
+// ---------------------------------------------------------------------------
+
+TEST_CASE("G5 gameosmain rows and the runtime-name reader") {
+    auto in = [&](const char* name, const char* text) {
+        return static_cast<std::int32_t>(static_cast<std::uint32_t>(gate::detail::parseRow(g1b::rowNamed(name), text)));
+    };
+    CHECK(in("MC2_SCREENSHOT_AT_FRAME", nullptr) == -1);      // the reader's "no screenshot" sentinel
+    CHECK(in("MC2_SCREENSHOT_AT_FRAME", "300") == 300);
+    CHECK(in("MC2_FPS_CAP", nullptr) == 90);
+    CHECK(in("MC2_FPS_CAP", "0") == 0);
+    CHECK(in("MC2_WIDTH", nullptr) == 0);
+    CHECK(g1b::rowNamed("MC2_STATIC_UPDATE_SKIP").defBool);
+    CHECK_FALSE(g1b::rowNamed("MC2_STATIC_UPDATE_TRACE").defBool);
+    CHECK(g1b::rowNamed("MC2_SCREENSHOT_PATH").kind == Kind::String);
+    CHECK(g1b::rowNamed("MC2_LOAD_RACE_PROBE_FRAMES").kind == Kind::String);
+    CHECK(gate::rows::tokenListHas(g1b::rowNamed("MC2_SCREENSHOT_SOURCE").tokens, "backbuffer"));
+
+    EnvVar env("MC2_BOX_DECAL");   // envText reads any name at run time, uncached
+    env.set(nullptr);
+    CHECK(gate::envText("MC2_BOX_DECAL") == nullptr);
+    env.set("1");
+    CHECK(std::string(gate::envText("MC2_BOX_DECAL")) == "1");
+    env.set(nullptr);
+}
+
 }  // TEST_SUITE

@@ -653,12 +653,9 @@ static void mc2resFrameAudit(int viewport_w, int viewport_h)
     }
 
     // (c) #49 windowed-resolution oracle.
-    static const int s_reqW =
-        []{ const char* e = getenv("MC2_WIDTH");  return e ? atoi(e) : 0; }();
-    static const int s_reqH =
-        []{ const char* e = getenv("MC2_HEIGHT"); return e ? atoi(e) : 0; }();
-    static const bool s_windowed =
-        []{ const char* e = getenv("MC2_WINDOWED"); return e && e[0] && e[0] != '0'; }();
+    static const int s_reqW = mc2::gate::get<"MC2_WIDTH">();
+    static const int s_reqH = mc2::gate::get<"MC2_HEIGHT">();
+    static const bool s_windowed = mc2::gate::get<"MC2_WINDOWED">();
     if (s_windowed && s_reqW > 0 && s_reqH > 0)
     {
         static int s_oracleFrames = 0;
@@ -776,8 +773,7 @@ static void draw_screen( void )
         // tier1 smoke A/B that is byte-identical with the gate OFF vs ON.
         // The Tracy sub-zones and frameBannerTick stay OUTSIDE the seam (they
         // are game-only), so both branches keep them identically.
-        static const bool s_useRenderFrameDriver =
-            (std::getenv("MC2_RENDER_FRAME_DRIVER") != nullptr);
+        static const bool s_useRenderFrameDriver = mc2::gate::get<"MC2_RENDER_FRAME_DRIVER">();
         if (s_useRenderFrameDriver) {
             RenderFrameDesc rfd;
             rfd.host = RenderHostKind::Game;
@@ -1000,7 +996,7 @@ void GLAPIENTRY OpenGLDebugLog(GLenum source, GLenum type, GLuint id, GLenum sev
 	// memory/{blend,sampler,gpu_direct_depth}_state_inheritance.md.
 	// MEDIUM/LOW are too noisy on AMD (perf warnings on every TGL stream).
 	// Function-scope static: 99.9% of callback invocations are a single load+branch.
-	static const bool s_glDebugFatal = (std::getenv("MC2_GL_DEBUG_FATAL") != nullptr);
+	static const bool s_glDebugFatal = mc2::gate::get<"MC2_GL_DEBUG_FATAL">();
 	if (s_glDebugFatal && severity == GL_DEBUG_SEVERITY_HIGH)
 	{
 		std::fprintf(stderr,
@@ -1026,8 +1022,7 @@ int main(int argc, char** argv)
     // desktop => 2x-desktop window, "zoomed" menus). MC2_DPI_UNAWARE=1 =
     // legacy virtualized behavior.
     {
-        const char* dv = getenv("MC2_DPI_UNAWARE");
-        if (!(dv && dv[0] == '1')) {
+        if (!mc2::gate::get<"MC2_DPI_UNAWARE">()) {
             typedef BOOL (WINAPI *SetDpiCtxFn)(void*);
             HMODULE u32 = LoadLibraryA("user32.dll");
             SetDpiCtxFn setCtx = u32
@@ -1046,12 +1041,12 @@ int main(int argc, char** argv)
     // explicit MC2_NO_LAUNCHER escape, so headless runs never pop the GUI. If the
     // launcher is missing or fails to start, fall through and run the game.
     {
-        const bool fromLauncher = std::getenv("MC2_LAUNCHED") != nullptr;
+        const bool fromLauncher = mc2::gate::isSet<"MC2_LAUNCHED">();
         const bool automation =
-            std::getenv("MC2_NO_LAUNCHER")     || std::getenv("MC2_SMOKE_SEED") ||
-            std::getenv("MC2_SMOKE_MODE")      || std::getenv("MC2_HEARTBEAT")  ||
-            (std::getenv("MC2_DEBUG_STATE_DUMP") && std::getenv("MC2_DEBUG_STATE_DUMP")[0] && std::getenv("MC2_DEBUG_STATE_DUMP")[0] != '0') ||
-            std::getenv("MC2_LOG") ||
+            mc2::gate::isSet<"MC2_NO_LAUNCHER">()  || mc2::gate::isSet<"MC2_SMOKE_SEED">() ||
+            mc2::gate::isSet<"MC2_SMOKE_MODE">()   || mc2::gate::isSet<"MC2_HEARTBEAT">()  ||
+            mc2::gate::get<"MC2_DEBUG_STATE_DUMP">() ||
+            mc2::gate::isSet<"MC2_LOG">() ||
             gos_WindowOffscreenRequested() || gos_CursorControlSuppressed();
         if (!fromLauncher && !automation) {
             char exePath[MAX_PATH] = {0};
@@ -1093,10 +1088,9 @@ int main(int argc, char** argv)
     // MC2_NO_LAUNCHER) are untouched, so smoke baselines cannot drift.
     // Kill-switch: MC2_LAUNCHER_ENV_JSON=0 restores the pure-shell-env launch.
     {
-        const char* noLauncher = std::getenv("MC2_NO_LAUNCHER");
-        const bool  fromLauncher = std::getenv("MC2_LAUNCHED") != nullptr;
-        const char* jsGate = std::getenv("MC2_LAUNCHER_ENV_JSON");
-        const bool  jsOff = (jsGate && jsGate[0] == '0' && jsGate[1] == '\0');
+        const bool  noLauncher = mc2::gate::isSet<"MC2_NO_LAUNCHER">();
+        const bool  fromLauncher = mc2::gate::isSet<"MC2_LAUNCHED">();
+        const bool jsOff = !mc2::gate::get<"MC2_LAUNCHER_ENV_JSON">();
         if (noLauncher && !fromLauncher && !jsOff) {
             char exePath[MAX_PATH] = {0};
             char jsonPath[MAX_PATH] = {0};
@@ -1139,13 +1133,13 @@ int main(int argc, char** argv)
                     if (vlen >= sizeof(val)) continue;
                     memcpy(val, valStart, vlen); val[vlen] = '\0';
                     if (!val[0]) continue;        // "" = unset (launcher semantics)
-                    if (std::getenv(key)) { shellWins++; continue; }  // shell wins
+                    if (mc2::gate::envText(key)) { shellWins++; continue; }  // shell wins
                     if (_putenv_s(key, val) == 0) applied++;
                 }
                 // stderr is still live here (the MC2_LOG NUL-redirect below has
                 // not run yet) — gate on MC2_LOG so a plain double-click-style
                 // console stays quiet.
-                if (std::getenv("MC2_LOG")) {
+                if (mc2::gate::isSet<"MC2_LOG">()) {
                     fprintf(stderr,
                         "[LAUNCHER_ENV v1] applied=%d shell_override=%d src=%s\n",
                         applied, shellWins, jsonPath);
@@ -1207,8 +1201,8 @@ int main(int argc, char** argv)
     selectionPickingPredicate_init();
     // Optional startup selftest — hard-fails on any boundary violation so the
     // operator knows immediately if the predicate body has a regression.
-    if (const char* st = std::getenv("MC2_OBJECT_ADMISSION_SELFTEST")) {
-        if (std::strcmp(st, "1") == 0) {
+    {
+        if (mc2::gate::get<"MC2_OBJECT_ADMISSION_SELFTEST">()) {
             int fails = objectAdmissionPredicate_selftest();
             std::printf("[OBJECT_ADMISSION v1] event=selftest_summary fails=%d\n", fails);
             std::fflush(stdout);
@@ -1224,25 +1218,22 @@ int main(int argc, char** argv)
         }
     }
     {
-        const bool tgl     = (getenv("MC2_TGL_POOL_TRACE")       != nullptr);
-        const bool destr   = (getenv("MC2_DESTROY_TRACE")        != nullptr);
+        const bool tgl     = mc2::gate::get<"MC2_TGL_POOL_TRACE">();
+        const bool destr   = mc2::gate::get<"MC2_DESTROY_TRACE">();
         // GL_ERROR is default-on; the env var suppresses it.
-        const bool glprint = (getenv("MC2_GL_ERROR_DRAIN_SILENT") == nullptr);
-        const bool smoke   = (getenv("MC2_SMOKE_MODE")           != nullptr);
-        const bool waterFp = (getenv("MC2_RENDER_WATER_FASTPATH")     != nullptr);
-        const bool waterPc = (getenv("MC2_RENDER_WATER_PARITY_CHECK") != nullptr);
-        const bool vpFast  = (getenv("MC2_VERTEX_PROJECT_FAST")       != nullptr);
-        const bool vpPar   = (getenv("MC2_VERTEX_PROJECT_PARITY")     != nullptr);
+        const bool glprint = !mc2::gate::get<"MC2_GL_ERROR_DRAIN_SILENT">();
+        const bool smoke   = mc2::gate::get<"MC2_SMOKE_MODE">();
+        const bool waterFp = mc2::gate::get<"MC2_RENDER_WATER_FASTPATH">();
+        const bool waterPc = mc2::gate::get<"MC2_RENDER_WATER_PARITY_CHECK">();
+        const bool vpFast  = mc2::gate::get<"MC2_VERTEX_PROJECT_FAST">();
+        const bool vpPar   = mc2::gate::get<"MC2_VERTEX_PROJECT_PARITY">();
         // MC2_GPU_OBJECTS env override: "0" disables (opt-out from the
         // 2026-05-04 default-on flip), any other value (including "1")
         // enables. Unset leaves the compile-time default (true).
         // Slice 1 invariant: mutually exclusive with legacy killswitch.
         // Setting g_useGpuObjects at startup here happens before any code
         // path can read it; legacy g_useGpuStaticProps starts false.
-        const char* gpuObjEnv = getenv("MC2_GPU_OBJECTS");
-        if (gpuObjEnv) {
-            g_useGpuObjects = (gpuObjEnv[0] != '0');
-        }
+        g_useGpuObjects = mc2::gate::get<"MC2_GPU_OBJECTS">();   // Lead0Kill, default ON like the compile-time default
         const bool gpuObj = g_useGpuObjects;
         // [OBJECT_RECON v1] read MC2_OBJECT_RECON_TRACY here so the gate is
         // live before any update kernel runs. drainPerFrame() lazy-inits
@@ -1254,26 +1245,16 @@ int main(int argc, char** argv)
         const bool tIndM   = gos_terrain_indirect::IsMineEnabled();   // PR2c
         const bool tIndO   = gos_terrain_indirect::IsOverlayEnabled();  // PR2b
         const bool tIndOP  = gos_terrain_indirect::IsOverlayParityCheckEnabled();  // PR2b
-        // ParseEnvBool semantics: "0"/"false"/"off"/"no" → false, anything else → true.
-        // Must match the ParseEnvBool logic in code/terrobj.cpp so the banner
-        // accurately reflects the actual gate state (getenv!=nullptr would report
-        // MC2_STATIC_UPDATE_SKIP=0 as enabled, breaking operator trust in the banner).
-        auto suParseBool = [](const char* name, bool def = false) -> bool {
-            const char* v = getenv(name);
-            if (!v || !*v) return def;
-            if (v[0] == '0' && !v[1]) return false;
-            if (!_stricmp(v, "false") || !_stricmp(v, "off") || !_stricmp(v, "no")) return false;
-            return true;
-        };
-        const bool suTrace = suParseBool("MC2_STATIC_UPDATE_TRACE");
+        // Std rule ("0"/"false"/"off"/"no" are false, anything else true) is the ParseEnvBool the terrobj.cpp
+        // reader uses, so the banner reflects the actual gate state.
+        const bool suTrace = mc2::gate::get<"MC2_STATIC_UPDATE_TRACE">();
         // 2026-05-11: MC2_STATIC_UPDATE_SKIP defaults ON; mirror in terrobj.cpp:88.
-        const bool suSkip  = suParseBool("MC2_STATIC_UPDATE_SKIP", true);
+        const bool suSkip  = mc2::gate::get<"MC2_STATIC_UPDATE_SKIP">();
         // Default ON; MC2_GPU_CULL_SUBSTRATE=0 opts out.
-        const char* _gcs = getenv("MC2_GPU_CULL_SUBSTRATE");
-        bool gpuCullSubstrate = (_gcs == nullptr || _gcs[0] != '0');
-        bool gpuCullParity    = (getenv("MC2_GPU_CULL_AABB_PARITY") != nullptr && getenv("MC2_GPU_CULL_AABB_PARITY")[0] != '0');
-        const bool shrHR      = (getenv("MC2_SHADER_HOT_RELOAD")    != nullptr && getenv("MC2_SHADER_HOT_RELOAD")[0] == '1');
-        const bool revZ       = (getenv("MC2_REVERSE_Z_TRACE")      != nullptr);
+        bool gpuCullSubstrate = mc2::gate::get<"MC2_GPU_CULL_SUBSTRATE">();
+        bool gpuCullParity    = mc2::gate::get<"MC2_GPU_CULL_AABB_PARITY">();
+        const bool shrHR      = mc2::gate::get<"MC2_SHADER_HOT_RELOAD">();
+        const bool revZ       = mc2::gate::get<"MC2_REVERSE_Z_TRACE">();
         // PR-0: dormant [TERRAIN_SURFACE v1] lifecycle channel gate. Trace-only,
         // default-OFF, separate from the MC2_TERRAIN_SURFACE path-select switch.
         const bool tSurfTrc   = mc2_terrain_surface_trace::enabled();
@@ -1331,10 +1312,8 @@ int main(int argc, char** argv)
         // (not accessible cross-TU — Option A from MaterialGpu-2 spec §3).
         // v5: MC2_MATERIAL_GPU defaults ON; set to "0" to disable.
         {
-            const char* matGpuEnv  = getenv("MC2_MATERIAL_GPU");
-            const bool  matGpuOn   = (matGpuEnv == nullptr || matGpuEnv[0] != '0');
-            const char* matSampleEnv = getenv("MC2_MATERIAL_GPU_SAMPLE");
-            const bool  matSampleOn  = (matSampleEnv == nullptr || matSampleEnv[0] != '0');
+            const bool matGpuOn = mc2::gate::get<"MC2_MATERIAL_GPU">();
+            const bool matSampleOn = mc2::gate::get<"MC2_MATERIAL_GPU_SAMPLE">();
             char buf[96];
             std::snprintf(buf, sizeof(buf),
                           "[MATERIAL_GPU v4] enabled=%d sample=%d binding=5 (default-ON; MC2_MATERIAL_GPU=0 disables)\n",
@@ -1361,7 +1340,7 @@ int main(int argc, char** argv)
         // to the mission log when MC2_GPU_CULL_READBACK=1 is set.
         // (No call needed here — readback_selftest() in readback.cpp is self-contained.)
 
-        if (getenv("MC2_STATIC_PROP_BAKE_SELFTEST")) {
+        if (mc2::gate::get<"MC2_STATIC_PROP_BAKE_SELFTEST">()) {
             // Stub: full self-test wired in Task 5 after buildRecipeFromShape
             // has callers and a registered type to test against.
             fprintf(stderr, "[STATIC_PROP_BAKE v1] event=selftest_stub note=full_test_wired_task5\n");
@@ -1437,12 +1416,12 @@ int main(int argc, char** argv)
     // legacy 2D HUD's layout correct; that was a stopgap for the pre-ImGui HUD
     // and is retired now that the defs/ImGui UI drives real-resolution layout.
     {
-        const char* envW = std::getenv("MC2_WIDTH");
-        const char* envH = std::getenv("MC2_HEIGHT");
-        if (envW && atoi(envW) > 0)
-            Environment.screenWidth = atoi(envW);
-        if (envH && atoi(envH) > 0)
-            Environment.screenHeight = atoi(envH);
+        const bool envW = mc2::gate::isSet<"MC2_WIDTH">();
+        const bool envH = mc2::gate::isSet<"MC2_HEIGHT">();
+        if (envW && mc2::gate::get<"MC2_WIDTH">() > 0)
+            Environment.screenWidth = mc2::gate::get<"MC2_WIDTH">();
+        if (envH && mc2::gate::get<"MC2_HEIGHT">() > 0)
+            Environment.screenHeight = mc2::gate::get<"MC2_HEIGHT">();
 
         // If no env override, try options.cfg.
         if (!envW && !envH)
@@ -1542,9 +1521,7 @@ int main(int argc, char** argv)
 
     // WINDOWED-8006-1: explicit windowed-mode override (launcher "Windowed
     // mode" checkbox). Wins over options.cfg fullscreen.
-    if (const char* wenv = std::getenv("MC2_WINDOWED")) {
-        if (wenv[0] && wenv[0] != '0') Environment.fullScreen = 0;
-    }
+    if (mc2::gate::get<"MC2_WINDOWED">()) Environment.fullScreen = 0;
 
     int w = Environment.screenWidth;
     int h = Environment.screenHeight;
@@ -1694,7 +1671,7 @@ int main(int argc, char** argv)
 	// builds this keeps stdout free of harmless driver warnings (esp. the
 	// AMD ~glsl_program double-detach chatter) and saves the sync-debug
 	// overhead. Paired with the context-flag gate in gos_render.cpp.
-	if (getenv("MC2_GL_DEBUG") != nullptr) {
+	if (mc2::gate::get<"MC2_GL_DEBUG">()) {
 		glEnable(GL_DEBUG_OUTPUT);
 		glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
 		glDebugMessageControlARB(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, NULL, GL_TRUE);
@@ -1771,9 +1748,13 @@ int main(int argc, char** argv)
     //   N     → N FPS in both states
     // timeBeginPeriod(1) brings Windows Sleep() to 1ms resolution.
     // Cap is skipped entirely when vsync is active (SDL_GL_GetSwapInterval()==1).
-    const char* fpsCapEnv = getenv("MC2_FPS_CAP");
-    static const int s_fps_cap_menu    = fpsCapEnv ? atoi(fpsCapEnv) : 90;
-    static const int s_fps_cap_mission = fpsCapEnv ? atoi(fpsCapEnv) : 165;
+    const char* fpsCapEnv = mc2::gate::raw<"MC2_FPS_CAP">();   // echoed as typed
+    // A set value (even an empty or non-numeric one: atoi -> 0, uncapped) overrides both caps; the row's own
+    // default (90) is the menu cap, the mission cap stays 165 when unset.
+    const int fpsCapSet = mc2::gate::isSet<"MC2_FPS_CAP">()
+        ? (mc2::gate::isNonEmpty<"MC2_FPS_CAP">() ? mc2::gate::get<"MC2_FPS_CAP">() : 0) : -1;
+    static const int s_fps_cap_menu    = fpsCapEnv ? fpsCapSet : 90;
+    static const int s_fps_cap_mission = fpsCapEnv ? fpsCapSet : 165;
     const bool s_vsync_active = (SDL_GL_GetSwapInterval() == 1);
     printf("[FRAMECAP] MC2_FPS_CAP=%s vsync=%s -- menu=%d FPS mission=%d FPS%s\n",
            fpsCapEnv ? fpsCapEnv : "(unset)",
@@ -1875,10 +1856,7 @@ int main(int argc, char** argv)
                 emitStaticPropDrawPackets(snap, s_candidates.data(), kMaxPackets);
 
             // DrawPacket v2: per-frame field compare. Set MC2_DRAW_PACKET_COMPARE=1 to enable.
-            static const bool s_dpCompareEnabled = [] {
-                const char* v = std::getenv("MC2_DRAW_PACKET_COMPARE");
-                return v && v[0] == '1';
-            }();
+            static const bool s_dpCompareEnabled = mc2::gate::get<"MC2_DRAW_PACKET_COMPARE">();
             if (s_dpCompareEnabled) {
                 comparePacketsToLegacy(s_candidates.data(), stats.emitted,
                     static_cast<uint32_t>(snap.frameIndex));
@@ -1886,10 +1864,7 @@ int main(int argc, char** argv)
 
             // DrawPacket v3: candidate → RenderCore::DrawPacket[] ABI promotion.
             // No dispatch; legacy flush() unchanged. Set MC2_DRAW_PACKET_V3=1 to enable.
-            static const bool s_v3Enabled = [] {
-                const char* v = std::getenv("MC2_DRAW_PACKET_V3");
-                return v && v[0] == '1';
-            }();
+            static const bool s_v3Enabled = mc2::gate::get<"MC2_DRAW_PACKET_V3">();
             static bool s_finalizeWarnedOnce = false;
 
             if (s_v3Enabled) {
@@ -1929,10 +1904,7 @@ int main(int argc, char** argv)
             // totally benign mismatch -> console spam. Dropped that condition; the remaining
             // overflow/invalidRanges/materialMismatches are genuine but are now also gated
             // off by default so a shipping/player build is silent.
-            static const bool s_drawPacketWarn = []{
-                const char* v = std::getenv("MC2_DRAW_PACKET_WARN");
-                return v && v[0] == '1';
-            }();
+            static const bool s_drawPacketWarn = mc2::gate::get<"MC2_DRAW_PACKET_WARN">();
             if (s_drawPacketWarn
                     && (stats.overflow
                         || stats.invalidRanges > 0
@@ -1950,10 +1922,7 @@ int main(int argc, char** argv)
             }
 
             // Full log line under MC2_RENDER_SNAPSHOT_LOG=1.
-            static const bool s_logEnabled = []{
-                const char* v = std::getenv("MC2_RENDER_SNAPSHOT_LOG");
-                return v && v[0] == '1';
-            }();
+            static const bool s_logEnabled = mc2::gate::get<"MC2_RENDER_SNAPSHOT_LOG">();
             if (s_logEnabled) {
                 std::fprintf(stderr,
                     "[DRAW_PACKET v1] frame=%llu emitted=%u expected=%u"
@@ -2223,9 +2192,9 @@ int main(int argc, char** argv)
             // EndFrame), once, when the frame counter first reaches N. Default
             // OFF, zero cost when env unset. Lets the dynamic-pipeline oracle
             // produce a real pixel image headlessly (TGA) for visual regression.
-            static const char* s_ssPath  = getenv("MC2_SCREENSHOT_PATH");
-            static const long  s_ssFrame = getenv("MC2_SCREENSHOT_AT_FRAME")
-                ? atol(getenv("MC2_SCREENSHOT_AT_FRAME")) : -1L;
+            static const std::string s_ssPathText = mc2::gate::str<"MC2_SCREENSHOT_PATH">();   // "" when unset or empty
+            static const char* s_ssPath  = s_ssPathText.empty() ? nullptr : s_ssPathText.c_str();
+            static const long s_ssFrame = static_cast<long>(mc2::gate::get<"MC2_SCREENSHOT_AT_FRAME">());
             static bool s_ssDone = false;
             // MC2_SCREENSHOT_SOURCE=backbuffer: capture FBO 0 (the real, finished
             // present-ready framebuffer -- includes the legacy 2D HUD/logistics
@@ -2237,10 +2206,7 @@ int main(int argc, char** argv)
             // Requires a non-minimized window (driver only composites to FBO 0
             // then); the default (unset) sceneFBO path remains the robust
             // works-when-minimized oracle for mission/terrain visual diffs.
-            static const bool s_ssBackbuffer = []{
-                const char* v = getenv("MC2_SCREENSHOT_SOURCE");
-                return v && !_stricmp(v, "backbuffer");
-            }();
+            static const bool s_ssBackbuffer = mc2::gate::is<"MC2_SCREENSHOT_SOURCE", "backbuffer">();
             if (s_ssPath && s_ssFrame >= 0 && !s_ssDone
                 && (long)g_mc2FrameCounter >= s_ssFrame) {
                 if (s_ssBackbuffer) {
@@ -2300,11 +2266,9 @@ int main(int argc, char** argv)
                 extern long  g_loadRaceTerrainFirstResidentFrame;
                 extern bool  g_loadRaceTerrainResidentNow;
                 extern float scenarioTime;
-                static const long s_vFrame = []{
-                    const char* v = getenv("MC2_LOAD_RACE_VERDICT_FRAME");
-                    if (!v) v = getenv("MC2_SCREENSHOT_AT_FRAME");
-                    return v ? atol(v) : -1L;
-                }();
+                static const long s_vFrame = static_cast<long>(
+                    mc2::gate::isSet<"MC2_LOAD_RACE_VERDICT_FRAME">() ? mc2::gate::get<"MC2_LOAD_RACE_VERDICT_FRAME">()
+                                                                      : mc2::gate::get<"MC2_SCREENSHOT_AT_FRAME">());
                 static bool s_vDone = false;
                 if (s_vFrame >= 0 && !s_vDone && (long)g_mc2FrameCounter >= s_vFrame) {
                     s_vDone = true;
@@ -2365,8 +2329,8 @@ int main(int argc, char** argv)
                 // (comma list) but defaults to the confirmed transient window.
                 static const std::vector<long> s_probeFrames = []{
                     std::vector<long> v;
-                    if (const char* e = getenv("MC2_LOAD_RACE_PROBE_FRAMES")) {
-                        const char* p = e;
+                    if (const std::string probeList = mc2::gate::str<"MC2_LOAD_RACE_PROBE_FRAMES">(); !probeList.empty()) {
+                        const char* p = probeList.c_str();
                         while (*p) { v.push_back(atol(p)); const char* c = strchr(p, ','); if (!c) break; p = c + 1; }
                     }
                     if (v.empty()) v = {600, 1300, 2600, 4000, 6000};
@@ -2496,7 +2460,7 @@ int main(int argc, char** argv)
                     // reads the composited back buffer (post exposure/sunset grade, what the
                     // player sees) instead of the pre-composite scene FBO, so GL captures
                     // are comparable with VK captures (which read the presented image).
-                    static const bool s_vcPost = []{ const char* e = getenv("MC2_VISUAL_CAPTURE_POST"); return e && e[0] && e[0] != '0'; }();
+                    static const bool s_vcPost = mc2::gate::get<"MC2_VISUAL_CAPTURE_POST">();
                     if (s_vcPost) {
                         glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
                         glReadBuffer(GL_BACK);
@@ -2528,7 +2492,7 @@ int main(int argc, char** argv)
             // cost is GPU-completion backpressure (GPU draining terrain/shadows),
             // not vsync/CPU. SwapWindow.SDL isolates the bare SDL_GL_SwapWindow.
             {
-                static const bool s_preSwapFinish = (getenv("MC2_PRESWAP_FINISH") != nullptr);
+                static const bool s_preSwapFinish = mc2::gate::get<"MC2_PRESWAP_FINISH">();
                 if (s_preSwapFinish) { ZoneScopedN("SwapWindow.PreFinish"); glFinish(); }
             }
             {
@@ -2687,7 +2651,7 @@ int main(int argc, char** argv)
             // whether the render loop is alive or frozen. Gated behind
             // MC2_HEARTBEAT so the default log is quiet — invaluable for
             // diagnosing freezes on content-faulting mod loads when enabled.
-            static const bool s_hbTrace = (getenv("MC2_HEARTBEAT") != nullptr);
+            static const bool s_hbTrace = mc2::gate::get<"MC2_HEARTBEAT">();
             if (s_hbTrace) {
                 static int s_hb_frame = 0;
                 static uint64_t s_hb_last_ms = 0;
@@ -2716,7 +2680,7 @@ int main(int argc, char** argv)
             bool inMission = SmokeMode::missionHasStarted();
             int cap = inMission ? s_fps_cap_mission : s_fps_cap_menu;
             static bool s_capTraceLast = !inMission;
-            static const bool s_capTrace = (getenv("MC2_FRAMECAP_TRACE") != nullptr);
+            static const bool s_capTrace = mc2::gate::get<"MC2_FRAMECAP_TRACE">();
             if (s_capTrace && s_capTraceLast != inMission) {
                 fprintf(stderr, "[FRAMECAP] cap switched: inMission=%d cap=%d\n",
                         (int)inMission, cap);
