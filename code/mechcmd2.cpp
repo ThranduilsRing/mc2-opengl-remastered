@@ -99,10 +99,6 @@ extern CPrefs prefs;
 // NS3: systemHeap defined in mclib/heap.cpp (engine boundary).
 UserHeapPtr guiHeap = NULL;
 
-#ifdef LAB_ONLY
-long         currentLineElement = 0;
-LineElement* debugLines[1024];
-#endif
 
 // NS3: fastFiles/numFastFiles/maxFastFiles defined in mclib/fastfile.cpp (engine boundary).
 
@@ -805,15 +801,6 @@ void __stdcall UpdateRenderers()
 			gos_SetRenderState( gos_State_IsHUD, 0 );
 		}
 
-		#ifdef LAB_ONLY
-		if (currentLineElement)
-		{
-			for (long i=0;i<currentLineElement;i++)
-			{
-				debugLines[i]->draw();
-			}
-		}
-		#endif
 	}
 	else
 	{
@@ -2215,9 +2202,6 @@ void __stdcall DoGameLogic()
 	ZoneScopedN("GameLogic");
 	if (!SnifferMode)
 	{
-	#ifdef LAB_ONLY		//Used for debugging LOS
-		currentLineElement = 0;
-	#endif
 	
 		if (MPlayer) {
 			{ ZoneScopedN("GameLogic.Multiplayer"); MPlayer->update(); }
@@ -2482,10 +2466,6 @@ void __stdcall DoGameLogic()
 	
 		//---------------------------------------------------
 		// Update heap instrumentation.
-	#ifdef LAB_ONLY
-		if (turn > 3)
-			globalHeapList->update();
-	#endif
 	
 		//-----------------------------------------------------
 		// Check the TimeBomb to see if we should go away
@@ -3037,9 +3017,7 @@ void __stdcall GetGameOSEnvironment(const char* CommandLine )
 		if ((result == ERROR_SUCCESS) && pData[0])
 		{
 			if (fileExists("options.cfg") && !SnifferMode)
-#ifndef LAB_ONLY
 				Environment.fullScreen				= 1;
-#endif
 			EULAShown = true;
 		}
 
