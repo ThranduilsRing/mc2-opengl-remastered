@@ -332,7 +332,13 @@ std::uint64_t resolve(std::size_t idx) noexcept {
     const Row& r = tableData()[idx];
     std::uint64_t s = parseRow(r, envOf(r)) | kResolvedBit;
     if (!g_mainEntered.load(std::memory_order_relaxed)) s |= kPreMainBit;
-    g_slot[idx].store(s, std::memory_order_relaxed);
+    // A row read fresh after in-process _putenv (reread) is never cached: every read parses again.
+    if (r.reread) return s;
+    // Two threads racing on the first read agree on the winner's value. invalidate()/invalidateAll()
+    // are for the single-threaded phases that call _putenv (startup, mod picker, harness setup): a read on
+    // another thread that straddles an invalidate may cache the pre-_putenv text until the next invalidate.
+    std::uint64_t expected = 0;
+    if (!g_slot[idx].compare_exchange_strong(expected, s, std::memory_order_relaxed)) return expected;
     return s;
 }
 
@@ -420,14 +426,14 @@ DumpSummary dumpConfigWith(std::FILE* out, const DumpOptions& opts) noexcept {
         if (set) ++sum.set;
         if (!isDefault(r, s)) ++sum.nondefault;
         if (set && (s & kBadBit)) {
-            ++sum.badvalue;
+            if (r.verified) ++sum.badvalue; else ++sum.badvalueUnverified;
             std::string w = "[CONFIG v1] warn=badvalue name=";
             w += r.name;
             w += " kind=";
             w += kindName(r.kind);
             w += " raw=\"";
             appendEscaped(w, raw);
-            w += "\"\n";
+            w += r.verified ? "\"\n" : "\" verified=0\n";
             warnings.push_back(std::move(w));
         }
         if (opts.none || !(opts.all || set)) continue;
@@ -482,8 +488,10 @@ DumpSummary dumpConfigWith(std::FILE* out, const DumpOptions& opts) noexcept {
 
     char b[200];
     std::snprintf(b, sizeof b,
-                  "[CONFIG v1] summary total=%zu set=%zu nondefault=%zu unregistered=%zu badvalue=%zu premain_stale=%zu\n",
-                  sum.total, sum.set, sum.nondefault, sum.unregistered, sum.badvalue, sum.premainStale);
+                  "[CONFIG v1] summary total=%zu set=%zu nondefault=%zu unregistered=%zu badvalue=%zu premain_stale=%zu"
+                  " badvalue_unverified=%zu\n",
+                  sum.total, sum.set, sum.nondefault, sum.unregistered, sum.badvalue, sum.premainStale,
+                  sum.badvalueUnverified);
     writeLine(out, b);
     std::fflush(out);
 

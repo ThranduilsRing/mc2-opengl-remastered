@@ -33,13 +33,15 @@
 #include <cstdlib>
 #include <cstdio>
 
+#include "Gates/gate.h"
+
 namespace mc2_terrain_surface_trace {
 
 // Cached once on first query (the env var is read once; flipping it
 // mid-process has no effect, mirroring the existing trace gates).
 inline bool enabled()
 {
-    static const bool s_enabled = (getenv("MC2_TERRAIN_SURFACE_TRACE") != nullptr);
+    static const bool s_enabled = mc2::gate::get<"MC2_TERRAIN_SURFACE_TRACE">();
     return s_enabled;
 }
 

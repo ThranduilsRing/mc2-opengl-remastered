@@ -64,7 +64,7 @@
    "LG16": 7,
    "LG17": 81,
    "LG18": 11,
-   "LG19": 745
+   "LG19": 732
   },
   "GuiRuntime": {
    "LG01": 1,
@@ -196,7 +196,7 @@
    "LG16": 158,
    "LG17": 93,
    "LG18": 6,
-   "LG19": 335
+   "LG19": 330
   }
  },
  "dirs": [
@@ -717,15 +717,13 @@
   },
   "GameOS/gameos/gos_terrain_patch_stream.cpp": {
    "LG08": 4,
-   "LG09": 22,
-   "LG19": 12
+   "LG09": 22
   },
   "GameOS/gameos/gos_terrain_patch_stream.h": {
    "LG09": 1
   },
   "GameOS/gameos/gos_terrain_surface.cpp": {
-   "LG09": 26,
-   "LG19": 1
+   "LG09": 26
   },
   "GameOS/gameos/gos_terrain_water_stream.cpp": {
    "LG08": 10,
@@ -2517,25 +2515,6 @@
    "LG06": 2,
    "LG13": 1,
    "LG14": 1
-  },
-  "code/missiongui_uicmd.cpp": {
-   "LG01": 5,
-   "LG09": 37,
-   "LG11": 2,
-   "LG12a": 3,
-   "LG12b": 24,
-   "LG19": 2
-  },
-  "code/missiongui_uicmd_fixture.cpp": {
-   "LG01": 3,
-   "LG09": 19,
-   "LG12b": 8,
-   "LG19": 3
-  },
-  "code/missiongui_uicmd_probe.cpp": {
-   "LG01": 9,
-   "LG09": 17,
-   "LG12b": 24
   },
   "code/missionresults.cpp": {
    "LG01": 3,
@@ -5210,13 +5189,9 @@
    "LG13": 21,
    "LG14": 2
   },
-  "mclib/terrain_admission_mode.h": {
-   "LG19": 1
-  },
   "mclib/terrain_runtime.cpp": {
    "LG09": 1,
-   "LG10": 2,
-   "LG19": 3
+   "LG10": 2
   },
   "mclib/terrain_runtime.h": {
    "LG14": 1
@@ -5225,8 +5200,7 @@
    "LG10": 1
   },
   "mclib/terrain_surface_trace.h": {
-   "LG12a": 1,
-   "LG19": 1
+   "LG12a": 1
   },
   "mclib/terrtxm.cpp": {
    "LG01": 41,
@@ -5429,9 +5403,28 @@
    "LG05": 1,
    "LG06": 1,
    "LG13": 31
+  },
+  "code/missiongui_uicmd.cpp": {
+   "LG01": 5,
+   "LG09": 37,
+   "LG11": 2,
+   "LG12a": 3,
+   "LG12b": 24,
+   "LG19": 2
+  },
+  "code/missiongui_uicmd_fixture.cpp": {
+   "LG01": 3,
+   "LG09": 19,
+   "LG12b": 8,
+   "LG19": 3
+  },
+  "code/missiongui_uicmd_probe.cpp": {
+   "LG01": 9,
+   "LG09": 17,
+   "LG12b": 24
   }
  },
- "head": "0cb7e49b3",
+ "head": "6c6c5218b",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

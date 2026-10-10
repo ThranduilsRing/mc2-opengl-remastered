@@ -14,6 +14,7 @@
 
 #include <map>    // STATIC-REGISTRY-COVERAGE-RECON-1: top shape names
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
+#include "Gates/gate_cold.h"  // gate::invalidate after the importer _putenv_s calls
 #include <mutex>  // STATIC-REGISTRY-COVERAGE-RECON-1: shape map guard
 
 // [TOBJSPLIT v1] RDTSC includes for the BldgAppearance/TreeAppearance probe
@@ -401,10 +402,12 @@ static void loadBuildingImportSourceWithSidecarAxis(TG_TypeMultiShape* shape, co
 	if (hasAxis) {
 		snprintf(axisValue, sizeof(axisValue), "%d", axis);
 		_putenv_s("MC2_GLTF_AXIS", axisValue);
+		mc2::gate::invalidate("MC2_GLTF_AXIS");
 	}
 	if (hasYaw) {
 		snprintf(yawValue, sizeof(yawValue), "%.3f", yawDegrees);
 		_putenv_s("MC2_GLTF_YAW_DEG", yawValue);
+		mc2::gate::invalidate("MC2_GLTF_YAW_DEG");
 	}
 
 	// META-FIX design B PART 1: REQUIRED slot — checked import load.
@@ -417,12 +420,14 @@ static void loadBuildingImportSourceWithSidecarAxis(TG_TypeMultiShape* shape, co
 			_putenv_s("MC2_GLTF_YAW_DEG", oldYawValue.c_str());
 		else
 			_putenv_s("MC2_GLTF_YAW_DEG", "");
+		mc2::gate::invalidate("MC2_GLTF_YAW_DEG");
 	}
 	if (hasAxis) {
 		if (!oldAxisValue.empty())
 			_putenv_s("MC2_GLTF_AXIS", oldAxisValue.c_str());
 		else
 			_putenv_s("MC2_GLTF_AXIS", "");
+		mc2::gate::invalidate("MC2_GLTF_AXIS");
 	}
 }
 

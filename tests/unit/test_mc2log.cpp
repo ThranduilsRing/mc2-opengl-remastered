@@ -4,6 +4,7 @@
 #include "doctest.h"
 #include "../../GameOS/gameos/utils/mc2log.h"
 
+#include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <string>
@@ -200,4 +201,63 @@ TEST_CASE("mc2log: rate limit and once") {
     CHECK(allowOnce(0x2222));
     CHECK_FALSE(allowOnce(0x2222));
     CHECK(allowOnce(0x3333));
+}
+
+TEST_CASE("mc2log: gos_terrain_lighting events equal the legacy printf bytes") {
+    resetSpec();
+    // Same arguments, same C types as the call sites (frame counters unsigned long long / long long,
+    // owner pointer printed as 16 upper-case hex digits like MSVC %p).
+    const void* owners[] = {nullptr, reinterpret_cast<const void*>(0x24DB7D100F0ull),
+                            reinterpret_cast<const void*>(0x7FF612345678ull)};
+    for (const void* owner : owners) {
+        Capture cap(mc2::log::Stream::Err);
+        char legacy[512];
+        std::snprintf(legacy, sizeof legacy,
+            "[LIGHT_POOL_DUMP v1] idx=%ld slot=%ld type=%ld active=%d ownerEnabled=%d "
+            "pos=(%.1f,%.1f,%.1f) argb=%08lx far=%.0f class=%s owner=%p packed=%d\n",
+            5L, -1L, 3L, 1, 0, -3288.34f, 2739.96f, 0.0f, 0xff746438ul, 80.0f, "bldg", owner, 1);
+        MC2_EVENT(Terrain, "LIGHT_POOL_DUMP", 1,
+            "idx={} slot={} type={} active={} ownerEnabled={} "
+            "pos=({:.1f},{:.1f},{:.1f}) argb={:08x} far={:.0f} class={} owner={:016X} packed={}",
+            5L, -1L, 3L, 1, 0, -3288.34f, 2739.96f, 0.0f, 0xff746438ul, 80.0f, "bldg",
+            reinterpret_cast<std::uintptr_t>(owner), 1);
+        CHECK(cap.str() == legacy);
+    }
+    {
+        Capture cap(mc2::log::Stream::Err);
+        char legacy[256];
+        std::snprintf(legacy, sizeof legacy, "[LIGHT_POOL_DUMP v1] frame_tick=%lu isNight=%d nTerrainLights=%ld\n",
+                      241ul, 1, 2L);
+        MC2_EVENT(Terrain, "LIGHT_POOL_DUMP", 1, "frame_tick={} isNight={} nTerrainLights={}", 241ul, 1, 2L);
+        CHECK(cap.str() == legacy);
+    }
+    {
+        Capture cap(mc2::log::Stream::Err);
+        char legacy[256];
+        std::snprintf(legacy, sizeof legacy,
+            "[TERRAIN_LIGHTING_PARITY v1] event=mismatch frame=%llu vertex=%d field=%s legacy=0x%08X gpu=0x%08X\n",
+            1234567890123ull, 42, "lightRGB", 0xff00aa11u, 0x0u);
+        MC2_EVENT(Terrain, "TERRAIN_LIGHTING_PARITY", 1,
+                  "event=mismatch frame={} vertex={} field={} legacy=0x{:08X} gpu=0x{:08X}",
+                  1234567890123ull, 42, "lightRGB", 0xff00aa11u, 0x0u);
+        CHECK(cap.str() == legacy);
+    }
+    {
+        Capture cap(mc2::log::Stream::Err);
+        char legacy[256];
+        std::snprintf(legacy, sizeof legacy,
+            "[TERRAIN_LIGHTING_PARITY v1] event=summary frames=%lld verts_checked=%lld total_mismatches=%lld\n",
+            600ll, 3123456789ll, 0ll);
+        MC2_EVENT(Terrain, "TERRAIN_LIGHTING_PARITY", 1,
+                  "event=summary frames={} verts_checked={} total_mismatches={}", 600ll, 3123456789ll, 0ll);
+        CHECK(cap.str() == legacy);
+    }
+    for (double d : {0.0, 1.5, 0.25, 1e-5, 123456.789, 1e10}) {
+        Capture o(mc2::log::Stream::Out);
+        char legacy[256];
+        std::snprintf(legacy, sizeof legacy, "[HAZE_PARITY v1] event=summary frames=%llu max_abs_delta=%g violations=%llu\n",
+                      600ull, d, 7ull);
+        MC2_EVENT_OUT(Terrain, "HAZE_PARITY", 1, "event=summary frames={} max_abs_delta={:g} violations={}", 600ull, d, 7ull);
+        CHECK(o.str() == legacy);
+    }
 }

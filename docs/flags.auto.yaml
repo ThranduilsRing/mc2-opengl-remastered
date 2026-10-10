@@ -6,8 +6,8 @@
 generator_version: "2.1.0"
 registry_entry_count: 354
 registry_env_flag_count: 353
-sweep_flag_count: 990
-flag_count: 1049
+sweep_flag_count: 972
+flag_count: 1034
 flags:
   - name: MC2_3DVIEW_DIAG
     default: unknown
@@ -2677,14 +2677,6 @@ flags:
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
-  - name: MC2_HAZE_PARITY
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/gos_terrain_lighting.cpp
-    registered: no
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: no
   - name: MC2_HDRI_BC6H
     default: unknown
     declared_in: null
@@ -3177,8 +3169,7 @@ flags:
     feature_id: MC2_FEATURE_LIGHT_GRID
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "LIGHT-CLUSTER-PERF-1: world-space XY light GRID over the per-frame terrain light pool. The producer (gos_terrain_lighting.cpp BuildAndUploadLightGrid) bins each packed light into every grid cell it..."
-    referenced_at:
-      - GameOS/gameos/gos_terrain_lighting.cpp
+    referenced_at: []
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -3188,8 +3179,7 @@ flags:
     feature_id: MC2_TUNE_LIGHT_GRID_DIM
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "LIGHT-CLUSTER-PERF-1 knob: cells per axis for the light grid (grid is DIM x DIM over the XY bbox of this frame's packed lights). Default 64; clamped to [2,256], out-of-range/unparseable -> default...."
-    referenced_at:
-      - GameOS/gameos/gos_terrain_lighting.cpp
+    referenced_at: []
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -3209,17 +3199,8 @@ flags:
     doc: "NIGHT-LIGHT-POOLS-3: tone-compress the accumulated terrain light-pool sum (chunk + overlay frag): 1-exp(-1.6*sum) instead of min(sum,1). Single light plateaus ~0.80, stacked lights approach 1.0 asy..."
     referenced_at:
       - GameOS/gameos/gameos_graphics.cpp
-      - GameOS/gameos/gos_terrain_lighting.cpp
       - GameOS/gameos/gos_terrain_lod_chunk.cpp
     registered: yes
-    in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: no
-  - name: MC2_LIGHT_POOL_DUMP
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/gos_terrain_lighting.cpp
-    registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
   - name: MC2_LIGHT_POOL_MAX
@@ -3228,8 +3209,7 @@ flags:
     feature_id: MC2_TUNE_LIGHT_POOL_MAX
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "LIGHT-POOL-CAP-1: per-mission slot count of the terrain light pool (gos_terrain_lighting.cpp mission_init). Default 256, raised from the callers' 64 because mc2_10 genuinely registers 142 fixtures ..."
-    referenced_at:
-      - GameOS/gameos/gos_terrain_lighting.cpp
+    referenced_at: []
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -3246,7 +3226,6 @@ flags:
     declared_in: null
     referenced_at:
       - GameOS/gameos/gameos_graphics.cpp
-      - GameOS/gameos/gos_terrain_lighting.cpp
       - GameOS/gameos/gos_terrain_lod_chunk.cpp
     registered: no
     in_smoke_passthrough: yes
@@ -3264,7 +3243,6 @@ flags:
     declared_in: null
     referenced_at:
       - GameOS/gameos/gameos_graphics.cpp
-      - GameOS/gameos/gos_terrain_lighting.cpp
       - GameOS/gameos/gos_terrain_lod_chunk.cpp
     registered: no
     in_smoke_passthrough: yes
@@ -3274,24 +3252,7 @@ flags:
     declared_in: null
     referenced_at:
       - GameOS/gameos/gameos_graphics.cpp
-      - GameOS/gameos/gos_terrain_lighting.cpp
       - GameOS/gameos/gos_terrain_lod_chunk.cpp
-    registered: no
-    in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: no
-  - name: MC2_LIGHT_POOL_OBJECTS
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/gos_terrain_lighting.cpp
-    registered: no
-    in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: no
-  - name: MC2_LIGHT_POOL_OBJ_SCALE
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/gos_terrain_lighting.cpp
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
@@ -3300,18 +3261,9 @@ flags:
     declared_in: null
     referenced_at:
       - GameOS/gameos/gameos_graphics.cpp
-      - GameOS/gameos/gos_terrain_lighting.cpp
       - GameOS/gameos/gos_terrain_lod_chunk.cpp
     registered: no
     in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: no
-  - name: MC2_LIGHT_POOL_VIS_GATE
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/gos_terrain_lighting.cpp
-    registered: no
-    in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
   - name: MC2_LIGHT_POS_COLUMN_FIX
     default: on
@@ -3341,7 +3293,6 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "LIGHT-REALISM-1: night light-pool + cone-glow realism reshape. Widens each pool light's ground falloff (MC2_LIGHT_REALISM_POOL_SPILL, default 2.2 = user-approved variant B) with a soft core (MC2_LI..."
     referenced_at:
-      - GameOS/gameos/gos_terrain_lighting.cpp
       - mclib/cone_glow.cpp
     registered: yes
     in_smoke_passthrough: yes
@@ -3375,22 +3326,6 @@ flags:
     declared_in: null
     referenced_at:
       - mclib/cone_glow.cpp
-    registered: no
-    in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: yes
-  - name: MC2_LIGHT_REALISM_POOL_CORE
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/gos_terrain_lighting.cpp
-    registered: no
-    in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: yes
-  - name: MC2_LIGHT_REALISM_POOL_SPILL
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/gos_terrain_lighting.cpp
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -6805,14 +6740,6 @@ flags:
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
-  - name: MC2_TERRAIN_ADMISSION_LEGACY
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - mclib/terrain_admission_mode.h
-    registered: no
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: no
   - name: MC2_TERRAIN_AMBIENT_FLOOR
     default: on
     kind: Feature
@@ -7217,22 +7144,6 @@ flags:
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
-  - name: MC2_TERRAIN_LIGHTING_GPU
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/gos_terrain_lighting.cpp
-    registered: no
-    in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: yes
-  - name: MC2_TERRAIN_LIGHTING_PARITY
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/gos_terrain_lighting.cpp
-    registered: no
-    in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: no
   - name: MC2_TERRAIN_LIGHT_POOLS
     default: on
     kind: Feature
@@ -7241,7 +7152,6 @@ flags:
     doc: "NIGHT-LIGHT-POOLS-1: per-fragment terrain light-pool loop on the LIVE LOD-chunk terrain path (terrain_lod_chunk.frag). Binds the SAME GpuTerrainLight SSBO the legacy vertex-lighting compute consume..."
     referenced_at:
       - GameOS/gameos/gameos_graphics.cpp
-      - GameOS/gameos/gos_terrain_lighting.cpp
       - GameOS/gameos/gos_terrain_lod_chunk.cpp
     registered: yes
     in_smoke_passthrough: yes
@@ -7568,30 +7478,6 @@ flags:
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no
-  - name: MC2_TERRAIN_RUNTIME_DECALS
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - mclib/terrain_runtime.cpp
-    registered: no
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: no
-  - name: MC2_TERRAIN_RUNTIME_GROUNDING
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - mclib/terrain_runtime.cpp
-    registered: no
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: no
-  - name: MC2_TERRAIN_RUNTIME_PARITY
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - mclib/terrain_runtime.cpp
-    registered: no
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: no
   - name: MC2_TERRAIN_SHADOW_GUARD_CLAMPED_SUN
     default: on
     kind: Feature
@@ -7699,22 +7585,6 @@ flags:
       - GameOS/gameos/gos_terrain_indirect.cpp
     registered: no
     in_smoke_passthrough: no
-    documented_in_tier1_env_vars: no
-  - name: MC2_TERRAIN_SURFACE
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/gos_terrain_surface.cpp
-    registered: no
-    in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: no
-  - name: MC2_TERRAIN_SURFACE_TRACE
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - mclib/terrain_surface_trace.h
-    registered: no
-    in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
   - name: MC2_TERRAIN_TESS
     default: on

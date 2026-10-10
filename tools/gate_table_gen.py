@@ -217,6 +217,8 @@ def row_line(r):
         opts.append("divergent")
     if r["smokePassthrough"]:
         opts.append("passthrough")
+    if r.get("verified"):
+        opts.append("verified")
     if r["range"]:
         fn, lo, hi = r["range"]
         opts.append("%s(%s, %s)" % (fn, num_lit(k, lo) if k == "Int" else float_lit(lo),
@@ -385,6 +387,7 @@ def rows_from_json(doc):
                       rng["lo"], rng["hi"]) if rng else None,
             "reread": g.get("reread", False), "divergent": g.get("divergent", False),
             "smokePassthrough": g.get("smokePassthrough", False), "logTopic": g.get("logTopic", ""),
+            "verified": g.get("verified", False),
             "history": False, "defaultUnknown": False,
         })
     return rows
@@ -428,7 +431,7 @@ def write_index(root):
 
 def count_overrides(root):
     """Per-site rule overrides: gate::get<"MC2_X", gate::Rule::...>() outside Gates/ and tests."""
-    pat = re.compile(r'get\s*<\s*"MC2_\w+"\s*,\s*(?:gate::|mc2::gate::)?Rule::')
+    pat = re.compile(r'get\s*<\s*"MC2_\w+"\s*,\s*[A-Za-z_]')   # a second template argument that is a Rule name
     n = 0
     for top in ("code", "mclib", "GameOS", "RenderCore", "GuiRuntime", "RenderWorld", "GameAdapters",
                 "HostServices", "EditorBridge", "editor", "gui"):
@@ -442,6 +445,97 @@ def count_overrides(root):
                     except OSError:
                         pass
     return n
+
+
+READER_DIRS = ("code", "mclib", "GameOS", "RenderCore", "GuiRuntime", "RenderWorld", "GameAdapters", "HostServices",
+               "EditorBridge", "editor", "gui", "tools")
+_READER_RE = re.compile(r'(?<![A-Za-z_])(?:get|state|isSet|str|is)\s*<\s*"(MC2_\w+)"')
+
+
+def typed_readers(root):
+    """Names read through gate::get/state/isSet/str/is outside Gates/ and the tests (comments skipped)."""
+    names = set()
+    for top in READER_DIRS:
+        for dp, dn, fns in os.walk(os.path.join(root, top)):
+            dn[:] = [d for d in dn if d not in ("build", ".vs", "__pycache__")]
+            for fn in fns:
+                if not fn.endswith((".cpp", ".h", ".hpp", ".inl", ".cc")):
+                    continue
+                try:
+                    with open(os.path.join(dp, fn), "r", encoding="utf-8", errors="replace") as fh:
+                        for line in fh:
+                            code = line.split("//", 1)[0]
+                            names.update(_READER_RE.findall(code))
+                except OSError:
+                    pass
+    return names
+
+
+def _top_level_args(call):
+    """Number of top-level arguments of `X(a, b, ...` (the closing paren is not in `call`); quotes and
+    nested parentheses are skipped."""
+    depth, n, i, in_str = 0, 1, call.index("(") + 1, False
+    while i < len(call):
+        c = call[i]
+        if in_str:
+            if c == "\\":
+                i += 1
+            elif c == '"':
+                in_str = False
+        elif c == '"':
+            in_str = True
+        elif c == "(":
+            depth += 1
+        elif c == ")":
+            depth -= 1
+        elif c == "," and depth == 0:
+            n += 1
+        i += 1
+    return n
+
+
+def sync_verified(root, outdir=None):
+    """Mark rows `verified` iff a typed reader exists, rebuild gate_dump, rewrite Gates/gate_table.json and the
+    index. One command after a migration."""
+    import tempfile
+    readers = typed_readers(root)
+    tp = os.path.join(root, TABLE_CPP_REL.replace("/", os.sep))
+    with open(tp, "r", encoding="utf-8", newline="") as fh:
+        text = fh.read()
+    nl = "\r\n" if "\r\n" in text else "\n"
+    out, changed = [], 0
+    for line in text.split(nl):
+        m = re.match(r'^[GLP]\((?:[A-Za-z0-9]+, )?"(MC2_\w+)"', line)
+        if m:
+            has = re.search(r'(?:, | \| )verified\)', line) is not None
+            want = m.group(1) in readers
+            if want and not has:
+                mm = re.match(r'^(.*)\)(,\s*(?://.*)?)$', line)
+                body, tail = mm.group(1), mm.group(2)
+                has_opts = _top_level_args(body) > (7 if line.startswith("L(") else 6)
+                line = body + ((" | verified)" if has_opts else ", verified)")) + tail
+                changed += 1
+            elif has and not want:
+                line = re.sub(r' \| verified\)', ')', line)
+                line = re.sub(r', verified\)', ')', line)
+                changed += 1
+        out.append(line)
+    if changed:
+        with open(tp, "w", encoding="utf-8", newline="") as fh:
+            fh.write(nl.join(out))
+    with tempfile.TemporaryDirectory(prefix="gate_dump_") as td:
+        exe = build_gate_dump(root, td)
+        if exe is None:
+            print("gate_table_gen: tools/gate_dump did not build")
+            return 1
+        r = subprocess.run([exe], capture_output=True, text=True, **nofocus.hidden_kwargs())
+        if r.returncode != 0:
+            print("gate_table_gen: gate_dump exited %d" % r.returncode)
+            return 1
+        _write(root, TABLE_JSON_REL, r.stdout.replace("\r\n", "\n"))
+    write_index(root)
+    print("gate_table_gen: %d row(s) re-marked; %d typed reader name(s)" % (changed, len(readers)))
+    return 0
 
 
 def build_gate_dump(root, outdir):
@@ -511,6 +605,14 @@ def check(root, rebuild=False):
                              % (ev, row["default"], e["defaultOn"]))
     except (ImportError, OSError, KeyError, AttributeError) as ex:
         fails.append("registry cross-check could not run: %s" % ex)
+    readers = typed_readers(root)
+    for r in rows:
+        if r.get("verified") and r["name"] not in readers:
+            fails.append("%s is marked verified but no gate::get<> reader exists: run py -3 tools/gate_gen.py --sync-verified"
+                         % r["name"])
+        if not r.get("verified") and r["name"] in readers:
+            fails.append("%s has a gate::get<> reader but is not marked verified: run py -3 tools/gate_gen.py --sync-verified"
+                         % r["name"])
     base = (_load_json(root, OVERRIDE_BASELINE_REL) or {}).get("count", 0)
     ov = count_overrides(root)
     if ov > base:

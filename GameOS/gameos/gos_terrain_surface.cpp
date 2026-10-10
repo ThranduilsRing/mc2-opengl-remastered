@@ -48,6 +48,7 @@
 #include "gos_terrain_surface.h"
 #include "gos_terrain_surface_schema.h"
 #include "../../mclib/terrain_surface_trace.h"  // PR-0 [TERRAIN_SURFACE v1] channel
+#include "Gates/gate.h"                         // typed gate registry
 #include "../../mclib/terrain_surface_bands.h"  // PR-3 single-sourced band config
 
 #include "gos_terrain_indirect.h"               // RecipeForVertexNum / IsDenseRecipeReady
@@ -69,10 +70,7 @@ namespace gos_terrain_surface {
 // literal non-"0" value turns generation on (plan Section F, Waves 0-3).
 // ---------------------------------------------------------------------------
 bool IsEnabled() {
-    static const bool s_enabled = []() {
-        const char* v = getenv("MC2_TERRAIN_SURFACE");
-        return v != nullptr && v[0] != '\0' && !(v[0] == '0' && v[1] == '\0');
-    }();
+    static const bool s_enabled = mc2::gate::get<"MC2_TERRAIN_SURFACE">();
     return s_enabled;
 }
 

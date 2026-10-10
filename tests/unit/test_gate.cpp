@@ -463,9 +463,61 @@ TEST_CASE("dumpConfig warns about an unregistered MC2_ variable and a bad value"
     opts.strict = true;
     const std::string out = capture(opts, &sum);
     CHECK(hasLine(out, "[CONFIG v1] warn=unregistered name=MC2_TERAIN_NOT_A_GATE"));
-    CHECK(hasLine(out, "[CONFIG v1] warn=badvalue name=" + name + " kind=bool raw=\"banana\""));
+    const bool verified = rows[stdBool].verified;
+    CHECK(hasLine(out, "[CONFIG v1] warn=badvalue name=" + name + " kind=bool raw=" + std::string(1, '"') + "banana" +
+                           std::string(1, '"') + (verified ? "" : " verified=0")));
     CHECK(sum.unregistered >= 1);
+    // A bad value is fatal under strict only on a verified row; an unverified row is a warning.
+    CHECK((verified ? sum.badvalue : sum.badvalueUnverified) >= 1);
+    if (!verified) CHECK(sum.badvalue == 0);
+}
+
+TEST_CASE("a bad value on a verified row counts toward strict, with no verified=0 marker") {
+    constexpr std::size_t idx = gate::detail::indexOf("MC2_LIGHT_GRID_DIM");
+    REQUIRE(gate::tableData()[idx].verified);
+    EnvVar env("MC2_LIGHT_GRID_DIM");
+    env.set("abc");
+    gate::DumpSummary sum;
+    gate::DumpOptions opts;
+    opts.exitOnStrict = false;
+    opts.strict = true;
+    const std::string out = capture(opts, &sum);
+    CHECK(hasLine(out, "[CONFIG v1] warn=badvalue name=MC2_LIGHT_GRID_DIM kind=int raw=\"abc\""));
     CHECK(sum.badvalue >= 1);
+}
+
+TEST_CASE("an Enum row's default must be one of its tokens") {
+    using namespace gate::rows;
+    CHECK(rowIsSane(G("MC2_UNITTEST_ENUM", Enum, "a", "test", "", "doc", tokens("a|b"))));
+    CHECK_FALSE(rowIsSane(G("MC2_UNITTEST_ENUM", Enum, "z", "test", "", "doc", tokens("a|b"))));
+    CHECK(rowIsSane(G("MC2_UNITTEST_ENUM", Enum, "", "test", "", "doc", tokens("|a|b"))));  // empty token listed
+    CHECK_FALSE(rowIsSane(G("MC2_UNITTEST_ENUM", Enum, "", "test", "", "doc", tokens("a|b"))));
+}
+
+TEST_CASE("a reread row is parsed on every read, never cached") {
+    constexpr std::size_t idx = gate::detail::indexOf("MC2_GLTF_AXIS");
+    REQUIRE(gate::tableData()[idx].reread);
+    EnvVar env("MC2_GLTF_AXIS");
+    env.set("3");
+    CHECK(gate::get<"MC2_GLTF_AXIS">() == 3);
+    env.set("5");   // no invalidate
+    CHECK(gate::get<"MC2_GLTF_AXIS">() == 5);
+    CHECK((gate::detail::g_slot[idx].load() & gate::detail::kResolvedBit) == 0);
+}
+
+TEST_CASE("a cached row keeps its value until invalidate") {
+    constexpr std::size_t idx = gate::detail::indexOf("MC2_LIGHT_GRID_DIM");
+    REQUIRE_FALSE(gate::tableData()[idx].reread);
+    EnvVar env("MC2_LIGHT_GRID_DIM");
+    gate::invalidate("MC2_LIGHT_GRID_DIM");
+    env.set("32");
+    CHECK(gate::get<"MC2_LIGHT_GRID_DIM">() == 32);
+    env.set("48");
+    CHECK(gate::get<"MC2_LIGHT_GRID_DIM">() == 32);
+    gate::invalidate("MC2_LIGHT_GRID_DIM");
+    CHECK(gate::get<"MC2_LIGHT_GRID_DIM">() == 48);
+    env.set(nullptr);
+    gate::invalidate("MC2_LIGHT_GRID_DIM");
 }
 
 TEST_CASE("invalidateAll keeps pre-main values and the dump flags the ones that went stale") {

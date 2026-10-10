@@ -20,6 +20,8 @@
 
 #include "gos_terrain_lighting.h"
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
+#include "utils/mc2log.h"       // LOGGING-FACADE-P2: MC2_EVENT for the structured [TAG vN] lines
+#include "Gates/gate.h"          // typed gate registry: gate::get<"MC2_X">()
 
 #include "gos_profiler.h"  // ZoneScopedN, TracyGpuZone
 
@@ -56,7 +58,7 @@ extern bool  useFog;           // defined in mclib/terrain.cpp
 // Step 8c). Deltas ~0 stock: binary clamp (MinHaze==MaxClip==50000) on both
 // sides; GetApproximateLength->length() only diverges if setFarClipDistance
 // reshapes the haze band. Retire in Step 8c.
-static const bool s_hazeParity = (getenv("MC2_HAZE_PARITY") != nullptr);
+static const bool s_hazeParity = mc2::gate::get<"MC2_HAZE_PARITY">();
 static double  s_hazeParityMaxAbsDelta = 0.0;
 static uint64_t s_hazeParityViolations = 0;
 static uint64_t s_hazeParitySummaryFrames = 0;
@@ -88,15 +90,12 @@ namespace gos_terrain_lighting {
 // scaffold) → eda2431 (Stage 2 parity-clean math) → ff8de07 (Stage 3
 // consumer flip) → THIS COMMIT (Stage 5 default-on).
 bool IsEnabled() {
-    static const bool s_enabled = [] {
-        const char* env = getenv("MC2_TERRAIN_LIGHTING_GPU");
-        return (env == nullptr) || (env[0] != '0');
-    }();
+    static const bool s_enabled = mc2::gate::get<"MC2_TERRAIN_LIGHTING_GPU">();
     return s_enabled;
 }
 
 bool IsParityCheckEnabled() {
-    static const bool s_parity = (getenv("MC2_TERRAIN_LIGHTING_PARITY") != nullptr);
+    static const bool s_parity = mc2::gate::get<"MC2_TERRAIN_LIGHTING_PARITY">();
     return s_parity;
 }
 
@@ -257,22 +256,14 @@ static float    s_lightGridMin[2]  = {0.0f, 0.0f};
 static float    s_lightGridInvCell[2] = {0.0f, 0.0f};
 
 static bool LightGridEnabled() {
-    static const bool s_on = [] {
-        const char* v = std::getenv("MC2_LIGHT_GRID");
-        return !(v && v[0] == '0');   // default ON; =0 reverts to the linear loop
-    }();
+    // default ON; =0 reverts to the linear loop
+    static const bool s_on = mc2::gate::get<"MC2_LIGHT_GRID">();
     return s_on;
 }
 
 static uint32_t LightGridDimEnv() {
-    static const uint32_t s_dim = [] () -> uint32_t {
-        const char* v = std::getenv("MC2_LIGHT_GRID_DIM");
-        if (v && v[0]) {
-            const long n = std::atol(v);
-            if (n >= 2 && n <= 256) return static_cast<uint32_t>(n);
-        }
-        return 64u;
-    }();
+    // Row: default 64, range(2, 256), out of range falls back to the default.
+    static const uint32_t s_dim = static_cast<uint32_t>(mc2::gate::get<"MC2_LIGHT_GRID_DIM">());
     return s_dim;
 }
 
@@ -652,51 +643,22 @@ bool GetLightGridCpu(LightGridCpu& out) {
 // VK-PARITY-MECH-1: shared object-pool producer (GL upload + VK mech island).
 void GetObjectLightPoolParams(ObjectLightPoolParams* out) {
     if (!out) return;
-    static const bool s_umbrella = []() {
-        const char* v = std::getenv("MC2_TERRAIN_LIGHT_POOLS");
-        return !(v && v[0] == '0');
-    }();
-    static const bool s_objects = []() {
-        const char* v = std::getenv("MC2_LIGHT_POOL_OBJECTS");
-        return !(v && v[0] == '0');   // default ON
-    }();
+    static const bool s_umbrella = mc2::gate::get<"MC2_TERRAIN_LIGHT_POOLS">();
+    static const bool s_objects = mc2::gate::get<"MC2_LIGHT_POOL_OBJECTS">();   // default ON
     // Knob values lockstep with the terrain-chunk consumer defaults
     // (gos_terrain_lod_chunk.cpp / gameos_graphics.cpp overlay path).
-    static const bool s_poolSoft = []() {
-        const char* v = std::getenv("MC2_LIGHT_POOL_SOFT");
-        return !(v && v[0] == '0');
-    }();
-    static const float s_poolMoverDim = []() {
-        const char* s = std::getenv("MC2_LIGHT_POOL_MOVER_DIM");
-        if (!s || !s[0]) return 0.25f;
-        float f = (float)std::atof(s);
-        return (f >= 0.0f && f <= 1.0f) ? f : 0.25f;
-    }();
-    static const float s_poolMoverRadius = []() {
-        const char* s = std::getenv("MC2_LIGHT_POOL_MOVER_RADIUS");
-        if (!s || !s[0]) return 0.6f;
-        float f = (float)std::atof(s);
-        return (f > 0.0f && f <= 1.0f) ? f : 0.6f;
-    }();
-    static const bool s_poolMoverMax = []() {
-        const char* v = std::getenv("MC2_LIGHT_POOL_MOVER_MAXBLEND");
-        return !(v && v[0] == '0');
-    }();
-    static const bool s_poolCompress = []() {
-        const char* v = std::getenv("MC2_LIGHT_POOL_COMPRESS");
-        return !(v && v[0] == '0');
-    }();
+    static const bool s_poolSoft = mc2::gate::get<"MC2_LIGHT_POOL_SOFT">();
+    // Rows: MOVER_DIM default 0.25 range(0, 1); MOVER_RADIUS default 0.6 range (0, 1] (exclusive lower
+    // bound); out of range falls back to the default.
+    static const float s_poolMoverDim = mc2::gate::get<"MC2_LIGHT_POOL_MOVER_DIM">();
+    static const float s_poolMoverRadius = mc2::gate::get<"MC2_LIGHT_POOL_MOVER_RADIUS">();
+    static const bool s_poolMoverMax = mc2::gate::get<"MC2_LIGHT_POOL_MOVER_MAXBLEND">();
+    static const bool s_poolCompress = mc2::gate::get<"MC2_LIGHT_POOL_COMPRESS">();
     // POOL-CONSUMERS-1: object-side intensity scale (objects hold baked light
     // rows already; keep the additive pool below the terrain level so the
     // composite stays atmospheric, not floodlit). MC2_LIGHT_POOL_OBJ_SCALE
     // override (default 0.7, clamp [0,2]; 0 behaves like the sub-gate off).
-    static const float s_objScale = []() {
-        const char* s = std::getenv("MC2_LIGHT_POOL_OBJ_SCALE");
-        float f = (s && s[0]) ? (float)std::atof(s) : 0.7f;
-        if (f < 0.0f) f = 0.0f;
-        if (f > 2.0f) f = 2.0f;
-        return f;
-    }();
+    static const float s_objScale = mc2::gate::get<"MC2_LIGHT_POOL_OBJ_SCALE">();   // row: default 0.7, clampRange(0, 2)
 
     out->count      = 0;
     out->pool       = nullptr;
@@ -848,14 +810,8 @@ void mission_init(uint32_t numVertices, uint32_t maxLights) {
     // headroom default here (rather than at the two call sites) so the cap is
     // owned in one place; MC2_LIGHT_POOL_MAX overrides without a rebuild.
     {
-        static const uint32_t s_capOverride = []() -> uint32_t {
-            const char* v = std::getenv("MC2_LIGHT_POOL_MAX");
-            if (v && v[0]) {
-                const long n = std::atol(v);
-                if (n > 0 && n <= 4096) return static_cast<uint32_t>(n);
-            }
-            return 0u;   // unset -> use the built-in default below
-        }();
+        // Row: default 0 (use the built-in default below), range(0, 4096).
+        static const uint32_t s_capOverride = static_cast<uint32_t>(mc2::gate::get<"MC2_LIGHT_POOL_MAX">());
         const uint32_t defaultCap = 256u;
         const uint32_t want = s_capOverride ? s_capOverride : defaultCap;
         if (want > s_maxLights) s_maxLights = want;
@@ -1186,10 +1142,11 @@ void PackAndDispatch() {
             s_hazeParityViolations += hpFrameViol;
             ++s_hazeParitySummaryFrames;
             if (s_hazeParitySummaryFrames % 600 == 0) {
-                printf("[HAZE_PARITY v1] event=summary frames=%llu max_abs_delta=%g violations=%llu\n",
-                       (unsigned long long)s_hazeParitySummaryFrames,
-                       s_hazeParityMaxAbsDelta,
-                       (unsigned long long)s_hazeParityViolations);
+                MC2_EVENT_OUT(Terrain, "HAZE_PARITY", 1,
+                    "event=summary frames={} max_abs_delta={:g} violations={}",
+                    static_cast<unsigned long long>(s_hazeParitySummaryFrames),
+                    s_hazeParityMaxAbsDelta,
+                    static_cast<unsigned long long>(s_hazeParityViolations));
                 fflush(stdout);
             }
         }
@@ -1220,10 +1177,7 @@ void PackAndDispatch() {
         // pools rendered at red sensor-blip positions of UNSEEN enemies
         // (positional intel leak) and off-screen lights burned pool budget.
         // Skip !active — legacy parity. Killswitch MC2_LIGHT_POOL_VIS_GATE=0.
-        static const bool s_visGate = []() {
-            const char* v = std::getenv("MC2_LIGHT_POOL_VIS_GATE");
-            return !(v && v[0] == '0');   // default ON
-        }();
+        static const bool s_visGate = mc2::gate::get<"MC2_LIGHT_POOL_VIS_GATE">();   // default ON
         // NIGHT-LIGHT-POOLS-2a: mover-light classification for the pool
         // consumer (frag dims mover pools; the compute vertex-lighting
         // consumer ignores the pad field — no legacy deviation). Slot tags
@@ -1247,40 +1201,20 @@ void PackAndDispatch() {
             return false;
         };
         // LIGHT-REALISM-1: pool-shape knobs (see the reshape block below).
-        // Each std::getenv literal is kept on its own line so the flag-registry
-        // sweep + check-env-registry see the readers.
-        static const bool s_lightRealism = []() {
-            const char* v = std::getenv("MC2_LIGHT_REALISM");
-            // CONE-SPILL-POLICY-1: default ON (user-approved variant B; free
-            // with MC2_LIGHT_GRID=1 per PERF-HARNESS-TRUTH-1). =0 reverts.
-            // Keep in lockstep with mclib/cone_glow.cpp realism_enabled().
-            return !(v && v[0] == '0');
-        }();
-        static const float s_lightRealismPoolSpill = []() {
-            const char* v = std::getenv("MC2_LIGHT_REALISM_POOL_SPILL");
-            float f = 2.2f;   // AUDIT-TRUTH-1: variant B (user-approved; A was 1.6)
-            if (v && v[0]) f = static_cast<float>(std::atof(v));
-            if (f < 0.25f) f = 0.25f;
-            if (f > 4.0f)  f = 4.0f;
-            return f;
-        }();
-        static const float s_lightRealismPoolCore = []() {
-            const char* v = std::getenv("MC2_LIGHT_REALISM_POOL_CORE");
-            float f = 0.0f;   // AUDIT-TRUTH-1: variant B (user-approved; A was 0.15)
-            if (v && v[0]) f = static_cast<float>(std::atof(v));
-            if (f < 0.0f) f = 0.0f;
-            if (f > 1.0f) f = 1.0f;
-            return f;
-        }();
+        // CONE-SPILL-POLICY-1: default ON (user-approved variant B; free
+        // with MC2_LIGHT_GRID=1 per PERF-HARNESS-TRUTH-1). =0 reverts.
+        // Keep in lockstep with mclib/cone_glow.cpp realism_enabled().
+        static const bool s_lightRealism = mc2::gate::get<"MC2_LIGHT_REALISM">();
+        // AUDIT-TRUTH-1 variant B (user-approved; A was 1.6): row default 2.2, clampRange(0.25, 4).
+        static const float s_lightRealismPoolSpill = mc2::gate::get<"MC2_LIGHT_REALISM_POOL_SPILL">();
+        // AUDIT-TRUTH-1 variant B (user-approved; A was 0.15): row default 0, clampRange(0, 1).
+        static const float s_lightRealismPoolCore = mc2::gate::get<"MC2_LIGHT_REALISM_POOL_CORE">();
         // GHOST-LIGHT-DUMP-1 (batch-7 item 5, env MC2_LIGHT_POOL_DUMP=1):
         // periodic dump of every light the pool pack ACCEPTS this frame, with
         // world-light slot + (E)-owner attribution (mc2_spotlight_diag), so a
         // rendered pool with no visible caster can be traced to its owner.
         // Default-off, zero cost when unset.
-        static const bool s_poolDump = []() {
-            const char* v = std::getenv("MC2_LIGHT_POOL_DUMP");
-            return (v && v[0] == '1');
-        }();
+        static const bool s_poolDump = mc2::gate::get<"MC2_LIGHT_POOL_DUMP">();
         static unsigned long s_poolDumpFrame = 0;
         const bool dumpThisFrame = s_poolDump && ((s_poolDumpFrame++ % 240) == 0);
         std::unordered_map<const void*, long> ptrToSlot;
@@ -1288,9 +1222,10 @@ void PackAndDispatch() {
             if (TG_LightPtr* wl = eye->getWorldLights())
                 for (long s = 0; s < MAX_LIGHTS_IN_WORLD; ++s)
                     if (wl[s]) ptrToSlot[wl[s]] = s;
-            std::fprintf(stderr,
-                "[LIGHT_POOL_DUMP v1] frame_tick=%lu isNight=%d nTerrainLights=%ld\n",
-                s_poolDumpFrame, eye->isNight ? 1 : 0, eye->getNumTerrainLights());
+            MC2_EVENT(Terrain, "LIGHT_POOL_DUMP", 1,
+                "frame_tick={} isNight={} nTerrainLights={}",
+                static_cast<unsigned long>(s_poolDumpFrame), eye->isNight ? 1 : 0,
+                static_cast<long>(eye->getNumTerrainLights()));
         }
         const long nLights = eye->getNumTerrainLights();
         // LIGHT-POOL-CAP-1: measure real DEMAND, not just what fit. The loop no
@@ -1308,17 +1243,18 @@ void PackAndDispatch() {
                 if (its != ptrToSlot.end()) slot = its->second;
                 mc2_spotlight_diag::SourceClass src;
                 const bool eOwned = mc2_spotlight_diag::is_e_slot(slot, &src);
-                std::fprintf(stderr,
-                    "[LIGHT_POOL_DUMP v1] idx=%ld slot=%ld type=%ld active=%d ownerEnabled=%d "
-                    "pos=(%.1f,%.1f,%.1f) argb=%08lx far=%.0f class=%s owner=%p packed=%d\n",
-                    i, slot, (long)tl->lightType, tl->active ? 1 : 0,
-                    (int)tl->ownerEnabled,
+                // owner prints like printf %p on MSVC x64: 16 upper-case hex digits, no 0x.
+                MC2_EVENT(Terrain, "LIGHT_POOL_DUMP", 1,
+                    "idx={} slot={} type={} active={} ownerEnabled={} "
+                    "pos=({:.1f},{:.1f},{:.1f}) argb={:08x} far={:.0f} class={} owner={:016X} packed={}",
+                    static_cast<long>(i), static_cast<long>(slot), static_cast<long>(tl->lightType),
+                    tl->active ? 1 : 0, static_cast<int>(tl->ownerEnabled),
                     tl->position.x, tl->position.y, tl->position.z,
-                    (unsigned long)tl->GetaRGB(), tl->farDistance,
+                    static_cast<unsigned long>(tl->GetaRGB()), tl->farDistance,
                     eOwned ? (src == mc2_spotlight_diag::Bldg ? "bldg"
                               : src == mc2_spotlight_diag::Mech ? "mech" : "gv")
                            : "other",
-                    mc2_spotlight_diag::slot_owner(slot),
+                    reinterpret_cast<std::uintptr_t>(mc2_spotlight_diag::slot_owner(slot)),
                     (!s_visGate || tl->active) ? 1 : 0);
                 std::fflush(stderr);
             }
@@ -1675,10 +1611,9 @@ static void Parity_PrintMismatch(uint64_t frame, int vn, const char* field,
     if (s_parityMismatchesThisFrame >= 16) return;  // throttle 16/frame
     ++s_parityMismatchesThisFrame;
     ++s_paritySummaryMismatches;
-    fprintf(stderr,
-            "[TERRAIN_LIGHTING_PARITY v1] event=mismatch frame=%llu vertex=%d "
-            "field=%s legacy=0x%08X gpu=0x%08X\n",
-            (unsigned long long)frame, vn, field ? field : "?", legacy, gpu);
+    MC2_EVENT(Terrain, "TERRAIN_LIGHTING_PARITY", 1,
+              "event=mismatch frame={} vertex={} field={} legacy=0x{:08X} gpu=0x{:08X}",
+              static_cast<unsigned long long>(frame), vn, field ? field : "?", legacy, gpu);
     fflush(stderr);
 }
 
@@ -1724,10 +1659,10 @@ void Parity_CompareFrame(TerrainQuad* quadList, int numberQuads,
 
     // 600-frame summary (mirrors gos_terrain_indirect.cpp:291 pattern)
     if (s_paritySummaryFrames % 600 == 0) {
-        fprintf(stderr,
-                "[TERRAIN_LIGHTING_PARITY v1] event=summary frames=%lld "
-                "verts_checked=%lld total_mismatches=%lld\n",
-                s_paritySummaryFrames, s_paritySummaryVerts, s_paritySummaryMismatches);
+        MC2_EVENT(Terrain, "TERRAIN_LIGHTING_PARITY", 1,
+                  "event=summary frames={} verts_checked={} total_mismatches={}",
+                  static_cast<long long>(s_paritySummaryFrames), static_cast<long long>(s_paritySummaryVerts),
+                  static_cast<long long>(s_paritySummaryMismatches));
         fflush(stderr);
     }
 }

@@ -7,9 +7,11 @@
 //
 // User-validated mc2_10 60s 2026-05-22 with Modern: no red-band, no false-
 // rejects, quadSetupTextures Tracy bucket 1.75ms -> 1.65ms.
+#include "Gates/gate.h"
+
 namespace mc2_terrain_admission {
 inline bool isModern() {
-    static const bool s = (getenv("MC2_TERRAIN_ADMISSION_LEGACY") == nullptr);
+    static const bool s = !mc2::gate::get<"MC2_TERRAIN_ADMISSION_LEGACY">();
     return s;
 }
 } // namespace mc2_terrain_admission
