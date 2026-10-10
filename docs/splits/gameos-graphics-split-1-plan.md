@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # GAMEOS-GRAPHICS-SPLIT-1 — extraction plan (recon 2026-07-05)
 
 Source: read-only recon of `GameOS/gameos/gameos_graphics.cpp` (~9k lines). Execute
