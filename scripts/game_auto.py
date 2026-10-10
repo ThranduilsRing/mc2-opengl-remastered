@@ -2,7 +2,7 @@
 
 Usage:
   python game_auto.py launch           # start mc2.exe in background
-  python game_auto.py kill             # taskkill mc2.exe
+  python game_auto.py kill             # end the game this tool launched
   python game_auto.py running          # print YES/NO
   python game_auto.py record <file>    # record clicks/keys into a script file
   python game_auto.py key <name> [hold_ms]
@@ -29,9 +29,11 @@ Recorder notes:
 """
 import atexit
 import ctypes
+import os
 import sys
 import time
 import subprocess
+import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -85,8 +87,8 @@ def _warp(x: int, y: int) -> None:
         return
     _CURSOR_MOVED = True
 
-GAME_EXE = r"A:\Games\mc2-opengl\mc2-win64-v0.1.1\mc2.exe"
-GAME_DIR = r"A:\Games\mc2-opengl\mc2-win64-v0.1.1"
+GAME_EXE = r"A:\Games\mc2-opengl\mc2-win64-v0.4\mc2.exe"
+GAME_DIR = r"A:\Games\mc2-opengl\mc2-win64-v0.4"
 _PYAUTOGUI = None
 KEYEVENTF_KEYUP = 0x0002
 MOUSEEVENTF_LEFTDOWN = 0x0002
@@ -95,12 +97,28 @@ MOUSEEVENTF_RIGHTDOWN = 0x0008
 MOUSEEVENTF_RIGHTUP = 0x0010
 
 
+# The pid of the game THIS tool launched. kill() ends only that process: an image-name kill would
+# also end a game the owner or another lane is running.
+PID_FILE = os.path.join(tempfile.gettempdir(), "game_auto.pid")
+
+
+def _own_pid():
+    try:
+        with open(PID_FILE, "r", encoding="ascii") as fh:
+            return int(fh.read().strip())
+    except (OSError, ValueError):
+        return None
+
+
 def running() -> bool:
+    pid = _own_pid()
+    if pid is None:
+        return False
     try:
         out = subprocess.check_output(
-            ["tasklist", "/FI", "IMAGENAME eq mc2.exe", "/NH"],
+            ["tasklist", "/FI", f"PID eq {pid}", "/NH"],
             stderr=subprocess.DEVNULL,
-            text=True,
+            text=True, **nofocus.hidden_kwargs(),
         )
         return "mc2.exe" in out
     except Exception:
@@ -119,13 +137,21 @@ def launch():
     # parked at (-32000,-32000). Declaring it makes nofocus REFUSE the launch
     # unless MC2_HARNESS_ALLOW_FOREGROUND=1, which is the correct outcome:
     # driving the game by synthetic input IS a user-present activity.
-    nofocus.spawn([GAME_EXE], cwd=GAME_DIR, creationflags=0x00000008,
-                  offscreen=False)
+    proc = nofocus.spawn([GAME_EXE], cwd=GAME_DIR, creationflags=0x00000008,
+                         offscreen=False)
+    with open(PID_FILE, "w", encoding="ascii") as fh:
+        fh.write(str(proc.pid))
     print("launched")
 
 
 def kill():
-    subprocess.run(["taskkill", "/F", "/IM", "mc2.exe"], stderr=subprocess.DEVNULL)
+    pid = _own_pid()
+    if pid is None:
+        print("nothing launched by this tool")
+        return
+    subprocess.run(["taskkill", "/F", "/PID", str(pid)], stderr=subprocess.DEVNULL,
+                   stdout=subprocess.DEVNULL, **nofocus.hidden_kwargs())
+    os.remove(PID_FILE)
     print("killed")
 
 

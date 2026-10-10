@@ -730,6 +730,24 @@ def main():
               f"proceeding without leasing (--no-lease behavior)", file=sys.stderr)
         _lease_available = False
 
+    # ----- Exe guard: never launch an exe that cannot stay off the desktop ----
+    # Runs BEFORE any lease is taken, so a refused exe never holds a folder, and its first
+    # line names the exe and the commit compiled into it. --verify-only launches nothing
+    # and may inspect any install.
+    if not args.verify_only:
+        _pre_exe = args.exe
+        if _pre_exe is None and _lease_available:
+            _names = dict(_deploy_lease.DEPLOY_FOLDERS)
+            _lane = args.deploy or _deploy_lease._WALK_LANES[0]
+            if _lane in _names:
+                _pre_exe = str(Path(_names[_lane]) / "mc2.exe")
+        if _pre_exe is not None and Path(_pre_exe).exists():
+            _exe_verdict = _exe_guard.check_exe(_pre_exe, purpose="smoke")
+            print(_exe_verdict.banner(), file=sys.stderr, flush=True)
+            if not _exe_verdict.ok:
+                print(_exe_verdict.refusal(), file=sys.stderr, flush=True)
+                sys.exit(7)
+
     if not _lease_available or args.no_lease:
         # No-lease path: --exe is REQUIRED here (no default fallback anymore).
         if args.exe is None:
@@ -801,18 +819,8 @@ def main():
               "This is a bug — pass --exe explicitly to work around.", file=sys.stderr)
         sys.exit(6)
 
-    # ----- Exe guard: never launch an exe that cannot stay off the desktop ----
-    # The first runner line names the exe and the commit it was built from, so
-    # a log always shows which install a verdict is about. --verify-only
-    # launches nothing and may inspect any install.
-    if not args.verify_only:
-        _exe_verdict = _exe_guard.check_exe(args.exe, purpose="smoke")
-        print(_exe_verdict.banner(), file=sys.stderr, flush=True)
-        if not _exe_verdict.ok:
-            print(_exe_verdict.refusal(), file=sys.stderr, flush=True)
-            sys.exit(7)
-        if args.resolve_only:
-            sys.exit(0)
+    if args.resolve_only:
+        sys.exit(0)
 
     # ----- Deploy-coherence verify (preflight) ---------------------------
     # The target dir run_smoke would launch from = parent of --exe. We call

@@ -37,13 +37,6 @@ KEYEVENTF_KEYUP = 0x0002
 _user32 = ctypes.windll.user32
 
 
-def _kill_mc2():
-    subprocess.run(["taskkill", "/F", "/IM", "mc2.exe"],
-                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                   **nofocus.hidden_kwargs())
-    time.sleep(1)
-
-
 def _park_cursor_center():
     """Keep the cursor out of MC2's edge-scroll bands.
 
@@ -106,7 +99,6 @@ def run(exe: Path, mission: str, duration: int, screenshot_at: int,
         profile: str, artifact_dir: Path) -> dict:
     log_path = artifact_dir / f"{mission}.log"
     shot_path = artifact_dir / f"{mission}.png"
-    _kill_mc2()
     _park_cursor_center()
     env = os.environ.copy()           # inherits MC2_VPL_CULL=1 etc. from caller
     env["MC2_SMOKE_MODE"] = "1"

@@ -76,6 +76,7 @@ except ImportError:    # imported as top-level smoke_lib with scripts/ on sys.pa
 
 __all__ = [
     "DesktopOccupancyRefused",
+    "ExeRefused",
     "NOFOCUS_ENV",
     "OFFSCREEN_ENV",
     "SMALL_WINDOW_ENV",
@@ -427,6 +428,28 @@ def park_window_offscreen(pid: int, timeout_s: float = 3600.0,
     return t
 
 
+class ExeRefused(RuntimeError):
+    """The engine exe cannot keep itself off the user's desktop (see smoke_lib/exe_guard.py)."""
+
+
+def _vet_engine_exe(argv: Sequence[str]) -> None:
+    """Refuse to launch a stale or fingerprint-less mc2.exe / editor exe.
+
+    Every harness launcher goes through spawn()/run(), so this one check covers them all:
+    an exe that predates the background-launch fix sizes its window to the monitor and
+    warps the pointer, and no environment variable can stop that.
+    """
+    try:
+        from . import exe_guard
+    except ImportError:
+        from smoke_lib import exe_guard
+    if not argv or exe_guard.engine_kind(argv[0]) is None:
+        return
+    verdict = exe_guard.check_exe(argv[0], purpose="spawn")
+    if not verdict.ok:
+        raise ExeRefused(verdict.refusal())
+
+
 def spawn(argv: Sequence[str], *, show_window: bool = False,
           offscreen: "Optional[bool]" = None, small_window: bool = True,
           env: "Optional[dict]" = None, **kw) -> "subprocess.Popen":
@@ -458,6 +481,7 @@ def spawn(argv: Sequence[str], *, show_window: bool = False,
     """
     if offscreen is None:
         offscreen = True
+    _vet_engine_exe(argv)
     proc = subprocess.Popen(
         list(argv),
         env=apply_env(env, small_window=small_window, offscreen=offscreen),
@@ -479,6 +503,7 @@ def run(argv: Sequence[str], *, show_window: bool = False,
     """
     if offscreen is None:
         offscreen = True
+    _vet_engine_exe(argv)
     return subprocess.run(
         list(argv),
         env=apply_env(env, small_window=small_window, offscreen=offscreen),

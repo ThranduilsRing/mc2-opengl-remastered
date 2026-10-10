@@ -66,6 +66,14 @@ only defence that scales is making the two populations declare themselves.
     call. A test suite that ran the real guard took the owner's mouse in 5-10 s
     bursts (2026-10-10).
 
+  RULE 13 -- one vetted launch path, no blanket kills.
+    (a) nofocus.spawn() and nofocus.run() must call `_vet_engine_exe`, which calls
+        exe_guard.check_exe: every launcher goes through them, so a stale or
+        fingerprint-less mc2.exe / editor exe is refused in one place.
+    (b) No script may `taskkill /IM` an engine image (mc2.exe, EditRel.exe,
+        Mission Editor.exe): that ends the owner's own game or another lane's run.
+        Kill the pid you spawned (`proc.kill()`, `taskkill /PID`).
+
 OWNER RULE (2026-10-09, after a launch stole focus and the mouse while two lanes
 were smoking and capturing): the game/editor must ALWAYS launch in the
 background. That turns RULE 1 from "has a STARTUPINFO" into "goes through
@@ -606,6 +614,11 @@ def check(root: Path = ROOT, use_git: bool = True):
         if r != "scripts/check-background-launch.py":
             problems.extend(cursor_write_problems(r, tree))
 
+        # ---- RULE 13: vetted launch path, no blanket kills ----
+        if r != "scripts/check-background-launch.py":
+            problems.extend(engine_kill_problems(r, tree))
+        problems.extend(launch_vet_problems(r, tree))
+
         # ---- RULE 12: test trees must disable the real cursor guard ----
         problems.extend(test_cursor_isolation_problems(root, r, tree, src))
 
@@ -1050,6 +1063,20 @@ _SELFTEST_FILES = {
         "from smoke_lib.cursor_guard import CursorGuard\n"
         "def test_x():\n"
         "    CursorGuard().start()\n"),
+    # RULE 13: blanket engine kill / nofocus without the vetting call.
+    "scripts/blanket_kill.py": (
+        "import subprocess\n"
+        "def k():\n"
+        "    subprocess.run(['taskkill', '/F', '/IM', 'mc2.exe'])\n"
+        "def k2(pid):\n"
+        "    subprocess.run(['taskkill', '/F', '/PID', str(pid)])\n"),
+    "scripts/smoke_lib/nofocus.py": (
+        "def _vet_engine_exe(argv):\n"
+        "    return None\n"
+        "def spawn(argv):\n"
+        "    return argv\n"
+        "def run(argv):\n"
+        "    _vet_engine_exe(argv)\n"),
     # RULE 9: shell launcher with and without a marker.
     "launch_bad.bat": "@echo off\nmc2.exe\n",
     "launch_ok.bat": "@echo off\nREM background-launch: allow selftest fixture\nmc2.exe\n",
@@ -1113,12 +1140,59 @@ def selftest() -> int:
                "CursorGuard() in a test with no MC2_CURSOR_GUARD_OFF conftest FAILS (RULE 12)")
         expect(not flagged("tests/fixtured/test_guard.py"),
                "CursorGuard() under a conftest that sets MC2_CURSOR_GUARD_OFF passes RULE 12")
+        expect(flagged("scripts/blanket_kill.py", "taskkill /IM"),
+               "taskkill /IM mc2.exe FAILS (RULE 13b)")
+        expect(not any(p.startswith("scripts/blanket_kill.py") and ":6:" in p for p in problems),
+               "taskkill /PID <own pid> passes RULE 13b")
+        expect(flagged("scripts/smoke_lib/nofocus.py", "spawn() does not call"),
+               "nofocus.spawn without the exe vetting FAILS (RULE 13a)")
+        expect(flagged("scripts/smoke_lib/nofocus.py", "_vet_engine_exe() does not call"),
+               "a vetting function that never calls check_exe FAILS (RULE 13a)")
+        expect(not flagged("scripts/smoke_lib/nofocus.py", "run() does not call"),
+               "nofocus.run that calls the vetting passes RULE 13a")
         expect(flagged("launch_bad.bat", "shell launcher"),
                ".bat engine launcher without a marker FAILS (RULE 9)")
         expect(not flagged("launch_ok.bat"), ".bat engine launcher with marker passes")
         del text
     print("[background-launch] selftest " + ("PASS" if ok else "FAIL"))
     return 0 if ok else 1
+
+
+ENGINE_IMAGE_NAMES = ("mc2.exe", "editrel.exe", "mission editor.exe")
+NOFOCUS_FILE = "scripts/smoke_lib/nofocus.py"
+LAUNCH_VET_FUNC = "_vet_engine_exe"
+
+
+def engine_kill_problems(rel: str, tree: ast.AST) -> list:
+    """RULE 13b: an image-name kill of an engine exe."""
+    out = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        strs = [c.value.casefold() for c in ast.walk(node) if isinstance(c, ast.Constant) and isinstance(c.value, str)]
+        if "taskkill" in strs and "/im" in strs and any(n in strs for n in ENGINE_IMAGE_NAMES):
+            out.append(f"{rel}:{node.lineno}: taskkill /IM of an engine exe ends every running game, "
+                       f"including the owner's. Kill only the pid you spawned.")
+    return out
+
+
+def launch_vet_problems(rel: str, tree: ast.AST) -> list:
+    """RULE 13a: nofocus.spawn()/run() must call the shared exe vetting."""
+    if rel != NOFOCUS_FILE:
+        return []
+    funcs = {f.name: f for f in ast.walk(tree) if isinstance(f, ast.FunctionDef)}
+    out = []
+    for name in ("spawn", "run"):
+        fn = funcs.get(name)
+        if fn is None or not any(isinstance(c, ast.Call) and call_name(c).rsplit(".", 1)[-1] == LAUNCH_VET_FUNC
+                                 for c in ast.walk(fn)):
+            out.append(f"{rel}: {name}() does not call {LAUNCH_VET_FUNC}(); every launcher relies on it to refuse "
+                       f"a stale exe.")
+    vet = funcs.get(LAUNCH_VET_FUNC)
+    if vet is None or not any(isinstance(c, ast.Call) and call_name(c).rsplit(".", 1)[-1] == "check_exe"
+                              for c in ast.walk(vet)):
+        out.append(f"{rel}: {LAUNCH_VET_FUNC}() does not call exe_guard.check_exe().")
+    return out
 
 
 TEST_CURSOR_APIS = ("CursorGuard", "park_cursor_if_edge", "ClipCursor")
