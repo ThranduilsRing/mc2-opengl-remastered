@@ -17,5 +17,5 @@
   "void GetNextLine (char *rawData, char *result);   // defined in msl.cpp",
   "extern std::atomic<int> g_workerResubmitCalls;   // defined in msl.cpp; counts worker-thread resubmits"
  ],
- "split_commit": "PENDING"
+ "split_commit": "d8ba94970"
 }

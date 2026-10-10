@@ -328,6 +328,19 @@ Split commit: `de0dbab39`.
 | `mech3d_update.cpp` | Mech3DAppearance: Mech3DAppearance::update, arm destruction, smoke, water wake and ejection. |
 | `mech3d_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
+## `mclib/msl.cpp`
+
+Split commit: `d8ba94970`.
+
+| Piece | What it holds |
+|---|---|
+| `msl.cpp` | keeps the include bundle's globals, the line parser, TG_TypeMultiShape::CreateFrom and the allocators |
+| `msl_anim.cpp` | Multi shape layer: TG_AnimateShape and _TG_Animation: binary load / save, ASE animation import and animation state. |
+| `msl_load.cpp` | Multi shape layer: TG_TypeMultiShape loading: binary copy, ASE import, texture setup, save and destroy, with the asset-load audit events. |
+| `msl_shape.cpp` | Multi shape layer: TG_MultiShape texture handles, node rotation and position queries, light list, render, shadows, detach and child tests. |
+| `msl_transform.cpp` | Multi shape layer: TG_MultiShape::TransformMultiShape (and its variants) and the GPU light-data cache. |
+| `msl_internal.h` | shared include bundle, extern globals and declarations of the pieces |
+
 ## `mclib/quad.cpp`
 
 Split commit: `08c557e04`.
