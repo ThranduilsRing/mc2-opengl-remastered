@@ -181,7 +181,8 @@ CPP_FLOOR_GATES = (
     ("mclib/camera.cpp", "MC2_NIGHT_AMBIENT_FLOOR"),
     ("mclib/txmmgr.cpp", "MC2_VEHICLE_AMBIENT_FLOOR"),
 )
-RE_GETENV = re.compile(r'getenv\(\s*"([A-Z0-9_]+)"\s*\)')
+# A getenv("MC2_X") read or a typed gate::get<"MC2_X">() read: either names the gate the file still reads.
+RE_GETENV = re.compile(r'(?:getenv\(\s*|\b(?:get|state|isSet|str|is)\s*<\s*)"([A-Z0-9_]+)"')
 
 
 def scan(verbose_sink=None):

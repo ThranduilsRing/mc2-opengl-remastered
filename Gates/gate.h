@@ -193,6 +193,14 @@ template <Name n>
     return (detail::flagsOf(detail::load(idx)) & detail::fSet) != 0;
 }
 
+// Present and not empty (the old `v && v[0]` test), whatever the row's kind.
+template <Name n>
+[[nodiscard]] inline bool isNonEmpty() noexcept {
+    constexpr std::size_t idx = detail::indexOf(n.sv());
+    static_assert(idx != detail::kNpos, "gate::isNonEmpty<>: name is not in the gate table (Gates/gate_table.cpp)");
+    return (detail::flagsOf(detail::load(idx)) & detail::fNonEmpty) != 0;
+}
+
 // Enum row: does the current value equal token `tok`? The token is checked at compile time.
 template <Name n, Name tok>
 [[nodiscard]] inline bool is() noexcept {

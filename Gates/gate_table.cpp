@@ -159,7 +159,7 @@ L(Lead0Kill, "MC2_CEMENT_ALPHA_ATLAS", Bool, true, "terrain", "", "DEFAULT ON si
 G("MC2_CEMENT_ATLAS_DUMP", String, "", "terrain", "", "CEMENT-ATLAS-CELL-2: dump the assembled cement/road overlay atlas so cell art can be inspected directly -- which cells actually carry painted markings is an...", passthrough | registry(Trace, "MC2_TRACE_CEMENT_ATLAS_DUMP", -1, false) | verified),
 // history: docs/gate-history.md#MC2_CEMENT_ATLAS_MAGENTA_KEY
 L(Lead0, "MC2_CEMENT_ATLAS_MAGENTA_KEY", Bool, false, "terrain", "", "CEMENT-ATLAS-MAGENTA-KEY-1 (MC2-03-CEMENT-PINK-1): solid cement catalog cells reach the atlas via TerrainTextures::textureFromMemory (gos_Texture_Solid)...", passthrough | registry(Feature, "MC2_FEATURE_CEMENT_ATLAS_MAGENTA_KEY", -1, false) | verified),
-L(Lead0Kill, "MC2_CEMENT_ATLAS_SEAM_FIX", Bool, true, "terrain", "", ""),
+L(Lead0Kill, "MC2_CEMENT_ATLAS_SEAM_FIX", Bool, true, "terrain", "", "", verified),
 // history: docs/gate-history.md#MC2_CEMENT_CONCRETE_CANON
 L(Lead0, "MC2_CEMENT_CONCRETE_CANON", Bool, false, "terrain", "", "CEMENT-ATLAS-CELL-2 ARM B: point every plain-concrete tile at ONE canonical concrete cell, so an apron cannot change colour tile to tile at all.", passthrough | registry(Feature, "MC2_FEATURE_CEMENT_CONCRETE_CANON", -1, false) | verified),
 // CEMENT-ATLAS-CELL-2: the two arms of the "concrete shouldn't magically
@@ -168,10 +168,10 @@ L(Lead0, "MC2_CEMENT_CONCRETE_CANON", Bool, false, "terrain", "", "CEMENT-ATLAS-
 L(Lead0, "MC2_CEMENT_CONCRETE_TONE", Bool, false, "terrain", "", "CEMENT-ATLAS-CELL-2 ARM A: tone-normalise ONLY the actual-concrete atlas cells.", passthrough | registry(Feature, "MC2_FEATURE_CEMENT_CONCRETE_TONE", -1, false) | verified),
 // RUNWAY-APRON-TONE-2: cross-map absolute runway/apron tone normalisation.
 // history: docs/gate-history.md#MC2_CEMENT_LIT
-P("MC2_CEMENT_LIT", Float, 0.0, "terrain", "", "RUNWAY-APRON-TONE-2 (user report, mc2_10 @ bookmark 204937): 0..1 share of the terrain lighting term that CEMENT fragments obey; default 0.0 == stock fully...", passthrough | clampRange(0.0, 1.0) | registry(Feature, "MC2_FEATURE_CEMENT_LIT", -1, false)),
+P("MC2_CEMENT_LIT", Float, 0.0, "terrain", "", "RUNWAY-APRON-TONE-2 (user report, mc2_10 @ bookmark 204937): 0..1 share of the terrain lighting term that CEMENT fragments obey; default 0.0 == stock fully...", passthrough | clampRange(0.0, 1.0) | registry(Feature, "MC2_FEATURE_CEMENT_LIT", -1, false) | verified),
 L(Lead0Kill, "MC2_CEMENT_MISSION_LIGHT", Bool, true, "gameos", "", ""),
 // history: docs/gate-history.md#MC2_CEMENT_RAMP_WORD
-L(Lead0, "MC2_CEMENT_RAMP_WORD", Bool, false, "terrain", "", "CEMENT-WORD-RAMP-1: the ALBEDO-side cure for the project's longest-running user complaint, the dark outlines around every concrete pad and taxiway...", passthrough | registry(Feature, "MC2_FEATURE_CEMENT_RAMP_WORD", -1, false)),
+L(Lead0, "MC2_CEMENT_RAMP_WORD", Bool, false, "terrain", "", "CEMENT-WORD-RAMP-1: the ALBEDO-side cure for the project's longest-running user complaint, the dark outlines around every concrete pad and taxiway...", passthrough | registry(Feature, "MC2_FEATURE_CEMENT_RAMP_WORD", -1, false) | verified),
 // MC2-03-CEMENT-PINK-1: cement catalog atlas post-processing (build-time, CPU).
 // CEMENT-INTRACELL-1 (ARM C): make the concrete arms obey the user's own
 // scope ruling by detecting the BAKED ROAD ART inside solid cement cells.
@@ -363,7 +363,7 @@ L(Presence, "MC2_GEOM_PHASE_SPLIT", Bool, false, "terrain", "", "", passthrough 
 L(Presence, "MC2_GLSTATEGUARD_LOG", Bool, false, "gameos", "", "GLSTATEGUARD-SLICE-1: leak-visibility for mc2gl::GlScopedSsboBinding (gl_state_guard.h).", passthrough | registry(Trace, "MC2_GLSTATEGUARD_LOG", -1, false)),
 // GLSTATEGUARD-SLICE-2
 // history: docs/gate-history.md#MC2_GLSTATEGUARD_TERRAIN
-L(DefOnAtoiNZ, "MC2_GLSTATEGUARD_TERRAIN", Bool, true, "terrain", "", "GLSTATEGUARD-SLICE-2: kill-switch for the RAII depth/blend/cull ownership of the terrain LOD chunk draw (gos_TerrainLodChunk_SubmitDrawCommands via...", registry(Feature, "MC2_GLSTATEGUARD_TERRAIN", -1, true)),
+L(DefOnAtoiNZ, "MC2_GLSTATEGUARD_TERRAIN", Bool, true, "terrain", "", "GLSTATEGUARD-SLICE-2: kill-switch for the RAII depth/blend/cull ownership of the terrain LOD chunk draw (gos_TerrainLodChunk_SubmitDrawCommands via...", registry(Feature, "MC2_GLSTATEGUARD_TERRAIN", -1, true) | verified),
 P("MC2_GLTF_AXIS", Int, 0, "props", "", "Coordinate transforms (spec ?6).", reread),
 P("MC2_GLTF_GROUND", Int, 2, "code", "", ""),
 P("MC2_GLTF_YAW_DEG", Float, 0.0, "props", "", "", reread),
@@ -702,7 +702,7 @@ L(Presence, "MC2_MOUSE_RECON", Bool, false, "unclassified", "", "MC2_MOUSE_RECON
 // META-FIX-BATCH-3 (recurrence-proofing, designs A + B — 2026-07-16)
 // history: docs/gate-history.md#MC2_MOVER_COHERENCE_AUDIT
 L(Lead0, "MC2_MOVER_COHERENCE_AUDIT", Bool, false, "code", "", "META-FIX design A runtime tier (code/mission.cpp auditMoverCoherence, ~1 Hz): read-only audit that the five per-mover registries (isOnGUI render gate...", passthrough | registry(Trace, "MC2_TRACE_MOVER_COHERENCE_AUDIT", -1, false)),
-P("MC2_MOVER_CONTACT_SHADOW", Float, 0.0, "terrain", "", "", passthrough | range(0.0, 1.0)),
+P("MC2_MOVER_CONTACT_SHADOW", Float, 0.0, "terrain", "", "", passthrough | range(0.0, 1.0) | verified),
 L(Lead0, "MC2_MOVE_CHUNK_SHADOW", Bool, false, "code", "", "", passthrough),
 L(Lead0, "MC2_MOVE_PATH_CACHE_SHADOW", Bool, false, "code", "", "", passthrough),
 // history: docs/gate-history.md#MC2_MOVE_RECON
@@ -755,8 +755,8 @@ L(Presence, "MC2_OVERLAY_TEXTURE_TRACE", Bool, false, "gameos", "", "", passthro
 // OVERLAY-TILE-HIRES-1: high-resolution terrain overlay tiles.
 // history: docs/gate-history.md#MC2_OVERLAY_TILE_HIRES
 P("MC2_OVERLAY_TILE_HIRES", Int, 0, "terrain", "", "OVERLAY-TILE-HIRES-1: honor the overlay tile TGA's actual dimensions instead of the legacy hard-assumed 64px (initOverlay header resync mirrors...", passthrough | registry(Feature, "MC2_OVERLAY_TILE_HIRES", -1, false)),  // default not derivable from the tree
-P("MC2_PAD_AREA_GLOW", Float, 0.12, "terrain", "", "", passthrough | clampRange(0.0, 4.0)),
-P("MC2_PAD_AREA_GLOW_SPILL", Float, 48.0, "terrain", "", "", passthrough | clampRange(4.0, 127.0)),
+P("MC2_PAD_AREA_GLOW", Float, 0.12, "terrain", "", "", passthrough | clampRange(0.0, 4.0) | verified),
+P("MC2_PAD_AREA_GLOW_SPILL", Float, 48.0, "terrain", "", "", passthrough | clampRange(4.0, 127.0) | verified),
 P("MC2_PAD_EDGE_ROAD_FIX", Int, 1, "terrain", "", "", range(0, 2) | verified),
 L(Presence, "MC2_PARTICLE_FLUSH_STALL_TRACE", Bool, false, "gameos", "", ""),
 L(Presence, "MC2_PATCHSTREAM_DIRECT_TEXTURE_BIND", Bool, false, "terrain", "", "", verified),
@@ -953,7 +953,7 @@ L(Presence, "MC2_SHAPE_C_PARITY_CHECK", Bool, false, "terrain", "", "", passthro
 // kFeatureTable is indexed by RendererFeature, so this entry's position is
 // its enum value (58).
 // history: docs/gate-history.md#MC2_SHORELINE_LEGACY_SUPPRESS
-L(Lead0Kill, "MC2_SHORELINE_LEGACY_SUPPRESS", Bool, true, "terrain", "", "[DEFAULT FLIPPED OFF -> ON by LEGACY-SHORELINE-MISAIM-1 (2026-07-31).", passthrough | registry(Feature, "MC2_SHORELINE_LEGACY_SUPPRESS", 50, true)),
+L(Lead0Kill, "MC2_SHORELINE_LEGACY_SUPPRESS", Bool, true, "terrain", "", "[DEFAULT FLIPPED OFF -> ON by LEGACY-SHORELINE-MISAIM-1 (2026-07-31).", passthrough | registry(Feature, "MC2_SHORELINE_LEGACY_SUPPRESS", 50, true) | verified),
 L(Presence, "MC2_SHOT_RESULTS", Bool, false, "code", "", ""),
 L(Presence, "MC2_SIM_CLOCK_TRACE", Bool, false, "code", "", "", passthrough),
 // ── SIM-IDENTITY-HASH-1 ────────────────────────────────────────────────
@@ -1183,31 +1183,31 @@ L(Presence, "MC2_TERRAIN_ADMISSION_LEGACY", Bool, false, "terrain", "", "", veri
 // reason -- Trace means "diagnostic output only; no correctness effect",
 // which this is not.
 // history: docs/gate-history.md#MC2_TERRAIN_AMBIENT_FLOOR
-P("MC2_TERRAIN_AMBIENT_FLOOR", Float, 0.35, "terrain", "", "TERRAIN-AMBIENT-FLOOR-2: terrain-only, albedo-scaled ambient floor in terrain_lod_chunk.frag.", passthrough | registry(Feature, "MC2_FEATURE_TERRAIN_AMBIENT_FLOOR", -1, true)),
+P("MC2_TERRAIN_AMBIENT_FLOOR", Float, 0.35, "terrain", "", "TERRAIN-AMBIENT-FLOOR-2: terrain-only, albedo-scaled ambient floor in terrain_lod_chunk.frag.", passthrough | registry(Feature, "MC2_FEATURE_TERRAIN_AMBIENT_FLOOR", -1, true) | clampRange(0.0, 2.0) | verified),
 // ── TERRAIN-AMBIENT-FLOOR-NIGHT-1 ──────────────────────────────────────
 // DEFAULT-OFF companion to the row above. Registered as a Feature (not a
 // Trace) because it changes pixels when armed. kAuxEnvVars is not indexed by
 // RendererFeature, so this row's position is free.
 // history: docs/gate-history.md#MC2_TERRAIN_AMBIENT_FLOOR_NIGHT
-P("MC2_TERRAIN_AMBIENT_FLOOR_NIGHT", Float, 0.0, "terrain", "", "TERRAIN-AMBIENT-FLOOR-NIGHT-1: 0..1 FLOOR under TERRAIN-AMBIENT-FLOOR-2's daylight gate; the uploaded gate becomes max(dayGate, floor).", passthrough | registry(Feature, "MC2_FEATURE_TERRAIN_AMBIENT_FLOOR_NIGHT", -1, false)),
+P("MC2_TERRAIN_AMBIENT_FLOOR_NIGHT", Float, 0.0, "terrain", "", "TERRAIN-AMBIENT-FLOOR-NIGHT-1: 0..1 FLOOR under TERRAIN-AMBIENT-FLOOR-2's daylight gate; the uploaded gate becomes max(dayGate, floor).", passthrough | registry(Feature, "MC2_FEATURE_TERRAIN_AMBIENT_FLOOR_NIGHT", -1, false) | clampRange(0.0, 1.0) | verified),
 // history: docs/gate-history.md#MC2_TERRAIN_AMBIENT_FLOOR_TRACE
-L(Presence, "MC2_TERRAIN_AMBIENT_FLOOR_TRACE", Bool, false, "terrain", "", "TERRAIN-AMBIENT-FLOOR-2 trace: prints ONE line at the first terrain-chunk uniform upload giving the resolved floor strength, the daylight gate ACTUALLY...", passthrough | registry(Trace, "MC2_TRACE_TERRAIN_AMBIENT_FLOOR", -1, false)),
-L(Lead0, "MC2_TERRAIN_CEMENT_DIAG_CONNECT", Bool, false, "terrain", "", ""),
+L(Presence, "MC2_TERRAIN_AMBIENT_FLOOR_TRACE", Bool, false, "terrain", "", "TERRAIN-AMBIENT-FLOOR-2 trace: prints ONE line at the first terrain-chunk uniform upload giving the resolved floor strength, the daylight gate ACTUALLY...", passthrough | registry(Trace, "MC2_TRACE_TERRAIN_AMBIENT_FLOOR", -1, false) | verified),
+L(Lead0, "MC2_TERRAIN_CEMENT_DIAG_CONNECT", Bool, false, "terrain", "", "", verified),
 // history: docs/gate-history.md#MC2_TERRAIN_CLIFF_DEBUG
-P("MC2_TERRAIN_CLIFF_DEBUG", Int, 0, "terrain", "", "TERRAIN-CLIFF-DEBUG: bounded debug-viz for the LOD-chunk terrain cliff material path (u_cliffDebug in terrain_lod_chunk.frag).", passthrough | registry(Trace, "MC2_DIAG_TERRAIN_CLIFF_DEBUG", -1, false)),
+P("MC2_TERRAIN_CLIFF_DEBUG", Int, 0, "terrain", "", "TERRAIN-CLIFF-DEBUG: bounded debug-viz for the LOD-chunk terrain cliff material path (u_cliffDebug in terrain_lod_chunk.frag).", passthrough | registry(Trace, "MC2_DIAG_TERRAIN_CLIFF_DEBUG", -1, false) | verified),
 // history: docs/gate-history.md#MC2_TERRAIN_CLIFF_DISPLACE
-L(Lead0, "MC2_TERRAIN_CLIFF_DISPLACE", Bool, false, "terrain", "", "SLICE 3: near-field cliff tessellation on the LOD-chunk terrain path.", passthrough | registry(Feature, "MC2_FEATURE_TERRAIN_CLIFF_DISPLACE", -1, false)),
+L(Lead0, "MC2_TERRAIN_CLIFF_DISPLACE", Bool, false, "terrain", "", "SLICE 3: near-field cliff tessellation on the LOD-chunk terrain path.", passthrough | registry(Feature, "MC2_FEATURE_TERRAIN_CLIFF_DISPLACE", -1, false) | verified),
 // history: docs/gate-history.md#MC2_TERRAIN_CLIFF_DISPLACE_MAXTESS
-P("MC2_TERRAIN_CLIFF_DISPLACE_MAXTESS", Float, 4.0, "terrain", "", "SLICE 3 knob: max tessellation factor (float; C++ default 4.0, clamped to GL_MAX_TESS_GEN_LEVEL at program build).", passthrough | registry(Trace, "MC2_TUNE_TERRAIN_CLIFF_MAXTESS", -1, false)),
+P("MC2_TERRAIN_CLIFF_DISPLACE_MAXTESS", Float, 4.0, "terrain", "", "SLICE 3 knob: max tessellation factor (float; C++ default 4.0, clamped to GL_MAX_TESS_GEN_LEVEL at program build).", passthrough | registry(Trace, "MC2_TUNE_TERRAIN_CLIFF_MAXTESS", -1, false) | verified),
 // history: docs/gate-history.md#MC2_TERRAIN_CLIFF_HEIGHT_NORMAL_STRENGTH
-P("MC2_TERRAIN_CLIFF_HEIGHT_NORMAL_STRENGTH", Float, 2.0, "terrain", "", "TERRAIN-CLIFF-HEIGHT-NORMAL-1 knob (float, default 2.0): derives the cliff SHADING normal from the HEIGHT GRADIENT of the cooked cliff displacement...", passthrough | registry(Trace, "MC2_TUNE_TERRAIN_CLIFF_HEIGHT_NORMAL_STRENGTH", -1, false)),
+P("MC2_TERRAIN_CLIFF_HEIGHT_NORMAL_STRENGTH", Float, 2.0, "terrain", "", "TERRAIN-CLIFF-HEIGHT-NORMAL-1 knob (float, default 2.0): derives the cliff SHADING normal from the HEIGHT GRADIENT of the cooked cliff displacement...", passthrough | registry(Trace, "MC2_TUNE_TERRAIN_CLIFF_HEIGHT_NORMAL_STRENGTH", -1, false) | rangeAbove(0.0, 3.4028234663852886e38) | verified),
 // history: docs/gate-history.md#MC2_TERRAIN_CLIFF_POM
-L(Lead0, "MC2_TERRAIN_CLIFF_POM", Bool, false, "terrain", "", "TERRAIN-CLIFF-POM-1: triplanar Parallax Occlusion Mapping on cliff faces.", passthrough | registry(Feature, "MC2_FEATURE_TERRAIN_CLIFF_POM", -1, false)),
+L(Lead0, "MC2_TERRAIN_CLIFF_POM", Bool, false, "terrain", "", "TERRAIN-CLIFF-POM-1: triplanar Parallax Occlusion Mapping on cliff faces.", passthrough | registry(Feature, "MC2_FEATURE_TERRAIN_CLIFF_POM", -1, false) | verified),
 // history: docs/gate-history.md#MC2_TERRAIN_CLIFF_POM_DEPTH
-P("MC2_TERRAIN_CLIFF_POM_DEPTH", Float, 12.0, "terrain", "", "TERRAIN-CLIFF-POM-1 knob: parallax depth = world-unit rock height scale relative to the CLIFF tiling (ts=256 wu/repeat).", passthrough | registry(Trace, "MC2_TUNE_TERRAIN_CLIFF_POM_DEPTH", -1, false)),
+P("MC2_TERRAIN_CLIFF_POM_DEPTH", Float, 12.0, "terrain", "", "TERRAIN-CLIFF-POM-1 knob: parallax depth = world-unit rock height scale relative to the CLIFF tiling (ts=256 wu/repeat).", passthrough | registry(Trace, "MC2_TUNE_TERRAIN_CLIFF_POM_DEPTH", -1, false) | rangeAbove(0.0, 3.4028234663852886e38) | verified),
 // history: docs/gate-history.md#MC2_TERRAIN_CLIFF_POM_STEPS
-P("MC2_TERRAIN_CLIFF_POM_STEPS", Float, 24.0, "terrain", "", "TERRAIN-CLIFF-POM-1 knob: max POM march layers per plane, clamped 8..32 (default 24; compile-constant loop cap 32).", passthrough | registry(Trace, "MC2_TUNE_TERRAIN_CLIFF_POM_STEPS", -1, false)),
-L(Lead0, "MC2_TERRAIN_CLIFF_SHADOW_FLOOR", Bool, false, "terrain", "", ""),
+P("MC2_TERRAIN_CLIFF_POM_STEPS", Float, 24.0, "terrain", "", "TERRAIN-CLIFF-POM-1 knob: max POM march layers per plane, clamped 8..32 (default 24; compile-constant loop cap 32).", passthrough | registry(Trace, "MC2_TUNE_TERRAIN_CLIFF_POM_STEPS", -1, false) | rangeAbove(0.0, 3.4028234663852886e38) | verified),
+L(Lead0, "MC2_TERRAIN_CLIFF_SHADOW_FLOOR", Bool, false, "terrain", "", "", verified),
 // TERRAIN-CLIFF-MATERIAL-TRIPLANAR-1: world-axis triplanar ROCK NORMAL + relief
 // on steep terrain cells (terrain_lod_chunk.frag useTriplanarCliff branch,
 // gos_terrain_lod_chunk.cpp kTglcCliffTriplanar upload). Samples the merged
@@ -1219,9 +1219,9 @@ L(Lead0, "MC2_TERRAIN_CLIFF_SHADOW_FLOOR", Bool, false, "terrain", "", ""),
 // albedo path. Default OFF -> uploads useTriplanarCliff=0 -> frag block no-op
 // (byte-identical).
 // history: docs/gate-history.md#MC2_TERRAIN_CLIFF_TRIPLANAR
-L(Lead0, "MC2_TERRAIN_CLIFF_TRIPLANAR", Bool, false, "terrain", "", "TERRAIN-CLIFF-MATERIAL-TRIPLANAR-1: on steep terrain cells (macro slope, cliffBlend=smoothstep(0.85,0.55,|macroNz|)), project the MAT_LAYER_MARBLE_CLIFF...", passthrough | registry(Feature, "MC2_FEATURE_TERRAIN_CLIFF_TRIPLANAR", -1, false)),
+L(Lead0, "MC2_TERRAIN_CLIFF_TRIPLANAR", Bool, false, "terrain", "", "TERRAIN-CLIFF-MATERIAL-TRIPLANAR-1: on steep terrain cells (macro slope, cliffBlend=smoothstep(0.85,0.55,|macroNz|)), project the MAT_LAYER_MARBLE_CLIFF...", passthrough | registry(Feature, "MC2_FEATURE_TERRAIN_CLIFF_TRIPLANAR", -1, false) | verified),
 // history: docs/gate-history.md#MC2_TERRAIN_CLIFF_TRIPLANAR_STRENGTH
-P("MC2_TERRAIN_CLIFF_TRIPLANAR_STRENGTH", Float, 1.0, "terrain", "", "TERRAIN-CLIFF-MATERIAL-TRIPLANAR-1 knob: triplanar rock-normal tilt strength (float, default 1.0).", passthrough | registry(Trace, "MC2_TUNE_TERRAIN_CLIFF_TRIPLANAR_STRENGTH", -1, false)),
+P("MC2_TERRAIN_CLIFF_TRIPLANAR_STRENGTH", Float, 1.0, "terrain", "", "TERRAIN-CLIFF-MATERIAL-TRIPLANAR-1 knob: triplanar rock-normal tilt strength (float, default 1.0).", passthrough | registry(Trace, "MC2_TUNE_TERRAIN_CLIFF_TRIPLANAR_STRENGTH", -1, false) | rangeAbove(0.0, 3.4028234663852886e38) | verified),
 // GATE-REGISTRATION-BACKFILL-1 (terrain-V2 catch-up): register terrain-V2
 // arc gates flagged UNREGISTERED by check-new-gates / check-env-registry.
 // TERRAIN-CONTROLMAP-SAMPLE-1: authored RGBA control-map override replacing
@@ -1258,13 +1258,13 @@ P("MC2_TERRAIN_DECAL_SCALE", Float, 1.0, "code", "", "TERRAIN-DECAL-SLICE-0B: un
 L(Presence, "MC2_TERRAIN_DECAL_TRACE", Bool, false, "props", "", "", passthrough),
 // history: docs/gate-history.md#MC2_TERRAIN_DECAL_YAW
 P("MC2_TERRAIN_DECAL_YAW", Float, 0.0, "code", "", "TERRAIN-DECAL-SLICE-0B: yaw rotation (float degrees, default 0.0) of the wall facing/tangent about world-up - corrects the outward-facing direction.", passthrough | registry(Trace, "MC2_TERRAIN_DECAL_YAW", -1, false)),
-L(Lead0, "MC2_TERRAIN_DETAIL_ANTITILE", Bool, false, "terrain", "", ""),
+L(Lead0, "MC2_TERRAIN_DETAIL_ANTITILE", Bool, false, "terrain", "", "", verified),
 P("MC2_TERRAIN_DETAIL_FADE_END", Float, 3000.0, "gameos", "", ""),
 P("MC2_TERRAIN_DETAIL_FADE_START", Float, 1000.0, "gameos", "", ""),
-P("MC2_TERRAIN_DETAIL_LOD1_STRENGTH", Float, 0.4, "terrain", "", ""),
-P("MC2_TERRAIN_DETAIL_MACRO_STRENGTH", Float, 0.0, "terrain", "", "", divergent),  // default not derivable from the tree
-L(Lead0Kill, "MC2_TERRAIN_EDGE_FEATHER", Bool, true, "terrain", "", ""),
-P("MC2_TERRAIN_EDGE_FEATHER_STRENGTH", Float, 1.0, "terrain", "", ""),
+P("MC2_TERRAIN_DETAIL_LOD1_STRENGTH", Float, 0.4, "terrain", "", "", verified),
+P("MC2_TERRAIN_DETAIL_MACRO_STRENGTH", Float, 0.0, "terrain", "", "", divergent | verified),  // default not derivable from the tree
+L(Lead0Kill, "MC2_TERRAIN_EDGE_FEATHER", Bool, true, "terrain", "", "", verified),
+P("MC2_TERRAIN_EDGE_FEATHER_STRENGTH", Float, 1.0, "terrain", "", "", rangeAbove(0.0, 3.4028234663852886e38) | verified),
 // history: docs/gate-history.md#MC2_TERRAIN_HEIGHT_RESAMPLE_FACTOR
 G("MC2_TERRAIN_HEIGHT_RESAMPLE_FACTOR", Enum, "1", "terrain", "", "TERRAIN-RESAMPLE-1: CPU bilinear resample factor for the per-mission terrain height texture used by TERRAIN-NORMALS-FROM-HEIGHT-1.", registry(Trace, "MC2_TUNE_TERRAIN_HEIGHT_RESAMPLE_FACTOR", -1, false) | tokens("1|2|4") | verified),
 L(Lead0Kill, "MC2_TERRAIN_INDIRECT", Bool, true, "terrain", "", "", passthrough | verified),
@@ -1282,24 +1282,24 @@ L(Presence, "MC2_TERRAIN_LIGHTING_PARITY", Bool, false, "terrain", "", "", passt
 // restoring stock-style night up-lighting on ground + cement pads.
 // history: docs/gate-history.md#MC2_TERRAIN_LIGHT_POOLS
 L(Lead0Kill, "MC2_TERRAIN_LIGHT_POOLS", Bool, true, "terrain", "", "NIGHT-LIGHT-POOLS-1: per-fragment terrain light-pool loop on the LIVE LOD-chunk terrain path (terrain_lod_chunk.frag).", passthrough | verified | registry(Feature, "MC2_FEATURE_TERRAIN_LIGHT_POOLS", -1, true)),
-L(Lead0Kill, "MC2_TERRAIN_LOD_CHECKER_DIAG", Bool, true, "terrain", "", ""),
+L(Lead0Kill, "MC2_TERRAIN_LOD_CHECKER_DIAG", Bool, true, "terrain", "", "", verified),
 // history: docs/gate-history.md#MC2_TERRAIN_LOD_CHUNK
 L(Lead0Kill, "MC2_TERRAIN_LOD_CHUNK", Bool, true, "terrain", "", "LOD-chunk terrain renderer (mclib/terrain.cpp/terrain.h), the primary tessellation-free terrain path.", registry(Feature, "MC2_FEATURE_TERRAIN_LOD_CHUNK", -1, true) | verified),
 P("MC2_TERRAIN_LOD_CHUNK_CEMENT_MAXLOD", Int, 0, "terrain", "", "", verified),
 P("MC2_TERRAIN_LOD_CHUNK_DIAG", Int, 0, "terrain", "", "", passthrough | verified),
 P("MC2_TERRAIN_LOD_CHUNK_DIST_SCALE", Float, 1.0, "terrain", "", "", rangeAbove(0.05, 3.4028234663852886e38) | verified),
-L(Presence, "MC2_TERRAIN_LOD_CHUNK_FORCE_COLOR", Bool, false, "terrain", "", "Resolved-once cached mirrors of the per-frame terrain-uniform env gates."),
+L(Presence, "MC2_TERRAIN_LOD_CHUNK_FORCE_COLOR", Bool, false, "terrain", "", "Resolved-once cached mirrors of the per-frame terrain-uniform env gates.", verified),
 P("MC2_TERRAIN_LOD_CHUNK_FORCE_LOD", Int, -1, "terrain", "", "", verified),
 L(Presence, "MC2_TERRAIN_LOD_CHUNK_NO_APRON", Bool, false, "terrain", "", "", verified),
 L(Presence, "MC2_TERRAIN_LOD_CHUNK_NO_CULL", Bool, false, "terrain", "", "Diagnostic: one-shot dump of planes + first superchunk AABB + camera pos.", verified),
 L(Presence, "MC2_TERRAIN_LOD_CHUNK_NO_SKIRTS", Bool, false, "terrain", "", "", verified),
 L(Presence, "MC2_TERRAIN_LOD_CHUNK_NO_STITCH", Bool, false, "terrain", "", "Phase 10.2b: PER-EDGE mask.", verified),
 P("MC2_TERRAIN_LOD_CHUNK_SKIRT_MAX", Float, 256.0, "terrain", "", "", verified),
-L(Presence, "MC2_TERRAIN_LOD_DEPTH_ALWAYS", Bool, false, "terrain", "", "Phase 10.3: chunk terrain is OPAQUE and must EXPLICITLY own depth/blend/ cull state."),
-L(Lead0Kill, "MC2_TERRAIN_LOD_GEOMORPH", Bool, true, "terrain", "", ""),
+L(Presence, "MC2_TERRAIN_LOD_DEPTH_ALWAYS", Bool, false, "terrain", "", "Phase 10.3: chunk terrain is OPAQUE and must EXPLICITLY own depth/blend/ cull state.", verified),
+L(Lead0Kill, "MC2_TERRAIN_LOD_GEOMORPH", Bool, true, "terrain", "", "", verified),
 P("MC2_TERRAIN_LOD_MORPH_START", Float, 0.6, "terrain", "", "", clampRange(0.0, 0.95) | verified),
-G("MC2_TERRAIN_MACRO_VARIATION", Bool, false, "terrain", "", ""),
-P("MC2_TERRAIN_MACRO_VARIATION_STRENGTH", Float, 1.0, "terrain", "", ""),
+L(Lead0, "MC2_TERRAIN_MACRO_VARIATION", Bool, false, "terrain", "", "", verified),
+P("MC2_TERRAIN_MACRO_VARIATION_STRENGTH", Float, 1.0, "terrain", "", "", rangeAbove(0.0, 3.4028234663852886e38) | verified),
 L(Lead0, "MC2_TERRAIN_MASK_DISPATCH", Bool, false, "terrain", "", "Cached at Init() time; re-read here for the IsMaskDispatchEnabled() path which may be called before Init() (safe: returns false if not init'd).", passthrough | verified),
 L(Lead0Kill, "MC2_TERRAIN_MASK_DISPATCH_SOLID", Bool, true, "terrain", "", "", verified),
 L(Lead0Kill, "MC2_TERRAIN_MASK_DISPATCH_WATER", Bool, true, "terrain", "", "", verified),
@@ -1311,9 +1311,9 @@ G("MC2_TERRAIN_MATERIAL_LIB_FILE", String, "", "terrain", "", "", passthrough), 
 // terrain_lod_chunk.frag u_useMatAlbedo branch). Gate OFF -> u_useMatAlbedo
 // uploads 0 -> the colormap-tint composition runs VERBATIM (byte-identical).
 // history: docs/gate-history.md#MC2_TERRAIN_MATERIAL_TEXTURES
-L(Lead0, "MC2_TERRAIN_MATERIAL_TEXTURES", Bool, false, "terrain", "", "TERRAIN-MATERIAL-TEXTURES-1: 6-layer BC7 sRGB GL_TEXTURE_2D_ARRAY albedo (rock/grass/dirt/concrete/snow/cliff from...", passthrough | registry(Feature, "MC2_FEATURE_TERRAIN_MATERIAL_TEXTURES", -1, false)),
+L(Lead0, "MC2_TERRAIN_MATERIAL_TEXTURES", Bool, false, "terrain", "", "TERRAIN-MATERIAL-TEXTURES-1: 6-layer BC7 sRGB GL_TEXTURE_2D_ARRAY albedo (rock/grass/dirt/concrete/snow/cliff from...", passthrough | registry(Feature, "MC2_FEATURE_TERRAIN_MATERIAL_TEXTURES", -1, false) | verified),
 // history: docs/gate-history.md#MC2_TERRAIN_MATERIAL_TEXTURES_STRENGTH
-P("MC2_TERRAIN_MATERIAL_TEXTURES_STRENGTH", Float, -1.0, "terrain", "", "TERRAIN-MATERIAL-TEXTURES-1 knob: albedo mix strength override (float, clamped 0..1).", passthrough | clampRange(0.0, 1.0) | registry(Trace, "MC2_TUNE_TERRAIN_MATERIAL_TEXTURES_STRENGTH", -1, false)),
+P("MC2_TERRAIN_MATERIAL_TEXTURES_STRENGTH", Float, -1.0, "terrain", "", "TERRAIN-MATERIAL-TEXTURES-1 knob: albedo mix strength override (float, clamped 0..1).", passthrough | clampRange(0.0, 1.0) | registry(Trace, "MC2_TUNE_TERRAIN_MATERIAL_TEXTURES_STRENGTH", -1, false) | verified),
 L(Presence, "MC2_TERRAIN_MINE_AB", Bool, false, "terrain", "", "", verified),
 L(Lead0Kill, "MC2_TERRAIN_NORMAL_ARRAY", Bool, true, "gameos", "", ""),
 // TERRAIN-OVERLAY-V2-PARITY-1: authored cement/pad/runway overlay sidecar.
@@ -1331,15 +1331,15 @@ L(Presence, "MC2_TERRAIN_PICK_PARITY", Bool, false, "code", "", "PARITY DIAGNOST
 // faux-view-vector chunkParallax output VERBATIM (supervisor ruling:
 // byte-identity INCLUDES the faux shear — pomParams is NOT zeroed when OFF).
 // history: docs/gate-history.md#MC2_TERRAIN_POM
-L(Lead0, "MC2_TERRAIN_POM", Bool, false, "terrain", "", "TERRAIN-CHUNK-POM-1: real per-fragment tangent-space view-vector POM on the LOD-chunk terrain (rock/grass detail layers).", passthrough | registry(Feature, "MC2_FEATURE_TERRAIN_POM", -1, false)),
+L(Lead0, "MC2_TERRAIN_POM", Bool, false, "terrain", "", "TERRAIN-CHUNK-POM-1: real per-fragment tangent-space view-vector POM on the LOD-chunk terrain (rock/grass detail layers).", passthrough | registry(Feature, "MC2_FEATURE_TERRAIN_POM", -1, false) | verified),
 // history: docs/gate-history.md#MC2_TERRAIN_POM_FAR
-P("MC2_TERRAIN_POM_FAR", Float, 3500.0, "terrain", "", "TERRAIN-CHUNK-POM-1 knob: POM distance-fade band end in world units (default 3500).", passthrough | registry(Trace, "MC2_TUNE_TERRAIN_POM_FAR", -1, false) | range(0.0, 3.4028234663852886e38)),
+P("MC2_TERRAIN_POM_FAR", Float, 3500.0, "terrain", "", "TERRAIN-CHUNK-POM-1 knob: POM distance-fade band end in world units (default 3500).", passthrough | registry(Trace, "MC2_TUNE_TERRAIN_POM_FAR", -1, false) | rangeAbove(0.0, 3.4028234663852886e38) | verified),
 // history: docs/gate-history.md#MC2_TERRAIN_POM_NEAR
-P("MC2_TERRAIN_POM_NEAR", Float, 1500.0, "terrain", "", "TERRAIN-CHUNK-POM-1 knob: POM distance-fade band start in world units (default 1500; 1 tile = 384 wu).", passthrough | registry(Trace, "MC2_TUNE_TERRAIN_POM_NEAR", -1, false) | range(0.0, 3.4028234663852886e38)),
+P("MC2_TERRAIN_POM_NEAR", Float, 1500.0, "terrain", "", "TERRAIN-CHUNK-POM-1 knob: POM distance-fade band start in world units (default 1500; 1 tile = 384 wu).", passthrough | registry(Trace, "MC2_TUNE_TERRAIN_POM_NEAR", -1, false) | range(0.0, 3.4028234663852886e38) | verified),
 // history: docs/gate-history.md#MC2_TERRAIN_POM_SCALE
-P("MC2_TERRAIN_POM_SCALE", Float, -1.0, "terrain", "", "TERRAIN-CHUNK-POM-1 knob: POM march scale override (float > 0).", passthrough | registry(Trace, "MC2_TUNE_TERRAIN_POM_SCALE", -1, false) | range(0.0, 3.4028234663852886e38)),
+P("MC2_TERRAIN_POM_SCALE", Float, -1.0, "terrain", "", "TERRAIN-CHUNK-POM-1 knob: POM march scale override (float > 0).", passthrough | registry(Trace, "MC2_TUNE_TERRAIN_POM_SCALE", -1, false) | rangeAbove(0.0, 3.4028234663852886e38) | verified),
 // history: docs/gate-history.md#MC2_TERRAIN_POM_STEPS
-P("MC2_TERRAIN_POM_STEPS", Float, 16.0, "terrain", "", "TERRAIN-CHUNK-POM-1 knob: max POM march layers, accepted 4..16 (else default 16; hard compile-constant cap 16).", passthrough | registry(Trace, "MC2_TUNE_TERRAIN_POM_STEPS", -1, false) | range(4.0, 16.0)),
+P("MC2_TERRAIN_POM_STEPS", Float, 16.0, "terrain", "", "TERRAIN-CHUNK-POM-1 knob: max POM march layers, accepted 4..16 (else default 16; hard compile-constant cap 16).", passthrough | registry(Trace, "MC2_TUNE_TERRAIN_POM_STEPS", -1, false) | range(4.0, 16.0) | verified),
 L(Presence, "MC2_TERRAIN_PROBE", Bool, false, "editor", "", ""),
 L(Presence, "MC2_TERRAIN_RAYCAST_PICK", Bool, false, "code", "", "Phase 7B: heightfield raycast picker - replaces the quadList AABB/ screen-triangle scan when MC2_TERRAIN_LOD_CHUNK=1."),
 L(Exact1, "MC2_TERRAIN_RUNTIME_DECALS", Bool, false, "terrain", "", "", verified),
@@ -1347,18 +1347,18 @@ L(Exact1, "MC2_TERRAIN_RUNTIME_GROUNDING", Bool, false, "terrain", "", "", verif
 L(Lead1, "MC2_TERRAIN_RUNTIME_PARITY", Bool, false, "terrain", "", "", verified),
 // history: docs/gate-history.md#MC2_TERRAIN_SHADOW_GUARD_CLAMPED_SUN
 L(Lead0Kill, "MC2_TERRAIN_SHADOW_GUARD_CLAMPED_SUN", Bool, true, "gameos", "", "TERRAIN-SHADOW-GUARD-1: the TERRAIN-side twin of SHADOW-SUNCLAMP-1, and the one that actually moves world pixels.", passthrough | registry(Feature, "MC2_FEATURE_TERRAIN_SHADOW_GUARD_CLAMPED_SUN", -1, true)),
-L(Lead0Kill, "MC2_TERRAIN_SHORELINE", Bool, true, "terrain", "", "", passthrough),
-P("MC2_TERRAIN_SHORELINE_EDGE_JITTER", Float, 4.0, "terrain", "", "", clampRange(0.0, 32.0)),
+L(Lead0Kill, "MC2_TERRAIN_SHORELINE", Bool, true, "terrain", "", "", passthrough | verified),
+P("MC2_TERRAIN_SHORELINE_EDGE_JITTER", Float, 4.0, "terrain", "", "", clampRange(0.0, 32.0) | verified),
 G("MC2_TERRAIN_SHORELINE_FILE", String, "", "terrain", "", "", passthrough | verified),
-P("MC2_TERRAIN_SHORELINE_FOAM", Float, 1.0, "terrain", "", "", clampRange(0.0, 2.0)),
-P("MC2_TERRAIN_SHORELINE_FOAM_HEIGHT", Float, 5.0, "terrain", "", "", range(0.0, 3.4028234663852886e38)),
-P("MC2_TERRAIN_SHORELINE_FOAM_RUN", Float, 5.0, "terrain", "", "", range(0.0, 3.4028234663852886e38)),
-P("MC2_TERRAIN_SHORELINE_STRENGTH", Float, 1.0, "terrain", "", "", clampRange(0.0, 2.0)),
-P("MC2_TERRAIN_SHORELINE_WET_HEIGHT", Float, 16.0, "terrain", "", "", range(0.0, 3.4028234663852886e38)),
-P("MC2_TERRAIN_SHORELINE_WET_RUN", Float, 16.0, "terrain", "", "", range(0.0, 3.4028234663852886e38)),
-L(Lead0, "MC2_TERRAIN_SLOPE_BIAS", Bool, false, "terrain", "", ""),
-P("MC2_TERRAIN_SLOPE_BIAS_STRENGTH", Float, 1.0, "terrain", "", ""),
-P("MC2_TERRAIN_SNOW_BRIGHTNESS_DAMPEN", Float, 0.78, "terrain", "", "Snow brightness dampen: <1 darkens detected-snow fragments."),
+P("MC2_TERRAIN_SHORELINE_FOAM", Float, 1.0, "terrain", "", "", clampRange(0.0, 2.0) | verified),
+P("MC2_TERRAIN_SHORELINE_FOAM_HEIGHT", Float, 5.0, "terrain", "", "", rangeAbove(0.0, 3.4028234663852886e38) | verified),
+P("MC2_TERRAIN_SHORELINE_FOAM_RUN", Float, 5.0, "terrain", "", "", rangeAbove(0.0, 3.4028234663852886e38) | verified),
+P("MC2_TERRAIN_SHORELINE_STRENGTH", Float, 1.0, "terrain", "", "", clampRange(0.0, 2.0) | verified),
+P("MC2_TERRAIN_SHORELINE_WET_HEIGHT", Float, 16.0, "terrain", "", "", rangeAbove(0.0, 3.4028234663852886e38) | verified),
+P("MC2_TERRAIN_SHORELINE_WET_RUN", Float, 16.0, "terrain", "", "", rangeAbove(0.0, 3.4028234663852886e38) | verified),
+L(Lead0, "MC2_TERRAIN_SLOPE_BIAS", Bool, false, "terrain", "", "", verified),
+P("MC2_TERRAIN_SLOPE_BIAS_STRENGTH", Float, 1.0, "terrain", "", "", rangeAbove(0.0, 3.4028234663852886e38) | verified),
+P("MC2_TERRAIN_SNOW_BRIGHTNESS_DAMPEN", Float, 0.78, "terrain", "", "Snow brightness dampen: <1 darkens detected-snow fragments.", verified),
 L(Lead0Kill, "MC2_TERRAIN_SOLID_NARROW", Bool, true, "terrain", "", "", verified),
 L(Exact1, "MC2_TERRAIN_SOLID_WINDOW_PARITY", Bool, false, "terrain", "", "", verified),
 L(Lead0, "MC2_TERRAIN_SURFACE", Bool, false, "terrain", "", "", passthrough | verified),
@@ -1367,7 +1367,7 @@ L(Presence, "MC2_TERRAIN_SURFACE_TRACE", Bool, false, "terrain", "", "", passthr
 L(Lead0Kill, "MC2_TERRAIN_TESS", Bool, true, "gameos", "", "TCS/TES terrain tessellation (gameos_graphics.cpp).", passthrough | registry(Feature, "MC2_FEATURE_TERRAIN_TESSELLATION", 3, true)),
 L(Lead0, "MC2_TERRAIN_TILE_CENSUS", Bool, false, "terrain", "", "", verified),
 L(Lead0, "MC2_TERRAIN_VISUAL_DISPLACE", Bool, false, "terrain", "", "", passthrough | verified),
-P("MC2_TERRAIN_VISUAL_DISPLACE_FAR", Float, 1.0, "terrain", "", "", passthrough | clampRange(0.0, 1.0)),
+P("MC2_TERRAIN_VISUAL_DISPLACE_FAR", Float, 1.0, "terrain", "", "", passthrough | clampRange(0.0, 1.0) | verified),
 // TERRAIN-VISUAL-HEIGHT-SAMPLE-1 companion fade.
 // history: docs/gate-history.md#MC2_TERRAIN_VISUAL_DISPLACE_OBJFADE
 L(Lead0Kill, "MC2_TERRAIN_VISUAL_DISPLACE_OBJFADE", Bool, true, "terrain", "", "TERRAIN-VISUAL-HEIGHT-SAMPLE-1: when visual terrain displacement is on, fade object grounding across the displaced-vs-gameplay height delta so props/units...", registry(Feature, "MC2_TERRAIN_VISUAL_DISPLACE_OBJFADE", -1, true) | verified),
@@ -1546,7 +1546,7 @@ G("MC2_VK_MECH_TIER1", Tri, false, "vk", "", "VK-MECH-TIER1: presence-gated =1, 
 // history: docs/gate-history.md#MC2_VK_NO_GL_INTEROP_RESOURCE_STRICT
 G("MC2_VK_NO_GL_INTEROP_RESOURCE_STRICT", Bool, false, "vk", "", "VK Metal-gate resource canary.", passthrough | registry(Trace, "MC2_TRACE_VK_NO_GL_INTEROP_RESOURCE_STRICT", -1, false)),
 // history: docs/gate-history.md#MC2_VK_NO_GL_INTEROP_STRICT
-L(Lead1, "MC2_VK_NO_GL_INTEROP_STRICT", Bool, false, "vk", "", "VK Metal-gate canary.", passthrough | registry(Trace, "MC2_TRACE_VK_NO_GL_INTEROP_STRICT", -1, false)),
+L(Lead1, "MC2_VK_NO_GL_INTEROP_STRICT", Bool, false, "vk", "", "VK Metal-gate canary.", passthrough | registry(Trace, "MC2_TRACE_VK_NO_GL_INTEROP_STRICT", -1, false) | verified),
 L(Lead1, "MC2_VK_OBJECTID_DIRECT_CHAIN", Bool, false, "vk", "", "", passthrough),
 // BUG-A pick-probe fixture (mouse->pick DPI regression fence)
 // history: docs/gate-history.md#MC2_VK_PICK_PROBE
@@ -1613,11 +1613,11 @@ L(Exact1, "MC2_VK_SHARED_SCENE_STRICT", Bool, false, "post", "", "VK shared-scen
 // history: docs/gate-history.md#MC2_VK_STATIC_SHADOW_MAP
 L(Is01, "MC2_VK_STATIC_SHADOW_MAP", Bool, false, "post", "", "DEPRECATED no-op (VK-RUNG8-ITEM6).", passthrough | registry(Feature, "MC2_FEATURE_VK_STATIC_SHADOW_MAP", -1, false)),
 G("MC2_VK_TERRAIN_ALL_LODS", Tri, false, "vk", "", ""),
-L(Presence, "MC2_VK_TERRAIN_COPY_STATS", Bool, false, "vk", "", "", passthrough),
+L(Presence, "MC2_VK_TERRAIN_COPY_STATS", Bool, false, "vk", "", "", passthrough | verified),
 // history: docs/gate-history.md#MC2_VK_TERRAIN_CSM
 G("MC2_VK_TERRAIN_CSM", Tri, false, "terrain", "", "VK-TERRAIN-CSM (biggest-safe-subset): presence-gated =1, default OFF (requires MC2_VK_TERRAIN_DYNSHADOW chain + CSM active).", passthrough | registry(Feature, "MC2_FEATURE_VK_TERRAIN_CSM", -1, false)),
-P("MC2_VK_TERRAIN_CSM_DEBUG", Int, 0, "vk", "", ""),
-L(Lead1, "MC2_VK_TERRAIN_CSM_FULLMAP_EXPERIMENTAL", Bool, false, "terrain", "", ""),
+P("MC2_VK_TERRAIN_CSM_DEBUG", Int, 0, "vk", "", "", verified),
+L(Lead1, "MC2_VK_TERRAIN_CSM_FULLMAP_EXPERIMENTAL", Bool, false, "terrain", "", "", verified),
 // history: docs/gate-history.md#MC2_VK_TERRAIN_DECAL_GL_CANARY
 G("MC2_VK_TERRAIN_DECAL_GL_CANARY", Bool, false, "gameos", "", "VK final-gate diagnostic: wraps gosRenderer::drawDecals GL draw loop in GL_ANY_SAMPLES_PASSED and logs [VK_SCENE_GL_DRAW_CANARY v1] tag=terrain_decal_batch.", registry(Trace, "MC2_TRACE_VK_TERRAIN_DECAL_GL_CANARY", -1, false)),
 // history: docs/gate-history.md#MC2_VK_TERRAIN_DETAIL
@@ -1628,9 +1628,9 @@ L(Lead0Kill, "MC2_VK_TERRAIN_FENCE_DEFER", Bool, true, "vk", "", ""),
 // history: docs/gate-history.md#MC2_VK_TERRAIN_GL_FALLBACK_AUDIT
 L(Exact1, "MC2_VK_TERRAIN_GL_FALLBACK_AUDIT", Bool, false, "terrain", "", "VK terrain ownership diagnostic: under the max-native terrain gates, counts terrain chunks captured by the Vulkan feed vs chunks that still fall through to...", registry(Trace, "MC2_TRACE_VK_TERRAIN_GL_FALLBACK_AUDIT", -1, false)),
 // history: docs/gate-history.md#MC2_VK_TERRAIN_HEIGHT_AUDIT
-L(Exact1, "MC2_VK_TERRAIN_HEIGHT_AUDIT", Bool, false, "vk", "", "VK-TERRAIN HEIGHT-AUDIT (verification-only, default OFF; requires MC2_VK_TERRAIN_TIER1).", passthrough | registry(Feature, "MC2_FEATURE_VK_TERRAIN_HEIGHT_AUDIT", -1, false)),
+L(Exact1, "MC2_VK_TERRAIN_HEIGHT_AUDIT", Bool, false, "vk", "", "VK-TERRAIN HEIGHT-AUDIT (verification-only, default OFF; requires MC2_VK_TERRAIN_TIER1).", passthrough | registry(Feature, "MC2_FEATURE_VK_TERRAIN_HEIGHT_AUDIT", -1, false) | verified),
 // history: docs/gate-history.md#MC2_VK_TERRAIN_HEIGHT_AUDIT_CORRUPT
-L(Exact1, "MC2_VK_TERRAIN_HEIGHT_AUDIT_CORRUPT", Bool, false, "vk", "", "VK-TERRAIN HEIGHT-AUDIT NEGATIVE CONTROL (test-only, default OFF; requires MC2_VK_TERRAIN_HEIGHT_AUDIT).", passthrough | registry(Feature, "MC2_FEATURE_VK_TERRAIN_HEIGHT_AUDIT_CORRUPT", -1, false)),
+L(Exact1, "MC2_VK_TERRAIN_HEIGHT_AUDIT_CORRUPT", Bool, false, "vk", "", "VK-TERRAIN HEIGHT-AUDIT NEGATIVE CONTROL (test-only, default OFF; requires MC2_VK_TERRAIN_HEIGHT_AUDIT).", passthrough | registry(Feature, "MC2_FEATURE_VK_TERRAIN_HEIGHT_AUDIT_CORRUPT", -1, false) | verified),
 // VK-TERRAIN-LIGHTING: make the VK Tier-1 terrain LIT (directional relief + baked static shadow).
 // history: docs/gate-history.md#MC2_VK_TERRAIN_LIGHTING
 G("MC2_VK_TERRAIN_LIGHTING", Tri, false, "terrain", "", "VK-TERRAIN-LIGHTING: presence-gated =1, default OFF (requires MC2_VK_TERRAIN_TIER1).", passthrough | registry(Feature, "MC2_FEATURE_VK_TERRAIN_LIGHTING", -1, false)),
@@ -1638,7 +1638,7 @@ G("MC2_VK_TERRAIN_LIGHTING", Tri, false, "terrain", "", "VK-TERRAIN-LIGHTING: pr
 L(Exact1, "MC2_VK_TERRAIN_LODFADE", Bool, false, "terrain", "", "VK-TERRAIN-LODFADE: presence-gated =1, default OFF (requires MC2_VK_TERRAIN_DETAIL).", passthrough | registry(Feature, "MC2_FEATURE_VK_TERRAIN_LODFADE", -1, false)),
 // history: docs/gate-history.md#MC2_VK_TERRAIN_OVERLAY_GL_CANARY
 G("MC2_VK_TERRAIN_OVERLAY_GL_CANARY", Bool, false, "gameos", "", "VK final-gate diagnostic: wraps gosRenderer::drawTerrainOverlays GL draw loop in GL_ANY_SAMPLES_PASSED and logs [VK_SCENE_GL_DRAW_CANARY v1]...", registry(Trace, "MC2_TRACE_VK_TERRAIN_OVERLAY_GL_CANARY", -1, false)),
-L(Lead1, "MC2_VK_TERRAIN_PERF", Bool, false, "vk", "", "", passthrough),
+L(Lead1, "MC2_VK_TERRAIN_PERF", Bool, false, "vk", "", "", passthrough | verified),
 G("MC2_VK_TERRAIN_SKIRTS", Tri, false, "vk", "", ""),
 // VK-P10 TERRAIN TIER-1: the terrain in-place shared-GBuffer co-write region.
 // history: docs/gate-history.md#MC2_VK_TERRAIN_TIER1
@@ -1659,7 +1659,7 @@ L(Presence, "MC2_VPL_CULL", Bool, false, "terrain", "", "VPL retirement: the MC2
 L(Presence, "MC2_VPL_PICK", Bool, false, "code", "", "VPL-retirement Step 3 (3a): recursion-free tile selection."),
 L(Presence, "MC2_VPL_REDUCE", Bool, false, "terrain", "", "", verified),
 L(Lead1, "MC2_VSYNC", Bool, false, "vk", "", "", passthrough),
-G("MC2_VULKAN_SPV_DIR", String, "", "vk", "", "", passthrough),  // default not derivable from the tree
+G("MC2_VULKAN_SPV_DIR", String, "shaders/vulkan", "vk", "", "", passthrough | verified),  // default not derivable from the tree
 G("MC2_VULKAN_VALIDATION", Bool, false, "vk", "", "", passthrough),
 L(Presence, "MC2_WATCHID_GENERATION", Bool, false, "code", "", "MF3-GENERATIONAL-HANDLE-1: generational watch-id validation killswitch.", passthrough),
 L(Presence, "MC2_WATER_ASPECT_DIAG", Bool, false, "code", "", "[WATER_ASPECT_DIAG v1] env-gated one-shot (MC2_WATER_ASPECT_DIAG=1), silent by default."),
@@ -1699,13 +1699,13 @@ P("MC2_WATER_SHORE_FEATHER", Float, 0.0, "terrain", "", "", passthrough | range(
 P("MC2_WATER_SHORE_FEATHER_WU", Float, 7.0, "gameos", "", ""),
 // WATER-SHORE-MASK-1 (3c864eac): shipped default-ON but was never registered.
 // history: docs/gate-history.md#MC2_WATER_SHORE_MASK
-G("MC2_WATER_SHORE_MASK", Bool, true, "terrain", "", "WATER-SHORE-MASK-1: per-mission shoreline mask sidecar (data/missions/<m>.beauty/shoreline_mask.png) drives the water shore edge.", passthrough | registry(Feature, "MC2_FEATURE_WATER_SHORE_MASK", -1, true)),
+L(Lead0Kill, "MC2_WATER_SHORE_MASK", Bool, true, "terrain", "", "WATER-SHORE-MASK-1: per-mission shoreline mask sidecar (data/missions/<m>.beauty/shoreline_mask.png) drives the water shore edge.", passthrough | registry(Feature, "MC2_FEATURE_WATER_SHORE_MASK", -1, true) | verified),
 // SHORELINE-GEOMETRY-1 / WATER-MEANDER-CLAMP-1: shore meander is DEFAULT OFF (0).
 // history: docs/gate-history.md#MC2_WATER_SHORE_MEANDER
 P("MC2_WATER_SHORE_MEANDER", Float, 0.0, "terrain", "", "SHORELINE-GEOMETRY-1: fBm meander amplitude in world units applied to the shore contour in gos_terrain_water_stream.cpp ShoreMeanderWu(); breaks the...", passthrough | registry(Feature, "MC2_FEATURE_WATER_SHORE_MEANDER", -1, false) | range(0.0, 3.4028234663852886e38) | verified),
 // history: docs/gate-history.md#MC2_WATER_SHORE_MEANDER_FREQ
 P("MC2_WATER_SHORE_MEANDER_FREQ", Float, 1.0 / 384.0, "terrain", "", "SHORELINE-GEOMETRY-1 companion tuning knob for MC2_WATER_SHORE_MEANDER: spatial frequency of the shore-contour fBm, in cycles per world unit...", passthrough | registry(Feature, "MC2_TUNE_WATER_SHORE_MEANDER_FREQ", -1, false) | rangeAbove(0.0, 3.4028234663852886e38) | verified),
-G("MC2_WATER_SHORE_MODE", Enum, "", "terrain", "", "", tokens("|0|1|2|3")),
+G("MC2_WATER_SHORE_MODE", Enum, "", "terrain", "", "", tokens("|0|1|2|3") | verified),
 L(Lead0, "MC2_WATER_SKYTINT", Bool, false, "gameos", "", ""),
 L(Presence, "MC2_WATER_STREAM_DEBUG", Bool, false, "terrain", "", "", passthrough | verified),
 L(Lead1, "MC2_WATER_THINRING_TRACE", Bool, false, "terrain", "", "", passthrough | verified),

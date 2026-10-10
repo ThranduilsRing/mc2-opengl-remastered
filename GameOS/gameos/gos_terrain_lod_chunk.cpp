@@ -24,6 +24,7 @@
 #include <utility>  // std::move (GPU-BUFFER-TIER0-LODCHUNK-RAII-1: move-only patch buffers)
 #include <vector>
 #include <map>
+#include "Gates/gate.h"
 
 #ifdef MC2_VULKAN_ISLAND
 #include "vulkan_terrain_island.h"   // VK-P10 TERRAIN TIER-1: LOD0 shared-GBuffer co-write
@@ -38,10 +39,7 @@
 // (kept verbatim, nothing deleted) — the A/B used to prove the guards are
 // pixel-neutral. Sampled once at process start.
 static bool glStateGuardTerrainEnabled() {
-    static const bool on = []() {
-        const char* v = std::getenv("MC2_GLSTATEGUARD_TERRAIN");
-        return (v == nullptr) || (std::atoi(v) != 0);  // unset/nonzero=ON, 0=OFF
-    }();
+    static const bool on = mc2::gate::get<"MC2_GLSTATEGUARD_TERRAIN">();
     return on;
 }
 
@@ -57,101 +55,64 @@ static bool glStateGuardTerrainEnabled() {
 // throughout this file. The per-frame block reads these
 // instead of hitting getenv. Uniform VALUES uploaded are unchanged.
 namespace {
-inline bool tglc_envOn(const char* name) {
-    const char* e = std::getenv(name);
-    return e && e[0] && e[0] != '0';
-}
-inline float tglc_envStrength(const char* name, float def) {
-    const char* s = std::getenv(name);
-    if (!s) return def;
-    float v = (float)std::atof(s);
-    return (v > 0.0f) ? v : def;
-}
 // Resolved-once cached mirrors of the per-frame terrain-uniform env gates.
-const bool  kTglcForceColor        = []() { return std::getenv("MC2_TERRAIN_LOD_CHUNK_FORCE_COLOR") != nullptr; }();
+const bool kTglcForceColor = mc2::gate::get<"MC2_TERRAIN_LOD_CHUNK_FORCE_COLOR">();
 // SHORELINE-GLOW-1: the two shoreline accessors are deliberately NOT in this
 // anonymous namespace -- mclib/terrain.cpp calls gos_TerrainShorelineGateOn()
 // too, so it needs external linkage. Defined at global scope further down,
 // next to gos_TerrainLodChunk_IsShorelineMaskActive(); declared in the header.
-const int   kTglcDiag              = []() { const char* v = std::getenv("MC2_TERRAIN_LOD_CHUNK_DIAG"); return v ? std::atoi(v) : 0; }();
-const bool  kTglcCementDiagConnect = []() { return tglc_envOn("MC2_TERRAIN_CEMENT_DIAG_CONNECT"); }();
+const int kTglcDiag = mc2::gate::get<"MC2_TERRAIN_LOD_CHUNK_DIAG">();
+const bool  kTglcCementDiagConnect = mc2::gate::get<"MC2_TERRAIN_CEMENT_DIAG_CONNECT">();
 // CEMENT-ATLAS-SEAM-1: default ON (killswitch MC2_CEMENT_ATLAS_SEAM_FIX=0).
-const bool  kTglcCementAtlasSeamFix = []() {
-    const char* e = std::getenv("MC2_CEMENT_ATLAS_SEAM_FIX");
-    return !(e && e[0] == '0');
-}();
+const bool kTglcCementAtlasSeamFix = mc2::gate::get<"MC2_CEMENT_ATLAS_SEAM_FIX">();
 // NIGHT-LIGHT-POOLS-2: soft falloff tail (default ON; =0 exact legacy
 // GetFalloff linear ramp) + mover-light dim factor (default 0.5; 1.0 = off).
-const bool  kTglcLightPoolSoft = []() {
-    const char* e = std::getenv("MC2_LIGHT_POOL_SOFT");
-    return !(e && e[0] == '0');
-}();
+const bool kTglcLightPoolSoft = mc2::gate::get<"MC2_LIGHT_POOL_SOFT">();
 // NIGHT-LIGHT-POOLS-4: default dropped 0.5 -> 0.25 (5-mech group still read as
 // one saturated egg at 0.5; compression can't help five overlapping full discs).
-const float kTglcLightPoolMoverDim = []() {
-    const char* s = std::getenv("MC2_LIGHT_POOL_MOVER_DIM");
-    if (!s || !s[0]) return 0.25f;
-    float v = (float)std::atof(s);
-    return (v >= 0.0f && v <= 1.0f) ? v : 0.25f;
-}();
+const float kTglcLightPoolMoverDim = mc2::gate::get<"MC2_LIGHT_POOL_MOVER_DIM">();
 // NIGHT-LIGHT-POOLS-4: mover pool radius scale (shrinks close/far distances of
 // mover-attached lights only; 1.0 = legacy radii = killswitch).
-const float kTglcLightPoolMoverRadius = []() {
-    const char* s = std::getenv("MC2_LIGHT_POOL_MOVER_RADIUS");
-    if (!s || !s[0]) return 0.6f;
-    float v = (float)std::atof(s);
-    return (v > 0.0f && v <= 1.0f) ? v : 0.6f;
-}();
+const float kTglcLightPoolMoverRadius = mc2::gate::get<"MC2_LIGHT_POOL_MOVER_RADIUS">();
 // NIGHT-LIGHT-POOLS-4: mover pools combine by per-channel MAX (no additive
 // stacking across an overlapping lance); =0 restores the additive sum.
-const bool kTglcLightPoolMoverMax = []() {
-    const char* e = std::getenv("MC2_LIGHT_POOL_MOVER_MAXBLEND");
-    return !(e && e[0] == '0');
-}();
+const bool kTglcLightPoolMoverMax = mc2::gate::get<"MC2_LIGHT_POOL_MOVER_MAXBLEND">();
 // NIGHT-LIGHT-POOLS-3: tone-compress the summed pool term (default ON;
 // =0 restores the legacy min(pool,1) hard clamp -> stacked-pool blowout).
-const bool  kTglcLightPoolCompress = []() {
-    const char* e = std::getenv("MC2_LIGHT_POOL_COMPRESS");
-    return !(e && e[0] == '0');
-}();
+const bool kTglcLightPoolCompress = mc2::gate::get<"MC2_LIGHT_POOL_COMPRESS">();
 // MOVER-CONTACT-SHADOW-1 (MASTER-FAIL #7): strength in [0,1] of the under-mech
 // contact shadow that carves a mover's own bright light-pool center + darkens
 // the ground beneath the body. Default 0.0 => uniform 0 => byte-identical
 // (mix() collapses, no darkening). Recommended ~0.7. MC2_MOVER_CONTACT_SHADOW.
-const float kTglcMoverContactShadow = []() {
-    const char* s = std::getenv("MC2_MOVER_CONTACT_SHADOW");
-    if (!s || !s[0]) return 0.0f;
-    float v = (float)std::atof(s);
-    return (v >= 0.0f && v <= 1.0f) ? v : 0.0f;
-}();
-const bool  kTglcSlopeBias         = []() { return tglc_envOn("MC2_TERRAIN_SLOPE_BIAS"); }();
-const float kTglcSlopeBiasStr      = []() { return tglc_envStrength("MC2_TERRAIN_SLOPE_BIAS_STRENGTH", 1.0f); }();
-const bool  kTglcCliffTriplanar    = []() { return tglc_envOn("MC2_TERRAIN_CLIFF_TRIPLANAR"); }();
-const float kTglcCliffTriplanarStr = []() { return tglc_envStrength("MC2_TERRAIN_CLIFF_TRIPLANAR_STRENGTH", 1.0f); }();
+const float kTglcMoverContactShadow = mc2::gate::get<"MC2_MOVER_CONTACT_SHADOW">();
+const bool  kTglcSlopeBias         = mc2::gate::get<"MC2_TERRAIN_SLOPE_BIAS">();
+const float kTglcSlopeBiasStr      = mc2::gate::get<"MC2_TERRAIN_SLOPE_BIAS_STRENGTH">();   // row: default 1, > 0
+const bool  kTglcCliffTriplanar    = mc2::gate::get<"MC2_TERRAIN_CLIFF_TRIPLANAR">();
+const float kTglcCliffTriplanarStr = mc2::gate::get<"MC2_TERRAIN_CLIFF_TRIPLANAR_STRENGTH">();
 // TERRAIN-CLIFF-HEIGHT-NORMAL-1: derive the cliff SHADING normal from the height
 // gradient of the cooked cliff displacement (mat5 layer-5 alpha) so the rich rock
 // relief actually catches light (the smooth marble rgb normal left it flat).
 // Trace knob MC2_TERRAIN_CLIFF_HEIGHT_NORMAL_STRENGTH, default 2.0; only consumed
 // inside the useTriplanarCliff frag block (0 -> pure rgb-normal == TRIPLANAR-1).
-const float kTglcCliffHeightNormalStr = []() { return tglc_envStrength("MC2_TERRAIN_CLIFF_HEIGHT_NORMAL_STRENGTH", 2.0f); }();
+const float kTglcCliffHeightNormalStr = mc2::gate::get<"MC2_TERRAIN_CLIFF_HEIGHT_NORMAL_STRENGTH">();
 // TERRAIN-CLIFF-POM-1: triplanar Parallax Occlusion Mapping on cliff faces.
 // Gate MC2_TERRAIN_CLIFF_POM (default OFF -> u_cliffPom.x=0 -> frag march skipped,
 // the triplanar block behaves exactly as TRIPLANAR-1). Depth (world-unit height
 // scale, default 12) via MC2_TERRAIN_CLIFF_POM_DEPTH; max march steps (clamp
 // 8..32, default 24) via MC2_TERRAIN_CLIFF_POM_STEPS.
-const bool  kTglcCliffPom          = []() { return tglc_envOn("MC2_TERRAIN_CLIFF_POM"); }();
-const float kTglcCliffPomDepth     = []() { return tglc_envStrength("MC2_TERRAIN_CLIFF_POM_DEPTH", 12.0f); }();
+const bool  kTglcCliffPom          = mc2::gate::get<"MC2_TERRAIN_CLIFF_POM">();
+const float kTglcCliffPomDepth     = mc2::gate::get<"MC2_TERRAIN_CLIFF_POM_DEPTH">();
 const float kTglcCliffPomSteps     = []() {
-    float s = tglc_envStrength("MC2_TERRAIN_CLIFF_POM_STEPS", 24.0f);
+    float s = mc2::gate::get<"MC2_TERRAIN_CLIFF_POM_STEPS">();
     if (s < 8.0f) s = 8.0f; if (s > 32.0f) s = 32.0f;
     return s;
 }();
 // TERRAIN-CLIFF-DEBUG: bounded debug-viz gate (default 0/off -> u_cliffDebug=0 ->
 // frag block skipped -> byte-identical). 1..4 select the debug output (see frag).
-const int   kTglcCliffDebug        = []() { const char* v = std::getenv("MC2_TERRAIN_CLIFF_DEBUG"); return v ? std::atoi(v) : 0; }();
+const int kTglcCliffDebug = mc2::gate::get<"MC2_TERRAIN_CLIFF_DEBUG">();
 const float kTglcMacroVariation    = []() {
-    if (!tglc_envOn("MC2_TERRAIN_MACRO_VARIATION")) return 0.0f;
-    return tglc_envStrength("MC2_TERRAIN_MACRO_VARIATION_STRENGTH", 1.0f);
+    if (!mc2::gate::get<"MC2_TERRAIN_MACRO_VARIATION">()) return 0.0f;
+    return mc2::gate::get<"MC2_TERRAIN_MACRO_VARIATION_STRENGTH">();
 }();
 // WATER-FAR-BAND-ATTRIB-1 (batch3 item C): default flipped ON to match
 // WATER-EDGE-FEATHER (54a70e2d). With water feathered ON and terrain feather
@@ -160,14 +121,11 @@ const float kTglcMacroVariation    = []() {
 // angles (mc2_01 saved_205644; MC2_WATER_DEBUG_MODE=2 shows water alpha
 // already 0 across the band -> the navy pixels are terrain, not water).
 // Killswitch: MC2_TERRAIN_EDGE_FEATHER=0.
-const bool  kTglcEdgeFeather       = []() {
-    const char* e = std::getenv("MC2_TERRAIN_EDGE_FEATHER");
-    return !(e && e[0] == '0');
-}();
-const float kTglcEdgeFeatherStr    = []() { return tglc_envStrength("MC2_TERRAIN_EDGE_FEATHER_STRENGTH", 1.0f); }();
+const bool kTglcEdgeFeather = mc2::gate::get<"MC2_TERRAIN_EDGE_FEATHER">();
+const float kTglcEdgeFeatherStr    = mc2::gate::get<"MC2_TERRAIN_EDGE_FEATHER_STRENGTH">();
 // TERRAIN-MATERIAL-TEXTURES-1: per-layer PBR albedo array gate (default OFF ->
 // u_useMatAlbedo uploads 0 -> frag composition verbatim -> byte-identical).
-const bool  kTglcMatAlbedo         = []() { return tglc_envOn("MC2_TERRAIN_MATERIAL_TEXTURES"); }();
+const bool  kTglcMatAlbedo         = mc2::gate::get<"MC2_TERRAIN_MATERIAL_TEXTURES">();
 }  // namespace
 
 // ---------------------------------------------------------------------------
@@ -180,14 +138,8 @@ const bool  kTglcMatAlbedo         = []() { return tglc_envOn("MC2_TERRAIN_MATER
 // reconstructs the interpolated clip position, the output is visually the same
 // as the base GL_TRIANGLES draw — this slice proves the tessellation PLUMBING.
 // ---------------------------------------------------------------------------
-static const bool s_cliffTessGate = []() {
-    const char* v = std::getenv("MC2_TERRAIN_CLIFF_DISPLACE");
-    return v && v[0] && v[0] != '0';
-}();
-static const float s_cliffTessWanted = []() {
-    const char* v = std::getenv("MC2_TERRAIN_CLIFF_DISPLACE_MAXTESS");
-    return (v && v[0]) ? (float)atof(v) : 4.0f;
-}();
+static const bool s_cliffTessGate = mc2::gate::get<"MC2_TERRAIN_CLIFF_DISPLACE">();
+static const float s_cliffTessWanted = mc2::gate::get<"MC2_TERRAIN_CLIFF_DISPLACE_MAXTESS">();
 static float s_cliffTessClamped = -1.0f;   // set once at program build (GL valid)
 
 // Clamp the requested tess level to GL_MAX_TESS_GEN_LEVEL. Called once inside
@@ -918,15 +870,10 @@ static const float* mc2_chunkDetailAntiTileYZW()
     static bool s_init = false;
     if (!s_init) {
         s_init = true;
-        const char* g = getenv("MC2_TERRAIN_DETAIL_ANTITILE");
-        if (g && *g && strcmp(g, "0") != 0) {
-            auto envF = [](const char* k, float def) -> float {
-                const char* v = getenv(k);
-                return (v && *v) ? (float)atof(v) : def;
-            };
-            s_yzw[0] = envF("MC2_TERRAIN_DETAIL_LOD1_STRENGTH", 0.4f);  // .y LOD1 fade
-            s_yzw[1] = 1.0f;                                            // .z enable
-            s_yzw[2] = envF("MC2_TERRAIN_DETAIL_MACRO_STRENGTH", 0.0f); // .w macro (chunk: off)
+        if (mc2::gate::get<"MC2_TERRAIN_DETAIL_ANTITILE">()) {
+            s_yzw[0] = mc2::gate::get<"MC2_TERRAIN_DETAIL_LOD1_STRENGTH">();    // .y LOD1 fade (row default 0.4)
+            s_yzw[1] = 1.0f;                                                    // .z enable
+            s_yzw[2] = mc2::gate::get<"MC2_TERRAIN_DETAIL_MACRO_STRENGTH">();   // .w macro (chunk: off, row default 0)
         }
     }
     return s_yzw;
@@ -993,10 +940,7 @@ static std::map<uint32_t, PatchShape> s_patchCache;
 // the prior fixed TL-BR behaviour (killswitch).
 static bool terrainLodCheckerDiagEnabled()
 {
-    static const bool s_on = [](){
-        const char* v = std::getenv("MC2_TERRAIN_LOD_CHECKER_DIAG");
-        return !(v && v[0] == '0');   // default ON; only "=0" reverts
-    }();
+    static const bool s_on = mc2::gate::get<"MC2_TERRAIN_LOD_CHECKER_DIAG">();
     return s_on;
 }
 
@@ -1555,22 +1499,12 @@ static uint64_t g_terrainVisualHeightVersion = 0;  // bumps on UploadVisualHeigh
 // draw site) so the feed getter can report them without touching the draw statics.
 static bool terrainVisualDisplaceGateOn()
 {
-    static const bool s_on = []() {
-        const char* v = getenv("MC2_TERRAIN_VISUAL_DISPLACE");
-        return v && v[0] && v[0] != '0';
-    }();
+    static const bool s_on = mc2::gate::get<"MC2_TERRAIN_VISUAL_DISPLACE">();
     return s_on;
 }
 static float terrainVisualDisplaceFarParam()
 {
-    static const float s_far = []() {
-        const char* v = getenv("MC2_TERRAIN_VISUAL_DISPLACE_FAR");
-        if (!v || !v[0]) return 1.0f;
-        float f = (float)atof(v);
-        if (f < 0.0f) f = 0.0f;
-        if (f > 1.0f) f = 1.0f;
-        return f;
-    }();
+    static const float s_far = mc2::gate::get<"MC2_TERRAIN_VISUAL_DISPLACE_FAR">();
     return s_far;
 }
 static std::vector<Mc2TerrainTier1Patch> s_vkTerrainPatches;  // this frame's LOD0 patches
@@ -1608,9 +1542,7 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
     out->useCement          = cementLive ? 1 : 0;
     out->useTransitionMask  = gos_terrain_indirect_isTransitionMaskReady() ? 1 : 0;
     {
-        int diagOn = 0;
-        if (const char* e = getenv("MC2_TERRAIN_CEMENT_DIAG_CONNECT")) diagOn = (e[0] && e[0] != '0') ? 1 : 0;
-        out->cementDiagConnect = diagOn;
+        out->cementDiagConnect = mc2::gate::get<"MC2_TERRAIN_CEMENT_DIAG_CONNECT">() ? 1 : 0;
     }
     out->glCementSsbo       = s_cementSsbo.name();
     out->cementBytes        = (uint64_t)s_mapSide * (uint64_t)s_mapSide * sizeof(unsigned int);
@@ -1721,8 +1653,7 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
         // strictly better than the wash until the near-cascade port lands.
         auto csmSubsetOn = []() {
             const bool csmSub = mc2vkgate::subGate("MC2_VK_TERRAIN_CSM");
-            const char* x = std::getenv("MC2_VK_TERRAIN_CSM_FULLMAP_EXPERIMENTAL");
-            return csmSub && x && x[0] == '1';
+            return csmSub && mc2::gate::get<"MC2_VK_TERRAIN_CSM_FULLMAP_EXPERIMENTAL">();
         };
         if (dynShadowGate && !out->dynShadowsEnabled && pp && pp->shadowsEnabled_
             && mc2ShadowCsmEnabled()
@@ -1908,7 +1839,7 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
         // Gated on presence of MC2_VK_TERRAIN_COPY_STATS (same opt-in convention as the
         // interop-copies stats line above) to stay silent by default.
         {
-            static const bool s_diagOn = (getenv("MC2_VK_TERRAIN_COPY_STATS") != nullptr);
+            static const bool s_diagOn = mc2::gate::get<"MC2_VK_TERRAIN_COPY_STATS">();
             static bool s_logged = false;
             if (s_diagOn && !s_logged) {
                 s_logged = true;
@@ -2044,7 +1975,7 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
     // disabled for the WHOLE draw (terrainMVP bakes the GL-NDC X-flip -> winding
     // is inverted -> the terrain TOP would be culled as a backface; terrain is
     // an opaque heightfield so double-sided is free).
-    static const bool s_depthAlways = (getenv("MC2_TERRAIN_LOD_DEPTH_ALWAYS") != nullptr);
+    static const bool s_depthAlways = mc2::gate::get<"MC2_TERRAIN_LOD_DEPTH_ALWAYS">();
     const GLenum s_wantDepthFunc = s_depthAlways ? GL_ALWAYS : GL_GEQUAL;
     const bool useGuards = glStateGuardTerrainEnabled();
 
@@ -2113,10 +2044,7 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
 #ifdef MC2_VULKAN_ISLAND
     const bool s_visualDisplaceGate = terrainVisualDisplaceGateOn();  // rung 5: shared helper (same env read)
 #else
-    static const bool s_visualDisplaceGate = []() {
-        const char* v = getenv("MC2_TERRAIN_VISUAL_DISPLACE");
-        return v && v[0] && v[0] != '0';
-    }();
+    static const bool s_visualDisplaceGate = mc2::gate::get<"MC2_TERRAIN_VISUAL_DISPLACE">();
 #endif
     const bool visualDisplaceActive = s_visualDisplaceGate && s_visualHeightSsbo.created() && s_visualSide > 0;
     if (visualDisplaceActive)
@@ -2127,10 +2055,7 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
     // when displacing AND the objfade gate is on (default ON when displacing —
     // it is the safety) AND a damp map for THIS map size was uploaded. Binds
     // binding 27 for the whole draw; u_visualDampOn=0 => shader never reads it.
-    static const bool s_visualDampGate = []() {
-        const char* v = getenv("MC2_TERRAIN_VISUAL_DISPLACE_OBJFADE");
-        return !(v && v[0] == '0');   // default ON (unset/other => on)
-    }();
+    static const bool s_visualDampGate = mc2::gate::get<"MC2_TERRAIN_VISUAL_DISPLACE_OBJFADE">();
     const bool visualDampActive = visualDisplaceActive && s_visualDampGate
                                   && s_visualDampSsbo.created()
                                   && s_visualDampSide == s_mapSide;
@@ -2144,14 +2069,7 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
 #ifdef MC2_VULKAN_ISLAND
     const float s_visualDisplaceFar = terrainVisualDisplaceFarParam();  // rung 5: shared helper (same env read)
 #else
-    static const float s_visualDisplaceFar = []() {
-        const char* v = getenv("MC2_TERRAIN_VISUAL_DISPLACE_FAR");
-        if (!v || !v[0]) return 1.0f;
-        float f = (float)atof(v);
-        if (f < 0.0f) f = 0.0f;
-        if (f > 1.0f) f = 1.0f;
-        return f;
-    }();
+    static const float s_visualDisplaceFar = mc2::gate::get<"MC2_TERRAIN_VISUAL_DISPLACE_FAR">();
 #endif
     if (s_locVisualDisplaceFar >= 0)
         glUniform1f(s_locVisualDisplaceFar, s_visualDisplaceFar);
@@ -2161,10 +2079,7 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
     // MC2_TERRAIN_VISUAL_DISPLACE gate (visualDisplaceActive); mips absent ->
     // uploads 0 -> vert branch skipped (S2 behavior verbatim).
     // MC2_TERRAIN_LOD_GEOMORPH=0 is the killswitch when mips ARE present.
-    static const bool s_geomorphKill = []() {
-        const char* v = getenv("MC2_TERRAIN_LOD_GEOMORPH");
-        return (v && v[0] == '0');
-    }();
+    static const bool s_geomorphKill = !mc2::gate::get<"MC2_TERRAIN_LOD_GEOMORPH">();
     const bool geomorphActive =
         visualDisplaceActive && s_visualMipFloats > 0 && !s_geomorphKill;
     if (s_locGeomorphMips >= 0)
@@ -2490,15 +2405,7 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
             if (s_locMatAlbedoStrength >= 0) {
                 // env resolved once (mission-constant, REDUNDANT-PASS-HUNT-1
                 // discipline); -1 sentinel = env absent -> JSON -> 0.7.
-                static const float s_envMatAlbedoStrength = []() {
-                    const char* v = std::getenv("MC2_TERRAIN_MATERIAL_TEXTURES_STRENGTH");
-                    if (!v || !v[0]) return -1.0f;
-                    float f = (float)std::atof(v);
-                    if (!(f == f)) return -1.0f;  // NaN guard
-                    if (f < 0.0f) f = 0.0f;
-                    if (f > 1.0f) f = 1.0f;
-                    return f;
-                }();
+                static const float s_envMatAlbedoStrength = mc2::gate::get<"MC2_TERRAIN_MATERIAL_TEXTURES_STRENGTH">();
                 const float strength =
                       (s_envMatAlbedoStrength >= 0.0f)  ? s_envMatAlbedoStrength
                     : (s_matAlbedoStrengthJson >= 0.0f) ? s_matAlbedoStrengthJson
@@ -2580,20 +2487,8 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
             // knobs, sampled once (feature gate is per-process anyway). Default
             // 1.0 = the authored modest band in terrain_lod_chunk.frag; clamp to
             // [0,2] so a bad env value can't blow the band out or invert it.
-            static const float s_shorelineStrength = []() {
-                const char* v = std::getenv("MC2_TERRAIN_SHORELINE_STRENGTH");
-                float f = v ? (float)std::atof(v) : 1.0f;
-                if (!(f == f)) f = 1.0f; // NaN guard
-                if (f < 0.0f) f = 0.0f; if (f > 2.0f) f = 2.0f;
-                return f;
-            }();
-            static const float s_shorelineFoamStrength = []() {
-                const char* v = std::getenv("MC2_TERRAIN_SHORELINE_FOAM");
-                float f = v ? (float)std::atof(v) : 1.0f;
-                if (!(f == f)) f = 1.0f; // NaN guard
-                if (f < 0.0f) f = 0.0f; if (f > 2.0f) f = 2.0f;
-                return f;
-            }();
+            static const float s_shorelineStrength = mc2::gate::get<"MC2_TERRAIN_SHORELINE_STRENGTH">();
+            static const float s_shorelineFoamStrength = mc2::gate::get<"MC2_TERRAIN_SHORELINE_FOAM">();
             if (s_locShorelineStrength >= 0)
                 glUniform1f(s_locShorelineStrength, s_shorelineStrength);
             if (s_locShorelineFoamStrength >= 0)
@@ -2609,20 +2504,14 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
             // (horizontal wu); legacy _WET_HEIGHT / _FOAM_HEIGHT names still
             // honored as aliases but are now interpreted as horizontal runs
             // (unit change documented in docs/tier1_env_vars.md).
-            static const float s_shorelineWetHeight = []() {
-                const char* v = std::getenv("MC2_TERRAIN_SHORELINE_WET_RUN");
-                if (!v) v = std::getenv("MC2_TERRAIN_SHORELINE_WET_HEIGHT"); // legacy alias
-                float f = v ? (float)std::atof(v) : 16.0f;
-                if (!(f == f) || f <= 0.0f) f = 16.0f; // NaN/non-positive guard
-                return f;
-            }();
-            static const float s_shorelineFoamHeight = []() {
-                const char* v = std::getenv("MC2_TERRAIN_SHORELINE_FOAM_RUN");
-                if (!v) v = std::getenv("MC2_TERRAIN_SHORELINE_FOAM_HEIGHT"); // legacy alias
-                float f = v ? (float)std::atof(v) : 5.0f;
-                if (!(f == f) || f <= 0.0f) f = 5.0f; // NaN/non-positive guard
-                return f;
-            }();
+            // MC2_TERRAIN_SHORELINE_WET_HEIGHT is the legacy alias, read only while WET_RUN is not set.
+            static const float s_shorelineWetHeight = mc2::gate::isSet<"MC2_TERRAIN_SHORELINE_WET_RUN">()
+                ? mc2::gate::get<"MC2_TERRAIN_SHORELINE_WET_RUN">()
+                : mc2::gate::get<"MC2_TERRAIN_SHORELINE_WET_HEIGHT">();
+            // MC2_TERRAIN_SHORELINE_FOAM_HEIGHT is the legacy alias, read only while FOAM_RUN is not set.
+            static const float s_shorelineFoamHeight = mc2::gate::isSet<"MC2_TERRAIN_SHORELINE_FOAM_RUN">()
+                ? mc2::gate::get<"MC2_TERRAIN_SHORELINE_FOAM_RUN">()
+                : mc2::gate::get<"MC2_TERRAIN_SHORELINE_FOAM_HEIGHT">();
             if (s_locShorelineWetHeight >= 0)
                 glUniform1f(s_locShorelineWetHeight, s_shorelineWetHeight);
             if (s_locShorelineFoamHeight >= 0)
@@ -2632,13 +2521,7 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
             // wet/foam lobes stop tracing the mesh waterline's straight
             // diamond segments. 0 = exact V3 contour. Clamp [0,32] so a bad
             // env value can't scatter the band across the whole beach.
-            static const float s_shorelineEdgeJitter = []() {
-                const char* v = std::getenv("MC2_TERRAIN_SHORELINE_EDGE_JITTER");
-                float f = v ? (float)std::atof(v) : 4.0f;
-                if (!(f == f)) f = 4.0f; // NaN guard
-                if (f < 0.0f) f = 0.0f; if (f > 32.0f) f = 32.0f;
-                return f;
-            }();
+            static const float s_shorelineEdgeJitter = mc2::gate::get<"MC2_TERRAIN_SHORELINE_EDGE_JITTER">();
             if (s_locShorelineEdgeJitter >= 0)
                 glUniform1f(s_locShorelineEdgeJitter, s_shorelineEdgeJitter);
         }
@@ -2710,8 +2593,7 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
         // CLIFF SHADOW FLOOR: env-gated. Unset/=0 uploads 0.0 (shader no-op,
         // byte-identical). Non-zero uploads the member value (ImGui-tunable), 0..1.
         {
-            static const char* s_cliffEnv = getenv("MC2_TERRAIN_CLIFF_SHADOW_FLOOR");
-            static const bool  s_cliffOn  = (s_cliffEnv && s_cliffEnv[0] && s_cliffEnv[0] != '0');
+            static const bool s_cliffOn = mc2::gate::get<"MC2_TERRAIN_CLIFF_SHADOW_FLOOR">();
             if (s_locCliffShadowFloor >= 0) {
                 float cf = s_cliffOn ? gos_GetTerrainCliffShadowFloor() : 0.0f;
                 if (cf < 0.0f) cf = 0.0f;
@@ -2821,7 +2703,7 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
             // alongside the uploaded gate so the night floor's effect is visible
             // rather than inferred.
             static bool s_traced = false;
-            if (!s_traced && getenv("MC2_TERRAIN_AMBIENT_FLOOR_TRACE")) {
+            if (!s_traced && mc2::gate::get<"MC2_TERRAIN_AMBIENT_FLOOR_TRACE">()) {
                 s_traced = true;
                 bool  isNight = false; float nf = 0.0f;
                 gos_GetNightState(&isNight, &nf);
@@ -2896,35 +2778,11 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
         //   MC2_TERRAIN_POM_NEAR / MC2_TERRAIN_POM_FAR  fade band in world units
         //                          (default 1500..3500; 1 tile = 384 wu)
         {
-            static const bool s_pomGate = []() {
-                const char* v = getenv("MC2_TERRAIN_POM");
-                return v && v[0] && v[0] != '0';
-            }();
-            static const float s_pomScale = []() {
-                const char* v = getenv("MC2_TERRAIN_POM_SCALE");
-                if (v && v[0]) { float f = (float)atof(v); if (f > 0.0f) return f; }
-                return -1.0f;   // <0 = no override -> gos_GetTerrainPOMScale()
-            }();
-            static const float s_pomSteps = []() {
-                const char* v = getenv("MC2_TERRAIN_POM_STEPS");
-                if (v && v[0]) {
-                    float f = (float)atof(v);
-                    if (f >= 4.0f && f <= 16.0f) return f;
-                }
-                return 16.0f;
-            }();
-            static const float s_pomNear = []() {
-                const char* v = getenv("MC2_TERRAIN_POM_NEAR");
-                float f = (v && v[0]) ? (float)atof(v) : 1500.0f;
-                if (!(f == f) || f < 0.0f) f = 1500.0f;  // NaN/negative guard
-                return f;
-            }();
-            static const float s_pomFar = []() {
-                const char* v = getenv("MC2_TERRAIN_POM_FAR");
-                float f = (v && v[0]) ? (float)atof(v) : 3500.0f;
-                if (!(f == f) || f <= 0.0f) f = 3500.0f;
-                return f;
-            }();
+            static const bool s_pomGate = mc2::gate::get<"MC2_TERRAIN_POM">();
+            static const float s_pomScale = mc2::gate::get<"MC2_TERRAIN_POM_SCALE">();
+            static const float s_pomSteps = mc2::gate::get<"MC2_TERRAIN_POM_STEPS">();
+            static const float s_pomNear = mc2::gate::get<"MC2_TERRAIN_POM_NEAR">();
+            static const float s_pomFar = mc2::gate::get<"MC2_TERRAIN_POM_FAR">();
             if (s_locPomParams >= 0) {
                 if (s_pomGate) {
                     const float scale    = (s_pomScale > 0.0f) ? s_pomScale : gos_GetTerrainPOMScale();
@@ -3562,14 +3420,8 @@ void gos_TerrainLodChunk_UploadVisualDampStatic(const float* damp01, int side)
 
 bool gos_TerrainLodChunk_VisualDampWanted()
 {
-    static const bool s_displaceGate = []() {
-        const char* v = getenv("MC2_TERRAIN_VISUAL_DISPLACE");
-        return v && v[0] && v[0] != '0';
-    }();
-    static const bool s_dampGate = []() {
-        const char* v = getenv("MC2_TERRAIN_VISUAL_DISPLACE_OBJFADE");
-        return !(v && v[0] == '0');
-    }();
+    static const bool s_displaceGate = mc2::gate::get<"MC2_TERRAIN_VISUAL_DISPLACE">();
+    static const bool s_dampGate = mc2::gate::get<"MC2_TERRAIN_VISUAL_DISPLACE_OBJFADE">();
     return s_displaceGate && s_dampGate && s_visualDampSsbo.created()
            && s_visualDampSide > 0 && !s_visualDampStatic.empty();
 }
@@ -3845,18 +3697,14 @@ void gos_TerrainLodChunk_UploadWaterShoreHeight(const float* heights, int w, int
 int gos_WaterShoreMode()
 {
     static const int s_mode = []() {
-        if (const char* m = std::getenv("MC2_WATER_SHORE_MODE"))
-        {
-            if (m[0] == '0' && m[1] == '\0') return 0;
-            if (m[0] == '1' && m[1] == '\0') return 1;
-            if (m[0] == '2' && m[1] == '\0') return 2;
-            if (m[0] == '3' && m[1] == '\0') return 3;   // GL-only smooth-shore prototype
-            // unparseable -> fall through to default resolution
-        }
+        // Enum row 0|1|2|3: anything else (unset, empty, unparseable) falls through to default resolution
+        if (mc2::gate::is<"MC2_WATER_SHORE_MODE", "0">()) return 0;
+        if (mc2::gate::is<"MC2_WATER_SHORE_MODE", "1">()) return 1;
+        if (mc2::gate::is<"MC2_WATER_SHORE_MODE", "2">()) return 2;
+        if (mc2::gate::is<"MC2_WATER_SHORE_MODE", "3">()) return 3;   // GL-only smooth-shore prototype
         // Back-compat killswitch: MC2_WATER_SHORE_MASK=0 predates the mode
         // gate and meant "full legacy ramp"; keep that meaning.
-        const char* v = std::getenv("MC2_WATER_SHORE_MASK");
-        const bool shoreMaskOn = !(v && v[0] == '0');  // default ON
+        const bool shoreMaskOn = mc2::gate::get<"MC2_WATER_SHORE_MASK">();  // default ON
         return shoreMaskOn ? 2 : 0;   // default: per-fragment signed height
     }();
     return s_mode;
@@ -3891,10 +3739,7 @@ bool gos_TerrainLodChunk_IsShorelineMaskActive()
 // turns the terrain-side band off.
 bool gos_TerrainShorelineGateOn()
 {
-    static const bool s_on = []() {
-        const char* v = std::getenv("MC2_TERRAIN_SHORELINE");
-        return !(v && v[0] == '0');
-    }();
+    static const bool s_on = mc2::gate::get<"MC2_TERRAIN_SHORELINE">();
     return s_on;
 }
 
@@ -3975,10 +3820,7 @@ bool gos_TerrainShorelineGateOn()
 // the legacy pass exactly as it shipped.
 bool gos_TerrainShorelineLegacySuppressOn()
 {
-    static const bool s_on = []() {
-        const char* v = std::getenv("MC2_SHORELINE_LEGACY_SUPPRESS");
-        return !(v && v[0] == '0');
-    }();
+    static const bool s_on = mc2::gate::get<"MC2_SHORELINE_LEGACY_SUPPRESS">();
     return s_on;
 }
 
@@ -4055,14 +3897,7 @@ void gos_GetTerrainChunkGridInfo(int* mapSide, float* halfMap)
 // uploader in gameos_graphics.cpp reuses both values for lockstep.
 float gos_TerrainPadGlowStrength()
 {
-    static const float s_v = []() {
-        const char* s = std::getenv("MC2_PAD_AREA_GLOW");
-        if (!s || !s[0]) return 0.12f;
-        float v = (float)std::atof(s);
-        if (v < 0.0f) v = 0.0f;
-        if (v > 4.0f) v = 4.0f;
-        return v;
-    }();
+    static const float s_v = mc2::gate::get<"MC2_PAD_AREA_GLOW">();
     return s_v;
 }
 
@@ -4075,39 +3910,23 @@ float gos_TerrainPadGlowStrength()
 // MC2_TERRAIN_SNOW_BRIGHTNESS_DAMPEN overrides), shared by the GL uniform upload and the VK feed.
 float gos_TerrainSnowBrightnessDampen()
 {
-    static const float s_v = [](){ const char* v = getenv("MC2_TERRAIN_SNOW_BRIGHTNESS_DAMPEN"); return v ? (float)atof(v) : 0.78f; }();
+    static const float s_v = mc2::gate::get<"MC2_TERRAIN_SNOW_BRIGHTNESS_DAMPEN">();
     return s_v;
 }
-static bool s_ambEnvSetFlag = false;
 float gos_TerrainAmbientFloor()
 {
-    static const float s_v = []() {
-        const char* e = std::getenv("MC2_TERRAIN_AMBIENT_FLOOR");
-        if (!e || !e[0]) return 0.35f;          // DEFAULT-ON
-        s_ambEnvSetFlag = true;
-        float v = (float)std::atof(e);
-        if (!(v >= 0.0f)) v = 0.0f;             // also catches NaN
-        if (v > 2.0f)     v = 2.0f;
-        return v;
-    }();
+    // Row: default 0.35 (DEFAULT-ON), clampRange(0, 2).
+    static const float s_v = mc2::gate::get<"MC2_TERRAIN_AMBIENT_FLOOR">();
     return s_v;
 }
-bool gos_TerrainAmbientFloorEnvSet() { (void)gos_TerrainAmbientFloor(); return s_ambEnvSetFlag; }
-static bool s_nightEnvSetFlag = false;
+bool gos_TerrainAmbientFloorEnvSet() { return mc2::gate::isNonEmpty<"MC2_TERRAIN_AMBIENT_FLOOR">(); }
 float gos_TerrainAmbientNightFloor()
 {
-    static const float s_v = []() {
-        const char* e = std::getenv("MC2_TERRAIN_AMBIENT_FLOOR_NIGHT");
-        if (!e || !e[0]) return 0.0f;           // DEFAULT-OFF
-        s_nightEnvSetFlag = true;
-        float v = (float)atof(e);
-        if (!(v >= 0.0f)) v = 0.0f;             // also catches NaN
-        if (v > 1.0f)     v = 1.0f;
-        return v;
-    }();
+    // Row: default 0 (DEFAULT-OFF), clampRange(0, 1).
+    static const float s_v = mc2::gate::get<"MC2_TERRAIN_AMBIENT_FLOOR_NIGHT">();
     return s_v;
 }
-bool gos_TerrainAmbientNightFloorEnvSet() { (void)gos_TerrainAmbientNightFloor(); return s_nightEnvSetFlag; }
+bool gos_TerrainAmbientNightFloorEnvSet() { return mc2::gate::isNonEmpty<"MC2_TERRAIN_AMBIENT_FLOOR_NIGHT">(); }
 // Daylight gate actually uploaded: max(daylight level, night floor).
 float gos_TerrainAmbientDayGate()
 {
@@ -4122,10 +3941,7 @@ float gos_TerrainAmbientDayGate()
 // SSBO must exist, capped at 256.
 int gos_TerrainLightPoolCount()
 {
-    static const bool s_lightPoolsGate = [] {
-        const char* v = getenv("MC2_TERRAIN_LIGHT_POOLS");
-        return !(v && v[0] == '0');   // default ON; =0 reverts byte-identical
-    }();
+    static const bool s_lightPoolsGate = mc2::gate::get<"MC2_TERRAIN_LIGHT_POOLS">();
     if (!s_lightPoolsGate) return 0;
     const GLuint   poolSsbo = gos_terrain_lighting::GetLightPoolSsbo();
     const uint32_t n        = gos_terrain_lighting::GetLightPoolLightCount();
@@ -4167,14 +3983,7 @@ void gos_TerrainLightPoolKnobs(int* soft, float* moverDim, float* moverScale,
 // that cement fragments obey. Default 0.0 == stock fully flat-lit cement slab.
 float gos_TerrainCementLit()
 {
-    static const float s_v = []() {
-        const char* s = std::getenv("MC2_CEMENT_LIT");
-        if (!s || !s[0]) return 0.0f;
-        float v = (float)std::atof(s);
-        if (v < 0.0f) v = 0.0f;
-        if (v > 1.0f) v = 1.0f;
-        return v;
-    }();
+    static const float s_v = mc2::gate::get<"MC2_CEMENT_LIT">();
     return s_v;
 }
 
@@ -4187,22 +3996,12 @@ float gos_TerrainCementLit()
 // could not close it because base never became cement.
 int gos_TerrainCementRampWord()
 {
-    static const int s_v = []() {
-        const char* s = std::getenv("MC2_CEMENT_RAMP_WORD");
-        return (s && s[0] && s[0] != '0') ? 1 : 0;
-    }();
+    static const int s_v = mc2::gate::get<"MC2_CEMENT_RAMP_WORD">();
     return s_v;
 }
 
 float gos_TerrainPadGlowSpillWu()
 {
-    static const float s_v = []() {
-        const char* s = std::getenv("MC2_PAD_AREA_GLOW_SPILL");
-        if (!s || !s[0]) return 48.0f;
-        float v = (float)std::atof(s);
-        if (v < 4.0f)   v = 4.0f;
-        if (v > 127.0f) v = 127.0f;   // mask probes ring-1 only (128 wu tiles)
-        return v;
-    }();
+    static const float s_v = mc2::gate::get<"MC2_PAD_AREA_GLOW_SPILL">();
     return s_v;
 }
