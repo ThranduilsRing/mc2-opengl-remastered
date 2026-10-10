@@ -13,6 +13,7 @@
 // otherwise so the GL shipping build never sees a Vulkan symbol.
 
 #include "engine_present_vk.h"
+#include "Gates/gate.h"
 #include "gos_visual_capture.h"   // VK-VISUAL-CAPTURE-1
 #include "Gates/gate_cold.h"   // gate::get<>() and str<>()
 
@@ -334,8 +335,7 @@ void presentNativeStrictAbort(const char* reason) {
 }
 
 std::string spv_dir() {
-    const char* env = std::getenv("MC2_VULKAN_SPV_DIR");
-    std::string d = (env && *env) ? env : "shaders/vulkan";
+    std::string d = mc2::gate::str<"MC2_VULKAN_SPV_DIR">();   // row default shaders/vulkan, empty reads the default
     if (!d.empty() && d.back() != '/' && d.back() != '\\') d += '/';
     return d;
 }
@@ -405,8 +405,7 @@ bool chooseQueuesAndPresentMode(EnginePresentVk::Impl& s, std::string& reason) {
         if (m == VK_PRESENT_MODE_MAILBOX_KHR)   haveMailbox = true;
         if (m == VK_PRESENT_MODE_IMMEDIATE_KHR) haveImmediate = true;
     }
-    const char* vs = std::getenv("MC2_VSYNC");
-    const bool vsyncOn = (vs && vs[0] == '1');
+    const bool vsyncOn = mc2::gate::get<"MC2_VSYNC">();
     if (vsyncOn) {
         s.presentMode = VK_PRESENT_MODE_FIFO_KHR;
     } else if (haveMailbox) {

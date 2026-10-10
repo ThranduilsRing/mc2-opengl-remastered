@@ -13,7 +13,7 @@
   "gui"
  ],
  "files_over_1500": {
-  "GameOS/gameos/engine_present_vk.cpp": 2750,
+  "GameOS/gameos/engine_present_vk.cpp": 2749,
   "GameOS/gameos/gameosmain.cpp": 2810,
   "GameOS/gameos/gos_mech_batcher.cpp": 3299,
   "GameOS/gameos/gos_static_prop_batcher_finalize.cpp": 2054,
@@ -93,7 +93,7 @@
   "mclib/vfxtile.cpp": 2944,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "b1c0b5796",
+ "head": "8bf2bf2aa",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -241,7 +241,7 @@
   },
   {
    "file": "GameOS/gameos/engine_present_vk.cpp",
-   "lines": 2750
+   "lines": 2749
   },
   {
    "file": "code/warrior.cpp",
