@@ -2,6 +2,10 @@
 // Declared in the class headers; shared names in mech_internal.h.
 #include "mech_internal.h"
 
+// MC2_GPU_CULL_LIFECYCLE=1 routes AI canBeSeen() combat gates to GPU-lagged visibility (same env var as objmgr.cpp).
+// Read at static-init like the other readers, before any in-main env application.
+static const bool s_gpuCullLifecycle = (getenv("MC2_GPU_CULL_LIFECYCLE") != nullptr);
+
 
 #define GestureGoalFallenBackward		8
 
@@ -723,7 +727,7 @@ void BattleMech::render (void)
 				appearance->render();
 	
 				// C3: route canBeSeen() to GPU-lagged visibility; 1-frame HUD lag: accepted.
-				const bool mechInViewQ3 = mech_gpuCullLifecycle()
+				const bool mechInViewQ3 = s_gpuCullLifecycle
 					? gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(getHandle()))
 					: appearance->canBeSeen();
 				if ( mechInViewQ3 )
@@ -745,7 +749,7 @@ void BattleMech::render (void)
 				appearance->render();
 
 				// C3: route canBeSeen() to GPU-lagged visibility; 1-frame HUD lag: accepted.
-				const bool mechInViewQ4 = mech_gpuCullLifecycle()
+				const bool mechInViewQ4 = s_gpuCullLifecycle
 					? gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(getHandle()))
 					: appearance->canBeSeen();
 				if ( mechInViewQ4 )
@@ -780,7 +784,7 @@ void BattleMech::render (void)
 				appearance->setSensorLevel(0);
 				appearance->render();
 				// C3: route canBeSeen() to GPU-lagged visibility; 1-frame fire-icon lag: accepted.
-				const bool mechInViewFire = mech_gpuCullLifecycle()
+				const bool mechInViewFire = s_gpuCullLifecycle
 					? gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(getHandle()))
 					: appearance->canBeSeen();
 				if ( attackRange == FIRERANGE_CURRENT && !isDisabled() && mechInViewFire )

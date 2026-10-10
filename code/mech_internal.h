@@ -231,10 +231,4 @@ extern char MechHitLocationTable[NUM_MECH_HIT_SECTIONS * NUM_MECH_HIT_ARCS * NUM
 extern bool ShowMovers;
 extern float DistanceToWaypoint;
 
-// MC2_GPU_CULL_LIFECYCLE=1 routes AI canBeSeen() combat gates to GPU-lagged visibility (same env var as objmgr.cpp); read once.
-inline bool mech_gpuCullLifecycle() {
-	static const bool v = (getenv("MC2_GPU_CULL_LIFECYCLE") != nullptr);
-	return v;
-}
-
 #endif // MECH_INTERNAL_H
