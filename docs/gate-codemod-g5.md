@@ -1941,3 +1941,15 @@ These change `Gates/gate_table.cpp` only; every other reader of the gate is stil
 * `inf`/`nan` and float-to-double rounding at a bound are modelled only through the `1e999` probe; `NaN` input is not probed.
 * Harness impact reads `harnessValues` in the gate seed (values found in scripts, tests, tools, data). Launcher `offVal`s and installed `launcher_env.json` files are not in the seed.
 * A replacement that drops a `const char*` local also drops the local's name, so the tool refuses when the pointer is used again.
+
+## EDGE ledger additions from the G5 review
+
+Behavior deltas that were applied under the typed rules and are not reachable from any shipped caller (nothing sets these values); recorded so a later reader of an odd value knows the rule changed.
+
+* Exact `"0"` became leading `"0"` (`Lead0`) on `MC2_SHADOW_CSM`, `MC2_SHADOW_FULLMAP_SEPARATE`, `MC2_SHADOW_GUARD_CLAMPED_SUN`, `MC2_HDRI_SKY`, `MC2_OOB_FOG`, `MC2_EDGE_FOG`, `MC2_FOG_HORIZON_CLAMP`, `MC2_TERRAIN_NORMAL_ARRAY`, `MC2_SHADOW_STATIC_BANDFIX`, `MC2_SHADOW_STATIC_BANDFIX_V2`, `MC2_TERRAIN_SHADOW_GUARD_CLAMPED_SUN`, `MC2_LAUNCHER_ENV_JSON` and `MC2_SPLIT_PATH_PARITY_TRACE`.
+* `MC2_CLOUD_SHADOW=01` read as ON before and reads as OFF now.
+* Empty text (`""`) reads as the row default where the old `atof("")` gave 0: `MC2_FAR_BACKDROP_LIT_NEAR` (700), `MC2_FAR_BACKDROP_LIT_FAR` (960), `MC2_FAR_BACKDROP_LIT_STRENGTH` (1.0), `MC2_TERRAIN_SNOW_BRIGHTNESS_DAMPEN` (0.78), `MC2_WATER_SHORE3_DEPTH_K` (0.03), `MC2_SCREENSHOT_AT_FRAME` (-1). Empty `MC2_SCREENSHOT_PATH` means no screenshot.
+* `nan` read as 0.0 and skipped the clamp before; now it takes the row default (the bound check rejects it): `MC2_FXAA_SUBPIX`, `MC2_BOX_DECAL_STRENGTH`, `MC2_BOX_DECAL_NORMAL_REJECT` (the arms reject), `MC2_SSAO_RADIUS`, `MC2_SSAO_BLUR_SIGMA`, `MC2_VIEWMODE_LOWLIGHT_GAIN`, `MC2_POST_CAS_SHARPNESS`, and `MC2_STATIC_PROP_IBL_SUN_ROTATE_FLOOR` (0.45).
+* Case-insensitive spellings stopped matching on `MC2_LIGHTING_DEBUG_VIEW` and `MC2_COALESCE_FORCE_DISARM`.
+* `MC2_POSTPROCESS_BACKEND` values `v` and `vk2` fall to `gl`.
+* `MC2_HDRI_SKY_AZ_OFFSET` differs by one ulp from the old `atof` path.
