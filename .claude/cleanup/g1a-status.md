@@ -78,3 +78,11 @@ Done in the pilot window (31a4ebfbe, a66f02ebf and the commit before the pilot f
 - Also: `default_build_quiet` baseline knows `[CONFIG v1]`; `flag-registry-auto-gen.py` sweeps `get<>` readers (otherwise migrated gates vanish from `docs/flags.auto.yaml`).
 
 Queued (not done): Enum rows return a typed `Token` enum class (no bool conversion) before G3; LG19 companion ratchet on `"MC2_` literals outside get/state/isSet/str helpers, including helper calls and `#define` lines, scanning tools/ and tests/; `markMainEntered` in harness mains; strict-mode design: the runner should drop ambient `MC2_*` names absent from the table instead of registering harness-only rows (16 owner `harness` rows exist now); test_gate cases for Int `"+1"` / overflow, Float `"1e999"` on a Std row, Prefix whitespace/sign, strict exit path (`_Exit(78)` in a child); NaN input on a Prefix float row is rejected to the default (the old atof readers kept NaN).
+
+## G2 single truth (3b8c50deb, 42409bd35)
+
+- `gate::get<>` on an Enum row returns `gate::Token` (enum class, no bool/int conversion); `reread` rows are parsed on every read (31a4ebfbe).
+- Table rows carry `registry(Kind, featureId, order, defaultOn)` (353 rows; reverse-Z, which has no env var, is in `Gates/feature_only_rows.json`). `tools/gate_registry_gen.py` writes the `kFeatureTable`/`kAuxEnvVars` rows of `RendererFeatureRegistry.h` and `docs/flags.auto.yaml` v3 from `Gates/gate_table.json`; `gate_gen --write` regenerates, `gate_gen --check` fails when either is stale.
+- Python tools read the table through `scripts/gate_table_reader.py` (env_index, gate_status, build_review_pack, gl_vk_feature_coverage). Deleted: `registry_parse.py`, `flag-registry-auto-gen.py`, `check-flag-registry-truth.py`, `check-flag-registry-drift.sh`, `test_gate_gen.py`, the one-shot seed importer.
+- Board: 167 rows -> 163 (retired `registry_parser_selftest`, `flag_registry_generator_selftest`, `flag_registry_truth`, `flag_registry_truth_selftest`; `flag_registry_drift` now runs `gate_gen --check`).
+- Registry docs are now the table's one-line `doc`; the long prose is `docs/gate-history.md` (a frozen archive, no generator).
