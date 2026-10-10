@@ -96,7 +96,6 @@ add_executable(tg_import_dump
     ${MC2_ROOT}/mclib/stuff/unitvector.cpp
     ${MC2_ROOT}/mclib/stuff/vector3d.cpp
     ${MC2_ROOT}/mclib/stuff/vector4d.cpp
-    ${MC2_ROOT}/mclib/stuff/matrixstack.cpp
     ${MC2_ROOT}/mclib/stuff/memoryblock.cpp
     ${MC2_ROOT}/mclib/stuff/mstring.cpp
     ${MC2_ROOT}/mclib/stuff/chain.cpp
@@ -106,19 +105,14 @@ add_executable(tg_import_dump
     ${MC2_ROOT}/mclib/stuff/node.cpp
     ${MC2_ROOT}/mclib/stuff/plug.cpp
     ${MC2_ROOT}/mclib/stuff/registeredclass.cpp
-    ${MC2_ROOT}/mclib/stuff/safechain.cpp
     ${MC2_ROOT}/mclib/stuff/safesocket.cpp
-    ${MC2_ROOT}/mclib/stuff/slot.cpp
     ${MC2_ROOT}/mclib/stuff/socket.cpp
     ${MC2_ROOT}/mclib/stuff/sortedchain.cpp
     ${MC2_ROOT}/mclib/stuff/sortedsocket.cpp
-    ${MC2_ROOT}/mclib/stuff/table.cpp
     ${MC2_ROOT}/mclib/stuff/tree.cpp
-    ${MC2_ROOT}/mclib/stuff/database.cpp
     ${MC2_ROOT}/mclib/stuff/filestream.cpp
     ${MC2_ROOT}/mclib/stuff/filestreammanager.cpp
     ${MC2_ROOT}/mclib/stuff/memorystream.cpp
-    ${MC2_ROOT}/mclib/stuff/namelist.cpp
     ${MC2_ROOT}/mclib/stuff/notationfile.cpp
     ${MC2_ROOT}/mclib/stuff/note.cpp
     ${MC2_ROOT}/mclib/stuff/page.cpp

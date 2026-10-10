@@ -188,10 +188,11 @@ long FitIniFile::afterOpen (void)
 			if (currentBlockNum == totalBlocks)
 				return(TOO_MANY_BLOCKS);
 
-			// blockId is char[50]: stop copying at 49 characters, and at the end of the string, so a long or
-			// unterminated [block] header in a mod .fit cannot write past the node or read past the line buffer.
+			// blockId is char[50]: the terminator goes at blockId[count-1], so copy up to index 49 (count 50) and no
+			// further, and stop at the end of the string, so a long or unterminated [block] header in a mod .fit
+			// cannot write past the node or read past the line buffer.
 			long count = 1;
-			while (line[count] != ']' && line[count] != '\n' && line[count] != '\0' && count < 49)
+			while (line[count] != ']' && line[count] != '\n' && line[count] != '\0' && count < 50)
 			{
 				fileBlocks[currentBlockNum].blockId[count-1] = line[count];
 				count++;
