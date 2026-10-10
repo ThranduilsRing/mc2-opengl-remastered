@@ -1855,7 +1855,7 @@ GLenum bptcInternalFormatFor(bool isSrgb) {
 // name (getTextureName returns the .tga/.txm source path, never .ktx2). Strip
 // the last extension that appears AFTER the last path separator (so a dot in a
 // directory name is never mistaken for an extension), then append ".orm.ktx2".
-static std::string deriveOrmSidecar(const char* srcName) {
+std::string deriveOrmSidecar(const char* srcName) {
     std::string s(srcName ? srcName : "");
     size_t sep = s.find_last_of("/\\");
     size_t dot = s.find_last_of('.');
@@ -1871,7 +1871,7 @@ static std::string deriveOrmSidecar(const char* srcName) {
 // The tier subdirectory is inserted between the parent directory and the filename.
 // If no tier directory is found the plain sidecar path (flat .ktx2) is returned
 // so the existing fallback / miss path handles it gracefully.
-static std::string deriveTieredKtxPath(const char* srcName, int tier) {
+std::string deriveTieredKtxPath(const char* srcName, int tier) {
     std::string s(srcName ? srcName : "");
     // Strip extension: find last dot after the last path separator.
     const size_t sep = s.find_last_of("/\\");
