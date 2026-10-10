@@ -1,5 +1,5 @@
-#ifndef TIMING_H
-#define TIMING_H
+#ifndef MC2_GAMEOS_UTILS_TIMING_H   // not TIMING_H: mclib/timing.h uses that guard, so whichever came second was silently skipped
+#define MC2_GAMEOS_UTILS_TIMING_H
 
 #include <stdint.h>
 
