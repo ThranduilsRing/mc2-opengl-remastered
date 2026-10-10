@@ -2589,17 +2589,13 @@ int main(int argc, char** argv)
                         // could never fire (verify ticks stopped first), so the
                         // oracle silently reported "PPM never wrote" on a healthy
                         // present path (the 2026-07-12 grey-regression red herring).
-                        static const unsigned long s_ppmPinFrame = [] {
-                            const char* p = getenv("MC2_VK_PRESENT_DUMP_FRAME");
-                            return (p && p[0]) ? strtoul(p, nullptr, 10) : 0ul;
-                        }();
+                        static const unsigned long s_ppmPinFrame = static_cast<unsigned long>(mc2::gate::get<"MC2_VK_PRESENT_DUMP_FRAME">());
                         // VK-FIELD-VFX-5: dynamic fire-event pin (armed at runtime
                         // by the MC2_FX_FORCE_SPAWN fixture when
                         // MC2_VK_PRESENT_DUMP_ON_FIRE is set) — must be read per
                         // frame, not memoized.
                         extern uint32_t g_mc2FxFireCaptureFrame;
-                        static const bool s_dumpOnFire =
-                            (getenv("MC2_VK_PRESENT_DUMP_ON_FIRE") != nullptr);
+                        static const bool s_dumpOnFire = mc2::gate::get<"MC2_VK_PRESENT_DUMP_ON_FIRE">();
                         const unsigned long firePin =
                             s_dumpOnFire ? (unsigned long)g_mc2FxFireCaptureFrame : 0ul;
                         const bool inVerifyWindow =
@@ -2611,7 +2607,7 @@ int main(int argc, char** argv)
                              g_mc2FrameCounter >= firePin &&
                              g_mc2FrameCounter < firePin + 600);
                         const bool verify =
-                            ((getenv("MC2_VK_PRESENT_VERIFY") != nullptr) &&
+                            ((mc2::gate::get<"MC2_VK_PRESENT_VERIFY">()) &&
                              inVerifyWindow && (g_mc2FrameCounter % 60 == 0)) ||
                             gos::visual_capture::vkCapturePending();   // VK-VISUAL-CAPTURE-1
                         if (vkpres.presentGLFrame((uint32_t)pdw, (uint32_t)pdh, verify)) {

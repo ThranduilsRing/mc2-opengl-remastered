@@ -23,6 +23,7 @@
 #endif
 
 #include "vulkan_context.h"
+#include "Gates/gate.h"
 
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
@@ -131,8 +132,7 @@ bool VulkanContext::init(bool wantPresent) {
     // created, so the fail-soft -> forceGLFallback path can be exercised on
     // demand (no broken-ICD juggling). Presence-gated; default OFF.
     {
-        const char* ff = std::getenv("MC2_VK_FORCE_FAIL");
-        if (ff && ff[0] && ff[0] != '0') {
+        if (mc2::gate::get<"MC2_VK_FORCE_FAIL">()) {
             return fail("MC2_VK_FORCE_FAIL=1 forced failure (fail-soft proof knob)");
         }
     }

@@ -1,4 +1,3 @@
-#include "Gates/gate_cold.h"   // gate::get<>() and str<>()
 // vulkan_terrain_island.cpp — VK-P10 TERRAIN TIER-1: LIVE LOD0 terrain opaque prefix
 // co-written IN-PLACE into the SHARED scene GBuffer.
 // =============================================================================
@@ -51,6 +50,7 @@
 #include "vk_gpu_timestamps.h"   // VK-DRAW-PERF-1: MC2_VK_GPU_TIMESTAMPS GPU segment timers
 #include "vulkan_context.h"
 #include "vulkan_terrain_island.h"
+#include "Gates/gate_cold.h"   // gate::get<>() and str<>()
 #include "vk_shared_gbuffer_gate.h"     // VK-P14 GATE-CONSOLIDATION-1 umbrella resolver
 #define MC2_VULKAN_SHARED_SCENE_COLOR_IMPL_ISLAND
 #include "vulkan_shared_scene_color.h"
@@ -160,7 +160,7 @@ void terrainPerFrameReadback(const char* fn) {
 bool terrainFenceDeferEnabled() {
     static int state = -1;
     if (state == -1)
-        state = (mc2vkgate::envTriState("MC2_VK_TERRAIN_FENCE_DEFER") == 0) ? 0 : 1;
+        state = mc2::gate::get<"MC2_VK_TERRAIN_FENCE_DEFER">() ? 1 : 0;
     return state == 1;
 }
 
@@ -182,9 +182,7 @@ bool terrainTier1Requested() {
     if (state == -1) {
         // Umbrella members: MC2_VK_SHARED_GBUFFER=1 arms both; explicit
         // MC2_VK_TERRAIN_TIER1 / MC2_VK_SHARED_SCENE_DEPTH =0/1 override.
-        const bool t1    = mc2vkgate::subGate("MC2_VK_TERRAIN_TIER1");
-        const bool depth = mc2vkgate::subGate("MC2_VK_SHARED_SCENE_DEPTH");
-        state = (t1 && depth) ? 1 : 0;
+        state = mc2vkgate::terrainNativeFirstOwnerOn() ? 1 : 0;   // tier-1 island AND shared scene depth
     }
     return state == 1;
 }
@@ -212,7 +210,7 @@ float g_prefixClearColor[4] = {0.0f, 0.0f, 0.0f, 1.0f};
 bool terrainAllLodsRequested() {
     static int state = -1;
     if (state == -1) {
-        state = (terrainTier1Requested() && mc2vkgate::subGate("MC2_VK_TERRAIN_ALL_LODS")) ? 1 : 0;
+        state = (terrainTier1Requested() && mc2vkgate::armed<"MC2_VK_TERRAIN_ALL_LODS">()) ? 1 : 0;
     }
     return state == 1;
 }
@@ -231,7 +229,7 @@ bool terrainAllLodsRequested() {
 bool terrainSkirtsRequested() {
     static int state = -1;
     if (state == -1) {
-        state = (terrainAllLodsRequested() && mc2vkgate::subGate("MC2_VK_TERRAIN_SKIRTS")) ? 1 : 0;
+        state = (terrainAllLodsRequested() && mc2vkgate::armed<"MC2_VK_TERRAIN_SKIRTS">()) ? 1 : 0;
     }
     return state == 1;
 }
@@ -250,7 +248,7 @@ bool terrainSkirtsRequested() {
 bool terrainVisualDisplaceFarRequested() {
     static int state = -1;
     if (state == -1) {
-        state = (terrainAllLodsRequested() && mc2vkgate::envTriState("MC2_VK_TERRAIN_VISUALDISPLACE_FAR") == 1) ? 1 : 0;
+        state = (terrainAllLodsRequested() && mc2::gate::get<"MC2_VK_TERRAIN_VISUALDISPLACE_FAR">()) ? 1 : 0;
     }
     return state == 1;
 }

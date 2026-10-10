@@ -1,3 +1,4 @@
+#include "Gates/gate.h"
 // vulkan_water_island.cpp - Vulkan water island.
 // =============================================================================
 // Renders the MC2 armed water fast-path mesh (base layer) in Vulkan. Tier-1
@@ -138,7 +139,7 @@ void vlog(const char* fmt, ...) {
 // post chain believed water was armed while the island declined. Now both agree. The strict
 // proof armed WATER_TIER1=1 and passed its parity check.
 bool waterTier1Requested() {
-    const bool s_on = mc2vkgate::subGate("MC2_VK_WATER_TIER1");   // per-call: VK-FAILSOFT-DISARM-1 (water must return to GL after fail-soft)
+    const bool s_on = mc2vkgate::armed<"MC2_VK_WATER_TIER1">();   // per-call: VK-FAILSOFT-DISARM-1 (water must return to GL after fail-soft)
     return s_on;
 }
 
@@ -149,8 +150,7 @@ bool waterTier1Requested() {
 bool waterPerfGateRequested() {
     static int state = -1;
     if (state == -1) {
-        const char* e = std::getenv("MC2_VK_WATER_PERF");
-        state = (e && e[0] == '1') ? 1 : 0;
+        state = mc2::gate::get<"MC2_VK_WATER_PERF">();
     }
     return state == 1;
 }
@@ -163,7 +163,7 @@ bool waterPerfGateRequested() {
 bool waterFenceDeferEnabled() {
     static int state = -1;
     if (state == -1)
-        state = (mc2vkgate::envTriState("MC2_VK_WATER_FENCE_DEFER") == 0) ? 0 : 1;
+        state = mc2::gate::get<"MC2_VK_WATER_FENCE_DEFER">() ? 1 : 0;
     return state == 1;
 }
 

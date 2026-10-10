@@ -47,6 +47,7 @@
 #include <cstdlib>
 #include <SDL2/SDL.h>
 #include "../../RenderCore/frame_executor.h"  // FRAME-GRAPH-EXECUTOR-ISLAND-1 IslandContract
+#include "Gates/gate.h"
 
 // === Item 1: Cascaded Shadow Maps gate (dynamic shadow path) ==============
 // MC2_SHADOW_CSM  : master gate, DEFAULT ON (reworked 2026-06-18, `8ff13a36`;
@@ -85,7 +86,7 @@ static bool mc2VkSharedSceneDepthEnabled()
 {
     // Umbrella family member: MC2_VK_SHARED_GBUFFER=1 arms it; explicit
     // MC2_VK_SHARED_SCENE_DEPTH=0/1 overrides. Default OFF (pure GL).
-    const bool s_on = mc2vkgate::subGate("MC2_VK_SHARED_SCENE_DEPTH");   // per-call: VK-FAILSOFT-DISARM-1
+    const bool s_on = mc2vkgate::armed<"MC2_VK_SHARED_SCENE_DEPTH">();   // per-call: VK-FAILSOFT-DISARM-1
     return s_on;
 }
 
@@ -100,8 +101,7 @@ static bool mc2VkSharedSceneDepthEnabled()
 // or island not compiled) = byte-identical to today.
 static bool mc2VkPropColorTier1Enabled()
 {
-    static const bool s_on =
-        mc2vkgate::subGate("MC2_VK_PROP_COLOR_TIER1") && mc2VkSharedSceneDepthEnabled();
+    static const bool s_on = mc2vkgate::regionTier1Armed<"MC2_VK_PROP_COLOR_TIER1">();
     return s_on;
 }
 
@@ -114,16 +114,14 @@ static bool mc2VkPropColorTier1Enabled()
 // Gate OFF / require missing / island not compiled = byte-identical.
 static bool mc2VkTerrainTier1Enabled()
 {
-    static const bool s_on =
-        mc2vkgate::subGate("MC2_VK_TERRAIN_TIER1") && mc2VkSharedSceneDepthEnabled();
+    static const bool s_on = mc2vkgate::regionTier1Armed<"MC2_VK_TERRAIN_TIER1">();
     return s_on;
 }
 
 // VK mech Tier-1 in-place co-write also renders into the shared scene GBuffer.
 static bool mc2VkMechTier1Enabled()
 {
-    static const bool s_on =
-        mc2vkgate::subGate("MC2_VK_MECH_TIER1") && mc2VkSharedSceneDepthEnabled();
+    static const bool s_on = mc2vkgate::regionTier1Armed<"MC2_VK_MECH_TIER1">();
     return s_on;
 }
 
@@ -145,18 +143,13 @@ static bool mc2VkSharedSceneDirectResourceEnabled()
     // decline the whole shared scene to pure GL under the umbrella unless a user set two
     // retired gates. The shared scene now arms on the post/composite direct-chain stack
     // alone (default-ON under MC2_VK_SHARED_GBUFFER).
-    static const bool s_on =
-        mc2vkgate::postDirectChainUpstreamOn() &&
-        mc2vkgate::directChainGate("MC2_VK_POST_COMPOSITE_DIRECT_CHAIN");
+    static const bool s_on = mc2vkgate::compositeDirectChainOn();
     return s_on;
 }
 
 static bool mc2VkSharedSceneStrictEnabled()
 {
-    static const bool s_on = []() {
-        const char* v = std::getenv("MC2_VK_SHARED_SCENE_STRICT");
-        return v && v[0] == '1' && v[1] == '\0';
-    }();
+    static const bool s_on = mc2::gate::get<"MC2_VK_SHARED_SCENE_STRICT">();
     return s_on;
 }
 
@@ -218,7 +211,7 @@ static GLuint createSceneDepthPlaceholderTex(int w, int h)
 static void mc2VkStaticShadowMapDeprecationNote()
 {
     static const bool s_once = [] {
-        if (mc2vkgate::envTriState("MC2_VK_STATIC_SHADOW_MAP") != -1)
+        if (mc2::gate::get<"MC2_VK_STATIC_SHADOW_MAP">())
             std::fprintf(stderr, "[VK_SHARED_STATIC_SHADOW] MC2_VK_STATIC_SHADOW_MAP is "
                                  "deprecated and now a no-op (VK-RUNG8-ITEM6): the VK static-"
                                  "shadow import substrate was deleted; static shadow uses the "
@@ -593,10 +586,7 @@ bool gos_SkyboxFogExcludeEnabled() { return skyboxFogExcludeEnabled(); }
 
 static bool sceneGlProducerQueryEnabled()
 {
-    static const bool s_on = []() {
-        const char* v = ::getenv("MC2_VK_SCENE_GL_PRODUCER_QUERY");
-        return v && v[0] == '1';
-    }();
+    static const bool s_on = mc2::gate::get<"MC2_VK_SCENE_GL_PRODUCER_QUERY">();
     return s_on;
 }
 
@@ -710,10 +700,7 @@ void gos_GlLostDrawsPop()
 
 static bool screenShadowGlCanaryEnabled()
 {
-    static const bool s_on = []() {
-        const char* v = ::getenv("MC2_VK_SCREENSHADOW_GL_CANARY");
-        return v && v[0] == '1';
-    }();
+    static const bool s_on = mc2::gate::get<"MC2_VK_SCREENSHADOW_GL_CANARY">();
     return s_on;
 }
 

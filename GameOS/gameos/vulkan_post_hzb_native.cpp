@@ -601,7 +601,7 @@ bool gosPostProcess::vkPostHzbNativeEnabled()
 {
     static int state = -1;
     if (state == -1) {
-        state = (mc2vkgate::envTriState("MC2_VK_POST_HZB") == 1) ? 1 : 0;
+        state = mc2::gate::get<"MC2_VK_POST_HZB">() ? 1 : 0;
         g_health.runtimeGate = state;
         if (state == 1) {
             vlog("MC2_VK_POST_HZB=1 -- rung-8.4 native HZB gate ON "

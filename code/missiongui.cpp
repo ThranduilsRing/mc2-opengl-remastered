@@ -25,6 +25,7 @@
 //--------------------------------------------------------------------------------------
 // Include Files
 #include "missiongui_internal.h"
+#include "Gates/gate.h"
 
 	static const char* terrainStr[NUM_TERRAIN_TYPES] = {
 			"Blue Water",	//MC_BLUEWATER_TYPE
@@ -870,10 +871,7 @@ void MissionInterfaceManager::update (void)
 	// brackets/bars. Gated, default-OFF -> zero effect on normal play. Runs before
 	// the mover render (Camera::render) so isSelected() is set when brackets draw.
 	{
-		static const int s_vkSelectTest = []{
-			const char* v = std::getenv("MC2_VK_SELECT_TEST");
-			return (v && v[0]=='1') ? 1 : 0;
-		}();
+		static const int s_vkSelectTest = mc2::gate::get<"MC2_VK_SELECT_TEST">();
 		if (s_vkSelectTest)
 			selectVisible();
 	}
@@ -1355,7 +1353,7 @@ void MissionInterfaceManager::update (void)
 	// the same gos_GetMouseInfo normalize). See gos_GetMouseInfo BUG-A fix.
 	{
 		static bool s_pickProbeDone = false;
-		if (!s_pickProbeDone && (turn > 20) && std::getenv("MC2_VK_PICK_PROBE"))
+		if (!s_pickProbeDone && (turn > 20) && mc2::gate::get<"MC2_VK_PICK_PROBE">())
 		{
 			s_pickProbeDone = true;
 			const char* be = std::getenv("MC2_RENDER_BACKEND");

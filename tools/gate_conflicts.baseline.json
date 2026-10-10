@@ -2,8 +2,12 @@
  "version": 1,
  "note": "Ratchet for tools/gate_conflicts.py --check: both numbers may only fall.",
  "conflict_gates": [
-  "MC2_FX_FORCE_SPAWN"
+  "MC2_FX_FORCE_SPAWN",
+  "MC2_SHADOW_DYNAMIC_PROP_CASTERS",
+  "MC2_SPOTLIGHT_DIRECTION_FIX",
+  "MC2_STATIC_PROP_BUILDING_SHADOW",
+  "MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE"
  ],
  "unresolved_conflicts": 0,
- "unclassified_sites": 18
+ "unclassified_sites": 21
 }

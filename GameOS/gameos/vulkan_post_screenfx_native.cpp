@@ -714,12 +714,12 @@ bool gosPostProcess::vkPostScreenFxNativeEnabled()
 {
     static int state = -1;
     if (state == -1) {
-        state = (mc2vkgate::envTriState("MC2_VK_POST_SCREENFX") == 1) ? 1 : 0;
+        state = mc2::gate::get<"MC2_VK_POST_SCREENFX">() ? 1 : 0;
         g_fx.runtimeGate = state;
         if (state == 1) {
-            g_fx.cloudGate = (mc2vkgate::envTriState("MC2_VK_POST_SCREENFX_CLOUD") == 0) ? 0 : 1;
-            g_fx.shoreGate = (mc2vkgate::envTriState("MC2_VK_POST_SCREENFX_SHORELINE") == 0) ? 0 : 1;
-            g_fx.shadowGate = (mc2vkgate::envTriState("MC2_VK_POST_SCREENFX_SHADOW") == 0) ? 0 : 1;
+            g_fx.cloudGate = mc2::gate::get<"MC2_VK_POST_SCREENFX_CLOUD">() ? 1 : 0;
+            g_fx.shoreGate = mc2::gate::get<"MC2_VK_POST_SCREENFX_SHORELINE">() ? 1 : 0;
+            g_fx.shadowGate = mc2::gate::get<"MC2_VK_POST_SCREENFX_SHADOW">() ? 1 : 0;
             vlog("MC2_VK_POST_SCREENFX=1 — rung-8.3 native screenfx gate ON "
                  "(shadow=%d cloud=%d shoreline=%d; lazy init at the pass site; fail-soft to GL).",
                  g_fx.shadowGate, g_fx.cloudGate, g_fx.shoreGate);

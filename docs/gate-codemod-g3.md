@@ -664,3 +664,15 @@ None.
 * `inf`/`nan` and float-to-double rounding at a bound are modelled only through the `1e999` probe; `NaN` input is not probed.
 * Harness impact reads `harnessValues` in the gate seed (values found in scripts, tests, tools, data). Launcher `offVal`s and installed `launcher_env.json` files are not in the seed.
 * A replacement that drops a `const char*` local also drops the local's name, so the tool refuses when the pointer is used again.
+
+## Post-implementation review corrections
+
+The G3 migration was reviewed site by site after it landed. These corrections replace the corresponding claims in the tables above; the tables are the dry-run output and are kept as written.
+
+* `MC2_TERRAIN_DETAIL_ANTITILE` (`gos_terrain_lod_chunk.cpp`): the old reader was "non-empty and not exactly `0`"; the row is Lead0 (first character not `0`), so `01`, `0.5` and `00` are now OFF. The second raw reader in `gameos_graphics.cpp` (`mc2_detailAntiTileYZW`) treated them as ON, leaving two readers in disagreement; it now reads the same row.
+* `MC2_PAD_EDGE_ROAD_FIX`: `01` and `02` change 0 to 1 and 2; `20` changes 2 to 1; `-0` changes 1 to 0.
+* `MC2_PAVED_OVERLAY_CLASS`: `+1` and `" 1"` change 0 to 1; `10` to `29` change 1 or 2 to 0.
+* `nan` now yields the default (the old reader passed NaN to the uniform) on `MC2_TERRAIN_LOD_MORPH_START`, `MC2_TERRAIN_VISUAL_DISPLACE_FAR`, `MC2_PAD_AREA_GLOW`, `MC2_CEMENT_LIT`, `MC2_TERRAIN_CLIFF_DISPLACE_MAXTESS`, `MC2_TERRAIN_DETAIL_LOD1_STRENGTH`, `MC2_TERRAIN_DETAIL_MACRO_STRENGTH`, `MC2_TERRAIN_LOD_CHUNK_SKIRT_MAX`, `MC2_LOWCAM_SOLID_NEAR`, `MC2_TERRAIN_SNOW_BRIGHTNESS_DAMPEN` and `MC2_WATER_SHORE3_EXTRA_WU`.
+* `1e999` is not an edge on `MC2_WATER_SHORE3_EXTRA_WU` or on the clamping rows.
+* `MC2_TERRAIN_LOD_CHUNK_DIST_SCALE`: the old test compared a float with `0.05f`; the row bound is now `static_cast<double>(0.05f)` so `0.05` is rejected as before.
+* `MC2_TERRAIN_CLIFF_HEIGHT_NORMAL_STRENGTH`: `0` was never "pure rgb-normal" (the old helper mapped it to the default 2.0); the row rejects values <= 0 and under `MC2_CONFIG_STRICT` a `0` now exits 78.

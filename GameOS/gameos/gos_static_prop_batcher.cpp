@@ -141,6 +141,7 @@ static const bool s_spotlightRealTrace = (getenv("MC2_SPOTLIGHT_REAL_TRACE") != 
 // ---------------------------------------------------------------------------
 #include <intrin.h>  // __rdtsc (MSVC intrinsic)
 #include "mc2_hitch_trace.h"
+#include "Gates/gate.h"
 
 // SP-BATCHER-ALPHASCAN-GATE-1: see header. Starts at 1 so a fresh scan (cached
 // gen 0) always runs its first pass regardless of any early destruction events.
@@ -10021,7 +10022,7 @@ extern "C" int mc2_color_prop_island_get_material_feed(Mc2ColorPropMaterialFeed*
     // real albedo layer or fall to teal. Type-count alone hid that the big buildings
     // were the no_primary bucket. Env-gated + one-shot (no hot-loop spam). REMOVE once
     // the teal bug is confirmed fixed in-engine.
-    if (std::getenv("MC2_VK_PROP_MATERIAL_DEBUG")) {
+    if (mc2::gate::get<"MC2_VK_PROP_MATERIAL_DEBUG">()) {
         static bool s_histLogged = false;
         if (!s_histLogged) {
             s_histLogged = true;

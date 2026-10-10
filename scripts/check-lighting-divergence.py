@@ -182,7 +182,7 @@ CPP_FLOOR_GATES = (
     ("mclib/txmmgr.cpp", "MC2_VEHICLE_AMBIENT_FLOOR"),
 )
 # A getenv("MC2_X") read or a typed gate::get<"MC2_X">() read: either names the gate the file still reads.
-RE_GETENV = re.compile(r'(?:getenv\(\s*|\b(?:get|state|isSet|str|is)\s*<\s*)"([A-Z0-9_]+)"')
+RE_GETENV = re.compile(r'(?:getenv\(\s*|\b(?:get|state|isSet|isNonEmpty|str|is)\s*<\s*)"([A-Z0-9_]+)"')
 
 
 def scan(verbose_sink=None):

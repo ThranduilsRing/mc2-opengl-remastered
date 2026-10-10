@@ -1,3 +1,4 @@
+#include "Gates/gate.h"
 // vulkan_mech_island.cpp — VK-P14 MECH TIER-1: the FIRST VK-native SKINNED mech region.
 // =============================================================================
 // Co-writes the GL mech batcher's visible instances IN-PLACE into the SHARED scene
@@ -110,9 +111,7 @@ bool mechGateRequested() {
     if (state == -1) {
         // Umbrella members: MC2_VK_SHARED_GBUFFER=1 arms both; explicit
         // MC2_VK_MECH_TIER1 / MC2_VK_SHARED_SCENE_DEPTH =0/1 override.
-        const bool on  = mc2vkgate::subGate("MC2_VK_MECH_TIER1");
-        const bool dep = mc2vkgate::subGate("MC2_VK_SHARED_SCENE_DEPTH");
-        state = (on && dep) ? 1 : 0;   // require shared depth
+        state = mc2vkgate::regionTier1Armed<"MC2_VK_MECH_TIER1">() ? 1 : 0;   // require shared depth
     }
     return state == 1;
 }
@@ -120,15 +119,14 @@ bool mechGateRequested() {
 bool mechFenceDeferEnabled() {
     static int state = -1;
     if (state == -1)
-        state = (mc2vkgate::envTriState("MC2_VK_MECH_FENCE_DEFER") == 0) ? 0 : 1;
+        state = mc2::gate::get<"MC2_VK_MECH_FENCE_DEFER">() ? 1 : 0;
     return state == 1;
 }
 
 bool mechPerfGateRequested() {
     static int state = -1;
     if (state == -1) {
-        const char* e = std::getenv("MC2_VK_MECH_PERF");
-        state = (e && e[0] == '1') ? 1 : 0;
+        state = mc2::gate::get<"MC2_VK_MECH_PERF">();
     }
     return state == 1;
 }
@@ -142,7 +140,7 @@ bool mechPerfGateRequested() {
 bool mechMaterialRequested() {
     // Umbrella member; explicit MC2_VK_MECH_MATERIAL=0/1 overrides.
     static int state = -1;
-    if (state == -1) state = mc2vkgate::subGate("MC2_VK_MECH_MATERIAL") ? 1 : 0;
+    if (state == -1) state = mc2vkgate::armed<"MC2_VK_MECH_MATERIAL">() ? 1 : 0;
     return state == 1;
 }
 
@@ -152,7 +150,7 @@ bool mechMaterialRequested() {
 bool mechLightingRequested() {
     // Umbrella member; explicit MC2_VK_MECH_LIGHTING=0/1 overrides.
     static int state = -1;
-    if (state == -1) state = mc2vkgate::subGate("MC2_VK_MECH_LIGHTING") ? 1 : 0;
+    if (state == -1) state = mc2vkgate::armed<"MC2_VK_MECH_LIGHTING">() ? 1 : 0;
     return state == 1;
 }
 
@@ -167,7 +165,7 @@ bool mechLightingRequested() {
 bool mechFeedAuditRequested() {
     static int state = -1;
     if (state == -1)
-        state = (mc2vkgate::envTriState("MC2_VK_MECH_FEED_AUDIT") == 1) ? 1 : 0;
+        state = mc2::gate::get<"MC2_VK_MECH_FEED_AUDIT">() ? 1 : 0;
     return state == 1;
 }
 

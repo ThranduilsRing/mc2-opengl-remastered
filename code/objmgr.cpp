@@ -2189,10 +2189,10 @@ void GameObjectManager::render (bool terrain, bool movers, bool other) {
 		// Gated on the MC2_VK_VFX sub-gate (default-ON under MC2_VK_SHARED_GBUFFER;
 		// explicit =0 disables ALL VK VFX handling — this route AND the particle
 		// island — for A/B and safe-off). Umbrella OFF -> false -> byte-identical GL.
-		const bool vkVfxRoute = mc2vkgate::subGate("MC2_VK_VFX");
+		const bool vkVfxRoute = mc2vkgate::armed<"MC2_VK_VFX">();
 		const bool prevVfxExempt = vkVfxRoute ? gos_GetHudScaleExempt() : false;
 		// VK-FIELD-VFX-2 trace (MC2_VK_VFX_TRACE): confirm the route + live effect counts.
-		static const bool s_vfxRouteTrace = (getenv("MC2_VK_VFX_TRACE") && getenv("MC2_VK_VFX_TRACE")[0] && getenv("MC2_VK_VFX_TRACE")[0] != '0');
+		static const bool s_vfxRouteTrace = mc2::gate::get<"MC2_VK_VFX_TRACE">();
 		if (s_vfxRouteTrace) {
 			long liveW = 0;
 			if (weapons) for (long i = 0; i < numWeapons; i++) if (weapons[i] && weapons[i]->getExists()) liveW++;

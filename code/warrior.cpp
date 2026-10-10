@@ -5,6 +5,7 @@
 //								WARRIOR.CPP
 
 #include "warrior_internal.h"
+#include "Gates/gate.h"
 
 
 // ABL-VM-FACTS-1: TU-local definitions for the abl_trace externs.
@@ -2170,7 +2171,7 @@ void MechWarrior::updateActions (void) {
 				// the GL engine capture (gos_visual_capture.cpp), so GL/VK pairs
 				// capture the same fire-relative instant.
 				static const bool s_dumpOnFire =
-					(getenv("MC2_VK_PRESENT_DUMP_ON_FIRE") != NULL ||
+					(mc2::gate::get<"MC2_VK_PRESENT_DUMP_ON_FIRE">() ||
 					 getenv("MC2_VISUAL_CAPTURE_ON_FIRE") != NULL);
 				if (s_dumpOnFire && g_mc2FxFireCaptureFrame == 0) {
 					g_mc2FxFireCaptureFrame = g_mc2FrameCounter + 30u;

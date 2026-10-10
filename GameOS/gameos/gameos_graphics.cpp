@@ -94,6 +94,7 @@ namespace gosFX { void DiagFrameTick(); }
 #include "engine_present_vk.h"
 #endif
 #include "vk_shared_gbuffer_gate.h"  // VK-FIELD-ENV-CONTENT-STACK-ARM-1: umbrella HUD arming
+#include "Gates/gate.h"   // typed gate registry
 #ifdef MC2_VULKAN_ISLAND
 #include "vulkan_terrain_island.h"    // VK-PARITY-OVERLAY-1: overlay/decal VK owner queue
 #endif
@@ -132,13 +133,9 @@ static bool debugEnvEnabled(const char* name) {
     return value && value[0] != '\0' && std::strcmp(value, "0") != 0;
 }
 
-static bool vkScopedGlCanaryEnabled(const char* name) {
-    const char* value = std::getenv(name);
-    return value && value[0] == '1';
-}
-
-static GLuint vkScopedGlCanaryBegin(const char* name) {
-    if (!vkScopedGlCanaryEnabled(name))
+// `armed` is the canary gate's value (MC2_VK_*_GL_CANARY), read by the caller.
+static GLuint vkScopedGlCanaryBegin(bool armed) {
+    if (!armed)
         return 0;
     GLuint query = 0;
     glGenQueries(1, &query);
@@ -3651,8 +3648,7 @@ void gosRenderer::renderWaterFastPath(
             // island run()'s [VK_WATER_PERF] line so the full per-frame cost is visible.
             static int s_vkWaterPerf = -1;
             if (s_vkWaterPerf == -1) {
-                const char* e = std::getenv("MC2_VK_WATER_PERF");
-                s_vkWaterPerf = (e && e[0] == '1') ? 1 : 0;
+                s_vkWaterPerf = mc2::gate::get<"MC2_VK_WATER_PERF">();
             }
             const auto tThinRb0 = std::chrono::steady_clock::now();
             const uint32_t vkThinCount = WaterStream::ReadbackGpuThinForVk(&vkThinPtr);
@@ -6388,9 +6384,8 @@ void gosRenderer::drawPoints(gos_VERTEX* vertices, int count) {
 static bool mc2VfxCoalesceEnabled() {
     static int state = -1;
     if (state == -1) {
-        const char* v = std::getenv("MC2_VK_VFX_COALESCE");
-        if (v && v[0] == '0' && v[1] == '\0') state = 0;   // explicit opt-out
-        else state = 1;   // unset (or explicit "1") -> ON
+        // Row: Lead0Kill, so unset (or anything not starting with '0') -> ON; a leading '0' is the opt-out.
+        state = mc2::gate::get<"MC2_VK_VFX_COALESCE">() ? 1 : 0;
         // DEFAULT-ON as of this slice's own verification pass: draw-count A/B
         // (mc2_01, forced multi-mech fire, field env) showed peak hudBatch_
         // entries collapse 349 -> 109 with quiet-floor unaffected (13 vs 14);
@@ -7255,8 +7250,8 @@ static const float* mc2_detailAntiTileYZW()
     static bool s_init = false;
     if (!s_init) {
         s_init = true;
-        const char* g = getenv("MC2_TERRAIN_DETAIL_ANTITILE");
-        if (g && *g && strcmp(g, "0") != 0) {
+        const bool antiTile = mc2::gate::get<"MC2_TERRAIN_DETAIL_ANTITILE">();   // row: Lead0, same rule as the chunk reader
+        if (antiTile) {
             auto envF = [](const char* k, float def) -> float {
                 const char* v = getenv(k);
                 return (v && *v) ? (float)atof(v) : def;
@@ -7588,7 +7583,7 @@ void gosRenderer::drawIndexedTris(gos_VERTEX* vertices, int num_vertices, WORD* 
     // (scene.gosfx_clipper lost-draw samples). Expand to a plain triangle list and
     // route through drawTris' IsHUD batching, same as the non-indexed effect draws.
     // Only when IsHUD is set AND the VFX sub-gate is armed (VK) -> GL byte-identical.
-    const bool vkVfxArmed = mc2vkgate::subGate("MC2_VK_VFX");
+    const bool vkVfxArmed = mc2vkgate::armed<"MC2_VK_VFX">();
     if (renderStates_[gos_State_IsHUD] && num_indices > 0 && vkVfxArmed) {
         std::vector<gos_VERTEX> expanded;
         expanded.reserve((size_t)num_indices);
@@ -8065,7 +8060,7 @@ static bool vkHudQueueEnabled()
     // queues the HUD into the VK present tail; explicit "1"/"0" still wins. The strict proof armed
     // MC2_VK_HUD=1 and passed. (Representable-draw filtering + the SKIP_GL all-or-nothing guard
     // below still apply -- a non-representable HUD element keeps GL HUD live for parity.)
-    const bool enabled = mc2vkgate::subGate("MC2_VK_HUD");            // per-call: VK-FAILSOFT-DISARM-1
+    const bool enabled = mc2vkgate::armed<"MC2_VK_HUD">();            // per-call: VK-FAILSOFT-DISARM-1
     return enabled;
 }
 
@@ -8076,7 +8071,7 @@ static bool vkHudSkipGlEnabled()
     // an optimization under VK-only present (the GL backbuffer is discarded anyway), and it is
     // self-protecting: nativeHudCanSkipGl is AND-reduced over drawRepresentable, so GL HUD stays
     // live whenever any HUD element is not VK-representable. Explicit "1"/"0" still wins.
-    const bool enabled = mc2vkgate::subGate("MC2_VK_HUD_SKIP_GL");    // per-call: VK-FAILSOFT-DISARM-1 (GL HUD must return after fail-soft)
+    const bool enabled = mc2vkgate::armed<"MC2_VK_HUD_SKIP_GL">();    // per-call: VK-FAILSOFT-DISARM-1 (GL HUD must return after fail-soft)
     return enabled;
 }
 
@@ -8412,16 +8407,15 @@ void gosRenderer::flushHUDBatch()
         // VK-HUD-GATE-HOIST-1: resolve the VFX umbrella sub-gate ONCE PER FLUSH,
         // not per draw (3x subGate() + a raw getenv per draw was ~380-450 CRT env
         // scans/frame at field HUD density, thousands during weapon fire).
-        // DISARM-1/2 semantics preserved: subGate() reads g_mc2VkSessionForcedGL
-        // through umbrellaOn() on THIS call, so a mid-session fail-soft still
+        // DISARM-1/2 semantics preserved: armed<>() reads g_mc2VkSessionForcedGL
+        // on THIS call, so a mid-session fail-soft still
         // propagates at the next flush (frame-boundary granularity is the disarm
         // intent). Do NOT make this local `static`, and do NOT re-fuse the
         // per-draw reads below back into the loop.
-        const bool hudVfxGate = mc2vkgate::subGate("MC2_VK_VFX");
+        const bool hudVfxGate = mc2vkgate::armed<"MC2_VK_VFX">();
         // Env-token-only memo (no disarm interaction): the env block is
         // process-static, so one getenv per process is exact.
-        static const bool s_hudDrawDumpEnv =
-            (std::getenv("MC2_VK_HUD_DRAW_DUMP") != nullptr);
+        static const bool s_hudDrawDumpEnv = mc2::gate::get<"MC2_VK_HUD_DRAW_DUMP">();
         std::vector<mc2vk::VkHudDraw> nativeDraws;
         nativeDraws.reserve(hudBatch_.size());
         for (const HudDrawCall& call : hudBatch_) {
@@ -11135,7 +11129,7 @@ void gosRenderer::drawTerrainOverlays()
         GLint prevVao = 0;
         glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &prevVao);
         glBindVertexArray(terrainOverlayBatch_.vao);
-        GLuint canary = vkScopedGlCanaryBegin("MC2_VK_TERRAIN_OVERLAY_GL_CANARY");
+        GLuint canary = vkScopedGlCanaryBegin(mc2::gate::get<"MC2_VK_TERRAIN_OVERLAY_GL_CANARY">());
         int canaryDraws = 0;
         for (const auto& entry : terrainOverlayBatch_.draws) {
             if (overlayLocs_.tex1 >= 0)
@@ -11290,7 +11284,7 @@ bool gosRenderer::drawDecalStaticBatch(unsigned int vboGL,
     {
         mc2gl::GlScopedTextureUnit texGuard(0);  // GLSTATE-TEXTURE-UNIT0-RESTORE-1
         glBindVertexArray(s_decalStaticVAO);
-        GLuint canary = vkScopedGlCanaryBegin("MC2_VK_DECAL_STATIC_GL_CANARY");
+        GLuint canary = vkScopedGlCanaryBegin(mc2::gate::get<"MC2_VK_DECAL_STATIC_GL_CANARY">());
         int canaryDraws = 0;
         for (int i = 0; i < drawCount; ++i) {
             const struct GosDecalStaticDraw& entry = draws[i];
@@ -11410,7 +11404,7 @@ void gosRenderer::drawDecals()
         GLint prevVao = 0;
         glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &prevVao);
         glBindVertexArray(decalBatch_.vao);
-        GLuint canary = vkScopedGlCanaryBegin("MC2_VK_TERRAIN_DECAL_GL_CANARY");
+        GLuint canary = vkScopedGlCanaryBegin(mc2::gate::get<"MC2_VK_TERRAIN_DECAL_GL_CANARY">());
         int canaryDraws = 0;
         for (const auto& entry : decalBatch_.draws) {
             if (decalLocs_.tex1 >= 0)

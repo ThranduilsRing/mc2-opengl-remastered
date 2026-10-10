@@ -29,6 +29,9 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <string>
+
+#include "Gates/gate_cold.h"
 
 // sim-frozen-for-sweep predicate (VK-MECH-CAPTURE-DETERMINISM-1): declared in
 // gos_visual_capture.h (single shared declaration, extern "C").
@@ -37,8 +40,8 @@
 namespace mc2vkfeeddump {
 
 inline const char* dumpPath() {
-    static const char* p = std::getenv("MC2_VK_FEED_DUMP");
-    return p;
+    static const std::string p = mc2::gate::str<"MC2_VK_FEED_DUMP">();   // "" when unset or empty
+    return p.empty() ? nullptr : p.c_str();
 }
 
 inline bool enabled() { return dumpPath() != nullptr && dumpPath()[0] != '\0'; }

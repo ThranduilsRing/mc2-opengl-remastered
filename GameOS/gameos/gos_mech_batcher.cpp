@@ -147,17 +147,28 @@ bool g_useGpuMechs = envFlagDefaultOn("MC2_GPU_MECHS");
 // default-OFF): when armed, the flush() below still BUILDS the instance/bone SSBOs
 // and the feed snapshot, but SKIPS its own GL color draws; the caller (txmmgr) runs
 // mc2_vk_mech_island_run() to co-write the mechs IN-PLACE into the shared GBuffer.
-// Gate OFF -> s_vkMechGateOn stays false -> GL flush() byte-identical.
-static bool s_vkMechGateOn = [] {
-    // Umbrella members: MC2_VK_SHARED_GBUFFER=1 arms both; explicit
-    // MC2_VK_MECH_TIER1 / MC2_VK_SHARED_SCENE_DEPTH =0/1 override.
-    const bool on  = mc2vkgate::subGate("MC2_VK_MECH_TIER1");
-    const bool dep = mc2vkgate::subGate("MC2_VK_SHARED_SCENE_DEPTH");
-    return on && dep;   // require shared depth (the co-write depth-tests against it)
-}();
+// Gate OFF -> vkMechGateOn() stays false -> GL flush() byte-identical.
+// Resolved on first use, not at static init: the gate registry then sees the environment after any
+// launcher_env.json apply, and the session fail-soft flag as it stands when the first flush runs.
+static bool vkMechGateOn() {
+    static int state = -1;
+    if (state == -1) {
+        // Umbrella members: MC2_VK_SHARED_GBUFFER=1 arms both; explicit
+        // MC2_VK_MECH_TIER1 / MC2_VK_SHARED_SCENE_DEPTH =0/1 override.
+        state = mc2vkgate::regionTier1Armed<"MC2_VK_MECH_TIER1">() ? 1 : 0;   // the co-write depth-tests against the shared depth
+        // VK-RUNG8 item-9: MC2_VK_MECH_FEED_NATIVE is DEPRECATED / a no-op (the native CPU feed is unconditional
+        // under the VK mech island; the GL readback fallback is deleted). The name is still parsed so old
+        // command lines do not hit unknown-variable behavior; setting it prints a one-line note.
+        if (mc2::gate::get<"MC2_VK_MECH_FEED_NATIVE">())
+            std::fprintf(stderr, "[VK_MECH_FEED] MC2_VK_MECH_FEED_NATIVE is deprecated "
+                                 "and now a no-op: native CPU feed is always used under "
+                                 "the VK mech island (GL readback fallback deleted).\n");
+    }
+    return state == 1;
+}
 
 // VK-P14 MECH feed snapshots (persisted host-visible copies the island memcpy's).
-// Populated at flush() end ONLY when s_vkMechGateOn; empty otherwise.
+// Populated at flush() end ONLY when vkMechGateOn(); empty otherwise.
 static std::vector<GpuMechInstance> s_vkMechInstSnapshot;
 static std::vector<GpuMechBone>     s_vkMechBoneSnapshot;
 static std::vector<Mc2MechDrawRun>  s_vkMechRunSnapshot;
@@ -165,23 +176,6 @@ static float                        s_vkMechWorldToClipGL[16] = {0};
 static float                        s_vkMechObjectDepthBias   = 0.0f;
 static bool                         s_vkMechFrameReady        = false;
 
-// VK-MECH-FEED-NATIVE-1 (rung 7): envTriState OPT-IN, default OFF (same new-rung
-// pattern as MC2_VK_TERRAIN_SKIRTS / MC2_VK_WATER_TIER1: unset -> OFF regardless
-// of the umbrella; explicit 0 forces OFF). When armed, the feed carries the CPU
-// byte sources (exact uploaded VBO work blob, s_stagingIbo, mcTextureManager
-// lightData_) so the island never reads GL buffer objects back.
-// VK-RUNG8 item-9: MC2_VK_MECH_FEED_NATIVE is now DEPRECATED / a no-op. The native
-// CPU feed is unconditional whenever the VK mech island is active (s_vkMechGateOn),
-// because the GL buffer-readback fallback in the island was deleted. The env name is
-// still parsed so old command lines don't hit unknown-var behavior; explicitly setting
-// it just prints a one-line deprecation note.
-[[maybe_unused]] static const bool s_vkMechFeedNativeDeprecated = [] {
-    if (mc2vkgate::envTriState("MC2_VK_MECH_FEED_NATIVE") != -1)
-        std::fprintf(stderr, "[VK_MECH_FEED] MC2_VK_MECH_FEED_NATIVE is deprecated "
-                             "and now a no-op: native CPU feed is always used under "
-                             "the VK mech island (GL readback fallback deleted).\n");
-    return true;
-}();
 // Exact bytes uploaded to s_sharedVbo (the normals-recomputed `work` copy —
 // s_stagingVbo alone is NOT the uploaded bytes when s_mechNormalsMode != 0).
 // Refreshed by uploadMechGeometryVbo(); cleared with the staging on map load.
@@ -1709,8 +1703,8 @@ static void uploadMechGeometryVbo() {
     // for the native geometry feed whenever the VK mech island is active. The old
     // GL buffer-readback fallback in the island was deleted, so this copy is the
     // island's only geometry source. Copy-once per map / normals rebuild; the copy
-    // exists only under the VK backend (s_vkMechGateOn), never in the pure-GL product.
-    if (s_vkMechGateOn)
+    // exists only under the VK backend (vkMechGateOn()), never in the pure-GL product.
+    if (vkMechGateOn())
         s_vkVboNativeCopy = work;
 #endif
 
@@ -2695,7 +2689,7 @@ void GpuMechBatcher::flush() {
 #ifdef MC2_VULKAN_ISLAND
     // VK-P14 MECH TIER-1: when armed, capture each run (with its LIVE slot-0 paint
     // texture resolved this frame) for the island and SKIP the GL draw below.
-    if (s_vkMechGateOn) s_vkMechRunSnapshot.clear();
+    if (vkMechGateOn()) s_vkMechRunSnapshot.clear();
 #endif
     for (const DrawCall& dc : drawCalls) {
         const GpuMechPacket& pkt = s_packets[dc.globalPacketIdx];
@@ -2714,7 +2708,7 @@ void GpuMechBatcher::flush() {
             : 0u;
         const uint32_t glTexId = gos_GetGLTextureId((uint32_t)liveGosHandle);
 #ifdef MC2_VULKAN_ISLAND
-        if (s_vkMechGateOn) {
+        if (vkMechGateOn()) {
             Mc2MechDrawRun run{};
             run.firstIndex    = pkt.firstIndex;
             run.indexCount    = pkt.indexCount;
@@ -2824,7 +2818,7 @@ void GpuMechBatcher::flush() {
 #ifdef MC2_VULKAN_ISLAND
         // VK-P14 MECH TIER-1: gate ON -> the island co-writes these mechs into the
         // shared GBuffer instead; skip the GL color draw (SSBOs + feed still built).
-        if (!s_vkMechGateOn)
+        if (!vkMechGateOn())
 #endif
         glDrawElementsInstancedBaseVertex(
             GL_TRIANGLES,
@@ -2938,7 +2932,7 @@ void GpuMechBatcher::flush() {
     // copies out of the mapped ring slot) + the world->clip / depth-bias the GL VS
     // uses, so the island can memcpy them into VK SSBOs without touching a fenced GL
     // buffer. Runs only when the gate is armed (empty otherwise -> feed reports 0).
-    if (s_vkMechGateOn) {
+    if (vkMechGateOn()) {
         s_vkMechInstSnapshot.assign(instDst, instDst + totalInstances);
         s_vkMechBoneSnapshot.assign(boneDst, boneDst + totalBones);
         // gos_GetMechFixBMVPMat4() is the row-major (GL_FALSE) kAxisSwap*worldToClip
@@ -3027,7 +3021,7 @@ extern "C" uint32_t mc2_mech_vertex_stride(void) { return (uint32_t)sizeof(GpuMe
 
 extern "C" int mc2_mech_island_get_geometry_feed(Mc2MechGeomFeed* out) {
     if (!out) return 0;
-    if (!s_vkMechGateOn || !s_geometryFinalized || s_sharedVbo == 0 || s_sharedIbo == 0)
+    if (!vkMechGateOn() || !s_geometryFinalized || s_sharedVbo == 0 || s_sharedIbo == 0)
         return 0;
     // Byte sizes from the staged CPU geometry (uploaded verbatim to the GL buffers).
     const uint64_t vboBytes = (uint64_t)s_stagingVbo.size();
@@ -3040,7 +3034,7 @@ extern "C" int mc2_mech_island_get_geometry_feed(Mc2MechGeomFeed* out) {
     out->vertexStride = (uint32_t)sizeof(GpuMechVertex);   // 48
     // VK-RUNG8 item-9: CPU byte sources are now the ONLY mech geometry feed (the GL
     // buffer-readback fallback was deleted from the island). Populate whenever the VK
-    // mech island is active (we are already past the s_vkMechGateOn guard above). A
+    // mech island is active (we are already past the vkMechGateOn() guard above). A
     // size mismatch means a normals rebuild raced this accessor -> leave vboCpu null;
     // the island declines this frame and retries next frame (no GL readback rescue).
     out->vboCpu = nullptr;
@@ -3053,7 +3047,7 @@ extern "C" int mc2_mech_island_get_geometry_feed(Mc2MechGeomFeed* out) {
 
 extern "C" int mc2_mech_island_get_frame_feed(Mc2MechFrameFeed* out) {
     if (!out) return 0;
-    if (!s_vkMechGateOn || !s_vkMechFrameReady) return 0;
+    if (!vkMechGateOn() || !s_vkMechFrameReady) return 0;
     if (s_vkMechInstSnapshot.empty() || s_vkMechRunSnapshot.empty()) return 0;
     out->instances64   = s_vkMechInstSnapshot.data();
     out->instanceCount = (uint32_t)s_vkMechInstSnapshot.size();

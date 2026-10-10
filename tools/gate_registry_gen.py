@@ -170,6 +170,8 @@ def render_yaml(doc, only):
         L.append("    doc: %s\n" % json.dumps(g["doc"], ensure_ascii=True))
         if g.get("tokens"):
             L.append("    tokens: %s\n" % json.dumps(g["tokens"]))
+        if g.get("inherits"):
+            L.append("    inherits: %s\n" % g["inherits"])
         rg = g.get("range")
         if rg:
             L.append("    range: {lo: %s, hi: %s, style: %s%s}\n" % (

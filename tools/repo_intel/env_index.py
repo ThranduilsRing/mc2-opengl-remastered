@@ -63,7 +63,7 @@ _GETENV_VAR_ANYCALL = re.compile(
 )
 # Typed gate registry readers: gate::get<"MC2_X">(), get<"MC2_X", Rule::...>(), state/isSet/str/is<"MC2_X"...>.
 _GATE_GET_VAR  = re.compile(
-    r'\b(?:(?:mc2::)?gate::)?(?:get|state|isSet|str|is)\s*<\s*"(MC2_[A-Z0-9_]+)"'
+    r'\b(?:(?:mc2::)?gate::)?(?:get|state|isSet|isNonEmpty|armed|regionTier1Armed|str|is)\s*<\s*"(MC2_[A-Z0-9_]+)"'
 )
 _TIER1_VAR     = re.compile(r'`(MC2_[A-Z_0-9]+)(?:=[^`]*)?`')
 _TIER1_DEFAULT = re.compile(r'Default\s+\*\*(ON|OFF)\*\*', re.IGNORECASE)

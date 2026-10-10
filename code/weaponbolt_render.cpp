@@ -1,6 +1,7 @@
 // WeaponBolt: bolt rendering and the VK VFX immediate-draw gates it reads.
 // Declared in the class headers; shared names in weaponbolt_internal.h.
 #include "weaponbolt_internal.h"
+#include "Gates/gate.h"
 
 
 // VK-FIELD-VFX-2 (2026-07-11): under the field VK umbrella the DEFAULT bolt path
@@ -15,15 +16,12 @@
 // tail. Umbrella OFF -> subGate false -> drawOldWay path unchanged -> byte-identical GL.
 static bool vkVfxImmediateDraw()
 {
-	const bool s_on = mc2vkgate::subGate("MC2_VK_VFX");   // per-call: VK-FAILSOFT-DISARM-1
+	const bool s_on = mc2vkgate::armed<"MC2_VK_VFX">();   // per-call: VK-FAILSOFT-DISARM-1
 	return s_on;
 }
 static bool vkVfxTraceOn()
 {
-	static const bool s_on = []{
-		const char* v = std::getenv("MC2_VK_VFX_TRACE");
-		return v && v[0] && v[0] != '0';
-	}();
+	static const bool s_on = mc2::gate::get<"MC2_VK_VFX_TRACE">();
 	return s_on;
 }
 

@@ -68,6 +68,7 @@ struct IndexEntry {
     Kind kind;
     Rule rule;
     std::string_view tokens;  // "a|b|c" for Enum rows, empty otherwise
+    std::string_view parent;  // Tri rows: the Bool gate an unset variable inherits, empty otherwise
 };
 
 }  // namespace mc2::gate

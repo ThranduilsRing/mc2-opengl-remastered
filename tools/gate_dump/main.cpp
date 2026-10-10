@@ -140,6 +140,10 @@ int main() {
         } else out += "null";
         out += ", \"logTopic\": ";
         str(out, r.logTopic);
+        if (!r.inherits.empty()) {
+            out += ", \"inherits\": ";
+            str(out, r.inherits);
+        }
         out += "}";
         out += (i + 1 < n) ? ",\n" : "\n";
     }
