@@ -26,12 +26,13 @@
 #include <vector>
 #include <cstdlib>
 #include <cstdint>
+#include "Gates/gate.h"
 
 namespace mc2vkts {
 
 inline bool timestampsEnabled() {
     static int s = -1;
-    if (s < 0) s = (std::getenv("MC2_VK_GPU_TIMESTAMPS") != nullptr) ? 1 : 0;
+    if (s < 0) s = (mc2::gate::get<"MC2_VK_GPU_TIMESTAMPS">()) ? 1 : 0;
     return s == 1;
 }
 

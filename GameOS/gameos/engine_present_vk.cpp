@@ -14,6 +14,7 @@
 
 #include "engine_present_vk.h"
 #include "gos_visual_capture.h"   // VK-VISUAL-CAPTURE-1
+#include "Gates/gate_cold.h"   // gate::get<>() and str<>()
 
 #if defined(MC2_VULKAN) && defined(MC2_VULKAN_ISLAND)
 
@@ -293,8 +294,7 @@ bool compositeDirectChainGateEnabled() {
 
 bool objectIdDirectChainGateEnabled() {
     static const bool on = []() {
-        const char* v = getenv("MC2_VK_OBJECTID_DIRECT_CHAIN");
-        return v && v[0] == '1' && compositeDirectChainGateEnabled();
+        return mc2::gate::get<"MC2_VK_OBJECTID_DIRECT_CHAIN">() && compositeDirectChainGateEnabled();
     }();
     return on;
 }
@@ -311,21 +311,16 @@ void emitDeprecatedPresentGateNotes() {
     static bool done = false;
     if (done) return;
     done = true;
-    const char* a = getenv("MC2_VK_PRESENT_SKIP_GL_HANDOFF");
-    if (a && a[0] == '1')
+    if (mc2::gate::get<"MC2_VK_PRESENT_SKIP_GL_HANDOFF">())
         plog("MC2_VK_PRESENT_SKIP_GL_HANDOFF is deprecated (item-8): the GL->VK "
              "present handoff is deleted; the skip is now unconditional. No-op.");
-    const char* b = getenv("MC2_VK_PRESENT_NO_GL_IMPORT");
-    if (b && b[0] == '1')
+    if (mc2::gate::get<"MC2_VK_PRESENT_NO_GL_IMPORT">())
         plog("MC2_VK_PRESENT_NO_GL_IMPORT is deprecated (item-8): the present "
              "image is always a VK-only allocation. No-op.");
 }
 
 bool presentNativeStrictEnabled() {
-    static const bool on = []() {
-        const char* v = getenv("MC2_VK_PRESENT_NATIVE_STRICT");
-        return v && v[0] == '1';
-    }();
+    static const bool on = mc2::gate::get<"MC2_VK_PRESENT_NATIVE_STRICT">();
     return on;
 }
 
@@ -1547,9 +1542,7 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
                 dst.push_back({v.x, v.y, v.argb});
             // VK-FIELD-VFX-2 tail trace: log untextured tri-batch (kind==2) bbox+argb so we
             // can see the ACTUAL geometry the tail rasterizes (bars vs weapon beams).
-            static const bool s_vfxTailTrace =
-                (std::getenv("MC2_VK_VFX_TRACE") && std::getenv("MC2_VK_VFX_TRACE")[0] &&
-                 std::getenv("MC2_VK_VFX_TRACE")[0] != '0');
+            static const bool s_vfxTailTrace = mc2::gate::get<"MC2_VK_VFX_TRACE">();
             // VK-FIELD-VFX-2 debug: log the beam LINES specifically (kind==1 alpha==1 — the
             // beam-axis line fallback; brackets/bars are alpha==3) to confirm they reach the tail.
             if (s_vfxTailTrace && d.kind == 1 && d.alphaMode == 1 && !d.vertices.empty()) {
@@ -2566,7 +2559,8 @@ void EnginePresentVk::verifyReadbackContent() {
         // (the HUD/force-bar is only fully up a few hundred frames in; a one-shot at
         // the first verify catches a bare early-boot HUD).
         static bool s_ppmDone = false; (void)s_ppmDone;
-        const char* ppmPath = std::getenv("MC2_VK_PRESENT_DUMP_PPM");
+        const std::string ppmPathText = mc2::gate::str<"MC2_VK_PRESENT_DUMP_PPM">();   // "" when unset or empty
+        const char* ppmPath = ppmPathText.empty() ? nullptr : ppmPathText.c_str();
         // VK-FIELD-VFX-3: optional frame pin. MC2_VK_PRESENT_DUMP_FRAME=N dumps at the
         // FIRST verify tick with g_mc2FrameCounter >= N, then stops overwriting -- so a
         // capture can be pinned to an early fire-active frame (continuous force-fire
@@ -2575,12 +2569,11 @@ void EnginePresentVk::verifyReadbackContent() {
         {
             extern uint32_t g_mc2FrameCounter;
             extern uint32_t g_mc2FxFireCaptureFrame;
-            const char* pinEnv = std::getenv("MC2_VK_PRESENT_DUMP_FRAME");
-            if (pinEnv && pinEnv[0]) {
-                const unsigned long pin = strtoul(pinEnv, nullptr, 10);
+            if (mc2::gate::isNonEmpty<"MC2_VK_PRESENT_DUMP_FRAME">()) {
+                const unsigned long pin = static_cast<unsigned long>(mc2::gate::get<"MC2_VK_PRESENT_DUMP_FRAME">());
                 if (s_ppmDone || (unsigned long)g_mc2FrameCounter < pin)
                     ppmPath = nullptr; // not yet at the pinned frame, or already captured
-            } else if (std::getenv("MC2_VK_PRESENT_DUMP_ON_FIRE")) {
+            } else if (mc2::gate::get<"MC2_VK_PRESENT_DUMP_ON_FIRE">()) {
                 // VK-FIELD-VFX-5: dynamic fire-event pin. The force-fire fixture
                 // (code/warrior.cpp) arms g_mc2FxFireCaptureFrame ~0.5s after its
                 // first volley, so the capture always lands mid-volley -- no

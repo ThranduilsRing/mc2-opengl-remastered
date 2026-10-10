@@ -1,3 +1,4 @@
+#include "Gates/gate.h"
 // vulkan_water_island.cpp - Vulkan water island.
 // =============================================================================
 // Renders the MC2 armed water fast-path mesh (base layer) in Vulkan. Tier-1
@@ -149,8 +150,7 @@ bool waterTier1Requested() {
 bool waterPerfGateRequested() {
     static int state = -1;
     if (state == -1) {
-        const char* e = std::getenv("MC2_VK_WATER_PERF");
-        state = (e && e[0] == '1') ? 1 : 0;
+        state = mc2::gate::get<"MC2_VK_WATER_PERF">();
     }
     return state == 1;
 }

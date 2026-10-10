@@ -1,3 +1,4 @@
+#include "Gates/gate.h"
 // vulkan_shadow_island_live.cpp — VK-P8a SHADOW-INTEROP: the SECOND Vulkan GEOMETRY
 // region and the FIRST VK-PRODUCES-DEPTH region (water was the first geometry region,
 // GL-produces-color / VK-consumes; shadow REVERSES the direction).
@@ -127,8 +128,7 @@ void vlog(const char* fmt, ...) {
 bool shadowInteropGateRequested() {
     static int state = -1;
     if (state == -1) {
-        const char* e = std::getenv("MC2_VK_SHADOW_INTEROP");
-        state = (e && e[0] == '1') ? 1 : 0;
+        state = mc2::gate::get<"MC2_VK_SHADOW_INTEROP">();
     }
     return state == 1;
 }
@@ -136,8 +136,7 @@ bool shadowInteropGateRequested() {
 bool csmFullMapInteropGateRequested() {
     static int state = -1;
     if (state == -1) {
-        const char* e = std::getenv("MC2_VK_CSM_FULLMAP_INTEROP");
-        state = (e && e[0] == '1') ? 1 : 0;
+        state = mc2::gate::get<"MC2_VK_CSM_FULLMAP_INTEROP">();
     }
     return state == 1;
 }
@@ -145,8 +144,7 @@ bool csmFullMapInteropGateRequested() {
 bool csmArrayInteropGateRequested() {
     static int state = -1;
     if (state == -1) {
-        const char* e = std::getenv("MC2_VK_CSM_ARRAY_INTEROP");
-        state = (e && e[0] == '1') ? 1 : 0;
+        state = mc2::gate::get<"MC2_VK_CSM_ARRAY_INTEROP">();
     }
     return state == 1;
 }
@@ -847,10 +845,7 @@ bool upload_geometry_once(ShadowIsland* s) {
 // received by the island per map, GL/VK depth readbacks -> normalized gray PNG.
 // ===========================================================================
 bool diagOn() {
-    static const bool on = []{
-        const char* v = std::getenv("MC2_VK_SHADOW_MATRIX_DIAG");
-        return v && v[0] && v[0] != '0';
-    }();
+    static const bool on = mc2::gate::get<"MC2_VK_SHADOW_MATRIX_DIAG">();
     return on;
 }
 struct DiagRecv { bool have = false; int size = 0; int layers = 0; float m[16] = {0}; };

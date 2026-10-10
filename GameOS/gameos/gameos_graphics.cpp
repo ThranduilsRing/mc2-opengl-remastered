@@ -133,13 +133,9 @@ static bool debugEnvEnabled(const char* name) {
     return value && value[0] != '\0' && std::strcmp(value, "0") != 0;
 }
 
-static bool vkScopedGlCanaryEnabled(const char* name) {
-    const char* value = std::getenv(name);
-    return value && value[0] == '1';
-}
-
-static GLuint vkScopedGlCanaryBegin(const char* name) {
-    if (!vkScopedGlCanaryEnabled(name))
+// `armed` is the canary gate's value (MC2_VK_*_GL_CANARY), read by the caller.
+static GLuint vkScopedGlCanaryBegin(bool armed) {
+    if (!armed)
         return 0;
     GLuint query = 0;
     glGenQueries(1, &query);
@@ -3652,8 +3648,7 @@ void gosRenderer::renderWaterFastPath(
             // island run()'s [VK_WATER_PERF] line so the full per-frame cost is visible.
             static int s_vkWaterPerf = -1;
             if (s_vkWaterPerf == -1) {
-                const char* e = std::getenv("MC2_VK_WATER_PERF");
-                s_vkWaterPerf = (e && e[0] == '1') ? 1 : 0;
+                s_vkWaterPerf = mc2::gate::get<"MC2_VK_WATER_PERF">();
             }
             const auto tThinRb0 = std::chrono::steady_clock::now();
             const uint32_t vkThinCount = WaterStream::ReadbackGpuThinForVk(&vkThinPtr);
@@ -6389,9 +6384,8 @@ void gosRenderer::drawPoints(gos_VERTEX* vertices, int count) {
 static bool mc2VfxCoalesceEnabled() {
     static int state = -1;
     if (state == -1) {
-        const char* v = std::getenv("MC2_VK_VFX_COALESCE");
-        if (v && v[0] == '0' && v[1] == '\0') state = 0;   // explicit opt-out
-        else state = 1;   // unset (or explicit "1") -> ON
+        // Row: Lead0Kill, so unset (or anything not starting with '0') -> ON; a leading '0' is the opt-out.
+        state = mc2::gate::get<"MC2_VK_VFX_COALESCE">() ? 1 : 0;
         // DEFAULT-ON as of this slice's own verification pass: draw-count A/B
         // (mc2_01, forced multi-mech fire, field env) showed peak hudBatch_
         // entries collapse 349 -> 109 with quiet-floor unaffected (13 vs 14);
@@ -8421,8 +8415,7 @@ void gosRenderer::flushHUDBatch()
         const bool hudVfxGate = mc2vkgate::armed<"MC2_VK_VFX">();
         // Env-token-only memo (no disarm interaction): the env block is
         // process-static, so one getenv per process is exact.
-        static const bool s_hudDrawDumpEnv =
-            (std::getenv("MC2_VK_HUD_DRAW_DUMP") != nullptr);
+        static const bool s_hudDrawDumpEnv = mc2::gate::get<"MC2_VK_HUD_DRAW_DUMP">();
         std::vector<mc2vk::VkHudDraw> nativeDraws;
         nativeDraws.reserve(hudBatch_.size());
         for (const HudDrawCall& call : hudBatch_) {
@@ -11136,7 +11129,7 @@ void gosRenderer::drawTerrainOverlays()
         GLint prevVao = 0;
         glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &prevVao);
         glBindVertexArray(terrainOverlayBatch_.vao);
-        GLuint canary = vkScopedGlCanaryBegin("MC2_VK_TERRAIN_OVERLAY_GL_CANARY");
+        GLuint canary = vkScopedGlCanaryBegin(mc2::gate::get<"MC2_VK_TERRAIN_OVERLAY_GL_CANARY">());
         int canaryDraws = 0;
         for (const auto& entry : terrainOverlayBatch_.draws) {
             if (overlayLocs_.tex1 >= 0)
@@ -11291,7 +11284,7 @@ bool gosRenderer::drawDecalStaticBatch(unsigned int vboGL,
     {
         mc2gl::GlScopedTextureUnit texGuard(0);  // GLSTATE-TEXTURE-UNIT0-RESTORE-1
         glBindVertexArray(s_decalStaticVAO);
-        GLuint canary = vkScopedGlCanaryBegin("MC2_VK_DECAL_STATIC_GL_CANARY");
+        GLuint canary = vkScopedGlCanaryBegin(mc2::gate::get<"MC2_VK_DECAL_STATIC_GL_CANARY">());
         int canaryDraws = 0;
         for (int i = 0; i < drawCount; ++i) {
             const struct GosDecalStaticDraw& entry = draws[i];
@@ -11411,7 +11404,7 @@ void gosRenderer::drawDecals()
         GLint prevVao = 0;
         glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &prevVao);
         glBindVertexArray(decalBatch_.vao);
-        GLuint canary = vkScopedGlCanaryBegin("MC2_VK_TERRAIN_DECAL_GL_CANARY");
+        GLuint canary = vkScopedGlCanaryBegin(mc2::gate::get<"MC2_VK_TERRAIN_DECAL_GL_CANARY">());
         int canaryDraws = 0;
         for (const auto& entry : decalBatch_.draws) {
             if (decalLocs_.tex1 >= 0)

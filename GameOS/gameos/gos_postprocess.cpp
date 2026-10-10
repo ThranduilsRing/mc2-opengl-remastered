@@ -47,6 +47,7 @@
 #include <cstdlib>
 #include <SDL2/SDL.h>
 #include "../../RenderCore/frame_executor.h"  // FRAME-GRAPH-EXECUTOR-ISLAND-1 IslandContract
+#include "Gates/gate.h"
 
 // === Item 1: Cascaded Shadow Maps gate (dynamic shadow path) ==============
 // MC2_SHADOW_CSM  : master gate, DEFAULT ON (reworked 2026-06-18, `8ff13a36`;
@@ -148,10 +149,7 @@ static bool mc2VkSharedSceneDirectResourceEnabled()
 
 static bool mc2VkSharedSceneStrictEnabled()
 {
-    static const bool s_on = []() {
-        const char* v = std::getenv("MC2_VK_SHARED_SCENE_STRICT");
-        return v && v[0] == '1' && v[1] == '\0';
-    }();
+    static const bool s_on = mc2::gate::get<"MC2_VK_SHARED_SCENE_STRICT">();
     return s_on;
 }
 
@@ -588,10 +586,7 @@ bool gos_SkyboxFogExcludeEnabled() { return skyboxFogExcludeEnabled(); }
 
 static bool sceneGlProducerQueryEnabled()
 {
-    static const bool s_on = []() {
-        const char* v = ::getenv("MC2_VK_SCENE_GL_PRODUCER_QUERY");
-        return v && v[0] == '1';
-    }();
+    static const bool s_on = mc2::gate::get<"MC2_VK_SCENE_GL_PRODUCER_QUERY">();
     return s_on;
 }
 
@@ -705,10 +700,7 @@ void gos_GlLostDrawsPop()
 
 static bool screenShadowGlCanaryEnabled()
 {
-    static const bool s_on = []() {
-        const char* v = ::getenv("MC2_VK_SCREENSHADOW_GL_CANARY");
-        return v && v[0] == '1';
-    }();
+    static const bool s_on = mc2::gate::get<"MC2_VK_SCREENSHADOW_GL_CANARY">();
     return s_on;
 }
 

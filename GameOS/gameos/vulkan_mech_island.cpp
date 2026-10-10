@@ -1,3 +1,4 @@
+#include "Gates/gate.h"
 // vulkan_mech_island.cpp — VK-P14 MECH TIER-1: the FIRST VK-native SKINNED mech region.
 // =============================================================================
 // Co-writes the GL mech batcher's visible instances IN-PLACE into the SHARED scene
@@ -125,8 +126,7 @@ bool mechFenceDeferEnabled() {
 bool mechPerfGateRequested() {
     static int state = -1;
     if (state == -1) {
-        const char* e = std::getenv("MC2_VK_MECH_PERF");
-        state = (e && e[0] == '1') ? 1 : 0;
+        state = mc2::gate::get<"MC2_VK_MECH_PERF">();
     }
     return state == 1;
 }

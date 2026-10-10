@@ -1,3 +1,4 @@
+#include "Gates/gate_cold.h"   // gate::get<>() and str<>()
 // vulkan_color_prop_island.cpp — VK-P11 STATIC-PROP COLOR: the FIRST VK-native COLOR
 // GEOMETRY region rendering REAL static-prop triangle geometry.
 // Renders static props in Vulkan directly into the shared scene GBuffer. The
@@ -140,8 +141,7 @@ bool propFenceDeferEnabled() {
 bool propPerfGateRequested() {
     static int state = -1;
     if (state == -1) {
-        const char* e = std::getenv("MC2_VK_PROP_PERF");
-        state = (e && e[0] == '1') ? 1 : 0;
+        state = mc2::gate::get<"MC2_VK_PROP_PERF">();
     }
     return state == 1;
 }
@@ -451,7 +451,7 @@ void bind_light_buffer(ColorPropIsland* s, uint32_t par, VkBuffer buf) {
 // actually used this frame.
 void prop_light_vertex_probe(const uint8_t* base, VkDeviceSize lbytes,
                              const Mc2ColorPropFeed& feed) {
-    if (!std::getenv("MC2_VK_PROP_LIGHT_VERTEX_PROBE")) return;
+    if (!mc2::gate::get<"MC2_VK_PROP_LIGHT_VERTEX_PROBE">()) return;
     static bool s_vtx_dumped = false;
     if (s_vtx_dumped) return;
     s_vtx_dumped = true;
@@ -736,7 +736,7 @@ bool cp_import_albedo_array(ColorPropIsland* s, const AlbedoTarget& tgt, uint32_
     // w/h halving loop) vs this import's computed `mips` vs the sampler's maxLod
     // that will be created below. Mismatch here would mean VK samples a mip level
     // GL's own state clamps away (or vice versa).
-    if (std::getenv("MC2_VK_PROP_MIP_PROBE")) {
+    if (mc2::gate::get<"MC2_VK_PROP_MIP_PROBE">()) {
         GLint glMaxLevel = -1;
         glGetTexParameteriv(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAX_LEVEL, &glMaxLevel);
         std::fprintf(stderr,
@@ -1556,7 +1556,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         // (= washout). Prints WHY the LightsData copy did/didn't land.
         {
             static bool s_lit_dumped = false;
-            if (std::getenv("MC2_VK_PROP_LIGHT_PROBE") && !s_lit_dumped) {
+            if (mc2::gate::get<"MC2_VK_PROP_LIGHT_PROBE">() && !s_lit_dumped) {
                 s_lit_dumped = true;
                 std::fprintf(stderr,
                     "[PROP_LIGHT_PROBE v1] lightingReady=%d haveLightFeed=%d tier1=%d "
@@ -1634,7 +1634,8 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         FILE* s_pktDump = nullptr;
         {
             static bool s_dumped = false;
-            const char* dp = std::getenv("MC2_VK_PROP_PACKET_DUMP");
+            const std::string dpText = mc2::gate::str<"MC2_VK_PROP_PACKET_DUMP">();   // "" when unset or empty
+            const char* dp = dpText.empty() ? nullptr : dpText.c_str();
             const bool frozen = mc2CaptureGaitFreezeActive() != 0 ||
                                 std::getenv("MC2_VISUAL_BOOKMARK_CAPTURE") == nullptr;
             if (dp && dp[0] && !s_dumped && frozen) {

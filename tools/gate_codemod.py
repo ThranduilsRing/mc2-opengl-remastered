@@ -72,6 +72,26 @@ G3_FILES = (
     "GameOS/gameos/gos_terrain_mask_dispatch.cpp",
     "GameOS/gameos/gos_terrain_height_tex.cpp",
 )
+# G4: every file that still reads an MC2_VK_* variable through a raw getenv (the umbrella helpers and the
+# envTriState readers are gone by then; what is left are the trace, perf and diagnostic reads).
+G4_FILES = (
+    "code/missiongui.cpp",
+    "code/objmgr.cpp",
+    "code/warrior.cpp",
+    "code/weaponbolt_render.cpp",
+    "GameOS/gameos/engine_present_vk.cpp",
+    "GameOS/gameos/gameosmain.cpp",
+    "GameOS/gameos/gameos_graphics.cpp",
+    "GameOS/gameos/gos_postprocess.cpp",
+    "GameOS/gameos/gos_static_prop_batcher.cpp",
+    "GameOS/gameos/vk_feed_dump.h",
+    "GameOS/gameos/vk_gpu_timestamps.h",
+    "GameOS/gameos/vulkan_color_prop_island.cpp",
+    "GameOS/gameos/vulkan_context.cpp",
+    "GameOS/gameos/vulkan_mech_island.cpp",
+    "GameOS/gameos/vulkan_shadow_island_live.cpp",
+    "GameOS/gameos/vulkan_water_island.cpp",
+)
 SEED_REL = "tools/gate_table.seed.json"
 TABLE_REL = "Gates/gate_table.json"
 LEDGER_REL = "tools/gate_g0_ledger.json"
@@ -85,6 +105,9 @@ FAMILIES = {
     "g3": {"title": "Gate codemod, G3 terrain-family plan (dry run)", "what": "G3 terrain migration", "files": G3_FILES,
            "md": "docs/gate-codemod-g3.md", "tsv": "docs/gate-codemod-g3.tsv",
            "cmd": "py -3 tools/gate_codemod.py --family g3 --write"},
+    "g4": {"title": "Gate codemod, G4 VK raw-read plan (dry run)", "what": "G4 VK raw-read migration", "files": G4_FILES,
+           "md": "docs/gate-codemod-g4.md", "tsv": "docs/gate-codemod-g4.tsv",
+           "cmd": "py -3 tools/gate_codemod.py --family g4 --write"},
 }
 
 NS = "mc2::gate"
@@ -1957,7 +1980,12 @@ def main(argv=None):
     ap.add_argument("--apply", action="store_true",
                     help="rewrite the NO-CHANGE / EDGE sites of --files in the working tree (needs --i-mean-it)")
     ap.add_argument("--i-mean-it", action="store_true")
+    ap.add_argument("--gate-prefix", default="",
+                    help="only plan / rewrite the sites that read a gate whose name starts with this prefix "
+                         "(the g4 family uses MC2_VK_ so a file shared with another slice keeps its other reads)")
     a = ap.parse_args(argv)
+    if a.family == "g4" and not a.gate_prefix:
+        a.gate_prefix = "MC2_VK_"
     if a.apply:
         if not a.i_mean_it:
             print("gate_codemod: --apply refused: pass --i-mean-it as well", file=sys.stderr)
@@ -1974,6 +2002,8 @@ def main(argv=None):
             with open(path, "r", encoding="utf-8", newline="") as fh:
                 raw = fh.read()
             results = analyze_text(rel, raw, rows, ledger, [])
+            if a.gate_prefix:
+                results = [r for r in results if r.gate.startswith(a.gate_prefix)]
             new, applied, skipped = apply_edits(raw, results)
             with open(path, "w", encoding="utf-8", newline="") as fh:
                 fh.write(new)
@@ -1990,6 +2020,8 @@ def main(argv=None):
     files = a.files or list(fam["files"])
     rev = None if a.worktree else a.rev
     results, rows = run(files, ROOT, rev)
+    if a.gate_prefix:
+        results = [r for r in results if r.gate.startswith(a.gate_prefix)]
     unhandled_code_lines(results, ROOT, rev)
     ledger = load_ledger(ROOT)
     umbrella = umbrella_report(files, ROOT, rev, results)
