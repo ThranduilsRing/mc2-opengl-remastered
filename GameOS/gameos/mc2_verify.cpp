@@ -3,6 +3,8 @@
 // for the adoption protocol.
 
 #include "mc2_verify.h"
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"   // str<>()
 
 #include <cstdio>
 #include <cstdarg>
@@ -31,8 +33,9 @@ const long kLogLineCap = 64;
 
 int resolve_mode()
 {
-    const char* v = std::getenv("MC2_VERIFY_MODE");
-    if (!v || !*v)
+    const std::string vText = mc2::gate::str<"MC2_VERIFY_MODE">();   // "" when unset or empty
+    const char* v = vText.c_str();
+    if (!*v)
         return MODE_LOG;
 #ifdef _MSC_VER
     if (_stricmp(v, "off") == 0)   return MODE_OFF;
