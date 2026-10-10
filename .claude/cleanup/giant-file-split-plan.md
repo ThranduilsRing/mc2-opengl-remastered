@@ -299,7 +299,7 @@ Estimated churn: high relative to the others. It is mostly blocked on the `gosRe
 3. `txmmgr_diag.cpp` (~450): RDTSC / audit / bounds / census.
 4. `txmmgr.cpp` (~3500): lifecycle, `addRenderShape`, `renderLists`.
 
-Splitting `renderLists` itself needs refactoring of the function into phase helpers (there is a local `bSkip` static spanning phases at line 3225). It is not a file move, so defer it. Churn: medium. Also an easy de-dup win: `isAllConcreteTerrainBatch` exists in both `mclib/txmmgr_render.cpp:70` and `GameOS/gameos/gameos_graphics.cpp:13`. Check that they are equivalent and share via a header.
+Splitting `renderLists` itself needs refactoring of the function into phase helpers (there is a local `bSkip` static spanning phases at line 3225). It is not a file move, so defer it. Churn: medium. Also an easy de-dup win: `isAllConcreteTerrainBatch` exists in both `mclib/txmmgr_render.cpp:70` and `gameos_graphics.cpp:160`. Check that they are equivalent and share via a header.
 
 ---
 
