@@ -77,7 +77,6 @@
   "mclib/heap.cpp": 2136,
   "mclib/inifile.cpp": 2876,
   "mclib/mapdata.cpp": 2633,
-  "mclib/mech3d.cpp": 6748,
   "mclib/mlr/mlrindexedpolymesh.cpp": 1846,
   "mclib/mlr/mlrlightmap.cpp": 1599,
   "mclib/mlr/mlrpolymesh.cpp": 1620,
@@ -92,12 +91,12 @@
   "mclib/terrtxm.cpp": 1778,
   "mclib/terrtxm2.cpp": 2785,
   "mclib/tgl.h": 1689,
-  "mclib/txmmgr.cpp": 5967,
+  "mclib/txmmgr_render.cpp": 2226,
   "mclib/vfx_translatedraw.cpp": 1742,
   "mclib/vfxtile.cpp": 2944,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "b3e48799d",
+ "head": "0af692123",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -154,10 +153,10 @@
    "max_lines": 1513
   },
   "mclib": {
-   "files": 600,
-   "files_over_1500": 32,
-   "files_over_3000": 6,
-   "max_lines": 6748
+   "files": 613,
+   "files_over_1500": 31,
+   "files_over_3000": 4,
+   "max_lines": 4895
   },
   "shaders": {
    "files": 171,
@@ -188,16 +187,8 @@
    "lines": 7187
   },
   {
-   "file": "mclib/mech3d.cpp",
-   "lines": 6748
-  },
-  {
    "file": "GameOS/gameos/gos_terrain_indirect.cpp",
    "lines": 6205
-  },
-  {
-   "file": "mclib/txmmgr.cpp",
-   "lines": 5967
   },
   {
    "file": "code/mission.cpp",
@@ -290,12 +281,20 @@
   {
    "file": "mclib/mapdata.cpp",
    "lines": 2633
+  },
+  {
+   "file": "GameOS/gameos/gos_terrain_water_stream.cpp",
+   "lines": 2455
+  },
+  {
+   "file": "code/mpparameterscreen.cpp",
+   "lines": 2415
   }
  ],
  "total": {
-  "files": 1691,
-  "files_over_1500": 83,
-  "files_over_3000": 20,
+  "files": 1704,
+  "files_over_1500": 82,
+  "files_over_3000": 18,
   "max_lines": 11652
  },
  "version": 1
