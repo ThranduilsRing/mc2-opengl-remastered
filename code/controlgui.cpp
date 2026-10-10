@@ -5,7 +5,8 @@ controlGui.cpp			: Implementation of the controlGui component.
 //===========================================================================//
 \*************************************************************************************************/
 
-#include <cstdlib>   // std::getenv (MC2_BOOT_TO_BAY video-skip gate)
+#include <cstdlib>
+#include "Gates/gate.h"
 #include"controlgui.h"
 #include"unitprofile.h"   // EQUIP-ADD-UI-NAME-1 (S3): equipmentAddUiTextForStringId
 #include"tacticaloverview.h"  // Tactical Overview: strategic-icon overlay
@@ -65,7 +66,7 @@ extern float worldUnitsPerMeter;   // sensor range is in world units; /this = me
 unsigned long long g_ifaceCgFrameNs[8] = {0};
 namespace {
 	enum CgPhase { CG_PAUSE=0, CG_BTNHOVER, CG_ROSTER, CG_MOVERSTATE, CG_TACMAP, CG_INFOWND, CG_VEHTAB, CG_FGBAR };
-	static const bool s_cgSplitOn = (std::getenv("MC2_MIF_SPLIT") != nullptr) || (std::getenv("MC2_IFACE_COST_SPLIT") != nullptr);
+	static const bool s_cgSplitOn = mc2::gate::get<"MC2_MIF_SPLIT">() || mc2::gate::get<"MC2_IFACE_COST_SPLIT">();
 	struct CgScope {
 		int idx; std::chrono::steady_clock::time_point t0;
 		explicit CgScope(int i):idx(i){ if(s_cgSplitOn) t0=std::chrono::steady_clock::now(); }
@@ -85,7 +86,7 @@ ControlGui* ControlGui::instance = 0;
 
 bool ControlGui::hudTabsGateOn() const
 {
-	return HudImGui::envGateOn( "MC2_HUD_IMGUI_TABS" ) && !HudImGui::pinnedToLegacy();
+	return mc2::gate::get<"MC2_HUD_IMGUI_TABS">() && !HudImGui::pinnedToLegacy();
 }
 
 // Registry thunks. Registration order == hotkey cycle order, which the legacy
@@ -137,7 +138,7 @@ void ControlGui::initHudTabRegistry()
 
 	// Double-gated throwaway witness tab — the modder's worked example: no
 	// enum widening, no button-array surgery, chrome + body both ImGui.
-	if ( HudImGui::envGateOn( "MC2_HUD_TABS_TEST" ) )
+	if ( mc2::gate::get<"MC2_HUD_TABS_TEST">() )
 	{
 		t.id = "test";
 		t.buttonCommand = -1;   // no legacy ControlButton; chrome is ImGui-drawn
@@ -154,7 +155,7 @@ void ControlGui::initHudTabRegistry()
 	// buttons drive the runtime multiplier behind MC2_SIM_SPEED
 	// (simSpeedSetMultiplier, mission.cpp) — the same mechanism, no second
 	// sim-speed path. Disabled in multiplayer (would desync the sim).
-	if ( HudImGui::envGateOn( "MC2_HUD_SIM_SPEED" ) )
+	if ( mc2::gate::get<"MC2_HUD_SIM_SPEED">() )
 	{
 		t.id = "speed";
 		t.buttonCommand = -1;   // no legacy ControlButton; chrome is ImGui-drawn
@@ -1540,10 +1541,7 @@ bool playedObjectiveClick[100];
 // OBJ-IMGUI-SLICE-1: gate. Default OFF -> legacy tile/font overlay, byte-identical.
 bool ControlGui::imguiObjEnabled()
 {
-	static const bool s_on = []{
-		const char* v = getenv("MC2_UI_IMGUI_OBJ");
-		return v && v[0] && v[0] != '0';
-	}();
+	static const bool s_on = mc2::gate::get<"MC2_UI_IMGUI_OBJ">();
 	return s_on;
 }
 
@@ -1852,19 +1850,13 @@ void ControlGui::renderObjectivesImGui()
 // SMALLPANELS-IMGUI-SLICE-1: gates. Default OFF -> legacy draws, byte-identical.
 bool ControlGui::imguiTimerEnabled()
 {
-	static const bool s_on = []{
-		const char* v = getenv("MC2_UI_IMGUI_TIMER");
-		return v && v[0] && v[0] != '0';
-	}();
+	static const bool s_on = mc2::gate::get<"MC2_UI_IMGUI_TIMER">();
 	return s_on;
 }
 
 bool ControlGui::imguiVideoEnabled()
 {
-	static const bool s_on = []{
-		const char* v = getenv("MC2_UI_IMGUI_VIDEO");
-		return v && v[0] && v[0] != '0';
-	}();
+	static const bool s_on = mc2::gate::get<"MC2_UI_IMGUI_VIDEO">();
 	return s_on;
 }
 
@@ -2377,10 +2369,7 @@ void ControlGui::update( bool bPaused, bool bLOS )
 	// path). Same fixture pattern as MC2_BOOT_PAUSED (missiongui.cpp). Registered
 	// Trace, default unset -> byte-identical.
 	{
-		static const long s_bootInfo = [] {
-			const char* v = getenv("MC2_BOOT_INFO");
-			return (v && v[0]) ? atol(v) : 0L;
-		}();
+		static const long s_bootInfo = static_cast<long>(mc2::gate::get<"MC2_BOOT_INFO">());
 		if ( s_bootInfo > 0 && infoWnd && ObjectManager && Team::home )
 		{
 			extern uint32_t g_mc2FrameCounter;
@@ -2416,10 +2405,7 @@ void ControlGui::update( bool bPaused, bool bLOS )
 	// pattern as MC2_BOOT_INFO above / MC2_BOOT_PAUSED (missiongui.cpp).
 	// Registered Trace, default unset -> byte-identical.
 	{
-		static const long s_bootObj = [] {
-			const char* v = getenv("MC2_BOOT_OBJ");
-			return (v && v[0]) ? atol(v) : 0L;
-		}();
+		static const long s_bootObj = static_cast<long>(mc2::gate::get<"MC2_BOOT_OBJ">());
 		if ( s_bootObj > 0 && Team::home )
 		{
 			extern uint32_t g_mc2FrameCounter;
@@ -2448,10 +2434,7 @@ void ControlGui::update( bool bPaused, bool bLOS )
 	// pattern as MC2_BOOT_OBJ above. Registered Trace, default unset ->
 	// byte-identical.
 	{
-		static const long s_bootObjComplete = [] {
-			const char* v = getenv("MC2_BOOT_OBJ_COMPLETE");
-			return (v && v[0]) ? atol(v) : 0L;
-		}();
+		static const long s_bootObjComplete = static_cast<long>(mc2::gate::get<"MC2_BOOT_OBJ_COMPLETE">());
 		if ( s_bootObjComplete > 0 && Team::home )
 		{
 			extern uint32_t g_mc2FrameCounter;
@@ -2490,18 +2473,11 @@ void ControlGui::update( bool bPaused, bool bLOS )
 	// capture in the red band, S=110 in the blink band. Default 754 s keeps
 	// the original far-above-warning readout.
 	{
-		static const long s_bootTimer = [] {
-			const char* v = getenv("MC2_BOOT_TIMER");
-			return (v && v[0]) ? atol(v) : 0L;
-		}();
-		static const float s_bootTimerSecs = [] {
-			// 754 s -> "012 : 34"-ish readout; far above the 5-minute red /
-			// 2-minute blink bands and never expires inside a 30 s capture run.
-			const char* v = getenv("MC2_BOOT_TIMER_SECS");
-			float s = (v && v[0]) ? (float)atof(v) : 754.0f;
-			if (s <= 0.0f) s = 754.0f;
-			return s;
-		}();
+		static const long s_bootTimer = static_cast<long>(mc2::gate::get<"MC2_BOOT_TIMER">());
+		// 754 s -> "012 : 34"-ish readout; far above the 5-minute red /
+		// 2-minute blink bands and never expires inside a 30 s capture run.
+		// The row reads 754 for an empty, non-numeric or non-positive value.
+		static const float s_bootTimerSecs = mc2::gate::get<"MC2_BOOT_TIMER_SECS">();
 		if ( s_bootTimer > 0 && mission )
 		{
 			extern uint32_t g_mc2FrameCounter;
@@ -3528,8 +3504,7 @@ void ControlGui::renderVehicleTab()
 		static int s_hudReadability = -1;
 		if ( s_hudReadability < 0 )
 		{
-			const char* v = getenv( "MC2_HUD_READABILITY_V1" );
-			s_hudReadability = ( v && v[0] && v[0] != '0' ) ? 1 : 0;
+			s_hudReadability = mc2::gate::get<"MC2_HUD_READABILITY_V1">();
 		}
 		const long disabledColor = s_hudReadability ? 0xffb8c2cc : 0xff7f7f7f;
 		long color = vehicleButtons[i].isEnabled() ?  0xff005392 : disabledColor;
@@ -4624,7 +4599,7 @@ void ControlGui::playMovie( const char* fileName )
 	// Headless harness: mission-objective briefing videos (CPlayBIK) reach here,
 	// bypassing the MC2_BOOT_TO_BAY gate in Logistics::playFullScreenVideo. Skip
 	// them too so the boot-to-purchase capture is not blocked by standin.bik.
-	if ( std::getenv("MC2_BOOT_TO_BAY") && std::getenv("MC2_BOOT_TO_BAY")[0] )
+	if ( mc2::gate::isNonEmpty<"MC2_BOOT_TO_BAY">() )
 		return;
 
 	// Apply hiResOffsetX/Y at use time — they were still 0 when

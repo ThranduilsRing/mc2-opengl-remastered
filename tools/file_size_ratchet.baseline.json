@@ -33,7 +33,7 @@
   "code/artlry.cpp": 1816,
   "code/bldng.cpp": 1702,
   "code/brain_special_dispatch.cpp": 3273,
-  "code/controlgui.cpp": 5016,
+  "code/controlgui.cpp": 4991,
   "code/gamecam.cpp": 1564,
   "code/gameobj.cpp": 2365,
   "code/infowindow.cpp": 1746,
@@ -93,7 +93,7 @@
   "mclib/vfxtile.cpp": 2944,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "1050e5ba5",
+ "head": "9c96d4c93",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -189,7 +189,7 @@
   },
   {
    "file": "code/controlgui.cpp",
-   "lines": 5016
+   "lines": 4991
   },
   {
    "file": "mclib/terrain.cpp",
