@@ -50,6 +50,7 @@
 #include"../GameOS/gameos/gos_frame_pass_stats.h"     // [FRAME_PASS_STATS v1] chunk draw count
 #include"../GameOS/gameos/utils/logging.h"            // Terrain LOD chunk Phase 2: throttled false-negative log
 #include"terrain_admission_mode.h"  // F6 T2: shared isModern() flag for terrain.cpp + quad.cpp
+#include "Gates/gate_cold.h"   // gate::get<>() and str<>()
 #include"terrain_runtime.h"  // TERRAIN-RUNTIME-API-1: compat seam + gated parity walk
 #include <cstdio>            // TERRAIN-RUNTIME-API-1: parity self-test log
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
@@ -145,8 +146,7 @@ int							g_terrainMaterialProfile = TERRAIN_MAT_PROFILE_LEGACY;
 bool mc2TerrainLodChunkEnabled()
 {
 	static const bool s_on = []() {
-		const char* v = getenv("MC2_TERRAIN_LOD_CHUNK");
-		const bool off = (v && v[0] == '0' && v[1] == '\0');
+		const bool off = !mc2::gate::get<"MC2_TERRAIN_LOD_CHUNK">();
 		if (off)
 			printf("[8Z_VESTIGIAL] MC2_TERRAIN_LOD_CHUNK=0 opt-out is increasingly vestigial:"
 			       " slimReduce deleted (8z-A3), ACTIVE_AB/SOLID_AB retired (8z-A1)."
@@ -250,10 +250,7 @@ static std::vector<float> s_morphFactorVec;
 // morphFactor=0 so FORCE_LOD A/B captures show the PURE band surface.)
 static int lodForceLevel()
 {
-    static const int s_forceLod = []() -> int {
-        const char* v = getenv("MC2_TERRAIN_LOD_CHUNK_FORCE_LOD");
-        return v ? atoi(v) : -1;
-    }();
+    static const int s_forceLod = mc2::gate::get<"MC2_TERRAIN_LOD_CHUNK_FORCE_LOD">();
     return s_forceLod;
 }
 
@@ -262,11 +259,7 @@ static int lodForceLevel()
 // factor so the morph window tracks the scaled thresholds exactly.
 static float lodDistScale()
 {
-    static const float s_distScale = []() -> float {
-        const char* v = getenv("MC2_TERRAIN_LOD_CHUNK_DIST_SCALE");
-        float s = v ? (float)atof(v) : 1.0f;
-        return (s > 0.05f) ? s : 1.0f;
-    }();
+    static const float s_distScale = mc2::gate::get<"MC2_TERRAIN_LOD_CHUNK_DIST_SCALE">();
     return s_distScale;
 }
 
@@ -312,13 +305,7 @@ static float computeMorphFactor(float distSq, uint8_t level)
 {
     if (level == 0 || level >= 5) return 0.0f;
     if (lodForceLevel() >= 0)     return 0.0f;
-    static const float s_morphStart = []() -> float {
-        const char* v = getenv("MC2_TERRAIN_LOD_MORPH_START");
-        float s = v ? (float)atof(v) : 0.6f;
-        if (s < 0.0f) s = 0.0f;
-        if (s > 0.95f) s = 0.95f;
-        return s;
-    }();
+    static const float s_morphStart = mc2::gate::get<"MC2_TERRAIN_LOD_MORPH_START">();
     const float sc = lodDistScale();
     const float lo = LOD_DIST_THRESH[level - 1] * sc;
     const float hi = LOD_DIST_THRESH[level] * sc;
@@ -877,17 +864,15 @@ long Terrain::init( unsigned long verticesPerMapSide, PacketFile* pakFile, unsig
 			// MC2_TERRAIN_CONTROLMAP_FILE overrides the sidecar path (precedent:
 			// MC2_TERRAIN_VISUAL_HEIGHT_FILE above).
 			{
-				static const bool s_controlMapGate = []() {
-					const char* v = getenv("MC2_TERRAIN_CONTROLMAP");
-					return (v && v[0] && v[0] != '0');
-				}();
+				static const bool s_controlMapGate = mc2::gate::get<"MC2_TERRAIN_CONTROLMAP">();
 				const int mapSide = (int)realVerticesMapSide;
 				if (s_controlMapGate && mapSide > 1)
 				{
 					char cmPath[600];
-					if (const char* ov = getenv("MC2_TERRAIN_CONTROLMAP_FILE"))
+					if (mc2::gate::isSet<"MC2_TERRAIN_CONTROLMAP_FILE">())   // set, even when empty (the old getenv test)
 					{
-						strncpy(cmPath, ov, sizeof(cmPath) - 1);
+						const std::string ovStr = mc2::gate::str<"MC2_TERRAIN_CONTROLMAP_FILE">();
+						strncpy(cmPath, ovStr.c_str(), sizeof(cmPath) - 1);
 						cmPath[sizeof(cmPath) - 1] = '\0';
 					}
 					else
@@ -978,16 +963,14 @@ long Terrain::init( unsigned long verticesPerMapSide, PacketFile* pakFile, unsig
 			// MC2_TERRAIN_OVERLAY_V2_FILE overrides the sidecar path (precedent:
 			// MC2_TERRAIN_CONTROLMAP_FILE above).
 			{
-				static const bool s_overlayV2Gate = []() {
-					const char* v = getenv("MC2_TERRAIN_OVERLAY_V2");
-					return (v && v[0] && v[0] != '0');
-				}();
+				static const bool s_overlayV2Gate = mc2::gate::get<"MC2_TERRAIN_OVERLAY_V2">();
 				if (s_overlayV2Gate)
 				{
 					char ovPath[600];
-					if (const char* ov = getenv("MC2_TERRAIN_OVERLAY_V2_FILE"))
+					if (mc2::gate::isSet<"MC2_TERRAIN_OVERLAY_V2_FILE">())   // set, even when empty (the old getenv test)
 					{
-						strncpy(ovPath, ov, sizeof(ovPath) - 1);
+						const std::string ovStr = mc2::gate::str<"MC2_TERRAIN_OVERLAY_V2_FILE">();
+						strncpy(ovPath, ovStr.c_str(), sizeof(ovPath) - 1);
 						ovPath[sizeof(ovPath) - 1] = '\0';
 					}
 					else
@@ -1120,9 +1103,10 @@ long Terrain::init( unsigned long verticesPerMapSide, PacketFile* pakFile, unsig
 				if (s_shorelineGate || gos_WaterShoreMode() >= 1)
 				{
 					char slPath[600];
-					if (const char* ov = getenv("MC2_TERRAIN_SHORELINE_FILE"))
+					if (mc2::gate::isSet<"MC2_TERRAIN_SHORELINE_FILE">())   // set, even when empty (the old getenv test)
 					{
-						strncpy(slPath, ov, sizeof(slPath) - 1);
+						const std::string ovStr = mc2::gate::str<"MC2_TERRAIN_SHORELINE_FILE">();
+						strncpy(slPath, ovStr.c_str(), sizeof(slPath) - 1);
 						slPath[sizeof(slPath) - 1] = '\0';
 					}
 					else
@@ -1243,9 +1227,10 @@ long Terrain::init( unsigned long verticesPerMapSide, PacketFile* pakFile, unsig
 				{
 					const int WV = (wsMapSide - 1) * 4 + 1;
 					char wsPath[600];
-					if (const char* ov = getenv("MC2_TERRAIN_VISUAL_HEIGHT_FILE"))
+					if (mc2::gate::isSet<"MC2_TERRAIN_VISUAL_HEIGHT_FILE">())   // set, even when empty (the old getenv test)
 					{
-						strncpy(wsPath, ov, sizeof(wsPath) - 1);
+						const std::string ovStr = mc2::gate::str<"MC2_TERRAIN_VISUAL_HEIGHT_FILE">();
+						strncpy(wsPath, ovStr.c_str(), sizeof(wsPath) - 1);
 						wsPath[sizeof(wsPath) - 1] = '\0';
 					}
 					else
@@ -1322,19 +1307,18 @@ long Terrain::init( unsigned long verticesPerMapSide, PacketFile* pakFile, unsig
 			// data/missions/<mission-stem>.beauty/visual_height_4x.r32. NO geometry
 			// consumes binding 26 yet, so this is render-invariant.
 			{
-				static const bool s_visualHeightGate = []() {
-					const char* v = getenv("MC2_TERRAIN_VISUAL_HEIGHT");
-					const char* d = getenv("MC2_TERRAIN_VISUAL_DISPLACE");  // displace implies load
-					return (v && v[0] && v[0] != '0') || (d && d[0] && d[0] != '0');
-				}();
+				// displace implies load
+				static const bool s_visualHeightGate = mc2::gate::get<"MC2_TERRAIN_VISUAL_HEIGHT">() ||
+				                                       mc2::gate::get<"MC2_TERRAIN_VISUAL_DISPLACE">();
 				const int mapSide = (int)realVerticesMapSide;
 				if (s_visualHeightGate && mapSide > 1)
 				{
 					const int V = (mapSide - 1) * 4 + 1;
 					char vhPath[600];
-					if (const char* ov = getenv("MC2_TERRAIN_VISUAL_HEIGHT_FILE"))
+					if (mc2::gate::isSet<"MC2_TERRAIN_VISUAL_HEIGHT_FILE">())   // set, even when empty (the old getenv test)
 					{
-						strncpy(vhPath, ov, sizeof(vhPath) - 1);
+						const std::string ovStr = mc2::gate::str<"MC2_TERRAIN_VISUAL_HEIGHT_FILE">();
+						strncpy(vhPath, ovStr.c_str(), sizeof(vhPath) - 1);
 						vhPath[sizeof(vhPath) - 1] = '\0';
 					}
 					else
@@ -1510,8 +1494,7 @@ long Terrain::init( unsigned long verticesPerMapSide, PacketFile* pakFile, unsig
 								// actual displacement amplitude vs the coarse gameplay grid
 								// so an invisible-because-too-subtle bake is obvious at load
 								// time instead of after four viewing runs.
-								const char* dv = getenv("MC2_TERRAIN_VISUAL_DISPLACE");
-								const bool displaceOn = (dv && dv[0] && dv[0] != '0');
+								const bool displaceOn = mc2::gate::get<"MC2_TERRAIN_VISUAL_DISPLACE">();
 								double maxAbs = 0.0, sumAbs = 0.0;
 								size_t moved5 = 0, moved50 = 0, cnt = 0;
 								// Compare every fine bake vertex to the coarse gameplay
@@ -1556,10 +1539,7 @@ long Terrain::init( unsigned long verticesPerMapSide, PacketFile* pakFile, unsig
 								// the inner (damp==0) zone — must be exactly 0 — and the
 								// fade annulus.
 								{
-									static const bool s_objfadeGate = []() {
-										const char* v = getenv("MC2_TERRAIN_VISUAL_DISPLACE_OBJFADE");
-										return !(v && v[0] == '0');
-									}();
+									static const bool s_objfadeGate = mc2::gate::get<"MC2_TERRAIN_VISUAL_DISPLACE_OBJFADE">();
 									if (s_objfadeGate)
 									{
 										char dampPath[600];
@@ -2452,13 +2432,13 @@ long Terrain::update (void)
 
 		// Diagnostic: one-shot dump of planes + first superchunk AABB + camera pos.
 		// MC2_TERRAIN_LOD_CHUNK_NO_CULL=1 bypasses frustum so GPU path can be tested.
-		static const bool s_noCull = (getenv("MC2_TERRAIN_LOD_CHUNK_NO_CULL") != nullptr);
+		static const bool s_noCull = mc2::gate::get<"MC2_TERRAIN_LOD_CHUNK_NO_CULL">();
 		// [LOW-CAMERA-TERRAIN-CULL-1 / FIX-2] When set, drop the near plane from the
 		// terrain AABB frustum test so near terrain isn't culled at a low/grazing
 		// pitch (near plane at NearPlaneDistance=-400). Other 5 planes intact;
 		// default OFF -> byte-identical to today.
 		// Default ON for this low-camera build; set MC2_LOWCAM_TERRAIN_NEAR=0 to disable.
-		static const bool s_lowCamNear = []{ const char* v = getenv("MC2_LOWCAM_TERRAIN_NEAR"); return !(v && v[0]=='0'); }();
+		static const bool s_lowCamNear = mc2::gate::get<"MC2_LOWCAM_TERRAIN_NEAR">();
 		static bool s_cullDiagDone = false;
 		if (!s_cullDiagDone && gCurrentFrame == 2) {
 			s_cullDiagDone = true;
@@ -2652,8 +2632,7 @@ long Terrain::update (void)
 		// independent angular test and never read s_blockMeta.inFrustum.
 		// MC2_TERRAIN_LOD_CHUNK_NO_APRON=1 disables it (A/B).
 		{
-			static const bool s_noApron =
-				(getenv("MC2_TERRAIN_LOD_CHUNK_NO_APRON") != nullptr);
+			static const bool s_noApron = mc2::gate::get<"MC2_TERRAIN_LOD_CHUNK_NO_APRON">();
 			if (!s_noApron)
 			{
 				const int side = s_terrainChunkSide;
@@ -2692,10 +2671,7 @@ long Terrain::update (void)
 		// clamp so neighbors ramp down gracefully into the cement area.
 		// MC2_TERRAIN_LOD_CHUNK_CEMENT_MAXLOD=k relaxes the cap (default 0).
 		{
-			static const int s_cementMaxLod = []() -> int {
-				const char* v = getenv("MC2_TERRAIN_LOD_CHUNK_CEMENT_MAXLOD");
-				return v ? atoi(v) : 0;
-			}();
+			static const int s_cementMaxLod = mc2::gate::get<"MC2_TERRAIN_LOD_CHUNK_CEMENT_MAXLOD">();
 			for (int i = 0; i < s_terrainChunkSide * s_terrainChunkSide; ++i)
 			{
 				TerrainBlockMeta& bm = s_blockMeta[i];
@@ -2841,8 +2817,7 @@ long Terrain::update (void)
 				//   neighbor not in-frustum (cull edge) -> skirt (fallback until 10.2e apron)
 				// MC2_TERRAIN_LOD_CHUNK_NO_SKIRTS=1 forces all skirts off (A/B).
 				{
-					static const bool s_noSkirts =
-						(getenv("MC2_TERRAIN_LOD_CHUNK_NO_SKIRTS") != nullptr);
+					static const bool s_noSkirts = mc2::gate::get<"MC2_TERRAIN_LOD_CHUNK_NO_SKIRTS">();
 					// Phase 10.2b: PER-EDGE mask. Build order N,S,W,E (matches the
 					// driver's skirtEdgeOffset slots). A skirt is drawn on an edge
 					// only if its neighbour needs sealing — same-LOD edges draw no
@@ -2855,8 +2830,7 @@ long Terrain::update (void)
 					// (neighbour-min, cf c2d7eb46). Skirts are KEPT as a backstop (a
 					// skirt below a now-collinear edge is hidden, so it is harmless).
 					// MC2_TERRAIN_LOD_CHUNK_NO_STITCH=1 disables stitching (A/B).
-					static const bool s_noStitch =
-						(getenv("MC2_TERRAIN_LOD_CHUNK_NO_STITCH") != nullptr);
+					static const bool s_noStitch = mc2::gate::get<"MC2_TERRAIN_LOD_CHUNK_NO_STITCH">();
 					uint8_t  edgeMask = 0;
 					uint32_t stitch   = 0;
 					{
@@ -2889,10 +2863,7 @@ long Terrain::update (void)
 						// Using the full range produced giant cliff walls on hilly
 						// terrain (mountains: elevRange in the thousands). Scale down
 						// and CAP. MC2_TERRAIN_LOD_CHUNK_SKIRT_MAX overrides the cap.
-						static const float s_skirtMax = []() -> float {
-							const char* v = getenv("MC2_TERRAIN_LOD_CHUNK_SKIRT_MAX");
-							return v ? (float)atof(v) : 256.0f;
-						}();
+						static const float s_skirtMax = mc2::gate::get<"MC2_TERRAIN_LOD_CHUNK_SKIRT_MAX">();
 						float elevRange = bm.maxElev - bm.minElev;
 						float depth     = elevRange * 0.5f + 32.0f;
 						if (depth > s_skirtMax) depth = s_skirtMax;
@@ -2913,8 +2884,7 @@ long Terrain::update (void)
 		// only when MC2_SHADOW_TIER_STATS is set. Resets implicitly each frame
 		// (tier* are frame-local). area%% is of total emitted visible terrain area.
 		{
-			static const bool s_shadowTierStats =
-				(getenv("MC2_SHADOW_TIER_STATS") != nullptr);
+			static const bool s_shadowTierStats = mc2::gate::get<"MC2_SHADOW_TIER_STATS">();
 			if (s_shadowTierStats && (gCurrentFrame % 600) == 0)
 			{
 				double totalArea = tierArea[0] + tierArea[1] + tierArea[2] + tierArea[3];
@@ -3244,7 +3214,7 @@ void Terrain::render (void)
 	// quad.cpp:422-476 (replicated inline; we do not touch quad.cpp state). Does
 	// NOT enqueue or draw anything. Behavior is identical when the var is unset.
 	{
-		static bool s_mineAB = (getenv("MC2_TERRAIN_MINE_AB") != NULL);
+		static bool s_mineAB = mc2::gate::get<"MC2_TERRAIN_MINE_AB">();
 		if (s_mineAB && GameMap && quadList && numberQuads > 0)
 		{
 			static unsigned long s_mineABFrame = 0;
@@ -3434,7 +3404,7 @@ void Terrain::flushDrawCommands (void)
 bool gos_terrain_indirect::WaterFastPathOwnsArmedDraw()
 {
 	static const bool s_fastPath =
-	    (getenv("MC2_RENDER_WATER_FASTPATH") != nullptr) ||
+	    (mc2::gate::get<"MC2_RENDER_WATER_FASTPATH">()) ||
 	    gpu_driven::IsWaterEnabled();
 	// PERF-MISSION-INTRO-ARMED-RENDER-1: water fast path now arms independently
 	// of terrain solid. Water resources (WaterStream recipes, terrainTextures2)
@@ -3444,8 +3414,7 @@ bool gos_terrain_indirect::WaterFastPathOwnsArmedDraw()
 	// MVP fallback: gameos_graphics.cpp uses gos_GetTerrainMVPMat4() when
 	// !IsFrameSolidArmed(), already handled (fix #3, water_fastpath_interim_fixes).
 	// Kill-switch: MC2_MISSION_INTRO_LEGACY_RENDER=1 restores solid-arm dependency.
-	static const bool s_introLegacy =
-	    (getenv("MC2_MISSION_INTRO_LEGACY_RENDER") != nullptr);
+	static const bool s_introLegacy = mc2::gate::get<"MC2_MISSION_INTRO_LEGACY_RENDER">();
 	const bool g1 = s_fastPath;
 	// g2: solid-arm dependency — removed by default, restored by kill-switch.
 	const bool g2 = s_introLegacy ? gos_terrain_indirect::IsFrameSolidArmed() : true;
@@ -3454,7 +3423,7 @@ bool gos_terrain_indirect::WaterFastPathOwnsArmedDraw()
 	const bool g5 = (Terrain::terrainTextures2 != nullptr);
 	// S2.15 gate diag: editor fails to arm FAST water path - print once
 	// per (mission/state-change) what gate fails. Throttled by signature.
-	static const bool s_gateDiag = (getenv("MC2_WATER_GATE_DIAG") != nullptr);
+	static const bool s_gateDiag = mc2::gate::get<"MC2_WATER_GATE_DIAG">();
 	if (s_gateDiag)
 	{
 		const bool solidArmed = gos_terrain_indirect::IsFrameSolidArmed();
@@ -3483,7 +3452,7 @@ void Terrain::renderWater (void)
 	// out-of-frustum or non-water by map data) vs handle-valid (the upper bound
 	// on the actually-emitting subset). Mirrors the MC2_THIN_DEBUG pattern in
 	// quad.cpp: prints 5 frames after a 1200-frame warmup hold-off, then dormant.
-	static const bool s_waterDebugOn = (getenv("MC2_WATER_DEBUG") != nullptr);
+	static const bool s_waterDebugOn = mc2::gate::get<"MC2_WATER_DEBUG">();
 	static uint32_t s_total = 0;
 	static uint32_t s_handleValid = 0;
 	static uint32_t s_detailEligibleByHandle = 0;
@@ -3504,7 +3473,7 @@ void Terrain::renderWater (void)
 	// legacy draw-side skipped this frame, GPU fast path owns it".
 	const bool s6FastPathOwns = gos_terrain_indirect::WaterFastPathOwnsArmedDraw();
 	{
-		static const bool s_waterS6Trace = (getenv("MC2_WATER_S6_TRACE") != nullptr);
+		static const bool s_waterS6Trace = mc2::gate::get<"MC2_WATER_S6_TRACE">();
 		if (s_waterS6Trace)
 		{
 			static int s_lastS6 = -1;
@@ -3531,8 +3500,7 @@ void Terrain::renderWater (void)
 	// CPU sample on armed frames (CPU water and the GPU fast path are
 	// mutually exclusive per frame). Pure writes, zero behavior change.
 	{
-		static const bool s_depthTransProbe =
-		    (getenv("MC2_DEPTH_TRANSITION_PROBE") != nullptr);
+		static const bool s_depthTransProbe = mc2::gate::get<"MC2_DEPTH_TRANSITION_PROBE">();
 		if (s_depthTransProbe)
 		{
 			extern float              g_cpuWaterProbeZ;
@@ -3638,7 +3606,7 @@ void Terrain::renderWaterFastPath (void)
 	// MC2_RENDER_WATER_FASTPATH: legacy fast-path gate. MC2_GPU_DRIVEN_WATER
 	// also enables the fast-path entry (the MDI branch inside the bridge).
 	static const bool s_fastPath =
-	    (getenv("MC2_RENDER_WATER_FASTPATH") != nullptr) ||
+	    (mc2::gate::get<"MC2_RENDER_WATER_FASTPATH">()) ||
 	    gpu_driven::IsWaterEnabled();
 	if (!s_fastPath) return;
 	if (!WaterStream::IsReady()) return;
@@ -3650,7 +3618,7 @@ void Terrain::renderWaterFastPath (void)
 	// MC2_WATER_DEBUG=1 parallel timer (matches the legacy renderWater printer
 	// style at terrain.cpp:1004-1077, post-warmup window of 5 frames). Lets
 	// gate B Tracy/perf comparison run side-by-side with one env var.
-	static const bool s_waterDebugOn = (getenv("MC2_WATER_DEBUG") != nullptr);
+	static const bool s_waterDebugOn = mc2::gate::get<"MC2_WATER_DEBUG">();
 	static uint64_t s_qpcFreq2 = 0;
 	static uint64_t s_qpcStart2 = 0;
 	static uint32_t s_framesPrinted2 = 0;
@@ -3689,7 +3657,7 @@ void Terrain::renderWaterFastPath (void)
 
 	{
 		static bool s_dumped = false;
-		if (!s_dumped && getenv("MC2_WATER_STREAM_DEBUG") != nullptr) {
+		if (!s_dumped && mc2::gate::get<"MC2_WATER_STREAM_DEBUG">()) {
 			s_dumped = true;
 			fprintf(stderr,
 			        "[WATER_FAST v1] event=alpha_uniforms waterElevation=%.3f "
@@ -3803,7 +3771,7 @@ namespace {
 	                GP_LIGHTPACK, GP_LIGHTCOPY, GP_INDIRECT, GP_COUNT };
 	static const char* s_gpNames[GP_COUNT] = {
 		"total","slim","chunkProd","quadSetup","lightingPack","lightingCopy","indirectCompute" };
-	static const bool s_gpOn = (getenv("MC2_GEOM_PHASE_SPLIT") != nullptr);
+	static const bool s_gpOn = mc2::gate::get<"MC2_GEOM_PHASE_SPLIT">();
 	static unsigned long long s_gpSum[GP_COUNT]     = {0};
 	static unsigned long long s_gpMax[GP_COUNT]     = {0};
 	static unsigned long long s_gpFrameNs[GP_COUNT] = {0};
@@ -3890,7 +3858,7 @@ void Terrain::geometry (void)
 	// workaround so visual A/B can confirm or refute the cull as root cause
 	// of the "terrain clips to small center region in editor" symptom.
 	// Default OFF: bit-identical legacy behavior. See handoff S2.13.
-	if (getenv("MC2_TERRAIN_CULL_WIDE") != NULL) {
+	if (mc2::gate::get<"MC2_TERRAIN_CULL_WIDE">()) {
 		vClipConstant = 1.0e9f;
 		hClipConstant = 1.0e9f;
 	}
@@ -3902,8 +3870,8 @@ void Terrain::geometry (void)
 	// body those probes compared against is deleted, so any relocated
 	// self-comparison would be tautological/false-alarm; demote-not-
 	// silently-delete per the worktree Debug-instrumentation rule).
-	static const bool s_vplCull = (getenv("MC2_VPL_CULL") != nullptr);
-	static const bool s_vplReduce = (getenv("MC2_VPL_REDUCE") != nullptr);
+	static const bool s_vplCull = mc2::gate::get<"MC2_VPL_CULL">();
+	static const bool s_vplReduce = mc2::gate::get<"MC2_VPL_REDUCE">();
 
 	// F6 T1/T2: terrain admission Modern path. Replaces per-vertex
 	// projectForTerrainAdmission with a world-space frustum-plane test:
@@ -3981,8 +3949,7 @@ void Terrain::geometry (void)
 	// via eye->getCachedFrustumPlanes(). Single extraction shared across all sites.
 	// MC2_BLOCK_FRUSTUM_FALLBACK also needs planes; cache unconditionally when
 	// either feature is active so both share the single extraction.
-	static const bool s_blockFrustumFallback =
-		(getenv("MC2_BLOCK_FRUSTUM_FALLBACK") != nullptr);
+	static const bool s_blockFrustumFallback = mc2::gate::get<"MC2_BLOCK_FRUSTUM_FALLBACK">();
 	if (s_admissionModern || s_blockFrustumFallback) {
 		eye->cacheFrustumPlanes();
 	}
@@ -4067,7 +4034,7 @@ void Terrain::geometry (void)
 		// unconditional near-field bypass and outside the horizontal cone -> dropped.
 		// Widen the near-field bypass radius (purely additive: only admits more
 		// blocks; dilation/superset invariants preserved). Default 4x; =1 = stock.
-		static const float s_lowCamSolidNear = []{ const char* v = getenv("MC2_LOWCAM_SOLID_NEAR"); return v ? (float)atof(v) : 6.0f; }();
+		static const float s_lowCamSolidNear = mc2::gate::get<"MC2_LOWCAM_SOLID_NEAR">();
 		const float kNearField = 768.0f * s_lowCamSolidNear;   // CLIP_THRESHOLD_DISTANCE
 		const float kExtent    = 384.0f;   // VERTEX_EXTENT_RADIUS
 		const float blockR     = (verticesBlockSide * 0.5f) * worldUnitsPerVertex * 1.5f;
@@ -4205,7 +4172,7 @@ void Terrain::geometry (void)
 		// Used to A/B armed ((ii) skipped) vs MC2_GPU_DRIVEN_WATER=0
 		// ((ii) runs) - the only setupTextures delta between those is (ii),
 		// so this isolates (ii)'s real per-frame CPU contribution.
-		static const bool s_s6CostOn = (getenv("MC2_WATER_S6_COST") != nullptr);
+		static const bool s_s6CostOn = mc2::gate::get<"MC2_WATER_S6_COST">();
 		static uint64_t s_s6QpcFreq = 0;
 		uint64_t s_s6QpcStart = 0;
 		if (s_s6CostOn)
@@ -4235,10 +4202,7 @@ void Terrain::geometry (void)
 		// DEFAULT-ON since 2026-06-03 (clean Tracy mc2_01 1.01ms->372us, tier1 5/5,
 		// water/mines/decals/picking user-verified): only literal "0" opts out
 		// (bisection / revert escape hatch), any other value INCLUDING UNSET opts in.
-		static const bool s_armedSkipOn = []() {
-			const char* v = getenv("MC2_QUADSETUP_ARMED_SKIP");
-			return !(v && v[0] == '0' && v[1] == '\0');
-		}();
+		static const bool s_armedSkipOn = mc2::gate::get<"MC2_QUADSETUP_ARMED_SKIP">();
 		const bool fullyArmed =
 			gos_terrain_indirect::IsFrameSolidArmed() &&
 			gos_terrain_indirect::IsFrameOverlayArmed() &&
@@ -4253,10 +4217,7 @@ void Terrain::geometry (void)
 		// OBSERVATIONAL ONLY — reads existing state, no rendering change.
 		// Emits exactly one line per armed<->fallback transition; silent every other frame.
 		{
-			static const bool s_fastpathDropLog = []() {
-				const char* v = getenv("MC2_FASTPATH_DROP_LOG");
-				return v != nullptr && v[0] != '0';
-			}();
+			static const bool s_fastpathDropLog = mc2::gate::get<"MC2_FASTPATH_DROP_LOG">();
 			if (s_fastpathDropLog)
 			{
 				static unsigned long s_dropFrame = 0;

@@ -1288,6 +1288,23 @@ def run(files, root=ROOT, rev="HEAD", helpers=()):
 GATE_INCLUDE = '#include "Gates/gate.h"'
 
 
+def _kept_comments(raw, T, a, b):
+    """The comment-only lines inside the old statement raw[a:b], re-emitted above the replacement (they hold the WHY
+    of the old reader: default history, measurements). Trailing comments on code lines are dropped with the code."""
+    ls = raw.rfind("\n", 0, a) + 1
+    indent = raw[ls:a] if not raw[ls:a].strip() else ""
+    nl = "\r\n" if "\r\n" in raw else "\n"
+    out = []
+    pos = a
+    for rl in raw[a:b].split("\n"):
+        seg_t = T[pos:pos + len(rl)]
+        pos += len(rl) + 1
+        stripped = rl.strip()
+        if stripped and not seg_t.strip():
+            out.append(stripped.rstrip("\r"))
+    return "".join(c + nl + indent for c in out)
+
+
 def apply_edits(raw, results):
     """The file text with every NO-CHANGE / EDGE site rewritten (descending offsets, overlaps skipped) and the gate
     include added. Returns (new_text, applied, skipped)."""
@@ -1300,6 +1317,7 @@ def apply_edits(raw, results):
         a, b, new = r.edit
         while a < b and T[a].isspace():
             a += 1
+        new = _kept_comments(raw, T, a, b) + new.lstrip(" 	")
         if b > limit:
             skipped.append(r)
             continue
@@ -1309,7 +1327,16 @@ def apply_edits(raw, results):
     if applied and "Gates/gate.h" not in raw and "Gates/gate_cold.h" not in raw:
         nl = "\r\n" if "\r\n" in raw else "\n"
         lines = raw.split(nl)
-        last = max((i for i, ln in enumerate(lines[:300]) if ln.lstrip().startswith("#include")), default=-1)
+        # the last #include of the first 300 lines that is NOT inside an #if / #ifdef / #ifndef block
+        depth, last = 0, -1
+        for i, ln in enumerate(lines[:300]):
+            s = ln.lstrip()
+            if s.startswith("#") and s[1:].lstrip().startswith(("if", "ifdef", "ifndef")):
+                depth += 1
+            elif s.startswith("#") and s[1:].lstrip().startswith("endif"):
+                depth = max(0, depth - 1)
+            elif s.startswith("#include") and depth == 0:
+                last = i
         lines.insert(last + 1, GATE_INCLUDE)
         raw = nl.join(lines)
     return raw, applied, skipped

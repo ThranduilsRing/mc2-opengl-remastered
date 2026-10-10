@@ -62,6 +62,7 @@ extern long g_viewContentEpoch;   // VIEW-EPOCH-DEDUPE-1 semantic view-content e
 
 #include "../gameos/gos_profiler.h"
 #include "mc2_hitch_trace.h"
+#include "Gates/gate_cold.h"   // gate::get<>() and str<>()
 
 // CEMENT_DIAG: file-scope extern for the global mission name buffer
 // (defined in code/mechcmd2.cpp:180 and code/logmain.cpp:88 as
@@ -92,7 +93,7 @@ extern float    scenarioTime;
 // pumps it each frame. This makes the atlas GENUINELY absent for ~30s so the
 // reviewer can confirm the atlas/texel probes (a)/(b) actually FIRE when the
 // atlas is the cause.
-static const bool s_loadRaceDelayAtlas = (getenv("MC2_LOAD_RACE_DELAY_ATLAS") != nullptr);
+static const bool s_loadRaceDelayAtlas = mc2::gate::get<"MC2_LOAD_RACE_DELAY_ATLAS">();
 
 namespace gos_terrain_indirect {
 
@@ -101,35 +102,25 @@ namespace gos_terrain_indirect {
 // ---------------------------------------------------------------------------
 
 bool IsEnabled() {
-    static const bool s = []() {
-        const char* v = getenv("MC2_TERRAIN_INDIRECT");
-        // Default-on (Stage C of plan v2.3). Literal "0" opts out; absent or
-        // anything else = on. Default-on flip arrived bundled into e22fa3a
-        // 2026-05-01; was previously deferred pending the gosFX/MLR white-
-        // saturation bug (resolved 2026-05-01 in commit e9bf756 by
-        // glDisable(GL_BLEND) before the postprocess composite). Verified
-        // clean on tier1 5/5 with both MC2_TERRAIN_INDIRECT=0 (legacy
-        // regression) and default-on configs 2026-05-01 sess 3 — no
-        // destroys delta, FPS parity within noise.
-        if (v && v[0] == '0' && v[1] == '\0') return false;
-        return true;
-    }();
+    // Default-on (Stage C of plan v2.3). Literal "0" opts out; absent or
+    // anything else = on. Default-on flip arrived bundled into e22fa3a
+    // 2026-05-01; was previously deferred pending the gosFX/MLR white-
+    // saturation bug (resolved 2026-05-01 in commit e9bf756 by
+    // glDisable(GL_BLEND) before the postprocess composite). Verified
+    // clean on tier1 5/5 with both MC2_TERRAIN_INDIRECT=0 (legacy
+    // regression) and default-on configs 2026-05-01 sess 3 — no
+    // destroys delta, FPS parity within noise.
+    static const bool s = mc2::gate::get<"MC2_TERRAIN_INDIRECT">();
     return s;
 }
 
 bool IsParityCheckEnabled() {
-    static const bool s = []() {
-        const char* v = getenv("MC2_TERRAIN_INDIRECT_PARITY_CHECK");
-        return v && v[0] == '1' && v[1] == '\0';
-    }();
+    static const bool s = mc2::gate::get<"MC2_TERRAIN_INDIRECT_PARITY_CHECK">();
     return s;
 }
 
 bool IsTraceEnabled() {
-    static const bool s = []() {
-        const char* v = getenv("MC2_TERRAIN_INDIRECT_TRACE");
-        return v && v[0] == '1' && v[1] == '\0';
-    }();
+    static const bool s = mc2::gate::get<"MC2_TERRAIN_INDIRECT_TRACE">();
     return s;
 }
 
@@ -139,11 +130,7 @@ bool IsTraceEnabled() {
 // Same idiom as IsEnabled() above: literal "0" => OFF == current HEAD
 // full-range behavior (the safety escape hatch); absent or anything else => ON.
 bool SolidWindowEnabled() {
-    static const bool s = []() {
-        const char* v = getenv("MC2_TERRAIN_SOLID_NARROW");
-        if (v && v[0] == '0' && v[1] == '\0') return false;
-        return true;
-    }();
+    static const bool s = mc2::gate::get<"MC2_TERRAIN_SOLID_NARROW">();
     return s;
 }
 
@@ -151,18 +138,12 @@ bool SolidWindowEnabled() {
 // quad dropped from the window).  Default-OFF; literal "1" arms it.  When off
 // the probe path does ZERO per-frame work (no ref build, no assert).
 bool IsSolidWindowParityEnabled() {
-    static const bool s = []() {
-        const char* v = getenv("MC2_TERRAIN_SOLID_WINDOW_PARITY");
-        return v && v[0] == '1' && v[1] == '\0';
-    }();
+    static const bool s = mc2::gate::get<"MC2_TERRAIN_SOLID_WINDOW_PARITY">();
     return s;
 }
 
 bool IsCostSplitEnabled() {
-    static const bool s = []() {
-        const char* v = getenv("MC2_TERRAIN_COST_SPLIT");
-        return v && v[0] == '1' && v[1] == '\0';
-    }();
+    static const bool s = mc2::gate::get<"MC2_TERRAIN_COST_SPLIT">();
     return s;
 }
 
@@ -234,11 +215,7 @@ long long Counters_GetLegacyDrawAlphaDetailQuads(){ return s_legacy_drawalpha_de
 // with arming verified across PR2c Stages 0c/1c/2c. Literal "0" opts out
 // for bisection; any other value (including unset) opts in.
 bool IsMineEnabled() {
-    static const bool s = []() {
-        const char* v = getenv("MC2_TERRAIN_INDIRECT_MINE");
-        if (v && v[0] == '0' && v[1] == '\0') return false;
-        return true;
-    }();
+    static const bool s = mc2::gate::get<"MC2_TERRAIN_INDIRECT_MINE">();
     return s;
 }
 
@@ -251,19 +228,12 @@ bool IsMineEnabled() {
 // other value INCLUDING UNSET opts in. Stock play now gets the retirement;
 // `MC2_TERRAIN_INDIRECT_OVERLAY=0` is the built-in revert.
 bool IsOverlayEnabled() {
-    static const bool s = []() {
-        const char* v = getenv("MC2_TERRAIN_INDIRECT_OVERLAY");
-        if (v && v[0] == '0' && v[1] == '\0') return false;
-        return true;
-    }();
+    static const bool s = mc2::gate::get<"MC2_TERRAIN_INDIRECT_OVERLAY">();
     return s;
 }
 
 bool IsOverlayParityCheckEnabled() {
-    static const bool s = []() {
-        const char* v = getenv("MC2_TERRAIN_INDIRECT_OVERLAY_PARITY_CHECK");
-        return v && v[0] == '1' && v[1] == '\0';
-    }();
+    static const bool s = mc2::gate::get<"MC2_TERRAIN_INDIRECT_OVERLAY_PARITY_CHECK">();
     return s;
 }
 
@@ -271,10 +241,7 @@ bool IsOverlayParityCheckEnabled() {
 // (diagnostic for the corrupt-recipeIdx grey-triangle bug). Default OFF — it is a
 // per-frame ~80KB glGetBufferSubData readback + CPU compare and must not run in
 // production. Kill-switch restores it for diagnosis.
-static const bool s_thinCanaryEnabled = []() -> bool {
-    const char* v = std::getenv("MC2_THIN_CANARY");
-    return v && v[0] == '1';
-}();
+static const bool s_thinCanaryEnabled = mc2::gate::get<"MC2_THIN_CANARY">();
 
 // Slice A — wire the real predicate (replaces the Stage 0b/1b/2b always-false
 // stub). Mirrors IsFrameMineArmed() == IsMineEnabled() EXACTLY: arming is
@@ -335,7 +302,7 @@ namespace gos_terrain_indirect {
 
 bool IsLightCostSplitEnabled() {
     if (!g_lcsInit) {                       // cache once -- getenv per-call is slow
-        g_lcsOn   = (getenv("MC2_LIGHT_COST_SPLIT") != nullptr);
+        g_lcsOn   = mc2::gate::get<"MC2_LIGHT_COST_SPLIT">();
         g_lcsInit = true;
     }
     return g_lcsOn;
@@ -604,8 +571,7 @@ static bool s_indirectTrace = false;
 static bool s_indirectTraceKnown = false;
 static bool traceOn() {
     if (!s_indirectTraceKnown) {
-        const char* v = getenv("MC2_TERRAIN_INDIRECT_TRACE");
-        s_indirectTrace = (v && v[0] == '1' && v[1] == '\0');
+        s_indirectTrace = mc2::gate::get<"MC2_TERRAIN_INDIRECT_TRACE">();
         s_indirectTraceKnown = true;
     }
     return s_indirectTrace;
@@ -833,13 +799,7 @@ static int deriveMaskIdFromCorners(bool c0, bool c1, bool c2, bool c3) {
 // decal-only revert (no cement word on road-adjacent tiles — the outline-seam
 // regression form, kept for A/B).
 static int PadEdgeRoadFixMode() {
-    static const int s = []() {
-        const char* v = getenv("MC2_PAD_EDGE_ROAD_FIX");
-        if (!v || !v[0]) return 1;
-        if (v[0] == '0') return 0;
-        if (v[0] == '2') return 2;
-        return 1;
-    }();
+    static const int s = mc2::gate::get<"MC2_PAD_EDGE_ROAD_FIX">();
     return s;
 }
 static bool PadEdgeRoadFixEnabled() { return PadEdgeRoadFixMode() != 0; }
@@ -853,10 +813,7 @@ static bool PadEdgeRoadFixEnabled() { return PadEdgeRoadFixMode() != 0; }
 // A census is ALWAYS printed (so a map can be judged without a gate); zeroing is
 // gated MC2_CEMENT_ATLAS_MAGENTA_KEY (default OFF).
 static bool CementAtlasMagentaKeyEnabled() {
-    static const bool s = []() {
-        const char* v = getenv("MC2_CEMENT_ATLAS_MAGENTA_KEY");
-        return v && v[0] && v[0] != '0';
-    }();
+    static const bool s = mc2::gate::get<"MC2_CEMENT_ATLAS_MAGENTA_KEY">();
     return s;
 }
 
@@ -873,10 +830,7 @@ static bool CementAtlasMagentaKeyEnabled() {
 // inherits the cement layer of an orthogonally adjacent tile that DID bake a
 // word, so the run stays continuous. Default OFF => not one word changes.
 static bool CementTransitionFallbackEnabled() {
-    static const bool s = []() {
-        const char* v = getenv("MC2_CEMENT_TRANSITION_FALLBACK");
-        return v && v[0] && v[0] != '0';
-    }();
+    static const bool s = mc2::gate::get<"MC2_CEMENT_TRANSITION_FALLBACK">();
     return s;
 }
 
@@ -913,10 +867,7 @@ static bool CementAlphaAtlasEnabled() {
     // (65.0-65.7 at runway_wide), i.e. the user criterion "the color they are
     // on top of concrete". Control pose byte-identical. MC2_CEMENT_ALPHA_ATLAS=0
     // restores the drop (bare-dirt gaps + pale word==0 runway).
-    static const bool s = []() {
-        const char* v = getenv("MC2_CEMENT_ALPHA_ATLAS");
-        return !(v && v[0] == '0');   // default ON
-    }();
+    static const bool s = mc2::gate::get<"MC2_CEMENT_ALPHA_ATLAS">();
     return s;
 }
 
@@ -1006,10 +957,7 @@ static constexpr uint32_t kCementAuthoredArtBit = 0x01000000u;
 // whether the bit-24 marking pass below runs; the frag reads its own uniform.
 // 0 = OFF => no bit 24 written AND the frag uniform uploads 0 => byte-identical.
 static bool OverlayCementAdoptEnabled() {
-    static const bool s = [] {
-        const char* v = getenv("MC2_OVERLAY_CEMENT_ADOPT");
-        return !(v && v[0] == '0');   // default ON
-    }();
+    static const bool s = mc2::gate::get<"MC2_OVERLAY_CEMENT_ADOPT">();
     return s;
 }
 
@@ -1025,49 +973,43 @@ static bool OverlayCementAdoptEnabled() {
 //       prior albedo-swapping attempts (MC2_CEMENT_TONE_MATCH,
 //       MC2_RUNWAY_TONE_MATCH) were user-rejected as "WAY worse".
 static int PavedOverlayClassMode() {
-    static const int s = []() {
-        const char* v = getenv("MC2_PAVED_OVERLAY_CLASS");
-        // PAVED-OVERLAY-CLASS-DEFAULT-ON-1 (CONCRETE-DELIVER-1) promoted this to
-        // default 1. CONCRETE-DELIVER-2 REVERTS THAT to default 0, because the
-        // justification it shipped was a claim a later lane had already measured
-        // and retracted IN WRITING:
-        //
-        //   .claude/CEMENT-EDGE-CURVE-1-STATUS.md sec.4, measured at the user's
-        //   own night poses: mode 1 produces max delta 20-29/255 and 9.2-21.7%
-        //   HARD-STEP pixels -- "It ADDS hard-edged outlines rather than removing
-        //   them." Same doc: "the ROAD-OVERLAY-LIGHT-1 attribution -- that the
-        //   user's 'weird coloured edge' IS the classification boundary and that
-        //   closing the classification gap cures it -- is wrong in the direction
-        //   it claims... This should not propagate into another status doc."
-        //   It then propagated into the CONCRETE-DELIVER-1 commit message and
-        //   into this comment block verbatim.
-        //
-        // The mechanism refutes the promotion independently. Mode 1 is
-        // LIGHTING-ONLY by construction (terrain_lod_chunk.frag:1897 sets
-        // normalLight = 1.0 and the code there states "Albedo is deliberately
-        // untouched... a residual albedo gap is expected and measured"). An
-        // unclassified paved tile keeps its DARK baked colormap, so
-        // CEMENT-EDGE-CURVE-1 sec.3 measured its ceiling at L~24 against concrete
-        // at L~60-87: flat lighting alone can never make mc2_10's runway "the
-        // color they are on top of concrete like in mc2_01", which is the user
-        // requirement the promotion was justified by. The gap is albedo-side.
-        //
-        // The originating lane also set its own precondition, unmet:
-        // .claude/PAVED-OVERLAY-CLASS-1-STATUS.md "Recommended next steps" 1-2 --
-        // a user click-through on mc2_10 saved_204937 is "the single decision
-        // that gates everything else", and pose coverage must be extended
-        // "before any default-ON proposal". Neither happened.
-        //
-        // Default 0 = not one word written = byte-identical stock. The user can
-        // evaluate it in one step with MC2_PAVED_OVERLAY_CLASS=1; nothing else
-        // in the concrete-seam fix depends on it (OVERLAY-CEMENT-ADOPT-1 acts
-        // only on tiles that already carry a valid cement word, which this pass
-        // explicitly skips).
-        if (!v || !v[0]) return 0;
-        if (v[0] == '1') return 1;
-        if (v[0] == '2') return 2;
-        return 0;
-    }();
+    // PAVED-OVERLAY-CLASS-DEFAULT-ON-1 (CONCRETE-DELIVER-1) promoted this to
+    // default 1. CONCRETE-DELIVER-2 REVERTS THAT to default 0, because the
+    // justification it shipped was a claim a later lane had already measured
+    // and retracted IN WRITING:
+    //
+    //   .claude/CEMENT-EDGE-CURVE-1-STATUS.md sec.4, measured at the user's
+    //   own night poses: mode 1 produces max delta 20-29/255 and 9.2-21.7%
+    //   HARD-STEP pixels -- "It ADDS hard-edged outlines rather than removing
+    //   them." Same doc: "the ROAD-OVERLAY-LIGHT-1 attribution -- that the
+    //   user's 'weird coloured edge' IS the classification boundary and that
+    //   closing the classification gap cures it -- is wrong in the direction
+    //   it claims... This should not propagate into another status doc."
+    //   It then propagated into the CONCRETE-DELIVER-1 commit message and
+    //   into this comment block verbatim.
+    //
+    // The mechanism refutes the promotion independently. Mode 1 is
+    // LIGHTING-ONLY by construction (terrain_lod_chunk.frag:1897 sets
+    // normalLight = 1.0 and the code there states "Albedo is deliberately
+    // untouched... a residual albedo gap is expected and measured"). An
+    // unclassified paved tile keeps its DARK baked colormap, so
+    // CEMENT-EDGE-CURVE-1 sec.3 measured its ceiling at L~24 against concrete
+    // at L~60-87: flat lighting alone can never make mc2_10's runway "the
+    // color they are on top of concrete like in mc2_01", which is the user
+    // requirement the promotion was justified by. The gap is albedo-side.
+    //
+    // The originating lane also set its own precondition, unmet:
+    // .claude/PAVED-OVERLAY-CLASS-1-STATUS.md "Recommended next steps" 1-2 --
+    // a user click-through on mc2_10 saved_204937 is "the single decision
+    // that gates everything else", and pose coverage must be extended
+    // "before any default-ON proposal". Neither happened.
+    //
+    // Default 0 = not one word written = byte-identical stock. The user can
+    // evaluate it in one step with MC2_PAVED_OVERLAY_CLASS=1; nothing else
+    // in the concrete-seam fix depends on it (OVERLAY-CEMENT-ADOPT-1 acts
+    // only on tiles that already carry a valid cement word, which this pass
+    // explicitly skips).
+    static const int s = mc2::gate::get<"MC2_PAVED_OVERLAY_CLASS">();
     return s;
 }
 
@@ -1202,10 +1144,7 @@ static const float kRoadArtFrac      = 0.05f;  // >5% such texels = cell carries
 // ON, with both other arms OFF, this gate is a pixel no-op: it only changes
 // which cells ARM A / ARM B are allowed to touch.
 static bool RoadArtDetectEnabled() {
-    static const bool s = []() {
-        const char* v = getenv("MC2_CEMENT_ROAD_ART_DETECT");
-        return v && v[0] && v[0] != '0';
-    }();
+    static const bool s = mc2::gate::get<"MC2_CEMENT_ROAD_ART_DETECT">();
     return s;
 }
 
@@ -1216,10 +1155,7 @@ static bool RoadArtDetectEnabled() {
 // cells that pass the neutrality+luminance concrete test, toward the family's
 // OWN median, and never touches an asphalt/dirt/coloured cell at all.
 static bool ConcreteToneEnabled() {
-    static const bool s = []() {
-        const char* v = getenv("MC2_CEMENT_CONCRETE_TONE");
-        return v && v[0] && v[0] != '0';
-    }();
+    static const bool s = mc2::gate::get<"MC2_CEMENT_CONCRETE_TONE">();
     return s;
 }
 
@@ -1227,10 +1163,7 @@ static bool ConcreteToneEnabled() {
 // apron cannot change colour tile to tile. Cells carrying painted markings are
 // excluded and keep their own art. Default OFF => no remap => byte-identical.
 static bool ConcreteCanonEnabled() {
-    static const bool s = []() {
-        const char* v = getenv("MC2_CEMENT_CONCRETE_CANON");
-        return v && v[0] && v[0] != '0';
-    }();
+    static const bool s = mc2::gate::get<"MC2_CEMENT_CONCRETE_CANON">();
     return s;
 }
 
@@ -1409,10 +1342,7 @@ static int ClassifyConcreteFamily(std::vector<CementCellStats>& st, int NT,
 // tile (discrete SDF). OFF => no mask bits => the frag's featherAlpha collapses
 // to 1.0 => byte-identical stock full replacement.
 static bool RunwayEdgeBlendEnabled() {
-    static const bool s = []() {
-        const char* v = getenv("MC2_RUNWAY_EDGE_BLEND");
-        return v && v[0] && v[0] != '0';
-    }();
+    static const bool s = mc2::gate::get<"MC2_RUNWAY_EDGE_BLEND">();
     return s;
 }
 
@@ -1564,10 +1494,7 @@ static void PopulateRecipeCementWords() {
     // MC2_TERRAIN_LOD_CHUNK_DIAG as bit 524288 (0x80000). Unset => the per-tile
     // getOverlay walk below and the [CEMENT_PAVEMENT_GAP v1] print are both
     // skipped entirely, which is byte-identical to the pre-a25037cf render.
-    static const bool s_pavementGapDiag = []() -> bool {
-        const char* v = getenv("MC2_TERRAIN_LOD_CHUNK_DIAG");
-        return v && (atoi(v) & 524288) != 0;
-    }();
+    static const bool s_pavementGapDiag = (mc2::gate::get<"MC2_TERRAIN_LOD_CHUNK_DIAG">() & 524288) != 0;
     long pavedOverlayTiles      = 0;   // tiles carrying a hard-paved overlay id
     long pavedOverlayNoCement   = 0;   // ...of those, tiles that bake NO cement word
     long anyOverlayTiles        = 0;
@@ -1806,10 +1733,7 @@ static void PopulateRecipeCementWords() {
                 if (IsPavedOverlayType(ovT)) ++pavedSubset;
             }
         }
-        static const bool s_adoptTrace = [] {
-            const char* v = getenv("MC2_TERRAIN_INDIRECT_TRACE");
-            return v && v[0] == '1' && v[1] == '\0';
-        }();
+        static const bool s_adoptTrace = mc2::gate::get<"MC2_TERRAIN_INDIRECT_TRACE">();
         if (s_adoptTrace) {
             printf("[OVERLAY_CEMENT_ADOPT v1] event=authored_art_marked mission=%s "
                    "tiles=%ld paved_subset=%ld overlay_id_subset=%ld "
@@ -1994,10 +1918,7 @@ static void CollectUniqueNodeIds() {
 // Default ON. Kill-switch MC2_COLORMAP_CPU_RETIRE=0 reverts (keeps CPU copy alive
 // for legacy displacement; needed when MC2_COLORMAP_DISPLACE_PROBE=1).
 static bool retireCpuColorMap() {
-    static const bool s = []() {
-        const char* v = getenv("MC2_COLORMAP_CPU_RETIRE");
-        return !v || v[0] != '0';
-    }();
+    static const bool s = mc2::gate::get<"MC2_COLORMAP_CPU_RETIRE">();
     return s;
 }
 
@@ -2561,7 +2482,9 @@ void BuildCementCatalogAtlas() {
     // an empirical question about the ART, not one to answer from thresholds).
     // MC2_CEMENT_ATLAS_DUMP=<path-prefix>. Writes <prefix>.rgba (raw BGRA8,
     // atlasPixelSide^2) + <prefix>.csv (per-cell stats). Diagnostic-only.
-    if (const char* dumpPfx = getenv("MC2_CEMENT_ATLAS_DUMP")) {
+    {
+        const std::string dumpPfxStr = mc2::gate::str<"MC2_CEMENT_ATLAS_DUMP">();   // "" when unset or empty
+        const char* dumpPfx = dumpPfxStr.c_str();
         if (dumpPfx[0]) {
             char pathBuf[1024];
             snprintf(pathBuf, sizeof(pathBuf), "%s.rgba", dumpPfx);
@@ -3226,7 +3149,7 @@ static float    g_dispatchMvp16[16] = { 0 };
 // 2026-05-14-vertex-project-loop-retirement.md §"Step 9" and
 // memory/ring_slot_state_must_travel_with_slot.md (Fix B is the surviving
 // instance of that rule; Fix A's snapshot is the retired mechanism).
-static const bool g_envRingTrace = (getenv("MC2_RING_TRACE") != nullptr);
+static const bool g_envRingTrace = mc2::gate::get<"MC2_RING_TRACE">();
 static float    g_thinSlotMVP[kThinRingFrames][16] = { { 0 } };
 static bool     g_thinSlotMVPValid[kThinRingFrames] = { false, false, false };
 
@@ -3389,8 +3312,7 @@ static int PackThinRecordsForFrame() {
     // future plan retires the declaration itself once telemetry confirms the
     // env-gate is never set in production. See
     // docs/superpowers/plans/2026-05-14-cpu-pack-retirement.md §3.
-    static const bool s_cpuFallback =
-        (getenv("MC2_TERRAIN_INDIRECT_CPU_FALLBACK") != nullptr);
+    static const bool s_cpuFallback = mc2::gate::get<"MC2_TERRAIN_INDIRECT_CPU_FALLBACK">();
     if (!s_cpuFallback) {
         // One-shot demotion log so smoke artifacts capture the gate state.
         static bool s_loggedDemote = false;
@@ -4208,8 +4130,7 @@ void ComputeDispatch() {
 
     // Step 2b: bucket-header SSBO demoted behind MC2_BUCKET_HEADER_TRACE.
     // Cached env lookup, used at alloc / bind / clear / readback / teardown.
-    static const bool s_bucketHeaderTrace =
-        (getenv("MC2_BUCKET_HEADER_TRACE") != nullptr);
+    static const bool s_bucketHeaderTrace = mc2::gate::get<"MC2_BUCKET_HEADER_TRACE">();
     // Lazy-allocate bucket header SSBO (16 B GpuDrivenBucketHeader) ONLY when
     // diagnostic tracing is requested.  Default-off: zero allocation, zero
     // per-frame work, zero binding.
@@ -4288,7 +4209,7 @@ void ComputeDispatch() {
     // notwithstanding) and the race produces the same bytes either way.
     // Fingerprint of the camera MVP rotation rows lets offline analysis
     // correlate fence misses with rotation magnitude.
-    static const bool s_ringTrace        = (getenv("MC2_RING_TRACE") != nullptr);
+        static const bool s_ringTrace        = mc2::gate::get<"MC2_RING_TRACE">();
     static uint64_t   s_ringTraceFrameIdx = 0;
     const uint64_t  ringFrameIdx = ++s_ringTraceFrameIdx;
     const int       probedSlot   = g_thinRingSlot;
@@ -4762,8 +4683,7 @@ void ComputeDispatch() {
         // (the matrix the decal overlay binds), and the cross-TU sampled CPU
         // water value; O(1)/frame; printf only on transition frames (latched).
         {
-            static const bool s_depthTransProbe =
-                (getenv("MC2_DEPTH_TRANSITION_PROBE") != nullptr);
+            static const bool s_depthTransProbe = mc2::gate::get<"MC2_DEPTH_TRANSITION_PROBE">();
             if (s_depthTransProbe) {
                 // --- Transition detector -----------------------------------
                 // maxDelta = max_i |g_dispatchMvp16[i] - prev[i]|. kEps chosen
@@ -5009,7 +4929,7 @@ void ComputeDispatch() {
     // insufficient on AMD — VS reads stale thin records via L1$ even though
     // CPU readback sees correct data in VRAM (probe 6 full coverage silent).
     // Severe perf cost (every-frame stall); diagnostic-only, default OFF.
-    static const bool s_ringForceFinish = (getenv("MC2_RING_FORCE_FINISH") != nullptr);
+    static const bool s_ringForceFinish = mc2::gate::get<"MC2_RING_FORCE_FINISH">();
     if (s_ringForceFinish) {
         glFinish();
     }
@@ -5161,10 +5081,7 @@ bool DrawIndirect() {
 // gos_GetTerrainMVPMat4 after this — water fast path, decals, overlays, cull).
 // Terrain only: no water/props/mechs. No clip plane (-> WATER-REFLECTION-CLIP-1).
 void RenderWaterReflectionPass() {
-    static const bool s_rtEnabled = [](){
-        const char* v = getenv("MC2_WATER_REFLECTION_RT");
-        return v && v[0] && v[0] != '0';
-    }();
+    static const bool s_rtEnabled = mc2::gate::get<"MC2_WATER_REFLECTION_RT">();
     if (!s_rtEnabled)          return;   // gate OFF -> byte-identical
     if (!IsFrameSolidArmed())  return;   // no terrain this frame
     const float* M = gos_GetTerrainMVPMat4();
@@ -5266,10 +5183,7 @@ void RenderWaterReflectionPass() {
     static long s_frame = 0; ++s_frame;
     if (s_frame == 1 || s_frame == 5 || s_frame == 30 || s_frame == 120 ||
         (s_frame % 600) == 0) {
-        static const bool s_pixelProof = [](){
-            const char* v = getenv("MC2_WATER_REFL_RT_PIXELPROOF");
-            return v && v[0] && v[0] != '0';
-        }();
+        static const bool s_pixelProof = mc2::gate::get<"MC2_WATER_REFL_RT_PIXELPROOF">();
         if (!s_pixelProof) {
             fprintf(stderr, "[WATER_REFL_RT v1] frame=%ld gate=1 fbo=%u dims=%dx%d drew=%d "
                     "mirrored_cmd_count=%u\n",
@@ -5441,8 +5355,7 @@ void ResetMineTextureArray() {
 // [TEMP MINE_GLPROBE] eager-drain probe — env MC2_DECAL_GLPROBE=1 (shared
 // gate with the decal probe). Removed once root cause is pinned.
 #define MINE_GLPROBE(tag) do { \
-    static const bool s_p = (getenv("MC2_DECAL_GLPROBE") && \
-                             getenv("MC2_DECAL_GLPROBE")[0] == '1'); \
+    static const bool s_p = mc2::gate::get<"MC2_DECAL_GLPROBE">(); \
     if (s_p) { GLenum e; while ((e = glGetError()) != GL_NO_ERROR) \
         printf("[MINE_GLPROBE] at=%s err=0x%x\n", tag, (unsigned)e); \
         fflush(stdout); } } while(0)
@@ -5855,10 +5768,7 @@ void BuildDecalStaticVBO() {
     // cement, alpha, overlayId) combo with count + world bbox. Answers "what
     // IS the runway in this map's data" without knowing its coords up front.
     {
-        static const bool s_tileCensus = []() {
-            const char* v = getenv("MC2_TERRAIN_TILE_CENSUS");
-            return v && v[0] && v[0] != '0';
-        }();
+        static const bool s_tileCensus = mc2::gate::get<"MC2_TERRAIN_TILE_CENSUS">();
         if (s_tileCensus) {
             struct Agg { long n; float minX, maxX, minY, maxY; };
             std::map<unsigned long long, Agg> agg;
@@ -5983,10 +5893,7 @@ void BuildDecalStaticVBO() {
                 // is not ready yet, keep the old skip (conservative; the words
                 // bake before the first decal build in the mission-load order).
                 // Killswitch MC2_MISSING_RUNWAY_FIX=0 -> old blanket skip.
-                static const bool s_runwayFix = []() {
-                    const char* v = getenv("MC2_MISSING_RUNWAY_FIX");
-                    return !(v && v[0] == '0');   // default ON
-                }();
+                static const bool s_runwayFix = mc2::gate::get<"MC2_MISSING_RUNWAY_FIX">();
                 bool fragOwnsTile = true;
                 if (s_runwayFix && g_cementLayerMapReady && blocks) {
                     auto cemCorner = [&](long r, long c2) -> bool {
@@ -6074,10 +5981,7 @@ void BuildDecalStaticVBO() {
             // within its bounds; alpha-accurate per-tile suppression is a
             // follow-up. Env MC2_TERRAIN_OVERLAY_V2_DECAL_SUPPRESS=0 reverts.
             {
-                static const bool s_decalSuppress = []() {
-                    const char* v = getenv("MC2_TERRAIN_OVERLAY_V2_DECAL_SUPPRESS");
-                    return !(v && v[0] == '0');   // default ON
-                }();
+                static const bool s_decalSuppress = mc2::gate::get<"MC2_TERRAIN_OVERLAY_V2_DECAL_SUPPRESS">();
                 if (s_decalSuppress && gos_TerrainLodChunk_OverlaySidecarLoaded()) {
                     const float* ob = gos_TerrainLodChunk_OverlayBounds();
                     const float bMinX = ob[0];

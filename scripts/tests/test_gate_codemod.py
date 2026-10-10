@@ -616,3 +616,12 @@ def test_g3_markdown_groups_helpers_and_lists_umbrella_sites_apart():
     plain = cm.render_md(cm.analyze_text("snippet.cpp", "static const bool a = (getenv(\"MC2_X\") != nullptr);", mk()), mk(),
                          ["snippet.cpp"], "abc")
     assert "UNHANDLED sites, grouped" not in plain and plain.startswith("# Gate codemod, G1b pilot plan")
+
+
+def test_the_include_is_added_outside_preprocessor_guards():
+    code = ("#include <cstdlib>\n#ifndef X_H\n#include \"x.h\"\n#endif\n\n"
+            "static const bool a = (getenv(\"MC2_X\") != nullptr);\n")
+    new, applied, _ = cm.apply_edits(code, cm.analyze_text("snippet.cpp", code, mk("Presence")))
+    assert applied
+    lines = new.split("\n")
+    assert lines.index('#include "Gates/gate.h"') == 1            # right after <cstdlib>, not inside the #ifndef
