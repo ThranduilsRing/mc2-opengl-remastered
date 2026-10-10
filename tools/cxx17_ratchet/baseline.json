@@ -20,8 +20,8 @@
    "LG16": 0,
    "LG17": 0,
    "LG18": 0,
-   "LG19": 1,
-   "LG20": 1
+   "LG19": 0,
+   "LG20": 0
   },
   "GameAdapters": {
    "LG01": 0,
@@ -52,10 +52,10 @@
    "LG03": 301,
    "LG04": 6,
    "LG05": 119,
-   "LG06": 509,
+   "LG06": 513,
    "LG07": 0,
    "LG08": 274,
-   "LG09": 2159,
+   "LG09": 2147,
    "LG10": 40,
    "LG11": 107,
    "LG12a": 613,
@@ -67,7 +67,7 @@
    "LG17": 81,
    "LG18": 11,
    "LG19": 2,
-   "LG20": 25
+   "LG20": 26
   },
   "GuiRuntime": {
    "LG01": 1,
@@ -135,7 +135,7 @@
    "LG16": 0,
    "LG17": 11,
    "LG18": 1,
-   "LG19": 1,
+   "LG19": 0,
    "LG20": 3
   },
   "RenderWorld": {
@@ -167,10 +167,10 @@
    "LG03": 970,
    "LG04": 21,
    "LG05": 202,
-   "LG06": 456,
+   "LG06": 450,
    "LG07": 0,
    "LG08": 15,
-   "LG09": 2464,
+   "LG09": 2462,
    "LG10": 20,
    "LG11": 101,
    "LG12a": 220,
@@ -269,9 +269,7 @@
  ],
  "files": {
   "EditorBridge/EditorRenderBridge.cpp": {
-   "LG04": 1,
-   "LG19": 1,
-   "LG20": 1
+   "LG04": 1
   },
   "GameAdapters/MechRenderAdapter.cpp": {
    "LG05": 3,
@@ -950,7 +948,8 @@
   "GameOS/gameos/gos_vegetation.cpp": {
    "LG06": 1,
    "LG12a": 1,
-   "LG17": 2
+   "LG17": 2,
+   "LG20": 1
   },
   "GameOS/gameos/gos_vegetation.h": {
    "LG06": 1,
@@ -1215,6 +1214,9 @@
   "GameOS/gameos/vk_image_resource.cpp": {
    "LG06": 2
   },
+  "GameOS/gameos/vk_island_util.h": {
+   "LG06": 4
+  },
   "GameOS/gameos/vk_shared_light_feed.cpp": {
    "LG09": 7
   },
@@ -1262,7 +1264,7 @@
   "GameOS/gameos/vulkan_post_fog_native.cpp": {
    "LG03": 2,
    "LG06": 3,
-   "LG09": 24,
+   "LG09": 20,
    "LG11": 1,
    "LG13": 2
   },
@@ -1276,14 +1278,14 @@
   "GameOS/gameos/vulkan_post_screenfx_native.cpp": {
    "LG03": 3,
    "LG06": 3,
-   "LG09": 38,
+   "LG09": 34,
    "LG11": 1,
    "LG13": 2
   },
   "GameOS/gameos/vulkan_post_ssao_native.cpp": {
    "LG03": 2,
    "LG06": 3,
-   "LG09": 35,
+   "LG09": 31,
    "LG11": 1,
    "LG13": 2
   },
@@ -1568,8 +1570,7 @@
   },
   "RenderCore/RendererFeatureRegistry.h": {
    "LG09": 4,
-   "LG12a": 2,
-   "LG19": 1
+   "LG12a": 2
   },
   "RenderCore/ResolutionContract.h": {
    "LG06": 3,
@@ -1997,9 +1998,9 @@
   },
   "code/equipment_registry.h": {
    "LG05": 1,
-   "LG06": 15,
+   "LG06": 13,
    "LG08": 3,
-   "LG09": 9,
+   "LG09": 8,
    "LG11": 1,
    "LG14": 5
   },
@@ -3166,11 +3167,11 @@
    "LG13": 54
   },
   "code/unitprofile.cpp": {
-   "LG06": 6,
-   "LG09": 3
+   "LG06": 4,
+   "LG09": 2
   },
   "code/unitprofile.h": {
-   "LG06": 8,
+   "LG06": 6,
    "LG14": 1,
    "LG17": 1
   },
@@ -5770,7 +5771,7 @@
    "LG20": 1
   }
  },
- "head": "fbabc78b8",
+ "head": "a82cad316",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

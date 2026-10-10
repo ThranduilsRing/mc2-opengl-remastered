@@ -5,7 +5,7 @@
 generator_version: "3.0.0"
 gate_count: 1139
 registry_entry_count: 354
-verified_count: 1101
+verified_count: 1132
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -1012,11 +1012,12 @@ flags:
     owner: gameos
     doc: "make a bad value or an unregistered MC2_* variable fatal at startup"
   - name: MC2_CONTRACT_REPO_ROOT
-    kind: Bool
-    default: false
-    rule: Presence
+    kind: String
+    default: ""
+    rule: Std
     owner: unclassified
     doc: ""
+    verified: true
   - name: MC2_CPU_PHONG_RETIRE
     kind: Bool
     default: true
@@ -1040,6 +1041,7 @@ flags:
     rule: Presence
     owner: gameos
     doc: "Headless crash fast-exit: write the bundle, then terminate WITHOUT the modal dialog so an automated soak/harness process exits immediately on crash (the..."
+    verified: true
   - name: MC2_CURSOR_TARGET_TRACE
     kind: Bool
     default: false
@@ -1354,18 +1356,21 @@ flags:
     rule: Lead0Kill
     owner: code
     doc: ""
+    verified: true
   - name: MC2_EDITOR_BEAUTY_AUTOAPPLY
     kind: Bool
     default: false
     rule: Lead0
     owner: editor
     doc: ""
+    verified: true
   - name: MC2_EDITOR_DOCK
     kind: Bool
     default: true
     rule: Lead0Kill
     owner: code
     doc: ""
+    verified: true
   - name: MC2_EDITOR_FAR_CLIP
     kind: Float
     default: 0
@@ -1375,58 +1380,68 @@ flags:
     verified: true
   - name: MC2_EDITOR_FPS_CAP
     kind: Int
-    default: -2
+    default: 60
     rule: Prefix
     owner: editor
-    doc: ""
+    doc: "Editor frame-rate cap; <= 0 is uncapped."
+    smoke_passthrough: true
+    verified: true
   - name: MC2_EDITOR_GPU_PICK
     kind: Bool
     default: true
     rule: Lead0Kill
     owner: editor
     doc: ""
+    verified: true
   - name: MC2_EDITOR_GPU_TIMERS
     kind: Bool
     default: false
     rule: Exact1
     owner: editor
     doc: ""
+    verified: true
   - name: MC2_EDITOR_MODE
     kind: Bool
     default: false
     rule: Exact1
     owner: editor
     doc: ""
+    verified: true
   - name: MC2_EDITOR_MOVER_REFRESH
     kind: Bool
     default: true
     rule: Lead0Kill
     owner: editor
     doc: ""
+    verified: true
   - name: MC2_EDITOR_PANEL_W
     kind: Int
     default: 320
     rule: Prefix
     owner: editor
     doc: ""
+    verified: true
   - name: MC2_EDITOR_PICK_TRACE
     kind: Bool
     default: false
     rule: Presence
     owner: editor
     doc: ""
+    verified: true
   - name: MC2_EDITOR_RTT
     kind: Bool
     default: false
     rule: Exact1
     owner: code
     doc: ""
+    verified: true
   - name: MC2_EDITOR_STATIC_PREWARM_OFF
     kind: Bool
     default: false
     rule: Presence
     owner: editor
     doc: ""
+    verified: true
   - name: MC2_EDITOR_STATIC_PRIME_DIAG
     kind: Bool
     default: false
@@ -1440,18 +1455,21 @@ flags:
     rule: Presence
     owner: editor
     doc: ""
+    verified: true
   - name: MC2_EDITOR_UI_DEFS
     kind: Bool
     default: true
     rule: Std
     owner: editor
     doc: "Mission Editor shell overlay is data/defs-first by default."
+    verified: true
   - name: MC2_EDITOR_WATCHDOG
     kind: Bool
     default: false
     rule: Exact1
     owner: editor
     doc: ""
+    verified: true
   - name: MC2_EFFECT_ADMISSION_PREDICATE
     kind: Enum
     default: ""
@@ -1862,6 +1880,7 @@ flags:
     rule: Std
     owner: editor
     doc: "The data/defs GameOS UI path is the replacement path, not an opt-in demo."
+    verified: true
   - name: MC2_GAMEPLAY_PICK_SELFTEST
     kind: Bool
     default: false
@@ -2581,6 +2600,7 @@ flags:
     rule: Lead1
     owner: unclassified
     doc: ""
+    verified: true
   - name: MC2_ICON_FAILLOUD
     kind: Bool
     default: false
@@ -2605,6 +2625,7 @@ flags:
     rule: Lead0Kill
     owner: code
     doc: "ImGui overlay (GuiRuntime/GuiRuntime.cpp)."
+    verified: true
     registry: {feature_id: MC2_FEATURE_IMGUI, kind: Feature, order: 6, default_on: true}
   - name: MC2_IMGUI_DEMO
     kind: Bool
@@ -2612,12 +2633,14 @@ flags:
     rule: Lead1
     owner: code
     doc: ""
+    verified: true
   - name: MC2_IMGUI_INSPECTOR
     kind: Bool
     default: true
     rule: Lead0Kill
     owner: code
     doc: "ImGui inspector panel (GuiRuntime/EditorInspector.cpp)."
+    verified: true
     registry: {feature_id: MC2_FEATURE_IMGUI_INSPECTOR, kind: Feature, order: 7, default_on: true}
   - name: MC2_IMPORTER_DIR
     kind: String
@@ -3877,6 +3900,7 @@ flags:
     rule: Lead0
     owner: editor
     doc: "Mission Editor (editor/EditorMFC.cpp, MainFrm.cpp): come up minimized and non-activating, never taking the foreground or keyboard focus."
+    verified: true
     registry: {feature_id: MC2_TRACE_NO_ACTIVATE, kind: Trace, order: -1, default_on: false}
   - name: MC2_NO_CURSOR_GRAB
     kind: Bool
@@ -4312,11 +4336,12 @@ flags:
     doc: ""
     verified: true
   - name: MC2_PLAYTEST_EXE
-    kind: Int
-    default: 0
-    rule: Prefix
+    kind: String
+    default: ""
+    rule: Std
     owner: editor
     doc: ""
+    verified: true
   - name: MC2_PNG_MAGENTA_KEY
     kind: Bool
     default: true
@@ -5383,9 +5408,11 @@ flags:
   - name: MC2_SMOKE_ACTIVE
     kind: Bool
     default: false
-    rule: NonEmpty
+    rule: Lead0
     owner: editor
-    doc: ""
+    doc: "Editor smoke forwards --smoke-active to the playtest child."
+    smoke_passthrough: true
+    verified: true
   - name: MC2_SMOKE_FIXED_TIMESTEP
     kind: Bool
     default: false
@@ -6974,6 +7001,7 @@ flags:
     rule: Presence
     owner: editor
     doc: ""
+    verified: true
   - name: MC2_TERRAIN_RAYCAST_PICK
     kind: Bool
     default: false
@@ -7428,24 +7456,28 @@ flags:
     rule: Std
     owner: editor
     doc: ""
+    verified: true
   - name: MC2_UI_DEFS_LOADSCREEN
     kind: Bool
     default: false
     rule: Presence
     owner: editor
     doc: ""
+    verified: true
   - name: MC2_UI_DEFS_RESULTS
     kind: Bool
     default: false
     rule: Presence
     owner: editor
     doc: ""
+    verified: true
   - name: MC2_UI_DEFS_TRACE
     kind: Bool
     default: false
     rule: Lead0
     owner: unclassified
     doc: ""
+    verified: true
   - name: MC2_UI_IMGUI_INFO
     kind: Bool
     default: false
@@ -8012,6 +8044,7 @@ flags:
     owner: code
     doc: "VK-IMGUI-NATIVE-1 (rung 8.6): default-OFF ImGui Vulkan renderer gate."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_VK_IMGUI, kind: Feature, order: -1, default_on: false}
   - name: MC2_VK_LIGHTFEED_DEDUP
     kind: Bool

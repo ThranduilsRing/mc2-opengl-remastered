@@ -23,13 +23,13 @@
   "GameOS/gameos/gos_terrain_water_stream.cpp": 2455,
   "GameOS/gameos/gpu_cull_compute.cpp": 1557,
   "GameOS/gameos/utils/shader_builder.cpp": 1546,
-  "GameOS/gameos/vulkan_color_prop_island.cpp": 1805,
-  "GameOS/gameos/vulkan_shadow_island_live.cpp": 1665,
-  "GameOS/gameos/vulkan_terrain_island.cpp": 3525,
+  "GameOS/gameos/vulkan_color_prop_island.cpp": 1785,
+  "GameOS/gameos/vulkan_shadow_island_live.cpp": 1645,
+  "GameOS/gameos/vulkan_terrain_island.cpp": 3505,
   "GameOS/include/gameos.hpp": 3753,
   "GameOS/include/imagehlp.h": 1799,
   "GuiRuntime/EditorInspector.cpp": 1659,
-  "RenderCore/RendererFeatureRegistry.h": 2917,
+  "RenderCore/RendererFeatureRegistry.h": 2918,
   "code/artlry.cpp": 1816,
   "code/bldng.cpp": 1702,
   "code/brain_special_dispatch.cpp": 3273,
@@ -88,12 +88,12 @@
   "mclib/terrtxm.cpp": 1778,
   "mclib/terrtxm2.cpp": 2785,
   "mclib/tgl.h": 1689,
-  "mclib/txmmgr_render.cpp": 2226,
+  "mclib/txmmgr_render.cpp": 2328,
   "mclib/vfx_translatedraw.cpp": 1742,
   "mclib/vfxtile.cpp": 2944,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "fbabc78b8",
+ "head": "a82cad316",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -102,7 +102,7 @@
    "max_lines": 523
   },
   "GameOS": {
-   "files": 302,
+   "files": 303,
    "files_over_1500": 15,
    "files_over_3000": 3,
    "max_lines": 3753
@@ -123,7 +123,7 @@
    "files": 55,
    "files_over_1500": 1,
    "files_over_3000": 0,
-   "max_lines": 2917
+   "max_lines": 2918
   },
   "RenderWorld": {
    "files": 6,
@@ -201,7 +201,7 @@
   },
   {
    "file": "GameOS/gameos/vulkan_terrain_island.cpp",
-   "lines": 3525
+   "lines": 3505
   },
   {
    "file": "code/logisticsdata.cpp",
@@ -225,7 +225,7 @@
   },
   {
    "file": "RenderCore/RendererFeatureRegistry.h",
-   "lines": 2917
+   "lines": 2918
   },
   {
    "file": "mclib/inifile.cpp",
@@ -285,11 +285,11 @@
   },
   {
    "file": "mclib/txmmgr_render.cpp",
-   "lines": 2226
+   "lines": 2328
   }
  ],
  "total": {
-  "files": 1748,
+  "files": 1749,
   "files_over_1500": 79,
   "files_over_3000": 13,
   "max_lines": 7888

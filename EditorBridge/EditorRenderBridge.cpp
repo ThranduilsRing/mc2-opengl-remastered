@@ -9,7 +9,7 @@
 
 #include "EditorRenderBridge.h"
 
-#include <cstdlib>   // std::getenv
+#include <cstdlib>
 #include <cstring>   // std::strcmp
 
 // Engine side
@@ -32,6 +32,7 @@
 #include "../GameOS/gameos/gpu_cull_compute.h"           // gpu_cull::compute_*
 #include "../GameOS/gameos/gpu_cull_substrate.h"          // gpu_cull::substrate_shutdown
 #include "../GameOS/gameos/gpu_cull_readback.h"           // gpu_cull::readback_shutdown
+#include "Gates/gate.h"
 
 // ---- game-side globals wired by the editor at startup ----
 extern TerrainPtr land;   // defined in mclib/terrain.cpp
@@ -128,8 +129,7 @@ static bool projectToScreen(const Stuff::Vector3D& worldPt,
 // ---- lifecycle ----
 
 void init() {
-    const char* val = std::getenv("MC2_EDITOR_MODE");
-    s_enabled = (val && std::strcmp(val, "1") == 0);
+    s_enabled = mc2::gate::get<"MC2_EDITOR_MODE">();
 }
 
 void shutdown() {
