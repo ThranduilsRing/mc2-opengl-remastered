@@ -4,7 +4,6 @@
 
 
 
-//----------------------------------------------------------------------------------
 
 void Mission::createPartObject (long partIndex, MoverPtr mover) {
 
@@ -38,11 +37,6 @@ void Mission::createPartObject (long partIndex, MoverPtr mover) {
 		mover->setAwake(parts[partIndex].active ? true : false);
 		mover->setHandle(ObjectManager->getHandle(mover));
 
-		//----------------------------------------------
-		// Load the profile data into the game object...
-		// This is MONDO DIFFERENT NOW.
-		// Profiles are in the mech's CSV file.  You should just init with mover with
-		// the variant number and the rest is done in the mover itself.
 		//
 		// Heidi, this is what needs to change in the mission.fit files!
 		// -fs 12/7/99		A date which will live in Infamy.
@@ -58,10 +52,6 @@ void Mission::createPartObject (long partIndex, MoverPtr mover) {
 			{
 				if (ObjectTypeManager::objectFile->seekPacket(parts[partIndex].objNumber) == NO_ERR) 
 				{
-					//--------------------------------------------------------
-					// All new code here.  This will ask the objectType it is
-					// loading what kind of objectType it is and create it
-					// based on that instead of objTypeNum.
 					FitIniFile profileFile;
 					long result = profileFile.open(ObjectTypeManager::objectFile,ObjectTypeManager::objectFile->getPacketSize());
 					if (result != NO_ERR)
@@ -69,7 +59,6 @@ void Mission::createPartObject (long partIndex, MoverPtr mover) {
 
 					if (result == NO_ERR) 
 					{
-						//-------------------------------------------
 						result = mover->init(&profileFile);
 						if (result != NO_ERR)
 							STOP((" Mission.createPartObject: bad Profile File "));
@@ -144,9 +133,6 @@ void Mission::createPartObject (long partIndex, MoverPtr mover) {
 				break;
 		}
 
-		//-----------------------------------------------------------------
-		// Set object Unique ID to be Part Number
-		//parts[i].object->setIdNumber(i);
 
 		if (MPlayer) {
 			MPlayer->addToMoverRoster((MoverPtr)ObjectManager->getByWatchID(parts[partIndex].objectWID));
@@ -187,11 +173,8 @@ void Mission::createPartObject (long partIndex, MoverPtr mover) {
 	}
 }
 
-//---------------------------------------------------------------------------
 long Mission::addMover (MoverInitData* moverSpec) {
 	
-	//--------------------------------------
-	// Load the mechwarrior into the mech...
 	MechWarriorPtr pilot = MechWarrior::newWarrior();
 	if (!pilot)
 		STOP(("Too many pilots in this mission!"));
@@ -289,11 +272,6 @@ typedef struct _MoverInitData {
 			mover->setAwake(moverSpec->active);
 			mover->setHandle(ObjectManager->getHandle(mover));
 
-			//----------------------------------------------
-			// Load the profile data into the game object...
-			// This is MONDO DIFFERENT NOW.
-			// Profiles are in the mech's CSV file.  You should just init with mover with
-			// the variant number and the rest is done in the mover itself.
 			//
 			// Heidi, this is what needs to change in the mission.fit files!
 			// -fs 12/7/99		A date which will live in Infamy.
@@ -307,10 +285,6 @@ typedef struct _MoverInitData {
 				{
 					if (ObjectTypeManager::objectFile->seekPacket(moverSpec->objNumber) == NO_ERR) 
 					{
-						//--------------------------------------------------------
-						// All new code here.  This will ask the objectType it is
-						// loading what kind of objectType it is and create it
-						// based on that instead of objTypeNum.
 						FitIniFile profileFile;
 						long result = profileFile.open(ObjectTypeManager::objectFile,ObjectTypeManager::objectFile->getPacketSize());
 						if (result != NO_ERR)
@@ -318,7 +292,6 @@ typedef struct _MoverInitData {
 	
 						if (result == NO_ERR) 
 						{
-							//-------------------------------------------
 							result = mover->init(&profileFile);
 							if (result != NO_ERR)
 								STOP((" Mission.createPartObject: bad Profile File "));
@@ -370,9 +343,6 @@ typedef struct _MoverInitData {
 					break;
 			}
 
-			//-----------------------------------------------------------------
-			// Set object Unique ID to be Part Number
-			//parts[i].object->setIdNumber(i);
 
 			if (MPlayer) {
 				MPlayer->addToMoverRoster(mover);
@@ -441,15 +411,9 @@ typedef struct _MoverInitData {
 	return(0);
 }
 
-//---------------------------------------------------------------------------
 
 long Mission::addMover (MoverInitData* moveSpec, LogisticsMech* mechData)
 {
-	//OK, whole new ballgame here.
-	// First, convert Heidi data to MoverInitData.
-	// Then, create Mech using this data.
-	// Then, Replace components to match logisticsMech Components.
-	// Then, it should be good to go.
   
 	MoverInitData mData;
 	memset(&mData,0,sizeof(MoverInitData));
@@ -484,7 +448,6 @@ long Mission::addMover (MoverInitData* moveSpec, LogisticsMech* mechData)
 
 	long moverHandle = addMover(&mData);
 
-	//Now take the moverHandle and change the component data to match Heidi's passed logisticsMech.
 	MoverPtr mMech = (MoverPtr)ObjectManager->get(moverHandle);
 	// BATTLEMECH-RESET-KIND-GUARD-1: the customization below (variantName strcpy +
 	// resetComponents) is BattleMech-ONLY. A non-BattleMech deployable
@@ -524,7 +487,6 @@ long Mission::addMover (MoverInitData* moveSpec, LogisticsMech* mechData)
 	return moverHandle;
 }
 
-//---------------------------------------------------------------------------
 
 void DEBUGWINS_removeGameObject (GameObjectPtr obj);
 
@@ -540,7 +502,6 @@ long Mission::removeMover (MoverPtr mover) {
 	return(0);
 }
 
-//---------------------------------------------------------------------------
 
 void Mission::tradeMover (MoverPtr mover, long newTeamID, long newCommanderID, char* pilotFileName, const char* brainFileName) {
 
@@ -571,7 +532,6 @@ void Mission::tradeMover (MoverPtr mover, long newTeamID, long newCommanderID, c
 	}
 }
 
-//----------------------------------------------------------------------------
 
 bool Mission::calcComplexDropZones (char* missionName, char dropZoneCID[MAX_MC_PLAYERS]) {
 
@@ -588,8 +548,6 @@ bool Mission::calcComplexDropZones (char* missionName, char dropZoneCID[MAX_MC_P
 	if (result != NO_ERR)
 		STOP(("Unable to open Mission File %s",missionFileName));
 
-	//------------------------------------------------------------
-	// First, let's see how many teams and commanders there are...
 	/*long maxTeamID = -1;
 	long maxCommanderID = -1;
 	for (long i = 0; i < MAX_MC_PLAYERS; i++) {
@@ -609,8 +567,6 @@ bool Mission::calcComplexDropZones (char* missionName, char dropZoneCID[MAX_MC_P
 			char partName[12];
 			sprintf(partName,"Part%d",i);
 			
-			//------------------------------------------------------------------
-			// Find the object to load
 			result = missionFile->seekBlock(partName);
 			gosASSERT(result == NO_ERR);
 
@@ -634,8 +590,6 @@ bool Mission::calcComplexDropZones (char* missionName, char dropZoneCID[MAX_MC_P
 			dropZoneSetup[commanderID] = teamID;
 	}
 
-	//------------------------------------------------------------------------------------
-	// First, let's confirm that we have the correct player/team setup for this mission...
 	long teamSize[MAX_TEAMS][2];
 	for (long i = 0; i < MAX_TEAMS; i++) {
 		teamSize[i][0] = 0;
@@ -651,8 +605,6 @@ bool Mission::calcComplexDropZones (char* missionName, char dropZoneCID[MAX_MC_P
 		if (teamSize[i][0] != teamSize[i][1])
 			return(false);
 */
-	//---------------------------------------------------------
-	// We know everything's good, so hand out the drop zones...
 	for (int i = 0; i < MAX_MC_PLAYERS; i++) {
 		long index = RandomNumber(teamSize[MPlayer->playerInfo[i].team][0]--);
 		for (long j = 0; j < MAX_MC_PLAYERS; j++)
@@ -675,7 +627,6 @@ bool Mission::calcComplexDropZones (char* missionName, char dropZoneCID[MAX_MC_P
 	return(true);
 }
 
-//----------------------------------------------------------------------------
 
 bool IsGateDisabled (int objectWID) {
 
@@ -694,7 +645,6 @@ bool IsGateDisabled (int objectWID) {
 	return(false);
 }
 
-//----------------------------------------------------------------------------
 
 bool IsGateOpen (int objectWID) {
 

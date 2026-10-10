@@ -1,0 +1,1048 @@
+#!/usr/bin/env python3
+"""comment_guard - fail-closed proof that an edit touched comments and nothing else.
+
+A cheap model may de-bloat comments (delete narration, dead history, commented-out code)
+only if a bad edit cannot land. This tool is the gate: it passes a file only when ALL hold.
+
+  a. Comment-only   Base and new text lex to the same code. Comments are removed with real
+                    C/C++ lexing (strings, chars, raw strings, digit separators, line
+                    continuations, `#include <a//b>`), whitespace is collapsed per logical
+                    line, blank lines are ignored. The first divergent line pair is reported.
+  b. Why survives   Comments that carry rationale or machine-read meaning are protected and must
+                    reappear in the new text verbatim (whitespace-normalised, moves allowed):
+                    license header, event-format notes, gate names, lint pragmas, rationale
+                    words, dates, shas, TODO tags, doxygen tags, pragma/static_assert
+                    neighbours. Everything under Gates/ is wholly protected.
+  c. Only shrinks   New comment bytes may not exceed base comment bytes.
+
+  py -3 tools/comment_guard.py --check code/a.cpp code/b.h        # worktree vs HEAD (default)
+  py -3 tools/comment_guard.py --check --staged                   # index vs HEAD, files from the index
+  py -3 tools/comment_guard.py --check --base abc123 code/a.cpp   # vs another rev (--rev is an alias)
+  py -3 tools/comment_guard.py --check --base-file orig.cpp copy.cpp   # vs a file outside git
+  py -3 tools/comment_guard.py --selftest
+
+Optional object proof (a build, which the caller runs, sits between the two steps):
+  py -3 tools/comment_guard.py --hash-objs build64-ninja code/a.cpp > before.json
+  ... edit comments, rebuild ...
+  py -3 tools/comment_guard.py --compare-objs before.json
+
+The object hash covers the COFF sections that define behaviour (code, data, relocations,
+symbols, linker directives) and ignores the header timestamp and every .debug* section,
+because comment deletion legitimately moves debug line tables. Files that use
+__LINE__/__DATE__/__TIME__ downgrade a mismatch to WARN; assert-style macros defined in
+headers expand __LINE__ invisibly, so a DIFF there is expected after a line-count change -
+treat --check as the primary proof and the object compare as a bonus. A toolchain switch
+that stabilises __DATE__/__TIME__ (for example /d1nodatetime or /Brepro) may be needed.
+
+Exit: 0 ok, 1 finding, 2 usage / environment error.  Stdlib only.
+"""
+from __future__ import annotations
+
+import argparse
+import datetime
+import glob
+import hashlib
+import json
+import os
+import re
+import struct
+import subprocess
+import sys
+from collections import Counter
+
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.abspath(os.path.join(HERE, ".."))
+
+SCOPE_EXTS = (".cpp", ".cc", ".cxx", ".c", ".h", ".hpp", ".hxx", ".inl",
+              ".hglsl", ".glsl", ".vert", ".frag", ".comp", ".tesc", ".tese", ".geom")
+LINE_SENSITIVE = re.compile(r"\b(?:__LINE__|__DATE__|__TIME__|__TIMESTAMP__)\b")
+
+# ------------------------------------------------------------------ protection rules
+# (label, compiled regex). Case-sensitive entries are machine-read formats; the rest are
+# rationale words, matched case-insensitively so "Why:", "MUST" and "must" all count.
+_CS = [
+    ("event-format", r"[A-Z_]+ v[0-9]+\]"),
+    ("clang-format", r"clang-format"),
+    ("NOLINT", r"NOLINT"),
+    ("NOSONAR", r"NOSONAR"),
+    ("gate-name", r"MC2_[A-Z]"),
+    ("Co-Authored", r"Co-Authored"),
+    ("SPDX", r"SPDX"),
+    ("date", r"20[0-9]{2}-[0-9]{2}"),
+    ("sha", r"(?<![0-9A-Za-z])(?=[0-9a-fA-F]*[0-9])[0-9a-fA-F]{7,40}(?![0-9A-Za-z])"),
+    ("tag", r"\b(?:TODO|FIXME|HACK|XXX)\b"),
+    ("doxygen-tag", r"(?<![\w.])@[A-Za-z]+"),
+]
+_CI = [
+    ("why", r"\bwhy\b"), ("because", r"\bbecause\b"), ("must", r"\bmust"),
+    ("never", r"\bnever\b"), ("do-not", r"\bdo not\b"), ("dont", r"\bdon'?t\b"),
+    ("race", r"\b(?:race|races|racy)\b"), ("contract", r"\bcontract"),
+    ("invariant", r"\binvariant"), ("bug", r"\bbug"), ("workaround", r"\bworkaround"),
+    ("deliberate", r"\bdeliberate"), ("intentional", r"\bintentional"),
+]
+PROTECT = ([(n, re.compile(p)) for n, p in _CS] +
+           [(n, re.compile(p, re.I)) for n, p in _CI])
+_PRAGMA_LINE = re.compile(r"^\s*#\s*pragma\b|\bstatic_assert\b|\b_Static_assert\b")
+
+
+# ------------------------------------------------------------------ lexer
+_WS = re.compile(r"[ \t\r\f\v]+")
+_IDENT = re.compile(r"[A-Za-z_][A-Za-z_0-9]*")
+_NUM = re.compile(r"(?:[0-9]|\.[0-9])(?:[eEpP][+-]|'[A-Za-z0-9_]|[A-Za-z0-9_.])*")
+_INCL = re.compile(r"#[ \t]*(?:include_next|include|import)[ \t]*<[^>\n]*>")
+_RAWOPEN = re.compile(r'"([^ ()\\\t\v\f\n]{0,16})\(')
+_CHAR = re.compile(r"'(?:\\[^\n]|[^'\\\n])*'")
+_RAW_PREFIX = frozenset(["R", "LR", "uR", "UR", "u8R"])
+
+
+def collapse(s):
+    return _WS.sub(" ", s).strip()
+
+
+def _enc(s, newlines=False):
+    """Protect whitespace inside a literal from collapsing: a changed literal is a code change."""
+    s = s.replace(" ", "\x02").replace("\t", "\x03")
+    return s.replace("\n", "\x01") if newlines else s
+
+
+def show(s, limit=140):
+    s = s.replace("\x02", " ").replace("\x03", "\t").replace("\x01", "\\n")
+    return s if len(s) <= limit else s[:limit - 3] + "..."
+
+
+class Comment:
+    __slots__ = ("kind", "start", "end", "text", "trailing", "code_after", "pre_code")
+
+    @property
+    def full_line(self):
+        return not self.trailing and not self.code_after
+
+    @property
+    def nbytes(self):
+        return len(self.text)
+
+
+class Lexed:
+    def __init__(self):
+        self.logical = []       # [(first physical line, collapsed code text)], non-blank only
+        self.comments = []
+        self.code_by_line = {}  # physical line -> code text on it (for pragma adjacency)
+        self.errors = []
+
+
+class _Lexer:
+    def __init__(self, t):
+        self.t = t
+        self.n = len(t)
+        self.i = 0
+        self.line = 1
+        self.cur = []
+        self.cur_line = 1
+        self.cur_has_code = False
+        self.seen_code = False
+        self.out = Lexed()
+
+    def emit(self, s):
+        self.cur.append(s)
+        self.out.code_by_line.setdefault(self.line, []).append(s)
+        if s.strip(" \t\r\f\v"):
+            if not self.cur_has_code:
+                self.cur_line = self.line
+            self.cur_has_code = True
+            self.seen_code = True
+            for c in reversed(self.out.comments):
+                if c.end != self.line:
+                    break
+                if c.kind == "block":
+                    c.code_after = True
+
+    def end_logical(self):
+        txt = collapse("".join(self.cur))
+        if txt:
+            self.out.logical.append((self.cur_line, txt))
+        self.cur = []
+        self.cur_has_code = False
+
+    def add_comment(self, kind, text):
+        c = Comment()
+        c.kind, c.text, c.start = kind, text, self.line
+        c.end = self.line + text.count("\n")
+        c.trailing = "".join(self.out.code_by_line.get(self.line, [])).strip() != ""
+        c.code_after = False
+        c.pre_code = not self.seen_code
+        self.out.comments.append(c)
+        self.line = c.end
+        self.emit(" ")
+
+    def string_end(self, i):
+        t, n = self.t, self.n
+        j = i + 1
+        while j < n:
+            c = t[j]
+            if c == "\\":
+                j += 2
+                continue
+            if c == '"':
+                return j + 1
+            if c == "\n":
+                return None
+            j += 1
+        return None
+
+    def run(self):
+        t, n = self.t, self.n
+        while self.i < n:
+            i = self.i
+            c = t[i]
+            if c == "\n":
+                self.end_logical()
+                self.line += 1
+                self.cur_line = self.line
+                self.i += 1
+            elif c == "\\" and t.startswith("\n", i + 1):
+                self.line += 1
+                self.i += 2
+            elif c in " \t\r\f\v":
+                self.emit(" ")
+                self.i += 1
+            elif c == "/" and t.startswith("/", i + 1):
+                j = i
+                while j < n and not (t[j] == "\n" and t[j - 1] != "\\"):
+                    j += 1
+                self.add_comment("line", t[i:j])
+                self.i = j
+            elif c == "/" and t.startswith("*", i + 1):
+                j = t.find("*/", i + 2)
+                if j < 0:
+                    self.out.errors.append("unterminated /* comment starting at line %d" % self.line)
+                    j = n
+                else:
+                    j += 2
+                self.add_comment("block", t[i:j])
+                self.i = j
+            elif c == "#" and not self.cur_has_code and _INCL.match(t, i):
+                m = _INCL.match(t, i)
+                self.emit(m.group(0))
+                self.i = m.end()
+            elif c == '"':
+                self.literal_string(i)
+            elif c == "'":
+                m = _CHAR.match(t, i)
+                if m:
+                    self.emit_literal(m.group(0), False)
+                    self.i = m.end()
+                else:
+                    self.emit(c)
+                    self.i += 1
+            elif c in "0123456789" or (c == "." and i + 1 < n and t[i + 1] in "0123456789"):
+                m = _NUM.match(t, i)
+                self.emit(m.group(0))
+                self.i = m.end()
+            elif c == "_" or c.isalpha():
+                m = _IDENT.match(t, i)
+                if m and m.group(0) in _RAW_PREFIX and t.startswith('"', m.end()):
+                    self.emit(m.group(0))
+                    self.raw_string(m.end())
+                elif m:
+                    self.emit(m.group(0))
+                    self.i = m.end()
+                else:
+                    self.emit(c)
+                    self.i += 1
+            else:
+                self.emit(c)
+                self.i += 1
+        self.end_logical()
+        return self.out
+
+    def emit_literal(self, text, newlines):
+        body = text.replace("\\\n", "")           # a spliced newline is not part of the literal
+        self.emit(_enc(body, newlines))
+        self.line += text.count("\n")
+
+    def literal_string(self, i):
+        j = self.string_end(i)
+        if j is None:
+            self.emit('"')
+            self.i = i + 1
+            return
+        self.emit_literal(self.t[i:j], False)
+        self.i = j
+
+    def raw_string(self, i):
+        m = _RAWOPEN.match(self.t, i)
+        if not m:
+            self.emit('"')
+            self.i = i + 1
+            return
+        close = ")" + m.group(1) + '"'
+        j = self.t.find(close, m.end())
+        if j < 0:
+            self.out.errors.append("unterminated raw string starting at line %d" % self.line)
+            j = self.n
+        else:
+            j += len(close)
+        start_line = self.line
+        text = self.t[i:j]
+        self.emit(_enc(text, True))
+        self.line = start_line + text.count("\n")
+        self.i = j
+
+
+def lex(text):
+    return _Lexer(text).run()
+
+
+# ------------------------------------------------------------------ comment units
+class Unit:
+    __slots__ = ("lines", "start", "end", "header", "reasons")
+
+    def text(self):
+        return "\n".join(self.lines)
+
+
+def _norm_lines(text):
+    return tuple(l for l in (collapse(x) for x in text.split("\n")) if l)
+
+
+def build_units(lx):
+    """Group comments into the smallest pieces that must be kept or dropped whole.
+
+    A block comment is one unit; consecutive full-line `//` comments form one unit, split at
+    bare `//` separator lines so a paragraph of narration can go without touching its neighbour.
+    """
+    units, run = [], None
+
+    def close():
+        nonlocal run
+        if run:
+            units.append(run)
+            run = None
+
+    def new(c):
+        u = Unit()
+        u.lines = _norm_lines(c.text)
+        u.start, u.end, u.header, u.reasons = c.start, c.end, c.pre_code, []
+        return u
+
+    for c in lx.comments:
+        if c.kind == "line" and c.full_line:
+            if not c.text[2:].strip():
+                close()
+                continue
+            if run and run.end + 1 == c.start and run.header == c.pre_code:
+                run.lines += _norm_lines(c.text)
+                run.end = c.end
+            else:
+                close()
+                run = new(c)
+        else:
+            close()
+            units.append(new(c))
+    close()
+    for u in units:
+        mark_protected(u, lx)
+    return units
+
+
+def mark_protected(u, lx):
+    txt = u.text()
+    if u.header:
+        u.reasons.append("file header")
+    for name, rx in PROTECT:
+        if rx.search(txt):
+            u.reasons.append(name)
+    for ln in range(u.start - 1, u.end + 2):
+        code = "".join(lx.code_by_line.get(ln, []))
+        if _PRAGMA_LINE.search(code):
+            u.reasons.append("pragma/static_assert neighbour")
+            break
+
+
+def _contains(hay, needle):
+    k = len(needle)
+    return any(hay[i:i + k] == needle for i in range(len(hay) - k + 1))
+
+
+def missing_protected(base_units, new_units):
+    """Protected base units with no verbatim home in the new text -> [Unit]."""
+    pool = Counter(u.lines for u in new_units)
+    spare = [u.lines for u in new_units]
+    lost = []
+    for u in base_units:
+        if not u.reasons:
+            continue
+        if pool[u.lines] > 0:
+            pool[u.lines] -= 1
+        elif not any(_contains(s, u.lines) for s in spare):
+            lost.append(u)
+    return lost
+
+
+# ------------------------------------------------------------------ per-file check
+class Report:
+    def __init__(self, rel):
+        self.rel = rel
+        self.findings = []       # [(kind, message)]
+        self.base_cb = None
+        self.new_cb = None
+
+    @property
+    def ok(self):
+        return not self.findings
+
+    def add(self, kind, msg):
+        self.findings.append((kind, msg))
+
+
+def in_scope(rel):
+    return rel.lower().endswith(SCOPE_EXTS)
+
+
+def is_gates(rel):
+    return "gates" in [p.lower() for p in rel.replace("\\", "/").split("/")[:-1]]
+
+
+def prep(data):
+    """bytes -> (text, bom, eol style). Latin-1 keeps every byte distinct and sizes honest."""
+    bom = data.startswith(b"\xef\xbb\xbf")
+    if bom:
+        data = data[3:]
+    text = data.decode("latin-1")
+    crlf = text.count("\r\n")
+    lf = text.count("\n") - crlf
+    style = "none" if not (crlf or lf) else "crlf" if not lf else "lf" if not crlf else "mixed"
+    return text.replace("\r\n", "\n"), bom, style
+
+
+def check_texts(rel, base, new):
+    """Grade one file. base/new are bytes (None = absent). Returns a Report."""
+    rep = Report(rel)
+    if not in_scope(rel):
+        rep.add("scope", "out of scope (only C/C++/GLSL sources are guarded)")
+        return rep
+    if base is None:
+        rep.add("no-base", "no base text (new or untracked file): a comment-only edit needs a base")
+        return rep
+    if new is None:
+        rep.add("no-new", "file is absent in the new text (deleted?)")
+        return rep
+    if is_gates(rel):
+        if base != new:
+            rep.add("gates", "Gates/ files are wholly protected; any change is rejected")
+        return rep
+
+    bt, bbom, bstyle = prep(base)
+    nt, nbom, nstyle = prep(new)
+    if bbom != nbom:
+        rep.add("format", "UTF-8 BOM %s" % ("added" if nbom else "removed"))
+    if "none" not in (bstyle, nstyle) and bstyle != nstyle:
+        rep.add("format", "line endings changed (%s -> %s)" % (bstyle, nstyle))
+
+    bl, nl = lex(bt), lex(nt)
+    for side, lx in (("base", bl), ("new", nl)):
+        for e in lx.errors:
+            rep.add("lex", "%s: %s" % (side, e))
+
+    rep.base_cb = sum(c.nbytes for c in bl.comments)
+    rep.new_cb = sum(c.nbytes for c in nl.comments)
+
+    a = [x for x in bl.logical]
+    b = [x for x in nl.logical]
+    for k in range(max(len(a), len(b))):
+        x = a[k] if k < len(a) else None
+        y = b[k] if k < len(b) else None
+        if x is None or y is None or x[1] != y[1]:
+            rep.add("code", "code differs: base %s | new %s" % (
+                ("line %d `%s`" % (x[0], show(x[1]))) if x else "<end of file>",
+                ("line %d `%s`" % (y[0], show(y[1]))) if y else "<end of file>"))
+            break
+
+    lost = missing_protected(build_units(bl), build_units(nl))
+    for u in lost[:6]:
+        rep.add("protected", "protected comment (%s) missing at base line %d: %s" % (
+            ", ".join(sorted(set(u.reasons))), u.start, show(u.text().replace("\n", " / "), 120)))
+    if len(lost) > 6:
+        rep.add("protected", "... and %d more protected comments missing" % (len(lost) - 6))
+
+    if rep.new_cb > rep.base_cb:
+        rep.add("grew", "comment bytes grew %d -> %d (this tool only shrinks)" % (rep.base_cb, rep.new_cb))
+    return rep
+
+
+# ------------------------------------------------------------------ git / fs sources
+def _git(repo, args):
+    r = subprocess.run(["git"] + args, cwd=repo, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                       **console_child.child_kwargs(redirected=True))
+    return r.returncode, r.stdout
+
+
+def git_blob(repo, spec):
+    rc, out = _git(repo, ["cat-file", "blob", spec])
+    return out if rc == 0 else None
+
+
+def read_file(path):
+    try:
+        with open(path, "rb") as fh:
+            return fh.read()
+    except OSError:
+        return None
+
+
+def rel_of(repo, path):
+    ap = os.path.abspath(path)
+    try:
+        r = os.path.relpath(ap, repo)
+    except ValueError:
+        return None
+    return None if r.startswith("..") else r.replace("\\", "/")
+
+
+def changed_files(repo, base, staged):
+    args = ["diff", "--name-only", "-z"] + (["--cached"] if staged else []) + [base, "--"]
+    rc, out = _git(repo, args)
+    if rc != 0:
+        return None
+    return [p.decode("utf-8", "replace") for p in out.split(b"\0") if p]
+
+
+def fmt_report(rep):
+    if rep.base_cb is not None:
+        pct = "%+.1f%%" % ((rep.new_cb - rep.base_cb) * 100.0 / rep.base_cb) if rep.base_cb else "n/a"
+        size = "  comments %d -> %d B (%s)" % (rep.base_cb, rep.new_cb, pct)
+    else:
+        size = ""
+    lines = ["%-5s %s%s" % ("OK" if rep.ok else "FAIL", rep.rel, size)]
+    lines += ["      - [%s] %s" % f for f in rep.findings]
+    return "\n".join(lines)
+
+
+def run_check(args):
+    repo = os.path.abspath(args.repo or ROOT)
+    base_rev = args.base
+    reports = []
+    paths = list(args.paths)
+    if args.base_file:
+        if len(paths) != 1:
+            print("comment_guard: --base-file needs exactly one path (the edited copy)", file=sys.stderr)
+            return 2
+        base_bytes = read_file(args.base_file)
+        if base_bytes is None:
+            print("comment_guard: cannot read --base-file %s" % args.base_file, file=sys.stderr)
+            return 2
+        rel = rel_of(repo, paths[0]) or os.path.abspath(paths[0]).replace("\\", "/")
+        reports.append(check_texts(rel, base_bytes, read_file(paths[0])))
+    else:
+        if not paths:
+            names = changed_files(repo, base_rev, args.staged)
+            if names is None:
+                print("comment_guard: git diff failed against %r" % base_rev, file=sys.stderr)
+                return 2
+            paths = [os.path.join(repo, n) for n in names]
+        if not paths:
+            print("comment_guard: no changed files against %s" % base_rev)
+            return 0
+        for p in paths:
+            rel = rel_of(repo, p)
+            if rel is None:
+                print("comment_guard: %s is outside the repo %s (use --base-file)" % (p, repo), file=sys.stderr)
+                return 2
+            if args.ignore_out_of_scope and not in_scope(rel):
+                continue
+            base = git_blob(repo, "%s:%s" % (base_rev, rel))
+            new = git_blob(repo, ":" + rel) if args.staged else read_file(os.path.join(repo, rel))
+            reports.append(check_texts(rel, base, new))
+    bad = 0
+    for rep in reports:
+        if not args.quiet or not rep.ok:
+            print(fmt_report(rep))
+        bad += 0 if rep.ok else 1
+    print("comment_guard: %d file(s) checked, %d ok, %d FAILED" % (len(reports), len(reports) - bad, bad))
+    return 1 if bad else 0
+
+
+# ------------------------------------------------------------------ object proof
+_DBG_PREFIX = ".debug"
+_SCN_BSS = 0x80
+_SCN_NRELOC_OVFL = 0x01000000
+
+
+def _h(*parts):
+    m = hashlib.sha256()
+    for p in parts:
+        if isinstance(p, str):
+            p = p.encode("utf-8", "replace")
+        m.update(struct.pack("<I", len(p)))
+        m.update(p)
+    return m.hexdigest()
+
+
+def parse_coff(b):
+    """-> (fmt, sections[(name, chars, data, relocs)], symbols[(name,value,type,cls,secname)]) or None."""
+    try:
+        if b[:4] == b"\x00\x00\xff\xff" and len(b) >= 56 and struct.unpack_from("<H", b, 4)[0] >= 2:
+            nsec, symptr, nsym = struct.unpack_from("<III", b, 44)
+            hdr, symsz, opt, fmt = 56, 20, 0, "coff-bigobj"
+        else:
+            _m, nsec, _ts, symptr, nsym, opt, _c = struct.unpack_from("<HHIIIHH", b, 0)
+            hdr, symsz, fmt = 20, 18, "coff"
+        strtab = symptr + nsym * symsz
+        strsize = struct.unpack_from("<I", b, strtab)[0] if symptr and strtab + 4 <= len(b) else 0
+
+        def sname(raw):
+            if raw[:4] == b"\0\0\0\0":
+                off = struct.unpack_from("<I", raw, 4)[0]
+                end = b.index(b"\0", strtab + off)
+                return b[strtab + off:end].decode("latin-1")
+            return raw.split(b"\0", 1)[0].decode("latin-1")
+
+        secs = []
+        for k in range(nsec):
+            o = hdr + opt + 40 * k
+            name, _vs, _va, rawsz, rawptr, relptr, _lp, nrel, _nl, chars = struct.unpack_from("<8sIIIIIIHHI", b, o)
+            nm = name.rstrip(b"\0").decode("latin-1")
+            if nm.startswith("/") and nm[1:].isdigit():
+                off = int(nm[1:])
+                nm = b[strtab + off:b.index(b"\0", strtab + off)].decode("latin-1")
+            data = b"" if (chars & _SCN_BSS or not rawptr) else b[rawptr:rawptr + rawsz]
+            if chars & _SCN_NRELOC_OVFL and nrel == 0xFFFF and relptr:
+                nrel = struct.unpack_from("<I", b, relptr)[0]
+            rel = b[relptr:relptr + 10 * nrel] if relptr and nrel else b""
+            secs.append((nm, chars, rawsz, data, rel))
+        syms, i = [], 0
+        while i < nsym:
+            o = symptr + i * symsz
+            if fmt == "coff-bigobj":
+                nm_raw, val, secno, typ, cls, naux = struct.unpack_from("<8sIiHBB", b, o)
+            else:
+                nm_raw, val, secno, typ, cls, naux = struct.unpack_from("<8sIhHBB", b, o)
+            sec = secs[secno - 1][0] if 0 < secno <= len(secs) else "#%d" % secno
+            syms.append((sname(nm_raw), val, typ, cls, sec))
+            i += 1 + naux
+        return fmt, secs, syms
+    except (struct.error, ValueError, IndexError):
+        return None
+
+
+def obj_digest(path):
+    """Behavioural digest of an object file; see the module docstring for what is excluded."""
+    raw = read_file(path)
+    if raw is None:
+        return None
+    info = {"raw_sha256": hashlib.sha256(raw).hexdigest(), "size": len(raw)}
+    parsed = parse_coff(raw)
+    if not parsed:
+        info.update(format="raw", code_sha256=info["raw_sha256"], sections={})
+        return info
+    fmt, secs, syms = parsed
+    sec_hashes = {}
+    for k, (nm, chars, rawsz, data, rel) in enumerate(secs):
+        if nm.startswith(_DBG_PREFIX):
+            continue
+        sec_hashes["%d:%s" % (k, nm)] = _h(nm, str(chars), str(rawsz), data, rel)
+    sym_part = _h(*["%s|%d|%d|%d|%s" % s for s in syms if not s[4].startswith(_DBG_PREFIX)])
+    sec_hashes["symbols"] = sym_part
+    info.update(format=fmt, sections=sec_hashes,
+                code_sha256=_h(*["%s=%s" % kv for kv in sorted(sec_hashes.items())]))
+    return info
+
+
+def find_objs(build_dir, rel):
+    bd = glob.escape(build_dir.replace("\\", "/"))
+    r = glob.escape(rel)
+    hits = glob.glob("%s/CMakeFiles/*/%s.obj" % (bd, r))
+    if not hits:
+        base = glob.escape(os.path.basename(rel))
+        stem = glob.escape(os.path.splitext(os.path.basename(rel))[0])
+        for pat in ("%s/**/%s.obj" % (bd, base), "%s/**/%s.obj" % (bd, stem)):
+            hits += glob.glob(pat, recursive=True)
+    return sorted(set(os.path.abspath(h) for h in hits))
+
+
+def _line_warn(repo, rel):
+    data = read_file(os.path.join(repo, rel))
+    if data is None:
+        return None
+    lx = lex(prep(data)[0])
+    used = sorted(set(m.group(0) for _l, t in lx.logical for m in LINE_SENSITIVE.finditer(t)))
+    return ("uses %s: line shifts change the object" % "/".join(used)) if used else None
+
+
+def _stamp(path):
+    return os.stat(path).st_mtime_ns
+
+
+def hash_files(repo, build_dir, rels):
+    """-> (document, problems[str])"""
+    doc = {"tool": "comment_guard", "version": 1,
+           "created": datetime.datetime.now().isoformat(timespec="seconds"),
+           "repo": repo.replace("\\", "/"), "build_dir": os.path.abspath(build_dir).replace("\\", "/"),
+           "files": {}}
+    problems = []
+    for rel in rels:
+        ent = {}
+        doc["files"][rel] = ent
+        if not rel.lower().endswith((".cpp", ".cc", ".cxx", ".c")):
+            ent.update(status="skip", reason="no object of its own (header/shader): rely on --check")
+            continue
+        src = os.path.join(repo, rel)
+        if not os.path.exists(src):
+            problems.append("%s: source missing" % rel)
+            ent.update(status="error", reason="source missing")
+            continue
+        objs = find_objs(build_dir, rel)
+        if not objs:
+            problems.append("%s: no object under %s - build first" % (rel, build_dir))
+            ent.update(status="error", reason="no object found")
+            continue
+        ent["warn"] = _line_warn(repo, rel)
+        ent["objs"] = []
+        ent["status"] = "ok"
+        for o in objs:
+            if _stamp(o) < _stamp(src):
+                problems.append("%s: %s is older than the source - not a base build" % (rel, o))
+                ent["status"] = "error"
+                ent["reason"] = "object older than source"
+            d = obj_digest(o)
+            d.update(path=o.replace("\\", "/"), mtime_ns=_stamp(o))
+            ent["objs"].append(d)
+    return doc, problems
+
+
+def compare_files(before):
+    repo = before.get("repo") or ROOT
+    out, bad = [], 0
+    for rel, ent in sorted(before["files"].items()):
+        if ent.get("status") == "skip":
+            out.append("SKIP  %s  (%s)" % (rel, ent["reason"]))
+            continue
+        if ent.get("status") != "ok":
+            out.append("FAIL  %s  unusable 'before' record: %s" % (rel, ent.get("reason")))
+            bad += 1
+            continue
+        src = os.path.join(repo, rel)
+        warn = ent.get("warn")
+        for o in ent["objs"]:
+            p = o["path"]
+            if not os.path.exists(p):
+                out.append("FAIL  %s  object vanished: %s" % (rel, p))
+                bad += 1
+                continue
+            if _stamp(p) == o["mtime_ns"]:
+                out.append("FAIL  %s  object not rebuilt since --hash-objs: %s" % (rel, p))
+                bad += 1
+                continue
+            if os.path.exists(src) and _stamp(p) < _stamp(src):
+                out.append("FAIL  %s  object older than the edited source - rebuild: %s" % (rel, p))
+                bad += 1
+                continue
+            now = obj_digest(p)
+            if now["code_sha256"] == o["code_sha256"]:
+                out.append("OK    %s  behaviour sections identical (%s)" % (rel, os.path.basename(p)))
+                continue
+            diff = sorted(k for k in set(o["sections"]) | set(now["sections"])
+                          if o["sections"].get(k) != now["sections"].get(k))
+            detail = "sections differ: %s%s" % (", ".join(diff[:6]), " ..." if len(diff) > 6 else "")
+            if warn:
+                out.append("WARN  %s  %s; %s" % (rel, detail, warn))
+            else:
+                out.append("FAIL  %s  %s" % (rel, detail))
+                bad += 1
+    return out, bad
+
+
+def run_hash_objs(args):
+    repo = os.path.abspath(args.repo or ROOT)
+    if not os.path.isdir(args.hash_objs):
+        print("comment_guard: build dir %s not found" % args.hash_objs, file=sys.stderr)
+        return 2
+    rels = []
+    for p in args.paths:
+        r = rel_of(repo, p)
+        if r is None:
+            print("comment_guard: %s is outside the repo" % p, file=sys.stderr)
+            return 2
+        rels.append(r)
+    if not rels:
+        print("comment_guard: --hash-objs needs at least one source path", file=sys.stderr)
+        return 2
+    doc, problems = hash_files(repo, args.hash_objs, rels)
+    json.dump(doc, sys.stdout, indent=1, sort_keys=True)
+    sys.stdout.write("\n")
+    for pr in problems:
+        print("comment_guard: " + pr, file=sys.stderr)
+    return 2 if problems else 0
+
+
+def run_compare_objs(args):
+    try:
+        with open(args.compare_objs, "r", encoding="utf-8") as fh:
+            before = json.load(fh)
+    except (OSError, ValueError) as e:
+        print("comment_guard: cannot read %s: %s" % (args.compare_objs, e), file=sys.stderr)
+        return 2
+    lines, bad = compare_files(before)
+    print("\n".join(lines))
+    print("comment_guard: object compare, %d problem(s)" % bad)
+    return 1 if bad else 0
+
+
+# ------------------------------------------------------------------ selftest
+SELFTEST_CASES = []
+
+
+def case(fn):
+    SELFTEST_CASES.append(fn)
+    return fn
+
+
+def R(base, new, rel="code/x.cpp"):
+    enc = lambda s: None if s is None else s.encode("utf-8") if isinstance(s, str) else s  # noqa: E731
+    return check_texts(rel, enc(base), enc(new))
+
+
+def _kinds(rep):
+    return sorted(set(k for k, _m in rep.findings))
+
+
+def _msgs(rep):
+    return " || ".join(m for _k, m in rep.findings)
+
+
+@case
+def st_comment_only_deletion_passes():
+    base = "int g;\n// loop over the items\nint f() {\n\tint x = 1; // one\n\t/* scratch */\n\treturn x;\n}\n"
+    new = "int g;\nint f() {\n\tint x = 1;\n\treturn x;\n}\n"
+    rep = R(base, new)
+    assert rep.ok, _msgs(rep)
+    assert rep.new_cb < rep.base_cb
+
+
+@case
+def st_string_literal_with_slashes_is_code():
+    rep = R('const char* s = "// not a comment"; // note\n', 'const char* s = "";\n')
+    assert _kinds(rep) == ["code"], _msgs(rep)
+    assert R('const char* s = "// not a comment"; // note\n',
+             'const char* s = "// not a comment";\n').ok
+
+
+@case
+def st_char_literal_and_digit_separator():
+    base = "int a = 1'000'000; // big\nchar c = '\"'; // quote\nint b = 2;\n"
+    assert R(base, "int a = 1'000'000;\nchar c = '\"';\nint b = 2;\n").ok
+    assert _kinds(R(base, "int a = 1'000'000;\nchar c = 'x';\nint b = 2;\n")) == ["code"]
+
+
+@case
+def st_protected_deletion_fails_with_text():
+    base = "// the lock must be held across both calls\nlock();\n"
+    rep = R(base, "lock();\n")
+    assert _kinds(rep) == ["protected"], _msgs(rep)
+    assert "the lock must be held across both calls" in _msgs(rep)
+
+
+@case
+def st_protected_pattern_families():
+    samples = ["[TERRAIN v1] fields: a b", "MC2_GPU_CULL gates it", "see 3df9e4c2d for context",
+               "fixed 2026-10-09", "TODO later", "NOLINT(readability)", "@param x the thing",
+               "do not reorder", "this avoids a race", "Co-Authored by", "SPDX-License-Identifier: MIT",
+               "because the driver lies", "WHY: stride", "workaround for AMD"]
+    for s in samples:
+        rep = R("int a;\n// %s\nint b;\n" % s, "int a;\nint b;\n")
+        assert _kinds(rep) == ["protected"], s
+    for s in ["loop over items", "increment i", "debug output", "trace the path"]:
+        assert R("int a;\n// %s\nint b;\n" % s, "int a;\nint b;\n").ok, s
+
+
+@case
+def st_adding_comment_bytes_fails():
+    rep = R("int a;\n", "int a; // brand new\n")
+    assert _kinds(rep) == ["grew"], _msgs(rep)
+
+
+@case
+def st_multiline_block_comment():
+    base = "int f() {\n  /* line one\n     line two\n     line three */\n  return 1;\n}\n"
+    assert R(base, "int f() {\n  return 1;\n}\n").ok
+    mid = "foo(a, /* explain\n  b */ b);\n"
+    assert R(mid, "foo(a, b);\n").ok
+    assert _kinds(R("a/**/b;\n", "ab;\n")) == ["code"]
+
+
+@case
+def st_raw_string_with_comment_markers():
+    base = 'const char* s = R"(// inside\n/* also */)"; // trailing\nint q;\n'
+    assert R(base, 'const char* s = R"(// inside\n/* also */)";\nint q;\n').ok
+    assert _kinds(R(base, 'const char* s = R"(/* also */)";\nint q;\n')) == ["code"]
+    d = 'x = R"xx(a)"b)xx"; // c\n'
+    assert R(d, 'x = R"xx(a)"b)xx";\n').ok
+
+
+@case
+def st_gates_files_rejected():
+    rep = R("// plain\nint a;\n", "int a;\n", rel="Gates/gate_table.cpp")
+    assert _kinds(rep) == ["gates"], _msgs(rep)
+    assert R("int a;\n", "int a;\n", rel="Gates/gate_table.cpp").ok
+    assert _kinds(R("// plain\nint a;\n", "int a;\n", rel="code/Gates/x.h")) == ["gates"]
+
+
+@case
+def st_blank_line_only_diff_passes():
+    assert R("int a;\n\n\n\nint b;\n", "int a;\nint b;\n").ok
+    assert R("int a;\nint b;\n", "\nint a;\n\n\nint b;\n\n").ok
+
+
+@case
+def st_crlf_files():
+    base = "int z;\r\n// narration\r\nint a;\r\nint b; // more\r\n"
+    assert R(base, "int z;\r\nint a;\r\nint b;\r\n").ok
+    assert _kinds(R(base, "int z;\nint a;\nint b;\n")) == ["format"]
+    prot = "int z;\r\n// must stay\r\nint a;\r\n"
+    assert _kinds(R(prot, "int z;\r\nint a;\r\n")) == ["protected"]
+
+
+@case
+def st_utf8_bom():
+    bom = b"\xef\xbb\xbf"
+    base = bom + "int z;\n// plain é note\nint a;\n".encode("utf-8")
+    assert R(base, bom + b"int z;\nint a;\n").ok
+    assert _kinds(R(base, b"int z;\nint a;\n")) == ["format"]
+
+
+@case
+def st_moved_comment_passes():
+    base = "// must keep this\nint a;\nint b;\n"
+    new = "int a;\n// must keep this\nint b;\n"
+    assert R(base, new).ok
+
+
+@case
+def st_protected_whitespace_normalised():
+    assert R("// must   keep\nint a;\n", "//  must keep\nint a;\n").ok
+
+
+@case
+def st_license_header_protected():
+    base = "/* (c) 1999 Someone. All rights reserved. */\nint a; // x\n"
+    rep = R(base, "int a;\n")
+    assert _kinds(rep) == ["protected"] and "file header" in _msgs(rep)
+    assert R(base, "/* (c) 1999 Someone. All rights reserved. */\nint a;\n").ok
+
+
+@case
+def st_include_angle_brackets_are_code():
+    assert _kinds(R("#include <a//b>\n", "#include <a>\n")) == ["code"]
+    assert R("#include <a//b> // narration\n", "#include <a//b>\n").ok
+
+
+@case
+def st_line_continuation_in_macro():
+    base = "#define M(a) \\\n    foo(a) /* note */ \\\n    bar(a)\nint z;\n"
+    assert R(base, "#define M(a) \\\n    foo(a) \\\n    bar(a)\nint z;\n").ok
+    cont = "int z;\n// narration \\\nint hidden;\nint y;\n"
+    assert R(cont, "int z;\nint y;\n").ok
+
+
+@case
+def st_pragma_and_static_assert_neighbours():
+    rep = R("int z;\n// keep layout\n#pragma pack(push, 1)\nint a;\n", "int z;\n#pragma pack(push, 1)\nint a;\n")
+    assert _kinds(rep) == ["protected"] and "pragma" in _msgs(rep)
+    rep = R("static_assert(1);\n// tidy\nint a;\n", "static_assert(1);\nint a;\n")
+    assert _kinds(rep) == ["protected"]
+
+
+@case
+def st_code_edit_detected_with_line_pair():
+    rep = R("int a;\n// n\nint b;\n", "int a;\nint c;\n")
+    assert _kinds(rep) == ["code"] and "int b;" in _msgs(rep) and "int c;" in _msgs(rep)
+    rep = R("int a;\n", "int a;\nint extra;\n")
+    assert _kinds(rep) == ["code"] and "<end of file>" in _msgs(rep)
+
+
+@case
+def st_literal_whitespace_is_code():
+    assert _kinds(R('s = "a  b"; // x\n', 's = "a b";\n')) == ["code"]
+
+
+@case
+def st_scope_and_missing_files():
+    assert _kinds(R("# x\n", "x\n", rel="docs/a.md")) == ["scope"]
+    assert _kinds(R(None, "int a;\n")) == ["no-base"]
+    assert _kinds(R("int a;\n", None)) == ["no-new"]
+
+
+@case
+def st_unterminated_block_comment_is_lex_error():
+    assert "lex" in _kinds(R("int a; /* open\n", "int a;\n"))
+
+
+@case
+def st_unterminated_quote_in_error_directive():
+    base = "#error don't build\nint a; // note\n"
+    assert R(base, "#error don't build\nint a;\n").ok
+
+
+@case
+def st_merged_paragraphs_keep_protected_text():
+    base = "int z;\n// first narration\n//\n// the order must not change\nint a;\n"
+    assert R(base, "int z;\n// the order must not change\nint a;\n").ok
+    assert R(base, "int z;\n// first narration\n// the order must not change\nint a;\n").ok
+    assert _kinds(R(base, "int z;\n// first narration\nint a;\n")) == ["protected"]
+
+
+@case
+def st_glsl_extension_in_scope():
+    assert R("#version 450\n// narration\nvoid main() {}\n", "#version 450\nvoid main() {}\n", rel="shaders/a.frag").ok
+
+
+def run_selftest():
+    failed = 0
+    for fn in SELFTEST_CASES:
+        try:
+            fn()
+        except AssertionError as e:
+            failed += 1
+            print("FAIL  %s: %s" % (fn.__name__, e))
+    n = len(SELFTEST_CASES)
+    print("comment_guard selftest: %d/%d ok" % (n - failed, n))
+    return 1 if failed else 0
+
+
+# ------------------------------------------------------------------ CLI
+def build_parser():
+    ap = argparse.ArgumentParser(description="Fail-closed guard for comment-only C/C++ edits.")
+    ap.add_argument("paths", nargs="*", help="files to check (default: every file changed vs the base)")
+    ap.add_argument("--check", action="store_true", help="comment-only check (default mode)")
+    ap.add_argument("--base", "--rev", dest="base", default="HEAD", help="base git rev (default HEAD)")
+    ap.add_argument("--base-file", help="take the base text from this file instead of git (one path)")
+    src = ap.add_mutually_exclusive_group()
+    src.add_argument("--staged", action="store_true", help="new text = the git index")
+    src.add_argument("--worktree", action="store_true", help="new text = the working tree (default)")
+    ap.add_argument("--repo", help="repo root (default: the repo this tool lives in)")
+    ap.add_argument("--ignore-out-of-scope", action="store_true",
+                    help="skip non-C/C++ files instead of failing them")
+    ap.add_argument("-q", "--quiet", action="store_true", help="print failing files only")
+    ap.add_argument("--selftest", action="store_true", help="run the in-memory fixtures")
+    ap.add_argument("--hash-objs", metavar="BUILD_DIR", help="print a JSON object-hash record for the paths")
+    ap.add_argument("--compare-objs", metavar="BEFORE_JSON", help="compare current objects with a --hash-objs record")
+    return ap
+
+
+def main(argv=None):
+    ap = build_parser()
+    args = ap.parse_intermixed_args(argv)
+    if args.selftest:
+        return run_selftest()
+    if args.hash_objs:
+        return run_hash_objs(args)
+    if args.compare_objs:
+        return run_compare_objs(args)
+    return run_check(args)
+
+
+if __name__ == "__main__":
+    sys.exit(main())
