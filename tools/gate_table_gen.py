@@ -111,7 +111,8 @@ def render_index(rows):
     L = [INDEX_HEAD % len(rows)]
     for r in rows:
         tok = cpp_str(r["tokens"]) if r["tokens"] else "{}"
-        L.append("    {%s, Kind::%s, Rule::%s, %s},\n" % (cpp_str(r["name"]), r["kind"], r["rule"], tok))
+        par = ", " + cpp_str(r["inherits"]) if r.get("inherits") else ""
+        L.append("    {%s, Kind::%s, Rule::%s, %s%s},\n" % (cpp_str(r["name"]), r["kind"], r["rule"], tok, par))
     L.append("};\n\n}  // namespace mc2::gate::detail\n")
     return "".join(L)
 
@@ -150,7 +151,7 @@ def rows_from_json(doc):
                       rng["lo"], rng["hi"]) if rng else None,
             "reread": g.get("reread", False), "divergent": g.get("divergent", False),
             "smokePassthrough": g.get("smokePassthrough", False), "logTopic": g.get("logTopic", ""),
-            "verified": g.get("verified", False), "registry": g.get("registry"),
+            "verified": g.get("verified", False), "registry": g.get("registry"), "inherits": g.get("inherits", ""),
             "history": False, "defaultUnknown": False,
         })
     return rows

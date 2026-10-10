@@ -31,6 +31,7 @@ struct Opts {
     Range range;
     std::string_view tokens;
     std::string_view logTopic;
+    std::string_view inherits;
 };
 
 constexpr Opts operator|(Opts a, const Opts& b) {
@@ -42,6 +43,7 @@ constexpr Opts operator|(Opts a, const Opts& b) {
     if (b.range.has) a.range = b.range;
     if (!b.tokens.empty()) a.tokens = b.tokens;
     if (!b.logTopic.empty()) a.logTopic = b.logTopic;
+    if (!b.inherits.empty()) a.inherits = b.inherits;
     return a;
 }
 
@@ -61,6 +63,9 @@ constexpr Opts rangeAbove(double lo, double hi) { return Opts{.range = Range{tru
 constexpr Opts clampRange(double lo, double hi) { return Opts{.range = Range{true, true, lo, hi}}; }
 constexpr Opts tokens(std::string_view list) { return Opts{.tokens = list}; }
 constexpr Opts topic(std::string_view t) { return Opts{.logTopic = t}; }
+// Tri rows only: an unset variable takes the value of `parent` (a Bool Exact1 gate with no parent of its
+// own), read through gate::effective<>() with the caller's fail-soft veto.
+constexpr Opts inherits(std::string_view parent) { return Opts{.inherits = parent}; }
 
 namespace detail {
 constexpr Row make(Rule rule, std::string_view name, Kind kind, std::string_view owner,
@@ -75,6 +80,7 @@ constexpr Row make(Rule rule, std::string_view name, Kind kind, std::string_view
     r.range = o.range;
     r.tokens = o.tokens;
     r.logTopic = o.logTopic;
+    r.inherits = o.inherits;
     r.reread = o.reread;
     r.divergent = o.divergent;
     r.smokePassthrough = o.passthrough;
@@ -160,6 +166,7 @@ constexpr bool rowIsSane(const Row& r) {
     if (r.kind == Kind::Enum && r.tokens.empty()) return false;
     if (r.kind == Kind::Enum && !tokenListHas(r.tokens, r.defStr)) return false;  // the default must be a token
     if (r.kind != Kind::Enum && !r.tokens.empty()) return false;
+    if ((r.kind == Kind::Tri) != !r.inherits.empty()) return false;  // a Tri row names its parent, nothing else may
     if (r.range.has && !(r.range.lo <= r.range.hi)) return false;
     if (r.range.has && r.range.loExcl && r.range.clamp) return false;  // an exclusive bound cannot clamp
     if (r.range.has && r.kind != Kind::Int && r.kind != Kind::Float) return false;
@@ -169,6 +176,20 @@ constexpr bool rowIsSane(const Row& r) {
 constexpr bool allRowsSane(const Row* t, std::size_t n) {
     for (std::size_t i = 0; i < n; ++i)
         if (!rowIsSane(t[i])) return false;
+    return true;
+}
+
+// Every `inherits` names an existing Bool Exact1 row that has no parent of its own (one level).
+constexpr bool parentsAreValid(const Row* t, std::size_t n) {
+    for (std::size_t i = 0; i < n; ++i) {
+        if (t[i].inherits.empty()) continue;
+        bool found = false;
+        for (std::size_t j = 0; j < n; ++j) {
+            if (t[j].name != t[i].inherits) continue;
+            found = t[j].kind == Kind::Bool && t[j].rule == Rule::Exact1 && t[j].inherits.empty();
+        }
+        if (!found) return false;
+    }
     return true;
 }
 

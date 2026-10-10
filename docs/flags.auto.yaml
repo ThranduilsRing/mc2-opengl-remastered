@@ -5971,7 +5971,7 @@ flags:
     rule: Prefix
     owner: terrain
     doc: ""
-    range: {lo: 0.05, hi: 3.4028234663852886e+38, style: reject, lo_exclusive: true}
+    range: {lo: 0.05000000074505806, hi: 3.4028234663852886e+38, style: reject, lo_exclusive: true}
     verified: true
   - name: MC2_TERRAIN_LOD_CHUNK_FORCE_COLOR
     kind: Bool
@@ -7119,12 +7119,14 @@ flags:
     rule: Std
     owner: gameos
     doc: "VK-FIELD-ENV-CONTENT-STACK-ARM-1 (2026-07-11): the game HUD is UI CONTENT, and post- VK-RUNG8-ITEM8 the native VK composite is the sole present-image..."
+    inherits: MC2_VK_SHARED_GBUFFER
   - name: MC2_VK_HUD_COLOR_PROOF
     kind: Tri
     default: null
     rule: Std
     owner: vk
     doc: "VK-FIELD-ENV-CONTENT-STACK-ARM-1 (2026-07-11): despite the legacy \"COLOR_PROOF\" name this is the ACTUAL native VK HUD renderer --..."
+    inherits: MC2_VK_SHARED_GBUFFER
   - name: MC2_VK_HUD_DRAW_DUMP
     kind: Bool
     default: false
@@ -7137,6 +7139,7 @@ flags:
     rule: Std
     owner: gameos
     doc: "VK-FIELD-ENV-CONTENT-STACK-ARM-1: arm from the umbrella too."
+    inherits: MC2_VK_SHARED_GBUFFER
   - name: MC2_VK_IMGUI
     kind: Bool
     default: false
@@ -7175,6 +7178,7 @@ flags:
     rule: Std
     owner: vk
     doc: "VK-MECH-MATERIAL-LIGHTING-1: presence-gated =1, default OFF; REQUIRES MC2_VK_MECH_TIER1 (visible only with MC2_VK_MECH_MATERIAL=1)."
+    inherits: MC2_VK_SHARED_GBUFFER
     smoke_passthrough: true
     registry: {feature_id: MC2_FEATURE_VK_MECH_LIGHTING, kind: Feature, order: -1, default_on: false}
   - name: MC2_VK_MECH_MATERIAL
@@ -7183,6 +7187,7 @@ flags:
     rule: Std
     owner: vk
     doc: "VK-MECH-MATERIAL: presence-gated =1, default OFF (requires MC2_VK_MECH_TIER1)."
+    inherits: MC2_VK_SHARED_GBUFFER
     smoke_passthrough: true
     registry: {feature_id: MC2_FEATURE_VK_MECH_MATERIAL, kind: Feature, order: -1, default_on: false}
   - name: MC2_VK_MECH_PERF
@@ -7198,6 +7203,7 @@ flags:
     rule: Std
     owner: vk
     doc: "VK-MECH-TIER1: presence-gated =1, default OFF (requires MC2_VK_SHARED_SCENE_DEPTH)."
+    inherits: MC2_VK_SHARED_GBUFFER
     smoke_passthrough: true
     registry: {feature_id: MC2_FEATURE_VK_MECH_TIER1, kind: Feature, order: -1, default_on: false}
   - name: MC2_VK_NO_GL_INTEROP_RESOURCE_STRICT
@@ -7238,12 +7244,14 @@ flags:
     rule: Std
     owner: vk
     doc: "VK-FIELD-ENV-COMPOSITE-ARM-1: arm from the umbrella (see directFboGateEnabled)."
+    inherits: MC2_VK_SHARED_GBUFFER
   - name: MC2_VK_POST_COMPOSITE_DIRECT_CHAIN
     kind: Tri
     default: null
     rule: Std
     owner: vk
     doc: "VK-POST-COMPOSITE-DIRECT-CHAIN: opt-in deletion-readiness proof gate, default OFF."
+    inherits: MC2_VK_SHARED_GBUFFER
     smoke_passthrough: true
     registry: {feature_id: MC2_FEATURE_VK_POST_COMPOSITE_DIRECT_CHAIN, kind: Feature, order: -1, default_on: false}
   - name: MC2_VK_POST_FOG_NATIVE
@@ -7252,6 +7260,7 @@ flags:
     rule: Std
     owner: vk
     doc: "VK-FIELD-ENV-CONTENT-STACK-ARM-1 (2026-07-11): now an umbrella family member (subGate)."
+    inherits: MC2_VK_SHARED_GBUFFER
   - name: MC2_VK_POST_HZB
     kind: Bool
     default: false
@@ -7294,6 +7303,7 @@ flags:
     rule: Std
     owner: vk
     doc: "VK-FIELD-ENV-COMPOSITE-ARM-1: after VK-RUNG8-ITEM8 deleted the GL copy-1 present FBO, the native VK composite is the ONLY producer of the present image for..."
+    inherits: MC2_VK_SHARED_GBUFFER
   - name: MC2_VK_PRESENT_DUMP_FRAME
     kind: Int
     default: 0
@@ -7344,6 +7354,7 @@ flags:
     rule: Std
     owner: vk
     doc: "VK-TAIL-HOOK-1 (rung 8.6): default-OFF present-command-buffer seam for native final-tail rendering."
+    inherits: MC2_VK_SHARED_GBUFFER
     smoke_passthrough: true
     registry: {feature_id: MC2_FEATURE_VK_PRESENT_TAIL_HOOK, kind: Feature, order: -1, default_on: false}
   - name: MC2_VK_PRESENT_VERIFY
@@ -7359,6 +7370,7 @@ flags:
     rule: Std
     owner: vk
     doc: "VK-P11 TIER-1 PROP COLOR: presence-gated =1, default OFF; REQUIRES MC2_VK_SHARED_SCENE_DEPTH."
+    inherits: MC2_VK_SHARED_GBUFFER
     smoke_passthrough: true
     registry: {feature_id: MC2_FEATURE_VK_PROP_COLOR_TIER1, kind: Feature, order: -1, default_on: false}
   - name: MC2_VK_PROP_DIRECT_CHAIN
@@ -7367,6 +7379,7 @@ flags:
     rule: Std
     owner: vk
     doc: "VK-PROP-DIRECT-CHAIN: opt-in deletion-readiness proof gate, default OFF."
+    inherits: MC2_VK_SHARED_GBUFFER
     smoke_passthrough: true
     registry: {feature_id: MC2_FEATURE_VK_PROP_DIRECT_CHAIN, kind: Feature, order: -1, default_on: false}
   - name: MC2_VK_PROP_FENCE_DEFER
@@ -7393,6 +7406,7 @@ flags:
     rule: Std
     owner: vk
     doc: "VK-PROP-MATERIAL: presence-gated =1, default OFF (requires MC2_VK_PROP_COLOR_TIER1)."
+    inherits: MC2_VK_SHARED_GBUFFER
     smoke_passthrough: true
     registry: {feature_id: MC2_FEATURE_VK_PROP_MATERIAL, kind: Feature, order: -1, default_on: false}
   - name: MC2_VK_PROP_MATERIAL_DEBUG
@@ -7472,6 +7486,7 @@ flags:
     rule: Std
     owner: vk
     doc: "VK-TIER1 SHARED SCENE DEPTH: presence-gated =1, default OFF."
+    inherits: MC2_VK_SHARED_GBUFFER
     smoke_passthrough: true
     registry: {feature_id: MC2_FEATURE_VK_SHARED_SCENE_DEPTH, kind: Feature, order: -1, default_on: false}
   - name: MC2_VK_SHARED_SCENE_STRICT
@@ -7496,6 +7511,7 @@ flags:
     rule: Std
     owner: vk
     doc: ""
+    inherits: MC2_VK_SHARED_GBUFFER
   - name: MC2_VK_TERRAIN_COPY_STATS
     kind: Bool
     default: false
@@ -7510,6 +7526,7 @@ flags:
     rule: Std
     owner: terrain
     doc: "VK-TERRAIN-CSM (biggest-safe-subset): presence-gated =1, default OFF (requires MC2_VK_TERRAIN_DYNSHADOW chain + CSM active)."
+    inherits: MC2_VK_SHARED_GBUFFER
     smoke_passthrough: true
     registry: {feature_id: MC2_FEATURE_VK_TERRAIN_CSM, kind: Feature, order: -1, default_on: false}
   - name: MC2_VK_TERRAIN_CSM_DEBUG
@@ -7539,6 +7556,7 @@ flags:
     rule: Std
     owner: terrain
     doc: "VK-TERRAIN-DETAIL: presence-gated =1, default OFF (requires MC2_VK_TERRAIN_LIGHTING)."
+    inherits: MC2_VK_SHARED_GBUFFER
     smoke_passthrough: true
     registry: {feature_id: MC2_FEATURE_VK_TERRAIN_DETAIL, kind: Feature, order: -1, default_on: false}
   - name: MC2_VK_TERRAIN_DYNSHADOW
@@ -7547,6 +7565,7 @@ flags:
     rule: Std
     owner: terrain
     doc: "VK-TERRAIN-DYNSHADOW: presence-gated =1, default OFF (requires MC2_VK_TERRAIN_LIGHTING)."
+    inherits: MC2_VK_SHARED_GBUFFER
     smoke_passthrough: true
     registry: {feature_id: MC2_FEATURE_VK_TERRAIN_DYNSHADOW, kind: Feature, order: -1, default_on: false}
   - name: MC2_VK_TERRAIN_FENCE_DEFER
@@ -7586,6 +7605,7 @@ flags:
     rule: Std
     owner: terrain
     doc: "VK-TERRAIN-LIGHTING: presence-gated =1, default OFF (requires MC2_VK_TERRAIN_TIER1)."
+    inherits: MC2_VK_SHARED_GBUFFER
     smoke_passthrough: true
     registry: {feature_id: MC2_FEATURE_VK_TERRAIN_LIGHTING, kind: Feature, order: -1, default_on: false}
   - name: MC2_VK_TERRAIN_LODFADE
@@ -7617,12 +7637,14 @@ flags:
     rule: Std
     owner: vk
     doc: ""
+    inherits: MC2_VK_SHARED_GBUFFER
   - name: MC2_VK_TERRAIN_TIER1
     kind: Tri
     default: null
     rule: Std
     owner: vk
     doc: "VK-P10 TERRAIN TIER-1: presence-gated =1, default OFF (requires MC2_VK_SHARED_SCENE_DEPTH)."
+    inherits: MC2_VK_SHARED_GBUFFER
     smoke_passthrough: true
     registry: {feature_id: MC2_FEATURE_VK_TERRAIN_TIER1, kind: Feature, order: -1, default_on: false}
   - name: MC2_VK_TERRAIN_VISUALDISPLACE_FAR
@@ -7637,6 +7659,7 @@ flags:
     rule: Std
     owner: vk
     doc: "VK-FIELD-VFX-1: umbrella sub-gate, default-ON under MC2_VK_SHARED_GBUFFER (explicit =0 forces off, =1 forces on)."
+    inherits: MC2_VK_SHARED_GBUFFER
     smoke_passthrough: true
     registry: {feature_id: MC2_FEATURE_VK_VFX, kind: Feature, order: -1, default_on: false}
   - name: MC2_VK_VFX_COALESCE
@@ -7660,6 +7683,7 @@ flags:
     rule: Std
     owner: vk
     doc: "VK-WATER-DIRECT-CHAIN: opt-in deletion-readiness proof gate, default OFF."
+    inherits: MC2_VK_SHARED_GBUFFER
     smoke_passthrough: true
     registry: {feature_id: MC2_FEATURE_VK_WATER_DIRECT_CHAIN, kind: Feature, order: -1, default_on: false}
   - name: MC2_VK_WATER_FENCE_DEFER
@@ -7681,6 +7705,7 @@ flags:
     rule: Std
     owner: vk
     doc: "Direct-chain members default ON under the umbrella; MC2_VK_WATER_TIER1 is a normal umbrella sub-gate."
+    inherits: MC2_VK_SHARED_GBUFFER
   - name: MC2_VPL_CULL
     kind: Bool
     default: false

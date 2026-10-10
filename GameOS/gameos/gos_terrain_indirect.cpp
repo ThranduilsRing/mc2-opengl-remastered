@@ -4209,7 +4209,7 @@ void ComputeDispatch() {
     // notwithstanding) and the race produces the same bytes either way.
     // Fingerprint of the camera MVP rotation rows lets offline analysis
     // correlate fence misses with rotation magnitude.
-        static const bool s_ringTrace        = mc2::gate::get<"MC2_RING_TRACE">();
+    static const bool s_ringTrace        = mc2::gate::get<"MC2_RING_TRACE">();
     static uint64_t   s_ringTraceFrameIdx = 0;
     const uint64_t  ringFrameIdx = ++s_ringTraceFrameIdx;
     const int       probedSlot   = g_thinRingSlot;

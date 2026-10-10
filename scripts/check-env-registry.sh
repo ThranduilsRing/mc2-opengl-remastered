@@ -1043,7 +1043,11 @@ ALLOWLIST=(
     MC2_UNITTEST_PF                           # test -- synthetic row in tests/unit/test_gate.cpp
     MC2_UNITTEST_PI                           # test -- synthetic row in tests/unit/test_gate.cpp
     MC2_UNITTEST_RNG                          # test -- synthetic row in tests/unit/test_gate.cpp
+    MC2_UNITTEST_SUB                          # test -- synthetic row in tests/unit/test_gate.cpp
+    MC2_UNITTEST_SUB2                         # test -- synthetic row in tests/unit/test_gate.cpp
     MC2_UNITTEST_TRI                          # test -- synthetic row in tests/unit/test_gate.cpp
+    MC2_UNITTEST_UMB                          # test -- synthetic row in tests/unit/test_gate.cpp
+    MC2_UNITTEST_UMB1                         # test -- synthetic row in tests/unit/test_gate.cpp
 )
 
 if [[ $VERBOSE -eq 1 ]]; then

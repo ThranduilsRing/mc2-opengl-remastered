@@ -67,7 +67,7 @@
    "LG17": 81,
    "LG18": 11,
    "LG19": 587,
-   "LG20": 706
+   "LG20": 704
   },
   "GuiRuntime": {
    "LG01": 1,
@@ -794,7 +794,7 @@
    "LG12a": 35,
    "LG12b": 6,
    "LG17": 2,
-   "LG20": 9
+   "LG20": 7
   },
   "GameOS/gameos/gos_terrain_lod_chunk.h": {
    "LG17": 2
@@ -5811,7 +5811,7 @@
    "LG20": 1
   }
  },
- "head": "bbc1d2d63",
+ "head": "8432b793d",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

@@ -55,6 +55,8 @@ struct Row {
     // a real reader. MC2_CONFIG_STRICT fails on a bad value only for verified rows; the rest
     // stay warnings because their kind is still the seed's guess.
     bool verified = false;
+    // Tri rows only: the Bool gate whose value an unset variable inherits (the VK umbrella).
+    std::string_view inherits;
     Registry registry;
 };
 

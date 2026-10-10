@@ -93,7 +93,7 @@ const float kTglcCliffTriplanarStr = mc2::gate::get<"MC2_TERRAIN_CLIFF_TRIPLANAR
 // gradient of the cooked cliff displacement (mat5 layer-5 alpha) so the rich rock
 // relief actually catches light (the smooth marble rgb normal left it flat).
 // Trace knob MC2_TERRAIN_CLIFF_HEIGHT_NORMAL_STRENGTH, default 2.0; only consumed
-// inside the useTriplanarCliff frag block (0 -> pure rgb-normal == TRIPLANAR-1).
+// inside the useTriplanarCliff frag block. Values <= 0 are rejected (the row is > 0) and use the default.
 const float kTglcCliffHeightNormalStr = mc2::gate::get<"MC2_TERRAIN_CLIFF_HEIGHT_NORMAL_STRENGTH">();
 // TERRAIN-CLIFF-POM-1: triplanar Parallax Occlusion Mapping on cliff faces.
 // Gate MC2_TERRAIN_CLIFF_POM (default OFF -> u_cliffPom.x=0 -> frag march skipped,

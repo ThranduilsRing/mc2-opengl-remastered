@@ -94,6 +94,7 @@ namespace gosFX { void DiagFrameTick(); }
 #include "engine_present_vk.h"
 #endif
 #include "vk_shared_gbuffer_gate.h"  // VK-FIELD-ENV-CONTENT-STACK-ARM-1: umbrella HUD arming
+#include "Gates/gate.h"   // typed gate registry
 #ifdef MC2_VULKAN_ISLAND
 #include "vulkan_terrain_island.h"    // VK-PARITY-OVERLAY-1: overlay/decal VK owner queue
 #endif
@@ -7255,8 +7256,8 @@ static const float* mc2_detailAntiTileYZW()
     static bool s_init = false;
     if (!s_init) {
         s_init = true;
-        const char* g = getenv("MC2_TERRAIN_DETAIL_ANTITILE");
-        if (g && *g && strcmp(g, "0") != 0) {
+        const bool antiTile = mc2::gate::get<"MC2_TERRAIN_DETAIL_ANTITILE">();   // row: Lead0, same rule as the chunk reader
+        if (antiTile) {
             auto envF = [](const char* k, float def) -> float {
                 const char* v = getenv(k);
                 return (v && *v) ? (float)atof(v) : def;

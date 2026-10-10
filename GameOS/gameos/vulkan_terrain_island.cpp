@@ -1,4 +1,3 @@
-#include "Gates/gate_cold.h"   // gate::get<>() and str<>()
 // vulkan_terrain_island.cpp — VK-P10 TERRAIN TIER-1: LIVE LOD0 terrain opaque prefix
 // co-written IN-PLACE into the SHARED scene GBuffer.
 // =============================================================================
@@ -51,6 +50,7 @@
 #include "vk_gpu_timestamps.h"   // VK-DRAW-PERF-1: MC2_VK_GPU_TIMESTAMPS GPU segment timers
 #include "vulkan_context.h"
 #include "vulkan_terrain_island.h"
+#include "Gates/gate_cold.h"   // gate::get<>() and str<>()
 #include "vk_shared_gbuffer_gate.h"     // VK-P14 GATE-CONSOLIDATION-1 umbrella resolver
 #define MC2_VULKAN_SHARED_SCENE_COLOR_IMPL_ISLAND
 #include "vulkan_shared_scene_color.h"

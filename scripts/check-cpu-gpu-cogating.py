@@ -86,19 +86,43 @@ DEFAULT_ON_IDIOMS = (
 )
 
 
-def classify_default_on(window: str, token: str = "") -> bool:
+_UNSET_ON_RULES = ("Lead0Kill", "DefOnLead0", "DefOnAtoiNZ")
+_TYPED_READ = r'(!\s*)?(?:\w+::)*get\s*<\s*"%s"\s*(?:,\s*(?:\w+::)*(\w+)\s*)?>'
+
+
+def _typed_unset_on(root: Path, token: str, window: str) -> bool | None:
+    """Does a typed read of `token` in `window` yield ON for an unset variable?
+
+    None when the window holds no typed read. The row supplies the default; a per-site Rule override
+    replaces the row's rule; a leading `!` inverts the answer."""
+    m = re.search(_TYPED_READ % re.escape(token), window)
+    if not m:
+        return None
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import gate_table_reader
+    row = gate_table_reader.gates(root)[token]
+    if row["kind"] != "Bool":
+        on = False
+    else:
+        rule = m.group(2) or row["rule"]
+        if rule in _UNSET_ON_RULES:
+            on = True
+        elif rule in ("Std", "Lead0Def"):
+            on = bool(row["default"])
+        else:
+            on = False
+    return (not on) if m.group(1) else on
+
+
+def classify_default_on(window: str, token: str = "", root: Path = ROOT) -> bool:
     """True when the reader in `window` yields ON for an unset var.
 
-    A typed read (gate::get<"MC2_X">()) takes its default from the gate table row, the one place it is declared;
-    a raw getenv is classified by its idiom."""
-    if token and re.search(r'\b(?:get|state)\s*<\s*"%s"' % re.escape(token), window):
-        try:
-            import os
-            import gate_table_reader
-            row = gate_table_reader.gates(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))[token]
-            return row["kind"] == "Bool" and bool(row["default"])
-        except Exception:                                              # noqa: BLE001
-            return False
+    A typed read (gate::get<"MC2_X">()) takes its default from the gate table row of `root`, the one place it is
+    declared, honoring a per-site Rule override and a leading `!`; a raw getenv is classified by its idiom."""
+    if token:
+        typed = _typed_unset_on(root, token, window)
+        if typed is not None:
+            return typed
     return any(p.search(window) for p in DEFAULT_ON_IDIOMS)
 
 
@@ -231,7 +255,7 @@ def check(root: Path, quiet: bool = False) -> list[str]:
             # The reader's unset-case must leave the CPU term OFF.
             idx = reader_src.index(token)
             window = reader_src[max(0, idx - 400): idx + 400]
-            if not classify_default_on(window, token):
+            if not classify_default_on(window, token, root):
                 fail(pid, "R3-ORPHAN",
                      f"{token} does not read as a default-ON killswitch near its reader in "
                      f"{inert['reader_file']}; the orphaned CPU term would still be live by "
@@ -298,6 +322,39 @@ INJECTIONS = [
 ]
 
 
+def _selftest_typed_readers() -> int:
+    """classify_default_on on typed reads: the row's default, a per-site Rule override, `!`, and the root argument."""
+    rc = 0
+    kill = "MC2_WATER_UPLOAD_NARROW"   # Lead0Kill, unset -> on
+    pres = "MC2_3DVIEW_DIAG"           # Presence, unset -> off
+    cases = [
+        ("row default (Lead0Kill)", 'x = mc2::gate::get<"%s">();' % kill, kill, True),
+        ("row default (Presence)", 'x = mc2::gate::get<"%s">();' % pres, pres, False),
+        ("inverted read", 'x = !mc2::gate::get<"%s">();' % kill, kill, False),
+        ("override to Presence", 'x = gate::get<"%s", gate::Rule::Presence>();' % kill, kill, False),
+        ("override to Lead0Kill", 'x = gate::get<"%s", gate::Rule::Lead0Kill>();' % pres, pres, True),
+        ("raw idiom still classified", "return !v || v[0] != '0';", kill, True),
+    ]
+    for name, window, token, want in cases:
+        got = classify_default_on(window, token, ROOT)
+        print("  [%s] typed reader: %s" % ("OK  " if got == want else "FAIL", name))
+        rc |= got != want
+    # the table comes from the root argument, not from this script's own repo
+    import json
+    with tempfile.TemporaryDirectory() as td:
+        (Path(td) / "Gates").mkdir()
+        doc = json.loads((ROOT / "Gates" / "gate_table.json").read_text(encoding="utf-8"))
+        for g in doc["gates"]:
+            if g["name"] == kill:
+                g["rule"] = "Presence"
+                g["default"] = False
+        (Path(td) / "Gates" / "gate_table.json").write_text(json.dumps(doc), encoding="utf-8")
+        got = classify_default_on('x = gate::get<"%s">();' % kill, kill, Path(td))
+        print("  [%s] typed reader: table read from the root argument" % ("OK  " if got is False else "FAIL"))
+        rc |= got is not False
+    return int(rc)
+
+
 def selftest() -> int:
     rc = 0
     print("[cpu-gpu-cogating] self-test: injecting real regressions into a scratch tree\n")
@@ -323,6 +380,7 @@ def selftest() -> int:
                     needed.add(ib["reader_file"])
                 if p["gpu"].get("file"):
                     needed.add(p["gpu"]["file"])
+            needed.add("Gates/gate_table.json")
             for r in needed:
                 dst = tmp / r
                 dst.parent.mkdir(parents=True, exist_ok=True)
@@ -343,6 +401,7 @@ def selftest() -> int:
             else:
                 print(f"  [FAIL] {name}\n         -> injected regression NOT caught")
                 rc = 1
+    rc |= _selftest_typed_readers()
     print("\n[cpu-gpu-cogating] self-test " + ("PASSED" if rc == 0 else "FAILED"))
     return rc
 

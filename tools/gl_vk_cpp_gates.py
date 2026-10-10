@@ -24,8 +24,8 @@ import re
 from gl_vk_source import blank_comments
 
 # An env-read call (getenv("MC2_X"), envFlag("MC2_X")) or a typed gate reader (gate::get<"MC2_X">() and its
-# state/isSet/str/is siblings); group 2 is the gate name in both forms.
-_ENV_CALL_RE = re.compile(r'(?:\b(\w*[Ee][Nn][Vv]\w*)\s*\(\s*|\b(?:get|state|isSet|str|is)\s*<\s*)"(MC2_[A-Z0-9_]+)"')
+# state/isSet/isNonEmpty/str/is siblings); group 2 is the gate name in both forms.
+_ENV_CALL_RE = re.compile(r'(?:\b(\w*[Ee][Nn][Vv]\w*)\s*\(\s*|\b(?:get|state|isSet|isNonEmpty|str|is)\s*<\s*)"(MC2_[A-Z0-9_]+)"')
 _KEYWORDS = {"if", "else", "for", "while", "switch", "catch", "do", "try", "return", "sizeof",
              "namespace", "class", "struct", "enum", "union", "const", "static", "auto", "bool",
              "int", "float", "char", "void", "true", "false", "nullptr", "this", "new", "delete",

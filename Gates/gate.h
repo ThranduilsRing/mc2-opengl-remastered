@@ -185,6 +185,31 @@ template <Name n>
     return Tri::Unset;
 }
 
+// A Tri row that inherits from a parent gate (the VK umbrella): an explicit "1" or "0" on the row wins,
+// otherwise the row is on iff the parent is on and the caller's veto is not raised. The veto is the
+// session fail-soft flag, which lives outside this static library, so the caller passes it and there is
+// deliberately no default.
+template <Name n>
+[[nodiscard]] consteval bool hasParent() noexcept {
+    constexpr std::size_t idx = detail::indexOf(n.sv());
+    static_assert(idx != detail::kNpos, "gate::hasParent<>: name is not in the gate table (Gates/gate_table.cpp)");
+    return !detail::kIndex[idx].parent.empty();
+}
+
+template <Name n>
+[[nodiscard]] inline bool effective(bool parentSuppressed) noexcept {
+    constexpr std::size_t idx = detail::indexOf(n.sv());
+    static_assert(idx != detail::kNpos, "gate::effective<>: name is not in the gate table (Gates/gate_table.cpp)");
+    static_assert(detail::kIndex[idx].kind == Kind::Tri && !detail::kIndex[idx].parent.empty(),
+                  "gate::effective<>: only Tri rows that inherit a parent (inherits() in gate_table.cpp)");
+    constexpr std::size_t parent = detail::indexOf(detail::kIndex[idx].parent);
+    static_assert(parent != detail::kNpos, "gate::effective<>: the row's parent is not in the gate table");
+    const std::uint32_t f = detail::flagsOf(detail::load(idx));
+    if (f & detail::fExact1) return true;
+    if (f & detail::fExact0) return false;
+    return !parentSuppressed && (detail::load(parent) & detail::kRowBit) != 0;
+}
+
 // Presence of the variable, whatever the row's kind (MC2_LOG, MC2_NO_LAUNCHER).
 template <Name n>
 [[nodiscard]] inline bool isSet() noexcept {
