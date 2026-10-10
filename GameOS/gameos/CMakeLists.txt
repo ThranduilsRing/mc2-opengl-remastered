@@ -207,6 +207,10 @@ if(MC2_VULKAN)
         # (requires MC2_VK_SHARED_SCENE_DEPTH) -> GL terrain path byte-identical.
         # extern "C" entry points only (no layout-affecting header members).
         list(APPEND SOURCES vulkan_terrain_island.cpp)
+        list(APPEND SOURCES vulkan_terrain_island_island.cpp)
+        list(APPEND SOURCES vulkan_terrain_island_images.cpp)
+        list(APPEND SOURCES vulkan_terrain_island_run.cpp)
+        list(APPEND SOURCES vulkan_terrain_island_overlay.cpp)
         # VK-P14 MECH TIER-1: the mech island — the FIRST VK-native SKINNED region.
         # Co-writes the GL mech batcher's visible instances IN-PLACE into the SHARED
         # scene GBuffer (color MRT0 + normal MRT1 a=0.0 + shared depth), VK-skinned

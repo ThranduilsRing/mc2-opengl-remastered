@@ -1,0 +1,53 @@
+{
+ "base": "4abcded83",
+ "src": "GameOS/gameos/vulkan_terrain_island.cpp",
+ "stem": "vulkan_terrain_island",
+ "scripts": [
+  "scripts/check-render-contract-gbuffer1.allowlist",
+  "scripts/check_vk_nointerop_log.py",
+  "scripts/tests/test_gate_codemod.py",
+  "tools/gate_codemod.py"
+ ],
+ "_scripts_reason": "Reviewed: check-render-contract-gbuffer1.allowlist and check_vk_nointerop_log.py cite vulkan_terrain_island.cpp in comments (the log tags the island prints are unchanged); check-vk-pipeline-layout stays OK but reports 24 VK-UNRESOLVED warnings for the overlay pipeline, whose descriptor-set layout is built in another piece (the checker resolves layouts within one source file); tools/gate_codemod.py and its test (lane 1 gate tooling) are not edited here.",
+ "includes": [
+  "volk.h",
+  "vk_mem_alloc.h",
+  "vulkan_shared_scene_color.h",
+  "vulkan_shared_scene_depth.h"
+ ],
+ "add": [
+  "#ifdef MC2_VULKAN_ISLAND",
+  "#endif // MC2_VULKAN_ISLAND",
+  "namespace vk_terrain_detail {",
+  "}  // namespace vk_terrain_detail",
+  "} // namespace vk_terrain_detail"
+ ],
+ "split_commit": "PENDING",
+ "edits": [
+  [
+   "void setFallback(const char* reason) {",
+   "void setFallback(std::string_view reason) {"
+  ],
+  [
+   "    std::strncpy(g_health.fallbackReason, reason ? reason : \"\",",
+   "    const size_t n = (std::min)(reason.size(), sizeof(g_health.fallbackReason) - 1);"
+  ],
+  [
+   "                 sizeof(g_health.fallbackReason) - 1);",
+   "    std::memcpy(g_health.fallbackReason, reason.data(), n);"
+  ],
+  [
+   "    g_health.fallbackReason[sizeof(g_health.fallbackReason) - 1] = '\\0';",
+   "    g_health.fallbackReason[n] = '\\0';"
+  ],
+  [
+   "void terrainPerFrameReadback(const char* fn) {",
+   "void terrainPerFrameReadback(std::string_view fn) {"
+  ],
+  [
+   "             \"readback in render path -- direct-chain declined this frame)\", fn);",
+   "             \"readback in render path -- direct-chain declined this frame)\", std::string(fn).c_str());"
+  ]
+ ],
+ "_edits_reason": "setFallback and terrainPerFrameReadback take std::string_view (the cxx17 ratchet counts the const char* read-only parameters the shared header would declare); every caller passes a literal."
+}
