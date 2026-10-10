@@ -525,6 +525,8 @@ set(SOURCES
     "code/logisticsmechdisplay.cpp"
     "code/logisticsmechicon.cpp"
     "code/logisticsmissioninfo.cpp"
+    "code/logisticsmissioninfo_progress.cpp"
+    "code/logisticsmissioninfo_query.cpp"
     "code/logisticspilot.cpp"
     "code/logisticspilotlistbox.cpp"
     "gui/logisticsscreen.cpp"

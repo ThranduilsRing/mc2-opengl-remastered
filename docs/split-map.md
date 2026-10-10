@@ -169,6 +169,15 @@ Split commit: `009e31493`.
 | `logisticsdata_save.cpp` | LogisticsData: removeMechsInForceGroup, pilot ranking, save / load, setMissionCompleted and the mech / pilot / variant lookups. |
 | `logisticsdata_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
+## `code/logisticsmissioninfo.cpp`
+
+| Piece | What it holds |
+|---|---|
+| `logisticsmissioninfo.cpp` | keeps construction, the campaign file parse, load and save |
+| `logisticsmissioninfo_progress.cpp` | LogisticsMissionInfo: available / current mission lists, mission selection and completion. |
+| `logisticsmissioninfo_query.cpp` | LogisticsMissionInfo: the per-mission accessors (purchase / operation files, videos, tune, flags) and the skip / multiplayer switches. |
+| `logisticsmissioninfo_internal.h` | shared include bundle, extern globals and declarations of the pieces |
+
 ## `code/mechcmd2.cpp`
 
 | Piece | What it holds |
