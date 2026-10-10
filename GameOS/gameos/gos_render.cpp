@@ -12,6 +12,8 @@
 #include <GL/glew.h>
 #include <GL/gl.h>
 #include "utils/logging.h"
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"   // raw<>()
 
 // FIXME: think how to make it better when different parts need window
 SDL_Window* g_sdl_window = NULL;
@@ -399,7 +401,7 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
     // warnings in our workload. Off by default in shipped builds;
     // env-gated rather than NDEBUG-gated so it can be flipped on a
     // deployed binary without rebuilding.
-    const bool gl_debug = (getenv("MC2_GL_DEBUG") != nullptr);
+    const bool gl_debug = mc2::gate::get<"MC2_GL_DEBUG">();
     if (gl_debug) {
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
         printf("[GL_DEBUG] MC2_GL_DEBUG=1 -- GL debug context active. This reduces performance.\n");
@@ -505,8 +507,6 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
         // MC2_WINDOW_RESIZABLE=0 restores a fixed window.
         Uint32 winFlags = SDL_WINDOW_OPENGL | SDL_WINDOW_ALLOW_HIGHDPI;
         {
-            const char* wenv = getenv("MC2_WINDOWED");
-            const char* renv = getenv("MC2_WINDOW_RESIZABLE");
             // ISSUE-49 residual: also honor the engine's windowed boot state
             // (windowed_hint = Environment.fullScreen == 0, set from
             // options.cfg FullScreen=FALSE) — a user booting windowed via
@@ -514,8 +514,8 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
             // fixed, non-draggable border. No change for fullscreen boots
             // (SDL ignores the resizable flag under FULLSCREEN_DESKTOP);
             // MC2_WINDOW_RESIZABLE=0 still opts out.
-            const bool windowed = (wenv && wenv[0] && wenv[0] != '0') || windowed_hint;
-            const bool resizable = !(renv && renv[0] == '0');
+            const bool windowed = mc2::gate::get<"MC2_WINDOWED">() || windowed_hint;
+            const bool resizable = mc2::gate::get<"MC2_WINDOW_RESIZABLE">();
             if (windowed && resizable)
                 winFlags |= SDL_WINDOW_RESIZABLE;
         }
@@ -552,11 +552,10 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
 
         // ISSUE-49 verification diag (existing MC2_RES_DIAG gate): one boot
         // line proving whether the OS window carries the resizable flag.
-        if (window && getenv("MC2_RES_DIAG")) {
+        if (window && mc2::gate::get<"MC2_RES_DIAG">()) {
             printf("[RES_DIAG] window flags: resizable=%d windowed_env=%d windowed_hint=%d\n",
                 (SDL_GetWindowFlags(window) & SDL_WINDOW_RESIZABLE) ? 1 : 0,
-                (getenv("MC2_WINDOWED") && getenv("MC2_WINDOWED")[0] &&
-                 getenv("MC2_WINDOWED")[0] != '0') ? 1 : 0,
+                mc2::gate::get<"MC2_WINDOWED">() ? 1 : 0,
                 windowed_hint ? 1 : 0);
             fflush(stdout);
         }
@@ -586,7 +585,7 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
         apply_unattended_window_styles(window);
         SDL_ShowWindow(window);
         apply_offscreen_position(window);
-        if (window_offscreen_requested() && getenv("MC2_RES_DIAG")) {
+        if (window_offscreen_requested() && mc2::gate::get<"MC2_RES_DIAG">()) {
             int px = 0, py = 0;
             SDL_GetWindowPosition(window, &px, &py);
             printf("[RES_DIAG] offscreen window origin=%d,%d size=%dx%d\n",
@@ -600,7 +599,7 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
         // software cursor doesn't render (e.g. old-era MC2X/MCO campaigns at the
         // 800-logical GUI tier, where the cursorsa sprite draws invisibly). Paired
         // with a software-cursor-draw skip in UserInput::render so there's no double.
-        if (getenv("MC2_OS_CURSOR"))
+        if (mc2::gate::get<"MC2_OS_CURSOR">())
             SDL_ShowCursor(SDL_ENABLE);
         else
             SDL_ShowCursor(SDL_DISABLE);
@@ -652,11 +651,10 @@ RenderContextHandle init_render_context(RenderWindowHandle render_window)
     // MC2_VSYNC: "1" forces vsync on, "0" or unset leaves it off.
     // Off by default so a GPU that misses 60 Hz is not rounded down
     // to 30/20/15 FPS.
-    const char* vsync_env = getenv("MC2_VSYNC");
-    const bool vsync_on = (vsync_env && vsync_env[0] == '1');
+    const bool vsync_on = mc2::gate::get<"MC2_VSYNC">();
     SDL_GL_SetSwapInterval(vsync_on ? 1 : 0);
     printf("[VSYNC] MC2_VSYNC=%s -- vsync %s.\n",
-           vsync_env ? vsync_env : "(unset, default 0)",
+           mc2::gate::raw<"MC2_VSYNC">() ? mc2::gate::raw<"MC2_VSYNC">() : "(unset, default 0)",   // echoed as typed
            vsync_on ? "ON" : "OFF");
 
     // Print GPU identity unconditionally with a distinctive prefix so it is
@@ -713,7 +711,7 @@ RenderContextHandle init_render_context(RenderWindowHandle render_window)
     // grep [MODE] and you see every toggle state at a glance.
     // NB: gl_debug is set on the attribute in create_window()'s scope; we
     // re-read the env here because that local doesn't carry across functions.
-    const bool gl_debug_mode = (getenv("MC2_GL_DEBUG") != nullptr);
+    const bool gl_debug_mode = mc2::gate::get<"MC2_GL_DEBUG">();
     printf("[MODE] gl_debug=%d vsync=%d tracy=on-demand\n",
            gl_debug_mode ? 1 : 0,
            vsync_on ? 1 : 0);
