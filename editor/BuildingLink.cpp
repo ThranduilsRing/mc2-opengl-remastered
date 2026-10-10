@@ -13,6 +13,7 @@
 #include <algorithm>
 #include "celine.h"
 #include "Camera.h"
+#include "../RenderCore/axis_convert.h"
 
 //-------------------------------------------------------------------------------------------------
 // Modern GL forward projection (projectModernClipGL + viewport remap). Legacy
@@ -290,9 +291,7 @@ static bool isInView(const Point3D &position)
 				Stuff::Vector3D Distance;
 				Stuff::Point3D objPosition;
 				Stuff::Point3D eyePosition(eye->getCameraOrigin());
-				objPosition.x = -position.x;
-				objPosition.y = position.z;
-				objPosition.z = position.y;
+				mc2ToRender(objPosition, position);
 		
 				Distance.Subtract(objPosition,eyePosition);
 				Distance.Normalize(Distance);
