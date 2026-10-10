@@ -499,7 +499,7 @@ bool
 
 
 		Check_Pointer(new_string);
-		delete new_string;
+		delete[] new_string;
 
 		current_position = next_slash;
 	}

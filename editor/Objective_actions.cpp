@@ -124,7 +124,7 @@ bool CPlayWAV::EditDialog() {
 			if (pathname.GetLength() > (CurrentDirectoryBufferLength - 1)) {
 				ret = _tcsnicmp(CurrentDirectoryBuffer, pathname.GetBuffer(0), CurrentDirectoryBufferLength - 1);
 			}
-			delete CurrentDirectoryBuffer; CurrentDirectoryBuffer = 0;
+			delete[] CurrentDirectoryBuffer; CurrentDirectoryBuffer = 0;
 			if (0 == ret) {
 				m_pathname = (pathname.GetBuffer(0) + (CurrentDirectoryBufferLength - 1) + 1);
 				return true;
@@ -357,7 +357,7 @@ bool CMakeNewTechnologyAvailable::EditDialog() {
 			if (pathname.GetLength() > (CurrentDirectoryBufferLength - 1)) {
 				ret = _tcsnicmp(CurrentDirectoryBuffer, pathname.GetBuffer(0), CurrentDirectoryBufferLength - 1);
 			}
-			delete CurrentDirectoryBuffer; CurrentDirectoryBuffer = 0;
+			delete[] CurrentDirectoryBuffer; CurrentDirectoryBuffer = 0;
 			if (0 == ret) {
 				m_purchaseFilePathname = (pathname.GetBuffer(0) + (CurrentDirectoryBufferLength - 1) + 1);
 				return true;

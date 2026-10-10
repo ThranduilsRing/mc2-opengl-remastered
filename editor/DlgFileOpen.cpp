@@ -130,6 +130,6 @@ void DlgFileOpen::OnSelchangeFileopenFilelist()
 		m_pList->GetText(nSelectionIndex, pszSelectionString);
 		CEdit* m_pEntry = (CEdit*)GetDlgItem(IDC_FILEOPEN_EDITBOX);
 		m_pEntry->SetWindowText(pszSelectionString);
-		delete pszSelectionString;	
+		delete[] pszSelectionString;	
 	}
 }

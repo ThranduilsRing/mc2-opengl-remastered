@@ -472,7 +472,7 @@ int EditorInterface::SaveAs()
 		GetCurrentDirectory(curDirStrSize, curDirStr);
 		BOOL result = SetCurrentDirectory(missionPath);
 		SetCurrentDirectory(curDirStr);
-		delete curDirStr; curDirStr = 0;
+		gos_Free(curDirStr); curDirStr = 0;
 
 		if (0 == result)
 		{
