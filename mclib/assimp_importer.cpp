@@ -13,6 +13,8 @@
 // Findings: docs/superpowers/explorations/2026-05-02-track-d-mvp-adversarial-findings.md
 #include "assimp_importer.h"
 #include "mech_texname_derive.h"  // GLB-TEXNAME-DERIVE-EXTRACT-1 pure name rules
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"
 
 #ifdef ENABLE_ASSIMP_IMPORTER
 
@@ -36,7 +38,7 @@
 #include "mech_anim_runtime.h" // BT2018-SKEL-ENGINE-1B-RUNTIME: per-frame re-bake API
 
 // BT2018-SKEL-ENGINE-1A — bind-pose bake trace (default OFF). MC2_MECH_SKEL_TRACE=1.
-static const bool s_mechSkelTrace = (getenv("MC2_MECH_SKEL_TRACE") != NULL);
+static const bool s_mechSkelTrace = mc2::gate::get<"MC2_MECH_SKEL_TRACE">();
 #define MECH_SKEL_TRACE(fmt, ...) \
     do { if (s_mechSkelTrace) { \
         fprintf(stderr, "[MECH_SKEL] " fmt "\n", ##__VA_ARGS__); \
@@ -46,7 +48,7 @@ static const bool s_mechSkelTrace = (getenv("MC2_MECH_SKEL_TRACE") != NULL);
 // to emit per-import checkpoint lines. Convention matches existing
 // [TGL_POOL v1] / [DESTROY v1] env-gated tracers
 // (memory:debug_instrumentation_rule).
-static const bool s_assimpTrace = (getenv("MC2_ASSIMP_TRACE") != NULL);
+static const bool s_assimpTrace = mc2::gate::get<"MC2_ASSIMP_TRACE">();
 #define ASSIMP_TRACE(fmt, ...) \
     do { if (s_assimpTrace) { \
         fprintf(stderr, "[ASSIMP_TRACE] " fmt "\n", ##__VA_ARGS__); \
@@ -69,9 +71,9 @@ namespace {
 // dialed in-game without rebuilds; MC2_GLTF_YOFF nudges the up component (stuff.y)
 // to lift a buried mesh (pivot-not-at-base). All four mappings are even-parity
 // (winding preserved). Bake the winning combo as the default once confirmed.
-static inline int s_gltfAxis() { const char* e=getenv("MC2_GLTF_AXIS"); return e?atoi(e):0; }
-static inline float s_gltfYoff() { static float o=[]{const char*e=getenv("MC2_GLTF_YOFF"); return e?(float)atof(e):0.0f;}(); return o; }
-static inline float s_gltfYawDeg() { const char* e=getenv("MC2_GLTF_YAW_DEG"); return e?(float)atof(e):0.0f; }
+static inline int s_gltfAxis() { return mc2::gate::get<"MC2_GLTF_AXIS">(); }
+static inline float s_gltfYoff() { static float o = mc2::gate::get<"MC2_GLTF_YOFF">(); return o; }
+static inline float s_gltfYawDeg() { return mc2::gate::get<"MC2_GLTF_YAW_DEG">(); }
 static inline void applyYaw(float& X, float& Z) {
 	const float yaw = s_gltfYawDeg();
 	if (fabsf(yaw) < 0.001f)
@@ -776,23 +778,20 @@ const unsigned ACTOR_STATE_STALE_FRAMES = 600u;
 
 bool mechImportAnimateEnabled() {
     // Opt-in, default OFF (static FORCE_CLIP bake stays the safe path).
-    static int v = [](){ const char* e = getenv("MC2_MECH_IMPORT_ANIMATE");
-                         return (e && e[0] == '1') ? 1 : 0; }();
+    static int v = mc2::gate::get<"MC2_MECH_IMPORT_ANIMATE">();
     return v != 0;
 }
 
 // 1B-GPU: route the imported mech through the GPU skinned-mech path (default OFF).
 bool mechImportGpuEnabled() {
-    static int v = [](){ const char* e = getenv("MC2_MECH_IMPORT_GPU");
-                         return (e && e[0] == '1') ? 1 : 0; }();
+    static int v = mc2::gate::get<"MC2_MECH_IMPORT_GPU">();
     return v != 0;
 }
 // GPU palette clip-side axis case. Default 2 (== mechToMC2Pos, the VBO axis): with
 // the actor shapeToWorld_root composed by the batcher, axis 2 stands the mech upright
 // (user-confirmed in-engine). Tunable for other rigs.
 int mechImportGpuAxis() {
-    static int v = [](){ const char* e = getenv("MC2_MECH_IMPORT_GPU_AXIS");
-                         return e ? atoi(e) : 2; }();
+    static int v = mc2::gate::get<"MC2_MECH_IMPORT_GPU_AXIS">();
     return v;
 }
 // World-up (Stuff.z, the shader's up after its (-x,z,y) swap) lift applied to the
@@ -801,17 +800,15 @@ int mechImportGpuAxis() {
 // and the feet sink; this lifts by the model's below-origin foot drop. Override/dial
 // with MC2_MECH_IMPORT_GPU_LIFT (world units); 0 (default) uses the auto value.
 float mechImportGpuLiftOverride(bool* hasOverride) {
-    static int has = 0;
-    static float v = [&](){ const char* e = getenv("MC2_MECH_IMPORT_GPU_LIFT");
-                            if (e) { has = 1; return (float)atof(e); } return 0.0f; }();
-    if (hasOverride) *hasOverride = (has != 0);
+    static const bool has = mc2::gate::isSet<"MC2_MECH_IMPORT_GPU_LIFT">();
+    static const float v = mc2::gate::get<"MC2_MECH_IMPORT_GPU_LIFT">();
+    if (hasOverride) *hasOverride = has;
     return v;
 }
 // Which world translation component the lift adds to (0=Stuff.x, 1=Stuff.y, 2=Stuff.z).
 // Default 1 (Stuff.y) — tuning which axis is world-up for the placed imported mech.
 int mechImportGpuLiftAxis() {
-    static int v = [](){ const char* e = getenv("MC2_MECH_IMPORT_GPU_LIFT_AXIS");
-                         return e ? atoi(e) : 1; }();
+    static int v = mc2::gate::get<"MC2_MECH_IMPORT_GPU_LIFT_AXIS">();
     return v;
 }
 
@@ -1154,7 +1151,7 @@ bool mc2mechanim::GetImportedNodeWorld(const void* actorKey, const void* typeKey
                                        const char* mc2Name, const float* rootToWorld12,
                                        float outXYZ[3]) {
     if (!mc2Name || !rootToWorld12 || !outXYZ) return false;
-    const bool diag = std::getenv("MC2_MECH_NODE_DIAG") != nullptr;
+    const bool diag = mc2::gate::get<"MC2_MECH_NODE_DIAG">();
     for (ImportedAnimEntry& e : g_importedAnims) {
         if ((const void*)e.multi != typeKey) continue;
         if (e.nodeManifest.empty()) {
@@ -1283,7 +1280,7 @@ void buildGpuModelDelta(const ImportedAnimEntry& e, ActorAnimState& s,
     const size_t n = (globals.size() < e.invMWrest.size()) ? globals.size() : e.invMWrest.size();
     // Default: static rest lift (steady torso). MC2_MECH_IMPORT_DYNAMIC_LIFT=1 restores
     // the old per-frame lowest-vertex lift (follows ground but bobs each step).
-    const bool dynamicLift = []{ const char* v = std::getenv("MC2_MECH_IMPORT_DYNAMIC_LIFT"); return v && v[0] == '1'; }();
+    const bool dynamicLift = mc2::gate::get<"MC2_MECH_IMPORT_DYNAMIC_LIFT">();
     float lowestY = 1e30f;
     for (size_t i = 0; i < n; ++i) {
         aiMatrix4x4 D = (e.AS1 * rowMajorToAi(globals[i].m)) * e.invMWrest[i];
@@ -1427,7 +1424,9 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
 		// instead — a STATIC posed import (no per-frame runtime yet). Same joint-
 		// global path (mc2skel::EvaluateClipGpuBones) the harness oracle uses, so
 		// mech_bone_parity --clip/--frame proves they match. Unknown clip -> rest.
-		const char* fc = getenv("MC2_MECH_IMPORT_FORCE_CLIP");
+		const bool hasForceClip = mc2::gate::isSet<"MC2_MECH_IMPORT_FORCE_CLIP">();
+		const std::string forceClipStr = hasForceClip ? mc2::gate::str<"MC2_MECH_IMPORT_FORCE_CLIP">() : std::string();
+		const char* fc = hasForceClip ? forceClipStr.c_str() : nullptr;
 		if (mechImportGpuEnabled()) {
 			// 1B-GPU: VBO must be the assembled REST pose (the runtime model delta is
 			// relative to rest); ignore FORCE_CLIP for the static bake. The clip still
@@ -1437,7 +1436,7 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
 			MECH_SKEL_TRACE("file='%s' GPU mode -> REST bake (runtime model-delta palette)", path);
 		} else if (fc) {
 			int ff = 0;
-			if (const char* fe = getenv("MC2_MECH_IMPORT_FORCE_FRAME")) ff = atoi(fe);
+			ff = mc2::gate::get<"MC2_MECH_IMPORT_FORCE_FRAME">();
 			double bt = 0, bd = 0;
 			if (mc2skel::EvaluateClipGpuBones(scene, fc, (float)ff, bake.names, bake.rest, &bt, &bd)) {
 				bake.forcedClip = fc;
@@ -1463,8 +1462,7 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
 		// height (matches the Python fk_bake --target_height). Override via
 		// MC2_MECH_SKEL_HEIGHT. Single-pass measure over intact, bone-bound meshes.
 		if (bake.active) {
-			float targetH = 50.0f;  // confirmed in-game (marauder); override MC2_MECH_SKEL_HEIGHT
-			if (const char* e = getenv("MC2_MECH_SKEL_HEIGHT")) targetH = (float)atof(e);
+			const float targetH = mc2::gate::get<"MC2_MECH_SKEL_HEIGHT">();  // default 50 confirmed in-game (marauder)
 			float lo[3] = {1e30f, 1e30f, 1e30f}, hi[3] = {-1e30f, -1e30f, -1e30f};
 			for (unsigned m = 0; m < scene->mNumMeshes; ++m) {
 				const aiMesh* me = scene->mMeshes[m];
@@ -1491,7 +1489,9 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
 		// MC2_MECH_SKEL_BONE_DUMP=<path> is set. Same shape as the harness
 		// `gpu-bones --rest` output, so a diff script can prove the engine and the
 		// CLI oracle compute identical bones (and, in 1B, identical per-frame).
-		if (const char* dumpPath = getenv("MC2_MECH_SKEL_BONE_DUMP")) {
+		if (mc2::gate::isSet<"MC2_MECH_SKEL_BONE_DUMP">()) {
+			const std::string dumpPathStr = mc2::gate::str<"MC2_MECH_SKEL_BONE_DUMP">();
+			const char* dumpPath = dumpPathStr.c_str();
 			if (FILE* bf = fopen(dumpPath, "w")) {
 				double sum = 0.0;
 				for (const auto& b : bake.rest) for (int k = 0; k < 16; ++k) sum += b.m[k];
@@ -1602,7 +1602,7 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
 	// largest stuff.y; translate that to 0 so the base sits on the ground.
 	// MC2_GLTF_GROUND=2 grounds the opposite end; =0 disables.
 	{
-		static const int s_ground = [](){ const char* e=getenv("MC2_GLTF_GROUND"); return e?atoi(e):2; }();
+		static const int s_ground = mc2::gate::get<"MC2_GLTF_GROUND">();
 		if (s_ground && autoGround) {
 			const float dy = (s_ground==2) ? -out->minBox.y : -out->maxBox.y;
 			for (unsigned si=0; si<scene->mNumMeshes; ++si) {

@@ -36,6 +36,7 @@
 
 #include"../GameOS/gameos/gos_terrain_indirect.h"
 #include"../GameOS/gameos/gos_terrain_surface.h"  // PR-1: continuous-surface regen on recipe rebuild
+#include "Gates/gate.h"
 
 //---------------------------------------------------------------------------
 // c'tors for postCompVertex
@@ -1350,7 +1351,7 @@ void MapData::renderStaticTerrainShadowFullMap (WORD* idxArray, unsigned long te
 	}
 	#undef MC2_SHFM_EMIT
 
-	if (getenv("MC2_DEBUG_SHADOW_STATIC") != nullptr) {
+	if (mc2::gate::get<"MC2_DEBUG_SHADOW_STATIC">()) {
 		const float ext = float(HALF) * WUPV;
 		fprintf(stderr,
 			"[SHADOWSTATIC v1] event=fullmap_build builds=1 RV=%ld quads=%lu "
@@ -2448,10 +2449,7 @@ float MapData::terrainElevation (const Stuff::Vector3D &position)
 	// Enforced against silent re-divergence by scripts/check-cpu-gpu-cogating.py.
 	if (Terrain::terrainTextures2) {
 		TerrainColorMap* tcm = Terrain::terrainTextures2;
-		static const bool s_retireCpuPhong = []() {
-			const char* v = getenv("MC2_CPU_PHONG_RETIRE");
-			return !v || v[0] != '0';   // default ON; only "=0" reverts
-		}();
+		static const bool s_retireCpuPhong = mc2::gate::get<"MC2_CPU_PHONG_RETIRE">();
 		float phongAlpha = gos_GetTerrainPhongAlpha();
 		float displaceScale = gos_GetTerrainDisplaceScale();
 		float detailTiling = gos_GetTerrainDetailTiling();
@@ -2551,7 +2549,7 @@ float MapData::terrainElevation (const Stuff::Vector3D &position)
 
 				// Probe: MC2_COLORMAP_DISPLACE_PROBE=1 logs displacement magnitude.
 				// Requires MC2_COLORMAP_CPU_RETIRE=0 so cpuColorMap is still alive.
-				static const bool s_probe = getenv("MC2_COLORMAP_DISPLACE_PROBE") != nullptr;
+				static const bool s_probe = mc2::gate::get<"MC2_COLORMAP_DISPLACE_PROBE">();
 				if (s_probe) {
 					static float s_maxAbs = 0.0f;
 					static long  s_count  = 0;

@@ -7,9 +7,7 @@ different places and drifted independently (2 observed ENV-DROP incidents +
 
   1. Gates/gate_table.json registry rows         (env_index registry read)
   2. docs/tier1_env_vars.md                      (env_index tier1 parse)
-  3. scripts/run_smoke.py passthrough allowlist  (anchors `if k in (` .. `)},`
-                                                  — same extraction as
-                                                  scripts/check-env-allowlist.sh)
+  3. Gates/gate_table.json smokePassthrough rows (the run_smoke.py passthrough list is generated from them)
   4. scripts/check-env-registry.sh ALLOWLIST=( ) (legacy/trace var allowlist)
 
 plus a live `git grep` for code readers (fast single-var path; env_index's
@@ -63,6 +61,7 @@ load-bearing, and ENV_DROP_RISK starts firing again — correctly, that time.
 """
 from __future__ import annotations
 
+import json
 import re
 import subprocess
 from pathlib import Path
@@ -87,25 +86,14 @@ _READER_DIRS = ("mclib", "GameOS", "code", "RenderCore", "RenderWorld",
 # ---------------------------------------------------------------------------
 
 def parse_smoke_allowlist(repo_root: Path) -> tuple[set, bool]:
-    """Quoted MC2_* names inside every `if k in (` .. `)},` block of
-    scripts/run_smoke.py. Returns (names, anchors_found)."""
-    path = Path(repo_root) / "scripts" / "run_smoke.py"
-    names: set = set()
-    found = False
+    """Gate names whose table row carries smokePassthrough -- the list scripts/run_smoke.py
+    forwards to the game is generated from Gates/gate_table.json. Returns (names, table_found)."""
+    path = Path(repo_root) / "Gates" / "gate_table.json"
     try:
-        text = path.read_text(encoding="utf-8", errors="ignore")
-    except OSError:
-        return names, False
-    in_block = False
-    for line in text.splitlines():
-        if not in_block and "if k in (" in line:
-            in_block = True
-            found = True
-        if in_block:
-            names.update(_QUOTED_MC2.findall(line))
-            if ")}," in line:
-                in_block = False
-    return names, found
+        rows = json.loads(path.read_text(encoding="utf-8"))["gates"]
+    except (OSError, ValueError, KeyError):
+        return set(), False
+    return {r["name"] for r in rows if r.get("smokePassthrough")}, True
 
 
 # ---------------------------------------------------------------------------

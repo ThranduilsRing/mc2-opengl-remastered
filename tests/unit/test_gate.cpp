@@ -1035,26 +1035,164 @@ TEST_CASE("the VK opt-in and kill-switch rows read like the envTriState expressi
     }
 }
 
-TEST_CASE("the five level-valued gates are Enum rows whose first token is the unset/unknown default") {
-    const char* names[] = {"MC2_FX_FORCE_SPAWN", "MC2_SHADOW_DYNAMIC_PROP_CASTERS", "MC2_SPOTLIGHT_DIRECTION_FIX",
-                           "MC2_STATIC_PROP_BUILDING_SHADOW", "MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE"};
-    for (const char* name : names) {
-        const gate::Row& row = g1b::rowNamed(name);
-        INFO(name);
-        CHECK(row.kind == Kind::Enum);
-        CHECK(row.defStr.empty());
-        CHECK(gate::rows::tokenListHas(row.tokens, "0"));
-        CHECK(gate::rows::tokenListHas(row.tokens, "1"));
-        CHECK(gate::rows::tokenListHas(row.tokens, "2"));
-        // unset, an unknown level and "2" resolve to three different answers, never to a bool
-        const std::int32_t unset = static_cast<std::int32_t>(static_cast<std::uint32_t>(gate::detail::parseRow(row, nullptr)));
-        const std::int32_t two = static_cast<std::int32_t>(static_cast<std::uint32_t>(gate::detail::parseRow(row, "2")));
-        const std::int32_t junk = static_cast<std::int32_t>(static_cast<std::uint32_t>(gate::detail::parseRow(row, "zz")));
-        CHECK(unset == 0);
-        CHECK(two > 0);
-        CHECK(junk == 0);
+TEST_CASE("MC2_FX_FORCE_SPAWN is an Enum row whose first token is the unset/unknown default") {
+    // The other four level gates are covered by "G6 level-valued gates are Enum rows".
+    const gate::Row& row = g1b::rowNamed("MC2_FX_FORCE_SPAWN");
+    CHECK(row.kind == Kind::Enum);
+    CHECK(row.defStr.empty());
+    for (const char* t : {"0", "1", "2", "9", "loop"})
+        CHECK(gate::rows::tokenListHas(row.tokens, t));
+    const auto idx = [&](const char* v) {
+        return static_cast<std::int32_t>(static_cast<std::uint32_t>(gate::detail::parseRow(row, v)));
+    };
+    CHECK(idx(nullptr) == 0);
+    CHECK(idx("loop") > 0);
+    CHECK(idx("zz") == 0);
+}
+
+// ---------------------------------------------------------------------------
+// G6: mclib rows. The old readers are transcribed with the environment text as a parameter.
+// ---------------------------------------------------------------------------
+
+namespace g6 {
+float oldMoverFwd(const char* v) {
+    float f = 24.0f;
+    if (v && v[0]) f = static_cast<float>(std::atof(v));
+    if (f < 0.0f) f = 0.0f;
+    if (f > 120.0f) f = 120.0f;
+    return f;
+}
+float oldCullMargin(const char* v) {
+    const float m = (v && v[0]) ? static_cast<float>(std::atof(v)) : 0.25f;
+    return (m >= 0.0f) ? m : 0.25f;
+}
+long oldNightFloor(const char* v) {
+    if (!v || !v[0]) return 0L;
+    long f = std::atol(v);
+    if (f < 0) f = 0;
+    if (f > 64) f = 64;
+    return f;
+}
+float oldClampKnob(const char* v, float dflt, float lo, float hi) {
+    float f = dflt;
+    if (v && v[0]) f = static_cast<float>(std::atof(v));
+    if (f < lo) return lo;
+    if (f > hi) return hi;
+    return f;
+}
+}  // namespace g6
+
+TEST_CASE("G6 numeric rows reproduce the old mclib readers on every probe") {
+    const gate::Row& fwd = g1b::rowNamed("MC2_LIGHT_POOL_MOVER_FWD");
+    const gate::Row& margin = g1b::rowNamed("MC2_SHADOW_CASTER_CULL_MARGIN");
+    const gate::Row& floor = g1b::rowNamed("MC2_NIGHT_AMBIENT_FLOOR");
+    for (const char* t : g1b::kProbes) {
+        INFO((t ? t : "(unset)"));
+        if (t && std::string(t) == "1e999") continue;   // inf: listed EDGE for the float rows (no harness sets it)
+        if (t && std::string(t) == "-1e999") continue;
+        CHECK(asFloat(gate::detail::parseRow(fwd, t)) == g6::oldMoverFwd(t));
+        CHECK(asFloat(gate::detail::parseRow(margin, t)) == g6::oldCullMargin(t));
+        CHECK(static_cast<long>(g1b::intOf(floor, t)) == g6::oldNightFloor(t));
     }
-    CHECK(gate::rows::tokenListHas(g1b::rowNamed("MC2_FX_FORCE_SPAWN").tokens, "loop"));
+}
+
+TEST_CASE("G6 clamped float knobs reproduce the old lambda readers (defaults and bounds included)") {
+    struct Knob { const char* name; float dflt; float lo; float hi; };
+    const Knob knobs[] = {
+        {"MC2_CAMERA_SMOOTH", 100.0f, 0.0f, 2000.0f},
+        {"MC2_CONE_POOL_REACH", 4.0f, 1.0f, 16.0f},
+        {"MC2_LIGHT_CONE_GLOW_ALPHA", 40.0f, 0.0f, 255.0f},
+        {"MC2_LIGHT_CONE_SPILL", 1.0f, 0.0f, 3.0f},
+        {"MC2_LIGHT_REALISM_CONE_OPACITY", 0.40f, 0.0f, 4.0f},
+        {"MC2_LIGHT_REALISM_CONE_FEATHER", 2.5f, 0.0f, 8.0f},
+        {"MC2_LIGHT_REALISM_BEACON", 70.0f, 0.0f, 255.0f},
+        {"MC2_LIGHT_REALISM_BEACON_RADIUS", 40.0f, 1.0f, 200.0f},
+    };
+    for (const Knob& k : knobs) {
+        const gate::Row& row = g1b::rowNamed(k.name);
+        CHECK(row.kind == Kind::Float);
+        CHECK(row.range.clamp);
+        for (const char* t : g1b::kProbes) {
+            INFO(k.name << " <- " << (t ? t : "(unset)"));
+            CHECK(asFloat(gate::detail::parseRow(row, t)) == g6::oldClampKnob(t, k.dflt, k.lo, k.hi));
+        }
+    }
+}
+
+TEST_CASE("G6 String rows keep path and text values verbatim") {
+    for (const char* name : {"MC2_ABL_COMPILE_FATAL_REPRO", "MC2_OVERLAY_TILE_HIRES", "MC2_MECH_IMPORT_FORCE_CLIP",
+                             "MC2_MECH_SKEL_BONE_DUMP", "MC2_LOG_FILE_RESOLVE", "MC2_RESOLVE_TRACE_FILE"}) {
+        INFO(name);
+        const gate::Row& row = g1b::rowNamed(name);
+        CHECK(row.kind == Kind::String);
+        CHECK(std::string(row.defStr).empty());
+    }
+    CHECK(std::string(g1b::rowNamed("MC2_MECH_IMPORT_FORCE_BONE").defStr) == "j_LThigh");
+}
+
+TEST_CASE("G6 MC2_FORCE_LOD is an integer level (the reader was atoi)") {
+    const gate::Row& row = g1b::rowNamed("MC2_FORCE_LOD");
+    CHECK(row.kind == Kind::Int);
+    CHECK(g1b::intOf(row, nullptr) == 0);
+    CHECK(g1b::intOf(row, "2") == 2);
+    CHECK(g1b::intOf(row, "2.9") == 2);   // atoi stops at the dot
+    CHECK(g1b::intOf(row, "abc") == 0);
+}
+
+TEST_CASE("G6 the mod-cache refresh flag is re-read after an in-process putenv") {
+    const gate::Row& row = g1b::rowNamed("MC2_REBUILD_MOD_CACHE");
+    CHECK(row.reread);
+    CHECK(row.rule == Rule::Presence);
+}
+
+TEST_CASE("G6 predicate enums accept their documented spellings without a badvalue") {
+    struct Spell { const char* name; const char* word; };
+    const Spell spell[] = {
+        {"MC2_OBJECT_ADMISSION_PREDICATE", "modern"}, {"MC2_EFFECT_ADMISSION_PREDICATE", "modern"},
+        {"MC2_LIGHTING_SHADOW_PREDICATE_MODE", "Modern"}, {"MC2_DEBUG_OVERLAY_PREDICATE_MODE", "Modern"},
+        {"MC2_SELECTION_PICKING_PREDICATE_MODE", "Modern"}, {"MC2_SCREENXY_PREDICATE_MODE", "Modern"},
+        {"MC2_PROJECTZ_BYPASS_MODE", "Bypass"},
+    };
+    for (const Spell& s : spell) {
+        INFO(s.name);
+        const gate::Row& r = g1b::rowNamed(s.name);
+        CHECK(r.kind == Kind::Enum);
+        CHECK((gate::detail::parseRow(r, s.word) & gate::detail::kBadBit) == 0);
+        CHECK(g1b::intOf(r, s.word) != 0);   // a named level, not the default token
+    }
+}
+
+TEST_CASE("G6 level-valued gates are Enum rows with the level tokens first") {
+    struct Want { const char* name; const char* tokens; const char* def; };
+    const Want want[] = {
+        {"MC2_STATIC_PROP_BUILDING_SHADOW", "0|1|2", "0"},
+        {"MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE", "1|0|2", "1"},
+        {"MC2_SHADOW_DYNAMIC_PROP_CASTERS", "1|0|2", "1"},
+        {"MC2_SPOTLIGHT_DIRECTION_FIX", "0|1|2", "0"},
+    };
+    for (const Want& w : want) {
+        INFO(w.name);
+        const gate::Row& r = g1b::rowNamed(w.name);
+        CHECK(r.kind == Kind::Enum);
+        CHECK(std::string(r.tokens) == w.tokens);
+        CHECK(std::string(r.defStr) == w.def);
+        // unset reads the default token (index 0); an unknown token reads the default and is flagged bad.
+        CHECK(g1b::intOf(r, nullptr) == 0);
+        CHECK(g1b::intOf(r, "9") == 0);
+    }
+    CHECK(g1b::intOf(g1b::rowNamed("MC2_STATIC_PROP_BUILDING_SHADOW"), "2") == 2);
+    CHECK(g1b::intOf(g1b::rowNamed("MC2_SHADOW_DYNAMIC_PROP_CASTERS"), "0") == 1);
+}
+
+TEST_CASE("G6 string and presence rows") {
+    const gate::Row& color = g1b::rowNamed("MC2_LIGHT_POOL_MOVER_COLOR");
+    CHECK(color.kind == Kind::String);
+    CHECK(std::string(color.defStr).empty());
+    const gate::Row& burnin = g1b::rowNamed("MC2_BURNIN_NO_JPG");
+    CHECK(burnin.rule == Rule::Presence);
+    CHECK_FALSE(rowValue(burnin, nullptr));
+    CHECK(rowValue(burnin, "0"));
+    CHECK(rowValue(burnin, ""));
 }
 
 }  // TEST_SUITE

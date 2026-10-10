@@ -12,17 +12,14 @@
 
 #include <cstring>
 #include <cmath>
+#include "Gates/gate.h"
 
 //---------------------------------------------------------------------------
 bool tglAssetFailLoudEnabled()
 {
 	// Default-ON killswitch (terrain-tess-style shape / envFlagDefaultOn
 	// convention): unset => ON; "0" => OFF; anything else => ON.
-	static const bool s_on = []() {
-		const char* v = getenv("MC2_ASSET_FAILLOUD");
-		if (!v) return true;
-		return v[0] != '0';
-	}();
+	static const bool s_on = mc2::gate::get<"MC2_ASSET_FAILLOUD">();
 	return s_on;
 }
 

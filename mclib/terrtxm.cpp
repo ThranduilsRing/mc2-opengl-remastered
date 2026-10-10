@@ -39,6 +39,8 @@
 #endif
 
 #include"platform_windows.h"
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"
 
 //---------------------------------------------------------------------------
 // Static Globals
@@ -65,8 +67,9 @@ int MC2_OverlayTileHiresSize (void)
 	if (s_size < 0)
 	{
 		s_size = 0;
-		const char* v = getenv("MC2_OVERLAY_TILE_HIRES");
-		if (v && v[0] && !(v[0] == '0' && v[1] == 0))
+		const std::string hiresStr = mc2::gate::str<"MC2_OVERLAY_TILE_HIRES">();
+		const char* v = hiresStr.c_str();
+		if (v[0] && !(v[0] == '0' && v[1] == 0))
 		{
 			long req = (v[0] == '1' && v[1] == 0) ? 256 : atol(v);
 			const bool pow2 = (req > 0) && ((req & (req - 1)) == 0);
@@ -149,7 +152,7 @@ long TerrainTextures::init (const char *fileName, const char *baseName)
 	// texture-combo ID (content-blind), so a .tga edit never invalidates it on
 	// its own; this is the override. Regen re-caches new loose .txm (loose wins
 	// over FST), so the new art persists even after the env is unset.
-	if (getenv("MC2_FORCE_TXM_REGEN"))
+	if (mc2::gate::get<"MC2_FORCE_TXM_REGEN">())
 		quickLoad = false;
 
 	tileCacheReqs = 0;

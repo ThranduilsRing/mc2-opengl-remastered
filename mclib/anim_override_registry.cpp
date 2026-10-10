@@ -9,6 +9,8 @@
 #include <fstream>
 #include <mutex>
 #include <utility>
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"
 
 using nlohmann::json;
 
@@ -158,8 +160,9 @@ AnimOverrideRegistry& AnimOverrideRegistry::instance() {
             fprintf(stderr, "[ANIMOVERRIDE] base registry: %d override(s)\n", base);
             fflush(stderr);
         }
-        const char* activeMod = getenv("MC2_ACTIVE_MOD");
-        if (activeMod && activeMod[0]) {
+        const std::string activeModStr = mc2::gate::str<"MC2_ACTIVE_MOD">();
+        const char* activeMod = activeModStr.c_str();
+        if (activeMod[0]) {
             std::string modManifest = std::string("mods/") + activeMod
                                       + "/data/anim_overrides/anims.json";
             std::string modDir      = std::string("mods/") + activeMod

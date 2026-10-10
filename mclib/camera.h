@@ -27,6 +27,7 @@
 // header weight low. projectZ() bumps n_calls_eventdriven when called
 // outside the render loop (TLS flag tracked by RenderLoopGuard).
 #include <cstdint>  // int64_t for cull_admission_*_ns
+#include "Gates/gate.h"
 namespace mc2_cpu_proj_cost {
     extern bool g_cpuProjEnabled;
     extern thread_local bool tls_inRenderLoop;
@@ -62,7 +63,7 @@ namespace mc2_cpu_proj_cost {
 #include<stuff/stuff.hpp>
 #include<float.h>   // FLT_MAX for trueSignedRhw sentinel
 #include<cmath>     // isfinite for MC2_PROJECTZ_FINITE_CHECK invariant
-#include<cstdlib>   // std::getenv for [LOW-CAMERA-OBJECT-CULL-1 / FIX-3] gate
+#include<cstdlib>
 
 inline signed short int float2short(float _in)
 {
@@ -774,15 +775,13 @@ class Camera
 		                                             Stuff::Vector4D& screen,
 		                                             float worldRadius) {
 			// Default ON for this low-camera build; set MC2_LOWCAM_OBJ_NEARPAD=0 to disable.
-			static const bool s_lowcamObjNearPad =
-			    []{ const char* v = std::getenv("MC2_LOWCAM_OBJ_NEARPAD"); return !(v && v[0]=='0'); }();
+			static const bool s_lowcamObjNearPad = mc2::gate::get<"MC2_LOWCAM_OBJ_NEARPAD">();
 			if (!s_lowcamObjNearPad || worldRadius <= 0.0f)
 				return projectForObjectAdmission(point, screen);
 			// [LOW-CAMERA-OBJECT-CULL-1 v2] getExtentRadius() is a tight extent; near
 			// objects still pop at low pitch. Scale the near-plane pad radius. Default
 			// 2.5x; MC2_LOWCAM_OBJ_NEARPAD_SCALE=k overrides (=1 = tight stock pad).
-			static const float s_objNearPadScale =
-			    []{ const char* v = std::getenv("MC2_LOWCAM_OBJ_NEARPAD_SCALE"); return v ? (float)atof(v) : 4.0f; }();
+			static const float s_objNearPadScale = mc2::gate::get<"MC2_LOWCAM_OBJ_NEARPAD_SCALE">();
 			worldRadius *= s_objNearPadScale;
 
 			const int64_t _f3_cull_t0 = ::mc2_cpu_proj_cost::cull_admission_begin_ns();

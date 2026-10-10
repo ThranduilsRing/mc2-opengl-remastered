@@ -8,6 +8,7 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include "Gates/gate.h"
 
 #if defined(_MSC_VER)
 #  include <intrin.h>            // __rdtsc
@@ -28,8 +29,7 @@ namespace {
 
 bool is_enabled() {
     if (!g_init) {
-        const char* v = std::getenv("MC2_FX_COST_SPLIT");
-        g_on   = (v && v[0] == '1' && v[1] == '\0');
+        g_on = mc2::gate::get<"MC2_FX_COST_SPLIT">();
         g_init = true;
     }
     return g_on;

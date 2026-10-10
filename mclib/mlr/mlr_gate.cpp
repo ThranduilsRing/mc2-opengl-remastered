@@ -9,6 +9,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <mutex>
+#include "Gates/gate.h"
 
 namespace mc2 {
 namespace mlr_gate {
@@ -34,10 +35,9 @@ std::mutex g_mutex;
 
 void initialize_locked() {
     if (g_initialized) return;
-    const char* v = std::getenv("MC2_DISABLE_GOSFX");
-    if (v && v[0] != '\0') {
+    if (mc2::gate::isNonEmpty<"MC2_DISABLE_GOSFX">()) {
         // Explicit env override always wins.
-        g_disabled = (v[0] == '1');
+        g_disabled = mc2::gate::get<"MC2_DISABLE_GOSFX">();
     } else {
         g_disabled = kDefaultDisabled;
     }

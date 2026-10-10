@@ -22,15 +22,13 @@
 #include <cstdio>    // CONE-AIM-DIAG-1 / GHOST-LIGHT-DUMP-1 throttled dumps
 #include <cstdlib>
 #include <vector>
+#include "Gates/gate.h"
 
 namespace mc2_cone_glow {
 
 namespace {
 
-// ---- env knobs (parse-once) -------------------------------------------------
-// NOTE: each std::getenv("MC2_...") literal is kept on its own line at the
-// call site (no name-forwarding helper) so check-env-registry.sh and the repo_intel reader scan both
-// see the readers.
+// ---- tuning knobs (parse-once, read through the typed gate registry) --------
 
 float clampf(float f, float lo, float hi)
 {
@@ -114,10 +112,7 @@ bool localConeAxis(const TG_TypeShape* ts, Stuff::Point3D& axisOut, float& lenOu
 
 bool nodes_enabled()
 {
-    static const bool s = []() {
-        const char* v = std::getenv("MC2_LIGHT_CONE_NODES");
-        return !(v && v[0] == '0');   // default ON
-    }();
+    static const bool s = mc2::gate::get<"MC2_LIGHT_CONE_NODES">();
     return s;
 }
 
@@ -150,10 +145,7 @@ bool nodes_enabled()
 // miss policy is revisited -- see .claude/CONE-SPILL-GRADE-1-STATUS.md).
 bool spill_coupling_enabled()
 {
-    static const bool s = []() {
-        const char* v = std::getenv("MC2_CONE_SPILL_COUPLING");
-        return (v && v[0] == '1');   // default OFF (evidence above)
-    }();
+    static const bool s = mc2::gate::get<"MC2_CONE_SPILL_COUPLING">();
     return s;
 }
 
@@ -175,21 +167,13 @@ bool spill_coupling_enabled()
 // killswitch back to the legacy unconditional placement.
 int pool_policy()
 {
-    static const int s = []() {
-        const char* v = std::getenv("MC2_CONE_POOL_POLICY");
-        return !(v && v[0] == '0');   // default ON (policy 1); '0' = legacy
-    }();
+    static const int s = mc2::gate::get<"MC2_CONE_POOL_POLICY">();
     return s;
 }
 
 float pool_reach_scale()
 {
-    static const float s = []() {
-        const char* v = std::getenv("MC2_CONE_POOL_REACH");
-        float f = 4.0f;
-        if (v && v[0]) f = (float)std::atof(v);
-        return clampf(f, 1.0f, 16.0f);
-    }();
+    static const float s = mc2::gate::get<"MC2_CONE_POOL_REACH">();
     return s;
 }
 
@@ -219,10 +203,8 @@ float pool_reach_scale()
 // Gated because the correction changes default night appearance on mc2_10.
 bool spot_direction_fix_enabled()
 {
-    static const bool s = []() {
-        const char* v = std::getenv("MC2_SPOTLIGHT_DIRECTION_FIX");
-        return (v && (v[0] == '1' || v[0] == '2'));   // default OFF
-    }();
+    static const bool s = mc2::gate::is<"MC2_SPOTLIGHT_DIRECTION_FIX", "1">()
+                       || mc2::gate::is<"MC2_SPOTLIGHT_DIRECTION_FIX", "2">();   // default OFF
     return s;
 }
 
@@ -239,41 +221,25 @@ bool spot_direction_fix_enabled()
 // Diagnostic only -- never a shipping value.
 bool spot_direction_exaggerate()
 {
-    static const bool s = []() {
-        const char* v = std::getenv("MC2_SPOTLIGHT_DIRECTION_FIX");
-        return (v && v[0] == '2');
-    }();
+    static const bool s = mc2::gate::is<"MC2_SPOTLIGHT_DIRECTION_FIX", "2">();
     return s;
 }
 
 bool glow_enabled()
 {
-    static const bool s = []() {
-        const char* v = std::getenv("MC2_LIGHT_CONE_GLOW");
-        return !(v && v[0] == '0');   // default ON
-    }();
+    static const bool s = mc2::gate::get<"MC2_LIGHT_CONE_GLOW">();
     return s;
 }
 
 float glow_alpha()
 {
-    static const float s = []() {
-        const char* v = std::getenv("MC2_LIGHT_CONE_GLOW_ALPHA");
-        float f = 40.0f;
-        if (v && v[0]) f = (float)std::atof(v);
-        return clampf(f, 0.0f, 255.0f);
-    }();
+    static const float s = mc2::gate::get<"MC2_LIGHT_CONE_GLOW_ALPHA">();
     return s;
 }
 
 float spill_scale()
 {
-    static const float s = []() {
-        const char* v = std::getenv("MC2_LIGHT_CONE_SPILL");
-        float f = 1.0f;
-        if (v && v[0]) f = (float)std::atof(v);
-        return clampf(f, 0.0f, 3.0f);
-    }();
+    static const float s = mc2::gate::get<"MC2_LIGHT_CONE_SPILL">();
     return s;
 }
 
@@ -292,10 +258,7 @@ float spill_scale()
 // =1 re-arms.
 static bool vis_gate_enabled()
 {
-    static const bool s = []() {
-        const char* v = std::getenv("MC2_LIGHT_CONE_VIS_GATE");
-        return (v && v[0] == '1');   // PARKED default OFF
-    }();
+    static const bool s = mc2::gate::get<"MC2_LIGHT_CONE_VIS_GATE">();
     return s;
 }
 
@@ -306,10 +269,7 @@ static bool vis_gate_enabled()
 // MC2_LIGHT_CONE_VIS_GATE — see the note there. =1 re-arms.
 bool mover_vis_gate_enabled()
 {
-    static const bool s = []() {
-        const char* v = std::getenv("MC2_LIGHT_MOVER_VIS_GATE");
-        return (v && v[0] == '1');   // PARKED default OFF
-    }();
+    static const bool s = mc2::gate::get<"MC2_LIGHT_MOVER_VIS_GATE">();
     return s;
 }
 
@@ -388,10 +348,7 @@ bool cone_geom_hidden_by_alpha(unsigned alphaValue)
 
 bool realism_enabled()
 {
-    static const bool s = []() {
-        const char* v = std::getenv("MC2_LIGHT_REALISM");
-        return !(v && v[0] == '0');   // default ON (user-approved variant B)
-    }();
+    static const bool s = mc2::gate::get<"MC2_LIGHT_REALISM">();
     return s;
 }
 
@@ -403,12 +360,7 @@ bool realism_enabled()
 // MC2_LIGHT_REALISM_CONE_OPACITY=0.15.
 static float realism_cone_opacity()
 {
-    static const float s = []() {
-        const char* v = std::getenv("MC2_LIGHT_REALISM_CONE_OPACITY");
-        float f = 0.40f;   // variant B (user-approved)
-        if (v && v[0]) f = (float)std::atof(v);
-        return clampf(f, 0.0f, 4.0f);
-    }();
+    static const float s = mc2::gate::get<"MC2_LIGHT_REALISM_CONE_OPACITY">();
     return s;
 }
 
@@ -416,22 +368,14 @@ static float realism_cone_opacity()
 // fades sooner (softer edge). 0 disables the radial feather.
 static float realism_cone_feather()
 {
-    static const float s = []() {
-        const char* v = std::getenv("MC2_LIGHT_REALISM_CONE_FEATHER");
-        float f = 2.5f;   // AUDIT-TRUTH-1: variant B (user-approved; A was 1.5)
-        if (v && v[0]) f = (float)std::atof(v);
-        return clampf(f, 0.0f, 8.0f);
-    }();
+    static const float s = mc2::gate::get<"MC2_LIGHT_REALISM_CONE_FEATHER">();
     return s;
 }
 
 // CONE-AIM-DIAG-1 (batch-7 item 4): per-node aim/apex dump. Default-off.
 static bool aim_diag_enabled()
 {
-    static const bool s = []() {
-        const char* v = std::getenv("MC2_LIGHT_CONE_DIAG");
-        return (v && v[0] == '1');
-    }();
+    static const bool s = mc2::gate::get<"MC2_LIGHT_CONE_DIAG">();
     return s;
 }
 
@@ -440,10 +384,7 @@ static bool aim_diag_enabled()
 // "the building light appears to be on the other side". Default OFF.
 static bool aim_flip_enabled()
 {
-    static const bool s = []() {
-        const char* v = std::getenv("MC2_LIGHT_CONE_AIM_FLIP");
-        return (v && v[0] == '1');
-    }();
+    static const bool s = mc2::gate::get<"MC2_LIGHT_CONE_AIM_FLIP">();
     return s;
 }
 
@@ -801,24 +742,14 @@ void QueueConeGlow(TG_MultiShape* shape, long nodeId,
 // design — a beacon spills a gentle colored pool, never a headlight.
 static float realism_beacon_alpha()
 {
-    static const float s = []() {
-        const char* v = std::getenv("MC2_LIGHT_REALISM_BEACON");
-        float f = 70.0f;   // AUDIT-TRUTH-1: variant B (user-approved; A was 45)
-        if (v && v[0]) f = (float)std::atof(v);
-        return clampf(f, 0.0f, 255.0f);
-    }();
+    static const float s = mc2::gate::get<"MC2_LIGHT_REALISM_BEACON">();
     return s;
 }
 
 // Ground-disc radius in world units.
 static float realism_beacon_radius()
 {
-    static const float s = []() {
-        const char* v = std::getenv("MC2_LIGHT_REALISM_BEACON_RADIUS");
-        float f = 40.0f;   // AUDIT-TRUTH-1: variant B (user-approved; A was 28)
-        if (v && v[0]) f = (float)std::atof(v);
-        return clampf(f, 1.0f, 200.0f);
-    }();
+    static const float s = mc2::gate::get<"MC2_LIGHT_REALISM_BEACON_RADIUS">();
     return s;
 }
 

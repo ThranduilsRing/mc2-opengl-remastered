@@ -6,6 +6,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include "Gates/gate.h"
 
 // -----------------------------------------------------------------------
 // Globals
@@ -410,13 +411,10 @@ void moveReconFrameTick()
     // Lazy init on first call (safe: GOM::update is the guaranteed-run path).
     if (!s_initialized) {
         s_initialized = true;
-        const char* env = std::getenv("MC2_MOVE_RECON");
-        const char* env2 = std::getenv("MC2_MOVE_CHUNK_SHADOW");       // alt enable
-        const char* env3 = std::getenv("MC2_MOVE_PATH_CACHE_SHADOW");  // alt enable
         g_moveReconEnabled =
-            (env  != nullptr && env[0]  != '\0' && env[0]  != '0') ||
-            (env2 != nullptr && env2[0] != '\0' && env2[0] != '0') ||
-            (env3 != nullptr && env3[0] != '\0' && env3[0] != '0');
+            mc2::gate::get<"MC2_MOVE_RECON">() ||
+            mc2::gate::get<"MC2_MOVE_CHUNK_SHADOW">() ||       // alt enable
+            mc2::gate::get<"MC2_MOVE_PATH_CACHE_SHADOW">();    // alt enable
         if (g_moveReconEnabled && !s_atexitRegistered) {
             std::atexit(moveReconEmit);
             s_atexitRegistered = true;

@@ -50,6 +50,7 @@
 #include"tex_resolve_table.h"
 
 #include <chrono>
+#include "Gates/gate.h"
 
 // Per-quad scratch for the four BoolAdmission per-vertex projectZ calls in
 // TerrainQuad::setupTextures. After each `eye->projectZ()` call we copy
@@ -252,7 +253,7 @@ unsigned long long g_cpuWaterProbeStamp = 0;
 // single legacy-loop entry where CPU water is the live producer. It clears
 // g_cpuWaterProbeAny / g_cpuWaterProbeBestD2 and bumps g_cpuWaterProbeStamp.
 
-static const bool s_shapeCParityCheck = (getenv("MC2_SHAPE_C_PARITY_CHECK") != nullptr);
+static const bool s_shapeCParityCheck = mc2::gate::get<"MC2_SHAPE_C_PARITY_CHECK">();
 
 // Step 1b-1 (cpu-pack-retirement plan §2 A1): the M2 thin-record emit scope is
 // orphaned by Fix B (commit 005ebc7) — the GPU compute shader
@@ -265,12 +266,11 @@ static const bool s_shapeCParityCheck = (getenv("MC2_SHAPE_C_PARITY_CHECK") != n
 // cement-transition/runway/road decal path — §2 WARNING, 9964d5a regression
 // class). MC2_TERRAIN_INDIRECT_THINEMIT_TRACE=1 emits a one-shot lifecycle
 // line so smoke artifacts capture the gate state.
-static const bool s_thinEmitTrace =
-    (getenv("MC2_TERRAIN_INDIRECT_THINEMIT_TRACE") != nullptr);
+static const bool s_thinEmitTrace = mc2::gate::get<"MC2_TERRAIN_INDIRECT_THINEMIT_TRACE">();
 
 // MC2_M2D_PZ_PARITY probe (VPL Step 8b precursor validator). Re-authored per
 // docs/superpowers/reviews/2026-05-15-overlay-pz-scoped-redesign-rereview.md
-// Finding 5. Arming is a static file-scope getenv read (NOT a Renderer!=3
+// Finding 5. Arming is a static file-scope gate read (NOT a Renderer!=3
 // arm-guard — that guard sat in the dead legacy arm; the modern fast path is
 // the perspective GL renderer, Environment.Renderer != 3). When armed, the
 // M2d pzc/pzTri block bit-compares pzc_new (the corrected reprojection +
@@ -280,19 +280,16 @@ static const bool s_thinEmitTrace =
 // unconditionally (NOT frame-modulo); a per-mission summary line asserts
 // checked > 0 (the v1 failure mode was checked == 0 = probe never fired).
 // Demote-don't-delete after green per the Debug-instrumentation rule.
-static const bool s_m2dPzParity = (getenv("MC2_M2D_PZ_PARITY") != nullptr);
+static const bool s_m2dPzParity = mc2::gate::get<"MC2_M2D_PZ_PARITY">();
 static int  s_m2dPzParityChecked = 0;       // quads the probe actually compared
 static int  s_m2dPzParityMismatch = 0;      // quads with any pzc/pzTri divergence
 static int  s_m2dPzParityEmitted = 0;       // first-N detail lines emitted so far
 static bool s_m2dPzParityArmLogged = false; // one-shot arm/scope-assertion line
 static const int s_m2dPzParityEmitCap = 32; // first-N detail-line cap
-static const bool s_shapeCEnabled = ([] {
-	// Default ON post Slice-1 flip (2026-04-29). Tier1 parity validated:
-	// 19.7M field-equality checks across 5 missions, zero mismatches.
-	// Explicit "0" still opts out for bisection; any other value (including unset) opts in.
-	const char* env = getenv("MC2_MODERN_TERRAIN_PATCHES");
-	return (env == nullptr) || (env[0] != '0');
-})();
+// Default ON post Slice-1 flip (2026-04-29). Tier1 parity validated:
+// 19.7M field-equality checks across 5 missions, zero mismatches.
+// A value starting with "0" still opts out for bisection; any other value (including unset) opts in.
+static const bool s_shapeCEnabled = mc2::gate::get<"MC2_MODERN_TERRAIN_PATCHES">();
 
 #define SELECTION_COLOR 0xffff7fff
 #define HIGHLIGHT_COLOR	0xff00ff00
@@ -750,8 +747,7 @@ void TerrainQuad::setupTextures (void)
 	// broke when IsFrameSolidArmed=true but IsFrameOverlayArmed=false (draw() still
 	// ran and needed overlayHandle). Correct guard requires BOTH armed.
 	// Kill-switch: MC2_SETUPTEXTURES_LEGACY_FORCE=1 restores full legacy execution.
-	static const bool s_legacyForce =
-	    (getenv("MC2_SETUPTEXTURES_LEGACY_FORCE") != nullptr);
+	static const bool s_legacyForce = mc2::gate::get<"MC2_SETUPTEXTURES_LEGACY_FORCE">();
 	const bool legacyTerrainNeeded =
 	    s_legacyForce ||
 	    !(gos_terrain_indirect::IsFrameSolidArmed() &&
@@ -1448,7 +1444,7 @@ void TerrainQuad::draw (void)
 		// and capture steady-state. Prints 5 frames then stops; per-quad cost is one
 		// branch on s_framesPrinted after that (effectively zero).
 		{
-		    static const bool s_pathMixOn = (getenv("MC2_THIN_DEBUG") != nullptr);
+		    static const bool s_pathMixOn = mc2::gate::get<"MC2_THIN_DEBUG">();
 		    static uint32_t s_fast = 0, s_legacy = 0;
 		    static uint32_t s_failActive = 0, s_failThin = 0, s_failReady = 0, s_failOver = 0;
 		    static uint32_t s_failHandle = 0, s_failOverlay = 0, s_failWater = 0;
@@ -1544,7 +1540,7 @@ void TerrainQuad::draw (void)
 		    // above against the literal vertices[c]->pz formula in a PROBE-ONLY
 		    // local (legal because terrain.cpp still writes cv->pz pre-Step-8b).
 		    // Per 2026-05-15-overlay-pz-scoped-redesign-rereview.md Finding 5:
-		    // static getenv arm (NO Renderer!=3 arm-guard), one-shot Renderer!=3
+		    // static gate arm (NO Renderer!=3 arm-guard), one-shot Renderer!=3
 		    // scope-assertion log, first-N unconditional mismatch emit, running
 		    // summary with checked>0 (vacuous-probe guard). pzc_old does NOT feed
 		    // the production path; it exists solely for this comparison.
@@ -1839,7 +1835,7 @@ void TerrainQuad::draw (void)
 			// W0 (default-zoom clip.w) + the real min/max clip.w to ground
 			// the 6 CRITICAL assumptions in the distance-proportional spec.
 			{
-				static const bool s_dbc = (getenv("MC2_DEPTHBIAS_CALIB") != nullptr);
+				static const bool s_dbc = mc2::gate::get<"MC2_DEPTHBIAS_CALIB">();
 				if (s_dbc) {
 					// Filter to VALID on-screen post-admission terrain verts
 					// ONLY: pz in [0,1) (the [0,1] glClipControl NDC-z the
@@ -2657,8 +2653,7 @@ void TerrainQuad::drawWater (void)
 		extern float    g_cpuWaterProbeZ;
 		extern double   g_cpuWaterProbeBestD2;
 		extern bool     g_cpuWaterProbeAny;
-		static const bool s_depthTransProbe =
-		    (getenv("MC2_DEPTH_TRANSITION_PROBE") != nullptr);
+		static const bool s_depthTransProbe = mc2::gate::get<"MC2_DEPTH_TRANSITION_PROBE">();
 		if (s_depthTransProbe)
 		{
 			const float px = Terrain::mapTopLeft3d.x

@@ -7,20 +7,9 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include "Gates/gate.h"
 
 namespace mc2_vis {
-
-static bool env_default_on(const char* name)
-{
-    const char* v = std::getenv(name);
-    return !(v && v[0] == '0');
-}
-
-static bool env_default_off(const char* name)
-{
-    const char* v = std::getenv(name);
-    return (v && v[0] && v[0] != '0');
-}
 
 bool enabled()
 {
@@ -34,13 +23,13 @@ bool enabled()
     // unconditionally, so =0 is stricter than stock, not looser.
     // VIS-SEMANTICS-FINISH-2: mover_model_shown() now has no live callers —
     // both job-(a) guards in cone_glow.cpp arm off vis_job_a_armed().
-    static const bool s = env_default_on("MC2_VIS_SEMANTICS");
+    static const bool s = mc2::gate::get<"MC2_VIS_SEMANTICS">();
     return s;
 }
 
 bool force_all_visible()
 {
-    static const bool s = env_default_off("MC2_FORCE_ALL_VISIBLE");
+    static const bool s = mc2::gate::get<"MC2_FORCE_ALL_VISIBLE">();
     return s;
 }
 
@@ -113,15 +102,14 @@ bool selfLit(const MoverVis& v)
 
 bool trace_enabled()
 {
-    static const bool s = env_default_off("MC2_VIS_SEMANTICS_TRACE");
+    static const bool s = mc2::gate::get<"MC2_VIS_SEMANTICS_TRACE">();
     return s;
 }
 
 static unsigned long trace_every()
 {
     static const unsigned long s = []() -> unsigned long {
-        const char* e = std::getenv("MC2_VIS_SEMANTICS_TRACE_EVERY");
-        unsigned long n = (e && e[0]) ? (unsigned long)std::strtoul(e, nullptr, 10) : 120ul;
+        const unsigned long n = static_cast<unsigned long>(mc2::gate::get<"MC2_VIS_SEMANTICS_TRACE_EVERY">());
         return n ? n : 120ul;
     }();
     return s;

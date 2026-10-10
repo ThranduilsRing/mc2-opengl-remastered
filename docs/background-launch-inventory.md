@@ -25,7 +25,7 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `scripts/renderdoc_capture.py` | 266 | `subprocess.run` **raw, allowed:** renderdoccmd convert is a console file converter, not the game; windowless via hidden_kwargs | offscreen |
 | `scripts/run_editor_playtest_smoke.py` | 235 | `nofocus.spawn` | offscreen |
 | `scripts/run_editor_smoke.py` | 143 | `nofocus.spawn` | offscreen |
-| `scripts/run_smoke.py` | 365 | `nofocus.spawn` | offscreen |
+| `scripts/run_smoke.py` | 374 | `nofocus.spawn` | offscreen |
 | `scripts/run_smoke_asan.py` | 195 | `nofocus.spawn` | offscreen |
 | `scripts/run_visual_capture.py` | 357 | `nofocus.spawn` | offscreen |
 | `scripts/run_vk_field_check.py` | 230 | `nofocus.spawn` | offscreen |

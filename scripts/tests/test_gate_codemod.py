@@ -625,3 +625,25 @@ def test_the_include_is_added_outside_preprocessor_guards():
     assert applied
     lines = new.split("\n")
     assert lines.index('#include "Gates/gate.h"') == 1            # right after <cstdlib>, not inside the #ifndef
+
+
+# ---------------------------------------------------------------------------
+# exact-"0" readers against leading-"0" rows: same on the eight probes, different on "01"
+# ---------------------------------------------------------------------------
+
+EXACT0 = {
+    "lambda": "[] { const char* v = getenv(\"%s\"); return !(v && v[0] == '0' && v[1] == '\0'); }()" % G,
+    "strcmp": "[] { const char* v = getenv(\"%s\"); return !v || strcmp(v, \"0\") != 0; }()" % G,
+}
+
+
+@pytest.mark.parametrize("form", sorted(EXACT0))
+def test_exact_zero_reader_on_a_lead0kill_row_is_edge_not_no_change(form):
+    r = one("static const bool s_on = %s;\n" % EXACT0[form], mk("Lead0Kill", default=True))
+    assert r.verdict == "EDGE", (r.verdict, r.why)
+    assert "X01" in r.diff
+
+
+def test_leading_zero_reader_on_a_lead0kill_row_stays_no_change():
+    r = one("static const bool s_on = %s;\n" % lam("Lead0Kill"), mk("Lead0Kill"))
+    assert r.verdict == "NO-CHANGE"

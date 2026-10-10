@@ -43,6 +43,7 @@
 
 #include<stuff/stuff.hpp>
 #include<math.h>
+#include "Gates/gate.h"
 
 //---------------------------------------------------------------------------
 UserInput *userInput = NULL;
@@ -122,7 +123,7 @@ void MouseCursorData::initCursors (const char *cursorFileName)
 	// texture handle for the states the GUI actually uses (NORMAL=21, LOGISTICS=43).
 	// A texHandle of 0 here means StaticInfo::init's loadTexture failed silently
 	// (the smoking gun for an invisible-but-positioned cursor quad).
-	if (getenv("MC2_LOG_CURSOR"))
+	if (mc2::gate::get<"MC2_LOG_CURSOR">())
 	{
 		FILE* f = fopen("cursor_debug.log", "a");
 		if (f)
@@ -233,7 +234,7 @@ void UserInput::update (void)
 	// mission code consumes (norm * viewMul) plus the viewMul itself. If a dead
 	// zone persists, this tells us whether the final pixel actually reaches the
 	// bottom/right edge or saturates early -- isolating cursor-draw vs pick.
-	if (getenv("MC2_MOUSE_RECON"))
+	if (mc2::gate::get<"MC2_MOUSE_RECON">())
 	{
 		static float s_lx = -1.0f, s_ly = -1.0f;
 		const float ddx = mouseXPosition - s_lx, ddy = mouseYPosition - s_ly;
@@ -941,7 +942,7 @@ void UserInput::render (void)						//Last thing rendered.  Draws Mouse.
 	// so we get a steady heartbeat without spamming. Shows the exact render-gate
 	// state every frame the cursor would-or-wouldn't draw: drawMouse, mouseState,
 	// numCursors, and the resolved texture handle for the current state.
-	if (getenv("MC2_LOG_CURSOR"))
+	if (mc2::gate::get<"MC2_LOG_CURSOR">())
 	{
 		static FILE* s_curLog = nullptr;
 		if (!s_curLog) s_curLog = fopen("cursor_debug.log", "a");
@@ -963,9 +964,9 @@ void UserInput::render (void)						//Last thing rendered.  Draws Mouse.
 	// MC2_OS_CURSOR: the native OS cursor is shown (see gos_render.cpp) -> skip the
 	// software cursor draw entirely so there is exactly one cursor on screen. Use for
 	// campaigns where the software cursor sprite doesn't render (old-era MC2X/MCO at
-	// the 800-logical GUI tier). Cached: getenv once.
+	// the 800-logical GUI tier). Cached: read once.
 	static int s_osCursor = -1;
-	if (s_osCursor < 0) s_osCursor = getenv("MC2_OS_CURSOR") ? 1 : 0;
+	if (s_osCursor < 0) s_osCursor = mc2::gate::get<"MC2_OS_CURSOR">() ? 1 : 0;
 	if (s_osCursor) return;
 
     //sebi, always NOT async mouse

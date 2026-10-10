@@ -107,14 +107,6 @@ extern Stuff::Vector3D debugGVActorPosition;
 extern float vehicleDebugAngle;
 extern float turretDebugAngle;
 extern float debugVelMag;
-extern const bool s_gpuCullLifecycle;   // defined (eager getenv read) in gvactor.cpp
-
-// Shared by the vehicle-lit-path cache (render) and the shadow-skip cache (update).
-inline bool gvEnvFlagDefaultOn(const char* name) {
-    const char* v = getenv(name);
-    if (v == nullptr) return true;                  // unset → on (new default)
-    if (v[0] == '0' && v[1] == '\0') return false;  // exactly "0" → off
-    return true;                                     // any other value → on
-}
+extern const bool s_gpuCullLifecycle;   // defined (eager typed-gate read) in gvactor.cpp
 
 #endif // GVACTOR_INTERNAL_H

@@ -11,6 +11,7 @@
 #include <atomic>
 #include <cstdio>
 #include <cstdlib>
+#include "Gates/gate.h"
 #if defined(_WIN32)
 #  define WIN32_LEAN_AND_MEAN
 #  include <windows.h>
@@ -42,8 +43,7 @@ namespace {
     void diag_init_if_needed() {
         if (g_diagEnabledChecked) return;
         g_diagEnabledChecked = true;
-        const char* v = std::getenv("MC2_GPU_PARTICLES");
-        g_diagEnabled = (v && v[0] == '1');
+        g_diagEnabled = mc2::gate::get<"MC2_GPU_PARTICLES">();
         if (g_diagEnabled && !g_diagAtexitRegistered) {
             g_diagAtexitRegistered = true;
             std::atexit([](){ emit_diag_summary("atexit"); });

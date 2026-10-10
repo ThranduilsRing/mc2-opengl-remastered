@@ -10,6 +10,7 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
+#include "Gates/gate.h"
 
 #ifndef ABLGEN_H
 #include"ablgen.h"
@@ -539,7 +540,7 @@ void enterStandardRoutine (const char* name, long routineKey, bool isOrder, cons
 	// Kept in tree per the Debug Instrumentation Rule — silent unless
 	// MC2_ABL_REG_TRACE is set. Reactivate when adding new ABL extensions
 	// or investigating dispatch issues.
-	static const bool s_ablRegTrace = (getenv("MC2_ABL_REG_TRACE") != NULL);
+	static const bool s_ablRegTrace = mc2::gate::get<"MC2_ABL_REG_TRACE">();
 	if (s_ablRegTrace) {
 		CB_PRINTF("[ABL_REG] key=%3ld name=%-28s params=%-8s ret=%s cb=%p",
 			tableIndex, name ? name : "(null)",

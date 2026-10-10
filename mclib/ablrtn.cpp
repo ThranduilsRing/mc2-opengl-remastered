@@ -11,6 +11,8 @@
 #include<stdlib.h>
 #include<string.h>
 #include"platform_str.h"
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"
 
 #ifndef ABLGEN_H
 #include"ablgen.h"
@@ -551,7 +553,9 @@ profile = true;
 	// absolute path to a deliberately malformed standalone ABL module; normal
 	// runs do no extra preprocessing. The expected default-ON guard exits from
 	// ABLi_preProcess with an attributable [ABL_COMPILE_FATAL] line.
-	if (const char* reproPath = getenv("MC2_ABL_COMPILE_FATAL_REPRO")) {
+	if (mc2::gate::isSet<"MC2_ABL_COMPILE_FATAL_REPRO">()) {
+		const std::string reproStr = mc2::gate::str<"MC2_ABL_COMPILE_FATAL_REPRO">();
+		const char* reproPath = reproStr.c_str();
 		long reproErrors = 0;
 		long reproLines = 0;
 		fprintf(stderr, "[ABL_COMPILE_FATAL_REPRO] file=%s\n", reproPath);
@@ -809,10 +813,7 @@ int32_t ABLi_preProcess (const char* sourceFileName, long* numErrors, long* numL
 	// full legacy execute-anyway roulette. Stock content compiles clean -> this
 	// branch never fires on tier1 (zero behavior change).
 	{
-		static const bool s_compileFatal = []() {
-			const char* v = getenv("MC2_ABL_COMPILE_FATAL");
-			return !(v && v[0] == '0' && v[1] == '\0');   // DEFAULT ON; only "0" disables
-		}();
+		static const bool s_compileFatal = mc2::gate::get<"MC2_ABL_COMPILE_FATAL">();
 		if (errorCount > 0 && s_compileFatal && !ablSkipErroredModulesEnabled()) {
 			char fatalMsg[512];
 			snprintf(fatalMsg, sizeof(fatalMsg),

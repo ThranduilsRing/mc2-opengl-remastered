@@ -96,6 +96,7 @@
 #include "../GameOS/gameos/gpu_cull_compute.h"  // C1b: compute_dispatch() moved here from mission.cpp
 #include "../GameOS/gameos/gpu_cull_substrate.h"
 #include "dynamic_decal_ring.h"  // MC2_DYNAMIC_DECALS gather before gos_DrawDecals
+#include "Gates/gate.h"
 
 // NS3 boundary: effectStream belongs to the texture/effect subsystem, not
 // to whatever game/tool main links it. Previously redefined in every main.
@@ -133,40 +134,24 @@ void mc_ResetTerrainShadowPrimed() { s_terrainShadowPrimed = false; }
 //   event=pin / event=unpin / event=pin_summary — registry-side pin lifecycle
 // Cross-reference logs by `nodeIdx` to identify nodes that are evicted but never
 // re-cached. See docs/superpowers/specs/2026-05-06-static-prop-texture-pin-fix.md
-static const bool s_texLifecycleTrace =
-    (getenv("MC2_TEX_LIFECYCLE_TRACE") != nullptr);
+static const bool s_texLifecycleTrace = mc2::gate::get<"MC2_TEX_LIFECYCLE_TRACE">();
 
 // T1.15 [SPOT_DIAG v1] pack-probe state (GatherLightsParameters).
 // First-shape always-on (one stderr line on the first call after process start).
 // Per-summary every 600 GatherLightsParameters calls when env=1. `calls=N`
 // because GatherLightsParameters runs once per submitMultiShape (many per frame).
-static const bool s_spotDiagPackEnabled = (getenv("MC2_SPOT_DIAG") != nullptr);
+static const bool s_spotDiagPackEnabled = mc2::gate::get<"MC2_SPOT_DIAG">();
 static bool          s_spotDiagPackFirstHit  = false;
 static unsigned long s_spotDiagPackCalls     = 0;
 static unsigned long s_spotDiagPackActiveSum = 0;
 static unsigned long s_spotDiagPackInactSum  = 0;
 static unsigned long s_spotDiagPackPointSum  = 0;
 
-// LIGHT-CLAMP-RAISE-STAGE1-1 — small env helper (default OFF; "1" only).
-static inline bool lightClampEnvFlagDefaultOff(const char* name) {
-    const char* v = getenv(name);
-    return v && v[0] == '1' && v[1] == '\0';
-}
-
-// VEHICLE-LIGHTING-PATH-1 — default-ON sibling ("0" only turns it off).
-// Matches the canonical envFlagDefaultOn pattern (gos_mech_batcher.cpp:120).
-static inline bool lightClampEnvFlagDefaultOn(const char* name) {
-    const char* v = getenv(name);
-    if (v == nullptr) return true;                  // unset -> on
-    if (v[0] == '0' && v[1] == '\0') return false;  // exactly "0" -> off
-    return true;                                     // any other value -> on
-}
-
 // MC2_LIGHT_CLAMP_PROBE (default OFF) — pure observation. Tracks the per-object
 // HIGH-WATER populated light count across all GatherLightsParameters calls and
 // emits a summary line. Answers "do stock missions ever exceed 16 lights/object?"
 // Does NOT change behavior when ON.
-static const bool    s_lightClampProbe        = lightClampEnvFlagDefaultOff("MC2_LIGHT_CLAMP_PROBE");
+static const bool    s_lightClampProbe        = mc2::gate::get<"MC2_LIGHT_CLAMP_PROBE">();
 static uint32_t      s_lightClampProbeHighWater = 0;
 static unsigned long s_lightClampProbeCalls     = 0;
 
@@ -174,7 +159,7 @@ static unsigned long s_lightClampProbeCalls     = 0;
 // extra point lights into slots [populated..32) to prove slots >16 ever render.
 // NEVER writes past ABI cap 32 (clamps injection to slot 31). NEVER changes
 // stock behavior unless explicitly enabled. Yells a clear log line when active.
-static const bool    s_lightClampFixture      = lightClampEnvFlagDefaultOff("MC2_LIGHT_CLAMP_FIXTURE");
+static const bool    s_lightClampFixture      = mc2::gate::get<"MC2_LIGHT_CLAMP_FIXTURE">();
 static bool          s_lightClampFixtureYelled = false;
 
 // MC2_LIGHT_POS_COLUMN_FIX (default ON as of VEHICLE-LIGHTING-PATH-1) —
@@ -198,7 +183,7 @@ static bool          s_lightClampFixtureYelled = false;
 // of which were being evaluated at the world origin, so their falloff tracked
 // distance-from-origin instead of distance-from-lamp. Requires re-measurement
 // at vehicle-adjacent night poses, not at the old fixtures.
-static const bool    s_lightPosColumnFix      = lightClampEnvFlagDefaultOn("MC2_LIGHT_POS_COLUMN_FIX");
+static const bool    s_lightPosColumnFix      = mc2::gate::get<"MC2_LIGHT_POS_COLUMN_FIX">();
 
 // MC2_LIGHT_ROW_PURE (default OFF — see WHY OFF below) — LIGHT-ROW-PURE-1,
 // ARCH-LIGHTING slice 1.
@@ -222,7 +207,7 @@ static const bool    s_lightPosColumnFix      = lightClampEnvFlagDefaultOn("MC2_
 // MC2_LIGHT_ROW_PURE=1 MC2_LIGHT_ROW_PURE_VERIFY=1 reports
 // checked>0 mismatched=0 across tier1 — that is the missing evidence, and
 // nothing else is.
-static const bool    s_lightRowPure           = lightClampEnvFlagDefaultOff("MC2_LIGHT_ROW_PURE");
+static const bool    s_lightRowPure           = mc2::gate::get<"MC2_LIGHT_ROW_PURE">();
 
 // MC2_LIGHT_ROW_PURE_VERIFY (default OFF) — the in-engine half of the proof.
 // Runs BOTH producers on the SAME frame and memcmps the 3600-byte rows: the
@@ -232,7 +217,7 @@ static const bool    s_lightRowPure           = lightClampEnvFlagDefaultOff("MC2
 // a mismatch means a class's published policy has drifted from its mutation,
 // which is exactly the divergence this slice exists to make impossible to ship
 // silently. Observation only — never changes which row is used.
-static const bool    s_lightRowPureVerify     = lightClampEnvFlagDefaultOff("MC2_LIGHT_ROW_PURE_VERIFY");
+static const bool    s_lightRowPureVerify     = mc2::gate::get<"MC2_LIGHT_ROW_PURE_VERIFY">();
 static unsigned long s_lightRowPureChecked    = 0;
 static unsigned long s_lightRowPureMismatch   = 0;
 
@@ -253,7 +238,7 @@ static unsigned long s_lightRowPureMismatch   = 0;
 // every shader actually decodes as the light origin), so the receipt shows
 // directly whether the position survives the upload under either gate state.
 // Observation only: never changes a single uploaded float.
-static const bool    s_lightRowCensus = lightClampEnvFlagDefaultOff("MC2_LIGHT_ROW_CENSUS");
+static const bool    s_lightRowCensus = mc2::gate::get<"MC2_LIGHT_ROW_CENSUS">();
 namespace {
 struct LightRowCensusRec {
     unsigned long seen;
@@ -298,10 +283,7 @@ static void lightRowCensusEmit(const char* tag, unsigned t) {
 // frame. Gate mirrors the registry-side gate (same env var). The consume
 // function is called by the registry summary emit (extern declaration there).
 // ---------------------------------------------------------------------------
-static const bool s_spflushTxmEnabled = []() {
-    const char* v = getenv("MC2_STATIC_PROP_FLUSH_COST_SPLIT");
-    return v && v[0] == '1' && v[1] == '\0';
-}();
+static const bool s_spflushTxmEnabled = mc2::gate::get<"MC2_STATIC_PROP_FLUSH_COST_SPLIT">();
 static unsigned long long s_spflush_baseinstance_upload_cyc = 0;
 // recipe_rebuilds: monotonic + window delta. light_index_writes==recipe_rebuilds (same site).
 static unsigned long long s_spflush_recipe_rebuilds_txm      = 0;
@@ -337,10 +319,7 @@ unsigned long long spflush_GetRecipeRebuildTotal() {
 // self_us = total minus the sum of instrumented phases (unattributed gaps).
 // ---------------------------------------------------------------------------
 namespace rlcost {
-static const bool s_enabled = []() {
-    const char* v = getenv("MC2_RENDERLISTS_COST_SPLIT");
-    return v && v[0] != '0';
-}();
+static const bool s_enabled = mc2::gate::get<"MC2_RENDERLISTS_COST_SPLIT">();
 enum Phase {
     kPreamble = 0, kLightUpload, kSceneData, kObj3d, kStateRestore,
     kStaticShadowBuild, kSpRegistryFlush, kDynShadow, kTerrainSolid,
@@ -413,8 +392,7 @@ struct TotalSpan {
 // A teardown dump surfaces any nonzero counter even with the trace gate off, so
 // silent pool exhaustion can no longer pass unnoticed.
 // ---------------------------------------------------------------------------
-bool g_txmmgrBoundsTrace =
-    []() { const char* v = getenv("MC2_TXMMGR_BOUNDS_TRACE"); return v && v[0] == '1'; }();
+bool g_txmmgrBoundsTrace = mc2::gate::get<"MC2_TXMMGR_BOUNDS_TRACE">();
 std::atomic<unsigned long long> g_txmmgr_vertex_block_exhausted{0};
 std::atomic<unsigned long long> g_txmmgr_block_exhausted{0};
 std::atomic<unsigned long long> g_txmmgr_add_vertices_overflow_prevented{0};
@@ -454,8 +432,7 @@ TxmmgrBoundsDump s_txmmgrBoundsDump;
 // nodeName==NULL/empty is either a from-memory texture or the reserved empty
 // node[0]. We report both buckets off the same NULL-name test.
 // ---------------------------------------------------------------------------
-static const bool s_txmLeakTrace =
-    []() { const char* v = getenv("MC2_TXM_LEAK_TRACE"); return v && v[0] == '1'; }();
+static const bool s_txmLeakTrace = mc2::gate::get<"MC2_TXM_LEAK_TRACE">();
 static long s_txmMissionIndex      = 0;   // ++ per mission unload (flush)
 static long s_txmAllocThisMission  = 0;   // nodes created since last unload boundary
 
@@ -1584,8 +1561,7 @@ namespace {
     static inline void lbInitFromEnv() {
         if (s_lbInit) return;
         s_lbInit = true;
-        const char* e = std::getenv("MC2_OBJECT_RECON_TRACY");
-        s_lbEnabled = (e != nullptr && e[0] != '\0' && e[0] != '0');
+        s_lbEnabled = mc2::gate::get<"MC2_OBJECT_RECON_TRACY">();
         if (s_lbEnabled) {
             MC2_DIAG_PUTS("[LIGHTBRIDGE v1] event=enabled note=c5c6_populate_sizing_active");
             std::fflush(stdout);
@@ -1660,9 +1636,8 @@ namespace {
     static inline void lbRepointInitFromEnv() {
         if (s_lbRepointInit) return;
         s_lbRepointInit = true;
-        const char* e = std::getenv("MC2_LIGHTBRIDGE");
         // OFF only on explicit "0"; any other value (or unset) = ON.
-        s_lbRepointEnabled = !(e != nullptr && e[0] == '0' && e[1] == '\0');
+        s_lbRepointEnabled = mc2::gate::get<"MC2_LIGHTBRIDGE">();
         MC2_DIAGF("[LIGHTBRIDGE v1] event=enabled mode=%s\n",
                     s_lbRepointEnabled ? "repoint" : "legacy");
         std::fflush(stdout);
@@ -1713,8 +1688,7 @@ namespace {
     static inline void bakeInitFromEnv() {
         if (s_bakeInit) return;
         s_bakeInit = true;
-        const char* e = std::getenv("MC2_LIGHTBAKE");
-        s_bakeEnabled = !(e != nullptr && e[0] == '0' && e[1] == '\0');
+        s_bakeEnabled = mc2::gate::get<"MC2_LIGHTBAKE">();
         MC2_DIAGF("[LIGHTBAKE v1] event=enabled mode=%s\n",
                     s_bakeEnabled ? "bake" : "passthrough");
         std::fflush(stdout);
@@ -1773,10 +1747,7 @@ bool mc2ConsumeStaticLightPrefixDirty()
 // parseEnvBoolWithDefault is not visible in this TU; use the explicit =0 idiom.
 static bool mc2StaticLightUploadSplitEnabled()
 {
-    static const bool s_split = []{
-        const char* e = std::getenv("MC2_STATIC_LIGHT_UPLOAD_SPLIT");
-        return !(e != nullptr && e[0] == '0' && e[1] == '\0');   // default true; "0" disables
-    }();
+    static const bool s_split = mc2::gate::get<"MC2_STATIC_LIGHT_UPLOAD_SPLIT">();
     return s_split;
 }
 
@@ -1788,8 +1759,7 @@ static bool mc2StaticLightUploadSplitEnabled()
 // aggregate coverage line (recipes_tracked / max_index / out-of-prefix count)
 // is emitted every 256 new recipes — so coverage is never silently 32-capped
 // (M2 fix, adversarial review 2026-06-03).
-static const bool s_lbStabilityTrace =
-    (std::getenv("MC2_LIGHTBAKE_STABILITY") != nullptr);
+static const bool s_lbStabilityTrace = mc2::gate::get<"MC2_LIGHTBAKE_STABILITY">();
 static std::unordered_map<int32_t, uint32_t> s_lbFirstSeenIndex;   // recipeIndex -> first index
 static uint64_t s_lbStabilityViolations = 0;   // cross-frame index changes
 static uint64_t s_lbOutOfPrefix        = 0;    // first-seen index >= S (should stay 0)
@@ -2249,8 +2219,7 @@ uint64_t MC_TextureManager::getLightDataBytes() const
 // baked-vs-transient A/B is the cross-run MC2_LIGHTBAKE=0 vs =1 comparison (validated
 // when the bake shipped, 2db2a04). Env-gated (MC2_LIGHTBAKE_PARITY), capped at 32
 // lines (+ always logs any mismatch). No behavior change.
-static const bool s_lbParityTrace =
-    (std::getenv("MC2_LIGHTBAKE_PARITY") != nullptr);
+static const bool s_lbParityTrace = mc2::gate::get<"MC2_LIGHTBAKE_PARITY">();
 static uint64_t s_lbParityChecks   = 0;
 static uint64_t s_lbParityMismatch = 0;
 
@@ -2387,12 +2356,7 @@ public:
 		// numLights==0 and returns before the frame is ever read. Only shapes
 		// that actually carry lights -- i.e. the vehicles this slice fixes --
 		// can observe the flip.
-		static const bool s_legacyLitMc2Frame = [](){
-			const char* v = getenv("MC2_LEGACY_LIT_MC2_FRAME");
-			if (v == nullptr) return true;                  // unset -> on (new default)
-			if (v[0] == '0' && v[1] == '\0') return false;  // exactly "0" -> off
-			return true;
-		}();
+		static const bool s_legacyLitMc2Frame = mc2::gate::get<"MC2_LEGACY_LIT_MC2_FRAME">();
 		gos_SetRenderMaterialParameterInt(mat, "u_legacyLitMc2Frame",
 			s_legacyLitMc2Frame ? 1 : 0);
 
@@ -2421,10 +2385,7 @@ public:
 		// Canonical DEFAULT-OFF OPT-IN idiom `(v && v[0] && v[0] != '0')`, so
 		// scripts/check-gate-default-agreement.py can read the default OUT of
 		// the reader. An unparseable idiom is a FAILURE for a Feature gate.
-		static const bool s_sunAxisMc2Fix = [](){
-			const char* v = getenv("MC2_SUN_AXIS_FIX");
-			return (v && v[0] && v[0] != '0');
-		}();
+		static const bool s_sunAxisMc2Fix = mc2::gate::get<"MC2_SUN_AXIS_FIX">();
 		gos_SetRenderMaterialParameterInt(mat, "u_sunAxisMc2Fix",
 			s_sunAxisMc2Fix ? 1 : 0);
 
@@ -2456,12 +2417,7 @@ public:
 		//
 		// MC2_VEHICLE_AMBIENT_FLOOR=0 -> u_vehicleAmbientFloor=0 -> no floor,
 		// no clamp -> byte-identical to the pre-slice shipped build.
-		static const bool s_vehicleAmbientFloor = [](){
-			const char* v = getenv("MC2_VEHICLE_AMBIENT_FLOOR");
-			if (v == nullptr) return true;                  // unset -> on (default)
-			if (v[0] == '0' && v[1] == '\0') return false;  // exactly "0" -> off
-			return true;
-		}();
+		static const bool s_vehicleAmbientFloor = mc2::gate::get<"MC2_VEHICLE_AMBIENT_FLOOR">();
 		gos_SetRenderMaterialParameterInt(mat, "u_vehicleAmbientFloor",
 			s_vehicleAmbientFloor ? 1 : 0);
 
@@ -2478,7 +2434,7 @@ public:
 		GLuint savedSsbo5 = 0;
 		if (usePbrOverride) {
 			static int s_pbrRenderTrace = 0;
-			if (getenv("MC2_BUILDING_PBR_TRACE") && s_pbrRenderTrace < 64) {
+			if (mc2::gate::get<"MC2_BUILDING_PBR_TRACE">() && s_pbrRenderTrace < 64) {
 				++s_pbrRenderTrace;
 				fprintf(stderr,
 					"[BUILDING_PBR_TRACE] ShapeRenderer::render vb=%p ib=%p tex=%lu normal=%lu orm=%lu ssbo=%lu light=%d\n",
@@ -2820,10 +2776,7 @@ void GatherLightsParameters(TG_HWLightsData* lights)
 	// Stage 2.D.2 diagnostic: dump gathered lights when MC2_OBJECT_PARITY_TRACE=1.
 	// Fired once per session to avoid per-frame spam. Shows what GPU UBO gets.
 	static bool s_lightDumpDone = false;
-	const bool doLightTrace = (!s_lightDumpDone && [](){
-		const char* v = getenv("MC2_OBJECT_PARITY_TRACE");
-		return v && v[0] == '1' && v[1] == '\0';
-	}());
+	const bool doLightTrace = (!s_lightDumpDone && mc2::gate::get<"MC2_OBJECT_PARITY_TRACE">());
 
 	uint32_t num_lights = 0;
 	// LIGHT-CLAMP-RAISE-STAGE1-1: runtime population now reaches the full GPU ABI
@@ -3513,12 +3466,9 @@ void MC_TextureManager::renderLists (void)
 		// (7ea32b83) so a building in both this and the dynamic bounded-near map does
 		// not double-darken terrain. Only runs when the prepass actually activates.
 		{
-			static const bool s_bldgStaticShadow =
-				(getenv("MC2_STATIC_PROP_BUILDING_SHADOW") != nullptr &&
-				 getenv("MC2_STATIC_PROP_BUILDING_SHADOW")[0] != '0');
+			static const bool s_bldgStaticShadow = !mc2::gate::is<"MC2_STATIC_PROP_BUILDING_SHADOW", "0">();
 			if (s_bldgStaticShadow) {
-				const bool s_sbTxmTrace =
-					(getenv("MC2_STATIC_PROP_BUILDING_SHADOW")[0] == '2');
+				const bool s_sbTxmTrace = mc2::gate::is<"MC2_STATIC_PROP_BUILDING_SHADOW", "2">();
 				if (gos_BeginShadowPrePass(false)) {  // append, no clear
 					// Local (not static): runs once per mission; getBuildingShadowInstances
 					// clears+fills it. No need to retain capacity for the process lifetime.
@@ -3564,7 +3514,7 @@ void MC_TextureManager::renderLists (void)
 			// by d65552ab's new GL_SHADER_STORAGE_BARRIER_BIT calls changing AMD
 			// pipeline scheduling for s_indirectCmdBuf visibility on camera-move frames.
 			// Kill this probe once root cause is identified.
-			static const bool s_finishProbe = (getenv("MC2_FLUSH_PROBE") != nullptr);
+			static const bool s_finishProbe = mc2::gate::get<"MC2_FLUSH_PROBE">();
 			if (s_finishProbe) glFinish();
 			GpuStaticPropRegistry::flush();
 		}
@@ -3655,9 +3605,7 @@ void MC_TextureManager::renderLists (void)
 			// SHADOW-STATIC-BUILDINGS-2: when buildings cast via the world-fixed
 			// static map, skip them in the dynamic pass to avoid a redundant fuzzy
 			// double-shadow on buildings (trees/mechs still cast dynamically).
-			static const bool s_skipBldgInDynamic =
-				(getenv("MC2_STATIC_PROP_BUILDING_SHADOW") != nullptr &&
-				 getenv("MC2_STATIC_PROP_BUILDING_SHADOW")[0] != '0');
+			static const bool s_skipBldgInDynamic = !mc2::gate::is<"MC2_STATIC_PROP_BUILDING_SHADOW", "0">();
 			// SHADOW-DYNAMIC-PROP-CASTERS-1 (gate, DEFAULT ON; =0 kill-switch): the camera-visible
 			// flushShadow feed (s_typeRanges) only admits props the camera frustum
 			// cull marked visible this frame, so most trees never cast into the (now
@@ -3671,8 +3619,7 @@ void MC_TextureManager::renderLists (void)
 			// only double-draw the camera-visible subset). Mechs still cast via their
 			// own batcher. Gate OFF -> byte-identical to prior behavior.
 			static const bool s_dynPropCasters =
-				!(getenv("MC2_SHADOW_DYNAMIC_PROP_CASTERS") != nullptr &&
-				 getenv("MC2_SHADOW_DYNAMIC_PROP_CASTERS")[0] == '0');  // DEFAULT ON; =0 kill-switch
+				!mc2::gate::is<"MC2_SHADOW_DYNAMIC_PROP_CASTERS", "0">();  // DEFAULT ON; =0 kill-switch
 			if (s_dynPropCasters) {
 				static std::vector<GpuStaticPropInstance> s_dynPropInsts; // reused; accessor clears
 				// Include buildings in the dynamic feed ONLY when the static building
@@ -3693,13 +3640,10 @@ void MC_TextureManager::renderLists (void)
 					// 150µs of cache-cold memory traffic per frame.
 					// NOTE: includeBldg is captured from a static at the outer scope, so it
 					// is also effectively constant per session; the extra compare is free.
-					static const bool s_dynPropDirtyOnly = []() {
-						// DEFAULT-ON since 2026-06-04 (smoke-clean mc2_24; proven
-						// s_registryGeneration dirty-only pattern, shadow pass reads only
-						// modelMatrix+typeID): only literal "0" opts out.
-						const char* v = getenv("MC2_SHADOW_DYNAMIC_PROP_DIRTY_ONLY");
-						return !(v && v[0] == '0' && v[1] == '\0');
-					}();
+					// DEFAULT-ON since 2026-06-04 (smoke-clean mc2_24; proven
+					// s_registryGeneration dirty-only pattern, shadow pass reads only
+					// modelMatrix+typeID): a value starting with "0" opts out.
+					static const bool s_dynPropDirtyOnly = mc2::gate::get<"MC2_SHADOW_DYNAMIC_PROP_DIRTY_ONLY">();
 					static uint64_t  s_dynPropInstsGeneration = UINT64_MAX; // sentinel: force first build
 					static bool      s_dynPropInstsIncludeBldg = false;
 					if (!s_dynPropDirtyOnly ||
@@ -3729,13 +3673,10 @@ void MC_TextureManager::renderLists (void)
 					// This is EXACTLY the registry's actorWorldCenter extraction
 					// (gos_static_prop_registry.cpp:842-847) and the frame the light matrix
 					// consumes — verified against both the VS and the SHADOWZRANGE probe.
-					static const bool s_casterLightboxCull = []() {
-						// DEFAULT ON since 2026-06-16 (render-hygiene-s1). Off-map props
-						// never land their shadows on the playfield — filtering them saves
-						// ~0.2-0.4ms GPU fill on prop-heavy missions (mc2_24). Kill: =0.
-						const char* v = getenv("MC2_SHADOW_CASTER_LIGHTBOX_CULL");
-						return !(v && v[0] == '0' && v[1] == '\0');
-					}();
+					// DEFAULT ON since 2026-06-16 (render-hygiene-s1). Off-map props
+					// never land their shadows on the playfield — filtering them saves
+					// ~0.2-0.4ms GPU fill on prop-heavy missions (mc2_24). Kill: =0.
+					static const bool s_casterLightboxCull = mc2::gate::get<"MC2_SHADOW_CASTER_LIGHTBOX_CULL">();
 					const std::vector<GpuStaticPropInstance>* dynShadowSet = &s_dynPropInsts;
 					if (s_casterLightboxCull) {
 						ZoneScopedN("Shadow.CasterCull");
@@ -3749,19 +3690,11 @@ void MC_TextureManager::renderLists (void)
 						// Reuse the previous culled vector when BOTH are unchanged; any
 						// camera motion or registry mutation recomputes exactly as before.
 						// margin + includeBldg are session-static (env-init'd) — no key part.
-						static const bool s_cullCacheEnabled = []() {
-							const char* v = getenv("MC2_SHADOW_CASTER_CULL_CACHE");
-							return v && v[0] != '0';
-						}();
+						static const bool s_cullCacheEnabled = mc2::gate::get<"MC2_SHADOW_CASTER_CULL_CACHE">();
 						static uint64_t s_cullCacheGen = UINT64_MAX;   // sentinel: no cache
 						static float    s_cullCacheM[16] = {};
-						static const float s_cullMargin = []() {
-							const char* v = getenv("MC2_SHADOW_CASTER_CULL_MARGIN");
-							const float m = (v && v[0]) ? static_cast<float>(atof(v)) : 0.25f;
-							return (m >= 0.0f) ? m : 0.25f;
-						}();
-						static const bool s_cullDebug =
-							(getenv("MC2_SHADOW_CULL_DEBUG") != nullptr);
+						static const float s_cullMargin = mc2::gate::get<"MC2_SHADOW_CASTER_CULL_MARGIN">();
+						static const bool s_cullDebug = mc2::gate::get<"MC2_SHADOW_CULL_DEBUG">();
 						gosPostProcess* ppCull = getGosPostProcess();
 						const float* M = ppCull ? ppCull->getDynamicLightSpaceMatrix() : nullptr;
 						if (!M) {
@@ -4042,8 +3975,7 @@ void MC_TextureManager::renderLists (void)
 		// filter mirrors the legacy DRAWSOLID|ISTERRAIN draw-emission
 		// predicate so it is apples-to-apples with PatchStream's modern
 		// scope.
-		static const bool s_bucketCensusOn =
-			(getenv("MC2_BUCKET_CENSUS") != NULL);
+		static const bool s_bucketCensusOn = mc2::gate::get<"MC2_BUCKET_CENSUS">();
 		uint32_t legacyEligible = 0;
 		if (s_bucketCensusOn) {
 			for (long ci = 0; ci < nextAvailableVertexNode; ++ci) {
@@ -4066,7 +3998,7 @@ void MC_TextureManager::renderLists (void)
 		// cull, so the ambient cull/frontFace read HERE is what terrain renders
 		// under. Read-only; first few frames then stops.
 		{
-			static const bool s_cullProbe = (std::getenv("MC2_TERRAIN_CULL_PROBE") != nullptr);
+			static const bool s_cullProbe = mc2::gate::get<"MC2_TERRAIN_CULL_PROBE">();
 			static int s_cullProbeFrames = 0;
 			if (s_cullProbe && s_cullProbeFrames < 8) {
 				++s_cullProbeFrames;
@@ -4306,7 +4238,7 @@ void MC_TextureManager::renderLists (void)
 			// dispatch to distinguish compute early-return vs frustum-all-fail.
 			// Gate: MC2_CAMERA_MOVE_DIAG=1. Causes GL stalls — diagnostic only.
 			{
-				static const bool s_diagEnabled = (getenv("MC2_CAMERA_MOVE_DIAG") != nullptr);
+				static const bool s_diagEnabled = mc2::gate::get<"MC2_CAMERA_MOVE_DIAG">();
 				if (s_diagEnabled) {
 					static float s_lastMvp[16] = {};
 					static uint32_t s_frameN = 0;
@@ -4357,8 +4289,7 @@ void MC_TextureManager::renderLists (void)
 		// begin(executorOwnBeginTopLevel @ Render.3DObjects)/end wrapper brackets
 		// both regardless. Gate OFF -> today's order verbatim (byte-identical).
 		// Gate ON -> mech flush, then static-prop flush.
-		static const bool s_reorderSpMech =
-			(getenv("MC2_FRAMEGRAPH_REORDER_SPMECH") != nullptr);
+		static const bool s_reorderSpMech = mc2::gate::get<"MC2_FRAMEGRAPH_REORDER_SPMECH">();
 
 		// Unit A: static-prop batcher flush, scoped by Pass_SpColor. Captured pre-
 		// flush eligibility lives in the extern flags read in Render.GpuStaticProps;
@@ -5297,7 +5228,7 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 	// from ground truth (mech *rgb AND plain-named vehicle bodies) instead of
 	// fragile filename heuristics.
 	{
-		static const bool s_loadTrace = (getenv("MC2_TEXMGR_LOAD_TRACE") != nullptr);
+		static const bool s_loadTrace = mc2::gate::get<"MC2_TEXMGR_LOAD_TRACE">();
 		if (s_loadTrace)
 		{
 			fprintf(stderr, "[TEXLOAD] uniq=%lu name=%s\n",
@@ -5314,7 +5245,7 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 		{
 			if (uniqueInstance == masterTextureNodes[i].uniqueInstance)
 			{
-				if (getenv("MC2_LOG_MECH_ICON") && strstr(textureFullPathName, "mechicon"))
+				if (mc2::gate::get<"MC2_LOG_MECH_ICON">() && strstr(textureFullPathName, "mechicon"))
 					printf("[MECHICON] loadTexture CACHE-HIT id=%ld: %s\n", i, textureFullPathName);
 				masterTextureNodes[i].numUsers++;
 				return(i);							//Return the texture Node Id Now.
@@ -5351,7 +5282,7 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 		key = gos_Texture_Keyed;
 	}
 
- 	if (getenv("MC2_LOG_MECH_ICON") && strstr(textureFullPathName, "mechicon"))
+ 	if (mc2::gate::get<"MC2_LOG_MECH_ICON">() && strstr(textureFullPathName, "mechicon"))
 		printf("[MECHICON] loadTexture FRESH id=%ld: %s\n", i, textureFullPathName);
 	//--------------------------------------------------------
 	// New Method.  Just store memory footprint of texture.
@@ -5390,10 +5321,7 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 	// a slim deploy (redundant /128 .tgas removed from loose + tgl.fst via
 	// tools/fst_repack_drop.py) the .ktx2 is decoded on demand. Set =0 to force
 	// the legacy "tga or bust" behavior.
-	static const int s_ktxPrimaryMode = [](){
-		const char* v = getenv("MC2_TEXMGR_KTX_PRIMARY");
-		return (v && v[0]) ? atoi(v) : 1;
-	}();
+	static const int s_ktxPrimaryMode = mc2::gate::get<"MC2_TEXMGR_KTX_PRIMARY">();
 	if (s_ktxPrimaryMode == 2 || (s_ktxPrimaryMode == 1 && textureFileOpenResult != NO_ERR))
 	{
 		{
@@ -5449,7 +5377,7 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 	// bytes actually came from at load time (loose disk vs fastfile), the
 	// open result, and a few header bytes — separates "loaded garbage/zeros"
 	// from "loaded real pixels but never uploaded".
-	if ( getenv("MC2_LOG_PREVIEW") && strstr(textureFullPathName, "tgl") )
+	if ( mc2::gate::get<"MC2_LOG_PREVIEW">() && strstr(textureFullPathName, "tgl") )
 	{
 		if ( FILE* f = fopen("preview_debug.log","a") )
 		{
@@ -5877,10 +5805,7 @@ DWORD MC_TextureNode::get_gosTextureHandle (void)	//If texture is not in VidRAM,
 				// Default-ON (opt out with MC2_TEXMGR_COMPRESSED_UPLOAD=0): prefer the
 				// BC7 .ktx2 sidecar for GPU upload when present; any failure (no sidecar,
 				// not BC7, no BPTC support) falls through to the .tga unchanged.
-				static const bool s_texmgrCompressedUpload = [](){
-					const char* v = getenv("MC2_TEXMGR_COMPRESSED_UPLOAD");
-					return (!v || !v[0]) ? true : (v[0] != '0');
-				}();
+				static const bool s_texmgrCompressedUpload = mc2::gate::get<"MC2_TEXMGR_COMPRESSED_UPLOAD">();
 				bool uploadedCompressed = false;
 
 				// Exclude MODIFIABLE textures (uniqueInstance != 0): the mech/vehicle

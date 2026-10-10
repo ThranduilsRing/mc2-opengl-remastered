@@ -2,6 +2,9 @@ add_library(gui_runtime STATIC
     GuiRuntime.cpp
     EditorInspector.cpp
     GraphicsOptionsWindow.cpp
+    GraphicsOptionsWindow_mech.cpp
+    GraphicsOptionsWindow_passes.cpp
+    GraphicsOptionsWindow_terrain.cpp
 )
 
 target_include_directories(gui_runtime PUBLIC

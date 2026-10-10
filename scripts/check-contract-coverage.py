@@ -181,7 +181,7 @@ ROW_RE = re.compile(r"""run_check(?:_tri)?\s+"[^"]+"\s+"([^"]+)""")
 # notice, which is why registering that one instance was not the fix.
 #
 # The debt file is a TWO-WAY ratchet, exactly like
-# scripts/registered-gate-passthrough-debt.txt:
+# the frozen-debt ratchet files:
 #   * an unregistered harness dir NOT in the debt file  -> FAIL (new dark check)
 #   * a debt entry that IS now registered               -> FAIL (delete the line,
 #     so debt can only shrink and a silent re-add is impossible)

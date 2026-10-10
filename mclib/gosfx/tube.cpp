@@ -9,9 +9,10 @@
 #include"particles/spawn.h"
 
 #include<cstdio>   // VFX-TUBE-PROFILE-ORACLE-1 diagnostics
-#include<cstdlib>  // MC2_TUBE_PROFILE_LOG getenv
+#include<cstdlib>
 #include<map>      // MC2_TUBE_PROFILE_LOG per-spec peak tracking
 #include<string>
+#include "Gates/gate.h"
 
 // MC2_VFX_ORACLE_TUBE slice 1: ribbon mesh submit bridge (GameOS-side GL).
 // Declared extern "C" here to avoid pulling GameOS headers into mclib.
@@ -1219,7 +1220,7 @@ void gosFX::Tube::Draw(DrawInfo *info)
 		// run oracle ON vs OFF and compare to test whether enabling the oracle
 		// changes profile growth (execution interaction) vs pure rendering diff.
 		{
-			static const bool s_tpOn = (std::getenv("MC2_TUBE_PROFILE_LOG") != nullptr);
+			static const bool s_tpOn = mc2::gate::get<"MC2_TUBE_PROFILE_LOG">();
 			if (s_tpOn) {
 				static std::map<std::string,int> s_maxBySpec;
 				const char* nm = (const char*)spec->m_name;

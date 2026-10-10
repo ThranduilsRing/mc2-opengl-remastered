@@ -72,6 +72,62 @@ G3_FILES = (
     "GameOS/gameos/gos_terrain_mask_dispatch.cpp",
     "GameOS/gameos/gos_terrain_height_tex.cpp",
 )
+G6_FILES = (
+    "mclib/ablenv.cpp",
+    "mclib/ablrtn.cpp",
+    "mclib/ablsymt.cpp",
+    "mclib/ablxstd.cpp",
+    "mclib/ablxstmt.cpp",
+    "mclib/anim_override_registry.cpp",
+    "mclib/apprtype.cpp",
+    "mclib/assimp_importer.cpp",
+    "mclib/bdactor.cpp",
+    "mclib/camera.cpp",
+    "mclib/camera.h",
+    "mclib/cliff_decal_tuning.cpp",
+    "mclib/cone_glow.cpp",
+    "mclib/cpu_proj_cost_split.cpp",
+    "mclib/dynamic_decal_ring.cpp",
+    "mclib/ffile.cpp",
+    "mclib/file.cpp",
+    "mclib/fx_def_registry.cpp",
+    "mclib/fx_trace/fx_cost_split.cpp",
+    "mclib/fx_trace/fx_trace.cpp",
+    "mclib/gosfx/effect.cpp",
+    "mclib/gosfx/tube.cpp",
+    "mclib/gvactor.cpp",
+    "mclib/gvactor_internal.h",
+    "mclib/gvactor_update.cpp",
+    "mclib/mapdata.cpp",
+    "mclib/mc2_audit.cpp",
+    "mclib/mech3d.cpp",
+    "mclib/mech_skel_import.cpp",
+    "mclib/mlr/mlr_gate.cpp",
+    "mclib/model_override_registry.cpp",
+    "mclib/move_recon.cpp",
+    "mclib/move_solvectx.h",
+    "mclib/msl.cpp",
+    "mclib/object_admission_predicate.cpp",
+    "mclib/particles/batcher.cpp",
+    "mclib/particles/gpu_trail.cpp",
+    "mclib/particles/spawn.cpp",
+    "mclib/projectz_trace.cpp",
+    "mclib/quad.cpp",
+    "mclib/render_contract.cpp",
+    "mclib/routines.cpp",
+    "mclib/spotlight_diag.cpp",
+    "mclib/terrtxm.cpp",
+    "mclib/terrtxm2.cpp",
+    "mclib/tex_resolve_table.cpp",
+    "mclib/tgl.cpp",
+    "mclib/tgl_load_guard.cpp",
+    "mclib/tgl_render.cpp",
+    "mclib/tgl_transform.cpp",
+    "mclib/txmmgr.cpp",
+    "mclib/userinput.cpp",
+    "mclib/vis_semantics.cpp",
+)
+
 # G4: every file that still reads an MC2_VK_* variable through a raw getenv (the umbrella helpers and the
 # envTriState readers are gone by then; what is left are the trace, perf and diagnostic reads).
 G4_FILES = (
@@ -105,6 +161,9 @@ FAMILIES = {
     "g3": {"title": "Gate codemod, G3 terrain-family plan (dry run)", "what": "G3 terrain migration", "files": G3_FILES,
            "md": "docs/gate-codemod-g3.md", "tsv": "docs/gate-codemod-g3.tsv",
            "cmd": "py -3 tools/gate_codemod.py --family g3 --write"},
+    "g6": {"title": "Gate codemod, G6 mclib-family plan (dry run)", "what": "G6 mclib migration", "files": G6_FILES,
+           "md": "docs/gate-codemod-g6.md", "tsv": "docs/gate-codemod-g6.tsv",
+           "cmd": "py -3 tools/gate_codemod.py --family g6 --write"},
     "g4": {"title": "Gate codemod, G4 VK raw-read plan (dry run)", "what": "G4 VK raw-read migration", "files": G4_FILES,
            "md": "docs/gate-codemod-g4.md", "tsv": "docs/gate-codemod-g4.tsv",
            "cmd": "py -3 tools/gate_codemod.py --family g4 --write"},
@@ -127,7 +186,18 @@ SHAPES = ("namespace-static", "local-static", "lambda-static", "per-call")
 PROBE_LABELS = tuple(gi.PROBE_LABELS)
 PROBE_VALUES = tuple(v for _, v in gi.PROBES)
 #: Probe labels whose result may differ in an EDGE (never U, Z or O: those are SEMANTICS).
-EDGE_LABELS = ("E", "F", "X", "X10", "X25")
+EDGE_LABELS = ("E", "F", "X", "X10", "X25", "X01")
+
+# Rules that read the FIRST character: an old reader that tests for an EXACT "0" (v[1] == '\\0', strcmp(v, "0"))
+# agrees with them on every gate_idioms probe but not on "01" / "00" / "0x".  The probe vector cannot see that, so
+# the site text is searched for the exact-compare idioms and the verdict becomes EDGE (label X01).
+LEAD0_RULES = ("Lead0Kill", "Lead0", "Lead0P", "DefOnLead0", "Lead0Def")
+EXACT0_RE = re.compile(r"\[\s*1\s*\]\s*[!=]=\s*'(?:\\0|\x00)'|\bstr(?:i)?cmp\s*\([^;]*?,\s*\"0\"\s*\)|[!=]=\s*\"0\"")
+
+
+def exact_zero_site(text):
+    """True when the reader text compares the value against an exact "0" (not just its first character)."""
+    return bool(text) and bool(EXACT0_RE.search(text))
 
 # ---------------------------------------------------------------------------
 # The Bool rules of Gates/gate.h, ported so the tool can ask "what does rule R say about value V"
@@ -541,7 +611,7 @@ def match_rule(site_vec, row_rule, row_default):
     return None
 
 
-def judge_bool(row, site_vec, why_prefix=""):
+def judge_bool(row, site_vec, why_prefix="", site_text=None):
     """Bool/Presence verdict for a site whose value (as written, not orientated) is `site_vec`.
     -> dict(verdict, rule_used, neg, override(rule|None), diff[labels], alt, why, reason)."""
     if any(x == "inh" for x in site_vec):
@@ -555,6 +625,8 @@ def judge_bool(row, site_vec, why_prefix=""):
         return {"reason": "row rule %s is not a Bool rule" % row.rule}
     site_rule_vec = rule_vec(r, d)
     diff = [PROBE_LABELS[i] for i in range(8) if site_rule_vec[i] != row_vec[i]]
+    if not diff and row.rule in LEAD0_RULES and r in LEAD0_RULES and exact_zero_site(site_text):
+        diff = ["X01"]
     out = {"rule": r, "neg": neg, "diff": diff, "default_used": d}
     if r in ("Std", "Lead0Def") and d != bool(row.default):
         out["reason"] = ("old reader is %s with default %s but the row's default is %s: no per-site override "
@@ -1064,7 +1136,8 @@ def _analyze_site(res, interp, path, raw, T, p, cs, ce, is_raw, rows, ledger):
         if d and d[0] == "bool":
             fam, vec, cls, inv = d
             res.idiom = cls
-            jd = judge_bool(row, [_flip(x) for x in vec] if inv else list(vec))
+            jd = judge_bool(row, [_flip(x) for x in vec] if inv else list(vec),
+                            site_text=T[gi._stmt_start(T, cs):gi._stmt_start(T, cs) + 400])
             if "verdict" in jd:
                 return _fail(res, "paired reads: the statement reads this gate %d times; as one reader it is %s%s vs row "
                                   "%s: %s%s -- replace the whole expression by hand" %
@@ -1095,7 +1168,7 @@ def _analyze_site(res, interp, path, raw, T, p, cs, ce, is_raw, rows, ledger):
         if isinstance(sub_unit, str):
             return _fail(res, sub_unit)
         unit.update(sub_unit)
-    jd = judge_bool(row, raw_vec)
+    jd = judge_bool(row, raw_vec, site_text=T[gi._stmt_start(T, cs):gi._stmt_start(T, cs) + 400])
     if "reason" in jd and "verdict" not in jd:
         return _fail(res, jd["reason"])
     return _bool_emit(res, row, jd, unit, mode, notes, T, raw, inv)

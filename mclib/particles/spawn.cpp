@@ -18,8 +18,9 @@
 #include "spawn_shard.h"
 #include "spawn_tube.h"
 
-#include <cstdlib>   // std::getenv
+#include <cstdlib>
 #include <cstdio>    // std::fprintf (gated min/max age summary)
+#include "Gates/gate.h"
 
 namespace mc2 {
 namespace particles {
@@ -31,10 +32,8 @@ bool g_ageGate_value       = false;   // MC2_VFX_AGE_SAMPLE (default OFF)
 bool g_ageLog_value        = false;   // MC2_GPU_PARTICLES_LOG (reuse for summary)
 void ageGateInitIfNeeded() {
     if (g_ageGate_initialized) return;
-    const char* v  = std::getenv("MC2_VFX_AGE_SAMPLE");
-    const char* vl = std::getenv("MC2_GPU_PARTICLES_LOG");
-    g_ageGate_value = (v && v[0] == '1');
-    g_ageLog_value  = (vl && vl[0] == '1');
+    g_ageGate_value = mc2::gate::get<"MC2_VFX_AGE_SAMPLE">();
+    g_ageLog_value  = mc2::gate::get<"MC2_GPU_PARTICLES_LOG">();
     g_ageGate_initialized = true;
 }
 }  // namespace

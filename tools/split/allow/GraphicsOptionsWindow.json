@@ -1,0 +1,56 @@
+{
+ "edits": [
+  [
+   "static void drawTerrainSection() {",
+   "void drawTerrainSection() {"
+  ],
+  [
+   "static void drawTerrainTuningSection() {",
+   "void drawTerrainTuningSection() {"
+  ],
+  [
+   "static void drawStaticPropTuningSection() {",
+   "void drawStaticPropTuningSection() {"
+  ],
+  [
+   "static void drawWaterSection() {",
+   "void drawWaterSection() {"
+  ],
+  [
+   "static void drawDrawPacketsSection() {",
+   "void drawDrawPacketsSection() {"
+  ],
+  [
+   "static void drawRenderPassesSection() {",
+   "void drawRenderPassesSection() {"
+  ],
+  [
+   "static void drawGBufferPreview() {",
+   "void drawGBufferPreview() {"
+  ],
+  [
+   "static void drawEnvGatesSection() {",
+   "void drawEnvGatesSection() {"
+  ],
+  [
+   "static void drawMechSection() {",
+   "void drawMechSection() {"
+  ],
+  [
+   "static void drawVfxTuningSection() {",
+   "void drawVfxTuningSection() {"
+  ]
+ ],
+ "scripts": [
+  "tools/gate_conflicts.py"
+ ],
+ "base": "HEAD",
+ "src": "GuiRuntime/GraphicsOptionsWindow.cpp",
+ "stem": "GraphicsOptionsWindow",
+ "_reason": "The ten section functions lose 'static' (namespace-scope) so the section files can define them and the core draw() can call them through the internal header; no gate read or init-form changes (every cache is function-local and moves with its function).",
+ "add": [
+  "namespace GraphicsOptionsWindow {",
+  "} // namespace GraphicsOptionsWindow"
+ ],
+ "_scripts_reason": "Reviewed: gate_conflicts.py names the file only in its DESIGN_S4 table of the design document's historical reader-line claims."
+}

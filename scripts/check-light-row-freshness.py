@@ -69,13 +69,21 @@ INDEX_WRITE_ONLY = re.compile(r"^\s*(?:\w+\s*->\s*|\w+\s*\.\s*)?cachedGpuLightIn
 # path -> reason.  An entry here is a deliberate, reviewed exception, and every
 # reason is PRINTED on a passing run so an exemption cannot quietly become the
 # place a defect lives.
+_BDACTOR_PRODUCER = (
+    "PRODUCER, guarded downstream. Its getCachedGpuLightIndex() reads all "
+    "feed staticReg.lightDataIndex, and the consumer -- "
+    "GameOS/gameos/gos_static_prop_registry.cpp flush() -- compares "
+    "getCachedFrame() against the current frame at :1051 and suppresses the "
+    "draw when stale. Handing an index onward to a checker is not trusting it.")
+
 EXEMPT: dict[str, str] = {
-    "mclib/bdactor.cpp":
-        "PRODUCER, guarded downstream. Its getCachedGpuLightIndex() reads all "
-        "feed staticReg.lightDataIndex, and the consumer -- "
-        "GameOS/gameos/gos_static_prop_registry.cpp flush() -- compares "
-        "getCachedFrame() against the current frame at :1051 and suppresses the "
-        "draw when stale. Handing an index onward to a checker is not trusting it.",
+    "mclib/bdactor_diag.cpp": _BDACTOR_PRODUCER,
+    "mclib/bdactor_lightbake.cpp": _BDACTOR_PRODUCER,
+    "mclib/bdactor_render.cpp": _BDACTOR_PRODUCER,
+    "mclib/bdactor_static.cpp": _BDACTOR_PRODUCER,
+    "mclib/bdactor_tree.cpp": _BDACTOR_PRODUCER,
+    "mclib/bdactor_tree_static.cpp": _BDACTOR_PRODUCER,
+    "mclib/bdactor_update.cpp": _BDACTOR_PRODUCER,
     # mclib/mech3d.cpp was exempt here until MECH-LIGHTROW-FRESHNESS-1 made the
     # GPU-mech submit path read getCachedFrame() (gate MC2_MECH_LIGHT_FRESHNESS,
     # default-ON). The exemption is deleted rather than reworded so this file

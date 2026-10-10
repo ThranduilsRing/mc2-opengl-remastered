@@ -1,0 +1,1004 @@
+// BldgAppearance / TreeAppearance: BldgAppearance static registry: eligibility, registerStatic, touch*, rebake gates, invalidate, destroy.
+// Declared in the class headers; shared names in bdactor_internal.h.
+#include "bdactor_internal.h"
+
+// BLDG-TYPE-ANIM-GATE-FIX-1 kill-switch.
+// Unset/1 = new: idle animatable-type buildings eligible for static path.
+// 0       = legacy: bldgTypeHasAnimations disqualifies entire type.
+static bool s_bldgTypeAnimStaticEligible = mc2::gate::get<"MC2_BLDG_TYPE_ANIM_STATIC_ELIGIBLE">();
+
+// STATIC-REGISTRY-COVERAGE-RECON-1: sub-classify the rej_no_static_reg population.
+// Gated by MC2_STATIC_REG_COVERAGE env var. No behavior change — read-only.
+// Answers why mc2_24 has ~72% rej_no_static_reg vs mc2_10 99% proxy_candidate.
+// Sub-conditions (first-fail priority, same as stableLightSkipEligible order):
+//   never_registered  — !staticReg.registered (registerStatic never completed)
+//   no_recipe         — registered but recipeIndex<0 (shouldn't normally occur)
+//   bake_not_enabled  — mc2LightBakeEnabled()=false blocks EmitBakedGpuLightData
+//   not_in_bake_table — bake on but recipeIndex not yet in s_bakedStaticLight
+// Also tracks: isStaticEligible() for the unregistered set, top shape names.
+static const bool s_regCovEnabled = mc2::gate::get<"MC2_STATIC_REG_COVERAGE">();
+static std::atomic<int64_t> g_rc_neverRegistered{0};   // !staticReg.registered
+static std::atomic<int64_t> g_rc_noRecipe{0};          // registered && recipeIndex<0
+static std::atomic<int64_t> g_rc_bakeNotEnabled{0};    // bake gate off (within rej_no_static_reg)
+static std::atomic<int64_t> g_rc_notInBakeTable{0};    // bake on but recipe not in table
+static std::atomic<int64_t> g_rc_isStaticEligibleYes{0}; // unregistered but would be eligible
+static std::atomic<int64_t> g_rc_isStaticEligibleNo{0};  // unregistered and not eligible
+// Top shape names for the never_registered bucket (guarded by mutex, main-thread only).
+static std::mutex            g_rc_shapeMu;
+static std::map<std::string, int> g_rc_shapeNames;
+
+// Stage 3.D: BldgAppearance static-registry path. Mirror of TreeAppearance's
+// IsStaticNow / touch / invalidateStaticRegistration / isStaticEligible.
+// Registry-replay eligibility for buildings is stricter than for trees because
+// buildings have many dynamic states (animation, spin, flash, destruct FX).
+// memory/bldg_animation_lod_swap_unsafe.md WAS the load-bearing reason: animated
+// types share LOD-0 node-index state across instances, so replaying a recipe
+// for an animated building drives the wrong node when LOD swaps.
+// ENV-DROP-CLOSE-1 (2026-07-30) -- THAT MECHANISM IS DEAD TODAY. Building LOD is
+// pinned to 0: every currentLOD write in this file assigns 0 (  
+//    ), no path assigns nonzero, and the LOD-select
+// body was deleted from recalcBounds (see the LATENT HAZARD note). There
+// is no LOD swap for the shared shapeId cache to be wrong about. The cache defect
+// itself is unfixed (msl.cpp shapeIdsSet is still per-type), so the hazard is
+// LATENT, not gone -- it re-arms the moment the TEMP LOD-0 pin is lifted.
+// Do NOT cite it to explain a present-day building/turret symptom; several lanes
+// were sent chasing this dead path on 2026-07-30.
+
+namespace {
+	// Type-level "any animation defined for this building type". Even if the
+	// current instance isn't actively animating, an animated TYPE is excluded
+	// from the static path because LOD swap could surface the animation later
+	// and break the cached recipe. (Unreachable today -- LOD-0 pin, see above --
+	// and additionally the exclusion is default-OFF: the caller applies it only
+	// when MC2_BLDG_TYPE_ANIM_STATIC_ELIGIBLE=0.)
+	bool bldgTypeHasAnimations(const BldgAppearanceType* t) {
+		if (!t) return false;
+		for (long i = 0; i < MAX_BD_ANIMATIONS; ++i) {
+			if (t->bdAnimData[i] != nullptr) return true;
+		}
+		return false;
+	}
+
+	bool bldgGestureHasAnimation(const BldgAppearanceType* t, long gestureId) {
+		if (!t) return false;
+		if (gestureId < 0 || gestureId >= MAX_BD_ANIMATIONS) return false;
+		return t->bdAnimData[gestureId] != nullptr;
+	}
+} // anon namespace
+
+bool BldgAppearance::isStaticEligible() const
+{
+	// Type-level disqualifiers.
+	if (!appearType)        return false;
+	if (appearType->spinMe) return false;
+	// BLDG-TYPE-ANIM-GATE-FIX-1 (nifty): legacy type-level animation-capacity
+	// check. Kill-switch MC2_BLDG_TYPE_ANIM_STATIC_ELIGIBLE=0 restores old
+	// behaviour. When enabled (default), the bdAnimationState guard below is
+	// sufficient.
+	if (!s_bldgTypeAnimStaticEligible && bldgTypeHasAnimations(appearType))
+		return false;
+	// Instance-level disqualifiers.
+	if (drawFlash)          return false;
+	if (destructFX)         return false;
+	if (activity)           return false;
+	if (activity1)          return false;
+	// MODEL-OVERRIDE admission fix (SEAMPROBE-1, override branch): a renderOnly
+	// override prop substitutes a static .glb render shape that carries NO MC2
+	// bdAnimData; setAnimation() on it is a no-op. Stock buildings get a default
+	// idle gesture (bdAnimationState=0) set during init/update even when the
+	// TYPE has no animations — which spuriously trips the guard below for an
+	// override prop, leaving its static recipe permanently un-admitted
+	// (markVisible never fires -> no substrate record -> never drawn). When this
+	// is an override-backed type with no real animations, the cached recipe is a
+	// faithful representation regardless of bdAnimationState, so skip the guard.
+	// Strictly scoped to bldgRenderShape!=nullptr: stock path byte-identical.
+	// Also require no rotational node: turrets/radars rotate via rotationalNodeId
+	// (code-driven), not bdAnimData, so bldgTypeHasAnimations() misses them.
+	// A renderOnly static .glb cannot represent a rotating part -> never admit.
+	const bool hasRotationalNode =
+		appearType->rotationalNodeId[0] != '\0'
+		&& S_stricmp(appearType->rotationalNodeId, "NONE") != 0;
+	const bool overrideStatic =
+		appearType->bldgRenderShape && !bldgTypeHasAnimations(appearType) && !hasRotationalNode;
+	const bool activeGestureHasAnimation =
+		bdAnimationState != -1 && bldgGestureHasAnimation(appearType, bdAnimationState);
+	if (activeGestureHasAnimation && !overrideStatic) return false;  // currently animating
+	return true;
+}
+
+// Task 5 (Track B): mission-load bulk static-prop registration.
+// Called from GameObjectManager::registerStaticPropsForMissionLoad() after
+// primeTerrainObjectsForMissionLoad() has set position/rotation on every
+// actor. Populates shapeToWorld matrices via TransformMultiShape_PositionsOnly,
+// builds a recipe batch per leaf via buildRecipeFromShape, and registers with
+// GpuStaticPropRegistry. HC-1: writes directly to typed staticReg member.
+void BldgAppearance::registerStatic() {
+	// [SEAMPROBE] stage 2: registerStatic entry + which early-return fires.
+	// Gate on the override target (hangar) to avoid log spam.
+	const bool seamProbe = (mc2::gate::get<"MC2_MODOVERRIDE_TRACE">())
+		&& appearType && appearType->bldgRenderShape;
+	if (seamProbe)
+		fprintf(stderr, "[SEAMPROBE] bldg registerStatic ENTER name=%s registered=%d hasShape=%d enabled=%d eligible=%d renderShape=%p\n",
+			appearType->name, (int)staticReg.registered, (int)(bldgShape!=NULL),
+			(int)GpuStaticPropRegistry::isEnabled(), (int)isStaticEligible(),
+			(void*)appearType->bldgRenderShape), fflush(stderr);
+	if (staticReg.registered) {
+		return;
+	}
+	if (!bldgShape) {
+		return;
+	}
+	if (!GpuStaticPropRegistry::isEnabled()) {
+		return;
+	}
+	if (!isStaticEligible()) {
+		if (seamProbe) fprintf(stderr, "[SEAMPROBE] bldg registerStatic ABORT name=%s reason=!isStaticEligible\n", appearType->name), fflush(stderr);
+		return;
+	}
+
+	// MODEL-OVERRIDE: register the RENDER shape geometry into s_typeIndex HERE,
+	// in the mission-load pre-pass (runs before StaticProp::finalizeGeometry).
+	// An override type-shape otherwise first registers late in per-instance
+	// init() -> buildRecipeFromShape() below misses s_typeIndex -> aborts to the
+	// CPU first-render fallback, which is catastrophic with ~1k tree instances
+	// (per-instance pool copies overflow). Idempotent for stock (already
+	// registered). getBldgRenderShape == stock when no override is present.
+	const bool _regIsOverride = (appearType->bldgRenderShape != nullptr);
+	for (int i = 0; i < MAX_LODS; ++i)
+		GpuStaticPropBatcher::instance().registerMultiShape(appearType->getBldgRenderShape(i), _regIsOverride);
+
+	// G5 RENDER-PATH OBSERVABILITY (descriptive; env-gated; ZERO behavior change):
+	// one line per registered static-prop type recording which render path it takes.
+	// path = override_multidraw (cooked/override geometry, layer-0 route) vs legacy_static.
+	// Full MeshCapability bits come once the engine reads the cooked manifest.json (later
+	// integration); for now we log what the seam knows. Schema-grep: \[RENDER_PATH v[0-9]+\].
+	if (mc2::gate::get<"MC2_RENDER_PATH">()) {
+		fprintf(stderr, "[RENDER_PATH v1] key=staticprop:%s isOverride=%d path=%s pools=%s\n",
+		        appearType->name, _regIsOverride ? 1 : 0,
+		        _regIsOverride ? "override_multidraw" : "legacy_static",
+		        gos_StaticPropLegacyInstancePools() ? "legacy" : "skipped");
+		fflush(stderr);
+	}
+
+	if (mc2::gate::get<"MC2_MODOVERRIDE_TRACE">() && appearType->bldgRenderShape) {
+		TG_TypeMultiShape* rs = appearType->bldgRenderShape;
+		fprintf(stderr, "[MODOVERRIDE_TRACE] bldg registerStatic name=%s renderShape=%p numShapes=%ld leaf0=%p leaf1=%p finalized_guess(typeNodes_above)\n",
+		        appearType->name, (void*)rs, rs->GetNumShapes(),
+		        rs->GetNumShapes() > 0 ? (void*)rs->GetTypeNode(0) : nullptr,
+		        rs->GetNumShapes() > 1 ? (void*)rs->GetTypeNode(1) : nullptr);
+		fflush(stderr);
+	}
+
+	// Compute transform — same coordinate convention as BldgAppearance::update().
+	// At mission-load time position.z may not yet hold terrain elevation (set by
+	// bldng.cpp on first update), so use getTerrainElevation() directly.
+	float yaw = rotation * DEGREES_TO_RADS;
+	Stuff::UnitQuaternion rot;
+	rot = Stuff::EulerAngles(0.0f, yaw, 0.0f);
+	Stuff::Point3D xlatPosition;
+	xlatPosition.x = -position.x;
+	xlatPosition.y = TerrainRuntime::groundElevation(position);
+	xlatPosition.z = position.y;
+	bldgShape->TransformMultiShape_BuildRecipe(&xlatPosition, &rot);
+
+	// TERRAIN-DECAL-SLICE-0A — CLIFF_WALL face frame (mesh-decal system).
+	// Default-OFF gate MC2_TERRAIN_DECAL. When ON and this appearance is the
+	// cliff-wall decal type ("MarbleCliff"), build an EXPLICIT face-frame mat4
+	// for the placed instance INSTEAD of the yaw-only recipe transform. This is
+	// the CLIFF_WALL conform mode from docs/superpowers/specs/
+	// 2026-07-03-terrain-mesh-decal-system-design.md: up = world vertical,
+	// facing = outward (downslope) horizontal cliff normal, tangent = contour.
+	// A small outward offset lifts the wall off the terrain face to avoid
+	// z-fighting. Row-vector convention: world = shapeRow * M, so each 3x3 ROW
+	// (X_Axis/Y_Axis/Z_Axis) holds the world direction of the mesh's local axis
+	// (GetLocalForward reads (FORWARD_AXIS, *)). The generated wall GLB authors
+	// width->local X, height->local Y, relief/face->local Z.
+	//   Shape-world axes (from xlatPosition remap): Xsw = -worldX, Ysw = up,
+	//   Zsw = worldY. Terrain normal (nx,ny,nz){world, nz up} maps to shape-world
+	//   (-nx, nz, ny); its horizontal projection (-nx,0,ny) is the outward facing.
+	static const bool s_terrainDecal = mc2::gate::get<"MC2_TERRAIN_DECAL">();
+	// TERRAIN-DECAL-SLICE-0B/0C — placement knobs live in CliffDecalTuning (mutable,
+	// seeded from the MC2_TERRAIN_DECAL_* env defaults so unset == byte-identical to
+	// Slice-0A). The face-frame math is factored into CliffDecalTuning::buildCliffWall
+	// Matrix(), shared by this registration path and the live ImGui tuning panel.
+	bool useCliffWallFrame = false;
+	Stuff::Matrix4D cliffWallXform;
+	Stuff::Vector3D decalNAcc;  // captured for the live-update panel
+	if (s_terrainDecal && appearType && appearType->name &&
+	    _stricmp(appearType->name, "MarbleCliff") == 0) {
+		// Sample the terrain normal at the placement site (average the 4
+		// enclosing corners via small offsets for stability — the raw normal is
+		// per-triangle/faceted). worldUnitsPerVertex ~ heightfield cell size.
+		Stuff::Vector3D nAcc; nAcc.Zero();
+		const float d = 32.0f; // ~half a heightfield cell for a 4-corner average
+		const float dx[4] = { -d,  d, -d,  d };
+		const float dy[4] = { -d, -d,  d,  d };
+		Terrain* landPtr = land; // file-scope terrain pointer
+		for (int c = 0; c < 4; ++c) {
+			Stuff::Vector3D sp = position;
+			sp.x += dx[c]; sp.y += dy[c];
+			Stuff::Vector3D nc = landPtr ? landPtr->getTerrainNormal(sp)
+			                             : Stuff::Vector3D(0.0f, 0.0f, 1.0f);
+			nAcc.x += nc.x; nAcc.y += nc.y; nAcc.z += nc.z;
+		}
+		decalNAcc = nAcc;
+		// Build the initial CLIFF_WALL face frame from the current (env-seeded) knobs.
+		CliffDecalTuning::buildCliffWallMatrix(
+		    xlatPosition, nAcc, CliffDecalTuning::knobs(), cliffWallXform);
+		useCliffWallFrame = true;
+		if (mc2::gate::get<"MC2_TERRAIN_DECAL_TRACE">()) {
+			const CliffDecalTuning::Knobs& k = CliffDecalTuning::knobs();
+			fprintf(stderr, "[TERRAIN_DECAL v1] CLIFF_WALL name=%s pos=(%.1f,%.1f) "
+			        "scale=%.3f offset=%.1f lateral=%.1f lift=%.1f yaw=%.1f\n",
+			        appearType->name, position.x, position.y,
+			        k.scale, k.offset, k.lateral, k.lift, k.yawDeg),
+			    fflush(stderr);
+		}
+	}
+
+	// Build per-leaf recipe batch.
+	// Use public GetNumShapes()/GetShapeRec() — numTG_Shapes/listOfShapes are protected.
+	std::vector<GpuStaticPropInstance> batch;
+	const int numShapes = static_cast<int>(bldgShape->GetNumShapes());
+	batch.reserve(numShapes);
+	// 2026-05-10 diag: count outcomes for buildings to see why so few reach count>1.
+	int diag_total = 0, diag_skip_processMe = 0, diag_skip_helper = 0,
+	    diag_skip_unreg = 0, diag_added = 0;
+	for (int i = 0; i < numShapes; ++i) {
+		++diag_total;
+		const TG_ShapeRec* rec = bldgShape->GetShapeRec(i);
+		if (!rec || !rec->processMe || !rec->node) { ++diag_skip_processMe; continue; }
+		TG_Shape* child = rec->node;
+		// 2026-05-10 fix: skip non-SHAPE_NODE children (helpers, spotlight
+		// emitters, animation roots) — mirrors GpuStaticPropBatcher::submitMultiShape
+		// at gos_static_prop_batcher.cpp. Without this, the loop hits a
+		// helper, buildRecipeFromShape's static_cast<TG_TypeShape*>(myType)
+		// produces a pointer that isn't in s_typeIndex, returns false, and
+		// the entire building registration aborts on its FIRST helper. This
+		// is why mc2_10 buildings (warehouses, S_admin, control) previously
+		// failed registerStatic and never reached the substrate.
+		if (!child->IsShapeNode()) { ++diag_skip_helper; continue; }
+		// CONE-LEAF-NAME-DIAG (batch-8C, MC2_CONE_LEAF_DUMP, default OFF): dump every
+		// static-prop recipe leaf's real node name + flags. cone_glow's diag emits a
+		// node INDEX only, so before this there was no
+		// build-free way to learn a static-prop leaf's NAME. That gap blocked the
+		// batch-7/8 "which leaf draws the 212019 searchlight wedge" question for two
+		// sessions. Answer (this dump, mc2_10): the wedge is the standalone `Spotlight`
+		// prop, whose leaves are 'L_SpotLight'/'L_SpotRotar'/'L_SpotBattery' — all
+		// isSpot=0 because GetIsSpotlight() keys on the EXACT "SpotLight_" 10-char prefix
+		// and "L_SpotLight" does not match it. Building-attached ghost cones
+		// ('Spotlight_Building01', 'SpotLight_Building', 'Spotlight_SensorCon',
+		// 'Spotlight_TurretCon') DO get isSpot=1 and ARE skipped below — the intended
+		// GHOST-CONE-RECIPE-SKIP-1 target. See .claude/DEFERRED-BATCH-8C-STATUS.md.
+		if (mc2::gate::get<"MC2_CONE_LEAF_DUMP">()) {
+			fprintf(stderr, "[CONE_LEAF] type=%s leaf=%d node='%s' isSpot=%d isWin=%d lightsOut=%d\n",
+			        appearType ? appearType->name : "?", i,
+			        child->getNodeName() ? child->getNodeName() : "(null)",
+			        (int)child->GetIsSpotlight(), (int)child->GetIsWindow(),
+			        (int)child->GetLightsOut());
+			fflush(stderr);
+		}
+		// GHOST-CONE-RECIPE-SKIP-1 (batch-7 items 4+5): SpotLight_ cone leaves
+		// must NOT enter the persistent-bucket recipe. submitMultiShape has
+		// skipped them unconditionally since T3.1 (gos_static_prop_batcher.cpp
+		// ~5006: cones are replaced by real TG_Lights + the additive cone
+		// glow), but THIS registerStatic recipe path still baked the authored
+		// cone MESH into the cached record — every static building with a
+		// searchlight drew its cone as an OPAQUE LIT tan wedge (the user's
+		// "ghost light" floating wedge + the small wedges at every searchlight
+		// housing; proven by A/B: wedge gone with
+		// MC2_STATIC_PROP_PERSISTENT_BUCKETS=0 / MC2_GPU_OBJECTS=0, unchanged
+		// by MC2_LIGHT_CONE_GLOW=0). The bit-2 instanceFlag it used to set was
+		// already dead (shader read deleted in T3.2).
+		// Killswitch MC2_STATICPROP_RECIPE_SPOTLIGHT_SKIP=0 restores the bake.
+		// CONE-LEAF-NAME INVARIANT (batch-8C -- DO NOT WIDEN THIS PREDICATE):
+		// GetIsSpotlight() is TRUE only for leaves whose node name carries the exact
+		// 10-char "SpotLight_" prefix (tgl.cpp, case-insensitive). The mc2_10
+		// saved_212019 "cream wedge" belongs to the standalone `Spotlight` prop (leaf
+		// 'L_SpotLight', a TEXTURED 16-vert lamp head, bitmap L_Spotlight.tga), which is
+		// NOT "SpotLight_"-prefixed, so it is legit geometry this skip must leave alone.
+		// Do NOT broaden the test to "SpotLight"/"L_Spot"/a cone-shape heuristic to chase
+		// that wedge: it would EAT the real searchlight-lamp mesh (and other L_Spot* /
+		// LitWin_Spot* leaves). The wedge's wrong cream look is the SAME unlit-static-prop
+		// root as the batch-8 Item A/B far-backdrop artifact (unlit geometry showing raw
+		// art colour); fix it by LIGHTING that pass, not by skipping the prop. Evidence +
+		// the MC2_CONE_LEAF_DUMP census: .claude/DEFERRED-BATCH-8C-STATUS.md.
+		{
+			static const bool s_recipeSpotSkip = mc2::gate::get<"MC2_STATICPROP_RECIPE_SPOTLIGHT_SKIP">();
+			if (s_recipeSpotSkip && child->GetIsSpotlight()) { ++diag_skip_helper; continue; }
+		}
+		uint32_t flags = 0;
+		if (child->GetLightsOut())   flags |= (1u << 0);
+		if (child->GetIsWindow())    flags |= (1u << 1);
+		if (propFoliageAlphaFlag() && child->GetIsAlphaTest()) flags |= (1u << 2);
+		// rec->shapeToWorld is LinearMatrix4D; convert to Matrix4D for buildRecipeFromShape().
+		Stuff::Matrix4D xform(rec->shapeToWorld);
+		// TERRAIN-DECAL-SLICE-0A: replace the yaw-only leaf transform with the
+		// explicit CLIFF_WALL face frame when the decal gate armed this type.
+		// Uniform scale only (Slice 0) — the wall GLB carries its own world-scale
+		// geometry, so the face frame is a pure rotation+translation (no scale).
+		if (useCliffWallFrame) {
+			xform = cliffWallXform;
+			// TERRAIN-DECAL-FILL-1: tag this decal leaf so static_prop.frag applies
+			// the shadow-side ambient/fill floor (u_terrainDecalFill) ONLY to the
+			// cliff decal — faces pointing away from the sun otherwise render as a
+			// black void (static-prop lighting is max(N·L,0) with no ambient floor).
+			// Bit 3 mirrors kFlagDecalFill in static_prop.frag; no other static prop
+			// ever sets it, so all other props stay byte-identical.
+			flags |= (1u << 3);
+		}
+		// LIGHT-BILLBOARD-GPU-1 (master-FAIL #8): bit-4 tags beacon/runway glow
+		// cards so static_prop.vert rotates the quad to face the camera (bit-5
+		// = debug exaggeration). This recipe path is the live one for
+		// persistent statics, so it MUST emit the same bit as
+		// GpuStaticPropBatcher::submitMultiShape — a split here would fix only
+		// half the airbase light population. Gate 0 => no bit => byte-identical.
+		if (child->GetIsLightBillboard()) {
+			const int lbMode = gos_lightBillboardFacingMode();
+			if (lbMode != 0) {
+				flags |= (1u << 4);
+				if (lbMode == 2) flags |= (1u << 5);
+			}
+		}
+		GpuStaticPropInstance inst;
+		if (!GpuStaticPropBatcher::instance().buildRecipeFromShape(
+				child, xform,
+				static_cast<uint32_t>(child->GetARGBHighlight()),
+				static_cast<uint32_t>(child->GetFogRGB()),
+				flags, &inst)) {
+			++diag_skip_unreg;
+			if (seamProbe)
+				fprintf(stderr, "[SEAMPROBE] bldg buildRecipe MISS name=%s leaf=%d child=%p node=%s (override type not in s_typeIndex) -> ABORT\n",
+					appearType->name, i, (void*)child, child->getNodeName()), fflush(stderr);
+			return;  // unregistered type — abort; first-render fallback covers it
+		}
+		if (seamProbe)
+			fprintf(stderr, "[SEAMPROBE] bldg buildRecipe HIT name=%s leaf=%d child=%p node=%s typeID=%u\n",
+				appearType->name, i, (void*)child, child->getNodeName(), inst.typeID), fflush(stderr);
+		// EDITOR-STATIC-RECIPE-FROM-TYPE-1: the recipe is built from the INSTANCE
+		// bldgShape (a CreateFrom copy, bdactor.cpp). For a building placed at
+		// runtime in the editor, that copy's leaf child->myType registers AFTER the
+		// one-shot finalizeGeometry() latch -> it gets a typeID in s_typeIndex but
+		// its geometry is NOT in the immutable VBO (batcher_getTypeDrawInfo
+		// indexCount==0) -> the draw replays an empty type -> invisible body (shadow
+		// still draws from the correct worldCenter record). Re-point the recipe at the
+		// canonical TYPE render-shape leaf (getBldgRenderShape, primed by
+		// primeAllBuildingAppearanceTypes BEFORE finalize, so it carries real VBO
+		// geometry); the instance still supplies transform/light/flags. Editor-only:
+		// in-game the instance leaves register pre-finalize, so this is a no-op. Guard:
+		// only re-point when the canonical leaf resolves to a typeID that actually has
+		// finalized geometry, else leave inst.typeID untouched.
+		{
+			extern bool InEditor;   // mech3d.cpp
+			if (InEditor && appearType) {
+				TG_TypeMultiShape* typeRS = appearType->getBldgRenderShape(0);
+				if (typeRS && i < typeRS->GetNumShapes()) {
+					TG_TypeNodePtr typeLeaf = typeRS->GetTypeNode(i);
+					uint32_t canonId = 0, idxc = 0, fi = 0, ic = 0; int32_t bv = 0;
+					const bool gotId = typeLeaf && batcher_typeIdForTypeShape((const void*)typeLeaf, &canonId);
+					const bool gotGeo = gotId && batcher_getTypeDrawInfo(canonId, &idxc, &fi, &bv, &ic);
+					if (gotGeo && idxc > 0) {
+						inst.typeID = canonId;
+					}
+				}
+			}
+		}
+		batch.push_back(inst);
+		++diag_added;
+	}
+	// 2026-05-10 diag: env-gated per-building outcome. MC2_BLDG_REG_TRACE=1.
+	{
+		static const bool s_trace = mc2::gate::get<"MC2_BLDG_REG_TRACE">();
+		static int s_loggedCount = 0;
+		if (s_trace && s_loggedCount < 80) {
+			++s_loggedCount;
+			fprintf(stderr,
+				"[BLDG_REG_DIAG v1] sample=first80 appearType=%s numShapes=%d total=%d processMe_skip=%d "
+				"helper_skip=%d unreg_skip=%d added=%d\n",
+				(appearType ? appearType->name : "<null>"),
+				numShapes, diag_total, diag_skip_processMe, diag_skip_helper,
+				diag_skip_unreg, diag_added);
+			fflush(stderr);
+		}
+		(void)diag_total; (void)diag_skip_processMe; (void)diag_skip_helper;
+		(void)diag_skip_unreg; (void)diag_added;
+	}
+	if (batch.empty()) {
+		return;
+	}
+
+	int32_t regIdx = -1;
+	(void)GameAdapters::StaticProp::syncStaticProp(
+		bldgShape, batch.data(), batch.size(), &regIdx);
+	if (seamProbe)
+		fprintf(stderr, "[SEAMPROBE] bldg syncStaticProp name=%s batchSize=%zu regIdx=%d firstTypeID=%u\n",
+			appearType->name, batch.size(), (int)regIdx,
+			batch.empty()?0xFFFFFFFFu:batch[0].typeID), fflush(stderr);
+	if (regIdx >= 0) {
+		staticReg.registered  = true;
+		staticReg.shape       = bldgShape;
+		staticReg.recipeIndex = regIdx;
+		// TERRAIN-DECAL-SLICE-0C: capture this decal's live-update context so the
+		// "Cliff Decal" ImGui panel can recompute + re-upload its transform when a
+		// slider moves. Only for the CLIFF_WALL decal (useCliffWallFrame); other
+		// buildings never register a live decal target.
+		if (useCliffWallFrame) {
+			CliffDecalTuning::captureDecalContext(regIdx, xlatPosition, decalNAcc);
+		}
+		// SHADOW-STATIC-BUILDINGS-2: tag this recipe Building so the world-fixed
+		// static shadow map replays it (visibility-independent; not per-frame buckets).
+		GpuStaticPropRegistry::setRecipePopulation(regIdx, GpuStaticPropPopulation::Building);
+		// H4 fix (2026-05-06): registerStatic only ran TransformMultiShape_BuildRecipe
+		// (positions only); leaf TG_Shape::lightData_ is still default/zero. Without
+		// this flag, IsStaticNow() returns true on the very next frame, UPDATE_SKIP
+		// fires, touch() re-submits the empty lightData_ via addLightDataStructure
+		// → all-zero lighting slot → black actor. Setting needsFullBakeNextFrame
+		// uses the existing late-reg recovery mechanism: IsStaticNow() returns
+		// false until the next update() runs a full TransformMultiShape and clears
+		// the flag (bdactor.cpp). One-time cost of one extra update() per
+		// mission-load-registered actor; recovers the UPDATE_SKIP perf win
+		// every frame thereafter. Spec:
+		// docs/superpowers/specs/2026-05-06-update-skip-touch-residual-debug-strategy.md
+		needsFullBakeNextFrame = true;
+		// [G1-STATIC-EAGER-LIGHT v1] Eager fallback: write a non-zero ambient slot so
+		// lightData_[recipeIndex] is never pure-zero if this prop is never on screen.
+		// CANNOT call CacheGpuLightData here -- worldLights[] are not populated until
+		// the first update() (SetLightList requires a live eye/camera). Instead we seed
+		// a minimal ambient record (numLights_=1, dim neutral color) so GPU-Scene cull
+		// can upload this slot without blacking the prop. The first real update() calls
+		// mc2CacheOrBakeStaticGpuLight -> MISS path -> CacheGpuLightData + mc2WriteStaticLightSlot
+		// which overwrites this fallback with the terrain-correct light. Gate default-OFF;
+		// unset = byte-identical to existing behavior.
+		{
+			extern void mc2SetBakedStaticLight(int32_t, const TG_HWLightsData&);
+			extern void mc2WriteStaticLightSlot(int32_t, const TG_HWLightsData&);
+			static const bool s_eagerLightBake = mc2::gate::get<"MC2_GPU_CULL_STATIC_EAGER_LIGHT_BAKE">();
+			if (s_eagerLightBake) {
+				TG_HWLightsData fallback;
+				// Minimal ambient: one dim neutral-white light. Overwritten on first
+				// in-view update() by the terrain-correct bake (MISS path). Non-zero
+				// numLights_ is the sentinel the zero-probe checks.
+				fallback.numLights_ = 1;
+				fallback.lightColor[0][0] = 0.3f;
+				fallback.lightColor[0][1] = 0.3f;
+				fallback.lightColor[0][2] = 0.3f;
+				fallback.lightColor[0][3] = 1.0f;
+				mc2SetBakedStaticLight(regIdx, fallback);
+				mc2WriteStaticLightSlot(regIdx, fallback);
+			}
+	}
+}
+}
+
+bool BldgAppearance::isStaticRegistered() const { return staticReg.registered; }
+
+int32_t BldgAppearance::getStaticRecipeIndex() const {
+    return staticReg.registered ? staticReg.recipeIndex : -1;
+}
+
+// STATIC-REG-PREWARM-QUEUE-1: mission-load off-screen light bake.
+// Called after finalizeGeometry() + eye init, before the first update() frame.
+// Purpose: drain the H4 latch (needsFullBakeNextFrame=true) that registerStatic()
+// arms, using the permanent SSBO path (mc2CacheOrBakeStaticGpuLight → MISS →
+// mc2WriteStaticLightSlot). Off-screen props that never reach render() will
+// have a valid cached light slot and will pass stableLightSkipEligible from
+// frame 1 onward, eliminating the rej_no_static_reg bucket on mc2_24.
+// The approach mirrors the existing gpuEligible non-full-bake branch in update():
+//   SetLightList → TransformMultiShape_HierarchyOnly → mc2CacheOrBakeStaticGpuLight
+// We re-use the static mc2CacheOrBakeStaticGpuLight() declared above in this TU.
+bool BldgAppearance::prewarmStaticLightBake(Camera* cam)
+{
+	// Gate: only bake objects that are registered and have the latch set.
+	if (!staticReg.registered || staticReg.recipeIndex < 0)
+		return false;
+	if (!needsFullBakeNextFrame)
+		return false;
+	if (!bldgShape)
+		return false;
+	if (!cam || cam->getNumLights() == 0)
+		return false;
+
+	// Populate shapeToWorld hierarchy (no full pool bake — mirrors gpuEligible branch).
+	bldgShape->SetLightList(cam->getWorldLights(), cam->getNumLights());
+
+	// Build xlatPosition/rot from the appearance world position/rotation.
+	// Same coordinate transform as BldgAppearance::update (line ~3281):
+	Stuff::Point3D xlatPosition;
+	xlatPosition.x = -position.x;
+	xlatPosition.y =  position.z;
+	xlatPosition.z =  position.y;
+
+	float yaw = rotation * DEGREES_TO_RADS;
+	Stuff::UnitQuaternion rot;
+	rot = Stuff::EulerAngles(0.0f, yaw, 0.0f);
+
+	// Hierarchy-only walk: fills shapeToWorld matrices without touching TGL pools.
+	// Safe to call from mission load: no GL calls, no frame-pool alloc.
+	bldgShape->TransformMultiShape_HierarchyOnly(&xlatPosition, &rot);
+
+	// Bake light into permanent SSBO slot (MISS path: CacheGpuLightData + mc2WriteStaticLightSlot).
+	mc2CacheOrBakeStaticGpuLight(bldgShape, staticReg.registered, staticReg.recipeIndex);
+	staticReg.lightDataIndex = bldgShape->getCachedGpuLightIndex();
+
+	if (staticReg.lightDataIndex != 0xFFFFFFFFu) {
+		staticReg.hasValidStaticLight = true;
+		needsFullBakeNextFrame = false;
+		return true;  // baked successfully
+	}
+	return false;  // gpu objects not enabled or CacheGpuLightData early-returned
+}
+
+bool BldgAppearance::IsStaticNow() const
+{
+	return staticReg.registered
+		&& staticReg.shape == bldgShape
+		&& !needsFullBakeNextFrame
+		&& isStaticEligible();
+}
+
+void BldgAppearance::touch()
+{
+	// FRAME-JOBS-2F: if touchSerialCommit() already ran this frame (split path active),
+	// skip redundant Path B work. When MC2_FRAME_JOBS_TOUCH=0, stamp is never set
+	// (0xFFFFFFFFu initial value cannot match any real frame counter).
+	if (mc2FrameJobsTouchDiagEnabled()) {
+		touchEntryDiagRollFrame(g_mc2FrameCounter);
+		if (touchSerialCommitFrame == g_mc2FrameCounter) {
+			++s_touchEntryDiag.legacy_skipped;
+			return;
+		}
+		++s_touchEntryDiag.legacy_ran_nosplit;
+	} else {
+		if (touchSerialCommitFrame == g_mc2FrameCounter)
+			return;
+	}
+
+	// BLDG-TYPE-ANIM-GATE-FIX-1: count touch() calls for newly-eligible pop:
+	// type has animation data, instance is idle (bdAnimationState==-1), and
+	// currently registered (staticReg.registered). Nonzero delta proves fix works.
+	if (bldgTypeHasAnimations(appearType) && bdAnimationState == -1 && staticReg.registered)
+		s_animTypeIdleNowStatic.fetch_add(1, std::memory_order_relaxed);
+	// MC2_STATIC_UPDATE_SKIP defaults TRUE (terrobj.cpp); touch() is the
+	// DEFAULT path. update() runs only when the env var is explicitly cleared.
+	if (bldgShape) {
+		const bool stableLightSkipArmed = mc2StableLightSkipEnabled();
+		const uint64_t currentLightEnvGen = mc2StaticLightEnvironmentGeneration(eye);
+		const bool stableLightSkipEligible =
+			staticReg.registered &&
+			staticReg.recipeIndex >= 0 &&
+			staticReg.hasValidStaticLight &&
+			staticReg.lightDataIndex != 0xFFFFFFFFu &&
+			staticReg.lastLightEnvGen == currentLightEnvGen &&
+			!needsFullBakeNextFrame;
+		recordStableLightSkipDiag(
+			stableLightSkipArmed,
+			stableLightSkipEligible,
+			!staticReg.registered || staticReg.recipeIndex < 0,
+			!staticReg.hasValidStaticLight,
+			staticReg.hasValidStaticLight && (staticReg.lastLightEnvGen != currentLightEnvGen),
+			needsFullBakeNextFrame,
+			staticReg.lightDataIndex == 0xFFFFFFFFu);
+
+		// STABLE-LIGHT-SKIP-BROADEN-1: broaden the LBSS resubmit-skip that
+		// touchSerialCommit() takes (bdactor.cpp ~4490) to THIS legacy path. In
+		// stock config touch() is the live path (FRAME-JOBS touch split default-OFF),
+		// so touchSerialCommit()'s skip never fires and every stable static building
+		// pays a redundant ResubmitCachedGpuLightData() per frame. When
+		// stableLightSkipEligible the cached lightDataIndex from a prior frame is
+		// still valid on the GPU (baked static prefix [0..s_staticLightHighWater)
+		// persists frame-to-frame under MC2_LIGHTBAKE — same invariant proof as the
+		// serial-commit skip below), so that resubmit is pure redundant recompute.
+		// SAFER-THAN-SERIAL-VARIANT: we still call bldgShape->Touch() (one field
+		// write advancing lastTurnTransformed) before returning — the non-split
+		// path bundles Touch() with the resubmit, whereas the split path runs Touch()
+		// in touchWorkerPrepass(). Skipping only the expensive resubmit keeps the
+		// legacy CPU-render staleness guard (tgl.cpp) byte-identical. staticReg
+		// fields are already correct from the last full update()/resubmit. Gate:
+		// mc2StableLightSkipTouchEnabled() (default OFF => resubmit still runs).
+		if (mc2StableLightSkipTouchEnabled() && mc2LightbridgeStableSkipEnabled()
+		    && stableLightSkipArmed && stableLightSkipEligible) {
+			lbssRecordBldg(/*eligible=*/true, /*skipTaken=*/true,
+			               /*blk_idx=*/false, /*blk_gen=*/false, /*blk_noelig=*/false);
+			bldgShape->Touch();
+			return;
+		}
+
+		// [LIGHTBRIDGE v1] C6 retirement: repoint to the primed 38d8720 slot
+		// (zero FNV/memcmp; cachedFrame_ stamped). MISS keeps the legacy
+		// resubmit (NOT CacheGpuLightData -- terrain-color-staleness,
+		// msl.cpp). MC2_LIGHTBAKE=0 -> legacy path bit-for-bit.
+		extern bool mc2LightBakeEnabled();
+		extern bool mc2IsBakedStaticLightPresent(int32_t);
+		// THREAD-SAFETY CLASSIFICATION: EmitBakedGpuLightData — WORKER_SAFE.
+		// (1) Writes only per-instance members cachedGpuLightIndex_ and cachedFrame_
+		//     on the TG_MultiShape pointed to by bldgShape (unique per BldgAppearance
+		//     instance, never aliased across actors). (2) Makes NO GL calls
+		//     (glBufferSubData, glMapBuffer, etc.). (3) The 'baked' struct is
+		//     explicitly discarded ((void)baked in msl.cpp) — the slot index IS
+		//     recipeIndex, which is per-recipe-constant. Two calls on different shape
+		//     instances cannot conflict. ResubmitCachedGpuLightData (the else branch)
+		//     also writes only per-instance members on the same hot path; no shared
+		//     pool write occurs unless the repoint fast-path misses, in which case it
+		//     calls addLightDataStructure (now mutex-protected by s_lightDataMapMu).
+		// [LIGHTBRIDGE-BAKED-PROBE-1] probe only — EmitBakedGpuLightData discards baked
+		if (mc2LightBakeEnabled()
+		    && staticReg.registered && staticReg.recipeIndex >= 0
+		    && mc2IsBakedStaticLightPresent(staticReg.recipeIndex)) {
+			TG_HWLightsData baked{};
+			bldgShape->EmitBakedGpuLightData(staticReg.recipeIndex, baked);
+		} else {
+			bldgShape->ResubmitCachedGpuLightData();
+		}
+		// 2026-05-11 per-instance capture: snapshot the just-resubmitted slot
+		// for THIS actor before sibling instances of the same multi-type
+		// overwrite multi->cachedGpuLightIndex_ in the same update phase.
+		staticReg.lightDataIndex = bldgShape->getCachedGpuLightIndex();
+		staticReg.hasValidStaticLight = (staticReg.lightDataIndex != 0xFFFFFFFFu);
+		staticReg.lastLightEnvGen = currentLightEnvGen;
+		bldgShape->Touch();
+	}
+}
+
+// FRAME-JOBS-2D: lock-free per-instance prep; runs on worker threads.
+// bldgShape->Touch() is lock-free (verified: sets lastTurnTransformed only, tgl.cpp).
+// s_animTypeIdleNowStatic.fetch_add is atomic — worker-safe.
+void BldgAppearance::touchWorkerPrepass()
+{
+	if (bldgTypeHasAnimations(appearType) && bdAnimationState == -1 && staticReg.registered)
+		s_animTypeIdleNowStatic.fetch_add(1, std::memory_order_relaxed);
+	if (bldgShape)
+		bldgShape->Touch();
+}
+
+// FRAME-JOBS-2D: light-data resubmit; runs serially on main thread after worker join.
+void BldgAppearance::touchSerialCommit()
+{
+	// FRAME-JOBS-2F: stamp this frame unconditionally so touch() (Path B, terrain object
+	// loop) returns immediately. Set BEFORE any early returns including stable-skip:
+	// if stable-skip fires and we return early, the stamp still prevents Path B from
+	// re-doing work that stable-skip correctly decided to omit.
+	touchSerialCommitFrame = g_mc2FrameCounter;
+	if (mc2FrameJobsTouchDiagEnabled()) {
+		touchEntryDiagRollFrame(g_mc2FrameCounter);
+		++s_touchEntryDiag.serial_commit_hits;
+	}
+
+	if (!bldgShape) {
+		if (s_proxyReconEnabled) {
+			g_spr_phase2Calls.fetch_add(1, std::memory_order_relaxed);
+			g_spr_bldgCalls.fetch_add(1, std::memory_order_relaxed);
+			g_spr_rejNoShape.fetch_add(1, std::memory_order_relaxed);
+			g_spr_callCounter.fetch_add(1, std::memory_order_relaxed);
+		}
+		return;
+	}
+	const bool stableLightSkipArmed = mc2StableLightSkipEnabled();
+	const uint64_t currentLightEnvGen = mc2StaticLightEnvironmentGeneration(eye);
+	const bool stableLightSkipEligible =
+		staticReg.registered &&
+		staticReg.recipeIndex >= 0 &&
+		staticReg.hasValidStaticLight &&
+		staticReg.lightDataIndex != 0xFFFFFFFFu &&
+		staticReg.lastLightEnvGen == currentLightEnvGen &&
+		!needsFullBakeNextFrame;
+	recordStableLightSkipDiag(
+		stableLightSkipArmed,
+		stableLightSkipEligible,
+		!staticReg.registered || staticReg.recipeIndex < 0,
+		!staticReg.hasValidStaticLight,
+		staticReg.hasValidStaticLight && (staticReg.lastLightEnvGen != currentLightEnvGen),
+		needsFullBakeNextFrame,
+		staticReg.lightDataIndex == 0xFFFFFFFFu);
+
+	// STATIC-SCENE-PROXY-RECON-1: classify this object as proxy candidate or not.
+	// Must run BEFORE the LBSS early return below (most objects skip via LBSS on mc2_24).
+	// Mirrors stableLightSkipEligible criteria exactly (stableLightSkipEligible is already
+	// computed above). No behavior change.
+	// Note: falling state (OBJECT_FLAG_FALLING) lives on the Building game object,
+	// not BldgAppearance — not accessible here without an owner pointer. Omitted;
+	// falling buildings will be counted as rej_no_static_reg (IsStaticNow calls
+	// invalidateStaticRegistration on fall, clearing staticReg.registered).
+	if (s_proxyReconEnabled) {
+		g_spr_phase2Calls.fetch_add(1, std::memory_order_relaxed);
+		g_spr_bldgCalls.fetch_add(1, std::memory_order_relaxed);
+
+		// Mirror stableLightSkipEligible exactly:
+		bool isProxy = stableLightSkipEligible;
+		if (!isProxy) {
+			// Attribute the first failing condition (same priority as stableLightSkipEligible)
+			if (!staticReg.registered || staticReg.recipeIndex < 0) {
+				g_spr_rejNoStaticReg.fetch_add(1, std::memory_order_relaxed);
+
+				// STATIC-REGISTRY-COVERAGE-RECON-1: sub-classify the rej_no_static_reg bucket.
+				// Runs only when MC2_STATIC_REG_COVERAGE=1 to avoid overhead on normal runs.
+				if (s_regCovEnabled) {
+					extern bool mc2LightBakeEnabled();
+					extern bool mc2IsBakedStaticLightPresent(int32_t);
+					if (!staticReg.registered) {
+						g_rc_neverRegistered.fetch_add(1, std::memory_order_relaxed);
+						// isStaticEligible() for the never-registered set: tells us whether
+						// the building COULD have been registered but wasn't (eligible=true),
+						// or is inherently ineligible (animated, spinning, etc.).
+						if (isStaticEligible())
+							g_rc_isStaticEligibleYes.fetch_add(1, std::memory_order_relaxed);
+						else
+							g_rc_isStaticEligibleNo.fetch_add(1, std::memory_order_relaxed);
+						// Track shape name for the top-N breakdown.
+						if (appearType && appearType->name) {
+							std::lock_guard<std::mutex> lk(g_rc_shapeMu);
+							g_rc_shapeNames[appearType->name]++;
+						}
+					} else {
+						// registered=true but recipeIndex<0 — should not normally occur
+						// (registration sets registered = (recipeIndex >= 0)).
+						g_rc_noRecipe.fetch_add(1, std::memory_order_relaxed);
+					}
+					// Also probe the bake gate and bake-table presence, independent of
+					// registered flag, to reveal whether bake infrastructure is live at all.
+					if (!mc2LightBakeEnabled()) {
+						g_rc_bakeNotEnabled.fetch_add(1, std::memory_order_relaxed);
+					} else if (staticReg.registered && staticReg.recipeIndex >= 0
+					           && !mc2IsBakedStaticLightPresent(staticReg.recipeIndex)) {
+						g_rc_notInBakeTable.fetch_add(1, std::memory_order_relaxed);
+					}
+				}
+			} else if (!staticReg.hasValidStaticLight)
+				g_spr_rejNoValidLight.fetch_add(1, std::memory_order_relaxed);
+			else if (staticReg.lightDataIndex == 0xFFFFFFFFu)
+				g_spr_rejBadLightIdx.fetch_add(1, std::memory_order_relaxed);
+			else if (staticReg.lastLightEnvGen != currentLightEnvGen)
+				g_spr_rejLightGenMismatch.fetch_add(1, std::memory_order_relaxed);
+			else if (needsFullBakeNextFrame)
+				g_spr_rejNeedsFullBake.fetch_add(1, std::memory_order_relaxed);
+		}
+		if (isProxy) g_spr_proxyCandidate.fetch_add(1, std::memory_order_relaxed);
+
+		const int64_t n = g_spr_callCounter.fetch_add(1, std::memory_order_relaxed);
+		if (n > 0 && (n % 15000) == 0) {
+			const int64_t ph2   = g_spr_phase2Calls.exchange(0, std::memory_order_relaxed);
+			const int64_t bldg  = g_spr_bldgCalls.exchange(0, std::memory_order_relaxed);
+			const int64_t tree  = g_spr_treeCalls.exchange(0, std::memory_order_relaxed);
+			const int64_t proxy = g_spr_proxyCandidate.exchange(0, std::memory_order_relaxed);
+			const int64_t rNS   = g_spr_rejNoStaticReg.exchange(0, std::memory_order_relaxed);
+			const int64_t rBL   = g_spr_rejBadLightIdx.exchange(0, std::memory_order_relaxed);
+			const int64_t rNVL  = g_spr_rejNoValidLight.exchange(0, std::memory_order_relaxed);
+			const int64_t rLG   = g_spr_rejLightGenMismatch.exchange(0, std::memory_order_relaxed);
+			const int64_t rNFB  = g_spr_rejNeedsFullBake.exchange(0, std::memory_order_relaxed);
+			const int64_t rNSh  = g_spr_rejNoShape.exchange(0, std::memory_order_relaxed);
+			printf("STATIC_PROXY_RECON: ph2_calls=%lld bldg=%lld tree=%lld"
+			       " proxy_candidate=%lld(%.1f%%)"
+			       " rej_no_static_reg=%lld rej_bad_light_idx=%lld"
+			       " rej_no_valid_light=%lld rej_light_gen_mismatch=%lld"
+			       " rej_needs_full_bake=%lld rej_no_shape=%lld\n",
+			       (long long)ph2, (long long)bldg, (long long)tree,
+			       (long long)proxy,
+			       ph2 > 0 ? (proxy * 100.0 / ph2) : 0.0,
+			       (long long)rNS, (long long)rBL,
+			       (long long)rNVL, (long long)rLG,
+			       (long long)rNFB, (long long)rNSh);
+
+			// STATIC-REGISTRY-COVERAGE-RECON-1: print sub-breakdown when gate is on.
+			if (s_regCovEnabled) {
+				const int64_t rcNR  = g_rc_neverRegistered.exchange(0, std::memory_order_relaxed);
+				const int64_t rcNRp = g_rc_noRecipe.exchange(0, std::memory_order_relaxed);
+				const int64_t rcBN  = g_rc_bakeNotEnabled.exchange(0, std::memory_order_relaxed);
+				const int64_t rcNBT = g_rc_notInBakeTable.exchange(0, std::memory_order_relaxed);
+				const int64_t rcEY  = g_rc_isStaticEligibleYes.exchange(0, std::memory_order_relaxed);
+				const int64_t rcEN  = g_rc_isStaticEligibleNo.exchange(0, std::memory_order_relaxed);
+				printf("STATIC_REG_COVERAGE: total_rej_no_static_reg=%lld"
+				       " sub: never_registered=%lld no_recipe=%lld"
+				       " bake_not_enabled=%lld not_in_bake_table=%lld"
+				       " is_static_eligible_yes=%lld is_static_eligible_no=%lld\n",
+				       (long long)rNS,
+				       (long long)rcNR, (long long)rcNRp,
+				       (long long)rcBN, (long long)rcNBT,
+				       (long long)rcEY, (long long)rcEN);
+				// Top-20 shape names from never_registered bucket.
+				{
+					std::lock_guard<std::mutex> lk(g_rc_shapeMu);
+					if (!g_rc_shapeNames.empty()) {
+						// Copy to a vector for top-N sort.
+						std::vector<std::pair<int,std::string>> sorted;
+						sorted.reserve(g_rc_shapeNames.size());
+						for (auto& kv : g_rc_shapeNames)
+							sorted.push_back({kv.second, kv.first});
+						std::sort(sorted.begin(), sorted.end(),
+						          [](const std::pair<int,std::string>& a, const std::pair<int,std::string>& b){
+						              return a.first > b.first;
+						          });
+						printf("STATIC_REG_COVERAGE: top_shapes(name:count):");
+						int shown = 0;
+						for (auto& p : sorted) {
+							if (shown >= 20) break;
+							printf(" %s:%d", p.second.c_str(), p.first);
+							++shown;
+						}
+						printf("\n");
+						g_rc_shapeNames.clear();
+					}
+				}
+			}
+			fflush(stdout);
+		}
+	}
+
+	// [LIGHTBRIDGE-STABLE-SKIP-WIRE-1]: skip Section C (EmitBakedGpuLightData +
+	// getCachedGpuLightIndex + staticReg writes) when MC2_LIGHTBRIDGE_STABLE_SKIP=1
+	// and this object's baked light slot is known valid for this frame.
+	// INVARIANT proof (verified 2026-06-20):
+	//   Q1: resetLightData() rebases lightDataStructuresCount to s_staticLightHighWater
+	//       (not 0) when MC2_LIGHTBAKE is on. lightData_[0..s_staticLightHighWater) is
+	//       NEVER memset'd or cleared — it persists intact frame-to-frame.
+	//   Q2: EmitBakedGpuLightData(recipeIndex, ...) sets cachedGpuLightIndex_ =
+	//       static_cast<uint32_t>(recipeIndex) — i.e. the permanent static prefix slot.
+	//   Q3: staticReg.lightDataIndex = getCachedGpuLightIndex() = recipeIndex, which
+	//       is an index into the static prefix [0..s_staticLightHighWater).
+	//   Q4: renderLists() uploads lightData_[0..max(lightDataStructuresCount,64)] which
+	//       always covers [0..s_staticLightHighWater) since count >= S after rebase.
+	//       With MC2_STATIC_LIGHT_UPLOAD_SPLIT the prefix is uploaded once-per-dirty;
+	//       suffix is uploaded every frame. Either path keeps [0..S) in GPU memory.
+	// Therefore: staticReg.lightDataIndex from a prior frame remains valid on the GPU
+	// for stable objects — we can skip resubmit entirely when stableLightSkipEligible.
+	// DO NOT remove the else-branch fallback — it handles any frame where light state
+	// changed, needsFullBakeNextFrame, or slot was invalidated.
+	if (mc2LightbridgeStableSkipEnabled() && stableLightSkipArmed) {
+		// FRAME-JOBS-2F Fix-A: stableLightSkipEligible already requires
+		// (lightDataIndex != 0xFFFFFFFF) and (lastLightEnvGen == currentLightEnvGen),
+		// so blk_idx and blk_gen were always false — removed (always-zero, misleading).
+		// skipTaken == stableLightSkipEligible by definition now.
+		const bool skipTaken  = stableLightSkipEligible;
+		const bool blk_noelig = !stableLightSkipEligible;
+		lbssRecordBldg(stableLightSkipEligible, skipTaken, /*blk_idx=*/false, /*blk_gen=*/false, blk_noelig);
+		if (skipTaken)
+			return;
+	}
+
+	extern bool mc2LightBakeEnabled();
+	extern bool mc2IsBakedStaticLightPresent(int32_t);
+	// [LIGHTBRIDGE-BAKED-PROBE-1] probe only — EmitBakedGpuLightData discards baked
+	if (mc2LightBakeEnabled()
+	    && staticReg.registered && staticReg.recipeIndex >= 0
+	    && mc2IsBakedStaticLightPresent(staticReg.recipeIndex)) {
+		TG_HWLightsData baked{};
+		bldgShape->EmitBakedGpuLightData(staticReg.recipeIndex, baked);
+	} else {
+		bldgShape->ResubmitCachedGpuLightData();
+	}
+	staticReg.lightDataIndex = bldgShape->getCachedGpuLightIndex();
+	staticReg.hasValidStaticLight = (staticReg.lightDataIndex != 0xFFFFFFFFu);
+	staticReg.lastLightEnvGen = currentLightEnvGen;
+	// NOTE: bldgShape->Touch() is in touchWorkerPrepass() (verified lock-free)
+}
+
+// STATIC-BLDG-SHADOW-REBAKE-1: re-arm the one-shot world-fixed static-shadow
+// latch (mclib/txmmgr.cpp gos_StaticLightMatrixBuilt()) so the static shadow
+// (terrain + buildings) replays fresh next frame without a since-destroyed
+// building (docs/known_issues.md "Static building shadow goes stale on
+// destroy"). Called from the two places a building's static registration
+// actually becomes stale mid-mission-relevant: (1) BldgAppearance::setObjStatus
+// transitioning to OBJECT_STATUS_DESTROYED -- the REAL in-game combat-destroy
+// event (swaps to appearType->bldgDmgShape; a later touch()/update() detects
+// the staticReg.shape mismatch and re-registers the rubble recipe through the
+// ordinary shape-swap path, but that generic re-registration does NOT itself
+// trigger a shadow rebake, hence this dedicated hook); and (2)
+// BldgAppearance::destroy() -- mission-end/pool-recycle teardown, cheap
+// insurance for the case a registered building never went through (1) first.
+// Only worth the rebake cost (a full-map static shadow replay,
+// ZoneScopedN("Shadow.StaticFullMapBuild") in txmmgr.cpp) when (a) this
+// building actually had a static registration, AND (b) the building
+// static-shadow map is actually active -- MC2_STATIC_PROP_BUILDING_SHADOW is
+// default OFF, and the unconditional terrain-only static build must NOT be
+// forced to redundantly re-run (wasted GPU work, zero visual change) on
+// missions that never opted into building-in-static-map at all.
+// MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE is a dedicated kill-switch (default
+// ON, independent of the parent gate) for this specific rebake trigger, in
+// case it proves too expensive on destruction-heavy missions.
+// Gate check split out so callers can decide whether to ALSO do the
+// synchronous invalidateStaticRegistration() dance (see setObjStatus) --
+// that call must byte-identically NOT happen when the gates are off, so it
+// cannot live only inside this function's early-return.
+bool bldgStaticShadowRebakeGatesActive()
+{
+	static const bool s_bldgStaticShadowActive = !mc2::gate::is<"MC2_STATIC_PROP_BUILDING_SHADOW", "0">();
+
+	static const bool s_rebakeOnDestroy = !mc2::gate::is<"MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE", "0">();
+	return s_bldgStaticShadowActive && s_rebakeOnDestroy;
+}
+
+void bldgTriggerStaticShadowRebakeIfArmed(bool wasRegistered, int32_t recipeIndex,
+                                                  const char* reason)
+{
+	if (!wasRegistered || !bldgStaticShadowRebakeGatesActive()) return;
+	static const bool s_rebakeTrace = mc2::gate::is<"MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE", "2">();
+	gos_ResetStaticLightMatrix();
+	if (s_rebakeTrace) {
+		fprintf(stderr,
+			"[SHADOW_STATIC_BLDG_REBAKE v1] event=%s recipeIndex=%d\n",
+			reason, recipeIndex);
+		fflush(stderr);
+	}
+}
+
+void BldgAppearance::invalidateStaticRegistration()
+{
+	if (staticReg.registered && staticReg.recipeIndex >= 0)
+		GameAdapters::StaticProp::destroyStaticPropByIndex(staticReg.recipeIndex);
+	staticReg = {};
+}
+
+void BldgAppearance::destroy (void)
+{
+	// Capture BEFORE invalidateStaticRegistration() clears staticReg below.
+	const bool    wasStaticRegistered   = staticReg.registered;
+	const int32_t prevStaticRecipeIndex = staticReg.recipeIndex;
+
+	// Stage 3.D: NULL the registry's RecipeRange::multi pointer before
+	// bldgShape is freed below. Mirrors TreeAppearance::destroy ordering.
+	invalidateStaticRegistration();
+
+	// STATIC-BLDG-SHADOW-REBAKE-1: cheap insurance -- see the helper's
+	// comment. In practice combat-destroyed buildings are already re-armed
+	// earlier via setObjStatus(OBJECT_STATUS_DESTROYED); this covers the
+	// mission-end/pool-recycle path.
+	bldgTriggerStaticShadowRebakeIfArmed(wasStaticRegistered, prevStaticRecipeIndex, "appearance_destroy");
+
+	if ( bldgShape )
+	{
+		delete bldgShape;
+		bldgShape = NULL;
+	}
+
+	if (destructFX)
+	{
+		destructFX->Kill();
+		delete destructFX;
+		destructFX = NULL;
+	}
+	
+	//Turn the lights off!
+	//Need to kill the light source here too!
+	if (pointLight)
+	{
+		if (eye)
+			eye->removeWorldLight(lightId,pointLight);
+
+		free(pointLight);
+		pointLight = NULL;
+	}
+
+	// (E) T1.5: paired cleanup for SpotLight_-child illumination from T1.4.
+	// IMPORTANT (C-r2 M5): bldgShape was deleted above; do NOT call
+	// getNodeIdPosition or any bldgShape method here. Use CACHED state
+	// (spotlightLights_/spotlightSlotIds_/spotlightNodeIds_) only. Unlike
+	// `pointLight` (alloc/free per night/day boundary), spotlightLights_
+	// stay allocated for the building's lifetime — this destroy hook is the
+	// only cleanup site.
+	for (size_t k = 0; k < spotlightLights_.size(); ++k)
+	{
+		if (eye)
+			eye->removeWorldLight(spotlightSlotIds_[k], spotlightLights_[k]);
+		// T1.16 — pair untag with removeWorldLight before free().
+		mc2_spotlight_diag::untag_slot(static_cast<long>(spotlightSlotIds_[k]));
+		free(spotlightLights_[k]);
+	}
+	spotlightLights_.clear();
+	spotlightSlotIds_.clear();
+	spotlightNodeIds_.clear();
+	spotlightsRegistered_ = false;
+
+	if (activity)
+	{
+		activity->Kill();
+		delete activity;
+		activity = NULL;
+	}
+
+	if (activity1)
+	{
+		activity1->Kill();
+		delete activity1;
+		activity1 = NULL;
+	}
+
+	appearanceTypeList->removeAppearance(appearType);
+}

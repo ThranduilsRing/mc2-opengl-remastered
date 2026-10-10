@@ -10,6 +10,7 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
+#include "Gates/gate.h"
 
 #ifndef ABLGEN_H
 #include"ablgen.h"
@@ -125,7 +126,7 @@ void execStatement (void) {
 			// a NULL pointer and crashes. Treat a NULL idPtr as a no-op
 			// statement so the rest of the module (and the game) can proceed.
 			if (!idPtr) {
-				static const bool s_ablTrace = (getenv("MC2_ABL_TRACE") != nullptr);
+				static const bool s_ablTrace = mc2::gate::get<"MC2_ABL_TRACE">();
 				if (s_ablTrace) {
 					const char* _cbmsg = "[ABL_EXEC] NULL idPtr at TKN_IDENTIFIER; skipping statement";
 					puts(_cbmsg); fflush(stdout);

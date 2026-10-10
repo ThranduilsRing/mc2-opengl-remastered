@@ -7,6 +7,8 @@
 #include <fstream>
 #include <mutex>
 #include <utility>
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"
 
 using nlohmann::json;
 
@@ -200,8 +202,9 @@ ModelOverrideRegistry& ModelOverrideRegistry::instance() {
         // manifestDir (mods/<id>/data/model_overrides), not full data-relative.
         // GLB load uses ImportGeometryFromFile (raw Assimp, not File::open),
         // so per-record manifestDir is the only way to route to the mod's files.
-        const char* activeMod = getenv("MC2_ACTIVE_MOD");
-        if (activeMod && activeMod[0]) {
+        const std::string activeModStr = mc2::gate::str<"MC2_ACTIVE_MOD">();
+        const char* activeMod = activeModStr.c_str();
+        if (activeMod[0]) {
             std::string modManifest = std::string("mods/") + activeMod
                                       + "/data/model_overrides/models.json";
             std::string modDir      = std::string("mods/") + activeMod

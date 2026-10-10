@@ -6,7 +6,7 @@
 # a '#'.
 #
 # Enforced by scripts/check-contract-coverage.py arm (e). TWO-WAY RATCHET, the
-# same shape as scripts/registered-gate-passthrough-debt.txt:
+# same shape as the other frozen-debt ratchet files:
 #
 #   * a buildable harness dir absent from BOTH the registry and this file
 #       -> FAIL. That is a dark check: never built, never run, and

@@ -11,6 +11,9 @@ set(SOURCES ${SOURCES}
     asystem.cpp
     logisticsscreen.cpp
     UiDefs.cpp
+    UiDefs_draw.cpp
+    UiDefs_element.cpp
+    UiDefs_parse.cpp
     )
 
 include_directories(${COMMON_INCLUDE_DIRS} "../mclib" "../Code")

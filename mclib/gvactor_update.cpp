@@ -1,6 +1,7 @@
 // GVAppearance: updateGeometry (reads the shadow-skip gate and the spot-light diagnostic counters), update, destroy, water wake and activity effects.
 // Declared in the class headers; shared names in gvactor_internal.h.
 #include "gvactor_internal.h"
+#include "Gates/gate.h"
 
 
 // Slice GV-shadow-skip (2026-05-09): skip gvShadowShape->TransformMultiShape
@@ -18,10 +19,10 @@
 // Tessellation gate is belt-and-suspenders: if a user disables tessellation,
 // the legacy RenderShadows path becomes reachable and would need
 // TransformMultiShape outputs.
-static const bool g_useGpuGVShadowSkip = gvEnvFlagDefaultOn("MC2_GPU_GV_SHADOW_SKIP");
+static const bool g_useGpuGVShadowSkip = mc2::gate::get<"MC2_GPU_GV_SHADOW_SKIP">();
 // T1.15 SpotLight_ illumination diagnostic — registration probe (gv class).
 // First-hit always-on; per-summary every 600 updateGeometry calls when env=1.
-static const bool s_spotDiagGvEnabled = (getenv("MC2_SPOT_DIAG") != nullptr);
+static const bool s_spotDiagGvEnabled = mc2::gate::get<"MC2_SPOT_DIAG">();
 static unsigned long s_spotDiagGvRegistered = 0;
 static unsigned long s_spotDiagGvOverflows  = 0;
 static unsigned long s_spotDiagGvActors     = 0;
@@ -600,8 +601,7 @@ long GVAppearance::update (bool animate)
 		static int s_gvLightsOutClear = -1;
 		if (s_gvLightsOutClear < 0)
 		{
-			const char* v = getenv("MC2_GV_LIGHTSOUT_CLEAR");
-			s_gvLightsOutClear = (v && v[0] && v[0] != '0') ? 1 : 0;
+			s_gvLightsOutClear = mc2::gate::get<"MC2_GV_LIGHTSOUT_CLEAR">();
 		}
 		if ((status == OBJECT_STATUS_DESTROYED) || (status == OBJECT_STATUS_DISABLED))
 		{

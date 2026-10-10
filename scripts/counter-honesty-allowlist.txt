@@ -15,7 +15,7 @@
 #   declare itself or be added here deliberately.  It is a ratchet.
 #
 # WHY THE STATIC-PROP FAMILY IS ABSENT
-#   gos_static_prop_batcher.cpp / gos_static_prop_registry.cpp / mclib/bdactor.cpp
+#   gos_static_prop_batcher.cpp / gos_static_prop_registry.cpp / mclib/bdactor*.cpp
 #   were FIXED in this lane rather than allowlisted -- that subsystem is where a
 #   sampled [TREE_DIAG] stream and a dynamic-path-only submit_trees counter twice
 #   produced published-but-false "no trees" conclusions.  Every limiter in those
@@ -108,9 +108,9 @@ mclib/terrain.cpp::s_prodFrame <= 3
 mclib/terrtxm.cpp::s_hiresLogged < 8
 mclib/tex_resolve_table.cpp::s_mismatchCount++ < kMaxMismatchPrints
 mclib/tex_resolve_table.cpp::s_oobCount++ < kMaxOobPrints
-mclib/tgl.cpp::s_mslBoundsWarnings++ < 8
-mclib/tgl.cpp::s_pbrRenderTrace < 64
-mclib/tgl.cpp::s_seenCount < 64
+mclib/tgl_types.cpp::s_mslBoundsWarnings++ < 8
+mclib/tgl_render.cpp::s_pbrRenderTrace < 64
+mclib/tgl_render.cpp::s_seenCount < 64
 mclib/txmmgr.cpp::s_cullProbeFrames < 8
 mclib/txmmgr.cpp::s_frames < 60
 mclib/txmmgr.cpp::s_lbFirstSeenIndex.size() <= 32

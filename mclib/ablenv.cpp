@@ -13,6 +13,7 @@
 #include<cassert>
 #include<set>
 #include"platform_str.h"
+#include "Gates/gate.h"
 
 #ifndef ABLGEN_H
 #include"ablgen.h"
@@ -801,7 +802,7 @@ int ABLModule::getStateHandle (void) {
 // consults the same gate so the load-time compile-error fatal defers to the
 // opt-in skip-errored-modules playability mode (decl in abl.h).
 bool ablSkipErroredModulesEnabled (void) {
-	static const bool s_on = (getenv("MC2_ABL_SKIP_ERRORED_MODULES") != NULL);
+	static const bool s_on = mc2::gate::get<"MC2_ABL_SKIP_ERRORED_MODULES">();
 	return s_on;
 }
 static void ablReportSkippedErroredModule (long handle, const char* fileName, long errs) {

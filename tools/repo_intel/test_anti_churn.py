@@ -182,11 +182,6 @@ def _mini_repo(tmp_path: Path) -> Path:
     root = tmp_path / "repo"
     (root / "scripts").mkdir(parents=True)
     (root / "docs").mkdir()
-    (root / "scripts" / "run_smoke.py").write_text(
-        "env = {k: v for k, v in os.environ.items()\n"
-        '       if k in ("MC2_ALLOWED_GATE",\n'
-        '                "MC2_OTHER_GATE",\n'
-        "                )},\n")
     (root / "scripts" / "check-env-registry.sh").write_text(
         "ALLOWLIST=(\n"
         "    MC2_LEGACY_TRACE           # trace\n"
@@ -215,7 +210,7 @@ def test_smoke_allowlist_parse(tmp_path):
     root = _mini_repo(tmp_path)
     names, found = gs.parse_smoke_allowlist(root)
     assert found
-    assert names == {"MC2_ALLOWED_GATE", "MC2_OTHER_GATE"}
+    assert names == {"MC2_ALLOWED_GATE"}
 
 
 def test_registry_check_allowlist_parse(tmp_path):

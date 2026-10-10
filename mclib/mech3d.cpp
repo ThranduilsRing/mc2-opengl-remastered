@@ -43,160 +43,11 @@ extern "C" int mc2FreezeMoversActive();
 #include <unordered_map>  // ANIM-CADENCE-GUARD-1: per-appearance last-advance frame stamp
 #include <vector>  // PRESENTATION-SOCKET-PROFILE-1: DeclaredSocketCheck list
 #include <set>      // MECH-LIGHTROW-FRESHNESS-1: one-line-per-mech-type fail-loud dedup
-#include <cstdlib>  // MECH-LIGHTROW-FRESHNESS-1: std::getenv for the killswitch reader
+#include <cstdlib>
 #include "unitprofile.h"              // PRESENTATION-SOCKET-PROFILE-1: mc2UnitProfileDataEnabled()
 #include "unit_profile_validator.h"  // PRESENTATION-SOCKET-PROFILE-1: validateDeclaredSockets()
 #include "action_executor_registry.h"  // UNIT-DEFINITION-VALIDATOR-1: theActionExecutorRegistry() for the ONE pass
-
-// M2.5 (Q6 amendment 2): always-on MLR mech draw counter. Incremented
-// at the legacy mechShape->Render(true) fallback site (~line 2623) so
-// the M2.6 readiness decision rule has live data on Path-B incidence.
-// NOT env-gated: M2.6 must consult this number regardless of
-// MC2_OBJECT_ID_BUFFER state. Consumed per-mission by
-// GpuMechBatcher::onMapUnload() via consumeAndResetMlrMechDraws().
-static uint64_t s_mlrMechDrawsThisMission = 0;
-
-// M2.5: getter for the per-mission MLR draw count, callable from
-// GpuMechBatcher::onMapUnload() in a different TU. Declaration in
-// gos_mech_batcher.cpp is at file scope per external-review C1.
-extern "C" uint64_t consumeAndResetMlrMechDraws() {
-    const uint64_t v = s_mlrMechDrawsThisMission;
-    s_mlrMechDrawsThisMission = 0;
-    return v;
-}
-
-// MC2_MECH_LOD_TRACE=1: per-actor LOD-swap boundary print.
-static const bool s_mechLodTrace = (getenv("MC2_MECH_LOD_TRACE") != nullptr);
-
-// C3: env-gated lifecycle routing killswitch (same env var as objmgr.cpp).
-// MC2_GPU_CULL_LIFECYCLE=1 enables GPU visibility-based node-position early-outs.
-static const bool s_gpuCullLifecycle = (getenv("MC2_GPU_CULL_LIFECYCLE") != nullptr);
-
-// MC2_GPU_CULL_LIFECYCLE_TRACE=1: verbose per-actor lifecycle boundary prints.
-// Default off (too noisy for production). Fires at: init, first GPU-cull skip per actor.
-static const bool s_lcTrace = (getenv("MC2_GPU_CULL_LIFECYCLE_TRACE") != nullptr);
-static uint32_t s_lcSkipCount3d = 0u;
-#define LC3D_TRACE(fmt, ...) \
-    do { if (s_lcTrace) { printf("[GPU_CULL_LIFECYCLE v1] mech3d " fmt "\n", ##__VA_ARGS__); fflush(stdout); } } while(0)
-
-// T1.15 SpotLight_ illumination diagnostic — registration probe (mech class).
-// First-hit always-on; per-summary every 600 updateGeometry calls when env=1.
-static const bool s_spotDiagMechEnabled = (getenv("MC2_SPOT_DIAG") != nullptr);
-static unsigned long s_spotDiagMechRegistered = 0;
-static unsigned long s_spotDiagMechOverflows  = 0;
-static unsigned long s_spotDiagMechActors     = 0;
-static unsigned long s_spotDiagMechCalls      = 0;
-
-// ---------------------------------------------------------------------------
-// MECH-LIGHTROW-FRESHNESS-1 gate. DEFAULT-ON kill-switch.
-// MC2_MECH_LIGHT_FRESHNESS=0 restores the pre-slice read at the GPU-mech submit
-// site (sentinel-only test, slot-0 substitution, no range check) bit-for-bit,
-// which is the only way to grade a suspected regression against it.
-// ---------------------------------------------------------------------------
-static bool mechLightFreshnessEnabled() {
-    static const bool s_on = []() {
-        const char* v = std::getenv("MC2_MECH_LIGHT_FRESHNESS");
-        return !(v != nullptr && v[0] == '0');
-    }();
-    return s_on;
-}
-
-// MECH-LIGHTROW-FRESHNESS-1 counters. These are the UNCAPPED truth; the stderr
-// lines below are capped/one-shot, so nobody should ever count log lines.
-// s_mechStaleLightRowStale is the instrument that decides whether this gate
-// is inert or load-bearing: zero in steady state means the mech submit path
-// never actually holds a stale stamp, and the gate is inert rather than wrong.
-//
-// MECH-DECLINE-FIX-1: renamed from s_mechStaleLightRowDeclines. Nothing is
-// declined any more (see the submit site) -- the counter records DETECTIONS.
-static uint64_t s_mechStaleLightRowStale    = 0;
-static uint64_t s_mechLightRowOutOfRange    = 0;
-
-// MECH-DECLINE-FIX-1: per-mission consume accessor so the always-on
-// [MECHBATCHER v1] onMapUnload summary can surface these totals. Mirrors the
-// consumeAndResetMlrMechDraws() pattern directly above -- same TU-crossing
-// shape, same per-mission reset semantics. Without this the counters were
-// readable ONLY from their own once-per-mech-type stderr line, which means a
-// count that starts or grows after that first line was unobservable, and the
-// advice "check the counter on your first launch" was unexecutable.
-extern "C" void consumeAndResetMechLightRowCounters(uint64_t* staleOut,
-                                                    uint64_t* oobOut) {
-    if (staleOut) *staleOut = s_mechStaleLightRowStale;
-    if (oobOut)   *oobOut   = s_mechLightRowOutOfRange;
-    s_mechStaleLightRowStale = 0;
-    s_mechLightRowOutOfRange = 0;
-}
-
-// MC2_FX_COUNT_LOG=1: env-gated per-effect-site GOSFX draw counter for the
-// Mech3DAppearance::render() effect sites. Default OFF, zero behavior change.
-// Counts draw attempts (control reaching the site); emits a [FX_COUNT v1]
-// summary line every 9000 ticks. Agent-checkable oracle for effect counts.
-static const bool s_fxCountLog = (getenv("MC2_FX_COUNT_LOG") != nullptr);
-namespace {
-	enum FxSite {
-		FX_RDUST=0, FX_LDUST, FX_JUMP, FX_LBOOM, FX_RBOOM,
-		FX_CSMOKE, FX_SMOKE, FX_WAKE, FX_HELIDUST, FX_RARMSMOKE, FX_LARMSMOKE,
-		FX_SITE_COUNT
-	};
-	static unsigned long long s_fxDrawCounts[FX_SITE_COUNT] = {0};
-	static unsigned long long s_fxTotalDraws = 0;
-	static void fxCountTick(int site) {
-		++s_fxDrawCounts[site];
-		if ((++s_fxTotalDraws % 9000ULL) == 0ULL) {
-			MC2_DIAGF(
-				"[FX_COUNT v1] event=summary total=%llu rDust=%llu lDust=%llu jump=%llu "
-				"lBoom=%llu rBoom=%llu critSmoke=%llu smoke=%llu wake=%llu heliDust=%llu "
-				"rArmSmoke=%llu lArmSmoke=%llu\n",
-				s_fxTotalDraws,
-				s_fxDrawCounts[FX_RDUST], s_fxDrawCounts[FX_LDUST], s_fxDrawCounts[FX_JUMP],
-				s_fxDrawCounts[FX_LBOOM], s_fxDrawCounts[FX_RBOOM], s_fxDrawCounts[FX_CSMOKE],
-				s_fxDrawCounts[FX_SMOKE], s_fxDrawCounts[FX_WAKE], s_fxDrawCounts[FX_HELIDUST],
-				s_fxDrawCounts[FX_RARMSMOKE], s_fxDrawCounts[FX_LARMSMOKE]);
-		}
-	}
-	// Shutdown emit via atexit() — mirrors the proven shutdownTexResolveTable
-	// pattern (tex_resolve_table.cpp:78). A static with a CONSTRUCTOR side
-	// effect runs reliably at dynamic-init; the registered handler fires at
-	// clean process exit and always prints final per-site totals (even total=0
-	// if a short/idle mission drew no effects — proves the chain end to end).
-	static void fxCountEmit() {
-		if (!s_fxCountLog) return;
-		MC2_DIAGF(
-			"[FX_COUNT v1] event=shutdown total=%llu rDust=%llu lDust=%llu jump=%llu "
-			"lBoom=%llu rBoom=%llu critSmoke=%llu smoke=%llu wake=%llu heliDust=%llu "
-			"rArmSmoke=%llu lArmSmoke=%llu\n",
-			s_fxTotalDraws,
-			s_fxDrawCounts[FX_RDUST], s_fxDrawCounts[FX_LDUST], s_fxDrawCounts[FX_JUMP],
-			s_fxDrawCounts[FX_LBOOM], s_fxDrawCounts[FX_RBOOM], s_fxDrawCounts[FX_CSMOKE],
-			s_fxDrawCounts[FX_SMOKE], s_fxDrawCounts[FX_WAKE], s_fxDrawCounts[FX_HELIDUST],
-			s_fxDrawCounts[FX_RARMSMOKE], s_fxDrawCounts[FX_LARMSMOKE]);
-		std::fflush(stdout);
-	}
-	// atexit registration happens once from Mech3DAppearance::render() (a code
-	// path guaranteed to run), not from a discardable anon-namespace static.
-}
-
-// Returns true if the texture file or its .ktx2 BC7 sidecar exists.
-// Used to gate TGL texture loading so sensor shapes work when .tga is absent
-// in a slim deploy (route-2 in txmmgr.cpp will decode the .ktx2 instead).
-static bool textureOrKtxSidecarExists(const char* tgaPath)
-{
-	if (fileExists(tgaPath))
-		return true;
-	const char* v = getenv("MC2_TEXMGR_KTX_PRIMARY");
-	const int ktxPrimaryMode = (v && v[0]) ? atoi(v) : 1;   // default mode 1
-	const bool ktxPrimary = (ktxPrimaryMode != 0);
-	if (!ktxPrimary)
-		return false;
-	char ktx[1024];
-	strncpy(ktx, tgaPath, sizeof(ktx) - 1);
-	ktx[sizeof(ktx) - 1] = 0;
-	char* dot   = strrchr(ktx, '.');
-	char* slash = strrchr(ktx, '/');
-	if (dot && (!slash || dot > slash)) *dot = 0;
-	if (strlen(ktx) + 6 < sizeof(ktx)) strcat(ktx, ".ktx2");
-	return fileExists(ktx);
-}
+#include "Gates/gate.h"
 
 #ifndef CAMERA_H
 #include"camera.h"
@@ -265,6 +116,151 @@ static bool textureOrKtxSidecarExists(const char* tgaPath)
 #ifndef GOS_PROFILER_H
 #include"gos_profiler.h"
 #endif
+
+// M2.5 (Q6 amendment 2): always-on MLR mech draw counter. Incremented
+// at the legacy mechShape->Render(true) fallback site (~line 2623) so
+// the M2.6 readiness decision rule has live data on Path-B incidence.
+// NOT env-gated: M2.6 must consult this number regardless of
+// MC2_OBJECT_ID_BUFFER state. Consumed per-mission by
+// GpuMechBatcher::onMapUnload() via consumeAndResetMlrMechDraws().
+static uint64_t s_mlrMechDrawsThisMission = 0;
+
+// M2.5: getter for the per-mission MLR draw count, callable from
+// GpuMechBatcher::onMapUnload() in a different TU. Declaration in
+// gos_mech_batcher.cpp is at file scope per external-review C1.
+extern "C" uint64_t consumeAndResetMlrMechDraws() {
+    const uint64_t v = s_mlrMechDrawsThisMission;
+    s_mlrMechDrawsThisMission = 0;
+    return v;
+}
+
+// MC2_MECH_LOD_TRACE=1: per-actor LOD-swap boundary print.
+static const bool s_mechLodTrace = mc2::gate::get<"MC2_MECH_LOD_TRACE">();
+
+// C3: env-gated lifecycle routing killswitch (same env var as objmgr.cpp).
+// MC2_GPU_CULL_LIFECYCLE=1 enables GPU visibility-based node-position early-outs.
+const bool s_gpuCullLifecycle = mc2::gate::get<"MC2_GPU_CULL_LIFECYCLE">();
+
+// MC2_GPU_CULL_LIFECYCLE_TRACE=1: verbose per-actor lifecycle boundary prints.
+// Default off (too noisy for production). Fires at: init, first GPU-cull skip per actor.
+const bool s_lcTrace = mc2::gate::get<"MC2_GPU_CULL_LIFECYCLE_TRACE">();
+static uint32_t s_lcSkipCount3d = 0u;
+#define LC3D_TRACE(fmt, ...) \
+    do { if (s_lcTrace) { printf("[GPU_CULL_LIFECYCLE v1] mech3d " fmt "\n", ##__VA_ARGS__); fflush(stdout); } } while(0)
+
+// T1.15 SpotLight_ illumination diagnostic — registration probe (mech class).
+// First-hit always-on; per-summary every 600 updateGeometry calls when env=1.
+static const bool s_spotDiagMechEnabled = mc2::gate::get<"MC2_SPOT_DIAG">();
+static unsigned long s_spotDiagMechRegistered = 0;
+static unsigned long s_spotDiagMechOverflows  = 0;
+static unsigned long s_spotDiagMechActors     = 0;
+static unsigned long s_spotDiagMechCalls      = 0;
+
+// ---------------------------------------------------------------------------
+// MECH-LIGHTROW-FRESHNESS-1 gate. DEFAULT-ON kill-switch.
+// MC2_MECH_LIGHT_FRESHNESS=0 restores the pre-slice read at the GPU-mech submit
+// site (sentinel-only test, slot-0 substitution, no range check) bit-for-bit,
+// which is the only way to grade a suspected regression against it.
+// ---------------------------------------------------------------------------
+static bool mechLightFreshnessEnabled() {
+    static const bool s_on = mc2::gate::get<"MC2_MECH_LIGHT_FRESHNESS">();
+    return s_on;
+}
+
+// MECH-LIGHTROW-FRESHNESS-1 counters. These are the UNCAPPED truth; the stderr
+// lines below are capped/one-shot, so nobody should ever count log lines.
+// s_mechStaleLightRowStale is the instrument that decides whether this gate
+// is inert or load-bearing: zero in steady state means the mech submit path
+// never actually holds a stale stamp, and the gate is inert rather than wrong.
+//
+// MECH-DECLINE-FIX-1: renamed from s_mechStaleLightRowDeclines. Nothing is
+// declined any more (see the submit site) -- the counter records DETECTIONS.
+static uint64_t s_mechStaleLightRowStale    = 0;
+static uint64_t s_mechLightRowOutOfRange    = 0;
+
+// MECH-DECLINE-FIX-1: per-mission consume accessor so the always-on
+// [MECHBATCHER v1] onMapUnload summary can surface these totals. Mirrors the
+// consumeAndResetMlrMechDraws() pattern directly above -- same TU-crossing
+// shape, same per-mission reset semantics. Without this the counters were
+// readable ONLY from their own once-per-mech-type stderr line, which means a
+// count that starts or grows after that first line was unobservable, and the
+// advice "check the counter on your first launch" was unexecutable.
+extern "C" void consumeAndResetMechLightRowCounters(uint64_t* staleOut,
+                                                    uint64_t* oobOut) {
+    if (staleOut) *staleOut = s_mechStaleLightRowStale;
+    if (oobOut)   *oobOut   = s_mechLightRowOutOfRange;
+    s_mechStaleLightRowStale = 0;
+    s_mechLightRowOutOfRange = 0;
+}
+
+// MC2_FX_COUNT_LOG=1: env-gated per-effect-site GOSFX draw counter for the
+// Mech3DAppearance::render() effect sites. Default OFF, zero behavior change.
+// Counts draw attempts (control reaching the site); emits a [FX_COUNT v1]
+// summary line every 9000 ticks. Agent-checkable oracle for effect counts.
+static const bool s_fxCountLog = mc2::gate::get<"MC2_FX_COUNT_LOG">();
+namespace {
+	enum FxSite {
+		FX_RDUST=0, FX_LDUST, FX_JUMP, FX_LBOOM, FX_RBOOM,
+		FX_CSMOKE, FX_SMOKE, FX_WAKE, FX_HELIDUST, FX_RARMSMOKE, FX_LARMSMOKE,
+		FX_SITE_COUNT
+	};
+	static unsigned long long s_fxDrawCounts[FX_SITE_COUNT] = {0};
+	static unsigned long long s_fxTotalDraws = 0;
+	static void fxCountTick(int site) {
+		++s_fxDrawCounts[site];
+		if ((++s_fxTotalDraws % 9000ULL) == 0ULL) {
+			MC2_DIAGF(
+				"[FX_COUNT v1] event=summary total=%llu rDust=%llu lDust=%llu jump=%llu "
+				"lBoom=%llu rBoom=%llu critSmoke=%llu smoke=%llu wake=%llu heliDust=%llu "
+				"rArmSmoke=%llu lArmSmoke=%llu\n",
+				s_fxTotalDraws,
+				s_fxDrawCounts[FX_RDUST], s_fxDrawCounts[FX_LDUST], s_fxDrawCounts[FX_JUMP],
+				s_fxDrawCounts[FX_LBOOM], s_fxDrawCounts[FX_RBOOM], s_fxDrawCounts[FX_CSMOKE],
+				s_fxDrawCounts[FX_SMOKE], s_fxDrawCounts[FX_WAKE], s_fxDrawCounts[FX_HELIDUST],
+				s_fxDrawCounts[FX_RARMSMOKE], s_fxDrawCounts[FX_LARMSMOKE]);
+		}
+	}
+	// Shutdown emit via atexit() — mirrors the proven shutdownTexResolveTable
+	// pattern (tex_resolve_table.cpp:78). A static with a CONSTRUCTOR side
+	// effect runs reliably at dynamic-init; the registered handler fires at
+	// clean process exit and always prints final per-site totals (even total=0
+	// if a short/idle mission drew no effects — proves the chain end to end).
+	static void fxCountEmit() {
+		if (!s_fxCountLog) return;
+		MC2_DIAGF(
+			"[FX_COUNT v1] event=shutdown total=%llu rDust=%llu lDust=%llu jump=%llu "
+			"lBoom=%llu rBoom=%llu critSmoke=%llu smoke=%llu wake=%llu heliDust=%llu "
+			"rArmSmoke=%llu lArmSmoke=%llu\n",
+			s_fxTotalDraws,
+			s_fxDrawCounts[FX_RDUST], s_fxDrawCounts[FX_LDUST], s_fxDrawCounts[FX_JUMP],
+			s_fxDrawCounts[FX_LBOOM], s_fxDrawCounts[FX_RBOOM], s_fxDrawCounts[FX_CSMOKE],
+			s_fxDrawCounts[FX_SMOKE], s_fxDrawCounts[FX_WAKE], s_fxDrawCounts[FX_HELIDUST],
+			s_fxDrawCounts[FX_RARMSMOKE], s_fxDrawCounts[FX_LARMSMOKE]);
+		std::fflush(stdout);
+	}
+	// atexit registration happens once from Mech3DAppearance::render() (a code
+	// path guaranteed to run), not from a discardable anon-namespace static.
+}
+
+// Returns true if the texture file or its .ktx2 BC7 sidecar exists.
+// Used to gate TGL texture loading so sensor shapes work when .tga is absent
+// in a slim deploy (route-2 in txmmgr.cpp will decode the .ktx2 instead).
+static bool textureOrKtxSidecarExists(const char* tgaPath)
+{
+	if (fileExists(tgaPath))
+		return true;
+	const bool ktxPrimary = (mc2::gate::get<"MC2_TEXMGR_KTX_PRIMARY">() != 0);   // default mode 1
+	if (!ktxPrimary)
+		return false;
+	char ktx[1024];
+	strncpy(ktx, tgaPath, sizeof(ktx) - 1);
+	ktx[sizeof(ktx) - 1] = 0;
+	char* dot   = strrchr(ktx, '.');
+	char* slash = strrchr(ktx, '/');
+	if (dot && (!slash || dot > slash)) *dot = 0;
+	if (strlen(ktx) + 6 < sizeof(ktx)) strcat(ktx, ".ktx2");
+	return fileExists(ktx);
+}
 
 //-------------------------------------------------------------------------------
 // Static Globals
@@ -443,7 +439,7 @@ void Mech3DAppearanceType::init (const char * fileName)
 	// NEVER put the Flea on the broken path again — it falls back to the stock
 	// ASE/FST shape. Set MC2_ASSIMP_MECH_IMPORT=1 to opt back in once a mech's GLB
 	// is verified good. (Building/prop GLB import is unaffected — separate path.)
-	static const bool s_assimpMechImport = (getenv("MC2_ASSIMP_MECH_IMPORT") != nullptr);
+	static const bool s_assimpMechImport = mc2::gate::get<"MC2_ASSIMP_MECH_IMPORT">();
 	if (s_assimpMechImport &&
 	    mechFile.seekBlock("Import") == NO_ERR &&
 	    mechFile.readIdString("Source", importSourceBase, 255) == NO_ERR &&
@@ -1100,7 +1096,7 @@ Stuff::Vector3D Mech3DAppearance::getWeaponNodePosition (long nodeId)
 				mechType->nodeData[nodeId].nodeId,
 				(const float*)mechShape->GetShapeRec(0)->shapeToWorld.entries, wp)) {
 			static int s_diagN = 0;
-			if (getenv("MC2_MECH_NODE_DIAG") && s_diagN++ < 24)
+			if (mc2::gate::get<"MC2_MECH_NODE_DIAG">() && s_diagN++ < 24)
 				fprintf(stderr, "[NODE-DIAG-CALLER] mech pos=(%.1f,%.1f,%.1f) node='%s' world=(%.1f,%.1f,%.1f) delta=(%.1f,%.1f,%.1f)\n",
 				        position.x, position.y, position.z,
 				        mechType->nodeData[nodeId].nodeId,
@@ -2163,7 +2159,7 @@ void Mech3DAppearance::setPaintScheme (void)
 
 		// ENCYCLO-3D-2 diagnostic: is the locked readback real pixels or zeros?
 		// A zeroed lock buffer here means the paint pass writes black back up.
-		if ( getenv("MC2_LOG_PREVIEW") )
+		if ( mc2::gate::get<"MC2_LOG_PREVIEW">() )
 		{
 			if ( FILE* f = fopen("preview_debug.log","a") )
 			{
@@ -2289,16 +2285,9 @@ DWORD bgrTorgb (DWORD frontRGB)
 //-----------------------------------------------------------------------------
 void Mech3DAppearance::setPaintScheme (DWORD mcRed, DWORD mcGreen, DWORD mcBlue)
 {
-#if defined(BGR)
-	// These come into here bgr instead of RGB.  CONVERT!
-	psRed = bgrTorgb(mcRed);
-	psBlue = bgrTorgb(mcBlue);
-	psGreen = bgrTorgb(mcGreen);
-#else /*BGR*/
 	psRed = mcRed;
 	psBlue = mcBlue;
 	psGreen = mcGreen;
-#endif /*BGR*/
 
 	setPaintScheme();	
 }	
@@ -2306,15 +2295,9 @@ void Mech3DAppearance::setPaintScheme (DWORD mcRed, DWORD mcGreen, DWORD mcBlue)
 //-----------------------------------------------------------------------------
 void Mech3DAppearance::getPaintScheme( DWORD& red, DWORD& green, DWORD& blue )
 {
-#if defined(BGR)
-	red = bgrTorgb(psRed);
-	blue = bgrTorgb(psBlue);
-	green = bgrTorgb(psGreen);
-#else /*BGR*/
 	red = psRed;
 	blue = psBlue;
 	green = psGreen;
-#endif /*BGR*/
 }
 
 //-----------------------------------------------------------------------------
@@ -3034,7 +3017,7 @@ long Mech3DAppearance::render (long depthFixup)
 	// mechShape NULL (see init()). Render nothing rather than deref NULL.
 	if (!mechShape)
 	{
-		if (g_mechPreviewRenderDepth > 0 && getenv("MC2_LOG_PREVIEW"))
+		if (g_mechPreviewRenderDepth > 0 && mc2::gate::get<"MC2_LOG_PREVIEW">())
 		{
 			FILE* f = fopen("preview_debug.log","a");
 			if (f) { fprintf(f,"[PREVIEW] Mech3D::render EARLY-OUT mechShape=NULL (partial-import guard)\n"); fflush(f); fclose(f); }
@@ -3043,7 +3026,7 @@ long Mech3DAppearance::render (long depthFixup)
 		// (Cohort B — broken appearance type with mechShape==NULL early-outs here,
 		// before both GPU submit and CPU fallback). Gated by MC2_MECH_RESTORE_TRACE.
 		{
-			static const bool s_mrtNull = (getenv("MC2_MECH_RESTORE_TRACE") != nullptr);
+			static const bool s_mrtNull = mc2::gate::get<"MC2_MECH_RESTORE_TRACE">();
 			static int s_nullEmits = 0;
 			if (s_mrtNull && g_mechPreviewRenderDepth == 0 && s_nullEmits < 20000) {
 				++s_nullEmits;
@@ -3077,7 +3060,7 @@ long Mech3DAppearance::render (long depthFixup)
 			: (inView || g_useGpuStaticProps);
 	if (mechShouldRender)
 	{
-		if (g_mechPreviewRenderDepth > 0 && getenv("MC2_LOG_PREVIEW"))
+		if (g_mechPreviewRenderDepth > 0 && mc2::gate::get<"MC2_LOG_PREVIEW">())
 		{
 			FILE* f = fopen("preview_debug.log","a");
 			if (f) { fprintf(f,"[PREVIEW] Mech3D::render preview shouldRender=1 visible=%d mechShape=%p currentLOD=%d\n",(int)visible,(void*)mechShape,(int)currentLOD); fflush(f); fclose(f); }
@@ -3437,7 +3420,7 @@ long Mech3DAppearance::render (long depthFixup)
 					static bool s_prevTrace = false;
 					if (!s_prevTraceInit) {
 						s_prevTraceInit = true;
-						s_prevTrace = (getenv("MC2_MECH_PREVIEW_TRACE") != nullptr);
+						s_prevTrace = mc2::gate::get<"MC2_MECH_PREVIEW_TRACE">();
 					}
 					static bool s_prevTraceEmitted = false;
 					if (s_prevTrace && !s_prevTraceEmitted) {
@@ -3455,8 +3438,7 @@ long Mech3DAppearance::render (long depthFixup)
 			// invisible-from-savegame signature is gpuMechSubmitted=0
 			// cullSkip=0 finalized=0 for every actor of one type.
 			{
-				static const bool s_mechRestoreTrace =
-					(getenv("MC2_MECH_RESTORE_TRACE") != nullptr);
+				static const bool s_mechRestoreTrace = mc2::gate::get<"MC2_MECH_RESTORE_TRACE">();
 				static int s_mechRestoreEmits = 0;
 				// DIAG (GPU-MECH-EQUIV recon): emit EVERY submitted=0 actor on a
 				// separate generous cap (the mech-bay preview consumes the 2000
@@ -3735,111 +3717,6 @@ long Mech3DAppearance::render (long depthFixup)
 				}
 			}
 				   
-#ifdef DRAW_BOX
-			//---------------------------------------------------------
-			// Render the Bounding Box to see if it is OK.
-			Stuff::Vector3D nodeCenter = mechShape->GetRootNodeCenter();
-
-			Stuff::Vector3D boxCoords[8];
-			boxCoords[0].x = position.x + mechType->typeUpperLeft.x;
-			boxCoords[0].y = position.y + mechType->typeUpperLeft.y;
-			boxCoords[0].z = position.z + mechType->typeUpperLeft.z;
-
-			boxCoords[1].x = position.x + mechType->typeUpperLeft.x;
-			boxCoords[1].y = position.y + mechType->typeLowerRight.y;
-			boxCoords[1].z = position.z + mechType->typeUpperLeft.z;
-
-			boxCoords[2].x = position.x + mechType->typeLowerRight.x;
-			boxCoords[2].y = position.y + mechType->typeUpperLeft.y;
-			boxCoords[2].z = position.z + mechType->typeUpperLeft.z;
-
-			boxCoords[3].x = position.x + mechType->typeLowerRight.x;
-			boxCoords[3].y = position.y + mechType->typeLowerRight.y;
-			boxCoords[3].z = position.z + mechType->typeUpperLeft.z;
-
-			boxCoords[4].x = position.x + mechType->typeLowerRight.x;
-			boxCoords[4].y = position.y + mechType->typeLowerRight.y;
-			boxCoords[4].z = position.z + mechType->typeLowerRight.z;
-
-			boxCoords[5].x = position.x + mechType->typeLowerRight.x;
-			boxCoords[5].y = position.y + mechType->typeUpperLeft.y;
-			boxCoords[5].z = position.z + mechType->typeLowerRight.z;
-
-			boxCoords[6].x = position.x + mechType->typeUpperLeft.x;
-			boxCoords[6].y = position.y + mechType->typeLowerRight.y;
-			boxCoords[6].z = position.z + mechType->typeLowerRight.z;
-
-			boxCoords[7].x = position.x + mechType->typeUpperLeft.x;
-			boxCoords[7].y = position.y + mechType->typeUpperLeft.y;
-			boxCoords[7].z = position.z + mechType->typeLowerRight.z;
-			
- 			Stuff::Vector4D screenPos[8];
-			for (long i=0;i<8;i++)
-			{
-				// [PROJECTZ:ScreenXYOracle id=mech3d_box_wire]
-				eye->projectForScreenXY(boxCoords[i],screenPos[i]);
-			}
-
-			{
-				LineElement newElement(screenPos[0],screenPos[1],XP_WHITE,NULL,-1);
-				newElement.draw();
-			}
-			
-			{
-				LineElement newElement(screenPos[0],screenPos[4],XP_WHITE,NULL,-1);
-				newElement.draw();
-			}
-			
-			{
-				LineElement newElement(screenPos[0],screenPos[3],XP_WHITE,NULL,-1);
-				newElement.draw();
-			}
-			
-			{
-				LineElement newElement(screenPos[5],screenPos[4],XP_WHITE,NULL,-1);
-				newElement.draw();
-			}
-			
-			{
-				LineElement newElement(screenPos[5],screenPos[6],XP_WHITE,NULL,-1);
-				newElement.draw();
-			}
-			
-			{
-				LineElement newElement(screenPos[5],screenPos[3],XP_WHITE,NULL,-1);
-				newElement.draw();
-			}
-			
-			{
-				LineElement newElement(screenPos[2],screenPos[3],XP_WHITE,NULL,-1);
-				newElement.draw();
-			}
-			
-			{
-				LineElement newElement(screenPos[2],screenPos[6],XP_WHITE,NULL,-1);
-				newElement.draw();
-			}
-			
-			{
-				LineElement newElement(screenPos[2],screenPos[1],XP_WHITE,NULL,-1);
-				newElement.draw();
-			}
-			
-			{
-				LineElement newElement(screenPos[7],screenPos[1],XP_WHITE,NULL,-1);
-				newElement.draw();
-			}
-			
-			{
-				LineElement newElement(screenPos[7],screenPos[6],XP_WHITE,NULL,-1);
-				newElement.draw();
-			}
-			
-			{
-				LineElement newElement(screenPos[7],screenPos[4],XP_WHITE,NULL,-1);
-				newElement.draw();
-			}
-#endif					
 		}
 		
 		if ((sensorLevel > 0) && (sensorLevel < 5))
@@ -4112,10 +3989,7 @@ void Mech3DAppearance::updateGeometry (void)
 		// clock when gamePaused (timing.h global). Killswitch MC2_ASSIMP_PAUSE_GATE=0 restores
 		// the old always-advance behavior for A/B.
 		extern bool gamePaused;  // mclib/timing.h
-		static const bool s_assimpPauseGate = []{
-			const char* v = std::getenv("MC2_ASSIMP_PAUSE_GATE");
-			return !(v && v[0] == '0');   // default-ON; only "0" disables
-		}();
+		static const bool s_assimpPauseGate = mc2::gate::get<"MC2_ASSIMP_PAUSE_GATE">();
 		// VK-MECH-CAPTURE-DETERMINISM-1: also freeze the imported clip clock during a
 		// frozen capture sweep (gamePaused is NOT set by the capture pause path — it
 		// drives bPaused only — so without this an imported mech kept striding through
@@ -5592,10 +5466,7 @@ long Mech3DAppearance::update (bool animate)
 					// without an extra gait step.
 					// DEFAULT-ON killswitch (user-confirmed fix, mc2_17 Catapult/Bushwacker):
 					// disable with MC2_ANIM_CADENCE_FIX=0 to A/B the double-step.
-					static const bool s_animCadenceFix = []{
-						const char* _v = std::getenv("MC2_ANIM_CADENCE_FIX");
-						return !(_v && _v[0] == '0' && _v[1] == '\0');   // default-ON
-					}();
+					static const bool s_animCadenceFix = mc2::gate::get<"MC2_ANIM_CADENCE_FIX">();
 					const bool _alreadyAdvanced = (s_animCadenceFix &&
 						lastAnimAdvanceFrame == (uint32_t)g_mc2FrameCounter);
 					// VK-MECH-CAPTURE-DETERMINISM-1: during a frozen visual-capture
@@ -5637,7 +5508,7 @@ long Mech3DAppearance::update (bool animate)
 					// same g_mc2FrameCounter == double advance. Map touched only when
 					// MC2_ANIM_CADENCE_GUARD set; events under MC2_DIAG_TAGS=ANIM_CADENCE.
 					{
-						static const bool s_animCadGuard = (std::getenv("MC2_ANIM_CADENCE_GUARD") != nullptr);
+						static const bool s_animCadGuard = mc2::gate::get<"MC2_ANIM_CADENCE_GUARD">();
 						if (s_animCadGuard)
 						{
 							static std::unordered_map<void*, uint32_t> s_lastAdvanceFrame;
@@ -6748,8 +6619,7 @@ void Mech3DAppearance::copyFrom (MechAppearanceData *data)
 	// single savegame load correlates each mech's restored type against
 	// its later submit/register events.
 	{
-		static const bool s_mechRestoreTrace =
-			(getenv("MC2_MECH_RESTORE_TRACE") != nullptr);
+		static const bool s_mechRestoreTrace = mc2::gate::get<"MC2_MECH_RESTORE_TRACE">();
 		if (s_mechRestoreTrace)
 			std::fprintf(stderr,
 				"[MECHRESTORE v1] event=copyfrom type=%p restored_lod=%d "
