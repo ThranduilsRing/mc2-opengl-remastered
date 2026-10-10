@@ -33,7 +33,6 @@
   "code/artlry.cpp": 1816,
   "code/bldng.cpp": 1702,
   "code/brain_special_dispatch.cpp": 3273,
-  "code/controlgui.cpp": 4991,
   "code/gamecam.cpp": 1564,
   "code/gameobj.cpp": 2366,
   "code/infowindow.cpp": 1732,
@@ -90,7 +89,7 @@
   "mclib/vfxtile.cpp": 2944,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "708c5e445",
+ "head": "217255c68",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -129,10 +128,10 @@
    "max_lines": 1159
   },
   "code": {
-   "files": 348,
-   "files_over_1500": 26,
-   "files_over_3000": 3,
-   "max_lines": 4991
+   "files": 356,
+   "files_over_1500": 25,
+   "files_over_3000": 2,
+   "max_lines": 3438
   },
   "editor": {
    "files": 225,
@@ -164,10 +163,6 @@
   3000
  ],
  "top": [
-  {
-   "file": "code/controlgui.cpp",
-   "lines": 4991
-  },
   {
    "file": "mclib/terrain.cpp",
    "lines": 4895
@@ -283,13 +278,17 @@
   {
    "file": "code/logisticsdialog.cpp",
    "lines": 2149
+  },
+  {
+   "file": "mclib/heap.cpp",
+   "lines": 2136
   }
  ],
  "total": {
-  "files": 1772,
-  "files_over_1500": 76,
-  "files_over_3000": 10,
-  "max_lines": 4991
+  "files": 1780,
+  "files_over_1500": 75,
+  "files_over_3000": 9,
+  "max_lines": 4895
  },
  "version": 1
 }
