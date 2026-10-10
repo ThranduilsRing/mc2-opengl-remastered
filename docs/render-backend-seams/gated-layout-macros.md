@@ -390,6 +390,70 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
+- Header: `GameOS/gameos/gos_terrain_lod_chunk_internal.h:68`
+- Class: `TerrainGlFallbackAudit`  (data-member)
+- Member: `int total = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/gos_terrain_lod_chunk_internal.h:69`
+- Class: `TerrainGlFallbackAudit`  (data-member)
+- Member: `int captured = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/gos_terrain_lod_chunk_internal.h:70`
+- Class: `TerrainGlFallbackAudit`  (data-member)
+- Member: `int glFallback = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/gos_terrain_lod_chunk_internal.h:71`
+- Class: `TerrainGlFallbackAudit`  (data-member)
+- Member: `int inactive = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/gos_terrain_lod_chunk_internal.h:72`
+- Class: `TerrainGlFallbackAudit`  (data-member)
+- Member: `int band = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/gos_terrain_lod_chunk_internal.h:73`
+- Class: `TerrainGlFallbackAudit`  (data-member)
+- Member: `int displace = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/gos_terrain_lod_chunk_internal.h:81`
+- Class: `TerrainGlFallbackAudit`  (data-member)
+- Member: `int other = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/gos_terrain_lod_chunk_internal.h:82`
+- Class: `TerrainGlFallbackAudit`  (data-member)
+- Member: `int skirtEdges = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
 - Header: `GameOS/gameos/vk_image_resource.h:23`
 - Class: `VkImageResource`  (data-member)
 - Member: `VkImage           image   = VK_NULL_HANDLE;`
@@ -558,4 +622,4 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ---
 
-Result: 69 guard(s) analyzed, 0 violation(s).
+Result: 77 guard(s) analyzed, 0 violation(s).

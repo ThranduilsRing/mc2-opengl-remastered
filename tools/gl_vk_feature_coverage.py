@@ -72,14 +72,25 @@ def load_cpp(src):
     paths = [p for p in src.paths() if p.endswith((".cpp", ".h", ".hpp")) and p.startswith(CPP_DIRS)
              and "/tests/" not in p and not p.startswith("GameOS/gameos/vulkan_")]
     src.preload(paths)
+    known = set(src.paths())
     files, ndefs = {}, {}
+    family = {}          # translation unit -> [text of every piece]: a uniform is named in one piece and set in another
     for p in paths:
         t = src.text(p)
         if not t:
             continue
         cg.count_defs(p, blank_comments(t, keep_strings=False), ndefs)
-        if "MC2_" in t or '"u_' in t:
+        fam = tu_family(p, known)
+        if fam != p:
+            family.setdefault(fam, []).append(t)
+        elif "MC2_" in t or '"u_' in t:
             files[p] = cg.CppFile(p, t)
+    for fam, texts in family.items():
+        if fam in known:
+            texts.insert(0, src.text(fam) or "")
+        merged = chr(10).join(texts)
+        if "MC2_" in merged or '"u_' in merged:
+            files[fam] = cg.CppFile(fam, merged)
     return files, ndefs
 
 
