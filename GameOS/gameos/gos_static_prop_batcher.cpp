@@ -759,7 +759,12 @@ static const bool s_materialGpuSampleEnabled = mc2::gate::get<"MC2_MATERIAL_GPU_
 // MC2_STATIC_PROP_AMBIENT_V1 is set to a non-"0" value. When OFF (default),
 // the uploaded strength is 0.0 so static_prop.vert's hemisphere term is a
 // bitwise no-op and the output is byte-identical to pre-slice af314d22.
-static const bool s_staticPropAmbientV1Enabled = mc2::gate::get<"MC2_STATIC_PROP_AMBIENT_V1">();
+// Read at first use, after main() has applied any launcher_env.json: a namespace-scope initializer would
+// resolve the gate during static initialization, before that apply, and keep the stale value.
+static bool staticPropAmbientV1Enabled() {
+    static const bool on = mc2::gate::get<"MC2_STATIC_PROP_AMBIENT_V1">();
+    return on;
+}
 
 // PROP-BASE-LIGHT-DIR-1: directional (hemispherical-wrap) modulation of the
 // baked per-vertex base_light seed. See the long rationale block in
@@ -1036,7 +1041,10 @@ static float iblShStrengthNightScaled() {
 // u_pbrV1Strength=0.0f -> shader `if (u_pbrV1Strength > 0.0)` short-circuits
 // before any u_cameraWorldPos access -> mathematically byte-identical
 // (strength=0 -> lit += specular * 0 = lit unchanged).
-static const bool s_pbrV1Enabled = mc2::gate::get<"MC2_STATIC_PROP_PBR_V1">();
+static bool pbrV1Enabled() {   // first-use read, see staticPropAmbientV1Enabled()
+    static const bool on = mc2::gate::get<"MC2_STATIC_PROP_PBR_V1">();
+    return on;
+}
 
 // STATICPROP-MATERIAL-ORM-1: gate for per-bucket linear ORM (occlusion-
 // roughness-metallic) texture-array slots + sidecar feed. Default-OFF; "=1"
@@ -1336,10 +1344,13 @@ static bool s_materialKtxEnabled = mc2::gate::get<"MC2_MATERIAL_KTX">();   // MC
 // Selects which cooked tier directory (data/tgl/<tier>/<name>.ktx2) is loaded
 // when MC2_MATERIAL_KTX=1. Launcher sets this from the Graphics / Texture Quality
 // slider; engine reads it once at process start.
-static int s_texTier = []() -> int {
-    const int v = mc2::gate::get<"MC2_STATICPROP_TEX_TIER">();   // row default 512
-    return (v == 128 || v == 256 || v == 1024) ? v : 512;
-}();
+static int texTier() {   // first-use read, see staticPropAmbientV1Enabled()
+    static const int tier = []() -> int {
+        const int v = mc2::gate::get<"MC2_STATICPROP_TEX_TIER">();   // row default 512
+        return (v == 128 || v == 256 || v == 1024) ? v : 512;
+    }();
+    return tier;
+}
 // COMPRESSION-BC7-STATICPROP-1: gate for BC7-compressed KTX2 static-prop arrays.
 // Default-OFF; effective only when s_materialKtxEnabled is also true. When the
 // per-group BC7 conditions (all-or-nothing + uniform-dim) are not met, the group
@@ -3227,7 +3238,7 @@ void GpuStaticPropBatcher::finalizeGeometry() {
 
     // One-shot log: always emit so the log confirms which tier is active.
     std::printf("[StaticPropBatcher] tex tier: %dpx (MC2_STATICPROP_TEX_TIER)"
-                " ktx=%s\n", s_texTier, s_materialKtxEnabled ? "ON" : "OFF");
+                " ktx=%s\n", texTier(), s_materialKtxEnabled ? "ON" : "OFF");
     std::fflush(stdout);
 
     GpuStaticPropRegistry::staticPropRegistryClearMaterialCache();
@@ -3773,7 +3784,7 @@ void GpuStaticPropBatcher::finalizeGeometry() {
                 if (u.nodeIdx == 0xFFFFFFFFu) { bc7Ok = false; failReason = "load_fail"; break; }
                 const char* srcName = mcTextureManager->getTextureName(u.nodeIdx);
                 if (!srcName || !*srcName) { bc7Ok = false; failReason = "load_fail"; break; }
-                const std::string ktxPath = deriveTieredKtxPath(srcName, s_texTier);
+                const std::string ktxPath = deriveTieredKtxPath(srcName, texTier());
                 if (!RenderCore::ktxLoadRgba8(ktxPath.c_str(), bc7Imgs[k])) {
                     bc7Ok = false; failReason = "load_fail"; break;
                 }
@@ -3850,7 +3861,7 @@ void GpuStaticPropBatcher::finalizeGeometry() {
             if (s_materialKtxEnabled && u.nodeIdx != 0xFFFFFFFFu && mcTextureManager) {
                 const char* srcName = mcTextureManager->getTextureName(u.nodeIdx);
                 if (srcName && *srcName) {
-                    const std::string ktxPath = deriveTieredKtxPath(srcName, s_texTier);
+                    const std::string ktxPath = deriveTieredKtxPath(srcName, texTier());
                     RenderCore::KtxImage ktxImg;
                     const bool ktxOk = RenderCore::ktxLoadRgba8(ktxPath.c_str(), ktxImg);
                     // Reject compressed sidecars here — block bytes are not RGBA8.
@@ -4396,7 +4407,7 @@ void GpuStaticPropBatcher::finalizeGeometry() {
                 if (u.nodeIdx == 0xFFFFFFFFu) { bc7Ok = false; failReason = "load_fail"; break; }
                 const char* srcName = mcTextureManager->getTextureName(u.nodeIdx);
                 if (!srcName || !*srcName) { bc7Ok = false; failReason = "load_fail"; break; }
-                const std::string ktxPath = deriveTieredKtxPath(srcName, s_texTier);
+                const std::string ktxPath = deriveTieredKtxPath(srcName, texTier());
                 if (!RenderCore::ktxLoadRgba8(ktxPath.c_str(), bc7Imgs[k])) {
                     bc7Ok = false; failReason = "load_fail"; break;
                 }
@@ -4523,7 +4534,7 @@ void GpuStaticPropBatcher::finalizeGeometry() {
                 const char* srcName = mcTextureManager->getTextureName(u.nodeIdx);
                 if (srcName && *srcName) {
                     // Derive tiered .ktx2 path: data/tgl/<tier>/foo.ktx2
-                    const std::string ktxPath = deriveTieredKtxPath(srcName, s_texTier);
+                    const std::string ktxPath = deriveTieredKtxPath(srcName, texTier());
                     RenderCore::KtxImage ktxImg;
                     const bool ktxOk = RenderCore::ktxLoadRgba8(ktxPath.c_str(), ktxImg);
                     // This RGBA8 upload path cannot consume compressed (BC7) KTX2:
@@ -7171,7 +7182,7 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
         // fill in shadowed faces. Skipped for window-flag nodes inside .vert.
         if (s_locsCoalesce.ambientV1Strength >= 0)
             glUniform1f       (s_locsCoalesce.ambientV1Strength,
-                               s_staticPropAmbientV1Enabled ? 1.0f : 0.0f);
+                               staticPropAmbientV1Enabled() ? 1.0f : 0.0f);
         // PROP-BASE-LIGHT-DIR-1: directional modulation of the baked seed.
         // 0.0 (default) -> shader's `> 0.0` guard skips the block entirely,
         // so this is a no-op stronger than a multiply-by-one: the code path
@@ -7309,7 +7320,7 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
         // and u_cameraWorldPos read; this is belt-and-suspenders).
         if (s_locsCoalesce.pbrV1Strength >= 0) {
             const float pbrStrength =
-                (s_pbrV1Enabled && !s_viewUniformsDisabled)
+                (pbrV1Enabled() && !s_viewUniformsDisabled)
                     ? g_pbrV1Strength : 0.0f;
             glUniform1f(s_locsCoalesce.pbrV1Strength, pbrStrength);
         }
@@ -8412,7 +8423,7 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
             // Same semantics as coalesce site: 0.0 default -> byte-identical OFF.
             if (s_locsLegacy.ambientV1Strength >= 0)
                 glUniform1f(s_locsLegacy.ambientV1Strength,
-                            s_staticPropAmbientV1Enabled ? 1.0f : 0.0f);
+                            staticPropAmbientV1Enabled() ? 1.0f : 0.0f);
             // PROP-BASE-LIGHT-DIR-1: same semantics as the coalesce site.
             // 0.0 default -> byte-identical OFF.
             if (s_locsLegacy.propBaseLightDirStrength >= 0)
@@ -8530,7 +8541,7 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
             // upload 0.0f -> shader short-circuit.
             if (s_locsLegacy.pbrV1Strength >= 0) {
                 const float pbrStrength =
-                    (s_pbrV1Enabled && !s_viewUniformsDisabled)
+                    (pbrV1Enabled() && !s_viewUniformsDisabled)
                         ? g_pbrV1Strength : 0.0f;
                 glUniform1f(s_locsLegacy.pbrV1Strength, pbrStrength);
             }
@@ -10754,7 +10765,7 @@ void batcher_getStaticPropOpaqueDebugState(StaticPropOpaqueDebugState* out) {
     out->iblShEnabled                = s_iblShEnabled;
     out->iblShStrength               = g_iblShStrength;
     out->iblShSet                    = s_currentShSet ? s_currentShSet->name : "default";
-    out->pbrEnabled                  = s_pbrV1Enabled;
+    out->pbrEnabled                  = pbrV1Enabled();
     out->pbrStrength                 = g_pbrV1Strength;
     out->pbrRoughnessOverrideEnabled = g_pbrV1RoughnessOverrideEnabled;
     out->pbrRoughnessOverride        = g_pbrV1RoughnessOverrideValue;
