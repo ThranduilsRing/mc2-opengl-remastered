@@ -198,7 +198,7 @@ def check_exe(exe, *, purpose: str = "smoke", env: Optional[Mapping[str, str]] =
               is_ancestor: GitAncestor = git_is_ancestor,
               has_offscreen: Callable[[object], bool] = exe_has_offscreen,
               commit_of: Callable[[object], "tuple[Optional[str], str]"] = embedded_commit) -> Verdict:
-    """Judge whether `exe` may be launched. `purpose` is "smoke" (golden refused), "capture" or "spawn".
+    """Judge whether `exe` may be launched. `purpose` is "smoke" or "spawn" (golden refused) or "capture".
 
     A game exe must carry a build fingerprint whose commit descends from MIN_COMMIT; an exe
     with no fingerprint is refused (nothing proves what it is). The editor exe has no
@@ -215,8 +215,8 @@ def check_exe(exe, *, purpose: str = "smoke", env: Optional[Mapping[str, str]] =
     else:
         v.src_commit = "n/a (editor)"
 
-    if purpose == "smoke" and is_golden(exe_p):
-        v.reasons.append("the golden install is a visual-golden reference and is never a smoke target; "
+    if purpose in ("smoke", "spawn") and is_golden(exe_p):
+        v.reasons.append("the golden install is a visual-golden reference and is never launched by the harness; "
                          "pass --deploy 0.4 (or the --exe of a current build).")
 
     if env.get(OWNER_OVERRIDE_ENV) != "1":

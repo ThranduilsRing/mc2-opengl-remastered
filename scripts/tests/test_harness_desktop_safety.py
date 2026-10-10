@@ -162,7 +162,6 @@ def test_nofocus_does_not_vet_non_engine_programs(monkeypatch):
     seen = []
     monkeypatch.setattr(subprocess, "Popen",
                         lambda argv, **k: seen.append(argv) or types.SimpleNamespace(pid=1, poll=lambda: 0))
-    monkeypatch.setattr(nofocus, "park_window_offscreen", lambda *a, **k: None)
     nofocus.spawn([sys.executable, "-c", "pass"])
     assert seen
 
@@ -385,7 +384,7 @@ def test_nofocus_window_calls_are_inert_with_the_off_switch(monkeypatch):
     monkeypatch.setenv("MC2_HARNESS_ALLOW_FOREGROUND", "1")
     monkeypatch.setenv("MC2_CURSOR_GUARD_OFF", "1")
     assert nofocus.raise_noactivate(12345) is False
-    assert nofocus.park_window_offscreen(1, force=True) is None
+    assert not hasattr(nofocus, "park_window_offscreen")
 
 
 def test_root_pytest_ini_and_conftest_exist_so_any_folder_gets_the_switch():
@@ -438,10 +437,81 @@ def test_nofocus_records_only_engine_children(tmp_path, monkeypatch):
     seen = []
     monkeypatch.setattr(child_registry, "record", lambda pid, exe, **k: seen.append((pid, str(exe))))
     monkeypatch.setattr(subprocess, "Popen", lambda argv, **k: types.SimpleNamespace(pid=7, poll=lambda: 0))
-    monkeypatch.setattr(nofocus, "park_window_offscreen", lambda *a, **k: None)
     nofocus.spawn([sys.executable, "-c", "pass"])
     assert seen == []
     exe = _install(tmp_path, "mc2-win64-ok", FRESH_SHA)
     monkeypatch.setattr(nofocus, "_vet_engine_exe", lambda argv: None)
     nofocus.spawn([str(exe)])
     assert seen == [(7, str(exe))]
+
+
+# ------------------------------------------------- synthetic input needs a user-present session
+
+def test_game_auto_key_and_chord_do_nothing_in_a_background_session(monkeypatch, capsys):
+    import game_auto
+
+    class _Boom:
+        def __getattr__(self, name):
+            raise AssertionError(f"input injected: {name}")
+
+    monkeypatch.delenv("MC2_HARNESS_ALLOW_FOREGROUND", raising=False)
+    monkeypatch.setattr(game_auto, "user32", _Boom())
+    monkeypatch.setattr(game_auto, "get_pyautogui", lambda: _Boom())
+    game_auto.do_key("escape")
+    game_auto.do_chord("ctrl+s")
+    assert capsys.readouterr().out.count("skipped (background mode") == 2
+
+
+def test_game_auto_keys_are_sent_when_the_session_opts_in(monkeypatch):
+    import game_auto
+
+    sent = []
+    fake = types.SimpleNamespace(keybd_event=lambda *a: sent.append(a))
+    monkeypatch.setenv("MC2_HARNESS_ALLOW_FOREGROUND", "1")
+    monkeypatch.setattr(game_auto, "user32", fake)
+    monkeypatch.setattr(game_auto.time, "sleep", lambda s: None)
+    game_auto.do_key("escape")
+    assert len(sent) == 2
+
+
+def test_menu_canary_is_refused_without_the_foreground_opt_in(monkeypatch):
+    from scripts import run_smoke
+
+    monkeypatch.delenv("MC2_HARNESS_ALLOW_FOREGROUND", raising=False)
+    assert "MC2_HARNESS_ALLOW_FOREGROUND" in run_smoke._menu_canary_refusal()
+    assert run_smoke._run_menu_canary(Path("x"), Path("y"), Path("z"), False, 0) == 5
+    monkeypatch.setenv("MC2_HARNESS_ALLOW_FOREGROUND", "1")
+    assert run_smoke._menu_canary_refusal() is None
+
+
+# ------------------------------------------------- renderdoc: launcher argv and the Qt GUI
+
+def test_vetting_covers_every_argument_so_a_launcher_cannot_hide_the_engine(tmp_path, monkeypatch):
+    exe = _install(tmp_path, "mc2-win64-stale", STALE_SHA, with_mark=False)
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: (_ for _ in ()).throw(AssertionError("launched")))
+    monkeypatch.setattr(subprocess, "Popen", lambda *a, **k: (_ for _ in ()).throw(AssertionError("launched")))
+    try:
+        nofocus.run(["renderdoccmd.exe", "capture", "-w", str(exe), "--mission", "m"])
+    except nofocus.ExeRefused as e:
+        assert "mc2-win64-stale" in str(e)
+    else:
+        raise AssertionError("expected ExeRefused for the engine inside a launcher argv")
+
+
+def test_golden_install_is_refused_for_spawn_as_well_as_smoke(tmp_path):
+    golden = _install(tmp_path, "mc2-win64-v0.4c", FRESH_SHA)
+    anc = _ancestor_of({FRESH_SHA})
+    assert not exe_guard.check_exe(golden, purpose="spawn", env={}, is_ancestor=anc, commit_of=_fresh()).ok
+
+
+def test_qrenderdoc_worker_needs_a_user_present_session(monkeypatch):
+    sys.path.insert(0, str(ROOT / "tools" / "renderdoc"))
+    import _rdcommon
+
+    monkeypatch.delenv("MC2_HARNESS_ALLOW_FOREGROUND", raising=False)
+    try:
+        _rdcommon.run_worker({"result_json": "x"})
+    except SystemExit as e:
+        assert "MC2_HARNESS_ALLOW_FOREGROUND" in str(e)
+    else:
+        raise AssertionError("expected SystemExit")

@@ -13,7 +13,6 @@
 4	mclib/ffile.cpp
 7	mclib/file.cpp
 1	mclib/fx_def_registry.cpp
-2	mclib/mlr/mlrloadobj.cpp
 2	mclib/model_override_registry.cpp
 8	mclib/terrain_init.cpp
 1	mclib/terrtxm2_bake.cpp

@@ -16,22 +16,6 @@ file(GLOB MC2FX_MLR_SRC       "${CMAKE_SOURCE_DIR}/mclib/mlr/*.cpp")
 file(GLOB MC2FX_PARTICLES_SRC "${CMAKE_SOURCE_DIR}/mclib/particles/*.cpp")
 file(GLOB MC2FX_STUFF_SRC     "${CMAKE_SOURCE_DIR}/mclib/stuff/*.cpp")
 
-# Dead MLR TUs (not in mclib/mlr/CMakeLists.txt; include missing mlrstuff.hpp).
-list(REMOVE_ITEM MC2FX_MLR_SRC
-    "${CMAKE_SOURCE_DIR}/mclib/mlr/gospoint.cpp"
-    "${CMAKE_SOURCE_DIR}/mclib/mlr/mlrindexedpolymesh.cpp"
-    "${CMAKE_SOURCE_DIR}/mclib/mlr/mlrindexedprimitive.cpp"
-    "${CMAKE_SOURCE_DIR}/mclib/mlr/mlrloadobj.cpp"
-    "${CMAKE_SOURCE_DIR}/mclib/mlr/mlrpolymesh.cpp"
-    "${CMAKE_SOURCE_DIR}/mclib/mlr/mlrprimitive.cpp"
-    "${CMAKE_SOURCE_DIR}/mclib/mlr/mlrvertex.cpp"
-)
-
-# Stuff *_test.cpp are test mains / include missing munga.hpp — drop them all.
-file(GLOB MC2FX_STUFF_TEST_SRC "${CMAKE_SOURCE_DIR}/mclib/stuff/*_test.cpp")
-if(MC2FX_STUFF_TEST_SRC)
-    list(REMOVE_ITEM MC2FX_STUFF_SRC ${MC2FX_STUFF_TEST_SRC})
-endif()
 # extentpoly.cpp is a dead Stuff TU (not in mclib/stuff/CMakeLists.txt).
 list(REMOVE_ITEM MC2FX_STUFF_SRC
     "${CMAKE_SOURCE_DIR}/mclib/stuff/extentpoly.cpp"
@@ -45,6 +29,8 @@ add_executable(mc2fx
     ${MC2FX_MLR_SRC}
     ${MC2FX_PARTICLES_SRC}
     ${MC2FX_STUFF_SRC}
+    # gosFX effect/clouds/tube time themselves with fx_cost_split (MC2_FX_COST_SPLIT, default off).
+    "${CMAKE_SOURCE_DIR}/mclib/fx_trace/fx_cost_split.cpp"
     # Tracy client (TRACY_ENABLE is global; any TU including gos_profiler.h
     # inline-instantiates the Tracy queue). Same gotcha asset_viewer hit.
     "${CMAKE_SOURCE_DIR}/3rdparty/tracy/TracyClient.cpp"

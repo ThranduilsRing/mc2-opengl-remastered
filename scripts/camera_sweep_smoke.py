@@ -76,7 +76,11 @@ def _foreground_mc2():
 
 
 def _hold_key(vk: int, hold_s: float):
-    """Press a vk, hold hold_s, release. keybd_event matches game_auto.py."""
+    """Press a vk, hold hold_s, release. keybd_event matches game_auto.py.
+
+    Global input to the foreground window: only in a user-present session."""
+    if not nofocus.allow_foreground():
+        return
     _user32.keybd_event(vk, 0, 0, 0)
     time.sleep(hold_s)
     _user32.keybd_event(vk, 0, KEYEVENTF_KEYUP, 0)

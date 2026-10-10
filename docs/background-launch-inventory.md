@@ -9,23 +9,17 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 
 | file | line | call | window |
 | --- | --- | --- | --- |
-| `.claude/vk-mech-feed-native/mech_feed_oracle.py` | 75 | `nofocus.spawn` | offscreen |
-| `.claude/vk-post-fog/fog_oracle.py` | 75 | `nofocus.spawn` | offscreen |
-| `.claude/vk-present-skip-gl-handoff/proof.py` | 48 | `nofocus.spawn` | offscreen |
-| `.claude/vk-water-tier1/water_oracle.py` | 69 | `nofocus.spawn` | offscreen |
-| `scripts/camera_sweep_smoke.py` | 117 | `nofocus.spawn` | desktop-composite |
+| `scripts/camera_sweep_smoke.py` | 121 | `nofocus.spawn` | desktop-composite |
 | `scripts/capture_baseline.py` | 325 | `nofocus.spawn` | desktop-composite |
 | `scripts/check-order-liveness.py` | 117 | `nofocus.spawn` | offscreen |
 | `scripts/game_auto.py` | 140 | `nofocus.spawn` | desktop-composite |
 | `scripts/mech_shot.py` | 86 | `nofocus.spawn` | offscreen |
 | `scripts/mechbay_preview_harness.py` | 107 | `nofocus.spawn` | offscreen |
-| `scripts/quick_shot.py` | 43 | `nofocus.spawn` | desktop-composite |
-| `scripts/quick_sweep.py` | 49 | `nofocus.spawn` | desktop-composite |
 | `scripts/renderdoc_capture.py` | 238 | `nofocus.run` | offscreen |
 | `scripts/renderdoc_capture.py` | 266 | `subprocess.run` **raw, allowed:** renderdoccmd convert is a console file converter, not the game; windowless via hidden_kwargs | offscreen |
 | `scripts/run_editor_playtest_smoke.py` | 235 | `nofocus.spawn` | offscreen |
 | `scripts/run_editor_smoke.py` | 143 | `nofocus.spawn` | offscreen |
-| `scripts/run_smoke.py` | 366 | `nofocus.spawn` | offscreen |
+| `scripts/run_smoke.py` | 379 | `nofocus.spawn` | offscreen |
 | `scripts/run_smoke_asan.py` | 203 | `nofocus.spawn` | offscreen |
 | `scripts/run_visual_capture.py` | 369 | `nofocus.spawn` | offscreen |
 | `scripts/run_vk_field_check.py` | 230 | `nofocus.spawn` | offscreen |
@@ -33,10 +27,10 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `scripts/smoke_lib/runner.py` | 289 | `nofocus.spawn` | offscreen |
 | `scripts/smoke_with_screenshots.py` | 158 | `nofocus.spawn` | desktop-composite |
 | `scripts/sweep_campaign.py` | 72 | `nofocus.spawn` | offscreen |
-| `scripts/tests/test_harness_desktop_safety.py` | 166 | `nofocus.spawn` | offscreen |
-| `scripts/tests/test_harness_desktop_safety.py` | 442 | `nofocus.spawn` | offscreen |
-| `scripts/tests/test_harness_desktop_safety.py` | 446 | `nofocus.spawn` | offscreen |
-| `scripts/water_visual_diff.py` | 56 | `nofocus.spawn` | desktop-composite |
+| `scripts/tests/test_harness_desktop_safety.py` | 165 | `nofocus.spawn` | offscreen |
+| `scripts/tests/test_harness_desktop_safety.py` | 440 | `nofocus.spawn` | offscreen |
+| `scripts/tests/test_harness_desktop_safety.py` | 444 | `nofocus.spawn` | offscreen |
+| `scripts/tests/test_harness_desktop_safety.py` | 494 | `nofocus.run` | offscreen |
 | `tests/smoke/object_visual_diff.py` | 123 | `nofocus.run` | offscreen |
 | `tools/debug_view_sweep.py` | 215 | `nofocus.spawn` | offscreen |
 | `tools/menu_oracle.py` | 110 | `nofocus.spawn` | desktop-composite |
@@ -48,7 +42,7 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `tools/tracy_capture_compare.py` | 390 | `subprocess.run` **raw, allowed:** Tracy csvexport console tool, not the game; windowless via hidden_kwargs | offscreen |
 | `tools/tracy_capture_compare.py` | 443 | `subprocess.run` **raw, allowed:** Tracy csvexport console tool, not the game; windowless via hidden_kwargs | offscreen |
 
-Total engine launch sites: 38
+Total engine launch sites: 32
 
 ## Shell launchers (RULE 9)
 
@@ -64,6 +58,19 @@ in the background.
 | `run-with-log.bat` | 27 | interactive user launcher. When CLAUDECODE is set (an agent shell) it exports the no-focus env so the engine stays in the background: windowed, parked offscreen, no cursor grab, silent audio. |
 
 Total shell launchers: 4
+
+## User tools, not harness
+
+Launchers meant to be double-clicked or run by a person (shipped dist scripts, docs examples).
+They are not guarded; each is listed in `scripts/background-launch-allow.json` (`user_tools`).
+
+| file | why it is a user tool |
+| --- | --- |
+| `docs/modding/examples/imgui-editing/mod/launch-with-tuning.ps1` | modder example run by a person, shipped in docs |
+| `tools/mc2fx/dist/mc2fx-preview.bat` | shipped dist script: double-click launcher of the gosFX previewer |
+| `tools/mc2weapon_gui/dist/mc2weapon-gui.bat` | shipped dist script: double-click launcher of the weapon editor |
+
+Total user tools: 3
 
 ## Desktop-composite capture exceptions (NOFOCUS-FINISH-1)
 
@@ -82,10 +89,7 @@ readback path retires its entry. Enforced by RULES 6-7.
 | `scripts/camera_sweep_smoke.py` | pyautogui.screenshot() of the whole desktop after a scripted arrow-key camera sweep; the sweep drives the engine through synthetic keys, so it needs a real on-screen window. |
 | `scripts/capture_baseline.py` | V-BASELINE-0 golden capture via pyautogui.screenshot(). The highest-risk entry: a wallpaper frame here becomes a checked-in visual BASELINE. |
 | `scripts/game_auto.py` | the interactive synthetic-input driver (keybd_event/mouse_event); its `screenshot` verb is pyautogui and its clicks target screen coordinates. |
-| `scripts/quick_shot.py` | one-shot diagnostic pyautogui.screenshot() of the desktop. |
-| `scripts/quick_sweep.py` | timed series of pyautogui.screenshot() desktop grabs. |
 | `scripts/smoke_with_screenshots.py` | per-mission pyautogui.screenshot() desktop grabs alongside a smoke run. |
-| `scripts/water_visual_diff.py` | A/B water fastpath comparison from two pyautogui.screenshot() grabs. |
 | `tools/menu_oracle.py` | PIL.ImageGrab.grab(bbox=<window client rect>) -- it reads the DESKTOP pixels under the window rect, so the window must be on the desktop. Already launches show_window=True; NOFOCUS-FINISH-1 decoupled show_window from offscreen, so it now has to say offscreen=False too. |
 
-Total desktop-composite exceptions: 8
+Total desktop-composite exceptions: 5

@@ -24,7 +24,7 @@ sys.path.insert(0, str(HERE))
 from smoke_lib.cursor_guard import CursorGuard  # noqa: E402
 from smoke_lib import nofocus  # noqa: E402
 # Computer-agnostic: override with MC2_DEPLOY_DIR env; literal is a last-resort dev fallback.
-DEFAULT_DEPLOY = os.environ.get("MC2_DEPLOY_DIR", r"A:/Games/mc2-opengl/releases/mc2-win64-v0.4d-rc1")
+DEFAULT_DEPLOY = os.environ.get("MC2_DEPLOY_DIR", r"A:/Games/mc2-opengl/mc2-win64-v0.4")
 
 def resolve(deploy, name):
     out = subprocess.run([sys.executable, str(HERE / "resolve_campaign_config.py"), deploy, name],

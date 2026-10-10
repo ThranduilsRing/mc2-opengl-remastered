@@ -83,9 +83,7 @@ void
 	Plug::InitializeClass();
 	Node::InitializeClass();
 
-	SlotLink::InitializeClass();
 	ChainLink::InitializeClass();
-	SafeChainLink::InitializeClass();
 
 	Random::InitializeClass();
 
@@ -154,9 +152,7 @@ void
 	//
 	Random::TerminateClass();
 
-	SafeChainLink::TerminateClass();
 	ChainLink::TerminateClass();
-	SlotLink::TerminateClass();
 
 	Node::TerminateClass();
 	Plug::TerminateClass();

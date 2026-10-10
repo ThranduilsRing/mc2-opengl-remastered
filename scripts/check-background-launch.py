@@ -74,6 +74,19 @@ only defence that scales is making the two populations declare themselves.
         Mission Editor.exe): that ends the owner's own game or another lane's run.
         Kill the pid you spawned (`proc.kill()`, `taskkill /PID`).
 
+  RULE 14 -- registered launchers. A file that calls nofocus.spawn/run must be listed in
+    scripts/background-launch-allow.json ("nofocus_callers") with its reason, and a file that
+    spawns a process whose program is not a string literal ("direct_spawn": a variable argv can
+    be the game) must be listed too. A new launcher is red until someone registers it; a listed
+    file that no longer launches is red until the stale entry is removed.
+  RULE 15 -- input injection and blanket kills. keybd_event / SendInput / pyautogui key calls
+    only in files listed under "input_injection" that also gate on allow_foreground();
+    `taskkill /IM <image>` of ANY image, and os.kill (TerminateProcess on Windows), fail unless
+    the file is listed under "image_kill" / "os_kill".
+  RULE 9 (extended) also covers mc2fx / mc2weapon_gui / asset_viewer, .sh, docs/ and .claude/.
+    Launchers meant for people (modder dist/*.bat, docs examples) are not guarded: they are
+    listed under "user_tools" with the reason, and rendered apart from the harness inventory.
+
 OWNER RULE (2026-10-09, after a launch stole focus and the mouse while two lanes
 were smoking and capturing): the game/editor must ALWAYS launch in the
 background. That turns RULE 1 from "has a STARTUPINFO" into "goes through
@@ -101,11 +114,10 @@ Detection resolves the launch argv through same-file assignments (`argv = [exe,
 variable is not called `exe_path`. SCAN_DIRS covers scripts/, tools/ (including
 tools/visual_verify), tests/ and .claude/.
 
-RULE 4 and RULE 5 are RESERVED, not missing: `scripts/smoke_lib/isolation.py`
-(DESKTOP-ISOLATION-ENFORCE-1, still uncommitted) already cites them by number
-for desktop-isolation enforcement and the MC2_HARNESS_ALLOW_FOREGROUND ban. Do
-not reuse those numbers -- renumbering a rule that another file names by number
-is how a docstring becomes a lie.
+RULE 4 and RULE 5 are RESERVED, not missing: scripts/smoke_lib/isolation.py
+(DESKTOP-ISOLATION-ENFORCE-1, parked and never wired in) cited them by number
+for desktop-isolation enforcement and the MC2_HARNESS_ALLOW_FOREGROUND ban. The
+file is deleted; do not reuse the numbers anyway -- docs and history still name them.
 
 CONVENTION (commit f99cf37d): verify-only by default, never mutates a tracked
 file as a side effect; --write regenerates the inventory; newline="\\n".
@@ -136,9 +148,30 @@ REQUIRED_SCAN_PATHS = ("scripts", "tools/visual_verify", "tests")
 ALLOW_MARKER = re.compile(r"background-launch:\s*allow\s+(\S.*?)\s*$")
 
 #: Shell launchers that execute an engine exe (RULE 9).
-SHELL_SUFFIXES = (".bat", ".cmd", ".ps1")
+SHELL_SUFFIXES = (".bat", ".cmd", ".ps1", ".sh")
 SHELL_ENGINE_EXE = re.compile(
-    r"(mc2|Mission Editor|EditRel|mc2-launcher)\.exe", re.IGNORECASE)
+    r"(mc2|Mission Editor|EditRel|mc2-launcher|mc2fx[_-]?preview|mc2fx|mc2weapon[_-]?gui|"
+    r"(mc2_)?asset_viewer|mc2-asan)\.exe", re.IGNORECASE)
+
+#: A .sh line that RUNS an exe: the exe is the command (optionally via exec/start/wine).
+SH_INVOCATION = re.compile(r"""^(?:exec\s+|start\s+|wine\s+)?["']?[^\s=]*\.exe["']?(?:\s|$)""", re.IGNORECASE)
+
+#: Registered launchers / injectors (RULE 14, RULE 15). Hand-maintained: --write never edits it.
+ALLOW_PATH = ROOT / "scripts" / "background-launch-allow.json"
+ALLOW_SECTIONS = ("nofocus_callers", "direct_spawn", "input_injection", "image_kill", "os_kill", "user_tools")
+INPUT_LEAVES = ("keybd_event", "SendInput")
+INPUT_PYAUTOGUI = ("pyautogui.keyDown", "pyautogui.keyUp", "pyautogui.press", "pyautogui.hotkey",
+                   "pyautogui.write", "pyautogui.typewrite")
+
+
+def load_allow(root: Path = ROOT):
+    """The allowlists, or None when this tree has none (the selftest's temporary trees)."""
+    import json
+    p = ALLOW_PATH if root == ROOT else root / "scripts" / "background-launch-allow.json"
+    if not p.is_file():
+        return None
+    doc = json.loads(p.read_text(encoding="utf-8"))
+    return {k: dict(doc.get(k, {})) for k in ALLOW_SECTIONS}
 
 #: The vars that keep an agent run off the user's screen. Any launch path that
 #: can prevent these reaching the child engine is a regression.
@@ -184,14 +217,8 @@ COMPOSITE_CAPTURE_FILES = {
     "scripts/game_auto.py":
         "the interactive synthetic-input driver (keybd_event/mouse_event); its "
         "`screenshot` verb is pyautogui and its clicks target screen coordinates.",
-    "scripts/quick_shot.py":
-        "one-shot diagnostic pyautogui.screenshot() of the desktop.",
-    "scripts/quick_sweep.py":
-        "timed series of pyautogui.screenshot() desktop grabs.",
     "scripts/smoke_with_screenshots.py":
         "per-mission pyautogui.screenshot() desktop grabs alongside a smoke run.",
-    "scripts/water_visual_diff.py":
-        "A/B water fastpath comparison from two pyautogui.screenshot() grabs.",
     "tools/menu_oracle.py":
         "PIL.ImageGrab.grab(bbox=<window client rect>) -- it reads the DESKTOP "
         "pixels under the window rect, so the window must be on the desktop. "
@@ -325,7 +352,7 @@ def iter_shell(root: Path = ROOT, use_git: bool = True):
         cands = sorted(q for q in root.rglob("*") if q.suffix.lower() in SHELL_SUFFIXES)
     for p in cands:
         parts = p.relative_to(root).parts
-        if parts[0] in ("3rdparty", "docs", "build64", "worktrees") or "worktrees" in parts:
+        if parts[0] in ("3rdparty", "build64", "worktrees") or "worktrees" in parts:
             continue
         if p.is_file():
             yield p
@@ -478,10 +505,7 @@ CHILD_ARGV = re.compile(
 
 #: Files allowed a literal CREATE_NO_WINDOW (RULE 10 bare-flag ban), with the reason.
 #: scripts/smoke_lib/ is owned by the smoke-lane and spawns once per smoke run.
-BARE_FLAG_EXEMPT = {
-    "scripts/smoke_lib/isolation.py":
-        "one-shot isolation canary per smoke run, owned by smoke_lib",
-}
+BARE_FLAG_EXEMPT: dict = {}
 
 CHILD_SPAWN_CALLS = LAUNCH_CALLS + ("os.startfile", "os.popen")
 
@@ -571,13 +595,77 @@ def literal_program(node: ast.Call):
     return None
 
 
-def check(root: Path = ROOT, use_git: bool = True):
+def collect_sites(tree: ast.AST) -> dict:
+    """What a file does that RULE 14 / RULE 15 care about (AST, not grep)."""
+    out = {"nofocus": False, "direct": False, "inject": [], "image_kill": [], "os_kill": []}
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        nm = call_name(node)
+        leaf = nm.rsplit(".", 1)[-1]
+        if nm in SAFE_LAUNCH_CALLS:
+            out["nofocus"] = True
+        elif (nm in LAUNCH_CALLS or nm in ("os.startfile", "os.popen")) and literal_program(node) is None:
+            out["direct"] = True
+        if leaf in INPUT_LEAVES or nm in INPUT_PYAUTOGUI:
+            out["inject"].append((node.lineno, nm))
+        if nm == "os.kill":
+            out["os_kill"].append(node.lineno)
+        strs = [c.value.casefold() for c in ast.walk(node) if isinstance(c, ast.Constant) and isinstance(c.value, str)]
+        if any("taskkill" in s for s in strs) and ("/im" in strs or any(re.search(r"/im\s", s) for s in strs)):
+            out["image_kill"].append(node.lineno)
+    return out
+
+
+def registry_problems(sites_by_file: dict, texts: dict, allow: dict) -> list:
+    """RULE 14 and RULE 15 against the allowlists, including stale entries."""
+    out = []
+    nof = {r for r, s in sites_by_file.items() if s["nofocus"]}
+    dsp = {r for r, s in sites_by_file.items() if s["direct"]}
+    for r in sorted(nof - set(allow["nofocus_callers"])):
+        out.append(f"{r}: calls nofocus.spawn/run but is not in scripts/background-launch-allow.json "
+                   f"(nofocus_callers). Register it with the reason it launches the engine.")
+    for r in sorted(dsp - set(allow["direct_spawn"])):
+        out.append(f"{r}: spawns a process whose program is not a string literal (it could be the game) and is "
+                   f"not in scripts/background-launch-allow.json (direct_spawn). Register it with its reason, or "
+                   f"route the launch through nofocus.spawn.")
+    for r, s in sorted(sites_by_file.items()):
+        for line, api in s["inject"]:
+            if r not in allow["input_injection"] or "allow_foreground" not in texts.get(r, ""):
+                out.append(f"{r}:{line}: {api} sends global input to the FOREGROUND window (the owner's). Only files "
+                           f"listed under input_injection that also gate on nofocus.allow_foreground() may do it.")
+        for line in s["image_kill"]:
+            if r not in allow["image_kill"]:
+                out.append(f"{r}:{line}: taskkill /IM ends every process of that image name, including the owner's "
+                           f"and other lanes'. Kill the pid you spawned.")
+        for line in s["os_kill"]:
+            if r not in allow["os_kill"]:
+                out.append(f"{r}:{line}: os.kill is TerminateProcess on Windows, not a liveness probe. Use "
+                           f"smoke_lib.child_registry.pid_alive / kill_if_orphan.")
+    for section, present in (("nofocus_callers", nof), ("direct_spawn", dsp),
+                             ("input_injection", {r for r, s in sites_by_file.items() if s["inject"]}),
+                             ("image_kill", {r for r, s in sites_by_file.items() if s["image_kill"]}),
+                             ("os_kill", {r for r, s in sites_by_file.items() if s["os_kill"]})):
+        for r in sorted(set(allow[section]) - present):
+            out.append(f"scripts/background-launch-allow.json: {section} lists {r}, which no longer does that. "
+                       f"Remove the stale entry.")
+        for r, why in allow[section].items():
+            if not str(why).strip():
+                out.append(f"scripts/background-launch-allow.json: {section}/{r} has no reason.")
+    return out
+
+
+def check(root: Path = ROOT, use_git: bool = True, allow=None):
     """Run every rule. Returns (problems, launches, extras).
 
     `extras` carries what the inventory renders: allowed raw launches, shell
     launchers and per-file counts of unflagged console spawns.
     """
     problems: list[str] = []
+    if allow is None:
+        allow = load_allow(root)
+    sites_by_file: dict = {}
+    texts: dict = {}
     launches: list[tuple[str, int, str]] = []
     #: (file, line) -> reason, for raw launches carrying the allow marker.
     allowed_raw: dict = {}
@@ -609,6 +697,10 @@ def check(root: Path = ROOT, use_git: bool = True):
         lines = src.splitlines()
         assigns = assignments(tree, src)
         names_engine_file = bool(ENGINE_FILE_MARK.search(src))
+
+        if r != "scripts/check-background-launch.py":
+            sites_by_file[r] = collect_sites(tree)
+            texts[r] = src
 
         # ---- RULE 11: SetCursorPos only inside cursor_guard.set_cursor_pos, after the idle check ----
         if r != "scripts/check-background-launch.py":
@@ -826,12 +918,13 @@ def check(root: Path = ROOT, use_git: bool = True):
             f"OFFSCREEN_ENV reference, no MC2_WINDOW_OFFSCREEN in code). The "
             f"engine then creates its window at options.cfg size in the middle "
             f"of the desktop, and the only thing between the user and a "
-            f"full-screen flash is nofocus.park_window_offscreen's 250ms poll "
+            f"full-screen flash is the old window poller's 250ms poll "
             f"-- which cannot fire before the window exists. Apply "
             f"nofocus.OFFSCREEN_ENV to the child env.")
 
     # ---- RULE 9: shell launchers ----
     shell_launchers: dict = {}
+    user_tools: dict = {}
     for path in iter_shell(root, use_git):
         r = rel(path, root)
         try:
@@ -845,8 +938,13 @@ def check(root: Path = ROOT, use_git: bool = True):
                 continue
             if re.match(r"(?i)(rem\b|::|#|echo\b|write-host\b|copy\b|set\b|if\s+exist\b)", st):
                 continue
+            if path.suffix.lower() == ".sh" and (not SH_INVOCATION.match(st) or st.endswith("\\") or st.lower().count(".exe") > 1):
+                continue    # a path in a cp/test/variable line is not a launch; only command position is
             hits.append(i)
         if not hits:
+            continue
+        if allow is not None and r in allow["user_tools"]:
+            user_tools[r] = allow["user_tools"][r]
             continue
         m = None
         for ln in text.splitlines():
@@ -897,7 +995,19 @@ def check(root: Path = ROOT, use_git: bool = True):
                   "**console_child.child_kwargs() (redirected=True if the call "
                   "captures stdio), or add `# background-launch: allow <why>`.")
 
-    extras = {"allowed_raw": allowed_raw, "shell": shell_launchers,
+    # ---- RULE 14 / RULE 15: registered launchers, input injection, blanket kills ----
+    if allow is not None:
+        problems.extend(registry_problems(sites_by_file, texts, allow))
+        for r, why in sorted(allow["user_tools"].items()):
+            if r not in user_tools:
+                problems.append(f"scripts/background-launch-allow.json: user_tools lists {r}, which is not a "
+                                f"shell launcher of an engine exe any more. Remove the stale entry.")
+    else:
+        for r, s in sorted(sites_by_file.items()):
+            for line in s["image_kill"]:
+                problems.append(f"{r}:{line}: taskkill /IM ends every process of that image name.")
+
+    extras = {"allowed_raw": allowed_raw, "shell": shell_launchers, "user_tools": user_tools,
               "unhidden": {k: len(v) for k, v in unhidden.items()},
               "allowed_child": allowed_child}
     return problems, launches, extras
@@ -943,6 +1053,19 @@ def render_inventory(launches, extras=None) -> str:
         lines.append(f"| `{r}` | {hits[0]} | {why or '**MISSING MARKER**'} |")
     lines.append("")
     lines.append(f"Total shell launchers: {len(shell)}")
+    tools = extras.get("user_tools", {})
+    lines.append("")
+    lines.append("## User tools, not harness")
+    lines.append("")
+    lines.append("Launchers meant to be double-clicked or run by a person (shipped dist scripts, docs examples).")
+    lines.append("They are not guarded; each is listed in `scripts/background-launch-allow.json` (`user_tools`).")
+    lines.append("")
+    lines.append("| file | why it is a user tool |")
+    lines.append("| --- | --- |")
+    for r in sorted(tools):
+        lines.append(f"| `{r}` | {tools[r]} |")
+    lines.append("")
+    lines.append(f"Total user tools: {len(tools)}")
     lines.append("")
     lines.append("## Desktop-composite capture exceptions (NOFOCUS-FINISH-1)")
     lines.append("")
@@ -1077,6 +1200,28 @@ _SELFTEST_FILES = {
         "    return argv\n"
         "def run(argv):\n"
         "    _vet_engine_exe(argv)\n"),
+    # RULE 14 / RULE 15 fixtures (judged against an explicit allowlist in selftest()).
+    "scripts/new_launcher.py": (
+        "from smoke_lib import nofocus\n"
+        "def go(exe):\n"
+        "    return nofocus.spawn([exe])\n"),
+    "scripts/var_spawn.py": (
+        "import subprocess\n"
+        "def go(prog):\n"
+        "    return subprocess.Popen(prog)\n"),
+    "scripts/inject.py": (
+        "def go(u):\n"
+        "    u.keybd_event(27, 0, 0, 0)\n"),
+    "scripts/inject_ok.py": (
+        "from smoke_lib import nofocus\n"
+        "def go(u):\n"
+        "    if nofocus.allow_foreground():\n"
+        "        u.keybd_event(27, 0, 0, 0)\n"),
+    "scripts/oskill.py": (
+        "import os\n"
+        "def go(pid):\n"
+        "    os.kill(pid, 0)\n"),
+    "tools/user_launch.bat": "@echo off\nstart \"\" mc2fx_preview.exe\n",
     # RULE 9: shell launcher with and without a marker.
     "launch_bad.bat": "@echo off\nmc2.exe\n",
     "launch_ok.bat": "@echo off\nREM background-launch: allow selftest fixture\nmc2.exe\n",
@@ -1150,6 +1295,31 @@ def selftest() -> int:
                "a vetting function that never calls check_exe FAILS (RULE 13a)")
         expect(not flagged("scripts/smoke_lib/nofocus.py", "run() does not call"),
                "nofocus.run that calls the vetting passes RULE 13a")
+        allow = {k: {} for k in ALLOW_SECTIONS}
+        allow["nofocus_callers"]["scripts/ok_launch.py"] = "fixture"
+        allow["input_injection"]["scripts/inject_ok.py"] = "fixture"
+        allow["direct_spawn"]["scripts/stale_spawn.py"] = "fixture"
+        p2, _l2, ex2 = check(root, use_git=False, allow=allow)
+
+        def flagged2(relp: str, needle: str = "") -> bool:
+            return any(p.startswith(relp) and needle in p for p in p2)
+
+        expect(flagged2("scripts/new_launcher.py", "nofocus_callers"),
+               "a nofocus caller missing from the allowlist FAILS (RULE 14)")
+        expect(not flagged2("scripts/ok_launch.py", "nofocus_callers"), "a registered nofocus caller passes RULE 14")
+        expect(flagged2("scripts/var_spawn.py", "direct_spawn"),
+               "a non-literal-program spawn missing from the allowlist FAILS (RULE 14)")
+        expect(flagged2("scripts/inject.py", "FOREGROUND"), "keybd_event in an unregistered file FAILS (RULE 15)")
+        expect(not flagged2("scripts/inject_ok.py"), "a registered injector that gates on allow_foreground passes")
+        expect(flagged2("scripts/oskill.py", "os.kill"), "os.kill FAILS (RULE 15)")
+        expect(any("stale entry" in p and "stale_spawn.py" in p for p in p2),
+               "an allowlist entry that no longer launches FAILS as stale (RULE 14)")
+        allow["user_tools"]["tools/user_launch.bat"] = "fixture"
+        p3, _l3, ex3 = check(root, use_git=False, allow=allow)
+        expect("tools/user_launch.bat" in ex3["user_tools"] and not any(p.startswith("tools/user_launch.bat") for p in p3),
+               "a registered user tool is exempt from the shell-launcher marker (RULE 9)")
+        expect(flagged("tools/user_launch.bat", "shell launcher"),
+               "an unregistered mc2fx_preview launcher FAILS RULE 9")
         expect(flagged("launch_bad.bat", "shell launcher"),
                ".bat engine launcher without a marker FAILS (RULE 9)")
         expect(not flagged("launch_ok.bat"), ".bat engine launcher with marker passes")
