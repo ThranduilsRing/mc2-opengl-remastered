@@ -192,6 +192,9 @@ L(Presence, "MC2_CONTRACT_REPO_ROOT", Bool, false, "unclassified", "", ""),
 L(Lead0Kill, "MC2_CPU_PHONG_RETIRE", Bool, true, "code", "", "[DEFAULT-ON KILLSWITCH; '=0' is the only revert token -- MC2_TERRAIN_TESS / MC2_COLORMAP_CPU_RETIRE shape.]", passthrough),
 L(Lead1, "MC2_CPU_PROJ_COST_SPLIT", Bool, false, "code", "", "", passthrough),
 L(Presence, "MC2_CRASH_FAST_EXIT", Bool, false, "gameos", "", "Headless crash fast-exit: write the bundle, then terminate WITHOUT the modal dialog so an automated soak/harness process exits immediately on crash (the..."),
+G("MC2_CURSOR_EDGE_BAND", Int, 100, "harness", "", "smoke harness only (cursor_guard.py): pixels from the screen edge that count as edge-safe"),
+L(Exact1, "MC2_CURSOR_NO_PARK", Bool, false, "harness", "", "smoke harness only (scripts/smoke_lib/cursor_guard.py, tools/visual_verify/ab.py): leave the pointer where it is"),
+L(Exact1, "MC2_CURSOR_PARK", Bool, false, "harness", "", "smoke harness only (cursor_guard.py): park the pointer at the screen edge before a run"),
 L(Presence, "MC2_CURSOR_TARGET_TRACE", Bool, false, "code", "", ""),
 G("MC2_DEBUG_OVERLAY_PREDICATE_MODE", Enum, "", "code", "", "", tokens("|Legacy")),
 // history: docs/gate-history.md#MC2_DEBUG_RENDERER
@@ -410,6 +413,8 @@ L(Lead1, "MC2_GPU_TRAIL_DISABLE", Bool, false, "code", "", ""),
 L(Lead0P, "MC2_GROUND_CONTACT_BLOB", Bool, false, "code", "", "", passthrough),
 // history: docs/gate-history.md#MC2_GV_LIGHTSOUT_CLEAR
 L(Lead0, "MC2_GV_LIGHTSOUT_CLEAR", Bool, false, "mech", "", "VEHICLE-NIGHT-LIT-2: GVAppearance::update (mclib/gvactor.cpp) calls gvShape->SetLightsOut(true) when a ground vehicle is OBJECT_STATUS_DESTROYED or...", passthrough),
+L(Lead0, "MC2_HARNESS_ALLOW_FOREGROUND", Bool, false, "harness", "", "smoke harness only (nofocus.py, isolation.py): a user-present session opts in to foreground launches"),
+L(Lead0, "MC2_HARNESS_PARK", Bool, false, "harness", "", "smoke harness only (nofocus.py): park the launched window"),
 L(Presence, "MC2_HAZE_PARITY", Bool, false, "terrain", "", "Step 7 (VPL retirement): MC2_HAZE_PARITY probe - env-gated default-off."),
 L(Lead0Kill, "MC2_HDRI_BC6H", Bool, true, "gameos", "", ""),
 L(Lead0Kill, "MC2_HDRI_SKY", Bool, true, "post", "", ""),
@@ -457,6 +462,9 @@ P("MC2_IMPORTER_DIR", Int, 0, "unclassified", "", ""),
 // history: docs/gate-history.md#MC2_IMPOSTOR_DIST
 P("MC2_IMPOSTOR_DIST", Float, 800.0, "props", "", "Static-prop / tree impostor LOD switch distance in world units (mclib/bdactor.cpp TreeAppearance::selectActiveLOD).", passthrough),
 L(Presence, "MC2_INVIEW_CONFLATION_TRACE", Bool, false, "code", "", "alpha-Stage 1 ?5 Stage 0: candidate-predicate disagreement probe.", passthrough),
+G("MC2_ISOLATION_DESKTOP", String, "", "harness", "", "smoke harness only (isolation.py): name of the private desktop object"),
+G("MC2_ISOLATION_MIN", String, "", "harness", "", "smoke harness only (isolation.py): lowest acceptable isolation tier (winsta|desktop)"),
+G("MC2_ISOLATION_WINSTA", String, "", "harness", "", "smoke harness only (isolation.py): name of the private window-station object"),
 L(Presence, "MC2_JUMPJETS_ALL", Bool, false, "code", "", ""),
 L(Presence, "MC2_LAUNCHED", Bool, false, "gameos", "", ""),
 L(Lead0Kill, "MC2_LAUNCHER_ENV_JSON", Bool, true, "gameos", "", ""),
@@ -650,6 +658,7 @@ P("MC2_NIGHT_FOG_DIM_SCALE", Float, 0.0, "post", "", "BACKDROP-BLIT-ATTRIB-1: mu
 L(Lead0, "MC2_NO_ACTIVATE", Bool, false, "editor", "", "Mission Editor (editor/EditorMFC.cpp, MainFrm.cpp): come up minimized and non-activating, never taking the foreground or keyboard focus."),
 // history: docs/gate-history.md#MC2_NO_CURSOR_GRAB
 L(Lead0Def, "MC2_NO_CURSOR_GRAB", Bool, false, "gameos", "", "SMOKE-NO-CURSOR-STEAL-1: suppress ALL OS-cursor manipulation -- window mouse-grab, Win32 ClipCursor clamp, and gos_SetMousePosition warps -- plus window..."),
+L(Exact1, "MC2_NO_CURSOR_GUARD", Bool, false, "harness", "", "smoke harness only (cursor_guard.py): do not start the cursor guard"),
 L(Presence, "MC2_NO_LAUNCHER", Bool, false, "gameos", "", "", passthrough),
 L(Presence, "MC2_OBJBATCHER_TRACE", Bool, false, "props", "", ""),
 G("MC2_OBJECT_ADMISSION_PREDICATE", Enum, "", "code", "", "", passthrough | tokens("|legacy")),
@@ -884,9 +893,16 @@ L(Lead0Kill, "MC2_SMART_LOAD", Bool, true, "code", "", "SMART-LOAD startup/missi
 L(Presence, "MC2_SMART_LOAD_TRACE", Bool, false, "code", "", ""),
 L(NonEmpty, "MC2_SMOKE_ACTIVE", Bool, false, "editor", "", ""),
 L(Presence, "MC2_SMOKE_FIXED_TIMESTEP", Bool, false, "gameos", "", "S9D deterministic clock.", passthrough),
+G("MC2_SMOKE_LEASE_TTL_SECS", Int, 3600, "harness", "", "smoke harness only (deploy_lease.py): deploy-lease time-to-live in seconds"),
 L(Presence, "MC2_SMOKE_MODE", Bool, false, "gameos", "", "", passthrough),
 P("MC2_SMOKE_PERF_SAMPLES", Int, 0, "gameos", "", ""),  // default not derivable from the tree
+L(Exact1, "MC2_SMOKE_REQUIRE_DIAG_STATE", Bool, false, "harness", "", "smoke harness only (run_smoke.py): a missing diagnostic state dump is a hard fail"),
+L(Lead0Kill, "MC2_SMOKE_REQUIRE_FINGERPRINT", Bool, true, "harness", "", "smoke harness only (run_smoke.py): =0 smokes an exe whose build fingerprint does not match HEAD"),
+L(Exact1, "MC2_SMOKE_REQUIRE_FRESH", Bool, false, "harness", "", "smoke harness only (run_smoke.py): require a freshly built exe"),
+L(Exact1, "MC2_SMOKE_REQUIRE_VISUAL", Bool, false, "harness", "", "smoke harness only (run_smoke.py): a non-PASS visual verdict is a hard fail"),
 P("MC2_SMOKE_SEED", Int, 0, "gameos", "", "", passthrough),  // default not derivable from the tree
+L(NonEmpty, "MC2_SMOKE_VISIBLE", Bool, false, "harness", "", "smoke harness only (runner.py): show the game window instead of launching it minimized"),
+G("MC2_SMOKE_VISUAL_REPORT", String, "", "harness", "", "smoke harness only (run_smoke.py): path of the visual compare report folded into the smoke verdict"),
 // history: docs/gate-history.md#MC2_SNAPSHOT_MECH_EXTRACT
 L(Lead0, "MC2_SNAPSHOT_MECH_EXTRACT", Bool, false, "mech", "", "MECH-EXTRACTION-0: mech snapshot extraction (observe-only, no GL mutation).", passthrough),
 // history: docs/gate-history.md#MC2_SNAPSHOT_STATIC_PROP_BUILD
