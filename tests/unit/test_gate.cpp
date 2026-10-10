@@ -735,9 +735,11 @@ TEST_CASE("Float rows: a Std row rejects 1e999, a Prefix row lets inf reach the 
 // ---------------------------------------------------------------------------
 
 #ifdef _WIN32
-// The child half of the strict test: run only when the parent spawns this exe with --no-skip. It prints the
-// dump and, under MC2_CONFIG_STRICT=1 with an unregistered variable in the environment, must never return.
-TEST_CASE("strict_exit_child" * doctest::skip(true)) {
+// The child half of the strict test: does nothing unless the parent spawned this exe with GATE_TEST_STRICT_CHILD
+// set. It prints the dump and, under MC2_CONFIG_STRICT=1 with an unregistered variable in the environment, must
+// never return.
+TEST_CASE("strict_exit_child") {
+    if (std::getenv("GATE_TEST_STRICT_CHILD") == nullptr) return;
     gate::dumpConfig(stderr);
     if (std::getenv("MC2_CONFIG_STRICT") != nullptr) FAIL("dumpConfig returned under strict mode");
 }
@@ -747,15 +749,17 @@ TEST_CASE("an unregistered MC2_ variable under MC2_CONFIG_STRICT=1 ends the proc
     REQUIRE(GetModuleFileNameA(nullptr, exe, MAX_PATH) > 0);
     EnvVar strict("MC2_CONFIG_STRICT");
     EnvVar typo("MC2_TERAIN_NOT_A_GATE");
+    EnvVar child("GATE_TEST_STRICT_CHILD");
+    child.set("1");
     strict.set("1");
     typo.set("1");
-    const intptr_t rc = _spawnl(_P_WAIT, exe, exe, "--no-skip",
+    const intptr_t rc = _spawnl(_P_WAIT, exe, exe,
                                 "-tc=strict_exit_child", nullptr);
     CHECK(rc == 78);
     strict.set(nullptr);
     typo.set(nullptr);
     // Without strict the same environment only warns: the child's dump returns and it exits 0.
-    const intptr_t rc2 = _spawnl(_P_WAIT, exe, exe, "--no-skip",
+    const intptr_t rc2 = _spawnl(_P_WAIT, exe, exe,
                                  "-tc=strict_exit_child", nullptr);
     CHECK(rc2 == 0);
 }

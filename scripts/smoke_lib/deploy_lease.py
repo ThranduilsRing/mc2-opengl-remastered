@@ -60,9 +60,9 @@ _WRITE_RETRY_SLEEP = 0.05  # seconds
 # 2026-10-05 reset: one dev lane + the golden walk automatically; another builder lane (lane2) is leased only
 # by name (--deploy lane2), never picked by the walk. Older lanes are archived to E:/mc2-archive-2026-10/installs.
 _WALK_LANES = ("0.4", "0.4c")
-DEPLOY_FOLDERS: list[tuple[str, str]] = [(n, p) for n, p in lane_model.install_paths() if n in _WALK_LANES]
+DEPLOY_FOLDERS: list[tuple[str, str]] = list(lane_model.install_paths())
 
-_NAME_TO_PATH: dict[str, str] = dict(lane_model.install_paths())
+_NAME_TO_PATH: dict[str, str] = dict(DEPLOY_FOLDERS)
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
@@ -373,6 +373,8 @@ def auto_acquire(
         # that actually exist and have an mc2.exe.
         candidates: list[tuple[str, str, Optional[float]]] = []
         for name, folder in DEPLOY_FOLDERS:
+            if name not in _WALK_LANES:
+                continue
             if not _folder_has_exe(folder):
                 _log(f"[LEASE] {name} ({folder}) skipped — folder missing or no mc2.exe")
                 continue
