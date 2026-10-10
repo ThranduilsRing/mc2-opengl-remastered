@@ -1272,4 +1272,45 @@ TEST_CASE("G5 postprocess text rows and the backend selector") {
         CHECK(g1b::rowNamed(name).kind == Kind::String);
 }
 
+// ---------------------------------------------------------------------------
+// G5: gos_static_prop_batcher.cpp rows
+// ---------------------------------------------------------------------------
+
+TEST_CASE("G5 static-prop clamp rows reproduce the lambdas they replaced") {
+    auto fl = [&](const char* name, const char* text) { return asFloat(gate::detail::parseRow(g1b::rowNamed(name), text)); };
+    auto in = [&](const char* name, const char* text) {
+        return static_cast<std::int32_t>(static_cast<std::uint32_t>(gate::detail::parseRow(g1b::rowNamed(name), text)));
+    };
+    CHECK(fl("MC2_STATIC_PROP_IBL_SH_STRENGTH", nullptr) == 0.5f);
+    CHECK(fl("MC2_STATIC_PROP_IBL_SH_STRENGTH", "9") == 3.0f);
+    CHECK(fl("MC2_TERRAIN_DECAL_FILL", nullptr) == 0.2f);
+    CHECK(fl("MC2_TERRAIN_DECAL_FILL", "5") == 1.0f);
+    CHECK(fl("MC2_TERRAIN_DECAL_COLORBLEND", "-1") == 0.0f);
+    CHECK(fl("MC2_TERRAIN_DECAL_COLORBLEND", nullptr) == 0.35f);
+    CHECK(fl("MC2_STATIC_PROP_PBR_V1_STRENGTH", "10") == 3.0f);
+    CHECK(fl("MC2_PROP_BASE_LIGHT_DIR", "2") == 1.0f);
+    CHECK(fl("MC2_PROP_BASE_LIGHT_DIR", "") == 0.0f);
+    CHECK(in("MC2_STATIC_PROP_NIGHT_TAGS", "7") == 2);
+    CHECK(in("MC2_STATIC_PROP_NIGHT_TAGS", "-1") == 0);
+    CHECK(fl("MC2_STATIC_PROP_NIGHT_TAGS_SCALE", "99") == 16.0f);
+    CHECK(fl("MC2_STATIC_PROP_FIXTURE_LIGHTS", nullptr) == 1.0f);
+    CHECK(fl("MC2_STATIC_PROP_FIXTURE_LIGHTS", "100") == 16.0f);
+    CHECK(fl("MC2_STATIC_PROP_FIXTURE_GLOW", "100") == 8.0f);
+    CHECK(fl("MC2_STATIC_PROP_IBL_NIGHT_SCALE", "3") == 1.0f);
+    CHECK(fl("MC2_STATIC_PROP_IBL_SUN_ROTATE_FLOOR", nullptr) == 0.45f);
+    CHECK(fl("MC2_STATIC_PROP_IBL_SUN_ROTATE_FLOOR", "-1") == 0.0f);   // the old reader failed to 0, never to a lift
+    CHECK(fl("MC2_STATIC_PROP_IBL_SUN_ROTATE_FLOOR", "9") == 2.0f);
+    CHECK(fl("MC2_STATIC_PROP_IBL_SUN_ROTATE_FLOOR", "abc") == 0.0f);
+    CHECK(in("MC2_STATIC_PROP_DEBUG_MATERIAL", "9") == 6);
+    CHECK(in("MC2_STATIC_PROP_DEBUG_MATERIAL", "") == 0);
+    CHECK(fl("MC2_FAR_BACKDROP_LIT_NEAR", nullptr) == 700.0f);
+    CHECK(fl("MC2_FAR_BACKDROP_LIT_FAR", nullptr) == 960.0f);
+    CHECK(fl("MC2_OBJECT_POLY_OFFSET_FACTOR", nullptr) == -1.0f);
+    // texture tier and the billboard mode keep their snapping / first-character logic at the site
+    CHECK(in("MC2_STATICPROP_TEX_TIER", nullptr) == 512);
+    CHECK(in("MC2_STATICPROP_TEX_TIER", "300") == 300);
+    CHECK(g1b::rowNamed("MC2_LIGHT_BILLBOARD_FACING").kind == Kind::String);
+    CHECK(g1b::rowNamed("MC2_FAR_BACKDROP_LIT_TINT").kind == Kind::String);
+}
+
 }  // TEST_SUITE

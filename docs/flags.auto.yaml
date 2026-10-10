@@ -5,7 +5,7 @@
 generator_version: "3.0.0"
 gate_count: 1139
 registry_entry_count: 354
-verified_count: 576
+verified_count: 654
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -111,6 +111,7 @@ flags:
     rule: Presence
     owner: props
     doc: ""
+    verified: true
   - name: MC2_AMBIENT_ASSERT_FATAL
     kind: Bool
     default: false
@@ -209,6 +210,7 @@ flags:
     rule: Presence
     owner: props
     doc: ""
+    verified: true
   - name: MC2_BLDG_DIAG_TRACE
     kind: Bool
     default: false
@@ -237,6 +239,7 @@ flags:
     rule: Presence
     owner: props
     doc: ""
+    verified: true
   - name: MC2_BLOCK_FRUSTUM_FALLBACK
     kind: Bool
     default: false
@@ -619,6 +622,7 @@ flags:
     owner: props
     doc: "STATICPROP-PERSISTENT-STATIC-BUCKETS-2B-STAGE2 Task-0 probe: per-type static-vs-dynamic add counts + order ([BUCKET_ORDER v1])."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TRACE_BUCKET_ORDER, kind: Trace, order: -1, default_on: false}
   - name: MC2_BUILDING_FOOTPRINT_SHADOW
     kind: Bool
@@ -847,12 +851,14 @@ flags:
     owner: props
     doc: "Step 12B.1 - exact, case-sensitive string match on the four valid values; anything else (including unset) leaves None."
     tokens: "|alloc_failed|mixed_alpha|no_extension|size_mismatch"
+    verified: true
   - name: MC2_COALESCE_GPU_VS_CPU_COUNT_TRACE
     kind: Bool
     default: false
     rule: Presence
     owner: props
     doc: "Env probe for GPU-vs-CPU count diagnostic (Step 4.11)."
+    verified: true
   - name: MC2_COLLISION_FACTS
     kind: Bool
     default: false
@@ -1165,6 +1171,7 @@ flags:
     owner: props
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_DRAW_PACKET_COALESCE_V5_TRACE
     kind: Bool
     default: false
@@ -1172,6 +1179,7 @@ flags:
     owner: props
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_DRAW_PACKET_COMPARE
     kind: Bool
     default: false
@@ -1193,6 +1201,7 @@ flags:
     owner: props
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_DRAW_PACKET_V3
     kind: Bool
     default: false
@@ -1327,6 +1336,7 @@ flags:
     rule: Presence
     owner: props
     doc: "MC2_EDITOR_STATIC_PRIME_DIAG=1 - compact aggregate DrawCmd census at finalize."
+    verified: true
   - name: MC2_EDITOR_TRACE
     kind: Bool
     default: false
@@ -1380,6 +1390,7 @@ flags:
     owner: props
     doc: "FAR-BACKDROP-LIT-IMPL-1: night-shade substitution for far/impostor static-prop LODs (static_prop.vert)."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FAR_BACKDROP_LIT, kind: Feature, order: 39, default_on: false}
   - name: MC2_FAR_BACKDROP_LIT_FAR
     kind: Float
@@ -1388,6 +1399,7 @@ flags:
     owner: props
     doc: "FAR-BACKDROP-LIT-IMPL-1: view-depth (clip.w, world units) where the night-shade fade completes (full substitution)."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TUNE_FAR_BACKDROP_LIT_FAR, kind: Trace, order: -1, default_on: false}
   - name: MC2_FAR_BACKDROP_LIT_NEAR
     kind: Float
@@ -1396,6 +1408,7 @@ flags:
     owner: props
     doc: "FAR-BACKDROP-LIT-IMPL-1: view-depth (clip.w, world units) where the night-shade fade begins."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TUNE_FAR_BACKDROP_LIT_NEAR, kind: Trace, order: -1, default_on: false}
   - name: MC2_FAR_BACKDROP_LIT_STRENGTH
     kind: Float
@@ -1404,14 +1417,16 @@ flags:
     owner: props
     doc: "FAR-BACKDROP-LIT-IMPL-1: maximum substitution amount scaling the distance fade (1.0 = full replace of the stale seed with night ambient; >1 exaggerates for..."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TUNE_FAR_BACKDROP_LIT_STRENGTH, kind: Trace, order: -1, default_on: false}
   - name: MC2_FAR_BACKDROP_LIT_TINT
-    kind: Bool
-    default: false
-    rule: NonEmpty
+    kind: String
+    default: ""
+    rule: Std
     owner: props
     doc: "FAR-BACKDROP-LIT-IMPL-1: debug/exaggeration additive tint 'r,g,b' added to the substituted night shade so the affected far/impostor pixels are visually..."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_DIAG_FAR_BACKDROP_LIT_TINT, kind: Trace, order: -1, default_on: false}
   - name: MC2_FASTPATH_DROP_LOG
     kind: Bool
@@ -1872,6 +1887,7 @@ flags:
     owner: props
     doc: "[GPUPROPS v1] setup-path instrumentation (internal; path tag lives at file scope)."
     smoke_passthrough: true
+    verified: true
   - name: MC2_GPU_CULL
     kind: Bool
     default: true
@@ -2157,6 +2173,7 @@ flags:
     rule: Prefix
     owner: props
     doc: ""
+    verified: true
   - name: MC2_GPU_SYNC_TRACE
     kind: Bool
     default: false
@@ -2461,6 +2478,7 @@ flags:
     rule: Lead0P
     owner: props
     doc: ""
+    verified: true
   - name: MC2_LEGACY_LIT_MC2_FRAME
     kind: Bool
     default: true
@@ -2594,12 +2612,13 @@ flags:
     owner: mech
     doc: ""
   - name: MC2_LIGHT_BILLBOARD_FACING
-    kind: Int
-    default: 0
-    rule: Prefix
+    kind: String
+    default: ""
+    rule: Std
     owner: props
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_LIGHT_BILLBOARD_TWOSIDED
     kind: Bool
     default: false
@@ -3104,6 +3123,7 @@ flags:
     owner: unclassified
     doc: "GPU material table upload/bind/compare for static props (default-ON as of v5, 2026-05-26)."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_MATERIAL_GPU, kind: Feature, order: 9, default_on: true}
   - name: MC2_MATERIAL_GPU_SAMPLE
     kind: Bool
@@ -3112,6 +3132,7 @@ flags:
     owner: props
     doc: "GPU material albedo sampling in static_prop.frag (default-ON as of v7, 2026-05-26)."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_MATERIAL_GPU_SAMPLE, kind: Feature, order: 10, default_on: true}
   - name: MC2_MATERIAL_KTX
     kind: Bool
@@ -3119,6 +3140,7 @@ flags:
     rule: Lead0P
     owner: props
     doc: "KTX2 sidecar loader for static-prop textures (RenderCore/KtxLoader)."
+    verified: true
     registry: {feature_id: MC2_FEATURE_MATERIAL_KTX, kind: Feature, order: 12, default_on: false}
   - name: MC2_MDI_SUBMIT_TRACE
     kind: Bool
@@ -3633,6 +3655,7 @@ flags:
     rule: Presence
     owner: props
     doc: ""
+    verified: true
   - name: MC2_OBJECT_ADMISSION_PREDICATE
     kind: Enum
     default: ""
@@ -3682,6 +3705,7 @@ flags:
     owner: props
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_OBJECT_POLY_OFFSET_FACTOR
     kind: Float
     default: -1
@@ -3689,6 +3713,7 @@ flags:
     owner: props
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_OBJECT_POLY_OFFSET_UNITS
     kind: Float
     default: -1
@@ -3696,6 +3721,7 @@ flags:
     owner: props
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_OBJECT_RECON_TRACY
     kind: Bool
     default: false
@@ -4157,8 +4183,9 @@ flags:
     rule: Prefix
     owner: props
     doc: "PROP-BASE-LIGHT-DIR-1: give the static-prop baked per-vertex base_light seed a directional (hemispherical-wrap) orientation term, so faces pointing away..."
-    range: {lo: 0, hi: 1, style: reject}
+    range: {lo: 0, hi: 1, style: clamp}
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_PROP_BASE_LIGHT_DIR, kind: Feature, order: 43, default_on: false}
   - name: MC2_PROP_FIXB_MVP
     kind: Bool
@@ -4166,6 +4193,7 @@ flags:
     rule: DefOnAtoiNZ
     owner: props
     doc: ""
+    verified: true
   - name: MC2_PROP_FOLIAGE_ALPHAFLAG
     kind: Bool
     default: false
@@ -4738,6 +4766,7 @@ flags:
     rule: Presence
     owner: props
     doc: ""
+    verified: true
   - name: MC2_SHADOW_DIST_FADE
     kind: Float
     default: 80
@@ -4780,6 +4809,7 @@ flags:
     owner: unclassified
     doc: "Dynamic object shadow caster pass (GpuStaticPropBatcher + GpuMechBatcher flushShadow)."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_SHADOW_MAPS, kind: Feature, order: 5, default_on: true}
   - name: MC2_SHADOW_FADE_CONT
     kind: Bool
@@ -4876,6 +4906,7 @@ flags:
     owner: props
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_SHADOW_PROP_ALPHA_ATLAS
     kind: Bool
     default: true
@@ -4883,6 +4914,7 @@ flags:
     owner: props
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_SHADOW_ROBUST_BASIS
     kind: Bool
     default: true
@@ -5065,6 +5097,7 @@ flags:
     owner: props
     doc: "Extraction v3: build v6Packets+meta from RenderSnapshot rows instead of live batcher state (gos_static_prop_batcher.cpp)."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_RENDER_SNAPSHOT_BUILD, kind: Feature, order: 14, default_on: true}
   - name: MC2_SNAP_CULL
     kind: Bool
@@ -5073,6 +5106,7 @@ flags:
     owner: props
     doc: "Extraction v2.3: skip prev-frame zero-instance slots during snapshot-based dispatch (snap-cull opt-in)."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_SNAP_CULL, kind: Feature, order: 15, default_on: false}
   - name: MC2_SOAK_AUTOWIN
     kind: Bool
@@ -5154,6 +5188,7 @@ flags:
     rule: Presence
     owner: unclassified
     doc: "[SPOTLIGHT_REAL_TRACE v1] (E) Stage 0 / T0.2 baseline."
+    verified: true
   - name: MC2_SPOT_DIAG
     kind: Bool
     default: false
@@ -5168,6 +5203,7 @@ flags:
     owner: props
     doc: "SP-BATCHER-ALPHASCAN-GATE-1: skip the frame-constant per-static-prop alpha re-resolve scan in the batcher when nothing that affects it changed..."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_SP_ALPHASCAN_GATE, kind: Feature, order: -1, default_on: false}
   - name: MC2_SP_GLASS_DITHER
     kind: Bool
@@ -5176,6 +5212,7 @@ flags:
     owner: unclassified
     doc: "BUILDING-GLASS-1: ordered-dither (Bayer 4x4) translucency for partial-alpha texels on static-prop ALPHA_TEST materials (window glass)."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_SP_GLASS_DITHER, kind: Feature, order: -1, default_on: true}
   - name: MC2_SSAO
     kind: Bool
@@ -5259,6 +5296,7 @@ flags:
     rule: Lead0P
     owner: props
     doc: "COMPRESSION-BC7-STATICPROP-1: upload BC7-compressed KTX2 static-prop texture arrays through the existing static-prop KTX path (gos_static_prop_batcher.cpp)..."
+    verified: true
     registry: {feature_id: MC2_FEATURE_STATICPROP_BC7, kind: Feature, order: 32, default_on: false}
   - name: MC2_STATICPROP_MATERIAL_PBR_SLOTS
     kind: Bool
@@ -5267,6 +5305,7 @@ flags:
     owner: props
     doc: "Static-prop PBR ORM (occlusion-roughness-metallic) texture-array slots + sidecar feed."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_STATICPROP_MATERIAL_PBR_SLOTS, kind: Feature, order: -1, default_on: false}
   - name: MC2_STATICPROP_ORM_TRACE
     kind: Bool
@@ -5274,6 +5313,7 @@ flags:
     rule: Presence
     owner: props
     doc: "Static-prop ORM load trace: logs source path + dims per unique ORM texture."
+    verified: true
     registry: {feature_id: MC2_TRACE_STATICPROP_ORM_TRACE, kind: Trace, order: -1, default_on: false}
   - name: MC2_STATICPROP_RECIPE_SPOTLIGHT_SKIP
     kind: Bool
@@ -5289,12 +5329,14 @@ flags:
     rule: Prefix
     owner: props
     doc: ""
+    verified: true
   - name: MC2_STATIC_C1B_DRAW
     kind: Bool
     default: false
     rule: Presence
     owner: props
     doc: "C1b: when compute cull is enabled and the indirect command buffer is ready, write the per-type CPU instance counts into the indirect buffer before the draw..."
+    verified: true
   - name: MC2_STATIC_FORCE_ADMIT
     kind: Bool
     default: false
@@ -5302,12 +5344,14 @@ flags:
     owner: props
     doc: "2026-05-10 diag: MC2_STATIC_FORCE_ADMIT mirrors registry::flush behavior so the env-var A/B (cull-bypassed vs cull-active) covers BOTH substrate-record..."
     smoke_passthrough: true
+    verified: true
   - name: MC2_STATIC_INST_DIAG
     kind: Bool
     default: false
     rule: Presence
     owner: props
     doc: ""
+    verified: true
   - name: MC2_STATIC_LEAF_DIAG
     kind: Bool
     default: false
@@ -5334,12 +5378,14 @@ flags:
     rule: Presence
     owner: props
     doc: ""
+    verified: true
   - name: MC2_STATIC_POP_SPLIT_CMD_DIAG
     kind: Bool
     default: false
     rule: Presence
     owner: props
     doc: "Diag (env-gated): dump the static cmd summary so Task 3 can be validated before the draw exists."
+    verified: true
   - name: MC2_STATIC_PROP_AMBIENT_V1
     kind: Bool
     default: false
@@ -5347,6 +5393,7 @@ flags:
     owner: props
     doc: "V-AMBIENT-STATIC-1: hemisphere ambient fill on StaticPropOpaque lane (static_prop.vert)."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_STATIC_PROP_AMBIENT_V1, kind: Feature, order: 18, default_on: false}
   - name: MC2_STATIC_PROP_BAKE_SELFTEST
     kind: Bool
@@ -5389,6 +5436,7 @@ flags:
     owner: props
     doc: "STATICPROP-COLORS-FILL-DEBUGONLY-1: per-static-instance Colors SSBO (binding 1) zero-fill."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_STATIC_PROP_COLORS_FILL, kind: Feature, order: -1, default_on: false}
   - name: MC2_STATIC_PROP_DEBUG_MATERIAL
     kind: Int
@@ -5396,8 +5444,9 @@ flags:
     rule: Prefix
     owner: props
     doc: "V-MATERIAL-DEBUG-1 / V-MATERIAL-PBR-1: per-fragment material debug view on StaticPropOpaque lane (static_prop.frag)."
-    range: {lo: 0, hi: 6, style: reject}
+    range: {lo: 0, hi: 6, style: clamp}
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_STATIC_PROP_DEBUG_MATERIAL, kind: Feature, order: 19, default_on: false}
   - name: MC2_STATIC_PROP_DEPTH_PREPASS
     kind: Bool
@@ -5405,14 +5454,16 @@ flags:
     rule: Presence
     owner: props
     doc: ""
+    verified: true
   - name: MC2_STATIC_PROP_FIXTURE_GLOW
     kind: Float
     default: 0
     rule: Prefix
     owner: props
     doc: "FIXTURE-GLOW-1: DEFAULT-OFF on measured evidence."
-    range: {lo: 0, hi: 8, style: reject}
+    range: {lo: 0, hi: 8, style: clamp}
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_STATIC_PROP_FIXTURE_GLOW, kind: Trace, order: -1, default_on: false}
   - name: MC2_STATIC_PROP_FIXTURE_LIGHTS
     kind: Float
@@ -5420,8 +5471,9 @@ flags:
     rule: Prefix
     owner: props
     doc: "BEACON-FIXTURE-ID-1: DEFAULT-ON."
-    range: {lo: 0, hi: 16, style: reject}
+    range: {lo: 0, hi: 16, style: clamp}
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_STATIC_PROP_FIXTURE_LIGHTS, kind: Trace, order: -1, default_on: true}
   - name: MC2_STATIC_PROP_FLUSH_CACHED_BLOB
     kind: Bool
@@ -5454,20 +5506,23 @@ flags:
     rule: Prefix
     owner: props
     doc: ""
+    verified: true
   - name: MC2_STATIC_PROP_GLOBAL_POOL_LEGACY
     kind: Bool
     default: false
     rule: Lead0P
     owner: props
     doc: ""
+    verified: true
   - name: MC2_STATIC_PROP_IBL_NIGHT_SCALE
     kind: Float
     default: 0.25
     rule: Prefix
     owner: props
     doc: "IBL-NIGHT-SCALE-1: night-scales the SH-IBL ambient probe on static props."
-    range: {lo: 0, hi: 1, style: reject}
+    range: {lo: 0, hi: 1, style: clamp}
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_STATIC_PROP_IBL_NIGHT_SCALE, kind: Feature, order: -1, default_on: true}
   - name: MC2_STATIC_PROP_IBL_SH
     kind: Bool
@@ -5476,6 +5531,7 @@ flags:
     owner: props
     doc: "V-IBL-STATIC-1: SH-L2 image-based ambient on StaticPropOpaque lane (static_prop.vert)."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_STATIC_PROP_IBL_SH, kind: Feature, order: 20, default_on: true}
   - name: MC2_STATIC_PROP_IBL_SH_SET
     kind: String
@@ -5484,6 +5540,7 @@ flags:
     owner: props
     doc: "V-IBL-STATIC-2: override the active SH coefficient set by name (e.g."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TUNE_STATIC_PROP_IBL_SH_SET, kind: Trace, order: -1, default_on: false}
   - name: MC2_STATIC_PROP_IBL_SH_STRENGTH
     kind: Float
@@ -5493,6 +5550,7 @@ flags:
     doc: "V-IBL-STATIC-1: optional default-strength override for SH-L2 ambient (clamped 0..3)."
     range: {lo: 0, hi: 3, style: clamp}
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TUNE_STATIC_PROP_IBL_SH_STRENGTH, kind: Trace, order: -1, default_on: false}
   - name: MC2_STATIC_PROP_IBL_SUN_ROTATE
     kind: Bool
@@ -5501,6 +5559,7 @@ flags:
     owner: props
     doc: "[DEFAULT-OFF OPT-IN."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_STATIC_PROP_IBL_SUN_ROTATE, kind: Feature, order: -1, default_on: false}
   - name: MC2_STATIC_PROP_IBL_SUN_ROTATE_FLOOR
     kind: Float
@@ -5508,7 +5567,9 @@ flags:
     rule: Prefix
     owner: props
     doc: "[VALUE, not a boolean: the floor in the probe's own irradiance units."
+    range: {lo: 0, hi: 2, style: clamp}
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_STATIC_PROP_IBL_SUN_ROTATE_FLOOR, kind: Feature, order: -1, default_on: true}
   - name: MC2_STATIC_PROP_LATE_SPAWN_REG
     kind: Bool
@@ -5523,6 +5584,7 @@ flags:
     owner: props
     doc: "v6 DrawPacket+Meta dispatch (default-ON as of v7)."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_STATIC_PROP_PACKET_DISPATCH, kind: Feature, order: 13, default_on: true}
   - name: MC2_STATIC_PROP_LIGHT_FRESHNESS
     kind: Bool
@@ -5531,6 +5593,7 @@ flags:
     owner: props
     doc: "LIGHTROW-FRESHNESS-1: DEFAULT-ON."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_STATIC_PROP_LIGHT_FRESHNESS, kind: Feature, order: 53, default_on: true}
   - name: MC2_STATIC_PROP_LIVE_BUILDER
     kind: Bool
@@ -5539,6 +5602,7 @@ flags:
     owner: props
     doc: "v8 kill-switch: =1 restores live build + snapshot compare"
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_STATIC_PROP_LIVE_BUILDER, kind: Feature, order: -1, default_on: false}
   - name: MC2_STATIC_PROP_MISSION_LOAD_REG
     kind: Bool
@@ -5552,8 +5616,9 @@ flags:
     rule: Prefix
     owner: props
     doc: "EDGE-LIGHT-EMISSION-1: restores the stock hot-colour NIGHT vertex tags on the GPU static-prop path."
-    range: {lo: 0, hi: 2, style: reject}
+    range: {lo: 0, hi: 2, style: clamp}
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_STATIC_PROP_NIGHT_TAGS, kind: Trace, order: -1, default_on: false}
   - name: MC2_STATIC_PROP_NIGHT_TAGS_SCALE
     kind: Float
@@ -5561,8 +5626,9 @@ flags:
     rule: Prefix
     owner: props
     doc: "EDGE-LIGHT-EMISSION-1: scales the NIGHT EMISSION DELTA only (night base_light minus day base_light), never the underlying lighting maths, so 0.0 is exactly..."
-    range: {lo: 0, hi: 16, style: reject}
+    range: {lo: 0, hi: 16, style: clamp}
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TUNE_STATIC_PROP_NIGHT_TAGS_SCALE, kind: Trace, order: -1, default_on: false}
   - name: MC2_STATIC_PROP_PBR_V1
     kind: Bool
@@ -5571,6 +5637,7 @@ flags:
     owner: props
     doc: "V-MATERIAL-PBR-3: per-fragment Schlick-Fresnel + power-lobe specular on StaticPropOpaque lane (static_prop.frag, inside `#if defined(MC2_USE_VIEW_UNIFORMS)`)."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_STATIC_PROP_PBR_V1, kind: Feature, order: 21, default_on: false}
   - name: MC2_STATIC_PROP_PBR_V1_DIAG_SUNFOUND
     kind: Bool
@@ -5579,6 +5646,7 @@ flags:
     owner: props
     doc: "V-MATERIAL-PBR-3-DIAG: diagnostic visualizer for the forwarded sunFound state."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_DIAG_STATIC_PROP_PBR_V1_SUNFOUND, kind: Trace, order: -1, default_on: false}
   - name: MC2_STATIC_PROP_PBR_V1_STRENGTH
     kind: Float
@@ -5586,8 +5654,9 @@ flags:
     rule: Prefix
     owner: props
     doc: "V-MATERIAL-PBR-3: optional default-strength override for per-fragment Schlick-Fresnel specular (clamped 0..3)."
-    range: {lo: 0, hi: 3, style: reject}
+    range: {lo: 0, hi: 3, style: clamp}
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TUNE_STATIC_PROP_PBR_V1_STRENGTH, kind: Trace, order: -1, default_on: false}
   - name: MC2_STATIC_PROP_PERSISTENT_BUCKETS
     kind: Bool
@@ -5645,6 +5714,7 @@ flags:
     rule: Lead0
     owner: props
     doc: "Stage 2.C+ instrumentation: one-shot registered-types dump."
+    verified: true
   - name: MC2_STATIC_PROXY_RECON
     kind: Bool
     default: false
@@ -5715,18 +5785,21 @@ flags:
     rule: Presence
     owner: props
     doc: ""
+    verified: true
   - name: MC2_SUBSTRATE_COALESCE_LEGACY
     kind: Bool
     default: false
     rule: Presence
     owner: props
     doc: ""
+    verified: true
   - name: MC2_SUBSTRATE_COALESCE_TRACE
     kind: Bool
     default: false
     rule: Presence
     owner: props
     doc: "Step 12.1 - trace gate for noisy non-lifecycle COALESCE diagnostics."
+    verified: true
   - name: MC2_SUN_AXIS_FIX
     kind: Bool
     default: false
@@ -6006,8 +6079,9 @@ flags:
     rule: Prefix
     owner: props
     doc: "TERRAIN-DECAL-COLORBLEND-1: RVT-style terrain-colormap blend (float 0..1, default 0.35) for the CLIFF_WALL mesh-decal."
-    range: {lo: 0, hi: 1, style: reject}
+    range: {lo: 0, hi: 1, style: clamp}
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TERRAIN_DECAL_COLORBLEND, kind: Trace, order: -1, default_on: false}
   - name: MC2_TERRAIN_DECAL_FILL
     kind: Float
@@ -6015,8 +6089,9 @@ flags:
     rule: Prefix
     owner: props
     doc: "TERRAIN-DECAL-FILL-1: ambient/fill floor (float 0..1, default 0.20) for the CLIFF_WALL mesh-decal's shadow side."
-    range: {lo: 0, hi: 1, style: reject}
+    range: {lo: 0, hi: 1, style: clamp}
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TERRAIN_DECAL_FILL, kind: Trace, order: -1, default_on: false}
   - name: MC2_TERRAIN_DECAL_LATERAL
     kind: Float
@@ -6841,6 +6916,7 @@ flags:
     owner: props
     doc: "[DEFAULT-OFF, but the OFF token is UNSET, not '0'.]"
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TREE_DIAG_TRACE, kind: Trace, order: -1, default_on: false}
   - name: MC2_TREE_REG_TRACE
     kind: Bool
@@ -6917,6 +6993,7 @@ flags:
     owner: props
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_TYPE_TABLE_CAND_VERBOSE
     kind: Bool
     default: false
@@ -6924,6 +7001,7 @@ flags:
     owner: props
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_UI_ASPECT_ANCHOR
     kind: Bool
     default: true
@@ -7277,6 +7355,7 @@ flags:
     owner: props
     doc: "ViewUniforms UBO at binding=3."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_VIEW_UNIFORMS, kind: Feature, order: 16, default_on: true}
   - name: MC2_VISUAL_BOOKMARK_CAPTURE
     kind: Bool
