@@ -3611,6 +3611,74 @@
    "LG10": 1,
    "LG13": 2
   },
+  "mclib/bdactor_diag.cpp": {
+   "LG09": 26,
+   "LG12a": 3,
+   "LG20": 1
+  },
+  "mclib/bdactor_internal.h": {
+   "LG06": 7,
+   "LG13": 3
+  },
+  "mclib/bdactor_lightbake.cpp": {
+   "LG09": 4
+  },
+  "mclib/bdactor_render.cpp": {
+   "LG01": 1,
+   "LG09": 31,
+   "LG12a": 4,
+   "LG20": 2
+  },
+  "mclib/bdactor_sidecar.cpp": {
+   "LG01": 1,
+   "LG05": 5,
+   "LG06": 12,
+   "LG09": 8,
+   "LG10": 2,
+   "LG11": 2,
+   "LG12a": 3,
+   "LG12b": 3,
+   "LG20": 8
+  },
+  "mclib/bdactor_static.cpp": {
+   "LG01": 6,
+   "LG03": 4,
+   "LG08": 3,
+   "LG09": 21,
+   "LG12a": 16
+  },
+  "mclib/bdactor_terrain.cpp": {
+   "LG01": 11,
+   "LG03": 11,
+   "LG09": 4,
+   "LG13": 1
+  },
+  "mclib/bdactor_tree.cpp": {
+   "LG01": 6,
+   "LG03": 5,
+   "LG09": 3,
+   "LG10": 1,
+   "LG12b": 2
+  },
+  "mclib/bdactor_tree_static.cpp": {
+   "LG01": 1,
+   "LG03": 1,
+   "LG09": 11,
+   "LG12a": 6
+  },
+  "mclib/bdactor_type.cpp": {
+   "LG01": 30,
+   "LG03": 25,
+   "LG06": 2,
+   "LG09": 3,
+   "LG12a": 17,
+   "LG12b": 11
+  },
+  "mclib/bdactor_update.cpp": {
+   "LG01": 8,
+   "LG03": 3,
+   "LG09": 7
+  },
   "mclib/bitflag.cpp": {
    "LG01": 7,
    "LG03": 8,
@@ -5737,77 +5805,9 @@
   },
   "tools/shader_contract_harness/shader_contract_harness.cpp": {
    "LG20": 1
-  },
-  "mclib/bdactor_diag.cpp": {
-   "LG09": 26,
-   "LG12a": 3,
-   "LG20": 1
-  },
-  "mclib/bdactor_internal.h": {
-   "LG06": 7,
-   "LG13": 3
-  },
-  "mclib/bdactor_lightbake.cpp": {
-   "LG09": 4
-  },
-  "mclib/bdactor_render.cpp": {
-   "LG01": 1,
-   "LG09": 31,
-   "LG12a": 4,
-   "LG20": 2
-  },
-  "mclib/bdactor_sidecar.cpp": {
-   "LG01": 1,
-   "LG05": 5,
-   "LG06": 12,
-   "LG09": 8,
-   "LG10": 2,
-   "LG11": 2,
-   "LG12a": 3,
-   "LG12b": 3,
-   "LG20": 8
-  },
-  "mclib/bdactor_static.cpp": {
-   "LG01": 6,
-   "LG03": 4,
-   "LG08": 3,
-   "LG09": 21,
-   "LG12a": 16
-  },
-  "mclib/bdactor_terrain.cpp": {
-   "LG01": 11,
-   "LG03": 11,
-   "LG09": 4,
-   "LG13": 1
-  },
-  "mclib/bdactor_tree.cpp": {
-   "LG01": 6,
-   "LG03": 5,
-   "LG09": 3,
-   "LG10": 1,
-   "LG12b": 2
-  },
-  "mclib/bdactor_tree_static.cpp": {
-   "LG01": 1,
-   "LG03": 1,
-   "LG09": 11,
-   "LG12a": 6
-  },
-  "mclib/bdactor_type.cpp": {
-   "LG01": 30,
-   "LG03": 25,
-   "LG06": 2,
-   "LG09": 3,
-   "LG12a": 17,
-   "LG12b": 11
-  },
-  "mclib/bdactor_update.cpp": {
-   "LG01": 8,
-   "LG03": 3,
-   "LG09": 7
   }
  },
- "head": "025648b3a",
+ "head": "8b13dda86",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
