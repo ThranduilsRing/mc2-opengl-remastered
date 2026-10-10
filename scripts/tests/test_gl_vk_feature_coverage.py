@@ -154,6 +154,22 @@ void f(Prog* p) {
     assert idx.attribute(py, oy) == {"MC2_B": 1}
 
 
+def test_phase_frame_member_set_by_an_earlier_method_reaches_the_gate():
+    # A function split into phase helpers hands its locals over in a *Frame struct: the flag is set in one method
+    # and read by the setter in a later one. An ordinary class gets no such resolution.
+    body = """
+static bool onA() { const char* v = getenv("MC2_A"); return v && v[0]; }
+void %s::bind() { active = onA() && ready; }
+void %s::draw(Prog* p) { p->setInt("u_x", active ? 1 : 0); }
+"""
+    for owner, want in (("DrawFrame", {"MC2_A": 2}), ("Drawer", {})):
+        src = Source(ROOT, files={"GameOS/gameos/x.cpp": body % (owner, owner)})
+        files, ndefs = cov.load_cpp(src)
+        idx = cg.GateIndex(files, ndefs)
+        (px, ox), = cg.feature_sites(files, "u_x")
+        assert idx.attribute(px, ox) == want, owner
+
+
 def test_ambiguous_helper_name_does_not_leak_a_gate():
     src = Source(ROOT, files={
         "GameOS/gameos/a.cpp": 'bool apply() { return getenv("MC2_NOISE") != nullptr; }\n',
