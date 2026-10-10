@@ -93,6 +93,7 @@ import manifest_schema as ms  # noqa: E402
 from smoke_lib.cursor_guard import CursorGuard, park_cursor_if_edge  # noqa: E402
 # BACKGROUND-SMOKE-1: no agent capture may take focus / fullscreen / the cursor.
 from smoke_lib import nofocus  # noqa: E402
+from smoke_lib import exe_guard  # noqa: E402
 
 DEFAULT_EXE = Path(r"A:/Games/mc2-opengl/releases/mc2-win64-v0.4d-rc1/mc2.exe")
 BOOKMARK_DIR = (Path(os.environ["MC2_VISUAL_BOOKMARK_DIR"])
@@ -224,12 +225,28 @@ def _engine_capture_done(log_path: Path, n_expected: int) -> bool:
     return wrote >= n_expected
 
 
+def guard_exe(exe: Path) -> bool:
+    """Vet `exe` before any launch; print the identity line and the refusal.
+
+    A capture against an exe that cannot stay off the desktop (no
+    MC2_WINDOW_OFFSCREEN, or built before the cursor-grab fix) puts a window on
+    the user's screen, so it is refused unless MC2_OWNER_VISIBLE_OK=1.
+    """
+    verdict = exe_guard.check_exe(exe, purpose="capture")
+    print(verdict.banner().replace("[SMOKE]", "[CAPTURE]"), file=sys.stderr, flush=True)
+    if not verdict.ok:
+        print(verdict.refusal(), file=sys.stderr, flush=True)
+    return verdict.ok
+
+
 def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
             trigger_frame: int, settle: int, duration: int,
             deterministic_clock: bool, show_window: bool = False,
             declared_env: dict | None = None) -> dict:
     """Launch one capture sweep; return a result dict (never raises on engine
     failure -- records it instead)."""
+    if not guard_exe(exe):
+        raise RuntimeError(f"exe guard refused {exe}")
     # The engine runs with cwd = the deploy dir and resolves
     # MC2_VISUAL_CAPTURE_DIR relative to THAT, so a relative out_dir would write
     # under the deploy (and fopen-fail if absent). Always pass an absolute path.
@@ -678,6 +695,8 @@ def main() -> int:
     if not exe.exists():
         print(f"[viscap] ERROR exe missing: {exe}", file=sys.stderr)
         return 4
+    if not guard_exe(exe):
+        return 7
     bookmarks_path = (Path(args.bookmarks) if args.bookmarks
                       else BOOKMARK_DIR / f"{args.mission}.json")
     if not bookmarks_path.exists():

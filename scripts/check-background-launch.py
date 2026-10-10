@@ -51,6 +51,14 @@ only defence that scales is making the two populations declare themselves.
     MC2_WINDOW_OFFSCREEN in real code. This is the rule that catches a
     hand-rolled subprocess.Popen with its own env dict.
 
+  RULE 11 -- one guarded pointer write. The only code that may name
+    SetCursorPos is `set_cursor_pos` in scripts/smoke_lib/cursor_guard.py, and
+    that function must consult `user_is_active()` before it. Every other pointer
+    move (nofocus, game_auto, the capture park/restore, the watchdog) funnels
+    through it, so a user at the keyboard is never fought for the mouse (owner
+    incident 2026-10-10). A new module calling the Win32 API directly, even
+    from a policy file, FAILS.
+
 OWNER RULE (2026-10-09, after a launch stole focus and the mouse while two lanes
 were smoking and capturing): the game/editor must ALWAYS launch in the
 background. That turns RULE 1 from "has a STARTUPINFO" into "goes through
@@ -211,6 +219,12 @@ ENV_FORCE_POLICIES = {"scripts/smoke_lib/runner.py"}
 #: default cannot reach it. Without an explicit force, every tier-1 smoke run
 #: puts an options.cfg-sized window on the user's desktop.
 FORCED_MINIMUM = ("MC2_WINDOWED", "MC2_NO_CURSOR_GRAB", "MC2_WINDOW_OFFSCREEN")
+
+#: RULE 11: the single function allowed to name the pointer-write API.
+CURSOR_WRITE_OWNER = "scripts/smoke_lib/cursor_guard.py"
+CURSOR_WRITE_FUNC = "set_cursor_pos"
+CURSOR_WRITE_API = "SetCursorPos"
+CURSOR_WRITE_GUARD = "user_is_active"
 
 FOCUS_APIS = ("SetForegroundWindow", "BringWindowToTop", "SetActiveWindow",
               "SwitchToThisWindow")
@@ -580,6 +594,10 @@ def check(root: Path = ROOT, use_git: bool = True):
         lines = src.splitlines()
         assigns = assignments(tree, src)
         names_engine_file = bool(ENGINE_FILE_MARK.search(src))
+
+        # ---- RULE 11: SetCursorPos only inside cursor_guard.set_cursor_pos, after the idle check ----
+        if r != "scripts/check-background-launch.py":
+            problems.extend(cursor_write_problems(r, tree))
 
         # ---- RULE 3: raw focus/cursor Win32 outside the policy modules ----
         # AST, not grep: a docstring or a string constant naming the API is not
@@ -1002,6 +1020,16 @@ _SELFTEST_FILES = {
         "    return subprocess.run(cmd, capture_output=True,\n"
         "                          creationflags=subprocess.CREATE_NO_WINDOW)\n"
         "# mc2.exe\n"),
+    # RULE 11: pointer write outside the guarded function, and an unguarded copy of it.
+    "scripts/raw_cursor.py": (
+        "import ctypes\n"
+        "def park():\n"
+        "    ctypes.windll.user32.SetCursorPos(1, 1)\n"),
+    "scripts/smoke_lib/cursor_guard.py": (
+        "def user_is_active():\n"
+        "    return False\n"
+        "def set_cursor_pos(pos):\n"
+        "    return u.SetCursorPos(pos[0], pos[1])\n"),
     # RULE 9: shell launcher with and without a marker.
     "launch_bad.bat": "@echo off\nmc2.exe\n",
     "launch_ok.bat": "@echo off\nREM background-launch: allow selftest fixture\nmc2.exe\n",
@@ -1052,12 +1080,51 @@ def selftest() -> int:
                "bare CREATE_NO_WINDOW with `# background-launch: allow <why>` passes")
         expect(not flagged("scripts/py_wrapper.py", "launches the engine"),
                "python wrapper taking an exe path is not an engine launch")
+        expect(flagged("scripts/raw_cursor.py", "SetCursorPos outside"),
+               "SetCursorPos in an ordinary module FAILS (RULE 11)")
+        expect(flagged("scripts/smoke_lib/cursor_guard.py", "SetCursorPos outside"),
+               "set_cursor_pos without the user_is_active() check FAILS (RULE 11)")
+        guarded = ("def user_is_active():\n    return False\n"
+                   "def set_cursor_pos(pos):\n    if user_is_active():\n        return False\n"
+                   "    return u.SetCursorPos(pos[0], pos[1])\n")
+        expect(not cursor_write_problems(CURSOR_WRITE_OWNER, ast.parse(guarded)),
+               "set_cursor_pos that checks user_is_active() first passes RULE 11")
         expect(flagged("launch_bad.bat", "shell launcher"),
                ".bat engine launcher without a marker FAILS (RULE 9)")
         expect(not flagged("launch_ok.bat"), ".bat engine launcher with marker passes")
         del text
     print("[background-launch] selftest " + ("PASS" if ok else "FAIL"))
     return 0 if ok else 1
+
+
+def cursor_write_problems(rel: str, tree: ast.AST) -> list:
+    """RULE 11: every mention of the pointer-write API outside its one guarded function."""
+    allowed = None      # (first_line, last_line) of the guarded function in the owner file
+    if rel == CURSOR_WRITE_OWNER:
+        for fn in ast.walk(tree):
+            if isinstance(fn, ast.FunctionDef) and fn.name == CURSOR_WRITE_FUNC:
+                guard_lines = [c.lineno for c in ast.walk(fn)
+                               if isinstance(c, ast.Call) and call_name(c).rsplit(".", 1)[-1] == CURSOR_WRITE_GUARD]
+                if guard_lines:
+                    allowed = (min(guard_lines), fn.end_lineno)
+                break
+    out = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Attribute) and node.attr == CURSOR_WRITE_API:
+            name = node.attr
+        elif isinstance(node, ast.Name) and node.id == CURSOR_WRITE_API:
+            name = node.id
+        elif (isinstance(node, ast.Call) and call_name(node).rsplit(".", 1)[-1] in ("getattr", "GetProcAddress")
+              and any(isinstance(a, ast.Constant) and a.value == CURSOR_WRITE_API for a in node.args)):
+            name = CURSOR_WRITE_API     # looked up by name; a list of names to scan for is not a call
+        else:
+            continue
+        if allowed and allowed[0] < node.lineno <= allowed[1]:
+            continue
+        out.append(f"{rel}:{node.lineno}: {name} outside {CURSOR_WRITE_OWNER}:{CURSOR_WRITE_FUNC}() "
+                   f"(after its {CURSOR_WRITE_GUARD}() check). Call cursor_guard.set_cursor_pos() "
+                   f"so a user at the keyboard is never fought for the mouse.")
+    return out
 
 
 def main() -> int:

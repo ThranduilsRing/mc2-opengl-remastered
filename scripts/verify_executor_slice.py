@@ -179,7 +179,6 @@ def _run_smoke(
     cmd = [
         sys.executable, str(smoke_script),
         "--exe", exe,
-        "--no-lease",
         "--keep-logs",
         "--duration", "30",
     ]

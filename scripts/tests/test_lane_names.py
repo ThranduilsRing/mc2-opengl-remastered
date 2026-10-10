@@ -21,7 +21,7 @@ def _cdt():
 def test_lane2_is_a_known_deploy_name_but_not_part_of_the_unattended_walk():
     assert deploy_lease._NAME_TO_PATH["lane2"] == lane_model.LANES["lane2"]["install"]
     assert "lane2" in [n for n, _ in deploy_lease.DEPLOY_FOLDERS]
-    assert deploy_lease._WALK_LANES == ("0.4", "0.4c")
+    assert deploy_lease._WALK_LANES == ("0.4",)   # the golden install is never picked unattended
 
 
 def test_good_dirs_follow_the_model_and_leave_out_the_golden():

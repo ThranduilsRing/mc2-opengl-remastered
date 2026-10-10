@@ -550,5 +550,10 @@ def set_cursor_pos(x: int, y: int, *, restoring: bool = False) -> bool:
         return False
     if not restoring and not allow_foreground():
         return False
-    import ctypes
-    return bool(ctypes.windll.user32.SetCursorPos(int(x), int(y)))
+    # The pointer write itself lives in cursor_guard so that one function owns
+    # (and idle-guards) every harness cursor move.
+    try:
+        from . import cursor_guard
+    except ImportError:
+        from smoke_lib import cursor_guard
+    return cursor_guard.set_cursor_pos((int(x), int(y)))

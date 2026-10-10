@@ -104,7 +104,7 @@ def main():
     env["MC2_DIAG_TAGS"] = "CONFIG,BUILD,DEVICE,COMBAT"
 
     cmd = [sys.executable, os.path.join(root, "scripts", "run_smoke.py"),
-           "--exe", args.exe, "--no-lease", "--mission", args.mission,
+           "--exe", args.exe, "--mission", args.mission,
            "--duration", str(args.duration), "--keep-logs"]
     proc = subprocess.run(cmd, env=env, capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
     smoke_ok = (proc.returncode == 0)
