@@ -9,6 +9,7 @@
 
 #include "gos_render_pass_timer.h"
 #include "gos_frame_pass_stats.h"
+#include "Gates/gate.h"
 
 namespace gos_render_pass_timer {
 
@@ -68,8 +69,7 @@ int emitEvery()
 {
     static int s_every = 0;
     if (s_every == 0) {
-        const char* v = std::getenv("MC2_RENDER_PASS_TIME_EVERY");
-        const int n = (v && v[0]) ? std::atoi(v) : 0;
+        const int n = mc2::gate::get<"MC2_RENDER_PASS_TIME_EVERY">();
         s_every = (n > 0) ? n : 60;
     }
     return s_every;
@@ -157,8 +157,7 @@ void emitWindow()
 static void initEnv()
 {
     if (s_inited) return;
-    const char* v = std::getenv("MC2_RENDER_PASS_TIME");
-    s_envOn = (v && v[0] == '1' && v[1] == '\0');
+    s_envOn = mc2::gate::get<"MC2_RENDER_PASS_TIME">();
     s_inited = true;
     if (s_envOn) {
         std::printf("[RENDER_PASS_TIME v1] armed every=%d ring=%d\n",

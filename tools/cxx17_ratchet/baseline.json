@@ -66,8 +66,8 @@
    "LG16": 7,
    "LG17": 81,
    "LG18": 11,
-   "LG19": 88,
-   "LG20": 122
+   "LG19": 86,
+   "LG20": 120
   },
   "GuiRuntime": {
    "LG01": 1,
@@ -725,9 +725,7 @@
    "LG12a": 2
   },
   "GameOS/gameos/gos_render_pass_timer.cpp": {
-   "LG09": 8,
-   "LG19": 2,
-   "LG20": 2
+   "LG09": 8
   },
   "GameOS/gameos/gos_render_pass_timer.h": {
    "LG14": 1
@@ -5849,7 +5847,7 @@
    "LG20": 1
   }
  },
- "head": "273b6170a",
+ "head": "6bed6a32f",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
