@@ -1,0 +1,170 @@
+{
+ "base": "HEAD",
+ "src": "gui/UiDefs.cpp",
+ "stem": "UiDefs",
+ "edits": [
+  [
+   "static std::string toLower(std::string v)",
+   "std::string toLower(std::string v)"
+  ],
+  [
+   "static bool envValueIsFalse(const char* v)",
+   "bool envValueIsFalse(const char* v)"
+  ],
+  [
+   "static bool uiDefsTraceEnabled()",
+   "bool uiDefsTraceEnabled()"
+  ],
+  [
+   "static void uiDefsTrace(const char* fmt, ...)",
+   "void uiDefsTrace(const char* fmt, ...)"
+  ],
+  [
+   "static void uiDefsLog(const char* fmt, ...)",
+   "void uiDefsLog(const char* fmt, ...)"
+  ],
+  [
+   "static bool parseInt(const std::string& s, int& out)",
+   "bool parseInt(const std::string& s, int& out)"
+  ],
+  [
+   "static unsigned int parseColor(const std::unordered_map<std::string, std::string>& f,",
+   "unsigned int parseColor(const std::unordered_map<std::string, std::string>& f,"
+  ],
+  [
+   "static std::string field(const std::unordered_map<std::string, std::string>& f,",
+   "std::string field(const std::unordered_map<std::string, std::string>& f,"
+  ],
+  [
+   "static Rect parseRect(const std::string& value)",
+   "Rect parseRect(const std::string& value)"
+  ],
+  [
+   "static bool pointInRect(const Rect& r, int x, int y)",
+   "bool pointInRect(const Rect& r, int x, int y)"
+  ],
+  [
+   "static std::vector<Block> parseTypedFit(const char* path)",
+   "std::vector<Block> parseTypedFit(const char* path)"
+  ],
+  [
+   "static std::filesystem::path defsRoot()",
+   "std::filesystem::path defsRoot()"
+  ],
+  [
+   "static bool fileExistsPath(const std::filesystem::path& p)",
+   "bool fileExistsPath(const std::filesystem::path& p)"
+  ],
+  [
+   "static bool uiPackageVersionCheckPassed()",
+   "bool uiPackageVersionCheckPassed()"
+  ],
+  [
+   "static std::filesystem::path resolveAssetPath(const std::string& value)",
+   "std::filesystem::path resolveAssetPath(const std::string& value)"
+  ],
+  [
+   "static void traceMissingTextureOnce(const std::string& texturePath, const std::filesystem::path& resolved)",
+   "void traceMissingTextureOnce(const std::string& texturePath, const std::filesystem::path& resolved)"
+  ],
+  [
+   "static bool readUiTextureSize(const std::filesystem::path& path, int& width, int& height)",
+   "bool readUiTextureSize(const std::filesystem::path& path, int& width, int& height)"
+  ],
+  [
+   "static std::string baseNameNoExt(const char* path)",
+   "std::string baseNameNoExt(const char* path)"
+  ],
+  [
+   "static int alignmentFromString(const std::string& value)",
+   "int alignmentFromString(const std::string& value)"
+  ],
+  [
+   "static int parseLegacyButtonIndex(const std::unordered_map<std::string, std::string>& f)",
+   "int parseLegacyButtonIndex(const std::unordered_map<std::string, std::string>& f)"
+  ],
+  [
+   "static bool parseBool(const std::unordered_map<std::string, std::string>& f,",
+   "bool parseBool(const std::unordered_map<std::string, std::string>& f,"
+  ],
+  [
+   "static UiElement makeElement(const Block& b)",
+   "UiElement makeElement(const Block& b)"
+  ],
+  [
+   "static PageScale currentPageScale(int localWidth, int localHeight)",
+   "PageScale currentPageScale(int localWidth, int localHeight)"
+  ],
+  [
+   "static FRect scaledRect(const Rect& r, int xOffset, int yOffset, const PageScale& s)",
+   "FRect scaledRect(const Rect& r, int xOffset, int yOffset, const PageScale& s)"
+  ],
+  [
+   "static int scaledFontSize(int fontSize, const PageScale& s)",
+   "int scaledFontSize(int fontSize, const PageScale& s)"
+  ],
+  [
+   "static int messageIdForElement(LogisticsScreen* screen, const UiElement& e)",
+   "int messageIdForElement(LogisticsScreen* screen, const UiElement& e)"
+  ],
+  [
+   "static bool isButtonEnabled(LogisticsScreen* screen, const UiElement& e)",
+   "bool isButtonEnabled(LogisticsScreen* screen, const UiElement& e)"
+  ],
+  [
+   "static void drawUiRectElement(const FRect& r, unsigned int color, bool filled)",
+   "void drawUiRectElement(const FRect& r, unsigned int color, bool filled)"
+  ],
+  [
+   "static unsigned int sampleLegacyAnim(const UiElement::AnimKeyframe* kf, int count,",
+   "unsigned int sampleLegacyAnim(const UiElement::AnimKeyframe* kf, int count,"
+  ],
+  [
+   "static bool drawUiImageElement(UiElement& e, int xOffset, int yOffset, const PageScale& s,",
+   "bool drawUiImageElement(UiElement& e, int xOffset, int yOffset, const PageScale& s,"
+  ],
+  [
+   "static void renderTextElement(UiElement& e, int xOffset, int yOffset, unsigned int color, const PageScale& s)",
+   "void renderTextElement(UiElement& e, int xOffset, int yOffset, unsigned int color, const PageScale& s)"
+  ],
+  [
+   "static void drawUiListElement(UiElement& e, int xOffset, int yOffset, const PageScale& s)",
+   "void drawUiListElement(UiElement& e, int xOffset, int yOffset, const PageScale& s)"
+  ],
+  [
+   "static void drawUiSliderElement(UiElement& e, int xOffset, int yOffset, const PageScale& s)",
+   "void drawUiSliderElement(UiElement& e, int xOffset, int yOffset, const PageScale& s)"
+  ],
+  [
+   "static void drawUiCheckRadioElement(UiElement& e, int xOffset, int yOffset, const PageScale& s)",
+   "void drawUiCheckRadioElement(UiElement& e, int xOffset, int yOffset, const PageScale& s)"
+  ],
+  [
+   "static float getFrameDelta()",
+   "float getFrameDelta()"
+  ],
+  [
+   "const char* fallback = \"\")",
+   "const char* fallback)"
+  ],
+  [
+   "const char* name, bool fallback = false)",
+   "const char* name, bool fallback)"
+  ],
+  [
+   "unsigned int tint = 0xffffffff)",
+   "unsigned int tint)"
+  ]
+ ],
+ "add": [
+  "namespace uidefs_detail {",
+  "} // namespace uidefs_detail",
+  "using namespace uidefs_detail;"
+ ],
+ "scripts": [],
+ "_reason": "The anonymous-namespace helpers become the named namespace uidefs_detail so the parse/element/draw files can share them; the 35 helpers called across files lose 'static' (prototypes in UiDefs_internal.h) and three default arguments move from the definition to the prototype. Every gate read is inside a function and moves with it; the types move verbatim into the header.",
+ "drop": [
+  "namespace {",
+  "} // namespace"
+ ]
+}
