@@ -33,7 +33,6 @@
 // The whole TU compiles to nothing unless MC2_VULKAN_ISLAND is defined.
 // =============================================================================
 
-#ifdef MC2_VULKAN_ISLAND
 
 #ifndef VK_USE_PLATFORM_WIN32_KHR
 #define VK_USE_PLATFORM_WIN32_KHR
@@ -78,7 +77,8 @@
 #define GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM  0x8E8D
 #endif
 
-namespace {
+// Types shared by the pieces of this island (the functions that use them live in namespace vk_terrain_detail).
+namespace vk_terrain_detail {
 
 // ---------------------------------------------------------------------------
 // Health snapshot (mirrors the prop island's).
@@ -97,173 +97,14 @@ struct TerrainIslandHealth {
     unsigned long heightSnapshots = 0;   // height-SSBO snapshot copies (bumps on change)
     double stageUs = 0.0, drawUs = 0.0, totalUs = 0.0;
 };
-TerrainIslandHealth g_health;
 
 struct InteropForbidden {
     unsigned long glGetTexImage = 0;   // color CPU pull (must be 0)
     unsigned long glReadPixels  = 0;   // color CPU pull (must be 0)
 };
-InteropForbidden g_forbidden;
-
-void setFallback(const char* reason) {
-    std::strncpy(g_health.fallbackReason, reason ? reason : "",
-                 sizeof(g_health.fallbackReason) - 1);
-    g_health.fallbackReason[sizeof(g_health.fallbackReason) - 1] = '\0';
-}
-
-void vlog(const char* fmt, ...) {
-    va_list ap; va_start(ap, fmt);
-    vk_island_util::vlogv("[VK_TERRAIN_ISLAND] ", fmt, ap);
-    va_end(ap);
-}
-
-// VK-NOINTEROP-STRICT-REVIEW (H2b): record a PER-FRAME render-path GL depth readback.
-// The terrain island's per-frame shadow fallback (copy_shadow_slot for the dynamic
-// single-map slot) does a glGetTexImage when the VK direct producer declined -- exactly
-// the fallback that
-// caused the 126 ms/frame CSM readback (killed by direct-chain in 62707331). Before this
-// fix the g_forbidden.glGetTexImage counter was DECLARED and printed but NEVER
-// incremented, so the run()-scope f0b/f0c snapshot check and the health-line counter were
-// always 0 (a realized false-pass). Copy-ONCE asset-feed imports (import_colormap /
-// import_cement / import_matnormal / copy_static_shadow, each guarded to fire once at
-// map/mission load) must NOT call this -- they are the allowed GL-dependent feed layer
-// documented in .claude/METAL-GATE-AUDIT-2.md. This bumps the counter the health line
-// asserts == 0 AND emits a one-time PERFRAME_READBACK trip-wire the hardened checker greps.
-// True under MC2_VK_NO_GL_INTEROP_STRICT: a per-frame render-path GL readback must NEVER
-// fire (the whole point of the strict proof). The shadow direct-chain producer covers the
-// steady state; on the ~2 warmup frames before it is ready, the per-frame fallback would
-// otherwise do a GL depth readback. Under strict we fail-soft (skip the readback -> that
-// frame's terrain is unshadowed via the legacy path) instead of violating the invariant.
-bool terrainNoInteropStrict() {
-    static const int s = mc2::gate::get<"MC2_VK_NO_GL_INTEROP_STRICT">();
-    return s != 0;
-}
-
-void terrainPerFrameReadback(const char* fn) {
-    g_forbidden.glGetTexImage++;
-    static bool s_first = true;
-    if (s_first) {
-        s_first = false;
-        vlog("[VK_TERRAIN_PERFRAME_READBACK v1] fn=%s (forbidden per-frame GL depth "
-             "readback in render path -- direct-chain declined this frame)", fn);
-    }
-}
-
-// VK-TERRAIN-FENCE-DEFER-1: defer the
-// island's retire wait to the parity slot's next vkImageResourceBeginFrame instead
-// of waiting the submit fence inline. Default-ON (the per-parity UBO staging +
-// per-parity descriptor sets make it correct by construction);
-// MC2_VK_TERRAIN_FENCE_DEFER=0 is the killswitch restoring the inline wait — the
-// per-parity staging holds either way (superset-safe).
-bool terrainFenceDeferEnabled() {
-    static int state = -1;
-    if (state == -1)
-        state = mc2::gate::get<"MC2_VK_TERRAIN_FENCE_DEFER">() ? 1 : 0;
-    return state == 1;
-}
-
-// MC2_VK_TERRAIN_PERF — per-frame microsecond breakdown receipt of the VK terrain
-// island ([VK_TERRAIN_PERF] line: stage/record-submit/fence-wait/total). Same
-// diagnostic class + shape as MC2_VK_WATER_PERF (additive stderr trace, default OFF).
-bool terrainPerfGateRequested() {
-    static int state = -1;
-    if (state == -1) {
-        state = mc2::gate::get<"MC2_VK_TERRAIN_PERF">();
-    }
-    return state == 1;
-}
-
-// Gate: MC2_VK_TERRAIN_TIER1==1 AND MC2_VK_SHARED_SCENE_DEPTH==1 (the shared depth
-// the Tier-1 pass depth-tests against). Mirrors propColorTier1Requested().
-bool terrainTier1Requested() {
-    static int state = -1;
-    if (state == -1) {
-        // Umbrella members: MC2_VK_SHARED_GBUFFER=1 arms both; explicit
-        // MC2_VK_TERRAIN_TIER1 / MC2_VK_SHARED_SCENE_DEPTH =0/1 override.
-        state = mc2vkgate::terrainNativeFirstOwnerOn() ? 1 : 0;   // tier-1 island AND shared scene depth
-    }
-    return state == 1;
-}
-
-float g_prefixClearColor[4] = {0.0f, 0.0f, 0.0f, 1.0f};
-
-// VK-TERRAIN-ALL-LODS sub-slice (rung 3): extend VK terrain ownership beyond LOD0
-// (lodStep==1) to all coarse bands (lodStep>1), non-displaced, non-stitched only.
-// Requires TIER1 (no coarse bands without the LOD0 island already live). Skirts and
-// skirts remain GL-owned until the rung-4 SKIRTS sub-gate. NOTE (VK-TERRAIN-EDGE-
-// STITCH-1, commit 0aae0337): edge-stitch is NO LONGER GL-owned -- the capture-
-// predicate exclusion was removed and the corner-pin (+ mode-2 re-stitch) vertex
-// math is ported into terrain_tier1.vert / _skirt.vert with edgeStitch/quadCountX/Y
-// carried through the patch UBO tail. Stitched patches are VK-captured; the GL-
-// fallback audit's edge_stitch counter is 0 by construction, captured_stitch>0.
-//
-// VK-FIELD-ENV-CONTENT-STACK-ARM-1 (2026-07-11): coarse LOD bands are BASE terrain
-// content, not an enhancement. Post-VK-RUNG8-ITEM8 the native VK composite is the sole
-// present-image producer under the umbrella and there is NO per-layer GL fallback: an
-// unarmed content layer VANISHES (the field bug -- only LOD0/1 terrain rendered, coarse
-// bands GL-drawn into the discarded GL backbuffer). So ALL_LODS is now an umbrella FAMILY
-// member (armed<>): MC2_VK_SHARED_GBUFFER=1 arms it; explicit "1"/"0" still wins for the
-// oracle. The strict proof armed ALL_LODS=1 and passed its parity check, so this is the
-// proven-complete scene config. Still gated on TIER1 (no coarse bands without LOD0).
-bool terrainAllLodsRequested() {
-    static int state = -1;
-    if (state == -1) {
-        state = (terrainTier1Requested() && mc2vkgate::armed<"MC2_VK_TERRAIN_ALL_LODS">()) ? 1 : 0;
-    }
-    return state == 1;
-}
-
-// VK-TERRAIN-SKIRTS sub-slice (rung 4): extend VK terrain ownership to skirt/edge-
-// stitch geometry for VK-owned patches. Requires ALL_LODS (skirts only matter once
-// coarse bands are VK-owned -- LOD0-only skirts were already excluded from GL draw
-// by the TIER1 capture, see the "LOD0 skirts excluded from probe" comment at the
-// capture site). Independent explicit opt-in (own env var, NOT chained silently onto
-// ALL_LODS) so the oracle can isolate "VK bands, GL skirts" (today's shipped state)
-// from "VK bands, VK skirts" (this rung) -- if skirts crack, flip this OFF alone and
-// keep the rung-3 band win. VK-FIELD-ENV-CONTENT-STACK-ARM-1: now an umbrella FAMILY
-// member (armed<>) like ALL_LODS -- without VK skirts the coarse-band LOD seams crack
-// open (visible gaps), and there is no per-layer GL fallback post-item-8. The strict
-// proof armed SKIRTS=1 and passed. Explicit "1"/"0" still wins; still gated on ALL_LODS.
-bool terrainSkirtsRequested() {
-    static int state = -1;
-    if (state == -1) {
-        state = (terrainAllLodsRequested() && mc2vkgate::armed<"MC2_VK_TERRAIN_SKIRTS">()) ? 1 : 0;
-    }
-    return state == 1;
-}
-
-// VK-TERRAIN-VISUALDISPLACE-FAR-1 (rung 5): far-band visual-displace mode-2 Z-swap
-// sub-gate. Requires ALL_LODS (mode-2 only exists on lodStep>1 bands). An explicit
-// opt-in (an Exact1 row: only "1" arms it; unset -> OFF regardless of the
-// umbrella, unlike SKIRTS which is now an umbrella member) so the oracle can isolate "VK bands undisplaced (GL owns displaced)" from
-// "VK bands displaced" -- if the Z-swap diverges, flip this OFF alone and keep rung 3/4.
-// VK-FIELD-ENV-CONTENT-STACK-ARM-1 (2026-07-11): DELIBERATELY stays an explicit opt-in
-// (NOT an umbrella family member, unlike ALL_LODS/SKIRTS). It is a far-band visual
-// ENHANCEMENT, not base content -- when OFF the coarse bands still render fully (via
-// ALL_LODS) merely undisplaced, so nothing VANISHES (the layer's "VK fallback" is the
-// undisplaced-but-present VK band). It also depends on visual_height_4x.r32 bakes the
-// 0.4c field lane does not ship, so arming it by default would risk a field regression.
-bool terrainVisualDisplaceFarRequested() {
-    static int state = -1;
-    if (state == -1) {
-        state = (terrainAllLodsRequested() && mc2::gate::get<"MC2_VK_TERRAIN_VISUALDISPLACE_FAR">()) ? 1 : 0;
-    }
-    return state == 1;
-}
-
-std::string spv_dir() {
-    std::string d = mc2::gate::str<"MC2_VULKAN_SPV_DIR">();   // row default "shaders/vulkan" (also for an empty value)
-    if (!d.empty() && d.back() != '/' && d.back() != '\\') d += '/';
-    return d;
-}
-
-VkShaderModule load_spv(VkDevice device, std::string_view path) {
-    return vk_island_util::loadSpv(device, path, vlog);
-}
 
 // int16 local-offset vertex (mirrors terrain_lod_chunk.cpp LocalVertex { int16 lx,ly }).
 struct LocalVertex { int16_t lx, ly; };
-
 const VkFormat kColorFmt = VK_FORMAT_R16G16B16A16_SFLOAT; // MainColor-compatible
 
 // A cached LOD0 patch grid (VK-owned VBO/IBO), keyed by (quadCountX,quadCountY).
@@ -476,18 +317,54 @@ struct TerrainIsland {
     mc2vkts::GpuTimer gpuTimer;
 };
 
-TerrainIsland* g_island = nullptr;
+struct OvlPC {                       // LOCKSTEP with OverlayPC in terrain_overlay_tier1.{vert,frag}
+    float   fogColor[4];             // off 0
+    float   artFlatExempt;           // off 16
+    float   mapHalfExtent;           // off 20
+    int32_t biasLegacy;              // off 24
+    int32_t cementAdopt;             // off 28
+    int32_t seamFix;                 // off 32
+    int32_t _pad[3];                 // off 36..47
+};
+static_assert(sizeof(OvlPC) == 48, "OvlPC push-constant lockstep");
 
-// VK-UMBRELLA-DIRECT-CHAIN-DEFAULT-1 item-2 (boot-level native-or-decline):
-// distinguish a PERMANENT init failure (spv/pipeline/renderpass/resource creation --
-// won't recover this session) from a TRANSIENT one (engine VK context / shared GBuffer
-// not born YET at boot -- recovers a few frames later, keep the item-9 fail-hard-with-
-// retry). g_terrainInitReachedBuild flips to 1 once init passes the context/GBuffer
-// readiness gates and starts creating permanent VK objects; if init then fails, the
-// island is declined for the SESSION (one receipt line, GL owns terrain from frame 0)
-// instead of re-newing + re-init'ing the island every frame.
-static bool g_terrainSessionDeclined  = false;
-static int  g_terrainInitReachedBuild = 0;
+struct OvlTex {
+    VkImage img = VK_NULL_HANDLE; VmaAllocation alloc = VK_NULL_HANDLE;
+    VkImageView view = VK_NULL_HANDLE;
+    VkDescriptorSet set = VK_NULL_HANDLE;
+    uint32_t glTex = 0;              // GL texture name this import came from
+};
+
+struct OvlPending {
+    uint32_t kind = 0;               // 0 = terrain overlay (cement/road art), 1 = decal
+    bool     isStatic = false;       // persistent bake (verts stay owned by the caller)
+    uint64_t version = 0;            // static bake version
+    const uint8_t* staticPtr = nullptr;
+    std::vector<uint8_t> verts;      // per-frame copy (28B WorldOverlayVert each)
+    uint32_t vertCount = 0;
+    std::vector<Mc2VkOverlayDraw> draws;
+};
+
+struct OvlState {
+    TerrainIsland* owner = nullptr;
+    int w = 0, h = 0;
+    bool inited = false, disabled = false;
+    VkRenderPass rpass = VK_NULL_HANDLE; VkFramebuffer fb = VK_NULL_HANDLE;
+    VkShaderModule vert[2] = {}, frag[2] = {};
+    VkPipeline pipe[2] = {};
+    VkPipelineLayout playout = VK_NULL_HANDLE;
+    VkDescriptorSetLayout texDsl = VK_NULL_HANDLE; VkDescriptorPool texPool = VK_NULL_HANDLE;
+    VkSampler samp = VK_NULL_HANDLE;
+    VkBuffer vtx[2] = {}; VmaAllocation vtxAlloc[2] = {}; VkDeviceSize vtxCap[2] = {0, 0};
+    VkBuffer stat = VK_NULL_HANDLE; VmaAllocation statAlloc = VK_NULL_HANDLE;
+    VkDeviceSize statCap = 0; uint64_t statVersion = UINT64_MAX;
+    VkCommandBuffer cbuf[2] = {};
+    OvlTex dummy;
+    std::unordered_map<uint32_t, OvlTex> texs;   // key: gos texture handle
+};
+
+const uint32_t kOvlMaxTex = 480;
+const uint32_t kOvlVertStride = 28;   // WorldOverlayVert
 
 // Forward decls (COLORMAP-BASE helpers defined after snapshot_height, used earlier).
 bool ensure_dummy_colormap(TerrainIsland* s);
@@ -506,6 +383,188 @@ bool copy_shadow_slot(TerrainIsland* s, uint32_t glTex, uint32_t dim,
                       bool perFrame);
 bool ensure_dummy_matnormal(TerrainIsland* s);
 void import_matnormal(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
+
+}  // namespace vk_terrain_detail
+using namespace vk_terrain_detail;
+
+namespace vk_terrain_detail {
+
+TerrainIslandHealth g_health;
+
+InteropForbidden g_forbidden;
+
+void setFallback(const char* reason) {
+    std::strncpy(g_health.fallbackReason, reason ? reason : "",
+                 sizeof(g_health.fallbackReason) - 1);
+    g_health.fallbackReason[sizeof(g_health.fallbackReason) - 1] = '\0';
+}
+
+void vlog(const char* fmt, ...) {
+    va_list ap; va_start(ap, fmt);
+    vk_island_util::vlogv("[VK_TERRAIN_ISLAND] ", fmt, ap);
+    va_end(ap);
+}
+
+// VK-NOINTEROP-STRICT-REVIEW (H2b): record a PER-FRAME render-path GL depth readback.
+// The terrain island's per-frame shadow fallback (copy_shadow_slot for the dynamic
+// single-map slot) does a glGetTexImage when the VK direct producer declined -- exactly
+// the fallback that
+// caused the 126 ms/frame CSM readback (killed by direct-chain in 62707331). Before this
+// fix the g_forbidden.glGetTexImage counter was DECLARED and printed but NEVER
+// incremented, so the run()-scope f0b/f0c snapshot check and the health-line counter were
+// always 0 (a realized false-pass). Copy-ONCE asset-feed imports (import_colormap /
+// import_cement / import_matnormal / copy_static_shadow, each guarded to fire once at
+// map/mission load) must NOT call this -- they are the allowed GL-dependent feed layer
+// documented in .claude/METAL-GATE-AUDIT-2.md. This bumps the counter the health line
+// asserts == 0 AND emits a one-time PERFRAME_READBACK trip-wire the hardened checker greps.
+// True under MC2_VK_NO_GL_INTEROP_STRICT: a per-frame render-path GL readback must NEVER
+// fire (the whole point of the strict proof). The shadow direct-chain producer covers the
+// steady state; on the ~2 warmup frames before it is ready, the per-frame fallback would
+// otherwise do a GL depth readback. Under strict we fail-soft (skip the readback -> that
+// frame's terrain is unshadowed via the legacy path) instead of violating the invariant.
+bool terrainNoInteropStrict() {
+    static const int s = mc2::gate::get<"MC2_VK_NO_GL_INTEROP_STRICT">();
+    return s != 0;
+}
+
+void terrainPerFrameReadback(const char* fn) {
+    g_forbidden.glGetTexImage++;
+    static bool s_first = true;
+    if (s_first) {
+        s_first = false;
+        vlog("[VK_TERRAIN_PERFRAME_READBACK v1] fn=%s (forbidden per-frame GL depth "
+             "readback in render path -- direct-chain declined this frame)", fn);
+    }
+}
+
+// VK-TERRAIN-FENCE-DEFER-1: defer the
+// island's retire wait to the parity slot's next vkImageResourceBeginFrame instead
+// of waiting the submit fence inline. Default-ON (the per-parity UBO staging +
+// per-parity descriptor sets make it correct by construction);
+// MC2_VK_TERRAIN_FENCE_DEFER=0 is the killswitch restoring the inline wait — the
+// per-parity staging holds either way (superset-safe).
+bool terrainFenceDeferEnabled() {
+    static int state = -1;
+    if (state == -1)
+        state = mc2::gate::get<"MC2_VK_TERRAIN_FENCE_DEFER">() ? 1 : 0;
+    return state == 1;
+}
+
+// MC2_VK_TERRAIN_PERF — per-frame microsecond breakdown receipt of the VK terrain
+// island ([VK_TERRAIN_PERF] line: stage/record-submit/fence-wait/total). Same
+// diagnostic class + shape as MC2_VK_WATER_PERF (additive stderr trace, default OFF).
+bool terrainPerfGateRequested() {
+    static int state = -1;
+    if (state == -1) {
+        state = mc2::gate::get<"MC2_VK_TERRAIN_PERF">();
+    }
+    return state == 1;
+}
+
+// Gate: MC2_VK_TERRAIN_TIER1==1 AND MC2_VK_SHARED_SCENE_DEPTH==1 (the shared depth
+// the Tier-1 pass depth-tests against). Mirrors propColorTier1Requested().
+bool terrainTier1Requested() {
+    static int state = -1;
+    if (state == -1) {
+        // Umbrella members: MC2_VK_SHARED_GBUFFER=1 arms both; explicit
+        // MC2_VK_TERRAIN_TIER1 / MC2_VK_SHARED_SCENE_DEPTH =0/1 override.
+        state = mc2vkgate::terrainNativeFirstOwnerOn() ? 1 : 0;   // tier-1 island AND shared scene depth
+    }
+    return state == 1;
+}
+
+float g_prefixClearColor[4] = {0.0f, 0.0f, 0.0f, 1.0f};
+
+// VK-TERRAIN-ALL-LODS sub-slice (rung 3): extend VK terrain ownership beyond LOD0
+// (lodStep==1) to all coarse bands (lodStep>1), non-displaced, non-stitched only.
+// Requires TIER1 (no coarse bands without the LOD0 island already live). Skirts and
+// skirts remain GL-owned until the rung-4 SKIRTS sub-gate. NOTE (VK-TERRAIN-EDGE-
+// STITCH-1, commit 0aae0337): edge-stitch is NO LONGER GL-owned -- the capture-
+// predicate exclusion was removed and the corner-pin (+ mode-2 re-stitch) vertex
+// math is ported into terrain_tier1.vert / _skirt.vert with edgeStitch/quadCountX/Y
+// carried through the patch UBO tail. Stitched patches are VK-captured; the GL-
+// fallback audit's edge_stitch counter is 0 by construction, captured_stitch>0.
+//
+// VK-FIELD-ENV-CONTENT-STACK-ARM-1 (2026-07-11): coarse LOD bands are BASE terrain
+// content, not an enhancement. Post-VK-RUNG8-ITEM8 the native VK composite is the sole
+// present-image producer under the umbrella and there is NO per-layer GL fallback: an
+// unarmed content layer VANISHES (the field bug -- only LOD0/1 terrain rendered, coarse
+// bands GL-drawn into the discarded GL backbuffer). So ALL_LODS is now an umbrella FAMILY
+// member (armed<>): MC2_VK_SHARED_GBUFFER=1 arms it; explicit "1"/"0" still wins for the
+// oracle. The strict proof armed ALL_LODS=1 and passed its parity check, so this is the
+// proven-complete scene config. Still gated on TIER1 (no coarse bands without LOD0).
+bool terrainAllLodsRequested() {
+    static int state = -1;
+    if (state == -1) {
+        state = (terrainTier1Requested() && mc2vkgate::armed<"MC2_VK_TERRAIN_ALL_LODS">()) ? 1 : 0;
+    }
+    return state == 1;
+}
+
+// VK-TERRAIN-SKIRTS sub-slice (rung 4): extend VK terrain ownership to skirt/edge-
+// stitch geometry for VK-owned patches. Requires ALL_LODS (skirts only matter once
+// coarse bands are VK-owned -- LOD0-only skirts were already excluded from GL draw
+// by the TIER1 capture, see the "LOD0 skirts excluded from probe" comment at the
+// capture site). Independent explicit opt-in (own env var, NOT chained silently onto
+// ALL_LODS) so the oracle can isolate "VK bands, GL skirts" (today's shipped state)
+// from "VK bands, VK skirts" (this rung) -- if skirts crack, flip this OFF alone and
+// keep the rung-3 band win. VK-FIELD-ENV-CONTENT-STACK-ARM-1: now an umbrella FAMILY
+// member (armed<>) like ALL_LODS -- without VK skirts the coarse-band LOD seams crack
+// open (visible gaps), and there is no per-layer GL fallback post-item-8. The strict
+// proof armed SKIRTS=1 and passed. Explicit "1"/"0" still wins; still gated on ALL_LODS.
+bool terrainSkirtsRequested() {
+    static int state = -1;
+    if (state == -1) {
+        state = (terrainAllLodsRequested() && mc2vkgate::armed<"MC2_VK_TERRAIN_SKIRTS">()) ? 1 : 0;
+    }
+    return state == 1;
+}
+
+// VK-TERRAIN-VISUALDISPLACE-FAR-1 (rung 5): far-band visual-displace mode-2 Z-swap
+// sub-gate. Requires ALL_LODS (mode-2 only exists on lodStep>1 bands). An explicit
+// opt-in (an Exact1 row: only "1" arms it; unset -> OFF regardless of the
+// umbrella, unlike SKIRTS which is now an umbrella member) so the oracle can isolate "VK bands undisplaced (GL owns displaced)" from
+// "VK bands displaced" -- if the Z-swap diverges, flip this OFF alone and keep rung 3/4.
+// VK-FIELD-ENV-CONTENT-STACK-ARM-1 (2026-07-11): DELIBERATELY stays an explicit opt-in
+// (NOT an umbrella family member, unlike ALL_LODS/SKIRTS). It is a far-band visual
+// ENHANCEMENT, not base content -- when OFF the coarse bands still render fully (via
+// ALL_LODS) merely undisplaced, so nothing VANISHES (the layer's "VK fallback" is the
+// undisplaced-but-present VK band). It also depends on visual_height_4x.r32 bakes the
+// 0.4c field lane does not ship, so arming it by default would risk a field regression.
+bool terrainVisualDisplaceFarRequested() {
+    static int state = -1;
+    if (state == -1) {
+        state = (terrainAllLodsRequested() && mc2::gate::get<"MC2_VK_TERRAIN_VISUALDISPLACE_FAR">()) ? 1 : 0;
+    }
+    return state == 1;
+}
+
+std::string spv_dir() {
+    std::string d = mc2::gate::str<"MC2_VULKAN_SPV_DIR">();   // row default "shaders/vulkan" (also for an empty value)
+    if (!d.empty() && d.back() != '/' && d.back() != '\\') d += '/';
+    return d;
+}
+
+VkShaderModule load_spv(VkDevice device, std::string_view path) {
+    return vk_island_util::loadSpv(device, path, vlog);
+}
+
+TerrainIsland* g_island = nullptr;
+
+// VK-UMBRELLA-DIRECT-CHAIN-DEFAULT-1 item-2 (boot-level native-or-decline):
+// distinguish a PERMANENT init failure (spv/pipeline/renderpass/resource creation --
+// won't recover this session) from a TRANSIENT one (engine VK context / shared GBuffer
+// not born YET at boot -- recovers a few frames later, keep the item-9 fail-hard-with-
+// retry). g_terrainInitReachedBuild flips to 1 once init passes the context/GBuffer
+// readiness gates and starts creating permanent VK objects; if init then fails, the
+// island is declined for the SESSION (one receipt line, GL owns terrain from frame 0)
+// instead of re-newing + re-init'ing the island every frame.
+bool g_terrainSessionDeclined  = false;
+int  g_terrainInitReachedBuild = 0;
+
+} // namespace
+
+namespace vk_terrain_detail {
 
 bool make_buffer(TerrainIsland* s, VkDeviceSize size, VkBufferUsageFlags usage,
                  VkBuffer* buf, VmaAllocation* alloc, bool hostVisible) {
@@ -1310,6 +1369,10 @@ bool init_island(TerrainIsland* s, int w, int h) {
          "prefix; reverse-Z GEQUAL double-sided; gbuffer1.a=1.0).", w, h);
     return true;
 }
+
+} // namespace
+
+namespace vk_terrain_detail {
 
 // FNV-1a 64 over a byte range (height-audit checksum; cheap, order-sensitive).
 static uint64_t fnv1a64(const void* data, size_t n) {
@@ -2875,58 +2938,11 @@ extern "C" void mc2_render_backend_terrain_region_health(
 // ===========================================================================
 uint32_t gos_GetGLTextureId(uint32_t gosHandle);   // gameos_graphics.cpp
 
-namespace {
+namespace vk_terrain_detail {
 
-struct OvlPC {                       // LOCKSTEP with OverlayPC in terrain_overlay_tier1.{vert,frag}
-    float   fogColor[4];             // off 0
-    float   artFlatExempt;           // off 16
-    float   mapHalfExtent;           // off 20
-    int32_t biasLegacy;              // off 24
-    int32_t cementAdopt;             // off 28
-    int32_t seamFix;                 // off 32
-    int32_t _pad[3];                 // off 36..47
-};
-static_assert(sizeof(OvlPC) == 48, "OvlPC push-constant lockstep");
-
-struct OvlTex {
-    VkImage img = VK_NULL_HANDLE; VmaAllocation alloc = VK_NULL_HANDLE;
-    VkImageView view = VK_NULL_HANDLE;
-    VkDescriptorSet set = VK_NULL_HANDLE;
-    uint32_t glTex = 0;              // GL texture name this import came from
-};
-
-struct OvlPending {
-    uint32_t kind = 0;               // 0 = terrain overlay (cement/road art), 1 = decal
-    bool     isStatic = false;       // persistent bake (verts stay owned by the caller)
-    uint64_t version = 0;            // static bake version
-    const uint8_t* staticPtr = nullptr;
-    std::vector<uint8_t> verts;      // per-frame copy (28B WorldOverlayVert each)
-    uint32_t vertCount = 0;
-    std::vector<Mc2VkOverlayDraw> draws;
-};
-
-struct OvlState {
-    TerrainIsland* owner = nullptr;
-    int w = 0, h = 0;
-    bool inited = false, disabled = false;
-    VkRenderPass rpass = VK_NULL_HANDLE; VkFramebuffer fb = VK_NULL_HANDLE;
-    VkShaderModule vert[2] = {}, frag[2] = {};
-    VkPipeline pipe[2] = {};
-    VkPipelineLayout playout = VK_NULL_HANDLE;
-    VkDescriptorSetLayout texDsl = VK_NULL_HANDLE; VkDescriptorPool texPool = VK_NULL_HANDLE;
-    VkSampler samp = VK_NULL_HANDLE;
-    VkBuffer vtx[2] = {}; VmaAllocation vtxAlloc[2] = {}; VkDeviceSize vtxCap[2] = {0, 0};
-    VkBuffer stat = VK_NULL_HANDLE; VmaAllocation statAlloc = VK_NULL_HANDLE;
-    VkDeviceSize statCap = 0; uint64_t statVersion = UINT64_MAX;
-    VkCommandBuffer cbuf[2] = {};
-    OvlTex dummy;
-    std::unordered_map<uint32_t, OvlTex> texs;   // key: gos texture handle
-};
 OvlState* g_ovl = nullptr;
 bool g_ovlDeclined = false;
 std::vector<OvlPending> g_ovlPending;
-const uint32_t kOvlMaxTex = 480;
-const uint32_t kOvlVertStride = 28;   // WorldOverlayVert
 
 void ovl_destroy_tex(TerrainIsland* s, OvlTex& t) {
     if (t.view) vkDestroyImageView(s->device, t.view, nullptr);
@@ -3502,4 +3518,3 @@ extern "C" void mc2_vk_terrain_set_native_prefix_clear_color(float r, float g, f
     g_prefixClearColor[3] = a;
 }
 
-#endif // MC2_VULKAN_ISLAND
