@@ -1569,7 +1569,7 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - editor/EditorInterface.cpp
+      - editor/EditorInterface_mouse.cpp
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: no

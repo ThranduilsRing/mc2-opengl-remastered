@@ -504,7 +504,7 @@
    "in_conflict": true,
    "readers": [
     "GameOS/gameos/gos_static_prop_batcher.cpp:9568 Custom[00000001]",
-    "mclib/bdactor.cpp:5568 Lead0P",
+    "mclib/bdactor.cpp:5562 Lead0P",
     "mclib/txmmgr.cpp:3517 Lead0P",
     "mclib/txmmgr.cpp:3518 Lead0P",
     "mclib/txmmgr.cpp:3521 Partial[D,off,off,off,off,off,off,on]",
@@ -520,9 +520,9 @@
    "gate": "MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE",
    "in_conflict": true,
    "readers": [
-    "mclib/bdactor.cpp:5572 Lead0Kill",
-    "mclib/bdactor.cpp:5583 Custom[00000001]",
-    "mclib/bdactor.cpp:5584 Custom[00000001]"
+    "mclib/bdactor.cpp:5566 Lead0Kill",
+    "mclib/bdactor.cpp:5577 Custom[00000001]",
+    "mclib/bdactor.cpp:5578 Custom[00000001]"
    ],
    "rule": "levels: =0 kill-switch (default ON), 2 adds a trace line",
    "status": "enum"
@@ -1233,7 +1233,7 @@
        "mclib/txmmgr.cpp:3521"
       ],
       "on": [
-       "mclib/bdactor.cpp:5568",
+       "mclib/bdactor.cpp:5562",
        "mclib/txmmgr.cpp:3517",
        "mclib/txmmgr.cpp:3518",
        "mclib/txmmgr.cpp:3659",
@@ -1259,7 +1259,7 @@
        "mclib/txmmgr.cpp:3521"
       ],
       "on": [
-       "mclib/bdactor.cpp:5568",
+       "mclib/bdactor.cpp:5562",
        "mclib/txmmgr.cpp:3517",
        "mclib/txmmgr.cpp:3518",
        "mclib/txmmgr.cpp:3659",
@@ -1285,7 +1285,7 @@
        "mclib/txmmgr.cpp:3521"
       ],
       "on": [
-       "mclib/bdactor.cpp:5568",
+       "mclib/bdactor.cpp:5562",
        "mclib/txmmgr.cpp:3517",
        "mclib/txmmgr.cpp:3518",
        "mclib/txmmgr.cpp:3659",
@@ -1311,7 +1311,7 @@
        "mclib/txmmgr.cpp:3521"
       ],
       "on": [
-       "mclib/bdactor.cpp:5568",
+       "mclib/bdactor.cpp:5562",
        "mclib/txmmgr.cpp:3517",
        "mclib/txmmgr.cpp:3518",
        "mclib/txmmgr.cpp:3659",
@@ -1337,7 +1337,7 @@
        "mclib/txmmgr.cpp:3521"
       ],
       "on": [
-       "mclib/bdactor.cpp:5568",
+       "mclib/bdactor.cpp:5562",
        "mclib/txmmgr.cpp:3517",
        "mclib/txmmgr.cpp:3518",
        "mclib/txmmgr.cpp:3659",
@@ -1387,7 +1387,7 @@
      "family": "bool",
      "file": "mclib/bdactor.cpp",
      "inverted": false,
-     "line": 5568,
+     "line": 5562,
      "vector": [
       "off",
       "on",
@@ -1517,11 +1517,11 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "mclib/bdactor.cpp:5583",
-       "mclib/bdactor.cpp:5584"
+       "mclib/bdactor.cpp:5577",
+       "mclib/bdactor.cpp:5578"
       ],
       "on": [
-       "mclib/bdactor.cpp:5572"
+       "mclib/bdactor.cpp:5566"
       ]
      },
      "probe": "U"
@@ -1538,11 +1538,11 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "mclib/bdactor.cpp:5583",
-       "mclib/bdactor.cpp:5584"
+       "mclib/bdactor.cpp:5577",
+       "mclib/bdactor.cpp:5578"
       ],
       "on": [
-       "mclib/bdactor.cpp:5572"
+       "mclib/bdactor.cpp:5566"
       ]
      },
      "probe": "E"
@@ -1559,11 +1559,11 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "mclib/bdactor.cpp:5583",
-       "mclib/bdactor.cpp:5584"
+       "mclib/bdactor.cpp:5577",
+       "mclib/bdactor.cpp:5578"
       ],
       "on": [
-       "mclib/bdactor.cpp:5572"
+       "mclib/bdactor.cpp:5566"
       ]
      },
      "probe": "F"
@@ -1580,11 +1580,11 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "mclib/bdactor.cpp:5583",
-       "mclib/bdactor.cpp:5584"
+       "mclib/bdactor.cpp:5577",
+       "mclib/bdactor.cpp:5578"
       ],
       "on": [
-       "mclib/bdactor.cpp:5572"
+       "mclib/bdactor.cpp:5566"
       ]
      },
      "probe": "O"
@@ -1601,11 +1601,11 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "mclib/bdactor.cpp:5583",
-       "mclib/bdactor.cpp:5584"
+       "mclib/bdactor.cpp:5577",
+       "mclib/bdactor.cpp:5578"
       ],
       "on": [
-       "mclib/bdactor.cpp:5572"
+       "mclib/bdactor.cpp:5566"
       ]
      },
      "probe": "X"
@@ -1622,11 +1622,11 @@
      "family": "bool",
      "outcomes": {
       "off": [
-       "mclib/bdactor.cpp:5583",
-       "mclib/bdactor.cpp:5584"
+       "mclib/bdactor.cpp:5577",
+       "mclib/bdactor.cpp:5578"
       ],
       "on": [
-       "mclib/bdactor.cpp:5572"
+       "mclib/bdactor.cpp:5566"
       ]
      },
      "probe": "X10"
@@ -1654,7 +1654,7 @@
      "family": "bool",
      "file": "mclib/bdactor.cpp",
      "inverted": false,
-     "line": 5572,
+     "line": 5566,
      "vector": [
       "on",
       "on",
@@ -1672,7 +1672,7 @@
      "family": "bool",
      "file": "mclib/bdactor.cpp",
      "inverted": false,
-     "line": 5583,
+     "line": 5577,
      "vector": [
       "off",
       "off",
@@ -1690,7 +1690,7 @@
      "family": "bool",
      "file": "mclib/bdactor.cpp",
      "inverted": false,
-     "line": 5584,
+     "line": 5578,
      "vector": [
       "off",
       "off",
@@ -1830,13 +1830,13 @@
   "editor",
   "gui"
  ],
- "source": "commit 594b4b0ae",
+ "source": "commit bddaa172c",
  "totals": {
   "conflict_gates": 6,
   "gates_with_literal": 1131,
   "gates_with_reader": 1117,
-  "literal_occurrences": 1699,
-  "non_call_literals": 47,
+  "literal_occurrences": 1697,
+  "non_call_literals": 45,
   "nonreader_sites": 17,
   "read_sites": 1652,
   "reader_sites": 1555,
@@ -1990,14 +1990,14 @@
    "file": "mclib/bdactor.cpp",
    "gate": "MC2_GLTF_AXIS",
    "line": 398,
-   "why": "unclassified:opaque"
+   "why": "unclassified:opaque-callee(_putenv_s)"
   },
   {
    "callee": "getenv",
    "file": "mclib/bdactor.cpp",
    "gate": "MC2_GLTF_YAW_DEG",
    "line": 399,
-   "why": "unclassified:opaque"
+   "why": "unclassified:opaque-callee(_putenv_s)"
   },
   {
    "callee": "getenv",

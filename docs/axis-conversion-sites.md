@@ -157,23 +157,23 @@ Shaders that carry sites, with their counterpart in the other backend. Twins mus
 
 ### `mclib/bdactor.cpp` (17)
 
-- `mclib/bdactor.cpp:1816` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
-- `mclib/bdactor.cpp:1842` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
-- `mclib/bdactor.cpp:2110` assign-triple: `tPosition.x = -actualPosition.x; tPosition.y = actualPosition.z; tPosition.z = actualPosition.y;`
-- `mclib/bdactor.cpp:2495` assign-triple: `tPosition.x = -actualPosition.x; tPosition.y = actualPosition.z; tPosition.z = actualPosition.y;`
-- `mclib/bdactor.cpp:2545` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
-- `mclib/bdactor.cpp:2581` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
-- `mclib/bdactor.cpp:3669` assign-triple: `ourPosition.x = -position.x; ourPosition.y = position.z; ourPosition.z = position.y;`
-- `mclib/bdactor.cpp:3968` assign-triple: `childPosP.x = -childPos.x; childPosP.y = childPos.z; childPosP.z = childPos.y;`
-- `mclib/bdactor.cpp:4079` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
-- `mclib/bdactor.cpp:4417` assign-triple: `tPosition.x = -actualPosition.x; tPosition.y = actualPosition.z; tPosition.z = actualPosition.y;`
-- `mclib/bdactor.cpp:4461` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
-- `mclib/bdactor.cpp:4509` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
-- `mclib/bdactor.cpp:4605` assign-triple: `wakePos.x = -nodePos.x; wakePos.y = nodePos.z; wakePos.z = nodePos.y;`
-- `mclib/bdactor.cpp:4641` assign-triple: `wakePos.x = -nodePos.x; wakePos.y = nodePos.z; wakePos.z = nodePos.y;`
-- `mclib/bdactor.cpp:5172` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
-- `mclib/bdactor.cpp:7342` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
-- `mclib/bdactor.cpp:8241` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
+- `mclib/bdactor.cpp:1810` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
+- `mclib/bdactor.cpp:1836` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
+- `mclib/bdactor.cpp:2104` assign-triple: `tPosition.x = -actualPosition.x; tPosition.y = actualPosition.z; tPosition.z = actualPosition.y;`
+- `mclib/bdactor.cpp:2489` assign-triple: `tPosition.x = -actualPosition.x; tPosition.y = actualPosition.z; tPosition.z = actualPosition.y;`
+- `mclib/bdactor.cpp:2539` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
+- `mclib/bdactor.cpp:2575` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
+- `mclib/bdactor.cpp:3663` assign-triple: `ourPosition.x = -position.x; ourPosition.y = position.z; ourPosition.z = position.y;`
+- `mclib/bdactor.cpp:3962` assign-triple: `childPosP.x = -childPos.x; childPosP.y = childPos.z; childPosP.z = childPos.y;`
+- `mclib/bdactor.cpp:4073` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
+- `mclib/bdactor.cpp:4411` assign-triple: `tPosition.x = -actualPosition.x; tPosition.y = actualPosition.z; tPosition.z = actualPosition.y;`
+- `mclib/bdactor.cpp:4455` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
+- `mclib/bdactor.cpp:4503` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
+- `mclib/bdactor.cpp:4599` assign-triple: `wakePos.x = -nodePos.x; wakePos.y = nodePos.z; wakePos.z = nodePos.y;`
+- `mclib/bdactor.cpp:4635` assign-triple: `wakePos.x = -nodePos.x; wakePos.y = nodePos.z; wakePos.z = nodePos.y;`
+- `mclib/bdactor.cpp:5166` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
+- `mclib/bdactor.cpp:7336` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
+- `mclib/bdactor.cpp:8235` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
 
 ### `code/artlry.cpp` (14)
 
@@ -244,12 +244,6 @@ Shaders that carry sites, with their counterpart in the other backend. Twins mus
 - `code/terrobj.cpp:1062` assign-triple: `actualPosition.x = -position.x; actualPosition.y = position.z; actualPosition.z = position.y;`
 - `code/terrobj.cpp:1328` assign-triple: `actualPosition.x = -position.x; actualPosition.y = position.z; actualPosition.z = position.y;`
 
-### `editor/EditorInterface.cpp` (3)
-
-- `editor/EditorInterface.cpp:2046` assign-triple: `objPosition.x = -pAppearance->position.x; objPosition.y = pAppearance->position.z; objPosition.z = pAppearance`
-- `editor/EditorInterface.cpp:2298` assign-triple: `objPosition.x = -pAppearance->position.x; objPosition.y = pAppearance->position.z; objPosition.z = pAppearance`
-- `editor/EditorInterface.cpp:5048` assign-triple: `objPosition.x = -pAppearance->position.x; objPosition.y = pAppearance->position.z; objPosition.z = pAppearance`
-
 ### `shaders/static_prop.vert` (3)
 
 - `shaders/static_prop.vert:371` triplet-ctor: `-world_stuff.x, world_stuff.z, world_stuff.y`
@@ -270,6 +264,11 @@ Shaders that carry sites, with their counterpart in the other backend. Twins mus
 
 - `code/turret.cpp:904` assign-triple: `xlatPos.x = -ourPosition.x; xlatPos.y = ourPosition.z; xlatPos.z = ourPosition.y;`
 - `code/turret.cpp:910` assign-triple: `pointLight->spotDir.x = -position.x; pointLight->spotDir.y = position.z; pointLight->spotDir.z = position.y;`
+
+### `editor/EditorInterface_mouse.cpp` (2)
+
+- `editor/EditorInterface_mouse.cpp:405` assign-triple: `objPosition.x = -pAppearance->position.x; objPosition.y = pAppearance->position.z; objPosition.z = pAppearance`
+- `editor/EditorInterface_mouse.cpp:1002` assign-triple: `objPosition.x = -pAppearance->position.x; objPosition.y = pAppearance->position.z; objPosition.z = pAppearance`
 
 ### `mclib/assimp_importer.cpp` (2)
 
@@ -318,6 +317,10 @@ Shaders that carry sites, with their counterpart in the other backend. Twins mus
 ### `editor/BuildingLink.cpp` (1)
 
 - `editor/BuildingLink.cpp:293` assign-triple: `objPosition.x = -position.x; objPosition.y = position.z; objPosition.z = position.y;`
+
+### `editor/EditorInterface.cpp` (1)
+
+- `editor/EditorInterface.cpp:241` assign-triple: `objPosition.x = -pAppearance->position.x; objPosition.y = pAppearance->position.z; objPosition.z = pAppearance`
 
 ### `mclib/camera.h` (1)
 

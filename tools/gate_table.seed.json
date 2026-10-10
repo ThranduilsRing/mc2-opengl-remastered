@@ -756,7 +756,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:2321",
+     "at": "mclib/bdactor.cpp:2315",
      "idiom": "Presence"
     }
    ],
@@ -782,7 +782,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:5056",
+     "at": "mclib/bdactor.cpp:5050",
      "idiom": "Presence"
     }
    ],
@@ -2526,7 +2526,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:561",
+     "at": "mclib/bdactor.cpp:555",
      "idiom": "Lead0Kill"
     }
    ],
@@ -3481,7 +3481,7 @@
    "doc": "CONE-LEAF-NAME-DIAG (batch-8C, MC2_CONE_LEAF_DUMP, default OFF): dump every static-prop recipe leaf's real node name + flags. cone_glow's diag emits a node INDEX only, so before this there was no build-free way to learn a static-prop leaf's NAME.",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:4934",
+     "at": "mclib/bdactor.cpp:4928",
      "idiom": "Presence"
     }
    ],
@@ -5009,7 +5009,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "editor/EditorInterface.cpp:4266",
+     "at": "editor/EditorInterface_mouse.cpp:500",
      "idiom": "Lead0Kill"
     }
    ],
@@ -5259,7 +5259,7 @@
      "idiom": "Presence"
     },
     {
-     "at": "editor/EditorInterface.cpp:251",
+     "at": "editor/EditorInterface.cpp:31",
      "idiom": "Presence"
     },
     {
@@ -5897,7 +5897,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:2284",
+     "at": "mclib/bdactor.cpp:2278",
      "idiom": "Partial[D,on,off,on,on,on,on,on]"
     }
    ],
@@ -5923,7 +5923,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:7053",
+     "at": "mclib/bdactor.cpp:7047",
      "idiom": "Partial[D,on,off,on,on,on,on,on]"
     }
    ],
@@ -5949,7 +5949,7 @@
    "doc": "TREE-OVERRIDE-LOD-MVP-1 (Task 5): force the active render-LOD index for override trees (0..MAX_LODS-1), clamped to the highest registered+available LOD.",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:7704",
+     "at": "mclib/bdactor.cpp:7698",
      "idiom": "Num(atof+atoi,raw)"
     }
    ],
@@ -6312,7 +6312,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:3048",
+     "at": "mclib/bdactor.cpp:3042",
      "idiom": "Std(def=off)"
     }
    ],
@@ -6904,7 +6904,6 @@
    "registryDefault": null,
    "seedDefaultSource": "reader-idiom",
    "harnessValues": [
-    "",
     "0",
     "1"
    ],
@@ -6965,9 +6964,7 @@
    "registered": false,
    "registryDefault": null,
    "seedDefaultSource": "reader-idiom",
-   "harnessValues": [
-    ""
-   ],
+   "harnessValues": [],
    "numericRange": null,
    "readerDefault": 0,
    "defaultDisagreement": "",
@@ -7706,11 +7703,11 @@
      "idiom": "Presence"
     },
     {
-     "at": "mclib/bdactor.cpp:5120",
+     "at": "mclib/bdactor.cpp:5114",
      "idiom": "Presence"
     },
     {
-     "at": "mclib/bdactor.cpp:8191",
+     "at": "mclib/bdactor.cpp:8185",
      "idiom": "Presence"
     }
    ],
@@ -7800,7 +7797,7 @@
      "idiom": "Presence"
     },
     {
-     "at": "mclib/bdactor.cpp:3444",
+     "at": "mclib/bdactor.cpp:3438",
      "idiom": "Presence"
     }
    ],
@@ -9616,7 +9613,7 @@
    "doc": "Static-prop / tree impostor LOD switch distance in world units (mclib/bdactor.cpp TreeAppearance::selectActiveLOD).",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:7709",
+     "at": "mclib/bdactor.cpp:7703",
      "idiom": "Num(atof,raw)"
     }
    ],
@@ -9914,7 +9911,7 @@
    "doc": "LIGHTBAKE-REBAKE-ON-READY-1: soft-invalidate the per-recipe static-light bake cache once, 8 frames after mission-ready, so recipes baked during boot/load (before mission lighting finalized) cannot freeze a wrong (day-bright) light row for the whole mission.",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:3400",
+     "at": "mclib/bdactor.cpp:3394",
      "idiom": "Lead0Kill"
     }
    ],
@@ -9992,7 +9989,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:2939",
+     "at": "mclib/bdactor.cpp:2933",
      "idiom": "Std(def=off)"
     }
    ],
@@ -10018,7 +10015,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:2943",
+     "at": "mclib/bdactor.cpp:2937",
      "idiom": "Std(def=off)"
     }
    ],
@@ -10218,7 +10215,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:3124",
+     "at": "mclib/bdactor.cpp:3118",
      "idiom": "Presence"
     }
    ],
@@ -10404,11 +10401,11 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:3817",
+     "at": "mclib/bdactor.cpp:3811",
      "idiom": "Lead1"
     },
     {
-     "at": "mclib/bdactor.cpp:3848",
+     "at": "mclib/bdactor.cpp:3842",
      "idiom": "Lead1"
     },
     {
@@ -13906,39 +13903,39 @@
      "idiom": "Presence"
     },
     {
-     "at": "mclib/bdactor.cpp:806",
+     "at": "mclib/bdactor.cpp:800",
      "idiom": "Presence"
     },
     {
-     "at": "mclib/bdactor.cpp:816",
+     "at": "mclib/bdactor.cpp:810",
      "idiom": "Presence"
     },
     {
-     "at": "mclib/bdactor.cpp:1015",
+     "at": "mclib/bdactor.cpp:1009",
      "idiom": "Presence"
     },
     {
-     "at": "mclib/bdactor.cpp:2207",
+     "at": "mclib/bdactor.cpp:2201",
      "idiom": "Presence"
     },
     {
-     "at": "mclib/bdactor.cpp:4778",
+     "at": "mclib/bdactor.cpp:4772",
      "idiom": "Presence"
     },
     {
-     "at": "mclib/bdactor.cpp:4823",
+     "at": "mclib/bdactor.cpp:4817",
      "idiom": "Presence"
     },
     {
-     "at": "mclib/bdactor.cpp:6399",
+     "at": "mclib/bdactor.cpp:6393",
      "idiom": "Presence"
     },
     {
-     "at": "mclib/bdactor.cpp:7912",
+     "at": "mclib/bdactor.cpp:7906",
      "idiom": "Presence"
     },
     {
-     "at": "mclib/bdactor.cpp:7936",
+     "at": "mclib/bdactor.cpp:7930",
      "idiom": "Presence"
     }
    ],
@@ -16407,7 +16404,7 @@
    "doc": "FOGLIGHT-LATCH-1: dump per-static-prop-actor [PROPLATCH v1] lines -- latch frame + latched lightRGB (the fogLightSet one-shot sample fed to the SUN slot) vs the light the same actor at the same position would sample now (MATCH/STALE).",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:3613",
+     "at": "mclib/bdactor.cpp:3607",
      "idiom": "Lead0"
     }
    ],
@@ -16433,7 +16430,7 @@
    "doc": "FOGLIGHT-LATCH-1: frame throttle for the [PROPLATCH v1] compare line (default 120).",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:3622",
+     "at": "mclib/bdactor.cpp:3616",
      "idiom": "Num(atol,raw)"
     }
    ],
@@ -17313,7 +17310,7 @@
    "doc": "G5 RENDER-PATH OBSERVABILITY (descriptive; env-gated; ZERO behavior change): one line per registered static-prop type recording which render path it takes. path = override_multidraw (cooked/override geometry, layer-0 route) vs legacy_static.",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:4815",
+     "at": "mclib/bdactor.cpp:4809",
      "idiom": "Presence"
     }
    ],
@@ -20523,11 +20520,11 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:2806",
+     "at": "mclib/bdactor.cpp:2800",
      "idiom": "Std(def=off)"
     },
     {
-     "at": "mclib/bdactor.cpp:2873",
+     "at": "mclib/bdactor.cpp:2867",
      "idiom": "NonReader"
     }
    ],
@@ -20553,7 +20550,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:2811",
+     "at": "mclib/bdactor.cpp:2805",
      "idiom": "Std(def=off)"
     }
    ],
@@ -20579,7 +20576,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:2960",
+     "at": "mclib/bdactor.cpp:2954",
      "idiom": "Std(def=off)"
     }
    ],
@@ -20719,11 +20716,11 @@
      "idiom": "Lead0Kill"
     },
     {
-     "at": "mclib/bdactor.cpp:4970",
+     "at": "mclib/bdactor.cpp:4964",
      "idiom": "Lead0Kill"
     },
     {
-     "at": "mclib/bdactor.cpp:8007",
+     "at": "mclib/bdactor.cpp:8001",
      "idiom": "Lead0Kill"
     }
    ],
@@ -21070,7 +21067,7 @@
      "idiom": "Custom[00000001]"
     },
     {
-     "at": "mclib/bdactor.cpp:5568",
+     "at": "mclib/bdactor.cpp:5562",
      "idiom": "Lead0P"
     },
     {
@@ -21116,15 +21113,15 @@
    "doc": "STATIC-BLDG-SHADOW-REBAKE-1: re-arm the one-shot world-fixed static-shadow latch (gos_ResetStaticLightMatrix) when a registered building is destroyed -- primarily BldgAppearance::setObjStatus transitioning to OBJECT_STATUS_DESTROYED (the real in-game combat-destroy event), with BldgAppearance::destroy (mission-end/pool-recycle) as cheap insurance -- so txmmgr's static-shadow build block (terrain + buildings) replays next frame WITHOUT the destroyed building instead of keeping its stale baked shadow until mission reload (docs/known_issues.md).",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:5572",
+     "at": "mclib/bdactor.cpp:5566",
      "idiom": "Lead0Kill"
     },
     {
-     "at": "mclib/bdactor.cpp:5583",
+     "at": "mclib/bdactor.cpp:5577",
      "idiom": "Custom[00000001]"
     },
     {
-     "at": "mclib/bdactor.cpp:5584",
+     "at": "mclib/bdactor.cpp:5578",
      "idiom": "Custom[00000001]"
     }
    ],
@@ -23397,7 +23394,7 @@
    "doc": "TERRAIN-DECAL-SLICE-0A: terrain mesh-decal system.",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:4860",
+     "at": "mclib/bdactor.cpp:4854",
      "idiom": "Lead0P"
     }
    ],
@@ -23613,7 +23610,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:4890",
+     "at": "mclib/bdactor.cpp:4884",
      "idiom": "Presence"
     }
    ],
@@ -25178,7 +25175,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "editor/EditorInterface.cpp:2892",
+     "at": "editor/EditorInterface.cpp:835",
      "idiom": "Presence"
     }
    ],
@@ -26430,7 +26427,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "mclib/bdactor.cpp:8061",
+     "at": "mclib/bdactor.cpp:8055",
      "idiom": "Presence"
     }
    ],
