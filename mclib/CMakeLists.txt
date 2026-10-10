@@ -68,6 +68,8 @@ set(SOURCES ${SOURCES}
     vfx_transform.cpp
     vfx_translatedraw.cpp
     vfxtile.cpp
+    vfxtile_line.cpp
+    vfxtile_pixel.cpp
     abldbug.cpp
     abldecl.cpp
     ablenv.cpp
