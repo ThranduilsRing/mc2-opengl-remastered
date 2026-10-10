@@ -25,8 +25,8 @@ static bool tgLightBillboardTwoSided()
 // Stage 2.D.2 diagnostic: one-shot trace for hot-green CPU lighting.
 // Fires once per session when MC2_OBJECT_PARITY_TRACE=1.
 // Prints s_lightDir direction, normal, cosine, contribution per vertex.
-static bool s_hotGreenLightTraceDone = false;
-static bool s_hotGreenLightTraceEnabled = mc2::gate::get<"MC2_OBJECT_PARITY_TRACE">();
+bool s_hotGreenLightTraceDone = false;
+bool s_hotGreenLightTraceEnabled = mc2::gate::get<"MC2_OBJECT_PARITY_TRACE">();
 
 void *TG_Shape::operator new (size_t mySize)
 {
@@ -111,7 +111,6 @@ void TG_TypeShape::movePosRelativeCenterNode (void)
 }
 
 
-extern float yawRotation;
 //-------------------------------------------------------------------------------
 //This function does exactly what TranformShape does EXCEPT that the shapeToClip,
 //Lighting and backface matrices have been calculated in the step above this one.
@@ -121,9 +120,6 @@ extern float yawRotation;
 //Function returns 0 if any one vertex screen position is off screen.
 //Function returns 1 is all vertex screen positions are on screen.
 // NOTE:  THIS IS NOT A RIGOROUS CLIP!!!!!!!!!
-#define MAX_FOG_ELEVATION			100.0f
-#define MAX_FOG_ELEVATION_INV		.01f
-#define TGL_WINDOW_THRESHOLD		0.75f
 
 long TG_Shape::MultiTransformShape (Stuff::Matrix4D *shapeToClip, Stuff::Point3D *backFacePoint, TG_ShapeRecPtr parentNode, bool isHudElement, BYTE alphaValue, bool isClamped)
 {

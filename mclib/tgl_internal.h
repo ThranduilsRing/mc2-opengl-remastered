@@ -93,6 +93,14 @@ template<int K> struct LcsScope {
 };
 } // namespace
 
+extern float yawRotation;
+// Hot-green CPU lighting trace flags (tgl_transform.cpp), read by the per-vertex lighting phase.
+extern bool s_hotGreenLightTraceDone;
+extern bool s_hotGreenLightTraceEnabled;
+#define MAX_FOG_ELEVATION			100.0f
+#define MAX_FOG_ELEVATION_INV		.01f
+#define TGL_WINDOW_THRESHOLD		0.75f
+
 // Free functions defined in the split pieces.
 void GetNumberData (char *rawData, char *result);
 void GetWordData (char *rawData, char *result);
