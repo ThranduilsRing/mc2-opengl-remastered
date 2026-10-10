@@ -185,15 +185,15 @@
    "LG20": 9
   },
   "mclib": {
-   "LG01": 747,
-   "LG02": 294,
+   "LG01": 733,
+   "LG02": 290,
    "LG03": 1139,
    "LG04": 16,
    "LG05": 136,
    "LG06": 667,
    "LG07": 0,
    "LG08": 75,
-   "LG09": 2341,
+   "LG09": 2339,
    "LG10": 32,
    "LG11": 67,
    "LG12a": 449,
@@ -4609,9 +4609,6 @@
    "LG01": 1,
    "LG03": 10
   },
-  "mclib/mlr/mlrtrianglelighting.hpp": {
-   "LG01": 1
-  },
   "mclib/mlr/owntrace.hpp": {
    "LG06": 1,
    "LG09": 1,
@@ -4686,7 +4683,6 @@
    "LG16": 3
   },
   "mclib/move_internal.h": {
-   "LG02": 1,
    "LG12b": 2,
    "LG13": 3,
    "LG14": 1,
@@ -4912,9 +4908,7 @@
    "LG06": 6
   },
   "mclib/resizeimage.h": {
-   "LG01": 5,
-   "LG02": 3,
-   "LG09": 22,
+   "LG09": 20,
    "LG13": 10
   },
   "mclib/routines.cpp": {
@@ -5343,7 +5337,6 @@
    "LG12b": 11
   },
   "mclib/terrtxm2_internal.h": {
-   "LG01": 8,
    "LG05": 8,
    "LG06": 3,
    "LG09": 10,
@@ -5597,7 +5590,7 @@
    "LG20": 2
   }
  },
- "head": "7de4684c7",
+ "head": "ed98199b9",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
