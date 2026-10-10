@@ -14,7 +14,6 @@
  ],
  "files_over_1500": {
   "GameOS/gameos/engine_present_vk.cpp": 2749,
-  "GameOS/gameos/gos_static_prop_registry.cpp": 2207,
   "GameOS/gameos/gos_terrain_lighting.cpp": 1697,
   "GameOS/gameos/gos_terrain_water_stream.cpp": 2455,
   "GameOS/gameos/gpu_cull_compute.cpp": 1557,
@@ -22,7 +21,6 @@
   "GameOS/gameos/vulkan_color_prop_island.cpp": 1785,
   "GameOS/gameos/vulkan_shadow_island_live.cpp": 1645,
   "GameOS/include/gameos.hpp": 3753,
-  "GameOS/include/imagehlp.h": 1799,
   "GuiRuntime/EditorInspector.cpp": 1652,
   "RenderCore/RendererFeatureRegistry.h": 2917,
   "code/artlry.cpp": 1816,
@@ -39,7 +37,7 @@
   "code/mover.h": 1911,
   "code/mpparameterscreen.cpp": 2415,
   "code/multplyr.h": 1849,
-  "code/objective.cpp": 2657,
+  "code/objective.cpp": 2656,
   "code/optionsarea.cpp": 1842,
   "code/pilotreviewarea.cpp": 1845,
   "code/tacordr.cpp": 2072,
@@ -53,13 +51,10 @@
   "mclib/ablrtn.cpp": 1781,
   "mclib/assimp_importer.cpp": 1630,
   "mclib/camera.h": 1800,
-  "mclib/echarstring.cpp": 1622,
   "mclib/estring.cpp": 1596,
-  "mclib/ewcharstring.cpp": 1636,
   "mclib/file.cpp": 2685,
   "mclib/gosfx/fcurve.cpp": 1923,
   "mclib/gosfx/tube.cpp": 1528,
-  "mclib/heap.cpp": 2136,
   "mclib/mapdata.cpp": 2633,
   "mclib/mlr/mlrlightmap.cpp": 1599,
   "mclib/mlr/mlrprimitiveclipping.hpp": 1722,
@@ -71,7 +66,7 @@
   "mclib/tgl.h": 1689,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "09934337d",
+ "head": "e53d20f3e",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -80,8 +75,8 @@
    "max_lines": 523
   },
   "GameOS": {
-   "files": 320,
-   "files_over_1500": 10,
+   "files": 317,
+   "files_over_1500": 8,
    "files_over_3000": 1,
    "max_lines": 3753
   },
@@ -110,7 +105,7 @@
    "max_lines": 1159
   },
   "code": {
-   "files": 367,
+   "files": 364,
    "files_over_1500": 22,
    "files_over_3000": 1,
    "max_lines": 3273
@@ -128,8 +123,8 @@
    "max_lines": 1513
   },
   "mclib": {
-   "files": 597,
-   "files_over_1500": 20,
+   "files": 588,
+   "files_over_1500": 17,
    "files_over_3000": 0,
    "max_lines": 2685
   },
@@ -171,7 +166,7 @@
   },
   {
    "file": "code/objective.cpp",
-   "lines": 2657
+   "lines": 2656
   },
   {
    "file": "mclib/mapdata.cpp",
@@ -198,20 +193,12 @@
    "lines": 2346
   },
   {
-   "file": "GameOS/gameos/gos_static_prop_registry.cpp",
-   "lines": 2207
-  },
-  {
    "file": "code/warrior.h",
    "lines": 2171
   },
   {
    "file": "code/logisticsdialog.cpp",
    "lines": 2149
-  },
-  {
-   "file": "mclib/heap.cpp",
-   "lines": 2136
   },
   {
    "file": "code/missionbegin.cpp",
@@ -264,11 +251,19 @@
   {
    "file": "mclib/camera.h",
    "lines": 1800
+  },
+  {
+   "file": "GameOS/gameos/vulkan_color_prop_island.cpp",
+   "lines": 1785
+  },
+  {
+   "file": "mclib/ablrtn.cpp",
+   "lines": 1781
   }
  ],
  "total": {
-  "files": 1788,
-  "files_over_1500": 57,
+  "files": 1773,
+  "files_over_1500": 52,
   "files_over_3000": 2,
   "max_lines": 3753
  },
