@@ -275,7 +275,7 @@ static void lightRowCensusEmit(const char* tag, unsigned t) {
         s_lightPosColumnFix ? 1 : 0);
     std::fflush(stderr);
 }
-} // namespace
+}
 
 // ---------------------------------------------------------------------------
 // [SPFLUSH_COST_SPLIT v1] — txmmgr-side RDTSC accumulator.
@@ -283,10 +283,10 @@ static void lightRowCensusEmit(const char* tag, unsigned t) {
 // frame. Gate mirrors the registry-side gate (same env var). The consume
 // function is called by the registry summary emit (extern declaration there).
 // ---------------------------------------------------------------------------
-static const bool s_spflushTxmEnabled = mc2::gate::get<"MC2_STATIC_PROP_FLUSH_COST_SPLIT">();
-static unsigned long long s_spflush_baseinstance_upload_cyc = 0;
+const bool s_spflushTxmEnabled = mc2::gate::get<"MC2_STATIC_PROP_FLUSH_COST_SPLIT">();
+unsigned long long s_spflush_baseinstance_upload_cyc = 0;
 // recipe_rebuilds: monotonic + window delta. light_index_writes==recipe_rebuilds (same site).
-static unsigned long long s_spflush_recipe_rebuilds_txm      = 0;
+unsigned long long s_spflush_recipe_rebuilds_txm      = 0;
 static unsigned long long s_spflush_recipe_rebuilds_total     = 0;
 
 // Exposed via extern in gos_static_prop_registry.cpp summary emit.
@@ -382,7 +382,7 @@ struct TotalSpan {
         s_frames = 0;
     }
 };
-} // namespace rlcost
+}
 
 // ---------------------------------------------------------------------------
 // [TXMMGR_BOUNDS v1] — TXMMGR-BOUNDS-HARDEN-1 exhaustion counters.
@@ -410,7 +410,7 @@ struct TxmmgrBoundsDump {
     }
 };
 TxmmgrBoundsDump s_txmmgrBoundsDump;
-} // namespace
+}
 
 #define TEX_LC(fmt, ...) \
     do { if (s_texLifecycleTrace) { printf("[TEX_LIFECYCLE v1] " fmt "\n", ##__VA_ARGS__); fflush(stdout); } } while (0)
@@ -432,12 +432,12 @@ TxmmgrBoundsDump s_txmmgrBoundsDump;
 // nodeName==NULL/empty is either a from-memory texture or the reserved empty
 // node[0]. We report both buckets off the same NULL-name test.
 // ---------------------------------------------------------------------------
-static const bool s_txmLeakTrace = mc2::gate::get<"MC2_TXM_LEAK_TRACE">();
+const bool s_txmLeakTrace = mc2::gate::get<"MC2_TXM_LEAK_TRACE">();
 static long s_txmMissionIndex      = 0;   // ++ per mission unload (flush)
-static long s_txmAllocThisMission  = 0;   // nodes created since last unload boundary
+long s_txmAllocThisMission  = 0;   // nodes created since last unload boundary
 
 // Bump on every fresh node-slot creation (the three creation paths).
-static inline void txmLeakNoteAlloc()
+inline void txmLeakNoteAlloc()
 {
     if (s_txmLeakTrace) s_txmAllocThisMission++;
 }
@@ -1745,7 +1745,7 @@ bool mc2ConsumeStaticLightPrefixDirty()
 // [LIGHTSSBO v2] Upload-split kill-switch. Default ON; MC2_STATIC_LIGHT_UPLOAD_SPLIT=0
 // forces the legacy whole-buffer upload every frame (bit-identical GPU contents).
 // parseEnvBoolWithDefault is not visible in this TU; use the explicit =0 idiom.
-static bool mc2StaticLightUploadSplitEnabled()
+bool mc2StaticLightUploadSplitEnabled()
 {
     static const bool s_split = mc2::gate::get<"MC2_STATIC_LIGHT_UPLOAD_SPLIT">();
     return s_split;
@@ -2735,7 +2735,7 @@ void applyPureObjectLightRow(TG_HWLightsData* lights)
 		memcpy(lights, &pure, sizeof(pure));
 }
 
-} // anonymous namespace
+}
 
 //-----------------------------------------------------------------------------
 // LIGHT-ROW-PURE-1 public policy declaration API (declared in txmmgr.h).
@@ -4215,9 +4215,6 @@ void MC_TextureManager::renderLists (void)
 			// The patch shader then writes GPU-computed instanceCounts into the
 			// indirect command buffer. GpuStaticPropBatcher::flush() below uses
 			// glMultiDrawElementsIndirect which reads those GPU-authoritative counts.
-#if defined(MC2_SUBSTRATE_COUNT_PARITY)
-				gpu_cull::substrate_countParityCheck();
-#endif
 			// M1 FROZEN-STATIC-CULL-RECORDS: build + install the frozen static
 			// cull-record prefix now that baseInstanceForType is valid (set by
 			// batcher_prepareBaseInstanceTable above) and before compute_dispatch
