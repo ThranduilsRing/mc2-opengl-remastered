@@ -1317,7 +1317,7 @@ def apply_edits(raw, results):
         a, b, new = r.edit
         while a < b and T[a].isspace():
             a += 1
-        new = _kept_comments(raw, T, a, b) + new
+        new = _kept_comments(raw, T, a, b) + new.lstrip(" 	")
         if b > limit:
             skipped.append(r)
             continue

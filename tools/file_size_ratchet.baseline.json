@@ -20,7 +20,7 @@
   "GameOS/gameos/gos_postprocess.cpp": 7349,
   "GameOS/gameos/gos_static_prop_batcher.cpp": 11198,
   "GameOS/gameos/gos_static_prop_registry.cpp": 2226,
-  "GameOS/gameos/gos_terrain_indirect.cpp": 6301,
+  "GameOS/gameos/gos_terrain_indirect.cpp": 6205,
   "GameOS/gameos/gos_terrain_lighting.cpp": 1697,
   "GameOS/gameos/gos_terrain_lod_chunk.cpp": 4208,
   "GameOS/gameos/gos_terrain_water_stream.cpp": 2455,
@@ -106,7 +106,7 @@
   "mclib/vfxtile.cpp": 2944,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "3ad51e033",
+ "head": "7c90759b7",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -206,7 +206,7 @@
   },
   {
    "file": "GameOS/gameos/gos_terrain_indirect.cpp",
-   "lines": 6301
+   "lines": 6205
   },
   {
    "file": "mclib/txmmgr.cpp",

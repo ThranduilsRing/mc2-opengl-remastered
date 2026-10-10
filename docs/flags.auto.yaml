@@ -5,7 +5,7 @@
 generator_version: "3.0.0"
 gate_count: 1139
 registry_entry_count: 354
-verified_count: 91
+verified_count: 127
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -223,6 +223,7 @@ flags:
     rule: Presence
     owner: terrain
     doc: "F6 T1/T2: cache frustum planes once per frame (O(1)) into Camera member."
+    verified: true
   - name: MC2_BOOKMARK_SAVE_DIR
     kind: Bool
     default: false
@@ -1360,6 +1361,7 @@ flags:
     owner: terrain
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_FF_TRACE
     kind: Bool
     default: false
@@ -1659,6 +1661,7 @@ flags:
     owner: terrain
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_GLSTATEGUARD_LOG
     kind: Bool
     default: false
@@ -2925,12 +2928,14 @@ flags:
     rule: Prefix
     owner: terrain
     doc: "[LOW-CAMERA-TERRAIN-CULL-1 v2] The angular solid-window producer (this loop) is the SECOND terrain visibility gate - independent of the frustum inFrustum..."
+    verified: true
   - name: MC2_LOWCAM_TERRAIN_NEAR
     kind: Bool
     default: true
     rule: Lead0Kill
     owner: terrain
     doc: "[LOW-CAMERA-TERRAIN-CULL-1 / FIX-2] When set, drop the near plane from the terrain AABB frustum test so near terrain isn't culled at a low/grazing pitch..."
+    verified: true
   - name: MC2_LOWCAM_ZOOM_ANCHOR
     kind: Bool
     default: false
@@ -3289,6 +3294,7 @@ flags:
     owner: terrain
     doc: "TRACKV-CI-GATE-RESTORE-1: mission intro render path kill-switch."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_MISSION_INTRO_LEGACY_RENDER, kind: Feature, order: 36, default_on: false}
   - name: MC2_MISSION_SPLIT
     kind: Bool
@@ -4000,6 +4006,7 @@ flags:
     owner: terrain
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_R2B_STATIC_NATURAL_TRACE
     kind: Bool
     default: false
@@ -4205,6 +4212,7 @@ flags:
     owner: terrain
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_RENDER_WATER_FASTPATH_DEBUG
     kind: Int
     default: 0
@@ -4647,6 +4655,7 @@ flags:
     rule: Presence
     owner: terrain
     doc: ""
+    verified: true
   - name: MC2_SHAPE_C_PARITY_CHECK
     kind: Bool
     default: false
@@ -5621,6 +5630,7 @@ flags:
     owner: terrain
     doc: "TERRAIN-CONTROLMAP-SAMPLE-1: load an authored per-mission RGBA control-map sidecar (data/missions/<stem>.beauty/control_map.png, vertex-resolution) that..."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TERRAIN_CONTROLMAP, kind: Feature, order: -1, default_on: false}
   - name: MC2_TERRAIN_CONTROLMAP_ALBEDO
     kind: Bool
@@ -5636,12 +5646,13 @@ flags:
     doc: ""
     smoke_passthrough: true
   - name: MC2_TERRAIN_CONTROLMAP_FILE
-    kind: Bool
-    default: false
-    rule: Presence
+    kind: String
+    default: ""
+    rule: Std
     owner: terrain
     doc: "TERRAIN-CONTROLMAP-SAMPLE-1: override the control-map sidecar path (default data/missions/<stem>.beauty/control_map.png)."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TERRAIN_CONTROLMAP_FILE, kind: Feature, order: -1, default_on: false}
   - name: MC2_TERRAIN_COST_SPLIT
     kind: Bool
@@ -5663,6 +5674,7 @@ flags:
     rule: Presence
     owner: terrain
     doc: "S2.13: MC2_TERRAIN_CULL_WIDE=1 forces the angular sphere cull to admit-all (constants set to 1e9)."
+    verified: true
   - name: MC2_TERRAIN_DEBUG_MODE
     kind: Float
     default: 0
@@ -5901,6 +5913,7 @@ flags:
     rule: Lead0Kill
     owner: terrain
     doc: "LOD-chunk terrain renderer (mclib/terrain.cpp/terrain.h), the primary tessellation-free terrain path."
+    verified: true
     registry: {feature_id: MC2_FEATURE_TERRAIN_LOD_CHUNK, kind: Feature, order: -1, default_on: true}
   - name: MC2_TERRAIN_LOD_CHUNK_CEMENT_MAXLOD
     kind: Int
@@ -5908,6 +5921,7 @@ flags:
     rule: Prefix
     owner: terrain
     doc: ""
+    verified: true
   - name: MC2_TERRAIN_LOD_CHUNK_DIAG
     kind: Int
     default: 0
@@ -5922,7 +5936,8 @@ flags:
     rule: Prefix
     owner: terrain
     doc: ""
-    range: {lo: 0.05, hi: 3.4028234663852886e+38, style: reject}
+    range: {lo: 0.05, hi: 3.4028234663852886e+38, style: reject, lo_exclusive: true}
+    verified: true
   - name: MC2_TERRAIN_LOD_CHUNK_FORCE_COLOR
     kind: Bool
     default: false
@@ -5935,36 +5950,42 @@ flags:
     rule: Prefix
     owner: terrain
     doc: ""
+    verified: true
   - name: MC2_TERRAIN_LOD_CHUNK_NO_APRON
     kind: Bool
     default: false
     rule: Presence
     owner: terrain
     doc: ""
+    verified: true
   - name: MC2_TERRAIN_LOD_CHUNK_NO_CULL
     kind: Bool
     default: false
     rule: Presence
     owner: terrain
     doc: "Diagnostic: one-shot dump of planes + first superchunk AABB + camera pos."
+    verified: true
   - name: MC2_TERRAIN_LOD_CHUNK_NO_SKIRTS
     kind: Bool
     default: false
     rule: Presence
     owner: terrain
     doc: ""
+    verified: true
   - name: MC2_TERRAIN_LOD_CHUNK_NO_STITCH
     kind: Bool
     default: false
     rule: Presence
     owner: terrain
     doc: "Phase 10.2b: PER-EDGE mask."
+    verified: true
   - name: MC2_TERRAIN_LOD_CHUNK_SKIRT_MAX
     kind: Float
     default: 256
     rule: Prefix
     owner: terrain
     doc: ""
+    verified: true
   - name: MC2_TERRAIN_LOD_DEPTH_ALWAYS
     kind: Bool
     default: false
@@ -5984,6 +6005,7 @@ flags:
     owner: terrain
     doc: ""
     range: {lo: 0, hi: 0.95, style: clamp}
+    verified: true
   - name: MC2_TERRAIN_MACRO_VARIATION
     kind: Bool
     default: false
@@ -6061,6 +6083,7 @@ flags:
     rule: Presence
     owner: terrain
     doc: ""
+    verified: true
   - name: MC2_TERRAIN_NORMAL_ARRAY
     kind: Bool
     default: true
@@ -6074,6 +6097,7 @@ flags:
     owner: terrain
     doc: "TERRAIN-OVERLAY-V2-PARITY-1: composite an authored world-XY-bounded cement/pad/runway overlay sidecar (data/missions/<stem>.beauty/overlay_v2.png..."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TERRAIN_OVERLAY_V2, kind: Feature, order: -1, default_on: false}
   - name: MC2_TERRAIN_OVERLAY_V2_DECAL_SUPPRESS
     kind: Bool
@@ -6084,12 +6108,13 @@ flags:
     verified: true
     registry: {feature_id: MC2_TERRAIN_OVERLAY_V2_DECAL_SUPPRESS, kind: Feature, order: -1, default_on: true}
   - name: MC2_TERRAIN_OVERLAY_V2_FILE
-    kind: Bool
-    default: false
-    rule: Presence
+    kind: String
+    default: ""
+    rule: Std
     owner: terrain
     doc: "TERRAIN-OVERLAY-V2-PARITY-1: override the overlay_v2 sidecar path (default data/missions/<stem>.beauty/overlay_v2.png)."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TERRAIN_OVERLAY_V2_FILE, kind: Feature, order: -1, default_on: false}
   - name: MC2_TERRAIN_PICK_PARITY
     kind: Bool
@@ -6197,12 +6222,13 @@ flags:
     doc: ""
     range: {lo: 0, hi: 32, style: clamp}
   - name: MC2_TERRAIN_SHORELINE_FILE
-    kind: Bool
-    default: false
-    rule: Presence
+    kind: String
+    default: ""
+    rule: Std
     owner: terrain
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_TERRAIN_SHORELINE_FOAM
     kind: Float
     default: 1
@@ -6315,6 +6341,7 @@ flags:
     owner: terrain
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_TERRAIN_VISUAL_DISPLACE_FAR
     kind: Float
     default: 1
@@ -6329,6 +6356,7 @@ flags:
     rule: Lead0Kill
     owner: terrain
     doc: "TERRAIN-VISUAL-HEIGHT-SAMPLE-1: when visual terrain displacement is on, fade object grounding across the displaced-vs-gameplay height delta so props/units..."
+    verified: true
     registry: {feature_id: MC2_TERRAIN_VISUAL_DISPLACE_OBJFADE, kind: Feature, order: -1, default_on: true}
   - name: MC2_TERRAIN_VISUAL_DISPLACE_OBJFADE_RADIUS
     kind: Float
@@ -6344,14 +6372,16 @@ flags:
     owner: terrain
     doc: "TERRAIN-VISUAL-HEIGHT: loads the 4x-res VISUAL heightfield bake into an SSBO for corner-pinned interior displacement (mclib/terrain.cpp)."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_TERRAIN_VISUAL_HEIGHT, kind: Feature, order: -1, default_on: false}
   - name: MC2_TERRAIN_VISUAL_HEIGHT_FILE
-    kind: Bool
-    default: false
-    rule: Presence
+    kind: String
+    default: ""
+    rule: Std
     owner: terrain
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_TEST_SPAWN
     kind: Bool
     default: false
@@ -7589,6 +7619,7 @@ flags:
     rule: Presence
     owner: terrain
     doc: "VPL retirement: the MC2_VPL_CULL / MC2_VPL_REDUCE getenv reads are KEPT solely to gate the one-shot event=retired lifecycle lines emitted just before the..."
+    verified: true
   - name: MC2_VPL_PICK
     kind: Bool
     default: false
@@ -7601,6 +7632,7 @@ flags:
     rule: Presence
     owner: terrain
     doc: ""
+    verified: true
   - name: MC2_VSYNC
     kind: Bool
     default: false
@@ -7648,6 +7680,7 @@ flags:
     owner: terrain
     doc: "MC2_WATER_DEBUG=1: post-warmup population recon for the renderWater slice."
     smoke_passthrough: true
+    verified: true
   - name: MC2_WATER_DEBUG_MODE
     kind: Int
     default: 0
@@ -7688,6 +7721,7 @@ flags:
     owner: terrain
     doc: "S2.15 gate diag: editor fails to arm FAST water path - print once per (mission/state-change) what gate fails."
     smoke_passthrough: true
+    verified: true
   - name: MC2_WATER_GPU_FULL_RECIPE_AUTHORITATIVE
     kind: Bool
     default: true
@@ -7766,12 +7800,14 @@ flags:
     owner: terrain
     doc: "S6 coarse cost A/B instrument: ONE QPC pair around the WHOLE per-frame setupTextures loop (NOT per-quad - the per-quad std::chrono COST_SPLIT scopes are..."
     smoke_passthrough: true
+    verified: true
   - name: MC2_WATER_S6_TRACE
     kind: Bool
     default: false
     rule: Presence
     owner: terrain
     doc: ""
+    verified: true
   - name: MC2_WATER_SHINE
     kind: Bool
     default: false
