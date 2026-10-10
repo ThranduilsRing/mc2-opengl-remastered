@@ -34,7 +34,7 @@
   "code/bldng.cpp": 1707,
   "code/brain_special_dispatch.cpp": 3273,
   "code/controlgui.cpp": 5016,
-  "code/gamecam.cpp": 1572,
+  "code/gamecam.cpp": 1564,
   "code/gameobj.cpp": 2365,
   "code/infowindow.cpp": 1746,
   "code/logisticsdata.cpp": 3438,
@@ -93,7 +93,7 @@
   "mclib/vfxtile.cpp": 2944,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "07e0af54b",
+ "head": "9d9b2cfef",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
