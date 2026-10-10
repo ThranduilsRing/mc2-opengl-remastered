@@ -1029,6 +1029,21 @@ ALLOWLIST=(
     MC2_VK_TERRAIN_VISUALDISPLACE_FAR         # feature -- read via mc2vkgate::envTriState in vulkan_terrain_island.cpp
     MC2_VK_WATER_FENCE_DEFER                  # feature -- read via mc2vkgate::envTriState in vulkan_water_island.cpp
     MC2_VK_WATER_TIER1                        # feature -- read via mc2vkgate::subGate,subGate in engine_present_vk.cpp,vk_shared_gbuffer_gate.h,vulkan_water_island.cpp
+
+    # --- typed gate registry (Gates/): the module's own rows, and synthetic names in its unit test ---
+    MC2_CONFIG_DUMP                           # infra -- [CONFIG v1] dump scope (default|all|none), read in Gates/gate.cpp
+    MC2_CONFIG_STRICT                         # infra -- bad value / unregistered MC2_* variable is fatal at startup, read in Gates/gate.cpp
+    MC2_NOT_A_GATE                            # test -- tests/unit/test_gate.cpp lookupName negative case
+    MC2_TERAIN_NOT_A_GATE                     # test -- tests/unit/test_gate.cpp unregistered-variable case
+    MC2_UNITTEST_BOOL                         # test -- synthetic row in tests/unit/test_gate.cpp
+    MC2_UNITTEST_CLAMP                        # test -- synthetic row in tests/unit/test_gate.cpp
+    MC2_UNITTEST_ENUM                         # test -- synthetic row in tests/unit/test_gate.cpp
+    MC2_UNITTEST_FLT                          # test -- synthetic row in tests/unit/test_gate.cpp
+    MC2_UNITTEST_INT                          # test -- synthetic row in tests/unit/test_gate.cpp
+    MC2_UNITTEST_PF                           # test -- synthetic row in tests/unit/test_gate.cpp
+    MC2_UNITTEST_PI                           # test -- synthetic row in tests/unit/test_gate.cpp
+    MC2_UNITTEST_RNG                          # test -- synthetic row in tests/unit/test_gate.cpp
+    MC2_UNITTEST_TRI                          # test -- synthetic row in tests/unit/test_gate.cpp
 )
 
 if [[ $VERBOSE -eq 1 ]]; then

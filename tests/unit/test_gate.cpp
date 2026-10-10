@@ -1,0 +1,488 @@
+// tests/unit/test_gate.cpp
+// GATE-REGISTRY-G1A: the typed gate table's parser, readers, cache and [CONFIG v1] dump.
+//
+// Two layers:
+//   * pure   -- detail::parseRow() on rows built here and on explicit text, so every
+//               truthiness rule is checked against the probe vectors of the idioms it replaces
+//               (U E Z F O X X10 X25) without touching the process environment;
+//   * live   -- the real table: slot caching, invalidate/invalidateAll, lookupName, the
+//               per-site Rule override, dumpConfigWith() output.
+#include "doctest.h"
+
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"
+#include "Gates/gate_parse.h"
+#include "Gates/gate_row.h"
+#include "Gates/gate_table_dsl.h"
+
+#include <cstdio>
+#include <cstdlib>
+#include <string>
+#include <string_view>
+#include <type_traits>
+#include <vector>
+
+#ifdef _WIN32
+#include <stdlib.h>
+#endif
+
+namespace gate = mc2::gate;
+using gate::Kind;
+using gate::Rule;
+using gate::Tri;
+
+namespace {
+
+// Set (or clear, value == nullptr) a process environment variable; restored on destruction.
+class EnvVar {
+public:
+    explicit EnvVar(const char* name) : name_(name) {
+        const char* old = std::getenv(name);
+        if (old != nullptr) { had_ = true; old_ = old; }
+    }
+    ~EnvVar() { apply(had_ ? old_.c_str() : nullptr); }
+    void set(const char* value) const { apply(value); }
+
+private:
+    void apply(const char* value) const {
+#ifdef _WIN32
+        _putenv_s(name_.c_str(), value != nullptr ? value : "");  // "" removes the variable
+#else
+        if (value != nullptr) setenv(name_.c_str(), value, 1); else unsetenv(name_.c_str());
+#endif
+    }
+    std::string name_;
+    bool had_ = false;
+    std::string old_;
+};
+
+// The test binary's main() has started by the time any case runs, so no slot a test resolves
+// is a "pre-main" slot; the premain case below fabricates one explicitly.
+const bool kMainEntered = (gate::markMainEntered(), true);
+
+gate::Row boolRow(Rule rule, bool dflt) {
+    return gate::rows::L(rule, "MC2_UNITTEST_BOOL", Kind::Bool, dflt, "test", "", "unit test row");
+}
+
+bool rowValue(const gate::Row& row, const char* text) {
+    return (gate::detail::parseRow(row, text) & gate::detail::kRowBit) != 0;
+}
+
+float asFloat(std::uint64_t slot) { return __builtin_bit_cast(float, static_cast<std::uint32_t>(slot)); }
+
+bool isBad(const gate::Row& row, const char* text) {
+    return (gate::detail::parseRow(row, text) & gate::detail::kBadBit) != 0;
+}
+
+// Probe order of scripts/gate_idioms.py: unset, "", "0", "false", "1", "yes", "10", "2.5".
+constexpr const char* kProbeText[8] = {nullptr, "", "0", "false", "1", "yes", "10", "2.5"};
+
+struct Vector {
+    Rule rule;
+    bool dflt;
+    const char* bits;  // on(1)/off(0) per probe
+};
+
+// The vectors named in scripts/gate_idioms.py (_BOOL_NAMES) plus the two default-carrying
+// rules, spelled out so a change of either side shows up here.
+constexpr Vector kVectors[] = {
+    {Rule::Std, false, "00001111"},      {Rule::Std, true, "11001111"},
+    {Rule::Lead0, false, "00011111"},    {Rule::Lead0Kill, true, "11011111"},
+    {Rule::Lead0P, false, "01011111"},   {Rule::DefOnLead0, true, "10011111"},
+    {Rule::Lead1, false, "00001010"},    {Rule::Exact1, false, "00001000"},
+    {Rule::NonEmpty, false, "00111111"}, {Rule::Presence, false, "01111111"},
+    {Rule::AtoiNZ, false, "00001011"},   {Rule::DefOnAtoiNZ, true, "10001011"},
+    {Rule::Is01, false, "00101000"},     {Rule::Lead0Def, false, "00011111"},
+    {Rule::Lead0Def, true, "11011111"},
+};
+
+}  // namespace
+
+TEST_SUITE("Gate") {
+
+// ---------------------------------------------------------------------------
+// Truthiness: every rule against the probe vectors of the idiom it names
+// ---------------------------------------------------------------------------
+
+TEST_CASE("Bool rules reproduce the probe vectors of the idioms they replace") {
+    for (const Vector& v : kVectors) {
+        const gate::Row row = boolRow(v.rule, v.dflt);
+        for (int i = 0; i < 8; ++i) {
+            INFO("rule index " << static_cast<int>(v.rule) << " default " << v.dflt << " probe " << i);
+            CHECK(rowValue(row, kProbeText[i]) == (v.bits[i] == '1'));
+        }
+    }
+}
+
+TEST_CASE("Std: the documented spellings, case-insensitively") {
+    const gate::Row row = boolRow(Rule::Std, true);
+    for (const char* off : {"0", "false", "FALSE", "Off", "no", "NO"}) CHECK_FALSE(rowValue(row, off));
+    for (const char* on : {"1", "true", "TRUE", "On", "yes", "Yes"}) CHECK(rowValue(row, on));
+    CHECK(rowValue(row, "") == true);       // empty gives the default
+    CHECK(rowValue(row, nullptr) == true);  // unset gives the default
+    for (const char* off : {"0", "false", "no", "off"}) CHECK_FALSE(isBad(row, off));
+    for (const char* on : {"1", "true", "yes", "on"}) CHECK_FALSE(isBad(row, on));
+}
+
+TEST_CASE("Std: an unknown non-empty string is on and flagged badvalue") {
+    const gate::Row row = boolRow(Rule::Std, false);
+    for (const char* text : {"banana", "2", "00", "-1", "0 ", " 1", "truee"}) {
+        INFO(text);
+        CHECK(rowValue(row, text));
+        CHECK(isBad(row, text));
+    }
+    CHECK_FALSE(isBad(row, ""));
+    CHECK_FALSE(isBad(row, nullptr));
+}
+
+TEST_CASE("Legacy rules never report badvalue") {
+    for (const Vector& v : kVectors) {
+        if (v.rule == Rule::Std) continue;
+        for (const char* text : kProbeText) CHECK_FALSE(isBad(boolRow(v.rule, v.dflt), text));
+        CHECK_FALSE(isBad(boolRow(v.rule, v.dflt), "banana"));
+    }
+}
+
+TEST_CASE("Lead1 reads a leading '1' (\"10\" is on), Exact1 only \"1\"") {
+    CHECK(rowValue(boolRow(Rule::Lead1, false), "10"));
+    CHECK(rowValue(boolRow(Rule::Lead1, false), "1abc"));
+    CHECK_FALSE(rowValue(boolRow(Rule::Exact1, false), "10"));
+    CHECK_FALSE(rowValue(boolRow(Rule::Exact1, false), "1 "));
+}
+
+TEST_CASE("Lead0Kill turns off on any leading '0' and is on for unset and empty") {
+    const gate::Row row = boolRow(Rule::Lead0Kill, true);
+    CHECK_FALSE(rowValue(row, "0"));
+    CHECK_FALSE(rowValue(row, "05"));
+    CHECK(rowValue(row, nullptr));
+    CHECK(rowValue(row, ""));
+    CHECK(rowValue(row, "false"));
+}
+
+TEST_CASE("AtoiNZ accepts a numeric prefix") {
+    const gate::Row row = boolRow(Rule::AtoiNZ, false);
+    CHECK(rowValue(row, "12abc"));
+    CHECK(rowValue(row, "2.0"));
+    CHECK_FALSE(rowValue(row, "abc"));
+    CHECK_FALSE(rowValue(row, "0x"));
+}
+
+TEST_CASE("per-site override applies the requested rule to the same flags") {
+    const gate::Row row = boolRow(Rule::Std, false);
+    for (int i = 0; i < 8; ++i) {
+        const std::uint64_t slot = gate::detail::parseRow(row, kProbeText[i]);
+        const std::uint32_t flags = gate::detail::flagsOf(slot);
+        for (const Vector& v : kVectors)
+            CHECK(gate::detail::applyRule(v.rule, flags, v.dflt) == (v.bits[i] == '1'));
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Numerics, enums, Tri
+// ---------------------------------------------------------------------------
+
+TEST_CASE("Int rows: whole-string parse, empty and junk fall back to the default") {
+    using namespace gate::rows;
+    const gate::Row row = G("MC2_UNITTEST_INT", Int, 64, "test", "", "doc");
+    auto val = [&](const char* t) { return static_cast<std::int32_t>(static_cast<std::uint32_t>(gate::detail::parseRow(row, t))); };
+    CHECK(val("128") == 128);
+    CHECK(val("-5") == -5);
+    CHECK(val(nullptr) == 64);
+    CHECK(val("") == 64);
+    for (const char* junk : {"abc", "12abc", " 5", "2.0", "5 "}) {
+        INFO(junk);
+        CHECK(val(junk) == 64);
+        CHECK(isBad(row, junk));
+    }
+}
+
+TEST_CASE("Int rows with range: Reject falls back, clamp clamps") {
+    using namespace gate::rows;
+    const gate::Row reject = G("MC2_UNITTEST_RNG", Int, 64, "test", "", "doc", range(16, 256));
+    const gate::Row clamp = G("MC2_UNITTEST_CLAMP", Int, 64, "test", "", "doc", clampRange(16, 256));
+    auto val = [](const gate::Row& r, const char* t) { return static_cast<std::int32_t>(static_cast<std::uint32_t>(gate::detail::parseRow(r, t))); };
+    CHECK(val(reject, "128") == 128);
+    CHECK(val(reject, "300") == 64);
+    CHECK(isBad(reject, "300"));
+    CHECK(val(reject, "3") == 64);
+    CHECK(val(clamp, "300") == 256);
+    CHECK(val(clamp, "3") == 16);
+    CHECK_FALSE(isBad(clamp, "300"));
+}
+
+TEST_CASE("Prefix numerics are atoi/atof compatible") {
+    using namespace gate::rows;
+    const gate::Row i = P("MC2_UNITTEST_PI", Int, 7, "test", "", "doc");
+    const gate::Row f = P("MC2_UNITTEST_PF", Float, 1.5, "test", "", "doc");
+    auto ival = [&](const char* t) { return static_cast<std::int32_t>(static_cast<std::uint32_t>(gate::detail::parseRow(i, t))); };
+    auto fval = [&](const char* t) { return asFloat(gate::detail::parseRow(f, t)); };
+    CHECK(ival("12abc") == 12);
+    CHECK(ival("2.0") == 2);
+    CHECK(ival(nullptr) == 7);
+    CHECK(ival("") == 7);
+    CHECK(ival("abc") == 0);  // atoi() says 0; flagged
+    CHECK(isBad(i, "abc"));
+    CHECK(fval("2.5x") == 2.5f);
+    CHECK(fval("abc") == 0.0f);
+    CHECK(fval(nullptr) == 1.5f);
+}
+
+TEST_CASE("Float rows: whole-string parse, non-finite rejected") {
+    using namespace gate::rows;
+    const gate::Row row = G("MC2_UNITTEST_FLT", Float, 0.5, "test", "", "doc");
+    auto val = [&](const char* t) { return asFloat(gate::detail::parseRow(row, t)); };
+    CHECK(val("2.25") == 2.25f);
+    CHECK(val("1e2") == 100.0f);
+    CHECK(val(nullptr) == 0.5f);
+    for (const char* bad : {"abc", "2.5x", "nan", "inf"}) {
+        INFO(bad);
+        CHECK(val(bad) == 0.5f);
+        CHECK(isBad(row, bad));
+    }
+}
+
+TEST_CASE("Enum rows: case-insensitive token, unknown falls back with badvalue") {
+    using namespace gate::rows;
+    const gate::Row row = G("MC2_UNITTEST_ENUM", Enum, "a", "test", "", "doc", tokens("a|b|c"));
+    auto val = [&](const char* t) { return static_cast<std::int32_t>(static_cast<std::uint32_t>(gate::detail::parseRow(row, t))); };
+    CHECK(val("b") == 1);
+    CHECK(val("C") == 2);
+    CHECK(val(nullptr) == 0);
+    CHECK(val("") == 0);
+    CHECK(val("zzz") == 0);
+    CHECK(isBad(row, "zzz"));
+    CHECK_FALSE(isBad(row, "B"));
+}
+
+TEST_CASE("Tri rows read exact \"1\" and \"0\" only") {
+    const gate::Row row = gate::rows::G("MC2_UNITTEST_TRI", Kind::Tri, false, "test", "", "doc");
+    auto val = [&](const char* t) { return static_cast<std::uint32_t>(gate::detail::parseRow(row, t) & 0xFFu); };
+    CHECK(val("1") == 2);   // On
+    CHECK(val("0") == 1);   // Off
+    CHECK(val(nullptr) == 0);
+    CHECK(val("") == 0);
+    CHECK(val("yes") == 0);
+    CHECK(val("10") == 0);
+}
+
+TEST_CASE("parseBool is the Std rule and reports badvalue") {
+    bool bad = true;
+    CHECK(gate::parseBool(nullptr, true, &bad) == true);
+    CHECK_FALSE(bad);
+    CHECK(gate::parseBool("", false, &bad) == false);
+    CHECK(gate::parseBool("No", true, &bad) == false);
+    CHECK_FALSE(bad);
+    CHECK(gate::parseBool("ON", false, &bad) == true);
+    CHECK_FALSE(bad);
+    CHECK(gate::parseBool("banana", false, &bad) == true);
+    CHECK(bad);
+    CHECK(gate::parseBool("0", true) == false);  // bad pointer is optional
+}
+
+// ---------------------------------------------------------------------------
+// Reader API: types, names, the live table
+// ---------------------------------------------------------------------------
+
+TEST_CASE("Tri is an enum class with no bool conversion") {
+    static_assert(!std::is_convertible_v<Tri, bool>);
+    static_assert(std::is_enum_v<Tri> && !std::is_convertible_v<Tri, int>);
+    static_assert(std::is_same_v<decltype(gate::get<"MC2_VK_HUD">()), Tri>);
+    static_assert(std::is_same_v<decltype(gate::get<"MC2_ABL_VM_FACTS">()), bool>);
+    static_assert(std::is_same_v<decltype(gate::get<"MC2_BOOT_INFO">()), std::int32_t>);
+    static_assert(std::is_same_v<decltype(gate::get<"MC2_BOOT_TIMER_SECS">()), float>);
+    static_assert(std::is_same_v<decltype(gate::get<"MC2_ABL_VM_FACTS", Rule::Presence>()), bool>);
+    CHECK(true);
+}
+
+TEST_CASE("table is sorted, unique and every name round-trips through lookupName") {
+    const gate::Row* rows = gate::tableData();
+    const std::size_t n = gate::tableSize();
+    REQUIRE(n == gate::detail::kGateCount);
+    REQUIRE(n > 1000);
+    for (std::size_t i = 0; i < n; ++i) {
+        if (i > 0) CHECK((rows[i - 1].name < rows[i].name));
+        const auto info = gate::lookupName(rows[i].name);
+        REQUIRE(info.has_value());
+        CHECK(info->index == i);
+        CHECK(info->kind == rows[i].kind);
+        CHECK(info->kind == gate::detail::kIndex[i].kind);
+        CHECK(info->rule == gate::detail::kIndex[i].rule);
+    }
+    CHECK_FALSE(gate::lookupName("MC2_NOT_A_GATE").has_value());
+    CHECK_FALSE(gate::lookupName("").has_value());
+    CHECK_FALSE(gate::lookupName("mc2_boot_info").has_value());
+}
+
+TEST_CASE("the gate module's own rows exist") {
+    CHECK(gate::lookupName("MC2_CONFIG_DUMP").has_value());
+    CHECK(gate::lookupName("MC2_CONFIG_STRICT").has_value());
+    CHECK(gate::get<"MC2_CONFIG_STRICT">() == false);
+}
+
+TEST_CASE("a read caches until invalidate") {
+    EnvVar env("MC2_BOOT_INFO");
+    env.set("7");
+    gate::invalidate("MC2_BOOT_INFO");
+    CHECK(gate::get<"MC2_BOOT_INFO">() == 7);
+    env.set("9");
+    CHECK(gate::get<"MC2_BOOT_INFO">() == 7);  // cached
+    gate::invalidate("MC2_BOOT_INFO");
+    CHECK(gate::get<"MC2_BOOT_INFO">() == 9);
+    env.set(nullptr);
+    gate::invalidateAll();
+    CHECK(gate::get<"MC2_BOOT_INFO">() == 0);  // default
+}
+
+TEST_CASE("isSet, state and the Rule override read the same cached flags") {
+    EnvVar env("MC2_ABL_VM_FACTS");
+    env.set(nullptr);
+    gate::invalidate("MC2_ABL_VM_FACTS");
+    CHECK_FALSE(gate::isSet<"MC2_ABL_VM_FACTS">());
+    CHECK(gate::state<"MC2_ABL_VM_FACTS">() == Tri::Unset);
+    CHECK_FALSE(gate::get<"MC2_ABL_VM_FACTS", Rule::Presence>());
+    env.set("0");
+    gate::invalidate("MC2_ABL_VM_FACTS");
+    CHECK(gate::isSet<"MC2_ABL_VM_FACTS">());
+    CHECK(gate::state<"MC2_ABL_VM_FACTS">() == Tri::Off);
+    CHECK(gate::get<"MC2_ABL_VM_FACTS", Rule::Presence>());     // set, so present
+    CHECK_FALSE(gate::get<"MC2_ABL_VM_FACTS", Rule::Lead0>());   // leading '0'
+    env.set("1");
+    gate::invalidate("MC2_ABL_VM_FACTS");
+    CHECK(gate::state<"MC2_ABL_VM_FACTS">() == Tri::On);
+    CHECK(gate::get<"MC2_ABL_VM_FACTS", Rule::Exact1>());
+    env.set(nullptr);
+    gate::invalidate("MC2_ABL_VM_FACTS");
+}
+
+TEST_CASE("Tri and Enum rows through the live table") {
+    EnvVar tri("MC2_VK_HUD");
+    tri.set("1");
+    gate::invalidate("MC2_VK_HUD");
+    CHECK(gate::get<"MC2_VK_HUD">() == Tri::On);
+    tri.set("0");
+    gate::invalidate("MC2_VK_HUD");
+    CHECK(gate::get<"MC2_VK_HUD">() == Tri::Off);
+    tri.set("maybe");
+    gate::invalidate("MC2_VK_HUD");
+    CHECK(gate::get<"MC2_VK_HUD">() == Tri::Unset);
+    tri.set(nullptr);
+    gate::invalidate("MC2_VK_HUD");
+
+    EnvVar en("MC2_CONFIG_DUMP");
+    en.set("ALL");
+    gate::invalidate("MC2_CONFIG_DUMP");
+    CHECK(gate::is<"MC2_CONFIG_DUMP", "all">());
+    CHECK_FALSE(gate::is<"MC2_CONFIG_DUMP", "none">());
+    en.set(nullptr);
+    gate::invalidate("MC2_CONFIG_DUMP");
+    CHECK(gate::is<"MC2_CONFIG_DUMP", "default">());
+}
+
+TEST_CASE("String rows are re-read on every call") {
+    EnvVar env("MC2_LOG");
+    env.set(nullptr);
+    CHECK(gate::str<"MC2_LOG">().empty());
+    env.set("a,b");
+    CHECK(gate::str<"MC2_LOG">() == "a,b");
+    env.set("c");
+    CHECK(gate::str<"MC2_LOG">() == "c");
+}
+
+// ---------------------------------------------------------------------------
+// [CONFIG v1]
+// ---------------------------------------------------------------------------
+
+namespace {
+std::string capture(const gate::DumpOptions& opts, gate::DumpSummary* sum = nullptr) {
+    std::FILE* f = std::tmpfile();
+    REQUIRE(f != nullptr);
+    const gate::DumpSummary s = gate::dumpConfigWith(f, opts);
+    if (sum != nullptr) *sum = s;
+    std::rewind(f);
+    std::string out;
+    char buf[512];
+    std::size_t n;
+    while ((n = std::fread(buf, 1, sizeof buf, f)) > 0) out.append(buf, n);
+    std::fclose(f);
+    return out;
+}
+
+bool hasLine(const std::string& text, const std::string& prefix) {
+    std::size_t pos = 0;
+    while (pos < text.size()) {
+        std::size_t end = text.find('\n', pos);
+        if (end == std::string::npos) end = text.size();
+        if (text.compare(pos, prefix.size(), prefix) == 0) return true;
+        pos = end + 1;
+    }
+    return false;
+}
+}  // namespace
+
+TEST_CASE("dumpConfig prints env-set gates and a summary") {
+    EnvVar env("MC2_BOOT_INFO");
+    env.set("7");
+    gate::DumpSummary sum;
+    const std::string out = capture({}, &sum);
+    CHECK(hasLine(out, "[CONFIG v1] name=MC2_BOOT_INFO kind=int value=7 src=env raw=\"7\" default=0 rule=prefix owner=code"));
+    CHECK(hasLine(out, "[CONFIG v1] summary total=" + std::to_string(gate::tableSize()) + " set="));
+    CHECK(sum.set >= 1);
+    CHECK(sum.nondefault >= 1);
+    CHECK_FALSE(hasLine(out, "[CONFIG v1] name=MC2_ABL_VM_FACTS "));  // unset rows stay out of the default dump
+}
+
+TEST_CASE("dumpConfig all lists every row, none only the summary") {
+    gate::DumpOptions all;
+    all.all = true;
+    gate::DumpOptions none;
+    none.none = true;
+    const std::string a = capture(all);
+    const std::string n = capture(none);
+    CHECK(hasLine(a, "[CONFIG v1] name=MC2_ABL_VM_FACTS kind=bool value=0 src=default raw=\"\" default=0 rule=lead0 owner=code"));
+    std::size_t lines = 0;
+    for (char c : a) lines += (c == '\n');
+    CHECK(lines >= gate::tableSize());
+    CHECK(hasLine(n, "[CONFIG v1] summary"));
+    CHECK_FALSE(hasLine(n, "[CONFIG v1] name="));
+}
+
+TEST_CASE("dumpConfig warns about an unregistered MC2_ variable and a bad value") {
+    EnvVar typo("MC2_TERAIN_NOT_A_GATE");
+    typo.set("1");
+    const gate::Row* rows = gate::tableData();
+    std::size_t stdBool = gate::tableSize();
+    for (std::size_t i = 0; i < gate::tableSize(); ++i)
+        if (rows[i].kind == Kind::Bool && rows[i].rule == Rule::Std) { stdBool = i; break; }
+    REQUIRE(stdBool < gate::tableSize());
+    const std::string name(rows[stdBool].name);
+    EnvVar bad(name.c_str());
+    bad.set("banana");
+    gate::DumpSummary sum;
+    gate::DumpOptions opts;
+    opts.exitOnStrict = false;
+    opts.strict = true;
+    const std::string out = capture(opts, &sum);
+    CHECK(hasLine(out, "[CONFIG v1] warn=unregistered name=MC2_TERAIN_NOT_A_GATE"));
+    CHECK(hasLine(out, "[CONFIG v1] warn=badvalue name=" + name + " kind=bool raw=\"banana\""));
+    CHECK(sum.unregistered >= 1);
+    CHECK(sum.badvalue >= 1);
+}
+
+TEST_CASE("invalidateAll keeps pre-main values and the dump flags the ones that went stale") {
+    constexpr std::size_t idx = gate::detail::indexOf("MC2_BOOT_INFO");
+    EnvVar env("MC2_BOOT_INFO");
+    env.set("7");
+    // A slot resolved before main() carries the pre-main bit.
+    gate::detail::g_slot[idx].store(gate::detail::kResolvedBit | gate::detail::kPreMainBit | 7u);
+    gate::invalidateAll();
+    CHECK_FALSE((gate::detail::g_slot[idx].load() & gate::detail::kResolvedBit) != 0);
+    env.set("9");  // the launcher applied a different value after static init
+    gate::DumpSummary sum;
+    const std::string out = capture({}, &sum);
+    CHECK(hasLine(out, "[CONFIG v1] warn=premain name=MC2_BOOT_INFO premain_value=7 env_now=9"));
+    CHECK(sum.premainStale >= 1);
+    env.set("7");  // nothing stale once the environment agrees again
+    CHECK_FALSE(hasLine(capture({}), "[CONFIG v1] warn=premain name=MC2_BOOT_INFO"));
+}
+
+}  // TEST_SUITE

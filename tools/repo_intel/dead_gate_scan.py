@@ -62,7 +62,16 @@ _GATE_NAME_RE = re.compile(r"MC2_[A-Z0-9_]+")
 # getenv-style call we care about for result-unused analysis.
 _GETENV_CALL_RE = re.compile(
     r'(?:std::)?(?:getenv|envFlag\w*|selftestEnvFlag|getEnvVar)\s*\(\s*"(MC2_[A-Z0-9_]+)"\s*\)'
+    # typed gate registry: gate::get<"MC2_X">() / get<"MC2_X", Rule::...>() / state<>/isSet<>
+    r'|\b(?:(?:mc2::)?gate::)?(?:get|state|isSet)\s*<\s*"(MC2_[A-Z0-9_]+)"\s*(?:,[^>]*)?>\s*\(\s*\)'
 )
+
+
+def _read_call(gate_name):
+    """Regex source for one read of `gate_name`: a getenv-style call or a gate::get<> read."""
+    g = re.escape(gate_name)
+    return (r'(?:(?:std::)?(?:getenv|envFlag\w*|selftestEnvFlag|getEnvVar)\s*\(\s*"' + g + r'"'
+            r'|\b(?:(?:mc2::)?gate::)?(?:get|state|isSet)\s*<\s*"' + g + r'"\s*(?:,[^>]*)?>\s*\(\s*)')
 
 _NOTE = (
     "ADVISORY ONLY — default-OFF is NOT dead (it is the deliberate feature-gate "
@@ -203,7 +212,7 @@ def _build_ledger_map(root: Path) -> tuple:
 _CACHED_BOOL_RE = re.compile(
     r'^\s*(?:static\s+)?(?:const\s+)?'
     r'(?:bool|char\s*\*|const\s+char\s*\*|auto)\s+\w+\s*=\s*'
-    r'.*(?:getenv|envFlag\w*|selftestEnvFlag)')
+    r'.*(?:getenv|envFlag\w*|selftestEnvFlag|gate::get\s*<)')
 
 
 def _enclosing_function_end(lines, idx) -> int:
@@ -241,18 +250,12 @@ def _result_unused_at(lines, line_no, gate_name) -> bool:
 
     # Bare call: line is essentially just `getenv("X");` with nothing consuming it.
     stripped = line.strip()
-    bare = bool(re.match(
-        r'^(?:std::)?(?:getenv|envFlag\w*|selftestEnvFlag|getEnvVar)\s*\(\s*"'
-        + re.escape(gate_name) + r'"\s*\)\s*;?\s*$',
-        stripped))
+    bare = bool(re.match(r'^' + _read_call(gate_name) + r'\)\s*;?\s*$', stripped))
     if bare:
         return True
 
     # Assignment form: `<type> var = getenv("X");` — capture LHS var name.
-    m = re.search(
-        r'([A-Za-z_]\w*)\s*=\s*(?:std::)?(?:getenv|envFlag\w*|selftestEnvFlag|getEnvVar)\s*\(\s*"'
-        + re.escape(gate_name) + r'"',
-        line)
+    m = re.search(r'([A-Za-z_]\w*)\s*=\s*' + _read_call(gate_name), line)
     if m:
         var = m.group(1)
         var_re = re.compile(r'\b' + re.escape(var) + r'\b')
@@ -325,8 +328,8 @@ def _classify_gate(entry, fc: _FileCache, if0_cache: dict,
             rline = lines[ridx]
             if (rline[:1] not in (" ", "\t")
                     and not rline.lstrip().startswith("static")
-                    and re.search(r'=\s*(?:std::)?(?:getenv|envFlag\w*|'
-                                  r'selftestEnvFlag|getEnvVar)\s*\(', rline)):
+                    and re.search(r'=\s*(?:(?:std::)?(?:getenv|envFlag\w*|'
+                                  r'selftestEnvFlag|getEnvVar)\s*\(|(?:mc2::)?gate::get\s*<)', rline)):
                 cross_tu_global = True
 
     ledger_marker  = ledger_map.get(name)

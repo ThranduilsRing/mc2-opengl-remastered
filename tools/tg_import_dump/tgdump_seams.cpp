@@ -18,6 +18,16 @@ bool g_txmmgrBoundsTrace = false;
 std::atomic<unsigned long long> g_txmmgr_vertex_block_exhausted{0};
 std::atomic<unsigned long long> g_txmmgr_add_vertices_overflow_prevented{0};
 
+// Game-layer diagnostics tgl.cpp / msl.cpp reference; permanently off in the importer.
+std::atomic<unsigned long long> g_staticPropAlphaGeneration{1};
+unsigned long g_fbDiagPtSpotConsumed = 0;
+unsigned long g_fbDiagPtSpotZeroDir = 0;
+int g_mechPreviewRenderDepth = 0;
+bool mc2FullBakeDiagEnabled() { return false; }
+namespace mc2_cone_glow {
+bool cone_geom_hidden_by_alpha(unsigned) { return false; }
+}
+
 // Render-pass contract note — called only from TG_Shape::Render (never on the
 // import path). No-op.
 namespace render_contract {

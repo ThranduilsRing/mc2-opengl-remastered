@@ -19,7 +19,7 @@ cd "$ROOT"
 # the script forward-compatible without per-slice script edits.
 # GameAdapters is the carve-out module: it MAY include both sides.
 # Do NOT add it to SCOPE_DIRS.
-SCOPE_DIRS="RenderCore RenderWorld Visibility MeshRenderer MaterialSystem DebugRenderer RenderDeviceGL EditorBridge HostServices"
+SCOPE_DIRS="RenderCore RenderWorld Visibility MeshRenderer MaterialSystem DebugRenderer RenderDeviceGL EditorBridge HostServices Gates"
 
 # EDITOR-BRIDGE-GPU-FIREWALL-1: editor/ is a header-ONLY scope. Unlike the
 # RenderWorld-boundary modules above, the mission editor legitimately includes

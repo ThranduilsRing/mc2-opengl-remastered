@@ -114,8 +114,8 @@ def _mtime_iso(p: Path) -> Optional[str]:
 
 def deploy_status(repo_root: Path, lane: str, expected_sha: str = "",
                   exe_name: str = "mc2.exe") -> dict:
-    """Deploy-lane health report. `lane` is a canonical name (0.4, 0.4d-rc1,
-    0.5-testing, ...) or an absolute deploy dir path."""
+    """Deploy-lane health report. `lane` is a canonical name (0.4, 0.4c, ...
+    see known_lanes) or an absolute deploy dir path."""
     repo_root = Path(repo_root)
     cdt = _load_cdt(repo_root)
     names = _lane_names(repo_root)

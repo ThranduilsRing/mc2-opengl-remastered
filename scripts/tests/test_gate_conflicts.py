@@ -387,3 +387,69 @@ def test_committed_ledger_covers_every_baseline_conflict():
         assert ledger.get(g, {}).get("status") in gc.LEDGER_ACCEPTED, g
     for g, e in ledger.items():
         assert e["status"] in ("resolved", "enum", "divergent", "note"), g
+
+
+# ---------------------------------------------------------------------------
+# typed gate registry readers: gate::get<"MC2_X">() is a reader whose rule is the table row's
+# ---------------------------------------------------------------------------
+
+def _typed(code, path="GameOS/gameos/x.cpp"):
+    sites, _ = gi.scan_sources([(path, gi.strip_comments(code))])
+    return sites
+
+
+def _with_rows(monkeypatch, rows):
+    monkeypatch.setattr(gi, "_GATE_ROWS", rows)
+    monkeypatch.setattr(gi, "gate_rows", lambda: rows)
+
+
+def test_typed_bool_get_is_a_reader_with_the_row_rule(monkeypatch):
+    _with_rows(monkeypatch, {"MC2_X": ("Bool", "Lead0Kill", True)})
+    (s,) = _typed('bool b = gate::get<"MC2_X">();\n')
+    assert (s["status"], s["family"], s["cls"]) == ("reader", "bool", "Lead0Kill")
+    assert s["vector"] == vec("11011111")
+    assert s["callee"] == "gate::get"
+
+
+def test_typed_std_row_takes_the_row_default(monkeypatch):
+    _with_rows(monkeypatch, {"MC2_ON": ("Bool", "Std", True), "MC2_OFF": ("Bool", "Std", False)})
+    sites = {s["gate"]: s for s in _typed('bool a = gate::get<"MC2_ON">();\nbool b = get<"MC2_OFF">();\n')}
+    assert sites["MC2_ON"]["vector"] == vec("11001111")
+    assert sites["MC2_OFF"]["vector"] == vec("00001111")
+
+
+def test_per_site_rule_override_wins(monkeypatch):
+    _with_rows(monkeypatch, {"MC2_X": ("Bool", "Std", False)})
+    (s,) = _typed('bool b = gate::get<"MC2_X", gate::Rule::Presence>();\n')
+    assert s["cls"] == "Presence" and s["vector"] == vec("01111111")
+
+
+def test_isset_is_a_presence_reader_for_any_kind(monkeypatch):
+    _with_rows(monkeypatch, {"MC2_LOG": ("String", "Std", "")})
+    (s,) = _typed('bool b = gate::isSet<"MC2_LOG">();\n')
+    assert s["status"] == "reader" and s["cls"] == "Presence"
+
+
+def test_non_bool_and_non_get_reads_are_tokens_not_readers(monkeypatch):
+    _with_rows(monkeypatch, {"MC2_I": ("Int", "Prefix", 0), "MC2_T": ("Tri", "Std", None), "MC2_E": ("Enum", "Std", "a")})
+    sites = _typed('int i = gate::get<"MC2_I">();\nauto t = gate::state<"MC2_T">();\nbool e = gate::is<"MC2_E", "a">();\n')
+    assert {s["gate"]: s["status"] for s in sites if s["gate"] != "a"} == {"MC2_I": "token", "MC2_T": "token", "MC2_E": "token"}
+
+
+def test_a_name_missing_from_the_table_is_unclassified(monkeypatch):
+    _with_rows(monkeypatch, {"MC2_OTHER": ("Bool", "Std", False)})
+    (s,) = _typed('bool b = gate::get<"MC2_GONE">();\n')
+    assert s["status"].startswith("unclassified")
+
+
+def test_the_gate_module_itself_is_not_a_reader(monkeypatch):
+    _with_rows(monkeypatch, {"MC2_X": ("Bool", "Std", False)})
+    assert _typed('bool b = gate::get<"MC2_X">();\n', path="Gates/gate.cpp") == []
+
+
+def test_typed_and_raw_readers_of_one_gate_are_compared(monkeypatch):
+    _with_rows(monkeypatch, {"MC2_X": ("Bool", "Lead0Kill", True)})
+    sites = _typed('bool a = gate::get<"MC2_X">();\n'
+                   'bool b = (getenv("MC2_X") != nullptr);\n')
+    analysis = gc.analyse_gate(sites)
+    assert analysis["disagreements"], "a Presence reader and a Lead0Kill reader of one gate must conflict"

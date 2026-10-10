@@ -68,6 +68,11 @@ FORCED_ENV: dict = {
     # unbuffered per-mission printf flush). See gameosmain.cpp after setvbuf.
     "MC2_LOG": "1",
     "MC2_HEARTBEAT": "1",
+    # Typed gate registry (Gates/): a bad value or an MC2_* variable that is not a gate
+    # (a typo in a harness, a renamed gate) ends the engine at startup with exit code 78
+    # and `[CONFIG v1] warn=...` lines, instead of silently measuring the default config.
+    # Exes built before Gates/ landed ignore it.
+    "MC2_CONFIG_STRICT": "1",
     "MC2_TGL_POOL_TRACE": "1",
     "MC2_ASSET_SCALE_TRACE": "1",
     # Engine-side cursor-theft suppression (gos_CursorControlSuppressed,

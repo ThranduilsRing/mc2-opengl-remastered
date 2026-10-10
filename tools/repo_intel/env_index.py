@@ -56,7 +56,12 @@ except ImportError as _exc:                                   # pragma: no cover
 # ---------------------------------------------------------------------------
 
 _WALK_EXCLUDE_DIRS = {"build64", "3rdparty", ".git", "releases", "dist",
-                      "release", ".vscode", ".clangd", ".ccls-cache"}
+                      "release", ".vscode", ".clangd", ".ccls-cache",
+                      # The gate table itself names every gate as a row; counting those as readers
+                      # would make every gate look read.
+                      "Gates"}
+# The gate module's unit test names gates as synthetic fixtures, not as readers.
+_WALK_EXCLUDE_FILES = {"tests/unit/test_gate.cpp"}
 _WALK_EXTENSIONS   = {".cpp", ".h", ".hpp", ".c"}
 
 # Match direct getenv("MC2_*"), std::getenv, and common thin wrappers:
@@ -69,6 +74,10 @@ _GETENV_VAR    = re.compile(
 # unknown per-TU helper wrappers that the explicit alternation above misses.
 _GETENV_VAR_ANYCALL = re.compile(
     r'\w+\s*\(\s*"(MC2_[A-Z0-9_]+)"'
+)
+# Typed gate registry readers: gate::get<"MC2_X">(), get<"MC2_X", Rule::...>(), state/isSet/str/is<"MC2_X"...>.
+_GATE_GET_VAR  = re.compile(
+    r'\b(?:(?:mc2::)?gate::)?(?:get|state|isSet|str|is)\s*<\s*"(MC2_[A-Z0-9_]+)"'
 )
 _TIER1_VAR     = re.compile(r'`(MC2_[A-Z_0-9]+)(?:=[^`]*)?`')
 _TIER1_DEFAULT = re.compile(r'Default\s+\*\*(ON|OFF)\*\*', re.IGNORECASE)
@@ -155,8 +164,16 @@ def _grep_getenv(repo_root: Path) -> dict:
             if 'MC2_' not in text:
                 continue
             rel = str(fpath.relative_to(repo_root)).replace("\\", "/")
+            if rel in _WALK_EXCLUDE_FILES:
+                continue
             for lineno, line in enumerate(text.splitlines(), 1):
                 seen_on_line = set()
+                for m in _GATE_GET_VAR.finditer(line):
+                    name = m.group(1)
+                    if name in seen_on_line:
+                        continue
+                    seen_on_line.add(name)
+                    readers.setdefault(name, []).append({"file": rel, "line": lineno})
                 for m in _GETENV_VAR.finditer(line):
                     name = m.group(1)
                     seen_on_line.add(name)

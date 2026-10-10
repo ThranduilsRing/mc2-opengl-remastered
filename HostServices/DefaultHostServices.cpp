@@ -4,11 +4,11 @@
 // target unchanged.
 #include "DefaultHostServices.h"
 
+#include "Gates/gate_cold.h"
+
 #include <chrono>
-#include <cctype>
 #include <cstdio>
 #include <cstdlib>
-#include <cstring>
 #include <fstream>
 
 namespace mc2host {
@@ -96,25 +96,9 @@ const char* EnvConfig::str(const char* key, const char* dflt) const {
 }
 
 bool EnvConfig::flag(const char* key, bool dflt) const {
-    const char* v = (key != nullptr) ? std::getenv(key) : nullptr;
-    if (v == nullptr || v[0] == '\0') {
-        return dflt;
-    }
-    // Lower-case the value for a case-insensitive compare against the
-    // recognized falsey tokens. Anything else present is treated as truthy.
-    char buf[8] = {0};
-    size_t i = 0;
-    for (; v[i] != '\0' && i < sizeof(buf) - 1; ++i) {
-        buf[i] = static_cast<char>(std::tolower(static_cast<unsigned char>(v[i])));
-    }
-    buf[i] = '\0';
-    if (std::strcmp(buf, "0")     == 0 ||
-        std::strcmp(buf, "false") == 0 ||
-        std::strcmp(buf, "off")   == 0 ||
-        std::strcmp(buf, "no")    == 0) {
-        return false;
-    }
-    return true;
+    // The one boolean parser of the tree: unset/empty -> dflt, 0/false/off/no -> false,
+    // anything else present -> true.
+    return mc2::gate::parseBool((key != nullptr) ? std::getenv(key) : nullptr, dflt);
 }
 
 // --- Bundle ----------------------------------------------------------------

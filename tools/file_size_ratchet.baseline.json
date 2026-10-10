@@ -15,7 +15,7 @@
  "files_over_1500": {
   "GameOS/gameos/engine_present_vk.cpp": 2766,
   "GameOS/gameos/gameos_graphics.cpp": 11658,
-  "GameOS/gameos/gameosmain.cpp": 2841,
+  "GameOS/gameos/gameosmain.cpp": 2850,
   "GameOS/gameos/gos_mech_batcher.cpp": 3414,
   "GameOS/gameos/gos_postprocess.cpp": 7349,
   "GameOS/gameos/gos_static_prop_batcher.cpp": 11198,
@@ -44,6 +44,7 @@
   "code/infowindow.cpp": 1746,
   "code/logisticsdata.cpp": 3442,
   "code/logisticsdialog.cpp": 2149,
+  "code/mech.cpp": 9021,
   "code/mechcmd2.cpp": 3089,
   "code/mechicon.cpp": 1969,
   "code/mechlabscreen.cpp": 1949,
@@ -110,7 +111,7 @@
   "mclib/vfxtile.cpp": 2944,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "d0fe71c74",
+ "head": "8e7b4724c",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -134,7 +135,7 @@
    "files": 3,
    "files_over_1500": 0,
    "files_over_3000": 0,
-   "max_lines": 136
+   "max_lines": 120
   },
   "RenderCore": {
    "files": 54,
@@ -149,9 +150,9 @@
    "max_lines": 1168
   },
   "code": {
-   "files": 304,
-   "files_over_1500": 31,
-   "files_over_3000": 10,
+   "files": 295,
+   "files_over_1500": 32,
+   "files_over_3000": 11,
    "max_lines": 9979
   },
   "editor": {
@@ -199,6 +200,10 @@
   {
    "file": "code/warrior.cpp",
    "lines": 9578
+  },
+  {
+   "file": "code/mech.cpp",
+   "lines": 9021
   },
   {
    "file": "mclib/bdactor.cpp",
@@ -299,16 +304,12 @@
   {
    "file": "code/brain_special_dispatch.cpp",
    "lines": 3307
-  },
-  {
-   "file": "code/mechcmd2.cpp",
-   "lines": 3089
   }
  ],
  "total": {
-  "files": 1609,
-  "files_over_1500": 96,
-  "files_over_3000": 32,
+  "files": 1600,
+  "files_over_1500": 97,
+  "files_over_3000": 33,
   "max_lines": 11658
  },
  "version": 1

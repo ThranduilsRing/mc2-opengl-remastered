@@ -836,6 +836,17 @@ run_check "gate_default_agreement_selftest" "py -3 scripts/check-gate-default-ag
 # readers it cannot read. Both may only fall. Scans the COMMITTED tree so another lane's dirty
 # working tree cannot flap it. Idiom tests live in scripts/tests (scripts_tests row).
 run_check "gate_reader_conflicts"           "py -3 tools/gate_conflicts.py --check"
+# GATE-TABLE-G1A (typed-gate-registry G1a, 2026-10-09): the compiled gate table is the truth.
+# gate_gen --check proves Gates/gate_index.gen.h is what Gates/gate_table.json generates, every
+# seed gate is still a row, registered gates agree with the feature registry, and the per-site
+# rule-override count did not rise; --rebuild compiles tools/gate_dump and diffs its JSON against
+# the committed one (the compiler, not a regex, is the parser of the table). The pytest file covers
+# the generator's own mapping rules.
+run_check "gate_gen_check"                  "py -3 tools/gate_gen.py --check --rebuild && py -3 -B -m pytest scripts/tests/test_gate_table_gen.py -q -p no:cacheprovider"
+# Class-type template parameters and consteval (Gates/gate.h) need C++20: a standalone CMake
+# project that compiles a source reading MC2_* gates must reach it, or it stops building the day
+# that source migrates. Self-maintaining: the list is derived from the sources, not enumerated.
+run_check "cxx_standard_floor"              "py -3 scripts/check-cxx-standard-floor.py && py -3 -B -m pytest scripts/tests/test_check_cxx_standard_floor.py -q -p no:cacheprovider"
 # CPU-GPU-COGATING-1: the check above keeps a gate honest about its OWN default.
 # This one keeps a MIRROR PAIR honest about EACH OTHER. When one quantity is
 # computed twice -- CPU for gameplay, GPU for the picture -- the two halves must

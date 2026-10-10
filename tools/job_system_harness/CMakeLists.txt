@@ -16,8 +16,7 @@
 cmake_minimum_required(VERSION 3.16)
 project(job_system_harness CXX)
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+include("${CMAKE_CURRENT_LIST_DIR}/../../cmake/Mc2Standalone.cmake")
 
 get_filename_component(MC2_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
 
@@ -25,11 +24,12 @@ add_executable(job_system_harness
     job_system_harness.cpp
     ${MC2_ROOT}/code/job_system.cpp
     ${MC2_ROOT}/code/jobs_fatal.cpp)
+mc2_link_gate(job_system_harness)
 
 target_include_directories(job_system_harness PRIVATE
     ${MC2_ROOT}/tools/contract_harness_common
     ${MC2_ROOT}/code)
-target_compile_features(job_system_harness PRIVATE cxx_std_17)
+target_compile_features(job_system_harness PRIVATE cxx_std_20)
 
 find_package(Threads REQUIRED)
 target_link_libraries(job_system_harness PRIVATE Threads::Threads)

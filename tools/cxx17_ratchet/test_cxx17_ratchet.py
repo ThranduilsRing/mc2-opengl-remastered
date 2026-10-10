@@ -143,6 +143,82 @@ class Check(unittest.TestCase):
         self.assertEqual(r.check(grew, base, out=io.StringIO()), 1)
 
 
+class RawEnvReads(unittest.TestCase):
+    """LG19: raw MC2_ environment reads (G1a of the typed gate registry)."""
+
+    def test_literal_getenv_forms(self):
+        self.assertEqual(n('const char* v = getenv("MC2_X");\n', "LG19"), 1)
+        self.assertEqual(n('const char* v = std::getenv("MC2_X");\n', "LG19"), 1)
+        self.assertEqual(n('const char* v = ::getenv("MC2_X");\n', "LG19"), 1)
+        self.assertEqual(n('const wchar_t* v = _wgetenv(L"MC2_X");\n', "LG19"), 1)
+
+    def test_non_literal_getenv_counts_but_other_literals_do_not(self):
+        self.assertEqual(n("const char* v = getenv(name);\n", "LG19"), 1)
+        self.assertEqual(n("const char* v = ::getenv(key.c_str());\n", "LG19"), 1)
+        self.assertEqual(n('const char* v = getenv("PATH");\n', "LG19"), 0)
+        self.assertEqual(n('const char* v = std::getenv("HOME");\n', "LG19"), 0)
+
+    def test_windows_and_crt_variants(self):
+        self.assertEqual(n('GetEnvironmentVariableA("MC2_X", buf, n);\n', "LG19"), 1)
+        self.assertEqual(n('GetEnvironmentVariableW(L"MC2_X", buf, n);\n', "LG19"), 1)
+        self.assertEqual(n('GetEnvironmentVariableA("TEMP", buf, n);\n', "LG19"), 0)
+        self.assertEqual(n("_dupenv_s(&p, &len, name);\n", "LG19"), 1)
+        self.assertEqual(n('getenv_s(&len, buf, n, "MC2_X");\n', "LG19"), 1)
+        self.assertEqual(n("char** e = _environ;\n", "LG19"), 1)
+        self.assertEqual(n("auto* b = GetEnvironmentStringsA();\n", "LG19"), 1)
+        self.assertEqual(n('auto* v = SDL_getenv("MC2_X");\n', "LG19"), 1)
+
+    def test_comments_and_string_text_do_not_count(self):
+        self.assertEqual(n('// getenv("MC2_X") in a comment\n', "LG19"), 0)
+        self.assertEqual(n('/* getenv("MC2_X") */ int a;\n', "LG19"), 0)
+        self.assertEqual(n('puts("call getenv(\\"MC2_X\\") here");\n', "LG19"), 0)
+        self.assertEqual(n("int my_getenv_wrapper = 1;\nobj.getenv(name);\n", "LG19"), 0)
+
+    def test_two_calls_on_one_line_count_once(self):
+        self.assertEqual(n('bool b = getenv("MC2_A") && getenv("MC2_B");\n', "LG19"), 1)
+
+    def test_preprocessor_lines_do_not_count(self):
+        self.assertEqual(n('#define READ(x) getenv("MC2_" x)\n', "LG19"), 0)
+
+    def test_gate_module_is_exempt_by_path(self):
+        self.assertEqual(n('const char* v = std::getenv("MC2_CONFIG_DUMP");\n', "LG19", "Gates/gate.cpp"), 0)
+        self.assertEqual(n('const char* v = std::getenv("MC2_CONFIG_DUMP");\n', "LG19", "GameOS/gameos/x.cpp"), 1)
+
+    def test_a_gate_read_through_the_registry_is_not_counted(self):
+        self.assertEqual(n('bool b = gate::get<"MC2_X">();\n', "LG19"), 0)
+
+    def test_strict_per_file_even_when_the_total_falls(self):
+        # two files: a.cpp drops 3 -> 1, b.cpp rises 0 -> 1: the total falls (3 -> 2), the check must still fail.
+        base = {"head": "t", "counts": {"code": {"LG19": 3}},
+                "files": {"code/a.cpp": {"LG19": 3}}}
+        res = {"code/a.cpp": {"LG19": [1]}, "code/b.cpp": {"LG19": [4]}}
+        out = io.StringIO()
+        self.assertEqual(r.check(res, base, out=out), 1)
+        self.assertIn("code/b.cpp", out.getvalue())
+        self.assertIn("drive-to-zero", out.getvalue())
+
+    def test_a_file_the_baseline_does_not_know_must_have_none(self):
+        base = {"head": "t", "counts": {"code": {"LG19": 0}}, "files": {}}
+        self.assertEqual(r.check({"code/new.cpp": {"LG19": [1]}}, base, out=io.StringIO()), 1)
+        self.assertEqual(r.check({"code/new.cpp": {"LG01": [1]}}, base, out=io.StringIO()), 1)  # LG01 is a total rise
+        self.assertEqual(r.check({"code/new.cpp": {}}, base, out=io.StringIO()), 0)
+
+    def test_equal_or_lower_per_file_passes(self):
+        base = {"head": "t", "counts": {"code": {"LG19": 4}}, "files": {"code/a.cpp": {"LG19": 4}}}
+        self.assertEqual(r.check({"code/a.cpp": {"LG19": [1, 2, 3, 4]}}, base, out=io.StringIO()), 0)
+        self.assertEqual(r.check({"code/a.cpp": {"LG19": [1]}}, base, out=io.StringIO()), 0)
+
+    def test_tracked_dirs_only_warn(self):
+        base = {"head": "t", "counts": {}, "files": {}, "tracked": {"LG19": {"editor": 3}}}
+        out = io.StringIO()
+        self.assertEqual(r.check({}, base, out=out, tracked={"editor": 5}), 0)
+        self.assertIn("editor LG19", out.getvalue())
+
+    def test_tracked_counts_group_by_top_level_dir(self):
+        res = {"editor/a.cpp": {"LG19": [1, 2]}, "gui/b.cpp": {"LG19": [3]}, "editor/c.cpp": {}}
+        self.assertEqual(r.tracked_counts(res), {"editor": 2, "gui": 1, "Viewer": 0})
+
+
 def _git(cwd, *a):
     return subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t"] + list(a), cwd=cwd,
                           stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))

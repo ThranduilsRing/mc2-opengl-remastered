@@ -18,8 +18,7 @@
 cmake_minimum_required(VERSION 3.16)
 project(render_state_contract_harness CXX)
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+include("${CMAKE_CURRENT_LIST_DIR}/../../cmake/Mc2Standalone.cmake")
 
 get_filename_component(MC2_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
 
@@ -33,6 +32,7 @@ add_executable(render_state_contract_harness
     ${MC2_ROOT}/mclib/render_contract.cpp
     ${MC2_ROOT}/RenderCore/RenderResourceRegistry.cpp
 )
+mc2_link_gate(render_state_contract_harness)
 
 target_include_directories(render_state_contract_harness PRIVATE
     ${MC2_ROOT}/tools/contract_harness_common
@@ -62,4 +62,4 @@ target_link_libraries(render_state_contract_harness PRIVATE
     opengl32
 )
 
-target_compile_features(render_state_contract_harness PRIVATE cxx_std_17)
+target_compile_features(render_state_contract_harness PRIVATE cxx_std_20)

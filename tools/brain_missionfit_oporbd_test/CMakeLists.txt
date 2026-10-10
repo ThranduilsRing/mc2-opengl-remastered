@@ -3,8 +3,7 @@
 cmake_minimum_required(VERSION 3.20)
 project(brain_missionfit_oporbd_test CXX)
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+include("${CMAKE_CURRENT_LIST_DIR}/../../cmake/Mc2Standalone.cmake")
 
 if(NOT DEFINED REPO_ROOT)
     get_filename_component(REPO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
@@ -14,4 +13,5 @@ add_executable(brain_missionfit_oporbd_test
     main.cpp
     "${REPO_ROOT}/code/brain_missionfit_oporbd.cpp"
 )
+mc2_link_gate(brain_missionfit_oporbd_test)
 target_include_directories(brain_missionfit_oporbd_test PRIVATE "${REPO_ROOT}/code")

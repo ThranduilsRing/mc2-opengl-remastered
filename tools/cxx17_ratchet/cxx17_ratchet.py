@@ -19,6 +19,11 @@ moved between dirs, e.g. code/ -> mclib/ by rename) is only a WARNING.  Trade-of
 can hide behind a decrease elsewhere in another dir; use --report --depth 2 / per-file counts in
 baseline.json in review.  (Rename-aware per-dir exemption via `git diff -M` was rejected: fragile.)
 
+LG19 (raw MC2_ environment reads) is STRICT per file, not per total: it is drive-to-zero, so a file may
+never gain a site and a file the baseline does not know must have none; a drop elsewhere buys nothing.
+editor/, gui/ and Viewer/ are not in the default dirs; their LG19 counts are tracked in baseline.json
+("tracked") and a rise only warns until they migrate.
+
 Exit: 0 ok, 1 an idiom total increased, 2 usage/baseline error.
 These are HEURISTICS (grep-grade, not a parser): the goal is a stable, cheap monotonic
 metric, not exact truth. A false positive is fine as long as it is stable.
@@ -43,6 +48,12 @@ BASELINE = os.path.join(HERE, "baseline.json")
 # opt in with --dirs (they are not in HeaderFilterRegex either).
 DEFAULT_DIRS = ["GameOS", "mclib", "code", "RenderCore", "GuiRuntime",
                 "RenderWorld", "GameAdapters", "HostServices", "EditorBridge"]
+# LG19 only: the legacy tool dirs that are not owned yet. Counted into baseline["tracked"], warned on, never failed.
+TRACKED_DIRS = ["editor", "gui", "Viewer"]
+# LG19 may only be read raw inside the gate module itself (Gates/gate.cpp parses the environment).
+LG19_EXEMPT_PREFIXES = ("Gates/",)
+# Idioms whose per-FILE count may never rise (drive-to-zero), whatever happens to the repo total.
+STRICT_FILE_IDIOMS = ("LG19",)
 EXTS = (".cpp", ".cc", ".cxx", ".h", ".hpp", ".hxx", ".inl")
 EXCLUDE_PARTS = {"3rdparty", "graphify-out", "__pycache__", ".git", "out", "Tracy"}
 
@@ -66,6 +77,8 @@ IDIOMS = {
     "LG16": ("manual multi-dim index math [y*w+x] / T** grids", "std::mdspan"),
     "LG17": ("pointer+count parameter pair (T* p, size_t n)", "std::span"),
     "LG18": ("type punning (reinterpret_cast<float*>, union, memcpy bits)", "std::bit_cast"),
+    "LG19": ("raw MC2_ environment read (getenv/GetEnvironmentVariable/_dupenv_s/getenv_s/_environ/non-literal getenv)",
+             "gate::get<\"MC2_X\">() (Gates/gate.h)"),
 }
 IDS = list(IDIOMS)
 
@@ -144,6 +157,13 @@ R_INTTOK = re.compile(r"\b(?:u?int(?:32|64)_t|DWORD|ULONG|unsigned(?:\s+(?:int|l
 R_DEFINE = re.compile(r"^\s*#\s*define\s+([A-Za-z_]\w*)(?!\()\s+(.+?)\s*$")
 R_DEFVAL = re.compile(r"""^(?:[-+~(]|\d|0[xX]|\.\d|['"]|L["']|\w+\s*[-+*/|<]\s*[\w(])""")
 R_ENUM = re.compile(r"\benum\b(?!\s+(?:class|struct)\b)\s*(?:\w+\s*)?(?::\s*[\w ]+)?\s*(?:\{|$)")
+# LG19 runs on the comment-stripped line WITH strings kept: the gate name is the evidence. A non-literal
+# `getenv(name)` counts too (it can read any MC2_ variable); `getenv("PATH")` does not.
+R_ENVREAD = re.compile(
+    r"""(?<![\w.>])(?:std::|::)?(?:getenv|_wgetenv)\s*\(\s*(?:L?"MC2_|[A-Za-z_])"""
+    r"""|\bGetEnvironmentVariable[AW]?\s*\(\s*L?"MC2_"""
+    r"""|\b_dupenv_s\b|\bgetenv_s\b|\b_wdupenv_s\b"""
+    r"""|\b_environ\b|\bGetEnvironmentStrings[AW]?\b|\bSDL_getenv\b""")
 R_LEGACY = re.compile(r"\b(?:auto_ptr|bind1st|bind2nd|ptr_fun|mem_fun|mem_fun_ref|unary_function|binary_function|"
                       r"random_shuffle|register)\b|\)\s*throw\s*\([^)]*\)\s*(?:[{;]|$)")
 
@@ -254,6 +274,9 @@ def scan_text(text: str, path: str = "") -> dict:
         # LG11 (strings kept)
         if R_WIN_PATH.search(b) or (R_PATH_CAT.search(c) and not pp and "#include" not in c):
             hits["LG11"].append(ln)
+        # LG19 (strings kept; Gates/ is the one place allowed to read the environment)
+        if not pp and R_ENVREAD.search(c) and not path.startswith(LG19_EXEMPT_PREFIXES):
+            hits["LG19"].append(ln)
         # LG12a (logging) / LG12b (buffer formatting)
         if R_LOG.search(b):
             hits["LG12a"].append(ln)
@@ -444,14 +467,40 @@ def load_baseline(path=BASELINE):
         return json.load(fh)
 
 
-def make_baseline(res, dirs):
+def tracked_counts(res):
+    """LG19 per tracked (not yet owned) dir: {dir: count}. Reported, never failed."""
+    out = {}
+    for d in TRACKED_DIRS:
+        n = sum(len(h.get("LG19", [])) for rel, h in res.items() if rel.split("/")[0] == d)
+        out[d] = n
+    return out
+
+
+def make_baseline(res, dirs, tracked=None):
     return {"version": 2, "head": git_head(), "dirs": dirs,
             "idioms": {k: v[0] for k, v in IDIOMS.items()},
-            "counts": aggregate(res), "files": per_file_counts(res)}
+            "counts": aggregate(res), "files": per_file_counts(res),
+            "tracked": {"LG19": tracked or {}}}
 
 
-def check(res, base, samples=5, out=sys.stdout, use_git_diff=False):
-    """Strict per-idiom REPO TOTALS (fail); per-dir increases with a flat/lower total only warn."""
+def strict_file_failures(res, base):
+    """Per-file rises of the drive-to-zero idioms: (idiom, rel, baseline_count, current_count, lines)."""
+    bf = base.get("files", {})
+    bad = []
+    for i in STRICT_FILE_IDIOMS:
+        for rel in sorted(res):
+            lines = res[rel].get(i, [])
+            was = bf.get(rel, {}).get(i, 0)
+            if len(lines) > was:
+                bad.append((i, rel, was, len(lines), lines))
+    return bad
+
+
+def check(res, base, samples=5, out=sys.stdout, use_git_diff=False, tracked=None):
+    """Strict per-idiom REPO TOTALS (fail); per-dir increases with a flat/lower total only warn.
+
+    STRICT_FILE_IDIOMS (LG19) fail on any per-FILE rise, and a file the baseline has no entry for must
+    have none. `tracked` (LG19 counts of editor/gui/Viewer) only warns."""
     cur = aggregate(res)
     zero = dict.fromkeys(IDS, 0)
     tot_c = {i: sum(r.get(i, 0) for r in cur.values()) for i in IDS}
@@ -465,10 +514,25 @@ def check(res, base, samples=5, out=sys.stdout, use_git_diff=False):
                 warn.append((d, i, b.get(i, 0), c.get(i, 0)))
     for d, i, b, c in warn:
         print("  warn: %s %s rose %d -> %d but the repo total did not (moved code?)" % (d, i, b, c), file=out)
+    for d, n in sorted((tracked or {}).items()):
+        was = base.get("tracked", {}).get("LG19", {}).get(d)
+        if was is not None and n > was:
+            print("  warn: %s LG19 (tracked, not yet owned) rose %d -> %d" % (d, was, n), file=out)
+    strict = strict_file_failures(res, base)
     improved = sum(max(0, tot_b[i] - tot_c[i]) for i in IDS)
-    if not bad:
+    if strict:
+        print("cxx17_ratchet: FAIL - drive-to-zero idiom rose in %d file(s) (%s):" % (len(strict), base.get("head", "?")), file=out)
+        for i, rel, was, now, lines in strict[:max(samples, 10)]:
+            print("  %s %s: %d -> %d  [%s -> %s]" % (i, rel, was, now, IDIOMS[i][0], IDIOMS[i][1]), file=out)
+            for l in lines[:samples]:
+                print("      %s:%d" % (rel, l), file=out)
+        print("A new or growing file must read MC2_ gates through gate::get<\"MC2_X\">() (Gates/gate.h). "
+              "If the file was only moved, rewrite the baseline with --write-baseline and say why.", file=out)
+    if not bad and not strict:
         print("cxx17_ratchet: OK (no idiom total increased; %d fewer legacy sites than baseline)" % improved, file=out)
         return 0
+    if not bad:
+        return 1
     print("cxx17_ratchet: FAIL - %d idiom total(s) increased vs baseline (%s):" % (len(bad), base.get("head", "?")), file=out)
     bf = base.get("files", {})
     for i, b, c in bad:
@@ -531,9 +595,10 @@ def main(argv=None):
         if not a.dirs:
             dirs = base.get("dirs", dirs)
         res = scan_repo(dirs, a.jobs, source)
-        rc = check(res, base, a.samples, use_git_diff=(source == "worktree"))
+        tracked = tracked_counts(scan_repo(TRACKED_DIRS, a.jobs, source))
+        rc = check(res, base, a.samples, use_git_diff=(source == "worktree"), tracked=tracked)
         if rc == 0 and a.tighten:
-            nb = make_baseline(res, dirs)
+            nb = make_baseline(res, dirs, tracked)
             with open(a.baseline, "w", encoding="utf-8", newline="\n") as fh:
                 json.dump(nb, fh, indent=1, sort_keys=True)
                 fh.write("\n")
@@ -541,7 +606,7 @@ def main(argv=None):
         return rc
     res = scan_repo(dirs, a.jobs, source)
     if a.write_baseline:
-        nb = make_baseline(res, dirs)
+        nb = make_baseline(res, dirs, tracked_counts(scan_repo(TRACKED_DIRS, a.jobs, source)))
         with open(a.baseline, "w", encoding="utf-8", newline="\n") as fh:
             json.dump(nb, fh, indent=1, sort_keys=True)
             fh.write("\n")

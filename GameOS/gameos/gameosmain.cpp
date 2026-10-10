@@ -234,6 +234,7 @@ static LONG WINAPI mc2_unhandled_exception_filter(EXCEPTION_POINTERS* ep)
 #include "gos_render_pass_timer.h"
 #include "gos_frame_pass_stats.h"   // [FRAME_PASS_STATS v1] collector
 #include "utils/mc2log.h"   // LOGGING-FACADE-P0: mc2::log::init() before the NUL redirect
+#include "Gates/gate_cold.h"   // typed gate registry: main-entered marker, invalidateAll, [CONFIG v1]
 
 // Tier-1 instrumentation (stability spec §5.1): single source of truth for
 // the frame=... field used by TGL_POOL, DESTROY, and GL_ERROR log lines.
@@ -1014,6 +1015,8 @@ void GLAPIENTRY OpenGLDebugLog(GLenum source, GLenum type, GLuint id, GLenum sev
 #ifndef DISABLE_GAMEOS_MAIN
 int main(int argc, char** argv)
 {
+    // Gate reads resolved before this line are "pre-main" (static initialisers).
+    mc2::gate::markMainEntered();
 #ifdef PLATFORM_WINDOWS
     // DPI-AWARE-1: FIRST statement of the process — the per-process DPI
     // context is locked by the first window ANY subsystem creates (the VK
@@ -1151,6 +1154,9 @@ int main(int argc, char** argv)
         }
     }
 
+    // The launcher_env.json values were just applied: forget every gate a static initialiser cached.
+    mc2::gate::invalidateAll();
+
     // Make stdout line-buffered (was fully buffered on Windows when redirected, hiding
     // output past the last explicit fflush before a crash). Harmless for interactive
     // runs; invaluable for diagnosing startup crashes when stdout is piped to a file.
@@ -1183,6 +1189,9 @@ int main(int argc, char** argv)
         FILE* esink = freopen("NUL", "w", stderr);
         (void)esink;
     }
+
+    // [CONFIG v1]: which MC2_* variables are set, what they parsed to, and the unregistered / bad ones.
+    mc2::gate::dumpConfig(stderr);
 
     // Tier-1 instrumentation: one-line banner so every log file is
     // self-describing about which traces are enabled.

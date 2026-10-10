@@ -16,8 +16,7 @@
 cmake_minimum_required(VERSION 3.16)
 project(glstate_guard_harness CXX)
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+include("${CMAKE_CURRENT_LIST_DIR}/../../cmake/Mc2Standalone.cmake")
 
 get_filename_component(MC2_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
 
@@ -30,6 +29,7 @@ else()
 endif()
 
 add_executable(glstate_guard_harness glstate_guard_harness.cpp)
+mc2_link_gate(glstate_guard_harness)
 
 target_include_directories(glstate_guard_harness PRIVATE
     ${MC2_ROOT}/tools/contract_harness_common
@@ -52,7 +52,7 @@ target_compile_definitions(glstate_guard_harness PRIVATE
     _CRT_SECURE_NO_WARNINGS
 )
 
-target_compile_features(glstate_guard_harness PRIVATE cxx_std_17)
+target_compile_features(glstate_guard_harness PRIVATE cxx_std_20)
 
 # The harness dynamically links SDL2.dll/glew32.dll — copy both beside the
 # .exe (mirrors the main CMakeLists.txt mc2 POST_BUILD DLL-copy pattern).

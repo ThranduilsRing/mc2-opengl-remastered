@@ -3,13 +3,14 @@ cmake_minimum_required (VERSION 3.10)
 cmake_policy(SET CMP0072 NEW) # cmake --help-policy CMP0072
 project(mc2)
 
-# C++ standard: single cache var MC2_CXX_STANDARD below (default 23 since 2026-10-09; was 17 per CXX17-1 flip 2026-05-24).
-# RenderCore/RenderWorld/GameAdapters/tests already require cxx_std_17 via
-# target_compile_features; flipping the root removes the C++14/17 mix and
-# makes mc2.exe uniformly C++17. See docs/superpowers/explorations/
-# 2026-05-24-cxx17-upgrade-recon.md.
-# Single source of truth for the language standard (17 or 23; Linux gcc stays 17 until deferred work).
-set(MC2_CXX_STANDARD 23 CACHE STRING "C++ standard for all project targets (17|20|23); default 23 = MSVC /std:c++23preview")
+# C++ standard: one cache variable, MC2_CXX_STANDARD (20 or 23; default 23 = MSVC /std:c++23preview).
+# The gate registry (Gates/gate.h) needs C++20 class-type template parameters and consteval, so 17 is
+# not an option; standalone projects take the same variable through cmake/Mc2Standalone.cmake.
+set(MC2_CXX_STANDARD 23 CACHE STRING "C++ standard for all project targets (20|23); default 23 = MSVC /std:c++23preview")
+set_property(CACHE MC2_CXX_STANDARD PROPERTY STRINGS 20 23)
+if(MC2_CXX_STANDARD LESS 20)
+    message(FATAL_ERROR "MC2_CXX_STANDARD=${MC2_CXX_STANDARD}: the gate registry needs C++20 or newer (use 20 or 23)")
+endif()
 set(CMAKE_CXX_STANDARD ${MC2_CXX_STANDARD})
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -312,6 +313,7 @@ if(MSVC)
     add_compile_definitions("$<$<CONFIG:RelWithDebInfo>:_MSVC_STL_HARDENING=1>")
 endif()
 
+add_subdirectory("./Gates" "./out/Gates")
 add_subdirectory("./mclib/" "./out/mclib")
 add_subdirectory("./RenderCore" "./out/RenderCore")
 add_subdirectory("./RenderWorld" "./out/RenderWorld")
@@ -580,7 +582,7 @@ if(MC2_VULKAN)
         "${CMAKE_SOURCE_DIR}/3rdparty/volk"
         ${Vulkan_INCLUDE_DIR})
 endif()
-target_link_libraries(mc2 mclib fx_trace particles gosfx mlr stuff gui gameos gameos_main windows ZLIB::ZLIB ${SDL2_LIBRARIES} GLEW::GLEW SDL2_mixer::SDL2_mixer ${ADDITIONAL_LIBS} OpenGL::GL renderworld gameadapters editorbridge imgui gui_runtime)
+target_link_libraries(mc2 mclib fx_trace particles gosfx mlr stuff gui gameos gameos_main windows ZLIB::ZLIB ${SDL2_LIBRARIES} GLEW::GLEW SDL2_mixer::SDL2_mixer ${ADDITIONAL_LIBS} OpenGL::GL renderworld gameadapters editorbridge imgui gui_runtime mc2_gate)
 
 if(MC2_IMGUI)
     target_compile_definitions(mc2 PRIVATE MC2_IMGUI=1)

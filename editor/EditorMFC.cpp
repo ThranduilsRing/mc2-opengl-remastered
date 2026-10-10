@@ -233,6 +233,7 @@ static void EarlyTraceBegin()
 #include "EditorPlaytest.h"   // -playtest end-to-end smoke
 #include "EditorTaskRunner.h" // ShutdownKillRunning() on editor exit
 #include "resource.h"   // ID_FOLIAGE_* for the -smoke-foliage-menu WM_COMMAND drive
+#include "Gates/gate_cold.h"  // markMainEntered / invalidateAll / dumpConfig: EditRel has no gameosmain
 
 // -- S-CLI parser ------------------------------------------------------------
 // Accepts: -mission/--mission PATH (or =PATH), -frames/--frames N (or =N),
@@ -461,6 +462,11 @@ bool EditorBackgroundLaunch()
 BOOL EditorMFCApp::InitInstance()
 {
 	editor_set_default_env_vars();
+
+	// EditRel builds with DISABLE_GAMEOS_MAIN, so none of gameosmain's gate hooks run here.
+	mc2::gate::markMainEntered();
+	mc2::gate::invalidateAll();
+	mc2::gate::dumpConfig(stderr);
 
 	// Mount mod overlays so the editor can load MOD missions + their appearance
 	// assets, not just base-game content. mods/<MC2_ACTIVE_MOD>/data/* shadow base

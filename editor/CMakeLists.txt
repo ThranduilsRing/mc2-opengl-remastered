@@ -124,6 +124,7 @@ target_link_libraries(EditRel PRIVATE
     SDL2_mixer::SDL2_mixer
 
     # misc
+    mc2_gate   # typed gate registry (Gates/); EditRel has no gameosmain, see EditorMFC.cpp
     ZLIB::ZLIB
     winmm
     ws2_32

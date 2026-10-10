@@ -15,8 +15,7 @@
 cmake_minimum_required(VERSION 3.16)
 project(ibl_registry_contract_harness CXX)
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+include("${CMAKE_CURRENT_LIST_DIR}/../../cmake/Mc2Standalone.cmake")
 
 get_filename_component(MC2_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
 
@@ -26,4 +25,4 @@ target_include_directories(ibl_registry_contract_harness PRIVATE
     ${MC2_ROOT})                       # for "RenderCore/IblHdriRegistry.h" style
 target_compile_definitions(ibl_registry_contract_harness PRIVATE
     MC2_REPO_ROOT="${MC2_ROOT}")
-target_compile_features(ibl_registry_contract_harness PRIVATE cxx_std_17)
+target_compile_features(ibl_registry_contract_harness PRIVATE cxx_std_20)
