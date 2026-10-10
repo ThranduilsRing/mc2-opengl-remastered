@@ -13,10 +13,12 @@
 #   ORCH_BEFORE                {line: text} glue lines inserted before that original line
 #   PHASES                     [(helper name, first line, last line, doc[, #ifdef guard])]
 #   METHOD_CLASS               helpers are members of this class (default: file-static functions)
+#   PARAMS                     [(name, type)] parameters of the original function; each helper takes those it uses
 #   ONLY                       {frame id: [phase names]} frames only those phases may alias (name clashes)
 #   FRAME_METHODS              single frame: helpers that use its members are methods of the struct (no alias lines);
 #                              a phase tuple may end in {'free': True} to stay a file-static function
 #   ALIAS_PER_LINE             alias declarations packed per line (keeps identical alias runs short)
+#   a phase tuple may end in {'dedent': prefix} to strip a different indent from that helper body
 #   INDENT, DEDENT, ORCH_DOC   indentation unit, prefix stripped from helper bodies, comment above function
 import importlib.util
 import re
@@ -112,7 +114,7 @@ def main():
     for x, y in zip(ph, ph[1:]):
         assert x[2] < y[1], (x[0], y[0])
 
-    def body_for(a, b):
+    def body_for(a, b, dedent=dedent):
         out = []
         for ln in range(a, b + 1):
             if ln in hoisted_lines:
@@ -131,7 +133,7 @@ def main():
         return [(n, fr) for n, _t, fr in members
                 if (fr not in only or phase in only[fr]) and re.search(r'\b' + ident(n) + r'\b', code)]
 
-    bodies = {a: body_for(a, b) for (_n, a, b, *_r) in ph}
+    bodies = {p[1]: body_for(p[1], p[2], next((r for r in p[4:] if isinstance(r, dict)), {}).get('dedent', dedent)) for p in ph}
     frame_methods = getattr(S, 'FRAME_METHODS', False)
     per_line = getattr(S, 'ALIAS_PER_LINE', 1)
     info = []
@@ -142,7 +144,9 @@ def main():
         used = used_members(body, name)
         frames = [fid for fid in structs if any(fr == fid for _n, fr in used)]
         as_method = frame_methods and bool(used) and not opts.get('free')
-        info.append(dict(name=name, a=a, doc=doc, guard=guard, body=body, used=used, frames=frames, as_method=as_method))
+        code = '\n'.join(strip_code(x) for x in body)
+        uparams = [(n, t) for n, t in getattr(S, 'PARAMS', []) if re.search(r'\b' + n + r'\b', code)]
+        info.append(dict(name=name, a=a, doc=doc, guard=guard, body=body, used=used, frames=frames, as_method=as_method, uparams=uparams))
     H = []
     if not method:
         H.append('namespace {')
@@ -180,7 +184,7 @@ def main():
             H.append('// ' + d)
         if guard:
             H.append('#ifdef ' + guard)
-        params = ', '.join('%s& %s' % (structs[fid], fid) for fid in frames)
+        params = ', '.join(['%s %s' % (t, n) for n, t in i['uparams']] + ['%s& %s' % (structs[fid], fid) for fid in frames])
         if i['as_method']:
             H.append('void %s::%s() {' % (structs['f'], name))
             calls[i['a']] = 'f.%s();' % name
@@ -190,7 +194,7 @@ def main():
             decls.append('void %s(%s);' % (name, params))
             for k in range(0, len(used), per_line):
                 H.append(indent + ' '.join('auto& %s = %s.%s;' % (ident(n), fr, ident(n)) for n, fr in used[k:k + per_line]))
-            calls[i['a']] = '%s(%s);' % (name, ', '.join(frames))
+            calls[i['a']] = '%s(%s);' % (name, ', '.join([n for n, _t in i['uparams']] + frames))
         H += i['body']
         H.append('}')
         if guard:

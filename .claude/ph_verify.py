@@ -75,7 +75,7 @@ for (name, a, b, doc, *_r) in S.PHASES:
 # 3. expand the orchestrator
 orch = new[ns_ + 1:ne]
 fr = '|'.join(structs)
-call_rx = re.compile(r'^\s*(?:f\.)?(\w+)\((?:%s)?(?:, (?:%s))*\);$' % (fr, fr))
+call_rx = re.compile(r'^\s*(?:f\.)?(\w+)\([\w, ]*\);$')
 decl_rx = re.compile(r'^\s*(%s) \w+;$' % '|'.join(structs.values()))
 expanded = []
 frame_decls = 0

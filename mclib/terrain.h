@@ -160,6 +160,9 @@ struct SuperchunkMeta {
 //---------------------------------------------------------------------------
 //Everything goes through here now.
 // This will understand the original MC2 format and new format and will convert between
+// Phase-helper state of Terrain::init (defined in terrain_init.cpp).
+struct TerrainLodInitFrame;
+
 class Terrain
 {
 	//Data Members
@@ -443,6 +446,26 @@ class Terrain
 		void getColorMapName (FitIniFile *file);
 		void setColorMapName (char *mapName);
 		void saveColorMapName (FitIniFile *file);
+
+	// Terrain::init phases (terrain_init.cpp); callers use init().
+	private:
+		void initMapExtents(unsigned long verticesPerMapSide, unsigned long visibleVertices);
+		void initTerrainHeap(volatile float& percent, float percentRange);
+		void initTerrainTextures(PacketFile* pakFile, volatile float& percent, float percentRange);
+		void initColorMapTexture(PacketFile* pakFile, volatile float& percent, float percentRange);
+		void initObjBlockLists(volatile float& percent, float percentRange);
+		void initMapData(PacketFile* pakFile, volatile float& percent, float percentRange);
+		void lodAllocMeta();
+		void lodHeightUpload(TerrainLodInitFrame& lf);
+		void lodControlMap();
+		void lodOverlayV2();
+		void lodShorelineMask();
+		void lodWaterShore();
+		void lodVisualHeight(TerrainLodInitFrame& lf);
+		void lodFlagConcrete(TerrainLodInitFrame& lf);
+		void initVertexQuadLists(unsigned long visibleVertices);
+		void initColorMapLoad();
+		void initMaterialProfile();
 };
 
 typedef Terrain *TerrainPtr;
