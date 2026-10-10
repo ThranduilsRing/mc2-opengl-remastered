@@ -21,6 +21,10 @@ Owner intent: **pay down most/all tech debt before building features**. No time 
 - Commit BEFORE build+deploy (DEPLOY_FINGERPRINT gate). Captures: `MC2_CURSOR_NO_PARK=1`.
 - Commits: `git diff --cached --name-only` first; commit with explicit pathspec `git commit -m ... -- <paths>`. Two sweep accidents on 2026-10-09.
 - ONE smoke/capture on the host at a time, lease-serialized; agents never pass `--no-lease` (owner-only via `MC2_OWNER_NO_LEASE=1`); cursor_guard must not SetCursorPos while the owner is active (incident 2026-10-10 08:34–08:40: two concurrent tier1 runs fought the owner's mouse for 20 min and a window came up fullscreen at 08:40; both killed; root cause + fix = lane 1 in flight).
+### Orchestrator tools
+- `py -3 tools/handoff_append.py [--lanes T] [--bullet T]... [--queue-prefix N T] [--queue-replace N OLD NEW] [--queue-append T] [--message S] [--dry-run]` — edits this file and commits only it (refuses mid-merge, exit 3; `--dry-run` previews the diff).
+- `py -3 tools/lane_merge.py <sha-or-branch> [--message S] [--dry-run]` — merge --no-ff, baseline conflicts auto-resolved, ratchets re-tightened, follow-up commit of the 4 baselines; fail-closed (4 dirty overlap/staged, 5 conflict, 6 ratchet FAIL).
+- `py -3 tools/visual_verify/montage_compact.py <before> <after> | --montage <x_before_after_diff.png> [--mech-box x,y,w,h] [--out f] [--scale 0.25]` — red-boxed 1/4-scale AFTER plus one `DIFF outside_box=...` line (exit 1 over `--threshold` 200).
 
 ## State at handoff (verify with `git log`)
 - C++23 default (`MC2_CXX_STANDARD=23`, MSVC 14.44). Full default build green (13 targets; text_tool EXCLUDE_FROM_ALL). Linux deferred.
