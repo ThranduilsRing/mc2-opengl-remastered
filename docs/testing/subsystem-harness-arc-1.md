@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # SUBSYSTEM-HARNESS-ARC-1 — cheap contract/edge-case harness layer
 
 **Status:** SHIPPED — HARNESS-TEMPLATE-1, SHADER-CONTRACT-HARNESS-1,

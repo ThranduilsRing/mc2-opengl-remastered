@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Golden-Scene Capture Manifest (GOLDEN-SCENE-MANIFEST-1)
 
 Reproducible-visual-proof metadata for ONE capture of a golden scene. A manifest

@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # GAMEOS-PLATFORM-BOUNDARY-RECON-1
 
 **Status:** RECON ONLY — no code. Maps GameOS/platform deps blocking portability,
@@ -67,7 +68,7 @@ crash/diag/threading · gameos.hpp surface+callers). All cites live-verified at 
 ### DEAD-LEGACY inventory
 - NETWORK/DirectPlay section (gameos.hpp 1721–1884); legacy Environment texture-heap + net fields (302–321, self-flagged "will be deleted"); pure-D3D vertex/state enums (D3DVERTEX variants, clip/lighting states).
 - Two UNREGISTERED crash filters: `gameosmain.cpp:52` (cast-to-void) + `code/dw.cpp:87` (Watson, `#ifndef LINUX_BUILD`) — confirm no double-registration, then delete.
-- `mclib/ffile.cpp:650` `_open("d:/ffile.bin")` dead debug stub.
+- `mclib/ffile.cpp:670` `_open("d:/ffile.bin")` dead debug stub.
 
 ## Recommended next 3 slices
 

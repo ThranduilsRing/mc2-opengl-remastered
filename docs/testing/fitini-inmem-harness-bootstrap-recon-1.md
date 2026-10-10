@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # FITINI-INMEM-HARNESS-BOOTSTRAP-RECON-1
 
 **Status:** RECON-FIRST follow-up (no fix here). Opened because

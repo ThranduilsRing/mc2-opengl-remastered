@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # SMOKE-FIRST-LAUNCH-CRASH-SILENT-RECON-1 — verdict
 
 **Status:** RECON — **INCONCLUSIVE / ENVIRONMENT-SUSPECTED** (no fix). Next step is an evidence-capture

@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # HARNESS-TARGET-SWEEP-2
 
 **Status:** RECON ONLY — no code, no production edits. Identifies the next
@@ -62,7 +63,7 @@ harness · mech-import tg-dump/bone-parity/roster CLI · `tests/unit/test_hashin
 
 ### Mech-import GLB asset-pack manifest — GREEN, zero-touch
 - **Confirmed gap:** deployed trees ship `Flea.glb`, `MadCat.glb`, marauder/madcat atlases, but `git ls-files data/tgl/` tracks only Hangar/Quonset GLBs — same untracked-large-asset class as the 7/8 HDRIs.
-- **Source:** `.mcasset.json` `lods[].glb` + `[Import] Source=` in `data/tgl/*.ini` (read by `bdactor.cpp:759`, `mech3d.cpp:383`). Parse the single `Source=` key with a trivial regex — NOT the FitIni parser.
+- **Source:** `.mcasset.json` `lods[].glb` + `[Import] Source=` in `data/tgl/*.ini` (read by `mclib/bdactor_sidecar.cpp:429`, `mclib/mech3d_type.cpp:50`). Parse the single `Source=` key with a trivial regex — NOT the FitIni parser.
 - **Bug class:** a `Source=`/mcasset GLB ref neither tracked nor declared = dangling import (silent ASE fallback or GPU-path crash).
 - **Smoke is blind:** import gated `MC2_ASSIMP_MECH_IMPORT=1`, off in tier1.
 - **Type:** Python, new `docs/testing/mech_import_glb_pack.txt` (IBL pipe-delimited format) + `every_glb_tracked_or_declared` + strict-local mode.
@@ -72,9 +73,9 @@ harness · mech-import tg-dump/bone-parity/roster CLI · `tests/unit/test_hashin
 - `tests/smoke/test_gates.py` (9 tests) exists but does NOT assert `crash_silent` (the single most important crash bucket — a classifier regression mislabeling it as pass makes the whole smoke gate silently blind), `engine_reported_fail`, `heartbeat_freeze_load`, `pool_null`/`asset_oob`/`missing_file`. **Add ~4 tests to the existing file** (not a new harness). Zero production touch, trivial risk.
 
 ### YELLOW extraction-gated (do ONLY with a paired fix)
-- **Logistics component-CSV tokenizer** (`code/logisticscomponent.cpp:182` `extractString`): no bounds check during scan (release `gosASSERT` is a no-op → `memcpy` overrun on over-long field) and `pFileLine += i+1` walks **one byte past the NUL** on a short/truncated line (~20 sequential extracts → OOB heap read). **Real bug.** Mod CSVs routinely malformed. Land as fix+extraction(`logistics_csv` leaf)+harness, else defer per objmgr rule.
-- **GLB→MC2 texname derivation** (`assimp_importer.cpp:266` `DeriveMC2TextureName`/`:162` `skelMeshDropped`): wrong derived atlas name → magenta mech (256-clamp off-by-one, missed `a_` alpha prefix). Extraction has forward value (active BT2018-1B milestone). Production touch + visual confirm required.
-- **File/path normalizer divergence:** `NormalizeKey` (file.cpp:202, `tolower`) vs `File::open` (`S_strlwr`+loop, L980) vs `FullPathFileName` (Win32 `CharLower`) — three rules, a real Linux/Vulkan case-sensitivity hazard. Best as a cross-agreement assertion in `tests/unit` doctest; merging the three is its own production refactor.
+- **Logistics component-CSV tokenizer** (`code/logisticscomponent.cpp:188` `extractString`): no bounds check during scan (release `gosASSERT` is a no-op → `memcpy` overrun on over-long field) and `pFileLine += i+1` walks **one byte past the NUL** on a short/truncated line (~20 sequential extracts → OOB heap read). **Real bug.** Mod CSVs routinely malformed. Land as fix+extraction(`logistics_csv` leaf)+harness, else defer per objmgr rule.
+- **GLB→MC2 texname derivation** (`mclib/assimp_importer.cpp:283` `DeriveMC2TextureName`/`:162` `skelMeshDropped`): wrong derived atlas name → magenta mech (256-clamp off-by-one, missed `a_` alpha prefix). Extraction has forward value (active BT2018-1B milestone). Production touch + visual confirm required.
+- **File/path normalizer divergence:** `NormalizeKey` (mclib/file.cpp:215, `tolower`) vs `File::open` (`S_strlwr`+loop, L980) vs `FullPathFileName` (Win32 `CharLower`) — three rules, a real Linux/Vulkan case-sensitivity hazard. Best as a cross-agreement assertion in `tests/unit` doctest; merging the three is its own production refactor.
 
 ## Ranked recommendation — next 3 (all GO)
 

@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # MINIMAL-VIABLE-HARNESS-1 — engine TUs under unit test, game-free
 
 **Status:** SHIPPED. The real mclib file stack (`file.cpp`, `inifile.cpp`,

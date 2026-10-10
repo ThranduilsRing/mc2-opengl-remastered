@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Golden-Scene Parity Harness (GOLDEN-SCENE-PARITY-1)
 
 The proof loop for validating a **render island** — a subsystem swapped behind a
