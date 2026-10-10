@@ -232,7 +232,6 @@ void initDialogs();
 void endDialogs();
 void DEBUGWINS_toggle (bool* windowsOpen);
 void DEBUGWINS_display (bool* windowsOpen);
-void DEBUGWINS_print (const char* s, long window);
 void DEBUGWINS_setGameObject (long debugObj, GameObjectPtr obj);
 void DEBUGWINS_viewGameObject (long debugObj);
 void DEBUGWINS_removeGameObject (GameObjectPtr obj);
@@ -242,7 +241,5 @@ void DEBUGWINS_render (void);
 void __stdcall UpdateRenderers();
 void __stdcall TerminateGameEngine();
 void __stdcall DoGameLogic();
-void ParseCommandLine(const char *command_line);
-void __stdcall GetGameOSEnvironment(const char* CommandLine );
 
 #endif // MECHCMD2_INTERNAL_H
