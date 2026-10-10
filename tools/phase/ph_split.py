@@ -183,7 +183,7 @@ def main():
         exits = bool(opts.get('exits'))
         exit_val = opts['exits'] if isinstance(opts.get('exits'), str) else ''
         if exits:
-            body = [re.sub(r'\breturn ' + (re.escape(exit_val) + ' ?' if exit_val else '') + ';', 'return true;', x) for x in body]
+            body = [re.sub(r'\breturn' + ((' ' + re.escape(exit_val)) if exit_val else '') + r'\s*;', 'return true;', x) for x in body]
             body = body + [indent + 'return false;']
         code = '\n'.join(strip_code(x) for x in body)
         uparams = [(n, t) for n, t in getattr(S, 'PARAMS', []) if re.search(r'\b' + n + r'\b', code)]
@@ -278,7 +278,7 @@ def main():
             if in_ph[ln] == ln:
                 if ln in S.ORCH_BEFORE:
                     O.append(before(ln))
-                lead = re.match(r'\s*', L[ln - 1]).group(0) if method else indent
+                lead = re.match(r'\s*', L[ln - 1]).group(0) if method and not L[ln - 1].startswith('#') else indent
                 O.append(lead + calls[ln])
             continue
         if ln in S.ORCH_BEFORE:

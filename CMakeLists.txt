@@ -460,6 +460,7 @@ set(SOURCES
     "code/sim_identity.cpp"
     "code/objective.cpp"
     "code/saveload.cpp"
+    "code/saveload_load.cpp"
     "code/trigger.cpp"
     "code/weather.cpp"
     "gui/aanimobject.cpp"
