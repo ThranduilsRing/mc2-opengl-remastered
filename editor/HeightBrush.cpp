@@ -34,7 +34,7 @@ static bool projectPtGL_brush( Camera* eye, const Stuff::Vector3D& wp, float& sx
 
 //-------------------------------------------------------------------------------------------------
 HeightBrush::HeightBrush( Mode m, float r, float s )
-	: mode( m ), radius( r ), strength( s ), pCurAction( NULL )
+	: mode( m ), radius( r ), strength( s ), pCurAction( nullptr )
 {
 }
 
@@ -56,7 +56,7 @@ Action* HeightBrush::endPaint()
 	if ( pCurAction && !pCurAction->vertexInfoList.Count() )
 	{
 		delete pCurAction;
-		pRet = NULL;
+		pRet = nullptr;
 	}
 	if ( land )
 	{
@@ -89,7 +89,7 @@ Action* HeightBrush::endPaint()
 			}
 		}
 	}
-	pCurAction = NULL;
+	pCurAction = nullptr;
 	touchedThisStroke.clear();
 	return pRet;
 }

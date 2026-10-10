@@ -24,13 +24,13 @@ static const int WM_DOTICK = WM_USER + 1;
 //-------------------------------------------------------------------------------------------------
 PointerSelectObjectDlg::PointerSelectObjectDlg():CDialog(IDD_POINTER_SELECT_OBJECT)
 {
-	m_pButton = 0;
+	m_pButton = nullptr;
 	m_bTimerIsReset = true;
 }
 
 PointerSelectObjectDlg::PointerSelectObjectDlg(int x, int y):CDialog(IDD_POINTER_SELECT_OBJECT)
 {
-	m_pButton = 0;
+	m_pButton = nullptr;
 	m_bTimerIsReset = true;
 }
 
@@ -150,7 +150,7 @@ BOOL PointerSelectObjectDlg::OnWndMsg( UINT message, WPARAM wParam, LPARAM lPara
 			BOOL result = PeekMessage(&msg, GetSafeHwnd(), 0, 0, PM_NOREMOVE);
 			depth -= 1;
 			if ((0 == result) && (m_bTimerIsReset)) {
-				unsigned int ui = ::SetTimer(GetSafeHwnd(), 1/*arbitrary non-zero ID*/, 2/*milliseconds*/, NULL);
+				unsigned int ui = ::SetTimer(GetSafeHwnd(), 1/*arbitrary non-zero ID*/, 2/*milliseconds*/, nullptr);
 				assert(ui);
 				m_bTimerIsReset = false;
 			}

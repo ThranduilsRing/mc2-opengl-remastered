@@ -73,7 +73,7 @@ namespace
 		p = s.find( ':', p );
 		if ( p == std::string::npos ) return false;
 		const char* start = s.c_str() + p + 1;
-		char* end = NULL;
+		char* end = nullptr;
 		double v = strtod( start, &end );
 		if ( end == start ) return false;        // no number consumed -> treat as missing
 		if ( !( v == v ) ) return false;          // NaN guard

@@ -7,7 +7,7 @@
 //
 #include <windows.h>
 
-static HINSTANCE g_hInstance = NULL;
+static HINSTANCE g_hInstance = nullptr;
 
 extern "C" __declspec(dllexport) void initStringResources()
 {
@@ -30,7 +30,7 @@ extern "C" __declspec(dllexport) const char* getStringById(unsigned int id)
             return buffer;
     }
 
-    return NULL;
+    return nullptr;
 }
 
 BOOL APIENTRY DllMain(HINSTANCE hModule,

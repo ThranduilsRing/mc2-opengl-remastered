@@ -98,7 +98,7 @@ EditorObject* EditorObjectMgr::getObjectAtPosition( const Stuff::Vector3D& posit
 	// uses getObjectAtPosition picks the same object the Select tool does.
 	const float pickFloor = 3.0f * ( land ? land->worldUnitsPerVertex : 64.0f );
 	float bestDistSq = 1.0e30f;
-	EditorObject* pBest = NULL;
+	EditorObject* pBest = nullptr;
 
 	for ( BUILDING_LIST::EIterator iter = buildings.Begin(); !iter.IsDone(); iter++ )
 	{
@@ -290,7 +290,7 @@ EditorObject* EditorObjectMgr::getObjectAtScreenPosition( int screenX, int scree
 	// user actually sees on screen, so the pick lines up with the cursor; it does
 	// not depend on the fragile screen->world unproject.
 	if (!eye)
-		return NULL;
+		return nullptr;
 
 	const float clickX = (float)screenX;
 	const float clickY = (float)screenY;
@@ -299,7 +299,7 @@ EditorObject* EditorObjectMgr::getObjectAtScreenPosition( int screenX, int scree
 	const float pixelFloor = 12.0f;
 
 	float bestPixSq = 1.0e30f;
-	EditorObject* pBest = NULL;
+	EditorObject* pBest = nullptr;
 
 	for( BUILDING_LIST::EIterator iter = buildings.Begin(); !iter.IsDone(); iter++ )
 		EditorObjectMgr_ConsiderScreenPick(*iter, clickX, clickY, pixelFloor, bestPixSq, pBest);
@@ -396,5 +396,5 @@ EditorObject* EditorObjectMgr::getObjectAtLocation( float x, float y )
 		}
 	}
 
-	return NULL;
+	return nullptr;
 }

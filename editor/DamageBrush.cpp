@@ -24,7 +24,7 @@ bool DamageBrush::beginPaint()
 
 Action* DamageBrush::endPaint()
 {
-	Action* pRetAction = NULL;
+	Action* pRetAction = nullptr;
 
 	if (pAction)
 	{
@@ -36,7 +36,7 @@ Action* DamageBrush::endPaint()
 		}
 	}
 	
-	pAction = NULL;
+	pAction = nullptr;
 	return pRetAction;
 }
 
@@ -44,7 +44,7 @@ bool DamageBrush::paint( Stuff::Vector3D& worldPos, int screenX, int screenY  )
 {
 	// EDITOR-BRUSH-SCREENPICK-1: screen-projection pick (like Select) so tall static
 	// props are hittable; world-footprint pick missed them (cursor ground point != base).
-	EditorObject* pObject = const_cast<EditorObject*>(EditorPickObjectAtScreen( screenX, screenY ));
+	EditorObject* pObject = EditorPickObjectAtScreen( screenX, screenY );
 
 	if ( pObject )
 	{
@@ -87,7 +87,7 @@ Action* DamageBrush::applyToSelection()
 
 	if (!(pRetAction->isNotNull()))
 	{
-		delete pRetAction; pRetAction = NULL;
+		delete pRetAction; pRetAction = nullptr;
 	}
 
 	return pRetAction;

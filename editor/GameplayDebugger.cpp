@@ -202,7 +202,7 @@ void GameplayDebugger::Draw()
 
     // Collect selected objects; we care only about the first.
     EditorObjectMgr::EDITOR_OBJECT_LIST sel = mgr->getSelectedObjectList();
-    EditorObject* obj = NULL;
+    EditorObject* obj = nullptr;
     {
         EditorObjectMgr::EDITOR_OBJECT_LIST::EIterator it = sel.Begin();
         if (!it.IsDone())
@@ -259,7 +259,7 @@ void GameplayDebugger::Draw()
         }
 
         // Squad
-        ImGui::Text("Squad: %lu", (unsigned long)unit->getSquad());
+        ImGui::Text("Squad: %lu", unit->getSquad());
     }
 
     ImGui::Separator();

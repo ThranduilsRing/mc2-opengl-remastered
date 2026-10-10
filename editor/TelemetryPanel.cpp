@@ -76,11 +76,11 @@ void TelemetryPanel::Draw()
 
     // --- Edit state -----------------------------------------------------
     ImGui::SeparatorText("Edit state");
-    const bool dirty = (EditorData::instance != NULL)
+    const bool dirty = (EditorData::instance != nullptr)
                        && EditorData::instance->MissionNeedsSaving();
     ImGui::Text("Unsaved:    %s", dirty ? "YES (dirty)" : "no");
 
-    if (ActionUndoMgr::instance != NULL)
+    if (ActionUndoMgr::instance != nullptr)
     {
         ActionUndoMgr* um = ActionUndoMgr::instance;
         const int pos   = um->GetCurrentPosition();

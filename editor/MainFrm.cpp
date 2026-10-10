@@ -60,9 +60,9 @@ int MainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 
 	// Create the real editor view first. Its constructor sets
 	// EditorInterface::s_instance, which the editor startup path requires.
-	if (!m_wndView.Create(NULL, _T("EditorInterface"),
+	if (!m_wndView.Create(nullptr, _T("EditorInterface"),
 		WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN | WS_VSCROLL | WS_HSCROLL,
-		CRect(0, 0, 0, 0), this, AFX_IDW_PANE_FIRST, NULL))
+		CRect(0, 0, 0, 0), this, AFX_IDW_PANE_FIRST, nullptr))
 	{
 		TRACE0("Failed to create view window\n");
 		return -1;

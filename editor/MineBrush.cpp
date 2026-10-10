@@ -22,7 +22,7 @@ bool MineBrush::beginPaint()
 
 Action* MineBrush::endPaint()
 {
-	Action* pRetAction = NULL;
+	Action* pRetAction = nullptr;
 
 	if (pAction)
 	{
@@ -34,7 +34,7 @@ Action* MineBrush::endPaint()
 		}
 	}
 	
-	pAction = NULL;
+	pAction = nullptr;
 	return pRetAction;
 }
 

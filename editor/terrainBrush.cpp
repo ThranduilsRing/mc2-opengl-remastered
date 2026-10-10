@@ -60,7 +60,7 @@ bool TerrainBrush::beginPaint()
 Action* TerrainBrush::endPaint()
 {
 	Action* pRetAction = pAction;
-	pAction = NULL;
+	pAction = nullptr;
 	touchedThisStroke.clear();
 
 	// Rebuild the legacy/indirect face cache + decal VBO for the painted cells

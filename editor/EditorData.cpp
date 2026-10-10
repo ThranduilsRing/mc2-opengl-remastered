@@ -46,13 +46,13 @@ void EditorDataTrace(const char* fmt, ...)
 	fputc('\n', f);
 	fclose(f);
 }
-IProviderAsset * mapAsset = NULL;
-IProviderAsset * mechAsset = NULL;
+IProviderAsset * mapAsset = nullptr;
+IProviderAsset * mechAsset = nullptr;
 
 char EditorData::mapName[256];
-unsigned long* EditorData::tacMapBmp = NULL;
+unsigned long* EditorData::tacMapBmp = nullptr;
 
-EditorData* EditorData::instance = NULL;
+EditorData* EditorData::instance = nullptr;
 
 char missionScriptName[1024]="M0101";
 
@@ -73,7 +73,7 @@ EditorData::EditorData()
 { 
 	gosASSERT( !instance ); instance = this; 
 	updateTitleBar();
-	tacMapBmp = NULL;
+	tacMapBmp = nullptr;
 	clear();
 }
 
@@ -96,7 +96,7 @@ EditorData::~EditorData()
 	EditorDataTrace("[EDITOR_SHUTDOWN] phase=~EditorData_enter");
 	clear();
 
-	instance = NULL;
+	instance = nullptr;
 	EditorDataTrace("[EDITOR_SHUTDOWN] phase=~EditorData_exit");
 }
 //-------------------------------------------------------------------------------------------------
@@ -118,7 +118,7 @@ bool EditorData::clear()
 	{
 		land->destroy();
 		delete land;
-		land = NULL;
+		land = nullptr;
 	}
 	EditorDataTrace("[EDITOR_SHUTDOWN] phase=land_destroyed");
 
@@ -178,7 +178,7 @@ bool EditorData::clear()
 	if ( tacMapBmp )
 	{
 		free( tacMapBmp );
-		tacMapBmp = NULL;
+		tacMapBmp = nullptr;
 	}
 
 	EditorData::instance->missionSettings.clear();

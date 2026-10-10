@@ -18,7 +18,7 @@ const DWORD  kPollMs       = 40;     // watchdog wake interval
 const DWORD  kRateLimitMs  = 1000;   // min gap between captures (avoid spam)
 const int    kMaxFrames    = 40;
 
-HANDLE volatile s_mainThread = NULL;          // duplicated real handle to main thread
+HANDLE volatile s_mainThread = nullptr;          // duplicated real handle to main thread
 volatile LONGLONG s_lastBeatMs = 0;           // GetTickCount64 of last heartbeat
 bool         s_inited = false;
 bool         s_on = false;
@@ -53,7 +53,7 @@ void captureStall(DWORD stallMs)
     {
         HANDLE proc = GetCurrentProcess();
         // SymInitialize may already have run (crash bundler) — harmless to repeat.
-        SymInitialize(proc, NULL, TRUE);
+        SymInitialize(proc, nullptr, TRUE);
         SymSetOptions(SymGetOptions() | SYMOPT_LOAD_LINES | SYMOPT_DEFERRED_LOADS);
 
         STACKFRAME64 frame;
@@ -74,7 +74,7 @@ void captureStall(DWORD stallMs)
         for (int i = 0; i < kMaxFrames; ++i)
         {
             if (!StackWalk64(machine, proc, th, &frame, &ctx,
-                             NULL, SymFunctionTableAccess64, SymGetModuleBase64, NULL))
+                             nullptr, SymFunctionTableAccess64, SymGetModuleBase64, nullptr))
                 break;
             if (frame.AddrPC.Offset == 0) break;
 
@@ -127,7 +127,7 @@ void initOnce()
 
     // Duplicate the (pseudo) current-thread handle into a real handle the
     // watchdog thread can use to suspend/inspect us.
-    HANDLE dup = NULL;
+    HANDLE dup = nullptr;
     DuplicateHandle(GetCurrentProcess(), GetCurrentThread(),
                     GetCurrentProcess(), &dup,
                     THREAD_SUSPEND_RESUME | THREAD_GET_CONTEXT | THREAD_QUERY_INFORMATION,
@@ -136,7 +136,7 @@ void initOnce()
     s_lastBeatMs = (LONGLONG)GetTickCount64();
 
     appendLog("[WATCHDOG] armed (MC2_EDITOR_WATCHDOG=1, stall>500ms)");
-    CreateThread(NULL, 0, watchdogProc, NULL, 0, NULL);
+    CreateThread(nullptr, 0, watchdogProc, nullptr, 0, nullptr);
 }
 
 } // namespace
