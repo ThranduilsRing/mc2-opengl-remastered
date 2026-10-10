@@ -33,9 +33,9 @@ only if a bad edit cannot land. This tool is the gate: it passes a file only whe
 
 Checker needles: a comment a checker script reads is a sentinel, whatever Rule A says about tags. At startup the
 guard scans scripts/ (*.py *.sh and the *.json/*.txt/*.allowlist lists), tools/ (*.py, not tests), tests/, cmake/ and
-.claude/hooks/ and collects (a) tag-shaped tokens (FOO-BAR-1) from string literals and non-comment text and (b) plain
-words (>= 6 chars with a hyphen, underscore or all caps) from grep/rg/Select-String arguments, re.* patterns and
-`in text` tests. A comment containing a needle verbatim is protected; `--needles` prints them. Over-protecting is accepted.
+.claude/hooks/ and collects (a) tag-shaped tokens (FOO-BAR-1) from string literals and non-comment text and (b) marker
+words (>= 6 chars: two uppercase segments joined by `-`, a trailing `:`, or >= 12 chars with `-` and a capital; never prose,
+lowercase stems or the NEEDLE_STOPLIST) from grep/rg/Select-String arguments, re.* patterns and `in text` tests. A comment containing a needle verbatim is protected; `--needles` prints them. Over-protecting is accepted.
 
 Optional object proof (a build, which the caller runs, sits between the two steps):
   py -3 tools/comment_guard.py --hash-objs build64-ninja code/a.cpp > before.json
@@ -163,7 +163,10 @@ NEEDLE_MIN_TAG = 5
 NEEDLE_MIN_WORD = 6
 _NEEDLE_PREFIX = 5                  # NeedleSet indexes needles by their first five characters
 _NEEDLE_TAG = re.compile(r"(?<![A-Za-z0-9_])[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+")
-_NEEDLE_WORD = re.compile(r"[A-Za-z0-9_-]+")
+_NEEDLE_WORD = re.compile(r"[A-Za-z0-9_-]+:?")
+_UPPER_SEGMENTS = re.compile(r"[A-Z][A-Z0-9]*(?:-[A-Z0-9]*[A-Z][A-Z0-9]*)+")
+_LOWER_STEM = re.compile(r"^[a-z0-9_]+$")
+NEEDLE_STOPLIST = frozenset(["byte-identical", "gos_terrain", "static_prop", "MATERIAL", "MC2_VK"])
 _NEEDLE_ESCAPE = re.compile(r"\\[A-Za-z]|\$\{?[A-Za-z_][A-Za-z_0-9]*\}?")
 _GREP_CMD = re.compile(r"(?<![\w-])(?:[ef]?grep|rg|Select-String)(?![\w-])(.*)$")
 _QUOTED = re.compile(r"'([^']*)'" r'|"((?:[^"\\]|\\.)*)"')
@@ -188,12 +191,25 @@ def _qtext(m):
     return m.group(1) if m.group(1) is not None else m.group(2)
 
 
+def looks_like_marker(tok):
+    """A word needle protects a comment only when it reads as a sentinel, not as prose or an identifier.
+
+    Marker: two uppercase segments joined by `-` (TIER2-EXCLUDED), a trailing `:` (TEX-CLASS:), or >= 12 chars with a
+    hyphen and an uppercase letter. Lowercase file stems and the known prose/identifier hits never qualify.
+    """
+    if tok in NEEDLE_STOPLIST or _LOWER_STEM.match(tok):
+        return False
+    return bool(_UPPER_SEGMENTS.search(tok) or tok.endswith(":")
+                or (len(tok) >= 12 and "-" in tok and any(c.isupper() for c in tok)))
+
+
 def _needle_words(text):
-    """Plain words a grep/regex/membership test looks for: >= 6 chars with a hyphen, an underscore or all caps."""
+    """Marker-like words a grep/regex/membership test looks for (>= 6 chars; see looks_like_marker)."""
     out = []
     for tok in _NEEDLE_WORD.findall(_NEEDLE_ESCAPE.sub(" ", text)):
-        tok = tok.strip("-_")
-        if len(tok) >= NEEDLE_MIN_WORD and any(c.isalpha() for c in tok) and ("-" in tok or "_" in tok or tok.isupper()):
+        colon = ":" if tok.endswith(":") else ""
+        tok = tok.rstrip(":").strip("-_") + colon
+        if len(tok) >= NEEDLE_MIN_WORD and any(c.isalpha() for c in tok) and looks_like_marker(tok):
             out.append(tok)
     return out
 
@@ -1510,24 +1526,43 @@ def st_split_piece_header_protected():
 def st_needle_extraction_from_checker_sources():
     sh = ("# MOVER-NOT-A-NEEDLE only in a comment\n"
           "b=\"$(grep -n 'MOVER-COHERENCE-AUDIT-BEGIN' \"$f\" | head -1)\"\n"
-          "rg -q sentinel_marker_x \"$f\"\nawk '/FOO-REGION-END/' x\n")
+          "rg -q SENTINEL_MARKER: \"$f\"\nawk '/FOO-REGION-END/' x\n")
     got = needles_from_source("scripts/c.sh", sh)
-    assert {"MOVER-COHERENCE-AUDIT-BEGIN", "sentinel_marker_x", "FOO-REGION-END"} <= set(got), got
+    assert {"MOVER-COHERENCE-AUDIT-BEGIN", "SENTINEL_MARKER:", "FOO-REGION-END"} <= set(got), got
     assert "MOVER-NOT-A-NEEDLE" not in got and "$f" not in got
     py = ('"""doc mentions DOC-ONLY-TAG-1"""\n'
           "# NOFOCUS-COMMENT-ONLY-1\n"
           "TAG = 'NOFOCUS-HARDEN-1'\n"
           "def f(text):\n"
-          "    if 'sentinel_in_text' in text: pass\n"
+          "    if 'sentinel-In-text' in text: pass\n"
           "    if TAG in text: pass\n"
-          "    return re.search(r'\bregion_word_here\b', text) or re.compile('AB-CD-EF')\n")
+          "    return re.search(r'\bregion-Marker-here\b', text) or re.compile('AB-CD-EF')\n")
     got = needles_from_source("scripts/c.py", py)
-    assert {"NOFOCUS-HARDEN-1", "sentinel_in_text", "region_word_here", "AB-CD-EF"} <= set(got), got
+    assert {"NOFOCUS-HARDEN-1", "sentinel-In-text", "region-Marker-here", "AB-CD-EF"} <= set(got), got
     assert "DOC-ONLY-TAG-1" not in got and "NOFOCUS-COMMENT-ONLY-1" not in got, got
     assert "FOO-REGION-END" in needles_from_source("cmake/a.cmake", "if(x MATCHES \"FOO-REGION-END\")\n# NOPE-IN-COMMENT-1\n")
     assert "NOPE-IN-COMMENT-1" not in needles_from_source("cmake/a.cmake", "# NOPE-IN-COMMENT-1\n")
     assert "SLICE-LIST-7" in needles_from_source("scripts/a.json", '{"a": ["SLICE-LIST-7"]}')
     assert set(needles_from_source("scripts/c.py", "x = 'abc'\ny = 'WX-1'\n")) == set()     # shorter than the minimums
+
+
+@case
+def st_word_needles_need_a_marker_shape():
+    for ok in ("TIER2-EXCLUDED", "TEX-CLASS:", "SENTINEL_MARKER:", "region-Marker-here", "VK-only-ITEM-X"):
+        assert looks_like_marker(ok), ok
+    for prose in ("byte-identical", "gos_terrain", "static_prop", "MATERIAL", "MC2_VK", "ring_frames", "some-hyphen-word",
+                  "GPU_CULL", "MC2_TERRAIN_INDIRECT", "default-off", "Short-Id"):
+        assert not looks_like_marker(prose), prose
+    got = needles_from_source("scripts/c.sh", "grep -q 'byte-identical' f\ngrep -q static_prop f\ngrep -q 'TIER2-EXCLUDED' f\n")
+    assert set(got) == {"TIER2-EXCLUDED"}, got
+
+
+@case
+def st_stoplisted_word_needle_does_not_protect():
+    env = Env(needles_from_source("scripts/c.sh", "grep -q 'byte-identical' f; grep -c MATERIAL f; grep -q 'ZONE-OPEN:' f\n"), [])
+    assert R("int a;\n// byte-identical when off\nint b;\n", "int a;\nint b;\n", env=env).ok
+    assert R("int a;\n// MATERIAL table\nint b;\n", "int a;\nint b;\n", env=env).ok
+    assert _kinds(R("int a;\n// ZONE-OPEN: here\nint b;\n", "int a;\nint b;\n", env=env)) == ["protected"]
 
 
 def run_selftest():

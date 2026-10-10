@@ -500,7 +500,7 @@ def test_needle_in_a_checker_comment_or_docstring_does_not_count(repo):
 
 def test_cli_needles_lists_needle_and_first_defining_file(repo):
     _write(repo / "scripts" / "a_check.sh", "grep -n 'FIRST-SENTINEL-END' x\n")
-    _write(repo / "scripts" / "b_check.sh", "grep -n 'FIRST-SENTINEL-END' x\ngrep -c 'second_marker_word' x\n")
+    _write(repo / "scripts" / "b_check.sh", "grep -n 'FIRST-SENTINEL-END' x\ngrep -c 'SECOND_MARKER:' x\n")
     _write(repo / "tools" / "test_skipped.py", "X = 'TEST-ONLY-TAG-1'\n")
     _write(repo / "tools" / "comment_guard.py", "X = 'SELF-ONLY-TAG-1'\n")
     _write(repo / "tests" / "t.py", "X = 'TESTS-DIR-TAG-1'\n")
@@ -508,7 +508,7 @@ def test_cli_needles_lists_needle_and_first_defining_file(repo):
     rc, out = _run("--repo", str(repo), "--needles")
     lines = out.strip().splitlines()
     assert rc == 0
-    assert "FIRST-SENTINEL-END\tscripts/a_check.sh" in lines and "second_marker_word\tscripts/b_check.sh" in lines, out
+    assert "FIRST-SENTINEL-END\tscripts/a_check.sh" in lines and "SECOND_MARKER:\tscripts/b_check.sh" in lines, out
     assert "TESTS-DIR-TAG-1\ttests/t.py" in lines and "CMAKE-SENTINEL-1\tcmake/c.cmake" in lines, out
     assert "TEST-ONLY-TAG-1" not in out and "SELF-ONLY-TAG-1" not in out
 
@@ -545,3 +545,17 @@ def test_split_piece_description_not_protected_without_an_allow_entry(repo):
     _split_repo(repo, with_allow=False)
     rc, out = _run("--repo", str(repo), "--check", str(repo / "code" / "foo_bar.cpp"))
     assert rc == 0, out
+
+
+def test_cli_needles_keep_markers_and_drop_prose_and_identifiers(repo):
+    _write(repo / "scripts" / "c.sh", "grep -q 'byte-identical' x\ngrep -q gos_terrain x\ngrep -q MC2_VK x\n"
+           "grep -q 'TIER2-EXCLUDED' x\ngrep -q 'SAMPLE_MARKER:' x\ngrep -q 'Some-long-Marker-word' x\n")
+    rc, out = _run("--repo", str(repo), "--needles")
+    got = [l.split("\t")[0] for l in out.strip().splitlines()]
+    assert rc == 0 and sorted(got) == ["SAMPLE_MARKER:", "Some-long-Marker-word", "TIER2-EXCLUDED"], got
+
+
+def test_marker_rule_and_stoplist_unit():
+    assert cg.looks_like_marker("TEX-CLASS:") and cg.looks_like_marker("TIER2-EXCLUDED")
+    assert not any(cg.looks_like_marker(w) for w in cg.NEEDLE_STOPLIST)
+    assert not cg.looks_like_marker("any_lowercase_stem") and not cg.looks_like_marker("short-Id")

@@ -703,7 +703,7 @@ Looser than the first cut, on purpose:
 - `--check --allow reviewed.json` (`[{"file","base_line","reason"}]`, line +-2) lets one named protected comment be deleted
   and prints `ALLOWED-DELETE file:line reason`. The reviewer (Sonnet) writes the file after reading the comment; the editing
   model never does. An entry for a checked file that matches nothing is stale and exits 2.
-- Checker needles override the slice-tag rule: at startup the guard collects tags (`FOO-BAR-1`) and grep/regex/`in text` words
+- Checker needles override the slice-tag rule: at startup the guard collects tags (`FOO-BAR-1`) and grep/regex/`in text` marker words (no prose, lowercase stems, stoplist)
   from `scripts/`, `tools/` (not tests), `tests/`, `cmake/`, `.claude/hooks/`; a comment containing one verbatim is protected and the
   finding names the needle and the script (`MOVER-COHERENCE-AUDIT-END` -> `check-mover-registry-coherence.sh`). `--needles` lists them
   (`needle<TAB>first file`). Also protected: `FOO-BEGIN`/`FOO-END`, `@@`/`===`-fenced markers, and the first 14 lines of a split piece
