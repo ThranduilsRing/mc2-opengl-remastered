@@ -36,7 +36,7 @@
   "code/controlgui.cpp": 4991,
   "code/gamecam.cpp": 1564,
   "code/gameobj.cpp": 2366,
-  "code/infowindow.cpp": 1746,
+  "code/infowindow.cpp": 1732,
   "code/logisticsdata.cpp": 3438,
   "code/logisticsdialog.cpp": 2149,
   "code/mechicon.cpp": 1969,
@@ -93,7 +93,7 @@
   "mclib/vfxtile.cpp": 2944,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "453539ec3",
+ "head": "f4788292b",
  "per_dir": {
   "GameAdapters": {
    "files": 8,

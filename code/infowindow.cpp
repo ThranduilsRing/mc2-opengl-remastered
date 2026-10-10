@@ -25,6 +25,7 @@ InfoWindow.cpp			: Implementation of the InfoWindow component.
 #include"infowindowmodel.h"
 #include "imgui.h"
 #include"unitprofile.h"	// EQUIP-ADD-UI-NAME-1 (S3): equipmentAddUiTextForStringId
+#include "Gates/gate.h"
 
 long InfoWindow::SCROLLLEFT = 0;
 long InfoWindow::SCROLLRIGHT = 0;
@@ -369,10 +370,7 @@ void InfoWindow::drawName( const char* name )
 // INFO-IMGUI-SLICE-1: gate. Default OFF -> legacy procedural panel, byte-identical.
 bool InfoWindow::imguiInfoEnabled()
 {
-	static const bool s_on = []{
-		const char* v = getenv("MC2_UI_IMGUI_INFO");
-		return v && v[0] && v[0] != '0';
-	}();
+	static const bool s_on = mc2::gate::get<"MC2_UI_IMGUI_INFO">();
 	return s_on;
 }
 
@@ -803,14 +801,8 @@ void InfoWindow::renderImGui()
 			// pin (render()) so a legacy scrolled reference exists too. No
 			// effect when either env is unset (normal play).
 			{
-				static const long s_bootInfoScroll = []{
-					const char* v = getenv("MC2_BOOT_INFO");
-					return (v && v[0]) ? atol(v) : 0L;
-				}();
-				static const bool s_scrollPin = []{
-					const char* v = getenv("MC2_BOOT_INFO_SCROLL");
-					return v && v[0] && v[0] != '0';
-				}();
+				static const long s_bootInfoScroll = static_cast<long>(mc2::gate::get<"MC2_BOOT_INFO">());
+				static const bool s_scrollPin = mc2::gate::get<"MC2_BOOT_INFO_SCROLL">();
 				if ( s_bootInfoScroll > 0 && s_scrollPin )
 				{
 					extern uint32_t g_mc2FrameCounter;
@@ -924,14 +916,8 @@ void InfoWindow::render()
 	// SCROLLMAX-SCROLLMIN exactly like a user scroll). No effect when either
 	// env is unset (normal play).
 	{
-		static const long s_bootInfoScroll = []{
-			const char* v = getenv("MC2_BOOT_INFO");
-			return (v && v[0]) ? atol(v) : 0L;
-		}();
-		static const bool s_scrollPin = []{
-			const char* v = getenv("MC2_BOOT_INFO_SCROLL");
-			return v && v[0] && v[0] != '0';
-		}();
+		static const long s_bootInfoScroll = static_cast<long>(mc2::gate::get<"MC2_BOOT_INFO">());
+		static const bool s_scrollPin = mc2::gate::get<"MC2_BOOT_INFO_SCROLL">();
 		if ( s_bootInfoScroll > 0 && s_scrollPin )
 		{
 			extern uint32_t g_mc2FrameCounter;
