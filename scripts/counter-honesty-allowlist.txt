@@ -89,7 +89,7 @@ mclib/camera.cpp::s_camTestFrame <= 420
 mclib/cone_glow.cpp::s_bcalls <= 64
 mclib/cone_glow.cpp::s_calls <= 48
 mclib/cone_glow.cpp::s_qcalls <= 48
-mclib/gvactor.cpp::s_spotDiagGvActors <= 8
+mclib/gvactor_update.cpp::s_spotDiagGvActors <= 8
 mclib/mech3d.cpp::g_loadRaceMechDegrade <= 50
 mclib/mech3d.cpp::s_diagN++ < 24
 mclib/mech3d.cpp::s_mechRestoreEmits < 2000

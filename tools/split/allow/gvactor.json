@@ -1,0 +1,24 @@
+{
+ "base": "c46894b57",
+ "src": "mclib/gvactor.cpp",
+ "stem": "gvactor",
+ "edits": [
+  [
+   "static const bool s_gpuCullLifecycle = (getenv(\"MC2_GPU_CULL_LIFECYCLE\") != nullptr);",
+   "const bool s_gpuCullLifecycle = (getenv(\"MC2_GPU_CULL_LIFECYCLE\") != nullptr);"
+  ],
+  [
+   "static bool gvEnvFlagDefaultOn(const char* name) {",
+   "inline bool gvEnvFlagDefaultOn(const char* name) {"
+  ]
+ ],
+ "_reason": "s_gpuCullLifecycle is read by five pieces, so it keeps its eager getenv initialisation but is defined (external linkage) in gvactor.cpp and declared extern in gvactor_internal.h; gvEnvFlagDefaultOn is shared by two caches in different pieces and becomes inline in the header. Every other gate cache moved textually, unchanged, beside its single user (render/update).",
+ "scripts": [
+  "scripts/check-env-registry.sh",
+  "scripts/counter-honesty-allowlist.txt",
+  "scripts/run_smoke.py",
+  "scripts/check-light-row-freshness.py",
+  "scripts/delivery-fixes.json"
+ ],
+ "_scripts_reason": "Reviewed: counter-honesty now names gvactor_update.cpp; delivery-fixes.json code_evidence paths are historical (read at the fix commit) and the current-tree gate read follows the helper into the header; the rest are comments."
+}
