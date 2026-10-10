@@ -181,8 +181,8 @@
    "LG16": 7,
    "LG17": 47,
    "LG18": 4,
-   "LG19": 35,
-   "LG20": 39
+   "LG19": 33,
+   "LG20": 37
   },
   "mclib": {
    "LG01": 2850,
@@ -2721,9 +2721,7 @@
    "LG09": 37,
    "LG11": 2,
    "LG12a": 3,
-   "LG12b": 24,
-   "LG19": 2,
-   "LG20": 2
+   "LG12b": 24
   },
   "code/missiongui_uicmd_fixture.cpp": {
    "LG01": 3,
@@ -5835,7 +5833,7 @@
    "LG20": 1
   }
  },
- "head": "93a8f3ad3",
+ "head": "fb6fa91d9",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

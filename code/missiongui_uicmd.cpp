@@ -1,6 +1,8 @@
 // MissionInterfaceManager: UI-command channel: file polling, verb dispatch and the ack epilogue.
 // Declared in missiongui.h; shared names in missiongui_internal.h.
 #include "missiongui_internal.h"
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"   // str<>()
 
 
 //--------------------------------------------------------------------------
@@ -122,7 +124,8 @@
 // as MC2_BOOT_PAUSED above. Registered (Trace).
 void MissionInterfaceManager::processUiCommandChannel()
 {
-	static const char* s_path = getenv("MC2_UI_COMMAND_FILE");
+	static const std::string s_pathText = mc2::gate::str<"MC2_UI_COMMAND_FILE">();   // "" when unset or empty
+	static const char* s_path = s_pathText.c_str();
 	if (!s_path || !s_path[0])
 		return;
 
@@ -284,8 +287,7 @@ bool MissionInterfaceManager::uiCmdBasic(UiCmdCtx& c)
 			backbuffer = (name.substr(sp + 1) == "backbuffer");
 			name = name.substr(0, sp);
 		}
-		const char* ds = getenv("MC2_DEV_SHELL");
-		if (!ds || ds[0] != '1') {
+		if (!mc2::gate::get<"MC2_DEV_SHELL">()) {
 			result = "blocked";
 			note = "needs MC2_DEV_SHELL=1 (capture hook is shell-gated)";
 		} else if (name.empty()) {
