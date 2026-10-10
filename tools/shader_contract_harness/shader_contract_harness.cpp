@@ -24,6 +24,8 @@
 //   cmake --build build64-shader --config RelWithDebInfo --target shader_contract_harness
 
 #include "contract_harness.h"
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"   // str<>()
 
 #include <cstdlib>
 #include <filesystem>
@@ -44,7 +46,7 @@ using namespace contract_harness;
 // ---- helpers ---------------------------------------------------------------
 
 static fs::path repoRoot() {
-    if (const char* e = std::getenv("MC2_CONTRACT_REPO_ROOT"); e && *e)
+    if (const std::string e = mc2::gate::str<"MC2_CONTRACT_REPO_ROOT">(); !e.empty())   // "" when unset or empty
         return fs::path(e);
     return fs::path(MC2_REPO_ROOT);
 }
