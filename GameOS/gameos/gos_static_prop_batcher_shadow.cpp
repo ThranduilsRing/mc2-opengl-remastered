@@ -605,6 +605,7 @@ void GpuStaticPropBatcher::drawDynamicPropShadows(
     if (lsLoc >= 0)
         glUniformMatrix4fv(lsLoc, 1, GL_FALSE, pp->getDynamicLightSpaceMatrix()); // DYNAMIC matrix
 
+    // SHADOW-PROP-ALPHA-1: one-time u_tex(=0)+u_debugAddrMode setup (alpha prog).
     if (usingAlphaProg) setupPropShadowAlphaUniforms(shadowProg, debugAddrMode_);
 
     glBindVertexArray(s_sharedVao);
@@ -761,6 +762,11 @@ extern "C" int mc2_shadow_island_get_geometry_feed(Mc2ShadowGeomFeed* out) {
 // + reverse-Z depth bias. Called by the color island ONLY when its gate is ON (the
 // GL flush() is skipped in that case).
 //
+// CURRENT BEHAVIOUR (supersedes the history below): per type the feed is the
+// persistent-store block FIRST, then this frame's dynamic submits from
+// s_bucketsByType (excluding the reinjPos/reinjCount range copied from the store);
+// mc2_color_prop_island_end_frame() performs flush()'s end-of-frame bookkeeping.
+// The 'persistent store only' text below describes the original fix, kept for context.
 //
 // VK-PROP-COVERAGE FIX (source correction): originally this read s_bucketsByType.
 // That map is a per-FRAME accumulator whose ONLY per-frame clear lives inside

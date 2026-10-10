@@ -477,6 +477,7 @@ static void bindAuxTextures() {
         }
     }
 
+    // Stage B: transition mask array at unit 11.
     {
         const bool tmReady = gos_terrain_indirect_isTransitionMaskReady();
         if (s_locUseTransitionMask >= 0)
@@ -1354,6 +1355,8 @@ void TerrainLodSubmitFrame::restoreGlState() {
         if (prevBlend)      glEnable(GL_BLEND);
         glDepthFunc((GLenum)prevDepthFunc);
     }
+    // useGuards path: gCull/gBlend/gDepthState/gDepthTest restore depth/blend/
+    // cull/mask/func when their optionals destruct at the closing brace below.
     glBindVertexArray((GLuint)prevVAO);
     glUseProgram((GLuint)prevProg);
 

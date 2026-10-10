@@ -76,12 +76,17 @@ unsigned int gos_GetTerrainNormalArrayTex() {
 // Defined here because the full gosRenderer type is visible in this TU.
 // Declarations live in gos_terrain_bridge.h.
 
+// gos_terrain_bridge_getMaterial and gos_terrain_bridge_getShaderProgram deleted by
+// DEAD-BRIDGE-DELETE-1: zero external callers tree-wide (whole-repo grep incl. editor/
+// tools/shaders/scripts). Provably-dead public wrappers around live gosRenderer members.
 
 void gos_terrain_bridge_bindUniforms(gosRenderMaterial* material) {
     if (g_gos_renderer && material)
         g_gos_renderer->terrainBindUniformsForPatchStream(material);
 }
 
+// gos_terrain_bridge_applyVertexDeclaration deleted by TERRAIN-BRIDGE-BODY-DELETE-2:
+// callerless after TerrainPatchStream::flush() retired (TERRAIN-BRIDGE-BODY-DELETE-1).
 
 unsigned int gos_terrain_bridge_glTextureForGosHandle(unsigned int gosHandle) {
     if (!g_gos_renderer) return 0;
@@ -565,6 +570,9 @@ bool gos_terrain_bridge_drawIndirect(int cmdCount, unsigned int recipeSSBO,
         if (locUseTM >= 0) glUniform1i(locUseTM, transitionMaskReady ? 1 : 0);
     }
 
+    // ---- SSBO bindings + indirect buffer -----------------------------------
+    // Slot 1 = recipe (static, mission-stable)
+    // Slot 2 = thin record (per-frame ring) — will be re-bound via range below
     if (recipeSSBO != 0)
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, (GLuint)recipeSSBO);
     glBindBuffer(GL_DRAW_INDIRECT_BUFFER, (GLuint)indirectCmdBuffer);

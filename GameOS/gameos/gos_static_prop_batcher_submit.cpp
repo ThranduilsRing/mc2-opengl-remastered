@@ -800,6 +800,7 @@ bool uploadAllBucketsIfNeeded() {
         return (v + (a - 1)) & ~(a - 1);
     };
 
+    // Compute EXACT total byte usage with per-bucket alignment padding.
     size_t instBytesNeeded = 0;
     size_t colBytesNeeded  = 0;
     for (auto& kv : s_bucketsByType) {

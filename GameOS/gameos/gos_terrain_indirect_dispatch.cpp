@@ -548,6 +548,7 @@ void ComputeDispatch() {
                                (GLsizeiptr)(vis * 2u * sizeof(uint32_t)),
                                s_canaryBuf.data());
 
+            // 2) Read full thin records as packed block (vis * 32 bytes).
             glBindBuffer(GL_SHADER_STORAGE_BUFFER, g_thinRecordSSBO);
             glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, thinSlotByteOffset,
                                (GLsizeiptr)(vis * 32u),
@@ -1338,6 +1339,7 @@ void RenderWaterReflectionPass() {
     glClearColor(prevCC[0], prevCC[1], prevCC[2], prevCC[3]);  // restore clear color
 
     gos_SetTerrainMVP(saved);   // RESTORE production MVP (load-bearing)
+    // RESTORE the dispatch snapshot the water fast path consumes (see above).
     memcpy(g_dispatchMvp16, savedDispatchMvp, sizeof(g_dispatchMvp16));
     g_dispatchMvpFp       = savedDispatchFp;
     g_dispatchMvpFrameIdx = savedDispatchFrameIdx;
@@ -1416,6 +1418,8 @@ const float* gos_terrain_indirect_getRingSlotMvp() {
     return g_thinSlotMVP[slot];
 }
 
+// Slice B4 Stage 1b — C-linkage accessors used by gos_terrain_mask_dispatch::DrawMaskSolid.
+// Probe 8: MVP fingerprint accessors also live here (C linkage for cross-TU call from bridge).
 extern "C" {
 
 unsigned int gos_terrain_indirect_getRecipeSSBO() {

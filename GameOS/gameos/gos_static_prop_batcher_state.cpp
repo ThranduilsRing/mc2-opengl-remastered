@@ -284,6 +284,7 @@ extern const float s_nightTagScale = []() {
     return (s_nightTagMode == 2) ? 4.0f : 1.0f;
 }();
 
+// BEACON-FIXTURE-ID-1: fixture-scoped night emission.
 //
 // MC2_STATIC_PROP_NIGHT_TAGS (above) restores the stock night vertex tags for
 // EVERY tagged prop, which is why it ships default-OFF: 738 of 2947 stock .ase
@@ -1056,6 +1057,8 @@ void staticPropReleaseBuckets() {
     s_packetBucketIndex.clear();
     s_slotBucketIndex.clear();
     s_bucketCmdCount.clear();
+    // STATICPROP-MATERIAL-ORM-1 — release the per-bucket ORM sibling arrays.
+    // Empty (no-op) when the gate is OFF.
     for (GLuint a : s_ormBucketArrays) {
         if (a) glDeleteTextures(1, &a);
     }

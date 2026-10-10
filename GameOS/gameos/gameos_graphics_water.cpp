@@ -536,6 +536,11 @@ void gosRenderer::renderWaterFastPath(
                           && baseTex       != 0;
 
     if (mdiValid) {
+        // ─────────────────────────────────────────────────────────────
+        // GPU-driven MDI path
+        // Thin records: already cull-packed by compute + bound to slot 6
+        // by ComputeDispatchAndBindThinRecords() (M2 fix).
+        // ─────────────────────────────────────────────────────────────
 
         // Atlas accessors: defined only in gos_terrain_indirect.cpp (no header).
         // Precedent: sibling terrain-solid functions declare identical extern blocks
@@ -796,6 +801,7 @@ void gosRenderer::renderWaterFastPath(
             setMF("u_waterHdriLod", hdriAvail ? mc2WaterHdriLodDefault() : -1.0f);
         }
 
+        // Bind SSBOs.
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, recipeBuf);
         // Slot 6 (thin records) was already bound by ComputeDispatchAndBindThinRecords.
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7, s_perCmdSsbo);

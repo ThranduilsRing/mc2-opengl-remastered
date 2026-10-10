@@ -767,6 +767,7 @@ void BuildCementCatalogAtlas() {
     g_cementCatalogTruncated = truncated ? 1 : 0;
     g_cementLayerMapReady    = true;
 
+    // REGISTRY-TERRAIN-SSBO-1: register the cement catalog atlas (observe-only).
     {
         RenderCore::RenderResourceDesc d;
         d.id        = RenderCore::RenderResourceId::CementAtlas;
@@ -893,6 +894,7 @@ void BuildDenseRecipe() {
                  GL_DYNAMIC_DRAW);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
+    // REGISTRY-TERRAIN-SSBO-1: register the dense recipe SSBO (observe-only).
     {
         RenderCore::RenderResourceDesc d;
         d.id        = RenderCore::RenderResourceId::TerrainRecipeBuffer;
@@ -967,6 +969,7 @@ void ResetDenseRecipe() {
         glDeleteTextures(1, &g_cementAtlasGLTex);
         g_cementAtlasGLTex = 0;
 
+        // REGISTRY-TERRAIN-SSBO-1: mark the cement atlas slot unavailable on teardown.
         RenderCore::RenderResourceDesc invalid;
         invalid.id = RenderCore::RenderResourceId::CementAtlas;
         RenderCore::registerOrUpdateRenderResource(invalid);

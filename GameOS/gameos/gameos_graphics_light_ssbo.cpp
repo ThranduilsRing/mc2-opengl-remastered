@@ -178,6 +178,8 @@ static bool gos_LightDataSsbo_UploadGrowOnce(const void* data, size_t bytes,
 	if (statsOn) {
 		s_lightUploadStats.baselineBytes += (unsigned long long)want;  // pre-fix would ship full range
 		s_lightUploadStats.frames        += 1;
+		// Periodic window dump (every 300 accounted calls ≈ 300 frames). savedBytes =
+		// prefixSkipped = the immutable-prefix bytes NOT re-shipped this window.
 		if (s_lightUploadStats.frames >= 300) {
 			std::fprintf(stderr,
 			    "[LIGHT_UPLOAD_STATS] frames=%u uploadBytes=%llu baselineBytes=%llu savedBytes=%llu\n",

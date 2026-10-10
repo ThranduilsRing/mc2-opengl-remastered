@@ -465,6 +465,8 @@ class gosRenderer {
         bool getTerrainDrawEnabled() const { return terrain_draw_enabled_; }
         float getTerrainDebugMode() const { return terrain_debug_mode_; }
 
+        // F1 Stage A-pre Task 7b: store probe-only worldToClipGL for upload at
+        // draw time inside terrainBindUniformsForPatchStream (terrainDrawIndexedPatches retired).
         void setWorldToClipGLProbeMatrix(const float* M16) {
             memcpy(probeWorldToClipGL_, M16, 16 * sizeof(float));
             probeWorldToClipGLValid_ = true;
@@ -848,6 +850,8 @@ class gosRenderer {
         vec4 terrain_camera_pos_;  // MC2 world space camera position for TCS LOD
         vec4 terrain_viewport_;    // (vmx, vmy, vax, vay) for EditorCamera shim
 
+        // F1 Stage A-pre Task 7b: probe-only worldToClipGL cache. Written by the
+        // now-retired probe setter; retained for diagnostic retirement batch.
         float probeWorldToClipGL_[16] = {};
         bool probeWorldToClipGLValid_ = false;
 
@@ -1095,6 +1099,7 @@ class gosRenderer {
             terrainLocs_.time = glGetUniformLocation(shp, "time");
             terrainLocs_.mapHalfExtent = glGetUniformLocation(shp, "mapHalfExtent");
             terrainLocs_.terrainMaterialProfile = glGetUniformLocation(shp, "g_terrainMaterialProfile");
+            // F1 Task 7b: probe uniform location (flat uniform, not UBO member).
             terrainLocs_.worldToClipGL    = glGetUniformLocation(shp, "u_worldToClipGL");
             terrainLocs_.matNormalBoost   = glGetUniformLocation(shp, "matNormalBoost");
             terrainLocs_.matTiling        = glGetUniformLocation(shp, "matTiling");

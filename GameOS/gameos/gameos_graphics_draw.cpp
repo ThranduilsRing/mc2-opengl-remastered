@@ -548,6 +548,7 @@ void gosRenderer::beginFrame()
     num_draw_calls_ = 0;
 
     TerrainPatchStream::beginFrame();
+    // gos_terrain_indirect::BeginFrame() moved to endFrame() — see comment there.
 }
 
 // Lazy-eval gate for the dev-only shader hot-reload sweep. Default OFF in
@@ -1108,6 +1109,8 @@ void gosRenderer::drawIndexedTris(gos_VERTEX* vertices, int num_vertices, WORD* 
                 }
             }
 
+            // Overlay.SplitDraw removed — alpha cement and decals now go through
+            // gos_DrawTerrainOverlays() / gos_DrawDecals() typed world-space batches.
             {
                 ZoneScopedN("BasicDraw.Indexed");
                 indexed_tris_->drawIndexed(mat);

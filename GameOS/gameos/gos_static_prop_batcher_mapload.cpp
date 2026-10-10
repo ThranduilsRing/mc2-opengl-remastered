@@ -146,6 +146,7 @@ void GpuStaticPropBatcher::onMapUnload() {
     if (s_dynamicPropShadowSsbo) {
         GLuint dynShadowLocal = static_cast<GLuint>(s_dynamicPropShadowOwner.backendHandle);
         glDeleteBuffers(1, &dynShadowLocal); s_dynamicPropShadowOwner.backendHandle = 0;
+        // SCENE-SSBO-OWNER-SWEEP-1: mark the registry slot unavailable on teardown.
         RenderCore::RenderResourceDesc invalid;
         invalid.id    = RenderCore::RenderResourceId::DynamicPropShadowSsbo;
         invalid.valid = false;
@@ -154,6 +155,9 @@ void GpuStaticPropBatcher::onMapUnload() {
     // Ring buffers are kept across maps (sized to map's worst case -- grow on demand).
 
     //
+    // 4.1 — refcount-aware unpin loop. Pattern matches
+    // gos_static_prop_registry.cpp:111-124 (releasePinsForRange).
+    // Idempotent via vector clear — rebuild populates fresh on next finalize.
     if (mcTextureManager) {
         for (DWORD nodeIdx : s_coalescePinnedNodes) {
             mcTextureManager->unpinNode(nodeIdx);
@@ -170,6 +174,7 @@ void GpuStaticPropBatcher::onMapUnload() {
         }
     }
 
+    // Slice 1 step group 3 — teardown base-instance table SSBO before legacy ring.
     if (s_baseInstanceByCmdSsbo) {
         if (s_baseInstanceByCmdMap) {
             glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_baseInstanceByCmdSsbo);
@@ -243,6 +248,7 @@ void GpuStaticPropBatcher::onMapUnload() {
         glDeleteBuffers(1, &local);
         s_materialGpuSsbo.backendHandle = 0;
 
+        // STATICPROP-MATERIAL-SSBO-OWNER-1: mark the slot unavailable on teardown.
         RenderCore::RenderResourceDesc invalid;
         invalid.id    = RenderCore::RenderResourceId::StaticPropMaterialGpuBuffer;
         invalid.valid = false;

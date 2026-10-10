@@ -773,6 +773,8 @@ void PopulateRecipeCementWords() {
     // PAVED-OVERLAY-CLASS-1: the census and the repair pass below MUST agree on
     // what "paved" means, so both now call the one file-scope predicate.
     auto IsPavedOverlay = [](Overlays t) -> bool { return IsPavedOverlayType(t); };
+    // Step 5c: also collect a full per-vn cement-word array for the terrain LOD
+    // chunk path (indexed vn = mx + my*mapSide, matching its heightfield SSBO).
     std::vector<uint32_t> chunkCementWords((size_t)mapSide * (size_t)mapSide, 0u);
     for (size_t vn = 0; vn < N; ++vn) {
         const long mx = (long)vn % mapSide;

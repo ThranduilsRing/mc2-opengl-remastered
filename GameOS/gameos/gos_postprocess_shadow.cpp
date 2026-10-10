@@ -136,6 +136,7 @@ void gosPostProcess::initShadows()
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+    // Initialize with identity so shadow map reads white (no shadow)
     memset(staticLightSpaceMatrix_, 0, sizeof(staticLightSpaceMatrix_));
     staticLightSpaceMatrix_[0] = staticLightSpaceMatrix_[5] = staticLightSpaceMatrix_[10] = staticLightSpaceMatrix_[15] = 1.0f;
     staticLightMatrixBuilt_ = false;
@@ -950,6 +951,7 @@ void gosPostProcess::buildDynamicLightMatrix(float sunDirX, float sunDirY, float
             float d = sqrtf(dx*dx+dy*dy+dz*dz);
             if (d > spreadB) spreadB = d;
         }
+        // nearC/farC = centroids; near has smaller spread.
         const float* nearC; const float* farC;
         const int nearBase2 = (spreadA <= spreadB) ? 0 : 4;
         const int farBase2  = (spreadA <= spreadB) ? 4 : 0;
@@ -991,6 +993,7 @@ void gosPostProcess::buildDynamicLightMatrix(float sunDirX, float sunDirY, float
             if (fabsf(dzc) > 1e-3f) { t = -nearCenter[2] / dzc; }
             else                    { t = 1.0f; }   // near-horizontal axis -> far center
             if (t < 0.0f) t = 0.0f;                 // behind camera -> use near center
+            // allow t>1 (forward distance capped below via cascade-1 radius)
             float fx_f = nearCenter[0] + t * (farCenter[0] - nearCenter[0]);
             float fy_f = nearCenter[1] + t * (farCenter[1] - nearCenter[1]);
             // Carry the intercept Z through (for a z=0 plane solve this is ~0,
@@ -1260,6 +1263,7 @@ void gosPostProcess::buildDynamicLightMatrix(float sunDirX, float sunDirY, float
             if (++s_csmN <= 1) {
                 for (int ci = 0; ci < N; ++ci) {
                     const float* M = &dynamicCascadeMatrices_[ci*16];
+                    // sample the cascade's own center (col 3 back-projected approx via camX/Y/Z)
                     const float px=camX, py=camY, pz=camZ;
                     float cz = M[0*4+2]*px+M[1*4+2]*py+M[2*4+2]*pz+M[3*4+2];
                     float cw = M[0*4+3]*px+M[1*4+3]*py+M[2*4+3]*pz+M[3*4+3];
