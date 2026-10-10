@@ -617,7 +617,7 @@ flags:
   - name: MC2_BURNIN_NO_JPG
     kind: Bool
     default: false
-    rule: Std
+    rule: Presence
     owner: terrain
     doc: "BURNIN-DISK-JPEG kill-switch: when set, skip the <name>.burnin.jpg sidecar probe in TerrainColorMap::init and load the full <name>.burnin.tga (or .tga) instead."
     registry: {feature_id: MC2_FEATURE_BURNIN_NO_JPG, kind: Feature, order: -1, default_on: false}
@@ -2627,11 +2627,11 @@ flags:
     verified: true
     registry: {feature_id: MC2_TUNE_LIGHT_POOL_MAX, kind: Trace, order: -1, default_on: false}
   - name: MC2_LIGHT_POOL_MOVER_COLOR
-    kind: Int
-    default: 0
-    rule: Prefix
+    kind: String
+    default: ""
+    rule: Std
     owner: code
-    doc: ""
+    doc: "MOVER-LIGHT-HALOGEN-1: hex RRGGBB mover light colour; unset, empty or malformed keeps FFEED1."
     smoke_passthrough: true
   - name: MC2_LIGHT_POOL_MOVER_DIM
     kind: Float
@@ -2648,7 +2648,7 @@ flags:
     rule: Prefix
     owner: code
     doc: ""
-    range: {lo: 0, hi: 120, style: reject}
+    range: {lo: 0, hi: 120, style: clamp}
     smoke_passthrough: true
   - name: MC2_LIGHT_POOL_MOVER_MAXBLEND
     kind: Bool
@@ -3410,7 +3410,7 @@ flags:
     rule: Prefix
     owner: code
     doc: "NIGHT-LIGHT-POOLS-1 knob: minimum per-channel output (0..64, clamped) of Camera::getLightRed/Green/Blue -- the family feeding the colormap night burn-in..."
-    range: {lo: 0, hi: 64, style: reject}
+    range: {lo: 0, hi: 64, style: clamp}
     registry: {feature_id: MC2_TUNE_NIGHT_AMBIENT_FLOOR, kind: Trace, order: -1, default_on: false}
   - name: MC2_NIGHT_FOG_DIM
     kind: Bool
@@ -4432,6 +4432,7 @@ flags:
     rule: Prefix
     owner: code
     doc: ""
+    range: {lo: 0, hi: 3.4028234663852886e+38, style: reject}
     smoke_passthrough: true
   - name: MC2_SHADOW_CASTER_LIGHTBOX_CULL
     kind: Bool
@@ -4519,11 +4520,12 @@ flags:
     range: {lo: 0, hi: 1, style: reject}
     smoke_passthrough: true
   - name: MC2_SHADOW_DYNAMIC_PROP_CASTERS
-    kind: Bool
-    default: true
-    rule: Lead0Kill
+    kind: Enum
+    default: "1"
+    rule: Std
     owner: props
     doc: "SHADOW-DYNAMIC-PROP-CASTERS-1: feed the per-frame DYNAMIC sun-shadow caster pass from the full registry (registered props, visibility-independent) instead..."
+    tokens: "1|0|2"
     smoke_passthrough: true
     registry: {feature_id: MC2_FEATURE_SHADOW_DYNAMIC_PROP_CASTERS, kind: Feature, order: -1, default_on: true}
   - name: MC2_SHADOW_DYNAMIC_PROP_DIRTY_ONLY
@@ -4884,11 +4886,12 @@ flags:
     smoke_passthrough: true
     registry: {feature_id: MC2_TRACE_SPLIT_PATH_PARITY, kind: Trace, order: -1, default_on: false}
   - name: MC2_SPOTLIGHT_DIRECTION_FIX
-    kind: Bool
-    default: false
-    rule: AtoiNZ
+    kind: Enum
+    default: "0"
+    rule: Std
     owner: code
     doc: "SPOTLIGHT-DIRECTION-1: fixes two coordinate-space defects at the building/guard-tower spotlight registration site (mclib/bdactor.cpp)."
+    tokens: "0|1|2"
     smoke_passthrough: true
     registry: {feature_id: MC2_SPOTLIGHT_DIRECTION_FIX, kind: Trace, order: -1, default_on: false}
   - name: MC2_SPOTLIGHT_REAL_TRACE
@@ -5085,19 +5088,21 @@ flags:
     owner: gameos
     doc: ""
   - name: MC2_STATIC_PROP_BUILDING_SHADOW
-    kind: Bool
-    default: false
-    rule: Lead0P
+    kind: Enum
+    default: "0"
+    rule: Std
     owner: props
     doc: "SHADOW-STATIC-BUILDINGS-2: replay ALL registered rigid-building recipes (full registry, visibility-independent) into the world-fixed static shadow map, once..."
+    tokens: "0|1|2"
     smoke_passthrough: true
     registry: {feature_id: MC2_FEATURE_SHADOW_STATIC_BUILDINGS, kind: Feature, order: -1, default_on: false}
   - name: MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE
-    kind: Bool
-    default: true
-    rule: Lead0Kill
+    kind: Enum
+    default: "1"
+    rule: Std
     owner: props
     doc: "STATIC-BLDG-SHADOW-REBAKE-1: re-arm the one-shot world-fixed static-shadow latch (gos_ResetStaticLightMatrix) when a registered building is destroyed --..."
+    tokens: "1|0|2"
     smoke_passthrough: true
     registry: {feature_id: MC2_FEATURE_SHADOW_STATIC_BUILDINGS_REBAKE, kind: Feature, order: -1, default_on: true}
   - name: MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE_TEST_DESTROY_AT_FRAME

@@ -142,7 +142,7 @@ L(Lead0Kill, "MC2_BUILDING_FOOTPRINT_SHADOW", Bool, true, "props", "", ""),
 L(Exact1, "MC2_BUILDING_PBR", Bool, false, "props", "", ""),
 L(Presence, "MC2_BUILDING_PBR_TRACE", Bool, false, "code", "", ""),
 // history: docs/gate-history.md#MC2_BURNIN_NO_JPG
-G("MC2_BURNIN_NO_JPG", Bool, false, "terrain", "", "BURNIN-DISK-JPEG kill-switch: when set, skip the <name>.burnin.jpg sidecar probe in TerrainColorMap::init and load the full <name>.burnin.tga (or .tga) instead.", registry(Feature, "MC2_FEATURE_BURNIN_NO_JPG", -1, false)),
+L(Presence, "MC2_BURNIN_NO_JPG", Bool, false, "terrain", "", "BURNIN-DISK-JPEG kill-switch: when set, skip the <name>.burnin.jpg sidecar probe in TerrainColorMap::init and load the full <name>.burnin.tga (or .tga) instead.", registry(Feature, "MC2_FEATURE_BURNIN_NO_JPG", -1, false)),
 // GitHub-issue fix batch 2026-07-16, part 2 (issues #9, #17)
 L(Lead0P, "MC2_CALLED_SHOT_FIX", Bool, false, "mech", "", "ISSUE-9 called-shot effectiveness (gameplay gate, default OFF = stock): (S1) Mover::calcAttackChance floors the aimed-shot modifiers at Head 0.30 / Arm 0.45...", passthrough | registry(Feature, "MC2_FEATURE_CALLED_SHOT_FIX", -1, false)),
 L(Lead0Kill, "MC2_CAMERA_ASPECT_NATIVE", Bool, true, "code", "", "", passthrough),
@@ -560,9 +560,9 @@ L(Lead1, "MC2_LIGHT_POOL_DUMP", Bool, false, "terrain", "", "", passthrough | ve
 // undocumented -- registered here by LIGHT-CLUSTER-PERF-1's meta review.
 // history: docs/gate-history.md#MC2_LIGHT_POOL_MAX
 P("MC2_LIGHT_POOL_MAX", Int, 0, "terrain", "", "LIGHT-POOL-CAP-1: per-mission slot count of the terrain light pool (gos_terrain_lighting.cpp mission_init).", passthrough | range(0, 4096) | verified | registry(Trace, "MC2_TUNE_LIGHT_POOL_MAX", -1, false)),
-P("MC2_LIGHT_POOL_MOVER_COLOR", Int, 0, "code", "", "", passthrough),  // default not derivable from the tree
+G("MC2_LIGHT_POOL_MOVER_COLOR", String, "", "code", "", "MOVER-LIGHT-HALOGEN-1: hex RRGGBB mover light colour; unset, empty or malformed keeps FFEED1.", passthrough),
 P("MC2_LIGHT_POOL_MOVER_DIM", Float, 0.25, "terrain", "", "", passthrough | range(0.0, 1.0) | verified),
-P("MC2_LIGHT_POOL_MOVER_FWD", Float, 24.0, "code", "", "", passthrough | range(0.0, 120.0)),
+P("MC2_LIGHT_POOL_MOVER_FWD", Float, 24.0, "code", "", "", passthrough | clampRange(0.0, 120.0)),
 L(Lead0Kill, "MC2_LIGHT_POOL_MOVER_MAXBLEND", Bool, true, "terrain", "", "", passthrough | verified),
 P("MC2_LIGHT_POOL_MOVER_RADIUS", Float, 0.6, "terrain", "", "", passthrough | rangeAbove(0.0, 1.0) | verified),
 L(Lead0Kill, "MC2_LIGHT_POOL_OBJECTS", Bool, true, "terrain", "", "", passthrough | verified),
@@ -709,7 +709,7 @@ L(Lead0, "MC2_MOVE_PATH_CACHE_SHADOW", Bool, false, "code", "", "", passthrough)
 L(Lead0, "MC2_MOVE_RECON", Bool, false, "code", "", "Pathfinding cost instrumentation (mclib/move_recon.cpp).", passthrough | registry(Feature, "MC2_FEATURE_MOVE_RECON", -1, false)),
 L(DefOnAtoiNZ, "MC2_MVP_PUBLISH_EARLY", Bool, true, "code", "", ""),  // default not derivable from the tree
 // history: docs/gate-history.md#MC2_NIGHT_AMBIENT_FLOOR
-P("MC2_NIGHT_AMBIENT_FLOOR", Int, 0, "code", "", "NIGHT-LIGHT-POOLS-1 knob: minimum per-channel output (0..64, clamped) of Camera::getLightRed/Green/Blue -- the family feeding the colormap night burn-in...", range(0, 64) | registry(Trace, "MC2_TUNE_NIGHT_AMBIENT_FLOOR", -1, false)),
+P("MC2_NIGHT_AMBIENT_FLOOR", Int, 0, "code", "", "NIGHT-LIGHT-POOLS-1 knob: minimum per-channel output (0..64, clamped) of Camera::getLightRed/Green/Blue -- the family feeding the colormap night burn-in...", clampRange(0, 64) | registry(Trace, "MC2_TUNE_NIGHT_AMBIENT_FLOOR", -1, false)),
 // NightFogDim (BACKDROP-BLIT-ATTRIB-1)
 // history: docs/gate-history.md#MC2_NIGHT_FOG_DIM
 L(Exact1, "MC2_NIGHT_FOG_DIM", Bool, false, "post", "", "BACKDROP-BLIT-ATTRIB-1: RenderDoc pixel-history on the pre-composite HDR scene FBO (231) pinned the mc2_10 night 'white horizon band' to the EDGE-FOG...", passthrough | registry(Feature, "MC2_NIGHT_FOG_DIM", 40, false)),
@@ -907,7 +907,7 @@ L(Lead0Kill, "MC2_SHADOW_BOUNDED_NEAR_FIT", Bool, true, "post", "", "SHADOW-BOUN
 P("MC2_SHADOW_BOUNDED_NEAR_RADIUS", Float, 2500.0, "post", "", "SHADOW-BOUNDED-NEAR-FIT-1 tunable: bounded near-fit radius in world units (default 2500, clamped 512..mapClampR).", passthrough | registry(Trace, "MC2_TUNE_SHADOW_BOUNDED_NEAR_RADIUS", -1, false)),
 // history: docs/gate-history.md#MC2_SHADOW_CASTER_CULL_CACHE
 L(Lead0P, "MC2_SHADOW_CASTER_CULL_CACHE", Bool, false, "code", "", "SHADOW-CASTER-CULL-CACHE-1 (TXMMGR-PERF-EASYWINS-1): reuse the Shadow.CasterCull result (mclib/txmmgr.cpp DynamicShadowPass) across frames when BOTH the...", passthrough | registry(Feature, "MC2_SHADOW_CASTER_CULL_CACHE", -1, false)),
-P("MC2_SHADOW_CASTER_CULL_MARGIN", Float, 0.25, "code", "", "", passthrough),
+P("MC2_SHADOW_CASTER_CULL_MARGIN", Float, 0.25, "code", "", "", passthrough | range(0.0, 3.4028234663852886e38)),
 L(Lead0Kill, "MC2_SHADOW_CASTER_LIGHTBOX_CULL", Bool, true, "code", "", "DEFAULT ON since 2026-06-16 (render-hygiene-s1).", passthrough),
 // history: docs/gate-history.md#MC2_SHADOW_CSM
 L(Lead0Kill, "MC2_SHADOW_CSM", Bool, true, "post", "", "Cascaded shadow maps master gate (GameOS/gameos/gos_postprocess.cpp), reworked 2026-06-18 (commit 8ff13a36).", passthrough | registry(Feature, "MC2_FEATURE_SHADOW_CSM", -1, true)),
@@ -923,7 +923,7 @@ L(Presence, "MC2_SHADOW_DIAG", Bool, false, "props", "", ""),
 P("MC2_SHADOW_DIST_FADE", Float, 80.0, "post", "", "", passthrough | range(0.0, 100000.0)),
 P("MC2_SHADOW_DIST_FADE_MAX", Float, 0.65, "post", "", "", passthrough | range(0.0, 1.0)),
 // history: docs/gate-history.md#MC2_SHADOW_DYNAMIC_PROP_CASTERS
-L(Lead0Kill, "MC2_SHADOW_DYNAMIC_PROP_CASTERS", Bool, true, "props", "", "SHADOW-DYNAMIC-PROP-CASTERS-1: feed the per-frame DYNAMIC sun-shadow caster pass from the full registry (registered props, visibility-independent) instead...", passthrough | registry(Feature, "MC2_FEATURE_SHADOW_DYNAMIC_PROP_CASTERS", -1, true)),
+G("MC2_SHADOW_DYNAMIC_PROP_CASTERS", Enum, "1", "props", "", "SHADOW-DYNAMIC-PROP-CASTERS-1: feed the per-frame DYNAMIC sun-shadow caster pass from the full registry (registered props, visibility-independent) instead...", passthrough | registry(Feature, "MC2_FEATURE_SHADOW_DYNAMIC_PROP_CASTERS", -1, true) | tokens("1|0|2")),
 L(Lead0Kill, "MC2_SHADOW_DYNAMIC_PROP_DIRTY_ONLY", Bool, true, "code", "", "DEFAULT-ON since 2026-06-04 (smoke-clean mc2_24; proven s_registryGeneration dirty-only pattern, shadow pass reads only modelMatrix+typeID): only literal..."),
 // history: docs/gate-history.md#MC2_SHADOW_ENABLE
 L(Lead0Kill, "MC2_SHADOW_ENABLE", Bool, true, "unclassified", "", "Dynamic object shadow caster pass (GpuStaticPropBatcher + GpuMechBatcher flushShadow).", passthrough | registry(Feature, "MC2_FEATURE_SHADOW_MAPS", 5, true)),
@@ -1019,7 +1019,7 @@ P("MC2_SOAK_WIN_AFTER_SEC", Float, 5.0, "code", "", ""),
 // history: docs/gate-history.md#MC2_SPLIT_PATH_PARITY_TRACE
 L(Lead0, "MC2_SPLIT_PATH_PARITY_TRACE", Bool, false, "gameos", "", "META-FIX design C runtime tier (GameOS/gameos/gameos_graphics.cpp gosRenderer::init): =1 emits machine-parseable [SPLIT_PATH_PARITY] marker lines at...", passthrough | registry(Trace, "MC2_TRACE_SPLIT_PATH_PARITY", -1, false)),
 // history: docs/gate-history.md#MC2_SPOTLIGHT_DIRECTION_FIX
-L(AtoiNZ, "MC2_SPOTLIGHT_DIRECTION_FIX", Bool, false, "code", "", "SPOTLIGHT-DIRECTION-1: fixes two coordinate-space defects at the building/guard-tower spotlight registration site (mclib/bdactor.cpp).", passthrough | registry(Trace, "MC2_SPOTLIGHT_DIRECTION_FIX", -1, false)),
+G("MC2_SPOTLIGHT_DIRECTION_FIX", Enum, "0", "code", "", "SPOTLIGHT-DIRECTION-1: fixes two coordinate-space defects at the building/guard-tower spotlight registration site (mclib/bdactor.cpp).", passthrough | registry(Trace, "MC2_SPOTLIGHT_DIRECTION_FIX", -1, false) | tokens("0|1|2")),
 L(Presence, "MC2_SPOTLIGHT_REAL_TRACE", Bool, false, "unclassified", "", "[SPOTLIGHT_REAL_TRACE v1] (E) Stage 0 / T0.2 baseline."),
 L(Presence, "MC2_SPOT_DIAG", Bool, false, "mech", "", "T1.15 SpotLight_ illumination diagnostic - registration probe (bldg class)."),
 // SP-BATCHER-ALPHASCAN-GATE-1 (framebudget-2 perf).
@@ -1066,9 +1066,9 @@ L(Presence, "MC2_STATIC_POP_SPLIT_CMD_DIAG", Bool, false, "props", "", "Diag (en
 L(Lead0, "MC2_STATIC_PROP_AMBIENT_V1", Bool, false, "props", "", "V-AMBIENT-STATIC-1: hemisphere ambient fill on StaticPropOpaque lane (static_prop.vert).", passthrough | registry(Feature, "MC2_FEATURE_STATIC_PROP_AMBIENT_V1", 18, false)),
 L(Presence, "MC2_STATIC_PROP_BAKE_SELFTEST", Bool, false, "gameos", "", ""),
 // history: docs/gate-history.md#MC2_STATIC_PROP_BUILDING_SHADOW
-L(Lead0P, "MC2_STATIC_PROP_BUILDING_SHADOW", Bool, false, "props", "", "SHADOW-STATIC-BUILDINGS-2: replay ALL registered rigid-building recipes (full registry, visibility-independent) into the world-fixed static shadow map, once...", passthrough | registry(Feature, "MC2_FEATURE_SHADOW_STATIC_BUILDINGS", -1, false)),
+G("MC2_STATIC_PROP_BUILDING_SHADOW", Enum, "0", "props", "", "SHADOW-STATIC-BUILDINGS-2: replay ALL registered rigid-building recipes (full registry, visibility-independent) into the world-fixed static shadow map, once...", passthrough | registry(Feature, "MC2_FEATURE_SHADOW_STATIC_BUILDINGS", -1, false) | tokens("0|1|2")),
 // history: docs/gate-history.md#MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE
-L(Lead0Kill, "MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE", Bool, true, "props", "", "STATIC-BLDG-SHADOW-REBAKE-1: re-arm the one-shot world-fixed static-shadow latch (gos_ResetStaticLightMatrix) when a registered building is destroyed --...", passthrough | registry(Feature, "MC2_FEATURE_SHADOW_STATIC_BUILDINGS_REBAKE", -1, true)),
+G("MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE", Enum, "1", "props", "", "STATIC-BLDG-SHADOW-REBAKE-1: re-arm the one-shot world-fixed static-shadow latch (gos_ResetStaticLightMatrix) when a registered building is destroyed --...", passthrough | registry(Feature, "MC2_FEATURE_SHADOW_STATIC_BUILDINGS_REBAKE", -1, true) | tokens("1|0|2")),
 // history: docs/gate-history.md#MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE_TEST_DESTROY_AT_FRAME
 P("MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE_TEST_DESTROY_AT_FRAME", Int, -1, "code", "", "STATIC-BLDG-SHADOW-REBAKE-1: deterministic repro hook (test-only, no production callers).", passthrough | registry(Trace, "MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE_TEST_DESTROY_AT_FRAME", -1, false)),
 // history: docs/gate-history.md#MC2_STATIC_PROP_COLORS_FILL
