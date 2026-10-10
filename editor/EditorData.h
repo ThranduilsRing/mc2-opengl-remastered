@@ -1,8 +1,5 @@
 #ifndef EDITORDATA_H
 #define EDITORDATA_H
-//===========================================================================//
-// Copyright (C) Microsoft Corporation. All rights reserved.                 //
-//===========================================================================//
 
 #include <string>
 #include "mclib.h"
@@ -34,7 +31,6 @@ static const int GAME_MAX_PLAYERS = 8;
 // camera-window iterator at mapdata.cpp:1114-1117 caps both paths).
 #define EDITOR_VISIBLE_VERTICES			500
 
-// ARM
 namespace Microsoft
 {
 	namespace Xna
@@ -137,7 +133,6 @@ class EditorData
 		EditorData();
 		~EditorData();
 
-		// wipes all the data, the terrain, object etc.
 		static bool clear();
 
 		// ---------- Map-size helpers --------------------------------------------------
@@ -151,9 +146,7 @@ class EditorData
 		// Always use these helpers — never write raw switch/+1/*3 at call sites.
 		static int MapSizeToCellSide(int sizeIndex);   // 0->60  1->80  ... 6->1020
 		static int MapSizeToVertexSide(int sizeIndex); // cellSide + 1
-		// ---------- end map-size helpers ----------------------------------------------
 
-		// makes a terrain from a height map.
 		static bool initTerrainFromTGA( int mapSize, int min = 0, int max = 512, int terrain = 0 );
 		// Generated mission (Path B): runs the python terrain generator for the
 		// chosen size + terrain-type/biome + seed, then builds an editable map from
@@ -189,9 +182,6 @@ class EditorData
 		// False for newly generated blank maps (set to true only after packet-4 read).
 		static bool IsMoveDataReadyForFullSave();
 
-		// ---------------------------------------------------------------------------
-		// MOVE rebuild API — treat MOVE as cached derived data.
-		// ---------------------------------------------------------------------------
 
 		// Mark MOVE as dirty (needs rebuild).  Call after terrain generation or load
 		// completes, BEFORE terrain/object state is stable enough to rebuild.
@@ -259,7 +249,6 @@ class EditorData
 
 		int MaxPlayers() { return m_maxPlayers; }
 		void MaxPlayers(int maxPlayers);
-		//{ m_maxPlayers = maxPlayers; /* Not finished. Need to check 2 <= param <= 8, disable menu items, etc.,. */}
 
 		CTeams &TeamsRef() { return m_teams; }
 		CPlayers &PlayersRef() { return m_players; }
@@ -315,7 +304,6 @@ class EditorData
 		bool RPsForMechsEnabledDefault() { return m_rPsForMechsEnabledDefault; }
 		void RPsForMechsEnabledDefault(bool rPsForMechsEnabledDefault) { m_rPsForMechsEnabledDefault = rPsForMechsEnabledDefault; }
 
-		//weather
 		int MaxRaindrops() { return m_maxRaindrops; }
 		void MaxRaindrops(int maxRaindrops) { m_maxRaindrops = maxRaindrops; }
 
@@ -389,7 +377,6 @@ class EditorData
 		EString m_downloadURL;
 		int m_missionType;
 
-		/*defaults for multiplayer options*/
 		bool m_airStrikesEnabledDefault;
 		bool m_mineLayersEnabledDefault;
 		bool m_scoutCoptersEnabledDefault;
@@ -409,7 +396,6 @@ class EditorData
 
 		MissionSettings	missionSettings;
 
-		//weather info
 		int m_maxRaindrops;
 		float m_startingRainLevel;
 		float m_chanceOfRain;
@@ -426,5 +412,4 @@ class EditorData
 
 
 
-//*************************************************************************************************
 #endif  // end of file ( EditorData.h )

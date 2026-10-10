@@ -59,7 +59,6 @@ static void PilotDataLossWarn( const char* msg )
 	}
 }
 
-// ARM
 #include "../ARM/Microsoft.Xna.Arm.h"
 
 // EDITOR-STATIC-DEDRAW: free an editor object's appearance, invalidating its static-prop
@@ -91,7 +90,6 @@ Pilot::PilotInfo Pilot::s_GoodPilots[MAX_PILOT] = { 0 };
 long	Pilot::goodCount = 0;
 long	Pilot::badCount = 0;
 
-//--------------------------------------------------------------------------------------
 void *EditorObject::operator new (size_t mySize)
 {
 	void *result = NULL;
@@ -100,13 +98,11 @@ void *EditorObject::operator new (size_t mySize)
 	return(result);
 }
 
-//--------------------------------------------------------------------------------------
 void EditorObject::operator delete (void *us)
 {
 	systemHeap->Free(us);
 }
 
-//--------------------------------------------------------------------------------------
 EditorObject::EditorObject()
 {
 	appearInfo = new AppearanceInfo();
@@ -133,7 +129,6 @@ EditorObject::EditorObject( const EditorObject& src )
 
 EditorObject& EditorObject::operator=( const EditorObject& src )
 {
-	/* do the assignment */
 	if ( &src != this )
 	{
 		/* "destruct" the current object first */
@@ -226,7 +221,6 @@ int EditorObject::getGroup() const
 
 void EditorObject::setAppearance( int Group, int indexInGroup )
 {
-	// make sure the thing has changed....
 	if ( Group != EditorObjectMgr::getGroup( id ) || indexInGroup != EditorObjectMgr::getIndexInGroup( id ) )
 	{
 		
@@ -262,7 +256,6 @@ void EditorObject::setAppearance( int Group, int indexInGroup )
 
 void EditorObject::select( bool bSelect )
 { 
-	//appearance()->selected = bSelect;
 	EditorObjectMgr::instance()->select(*this, bSelect);
 }
 
@@ -328,7 +321,6 @@ int	EditorObject::getSpecialType() const
 	return EditorObjectMgr::instance()->getSpecialType( getID() );
 }
 
-//*************************************************************************************************
 
 
 Unit::Unit( int align )
@@ -415,7 +407,6 @@ bool Unit::save( FitIniFile* file, int WarriorNumber )
 
 bool Unit::save( FitIniFile* file, int WarriorNumber, int controlDataType, const char* objectProfile )
 {
-	// ARM
 	if (mechAsset)
 	{
 		const char * iniFilename = (const char *)EditorObjectMgr::instance()->getFileName( id );
@@ -719,7 +710,6 @@ static bool EditorAnalyzeBrain( const char* brainName, std::vector<Stuff::Vector
 		if ( n >= (long)sizeof( line ) ) n = (long)sizeof( line ) - 1;
 		line[n] = 0;
 
-		// fsm name: "fsm <name>;" (first occurrence).
 		if ( fsmOut && fsmCap && !fsmOut[0] )
 		{
 			const char* fp = strstr( line, "fsm " );
@@ -734,12 +724,10 @@ static bool EditorAnalyzeBrain( const char* brainName, std::vector<Stuff::Vector
 			}
 		}
 
-		// Behavior keyword sniff (coarse).
 		if ( strstr( line, "PATROL_TYPE" ) || strstr( line, "PatrolPath" ) ) sawPatrol = true;
 		if ( strstr( line, "guard" ) || strstr( line, "Guard" ) )            sawGuard  = true;
 		if ( strstr( line, "attack" ) || strstr( line, "Attack" ) )          sawAttack = true;
 
-		// Patrol path literals.
 		const char* p = strstr( line, "PatrolPath[" );
 		if ( !p )
 			continue;
@@ -872,7 +860,6 @@ void Unit::setSquad(unsigned long newSquad) {
 	}
 }
 
-//*************************************************************************************************
 
 bool DropZone::save( FitIniFile* file, int number )
 {
@@ -932,7 +919,6 @@ void DropZone::CastAndCopy(const EditorObject &master)
 	}
 }
 
-//*************************************************************************************************
 bool Brain::save( FitIniFile* file, int warriorNumber, bool bPlayer )
 {
 	if (brainName[0])
@@ -951,7 +937,6 @@ bool Brain::save( FitIniFile* file, int warriorNumber, bool bPlayer )
 			file->writeIdFloat("Value", cellData[i]);
 		}
 
-		// ARM
 		if (mechAsset && brainName[0])
 		{
 			char buf[512] = {0};
@@ -1008,7 +993,6 @@ bool Brain::save( FitIniFile* file, int warriorNumber, bool bPlayer )
 	return true;
 }
 
-//*************************************************************************************************
 bool Brain::load( FitIniFile* file, int warriorNumber )
 {
 	file->readIdLong( "NumCells", numCells );
@@ -1120,7 +1104,6 @@ void Pilot::save( FitIniFile* file, int bGoodGuy )
 			"pilots.csv catalog match) -- possible editor data loss" );
 	file->writeIdString( "Profile", profileName );
 
-	// ARM
 	if (mechAsset && info && info->fileName && info->fileName[0])
 	{
 		char buf[512] = {0};
@@ -1257,7 +1240,6 @@ void Pilot::initPilots()
 				if ((strlen(pilotFileName) > strlen("pmw"))
 					&& (0 == strnicmp(pilotFileName, "pmw", strlen("pmw"))))
 				{
-					/*Good pilots that start with "pmw" are single-player pilots.*/
 					CString tmpStr;
 					tmpStr.LoadString(IDS_PILOT_SINGLE_PLAYER_VERSION);
 					postFix = tmpStr.GetBuffer(0);
@@ -1265,7 +1247,6 @@ void Pilot::initPilots()
 				else if ((strlen(pilotFileName) > strlen("pmp_"))
 					&& (0 == strnicmp(pilotFileName, "pmp_", strlen("pmp_"))))
 				{
-					/*Good pilots that start with "pmp_" are multi-player pilots.*/
 					CString tmpStr;
 					tmpStr.LoadString(IDS_PILOT_MULTIPLAYER_VERSION);
 					postFix = tmpStr.GetBuffer(0);
@@ -1286,7 +1267,6 @@ void Pilot::initPilots()
 			infos[*counter].fileName = new char[strlen( pilotFileName ) + 1];
 			strcpy( infos[*counter].fileName, pilotFileName );
 
-			// if we got this far we have a file, make a pilot
 			int result = pilotFile.seekBlock( "General" );
 			gosASSERT( result == 0 );
 
@@ -1380,5 +1360,3 @@ NavMarker::NavMarker()
 }
 
 
-//*************************************************************************************************
-// end of file ( EditorObjects.cpp )

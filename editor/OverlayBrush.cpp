@@ -12,7 +12,6 @@ OverlayBrush.cpp			: Implementation of the OverlayBrush component.
 #include "EditorData.h"
 #include <map>
 
-//-------------------------------------------------------------------------------------------------
 
 class OTMap : public std::map<int, Overlays> {};
 static OTMap *pOverlaysToTransitionMapping = 0;
@@ -564,7 +563,6 @@ bool OverlayBrush::paint( Stuff::Vector3D& worldPos, int screenX, int screenY )
 					} else {
 						break; // no more steps
 					}
-					// Clamp to valid map range before painting
 					if (nextR >= 0 && nextR < Terrain::realVerticesMapSide &&
 					    nextC >= 0 && nextC < Terrain::realVerticesMapSide) {
 						paintRoadStep( stepR, stepC, nextR, nextC, dir, type, pAction );
@@ -615,5 +613,3 @@ Action*  OverlayBrush::endPaint()
 }
 
 
-//*************************************************************************************************
-// end of file ( OverlayBrush.cpp )

@@ -26,7 +26,6 @@ static bool editorMoverRefreshOn()
 	return v == 1;
 }
 
-//*************************************************************************************************
 void EditorObjectMgr::update()
 {
 	static long homeRelations[9] = {0, 0, 2, 1, 1, 1, 1, 1, 1};
@@ -36,7 +35,6 @@ void EditorObjectMgr::update()
 			!iter.IsDone(); iter++ )
 			{
 				currentFloatHelp = 0;
-				// Guard: objects with no loaded appearance are skipped.
 				ObjectAppearance* pBAppr = (*iter) ? (*iter)->appearance() : NULL;
 				if (!pBAppr) continue;
 				if (renderTrees || (!renderTrees && (pBAppr->getAppearanceClass() != TREE_APPR_TYPE)))
@@ -61,14 +59,12 @@ void EditorObjectMgr::update()
 			}
 	}
 
-	//Always draw the Mechs/Vehicles
 		const bool moverRefresh = editorMoverRefreshOn();
 		for ( UNIT_LIST::EIterator mIter = units.Begin();
 		!mIter.IsDone(); mIter++ )
 		{
 			EditorObject* pObj = (*mIter);
 			currentFloatHelp = 0;
-			// Guard: units with no loaded appearance are skipped.
 			ObjectAppearance* pUAppr = pObj ? pObj->appearance() : NULL;
 			if (!pUAppr) continue;
 			const bool uInView = pUAppr->recalcBounds();
@@ -100,7 +96,6 @@ void EditorObjectMgr::update()
 		}
 }
 
-//*************************************************************************************************
 void EditorObjectMgr::render()
 {
 	// S2.5 (2026-05-25): actor walk only. Frame-level orchestration
@@ -203,7 +198,6 @@ void EditorObjectMgr::render()
 		EditorObjMgrTrace("EditorObjectMgr::render frame=%ld buildings-loop SKIPPED (renderObjects=false)", s_emrFrame);
 	}
 
-	// Always draw the Mechs/Vehicles
 	long uRecalcPassed = 0;
 	long uRendered = 0;
 	if (s_emrLog)

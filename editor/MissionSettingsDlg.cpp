@@ -33,8 +33,6 @@ static char THIS_FILE[] = __FILE__;
 #endif
 #endif /*gos doesn't like this */
 
-/////////////////////////////////////////////////////////////////////////////
-// MissionSettingsDlg dialog
 
 
 MissionSettingsDlg::MissionSettingsDlg(CWnd* pParent /*=NULL*/)
@@ -136,8 +134,6 @@ BEGIN_MESSAGE_MAP(MissionSettingsDlg, CDialog)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
-/////////////////////////////////////////////////////////////////////////////
-// MissionSettingsDlg message handlers
 
 static BOOL CSLoadString(int resourceID, CString &targetStr) {
 	char szTmp[16384/*max string length*/];
@@ -224,7 +220,6 @@ void MissionSettingsDlg::OnBrowseButton()
 			CString pathname = selectAVIFileDialog.GetPathName();
 			int CurrentDirectoryBufferLength = GetCurrentDirectory(0, 0);
 			assert(1 <= CurrentDirectoryBufferLength);
-			//TCHAR *CurrentDirectoryBuffer = new TCHAR[CurrentDirectoryBufferLength];
 			TCHAR *CurrentDirectoryBuffer = (TCHAR *)malloc(sizeof(TCHAR) * CurrentDirectoryBufferLength);
 			int ret = GetCurrentDirectory(CurrentDirectoryBufferLength, CurrentDirectoryBuffer);
 			assert(CurrentDirectoryBufferLength - 1 == ret);
@@ -232,7 +227,6 @@ void MissionSettingsDlg::OnBrowseButton()
 			if (pathname.GetLength() > (CurrentDirectoryBufferLength - 1)) {
 				ret = _tcsnicmp(CurrentDirectoryBuffer, pathname.GetBuffer(0), CurrentDirectoryBufferLength - 1);
 			}
-			//delete [] CurrentDirectoryBuffer; CurrentDirectoryBuffer = 0;
 			free(CurrentDirectoryBuffer); CurrentDirectoryBuffer = 0;
 			if (0 == ret) {
 				m_VideoFilename = (pathname.GetBuffer(0) + (CurrentDirectoryBufferLength - 1) + 1);

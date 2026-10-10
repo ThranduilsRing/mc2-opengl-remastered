@@ -88,7 +88,6 @@ static void EditorObjectMgr_ConsiderScreenCenter(EditorObject* pObject, int scre
 	}
 }
 
-//-------------------------------------------------------------------------------------------------
 EditorObject* EditorObjectMgr::getObjectAtPosition( const Stuff::Vector3D& position )
 {
 	// World-space match: nearest object whose footprint (extent radius, with a

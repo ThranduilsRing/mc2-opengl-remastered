@@ -226,8 +226,6 @@ bool CDisplayResourceTextMessage::Save( FitIniFile* file )
 
 bool CDisplayResourceTextMessage::EditDialog() {
 	ResourceStringSelectionDlg resourceStringSelectionDlg;
-	//resourceStringSelectionDlg.m_BottomOfIDRange = ;
-	//resourceStringSelectionDlg.m_TopOfIDRange = ;
 	resourceStringSelectionDlg.m_SelectedResourceStringID = m_resourceStringID;
 	int result = resourceStringSelectionDlg.DoModal();
 	if (IDOK == result) {

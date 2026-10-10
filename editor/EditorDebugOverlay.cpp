@@ -163,13 +163,11 @@ namespace
 		// surface; on the water plane this is a straight line anyway.
 		const float sampleStep = wupv * (float)kChunkCells;
 
-		// Vertical lines (fixed column index c -> fixed world x), run top->bottom.
 		for ( long c = 0; c < side; c += stepCells )
 		{
 			float wx = tlx + (float)c * wupv;
 			drawGridLine( eye, /*horizontal=*/false, wx, maxY, minY, sampleStep, argb );
 		}
-		// Horizontal lines (fixed row index r -> fixed world y), run left->right.
 		for ( long r = 0; r < side; r += stepCells )
 		{
 			float wy = tly - (float)r * wupv;
@@ -235,7 +233,6 @@ namespace
 		s_probe.atlasTex    = gos_terrain_indirect_getAtlasGLTex();
 		s_probe.chunkPath   = mc2TerrainLodChunkEnabled();
 
-		// (1) elevation file on disk (the last generated one, if present).
 		if ( FILE* ef = fopen( kProbeElevPath, "rb" ) )
 		{
 			s_probe.fileFound = true;
@@ -247,7 +244,6 @@ namespace
 			fclose( ef );
 		}
 
-		// (2) terrain vertex storage (what setVertexHeight wrote).
 		for ( long i = 0; i < n; ++i )
 		{
 			float h = land->getVertexHeight( (int)i );
@@ -255,7 +251,6 @@ namespace
 		}
 		statsFinish( s_probe.vert );
 
-		// (3) postcomp render/water mesh (what the renderer + recalcWater read).
 		if ( Terrain::mapData )
 		{
 			PostcompVertexPtr verts = Terrain::mapData->getData();
@@ -364,17 +359,14 @@ namespace
 			dl->AddText( pos, colText, buf );
 		};
 
-		// Buildings
 		EditorObjectMgr::BUILDING_LIST blds = mgr->getBuildings();
 		for ( EditorObjectMgr::BUILDING_LIST::EIterator it = blds.Begin(); !it.IsDone(); it++ )
 			drawLabel( *it );
 
-		// Units (mechs / vehicles)
 		EditorObjectMgr::UNIT_LIST units = mgr->getUnits();
 		for ( EditorObjectMgr::UNIT_LIST::EIterator it = units.Begin(); !it.IsDone(); it++ )
 			drawLabel( *it );
 
-		// Drop zones
 		EditorObjectMgr::DROPZONE_LIST dzs = mgr->getDropZones();
 		for ( EditorObjectMgr::DROPZONE_LIST::EIterator it = dzs.Begin(); !it.IsDone(); it++ )
 			drawLabel( *it );
@@ -788,7 +780,6 @@ void RenderImGui()
 	ImGui::Separator();
 	if ( ImGui::CollapsingHeader( "Terrain Probe" ) )
 	{
-		// Manual rescan + auto-refresh once per second while expanded.
 		bool doScan = ImGui::Button( "Rescan Terrain Heights" );
 		static double s_lastScan = -1.0;
 		double now = ImGui::GetTime();

@@ -28,7 +28,6 @@ class FitIniFile;
 
 #include "DAprType.h"
 #define MAX_PILOT	64
-//*************************************************************************************************
 
 class EditorObject
 {
@@ -179,7 +178,6 @@ public:
 	
 };
 
-//*************************************************************************************************
 
 class Brain
 {
@@ -227,7 +225,6 @@ public:
 	long        getNumStaticVars() const { return numStaticVars; }
 };
 
-//*************************************************************************************************
 
 class CUnitList;
 
@@ -335,7 +332,6 @@ protected:
 
 class CUnitList : public EList<Unit, Unit&> {};
 
-//*************************************************************************************************
 class DropZone : public EditorObject
 {
 public:
@@ -364,7 +360,6 @@ class NavMarker : public EditorObject
 };
 
 
-//*************************************************************************************************
 
 
 #endif  // end of file ( EditorObjects.h )

@@ -27,13 +27,6 @@
 
 ActionUndoMgr* ActionUndoMgr::instance = NULL;
 
-//************************************************************************
-// Function:    c'tor
-// ParamsIn:    none
-// ParamsOut:   none
-// Returns:     nothing
-// Description:
-//************************************************************************
 ActionUndoMgr::ActionUndoMgr()
 {
     m_CurrentPos = -1;
@@ -42,25 +35,11 @@ ActionUndoMgr::ActionUndoMgr()
     instance = this;
 }
 
-//************************************************************************
-// Function:    d'tor
-// ParamsIn:    none
-// ParamsOut:   none
-// Returns:     nothing
-// Description: empties list
-//************************************************************************
 ActionUndoMgr::~ActionUndoMgr()
 {
     Reset();
 }
 
-//***********************************************************************
-// Function:    AddAction
-// ParamsIn:    Action to add
-// ParamsOut:   none
-// Returns:     void
-// Descripition: adds the passed in action to the undo list
-//***********************************************************************
 void ActionUndoMgr::AddAction( Action* pAction )
 {
     gosASSERT( pAction );
@@ -85,13 +64,6 @@ void ActionUndoMgr::AddAction( Action* pAction )
     m_CurrentPos = m_listUndoActions.Count() - 1;
 }
 
-//***********************************************************************
-// Function:    EmptyUndoList
-// ParamsIn:    none
-// ParamsOut:   none
-// Returns:     void
-// Descripition:clears out the undo list
-//***********************************************************************
 void ActionUndoMgr::EmptyUndoList()
 {
     for (ACTION_LIST::EIterator pos = m_listUndoActions.Begin(); !pos.IsDone(); pos++ )
@@ -104,13 +76,6 @@ void ActionUndoMgr::EmptyUndoList()
     m_PosOfLastSave = -1;
 }
 
-//***********************************************************************
-// Function:    GetRedoString
-// ParamsIn:    none
-// ParamsOut:   none
-// Returns:     string to put in the Undo prompt
-// Descripition: this is the string that should go in the redo prompt
-//***********************************************************************
 const char* ActionUndoMgr::GetRedoString()
 {
     const char* strRet = NULL;
@@ -126,13 +91,6 @@ const char* ActionUndoMgr::GetRedoString()
     return strRet;
 }
 
-//***********************************************************************
-// Function:    GetUndoString
-// ParamsIn:    none
-// ParamsOut:   none
-// Returns:     string to put in the Udo prompt
-// Descripition: this is the string that should go in the undo prompt
-//***********************************************************************
 const char* ActionUndoMgr::GetUndoString()
 {
     const char* strRet = NULL;
@@ -146,38 +104,16 @@ const char* ActionUndoMgr::GetUndoString()
     return strRet;
 }
 
-//***********************************************************************
-// Function:    HaveRedo
-// ParamsIn:    none
-// ParamsOut:   none
-// Returns:     whether there is a redo action to perform
-// Descripition: call to see wherther you can perform a redo
-//***********************************************************************
 bool ActionUndoMgr::HaveRedo() const
 {
     return m_CurrentPos + 1 != m_listUndoActions.Count();
 }
 
-//***********************************************************************
-// Function:    HaveUndo
-// ParamsIn:    none
-// ParamsOut:   none
-// Returns:     whether there is undo action to perform
-// Descripition: call to see whether you can perform an undo action
-//***********************************************************************
 bool ActionUndoMgr::HaveUndo() const
 {
     return m_CurrentPos != -1;
 }
 
-//************************************************************************
-// Function:    Redo
-// ParamsIn:    none
-// ParamsOut;   none
-// Returns:     success of operation
-// Description: gets the action at the front of the redo list, performs
-//              it and adds it to the undo list
-//************************************************************************
 bool ActionUndoMgr::Redo()
 {
     gosASSERT( HaveRedo() );
@@ -188,26 +124,11 @@ bool ActionUndoMgr::Redo()
     return (*iter)->redo();
 }
 
-//************************************************************************
-// Function:    Reset
-// ParamsIn:    none
-// ParamsOut:   none
-// Returns:     nothing
-// Description: Empties all of the actions from the do and undo lists
-//************************************************************************
 void ActionUndoMgr::Reset()
 {
     EmptyUndoList();
 }
 
-//************************************************************************
-// Function:    Undo
-// ParamsIn:    none
-// ParamsOut;   none
-// Returns:     success of operation
-// Description: gets the action at the front of the undo list, performs
-//              it and adds it to the redo list
-//************************************************************************
 bool ActionUndoMgr::Undo()
 {
     bool bRetVal = false;
@@ -221,25 +142,11 @@ bool ActionUndoMgr::Undo()
     return bRetVal;
 }
 
-//************************************************************************
-// Function:    NoteThatASaveHasJustOccurred
-// ParamsIn:    none
-// ParamsOut;   none
-// Returns:
-// Description:
-//************************************************************************
 void ActionUndoMgr::NoteThatASaveHasJustOccurred()
 {
     m_PosOfLastSave = m_CurrentPos;
 }
 
-//************************************************************************
-// Function:    ThereHasBeenANetChangeFromWhenLastSaved
-// ParamsIn:    none
-// ParamsOut;   none
-// Returns:
-// Description:
-//************************************************************************
 bool ActionUndoMgr::ThereHasBeenANetChangeFromWhenLastSaved()
 {
     if (m_PosOfLastSave == m_CurrentPos)
@@ -252,13 +159,6 @@ bool ActionUndoMgr::ThereHasBeenANetChangeFromWhenLastSaved()
     }
 }
 
-//************************************************************************
-// Function:    GetActionCount
-// ParamsIn:    none
-// ParamsOut:   none
-// Returns:     number of actions currently in the undo list
-// Description: Read-only accessor for display panels.
-//************************************************************************
 int ActionUndoMgr::GetActionCount() const
 {
     return (int)m_listUndoActions.Count();
@@ -293,25 +193,11 @@ const char* ActionUndoMgr::GetActionDescription( int index ) const
     return "";
 }
 
-//************************************************************************
-// Function:    GetCurrentPosition
-// ParamsIn:    none
-// ParamsOut:   none
-// Returns:     current undo cursor position (m_CurrentPos); -1 when empty
-// Description: Read-only accessor for display panels.
-//************************************************************************
 int ActionUndoMgr::GetCurrentPosition() const
 {
     return (int)m_CurrentPos;
 }
 
-//-----------------------------------------------------------------------
-// Function:    ActionPaintTile::Redo
-// ParamsIn:    none
-// ParamsOut:   none
-// Returns:     success of operation
-// Description: redoes a smart paint operation
-////-----------------------------------------------------------------------
 bool ActionPaintTile::redo()
 {
     return doRedo();
@@ -322,7 +208,6 @@ bool ActionPaintTile::doRedo()
     for ( VERTEX_INFO_LIST::EIterator iter = vertexInfoList.Begin();
         !iter.IsDone(); iter++ )
     {
-        // get current values
         int terrain = land->getTerrain( (*iter).row, (*iter).column );
         int texture = land->getTexture( (*iter).row, (*iter).column );
         float elv = land->getTerrainElevation( (*iter).row, (*iter).column );
@@ -330,13 +215,11 @@ bool ActionPaintTile::doRedo()
         Overlays overlay;
         unsigned long offset;
 
-        // reset to old values
         land->terrainTextures->getOverlayInfoFromHandle( (*iter).textureData, overlay, offset );
         land->setOverlay( (*iter).row, (*iter).column, overlay, offset );
         land->setTerrain( (*iter).row, (*iter).column, (*iter).terrainData );
         land->setVertexHeight( (*iter).row * land->realVerticesMapSide + (*iter).column, (*iter).elevation );
 
-        // save current values
         (*iter).terrainData = terrain;
         (*iter).textureData = texture;
         (*iter).elevation = elv;
@@ -348,27 +231,12 @@ bool ActionPaintTile::doRedo()
     return true;
 }
 
-//-----------------------------------------------------------------------
-// Function:    Undo
-// ParamsIn:    none
-// ParamsOut:   none
-// Returns:     nothing
-// Description: undos a smart paint operation
-////-----------------------------------------------------------------------
 bool ActionPaintTile::undo()
 {
     // actually, undo does the same thing as redo.
     return doRedo();
 }
 
-//-----------------------------------------------------------------------
-// Function:    AddTileInfo
-// ParamsIn:    info to be added to the undo list
-// ParamsOut:   none
-// Returns:     nothing
-// Description: this function checks to make sure that the object isn't
-//              already in the list before adding it.
-////-----------------------------------------------------------------------
 void ActionPaintTile::addVertexInfo( VertexInfo& info )
 {
     for( VERTEX_INFO_LIST::EIterator iter = vertexInfoList.Begin();
@@ -381,16 +249,8 @@ void ActionPaintTile::addVertexInfo( VertexInfo& info )
     vertexInfoList.Append( info );
 }
 
-//-----------------------------------------------------------------------
-// Function:    AddChangedVertexInfo
-// ParamsIn:    none
-// ParamsOut:   none
-// Returns:     nothing
-// Description:
-////-----------------------------------------------------------------------
 void ActionPaintTile::addChangedVertexInfo( int row, int column )
 {
-    // get the info and add it
     for( VERTEX_INFO_LIST::EIterator iter = vertexInfoList.Begin();
         !iter.IsDone(); iter++ )
     {
@@ -398,7 +258,6 @@ void ActionPaintTile::addChangedVertexInfo( int row, int column )
             return;
     }
 
-    // if we made it here, it isn't in there already
     VertexInfo info( row, column );
     vertexInfoList.Append( info );
 }
@@ -561,7 +420,6 @@ bool ModifyBuildingAction::doRedo()
     for ( OBJ_INFO_PTR_LIST::EIterator iter = buildingCopyPtrs.Begin();
         !iter.IsDone(); iter++)
     {
-        //EditorObject *pBuilding = (*iter2);
         EditorObject *pBuilding = EditorObjectMgr::instance()->getObjectAtLocation((*iter4).x, (*iter4).y);
 
         if (pBuilding)
@@ -656,7 +514,6 @@ void ModifyBuildingAction::addBuildingInfo(EditorObject& info)
         return;
     }
 
-    // if we made it here, it isn't in there already
     EditorObject *pInfoCopy = info.Clone();
     buildingCopyPtrs.Append( pInfoCopy );
 
@@ -676,9 +533,6 @@ void ModifyBuildingAction::addBuildingInfo(EditorObject& info)
     buildingIDs.Append(id);
 }
 
-// ---------------------------------------------------------------------------
-// ForestAction
-// ---------------------------------------------------------------------------
 
 #ifndef FOREST_H
 #include "Forest.h"
@@ -772,9 +626,6 @@ void ModifyBuildingAction::updateNotedObjectPositions()
     }
 }
 
-//*************************************************************************************************
-// ModifyUnitOrderAction — undo/redo for patrol/move order authoring (UnitBrainPanel)
-//*************************************************************************************************
 
 static void EditorOrderSnapFromUnit( Unit* unit, int& orderType, int& stance,
 	std::vector<Stuff::Vector3D>& waypoints )

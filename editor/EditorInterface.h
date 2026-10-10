@@ -1,8 +1,5 @@
 #ifndef EDITORINTERFACE_H
 #define EDITORINTERFACE_H
-//===========================================================================//
-// Copyright (C) Microsoft Corporation. All rights reserved.                 //
-//===========================================================================//
 
 #pragma warning( disable : 4786 )
 
@@ -37,17 +34,13 @@ class ModifyBuildingAction;
 #include "MapGeneratorDialog.h"
 #endif
 
-// forward declarations
 class DlgFileOpen;
 class Brush;
 class MainMenu;
-// class Menu; // wlib Menu removed - Editor uses MFC CMenu
 
-// global resource handle
 extern HSTRRES gameResourceHandle;
 extern bool DebuggerActive;
 
-// ARM
 namespace Microsoft
 {
 	namespace Xna
@@ -63,16 +56,12 @@ namespace Microsoft
 extern Microsoft::Xna::Arm::IProviderEngine * armProvider;
 
 
-//--------------------------------------------------------------------------------------
 //
-// Mech Commander 2 -- Copyright (c) 1998 FASA Interactive
 //
-// the EditorInterface class handles all the messages for the editor
 //
 // the Editor class merely holds everything needed to make this go.
 //
 // 
-//--------------------------------------------------------------------------------------
 
 // this class handles and routes all messages...
 class EditorInterface : public CWnd
@@ -211,16 +200,13 @@ public:
 
 	ActionUndoMgr				undoMgr;
 
-		//{{AFX_VIRTUAL(EditorInterface)
 	public:
 	virtual BOOL PreTranslateMessage(MSG* pMsg);
 	protected:
 	virtual LRESULT WindowProc(UINT message, WPARAM wParam, LPARAM lParam);
 	virtual BOOL PreCreateWindow(CREATESTRUCT& cs);
-	//}}AFX_VIRTUAL
 
 	protected:
-		//{{AFX_MSG(EditorInterface)
 		afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);
 	afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
 	afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
@@ -259,7 +245,6 @@ public:
 	afx_msg void OnViewShowpassabilitymap();
 	afx_msg void OnMButtonUp(UINT nFlags, CPoint point);
 	afx_msg void OnTimer(UINT_PTR nIDEvent);   // render-pump timer (freeze fix)
-	//}}AFX_MSG
 		DECLARE_MESSAGE_MAP()
 
 	enum { kRenderTimerId = 0xED20 };          // WM_TIMER id for the render pump
@@ -269,7 +254,6 @@ public:
 
 private:
 
-	// Message handlers
 	int Undo();
 	int Redo();	
 	int FileOpen();
@@ -325,7 +309,6 @@ private:
 	
 	int CampaignEditor();
 
-	// helpers
 	void KillCurBrush();
 
 	// EDITOR-SIMPLIFY-S1: single source of truth for the active tool. Tears down the
@@ -341,8 +324,6 @@ private:
 	void rotateSelectedObjects( int direction );
 	void rotateSelectedObjectsDegrees( float deg );
 
-	//-------------------------------------------
-	// Data to control scroll, rotation and zoom
 	float						baseFrameLength;
 	
 	float						zoomInc;

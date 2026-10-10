@@ -250,7 +250,6 @@ int BuildingLink::GetChildrenPositions( Stuff::Vector3D* pos, int Count ) const
 
 static bool isInView(const Point3D &position)
 {
-	/* the code in this function was largely swiped from "bool BldgAppearance::recalcBounds (void)" on 4/24/00 */
 	bool inView = false;
 
 	if (eye)
@@ -268,7 +267,6 @@ static bool isInView(const Point3D &position)
 			float eyeDistance = Distance.GetApproximateLength();
 			if (eyeDistance > Camera::MaxClipDistance)
 			{
-				//hazeFactor = 1.0f;
 				inView = false;
 			}
 			else if (eyeDistance > Camera::MinHazeDistance)

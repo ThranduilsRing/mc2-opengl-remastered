@@ -15,7 +15,6 @@ static long sReadIdBoolean(FitIniFile &missionFile, const char *varName, bool &v
 	bool tmpBool;
 	result = missionFile.readIdBoolean((char *)varName, tmpBool);
 	if (NO_ERR != result) {
-		//assert(false);
 	} else {
 		value = tmpBool;
 	}
@@ -27,7 +26,6 @@ static long sReadIdInteger(FitIniFile &missionFile, const char *varName, int &va
 	long tmpLong;
 	result = missionFile.readIdLong((char *)varName, tmpLong);
 	if (NO_ERR != result) {
-		//assert(false);
 	} else {
 		value = tmpLong;
 	}
@@ -39,7 +37,6 @@ static long sReadIdString(FitIniFile &missionFile, const char *varName, CString 
 	char buffer[2001/*buffer size*/]; buffer[0] = '\0';
 	result = missionFile.readIdString((char *)varName, buffer, 2001/*buffer size*/ - 1);
 	if (NO_ERR != result) {
-		//assert(false);
 	} else {
 		CStr = buffer;
 	}

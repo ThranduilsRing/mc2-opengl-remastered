@@ -3,7 +3,6 @@
 #include "EditorObjectMgr_internal.h"
 
 
-//*************************************************************************************************
 bool EditorObjectMgr::save( PacketFile& PakFile, int whichPacket )
 {
 	File file;
@@ -64,7 +63,6 @@ bool EditorObjectMgr::save( PacketFile& PakFile, int whichPacket )
 				EditorObject* pObject = getObjectAtCell( cellJ, cellI );
 				if (!pObject)
 				{
-					//Dissolve the link here.  Maybe we should warn?
 					val = 0xffffffff;
 					PAUSE(("Turret/Gate linked to bldg @ R %d, C %d  X:%f Y:%f No Bldg there!  Link Deleted",cellJ,cellI,pos.x,pos.y));
 				}
@@ -74,7 +72,6 @@ bool EditorObjectMgr::save( PacketFile& PakFile, int whichPacket )
 			else
 				file.writeLong( 0xffffffff );
 			
-			// forest stuff
 			file.writeLong( (*iter)->getForestID() + 1 );
 			if ( (*iter)->getForestID() != -1 )
 				file.writeLong( (*iter)->getScale()  );
@@ -169,10 +166,6 @@ bool EditorObjectMgr::load( PacketFile& PakFile, int whichPacket )
 			pInfo->appearance()->setDamage(1);
 
 		pInfo->appearance()->teamId = teamId;
-		//Most everything can have an alignment now
-		// -fs  6/14/2000
-//		if ( !isAlignable( pInfo->id ) )
-//			pInfo->appearance()->teamId = -1;
 
 		if ( cells && (cells != 0xffffffff)) // this building is linked
 		{
@@ -190,7 +183,6 @@ bool EditorObjectMgr::load( PacketFile& PakFile, int whichPacket )
 			{
 				if ( (*iter)->GetParentPosition() == pos )
 				{
-					// we've got the link
 					(*iter)->AddChild( pInfo );
 					bFound = true;
 					break;
@@ -205,7 +197,6 @@ bool EditorObjectMgr::load( PacketFile& PakFile, int whichPacket )
 			}
 		}
 
-		// forest stuff
 		pInfo->setForestID( forestId );
 		if ( pInfo->getForestID() != -1 )
 			pInfo->setScale( scale );
@@ -469,7 +460,6 @@ bool		EditorObjectMgr::saveMechs( FitIniFile& file )
 
 	file.writeBlock( "Parts" );
 	file.writeIdULong( "NumParts", units.Count() );
-	//file.writeIdBoolean( "AlliedTeam", alignmentCount[NONE] ? true : false );
 
 	char buffer[256];
 	int counter = 1; // for some unknown reason we index from 1
@@ -480,7 +470,6 @@ bool		EditorObjectMgr::saveMechs( FitIniFile& file )
 	{
 		sprintf( buffer, "Warrior%ld", counter );
 		file.writeBlock( buffer );
-		// ARM
 
 		// Make a new name of the form "level23_warrior8"
 		char armName[512] = {0};
@@ -535,11 +524,8 @@ bool		EditorObjectMgr::saveMechs( FitIniFile& file )
 	}
 
 
-	// you should be able to get the force groups frm the units themselves 
 	file.writeBlock( "Teams" );
 
-	//bool alliedFlag = alignmentCount[2] || alignmentCount[3] || alignmentCount[4] || alignmentCount[5] || alignmentCount[6] || alignmentCount[7];
-	//file.writeIdBoolean( "AlliedTeam", alliedFlag ? true : false );
 
 	{
 		/*When saving, each player's units need to be grouped into "lances" of 12 units

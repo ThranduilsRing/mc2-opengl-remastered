@@ -390,5 +390,3 @@ void BuildingBrush::addRotationDegrees( float deg )
 		pCursor->rotation += deg;
 }
 
-//*************************************************************************************************
-// end of file ( BuildingBrush.cpp )

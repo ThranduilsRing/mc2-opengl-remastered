@@ -37,8 +37,6 @@ static bool projectPtGL_link( Camera* eye, const Stuff::Vector3D& wp, float& sx,
 
 LinkBrush::LinkBrush( bool Link )
 {
-	// here we need to get all of the links on the map
-	// and add an interface element for each one. 
 	parentPos.x = parentPos.y = -1;
 	bLink = Link;
 	parent = NULL;
@@ -212,13 +210,11 @@ LinkBrush::LinkAction::LinkAction( )
 
 bool LinkBrush::LinkAction::undo( )
 {
-	// go through each of the objects in the list
 	for ( EList<LinkInfo, const LinkInfo& >::EIterator iter = changedLinks.End(); 
 	 !iter.IsDone(); iter-- )
 	{
 		 if ( (*iter).type == LinkInfo::ADD )
 		{
-			// change the type to remove, and take it out of the map
 			(*iter).type = LinkInfo::REMOVE;
 
 			Stuff::Vector3D pos = (*iter).m_LinkCopy.GetParentPosition();
@@ -240,7 +236,6 @@ bool LinkBrush::LinkAction::undo( )
 		}
 		else if ( (*iter).type == LinkInfo::REMOVE )
 		{
-			// change the type to remove, and take it out of the map
 			(*iter).type = LinkInfo::ADD;
 
 			EditorObjectMgr::instance()->addLink( new BuildingLink((*iter).m_LinkCopy) );

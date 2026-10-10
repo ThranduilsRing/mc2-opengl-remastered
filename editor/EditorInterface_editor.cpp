@@ -3,7 +3,6 @@
 #include "EditorInterface_internal.h"
 
 
-// EDITOR stuff
 
 void Editor::init( char* loader )
 {
@@ -119,7 +118,6 @@ void Editor::init( char* loader )
 								long camResult = camFile.open( path );
 								if ( NO_ERR != camResult )
 								{
-									// STOP(( "Need Camera File " ));
 								}
 
 								if (EditorInterface::instance())
@@ -315,11 +313,9 @@ void Editor::destroy (void)
 
 void Editor::resaveAll (void)
 {
-	//Startup the editor.
 	if ( !eye )
 		eye = new EditorCamera;
 
-	// ARM
 	CoInitialize(NULL);
 	// by Methuselas: EditorInterface joins the Editor-owned SemVer lane;
 	// do not reintroduce the legacy provider identity here.
@@ -342,13 +338,11 @@ void Editor::resaveAll (void)
 		int count = 0;
 		char buf[512] = {0};
 		
-		// for all groups
 		for ( EList<CGroupData, CGroupData>::EConstIterator iter = campaignData.m_GroupList.Begin();
 			!iter.IsDone(); count++, iter++ )
 		{
 			CGroupData groupData = (*iter);
 
-			// Make a virtual group name
 			strcpy(buf, campaignFiles[i]);
 			int campaignLen = (int)strlen(buf);
 			buf[campaignLen-4] = '_';
@@ -358,15 +352,12 @@ void Editor::resaveAll (void)
 			sprintf(groupId, "%02d", count+1);
 			strcat(buf, groupId);
 
-			// Add a relationship from the campaign to the virtual group
 			campaignAssetPtr->AddRelationship("Group", buf);
 			
-			// Open the virtual asset
 			IProviderAssetPtr groupAssetPtr = armProvider->OpenAsset(buf, AssetType_Virtual, ProviderType_Primary);
 
 			groupAssetPtr->AddProperty("Type", "Mission Group");
 			
-			// Add all the relationships
 
 			if (groupData.m_OperationFile != "")
 			{
@@ -400,7 +391,6 @@ void Editor::resaveAll (void)
 				groupAssetPtr->AddRelationship("Video", buf);			
 			}
 
-			// for all missions part of this group
 			for ( EList<CMissionData, CMissionData>::EConstIterator iter2 = groupData.m_MissionList.Begin();
 				!iter2.IsDone(); iter2++ )
 			{
@@ -445,8 +435,6 @@ void Editor::resaveAll (void)
 	EditorObjectMgr* pMgr = EditorObjectMgr::instance();
 	pMgr->init( bdgFileName, objFileName );
 
-	//----------------------------------------------------------------------------
-	//Recurse through the data\missions directory and resave every .PAK you find!
 	char findString[512];
 	sprintf(findString,"%s*.pak",missionPath);
 
@@ -467,7 +455,6 @@ void Editor::resaveAll (void)
 			
 			if (fileExists(pakName))
 			{
-				//Force Attributes to RW!
 				SetFileAttributes(pakName,FILE_ATTRIBUTE_NORMAL);
 				SetFileAttributes(fitName,FILE_ATTRIBUTE_NORMAL);
 				long result = EditorData::initTerrainFromPCV(pakName);
@@ -486,7 +473,6 @@ void Editor::resaveAll (void)
 
 	FindClose(searchHandle);
 
-	// ARM
 	CoUninitialize();
 }
 
@@ -526,7 +512,6 @@ void Editor::update()
 		gos_SetScreenMode(g_newWidth, g_newHeight);
 	}
 
-	//interMgr.update();
 
 	mcTextureManager->clearArrays();
 
@@ -549,8 +534,6 @@ void Editor::update()
 			land->update();
 		}
 
-		// S2.13-surgical: hoist camera projection-state refresh from
-		// EditorCamera::render() to BEFORE land->geometry().
 		{
 			// Use the SCENE viewport size (Environment.drawable*), NOT gos_GetViewport's
 			// viewMul*. With the docked map-resize, the GL scene renders into a centralW
@@ -588,9 +571,7 @@ void Editor::update()
 	mcTextureManager->update();
 }
 
-//--------------------------------------------------------------------------------------
 BEGIN_MESSAGE_MAP(EditorInterface,CWnd )
-	//{{AFX_MSG_MAP(EditorInterface)
 	ON_WM_CREATE()
 	ON_WM_LBUTTONDOWN()
 	ON_WM_LBUTTONUP()
@@ -629,7 +610,6 @@ BEGIN_MESSAGE_MAP(EditorInterface,CWnd )
 	ON_COMMAND(ID_VIEW_SHOWPASSABILITYMAP, OnViewShowpassabilitymap)
 	ON_WM_MBUTTONUP()
 	ON_WM_TIMER()
-	//}}AFX_MSG_MAP
 	ON_UPDATE_COMMAND_UI_RANGE(0, 0xffff, UpdateButton ) 
 	ON_COMMAND_RANGE( 0, 0xffff, OnCommand )
 END_MESSAGE_MAP()
@@ -834,7 +814,6 @@ void EditorInterface::addBuildingsToNewMenu()
 	CMenu* pMenu = new CMenu;
 	pMenu->CreatePopupMenu();
 
-	// now i need to add the buildings to the toolbars/menus
 	int groupCount = pMgr->getBuildingGroupCount( );
 
 	const char** pNames = ( const char** )malloc( sizeof( const char *) * groupCount );
@@ -858,7 +837,6 @@ void EditorInterface::addBuildingsToNewMenu()
 		pChildMenu->CreatePopupMenu();
 		menus[i + 1] = pChildMenu;
 		
-		// now add sub items to the group
 		int buildingCount = pMgr->getNumberBuildingsInGroup( i );
 
 		const char** pBuildingNames = (const char**)malloc( sizeof( const char * ) * buildingCount );
@@ -978,7 +956,6 @@ void EditorInterface::addBuildingsToNewMenu()
 
 }
 
-//--------------------------------------------------------------------------------------
 void EditorInterface::handleNewMenuMessage( long specificMessage )
 {
 	if ( !eye || !eye->active )
@@ -990,7 +967,6 @@ void EditorInterface::handleNewMenuMessage( long specificMessage )
 		return;
 	}
 
-	// special check for building range
 	if ( specificMessage >= IDS_OBJECT_200 && specificMessage <= 30800 )
 	{
 		paintBuildings( specificMessage );
@@ -1171,7 +1147,6 @@ void EditorInterface::handleNewMenuMessage( long specificMessage )
 }
 
 
-//--------------------------------------------------------------------------------------
 int EditorInterface::Quit()
 {
 	int res = PromptAndSaveIfNecessary();
@@ -1184,7 +1159,6 @@ int EditorInterface::Quit()
 	return 1;
 }
 
-//--------------------------------------------------------------------------------------
 int EditorInterface::PromptAndSaveIfNecessary()
 {
 	int res = IDNO;
@@ -1211,7 +1185,6 @@ int EditorInterface::PromptAndSaveIfNecessary()
 	return res;
 }
 
-//--------------------------------------------------------------------------------------
 int EditorInterface::New()
 {
 	int res = PromptAndSaveIfNecessary();
@@ -1290,7 +1263,6 @@ int EditorInterface::NewGeneratedMission()
 	return true;
 }
 
-//--------------------------------------------------------------------------------------
 int EditorInterface::FileOpen()
 {
 	int res = PromptAndSaveIfNecessary();
@@ -1318,7 +1290,6 @@ int EditorInterface::FileOpen()
 
 }
 
-//--------------------------------------------------------------------------------------
 
 void EditorInterface::OpenMissionByPath( const char* pakPath )
 {

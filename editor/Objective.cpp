@@ -748,7 +748,6 @@ CObjectives &CObjectives::operator=(const CObjectives &master) {
 	Clear();
 	CObjectives::EConstIterator it = master.Begin();
 	while (!it.IsDone()) {
-		//CObjective *tmpObjective = new CObjective(*(*it));
 		CObjective *tmpObjective = new CObjective(m_alignment);
 		(*tmpObjective) = (*(*it));
 		Append(tmpObjective);
@@ -895,7 +894,6 @@ void CObjectives::handleObjectInvalidation(const EditorObject *pObj) {
 	while (!it.IsDone()) {
 		CObjective *pObjective = *it;
 		if (pObjective->Count() > 0) {
-			/*do success conditions*/
 			CObjective::EIterator it2 = pObjective->End();
 			while (!it2.IsDone()) {
 				if (true == (*it2)->RefersTo(pObj)) {
@@ -919,7 +917,6 @@ void CObjectives::handleObjectInvalidation(const EditorObject *pObj) {
 			}
 		}
 		if (pObjective->m_failureConditionList.Count() > 0) {
-			/*do failure conditions*/
 			CObjective::EIterator it2 = pObjective->m_failureConditionList.End();
 			while (!it2.IsDone()) {
 				if (true == (*it2)->RefersTo(pObj)) {

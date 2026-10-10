@@ -369,7 +369,6 @@ long EditorObjectMgr::createForest( const Forest& forest )
 
 	forests.Append( pForest );
 	
-	// here I need to go about adding the trees -- will do in a sec
 	doForest( *pForest );
 
 	return ID;
@@ -401,7 +400,6 @@ void EditorObjectMgr::editForest( long& oldID, const Forest& forest )
 			bIter--;
 	}
 
-	// update the forest object
 	for ( FOREST_LIST::EIterator iter = forests.Begin(); !iter.IsDone(); iter++ )
 	{
 		if ( (*iter)->getID() == oldID )
@@ -434,7 +432,6 @@ void EditorObjectMgr::removeForest( const Forest& forest )
 		}
 	}
 
-	// now remove the forest from the list
 	for ( FOREST_LIST::EIterator iter = forests.Begin(); !iter.IsDone(); iter++ )
 	{
 		if ( (*iter)->getID() == forest.getID() )
@@ -516,11 +513,9 @@ void EditorObjectMgr::doForest( const Forest& forest )
 							continue;
 						}
 						
-						// figure out how far from center we are
 						land->cellToWorld( cellJ + l, cellI + m, pos );
 						pos.z = land->getTerrainElevation( pos );
 
-						// distance 
 						float deltaX = centerX - pos.x;
 						float deltaY = centerY - pos.y;
 						float tmpR  = deltaX * deltaX + deltaY * deltaY;
@@ -534,13 +529,9 @@ void EditorObjectMgr::doForest( const Forest& forest )
 
 						long count = (int)density + (RandomNumber( 100 ) < remainder * 100 ? 1 : 0);
 
-						// OK, now we have the density randomly (if possible)
-						// populate the tile with these...
-						// might want to break down by cell
 						
 						for ( int t = 0; t < count; t++ )
 						{
-							// oh god, now we need to pick a tree
 							long random = RandomNumber( 100 );
 							int group = -1;
 							int index = -1;
@@ -560,7 +551,6 @@ void EditorObjectMgr::doForest( const Forest& forest )
 
 							Stuff::Vector3D treePos = pos;
 
-							// now place equally randomly.
 							treePos.x += (float)RandomNumber( Terrain::worldUnitsPerCell ) - Terrain::worldUnitsPerCell/2;
 							treePos.y += (float)RandomNumber( Terrain::worldUnitsPerCell ) - Terrain::worldUnitsPerCell/2;
 
@@ -634,7 +624,6 @@ void EditorObjectMgr::getRandomTreeFromGroup( int treeGroup, int& group, int& in
 	index  = 0;
 
 	int treeCount = 0;
-	// figure out how many trees are in the group
 	Group* pGroup = &groups[TREE_GROUP];
 	if ( pGroup )
 	{

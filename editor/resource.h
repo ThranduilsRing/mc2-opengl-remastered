@@ -592,7 +592,6 @@
 #define ID_TERRAINS_GRASS2              60029
 #define ID_TERRAINS_GRASS3              60030
 
-// Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS

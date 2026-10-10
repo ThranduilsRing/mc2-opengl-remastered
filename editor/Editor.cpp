@@ -27,17 +27,12 @@
 class gosRenderer;
 gosRenderer* getGosRenderer();
 
-/* begin jubilee stuff */
-//#include "wlib.h"
 #include "resource.h"
 #include "EditorResourceFallback.h"
 #include "EditorVersion.h"
-//#include "d3dfont.h"
 extern void InitWLib(void);
-/* end jubilee stuff */
 
 
-// globals used for memory
 UserHeapPtr guiHeap = NULL;
 
 
@@ -55,7 +50,6 @@ unsigned long tglHeapSize = 65536000;
 long gammaLevel = 0;
 bool hasGuardBand = false;
 extern long terrainLineChanged; // the terrain uses this
-//extern float frameNum;	// tiny geometry needs this
 extern float frameRate; // tiny geometry needs this
 
 extern bool InEditor;
@@ -146,7 +140,6 @@ void UpdateRenderers()
 
 	gos_GetViewport(&viewMulX, &viewMulY, &viewAddX, &viewAddY);
 			
-	//------------------------------------------------------------
 	gos_SetRenderState( gos_State_Filter, gos_FilterNone );
 
 	// Guard against partial init (e.g. mc2.fx missing caused InitializeGameEngine
@@ -164,7 +157,6 @@ void UpdateRenderers()
 
 	reloadBounds = false;
 
-   	//reset the TGL RAM pools.
    	colorPool->reset();
    	vertexPool->reset();
    	facePool->reset();
@@ -173,16 +165,12 @@ void UpdateRenderers()
 }
 
 bool statisticsInitialized = false;
-//------------------------------------------------------------
 void DoGameLogic()
 {
 
 	if (globalFloatHelp)
 		globalFloatHelp->resetAll();
 
-	//-------------------------------------
-	// Get me the current frameRate.
-	// Convert to frameLength and any other timing stuff.
 	if (frameRate < 4.0)
 		frameRate = 4.0;
 
@@ -193,21 +181,15 @@ void DoGameLogic()
 
 	if (doTransformMath)
 	{
-		//-------------------------------------
-		// Poll devices for this frame.
 
 		if (editor)
 			editor->update();
 
-		//----------------------------------------
-		// Update all of the timers
 		if (timerManager)
 			timerManager->update();
 	}
 
 
-	//---------------------------------------------------
-	// Update heap instrumentation.
 	if (globalHeapList)
 		globalHeapList->update();
 
@@ -217,8 +199,6 @@ void DoGameLogic()
 		quitGame = true;		//We just needed to resave the maps.  Exit immediately
 	}
 		
-	//---------------------------------------------------------------
-	// Somewhere in all of the updates, we have asked to be excused!
 	if (quitGame)
 	{
 		//EnterWindowMode();				//Game crashes if _TerminateApp called from fullScreen
@@ -227,7 +207,6 @@ void DoGameLogic()
 
 }
 
-//---------------------------------------------------------------------------
 void InitializeGameEngine()
 {
 	InEditor = true;
@@ -287,16 +266,7 @@ void InitializeGameEngine()
 		gosFontHandle = 0;
 	}
 
-	// Legacy Voodoo3 hardware restriction removed for modern builds.
 
-   	//-------------------------------------------------------------
-   	// Find the CDPath in the registry and save it off so I can
-   	// look in CD Install Path for files.
-	//Changed for the shared source release, just set to current directory
-	//DWORD maxPathLength = 1023;
-	//gos_LoadDataFromRegistry("CDPath", CDInstallPath, &maxPathLength);
-	//if (!maxPathLength)
-	//	strcpy(CDInstallPath,"..\\");
 	strcpy(CDInstallPath,".\\");
 
 	long lastCharacter = (long)strlen(CDInstallPath)-1;
@@ -306,8 +276,6 @@ void InitializeGameEngine()
 		CDInstallPath[lastCharacter+2] = 0;
 	}
 
-	//--------------------------------------------------------------
-	// Start the SystemHeap and globalHeapList
 	globalHeapList = new HeapList;
 	gosASSERT(globalHeapList != NULL);
 
@@ -333,8 +301,6 @@ void InitializeGameEngine()
 	
 	gos_PopCurrentHeap();
 	
-	//------------------------------------------------------
-	// Start the GOS FX.
 	gos_PushCurrentHeap(gosFX::Heap);
 	
 	gosFX::EffectLibrary::Instance = new gosFX::EffectLibrary();
@@ -385,7 +351,6 @@ void InitializeGameEngine()
 	{
 	}
 
-	//---------------------------------------------------------------------
 	float doubleClickThreshold = 0.2f;
 	long dragThreshold = 10;
 
@@ -400,8 +365,6 @@ void InitializeGameEngine()
 		userInput->setMouseDragThreshold((float)dragThreshold);
 	}
 
-	//--------------------------------------------------------------
-	// Read in System.CFG
 	FitIniFilePtr systemFile = new FitIniFile;
 
 #ifdef _DEBUG
@@ -582,8 +545,6 @@ void InitializeGameEngine()
 	delete systemFile;
 	systemFile = NULL;
 
-	//--------------------------------------------------------------
-	// Read in Prefs.cfg
 	FitIniFilePtr prefs = new FitIniFile;
 
 	Environment.Key_Exit= (unsigned long)-1;
@@ -702,18 +663,11 @@ void InitializeGameEngine()
 	
 	delete prefs;
 	prefs = NULL;
-	//---------------------------------------------------------------------
 
-	//--------------------------------------------------
-	// Setup Mouse Parameters from Prefs.CFG
-	//--------------------------------------------------
 
- 	//---------------------------------------------------------
-	// Start the Tiny Geometry Layer Heap.
 	TG_Shape::tglHeap = new UserHeap;
 		TG_Shape::tglHeap->init(tglHeapSize,"TinyGeom");
 
-		//Start up the TGL RAM pools.
 		colorPool 		= new TG_VertexPool;
 		colorPool->init(20000);
 		
@@ -729,10 +683,7 @@ void InitializeGameEngine()
 		trianglePool 	= new TG_TrianglePool;
 		trianglePool->init(20000);
 
-	//--------------------------------------------------------------
 	
-	//------------------------------------------------
-	// Fire up the MC Texture Manager.
 	mcTextureManager = new MC_TextureManager;
 
 	if (getGosRenderer())
@@ -743,7 +694,6 @@ void InitializeGameEngine()
 	{
 	}
 
-	//Startup the vertex array pool
 	mcTextureManager->startVertices(500000);
 
 	// clearArrays() resets both the vertex and render-shape managers.
@@ -751,13 +701,9 @@ void InitializeGameEngine()
 	// before the restored DoGameLogic/update path can safely run.
 	mcTextureManager->startShapes(10000);
 
-	//--------------------------------------------------------------
-	// Load up the mouse cursors
 	godMode = true;
 	MOVE_init(30);
 
-	//--------------------------
-	// Create and Load the master Effects File
 	weaponEffects = new WeaponEffects;
 		weaponEffects->init("Effects");
 
@@ -806,13 +752,9 @@ else
     {
     }
 }
-	//---------------------------------------------------------
-	// Start the Timers
 	timerManager = new TimerManager;
 	timerManager->init();
 
-	//---------------------------------------------------------
-	// Start the Color table code
 	initColorTables();
 
 	if (!statisticsInitialized)
@@ -821,7 +763,6 @@ else
 		HeapList::initializeStatistics();
 	}
 
-	//Startup the Office Watson Handler.
 	InitDW();
 }
 
@@ -833,12 +774,8 @@ void TerminateGameEngine()
 	else
 		alreadyTermed = true;
 
-	//---------------------------------------------------------
-	// End the Color table code
 	destroyColorTables();
 
-	//---------------------------------------------------------
-	// End the Timers
 	delete timerManager;
 	timerManager = NULL;
 
@@ -846,8 +783,6 @@ void TerminateGameEngine()
 		delete editor;
 	editor = NULL;
 
-	//--------------------------
-	// master Effects File
 	if (weaponEffects)
 		delete weaponEffects;
 	weaponEffects = NULL;
@@ -860,8 +795,6 @@ void TerminateGameEngine()
 
 	MOVE_cleanup();
 
-	//------------------------------------------------
-	// shutdown the MC Texture Manager.
 	if (mcTextureManager)
 	{
 		mcTextureManager->freeShapes();
@@ -872,11 +805,8 @@ void TerminateGameEngine()
 		mcTextureManager = NULL;
 	}
 
-	//---------------------------------------------------------
-	// End the Tiny Geometry Layer Heap.
 	if (TG_Shape::tglHeap)
 	{
-		//Shut down the TGL RAM pools.
 		if (colorPool)
 		{
 			colorPool->destroy();
@@ -919,18 +849,12 @@ void TerminateGameEngine()
 	}
 
 	//
-	//--------------------------
-	// Turn off the fast Files
-	//--------------------------
 	//
 	FastFileFini();
 
 	delete globalFloatHelp;
 	globalFloatHelp = NULL;
 
-	//----------------------------------------------------
-	// Shutdown the MLR and associated stuff libraries
-	//----------------------------------------------------
 	gos_PushCurrentHeap(gosFX::Heap);
 
 	delete effectStream;
@@ -956,8 +880,6 @@ void TerminateGameEngine()
 	MidLevelRenderer::TerminateClasses();
 	Stuff::TerminateClasses();
 
-	//--------------------------------------------------------------
-	// End the SystemHeap and globalHeapList
 	if (systemHeap)
 	{
 		systemHeap->destroy();
@@ -974,7 +896,6 @@ void TerminateGameEngine()
 		globalHeapList = NULL;
 	}
 
-	//---------------------------------------------------------
 
 	gos_DeleteFont(gosFontHandle);
 
@@ -989,10 +910,6 @@ void TerminateGameEngine()
 		gosResourceHandle = nullptr;
 	}
 
-	/*terminating stuff not initialized explicitly by InitializeGameEngine()*/
-	//---------------------------------------------------------
-	// TEST of PORT
-	// Create VFX PANE and WINDOW to test draw of old terrain!
 	if (globalPane)
 	{
 		delete globalPane;
@@ -1005,13 +922,10 @@ void TerminateGameEngine()
 		globalWindow = NULL;
 	}
 
-	// Tear down the SDL/GL context and GameOS renderer that InitGameOS created.
 	extern void EditorGameOS_Shutdown();
 	EditorGameOS_Shutdown();
 }
 
-//----------------------------------------------------------------------------
-// Same command line Parser as MechCommander
 void ParseCommandLine(char *command_line)
 {
 	int i;
@@ -1060,8 +974,6 @@ void ParseCommandLine(char *command_line)
 			{
 				if (argv[i][0] == '"')
 				{
-					// They typed in a quote, keep reading argvs
-					// until you find the close quote
 					strcpy(missionName,&(argv[i][1]));
 					bool scanName = true;
 					while (scanName && (i < n_args))
@@ -1096,7 +1008,6 @@ void ParseCommandLine(char *command_line)
 	}
 }
 
-//---------------------------------------------------------------------
 void GetGameOSEnvironment( char* CommandLine )
 {
 		ParseCommandLine(CommandLine);
@@ -1135,7 +1046,6 @@ void GetGameOSEnvironment( char* CommandLine )
 
 	Environment.AntiAlias				= 0;
 //
-// Texture infomation
 //
 	Environment.Texture_S_256			= 6;
 	Environment.Texture_S_128			= 1;

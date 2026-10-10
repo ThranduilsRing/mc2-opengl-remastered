@@ -10,7 +10,6 @@
 
 #ifndef ACTION_H
 #define ACTION_H
-//--------------------------------------------------------------------------------
 //
 // Actions.h - header file for the Action Base object and the Action Mgr.
 //              Actions are things that can be undone
@@ -32,7 +31,6 @@ class Action;
 
 #include <vector>
 
-// Abstract base class for all action objects
 class Action
 {
 public:
@@ -47,7 +45,6 @@ public:
 
 protected:
 
-    // suppressed
     Action( const char* pStr )
     {
         gosASSERT( strlen( pStr ) < MAX_DESC_LENGTH );
@@ -84,7 +81,6 @@ public:
 
     ActionPaintTile(){}
 
-    // virtual overrides
     virtual bool redo();
     virtual bool undo();
 
@@ -236,7 +232,6 @@ private:
     Forest* m_forest; // heap copy of the snapshot (ID + all placement params)
 };
 
-// this mgr holds all the actions
 class ActionUndoMgr
 {
 public:

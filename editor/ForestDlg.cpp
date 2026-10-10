@@ -14,8 +14,6 @@
 #include "mclib.h"
 
 
-/////////////////////////////////////////////////////////////////////////////
-// ForestDlg dialog
 
 static char szFITFilter[] = "FIT Files (*.FIT)|*.fit||";
 
@@ -23,7 +21,6 @@ static char szFITFilter[] = "FIT Files (*.FIT)|*.fit||";
 ForestDlg::ForestDlg(CWnd* pParent /*=NULL*/)
 : CDialog(ForestDlg::IDD, pParent), forest( -1 )
 {
-	//{{AFX_DATA_INIT(ForestDlg)
 	m_maxDensity = 10.0f;
 	m_minDensity = 2.0f;
 	m_maxHeight = 1.0f;
@@ -47,7 +44,6 @@ ForestDlg::ForestDlg(CWnd* pParent /*=NULL*/)
 	m_13 = 0;
 	m_14 = 0;
 	m_15 = 0;
-	//}}AFX_DATA_INIT
 }
 
 
@@ -57,7 +53,6 @@ void ForestDlg::DoDataExchange(CDataExchange* pDX)
 	float max = land->mapTopLeft3d.y;
 
 	CDialog::DoDataExchange(pDX);
-	//{{AFX_DATA_MAP(ForestDlg)
 	DDX_Text(pDX, IDC_DENSITY_MAX, m_maxDensity);
 	DDV_MinMaxFloat(pDX, m_maxDensity, 0.f, 10.f);
 	DDX_Text(pDX, IDC_DENSITY_MIN, m_minDensity);
@@ -99,24 +94,18 @@ void ForestDlg::DoDataExchange(CDataExchange* pDX)
 	DDV_MinMaxInt(pDX, m_14, 0, 100);
 	DDX_Text(pDX, IDC_FOREST_EDIT15, m_15);
 	DDV_MinMaxInt(pDX, m_15, 0, 100);
-	//}}AFX_DATA_MAP
-//	DDV_MinMaxFloat(pDX, m_xLoc, land->mapTopLeft3d.x, -land->mapTopLeft3d.x);
 	DDV_MinMaxFloat(pDX, m_yLoc, min, max);
 
 }
 
 
 BEGIN_MESSAGE_MAP(ForestDlg, CDialog)
-	//{{AFX_MSG_MAP(ForestDlg)
 	ON_BN_CLICKED(IDSAVE, OnSave)
 	ON_BN_CLICKED(IDLOAD, OnLoad)
-	//}}AFX_MSG_MAP
 	ON_CONTROL_RANGE( EN_CHANGE, IDC_FOREST_EDIT1, IDC_FOREST_EDIT15, OnEditChanged )
 	ON_NOTIFY_RANGE( NM_RELEASEDCAPTURE, IDC_SLIDER1, IDC_SLIDER15, OnSliderChanged )
 END_MESSAGE_MAP()
 
-/////////////////////////////////////////////////////////////////////////////
-// ForestDlg message handlers
 
 void ForestDlg::OnSave() 
 {
@@ -304,7 +293,6 @@ BOOL ForestDlg::OnInitDialog()
 	}
 	
 	return TRUE;  // return TRUE unless you set the focus to a control
-	              // EXCEPTION: OCX Property Pages should return FALSE
 }
 
 void ForestDlg::OnLoad() 
@@ -316,16 +304,11 @@ void ForestDlg::OnLoad()
 	if ( IDOK == dlg.DoModal() )
 	{
 		CString str = dlg.GetFileName();
-//		Forest tmp( -1 );	
-//		tmp.setFileName( dlg.m_ofn.lpstrFile );
-//		tmp.init();
 
 		EditorObjectMgr::instance()->unselectAll();
 
-//		int ID = EditorObjectMgr::instance()->createForest( tmp );	
 		forest.setFileName( dlg.m_ofn.lpstrFile );
 		forest.init();
-		//forest = tmp;
 		OnInitDialog();
 	}
 

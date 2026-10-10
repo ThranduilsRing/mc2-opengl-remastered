@@ -108,9 +108,6 @@ static graphics::RenderContextHandle g_editorRenderContext = nullptr;
 static bool g_editorAudioCreated = false;
 
 
-// ---------------------------------------------------------------------------
-// Local startup tracing
-// ---------------------------------------------------------------------------
 static void EditorGameOSTrace(const char* fmt, ...)
 {
 	if (!mc2::gate::get<"MC2_EDITOR_TRACE">())
@@ -169,9 +166,6 @@ static bool EditorGameOS_EnsureSDLVideo()
 }
 
 
-// ---------------------------------------------------------------------------
-// Runtime globals
-// ---------------------------------------------------------------------------
 
 // gActive / gGotFocus: track Editor window activation state.
 // WindowProc in EditorInterface.cpp sets these on WM_CREATE / WM_ACTIVATE.
@@ -584,7 +578,6 @@ DWORD __stdcall RunGameOSLogic()
 #endif
     }
 
-    // --- Pump SDL events ---------------------------------------------------
     input::beginUpdateMouseState();
 
     SDL_Event event;
@@ -680,8 +673,6 @@ DWORD __stdcall RunGameOSLogic()
     }
     GuiRuntime::NewFrame();
     if (g_imguiInitialized) {
-        // (Removed the leftover "MC2 Editor" bring-up window that floated at (10,50)
-        // and overlapped the top-left status HUD.)
         if (EditorInterface::instance())
             EditorInterface::instance()->renderToolbarImGui();
     }
@@ -857,9 +848,6 @@ graphics::RenderContextHandle EditorGameOS_GetRenderContext()
     return g_editorRenderContext;
 }
 
-// ---------------------------------------------------------------------------
-// Legacy editor/global compatibility symbols
-// ---------------------------------------------------------------------------
 HSTRRES gameResourceHandle = nullptr;
 
 extern void GetGameOSEnvironment(char* path);

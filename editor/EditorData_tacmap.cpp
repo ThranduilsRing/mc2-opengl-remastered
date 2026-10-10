@@ -58,7 +58,6 @@ struct TGARecs
 #define LIGHT_YAW		-250.0f
 #define LIGHT_PITCH		32.0f
 
-//---------------------------------------------------------------------------
 inline bool isCementType (DWORD type)
 {
 	bool isCement = ((type == BASE_CEMENT_TYPE) ||
@@ -66,7 +65,6 @@ inline bool isCementType (DWORD type)
 	return isCement;
 }
 
-//---------------------------------------------------------------------------
 void EditorData::drawTacMap( BYTE* pDest, long dataSize, int tacMapSize )
 {
 	EditorInterface::instance()->SetBusyMode();
@@ -85,8 +83,6 @@ void EditorData::drawTacMap( BYTE* pDest, long dataSize, int tacMapSize )
 	optimalLight.y = sin(LIGHT_YAW * DEGREES_TO_RADS);
 	optimalLight.z = sin(LIGHT_PITCH * DEGREES_TO_RADS);
 
-	//------------------------------------------------------
-	// First Pass - Find Max and Min Elevation.
 	if (!land->mapData) { return; }
 	PostcompVertexPtr currentVertex = land->mapData->getData();
 
@@ -109,12 +105,7 @@ void EditorData::drawTacMap( BYTE* pDest, long dataSize, int tacMapSize )
 	float elevationRange = maxElv - minElv;
 	elevationRange /= 128.0f;			//Used to scale color based on elevation.
 
-	//------------------------------------------------------
-	// Second Pass - Draw Base Terrain Colors and elevations
-	// This were the old way.
 	//
-	// Now we grab the colormap and shrink it on down!!
-	// IF NO colormap, try the burnin?
 	if (land->terrainTextures2)
 	{
 		land->terrainTextures2->getScaledColorMap((MemoryPtr)tacMapBmp,((land->realVerticesMapSide) * MAPCELL_DIM));
@@ -124,12 +115,8 @@ void EditorData::drawTacMap( BYTE* pDest, long dataSize, int tacMapSize )
 	{
 		for (long x=0;x<(land->realVerticesMapSide) * MAPCELL_DIM;x++)
 		{
-			//-----------------------------------------------
-			// Get the data needed to make this terrain quad
 			PostcompVertex *pVertex1 = currentVertex;
 				
-			//-------------------------------------------------------------------------------
-			// Store texture in bottom part from TxmIndex provided by TerrainTextureManager
 			DWORD terrainType1RGB = 0xffffffff;
 
 			if (pVertex1->elevation < (Terrain::waterElevation - MapData::shallowDepth))
@@ -141,8 +128,6 @@ void EditorData::drawTacMap( BYTE* pDest, long dataSize, int tacMapSize )
 
 			float lightIntensity1 = 1.0f;
 
-			//----------------------------------------------
-			// Get Pointer to BMP data for this point.
 			unsigned long *tBMP = &(tacMapBmp[(x) + ((y) * land->realVerticesMapSide * 3)]);
 
 			if (terrainType1RGB != 0xffffffff)
@@ -156,13 +141,11 @@ void EditorData::drawTacMap( BYTE* pDest, long dataSize, int tacMapSize )
 			}
 		}
 		
-		//Reset and read the same vertices until we hit the next set of cells!!
 		currentVertex = land->mapData->getData(); 
 		currentVertex += land->realVerticesMapSide * (y / 3);
 	}
 
 	unsigned long *tBMP = tacMapBmp;
-	// now draw on the trees
 	for( long i = 0; i < land->realVerticesMapSide * MAPCELL_DIM; i++ )
 	{
 		for ( int j = 0; j < land->realVerticesMapSide * MAPCELL_DIM; j++ )
@@ -184,17 +167,12 @@ void EditorData::drawTacMap( BYTE* pDest, long dataSize, int tacMapSize )
 	}
 
 	currentVertex = land->mapData->getData();
-	// now draw on the Roads
 	for (long y=0;y<(land->realVerticesMapSide-1);y++)
 	{
 		for (long x=0;x<(land->realVerticesMapSide-1);x++)
 		{
-			//-----------------------------------------------
-			// Get the data needed to make this terrain quad
 			PostcompVertex *pVertex1 = currentVertex;
 				
-			//-------------------------------------------------------------------------------
-			// Store texture in bottom part from TxmIndex provided by TerrainTextureManager
 			Overlays o = (Overlays)-1;
 			unsigned long offset = 0;
 			
@@ -216,8 +194,6 @@ void EditorData::drawTacMap( BYTE* pDest, long dataSize, int tacMapSize )
 			float lightIntensity3 = pVertex3->vertexNormal * optimalLight;
 			float lightIntensity4 = pVertex4->vertexNormal * optimalLight;
 
-			//----------------------------------------------
-			// Get Pointer to BMP data for this point.
 			unsigned long *tBMP = &(tacMapBmp[(x * 3) + ((y * 3) * land->realVerticesMapSide * 3)]); 
 			float totalR1, totalG1, totalB1, totalR2, totalG2, totalB2, totalR3, totalG3, totalB3, totalR4, totalG4, totalB4;
 
@@ -354,7 +330,6 @@ void EditorData::drawTacMap( BYTE* pDest, long dataSize, int tacMapSize )
 	}
 	 
 	tBMP = tacMapBmp;
-	// now draw on the Buildings and forests
 	TGARecs *tRecs = (TGARecs *)systemHeap->Malloc(sizeof(TGARecs) * 255);
 	memset(tRecs,0,sizeof(TGARecs) * 255);
 	
@@ -455,7 +430,6 @@ void EditorData::drawTacMap( BYTE* pDest, long dataSize, int tacMapSize )
 					long result = ~NO_ERR;
 					if (0 != strcmp("0", EditorObjectMgr::instance()->getTGAFileName(pObj->getID())))
 					{
-						//Draw the TGA at this location into the tBMP
 						FullPathFileName tgaName;
 						tgaName.init(artPath,EditorObjectMgr::instance()->getTGAFileName(pObj->getID()),".tga");
 						
@@ -556,7 +530,6 @@ void EditorData::drawTacMap( BYTE* pDest, long dataSize, int tacMapSize )
 	systemHeap->Free(tRecs);
 	tRecs = NULL;
 	
- 	// now shrink 'er down
 	double xRatio = 3. * (land->realVerticesMapSide)/tacMapSize;
 	double yRatio = 3. * (land->realVerticesMapSide)/tacMapSize;
 
@@ -621,9 +594,6 @@ void EditorData::loadTacMap(PacketFile *file, BYTE*& pReturn, long dataSize, int
 	// the bitmap is always 128 * 128, the size of the tac map can be anything,
 	// the edges will be filled in with transparency
 	
-	//-----------------------------------------------------
-	// Create a block of RAM for Bitmap.
-	// 24 Bits of color at Cell resolution.
 	long outputSize = 128 * 128 * 4;
 
 	BYTE* pOutput = (BYTE*)new BYTE[ outputSize + sizeof( TGAFileHeader )];

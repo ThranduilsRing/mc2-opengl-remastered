@@ -30,7 +30,6 @@ int EditorInterface::NewHeightMap()
 
 				if ((theader.width != land->realVerticesMapSide) || (theader.height != land->realVerticesMapSide))
 				{
-					/*wrong size*/
 					AfxMessageBox(IDS_WRONG_SIZE_HEIGHT_MAP);
 					endFlag = false;
 					continue;
@@ -336,8 +335,6 @@ int EditorInterface::Fog()
 		eye->fogStart = dlg.m_start;
 		eye->fogFull = dlg.m_end;
 
-//		land->reCalcLight();
-//		eye->updateDaylight();
 	}
 
 	return true;
@@ -454,12 +451,10 @@ int EditorInterface::AssignElevation()
 				}
 			}
 
-			//Action* pAction = tmp.applyHeightToSelection( (float)dlg.GetVal() );
 			if ( pAction )
 				undoMgr.AddAction( pAction );
 
 			/*Designers say refreshing the tacmap takes too long. User can do it manually.*/
-			//tacMap.UpdateMap();
 		}
 	}
 
@@ -721,7 +716,6 @@ int EditorInterface::SelectWaterTexture()
 	return true;
 }
 
-//---------------------------------------------------------------------------
 inline bool colorMapIsOKFormat (const char *fileName)
 {
 	DWORD localColorMapSizeCheck = land->realVerticesMapSide * 12.8;
@@ -845,7 +839,6 @@ int EditorInterface::DropZone( bool bVTol )
 {
 	int alignment = EDITOR_TEAM1;
 	
-	// you'll need this for multiplayer
 	/*for ( int j = 0; j < 9; ++j )
 	{
 		if ( GetParent()->GetMenu()->GetMenuState( ID_ALIGNMENT_TEAM1 + j, MF_BYCOMMAND ) & MF_CHECKED )
