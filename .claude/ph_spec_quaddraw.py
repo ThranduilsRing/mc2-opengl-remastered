@@ -61,3 +61,4 @@ PHASES = [
 
 # The legacy bodies declare their own pzTri1/pzTri2; the fast-path flags must not alias into them.
 ONLY = {'fp': ['fastPzGate', 'fastThinEmit', 'fastOverlayEmit']}
+ALIAS_PER_LINE = 3

@@ -215,6 +215,21 @@ struct MechFlushFrame {
     GLint prevTexUnit7;
     GLint prevSampler7;
     uint32_t drawnCalls;
+
+    void buildBuckets();
+    void advanceRing();
+    void writeBones();
+    void buildMaterialTable();
+    void writeInstances();
+    void validateMaterialTable();
+    void bindSsbos();
+    void saveGlState();
+    void drawBuckets();
+    void restoreGlState();
+    void persistDrawCalls();
+#ifdef MC2_VULKAN_ISLAND
+    void snapshotForVkIsland();
+#endif
 };
 
 }  // namespace
@@ -290,10 +305,7 @@ static void resolveSurfaceMaterial() {
 }
 
 // Count bones and group the pending submits into draw buckets keyed by packet, texture and flags.
-static void buildBuckets(MechFlushFrame& f) {
-    auto& totalBones = f.totalBones;
-    auto& buckets = f.buckets;
-    auto& totalInstances = f.totalInstances;
+void MechFlushFrame::buildBuckets() {
     // Step 1: Count total bones (one block per actor).
     totalBones = 0;
     for (const auto& ps : s_pendingSubmits) totalBones += ps.bones.size();
@@ -323,9 +335,7 @@ static void buildBuckets(MechFlushFrame& f) {
 }
 
 // Advance the ring slot, wait for its oldest fence and point at the slot slices.
-static void advanceRing(MechFlushFrame& f) {
-    auto& instDst = f.instDst;
-    auto& boneDst = f.boneDst;
+void MechFlushFrame::advanceRing() {
     // Step 3: Advance ring slot and wait for oldest fence.
     s_frameSlot = (s_frameSlot + 1) % MECH_RING_FRAMES;
     if (s_fence[s_frameSlot]) {
@@ -339,9 +349,7 @@ static void advanceRing(MechFlushFrame& f) {
 }
 
 // Write each actor bone palette into the bone ring and record its base offset.
-static void writeBones(MechFlushFrame& f) {
-    auto& boneDst = f.boneDst;
-    auto& actorBoneBase = f.actorBoneBase;
+void MechFlushFrame::writeBones() {
     // Step 4: Write bone SSBO once per actor; record each actor's boneBase offset.
     actorBoneBase.assign(s_pendingSubmits.size(), 0u);
     uint32_t boneHead = 0;
@@ -353,8 +361,7 @@ static void writeBones(MechFlushFrame& f) {
 }
 
 // Assign each bucket a material-table row and upload the table when it grew.
-static void buildMaterialTable(MechFlushFrame& f) {
-    auto& buckets = f.buckets;
+void MechFlushFrame::buildMaterialTable() {
     // Step 2.5: Build mech MaterialGpu table (same bucket iteration order as Step 5).
     // s_mechDrawMaterialIdx is per-draw (bucket-iteration order) — rebuilt every flush.
     // s_mechMaterialTable / s_mechHandleToMaterialIdx PERSIST within a mission
@@ -423,11 +430,7 @@ static void buildMaterialTable(MechFlushFrame& f) {
 }
 
 // Write the instance ring in bucket order and collect the draw calls.
-static void writeInstances(MechFlushFrame& f) {
-    auto& buckets = f.buckets;
-    auto& instDst = f.instDst;
-    auto& actorBoneBase = f.actorBoneBase;
-    auto& drawCalls = f.drawCalls;
+void MechFlushFrame::writeInstances() {
     // Step 5: Write instance SSBO in bucket order; collect draw calls.
     drawCalls.reserve(buckets.size());
 
@@ -502,8 +505,7 @@ static void writeInstances(MechFlushFrame& f) {
 }
 
 // Check every draw call material row still names the bucket texture.
-static void validateMaterialTable(MechFlushFrame& f) {
-    auto& drawCalls = f.drawCalls;
+void MechFlushFrame::validateMaterialTable() {
     // Task 5: Compare validation — verify albedoTex == texHandle per draw call
     if (s_mechMaterialGpuEnabled) {
         int mismatches = 0;
@@ -536,10 +538,7 @@ static void validateMaterialTable(MechFlushFrame& f) {
 }
 
 // Bind the instance, bone and material SSBOs for the draw loop.
-static void bindSsbos(MechFlushFrame& f) {
-    auto& totalBones = f.totalBones;
-    auto& totalInstances = f.totalInstances;
-    auto& guardSsbo2 = f.guardSsbo2;
+void MechFlushFrame::bindSsbos() {
     // Mech-1: save binding 2 before Step 6 mutates it.
     // GLSTATE-GUARD-ADOPTION-3 (glstate-guard-epilogue-recon-1.md Site 1 — "the
     // one genuinely clean, behavior-preserving win"): restore-previous SSBO
@@ -574,34 +573,7 @@ static void bindSsbos(MechFlushFrame& f) {
 }
 
 // Save the GL state the draw loop changes so it can be restored afterwards.
-static void saveGlState(MechFlushFrame& f) {
-    auto& prevDepthFunc = f.prevDepthFunc;
-    auto& prevDepthTest = f.prevDepthTest;
-    auto& prevDepthMask = f.prevDepthMask;
-    auto& prevBlend = f.prevBlend;
-    auto& prevCull = f.prevCull;
-    auto& prevCullMode = f.prevCullMode;
-    auto& prevProgram = f.prevProgram;
-    auto& prevVao = f.prevVao;
-    auto& prevArrayBuf = f.prevArrayBuf;
-    auto& prevElemBuf = f.prevElemBuf;
-    auto& prevActiveTex = f.prevActiveTex;
-    auto& prevSampler = f.prevSampler;
-    auto& guardSsbo0 = f.guardSsbo0;
-    auto& guardSsbo1 = f.guardSsbo1;
-    auto& prevTexUnit0 = f.prevTexUnit0;
-    auto& prevTexUnit1 = f.prevTexUnit1;
-    auto& prevSampler1 = f.prevSampler1;
-    auto& prevTexUnit2 = f.prevTexUnit2;
-    auto& prevSampler2 = f.prevSampler2;
-    auto& prevTexUnit3 = f.prevTexUnit3;
-    auto& prevSampler3 = f.prevSampler3;
-    auto& prevTexUnit4 = f.prevTexUnit4;
-    auto& prevSampler4 = f.prevSampler4;
-    auto& prevTexUnit6 = f.prevTexUnit6;
-    auto& prevSampler6 = f.prevSampler6;
-    auto& prevTexUnit7 = f.prevTexUnit7;
-    auto& prevSampler7 = f.prevSampler7;
+void MechFlushFrame::saveGlState() {
     // Save prior GL state. The mech flush bypasses applyRenderStates'
     // tracked slot set, so the engine's render-state cache becomes
     // out-of-sync after we mutate state directly. We save EVERYTHING the
@@ -920,9 +892,7 @@ static void uploadProjectionUniforms() {
 }
 
 // Order the SSBO writes before the draws, then issue one instanced draw per bucket.
-static void drawBuckets(MechFlushFrame& f) {
-    auto& drawCalls = f.drawCalls;
-    auto& drawnCalls = f.drawnCalls;
+void MechFlushFrame::drawBuckets() {
     // GPU-SYNC-CONTRACT: the instance + bone SSBOs were just written through a
     // persistent GL_MAP_COHERENT_BIT mapping (Steps 4-5). Order those CPU writes
     // BEFORE the instanced draws below read them as SSBO. Without this, NVIDIA may
@@ -1082,35 +1052,7 @@ static void drawBuckets(MechFlushFrame& f) {
 }
 
 // Restore the GL state saved before the draw loop.
-static void restoreGlState(MechFlushFrame& f) {
-    auto& guardSsbo2 = f.guardSsbo2;
-    auto& prevDepthFunc = f.prevDepthFunc;
-    auto& prevDepthTest = f.prevDepthTest;
-    auto& prevDepthMask = f.prevDepthMask;
-    auto& prevBlend = f.prevBlend;
-    auto& prevCull = f.prevCull;
-    auto& prevCullMode = f.prevCullMode;
-    auto& prevProgram = f.prevProgram;
-    auto& prevVao = f.prevVao;
-    auto& prevArrayBuf = f.prevArrayBuf;
-    auto& prevElemBuf = f.prevElemBuf;
-    auto& prevActiveTex = f.prevActiveTex;
-    auto& prevSampler = f.prevSampler;
-    auto& guardSsbo0 = f.guardSsbo0;
-    auto& guardSsbo1 = f.guardSsbo1;
-    auto& prevTexUnit0 = f.prevTexUnit0;
-    auto& prevTexUnit1 = f.prevTexUnit1;
-    auto& prevSampler1 = f.prevSampler1;
-    auto& prevTexUnit2 = f.prevTexUnit2;
-    auto& prevSampler2 = f.prevSampler2;
-    auto& prevTexUnit3 = f.prevTexUnit3;
-    auto& prevSampler3 = f.prevSampler3;
-    auto& prevTexUnit4 = f.prevTexUnit4;
-    auto& prevSampler4 = f.prevSampler4;
-    auto& prevTexUnit6 = f.prevTexUnit6;
-    auto& prevSampler6 = f.prevSampler6;
-    auto& prevTexUnit7 = f.prevTexUnit7;
-    auto& prevSampler7 = f.prevSampler7;
+void MechFlushFrame::restoreGlState() {
     // Restore prior state in reverse order of save.
     // GLSTATE-GUARD-ADOPTION-3: SSBO 0/1/2 restore via guard .reset() (runs the
     // dtor immediately, same glBindBufferBase(slot, prev) it replaces) — MUST
@@ -1169,7 +1111,7 @@ static void fenceAndInvalidate() {
     gos_InvalidateRenderStateCache();
 }
 
-// Print the per-frame batcher and fallback summary.
+// Print the per-frame batcher and fallback summary (a free function: its block-scope extern must name the global).
 static void emitBatcherStats(MechFlushFrame& f) {
     auto& buckets = f.buckets;
     auto& totalInstances = f.totalInstances;
@@ -1204,10 +1146,7 @@ static void emitBatcherStats(MechFlushFrame& f) {
 }
 
 // Keep this frame draw-call list and SSBO sizes for the shadow pass.
-static void persistDrawCalls(MechFlushFrame& f) {
-    auto& totalBones = f.totalBones;
-    auto& totalInstances = f.totalInstances;
-    auto& drawCalls = f.drawCalls;
+void MechFlushFrame::persistDrawCalls() {
     // Persist this frame's draw-call list and SSBO sizes for flushShadow()
     // to consume on the NEXT frame (Option B: persisted drawCalls).
     s_lastDrawCalls.clear();
@@ -1225,11 +1164,7 @@ static void persistDrawCalls(MechFlushFrame& f) {
 
 // Copy the instance and bone palettes and the view matrix out for the VK mech island.
 #ifdef MC2_VULKAN_ISLAND
-static void snapshotForVkIsland(MechFlushFrame& f) {
-    auto& totalBones = f.totalBones;
-    auto& totalInstances = f.totalInstances;
-    auto& instDst = f.instDst;
-    auto& boneDst = f.boneDst;
+void MechFlushFrame::snapshotForVkIsland() {
     // VK-P14 MECH TIER-1: snapshot this frame's instance + bone palette (host-visible
     // copies out of the mapped ring slot) + the world->clip / depth-bias the GL VS
     // uses, so the island can memcpy them into VK SSBOs without touching a fenced GL
@@ -1302,35 +1237,34 @@ void GpuMechBatcher::flush() {
 
     resolveSurfaceMaterial();
     MechFlushFrame f;
-    buildBuckets(f);
+    f.buildBuckets();
     ensureRingCapacity(f.totalInstances, f.totalBones);
     if (!s_instanceMap || !s_boneMap) {
         s_pendingSubmits.clear();
         return;
     }
 
-    advanceRing(f);
-    writeBones(f);
-    buildMaterialTable(f);
-    writeInstances(f);
-    validateMaterialTable(f);
-    bindSsbos(f);
-    saveGlState(f);
+    f.advanceRing();
+    f.writeBones();
+    f.buildMaterialTable();
+    f.writeInstances();
+    f.validateMaterialTable();
+    f.bindSsbos();
+    f.saveGlState();
     applyMechPipeline();
     uploadShadingUniforms();
     uploadProjectionUniforms();
-    drawBuckets(f);
-    restoreGlState(f);
+    f.drawBuckets();
+    f.restoreGlState();
     fenceAndInvalidate();
     emitBatcherStats(f);
-    persistDrawCalls(f);
+    f.persistDrawCalls();
 
 #ifdef MC2_VULKAN_ISLAND
-    snapshotForVkIsland(f);
+    f.snapshotForVkIsland();
 #endif
 
     persistExtraction();
-
     s_pendingSubmits.clear();
     s_eligibleActorsThisFrame = 0;
     std::memset(s_fallbacksThisFrame, 0, sizeof(s_fallbacksThisFrame));

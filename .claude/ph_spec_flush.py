@@ -6,6 +6,8 @@ SRC = 'GameOS/gameos/gos_mech_batcher_flush.cpp'
 FUNC_SIG = r'^void GpuMechBatcher::flush\(\)'
 STRUCT = 'MechFlushFrame'
 FRAME_VAR = 'f'
+# Phases that use the shared locals are members of the frame struct, so their bodies name those locals directly.
+FRAME_METHODS = True
 
 # Function-local types that more than one phase needs: moved out to file scope unchanged.
 HOIST = [237, 362]           # BucketKey, DrawCall
@@ -103,7 +105,8 @@ PHASES = [
     ('fenceAndInvalidate', 1018, 1026,
      'Fence the ring slot and invalidate the engine render-state cache.'),
     ('emitBatcherStats', 1028, 1054,
-     'Print the per-frame batcher and fallback summary.'),
+     'Print the per-frame batcher and fallback summary (a free function: its block-scope extern must name the global).',
+     {'free': True}),
     ('persistDrawCalls', 1056, 1068,
      'Keep this frame draw-call list and SSBO sizes for the shadow pass.'),
     ('snapshotForVkIsland', 1071, 1086,

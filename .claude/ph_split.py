@@ -14,11 +14,18 @@
 #   PHASES                     [(helper name, first line, last line, doc[, #ifdef guard])]
 #   METHOD_CLASS               helpers are members of this class (default: file-static functions)
 #   ONLY                       {frame id: [phase names]} frames only those phases may alias (name clashes)
+#   FRAME_METHODS              single frame: helpers that use its members are methods of the struct (no alias lines);
+#                              a phase tuple may end in {'free': True} to stay a file-static function
+#   ALIAS_PER_LINE             alias declarations packed per line (keeps identical alias runs short)
 #   INDENT, DEDENT, ORCH_DOC   indentation unit, prefix stripped from helper bodies, comment above function
 import importlib.util
 import re
+import os
 import subprocess
 import sys
+
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'scripts'))
+import console_child  # noqa: E402  (windowless console children without a conhost each)
 
 MEMBER_COMMENTS = {}
 
@@ -76,7 +83,7 @@ def transform(line, members, edits, lineno):
 
 def main():
     S = load(sys.argv[1])
-    raw = subprocess.check_output(['git', 'show', getattr(S, 'BASE', 'HEAD') + ':' + S.SRC])
+    raw = subprocess.check_output(['git', 'show', getattr(S, 'BASE', 'HEAD') + ':' + S.SRC], **console_child.child_kwargs(redirected=True))
     crlf = raw.count(b'\r\n') * 2 > raw.count(b'\n')
     text = raw.decode('utf-8')
     if crlf:
@@ -125,6 +132,17 @@ def main():
                 if (fr not in only or phase in only[fr]) and re.search(r'\b' + ident(n) + r'\b', code)]
 
     bodies = {a: body_for(a, b) for (_n, a, b, *_r) in ph}
+    frame_methods = getattr(S, 'FRAME_METHODS', False)
+    per_line = getattr(S, 'ALIAS_PER_LINE', 1)
+    info = []
+    for (name, a, b, doc, *rest) in ph:
+        guard = next((r for r in rest if isinstance(r, str)), None)
+        opts = next((r for r in rest if isinstance(r, dict)), {})
+        body = bodies[a]
+        used = used_members(body, name)
+        frames = [fid for fid in structs if any(fr == fid for _n, fr in used)]
+        as_method = frame_methods and bool(used) and not opts.get('free')
+        info.append(dict(name=name, a=a, doc=doc, guard=guard, body=body, used=used, frames=frames, as_method=as_method))
     H = []
     if not method:
         H.append('namespace {')
@@ -140,30 +158,40 @@ def main():
         for n, t, fr in members:
             if fr == fid:
                 H.append(indent + t + ' ' + n + ';' + (('  ' + MEMBER_COMMENTS[n]) if n in MEMBER_COMMENTS else ''))
+        meths = [i for i in info if i['as_method']]
+        if meths:
+            H.append('')
+        for i in meths:
+            if i['guard']:
+                H.append('#ifdef ' + i['guard'])
+            H.append(indent + 'void %s();' % i['name'])
+            if i['guard']:
+                H.append('#endif')
         H.append('};')
         H.append('')
     if not method:
         H.append('}  // namespace')
     calls = {}
     decls = []
-    for (name, a, b, doc, *rest) in ph:
-        guard = rest[0] if rest else None
-        body = bodies[a]
-        used = used_members(body, name)
-        frames = [fid for fid in structs if any(fr == fid for _n, fr in used)]
+    for i in info:
+        name, guard, used, frames = i['name'], i['guard'], i['used'], i['frames']
         H.append('')
-        for d in doc.split('\n'):
+        for d in i['doc'].split('\n'):
             H.append('// ' + d)
         if guard:
             H.append('#ifdef ' + guard)
         params = ', '.join('%s& %s' % (structs[fid], fid) for fid in frames)
-        head = ('void %s::%s(%s) {' if method else 'static void %s%s(%s) {') % ((method, name, params) if method else ('', name, params))
-        H.append(head)
-        decls.append('void %s(%s);' % (name, params))
-        for n, fr in used:
-            H.append('%sauto& %s = %s.%s;' % (indent, ident(n), fr, ident(n)))
-        calls[a] = '%s(%s);' % (name, ', '.join(frames))
-        H += body
+        if i['as_method']:
+            H.append('void %s::%s() {' % (structs['f'], name))
+            calls[i['a']] = 'f.%s();' % name
+        else:
+            head = ('void %s::%s(%s) {' if method else 'static void %s%s(%s) {') % ((method, name, params) if method else ('', name, params))
+            H.append(head)
+            decls.append('void %s(%s);' % (name, params))
+            for k in range(0, len(used), per_line):
+                H.append(indent + ' '.join('auto& %s = %s.%s;' % (ident(n), fr, ident(n)) for n, fr in used[k:k + per_line]))
+            calls[i['a']] = '%s(%s);' % (name, ', '.join(frames))
+        H += i['body']
         H.append('}')
         if guard:
             H.append('#endif')
@@ -198,7 +226,7 @@ def main():
         O.append(t)
 
     def is_call(x):
-        return re.match(r'^\s*\w+\(.*\);$', x) is not None or re.match(r'^\s*(%s) \w+;$' % '|'.join(structs.values()), x) is not None
+        return re.match(r'^\s*[\w.]+\(.*\);$', x) is not None or re.match(r'^\s*(%s) \w+;$' % '|'.join(structs.values()), x) is not None
     O = [x for i, x in enumerate(O) if not (x.strip() == '' and 0 < i < len(O) - 1 and is_call(O[i - 1]) and is_call(O[i + 1]))]
     new = L[:fs] + H + (S.ORCH_DOC.split('\n') if getattr(S, 'ORCH_DOC', '') else [])
     new = new + O + L[fe + 1:]

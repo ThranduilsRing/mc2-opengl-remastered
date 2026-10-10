@@ -6,8 +6,12 @@
 import collections
 import importlib.util
 import re
+import os
 import subprocess
 import sys
+
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'scripts'))
+import console_child  # noqa: E402  (windowless console children without a conhost each)
 
 sp = importlib.util.spec_from_file_location('spec', sys.argv[1])
 S = importlib.util.module_from_spec(sp)
@@ -26,7 +30,7 @@ def lines_of(raw):
     return raw.decode('utf-8').replace('\r\n', '\n').split('\n')
 
 
-old = lines_of(subprocess.check_output(['git', 'show', getattr(S, 'BASE', 'HEAD') + ':' + S.SRC]))
+old = lines_of(subprocess.check_output(['git', 'show', getattr(S, 'BASE', 'HEAD') + ':' + S.SRC], **console_child.child_kwargs(redirected=True)))
 new = lines_of(open(S.SRC, 'rb').read())
 
 
@@ -47,13 +51,14 @@ if old[oe + 1:] != new[ne + 1:]:
     fail.append('text after the function changed')
 
 # 2. helpers: name -> body with alias lines dropped
-alias_rx = re.compile(r'^\s*auto& \w+ = (?:%s)\.\w+;$' % '|'.join(structs))
+one_alias = r'auto& \w+ = (?:%s)\.\w+;' % '|'.join(structs)
+alias_rx = re.compile(r'^\s*' + one_alias + r'(?:\s+' + one_alias + r')*$')
 helpers = {}
 for (name, a, b, doc, *_r) in S.PHASES:
     if method:
         sig_rx = re.compile(r'^void ' + method + '::' + name + r'\([^)]*\) \{$')
     else:
-        sig_rx = re.compile(r'^static void ' + name + r'\([^)]*\) \{$')
+        sig_rx = re.compile(r'^(?:static void ' + name + r'\([^)]*\)|void \w+::' + name + r'\(\)) \{$')
     i = next((k for k, l in enumerate(new) if sig_rx.match(l)), None)
     if i is None:
         fail.append('helper missing: ' + name)
@@ -70,7 +75,7 @@ for (name, a, b, doc, *_r) in S.PHASES:
 # 3. expand the orchestrator
 orch = new[ns_ + 1:ne]
 fr = '|'.join(structs)
-call_rx = re.compile(r'^\s*(\w+)\((?:%s)?(?:, (?:%s))*\);$' % (fr, fr))
+call_rx = re.compile(r'^\s*(?:f\.)?(\w+)\((?:%s)?(?:, (?:%s))*\);$' % (fr, fr))
 decl_rx = re.compile(r'^\s*(%s) \w+;$' % '|'.join(structs.values()))
 expanded = []
 frame_decls = 0

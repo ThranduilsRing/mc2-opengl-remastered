@@ -1,4 +1,4 @@
-inline expansion: 893 statements, helpers 20, orchestrator lines 47
+inline expansion: 893 statements, helpers 20, orchestrator lines 46
 declaration lifts / edits applied (37):
   L230   lift size_t totalBones = 0;  =>  totalBones = 0;
   L250   lift std::map<BucketKey, std::vector<uint32_t>> buckets;  // key -> [submit  =>  (declaration only)
@@ -37,9 +37,9 @@ declaration lifts / edits applied (37):
   L558   lift GLint prevTexUnit7 = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTexU  =>  prevTexUnit7 = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTexUnit7);
   L559   lift GLint prevSampler7 = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 7, &prevSa  =>  prevSampler7 = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 7, &prevSampler7
   L827   lift uint32_t drawnCalls = 0;  =>  drawnCalls = 0;
-scaffolding only in new (172 distinct):
-   + #endif 
-   + #ifdef MC2_VULKAN_ISLAND 
+scaffolding only in new (151 distinct):
+   + #endif x2
+   + #ifdef MC2_VULKAN_ISLAND x2
    + // Advance the ring slot, wait for its oldest fence and point at the slot slices. 
    + // Apply the mech pipeline and bind the shared VAO, IBO, sampler and PBR detail textures. 
    + // Assign each bucket a material-table row and upload the table when it grew. 
@@ -54,7 +54,7 @@ scaffolding only in new (172 distinct):
    + // Order the SSBO writes before the draws, then issue one instanced draw per bucket. 
    + // Per-frame mech draw: bucket the pending submits, stream the instance + bone SSBOs, draw one instanced 
    + // Persist per-actor facts for the extract snapshot. 
-   + // Print the per-frame batcher and fallback summary. 
+   + // Print the per-frame batcher and fallback summary (a free function: its block-scope extern must name the glo 
    + // Resolve the named surface-material profile indices once, after the material tables exist. 
    + // Restore the GL state saved before the draw loop. 
    + // Save the GL state the draw loop changes so it can be restored afterwards. 
@@ -94,52 +94,26 @@ scaffolding only in new (172 distinct):
    + GpuMechInstance* instDst; 
    + MechFlushFrame f; 
    + actorBoneBase.assign(s_pendingSubmits.size(), 0u); 
-   + advanceRing(f); 
    + applyMechPipeline(); 
-   + auto& actorBoneBase = f.actorBoneBase; x2
-   + auto& boneDst = f.boneDst; x3
-   + auto& buckets = f.buckets; x4
-   + auto& drawCalls = f.drawCalls; x4
-   + auto& drawnCalls = f.drawnCalls; x2
-   + auto& guardSsbo0 = f.guardSsbo0; x2
-   + auto& guardSsbo1 = f.guardSsbo1; x2
-   + auto& guardSsbo2 = f.guardSsbo2; x2
-   + auto& instDst = f.instDst; x3
-   + auto& prevActiveTex = f.prevActiveTex; x2
-   + auto& prevArrayBuf = f.prevArrayBuf; x2
-   + auto& prevBlend = f.prevBlend; x2
-   + auto& prevCull = f.prevCull; x2
-   + auto& prevCullMode = f.prevCullMode; x2
-   + auto& prevDepthFunc = f.prevDepthFunc; x2
-   + auto& prevDepthMask = f.prevDepthMask; x2
-   + auto& prevDepthTest = f.prevDepthTest; x2
-   + auto& prevElemBuf = f.prevElemBuf; x2
-   + auto& prevProgram = f.prevProgram; x2
-   + auto& prevSampler = f.prevSampler; x2
-   + auto& prevSampler1 = f.prevSampler1; x2
-   + auto& prevSampler2 = f.prevSampler2; x2
-   + auto& prevSampler3 = f.prevSampler3; x2
-   + auto& prevSampler4 = f.prevSampler4; x2
-   + auto& prevSampler6 = f.prevSampler6; x2
-   + auto& prevSampler7 = f.prevSampler7; x2
-   + auto& prevTexUnit0 = f.prevTexUnit0; x2
-   + auto& prevTexUnit1 = f.prevTexUnit1; x2
-   + auto& prevTexUnit2 = f.prevTexUnit2; x2
-   + auto& prevTexUnit3 = f.prevTexUnit3; x2
-   + auto& prevTexUnit4 = f.prevTexUnit4; x2
-   + auto& prevTexUnit6 = f.prevTexUnit6; x2
-   + auto& prevTexUnit7 = f.prevTexUnit7; x2
-   + auto& prevVao = f.prevVao; x2
-   + auto& totalBones = f.totalBones; x4
-   + auto& totalInstances = f.totalInstances; x5
-   + bindSsbos(f); 
+   + auto& buckets = f.buckets; 
+   + auto& drawnCalls = f.drawnCalls; 
+   + auto& totalInstances = f.totalInstances; 
    + boneDst = (GpuMechBone*)    s_boneMap     + s_frameSlot * s_boneCapacity; 
-   + buildBuckets(f); 
-   + buildMaterialTable(f); 
-   + drawBuckets(f); 
    + drawnCalls = 0; 
    + emitBatcherStats(f); 
    + ensureRingCapacity(f.totalInstances, f.totalBones); 
+   + f.advanceRing(); 
+   + f.bindSsbos(); 
+   + f.buildBuckets(); 
+   + f.buildMaterialTable(); 
+   + f.drawBuckets(); 
+   + f.persistDrawCalls(); 
+   + f.restoreGlState(); 
+   + f.saveGlState(); 
+   + f.snapshotForVkIsland(); 
+   + f.validateMaterialTable(); 
+   + f.writeBones(); 
+   + f.writeInstances(); 
    + fenceAndInvalidate(); 
    + glGetBooleanv(GL_BLEND,            &prevBlend); 
    + glGetBooleanv(GL_CULL_FACE,        &prevCull); 
@@ -155,7 +129,6 @@ scaffolding only in new (172 distinct):
    + glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &prevVao); 
    + instDst = (GpuMechInstance*)s_instanceMap + s_frameSlot * s_instanceCapacity; 
    + namespace { 
-   + persistDrawCalls(f); 
    + persistExtraction(); 
    + prevSampler = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 0, &prevSampler); 
    + prevSampler1 = 0; glGetIntegeri_v(GL_SAMPLER_BINDING, 1, &prevSampler1); 
@@ -171,31 +144,16 @@ scaffolding only in new (172 distinct):
    + prevTexUnit6 = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTexUnit6); 
    + prevTexUnit7 = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTexUnit7); 
    + resolveSurfaceMaterial(); 
-   + restoreGlState(f); 
-   + saveGlState(f); 
    + size_t totalBones; 
    + size_t totalInstances; 
-   + snapshotForVkIsland(f); 
-   + static void advanceRing(MechFlushFrame& f) { 
    + static void applyMechPipeline() { 
-   + static void bindSsbos(MechFlushFrame& f) { 
-   + static void buildBuckets(MechFlushFrame& f) { 
-   + static void buildMaterialTable(MechFlushFrame& f) { 
-   + static void drawBuckets(MechFlushFrame& f) { 
    + static void emitBatcherStats(MechFlushFrame& f) { 
    + static void fenceAndInvalidate() { 
-   + static void persistDrawCalls(MechFlushFrame& f) { 
    + static void persistExtraction() { 
    + static void resolveSurfaceMaterial() { 
-   + static void restoreGlState(MechFlushFrame& f) { 
-   + static void saveGlState(MechFlushFrame& f) { 
-   + static void snapshotForVkIsland(MechFlushFrame& f) { 
    + static void traceLatch() { 
    + static void uploadProjectionUniforms() { 
    + static void uploadShadingUniforms() { 
-   + static void validateMaterialTable(MechFlushFrame& f) { 
-   + static void writeBones(MechFlushFrame& f) { 
-   + static void writeInstances(MechFlushFrame& f) { 
    + std::vector<uint32_t> actorBoneBase; 
    + struct MechFlushFrame { 
    + totalBones = 0; 
@@ -204,9 +162,30 @@ scaffolding only in new (172 distinct):
    + uint32_t drawnCalls; 
    + uploadProjectionUniforms(); 
    + uploadShadingUniforms(); 
-   + validateMaterialTable(f); 
-   + writeBones(f); 
-   + writeInstances(f); 
+   + void MechFlushFrame::advanceRing() { 
+   + void MechFlushFrame::bindSsbos() { 
+   + void MechFlushFrame::buildBuckets() { 
+   + void MechFlushFrame::buildMaterialTable() { 
+   + void MechFlushFrame::drawBuckets() { 
+   + void MechFlushFrame::persistDrawCalls() { 
+   + void MechFlushFrame::restoreGlState() { 
+   + void MechFlushFrame::saveGlState() { 
+   + void MechFlushFrame::snapshotForVkIsland() { 
+   + void MechFlushFrame::validateMaterialTable() { 
+   + void MechFlushFrame::writeBones() { 
+   + void MechFlushFrame::writeInstances() { 
+   + void advanceRing(); 
+   + void bindSsbos(); 
+   + void buildBuckets(); 
+   + void buildMaterialTable(); 
+   + void drawBuckets(); 
+   + void persistDrawCalls(); 
+   + void restoreGlState(); 
+   + void saveGlState(); 
+   + void snapshotForVkIsland(); 
+   + void validateMaterialTable(); 
+   + void writeBones(); 
+   + void writeInstances(); 
    + } x20
    + }  // namespace 
    + }; 

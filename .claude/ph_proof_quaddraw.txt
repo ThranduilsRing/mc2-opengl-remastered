@@ -13,7 +13,7 @@ declaration lifts / edits applied (13):
   L225   edit if (fastPathEligible)  =>  if (f.fastPathEligible)
   L263   edit bool pzTri1, pzTri2;  =>  
   L334   edit if (!pzTri1 && !pzTri2) return;  // both culled — skip entirely  =>  if (!fp.pzTri1 && !fp.pzTri2) return;  // both culled — skip entirely
-scaffolding only in new (65 distinct):
+scaffolding only in new (64 distinct):
    + // Decide whether the M2 fast path takes this quad and run the path-mix diagnostic. 
    + // Emits this quad: the M2 fast path (thin record, overlay decals) when the patch stream is armed, 
    + // Fast path: compute the pz-validity of each triangle and run the pz parity probe. 
@@ -28,17 +28,16 @@ scaffolding only in new (65 distinct):
    + QuadDrawFrame f; 
    + QuadFastFrame fp; 
    + auto& fastPathEligible = f.fastPathEligible; 
-   + auto& gVertex = f.gVertex; x2
-   + auto& maxU = f.maxU; x4
-   + auto& maxV = f.maxV; x4
-   + auto& minU = f.minU; x4
-   + auto& minV = f.minV; x4
-   + auto& oldmaxU = f.oldmaxU; x4
-   + auto& oldmaxV = f.oldmaxV; x4
-   + auto& oldminU = f.oldminU; x4
-   + auto& oldminV = f.oldminV; x4
-   + auto& pzTri1 = fp.pzTri1; x3
-   + auto& pzTri2 = fp.pzTri2; x3
+   + auto& gVertex = f.gVertex; auto& minU = f.minU; auto& maxU = f.maxU; x2
+   + auto& maxV = f.maxV; auto& oldminU = f.oldminU; auto& oldmaxU = f.oldmaxU; 
+   + auto& maxV = f.maxV; auto& pzTri1 = fp.pzTri1; auto& pzTri2 = fp.pzTri2; 
+   + auto& minU = f.minU; auto& maxU = f.maxU; auto& minV = f.minV; x2
+   + auto& minV = f.minV; auto& maxV = f.maxV; auto& oldminU = f.oldminU; x2
+   + auto& oldmaxU = f.oldmaxU; auto& oldminV = f.oldminV; auto& oldmaxV = f.oldmaxV; x2
+   + auto& oldmaxV = f.oldmaxV; auto& pzTri1 = fp.pzTri1; auto& pzTri2 = fp.pzTri2; 
+   + auto& oldminU = f.oldminU; auto& oldmaxU = f.oldmaxU; auto& oldminV = f.oldminV; 
+   + auto& oldminV = f.oldminV; auto& oldmaxV = f.oldmaxV; 
+   + auto& pzTri1 = fp.pzTri1; auto& pzTri2 = fp.pzTri2; 
    + bool fastPathEligible; 
    + bool pzTri1; 
    + bool pzTri2; 

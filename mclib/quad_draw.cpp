@@ -98,14 +98,9 @@ struct QuadFastFrame {
 
 // Set up the vertex scratch and the base / overlay UV insets for this quad.
 void TerrainQuad::drawSetup(QuadDrawFrame& f) {
-	auto& minU = f.minU;
-	auto& maxU = f.maxU;
-	auto& minV = f.minV;
-	auto& maxV = f.maxV;
-	auto& oldminU = f.oldminU;
-	auto& oldmaxU = f.oldmaxU;
-	auto& oldminV = f.oldminV;
-	auto& oldmaxV = f.oldmaxV;
+	auto& minU = f.minU; auto& maxU = f.maxU; auto& minV = f.minV;
+	auto& maxV = f.maxV; auto& oldminU = f.oldminU; auto& oldmaxU = f.oldmaxU;
+	auto& oldminV = f.oldminV; auto& oldmaxV = f.oldmaxV;
 	//---------------------------------------
 	// GOS 3D draw Calls now!
 
@@ -238,8 +233,7 @@ void TerrainQuad::drawPathSelect(QuadDrawFrame& f) {
 
 // Fast path: compute the pz-validity of each triangle and run the pz parity probe.
 void TerrainQuad::fastPzGate(QuadFastFrame& fp) {
-	auto& pzTri1 = fp.pzTri1;
-	auto& pzTri2 = fp.pzTri2;
+	auto& pzTri1 = fp.pzTri1; auto& pzTri2 = fp.pzTri2;
 	    // pz-validity gate. v2-scoping: only the M2d overlay (live-when-armed)
 	    // and the not-armed thin-emit consume pzc/pzTri; gate the (re-)compute
 	    // behind the union of their producer predicates so the cost is bounded
@@ -350,12 +344,8 @@ void TerrainQuad::fastPzGate(QuadFastFrame& fp) {
 
 // Fast path: emit the thin record (falls through to the detail label when the recipe SSBO is full).
 void TerrainQuad::fastThinEmit(QuadDrawFrame& f, QuadFastFrame& fp) {
-	auto& minU = f.minU;
-	auto& maxU = f.maxU;
-	auto& minV = f.minV;
-	auto& maxV = f.maxV;
-	auto& pzTri1 = fp.pzTri1;
-	auto& pzTri2 = fp.pzTri2;
+	auto& minU = f.minU; auto& maxU = f.maxU; auto& minV = f.minV;
+	auto& maxV = f.maxV; auto& pzTri1 = fp.pzTri1; auto& pzTri2 = fp.pzTri2;
 	    // === Thin-record emit path (terrainHandle != 0 only) ===
 	    // Detail-only quads (terrainHandle == 0 + has detail) skip this entire block
 	    // and go straight to the M2c detail emit below. The thin record is a base-
@@ -496,12 +486,8 @@ void TerrainQuad::fastThinEmit(QuadDrawFrame& f, QuadFastFrame& fp) {
 
 // Fast path: emit the overlay decal triangles.
 void TerrainQuad::fastOverlayEmit(QuadDrawFrame& f, QuadFastFrame& fp) {
-	auto& oldminU = f.oldminU;
-	auto& oldmaxU = f.oldmaxU;
-	auto& oldminV = f.oldminV;
-	auto& oldmaxV = f.oldmaxV;
-	auto& pzTri1 = fp.pzTri1;
-	auto& pzTri2 = fp.pzTri2;
+	auto& oldminU = f.oldminU; auto& oldmaxU = f.oldmaxU; auto& oldminV = f.oldminV;
+	auto& oldmaxV = f.oldmaxV; auto& pzTri1 = fp.pzTri1; auto& pzTri2 = fp.pzTri2;
 	    if (useOverlayTexture && overlayHandle != 0xffffffff)
 	    {
 	        // PR2b Stage 0b — bracket the M2d fast-path block + counter.
@@ -574,15 +560,9 @@ void TerrainQuad::fastOverlayEmit(QuadDrawFrame& f, QuadFastFrame& fp) {
 
 // Legacy path for a BOTTOMRIGHT quad: base, overlay, detail and patch-stream emit for both triangles.
 void TerrainQuad::drawLegacyBottomRight(QuadDrawFrame& f) {
-	auto& gVertex = f.gVertex;
-	auto& minU = f.minU;
-	auto& maxU = f.maxU;
-	auto& minV = f.minV;
-	auto& maxV = f.maxV;
-	auto& oldminU = f.oldminU;
-	auto& oldmaxU = f.oldmaxU;
-	auto& oldminV = f.oldminV;
-	auto& oldmaxV = f.oldmaxV;
+	auto& gVertex = f.gVertex; auto& minU = f.minU; auto& maxU = f.maxU;
+	auto& minV = f.minV; auto& maxV = f.maxV; auto& oldminU = f.oldminU;
+	auto& oldmaxU = f.oldmaxU; auto& oldminV = f.oldminV; auto& oldmaxV = f.oldmaxV;
 		//--------------------------
 		// Top Triangle
 		DWORD lightRGB0 = vertices[0]->lightRGB; 
@@ -999,15 +979,9 @@ void TerrainQuad::drawLegacyBottomRight(QuadDrawFrame& f) {
 
 // Legacy path for a BOTTOMLEFT quad: base, overlay, detail and patch-stream emit for both triangles.
 void TerrainQuad::drawLegacyBottomLeft(QuadDrawFrame& f) {
-	auto& gVertex = f.gVertex;
-	auto& minU = f.minU;
-	auto& maxU = f.maxU;
-	auto& minV = f.minV;
-	auto& maxV = f.maxV;
-	auto& oldminU = f.oldminU;
-	auto& oldmaxU = f.oldmaxU;
-	auto& oldminV = f.oldminV;
-	auto& oldmaxV = f.oldmaxV;
+	auto& gVertex = f.gVertex; auto& minU = f.minU; auto& maxU = f.maxU;
+	auto& minV = f.minV; auto& maxV = f.maxV; auto& oldminU = f.oldminU;
+	auto& oldmaxU = f.oldmaxU; auto& oldminV = f.oldminV; auto& oldmaxV = f.oldmaxV;
 		//------------------------------
 		// Top Triangle.
 		DWORD lightRGB0 = vertices[0]->lightRGB;
