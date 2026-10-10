@@ -184,6 +184,29 @@
    "LG19": 0,
    "LG20": 1
   },
+  "editor": {
+   "LG01": 0,
+   "LG02": 0,
+   "LG03": 0,
+   "LG04": 0,
+   "LG05": 0,
+   "LG06": 0,
+   "LG07": 0,
+   "LG08": 0,
+   "LG09": 0,
+   "LG10": 0,
+   "LG11": 0,
+   "LG12a": 0,
+   "LG12b": 0,
+   "LG13": 0,
+   "LG14": 0,
+   "LG15": 0,
+   "LG16": 0,
+   "LG17": 0,
+   "LG18": 0,
+   "LG19": 1,
+   "LG20": 9
+  },
   "mclib": {
    "LG01": 2850,
    "LG02": 316,
@@ -265,7 +288,10 @@
   "HostServices",
   "EditorBridge",
   "tools",
-  "tests"
+  "tests",
+  "editor",
+  "gui",
+  "Viewer"
  ],
  "files": {
   "EditorBridge/EditorRenderBridge.cpp": {
@@ -3380,6 +3406,21 @@
    "LG02": 1,
    "LG13": 15
   },
+  "editor/EditorGosRender.cpp": {
+   "LG20": 2
+  },
+  "editor/EditorMFC.cpp": {
+   "LG20": 1
+  },
+  "editor/EditorPlaytest.cpp": {
+   "LG20": 4
+  },
+  "editor/EditorTaskRunner.cpp": {
+   "LG19": 1
+  },
+  "editor/ModPicker.cpp": {
+   "LG20": 2
+  },
   "mclib/abl.h": {
    "LG01": 9,
    "LG06": 9,
@@ -5866,7 +5907,7 @@
    "LG20": 2
   }
  },
- "head": "171ec138d",
+ "head": "20e160328",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
@@ -5891,11 +5932,7 @@
   "LG20": "MC2_ name literal outside a typed gate reader (helper-call reads, #define lines, putenv, messages)"
  },
  "tracked": {
-  "LG19": {
-   "Viewer": 0,
-   "editor": 1,
-   "gui": 0
-  }
+  "LG19": {}
  },
  "version": 2
 }

@@ -47,14 +47,17 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 BASELINE = os.path.join(HERE, "baseline.json")
 
-# .clang-tidy owned dirs + the small seam dirs. editor/, gui/, Viewer/ are legacy tools:
-# opt in with --dirs (they are not in HeaderFilterRegex either).
+# .clang-tidy owned dirs + the small seam dirs + the legacy tool dirs, which are scanned for the
+# MC2_ gate idioms only (GATE_ONLY_DIRS): the other idioms are not tracked there.
 DEFAULT_DIRS = ["GameOS", "mclib", "code", "RenderCore", "GuiRuntime",
-                "RenderWorld", "GameAdapters", "HostServices", "EditorBridge", "tools", "tests"]
+                "RenderWorld", "GameAdapters", "HostServices", "EditorBridge", "tools", "tests",
+                "editor", "gui", "Viewer"]
+GATE_ONLY_DIRS = ("editor", "gui", "Viewer")
 # Scanned for LG20 only (the other idioms are not tracked in the harnesses and tools).
 LG20_ONLY_DIRS = ("tools", "tests")
-# LG19 only: the legacy tool dirs that are not owned yet. Counted into baseline["tracked"], warned on, never failed.
-TRACKED_DIRS = ["editor", "gui", "Viewer"]
+# LG19 only, warned on and never failed: dirs a baseline does not own yet. Empty since G8 moved editor/gui/Viewer
+# into the strict GATE_ONLY_DIRS (the deleted check-env-registry.sh used to fail the build for them).
+TRACKED_DIRS = []
 # LG19 may only be read raw inside the gate module itself (Gates/gate.cpp parses the environment).
 LG19_EXEMPT_PREFIXES = ("Gates/",)
 # Idioms whose per-FILE count may never rise (drive-to-zero), whatever happens to the repo total.
@@ -400,8 +403,11 @@ def git_blobs(dirs, mode):
 def _scan_item(item):
     rel, data = item
     hits = scan_text(data.decode("latin-1"), rel)
-    if rel.split("/")[0] in LG20_ONLY_DIRS:
+    top = rel.split("/")[0]
+    if top in LG20_ONLY_DIRS:
         hits = {k: v for k, v in hits.items() if k == "LG20"}
+    elif top in GATE_ONLY_DIRS:
+        hits = {k: v for k, v in hits.items() if k in ("LG19", "LG20")}
     return rel, hits
 
 
