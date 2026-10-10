@@ -981,25 +981,6 @@ GroundVehiclePtr GameObjectManager::newVehicle (void) {
 
 //---------------------------------------------------------------------------
 
-// WATCHID-LOAD-GUARD-1: rate-limited diagnostic for invalid watch data read
-// from an untrusted/corrupt/cross-version save. Emits a one-time stderr line
-// (visible without any diag tag) plus a rate-limited WATCHID_LOAD JSONL event.
-static void mc2_watchidLoadDiag(const char* what, long a, long b)
-{
-	static unsigned long s_loadDrops = 0;
-	++s_loadDrops;
-	if (s_loadDrops == 1)
-		fprintf(stderr, "[WATCHID_LOAD] invalid watch data on load (%s a=%ld b=%ld); "
-			"slot invalidated. Further occurrences rate-limited.\n", what, a, b);
-	if (mc2_diag::tagEnabled("WATCHID_LOAD") &&
-		(s_loadDrops == 1 || (s_loadDrops & 0xFF) == 0)) {
-		char _wl_buf[160];
-		snprintf(_wl_buf, sizeof(_wl_buf),
-			"{\"what\":\"%s\",\"a\":%ld,\"b\":%ld,\"drops\":%lu}", what, a, b, s_loadDrops);
-		mc2_diag::writeEvent("WATCHID_LOAD", 1, 0, _wl_buf);
-	}
-}
-
 //---------------------------------------------------------------------------
 
 void GameObjectManager::setWatchID (GameObjectPtr obj) {
@@ -4931,6 +4912,25 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 				}
 			}
 		}
+	}
+}
+
+// WATCHID-LOAD-GUARD-1: rate-limited diagnostic for invalid watch data read
+// from an untrusted/corrupt/cross-version save. Emits a one-time stderr line
+// (visible without any diag tag) plus a rate-limited WATCHID_LOAD JSONL event.
+static void mc2_watchidLoadDiag(const char* what, long a, long b)
+{
+	static unsigned long s_loadDrops = 0;
+	++s_loadDrops;
+	if (s_loadDrops == 1)
+		fprintf(stderr, "[WATCHID_LOAD] invalid watch data on load (%s a=%ld b=%ld); "
+			"slot invalidated. Further occurrences rate-limited.\n", what, a, b);
+	if (mc2_diag::tagEnabled("WATCHID_LOAD") &&
+		(s_loadDrops == 1 || (s_loadDrops & 0xFF) == 0)) {
+		char _wl_buf[160];
+		snprintf(_wl_buf, sizeof(_wl_buf),
+			"{\"what\":\"%s\",\"a\":%ld,\"b\":%ld,\"drops\":%lu}", what, a, b, s_loadDrops);
+		mc2_diag::writeEvent("WATCHID_LOAD", 1, 0, _wl_buf);
 	}
 }
 
