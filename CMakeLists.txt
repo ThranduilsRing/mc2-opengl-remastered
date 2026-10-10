@@ -367,6 +367,9 @@ endif()
 set(SOURCES 
     "code/dw.cpp"
     "code/mechcmd2.cpp"
+    "code/mechcmd2_cmdline.cpp"
+    "code/mechcmd2_debugwins.cpp"
+    "code/mechcmd2_frame.cpp"
     "code/artlry.cpp"
     "code/bldng.cpp"
     "code/carnage.cpp"

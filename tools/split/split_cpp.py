@@ -6,7 +6,7 @@ Usage: py -3 tools/split/split_cpp.py CONFIG.py   (writes <stem>_*.cpp, <stem>_i
 Config names: SRC, STEM, INCLUDE_RAW=(first,last) 1-based raw lines copied into the header, PREAMBLE_END (first post-preamble line),
 KEEP_FROM (first preamble line the core keeps), GROUPS=[(name,[(a,b)...])] with a 'core' group, DOC={name:text},
 PREAMBLE_MOVES={group:[(a,b)...]} (preamble line ranges moved to the top of a group file), HEADER_EXTRA=[lines], BANNER=[lines].
-Optional: BASE_REV / BASE_SRC (git rev and path holding the original, default HEAD and SRC) and ALLOW (see split_verify.py) drive the fail-closed checks that run
+Optional: CORE_ONLY=[(a,b)...] (bundle lines kept out of the header and emitted into the core file: a header that DEFINES variables may be included by one TU only), BASE_REV / BASE_SRC (git rev and path holding the original, default HEAD and SRC) and ALLOW (see split_verify.py) drive the fail-closed checks that run
 after the pieces are written; any finding exits 1 and the caller must not install the .new file. OUT (output dir, default the source's directory), HEADER_PRE_MOVES / HEADER_MOVES=[(a,b)...] (1-based line ranges whose units move verbatim into the
 header, before / after the externs: macros and inline definitions every piece needs), HEADER_PRE=[lines]."""
 import importlib.util, os, re, sys
@@ -72,7 +72,9 @@ G = C.STEM.upper() + "_INTERNAL_H"
 hdr = list(C.BANNER) + ["#ifndef " + G, "#define " + G, ""]
 a, b = C.INCLUDE_RAW
 # include groups are copied verbatim: some guards skip a header that no longer exists, so they must stay guards
-hdr += [l.decode("utf-8", "replace").rstrip(chr(13)) for l in raw[a - 1:b]]
+CORE_ONLY = getattr(C, "CORE_ONLY", [])
+hdr += [l.decode("utf-8", "replace").rstrip(chr(13)) for i, l in enumerate(raw[a - 1:b], start=a)
+        if not in_ranges(i, CORE_ONLY)]
 hdr += list(getattr(C, "HEADER_PRE", []))
 hdr += moved_text(PRE_MOVES)
 hdr += ["", "// Globals defined in %s.cpp (or elsewhere in the engine) that the split pieces share." % C.STEM]
@@ -191,6 +193,8 @@ for u, c in core_pre:
     core_keep.append(c)
 
 core_head = b"\n".join(raw[0:C.INCLUDE_RAW[0] - 1]).rstrip() + b"\r\n\r\n#include \"%s_internal.h\"\r\n\r\n" % C.STEM.encode()
+if CORE_ONLY:
+    core_head += b"\n".join(b"\n".join(raw[x - 1:y]) for x, y in CORE_ONLY) + b"\n\n"
 open(C.SRC + ".new", "wb").write(core_head + b"\n".join(core_keep) + b"\n" + b"\n".join(bodies["core"]) + b"\n")
 for g, _ in C.GROUPS:
     if g == "core":
