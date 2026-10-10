@@ -26,7 +26,6 @@ set(SOURCES ${SOURCES}
     unitvector.cpp
     vector3d.cpp
     vector4d.cpp
-    matrixstack.cpp
     memoryblock.cpp
     mstring.cpp
     chain.cpp
@@ -36,19 +35,14 @@ set(SOURCES ${SOURCES}
     node.cpp
     plug.cpp
     registeredclass.cpp
-    safechain.cpp
     safesocket.cpp
-    slot.cpp
     socket.cpp
     sortedchain.cpp
     sortedsocket.cpp
-    table.cpp
     tree.cpp
-    database.cpp
     filestream.cpp
     filestreammanager.cpp
     memorystream.cpp
-    namelist.cpp
     notationfile.cpp
     note.cpp
     page.cpp
