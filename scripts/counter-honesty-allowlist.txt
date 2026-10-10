@@ -41,11 +41,11 @@
 #   reported TOTAL, not just the list).  This inventory is a floor, not a ceiling.
 #
 GameOS/gameos/engine_present_vk.cpp::s_n < 5000
-GameOS/gameos/gameos_graphics.cpp::s_hudDumpLines < 400
-GameOS/gameos/gameos_graphics.cpp::s_hudMeasureFrames <= 10
-GameOS/gameos/gameos_graphics.cpp::s_mismatchPrints < 8
-GameOS/gameos/gameos_graphics.cpp::s_nativeHudDeclineLogs < 16
-GameOS/gameos/gameos_graphics.cpp::s_nativeHudSkipFrames <= 10
+GameOS/gameos/gameos_graphics_hud.cpp::s_hudDumpLines < 400
+GameOS/gameos/gameos_graphics_hud.cpp::s_hudMeasureFrames <= 10
+GameOS/gameos/gameos_graphics_draw.cpp::s_mismatchPrints < 8
+GameOS/gameos/gameos_graphics_hud.cpp::s_nativeHudDeclineLogs < 16
+GameOS/gameos/gameos_graphics_hud.cpp::s_nativeHudSkipFrames <= 10
 GameOS/gameos/gameos_graphics_internal.h::s_mirrorReadFails <= 3
 GameOS/gameos/gameos_graphics_internal.h::s_mirrorReadOk <= 8
 GameOS/gameos/gos_gpu_sync.cpp::s_align < 16

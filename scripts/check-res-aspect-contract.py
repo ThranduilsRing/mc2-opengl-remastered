@@ -178,7 +178,8 @@ def rule_b(ctx: Ctx) -> list[str]:
 # ---------------------------------------------------------------------------
 
 GAMEOSMAIN = "GameOS/gameos/gameosmain.cpp"
-GRAPHICS = "GameOS/gameos/gameos_graphics.cpp"
+GRAPHICS_MODE = "GameOS/gameos/gameos_graphics_capi.cpp"      # gos_SetScreenMode
+GRAPHICS_EVENTS = "GameOS/gameos/gameos_graphics_draw.cpp"    # gosRenderer::handleEvents
 CAMERA = "mclib/camera.cpp"
 
 
@@ -195,14 +196,15 @@ def rule_c(ctx: Ctx) -> list[str]:
         problems.append("RULE C(i): boot clamp `Environment.screenHeight = 600` "
                         "missing from %s (HUD-RES-CLAMP revert?)" % GAMEOSMAIN)
 
-    gfx_text = checklib.strip_comments(ctx.read(GRAPHICS))
+    gfx_text = checklib.strip_comments(ctx.read(GRAPHICS_MODE))
+    ev_text = checklib.strip_comments(ctx.read(GRAPHICS_EVENTS))
 
     # (ii) gos_SetScreenMode clamp block — protects the handleEvents rewrite
     body = checklib.find_function_body(
         gfx_text, r"void\s+__stdcall\s+gos_SetScreenMode\s*\(")
     if body is None:
         problems.append("RULE C(ii): cannot locate gos_SetScreenMode body in %s"
-                        % GRAPHICS)
+                        % GRAPHICS_MODE)
     else:
         norm = checklib.normalize_ws(body)
         if not re.search(r"if\s*\(\s*g_hudResClampEnabled\s*\)", norm):
@@ -217,10 +219,10 @@ def rule_c(ctx: Ctx) -> list[str]:
 
     # (iii) #49 keep-window guard in gosRenderer::handleEvents
     body = checklib.find_function_body(
-        gfx_text, r"void\s+gosRenderer\s*::\s*handleEvents\s*\(\s*\)")
+        ev_text, r"void\s+gosRenderer\s*::\s*handleEvents\s*\(\s*\)")
     if body is None:
         problems.append("RULE C(iii): cannot locate gosRenderer::handleEvents "
-                        "body in %s" % GRAPHICS)
+                        "body in %s" % GRAPHICS_EVENTS)
     else:
         norm = checklib.normalize_ws(body)
         m_guard = re.search(r"if\s*\(\s*reqPhysWidth\s*>\s*0\s*&&\s*"
@@ -306,15 +308,15 @@ def self_test() -> int:
 
     # RULE C(ii): the SetScreenMode clamp branch is widened away (the exact
     # HUD-RES-CLAMP merge-drop class).
-    t = checklib.read_text(GRAPHICS).replace(
+    t = checklib.read_text(GRAPHICS_MODE).replace(
         "if (g_hudResClampEnabled)", "if (false && g_hudResClampEnabled)", 1)
     t = t.replace("Width  = 800;", "Width  = Width;", 1)
-    failures.append(("RULE C(ii) clamp drop", run_all(Ctx({GRAPHICS: t}), True)))
+    failures.append(("RULE C(ii) clamp drop", run_all(Ctx({GRAPHICS_MODE: t}), True)))
 
     # RULE C(iii): #49 keep-window guard removed.
-    t = checklib.read_text(GRAPHICS).replace(
+    t = checklib.read_text(GRAPHICS_EVENTS).replace(
         "if (reqPhysWidth > 0 && reqPhysHeight > 0)", "if (true)", 1)
-    failures.append(("RULE C(iii) #49 guard", run_all(Ctx({GRAPHICS: t}), True)))
+    failures.append(("RULE C(iii) #49 guard", run_all(Ctx({GRAPHICS_EVENTS: t}), True)))
 
     # RULE C(iv): #45 drawable-aspect override reverted.
     t = checklib.read_text(CAMERA).replace(

@@ -4,6 +4,14 @@ project(gameos)
 set(SOURCES ${SOURCES}
     gameos.cpp
     gameos_graphics.cpp
+    gameos_graphics_draw.cpp
+    gameos_graphics_water.cpp
+    gameos_graphics_bridge.cpp
+    gameos_graphics_shadow.cpp
+    gameos_graphics_tparams.cpp
+    gameos_graphics_hud.cpp
+    gameos_graphics_capi.cpp
+    gameos_graphics_overlay.cpp
     gameos_graphics_font.cpp
     gameos_graphics_texture.cpp
     gameos_graphics_light_ssbo.cpp

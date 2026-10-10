@@ -83,7 +83,12 @@ ALLOWLIST_PREFIX = (
 # so they do not retro-fail. Documented as the v1 freeze. New raw calls in NEW
 # (non-allowlisted) files still fail. v2 will add per-file count ceilings here.
 FROZEN_BACKLOG = {
-    "GameOS/gameos/gameos_graphics.cpp",
+    "GameOS/gameos/gameos_graphics_bridge.cpp",
+    "GameOS/gameos/gameos_graphics_capi.cpp",
+    "GameOS/gameos/gameos_graphics_draw.cpp",
+    "GameOS/gameos/gameos_graphics_overlay.cpp",
+    "GameOS/gameos/gameos_graphics_shadow.cpp",
+    "GameOS/gameos/gameos_graphics_water.cpp",
     "GameOS/gameos/gos_postprocess_shadow.cpp",
     "GameOS/gameos/gos_particle_bridge.cpp",
     "GameOS/gameos/gos_vfx_mesh_bridge.cpp",

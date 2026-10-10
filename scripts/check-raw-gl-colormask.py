@@ -101,7 +101,9 @@ ALLOWLIST_PREFIX = (
 #   - gos_postprocess.cpp : glColorMaski per-draw-buffer MRT masks.
 # They MUST stay allowlisted -- banning them would break the default-ON path.
 FROZEN_BACKLOG = {
-    "GameOS/gameos/gameos_graphics.cpp",
+    "GameOS/gameos/gameos_graphics_bridge.cpp",
+    "GameOS/gameos/gameos_graphics_capi.cpp",
+    "GameOS/gameos/gameos_graphics_shadow.cpp",
     "GameOS/gameos/gos_postprocess.cpp",
     "GameOS/gameos/gos_postprocess_shadow.cpp",
     "GameOS/gameos/gos_postprocess_skybox.cpp",

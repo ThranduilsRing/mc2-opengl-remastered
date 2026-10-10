@@ -708,9 +708,22 @@ def collect_make_program(world: World, out: list):
                          value=value, assemble="engine")
 
 
+def _merged_material_src(core: Src, hdr: Src) -> Src:
+    """The material loader is split: the flag enum, g_shader_flags and getMaterialVariation sit in the material header, the
+    shader list and flag combinations in gameos_graphics.cpp. One text holds both; variants are attributed to the .cpp."""
+    s = Src.__new__(Src)
+    s.path = core.path
+    s.raw = hdr.raw + chr(10) + core.raw
+    s.t = hdr.t + chr(10) + core.t
+    s.pairs = brace_pairs(s.t)
+    s.rel = core.rel
+    s.anchor_line = line_of(core.t, core.t.index("shader_list"))
+    return s
+
+
 def collect_materials(world: World, out: list):
     p = GAMEOS / "gameos_graphics.cpp"
-    s = world.src(p)
+    s = _merged_material_src(world.src(p), world.src(GAMEOS / "gameos_graphics_material_internal.h"))
     # flag names
     m = re.search(r"g_shader_flags\s*\[\s*\]\s*=\s*\{(.*?)\};", s.t, re.S)
     flags = [parse_string_literals(x.strip()) for x in split_top(m.group(1), ",") if x.strip()]
@@ -789,7 +802,7 @@ def _emit_material(out, s, sh, fl, value, tess):
         stages["tesc"] = f"{path}.tesc"
         stages["tese"] = f"{path}.tese"
     pid = sh
-    ln = line_of(s.t, s.t.index("getMaterialVariation"))
+    ln = getattr(s, "anchor_line", None) or line_of(s.t, s.t.index("getMaterialVariation"))
     add_variants(out, pid=pid, src=s.rel, line=ln, stages=stages, value=value,
                  assemble="engine", singles=not fl)
 

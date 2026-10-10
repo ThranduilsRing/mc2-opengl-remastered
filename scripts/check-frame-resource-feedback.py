@@ -37,8 +37,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PP_PIECES = sorted((ROOT / "GameOS" / "gameos").glob("gos_postprocess*.cpp"))   # gos_postprocess.cpp + its split pieces
 SCAN = PP_PIECES + [
     ROOT / "GameOS" / "gameos" / "gos_particle_bridge.cpp",
-    ROOT / "GameOS" / "gameos" / "gameos_graphics.cpp",
-]
+] + sorted((ROOT / "GameOS" / "gameos").glob("gameos_graphics*.cpp"))   # gameos_graphics.cpp + its split pieces
 
 BIND = re.compile(r"glBindTexture\w*\s*\([^;]*?\bsceneColorTex_\b")
 GEN = re.compile(r"glGenTextures\s*\([^;]*&\s*sceneColorTex_")

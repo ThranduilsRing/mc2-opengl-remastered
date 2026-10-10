@@ -77,8 +77,9 @@ def _is_generated(l, stem, in_header):
     s = l.strip()
     if not s or s.startswith(b"//") or s.startswith(b"/*") or s.startswith(b"*"):
         return True
-    if s == b'#include "%s_internal.h"' % stem.encode() or s.startswith(b"#ifndef " + stem.upper().encode() + b"_INTERNAL_H") \
-            or s.startswith(b"#define " + stem.upper().encode() + b"_INTERNAL_H") or s.startswith(b"#endif // " + stem.upper().encode()):
+    if (s.startswith(b'#include "') and s.endswith(b'_internal.h"') and s[10:].startswith(stem.encode() + b"_")) \
+            or (s.startswith((b"#ifndef ", b"#define ")) and s.endswith(b"_INTERNAL_H") and s.split(b" ")[1].startswith(stem.upper().encode() + b"_")) \
+            or s.startswith(b"#endif // " + stem.upper().encode()):
         return True
     if in_header and (s.startswith(b"extern ") or s.endswith(b");") or s.startswith(b"struct ") or s == b"};" or s == b"{" or s == b"}"):
         return True

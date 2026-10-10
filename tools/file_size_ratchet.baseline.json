@@ -14,7 +14,6 @@
  ],
  "files_over_1500": {
   "GameOS/gameos/engine_present_vk.cpp": 2750,
-  "GameOS/gameos/gameos_graphics.cpp": 11533,
   "GameOS/gameos/gameosmain.cpp": 2810,
   "GameOS/gameos/gos_mech_batcher.cpp": 3408,
   "GameOS/gameos/gos_static_prop_batcher.cpp": 11025,
@@ -93,7 +92,7 @@
   "mclib/vfxtile.cpp": 2944,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "e2dd6bead",
+ "head": "d140a1b90",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -102,10 +101,10 @@
    "max_lines": 536
   },
   "GameOS": {
-   "files": 283,
-   "files_over_1500": 15,
-   "files_over_3000": 5,
-   "max_lines": 11533
+   "files": 293,
+   "files_over_1500": 14,
+   "files_over_3000": 4,
+   "max_lines": 11025
   },
   "GuiRuntime": {
    "files": 10,
@@ -167,10 +166,6 @@
   3000
  ],
  "top": [
-  {
-   "file": "GameOS/gameos/gameos_graphics.cpp",
-   "lines": 11533
-  },
   {
    "file": "GameOS/gameos/gos_static_prop_batcher.cpp",
    "lines": 11025
@@ -286,13 +281,17 @@
   {
    "file": "code/turret.cpp",
    "lines": 2346
+  },
+  {
+   "file": "GameOS/gameos/gos_static_prop_registry.cpp",
+   "lines": 2226
   }
  ],
  "total": {
-  "files": 1729,
-  "files_over_1500": 79,
-  "files_over_3000": 15,
-  "max_lines": 11533
+  "files": 1739,
+  "files_over_1500": 78,
+  "files_over_3000": 14,
+  "max_lines": 11025
  },
  "version": 1
 }

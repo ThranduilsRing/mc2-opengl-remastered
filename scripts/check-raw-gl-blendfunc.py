@@ -101,7 +101,11 @@ ALLOWLIST_PREFIX = (
 # calls in NEW (non-allowlisted) files still fail. v2 will add per-file count
 # ceilings.
 FROZEN_BACKLOG = {
-    "GameOS/gameos/gameos_graphics.cpp",
+    "GameOS/gameos/gameos_graphics_bridge.cpp",
+    "GameOS/gameos/gameos_graphics_capi.cpp",
+    "GameOS/gameos/gameos_graphics_draw.cpp",
+    "GameOS/gameos/gameos_graphics_hud.cpp",
+    "GameOS/gameos/gameos_graphics_water.cpp",
     "GameOS/gameos/gos_postprocess.cpp",
     "GameOS/gameos/gos_postprocess_effects.cpp",
     "GameOS/gameos/gos_particle_bridge.cpp",

@@ -47,6 +47,14 @@ FULL_ALLOW = {
 # read the raw snapshot blind under a whole-file allowlist (OBJECT-SHADOW-MVP-CURRENCY-1).
 MARKER_REQUIRED = {
     "gameos_graphics.cpp",
+    "gameos_graphics_draw.cpp",
+    "gameos_graphics_water.cpp",
+    "gameos_graphics_bridge.cpp",
+    "gameos_graphics_shadow.cpp",
+    "gameos_graphics_tparams.cpp",
+    "gameos_graphics_hud.cpp",
+    "gameos_graphics_capi.cpp",
+    "gameos_graphics_overlay.cpp",
 }
 MARKER = "TERRAIN-PHASE-RAW-MVP-OK"
 
