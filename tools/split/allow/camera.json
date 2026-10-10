@@ -20,7 +20,7 @@
   "tools/terrain_daylight_harness/terrain_daylight_harness.cpp"
  ],
  "_scripts_reason": "Reviewed: check-res-aspect-contract reads the #45 drawable-aspect override from camera_matrix.cpp (Camera::setOrthogonal) and its legacy-canvas read ratchet is split per piece (matrix 13, update 2), self-test passes; check-terrain-daylight-constants reads the NIGHT_* defines from camera_internal.h where they moved; counter-honesty keys the s_camTestFrame limiters to camera_update.cpp; check-lighting-divergence reads MC2_NIGHT_AMBIENT_FLOOR from camera.cpp where mc2NightAmbientFloor stays; the raw-GL allowlist is unchanged (the check is clean); the rest cite camera.cpp lines in comments only; tools/gate_codemod.py (lane 1) is not edited here.",
- "split_commit": "PENDING",
+ "split_commit": "f4c986566",
  "add": [
   "",
   "// Scroll momentum and the smoothing helpers update and input share (defined in camera.cpp).",

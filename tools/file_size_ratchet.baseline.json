@@ -42,7 +42,6 @@
   "code/mechlabscreen.cpp": 1952,
   "code/mechlopedia.cpp": 1663,
   "code/mission_init.cpp": 2183,
-
   "code/missionbegin.cpp": 2132,
   "code/mover.h": 1911,
   "code/mpparameterscreen.cpp": 2415,
@@ -61,7 +60,6 @@
   "mclib/ablenv.cpp": 1553,
   "mclib/ablrtn.cpp": 1781,
   "mclib/assimp_importer.cpp": 1630,
-  "mclib/camera.cpp": 4613,
   "mclib/camera.h": 1800,
   "mclib/echarstring.cpp": 1622,
   "mclib/estring.cpp": 1596,
@@ -89,8 +87,7 @@
   "mclib/vfxtile.cpp": 2944,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "b9cc28a1f",
-
+ "head": "f4c986566",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -147,10 +144,10 @@
    "max_lines": 1513
   },
   "mclib": {
-   "files": 623,
-   "files_over_1500": 29,
-   "files_over_3000": 3,
-   "max_lines": 4613
+   "files": 629,
+   "files_over_1500": 28,
+   "files_over_3000": 2,
+   "max_lines": 4256
   },
   "shaders": {
    "files": 172,
@@ -164,10 +161,6 @@
   3000
  ],
  "top": [
-  {
-   "file": "mclib/camera.cpp",
-   "lines": 4613
-  },
   {
    "file": "mclib/quad.cpp",
    "lines": 4256
@@ -267,7 +260,6 @@
   {
    "file": "code/mission_init.cpp",
    "lines": 2183
-
   },
   {
    "file": "code/warrior.h",
@@ -284,13 +276,17 @@
   {
    "file": "code/missionbegin.cpp",
    "lines": 2132
+  },
+  {
+   "file": "mclib/mlr/mlrtriangleclipping.hpp",
+   "lines": 2112
   }
  ],
  "total": {
-  "files": 1786,
-  "files_over_1500": 74,
-  "files_over_3000": 8,
-  "max_lines": 4613
+  "files": 1792,
+  "files_over_1500": 73,
+  "files_over_3000": 7,
+  "max_lines": 4256
  },
  "version": 1
 }

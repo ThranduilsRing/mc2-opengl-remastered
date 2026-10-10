@@ -250,6 +250,20 @@ Split commit: `6456f46eb`.
 | `bdactor_update.cpp` | BldgAppearance / TreeAppearance: BldgAppearance::update and the activity/flash helpers. |
 | `bdactor_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
+## `mclib/camera.cpp`
+
+Split commit: `f4c986566`.
+
+| Piece | What it holds |
+|---|---|
+| `camera.cpp` | keeps the camera globals, init / destroy, the frustum planes and the save / light-colour accessors |
+| `camera_daylight.cpp` | Camera: daylight fraction and sun pitch, HSI colour helpers and the per-frame light update. |
+| `camera_input.cpp` | Camera: Camera::setPosition, zoom, tilt, rotate, scroll and the input smoothing. |
+| `camera_matrix.cpp` | Camera: the camera transform: activation, orthogonal setup, line of sight, origin, GL matrices and projection constants. |
+| `camera_project.cpp` | Camera: screen-to-world projection: the ground-plane and terrain approximations and inverseProject. |
+| `camera_update.cpp` | Camera: the camera goal updates, Camera::update and render. |
+| `camera_internal.h` | shared include bundle, extern globals and declarations of the pieces |
+
 ## `mclib/gvactor.cpp`
 
 | Piece | What it holds |
