@@ -113,7 +113,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_CAMERA_SMOOTH_TRACE", Kind::Bool, Rule::Lead1, {}},
     {"MC2_CAM_SMOOTH_TEST", Kind::Bool, Rule::Lead1, {}},
     {"MC2_CEMENT_ALPHA_ATLAS", Kind::Bool, Rule::Lead0Kill, {}},
-    {"MC2_CEMENT_ATLAS_DUMP", Kind::Bool, Rule::NonEmpty, {}},
+    {"MC2_CEMENT_ATLAS_DUMP", Kind::String, Rule::Std, {}},
     {"MC2_CEMENT_ATLAS_MAGENTA_KEY", Kind::Bool, Rule::Lead0, {}},
     {"MC2_CEMENT_ATLAS_SEAM_FIX", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_CEMENT_CONCRETE_CANON", Kind::Bool, Rule::Lead0, {}},
