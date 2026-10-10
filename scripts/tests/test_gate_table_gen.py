@@ -155,3 +155,13 @@ def test_check_flags_an_unsorted_table(tmp_path):
 
 def test_the_committed_table_is_consistent():
     assert tg.check(tg.ROOT) == []
+
+
+def test_exclusive_lower_bound_survives_the_json_round_trip_and_renders_as_range_above():
+    doc = {"gates": [{
+        "name": "MC2_X_RADIUS", "kind": "Float", "rule": "Prefix", "default": 0.6, "owner": "t", "retireBy": "",
+        "doc": "d", "tokens": "", "range": {"lo": 0, "hi": 1, "clamp": False, "loExclusive": True},
+    }]}
+    (row,) = tg.rows_from_json(doc)
+    assert row["range"] == ("rangeAbove", 0, 1)
+    assert "rangeAbove(0.0, 1.0)" in tg.row_line(row)

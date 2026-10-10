@@ -115,6 +115,7 @@ int main() {
             num(out, r.range.hi, "%.17g");
             out += ", \"clamp\": ";
             out += r.range.clamp ? "true" : "false";
+            if (r.range.loExcl) out += ", \"loExclusive\": true";
             out += "}";
         } else out += "null";
         out += ", \"reread\": ";

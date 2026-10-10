@@ -485,4 +485,127 @@ TEST_CASE("invalidateAll keeps pre-main values and the dump flags the ones that 
     CHECK_FALSE(hasLine(capture({}), "[CONFIG v1] warn=premain name=MC2_BOOT_INFO"));
 }
 
+// ---------------------------------------------------------------------------
+// G1b: the numeric rows of the terrain pilot read exactly what the lambdas they replace read
+// ---------------------------------------------------------------------------
+
+TEST_CASE("exclusive lower bound: rangeAbove accepts (lo, hi] and rejects the rest") {
+    using namespace gate::rows;
+    const gate::Row row = P("MC2_UNITTEST_RNG", Float, 0.6, "test", "", "doc", rangeAbove(0.0, 1.0));
+    auto val = [&](const char* t) { return asFloat(gate::detail::parseRow(row, t)); };
+    CHECK(val("0.25") == 0.25f);
+    CHECK(val("1") == 1.0f);
+    CHECK(val("0.0001") == 0.0001f);
+    for (const char* t : {"0", "0.0", "-1", "1.5", "abc", "1e999", ""}) {
+        INFO(t);
+        CHECK(val(t) == 0.6f);
+    }
+}
+
+TEST_CASE("Prefix float rows: +-inf reaches the range test, so a clamp gives the bound") {
+    using namespace gate::rows;
+    const gate::Row row = P("MC2_UNITTEST_RNG", Float, 0.7, "test", "", "doc", clampRange(0.0, 2.0));
+    auto val = [&](const char* t) { return asFloat(gate::detail::parseRow(row, t)); };
+    CHECK(val("1e999") == 2.0f);
+    CHECK(val("-1e999") == 0.0f);
+    CHECK(val("3") == 2.0f);
+    CHECK(val("-3") == 0.0f);
+    CHECK(val("abc") == 0.0f);  // atof("abc") is 0, inside the range
+}
+
+namespace g1b {
+
+const gate::Row& rowNamed(const char* name) {
+    const auto info = gate::lookupName(name);
+    REQUIRE(info.has_value());
+    return gate::tableData()[info->index];
+}
+
+constexpr const char* kProbes[] = {nullptr, "", "0", "false", "1", "yes", "10", "2.5", "abc", "0.5", "0.0",
+                                   "-1", "1.5", "300", "3", "2", "256", "257", "4096", "4097", "1e999",
+                                   "-1e999", " 2", "2junk", "0.25", "0.0001", "1.0000000001", "0x10"};
+
+// The reader lambdas of gos_terrain_lighting.cpp, transcribed with the environment text as a parameter.
+std::uint32_t oldGridDim(const char* v) {
+    if (v && v[0]) { const long n = std::atol(v); if (n >= 2 && n <= 256) return static_cast<std::uint32_t>(n); }
+    return 64u;
+}
+std::uint32_t oldPoolMax(const char* v) {
+    if (v && v[0]) { const long n = std::atol(v); if (n > 0 && n <= 4096) return static_cast<std::uint32_t>(n); }
+    return 0u;
+}
+float oldMoverDim(const char* s) {
+    if (!s || !s[0]) return 0.25f;
+    const float f = static_cast<float>(std::atof(s));
+    return (f >= 0.0f && f <= 1.0f) ? f : 0.25f;
+}
+float oldMoverRadius(const char* s) {
+    if (!s || !s[0]) return 0.6f;
+    const float f = static_cast<float>(std::atof(s));
+    return (f > 0.0f && f <= 1.0f) ? f : 0.6f;
+}
+float oldObjScale(const char* s) {
+    float f = (s && s[0]) ? static_cast<float>(std::atof(s)) : 0.7f;
+    if (f < 0.0f) f = 0.0f;
+    if (f > 2.0f) f = 2.0f;
+    return f;
+}
+float oldPoolSpill(const char* v) {
+    float f = 2.2f;
+    if (v && v[0]) f = static_cast<float>(std::atof(v));
+    if (f < 0.25f) f = 0.25f;
+    if (f > 4.0f) f = 4.0f;
+    return f;
+}
+float oldPoolCore(const char* v) {
+    float f = 0.0f;
+    if (v && v[0]) f = static_cast<float>(std::atof(v));
+    if (f < 0.0f) f = 0.0f;
+    if (f > 1.0f) f = 1.0f;
+    return f;
+}
+
+std::int32_t intOf(const gate::Row& r, const char* t) {
+    return static_cast<std::int32_t>(static_cast<std::uint32_t>(gate::detail::parseRow(r, t)));
+}
+
+}  // namespace g1b
+
+TEST_CASE("pilot Int rows reproduce the old atol readers on every probe") {
+    const gate::Row& grid = g1b::rowNamed("MC2_LIGHT_GRID_DIM");
+    const gate::Row& pool = g1b::rowNamed("MC2_LIGHT_POOL_MAX");
+    for (const char* t : g1b::kProbes) {
+        INFO((t ? t : "(unset)"));
+        CHECK(static_cast<std::uint32_t>(g1b::intOf(grid, t)) == g1b::oldGridDim(t));
+        CHECK(static_cast<std::uint32_t>(g1b::intOf(pool, t)) == g1b::oldPoolMax(t));
+    }
+}
+
+TEST_CASE("pilot Float rows reproduce the old atof readers on every probe") {
+    struct Case { const char* name; float (*old)(const char*); };
+    const Case cases[] = {
+        {"MC2_LIGHT_POOL_MOVER_DIM", g1b::oldMoverDim},     {"MC2_LIGHT_POOL_MOVER_RADIUS", g1b::oldMoverRadius},
+        {"MC2_LIGHT_POOL_OBJ_SCALE", g1b::oldObjScale},     {"MC2_LIGHT_REALISM_POOL_SPILL", g1b::oldPoolSpill},
+        {"MC2_LIGHT_REALISM_POOL_CORE", g1b::oldPoolCore},
+    };
+    for (const Case& c : cases) {
+        const gate::Row& row = g1b::rowNamed(c.name);
+        for (const char* t : g1b::kProbes) {
+            INFO(c.name << " <- " << (t ? t : "(unset)"));
+            CHECK(asFloat(gate::detail::parseRow(row, t)) == c.old(t));
+        }
+    }
+}
+
+TEST_CASE("MC2_PATCH_STREAM_FORCE_INIT_FAIL is a presence gate that defaults off") {
+    const gate::Row& row = g1b::rowNamed("MC2_PATCH_STREAM_FORCE_INIT_FAIL");
+    CHECK(row.rule == Rule::Presence);
+    CHECK_FALSE(row.defBool);
+    CHECK_FALSE(rowValue(row, nullptr));
+    for (const char* t : {"", "0", "false", "1"}) {
+        INFO(t);
+        CHECK(rowValue(row, t));  // getenv(x) != nullptr
+    }
+}
+
 }  // TEST_SUITE

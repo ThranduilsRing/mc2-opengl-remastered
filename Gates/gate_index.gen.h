@@ -560,7 +560,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_PATCHSTREAM_THIN_RECORDS", Kind::Bool, Rule::Presence, {}},
     {"MC2_PATCHSTREAM_THIN_RECORDS_DRAW", Kind::Bool, Rule::Presence, {}},
     {"MC2_PATCHSTREAM_THIN_RECORD_FASTPATH", Kind::Bool, Rule::Presence, {}},
-    {"MC2_PATCH_STREAM_FORCE_INIT_FAIL", Kind::Bool, Rule::Std, {}},
+    {"MC2_PATCH_STREAM_FORCE_INIT_FAIL", Kind::Bool, Rule::Presence, {}},
     {"MC2_PATCH_STREAM_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_PATH_JUMP_FAIL_BACKOFF", Kind::Bool, Rule::Presence, {}},
     {"MC2_PATH_SOLVE_ISOLATED", Kind::Bool, Rule::Lead1, {}},

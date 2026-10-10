@@ -45,6 +45,8 @@ inline constexpr Opts divergent{.divergent = true};
 inline constexpr Opts passthrough{.passthrough = true};
 // Out-of-range values fall back to the default.
 constexpr Opts range(double lo, double hi) { return Opts{.range = Range{true, false, lo, hi}}; }
+// Same, with the lower bound exclusive: accepts (lo, hi]. For `f > lo && f <= hi` readers.
+constexpr Opts rangeAbove(double lo, double hi) { return Opts{.range = Range{true, false, lo, hi, true}}; }
 // Out-of-range values are clamped: only where the old reader clamped.
 constexpr Opts clampRange(double lo, double hi) { return Opts{.range = Range{true, true, lo, hi}}; }
 constexpr Opts tokens(std::string_view list) { return Opts{.tokens = list}; }
@@ -134,6 +136,7 @@ constexpr bool rowIsSane(const Row& r) {
     if (r.kind == Kind::Enum && r.tokens.empty()) return false;
     if (r.kind != Kind::Enum && !r.tokens.empty()) return false;
     if (r.range.has && !(r.range.lo <= r.range.hi)) return false;
+    if (r.range.has && r.range.loExcl && r.range.clamp) return false;  // an exclusive bound cannot clamp
     if (r.range.has && r.kind != Kind::Int && r.kind != Kind::Float) return false;
     return true;
 }
