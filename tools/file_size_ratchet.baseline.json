@@ -15,7 +15,6 @@
  "files_over_1500": {
   "GameOS/gameos/engine_present_vk.cpp": 2749,
   "GameOS/gameos/gameosmain.cpp": 2811,
-  "GameOS/gameos/gos_mech_batcher.cpp": 3299,
   "GameOS/gameos/gos_static_prop_batcher_finalize.cpp": 2028,
   "GameOS/gameos/gos_static_prop_batcher_flush.cpp": 2324,
   "GameOS/gameos/gos_static_prop_registry.cpp": 2207,
@@ -85,7 +84,7 @@
   "mclib/vfxtile.cpp": 2944,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "009e31493",
+ "head": "d9f3d13b6",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -94,9 +93,9 @@
    "max_lines": 523
   },
   "GameOS": {
-   "files": 303,
-   "files_over_1500": 15,
-   "files_over_3000": 3,
+   "files": 307,
+   "files_over_1500": 14,
+   "files_over_3000": 2,
    "max_lines": 3753
   },
   "GuiRuntime": {
@@ -166,10 +165,6 @@
   {
    "file": "GameOS/gameos/vulkan_terrain_island.cpp",
    "lines": 3505
-  },
-  {
-   "file": "GameOS/gameos/gos_mech_batcher.cpp",
-   "lines": 3299
   },
   {
    "file": "code/brain_special_dispatch.cpp",
@@ -278,12 +273,16 @@
   {
    "file": "GameOS/gameos/gos_static_prop_batcher_finalize.cpp",
    "lines": 2028
+  },
+  {
+   "file": "code/mechicon.cpp",
+   "lines": 1967
   }
  ],
  "total": {
-  "files": 1803,
-  "files_over_1500": 71,
-  "files_over_3000": 5,
+  "files": 1807,
+  "files_over_1500": 70,
+  "files_over_3000": 4,
   "max_lines": 3753
  },
  "version": 1
