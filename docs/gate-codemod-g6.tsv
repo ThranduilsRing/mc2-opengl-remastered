@@ -104,7 +104,7 @@ mclib/camera.cpp:3050	MC2_CAMERA_ASPECT_NATIVE	Lead0Kill	lambda-static	static co
 mclib/camera.cpp:3124	MC2_REVERSE_Z_TRACE	Presence	local-static	static const bool s_rzTrace = mc2::gate::get<"MC2_REVERSE_Z_TRACE">();	NO-CHANGE	site Presence vs row Presence
 mclib/camera.cpp:3149	MC2_WATER_ASPECT_DIAG	Presence	local-static	static const bool s_waAspect = mc2::gate::get<"MC2_WATER_ASPECT_DIAG">();	NO-CHANGE	site Presence vs row Presence
 mclib/camera.cpp:3320	MC2_HZB_FORCE_HORIZON	Presence	per-call	if (mc2::gate::get<"MC2_HZB_FORCE_HORIZON">())	NO-CHANGE	site Presence vs row Presence
-mclib/camera.cpp:4462	MC2_NIGHT_AMBIENT_FLOOR	Num(atol)	lambda-static	static const long s_floor = static_cast<long>(mc2::gate::get<"MC2_NIGHT_AMBIENT_FLOOR">());	NO-CHANGE	ROW EDIT needed first (MC2_NIGHT_AMBIENT_FLOOR) clampRange(0, 64)
+mclib/camera.cpp:4462	MC2_NIGHT_AMBIENT_FLOOR	Num(atol)	lambda-static	static const long s_floor = static_cast<long>(mc2::gate::get<"MC2_NIGHT_AMBIENT_FLOOR">());	NO-CHANGE	no row edit needed
 mclib/camera.h:778	MC2_LOWCAM_OBJ_NEARPAD	Lead0Kill	lambda-static	static const bool s_lowcamObjNearPad = mc2::gate::get<"MC2_LOWCAM_OBJ_NEARPAD">();	NO-CHANGE	site Lead0Kill vs row Lead0Kill; inside #ifndef CAMERA_H
 mclib/camera.h:785	MC2_LOWCAM_OBJ_NEARPAD_SCALE	Num(atof)	lambda-static	static const float s_objNearPadScale = mc2::gate::get<"MC2_LOWCAM_OBJ_NEARPAD_SCALE">();	EDGE	no row edit needed; inputs whose result changes after the row edit: '', '1e999'; harness sets none of them; inside #ifndef CAMERA_H
 mclib/cliff_decal_tuning.cpp:34	MC2_TERRAIN_DECAL_SCALE		per-call	-	UNHANDLED	helper-call reader envFloat(): helper mapping lands in G4/G6
@@ -236,11 +236,11 @@ mclib/render_contract.cpp:1358	MC2_RENDER_PASS_CONTRACT_ASSERT	Lead1	per-call	-	
 mclib/render_contract.cpp:1450	MC2_FRAMEGRAPH_EXECUTOR	Lead1	lambda-static	static const bool s_on = mc2::gate::get<"MC2_FRAMEGRAPH_EXECUTOR">();	NO-CHANGE	site Lead1 vs row Lead1
 mclib/routines.cpp:198	MC2_DETERMINISTIC_RNG	Lead0	per-call	s_det = mc2::gate::get<"MC2_DETERMINISTIC_RNG">();	NO-CHANGE	site Lead0 vs row Lead0
 mclib/spotlight_diag.cpp:25	MC2_SPOT_DIAG	Presence	namespace-static	bool s_enabled_cached = mc2::gate::get<"MC2_SPOT_DIAG">();	NO-CHANGE	site Presence vs row Presence
-mclib/spotlight_diag.cpp:73	MC2_LIGHT_POOL_MOVER_COLOR	Num(strtoul)	lambda-static	static const unsigned long s_argb = static_cast<unsigned long>(mc2::gate::get<"MC2_LIGHT_POOL_MOVER_COLOR">());	EDGE	ROW EDIT needed first (MC2_LIGHT_POOL_MOVER_COLOR) default 0 -> 4294962897; range(-FLT_MAX, -1); inputs whose result changes after the row edit: '-1'; harness sets none of them
-mclib/spotlight_diag.cpp:89	MC2_LIGHT_POOL_MOVER_FWD	Num(atof)	lambda-static	static const float s_fwd = mc2::gate::get<"MC2_LIGHT_POOL_MOVER_FWD">();	EDGE	ROW EDIT needed first (MC2_LIGHT_POOL_MOVER_FWD) clampRange(0, 120); inputs whose result changes after the row edit: '1e999'; harness sets none of them
+mclib/spotlight_diag.cpp:73	MC2_LIGHT_POOL_MOVER_COLOR		lambda-static	-	UNHANDLED	row kind String: read through str<> (G3 Enum / G4 Tri / String via str<>)
+mclib/spotlight_diag.cpp:89	MC2_LIGHT_POOL_MOVER_FWD	Num(atof)	lambda-static	static const float s_fwd = mc2::gate::get<"MC2_LIGHT_POOL_MOVER_FWD">();	EDGE	no row edit needed; inputs whose result changes after the row edit: '1e999'; harness sets none of them
 mclib/terrtxm.cpp:68	MC2_OVERLAY_TILE_HIRES		per-call	-	UNHANDLED	numeric reader is not a lambda/declaration initializer (e.g. multi-statement local)
 mclib/terrtxm.cpp:152	MC2_FORCE_TXM_REGEN	Presence	per-call	if (mc2::gate::get<"MC2_FORCE_TXM_REGEN">())	NO-CHANGE	site Presence vs row Presence
-mclib/terrtxm2.cpp:104	MC2_BURNIN_NO_JPG	Presence	per-call	if (mc2::gate::get<"MC2_BURNIN_NO_JPG", mc2::gate::Rule::Presence>())	SEMANTICS	site Presence vs row Std(def=off); differs on E,Z,F; no harness value in the seed hits a changed input
+mclib/terrtxm2.cpp:104	MC2_BURNIN_NO_JPG	Presence	per-call	if (mc2::gate::get<"MC2_BURNIN_NO_JPG">())	NO-CHANGE	site Presence vs row Presence
 mclib/terrtxm2.cpp:190	MC2_SETUPTEXTURES_LEGACY_FORCE	Presence (inverted use)	lambda-static	static const bool s = !mc2::gate::get<"MC2_SETUPTEXTURES_LEGACY_FORCE">();	NO-CHANGE	site !Presence vs row Presence
 mclib/terrtxm2.cpp:191	MC2_TERRAIN_INDIRECT	Lead0Kill	lambda-static	static const bool s = mc2::gate::get<"MC2_TERRAIN_INDIRECT">();	NO-CHANGE	site Lead0Kill vs row Lead0Kill
 mclib/terrtxm2.cpp:193	MC2_TERRAIN_INDIRECT_OVERLAY	Lead0Kill	lambda-static	static const bool s = mc2::gate::get<"MC2_TERRAIN_INDIRECT_OVERLAY">();	NO-CHANGE	site Lead0Kill vs row Lead0Kill
@@ -290,7 +290,7 @@ mclib/txmmgr.cpp:3675	MC2_SHADOW_DYNAMIC_PROP_CASTERS		local-static	-	UNHANDLED	
 mclib/txmmgr.cpp:3700	MC2_SHADOW_DYNAMIC_PROP_DIRTY_ONLY	Lead0Kill	lambda-static	static const bool s_dynPropDirtyOnly = mc2::gate::get<"MC2_SHADOW_DYNAMIC_PROP_DIRTY_ONLY">();	NO-CHANGE	site Lead0Kill vs row Lead0Kill
 mclib/txmmgr.cpp:3736	MC2_SHADOW_CASTER_LIGHTBOX_CULL	Lead0Kill	lambda-static	static const bool s_casterLightboxCull = mc2::gate::get<"MC2_SHADOW_CASTER_LIGHTBOX_CULL">();	NO-CHANGE	site Lead0Kill vs row Lead0Kill
 mclib/txmmgr.cpp:3753	MC2_SHADOW_CASTER_CULL_CACHE	Lead0P	lambda-static	static const bool s_cullCacheEnabled = mc2::gate::get<"MC2_SHADOW_CASTER_CULL_CACHE">();	NO-CHANGE	site Lead0P vs row Lead0P
-mclib/txmmgr.cpp:3759	MC2_SHADOW_CASTER_CULL_MARGIN	Num(atof)	lambda-static	static const float s_cullMargin = mc2::gate::get<"MC2_SHADOW_CASTER_CULL_MARGIN">();	EDGE	ROW EDIT needed first (MC2_SHADOW_CASTER_CULL_MARGIN) range(0, FLT_MAX); inputs whose result changes after the row edit: '1e999'; harness sets none of them
+mclib/txmmgr.cpp:3759	MC2_SHADOW_CASTER_CULL_MARGIN	Num(atof)	lambda-static	static const float s_cullMargin = mc2::gate::get<"MC2_SHADOW_CASTER_CULL_MARGIN">();	EDGE	no row edit needed; inputs whose result changes after the row edit: '1e999'; harness sets none of them
 mclib/txmmgr.cpp:3764	MC2_SHADOW_CULL_DEBUG	Presence	local-static	static const bool s_cullDebug = mc2::gate::get<"MC2_SHADOW_CULL_DEBUG">();	NO-CHANGE	site Presence vs row Presence
 mclib/txmmgr.cpp:4046	MC2_BUCKET_CENSUS	Presence	local-static	static const bool s_bucketCensusOn = mc2::gate::get<"MC2_BUCKET_CENSUS">();	NO-CHANGE	site Presence vs row Presence
 mclib/txmmgr.cpp:4069	MC2_TERRAIN_CULL_PROBE	Presence	local-static	static const bool s_cullProbe = mc2::gate::get<"MC2_TERRAIN_CULL_PROBE">();	NO-CHANGE	site Presence vs row Presence
