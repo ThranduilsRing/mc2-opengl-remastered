@@ -1,5 +1,5 @@
-#ifndef OBJECTIVE_H
-#define OBJECTIVE_H
+#ifndef EDITOR_OBJECTIVE_H
+#define EDITOR_OBJECTIVE_H
 /*************************************************************************************************\
 Objective.h			: Interface for the Objective component.
 //---------------------------------------------------------------------------//

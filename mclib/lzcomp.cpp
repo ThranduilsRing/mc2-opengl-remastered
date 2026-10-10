@@ -33,7 +33,7 @@
 #define NULL			0
 #endif
 
-typedef unsigned char* MemoryPtr;
+using MemoryPtr = unsigned char*;
 
 
 // LZ Compress Routine

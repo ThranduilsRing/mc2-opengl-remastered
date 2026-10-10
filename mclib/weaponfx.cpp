@@ -14,14 +14,14 @@
 #include"weaponfx.h"
 //---------------------------------------------------------------------------------
 // weapon FX Equivalancy.  Stores names now for GOS FX
-WeaponEffects *weaponEffects = NULL;
+WeaponEffects *weaponEffects = nullptr;
 char mc2_word_none[5] = "NONE";
 
 //---------------------------------------------------------------------------------
 void WeaponEffects::destroy (void)
 {
 	systemHeap->Free(effects);
-	effects = NULL;
+	effects = nullptr;
 	numEffects = 0;
 }
 		

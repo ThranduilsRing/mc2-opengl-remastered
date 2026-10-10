@@ -93,10 +93,20 @@ MemoryStream&
 	Check_Object(this);
 	Check_Pointer(ptr);
 	Verify(number_of_bytes > 0);
-	#if defined(_ARMOR)
-		DWORD remaining = GetBytesRemaining();
-		Verify(remaining >= number_of_bytes);
-	#endif
+	// Checked in every build (the old check lived under _ARMOR, which no target defines): a truncated or malformed
+	// stream, e.g. a mod's .fx, reads zeros for the missing tail and leaves the position at the end instead of
+	// reading past the buffer. Valid data never takes this branch.
+	DWORD remaining = static_cast<DWORD>(GetBytesRemaining());
+	if (remaining < number_of_bytes)
+	{
+		memset(ptr, 0, number_of_bytes);
+		if (remaining > 0)
+		{
+			Mem_Copy(ptr, GetPointer(), remaining, remaining);
+			AdvancePointer(remaining);
+		}
+		return *this;
+	}
 
 	Mem_Copy(ptr, GetPointer(), number_of_bytes, number_of_bytes);
 	AdvancePointer(number_of_bytes);

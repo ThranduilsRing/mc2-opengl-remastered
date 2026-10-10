@@ -51,3 +51,23 @@ def test_header_is_skipped_and_unbuilt_source_is_a_problem(tmp_path):
     doc, problems = objhash.hash_files(str(repo), str(build), ["code/a.h", "code/b.cpp"])
     assert doc["files"]["code/a.h"]["status"] == "skip"
     assert any("no object" in p for p in problems)
+
+
+def test_digest_ignores_the_incremental_link_checksum_section(tmp_path):
+    a, b, c = tmp_path / "a.obj", tmp_path / "b.obj", tmp_path / "c.obj"
+    a.write_bytes(make_obj(chks=b"\x01" * 8))
+    b.write_bytes(make_obj(chks=b"\x02" * 8))          # only the checksum differs (NULL -> nullptr style edit)
+    c.write_bytes(make_obj(text=b"\x90\xc3", chks=b"\x01" * 8))   # real code change
+    da, db, dc = (objhash.obj_digest(str(p)) for p in (a, b, c))
+    assert da["code_sha256"] == db["code_sha256"] != dc["code_sha256"]
+
+
+def test_same_basename_in_two_directories_resolves_to_the_sources_own_object(tmp_path):
+    build = tmp_path / "build"
+    for d in ("out/mclib/CMakeFiles/mclib.dir", "out/mclib/stuff/CMakeFiles/stuff.dir"):
+        (build / d).mkdir(parents=True)
+        (build / d / "color.cpp.obj").write_bytes(make_obj())
+    own = objhash.find_objs(str(build), "mclib/color.cpp")
+    assert len(own) == 1 and own[0].replace("\\", "/").endswith("out/mclib/CMakeFiles/mclib.dir/color.cpp.obj")
+    nested = objhash.find_objs(str(build), "mclib/stuff/color.cpp")
+    assert len(nested) == 1 and "stuff.dir" in nested[0]

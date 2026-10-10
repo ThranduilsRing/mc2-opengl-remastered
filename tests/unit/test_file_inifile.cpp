@@ -206,3 +206,47 @@ TEST_CASE("File resolves and reads a loose disk file (base-loose branch)")
 }
 
 } // TEST_SUITE("FileStack")
+
+TEST_CASE("FitIniFile block ids up to 47 characters index and seek; the block-id copy is bounded")
+{
+	// blockId is char[50]. A 47-character name is the longest the parser accepts (48 trips the STOP guard); the
+	// copy loop must stop at the bound instead of trusting the header to end in ']'.
+	const std::string longId(47, 'b');
+	std::string text = "FITini\r\n\r\n[" + longId + "]\r\nl Alpha = 7\r\n\r\n[Second]\r\nl Beta = 9\r\n\r\nFITend\r\n";
+
+	FitIniFile fit;
+	REQUIRE(fit.open(text.data(), (int)text.size()) == NO_ERR);
+	REQUIRE(fit.seekBlock(longId.c_str()) == NO_ERR);
+	long l = 0;
+	CHECK(fit.readIdLong("Alpha", l) == NO_ERR);
+	CHECK(l == 7);
+	REQUIRE(fit.seekBlock("Second") == NO_ERR);
+	CHECK(fit.readIdLong("Beta", l) == NO_ERR);
+	CHECK(l == 9);
+	fit.close();
+}
+
+TEST_CASE("PacketFile rejects a negative packet index instead of reading seekTable[-n]")
+{
+	const std::string path = scratchPath("negindex.pak");
+	const char p0[] = "alpha";
+	{
+		PacketFile out;
+		REQUIRE(out.create(path.c_str()) == NO_ERR);
+		out.reserve(1);
+		CHECK(out.writePacket(0, (MemoryPtr)p0, sizeof(p0)) == (int)sizeof(p0));
+		out.close();
+	}
+	{
+		PacketFile in;
+		REQUIRE(in.open(path.c_str()) == NO_ERR);
+		CHECK(in.readPacketOffset(-1) == -1);
+		CHECK(in.readPacketOffset(-1000) == -1);
+		CHECK(in.seekPacket(-1) == PACKET_OUT_OF_RANGE);
+		CHECK(in.seekPacket(-7) == PACKET_OUT_OF_RANGE);
+		REQUIRE(in.seekPacket(0) == NO_ERR);        // a valid index still works afterwards
+		CHECK(in.getPacketSize() == (int)sizeof(p0));
+		in.close();
+	}
+	remove(path.c_str());
+}

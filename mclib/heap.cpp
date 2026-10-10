@@ -262,13 +262,8 @@ UserHeap::UserHeap (void) : HeapManager()
 //---------------------------------------------------------------------------
 long UserHeap::init (unsigned long memSize, const char *heapId, bool useGOS)
 {
-	if (heapId)
-	{
-		heapName = (char *)::gos_Malloc(strlen(heapId)+1);
-		strcpy(heapName,heapId);
-	}
-	else
-		heapName = NULL;
+	// The gos heap keeps its own name; heapName stays NULL (it used to be allocated here and then overwritten
+	// with NULL below, leaking the copy).
 	{
 		gosHeap = gos_CreateMemoryHeap(heapId,memSize);
 		useGOSGuardPage = true;

@@ -513,7 +513,7 @@ void UnitSettingsDlg::OnSelchangeMech()
 			m_Variant.AddString( VariantNames[v] );
 		}
 
-		delete VariantNames;
+		delete[] VariantNames;
 		VariantNames = 0;
 
 		m_Variant.SetCurSel( 0 );
@@ -712,7 +712,7 @@ void UnitSettingsDlg::updateMemberVariables()
 						m_Variant.AddString( VariantNames[v] );
 					}
 
-					delete VariantNames;
+					delete[] VariantNames;
 					VariantNames = 0;
 
 					int variant = units.GetHead()->getVariant();	

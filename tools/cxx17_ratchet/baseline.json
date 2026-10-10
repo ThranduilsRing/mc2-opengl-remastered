@@ -48,20 +48,20 @@
   },
   "GameOS": {
    "LG01": 187,
-   "LG02": 265,
+   "LG02": 209,
    "LG03": 301,
    "LG04": 6,
    "LG05": 119,
-   "LG06": 499,
+   "LG06": 498,
    "LG07": 0,
    "LG08": 274,
-   "LG09": 2147,
+   "LG09": 2129,
    "LG10": 40,
    "LG11": 107,
    "LG12a": 613,
    "LG12b": 115,
-   "LG13": 383,
-   "LG14": 67,
+   "LG13": 331,
+   "LG14": 63,
    "LG15": 0,
    "LG16": 7,
    "LG17": 81,
@@ -91,29 +91,6 @@
    "LG18": 0,
    "LG19": 0,
    "LG20": 26
-  },
-  "HostServices": {
-   "LG01": 0,
-   "LG02": 0,
-   "LG03": 0,
-   "LG04": 0,
-   "LG05": 3,
-   "LG06": 15,
-   "LG07": 0,
-   "LG08": 0,
-   "LG09": 0,
-   "LG10": 0,
-   "LG11": 0,
-   "LG12a": 0,
-   "LG12b": 0,
-   "LG13": 0,
-   "LG14": 0,
-   "LG15": 0,
-   "LG16": 0,
-   "LG17": 0,
-   "LG18": 0,
-   "LG19": 0,
-   "LG20": 0
   },
   "RenderCore": {
    "LG01": 0,
@@ -162,21 +139,21 @@
    "LG20": 0
   },
   "code": {
-   "LG01": 1797,
+   "LG01": 1779,
    "LG02": 232,
-   "LG03": 970,
+   "LG03": 957,
    "LG04": 21,
    "LG05": 202,
-   "LG06": 449,
+   "LG06": 445,
    "LG07": 0,
    "LG08": 15,
-   "LG09": 2462,
+   "LG09": 2461,
    "LG10": 20,
    "LG11": 101,
    "LG12a": 220,
-   "LG12b": 792,
-   "LG13": 1186,
-   "LG14": 136,
+   "LG12b": 790,
+   "LG13": 1184,
+   "LG14": 135,
    "LG15": 0,
    "LG16": 7,
    "LG17": 47,
@@ -208,24 +185,24 @@
    "LG20": 9
   },
   "mclib": {
-   "LG01": 2843,
-   "LG02": 315,
-   "LG03": 1325,
-   "LG04": 17,
-   "LG05": 143,
-   "LG06": 723,
+   "LG01": 2536,
+   "LG02": 298,
+   "LG03": 1139,
+   "LG04": 16,
+   "LG05": 136,
+   "LG06": 667,
    "LG07": 0,
    "LG08": 75,
-   "LG09": 2539,
+   "LG09": 2410,
    "LG10": 32,
-   "LG11": 69,
-   "LG12a": 588,
-   "LG12b": 577,
-   "LG13": 1310,
-   "LG14": 128,
+   "LG11": 67,
+   "LG12a": 449,
+   "LG12b": 563,
+   "LG13": 1293,
+   "LG14": 122,
    "LG15": 0,
-   "LG16": 158,
-   "LG17": 93,
+   "LG16": 156,
+   "LG17": 91,
    "LG18": 6,
    "LG19": 0,
    "LG20": 10
@@ -251,7 +228,7 @@
    "LG17": 0,
    "LG18": 0,
    "LG19": 0,
-   "LG20": 16
+   "LG20": 14
   },
   "tools": {
    "LG01": 0,
@@ -1137,9 +1114,6 @@
    "LG14": 1,
    "LG17": 4
   },
-  "GameOS/gameos/utils/camera.cpp": {
-   "LG09": 3
-  },
   "GameOS/gameos/utils/file_utils.cpp": {
    "LG06": 2,
    "LG11": 3
@@ -1158,8 +1132,8 @@
    "LG01": 1,
    "LG02": 2,
    "LG03": 8,
-   "LG06": 5,
-   "LG09": 9,
+   "LG06": 4,
+   "LG09": 2,
    "LG12a": 3
   },
   "GameOS/gameos/utils/gpu_debug_labels.h": {
@@ -1177,9 +1151,6 @@
   "GameOS/gameos/utils/logging.h": {
    "LG06": 1,
    "LG14": 1
-  },
-  "GameOS/gameos/utils/matrix.cpp": {
-   "LG09": 7
   },
   "GameOS/gameos/utils/mc2log.cpp": {
    "LG12a": 2
@@ -1430,12 +1401,6 @@
    "LG17": 6,
    "LG18": 1
   },
-  "GameOS/include/imagehlp.h": {
-   "LG02": 56,
-   "LG09": 1,
-   "LG13": 52,
-   "LG14": 4
-  },
   "GameOS/include/mc2_dialog.h": {
    "LG01": 1,
    "LG06": 1
@@ -1574,18 +1539,6 @@
   "GuiRuntime/GuiRuntime.h": {
    "LG05": 1,
    "LG06": 2
-  },
-  "HostServices/DefaultHostServices.cpp": {
-   "LG05": 1,
-   "LG06": 5
-  },
-  "HostServices/DefaultHostServices.h": {
-   "LG05": 1,
-   "LG06": 5
-  },
-  "HostServices/HostServices.h": {
-   "LG05": 1,
-   "LG06": 5
   },
   "RenderCore/FrameArena.h": {
    "LG06": 1
@@ -2004,15 +1957,6 @@
    "LG02": 7,
    "LG13": 3,
    "LG14": 3
-  },
-  "code/debugging.cpp": {
-   "LG01": 2,
-   "LG06": 2
-  },
-  "code/debugging.h": {
-   "LG01": 2,
-   "LG06": 2,
-   "LG13": 2
   },
   "code/delemntl.h": {
    "LG02": 2
@@ -2528,13 +2472,6 @@
   "code/logisticsvariant.h": {
    "LG06": 1,
    "LG09": 2,
-   "LG14": 1
-  },
-  "code/logmain.cpp": {
-   "LG01": 14,
-   "LG03": 13,
-   "LG09": 1,
-   "LG12b": 2,
    "LG14": 1
   },
   "code/mainmenu.cpp": {
@@ -3919,7 +3856,7 @@
    "LG13": 1
   },
   "mclib/cident.cpp": {
-   "LG01": 2,
+   "LG01": 1,
    "LG06": 2,
    "LG09": 1
   },
@@ -3945,7 +3882,7 @@
    "LG17": 2
   },
   "mclib/color.cpp": {
-   "LG01": 6,
+   "LG01": 2,
    "LG09": 3,
    "LG12b": 2,
    "LG13": 1
@@ -3968,7 +3905,7 @@
    "LG14": 2
   },
   "mclib/crater.cpp": {
-   "LG01": 8,
+   "LG01": 1,
    "LG03": 4,
    "LG06": 1,
    "LG09": 11,
@@ -4022,7 +3959,6 @@
    "LG02": 1
   },
   "mclib/debugging.cpp": {
-   "LG01": 2,
    "LG06": 2
   },
   "mclib/debugging.h": {
@@ -4086,19 +4022,6 @@
   "mclib/dynamic_decal_ring.cpp": {
    "LG09": 9
   },
-  "mclib/echarstring.cpp": {
-   "LG01": 18,
-   "LG03": 5,
-   "LG05": 3,
-   "LG06": 18,
-   "LG09": 23,
-   "LG12b": 3,
-   "LG13": 2
-  },
-  "mclib/echarstring.h": {
-   "LG03": 1,
-   "LG09": 1
-  },
   "mclib/elist.h": {
    "LG01": 16,
    "LG09": 2,
@@ -4113,7 +4036,7 @@
    "LG06": 2
   },
   "mclib/estring.cpp": {
-   "LG01": 18,
+   "LG01": 14,
    "LG03": 4,
    "LG05": 4,
    "LG06": 18,
@@ -4124,19 +4047,6 @@
   "mclib/estring.h": {
    "LG02": 1,
    "LG09": 2
-  },
-  "mclib/ewcharstring.cpp": {
-   "LG01": 18,
-   "LG03": 5,
-   "LG05": 3,
-   "LG06": 18,
-   "LG09": 22,
-   "LG12b": 3,
-   "LG13": 2
-  },
-  "mclib/ewcharstring.h": {
-   "LG03": 1,
-   "LG09": 1
   },
   "mclib/fastfile.cpp": {
    "LG01": 5,
@@ -4233,7 +4143,7 @@
    "LG09": 1
   },
   "mclib/gamelog.cpp": {
-   "LG01": 5,
+   "LG01": 1,
    "LG03": 4,
    "LG06": 2,
    "LG12b": 1
@@ -4436,19 +4346,18 @@
    "LG09": 4
   },
   "mclib/heap.cpp": {
-   "LG01": 33,
+   "LG01": 21,
    "LG05": 2,
    "LG06": 1,
-   "LG09": 28,
-   "LG12a": 4,
-   "LG12b": 20,
+   "LG09": 11,
+   "LG12b": 13,
    "LG17": 1
   },
   "mclib/heap.h": {
-   "LG01": 2,
+   "LG01": 1,
    "LG02": 3,
    "LG05": 1,
-   "LG06": 2,
+   "LG06": 1,
    "LG13": 16
   },
   "mclib/inifile.cpp": {
@@ -4483,14 +4392,13 @@
   },
   "mclib/lzcomp.cpp": {
    "LG01": 1,
-   "LG02": 1,
    "LG13": 2
   },
   "mclib/lzdecomp.cpp": {
    "LG01": 1,
    "LG02": 1,
    "LG05": 1,
-   "LG09": 12,
+   "LG09": 11,
    "LG13": 7,
    "LG14": 2
   },
@@ -4598,7 +4506,6 @@
    "LG17": 2
   },
   "mclib/mlr/gosimage.cpp": {
-   "LG01": 4,
    "LG06": 2,
    "LG09": 1,
    "LG12b": 1
@@ -4608,7 +4515,6 @@
    "LG14": 1
   },
   "mclib/mlr/gosimagepool.cpp": {
-   "LG01": 3,
    "LG06": 3
   },
   "mclib/mlr/gosimagepool.hpp": {
@@ -4746,19 +4652,7 @@
   "mclib/mlr/mlr_i_tmesh.hpp": {
    "LG13": 2
   },
-  "mclib/mlr/mlr_terrain.cpp": {
-   "LG01": 5,
-   "LG03": 15,
-   "LG09": 1
-  },
-  "mclib/mlr/mlr_terrain2.cpp": {
-   "LG01": 2,
-   "LG03": 7,
-   "LG12a": 19,
-   "LG12b": 1
-  },
   "mclib/mlr/mlrambientlight.cpp": {
-   "LG01": 2,
    "LG03": 2
   },
   "mclib/mlr/mlrcardcloud.cpp": {
@@ -4780,16 +4674,6 @@
    "LG01": 3,
    "LG03": 6
   },
-  "mclib/mlr/mlrindexedpolymesh.cpp": {
-   "LG01": 9,
-   "LG03": 13,
-   "LG09": 11,
-   "LG17": 1
-  },
-  "mclib/mlr/mlrindexedprimitive.cpp": {
-   "LG01": 5,
-   "LG03": 2
-  },
   "mclib/mlr/mlrindexedprimitivebase.cpp": {
    "LG01": 4,
    "LG03": 6
@@ -4800,7 +4684,6 @@
    "LG09": 4
   },
   "mclib/mlr/mlrinfinitelight.cpp": {
-   "LG01": 2,
    "LG03": 2
   },
   "mclib/mlr/mlrinfinitelightwithfalloff.cpp": {
@@ -4830,15 +4713,6 @@
    "LG03": 2,
    "LG09": 3
   },
-  "mclib/mlr/mlrloadobj.cpp": {
-   "LG01": 1,
-   "LG02": 3,
-   "LG03": 18,
-   "LG06": 1,
-   "LG09": 9,
-   "LG11": 2,
-   "LG12a": 29
-  },
   "mclib/mlr/mlrlookuplight.cpp": {
    "LG01": 11,
    "LG03": 12,
@@ -4860,21 +4734,6 @@
   "mclib/mlr/mlrpointlight.cpp": {
    "LG01": 6,
    "LG03": 6
-  },
-  "mclib/mlr/mlrpolymesh.cpp": {
-   "LG01": 8,
-   "LG03": 14,
-   "LG09": 6,
-   "LG17": 1
-  },
-  "mclib/mlr/mlrprimitive.cpp": {
-   "LG01": 5,
-   "LG03": 2,
-   "LG09": 2
-  },
-  "mclib/mlr/mlrprimitive.hpp": {
-   "LG02": 3,
-   "LG03": 1
   },
   "mclib/mlr/mlrprimitivebase.cpp": {
    "LG01": 5,
@@ -4934,7 +4793,6 @@
    "LG14": 18
   },
   "mclib/mlr/mlrtexture.cpp": {
-   "LG01": 1,
    "LG03": 2
   },
   "mclib/mlr/mlrtexture.hpp": {
@@ -4958,10 +4816,6 @@
   },
   "mclib/mlr/mlrtrianglelighting.hpp": {
    "LG01": 1
-  },
-  "mclib/mlr/mlrvertex.cpp": {
-   "LG01": 2,
-   "LG03": 3
   },
   "mclib/mlr/owntrace.hpp": {
    "LG06": 1,
@@ -5163,7 +5017,6 @@
    "LG14": 1
   },
   "mclib/particles/light_manager.cpp": {
-   "LG01": 1,
    "LG06": 1
   },
   "mclib/particles/light_manager.h": {
@@ -5277,7 +5130,6 @@
    "LG14": 1
   },
   "mclib/scale.cpp": {
-   "LG01": 1,
    "LG05": 3,
    "LG09": 3,
    "LG13": 2
@@ -5291,7 +5143,6 @@
    "LG17": 2
   },
   "mclib/sortlist.cpp": {
-   "LG01": 2,
    "LG09": 7
   },
   "mclib/sortlist.h": {
@@ -5333,28 +5184,12 @@
   "mclib/stuff/affinematrix.cpp": {
    "LG12a": 4
   },
-  "mclib/stuff/affinematrix_test.cpp": {
-   "LG12a": 2
-  },
   "mclib/stuff/angle.cpp": {
-   "LG12a": 3
-  },
-  "mclib/stuff/angle_test.cpp": {
    "LG12a": 3
   },
   "mclib/stuff/armoron.hpp": {
    "LG01": 1,
    "LG12a": 1
-  },
-  "mclib/stuff/auto_container.hpp": {
-   "LG02": 8,
-   "LG03": 2
-  },
-  "mclib/stuff/auto_ptr.hpp": {
-   "LG03": 2,
-   "LG04": 1,
-   "LG09": 1,
-   "LG14": 2
   },
   "mclib/stuff/average.hpp": {
    "LG01": 3,
@@ -5370,29 +5205,11 @@
    "LG03": 1,
    "LG14": 1
   },
-  "mclib/stuff/chain_test.cpp": {
-   "LG01": 15,
-   "LG03": 9,
-   "LG12a": 5,
-   "LG13": 1
-  },
   "mclib/stuff/color.cpp": {
    "LG10": 2
   },
-  "mclib/stuff/database.cpp": {
-   "LG01": 7,
-   "LG03": 7,
-   "LG06": 1,
-   "LG09": 16,
-   "LG14": 1
-  },
   "mclib/stuff/extentbox.cpp": {
    "LG12a": 1
-  },
-  "mclib/stuff/extentpoly.cpp": {
-   "LG01": 2,
-   "LG03": 3,
-   "LG09": 1
   },
   "mclib/stuff/filestream.cpp": {
    "LG01": 30,
@@ -5407,9 +5224,6 @@
    "LG06": 1,
    "LG14": 2
   },
-  "mclib/stuff/filestream_test.cpp": {
-   "LG12a": 5
-  },
   "mclib/stuff/filestreammanager.cpp": {
    "LG01": 3,
    "LG03": 1,
@@ -5418,12 +5232,6 @@
   },
   "mclib/stuff/filestreammanager.hpp": {
    "LG02": 1
-  },
-  "mclib/stuff/filestreammanager_test.cpp": {
-   "LG01": 7,
-   "LG03": 12,
-   "LG09": 1,
-   "LG13": 1
   },
   "mclib/stuff/hash.cpp": {
    "LG01": 29,
@@ -5435,20 +5243,8 @@
    "LG01": 1,
    "LG03": 2
   },
-  "mclib/stuff/hash_test.cpp": {
-   "LG01": 12,
-   "LG03": 6,
-   "LG12a": 6,
-   "LG13": 1
-  },
-  "mclib/stuff/iterator.cpp": {
-   "LG01": 6
-  },
   "mclib/stuff/iterator.hpp": {
    "LG02": 2
-  },
-  "mclib/stuff/link.cpp": {
-   "LG01": 5
   },
   "mclib/stuff/marray.hpp": {
    "LG01": 12,
@@ -5460,9 +5256,6 @@
    "LG09": 2,
    "LG12a": 4
   },
-  "mclib/stuff/matrix_test.cpp": {
-   "LG12a": 2
-  },
   "mclib/stuff/memoryblock.cpp": {
    "LG01": 10,
    "LG09": 1,
@@ -5470,9 +5263,6 @@
   },
   "mclib/stuff/memoryblock.hpp": {
    "LG01": 2
-  },
-  "mclib/stuff/memoryblock_test.cpp": {
-   "LG12a": 4
   },
   "mclib/stuff/memorystream.cpp": {
    "LG01": 4,
@@ -5482,10 +5272,6 @@
   "mclib/stuff/memorystream.hpp": {
    "LG02": 1,
    "LG09": 2
-  },
-  "mclib/stuff/memorystream_test.cpp": {
-   "LG09": 13,
-   "LG12a": 18
   },
   "mclib/stuff/motion.cpp": {
    "LG12a": 3
@@ -5505,35 +5291,11 @@
    "LG09": 3,
    "LG12a": 1
   },
-  "mclib/stuff/mstring_test.cpp": {
-   "LG13": 3
-  },
-  "mclib/stuff/namelist.cpp": {
-   "LG01": 8,
-   "LG03": 5,
-   "LG05": 1,
-   "LG06": 7
-  },
-  "mclib/stuff/namelist.hpp": {
-   "LG01": 1,
-   "LG02": 1,
-   "LG06": 8
-  },
-  "mclib/stuff/namelist_test.cpp": {
-   "LG01": 1,
-   "LG06": 2,
-   "LG12a": 6,
-   "LG13": 1
-  },
   "mclib/stuff/node.cpp": {
-   "LG01": 2,
    "LG03": 2
   },
   "mclib/stuff/node.hpp": {
    "LG02": 2
-  },
-  "mclib/stuff/normal_test.cpp": {
-   "LG12a": 2
   },
   "mclib/stuff/notationfile.cpp": {
    "LG01": 21,
@@ -5549,12 +5311,6 @@
    "LG03": 1,
    "LG06": 7,
    "LG14": 1
-  },
-  "mclib/stuff/notationfile_test.cpp": {
-   "LG01": 7,
-   "LG03": 5,
-   "LG09": 1,
-   "LG12a": 1
   },
   "mclib/stuff/note.cpp": {
    "LG01": 12,
@@ -5573,9 +5329,6 @@
   },
   "mclib/stuff/origin.cpp": {
    "LG12a": 3
-  },
-  "mclib/stuff/origin_test.cpp": {
-   "LG12a": 1
   },
   "mclib/stuff/page.cpp": {
    "LG01": 7,
@@ -5601,22 +5354,12 @@
    "LG02": 2,
    "LG03": 1
   },
-  "mclib/stuff/point3d_test.cpp": {
-   "LG12a": 1
-  },
   "mclib/stuff/polar.cpp": {
    "LG12a": 3
   },
   "mclib/stuff/random.cpp": {
    "LG01": 2,
    "LG03": 2
-  },
-  "mclib/stuff/random_test.cpp": {
-   "LG12a": 1,
-   "LG13": 1
-  },
-  "mclib/stuff/ray_test.cpp": {
-   "LG12a": 2
   },
   "mclib/stuff/registeredclass.cpp": {
    "LG01": 6,
@@ -5634,26 +5377,8 @@
    "LG12a": 9,
    "LG13": 1
   },
-  "mclib/stuff/rotation_test.cpp": {
-   "LG12a": 2,
-   "LG13": 1
-  },
-  "mclib/stuff/safechain.cpp": {
-   "LG01": 27,
-   "LG03": 6
-  },
-  "mclib/stuff/safechain.hpp": {
-   "LG03": 1,
-   "LG14": 1
-  },
-  "mclib/stuff/safechain_test.cpp": {
-   "LG01": 8,
-   "LG03": 8,
-   "LG12a": 5,
-   "LG13": 1
-  },
   "mclib/stuff/safesocket.cpp": {
-   "LG01": 10
+   "LG01": 1
   },
   "mclib/stuff/safesocket.hpp": {
    "LG02": 1,
@@ -5669,15 +5394,7 @@
    "LG13": 1,
    "LG18": 1
   },
-  "mclib/stuff/slot.cpp": {
-   "LG01": 13,
-   "LG03": 5
-  },
-  "mclib/stuff/slot.hpp": {
-   "LG14": 1
-  },
   "mclib/stuff/socket.cpp": {
-   "LG01": 3,
    "LG03": 1
   },
   "mclib/stuff/sortedchain.cpp": {
@@ -5689,15 +5406,6 @@
    "LG01": 4,
    "LG03": 6,
    "LG14": 2
-  },
-  "mclib/stuff/sortedchain_test.cpp": {
-   "LG01": 8,
-   "LG03": 6,
-   "LG12a": 6,
-   "LG13": 1
-  },
-  "mclib/stuff/sortedsocket.cpp": {
-   "LG01": 3
   },
   "mclib/stuff/sphere.cpp": {
    "LG12a": 2
@@ -5714,23 +5422,6 @@
    "LG10": 1,
    "LG12a": 5,
    "LG14": 3
-  },
-  "mclib/stuff/table.cpp": {
-   "LG01": 19,
-   "LG03": 6,
-   "LG09": 2,
-   "LG16": 2
-  },
-  "mclib/stuff/table.hpp": {
-   "LG01": 2,
-   "LG03": 4,
-   "LG14": 1
-  },
-  "mclib/stuff/table_test.cpp": {
-   "LG01": 8,
-   "LG03": 6,
-   "LG12a": 6,
-   "LG13": 1
   },
   "mclib/stuff/trace.cpp": {
    "LG01": 15,
@@ -5753,15 +5444,6 @@
    "LG03": 4,
    "LG14": 1
   },
-  "mclib/stuff/tree_test.cpp": {
-   "LG01": 6,
-   "LG03": 6,
-   "LG12a": 6,
-   "LG13": 1
-  },
-  "mclib/stuff/unitvector_test.cpp": {
-   "LG12a": 1
-  },
   "mclib/stuff/vector2d.hpp": {
    "LG12a": 3
   },
@@ -5772,13 +5454,7 @@
    "LG13": 18,
    "LG14": 1
   },
-  "mclib/stuff/vector3d_test.cpp": {
-   "LG12a": 1
-  },
   "mclib/stuff/vector4d.cpp": {
-   "LG12a": 1
-  },
-  "mclib/stuff/vector4d_test.cpp": {
    "LG12a": 1
   },
   "mclib/tacmap.cpp": {
@@ -6110,9 +5786,6 @@
    "LG09": 2,
    "LG13": 4
   },
-  "mclib/vfx_translatedraw.cpp": {
-   "LG02": 1
-  },
   "mclib/vfxtile.cpp": {
    "LG13": 3
   },
@@ -6125,11 +5798,8 @@
    "LG09": 1,
    "LG14": 1
   },
-  "mclib/vport.cpp": {
-   "LG01": 2
-  },
   "mclib/weaponfx.cpp": {
-   "LG01": 3,
+   "LG01": 1,
    "LG06": 1,
    "LG09": 2
   },
@@ -6139,9 +5809,6 @@
    "LG05": 1,
    "LG06": 1,
    "LG13": 31
-  },
-  "tests/unit/test_host_services.cpp": {
-   "LG20": 2
   },
   "tests/unit/test_path_permutations.cpp": {
    "LG20": 3
@@ -6163,7 +5830,7 @@
    "LG20": 2
   }
  },
- "head": "f358efc3a",
+ "head": "2e3b92cf8",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

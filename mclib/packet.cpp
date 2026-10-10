@@ -267,7 +267,8 @@ int PacketFile::readPacketOffset (int packet, int* lastType)
 {
 	unsigned int offset = -1;
 
-	if (packet < numPackets)
+	// packet is a signed int: a negative index must not reach seekTable[]
+	if (packet >= 0 && packet < numPackets)
 	{
 		if (seekTable)
 			offset = seekTable[packet];
@@ -416,8 +417,10 @@ int PacketFile::seekPacket (int packet)
 {
 	int offset, next;
 
-	//sebi: packet is unsigned => always > 0 thank you clang
-	//if (packet < 0)
+	// packet is a signed int. A negative index is a plain range error (no STOP): it used to fall through to
+	// seekTable[packet], an out-of-bounds read.
+	if (packet < 0)
+		return(PACKET_OUT_OF_RANGE);
 	if(packet >= numPackets)
 	{
 		static int s_oobCount = 0;

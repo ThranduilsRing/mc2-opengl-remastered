@@ -2,8 +2,8 @@
 // Copyright (C) Microsoft Corporation. All rights reserved.                 //
 //===========================================================================//
 
-#ifndef MAINMENU_H
-#define MAINMENU_H
+#ifndef EDITOR_MAINMENU_H
+#define EDITOR_MAINMENU_H
 
 // MainMenu was previously built on the wlib Window/Menu framework which is
 // no longer part of this codebase. The Editor uses MFC (EditorInterface)

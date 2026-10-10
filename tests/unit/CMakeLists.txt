@@ -36,7 +36,6 @@ add_executable(mc2_tests
     test_rendercore.cpp     # RENDERCORE-UNIT-TESTS-1: GL-free substrate invariants
     test_frame_arena.cpp    # FRAME-ARENA-1: FrameArena typed L2 allocator invariants
     test_depth_hzb.cpp      # HZB-DEPTH-CONVENTION-TESTS-1: reverse-Z / HZB reduction contract
-    test_host_services.cpp  # ENGINE-HOST-SERVICES-0: host-service contract + default impls
     test_gate.cpp           # GATE-REGISTRY-G1A: truthiness matrix, slot cache, [CONFIG v1] dump
     test_tactical_overview.cpp   # TACTICAL-OVERVIEW-1: blend-state pure logic
     test_xform_convention.cpp    # XFORM-CONVENTION-HARNESS-1: clip-space convention lock
@@ -80,6 +79,8 @@ add_executable(mc2_tests
     test_file_inifile.cpp   # MINIMAL-VIABLE-HARNESS-1: real file/inifile/packet stack, game-free
     test_path_permutations.cpp  # META-FIX design E: canonical-key permutation matrix (issue #8 family)
     test_csvfile.cpp        # MINIMAL-VIABLE-HARNESS-2: real csvfile.cpp (Buildings.csv-shaped)
+    test_memorystream.cpp   # Stuff::MemoryStream::ReadBytes bounds check (truncated mod .fx)
+    test_estring.cpp        # EString::Format sizing (ll/z/j specs) via the CRT parser
     test_fst_roundtrip.cpp  # MINIMAL-VIABLE-HARNESS-2: FST create/writeFast -> loose-vs-FST ladder
     test_paths_mod.cpp      # MINIMAL-VIABLE-HARNESS-2: paths.cpp globals + mod-index (TryModOpen) resolution
     test_pilot_profile_preserve.cpp  # PILOT-PROFILE-PRESERVE-1: editor Profile save decision kernel (offline)
@@ -102,7 +103,6 @@ add_executable(mc2_tests
     ${MC2_WORKTREE_ROOT}/mclib/xform_conventions.cpp  # XFORM-CONVENTION-HARNESS-1: GL-free leaf TU
     ${MC2_WORKTREE_ROOT}/RenderCore/RenderResourceRegistry.cpp
     ${MC2_WORKTREE_ROOT}/RenderCore/RenderDebugView.cpp
-    ${MC2_WORKTREE_ROOT}/HostServices/DefaultHostServices.cpp  # ENGINE-HOST-SERVICES-0
     ${MC2_WORKTREE_ROOT}/code/tacticaloverview_state.cpp  # TACTICAL-OVERVIEW-1
     ${MC2_WORKTREE_ROOT}/code/unitprofile.cpp   # UNIT-PROFILE-SEAM-1
     ${MC2_WORKTREE_ROOT}/code/hudtabregistry.cpp  # HUD-IMGUI slice C (pure leaf TU)
@@ -125,6 +125,13 @@ add_executable(mc2_tests
     # MINIMAL-VIABLE-HARNESS-2: csvfile.cpp is a File subclass -> zero new link
     # frontier (same shim, same base class). Completes the data-ingest spine.
     ${MC2_WORKTREE_ROOT}/mclib/csvfile.cpp    # CSVFile (Excel-CSV reader, Buildings.csv)
+    ${MC2_WORKTREE_ROOT}/mclib/stuff/memorystream.cpp      # Stuff::MemoryStream (gosFX .fx reader)
+    ${MC2_WORKTREE_ROOT}/mclib/stuff/registeredclass.cpp   # its RegisteredClass base
+    ${MC2_WORKTREE_ROOT}/mclib/stuff/scalar.cpp            # Scaled_*_Bits used by its bit I/O
+    ${MC2_WORKTREE_ROOT}/mclib/stuff/mstring.cpp           # MString used by its string I/O
+    ${MC2_WORKTREE_ROOT}/mclib/stuff/style.cpp             # Stuff::SMALL and the other global constants
+    ${MC2_WORKTREE_ROOT}/mclib/estring.cpp                 # EString under test
+    ${MC2_WORKTREE_ROOT}/mclib/mlr/mlr_gate.cpp            # MC2_DISABLE_GOSFX latch
 
     # MINIMAL-VIABLE-HARNESS-2: paths.cpp is a pure leaf TU (path string globals
     # only -- no TryModOpen/mod-index; that logic lives in file.cpp, already
@@ -145,7 +152,6 @@ target_include_directories(mc2_tests PRIVATE
     ${MC2_WORKTREE_ROOT}/GameOS/gameos    # XFORM-CONVENTION-HARNESS-1: utils/vec.h pulled by gameos.hpp
     ${MC2_WORKTREE_ROOT}/RenderWorld
     ${MC2_WORKTREE_ROOT}/RenderCore
-    ${MC2_WORKTREE_ROOT}/HostServices
     ${MC2_WORKTREE_ROOT}/code     # UNIT-PROFILE-SEAM-1: capability.h / unitprofile.h
     ${MC2_WORKTREE_ROOT}/3rdparty/include  # MINIMAL-VIABLE-HARNESS-1: zlib.h (ffile/packet)
     ${CMAKE_CURRENT_SOURCE_DIR}

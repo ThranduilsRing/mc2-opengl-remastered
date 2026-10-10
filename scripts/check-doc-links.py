@@ -64,7 +64,11 @@ ARCHIVED_TARGET_MARKERS = ("superpowers/", "audit-lanes", "docs/archive/",
                            "docs/observations/", "docs/plans/", "docs/recon/",
                            "observations/2026-05-",
                            "model-override-", "-rv-arc-", "terrain-8z-",
-                           "trackv-", "track-r-closeout", "-recon-1.md")
+                           "trackv-", "track-r-closeout", "-recon-1.md",
+                           # 2026-10-11 legacy-subsystem deletions (recovery: the cluster commits' parent shas);
+                           # docs naming these are historical citations, not links to repair:
+                           "mclib/stuff/auto_ptr.hpp", "scripts/quick_shot.py", "scripts/quick_sweep.py",
+                           "scripts/water_visual_diff.py")
 
 
 def archived_target(target):

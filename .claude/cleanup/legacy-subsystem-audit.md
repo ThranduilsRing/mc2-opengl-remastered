@@ -6,6 +6,7 @@ Base: `A:/Games/mc2-main` HEAD `214e8c45e` (branch `claude/nifty-mendeleev`). Th
 Corrections to the brief:
 - **`USE_GOS_HEAP` is DEFINED.** `mclib/heap.h:15-17` defines it under `LINUX_BUILD`. Every `#ifndef USE_GOS_HEAP` body in heap.cpp is dead: 13 regions, ~1.3–1.4k lines depending on how nesting is counted, including the x86 `_asm` at heap.cpp:59-86.
 - **MLR is not a software rasteriser.** It transforms and clips gosFX geometry, then submits gos vertex batches to the GL renderer. It is still the default VFX draw path: `MC2_GPU_PARTICLES` defaults to false (`Gates/gate_table.cpp:437`), and `kDefaultDisabled=false` in `mclib/mlr/mlr_gate.cpp`.
+- **Correction (2026-10-11, cluster 10):** `GameOS/include/mfcplatform.hpp` is NOT dead - `editor/stdafx.h` includes it (the editor build fails without it); it was restored and stays.
 - **glm is not vendored.** No include of it exists and there is no `vcpkg.json`, so C++23 step 5 (Stuff→glm) means adding a dependency.
 - **Three math types coexist:** `Stuff::` (MC2 space), `GameOS/gameos/utils/vec.h` (`vec4`/`mat4`, render side), and raw `float[16]` plus the gpu_abi structs.
 - **`HostServices/` is test-only.** `DefaultHostServices.cpp` is linked only by `tests/unit/CMakeLists.txt:105`, and there are 0 production users.

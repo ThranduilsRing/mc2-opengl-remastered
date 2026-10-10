@@ -29,7 +29,7 @@ unsigned char* BurninJpeg_DecodeRGB(const unsigned char* data, int dataLen,
     // force 3 channels (RGB) regardless of source comp count.
     unsigned char* px = stbi_load_from_memory(data, dataLen, &w, &h, &comp, 3);
     if (!px)
-        return 0;
+        return nullptr;
     if (outW) *outW = w;
     if (outH) *outH = h;
     return px;

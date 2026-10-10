@@ -36,7 +36,7 @@ Plug*
 {
 	Check_Object(this);
 	STOP(("SortedSocket::FindImplementation - Should never reach here"));
-	return NULL;
+	return nullptr;
 }
 
 SortedIterator::SortedIterator(SortedSocket *sortedSocket):
@@ -54,7 +54,7 @@ Plug*
 {
 	Check_Object(this);
 	STOP(("SortedIterator::FindImplementation - Should never reach here"));
-	return NULL;
+	return nullptr;
 }
 
 void*
@@ -62,6 +62,6 @@ void*
 {
 	Check_Object(this);
 	STOP(("SortedIterator::GetValueImplementation - Should never reach here"));
-	return NULL;
+	return nullptr;
 }
 

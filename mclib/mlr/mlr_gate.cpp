@@ -8,7 +8,6 @@
 
 #include <cstdio>
 #include <cstdlib>
-#include <mutex>
 #include "Gates/gate.h"
 
 namespace mc2 {
@@ -29,29 +28,22 @@ namespace {
 // Migration plan: docs/vfx-originals-lockdown.md.
 constexpr bool kDefaultDisabled = false;
 
-bool g_initialized = false;
-bool g_disabled = false;
-std::mutex g_mutex;
-
-void initialize_locked() {
-    if (g_initialized) return;
+// Read once, on first use, by whichever thread gets there first (a function-local static is initialised under the
+// language's own lock; the hand-rolled double-checked latch this replaced read g_initialized unsynchronised).
+bool compute_disabled() {
+    bool disabled = kDefaultDisabled;
     if (mc2::gate::isNonEmpty<"MC2_DISABLE_GOSFX">()) {
         // Explicit env override always wins.
-        g_disabled = mc2::gate::get<"MC2_DISABLE_GOSFX">();
-    } else {
-        g_disabled = kDefaultDisabled;
+        disabled = mc2::gate::get<"MC2_DISABLE_GOSFX">();
     }
-    g_initialized = true;
-    std::fprintf(stderr, "[INSTR v1] enabled: mlr_gate disabled=%d\n",
-                 g_disabled ? 1 : 0);
+    std::fprintf(stderr, "[INSTR v1] enabled: mlr_gate disabled=%d\n", disabled ? 1 : 0);
+    return disabled;
 }
 } // namespace
 
 bool is_disabled() {
-    if (g_initialized) return g_disabled;
-    std::lock_guard<std::mutex> lock(g_mutex);
-    initialize_locked();
-    return g_disabled;
+    static const bool disabled = compute_disabled();
+    return disabled;
 }
 
 } // namespace mlr_gate

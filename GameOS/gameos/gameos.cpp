@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <stdlib.h> // rand
+#include <new>      // std::bad_alloc
 #include "utils/timing.h"
 #include "utils/timing_math.h"
 
@@ -224,7 +225,11 @@ void __stdcall gos_WalkMemoryHeap(HGOSHEAP pHeap, bool vociferous/* = false*/)
 
 ////////////////////////////////////////////////////////////////////////////////
 void* operator new(size_t sz) {
-    return gos_Malloc(sz, NULL);
+    // A replaced operator new must not return null: callers (and the compiler) assume the result is valid.
+    void* p = gos_Malloc(sz ? sz : 1, NULL);
+    if (!p)
+        throw std::bad_alloc();
+    return p;
 }
 void operator delete(void* ptr)
 #ifndef PLATFORM_WINDOWS
@@ -280,17 +285,14 @@ void __stdcall gos_Free(void* ptr)
 // DETERMINISTIC-RNG-1: seedable per-process LCG behind gos_rand/gos_srand,
 // gated by MC2_DETERMINISTIC_RNG (default-OFF). When the gate is OFF every line
 // below is the original CRT srand/rand path => byte-identical to stock.
-static bool     s_detRngChecked = false;
-static bool     s_detRngEnabled = false;   // MC2_DETERMINISTIC_RNG=1
 static uint32_t s_lcg_state     = 0u;
 
+// MC2_DETERMINISTIC_RNG=1, read once on first use. A function-local static is initialised under the language's own lock,
+// so a gos_rand call on a worker thread cannot see the "checked" latch before the value (the old two-flag latch could).
 static inline bool gos_detRngEnabled()
 {
-    if (!s_detRngChecked) {
-        s_detRngChecked = true;
-        s_detRngEnabled = mc2::gate::get<"MC2_DETERMINISTIC_RNG">();
-    }
-    return s_detRngEnabled;
+    static const bool enabled = mc2::gate::get<"MC2_DETERMINISTIC_RNG">();
+    return enabled;
 }
 
 void __stdcall gos_srand(unsigned int seed)

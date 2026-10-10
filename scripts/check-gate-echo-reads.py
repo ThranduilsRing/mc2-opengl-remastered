@@ -35,7 +35,6 @@ EXTS = (".cpp", ".h", ".hpp", ".cc", ".inl")
 ENVTEXT_ALLOWED = {
     "GameOS/gameos/gameosmain_init.cpp": 1,   # the launcher_env.json apply asks "did the shell already set this key?"
     "GameOS/gameos/gos_dev_shell.cpp": 1,  # the dev shell's get_gate answers for a variable NAME the client sends
-    "HostServices/DefaultHostServices.cpp": 2,  # EnvConfig::str / flag take a caller-supplied runtime key
 }
 # file -> max lines calling boolState( ; every one is a status display driven by a table of gate names
 BOOLSTATE_ALLOWED = {
