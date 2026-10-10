@@ -66,8 +66,8 @@
    "LG16": 7,
    "LG17": 81,
    "LG18": 11,
-   "LG19": 97,
-   "LG20": 133
+   "LG19": 95,
+   "LG20": 131
   },
   "GuiRuntime": {
    "LG01": 1,
@@ -643,9 +643,7 @@
    "LG08": 3,
    "LG09": 2,
    "LG16": 1,
-   "LG18": 1,
-   "LG19": 2,
-   "LG20": 2
+   "LG18": 1
   },
   "GameOS/gameos/gos_object_parity.h": {
    "LG06": 1
@@ -5857,7 +5855,7 @@
    "LG20": 1
   }
  },
- "head": "f1594a193",
+ "head": "43bba2501",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
