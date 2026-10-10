@@ -36,6 +36,7 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `scripts/tests/test_harness_desktop_safety.py` | 166 | `nofocus.spawn` | offscreen |
 | `scripts/tests/test_harness_desktop_safety.py` | 442 | `nofocus.spawn` | offscreen |
 | `scripts/tests/test_harness_desktop_safety.py` | 446 | `nofocus.spawn` | offscreen |
+| `scripts/tests/test_harness_desktop_safety.py` | 496 | `nofocus.run` | offscreen |
 | `scripts/water_visual_diff.py` | 56 | `nofocus.spawn` | desktop-composite |
 | `tests/smoke/object_visual_diff.py` | 123 | `nofocus.run` | offscreen |
 | `tools/debug_view_sweep.py` | 215 | `nofocus.spawn` | offscreen |
@@ -48,7 +49,7 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `tools/tracy_capture_compare.py` | 390 | `subprocess.run` **raw, allowed:** Tracy csvexport console tool, not the game; windowless via hidden_kwargs | offscreen |
 | `tools/tracy_capture_compare.py` | 443 | `subprocess.run` **raw, allowed:** Tracy csvexport console tool, not the game; windowless via hidden_kwargs | offscreen |
 
-Total engine launch sites: 38
+Total engine launch sites: 39
 
 ## Shell launchers (RULE 9)
 

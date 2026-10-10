@@ -450,6 +450,7 @@ def _record_child(proc, argv: Sequence[str]) -> None:
         from smoke_lib import exe_guard, child_registry
     if argv and exe_guard.engine_kind(argv[0]) is not None:
         child_registry.record(proc.pid, argv[0])
+    # (a launcher that starts the engine for us, e.g. renderdoccmd, is not recorded: its child pid is unknown)
 
 
 class ExeRefused(RuntimeError):
@@ -467,11 +468,14 @@ def _vet_engine_exe(argv: Sequence[str]) -> None:
         from . import exe_guard
     except ImportError:
         from smoke_lib import exe_guard
-    if not argv or exe_guard.engine_kind(argv[0]) is None:
-        return
-    verdict = exe_guard.check_exe(argv[0], purpose="spawn")
-    if not verdict.ok:
-        raise ExeRefused(verdict.refusal())
+    # Every argument, not only argv[0]: a launcher such as `renderdoccmd capture -w mc2.exe` starts the
+    # engine itself, and argv[0] there is the launcher.
+    for arg in argv or ():
+        if exe_guard.engine_kind(arg) is None:
+            continue
+        verdict = exe_guard.check_exe(arg, purpose="spawn")
+        if not verdict.ok:
+            raise ExeRefused(verdict.refusal())
 
 
 def spawn(argv: Sequence[str], *, show_window: bool = False,

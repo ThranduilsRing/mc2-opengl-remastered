@@ -81,6 +81,12 @@ def run_worker(job: dict, timeout: float = 180.0,
     qrenderdoc --python, waits (with a PID-kill backstop), then reads back
     job["result_json"].
     """
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+    from smoke_lib import nofocus  # noqa: E402
+    if not nofocus.allow_foreground():
+        raise SystemExit(
+            "qrenderdoc is a Qt GUI and may raise its own window over whatever the owner is doing; "
+            "replay analysis runs only in a user-present session (MC2_HARNESS_ALLOW_FOREGROUND=1).")
     q = find_tool("qrenderdoc", qrenderdoc)
     if not q:
         raise SystemExit(
@@ -114,8 +120,6 @@ def run_worker(job: dict, timeout: float = 180.0,
     # (not the engine), so nofocus.spawn's engine env does not apply -- but its
     # non-activating, minimized STARTUPINFO does, and costs nothing for a
     # headless --python worker. Best effort: Qt may still raise its own window.
-    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
-    from smoke_lib import nofocus  # noqa: E402
     proc = subprocess.Popen(cmd, env=env,
                             stdout=subprocess.DEVNULL,
                             stderr=subprocess.DEVNULL,

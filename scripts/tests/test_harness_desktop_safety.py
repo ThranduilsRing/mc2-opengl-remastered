@@ -484,3 +484,36 @@ def test_menu_canary_is_refused_without_the_foreground_opt_in(monkeypatch):
     assert run_smoke._run_menu_canary(Path("x"), Path("y"), Path("z"), False, 0) == 5
     monkeypatch.setenv("MC2_HARNESS_ALLOW_FOREGROUND", "1")
     assert run_smoke._menu_canary_refusal() is None
+
+
+# ------------------------------------------------- renderdoc: launcher argv and the Qt GUI
+
+def test_vetting_covers_every_argument_so_a_launcher_cannot_hide_the_engine(tmp_path, monkeypatch):
+    exe = _install(tmp_path, "mc2-win64-stale", STALE_SHA, with_mark=False)
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: (_ for _ in ()).throw(AssertionError("launched")))
+    monkeypatch.setattr(subprocess, "Popen", lambda *a, **k: (_ for _ in ()).throw(AssertionError("launched")))
+    try:
+        nofocus.run(["renderdoccmd.exe", "capture", "-w", str(exe), "--mission", "m"])
+    except nofocus.ExeRefused as e:
+        assert "mc2-win64-stale" in str(e)
+    else:
+        raise AssertionError("expected ExeRefused for the engine inside a launcher argv")
+
+
+def test_golden_install_is_refused_for_spawn_as_well_as_smoke(tmp_path):
+    golden = _install(tmp_path, "mc2-win64-v0.4c", FRESH_SHA)
+    anc = _ancestor_of({FRESH_SHA})
+    assert not exe_guard.check_exe(golden, purpose="spawn", env={}, is_ancestor=anc, commit_of=_fresh()).ok
+
+
+def test_qrenderdoc_worker_needs_a_user_present_session(monkeypatch):
+    sys.path.insert(0, str(ROOT / "tools" / "renderdoc"))
+    import _rdcommon
+
+    monkeypatch.delenv("MC2_HARNESS_ALLOW_FOREGROUND", raising=False)
+    try:
+        _rdcommon.run_worker({"result_json": "x"})
+    except SystemExit as e:
+        assert "MC2_HARNESS_ALLOW_FOREGROUND" in str(e)
+    else:
+        raise AssertionError("expected SystemExit")
