@@ -31,6 +31,7 @@
 
 #include "det_rng.h"          // DETERMINISTIC-RNG-1: GL-free LCG kernel
 #include "diagnostic_trace.h" // DETERMINISTIC-RNG-1: optional "RNG" JSONL trace
+#include "Gates/gate.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 void __stdcall AddDebuggerMenuItem(char const*, bool (__stdcall *)(), void (__stdcall *)(), bool (__stdcall *)(), DWORD (__stdcall *)(char const*, DWORD))
@@ -75,7 +76,7 @@ static bool g_gos_exit_game_os = false;
 #include <dbghelp.h>
 static void mc2_log_exit_caller(const char* fn)
 {
-    static const bool s_trace = (getenv("MC2_TRACE_EXIT") != nullptr);
+    static const bool s_trace = mc2::gate::get<"MC2_TRACE_EXIT">();
     static bool s_once = false;
     if (!s_trace && s_once) return;   // always log first; repeats only if env set
     s_once = true;
@@ -287,8 +288,7 @@ static inline bool gos_detRngEnabled()
 {
     if (!s_detRngChecked) {
         s_detRngChecked = true;
-        const char* v = getenv("MC2_DETERMINISTIC_RNG");
-        s_detRngEnabled = (v && v[0] != '\0' && v[0] != '0');
+        s_detRngEnabled = mc2::gate::get<"MC2_DETERMINISTIC_RNG">();
     }
     return s_detRngEnabled;
 }
