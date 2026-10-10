@@ -82,7 +82,12 @@ static bool scanHdriSunAzGL(const float* px, int w, int h, float* outAzGL)
 
 // HDRI-BC6H-1: gate — MC2_HDRI_BC6H controls BC6H sidecar upload.
 // Default ON (absent = ON); set =0 to force RGBA16F fallback path.
-static bool s_hdribc6h = mc2::gate::get<"MC2_HDRI_BC6H">();
+// Read at first use, not at static-init time: the launcher writes this variable after the exe starts.
+static bool hdriBc6hOn()
+{
+    static const bool on = mc2::gate::get<"MC2_HDRI_BC6H">();
+    return on;
+}
 
 // Derive sidecar path: replace trailing ".exr" with ".ktx2".
 // Returns false if path does not end with ".exr" or output buffer is too small.
@@ -117,7 +122,7 @@ GLuint loadHdriTexture(const char* path,
     // Attempt the .ktx2 sidecar before tinyexr if MC2_HDRI_BC6H=1 and BPTC
     // is available.  The sun-scan still runs from the EXR pixel buffer so the
     // azimuth estimate is identical to the RGBA16F path.
-    if (s_hdribc6h && GLEW_ARB_texture_compression_bptc) {
+    if (hdriBc6hOn() && GLEW_ARB_texture_compression_bptc) {
         char sidecarPath[1024];
         if (deriveSidecarKtx2(path, sidecarPath, sizeof(sidecarPath))) {
             RenderCore::KtxImage img;

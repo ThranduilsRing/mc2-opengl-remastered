@@ -20,18 +20,6 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 
 	// If the start tile is blocked, let's clear it so we may move off of
 	// it, at least. Change the blocked tiles to just barely passable...
-/*	long startULr = startR - 1;
-	long startULc = startC - 1;
-	for (long cellR = 0; cellR < MAPCELL_DIM; cellR++)
-		for (long cellC = 0; cellC < MAPCELL_DIM; cellC++) {
-			long curCellR = startULr + cellR;
-			long curCellC = startULc + cellC;
-			long mapIndex = curCellR * maxCellWidth + curCellC;
-			if ((curCellR >= 0) && (curCellR < cellHeight) && (curCellC >= 0) && (curCellC < cellWidth))
-				if (map[mapIndex].cost >= COST_BLOCKED)
-					map[mapIndex].cost = COST_BLOCKED - 1;
-		}
-*/
 
 /*
 	if ((goalR < 0) || (goalR >= cellHeight) || (goalC < 0) || (goalC >= cellWidth)) {
@@ -159,7 +147,6 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 
 						bool jumping = false;
 						long cost = succMapNode->cost;
-						// Diagonal movement is more costly...
 						if (dir > 7) {
 							jumping = true;
 							if (solveJumpOnBlocked)   // PATHFINDING-SOLVER-ISOLATION-1
@@ -176,9 +163,6 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 						long succNodeG = bestNodeG + cost;
 
 						if (succMapNode->flags & MOVEFLAG_OPEN) {
-							// This node is already in the OPEN queue to be
-							// be processed. Let's check if we have a better
-							// path thru this route...
 							if (succNodeG < succMapNode->g) {
 								succMapNode->parent = dirToParent;
 								succMapNode->g = succNodeG;
@@ -194,10 +178,7 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 							}
 							}
 						else if (succMapNode->flags & MOVEFLAG_CLOSED) {
-							// This path may be better than this node's current
-							// path. If so, we may have to propogate thru...
 							if (succNodeG < succMapNode->g) {
-								// This new path is cheaper...
 								succMapNode->parent = dirToParent;
 
 								propogateCostJUMP(succRow, succCol, cost, bestNodeG);
@@ -310,7 +291,6 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 					path->goal = goal;
 				}
 			else {
-				// It's a door, so it's the last on the path list...
 				curCell--;
 				path->setDirection(curCell, /*reverseShift[*/doorDirection * 2/*]*/);
 				long doorR = bestRow + adjTile[doorDirection][0];
@@ -327,8 +307,6 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 				path->setCell(curCell, goalCell[0], goalCell[1]);
 				path->goal = stepDest;
 				if (goalWorldPos) {
-					// We didn't know the exact goal world pos coming into this, since are
-					// goal was an area door....
 					*goalWorldPos = stepDest;
 				}
 			}
@@ -377,7 +355,6 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 			}
 			
 			#ifdef BLOCKED_PATH_TEST
-				// Let's test every path point to make sure it is not a blocked cell...
 				for (long i = 0; i < path->numSteps; i++) {
 					long tile[2], cell[2];
 					GameMap->worldToMapPos(path->stepList[i].destination, tile[0], tile[1], cell[0], cell[1]);
@@ -434,9 +411,6 @@ void MoveMap::writeDebug (File* debugFile) {
 		outString[0] = '\0';
 		char numStr[10];
 		for (long c = 0; c < width; c++) {
-			/*if ((goalR == r) && (goalC == c))
-				sprintf(numStr, "G");
-			else*/
 			if ((startR == r) && (startC == c))
 				sprintf(numStr, "S");
 			else if (map[r * maxWidth + c].parent == -1)

@@ -27,13 +27,8 @@ void GlobalMap::calcGlobalDoors (void) {
 
 				for (long r = minRow; r < maxRow; r++)
 					for (long c = minCol; c < maxCol; c++) {
-						// First, check each cell in the sector to see if
-						// it's a "door" cell (is open and adjacent to an
-						// open cell in another area in the current direction)...
 						long curArea = areaMap[r * width + c];
 						if (curArea > -1) {
-							// The doorMap tracks, for each tile, what area is adjacent
-							// to it thru a door...
 							long adjR = r + adjTile[dir][0];
 							long adjC = c + adjTile[dir][1];
 							if ((adjR >= 0) && (adjR < height) && (adjC >= 0) && (adjC < width)) {
@@ -214,14 +209,6 @@ long GlobalMap::calcLinkCost (long startDoor, long thruArea, long goalDoor) {
 
 	// If there is no path, find out why! In theory, this should never occur...
 	if (newPath.numSteps == 0) {
-		/*
-		File* pathDebugFile = new File;
-		pathDebugFile->create("movemap1.dbg");
-		PathFindMap->writeDebug(pathDebugFile);
-		pathDebugFile->close();
-		delete pathDebugFile;
-		pathDebugFile = NULL;
-		*/
 		// If the cost is 1, then our start and goal cells are the same. Thus, there
 		// is a path, it's just REALLY short :)
 		if (newPath.cost == 1)
@@ -476,10 +463,6 @@ long GlobalMap::build (MissionMapCellInfo* mapData) {
 
 	calcDoorLinks();
 
-/*	for (r = 0; r < tileHeight; r++)
-		for (long c = 0; c < tileWidth; c++)
-			calcSectorPaths(scenarioMap, r, c);
-*/
 	#ifdef _DEBUG
 	#endif
 

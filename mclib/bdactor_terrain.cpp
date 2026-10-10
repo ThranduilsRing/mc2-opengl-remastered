@@ -454,7 +454,6 @@ void BldgAppearance::markLOS (bool clearIt)
 			appearType->setAnimation(tempBldgShape,bdAnimationState);
 	}
 
-	// New way.  For each vertex in each shape, translate to world
 	for (int i=0;i<tempBldgShape->GetNumShapes();i++)
 	{
 		//Check if the artists meant for this piece to NOT block LOS!!

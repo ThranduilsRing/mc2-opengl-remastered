@@ -223,7 +223,7 @@ void vfxDistortInitIfNeeded() {
     if (s_distort_initialized) return;
     s_distort_enabled = mc2::gate::get<"MC2_VFX_DISTORTION">();
     s_distort_fixture = mc2::gate::get<"MC2_VFX_DISTORT_FIXTURE">();
-    s_distortAmp = mc2::gate::get<"MC2_VFX_DISTORT_AMP">();   // row: default 0.04, accepts (0, 0.5]
+    s_distortAmp = mc2::gate::get<"MC2_VFX_DISTORT_AMP">();   // row: default 0.04, accepts (0, 0.5)
     s_distort_initialized = true;
 }
 

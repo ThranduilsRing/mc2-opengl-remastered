@@ -1139,7 +1139,8 @@ int main(int argc, char** argv)
                 // stderr is still live here (the MC2_LOG NUL-redirect below has
                 // not run yet) — gate on MC2_LOG so a plain double-click-style
                 // console stays quiet.
-                if (mc2::gate::envText("MC2_LOG")) {
+                mc2::gate::invalidateAll();   // the loop above putenv'd: re-read before asking about MC2_LOG
+                if (mc2::gate::isSet<"MC2_LOG">()) {
                     fprintf(stderr,
                         "[LAUNCHER_ENV v1] applied=%d shell_override=%d src=%s\n",
                         applied, shellWins, jsonPath);

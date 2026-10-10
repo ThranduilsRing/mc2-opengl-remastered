@@ -302,12 +302,6 @@ long GVAppearance::render (long depthFixup)
 					shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 					shapeOrigin.BuildTranslation(wakePos);
 					
-					/*		
-					Stuff::UnitQuaternion effectRot;
-					effectRot = Stuff::EulerAngles(0.0f,rotation * DEGREES_TO_RADS,0.0f);
-					localToWorld.Multiply(gosFX::Effect_Against_Motion,effectRot);
-					localResult.Multiply(localToWorld,shapeOrigin);
-					*/
 		
 					drawInfo.m_parentToWorld = &shapeOrigin;
 					if (!MLRVertexLimitReached)

@@ -124,7 +124,6 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 	flashColor = 0x00000000;
 	drawFlash = false;
 
-	//Default to Bright RGB.
 	psRed = psGreen = psBlue = 0xffffffff;
 
 	// DEGRADE-DON'T-CRASH: ensure the instance shape is NULL before the build
@@ -202,7 +201,6 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 			}
 			else
 			{
-				//PAUSE(("Warning: %s texture name not found",textureName));
 				sensorTriangleShape->SetTextureHandle(i,0xffffffff);
 			}
 		}
@@ -238,7 +236,6 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 				}
 				else
 				{
-					//PAUSE(("Warning: %s texture name not found",textureName));
 					sensorSquareShape->SetTextureHandle(i,0xffffffff);
 				}
 			}
@@ -274,7 +271,6 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 				}
 				else
 				{
-					//PAUSE(("Warning: %s texture name not found",textureName));
 					sensorSquareShape->SetTextureHandle(i,0xffffffff);
 				}
 			}
@@ -504,7 +500,6 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 
 void Mech3DAppearance::initFX (void)
 {
-	//Create FX here so they are always ready to go!
 	if (!InEditor)
 	{
    		if (useNonWeaponEffects && strcmp(weaponEffects->GetEffectName(FX_POOF_ID),"NONE") != 0)
@@ -723,7 +718,6 @@ void Mech3DAppearance::setPaintScheme (void)
 	if (!mechShape)
 		return;
 
-	// Simple really.  Get the texture memory, apply the paint scheme, let it go!
 	DWORD gosHandle = mcTextureManager->get_gosTextureHandle(mechShape->GetTextureHandle(0));
 
 	if (gosHandle && gosHandle != 0xffffffff)
@@ -948,7 +942,6 @@ void Mech3DAppearance::resetPaintScheme (DWORD red, DWORD green, DWORD blue)
 		}
 	}
 
-	// Simple really.  Toss the current texture, reload the RGB and reapply the colors
 
 	DWORD gosHandle = mcTextureManager->get_gosTextureHandle(localTextureHandle);
 	mcTextureManager->removeTexture(gosHandle);

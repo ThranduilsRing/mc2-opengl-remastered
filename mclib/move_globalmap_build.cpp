@@ -800,8 +800,6 @@ long GlobalMap::setTempArea (long tileR, long tileC, long cost) {
 
 bool GlobalMap::fillSpecialArea (long row, long col, long area, long specialID) {
 
-	// This is used to fill any dynamic or "special" areas. Currently, these
-	// are: wall, gate and forest.
 	areaMap[row * width + col] = area;
 	GameMap->setBuildNotSet(row, col, false);
 
@@ -821,13 +819,10 @@ bool GlobalMap::fillArea (long row, long col, long area, bool offMap) {
 	if ((row < minRow) || (row >= maxRow) || (col < minCol) || (col >= maxCol))
 		return(false);
 
-	// If we hit a special (wall/gate/forest) tile, politely stop expanding
-	// this area into it...
 	if (!blank)
 		if (GameMap->getBuildSpecial(row, col))
 			return(false);
 
-	// If we're processing an offMap area, then stop if we hit a non-offMap cell...
 	if (offMap) {
 		if (!GameMap->getOffMap(row, col))
 			return(false);
@@ -886,8 +881,6 @@ void GlobalMap::calcSectorAreas (long sectorR, long sectorC) {
 					if (GameMap->getBuildSpecial(r, c)) {
 						long specialHere = areaMap[r * width + c];
 						gosASSERT(specialHere > -1);
-						// List this new area as part of the region covered
-						// by this gate or wall or forest...
 						if (specialAreas[specialHere].numSubAreas == MAX_SPECIAL_SUB_AREAS)
 							Fatal(MAX_SPECIAL_SUB_AREAS, " GlobalMap.calcSectorAreas: too many special subareas ");
 						specialAreas[specialHere].subAreas[specialAreas[specialHere].numSubAreas] = numAreas;
@@ -960,12 +953,6 @@ void GlobalMap::calcAreas (void) {
 
 void GlobalMap::calcCellsCovered (void) {
 
-/*	for (long r = 0; r < height; r++)
-		for (long c = 0; c < width; c++) {
-			long area = areaMap[r * width + c];
-			if (areas[area].type
-		}
-*/
 }
 
 void GlobalMap::calcSpecialTypes (void) {
@@ -1011,14 +998,6 @@ void GlobalMap::beginDoorProcessing (void) {
 
 void GlobalMap::addDoor (long area1, long area2, long row, long col, long length, long dir) {
 
-	/*
-	if (area1 > area2) {
-		long savedArea = area1;
-		area1 = area2;
-		area2 = savedArea;
-		dir = (dir + 2) % 4;
-	}
-	*/
 
 	bool newDoor = true;
 	for (long curDoorIndex = 0; curDoorIndex < numDoors; curDoorIndex++) {
@@ -1029,15 +1008,6 @@ void GlobalMap::addDoor (long area1, long area2, long row, long col, long length
 	}
 
 	if (newDoor) {
-		/*
-		if (area1 > area2) {
-			// Smaller area number first...
-			long savedArea1 = area1;
-			area1 = area2;
-			area2 = savedArea1;
-			dir = (dir + 2) % 4;
-		}
-		*/
 		doorBuildList[numDoors].row = row;
 		doorBuildList[numDoors].col = col;
 		doorBuildList[numDoors].length = length;

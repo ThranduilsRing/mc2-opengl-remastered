@@ -372,7 +372,6 @@ long MoveMap::calcPath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int* go
 					path->goal = goal;
 				}
 			else {
-				// It's a door, so it's the last on the path list...
 				curCell--;
 				path->setDirection(curCell, /*reverseShift[*/doorDirection * 2/*]*/);
 				int doorR = bestRow + adjTile[doorDirection][0];
@@ -389,8 +388,6 @@ long MoveMap::calcPath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int* go
 				path->setCell(curCell, goalCell[0], goalCell[1]);
 				path->goal = stepDest;
 				if (goalWorldPos) {
-					// We didn't know the exact goal world pos coming into this, since are
-					// goal was an area door....
 					*goalWorldPos = stepDest;
 				}
 			}
@@ -511,18 +508,6 @@ long MoveMap::calcPathJUMP (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int
 	#endif
 
 
-/*	long startULr = startR - 1;
-	long startULc = startC - 1;
-	for (long cellR = 0; cellR < MAPCELL_DIM; cellR++)
-		for (long cellC = 0; cellC < MAPCELL_DIM; cellC++) {
-			long curCellR = startULr + cellR;
-			long curCellC = startULc + cellC;
-			long mapIndex = curCellR * maxCellWidth + curCellC;
-			if ((curCellR >= 0) && (curCellR < cellHeight) && (curCellC >= 0) && (curCellC < cellWidth))
-				if (map[mapIndex].cost >= COST_BLOCKED)
-					map[mapIndex].cost = COST_BLOCKED - 1;
-		}
-*/
 
 	if ((goalR < 0) || (goalR >= height) || (goalC < 0) || (goalC >= width)) {
 		Stuff::Vector3D p;
@@ -534,7 +519,6 @@ long MoveMap::calcPathJUMP (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int
 		gosASSERT((goalR >= 0) && (goalR < height) && (goalC >= 0) && (goalC < width));
 	}
 
-	// Let's use their hPrime as a barrier for cutting off the search...
 	MaxHPrime = calcHPrime(startR, startC) * 2.5;
 	if (MaxHPrime < 500)
 		MaxHPrime = 500;
@@ -657,7 +641,6 @@ long MoveMap::calcPathJUMP (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int
 						char dirToParent = reverseShift[dir];
 
 						bool jumping = false;
-						// Diagonal movement is more costly...
 						gosASSERT(cost > 0);
 						if (dir > 7) {
 							jumping = true;
@@ -739,8 +722,6 @@ long MoveMap::calcPathJUMP (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int
 			curRow += cellShift[cellOffsetIndex++];
 			curCol += cellShift[cellOffsetIndex];
 		}
-		// If our goal is a door, the path will be one step longer, since
-		// we need to walk "thru" the door...
 		if (doorDirection != -1)
 			numCells++;
 
@@ -806,7 +787,6 @@ long MoveMap::calcPathJUMP (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int
 					path->goal = goal;
 				}
 			else {
-				// It's a door, so it's the last on the path list...
 				curCell--;
 				path->setDirection(curCell, /*reverseShift[*/doorDirection * 2/*]*/);
 				int doorR = bestRow + adjTile[doorDirection][0];
@@ -823,8 +803,6 @@ long MoveMap::calcPathJUMP (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int
 				path->setCell(curCell, goalCell[0], goalCell[1]);
 				path->goal = stepDest;
 				if (goalWorldPos) {
-					// We didn't know the exact goal world pos coming into this, since are
-					// goal was an area door....
 					*goalWorldPos = stepDest;
 				}
 			}

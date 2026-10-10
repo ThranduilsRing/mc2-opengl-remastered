@@ -142,7 +142,6 @@ void GlobalMap::setGoalDoor (long goalArea) {
 		goalDoor_links[0][curLink].cost = costSum;
 		goalDoor_links[0][curLink].openCost = costSum;
 		
-		// Make sure this area door points to the goal door...
 		curDoor_links[doorSide][curDoor->numLinks[doorSide]].doorIndex = numDoors + DOOR_OFFSET_GOAL;
 		curDoor_links[doorSide][curDoor->numLinks[doorSide]].doorSide = 0;
 		curDoor_links[doorSide][curDoor->numLinks[doorSide]].cost = costSum;
@@ -216,7 +215,6 @@ inline void GlobalMap::propogateCost (long door, long cost, long fromAreaIndex, 
 				else {
 					if ((succMapDoor->teamID > -1) && (succMapDoor->teamID != moverTeamID))
 						succDoorCost = COST_BLOCKED;
-					// Whether the door is even open is another issue...
 					if (!succMapDoor->open)
 						succDoorCost = COST_BLOCKED;
 				}
@@ -400,7 +398,6 @@ long GlobalMap::calcPath (long startArea,
 			// If we want to limit the doors thru which the path may
 			// travel, we must check right here...
 			
-			// Now, process this door...
 			long succDoor = bestMapDoor_links[toAreaIndex][curLink].doorIndex;
 			gosASSERT((succDoor >= 0) && (succDoor < numDoors + NUM_DOOR_OFFSETS));
 			GlobalMapDoorPtr succMapDoor = &doors[succDoor];
@@ -423,7 +420,6 @@ long GlobalMap::calcPath (long startArea,
 			else {
 				if ((succMapDoor->teamID > -1) && (succMapDoor->teamID != moverTeamID))
 					succDoorCost = COST_BLOCKED;
-				// Whether the door is even open is another issue...
 				if (!succMapDoor->open)
 					succDoorCost = COST_BLOCKED;
 			}
@@ -663,8 +659,6 @@ void GlobalMap::destroy (void) {
 
 	if (areas) {
 		if (!doorInfos) {
-			// Build path: areas_cellsCovered and areas_doors elements are individually
-			// heap-allocated in calcAreaDoors(). Free each one.
 			for (long i = 0; i < (numAreas + 1); i++) {
 				if (areas_cellsCovered && areas_cellsCovered[i]) {
 					systemHeap->Free(areas_cellsCovered[i]);
@@ -679,8 +673,6 @@ void GlobalMap::destroy (void) {
 		systemHeap->Free(areas);
 		areas = NULL;
 	}
-	// Free the pointer arrays themselves — they are systemHeap-allocated in both
-	// the build path (calcAreas) and the load path (init(PacketFile,packet)).
 	if (areas_cellsCovered) {
 		systemHeap->Free(areas_cellsCovered);
 		areas_cellsCovered = NULL;
@@ -692,8 +684,6 @@ void GlobalMap::destroy (void) {
 
 	if (doors) {
 		if (!doorLinks) {
-			// Build path: each doors_links[i][s] element is individually heap-allocated
-			// in calcDoorLinks(). Free each one.
 			for (long i = 0; i < (numDoors + NUM_DOOR_OFFSETS); i++)
 				for (long s = 0; s < 2; s++) {
 					if (doors_links && doors_links[i][s]) {
@@ -705,7 +695,6 @@ void GlobalMap::destroy (void) {
 		systemHeap->Free(doors);
 		doors = NULL;
 	}
-	// Free the doors_links pointer array itself — allocated in both paths.
 	if (doors_links) {
 		systemHeap->Free(doors_links);
 		doors_links = NULL;

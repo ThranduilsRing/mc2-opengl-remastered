@@ -490,12 +490,6 @@ void GVAppearance::updateGeometry (void)
  		shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 		shapeOrigin.BuildTranslation(wakePos);
 				
-		/*
-		Stuff::UnitQuaternion effectRot;
-		effectRot = Stuff::EulerAngles(0.0f,rotation * DEGREES_TO_RADS,0.0f);
-		localToWorld.Multiply(gosFX::Effect_Against_Motion,effectRot);
-		localResult.Multiply(localToWorld,shapeOrigin);
-		*/
 		
  		Stuff::OBB boundingBox;
 		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,&boundingBox);
@@ -878,12 +872,6 @@ void GVAppearance::startActivity (long effectId, bool loop)
  		shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 		shapeOrigin.BuildTranslation(wakePos);
 				
-		/*
-		Stuff::UnitQuaternion effectRot;
-		effectRot = Stuff::EulerAngles(0.0f,rotation * DEGREES_TO_RADS,0.0f);
-		localToWorld.Multiply(gosFX::Effect_Against_Motion,effectRot);
-		localResult.Multiply(localToWorld,shapeOrigin);
-		*/
 			
  		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,NULL);
 

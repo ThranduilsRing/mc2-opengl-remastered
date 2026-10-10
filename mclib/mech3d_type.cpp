@@ -902,11 +902,9 @@ long Mech3DAppearance::getWeaponNode (long weaponType)
 					(mechType->nodeData[numSmokeNodes+i].weaponType == MECH3D_WEAPONTYPE_ANY) || 
 					(mechType->nodeData[numSmokeNodes+i].weaponType == MECH3D_WEAPONTYPE_NONENERGY))
 				{
-					//This node is blown off.
 					if (rightArmOff && mechType->nodeData[i+numSmokeNodes].isRArmNode)
 						continue;
 						
-					//This node is blown off.
 					if (leftArmOff && mechType->nodeData[i+numSmokeNodes].isLArmNode)
 						continue;
 						
@@ -924,11 +922,9 @@ long Mech3DAppearance::getWeaponNode (long weaponType)
 					(mechType->nodeData[numSmokeNodes+i].weaponType == MECH3D_WEAPONTYPE_DIRECT) ||
 					(mechType->nodeData[numSmokeNodes+i].weaponType == MECH3D_WEAPONTYPE_NONENERGY))
 				{
-					//This node is blown off.
 					if (rightArmOff && mechType->nodeData[i+numSmokeNodes].isRArmNode)
 						continue;
 						
-					//This node is blown off.
 					if (leftArmOff && mechType->nodeData[i+numSmokeNodes].isLArmNode)
 						continue;
 						
@@ -945,11 +941,9 @@ long Mech3DAppearance::getWeaponNode (long weaponType)
 					(mechType->nodeData[numSmokeNodes+i].weaponType == MECH3D_WEAPONTYPE_DIRECT) ||
 					(mechType->nodeData[numSmokeNodes+i].weaponType == MECH3D_WEAPONTYPE_ANY))
 				{
-					//This node is blown off.
 					if (rightArmOff && mechType->nodeData[i+numSmokeNodes].isRArmNode)
 						continue;
 						
-					//This node is blown off.
 					if (leftArmOff && mechType->nodeData[i+numSmokeNodes].isLArmNode)
 						continue;
 						
@@ -962,11 +956,9 @@ long Mech3DAppearance::getWeaponNode (long weaponType)
 			break;
 			
 			case MECH3D_WEAPONTYPE_ANY:
-				//This node is blown off.
 				if (rightArmOff && mechType->nodeData[i+numSmokeNodes].isRArmNode)
 					continue;
 					
-				//This node is blown off.
 				if (leftArmOff && mechType->nodeData[i+numSmokeNodes].isLArmNode)
 					continue;
 					

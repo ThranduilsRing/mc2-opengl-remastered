@@ -1392,3 +1392,15 @@ TEST_CASE("boolState answers by the row's own rule for a gate named at run time"
 }
 
 }  // TEST_SUITE
+
+TEST_CASE("MC2_VFX_DISTORT_AMP accepts (0, 0.5) like the `a > 0 && a < 0.5f` reader it replaced") {
+    using namespace gate::rows;
+    const gate::Row row = P("MC2_UNITTEST_DAMP", Float, 0.04, "test", "", "doc", rangeAbove(0.0, 0.4999999701976776));
+    auto val = [&](const char* t) { return asFloat(gate::detail::parseRow(row, t)); };
+    CHECK(val("0.25") == 0.25f);
+    CHECK(val("0.49999997") == 0.49999997f);
+    for (const char* t : {"0.5", "0.51", "0", "-0.1", "abc"}) {
+        INFO(t);
+        CHECK(val(t) == 0.04f);
+    }
+}

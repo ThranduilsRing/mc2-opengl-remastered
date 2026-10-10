@@ -217,7 +217,6 @@ long Mech3DAppearance::update (bool animate)
 		}
 	}
  	
-	// Force frames to last frame of FALL if fallen
 	fallen = FALSE;
 	if ((currentGestureId == GestureFallenForward) || (currentGestureId == GestureFallenBackward))
 	{
@@ -762,7 +761,6 @@ void Mech3DAppearance::blowLeftArm (void)
 	
 	leftArmOff = true;
 	
-	//Calc initial Velocity, rotation and set Acceleration to down in World.
 	long xlatBase = 12.0f + 50.0 / 2.0f;
 	long upBase = 25.0f + 100.0;
 	long rotBase = 25.0f + 100.0;
@@ -878,7 +876,6 @@ void Mech3DAppearance::blowRightArm (void)
 
 	rightArmOff = true;
 
-	//Calc initial Velocity, rotation and set Acceleration to down in World.
 	long xlatBase = 12.0f + 50.0 / 2.0f;
 	long upBase = 25.0f + 100.0;
 	long rotBase = 25.0f + 100.0;
@@ -910,8 +907,6 @@ void Mech3DAppearance::blowRightArm (void)
 void Mech3DAppearance::startSmoking (long smokeLvl)
 {
 	
-	//First, check if its even loaded.
-	// can easily preload this.  Should we?  Memory?
 	
 	if (!useNonWeaponEffects)
 		return;
@@ -991,15 +986,12 @@ void Mech3DAppearance::startSmoking (long smokeLvl)
 void Mech3DAppearance::startWaterWake (void)
 {
 	
-	//Check if we are a helicopter OR we are jumping.  No WAKE if either is true.
 	if (isHelicopter || currentGestureId == 20)
 		return;
 
 	if (!useNonWeaponEffects)
 		return;
 
-	//First, check if its even loaded.
-	// can easily preload this.  Should we?  Memory?
 	if (useNonWeaponEffects && !waterWake)
 	{
    		if (strcmp(weaponEffects->GetEffectName(MECH_WATER_WAKE),"NONE") != 0)
@@ -1062,8 +1054,6 @@ void Mech3DAppearance::playEjection (void)
 		return;
 
 	
-	//First, check if its even loaded.
-	// can easily preload this.  Should we?  Memory?
 	if (useNonWeaponEffects && !helicopterDustCloud)
 	{
    		if (strcmp(weaponEffects->GetEffectName(HELICOPTER_DUST_CLOUD),"NONE") != 0)
@@ -1095,12 +1085,6 @@ void Mech3DAppearance::playEjection (void)
  		shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 		shapeOrigin.BuildTranslation(wakePos);
 				
-		/*
-		Stuff::UnitQuaternion effectRot;
-		effectRot = Stuff::EulerAngles(0.0f,rotation * DEGREES_TO_RADS,0.0f);
-		localToWorld.Multiply(gosFX::Effect_Against_Motion,effectRot);
-		localResult.Multiply(localToWorld,shapeOrigin);
-		*/
 			
  		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,NULL);
 

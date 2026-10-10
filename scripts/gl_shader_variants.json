@@ -886,7 +886,7 @@
    "key": "gos_terrain_water_mdi",
    "optional_groups_on": [],
    "prefix": "#version 430\n#extension GL_ARB_shader_draw_parameters : require\n",
-   "source": "GameOS/gameos/gameos_graphics_water.cpp:295",
+   "source": "GameOS/gameos/gameos_graphics_water.cpp:302",
    "stages": {
     "frag": "shaders/gos_terrain_water_mdi.frag",
     "vert": "shaders/gos_terrain_water_fast_mdi.vert"
@@ -2800,7 +2800,7 @@
    "key": "gpu_driven_terrain_solid",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_terrain_indirect_dispatch.cpp:269",
+   "source": "GameOS/gameos/gos_terrain_indirect_dispatch.cpp:272",
    "stages": {
     "comp": "shaders/gpu_driven_terrain_solid.comp"
    }
