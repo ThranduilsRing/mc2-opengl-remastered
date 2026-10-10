@@ -417,31 +417,9 @@ def auto_acquire(
 
 
 def _pid_alive(pid: int) -> bool:
-    """True if a process with this pid exists on this host."""
-    if pid <= 0:
-        return False
-    if os.name == "nt":
-        import ctypes
-        PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
-        STILL_ACTIVE = 259
-        k32 = ctypes.windll.kernel32
-        h = k32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, int(pid))
-        if not h:
-            return False
-        try:
-            code = ctypes.c_ulong(0)
-            if not k32.GetExitCodeProcess(h, ctypes.byref(code)):
-                return True
-            return code.value == STILL_ACTIVE
-        finally:
-            k32.CloseHandle(h)
-    try:
-        os.kill(int(pid), 0)
-    except ProcessLookupError:
-        return False
-    except OSError:
-        return True
-    return True
+    """True if a process with this pid exists on this host (never signals it)."""
+    from . import child_registry
+    return child_registry.pid_alive(pid)
 
 
 def clear_dead_leases(pid_alive=_pid_alive, hostname: Optional[str] = None) -> list:

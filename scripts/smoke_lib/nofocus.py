@@ -442,6 +442,16 @@ def _desktop_blocked(what: str) -> bool:
     return False
 
 
+def _record_child(proc, argv: Sequence[str]) -> None:
+    """Note an engine child so a later run may end it if its runner died (see child_registry)."""
+    try:
+        from . import exe_guard, child_registry
+    except ImportError:
+        from smoke_lib import exe_guard, child_registry
+    if argv and exe_guard.engine_kind(argv[0]) is not None:
+        child_registry.record(proc.pid, argv[0])
+
+
 class ExeRefused(RuntimeError):
     """The engine exe cannot keep itself off the user's desktop (see smoke_lib/exe_guard.py)."""
 
@@ -500,6 +510,7 @@ def spawn(argv: Sequence[str], *, show_window: bool = False,
         list(argv),
         env=apply_env(env, small_window=small_window, offscreen=offscreen),
         **popen_kwargs(show_window=show_window, **kw))
+    _record_child(proc, argv)
     if offscreen:
         # Backstop for exes predating MC2_WINDOW_OFFSCREEN; a current exe is
         # already offscreen at creation and the poller finds nothing to move.

@@ -25,8 +25,8 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `scripts/renderdoc_capture.py` | 266 | `subprocess.run` **raw, allowed:** renderdoccmd convert is a console file converter, not the game; windowless via hidden_kwargs | offscreen |
 | `scripts/run_editor_playtest_smoke.py` | 235 | `nofocus.spawn` | offscreen |
 | `scripts/run_editor_smoke.py` | 143 | `nofocus.spawn` | offscreen |
-| `scripts/run_smoke.py` | 375 | `nofocus.spawn` | offscreen |
-| `scripts/run_smoke_asan.py` | 195 | `nofocus.spawn` | offscreen |
+| `scripts/run_smoke.py` | 366 | `nofocus.spawn` | offscreen |
+| `scripts/run_smoke_asan.py` | 203 | `nofocus.spawn` | offscreen |
 | `scripts/run_visual_capture.py` | 369 | `nofocus.spawn` | offscreen |
 | `scripts/run_vk_field_check.py` | 230 | `nofocus.spawn` | offscreen |
 | `scripts/run_vk_field_check.py` | 272 | `nofocus.spawn` | offscreen |
@@ -34,6 +34,8 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `scripts/smoke_with_screenshots.py` | 158 | `nofocus.spawn` | desktop-composite |
 | `scripts/sweep_campaign.py` | 72 | `nofocus.spawn` | offscreen |
 | `scripts/tests/test_harness_desktop_safety.py` | 166 | `nofocus.spawn` | offscreen |
+| `scripts/tests/test_harness_desktop_safety.py` | 442 | `nofocus.spawn` | offscreen |
+| `scripts/tests/test_harness_desktop_safety.py` | 446 | `nofocus.spawn` | offscreen |
 | `scripts/water_visual_diff.py` | 56 | `nofocus.spawn` | desktop-composite |
 | `tests/smoke/object_visual_diff.py` | 123 | `nofocus.run` | offscreen |
 | `tools/debug_view_sweep.py` | 215 | `nofocus.spawn` | offscreen |
@@ -46,7 +48,7 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `tools/tracy_capture_compare.py` | 390 | `subprocess.run` **raw, allowed:** Tracy csvexport console tool, not the game; windowless via hidden_kwargs | offscreen |
 | `tools/tracy_capture_compare.py` | 443 | `subprocess.run` **raw, allowed:** Tracy csvexport console tool, not the game; windowless via hidden_kwargs | offscreen |
 
-Total engine launch sites: 36
+Total engine launch sites: 38
 
 ## Shell launchers (RULE 9)
 

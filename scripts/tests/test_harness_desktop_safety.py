@@ -391,3 +391,57 @@ def test_nofocus_window_calls_are_inert_with_the_off_switch(monkeypatch):
 def test_root_pytest_ini_and_conftest_exist_so_any_folder_gets_the_switch():
     assert (ROOT / "pytest.ini").is_file()
     assert "MC2_CURSOR_GUARD_OFF" in (ROOT / "conftest.py").read_text(encoding="utf-8")
+
+
+# ------------------------------------------------- kills: only orphans of a dead harness run
+
+from smoke_lib import child_registry  # noqa: E402
+
+
+def _rec(**kw):
+    base = {"pid": 10, "exe": "a:/x/mc2.exe", "runner_pid": 99, "create_time": 123}
+    base.update(kw)
+    return base
+
+
+def _may(rec, alive=lambda p: p == 10, created=lambda p: 123, image=lambda p: "a:/x/mc2.exe"):
+    return child_registry.may_kill(10, alive=alive, created=created, image=image, rec=rec)
+
+
+def test_orphan_of_a_dead_runner_may_be_ended():
+    ok, why = _may(_rec())
+    assert ok, why
+
+
+def test_a_game_with_no_record_is_never_killed():
+    ok, why = child_registry.may_kill(2_000_000_000)
+    assert not ok and "no record" in why
+
+
+def test_live_runner_reused_pid_or_other_image_blocks_the_kill():
+    assert "runner" in _may(_rec(), alive=lambda p: True)[1]
+    assert "creation time" in _may(_rec(), created=lambda p: 999)[1]
+    assert "image path" in _may(_rec(), image=lambda p: "a:/other/mc2.exe")[1]
+    assert not _may(_rec(), alive=lambda p: False)[0]
+
+
+def test_pid_alive_never_signals_on_windows(monkeypatch):
+    def _boom(*a, **k):
+        raise AssertionError("os.kill is TerminateProcess on Windows; liveness must not call it")
+
+    monkeypatch.setattr(os, "kill", _boom)
+    assert child_registry.pid_alive(os.getpid()) is True
+    assert child_registry.pid_alive(2_000_000_000) is False
+
+
+def test_nofocus_records_only_engine_children(tmp_path, monkeypatch):
+    seen = []
+    monkeypatch.setattr(child_registry, "record", lambda pid, exe, **k: seen.append((pid, str(exe))))
+    monkeypatch.setattr(subprocess, "Popen", lambda argv, **k: types.SimpleNamespace(pid=7, poll=lambda: 0))
+    monkeypatch.setattr(nofocus, "park_window_offscreen", lambda *a, **k: None)
+    nofocus.spawn([sys.executable, "-c", "pass"])
+    assert seen == []
+    exe = _install(tmp_path, "mc2-win64-ok", FRESH_SHA)
+    monkeypatch.setattr(nofocus, "_vet_engine_exe", lambda argv: None)
+    nofocus.spawn([str(exe)])
+    assert seen == [(7, str(exe))]

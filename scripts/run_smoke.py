@@ -351,15 +351,6 @@ def _lane_lock_token(lease_folder: str | None, exe_path: str,
     return "".join(c if c.isalnum() or c in "-_" else "_" for c in lane_key)
 
 
-def _taskkill_mc2(pids: list[int]):
-    """Kill ONLY the given PIDs (never /IM image-name kill, which would also
-    nuke foreign mc2.exe from a different deploy path)."""
-    for pid in pids:
-        subprocess.run(["taskkill", "/F", "/PID", str(pid)],
-                       stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
-                       **nofocus.hidden_kwargs())
-
-
 def _run_menu_canary(exe: Path, script_path: Path, artifact_dir: Path,
                      keep_logs: bool, settle_s: int) -> int:
     env = os.environ.copy()
@@ -1109,15 +1100,23 @@ def main():
     if blockers:
         block_pids = [p for p, _ in blockers]
         if args.kill_existing:
-            # Kill ONLY same-path PIDs even under --block-any-mc2 we still only
-            # taskkill same-path here unless legacy block selected the foreign.
-            kill_pids = block_pids if args.block_any_mc2 else [p for p, _ in same_path]
-            print(f"[runner] killing existing mc2.exe PIDs {kill_pids}",
-                  file=sys.stderr)
-            _taskkill_mc2(kill_pids)
+            # Only an orphan of a DEAD harness run is ended (child_registry): a game the owner or another
+            # lane started on this install, or one whose runner is still alive, is never killed.
+            from scripts.smoke_lib import child_registry as _children
+            refused = []
+            for _pid in block_pids:
+                _killed, _why = _children.kill_if_orphan(_pid)
+                print(f"[runner] mc2.exe PID {_pid}: {'killed, ' if _killed else 'left running, '}{_why}",
+                      file=sys.stderr)
+                if not _killed:
+                    refused.append(_pid)
+            if refused:
+                print(f"[runner] ERROR: mc2.exe PIDs {refused} were not started by a dead smoke run; "
+                      f"close them yourself.", file=sys.stderr)
+                sys.exit(4)
         else:
             print(f"[runner] ERROR: mc2.exe already running (PIDs {block_pids}); "
-                  f"pass --kill-existing to override.", file=sys.stderr)
+                  f"--kill-existing ends only orphans of a dead smoke run.", file=sys.stderr)
             sys.exit(4)
 
     if args.menu_canary:
