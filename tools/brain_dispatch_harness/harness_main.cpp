@@ -52,6 +52,7 @@ extern void harnessSetBrainTimeMs(uint32_t ms);
 #ifdef _WIN32
 #include <io.h>      // _dup, _dup2, _close, _fileno
 #include <cstdlib>   // _putenv
+#include "Gates/gate_cold.h"   // invalidateAll() after the _putenv block
 #endif
 
 // ---------------------------------------------------------------------------
@@ -640,6 +641,7 @@ int main(int argc, char** argv) {
     }
     // MC2_BRAIN_INTENT_QUEUE is read from the environment as-is.
     // The caller sets it before invoking the harness for gate-ON runs.
+    mc2::gate::invalidateAll();   // the _putenv calls above ran after static initialisers cached gates
 
     // Detect intent queue gate state (read BEFORE first static-init call).
     const char* intentQueueEnv = std::getenv("MC2_BRAIN_INTENT_QUEUE");

@@ -24,6 +24,8 @@
 #include <sstream>
 #include <string>
 #include <vector>
+
+#include "Gates/gate_cold.h"   // invalidateAll() after _putenv
 #ifdef _WIN32
 #include <process.h>   // _getpid
 #else
@@ -237,6 +239,7 @@ static bool test_fatal_if_aborts_and_traces(TestCtx& t) {
     setenv("MC2_DIAGNOSTIC_TRACE_FILE", trace.string().c_str(), 1);
     const char* devnull = "/dev/null";
 #endif
+    mc2::gate::invalidateAll();   // the variable above was set after static initialisers cached gates
 
     std::ostringstream cmd;
     cmd << '"' << g_argv0 << "\" --test fatal_trip > " << devnull << " 2>&1";

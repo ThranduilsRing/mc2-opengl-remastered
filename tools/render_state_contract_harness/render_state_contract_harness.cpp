@@ -32,6 +32,7 @@
 #include "render_contract.h"
 #include "RenderCore/RenderPassContract.h"
 #include "RenderCore/RenderResourceRegistry.h"
+#include "Gates/gate_cold.h"   // invalidateAll() after _putenv
 
 using namespace contract_harness;
 namespace rc = render_contract;
@@ -121,6 +122,7 @@ static void enableScopeTracking() {
 #else
     setenv("MC2_RENDER_PASS_CONTRACT_ASSERT", "1", 1);
 #endif
+    mc2::gate::invalidateAll();         // gates cached by static initialisers predate the _putenv above
     rc::initRenderPassScope();          // reads the env we just set
     rc::initRenderPassOrder();
     rc::_test_forceOrderAudit(true);    // run order audit without MC2_RENDER_PASS_ORDER

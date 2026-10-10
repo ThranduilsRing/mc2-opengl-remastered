@@ -3,6 +3,7 @@
 //-------------------------------------------------------------------------------------------------
 #include "stdafx.h"
 #include "ModPicker.h"
+#include "Gates/gate_cold.h"
 
 #ifdef MC2_IMGUI
 #include "imgui.h"
@@ -69,6 +70,7 @@ void Activate( const char* modId )
 {
 	const char* id = modId ? modId : "";
 	_putenv_s( "MC2_ACTIVE_MOD", id );
+	mc2::gate::invalidate( "MC2_ACTIVE_MOD" );
 	InitModSearchPaths( "./mods/" );
 	strncpy( s_active, id, sizeof( s_active ) - 1 );
 	s_active[sizeof( s_active ) - 1] = '\0';
