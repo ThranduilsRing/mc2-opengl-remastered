@@ -567,293 +567,39 @@ void EString::Reverse()
 void EString::Format( const EChar* p_Str, ... )
 {
 	va_list Arg_List;
-	
 	va_start(Arg_List, p_Str);
-
-    // sebi !NB
-	//va_list Arg_List_Save = Arg_List;
 	va_list Arg_List_Save;
-    va_copy(Arg_List_Save, Arg_List);
+	va_copy(Arg_List_Save, Arg_List);
 
-	// make a guess at the maximum length of the resulting string
-	int Max_Len = 0;
-	for (const EChar* p_Tmp = p_Str; *p_Tmp != '\0'; p_Tmp = KSInc(p_Tmp))
-	{
-		// handle '%' character, but watch out for '%%'
-		if (*p_Tmp != '%' || *(p_Tmp = KSInc(p_Tmp)) == '%')
-		{
-			Max_Len += ECharLen(p_Tmp);
-			continue;
-		}
-
-		int Item_Len = 0;
-
-		// handle '%' character with format
-		int Width = 0;
-		for (; *p_Tmp != '\0'; p_Tmp = KSInc(p_Tmp))
-		{
-			// check for valid flags
-			if (*p_Tmp == '#')
-				Max_Len += 2;   // for '0x'
-			else if (*p_Tmp == '*')
-				Width = va_arg(Arg_List, int);
-			else if (*p_Tmp == '-' || *p_Tmp == '+' || *p_Tmp == '0' ||
-				*p_Tmp == ' ')
-				;
-			else // hit non-flag character
-				break;
-		}
-		// get width and skip it
-		if ( Width == 0)
-		{
-			// width indicated by
-			Width = KToI(p_Tmp);
-			unsigned short buffer;
-			for (; *p_Tmp != '\0'; )
-			{
-				GetStringTypeEx(LOCALE_SYSTEM_DEFAULT, CT_CTYPE1, p_Tmp, 1, &buffer);
-				if (buffer == C1_DIGIT || buffer == C1_XDIGIT)
-					p_Tmp = KSInc(p_Tmp);
-				else
-					break;
-			}
-		}
-		
-		gosASSERT( Width >= 0);
-
-		int Precision = 0;	
-		if (*p_Tmp == '.')
-		{
-			// skip past '.' separator (width.precision)
-			p_Tmp = KSInc(p_Tmp);
-
-			// get precision and skip it
-			if (*p_Tmp == '*')
-			{
-				Precision = va_arg(Arg_List, int);
-				p_Tmp = KSInc(p_Tmp);
-			}
-			else
-			{
-				Precision = KToI(p_Tmp);
-				for (; *p_Tmp != '\0'; )
-				{
-					unsigned short buffer;
-					GetStringTypeEx(LOCALE_SYSTEM_DEFAULT, CT_CTYPE1, p_Tmp, 1, &buffer);
-					//if (buffer == C1_DIGIT || buffer == C1_XDIGIT)
-					if (buffer & C1_DIGIT)	//mh
-						p_Tmp = KSInc(p_Tmp);
-					else
-						break;
-				}
-
-			}
-			gosASSERT( Precision >= 0);
-		}
-
-		// should be on type modifier or specifier
-		int	Modifier = 0;
-		switch (*p_Tmp)
-		{
-		// modifiers that affect size
-		case 'h':
-			Modifier = s_Force_Ansi;
-			p_Tmp = KSInc(p_Tmp);
-			break;
-		case 'l':
-			Modifier = s_Force_Unicode;
-			p_Tmp = KSInc(p_Tmp);
-			break;
-
-		// modifiers that do not affect size
-		case 'F':
-		case 'N':
-		case 'L':
-			p_Tmp = KSInc(p_Tmp);
-			break;
-		}
-
-		// now should be on specifier
-		switch (*p_Tmp | Modifier)
-		{
-		// single characters
-		case 'c':
-		case 'C':
-			Item_Len = 2;
-            // sebi: char is promoted to int
-			//va_arg(Arg_List, EChar);
-			va_arg(Arg_List, int);
-			break;
-		case 'c'|s_Force_Ansi:
-		case 'C'|s_Force_Ansi:
-			Item_Len = 2;
-            // sebi: char is promoted to int
-			//va_arg(Arg_List, char);
-			va_arg(Arg_List, int);
-			break;
-		case 'c'|s_Force_Unicode:
-		case 'C'|s_Force_Unicode:
-			Item_Len = 2;
-            // sebi: char is promoted to int
-			//va_arg(Arg_List, short);
-			va_arg(Arg_List, int);
-			break;
-
-		// strings
-		case 's':
-		{
-			const EChar* p_Next_Arg = va_arg(Arg_List, const EChar*);
-			if (p_Next_Arg == NULL)
-			   Item_Len = 6;  // "(null)"
-			else
-			{
-			   Item_Len = StrSize(p_Next_Arg);
-			   Item_Len = max(1, Item_Len);
-			}
-			break;
-		}
-
-		case 'S':
-		{
-#ifndef K_UNICODE
-            // sebi
-			const wchar_t* p_Next_Arg = va_arg(Arg_List, const wchar_t*);
-			if (p_Next_Arg == NULL)
-			   Item_Len = 6;  // "(null)"
-			else
-			{
-			   Item_Len = static_cast<int>(wcslen(p_Next_Arg));
-			   Item_Len = max(1, Item_Len);
-			}
+	// Size the result with the C runtime's own format parser. The scan this replaced re-implemented %-spec
+	// parsing by hand, did not know ll / z / j / t and friends, and then vsprintf wrote into a buffer sized by
+	// that guess.
+#ifdef UNICODE
+	int Max_Len = _vscwprintf(p_Str, Arg_List);
 #else
-			const char* p_Next_Arg = va_arg(Arg_List, const char*);
-			if (p_Next_Arg == NULL)
-			   Item_Len = 6; // "(null)"
-			else
-			{
-			   Item_Len = lstrlenA(p_Next_Arg);
-			   Item_Len = max(1, Item_Len);
-			}
+	int Max_Len = vsnprintf(NULL, 0, p_Str, Arg_List);
 #endif
-			break;
-		}
-
-		case 's'|s_Force_Ansi:
-		case 'S'|s_Force_Ansi:
-		{
-			const char* p_Next_Arg = va_arg(Arg_List, const char*);
-			if (p_Next_Arg == NULL)
-			   Item_Len = 6; // "(null)"
-			else
-			{
-			   Item_Len = lstrlenA(p_Next_Arg);
-			   Item_Len = max(1, Item_Len);
-			}
-			break;
-		}
-
-#ifndef _MAC
-		case 's'|s_Force_Unicode:
-		case 'S'|s_Force_Unicode:
-		{
-			LPWSTR pstrNextArg = va_arg(Arg_List, LPWSTR);
-			if (pstrNextArg == NULL)
-			   Item_Len = 6; // "(null)"
-			else
-			{
-			   Item_Len = static_cast<int>(wcslen(pstrNextArg));
-			   Item_Len = max(1, Item_Len);
-			}
-			break;
-		}
-#endif
-		}
-
-		// adjust nItemLen for strings
-		if (Item_Len != 0)
-		{
-			Item_Len = max(Item_Len, Width);
-			if (Precision != 0)
-			{
-				Item_Len = min(Item_Len, Precision);
-			}
-		}
-		else
-		{
-			switch (*p_Tmp)
-			{
-			// integers
-			case 'd':
-			case 'i':
-			case 'u':
-			case 'x':
-			case 'X':
-			case 'o':
-				va_arg(Arg_List, int);
-				Item_Len = 32;
-				Item_Len = max(Item_Len, Width + Precision);
-				break;
-
-			case 'e':
-			case 'f':
-			case 'g':
-			case 'G':
-				va_arg(Arg_List, double);
-				Item_Len = 128;
-				Item_Len = max(Item_Len, Width + Precision);
-				break;
-
-			case 'p':
-				va_arg(Arg_List, void*);
-				Item_Len = 32;
-				Item_Len = max(Item_Len, Width + Precision);
-				break;
-
-			// no output
-			case 'n':
-				va_arg(Arg_List, int*);
-				break;
-			
-			case 'I': // assume INT64 skip next two chars
-				p_Tmp = KSInc(p_Tmp);
-				p_Tmp = KSInc(p_Tmp);
-				p_Tmp = KSInc(p_Tmp);
-				Item_Len = 64;
-				va_arg(Arg_List, __int64);
-				break;
-
-
-			default:
-				gosASSERT(false);  // unknown formatting option
-			}
-		}
-
-		// adjust nMaxLen for output nItemLen
-		Max_Len += Item_Len;
-	}
+	va_end(Arg_List);
+	if (Max_Len < 0)
+		Max_Len = 0;
 
 	// make sure noone else is using this buffer
 	ChecEBuffer();
-	
-	if ( Max_Len > m_pBuffer->m_Alloc_Length )
+
+	if ( Max_Len + 1 > m_pBuffer->m_Alloc_Length )
 	{
 		m_pBuffer->Release();
 		Alloc( Max_Len + 1 );
 	}
 
 #ifdef UNICODE
-	vswprintf(m_pBuffer->Data(), p_Str, Arg_List_Save);
+	vswprintf(m_pBuffer->Data(), Max_Len + 1, p_Str, Arg_List_Save);
 #else
-	vsprintf(m_pBuffer->Data(), p_Str, Arg_List_Save);
+	vsnprintf(m_pBuffer->Data(), Max_Len + 1, p_Str, Arg_List_Save);
 #endif
-    va_end(Arg_List_Save);
-
+	va_end(Arg_List_Save);
 
 	m_pBuffer->m_Data_Length = StrSize( m_pBuffer->Data() );
-
-	// clean up
-	va_end( Arg_List );
-	
 }
 
 /////////////////////////////////////////////////////////////////
