@@ -1,6 +1,7 @@
 // Game main: the per-frame renderer update, engine termination and DoGameLogic.
 // Declared in the class headers; shared names in mechcmd2_internal.h.
 #include "mechcmd2_internal.h"
+#include "Gates/gate.h"
 
 
 //---------------------------------------------------------------------------
@@ -593,7 +594,7 @@ void __stdcall DoGameLogic()
 						mission && mission->isActive()) {
 						SmokeMode::markMissionReady();
 						s_missionReadyMarked = true;
-						if (getenv("MC2_FRAMECAP_TRACE")) {
+						if (mc2::gate::get<"MC2_FRAMECAP_TRACE">()) {
 							fprintf(stderr, "[FRAMECAP] markMissionReady fired (mission active)\n");
 							fflush(stderr);
 						}
