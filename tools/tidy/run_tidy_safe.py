@@ -28,6 +28,7 @@ import argparse
 import fnmatch
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -133,22 +134,29 @@ def restore_file(rel: str, mtime_ns: int) -> None:
     os.utime(os.path.join(ROOT, rel), ns=(mtime_ns, mtime_ns))
 
 
-def ninja_objects(tree: str, rels, jobs: int) -> int:
-    """Build the objects of `rels` in one ninja run under the MSVC environment."""
+def ninja_objects(tree: str, rels, jobs: int):
+    """Build the objects of `rels` in one ninja run under the MSVC environment (keep going past failures).
+
+    -> (returncode, [object targets that failed to compile])."""
     import configure_ninja as cn
     targets = []
     for rel in rels:
         for o in objhash.find_objs(tree, rel):
             targets.append(os.path.relpath(o, tree).replace("\\", "/"))
     if not targets:
-        return 0
-    inner = subprocess.list2cmdline([cn.NINJA, "-C", tree, f"-j{jobs}"] + targets)
+        return 0, []
+    inner = subprocess.list2cmdline([cn.NINJA, "-C", tree, f"-j{jobs}", "-k", "0"] + targets)
     # Freeze the build-fingerprint header: the edit makes the tree dirty, which would otherwise change the dirty flag compiled into
     # every TU that embeds it (see cmake/GenerateBuildFingerprint.cmake).
-    r = subprocess.run(f'call "{cn.VCVARS}" >nul && {inner}', shell=True,
+    r = subprocess.run(f'call "{cn.VCVARS}" >nul && {inner}', shell=True, capture_output=True, text=True, errors="replace",
                        env={**os.environ, "MC2_FINGERPRINT_FREEZE": "1"},
-                       **console_child.child_kwargs(redirected=False))
-    return r.returncode
+                       **console_child.child_kwargs(redirected=True))
+    out = (r.stdout or "") + (r.stderr or "")
+    failed = re.findall(r"^FAILED: (\S+)", out, re.M)
+    for ln in out.splitlines():
+        if "error C" in ln or ln.startswith("FAILED:"):
+            print("  " + ln[:240], file=sys.stderr)
+    return r.returncode, failed
 
 
 def run(args, tidy=None, build=None) -> int:
@@ -205,12 +213,31 @@ def run(args, tidy=None, build=None) -> int:
         print("run_tidy_safe: no rewrites needed")
         return 0
 
-    rc = (build or ninja_objects)(tree, changed, args.build_jobs)
+    res = (build or ninja_objects)(tree, changed, args.build_jobs)
+    rc, failed = res if isinstance(res, tuple) else (res, [])
     if rc:
-        print(f"run_tidy_safe: ninja failed (rc={rc}); reverting every edit of this batch", file=sys.stderr)
-        for rel in changed:
+        # A rewrite the compiler rejects (e.g. clang-tidy turning `typedef struct X {...} Y;` into an alias declaration with a
+        # definition, which MSVC refuses) reverts that TU only; the rest are rebuilt and proved.
+        failed_keys = {f.replace("\\", "/") for f in failed}
+        bad = [rel for rel in changed
+               if any(os.path.relpath(o, tree).replace("\\", "/") in failed_keys for o in objhash.find_objs(tree, rel))]
+        if not bad:
+            print(f"run_tidy_safe: ninja failed (rc={rc}) with no attributable object; reverting every edit of this batch",
+                  file=sys.stderr)
+            for rel in changed:
+                restore_file(rel, mtimes[rel])
+            return 1
+        for rel in bad:
             restore_file(rel, mtimes[rel])
-        return 1
+            reverted.append((rel, "does not compile after the rewrite"))
+            changed.remove(rel)
+        res = (build or ninja_objects)(tree, changed, args.build_jobs) if changed else (0, [])
+        rc, failed = res if isinstance(res, tuple) else (res, [])
+        if rc:
+            print(f"run_tidy_safe: ninja failed again (rc={rc}); reverting every edit of this batch", file=sys.stderr)
+            for rel in changed:
+                restore_file(rel, mtimes[rel])
+            return 1
 
     proven = []
     for rel in sorted(changed):
