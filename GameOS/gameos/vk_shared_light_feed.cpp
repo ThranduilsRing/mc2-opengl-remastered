@@ -41,7 +41,7 @@ bool mc2vkSharedLightFeedEnabled()
     // twin per-island copy paths; unset / "1" = dedup armed.
     static int s_state = -1;
     if (s_state == -1)
-        s_state = (mc2vkgate::envTriState("MC2_VK_LIGHTFEED_DEDUP") == 0) ? 0 : 1;
+        s_state = mc2::gate::get<"MC2_VK_LIGHTFEED_DEDUP">() ? 1 : 0;
     return s_state == 1;
 }
 

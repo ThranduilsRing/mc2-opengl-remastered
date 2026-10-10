@@ -213,7 +213,7 @@ static GLuint createSceneDepthPlaceholderTex(int w, int h)
 static void mc2VkStaticShadowMapDeprecationNote()
 {
     static const bool s_once = [] {
-        if (mc2vkgate::envTriState("MC2_VK_STATIC_SHADOW_MAP") != -1)
+        if (mc2::gate::get<"MC2_VK_STATIC_SHADOW_MAP">())
             std::fprintf(stderr, "[VK_SHARED_STATIC_SHADOW] MC2_VK_STATIC_SHADOW_MAP is "
                                  "deprecated and now a no-op (VK-RUNG8-ITEM6): the VK static-"
                                  "shadow import substrate was deleted; static shadow uses the "

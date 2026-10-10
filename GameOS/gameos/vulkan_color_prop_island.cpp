@@ -131,7 +131,7 @@ bool propColorTier1Requested() {
 bool propFenceDeferEnabled() {
     static int state = -1;
     if (state == -1)
-        state = (mc2vkgate::envTriState("MC2_VK_PROP_FENCE_DEFER") == 0) ? 0 : 1;
+        state = mc2::gate::get<"MC2_VK_PROP_FENCE_DEFER">() ? 1 : 0;
     return state == 1;
 }
 

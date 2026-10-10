@@ -5,7 +5,7 @@
 generator_version: "3.0.0"
 gate_count: 1139
 registry_entry_count: 354
-verified_count: 219
+verified_count: 232
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -7157,12 +7157,14 @@ flags:
     rule: Lead0Kill
     owner: vk
     doc: ""
+    verified: true
   - name: MC2_VK_MECH_FEED_AUDIT
     kind: Bool
     default: false
     rule: Exact1
     owner: vk
     doc: ""
+    verified: true
   - name: MC2_VK_MECH_FEED_NATIVE
     kind: Bool
     default: false
@@ -7176,6 +7178,7 @@ flags:
     rule: Lead0Kill
     owner: vk
     doc: ""
+    verified: true
   - name: MC2_VK_MECH_LIGHTING
     kind: Tri
     default: null
@@ -7277,36 +7280,42 @@ flags:
     rule: Exact1
     owner: vk
     doc: ""
+    verified: true
   - name: MC2_VK_POST_SCREENFX
     kind: Bool
     default: false
     rule: Exact1
     owner: vk
     doc: ""
+    verified: true
   - name: MC2_VK_POST_SCREENFX_CLOUD
     kind: Bool
     default: true
     rule: Lead0Kill
     owner: vk
     doc: ""
+    verified: true
   - name: MC2_VK_POST_SCREENFX_SHADOW
     kind: Bool
     default: true
     rule: Lead0Kill
     owner: vk
     doc: ""
+    verified: true
   - name: MC2_VK_POST_SCREENFX_SHORELINE
     kind: Bool
     default: true
     rule: Lead0Kill
     owner: vk
     doc: ""
+    verified: true
   - name: MC2_VK_POST_SSAO
     kind: Bool
     default: false
     rule: Exact1
     owner: vk
     doc: ""
+    verified: true
   - name: MC2_VK_PRESENT_DIRECT_FBO
     kind: Tri
     default: null
@@ -7402,6 +7411,7 @@ flags:
     rule: Lead0Kill
     owner: vk
     doc: ""
+    verified: true
   - name: MC2_VK_PROP_LIGHT_PROBE
     kind: Bool
     default: false
@@ -7521,6 +7531,7 @@ flags:
     owner: post
     doc: "DEPRECATED no-op (VK-RUNG8-ITEM6)."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_VK_STATIC_SHADOW_MAP, kind: Feature, order: -1, default_on: false}
   - name: MC2_VK_TERRAIN_ALL_LODS
     kind: Tri
@@ -7595,6 +7606,7 @@ flags:
     rule: Lead0Kill
     owner: vk
     doc: ""
+    verified: true
   - name: MC2_VK_TERRAIN_GL_FALLBACK_AUDIT
     kind: Bool
     default: false
@@ -7721,6 +7733,7 @@ flags:
     rule: Lead0Kill
     owner: vk
     doc: ""
+    verified: true
   - name: MC2_VK_WATER_PERF
     kind: Bool
     default: false
