@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # mc2texcook
 
 Cook tool for MC2 OpenGL modding.  Converts TGA/PNG/EXR source art to KTX2

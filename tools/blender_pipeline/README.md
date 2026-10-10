@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # tools/blender_pipeline — BLENDER-ASSET-PIPELINE-1
 
 Headless, batchable upscale/reimagine pipeline for EXISTING game assets:

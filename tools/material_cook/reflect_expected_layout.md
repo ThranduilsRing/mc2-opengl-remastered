@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # MaterialGpu — expected shader reflection layout
 
 When a shader binds `MaterialTable` (the `MaterialGpu[]` SSBO), the

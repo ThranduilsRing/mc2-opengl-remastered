@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # mc2_asset_viewer (stage 1: texture/asset shell)
 
 Standalone modder tool. Stage 1 = app shell + folder-path browser + texture preview +

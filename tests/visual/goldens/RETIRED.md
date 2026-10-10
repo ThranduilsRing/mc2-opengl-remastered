@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Retired golden sets
 
 A golden set removed from this tree gets an entry here. An absent set with no

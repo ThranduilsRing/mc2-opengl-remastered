@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # tests/visual/baselines
 
 V-BASELINE-0 controlled visual reference corpus for objective before/after

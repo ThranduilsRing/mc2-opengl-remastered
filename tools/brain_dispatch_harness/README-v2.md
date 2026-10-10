@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # brain_dispatch_harness V2
 
 **BRAIN-DISPATCH-HARNESS-V2** — extends the v1 offline harness to exercise `executeSpecialBody_Apply` + `commitBrainIntents` against a fake `TacOrderSink`, proving the A/B effect-identity contract for all 6 effect verbs offline.

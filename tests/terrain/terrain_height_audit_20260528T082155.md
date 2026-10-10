@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # Terrain Height Audit — empirical run
 
 - Script: `scripts/terrain_height_audit.py` (TERRAIN-HEIGHT-AUDIT-SCRIPT-1)

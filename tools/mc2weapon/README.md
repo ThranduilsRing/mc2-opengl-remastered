@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # mc2weapon
 
 MechCommander 2 weapon viewer / modder tool. Reads every component from

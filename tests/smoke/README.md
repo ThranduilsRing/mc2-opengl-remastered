@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # Smoke Gate
 
 This is the default "did I break it" regression gate for render/init/cull/asset-path changes.
