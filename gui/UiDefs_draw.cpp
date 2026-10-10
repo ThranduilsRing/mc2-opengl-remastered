@@ -460,7 +460,6 @@ void drawUiSliderElement(UiElement& e, int xOffset, int yOffset, const PageScale
                                         static_cast<float>(e.sliderMax)))
         : 0.0f;
 
-    // Groove: a slim bar centered vertically in the element rect.
     const float grooveH = std::max(3.0f, r.h * 0.34f);
     const float grooveY = r.y + (r.h - grooveH) * 0.5f;
     const unsigned int grooveColor = (e.fillColor & 0xff000000) ? e.fillColor : 0xff202830;
@@ -470,12 +469,10 @@ void drawUiSliderElement(UiElement& e, int xOffset, int yOffset, const PageScale
     const float thumbW = std::max(8.0f, r.h * 0.55f);
     const float thumbX = r.x + frac * (r.w - thumbW);
 
-    // Filled portion up to the thumb center.
     const float fillW = (thumbX + thumbW * 0.5f) - r.x;
     if (fillW > 0.0f)
         GuiRuntime::DrawUiRect(r.x, grooveY, fillW, grooveH, e.textColor, true);
 
-    // Thumb (full element height for an easy hit target).
     GuiRuntime::DrawUiRect(thumbX, r.y, thumbW, r.h, e.highlightColor, true);
 }
 
