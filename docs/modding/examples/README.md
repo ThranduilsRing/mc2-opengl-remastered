@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Example Mods
 
 This folder is a collection of small, working example mods for MechCommander 2 —

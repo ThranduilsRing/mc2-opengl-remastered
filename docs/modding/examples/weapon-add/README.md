@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Example Mod — Add a Weapon (Fill an Undefined `compbas.csv` Row)
 
 > **AVAILABILITY**
@@ -17,7 +18,7 @@ Before you start, read [Chapter 0 — Getting Started](../getting-started.md) (m
 
 ## 1. Why a "free row" instead of a new row
 
-`compbas.csv` is the master component/weapon table, loaded by `MasterComponent::loadMasterList` (`mclib/cmponent.cpp:630-678`) into a **fixed-size 255-row array** — the row count is hard-coded `255` at both call sites (`code/mission.cpp:1974`, `code/saveload.cpp:846`), not read from the file. `initEXCEL` (`cmponent.cpp:87-179`) parses each line positionally with `strtok(..., ",")`, and elsewhere in the engine components are looked up by **direct array index** on `masterID` — e.g. `MasterComponent::masterList[inventory[curItem].masterID]` (`code/gvehicl.cpp:1082` and about a dozen more call sites in `gvehicl.cpp`/`gameobj.cpp`). That means:
+`compbas.csv` is the master component/weapon table, loaded by `MasterComponent::loadMasterList` (`mclib/cmponent.cpp:630-678`) into a **fixed-size 255-row array** — the row count is hard-coded `255` at both call sites (`code/mission_init.cpp:256`, `code/saveload.cpp:832`), not read from the file. `initEXCEL` (`cmponent.cpp:87-179`) parses each line positionally with `strtok(..., ",")`, and elsewhere in the engine components are looked up by **direct array index** on `masterID` — e.g. `MasterComponent::masterList[inventory[curItem].masterID]` (`code/gvehicl.cpp:1082` and about a dozen more call sites in `gvehicl.cpp`/`gameobj.cpp`). That means:
 
 - You cannot add a 256th row — there is no row 256.
 - The row's position in the file **must equal** its own `masterID` value in column 0, or every other system that indexes `masterList[masterID]` reads the wrong component.

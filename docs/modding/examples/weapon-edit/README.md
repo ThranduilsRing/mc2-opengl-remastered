@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Example Mod — Edit Weapon Stats (Double PPC Damage)
 
 > **AVAILABILITY**
@@ -15,7 +16,7 @@ Double the `PPC`'s damage stat by shipping a modified copy of `data/objects/comp
 
 ## 1. Why the whole file, and where the "truth" column names come from
 
-`compbas.csv` is the master component/weapon table, loaded by `MasterComponent::loadMasterList` (`mclib/cmponent.cpp:630-678`) into a **fixed-size 255-row array** — the row count is hard-coded at the call site (`code/mission.cpp:1974`), not read from the file. The loader reads and discards line 1 (the header) unconditionally (`cmponent.cpp:663`), then reads exactly 255 more lines and hands each one to `MasterComponent::initEXCEL` (`cmponent.cpp:87-179`), which parses it with `strtok(..., ",")` — positional, not name-based. This means:
+`compbas.csv` is the master component/weapon table, loaded by `MasterComponent::loadMasterList` (`mclib/cmponent.cpp:630-678`) into a **fixed-size 255-row array** — the row count is hard-coded at the call site (`code/mission_init.cpp:256`), not read from the file. The loader reads and discards line 1 (the header) unconditionally (`cmponent.cpp:663`), then reads exactly 255 more lines and hands each one to `MasterComponent::initEXCEL` (`cmponent.cpp:87-179`), which parses it with `strtok(..., ",")` — positional, not name-based. This means:
 
 - Your mod's `compbas.csv` **must** have the header line + exactly 255 data rows, same column order, or the row-index-to-`masterID` mapping breaks.
 - The header row's actual text is cosmetic — `initEXCEL` never reads it — but it documents the intended column names, and I'm using it below because it matches the field order `initEXCEL` actually consumes.

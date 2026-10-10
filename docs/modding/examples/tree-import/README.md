@@ -1,7 +1,8 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Example Mod — Tree Import (render-only model override)
 
 > **AVAILABILITY**
-> - **Works on:** this checkout, any branch — the render-only model-override registry (`mclib/model_override_registry.{h,cpp}`, `data/model_overrides/models.json`) and its **tree** resolve seam (`mclib/bdactor.cpp:4106`) are shipped code, not gated behind an env var and not branch-only. Verified present at the time this doc was written.
+> - **Works on:** this checkout, any branch — the render-only model-override registry (`mclib/model_override_registry.{h,cpp}`, `data/model_overrides/models.json`) and its **tree** resolve seam (`mclib/bdactor_update.cpp:683`) are shipped code, not gated behind an env var and not branch-only. Verified present at the time this doc was written.
 > - **⚠ CONFIRMED ENGINE BUG — the mod overlay does NOT apply to this mechanism.** `ModelOverrideRegistry::instance()` always loads the manifest from the hardcoded literal path `data/model_overrides/models.json` via a raw `std::ifstream` (`mclib/model_override_registry.cpp:39-45,158-166`) — it never goes through the mod-aware `TryModOpen`/`File::open` resolver (`mclib/file.cpp:545,907-925`) that every other moddable asset type uses. The referenced `.glb`/`.gltf` geometry has the same problem one layer down: it's opened by `Assimp::Importer::ReadFile(path, ...)` on the literal OS path (`mclib/assimp_importer.cpp:475-486`), also bypassing the overlay. **Net effect: a mod's own `mods/<id>/data/model_overrides/...` files are never read, active mod or not.** Only the literal `<game-folder>\data\model_overrides\...` path is ever consulted. §4 below documents the required workaround (place the payload at the base-game path directly) until this is fixed engine-side. This is not tree-specific — it affects the `staticProp` half of the mechanism identically.
 > - **No gate / env var turns this mechanism on or off** — if a valid `tree:<name>` entry exists in the base game's `data/model_overrides/models.json`, it applies. `MC2_ACTIVE_MOD` has **no effect** on whether this specific mechanism fires (see bug notice above) — you may leave it set or unset for this example.
 > - **Diagnostics env vars** (all optional, unset by default): `MC2_MODOVERRIDE_TRACE` (any value = log registry resolve attempts to stderr), `MC2_ASSIMP_TRACE` (any value = verbose glTF import log), `MC2_GLTF_AXIS` (`0`-`3`, default `0`), `MC2_GLTF_YOFF` (float, default `0.0`), `MC2_GLTF_GROUND` (`0`/`1`/`2`, default `2`).
@@ -38,17 +39,17 @@ Both static props and trees share one registry (`ModelOverrideRegistry`, singlet
 - `type` must be exactly `"model"`, `renderOnly` must be exactly `true`, `fallback` must be exactly `"stock"`, and `scale` must be exactly `1.0` — any other value silently drops the whole entry (`:63-68`, MVP limitation, logged via `logDrop`).
 - `source` must be a relative path ending `.glb` or `.gltf`, with no leading slash/drive letter and no `..` component (`isSafeSource`, `:27-34`) — it resolves relative to `data/model_overrides/` (the registry's `manifestDir_`), **not** relative to your mod's root.
 
-**Resolve seam** — where the engine actually asks the registry for a tree override, at load time, per tree *type* (not per instance): `mclib/bdactor.cpp:4100-4106`, right after the stock `.ase` load populates the collision-authoritative `treeShape[0]`. On a hit it loads the override geometry into a **separate** `treeRenderShape[0]` (`:4113-4149`) — collision keeps reading the untouched stock shape; only what's drawn changes.
+**Resolve seam** — where the engine actually asks the registry for a tree override, at load time, per tree *type* (not per instance): `mclib/bdactor_update.cpp:677-683`, right after the stock `.ase` load populates the collision-authoritative `treeShape[0]`. On a hit it loads the override geometry into a **separate** `treeRenderShape[0]` (`:4113-4149`) — collision keeps reading the untouched stock shape; only what's drawn changes.
 
 ### The pivot difference vs. static props (the thing to actually learn here)
 
 Look at the two call sites side by side:
 
 ```cpp
-// staticProp (mclib/bdactor.cpp:374)
+// staticProp (mclib/bdactor_sidecar.cpp:104)
 long r = ImportGeometryFromFile(overridePath, bldgRenderShape, /*autoGround=*/false);
 
-// tree (mclib/bdactor.cpp:4123)
+// tree (mclib/bdactor_update.cpp:700)
 long r = ImportGeometryFromFile(overridePath, treeRenderShape[0]);
 ```
 
@@ -163,7 +164,7 @@ $env:MC2_MODOVERRIDE_TRACE = "1"
 
 ## 5. How the payload was built
 
-`mod/source/make_placeholder_glb.py` is a pure-stdlib script that hand-emits the `.glb` binary (no Blender/Assimp/external tooling needed) — the same technique used by the `building-import` example. It authors two crossed alpha-tested quads, front+back-faced, in the axis convention above, with a material named `a_oak1` whose base-color image is named `a_oak1.png`. The engine's `DeriveMC2TextureName` (`mclib/assimp_importer.cpp:173-`) derives the MC2 texture name from that image's file stem (`a_oak1` → `a_oak1.tga`) and binds the **stock** `data/tgl/128/a_oak1.tga` already in your install — no new texture asset is cooked.
+`mod/source/make_placeholder_glb.py` is a pure-stdlib script that hand-emits the `.glb` binary (no Blender/Assimp/external tooling needed) — the same technique used by the `building-import` example. It authors two crossed alpha-tested quads, front+back-faced, in the axis convention above, with a material named `a_oak1` whose base-color image is named `a_oak1.png`. The engine's `DeriveMC2TextureName` (`mclib/assimp_importer.cpp:283-`) derives the MC2 texture name from that image's file stem (`a_oak1` → `a_oak1.tga`) and binds the **stock** `data/tgl/128/a_oak1.tga` already in your install — no new texture asset is cooked.
 
 ```powershell
 cd docs\modding\examples\tree-import\mod\source

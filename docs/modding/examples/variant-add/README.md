@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Example Mod — Add a New Mech Variant (Pure Data)
 
 > **AVAILABILITY**

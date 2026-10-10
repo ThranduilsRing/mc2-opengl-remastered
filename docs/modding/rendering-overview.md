@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # MC2 OpenGL — Rendering Overview
 
 Target audience: contributors adding new render features or understanding how a frame is produced.

@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Example Mod: Replace a Building's Model (`building-import`)
 
 Swap the stock **hangar** building for your own glTF model — render only,

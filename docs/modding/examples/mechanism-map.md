@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Data-Modding Mechanism Map
 
 Reference table of verified data-modding mechanisms in this checkout. Every anchor below was spot-checked against the source at the time of writing (grep + read, not memory) — if a line has drifted since, trust the surrounding function/symbol name over the exact line number and re-grep.
@@ -8,7 +9,7 @@ Start with [`getting-started.md`](getting-started.md) if you haven't set up a mo
 
 | Mechanism | Entry point | Gate / env | Drop path | Status |
 |---|---|---|---|---|
-| Mod activation | `InitModSearchPaths`, `mclib/file.cpp:632` (reads `MC2_ACTIVE_MOD` at `:668`) | `MC2_ACTIVE_MOD` (unset = base game) | — | Shipped, this checkout |
+| Mod activation | `InitModSearchPaths`, `mclib/file.cpp:679` (reads `MC2_ACTIVE_MOD` at `:668`) | `MC2_ACTIVE_MOD` (unset = base game) | — | Shipped, this checkout |
 | Priority order (active > deps > base > FastFile > CD) | `mclib/file.cpp:700-720` (index build, highest-priority-first, first-wins) | — | — | Shipped |
 | Dependency chain mounting | `mclib/file.cpp:724-740` | `mod.json` `"dependencies"` array | `mods/<dep-id>/data/...` | Shipped |
 | `mod.json` parser (minimal JSON extractor) | `ReadModJson`, `mclib/file.cpp:524-539` | — | `mods/<id>/mod.json` | Shipped. Only reads `id`/`name`/`dependencies`; `type`/`description` are launcher-only fields, not read by the engine |
@@ -32,7 +33,7 @@ Start with [`getting-started.md`](getting-started.md) if you haven't set up a mo
 
 | Mechanism | Entry point | Gate / env | Drop path | Status |
 |---|---|---|---|---|
-| Master component table load | `MasterComponent::loadMasterList`, `mclib/cmponent.cpp:630-678` — called with fixed size 255 (`code/mission.cpp:1974`, `code/saveload.cpp:846`) | — | `data/objects/compbas.csv` | Shipped. **Fixed 255-row table** — you cannot add row 256; "adding" a weapon means filling a row whose `Type` column is `undefined` |
+| Master component table load | `MasterComponent::loadMasterList`, `mclib/cmponent.cpp:630-678` — called with fixed size 255 (`code/mission_init.cpp:256`, `code/saveload.cpp:832`) | — | `data/objects/compbas.csv` | Shipped. **Fixed 255-row table** — you cannot add row 256; "adding" a weapon means filling a row whose `Type` column is `undefined` |
 | Row parser | `MasterComponent::initEXCEL`, `mclib/cmponent.cpp:87-179` | — | — | Shipped. Column 0 = `masterID` (must match the row's own position); `Type` column `"undefined"` → row is skipped/free (`:111-114`) |
 | Weapon/component display name + abbreviation | `mclib/cmponent.cpp:62-63` (`COMPONENT_NAME_START=32000`, `COMPONENT_ABBR_START=33000`), read at `:100-101`/`:288,292` | — | string resource IDs `32000+masterID` / `33000+masterID`, resolved via `cLoadString` from `data/defs/text/en_us/mc2res_legacy.fit` | **TRAP**: the CSV's own `Name` column is parsed then discarded (`:118`, `// name, ignore`) — it is never shown in-game. To rename a weapon you must edit the string-resource `.fit` file at the matching ID, not the CSV |
 | Weapon FX binding | `compbas.csv` col `Special FX ID` → `MasterComponent::getWeaponSpecialEffect()` (`mclib/cmponent.h:467`) → `effects.csv` row lookup (`mclib/weaponfx.cpp` init) | — | `data/objects/compbas.csv` (col) + `data/objects/effects.csv` (row) | Shipped, pure data. Full chain documented in [`docs/gosfx-modder-dropin-path.md`](../../gosfx-modder-dropin-path.md) |
@@ -67,10 +68,10 @@ Start with [`getting-started.md`](getting-started.md) if you haven't set up a mo
 | Terrain/object pak | `code/mission.cpp:2344` — `PacketFile::open` → `File::open` (`mclib/packet.cpp:206-208`) | — | `data/missions/<stem>.pak` | Shipped. **Stem-derived from the mission name** — no `.fit` key selects the map |
 | Mission script | `[Script]` `ScenarioScript` → ABL preprocess, `code/mission.cpp:2480-2496`; ABL opens route through `File::open` (`ablFileOpenCB`, `code/ablmc2.cpp:7508-7519`) | — | `data/missions/<script>.abl` + fixed `orders`/`miscfunc`/`corebrain.abx` (`:2460-2474`) | Shipped, overlay-covered |
 | Pilot profiles + AI brains | `code/mission.cpp:2542-2586` (`warriorPath`, `mclib/paths.cpp:38`) | — | `data/missions/profiles/<name>.fit` / `<brain>.abl` | Shipped, overlay-covered |
-| Time limit | read `code/mission.cpp:3057-3073`; HUD countdown `code/controlgui.cpp:373-395`; timeout loss `code/mission.cpp:790-798` | — | `[MissionSettings]` `TimeLimit` (seconds; `-1` = none) | Shipped. MP session settings override the `.fit` (`:3071-3072`) |
+| Time limit | read `code/mission_init.cpp:203-219`; HUD countdown `code/controlgui_hudtabs.cpp:201-223`; timeout loss `code/mission_update.cpp:313-321` | — | `[MissionSettings]` `TimeLimit` (seconds; `-1` = none) | Shipped. MP session settings override the `.fit` (`:3071-3072`) |
 | Resource points | `code/mission.cpp:2303-2315` | `-rps <N>` cmdline overrides (`code/mechcmd2.cpp:180,2775-2779`) | `[MissionSettings]` `ResourcePoints` | Shipped. MP overrides too (`:2307-2314`) |
 | Objectives | `Team::loadObjectives` → `CObjectives::Read` (block `Team<N>Objectives`, `code/objective.cpp:2119`) → `CObjective::Read` (`:1674-`) | — | `[Team<N>Objective<M>]` (+`Condition`/`Action` blocks) | Shipped. **TRAP**: literal `Title`/`Description` edits are ignored while `...UseResourceString = TRUE` (`code/objective.cpp:2036-2046`) — flip the boolean |
-| Unit roster (parts/warriors) | `code/mission.cpp:2726-2897` / `:2520-2600` | — | `[PartN]`/`[WarriorN]` blocks | Shipped for field edits. **TRAP**: home-commander units ignore `.fit` paint colors — player prefs win (`code/mission.cpp:1218-1219`) |
+| Unit roster (parts/warriors) | `code/mission.cpp:2726-2897` / `:2520-2600` | — | `[PartN]`/`[WarriorN]` blocks | Shipped for field edits. **TRAP**: home-commander units ignore `.fit` paint colors — player prefs win (`code/mission_update.cpp:723-724`) |
 | Mission quick-start | `-mission <stem>` (single dash), `code/mechcmd2.cpp:2617-2654` → `:1798-1806` (`MISSION_LOAD_SP_QUICKSTART`, skips logistics) | — | — | Shipped. `--mission` (double dash) is the smoke harness and is refused without `MC2_SMOKE_MODE` (`GameOS/gameos/gos_smoke.cpp:98-105`) |
 | Mod campaign injection | `EnumerateModCampaignFiles`, `mclib/file.cpp:594-611` → load-campaign list UI (`code/logisticsdialog.cpp:571-606`); campaign parse `code/logisticsmissioninfo.cpp:77-260` | `MC2_ACTIVE_MOD` | `mods/<id>/data/campaign/<name>.fit` | Shipped mechanism, **no worked example yet** — see `mission-edit` §9 |
 

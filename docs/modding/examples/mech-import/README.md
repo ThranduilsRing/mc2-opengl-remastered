@@ -1,7 +1,8 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Example Mod: Mech Mesh via glTF (`[Import]` Opt-In)
 
 > **AVAILABILITY**
-> - **Works on:** this checkout. Verified present: the `[Import]` opt-in probe (`mclib/mech3d.cpp:346-360`), the `.glb`→`.fbx`→`.ase` format probe (`mclib/msl.cpp:438-479`), and the Assimp-backed reader (`mclib/assimp_importer.cpp`).
+> - **Works on:** this checkout. Verified present: the `[Import]` opt-in probe (`mclib/mech3d.cpp:346-360`), the `.glb`→`.fbx`→`.ase` format probe (`mclib/msl_load.cpp:240-281`), and the Assimp-backed reader (`mclib/assimp_importer.cpp`).
 > - **Build flag:** `ENABLE_ASSIMP_IMPORTER` (`CMakeLists.txt:204`), **default `ON`**. No rebuild needed on a normal build of this checkout.
 > - **No runtime `MC2_*` gate controls whether this mechanism exists.** The opt-in is per-mech: a mech's own `.ini` either has an `[Import]` block (uses the modern importer for LOD0 only) or it doesn't (takes the original `.ase` path, byte-identical to stock). Diagnostics: `MC2_ASSIMP_TRACE=1` (probe/import trace), `MC2_GLTF_AXIS` / `MC2_GLTF_YOFF` / `MC2_GLTF_GROUND` (orientation tuning).
 > - **★ MOD-OVERLAY CAVEAT (read before you install anything):** the `.ini` shadows correctly through `mods/<id>/data/tgl/`, but the paired `.glb` geometry file **does not** — Assimp's file reader bypasses the mod overlay entirely (see "Why this doesn't overlay cleanly" below, verified against the source and by exercising the shared resolver replica). **This tutorial instructs a direct drop-in to your own game install's `data/tgl/` folder, not a `mods/<id>/` install**, because that's the only way that reliably works today.
@@ -23,9 +24,9 @@ It swaps the stock **Warhammer**'s LOD0 mesh for a placeholder glTF box-mech, us
 
 The engine has two unrelated file-access paths, and only one of them goes through the mod overlay:
 
-1. **The `.ini` itself** is opened by `FitIniFile`/`File::open` (`mclib/file.cpp:907`), which calls `TryModOpen()` (`file.cpp:545`) first — this is the normal mod-overlay path documented in `getting-started.md`. A `data/tgl/warhammer.ini` shipped in `mods/<id>/data/tgl/` **will** shadow the stock one correctly.
-2. **The `.glb` geometry** is read by `TG_TypeMultiShape::LoadFromFile()` (`mclib/msl.cpp:438`), which:
-   - first calls `fileExists(probePath, FILE_ON_DISK)` (`msl.cpp:457`) to decide whether to attempt the import at all. `fileExists()` (`mclib/file.cpp:776`) *does* consult the mod overlay (`TryModOpen`) before falling back to a plain `_stat()` — so this existence check can succeed purely because the file lives in `mods/<id>/data/tgl/`.
+1. **The `.ini` itself** is opened by `FitIniFile`/`File::open` (`mclib/file.cpp:907`), which calls `TryModOpen()` (`mclib/file.cpp:592`) first — this is the normal mod-overlay path documented in `getting-started.md`. A `data/tgl/warhammer.ini` shipped in `mods/<id>/data/tgl/` **will** shadow the stock one correctly.
+2. **The `.glb` geometry** is read by `TG_TypeMultiShape::LoadFromFile()` (`mclib/msl_load.cpp:301`), which:
+   - first calls `fileExists(probePath, FILE_ON_DISK)` (`msl.cpp:457`) to decide whether to attempt the import at all. `fileExists()` (`mclib/file.cpp:935`) *does* consult the mod overlay (`TryModOpen`) before falling back to a plain `_stat()` — so this existence check can succeed purely because the file lives in `mods/<id>/data/tgl/`.
    - but then calls `ImportGeometryFromFile(probePath, this)` (`msl.cpp:463`), which constructs a bare `Assimp::Importer` and calls `imp.ReadFile(path, ...)` directly (`mclib/assimp_importer.cpp:480-482`) — **no `SetIOHandler()` is ever called**, so Assimp uses its own default OS-level file reader on the literal relative path string (`data/tgl/<base>.glb`), completely bypassing `TryModOpen`/`File::open`.
 
 The practical effect: `fileExists()` reports "found" (via the mod overlay) even when the `.glb` only exists inside `mods/<id>/data/tgl/`, which is enough to make `LoadFromFile()` *attempt* the import — but the actual read then fails, because Assimp looks for the file relative to the process's current working directory, not inside `mods/`. On failure, `ImportGeometryFromFile` logs `Assimp ReadFile failed: ...` (`assimp_importer.cpp:492-493`) and `LoadFromFile` silently falls through to the stock `.ase` (`msl.cpp:467-471`, `471`) — so the mod would appear to do *nothing*, with no error dialog, just a log line you'd only see with `MC2_ASSIMP_TRACE=1`.
