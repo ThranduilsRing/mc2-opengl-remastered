@@ -202,6 +202,8 @@ struct PatchShape {
     int    skirtEdgeCount[4];
 };
 
+namespace gos_terrain_indirect { bool IsFrameSolidArmed(); }
+
 // GlStateGuard slice 2 kill-switch. Default-ON: when set, the terrain chunk
 // draw owns its depth/blend/cull/mask/func via RAII guards (mc2gl::GlScoped*).
 // MC2_GLSTATEGUARD_TERRAIN=0 reverts to the legacy hand-rolled save/restore
@@ -475,7 +477,6 @@ void resolveTessPatchLocs(GLuint tessProg) {
     s_tessLocVisualDisplace = glGetUniformLocation(tessProg, "u_visualDisplace");
     s_tessLocSkirtDepth     = glGetUniformLocation(tessProg, "u_skirtDepth");
 }
-namespace gos_terrain_indirect { bool IsFrameSolidArmed(); }
 
 // ---------------------------------------------------------------------------
 // Static SSBO state — all GL objects live here, never in mclib/.
@@ -1531,27 +1532,31 @@ void mirrorTerrainPatchUniforms(GLuint src, GLuint dst) {
 // co-writes those patches into the shared scene GBuffer instead. Default-OFF ->
 // none of this runs -> the GL path draws every band exactly as before.
 // ---------------------------------------------------------------------------
-static uint64_t g_terrainHeightVersion = 0;  // bumps on UploadHeightFull
-static uint64_t g_terrainCementVersion = 0;  // bumps on UploadCementWordsFull
-static uint64_t g_terrainVisualHeightVersion = 0;  // bumps on UploadVisualHeightFull (rung 5)
-
+uint64_t g_terrainHeightVersion = 0;  // bumps on UploadHeightFull
+uint64_t g_terrainCementVersion = 0;  // bumps on UploadCementWordsFull
+uint64_t g_terrainVisualHeightVersion = 0;  // bumps on UploadVisualHeightFull (rung 5)
+#endif
+#ifdef MC2_VULKAN_ISLAND
 // VK-TERRAIN-VISUALDISPLACE-FAR-1: file-scope reads of the SAME env knobs the draw
 // path caches locally (MC2_TERRAIN_VISUAL_DISPLACE / _FAR at gos_terrain_lod_chunk.cpp
 // draw site) so the feed getter can report them without touching the draw statics.
-static bool terrainVisualDisplaceGateOn()
+bool terrainVisualDisplaceGateOn()
 {
     static const bool s_on = mc2::gate::get<"MC2_TERRAIN_VISUAL_DISPLACE">();
     return s_on;
 }
-static float terrainVisualDisplaceFarParam()
+float terrainVisualDisplaceFarParam()
 {
     static const float s_far = mc2::gate::get<"MC2_TERRAIN_VISUAL_DISPLACE_FAR">();
     return s_far;
 }
-static std::vector<Mc2TerrainTier1Patch> s_vkTerrainPatches;  // this frame's LOD0 patches
-static float    s_vkTerrainMvp[16] = {0};
-static bool     s_vkTerrainFeedValid = false;
-
+#endif
+#ifdef MC2_VULKAN_ISLAND
+std::vector<Mc2TerrainTier1Patch> s_vkTerrainPatches;  // this frame's LOD0 patches
+float    s_vkTerrainMvp[16] = {0};
+bool     s_vkTerrainFeedValid = false;
+#endif
+#ifdef MC2_VULKAN_ISLAND
 extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
 {
     if (!out) return 0;
