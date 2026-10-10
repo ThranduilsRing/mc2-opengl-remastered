@@ -47,9 +47,10 @@ PER_CALL = (
     ("GameOS/gameos/gos_postprocess_gates.cpp", "MC2_VK_SHARED_SCENE_DEPTH"),
     ("GameOS/gameos/vulkan_vfx_island.cpp", "MC2_VK_VFX"),
     ("GameOS/gameos/vulkan_water_island.cpp", "MC2_VK_WATER_TIER1"),
-    ("GameOS/gameos/gameos_graphics.cpp", "MC2_VK_VFX"),
-    ("GameOS/gameos/gameos_graphics.cpp", "MC2_VK_HUD"),
-    ("GameOS/gameos/gameos_graphics.cpp", "MC2_VK_HUD_SKIP_GL"),
+    ("GameOS/gameos/gameos_graphics_draw.cpp", "MC2_VK_VFX"),
+    ("GameOS/gameos/gameos_graphics_hud.cpp", "MC2_VK_VFX"),
+    ("GameOS/gameos/gameos_graphics_hud.cpp", "MC2_VK_HUD"),
+    ("GameOS/gameos/gameos_graphics_hud.cpp", "MC2_VK_HUD_SKIP_GL"),
     # the terrain submit path fills the island's per-frame parameter block
     ("GameOS/gameos/gos_terrain_lod_chunk_feed.cpp", "MC2_VK_TERRAIN_LIGHTING"),
     ("GameOS/gameos/gos_terrain_lod_chunk_feed.cpp", "MC2_VK_TERRAIN_DYNSHADOW"),

@@ -229,11 +229,27 @@ class Symbols:
                 maxal = max(maxal, al)
         return (off + maxal - 1) // maxal * maxal
 
+    @staticmethod
+    def unit_stem(path):
+        """gos_static_prop_batcher_shadow.cpp and gos_static_prop_batcher_internal.h are one translation unit's source:
+        a split piece and the shared header of its stem count as the same file for constant lookup."""
+        base = os.path.splitext(os.path.basename(path))[0]
+        d = os.path.dirname(path)
+        if base.endswith("_internal"):
+            return os.path.join(d, base[:-len("_internal")])
+        cut = base.rsplit("_", 1)[0]
+        if cut != base and os.path.exists(os.path.join(d, cut + "_internal.h")):
+            return os.path.join(d, cut)
+        return os.path.join(d, base)
+
     def lookup(self, table, name, cur_file):
         ents = table.get(name)
         if not ents:
             return None
         same = [e for e in ents if e[0] == cur_file]
+        if not same:
+            cs = self.unit_stem(cur_file)
+            same = [e for e in ents if self.unit_stem(e[0]) == cs]
         if same:
             return same[-1]
         vals = {e[1] for e in ents}

@@ -150,7 +150,7 @@ PAIRS = [
             # DRAW through it. These two anchors prove that, and stop matching
             # the moment somebody re-arms the funnel.
             "absence_proof": [
-                ("GameOS/gameos/gameos_graphics.cpp",
+                ("GameOS/gameos/gameos_graphics_draw.cpp",
                  r"TERRAIN-DEADCODE-DELETE-1: gosRenderer::terrainDrawIndexedPatches deleted"),
                 ("GameOS/gameos/gos_terrain_lod_chunk.cpp",
                  r'"shaders/terrain_lod_chunk\.vert"'),
@@ -174,7 +174,7 @@ PAIRS = [
         "gpu": {
             "status": "ABSENT",
             "absence_proof": [
-                ("GameOS/gameos/gameos_graphics.cpp",
+                ("GameOS/gameos/gameos_graphics_draw.cpp",
                  r"TERRAIN-DEADCODE-DELETE-1: gosRenderer::terrainDrawIndexedPatches deleted"),
             ],
             "orphan_of": ("shaders/gos_terrain.tese",
@@ -316,7 +316,7 @@ INJECTIONS = [
      "// --- Phong smoothing (legacy mirror of gos_terrain.tese:101-108) ---",
      "// --- Phong smoothing ---"),
     ("R4: absence proof stops holding (GPU half reintroduced)",
-     "GameOS/gameos/gameos_graphics.cpp",
+     "GameOS/gameos/gameos_graphics_draw.cpp",
      "// TERRAIN-DEADCODE-DELETE-1: gosRenderer::terrainDrawIndexedPatches deleted.",
      "// (re-armed)"),
 ]

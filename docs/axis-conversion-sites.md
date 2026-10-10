@@ -8,9 +8,9 @@ The conversion is `(x, y, z) -> (-x, z, y)`; it is its own inverse, so the same 
 
 | Metric | Count |
 |---|---:|
-| Hand-written sites (ratcheted) | 6 |
+| Hand-written sites (ratcheted) | 5 |
 | Waived (`axis-swizzle: allow`) | 1 |
-| Helper-call sites (centralized) | 203 |
+| Helper-call sites (centralized) | 205 |
 | Helper definitions | 7 |
 | Matrix-form references (`kAxisSwapMC2toGL`, `makeAxisSwapMC2toGL`) | 9 |
 
@@ -19,7 +19,7 @@ The conversion is `(x, y, z) -> (-x, z, y)`; it is its own inverse, so the same 
 | Shape | Example | Sites |
 |---|---|---:|
 | triplet-ctor | `vec3(-a.x, a.z, a.y)` | 0 |
-| triplet-brace | `{ -a.x, a.z, a.y }` | 1 |
+| triplet-brace | `{ -a.x, a.z, a.y }` | 0 |
 | triplet-arglist | `f(.., -a.x, a.z, a.y)` | 0 |
 | decl-chain | `float lx = -d.x, ly = d.z, lz = d.y;` | 1 |
 | swizzle-zy | `vec3(-a.x, a.zy)` | 0 |
@@ -33,7 +33,6 @@ The conversion is `(x, y, z) -> (-x, z, y)`; it is its own inverse, so the same 
 |---|---:|
 | `mclib` | 3 |
 | `tools` | 2 |
-| `GameOS` | 1 |
 
 ## GL/VK shader twins
 
@@ -54,17 +53,14 @@ Shaders that carry sites, with their counterpart in the other backend. Twins mus
 - `tools/asset_viewer/TglMeshLoader.cpp:271` assign-scalars: `float px = -tv.position.x; float py = tv.position.z; float pz = tv.position.y;`
 - `tools/asset_viewer/TglMeshLoader.cpp:275` assign-scalars: `float nx = -tv.normal.x; float ny = tv.normal.z; float nz = tv.normal.y;`
 
-### `GameOS/gameos/gameos_graphics.cpp` (1)
-
-- `GameOS/gameos/gameos_graphics.cpp:3510` triplet-brace: `-terrain_camera_pos_.x, terrain_camera_pos_.z, terrain_camera_pos_.y`
-
 ### `mclib/terrain.cpp` (1)
 
 - `mclib/terrain.cpp:3004` decl-chain: `-lookDir.x, ly = lookDir.z, lz = lookDir.y`
 
 ## Helper-call sites
 
-- `RenderCore/axis_convert.h`: 2
+- `GameOS/gameos/gameos_graphics.cpp`: 1
+- `RenderCore/axis_convert.h`: 3
 - `code/artlry.cpp`: 14
 - `code/carnage.cpp`: 4
 - `code/gamecam.cpp`: 2

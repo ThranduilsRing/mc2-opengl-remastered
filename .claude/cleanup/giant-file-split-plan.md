@@ -13,6 +13,19 @@ Priority by agent-cost saving per unit of risk:
 
 ---
 
+## Status (lane 2, updated 2026-10-10)
+
+| File | Before | After | Pieces | Notes |
+|---|---:|---:|---|---|
+| `mclib/bdactor.cpp` | 8,317 | 931 | 10 pieces + `bdactor_internal.h` | done (split commit 6456f46eb) |
+| `mclib/mech3d.cpp` | 6,877 | 474 | 6 pieces + `mech3d_internal.h` | done (de0dbab39) |
+| `mclib/txmmgr.cpp` | 6,064 | 1,009 | 5 pieces + `txmmgr_internal.h` | done (16460b02e); `txmmgr_render.cpp` stays 2,226 lines, `renderLists` is one function |
+| `GameOS/gameos/gos_postprocess.cpp` | 7,184 | 1,270 | gates, diag, fbo, effects, region, skybox, shadow, executor + `gos_postprocess_internal.h` | done (b29481493) |
+| `GameOS/gameos/gos_terrain_indirect.cpp` | 6,221 | 307 | diag, atlas, cement, pack, dispatch, mine_decal + `gos_terrain_indirect_internal.h` | done (2f2457147); state design in `terrain-indirect-state-design.md`, no state struct |
+| `GameOS/gameos/gos_terrain_lod_chunk.cpp` | 4,054 | 833 | gates, matalbedo, patch, feed, draw, upload + `gos_terrain_lod_chunk_internal.h` | done (5289c5285); `SubmitDrawCommands` stays one 1,385-line function in the draw piece |
+
+Method that worked for the namespace-heavy GameOS files: a pre-edit commit gives every name that more than one piece uses external linkage (the anonymous namespaces that held shared state become one named namespace reached through a using-directive), collects the shared constants, types and declarations in one block after the include bundle, and cuts namespace and `#if` blocks at the piece boundaries; the split then moves units verbatim (`tools/split/split_cpp.py` with `NO_PROTOS` and a hand-written shared-declaration list). Retro verification of a finished split: `split_verify.py --base BEFORE --src F --stem S --allow tools/split/allow/S.json --at SPLIT_COMMIT` (reads the pieces from the split commit, so later edits cannot fail it; the allow files for bdactor, mech3d and txmmgr carry `split_commit`).
+
 ## Split order proposal (added 2026-10-09; ranks the files in sections 6-17, sections 1-5 keep their priority above)
 
 Ranking rule: payoff = lines taken out of agent context times how often agents open the file; risk = shared-state coupling plus name-keyed scripts plus churn from lane 1 (gate deletion B0-B6, then G0/G1a typed-gate rewrite of every `getenv`) and lane 2 (C4267 narrowing in `code/`, `mclib/`). A split goes AFTER the gate batch that touches its file, because a gate deletion or G1 reader rewrite inside a freshly moved range is a pure conflict. Gate-free files go first.

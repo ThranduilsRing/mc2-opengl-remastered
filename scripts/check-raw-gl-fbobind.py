@@ -84,7 +84,9 @@ ALLOWLIST_EXACT = {
     "GameOS/gameos/gos_postprocess_fbo.cpp",
     "GameOS/gameos/gos_postprocess_shadow.cpp",
     # executor applyTopLevelGenericAxes + shadow brackets.
-    "GameOS/gameos/gameos_graphics.cpp",
+    "GameOS/gameos/gameos_graphics_capi.cpp",
+    "GameOS/gameos/gameos_graphics_overlay.cpp",
+    "GameOS/gameos/gameos_graphics_shadow.cpp",
     # screenshot / video READ-blit brackets.
     "GameOS/gameos/gameosmain.cpp",
     # water-reflection prev-restore brackets.

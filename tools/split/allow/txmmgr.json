@@ -54,5 +54,6 @@
    "\t\t\t: static_cast<DWORD>(LZCompress(lzBuffer2, lzBuffer1, txmSize));"
   ]
  ],
- "_edits_reason": "MSVC /we4267 now applies to every txmmgr piece (mclib/txmmgr.cpp left Mc2NarrowingErrors EXCEPT): the five LZCompress/LZDecomp size_t returns get an explicit static_cast, nothing else changes."
+ "_edits_reason": "MSVC /we4267 now applies to every txmmgr piece (mclib/txmmgr.cpp left Mc2NarrowingErrors EXCEPT): the five LZCompress/LZDecomp size_t returns get an explicit static_cast, nothing else changes.",
+ "split_commit": "16460b02e"
 }

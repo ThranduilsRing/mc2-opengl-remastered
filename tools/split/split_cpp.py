@@ -7,7 +7,7 @@ Config names: SRC, STEM, INCLUDE_RAW=(first,last) 1-based raw lines copied into 
 KEEP_FROM (first preamble line the core keeps), GROUPS=[(name,[(a,b)...])] with a 'core' group, DOC={name:text},
 PREAMBLE_MOVES={group:[(a,b)...]} (preamble line ranges moved to the top of a group file), HEADER_EXTRA=[lines], BANNER=[lines].
 Note: the header gets a prototype for EVERY free function defined in a piece; prune the ones no other piece calls (the cxx17 LG06 ratchet counts each const char* declaration).
-Optional: NO_PROTOS=True (no prototypes are generated: the config declares what the pieces share in HEADER_EXTRA, e.g. when the shared functions sit in namespaces), PROTO_SKIP=(names) (functions defined in a piece that need no header prototype, e.g. anonymous-namespace helpers), CORE_ONLY=[(a,b)...] (bundle lines kept out of the header and emitted into the core file: a header that DEFINES variables may be included by one TU only), BASE_REV / BASE_SRC (git rev and path holding the original, default HEAD and SRC) and ALLOW (see split_verify.py) drive the fail-closed checks that run
+Optional: HEADER_NAME (default <stem>_internal.h) and HEADER2_NAME + HEADER2_RAW=(first,last) (a second header holding those raw lines, included at the end of the first; both names end in _internal.h), NO_PROTOS=True (no prototypes are generated: the config declares what the pieces share in HEADER_EXTRA, e.g. when the shared functions sit in namespaces), PROTO_SKIP=(names) (functions defined in a piece that need no header prototype, e.g. anonymous-namespace helpers), CORE_ONLY=[(a,b)...] (bundle lines kept out of the header and emitted into the core file: a header that DEFINES variables may be included by one TU only), BASE_REV / BASE_SRC (git rev and path holding the original, default HEAD and SRC) and ALLOW (see split_verify.py) drive the fail-closed checks that run
 after the pieces are written; any finding exits 1 and the caller must not install the .new file. OUT (output dir, default the source's directory), HEADER_PRE_MOVES / HEADER_MOVES=[(a,b)...] (1-based line ranges whose units move verbatim into the
 header, before / after the externs: macros and inline definitions every piece needs), HEADER_PRE=[lines]."""
 import importlib.util, os, re, sys
@@ -69,7 +69,8 @@ def moved_group(n):
 
 
 # ---- header ---------------------------------------------------------------------------------------------
-G = C.STEM.upper() + "_INTERNAL_H"
+H1 = getattr(C, "HEADER_NAME", C.STEM + "_internal.h")
+G = os.path.splitext(H1)[0].upper() + "_H"
 hdr = list(C.BANNER) + ["#ifndef " + G, "#define " + G, ""]
 a, b = C.INCLUDE_RAW
 # include groups are copied verbatim: some guards skip a header that no longer exists, so they must stay guards
@@ -159,9 +160,19 @@ if protos:
     hdr.append("// Free functions defined in the split pieces.")
     hdr += protos
     hdr.append("")
+if hasattr(C, "HEADER2_NAME"):
+    hdr += ["// Second shared header: the class definitions that no other piece may redefine.", '#include "%s"' % C.HEADER2_NAME, ""]
 hdr.append("#endif // " + G)
 hdr.append("")
-open(os.path.join(OUT, "%s_internal.h" % C.STEM), "wb").write("\r\n".join(hdr).encode("utf-8"))
+open(os.path.join(OUT, H1), "wb").write("\r\n".join(hdr).encode("utf-8"))
+if hasattr(C, "HEADER2_NAME"):
+    G2 = os.path.splitext(C.HEADER2_NAME)[0].upper() + "_H"
+    a2, b2 = C.HEADER2_RAW
+    h2 = list(getattr(C, "BANNER2", [])) + ["#ifndef " + G2, "#define " + G2, "",
+        "// Include %s, not this file: it relies on the declarations that header makes before including it." % H1, ""]
+    h2 += [l.decode("utf-8", "replace").rstrip(chr(13)) for l in raw[a2 - 1:b2]]
+    h2 += ["", "#endif // " + G2, ""]
+    open(os.path.join(OUT, C.HEADER2_NAME), "wb").write("\r\n".join(h2).encode("utf-8"))
 
 # ---- groups ---------------------------------------------------------------------------------------------
 bodies = {g: [] for g, _ in C.GROUPS}
@@ -195,15 +206,15 @@ for u, c in core_pre:
         continue
     core_keep.append(c)
 
-core_head = b"\n".join(raw[0:C.INCLUDE_RAW[0] - 1]).rstrip() + b"\r\n\r\n#include \"%s_internal.h\"\r\n\r\n" % C.STEM.encode()
+core_head = b"\n".join(raw[0:C.INCLUDE_RAW[0] - 1]).rstrip() + b"\r\n\r\n#include \"%s\"\r\n\r\n" % H1.encode()
 if CORE_ONLY:
     core_head += b"\n".join(b"\n".join(raw[x - 1:y]) for x, y in CORE_ONLY) + b"\n\n"
 open(C.SRC + ".new", "wb").write(core_head + b"\n".join(core_keep) + b"\n" + b"\n".join(bodies["core"]) + b"\n")
 for g, _ in C.GROUPS:
     if g == "core":
         continue
-    head = ("// %s: %s.\r\n// Declared in the class headers; shared names in %s_internal.h.\r\n#include \"%s_internal.h\"\r\n\r\n"
-            % (C.TITLE, C.DOC[g], C.STEM, C.STEM)).encode("utf-8")
+    head = ("// %s: %s.\r\n// Declared in the class headers; shared names in %s.\r\n#include \"%s\"\r\n\r\n"
+            % (C.TITLE, C.DOC[g], H1, H1)).encode("utf-8")
     pm = (b"\n".join(pre_moves.get(g, [])) + b"\n") if pre_moves.get(g) else b""
     open(os.path.join(OUT, "%s_%s.cpp" % (C.STEM, g)), "wb").write(head + pm + b"\n".join(bodies[g]) + b"\n")
 print("externs", len(seen), "protos", len(protos))
@@ -216,7 +227,9 @@ _old = split_verify._git(["show", "%s:%s" % (getattr(C, "BASE_REV", "HEAD"), get
 if not _old:
     raise SystemExit("split_verify: cannot read %s from %s" % (C.SRC, getattr(C, "BASE_REV", "HEAD")))
 _files = {C.SRC: open(C.SRC + ".new", "rb").read(),
-          os.path.join(OUT, "%s_internal.h" % C.STEM): open(os.path.join(OUT, "%s_internal.h" % C.STEM), "rb").read()}
+          os.path.join(OUT, H1): open(os.path.join(OUT, H1), "rb").read()}
+if hasattr(C, "HEADER2_NAME"):
+    _files[os.path.join(OUT, C.HEADER2_NAME)] = open(os.path.join(OUT, C.HEADER2_NAME), "rb").read()
 for g, _ in C.GROUPS:
     if g != "core":
         _p = os.path.join(OUT, "%s_%s.cpp" % (C.STEM, g))

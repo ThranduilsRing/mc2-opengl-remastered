@@ -25,5 +25,6 @@
   "tools/object_light_row_harness/object_light_row_harness.cpp",
   "tools/repo_intel/test_anti_churn.py"
  ],
- "_scripts_reason": "Reviewed: check-light-row-freshness and check-no-raw-gl-from-game.allowlist are updated to name the pieces that hold the producer reads and the building-PBR SSBO calls; the rest cite bdactor.cpp in comments or as a lane-claim fixture, and the viewer stubs re-define globals by name."
+ "_scripts_reason": "Reviewed: check-light-row-freshness and check-no-raw-gl-from-game.allowlist are updated to name the pieces that hold the producer reads and the building-PBR SSBO calls; the rest cite bdactor.cpp in comments or as a lane-claim fixture, and the viewer stubs re-define globals by name.",
+ "split_commit": "6456f46eb"
 }
