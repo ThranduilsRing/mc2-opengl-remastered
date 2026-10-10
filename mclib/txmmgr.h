@@ -1351,6 +1351,31 @@ class MC_TextureManager
 		//Sends down the triangle lists
 		void renderLists (void);
 
+	private:
+		// renderLists phases, in execution order (txmmgr_render.cpp).
+		struct RenderListsFrame;
+		void renderListsPreamble (void);
+		void renderListsLightDataUpload (void);
+		void renderListsSceneDataUpload (void);
+		void renderListsObjects3D (void);
+		void renderListsPostObjectsStateRestore (void);
+		void renderListsStaticShadowBuild (void);
+		void renderListsStaticPropRegistryFlush (void);
+		void renderListsDynamicShadowPass (void);
+		void renderListsTerrainSolid (const RenderListsFrame& st);
+		void renderListsGpuStaticProps (void);
+		void renderListsOverlayBatches (void);
+		void renderListsOverlaysWaterLoops (void);
+		void renderListsOverlaysNoUnderlayer (void);
+		void renderListsOverlaysShadowBlobs (const RenderListsFrame& st);
+		void renderListsOverlaysNonTerrainAlpha (const RenderListsFrame& st);
+		void renderListsOverlaysVfxHudSubmit (const RenderListsFrame& st);
+		void renderListsOverlaysOld (const RenderListsFrame& st);
+		// VK legacy-shape island queue / run (defined only under MC2_VULKAN_ISLAND).
+		void vkLegacySubmitNode (long i, uint32_t pass, uint32_t alphaTest);
+		void vkLegacyRun (void);
+	public:
+
 		DWORD getWidth( DWORD nodeId )
 		{
 			if (nodeId != 0xffffffff)

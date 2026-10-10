@@ -373,31 +373,20 @@ public:
 
 // Draws all textures with isTerrain set that are solid first,
 // then draws all alpha with isTerrain set.
-void MC_TextureManager::renderLists (void)
+//----------------------------------------------------------------------------
+// renderLists phases. renderLists() runs them in the order listed below; each
+// body is the former inline block unchanged, so every GL call keeps its relative
+// order. RenderListsFrame carries the one per-frame value the phases share.
+struct MC_TextureManager::RenderListsFrame
 {
-	ZoneScopedN("textureManagerRenderLists");
-	// [RENDERLISTS_COST v1] whole-function span; constructed first so its dtor
-	// (accumulate + 60-frame emit) runs after every phase span has closed.
-	rlcost::TotalSpan _rlTotal(nextAvailableVertexNode,
-	                           static_cast<long>(nextAvailableHardwareVertexNode));
-
-	// LIGHT-CONE-MODELS-1 (B): fill the deferred cone-glow vertices into the
-	// MC2_ISSPOTLGT batch. Must run before the ISSPOTLGT consumer loop below
-	// and AFTER every legacy addVertices for the frame (all of which happen in
-	// the object render pass, before renderLists). See mclib/cone_glow.cpp.
-	mc2_cone_glow::FlushFrame();
-	static bool bSkip = true; // used across preamble and Render.3DObjects
 #ifdef MC2_VULKAN_ISLAND
-	// VK-PARITY-F1: ground vehicles (and every other TG_Shape on the CPU-transformed
-	// gos_VERTEX path) are flushed by the legacy masterVertexNodes loops below (solid,
-	// blob-shadow, alpha, additive effects / spotlight cones). Under the VK umbrella the
-	// native VK composite is the sole present producer, so those GL draws would land in a
-	// DISCARDED GL backbuffer and the objects would vanish. When the VK legacy-shape island
-	// is armed, each loop queues its nodes for the island (run right after the loop group)
-	// instead of drawing them here. Gate off (default GL) -> vkLegacyOn == false -> every
-	// loop is byte-identical.
-	const bool vkLegacyOn = (mc2_vk_legacy_shape_island_enabled() != 0);
-	auto vkLegacySubmitNode = [this](long i, uint32_t pass, uint32_t alphaTest) {
+	bool vkLegacyOn = false;   // VK legacy-shape island armed for this frame
+#endif
+};
+
+#ifdef MC2_VULKAN_ISLAND
+void MC_TextureManager::vkLegacySubmitNode (long i, uint32_t pass, uint32_t alphaTest)
+{
 		DWORD totalVertices = masterVertexNodes[i].numVertices;
 		if (masterVertexNodes[i].currentVertex != (masterVertexNodes[i].vertices + masterVertexNodes[i].numVertices))
 			totalVertices = (DWORD)(masterVertexNodes[i].currentVertex - masterVertexNodes[i].vertices);
@@ -414,8 +403,10 @@ void MC_TextureManager::renderLists (void)
 			mc2_vk_legacy_shape_submit(&d);
 		}
 		masterVertexNodes[i].currentVertex = masterVertexNodes[i].vertices;
-	};
-	auto vkLegacyRun = [this]() {
+}
+
+void MC_TextureManager::vkLegacyRun (void)
+{
 		// fog_color_ is what gosRenderer would have latched from gos_State_Fog (set in the
 		// renderLists preamble: eye->fogColor when fog is on, else 0). The additive loops
 		// clear fog themselves (the island ADD pass ignores this).
@@ -424,8 +415,11 @@ void MC_TextureManager::renderLists (void)
 		ff.fogColor[0] = fcv.x; ff.fogColor[1] = fcv.y; ff.fogColor[2] = fcv.z; ff.fogColor[3] = fcv.w;
 		if (gosPostProcess* ppVkLeg = getGosPostProcess())
 			(void)mc2_vk_legacy_shape_island_run(ppVkLeg->getWidth(), ppVkLeg->getHeight(), &ff);
-	};
+}
 #endif
+
+void MC_TextureManager::renderListsPreamble (void)
+{
 	{
 	ZoneScopedN("RenderLists.Preamble");
 	rlcost::Span _rl(rlcost::kPreamble);
@@ -476,7 +470,10 @@ void MC_TextureManager::renderLists (void)
 
 	gos_SetRenderState(gos_State_Culling, gos_Cull_CW);
 	} // end RenderLists.Preamble
+}
 
+void MC_TextureManager::renderListsLightDataUpload (void)
+{
 	{
 	ZoneScopedN("RenderLists.LightDataUpload");
 	rlcost::Span _rl(rlcost::kLightUpload);
@@ -515,7 +512,10 @@ void MC_TextureManager::renderLists (void)
         gos_LightDataSsbo_Upload(lightData_, totalBytes);   // legacy whole-buffer
     }
 	} // end RenderLists.LightDataUpload
+}
 
+void MC_TextureManager::renderListsSceneDataUpload (void)
+{
     // update scene data uniform buffer
     Stuff::Vector3D cp = eye->getCameraOrigin();
     {
@@ -545,7 +545,11 @@ void MC_TextureManager::renderLists (void)
         sceneData_->baseVertexColor = uint32_to_vec4(BaseVertexColor).zyxw();
         gos_UpdateBuffer(sceneDataBuffer_, sceneData_, 0, sizeof(TG_HWSceneData));
     }
-    
+}
+
+void MC_TextureManager::renderListsObjects3D (void)
+{
+	static bool bSkip = true;
 	{
 		ZoneScopedN("Render.3DObjects");
 		TracyGpuZone("Render.3DObjects");
@@ -617,7 +621,10 @@ void MC_TextureManager::renderLists (void)
 	gos_render_pass_timer::End(gos_render_pass_timer::Pass_Obj3d);
 	} // end Render.3DObjects zone
 	drainGLErrors("objects_3d");
+}
 
+void MC_TextureManager::renderListsPostObjectsStateRestore (void)
+{
 	{
 	ZoneScopedN("RenderLists.PostObjectsStateRestore");
 	rlcost::Span _rl(rlcost::kStateRestore);
@@ -632,7 +639,10 @@ void MC_TextureManager::renderLists (void)
 	// restore viewport
 	gos_SetRenderViewport(0, 0, Environment.drawableWidth, Environment.drawableHeight);
 	} // end RenderLists.PostObjectsStateRestore
+}
 
+void MC_TextureManager::renderListsStaticShadowBuild (void)
+{
 	// VPL-#shadow Phase 1+2 (arch-doc docs/plans/static-terrain-shadow-
 	// architecture.md): build the static terrain shadow from the FULL map
 	// ONCE. Was: a prime + a camera-windowed accumulate behind a >100u
@@ -711,6 +721,10 @@ void MC_TextureManager::renderLists (void)
 		}
 		gos_render_pass_timer::End(gos_render_pass_timer::Pass_ShadowStatic);
 	}
+}
+
+void MC_TextureManager::renderListsStaticPropRegistryFlush (void)
+{
 	// STATIC-PROP SHADOW-ORDER FIX (2026-05-29): inject static-registry instances
 	// into batcher buckets BEFORE flushShadow() below. flushShadow() calls
 	// uploadAllBucketsIfNeeded(), which uploads s_bucketsByType and LOCKS the
@@ -741,6 +755,10 @@ void MC_TextureManager::renderLists (void)
 			GpuStaticPropRegistry::flush();
 		}
 	} // end RenderLists.StaticPropRegistryFlush
+}
+
+void MC_TextureManager::renderListsDynamicShadowPass (void)
+{
 	// GPU-driven dynamic sun shadow (Phase 1): frustum-fit + flushShadow.
 	// Runs BEFORE gpu_cull::compute_dispatch so the static-prop shadow uses the
 	// full camera-visible per-type ranges (not the cull-narrowed indirect).
@@ -1106,7 +1124,13 @@ void MC_TextureManager::renderLists (void)
 		gos_render_pass_timer::End(gos_render_pass_timer::Pass_ShadowDyn);
 	}
 	g_numShadowShapes.store(0, std::memory_order_relaxed);
+}
 
+void MC_TextureManager::renderListsTerrainSolid ([[maybe_unused]] const RenderListsFrame& st)
+{
+#ifdef MC2_VULKAN_ISLAND
+	const bool vkLegacyOn = st.vkLegacyOn;
+#endif
 	// No special depth state for DRAWSOLID terrain
 
 	{
@@ -1391,7 +1415,10 @@ void MC_TextureManager::renderLists (void)
 		gos_render_pass_timer::End(gos_render_pass_timer::Pass_TerrainSolid);
 	}   // end Render.TerrainSolid zone
 	drainGLErrors("terrain");
+}
 
+void MC_TextureManager::renderListsGpuStaticProps (void)
+{
 	// Task 10 flush() — moved here from after Render.3DObjects because
 	// terrain renders AFTER 3D objects in this codebase; placing our
 	// flush earlier meant terrain overwrote our pixels. Running after
@@ -1604,7 +1631,10 @@ void MC_TextureManager::renderLists (void)
 		render_contract::executorOwnEndTopLevel(render_contract::PassIdentity::OpaqueObject,
 		                                        "renderLists_GpuMechBatcher_flush");
 	}
+}
 
+void MC_TextureManager::renderListsOverlayBatches (void)
+{
 	// DRAWSOLID done
 
 	// B4 Slice Stage 1b — mask-SOLID dual-run dispatch.
@@ -1685,21 +1715,10 @@ void MC_TextureManager::renderLists (void)
 	gos_render_pass_timer::End(gos_render_pass_timer::Pass_Overlays);
 	if (rlcost::s_enabled) rlcost::s_ns[rlcost::kOverlays] += rlcost::nowNs() - _rlOv0;
 	// ── End new world-space overlay batches ───────────────────────────────────
+}
 
-	{
-		ZoneScopedN("Render.Overlays"); GosGlLostDrawsScope _lost_("overlays.overlays_old");
-		TracyGpuZone("Render.Overlays");
-	if (Environment.Renderer == 3)
-	{
-		//Do NOT draw the water as transparent in software
-		gos_SetRenderState( gos_State_TextureAddress, gos_TextureWrap );
-	}
-	else
-	{
-		gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha);
-		gos_SetRenderState( gos_State_TextureAddress, gos_TextureWrap );
-	}
-	
+void MC_TextureManager::renderListsOverlaysWaterLoops (void)
+{
     // sebi: split in 2 parts, first draw objects which have alpha test off, then with alpha test on
 	{
 	ZoneScopedN("RenderLists.TerrainAlphaWaterLoops");
@@ -1773,7 +1792,10 @@ void MC_TextureManager::renderLists (void)
     gos_SetRenderState( gos_State_AlphaTest, 0);
 	gos_render_pass_timer::End(gos_render_pass_timer::Pass_Water);
 	} // end RenderLists.TerrainAlphaWaterLoops
+}
 
+void MC_TextureManager::renderListsOverlaysNoUnderlayer (void)
+{
 	//<< sebi: added this section to draw objects which do not have terrain underlayer (those are added in quad.cpp, see (*) there )
 	{ ZoneScopedN("Render.NoUnderlayer");
 	  TracyGpuZone("Render.NoUnderlayer");
@@ -1835,7 +1857,13 @@ void MC_TextureManager::renderLists (void)
 	}
 	} // end ZoneScopedN("Render.NoUnderlayer")
 	//<< sebi: end of added block
+}
 
+void MC_TextureManager::renderListsOverlaysShadowBlobs ([[maybe_unused]] const RenderListsFrame& st)
+{
+#ifdef MC2_VULKAN_ISLAND
+	const bool vkLegacyOn = st.vkLegacyOn;
+#endif
 	// Cement overlays (MC2_ISCRATERS|MC2_ISTERRAIN) and decals (!MC2_ISTERRAIN|MC2_ISCRATERS)
 	// are now drawn by gos_DrawTerrainOverlays() and gos_DrawDecals() before Render.Overlays.
 	// The old Render.CraterOverlays and non-terrain crater loops are removed.
@@ -1918,7 +1946,13 @@ void MC_TextureManager::renderLists (void)
 #endif
 	gos_render_pass_timer::End(gos_render_pass_timer::Pass_Blobs);
 	} // end RenderLists.ShadowBlobs
+}
 
+void MC_TextureManager::renderListsOverlaysNonTerrainAlpha ([[maybe_unused]] const RenderListsFrame& st)
+{
+#ifdef MC2_VULKAN_ISLAND
+	const bool vkLegacyOn = st.vkLegacyOn;
+#endif
 	{
 	ZoneScopedN("RenderLists.NonTerrainAlphaLoops");
 	rlcost::Span _rl(rlcost::kAlphaLoops);
@@ -1996,7 +2030,13 @@ void MC_TextureManager::renderLists (void)
 	}
 	gos_render_pass_timer::End(gos_render_pass_timer::Pass_AlphaVfx);
 	} // end RenderLists.NonTerrainAlphaLoops
+}
 
+void MC_TextureManager::renderListsOverlaysVfxHudSubmit ([[maybe_unused]] const RenderListsFrame& st)
+{
+#ifdef MC2_VULKAN_ISLAND
+	const bool vkLegacyOn = st.vkLegacyOn;
+#endif
 	{
 	ZoneScopedN("RenderLists.VfxHudSubmit");
 	rlcost::Span _rl(rlcost::kVfxHud);
@@ -2222,5 +2262,67 @@ void MC_TextureManager::renderLists (void)
 	gos_TerrainExtraReset();
 	gos_render_pass_timer::End(gos_render_pass_timer::Pass_Hud);
 	} // end RenderLists.VfxHudSubmit
+}
+
+void MC_TextureManager::renderListsOverlaysOld (const RenderListsFrame& st)
+{
+	{
+		ZoneScopedN("Render.Overlays"); GosGlLostDrawsScope _lost_("overlays.overlays_old");
+		TracyGpuZone("Render.Overlays");
+	if (Environment.Renderer == 3)
+	{
+		//Do NOT draw the water as transparent in software
+		gos_SetRenderState( gos_State_TextureAddress, gos_TextureWrap );
+	}
+	else
+	{
+		gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha);
+		gos_SetRenderState( gos_State_TextureAddress, gos_TextureWrap );
+	}
+	
+	renderListsOverlaysWaterLoops();
+	renderListsOverlaysNoUnderlayer();
+	renderListsOverlaysShadowBlobs(st);
+	renderListsOverlaysNonTerrainAlpha(st);
+	renderListsOverlaysVfxHudSubmit(st);
 	} // end Render.Overlays zone
+}
+
+void MC_TextureManager::renderLists (void)
+{
+	ZoneScopedN("textureManagerRenderLists");
+	// [RENDERLISTS_COST v1] whole-function span; constructed first so its dtor
+	// (accumulate + 60-frame emit) runs after every phase span has closed.
+	rlcost::TotalSpan _rlTotal(nextAvailableVertexNode,
+	                           static_cast<long>(nextAvailableHardwareVertexNode));
+
+	// LIGHT-CONE-MODELS-1 (B): fill the deferred cone-glow vertices into the
+	// MC2_ISSPOTLGT batch. Must run before the ISSPOTLGT consumer loop below
+	// and AFTER every legacy addVertices for the frame (all of which happen in
+	// the object render pass, before renderLists). See mclib/cone_glow.cpp.
+	mc2_cone_glow::FlushFrame();
+	RenderListsFrame st;
+#ifdef MC2_VULKAN_ISLAND
+	// VK-PARITY-F1: ground vehicles (and every other TG_Shape on the CPU-transformed
+	// gos_VERTEX path) are flushed by the legacy masterVertexNodes loops below (solid,
+	// blob-shadow, alpha, additive effects / spotlight cones). Under the VK umbrella the
+	// native VK composite is the sole present producer, so those GL draws would land in a
+	// DISCARDED GL backbuffer and the objects would vanish. When the VK legacy-shape island
+	// is armed, each loop queues its nodes for the island (run right after the loop group)
+	// instead of drawing them here. Gate off (default GL) -> vkLegacyOn == false -> every
+	// loop is byte-identical.
+	st.vkLegacyOn = (mc2_vk_legacy_shape_island_enabled() != 0);
+#endif
+	renderListsPreamble();
+	renderListsLightDataUpload();
+	renderListsSceneDataUpload();
+	renderListsObjects3D();
+	renderListsPostObjectsStateRestore();
+	renderListsStaticShadowBuild();
+	renderListsStaticPropRegistryFlush();
+	renderListsDynamicShadowPass();
+	renderListsTerrainSolid(st);
+	renderListsGpuStaticProps();
+	renderListsOverlayBatches();
+	renderListsOverlaysOld(st);
 }
