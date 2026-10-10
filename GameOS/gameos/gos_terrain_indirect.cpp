@@ -93,7 +93,10 @@ extern float    scenarioTime;
 // pumps it each frame. This makes the atlas GENUINELY absent for ~30s so the
 // reviewer can confirm the atlas/texel probes (a)/(b) actually FIRE when the
 // atlas is the cause.
-static const bool s_loadRaceDelayAtlas = mc2::gate::get<"MC2_LOAD_RACE_DELAY_ATLAS">();
+extern const bool s_loadRaceDelayAtlas = mc2::gate::get<"MC2_LOAD_RACE_DELAY_ATLAS">();
+
+namespace gos_terrain_indirect_detail {}
+using namespace gos_terrain_indirect_detail;
 
 namespace gos_terrain_indirect {
 
@@ -241,7 +244,7 @@ bool IsOverlayParityCheckEnabled() {
 // (diagnostic for the corrupt-recipeIdx grey-triangle bug). Default OFF — it is a
 // per-frame ~80KB glGetBufferSubData readback + CPU compare and must not run in
 // production. Kill-switch restores it for diagnosis.
-static const bool s_thinCanaryEnabled = mc2::gate::get<"MC2_THIN_CANARY">();
+extern const bool s_thinCanaryEnabled = mc2::gate::get<"MC2_THIN_CANARY">();
 
 // Slice A — wire the real predicate (replaces the Stage 0b/1b/2b always-false
 // stub). Mirrors IsFrameMineArmed() == IsMineEnabled() EXACTLY: arming is
@@ -526,7 +529,7 @@ void ParityFrameTick(int quadsCheckedThisFrame) {
 // Stage 2 — dense recipe SSBO storage and helpers
 // ---------------------------------------------------------------------------
 
-namespace {
+namespace gos_terrain_indirect_detail {
 
 // Module-private: dense recipe array indexed by vertexNum (= mx + my * mapSide).
 // Sized mapSide² when built; cleared on ResetDenseRecipe.
@@ -564,12 +567,12 @@ bool                           g_recipeReady         = false;
 // commit. See memory/mc_texture_manager_dual_queue_legacy_retirement_debt.md.
 
 // Mission-latch for trace reset
-static bool s_firstDrawPrintedThisMission = false;
+bool s_firstDrawPrintedThisMission = false;
 
 // Cached trace flag (avoids repeated getenv calls in hot paths)
 static bool s_indirectTrace = false;
 static bool s_indirectTraceKnown = false;
-static bool traceOn() {
+bool traceOn() {
     if (!s_indirectTraceKnown) {
         s_indirectTrace = mc2::gate::get<"MC2_TERRAIN_INDIRECT_TRACE">();
         s_indirectTraceKnown = true;
@@ -697,7 +700,7 @@ void buildRecipeSlot(int32_t vn, TerrainQuadRecipe& out) {
 }
 
 
-}  // anonymous namespace
+}  // namespace gos_terrain_indirect_detail
 
 // ---------------------------------------------------------------------------
 // Colormap atlas — single GL texture covering the full merged colormap.
@@ -718,14 +721,14 @@ void buildRecipeSlot(int32_t vn, TerrainQuadRecipe& out) {
 // Dividing by numTexturesAcross converts tile-local to atlas-absolute.
 // ---------------------------------------------------------------------------
 
-namespace {
+namespace gos_terrain_indirect_detail {
 
-static GLuint  g_atlasGLTex              = 0;
-static int     g_atlasSize               = 0;
-static float   g_atlasNumTexturesAcross  = 0.f;
-static float   g_atlasMapTopLeftX        = 0.f;
-static float   g_atlasMapTopLeftY        = 0.f;
-static float   g_atlasOneOverWorldUnits  = 0.f;
+GLuint  g_atlasGLTex              = 0;
+int     g_atlasSize               = 0;
+float   g_atlasNumTexturesAcross  = 0.f;
+float   g_atlasMapTopLeftX        = 0.f;
+float   g_atlasMapTopLeftY        = 0.f;
+float   g_atlasOneOverWorldUnits  = 0.f;
 
 // ---------------------------------------------------------------------------
 // Cement catalog atlas — single GL_TEXTURE_2D, packed grid of N cement tile
@@ -738,16 +741,16 @@ static float   g_atlasOneOverWorldUnits  = 0.f;
 //   q.terrainHandle returned by quad.cpp:546 (getTextureHandle) is the
 //   nodeIdx, NOT the slot — see V22 in Verification Appendix.
 // ---------------------------------------------------------------------------
-static GLuint  g_cementAtlasGLTex          = 0;
-static int     g_cementAtlasGridSide       = 0;   // cells per row/col (power of 2)
-static int     g_cementAtlasTileCount      = 0;   // distinct cement entries enumerated
-static bool    g_cementLayerMapReady       = false;
-static int     g_cementCatalogTruncated    = 0;   // 1 if N>=255 cap hit (Gate A FAIL)
+GLuint  g_cementAtlasGLTex          = 0;
+int     g_cementAtlasGridSide       = 0;   // cells per row/col (power of 2)
+int     g_cementAtlasTileCount      = 0;   // distinct cement entries enumerated
+bool    g_cementLayerMapReady       = false;
+int     g_cementCatalogTruncated    = 0;   // 1 if N>=255 cap hit (Gate A FAIL)
 
 // Dense lookup: mcTextureNodeIndex → atlas layer-index (0..N-1).
 // Sized MC_MAXTEXTURES = 4096 (mclib/txmmgr.h:44) — node-index space.
 // 0xFFFF = "not cement / not in atlas".
-static uint16_t g_cementLayerIndexByNodeIdx[MC_MAXTEXTURES];
+uint16_t g_cementLayerIndexByNodeIdx[MC_MAXTEXTURES];
 
 // Slot-keyed lookup: textures[] slot index → atlas layer-index (0..N-1).
 // SLOT IS THE STABLE KEY (persistent across frames).  nodeIdx (mcTextureManager
@@ -758,7 +761,7 @@ static uint16_t g_cementLayerIndexByNodeIdx[MC_MAXTEXTURES];
 //
 // Sized MC_MAX_TERRAIN_TXMS = 3000 (terrtxm.h:34) — the textures[] cap.
 // 0xFFFF = "not cement / not in atlas".
-static uint16_t g_cementLayerIndexBySlot[MC_MAX_TERRAIN_TXMS];
+uint16_t g_cementLayerIndexBySlot[MC_MAX_TERRAIN_TXMS];
 
 // Stage B — cement transitions in recipe.
 static constexpr uint32_t kCementTransitionBit = 0x40000000u;  // IS_TRANSITION in cementWord
@@ -767,12 +770,12 @@ static constexpr uint32_t kCementMaskIdMask     = 0x3Fu;       // 6 bits (14 sha
 static constexpr int      kTransitionMaskLayers = 14;
 static constexpr int      kTransitionMaskSize   = 256;
 
-static GLuint g_transitionMaskArrayGL = 0;
-static bool   g_transitionMaskReady   = false;
+GLuint g_transitionMaskArrayGL = 0;
+bool   g_transitionMaskReady   = false;
 
 // binNumber = (c0?8:0)|(c1?4:0)|(c2?2:0)|(c3?1:0); 0 and 15 are degenerate.
 // maskId = binNumber - 1 (0..13).
-static int deriveMaskIdFromCorners(bool c0, bool c1, bool c2, bool c3) {
+int deriveMaskIdFromCorners(bool c0, bool c1, bool c2, bool c3) {
     const uint32_t bn = (c0 ? 8u : 0u) | (c1 ? 4u : 0u) | (c2 ? 2u : 0u) | (c3 ? 1u : 0u);
     if (bn == 0u || bn == 15u) return -1;
     return (int)(bn - 1u);
@@ -802,7 +805,7 @@ static int PadEdgeRoadFixMode() {
     static const int s = mc2::gate::get<"MC2_PAD_EDGE_ROAD_FIX">();
     return s;
 }
-static bool PadEdgeRoadFixEnabled() { return PadEdgeRoadFixMode() != 0; }
+bool PadEdgeRoadFixEnabled() { return PadEdgeRoadFixMode() != 0; }
 
 // CEMENT-ATLAS-MAGENTA-KEY-1: solid cement catalog cells are uploaded through
 // TerrainTextures::textureFromMemory (gos_Texture_Solid), which -- unlike the
@@ -812,7 +815,7 @@ static bool PadEdgeRoadFixEnabled() { return PadEdgeRoadFixMode() != 0; }
 // GL_LINEAR, which shows as thin pink lines/patches along road and pad edges.
 // A census is ALWAYS printed (so a map can be judged without a gate); zeroing is
 // gated MC2_CEMENT_ATLAS_MAGENTA_KEY (default OFF).
-static bool CementAtlasMagentaKeyEnabled() {
+bool CementAtlasMagentaKeyEnabled() {
     static const bool s = mc2::gate::get<"MC2_CEMENT_ATLAS_MAGENTA_KEY">();
     return s;
 }
@@ -860,7 +863,7 @@ static bool CementTransitionFallbackEnabled() {
 // DROPS. Tiles that already bake a marching-squares word keep it untouched, so
 // the user-approved CEMENT-HARD-EDGE-1 crisp transitions are not disturbed.
 // Default OFF => not one atlas texel and not one cement word changes.
-static bool CementAlphaAtlasEnabled() {
+bool CementAlphaAtlasEnabled() {
     // RUNWAY-CLOSE-1 (2026-08-02): DEFAULT ON. Measured at the user's mc2_10
     // saved_204907 bookmark (exe 30c18df1): rescued swath px 15 -> 6506, their
     // luma 32.4 (bare dirt) -> 54.7 = the historical on-concrete runway value
@@ -876,8 +879,8 @@ static bool CementAlphaAtlasEnabled() {
 // terrainType a solid cement corner" oracle used by cemLayerForVertex() and by
 // the solid-quad branch, and folding alpha slots into it would silently promote
 // every transition tile to a full-replacement solid slab.
-static uint16_t g_cementAlphaLayerIndexBySlot[MC_MAX_TERRAIN_TXMS];
-static bool     g_cementAlphaLayerMapReady = false;
+uint16_t g_cementAlphaLayerIndexBySlot[MC_MAX_TERRAIN_TXMS];
+bool     g_cementAlphaLayerMapReady = false;
 
 // cementWord bit 23 = OWN-ALPHA transition: layerIdx addresses an alpha cell
 // whose own texel alpha is the coverage. Bits 31,30 and 29:24 (maskId) and
@@ -1143,7 +1146,7 @@ static const float kRoadArtFrac      = 0.05f;  // >5% such texels = cell carries
 //
 // ON, with both other arms OFF, this gate is a pixel no-op: it only changes
 // which cells ARM A / ARM B are allowed to touch.
-static bool RoadArtDetectEnabled() {
+bool RoadArtDetectEnabled() {
     static const bool s = mc2::gate::get<"MC2_CEMENT_ROAD_ART_DETECT">();
     return s;
 }
@@ -1154,7 +1157,7 @@ static bool RoadArtDetectEnabled() {
 // toward a whole-atlas median with a [0.70,1.40] clamp; this one moves only
 // cells that pass the neutrality+luminance concrete test, toward the family's
 // OWN median, and never touches an asphalt/dirt/coloured cell at all.
-static bool ConcreteToneEnabled() {
+bool ConcreteToneEnabled() {
     static const bool s = mc2::gate::get<"MC2_CEMENT_CONCRETE_TONE">();
     return s;
 }
@@ -1162,7 +1165,7 @@ static bool ConcreteToneEnabled() {
 // ARM B. Point every plain-concrete slot at ONE canonical concrete cell, so the
 // apron cannot change colour tile to tile. Cells carrying painted markings are
 // excluded and keep their own art. Default OFF => no remap => byte-identical.
-static bool ConcreteCanonEnabled() {
+bool ConcreteCanonEnabled() {
     static const bool s = mc2::gate::get<"MC2_CEMENT_CONCRETE_CANON">();
     return s;
 }
@@ -1202,7 +1205,7 @@ struct CementCellStats {
 };
 
 // Neutrality + marking census for one cell, on top of the band mean.
-static void CementCellComputeStats(const std::vector<uint32_t>& atlasBuf,
+void CementCellComputeStats(const std::vector<uint32_t>& atlasBuf,
                                    int atlasPixelSide, int gridSide, int txmSize,
                                    int k, CementCellStats& s) {
     s.ok = CementCellBandMean(atlasBuf, atlasPixelSide, gridSide, txmSize,
@@ -1271,7 +1274,7 @@ static void CementCellComputeStats(const std::vector<uint32_t>& atlasBuf,
 // within a luminance window, then re-medians once over the admitted set so the
 // reference is the family's own tone rather than the whole atlas's.
 // Returns the family reference in refR/refG/refB and the canonical cell index.
-static int ClassifyConcreteFamily(std::vector<CementCellStats>& st, int NT,
+int ClassifyConcreteFamily(std::vector<CementCellStats>& st, int NT,
                                   float& refR, float& refG, float& refB) {
     std::vector<float> okL;
     for (int k = 0; k < NT; ++k) if (st[(size_t)k].ok) okL.push_back(st[(size_t)k].lum);
@@ -1372,7 +1375,7 @@ static bool TileIsRoadArt(long r, long c, long mapSide, PostcompVertexPtr blocks
 }
 
 // True when any of the 8 neighbors of tile (r,c) is road art.
-static bool TileRoadAdjacent8(long r, long c, long mapSide, PostcompVertexPtr blocks) {
+bool TileRoadAdjacent8(long r, long c, long mapSide, PostcompVertexPtr blocks) {
     for (long dr = -1; dr <= 1; ++dr)
         for (long dc = -1; dc <= 1; ++dc) {
             if (dr == 0 && dc == 0) continue;
@@ -1383,7 +1386,7 @@ static bool TileRoadAdjacent8(long r, long c, long mapSide, PostcompVertexPtr bl
 
 // Build 14-layer R8 GL_TEXTURE_2D_ARRAY procedurally (bilinear weights + smoothstep).
 // Called once at end of BuildCementCatalogAtlas().
-static void BuildTransitionMaskArray() {
+void BuildTransitionMaskArray() {
     const int N = kTransitionMaskLayers;
     const int S = kTransitionMaskSize;
     std::vector<uint8_t> buf((size_t)N * S * S, 0u);
@@ -1448,7 +1451,7 @@ static void BuildTransitionMaskArray() {
 // is not populated until that function runs.
 // Marks all modified slots dirty so FlushDirtyRecipeSlotsToGPU uploads them.
 // ---------------------------------------------------------------------------
-static void PopulateRecipeCementWords() {
+void PopulateRecipeCementWords() {
     if (!Terrain::mapData) return;
     const long mapSide = Terrain::realVerticesMapSide;
     if (mapSide <= 0) return;
@@ -1897,9 +1900,9 @@ static void PopulateRecipeCementWords() {
 // populated. Used by UploadTerrainHandleLUT() to resolve handles per frame
 // without iterating the full quadList.
 // ---------------------------------------------------------------------------
-static std::vector<uint32_t> g_uniqueTerrainNodeIds;
+std::vector<uint32_t> g_uniqueTerrainNodeIds;
 
-static void CollectUniqueNodeIds() {
+void CollectUniqueNodeIds() {
     g_uniqueTerrainNodeIds.clear();
     static bool seen[MC_MAXTEXTURES];
     memset(seen, 0, sizeof(seen));
@@ -1917,7 +1920,7 @@ static void CollectUniqueNodeIds() {
 // COLORMAP-CPU-RETIRE-1: free cpuColorMap + cpuDispAlpha after atlas upload.
 // Default ON. Kill-switch MC2_COLORMAP_CPU_RETIRE=0 reverts (keeps CPU copy alive
 // for legacy displacement; needed when MC2_COLORMAP_DISPLACE_PROBE=1).
-static bool retireCpuColorMap() {
+bool retireCpuColorMap() {
     static const bool s = mc2::gate::get<"MC2_COLORMAP_CPU_RETIRE">();
     return s;
 }
@@ -1925,13 +1928,16 @@ static bool retireCpuColorMap() {
 // Per-frame counter — incremented when the packer sees a quad whose
 // q.terrainHandle is non-zero AND maps to no cement layer.  A non-zero count
 // after Stage A.4 is wired indicates an enumeration miss (debug discipline).
-static uint32_t g_cementPackUnmappedCount = 0;
+uint32_t g_cementPackUnmappedCount = 0;
 
 // Diagnostic Test 1 — per-frame cement classification flip detection.
 // Reset at the start of PackThinRecordsForFrame, emitted every 60 frames
 // when MC2_TERRAIN_INDIRECT_TRACE is on.
-static uint32_t g_cementMappedThisFrame       = 0;  // valid cement layer found
-static uint32_t g_concreteAllCornersThisFrame = 0;  // _wp0 == 3,3,3,3 (genuine pure-cement quad)
+uint32_t g_cementMappedThisFrame       = 0;  // valid cement layer found
+uint32_t g_concreteAllCornersThisFrame = 0;  // _wp0 == 3,3,3,3 (genuine pure-cement quad)
+}  // namespace gos_terrain_indirect_detail
+
+namespace gos_terrain_indirect_detail {
 
 
 void BuildColormapAtlas() {
@@ -2566,7 +2572,7 @@ void BuildCementCatalogAtlas() {
     BuildTransitionMaskArray();
 }
 
-}  // anonymous namespace (atlas helpers)
+}  // namespace gos_terrain_indirect_detail
 
 namespace gos_terrain_indirect {
 
@@ -2820,6 +2826,9 @@ void FlushDirtyRecipeSlotsToGPU() {
     g_denseRecipeAnyDirty = false;
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 }
+}  // namespace gos_terrain_indirect
+
+namespace gos_terrain_indirect {
 
 // ---------------------------------------------------------------------------
 // Stage 2 parity body
@@ -3030,7 +3039,7 @@ bool gos_terrain_bridge_drawIndirect(int cmdCount, unsigned int recipeSSBO,
 #endif
 using mc2depth::TERRAIN_DEPTH_FUDGE;
 
-namespace {
+namespace gos_terrain_indirect_detail {
 
 // ---------------------------------------------------------------------------
 // Thin-record SSBO (triple-buffered, GPU_STREAM_DRAW).
@@ -3040,9 +3049,9 @@ static constexpr int    kThinRingFrames    = 3;
 static constexpr size_t kMaxThinRecords    = 65536u;  // ≥ max visible quads
 static constexpr size_t kThinRecordBytes   = kMaxThinRecords * sizeof(TerrainQuadThinRecord);
 
-static GLuint g_thinRecordSSBO              = 0;
-static int    g_thinRingSlot                = 0;
-static GLsync g_thinRingFences[kThinRingFrames] = { 0, 0, 0 };
+GLuint g_thinRecordSSBO              = 0;
+int    g_thinRingSlot                = 0;
+GLsync g_thinRingFences[kThinRingFrames] = { 0, 0, 0 };
 
 // Indirect command buffer — driver-only, GL_DRAW_INDIRECT_BUFFER.
 // Sized for 16 commands (256 B); PR1 emits exactly 1.
@@ -3056,15 +3065,15 @@ static_assert(sizeof(DrawArraysIndirectCommand) == 16,
     "DrawArraysIndirectCommand is 4 GLuints = 16 B per GL spec");
 
 static constexpr size_t kIndirectCmdBufferBytes = 16 * sizeof(DrawArraysIndirectCommand);
-static GLuint g_indirectCmdBuffer = 0;
+GLuint g_indirectCmdBuffer = 0;
 
 // Per-frame arming state (reset each frame by ComputePreflight).
-static bool  s_frameSolidArmed           = false;
-static int   s_frameSolidPackedThinCount = 0;
-static int   s_frameSolidCmdCount        = 0;
+bool  s_frameSolidArmed           = false;
+int   s_frameSolidPackedThinCount = 0;
+int   s_frameSolidCmdCount        = 0;
 
 // Process-sticky hard-failure latch.
-static bool  s_processArmingDisabled     = false;
+bool  s_processArmingDisabled     = false;
 
 // Process-sticky "intro pan complete observed" latch. Set on the first
 // frame where ComputePreflight() arms (path=gpu or path=cpu); never
@@ -3072,7 +3081,7 @@ static bool  s_processArmingDisabled     = false;
 // frame counting on the engine's own intro-complete signal -- the
 // IsFrameSolidArmed() per-frame flag is reset by gosRenderer::endFrame()
 // before VisualDiff's post-PP hook fires, so a sticky cousin is needed.
-static bool  s_everFrameSolidArmed       = false;
+bool  s_everFrameSolidArmed       = false;
 
 // first_draw lifecycle latch (reset by ResetDenseRecipe / mission teardown).
 // Declared extern in the anonymous ns of the Stage 2 block; re-stated here
@@ -3087,21 +3096,21 @@ static bool  s_resourcesReady     = false;
 // Phase C Stage 2 — SOLID GPU compute resources.
 // Lazy-allocated on first ComputeDispatch(); destroyed on ResetDenseRecipe.
 // ---------------------------------------------------------------------------
-static GLuint  g_solidComputeProgram    = 0;
+GLuint  g_solidComputeProgram    = 0;
 // Step 2b (VPL retirement): cmd-patch program retired.  Primary compute is
 // the sole writer of cmds[0].count via atomicAdd.  Bucket-header SSBO is
 // demoted behind MC2_BUCKET_HEADER_TRACE=1 (default-off) per plan
 // amendment C1; when off the SSBO is not allocated, not bound, not cleared,
 // and no diagnostic atomicAdds run in the shader.
-static GLuint  g_solidBucketHeaderSsbo  = 0;
-static GLuint  g_terrainHandleLutSSBO   = 0;
+GLuint  g_solidBucketHeaderSsbo  = 0;
+GLuint  g_terrainHandleLutSSBO   = 0;
 // Camera-windowed solid dispatch (Approach A) state — DECLARED EARLY (next to
 // g_denseRecipes) so the per-mission reset in ResetDenseRecipe() can clear it
 // (MAJOR-1).  Definitions live near g_denseRecipes; see the comment there.
-static GLuint  g_thinCanarySSBO         = 0;   // probe 6: separate buffer, never bound by bridge
+GLuint  g_thinCanarySSBO         = 0;   // probe 6: separate buffer, never bound by bridge
 // Probe 8: MVP fingerprint at compute dispatch time, read by bridge at draw time.
-static uint32_t g_dispatchMvpFp      = 0;
-static uint64_t g_dispatchMvpFrameIdx = 0;
+uint32_t g_dispatchMvpFp      = 0;
+uint64_t g_dispatchMvpFrameIdx = 0;
 // RENDER-VIEW-CURRENCY-1: the VIEW EPOCH (g_mvpDiagFrame, bumped on every
 // gos_SetWorldToClipGL = every authoritative camera-matrix publish) observed at
 // the moment this snapshot's MVP was sourced. Object/mech consumers compare this
@@ -3109,10 +3118,10 @@ static uint64_t g_dispatchMvpFrameIdx = 0;
 // camera — even within the same engine frame (e.g. an early publish followed by a
 // mid-frame zoom-anchor camera change). -1 = never published. Engine-frame is NOT
 // sufficient here: same frame, different camera must be detectable.
-static long     g_dispatchMvpViewEpoch = -1;
+long     g_dispatchMvpViewEpoch = -1;
 // Probe 8b: verification — also stash first 4 floats from compute-time MVP.
 // Bridge logs both sets on mismatch so we can see byte-level difference.
-static float    g_dispatchMvpFloats[4] = { 0, 0, 0, 0 };
+float    g_dispatchMvpFloats[4] = { 0, 0, 0, 0 };
 // Water-consistency fix (2026-05-17): full 16-float snapshot of the MVP
 // terrain-solid baked its Fix-B clipPos with THIS frame. The water compute
 // reads this (via gos_terrain_indirect_getDispatchMvp16) so the drawn water
@@ -3122,7 +3131,7 @@ static float    g_dispatchMvpFloats[4] = { 0, 0, 0, 0 };
 // with_slot.md. Unconditional 64 B/frame; written only when ComputeDispatch
 // actually runs (terrain-solid armed), so a consumer that gates on
 // IsFrameSolidArmed() always sees this-frame-fresh data.
-static float    g_dispatchMvp16[16] = { 0 };
+float    g_dispatchMvp16[16] = { 0 };
 
 // Fix A (2026-05-14): per-ring-slot MVP stash for the intentional 1-frame
 // compute->bridge lag.  Compute writes thin records to slot S using MVP_X;
@@ -3149,39 +3158,39 @@ static float    g_dispatchMvp16[16] = { 0 };
 // 2026-05-14-vertex-project-loop-retirement.md §"Step 9" and
 // memory/ring_slot_state_must_travel_with_slot.md (Fix B is the surviving
 // instance of that rule; Fix A's snapshot is the retired mechanism).
-static const bool g_envRingTrace = mc2::gate::get<"MC2_RING_TRACE">();
-static float    g_thinSlotMVP[kThinRingFrames][16] = { { 0 } };
-static bool     g_thinSlotMVPValid[kThinRingFrames] = { false, false, false };
+extern const bool g_envRingTrace = mc2::gate::get<"MC2_RING_TRACE">();
+float    g_thinSlotMVP[kThinRingFrames][16] = { { 0 } };
+bool     g_thinSlotMVPValid[kThinRingFrames] = { false, false, false };
 
 // Cached uniform locations — populated once when programs are compiled.
 // Per-frame varying uniforms (u_windowCount, u_terrainMVP, u_alphaOverride)
 // are still uploaded every frame; only the locations themselves are cached.
-static GLint g_locSolidWC  = -1;   // u_windowCount   (per-frame)
-static GLint g_locSolidAO  = -1;   // u_alphaOverride (per-frame, may be absent)
-static GLint g_locSolidMVP = -1;   // u_terrainMVP    (per-frame)
+GLint g_locSolidWC  = -1;   // u_windowCount   (per-frame)
+GLint g_locSolidAO  = -1;   // u_alphaOverride (per-frame, may be absent)
+GLint g_locSolidMVP = -1;   // u_terrainMVP    (per-frame)
 // Step 2b (VPL retirement): cmd-patch uniform-location caches retired
 // (g_locCmdVPE, g_locCmdCC removed) — cmd-patch program is no longer compiled.
 // u_bucketHeaderTrace gates the demoted bucket-header SSBO writes in the
 // primary compute shader (MC2_BUCKET_HEADER_TRACE).
-static GLint g_locSolidBHT = -1;   // u_bucketHeaderTrace (per-frame int gate)
-static GLint g_locSolidUW  = -1;   // u_useWindow (per-frame: 1=windowed, 0=full-range identity)
-static GLint g_locSolidMS  = -1;   // u_mapSide (PER-FRAME: changes when a different-size map loads)
+GLint g_locSolidBHT = -1;   // u_bucketHeaderTrace (per-frame int gate)
+GLint g_locSolidUW  = -1;   // u_useWindow (per-frame: 1=windowed, 0=full-range identity)
+GLint g_locSolidMS  = -1;   // u_mapSide (PER-FRAME: changes when a different-size map loads)
 // WATER-REFLECTION-CLIP-1: u_reflectionPass (per-frame int gate; see .comp for
 // rationale). Set true only for the duration of RenderWaterReflectionPass()'s
 // ComputeDispatch() call, false otherwise -- so the main SOLID dispatch is
 // unaffected (byte-identical pzOk behavior).
-static GLint g_locSolidReflPass = -1;
-static bool  s_solidReflectionPassActive = false;
+GLint g_locSolidReflPass = -1;
+bool  s_solidReflectionPassActive = false;
 
 
 // Flag: whether ComputeDispatch() ran the GPU path this frame.
-static bool s_solidGpuDispatchRanThisFrame = false;
+bool s_solidGpuDispatchRanThisFrame = false;
 
 // ---------------------------------------------------------------------------
 // ResourcesReady() — lazy-allocate thin-record SSBO + indirect buffer.
 // Called from ComputePreflight; returns true once both are allocated.
 // ---------------------------------------------------------------------------
-static bool ResourcesReady() {
+bool ResourcesReady() {
     if (s_resourcesReady) {
         // Between-mission check: atlas is deleted by ResetDenseRecipe but
         // s_resourcesReady isn't visible from that public function. Re-arm
@@ -3303,7 +3312,7 @@ static inline bool InMissionTransition() { return false; }
 //   3. Recipe coverage: RecipeForVertexNum returns nullptr
 //   4. Per-tri pz check (drives flags bits 1, 2)
 // ---------------------------------------------------------------------------
-static int PackThinRecordsForFrame() {
+int PackThinRecordsForFrame() {
     // VPL retirement step 1 (2026-05-14): CPU thin-record pack demoted behind
     // MC2_TERRAIN_INDIRECT_CPU_FALLBACK. Default-off — the GPU compute path in
     // shaders/gpu_driven_terrain_solid.comp is the sole projection authority
@@ -3558,7 +3567,7 @@ static int PackThinRecordsForFrame() {
 // BuildIndirectCommands() — builds 1 DrawArraysIndirectCommand (PR1 SOLID-only).
 // Returns 1 on success, 0 on error.
 // ---------------------------------------------------------------------------
-static int BuildIndirectCommands(int thinCount) {
+int BuildIndirectCommands(int thinCount) {
     if (thinCount <= 0) return 0;
 
     DrawArraysIndirectCommand cmd{};
@@ -3582,7 +3591,7 @@ static int BuildIndirectCommands(int thinCount) {
 // indexes into this LUT — eliminating the per-frame quadList CPU walk.
 // Returns g_denseRecipes.size() as the GPU dispatch count (full recipe range).
 // ---------------------------------------------------------------------------
-static uint32_t UploadTerrainHandleLUT() {
+uint32_t UploadTerrainHandleLUT() {
     constexpr GLsizeiptr kLutBytes = MC_MAXTEXTURES * sizeof(uint32_t);
 
     if (g_terrainHandleLutSSBO == 0) {
@@ -3644,7 +3653,7 @@ static uint32_t UploadTerrainHandleLUT() {
 // The empty-on-armed-frame case (e.g. the 1-frame lag's very first armed
 // frame, before the loop has run once) falls back to full-range so terrain
 // is never blank.
-static uint32_t BuildSolidQuadWindowSSBO(int* outUseWindow) {
+uint32_t BuildSolidQuadWindowSSBO(int* outUseWindow) {
     const bool narrowOn = gos_terrain_indirect::SolidWindowEnabled();
 
     if (!narrowOn || g_solidWindowStaging.empty()) {
@@ -3812,7 +3821,7 @@ static uint32_t BuildSolidQuadWindowSSBO(int* outUseWindow) {
     return windowCount;
 }
 
-}  // anonymous namespace (Stage 3 helpers)
+}  // namespace gos_terrain_indirect_detail
 
 namespace gos_terrain_indirect {
 
