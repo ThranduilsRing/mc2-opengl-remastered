@@ -618,7 +618,7 @@ int main(int argc, char** argv) {
     // overrode the A/B runner's gate-OFF pass. Default it ON only when the caller did not
     // set it (so a bare harness run still exercises patrol + the intent path), but an
     // explicit caller value (the A/B runner sets =0 for the OFF pass) is respected.
-    if (std::getenv("MC2_BRAIN_INTENT_QUEUE") == nullptr)
+    if (!mc2::gate::isSet<"MC2_BRAIN_INTENT_QUEUE">())
         (void)_putenv("MC2_BRAIN_INTENT_QUEUE=1");
     // BRAIN-FSM-1K-A/B: enable FSM verbs for fsm-* fixtures.
     (void)_putenv("MC2_BRAIN_FSM=1");
@@ -645,8 +645,7 @@ int main(int argc, char** argv) {
     mc2::gate::invalidateAll();   // the _putenv calls above ran after static initialisers cached gates
 
     // Detect intent queue gate state (read BEFORE first static-init call).
-    const char* intentQueueEnv = std::getenv("MC2_BRAIN_INTENT_QUEUE");
-    bool intentQueueGateOn = (intentQueueEnv && std::atoi(intentQueueEnv) != 0);
+    bool intentQueueGateOn = mc2::gate::get<"MC2_BRAIN_INTENT_QUEUE">();
 
     // FITBLOCK-WRITER-1: writer round-trip self-test (needs the gates set above:
     // ALIAS for alias= lookup, VARIANTOF for inheritance, FLOW for WAIT/STOP verbs).
