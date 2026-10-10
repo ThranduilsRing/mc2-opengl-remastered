@@ -32,7 +32,7 @@
   "RenderCore/RendererFeatureRegistry.h": 2917,
   "code/artlry.cpp": 1816,
   "code/bldng.cpp": 1707,
-  "code/brain_special_dispatch.cpp": 3307,
+  "code/brain_special_dispatch.cpp": 3273,
   "code/controlgui.cpp": 5016,
   "code/gamecam.cpp": 1572,
   "code/gameobj.cpp": 2365,
@@ -93,7 +93,7 @@
   "mclib/vfxtile.cpp": 2944,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "74fa629c7",
+ "head": "7254bdcb7",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -221,7 +221,7 @@
   },
   {
    "file": "code/brain_special_dispatch.cpp",
-   "lines": 3307
+   "lines": 3273
   },
   {
    "file": "mclib/msl.cpp",

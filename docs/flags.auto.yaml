@@ -5,7 +5,7 @@
 generator_version: "3.0.0"
 gate_count: 1139
 registry_entry_count: 354
-verified_count: 810
+verified_count: 820
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -401,6 +401,7 @@ flags:
     rule: AtoiNZ
     owner: code
     doc: ""
+    verified: true
   - name: MC2_BRAIN_COMMIT_PHASE
     kind: Bool
     default: false
@@ -432,6 +433,7 @@ flags:
     owner: code
     doc: "Call chaining of the brain special dispatcher; inert without MC2_BRAIN_DISPATCH."
     smoke_passthrough: true
+    verified: true
   - name: MC2_BRAIN_DISPATCH_FSM_TODO
     kind: Bool
     default: false
@@ -455,6 +457,7 @@ flags:
     owner: code
     doc: ""
     reread: true
+    verified: true
   - name: MC2_BRAIN_FIXED_TICK
     kind: Bool
     default: false
@@ -483,6 +486,7 @@ flags:
     rule: AtoiNZ
     owner: code
     doc: ""
+    verified: true
   - name: MC2_BRAIN_FREEZE_TRACE
     kind: Bool
     default: false
@@ -498,6 +502,7 @@ flags:
     rule: AtoiNZ
     owner: code
     doc: ""
+    verified: true
   - name: MC2_BRAIN_INLINE_EMPTY_SKIP
     kind: Bool
     default: false
@@ -534,6 +539,7 @@ flags:
     owner: code
     doc: ""
     reread: true
+    verified: true
   - name: MC2_BRAIN_RUNTIME
     kind: Bool
     default: false
@@ -575,12 +581,14 @@ flags:
     rule: AtoiNZ
     owner: code
     doc: ""
+    verified: true
   - name: MC2_BRAIN_SNAPSHOT
     kind: Bool
     default: false
     rule: AtoiNZ
     owner: code
     doc: ""
+    verified: true
   - name: MC2_BRAIN_SPECIAL_FIT
     kind: String
     default: ""
@@ -611,6 +619,7 @@ flags:
     rule: AtoiNZ
     owner: code
     doc: ""
+    verified: true
   - name: MC2_BRAIN_VAR_MISSION
     kind: Bool
     default: false
@@ -5995,6 +6004,7 @@ flags:
     rule: AtoiNZ
     owner: code
     doc: ""
+    verified: true
   - name: MC2_TARGETING_GUARD
     kind: Bool
     default: false
