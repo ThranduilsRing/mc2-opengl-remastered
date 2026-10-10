@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Offline mission-load test — design (2026-10-09; full headless Mission::init NO-GO, staged data+ABL-compile target GO ≈ 2 sessions, modest payoff)
 
 Recon only. Nothing was edited, built or written to git. I did run `llvm-nm` (read-only) on `A:/Games/mc2-main/build64` objects. They are from the existing build, which may lag HEAD d628e1374.
@@ -39,7 +40,7 @@ Wiring note: `scripts/check-contracts.sh` is a source-only board. It never build
 | FST open, `.fit` via `FitIniFile`, `.pak` via `PacketFile` | **pure data** (already linkable in `mc2_tests`) |
 | `Terrain::init` / `load` / `primeMissionTerrainCache` (`mclib/terrain.cpp` 638-1830) | **GL-coupled inline**: ~20 `gos_TerrainLodChunk_Upload*`, `gos_uploadTerrainHeightTex`, `gos_SetMapHalfExtent`, `BuildDenseRecipe`, `gos_terrain_surface::GenerateForMission`, `mask_dispatch::Init` |
 | `ObjectManager->loadObjectType` / `loadTerrainObjects` / `registerStaticPropsForMissionLoad` | game class (`code/`), pulls TG shapes plus `mcTextureManager` |
-| `mcTextureManager::loadTexture` (`txmmgr.cpp:5287`) | CPU only (LZ cache). GPU handle creation is deferred to `get_gosTextureHandle` (~5856). But the manager's init and ctor call `gos_CreateBuffer` and `gos_LightDataSsbo_Upload`. |
+| `mcTextureManager::loadTexture` (`mclib/txmmgr_texture.cpp:165`) | CPU only (LZ cache). GPU handle creation is deferred to `get_gosTextureHandle` (~5856). But the manager's init and ctor call `gos_CreateBuffer` and `gos_LightDataSsbo_Upload`. |
 | ABL: libs `orders/miscfunc/corebrain/mc2xcore.abx`, scenario `.abl`, warrior brains | **ABL core is pure data** (see 3) |
 | `weather->init`, `eye->init`, `MissionInterfaceManager` (GUI), sound, logistics | GL/GUI/SDL-coupled. Never include these. |
 
@@ -68,7 +69,7 @@ A new doctest exe at `tests/mission_load/`. It is separate from `mc2_tests`, so 
 **ABL core is a clean cut.** The 14 `mclib/abl*.cpp` TUs have a closure of exactly those 14. Their only non-CRT unresolved symbols are:
 - `S_strlwr` and `S_snprintf`: already in `platform_str.cpp` in `mc2_tests`.
 - `crashbundle_append`: already shimmed.
-- `mc2AblNotePeakDepth(int)`: a one-line stub (the real one is `code/warrior.cpp:131`).
+- `mc2AblNotePeakDepth(int)`: a one-line stub (the real one is `code/warrior.cpp:20`).
 - No `gos_*` symbols at all.
 - ABL source I/O goes through `ABLFile::openCB` etc. callbacks, so the test supplies `File`-backed callbacks.
 

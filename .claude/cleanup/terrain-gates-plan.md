@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # Terrain gate deletion plan (default-OFF gates: delete ON-only code, keep OFF path)
 
 Read-only recon, HEAD 7159006ef. All line numbers are PRE-EDIT. Within a file, apply edits
@@ -11,17 +12,17 @@ BOTTOM-UP or anchor on the quoted text, not the number. Every gate below is regi
   MC2_TERRAIN_AMBIENT_FLOOR_NIGHT, MC2_TERRAIN_CONCRETE_DETAIL_NORMAL, MC2_PROP_LOD_SHADOW_CAST.
 * KEEP MC2_TERRAIN_CONTROLMAP_FILE and MC2_TERRAIN_OVERLAY_V2_FILE. Parents MC2_TERRAIN_CONTROLMAP
   and MC2_TERRAIN_OVERLAY_V2 are default-OFF, are NOT in this task, and their sidecar loaders in
-  mclib/terrain.cpp:885-905 / 986-1005 stay. The _FILE readers (terrain.cpp:896, :996), the registry
+  mclib/terrain.cpp:885-905 / 986-1005 stay. The _FILE readers (mclib/terrain_init.cpp:278, :996), the registry
   rows (RendererFeatureRegistry.h:1445-1466), check-env-registry.sh:438 allowlist line and
   run_smoke.py:1569/1575 stay untouched. Only stale comment cross-refs are n/a. Re-evaluate when the
   parents are scheduled.
 * NOT removed (still live, do not touch): terrainNormalsFromHeightStrength on the CHUNK path
   (terrain_lod_chunk.frag:473/1513, gos_terrain_lod_chunk.cpp s_locNfhStrength :854/:1353/:3009,
-  VK feed nfhStrength vulkan_terrain_island.{h:130,cpp:363,2571}, gos_terrain_lod_chunk.cpp:1949),
+  VK feed nfhStrength vulkan_terrain_island.{h:130,cpp:363,2571}, GameOS/gameos/gos_terrain_lod_chunk_draw.cpp:46),
   gos_Set/GetTerrainNormalsFromHeightStrength, terrain_nfh_strength_, the NfH strength UI slider,
   the R32F height texture + terrainHeightTex/terrainHeightParams uniforms + computeTerrainNormalFromHeight()
   (gos_terrain.frag still uses them for debug mode 10 :488-500 and the shadowN path :938-940),
-  mclib/terrain.cpp:775 gos_uploadTerrainHeightTex (unconditional), MC2_TERRAIN_HEIGHT_RESAMPLE_FACTOR,
+  mclib/terrain_init.cpp:157 gos_uploadTerrainHeightTex (unconditional), MC2_TERRAIN_HEIGHT_RESAMPLE_FACTOR,
   MC2_TERRAIN_CLIFF_SHADOW_FLOOR, MC2_TERRAIN_AMBIENT_FLOOR (default ON), gos_TerrainAmbientDayGate().
 * Follow-up candidate (NOT in this patch): after NFH-gate removal the R32F height texture is consumed only
   by gos_terrain.frag (legacy, MC2_TERRAIN_LOD_CHUNK=0, "vestigial") debug mode 10 + shadowN. Ask owner
@@ -115,7 +116,7 @@ docs
 * GraphicsOptionsWindow.cpp:550-552 comment; 556-570 delete `nfhGateOn` status block; 602 tooltip line `"Only effective when MC2_TERRAIN_NORMALS_FROM_HEIGHT=1."` -> "Scales the macro-slope tilt on the chunk terrain path.";
   605-607 delete `if (!nfhGateOn) TextDisabled(...)`. KEEP height-tex readout/resample combo/NfH strength slider (strength still drives live chunk path).
 * RendererFeatureRegistry.h: enum 135-137 (TerrainNormalsFromHeight =23) + table 514-521.
-* mclib/terrain.cpp:775 comment reword only (no code change).
+* mclib/terrain_init.cpp:157 comment reword only (no code change).
 * debt file line 68 (see above); capture_baseline.py:78-79; smoke matrix (above); tools/shader_reflect goldens (section 3).
 * Docs: tier1_env_vars.md:772, docs/VISUAL-CAPTURE-MATRIX-1-DESIGN.md:49, render-pipeline-map.md:99 (that file wrongly says NFH is ON; registry/reader are OFF).
 * ADVERSARIAL: debug mode 10 and the legacy shadowN path still need the height texture: do NOT stop uploading it.
@@ -159,14 +160,14 @@ ADVERSARIAL: none in data/mods/scripts. GL_MAX_TESS_GEN_LEVEL / tess-capable GL 
 * gos_terrain_lod_chunk.cpp:918-932 delete `mc2TerrainConcreteDetailNormalEnabled()` (keep the `extern gos_GetTerrainMatNormalBoost` at 918 - used at 2777).
 * 2786-2804: replace `if (!mc2TerrainConcreteDetailNormalEnabled()) nb[3] = 0.0f;` with unconditional `nb[3] = 0.0f;  // concrete detail normal permanently off (user ruling 2026-07-26)`; trim the long comment 2789-2803 to 3 lines.
   This keeps the shader byte-identical (zero multiplier) - Phase 1.
-* Phase 2 (optional, perf only, same pixels): terrain_lod_chunk.frag:1494-1498 delete `if (pureConcrete > 0.001) {...textureGrad(matNormalArray...MAT_LAYER_PAINTED_CONC...)}` and :796-799 `if (w.w > 0.01) {...dN += w.w * matNormalBoost.w ...}` (both multiply by the now-zero .w). Needs a visual diff; skip if the dead-uniform `matNormalBoost.w` slider (GraphicsOptionsWindow.cpp:421-446 `s_boostConcrete`) is wanted for the legacy gos_terrain.frag path, which still uses the real value (gameos_graphics.cpp:7453/7604 upload terrain_mat_normal_boost_ unforced).
+* Phase 2 (optional, perf only, same pixels): terrain_lod_chunk.frag:1494-1498 delete `if (pureConcrete > 0.001) {...textureGrad(matNormalArray...MAT_LAYER_PAINTED_CONC...)}` and :796-799 `if (w.w > 0.01) {...dN += w.w * matNormalBoost.w ...}` (both multiply by the now-zero .w). Needs a visual diff; skip if the dead-uniform `matNormalBoost.w` slider (GraphicsOptionsWindow.cpp:421-446 `s_boostConcrete`) is wanted for the legacy gos_terrain.frag path, which still uses the real value (GameOS/gameos/gameos_graphics_tparams.cpp:346/7604 upload terrain_mat_normal_boost_ unforced).
 * RendererFeatureRegistry.h:2789-2800 (comment + MC2_FEATURE_TERRAIN_CONCRETE_DETAIL_NORMAL row, kAuxEnvVars).
 * scripts/run_smoke.py:1796 delete string. docs/tier1_env_vars.md:867.
 * ADVERSARIAL: GL-chunk only; VK terrain has no matNormalBoost (grep clean). Installs with data/terrain_layers/ shipped (matNormalArray loads) are the only ones where the flag mattered; OFF stays the default for everyone.
 
 ### G7. MC2_PROP_LOD_SHADOW_CAST
 
-* mclib/bdactor.cpp:30-39 delete the comment + `s_propLodShadowCast` lambda.
+* mclib/bdactor_internal.h:22-31 delete the comment + `s_propLodShadowCast` lambda.
 * mclib/bdactor.cpp:8215-8242: replace
   `if (!s_propLodShadowCast) { GpuStaticPropRegistry::setRecipeNoShadow(regIdx, true); }` with the unconditional call; rewrite the stale-rationale comment (8205-8239) to a 4-line note pointing at .claude/SHADOW-DECISIONS-1-STATUS.md (the exclusion rationale is documented there as false but benefit undemonstrated; call kept intentionally).
   Keep setRecipeNoShadow (gos_static_prop_registry.{h:176,cpp:2035}) and `noShadow` (registry.cpp:281/651/2089): still used.
@@ -207,7 +208,7 @@ ADVERSARIAL: none in data/mods/scripts. GL_MAX_TESS_GEN_LEVEL / tess-capable GL 
 4. gameos_graphics.cpp: G1/G3 helper signature + 3 call sites + loc structs + accessors + gos_* wrappers.
 5. visual_tuning_profile.cpp + data/visual_tuning.json.
 6. GraphicsOptionsWindow.cpp UI + debug-mode row.
-7. mclib/bdactor.cpp (G7), mclib/terrain.cpp:775 comment.
+7. mclib/bdactor.cpp (G7), mclib/terrain_init.cpp:157 comment.
 8. RendererFeatureRegistry.h (enum + table + aux rows), single pass.
 9. scripts: registered-gate-passthrough-debt.txt, run_smoke.py (5 spots: NIGHT 1750-1755, CONCRETE 1796, PROP_LOD 1851-1855, CLIFF 2905-2910; leave CONTROLMAP_FILE/OVERLAY_V2_FILE), capture_baseline.py, check-lighting-divergence.py, tests/smoke/matrices/terrain.json.
 10. Docs: tier1_env_vars.md, visual-tuning-profiles.md, lighting-divergence-map.md, trackv doc, render-pipeline-map.md, VISUAL-CAPTURE-MATRIX-1-DESIGN.md.

@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # beauty_sidecars check failure: diagnosis
 
 Command (scripts/check-contracts.sh:1156): `py -3 scripts/check-beauty-sidecars.py --no-lanes --quiet` (exit 2).

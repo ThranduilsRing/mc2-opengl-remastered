@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # Scout: tracked docs/ and .claude/ markdown classification
 
 Scope: `git ls-files 'docs/*.md' 'docs/**/*.md' '.claude/*.md' '.claude/**/*.md'` on branch `claude/nifty-mendeleev` (549 files, all present on disk). Read-only scout; nothing moved, edited or deleted.

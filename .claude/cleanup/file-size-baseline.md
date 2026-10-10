@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # File-size baseline (physical lines, owned dirs)
 
 Frozen by `tools/file_size_ratchet.py --write-baseline` at HEAD `a9fd72350`; enforced by the `file_size_ratchet` row in `scripts/check-contracts.sh`. Counts are physical lines (blank and comment lines included): the metric is the read cost of opening a file. Soft target for owned files is 800-1500 lines; the ratchet only stops the numbers rising.

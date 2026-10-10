@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # G1a typed gate registry — Opus adversarial review (2026-10-10, at 354c0071e; ACCEPT-WITH-FIX, G1b not blocked)
 
 Condensed by the orchestrator from the reviewer's report. Line refs are the G1a versions of the files.
@@ -12,7 +13,7 @@ Hot reader API and parse rules are sound for the rows G1b touches (Bool legacy r
 - Truthiness per input class matches design §2, `gate_idioms._RULE_BITS` and `test_gate` vectors for Std/Presence/Exact1/Lead1/Lead0Kill/Lead0/NonEmpty/Is01/Tri. Whole-string Int parse rejects `" 1"`, `"1 "`, `"+1"`, `"1.0"` (default + badvalue); Float `"1e999"` → default + badvalue; `range=Reject` really falls back to default.
 - Table: constexpr, `static_assert` sorted/unique/`rowIsSane`/index cross-check; 1155 one-line rows; all 1124 call-passed names present.
 - Compiler-sourced truth for the index: `gate_dump` emits the compiled table; contracts row runs `gate_gen --check --rebuild`. yaml/registry shim still regex-derived (G2).
-- Hooks: `markMainEntered` `gameosmain.cpp:1019`, `invalidateAll` `:1158` (after launcher_env loop), `dumpConfig` `:1194`; editor, ModPicker, 3 harness mains, dev shell done. `invalidateAll` snapshots pre-main slots before wiping.
+- Hooks: `markMainEntered` `GameOS/gameos/gameosmain.cpp:1015`, `invalidateAll` `:1158` (after launcher_env loop), `dumpConfig` `:1194`; editor, ModPicker, 3 harness mains, dev shell done. `invalidateAll` snapshots pre-main slots before wiping.
 - LG19 regex covers std::/::getenv, `_wgetenv`, `GetEnvironmentVariable[AW]`, `_dupenv_s`, `getenv_s`, `_environ`, `SDL_getenv`, non-literal `getenv(name)`; baseline 1391 honest (six `MC2_ABL_TRACE` stub reads deleted in 1dd468eed).
 - STATIC lib; C++20 floor enforced by `check-cxx-standard-floor.py`.
 

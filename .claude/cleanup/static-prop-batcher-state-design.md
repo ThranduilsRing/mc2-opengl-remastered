@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # gos_static_prop_batcher split: shared state and initialisation order (2026-10-10)
 
 Decision: pieces are contiguous slices of the old file, in file order, and the build lists them in that order. No state struct:

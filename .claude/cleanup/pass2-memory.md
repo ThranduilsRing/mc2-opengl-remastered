@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # Pass 2 memory audit (report-only)
 
 Coverage: 395 memory files linked from INDEX-MECH, INDEX-BUILD*, INDEX-MISSION-DATA, INDEX-SMOKE-TEST, INDEX-PROCESS* (8 index files). Checks run mechanically over full text by script; no memory files were edited.
@@ -282,7 +283,7 @@ Caveat: 'worktree/lane' matches include generic words; obsolete = worktree/lane 
 | mech_hud_icon_atlas_cveg.md | missing path | 1/4 missing, e.g. data/art/asset_sizes.c |
 | mech_hud_icon_atlas_cveg.md | worktree/lane/lease ref | 1 lines, e.g. "worktree, NOT `A:/Games/mc2-opengl-src` root — edits to root do nothing (root CLAUDE.md" |
 | mech_hud_icon_atlas_cveg.md | OPEN/TODO/unfixed claim | 1 lines, e.g. "**OPEN follow-up:** weapon descriptor strings show `<missing-string:legacyId:>` /" |
-| mech_paint_and_mipmap_system.md | OPEN/TODO/unfixed claim | 1 lines, e.g. "**Paint-instance cache key collision bug (still present, unfixed):** `mclib/mech3d.cpp:1807-1810` hashes paint" |
+| mech_paint_and_mipmap_system.md | OPEN/TODO/unfixed claim | 1 lines, e.g. "**Paint-instance cache key collision bug (still present, unfixed):** `mclib/mech3d_init.cpp:399-402` hashes paint" |
 | mech_vehicle_gpu_pull_in.md | missing path | 1/3 missing, e.g. mech.vert/mech.frag |
 | mech_vehicle_gpu_pull_in.md | missing MC2_ name | MC2_GV_SHADOW_SKIP |
 | mechlab-mods-ferro-jumpjets-weapons-engines.md | missing path | 2/3 missing, e.g. mods/magic-ballistic-weapons/data/objects/compbas.c, scripts/cook_magic_icons.py |

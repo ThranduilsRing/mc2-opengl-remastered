@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Seam 2: single source of truth for C++/GLSL mirrored structs
 
 ## Decision: (b) C++ header is source; Python generator emits committed .hglsl plus C++ layout asserts
@@ -28,7 +29,7 @@ The hash covers the flattened (#include-expanded) source. Replacing an inline st
 - Unknown type or annotation = exit 2 (matches the existing UNKNOWN-TYPE policy).
 
 ## Migration order (all mirror locations)
-1. GpuStaticPropInstance 112B (slice 1). C++: GameOS/gameos/gos_static_prop_batcher.h:28. C++ mirrors: GameOS/gameos/vulkan_color_prop_island.cpp:205, GameOS/gameos/vulkan_shadow_island_live.cpp:205. GLSL: shaders/static_prop.vert:33, shaders/shadow_static_prop.vert:19, shaders/vulkan/color_prop_tier1.vert:100, shaders/vulkan/shadow_prop.vert:50. Consumers: GameAdapters/StaticPropRenderAdapter.cpp:39-47, gos_static_prop_batcher.cpp:9478-9566, tools/material_cook/reflect_expected_layout.md.
+1. GpuStaticPropInstance 112B (slice 1). C++: GameOS/gameos/gos_static_prop_batcher.h:28. C++ mirrors: GameOS/gameos/vulkan_color_prop_island.cpp:205, GameOS/gameos/vulkan_shadow_island_live.cpp:205. GLSL: shaders/static_prop.vert:33, shaders/shadow_static_prop.vert:19, shaders/vulkan/color_prop_tier1.vert:100, shaders/vulkan/shadow_prop.vert:50. Consumers: GameAdapters/StaticPropRenderAdapter.cpp:39-47, GameOS/gameos/gos_static_prop_batcher_shadow.cpp:509-597, tools/material_cook/reflect_expected_layout.md.
 2. PerDrawEntry 32B: gos_static_prop_batcher.h:59; shaders/static_prop.frag:90; shaders/static_prop_depth.frag:41.
 3. GpuMechInstance 64B: gos_mech_batcher.h (~35-56); shaders/mech.vert:49; shaders/vulkan/mech_tier1.vert:46; shaders/shadow_mech.vert.
 4. MaterialGpu: shaders/include/material_gpu.hglsl:46 plus the RenderCore C++ struct. Flip to generated and retire check-material-gpu-mirror.sh.

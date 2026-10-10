@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # check-contracts rows and lane/lease machinery: single-lane cleanup plan
 
 Read-only analysis (no builds, launches or check runs). Classification is from the row names, the wiring comments and script headers. Rows marked "candidate" were not diffed line by line.

@@ -1,9 +1,10 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Logging facade plan (C++23, MSVC 14.44). Design only, nothing built.
 
 ## Amendments (adversarial review 2026-10-09)
 Source: `.claude/cleanup/seam-plans-adversarial.md`, "Logging". These override the sections below where they conflict.
 
-- **A1 LG12 split.** LG12a = printf-style logging (fprintf/printf to stdout/stderr, log_info family): the facade target; reaches 0 via MC2_LOG/MC2_EVENT, allow-list only for crash/signal handlers and facade internals. LG12b = sprintf/snprintf/vsnprintf buffer formatting (R_PRINTF, cxx17_ratchet.py:116): migrates to `std::format_to`/`std::format_to_n`, NOT the logger; tracked as its own ratchet line. The 2704 figure is LG12a+LG12b combined; report them separately.
+- **A1 LG12 split.** LG12a = printf-style logging (fprintf/printf to stdout/stderr, log_info family): the facade target; reaches 0 via MC2_LOG/MC2_EVENT, allow-list only for crash/signal handlers and facade internals. LG12b = sprintf/snprintf/vsnprintf buffer formatting (R_PRINTF, tools/cxx17_ratchet/cxx17_ratchet.py:86): migrates to `std::format_to`/`std::format_to_n`, NOT the logger; tracked as its own ratchet line. The 2704 figure is LG12a+LG12b combined; report them separately.
 - **A2 constinit defaults.** Thresholds and event-enable flags are `constinit` with explicit legacy defaults (MC2_LOG-unset semantics). No dynamic initialisation, so logging before `main` (static init, DLLs) is safe. `init()` only overrides.
 - **A3 MC2_LOG parse ordering.** Spec parse runs BEFORE the NUL redirect at gameosmain.cpp:1145-1175; stream liveness is decided from the parsed result. `MC2_LOG=1` keeps legacy meaning exactly (all streams live, all legacy events on). Unset = unchanged NUL redirect. A value containing `:` or `=` is a spec and implies live streams.
 - **A4 runtime format strings.** SPEW-style and data-supplied templates use `std::vformat` inside `try/catch (std::format_error&)`. On error emit the raw template plus a one-line `[LOG FORMAT ERROR]` marker. The facade never throws. Only compile-time literals use `std::format_string`.

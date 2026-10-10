@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Giant-file split plan (read-only survey; nothing built or edited)
 
 Method: top-level function/banner outline via grep; line counts are approximate (`~`) where a region was sized from boundaries, not read line by line. Re-verify boundaries before cutting. Line numbers are current as of 2026-10-08.
@@ -298,7 +299,7 @@ Estimated churn: high relative to the others. It is mostly blocked on the `gosRe
 3. `txmmgr_diag.cpp` (~450): RDTSC / audit / bounds / census.
 4. `txmmgr.cpp` (~3500): lifecycle, `addRenderShape`, `renderLists`.
 
-Splitting `renderLists` itself needs refactoring of the function into phase helpers (there is a local `bSkip` static spanning phases at line 3225). It is not a file move, so defer it. Churn: medium. Also an easy de-dup win: `isAllConcreteTerrainBatch` exists in both `txmmgr.cpp:529` and `gameos_graphics.cpp:160`. Check that they are equivalent and share via a header.
+Splitting `renderLists` itself needs refactoring of the function into phase helpers (there is a local `bSkip` static spanning phases at line 3225). It is not a file move, so defer it. Churn: medium. Also an easy de-dup win: `isAllConcreteTerrainBatch` exists in both `mclib/txmmgr_render.cpp:70` and `GameOS/gameos/gameos_graphics.cpp:13`. Check that they are equivalent and share via a header.
 
 ---
 
@@ -362,7 +363,7 @@ Counts: 1675 comment lines (483 banner, 2 stale refs); getenv 5 lines / 5 gates;
 | 9332-9796 | speeds, `getTotalEffectiveness`, `CopyTo`/`Load`/`repairAll` | 465 |
 
 Split (10 files): `mech_tables.cpp` (1-517 data only, ~330 after externs move to the header), `mech_type.cpp` (518-1224), `mech_loadout.cpp` (`resetComponents` + `init(variant)`, 1575-2993, ~1420), `mech_init.cpp` (1225-1574 + `init(FitIni)`/`write`, ~1090), `mech_move.cpp` (4153-5232, ~1080), `mech_move_net.cpp` (5233-5866, ~630), `mech_update.cpp` (5867-7230, ~1365), `mech_damage.cpp` (7231-8346, ~1115), `mech_weapons.cpp` (8347-9331, ~985), core `mech.cpp` (heat/status 3742-4152 + 9332-9796 + ctor bits, ~900).
-Shared state / header: `mech_internal.h` = include bundle (the 37 includes at the top) + the extern table block + an inline `mech_gpuCullLifecycle()` accessor. The same `MC2_GPU_CULL_LIFECYCLE` read is duplicated at mech.cpp:146, mech3d.cpp:73 and objmgr.cpp: de-dup it here. Tables are non-static globals already, so no visibility change; `logisticsTable` (2266, used 2376/2800) stays with `mech_loadout.cpp`.
+Shared state / header: `mech_internal.h` = include bundle (the 37 includes at the top) + the extern table block + an inline `mech_gpuCullLifecycle()` accessor. The same `MC2_GPU_CULL_LIFECYCLE` read is duplicated at mech.cpp:146, mclib/mech3d_internal.h:59 and objmgr.cpp: de-dup it here. Tables are non-static globals already, so no visibility change; `logisticsTable` (2266, used 2376/2800) stays with `mech_loadout.cpp`.
 Surface that must not change: all `BattleMech`/`BattleMechType` members (mech.h, 22 includers); tables extern'd from gameobj.cpp, gvehicl.cpp, mover.cpp, warrior.cpp (`MechClassWeights`, `MechHitSectionTable`, `RankVersusChassisCombatModifier`, `tonnageTurnRate`...).
 Risks: (1) four contract scripts read this file by path and must learn the new names in the same commit: `check-mover-registry-coherence.sh` (17 refs: S1a `setOnGUI` count, S2 `addMover(this)` within 10 lines above `setOnGUI(true)`, S5 `if (!isOnGUI())` gate, plus revert-simulations that `sed` the file), `check-order-gate-coverage.py` (`MECH` const; `fireWeapon` must keep the `FIREGATE-REGION-END` sentinel at 8502 and every `return` before it needs `fireGateTrace(` within 4 lines, so `fireGateTrace` and `fireWeapon` MUST land in the same file), `checklib.py` (commented-out `return(4)` and the `//****` phantom-block lexer trap), `.claude/maintenance-rules.json`. (2) comments in `tools/mc2_modlint/modlint_variant_csv.h` cite `code/mech.cpp:1718`. (3) The link-up latch lives inside `update`; keep `update` and `setControl` in one file or point S2/S5 at both. (4) Mid-file macros `JUMPJET_SLOT/SENSOR_SLOT/ELECTRONIC_SLOT/WEAPONAMMO_SLOT` (2341-2344) are used only by `resetComponents`; `ARMOR_*` (301-312) by `init(variant)`.
 First cut: `mech_weapons.cpp` = 8347-9331 (`fireGateTrace`, `fireWeapon`, `handleWeaponFire`; ~985 lines). Update `check-order-gate-coverage.py` `MECH` to the new path in the same commit. Delete the 170 dead `#if 0` lines first.

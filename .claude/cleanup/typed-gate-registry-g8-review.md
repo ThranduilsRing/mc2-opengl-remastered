@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # G8 (GameOS tail + checker deletions + harness fixes) — Opus adversarial review (2026-10-11; ACCEPT-WITH-FIX; gate code safe, fixes in harness/checker layer)
 
 Condensed by the orchestrator. Read-only over committed objects (c6e40308a..9540b1d0f, a82cad316, e08429c08, 602362d63); no builds, no checkers run.

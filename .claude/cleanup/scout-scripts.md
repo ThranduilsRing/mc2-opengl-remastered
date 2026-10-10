@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # Scout: scripts/ and tools/ (top level + scripts/smoke_lib) classification
 
 Scope: `git ls-files` of `scripts/*`, `scripts/smoke_lib/*`, `tools/*` (top level only). 305 files. Read-only scout; nothing edited, built, or run.

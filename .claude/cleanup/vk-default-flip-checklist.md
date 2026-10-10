@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # VK default-flip checklist (recon, read-only, 2026-10-08)
 
 ## 1. Letterbox bars under VK
@@ -5,11 +6,11 @@
 - They are NOT drawn after endScene: they are an in-scene immediate draw, and the block never sets gos_State_IsHUD.
   (compare gamecam.cpp:736/740 which wraps the gosFX flush in IsHUD 1/0).
 - Under VK the scene color is VK-owned (shared GBuffer). Un-flagged GL quads land in the GL scene FBO that VK discards.
-  Only IsHUD draws are buffered (gameos_graphics.cpp:6471 drawTris, flushHUDBatch :8234) and queued to the VK present tail
+  Only IsHUD draws are buffered (GameOS/gameos/gameos_graphics_draw.cpp:927 drawTris, flushHUDBatch :8234) and queued to the VK present tail
   (queueHudVulkanFrame gameos_graphics.cpp:8644 -> engine_present_vk.cpp:2116, drawn :1640-1700).
   The tail's color-tri pipe handles AlphaInvAlpha untextured quads (vkHudDrawRepresentable :8199 returns true) -> fix is feasible.
 - Separate, unrelated: FORCE-43 / OOB-letterbox composite clear+viewport is GL-only (gos_postprocess.cpp:4873-4915,
-  gos_Compute43Box gameos_graphics.cpp:9301). Grep finds no VK equivalent in engine_present_vk.cpp -> FORCE_43 pillarbox under VK is UNVERIFIED/likely missing.
+  gos_Compute43Box GameOS/gameos/gameos_graphics_hud.cpp:955). Grep finds no VK equivalent in engine_present_vk.cpp -> FORCE_43 pillarbox under VK is UNVERIFIED/likely missing.
 - Fix sketch: in gamecam.cpp wrap both quad blocks (bars, fade) with gos_SetRenderState(gos_State_IsHUD,1) ... (0), gated
   mc2vkgate::subGate("MC2_VK_VFX") like :736 so GL stays byte-identical. Check z=0.00001/rhw state survives HUD projection remap.
   Verify: ab.py on a mission with a movie-mode intro (mc2_10), frame ~100 with MC2_VISUAL_CAPTURE_CLEAN unset; bars must be opaque black top+bottom.

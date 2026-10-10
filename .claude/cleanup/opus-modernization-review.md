@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # Adversarial strategic review: modernization / hardening program (2026-10-09)
 
 Read-only. Nothing was built or launched; the writer agent owns build64. Inputs: memory (cpp23 goal, full-modernization, small-files,

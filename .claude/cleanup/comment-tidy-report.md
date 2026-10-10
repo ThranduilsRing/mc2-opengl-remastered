@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # comment-tidy report (report-only run)
 
 Tool: `tools/comment_tidy/comment_tidy.py` (README alongside; tests: `test_comment_tidy.py`, 9 pass).
@@ -28,10 +29,10 @@ Run: 2025 files in owned dirs, 2680 findings, ~10 s. No source file was modified
 ### CT002 (235)
 - `tools/mod_install/parity_smoke.py:199` path data/tgl/foo.ini does not exist -- `records (e.g. "data/tgl/foo.ini") while the resolver emits absolute`
 - `scripts/check-vfx-no-objectid.sh:21` path docs/superpowers/specs/2026-05-24-renderworld-slice-m3-m4-m5-resolutions.md -- `Resolutions: docs/superpowers/specs/2026-05-24-renderworld-slice-m3-m4-m5-resolutions.md (Q1 confirms)`
-- `GameOS/gameos/gameos_graphics.cpp:7698` path memory/terrain_mvp_gl_false.md does not exist -- `GL_FALSE is correct for terrainMVP (memory/terrain_mvp_gl_false.md) —`
+- `GameOS/gameos/gameos_graphics_draw.cpp:1158` path memory/terrain_mvp_gl_false.md does not exist -- `GL_FALSE is correct for terrainMVP (memory/terrain_mvp_gl_false.md) —`
 
 ### CT003 (1409)
-- `code/missiongui.cpp:1523` line-number ref objmgr.cpp:1348-1360 will rot -- `arrays -- objmgr.cpp:1348-1360 increments numTerrainObjects /`
+- `code/missiongui_update.cpp:777` line-number ref code/objmgr_io.cpp:116-128 will rot -- `arrays -- code/objmgr_io.cpp:116-128 increments numTerrainObjects /`
 - `GameOS/gameos/gos_terrain_lod_chunk.cpp:386` line-number ref GpuBufferOwner.h:15 will rot -- `(the "LATER slice" flagged in GpuBufferOwner.h:15). The wrapper's ops mirror`
 - `shaders/gos_terrain_lighting.comp:227` line-number ref quad.cpp:1317-1320 will rot -- `quad.cpp:1317-1320: lightning`
 
@@ -40,7 +41,7 @@ Run: 2025 files in owned dirs, 2680 findings, ~10 s. No source file was modified
 ### CT005 (88)
 - `RenderCore/frame_executor.h:12` function _validation_failures() not found in code -- `extern "C" mc2_framegraph_executor_owned_passes() / _validation_failures().`
 - `GameOS/gameos/gl_state_guard.h:151` function endXxxPass() not found in code -- `change clip semantics, or defensively in endXxxPass() to re-assert the scene`
-- `code/missiongui.cpp:1430` function ForCapture() not found in code -- `ForCapture() deliberately clears lookTargetObject.`
+- `code/missiongui_update.cpp:688` function ForCapture() not found in code -- `ForCapture() deliberately clears lookTargetObject.`
 
 ### CT006 (330)
 - `code/warrior.cpp:1379` 5 consecutive lines look like commented-out code -- `moveOrders[which].zone.angle[0] = 45.0;`
@@ -54,12 +55,12 @@ Run: 2025 files in owned dirs, 2680 findings, ~10 s. No source file was modified
 
 ### CT008 (92)
 - `GameOS/src/platform_winuser.cpp:14` TODO untouched for 3671d (since 2016-09-19) -- `TODO: implememt`
-- `mclib/tgl.cpp:3475` FIXME untouched for 3192d (since 2018-01-12) -- `FIXME: this is not correct if model has more than 1 texture!`
+- `mclib/tgl_render.cpp:376` FIXME untouched for 3192d (since 2018-01-12) -- `FIXME: this is not correct if model has more than 1 texture!`
 - `code/team.cpp:1069` HACK untouched for 3671d (since 2016-09-19) -- `TILE HACK...`
 
 ### CT009 (401)
 - `RenderCore/render_state_desc.h:204` worktree/lane-era reference 'lane' -- `the representative PipelineId is Invalid, but the lane does route applyPipeline).`
-- `GameOS/gameos/gos_static_prop_batcher.cpp:884` worktree/lane-era reference 'lane' -- `this lane: "edge light is just doing the wrong thing entirely. the actual`
+- `GameOS/gameos/gos_static_prop_batcher_state.cpp:110` worktree/lane-era reference 'lane' -- `this lane: "edge light is just doing the wrong thing entirely. the actual`
 - `mclib/terrain.h:387` worktree/lane-era reference 'lane' -- `build+upload at terrain.cpp ttype[] loop. Additive editor-lane helper.`
 
 ### CT010 (58)

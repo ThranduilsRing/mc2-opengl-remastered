@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # Disk scout: untracked and ignored content in A:/Games/mc2-main
 
 Scan date: 2026-10-07. Read-only scout. Nothing was deleted, moved, built, or committed.

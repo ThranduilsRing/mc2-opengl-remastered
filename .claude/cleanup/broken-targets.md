@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # Broken build targets (from build_logs/cxx23_probe*.out)
 
 Read-only audit. No builds run, no sources edited.
@@ -6,7 +7,7 @@ Read-only audit. No builds run, no sources edited.
 
 | Target | Error | Cause | Proposed fix | Effort |
 |---|---|---|---|---|
-| editor (EditRel) | C2084 `mc2_save_camera_bookmark` already has a body (editor/EditorGameOS.cpp:244 vs :226) | Two identical `extern "C"` no-op stubs added in the same file (same commit 560dfc1d). Second block at lines ~233-250 is a duplicate. | Delete the second definition and its comment block. | S (minutes) |
+| editor (EditRel) | C2084 `mc2_save_camera_bookmark` already has a body (editor/EditorGameOS.cpp:226 vs :226) | Two identical `extern "C"` no-op stubs added in the same file (same commit 560dfc1d). Second block at lines ~233-250 is a duplicate. | Delete the second definition and its comment block. | S (minutes) |
 | editor (EditRel) | C2665 `Unit::save` no overload (editor/EditorObjects.cpp:407, :411) | Declared `bool save(FitIniFile*, int, int, char* objectProfile)` (editor/EditorObjects.h:310) but called with string literals (`const char[9]`), which cannot convert to `char*`. | Change the parameter (header + definition) to `const char*`. | S |
 | text_tool | 165 unresolved externals (LNK2001/2019) | Links `gameos` static lib, which pulls game-layer globals/functions (`eye`, `land`, `Terrain::*` statics, `gamePaused`, `quitGame`, `mc2FreezeMoversActive`, `mc2VisualCaptureSetPaused`, `mc2_*_collect_witness`, ImGui/GuiRuntime, `TexResolveTable`, `Camera::*`). Those are defined in code/, mclib/, editor/ TUs not in its link set. CMake comment in data_tools/CMakeLists.txt documents the same class of problem. | Either mirror the data_tools link closure plus a stub TU (165 symbols: large), or set EXCLUDE_FROM_ALL. | L |
 | mc2_asset_viewer | 9 unresolved (`mc2FullBakeDiagEnabled`, `cone_geom_hidden_by_alpha`, `g_txmmgr_vertex_block_exhausted`, `g_txmmgr_add_vertices_overflow_prevented`, `g_mechPreviewRenderDepth`, `g_txmmgrBoundsTrace`, `g_staticPropAlphaGeneration`, `g_fbDiagPtSpotZeroDir`, `g_fbDiagPtSpotConsumed`) | Hand-curated source list in tools/asset_viewer/CMakeLists.txt includes mclib/tgl.cpp and msl.cpp but not the TUs defining these: mclib/bdactor.cpp, mclib/cone_glow.cpp, mclib/txmmgr.cpp, GameOS/gameos/gos_static_prop_batcher.cpp. | Add the defining TUs to the source list (check transitive deps), or add a small stub TU. | M |

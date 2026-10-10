@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # G7 code/ family — Opus adversarial review (2026-10-10, f722b0886..4614a8cd6; ACCEPT-WITH-FIX; no code regression, no lost lambda logic)
 
 Condensed by the orchestrator. Reviewer read every −/+ line of all 60 batch commits plus the seven lead files in full, ran `check-gate-default-agreement` (selftest 33/33, 236 checked) and probed `check-gate-echo-reads` on a `git archive` of 4614a8cd6. No builds/launches.

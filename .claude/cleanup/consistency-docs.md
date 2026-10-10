@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # Docs vs code consistency audit (2026-10-09, read-only)
 
 Method: parsed RenderCore/RendererFeatureRegistry.h with scripts/registry_parse.py (361 env-var rows: Feature 60 ON / 142 OFF, Trace 3/153, Retired 1/2), grepped all docs/*.md, docs/*/*.md, CLAUDE.md, AGENTS.md, .claude/*.md for "MC2_X ... ON/OFF" claims, compared to registry and to the getenv reader. Ran scripts/check-gate-default-agreement.py (green: 229 agree, 0 disagree - but it only checks registry vs reader vs docs/tier1_env_vars.md + in-source comments, NOT other docs), scripts/check-flag-registry-drift.sh (STALE), scripts/check-doc-links.py (0 broken in live docs).
@@ -17,15 +18,15 @@ Ranking: P1 = an agent will act on a false default; P2 = wastes time; P3 = cosme
 | MC2_GPU_PARTICLES | OFF; unset => disabled. NOT in registry (allowlisted check-env-registry.sh:292 "promote-to-registry") | mclib/particles/batcher.cpp:80-90 |
 | MC2_VFX_ORACLE_RENDER | OFF (`v && v[0]=='1'`); registry false | batcher.cpp:137-141 (comment at 127-133 above it is ALSO stale: says "flipped to default-ON", "Kill-switch =0") ; Registry.h:549-552 |
 | MC2_TERRAIN_NORMALS_FROM_HEIGHT | OFF | Registry.h:516-520; tier1_env_vars.md:772 |
-| MC2_SMART_LOAD | ON (`!v => true`) | code/logisticsdata.cpp:44-49; Registry.h ~3423 true |
-| MC2_SHADOW_STATIC_BANDFIX_V2 | ON, `=0` kills (unregistered) | GameOS/gameos/gameos_graphics.cpp:261-265 |
+| MC2_SMART_LOAD | ON (`!v => true`) | code/logisticsdata_init.cpp:7-12; Registry.h ~3423 true |
+| MC2_SHADOW_STATIC_BANDFIX_V2 | ON, `=0` kills (unregistered) | GameOS/gameos/gameos_graphics_material_internal.h:266-270 |
 | MC2_SHADOW_CSM, MC2_SHADOW_DYNAMIC_PROP_CASTERS, MC2_TERRAIN_LOD_CHUNK, MC2_COLORMAP_KTX2 | ON | registry |
 | MC2_VFX_SOFT/LIT_PARTICLES, MC2_TERRAIN_LIGHTING_V1/V2, MC2_VK_VFX, MC2_VK_SHARED_GBUFFER | OFF | registry |
 
 ## 2. Findings by file (batchable fixes)
 
 ### docs/render-pipeline-map.md (P1, most-read doc)
-- L99: `MC2_TERRAIN_NORMALS_FROM_HEIGHT` (ON) -> (OFF). Also `MC2_TERRAIN_INDIRECT`/`SOLID_NARROW` are unregistered; reader gos_terrain_indirect.cpp:106 - leave ON only if verified.
+- L99: `MC2_TERRAIN_NORMALS_FROM_HEIGHT` (ON) -> (OFF). Also `MC2_TERRAIN_INDIRECT`/`SOLID_NARROW` are unregistered; reader GameOS/gameos/gos_terrain_indirect_internal.h:108 - leave ON only if verified.
 - L260: "**Status: GPU particle pipeline is DEFAULT** (`MC2_GPU_PARTICLES` ON)" -> "GPU particle pipeline is OPT-IN (`MC2_GPU_PARTICLES=1`); default is legacy CPU/MLR (reverted 2026-06-15 4ad31a9e)".
 - L287: `MC2_GPU_PARTICLES` (ON), `MC2_VFX_ORACLE_RENDER` (ON) -> both (OFF).
 
@@ -42,7 +43,7 @@ Ranking: P1 = an agent will act on a false default; P2 = wastes time; P3 = cosme
 - L127-133: comment says default-ON/Kill-switch; code at 137-141 is opt-in. Fix comment to "Default OFF; =1 enables (reverted)".
 
 ### docs/active_campaigns.md
-- L146: "Gate `MC2_SMART_LOAD=1` default OFF" -> "default ON (`=0` restores eager init); reader code/logisticsdata.cpp:44-49". P1 (wrong direction).
+- L146: "Gate `MC2_SMART_LOAD=1` default OFF" -> "default ON (`=0` restores eager init); reader code/logisticsdata_init.cpp:7-12". P1 (wrong direction).
 - L227: "Kill-switch MC2_STATIC_PROP_LIVE_BUILDER=1" - registry lists default false (consistent: =1 re-enables old live builder). OK, no change; just ambiguous wording "Kill-switch" -> "Re-enable switch".
 
 ### docs/engine-closure-audit.md
@@ -50,7 +51,7 @@ Ranking: P1 = an agent will act on a false default; P2 = wastes time; P3 = cosme
 
 ### docs/known_issues.md (CLAUDE.md-linked; file header L62-64 says "remove fixed ones outright, don't append FIXED")
 - L45: struck-through "Shadow stutter ... FIXED, stale entry" -> DELETE (dup of L74). L74 itself also "FIXED" -> DELETE (e9b9aea7 shipped 2026-05-16).
-- L46 and L75: duplicates; both say `MC2_SHADOW_STATIC_BANDFIX_V2` "default-OFF, awaiting user field check". Code gameos_graphics.cpp:261-265 is default ON (killswitch =0), docs/tier1_env_vars.md:244 agrees. Fix: delete L75, change L46 to "banding fixed by BANDFIX_V2 (default ON, =0 reverts)" or delete both.
+- L46 and L75: duplicates; both say `MC2_SHADOW_STATIC_BANDFIX_V2` "default-OFF, awaiting user field check". Code GameOS/gameos/gameos_graphics_material_internal.h:266-270 is default ON (killswitch =0), docs/tier1_env_vars.md:244 agrees. Fix: delete L75, change L46 to "banding fixed by BANDFIX_V2 (default ON, =0 reverts)" or delete both.
 - L47 + L88 (water shoreline z-fight): duplicate; L88 cites a memory file not in repo. Git evidence of fixes after the entry: 37557c8b6 WATER-BIAS-LINEARIZE-1 (2026-07-18, "far z-fight cure"), 8ab474091 WATER-FAR-BAND-ATTRIB-1, a8ea67265 SHORELINE-STAIRCASE-1, 3af9c6737/0e701f763 shore mode 3 (2026-10-09). Needs a user field check before delete; merge to one bullet "mitigated, see commits".
 - L48 + L121 (first-launch black terrain): L121 itself says NOT REPRODUCED (c5570f40d). Merge to one bullet, drop it from "Player-visible".
 - L49 + L136 (options 4K resolution): duplicate, L136 says MITIGATED by HUD-RES-CLAMP. Delete L49 (keep L136).

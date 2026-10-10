@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # Adversarial review: seam2 / logging / strangler (2026-10-09)
 
 ## Seam #2 (GPU structs)
