@@ -209,7 +209,7 @@ namespace gos_terrain_indirect { bool IsFrameSolidArmed(); }
 // MC2_GLSTATEGUARD_TERRAIN=0 reverts to the legacy hand-rolled save/restore
 // (kept verbatim, nothing deleted) — the A/B used to prove the guards are
 // pixel-neutral. Sampled once at process start.
-static bool glStateGuardTerrainEnabled() {
+bool glStateGuardTerrainEnabled() {
     static const bool on = mc2::gate::get<"MC2_GLSTATEGUARD_TERRAIN">();
     return on;
 }
@@ -226,15 +226,15 @@ static bool glStateGuardTerrainEnabled() {
 // throughout this file. The per-frame block reads these
 // instead of hitting getenv. Uniform VALUES uploaded are unchanged.
 // Resolved-once cached mirrors of the per-frame terrain-uniform env gates.
-const bool kTglcForceColor = mc2::gate::get<"MC2_TERRAIN_LOD_CHUNK_FORCE_COLOR">();
+extern const bool kTglcForceColor = mc2::gate::get<"MC2_TERRAIN_LOD_CHUNK_FORCE_COLOR">();
 // SHORELINE-GLOW-1: the two shoreline accessors are deliberately NOT in this
 // anonymous namespace -- mclib/terrain.cpp calls gos_TerrainShorelineGateOn()
 // too, so it needs external linkage. Defined at global scope further down,
 // next to gos_TerrainLodChunk_IsShorelineMaskActive(); declared in the header.
-const int kTglcDiag = mc2::gate::get<"MC2_TERRAIN_LOD_CHUNK_DIAG">();
-const bool  kTglcCementDiagConnect = mc2::gate::get<"MC2_TERRAIN_CEMENT_DIAG_CONNECT">();
+extern const int kTglcDiag = mc2::gate::get<"MC2_TERRAIN_LOD_CHUNK_DIAG">();
+extern const bool  kTglcCementDiagConnect = mc2::gate::get<"MC2_TERRAIN_CEMENT_DIAG_CONNECT">();
 // CEMENT-ATLAS-SEAM-1: default ON (killswitch MC2_CEMENT_ATLAS_SEAM_FIX=0).
-const bool kTglcCementAtlasSeamFix = mc2::gate::get<"MC2_CEMENT_ATLAS_SEAM_FIX">();
+extern const bool kTglcCementAtlasSeamFix = mc2::gate::get<"MC2_CEMENT_ATLAS_SEAM_FIX">();
 // NIGHT-LIGHT-POOLS-2: soft falloff tail (default ON; =0 exact legacy
 // GetFalloff linear ramp) + mover-light dim factor (default 0.5; 1.0 = off).
 extern const bool kTglcLightPoolSoft = mc2::gate::get<"MC2_LIGHT_POOL_SOFT">();
@@ -255,32 +255,32 @@ extern const bool kTglcLightPoolCompress = mc2::gate::get<"MC2_LIGHT_POOL_COMPRE
 // the ground beneath the body. Default 0.0 => uniform 0 => byte-identical
 // (mix() collapses, no darkening). Recommended ~0.7. MC2_MOVER_CONTACT_SHADOW.
 extern const float kTglcMoverContactShadow = mc2::gate::get<"MC2_MOVER_CONTACT_SHADOW">();
-const bool  kTglcSlopeBias         = mc2::gate::get<"MC2_TERRAIN_SLOPE_BIAS">();
-const float kTglcSlopeBiasStr      = mc2::gate::get<"MC2_TERRAIN_SLOPE_BIAS_STRENGTH">();   // row: default 1, > 0
-const bool  kTglcCliffTriplanar    = mc2::gate::get<"MC2_TERRAIN_CLIFF_TRIPLANAR">();
-const float kTglcCliffTriplanarStr = mc2::gate::get<"MC2_TERRAIN_CLIFF_TRIPLANAR_STRENGTH">();
+extern const bool  kTglcSlopeBias         = mc2::gate::get<"MC2_TERRAIN_SLOPE_BIAS">();
+extern const float kTglcSlopeBiasStr      = mc2::gate::get<"MC2_TERRAIN_SLOPE_BIAS_STRENGTH">();   // row: default 1, > 0
+extern const bool  kTglcCliffTriplanar    = mc2::gate::get<"MC2_TERRAIN_CLIFF_TRIPLANAR">();
+extern const float kTglcCliffTriplanarStr = mc2::gate::get<"MC2_TERRAIN_CLIFF_TRIPLANAR_STRENGTH">();
 // TERRAIN-CLIFF-HEIGHT-NORMAL-1: derive the cliff SHADING normal from the height
 // gradient of the cooked cliff displacement (mat5 layer-5 alpha) so the rich rock
 // relief actually catches light (the smooth marble rgb normal left it flat).
 // Trace knob MC2_TERRAIN_CLIFF_HEIGHT_NORMAL_STRENGTH, default 2.0; only consumed
 // inside the useTriplanarCliff frag block. Values <= 0 are rejected (the row is > 0) and use the default.
-const float kTglcCliffHeightNormalStr = mc2::gate::get<"MC2_TERRAIN_CLIFF_HEIGHT_NORMAL_STRENGTH">();
+extern const float kTglcCliffHeightNormalStr = mc2::gate::get<"MC2_TERRAIN_CLIFF_HEIGHT_NORMAL_STRENGTH">();
 // TERRAIN-CLIFF-POM-1: triplanar Parallax Occlusion Mapping on cliff faces.
 // Gate MC2_TERRAIN_CLIFF_POM (default OFF -> u_cliffPom.x=0 -> frag march skipped,
 // the triplanar block behaves exactly as TRIPLANAR-1). Depth (world-unit height
 // scale, default 12) via MC2_TERRAIN_CLIFF_POM_DEPTH; max march steps (clamp
 // 8..32, default 24) via MC2_TERRAIN_CLIFF_POM_STEPS.
-const bool  kTglcCliffPom          = mc2::gate::get<"MC2_TERRAIN_CLIFF_POM">();
-const float kTglcCliffPomDepth     = mc2::gate::get<"MC2_TERRAIN_CLIFF_POM_DEPTH">();
-const float kTglcCliffPomSteps     = []() {
+extern const bool  kTglcCliffPom          = mc2::gate::get<"MC2_TERRAIN_CLIFF_POM">();
+extern const float kTglcCliffPomDepth     = mc2::gate::get<"MC2_TERRAIN_CLIFF_POM_DEPTH">();
+extern const float kTglcCliffPomSteps     = []() {
     float s = mc2::gate::get<"MC2_TERRAIN_CLIFF_POM_STEPS">();
     if (s < 8.0f) s = 8.0f; if (s > 32.0f) s = 32.0f;
     return s;
 }();
 // TERRAIN-CLIFF-DEBUG: bounded debug-viz gate (default 0/off -> u_cliffDebug=0 ->
 // frag block skipped -> byte-identical). 1..4 select the debug output (see frag).
-const int kTglcCliffDebug = mc2::gate::get<"MC2_TERRAIN_CLIFF_DEBUG">();
-const float kTglcMacroVariation    = []() {
+extern const int kTglcCliffDebug = mc2::gate::get<"MC2_TERRAIN_CLIFF_DEBUG">();
+extern const float kTglcMacroVariation    = []() {
     if (!mc2::gate::get<"MC2_TERRAIN_MACRO_VARIATION">()) return 0.0f;
     return mc2::gate::get<"MC2_TERRAIN_MACRO_VARIATION_STRENGTH">();
 }();
@@ -291,11 +291,11 @@ const float kTglcMacroVariation    = []() {
 // angles (mc2_01 saved_205644; MC2_WATER_DEBUG_MODE=2 shows water alpha
 // already 0 across the band -> the navy pixels are terrain, not water).
 // Killswitch: MC2_TERRAIN_EDGE_FEATHER=0.
-const bool kTglcEdgeFeather = mc2::gate::get<"MC2_TERRAIN_EDGE_FEATHER">();
-const float kTglcEdgeFeatherStr    = mc2::gate::get<"MC2_TERRAIN_EDGE_FEATHER_STRENGTH">();
+extern const bool kTglcEdgeFeather = mc2::gate::get<"MC2_TERRAIN_EDGE_FEATHER">();
+extern const float kTglcEdgeFeatherStr    = mc2::gate::get<"MC2_TERRAIN_EDGE_FEATHER_STRENGTH">();
 // TERRAIN-MATERIAL-TEXTURES-1: per-layer PBR albedo array gate (default OFF ->
 // u_useMatAlbedo uploads 0 -> frag composition verbatim -> byte-identical).
-const bool  kTglcMatAlbedo         = mc2::gate::get<"MC2_TERRAIN_MATERIAL_TEXTURES">();
+extern const bool  kTglcMatAlbedo         = mc2::gate::get<"MC2_TERRAIN_MATERIAL_TEXTURES">();
 
 // ---------------------------------------------------------------------------
 // SLICE 3a — cliff-tessellation PLUMBING spike (pass-through, NO displacement).
