@@ -13,9 +13,21 @@
    "vk_twin": ""
   },
   {
-   "confidence": "MEDIUM",
+   "confidence": "HIGH",
    "feature": "u_normalRejectCos",
    "gate": "MC2_BOX_DECAL_NORMAL_REJECT",
+   "gate_default_on": false,
+   "gate_evidence": "GameOS/gameos/gos_postprocess.cpp (1 hop)",
+   "gl_shader": "shaders/box_decal.frag",
+   "kind": "uniform",
+   "status": "NO_TWIN",
+   "vk_evidence": "",
+   "vk_twin": ""
+  },
+  {
+   "confidence": "MEDIUM",
+   "feature": "u_decalStrength",
+   "gate": "MC2_BOX_DECAL_YSPAN",
    "gate_default_on": false,
    "gate_evidence": "GameOS/gameos/gos_postprocess.cpp (3 hops)",
    "gl_shader": "shaders/box_decal.frag",
@@ -133,40 +145,16 @@
    "vk_twin": "shaders/vulkan/color_prop_tier1.*"
   },
   {
-   "confidence": "HIGH",
-   "feature": "frameFix",
-   "gate": "MC2_HDRI_SKY_AZ_OFFSET",
-   "gate_default_on": false,
-   "gate_evidence": "GameOS/gameos/gos_postprocess.cpp (2 hops)",
-   "gl_shader": "shaders/hdri_skybox.frag",
-   "kind": "uniform",
-   "status": "NOT_PORTED",
-   "vk_evidence": "absent",
-   "vk_twin": "shaders/vulkan/hdri_sky.*"
-  },
-  {
-   "confidence": "HIGH",
+   "confidence": "MEDIUM",
    "feature": "skyYaw",
    "gate": "MC2_HDRI_SKY_AZ_OFFSET",
    "gate_default_on": false,
-   "gate_evidence": "GameOS/gameos/gos_postprocess.cpp (2 hops)",
+   "gate_evidence": "GameOS/gameos/gos_postprocess.cpp (3 hops)",
    "gl_shader": "shaders/hdri_skybox.frag",
    "kind": "uniform",
    "status": "PORTED",
    "vk_evidence": "exact:skyYaw",
    "vk_twin": "shaders/vulkan/hdri_sky.frag"
-  },
-  {
-   "confidence": "HIGH",
-   "feature": "uvDebug",
-   "gate": "MC2_HDRI_SKY_AZ_OFFSET",
-   "gate_default_on": false,
-   "gate_evidence": "GameOS/gameos/gos_postprocess.cpp (2 hops)",
-   "gl_shader": "shaders/hdri_skybox.frag",
-   "kind": "uniform",
-   "status": "NOT_PORTED",
-   "vk_evidence": "absent",
-   "vk_twin": "shaders/vulkan/hdri_sky.*"
   },
   {
    "confidence": "HIGH",
@@ -3013,18 +3001,6 @@
    "vk_twin": "shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.*"
   },
   {
-   "confidence": "MEDIUM",
-   "feature": "u_lodStep",
-   "gate": "MC2_TERRAIN_LOD_GEOMORPH",
-   "gate_default_on": true,
-   "gate_evidence": "GameOS/gameos/gos_terrain_lod_chunk.cpp (3 hops)",
-   "gl_shader": "shaders/terrain_lod_chunk.frag",
-   "kind": "uniform",
-   "status": "NOT_PORTED",
-   "vk_evidence": "absent",
-   "vk_twin": "shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.*"
-  },
-  {
    "confidence": "HIGH",
    "feature": "u_morphFactor",
    "gate": "MC2_TERRAIN_LOD_GEOMORPH",
@@ -3042,18 +3018,6 @@
    "gate": "MC2_TERRAIN_LOD_GEOMORPH",
    "gate_default_on": true,
    "gate_evidence": "GameOS/gameos/gos_terrain_lod_chunk.cpp (2 hops)",
-   "gl_shader": "shaders/terrain_lod_chunk.vert",
-   "kind": "uniform",
-   "status": "NOT_PORTED",
-   "vk_evidence": "absent",
-   "vk_twin": "shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.*"
-  },
-  {
-   "confidence": "MEDIUM",
-   "feature": "u_lodStep",
-   "gate": "MC2_TERRAIN_LOD_GEOMORPH",
-   "gate_default_on": true,
-   "gate_evidence": "GameOS/gameos/gos_terrain_lod_chunk.cpp (3 hops)",
    "gl_shader": "shaders/terrain_lod_chunk.vert",
    "kind": "uniform",
    "status": "NOT_PORTED",
@@ -3350,34 +3314,10 @@
   },
   {
    "confidence": "HIGH",
-   "feature": "u_shorelineStrength",
-   "gate": "MC2_TERRAIN_SHORELINE_FOAM",
-   "gate_default_on": true,
-   "gate_evidence": "GameOS/gameos/gos_terrain_lod_chunk.cpp (2 hops)",
-   "gl_shader": "shaders/terrain_lod_chunk.frag",
-   "kind": "uniform",
-   "status": "NOT_PORTED",
-   "vk_evidence": "absent",
-   "vk_twin": "shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.*"
-  },
-  {
-   "confidence": "HIGH",
    "feature": "u_shorelineFoamHeight",
    "gate": "MC2_TERRAIN_SHORELINE_FOAM_HEIGHT",
    "gate_default_on": true,
    "gate_evidence": "GameOS/gameos/gos_terrain_lod_chunk.cpp (1 hop)",
-   "gl_shader": "shaders/terrain_lod_chunk.frag",
-   "kind": "uniform",
-   "status": "NOT_PORTED",
-   "vk_evidence": "absent",
-   "vk_twin": "shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.*"
-  },
-  {
-   "confidence": "HIGH",
-   "feature": "u_shorelineWetHeight",
-   "gate": "MC2_TERRAIN_SHORELINE_FOAM_HEIGHT",
-   "gate_default_on": true,
-   "gate_evidence": "GameOS/gameos/gos_terrain_lod_chunk.cpp (2 hops)",
    "gl_shader": "shaders/terrain_lod_chunk.frag",
    "kind": "uniform",
    "status": "NOT_PORTED",

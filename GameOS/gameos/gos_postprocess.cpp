@@ -47,7 +47,14 @@
 #include <cstdlib>
 #include <SDL2/SDL.h>
 #include "../../RenderCore/frame_executor.h"  // FRAME-GRAPH-EXECUTOR-ISLAND-1 IslandContract
-#include "Gates/gate.h"
+#include "Gates/gate_cold.h"   // gate::get<>(), str<>(), raw<>()
+
+// MC2_POSTPROCESS_BACKEND selects the backend of every routed region: "vk" (or "vulkan") asks for the
+// Vulkan island, anything else (and unset) stays on GL.
+static bool postprocessBackendWantsVk()
+{
+    return mc2::gate::is<"MC2_POSTPROCESS_BACKEND", "vk">() || mc2::gate::is<"MC2_POSTPROCESS_BACKEND", "vulkan">();
+}
 
 // === Item 1: Cascaded Shadow Maps gate (dynamic shadow path) ==============
 // MC2_SHADOW_CSM  : master gate, DEFAULT ON (reworked 2026-06-18, `8ff13a36`;
@@ -57,10 +64,7 @@
 // MC2_SHADOW_CSM_LAMBDA : log/uniform split blend, default 0.5, clamp [0,1].
 bool mc2ShadowCsmEnabled()
 {
-    static const bool s_on = []() {
-        const char* v = getenv("MC2_SHADOW_CSM");
-        return !(v && v[0] == '0' && v[1] == '\0');   // DEFAULT ON; only "0" disables
-    }();
+    static const bool s_on = mc2::gate::get<"MC2_SHADOW_CSM">();
     return s_on;
 }
 
@@ -68,10 +72,7 @@ bool mc2ShadowCsmEnabled()
 // 1 = each candidate ground shader returns its signature solid color early.
 int mc2ShaderPathTint()
 {
-    static const int s_v = []() {
-        const char* v = getenv("MC2_SHADER_PATH_TINT");
-        return (v && v[0]) ? atoi(v) : 0;   // DEFAULT 0 (off, byte-identical)
-    }();
+    static const int s_v = mc2::gate::get<"MC2_SHADER_PATH_TINT">();
     return s_v;
 }
 
@@ -223,25 +224,13 @@ static void mc2VkStaticShadowMapDeprecationNote()
 
 int mc2ShadowCsmCount()
 {
-    static const int s_n = []() {
-        const char* v = getenv("MC2_SHADOW_CSM_COUNT");
-        int n = (v && v[0]) ? atoi(v) : 3;
-        if (n < 1) n = 1;
-        if (n > 3) n = 3;
-        return n;
-    }();
+    static const int s_n = mc2::gate::get<"MC2_SHADOW_CSM_COUNT">();
     return s_n;
 }
 
 float mc2ShadowCsmLambda()
 {
-    static const float s_l = []() {
-        const char* v = getenv("MC2_SHADOW_CSM_LAMBDA");
-        float l = (v && v[0]) ? (float)atof(v) : 0.5f;
-        if (l < 0.0f) l = 0.0f;
-        if (l > 1.0f) l = 1.0f;
-        return l;
-    }();
+    static const float s_l = mc2::gate::get<"MC2_SHADOW_CSM_LAMBDA">();
     return s_l;
 }
 
@@ -250,8 +239,7 @@ float mc2ShadowCsmLambda()
 int mc2ShadowMapSize()
 {
     static const int s_sz = []() {
-        const char* v = getenv("MC2_SHADOW_MAP_SIZE");
-        int s = (v && v[0]) ? atoi(v) : 8192;
+        const int s = mc2::gate::get<"MC2_SHADOW_MAP_SIZE">();   // row default 8192
         if (s <= 2048) return 2048;
         if (s <= 4096) return 4096;
         return 8192;
@@ -267,11 +255,7 @@ int mc2ShadowMapSize()
 // to the old all-in-array layout; the texture still exists, just full-res).
 bool mc2ShadowFullMapSeparate()
 {
-    static const bool s_on = []() {
-        const char* v = getenv("MC2_SHADOW_FULLMAP_SEPARATE");
-        if (!v || !v[0]) return true;          // DEFAULT ON
-        return !(v[0] == '0' && v[1] == '\0'); // only "0" disables
-    }();
+    static const bool s_on = mc2::gate::get<"MC2_SHADOW_FULLMAP_SEPARATE">();
     return s_on;
 }
 
@@ -280,8 +264,7 @@ bool mc2ShadowFullMapSeparate()
 int mc2ShadowFullMapSize()
 {
     static const int s_sz = []() {
-        const char* v = getenv("MC2_SHADOW_FULLMAP_SIZE");
-        int s = (v && v[0]) ? atoi(v) : 4096;
+        const int s = mc2::gate::get<"MC2_SHADOW_FULLMAP_SIZE">();   // row default 4096
         if (s <= 2048) return 2048;
         if (s <= 4096) return 4096;
         return 8192;
@@ -294,8 +277,7 @@ int mc2ShadowFullMapSize()
 float mc2ShadowCsmR0()
 {
     static const float s = []() {
-        const char* v = getenv("MC2_SHADOW_CSM_R0");
-        float r = (v && v[0]) ? (float)atof(v) : 512.0f;
+        const float r = mc2::gate::get<"MC2_SHADOW_CSM_R0">();   // row default 512
         return (r < 64.0f) ? 64.0f : r;
     }();
     return s;
@@ -303,8 +285,7 @@ float mc2ShadowCsmR0()
 float mc2ShadowCsmR1()
 {
     static const float s = []() {
-        const char* v = getenv("MC2_SHADOW_CSM_R1");
-        float r = (v && v[0]) ? (float)atof(v) : 4096.0f;
+        const float r = mc2::gate::get<"MC2_SHADOW_CSM_R1">();   // row default 4096
         return (r < 128.0f) ? 128.0f : r;
     }();
     return s;
@@ -314,13 +295,7 @@ float mc2ShadowCsmR1()
 // Default 0.9. Lower = sharper mech/terrain shadows; higher = softer. Clamp [0.1, 6.0].
 float mc2ShadowCsmSoftness()
 {
-    static const float s_s = []() {
-        const char* v = getenv("MC2_SHADOW_CSM_SOFTNESS");
-        float s = (v && v[0]) ? (float)atof(v) : 0.9f;
-        if (s < 0.1f) s = 0.1f;
-        if (s > 6.0f) s = 6.0f;
-        return s;
-    }();
+    static const float s_s = mc2::gate::get<"MC2_SHADOW_CSM_SOFTNESS">();
     return s_s;
 }
 
@@ -331,13 +306,7 @@ float mc2ShadowCsmSoftness()
 // injected -> shadow.hglsl folds the whole block away (current behavior).
 float mc2ShadowDistFadeWu()
 {
-    static const float s_f = []() {
-        const char* v = getenv("MC2_SHADOW_DIST_FADE");
-        float f = (v && v[0]) ? (float)atof(v) : 80.0f;
-        if (f < 0.0f) f = 0.0f;
-        if (f > 100000.0f) f = 100000.0f;
-        return f;
-    }();
+    static const float s_f = mc2::gate::get<"MC2_SHADOW_DIST_FADE">();
     return s_f;
 }
 
@@ -346,13 +315,7 @@ float mc2ShadowDistFadeWu()
 // fade distance; lower keeps a soft shadow floor on far-caster interiors.
 float mc2ShadowDistFadeMax()
 {
-    static const float s_m = []() {
-        const char* v = getenv("MC2_SHADOW_DIST_FADE_MAX");
-        float m = (v && v[0]) ? (float)atof(v) : 0.65f;
-        if (m < 0.0f) m = 0.0f;
-        if (m > 1.0f) m = 1.0f;
-        return m;
-    }();
+    static const float s_m = mc2::gate::get<"MC2_SHADOW_DIST_FADE_MAX">();
     return s_m;
 }
 
@@ -362,10 +325,7 @@ float mc2ShadowDistFadeMax()
 // boundaries, the batch-6 mech-shadow report).
 bool mc2ShadowFadeCont()
 {
-    static const bool s_on = []() {
-        const char* v = getenv("MC2_SHADOW_FADE_CONT");
-        return !(v && v[0] == '0');
-    }();
+    static const bool s_on = mc2::gate::get<"MC2_SHADOW_FADE_CONT">();
     return s_on;
 }
 
@@ -375,10 +335,7 @@ bool mc2ShadowFadeCont()
 // restores the windowed onset.
 bool mc2ShadowFadeRamp0()
 {
-    static const bool s_on = []() {
-        const char* v = getenv("MC2_SHADOW_FADE_RAMP0");
-        return !(v && v[0] == '0');
-    }();
+    static const bool s_on = mc2::gate::get<"MC2_SHADOW_FADE_RAMP0">();
     return s_on;
 }
 
@@ -388,10 +345,7 @@ bool mc2ShadowFadeRamp0()
 // ON; =0 restores the fixed low-sun-tuned gains at every altitude.
 bool mc2ShadowAltScale()
 {
-    static const bool s_on = []() {
-        const char* v = getenv("MC2_SHADOW_ALT_SCALE");
-        return !(v && v[0] == '0');
-    }();
+    static const bool s_on = mc2::gate::get<"MC2_SHADOW_ALT_SCALE">();
     return s_on;
 }
 
@@ -400,13 +354,7 @@ bool mc2ShadowAltScale()
 // shader is always-on (tiny); this only gates the world-space normal-offset.
 float mc2ShadowObjNormalBias()
 {
-    static const float s_b = []() {
-        const char* v = getenv("MC2_SHADOW_OBJ_NORMAL_BIAS");
-        float b = (v && v[0]) ? (float)atof(v) : 2.0f;
-        if (b < 0.0f) b = 0.0f;
-        if (b > 16.0f) b = 16.0f;
-        return b;
-    }();
+    static const float s_b = mc2::gate::get<"MC2_SHADOW_OBJ_NORMAL_BIAS">();
     return s_b;
 }
 
@@ -416,13 +364,7 @@ float mc2ShadowObjNormalBias()
 // hard mech self-shadow); >1 = blurrier/softer terminator.
 float mc2ShadowMechSoft()
 {
-    static const float s_s = []() {
-        const char* v = getenv("MC2_SHADOW_MECH_SOFT");
-        float s = (v && v[0]) ? (float)atof(v) : 1.0f;
-        if (s < 0.0f) s = 0.0f;
-        if (s > 4.0f) s = 4.0f;
-        return s;
-    }();
+    static const float s_s = mc2::gate::get<"MC2_SHADOW_MECH_SOFT">();
     return s_s;
 }
 
@@ -433,10 +375,7 @@ float mc2ShadowMechSoft()
 // (uniform uploads 0 -> shader branch unreachable -> pixel-identical).
 int mc2PropShadowReceive()
 {
-    static const int s_v = []() {
-        const char* v = getenv("MC2_PROP_SHADOW_RECEIVE");
-        return (v && v[0]) ? atoi(v) : 0;   // DEFAULT 0 (off)
-    }();
+    static const int s_v = mc2::gate::get<"MC2_PROP_SHADOW_RECEIVE">();
     return s_v;
 }
 
@@ -473,11 +412,7 @@ static void mc2ClampShadowSunAltitude(float& fx, float& fy, float& fz);
 
 bool mc2ShadowGuardClampedSun()
 {
-    static const bool s_on = []() {
-        const char* v = getenv("MC2_SHADOW_GUARD_CLAMPED_SUN");
-        if (!v || !v[0]) return true;            // DEFAULT ON
-        return !(v[0] == '0' && v[1] == '\0');   // =0 disables
-    }();
+    static const bool s_on = mc2::gate::get<"MC2_SHADOW_GUARD_CLAMPED_SUN">();
     return s_on;
 }
 
@@ -490,11 +425,7 @@ bool mc2ShadowGuardClampedSun()
 // have had anyone A/B-ing "=0 versus unset" grading OFF against OFF.
 bool mc2CloudShadowEnabled()
 {
-    static const bool s_on = []() {
-        const char* v = getenv("MC2_CLOUD_SHADOW");
-        if (!v || !v[0]) return false;           // default OFF
-        return !(v[0] == '0' && v[1] == '\0');
-    }();
+    static const bool s_on = mc2::gate::get<"MC2_CLOUD_SHADOW">();
     return s_on;
 }
 
@@ -566,10 +497,7 @@ static void setSceneDrawBuffers(SceneDrawBufferMode mode,
 // Kill-switch preserved: MC2_SKYBOX_FOG_EXCLUDE=0 restores the legacy OFF path.
 static bool skyboxFogExcludeEnabled()
 {
-    static const bool s_on = []() {
-        const char* v = ::getenv("MC2_SKYBOX_FOG_EXCLUDE");
-        return !(v && v[0] == '0');   // default ON; explicit "0" disables.
-    }();
+    static const bool s_on = mc2::gate::get<"MC2_SKYBOX_FOG_EXCLUDE">();
     return s_on;
 }
 
@@ -922,8 +850,8 @@ void gosPostProcess::init(int w, int h)
     // HZB-DEPTH-PYRAMID-MVP-1: resolve the build gate BEFORE createFBOs so the
     // pyramid texture is allocated in the same pass as the other scene targets.
     {
-        const char* hzbEnv = getenv("MC2_HZB_BUILD");
-        hzbEnabled_ = (hzbEnv && hzbEnv[0] && hzbEnv[0] != '0');
+        const char* hzbEnv = mc2::gate::raw<"MC2_HZB_BUILD">();   // echoed as typed
+        hzbEnabled_ = mc2::gate::get<"MC2_HZB_BUILD">();
         MC2_DIAGFE(stderr, "[HZB_BUILD v1] enabled=%d (MC2_HZB_BUILD=%s)\n",
                      hzbEnabled_ ? 1 : 0, hzbEnv ? hzbEnv : "(unset)");
     }
@@ -956,8 +884,7 @@ void gosPostProcess::init(int w, int h)
 
     // HDRI-SKY-1 init. Gate read once; default enabled unless env var == "0".
     {
-        const char* gateEnv = getenv("MC2_HDRI_SKY");
-        hdriEnabled_ = !(gateEnv && gateEnv[0] == '0' && gateEnv[1] == '\0');
+        hdriEnabled_ = mc2::gate::get<"MC2_HDRI_SKY">();
 
         if (hdriEnabled_) {
             // HDRI-SKY-NUMBER-1: default path (overridden at mission load via setSkyNumber).
@@ -1066,14 +993,14 @@ void gosPostProcess::init(int w, int h)
     if (!boxDecalProg_ || !boxDecalProg_->is_valid())
         fprintf(stderr, "gosPostProcess: failed to compile box_decal shader\n");
     {
-        const char* e = getenv("MC2_BOX_DECAL");
-        boxDecalEnabled_ = (e && e[0] && e[0] != '0');
+        const char* e = mc2::gate::raw<"MC2_BOX_DECAL">();   // echoed as typed
+        boxDecalEnabled_ = mc2::gate::get<"MC2_BOX_DECAL">();
         MC2_DIAGFE(stderr, "[BOX_DECAL v1] enabled=%d (MC2_BOX_DECAL=%s)\n",
                      boxDecalEnabled_ ? 1 : 0, e ? e : "(unset)");
         // DECAL-INTEGRATE-1: MC2_PROJECTED_DECALS (default OFF). When ON, the box-decal
         // pass is fed by the dynamic_decal_ring impact slots instead of the v1 test box.
-        const char* pd = getenv("MC2_PROJECTED_DECALS");
-        projectedDecalsEnabled_ = (pd && pd[0] && pd[0] != '0');
+        const char* pd = mc2::gate::raw<"MC2_PROJECTED_DECALS">();   // echoed as typed
+        projectedDecalsEnabled_ = mc2::gate::get<"MC2_PROJECTED_DECALS">();
         std::fprintf(stderr, "[PROJECTED_DECALS] enabled=%d (MC2_PROJECTED_DECALS=%s)\n",
                      projectedDecalsEnabled_ ? 1 : 0, pd ? pd : "(unset)");
     }
@@ -1082,14 +1009,12 @@ void gosPostProcess::init(int w, int h)
     // skipped entirely (byte-identical). aoRadius/strength/bias keep their
     // member defaults (ImGui + per-mission profile adjustable).
     {
-        const char* ssaoEnv = getenv("MC2_SSAO");
-        ssaoEnabled_ = (ssaoEnv && ssaoEnv[0] && ssaoEnv[0] != '0');
-        const char* dbgEnv = getenv("MC2_SSAO_DEBUG");
-        ssaoDebug_ = (dbgEnv && dbgEnv[0] && dbgEnv[0] != '0') ? 1 : 0;
+        const char* ssaoEnv = mc2::gate::raw<"MC2_SSAO">();   // echoed as typed
+        ssaoEnabled_ = mc2::gate::get<"MC2_SSAO">();
+        ssaoDebug_ = mc2::gate::get<"MC2_SSAO_DEBUG">();
         // SSAO-BLUR-1: blur defaults ON with SSAO; MC2_SSAO_BLUR=0 restores the
         // pre-SSAO-BLUR-1 two-draw chain (no denoise) for A/B on one exe.
-        const char* blurEnv = getenv("MC2_SSAO_BLUR");
-        ssaoBlurEnabled_ = !(blurEnv && blurEnv[0] == '0');
+        ssaoBlurEnabled_ = mc2::gate::get<"MC2_SSAO_BLUR">();
         // SSAO-BLUR-1: sigma MUST be env-tunable. Measured 2026-07-28: at the
         // initial 0.02 (2% relative depth) the blur was strongly effective on
         // flat near-constant-depth faces (cliff_wall_sideon, HF noise -52.5%)
@@ -1122,22 +1047,14 @@ void gosPostProcess::init(int w, int h)
         // known-bad pairing is actually selected. The radius keeps its own
         // runtime reverts too (ImGui, and the per-mission visual-tuning-profile
         // `aoRadius` key) -- this adds the launch-time one those cannot give.
-        const char* radEnv = getenv("MC2_SSAO_RADIUS");
+        const char* radEnv = mc2::gate::raw<"MC2_SSAO_RADIUS">();   // echoed as typed
         bool radiusOverridden = false;
-        if (radEnv && radEnv[0]) {
-            float r = (float)atof(radEnv);
-            if (r < 0.1f)  r = 0.1f;
-            if (r > 64.0f) r = 64.0f;
-            aoRadius_ = r;
+        if (mc2::gate::isNonEmpty<"MC2_SSAO_RADIUS">()) {
+            aoRadius_ = mc2::gate::get<"MC2_SSAO_RADIUS">();   // row clamps to [0.1, 64]
             radiusOverridden = true;
         }
-        const char* sigEnv = getenv("MC2_SSAO_BLUR_SIGMA");
-        if (sigEnv && sigEnv[0]) {
-            float s = (float)atof(sigEnv);
-            if (s < 0.001f) s = 0.001f;
-            if (s > 1.0f)   s = 1.0f;
-            aoBlurDepthSigma_ = s;
-        }
+        if (mc2::gate::isNonEmpty<"MC2_SSAO_BLUR_SIGMA">())
+            aoBlurDepthSigma_ = mc2::gate::get<"MC2_SSAO_BLUR_SIGMA">();   // row clamps to [0.001, 1]
         MC2_DIAGFE(stderr, "[SSAO v1] enabled=%d debug=%d (MC2_SSAO=%s) radius=%.2f (MC2_SSAO_RADIUS=%s) strength=%.2f bias=%.4f blur=%d sigma=%.4f\n",
                      ssaoEnabled_ ? 1 : 0, ssaoDebug_,
                      ssaoEnv ? ssaoEnv : "(unset)", aoRadius_,
@@ -1163,14 +1080,14 @@ void gosPostProcess::init(int w, int h)
     // -> composite uploads u_fxaaEnabled=0 -> single tap (byte-identical).
     // Defaults = "sharper" preset (subpix 0.25 / edge 0.166 / edgeMin 0.0833).
     {
-        const char* fxEnv = getenv("MC2_FXAA");
-        fxaaEnabled_         = (fxEnv && fxEnv[0] && fxEnv[0] != '0');
+        const char* fxEnv = mc2::gate::raw<"MC2_FXAA">();   // echoed as typed
+        fxaaEnabled_         = mc2::gate::get<"MC2_FXAA">();
         fxaaSubpix_          = 0.25f;
         fxaaEdgeThreshold_   = 0.166f;
         fxaaEdgeThresholdMin_= 0.0833f;
-        if (const char* s = getenv("MC2_FXAA_SUBPIX"))            { float v = (float)atof(s); if (v >= 0.0f) fxaaSubpix_ = v; }
-        if (const char* s = getenv("MC2_FXAA_EDGE_THRESHOLD"))    { float v = (float)atof(s); if (v >  0.0f) fxaaEdgeThreshold_ = v; }
-        if (const char* s = getenv("MC2_FXAA_EDGE_THRESHOLD_MIN")){ float v = (float)atof(s); if (v >  0.0f) fxaaEdgeThresholdMin_ = v; }
+        if (mc2::gate::isSet<"MC2_FXAA_SUBPIX">())            { const float v = mc2::gate::get<"MC2_FXAA_SUBPIX">(); if (v >= 0.0f) fxaaSubpix_ = v; }
+        if (mc2::gate::isSet<"MC2_FXAA_EDGE_THRESHOLD">())    { const float v = mc2::gate::get<"MC2_FXAA_EDGE_THRESHOLD">(); if (v >  0.0f) fxaaEdgeThreshold_ = v; }
+        if (mc2::gate::isSet<"MC2_FXAA_EDGE_THRESHOLD_MIN">()){ const float v = mc2::gate::get<"MC2_FXAA_EDGE_THRESHOLD_MIN">(); if (v >  0.0f) fxaaEdgeThresholdMin_ = v; }
         MC2_DIAGFE(stderr, "[FXAA v1] enabled=%d subpix=%.3f edge=%.3f edgeMin=%.4f (MC2_FXAA=%s)\n",
                      fxaaEnabled_ ? 1 : 0, fxaaSubpix_, fxaaEdgeThreshold_, fxaaEdgeThresholdMin_,
                      fxEnv ? fxEnv : "(unset)");
@@ -1181,13 +1098,11 @@ void gosPostProcess::init(int w, int h)
     // CAS skipped in the shader (byte-identical). Sharpness clamped 0..1, default
     // 0.5. Applied to the final graded LDR color, after FXAA/grade, before UI.
     {
-        const char* casEnv = getenv("MC2_POST_CAS");
-        casEnabled_   = (casEnv && casEnv[0] && casEnv[0] != '0');
+        const char* casEnv = mc2::gate::raw<"MC2_POST_CAS">();   // echoed as typed
+        casEnabled_   = mc2::gate::get<"MC2_POST_CAS">();
         casSharpness_ = 0.5f;
-        if (const char* s = getenv("MC2_POST_CAS_SHARPNESS")) {
-            float v = (float)atof(s);
-            casSharpness_ = (v < 0.0f) ? 0.0f : (v > 1.0f ? 1.0f : v);
-        }
+        if (mc2::gate::isSet<"MC2_POST_CAS_SHARPNESS">())
+            casSharpness_ = mc2::gate::get<"MC2_POST_CAS_SHARPNESS">();   // row clamps to [0, 1]
         MC2_DIAGFE(stderr, "[CAS v1] enabled=%d sharpness=%.3f (MC2_POST_CAS=%s)\n",
                      casEnabled_ ? 1 : 0, casSharpness_,
                      casEnv ? casEnv : "(unset)");
@@ -1200,13 +1115,15 @@ void gosPostProcess::init(int w, int h)
     // names agx/hable/reinhard). Visual-only; no geometry/depth/object-id effect.
     {
         tonemapMode_ = 0;
-        if (const char* v = getenv("MC2_TONEMAP_V2")) {
+        if (mc2::gate::isSet<"MC2_TONEMAP_V2">()) {
+            const std::string text = mc2::gate::str<"MC2_TONEMAP_V2">();   // "" when empty: no mode matches
+            const char* v = text.c_str();
             if      (v[0]=='1' || !strcmp(v,"agx"))      tonemapMode_ = 1;
             else if (v[0]=='2' || !strcmp(v,"hable"))    tonemapMode_ = 2;
             else if (v[0]=='3' || !strcmp(v,"reinhard")) tonemapMode_ = 3;
         }
         MC2_DIAGFE(stderr, "[TONEMAP v2] mode=%d (MC2_TONEMAP_V2=%s)\n",
-                     tonemapMode_, getenv("MC2_TONEMAP_V2") ? getenv("MC2_TONEMAP_V2") : "(unset)");
+                     tonemapMode_, mc2::gate::raw<"MC2_TONEMAP_V2">() ? mc2::gate::raw<"MC2_TONEMAP_V2">() : "(unset)");
     }
 
     // OOB-FOG-1: far-plane fog over the out-of-bounds region. Default ON.
@@ -1215,12 +1132,12 @@ void gosPostProcess::init(int w, int h)
             "shaders/postprocess.vert", "shaders/fog_oob.frag", kShaderPrefix);
         if (!fogOobProg_ || !fogOobProg_->is_valid())
             std::fprintf(stderr, "gosPostProcess: failed to compile fog_oob shader\n");
-        const char* oobEnv = getenv("MC2_OOB_FOG");
-        fogOobEnabled_ = !(oobEnv && oobEnv[0] == '0' && oobEnv[1] == '\0')
+        fogOobEnabled_ = mc2::gate::get<"MC2_OOB_FOG">()
                       && fogOobProg_ && fogOobProg_->is_valid();
-        if (const char* colorEnv = getenv("MC2_OOB_FOG_COLOR")) {
+        if (mc2::gate::isSet<"MC2_OOB_FOG_COLOR">()) {
+            const std::string colorEnv = mc2::gate::str<"MC2_OOB_FOG_COLOR">();
             float r, g, b;
-            if (std::sscanf(colorEnv, "%f,%f,%f", &r, &g, &b) == 3) {
+            if (std::sscanf(colorEnv.c_str(), "%f,%f,%f", &r, &g, &b) == 3) {
                 oobFogColor_[0] = r; oobFogColor_[1] = g; oobFogColor_[2] = b;
             }
         }
@@ -1234,12 +1151,11 @@ void gosPostProcess::init(int w, int h)
             "shaders/postprocess.vert", "shaders/edge_fog.frag", kShaderPrefix);
         if (!edgeFogProg_ || !edgeFogProg_->is_valid())
             std::fprintf(stderr, "gosPostProcess: failed to compile edge_fog shader\n");
-        const char* efEnv = getenv("MC2_EDGE_FOG");
-        edgeFogEnabled_ = !(efEnv && efEnv[0] == '0' && efEnv[1] == '\0')
+        edgeFogEnabled_ = mc2::gate::get<"MC2_EDGE_FOG">()
                        && edgeFogProg_ && edgeFogProg_->is_valid();
-        if (const char* v = getenv("MC2_EDGE_FOG_START"))  edgeFogStart_  = std::atof(v);
-        if (const char* v = getenv("MC2_EDGE_FOG_HEIGHT")) edgeFogHeight_ = std::atof(v);
-        if (const char* v = getenv("MC2_EDGE_FOG_MAX"))    edgeFogMax_    = std::atof(v);
+        if (mc2::gate::isSet<"MC2_EDGE_FOG_START">())  edgeFogStart_  = mc2::gate::get<"MC2_EDGE_FOG_START">();
+        if (mc2::gate::isSet<"MC2_EDGE_FOG_HEIGHT">()) edgeFogHeight_ = mc2::gate::get<"MC2_EDGE_FOG_HEIGHT">();
+        if (mc2::gate::isSet<"MC2_EDGE_FOG_MAX">())    edgeFogMax_    = mc2::gate::get<"MC2_EDGE_FOG_MAX">();
         MC2_DIAGFE(stderr, "[EDGE_FOG v3] enabled=%d start=%.0f height=%.0f max=%.2f\n",
             edgeFogEnabled_ ? 1 : 0, edgeFogStart_, edgeFogHeight_, edgeFogMax_);
     }
@@ -1249,10 +1165,9 @@ void gosPostProcess::init(int w, int h)
     // "white horizon band" to this edge-fog pass painting the hardcoded bright grey
     // edgeFogColor_ (never night-dimmed). Default-OFF -> unscaled -> byte-identical.
     {
-        const char* nfd = getenv("MC2_NIGHT_FOG_DIM");
-        nightFogDimEnabled_ = (nfd && nfd[0] == '1' && nfd[1] == '\0');
-        if (const char* v = getenv("MC2_NIGHT_FOG_DIM_SCALE"); v && v[0] != '\0') {
-            float s = (float)std::atof(v);
+        nightFogDimEnabled_ = mc2::gate::get<"MC2_NIGHT_FOG_DIM">();
+        if (mc2::gate::isNonEmpty<"MC2_NIGHT_FOG_DIM_SCALE">()) {
+            float s = mc2::gate::get<"MC2_NIGHT_FOG_DIM_SCALE">();
             if (s < 0.0f) s = 0.0f;
             nightFogDimScale_ = s;
         }
@@ -1267,12 +1182,12 @@ void gosPostProcess::init(int w, int h)
     // horizon; we precompute their sines here so the frag stays trig-free
     // (elevSin = -worldDir.z for a normalized view ray).
     {
-        if (const char* v = getenv("MC2_FOG_HORIZON_CLAMP"))
-            fogHorizonClampEnabled_ = !(v[0] == '0' && v[1] == '\0');
-        if (const char* v = getenv("MC2_FOG_HORIZON_FADE_START"))
-            fogHorizonFadeStartDeg_ = (float)std::atof(v);
-        if (const char* v = getenv("MC2_FOG_HORIZON_FADE_END"))
-            fogHorizonFadeEndDeg_   = (float)std::atof(v);
+        if (mc2::gate::isSet<"MC2_FOG_HORIZON_CLAMP">())
+            fogHorizonClampEnabled_ = mc2::gate::get<"MC2_FOG_HORIZON_CLAMP">();
+        if (mc2::gate::isSet<"MC2_FOG_HORIZON_FADE_START">())
+            fogHorizonFadeStartDeg_ = mc2::gate::get<"MC2_FOG_HORIZON_FADE_START">();
+        if (mc2::gate::isSet<"MC2_FOG_HORIZON_FADE_END">())
+            fogHorizonFadeEndDeg_   = mc2::gate::get<"MC2_FOG_HORIZON_FADE_END">();
         // Guard the ordering so smoothstep(edge0<edge1) always holds; a degenerate
         // or inverted band would make the fade a hard step. Clamp to [-90,90].
         auto clampDeg = [](float d) { return d < -90.0f ? -90.0f : (d > 90.0f ? 90.0f : d); };
@@ -1298,9 +1213,8 @@ void gosPostProcess::init(int w, int h)
         fprintf(stderr, "gosPostProcess: failed to compile hzb_reduce shader\n");
     {
         // HZB-OCCLUSION-PROBE-1 gate (diagnostic only; requires the build gate).
-        const char* probeEnv = getenv("MC2_HZB_PROBE");
-        hzbProbeEnabled_ = hzbEnabled_ &&
-                           (probeEnv && probeEnv[0] && probeEnv[0] != '0');
+        const char* probeEnv = mc2::gate::raw<"MC2_HZB_PROBE">();   // echoed as typed
+        hzbProbeEnabled_ = hzbEnabled_ && mc2::gate::get<"MC2_HZB_PROBE">();
         MC2_DIAGFE(stderr, "[HZB_PROBE v1] enabled=%d (MC2_HZB_PROBE=%s, requires MC2_HZB_BUILD)\n",
                      hzbProbeEnabled_ ? 1 : 0, probeEnv ? probeEnv : "(unset)");
     }
@@ -1310,8 +1224,9 @@ void gosPostProcess::init(int w, int h)
     // Default unset/0/off -> showShadowDebug_ stays false (byte-identical).
     // RAlt+F2 hotkey and ImGui checkbox still override at runtime.
     {
-        const char* sdEnv = getenv("MC2_SHADOW_DEBUG_MODE");
-        if (sdEnv && sdEnv[0]) {
+        const std::string sdText = mc2::gate::str<"MC2_SHADOW_DEBUG_MODE">();   // "" when unset or empty
+        const char* sdEnv = sdText.c_str();
+        if (sdEnv[0]) {
             if (sdEnv[0] == '1' || (sdEnv[0] == 's' && sdEnv[1] == 't')) {
                 showShadowDebug_ = true;
                 shadowDebugMode_ = 0;
@@ -1330,16 +1245,18 @@ void gosPostProcess::init(int w, int h)
     // Default OFF -> u_viewMode forced 0, ImGui combo not rendered,
     // endScene() output byte-identical to baseline.
     {
-        const char* vmEnv = getenv("MC2_VIEWMODE_FRAMEWORK");
-        s_viewmodeFrameworkEnabled = (vmEnv && vmEnv[0] && vmEnv[0] != '0');
+        const char* vmEnv = mc2::gate::raw<"MC2_VIEWMODE_FRAMEWORK">();   // echoed as typed
+        s_viewmodeFrameworkEnabled = mc2::gate::get<"MC2_VIEWMODE_FRAMEWORK">();
 
         // MC2_VIEW_MODE seeds the startup mode (numeric 0..5 matching
         // RenderCore::ViewMode, or a name) so headless capture can request a
         // mode without ImGui. Only meaningful when the framework gate is ON;
         // the ImGui combo overrides it live.
-        const char* modeEnv = getenv("MC2_VIEW_MODE");
+        const char* modeEnvRaw = mc2::gate::raw<"MC2_VIEW_MODE">();   // echoed as typed
+        const std::string modeText = mc2::gate::str<"MC2_VIEW_MODE">();   // "" when unset or empty
+        const char* modeEnv = modeText.c_str();
         int initialMode = 0;
-        if (modeEnv && modeEnv[0]) {
+        if (modeEnv[0]) {
             if (modeEnv[0] >= '0' && modeEnv[0] <= '9') initialMode = atoi(modeEnv);
             else if (!strcmp(modeEnv, "visual"))   initialMode = 0;
             else if (!strcmp(modeEnv, "objectid")) initialMode = 1;
@@ -1351,20 +1268,17 @@ void gosPostProcess::init(int w, int h)
         gos_SetSelectedViewMode(initialMode);
         MC2_DIAGFE(stderr, "[VIEWMODE v1] framework=%d initialMode=%d (MC2_VIEWMODE_FRAMEWORK=%s MC2_VIEW_MODE=%s)\n",
                      s_viewmodeFrameworkEnabled ? 1 : 0, s_selectedViewMode,
-                     vmEnv ? vmEnv : "(unset)", modeEnv ? modeEnv : "(unset)");
+                     vmEnv ? vmEnv : "(unset)", modeEnvRaw ? modeEnvRaw : "(unset)");
 
         // LOWLIGHT-NIGHTVISION-MVP-1: seed night-vision tunables from env.
         // Inert unless the selected ViewMode is LowLight (5). Direct member
         // writes — s_postProcess is not yet assigned during init(), so the
         // gos_SetLowLight* setters would no-op here.
-        const char* gainEnv = getenv("MC2_VIEWMODE_LOWLIGHT_GAIN");
-        if (gainEnv && gainEnv[0]) {
-            float g = (float)atof(gainEnv);
-            lowLightGain_ = (g < 0.1f ? 0.1f : (g > 16.0f ? 16.0f : g));
-        }
-        const char* tintEnv = getenv("MC2_VIEWMODE_LOWLIGHT_TINT");
-        if (tintEnv && tintEnv[0])
-            sscanf(tintEnv, "%f,%f,%f", &lowLightTint_[0], &lowLightTint_[1], &lowLightTint_[2]);
+        if (mc2::gate::isNonEmpty<"MC2_VIEWMODE_LOWLIGHT_GAIN">())
+            lowLightGain_ = mc2::gate::get<"MC2_VIEWMODE_LOWLIGHT_GAIN">();   // row clamps to [0.1, 16]
+        const std::string tintEnv = mc2::gate::str<"MC2_VIEWMODE_LOWLIGHT_TINT">();   // "" when unset or empty
+        if (!tintEnv.empty())
+            sscanf(tintEnv.c_str(), "%f,%f,%f", &lowLightTint_[0], &lowLightTint_[1], &lowLightTint_[2]);
         MC2_DIAGFE(stderr, "[VIEWMODE_LOWLIGHT v1] gain=%.2f tint=(%.2f,%.2f,%.2f)\n",
                      lowLightGain_, lowLightTint_[0], lowLightTint_[1], lowLightTint_[2]);
     }
@@ -1569,7 +1483,7 @@ void gosPostProcess::createFBOs(int w, int h)
     // (not just from source) the facts linear-correctness/PBR work depends on:
     // whether GL_FRAMEBUFFER_SRGB auto-encode is enabled, the scene render-target
     // internal format, and whether the HDR/tonemap post path is engaged.
-    if (getenv("MC2_LIGHTING_LINEAR_AUDIT")) {
+    if (mc2::gate::get<"MC2_LIGHTING_LINEAR_AUDIT">()) {
         static bool s_linearAudited = false;
         if (!s_linearAudited) {
             s_linearAudited = true;
@@ -2387,13 +2301,13 @@ void gosPostProcess::drawBoxDecals()
     if (sceneDepthCopyTex_ == 0) return;
 
     float strength = 0.85f;
-    if (const char* s = getenv("MC2_BOX_DECAL_STRENGTH")) { float v = (float)atof(s); if (v >= 0.0f) strength = v; }
+    if (mc2::gate::isSet<"MC2_BOX_DECAL_STRENGTH">()) { const float v = mc2::gate::get<"MC2_BOX_DECAL_STRENGTH">(); if (v >= 0.0f) strength = v; }
 
     // Vertical span of the AABB on the reconstruct-frame up axis (+Y). The box is made
     // tall so it drapes across terrain elevation under the impact; the FS world-AABB clip
     // does the real coverage. Overridable for tuning.
     float ySpan = 4000.0f;
-    if (const char* s = getenv("MC2_BOX_DECAL_YSPAN")) { float v = (float)atof(s); if (v > 1.0f) ySpan = v; }
+    if (mc2::gate::isSet<"MC2_BOX_DECAL_YSPAN">()) { const float v = mc2::gate::get<"MC2_BOX_DECAL_YSPAN">(); if (v > 1.0f) ySpan = v; }
 
     // Normal-reject: SHIPPED DISABLED by default. The terrain GBuffer1 normal is a
     // constant flat-up sentinel in a Z-up frame while the box up-axis here is Y-up, so a
@@ -2401,7 +2315,7 @@ void gosPostProcess::drawBoxDecals()
     // up-axis TODO). A threshold <= -1.5 makes the reject a no-op (never discards). Do
     // NOT raise this without first reconciling u_decalUpAxis against the reconstruct frame.
     float normalRejectCos = -1.5f;
-    if (const char* s = getenv("MC2_BOX_DECAL_NORMAL_REJECT")) { float v = (float)atof(s); normalRejectCos = v; }
+    if (mc2::gate::isSet<"MC2_BOX_DECAL_NORMAL_REJECT">()) normalRejectCos = mc2::gate::get<"MC2_BOX_DECAL_NORMAL_REJECT">();
 
     float upAxis[3] = { 0.0f, 1.0f, 0.0f };   // reconstruct-frame up (Y-up). TODO: reconcile.
 
@@ -2525,7 +2439,7 @@ void gosPostProcess::beginScene()
     // vs the native drawable (Environment.drawableWidth). Env-gated so it is
     // byte-identical when MC2_RES_DIAG is unset. Confirms whether the scene
     // FBO tracks options-res (screenWidth) or the native desktop (drawable).
-    static const bool s_resDiag = (getenv("MC2_RES_DIAG") != nullptr);
+    static const bool s_resDiag = mc2::gate::get<"MC2_RES_DIAG">();
     static bool s_resDiagDone = false;
     if (s_resDiag && !s_resDiagDone) {
         s_resDiagDone = true;
@@ -3654,10 +3568,7 @@ void gosPostProcess::runFogOob()
         // under MC2_RENDER_BACKEND_IFACE (default-OFF). OFF = direct GL, byte-
         // identical. ON = the SAME glBindFramebuffer(sceneFBO_) via GLBackend —
         // both GL, output identical; the gate just proves the seam routes.
-        static const bool s_backendIface = []() {
-            const char* v = getenv("MC2_RENDER_BACKEND_IFACE");
-            return v && v[0] == '1';
-        }();
+        static const bool s_backendIface = mc2::gate::get<"MC2_RENDER_BACKEND_IFACE">();
         if (s_backendIface) {
             RenderCore::getGLBackend().bindFramebuffer(sceneFBO_);
         } else {
@@ -3769,10 +3680,7 @@ int gosPostProcess::runFogRegionGL()
 // region through IRenderBackend; else the original direct-GL sites run.
 bool gosPostProcess::regionIfaceEnabled() const
 {
-    static const bool s_on = []() {
-        const char* v = getenv("MC2_RENDER_BACKEND_REGION_IFACE");
-        return v && v[0] == '1';
-    }();
+    static const bool s_on = mc2::gate::get<"MC2_RENDER_BACKEND_REGION_IFACE">();
     return s_on;
 }
 
@@ -3912,10 +3820,7 @@ void gosPostProcess::runFogRegionThroughBackend()
     g_region.ifaceGateOn = 1;
 
     // Sub-selector: MC2_POSTPROCESS_BACKEND = gl | vk (default gl).
-    static const bool s_wantVk = []() {
-        const char* v = getenv("MC2_POSTPROCESS_BACKEND");
-        return v && (v[0] == 'v' || v[0] == 'V');   // "vk"
-    }();
+    static const bool s_wantVk = postprocessBackendWantsVk();
     std::strncpy(g_region.requestedBackend, s_wantVk ? "vk" : "gl",
                  sizeof(g_region.requestedBackend) - 1);
 
@@ -4077,10 +3982,7 @@ void gosPostProcess::runSSAORegionThroughBackend()
 
     // Sub-selector: MC2_POSTPROCESS_BACKEND = gl | vk (default gl). SAME env var
     // as the fog region -- one selector picks the backend for every region.
-    static const bool s_wantVk = []() {
-        const char* v = getenv("MC2_POSTPROCESS_BACKEND");
-        return v && (v[0] == 'v' || v[0] == 'V');   // "vk"
-    }();
+    static const bool s_wantVk = postprocessBackendWantsVk();
     std::strncpy(g_ssaoRegion.requestedBackend, s_wantVk ? "vk" : "gl",
                  sizeof(g_ssaoRegion.requestedBackend) - 1);
 
@@ -4313,10 +4215,7 @@ void gosPostProcess::runHzbRegionThroughBackend()
     ++g_hzbRegion.routedFrames;
     g_hzbRegion.ifaceGateOn = 1;
 
-    static const bool s_wantVk = []() {
-        const char* v = getenv("MC2_POSTPROCESS_BACKEND");
-        return v && (v[0] == 'v' || v[0] == 'V');   // "vk"
-    }();
+    static const bool s_wantVk = postprocessBackendWantsVk();
     std::strncpy(g_hzbRegion.requestedBackend, s_wantVk ? "vk" : "gl",
                  sizeof(g_hzbRegion.requestedBackend) - 1);
 
@@ -4583,10 +4482,7 @@ void gosPostProcess::endScene()
     // identical. ON = the SAME glBindFramebuffer(0) via GLBackend — both GL, so
     // output is identical; the gate just proves the seam routes. The interface
     // grows one edge at a time; only this bind is routed in this slice.
-    static const bool s_backendIface = []() {
-        const char* v = getenv("MC2_RENDER_BACKEND_IFACE");
-        return v && v[0] == '1';
-    }();
+    static const bool s_backendIface = mc2::gate::get<"MC2_RENDER_BACKEND_IFACE">();
     // VK-P14b (MC2_VK_PRESENT_DIRECT_FBO, copy-1 elimination): when the Vulkan
     // backend owns present AND the direct-composite gate is on, redirect this
     // single backbuffer bind to the FBO wrapping the shared exportable present
@@ -4635,10 +4531,7 @@ void gosPostProcess::endScene()
         // so disable scissor for the clear. No-op in normal play: the composite
         // quad overdraws the full backbuffer. FORCE-43 already cleared in its own
         // branch; this generalizes it to ALL composite paths.
-        static const bool s_oobLetterbox = []() {
-            const char* v = getenv("MC2_OOB_LETTERBOX");
-            return !(v && v[0] == '0');
-        }();
+        static const bool s_oobLetterbox = mc2::gate::get<"MC2_OOB_LETTERBOX">();
         if (s_oobLetterbox) {
             const GLboolean prevScissor = glIsEnabled(GL_SCISSOR_TEST);
             if (prevScissor) glDisable(GL_SCISSOR_TEST);
@@ -4947,6 +4840,12 @@ void gosPostProcess::renderSkybox(float sunDirX, float sunDirY, float sunDirZ)
     glUseProgram(0);
 }
 
+// MC2_HDRI_SKY_AZ_OFFSET is a manual sun-sync trim in DEGREES; every sky path wants it in radians.
+static float hdriAzOffsetRadians()
+{
+    return static_cast<float>(static_cast<double>(mc2::gate::get<"MC2_HDRI_SKY_AZ_OFFSET">()) * 3.14159265358979323846 / 180.0);
+}
+
 void gosPostProcess::renderHdriSkybox(const float* viewMat, const float* projMat)
 {
     if (!hdriReady_ || !hdriSkyboxProg_ || !hdriSkyboxProg_->is_valid()
@@ -4980,10 +4879,7 @@ void gosPostProcess::renderHdriSkybox(const float* viewMat, const float* projMat
     // terrain, and skip the GL draw. Gate off -> this block is dead and GL is unchanged.
     if (mc2_vk_sky_island_enabled()) {
         // Sun-sync yaw: LOCKSTEP with the GL path below (manual trim + baked-sun align).
-        static const float s_vkAzOffsetRad = []() {
-            const char* e = getenv("MC2_HDRI_SKY_AZ_OFFSET");
-            return e ? (float)(atof(e) * 3.14159265358979323846 / 180.0) : 0.0f;
-        }();
+        static const float s_vkAzOffsetRad = hdriAzOffsetRadians();
         float vkSkyYaw = s_vkAzOffsetRad;
         if (hdriBakedSunValid_) {
             float lx = 0.0f, ly = 0.0f, lz = 0.0f;
@@ -5066,22 +4962,13 @@ void gosPostProcess::renderHdriSkybox(const float* viewMat, const float* projMat
     // The sun-sync rotation is only applied when the AZ offset is set OR the
     // baked-sun scan succeeded AND a non-zero offset/sync makes skyYaw != 0;
     // when skyYaw resolves to exactly 0.0 the frag path is byte-identical.
-    static const int   s_uvDebug = []() {
-        const char* e = getenv("MC2_HDRI_SKY_UV_DEBUG");
-        return (e && e[0] != '0') ? 1 : 0;
-    }();
+    static const int s_uvDebug = mc2::gate::get<"MC2_HDRI_SKY_UV_DEBUG">();
     // MC2_HDRI_SKY_FRAME_FIX: when set (any non-"0" value), applies the
     // kAxisSwapMC2toGL conversion to worldDir in the frag shader before equirect
     // lookup.  Default OFF => frameFix=0 => byte-identical baseline.
-    static const int   s_frameFix = []() {
-        const char* e = getenv("MC2_HDRI_SKY_FRAME_FIX");
-        return (e && e[0] != '0') ? 1 : 0;
-    }();
-    static const bool  s_azOffsetSet = (getenv("MC2_HDRI_SKY_AZ_OFFSET") != nullptr);
-    static const float s_azOffsetRad = []() {
-        const char* e = getenv("MC2_HDRI_SKY_AZ_OFFSET");
-        return e ? (float)(atof(e) * 3.14159265358979323846 / 180.0) : 0.0f;
-    }();
+    static const int s_frameFix = mc2::gate::get<"MC2_HDRI_SKY_FRAME_FIX">();
+    static const bool  s_azOffsetSet = mc2::gate::isSet<"MC2_HDRI_SKY_AZ_OFFSET">();
+    static const float s_azOffsetRad = hdriAzOffsetRadians();
 
     // Compute skyYaw. Auto-sync is always-on when hdriBakedSunValid_:
     // aligns the HDRI baked-sun azimuth to the mission terrain sun.
@@ -5313,15 +5200,9 @@ void gosPostProcess::renderHdriSkyboxBasis(const float* camFwd,
     glDisable(GL_CULL_FACE);
 
     // --- Sub-flag resolution (env read once). ---
-    static const int   s_uvDebug = []() {
-        const char* e = getenv("MC2_HDRI_SKY_UV_DEBUG");
-        return (e && e[0] != '0') ? 1 : 0;
-    }();
-    static const bool  s_azOffsetSet = (getenv("MC2_HDRI_SKY_AZ_OFFSET") != nullptr);
-    static const float s_azOffsetRad = []() {
-        const char* e = getenv("MC2_HDRI_SKY_AZ_OFFSET");
-        return e ? (float)(atof(e) * 3.14159265358979323846 / 180.0) : 0.0f;
-    }();
+    static const int s_uvDebug = mc2::gate::get<"MC2_HDRI_SKY_UV_DEBUG">();
+    static const bool  s_azOffsetSet = mc2::gate::isSet<"MC2_HDRI_SKY_AZ_OFFSET">();
+    static const float s_azOffsetRad = hdriAzOffsetRadians();
 
     // skyYaw. Default (no offset env) => 0.0 => no rotation. Frame-consistent
     // with the MC2-frame equirect: azimuth = atan2(north, east) = atan2(ly, lx)
@@ -5457,15 +5338,9 @@ void gosPostProcess::renderHdriSkyboxInvVP(const float* invVP16)
     // --- Sub-flag resolution (env read once). ---
     // MC2_HDRI_SKY_FLIP_H / FLIP_V are intentionally NOT read here: the matrix
     // inverse needs no handedness toggle (they were camera-basis only).
-    static const int   s_uvDebug = []() {
-        const char* e = getenv("MC2_HDRI_SKY_UV_DEBUG");
-        return (e && e[0] != '0') ? 1 : 0;
-    }();
-    static const bool  s_azOffsetSet = (getenv("MC2_HDRI_SKY_AZ_OFFSET") != nullptr);
-    static const float s_azOffsetRad = []() {
-        const char* e = getenv("MC2_HDRI_SKY_AZ_OFFSET");
-        return e ? (float)(atof(e) * 3.14159265358979323846 / 180.0) : 0.0f;
-    }();
+    static const int s_uvDebug = mc2::gate::get<"MC2_HDRI_SKY_UV_DEBUG">();
+    static const bool  s_azOffsetSet = mc2::gate::isSet<"MC2_HDRI_SKY_AZ_OFFSET">();
+    static const float s_azOffsetRad = hdriAzOffsetRadians();
 
     // skyYaw: auto-sync HDRI sun to terrain light direction when the scan found
     // a baked sun (hdriBakedSunValid_). The raw-MC2-frame equirect uses azimuth
@@ -5779,11 +5654,7 @@ void gos_ResetStaticShadowPriming()
 // its back-face guard), so this accessor is exported rather than kept static.
 float mc2ShadowMinSunAltDeg()
 {
-    static const float s_minAltDeg = []() {
-        const char* v = getenv("MC2_SHADOW_MIN_SUN_ALT");
-        if (!v || !v[0]) return 15.0f;   // default 15 degrees
-        return (float)atof(v);           // 0 (or negative) disables
-    }();
+    static const float s_minAltDeg = mc2::gate::get<"MC2_SHADOW_MIN_SUN_ALT">();
     return s_minAltDeg;
 }
 
@@ -5809,10 +5680,7 @@ static void mc2ComputeLightBasis(float fx, float fy, float fz,
                                  float& rx, float& ry, float& rz,
                                  float& ux, float& uy, float& uz)
 {
-    static const bool s_robustGuard = []() {
-        const char* v = getenv("MC2_SHADOW_ROBUST_BASIS");
-        return !(v && v[0] == '0');   // default ON
-    }();
+    static const bool s_robustGuard = mc2::gate::get<"MC2_SHADOW_ROBUST_BASIS">();
 
     // Legacy up-hint pick (primary path; unchanged behavior).
     ux = 0.0f; uy = 0.0f; uz = 1.0f;
@@ -5923,7 +5791,7 @@ void gosPostProcess::buildStaticLightMatrix(float sunDirX, float sunDirY, float 
     // and the map's real half-size, the clipper covers the FULL map ->
     // the bug is definitively the FEED (camera-windowed terrain), not the
     // light/clipper. buildCount>1 would mean the latch resets (rebuild).
-    if (getenv("MC2_DEBUG_SHADOW_FRUSTUM") != nullptr) {
+    if (mc2::gate::get<"MC2_DEBUG_SHADOW_FRUSTUM">()) {
         static int s_buildCount = 0;
         ++s_buildCount;
         fprintf(stderr,
@@ -5941,7 +5809,7 @@ void gosPostProcess::buildStaticLightMatrix(float sunDirX, float sunDirY, float 
     // out-of-range value BEFORE any GPU round-trip. Unconditional env-gated
     // fprintf (assert is a no-op under RelWithDebInfo); one-shot via the
     // staticLightMatrixBuilt_ latch.
-    if (getenv("MC2_DEBUG_SHADOW_ZRANGE") != nullptr) {
+    if (mc2::gate::get<"MC2_DEBUG_SHADOW_ZRANGE">()) {
         const float* M = staticLightSpaceMatrix_;
         const float pts[5][3] = {
             { 0.0f, 0.0f, 0.0f },
@@ -6373,11 +6241,9 @@ void gosPostProcess::buildDynamicLightMatrix(float sunDirX, float sunDirY, float
     // "shadows vanish at angle" symptom). When corners are scarce, rebuild the
     // AABB from ALL 8 corners so the fit can't degenerate to a sliver. Legacy
     // only fell back at validCorners==0. Gated (default ON) via the same knob.
-    static const int s_minValidCorners = []() {
-        const char* g = getenv("MC2_SHADOW_ROBUST_BASIS");
-        if (g && g[0] == '0') return 1;        // legacy: only the ==0 (i.e. <1) path
-        return 4;                              // robust: fall back when <4 survive
-    }();
+    static const int s_minValidCorners =
+        mc2::gate::get<"MC2_SHADOW_ROBUST_BASIS">() ? 4    // robust: fall back when <4 survive
+                                                    : 1;   // legacy: only the ==0 (i.e. <1) path
     if (validCorners < s_minValidCorners) {
         minLX = 1e30f; maxLX = -1e30f;
         minLY = 1e30f; maxLY = -1e30f;
@@ -6420,10 +6286,7 @@ void gosPostProcess::buildDynamicLightMatrix(float sunDirX, float sunDirY, float
     // Kill-switch: MC2_SHADOW_FOCUS_CENTER=0 reverts to the AABB centroid.
     // (MC2_SHADOW_FOCUS_DIST is retained for diagnostic logging but no longer
     //  drives the centering.)
-    static const bool s_focusCenter = []() {
-        const char* v = getenv("MC2_SHADOW_FOCUS_CENTER");
-        return !(v && v[0] == '0');  // default ON; opt out with =0
-    }();
+    static const bool s_focusCenter = mc2::gate::get<"MC2_SHADOW_FOCUS_CENTER">();
     // CSM-REDESIGN: MC2_SHADOW_CSM_FULLMAP_LAST and MC2_SHADOW_CSM_NEAR_MAX are
     // RETIRED/IGNORED. The last cascade is always full-map+map-centered and the
     // near/mid cascades use fixed radii (mc2ShadowCsmR0/R1), so the old per-frame
@@ -6535,7 +6398,7 @@ void gosPostProcess::buildDynamicLightMatrix(float sunDirX, float sunDirY, float
         focusDistUsed = sqrtf(fdx*fdx + fdy*fdy);
 
         // [CSM focus] diag: gated on the CSM frustum-diag env.
-        static const bool s_focusDiag = (getenv("MC2_SHADOW_FRUSTUM_DIAG") != nullptr);
+        static const bool s_focusDiag = mc2::gate::get<"MC2_SHADOW_FRUSTUM_DIAG">();
         if (s_focusDiag) {
             printf("[CSM focus] src=%s fx=%.1f fy=%.1f fz=%.1f t=%.3f d=%.1f cap=%.1f\n",
                    focusSrc, focusWorld[0], focusWorld[1], focusWorld[2], t, d, cap);
@@ -6560,17 +6423,9 @@ void gosPostProcess::buildDynamicLightMatrix(float sunDirX, float sunDirY, float
     // line, RendererFeatureRegistry.h and the tier1 doc in the SAME commit --
     // scripts/check-gate-defaults.py now fails the build if they disagree.
     {
-        static const bool s_boundedNear = []() {
-            const char* v = getenv("MC2_SHADOW_BOUNDED_NEAR_FIT");
-            return !(v && v[0] == '0');  // default ON; opt out with =0
-        }();
+        static const bool s_boundedNear = mc2::gate::get<"MC2_SHADOW_BOUNDED_NEAR_FIT">();
         if (s_boundedNear) {
-            static const float s_boundedRadiusRaw = []() {
-                const char* v = getenv("MC2_SHADOW_BOUNDED_NEAR_RADIUS");
-                float rad = (v ? (float)atof(v) : 2500.0f);
-                if (rad <= 0.0f) rad = 2500.0f;
-                return rad;
-            }();
+            static const float s_boundedRadiusRaw = mc2::gate::get<"MC2_SHADOW_BOUNDED_NEAR_RADIUS">();
             float boundedRadius = s_boundedRadiusRaw;
             if (boundedRadius < 512.0f) boundedRadius = 512.0f;
             if (boundedRadius > r)      boundedRadius = r;
@@ -6595,7 +6450,7 @@ void gosPostProcess::buildDynamicLightMatrix(float sunDirX, float sunDirY, float
 
     // SHADOW-FRUSTUM-AUDIT-1: MC2_SHADOW_FRUSTUM_DIAG=1 logs per-frame coverage.
     {
-        static const bool s_frustDiag = (getenv("MC2_SHADOW_FRUSTUM_DIAG") != nullptr);
+        static const bool s_frustDiag = mc2::gate::get<"MC2_SHADOW_FRUSTUM_DIAG">();
         static int s_frustN = 0;
         if (s_frustDiag) {
             ++s_frustN;
@@ -6771,7 +6626,7 @@ void gosPostProcess::buildDynamicLightMatrix(float sunDirX, float sunDirY, float
         }
 
         // Per-cascade ZRANGE probe (center + corners must land in [0,1]).
-        if (getenv("MC2_DEBUG_SHADOW_ZRANGE") != nullptr) {
+        if (mc2::gate::get<"MC2_DEBUG_SHADOW_ZRANGE">()) {
             static int s_csmN = 0;
             if (++s_csmN <= 1) {
                 for (int ci = 0; ci < N; ++ci) {
@@ -6792,7 +6647,7 @@ void gosPostProcess::buildDynamicLightMatrix(float sunDirX, float sunDirY, float
     // per frame -> one-shot via static counter. Transforms the snapped camera
     // center + offsets through dynamicLightSpaceMatrix_; clip.z/clip.w MUST be
     // in [0,1] (lockstep with the static probe + the .xy-only sampler remap).
-    if (getenv("MC2_DEBUG_SHADOW_ZRANGE") != nullptr) {
+    if (mc2::gate::get<"MC2_DEBUG_SHADOW_ZRANGE">()) {
         static int s_dynN = 0;
         if (++s_dynN <= 1) {
             const float* M = dynamicLightSpaceMatrix_;
@@ -6890,10 +6745,7 @@ bool gosPostProcess::executorScreenShadowWillRun() const
 
 static bool executorEnabled()
 {
-    static const bool s_on = []() {
-        const char* v = ::getenv("MC2_FRAMEGRAPH_EXECUTOR");
-        return v && v[0] == '1';
-    }();
+    static const bool s_on = mc2::gate::get<"MC2_FRAMEGRAPH_EXECUTOR">();
     return s_on;
 }
 

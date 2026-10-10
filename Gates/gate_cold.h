@@ -30,6 +30,8 @@ struct NameInfo {
 [[nodiscard]] std::optional<NameInfo> lookupName(std::string_view name) noexcept;
 
 namespace detail {
+// The variable's environment text as the C runtime reports it (nullptr when unset), for any row. Never cached.
+[[nodiscard]] const char* rawEnv(std::size_t idx) noexcept;
 // Current text of gate `idx`: the environment value, or the row's default string when the
 // variable is unset or empty. Never cached (String rows are cold).
 [[nodiscard]] std::string strRead(std::size_t idx);
@@ -42,6 +44,15 @@ template <Name n>
     static_assert(idx != detail::kNpos, "gate::str<>: name is not in the gate table (Gates/gate_table.cpp)");
     static_assert(detail::kIndex[idx].kind == Kind::String, "gate::str<>: only String rows");
     return detail::strRead(idx);
+}
+
+// The variable's current environment text, or nullptr when it is unset: for the diagnostic lines that echo
+// what the user typed next to the parsed value. Cold and uncached; decisions read get<>() instead.
+template <Name n>
+[[nodiscard]] inline const char* raw() noexcept {
+    constexpr std::size_t idx = detail::indexOf(n.sv());
+    static_assert(idx != detail::kNpos, "gate::raw<>: name is not in the gate table (Gates/gate_table.cpp)");
+    return detail::rawEnv(idx);
 }
 
 // Forget the cached value of one gate / of every gate, so the next read parses the

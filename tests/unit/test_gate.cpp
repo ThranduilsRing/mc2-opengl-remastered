@@ -1211,4 +1211,65 @@ TEST_CASE("G6 string and presence rows") {
     CHECK(rowValue(burnin, ""));
 }
 
+TEST_CASE("raw<> echoes the environment text, nullptr when unset, without caching") {
+    EnvVar env("MC2_BOX_DECAL");
+    env.set(nullptr);
+    CHECK(gate::raw<"MC2_BOX_DECAL">() == nullptr);
+    env.set("");
+    gate::invalidate("MC2_BOX_DECAL");
+    CHECK(gate::get<"MC2_BOX_DECAL">() == false);
+    env.set("yes");
+    CHECK(std::string(gate::raw<"MC2_BOX_DECAL">()) == "yes");   // fresh even though get<> cached
+    env.set(nullptr);
+    gate::invalidate("MC2_BOX_DECAL");
+}
+
+// ---------------------------------------------------------------------------
+// G5: gos_postprocess.cpp rows
+// ---------------------------------------------------------------------------
+
+TEST_CASE("G5 postprocess clamp rows reproduce the clamping lambdas they replaced") {
+    auto fl = [&](const char* name, const char* text) { return asFloat(gate::detail::parseRow(g1b::rowNamed(name), text)); };
+    auto in = [&](const char* name, const char* text) {
+        return static_cast<std::int32_t>(static_cast<std::uint32_t>(gate::detail::parseRow(g1b::rowNamed(name), text)));
+    };
+    CHECK(in("MC2_SHADOW_CSM_COUNT", nullptr) == 3);
+    CHECK(in("MC2_SHADOW_CSM_COUNT", "0") == 1);
+    CHECK(in("MC2_SHADOW_CSM_COUNT", "9") == 3);
+    CHECK(in("MC2_SHADOW_CSM_COUNT", "2") == 2);
+    CHECK(fl("MC2_SHADOW_CSM_LAMBDA", "-1") == 0.0f);
+    CHECK(fl("MC2_SHADOW_CSM_LAMBDA", "7") == 1.0f);
+    CHECK(fl("MC2_SHADOW_CSM_LAMBDA", "") == 0.5f);
+    CHECK(fl("MC2_SHADOW_CSM_SOFTNESS", "0.01") == 0.1f);      // the old test was `s < 0.1f`
+    CHECK(fl("MC2_SHADOW_CSM_SOFTNESS", "99") == 6.0f);
+    CHECK(fl("MC2_SHADOW_DIST_FADE", "1e9") == 100000.0f);
+    CHECK(fl("MC2_SHADOW_DIST_FADE_MAX", "2") == 1.0f);
+    CHECK(fl("MC2_SHADOW_OBJ_NORMAL_BIAS", "30") == 16.0f);
+    CHECK(fl("MC2_SHADOW_MECH_SOFT", "-3") == 0.0f);
+    CHECK(fl("MC2_SSAO_RADIUS", "0.01") == 0.1f);
+    CHECK(fl("MC2_SSAO_RADIUS", "1000") == 64.0f);
+    CHECK(fl("MC2_SSAO_BLUR_SIGMA", "0") == 0.001f);
+    CHECK(fl("MC2_SSAO_BLUR_SIGMA", "5") == 1.0f);
+    CHECK(fl("MC2_VIEWMODE_LOWLIGHT_GAIN", "0") == 0.1f);
+    CHECK(fl("MC2_VIEWMODE_LOWLIGHT_GAIN", "99") == 16.0f);
+    // the reader fell back to 2500 for <= 0
+    CHECK(fl("MC2_SHADOW_BOUNDED_NEAR_RADIUS", "0") == 2500.0f);
+    CHECK(fl("MC2_SHADOW_BOUNDED_NEAR_RADIUS", "-5") == 2500.0f);
+    CHECK(fl("MC2_SHADOW_BOUNDED_NEAR_RADIUS", "800") == 800.0f);
+    // snapped and lower-bound-only knobs keep unranged rows: the site does the snapping / flooring
+    CHECK(in("MC2_SHADOW_MAP_SIZE", "5000") == 5000);
+    CHECK(in("MC2_SHADOW_MAP_SIZE", nullptr) == 8192);
+    CHECK(fl("MC2_SHADOW_CSM_R0", "10") == 10.0f);
+}
+
+TEST_CASE("G5 postprocess text rows and the backend selector") {
+    const gate::Row& be = g1b::rowNamed("MC2_POSTPROCESS_BACKEND");
+    CHECK(be.kind == Kind::Enum);
+    CHECK(gate::rows::tokenListHas(be.tokens, "vk"));
+    CHECK(gate::rows::tokenListHas(be.tokens, "vulkan"));
+    for (const char* name : {"MC2_TONEMAP_V2", "MC2_SHADOW_DEBUG_MODE", "MC2_VIEW_MODE", "MC2_VIEWMODE_LOWLIGHT_TINT",
+                             "MC2_OOB_FOG_COLOR"})
+        CHECK(g1b::rowNamed(name).kind == Kind::String);
+}
+
 }  // TEST_SUITE

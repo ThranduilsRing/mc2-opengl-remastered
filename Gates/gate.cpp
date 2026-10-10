@@ -342,6 +342,11 @@ std::uint64_t resolve(std::size_t idx) noexcept {
     return s;
 }
 
+const char* rawEnv(std::size_t idx) noexcept {
+    if (idx >= tableSize()) return nullptr;
+    return envOf(tableData()[idx]);
+}
+
 std::string strRead(std::size_t idx) {
     if (idx >= tableSize()) return {};
     const Row& r = tableData()[idx];
