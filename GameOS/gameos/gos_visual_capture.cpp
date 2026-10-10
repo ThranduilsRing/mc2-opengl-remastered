@@ -93,6 +93,8 @@ extern "C" {
 // header, same layering reason as the pause shims above -- the collector in
 // code/sim_identity.cpp is what includes objmgr.h / mover.h / appear.h.
 #include "../../code/sim_identity.h"
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"   // str<>()
 
 // Global-scope game-quit flag (code/mechcmd2.cpp etc.); the mission main loop polls it
 // and calls gos_TerminateApplication(). Declared here so MC2_VISUAL_CAPTURE_EXIT_AFTER
@@ -542,12 +544,19 @@ struct ReplayState {
 };
 ReplayState g_replay;
 
+// MC2_VISUAL_CAPTURE_FRAME as the old reader saw it: unset -> -1, set -> atol() (empty -> 0).
+static long captureFrameEnv() {
+    if (!mc2::gate::isSet<"MC2_VISUAL_CAPTURE_FRAME">()) return -1L;
+    return mc2::gate::isNonEmpty<"MC2_VISUAL_CAPTURE_FRAME">() ? (long)mc2::gate::get<"MC2_VISUAL_CAPTURE_FRAME">() : 0L;
+}
+
 void parse_capture_cfg() {
     if (g_cap.parsed) return;
     g_cap.parsed = true;
-    const char* fr = getenv("MC2_VISUAL_CAPTURE_FRAME");
-    g_cap.frame = fr ? atol(fr) : -1L;
-    g_cap.dir = getenv("MC2_VISUAL_CAPTURE_DIR");
+    // Unset -> -1 (no capture); set-but-empty -> 0, exactly the atol() of the old reader.
+    g_cap.frame = captureFrameEnv();
+    static const std::string s_capDir = mc2::gate::str<"MC2_VISUAL_CAPTURE_DIR">();   // "" when unset or empty
+    g_cap.dir = mc2::gate::isSet<"MC2_VISUAL_CAPTURE_DIR">() ? s_capDir.c_str() : nullptr;
     static bool initLineDone = false;
     if (!initLineDone && g_cap.frame >= 0 && g_cap.dir) {
         initLineDone = true;
@@ -559,17 +568,15 @@ void parse_capture_cfg() {
 void parse_replay_cfg() {
     if (g_replay.parsed) return;
     g_replay.parsed = true;
-    g_replay.path = getenv("MC2_VISUAL_BOOKMARK_CAPTURE");
+    static const std::string s_replayPath = mc2::gate::str<"MC2_VISUAL_BOOKMARK_CAPTURE">();   // "" when unset or empty
+    g_replay.path = mc2::gate::isSet<"MC2_VISUAL_BOOKMARK_CAPTURE">() ? s_replayPath.c_str() : nullptr;
     if (!g_replay.path) return;
-    const char* settle = getenv("MC2_VISUAL_SETTLE");
-    if (settle) { long s = atol(settle); if (s > 0) g_replay.settleFrames = (int)s; }
-    const char* dir = getenv("MC2_VISUAL_CAPTURE_DIR");
-    g_replay.dir = dir ? dir : ".";
+    { long s = mc2::gate::get<"MC2_VISUAL_SETTLE">(); if (s > 0) g_replay.settleFrames = (int)s; }
+    g_replay.dir = mc2::gate::isSet<"MC2_VISUAL_CAPTURE_DIR">() ? mc2::gate::str<"MC2_VISUAL_CAPTURE_DIR">() : std::string(".");
     // Reuse MC2_VISUAL_CAPTURE_FRAME as the deterministic sweep-trigger frame
     // (default 120). Both runs trigger the freeze+sweep at the same frame so
     // scenarioTime is frozen at an identical value across runs.
-    const char* tf = getenv("MC2_VISUAL_CAPTURE_FRAME");
-    if (tf) { long t = atol(tf); if (t >= 0) g_replay.triggerFrame = t; }
+    if (mc2::gate::isSet<"MC2_VISUAL_CAPTURE_FRAME">()) { long t = captureFrameEnv(); if (t >= 0) g_replay.triggerFrame = t; }
     fprintf(stderr, "[VISUAL_CAPTURE v1.5] bookmark-replay init path=%s settle=%d "
             "triggerFrame=%ld dir=%s\n",
             g_replay.path, g_replay.settleFrames, g_replay.triggerFrame,
@@ -721,8 +728,7 @@ void onPostRenderFrame(unsigned int frame, int sceneW, int sceneH) {
     // frame pin is volley roulette). Unarmed (0) = wait.
     long trigger = g_cap.frame;
     {
-        static const bool s_onFire =
-            (getenv("MC2_VISUAL_CAPTURE_ON_FIRE") != nullptr);
+        static const bool s_onFire = mc2::gate::get<"MC2_VISUAL_CAPTURE_ON_FIRE">();
         if (s_onFire) {
             trigger = (::g_mc2FxFireCaptureFrame == 0)
                 ? 0x7fffffffL : (long)::g_mc2FxFireCaptureFrame;
@@ -808,7 +814,7 @@ void onPostRenderFrame(unsigned int frame, int sceneW, int sceneH) {
             // counters. Sets the same quitGame flag a window-close would; the mission
             // main loop polls it and calls gos_TerminateApplication() -> ordered VK
             // teardown (gameosmain.cpp mc2_vk_*_island_destroy). Off by default.
-            if (::getenv("MC2_VISUAL_CAPTURE_EXIT_AFTER")) {
+            if (mc2::gate::get<"MC2_VISUAL_CAPTURE_EXIT_AFTER">()) {
                 ::quitGame = true;
                 fprintf(stderr, "[VISUAL_CAPTURE v1.5] MC2_VISUAL_CAPTURE_EXIT_AFTER=1 "
                         "-> requesting clean shutdown (quitGame=true)\n");
@@ -892,7 +898,8 @@ void onPostRenderFrame(unsigned int frame, int sceneW, int sceneH) {
 // pose pin at frame >= @frame (default 300); sim keeps running.
 void cameraParkTick(unsigned int frame)
 {
-    static const char* s_park = getenv("MC2_CAMERA_PARK");
+    static const std::string s_parkText = mc2::gate::str<"MC2_CAMERA_PARK">();   // "" when unset or empty
+    static const char* s_park = mc2::gate::isSet<"MC2_CAMERA_PARK">() ? s_parkText.c_str() : nullptr;
     if (!s_park || !eye)
         return;
     static bool s_parked = false;
@@ -925,10 +932,7 @@ void cameraParkTick(unsigned int frame)
 namespace gos { namespace visual_capture {
 
 bool cleanFrame() {
-    static const bool s_clean = []{
-        const char* e = getenv("MC2_VISUAL_CAPTURE_CLEAN");
-        return e && e[0] != 0 && e[0] != '0';
-    }();
+    static const bool s_clean = mc2::gate::get<"MC2_VISUAL_CAPTURE_CLEAN">();
     return s_clean;
 }
 
