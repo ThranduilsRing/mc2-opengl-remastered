@@ -48,10 +48,9 @@
   "code/mpparameterscreen.cpp": 2415,
   "code/multplyr.h": 1849,
   "code/objective.cpp": 2657,
-  "code/objmgr.cpp": 5668,
   "code/optionsarea.cpp": 1842,
   "code/pilotreviewarea.cpp": 1845,
-  "code/saveload.cpp": 1720,
+  "code/saveload.cpp": 1683,
   "code/tacordr.cpp": 2072,
   "code/terrobj.cpp": 1740,
   "code/turret.cpp": 2346,
@@ -91,7 +90,7 @@
   "mclib/vfxtile.cpp": 2944,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "4acec1e81",
+ "head": "708c5e445",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -130,10 +129,10 @@
    "max_lines": 1159
   },
   "code": {
-   "files": 342,
-   "files_over_1500": 27,
-   "files_over_3000": 4,
-   "max_lines": 5668
+   "files": 348,
+   "files_over_1500": 26,
+   "files_over_3000": 3,
+   "max_lines": 4991
   },
   "editor": {
    "files": 225,
@@ -165,10 +164,6 @@
   3000
  ],
  "top": [
-  {
-   "file": "code/objmgr.cpp",
-   "lines": 5668
-  },
   {
    "file": "code/controlgui.cpp",
    "lines": 4991
@@ -284,13 +279,17 @@
   {
    "file": "code/warrior.h",
    "lines": 2171
+  },
+  {
+   "file": "code/logisticsdialog.cpp",
+   "lines": 2149
   }
  ],
  "total": {
-  "files": 1766,
-  "files_over_1500": 77,
-  "files_over_3000": 11,
-  "max_lines": 5668
+  "files": 1772,
+  "files_over_1500": 76,
+  "files_over_3000": 10,
+  "max_lines": 4991
  },
  "version": 1
 }

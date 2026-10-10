@@ -76,7 +76,7 @@ RenderCore/ResolutionContract.h::s_count < 16
 code/gamecam.cpp::s_vuCompareFrame <= 10
 code/ground_contact_blob.cpp::s_blobLogCount < 8
 code/missiongui_update.cpp::s_stage < 12
-code/objmgr.cpp::s_frames < 60
+code/objmgr_update.cpp::s_frames < 60
 code/warrior.cpp::s_firedMechs < 8
 editor/EditorInterface_mouse.cpp::s_clickTrace <= 5
 editor/EditorMFC.cpp::g_cliPlaytestWarmFrames < 30

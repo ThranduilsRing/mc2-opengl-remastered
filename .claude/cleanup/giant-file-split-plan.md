@@ -27,6 +27,11 @@ Priority by agent-cost saving per unit of risk:
 | `GameOS/gameos/gos_static_prop_batcher.cpp` | 11,076 | 378 | state, program, mapload, finalize, submit, flush, shadow, seam + `gos_static_prop_batcher_internal.h` | done (4361bc735); pieces are contiguous slices linked in file order (`static-prop-batcher-state-design.md`); `finalizeGeometry` (2,054) and `flush` (2,366) are single functions and stay the oversized pieces until a phase-helper refactor |
 | `code/missiongui.cpp` | 7,908 | 531 | diag, update, style, orders, cursor, support, debugkeys, input + `missiongui_shared_internal.h` (the UI-command pieces keep `missiongui_internal.h`) | done (1af09dd12); largest piece update 1,309; shared hover state and the MIF/GPU-pick diag block became external names in two prep commits |
 | `code/mission.cpp` | 5,867 | 908 | update, movers, init + `mission_internal.h` | done (e8aaccaa1); `Mission::init` (2,284 lines, `mission_init.cpp`) is one function and stays the oversized piece until a phase-helper refactor; mid-file includes and the game-system constants moved up in two prep commits |
+| `code/objmgr.cpp` | 5,668 | 1,317 | io, update, pick, misc + `objmgr_internal.h` | done (708c5e445); `GameObjectManager::update` (1,032 lines) stays whole in the update piece with its preamble gates and the gomcost spans |
+
+Phase-helper candidates (second pass, after the split queue; each is one function that no split can cut, done the way `renderLists` was: verbatim phase bodies, small state struct for the loop-carried locals, inline-expansion proof): `Mission::init` (`mission_init.cpp`, 2,284 lines), `gos_static_prop_batcher_finalize.cpp` `finalizeGeometry` (2,054), `gos_static_prop_batcher_flush.cpp` `flush` (2,366), `gos_terrain_lod_chunk_draw.cpp` `SubmitDrawCommands` (1,385).
+
+Copy-paste groups that moved intact with the mission split and belong to the refactor pass: `mission_init.cpp` 1206-1281 and `mission_movers.cpp` 60-81 / 309-330 (they pre-existed inside `mission.cpp`).
 
 Ratchet ruling (2026-10-10): the two single-function static-prop pieces raise the oversized-file count by one against the file they replace (repo-wide 79 files over 1,500, from 82 when the lane-2 split program started); accepted with the same reasoning as `txmmgr_render.cpp`.
 
