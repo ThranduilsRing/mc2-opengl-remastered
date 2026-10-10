@@ -886,6 +886,9 @@ run_check "split_map"                 "py -3 tools/split/split_map.py --check"
 # Comment de-bloat guard (giant-file-split-plan.md, "Comment de-bloat pass"): proves the lexer, protection rules and
 # exit codes still hold. Fixtures are in-memory; pytest twin is tools/test_comment_guard.py (tools_tests row).
 run_check "comment_guard_selftest"   "py -3 tools/comment_guard.py --selftest"
+# Doc cite repair guard (docs/cite-guard.md): proves the cite grammar, SPLIT/DELETED/STALE-LINE classes and the diff-guard still
+# hold on a temp git repo. No repo-wide --check row: the docs are red by design until the triage pass lands. Pytest twin: tools/test_cite_guard.py.
+run_check "cite_guard_selftest"      "py -3 tools/cite_guard.py --selftest"
 run_check "pipeline_desc"          "py -3 scripts/check-pipeline-desc.py --quiet"
 # DARK-TESTS-RUN-1 (2026-07-31): the sibling rows above arm the COUNT pins the
 # unrun binary cannot. These arm the tier itself. check-contract-coverage.py
