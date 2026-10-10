@@ -1,6 +1,8 @@
 // UiDefs: defs-file text parsing, path resolution, drawing primitives.
 // Declared in UiDefs_internal.h.
 #include "UiDefs_internal.h"
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"   // str<>()
 
 namespace uidefs_detail {
 
@@ -21,18 +23,9 @@ std::string toLower(std::string v)
     return v;
 }
 
-bool envValueIsFalse(const char* v)
-{
-    if (!v || !v[0])
-        return false;
-    const std::string lower = toLower(v);
-    return lower == "0" || lower == "false" || lower == "off" || lower == "no";
-}
-
 bool uiDefsTraceEnabled()
 {
-    const char* v = std::getenv("MC2_UI_DEFS_TRACE");
-    return v && v[0] && v[0] != '0';
+    return mc2::gate::get<"MC2_UI_DEFS_TRACE">();
 }
 
 void uiDefsTrace(const char* fmt, ...)
@@ -260,8 +253,8 @@ static std::filesystem::path executableDirectory()
 
 std::filesystem::path defsRoot()
 {
-    const char* explicitRoot = std::getenv("MC2_DEFS_ROOT");
-    if (explicitRoot && explicitRoot[0])
+    const std::string explicitRoot = mc2::gate::str<"MC2_DEFS_ROOT">();   // "" when unset or empty
+    if (!explicitRoot.empty())
         return std::filesystem::path(explicitRoot);
 
     const std::filesystem::path cwd = std::filesystem::current_path();
@@ -301,8 +294,7 @@ bool uiPackageVersionCheckPassed()
     if (s_verdict >= 0)
         return s_verdict == 1;
 
-    const char* skip = std::getenv("MC2_UI_DEFS_IGNORE_PACKAGE_VERSION");
-    if (skip && skip[0] && !envValueIsFalse(skip)) {
+    if (mc2::gate::get<"MC2_UI_DEFS_IGNORE_PACKAGE_VERSION">()) {
         uiDefsLog("package version check BYPASSED (MC2_UI_DEFS_IGNORE_PACKAGE_VERSION set)");
         s_verdict = 1;
         return true;

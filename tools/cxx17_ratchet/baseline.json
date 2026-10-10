@@ -5759,7 +5759,7 @@
    "LG20": 1
   }
  },
- "head": "ea1b378ca",
+ "head": "b777f5a2a",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
@@ -5787,7 +5787,7 @@
   "LG19": {
    "Viewer": 0,
    "editor": 1,
-   "gui": 8
+   "gui": 5
   }
  },
  "version": 2
