@@ -1,3 +1,4 @@
+#include "Gates/gate_cold.h"   // gate::get<>() and str<>()
 // vulkan_terrain_island.cpp — VK-P10 TERRAIN TIER-1: LIVE LOD0 terrain opaque prefix
 // co-written IN-PLACE into the SHARED scene GBuffer.
 // =============================================================================
@@ -136,10 +137,7 @@ void vlog(const char* fmt, ...) {
 // otherwise do a GL depth readback. Under strict we fail-soft (skip the readback -> that
 // frame's terrain is unshadowed via the legacy path) instead of violating the invariant.
 bool terrainNoInteropStrict() {
-    static const int s = [](){
-        const char* v = getenv("MC2_VK_NO_GL_INTEROP_STRICT");
-        return (v && v[0] == '1') ? 1 : 0;
-    }();
+    static const int s = mc2::gate::get<"MC2_VK_NO_GL_INTEROP_STRICT">();
     return s != 0;
 }
 
@@ -172,8 +170,7 @@ bool terrainFenceDeferEnabled() {
 bool terrainPerfGateRequested() {
     static int state = -1;
     if (state == -1) {
-        const char* e = std::getenv("MC2_VK_TERRAIN_PERF");
-        state = (e && e[0] == '1') ? 1 : 0;
+        state = mc2::gate::get<"MC2_VK_TERRAIN_PERF">();
     }
     return state == 1;
 }
@@ -259,8 +256,7 @@ bool terrainVisualDisplaceFarRequested() {
 }
 
 std::string spv_dir() {
-    const char* env = std::getenv("MC2_VULKAN_SPV_DIR");
-    std::string d = (env && *env) ? env : "shaders/vulkan";
+    std::string d = mc2::gate::str<"MC2_VULKAN_SPV_DIR">();   // row default "shaders/vulkan" (also for an empty value)
     if (!d.empty() && d.back() != '/' && d.back() != '\\') d += '/';
     return d;
 }
@@ -1385,8 +1381,7 @@ bool snapshot_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
 static bool heightAuditRequested() {
     static int state = -1;
     if (state == -1) {
-        const char* e = std::getenv("MC2_VK_TERRAIN_HEIGHT_AUDIT");
-        state = (e && e[0] == '1' && e[1] == '\0') ? 1 : 0;
+        state = mc2::gate::get<"MC2_VK_TERRAIN_HEIGHT_AUDIT">();
     }
     return state == 1;
 }
@@ -1397,8 +1392,7 @@ static bool heightAuditRequested() {
 static bool heightAuditCorruptRequested() {
     static int state = -1;
     if (state == -1) {
-        const char* e = std::getenv("MC2_VK_TERRAIN_HEIGHT_AUDIT_CORRUPT");
-        state = (e && e[0] == '1' && e[1] == '\0') ? 1 : 0;
+        state = mc2::gate::get<"MC2_VK_TERRAIN_HEIGHT_AUDIT_CORRUPT">();
     }
     return state == 1;
 }
@@ -2439,10 +2433,7 @@ static void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
     // CSM-BLACKOUT-RECON-1: one-shot debug viz, env-gated (no perf/behavior
     // impact when unset). See MC2_VK_TERRAIN_CSM_DEBUG in mc2vkgate.
     {
-        static const int dbgMode = [](){
-            const char* v = getenv("MC2_VK_TERRAIN_CSM_DEBUG");
-            return v ? atoi(v) : 0;
-        }();
+        static const int dbgMode = mc2::gate::get<"MC2_VK_TERRAIN_CSM_DEBUG">();
         u.csmDebugMode = dbgMode;
     }
     std::memcpy(u.csmCascadeMatrices, feed.csmCascadeMatrices, sizeof(u.csmCascadeMatrices));
@@ -2561,7 +2552,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     const clk::time_point tCopies0 = clk::now();
     // VK-TERRAIN-STAGING-PERF-1: per-step sub-timers inside the copies zone, only
     // sampled when MC2_VK_TERRAIN_COPY_STATS is set (same gate as the summary line).
-    static const bool s_copyStatsOn = (getenv("MC2_VK_TERRAIN_COPY_STATS") != nullptr);
+    static const bool s_copyStatsOn = mc2::gate::get<"MC2_VK_TERRAIN_COPY_STATS">();
     double subStaticUs = 0.0, subDynUs = 0.0, subCsmUs = 0.0;
     {
     ZoneScopedN("VK-terrain-interop-copies");

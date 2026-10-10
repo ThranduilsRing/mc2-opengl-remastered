@@ -5,7 +5,7 @@
 generator_version: "3.0.0"
 gate_count: 1139
 registry_entry_count: 354
-verified_count: 127
+verified_count: 134
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -7154,6 +7154,7 @@ flags:
     owner: vk
     doc: "VK Metal-gate canary."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TRACE_VK_NO_GL_INTEROP_STRICT, kind: Trace, order: -1, default_on: false}
   - name: MC2_VK_OBJECTID_DIRECT_CHAIN
     kind: Bool
@@ -7441,6 +7442,7 @@ flags:
     owner: vk
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_VK_TERRAIN_CSM
     kind: Tri
     default: null
@@ -7455,6 +7457,7 @@ flags:
     rule: Prefix
     owner: vk
     doc: ""
+    verified: true
   - name: MC2_VK_TERRAIN_CSM_FULLMAP_EXPERIMENTAL
     kind: Bool
     default: false
@@ -7504,6 +7507,7 @@ flags:
     owner: vk
     doc: "VK-TERRAIN HEIGHT-AUDIT (verification-only, default OFF; requires MC2_VK_TERRAIN_TIER1)."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_VK_TERRAIN_HEIGHT_AUDIT, kind: Feature, order: -1, default_on: false}
   - name: MC2_VK_TERRAIN_HEIGHT_AUDIT_CORRUPT
     kind: Bool
@@ -7512,6 +7516,7 @@ flags:
     owner: vk
     doc: "VK-TERRAIN HEIGHT-AUDIT NEGATIVE CONTROL (test-only, default OFF; requires MC2_VK_TERRAIN_HEIGHT_AUDIT)."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_VK_TERRAIN_HEIGHT_AUDIT_CORRUPT, kind: Feature, order: -1, default_on: false}
   - name: MC2_VK_TERRAIN_LIGHTING
     kind: Tri
@@ -7543,6 +7548,7 @@ flags:
     owner: vk
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_VK_TERRAIN_SKIRTS
     kind: Tri
     default: null
@@ -7642,11 +7648,12 @@ flags:
     smoke_passthrough: true
   - name: MC2_VULKAN_SPV_DIR
     kind: String
-    default: ""
+    default: "shaders/vulkan"
     rule: Std
     owner: vk
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_VULKAN_VALIDATION
     kind: Bool
     default: false

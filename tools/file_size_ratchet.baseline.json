@@ -96,7 +96,7 @@
   "mclib/quad.cpp": 4261,
   "mclib/render_contract.cpp": 1608,
   "mclib/stuff/rotation.cpp": 1672,
-  "mclib/terrain.cpp": 4934,
+  "mclib/terrain.cpp": 4895,
   "mclib/terrtxm.cpp": 1775,
   "mclib/terrtxm2.cpp": 2792,
   "mclib/tgl.cpp": 4355,
@@ -106,7 +106,7 @@
   "mclib/vfxtile.cpp": 2944,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "7c90759b7",
+ "head": "156e6eaa5",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -226,7 +226,7 @@
   },
   {
    "file": "mclib/terrain.cpp",
-   "lines": 4934
+   "lines": 4895
   },
   {
    "file": "mclib/camera.cpp",
