@@ -59,6 +59,8 @@ void gFree (void *me);
 
 #define MAX_COMMAND 107
 //--------------------------------------------------------------------------------------
+struct UiCmdCtx;
+
 class MissionInterfaceManager
 {
 	//-------------------------------------------------------------------
@@ -362,6 +364,12 @@ public:
 
 		// UI-COMMAND-CHANNEL-1: MC2_UI_COMMAND_FILE polling (see missiongui.cpp)
 		void processUiCommandChannel();
+		// One group of the verb chain per function; each returns true when a verb matched (see missiongui_uicmd*.cpp).
+		bool uiCmdBasic(UiCmdCtx& c);
+		bool uiCmdWorld(UiCmdCtx& c);
+		bool uiCmdReadback(UiCmdCtx& c);
+		bool uiCmdProbe(UiCmdCtx& c);
+		bool uiCmdFixture(UiCmdCtx& c);
 
 		void makeForceGroup( int forceGroup );
 		bool moveCameraAround( bool lineOfSight, bool passable, bool ctrl, bool bGui, long moverCount, long nonMoverCount );
