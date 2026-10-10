@@ -4430,18 +4430,31 @@
    "LG13": 16
   },
   "mclib/inifile.cpp": {
-   "LG01": 60,
-   "LG06": 57,
-   "LG09": 75,
-   "LG11": 1,
-   "LG12b": 74,
-   "LG17": 4
+   "LG01": 14,
+   "LG06": 28,
+   "LG09": 39,
+   "LG12b": 33,
+   "LG17": 3
   },
   "mclib/inifile.h": {
    "LG01": 1,
    "LG06": 64,
    "LG13": 16,
    "LG17": 4
+  },
+  "mclib/inifile_arrays.cpp": {
+   "LG01": 45,
+   "LG06": 15,
+   "LG09": 23,
+   "LG12b": 30,
+   "LG17": 1
+  },
+  "mclib/inifile_read.cpp": {
+   "LG01": 1,
+   "LG06": 14,
+   "LG09": 13,
+   "LG11": 1,
+   "LG12b": 11
   },
   "mclib/lz.h": {
    "LG02": 1
@@ -5832,16 +5845,15 @@
    "LG13": 10
   },
   "mclib/terrtxm2.cpp": {
-   "LG01": 88,
-   "LG03": 11,
-   "LG05": 9,
-   "LG06": 15,
-   "LG09": 122,
+   "LG01": 19,
+   "LG03": 2,
+   "LG05": 1,
+   "LG06": 3,
+   "LG09": 3,
    "LG11": 1,
-   "LG12a": 24,
-   "LG12b": 30,
-   "LG13": 5,
-   "LG17": 1
+   "LG12a": 1,
+   "LG12b": 4,
+   "LG13": 1
   },
   "mclib/terrtxm2.h": {
    "LG01": 1,
@@ -5850,6 +5862,32 @@
    "LG06": 10,
    "LG09": 2,
    "LG13": 3
+  },
+  "mclib/terrtxm2_bake.cpp": {
+   "LG01": 29,
+   "LG03": 4,
+   "LG06": 8,
+   "LG09": 44,
+   "LG12a": 4,
+   "LG12b": 11
+  },
+  "mclib/terrtxm2_internal.h": {
+   "LG01": 8,
+   "LG05": 8,
+   "LG06": 3,
+   "LG09": 10,
+   "LG12a": 7,
+   "LG12b": 2,
+   "LG13": 4,
+   "LG17": 1
+  },
+  "mclib/terrtxm2_load.cpp": {
+   "LG01": 32,
+   "LG03": 5,
+   "LG06": 1,
+   "LG09": 65,
+   "LG12a": 12,
+   "LG12b": 13
   },
   "mclib/tex_resolve_table.cpp": {
    "LG09": 13
@@ -6110,7 +6148,7 @@
    "LG20": 2
   }
  },
- "head": "d12925470",
+ "head": "ee5956b82",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
