@@ -1,3 +1,4 @@
+#include "Gates/gate.h"
 #ifndef EDITORCAMERA_H
 #define EDITORCAMERA_H
 /*************************************************************************************************\
@@ -52,7 +53,7 @@ EditorCamera.h			: Interface for the EditorCamera component.
 // (EditorInterface.cpp) so file-scope static linkage is safe. ASCII only.
 static void EditorCameraTrace(const char* fmt, ...)
 {
-	if (getenv("MC2_EDITOR_TRACE") == NULL)
+	if (!mc2::gate::get<"MC2_EDITOR_TRACE">())
 		return;
 	FILE* f = fopen("editor-startup.log", "a");
 	if (!f)
@@ -250,8 +251,8 @@ public:
 					RenderCore::setCurrentView(mainView);
 				}
 
-				static const char* s_vuEnv = std::getenv("MC2_VIEW_UNIFORMS");
-				if (!(s_vuEnv && s_vuEnv[0] == '0')) {
+				static const bool s_vuOn = mc2::gate::get<"MC2_VIEW_UNIFORMS">();
+				if (s_vuOn) {
 					RenderCore::uploadViewUniforms(vu);
 				}
 			}
