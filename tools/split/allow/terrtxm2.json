@@ -15,5 +15,5 @@
   "tools/terrain_beautify/cook_cliff_material.py"
  ],
  "_scripts_reason": "Reviewed: these harnesses, cook scripts and manifests cite terrtxm2.cpp in comments and notes only; tools/gate_codemod.py and tools/mc2_launcher (lane 1) are not edited here.",
- "split_commit": "PENDING"
+ "split_commit": "e880b7520"
 }

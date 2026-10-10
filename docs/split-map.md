@@ -379,6 +379,17 @@ Split commit: `b9cc28a1f`.
 | `terrain_update.cpp` | Terrain: Terrain::update with the LOD chunk selection and morph factor helpers. |
 | `terrain_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
+## `mclib/terrtxm2.cpp`
+
+Split commit: `e880b7520`.
+
+| Piece | What it holds |
+|---|---|
+| `terrtxm2.cpp` | keeps init / destroy, the colormap data access, the texture handle resolve and the save functions |
+| `terrtxm2_bake.cpp` | TerrainColorMap: fractal base mesh, shadow burn-in, detail / water texture reset and light recalc, and the base texture reset. |
+| `terrtxm2_load.cpp` | TerrainColorMap: getScaledColorMap and TerrainColorMap::init(fileName): the mission colormap load. |
+| `terrtxm2_internal.h` | shared include bundle, extern globals and declarations of the pieces |
+
 ## `mclib/tgl.cpp`
 
 | Piece | What it holds |
