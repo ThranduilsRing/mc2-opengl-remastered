@@ -33,15 +33,16 @@
 #include <string>
 #include <vector>
 #include "diagnostic_trace.h"
+#include "Gates/gate.h"
 
 // ---------------------------------------------------------------------------
 // Trace macro (env-gated, default off)
 // ---------------------------------------------------------------------------
-static const bool s_computeTrace = (getenv("MC2_GPU_CULL_COMPUTE_TRACE") != nullptr);
+static const bool s_computeTrace = mc2::gate::get<"MC2_GPU_CULL_COMPUTE_TRACE">();
 
 // Ownership-parity oracle (Slice A, measurement-only, default off).
 // Set MC2_GPU_CULL_OWNERSHIP_PARITY=1 to enable.
-static const bool s_ownershipParity = (getenv("MC2_GPU_CULL_OWNERSHIP_PARITY") != nullptr);
+static const bool s_ownershipParity = mc2::gate::get<"MC2_GPU_CULL_OWNERSHIP_PARITY">();
 #define COMPUTE_TRACE(fmt, ...) \
     do { if (s_computeTrace) { printf("[GPU_CULL v1] " fmt "\n", ##__VA_ARGS__); fflush(stdout); } } while (0)
 
@@ -107,8 +108,7 @@ bool compute_isEnabled() {
     static bool s_enabled = false;
     if (!s_initialized_flag) {
         s_initialized_flag = true;
-        const char* v = getenv("MC2_GPU_CULL");
-        s_enabled = (v == nullptr || v[0] != '0');
+        s_enabled = mc2::gate::get<"MC2_GPU_CULL">();
     }
     return s_enabled;
 }
@@ -122,8 +122,7 @@ static float compute_getFrustumDilation() {
     static float s_value  = 0.08f;
     if (!s_inited) {
         s_inited = true;
-        const char* v = getenv("MC2_GPU_CULL_FRUSTUM_DILATION");
-        if (v) { float p = (float)atof(v); if (p >= 0.0f && p < 1.0f) s_value = p; }
+        s_value = mc2::gate::get<"MC2_GPU_CULL_FRUSTUM_DILATION">();   // row: default 0.08, outside [0, 1] reads the default
     }
     // Design v4 §6.1 coalesce-armed zero-dilation gate removed.
     // Rationale: this function feeds the actor-level compute shader (gpu_cull.comp);
@@ -297,7 +296,7 @@ static GLuint build_cull_program(const std::string* preambles, int nPreambles,
     if (!sh) { return 0; }
 
     // Debug: dump concatenated source to file for inspection.
-    if (getenv("MC2_GPU_CULL_DUMP_SHADER")) {
+    if (mc2::gate::get<"MC2_GPU_CULL_DUMP_SHADER">()) {
         char fname[64];
         snprintf(fname, sizeof(fname), "shader_dump_%s.glsl", debugName ? debugName : "unknown");
         if (FILE* dumpf = fopen(fname, "w")) {
@@ -896,7 +895,7 @@ void compute_dispatch() {
     COMPUTE_TRACE("mvp row3=(%.4f,%.4f,%.4f,%.4f)",
                   mvp[3],mvp[7],mvp[11],mvp[15]);
 
-    static const bool s_camMoveDiag = (getenv("MC2_CAMERA_MOVE_DIAG") != nullptr);
+    static const bool s_camMoveDiag = mc2::gate::get<"MC2_CAMERA_MOVE_DIAG">();
 
     // Copy active ring slot to staging SSBO (offset 0).
     GLuint substrateSsbo = substrate_getInstanceSsboName();
