@@ -1,6 +1,6 @@
 # Lists every inline-asm site (__asm / _asm / asm volatile) and whether the preprocessor region holding it is dead
 # under the build invariants (LINUX_BUILD defined, USE_ASSEMBLER_CODE=0). Regions guarded by anything else are "unknown".
-# usage: py -3 .claude/asm_dead_scan.py FILE...
+# usage: py -3 tools/phase/asm_dead_scan.py FILE...
 import re
 import sys
 # eval() below only folds a numeric preprocessor expression read from repo sources; this is an offline audit tool.

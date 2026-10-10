@@ -137,6 +137,11 @@ struct GpuStaticPropType {
 
 // Forward declaration needed for flush() signature (v2.3).
 // Full definition in render_snapshot.h; batcher.cpp includes it directly.
+// Phase-helper state of GpuStaticPropBatcher::flush (defined in gos_static_prop_batcher_flush.cpp).
+struct StaticPropFlushFrame;
+struct StaticPropFinalizeFrame;
+struct StaticPropDispatchMeta;
+namespace RenderCore { struct DrawPacket; }
 struct RenderSnapshot;
 
 class GpuStaticPropBatcher {
@@ -174,6 +179,18 @@ public:
 
     // Called at end of registration to upload the immutable VBO/IBO.
     void finalizeGeometry();
+
+private:
+    // GpuStaticPropBatcher::finalizeGeometry phases (gos_static_prop_batcher_finalize*.cpp); callers use finalizeGeometry().
+    void finalizePrologue();
+    void createSharedBuffers();
+    void uploadPerTypeAndPublish();
+    bool layoutCoalesce(StaticPropFinalizeFrame& f);
+    bool buildTextureArrays(StaticPropFinalizeFrame& f);
+    void buildPerPacketDrawTables(StaticPropFinalizeFrame& f);
+    bool reportMaterialCacheAndBaseInstances(StaticPropFinalizeFrame& f);
+    void armCoalesce(StaticPropFinalizeFrame& f);
+public:
 
     // Per-frame submission. shape->listOfColors must be fresh (set by
     // TransformMultiShape earlier in the frame).
@@ -233,6 +250,39 @@ public:
     // (MC2_SNAP_CULL=1). nullptr = no snap-cull (default OFF).
     // snap pointer is not stored; read only during this call.
     void flush(const RenderSnapshot* snap = nullptr);
+
+private:
+    // GpuStaticPropBatcher::flush phases (gos_static_prop_batcher_flush.cpp); callers use flush().
+    void candidateLogAndParityReadback(StaticPropFlushFrame& f);
+    void acquireGlGuards(StaticPropFlushFrame& f);
+    void applyOpaqueState(StaticPropFlushFrame& f);
+    void prepareIndirectAndFence(StaticPropFlushFrame& f);
+    void writeCoalesceInstances();
+    void logInstDiagPath();
+    void refreshAlphaFlags();
+    void bindCoalesceGuards(StaticPropFlushFrame& f);
+    void uploadCoalesceMvp();
+    void uploadCoalesceUniforms();
+    void bindPerDrawAndMaterial();
+    void armV5();
+    void armV6();
+    void drawStaticPopulation();
+    void decideV6(StaticPropFlushFrame& f);
+    void initV6State(StaticPropFlushFrame& f);
+    void buildV6Packets(std::vector<RenderCore::DrawPacket>& v6Packets, std::vector<StaticPropDispatchMeta>& v6Meta, StaticPropFlushFrame& f);
+    void decideV5(StaticPropFlushFrame& f);
+    void dispatchV6(const RenderSnapshot* snap, std::vector<RenderCore::DrawPacket>& v6Packets, std::vector<StaticPropDispatchMeta>& v6Meta, StaticPropFlushFrame& f);
+    void dispatchV5(StaticPropFlushFrame& f);
+    void dispatchBc7Buckets(StaticPropFlushFrame& f);
+    void dispatchMultiDraw(StaticPropFlushFrame& f);
+    void finishCoalesceDraw(StaticPropFlushFrame& f);
+    void legacyPrepare();
+    void legacyCensus();
+    void legacyDrawLoop(StaticPropFlushFrame& f);
+    void fenceAndParitySlot();
+    void releaseGlGuards(StaticPropFlushFrame& f);
+    void finishFlush();
+public:
     // depth-only into the dynamic shadow FBO. skipStaticBuildingTypes=true (set
     // when MC2_STATIC_PROP_BUILDING_SHADOW is active) omits building types — they
     // cast via the world-fixed static map, so the dynamic copy would be a

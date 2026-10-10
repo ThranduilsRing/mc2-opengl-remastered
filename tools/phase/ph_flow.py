@@ -1,5 +1,5 @@
 # Depth-1 outline of one function body: the statements at the function's own brace depth, with line numbers.
-# usage: py -3 .claude/ph_flow.py FILE 'signature regex'
+# usage: py -3 tools/phase/ph_flow.py FILE 'signature regex'
 import re, sys
 BS = chr(92)
 path, sig = sys.argv[1], sys.argv[2]

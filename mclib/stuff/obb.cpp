@@ -71,79 +71,6 @@ OBB&
 	Check_Object(&obb);
 	Check_Object(&matrix);
 
-#if USE_ASSEMBLER_CODE
-
-	Scalar *f = localToParent.entries;
-
-	_asm {
-		mov         edx, matrix
-		push        esi
-		mov         esi, obb.localToParent
-		
-		mov         eax, f
-
-		fld         dword ptr [edx+4]		//	m[1][0]
-		fmul        dword ptr [esi+01ch]	//	obb.localToParent(3,1)
-		
-		fld         dword ptr [edx+8]		//	m[2][0]
-		fmul        dword ptr [esi+02Ch]	//	obb.localToParent(3,2)
-
-		fxch		st(1)
-		fadd        dword ptr [edx+0Ch]		//	m[3][0]
-		
-		fld         dword ptr [edx]			//	m[0][0]
-		fmul        dword ptr [esi+0Ch]		//	obb.localToParent(3,0)
-
-		fxch		st(2)
-		faddp       st(1),st
-
-		fld         dword ptr [edx+14h]		//	m[1][1]
-		fmul        dword ptr [esi+01ch]	//	obb.localToParent(3,1)
-
-		fxch		st(2)
-		faddp       st(1),st
-
-		fld         dword ptr [edx+18h]		//	m[2][1]
-		fmul        dword ptr [esi+02ch]	//	obb.localToParent(3,2)
-		
-		fxch		st(1)
-		fstp        dword ptr [eax+0ch]		//	localToParent(3,0)
-
-		fadd        dword ptr [edx+1Ch]		//	m[3][1]
-
-		fld         dword ptr [edx+10h]		//	m[0][1]
-		fmul        dword ptr [esi+0ch]		//	obb.localToParent(3,0)
-
-		fxch		st(2)
-		faddp       st(1),st
-
-		fld         dword ptr [edx+24h]		//	m[1][2]
-		fmul        dword ptr [esi+01ch]	//	obb.localToParent(3,1)
-
-		fxch		st(2)
-		faddp       st(1),st
-
-		fld         dword ptr [edx+28h]		//	m[2][2]
-		fmul        dword ptr [esi+02ch]	//	obb.localToParent(3,2)
-		
-		fxch		st(1)
-		fstp        dword ptr [eax+01ch]	//	localToParent(3,1)
-
-		fadd        dword ptr [edx+2Ch]		//	m[3][2]
-		
-		fld         dword ptr [edx+20h]		//	m[0][2]
-		fmul        dword ptr [esi+0ch]		//	obb.localToParent(3,0)
-
-		fxch		st(2)
-		faddp       st(1),st
-
-		pop         esi
-
-		faddp       st(1),st
-
-		fstp        dword ptr [eax+02ch]	//	localToParent(3,2)
-	}
-#else
 	localToParent(3,0) =
 		obb.localToParent(3,0)*matrix(0,0)
 		 + obb.localToParent(3,1)*matrix(1,0)
@@ -159,7 +86,6 @@ OBB&
 		 + obb.localToParent(3,1)*matrix(1,2)
 		 + obb.localToParent(3,2)*matrix(2,2)
 		 + matrix(3,2);
-#endif
 
 	sphereRadius = obb.sphereRadius;
 	return *this;

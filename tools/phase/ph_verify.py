@@ -2,7 +2,7 @@
 # into the helper body and require the result to equal the original function body statement for statement
 # (modulo the spec's listed declaration lifts / edits and the scaffolding), and require everything outside
 # the function and the added helper block to be byte-identical.
-# usage: py -3 .claude/ph_verify.py .claude/ph_spec_<name>.py
+# usage: py -3 tools/phase/ph_verify.py tools/phase/proofs/ph_spec_<name>.py
 import collections
 import importlib.util
 import re
@@ -10,7 +10,7 @@ import os
 import subprocess
 import sys
 
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'scripts'))
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'scripts'))
 import console_child  # noqa: E402  (windowless console children without a conhost each)
 
 sp = importlib.util.spec_from_file_location('spec', sys.argv[1])
@@ -38,7 +38,10 @@ if hasattr(S, 'FRAME_HEADER'):
     inc = '#include "%s"' % S.FRAME_HEADER.split('/')[-1]
     assert inc in new, 'frame header include missing'
     new.remove(inc)
-extra = lines_of(open(S.SPLIT_SRC, 'rb').read()) if hasattr(S, 'SPLIT_SRC') else []
+extra_paths = [sp for _sn, sp, _sh in getattr(S, 'SPLITS', [])] + ([S.SPLIT_SRC] if hasattr(S, 'SPLIT_SRC') else []) + list(getattr(S, 'FILE_HEADS', {}))
+extra = []
+for _p in extra_paths:
+    extra += lines_of(open(_p, 'rb').read()) + ['']
 
 
 def fn_range(L, sig):
@@ -52,6 +55,8 @@ ns_, ne = fn_range(new, S.FUNC_SIG)
 fail = []
 
 # 1. outside the function (and the helper block inserted before it): prefix and suffix identical
+for _ln, _txt in getattr(S, 'PREFIX_EDITS', {}).items():
+    old[_ln - 1] = _txt
 if old[:os_] != new[:os_]:
     fail.append('text before the function changed')
 if old[oe + 1:] != new[ne + 1:]:
@@ -63,9 +68,9 @@ alias_rx = re.compile(r'^\s*' + one_alias + r'(?:\s+' + one_alias + r')*$')
 helpers = {}
 for (name, a, b, doc, *_r) in S.PHASES:
     if method:
-        sig_rx = re.compile(r'^void ' + method + '::' + name + r'\(.*\) \{$')
+        sig_rx = re.compile(r'^(?:void|bool) ' + method + '::' + name + r'\(.*\) \{$')
     else:
-        sig_rx = re.compile(r'^(?:static void ' + name + r'\(.*\)|void \w+::' + name + r'\(.*\)) \{$')
+        sig_rx = re.compile(r'^(?:static void ' + name + r'\(.*\)|(?:void|bool) \w+::' + name + r'\(.*\)) \{$')
     src_lines = new
     i = next((k for k, l in enumerate(src_lines) if sig_rx.match(l)), None)
     if i is None:
@@ -81,12 +86,15 @@ for (name, a, b, doc, *_r) in S.PHASES:
     for x in body:
         if alias_rx.match(x):
             fail.append('alias line inside body of ' + name)
+    if any(isinstance(r, dict) and r.get('exits') for r in _r):
+        assert body and body[-1].strip() == 'return false;', 'exits helper must end in return false;'
+        body = [re.sub(r'\breturn true;', 'return;', x) for x in body[:-1]]
     helpers[name] = body
 
 # 3. expand the orchestrator
 orch = new[ns_ + 1:ne]
 fr = '|'.join(structs)
-call_rx = re.compile(r'^\s*(?:f\.)?(\w+)\([\w, ]*\);$')
+call_rx = re.compile(r'^\s*(?:if \()?(?:f\.)?(\w+)\([\w, ]*\)(?:\) return)?;$')
 decl_rx = re.compile(r'^\s*(%s) \w+;$' % '|'.join(structs.values()))
 expanded = []
 frame_decls = 0

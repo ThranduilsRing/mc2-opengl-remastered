@@ -1,6 +1,6 @@
 # Syntax-only compile of one TU with MC2_VULKAN_ISLAND undefined (the island is on in every shipped build; this
 # proves the guarded phase helpers do not leave the non-island build referring to missing names).
-# usage: py -3 .claude/ph_nonvk.py <ninja obj target> <source file name>
+# usage: py -3 tools/phase/ph_nonvk.py <ninja obj target> <source file name>
 import re
 import subprocess
 import sys

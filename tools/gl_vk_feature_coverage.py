@@ -203,8 +203,15 @@ def tu_family(path, known):
     gos_postprocess_internal.h exists. A shader's program is built in one piece and its uniforms are set in another,
     so "builds this shader's program" is a question about the whole family."""
     m = _PIECE_RE.match(path)
-    if m and "%s%s_internal.h" % (m.group(1) or "", m.group(2)) in known:
-        return "%s%s.cpp" % (m.group(1) or "", m.group(2))
+    if m:
+        # <stem>_<part>.cpp, or a piece of a piece (<stem>_<part>_<sub>.cpp): the longest stem whose internal header exists
+        stem = m.group(2)
+        while True:
+            if "%s%s_internal.h" % (m.group(1) or "", stem) in known:
+                return "%s%s.cpp" % (m.group(1) or "", stem)
+            if "_" not in stem:
+                break
+            stem = stem.rsplit("_", 1)[0]
     if path.endswith("_internal.h"):
         base = path[:-len("_internal.h")]
         for cand in (base, base.rsplit("_", 1)[0]):          # <stem>_internal.h or <stem>_<part>_internal.h

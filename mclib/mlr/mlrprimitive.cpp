@@ -562,42 +562,7 @@ void
 			RGBAColor *color = &colors[0];
 			RGBAColor *litColor = &litColors[0];
 
-#if USE_ASSEMBLER_CODE
-			_asm {
-				push		esi
-				push		edi
-
-				mov			esi, color
-
-				mov			edi, litColor
-				mov         ecx, len
-
-			_loop1:
-
-				mov			eax, dword ptr [esi]
-				mov			ebx, dword ptr [esi+4]
-
-				mov			dword ptr [edi], eax
-				mov			dword ptr [edi+ 4], ebx
-
-				mov			eax, dword ptr [esi + 8]
-				mov			ebx, dword ptr [esi + 12]
-
-				mov			dword ptr [edi + 8], eax
-				mov			dword ptr [edi + 12], ebx
-
-				add			esi,16
-				add			edi,16
-
-				dec			ecx
-				jnz			_loop1
-
-				pop			edi
-				pop			esi
-			}
-#else	// it doesnt know that ...
 			memcpy(litColor, color, (len<<2)*sizeof(Scalar));
-#endif
 #endif
 
 			//
@@ -658,42 +623,7 @@ void
 			RGBAColor *color = &colors[0];
 			RGBAColor *litColor = &litColors[0];
 
-#if USE_ASSEMBLER_CODE
-			_asm {
-				push		esi
-				push		edi
-
-				mov			esi, color
-
-				mov			edi, litColor
-				mov         ecx, len
-
-			_loop2:
-
-				mov			eax, dword ptr [esi]
-				mov			ebx, dword ptr [esi+4]
-
-				mov			dword ptr [edi], eax
-				mov			dword ptr [edi+ 4], ebx
-
-				mov			eax, dword ptr [esi + 8]
-				mov			ebx, dword ptr [esi + 12]
-
-				mov			dword ptr [edi + 8], eax
-				mov			dword ptr [edi + 12], ebx
-
-				add			esi,16
-				add			edi,16
-
-				dec			ecx
-				jnz			_loop2
-
-				pop			edi
-				pop			esi
-			}
-#else	// it doesnt know that ...
 			memcpy(litColor, color, (len<<2)*sizeof(Scalar));
-#endif
 #endif
 
 			//

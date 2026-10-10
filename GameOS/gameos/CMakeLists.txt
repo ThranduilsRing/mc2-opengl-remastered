@@ -41,8 +41,11 @@ set(SOURCES ${SOURCES}
     gos_static_prop_batcher_program.cpp
     gos_static_prop_batcher_mapload.cpp
     gos_static_prop_batcher_finalize.cpp
+    gos_static_prop_batcher_finalize_textures.cpp
     gos_static_prop_batcher_submit.cpp
     gos_static_prop_batcher_flush.cpp
+    gos_static_prop_batcher_flush_dispatch.cpp
+    gos_static_prop_batcher_flush_prep.cpp
     gos_static_prop_batcher_shadow.cpp
     gos_static_prop_batcher_seam.cpp
     gos_static_prop_registry.cpp

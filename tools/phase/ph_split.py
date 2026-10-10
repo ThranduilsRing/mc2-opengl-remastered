@@ -1,7 +1,7 @@
 # Phase-helper split of one oversized function: moves each lexical phase of the body, verbatim, into a
 # helper that takes the small shared-state struct(s) holding the locals that cross phases; the original
 # function keeps only the glue (calls, early-outs, scoping).
-# usage: py -3 .claude/ph_split.py .claude/ph_spec_<name>.py
+# usage: py -3 tools/phase/ph_split.py tools/phase/proofs/ph_spec_<name>.py
 # Reads the text at the spec's BASE commit (default HEAD) so it is re-runnable; writes the working file.
 #
 # Spec fields:
@@ -15,6 +15,12 @@
 #   PHASES                     [(helper name, first line, last line, doc[, #ifdef guard])]
 #   METHOD_CLASS               helpers are members of this class (default: file-static functions)
 #   PARAMS                     [(name, type)] parameters of the original function; each helper takes those it uses
+#   SPLITS / INTERNAL_INCLUDES   [(first phase, path, head comment lines)] helper pieces written to further files;
+#                              the include lines every piece (and the frame header) starts with
+#   PREFIX_EDITS               {line: text} comment lines before the function to rewrite (the file header)
+#   a phase tuple may end in {'file': path}: its helper is written to that file (heads in FILE_HEADS)
+#   a phase tuple may end in {'exits': True}: the helper returns bool (true = the original function returned) and
+#                              its bare `return;` statements become `return true;`
 #   ONLY                       {frame id: [phase names]} frames only those phases may alias (name clashes)
 #   FRAME_METHODS              single frame: helpers that use its members are methods of the struct (no alias lines);
 #                              a phase tuple may end in {'free': True} to stay a file-static function
@@ -28,7 +34,7 @@ import os
 import subprocess
 import sys
 
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'scripts'))
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'scripts'))
 import console_child  # noqa: E402  (windowless console children without a conhost each)
 
 MEMBER_COMMENTS = {}
@@ -157,10 +163,15 @@ def main():
         return [(n, fr) for n, _t, fr in members
                 if (fr not in only or phase in only[fr]) and re.search(r'\b' + ident(n) + r'\b', code)]
 
+    splits = list(getattr(S, 'SPLITS', []))
+    if hasattr(S, 'SPLIT_AT'):
+        splits.append((S.SPLIT_AT, S.SPLIT_SRC, S.SPLIT_HEAD))
+    internal = list(getattr(S, 'INTERNAL_INCLUDES', ['#include "mission_internal.h"']))
     bodies = {p[1]: body_for(p[1], p[2], next((r for r in p[4:] if isinstance(r, dict)), {}).get('dedent', dedent)) for p in ph}
     frame_methods = getattr(S, 'FRAME_METHODS', False)
     per_line = getattr(S, 'ALIAS_PER_LINE', 1)
     info = []
+    FILE_BLOCKS = {}
     for (name, a, b, doc, *rest) in ph:
         guard = next((r for r in rest if isinstance(r, str)), None)
         opts = next((r for r in rest if isinstance(r, dict)), {})
@@ -168,9 +179,13 @@ def main():
         used = used_members(body, name)
         frames = [fid for fid in structs if any(fr == fid for _n, fr in used)]
         as_method = frame_methods and bool(used) and not opts.get('free')
+        exits = bool(opts.get('exits'))
+        if exits:
+            body = [re.sub(r'\breturn;', 'return true;', x) for x in body]
+            body = body + [indent + 'return false;']
         code = '\n'.join(strip_code(x) for x in body)
         uparams = [(n, t) for n, t in getattr(S, 'PARAMS', []) if re.search(r'\b' + n + r'\b', code)]
-        info.append(dict(name=name, a=a, doc=doc, guard=guard, body=body, used=used, frames=frames, as_method=as_method, uparams=uparams))
+        info.append(dict(exits=exits, file=opts.get('file'), name=name, a=a, doc=doc, guard=guard, body=body, used=used, frames=frames, as_method=as_method, uparams=uparams))
     H = []
     anon = not method and not getattr(S, 'FRAME_GLOBAL', False)
     if anon:
@@ -211,29 +226,36 @@ def main():
     decls = []
     for i in info:
         name, guard, used, frames = i['name'], i['guard'], i['used'], i['frames']
-        if name == getattr(S, 'SPLIT_AT', None):
-            H.append('\x00SPLIT')
-        H.append('')
+        for sk, (sn, _sp, _sh) in enumerate(splits):
+            if name == sn:
+                H.append('\x00SPLIT%d' % sk)
+        blk = []
+        blk.append('')
         for d in i['doc'].split('\n'):
-            H.append('// ' + d)
+            blk.append('// ' + d)
         if guard:
-            H.append('#ifdef ' + guard)
+            blk.append('#ifdef ' + guard)
         params = ', '.join([(t if re.search(r'\b' + n + r'\b', t) else '%s %s' % (t, n)) for n, t in i['uparams']] +['%s& %s' % (structs[fid], fid) for fid in frames])
         if i['as_method']:
             mparams = ', '.join((t if re.search(r'\b' + n + r'\b', t) else '%s %s' % (t, n)) for n, t in i['uparams'])
-            H.append('void %s::%s(%s) {' % (structs['f'], name, mparams))
+            blk.append('void %s::%s(%s) {' % (structs['f'], name, mparams))
             calls[i['a']] = 'f.%s(%s);' % (name, ', '.join(n for n, _t in i['uparams']))
         else:
             head = ('void %s::%s(%s) {' if method else 'static void %s%s(%s) {') % ((method, name, params) if method else ('', name, params))
-            H.append(head)
-            decls.append('void %s(%s);' % (name, params))
+            if i['exits']:
+                head = head.replace('void ', 'bool ', 1)
+            blk.append(head)
+            decls.append('%s %s(%s);' % ('bool' if i['exits'] else 'void', name, params))
             for k in range(0, len(used), per_line):
-                H.append(indent + ' '.join('auto& %s = %s.%s;' % (ident(n), fr, ident(n)) for n, fr in used[k:k + per_line]))
+                blk.append(indent + ' '.join('auto& %s = %s.%s;' % (ident(n), fr, ident(n)) for n, fr in used[k:k + per_line]))
             calls[i['a']] = '%s(%s);' % (name, ', '.join([n for n, _t in i['uparams']] + frames))
-        H += i['body']
-        H.append('}')
+            if i['exits']:
+                calls[i['a']] = 'if (' + calls[i['a']][:-1] + ') return;'
+        blk += i['body']
+        blk.append('}')
         if guard:
-            H.append('#endif')
+            blk.append('#endif')
+        (FILE_BLOCKS.setdefault(i['file'], []) if i['file'] else H).extend(blk)
     H.append('')
     O = []
     in_ph = {}
@@ -274,29 +296,40 @@ def main():
         H = H[:i0] + H[i1 + 1:]
     else:
         H = [x for x in H if x not in ('\x00FRAME_BEGIN', '\x00FRAME_END')]
-    H2 = []
-    if '\x00SPLIT' in H:
-        k = H.index('\x00SPLIT')
-        H, H2 = H[:k], H[k + 1:]
+    pieces = []
+    for sk in reversed(range(len(splits))):
+        mk = '\x00SPLIT%d' % sk
+        if mk in H:
+            k = H.index(mk)
+            pieces.append(H[k + 1:])
+            H = H[:k]
+    pieces.reverse()                      # cut from the back, so pieces[i] is the text after split i
     if 'FRAME_HEADER' in S.__dict__:
         guard_name = re.sub(r'\W', '_', S.FRAME_HEADER).upper()
-        hdr = ['// ' + S.FRAME_HEADER_DOC, '#ifndef ' + guard_name, '#define ' + guard_name, '', '#include "mission_internal.h"', ''] + frame_lines + ['#endif  // ' + guard_name]
+        hdr = ['// ' + S.FRAME_HEADER_DOC, '#ifndef ' + guard_name, '#define ' + guard_name, ''] + internal + [''] + frame_lines + ['#endif  // ' + guard_name]
         open(S.FRAME_HEADER, 'wb').write(('\n'.join(hdr) + '\n').encode('utf-8'))
         inc = '#include "%s"' % S.FRAME_HEADER.split('/')[-1]
-        j = next(k for k, l in enumerate(L[:fs]) if l.startswith('#include "mission_internal.h"'))
+        j = next(k for k, l in enumerate(L[:fs]) if l.startswith(internal[0]))
         L = L[:j + 1] + [inc] + L[j + 1:]
         fs += 1
         fe += 1
-    if H2:
-        h2 = list(S.SPLIT_HEAD) + ['#include "mission_internal.h"', '#include "%s"' % S.FRAME_HEADER.split('/')[-1], ''] + H2
-        open(S.SPLIT_SRC, 'wb').write(('\n'.join(h2) + '\n').encode('utf-8'))
+    for path, body in FILE_BLOCKS.items():
+        extra_inc = internal + ['#include "%s"' % S.FRAME_HEADER.split('/')[-1]]
+        open(path, 'wb').write(('\n'.join(list(S.FILE_HEADS[path]) + extra_inc + [''] + body) + '\n').encode('utf-8'))
+    for (sn, sp, sh), body in zip(splits, pieces):
+        extra_inc = internal + ['#include "%s"' % S.FRAME_HEADER.split('/')[-1]]
+        open(sp, 'wb').write(('\n'.join(list(sh) + extra_inc + [''] + body) + '\n').encode('utf-8'))
+    for ln, txt in getattr(S, 'PREFIX_EDITS', {}).items():
+        assert ln - 1 < fs, 'PREFIX_EDITS line %d is not before the function' % ln
+        L[ln - 1] = txt
     new = L[:fs] + H + (S.ORCH_DOC.split('\n') if getattr(S, 'ORCH_DOC', '') else [])
     new = new + O + L[fe + 1:]
     out = '\n'.join(new)
     if crlf:
         out = out.replace('\n', '\r\n')
     open(S.SRC, 'wb').write(out.encode('utf-8'))
-    open('.claude/ph_decls_%s.txt' % re.sub(r'\W', '_', S.SRC), 'w').write('\n'.join(decls) + '\n')
+    decl_path = os.path.splitext(sys.argv[1])[0] + '.decls.txt'   # the member declarations to add to the class header
+    open(decl_path, 'w').write('\n'.join(decls) + '\n')
     print('lines', len(L), '->', len(new), ' orchestrator', len(O), ' helpers', len(ph))
 
 

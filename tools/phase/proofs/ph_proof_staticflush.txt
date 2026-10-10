@@ -1,0 +1,1350 @@
+inline expansion: 2162 statements, helpers 29, orchestrator lines 180
+declaration lifts / edits applied (26):
+  L105   lift GLuint parityBuffer = 0;  =>  parityBuffer = 0;
+  L162   lift std::optional<mc2gl::GlScopedProgram>       guardProgram;  =>  (declaration only)
+  L163   lift std::optional<mc2gl::GlScopedVertexArray>   guardVao;  =>  (declaration only)
+  L164   lift std::optional<mc2gl::GlScopedBufferBinding> guardArrayBuf;  =>  (declaration only)
+  L165   lift std::optional<mc2gl::GlScopedBufferBinding> guardElemBuf;  =>  (declaration only)
+  L166   lift std::optional<mc2gl::GlScopedTextureUnit>   guardTexUnit0;  =>  (declaration only)
+  L167   lift std::optional<mc2gl::GlScopedSsboBinding>   guardSsbo0;  =>  (declaration only)
+  L168   lift std::optional<mc2gl::GlScopedSsboBinding>   guardSsbo1;  =>  (declaration only)
+  L169   lift std::optional<mc2gl::GlScopedSsboBinding>   guardSsbo2;  =>  (declaration only)
+  L170   lift std::optional<mc2gl::GlScopedSsboBinding>   guardSsbo3;  =>  (declaration only)
+  L171   lift std::optional<mc2gl::GlScopedSsboBinding>   guardSsbo5;  =>  (declaration only)
+  L241   edit const GLint locParityWrite      = s_loc_u_parityWrite;  =>  locParityWrite = s_loc_u_parityWrite;
+  L242   edit const GLint locParityVerts      = s_loc_u_parityVertsPerType;  =>  locParityVerts = s_loc_u_parityVertsPerType;
+  L243   edit const GLint locParityBaseVertex = s_loc_u_parityBaseVertex;  =>  locParityBaseVertex = s_loc_u_parityBaseVertex;
+  L288   edit const bool useC1bIndirect = s_c1bDrawOverride &&  =>  useC1bIndirect = s_c1bDrawOverride &&
+  L550   edit const size_t fr_off_bytes_d =  =>  fr_off_bytes_d =
+  L554   edit const size_t off_total_bytes = s_globalPoolLegacy  =>  off_total_bytes = s_globalPoolLegacy
+  L557   edit const size_t on_total_bytes  = s_globalPoolLegacy  =>  on_total_bytes  = s_globalPoolLegacy
+  L575   lift std::optional<mc2gl::GlScopedSsboBinding> guardSsbo4;  =>  (declaration only)
+  L576   lift std::optional<mc2gl::GlScopedTextureUnit> guardTex2DArray;  =>  (declaration only)
+  L1021  edit const bool runV6 = s_v6Enabled && !s_v6Disarmed;  =>  runV6 = s_v6Enabled && !s_v6Disarmed;
+  L1025  lift uint32_t v6LockstepViolations = 0u;  =>  v6LockstepViolations = 0u;
+  L1028  lift bool retireLiveBuilder = false;  =>  retireLiveBuilder = false;
+  L1100  edit const bool runV5 = s_v5Enabled && s_baseInstanceSupported && !s_v5Disa  =>  runV5 = s_v5Enabled && s_baseInstanceSupported && !s_v5Disarmed;
+  L1102  edit if (runV6 && v6LockstepViolations == 0u) {  =>  if (f.runV6 && f.v6LockstepViolations == 0u) {
+  L1506  edit } else if (runV5) {  =>  } else if (f.runV5) {
+scaffolding only in new (50 distinct):
+   + // Apply the opaque pipeline state, bind the shared VAO / IBO and per-type SSBO, clear the parity slot. 
+   + // BC7 bucketed multidraw dispatch. 
+   + // Draw the static-population split when its gate is armed. 
+   + // Draws the frame static props. The top-level pass guard, the timing clocks, the early bail-outs and the coal 
+   + // Existing indirect multidraw dispatch. 
+   + // Legacy path: draw each type. 
+   + // legacy branch skeleton stay here; each phase body is a member helper declared in gos_static_prop_batcher.h. 
+   + StaticPropFlushFrame f; 
+   + acquireGlGuards(f); 
+   + applyOpaqueState(f); 
+   + armV5(); 
+   + armV6(); 
+   + auto& fr_off_bytes_d = f.fr_off_bytes_d; auto& off_total_bytes = f.off_total_bytes; auto& on_total_bytes = f.o x2
+   + auto& parityBuffer = f.parityBuffer; auto& locParityWrite = f.locParityWrite; auto& locParityVerts = f.locPari x2
+   + auto& useC1bIndirect = f.useC1bIndirect; 
+   + bindCoalesceGuards(f); 
+   + bindPerDrawAndMaterial(); 
+   + buildV6Packets(v6Packets, v6Meta, f); 
+   + candidateLogAndParityReadback(f); 
+   + decideV5(f); 
+   + decideV6(f); 
+   + dispatchBc7Buckets(f); 
+   + dispatchMultiDraw(f); 
+   + dispatchV5(f); 
+   + dispatchV6(snap, v6Packets, v6Meta, f); 
+   + drawStaticPopulation(); 
+   + fenceAndParitySlot(); 
+   + finishCoalesceDraw(f); 
+   + finishFlush(); 
+   + if (f.runV6 && f.v6LockstepViolations == 0u) { 
+   + initV6State(f); 
+   + legacyCensus(); 
+   + legacyDrawLoop(f); 
+   + legacyPrepare(); 
+   + locParityBaseVertex = s_loc_u_parityBaseVertex; 
+   + locParityVerts = s_loc_u_parityVertsPerType; 
+   + locParityWrite = s_loc_u_parityWrite; 
+   + logInstDiagPath(); 
+   + prepareIndirectAndFence(f); 
+   + refreshAlphaFlags(); 
+   + releaseGlGuards(f); 
+   + uploadCoalesceMvp(); 
+   + uploadCoalesceUniforms(); 
+   + void GpuStaticPropBatcher::applyOpaqueState(StaticPropFlushFrame& f) { 
+   + void GpuStaticPropBatcher::dispatchBc7Buckets(StaticPropFlushFrame& f) { 
+   + void GpuStaticPropBatcher::dispatchMultiDraw(StaticPropFlushFrame& f) { 
+   + void GpuStaticPropBatcher::drawStaticPopulation() { 
+   + void GpuStaticPropBatcher::legacyDrawLoop(StaticPropFlushFrame& f) { 
+   + writeCoalesceInstances(); 
+   + } else if (f.runV5) { 
+statements only in old (1269 distinct, all lifted declarations / hoisted-type lines):
+   - !s_keepLiveBuilder && s_snapshotBuildEnabled && !s_snapCullEnabled; 
+   - !s_snapshotBuildEnabled ? "snapshot_packet_build_disabled_keep_live" : 
+   - " attempted=%u count_mismatch=%u pkt_mismatch=%u" 
+   - " attempted=1 count_mismatch=%u pkt_mismatch=%u" 
+   - " drawid_loc=%d\n", 
+   - " ext_supported=1 drawid_loc=%d default=1\n", 
+   - " gl_errors=%u ok=%d\n", x2
+   - " inst=%u base=%u drawID=%u first=%u count=%u baseV=%d\n", 
+   - " loc=%d\n", 
+   - " meta_mismatch=%u fallback=%u using_snapshot=%d\n", 
+   - " meta_mismatch=%u fallback=1\n", 
+   - " slots_considered=%u draws_issued=%u zero_instance_skips=%u" x2
+   - " snapshot_packet_build=%d live_builder_forced=%d reason=%s\n", 
+   - " sorted_oob=%u packet_oob=%u type_oob=%u base_instance_missing=%u" 
+   - " sorted_oob=%u packet_oob=%u type_oob=%u lockstep_violations=%u" 
+   - "[COALESCE v1] event=ready buckets_off=%u buckets_on=%u " 
+   - "[DRAW_PACKET_V5] WARNING event=disarmed reason=drawid_loc_missing" 
+   - "[DRAW_PACKET_V5] event=armed slots=%u ext_supported=%d" 
+   - "[DRAW_PACKET_V5] event=disarmed reason=legacy_pool_no_baseinst_map\n"); 
+   - "[DRAW_PACKET_V5] event=gl_error frame=%u err=0x%x\n", 
+   - "[DRAW_PACKET_V5] frame=%u event=dispatch_summary" 
+   - "[DRAW_PACKET_V5] slot=%u type=%u inst=%u base_inst=%u draw_id_base=%u\n", 
+   - "[DRAW_PACKET_V6] event=armed slots=%u alpha_off=%u alpha_on=%u" 
+   - "[DRAW_PACKET_V6] event=disarmed reason=%s\n", 
+   - "[DRAW_PACKET_V6] event=gl_error frame=%u err=0x%x\n", 
+   - "[DRAW_PACKET_V6] frame=%u event=dispatch_summary" 
+   - "[DRAW_PACKET_V6] slot=%u pkt=%u type=%u group=%u" 
+   - "[INSTDIAG] PATH coalesceEnabled=%d globalPoolLegacy=%d instanceCapacity=%u " 
+   - "[MATERIAL_GPU v4] GL ERROR after bind (real): 0x%x\n", bindErr); 
+   - "[MATERIAL_GPU v4] GL ERROR after sample uniform: 0x%x\n", 
+   - "[MATERIAL_GPU v4] event=sample_mode enabled=0 reason=%s\n", 
+   - "[MATERIAL_GPU v4] event=sample_mode enabled=1 loc=%d\n", 
+   - "[MVP_DIAG v1] event=coalesce_upload frame=%ld loc=%d ptr=%p row0=[%g %g %g %g]\n", 
+   - "[MVP_DIAG v1] event=coalesce_upload frame=%ld loc=%d ptr=%p row0=null\n", 
+   - "[RENDER_SNAPSHOT v3] frame=%u disabled — MC2_SNAP_CULL collision\n", 
+   - "[RENDER_SNAPSHOT v3] frame=%u first-fallback" 
+   - "[RENDER_SNAPSHOT v3] frame=%u" 
+   - "[STATIC_PROP_PACKET_DISPATCH v8] event=arm live_builder_retired=%d" 
+   - "cmds_off=%u cmds_on=%u\n", 
+   - "frameSlot=%u typeRanges=%zu\n", 
+   - "snap_cull_collision_keep_live"; 
+   - "sp.coalesce.v5"); 
+   - "sp.coalesce.v6a"); 
+   - "staticprop_legacy_instance"); 
+   - "type=%u count=%zu cap=%u\n", 
+   - "type=%u old_handle=%lu new_handle=%lu\n", x2
+   - && (s_counters.frame_count == 1 
+   - && s_locsCoalesce.materialGpuSample >= 0; 
+   - && s_materialGpuSampleEnabled 
+   - && s_materialGpuSidecarValid 
+   - && s_materialGpuSsbo.backendHandle != 0 
+   - && s_spBuildMetaMismatch   == 0; 
+   - && s_spBuildPacketMismatch == 0 
+   - (g_pbrV1RoughnessOverrideEnabled && !s_viewUniformsDisabled) x2
+   - (gpu_cull::compute_getBucketCount() == s_types.size()); 
+   - (gpu_cull::compute_getIndirectCmdBuf() != 0) && 
+   - (int)IsCoalesceEnabled(), (int)s_globalPoolLegacy, 
+   - (long long)(totalUsed > 0 ? totalUsed : sizeof(GpuStaticPropInstance)), x2
+   - (long long)fr_off_bytes_d, x2
+   - (pbrV1Enabled() && !s_viewUniformsDisabled) x2
+   - (s_nightTagMode != 0) ? s_nightTagScale : 0.0f); x2
+   - (s_ormSlotsEnabled && s_staticPropBc7Enabled) ? 1 : 0); 
+   - (s_v6FrameDrawsIssued + s_v6FrameZeroInstSkips) == slotsConsidered) 
+   - (type.alphaClass == 1u) ? s_offGroupTotalBytes : 0u; 
+   - (typeIt != s_typeRanges.end()) 
+   - (typeIt != s_typeRanges.end()) ? typeIt->second.instanceCount : 0u; 
+   - (unsigned long)now); x2
+   - (unsigned long)type.lastSeenGosHandle, x2
+   - (unsigned)s_instanceCapacity, (unsigned)s_frameSlot, 
+   - (void*)mvpPtr, mvpPtr[0], mvpPtr[1], mvpPtr[2], mvpPtr[3]); 
+   - + (group == 1u ? s_offGroupCountThisFrame : 0u); 
+   - + groupBase_bytes 
+   - + type.coalesceByteOffsetWithinGroup; 
+   - ++s_snapCullActive; 
+   - ++s_snapCullSkipped; 
+   - ++s_snapCullSlotMismatch; 
+   - ++s_spBuildCountMismatch; 
+   - ++s_spBuildFallback; x3
+   - ++s_spBuildMetaMismatch; x3
+   - ++s_spBuildPacketMismatch; 
+   - ++s_v5FrameDrawsIssued; 
+   - ++s_v5FrameGlErrors; 
+   - ++s_v5FramePacketOob; 
+   - ++s_v5FrameSortedOob; 
+   - ++s_v5FrameTypeOob; 
+   - ++s_v5FrameZeroInstSkips; 
+   - ++s_v5TotalFrameCount; 
+   - ++s_v6FrameDrawsIssued; 
+   - ++s_v6FrameGlErrors; 
+   - ++s_v6FrameZeroInstSkips; 
+   - ++s_v6TotalFrameCount; 
+   - /* no counter — snap is unusable, not a v3 failure */ 
+   - /* no counter — v2.2 gate failed; ordering unreliable */ 
+   - // x13
+   - //     prior-frame pool (always), 
+   - //     round-robin and re-arms (state=Armed, armMode=SampledOnly, 
+   - //     s_currentSampledShape=picked). 
+   - //   - MC2_SNAP_CULL=1 and snap non-null 
+   - //   - count matches totalCmds (snapshot covers exactly the live draw slots) 
+   - //   - if state == Done AND the pool is non-empty, picks one shape via 
+   - //   - rotates this frame's submitMultiShape observation list into the 
+   - //   - snap->ok == 1u (snapshot was structurally valid — v2.2 gates passed) 
+   - //   1. Sampler state: bind REPEAT/LINEAR before first C1b draw (below). 
+   - //   2. Depth state:   glEnable(GL_DEPTH_TEST) + GL_GEQUAL (reverse-Z) — set by applyPipeline() above. 
+   - //   3. Blend state:   glDisable(GL_BLEND) — set by applyPipeline() above. 
+   - // "default" == kIblShCoeffs, so byte-identical to V-IBL-STATIC-1 when 
+   - // (IsParityCheckEnabled() returns false → EnsureParityOutputSSBO() 
+   - // (RING_FRAMES frames from now) knows exactly how much to glGetBufferSubData. 
+   - // (and zeroes the bad slot) but still leaves snapBuilt=true. Treat any 
+   - // (env unset or =0) -> shader hemisphere term contributes vec3(0) -> 
+   - // (flushDepthPrepassV6 returns false → color path byte-identical to 
+   - // (frame 1 or all-invisible scene) don't cull — avoids frame-1 blank screen. 
+   - // (function-end) scope exit. See the capture-site comment above. 
+   - // (legacy program path; same gating as the coalesce site). 
+   - // (legacy program). Same flag-gated no-op contract as coalesce. 
+   - // (object-offload) Stage 2.C.2/2.D.1: SSBO slots 2/3 covered too 
+   - // (off) -> shader runs existing PBR math unchanged. 
+   - // (parity tick, sample pick, bucket-map clear) run between the original 
+   - // (per-type hot-color / parity readback). 
+   - // (reverse-Z, so GEQUAL prepass stored the nearest depth). EQUAL + 
+   - // (shader's #if defined(MC2_USE_VIEW_UNIFORMS) excludes the block 
+   - // (snapBuilt with totalCmds==0) is VALID → dispatch zero, NEVER fallback. 
+   - // (the prepass left the OFF texture array bound, slot-2 bound, and 
+   - // (which flips a type's texture alpha via TG_TypeMultiShape::SetTextureAlpha 
+   - // (which mirrors s_frameSlot under legacy mode — set at the :2644 advance site). 
+   - // (written only inside v5 arm block; may be false if v5 gate is OFF). 
+   - // 0.0 (default) -> shader's `> 0.0` guard skips the block entirely, 
+   - // 0.0 default -> byte-identical OFF. 
+   - // 0/0/0 uploaded -> get_base_light takes its daytime arms -> render is x2
+   - // 1.0 == "clear" per shader convention. Revisit for distance fog. 
+   - // 10.3 envelope in compute_dispatch() honors the spec §3.X / §9 
+   - // 11.7.a — save SSBO slot 4 + unit-0 GL_TEXTURE_BINDING_2D_ARRAY. 
+   - // 11.7.d — upload shared uniforms to the coalesce program. Source 
+   - // 11.7.e — slot 1 is NOT bound (per v2r18 §3.X.1: colors_.c[] 
+   - // 11.7.j — restore slot 4 + unit-0 GL_TEXTURE_BINDING_2D_ARRAY via the 
+   - // 11.7.k — first-flush latch (per-mission). event=ready is logged 
+   - // 2.D.1 acceptance is "the readback runs without crash or stall" — we 
+   - // 2026-05-08 adversarial review of the state-equality early-out. 
+   - // 2026-05-11 per-packet alpha-test re-resolve. s_perDrawSsbo's 
+   - // 7714) showed gl_Position = NaN/0 with $Globals.terrainMVP = all 
+   - // ======================================================================= 
+   - // A per-row guard failure during the snapshot build increments these 
+   - // Activation requires: 
+   - // Active texture is already GL_TEXTURE0 (set by prologue at line 
+   - // After compare, advance latch to Done and free the snapshot. 
+   - // After destruction, the leaf-propagation fix in 
+   - // Arithmetic is in BYTES: multiply ring-slot index by bytes-per-frame, 
+   - // BEACON-FIXTURE-ID-1: the fixture gate also needs real night state. x2
+   - // BUILDING-GLASS-1: dither-glass translucency toggle (default ON, 
+   - // BUILDING-GLASS-1: dither-glass translucency toggle (legacy program). 
+   - // Bind this slot's bucket array (contiguous runs → at most 
+   - // C1: guard fires on every run now that s_materialGpuEnabled is default-ON (v5). 
+   - // C1B-DRAW-FIX: glDrawElementsIndirect uses GPU bucket count (how many visible by 
+   - // C1b GPU authority flip: compute_dispatch() now runs BEFORE flush() and writes 
+   - // C1b: when compute cull is enabled and the indirect command buffer is 
+   - // COMPRESSION-BC7-STATICPROP-2: gate ON binds per-bucket in-loop. 
+   - // COMPRESSION-BC7-STATICPROP-2: gate ON binds per-bucket inside the 
+   - // CPU-composed terrainMVP as terrain/terrain_overlay.vert: axisSwap * 
+   - // Called AFTER ParityFrameTick so the summary's parity_compared_actors 
+   - // Check ARB_base_instance independently — do NOT read s_baseInstanceSupported 
+   - // Check here (not per-slot) to avoid 753x base_instance_missing masking root cause. 
+   - // Color pass: keep ONLY the front-most fragment the prepass laid 
+   - // Compare snapshot-built vs live-built, field-by-field per slot. 
+   - // Compute base-instance map pointer for this ring slot. 
+   - // Default 0 = OFF; shader skips entire debug branch when 0. 
+   - // Default-off inside the sidecar; safe to call unconditionally. 
+   - // Direct uniforms for the legacy path. Static props use the same 
+   - // Disabled (default) or MC2_VIEW_UNIFORMS=0 -> -1.0 -> shader falls 
+   - // Do NOT use index arithmetic on the void* base directly. 
+   - // DrawPacket v5: gate-arm checks (run once per process on first gate-ON flush). 
+   - // DrawPacket v5: per-draw-call dispatch (MC2_DRAW_PACKET_COALESCE_V5=1). 
+   - // DrawPacket v6: build packet+meta arrays then validate before dispatch. 
+   - // DrawPacket v6: gate-arm checks (run once per process on first gate-ON flush). 
+   - // EDGE-LIGHT-EMISSION-1: stock hot-colour NIGHT tag state. Gate OFF -> x2
+   - // FAR-BACKDROP-LIT: upload gate + distance band + tint (coalesce). When 
+   - // FAR-BACKDROP-LIT: upload gate + distance band + tint (legacy). 
+   - // FIXME(task-10): no clean per-scene global fog scalar source 
+   - // FIXTURE-GLOW-1: 0.0 -> v_fixtureGlow is vec3(0.0) -> byte-identical. x2
+   - // FOLIAGE-STATICPROP-DEPTH-PREPASS-1 (B + C): run the depth prepass 
+   - // Fail closed on unknown pipelineId. 
+   - // Fallback build itself is inconsistent — do not issue draws from a 
+   - // GLSTATE-GUARD-SITE5: both restore-previous, so both are 
+   - // GLSTATE-GUARD-SITE5: capture-only guards replace the hand-rolled 
+   - // GLSTATE-GUARD-SITE5: explicit .reset() in the same order the hand- 
+   - // GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT. Without it, NVIDIA reads stale instance 
+   - // GPU-SYNC-CONTRACT: the legacy instance/color SSBOs were CPU-written this 
+   - // GPU-complete and safe to read on the CPU. 
+   - // GPU-computed per-type instanceCounts via the patch shader. The CPU overwrite 
+   - // GREYBEARD-DIFFUSE-TEST: upload raw MC2 terrain sun for forced diffuse. x2
+   - // Gate OFF: original OFF→ON flip, byte-identical. 
+   - // Genuine OOB: owningTypeID outside the static type table. 
+   - // Global-pool mode: single contiguous range covering both groups. 
+   - // Global-pool path: iterate s_sortedTypeOrder (same order as 
+   - // GpuMechBatcher::flush() SSBO 0/1/2 precedent (gos_mech_batcher.cpp 
+   - // GpuStaticPropRegistry::flush() with category = Cat_StaticProp | (typeID<<4), 
+   - // Group boundary: switch texture array when entering alpha-ON group. 
+   - // Guard: globalPacketIdx in bounds. 
+   - // IBL-SUN-ROTATE-1: same accessor as the coalesce site; gate OFF 
+   - // IBL-SUN-ROTATE-1: when MC2_STATIC_PROP_IBL_SUN_ROTATE is off this 
+   - // If -1, glUniform1i is a GL no-op and the shader reads the wrong PerDrawEntry. 
+   - // If all props are alpha-ON (OFF count == 0), slot 0 is stale. 
+   - // If loc == -1: M3 error already logged at loadProgramsIfNeeded(); no-op here. 
+   - // If visual corruption occurs, re-enable by reverting this comment block to the 
+   - // ImGui slider g_iblShStrength modulates magnitude (range 0..3). 
+   - // In multidraw: u_drawIDBase = group-start, gl_DrawID = within-group index. 
+   - // In per-draw:  u_drawIDBase = i,           gl_DrawID = always 0. 
+   - // Independent of legacy s_fence[]: tracks s_coalesceInstanceSsbo's 
+   - // Invariant: compute_dispatch() → GL_COMMAND_BARRIER_BIT → flush() ordering is 
+   - // Kill-switch: MC2_STATIC_C1B_DRAW=1 re-enables the (buggy) GPU indirect count. 
+   - // LIGHTING-DEBUG-VIEWS-1B: unified lighting debug channel (40-series). 
+   - // LIGHTING-DEBUG-VIEWS-1B: unified lighting debug channel (legacy 
+   - // Legacy dual path: use snapshot arrays only when compare clean. 
+   - // Legacy mode: separate off/on group byte boundaries. 
+   - // Legacy per-type-cap path (unchanged from substrate-coalesce). Uses s_coalesceFrameSlot 
+   - // M2: diagnostic log — first frame + every 600 frames (mirrors accumulateMonotonicAndMaybeEmit cadence). 
+   - // MC2_COALESCE). 
+   - // MC2_SHADER_PATH_TINT: solid-color path-id debug (default 0 = OFF). x2
+   - // MC2_SP_GLASS_DITHER=0 -> 0.0 -> legacy binary discard in frag). 
+   - // MaterialGpu-2/v3: v3+ static_prop.frag declares MaterialTable at binding 5. 
+   - // MaterialGpu-3: compute sampleOn once per flush. 
+   - // Mirror of the coalesce block above; OFF -> u_farBackdropLit=0 -> 
+   - // Missing = zero instances this frame; not an error. 
+   - // NOT restored: gos_InvalidateRenderStateCache() at exit ensures the next 
+   - // Net shader index (gl_DrawID + u_drawIDBase) is identical in both paths. 
+   - // Non-legacy mode: prepare-table already waited and cleared this fence; 
+   - // OBJECT-TERRAIN-COPLANAR-OFFSET-1: slope-scaled depth push so object 
+   - // ONLY when BOTH gates are on — gate the baseline on s_staticPropBc7Enabled 
+   - // ORM unit when the gate is ON (no extra state churn when OFF). 
+   - // On identity mismatch: don't skip — count it and fall through to current-frame logic. 
+   - // Overflow gate is dead under global-pool mode: detected in prepare-table. 
+   - // POOL-CONSUMERS-1 (batch-6 item 6): bind + upload the night light-pool 
+   - // POOL-CONSUMERS-1 (batch-6 item 6): night light-pool consumption 
+   - // PROP-BASE-LIGHT-DIR-1: directional modulation of the baked seed. 
+   - // PROP-BASE-LIGHT-DIR-1: same semantics as the coalesce site. 
+   - // Peak tracker — runs unconditionally so slice-2 GPU-emit can read peak[t]. 
+   - // Per-draw uniform: u_drawIDBase = absolute sorted slot. 
+   - // Per-row slot identity check guards against any snapshot/live ordering drift. 
+   - // Per-type drawing: bind per-type instance & color SSBO ranges, then 
+   - // Pipeline state (depth/blend/cull) is set by applyPipeline() below and 
+   - // Pipeline state: no explicit restore needed — applyPipeline() set state 
+   - // Plan v3.8 Step 11.9 — coalesce fence insert after all draws issued. 
+   - // Precondition 1: base-instance map must be non-null. 
+   - // Precondition 2: u_drawIDBase uniform location must be valid. 
+   - // Prefix-sum write: all types of each group are packed contiguously. 
+   - // Prev-frame zero — safe to skip. 
+   - // RENDER_STATES v1: this path mutates GL_TEXTURE_WRAP_S/T (lines 1700-1701 
+   - // Reading here (before s_bucketsByType.clear) gives prior-frame 
+   - // Resolver returns -1 when MC2_LIGHTING_DEBUG_VIEW is unset/unknown -> 
+   - // Restore GL state to EXACTLY what it was at flush start. 
+   - // Restore the legacy program before issuing legacy uniform uploads and draws. 
+   - // S5-B hardening: the ORM texture arrays (s_ormBucketArrays) are ONLY built 
+   - // SP-BATCHER-ALPHASCAN-GATE-1: the per-packet OR-reduce scan below is 
+   - // SSBO/uniforms (u_numPoolLights=0 when gated -> byte-identical). 
+   - // STALE (not rebuilt this frame), so the compare is meaningless and 
+   - // STATICPROP-MATERIAL-ORM-1: bind layer-aligned ORM sibling. 
+   - // STATICPROP-MATERIAL-ORM-1: bind the layer-aligned ORM 
+   - // STATICPROP-MATERIAL-ORM-1: per-frame baseline for u_ormSampleEnable. 
+   - // STATICPROP-MATERIAL-ORM-1: unbind the ORM unit and restore active unit 0 
+   - // Safe for non-fixtures: their scale stays 0.0, so get_base_light x2
+   - // Same semantics as coalesce site: 0.0 default -> byte-identical OFF. 
+   - // Save binding state (program/VAO/SSBO/texture) for restore at exit. 
+   - // Set MC2_MATERIAL_GPU=0 to silence. reason cascade mirrors sampleOn condition order. 
+   - // Shadow mode is no longer needed: static prop substrate records are emitted by 
+   - // Skips entirely when MC2_OBJECT_PARITY_CHECK is unset 
+   - // Slice 2 (object-offload) — Stage 2.D.1: tick parity counters and emit 
+   - // Slot 15 is NOT saved here: the draw branch never binds it; Step 
+   - // Slot identity mismatch — snapshot and live order diverged. 
+   - // Snapshot is sole owner. Dispatch unless STRUCTURALLY invalid. 
+   - // Snapshot owns slot identity — row must claim this slot. 
+   - // Stage 1: snap-cull collision — both gates active → disable v3. 
+   - // Stage 2.D.1: record this slot's parity-byte usage so the next visit 
+   - // Stage 2.D.2: after the fence is inserted (GPU draw committed), advance 
+   - // Stage 2.D.2: compare only when the ring has returned to the 
+   - // Stage 2.D.2: if the latch is WaitingForReadback, compare 
+   - // Stage 2: structural guards — snap unusable (no counter). 
+   - // Stage 3: v2.2 structural must be clean. 
+   - // Stage 4 (count mismatch) already counted a fallback for this frame; 
+   - // State setup for C1b: three inheritance traps (gpu_direct_renderer_bringup_checklist.md): 
+   - // Step 11.1 — unconditional coalesce fence cleanup. Runs whether or 
+   - // Step 4.4 — legacy mode only: wait on coalesce fence here. 
+   - // Step 4.4 — use s_coalesceFrameSlot (coalesce ring), not s_frameSlot (legacy ring). 
+   - // TERRAIN-DECAL-COLORBLEND-1: bind the terrain colormap atlas + atlas-UV 
+   - // TERRAIN-DECAL-COLORBLEND-1: colormap atlas + UV params + blend 
+   - // TERRAIN-DECAL-FILL-1: cliff-decal shadow-side ambient floor (legacy 
+   - // TERRAIN-DECAL-FILL-1: cliff-decal shadow-side ambient floor. Uploaded 
+   - // TG_TypeMultiShape::SetTextureAlpha (msl.cpp) updates every leaf 
+   - // TG_TypeShape's TG_TinyTexture; this loop refreshes the SSBO so 
+   - // The CPU write loop below (11.2) and the draw branch later (11.7) form 
+   - // The CPU-overwrite block (shadow mode) is intentionally REMOVED here. 
+   - // The GPU cull still runs (bucket counts → readback/lifecycle), just not for draw. 
+   - // The barrier in compute_dispatch() after the patch shader covers GL_COMMAND_BARRIER_BIT. 
+   - // The fence wait above (glClientWaitSync in 
+   - // The legacy group-array paths (s_texArrayOff/On) bind albedo only and leave 
+   - // The prepass clobbers the bound program + depth state + color mask; 
+   - // The prologue only binds inside if(s_alphaOffCmdCount > 0u). 
+   - // The terrain pass uses slot 5 for WaterRecipeBuf in a different GL program — 
+   - // Unconditionally bind SSBO slot 0 before the loop. 
+   - // Under MC2_STATIC_PROP_GLOBAL_POOL_LEGACY=1, s_baseInstanceByCmdSsbo is 
+   - // Uses s_coalesceFrameSlot — the coalesce ring, advanced in prepare-table. 
+   - // V-AMBIENT-STATIC-1: hemisphere ambient fill strength. Default 0.0 
+   - // V-AMBIENT-STATIC-1: hemisphere ambient strength (legacy program). 
+   - // V-IBL-STATIC-1: SH-L2 image-based ambient (legacy program). Same 
+   - // V-IBL-STATIC-1: SH-L2 image-based ambient. Strength gate is the env 
+   - // V-IBL-STATIC-2: same per-mission source as coalesce site. 
+   - // V-IBL-STATIC-2: source coeffs from the per-mission set (defaults to 
+   - // V-MATERIAL-DEBUG-1: per-frag material debug view (legacy program). 
+   - // V-MATERIAL-DEBUG-1: per-frag material debug view. Default 0 = OFF; 
+   - // V-MATERIAL-PBR-2-DIAG: diagnostic visualizer upload. Default 0 
+   - // V-MATERIAL-PBR-2-DIAG: legacy program diag visualizer upload. 
+   - // V-MATERIAL-PBR-2-TUNE-UI: legacy program override upload (mirror). 
+   - // V-MATERIAL-PBR-2-TUNE-UI: upload roughness override sentinel. 
+   - // V-MATERIAL-PBR-2: legacy program upload. Same gating as coalesce 
+   - // V-MATERIAL-PBR-2: per-vertex Schlick-Fresnel specular. Default OFF; 
+   - // Verified: depth and blend are set unconditionally by applyPipeline() regardless of C1b path. 
+   - // Warmup guard: even when all conditions above hold, if ALL instanceCounts are zero 
+   - // When active, replaces both glMultiDrawElementsIndirect calls with a 
+   - // When retired and the snapshot builds clean, s_v6FrameLockstepViolations 
+   - // When sampleOn=0, static_prop.frag falls back to texArrayLayer (no pixel change). 
+   - // Why !s_snapCullEnabled is a condition: the snap-cull path (MC2_SNAP_CULL, 
+   - // [INSTDIAG] one-shot path-state log so we know which draw path is active on the 
+   - // [MVP_DIAG v1] S2.7 — null-guard the coalesce MVP upload to match 
+   - // [SEAMPROBE] stage 8: one-shot per-type draw census (which types have a 
+   - // above) on the bound texture object — persistent state that survives 
+   - // above, and gos_InvalidateRenderStateCache() below ensures the next 
+   - // accepted the coalesce draw without disarm. 
+   - // actually-visible N instances identified by visibleIds[]. When the camera moves, 
+   - // addresses 0..N-1 within the bound range (no gl_BaseInstance needed). 
+   - // against the right program + depth state. SSBO slot 0 (instance 
+   - // already happened above via uploadAllBucketsIfNeeded — both buffers 
+   - // and bound inside the BC7-bucketed paths (guarded by s_staticPropBc7Enabled). 
+   - // and bumps g_staticPropAlphaGeneration). When the gate is armed and the 
+   - // and the bake leaves materialFlags=0 → no alpha-test discard. 
+   - // and u_cameraWorldPos read; this is belt-and-suspenders). 
+   - // applyPipeline left. 
+   - // applyPipeline rebinds the program but NOT the VAO/IBO/SSBO/ 
+   - // applyRenderStates() call re-applies from scratch regardless of what 
+   - // applyRenderStates() re-applies from scratch. 
+   - // architecturally incorrect here. Use CPU instance count (r.instanceCount) always. 
+   - // available for static props; per-instance fog color is on v_fog. 
+   - // avoid double-counting so spBuildFallback reflects frames, not events. 
+   - // back to legacy arrays when bc7Buckets is false) is covered at the source, 
+   - // batcher_prepareBaseInstanceTable) and write instances tightly packed. 
+   - // before evalShL2 (byte-identical to pre-slice output). When ON, the 
+   - // before the draw loop (shadow mode: CPU counts match what GPU will see 
+   - // below is REMOVED — glMultiDrawElementsIndirect reads GPU-authoritative counts. 
+   - // binding-hygiene contract for slot 15. 
+   - // bodies win the coplanar tie over true-depth terrain (gate default OFF). 
+   - // broken array this frame (matches dual-mode lockstep gating). 
+   - // build borrows baseInstance from here (NOT from the live build, which is 
+   - // build for the whole frame — matching the dual path's mismatch->fallback 
+   - // by Step 11.7 (coalesce armed) vs Step 11.8 (coalesce off). 
+   - // byte-cast the void*, then reinterpret as uint32_t*. 
+   - // byte-identical to pre-slice output. =1 -> 1.0 -> visible subtle 
+   - // byte-identical to the pre-fix build. x2
+   - // byte-identical. 
+   - // byte-identical. Static-band/strength/tint values are harmless when the 
+   - // called later in this function — ~30 lines of unrelated bookkeeping 
+   - // can wait on this fence before overwriting the slot's CPU writes. 
+   - // capture/restore is behavior-identical to the old manual pair. 
+   - // carries kFlagDecalFill (bit 3) — set solely on MarbleCliff decal 
+   - // checks both state==WaitingForReadback AND slot match). 
+   - // colMapBase). The ring's glClientWaitSync handles cross-frame WAR reuse, but 
+   - // color attachment write, not a depth-state field. 
+   - // color loop re-binds the OFF texture array via enteredOnGroup logic). 
+   - // compaction path (vertex shader reading visibleIds[gl_BaseInstance+gl_InstanceID]) 
+   - // compute_dispatch(). 
+   - // count mismatch / malformed metadata). An empty-but-valid snapshot 
+   - // count) but draws the FIRST N instances in SSBO registration order — NOT the 
+   - // data each running frame -> props invisible during gameplay, reappearing only 
+   - // data). The legacy DRAW loop below is gated on !IsCoalesceEnabled() 
+   - // disarmed-mid-mission frames drain. Otherwise outstanding GLsync 
+   - // draw-time decision agree. loc-guarded → no-op until the shader declares it. 
+   - // driver appears to zero the uniform when handed nullptr. Capture 
+   - // enclosing gos_InvalidateRenderStateCache() is the outer flush() 
+   - // epilogue's, well past this block's own natural close). 
+   - // exact slot the Armed frame wrote to (IsDualEmitReadyForSlot 
+   - // feature is active (blend>0); with blend==0 (default) we still upload 
+   - // fill in shadowed faces. Skipped for window-flag nodes inside .vert. 
+   - // first-flush latch: do NOT set s_coalesceFirstFlushDone here — the 
+   - // firstIndex is uint32_t; multiply in uintptr_t space to avoid 32-bit overflow. 
+   - // for a CPU recompute compare. 
+   - // frame through a persistent GL_MAP_COHERENT_BIT mapping (instMapBase / 
+   - // frame-constant except immediately after a destruction/damage event 
+   - // function exit and is not tracked by applyRenderStates' cache. Without 
+   - // gate is 0 (never read). Mirror in the legacy block below. 
+   - // generation is unchanged since the last scan AND the packet count is 
+   - // get filled so a runtime-disarm transition leaves legacy with valid 
+   - // glClientWaitSync ensures GPU writes are complete — RING_FRAMES later). 
+   - // glDrawElementsIndirect (one draw per type) instead of the instanced call. 
+   - // glGetBufferSubData the live byte range from this slot into a discard 
+   - // globally but the frag only applies it to fragments whose instance 
+   - // gos_InvalidateRenderStateCache() below, not at this optional's natural 
+   - // gos_State_TextureAddress=Clamp was requested. CRITICAL-1 from the 
+   - // guaranteed by txmmgr.cpp (registry::flush → compute_dispatch → batcher::flush). 
+   - // guard-able; wrapped in std::optional and .reset() explicitly at 
+   - // guardSsbo5 captures at flush() entry and restores at flush() exit. 
+   - // guards' explicit .reset() (SSBO first, then texture, matching the 
+   - // here (with the EQUAL/no-write override) so the color loop below runs 
+   - // here, not at finalize, because finalize emits event=armed and 
+   - // holds the correct flags from the last event. Default OFF => scan always 
+   - // if MC2_VIEW_UNIFORMS=0, force-zero regardless of gate/slider 
+   - // instanceCount from current-frame live (NOT snapshot prev-frame). 
+   - // instances. Other props are byte-identical regardless of this value. 
+   - // invalidation, a subsequent applyRenderStates call would early-out on 
+   - // is not clobbered. 1 = live builder skipped this frame (snapshot sole owner). 
+   - // is not wired to the per-type legacy draw loop, so the C1b indirect count is 
+   - // issue one instanced draw per packet. gl_InstanceID in the shader 
+   - // it restores the color mask itself. We re-apply the color pipeline 
+   - // it). Slot 15 restore lives at the Step 10.3 envelope in 
+   - // it, and the legacy bind site at the per-type loop is dead state). 
+   - // kOrmTexUnit) returns to GL_TEXTURE0 before falling through here — 
+   - // keeps its daytime result (delta * 0 == 0). x2
+   - // latch is for first ARMED flush (placed in Step 11.7.k). 
+   - // legacy loop or whether the coalesce/MDI path is in play instead). 
+   - // locations are skipped (legacy-only uniforms removed under 
+   - // loop (init to an invalid bucket so the first drawn slot binds). 
+   - // manual-restore point and that call — so, mirroring the 
+   - // matching tracked-slot values while wrap stays at REPEAT even when 
+   - // materialFlags is baked at finalizeGeometry time. Damage-shape 
+   - // never allocated and s_baseInstanceByCmdMap stays nullptr. 
+   - // never runs and the pixel is byte-identical. 
+   - // no depth re-write. Object-ID (frag loc=2) is unaffected — it is a 
+   - // no registry entry matches). 
+   - // not coalesce is currently armed: out-MAJ-2 ensures fences from 
+   - // not just the non-bucketed else branch below. s_staticPropBc7Enabled is set 
+   - // objects leak until onMapUnload (or longer). Per Step 11.1 
+   - // old bind-order). Active texture stays GL_TEXTURE0 (guard restores 
+   - // on NVIDIA (coalesce disarms there), so this is the live fix. AMD tolerated it. 
+   - // on demand) — so at finalize, leaf-level `textureAlpha` is false 
+   - // once C1b->C1c flips GPU-driven counts ON). Then the draw loop uses 
+   - // once at startup and never mutated, so build-time array existence and this 
+   - // one bind per bucket). s_slotBucketIndex is in sorted-slot 
+   - // opt-in, default OFF) still relies on the live<->snapshot compare for slot 
+   - // order, same as the dispatch loop index i. 
+   - // ordering THIS frame's CPU writes BEFORE the draws reads them still needs 
+   - // original glBufferSubData loop (see git history for the shadow mode code). 
+   - // over the SAME dispatch lists the color loop below draws, then flip 
+   - // ownership in v8; it has not been ported to sole-owner packet build. Keep 
+   - // params so the flagged cliff decal can pull its albedo toward the 
+   - // passed before the slice -- so the upload is byte-identical. 
+   - // per-slot glDrawElementsInstancedBaseVertexBaseInstance loop. 
+   - // pixel invariant — proof at static_prop.frag `if (u_debugMaterialMode != 0)`). 
+   - // point below, instead of at this scope's natural end. Slice 2 
+   - // pointer once, branch on it. Probe logs row0 (or "null") throttled 
+   - // pre-change behavior, no re-applyPipeline issued). 
+   - // predicate, set telemetry, emit the one-shot arm log. 
+   - // prevProgram/prevVao/prevArrayBuf/prevElemBuf/prevActiveTex/prevTexUnit0/ 
+   - // prevSsbo{0,1,2,3,5} save + restore. gos_InvalidateRenderStateCache() is 
+   - // program). Frag applies it only to kFlagDecalFill (bit 3) fragments. 
+   - // program). Resolver -1 -> upload 0 -> pixel-invariant default. 
+   - // program/VAO/buffer bindings) — must close here, BEFORE 
+   - // proof: lit += specular * 0.0 = lit unchanged). Safety interlock: 
+   - // prop stays byte-identical. 
+   - // props registered late) get cut off even though they ARE visible. The visibleIds 
+   - // range / instances / packets at first legacy draw). Gated on MC2_MODOVERRIDE_TRACE. 
+   - // range) and the VAO/IBO survive (prepass does not rebind slot 0; the 
+   - // ready, write the per-type CPU instance counts into the indirect buffer 
+   - // reduce + glBufferSubData when changed (~10 µs/frame in mc2_10). 
+   - // returns &s_currentShSet->coeffs[0][0] -- the same pointer this line 
+   - // returns 0 → the bind/uniform/readback all short-circuit). This is 
+   - // returns the unchanged shipped-table pointer. 
+   - // ring-slot lifecycle so the next visit (RING_FRAMES frames from now) 
+   - // rolled epilogue used to restore (SSBOs, then texture unit 0, then 
+   - // runs (byte-identical). First scan always runs (cached gen 0 != live >=1). 
+   - // s_fence[s_frameSlot] (the fence from RING_FRAMES frames ago). At 
+   - // s_materialGpuEnabled is default-ON; s_materialGpuSampleEnabled is default-ON (set MC2_MATERIAL_GPU_SAMPLE=0 
+   - // s_typeRanges is module-static and holds this frame's counts. 
+   - // s_typeRanges only has snapshot (instance-bearing) types. 
+   - // safety. This also makes the spBuildFallback==0 merge gate cover it. 
+   - // sampleOn: all five conditions required. 
+   - // sampleOn=true guarantees loc >= 0, so loc is always valid here. 
+   - // scratch buffer and DROP the bytes. 2.D.2/2.D.3 will swap the discard 
+   - // sees the just-finalized count, and AFTER AdvanceDualEmitToWaiting so 
+   - // semantics as coalesce site: strength 0.0 default -> byte-identical OFF. 
+   - // semantics to batcher_getDrawSlotEntry() called from ExtractRenderSnapshot(). 
+   - // set s_spBuildRetired, and emit the one-shot arm log. 
+   - // setObjStatus runs the texture-load + SetTextureAlpha(true) loop 
+   - // shader skips entire debug branch when uniform == 0 (byte-identical 
+   - // sibling to kOrmTexUnit, then restore active unit 0. 
+   - // site (env + ViewUniforms-disabled interlock). Default-OFF is 
+   - // skip to avoid a double-wait on the same sync object. 
+   - // skipped when retired). Same arithmetic as the live path's baseInstanceMap. 
+   - // slot 0 untouched, so this is belt-and-suspenders). 
+   - // snapshotInvalid == NOT built (guards failed: snap nullptr / ok!=1 / 
+   - // so every draw branch (incl. the v5 snap-cull multidraw path, which falls 
+   - // so the compare only fires when the ring revisits this exact slot (after 
+   - // so the cull shader correctly scatters each instance into its typeID bucket. 
+   - // so this is a no-op stronger than a multiply-by-one: the code path 
+   - // so we leave GL state exactly as the gate-OFF path does. Only touch the 
+   - // stays 0 from the unconditional per-flush reset above (no live build runs). 
+   - // std::optional and .reset() explicitly at the ORIGINAL manual-restore 
+   - // strength=0.0 when env unset/=0 -> shader short-circuits (mathematical 
+   - // such divergence as structurally invalid so we fall back to the live 
+   - // surrounding terrain colour. Only touches GL texture state when the 
+   - // tester's NVIDIA (and therefore whether the per-draw [INSTDIAG] below fires from the 
+   - // texture; re-assert the geometry bindings the color loop expects 
+   - // textures aren't loaded until the moment of destruction (bdactor 
+   - // that is not a conflict (terrain re-binds WaterRecipeBuf before its own draw). 
+   - // the 0.0 scalar so the shader's flag-gated branch is a no-op and every 
+   - // the 600-frame summary line if the cadence is hit. Internally a no-op 
+   - // the GPU bytes against the CPU snapshot captured on frame N. 
+   - // the GPU cull count changes and instances at high SSBO indices (e.g. center-screen 
+   - // the ORM unit holding whatever was last bound. So sampling must be enabled 
+   - // the color pass to GL_EQUAL + depthWrite-off. Gated/no-op by default 
+   - // the dispatch block (a separate scope) to select dispatch + structural fallback. 
+   - // the dual-emit latch from Armed → WaitingForReadback. Pass s_frameSlot 
+   - // the env gate is OFF, u_farBackdropLit=0 -> shader branch skipped -> 
+   - // the legacy path at line ~3284. RenderDoc capture (frame 488, EID 
+   - // the live builder whenever snap-cull is active until that port lands. 
+   - // the load-bearing default-off contract per the advisor. 
+   - // the original 11.7.j restore point (this nested block's nearest 
+   - // the runtime side of the coalesce path. Per-frame write happens 
+   - // the shader sees the live bit. Cost: ~packet count entries × OR- 
+   - // the state machine has progressed for this frame. PickNextSampleIfReady: 
+   - // this point the parity SSBO writes from that prior cycle are 
+   - // through to its literal 0.6 -> byte-identical to PBR-2-TUNE. 
+   - // to frames {1,5,30,120} to keep silent at steady state. 
+   - // unchanged (buffer layout stable), skip the whole scan — the SSBO already 
+   - // unconditionally if coalesce is armed (legacy s_instanceSsbo write 
+   - // unread in any live shader path; coalesce branch does not bind 
+   - // upload 0 -> shader skips all channels (pixel-invariant default). 
+   - // upload 0.0f -> shader short-circuit. 
+   - // uploadAllBucketsIfNeeded() above just glClientWaitSync'd on 
+   - // uploadAllBucketsIfNeeded) guarantees GPU writes are complete. 
+   - // v1: applyPipeline() above bound the coalesce program (if available). 
+   - // v2.1: snapshot per-type instance counts for next-frame extraction. 
+   - // v2.3 snap-cull: determine whether to use prev-frame snapshot for slot skipping. 
+   - // v2.3 snap-cull: skip slots whose prev-frame instanceCount was zero. 
+   - // v3: reset per-flush build counters so stale stats never persist. 
+   - // v5 only runs in global-pool mode (legacy mode disarms at gate-arm). 
+   - // v8: re-home the ring-slot base-instance map for this dispatch. The snapshot 
+   - // v8: retirement predicate. Consumed just below to gate the live builder, 
+   - // v8: set retirement telemetry AFTER the unconditional reset above so it 
+   - // v8: skip when the live builder is retired — v6Meta/v6Packets are 
+   - // v8: snapshot is now the SOLE owner when retired. Consume the planned 
+   - // v8: snapshot-sole-owner decision. Set in the runV6 preamble, read again in 
+   - // values match the existing legacy upload sites; -1 cached 
+   - // var (s_iblShEnabled); when OFF -> upload 0.0 -> shader short-circuits 
+   - // verified by inspection, so GlScopedTextureUnit's default unit=0 
+   - // we want a separate ready signal that confirms the GPU actually 
+   - // when MC2_OBJECT_PARITY_CHECK is unset. 
+   - // when paused (the per-frame rewrite stops). The legacy path is the ACTIVE one 
+   - // worldToClip, row-major rewritten in gamecam.cpp, uploaded GL_FALSE. 
+   - // would set spurious mismatches. Snapshot is sole owner in that mode. 
+   - // zeros while the legacy path's u_mvp uploaded correctly; AMD 
+   - // ~2167/2212, GLSTATE-GUARD-ADOPTION-3), every guard here is wrapped in 
+   - // ~2192) and every mid-block excursion below (kColormapTexUnit, 
+   - : RenderCore::PipelineId::StaticPropAlphaTest); 
+   - : s_offGroupBytesThisFrame; 
+   - : s_onGroupBytesThisFrame; 
+   - ? (batcher_getCoalescePerFrameInstanceBytes() - s_offGroupTotalBytes) 
+   - ? 1 : 0; 
+   - ? STATIC_PROP_FLAG_ALPHA_TEST : 0; 
+   - ? g_pbrV1RoughnessOverrideValue : -1.0f; x2
+   - ? g_pbrV1Strength : 0.0f; x2
+   - ? s_offGroupTotalBytes 
+   - ? typeIt->second.instanceCount : 0u; 
+   - GL_SYNC_FLUSH_COMMANDS_BIT, 
+   - GL_TIMEOUT_IGNORED); 
+   - GL_TRIANGLES, x2
+   - GL_UNSIGNED_INT, x2
+   - GLuint parityBuffer = 0; 
+   - GpuStaticPropType& type = s_types[typeID]; x2
+   - MC2_DIAGFE(stderr, x4
+   - MC2_DIAGFE(stderr, "[COALESCE v1] event=disarmed reason=tex_evicted " x2
+   - MC2_DIAGFE(stderr, "[COALESCE v1] event=disarmed reason=type_overflow " 
+   - MC2_DIAG_FPUTS(buf, stderr); x3
+   - MC2_GL_BufferSubData(GL_SHADER_STORAGE_BUFFER, 
+   - MC2_GL_ClientWaitSync(s_coalesceFence[s_coalesceFrameSlot], 
+   - RenderCore::PipelineDesc colorDesc = 
+   - RenderCore::getPipelineDesc(RenderCore::PipelineId::StaticPropOpaque); 
+   - ZoneScopedN("StaticProp.BuildCompare"); 
+   - ZoneScopedN("StaticProp.LiveBuild"); 
+   - ZoneScopedN("StaticProp.LiveBuild.Fallback");  // rare fallback build, counted 
+   - ZoneScopedN("StaticProp.SnapshotBuild"); 
+   - accumulateMonotonicAndMaybeEmit(/*forceEmit=*/false); 
+   - allZero = false; 
+   - anyChanged = true; 
+   - auto kvIt = s_bucketsByType.find(typeID); 
+   - auto rit2 = s_typeRanges.find(tid); 
+   - b >= 0 && b < static_cast<int32_t>(s_bucketArrays.size())) { x2
+   - baseInstance); 
+   - batcher_buildCandidateLog(); 
+   - bool  nIsNight = false; x2
+   - bool allZero = true; 
+   - bool anyChanged = false; 
+   - bool disarm = false; x2
+   - bool enteredOnGroup = false; x2
+   - bool hasRange = (rit2 != s_typeRanges.end()); 
+   - bool retireLiveBuilder = false; 
+   - bool skipDispatch = false; 
+   - bool snapBuilt = false; 
+   - bool snapCullActive = false; 
+   - bool useSnapshot; 
+   - break; x4
+   - bucket.instances.data(), 
+   - bucket.instances.size() * sizeof(GpuStaticPropInstance)); x2
+   - buildLiveV6Arrays(totalCmds, baseInstanceMapDisp, v6Packets, v6Meta); 
+   - bytesToRead, 
+   - char buf[96]; x3
+   - colorDesc.depthFunc        = RenderCore::DepthFunc::Equal; 
+   - colorDesc.depthWriteEnable = false; 
+   - const DWORD now = src->listOfTextures[firstPkt.textureSlot].gosTextureHandle; x2
+   - const ExtractedStaticPropPacket& row = 
+   - const ExtractedStaticPropPacket& scRow = snap->staticPropPackets.data[i]; 
+   - const GLenum bindErr = glGetError(); 
+   - const GLenum err = glGetError(); x2
+   - const GLenum uniformErr = glGetError();  // sample AFTER 
+   - const GLint locMVP = glGetUniformLocation(s_staticPropProgram, "u_mvp"); 
+   - const GLint locParityBaseVertex = s_loc_u_parityBaseVertex; 
+   - const GLint locParityVerts      = s_loc_u_parityVertsPerType; 
+   - const GLint locParityWrite      = s_loc_u_parityWrite; 
+   - const GLint locTerrainMVP = glGetUniformLocation(s_staticPropProgram, "u_worldToClipGL"); 
+   - const GLintptr slotBase = 
+   - const GLuint baseInstance = baseInstanceMap[i]; 
+   - const GpuStaticPropPacket& pkt = s_packets[globalPktIdx]; 
+   - const GpuStaticPropPacket& spkt = s_packets[row.globalPacketIdx]; 
+   - const GpuStaticPropType& ty = s_types[tid]; 
+   - const PerTypeBucket& bucket = kv.second; 
+   - const PerTypeBucket& bucket = kvIt->second; 
+   - const RenderCore::DrawPacket&  dp = (*pDispatchPackets)[i]; 
+   - const RenderCore::DrawPacket&  lp = v6Packets[ci]; 
+   - const RenderCore::DrawPacket&  sp = s_snapV6Packets[ci]; 
+   - const StaticPropDispatchMeta& lm = v6Meta[ci]; 
+   - const StaticPropDispatchMeta& m  = (*pDispatchMeta)[i]; 
+   - const StaticPropDispatchMeta& sm = s_snapV6Meta[ci]; 
+   - const TG_TypeShape* src = s_types[pkt.owningTypeID].source; 
+   - const TG_TypeShape* src = type.source; x2
+   - const auto typeIt = s_typeRanges.find(pkt.owningTypeID); 
+   - const auto typeIt = s_typeRanges.find(row.typeId); 
+   - const auto& firstPkt = s_packets[type.firstPacket]; x2
+   - const auto& pkt = s_packets[globalPktIdx]; 
+   - const bool alphaScanSkip = s_alphaScanGate && 
+   - const bool bc7Buckets = s_staticPropBc7Enabled && !s_slotBucketIndex.empty(); x2
+   - const bool retireLiveBuilderPlanned = 
+   - const bool runV5 = s_v5Enabled && s_baseInstanceSupported && !s_v5Disarmed; 
+   - const bool runV6 = s_v6Enabled && !s_v6Disarmed; 
+   - const bool s_objPO = objPolyOffsetEnabled(); 
+   - const bool sampleOn = s_materialGpuEnabled 
+   - const bool snapshotInvalid = !snapBuilt 
+   - const bool useC1bIndirect = s_c1bDrawOverride && 
+   - const char* disarmReason = nullptr; 
+   - const char* reason = 
+   - const char* reason = "ok"; 
+   - const float pbrRough = x2
+   - const float pbrStrength = x2
+   - const float* mm = gos_GetProj2ScreenMat4(); 
+   - const float* mvpPtr = gos_GetObjectFixBMVPMat4(); 
+   - const float* terrainMVP = gos_GetObjectFixBMVPMat4(); 
+   - const int ok = (s_v5FrameSortedOob       == 0u && 
+   - const int ok = (s_v6FrameSortedOob          == 0u && 
+   - const int32_t b = static_cast<int32_t>(s_slotBucketIndex[i]); x2
+   - const int32_t f = s_lastSeenMaterialFlags[i]; 
+   - const size_t bytesToRead = s_parityBytesUsedPerSlot[s_frameSlot]; 
+   - const size_t entryStride = sizeof(PerDrawEntry); 
+   - const size_t flagOffset  = offsetof(PerDrawEntry, materialFlags); 
+   - const size_t fr_off_bi = 
+   - const size_t fr_off_bi_disp = 
+   - const size_t fr_off_bi_v6 = 
+   - const size_t fr_off_bytes = x2
+   - const size_t fr_off_bytes_d = 
+   - const size_t groupBase_bytes = 
+   - const size_t off_total_bytes = s_globalPoolLegacy 
+   - const size_t on_total_bytes  = s_globalPoolLegacy 
+   - const size_t pktCount = s_sortedPacketOrder.size(); 
+   - const size_t totalUsed = s_totalUsedBytesThisFrame; x2
+   - const std::vector<RenderCore::DrawPacket>* pDispatchPackets = 
+   - const std::vector<StaticPropDispatchMeta>* pDispatchMeta = 
+   - const uint32_t cnt = static_cast<uint32_t>(bucket.instances.size()); x2
+   - const uint32_t globalPktIdx = s_sortedPacketOrder[i]; x2
+   - const uint32_t group = type.alphaClass; 
+   - const uint32_t grp = pipelineId_to_group(row.pipelineId); 
+   - const uint32_t instCount = 
+   - const uint32_t instanceCount = 
+   - const uint32_t slotsConsidered = totalCmds; 
+   - const uint32_t totalCmds = s_alphaOffCmdCount + s_alphaOnCmdCount; x3
+   - const uint32_t totalSlots = s_alphaOffCmdCount + s_alphaOnCmdCount; x2
+   - const uint32_t typeBaseInstance = groupCursor[group] 
+   - const uint32_t typeID = kv.first; 
+   - const uint32_t typeID = s_sortedTypeOrder[i]; 
+   - const uint32_t* baseInstanceMap = reinterpret_cast<const uint32_t*>( x2
+   - const uint32_t* baseInstanceMapDisp = reinterpret_cast<const uint32_t*>( 
+   - const uint64_t liveAlphaGen = g_staticPropAlphaGeneration.load(std::memory_order_relaxed); 
+   - continue; x10
+   - curBucket = b; x2
+   - disarm = true; x7
+   - disarmReason = "base_instance_ext_missing"; 
+   - disarmReason = "drawid_loc_missing"; 
+   - disarmReason = "legacy_pool_no_baseinst_map"; 
+   - disarmReason = "pipeline_enum_stale_alphatest"; 
+   - disarmReason = "pipeline_enum_stale_opaque"; 
+   - disarmReason); 
+   - dp.firstIndex, dp.indexCount, m.baseVertex); 
+   - else if (!s_materialGpuSampleEnabled)          reason = "sample_env_off"; 
+   - else if (!s_materialGpuSidecarValid)           reason = "sidecar_invalid"; 
+   - else if (s_locsCoalesce.materialGpuSample < 0) reason = "uniform_missing"; 
+   - else if (s_materialGpuSsbo.backendHandle == 0)        reason = "no_ssbo"; 
+   - else if (snap == nullptr || snap->ok != 1u || 
+   - else if (snap->spCountMismatch       != 0u || 
+   - else if (snap->staticPropPackets.count != totalCmds) { 
+   - else { 
+   - enteredOnGroup = true; x2
+   - extern GLuint gos_terrain_indirect_getAtlasGLTex(); x2
+   - extern float  gos_terrain_indirect_getAtlasMapTopLeftX(); x2
+   - extern float  gos_terrain_indirect_getAtlasMapTopLeftY(); x2
+   - extern float  gos_terrain_indirect_getAtlasOneOverWorldUnits(); x2
+   - extern int mc2LightingDebugMode(); x2
+   - extern long g_mvpDiagFrame; 
+   - extern void gos_GetNightState(bool*, float*); x2
+   - extern void gos_GetTerrainLightDir(float*, float*, float*); x2
+   - fflush(stderr); x3
+   - flags = STATIC_PROP_FLAG_ALPHA_TEST; 
+   - float nFactor  = 0.0f; x2
+   - float tsx = 0.0f, tsy = 0.0f, tsz = 1.0f; x2
+   - flushDepthPrepassV6(*pDispatchPackets, *pDispatchMeta, 
+   - for (auto& kv : s_bucketsByType) { 
+   - for (const auto& kv : s_typeRanges) 
+   - for (size_t i = 0; i < pktCount; ++i) { x2
+   - for (size_t scj = 0; scj < snap->staticPropPackets.count; ++scj) { 
+   - for (uint32_t ci = 0u; ci < totalCmds; ++ci) { 
+   - for (uint32_t i = 0; i < s_sortedTypeOrder.size(); ++i) { 
+   - for (uint32_t i = 0u; i < totalCmds; ++i) { x2
+   - for (uint32_t si = 0u; si < totalCmds; ++si) { 
+   - for (uint32_t tid = 0; tid < s_types.size(); ++tid) { 
+   - fprintf(stderr, 
+   - fprintf(stderr, "[SEAMPROBE] draw-census typeID=%u src=%p packetCount=%u vertexCount=%u hasRange=%d instanceCo 
+   - g_mc2HitchAccum.staticDrawCmds = totalCmds; 
+   - g_mc2HitchAccum.staticRecords  = static_cast<uint32_t>(s_bucketsByType.size()); 
+   - g_mvpDiagFrame == 30 || g_mvpDiagFrame == 120) { 
+   - g_mvpDiagFrame, (int)s_locsCoalesce.terrainMVP, 
+   - g_mvpDiagFrame, (int)s_locsCoalesce.terrainMVP, (void*)mvpPtr); 
+   - glActiveTexture(GL_TEXTURE0 + kColormapTexUnit); x2
+   - glActiveTexture(GL_TEXTURE0 + kOrmTexUnit); x3
+   - glActiveTexture(GL_TEXTURE0); x7
+   - glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0); 
+   - glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, s_sharedIbo); 
+   - glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0); x2
+   - glBindBuffer(GL_SHADER_STORAGE_BUFFER, parityBuffer); 
+   - glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_perDrawSsbo); 
+   - glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, s_perDrawSsbo); 
+   - glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, static_cast<GLuint>(s_materialGpuSsbo.backendHandle)); 
+   - glBindTexture(GL_TEXTURE_2D, gos_terrain_indirect_getAtlasGLTex()); x2
+   - glBindTexture(GL_TEXTURE_2D_ARRAY, 0); 
+   - glBindTexture(GL_TEXTURE_2D_ARRAY, s_bucketArrays[b]); x2
+   - glBindTexture(GL_TEXTURE_2D_ARRAY, s_ormBucketArrays[b]); x2
+   - glBindTexture(GL_TEXTURE_2D_ARRAY, s_texArrayOff); x2
+   - glBindTexture(GL_TEXTURE_2D_ARRAY, s_texArrayOn); x2
+   - glBindVertexArray(s_sharedVao); 
+   - glDeleteSync(s_coalesceFence[s_coalesceFrameSlot]); 
+   - glDrawElementsInstancedBaseVertexBaseInstance( x2
+   - glEnable(GL_POLYGON_OFFSET_FILL); 
+   - glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 
+   - glPolygonOffset(objPolyOffsetFactor(), objPolyOffsetUnits()); 
+   - glUniform1f       (s_locsCoalesce.ambientV1Strength, 
+   - glUniform1f       (s_locsCoalesce.fogValue,      1.0f); 
+   - glUniform1f       (s_locsCoalesce.glassDither, 
+   - glUniform1f       (s_locsCoalesce.iblShStrength, 
+   - glUniform1f       (s_locsCoalesce.propBaseLightDirStrength, 
+   - glUniform1f       (s_locsCoalesce.terrainDecalColorBlend, g_terrainDecalColorBlend); 
+   - glUniform1f       (s_locsCoalesce.terrainDecalFill, g_terrainDecalFill); 
+   - glUniform1f(glGetUniformLocation(s_staticPropProgram, "u_fogValue"),      1.0f); 
+   - glUniform1f(s_locsCoalesce.decalAtlasOOW, gos_terrain_indirect_getAtlasOneOverWorldUnits()); 
+   - glUniform1f(s_locsCoalesce.decalAtlasTLX, gos_terrain_indirect_getAtlasMapTopLeftX()); 
+   - glUniform1f(s_locsCoalesce.decalAtlasTLY, gos_terrain_indirect_getAtlasMapTopLeftY()); 
+   - glUniform1f(s_locsCoalesce.farBackdropFar, s_farBackdropFar); 
+   - glUniform1f(s_locsCoalesce.farBackdropNear, s_farBackdropNear); 
+   - glUniform1f(s_locsCoalesce.farBackdropStrength, s_farBackdropStrength); 
+   - glUniform1f(s_locsCoalesce.fixtureEmissiveScale, s_fixtureLightsScale); 
+   - glUniform1f(s_locsCoalesce.fixtureGlowStrength, s_fixtureGlowStrength); 
+   - glUniform1f(s_locsCoalesce.nightEmissiveScale, 
+   - glUniform1f(s_locsCoalesce.nightFactor, nFactor); 
+   - glUniform1f(s_locsCoalesce.pbrV1RoughnessOverride, pbrRough); 
+   - glUniform1f(s_locsCoalesce.pbrV1Strength, pbrStrength); 
+   - glUniform1f(s_locsLegacy.ambientV1Strength, 
+   - glUniform1f(s_locsLegacy.decalAtlasOOW, gos_terrain_indirect_getAtlasOneOverWorldUnits()); 
+   - glUniform1f(s_locsLegacy.decalAtlasTLX, gos_terrain_indirect_getAtlasMapTopLeftX()); 
+   - glUniform1f(s_locsLegacy.decalAtlasTLY, gos_terrain_indirect_getAtlasMapTopLeftY()); 
+   - glUniform1f(s_locsLegacy.farBackdropFar, s_farBackdropFar); 
+   - glUniform1f(s_locsLegacy.farBackdropNear, s_farBackdropNear); 
+   - glUniform1f(s_locsLegacy.farBackdropStrength, s_farBackdropStrength); 
+   - glUniform1f(s_locsLegacy.fixtureEmissiveScale, s_fixtureLightsScale); 
+   - glUniform1f(s_locsLegacy.fixtureGlowStrength, s_fixtureGlowStrength); 
+   - glUniform1f(s_locsLegacy.glassDither, 
+   - glUniform1f(s_locsLegacy.iblShStrength, 
+   - glUniform1f(s_locsLegacy.nightEmissiveScale, 
+   - glUniform1f(s_locsLegacy.nightFactor, nFactor); 
+   - glUniform1f(s_locsLegacy.pbrV1RoughnessOverride, pbrRough); 
+   - glUniform1f(s_locsLegacy.pbrV1Strength, pbrStrength); 
+   - glUniform1f(s_locsLegacy.propBaseLightDirStrength, 
+   - glUniform1f(s_locsLegacy.terrainDecalColorBlend, g_terrainDecalColorBlend); 
+   - glUniform1f(s_locsLegacy.terrainDecalFill, g_terrainDecalFill); 
+   - glUniform1i       (s_locsCoalesce.debugAddrMode, debugAddrMode_); 
+   - glUniform1i       (s_locsCoalesce.debugMaterialMode, 
+   - glUniform1i       (s_locsCoalesce.pathTint, mc2ShaderPathTint()); 
+   - glUniform1i(glGetUniformLocation(s_staticPropProgram, "u_debugAddrMode"), debugAddrMode_); 
+   - glUniform1i(glGetUniformLocation(s_staticPropProgram, "u_lightingDebugView"), 
+   - glUniform1i(glGetUniformLocation(s_staticPropProgram, "u_tex"),           0); 
+   - glUniform1i(glGetUniformLocation(s_staticPropProgramCoalesce, "u_lightingDebugView"), 
+   - glUniform1i(s_locsCoalesce.drawIDBase, static_cast<GLint>(i)); 
+   - glUniform1i(s_locsCoalesce.drawIDBase, static_cast<GLint>(m.drawIDBase)); 
+   - glUniform1i(s_locsCoalesce.farBackdropLit, s_farBackdropLitEnabled ? 1 : 0); 
+   - glUniform1i(s_locsCoalesce.isNight, nIsNight ? 1 : 0); 
+   - glUniform1i(s_locsCoalesce.materialGpuSample, sampleOn ? 1 : 0); 
+   - glUniform1i(s_locsCoalesce.ormSampleEnable, 
+   - glUniform1i(s_locsCoalesce.pbrV1DiagSunFound, 
+   - glUniform1i(s_locsCoalesce.terrainColormap, static_cast<GLint>(kColormapTexUnit)); 
+   - glUniform1i(s_locsLegacy.debugMaterialMode, 
+   - glUniform1i(s_locsLegacy.farBackdropLit, s_farBackdropLitEnabled ? 1 : 0); 
+   - glUniform1i(s_locsLegacy.isNight, nIsNight ? 1 : 0); 
+   - glUniform1i(s_locsLegacy.pathTint, mc2ShaderPathTint()); 
+   - glUniform1i(s_locsLegacy.pbrV1DiagSunFound, 
+   - glUniform1i(s_locsLegacy.terrainColormap, static_cast<GLint>(kColormapTexUnit)); 
+   - glUniform3f(s_locsCoalesce.farBackdropTint, 
+   - glUniform3f(s_locsCoalesce.terrainSunMC2, tsx, tsy, tsz); 
+   - glUniform3f(s_locsLegacy.farBackdropTint, 
+   - glUniform3f(s_locsLegacy.terrainSunMC2, tsx, tsy, tsz); 
+   - glUniform3fv      (s_locsCoalesce.iblSh, 9, 
+   - glUniform3fv(s_locsLegacy.iblSh, 9, 
+   - glUniformMatrix4fv(locTerrainMVP, 1, GL_FALSE, terrainMVP); 
+   - glUniformMatrix4fv(s_locsCoalesce.mvp,           1, GL_TRUE,  gos_GetProj2ScreenMat4()); 
+   - glUniformMatrix4fv(s_locsCoalesce.terrainMVP, 1, GL_FALSE, mvpPtr); 
+   - glUseProgram(s_staticPropProgram); 
+   - gos_GetNightState(&nIsNight, &nFactor); x2
+   - gos_GetTerrainLightDir(&tsx, &tsy, &tsz); x2
+   - gos_InvalidateRenderStateCache(); 
+   - gos_object_parity::AdvanceDualEmitToDone(); 
+   - gos_object_parity::AdvanceDualEmitToWaiting(s_frameSlot); 
+   - gos_object_parity::CompareAndReport( 
+   - gos_object_parity::Counters_AddReadbackBytesThisFrame( 
+   - gos_object_parity::ParityFrameTick(); 
+   - gos_object_parity::PickNextSampleIfReady(); 
+   - gos_terrain_lighting::UploadObjectLightPoolUniforms(s_staticPropProgram); 
+   - gos_terrain_lighting::UploadObjectLightPoolUniforms(s_staticPropProgramCoalesce); 
+   - gpuBindSsboRange(0, s_coalesceInstanceSsbo, x2
+   - gpuSyncBarrier(GpuProducer::CpuCoherentWrite, GpuConsumer::InstancedDraw, 
+   - gpu_cull::compute_isEnabled() && 
+   - groupCursor[group] += static_cast<uint32_t>(bucket.instances.size()); 
+   - grp == 0u ? RenderCore::PipelineId::StaticPropOpaque 
+   - guardArrayBuf.emplace(GL_ARRAY_BUFFER); 
+   - guardArrayBuf.reset(); 
+   - guardElemBuf.emplace(GL_ELEMENT_ARRAY_BUFFER); 
+   - guardElemBuf.reset(); 
+   - guardProgram.emplace(); 
+   - guardProgram.reset(); 
+   - guardSsbo0.emplace(0); 
+   - guardSsbo0.reset(); 
+   - guardSsbo1.emplace(1); 
+   - guardSsbo1.reset(); 
+   - guardSsbo2.emplace(2); 
+   - guardSsbo2.reset(); 
+   - guardSsbo3.emplace(3); 
+   - guardSsbo3.reset(); 
+   - guardSsbo4.emplace(4); 
+   - guardSsbo4.reset(); 
+   - guardSsbo5.emplace(5); 
+   - guardSsbo5.reset(); 
+   - guardTex2DArray.emplace(0, GL_TEXTURE_2D_ARRAY); 
+   - guardTex2DArray.reset(); 
+   - guardTexUnit0.emplace(0);   // ctor also leaves GL_TEXTURE0 active (matches the old explicit glActiveTexture(G 
+   - guardTexUnit0.reset(); 
+   - guardVao.emplace(); 
+   - guardVao.reset(); 
+   - i, pkt.owningTypeID, instanceCount, static_cast<unsigned>(baseInstance), i); 
+   - iblShCoeffsForUpload()); x2
+   - iblShStrengthNightScaled()); x2
+   - if (!alphaScanSkip) { 
+   - if (!bc7Buckets) glBindTexture(GL_TEXTURE_2D_ARRAY, s_texArrayOff); x2
+   - if (!disarm && x2
+   - if (!disarm && s_baseInstanceByCmdMap == nullptr) { 
+   - if (!disarm && s_locsCoalesce.drawIDBase < 0) { x2
+   - if (!retireLiveBuilder) { x2
+   - if (!s_coalesceFirstFlushDone) { 
+   - if (!s_materialGpuEnabled)                    reason = "upload_env_off"; 
+   - if (!s_seamDrawCensus && mc2::gate::get<"MC2_MODOVERRIDE_TRACE">()) { 
+   - if (!s_spBuildCollisionLoggedOnce) { 
+   - if (!s_spBuildFirstFallbackLogged) { 
+   - if (!s_v8ArmLogged) { 
+   - if (!skipDispatch && 
+   - if (!skipDispatch) 
+   - if ((s_materialGpuEnabled || s_materialGpuSampleEnabled) 
+   - if ((s_v5TotalFrameCount % 600u) == 0u) { 
+   - if ((s_v6TotalFrameCount % 600u) == 0u) { 
+   - if (GLEW_ARB_base_instance != GL_TRUE) { 
+   - if (IsCoalesceEnabled() && !s_globalPoolLegacy) { 
+   - if (IsCoalesceEnabled() && s_globalPoolLegacy) { 
+   - if (IsCoalesceEnabled()) { 
+   - if (anyChanged && s_perDrawSsbo) { 
+   - if (b != curBucket && x2
+   - if (bc7Buckets) { x2
+   - if (bindErr != GL_NO_ERROR) { 
+   - if (bucket.instances.size() > type.instanceCap) { 
+   - if (bytesToRead > 0) { 
+   - if (cnt > s_perTypePeak[typeID]) s_perTypePeak[typeID] = cnt; x2
+   - if (disarm) { x2
+   - if (enteredOnGroup) 
+   - if (enteredOnGroup) { 
+   - if (err != GL_NO_ERROR) { x2
+   - if (firstPkt.textureSlot < src->numTextures) { x2
+   - if (flags == 0 && pkt.owningTypeID < s_types.size()) { 
+   - if (g_mc2HitchEnabled) { 
+   - if (g_mvpDiagFrame == 1 || g_mvpDiagFrame == 5 || 
+   - if (g_terrainDecalColorBlend > 0.0f) { x2
+   - if (globalPktIdx >= s_packets.size()) continue; 
+   - if (globalPktIdx >= static_cast<uint32_t>(s_packets.size())) { 
+   - if (gos_object_parity::IsDualEmitArmedAnyActor()) { 
+   - if (gos_object_parity::IsDualEmitReadyForSlot(s_frameSlot)) { 
+   - if (gos_object_parity::IsParityCheckEnabled()) { 
+   - if (grp == 0xFFFFFFFFu) { 
+   - if (i < s_slotBucketIndex.size()) { x2
+   - if (i >= static_cast<uint32_t>(s_sortedPacketOrder.size())) { 
+   - if (instanceCount == 0u) { 
+   - if (kvIt == s_bucketsByType.end()) continue; 
+   - if (locMVP >= 0 && mm) glUniformMatrix4fv(locMVP, 1, GL_TRUE, mm); 
+   - if (locTerrainMVP >= 0 && terrainMVP) 
+   - if (m.instanceCount == 0u) { 
+   - if (mvpPtr) { 
+   - if (now != type.lastSeenGosHandle) { x2
+   - if (parityBuffer != 0) { 
+   - if (pkt.owningTypeID >= static_cast<uint32_t>(s_types.size())) { 
+   - if (retireLiveBuilder) { 
+   - if (row.globalPacketIdx >= 
+   - if (row.sortedSlot != si) { 
+   - if (row.typeId >= static_cast<uint32_t>(s_types.size())) { 
+   - if (runV6 && v6LockstepViolations == 0u) { 
+   - if (runV6) { 
+   - if (s_baseInstanceByCmdMap == nullptr) { 
+   - if (s_globalPoolLegacy && s_coalesceFence[s_coalesceFrameSlot]) { 
+   - if (s_instDiag && !s_pathLogged) { 
+   - if (s_lastSeenMaterialFlags.size() != pktCount) { 
+   - if (s_lastSeenMaterialFlags[i] != flags) { 
+   - if (s_locsCoalesce.ambientV1Strength >= 0) 
+   - if (s_locsCoalesce.debugAddrMode   >= 0) 
+   - if (s_locsCoalesce.debugMaterialMode >= 0) 
+   - if (s_locsCoalesce.decalAtlasOOW >= 0) 
+   - if (s_locsCoalesce.decalAtlasTLX >= 0) 
+   - if (s_locsCoalesce.decalAtlasTLY >= 0) 
+   - if (s_locsCoalesce.farBackdropFar >= 0) 
+   - if (s_locsCoalesce.farBackdropLit >= 0) 
+   - if (s_locsCoalesce.farBackdropNear >= 0) 
+   - if (s_locsCoalesce.farBackdropStrength >= 0) 
+   - if (s_locsCoalesce.farBackdropTint >= 0) 
+   - if (s_locsCoalesce.fixtureEmissiveScale >= 0) 
+   - if (s_locsCoalesce.fixtureGlowStrength >= 0) 
+   - if (s_locsCoalesce.fogValue        >= 0) 
+   - if (s_locsCoalesce.glassDither >= 0) 
+   - if (s_locsCoalesce.iblSh >= 0) 
+   - if (s_locsCoalesce.iblShStrength >= 0) 
+   - if (s_locsCoalesce.isNight >= 0 || s_locsCoalesce.nightFactor >= 0) { 
+   - if (s_locsCoalesce.isNight >= 0) 
+   - if (s_locsCoalesce.materialGpuSample >= 0) { 
+   - if (s_locsCoalesce.mvp             >= 0) 
+   - if (s_locsCoalesce.nightEmissiveScale >= 0) 
+   - if (s_locsCoalesce.nightFactor >= 0) 
+   - if (s_locsCoalesce.ormSampleEnable >= 0) 
+   - if (s_locsCoalesce.pathTint >= 0) 
+   - if (s_locsCoalesce.pbrV1DiagSunFound >= 0) { 
+   - if (s_locsCoalesce.pbrV1RoughnessOverride >= 0) { 
+   - if (s_locsCoalesce.pbrV1Strength >= 0) { 
+   - if (s_locsCoalesce.propBaseLightDirStrength >= 0) 
+   - if (s_locsCoalesce.terrainColormap >= 0) 
+   - if (s_locsCoalesce.terrainDecalColorBlend >= 0) 
+   - if (s_locsCoalesce.terrainDecalFill >= 0) 
+   - if (s_locsCoalesce.terrainMVP >= 0 && mvpPtr) 
+   - if (s_locsCoalesce.terrainSunMC2 >= 0) { 
+   - if (s_locsLegacy.ambientV1Strength >= 0) 
+   - if (s_locsLegacy.debugMaterialMode >= 0) 
+   - if (s_locsLegacy.decalAtlasOOW >= 0) 
+   - if (s_locsLegacy.decalAtlasTLX >= 0) 
+   - if (s_locsLegacy.decalAtlasTLY >= 0) 
+   - if (s_locsLegacy.farBackdropFar >= 0) 
+   - if (s_locsLegacy.farBackdropLit >= 0) 
+   - if (s_locsLegacy.farBackdropNear >= 0) 
+   - if (s_locsLegacy.farBackdropStrength >= 0) 
+   - if (s_locsLegacy.farBackdropTint >= 0) 
+   - if (s_locsLegacy.fixtureEmissiveScale >= 0) 
+   - if (s_locsLegacy.fixtureGlowStrength >= 0) 
+   - if (s_locsLegacy.glassDither >= 0) 
+   - if (s_locsLegacy.iblSh >= 0) 
+   - if (s_locsLegacy.iblShStrength >= 0) 
+   - if (s_locsLegacy.isNight >= 0 || s_locsLegacy.nightFactor >= 0) { 
+   - if (s_locsLegacy.isNight >= 0) 
+   - if (s_locsLegacy.nightEmissiveScale >= 0) 
+   - if (s_locsLegacy.nightFactor >= 0) 
+   - if (s_locsLegacy.pathTint >= 0) 
+   - if (s_locsLegacy.pbrV1DiagSunFound >= 0) { 
+   - if (s_locsLegacy.pbrV1RoughnessOverride >= 0) { 
+   - if (s_locsLegacy.pbrV1Strength >= 0) { 
+   - if (s_locsLegacy.propBaseLightDirStrength >= 0) 
+   - if (s_locsLegacy.terrainColormap >= 0) 
+   - if (s_locsLegacy.terrainDecalColorBlend >= 0) 
+   - if (s_locsLegacy.terrainDecalFill >= 0) 
+   - if (s_locsLegacy.terrainSunMC2 >= 0) { 
+   - if (s_materialGpuEnabled && s_materialGpuSsbo.backendHandle != 0) { 
+   - if (s_nightTagMode != 0 || s_fixtureLightsScale > 0.0f || x2
+   - if (s_objPO) glDisable(GL_POLYGON_OFFSET_FILL);  // OBJECT-TERRAIN-COPLANAR-OFFSET-1 
+   - if (s_objPO) { 
+   - if (s_ormSlotsEnabled && x2
+   - if (s_ormSlotsEnabled) { 
+   - if (s_parityReadbackScratch.size() < bytesToRead) { 
+   - if (s_snapCullEnabled && 
+   - if (s_snapCullEnabled) { 
+   - if (s_snapshotBuildEnabled) { x2
+   - if (s_spBuildCountMismatch == 0u) ++s_spBuildFallback; 
+   - if (s_v5Enabled && !s_v5Armed && !s_v5Disarmed) { 
+   - if (s_v5TraceEnabled) x5
+   - if (s_v6Enabled && !s_v6Armed && !s_v6Disarmed) { 
+   - if (s_v6TraceEnabled) 
+   - if (sampleOn) { 
+   - if (scRow.sortedSlot != i) { 
+   - if (sm.baseVertex      != lm.baseVertex)      ++s_spBuildMetaMismatch; 
+   - if (sm.drawIDBase      != lm.drawIDBase)      ++s_spBuildMetaMismatch; 
+   - if (sm.globalPacketIdx != lm.globalPacketIdx) ++s_spBuildMetaMismatch; 
+   - if (sm.group           != lm.group)           ++s_spBuildMetaMismatch; 
+   - if (sm.sortedSlot      != lm.sortedSlot)      ++s_spBuildMetaMismatch; 
+   - if (sm.typeId          != lm.typeId)          ++s_spBuildMetaMismatch; 
+   - if (snap->staticPropPackets.data[scj].instanceCount != 0u) { 
+   - if (snapBuilt && !useSnapshot) { 
+   - if (snapCullActive && i < snapN) { 
+   - if (snapshotInvalid) { 
+   - if (sp.firstIndex  != lp.firstIndex)  ++s_spBuildPacketMismatch; 
+   - if (sp.indexCount  != lp.indexCount)  ++s_spBuildPacketMismatch; 
+   - if (sp.pipelineId != lp.pipelineId) ++s_spBuildPacketMismatch; 
+   - if (src && src->listOfTextures && 
+   - if (src && src->listOfTextures && type.packetCount > 0u && x2
+   - if (ty.packetCount > 0 && (!hasRange || ic == 0)) { 
+   - if (typeID >= s_perTypePeak.size()) s_perTypePeak.resize(typeID + 1, 0u); x2
+   - if (typeID >= s_types.size()) continue; x2
+   - if (uniformErr != GL_NO_ERROR) { 
+   - if (v6LockstepViolations != 0u) { 
+   - int lvm = mc2LightingDebugMode(); x2
+   - int32_t curBucket = -1; 
+   - int32_t curBucket = -1;  // gate-ON tracker 
+   - int32_t flags = (pkt.materialFlags & STATIC_PROP_FLAG_ALPHA_TEST) 
+   - lvm < 0 ? 0 : lvm); x2
+   - m.baseInstance); 
+   - m.baseVertex, 
+   - m.instanceCount, m.baseInstance, m.drawIDBase, 
+   - m.sortedSlot, m.globalPacketIdx, m.typeId, m.group, 
+   - mc2_hitch::HitchScope _hitchSnap(mc2_hitch::HitchSpanKind::GpuStaticPropsSnapshot); 
+   - ok); 
+   - parityBuffer = gos_object_parity::EnsureParityOutputSSBO(kParitySlotBytes); 
+   - pipeline_binder::applyPipeline(colorDesc, "StaticPropOpaque");  // re-test variant (Equal depth) 
+   - pkt.textureSlot < src->numTextures && 
+   - reason); 
+   - reinterpret_cast<const void*>( x2
+   - retireLiveBuilder       ? "snapshot_sole_owner" : 
+   - retireLiveBuilder = retireLiveBuilderPlanned; 
+   - retireLiveBuilder ? 1 : 0, s_snapshotBuildEnabled ? 1 : 0, 
+   - s_alphaOffCmdCount + s_alphaOnCmdCount, 
+   - s_alphaOffCmdCount, s_alphaOnCmdCount); 
+   - s_alphaOffCount, s_alphaOnCount, 
+   - s_baseInstanceSupported = (GLEW_ARB_base_instance == GL_TRUE); 
+   - s_bucketsByType.clear(); 
+   - s_coalesceArmed = false; x3
+   - s_coalesceFence[s_coalesceFrameSlot] = MC2_GL_FenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0); 
+   - s_coalesceFence[s_coalesceFrameSlot] = nullptr; 
+   - s_coalesceFirstFlushDone = true; 
+   - s_farBackdropTint[0], s_farBackdropTint[1], s_farBackdropTint[2]); x2
+   - s_fence[s_frameSlot] = MC2_GL_FenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0); 
+   - s_fixtureGlowStrength > 0.0f) { x2
+   - s_glassDitherEnabled ? 1.0f : 0.0f); x2
+   - s_keepLiveBuilder       ? "live_builder_forced" : 
+   - s_keepLiveBuilder ? 1 : 0, reason); 
+   - s_lastScannedAlphaGen = liveAlphaGen; 
+   - s_lastScannedAlphaGen == liveAlphaGen && 
+   - s_lastScannedPktCount = pktCount; 
+   - s_lastScannedPktCount == pktCount; 
+   - s_lastSeenMaterialFlags.assign(pktCount, -1); 
+   - s_lastSeenMaterialFlags[i] = flags; 
+   - s_lastUploadedSlot = 0xFFFFFFFFu;  // reset for next frame 
+   - s_locsCoalesce.materialGpuSample); 
+   - s_parityBytesUsedPerSlot[s_frameSlot] = 0; 
+   - s_parityBytesUsedPerSlot[s_frameSlot] = s_parityBytesUsedThisFrame; 
+   - s_parityBytesUsedThisFrame = 0; 
+   - s_parityReadbackScratch.data()); 
+   - s_parityReadbackScratch.data(), 
+   - s_parityReadbackScratch.resize(bytesToRead); 
+   - s_pathLogged = true; 
+   - s_pbrV1DiagSunFound ? 1 : 0); x2
+   - s_propBaseLightDirStrength); x2
+   - s_reinjectedThisFrame = false; 
+   - s_seamDrawCensus = true; 
+   - s_snapV6Meta.resize(totalCmds); 
+   - s_snapV6Meta[si]    = {}; x4
+   - s_snapV6Meta[si].baseInstance    = baseInstanceMapDisp[si]; 
+   - s_snapV6Meta[si].baseVertex      = spkt.baseVertex; 
+   - s_snapV6Meta[si].drawIDBase      = si; 
+   - s_snapV6Meta[si].globalPacketIdx = row.globalPacketIdx; 
+   - s_snapV6Meta[si].group           = grp; 
+   - s_snapV6Meta[si].instanceCount   = instCount; 
+   - s_snapV6Meta[si].sortedSlot      = row.sortedSlot; 
+   - s_snapV6Meta[si].typeId          = row.typeId; 
+   - s_snapV6Packets.resize(totalCmds); 
+   - s_snapV6Packets[si]            = RenderCore::DrawPacket{}; 
+   - s_snapV6Packets[si] = {}; x4
+   - s_snapV6Packets[si].firstIndex = spkt.firstIndex; 
+   - s_snapV6Packets[si].indexCount = spkt.indexCount; 
+   - s_snapV6Packets[si].pipelineId = static_cast<uint32_t>( 
+   - s_spBuildAttempted = s_snapshotBuildEnabled ? 1u : 0u; 
+   - s_spBuildAttempted = s_spBuildCountMismatch = s_spBuildPacketMismatch = 
+   - s_spBuildAttempted, 
+   - s_spBuildCollisionLoggedOnce = true; 
+   - s_spBuildCountMismatch, x2
+   - s_spBuildFallback, 
+   - s_spBuildFirstFallbackLogged = true; 
+   - s_spBuildMetaMismatch = s_spBuildFallback = s_spBuildRetired = 0u; 
+   - s_spBuildMetaMismatch); 
+   - s_spBuildMetaMismatch, 
+   - s_spBuildPacketMismatch, x2
+   - s_spBuildRetired = retireLiveBuilder ? 1u : 0u; 
+   - s_staticPropDebugMaterialMode); x2
+   - s_typeInstanceCountPrevFrame.clear(); 
+   - s_typeInstanceCountPrevFrame[kv.first] = kv.second.instanceCount; 
+   - s_typeRanges.size()); 
+   - s_v5Armed = true; 
+   - s_v5Disarmed = true; 
+   - s_v5FrameBaseInstMissing  == 0u && 
+   - s_v5FrameBaseInstMissing = 0u; 
+   - s_v5FrameBaseInstMissing, 
+   - s_v5FrameDrawsIssued     = 0u; 
+   - s_v5FrameDrawsIssued, 
+   - s_v5FrameGlErrors         == 0u) ? 1 : 0; 
+   - s_v5FrameGlErrors        = 0u; 
+   - s_v5FrameGlErrors, 
+   - s_v5FramePacketOob        == 0u && 
+   - s_v5FramePacketOob       = 0u; 
+   - s_v5FramePacketOob, 
+   - s_v5FrameSortedOob       = 0u; 
+   - s_v5FrameSortedOob, 
+   - s_v5FrameTypeOob          == 0u && 
+   - s_v5FrameTypeOob         = 0u; 
+   - s_v5FrameTypeOob, 
+   - s_v5FrameZeroInstSkips   = 0u; 
+   - s_v5FrameZeroInstSkips, 
+   - s_v5TotalFrameCount, 
+   - s_v5TotalFrameCount, static_cast<unsigned>(err)); 
+   - s_v6Armed = true; 
+   - s_v6Disarmed = true; 
+   - s_v6FrameDrawsIssued        = 0u; 
+   - s_v6FrameDrawsIssued, s_v6FrameZeroInstSkips, 
+   - s_v6FrameGlErrors            == 0u && 
+   - s_v6FrameGlErrors           = 0u; 
+   - s_v6FrameLockstepViolations  == 0u && 
+   - s_v6FrameLockstepViolations = 0u; 
+   - s_v6FrameLockstepViolations = v6LockstepViolations; x2
+   - s_v6FrameLockstepViolations, s_v6FrameGlErrors, ok); 
+   - s_v6FramePacketOob           == 0u && 
+   - s_v6FramePacketOob          = 0u; 
+   - s_v6FrameSortedOob          = 0u; 
+   - s_v6FrameSortedOob, s_v6FramePacketOob, s_v6FrameTypeOob, 
+   - s_v6FrameTypeOob             == 0u && 
+   - s_v6FrameTypeOob            = 0u; 
+   - s_v6FrameZeroInstSkips      = 0u; 
+   - s_v6TotalFrameCount); 
+   - s_v6TotalFrameCount, x2
+   - s_v6TotalFrameCount, slotsConsidered, 
+   - s_v6TotalFrameCount, static_cast<unsigned>(err)); 
+   - s_v8ArmLogged = true; 
+   - sizeof(int32_t), &f); 
+   - skipDispatch = true; 
+   - slotBase, 
+   - snap != nullptr && 
+   - snap->ok == 1u && 
+   - snap->spGlobalPacketMismatch != 0u || 
+   - snap->spMaterialIdxMismatch  != 0u || 
+   - snap->spPipelineMismatch     != 0u || 
+   - snap->spSortedSlotMismatch  != 0u || 
+   - snap->spTexLayerMismatch     != 0u) { 
+   - snap->staticPropPackets.count == totalCmds && 
+   - snap->staticPropPackets.count > 0u) { 
+   - snap->staticPropPackets.data != nullptr && 
+   - snap->staticPropPackets.data == nullptr) { 
+   - snap->staticPropPackets.data[si]; 
+   - snapBuilt = true; 
+   - snapCullActive = !allZero; 
+   - snapN          = static_cast<uint32_t>(snap->staticPropPackets.count); 
+   - src->listOfTextures[pkt.textureSlot].textureAlpha) { 
+   - static bool s_pathLogged = false; 
+   - static bool s_seamDrawCensus = false; 
+   - static const bool s_alphaScanGate = mc2::gate::get<"MC2_SP_ALPHASCAN_GATE">(); 
+   - static const bool s_c1bDrawOverride = mc2::gate::get<"MC2_STATIC_C1B_DRAW">(); 
+   - static const bool s_instDiag = mc2::gate::get<"MC2_STATIC_INST_DIAG">(); 
+   - static size_t   s_lastScannedPktCount = (size_t)-1; 
+   - static std::vector<int32_t> s_lastSeenMaterialFlags; 
+   - static uint64_t s_lastScannedAlphaGen = 0; 
+   - staticPropAmbientV1Enabled() ? 1.0f : 0.0f); x2
+   - static_cast<GLint>(pkt.baseVertex), 
+   - static_cast<GLintptr>(i * entryStride + flagOffset), 
+   - static_cast<GLintptr>(kParitySlotBytes); 
+   - static_cast<GLintptr>(s_frameSlot) * 
+   - static_cast<GLsizei>(dp.indexCount), 
+   - static_cast<GLsizei>(instanceCount), 
+   - static_cast<GLsizei>(m.instanceCount), 
+   - static_cast<GLsizei>(pkt.indexCount), 
+   - static_cast<GLsizeiptr>(bytesToRead), 
+   - static_cast<const uint8_t*>(s_baseInstanceByCmdMap) + fr_off_bi); 
+   - static_cast<const uint8_t*>(s_baseInstanceByCmdMap) + fr_off_bi_disp); 
+   - static_cast<const uint8_t*>(s_baseInstanceByCmdMap) + fr_off_bi_v6); 
+   - static_cast<int>(s_baseInstanceSupported), 
+   - static_cast<int>(s_locsCoalesce.drawIDBase)); x3
+   - static_cast<size_t>(b) < s_ormBucketArrays.size()) { x2
+   - static_cast<size_t>(s_coalesceFrameSlot) * batcher_getCoalescePerFrameInstanceBytes(); x3
+   - static_cast<size_t>(s_coalesceFrameSlot) * s_baseInstanceByCmdBytesPerFrame; x3
+   - static_cast<uint32_t>(RenderCore::PipelineId::Count_)) { x2
+   - static_cast<uint32_t>(RenderCore::PipelineId::StaticPropAlphaTest) >= 
+   - static_cast<uint32_t>(RenderCore::PipelineId::StaticPropOpaque) >= 
+   - static_cast<uint32_t>(s_packets.size())) { 
+   - static_cast<uint64_t>(bytesToRead)); 
+   - static_cast<uint8_t*>(s_coalesceInstanceMap) + fr_off_bytes; x2
+   - static_cast<uintptr_t>(dp.firstIndex) * sizeof(uint32_t)), 
+   - static_cast<uintptr_t>(pkt.firstIndex) * sizeof(uint32_t)), 
+   - static_cast<unsigned>(s_counters.frame_count)); 
+   - std::array<uint32_t, 2> groupCursor = {0u, 0u}; 
+   - std::fflush(stderr); 
+   - std::fprintf(stderr, x14
+   - std::fprintf(stderr, "[DRAW_PACKET_V5] event=skip slot=%u reason=packet_oob\n", i); 
+   - std::fprintf(stderr, "[DRAW_PACKET_V5] event=skip slot=%u reason=sorted_oob\n", i); 
+   - std::fprintf(stderr, "[DRAW_PACKET_V5] event=skip slot=%u reason=type_oob\n", i); 
+   - std::fprintf(stderr, "[DRAW_PACKET_V5] event=skip slot=%u reason=zero_inst\n", i); 
+   - std::memcpy(dst, 
+   - std::memcpy(dst, bucket.instances.data(), 
+   - std::optional<mc2gl::GlScopedBufferBinding> guardArrayBuf; 
+   - std::optional<mc2gl::GlScopedBufferBinding> guardElemBuf; 
+   - std::optional<mc2gl::GlScopedProgram>       guardProgram; 
+   - std::optional<mc2gl::GlScopedSsboBinding>   guardSsbo0; 
+   - std::optional<mc2gl::GlScopedSsboBinding>   guardSsbo1; 
+   - std::optional<mc2gl::GlScopedSsboBinding>   guardSsbo2; 
+   - std::optional<mc2gl::GlScopedSsboBinding>   guardSsbo3; 
+   - std::optional<mc2gl::GlScopedSsboBinding>   guardSsbo5; 
+   - std::optional<mc2gl::GlScopedSsboBinding> guardSsbo4; 
+   - std::optional<mc2gl::GlScopedTextureUnit>   guardTexUnit0; 
+   - std::optional<mc2gl::GlScopedTextureUnit> guardTex2DArray; 
+   - std::optional<mc2gl::GlScopedVertexArray>   guardVao; 
+   - std::snprintf(buf, sizeof(buf), x4
+   - tid, (void*)ty.source, ty.packetCount, ty.vertexCount, (int)hasRange, ic); 
+   - totalCmds, bc7Buckets, debugAddrMode_)) { 
+   - totalSlots, 
+   - totalSlots, s_alphaOffCmdCount, s_alphaOnCmdCount, 
+   - type.lastSeenGosHandle != 0xFFFFFFFFu) { x2
+   - typeID, x2
+   - typeID, bucket.instances.size(), type.instanceCap); 
+   - uint32_t ic = hasRange ? rit2->second.instanceCount : 0; 
+   - uint32_t snapN      = 0u; 
+   - uint32_t v6LockstepViolations = 0u; 
+   - uint8_t* coalesceMapBase = x2
+   - uint8_t* dst = coalesceMapBase 
+   - uint8_t* dst = coalesceMapBase + typeBaseInstance * sizeof(GpuStaticPropInstance); 
+   - uniformErr); 
+   - useSnapshot = false; 
+   - useSnapshot = snapBuilt 
+   - useSnapshot = true; 
+   - useSnapshot ? &s_snapV6Meta    : &v6Meta; 
+   - useSnapshot ? &s_snapV6Packets : &v6Packets; 
+   - useSnapshot ? 1 : 0); 
+   - v6LockstepViolations = 
+   - v6LockstepViolations = buildLiveV6Arrays(totalCmds, baseInstanceMap, v6Packets, v6Meta); 
+   - while (glGetError() != GL_NO_ERROR) {}  // drain stale before bind check 
+   - { x12
+   - || (s_counters.frame_count % 600 == 0 && s_counters.frame_count > 0))) { 
+   - || s_spBuildMetaMismatch   != 0u 
+   - || s_spBuildPacketMismatch != 0u; 
+   - } x122
+   - }  // end StaticProp.BuildCompare 
+   - }  // end StaticProp.SnapshotBuild 
+   - } else if (i == s_alphaOffCmdCount) { 
+   - } else if (m.group == 1u && !enteredOnGroup) { 
+   - } else if (runV5) { 
+   - } else if (scRow.instanceCount == 0u) { 
+   - } else { x7
+PASS: inline expansion of the new function equals the original body

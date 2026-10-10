@@ -122,37 +122,6 @@ inline long float2long (float val)
 	long result = long(val);
 	return result;
 	
-#if 0
-	float point5 = 0.49f;
-	if (val < 0.0f)
-	{
-		__asm
-		{
-			fld		val
-			fadd	point5
-			fistp	result
-		}
-	}
-	else
-	{
-		__asm
-		{
-			fld		val
-			fsub	point5
-			fistp	result
-		}
-	}
-
-	return result;
-
-	if (val > 0.0f)
-		val -= 0.49999999f;
-	else
-		val += 0.49999999f;
-
-	val += 3 << 22;
-	return ((*(long*)&val)&0x007fffff) - 0x00400000;
-#endif
 }
 
 //---------------------------------------------------------------------------
@@ -163,18 +132,7 @@ inline float mc2_atan2 (float f1, float f2)
 	//f2 is always assumed positive here!!!
 	if (f2 > Stuff::SMALL)
 	{
-#ifndef LINUX_BUILD
-		__asm
-		{
-			fld f1
-			fld f2
-			fpatan
-			fabs
-			fstp result
-		}
-#else
         result = atan2f(f1, f2);
-#endif
 	}
 	
 	return result;
