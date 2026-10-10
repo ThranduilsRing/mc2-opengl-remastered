@@ -91,6 +91,9 @@ set(SOURCES ${SOURCES}
     cliff_decal_tuning.cpp
     genactor.cpp
     gvactor.cpp
+    gvactor_geometry.cpp
+    gvactor_render.cpp
+    gvactor_update.cpp
     mech3d.cpp
     soundsys.cpp
     move.cpp

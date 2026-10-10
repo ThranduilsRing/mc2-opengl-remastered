@@ -313,7 +313,7 @@ def verify(old_bytes, new_files, stem, src, allow=None, run_selftests=False, che
 
 def report(findings):
     for c, m in findings:
-        print("[split_verify] %s: %s" % (c, m))
+        print(("[split_verify] %s: %s" % (c, m)).encode("ascii", "replace").decode())
     print("[split_verify] %s (%d finding(s))" % ("FAIL" if findings else "OK", len(findings)))
     return 1 if findings else 0
 

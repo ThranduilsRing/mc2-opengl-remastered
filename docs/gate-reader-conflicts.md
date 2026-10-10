@@ -6,7 +6,7 @@ Probes: **U** unset, **E** `""`, **Z** `"0"`, **F** `"false"`, **O** `"1"`, **X*
 
 ## Totals
 
-Scanned: commit 3ad51e033.
+Scanned: commit 6532c1ca9.
 
 | Measure | Count |
 |---|---|
@@ -91,7 +91,7 @@ Source: `tools/gate_g0_ledger.json`. `resolved` = the readers now agree; `enum` 
 | `MC2_TERRAIN_HEIGHT_RESAMPLE_FACTOR` | note | no | `GameOS/gameos/gos_terrain_height_tex.cpp:53 Typed(is)`<br>`GameOS/gameos/gos_terrain_height_tex.cpp:54 Typed(is)` | Enum {1,2,4}; other values rejected | code unchanged | single reader; a clamp row would change it |
 | `MC2_TERRAIN_MATERIAL_LIB` | resolved | no | `GameOS/gameos/gameos_graphics.cpp:364 Lead0`<br>`GameOS/gameos/terrain_material_lib.cpp:231 Lead0` | Lead0 | =0 now disables the material-library JSON load | matches the host reader |
 | `MC2_TERRAIN_MATERIAL_TEXTURES` | resolved | no | `GameOS/gameos/gos_terrain_lod_chunk.cpp:170 Lead0`<br>`GameOS/gameos/terrain_material_lib.cpp:196 Lead0`<br>`GameOS/gameos/terrain_material_lib.cpp:233 Lead0` | Lead0 | =0 now disables the material-texture config load | matches the chunk reader |
-| `MC2_TEXMGR_KTX_PRIMARY` | resolved | no | `mclib/bdactor.cpp:179 Num(atoi,raw)`<br>`mclib/gvactor.cpp:143 Num(atoi,raw)`<br>`mclib/mech3d.cpp:186 Num(atoi,raw)`<br>`mclib/txmmgr.cpp:5394 Num(atoi,raw)` | numeric mode via atoi, default 1 (0 tga only, 1 ktx fallback, 2 ktx first) | non-numeric values (false, yes) now read as mode 0 at the three sidecar readers, as they already did in the texture manager | txmmgr.cpp is the mode authority |
+| `MC2_TEXMGR_KTX_PRIMARY` | resolved | no | `mclib/bdactor.cpp:179 Num(atoi,raw)`<br>`mclib/gvactor.cpp:36 Num(atoi,raw)`<br>`mclib/mech3d.cpp:186 Num(atoi,raw)`<br>`mclib/txmmgr.cpp:5394 Num(atoi,raw)` | numeric mode via atoi, default 1 (0 tga only, 1 ktx fallback, 2 ktx first) | non-numeric values (false, yes) now read as mode 0 at the three sidecar readers, as they already did in the texture manager | txmmgr.cpp is the mode authority |
 | `MC2_UI_DEFS_TRACE` | resolved | no | `GuiRuntime/GuiRuntime.cpp:105 Lead0`<br>`gui/UiDefs.cpp:107 Lead0` | Lead0 | =false/off/no now read as on in the defs reader | matches the runtime reader |
 | `MC2_VK_PROP_DIRECT_CHAIN` | resolved | no | `GameOS/gameos/engine_present_vk.cpp:296 Tri(inherit)`<br>`GameOS/gameos/vk_shared_gbuffer_gate.h:146 Tri(inherit)` | Tri: explicit 1/0 wins, else inherit the umbrella | none: the island's deprecation-note reader is deleted (prop is unconditionally direct-chain) | owner ruling: the umbrella is canonical |
 | `MC2_VK_TERRAIN_CSM` | resolved | no | `GameOS/gameos/gos_terrain_lod_chunk.cpp:1723 Tri(inherit)`<br>`GameOS/gameos/gos_terrain_lod_chunk.cpp:1765 Tri(inherit)` | Tri (subGate): explicit 1/0 wins, else inherit the umbrella | the near-cascade subset check now inherits the umbrella; it still also requires MC2_VK_TERRAIN_CSM_FULLMAP_EXPERIMENTAL=1, so the default render is unchanged | owner ruling; VK captures unchanged |

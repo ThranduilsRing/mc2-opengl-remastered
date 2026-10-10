@@ -1,0 +1,844 @@
+// Game main: the per-frame renderer update, engine termination and DoGameLogic.
+// Declared in the class headers; shared names in mechcmd2_internal.h.
+#include "mechcmd2_internal.h"
+
+
+//---------------------------------------------------------------------------
+// C3: Track C3-B plan called for "Camera::UpdateRenderers stub" here.
+// Recon finding: the per-actor recalcBounds() calls the plan expected to collapse
+// live inside each Mech/GV update() (mech.cpp, gvehicl.cpp), NOT in this function.
+// This function dispatches mission/logistics/UI rendering — it cannot be stubbed.
+// The Camera.UpdateRenderers Tracy zone wraps this call from gameosmain.cpp:520.
+// No changes needed here; the C3-B perf win comes from the node-position early-outs
+// in mech3d.cpp and gvactor.cpp, and the render/shadow gates in those files.
+//---------------------------------------------------------------------------
+void __stdcall UpdateRenderers()
+{
+	ZoneScopedN("UpdateRenderers");
+	if (!SnifferMode)
+	{
+		hasGuardBand = true;
+		//hasGuardBand = gos_GetMachineInformation(gos_Info_HasGuardBandClipping) != 0;
+		canMultiTextureDetail = (gos_GetMachineInformation(gos_Info_CanMultitextureDetail) != 0);
+
+		//---------------------------------------------------------------------------------
+		//Doesn't work.  Always returns 0 for TNT in Win2K build 2183 with 3.55 detonator
+		//Assume worst case is +/- 8.0 for now.
+		//MaxMinUV = gos_GetMachineInformation(gos_Info_GetMaximumUVSize);
+
+		DWORD bColor = 0x0;
+		if (eye && mission->isActive())
+			bColor = eye->fogColor;
+
+		{
+			ZoneScopedN("UpdateRenderers setupStates");
+			gos_SetupViewport(1,1.0,1,bColor, 0.0, 0.0, 1.0, 1.0 );		//ALWAYS FULL SCREEN for now
+			gos_SetRenderState( gos_State_Filter, gos_FilterBiLinear );
+
+			gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha );
+
+			gos_SetRenderState( gos_State_AlphaTest, TRUE );
+
+			gos_SetRenderState( gos_State_Clipping, TRUE);
+
+			gos_SetRenderState( gos_State_TextureAddress, gos_TextureClamp );
+
+			gos_SetRenderState( gos_State_Dither, 1);
+		}
+
+
+		//---------------------------------------------------------------------------------------
+		// Tell the mission to render, the operation to render and the logistics to render here.
+		if (mission && (!optionsScreenWrapper || optionsScreenWrapper->isDone() ) )
+		{
+			ZoneScopedN("UpdateRenderers missionRender");
+			mission->render();
+		}
+
+		if (logistics)
+		{
+			ZoneScopedN("UpdateRenderers logisticsRender"); GosGlLostDrawsScope _lostSc_("hud.logistics");
+			float viewMulX, viewMulY, viewAddX, viewAddY;
+			gos_GetViewport(&viewMulX, &viewMulY, &viewAddX, &viewAddY);
+			userInput->setViewport(viewMulX,viewMulY,viewAddX,viewAddY);
+
+			gos_SetRenderState( gos_State_IsHUD, 1 );
+			logistics->render();
+			gos_SetRenderState( gos_State_IsHUD, 0 );
+		}
+
+		if (optionsScreenWrapper && !optionsScreenWrapper->isDone() )
+		{
+			ZoneScopedN("UpdateRenderers optionsRender"); GosGlLostDrawsScope _lostSc_("hud.options");
+			float viewMulX, viewMulY, viewAddX, viewAddY;
+			gos_GetViewport(&viewMulX, &viewMulY, &viewAddX, &viewAddY);
+			userInput->setViewport(viewMulX,viewMulY,viewAddX,viewAddY);
+
+			gos_SetRenderState( gos_State_IsHUD, 1 );
+			optionsScreenWrapper->render();
+			gos_SetRenderState( gos_State_IsHUD, 0 );
+		}
+
+		//------------------------------------------------------------
+		{
+			ZoneScopedN("UpdateRenderers uiRender"); GosGlLostDrawsScope _lostSc_("hud.cursor_userinput");
+			gos_SetRenderState( gos_State_Filter, gos_FilterNone );
+			gos_SetRenderState( gos_State_IsHUD, 1 );
+			userInput->render();
+			gos_SetRenderState( gos_State_IsHUD, 0 );
+#ifdef MC2_IMGUI
+			// CURSOR-ON-TOP-OF-IMGUI-1: the custom MC2 cursor sprite drawn just
+			// above is part of the normal HUD batch, which flushes BEFORE
+			// GuiRuntime::Render() (the ui-phase1 defs/ImGui pages draw later,
+			// same frame) -- so the cursor was hidden behind every ImGui panel
+			// (Main Screen, Mission pages, popups). Re-draw it again as a
+			// post-ImGui callback (same mechanism SimpleCamera preview panels
+			// use) so it composites on top instead. Cheap: one extra sprite
+			// draw per frame, only fires if GuiRuntime actually rendered a
+			// frame (no-op otherwise).
+			GuiRuntime::RegisterPostImGuiRender( []() { userInput->renderForImGuiOverlay(); } );
+#endif
+		}
+
+		{
+			ZoneScopedN("UpdateRenderers debugWindows");
+			gos_SetRenderState( gos_State_IsHUD, 1 );
+			DEBUGWINS_render();
+			gos_SetRenderState( gos_State_IsHUD, 0 );
+		}
+
+	}
+	else
+	{
+		if (gos_GetMachineInformation(gos_Info_GetDeviceLocalMemory, curDevice) >= 6291456)
+		{
+			startTime=timeGetTime();
+
+			gos_SetupViewport(1,1.0,1,0, 0.0, 0.0, 1.0, 1.0 );		//ALWAYS FULL SCREEN for now
+
+			if (Environment.Renderer == 3)
+			{
+				gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_OneZero);
+				gos_SetRenderState( gos_State_ShadeMode, gos_ShadeGouraud);
+				gos_SetRenderState( gos_State_MonoEnable, 1);
+				gos_SetRenderState( gos_State_Perspective, 0);
+				gos_SetRenderState( gos_State_Clipping, 2);
+				gos_SetRenderState( gos_State_AlphaTest, 0);
+				gos_SetRenderState( gos_State_Specular, 0);
+				gos_SetRenderState( gos_State_Dither, 0);
+				gos_SetRenderState( gos_State_TextureMapBlend, gos_BlendModulate);
+				gos_SetRenderState( gos_State_Filter, gos_FilterBiLinear);
+				gos_SetRenderState( gos_State_TextureAddress, gos_TextureWrap);
+				gos_SetRenderState( gos_State_ZCompare, 1);
+				gos_SetRenderState(	gos_State_ZWrite, 1);
+				//DWORD fogColor = 0x009f9f9f;
+				//gos_SetRenderState( gos_State_Fog, (int)&fogColor);
+			}
+			else
+			{
+				gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha);
+				gos_SetRenderState( gos_State_ShadeMode, gos_ShadeGouraud);
+				gos_SetRenderState( gos_State_MonoEnable, 1);
+				gos_SetRenderState( gos_State_Perspective, 1);
+				gos_SetRenderState( gos_State_Clipping, 2);
+				gos_SetRenderState( gos_State_AlphaTest, 1);
+				gos_SetRenderState( gos_State_Specular, 1);
+				gos_SetRenderState( gos_State_Dither, 1);
+				gos_SetRenderState( gos_State_TextureMapBlend, gos_BlendModulateAlpha);
+				gos_SetRenderState( gos_State_Filter, gos_FilterBiLinear);
+				gos_SetRenderState( gos_State_TextureAddress, gos_TextureWrap);
+				gos_SetRenderState( gos_State_ZCompare, 1);
+				gos_SetRenderState(	gos_State_ZWrite, 1);
+				int fogColor = 0x009f9f9f;
+                // sebi
+				//gos_SetRenderState( gos_State_Fog, (int)&fogColor);
+				gos_SetRenderState( gos_State_Fog, fogColor);
+			}
+
+			//Send down 5000 triangles
+			long nIterations = 5;
+			for (long i=0;i<nIterations;i++)
+			{
+
+				DWORD totalVertices = 3000;
+				gos_SetRenderState( gos_State_Texture, testTextureHandle);
+				gos_RenderIndexedArray( testVertex, totalVertices, indexArray, totalVertices );
+			}
+
+			endTime=timeGetTime()-startTime;
+
+			totalTime += endTime;
+		}
+	}
+}
+
+//---------------------------------------------------------------------------
+
+void __stdcall TerminateGameEngine()
+{
+	if (!gameStarted)
+		return;
+
+	if (!SnifferMode)
+	{
+		//--------------------------------------------------
+		// Setup Mouse Parameters from Prefs.CFG
+		if (userInput)
+		{
+			//Must call this to shut off the mouse async draw thread.
+			//DO NOT DELETE Yet!!  Too many things assume this is around.
+			userInput->destroy();
+		}
+
+		//--------------------------------------------------
+
+		DEBUGWINS_destroy();
+
+		ShutdownNetworking();
+
+		delete theClipper;
+		theClipper = NULL;
+
+		//---------------------------------------------------------
+		// End the Mission, Operation and Logistics classes here
+		if (mission)
+		{
+			mission->destroy(false);
+			delete mission;
+			mission = NULL;
+		}
+
+		if (logistics)
+		{
+			logistics->destroy();
+			delete logistics;
+			logistics = NULL;
+		}
+
+		endDialogs();
+
+		if (optionsScreenWrapper)
+		{
+			optionsScreenWrapper->destroy();
+			delete optionsScreenWrapper;
+			optionsScreenWrapper = NULL;
+		}
+
+		//---------------------------------------------------------
+		// Start the Color table code
+		destroyColorTables();
+
+		GameLog::cleanup();
+
+		//---------------------------------------------------------
+		// End the Timers
+		delete timerManager;
+		timerManager = NULL;
+
+		//---------------------------------------------------------
+		// TEST of PORT
+		// Create VFX PANE and WINDOW to test draw of old terrain!
+		if (globalPane)
+		{
+			delete globalPane;
+			globalPane = NULL;
+		}
+
+		if (globalWindow)
+		{
+			delete globalWindow;
+			globalWindow = NULL;
+		}
+
+		//-------------------------------------------------------------
+		// Shut down the soundSytem for a change!
+		if (soundSystem)
+		{
+			soundSystem->destroy();
+
+			delete soundSystem;
+			soundSystem = NULL;
+		}
+
+		//------------------------------------------------
+		// shutdown the MC Texture Manager.
+		if (mcTextureManager)
+		{
+            // sebi: destroy is called from destructor anyway, and
+            // by calling it here before destructor, we a are causing memory leak:
+            // lzBuffer1 & lzBuffer2 will not be freed because
+            // textureCacheHeap will be NULL
+			//mcTextureManager->destroy();
+
+			delete mcTextureManager;
+			mcTextureManager = NULL;
+		}
+
+		delete globalFloatHelp;
+		globalFloatHelp = NULL;
+
+		//--------------------------------------------------------------
+		// End the SystemHeap and globalHeapList
+		if (systemHeap)
+		{
+			systemHeap->destroy();
+
+			delete systemHeap;
+			systemHeap = NULL;
+		}
+
+		if (guiHeap)
+		{
+			guiHeap->destroy();
+
+			delete guiHeap;
+			guiHeap = NULL;
+		}
+
+		if (globalHeapList)
+		{
+			globalHeapList->destroy();
+
+			delete globalHeapList;
+			globalHeapList = NULL;
+		}
+
+		//----------------------------------------------------
+		// Shutdown the MLR and associated stuff libraries
+		//----------------------------------------------------
+		gos_PushCurrentHeap(gosFX::Heap);
+
+		delete effectStream;
+		delete gosFX::LightManager::Instance;
+
+		gos_PopCurrentHeap();
+
+		//
+		//-------------------
+		// Turn off libraries
+		//-------------------
+		//
+		gosFX::TerminateClasses();
+		MidLevelRenderer::TerminateClasses();
+		Stuff::TerminateClasses();
+
+		delete userInput;
+		userInput = NULL;
+
+		//Redundant.  Something else is shutting this down.
+		//GOS sure does think its bad to delete something multiple times though.
+		//Even though it simply never is!
+		//gos_DeleteFont(gosFontHandle);
+
+		gos_CloseResourceDLL(gosResourceHandle);
+
+		//
+		//--------------------------
+		// Turn off the fast Files
+		//--------------------------
+		//
+		FastFileFini();
+
+		//
+		//Just down any global allocations
+		//
+		if (g_textureCache_FilenameOfLastLoadedTexture)
+		{
+			delete g_textureCache_FilenameOfLastLoadedTexture;
+			g_textureCache_FilenameOfLastLoadedTexture = NULL;
+		}
+
+		if (ForceGroupIcon::jumpJetIcon)
+		{
+			delete ForceGroupIcon::jumpJetIcon;
+			ForceGroupIcon::jumpJetIcon = NULL;
+		}
+
+		if (MechIcon::s_MechTextures)
+		{
+			delete [] MechIcon::s_MechTextures;
+			MechIcon::s_MechTextures = NULL;
+		}
+
+		if (ForceGroupIcon::s_textureMemory)
+		{
+			delete [] ForceGroupIcon::s_textureMemory; 
+			ForceGroupIcon::s_textureMemory = NULL; 
+		}
+	}
+	else
+	{
+		free(testVertex);
+		testVertex = NULL;
+		free(indexArray);
+		indexArray = NULL;
+	}
+}
+
+//-------------------------------
+// Test TGL Parser.
+bool extracted = false;
+
+bool doTransformMath = true;
+
+extern bool useFog;
+
+extern long terrainLineChanged;
+
+float frameNum = 0.0f;
+
+bool enoughTime = true;
+long enoughCount = 0;
+
+//---------------------------------------------------------------------------
+//
+// No multi-thread now!
+//
+bool DoneSniffing = false;
+void __stdcall DoGameLogic()
+{
+	ZoneScopedN("GameLogic");
+	if (!SnifferMode)
+	{
+	
+		if (MPlayer) {
+			{ ZoneScopedN("GameLogic.Multiplayer"); MPlayer->update(); }
+			if (MPlayer->waitingToStartMission) 
+			{
+				if (MPlayer->startMission)
+				{
+//					logistics->setLogisticsState(log_DONE); // can't do this until screen animates out
+					soundSystem->playBettySample(BETTY_NEW_CAMPAIGN);
+					MPlayer->waitingToStartMission = false;
+				}
+			}
+		}
+	
+		FloatHelp::resetAll();
+	
+		//-------------------------------------
+		// Get me the current frameRate.
+		// Convert to frameLength and any other timing stuff.
+		//if (frameRate < 15.0)
+		//	frameRate = 15.0;
+	
+		//FrameRate can be zero in GameOS for some unknown fu-cocked reason.
+		if (frameRate < Stuff::SMALL)
+			frameRate = 4.0f;
+	
+		frameLength = 1.0 / frameRate;
+		if (frameLength > 0.25f)
+			frameLength = 0.25f;
+
+		// CAPTURE-DETERMINISM-1: frameLength drives ALL mover / object / GOSFX
+		// motion integration, but until now it was derived from the REAL
+		// measured frameRate even under MC2_SMOKE_FIXED_TIMESTEP. S9D pinned
+		// scenarioTime (mission.cpp) and S9E pinned the shader clocks, so both
+		// runs reached a given render frame with an identical scenarioTime and
+		// an identical `deterministic:true` sidecar -- while every mover had
+		// integrated a DIFFERENT per-frame dt on the way there. Two launches
+		// therefore captured the same pose, same frame, same clock, and
+		// visibly different unit positions (measured: up to 27% of pixels on
+		// mc2_10 poses containing movers; exactly 0.000% on poses containing
+		// none). Pin frameLength to the same fixed step as scenarioTime so the
+		// sim integrates identically frame-for-frame. Deliberately placed
+		// BEFORE the sim-speed multiply and left unmultiplied below, matching
+		// mission.cpp's fixed-timestep branch which likewise keeps 1x.
+		if (SmokeMode::fixedTimestepEnabled())
+		{
+			// Fixed-step sim; the sim-speed multiply in the else-branch is
+			// deliberately NOT applied (mission.cpp parity: determinism = 1x).
+			frameLength = SmokeMode::fixedTimestepMs() / 1000.0f;   // 1/30
+		}
+		else
+		{
+		// SIM-CLOCK-SPEED-1 / SIM-SPEED-BUTTON-1: sim-speed multiplier applied
+		// at the frameLength site so mover / object / GOSFX motion (all
+		// frameLength-driven) tracks the same multiplier as scenarioTime
+		// (mission.cpp). Seeded from MC2_SIM_SPEED (default 1.0, clamped
+		// [0.25,4.0]); runtime-settable via the HUD speed tab / dev-shell —
+		// single source in mission.cpp (simSpeedGetMultiplier, mission.h).
+		// OFF path (unset env, never set) is a no-op multiply by 1.0.
+		frameLength *= simSpeedGetMultiplier();
+		}
+
+		//Calc out the average frame rate so we can decide if we should use the
+		// movie Video or Just the Audio Track!
+		currentFrameNum++;
+		if (currentFrameNum == 30)
+			currentFrameNum = 0;
+
+		last30Frames[currentFrameNum] = frameRate;
+
+		averageFrameRate = 0.0f;
+		for (long fc=0;fc<30;fc++)
+			averageFrameRate += last30Frames[fc];
+
+		averageFrameRate /= 30.0f;
+
+		if (userInput->getKeyDown(KEY_R) && userInput->ctrl() && !userInput->alt() && !userInput->shift())
+		{
+			doTransformMath ^= true;
+			terrainLineChanged = turn;
+		}
+	
+		if (doTransformMath)
+		{
+			//-------------------------------------
+			// Poll devices for this frame.
+			userInput->update();
+	
+			//----------------------------------------
+			// Update the Sound System for this frame
+			soundSystem->update();
+			
+			//----------------------------------------
+			// Update all of the timers
+			timerManager->update();
+	
+			//-----------------------------------------------------
+			// Update Mission and Logistics here.
+			if (logistics)
+			{
+				long result = logistics->update();
+				if (result == log_DONE)
+				{
+					logistics->stop();
+				}
+			}
+
+			// Tactical Overview toggle (F6). Detected here in the main loop where
+			// input is freshly polled (userInput->update() above); the mission
+			// command table did not dispatch it. Edge-latch: one press = one toggle.
+			{
+				static bool s_tacOvF6Was = false;
+				bool f6Down = userInput->getKeyDown(KEY_F6);
+				if (f6Down && !s_tacOvF6Was)
+					g_tacticalOverview.onHotkey();
+				s_tacOvF6Was = f6Down;
+			}
+
+			// Sensor view toggle (F7) — same proven input site.
+			{
+				extern bool g_sensorViewOn;
+				static bool s_f7Was = false;
+				bool f7Down = userInput->getKeyDown(KEY_F7);
+				if (f7Down && !s_f7Was)
+					g_sensorViewOn = !g_sensorViewOn;
+				s_f7Was = f7Down;
+			}
+
+			// Weapon view toggle (F8).
+			{
+				extern bool g_weaponViewOn;
+				static bool s_f8Was = false;
+				bool f8Down = userInput->getKeyDown(KEY_F8);
+				if (f8Down && !s_f8Was)
+					g_weaponViewOn = !g_weaponViewOn;
+				s_f8Was = f8Down;
+			}
+
+			// Formation line (MC2_TACMAP_FORMATION_LINE): L arms while F6
+			// overview active; LMB drag draws; release issues orders (handled
+			// in ControlGui::render where eye/selection live); Esc/RMB cancels.
+			if ( TacticalOverview::formationLineEnabled() )
+			{
+				static bool s_flLWas = false;
+				bool lDown = userInput->getKeyDown( KEY_L )
+					&& !userInput->ctrl() && !userInput->alt() && !userInput->shift();
+				if ( lDown && !s_flLWas )
+					g_tacticalOverview.flOnHotkeyL();
+				s_flLWas = lDown;
+
+				if ( g_tacticalOverview.flState() != TacticalOverview::FL_IDLE )
+				{
+					static bool s_flEscWas = false;
+					bool escDown = userInput->getKeyDown( KEY_ESCAPE );
+					if ( escDown && !s_flEscWas )
+						g_tacticalOverview.flOnCancel();
+					s_flEscWas = escDown;
+					if ( userInput->rightMouseReleased() )
+						g_tacticalOverview.flOnCancel();
+				}
+			}
+
+			if ((true == bInvokeOptionsScreenFlag)
+				|| (userInput->getKeyDown(KEY_O) && userInput->ctrl() && !userInput->alt() && !userInput->shift()))
+			{
+				bInvokeOptionsScreenFlag = false;
+				if ((!optionsScreenWrapper) || (optionsScreenWrapper->isDone()))
+				{
+					if (!optionsScreenWrapper)
+					{
+						optionsScreenWrapper = new OptionsScreenWrapper;
+						optionsScreenWrapper->init();
+					}
+					if (mission && mission->missionInterface && !mission->missionInterface->isPaused())
+						mission->missionInterface->togglePauseWithoutMenu();
+					optionsScreenWrapper->begin();
+				}
+			}
+			else
+			if (mission && (!optionsScreenWrapper || optionsScreenWrapper->isDone() ) )
+			{
+				long result = mission->update();
+
+				// Gameplay-ready marker. Fires exactly once per process when
+				// Mission::active becomes true (set in Mission::start()).
+				// Drives both smoke-mode timing AND the in-mission frame cap
+				// selection in gameosmain.cpp; must run regardless of smoke mode.
+				{
+					static bool s_missionReadyMarked = false;
+					if (!s_missionReadyMarked &&
+						mission && mission->isActive()) {
+						SmokeMode::markMissionReady();
+						s_missionReadyMarked = true;
+						if (getenv("MC2_FRAMECAP_TRACE")) {
+							fprintf(stderr, "[FRAMECAP] markMissionReady fired (mission active)\n");
+							fflush(stderr);
+						}
+					}
+				}
+
+				if (result == 9999) {
+					mission->destroy();
+					//delete mission;
+					//mission = NULL;
+					for (long i = 0; i < 3; i++) {
+						DebugGameObject[i] = NULL;
+						DebugWindow[i + 1]->clear();
+					}
+					if (MPlayer && MPlayer->isServer())
+						MPlayer->sendEndMission(1);
+					quitGame = true;
+				}
+				else if (result != mis_PLAYING)
+				{
+					//if (MPlayer && MPlayer->isServer())
+					//	MPlayer->sendEndMission(1);
+					if (result < mis_PLAYER_DRAW)
+						soundSystem->playBettySample(BETTY_MISSION_LOST);
+					else if (result > mis_PLAYER_DRAW)
+						soundSystem->playBettySample(BETTY_MISSION_WON);
+					
+					//Gotta get rid of the mission textures before Heidi starts her stuff!
+					// No RAM otherwise in mc2_18.
+					mcTextureManager->flush(true);
+
+					if (MPlayer && aborted) {
+						MPlayer->closeSession();
+						MPlayer->setMode(MULTIPLAYER_MODE_NONE);
+						logistics->start(log_SPLASH);
+						}
+					else
+						logistics->start(log_RESULTS);		//Should be log_RESULTS!!!!!!
+					aborted = false;
+					if ( !LogisticsData::instance->campaignOver() || MPlayer || LogisticsData::instance->isSingleMission() ) {
+						mission->destroy();
+						//delete mission;
+						//mission = NULL;
+					}
+	
+					for (long i = 0; i < 3; i++) {
+						DebugGameObject[i] = NULL;
+						DebugWindow[i + 1]->clear();
+					}
+	
+				}
+			}
+			if (optionsScreenWrapper && !optionsScreenWrapper->isDone())
+			{
+				OptionsScreenWrapper::status_type result = optionsScreenWrapper->update();
+				if (result == OptionsScreenWrapper::opt_DONE)
+				{
+					optionsScreenWrapper->end();
+					if (mission && mission->missionInterface && mission->missionInterface->isPaused())
+						mission->missionInterface->togglePauseWithoutMenu();
+				}
+			}
+	
+
+		}
+	
+		DEBUGWINS_update();
+	
+		//---------------------------------------------------
+		// Update heap instrumentation.
+	
+		//-----------------------------------------------------
+		// Check the TimeBomb to see if we should go away
+		/*
+		if (!checkedBomb)
+		{
+			SYSTEMTIME checkTime;
+			SYSTEMTIME bombTime;
+			DWORD dataSize = sizeof(SYSTEMTIME);
+			GetSystemTime(&checkTime);
+		
+			if (!gotBombData)
+			{
+				gos_LoadDataFromRegistry("GraphicsDataInit2", &bombTime, &dataSize);
+				gotBombData = true;
+			}
+		
+			if (dataSize == 0)
+			{
+				STOP(("NO Graphics Data Initializer - Please Login with administrator privileges"));	//In Case they try to whack the registry entry while running!
+			}
+		
+			if ((checkTime.wYear >= bombTime.wYear) &&
+				(checkTime.wMonth >= bombTime.wMonth) &&
+				(checkTime.wDay >= bombTime.wDay))
+			{
+				//If bomb goes off, set date to IMPOSSIBLE to achieve time!!
+				// If they whack the entry after this, it doesn't matter!  The normal bomb will go off and then set this anyway.
+				// If they whack the entry, then reset their system clock, then run the game, it will work.  Not much more I can do!
+				// I could delete files but it won't matter, they have the CD!
+				//
+				// MUST change version numbers on fastfiles after Code Complete and after EACH Beta we release!!
+				bombTime.wYear = 1950;
+				bombTime.wMonth = 0;
+				bombTime.wDay = 0;
+		
+				gos_SaveDataToRegistry("GraphicsDataInit2",  &bombTime, sizeof(SYSTEMTIME));
+		
+				STOP(("Time Bomb has exploded!"));
+		
+				quitGame = true;
+			}
+
+			checkedBomb = true;
+		}
+		*/
+	
+		//---------------------------------------------------------------
+		// Somewhere in all of the updates, we have asked to be excused!
+		if (quitGame)
+		{
+			//EnterWindowMode();				//Game crashes if _TerminateApp called from fullScreen
+			gos_TerminateApplication();
+		}
+
+		if (loadInMissionSave)
+		{
+			//sebi:
+            //mission->load("data" PATH_SEPARATOR "savegame" PATH_SEPARATOR "testgame.ims");
+            char savegame_path[1024];
+            S_snprintf(savegame_path, sizeof(savegame_path)/sizeof(savegame_path[0]), "%s" PATH_SEPARATOR "testgame.ims", savePath);
+            mission->load(savegame_path);
+			loadInMissionSave = false;
+		}
+	}
+	else
+	{
+		if (!DoneSniffing)
+		{
+			for (long i=0;i<3000;i++)
+			{
+				testVertex[i].x = RandomNumber(1000) - 100;
+				testVertex[i].y = RandomNumber(800) - 100;
+				testVertex[i].z = ((float)RandomNumber(150) / 100.0f) - 0.25f;
+				testVertex[i].rhw = 0.5f;
+				testVertex[i].u = (float)RandomNumber(100) / 100.0f;
+				testVertex[i].v = (float)RandomNumber(100) / 100.0f; 
+				testVertex[i].argb = 0x3fffffff;
+				testVertex[i].frgb = 0x3f1f2f3f;
+				indexArray[i] = i;
+			}
+
+			curIteration++;
+			if (curIteration > numIterations)
+			{
+				if (gos_GetMachineInformation(gos_Info_GetDeviceLocalMemory, curDevice) >= 6291456)
+					trisPerSecond[curDevice] = 5000.0f * numIterations / (totalTime / 1000);
+				else
+					trisPerSecond[curDevice] = 0.0f;
+
+				curDevice++;
+				if ((curDevice >= NumDevices) || (curDevice > MAX_HARDWARE_CARDS))
+				{
+					FILE *sniffData = fopen("sniff.dat","wt");
+					if (sniffData)
+					{
+						char sniff[2048];
+						sprintf(sniff,"%f,%f,%f,%f,%f,%f\n",trisPerSecond[0],ProcessorSpeed,trisPerSecond[1],trisPerSecond[2],trisPerSecond[3],trisPerSecond[4]);
+
+						fputs(sniff,sniffData);
+						fclose(sniffData);
+					}
+
+					if ((trisPerSecond[0] > 1000000.0f) && (ProcessorSpeed > 595.0f))
+					{
+						CopyFile("hiPrefs.cfg","orgprefs.cfg",false);
+						CopyFile("hiPrefs.cfg","options.cfg",false);
+					}
+					else if ((trisPerSecond[0] > 1000000.0f) && (ProcessorSpeed <= 595.0f))
+					{
+						CopyFile("h2Prefs.cfg","orgprefs.cfg",false);
+						CopyFile("h2Prefs.cfg","options.cfg",false);
+					}
+					else if ((trisPerSecond[0] > 10000.0f) && (ProcessorSpeed > 595.0f))
+					{
+						CopyFile("midPrefs.cfg","orgprefs.cfg",false);
+						CopyFile("midPrefs.cfg","options.cfg",false);
+					}
+					else if ((trisPerSecond[1] > 1000000.0f) && (ProcessorSpeed > 595.0f))
+					{
+						CopyFile("hiPrefs1.cfg","orgprefs.cfg",false);
+						CopyFile("hiPrefs1.cfg","options.cfg",false);
+					}
+					else if ((trisPerSecond[1] > 1000000.0f) && (ProcessorSpeed <= 595.0f))
+					{
+						CopyFile("h2Prefs1.cfg","orgprefs.cfg",false);
+						CopyFile("h2Prefs1.cfg","options.cfg",false);
+					}
+					else if ((trisPerSecond[1] > 10000.0f) && (ProcessorSpeed > 595.0f))
+					{
+						CopyFile("midPrefs1.cfg","orgprefs.cfg",false);
+						CopyFile("midPrefs1.cfg","options.cfg",false);
+					}
+					else if (trisPerSecond[1] > 0.0f)
+					{
+						CopyFile("minPrefs1.cfg","orgprefs.cfg",false);
+						CopyFile("minPrefs1.cfg","options.cfg",false);
+					}
+					else
+					{
+						CopyFile("minPrefs.cfg","orgprefs.cfg",false);
+						CopyFile("minPrefs.cfg","options.cfg",false);
+					}
+
+					DoneSniffing = true;
+				}
+				else
+				{
+					//Don't sniff a below minspec card.  Crash O Roni!
+					if (gos_GetMachineInformation(gos_Info_GetDeviceLocalMemory, curDevice) >= 6291456)
+						gos_SetScreenMode(800,600,16,curDevice,0,0,0,true,0,0,0,0);
+					else
+						curDevice++;
+
+					curIteration = 0;
+				}
+			}
+		}
+		else
+		{
+			gos_SetScreenMode(800,600,16,0,0,0,0,false,0,true,0,0);
+			DoneSniffing = true;
+
+			if (Environment.fullScreen == 0)
+			{
+				char msgBuffer[4096];
+				char msgTitle[1024];
+
+				cLoadString(IDS_SNIFFER_DONE_MSG,msgBuffer,4095);
+				cLoadString(IDS_SNIFFER_INIT_TITLE,msgTitle,1023);
+
+				mc2MessageBox(msgBuffer,msgTitle,MB_OK,IDOK);
+
+				gos_TerminateApplication();
+			}
+		}
+	}
+}

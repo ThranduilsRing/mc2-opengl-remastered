@@ -113,28 +113,6 @@ Shaders that carry sites, with their counterpart in the other backend. Twins mus
 - `mclib/mech3d.cpp:6792` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
 - `mclib/mech3d.cpp:6846` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
 
-### `mclib/gvactor.cpp` (19)
-
-- `mclib/gvactor.cpp:593` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
-- `mclib/gvactor.cpp:646` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
-- `mclib/gvactor.cpp:685` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
-- `mclib/gvactor.cpp:1749` assign-triple: `objPosition.x = -position.x; objPosition.y = position.z; objPosition.z = position.y;`
-- `mclib/gvactor.cpp:1780` assign-triple: `objPosition.x = -position.x; objPosition.y = position.z; objPosition.z = position.y;`
-- `mclib/gvactor.cpp:1833` assign-triple: `minBox.x = -appearType->typeUpperLeft.x; minBox.y = appearType->typeUpperLeft.z; minBox.z = appearType->typeUp`
-- `mclib/gvactor.cpp:1838` assign-triple: `maxBox.x = -appearType->typeLowerRight.x; maxBox.y = appearType->typeLowerRight.z; maxBox.z = appearType->type`
-- `mclib/gvactor.cpp:2098` assign-triple: `tPosition.x = -position.x; tPosition.y = position.z; tPosition.z = position.y;`
-- `mclib/gvactor.cpp:2138` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
-- `mclib/gvactor.cpp:2180` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
-- `mclib/gvactor.cpp:2382` assign-triple: `tPosition.x = -position.x; tPosition.y = position.z; tPosition.z = position.y;`
-- `mclib/gvactor.cpp:2456` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
-- `mclib/gvactor.cpp:2496` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
-- `mclib/gvactor.cpp:2628` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
-- `mclib/gvactor.cpp:2889` assign-triple: `tPosition.x = -position.x; tPosition.y = position.z; tPosition.z = position.y;`
-- `mclib/gvactor.cpp:2954` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
-- `mclib/gvactor.cpp:2982` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
-- `mclib/gvactor.cpp:3012` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
-- `mclib/gvactor.cpp:3428` assign-triple: `wakePos.x = -nodePos.x; wakePos.y = nodePos.z; wakePos.z = nodePos.y;`
-
 ### `mclib/bdactor.cpp` (17)
 
 - `mclib/bdactor.cpp:1810` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
@@ -198,6 +176,25 @@ Shaders that carry sites, with their counterpart in the other backend. Twins mus
 - `code/missiongui.cpp:6013` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
 - `code/missiongui.cpp:7521` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
 
+### `mclib/gvactor_geometry.cpp` (7)
+
+- `mclib/gvactor_geometry.cpp:452` assign-triple: `objPosition.x = -position.x; objPosition.y = position.z; objPosition.z = position.y;`
+- `mclib/gvactor_geometry.cpp:483` assign-triple: `objPosition.x = -position.x; objPosition.y = position.z; objPosition.z = position.y;`
+- `mclib/gvactor_geometry.cpp:536` assign-triple: `minBox.x = -appearType->typeUpperLeft.x; minBox.y = appearType->typeUpperLeft.z; minBox.z = appearType->typeUp`
+- `mclib/gvactor_geometry.cpp:541` assign-triple: `maxBox.x = -appearType->typeLowerRight.x; maxBox.y = appearType->typeLowerRight.z; maxBox.z = appearType->type`
+- `mclib/gvactor_geometry.cpp:801` assign-triple: `tPosition.x = -position.x; tPosition.y = position.z; tPosition.z = position.y;`
+- `mclib/gvactor_geometry.cpp:841` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
+- `mclib/gvactor_geometry.cpp:883` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
+
+### `mclib/gvactor_update.cpp` (6)
+
+- `mclib/gvactor_update.cpp:123` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
+- `mclib/gvactor_update.cpp:384` assign-triple: `tPosition.x = -position.x; tPosition.y = position.z; tPosition.z = position.y;`
+- `mclib/gvactor_update.cpp:449` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
+- `mclib/gvactor_update.cpp:477` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
+- `mclib/gvactor_update.cpp:507` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
+- `mclib/gvactor_update.cpp:923` assign-triple: `wakePos.x = -nodePos.x; wakePos.y = nodePos.z; wakePos.z = nodePos.y;`
+
 ### `code/weaponbolt_render.cpp` (5)
 
 - `code/weaponbolt_render.cpp:629` assign-triple: `actualPosition.x = -hotSpot.x; actualPosition.y = hotSpot.z; actualPosition.z = hotSpot.y;`
@@ -246,6 +243,18 @@ Shaders that carry sites, with their counterpart in the other backend. Twins mus
 - `code/terrobj.cpp:948` assign-triple: `actualPosition.x = -position.x; actualPosition.y = position.z; actualPosition.z = position.y;`
 - `code/terrobj.cpp:1062` assign-triple: `actualPosition.x = -position.x; actualPosition.y = position.z; actualPosition.z = position.y;`
 - `code/terrobj.cpp:1328` assign-triple: `actualPosition.x = -position.x; actualPosition.y = position.z; actualPosition.z = position.y;`
+
+### `mclib/gvactor.cpp` (3)
+
+- `mclib/gvactor.cpp:457` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
+- `mclib/gvactor.cpp:510` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
+- `mclib/gvactor.cpp:549` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
+
+### `mclib/gvactor_render.cpp` (3)
+
+- `mclib/gvactor_render.cpp:195` assign-triple: `tPosition.x = -position.x; tPosition.y = position.z; tPosition.z = position.y;`
+- `mclib/gvactor_render.cpp:269` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
+- `mclib/gvactor_render.cpp:309` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
 
 ### `shaders/static_prop.vert` (3)
 

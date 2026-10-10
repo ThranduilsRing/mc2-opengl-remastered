@@ -1,0 +1,18 @@
+{
+ "base": "ece00913f",
+ "src": "code/mechcmd2.cpp",
+ "stem": "mechcmd2",
+ "scripts": [
+  "scripts/build_release.sh",
+  "scripts/check-capture-provenance.py",
+  "scripts/exe_fingerprint.py",
+  "scripts/provenance_gate.py",
+  "scripts/run_smoke.py",
+  "scripts/smoke_lib/fingerprint.py",
+  "scripts/test_release_zip_install.py",
+  "scripts/tests/test_exe_fingerprint_layout.py",
+  "tools/visual_verify/bless_selftest.py",
+  "tests/unit/test_fst_roundtrip.cpp"
+ ],
+ "_scripts_reason": "Reviewed: each names code/mechcmd2.cpp for InitializeGameEngine's build-fingerprint printf or the sniffer path, both of which stay in the core file."
+}
