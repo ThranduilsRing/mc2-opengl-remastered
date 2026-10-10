@@ -16,6 +16,7 @@
 
 // HDRI-BC6H-1: BC6H sidecar upload via KtxLoader (GL-free loader, BC6H blocks).
 #include "../../RenderCore/KtxLoader.h"
+#include "Gates/gate.h"
 
 // HDRI-SKY Item 2: scan a decoded equirect RGBA-float buffer for the dominant
 // above-horizon light source and return its GL-equirect azimuth (radians).
@@ -81,10 +82,7 @@ static bool scanHdriSunAzGL(const float* px, int w, int h, float* outAzGL)
 
 // HDRI-BC6H-1: gate — MC2_HDRI_BC6H controls BC6H sidecar upload.
 // Default ON (absent = ON); set =0 to force RGBA16F fallback path.
-static bool s_hdribc6h = [] {
-    const char* e = getenv("MC2_HDRI_BC6H");
-    return !e || e[0] != '0';
-}();
+static bool s_hdribc6h = mc2::gate::get<"MC2_HDRI_BC6H">();
 
 // Derive sidecar path: replace trailing ".exr" with ".ktx2".
 // Returns false if path does not end with ".exr" or output buffer is too small.

@@ -162,8 +162,7 @@ bool propMaterialRequested() {
 }
 
 std::string spv_dir() {
-    const char* env = std::getenv("MC2_VULKAN_SPV_DIR");
-    std::string d = (env && *env) ? env : "shaders/vulkan";
+    std::string d = mc2::gate::str<"MC2_VULKAN_SPV_DIR">();   // row default shaders/vulkan, empty reads the default
     if (!d.empty() && d.back() != '/' && d.back() != '\\') d += '/';
     return d;
 }
@@ -1524,10 +1523,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         }
         u.lightingReady = s->lightingReady ? 1 : 0;
         {   // GL parity: MC2_SP_GLASS_DITHER (default ON; =0 -> legacy binary a<0.5 discard).
-            static const int s_glassDither = []() {
-                const char* v = std::getenv("MC2_SP_GLASS_DITHER");
-                return (v && v[0] == '0') ? 0 : 1;
-            }();
+            static const int s_glassDither = mc2::gate::get<"MC2_SP_GLASS_DITHER">();
             u.glassDither = s_glassDither;
         }
         // ADJUDICATION-1 WASHOUT engagement probe: one-shot dump of the exact UBO
@@ -1617,7 +1613,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
             const std::string dpText = mc2::gate::str<"MC2_VK_PROP_PACKET_DUMP">();   // "" when unset or empty
             const char* dp = dpText.empty() ? nullptr : dpText.c_str();
             const bool frozen = mc2CaptureGaitFreezeActive() != 0 ||
-                                std::getenv("MC2_VISUAL_BOOKMARK_CAPTURE") == nullptr;
+                                !mc2::gate::isSet<"MC2_VISUAL_BOOKMARK_CAPTURE">();
             if (dp && dp[0] && !s_dumped && frozen) {
                 s_dumped = true;
                 s_pktDump = std::fopen(dp, "w");

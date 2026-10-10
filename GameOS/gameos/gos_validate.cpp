@@ -147,8 +147,9 @@ void validateWriteResults(int viewportW, int viewportH) {
 // -- Tier-1 instrumentation: GL error drain (stability spec §4) -------------
 
 #include <string.h>
+#include "Gates/gate.h"
 
-static const bool s_glErrorDrainSilent = (getenv("MC2_GL_ERROR_DRAIN_SILENT") != nullptr);
+static const bool s_glErrorDrainSilent = mc2::gate::get<"MC2_GL_ERROR_DRAIN_SILENT">();
 
 // Seven known pass names (spec §4.1). Keep in the same order as the pass table.
 enum GlDrainPass { GLP_SHADOW_STATIC = 0, GLP_SHADOW_DYNAMIC, GLP_TERRAIN, GLP_OBJECTS_3D, GLP_POST_PROCESS, GLP_HUD, GLP_FRAME, GLP_COUNT };

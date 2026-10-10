@@ -644,8 +644,9 @@ static bool iblSunRotateEnabled() {
 //
 // "0" or unset-to-0 disables the floor and gives the bare rotation; that is the
 // arm to use when measuring how much of a graded difference the floor is worth.
-// Bounded [0,2] (out-of-range numbers clamp); text that is not a number, NaN
-// included, reads as the 0.45 default -- never a silent giant lift.
+// Bounded [0,2] (out-of-range numbers clamp); text that is not a number parses as
+// 0 and so reads as the bare rotation, only NaN reads as the 0.45 default --
+// never a silent giant lift.
 // Read at first use, see staticPropAmbientV1Enabled().
 static float iblSunRotateFloor() {
     static const float v = mc2::gate::get<"MC2_STATIC_PROP_IBL_SUN_ROTATE_FLOOR">();

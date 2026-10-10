@@ -29,6 +29,9 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <string>
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"   // str<>()
 
 namespace mc2res {
 
@@ -36,9 +39,9 @@ enum Mode { kOff = 0, kLog = 1, kFatal = 2 };
 
 inline Mode mode() {
     static const Mode s_mode = []() -> Mode {
-        const char* v = ::getenv("MC2_RES_ASSERT");
-        if (!v || !v[0] || (v[0] == '0' && !v[1])) return kOff;
-        if (::strcmp(v, "fatal") == 0) return kFatal;
+        const std::string v = mc2::gate::str<"MC2_RES_ASSERT">();   // "" when unset or empty
+        if (v.empty() || v == "0") return kOff;
+        if (v == "fatal") return kFatal;
         return kLog;   // "1" / "log" / anything else truthy
     }();
     return s_mode;

@@ -20,7 +20,8 @@ MissionResults.cpp			: Implementation of the MissionResults component.
 #include"../GuiRuntime/GuiRuntime.h"   // GetDisplaySize (MECH-ICON-BLANK-1 gui bridge)
 #include"../GameOS/gameos/gos_dev_shell.h"   // RESULTS-CAPTURE-1
 #include <cstdlib>
-#include <cstdlib>   // std::getenv (MC2_SOAK_AUTOWIN results auto-dismiss)
+#include <cstdlib>
+#include "Gates/gate.h"
 
 bool MissionResults::FirstTimeResults = true;
 MissionResults::MissionResults()
@@ -149,9 +150,8 @@ void MissionResults::update()
 	//     it self-gates on entryAnim.isDone(), so a repeated nudge is safe.
 	// A short settle dwell per panel lets entry anims finish (matches the
 	// human-pace dismissal) before we fire. Single-player only; default OFF
-	// (env unset) is byte-identical. Cached getenv at first call.
-	static const bool s_soakAutoWin =
-		( std::getenv("MC2_SOAK_AUTOWIN") != nullptr );
+	// (env unset) is byte-identical. Cached at first call.
+	static const bool s_soakAutoWin = mc2::gate::get<"MC2_SOAK_AUTOWIN">();
 	if ( s_soakAutoWin && !MPlayer )
 	{
 		static float s_soakResultsDwell = 0.0f;
@@ -253,7 +253,7 @@ void MissionResults::render()
 		// has settled (30 frames), once per screen per process. Replaces
 		// blind-timed harness screenshots.
 		{
-			static const bool s_shotResults = (getenv("MC2_SHOT_RESULTS") != nullptr);
+			static const bool s_shotResults = mc2::gate::get<"MC2_SHOT_RESULTS">();
 			static int s_salvageFrames = 0;
 			if ( s_shotResults && s_salvageFrames >= 0 && ++s_salvageFrames == 30 )
 			{
@@ -275,7 +275,7 @@ void MissionResults::render()
 	{
 		// RESULTS-CAPTURE-1: same one-shot for the pilot-promotion screen.
 		{
-			static const bool s_shotResults = (getenv("MC2_SHOT_RESULTS") != nullptr);
+			static const bool s_shotResults = mc2::gate::get<"MC2_SHOT_RESULTS">();
 			static int s_promoteFrames = 0;
 			if ( s_shotResults && s_promoteFrames >= 0 && ++s_promoteFrames == 30 )
 			{

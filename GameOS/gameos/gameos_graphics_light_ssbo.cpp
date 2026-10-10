@@ -15,10 +15,11 @@
 
 #include "mc2_hitch_trace.h"
 #include "gos_profiler.h"  // ZoneScopedN (VK-ISLAND-TRACY-1 zones)
+#include "Gates/gate.h"
 
 // MC2_GPUBUF_LIGHT_GROWONCE gate (moved with the cluster).
 static bool gosLightGrowOnceEnabled() {
-    static const bool s_on = (std::getenv("MC2_GPUBUF_LIGHT_GROWONCE") != nullptr);
+    static const bool s_on = mc2::gate::get<"MC2_GPUBUF_LIGHT_GROWONCE">();
     return s_on;
 }
 
@@ -77,8 +78,7 @@ static LightUploadStats s_lightUploadStats;
 static bool lightUploadStatsEnabled() {
 	static int cached = -1;
 	if (cached < 0) {
-		const char* v = std::getenv("MC2_LIGHT_UPLOAD_STATS");
-		cached = (v && v[0] && v[0] != '0') ? 1 : 0;
+		cached = mc2::gate::get<"MC2_LIGHT_UPLOAD_STATS">();
 	}
 	return cached != 0;
 }
@@ -102,8 +102,7 @@ static void invalidateLightDataSsbo() {
     invalid.id = RenderCore::RenderResourceId::LightDataSsbo;
     RenderCore::registerOrUpdateRenderResource(invalid);
 }
-static const bool s_lightSsboTrace =
-	(getenv("MC2_LIGHTSSBO_TRACE") != nullptr);
+static const bool s_lightSsboTrace = mc2::gate::get<"MC2_LIGHTSSBO_TRACE">();
 
 // LIGHT-GROW-ONCE-SUBDATA-1: per-record stride for headroom sizing, taken from the
 // single-source GPU record so a widened light cap cannot leave a stale literal here.
@@ -136,10 +135,7 @@ static constexpr GLsizeiptr kLightGrowHeadroomRecords = 128;
 // Subsumed by MC2_GPUBUF_LIGHT_GROWONCE when that ships (grow-once branch
 // runs first).
 static bool gosLightPrefixGpuCopyEnabled() {
-    static const bool s_on = []() {
-        const char* v = std::getenv("MC2_LIGHT_PREFIX_GPU_COPY");
-        return v && v[0] != '0';
-    }();
+    static const bool s_on = mc2::gate::get<"MC2_LIGHT_PREFIX_GPU_COPY">();
     return s_on;
 }
 static GLuint     s_lightPrefixStash      = 0;  // immutable prefix mirror (VRAM)

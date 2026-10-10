@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in weaponbolt_internal.h.
 #include "weaponbolt_internal.h"
 #include "../RenderCore/axis_convert.h"
+#include "Gates/gate.h"
 
 
 //---------------------------------------------------------------------------
@@ -13,19 +14,12 @@
 // MC2_PROJECTILE_SPEED_MULT scales direct-fire travel speed (default 1.0).
 static bool directFireStraightEnabled (void)
 {
-	static const bool s = []{
-		const char* v = getenv("MC2_DIRECT_FIRE_STRAIGHT");
-		return v && v[0] == '1' && v[1] == '\0';
-	}();
+	static const bool s = mc2::gate::get<"MC2_DIRECT_FIRE_STRAIGHT">();
 	return s;
 }
 static float directFireSpeedMult (void)
 {
-	static const float s = []{
-		const char* v = getenv("MC2_PROJECTILE_SPEED_MULT");
-		float m = v ? (float)atof(v) : 1.0f;
-		return (m > 0.0f && m <= 10.0f) ? m : 1.0f;
-	}();
+	static const float s = mc2::gate::get<"MC2_PROJECTILE_SPEED_MULT">();   // the row reads 1 outside (0, 10]
 	return s;
 }
 

@@ -36,7 +36,7 @@
 #include"mission.h"
 #endif
 
-#include <cstdlib>  // getenv/atof for MC2_PROJECTILE_SPEED_MULT
+#include <cstdlib>
 
 #ifndef GOS_PROFILER_H
 #include"gos_profiler.h"

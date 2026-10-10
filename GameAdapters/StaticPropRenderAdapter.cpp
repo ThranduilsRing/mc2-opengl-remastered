@@ -4,6 +4,7 @@
 
 #include "StaticPropRenderAdapter.h"
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
+#include "Gates/gate.h"
 
 // Engine side.
 #include "../RenderWorld/RenderWorld.h"
@@ -26,11 +27,6 @@
 #include <type_traits>
 
 namespace {
-
-bool envFlag(const char* name) {
-    const char* v = std::getenv(name);
-    return v && v[0] && v[0] != '0';
-}
 
 // C1 fix: game-side seam for POD-mirror translation. Engine-side seam
 // lives in RenderWorld/legacy/static_prop_backend.cpp. Both perform
@@ -158,7 +154,7 @@ RenderCore::RenderObjectHandle syncStaticProp(
             h.isValid() ? static_cast<int32_t>(h.index()) : -1;
     }
 
-    if (envFlag("MC2_RENDER_WORLD_TRACE")) {
+    if (mc2::gate::get<"MC2_RENDER_WORLD_TRACE">()) {
         MC2_DIAGFE(stderr,
             "[RENDER_WORLD v1] event=adapter_sync_static "
             "shape=%p batch=%zu handle.valid=%d legacy=%d\n",
@@ -187,7 +183,7 @@ RenderCore::RenderObjectHandle syncStaticPropLateSpawn(
         *legacyRecipeIndexOut = recipe;
     }
 
-    if (envFlag("MC2_RENDER_WORLD_TRACE")) {
+    if (mc2::gate::get<"MC2_RENDER_WORLD_TRACE">()) {
         MC2_DIAGFE(stderr,
             "[RENDER_WORLD v1] event=adapter_sync_late "
             "app=%p recipe=%d handle.valid=%d\n",

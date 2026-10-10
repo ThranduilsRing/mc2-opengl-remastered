@@ -2,6 +2,8 @@
 // See docs/visual-tuning-profiles.md.
 
 #include "visual_tuning_profile.h"
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"   // str<>()
 #include "ibl_sh_runtime.h"  // g_iblShStrength (extern float)
 
 #include <cstdio>
@@ -144,11 +146,6 @@ static int  s_appliedKeys = 0;
 static char s_profilePath[256]  = "data/visual_tuning.json";
 static char s_activeMission[80] = "";
 
-static bool envIsSet(const char* name) {
-    const char* v = getenv(name);
-    return v && v[0] != '\0';
-}
-
 static void applyKey(const char* key, float val, int& count) {
     if (strcmp(key, "exposure") == 0) {
         gos_SetExposure(val);
@@ -167,23 +164,22 @@ static void applyKey(const char* key, float val, int& count) {
         // renders at (INCAPABLE-BATCH-1, 2026-07-31; see the long note at the
         // g_iblShStrength definition). Note the env guard below does not just
         // override the number, it suppresses the per-mission profile entirely.
-        if (!envIsSet("MC2_STATIC_PROP_IBL_SH_STRENGTH")) {
+        if (!mc2::gate::isNonEmpty<"MC2_STATIC_PROP_IBL_SH_STRENGTH">()) {
             g_iblShStrength = val < 0.0f ? 0.0f : (val > 3.0f ? 3.0f : val);
             count++;
         }
     } else if (strcmp(key, "waterSkyTintStrength") == 0) {
-        const char* skyTintEnv = getenv("MC2_WATER_SKYTINT");
-        if (!(skyTintEnv && skyTintEnv[0] && skyTintEnv[0] != '0')) {
+        if (!mc2::gate::get<"MC2_WATER_SKYTINT">()) {
             gos_SetWaterSkyTintStrength(val);
             count++;
         }
     } else if (strcmp(key, "vfxBrightness") == 0) {
-        if (!envIsSet("MC2_TUNE_VFX_BRIGHTNESS")) {
+        if (!mc2::gate::isNonEmpty<"MC2_TUNE_VFX_BRIGHTNESS">()) {
             gos_vfx_setBrightness(val);
             count++;
         }
     } else if (strcmp(key, "vfxAdditiveBrightness") == 0) {
-        if (!envIsSet("MC2_TUNE_VFX_ADDITIVE_BRIGHTNESS")) {
+        if (!mc2::gate::isNonEmpty<"MC2_TUNE_VFX_ADDITIVE_BRIGHTNESS">()) {
             gos_vfx_setAdditiveBrightness(val);
             count++;
         }
@@ -191,7 +187,7 @@ static void applyKey(const char* key, float val, int& count) {
         // VFX-LIT-PARTICLES-MVP-1: per-mission lit-smoke strength (0..1). env
         // value-var wins over profile (same convention as the mech keys). Gate
         // MC2_VFX_LIT_PARTICLES still controls whether lighting is applied.
-        if (!envIsSet("MC2_TUNE_VFX_LIT_STRENGTH")) {
+        if (!mc2::gate::isNonEmpty<"MC2_TUNE_VFX_LIT_STRENGTH">()) {
             gos_vfx_setLitStrength(val);
             count++;
         }
@@ -210,12 +206,12 @@ static void applyKey(const char* key, float val, int& count) {
         // MISSION-LIGHTING-PROFILE-FIELDS-1: env value-var wins over profile,
         // matching the IBL/water/VFX env-guard convention. Gate
         // MC2_MECH_AMBIENT_V1 still controls whether the term is applied at all.
-        if (!envIsSet("MC2_MECH_AMBIENT_V1_STRENGTH")) {
+        if (!mc2::gate::isNonEmpty<"MC2_MECH_AMBIENT_V1_STRENGTH">()) {
             batcher_setMechAmbientStrength(val);
             count++;
         }
     } else if (strcmp(key, "mechSpecularStrength") == 0) {
-        if (!envIsSet("MC2_MECH_SPECULAR_STRENGTH")) {
+        if (!mc2::gate::isNonEmpty<"MC2_MECH_SPECULAR_STRENGTH">()) {
             batcher_setMechSpecularStrength(val);
             count++;
         }
@@ -299,8 +295,8 @@ void visualTuning_applyProfile(const char* missionName) {
     if (missionName && missionName[0])
         strncpy(s_activeMission, missionName, sizeof(s_activeMission) - 1);
 
-    const char* pathEnv = getenv("MC2_VISUAL_TUNING_FILE");
-    const char* path = (pathEnv && pathEnv[0]) ? pathEnv : "data/visual_tuning.json";
+    const std::string pathEnv = mc2::gate::str<"MC2_VISUAL_TUNING_FILE">();   // "" when unset or empty
+    const char* path = !pathEnv.empty() ? pathEnv.c_str() : "data/visual_tuning.json";
     strncpy(s_profilePath, path, sizeof(s_profilePath) - 1);
 
     FILE* f = fopen(path, "r");

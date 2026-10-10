@@ -23,7 +23,7 @@ MC2_VIEW_UNIFORMS  Polarity-inverted, registry is CORRECT. The ViewUniforms UBO 
 
 # --- (a) not a boolean gate at all: defaultOn carries no meaning
 MC2_RENDER_BACKEND  String-valued, not boolean: it names a backend ("gl"/"vk") and is consumed as a label (code/missiongui.cpp:2777 and the VK selection path), so there is no ON/OFF default to compare. Registered as Feature for discoverability rather than as a two-state gate.
-MC2_FX_FORCE_SPAWN  Character-valued, not boolean: code/warrior.cpp:5533 selects a spawn class from 'l'/'L' or the digits '2'..'9', so "unset" means "no forcing" rather than a boolean OFF. The value grammar, not a default flag, is what matters here.
+MC2_FX_FORCE_SPAWN  Enum-valued, not boolean: the Enum row in Gates/gate_table.cpp has the tokens 0, 1, 2..9 and loop, and code/warrior.cpp (updateActions) reads fire-once as isSet && !is<"0"> and loop as is<"loop"> or is<"2".."9">, so "unset" means "no forcing" rather than a boolean OFF.
 MC2_UNIT_PROFILE_DATA  Parsed in another translation unit: code/unitprofile.cpp:10 passes getenv() straight into mc2_unitprofile_parse_enabled(), which is a multi-mode source selector rather than a boolean. The checker deliberately refuses to guess a default across a call boundary it cannot see.
 
 # --- (a) default is CONDITIONAL on another variable, so it is neither ON nor OFF

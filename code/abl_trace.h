@@ -27,6 +27,7 @@
 
 #include "../GameOS/gameos/diagnostic_trace.h"
 #include <cstdio>
+#include "Gates/gate.h"
 #include <cstdlib>
 #include <chrono>
 #include <algorithm>
@@ -41,8 +42,7 @@ inline bool gateActive() {
 	if (cached < 0) {
 		bool on = mc2_diag::tagEnabled("ABL");
 		if (!on) {
-			const char* e = getenv("MC2_ABL_VM_FACTS");
-			on = (e && e[0] && e[0] != '0');
+			on = mc2::gate::get<"MC2_ABL_VM_FACTS">();
 		}
 		cached = on ? 1 : 0;
 	}

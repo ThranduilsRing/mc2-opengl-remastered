@@ -30,6 +30,7 @@
 #include "equipment_definition.h"  // EquipmentKind + component-form mapping target
 
 #include <string>
+#include "Gates/gate.h"
 #include <vector>
 #include <map>
 #include <cctype>
@@ -201,8 +202,7 @@ inline bool mc2_equipment_definition_source_is_generated(const char* e) {
     }
 }
 inline bool mc2EquipmentDefinitionSourceIsGenerated() {
-    static const bool s =
-        mc2_equipment_definition_source_is_generated(getenv("MC2_EQUIPMENT_DEFINITION_SOURCE"));
+    static const bool s = mc2::gate::is<"MC2_EQUIPMENT_DEFINITION_SOURCE", "generated">();
     return s;
 }
 
@@ -440,7 +440,7 @@ inline bool mc2_equipment_add_parse_enabled(const char* e) {
     return !(e[0] == '0' && e[1] == '\0');
 }
 inline bool mc2EquipmentAddEnabled() {
-    static const bool s = mc2_equipment_add_parse_enabled(getenv("MC2_EQUIPMENT_ADD"));
+    static const bool s = mc2::gate::get<"MC2_EQUIPMENT_ADD">();
     return s;
 }
 

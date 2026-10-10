@@ -24,10 +24,11 @@
 
 #include"mc2video.h"
 #include "../GameOS/gameos/gos_smoke.h"
-#include <cstdlib>   // std::getenv (MC2_BOOT_VIDEO capture fixture)
+#include <cstdlib>
 
 #include "../resource.h"
 #include"gameos.hpp"
+#include "Gates/gate.h"
 
 // Frame-rate averaging globals referenced by mechcmd2.cpp.
 // Defined here to keep them co-located with the movie subsystem.
@@ -84,10 +85,7 @@ void MC2Movie::init (const char *MC2Name, RECT mRect, bool useWaveFile)
         // (mc2_01 ABL plays V1A.bik ~frame 1600 under MC2_SMOKE_MODE, but this
         // early-out swallowed it). Registered Trace, default unset ->
         // byte-identical (skip preserved).
-        static const bool s_bootVideo = [] {
-            const char* v = getenv("MC2_BOOT_VIDEO");
-            return v && v[0] && v[0] != '0';
-        }();
+        static const bool s_bootVideo = mc2::gate::get<"MC2_BOOT_VIDEO">();
         if (!s_bootVideo) {
             printf("[VIDEO] init: smoke mode active, skipping movie '%s'\n", shortName);
             stillPlaying  = false;

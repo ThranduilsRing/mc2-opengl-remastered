@@ -15,6 +15,8 @@
 #endif
 
 #include <SDL2/SDL.h>
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"   // str<>()
 
 namespace {
 SmokeMode::State g_state;
@@ -46,22 +48,23 @@ void parseArgs(int argc, char** argv) {
     g_freq = SDL_GetPerformanceFrequency();
     g_startupT0 = SDL_GetPerformanceCounter();
 
-    g_state.enabled = (std::getenv("MC2_SMOKE_MODE") != nullptr);
+    g_state.enabled = mc2::gate::get<"MC2_SMOKE_MODE">();
 
     // S9D deterministic clock. Opt-in and SEPARATE from MC2_SMOKE_MODE so
     // default smoke timing is unchanged until this is proven. Parsed once;
     // read via fixedTimestepEnabled() (single cached bool) on hot paths.
-    g_state.fixedTimestep = (std::getenv("MC2_SMOKE_FIXED_TIMESTEP") != nullptr);
+    g_state.fixedTimestep = mc2::gate::get<"MC2_SMOKE_FIXED_TIMESTEP">();
     if (g_state.fixedTimestep) {
         std::fprintf(stderr,
             "[SMOKE_FIXED_TIMESTEP v1] dt_ms=33.333 fps=30\n");
         std::fflush(stderr);
     }
 
-    if (const char* seedEnv = std::getenv("MC2_SMOKE_SEED")) {
+    if (mc2::gate::isSet<"MC2_SMOKE_SEED">()) {
+        const std::string seedText = mc2::gate::str<"MC2_SMOKE_SEED">();   // "" when set but empty
         char* end = nullptr;
-        unsigned long v = std::strtoul(seedEnv, &end, 0);
-        if (end != seedEnv) g_state.seed = static_cast<uint32_t>(v);
+        unsigned long v = std::strtoul(seedText.c_str(), &end, 0);
+        if (end != seedText.c_str()) g_state.seed = static_cast<uint32_t>(v);
     }
 
     // [[noreturn]] on lambdas requires C++23; use a local static function instead.
@@ -152,8 +155,8 @@ void samplePerf(double frameMs) {
         // NOTE: first_frame fires BEFORE mission_ready. Runner must not treat
         // this as a gameplay-ready signal — mission_ready is authoritative.
         emitTiming("first_frame");
-        if (const char* capEnv = std::getenv("MC2_SMOKE_PERF_SAMPLES")) {
-            int v = std::atoi(capEnv);
+        {
+            const int v = mc2::gate::get<"MC2_SMOKE_PERF_SAMPLES">();   // row default 0 = keep the built-in cap
             if (v > 0 && v < 1000000) g_frameMsCap = (size_t)v;
         }
         g_frameMs.assign(g_frameMsCap, 0.0);

@@ -1,4 +1,5 @@
 #include "unitprofile.h"
+#include "Gates/gate.h"
 #include <cstdlib>
 #include <cstring>
 #include <cstdio>
@@ -7,7 +8,7 @@ bool mc2_unitprofile_parse_enabled(const char* e) {
     return e && e[0] != '\0' && e[0] != '0';
 }
 bool mc2UnitProfileDataEnabled() {
-    static const bool s = mc2_unitprofile_parse_enabled(getenv("MC2_UNIT_PROFILE_DATA"));
+    static const bool s = mc2::gate::get<"MC2_UNIT_PROFILE_DATA">();
     return s;
 }
 
@@ -26,8 +27,7 @@ bool mc2_unit_definition_source_is_generated(const char* e) {
     }
 }
 bool mc2UnitDefinitionSourceIsGenerated() {
-    static const bool s =
-        mc2_unit_definition_source_is_generated(getenv("MC2_UNIT_DEFINITION_SOURCE"));
+    static const bool s = mc2::gate::is<"MC2_UNIT_DEFINITION_SOURCE", "generated">();
     return s;
 }
 

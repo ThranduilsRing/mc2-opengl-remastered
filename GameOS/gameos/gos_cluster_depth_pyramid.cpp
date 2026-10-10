@@ -14,6 +14,7 @@
 #include <cmath>
 #include <vector>
 #include <string>
+#include "Gates/gate.h"
 
 namespace cluster_depth_pyramid {
 
@@ -26,11 +27,6 @@ namespace {
 // is documented as the safe floor for any device that reports < 1024
 // invocations. We assert the target supports it at init and stick with 32.
 constexpr int kTileSize = 32;
-
-bool envFlagDefaultOff(const char* name) {
-    const char* v = getenv(name);
-    return v && !(v[0] == '0' && v[1] == '\0');
-}
 
 // --- State -----------------------------------------------------------------
 bool   s_gateResolved = false;
@@ -240,9 +236,9 @@ void runParityCheck(GLuint sceneDepthTex, int width, int height) {
 bool IsEnabled() {
     if (!s_gateResolved) {
         s_gateResolved = true;
-        s_enabled = envFlagDefaultOff("MC2_CLUSTER_DEPTH_PYRAMID");
-        s_verify  = s_enabled && envFlagDefaultOff("MC2_CLUSTER_DEPTH_PYRAMID_VERIFY");
-        s_plant   = s_verify  && envFlagDefaultOff("MC2_CLUSTER_DEPTH_PYRAMID_PLANT");
+        s_enabled = mc2::gate::get<"MC2_CLUSTER_DEPTH_PYRAMID">();
+        s_verify  = s_enabled && mc2::gate::get<"MC2_CLUSTER_DEPTH_PYRAMID_VERIFY">();
+        s_plant   = s_verify  && mc2::gate::get<"MC2_CLUSTER_DEPTH_PYRAMID_PLANT">();
         MC2_DIAGFE(stderr, "[CLUSTER_DEPTH_PYRAMID v1] enabled=%d verify=%d plant=%d "
                         "(MC2_CLUSTER_DEPTH_PYRAMID)\n",
                 s_enabled ? 1 : 0, s_verify ? 1 : 0, s_plant ? 1 : 0);

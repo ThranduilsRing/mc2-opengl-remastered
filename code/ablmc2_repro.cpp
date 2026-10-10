@@ -1,6 +1,7 @@
 // ABL native bindings: the arg-guard repro hooks (test-only, gated by MC2_ABL_ARG_GUARD_REPRO).
 // Declared in ablmc2_internal.h; registered, in order, by initABL in ablmc2.cpp.
 #include "ablmc2_internal.h"
+#include "Gates/gate.h"
 
 
 static void runAblArgGuardRepro2A(void);
@@ -12,8 +13,7 @@ static void runAblArgGuardRepro2A(void);
 // Guard ON (MC2_ABL_ARG_GUARD=1): [ABL_ARG_GUARD] is logged, the function returns, nothing crashes.
 // Guard OFF: relPos[0] = 1.0f writes to 0x0 and crashes, which is the point; smoke always sets the guard.
 void runAblArgGuardRepro(void) {
-    const char* repro_env = getenv("MC2_ABL_ARG_GUARD_REPRO");
-    if (!repro_env || repro_env[0] != '1')
+    if (!mc2::gate::get<"MC2_ABL_ARG_GUARD_REPRO">())
         return;
 
     printf("[ABL_REPRO] ABL-BAD-NATIVE-ARG-REPRO-1 starting\n");
@@ -53,8 +53,7 @@ void runAblArgGuardRepro(void) {
 // Point-variant sibling of runAblArgGuardRepro (pos + relPos null cases); called from it once the Object-variant
 // guard has returned. Guard ON: both cases log [ABL_ARG_GUARD] and skip. Guard OFF: the write to 0x0 crashes.
 static void runAblArgGuardRepro2A(void) {
-    const char* repro_env = getenv("MC2_ABL_ARG_GUARD_REPRO");
-    if (!repro_env || repro_env[0] != '1')
+    if (!mc2::gate::get<"MC2_ABL_ARG_GUARD_REPRO">())
         return;
 
     printf("[ABL_REPRO_2A] execGetRelativePositionToPoint sibling repro starting\n");

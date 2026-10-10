@@ -12,6 +12,7 @@
 #include<stdlib.h>
 #include<stdio.h>
 #include<cstdlib>
+#include "Gates/gate.h"
 
 // The one SDL window (owned by gos_render). Used to normalize the raw mouse by
 // the SAME coordinate space SDL delivers mouse-motion events in (window points),
@@ -35,11 +36,10 @@ bool gos_CursorControlSuppressed()
 {
     static int s_state = -1;
     if (s_state < 0) {
-        const char* explicitVar = std::getenv("MC2_NO_CURSOR_GRAB");
-        if (explicitVar && explicitVar[0]) {
-            s_state = (explicitVar[0] == '0') ? 0 : 1;
+        if (mc2::gate::isNonEmpty<"MC2_NO_CURSOR_GRAB">()) {
+            s_state = mc2::gate::get<"MC2_NO_CURSOR_GRAB">() ? 1 : 0;   // Lead0Def row: leading 0 -> 0, anything else -> 1
         } else {
-            s_state = std::getenv("MC2_SMOKE_MODE") ? 1 : 0;
+            s_state = mc2::gate::get<"MC2_SMOKE_MODE">() ? 1 : 0;
         }
     }
     return s_state == 1;
@@ -63,8 +63,7 @@ bool gos_WindowOffscreenRequested()
     // so there is exactly ONE parse of MC2_WINDOW_OFFSCREEN in the engine.
     static int s_state = -1;
     if (s_state < 0) {
-        const char* e = std::getenv("MC2_WINDOW_OFFSCREEN");
-        s_state = (e && e[0] && e[0] != '0') ? 1 : 0;
+        s_state = mc2::gate::get<"MC2_WINDOW_OFFSCREEN">();
     }
     return s_state == 1;
 }
@@ -113,7 +112,7 @@ bool gos_NoUserPresentRequested()
     static int s_state = -1;
     if (s_state < 0) {
         s_state = (gos_WindowOffscreenRequested() ||
-                   std::getenv("MC2_SMOKE_MODE") != nullptr) ? 1 : 0;
+                   mc2::gate::get<"MC2_SMOKE_MODE">()) ? 1 : 0;
     }
     return s_state == 1;
 }
@@ -257,7 +256,7 @@ void __stdcall gos_GetMouseInfo( float* pXPosition, float* pYPosition, int* pXDe
     // both candidate denominators, and the resulting normalized coord so the
     // logical-vs-drawable divergence (the dead-zone root cause) is visible in a
     // pasted console log. Throttled to "moved > 8px" to avoid flooding.
-    if (getenv("MC2_MOUSE_RECON"))
+    if (mc2::gate::get<"MC2_MOUSE_RECON">())
     {
         static float s_lastX = -1.0f, s_lastY = -1.0f;
         const float dx = mi->x_ - s_lastX, dy = mi->y_ - s_lastY;

@@ -22,6 +22,8 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"   // str<>()
 
 namespace VisualDiff {
 
@@ -44,15 +46,10 @@ struct State {
 };
 State s_state;
 
-int envInt(const char* name, int dflt) {
-    const char* v = getenv(name);
-    if (!v || !v[0]) return dflt;
-    return atoi(v);
-}
-
 void doCapture(int viewportW, int viewportH) {
-    const char* outPath = getenv("MC2_VISUAL_DIFF_OUT");
-    if (!outPath || !outPath[0]) {
+    const std::string outPathText = mc2::gate::str<"MC2_VISUAL_DIFF_OUT">();   // "" when unset or empty
+    const char* outPath = outPathText.c_str();
+    if (!outPath[0]) {
         fprintf(stderr,
                 "[VISUAL_DIFF v1] event=capture_skipped reason=no_out_path\n");
         fflush(stderr);
@@ -60,10 +57,11 @@ void doCapture(int viewportW, int viewportH) {
     }
     bool ok = gos::screenshot::writeTGA(outPath, viewportW, viewportH);
     if (ok) {
-        const char* mission = getenv("MC2_VISUAL_DIFF_MISSION");
+        const std::string mission = mc2::gate::str<"MC2_VISUAL_DIFF_MISSION">();
         fprintf(stderr,
                 "[VISUAL_DIFF v1] event=capture_done out=%s w=%d h=%d mission=%s\n",
-                outPath, viewportW, viewportH, mission ? mission : "(unset)");
+                outPath, viewportW, viewportH,
+                mc2::gate::isSet<"MC2_VISUAL_DIFF_MISSION">() ? mission.c_str() : "(unset)");
     } else {
         fprintf(stderr,
                 "[VISUAL_DIFF v1] event=capture_failed reason=write_tga out=%s\n",
@@ -76,8 +74,7 @@ void doCapture(int viewportW, int viewportH) {
 
 bool isCaptureEnabled() {
     if (!s_captureRead) {
-        const char* v = getenv("MC2_VISUAL_DIFF_CAPTURE");
-        s_capture = (v && v[0] && v[0] != '0');
+        s_capture = mc2::gate::get<"MC2_VISUAL_DIFF_CAPTURE">();
         s_captureRead = true;
     }
     return s_capture;
@@ -96,13 +93,14 @@ void onFrameTick(int viewportW, int viewportH) {
     // Resolve frameN + maxFrames from env on first tick. No JSON parsing,
     // no per-mission file lookup — Python harness sets these per launch.
     if (!s_state.paramsResolved) {
-        s_state.frameN    = envInt("MC2_VISUAL_DIFF_FRAME_N",    90);
-        s_state.maxFrames = envInt("MC2_VISUAL_DIFF_MAX_FRAMES", s_state.frameN + 60);
+        s_state.frameN    = mc2::gate::get<"MC2_VISUAL_DIFF_FRAME_N">();   // row default 90
+        s_state.maxFrames = mc2::gate::isNonEmpty<"MC2_VISUAL_DIFF_MAX_FRAMES">()
+                              ? (int)mc2::gate::get<"MC2_VISUAL_DIFF_MAX_FRAMES">() : s_state.frameN + 60;
         s_state.paramsResolved = true;
-        const char* mission = getenv("MC2_VISUAL_DIFF_MISSION");
+        const std::string mission = mc2::gate::str<"MC2_VISUAL_DIFF_MISSION">();
         fprintf(stderr,
                 "[VISUAL_DIFF v1] event=capture_armed mission=%s frameN=%d maxFrames=%d\n",
-                mission ? mission : "(unset)",
+                mc2::gate::isSet<"MC2_VISUAL_DIFF_MISSION">() ? mission.c_str() : "(unset)",
                 s_state.frameN, s_state.maxFrames);
         fflush(stderr);
     }

@@ -126,6 +126,7 @@
 #include "../GameOS/gameos/gpu_cull_readback.h"    // Stage 0.5 §0 (cont'd): mirror Init's per-mission readback re-init (mission.cpp:2826)
 #include "../GameOS/gameos/gos_terrain_lighting.h" // Stage 0.5 §0 (cont'd): mirror Init's per-mission terrain-lighting re-init (mission.cpp:2817)
 #include "apprtype.h"
+#include "Gates/gate.h"
 #ifndef LINUX_BUILD
 #include<ddraw.h>
 #else
@@ -727,8 +728,7 @@ void Mission::load (const char *loadFileName)
 	destroy();
 
 	{
-		static const bool s_mechRestoreTrace =
-			(getenv("MC2_MECH_RESTORE_TRACE") != nullptr);
+		static const bool s_mechRestoreTrace = mc2::gate::get<"MC2_MECH_RESTORE_TRACE">();
 		if (s_mechRestoreTrace)
 			fprintf(stderr,
 				"[MECHRESTORE v1] event=saveload_phase phase=post_destroy "
@@ -1452,8 +1452,7 @@ void Mission::load (const char *loadFileName)
 	currentPacket = ObjectManager->Load( &loadFile, currentPacket );
 
 	{
-		static const bool s_mechRestoreTrace =
-			(getenv("MC2_MECH_RESTORE_TRACE") != nullptr);
+		static const bool s_mechRestoreTrace = mc2::gate::get<"MC2_MECH_RESTORE_TRACE">();
 		if (s_mechRestoreTrace)
 			fprintf(stderr,
 				"[MECHRESTORE v1] event=saveload_phase phase=post_objmgr_load "
@@ -1482,8 +1481,7 @@ void Mission::load (const char *loadFileName)
 		gpu_cull::readback_init(maxActors + maxActors / 4u + staticPropHeadroom);
 	}
 	{
-		static const bool s_mechRestoreTrace =
-			(getenv("MC2_MECH_RESTORE_TRACE") != nullptr);
+		static const bool s_mechRestoreTrace = mc2::gate::get<"MC2_MECH_RESTORE_TRACE">();
 		if (s_mechRestoreTrace)
 			fprintf(stderr,
 				"[MECHRESTORE v1] event=saveload_phase phase=post_init_mirror "
@@ -1682,8 +1680,7 @@ void Mission::load (const char *loadFileName)
 		gpu_cull::compute_buildIndirectBuffer(GameAdapters::StaticProp::typeCount());
 	}
 	{
-		static const bool s_mechRestoreTrace =
-			(getenv("MC2_MECH_RESTORE_TRACE") != nullptr);
+		static const bool s_mechRestoreTrace = mc2::gate::get<"MC2_MECH_RESTORE_TRACE">();
 		if (s_mechRestoreTrace)
 			fprintf(stderr,
 				"[MECHRESTORE v1] event=saveload_phase phase=post_finalize "

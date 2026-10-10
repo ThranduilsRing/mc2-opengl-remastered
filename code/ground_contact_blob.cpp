@@ -41,6 +41,7 @@
 
 #include <cstdlib>
 #include <cstdio>
+#include "Gates/gate.h"
 
 namespace {
 
@@ -48,8 +49,7 @@ bool isEnabled()
 {
     static int cached = -1;
     if (cached < 0) {
-        const char* v = getenv("MC2_GROUND_CONTACT_BLOB");
-        cached = (v && v[0] != '0') ? 1 : 0;
+        cached = mc2::gate::get<"MC2_GROUND_CONTACT_BLOB">();
     }
     return cached == 1;
 }

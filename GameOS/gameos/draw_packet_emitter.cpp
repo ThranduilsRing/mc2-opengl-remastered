@@ -15,6 +15,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include "Gates/gate.h"
 // <climits> not needed: UINT32_MAX comes from <cstdint> already included via draw_packet_emitter.h
 
 // Global debug snapshot — written each frame by gameosmain, read by ImGui panel.
@@ -49,10 +50,7 @@ DrawPacketEmitStats emitStaticPropDrawPackets(const RenderSnapshot&          sna
     // re-enable). These can fire per-type per-frame (e.g. packetCount=0 skip) and were
     // spamming the player console. Counters (stats.*) still increment; only the prints
     // are gated. ERRORs (genuine aborts) stay unconditional.
-    static const bool s_dpWarn = []{
-        const char* v = std::getenv("MC2_DRAW_PACKET_WARN");
-        return v && v[0] == '1';
-    }();
+    static const bool s_dpWarn = mc2::gate::get<"MC2_DRAW_PACKET_WARN">();
 
     // Guard against sparse or corrupt typeId values.
     static constexpr uint32_t kMaxAllowedTypeId = 65535u;
@@ -251,10 +249,7 @@ DrawPacketEmitStats emitStaticPropDrawPackets(const RenderSnapshot&          sna
 // s_compareEnabled lives at the CALL SITE (Task 5), not here — this function is only
 // invoked when that gate fires. s_verboseEnabled lives here because it is read inside
 // the loop; evaluating getenv() per candidate would be a syscall loop.
-static const bool s_verboseEnabled = [] {
-    const char* v = std::getenv("MC2_DRAW_PACKET_COMPARE_VERBOSE");
-    return v && v[0] == '1';
-}();
+static const bool s_verboseEnabled = mc2::gate::get<"MC2_DRAW_PACKET_COMPARE_VERBOSE">();
 
 DrawPacketCompareResult comparePacketsToLegacy(
     const StaticPropDrawPacketCandidate* candidates,

@@ -21,6 +21,7 @@
 #include <mutex>
 #include <thread>
 #include <vector>
+#include "Gates/gate.h"
 
 // ===========================================================================
 //  LEGACY FRAME-JOBS-1 API  (verbatim behavior — do not change the OFF path)
@@ -90,23 +91,20 @@ void workerFn(Pool* pool, int workerId) {
 } // namespace
 
 void frameJobsInit() {
-    const char* envEnabled = std::getenv("MC2_FRAME_JOBS");
-    g_enabled = envEnabled && std::atoi(envEnabled) != 0;
+    g_enabled = mc2::gate::get<"MC2_FRAME_JOBS">();
 
-    if (const char* e = std::getenv("MC2_FRAME_JOBS_BATCH"))
-        g_batch = std::max(1, std::atoi(e));
-    g_trace = std::getenv("MC2_FRAME_JOBS_TRACE") &&
-              std::atoi(std::getenv("MC2_FRAME_JOBS_TRACE")) != 0;
+    if (mc2::gate::isSet<"MC2_FRAME_JOBS_BATCH">())
+        g_batch = std::max(1, mc2::gate::get<"MC2_FRAME_JOBS_BATCH">());
+    g_trace = mc2::gate::get<"MC2_FRAME_JOBS_TRACE">();
 
-    const char* touchEnv = getenv("MC2_FRAME_JOBS_TOUCH");
-    g_touchEnabled = g_enabled && touchEnv && touchEnv[0] == '1';
+    g_touchEnabled = g_enabled && mc2::gate::get<"MC2_FRAME_JOBS_TOUCH">();
 
     if (!g_enabled) return;
 
     int hw = static_cast<int>(std::thread::hardware_concurrency());
     int nw = (hw > 1) ? (hw - 1) : 1;
-    if (const char* e = std::getenv("MC2_FRAME_JOBS_WORKERS"))
-        nw = std::atoi(e);
+    if (mc2::gate::isSet<"MC2_FRAME_JOBS_WORKERS">())
+        nw = mc2::gate::get<"MC2_FRAME_JOBS_WORKERS">();
     const int hwMax = std::max(1, static_cast<int>(std::thread::hardware_concurrency()));
     nw = std::max(1, std::min(hwMax, nw));
 

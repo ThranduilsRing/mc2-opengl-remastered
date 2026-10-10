@@ -1,6 +1,7 @@
 // BattleMech: fireGateTrace, fireWeapon and handleWeaponFire (kept together: the order-gate contract reads both).
 // Declared in the class headers; shared names in mech_internal.h.
 #include "mech_internal.h"
+#include "Gates/gate.h"
 
 
 // ISSUE-17 (MC2_FIRE_DECISION_TRACE, default OFF = byte-identical): fireWeapon
@@ -12,7 +13,7 @@
 static void fireGateTrace (unsigned long wid, long weaponIndex, const char* site)
 {
 	static const bool s_fireDecisionTrace =
-		(getenv("MC2_FIRE_DECISION_TRACE") != NULL && getenv("MC2_FIRE_DECISION_TRACE")[0] != '0');
+		mc2::gate::get<"MC2_FIRE_DECISION_TRACE">();
 	if (!s_fireDecisionTrace || !mc2_diag::tagEnabled("COMBAT"))
 		return;
 	char _fg[128];
@@ -334,7 +335,7 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 					// honors the called location (curShotInfo.hitLocation ==
 					// aimLocation here) instead of a randomly-located explosion.
 					static const bool s_calledShotFix =
-						(getenv("MC2_CALLED_SHOT_FIX") != NULL && getenv("MC2_CALLED_SHOT_FIX")[0] != '0');
+						mc2::gate::get<"MC2_CALLED_SHOT_FIX">();
 					if (s_calledShotFix && (aimLocation != -1))
 						weaponFX->setAimedTarget(target->getWatchID());
 				}

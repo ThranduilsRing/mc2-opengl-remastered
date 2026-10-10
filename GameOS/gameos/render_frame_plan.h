@@ -19,6 +19,7 @@
 #include <cstdlib>
 
 #include "render_pass_attachment.h"
+#include "Gates/gate.h"
 
 namespace render_frame_plan {
 
@@ -47,7 +48,7 @@ enum class PathKind {
 };
 
 inline bool traceEnabled() {
-    static const bool s = (std::getenv("MC2_RENDER_FRAME_PLAN_TRACE") != nullptr);
+    static const bool s = mc2::gate::get<"MC2_RENDER_FRAME_PLAN_TRACE">();
     return s;
 }
 

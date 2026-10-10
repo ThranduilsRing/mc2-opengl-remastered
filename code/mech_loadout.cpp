@@ -1,6 +1,7 @@
 // BattleMech: loadout build: BattleMech::init(variant) and resetComponents.
 // Declared in the class headers; shared names in mech_internal.h.
 #include "mech_internal.h"
+#include "Gates/gate.h"
 
 
 #define ARMOR_POINTS_PER_NEWARMOR				32.0f
@@ -943,7 +944,7 @@ void BattleMech::resetComponents (long totalComponents, long *componentList)
 				// resetComponents runs once per mech build, so it does not compound.
 				if ( componentList[newItems] == 2 || componentList[newItems] == 3 )
 				{
-					static const bool s_engineXL = ( getenv( "MC2_ENGINE_XL" ) != nullptr );
+					static const bool s_engineXL = mc2::gate::get<"MC2_ENGINE_XL">();
 					if ( s_engineXL )
 						maxMoveSpeed *= 1.2f;
 					continue;

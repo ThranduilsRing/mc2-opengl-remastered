@@ -1675,7 +1675,7 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "MC2_RES_ASSERT",
         EnvVarKind::Trace,
         false,
-        "META-FIX design D runtime tier (RenderCore/ResolutionContract.h): resolution/aspect contract audit.",
+        "META-FIX design D runtime tier (RenderCore/ResolutionContract.h): audit mode, unset/0 = off, fatal = abort, anything else = log.",
     },
     {
         "MC2_FEATURE_RUNWAY_EDGE_BLEND",

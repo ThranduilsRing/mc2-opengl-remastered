@@ -26,6 +26,7 @@
 // Include Files
 #include "missiongui_internal.h"
 #include "Gates/gate.h"
+#include "Gates/gate_cold.h"   // str<>(), raw<>()
 #include "../RenderCore/axis_convert.h"
 
 	static const char* terrainStr[NUM_TERRAIN_TYPES] = {
@@ -434,7 +435,7 @@ namespace {
 	const int MF_CG_FIRST = MF_CG_PAUSE;
 	static const char* s_mfNames[MF_COUNT] = {"TOTAL","invProj","LOS","controlGui","updateTarget","postTarget","drawBars","rollovers",
 		"cg.pauseWnd","cg.btnHover","cg.rosterScan","cg.moverState","cg.tacMap","cg.infoWnd","cg.vehicleTab","cg.fgBar"};
-	static const bool s_mfOn = (getenv("MC2_MIF_SPLIT") != nullptr) || (getenv("MC2_IFACE_COST_SPLIT") != nullptr);
+	static const bool s_mfOn = mc2::gate::get<"MC2_MIF_SPLIT">() || mc2::gate::get<"MC2_IFACE_COST_SPLIT">();
 	static unsigned long long s_mfSum[MF_COUNT]={0}, s_mfMax[MF_COUNT]={0}, s_mfFrameNs[MF_COUNT]={0};
 	static unsigned long long s_mfFrames=0, s_mfInvWalks=0, s_mfInvHits=0;
 	// [IFACE_PERF v1] window accumulators (reset each emission).
@@ -504,15 +505,9 @@ namespace {
 	// default sample rate keeps the oracle from freezing the game if someone
 	// enables the gate without tuning; set MC2_GPU_GROUND_PICK_PARITY_SAMPLE=1
 	// for a dense interactive parity capture (move the cursor by hand).
-	static int s_gpSampleN = []() {
-		const char* v = getenv("MC2_GPU_GROUND_PICK_PARITY_SAMPLE");
-		int n = (v && *v) ? atoi(v) : 30;
-		return n > 0 ? n : 30;
-	}();
-	static const char* s_gpMissionTag = []() {
-		const char* v = getenv("MC2_GPU_GROUND_PICK_PARITY_TAG");
-		return (v && *v) ? v : "?";
-	}();
+	static int s_gpSampleN = mc2::gate::get<"MC2_GPU_GROUND_PICK_PARITY_SAMPLE">();   // the row reads 30 below 1
+	static const std::string s_gpMissionTagText = mc2::gate::str<"MC2_GPU_GROUND_PICK_PARITY_TAG">();   // "" when unset or empty
+	static const char* s_gpMissionTag = s_gpMissionTagText.empty() ? "?" : s_gpMissionTagText.c_str();
 	// Center-probe knob: unattended smoke parks the cursor at (0,0), so the
 	// primary cursor-driven oracle never samples real terrain (compared=0).
 	// MC2_GPU_GROUND_PICK_PARITY_CENTER=1 adds a screen-CENTER parity probe on
@@ -521,7 +516,7 @@ namespace {
 	// GPU-vs-CPU ground-pos delta over the terrain the camera is looking at
 	// (incl. displaced terrain), which the parked-cursor path cannot. Same
 	// throttle as the cursor path. Diagnostic-only; result never consumed.
-	static const bool s_gpCenter = (getenv("MC2_GPU_GROUND_PICK_PARITY_CENTER") != nullptr);
+	static const bool s_gpCenter = mc2::gate::get<"MC2_GPU_GROUND_PICK_PARITY_CENTER">();
 	// Counters (process-lifetime; atexit summary).
 	static unsigned long long s_gpSites=0;          // eligible parity sites seen
 	static unsigned long long s_gpCompared=0;        // both CPU+GPU produced a point
@@ -729,10 +724,7 @@ void MissionInterfaceManager::update (void)
 	// pause window headlessly (no keypress path headless). Same fixture pattern
 	// as MC2_FX_FORCE_SPAWN / the fire-event capture pin. Registered (Trace).
 	{
-		static const long s_bootPaused = [] {
-			const char* v = getenv("MC2_BOOT_PAUSED");
-			return (v && v[0]) ? atol(v) : 0L;
-		}();
+		static const long s_bootPaused = static_cast<long>(mc2::gate::get<"MC2_BOOT_PAUSED">());
 		if (s_bootPaused > 0) {
 			extern uint32_t g_mc2FrameCounter;
 			static bool s_done = false;
@@ -753,10 +745,7 @@ void MissionInterfaceManager::update (void)
 	// render view once at the first update frame; the command-channel verb
 	// `debugview N` switches it at runtime thereafter. Registered (Trace).
 	{
-		static const long s_bootView = [] {
-			const char* v = getenv("MC2_DEBUG_VIEW");
-			return (v && v[0]) ? atol(v) : 0L;
-		}();
+		static const long s_bootView = static_cast<long>(mc2::gate::get<"MC2_DEBUG_VIEW">());
 		if (s_bootView > 0) {
 			static bool s_dvDone = false;
 			if (!s_dvDone) {
@@ -778,14 +767,8 @@ void MissionInterfaceManager::update (void)
 		extern bool saveInMissionSave;
 		extern bool loadInMissionSave;
 		extern uint32_t g_mc2FrameCounter;
-		static const long s_qsAt = [] {
-			const char* v = getenv("MC2_BOOT_QUICKSAVE_AT");
-			return (v && v[0]) ? atol(v) : 0L;
-		}();
-		static const long s_qlAt = [] {
-			const char* v = getenv("MC2_BOOT_QUICKLOAD_AT");
-			return (v && v[0]) ? atol(v) : 0L;
-		}();
+		static const long s_qsAt = static_cast<long>(mc2::gate::get<"MC2_BOOT_QUICKSAVE_AT">());
+		static const long s_qlAt = static_cast<long>(mc2::gate::get<"MC2_BOOT_QUICKLOAD_AT">());
 		if (s_qsAt > 0) {
 			static bool s_qsDone = false;
 			if (!s_qsDone && (long)g_mc2FrameCounter >= s_qsAt &&
@@ -816,7 +799,8 @@ void MissionInterfaceManager::update (void)
 	// byte-comparable frames. Driven by tools/debug_view_sweep.py. Registered
 	// (Trace).
 	{
-		static const char* s_sw = getenv("MC2_DEBUG_VIEW_SWEEP");
+		static const std::string s_swText = mc2::gate::str<"MC2_DEBUG_VIEW_SWEEP">();   // "" when unset or empty
+		static const char* s_sw = s_swText.c_str();
 		if (s_sw && s_sw[0]) {
 			extern uint32_t g_mc2FrameCounter;
 			static long s_start = 600, s_settle = 30;
@@ -1357,7 +1341,7 @@ void MissionInterfaceManager::update (void)
 		if (!s_pickProbeDone && (turn > 20) && mc2::gate::get<"MC2_VK_PICK_PROBE">())
 		{
 			s_pickProbeDone = true;
-			const char* be = std::getenv("MC2_RENDER_BACKEND");
+			const char* be = mc2::gate::raw<"MC2_RENDER_BACKEND">();   // echoed as typed
 			const float logW = (float)Environment.screenWidth;
 			const float logH = (float)Environment.screenHeight;
 			const int savedDW = Environment.drawableWidth;
@@ -2282,7 +2266,7 @@ void MissionInterfaceManager::updateTarget( bool bGui)
 	// MC2_DIAG_TAGS=CURSOR_TARGET. Read via get_diagnostic_events("CURSOR_TARGET").
 	// Recon only — no behavior change.
 	{
-		static const bool s_cursorTargetTrace = (std::getenv("MC2_CURSOR_TARGET_TRACE") != nullptr);
+		static const bool s_cursorTargetTrace = mc2::gate::get<"MC2_CURSOR_TARGET_TRACE">();
 		if ( s_cursorTargetTrace && target && eye && mc2_diag::tagEnabled("CURSOR_TARGET") )
 		{
 			Stuff::Vector3D _ct_pos = target->getPosition();
@@ -3223,7 +3207,7 @@ void MissionInterfaceManager::doAttack()
 	// issue before adding any suppression. Gate MC2_TARGETING_GUARD +
 	// MC2_DIAG_TAGS=TARGETING. Read via get_diagnostic_events("TARGETING").
 	{
-		static const bool s_tgtGuard = (std::getenv("MC2_TARGETING_GUARD") != nullptr);
+		static const bool s_tgtGuard = mc2::gate::get<"MC2_TARGETING_GUARD">();
 		if ( s_tgtGuard && eye && mc2_diag::tagEnabled("TARGETING") )
 		{
 			static uint64_t s_tg_orders = 0, s_tg_staleWID = 0, s_tg_behind = 0, s_tg_far = 0;
@@ -4031,8 +4015,7 @@ namespace {
 		{
 			// Default OFF: anchored zoom still reads as a pan in practice; use the
 			// legacy fixed-pivot wheel zoom. Opt in with MC2_LOWCAM_ZOOM_ANCHOR=1.
-			const char* v = getenv("MC2_LOWCAM_ZOOM_ANCHOR");
-			cached = (v && v[0] && v[0] != '0') ? 1 : 0;
+			cached = mc2::gate::get<"MC2_LOWCAM_ZOOM_ANCHOR">();
 		}
 		return cached != 0;
 	}

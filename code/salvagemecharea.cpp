@@ -7,6 +7,7 @@ SalvageMechArea.cpp			: Implementation of the SalvageMechArea component.
 \*************************************************************************************************/
 
 #include"salvagemecharea.h"
+#include "Gates/gate.h"
 #include "../GuiRuntime/GuiRuntime.h"
 #include"inifile.h"
 #include"objmgr.h"
@@ -19,8 +20,10 @@ SalvageMechArea.cpp			: Implementation of the SalvageMechArea component.
 #include<malloc.h>
 
 // Interactive cheat gates — read once at startup, default OFF
-static const bool s_cheatInfiniteMoney = (getenv("MC2_CHEAT_INFINITE_MONEY") != nullptr);
-static const bool s_cheatSalvageAll    = (getenv("MC2_CHEAT_SALVAGE_ALL")    != nullptr);
+// The launcher writes these into launcher_env.json, which main() applies after static initialization, so they
+// are read at first use rather than in a namespace-scope initializer.
+static bool cheatInfiniteMoney() { static const bool on = mc2::gate::get<"MC2_CHEAT_INFINITE_MONEY">(); return on; }
+static bool cheatSalvageAll() { static const bool on = mc2::gate::get<"MC2_CHEAT_SALVAGE_ALL">(); return on; }
 
 aAnimButton* SalvageListItem::templateCheckButton = NULL;
 
@@ -158,7 +161,7 @@ void SalvageMechScreen::init(FitIniFile* file)
 	for (int i = 0; i < ObjectManager->numMechs; i++ )
 	{
 		BattleMech* pMech = ObjectManager->getMech( i );
-		if ( pMech->moveLevel != 2 && ( s_cheatSalvageAll ? ( pMech->isDisabled() || pMech->isDestroyed() ) : ( pMech->isDisabled() && !pMech->isDestroyed() ) ) )
+		if ( pMech->moveLevel != 2 && ( cheatSalvageAll() ? ( pMech->isDisabled() || pMech->isDestroyed() ) : ( pMech->isDisabled() && !pMech->isDestroyed() ) ) )
 			pSortedMechs[count++] = pMech;
 	}
 
@@ -167,7 +170,7 @@ void SalvageMechScreen::init(FitIniFile* file)
 	for (int i = 0; i < count; i++ )
 	{
 		BattleMech* pMech = pSortedMechs[i];
-		if ( pMech->moveLevel != 2 && ( s_cheatSalvageAll ? ( pMech->isDisabled() || pMech->isDestroyed() ) : ( pMech->isDisabled() && !pMech->isDestroyed() ) ) ) // don't put copters in the list
+		if ( pMech->moveLevel != 2 && ( cheatSalvageAll() ? ( pMech->isDisabled() || pMech->isDestroyed() ) : ( pMech->isDisabled() && !pMech->isDestroyed() ) ) ) // don't put copters in the list
 		{
 			SalvageListItem* pItem = new SalvageListItem( pMech );
 			salvageListBox.AddItem( pItem );
@@ -481,7 +484,7 @@ void SalvageListItem::update()
 	long mouseX = userInput->getMouseX();
 	long mouseY = userInput->getMouseY();
 
-	if ( !s_cheatInfiniteMoney && costToSalvage > LogisticsData::instance->getCBills()
+	if ( !cheatInfiniteMoney() && costToSalvage > LogisticsData::instance->getCBills()
 		&& !isChecked() )
 	{
 		disable( );

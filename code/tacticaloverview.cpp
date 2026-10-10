@@ -7,6 +7,7 @@
 #include <windows.h>
 #include "../mclib/camera.h"
 #include "../mclib/appear.h"   // DRAW_BARS (maskWorldBars)
+#include "Gates/gate.h"
 
 TacticalOverview g_tacticalOverview;
 
@@ -32,8 +33,7 @@ bool TacticalOverview::enabled() {
     // Default ON; opt out with MC2_TACTICAL_OVERVIEW=0.
     static int cached = -1;
     if (cached < 0) {
-        const char* v = getenv("MC2_TACTICAL_OVERVIEW");
-        cached = (v && v[0] == '0') ? 0 : 1;
+        cached = mc2::gate::get<"MC2_TACTICAL_OVERVIEW">();
     }
     return cached != 0;
 }
@@ -42,8 +42,7 @@ bool TacticalOverview::tintEnabled() {
     if (!enabled()) return false;
     static int cached = -1;
     if (cached < 0) {
-        const char* v = getenv("MC2_TACTICAL_OVERVIEW_TINT");
-        cached = (v && v[0] == '0') ? 0 : 1;   // default ON; only "=0" disables
+        cached = mc2::gate::get<"MC2_TACTICAL_OVERVIEW_TINT">();   // default ON; only "=0" disables
     }
     return cached != 0;
 }
@@ -79,7 +78,7 @@ void TacticalOverview::advance(float dt) {
     if (!enabled()) return;
     float before = state_.t();
     state_.update(dt);
-    if (before != state_.t() && getenv("MC2_TACTICAL_OVERVIEW_DEBUG")) {
+    if (before != state_.t() && mc2::gate::get<"MC2_TACTICAL_OVERVIEW_DEBUG">()) {
         char buf[96];
         sprintf_s(buf, sizeof(buf), "[TacOverview] t=%.3f iconA=%.3f", state_.t(), state_.iconAlpha());
         OutputDebugStringA(buf);
@@ -135,8 +134,7 @@ bool TacticalOverview::formationLineEnabled()
     static int cached = -1;
     if ( cached < 0 )
     {
-        const char* v = getenv( "MC2_TACMAP_FORMATION_LINE" );
-        cached = ( v && v[0] == '1' ) ? 1 : 0;
+        cached = mc2::gate::get<"MC2_TACMAP_FORMATION_LINE">();
     }
     return cached == 1;
 }

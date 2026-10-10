@@ -16,6 +16,7 @@ LogisticsVariant.cpp			: Implementation of the LogisticsVariant component.
 #include"ui_profile_registry.h"  // UI-PROFILE-1: uiProfileForChassis (additive-merge, gated)
 #include"unit_definition.h"      // SINGLE-SOURCE-UNIT-DEFINITION-1: mergeUIProfile (shared UI resolution)
 #include"unit_profile_validator.h" // UI-PROFILE-1: UPV_UI_ASSET_MISSING reason code
+#include "Gates/gate.h"
 
 
 int LogisticsChassis::weightClasses[5] = { 0, 35, 55, 75, 100};
@@ -654,7 +655,7 @@ int LogisticsVariant::getArmor( ) const
 
 bool LogisticsVariant::hasXLEngine() const
 {
-	static const bool s_engineXL = ( getenv( "MC2_ENGINE_XL" ) != nullptr );
+	static const bool s_engineXL = mc2::gate::get<"MC2_ENGINE_XL">();
 	if ( !s_engineXL )
 		return false;
 	for ( int i = 0; i < componentCount; ++i )
@@ -698,7 +699,7 @@ int		LogisticsVariant::getMaxHeat() const
 // its drop target, and the add-component validation all agree.
 bool LogisticsChassis::jumpJetsAllowed() const
 {
-	static const bool s_jumpjetsAll = ( getenv( "MC2_JUMPJETS_ALL" ) != nullptr );
+	static const bool s_jumpjetsAll = mc2::gate::get<"MC2_JUMPJETS_ALL">();
 	return canHaveJumpJets || s_jumpjetsAll;
 }
 

@@ -78,6 +78,8 @@ namespace gos_terrain_indirect { void RenderWaterReflectionPass(); }
 #include "../GameOS/gameos/utils/terrain_daylight.h"  // TERRAIN-AMBIENT-FLOOR-2 daylight gate (pure)
 #include "../GameOS/gameos/vk_umbrella_light.h"  // VK-FIELD-VFX-6: gosFX flush IsHUD route
 #include "../GameOS/gameos/gos_postprocess.h"  // VK-GL-LOST-DRAWS tags
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"   // str<>()
 extern float g_iblShStrength;             // static-prop SH ambient slider (gos_static_prop_batcher.cpp)
 
 //---------------------------------------------------------------------------
@@ -91,8 +93,8 @@ CameraPtr eye = NULL;
 // headline fragmentation this slice surfaces). No-op when neither gate is set.
 void mc2SceneLightingTrace()
 {
-    const bool doTrace  = (getenv("MC2_SCENE_LIGHTING_TRACE")  != nullptr);
-    const bool doAssert = (getenv("MC2_SCENE_LIGHTING_ASSERT") != nullptr);
+    const bool doTrace  = mc2::gate::get<"MC2_SCENE_LIGHTING_TRACE">();
+    const bool doAssert = mc2::gate::get<"MC2_SCENE_LIGHTING_ASSERT">();
     if (!doTrace && !doAssert) return;
 
     static unsigned s_frame = 0;
@@ -345,8 +347,8 @@ void GameCamera::render (void)
 				// props off-screen. Matches the s_viewUniformsShaderEnabled flip in
 				// gos_static_prop_batcher.cpp.
 				{
-					static const char* s_vuEnv = std::getenv("MC2_VIEW_UNIFORMS");
-					if (!(s_vuEnv && s_vuEnv[0] == '0')) {
+					static const bool s_vuOn = mc2::gate::get<"MC2_VIEW_UNIFORMS">();
+					if (s_vuOn) {
 						RenderCore::uploadViewUniforms(vu);
 
 						// F1-3C: compare ViewUniforms.worldToClipGL against legacy terrain MVP upload
@@ -375,8 +377,7 @@ void GameCamera::render (void)
 							// terrain MVP, abort instead of silently rendering with a mismatched
 							// clip-space transform (the exact regression class this slice locks).
 							{
-								static const char* s_xformFatalEnv = std::getenv("MC2_XFORM_PARITY_FATAL");
-								static const bool s_xformFatal = (s_xformFatalEnv && s_xformFatalEnv[0] == '1');
+								static const bool s_xformFatal = mc2::gate::get<"MC2_XFORM_PARITY_FATAL">();
 								if (s_xformFatal && ok == 0) {
 									fprintf(stderr,
 									        "[XFORM_PARITY_FATAL] ViewUniforms.worldToClipGL diverged from legacy "
@@ -400,7 +401,7 @@ void GameCamera::render (void)
 			// NOT matrix divergence (VIEW_UNIFORMS compare stays ok=1). One-shot
 			// per ~60 frames; coarse, off by default.
 			{
-				static const bool s_vanishProbe = (getenv("MC2_VANISH_PROBE") != nullptr);
+				static const bool s_vanishProbe = mc2::gate::get<"MC2_VANISH_PROBE">();
 				if (s_vanishProbe) {
 					extern uint32_t gos_ProbeStaticInstanceCount();
 					extern bool     gos_ProbeStaticInstanceWorld(uint32_t, float[3]);
@@ -766,10 +767,7 @@ void GameCamera::render (void)
 			// debug renderer's own MC2_DEBUG_RENDERER gate must also be ON for
 			// these prims to actually flush. Read-only; no gameplay coupling.
 			{
-				static const bool s_tacArcOverlay = [](){
-					const char* v = getenv("MC2_TACTICAL_ARC_OVERLAY");
-					return v && v[0] && v[0] != '0';
-				}();
+				static const bool s_tacArcOverlay = mc2::gate::get<"MC2_TACTICAL_ARC_OVERLAY">();
 				if (s_tacArcOverlay && ObjectManager) {
 					const long nMovers = ObjectManager->getNumMovers();
 					for (long mi = 0; mi < nMovers; ++mi) {
@@ -862,10 +860,7 @@ void GameCamera::render (void)
 		// meant to be opaque black; only the EXTENT should animate. Keep the
 		// letterBoxPos wipe, drop the alpha ramp. (The separate fadeAlpha
 		// fade-to-black quad below is a real fade and is left untouched.)
-		static const bool s_letterboxOpaque = []() {
-			const char* v = getenv("MC2_LETTERBOX_OPAQUE");
-			return !(v && v[0] == '0' && v[1] == '\0');
-		}();
+		static const bool s_letterboxOpaque = mc2::gate::get<"MC2_LETTERBOX_OPAQUE">();
 		const DWORD barARGB =
 			(s_letterboxOpaque ? (DWORD)0xff : (DWORD)letterBoxAlpha) << 24;
 
@@ -1139,8 +1134,7 @@ long GameCamera::update (void)
 	{
 		static int s_bookmarkTestFrames = -2;   // -2 = env unchecked
 		if (s_bookmarkTestFrames == -2) {
-			const char* t = getenv("MC2_BOOKMARK_SAVE_TEST");
-			s_bookmarkTestFrames = (t && t[0] == '1') ? 120 : -1;
+			s_bookmarkTestFrames = mc2::gate::get<"MC2_BOOKMARK_SAVE_TEST">() ? 120 : -1;
 		}
 		if (s_bookmarkTestFrames > 0 && --s_bookmarkTestFrames == 0)
 			mc2_save_camera_bookmark(nullptr, 0);
@@ -1179,7 +1173,8 @@ long GameCamera::update (void)
 	// the map. Tunable: MC2_HZB_FORCE_HORIZON_ANGLE (deg), MC2_HZB_FORCE_HORIZON_ALT.
 	// MC2_HZB_VIEW_FILE: path to a saved_view.txt written by Ctrl+Alt+V.
 	// When set, read the file once and pin the camera to those exact coords.
-	static const char* s_hzbViewFile = getenv("MC2_HZB_VIEW_FILE");
+	static const std::string s_hzbViewFileText = mc2::gate::str<"MC2_HZB_VIEW_FILE">();   // "" when unset or empty
+	static const char* s_hzbViewFile = s_hzbViewFileText.c_str();
 	struct HzbSavedView { float x, y, z, rot, angle, alt; bool valid; };
 	static HzbSavedView s_hzbSavedView = [&]() -> HzbSavedView {
 		HzbSavedView v{}; v.valid = false;
@@ -1223,7 +1218,7 @@ long GameCamera::update (void)
 		cameraShift.y = 0.0f;
 	};
 
-	static const bool s_hzbForceHorizon = (getenv("MC2_HZB_FORCE_HORIZON") != nullptr);
+	static const bool s_hzbForceHorizon = mc2::gate::get<"MC2_HZB_FORCE_HORIZON">();
 	if (s_hzbSavedView.valid)
 	{
 		// MC2_HZB_VIEW_FILE wins: absolute coord replay from saved_view.txt
@@ -1240,22 +1235,18 @@ long GameCamera::update (void)
 	}
 	else if (s_hzbForceHorizon)
 	{
-		auto envf = [](const char* k, float def) {
-			const char* v = getenv(k);
-			return (v && v[0]) ? (float)atof(v) : def;
-		};
 		// Corner position as a fraction of the half-map extent (map is centered
 		// at origin: vegHalfMap = worldUnitsMapSide*0.5). +X=east, +Y=north.
 		// mc2_01 SE-looking-NW: X=+0.9 Y=-0.9 ROT~?  mc2_24 NW-looking-SE: X=-0.9 Y=+0.9.
-		static const float s_xf    = envf("MC2_HZB_FORCE_HORIZON_X",   0.9f);
-		static const float s_yf    = envf("MC2_HZB_FORCE_HORIZON_Y",  -0.9f);
-		static const float s_rot   = envf("MC2_HZB_FORCE_HORIZON_ROT", 135.0f);
-		static const float s_angle = envf("MC2_HZB_FORCE_HORIZON_ANGLE", 12.0f);
-		static const float s_alt   = envf("MC2_HZB_FORCE_HORIZON_ALT",  150.0f);
+		static const float s_xf    = mc2::gate::get<"MC2_HZB_FORCE_HORIZON_X">();
+		static const float s_yf    = mc2::gate::get<"MC2_HZB_FORCE_HORIZON_Y">();
+		static const float s_rot   = mc2::gate::get<"MC2_HZB_FORCE_HORIZON_ROT">();
+		static const float s_angle = mc2::gate::get<"MC2_HZB_FORCE_HORIZON_ANGLE">();
+		static const float s_alt   = mc2::gate::get<"MC2_HZB_FORCE_HORIZON_ALT">();
 		// Position override is opt-in (MC2_HZB_FORCE_HORIZON_POS=1): place the
 		// camera at a map corner. Without it, the flythrough position is kept and
 		// only the pitch/altitude/rotation are forced (occlusion-rich over land).
-		static const bool s_forcePos = (getenv("MC2_HZB_FORCE_HORIZON_POS") != nullptr);
+		static const bool s_forcePos = mc2::gate::get<"MC2_HZB_FORCE_HORIZON_POS">();
 		if (s_forcePos) {
 			const float half = Terrain::worldUnitsMapSide * 0.5f;
 			position.x = s_xf * half;
@@ -1373,7 +1364,7 @@ long GameCamera::update (void)
 
 	// Tactical Overview diagnostic HUD — only under MC2_TACTICAL_OVERVIEW_DEBUG.
 	// Shows blend t / setpoint / altitude for tuning; off in normal play.
-	if (TacticalOverview::enabled() && getenv("MC2_TACTICAL_OVERVIEW_DEBUG"))
+	if (TacticalOverview::enabled() && mc2::gate::get<"MC2_TACTICAL_OVERVIEW_DEBUG">())
 	{
 		char ovtext[256];
 		sprintf(ovtext,"[TacOverview] t=%.3f setpt=%.2f fires=%d | tilt=%.1f alt=%.0f maxLo=%.0f  (F6=toggle, wheel=zoom)",
@@ -1460,8 +1451,8 @@ extern "C" int mc2_hzb_dump_camera_view(void)
 {
 	// Author target == replay target: honor MC2_HZB_VIEW_FILE (the same env the
 	// replay reader reads) if set, else fall back to the hardcoded path.
-	const char* envPath = getenv("MC2_HZB_VIEW_FILE");
-	const char* dumpPath = (envPath && *envPath) ? envPath : "A:/Games/mc2-hzb-cull/saved_view.txt";
+	const std::string envPath = mc2::gate::str<"MC2_HZB_VIEW_FILE">();   // "" when unset or empty
+	const char* dumpPath = !envPath.empty() ? envPath.c_str() : "A:/Games/mc2-hzb-cull/saved_view.txt";
 	if (!eye) {
 		fprintf(stderr, "[HZB_VIEW_DUMP v1] ERROR: eye is null\n");
 		fflush(stderr);
@@ -1507,8 +1498,9 @@ extern "C" void mc2_save_camera_bookmark(char* outPath, int outPathLen)
 		fflush(stderr);
 		return;
 	}
-	const char* dir = getenv("MC2_BOOKMARK_SAVE_DIR");
-	if (!dir || !dir[0]) {
+	const std::string dirText = mc2::gate::str<"MC2_BOOKMARK_SAVE_DIR">();   // "" when unset or empty
+	const char* dir = dirText.c_str();
+	if (!dir[0]) {
 		dir = "saved_bookmarks";
 		_mkdir(dir);   // best-effort create; EEXIST is fine
 	} else {

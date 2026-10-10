@@ -156,6 +156,111 @@ G5_FILES = (
     "GameOS/gameos/gameos_graphics.cpp",
     "GameOS/gameos/gameosmain.cpp",
 )
+# G8: the rest of the tree that reads a gate raw (GameOS non-giant files, GuiRuntime, editor/, gui/, tools/), batch order.
+G8_FILES = (
+    "GameOS/gameos/gos_mech_batcher.cpp",
+    "GameOS/gameos/gos_static_prop_registry.cpp",
+    "GameOS/gameos/gos_particle_bridge.cpp",
+    "GameOS/gameos/gos_visual_capture.cpp",
+    "GameOS/gameos/gos_render.cpp",
+    "GuiRuntime/GuiRuntime.cpp",
+    "GuiRuntime/EditorInspector.cpp",
+    "GuiRuntime/GraphicsOptionsWindow_terrain.cpp",
+    "GameOS/gameos/gpu_driven_common.cpp",
+    "GameOS/gameos/gpu_cull_compute.cpp",
+    "GameOS/gameos/gameos.cpp",
+    "editor/EditorMFC.cpp",
+    "editor/EditorGosRender.cpp",
+    "GameOS/gameos/vulkan_post_screenfx_native.cpp",
+    "GameOS/gameos/gos_visual_diff.cpp",
+    "GameOS/gameos/gos_rdoc_capture.cpp",
+    "GameOS/gameos/gameos_input.cpp",
+    "gui/asystem.cpp",
+    "gui/UiDefs.cpp",
+    "GameOS/gameos/terrain_material_lib.cpp",
+    "GameOS/gameos/render_snapshot.cpp",
+    "GameOS/gameos/gpu_cull_readback.cpp",
+    "GameOS/gameos/gos_vegetation.cpp",
+    "GameOS/gameos/gos_smoke.cpp",
+    "GameOS/gameos/gameos_graphics_light_ssbo.cpp",
+    "GameOS/gameos/MC2Strings.cpp",
+    "gui/UiDefs_parse.cpp",
+    "GameOS/gameos/vulkan_color_prop_island.cpp",
+    "GameOS/gameos/visual_tuning_profile.cpp",
+    "GameOS/gameos/utils/shader_builder.cpp",
+    "GameOS/gameos/mc2_hitch_trace.cpp",
+    "GameOS/gameos/gpu_cull_substrate.cpp",
+    "GameOS/gameos/gos_dev_shell.cpp",
+    "GameOS/gameos/diagnostic_trace.cpp",
+    "GameOS/gameos/debug_state_dump.cpp",
+    "tools/ibl_registry_contract_harness/ibl_registry_contract_harness.cpp",
+    "tools/brain_dispatch_harness/harness_main.cpp",
+    "editor/EditorPlaytest.cpp",
+    "editor/EditorObjects.cpp",
+    "editor/EditorObjectMgr_render.cpp",
+    "editor/EditorInterface.cpp",
+    "editor/EditorGameOS.cpp",
+    "editor/EditorCamera.h",
+    "HostServices/DefaultHostServices.cpp",
+    "GuiRuntime/GraphicsOptionsWindow_mech.cpp",
+    "GameOS/gameos/vulkan_mech_island.cpp",
+    "GameOS/gameos/vk_feed_dump.h",
+    "GameOS/gameos/pipeline_binder.cpp",
+    "GameOS/gameos/gpu_cull_parity.cpp",
+    "GameOS/gameos/gos_render_pass_timer.cpp",
+    "GameOS/gameos/gos_object_parity.cpp",
+    "GameOS/gameos/gos_materials.cpp",
+    "GameOS/gameos/gos_gpu_sync.cpp",
+    "GameOS/gameos/gos_frame_pass_stats.cpp",
+    "GameOS/gameos/gameos_graphics_texture.cpp",
+    "GameOS/gameos/engine_present_vk.cpp",
+    "GameOS/gameos/draw_packet_emitter.cpp",
+    "GameOS/gameos/asset_scale.cpp",
+    "tools/shader_contract_harness/shader_contract_harness.cpp",
+    "tools/mc2fx/mc2fx_core.cpp",
+    "tools/mc2_launcher/mc2_launcher.cpp",
+    "gui/afont.cpp",
+    "gui/UiDefs_draw.cpp",
+    "editor/EditorWatchdog.cpp",
+    "editor/EditorResourceCatalog.cpp",
+    "editor/EditorObjectMgr_pick.cpp",
+    "editor/EditorObjectMgr.cpp",
+    "editor/EditorInterface_mouse.cpp",
+    "editor/EditorGpuTimer.cpp",
+    "editor/EditorData.cpp",
+    "editor/BeautySidecarPreview.cpp",
+    "RenderCore/RendererFeatureRegistry.h",
+    "GuiRuntime/GraphicsOptionsWindow_passes.cpp",
+    "GameOS/include/mc2_diag_verbose.h",
+    "GameOS/gameos/vulkan_water_island.cpp",
+    "GameOS/gameos/vulkan_vfx_island.cpp",
+    "GameOS/gameos/vulkan_sky_island.cpp",
+    "GameOS/gameos/vulkan_shadow_island_live.cpp",
+    "GameOS/gameos/vulkan_post_ssao_native.cpp",
+    "GameOS/gameos/vulkan_post_hzb_native.cpp",
+    "GameOS/gameos/vulkan_post_fog_native.cpp",
+    "GameOS/gameos/vulkan_legacy_shape_island.cpp",
+    "GameOS/gameos/vulkan_context.cpp",
+    "GameOS/gameos/utils/mc2log.cpp",
+    "GameOS/gameos/utils/gpu_debug_labels.h",
+    "GameOS/gameos/render_frame_plan.h",
+    "GameOS/gameos/render_backend_select.cpp",
+    "GameOS/gameos/particle_stall_probe.h",
+    "GameOS/gameos/mdi_submit.h",
+    "GameOS/gameos/mc2_verify.cpp",
+    "GameOS/gameos/gos_vfx_mesh_bridge.cpp",
+    "GameOS/gameos/gos_validate.cpp",
+    "GameOS/gameos/gos_postprocess_blur.cpp",
+    "GameOS/gameos/gos_object_recon_tracy.cpp",
+    "GameOS/gameos/gos_lightgrid_build.cpp",
+    "GameOS/gameos/gos_hdri.cpp",
+    "GameOS/gameos/gos_crashbundle.cpp",
+    "GameOS/gameos/gos_cluster_depth_pyramid.cpp",
+    "GameOS/gameos/gl_state_guard.h",
+    "GameOS/gameos/gameos_graphics_params.cpp",
+    "GameOS/gameos/debug_renderer.cpp",
+    "EditorBridge/EditorRenderBridge.cpp",
+)
 # G7: code/, GameAdapters/, RenderWorld/, HostServices/ and RenderCore/ files that still read a gate raw, in migration order.
 G7_FILES = (
     "code/mission.cpp",
@@ -251,6 +356,9 @@ FAMILIES = {
     "g7": {"title": "Gate codemod, G7 code/ and adapters plan (dry run)", "what": "G7 code/ migration", "files": G7_FILES,
            "md": "docs/gate-codemod-g7.md", "tsv": "docs/gate-codemod-g7.tsv",
            "cmd": "py -3 tools/gate_codemod.py --family g7 --write"},
+    "g8": {"title": "Gate codemod, G8 GameOS tail, GuiRuntime, editor and gui plan (dry run)", "what": "G8 tail migration", "files": G8_FILES,
+           "md": "docs/gate-codemod-g8.md", "tsv": "docs/gate-codemod-g8.tsv",
+           "cmd": "py -3 tools/gate_codemod.py --family g8 --write"},
 }
 
 NS = "mc2::gate"
@@ -1016,7 +1124,9 @@ def _helper_definition(fns, callee, path):
                            _norm_ws(d.text[d.body_lo:d.body_hi], 420))
 
 
-_PP_LINE_RE = re.compile(r"[ \t\r\n]*#(?:[^\\\n]|\\[\s\S])*")
+# A byte-order mark at the top of a file counts as blank: without it the first statement of a BOM-led file would
+# start at offset 0 and swallow the whole preamble of includes and comments.
+_PP_LINE_RE = re.compile(r"[ \t\r\n﻿]*#(?:[^\\\n]|\\[\s\S])*")
 
 
 def _skip_pp(T, ss):
@@ -1594,6 +1704,12 @@ def apply_edits(raw, results):
     applied, skipped, limit = [], [], len(raw) + 1
     for r in todo:
         a, b, new = r.edit
+        # An EDGE verdict means the old reader and the row differ on some probe input. A lambda body or a
+        # multi-statement span can carry clamps, snaps and fallbacks the probes do not exercise, so those sites are
+        # a human's job: only NO-CHANGE is applied automatically there (G7 Opus review F5).
+        if r.verdict == "EDGE" and (r.shape == "lambda-static" or T[a:b].count(";") > 1):
+            skipped.append(r)
+            continue
         while a < b and T[a].isspace():
             a += 1
         new = _kept_comments(raw, T, a, b) + new.lstrip(" 	")
@@ -1607,6 +1723,8 @@ def apply_edits(raw, results):
     applied = applied + helper_calls
     raw, paired = _apply_paired_reads(raw, results)
     applied = applied + paired
+    # `x = (mc2::gate::get<"X">());` keeps no parentheses of its own
+    raw = re.sub(r'(=[ \t]*(?:\r?\n[ \t]*)?)\((mc2::gate::get<"[A-Z0-9_]+">\(\))\);', r'\1\2;', raw)
     if applied and "Gates/gate.h" not in raw and "Gates/gate_cold.h" not in raw:
         nl = "\r\n" if "\r\n" in raw else "\n"
         lines = raw.split(nl)
@@ -1620,6 +1738,19 @@ def apply_edits(raw, results):
                 depth = max(0, depth - 1)
             elif s.startswith("#include") and depth == 0:
                 last = i
+        # not inside an `extern "C" {` block (a template cannot have C linkage), and before the first use
+        extern_depth, safe = 0, -1
+        for i, ln in enumerate(lines[:300]):
+            if re.match(r'\s*extern\s+"C"\s*\{', ln):
+                extern_depth += 1
+            elif extern_depth and ln.strip() == "}":
+                extern_depth -= 1
+            elif ln.lstrip().startswith("#include") and not extern_depth and i <= last:
+                safe = i
+        last = safe if safe >= 0 else last
+        first_use = next((i for i, ln in enumerate(lines) if "mc2::gate::" in ln), len(lines))
+        if last + 1 > first_use:
+            last = next((i for i, ln in enumerate(lines[:300]) if ln.lstrip().startswith("#include")), -1)
         lines.insert(last + 1, GATE_INCLUDE)
         raw = nl.join(lines)
     return raw, applied, skipped

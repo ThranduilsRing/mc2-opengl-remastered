@@ -6,6 +6,7 @@
 
 #include "VegetationAdapter.h"
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
+#include "Gates/gate.h"
 
 // Engine side.
 #include "gos_vegetation.h"
@@ -34,20 +35,6 @@
 // ---------------------------------------------------------------------------
 
 namespace {
-
-// Read an integer env var.  Returns defaultVal if not set or empty.
-[[nodiscard]] int envInt(const char* name, int defaultVal) noexcept
-{
-    const char* v = std::getenv(name);
-    if (!v || !v[0]) return defaultVal;
-    return std::atoi(v);
-}
-
-[[nodiscard]] bool envSet(const char* name) noexcept
-{
-    const char* v = std::getenv(name);
-    return v && v[0] && v[0] != '0';
-}
 
 // Cheap, deterministic hash in [0, 1).  Inputs are world-grid coordinates
 // plus a per-instance discriminator so each card within a cell differs.
@@ -198,8 +185,8 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
     if (!GosVegetation::isEnabled()) return;
     GosVegetation::init();  // no-op if already initialized
 
-    const int density = envInt("MC2_VEGETATION_DENSITY", 25);
-    const int maxInst = envInt("MC2_VEGETATION_MAX", 5000000);
+    const int density = mc2::gate::get<"MC2_VEGETATION_DENSITY">();
+    const int maxInst = mc2::gate::get<"MC2_VEGETATION_MAX">();
 
     // Terrain map is square.  mapTopLeft3d is the top-left (max-Y, min-X)
     // corner in world space.  worldUnitsMapSide is the total span.

@@ -7,6 +7,7 @@
 #include "gameos_graphics_internal.h"
 
 #include <cstdlib>
+#include "Gates/gate.h"
 
 float  s_hud_scale = 0.85f;  // default while iterating; RAlt+5 cycles
 bool   s_hud_scale_active = false;  // gated: only shrink during mission
@@ -51,8 +52,7 @@ int  __stdcall gos_GetHudCanvasExemptMode() { return s_hud_canvas_exempt_mode; }
 
 static bool uiAspectAnchorEnabled()
 {
-    static const bool s_enabled =
-        []{ const char* e = getenv("MC2_UI_ASPECT_ANCHOR"); return !(e && e[0] == '0'); }();
+    static const bool s_enabled = mc2::gate::get<"MC2_UI_ASPECT_ANCHOR">();
     return s_enabled;
 }
 

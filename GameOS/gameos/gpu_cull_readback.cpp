@@ -28,9 +28,10 @@
 #include <cstdlib>
 #include <cstring>
 #include "diagnostic_trace.h"
+#include "Gates/gate.h"
 
 // Env-gated trace macro.
-static const bool s_readbackTrace = (getenv("MC2_GPU_CULL_READBACK_TRACE") != nullptr);
+static const bool s_readbackTrace = mc2::gate::get<"MC2_GPU_CULL_READBACK_TRACE">();
 #define RB_TRACE(fmt, ...) \
     do { if (s_readbackTrace) { MC2_DIAGF("[GPU_CULL v1] " fmt "\n", ##__VA_ARGS__); fflush(stdout); } } while (0)
 
@@ -64,8 +65,7 @@ bool readback_isEnabled() {
         // PERF-OBJECT-ITER-GPU-PORT-1: default-ON now that substrate+coalesce are
         // stable. Kill-switch: MC2_GPU_CULL_READBACK=0 opts out.
         // Conservative-OR + dilation (89e35ac) are default-on so lag is motion-safe.
-        const char* v = getenv("MC2_GPU_CULL_READBACK");
-        s_enabled = !(v && v[0] == '0');
+        s_enabled = mc2::gate::get<"MC2_GPU_CULL_READBACK">();
     }
     return s_enabled;
 }
@@ -79,8 +79,7 @@ static bool readback_isConservativeOrEnabled() {
     static bool s_value  = true;
     if (!s_inited) {
         s_inited = true;
-        const char* v = getenv("MC2_GPU_CULL_CONSERVATIVE_OR");
-        if (v && v[0] == '0' && v[1] == '\0') s_value = false;
+        s_value = mc2::gate::get<"MC2_GPU_CULL_CONSERVATIVE_OR">();
     }
     return s_value;
 }
@@ -193,7 +192,7 @@ bool readback_init(uint32_t maxActors) {
         readback_shutdown();
     }
 
-    s_forceNotReady = (getenv("MC2_GPU_CULL_FORCE_FENCE_NOT_READY") != nullptr);
+    s_forceNotReady = mc2::gate::get<"MC2_GPU_CULL_FORCE_FENCE_NOT_READY">();
 
     s_maxActors    = maxActors;
     s_currentSlot  = 0;

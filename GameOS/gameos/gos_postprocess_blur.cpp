@@ -14,6 +14,7 @@
 #include <cmath>
 #include <vector>
 #include <string>
+#include "Gates/gate.h"
 
 namespace postprocess_blur {
 
@@ -36,11 +37,6 @@ constexpr float kW2 = 0.375f;  // 6/16  (center)
 // Chosen non-power-of-two-friendly but even so the 2x2 downsample maps cleanly.
 constexpr int kTestSrcW = 64;
 constexpr int kTestSrcH = 64;
-
-bool envFlagDefaultOff(const char* name) {
-    const char* v = getenv(name);
-    return v && !(v[0] == '0' && v[1] == '\0');
-}
 
 // --- State -----------------------------------------------------------------
 bool   s_gateResolved = false;
@@ -379,9 +375,9 @@ void runPipeline(GLuint srcTex, int fullW, int fullH) {
 bool IsEnabled() {
     if (!s_gateResolved) {
         s_gateResolved = true;
-        s_enabled = envFlagDefaultOff("MC2_POSTPROCESS_COMPUTE_BLUR");
-        s_verify  = s_enabled && envFlagDefaultOff("MC2_POSTPROCESS_COMPUTE_BLUR_VERIFY");
-        s_plant   = s_verify  && envFlagDefaultOff("MC2_POSTPROCESS_COMPUTE_BLUR_PLANT");
+        s_enabled = mc2::gate::get<"MC2_POSTPROCESS_COMPUTE_BLUR">();
+        s_verify  = s_enabled && mc2::gate::get<"MC2_POSTPROCESS_COMPUTE_BLUR_VERIFY">();
+        s_plant   = s_verify  && mc2::gate::get<"MC2_POSTPROCESS_COMPUTE_BLUR_PLANT">();
         MC2_DIAGFE(stderr, "[POSTPROCESS_BLUR v1] enabled=%d verify=%d plant=%d "
                         "(MC2_POSTPROCESS_COMPUTE_BLUR)\n",
                 s_enabled ? 1 : 0, s_verify ? 1 : 0, s_plant ? 1 : 0);

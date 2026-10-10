@@ -55,7 +55,7 @@ py -3 scripts/run_visual_capture.py --mission mc2_01 \
 - `--allow-partial`: materialize the byte-stable subset even if some bookmarks
   drift; drifters are recorded in `set.json.excluded_unstable`. A small-but-
   real baseline beats a fake-complete one.
-- Determinism requires `MC2_SMOKE_FIXED_TIMESTEP=1` (default ON in the runner;
+- Determinism requires `MC2_SMOKE_FIXED_TIMESTEP=1` (set ON by the runner, off when unset;
   the engine stamps each sidecar's `deterministic` honestly).
 - Uses the engine glReadPixels FBO readback (NOT pyautogui) — no screen grab,
   runs minimized. The OS-screenshot `capture_baseline.py` is for eyeballing

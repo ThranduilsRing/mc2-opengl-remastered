@@ -41,10 +41,6 @@ beginPanel returns false.
 
 namespace HudImGui
 {
-	// Presence-gate check, cached after first call per name (max 8 names).
-	// ON = set and not "0".
-	bool envGateOn( const char* name );
-
 	// True once any beginPanel has failed; all later beginPanel calls return
 	// false immediately (session-wide legacy fallback).
 	bool pinnedToLegacy();

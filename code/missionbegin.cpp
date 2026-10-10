@@ -39,6 +39,8 @@ MissionBegin.cpp			: Implementation of the MissionBegin component.
 #include"platform_str.h"   // S_stricmp (MC2_BOOT_TO_SCREEN parse, LINUX_BUILD-safe)
 
 #include"prefs.h"
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"   // str<>()
 extern CPrefs prefs;
 
 class MechLabScreen;
@@ -229,12 +231,12 @@ bool MissionBegin::startAnimation (long bId, bool isButton, float scrollTime, lo
 // Unset/unknown MC2_BOOT_TO_SCREEN defaults to bay (preserves prior behavior).
 static bool mc2BootScreenXY( int& x, int& y )
 {
-	const char* bootBay = std::getenv("MC2_BOOT_TO_BAY");
-	if ( !bootBay || !bootBay[0] )
+	if ( !mc2::gate::isNonEmpty<"MC2_BOOT_TO_BAY">() )
 		return false;
 	x = 2; y = 1; // default: mech bay
-	const char* scr = std::getenv("MC2_BOOT_TO_SCREEN");
-	if ( scr && scr[0] )
+	const std::string scrText = mc2::gate::str<"MC2_BOOT_TO_SCREEN">();   // "" when unset or empty
+	const char* scr = scrText.c_str();
+	if ( scr[0] )
 	{
 		if      ( !S_stricmp(scr, "purchase") ) { x = 2; y = 0; }
 		else if ( !S_stricmp(scr, "bay") )      { x = 2; y = 1; }
@@ -250,8 +252,7 @@ static bool mc2BootScreenXY( int& x, int& y )
 // logistics screen at curScreenX>=2 is forced to advance (NEXT) on a throttle so
 // it walks bay -> pilotready -> load -> mission start. Gated on the env flag;
 // default OFF = byte-identical. Single getenv cached at startup.
-static const bool s_soakAutoWin =
-	( std::getenv("MC2_SOAK_AUTOWIN") != nullptr );
+static const bool s_soakAutoWin = mc2::gate::get<"MC2_SOAK_AUTOWIN">();
 
 // SOAK-SCREEN-CHECK-1 (MC2_SOAK_CHECK_SCREENS). When set (and MC2_SOAK_AUTOWIN
 // is also active), before each mission launch the soak walks through
@@ -259,8 +260,7 @@ static const bool s_soakAutoWin =
 // (mech_lab_loadout), dwells briefly on each to let dumpFrontEndState fire,
 // emits [SOAK] screen-check markers, then returns to [2][1] and resumes the
 // normal autowin advance. Default OFF = byte-identical to prior behaviour.
-static const bool s_soakCheckScreens =
-	( std::getenv("MC2_SOAK_CHECK_SCREENS") != nullptr );
+static const bool s_soakCheckScreens = mc2::gate::get<"MC2_SOAK_CHECK_SCREENS">();
 
 // SOAK-AUTO-PURCHASE-1 (MC2_SOAK_AUTO_PURCHASE). Campaign missions require the
 // player to buy + deploy a mech in the mech bay before launch; the auto-advance
@@ -271,8 +271,7 @@ static const bool s_soakCheckScreens =
 // slot 1, assigns the first available pilot, and selects it (which also makes the
 // loadout/mechlab screen reachable for MC2_SOAK_CHECK_SCREENS). Default OFF =
 // byte-identical to prior behaviour.
-static const bool s_soakAutoPurchase =
-	( std::getenv("MC2_SOAK_AUTO_PURCHASE") != nullptr );
+static const bool s_soakAutoPurchase = mc2::gate::get<"MC2_SOAK_AUTO_PURCHASE">();
 
 // SOAK-STOP-AT-BAY-1 (MC2_SOAK_STOP_AT_BAY). For validation harnesses that only
 // need to auto-win ONE mission to reach the bay and then sit there (e.g. to
@@ -281,8 +280,7 @@ static const bool s_soakAutoPurchase =
 // (soakForceNext) the first time curScreenX==2 && curScreenY==1 (mech bay) is
 // reached, so the soak parks there instead of clicking NEXT into
 // purchase/loadout/launch/mission2. Default OFF = byte-identical.
-static const bool s_soakStopAtBay =
-	( std::getenv("MC2_SOAK_STOP_AT_BAY") != nullptr );
+static const bool s_soakStopAtBay = mc2::gate::get<"MC2_SOAK_STOP_AT_BAY">();
 
 // SOAK-LANCE-RANDOM-1 (MC2_SOAK_LANCE_RANDOM). Requires MC2_SOAK_AUTO_PURCHASE.
 // When set, REPLACES the single-mech buy with a full random-sized lance purchase:
@@ -291,8 +289,7 @@ static const bool s_soakStopAtBay =
 // variants (weight >= 20t) from the purchase pool. Stops early on pilot
 // exhaustion, addMechToForceGroup rejection, or empty pool. Drop-weight cap is
 // intentionally IGNORED (cheat-mode stress). Default OFF = byte-identical.
-static const bool s_soakLanceRandom =
-	( std::getenv("MC2_SOAK_LANCE_RANDOM") != nullptr );
+static const bool s_soakLanceRandom = mc2::gate::get<"MC2_SOAK_LANCE_RANDOM">();
 
 // State machine for the screen-check detour. IDLE when not active.
 enum class SoakCheckState : int
@@ -480,8 +477,7 @@ void MissionBegin::begin()
 	mainMenu->init( file );
 	mainMenu->setDrawBackground( true );
 	mainMenu->begin();
-	const char* menuCanarySkipIntro = std::getenv("MC2_MENU_CANARY_SKIP_INTRO");
-	if ( menuCanarySkipIntro && menuCanarySkipIntro[0] && menuCanarySkipIntro[0] != '0' )
+	if ( mc2::gate::get<"MC2_MENU_CANARY_SKIP_INTRO">() )
 	{
 		mainMenu->skipIntro();
 		printf("[MENU_CANARY] skip_intro=1\n");
@@ -1516,7 +1512,7 @@ const char* MissionBegin::update()
 					mc2BootScreenXY( stopX, stopY );
 					// MC2_BOOT_TO_MECHLAB auto-clicks Modify Mech from the bay,
 					// landing on mech_lab_loadout [2][2] -- park THERE.
-					if ( std::getenv("MC2_BOOT_TO_MECHLAB") )
+					if ( mc2::gate::get<"MC2_BOOT_TO_MECHLAB">() )
 					{
 						stopX = 2; stopY = 2;
 					}

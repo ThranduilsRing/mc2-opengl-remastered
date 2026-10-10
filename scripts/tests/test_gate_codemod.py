@@ -732,7 +732,7 @@ def test_paired_reads_of_one_gate_become_one_typed_read(rule, expr, monkeypatch)
     monkeypatch.setattr(cm, "_CURRENT_ROWS", rows)
     res = cm.analyze_text("snippet.cpp", code, rows, None)
     new, applied, skipped = cm.apply_edits(code, res)
-    assert 'const bool on = (mc2::gate::get<"MC2_X">());' in new, new
+    assert 'const bool on = mc2::gate::get<"MC2_X">();' in new, new
 
 
 def test_paired_reads_on_a_row_with_another_rule_are_left_alone(monkeypatch):
@@ -752,3 +752,60 @@ def test_paired_read_inside_an_if_keeps_the_closing_parenthesis(monkeypatch):
     res = cm.analyze_text("snippet.cpp", code, rows, None)
     new, applied, skipped = cm.apply_edits(code, res)
     assert 'if (n > 0 && mc2::gate::get<"MC2_X">()) {' in re.sub(r"\s+", " ", new).replace("&& mc2", "&& mc2"), new
+
+
+# ---------------------------------------------------------------------------
+# apply placement: BOM-led files, extern "C" blocks, uses above the last include
+# ---------------------------------------------------------------------------
+
+def test_a_bom_led_file_keeps_its_preamble_when_the_first_statement_is_rewritten():
+    code = ("﻿#define X_CPP\n/* header comment */\n#include \"a.h\"\n\n"
+            "static const bool s_a = (getenv(\"MC2_X\") != nullptr);\n")
+    new, applied, _ = cm.apply_edits(code, cm.analyze_text("snippet.cpp", code, mk("Presence")))
+    assert applied
+    assert new.count("header comment") == 1 and new.startswith("﻿#define X_CPP"), new
+
+
+def test_the_include_never_lands_inside_an_extern_c_block():
+    code = ("#include <a.h>\nextern \"C\" {\n#include <b.h>\n}\n\n"
+            "static const bool s_a = (getenv(\"MC2_X\") != nullptr);\n")
+    new, applied, _ = cm.apply_edits(code, cm.analyze_text("snippet.cpp", code, mk("Presence")))
+    assert applied
+    lines = new.split("\n")
+    inc = lines.index('#include "Gates/gate.h"')
+    assert inc == 1, new                                           # right after <a.h>, before the extern block
+
+
+def test_a_use_above_the_last_include_gets_the_include_before_it():
+    code = ("#include <a.h>\nstatic const bool s_a = (getenv(\"MC2_X\") != nullptr);\n#include <late.h>\n")
+    new, applied, _ = cm.apply_edits(code, cm.analyze_text("snippet.cpp", code, mk("Presence")))
+    assert applied
+    lines = new.split("\n")
+    assert lines.index('#include "Gates/gate.h"') < next(i for i, ln in enumerate(lines) if "mc2::gate::get" in ln), new
+
+
+
+
+def test_a_parenthesised_paired_read_assigned_to_a_variable_loses_the_extra_parentheses(monkeypatch):
+    code = "\n".join(['#include <a.h>', 'static const bool s_a =',
+                      "\t(getenv(\"MC2_X\") != NULL && getenv(\"MC2_X\")[0] != '0');", ''])
+    rows = mk("Lead0P")
+    monkeypatch.setattr(cm, "_CURRENT_ROWS", rows)
+    new, applied, _ = cm.apply_edits(code, cm.analyze_text("snippet.cpp", code, rows, None))
+    assert applied
+    assert 's_a =\n\tmc2::gate::get<"MC2_X">();' in new, new
+
+
+def test_edge_sites_in_a_lambda_or_a_multi_statement_span_are_left_to_a_human():
+    lam_code = "static const bool s_on = %s;\n" % EXACT0["lambda"]
+    res = cm.analyze_text("snippet.cpp", lam_code, mk("Lead0Kill", default=True), None)
+    assert res[0].verdict == "EDGE" and res[0].shape == "lambda-static"
+    new, applied, skipped = cm.apply_edits(lam_code, res)
+    assert not applied and new == lam_code and skipped
+    multi = ("void f() {\n  static int cached = -1;\n  if (cached < 0) {\n    const char* v = getenv(\"MC2_X\");\n"
+             "    cached = (v && v[0] == '0' && v[1] == '\0') ? 0 : 1;\n  }\n}\n")
+    res = cm.analyze_text("snippet.cpp", multi, mk("Lead0Kill", default=True), None)
+    edge = [r for r in res if r.verdict == "EDGE"]
+    if edge:
+        new, applied, _ = cm.apply_edits(multi, res)
+        assert not applied and new == multi

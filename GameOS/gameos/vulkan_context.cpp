@@ -24,6 +24,7 @@
 
 #include "vulkan_context.h"
 #include "Gates/gate.h"
+#include "Gates/gate_cold.h"   // str<>()
 
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
@@ -79,9 +80,9 @@ bool resolveValidationPreset(std::vector<VkValidationFeatureEnableEXT>& feats,
                              const char*& resolvedName) {
     feats.clear();
     resolvedName = "off";
-    const char* env = std::getenv("MC2_VULKAN_VALIDATION");
-    if (env == nullptr) return false;
-    auto eq = [&](const char* s) { return std::strcmp(env, s) == 0; };
+    if (!mc2::gate::isSet<"MC2_VULKAN_VALIDATION">()) return false;
+    const std::string env = mc2::gate::str<"MC2_VULKAN_VALIDATION">();   // "" when set but empty
+    auto eq = [&](const char* s) { return env == s; };
     if (eq("0") || eq("off")) { resolvedName = "off"; return false; }
     if (eq("1") || eq("core") || eq("")) { resolvedName = "core"; return true; }
     if (eq("sync")) {

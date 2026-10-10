@@ -1,11 +1,12 @@
 // GroundVehicle: the per-frame update, the GPU-lagged visibility gate, and Save/CopyTo/Load.
 // Declared in the class headers; shared names in gvehicl_internal.h.
 #include "gvehicl_internal.h"
+#include "Gates/gate.h"
 
 
 // C3: env-gated lifecycle routing killswitch (same env var as objmgr.cpp).
 // MC2_GPU_CULL_LIFECYCLE=1 routes AI canBeSeen() combat gates to GPU-lagged visibility.
-static const bool s_gpuCullLifecycle = (getenv("MC2_GPU_CULL_LIFECYCLE") != nullptr);
+static const bool s_gpuCullLifecycle = mc2::gate::get<"MC2_GPU_CULL_LIFECYCLE">();
 
 //---------------------------------------------------------------------------
 long GroundVehicle::update (void)

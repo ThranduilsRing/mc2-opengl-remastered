@@ -46,6 +46,7 @@
 #include <set>
 #include <unordered_map>
 #include <vector>
+#include "Gates/gate.h"
 
 namespace gos_object_parity {
 
@@ -54,18 +55,12 @@ namespace gos_object_parity {
 // ---------------------------------------------------------------------------
 
 bool IsParityCheckEnabled() {
-    static const bool s = []() {
-        const char* v = getenv("MC2_OBJECT_PARITY_CHECK");
-        return v && v[0] == '1' && v[1] == '\0';
-    }();
+    static const bool s = mc2::gate::get<"MC2_OBJECT_PARITY_CHECK">();
     return s;
 }
 
 bool IsParityTraceEnabled() {
-    static const bool s = []() {
-        const char* v = getenv("MC2_OBJECT_PARITY_TRACE");
-        return v && v[0] == '1' && v[1] == '\0';
-    }();
+    static const bool s = mc2::gate::get<"MC2_OBJECT_PARITY_TRACE">();
     return s;
 }
 

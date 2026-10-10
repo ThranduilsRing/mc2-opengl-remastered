@@ -47,6 +47,8 @@
 // The whole TU compiles to nothing unless MC2_VULKAN_ISLAND is defined.
 
 #include "gos_postprocess.h"
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"   // str<>()
 
 #ifdef MC2_VULKAN_ISLAND
 
@@ -63,6 +65,7 @@
 
 #include "vk_image_resource.h"
 #include "vulkan_context.h"
+#include "vk_island_util.h"
 #define MC2_VULKAN_SHARED_SCENE_COLOR_IMPL_ISLAND
 #include "vulkan_shared_scene_color.h"
 #define MC2_VULKAN_SHARED_SCENE_DEPTH_IMPL_ISLAND
@@ -87,12 +90,9 @@ extern void gos_GetTerrainLightDir(float* x, float* y, float* z);
 namespace {
 
 void vlog(const char* fmt, ...) {
-    char buf[512];
     va_list ap; va_start(ap, fmt);
-    std::vsnprintf(buf, sizeof(buf), fmt, ap);
+    vk_island_util::vlogv512("[VK_POST_SCREENFX_NATIVE] ", fmt, ap);
     va_end(ap);
-    std::fprintf(stderr, "[VK_POST_SCREENFX_NATIVE] %s\n", buf);
-    std::fflush(stderr);
 }
 
 // Health snapshot — read by debug_state_dump.cpp via the extern "C" getter below
@@ -128,42 +128,18 @@ void setFallback(const char* reason) {
 }
 
 float shadow_softness_default() {
-    static const float s_s = []() {
-        const char* v = std::getenv("MC2_SHADOW_CSM_SOFTNESS");
-        float s = (v && v[0]) ? (float)std::atof(v) : 0.9f;
-        if (s < 0.1f) s = 0.1f;
-        if (s > 6.0f) s = 6.0f;
-        return s;
-    }();
+    static const float s_s = mc2::gate::get<"MC2_SHADOW_CSM_SOFTNESS">();   // row: default 0.9, clamps to [0.1, 6]
     return s_s;
 }
 
 std::string spv_dir() {
-    const char* env = std::getenv("MC2_VULKAN_SPV_DIR");
-    std::string d = (env && *env) ? env : "shaders/vulkan";
+    std::string d = mc2::gate::str<"MC2_VULKAN_SPV_DIR">();   // row default shaders/vulkan, empty reads the default
     if (!d.empty() && d.back() != '/' && d.back() != '\\') d += '/';
     return d;
 }
 
 VkShaderModule load_spv(VkDevice device, const std::string& path) {
-    std::FILE* f = std::fopen(path.c_str(), "rb");
-    if (!f) { vlog("cannot open spv '%s'.", path.c_str()); return VK_NULL_HANDLE; }
-    std::fseek(f, 0, SEEK_END);
-    long len = std::ftell(f);
-    std::fseek(f, 0, SEEK_SET);
-    if (len <= 0 || (len % 4) != 0) { vlog("spv '%s' bad size %ld.", path.c_str(), len); std::fclose(f); return VK_NULL_HANDLE; }
-    std::vector<uint32_t> code((size_t)len / 4);
-    size_t got = std::fread(code.data(), 1, (size_t)len, f);
-    std::fclose(f);
-    if (got != (size_t)len) { vlog("spv short read '%s'.", path.c_str()); return VK_NULL_HANDLE; }
-    VkShaderModuleCreateInfo smci{};
-    smci.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    smci.codeSize = (size_t)len; smci.pCode = code.data();
-    VkShaderModule mod = VK_NULL_HANDLE;
-    if (vkCreateShaderModule(device, &smci, nullptr, &mod) != VK_SUCCESS) {
-        vlog("vkCreateShaderModule('%s') failed.", path.c_str()); return VK_NULL_HANDLE;
-    }
-    return mod;
+    return vk_island_util::loadSpv(device, path, vlog);
 }
 
 // std140 PODs — offsets cross-checked offline by tools/check_ubo_layout.py
@@ -744,8 +720,7 @@ static bool vkPostScreenFxDirectChainEnabled()
 
 bool gosPostProcess::runVkPostScreenShadowStaticNative()
 {
-    const char* shadowEnv = std::getenv("MC2_SHADOW_ENABLE");
-    const bool dynamicCasterActive = !(shadowEnv != nullptr && shadowEnv[0] == '0');   // DEFAULT ON; =0 kill-switch
+    const bool dynamicCasterActive = mc2::gate::get<"MC2_SHADOW_ENABLE">();   // DEFAULT ON; =0 kill-switch
     const bool csmActive = dynamicCasterActive && (dynShadowArrayTex_ != 0);
     const bool csmDirectReady = csmActive
         && mc2_vk_shadow_island_csm_array_ready()
@@ -796,20 +771,9 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
         p.csmDepthSpan = csmDepthSpan_;
         p.dynamicFullMapTexelWorld = dynamicFullMapTexelWorld_;
         p.enableDynamicShadows = 1;
-        p.objNormalBiasScale = []() {
-            const char* v = std::getenv("MC2_SHADOW_OBJ_NORMAL_BIAS");
-            float s = (v && v[0]) ? (float)std::atof(v) : 2.0f;
-            if (s < 0.0f) s = 0.0f;
-            if (s > 20.0f) s = 20.0f;
-            return s;
-        }();
-        p.mechSoft = []() {
-            const char* v = std::getenv("MC2_SHADOW_MECH_SOFT");
-            float s = (v && v[0]) ? (float)std::atof(v) : 1.0f;
-            if (s < 0.0f) s = 0.0f;
-            if (s > 4.0f) s = 4.0f;
-            return s;
-        }();
+        // Same rows as the GL path (gos_postprocess_gates.cpp): default 2, clamps to [0, 16] and default 1, [0, 4].
+        p.objNormalBiasScale = mc2::gate::get<"MC2_SHADOW_OBJ_NORMAL_BIAS">();
+        p.mechSoft = mc2::gate::get<"MC2_SHADOW_MECH_SOFT">();
         float lx = 0.0f, ly = 0.0f, lz = 1.0f;
         gos_GetTerrainLightDir(&lx, &ly, &lz);
         float len = sqrtf(lx*lx + ly*ly + lz*lz);

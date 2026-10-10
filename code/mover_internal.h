@@ -123,7 +123,7 @@
 
 #include "move_recon.h"  // MC2_MOVE_RECON per-frame pathfinding cost instrumentation
 #include "../GameOS/gameos/diagnostic_trace.h"  // TARGETING-GUARD-1 chokepoint trace
-#include <cstdlib>  // TARGETING-GUARD-1: std::getenv
+#include <cstdlib>
 #include "unitprofile.h"             // LOADOUT-HARDPOINT-JOIN-1: mc2UnitProfileDataEnabled()
 #include "unit_profile_validator.h"  // LOADOUT-HARDPOINT-JOIN-1: validateLoadoutHardpointJoins()
 #include "hardpoint.h"               // LOADOUT-HARDPOINT-JOIN-1: HardpointProfile / WeaponTag

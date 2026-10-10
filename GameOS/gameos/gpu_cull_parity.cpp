@@ -3,12 +3,12 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cmath>
+#include "Gates/gate.h"
 
 namespace gpu_cull {
 
 static bool parity_isEnabled_impl() {
-    return getenv("MC2_GPU_CULL_AABB_PARITY") != nullptr &&
-           getenv("MC2_GPU_CULL_AABB_PARITY")[0] != '0';
+    return mc2::gate::get<"MC2_GPU_CULL_AABB_PARITY">();
 }
 
 bool parity_isEnabled() {

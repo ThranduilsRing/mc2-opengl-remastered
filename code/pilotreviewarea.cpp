@@ -6,7 +6,7 @@ SalvageMechArea.cpp			: Implementation of the SalvageMechArea component.
 //===========================================================================//
 \*************************************************************************************************/
 
-#include <cstdlib>   // getenv (MC2_SOAK_AUTOWIN fast-dismiss)
+#include <cstdlib>
 #include"pilotreviewarea.h"
 #include"inifile.h"
 #include"objmgr.h"
@@ -18,6 +18,7 @@ SalvageMechArea.cpp			: Implementation of the SalvageMechArea component.
 #include"mechicon.h"
 #include"platform_windows.h"
 #include"gamesound.h"
+#include "Gates/gate.h"
 
 aText*		DeadPilotListItem::s_nameText = NULL;
 aText*		DeadPilotListItem::s_rankText = NULL;
@@ -284,7 +285,7 @@ void PilotReviewScreen::update()
 	// never opens -> permanent hang. Under the soak, drop the promotion pulse and
 	// dismiss immediately, but DON'T return early so exitAnim still runs and
 	// isDone() (bDone && exitAnim.isDone()) can resolve.
-	static const int s_soakAutoWin = getenv("MC2_SOAK_AUTOWIN") ? 1 : 0;
+	static const int s_soakAutoWin = mc2::gate::get<"MC2_SOAK_AUTOWIN">() ? 1 : 0;
 	if ( s_soakAutoWin )
 	{
 		s_curPromotion = 0;

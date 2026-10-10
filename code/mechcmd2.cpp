@@ -7,6 +7,8 @@
 //===========================================================================//
 
 #include "mechcmd2_internal.h"
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"   // str<>()
 
 #ifndef VERSION_H
 #include"version.h"
@@ -365,13 +367,12 @@ void __stdcall InitializeGameEngine()
 	// run and break replay before Mission::init's per-mission reseed lands.
 	// Gate OFF: unchanged wall-clock seed => byte-identical to stock.
 	{
-		const char* detEnv = getenv("MC2_DETERMINISTIC_RNG");
-		const bool detRng = (detEnv && detEnv[0] != '\0' && detEnv[0] != '0');
+		const bool detRng = mc2::gate::get<"MC2_DETERMINISTIC_RNG">();
 		if (detRng) {
 			uint32_t seed = 0xCAFEBABEu;  // fixed startup seed
-			const char* seedEnv = getenv("MC2_RNG_SEED");
-			if (seedEnv && seedEnv[0] != '\0')
-				seed = (uint32_t)strtoul(seedEnv, nullptr, 0);
+			const std::string seedText = mc2::gate::str<"MC2_RNG_SEED">();   // "" when unset or empty
+			if (!seedText.empty())
+				seed = (uint32_t)strtoul(seedText.c_str(), nullptr, 0);
 			gos_srand(seed);
 		} else {
 			gos_srand(timeGetTime());
@@ -1048,7 +1049,7 @@ void __stdcall InitializeGameEngine()
 		// [FXDEF] diagnostics are available under MC2_LOG regardless, but the
 		// spec-mutating apply only runs when the gate is on. When OFF or no
 		// defs exist, the loaded blob is byte-identical to stock.
-		if (getenv("MC2_FX_DEFS")) {
+		if (mc2::gate::get<"MC2_FX_DEFS">()) {
 			mc2fxdefs::EffectDefRegistry::instance().applyAll(mc2::particles::SpecLibrary::Instance());
 		}
 

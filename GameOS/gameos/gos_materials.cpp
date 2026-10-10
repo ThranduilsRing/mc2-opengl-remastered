@@ -33,6 +33,8 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"   // str<>()
 
 // ---------------------------------------------------------------------------
 // Internal state
@@ -42,10 +44,7 @@ namespace {
 
 // MC2_MATERIAL_GPU defaults ON (mirrors gos_mech_batcher.cpp / gos_static_prop_batcher.cpp).
 // Set MC2_MATERIAL_GPU=0 to disable all table upload and bind.
-const bool s_gpuEnabled = []() {
-    const char* v = getenv("MC2_MATERIAL_GPU");
-    return v == nullptr || (v[0] != '0');
-}();
+const bool s_gpuEnabled = mc2::gate::get<"MC2_MATERIAL_GPU">();
 
 struct ProfileEntry {
     std::string    name;
@@ -472,25 +471,22 @@ void init() {
     // Unset/null -> passthrough only (no surface detail).
     // "metal061b"     -> load metal061b + paintedmetal003 (debug/exposed-metal).
     // "painted_subtle"-> load painted_subtle (ORM-only, flat normal).
-    const char* matEnv = getenv("MC2_MECH_SURFACE_MATERIAL");
-    const bool loadMetal061b =
-        (matEnv != nullptr) && (strcmp(matEnv, "metal061b") == 0);
-    const bool loadPaintedSubtle =
-        (matEnv != nullptr) && (strcmp(matEnv, "painted_subtle") == 0);
+    const bool loadMetal061b = mc2::gate::is<"MC2_MECH_SURFACE_MATERIAL", "metal061b">();
+    const bool loadPaintedSubtle = mc2::gate::is<"MC2_MECH_SURFACE_MATERIAL", "painted_subtle">();
 
     if (loadMetal061b) {
         registerMetal061b();
         registerPaintedMetal003();
     } else if (loadPaintedSubtle) {
         registerPaintedSubtle();
-    } else if (matEnv != nullptr && matEnv[0] != '\0') {
+    } else if (mc2::gate::isNonEmpty<"MC2_MECH_SURFACE_MATERIAL">()) {
         std::fprintf(stderr,
             "[GOS_MATERIALS] WARN: unrecognized MC2_MECH_SURFACE_MATERIAL='%s': "
-            "falling back to passthrough\n", matEnv);
+            "falling back to passthrough\n", mc2::gate::raw<"MC2_MECH_SURFACE_MATERIAL">());   // echoed as typed
     } else {
         std::fprintf(stderr,
             "[GOS_MATERIALS] MC2_MECH_SURFACE_MATERIAL=%s: passthrough only\n",
-            matEnv ? "(empty)" : "(null)");
+            mc2::gate::isSet<"MC2_MECH_SURFACE_MATERIAL">() ? "(empty)" : "(null)");
     }
 
     uploadSsbo();

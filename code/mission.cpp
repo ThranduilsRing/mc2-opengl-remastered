@@ -12,6 +12,8 @@
 // Include Files
 #ifndef MCLIB_H
 #include"mclib.h"
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"   // str<>()
 #include "gos_crashbundle.h"
 #include "gos_smoke.h"            // S9D fixed-timestep deterministic smoke clock
 #include "gos_postprocess.h"   // VK-GL-LOST-DRAWS tags
@@ -280,8 +282,6 @@ static void simClockTraceTick(float scenarioTimeNow)
 #include "../GameOS/gameos/gpu_cull_compute.h"   // C1a: GPU visibility compute dispatch
 #include "../GameOS/gameos/gpu_cull_readback.h"  // C2: async readback ring buffer
 #include "../GameOS/gameos/gos_terrain_lighting.h"  // Phase 1: terrain lighting GPU compute
-#include "Gates/gate.h"
-#include "Gates/gate_cold.h"   // str<>()
 
 //----------------------------------------------------------------------------------
 // Macro Definitions

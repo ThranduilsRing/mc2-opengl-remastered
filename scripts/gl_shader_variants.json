@@ -374,7 +374,7 @@
    "optional_groups_on": [],
    "prefix": "#version 430\n#define TILE_SIZE 32\n",
    "raw_note": "loaded as plain text (no engine include flattening)",
-   "source": "GameOS/gameos/gos_cluster_depth_pyramid.cpp:75",
+   "source": "GameOS/gameos/gos_cluster_depth_pyramid.cpp:71",
    "stages": {
     "comp": "shaders/cluster_depth_pyramid.comp"
    }
@@ -386,7 +386,7 @@
    "key": "debug_prim",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/debug_renderer.cpp:67",
+   "source": "GameOS/gameos/debug_renderer.cpp:58",
    "stages": {
     "frag": "shaders/debug_prim.frag",
     "vert": "shaders/debug_prim.vert"
@@ -2691,7 +2691,7 @@
    "key": "gpu_cull#C1a#READBACK{READBACK_SSBO_BINDING=14,GPU_CULL_C2_READBACK}",
    "optional_groups_on": [],
    "prefix": "#version 430\n#define READBACK_SSBO_BINDING 14\n#define GPU_CULL_C2_READBACK 1\n",
-   "source": "GameOS/gameos/gpu_cull_compute.cpp:249",
+   "source": "GameOS/gameos/gpu_cull_compute.cpp:248",
    "splice": {
     "file": "shaders/gpu_cull_predicate.glsl",
     "include_line": "#include <gpu_cull_predicate.glsl>"
@@ -2709,7 +2709,7 @@
    "key": "gpu_cull#C1a{READBACK_SSBO_BINDING=14}",
    "optional_groups_on": [],
    "prefix": "#version 430\n#define READBACK_SSBO_BINDING 14\n",
-   "source": "GameOS/gameos/gpu_cull_compute.cpp:249",
+   "source": "GameOS/gameos/gpu_cull_compute.cpp:248",
    "splice": {
     "file": "shaders/gpu_cull_predicate.glsl",
     "include_line": "#include <gpu_cull_predicate.glsl>"
@@ -2729,7 +2729,7 @@
    "key": "gpu_cull#C1b#READBACK{READBACK_SSBO_BINDING=14,GPU_CULL_C1B_INDIRECT,GPU_CULL_C2_READBACK}",
    "optional_groups_on": [],
    "prefix": "#version 430\n#define READBACK_SSBO_BINDING 14\n#define GPU_CULL_C1B_INDIRECT 1\n#define GPU_CULL_C2_READBACK 1\n",
-   "source": "GameOS/gameos/gpu_cull_compute.cpp:249",
+   "source": "GameOS/gameos/gpu_cull_compute.cpp:248",
    "splice": {
     "file": "shaders/gpu_cull_predicate.glsl",
     "include_line": "#include <gpu_cull_predicate.glsl>"
@@ -2748,7 +2748,7 @@
    "key": "gpu_cull#C1b{READBACK_SSBO_BINDING=14,GPU_CULL_C1B_INDIRECT}",
    "optional_groups_on": [],
    "prefix": "#version 430\n#define READBACK_SSBO_BINDING 14\n#define GPU_CULL_C1B_INDIRECT 1\n",
-   "source": "GameOS/gameos/gpu_cull_compute.cpp:249",
+   "source": "GameOS/gameos/gpu_cull_compute.cpp:248",
    "splice": {
     "file": "shaders/gpu_cull_predicate.glsl",
     "include_line": "#include <gpu_cull_predicate.glsl>"
@@ -2764,7 +2764,7 @@
    "key": "gpu_cull_block_rollup",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gpu_cull_compute.cpp:420",
+   "source": "GameOS/gameos/gpu_cull_compute.cpp:419",
    "stages": {
     "comp": "shaders/gpu_cull_block_rollup.comp"
    }
@@ -2776,7 +2776,7 @@
    "key": "gpu_cull_patch",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gpu_cull_compute.cpp:409",
+   "source": "GameOS/gameos/gpu_cull_compute.cpp:408",
    "stages": {
     "comp": "shaders/gpu_cull_patch.comp"
    }
@@ -2867,7 +2867,7 @@
    "optional_groups_on": [],
    "prefix": "#version 430\n#define LIGHTGRID_STAGE 0\n#define LIGHTGRID_MAX_LIGHTS 32\n",
    "raw_note": "loaded as plain text (no engine include flattening)",
-   "source": "GameOS/gameos/gos_lightgrid_build.cpp:116",
+   "source": "GameOS/gameos/gos_lightgrid_build.cpp:112",
    "stages": {
     "comp": "shaders/lightgrid_build.comp"
    }
@@ -2883,7 +2883,7 @@
    "optional_groups_on": [],
    "prefix": "#version 430\n#define LIGHTGRID_STAGE 1\n#define LIGHTGRID_MAX_LIGHTS 32\n",
    "raw_note": "loaded as plain text (no engine include flattening)",
-   "source": "GameOS/gameos/gos_lightgrid_build.cpp:116",
+   "source": "GameOS/gameos/gos_lightgrid_build.cpp:112",
    "stages": {
     "comp": "shaders/lightgrid_build.comp"
    }
@@ -2897,7 +2897,7 @@
    "key": "mech{IMPORTED_MECH_MATERIAL}",
    "optional_groups_on": [],
    "prefix": "#version 430\n#define MC2_IMPORTED_MECH_MATERIAL 1\n",
-   "source": "GameOS/gameos/gos_mech_batcher.cpp:733",
+   "source": "GameOS/gameos/gos_mech_batcher.cpp:633",
    "stages": {
     "frag": "shaders/mech.frag",
     "vert": "shaders/mech.vert"
@@ -2915,7 +2915,7 @@
     "if (RenderWorld::IsObjectIdBufferEnabled())"
    ],
    "prefix": "#version 430\n#define MC2_OBJECT_ID_BUFFER 1\n#define MC2_IMPORTED_MECH_MATERIAL 1\n",
-   "source": "GameOS/gameos/gos_mech_batcher.cpp:733",
+   "source": "GameOS/gameos/gos_mech_batcher.cpp:633",
    "stages": {
     "frag": "shaders/mech.frag",
     "vert": "shaders/mech.vert"
@@ -2935,7 +2935,7 @@
     "if (s_mechViewUniforms)"
    ],
    "prefix": "#version 430\n#define MC2_OBJECT_ID_BUFFER 1\n#define MC2_USE_VIEW_UNIFORMS 1\n#define MC2_IMPORTED_MECH_MATERIAL 1\n",
-   "source": "GameOS/gameos/gos_mech_batcher.cpp:733",
+   "source": "GameOS/gameos/gos_mech_batcher.cpp:633",
    "stages": {
     "frag": "shaders/mech.frag",
     "vert": "shaders/mech.vert"
@@ -2953,7 +2953,7 @@
     "if (s_mechViewUniforms)"
    ],
    "prefix": "#version 430\n#define MC2_USE_VIEW_UNIFORMS 1\n#define MC2_IMPORTED_MECH_MATERIAL 1\n",
-   "source": "GameOS/gameos/gos_mech_batcher.cpp:733",
+   "source": "GameOS/gameos/gos_mech_batcher.cpp:633",
    "stages": {
     "frag": "shaders/mech.frag",
     "vert": "shaders/mech.vert"
@@ -2966,7 +2966,7 @@
    "key": "particle_billboard",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_particle_bridge.cpp:316",
+   "source": "GameOS/gameos/gos_particle_bridge.cpp:293",
    "stages": {
     "frag": "shaders/particle_billboard.frag",
     "vert": "shaders/particle_billboard.vert"
@@ -2997,7 +2997,7 @@
    "optional_groups_on": [],
    "prefix": "#version 430\n#define TILE_X 8\n#define TILE_Y 8\n#define MODE_BLUR_H 1\n",
    "raw_note": "loaded as plain text (no engine include flattening)",
-   "source": "GameOS/gameos/gos_postprocess_blur.cpp:91",
+   "source": "GameOS/gameos/gos_postprocess_blur.cpp:87",
    "stages": {
     "comp": "shaders/postprocess_blur.comp"
    }
@@ -3014,7 +3014,7 @@
    "optional_groups_on": [],
    "prefix": "#version 430\n#define TILE_X 8\n#define TILE_Y 8\n#define MODE_BLUR_V 1\n",
    "raw_note": "loaded as plain text (no engine include flattening)",
-   "source": "GameOS/gameos/gos_postprocess_blur.cpp:91",
+   "source": "GameOS/gameos/gos_postprocess_blur.cpp:87",
    "stages": {
     "comp": "shaders/postprocess_blur.comp"
    }
@@ -3031,7 +3031,7 @@
    "optional_groups_on": [],
    "prefix": "#version 430\n#define TILE_X 8\n#define TILE_Y 8\n#define MODE_DOWNSAMPLE 1\n",
    "raw_note": "loaded as plain text (no engine include flattening)",
-   "source": "GameOS/gameos/gos_postprocess_blur.cpp:91",
+   "source": "GameOS/gameos/gos_postprocess_blur.cpp:87",
    "stages": {
     "comp": "shaders/postprocess_blur.comp"
    }
@@ -4352,7 +4352,7 @@
    "key": "tube_ribbon",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_particle_bridge.cpp:442",
+   "source": "GameOS/gameos/gos_particle_bridge.cpp:419",
    "stages": {
     "frag": "shaders/tube_ribbon.frag",
     "vert": "shaders/tube_ribbon.vert"
@@ -4365,7 +4365,7 @@
    "key": "vegetation_card",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_vegetation.cpp:136",
+   "source": "GameOS/gameos/gos_vegetation.cpp:137",
    "stages": {
     "frag": "shaders/gos_vegetation_card.frag",
     "vert": "shaders/gos_vegetation_card.vert"

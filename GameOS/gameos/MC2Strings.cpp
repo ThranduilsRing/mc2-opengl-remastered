@@ -31,6 +31,8 @@
 #include <map>
 #include <string>
 #include <vector>
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"   // str<>()
 
 // Forward-declare mod file enumeration from mclib/file.cpp.
 // MC2Strings must not pull in all of file.h; this thin seam is intentional.
@@ -89,7 +91,7 @@ namespace
 
     bool TraceEnabled()
     {
-        static const bool enabled = (std::getenv("MC2_STRINGS_TRACE") != 0);
+        static const bool enabled = (mc2::gate::get<"MC2_STRINGS_TRACE">());
         return enabled;
     }
 
@@ -804,7 +806,7 @@ namespace
 #else
         snprintf(number, sizeof(number), "%ld", value);
 #endif
-        if ( getenv("MC2_LOG_STRINGS") )
+        if ( mc2::gate::get<"MC2_LOG_STRINGS">() )
         {
             printf("[strings] missing prefix='%s' id=%ld\n", prefix ? prefix : "null", value);
             fflush(stdout);
@@ -837,9 +839,9 @@ namespace MC2Strings
 
         std::vector<std::string> dirs;
 
-        const char* envRoot = std::getenv("MC2_DEFS_ROOT");
-        if (envRoot && envRoot[0])
-            AddDefsRootCandidates(dirs, envRoot);
+        const std::string envRoot = mc2::gate::str<"MC2_DEFS_ROOT">();   // "" when unset or empty
+        if (!envRoot.empty())
+            AddDefsRootCandidates(dirs, envRoot.c_str());
 
         const char* locale = ActiveLocale();
         dirs.push_back(std::string("data/defs/text/") + locale);
@@ -1062,7 +1064,7 @@ namespace MC2Strings
         // Refresh loaded flag in case catalog was previously empty
         State().loaded = !State().byKey.empty();
 
-        if (getenv("MC2_LOG_STRINGS")) {
+        if (mc2::gate::get<"MC2_LOG_STRINGS">()) {
             printf("[strings] LoadModFits prefix=%s keys=%u legacyAliases=%u\n",
                    prefix.c_str(),
                    (unsigned)State().byKey.size(),

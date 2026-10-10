@@ -17,6 +17,7 @@ MechBayScreen.cpp			: Implementation of the MechBayScreen component.
 #include"chatwindow.h"
 #include"prefs.h"
 #include"../GuiRuntime/GuiRuntime.h"
+#include "Gates/gate.h"
 
 MechBayScreen* MechBayScreen::s_instance = NULL;
 
@@ -460,7 +461,7 @@ void MechBayScreen::update()
 	// MC2_SOAK_AUTO_PURCHASE), auto-click "Modify Mech" to enter the mech lab so
 	// its component palette loads/renders for capture + file-resolve tracing.
 	{
-		static const bool s_bootMechLab = ( getenv("MC2_BOOT_TO_MECHLAB") != nullptr );
+		static const bool s_bootMechLab = mc2::gate::get<"MC2_BOOT_TO_MECHLAB">();
 		static int s_mechLabDelay = 0;
 		static bool s_mechLabFired = false;
 		if ( s_bootMechLab && !s_mechLabFired && pCurMech )

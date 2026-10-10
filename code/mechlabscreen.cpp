@@ -7,6 +7,7 @@ MechLabScreen.cpp			: Implementation of the MechLabScreen component.
 \*************************************************************************************************/
 
 #include"mechlabscreen.h"
+#include "Gates/gate.h"
 #include"inifile.h"
 #include"logisticsdata.h"
 #include"mechbayscreen.h"
@@ -19,7 +20,9 @@ MechLabScreen.cpp			: Implementation of the MechLabScreen component.
 #include"gamesound.h"
 
 // Interactive cheat gate
-static const bool s_cheatInfiniteMoney = (getenv("MC2_CHEAT_INFINITE_MONEY") != nullptr);
+// The launcher writes these into launcher_env.json, which main() applies after static initialization, so they
+// are read at first use rather than in a namespace-scope initializer.
+static bool cheatInfiniteMoney() { static const bool on = mc2::gate::get<"MC2_CHEAT_INFINITE_MONEY">(); return on; }
 #include"chatwindow.h"
 #include"multplyr.h"
 extern bool useUnlimitedAmmo;
@@ -1177,7 +1180,7 @@ int	MechLabScreen::handleMessage( unsigned long msg, unsigned long who)
 				// figure out change
 				float costChange = newCost - originalCost;
 
-				if ( !s_cheatInfiniteMoney && costChange > LogisticsData::instance->getCBills() )
+				if ( !cheatInfiniteMoney() && costChange > LogisticsData::instance->getCBills() )
 				{
 					LogisticsOneButtonDialog::instance()->setText( IDS_MC_INSUFFICIENT_CBILLS, IDS_DIALOG_OK,
 						IDS_DIALOG_OK );
@@ -1241,7 +1244,7 @@ int	MechLabScreen::handleMessage( unsigned long msg, unsigned long who)
 			{
 				// MC2_ENGINE_XL: surface XL engine components in the equipment tab
 				// so they can be installed (they bump speed at mission load).
-				static const bool s_engineXL = ( getenv( "MC2_ENGINE_XL" ) != nullptr );
+				static const bool s_engineXL = mc2::gate::get<"MC2_ENGINE_XL">();
 				componentListBox.setType( COMPONENT_FORM_JUMPJET, COMPONENT_FORM_BULK,
 					COMPONENT_FORM_HEATSINK, s_engineXL ? COMPONENT_FORM_ENGINE : -1 );
 			}

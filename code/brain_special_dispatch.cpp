@@ -77,6 +77,7 @@
 #include <regex>
 #include <string>
 #include "inifile.h"   // FitIniFile — same header used by _ai.fit loader
+#include "Gates/gate.h"
 
 // ---------------------------------------------------------------------------
 // TECHSCRIPT-DISPATCH-1D-M: MissionVarStore global definition.
@@ -89,10 +90,8 @@ MissionVarStore g_missionVarStore;
 // so it can be turned on independently. Warns if turned on without DISPATCH_VAR.
 static bool s_missionVarGate() {
     static const bool kGate = ([](){
-        const char* v = std::getenv("MC2_BRAIN_VAR_MISSION");
-        if (v && std::atoi(v) != 0) {
-            const char* dv = std::getenv("MC2_BRAIN_DISPATCH_VAR");
-            if (!dv || std::atoi(dv) == 0) {
+        if (mc2::gate::get<"MC2_BRAIN_VAR_MISSION">()) {
+            if (!mc2::gate::get<"MC2_BRAIN_DISPATCH_VAR">()) {
                 std::fprintf(stderr, "[BRAIN_VAR_MISSION] WARNING: MC2_BRAIN_VAR_MISSION=1 requires MC2_BRAIN_DISPATCH_VAR=1 — mission-scope writes/reads are INERT\n");
                 std::fflush(stderr);
                 return false;
@@ -124,10 +123,7 @@ static constexpr int kCallChainMaxDepth = 8;
 // and behavior is byte-identical to pre-slice (only the 5 hardcoded
 // aliasToCanonical mappings apply, exactly as before).
 static bool s_brainAliasGate() {
-    static const bool kGate = ([](){
-        const char* v = std::getenv("MC2_BRAIN_ALIAS");
-        return v && std::atoi(v) != 0;
-    })();
+    static const bool kGate = mc2::gate::get<"MC2_BRAIN_ALIAS">();
     return kGate;
 }
 
@@ -172,10 +168,8 @@ const SpecialIndexEntry* specialIndexFind(const SpecialIndex& idx, const std::st
 // Gate helper for DISPATCH_CALL (TECHSCRIPT-CALL-CHAIN-1A).
 static bool s_dispatchCallGate() {
     static const bool kGate = ([](){
-        const char* v = std::getenv("MC2_BRAIN_DISPATCH_CALL");
-        if (v && std::atoi(v) != 0) {
-            const char* d = std::getenv("MC2_BRAIN_DISPATCH");
-            if (!d || std::atoi(d) == 0) {
+        if (mc2::gate::get<"MC2_BRAIN_DISPATCH_CALL">()) {
+            if (!mc2::gate::get<"MC2_BRAIN_DISPATCH">()) {
                 std::fprintf(stderr, "[BRAIN_DISPATCH_CALL] WARNING: MC2_BRAIN_DISPATCH_CALL=1 requires MC2_BRAIN_DISPATCH=1 — call chaining is INERT\n");
                 std::fflush(stderr);
                 return false;
@@ -197,10 +191,7 @@ static bool s_dispatchVarGate();
 // are active.  When OFF, FSM verb strings fall through to the isRecognizedVerb
 // path (trace-only [BRAIN_DISPATCH] line) — byte-identical for brains without FSM verbs.
 static bool s_brainFsmGate() {
-    static const bool kGate = ([](){
-        const char* v = std::getenv("MC2_BRAIN_FSM");
-        return v && std::atoi(v) != 0;
-    })();
+    static const bool kGate = mc2::gate::get<"MC2_BRAIN_FSM">();
     return kGate;
 }
 
@@ -213,10 +204,7 @@ static bool s_brainFsmGate() {
 //   - executeSpecialBody_Apply gates verbs after an unsatisfied WAIT/WAIT_UNTIL and
 //     terminates the tick's body execution at STOP.
 static bool s_brainFlowGate() {
-    static const bool kGate = ([](){
-        const char* v = std::getenv("MC2_BRAIN_FLOW");
-        return v && std::atoi(v) != 0;
-    })();
+    static const bool kGate = mc2::gate::get<"MC2_BRAIN_FLOW">();
     return kGate;
 }
 
@@ -225,16 +213,14 @@ static bool s_brainFlowGate() {
 // Default OFF. When ON, OPORD.CorePatrol parse + per-tick advance are active.
 // NOTE: reads MC2_BRAIN_PATROL fresh per call (not cached) so harness _putenv works.
 static bool s_brainPatrolGate() {
-    const char* v = std::getenv("MC2_BRAIN_PATROL");
-    return v && std::atoi(v) != 0;
+    return mc2::gate::get<"MC2_BRAIN_PATROL">();
 }
 
 // BRAIN-ENGAGE-1: MC2_BRAIN_ENGAGE gate (default OFF). When ON, Patrol/Guard runtimes with
 // engageRadius>0 auto-acquire the nearest enemy in range and fire (tickEngageNearest).
 // Read fresh per call (harness _putenv friendly), matching s_brainPatrolGate.
 static bool s_brainEngageGate() {
-    const char* v = std::getenv("MC2_BRAIN_ENGAGE");
-    return v && std::atoi(v) != 0;
+    return mc2::gate::get<"MC2_BRAIN_ENGAGE">();
 }
 
 // BRAIN-COMMIT-PHASE-1 (GAP B): MC2_BRAIN_COMMIT_PHASE gate (default OFF).
@@ -242,10 +228,7 @@ static bool s_brainEngageGate() {
 // When ON, patrol-emitted intents must be left in pendingIntents for the deferred
 // WID-ordered drain (objmgr.cpp) instead of being self-committed inline here.
 static bool s_brainCommitPhaseEnabled() {
-    static const bool kGate = ([](){
-        const char* v = std::getenv("MC2_BRAIN_COMMIT_PHASE");
-        return (v && std::atoi(v) != 0);
-    })();
+    static const bool kGate = mc2::gate::get<"MC2_BRAIN_COMMIT_PHASE">();
     return kGate;
 }
 
@@ -255,10 +238,7 @@ static bool s_brainCommitPhaseEnabled() {
 // Needs BOTH gates: WEIGHTS to populate selectedTactic, WEIGHTS_B to wire it. With B
 // OFF the field is left at its init default (TACTIC_NONE) → byte-identical to pre-B.
 static bool s_tacticWeightsBEnabled() {
-    static const bool kGate = ([](){
-        const char* v = std::getenv("MC2_TACTIC_WEIGHTS_B");
-        return (v && std::atoi(v) != 0);
-    })();
+    static const bool kGate = mc2::gate::get<"MC2_TACTIC_WEIGHTS_B">();
     return kGate;
 }
 
@@ -901,10 +881,7 @@ static bool parseWaitUntilCondition(const char* verbStr, char outKey[32], char o
 // the pre-BRAIN-DECISION-INTENT-QUEUE-1 behavior.
 
 static bool s_intentQueueEnabled() {
-    static const bool kGate = ([](){
-        const char* v = std::getenv("MC2_BRAIN_INTENT_QUEUE");
-        return (v && std::atoi(v) != 0);
-    })();
+    static const bool kGate = mc2::gate::get<"MC2_BRAIN_INTENT_QUEUE">();
     return kGate;
 }
 
@@ -921,10 +898,7 @@ static bool s_intentQueueEnabled() {
 //   team + existence still read live via ObjectManager::getByWatchID (deferred
 //   to rung 7/8 when a target/contact table snapshot is added).
 bool s_brainSnapshotEnabled() {
-    static const bool kGate = ([](){
-        const char* v = std::getenv("MC2_BRAIN_SNAPSHOT");
-        return (v && std::atoi(v) != 0);
-    })();
+    static const bool kGate = mc2::gate::get<"MC2_BRAIN_SNAPSHOT">();
     return kGate;
 }
 
@@ -2688,10 +2662,7 @@ static bool parseBrainSpecialBody_FitIni(const char* fitPath, BrainSpecialBody& 
 //
 // FORBIDDEN-CALL CONTRACT: file scan + string ops + fprintf only. No order functions.
 static bool s_brainScopeGlobalGate() {
-    static const bool kGate = ([](){
-        const char* v = std::getenv("MC2_BRAIN_SCOPE_GLOBAL");
-        return v && std::atoi(v) != 0;
-    })();
+    static const bool kGate = mc2::gate::get<"MC2_BRAIN_SCOPE_GLOBAL">();
     return kGate;
 }
 
@@ -2737,10 +2708,7 @@ static bool parseGlobalSpecials(const char* missionFitPath, SpecialIndex& gIndex
 //
 // FORBIDDEN-CALL CONTRACT: index walk + string copies + fprintf only. No order functions.
 static bool s_brainVariantOfGate() {
-    static const bool kGate = ([](){
-        const char* v = std::getenv("MC2_BRAIN_VARIANTOF");
-        return v && std::atoi(v) != 0;
-    })();
+    static const bool kGate = mc2::gate::get<"MC2_BRAIN_VARIANTOF">();
     return kGate;
 }
 
@@ -3176,10 +3144,8 @@ void handleVarGet(const char* key, uint8_t scope, VarStore* store, int wid) {
 // Gate init helper for DISPATCH_VAR (used by both execute functions).
 static bool s_dispatchVarGate() {
     static const bool kGate = ([](){
-        const char* v = std::getenv("MC2_BRAIN_DISPATCH_VAR");
-        if (v && std::atoi(v) != 0) {
-            const char* d = std::getenv("MC2_BRAIN_DISPATCH");
-            if (!d || std::atoi(d) == 0) {
+        if (mc2::gate::get<"MC2_BRAIN_DISPATCH_VAR">()) {
+            if (!mc2::gate::get<"MC2_BRAIN_DISPATCH">()) {
                 std::fprintf(stderr, "[BRAIN_DISPATCH_VAR] WARNING: MC2_BRAIN_DISPATCH_VAR=1 requires MC2_BRAIN_DISPATCH=1 -- var handling is INERT\n");
                 std::fflush(stderr);
                 return false;

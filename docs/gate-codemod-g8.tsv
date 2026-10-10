@@ -1,0 +1,370 @@
+file:line	gate	old idiom class	old caching shape	proposed replacement	verdict	why
+GameOS/gameos/gos_mech_batcher.cpp:103	MC2_PROP_FIXB_MVP	Custom[10001011]	lambda-static	static const bool on = mc2::gate::get<"MC2_PROP_FIXB_MVP">();	NO-CHANGE	site DefOnAtoiNZ vs row DefOnAtoiNZ
+GameOS/gameos/gos_mech_batcher.cpp:142	MC2_GPU_MECHS		per-call	-	UNHANDLED	helper-call reader envFlagDefaultOn(): helper mapping lands in G4/G6
+GameOS/gameos/gos_mech_batcher.cpp:194	MC2_GPU_MECH_CULL		per-call	-	UNHANDLED	helper-call reader envFlagDefaultOn(): helper mapping lands in G4/G6
+GameOS/gameos/gos_mech_batcher.cpp:202	MC2_GPU_MECH_FAST_TRANSFORM		per-call	-	UNHANDLED	helper-call reader envFlagDefaultOn(): helper mapping lands in G4/G6
+GameOS/gameos/gos_mech_batcher.cpp:206	MC2_GPU_MECH_SHADOW_FAST_TRANSFORM		per-call	-	UNHANDLED	helper-call reader envFlagDefaultOn(): helper mapping lands in G4/G6
+GameOS/gameos/gos_mech_batcher.cpp:215	MC2_GPU_MECH_LEAF_SKIP		per-call	-	UNHANDLED	helper-call reader envFlagDefaultOn(): helper mapping lands in G4/G6
+GameOS/gameos/gos_mech_batcher.cpp:243	MC2_MECH_VIEWUNIFORMS	Lead0Kill	lambda-static	static const bool s_mechViewUniforms = mc2::gate::get<"MC2_MECH_VIEWUNIFORMS">();	NO-CHANGE	site Lead0Kill vs row Lead0Kill
+GameOS/gameos/gos_mech_batcher.cpp:249	MC2_MECH_VIEWUNIFORMS_DIAG	Lead1	lambda-static	static const bool s_mechViewUniformsDiag = mc2::gate::get<"MC2_MECH_VIEWUNIFORMS_DIAG">();	NO-CHANGE	site Lead1 vs row Lead1
+GameOS/gameos/gos_mech_batcher.cpp:268	MC2_MECH_NORMALS_MODE	Num(atoi)	lambda-static	static int s_mechNormalsMode = mc2::gate::get<"MC2_MECH_NORMALS_MODE">();	EDGE	no row edit needed; inputs whose result changes after the row edit: ''; harness sets none of them
+GameOS/gameos/gos_mech_batcher.cpp:275	MC2_MECH_NORMALS_SMOOTH_DEG	Num(atof)	lambda-static	static float s_mechNormalsSmoothDeg = mc2::gate::get<"MC2_MECH_NORMALS_SMOOTH_DEG">();	EDGE	HAND (not applied by the tool): the row needs an edit first (MC2_MECH_NORMALS_SMOOTH_DEG) clampRange(1, 179): apply it by hand after checking it against the reader [ROW EDIT needed first (MC2_MECH_NORMALS_SMOOTH_DEG) clampRange(1, 179); inputs whose result changes after the row edit: '', '1e999'; harness sets none of them]
+GameOS/gameos/gos_mech_batcher.cpp:296	MC2_MECH_AMBIENT_V1	Lead0Kill	lambda-static	static bool s_mechAmbientV1 = mc2::gate::get<"MC2_MECH_AMBIENT_V1">();	NO-CHANGE	site Lead0Kill vs row Lead0Kill
+GameOS/gameos/gos_mech_batcher.cpp:300	MC2_MECH_AMBIENT_V1_STRENGTH	Num(atof)	lambda-static	static float s_mechAmbientStrength = mc2::gate::get<"MC2_MECH_AMBIENT_V1_STRENGTH">();	EDGE	HAND (not applied by the tool): the row needs an edit first (MC2_MECH_AMBIENT_V1_STRENGTH) clampRange(0, 2): apply it by hand after checking it against the reader [ROW EDIT needed first (MC2_MECH_AMBIENT_V1_STRENGTH) clampRange(0, 2); inputs whose result changes after the row edit: '', '1e999'; harness sets none of them]
+GameOS/gameos/gos_mech_batcher.cpp:312	MC2_MECH_SPECULAR_V1	Lead0Kill	lambda-static	static bool s_mechSpecularV1 = mc2::gate::get<"MC2_MECH_SPECULAR_V1">();	NO-CHANGE	site Lead0Kill vs row Lead0Kill
+GameOS/gameos/gos_mech_batcher.cpp:316	MC2_MECH_SPECULAR_STRENGTH	Num(atof)	lambda-static	static float s_mechSpecularStrength = mc2::gate::get<"MC2_MECH_SPECULAR_STRENGTH">();	EDGE	HAND (not applied by the tool): the row needs an edit first (MC2_MECH_SPECULAR_STRENGTH) clampRange(0, 4): apply it by hand after checking it against the reader [ROW EDIT needed first (MC2_MECH_SPECULAR_STRENGTH) clampRange(0, 4); inputs whose result changes after the row edit: '', '1e999'; harness sets none of them]
+GameOS/gameos/gos_mech_batcher.cpp:326	MC2_MECH_METAL_ROUGHNESS	Num(atof)	lambda-static	static float s_mechMetalRoughness = mc2::gate::get<"MC2_MECH_METAL_ROUGHNESS">();	EDGE	HAND (not applied by the tool): the row needs an edit first (MC2_MECH_METAL_ROUGHNESS) clampRange(0.04, 1): apply it by hand after checking it against the reader [ROW EDIT needed first (MC2_MECH_METAL_ROUGHNESS) clampRange(0.04, 1); inputs whose result changes after the row edit: '', '1e999'; harness sets none of them]
+GameOS/gameos/gos_mech_batcher.cpp:333	MC2_MECH_GLASS_ROUGHNESS	Num(atof)	lambda-static	static float s_mechGlassRoughness = mc2::gate::get<"MC2_MECH_GLASS_ROUGHNESS">();	EDGE	HAND (not applied by the tool): the row needs an edit first (MC2_MECH_GLASS_ROUGHNESS) clampRange(0.04, 1): apply it by hand after checking it against the reader [ROW EDIT needed first (MC2_MECH_GLASS_ROUGHNESS) clampRange(0.04, 1); inputs whose result changes after the row edit: '', '1e999'; harness sets none of them]
+GameOS/gameos/gos_mech_batcher.cpp:340	MC2_MECH_GLASS_LUMA_THRESH	Num(atof)	lambda-static	static float s_mechGlassLumaThresh = mc2::gate::get<"MC2_MECH_GLASS_LUMA_THRESH">();	EDGE	HAND (not applied by the tool): the row needs an edit first (MC2_MECH_GLASS_LUMA_THRESH) clampRange(0, 1): apply it by hand after checking it against the reader [ROW EDIT needed first (MC2_MECH_GLASS_LUMA_THRESH) clampRange(0, 1); inputs whose result changes after the row edit: '', '1e999'; harness sets none of them]
+GameOS/gameos/gos_mech_batcher.cpp:347	MC2_MECH_GLASS_MAXCHAN_THRESH	Num(atof)	lambda-static	static float s_mechGlassMaxChanThresh = mc2::gate::get<"MC2_MECH_GLASS_MAXCHAN_THRESH">();	EDGE	HAND (not applied by the tool): the row needs an edit first (MC2_MECH_GLASS_MAXCHAN_THRESH) clampRange(0, 1): apply it by hand after checking it against the reader [ROW EDIT needed first (MC2_MECH_GLASS_MAXCHAN_THRESH) clampRange(0, 1); inputs whose result changes after the row edit: '', '1e999'; harness sets none of them]
+GameOS/gameos/gos_mech_batcher.cpp:357	MC2_MECH_BACK_FILL	Num(atof)	lambda-static	static float s_mechBackFillStrength = mc2::gate::get<"MC2_MECH_BACK_FILL">();	EDGE	no row edit needed; inputs whose result changes after the row edit: '1e999'; harness sets none of them
+GameOS/gameos/gos_mech_batcher.cpp:365	MC2_STANDARD_LIT_V1	Lead1	lambda-static	static int s_standardLitEnabled = mc2::gate::get<"MC2_STANDARD_LIT_V1">();	NO-CHANGE	site Lead1 vs row Lead1
+GameOS/gameos/gos_mech_batcher.cpp:369	MC2_PBR_METALLIC_INFLUENCE		per-call	-	UNHANDLED	HAND: the lambda reads 2 gates (MC2_MECH_SURFACE_MATERIAL, MC2_PBR_METALLIC_INFLUENCE); replacing it by one read would drop the others
+GameOS/gameos/gos_mech_batcher.cpp:371	MC2_MECH_SURFACE_MATERIAL		per-call	-	UNHANDLED	HAND: the lambda reads 2 gates (MC2_MECH_SURFACE_MATERIAL, MC2_PBR_METALLIC_INFLUENCE); replacing it by one read would drop the others
+GameOS/gameos/gos_mech_batcher.cpp:375	MC2_PBR_ROUGHNESS_MIN		per-call	-	UNHANDLED	HAND: the lambda reads 2 gates (MC2_MECH_SURFACE_MATERIAL, MC2_PBR_ROUGHNESS_MIN); replacing it by one read would drop the others
+GameOS/gameos/gos_mech_batcher.cpp:377	MC2_MECH_SURFACE_MATERIAL		per-call	-	UNHANDLED	HAND: the lambda reads 2 gates (MC2_MECH_SURFACE_MATERIAL, MC2_PBR_ROUGHNESS_MIN); replacing it by one read would drop the others
+GameOS/gameos/gos_mech_batcher.cpp:381	MC2_PBR_ROUGHNESS_MAX		per-call	-	UNHANDLED	HAND: the lambda reads 2 gates (MC2_MECH_SURFACE_MATERIAL, MC2_PBR_ROUGHNESS_MAX); replacing it by one read would drop the others
+GameOS/gameos/gos_mech_batcher.cpp:383	MC2_MECH_SURFACE_MATERIAL		per-call	-	UNHANDLED	HAND: the lambda reads 2 gates (MC2_MECH_SURFACE_MATERIAL, MC2_PBR_ROUGHNESS_MAX); replacing it by one read would drop the others
+GameOS/gameos/gos_mech_batcher.cpp:387	MC2_PBR_AMBIENT_SPECULAR	Num(atof)	lambda-static	static float s_pbrAmbientSpecularStrength = mc2::gate::get<"MC2_PBR_AMBIENT_SPECULAR">();	EDGE	no row edit needed; inputs whose result changes after the row edit: '', '1e999'; harness sets none of them
+GameOS/gameos/gos_mech_batcher.cpp:394	MC2_PBR_WEAR_STRENGTH		per-call	-	UNHANDLED	HAND: the lambda reads 2 gates (MC2_MECH_SURFACE_MATERIAL, MC2_PBR_WEAR_STRENGTH); replacing it by one read would drop the others
+GameOS/gameos/gos_mech_batcher.cpp:396	MC2_MECH_SURFACE_MATERIAL		per-call	-	UNHANDLED	HAND: the lambda reads 2 gates (MC2_MECH_SURFACE_MATERIAL, MC2_PBR_WEAR_STRENGTH); replacing it by one read would drop the others
+GameOS/gameos/gos_mech_batcher.cpp:400	MC2_PBR_TRIPLANAR	Lead1	lambda-static	static int s_pbrTriplanar = mc2::gate::get<"MC2_PBR_TRIPLANAR">();	NO-CHANGE	site Lead1 vs row Lead1
+GameOS/gameos/gos_mech_batcher.cpp:404	MC2_PBR_TRIPLANAR_SCALE	Num(atof)	lambda-static	static float s_pbrTriplanarScale = mc2::gate::get<"MC2_PBR_TRIPLANAR_SCALE">();	EDGE	no row edit needed; inputs whose result changes after the row edit: '', '1e999'; harness sets none of them
+GameOS/gameos/gos_mech_batcher.cpp:410	MC2_MECH_IBL_SH	Lead0Kill	lambda-static	static const bool s_mechIblShEnabled = mc2::gate::get<"MC2_MECH_IBL_SH">();	NO-CHANGE	site Lead0Kill vs row Lead0Kill
+GameOS/gameos/gos_mech_batcher.cpp:660	MC2_SPOTLIGHT_REAL_TRACE	Presence	namespace-static	static const bool s_spotlightRealTrace = mc2::gate::get<"MC2_SPOTLIGHT_REAL_TRACE">();	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/gos_mech_batcher.cpp:677	MC2_MATERIAL_GPU	Lead0Kill	lambda-static	static const bool s_mechMaterialGpuEnabled = mc2::gate::get<"MC2_MATERIAL_GPU">();	NO-CHANGE	site Lead0Kill vs row Lead0Kill; G0 ledger resolved: Lead0Kill (default ON, =0 disables)
+GameOS/gameos/gos_mech_batcher.cpp:792	MC2_LIGHTSSBO_TRACE	Presence	per-call	if (mc2::gate::get<"MC2_LIGHTSSBO_TRACE">()) {	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/gos_mech_batcher.cpp:1161	MC2_SHADOW_ENABLE	Lead0Kill	local-static	-	UNHANDLED	paired reads: the statement reads this gate 2 times; as one reader it is Lead0Kill vs row Lead0Kill: NO-CHANGE -- replace the whole expression by hand
+GameOS/gameos/gos_mech_batcher.cpp:1162	MC2_SHADOW_ENABLE	Lead0Kill	local-static	-	UNHANDLED	paired reads: the statement reads this gate 2 times; as one reader it is Lead0Kill vs row Lead0Kill: NO-CHANGE -- replace the whole expression by hand
+GameOS/gameos/gos_mech_batcher.cpp:1379	MC2_MECH_RESTORE_TRACE	Presence	local-static	static const bool s_mechRestoreTrace = mc2::gate::get<"MC2_MECH_RESTORE_TRACE">();	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/gos_mech_batcher.cpp:1425	MC2_MECH_NODE_TRACE	Presence	local-static	static const bool s_nodeTrace = mc2::gate::get<"MC2_MECH_NODE_TRACE">();	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/gos_mech_batcher.cpp:1862	MC2_MECH_RESTORE_TRACE	Presence	per-call	if (mc2::gate::get<"MC2_MECH_RESTORE_TRACE">())	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/gos_mech_batcher.cpp:2038	MC2_MECH_BATCHER_STATS	Presence	per-call	s_mechBatcherTrace = mc2::gate::get<"MC2_MECH_BATCHER_STATS">();	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/gos_mech_batcher.cpp:2042	MC2_MECH_LIGHT_TRACE	Presence	per-call	s_mechLightTrace = mc2::gate::get<"MC2_MECH_LIGHT_TRACE">();	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/gos_mech_batcher.cpp:2074	MC2_MECH_SURFACE_MATERIAL		per-call	-	UNHANDLED	row kind Enum: read through is<>/Enum token (G3 Enum / G4 Tri / String via str<>)
+GameOS/gameos/gos_mech_batcher.cpp:2453	MC2_PBR_TILE_SCALE		per-call	-	UNHANDLED	HAND: the lambda reads 2 gates (MC2_MECH_SURFACE_MATERIAL, MC2_PBR_TILE_SCALE); replacing it by one read would drop the others
+GameOS/gameos/gos_mech_batcher.cpp:2455	MC2_MECH_SURFACE_MATERIAL		per-call	-	UNHANDLED	HAND: the lambda reads 2 gates (MC2_MECH_SURFACE_MATERIAL, MC2_PBR_TILE_SCALE); replacing it by one read would drop the others
+GameOS/gameos/gos_mech_batcher.cpp:2524	MC2_SUN_AXIS_FIX	Lead0	lambda-static	static const bool s_sunAxisMc2Fix = mc2::gate::get<"MC2_SUN_AXIS_FIX">();	NO-CHANGE	site Lead0 vs row Lead0
+GameOS/gameos/gos_mech_batcher.cpp:2545	MC2_MECH_FRAG_DEBUG		per-call	-	UNHANDLED	numeric reader is not a lambda/declaration initializer (e.g. multi-statement local)
+GameOS/gameos/gos_mech_batcher.cpp:2765	MC2_MECH_TEX_READBACK	Presence	local-static	static const bool s_pixelReadback = mc2::gate::get<"MC2_MECH_TEX_READBACK">();	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/gos_mech_batcher.cpp:2952	MC2_SNAPSHOT_MECH_EXTRACT	Lead0	lambda-static	static const bool s_mechExtractEnabled = mc2::gate::get<"MC2_SNAPSHOT_MECH_EXTRACT">();	NO-CHANGE	site Lead0 vs row Lead0; G0 ledger resolved: Lead0
+GameOS/gameos/gos_static_prop_registry.cpp:62	MC2_STATIC_PROP_FLUSH_COST_SPLIT	Exact1	lambda-static	static const bool s_spflushEnabled = mc2::gate::get<"MC2_STATIC_PROP_FLUSH_COST_SPLIT">();	NO-CHANGE	site Exact1 vs row Exact1
+GameOS/gameos/gos_static_prop_registry.cpp:137	MC2_STATIC_PROP_REGISTRY		per-call	-	UNHANDLED	helper-call reader parseEnvBoolWithDefault(): helper mapping lands in G4/G6
+GameOS/gameos/gos_static_prop_registry.cpp:138	MC2_STATIC_PROP_TRACE	Lead0	lambda-static	static const bool s_trace = mc2::gate::get<"MC2_STATIC_PROP_TRACE">();	NO-CHANGE	site Lead0 vs row Lead0; G0 ledger resolved: Lead0
+GameOS/gameos/gos_static_prop_registry.cpp:143	MC2_STATIC_PROP_MISSION_LOAD_REG		per-call	-	UNHANDLED	helper-call reader parseEnvBoolWithDefault(): helper mapping lands in G4/G6
+GameOS/gameos/gos_static_prop_registry.cpp:166	MC2_STATIC_PROP_LATE_SPAWN_REG		per-call	-	UNHANDLED	helper-call reader parseEnvBoolWithDefault(): helper mapping lands in G4/G6
+GameOS/gameos/gos_static_prop_registry.cpp:181	MC2_STATIC_PER_INSTANCE_LIGHT		per-call	-	UNHANDLED	helper-call reader parseEnvBoolWithDefault(): helper mapping lands in G4/G6
+GameOS/gameos/gos_static_prop_registry.cpp:199	MC2_STATIC_PROP_FLUSH_CACHED_BLOB		per-call	-	UNHANDLED	helper-call reader parseEnvBoolWithDefault(): helper mapping lands in G4/G6
+GameOS/gameos/gos_static_prop_registry.cpp:204	MC2_STATIC_PROP_FLUSH_CACHED_BLOB_COMPARE		per-call	-	UNHANDLED	helper-call reader parseEnvBoolWithDefault(): helper mapping lands in G4/G6
+GameOS/gameos/gos_static_prop_registry.cpp:213	MC2_STATIC_PROP_PERSISTENT_BUCKETS		per-call	-	UNHANDLED	helper-call reader parseEnvBoolWithDefault(): helper mapping lands in G4/G6
+GameOS/gameos/gos_static_prop_registry.cpp:215	MC2_STATIC_PROP_PERSISTENT_BUCKETS_COMPARE		per-call	-	UNHANDLED	helper-call reader parseEnvBoolWithDefault(): helper mapping lands in G4/G6
+GameOS/gameos/gos_static_prop_registry.cpp:239	MC2_TEX_LIFECYCLE_TRACE	Presence	per-call	(mc2::gate::get<"MC2_TEX_LIFECYCLE_TRACE">());	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/gos_static_prop_registry.cpp:321	MC2_STATIC_RECIPE_RECYCLE	Lead0Kill	lambda-static	static const bool s_recipeRecycle = mc2::gate::get<"MC2_STATIC_RECIPE_RECYCLE">();	NO-CHANGE	site Lead0Kill vs row Lead0Kill
+GameOS/gameos/gos_static_prop_registry.cpp:340	MC2_GPU_CULL_STATIC_FROZEN_RECORDS	Presence	namespace-static	static const bool s_staticFrozenReg = mc2::gate::get<"MC2_GPU_CULL_STATIC_FROZEN_RECORDS">();	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/gos_static_prop_registry.cpp:433	MC2_STATIC_FORCE_ADMIT	Presence	local-static	static const bool s_diag_forceAdmit = mc2::gate::get<"MC2_STATIC_FORCE_ADMIT">();	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/gos_static_prop_registry.cpp:896	MC2_GPU_CULL_STATIC_FROZEN_ORDER_ORACLE	Presence	local-static	static const bool s_orderOracle = mc2::gate::get<"MC2_GPU_CULL_STATIC_FROZEN_ORDER_ORACLE">();	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/gos_static_prop_registry.cpp:944	MC2_REGFLUSH_GUARD2	Presence	local-static	static const bool s_guard2 = mc2::gate::get<"MC2_REGFLUSH_GUARD2">();	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/gos_static_prop_registry.cpp:1022	MC2_STATIC_LEAF_DIAG	Presence	local-static	static const bool s_td = mc2::gate::get<"MC2_STATIC_LEAF_DIAG">();	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/gos_static_prop_registry.cpp:1117	MC2_STATIC_STALE_DROP_FATAL	Presence	local-static	static const bool s_staleFatal = mc2::gate::get<"MC2_STATIC_STALE_DROP_FATAL">();	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/gos_static_prop_registry.cpp:1138	MC2_REGFLUSH_MULTI	Presence	local-static	static const bool s_traceMulti = mc2::gate::get<"MC2_REGFLUSH_MULTI">();	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/gos_static_prop_registry.cpp:1318	MC2_MODOVERRIDE_TRACE	Presence	local-static	static const bool s_seamFlush = mc2::gate::get<"MC2_MODOVERRIDE_TRACE">();	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/gos_static_prop_registry.cpp:1364	MC2_STATIC_LEAF_DIAG	Presence	local-static	static const bool s_leafDiag = mc2::gate::get<"MC2_STATIC_LEAF_DIAG">();	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/gos_static_prop_registry.cpp:1478	MC2_STATIC_FORCE_ADMIT	Presence	local-static	static const bool s_diag_forceAdmit = mc2::gate::get<"MC2_STATIC_FORCE_ADMIT">();	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/gos_static_prop_registry.cpp:1502	MC2_BLKIDX_TRACE	Presence	local-static	static const bool s_blkidxTrace = mc2::gate::get<"MC2_BLKIDX_TRACE">();	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/gos_static_prop_registry.cpp:1547	MC2_REGFLUSH_TYPEHIST	Presence	local-static	static const bool s_th = mc2::gate::get<"MC2_REGFLUSH_TYPEHIST">();	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/gos_static_prop_registry.cpp:1741	MC2_GPU_CULL_STATIC_LIGHT_ZERO_PROBE	Presence	local-static	static const bool s_staticLightZeroProbe = mc2::gate::get<"MC2_GPU_CULL_STATIC_LIGHT_ZERO_PROBE">();	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/gos_static_prop_registry.cpp:1742	MC2_GPU_CULL_STATIC_EAGER_LIGHT_BAKE	Presence	local-static	static const bool s_staticEagerGate = mc2::gate::get<"MC2_GPU_CULL_STATIC_EAGER_LIGHT_BAKE">();	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/gos_static_prop_registry.cpp:1803	MC2_REGFLUSH_DIAG_TRACE	Presence	local-static	static const bool s_regflushTrace = mc2::gate::get<"MC2_REGFLUSH_DIAG_TRACE">();	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/gos_particle_bridge.cpp:83	MC2_GOSFX_GROUP_LOG	Lead1	per-call	s_groupLog_value = mc2::gate::get<"MC2_GOSFX_GROUP_LOG">();	NO-CHANGE	site Lead1 vs row Lead1
+GameOS/gameos/gos_particle_bridge.cpp:102	MC2_VFX_ORACLE_TUBE_COVERAGE	Lead1	per-call	s_tubeCoverage_value = mc2::gate::get<"MC2_VFX_ORACLE_TUBE_COVERAGE">();	NO-CHANGE	site Lead1 vs row Lead1
+GameOS/gameos/gos_particle_bridge.cpp:119	MC2_VFX_DEBUG_MODE		per-call	-	UNHANDLED	numeric reader is not a lambda/declaration initializer (e.g. multi-statement local)
+GameOS/gameos/gos_particle_bridge.cpp:150	MC2_TUNE_VFX_BRIGHTNESS		per-call	-	UNHANDLED	helper-call reader envVfxScale(): helper mapping lands in G4/G6
+GameOS/gameos/gos_particle_bridge.cpp:151	MC2_TUNE_VFX_ADDITIVE_BRIGHTNESS		per-call	-	UNHANDLED	helper-call reader envVfxScale(): helper mapping lands in G4/G6
+GameOS/gameos/gos_particle_bridge.cpp:152	MC2_TUNE_VFX_ALPHA_SCALE		per-call	-	UNHANDLED	helper-call reader envVfxScale(): helper mapping lands in G4/G6
+GameOS/gameos/gos_particle_bridge.cpp:154	MC2_TUNE_VFX_AGE_FADE		per-call	-	UNHANDLED	numeric reader is not a lambda/declaration initializer (e.g. multi-statement local)
+GameOS/gameos/gos_particle_bridge.cpp:172	MC2_VFX_SOFT_PARTICLES	Lead1	per-call	s_soft_enabled = mc2::gate::get<"MC2_VFX_SOFT_PARTICLES">();	NO-CHANGE	site Lead1 vs row Lead1
+GameOS/gameos/gos_particle_bridge.cpp:188	MC2_VFX_SCENECOLOR_GRAB	Lead1	per-call	s_scenecolor_enabled = mc2::gate::get<"MC2_VFX_SCENECOLOR_GRAB">();	NO-CHANGE	site Lead1 vs row Lead1
+GameOS/gameos/gos_particle_bridge.cpp:204	MC2_VFX_LIT_PARTICLES	Lead1	per-call	s_lit_enabled = mc2::gate::get<"MC2_VFX_LIT_PARTICLES">();	NO-CHANGE	site Lead1 vs row Lead1
+GameOS/gameos/gos_particle_bridge.cpp:206	MC2_TUNE_VFX_LIT_STRENGTH		per-call	-	UNHANDLED	numeric reader is not a lambda/declaration initializer (e.g. multi-statement local)
+GameOS/gameos/gos_particle_bridge.cpp:221	MC2_VFX_BLACKBODY	Lead1	per-call	s_blackbody_enabled = mc2::gate::get<"MC2_VFX_BLACKBODY">();	NO-CHANGE	site Lead1 vs row Lead1
+GameOS/gameos/gos_particle_bridge.cpp:241	MC2_VFX_DISTORTION	Lead1	per-call	s_distort_enabled = mc2::gate::get<"MC2_VFX_DISTORTION">();	NO-CHANGE	site Lead1 vs row Lead1
+GameOS/gameos/gos_particle_bridge.cpp:243	MC2_VFX_DISTORT_FIXTURE	Lead1	per-call	s_distort_fixture = mc2::gate::get<"MC2_VFX_DISTORT_FIXTURE">();	NO-CHANGE	site Lead1 vs row Lead1
+GameOS/gameos/gos_particle_bridge.cpp:245	MC2_VFX_DISTORT_AMP		per-call	-	UNHANDLED	numeric reader is not a lambda/declaration initializer (e.g. multi-statement local)
+GameOS/gameos/gos_particle_bridge.cpp:496	MC2_VFX_TUBE_UPLOAD_STATS	Lead0	per-call	cached = mc2::gate::get<"MC2_VFX_TUBE_UPLOAD_STATS">();	NO-CHANGE	site Lead0 vs row Lead0
+GameOS/gameos/gos_visual_capture.cpp:548	MC2_VISUAL_CAPTURE_FRAME		per-call	-	UNHANDLED	numeric reader is not a lambda/declaration initializer (e.g. multi-statement local)
+GameOS/gameos/gos_visual_capture.cpp:550	MC2_VISUAL_CAPTURE_DIR		per-call	-	UNHANDLED	getenv result is used as a pointer here (not a bare presence test)
+GameOS/gameos/gos_visual_capture.cpp:562	MC2_VISUAL_BOOKMARK_CAPTURE		per-call	-	UNHANDLED	getenv result is used as a pointer here (not a bare presence test)
+GameOS/gameos/gos_visual_capture.cpp:564	MC2_VISUAL_SETTLE		per-call	-	UNHANDLED	numeric reader is not a lambda/declaration initializer (e.g. multi-statement local)
+GameOS/gameos/gos_visual_capture.cpp:566	MC2_VISUAL_CAPTURE_DIR		per-call	-	UNHANDLED	classifier: nonreader
+GameOS/gameos/gos_visual_capture.cpp:571	MC2_VISUAL_CAPTURE_FRAME		per-call	-	UNHANDLED	numeric reader is not a lambda/declaration initializer (e.g. multi-statement local)
+GameOS/gameos/gos_visual_capture.cpp:725	MC2_VISUAL_CAPTURE_ON_FIRE	Presence	local-static	static const bool s_onFire = mc2::gate::get<"MC2_VISUAL_CAPTURE_ON_FIRE">();	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/gos_visual_capture.cpp:811	MC2_VISUAL_CAPTURE_EXIT_AFTER	Presence	per-call	if (mc2::gate::get<"MC2_VISUAL_CAPTURE_EXIT_AFTER">()) {	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/gos_visual_capture.cpp:895	MC2_CAMERA_PARK	Presence	local-static	-	UNHANDLED	pointer s_park is consumed by a block/branch statement: not a single expression
+GameOS/gameos/gos_visual_capture.cpp:929	MC2_VISUAL_CAPTURE_CLEAN	Lead0	lambda-static	static const bool s_clean = mc2::gate::get<"MC2_VISUAL_CAPTURE_CLEAN">();	NO-CHANGE	site Lead0 vs row Lead0
+GameOS/gameos/gos_render.cpp:402	MC2_GL_DEBUG	Presence	per-call	const bool gl_debug = mc2::gate::get<"MC2_GL_DEBUG">();	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/gos_render.cpp:508	MC2_WINDOWED	Lead0	per-call	-	UNHANDLED	pointer wenv is not used by the following statement
+GameOS/gameos/gos_render.cpp:509	MC2_WINDOW_RESIZABLE	Lead0Kill	per-call	-	UNHANDLED	expression using renv also names `wenv`
+GameOS/gameos/gos_render.cpp:555	MC2_RES_DIAG	Presence	per-call	if (window && mc2::gate::get<"MC2_RES_DIAG">()) {	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/gos_render.cpp:558	MC2_WINDOWED		per-call	-	UNHANDLED	paired reads: the statement reads this gate more than once; replace the whole expression by hand
+GameOS/gameos/gos_render.cpp:558	MC2_WINDOWED		per-call	-	UNHANDLED	paired reads: the statement reads this gate more than once; replace the whole expression by hand
+GameOS/gameos/gos_render.cpp:559	MC2_WINDOWED		per-call	-	UNHANDLED	paired reads: the statement reads this gate more than once; replace the whole expression by hand
+GameOS/gameos/gos_render.cpp:589	MC2_RES_DIAG	Presence	per-call	if (window_offscreen_requested() && mc2::gate::get<"MC2_RES_DIAG">()) {	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/gos_render.cpp:603	MC2_OS_CURSOR	Presence	per-call	if (mc2::gate::get<"MC2_OS_CURSOR">())	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/gos_render.cpp:655	MC2_VSYNC	Lead1	per-call	-	UNHANDLED	pointer vsync_env is used again later in the block
+GameOS/gameos/gos_render.cpp:716	MC2_GL_DEBUG	Presence	per-call	const bool gl_debug_mode = mc2::gate::get<"MC2_GL_DEBUG">();	NO-CHANGE	site Presence vs row Presence
+GuiRuntime/GuiRuntime.cpp:88	MC2_IMGUI	Lead0Kill	per-call	cached = mc2::gate::get<"MC2_IMGUI">();	NO-CHANGE	site Lead0Kill vs row Lead0Kill
+GuiRuntime/GuiRuntime.cpp:97	MC2_VK_IMGUI	Lead1	per-call	cached = mc2::gate::get<"MC2_VK_IMGUI">();	NO-CHANGE	site Lead1 vs row Lead1; G0 ledger intentional-optin: Lead1 explicit opt-in
+GuiRuntime/GuiRuntime.cpp:105	MC2_UI_DEFS_TRACE	Lead0	per-call	return mc2::gate::get<"MC2_UI_DEFS_TRACE">();	NO-CHANGE	site Lead0 vs row Lead0; G0 ledger resolved: Lead0
+GuiRuntime/GuiRuntime.cpp:435	MC2_EDITOR_DOCK	Lead0Kill	per-call	-	UNHANDLED	pointer d is consumed by a block/branch statement: not a single expression
+GuiRuntime/GuiRuntime.cpp:447	MC2_EDITOR_AUTODOCK	Lead0Kill	per-call	-	UNHANDLED	pointer a is consumed by a block/branch statement: not a single expression
+GuiRuntime/GuiRuntime.cpp:535	MC2_EDITOR_RTT	Exact1	per-call	s_on = mc2::gate::get<"MC2_EDITOR_RTT">();	NO-CHANGE	site Exact1 vs row Exact1
+GuiRuntime/GuiRuntime.cpp:544	MC2_EDITOR_AUTODOCK	Lead0Kill	per-call	s = mc2::gate::get<"MC2_EDITOR_AUTODOCK">();	EDGE	site Lead0Kill vs row Lead0Kill; differs on X01; byte-identical alternative: mc2::gate::get<"MC2_EDITOR_AUTODOCK", mc2::gate::Rule::Lead0Kill>(); no harness value in the seed hits a changed input
+GuiRuntime/GuiRuntime.cpp:560	MC2_EDITOR_DOCK	Lead0Kill	per-call	return mc2::gate::get<"MC2_EDITOR_DOCK">();	EDGE	site Lead0Kill vs row Lead0Kill; differs on X01; byte-identical alternative: mc2::gate::get<"MC2_EDITOR_DOCK", mc2::gate::Rule::Lead0Kill>(); no harness value in the seed hits a changed input
+GuiRuntime/GuiRuntime.cpp:583	MC2_EDITOR_AUTODOCK	Lead0Kill	per-call	s_autodock = mc2::gate::get<"MC2_EDITOR_AUTODOCK">();	EDGE	site Lead0Kill vs row Lead0Kill; differs on X01; byte-identical alternative: mc2::gate::get<"MC2_EDITOR_AUTODOCK", mc2::gate::Rule::Lead0Kill>(); no harness value in the seed hits a changed input
+GuiRuntime/GuiRuntime.cpp:795	MC2_IMGUI_DEMO	Lead1	per-call	cached = mc2::gate::get<"MC2_IMGUI_DEMO">();	NO-CHANGE	site Lead1 vs row Lead1
+GuiRuntime/EditorInspector.cpp:111	MC2_IMGUI_INSPECTOR	Lead0Kill	per-call	cached = mc2::gate::get<"MC2_IMGUI_INSPECTOR">();	NO-CHANGE	site Lead0Kill vs row Lead0Kill
+GuiRuntime/EditorInspector.cpp:682	MC2_STATIC_PROP_AMBIENT_V1	Lead0	per-call	bool ambOn = mc2::gate::get<"MC2_STATIC_PROP_AMBIENT_V1">();	NO-CHANGE	site Lead0 vs row Lead0
+GuiRuntime/EditorInspector.cpp:726	MC2_STATIC_PROP_IBL_SH	Lead0Kill	per-call	bool iblOn = mc2::gate::get<"MC2_STATIC_PROP_IBL_SH">();	NO-CHANGE	site Lead0Kill vs row Lead0Kill
+GuiRuntime/EditorInspector.cpp:751	MC2_STATIC_PROP_PBR_V1	Lead0	per-call	bool pbrOn = mc2::gate::get<"MC2_STATIC_PROP_PBR_V1">();	NO-CHANGE	site Lead0 vs row Lead0
+GuiRuntime/EditorInspector.cpp:1273	MC2_DEBUG_RENDERER	Lead0	per-call	s_drEnabled = mc2::gate::get<"MC2_DEBUG_RENDERER">();	NO-CHANGE	site Lead0 vs row Lead0; G0 ledger resolved: Lead0 (set, non-empty, not "0")
+GuiRuntime/GraphicsOptionsWindow_terrain.cpp:397	MC2_TERRAIN_CLIFF_SHADOW_FLOOR	Lead0	per-call	bool cliffGateOn = mc2::gate::get<"MC2_TERRAIN_CLIFF_SHADOW_FLOOR">();	NO-CHANGE	site Lead0 vs row Lead0
+GuiRuntime/GraphicsOptionsWindow_terrain.cpp:421	MC2_DYNAMIC_DECALS	Lead0P	per-call	bool ddOn = mc2::gate::get<"MC2_DYNAMIC_DECALS">();	NO-CHANGE	site Lead0P vs row Lead0P
+GuiRuntime/GraphicsOptionsWindow_terrain.cpp:514	MC2_STATIC_PROP_IBL_SH	Lead0Kill	per-call	-	UNHANDLED	pointer env is used again later in the block
+GuiRuntime/GraphicsOptionsWindow_terrain.cpp:540	MC2_STATIC_PROP_PBR_V1	Lead0	per-call	bool pbrOn = mc2::gate::get<"MC2_STATIC_PROP_PBR_V1">();	NO-CHANGE	site Lead0 vs row Lead0
+GuiRuntime/GraphicsOptionsWindow_terrain.cpp:568	MC2_STATIC_PROP_PBR_V1	Lead0	per-call	-	UNHANDLED	pointer env is used again later in the block
+GuiRuntime/GraphicsOptionsWindow_terrain.cpp:676	MC2_WATER_SKYTINT	Lead0	per-call	bool gateOn = mc2::gate::get<"MC2_WATER_SKYTINT">();	NO-CHANGE	site Lead0 vs row Lead0; G0 ledger resolved: Lead0
+GameOS/gameos/gpu_driven_common.cpp:32	MC2_GPU_DRIVEN	Lead0Kill	lambda-static	static const bool s_enabled = mc2::gate::get<"MC2_GPU_DRIVEN">();	NO-CHANGE	site Lead0Kill vs row Lead0Kill
+GameOS/gameos/gpu_driven_common.cpp:40	MC2_GPU_DRIVEN_PARITY	Lead1	lambda-static	static const bool s_enabled = mc2::gate::get<"MC2_GPU_DRIVEN_PARITY">();	NO-CHANGE	site Lead1 vs row Lead1
+GameOS/gameos/gpu_driven_common.cpp:48	MC2_GPU_DRIVEN_TRACE	Lead1	lambda-static	static const bool s_enabled = mc2::gate::get<"MC2_GPU_DRIVEN_TRACE">();	NO-CHANGE	site Lead1 vs row Lead1
+GameOS/gameos/gpu_driven_common.cpp:57	MC2_GPU_DRIVEN_WATER		per-call	-	UNHANDLED	lambda body names `IsGlobalEnabled`, which is state outside the read
+GameOS/gameos/gpu_driven_common.cpp:66	MC2_GPU_DRIVEN_TERRAIN_SOLID		per-call	-	UNHANDLED	lambda body names `IsGlobalEnabled`, which is state outside the read
+GameOS/gameos/gpu_driven_common.cpp:75	MC2_GPU_DRIVEN_OVERLAY		per-call	-	UNHANDLED	lambda body names `IsGlobalEnabled`, which is state outside the read
+GameOS/gameos/gpu_cull_compute.cpp:40	MC2_GPU_CULL_COMPUTE_TRACE	Presence	namespace-static	static const bool s_computeTrace = mc2::gate::get<"MC2_GPU_CULL_COMPUTE_TRACE">();	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/gpu_cull_compute.cpp:44	MC2_GPU_CULL_OWNERSHIP_PARITY	Presence	namespace-static	static const bool s_ownershipParity = mc2::gate::get<"MC2_GPU_CULL_OWNERSHIP_PARITY">();	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/gpu_cull_compute.cpp:110	MC2_GPU_CULL	Lead0Kill	per-call	s_enabled = mc2::gate::get<"MC2_GPU_CULL">();	NO-CHANGE	site Lead0Kill vs row Lead0Kill
+GameOS/gameos/gpu_cull_compute.cpp:125	MC2_GPU_CULL_FRUSTUM_DILATION		per-call	-	UNHANDLED	numeric reader is not a lambda/declaration initializer (e.g. multi-statement local)
+GameOS/gameos/gpu_cull_compute.cpp:300	MC2_GPU_CULL_DUMP_SHADER	Presence	per-call	if (mc2::gate::get<"MC2_GPU_CULL_DUMP_SHADER">()) {	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/gpu_cull_compute.cpp:899	MC2_CAMERA_MOVE_DIAG	Presence	local-static	static const bool s_camMoveDiag = mc2::gate::get<"MC2_CAMERA_MOVE_DIAG">();	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/gameos.cpp:78	MC2_TRACE_EXIT	Presence	local-static	static const bool s_trace = mc2::gate::get<"MC2_TRACE_EXIT">();	NO-CHANGE	site Presence vs row Presence; inside #ifdef _WIN32
+GameOS/gameos/gameos.cpp:290	MC2_DETERMINISTIC_RNG	Lead0	per-call	s_detRngEnabled = mc2::gate::get<"MC2_DETERMINISTIC_RNG">();	NO-CHANGE	site Lead0 vs row Lead0
+editor/EditorMFC.cpp:177	MC2_EDITOR_TRACE	Presence	per-call	-	UNHANDLED	paired reads: the statement reads this gate 2 times; as one reader it is !Presence vs row Presence: NO-CHANGE -- replace the whole expression by hand
+editor/EditorMFC.cpp:187	MC2_EDITOR_TRACE	Presence (== nullptr)	per-call	if (!mc2::gate::get<"MC2_EDITOR_TRACE">())	NO-CHANGE	site !Presence vs row Presence
+editor/EditorMFC.cpp:200	MC2_EDITOR_TRACE	Presence (== nullptr)	per-call	if (!mc2::gate::get<"MC2_EDITOR_TRACE">())	NO-CHANGE	site !Presence vs row Presence
+editor/EditorMFC.cpp:457	MC2_NO_ACTIVATE	Lead0	per-call	-	UNHANDLED	pointer noActivate is not used by the following statement
+editor/EditorMFC.cpp:458	MC2_WINDOW_OFFSCREEN	Lead0	per-call	-	UNHANDLED	expression using offscreen also names `noActivate`
+editor/EditorGosRender.cpp:431	MC2_GL_DEBUG	Presence	per-call	const bool gl_debug = mc2::gate::get<"MC2_GL_DEBUG">();	NO-CHANGE	site Presence vs row Presence
+editor/EditorGosRender.cpp:693	MC2_EDITOR_FPS_CAP		per-call	-	UNHANDLED	numeric reader is not a lambda/declaration initializer (e.g. multi-statement local)
+editor/EditorGosRender.cpp:836	MC2_VSYNC	Lead1	per-call	-	UNHANDLED	pointer vsync_env is used again later in the block; inside #ifdef PLATFORM_WINDOWS
+editor/EditorGosRender.cpp:863	MC2_GL_DEBUG	Presence	per-call	const bool gl_debug_mode = mc2::gate::get<"MC2_GL_DEBUG">();	NO-CHANGE	site Presence vs row Presence; inside #ifdef PLATFORM_WINDOWS
+editor/EditorGosRender.cpp:885	MC2_VSYNC	Lead1	per-call	-	UNHANDLED	pointer vsync_env is used again later in the block; inside #else of #ifdef PLATFORM_WINDOWS
+GameOS/gameos/vulkan_post_screenfx_native.cpp:132	MC2_SHADOW_CSM_SOFTNESS	Num(atof)	lambda-static	static const float s_s = mc2::gate::get<"MC2_SHADOW_CSM_SOFTNESS">();	EDGE	no row edit needed; inputs whose result changes after the row edit: '1e999'; harness sets none of them; inside #ifdef MC2_VULKAN_ISLAND
+GameOS/gameos/vulkan_post_screenfx_native.cpp:142	MC2_VULKAN_SPV_DIR		per-call	-	UNHANDLED	row kind String: read through str<> (G3 Enum / G4 Tri / String via str<>); inside #ifdef MC2_VULKAN_ISLAND
+GameOS/gameos/vulkan_post_screenfx_native.cpp:747	MC2_SHADOW_ENABLE	Lead0Kill	per-call	const bool dynamicCasterActive = mc2::gate::get<"MC2_SHADOW_ENABLE">();	NO-CHANGE	site Lead0Kill vs row Lead0Kill; G0 ledger resolved: Lead0Kill (default ON, =0 disables); inside #ifdef MC2_VULKAN_ISLAND
+GameOS/gameos/vulkan_post_screenfx_native.cpp:800	MC2_SHADOW_OBJ_NORMAL_BIAS	Num(atof)	per-call	p.objNormalBiasScale = mc2::gate::get<"MC2_SHADOW_OBJ_NORMAL_BIAS">();	EDGE	HAND (not applied by the tool): the row needs an edit first (MC2_SHADOW_OBJ_NORMAL_BIAS) clampRange(0, 20): apply it by hand after checking it against the reader [ROW EDIT needed first (MC2_SHADOW_OBJ_NORMAL_BIAS) clampRange(0, 20); inputs whose result changes after the row edit: '1e999'; harness sets none of them]; inside #ifdef MC2_VULKAN_ISLAND
+GameOS/gameos/vulkan_post_screenfx_native.cpp:807	MC2_SHADOW_MECH_SOFT	Num(atof)	per-call	p.mechSoft = mc2::gate::get<"MC2_SHADOW_MECH_SOFT">();	EDGE	no row edit needed; inputs whose result changes after the row edit: '1e999'; harness sets none of them; inside #ifdef MC2_VULKAN_ISLAND
+GameOS/gameos/gos_visual_diff.cpp:54	MC2_VISUAL_DIFF_OUT		per-call	-	UNHANDLED	row kind String: read through str<> (G3 Enum / G4 Tri / String via str<>)
+GameOS/gameos/gos_visual_diff.cpp:63	MC2_VISUAL_DIFF_MISSION		per-call	-	UNHANDLED	row kind String: read through str<> (G3 Enum / G4 Tri / String via str<>)
+GameOS/gameos/gos_visual_diff.cpp:79	MC2_VISUAL_DIFF_CAPTURE	Lead0	per-call	s_capture = mc2::gate::get<"MC2_VISUAL_DIFF_CAPTURE">();	NO-CHANGE	site Lead0 vs row Lead0
+GameOS/gameos/gos_visual_diff.cpp:99	MC2_VISUAL_DIFF_FRAME_N		per-call	-	UNHANDLED	helper-call reader envInt(): helper mapping lands in G4/G6
+GameOS/gameos/gos_visual_diff.cpp:100	MC2_VISUAL_DIFF_MAX_FRAMES		per-call	-	UNHANDLED	helper-call reader envInt(): helper mapping lands in G4/G6
+GameOS/gameos/gos_visual_diff.cpp:102	MC2_VISUAL_DIFF_MISSION		per-call	-	UNHANDLED	row kind String: read through str<> (G3 Enum / G4 Tri / String via str<>)
+GameOS/gameos/gos_rdoc_capture.cpp:86	MC2_RDC_MISSION	NonEmpty	per-call	-	UNHANDLED	pointer m is consumed by a block/branch statement: not a single expression
+GameOS/gameos/gos_rdoc_capture.cpp:116	MC2_RDC_CAPTURE_FRAME		per-call	-	UNHANDLED	numeric reader is not a lambda/declaration initializer (e.g. multi-statement local)
+GameOS/gameos/gos_rdoc_capture.cpp:122	MC2_RDC_EXIT_AFTER	Presence	per-call	s_state.exitAfter = mc2::gate::get<"MC2_RDC_EXIT_AFTER">();	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/gos_rdoc_capture.cpp:131	MC2_RDC_CAPTURE_PATH		per-call	-	UNHANDLED	getenv result is used as a pointer here (not a bare presence test)
+GameOS/gameos/gos_rdoc_capture.cpp:258	MC2_RDC_MAX_WAIT		per-call	-	UNHANDLED	helper-call reader envInt(): helper mapping lands in G4/G6
+GameOS/gameos/gameos_input.cpp:38	MC2_NO_CURSOR_GRAB	Partial[D,D,off,on,on,on,on,on]	per-call	-	UNHANDLED	pointer explicitVar is consumed by a block/branch statement: not a single expression
+GameOS/gameos/gameos_input.cpp:42	MC2_SMOKE_MODE	Presence	per-call	s_state = mc2::gate::get<"MC2_SMOKE_MODE">() ? 1 : 0;	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/gameos_input.cpp:66	MC2_WINDOW_OFFSCREEN	Lead0	per-call	s_state = mc2::gate::get<"MC2_WINDOW_OFFSCREEN">();	NO-CHANGE	site Lead0 vs row Lead0
+GameOS/gameos/gameos_input.cpp:116	MC2_SMOKE_MODE	Presence	per-call	s_state = (gos_WindowOffscreenRequested() || mc2::gate::get<"MC2_SMOKE_MODE">()) ? 1 : 0;	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/gameos_input.cpp:260	MC2_MOUSE_RECON	Presence	per-call	if (mc2::gate::get<"MC2_MOUSE_RECON">())	NO-CHANGE	site Presence vs row Presence
+gui/asystem.cpp:180	MC2_LOG_MECH_ICON	Presence	per-call	if (mc2::gate::get<"MC2_LOG_MECH_ICON">() && textureHandle && mcTextureManager)	NO-CHANGE	site Presence vs row Presence
+gui/asystem.cpp:210	MC2_LOG_MECH_ICON	Presence	per-call	if (mc2::gate::get<"MC2_LOG_MECH_ICON">() && textureHandle && mcTextureManager)	NO-CHANGE	site Presence vs row Presence
+gui/asystem.cpp:354	MC2_LOG_MECH_ICON	Presence	per-call	if ( mc2::gate::get<"MC2_LOG_MECH_ICON">() && strstr(buffer, "mechicon") )	NO-CHANGE	site Presence vs row Presence
+gui/asystem.cpp:737	MC2_LOG_MECH_ICON	Presence	per-call	if ( mc2::gate::get<"MC2_LOG_MECH_ICON">() && strstr(fileName, "mechicon") )	NO-CHANGE	site Presence vs row Presence
+gui/UiDefs.cpp:32	MC2_GAMEOS_UI_DEFS	Std(def=on)	per-call	-	UNHANDLED	expression using v also names `envValueIsFalse`
+gui/UiDefs.cpp:40	MC2_EDITOR_UI_DEFS	Std(def=on)	per-call	-	UNHANDLED	expression using v also names `envValueIsFalse`
+gui/UiDefs.cpp:75	MC2_UI_DEFS_LOADSCREEN	Presence	local-static	static const bool s_loadDefs = mc2::gate::get<"MC2_UI_DEFS_LOADSCREEN">();	NO-CHANGE	site Presence vs row Presence
+gui/UiDefs.cpp:83	MC2_UI_DEFS_RESULTS	Presence	local-static	static const bool s_resultsDefs = mc2::gate::get<"MC2_UI_DEFS_RESULTS">();	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/terrain_material_lib.cpp:174	MC2_TERRAIN_CONTROLMAP_ALBEDO		per-call	-	UNHANDLED	helper-call reader envGateOn(): helper mapping lands in G4/G6
+GameOS/gameos/terrain_material_lib.cpp:177	MC2_TERRAIN_CONTROLMAP_ALBEDO_STRENGTH		per-call	-	UNHANDLED	numeric reader is not a lambda/declaration initializer (e.g. multi-statement local)
+GameOS/gameos/terrain_material_lib.cpp:196	MC2_TERRAIN_MATERIAL_TEXTURES		per-call	-	UNHANDLED	helper-call reader envGateOn(): helper mapping lands in G4/G6
+GameOS/gameos/terrain_material_lib.cpp:229	MC2_TERRAIN_MATERIAL_LIB_FILE		per-call	-	UNHANDLED	row kind String: read through str<> (G3 Enum / G4 Tri / String via str<>)
+GameOS/gameos/terrain_material_lib.cpp:231	MC2_TERRAIN_MATERIAL_LIB		per-call	-	UNHANDLED	helper-call reader envGateOn(): helper mapping lands in G4/G6
+GameOS/gameos/terrain_material_lib.cpp:232	MC2_TERRAIN_CONTROLMAP_ALBEDO		per-call	-	UNHANDLED	helper-call reader envGateOn(): helper mapping lands in G4/G6
+GameOS/gameos/terrain_material_lib.cpp:233	MC2_TERRAIN_MATERIAL_TEXTURES		per-call	-	UNHANDLED	helper-call reader envGateOn(): helper mapping lands in G4/G6
+GameOS/gameos/terrain_material_lib.cpp:343	MC2_TERRAIN_SNOW_BRIGHTNESS_DAMPEN		per-call	-	UNHANDLED	helper-call reader envIsSet(): helper mapping lands in G4/G6
+GameOS/gameos/render_snapshot.cpp:37	MC2_STATIC_PROP_SNAPSHOT_BRIDGE_COMPARE	Lead1	lambda-static	static const bool s_bridgeCompareEnabled = mc2::gate::get<"MC2_STATIC_PROP_SNAPSHOT_BRIDGE_COMPARE">();	NO-CHANGE	site Lead1 vs row Lead1
+GameOS/gameos/render_snapshot.cpp:46	MC2_STATIC_PROP_SNAPSHOT_FILL_DIRTYONLY	Lead0Kill	lambda-static	static const bool s_dirtyOnlyEnabled = mc2::gate::get<"MC2_STATIC_PROP_SNAPSHOT_FILL_DIRTYONLY">();	NO-CHANGE	site Lead0Kill vs row Lead0Kill
+GameOS/gameos/render_snapshot.cpp:245	MC2_SNAPSHOT_MECH_EXTRACT	Lead0	lambda-static	static const bool s_mechExtractEnabled = mc2::gate::get<"MC2_SNAPSHOT_MECH_EXTRACT">();	NO-CHANGE	site Lead0 vs row Lead0; G0 ledger resolved: Lead0
+GameOS/gameos/render_snapshot.cpp:673	MC2_RENDER_SNAPSHOT_LOG	Lead1	lambda-static	static const bool s_logEnabled = mc2::gate::get<"MC2_RENDER_SNAPSHOT_LOG">();	NO-CHANGE	site Lead1 vs row Lead1
+GameOS/gameos/gpu_cull_readback.cpp:33	MC2_GPU_CULL_READBACK_TRACE	Presence	namespace-static	static const bool s_readbackTrace = mc2::gate::get<"MC2_GPU_CULL_READBACK_TRACE">();	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/gpu_cull_readback.cpp:67	MC2_GPU_CULL_READBACK	Lead0Kill	per-call	s_enabled = mc2::gate::get<"MC2_GPU_CULL_READBACK">();	NO-CHANGE	site Lead0Kill vs row Lead0Kill
+GameOS/gameos/gpu_cull_readback.cpp:82	MC2_GPU_CULL_CONSERVATIVE_OR	Lead0Kill	per-call	-	UNHANDLED	pointer v is consumed by a block/branch statement: not a single expression
+GameOS/gameos/gpu_cull_readback.cpp:196	MC2_GPU_CULL_FORCE_FENCE_NOT_READY	Presence	per-call	s_forceNotReady = mc2::gate::get<"MC2_GPU_CULL_FORCE_FENCE_NOT_READY">();	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/gos_vegetation.cpp:110	MC2_VEGETATION_CARDS	Lead0	per-call	-	UNHANDLED	pointer v is used again later in the block
+GameOS/gameos/gos_vegetation.cpp:247	MC2_VEGETATION_ATLAS	NonEmpty	per-call	-	UNHANDLED	pointer envPath is consumed by a block/branch statement: not a single expression
+GameOS/gameos/gos_vegetation.cpp:442	MC2_VEG_DEBUG_FORCE_VISIBLE	Lead0	per-call	s_forceVis = mc2::gate::get<"MC2_VEG_DEBUG_FORCE_VISIBLE">();	NO-CHANGE	site Lead0 vs row Lead0
+GameOS/gameos/gos_vegetation.cpp:454	MC2_VEG_MAX_DIST		per-call	-	UNHANDLED	numeric reader is not a lambda/declaration initializer (e.g. multi-statement local)
+GameOS/gameos/gos_smoke.cpp:49	MC2_SMOKE_MODE	Presence	per-call	g_state.enabled = mc2::gate::get<"MC2_SMOKE_MODE">();	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/gos_smoke.cpp:54	MC2_SMOKE_FIXED_TIMESTEP	Presence	per-call	g_state.fixedTimestep = mc2::gate::get<"MC2_SMOKE_FIXED_TIMESTEP">();	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/gos_smoke.cpp:61	MC2_SMOKE_SEED		per-call	-	UNHANDLED	numeric reader is not a lambda/declaration initializer (e.g. multi-statement local)
+GameOS/gameos/gos_smoke.cpp:155	MC2_SMOKE_PERF_SAMPLES		per-call	-	UNHANDLED	numeric reader is not a lambda/declaration initializer (e.g. multi-statement local)
+GameOS/gameos/gameos_graphics_light_ssbo.cpp:21	MC2_GPUBUF_LIGHT_GROWONCE	Presence	local-static	static const bool s_on = mc2::gate::get<"MC2_GPUBUF_LIGHT_GROWONCE">();	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/gameos_graphics_light_ssbo.cpp:80	MC2_LIGHT_UPLOAD_STATS	Lead0	per-call	cached = mc2::gate::get<"MC2_LIGHT_UPLOAD_STATS">();	NO-CHANGE	site Lead0 vs row Lead0
+GameOS/gameos/gameos_graphics_light_ssbo.cpp:106	MC2_LIGHTSSBO_TRACE	Presence	namespace-static	static const bool s_lightSsboTrace = mc2::gate::get<"MC2_LIGHTSSBO_TRACE">();	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/gameos_graphics_light_ssbo.cpp:140	MC2_LIGHT_PREFIX_GPU_COPY	Lead0P	lambda-static	static const bool s_on = mc2::gate::get<"MC2_LIGHT_PREFIX_GPU_COPY">();	NO-CHANGE	site Lead0P vs row Lead0P
+GameOS/gameos/MC2Strings.cpp:92	MC2_STRINGS_TRACE	Presence	local-static	static const bool enabled = mc2::gate::get<"MC2_STRINGS_TRACE", mc2::gate::Rule::Presence>();	SEMANTICS	site Presence vs row Std(def=off); differs on E,Z,F; no harness value in the seed hits a changed input
+GameOS/gameos/MC2Strings.cpp:807	MC2_LOG_STRINGS	Presence	per-call	if ( mc2::gate::get<"MC2_LOG_STRINGS">() )	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/MC2Strings.cpp:840	MC2_DEFS_ROOT	NonEmpty	per-call	-	UNHANDLED	pointer envRoot is consumed by a block/branch statement: not a single expression
+GameOS/gameos/MC2Strings.cpp:1065	MC2_LOG_STRINGS	Presence	per-call	if (mc2::gate::get<"MC2_LOG_STRINGS">()) {	NO-CHANGE	site Presence vs row Presence
+gui/UiDefs_parse.cpp:34	MC2_UI_DEFS_TRACE	Lead0	per-call	return mc2::gate::get<"MC2_UI_DEFS_TRACE">();	NO-CHANGE	site Lead0 vs row Lead0; G0 ledger resolved: Lead0
+gui/UiDefs_parse.cpp:263	MC2_DEFS_ROOT	NonEmpty	per-call	-	UNHANDLED	pointer explicitRoot is consumed by a block/branch statement: not a single expression
+gui/UiDefs_parse.cpp:304	MC2_UI_DEFS_IGNORE_PACKAGE_VERSION	Token/State	per-call	-	UNHANDLED	pointer skip is consumed by a block/branch statement: not a single expression
+GameOS/gameos/vulkan_color_prop_island.cpp:167	MC2_VULKAN_SPV_DIR		per-call	-	UNHANDLED	row kind String: read through str<> (G3 Enum / G4 Tri / String via str<>); inside #ifdef MC2_VULKAN_ISLAND
+GameOS/gameos/vulkan_color_prop_island.cpp:1548	MC2_SP_GLASS_DITHER	Lead0Kill	lambda-static	static const int s_glassDither = mc2::gate::get<"MC2_SP_GLASS_DITHER">();	NO-CHANGE	site Lead0Kill vs row Lead0Kill; inside #ifdef MC2_VULKAN_ISLAND
+GameOS/gameos/vulkan_color_prop_island.cpp:1640	MC2_VISUAL_BOOKMARK_CAPTURE	Presence (== nullptr)	per-call	const bool frozen = mc2CaptureGaitFreezeActive() != 0 || !mc2::gate::get<"MC2_VISUAL_BOOKMARK_CAPTURE">();	NO-CHANGE	site !Presence vs row Presence; inside #ifdef MC2_VULKAN_ISLAND
+GameOS/gameos/visual_tuning_profile.cpp:170	MC2_STATIC_PROP_IBL_SH_STRENGTH		per-call	-	UNHANDLED	helper-call reader envIsSet(): helper mapping lands in G4/G6
+GameOS/gameos/visual_tuning_profile.cpp:175	MC2_WATER_SKYTINT	Lead0	per-call	-	UNHANDLED	pointer skyTintEnv is consumed by a block/branch statement: not a single expression
+GameOS/gameos/visual_tuning_profile.cpp:181	MC2_TUNE_VFX_BRIGHTNESS		per-call	-	UNHANDLED	helper-call reader envIsSet(): helper mapping lands in G4/G6
+GameOS/gameos/visual_tuning_profile.cpp:186	MC2_TUNE_VFX_ADDITIVE_BRIGHTNESS		per-call	-	UNHANDLED	helper-call reader envIsSet(): helper mapping lands in G4/G6
+GameOS/gameos/visual_tuning_profile.cpp:194	MC2_TUNE_VFX_LIT_STRENGTH		per-call	-	UNHANDLED	helper-call reader envIsSet(): helper mapping lands in G4/G6
+GameOS/gameos/visual_tuning_profile.cpp:213	MC2_MECH_AMBIENT_V1_STRENGTH		per-call	-	UNHANDLED	helper-call reader envIsSet(): helper mapping lands in G4/G6
+GameOS/gameos/visual_tuning_profile.cpp:218	MC2_MECH_SPECULAR_STRENGTH		per-call	-	UNHANDLED	helper-call reader envIsSet(): helper mapping lands in G4/G6
+GameOS/gameos/visual_tuning_profile.cpp:302	MC2_VISUAL_TUNING_FILE		per-call	-	UNHANDLED	row kind String: read through str<> (G3 Enum / G4 Tri / String via str<>)
+GameOS/gameos/utils/shader_builder.cpp:420	MC2_SHADER_SPIRV	Lead1	per-call	-	UNHANDLED	pointer e is consumed by a block/branch statement: not a single expression
+GameOS/gameos/utils/shader_builder.cpp:422	MC2_SHADER_HOT_RELOAD	Lead1	per-call	-	UNHANDLED	pointer hr is consumed by a block/branch statement: not a single expression
+GameOS/gameos/utils/shader_builder.cpp:431	MC2_SHADER_SPIRV_FATAL	Lead1	per-call	return mc2::gate::get<"MC2_SHADER_SPIRV_FATAL">();	NO-CHANGE	site Lead1 vs row Lead1
+GameOS/gameos/mc2_hitch_trace.cpp:35	MC2_HITCH_TRACE	Presence	per-call	g_mc2HitchEnabled = mc2::gate::get<"MC2_HITCH_TRACE">();	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/mc2_hitch_trace.cpp:37	MC2_HITCH_MS		per-call	-	UNHANDLED	numeric reader is not a lambda/declaration initializer (e.g. multi-statement local)
+GameOS/gameos/mc2_hitch_trace.cpp:49	MC2_GPUBUF_COUNTER	Presence	per-call	g_mc2GpuBufCounter = mc2::gate::get<"MC2_GPUBUF_COUNTER">();	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/gpu_cull_substrate.cpp:13	MC2_GPU_CULL_SUBSTRATE_TRACE	Presence	namespace-static	static const bool s_substrateTrace = mc2::gate::get<"MC2_GPU_CULL_SUBSTRATE_TRACE">();	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/gpu_cull_substrate.cpp:77	MC2_GPU_CULL_STATIC_FROZEN_RECORDS	Presence	namespace-static	static const bool s_staticFrozen = mc2::gate::get<"MC2_GPU_CULL_STATIC_FROZEN_RECORDS">();	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/gpu_cull_substrate.cpp:88	MC2_GPU_CULL_SUBSTRATE	Lead0Kill	per-call	return mc2::gate::get<"MC2_GPU_CULL_SUBSTRATE">();	NO-CHANGE	site Lead0Kill vs row Lead0Kill
+GameOS/gameos/gos_dev_shell.cpp:60	MC2_DEV_SHELL	Lead1	lambda-static	static const bool s_on = mc2::gate::get<"MC2_DEV_SHELL">();	NO-CHANGE	site Lead1 vs row Lead1; G0 ledger resolved: Lead1 (=1); inside #else of #ifndef _WIN32
+GameOS/gameos/gos_dev_shell.cpp:162	MC2_DEV_SHELL_PORT		per-call	-	UNHANDLED	numeric reader is not a lambda/declaration initializer (e.g. multi-statement local); inside #else of #ifndef _WIN32
+GameOS/gameos/diagnostic_trace.cpp:87	MC2_DIAG_TAGS		per-call	-	UNHANDLED	row kind String: read through str<> (G3 Enum / G4 Tri / String via str<>)
+GameOS/gameos/diagnostic_trace.cpp:129	MC2_DIAGNOSTIC_TRACE_FILE		per-call	-	UNHANDLED	row kind String: read through str<> (G3 Enum / G4 Tri / String via str<>)
+GameOS/gameos/diagnostic_trace.cpp:166	MC2_DIAGNOSTIC_TRACE_FILE		per-call	-	UNHANDLED	row kind String: read through str<> (G3 Enum / G4 Tri / String via str<>)
+GameOS/gameos/debug_state_dump.cpp:221	MC2_DEBUG_STATE_DUMP_DIR		per-call	-	UNHANDLED	getenv result is used as a pointer here (not a bare presence test)
+GameOS/gameos/debug_state_dump.cpp:481	MC2_VIEW_UNIFORMS		per-call	-	UNHANDLED	helper-call reader featureActive(): helper mapping lands in G4/G6
+GameOS/gameos/debug_state_dump.cpp:482	MC2_SNAPSHOT_STATIC_PROP_BUILD		per-call	-	UNHANDLED	helper-call reader featureActive(): helper mapping lands in G4/G6
+GameOS/gameos/debug_state_dump.cpp:483	MC2_MATERIAL_GPU		per-call	-	UNHANDLED	helper-call reader featureActive(): helper mapping lands in G4/G6
+GameOS/gameos/debug_state_dump.cpp:484	MC2_MATERIAL_GPU_SAMPLE		per-call	-	UNHANDLED	helper-call reader featureActive(): helper mapping lands in G4/G6
+GameOS/gameos/debug_state_dump.cpp:485	MC2_STATIC_PROP_IBL_SH		per-call	-	UNHANDLED	helper-call reader featureActive(): helper mapping lands in G4/G6
+GameOS/gameos/debug_state_dump.cpp:486	MC2_STATIC_PROP_PBR_V1		per-call	-	UNHANDLED	helper-call reader featureActive(): helper mapping lands in G4/G6
+GameOS/gameos/debug_state_dump.cpp:487	MC2_QUADSETUP_ARMED_SKIP		per-call	-	UNHANDLED	helper-call reader featureActive(): helper mapping lands in G4/G6
+GameOS/gameos/debug_state_dump.cpp:488	MC2_WATER_GPU_FULL_RECIPE_AUTHORITATIVE		per-call	-	UNHANDLED	helper-call reader featureActive(): helper mapping lands in G4/G6
+GameOS/gameos/debug_state_dump.cpp:489	MC2_VEGETATION_CARDS		per-call	-	UNHANDLED	helper-call reader featureActive(): helper mapping lands in G4/G6
+GameOS/gameos/debug_state_dump.cpp:593	MC2_SNAPSHOT_MECH_EXTRACT		per-call	-	UNHANDLED	helper-call reader featureActive(): helper mapping lands in G4/G6
+GameOS/gameos/debug_state_dump.cpp:717	MC2_UNIT_PROFILE_DATA		per-call	-	UNHANDLED	helper-call reader envFlagOn(): helper mapping lands in G4/G6
+GameOS/gameos/debug_state_dump.cpp:753	MC2_UNIT_PROFILE_DATA		per-call	-	UNHANDLED	helper-call reader envFlagOn(): helper mapping lands in G4/G6
+GameOS/gameos/debug_state_dump.cpp:785	MC2_UNIT_PROFILE_DATA		per-call	-	UNHANDLED	helper-call reader envFlagOn(): helper mapping lands in G4/G6
+GameOS/gameos/debug_state_dump.cpp:1180	MC2_DEBUG_STATE_DUMP		per-call	-	UNHANDLED	helper-call reader envFlagOn(): helper mapping lands in G4/G6
+GameOS/gameos/debug_state_dump.cpp:1200	MC2_DEBUG_STATE_DUMP_HISTORY		per-call	-	UNHANDLED	helper-call reader envFlagOn(): helper mapping lands in G4/G6
+GameOS/gameos/debug_state_dump.cpp:1211	MC2_DEBUG_STATE_DUMP		per-call	-	UNHANDLED	helper-call reader envFlagOn(): helper mapping lands in G4/G6
+tools/ibl_registry_contract_harness/ibl_registry_contract_harness.cpp:46	MC2_CONTRACT_REPO_ROOT		per-call	-	UNHANDLED	getenv result is used as a pointer here (not a bare presence test)
+tools/ibl_registry_contract_harness/ibl_registry_contract_harness.cpp:52	MC2_IBL_ASSET_STRICT	Lead1	per-call	return mc2::gate::get<"MC2_IBL_ASSET_STRICT">();	NO-CHANGE	site Lead1 vs row Lead1
+tools/brain_dispatch_harness/harness_main.cpp:621	MC2_BRAIN_INTENT_QUEUE	Presence (== nullptr)	per-call	if (!mc2::gate::get<"MC2_BRAIN_INTENT_QUEUE", mc2::gate::Rule::Presence>())	SEMANTICS	site !Presence vs row AtoiNZ; differs on E,Z,F,X; harness sets '0' (changes behavior)
+tools/brain_dispatch_harness/harness_main.cpp:648	MC2_BRAIN_INTENT_QUEUE	AtoiNZ	per-call	bool intentQueueGateOn = mc2::gate::get<"MC2_BRAIN_INTENT_QUEUE">();	NO-CHANGE	site AtoiNZ vs row AtoiNZ
+editor/EditorPlaytest.cpp:163	MC2_PLAYTEST_EXE		per-call	-	UNHANDLED	helper-call reader GetEnvironmentVariableA(): helper mapping lands in G4/G6
+editor/EditorPlaytest.cpp:915	MC2_SMOKE_ACTIVE		per-call	-	UNHANDLED	helper-call reader GetEnvironmentVariableA(): helper mapping lands in G4/G6
+editor/EditorPlaytest.cpp:934	MC2_BRIDGE_MOVER_STATE		per-call	-	UNHANDLED	helper-call reader string(): helper mapping lands in G4/G6
+editor/EditorPlaytest.cpp:939	MC2_ACTIVE_MOD		per-call	-	UNHANDLED	helper-call reader string(): helper mapping lands in G4/G6
+editor/EditorPlaytest.cpp:940	MC2_DEBUG_STATE_DUMP		per-call	-	UNHANDLED	helper-call reader string(): helper mapping lands in G4/G6
+editor/EditorPlaytest.cpp:947	MC2_SMOKE_MODE		per-call	-	UNHANDLED	helper-call reader string(): helper mapping lands in G4/G6
+editor/EditorObjects.cpp:700	MC2_EDITOR_TRACE	Presence	per-call	if ( mc2::gate::get<"MC2_EDITOR_TRACE">() )	NO-CHANGE	site Presence vs row Presence
+editor/EditorObjects.cpp:855	MC2_EDITOR_TRACE	Presence	per-call	if ( mc2::gate::get<"MC2_EDITOR_TRACE">() && !wps.empty() && appearance() )	NO-CHANGE	site Presence vs row Presence
+editor/EditorObjectMgr_render.cpp:24	MC2_EDITOR_MOVER_REFRESH	Lead0Kill	per-call	v = mc2::gate::get<"MC2_EDITOR_MOVER_REFRESH">();	EDGE	site Lead0Kill vs row Lead0Kill; differs on X01; byte-identical alternative: mc2::gate::get<"MC2_EDITOR_MOVER_REFRESH", mc2::gate::Rule::Lead0Kill>(); no harness value in the seed hits a changed input
+editor/EditorObjectMgr_render.cpp:128	MC2_EDITOR_STATIC_PREWARM_OFF	Presence	local-static	static const bool s_prewarmOff = mc2::gate::get<"MC2_EDITOR_STATIC_PREWARM_OFF">();	NO-CHANGE	site Presence vs row Presence
+editor/EditorInterface.cpp:32	MC2_EDITOR_TRACE	Presence (== nullptr)	per-call	if (!mc2::gate::get<"MC2_EDITOR_TRACE">())	NO-CHANGE	site !Presence vs row Presence
+editor/EditorInterface.cpp:834	MC2_TERRAIN_PROBE	Presence	local-static	static bool s_probeEnabled = mc2::gate::get<"MC2_TERRAIN_PROBE">();	NO-CHANGE	site Presence vs row Presence
+editor/EditorGameOS.cpp:115	MC2_EDITOR_TRACE	Presence (== nullptr)	per-call	if (!mc2::gate::get<"MC2_EDITOR_TRACE">())	NO-CHANGE	site !Presence vs row Presence
+editor/EditorGameOS.cpp:533	MC2_EDITOR_PANEL_W		per-call	-	UNHANDLED	numeric reader is not a lambda/declaration initializer (e.g. multi-statement local); inside #ifdef MC2_IMGUI
+editor/EditorCamera.h:55	MC2_EDITOR_TRACE	Presence (== nullptr)	per-call	if (!mc2::gate::get<"MC2_EDITOR_TRACE">())	NO-CHANGE	site !Presence vs row Presence; inside #ifndef EDITORCAMERA_H
+editor/EditorCamera.h:253	MC2_VIEW_UNIFORMS	Lead0Kill	local-static	-	UNHANDLED	pointer s_vuEnv is consumed by a block/branch statement: not a single expression; inside #ifndef EDITORCAMERA_H
+GuiRuntime/GraphicsOptionsWindow_mech.cpp:233	MC2_MECH_IBL_SH	Lead0Kill	per-call	bool mechIblOn = mc2::gate::get<"MC2_MECH_IBL_SH">();	NO-CHANGE	site Lead0Kill vs row Lead0Kill
+GameOS/gameos/vulkan_mech_island.cpp:182	MC2_VULKAN_SPV_DIR		per-call	-	UNHANDLED	row kind String: read through str<> (G3 Enum / G4 Tri / String via str<>); inside #ifdef MC2_VULKAN_ISLAND
+GameOS/gameos/vulkan_mech_island.cpp:1016	MC2_MECH_BATCHER_STATS	Presence	local-static	static const bool s_cullWitness = mc2::gate::get<"MC2_MECH_BATCHER_STATS">();	NO-CHANGE	site Presence vs row Presence; inside #ifdef MC2_VULKAN_ISLAND
+GameOS/gameos/vk_feed_dump.h:60	MC2_VISUAL_BOOKMARK_CAPTURE	Presence	per-call	const bool bookmarkConfigured = (mc2::gate::get<"MC2_VISUAL_BOOKMARK_CAPTURE">()) || (std::getenv("MC2_VISUAL_CAPTURE_FRAME") != nullptr);	NO-CHANGE	site Presence vs row Presence; inside #ifndef MC2_VK_FEED_DUMP_H
+GameOS/gameos/vk_feed_dump.h:61	MC2_VISUAL_CAPTURE_FRAME	Num	per-call	-	UNHANDLED	reader result is not a number for input None; inside #ifndef MC2_VK_FEED_DUMP_H
+GameOS/gameos/pipeline_binder.cpp:23	MC2_PIPELINE_BIND_TRACE	Lead0	per-call	s_on = mc2::gate::get<"MC2_PIPELINE_BIND_TRACE">();	NO-CHANGE	site Lead0 vs row Lead0
+GameOS/gameos/pipeline_binder.cpp:38	MC2_PIPELINE_COLORMASK	Lead0	per-call	s_on = mc2::gate::get<"MC2_PIPELINE_COLORMASK">();	NO-CHANGE	site Lead0 vs row Lead0
+GameOS/gameos/gpu_cull_parity.cpp:10	MC2_GPU_CULL_AABB_PARITY	Lead0P	per-call	-	UNHANDLED	paired reads: the statement reads this gate 2 times; as one reader it is Lead0P vs row Lead0P: NO-CHANGE -- replace the whole expression by hand
+GameOS/gameos/gpu_cull_parity.cpp:11	MC2_GPU_CULL_AABB_PARITY	Lead0P	per-call	-	UNHANDLED	paired reads: the statement reads this gate 2 times; as one reader it is Lead0P vs row Lead0P: NO-CHANGE -- replace the whole expression by hand
+GameOS/gameos/gos_render_pass_timer.cpp:71	MC2_RENDER_PASS_TIME_EVERY		per-call	-	UNHANDLED	numeric reader is not a lambda/declaration initializer (e.g. multi-statement local)
+GameOS/gameos/gos_render_pass_timer.cpp:160	MC2_RENDER_PASS_TIME	Exact1	per-call	s_envOn = mc2::gate::get<"MC2_RENDER_PASS_TIME">();	NO-CHANGE	site Exact1 vs row Exact1
+GameOS/gameos/gos_object_parity.cpp:58	MC2_OBJECT_PARITY_CHECK	Exact1	lambda-static	static const bool s = mc2::gate::get<"MC2_OBJECT_PARITY_CHECK">();	NO-CHANGE	site Exact1 vs row Exact1
+GameOS/gameos/gos_object_parity.cpp:66	MC2_OBJECT_PARITY_TRACE	Exact1	lambda-static	static const bool s = mc2::gate::get<"MC2_OBJECT_PARITY_TRACE">();	NO-CHANGE	site Exact1 vs row Exact1
+GameOS/gameos/gos_materials.cpp:46	MC2_MATERIAL_GPU	Lead0Kill	lambda-static	const bool s_gpuEnabled = mc2::gate::get<"MC2_MATERIAL_GPU">();	NO-CHANGE	site Lead0Kill vs row Lead0Kill; G0 ledger resolved: Lead0Kill (default ON, =0 disables)
+GameOS/gameos/gos_materials.cpp:475	MC2_MECH_SURFACE_MATERIAL		per-call	-	UNHANDLED	row kind Enum: read through is<>/Enum token (G3 Enum / G4 Tri / String via str<>)
+GameOS/gameos/gos_gpu_sync.cpp:16	MC2_RENDER_CONTRACT_ASSERT	Lead0	per-call	cached = mc2::gate::get<"MC2_RENDER_CONTRACT_ASSERT">();	NO-CHANGE	site Lead0 vs row Lead0; G0 ledger resolved: Lead0
+GameOS/gameos/gos_gpu_sync.cpp:92	MC2_GPU_SYNC_TRACE	Lead1	per-call	cached = mc2::gate::get<"MC2_GPU_SYNC_TRACE">();	NO-CHANGE	site Lead1 vs row Lead1
+GameOS/gameos/gos_frame_pass_stats.cpp:50	MC2_FRAME_PASS_STATS_EVERY		per-call	-	UNHANDLED	numeric reader is not a lambda/declaration initializer (e.g. multi-statement local)
+GameOS/gameos/gos_frame_pass_stats.cpp:86	MC2_FRAME_PASS_STATS	Exact1	per-call	s_envOn = mc2::gate::get<"MC2_FRAME_PASS_STATS">();	NO-CHANGE	site Exact1 vs row Exact1
+GameOS/gameos/gameos_graphics_texture.cpp:25	MC2_PNG_MAGENTA_KEY	Lead0Kill	lambda-static	static const bool s_on = mc2::gate::get<"MC2_PNG_MAGENTA_KEY">();	NO-CHANGE	site Lead0Kill vs row Lead0Kill
+GameOS/gameos/gameos_graphics_texture.cpp:179	MC2_OVERLAY_MAGENTA_TRACE	Presence	local-static	static const bool s_magentaTrace = mc2::gate::get<"MC2_OVERLAY_MAGENTA_TRACE">();	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/engine_present_vk.cpp:337	MC2_VULKAN_SPV_DIR		per-call	-	UNHANDLED	row kind String: read through str<> (G3 Enum / G4 Tri / String via str<>); inside #if defined(MC2_VULKAN) && defined(MC2_VULKAN_ISLAND)
+GameOS/gameos/engine_present_vk.cpp:408	MC2_VSYNC	Lead1	per-call	const bool vsyncOn = mc2::gate::get<"MC2_VSYNC">();	NO-CHANGE	site Lead1 vs row Lead1; inside #if defined(MC2_VULKAN) && defined(MC2_VULKAN_ISLAND)
+GameOS/gameos/draw_packet_emitter.cpp:53	MC2_DRAW_PACKET_WARN	Lead1	lambda-static	static const bool s_dpWarn = mc2::gate::get<"MC2_DRAW_PACKET_WARN">();	NO-CHANGE	site Lead1 vs row Lead1
+GameOS/gameos/draw_packet_emitter.cpp:255	MC2_DRAW_PACKET_COMPARE_VERBOSE	Lead1	lambda-static	static const bool s_verboseEnabled = mc2::gate::get<"MC2_DRAW_PACKET_COMPARE_VERBOSE">();	NO-CHANGE	site Lead1 vs row Lead1
+GameOS/gameos/asset_scale.cpp:313	MC2_ASSET_SCALE_TRACE	Lead1	per-call	st.traceEnabled = mc2::gate::get<"MC2_ASSET_SCALE_TRACE">();	NO-CHANGE	site Lead1 vs row Lead1
+GameOS/gameos/asset_scale.cpp:316	MC2_ASSET_SCALE_SELFTEST	Lead1	per-call	-	UNHANDLED	pointer st_env is consumed by a block/branch statement: not a single expression
+tools/shader_contract_harness/shader_contract_harness.cpp:47	MC2_CONTRACT_REPO_ROOT		per-call	-	UNHANDLED	getenv result is used as a pointer here (not a bare presence test)
+tools/mc2_launcher/mc2_launcher.cpp:2211	MC2_IMPORTER_DIR		per-call	-	UNHANDLED	helper-call reader GetEnvironmentVariableA(): helper mapping lands in G4/G6
+gui/afont.cpp:31	MC2_HUD_READABILITY_V1	Lead0	per-call	cached = mc2::gate::get<"MC2_HUD_READABILITY_V1">();	NO-CHANGE	site Lead0 vs row Lead0
+gui/UiDefs_draw.cpp:286	MC2_LOG_PREVIEW	Presence	per-call	if (mc2::gate::get<"MC2_LOG_PREVIEW">() && e.key.find("this_rect_defines") != std::string::npos) {	NO-CHANGE	site Presence vs row Presence
+editor/EditorWatchdog.cpp:27	MC2_EDITOR_WATCHDOG	Exact1	per-call	return mc2::gate::get<"MC2_EDITOR_WATCHDOG">();	NO-CHANGE	site Exact1 vs row Exact1
+editor/EditorResourceCatalog.cpp:386	MC2_EDITOR_TRACE	Presence	per-call	if (mc2::gate::get<"MC2_EDITOR_TRACE">())	NO-CHANGE	site Presence vs row Presence
+editor/EditorObjectMgr_pick.cpp:320	MC2_EDITOR_PICK_TRACE	Presence	local-static	static const bool s_pickTrace = mc2::gate::get<"MC2_EDITOR_PICK_TRACE">();	NO-CHANGE	site Presence vs row Presence
+editor/EditorObjectMgr.cpp:24	MC2_EDITOR_TRACE	Presence (== nullptr)	per-call	if (!mc2::gate::get<"MC2_EDITOR_TRACE">())	NO-CHANGE	site !Presence vs row Presence
+editor/EditorInterface_mouse.cpp:499	MC2_EDITOR_GPU_PICK	Lead0Kill	lambda-static	static const bool s_enabled = mc2::gate::get<"MC2_EDITOR_GPU_PICK">();	EDGE	site Lead0Kill vs row Lead0Kill; differs on X01; byte-identical alternative: mc2::gate::get<"MC2_EDITOR_GPU_PICK", mc2::gate::Rule::Lead0Kill>(); no harness value in the seed hits a changed input
+editor/EditorGpuTimer.cpp:41	MC2_EDITOR_GPU_TIMERS	Exact1	per-call	s_on = mc2::gate::get<"MC2_EDITOR_GPU_TIMERS">();	NO-CHANGE	site Exact1 vs row Exact1
+editor/EditorData.cpp:38	MC2_EDITOR_TRACE	Presence (== nullptr)	per-call	if (!mc2::gate::get<"MC2_EDITOR_TRACE">())	NO-CHANGE	site !Presence vs row Presence
+editor/BeautySidecarPreview.cpp:246	MC2_EDITOR_BEAUTY_AUTOAPPLY	Lead0	per-call	-	UNHANDLED	pointer e is consumed by a block/branch statement: not a single expression
+GuiRuntime/GraphicsOptionsWindow_passes.cpp:443	MC2_DISABLE_GOSFX	Lead1	per-call	bool fxDisabled = mc2::gate::get<"MC2_DISABLE_GOSFX">();	NO-CHANGE	site Lead1 vs row Lead1; G0 ledger resolved: Lead1 (=1 disables; unset = enabled)
+GameOS/include/mc2_diag_verbose.h:57	MC2_DIAG_VERBOSE	Lead0	lambda-static	static const bool s_on = mc2::gate::get<"MC2_DIAG_VERBOSE">();	EDGE	site Lead0 vs row Lead0; differs on X01; byte-identical alternative: mc2::gate::get<"MC2_DIAG_VERBOSE", mc2::gate::Rule::Lead0>(); no harness value in the seed hits a changed input
+GameOS/gameos/vulkan_water_island.cpp:180	MC2_VULKAN_SPV_DIR		per-call	-	UNHANDLED	row kind String: read through str<> (G3 Enum / G4 Tri / String via str<>); inside #ifdef MC2_VULKAN_ISLAND
+GameOS/gameos/vulkan_vfx_island.cpp:83	MC2_VULKAN_SPV_DIR		per-call	-	UNHANDLED	row kind String: read through str<> (G3 Enum / G4 Tri / String via str<>); inside #ifdef MC2_VULKAN_ISLAND
+GameOS/gameos/vulkan_sky_island.cpp:61	MC2_VULKAN_SPV_DIR		per-call	-	UNHANDLED	row kind String: read through str<> (G3 Enum / G4 Tri / String via str<>); inside #ifdef MC2_VULKAN_ISLAND
+GameOS/gameos/vulkan_shadow_island_live.cpp:157	MC2_VULKAN_SPV_DIR		per-call	-	UNHANDLED	row kind String: read through str<> (G3 Enum / G4 Tri / String via str<>); inside #ifdef MC2_VULKAN_ISLAND
+GameOS/gameos/vulkan_post_ssao_native.cpp:118	MC2_VULKAN_SPV_DIR		per-call	-	UNHANDLED	row kind String: read through str<> (G3 Enum / G4 Tri / String via str<>); inside #ifdef MC2_VULKAN_ISLAND
+GameOS/gameos/vulkan_post_hzb_native.cpp:83	MC2_VULKAN_SPV_DIR		per-call	-	UNHANDLED	row kind String: read through str<> (G3 Enum / G4 Tri / String via str<>); inside #ifdef MC2_VULKAN_ISLAND
+GameOS/gameos/vulkan_post_fog_native.cpp:111	MC2_VULKAN_SPV_DIR		per-call	-	UNHANDLED	row kind String: read through str<> (G3 Enum / G4 Tri / String via str<>); inside #ifdef MC2_VULKAN_ISLAND
+GameOS/gameos/vulkan_legacy_shape_island.cpp:80	MC2_VULKAN_SPV_DIR		per-call	-	UNHANDLED	row kind String: read through str<> (G3 Enum / G4 Tri / String via str<>); inside #ifdef MC2_VULKAN_ISLAND
+GameOS/gameos/vulkan_context.cpp:82	MC2_VULKAN_VALIDATION	Token/State	per-call	-	UNHANDLED	pointer env is consumed by a block/branch statement: not a single expression; inside #ifdef MC2_VULKAN
+GameOS/gameos/utils/mc2log.cpp:177	MC2_LOG		per-call	-	UNHANDLED	helper-call reader envView(): helper mapping lands in G4/G6
+GameOS/gameos/utils/mc2log.cpp:181	MC2_LOG_DECORATE		per-call	-	UNHANDLED	helper-call reader envView(): helper mapping lands in G4/G6
+GameOS/gameos/utils/gpu_debug_labels.h:24	MC2_GPU_DEBUG_NAMES	Presence	local-static	static const bool s_enabled = mc2::gate::get<"MC2_GPU_DEBUG_NAMES">();	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/render_frame_plan.h:50	MC2_RENDER_FRAME_PLAN_TRACE	Presence	local-static	static const bool s = mc2::gate::get<"MC2_RENDER_FRAME_PLAN_TRACE">();	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/render_backend_select.cpp:30	MC2_RENDER_BACKEND	NonEmpty	per-call	-	UNHANDLED	pointer env is consumed by a block/branch statement: not a single expression
+GameOS/gameos/particle_stall_probe.h:21	MC2_PARTICLE_FLUSH_STALL_TRACE	Presence	local-static	static const bool s = mc2::gate::get<"MC2_PARTICLE_FLUSH_STALL_TRACE">();	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/mdi_submit.h:22	MC2_MDI_SUBMIT_TRACE	Presence	local-static	static const bool s = mc2::gate::get<"MC2_MDI_SUBMIT_TRACE">();	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/mc2_verify.cpp:34	MC2_VERIFY_MODE	NonEmpty	per-call	-	UNHANDLED	pointer v is consumed by a block/branch statement: not a single expression
+GameOS/gameos/gos_vfx_mesh_bridge.cpp:69	MC2_VFX_ORACLE_SHAPE_LOG	Lead1	per-call	s_log_value = mc2::gate::get<"MC2_VFX_ORACLE_SHAPE_LOG">();	NO-CHANGE	site Lead1 vs row Lead1
+GameOS/gameos/gos_validate.cpp:151	MC2_GL_ERROR_DRAIN_SILENT	Presence	namespace-static	static const bool s_glErrorDrainSilent = mc2::gate::get<"MC2_GL_ERROR_DRAIN_SILENT">();	NO-CHANGE	site Presence vs row Presence
+GameOS/gameos/gos_postprocess_blur.cpp:382	MC2_POSTPROCESS_COMPUTE_BLUR		per-call	-	UNHANDLED	helper-call reader envFlagDefaultOff(): helper mapping lands in G4/G6
+GameOS/gameos/gos_postprocess_blur.cpp:383	MC2_POSTPROCESS_COMPUTE_BLUR_VERIFY		per-call	-	UNHANDLED	helper-call reader envFlagDefaultOff(): helper mapping lands in G4/G6
+GameOS/gameos/gos_postprocess_blur.cpp:384	MC2_POSTPROCESS_COMPUTE_BLUR_PLANT		per-call	-	UNHANDLED	helper-call reader envFlagDefaultOff(): helper mapping lands in G4/G6
+GameOS/gameos/gos_object_recon_tracy.cpp:95	MC2_OBJECT_RECON_TRACY	Lead0	per-call	g_enabled = mc2::gate::get<"MC2_OBJECT_RECON_TRACY">();	NO-CHANGE	site Lead0 vs row Lead0
+GameOS/gameos/gos_lightgrid_build.cpp:431	MC2_LIGHTGRID_BUILD		per-call	-	UNHANDLED	helper-call reader envFlagDefaultOff(): helper mapping lands in G4/G6
+GameOS/gameos/gos_lightgrid_build.cpp:432	MC2_LIGHTGRID_VERIFY		per-call	-	UNHANDLED	helper-call reader envFlagDefaultOff(): helper mapping lands in G4/G6
+GameOS/gameos/gos_lightgrid_build.cpp:433	MC2_LIGHTGRID_PLANT		per-call	-	UNHANDLED	helper-call reader envFlagDefaultOff(): helper mapping lands in G4/G6
+GameOS/gameos/gos_hdri.cpp:85	MC2_HDRI_BC6H	Lead0Kill	lambda-static	static bool s_hdribc6h = mc2::gate::get<"MC2_HDRI_BC6H">();	NO-CHANGE	site Lead0Kill vs row Lead0Kill
+GameOS/gameos/gos_crashbundle.cpp:676	MC2_TGL_POOL_TRACE		per-call	-	UNHANDLED	helper-call reader read_env_flag(): helper mapping lands in G4/G6; inside #else of #ifndef _WIN32
+GameOS/gameos/gos_crashbundle.cpp:677	MC2_DESTROY_TRACE		per-call	-	UNHANDLED	helper-call reader read_env_flag(): helper mapping lands in G4/G6; inside #else of #ifndef _WIN32
+GameOS/gameos/gos_crashbundle.cpp:678	MC2_GL_ERROR_DRAIN_SILENT		per-call	-	UNHANDLED	helper-call reader read_env_flag(): helper mapping lands in G4/G6; inside #else of #ifndef _WIN32
+GameOS/gameos/gos_crashbundle.cpp:679	MC2_HEARTBEAT		per-call	-	UNHANDLED	helper-call reader read_env_flag(): helper mapping lands in G4/G6; inside #else of #ifndef _WIN32
+GameOS/gameos/gos_crashbundle.cpp:680	MC2_ABL_TRACE		per-call	-	UNHANDLED	helper-call reader read_env_flag(): helper mapping lands in G4/G6; inside #else of #ifndef _WIN32
+GameOS/gameos/gos_crashbundle.cpp:681	MC2_ABL_REG_TRACE		per-call	-	UNHANDLED	helper-call reader read_env_flag(): helper mapping lands in G4/G6; inside #else of #ifndef _WIN32
+GameOS/gameos/gos_crashbundle.cpp:682	MC2_FF_TRACE		per-call	-	UNHANDLED	helper-call reader read_env_flag(): helper mapping lands in G4/G6; inside #else of #ifndef _WIN32
+GameOS/gameos/gos_crashbundle.cpp:687	MC2_CRASH_FAST_EXIT		per-call	-	UNHANDLED	helper-call reader read_env_flag(): helper mapping lands in G4/G6; inside #else of #ifndef _WIN32
+GameOS/gameos/gos_crashbundle.cpp:688	MC2_SOAK_AUTOWIN		per-call	-	UNHANDLED	helper-call reader read_env_flag(): helper mapping lands in G4/G6; inside #else of #ifndef _WIN32
+GameOS/gameos/gos_cluster_depth_pyramid.cpp:243	MC2_CLUSTER_DEPTH_PYRAMID		per-call	-	UNHANDLED	helper-call reader envFlagDefaultOff(): helper mapping lands in G4/G6
+GameOS/gameos/gos_cluster_depth_pyramid.cpp:244	MC2_CLUSTER_DEPTH_PYRAMID_VERIFY		per-call	-	UNHANDLED	helper-call reader envFlagDefaultOff(): helper mapping lands in G4/G6
+GameOS/gameos/gos_cluster_depth_pyramid.cpp:245	MC2_CLUSTER_DEPTH_PYRAMID_PLANT		per-call	-	UNHANDLED	helper-call reader envFlagDefaultOff(): helper mapping lands in G4/G6
+GameOS/gameos/gl_state_guard.h:63	MC2_GLSTATEGUARD_LOG	Presence	local-static	static const bool on = mc2::gate::get<"MC2_GLSTATEGUARD_LOG">();	NO-CHANGE	site Presence vs row Presence; inside #ifndef GL_STATE_GUARD_H
+GameOS/gameos/gameos_graphics_params.cpp:55	MC2_UI_ASPECT_ANCHOR	Lead0Kill	lambda-static	static const bool s_enabled = mc2::gate::get<"MC2_UI_ASPECT_ANCHOR">();	NO-CHANGE	site Lead0Kill vs row Lead0Kill
+GameOS/gameos/debug_renderer.cpp:41	MC2_DEBUG_RENDERER		per-call	-	UNHANDLED	helper-call reader envFlagDefaultOff(): helper mapping lands in G4/G6
+GameOS/gameos/debug_renderer.cpp:42	MC2_DEBUG_RENDERER_TEST		per-call	-	UNHANDLED	helper-call reader envFlagDefaultOff(): helper mapping lands in G4/G6
+EditorBridge/EditorRenderBridge.cpp:131	MC2_EDITOR_MODE	Exact1	per-call	s_enabled = mc2::gate::get<"MC2_EDITOR_MODE">();	NO-CHANGE	site Exact1 vs row Exact1

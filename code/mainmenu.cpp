@@ -28,6 +28,8 @@ struct DDSURFACEDESC2 {
 #include"multplyr.h"
 
 #include"prefs.h"
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"   // str<>()
 extern CPrefs prefs;
 
 
@@ -438,8 +440,9 @@ void MainMenu::update()
 	// clicks. Requires MC2_ACTIVE_MOD + MC2_MOD_DEPS set (as the launcher does).
 	{
 		static bool s_bootToBayFired = false;
-		const char* bootCamp = std::getenv("MC2_BOOT_TO_BAY");
-		if ( !s_bootToBayFired && bootCamp && bootCamp[0] && LogisticsData::instance )
+		const std::string bootCampText = mc2::gate::str<"MC2_BOOT_TO_BAY">();   // "" when unset or empty
+		const char* bootCamp = bootCampText.c_str();
+		if ( !s_bootToBayFired && bootCamp[0] && LogisticsData::instance )
 		{
 			s_bootToBayFired = true;
 			LogisticsData::instance->startNewCampaign( bootCamp );
@@ -447,8 +450,9 @@ void MainMenu::update()
 			// logistics instead of the campaign's first mission. Used to boot the
 			// LAST purchasing-enabled mission (fullest roster -> highest icon indices)
 			// for icon-atlas verification. startNewCampaign defaults to mission 0.
-			const char* bootMission = std::getenv("MC2_BOOT_TO_MISSION");
-			if ( bootMission && bootMission[0] )
+			const std::string bootMissionText = mc2::gate::str<"MC2_BOOT_TO_MISSION">();   // "" when unset or empty
+			const char* bootMission = bootMissionText.c_str();
+			if ( bootMission[0] )
 				LogisticsData::instance->setCurrentMissionAnyStage( bootMission );
 			status = RESTART;
 			return;
@@ -460,11 +464,12 @@ void MainMenu::update()
 	// captures start immediately). One-shot; harness-capturable without clicks.
 	{
 		static bool s_bootToEncycloFired = false;
-		const char* bootScr = std::getenv("MC2_BOOT_TO_SCREEN");
+		const std::string bootScrText = mc2::gate::str<"MC2_BOOT_TO_SCREEN">();   // "" when unset or empty
+		const char* bootScr = bootScrText.c_str();
 		// prefix match: "encyclopedia" or "encyclopedia_<tab>" (tab handled in
 		// Mechlopedia::begin)
-		if ( !s_bootToEncycloFired && bootScr && !S_strnicmp(bootScr, "encyclopedia", 12)
-			&& !(std::getenv("MC2_BOOT_TO_BAY") && std::getenv("MC2_BOOT_TO_BAY")[0]) && !introMovie )
+		if ( !s_bootToEncycloFired && bootScr[0] && !S_strnicmp(bootScr, "encyclopedia", 12)
+			&& !mc2::gate::isNonEmpty<"MC2_BOOT_TO_BAY">() && !introMovie )
 		{
 			s_bootToEncycloFired = true;
 			bDrawMechlopedia = true;

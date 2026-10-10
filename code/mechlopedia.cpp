@@ -13,12 +13,14 @@ Mechlopedia.cpp			: Implementation of the Mechlopedia component.
 #include"logisticsdata.h"
 #include"unitprofile.h"   // EQUIP-ADD-UI-NAME-1 (S3): equipmentAddUiTextForStringId
 #include"mission.h"   // ENCYCLO-LAZYLOAD-1: initTGLForLogistics
-#include <cstdlib>    // ENCYCLO-3D-2: std::getenv (boot-tab harness target)
+#include <cstdlib>
 #include"platform_str.h"   // S_stricmp (encyclopedia_<tab> parse)
 #include"../resource.h"
 #include"prefs.h"
 #include"cmponent.h"
 #include"../GuiRuntime/GuiRuntime.h"
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"   // str<>()
 
 #define ENCYCLO_MECHS	130
 #define ENCYCLO_BUILD	131
@@ -287,7 +289,7 @@ void Mechlopedia::syncEntityList()
 	// ENCYCLO-LIST-1 diagnostic: the list can be empty for two very different
 	// reasons — legacy listBox never populated (data side) vs the defs GuiList
 	// key not found (mirror side). Log both counts to tell them apart.
-	if ( getenv("MC2_LOG_PREVIEW") )
+	if ( mc2::gate::get<"MC2_LOG_PREVIEW">() )
 	{
 		printf("[ENCYCLO] syncEntityList screen=%ld legacyItems=%d mirrorOk=%d\n",
 			currentScreen, (int)items.size(), (int)ok);
@@ -316,8 +318,9 @@ void Mechlopedia::begin()
 	// MC2_BOOT_TO_SCREEN=encyclopedia_<tab> harness sub-target: land on a
 	// specific encyclopedia tab with no clicks (weapons/vehicles/buildings).
 	long bootTab = 0;
-	const char* bootScr = std::getenv("MC2_BOOT_TO_SCREEN");
-	if ( bootScr && bootScr[0] )
+	const std::string bootScrText = mc2::gate::str<"MC2_BOOT_TO_SCREEN">();   // "" when unset or empty
+	const char* bootScr = bootScrText.c_str();
+	if ( bootScr[0] )
 	{
 		if      ( !S_stricmp(bootScr, "encyclopedia_vehicles") )  bootTab = ENCYCLO_VEHIC;
 		else if ( !S_stricmp(bootScr, "encyclopedia_buildings") ) bootTab = ENCYCLO_BUILD;
@@ -352,7 +355,7 @@ void Mechlopedia::MechScreen::init()
 		//   rect = "12,43,154,191"  mountOffset = "285,58"
 		float sx = (Environment.screenWidth > 0) ? (float)Environment.screenWidth / 800.f : 1.f;
 		float sy = (Environment.screenHeight > 0) ? (float)Environment.screenHeight / 600.f : 1.f;
-		if ( getenv("MC2_LOG_PREVIEW") )
+		if ( mc2::gate::get<"MC2_LOG_PREVIEW">() )
 		{
 			FILE* f = fopen("preview_debug.log","a");
 			if (f) { fprintf(f,"[PREVIEW] MechScreen::init DEFS-BRANCH screenW=%d screenH=%d sx=%.4f sy=%.4f bounds=[%.1f,%.1f,%.1f,%.1f]\n",
@@ -566,7 +569,7 @@ void Mechlopedia::MechScreen::select( aTextListItem* pItem )
 
 		LogisticsVariant* pChassis  = LogisticsData::instance->getVariant( name );
 		// ENCYCLO-3D-1 diagnostic: is the select→variant→camera chain intact?
-		if ( getenv("MC2_LOG_PREVIEW") )
+		if ( mc2::gate::get<"MC2_LOG_PREVIEW">() )
 		{
 			if ( FILE* f = fopen("preview_debug.log","a") )
 			{
@@ -832,7 +835,7 @@ void Mechlopedia::MechScreen::setMech( LogisticsVariant* pChassis, bool bShowJum
 	// actual collision, kept as-is.
 	camera.setScale( pChassis->getChassis()->getScale() );
 	// ENCYCLO-3D-2 diagnostic: is the chassis scale real here on fresh boot?
-	if ( getenv("MC2_LOG_PREVIEW") )
+	if ( mc2::gate::get<"MC2_LOG_PREVIEW">() )
 	{
 		if ( FILE* f = fopen("preview_debug.log","a") )
 		{

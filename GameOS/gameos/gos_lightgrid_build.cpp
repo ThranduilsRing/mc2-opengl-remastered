@@ -20,6 +20,7 @@
 #include <cmath>
 #include <vector>
 #include <string>
+#include "Gates/gate.h"
 
 namespace lightgrid_build {
 
@@ -58,11 +59,6 @@ constexpr GLuint kHeaderImageUnit  = 0;  // stage1 RG32UI header image
 constexpr GLuint kIndexPoolSlot    = 1;  // stage1 compact index pool
 constexpr GLuint kCursorSlot       = 2;  // stage1 global atomic cursor
 constexpr GLuint kTileMinMaxUnit   = 1;  // stage1 depth pyramid sampler unit
-
-bool envFlagDefaultOff(const char* name) {
-    const char* v = getenv(name);
-    return v && !(v[0] == '0' && v[1] == '\0');
-}
 
 // --- Gate state ------------------------------------------------------------
 bool s_gateResolved = false;
@@ -428,9 +424,9 @@ void runParityCheck(const float* invVP, int sceneW, int sceneH,
 bool IsEnabled() {
     if (!s_gateResolved) {
         s_gateResolved = true;
-        s_enabled = envFlagDefaultOff("MC2_LIGHTGRID_BUILD");
-        s_verify  = s_enabled && envFlagDefaultOff("MC2_LIGHTGRID_VERIFY");
-        s_plant   = s_verify  && envFlagDefaultOff("MC2_LIGHTGRID_PLANT");
+        s_enabled = mc2::gate::get<"MC2_LIGHTGRID_BUILD">();
+        s_verify  = s_enabled && mc2::gate::get<"MC2_LIGHTGRID_VERIFY">();
+        s_plant   = s_verify  && mc2::gate::get<"MC2_LIGHTGRID_PLANT">();
         MC2_DIAGFE(stderr, "[LIGHTGRID_BUILD v1] enabled=%d verify=%d plant=%d "
                         "(MC2_LIGHTGRID_BUILD)\n",
                 s_enabled ? 1 : 0, s_verify ? 1 : 0, s_plant ? 1 : 0);

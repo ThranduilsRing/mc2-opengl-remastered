@@ -2,14 +2,16 @@
 """check-gate-echo-reads.py -- keeps the two uncached environment readers out of decision code.
 
 gate::raw<"X">() and gate::envText(name) return the live environment text. They exist so a log line can echo what
-the user typed and so the launcher-env applier can ask the process environment before the registry is valid.
-Neither may decide anything: a decision made from them skips the row's rule, range and default, which is the
-defect the typed registry removes.
+the user typed and so the callers that walk names they do not know at compile time can ask the process
+environment. Neither may decide anything: a decision made from them skips the row's rule, range and default,
+which is the defect the typed registry removes.
 
-  E1  raw<"X"> may appear only inside a printf-family / MC2_DIAGFE / MC2_EVENT argument list, or be assigned to a
-      local that is afterwards used only as `name ? name : "(unset)"` (or `name && name[0] ? ...`).
-  E2  envText( may be called only from GameOS/gameos/gameosmain.cpp (the [LAUNCHER_ENV v1] block, at most two
-      call lines) -- everywhere else the typed readers apply.
+  E1  raw<"X"> may appear only inside the still-open argument list of a printf-family / MC2_DIAGFE / MC2_EVENT
+      call, or be assigned to a `const char*` local whose every later use is itself inside such an argument
+      list. Nothing weaker counts: a ternary on the same line does not (`atoi(e ? e : "0")` decides), and a
+      print call nearby does not (`printf(...); if (raw<>())` decides).
+  E2  envText( may be called only from the files in ENVTEXT_ALLOWED, each with a line budget. Each entry is a
+      deliberate widening with its reason beside it.
 
 USAGE
   py -3 scripts/check-gate-echo-reads.py [--quiet]
@@ -24,59 +26,121 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SCAN_DIRS = ("code", "mclib", "GameOS", "RenderCore", "GuiRuntime", "RenderWorld", "GameAdapters",
-             "HostServices", "editor", "gui", "Gates")
+             "HostServices", "editor", "gui", "Gates", "EditorBridge", "Viewer")
 EXTS = (".cpp", ".h", ".hpp", ".cc", ".inl")
-ENVTEXT_FILE = "GameOS/gameos/gameosmain.cpp"
-ENVTEXT_MAX_LINES = 2
+# file -> max lines calling envText( ; why the name is truly dynamic there
+ENVTEXT_ALLOWED = {
+    "GameOS/gameos/gameosmain.cpp": 2,   # the launcher_env.json apply asks "did the shell already set this key?"
+    "GameOS/gameos/gos_dev_shell.cpp": 1,  # the dev shell's get_gate answers for a variable NAME the client sends
+}
 # Gates/ defines the two readers; the ratchet cares about their callers.
 DEFINING_DIR = "Gates/"
-
-PRINT_RX = re.compile(r"\b(?:printf|fprintf|snprintf|MC2_DIAGFE|MC2_EVENT)\s*\(")
-RAW_RX = re.compile(r"\braw\s*<\s*\"MC2_[A-Z0-9_]+\"\s*>\s*\(\s*\)")
+PRINT_FAMILY_RX = re.compile(r"^(?:std::)?(?:printf|fprintf|snprintf|MC2_DIAGFE|MC2_EVENT)$")
+# the gate name inside the quotes is blanked by blank(), so match any (blank) literal
+RAW_RX = re.compile(r"\braw\s*<\s*\"[^\"]*\"\s*>\s*\(\s*\)")
 RAW_LOCAL_RX = re.compile(r"\bconst\s+char\s*\*\s*(\w+)\s*=\s*(?:mc2::)?(?:gate::)?raw\s*<")
 ENVTEXT_RX = re.compile(r"\benvText\s*\(")
-LOOKBACK = 4
-LOOKAHEAD = 90
+LOOKAHEAD_CHARS = 6000
+NL = chr(10)
+BS = chr(92)
+QUOTES = chr(34) + chr(39)
 
 
-def strip_comment(line: str) -> str:
-    i = line.find("//")
-    return line if i < 0 else line[:i]
+def blank(text: str) -> str:
+    """The text with comments and the CONTENT of string/char literals replaced by spaces (offsets and newlines
+    kept), so parentheses and quotes inside them cannot confuse the argument-list scan."""
+    out = list(text)
+    n, i = len(text), 0
+    while i < n:
+        c = text[i]
+        if c == "/" and i + 1 < n and text[i + 1] == "/":
+            while i < n and text[i] != NL:
+                out[i] = " "
+                i += 1
+        elif c == "/" and i + 1 < n and text[i + 1] == "*":
+            while i < n and not (text[i] == "*" and i + 1 < n and text[i + 1] == "/"):
+                if text[i] != NL:
+                    out[i] = " "
+                i += 1
+            for k in (i, i + 1):
+                if k < n:
+                    out[k] = " "
+            i += 2
+        elif c in QUOTES:
+            q = c
+            i += 1
+            while i < n and text[i] != q and text[i] != NL:
+                if text[i] == BS and i + 1 < n:
+                    out[i] = " "
+                    i += 1
+                out[i] = " "
+                i += 1
+            i += 1
+        else:
+            i += 1
+    return "".join(out)
+
+
+def enclosing_callees(t: str, pos: int) -> list[str]:
+    """Names of the calls whose argument list is still open at `pos`, innermost first, back to the statement start."""
+    names: list[str] = []
+    depth = 0
+    i = pos - 1
+    while i >= 0:
+        c = t[i]
+        if c == ")":
+            depth += 1
+        elif c == "(":
+            if depth == 0:
+                j = i
+                while j > 0 and t[j - 1].isspace():
+                    j -= 1
+                k = j
+                while k > 0 and (t[k - 1].isalnum() or t[k - 1] in "_:"):
+                    k -= 1
+                names.append(t[k:j])
+            else:
+                depth -= 1
+        elif depth == 0 and c in ";{}":
+            break
+        i -= 1
+    return names
+
+
+def in_print_args(t: str, pos: int) -> bool:
+    return any(PRINT_FAMILY_RX.match(n) for n in enclosing_callees(t, pos))
 
 
 def check_text(rel: str, text: str) -> list[str]:
     errs: list[str] = []
-    lines = [strip_comment(l) for l in text.splitlines()]
-    in_defining = rel.startswith(DEFINING_DIR)
+    if rel.startswith(DEFINING_DIR):
+        return errs
+    t = blank(text)
+
+    def line_of(off: int) -> int:
+        return t.count(NL, 0, off) + 1
+
     envtext_lines = 0
-    for i, line in enumerate(lines):
-        if not in_defining and ENVTEXT_RX.search(line):
-            envtext_lines += 1
-            if rel != ENVTEXT_FILE:
-                errs.append("%s:%d: envText( outside %s (use isSet<>/get<>/str<>)" % (rel, i + 1, ENVTEXT_FILE))
-        if in_defining or not RAW_RX.search(line):
+    for m in ENVTEXT_RX.finditer(t):
+        envtext_lines += 1
+        if rel not in ENVTEXT_ALLOWED:
+            errs.append("%s:%d: envText( outside ENVTEXT_ALLOWED (use isSet<>/get<>/str<>)" % (rel, line_of(m.start())))
+    if rel in ENVTEXT_ALLOWED and envtext_lines > ENVTEXT_ALLOWED[rel]:
+        errs.append("%s: envText( on %d lines (max %d)" % (rel, envtext_lines, ENVTEXT_ALLOWED[rel]))
+    for m in RAW_RX.finditer(t):
+        if in_print_args(t, m.start()):
             continue
-        window = lines[max(0, i - LOOKBACK):i + 1]
-        if any(PRINT_RX.search(w) for w in window):
+        lm = RAW_LOCAL_RX.search(t[max(0, t.rfind(NL, 0, m.start())):m.end()])
+        if not lm:
+            errs.append("%s:%d: raw<> outside an open print/MC2_EVENT argument list" % (rel, line_of(m.start())))
             continue
-        m = RAW_LOCAL_RX.search(line)
-        if m:
-            name = m.group(1)
-            use_rx = re.compile(r"\b%s\b" % re.escape(name))
-            n_ = re.escape(name)
-            echo_rx = re.compile(r"\b%s\s*(?:&&\s*%s\s*\[\s*0\s*\]\s*)?\?\s*%s\s*:\s*\"\(unset\)\"" % (n_, n_, n_))
-            bad = False
-            for j in range(i + 1, min(len(lines), i + 1 + LOOKAHEAD)):
-                if use_rx.search(lines[j]) and not echo_rx.search(lines[j]):
-                    bad = True
-                    errs.append("%s:%d: raw<> local '%s' used for more than echo" % (rel, j + 1, name))
-                    break
-            if not bad:
-                continue
-            continue
-        errs.append("%s:%d: raw<> outside a print/MC2_EVENT argument list" % (rel, i + 1))
-    if envtext_lines > ENVTEXT_MAX_LINES and rel == ENVTEXT_FILE:
-        errs.append("%s: envText( on %d lines (max %d)" % (rel, envtext_lines, ENVTEXT_MAX_LINES))
+        name = lm.group(1)
+        use_rx = re.compile(r"\b%s\b" % re.escape(name))
+        for u in use_rx.finditer(t, m.end(), min(len(t), m.end() + LOOKAHEAD_CHARS)):
+            if not in_print_args(t, u.start()):
+                errs.append("%s:%d: raw<> local '%s' used outside a print/MC2_EVENT argument list" % (
+                    rel, line_of(u.start()), name))
+                break
     return errs
 
 
@@ -96,6 +160,7 @@ def scan() -> list[str]:
 
 def selftest() -> int:
     ok = True
+    launcher = next(iter(ENVTEXT_ALLOWED))
 
     def expect(name: str, rel: str, text: str, want_errors: bool) -> None:
         nonlocal ok
@@ -112,11 +177,21 @@ def selftest() -> int:
     expect("raw decision local", "code/a.cpp",
            'const char* e = mc2::gate::raw<"MC2_A">();\nint cap = e ? 1 : 2;', True)
     expect("raw bare decision", "code/a.cpp", 'if (mc2::gate::raw<"MC2_A">()) go();', True)
+    # the two loopholes of the first version: a ternary on the line, and a print call within four lines above
+    expect("loophole: ternary inside a non-print call", "code/a.cpp",
+           'const char* e = mc2::gate::raw<"MC2_A">();\nint cap = atoi(e ? e : "0");', True)
+    expect("loophole: print call just above a decision", "code/a.cpp",
+           'printf("x");\nif (mc2::gate::raw<"MC2_A">()) go();', True)
+    expect("raw in a closed print call then reused", "code/a.cpp",
+           'const char* e = mc2::gate::raw<"MC2_A">();\nprintf("%s", e);\nif (e) go();', True)
+    expect("raw nested in a call inside print", "code/a.cpp",
+           'printf("%s", pick(mc2::gate::raw<"MC2_A">()));', False)
     expect("envText elsewhere", "code/a.cpp", 'if (mc2::gate::envText("MC2_A")) go();', True)
-    expect("envText in launcher file", ENVTEXT_FILE, 'if (mc2::gate::envText(key)) go();', False)
-    expect("envText three lines", ENVTEXT_FILE, "envText(a);\nenvText(b);\nenvText(c);", True)
+    expect("envText in an allowed file", launcher, 'if (mc2::gate::envText(key)) go();', False)
+    expect("envText over budget", launcher, "envText(a);\nenvText(b);\nenvText(c);", True)
     expect("defining dir", "Gates/gate.cpp", "const char* envText(const char* n) { return n; }", False)
     expect("comment ignored", "code/a.cpp", '// raw<"MC2_A">() is echo only', False)
+    expect("string ignored", "code/a.cpp", 'puts("raw<\\"MC2_A\\">() )(");', False)
     print("[gate-echo-reads] self-test " + ("PASSED" if ok else "FAILED"))
     return 0 if ok else 1
 

@@ -100,6 +100,7 @@ extern float scenarioTime;
 
 //#ifndef SOUNDS_H
 #include"sounds.h"
+#include "Gates/gate.h"
 //#endif
 
 extern long DefaultPilotId;
@@ -811,13 +812,7 @@ long Building::update (void)
 			// touch() path (was running a full BldgAppearance::update — spotlight
 			// SetPosition loop + hierarchy transform — every frame). updateAnimations()
 			// + recalcBounds already ran above. MC2_STATIC_UPDATE_SKIP=0 opts out.
-			static const bool s_bldgStaticSkip = []() {
-				const char* v = getenv("MC2_STATIC_UPDATE_SKIP");
-				if (!v || !*v) return true;                  // default ON
-				if (v[0] == '0' && !v[1]) return false;
-				if (!_stricmp(v, "false") || !_stricmp(v, "off") || !_stricmp(v, "no")) return false;
-				return true;
-			}();
+			static const bool s_bldgStaticSkip = mc2::gate::get<"MC2_STATIC_UPDATE_SKIP">();
 			if (s_bldgStaticSkip && appearance->IsStaticNow() && !getFlag(OBJECT_FLAG_FALLING))
 				appearance->touch();
 			else

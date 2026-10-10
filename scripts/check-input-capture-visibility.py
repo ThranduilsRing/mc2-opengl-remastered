@@ -43,8 +43,8 @@ RULE 3 -- NO STALE POLICY ENTRY. Every file in POLICY_FILES and every function
   that goes green because someone renamed a function is not a check, so the
   absence of a named symbol is a FAILURE, never a pass.
 
-RULE 4 -- ONE PARSE OF MC2_WINDOW_OFFSCREEN. Exactly one getenv of that
-  variable may exist in engine C++. A second parse is how the two halves of the
+RULE 4 -- ONE PARSE OF MC2_WINDOW_OFFSCREEN. Exactly one read of that
+  variable (a getenv, or a typed gate get/is/isSet/str/raw of "MC2_WINDOW_OFFSCREEN") may exist in engine C++. A second parse is how the two halves of the
   policy drifted apart the first time.
 
 Scope is the ENGINE only. `editor/` is excluded on purpose: the MFC editor is a
@@ -441,7 +441,7 @@ def check(read=None):
         code = get_with_strings(r)
         if code is None:
             continue
-        for m in re.finditer(r"getenv\s*\(\s*\"" + OFFSCREEN_VAR + r"\"", code):
+        for m in re.finditer(r"(?:getenv\s*\(\s*|\b(?:get|is|isSet|isNonEmpty|str|raw)\s*<\s*)\"" + OFFSCREEN_VAR + r"\"", code):
             parsers.append((r, code[:m.start()].count("\n") + 1))
     if len(parsers) != 1 or parsers[0][0] != OFFSCREEN_PARSE_OWNER:
         where = ", ".join(f"{f}:{l}" for f, l in parsers) or "(none)"
@@ -535,6 +535,9 @@ def selftest() -> int:
     twice = real[gi] + '\nstatic int mc2_selftest_dup(){ return getenv("MC2_WINDOW_OFFSCREEN") != 0; }\n'
     grade("RULE 4 -- MC2_WINDOW_OFFSCREEN parsed twice",
           {gi: twice}, "must be parsed exactly once")
+    typed_twice = real[gi] + '\nstatic int mc2_selftest_dup2(){ return mc2::gate::get<"MC2_WINDOW_OFFSCREEN">(); }\n'
+    grade("RULE 4 -- MC2_WINDOW_OFFSCREEN read a second time through the typed registry",
+          {gi: typed_twice}, "must be parsed exactly once")
 
     # Comment stripper: prose naming an API must NOT be a hit.
     if victim:

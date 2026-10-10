@@ -22,6 +22,7 @@ struct DDSURFACEDESC2 {
 #include"multplyr.h"
 #include"mission.h"
 #include"gamesound.h"
+#include "Gates/gate.h"
 float loadProgress = 0.0f;
 
 long LoadScreen::xProgressLoc = 0;
@@ -566,7 +567,7 @@ void ProgressTimer(	RECT& WinRect,DDSURFACEDESC2& mouseSurfaceDesc )
 	// default; MC2_LEGACY_LOAD_BANNER=1 restores the old overlay if some
 	// genuinely blocking path turns out to need it.
 	{
-		static const bool s_legacyBanner = (getenv("MC2_LEGACY_LOAD_BANNER") != nullptr);
+		static const bool s_legacyBanner = mc2::gate::get<"MC2_LEGACY_LOAD_BANNER">();
 		if ( !s_legacyBanner )
 			return;
 	}
@@ -578,7 +579,7 @@ void ProgressTimer(	RECT& WinRect,DDSURFACEDESC2& mouseSurfaceDesc )
 	// is about to composite the progress art, log the progress value — pins
 	// down WHICH lingering state draws the world-floating banner at mission
 	// start. Throttled; file-based per probe discipline.
-	if ( getenv("MC2_LOG_PREVIEW") && ( (loadProgress > 0 && loadProgress < 100) || loadProgress == 1000 ) )
+	if ( mc2::gate::get<"MC2_LOG_PREVIEW">() && ( (loadProgress > 0 && loadProgress < 100) || loadProgress == 1000 ) )
 	{
 		static int s_bannerTick = 0;
 		if ( (s_bannerTick++ % 30) == 0 )

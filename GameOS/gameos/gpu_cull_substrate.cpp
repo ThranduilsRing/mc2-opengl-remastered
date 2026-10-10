@@ -7,10 +7,11 @@
 #include <cstring>
 #include "gos_profiler.h"        // Tracy ZoneScopedN
 #include "diagnostic_trace.h"
+#include "Gates/gate.h"
 
 // MC2_GPU_CULL_SUBSTRATE_TRACE=1 — verbose per-frame lifecycle prints.
 // Default off; the 600-frame summary + first-flush banner emit unconditionally.
-static const bool s_substrateTrace = (getenv("MC2_GPU_CULL_SUBSTRATE_TRACE") != nullptr);
+static const bool s_substrateTrace = mc2::gate::get<"MC2_GPU_CULL_SUBSTRATE_TRACE">();
 #define SUBSTRATE_TRACE(fmt, ...) \
     do { if (s_substrateTrace) { MC2_DIAGF("[GPU_CULL v1] " fmt "\n", ##__VA_ARGS__); fflush(stdout); } } while (0)
 
@@ -73,8 +74,7 @@ static uint32_t  s_cpuSlotCount[RING_FRAMES] = {0u, 0u, 0u};
 // REQUIRES the registry-side step (skip the per-frame static append + call
 // substrate_rebuildStaticPrefix on dirty) before the gate may be turned on;
 // otherwise statics would be double-counted (prefix + per-frame append).
-static const bool s_staticFrozen =
-    (getenv("MC2_GPU_CULL_STATIC_FROZEN_RECORDS") != nullptr);
+static const bool s_staticFrozen = mc2::gate::get<"MC2_GPU_CULL_STATIC_FROZEN_RECORDS">();
 static GpuActorRecord* s_staticRecords            = nullptr;  // golden copy, sized maxActors
 static uint32_t        s_staticPrefixCount        = 0u;       // S
 static uint32_t        s_staticPrefixVisibleCount = 0u;       // # prevVisibilityBit==1 in [0,S)
@@ -85,8 +85,7 @@ static uint32_t        s_staticDirty[RING_FRAMES] = {0u, 0u, 0u};  // per-slot: 
 // ---------------------------------------------------------------------------
 
 static bool substrate_isEnabled_impl() {
-    const char* v = getenv("MC2_GPU_CULL_SUBSTRATE");
-    return (v == nullptr || v[0] != '0');
+    return mc2::gate::get<"MC2_GPU_CULL_SUBSTRATE">();
 }
 
 bool substrate_isEnabled() {

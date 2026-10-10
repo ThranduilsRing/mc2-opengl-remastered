@@ -1,6 +1,7 @@
 // GroundVehicle: hit and attack helpers, status/move chunks, handleWeaponHit, fireWeapon and handleWeaponFire.
 // Declared in the class headers; shared names in gvehicl_internal.h.
 #include "gvehicl_internal.h"
+#include "Gates/gate.h"
 
 
 //----------------------------------------------------------------------------------
@@ -742,7 +743,7 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 					// honors the called location instead of a randomly-located
 					// explosion. Mirrors BattleMech::fireWeapon.
 					static const bool s_calledShotFix =
-						(getenv("MC2_CALLED_SHOT_FIX") != NULL && getenv("MC2_CALLED_SHOT_FIX")[0] != '0');
+						mc2::gate::get<"MC2_CALLED_SHOT_FIX">();
 					if (s_calledShotFix && (aimLocation != -1))
 						weaponFX->setAimedTarget(target->getWatchID());
 				}

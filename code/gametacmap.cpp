@@ -44,6 +44,7 @@ gameTacMap.cpp			: Implementation of the gameTacMap component.
 #include"hudimguipanel.h"
 #include "imgui.h"
 #include <stdint.h>   // intptr_t (ImTextureID cast)
+#include "Gates/gate.h"
 extern unsigned char godMode;
 extern bool useLeftRightMouseProfile;
 
@@ -96,7 +97,7 @@ void GameTacMap::init( unsigned char* bitmapData, int dataSize )
 
 bool GameTacMap::usingImGui() const
 {
-	return HudImGui::envGateOn( "MC2_HUD_IMGUI_TACMAP" ) && !HudImGui::pinnedToLegacy();
+	return mc2::gate::get<"MC2_HUD_IMGUI_TACMAP">() && !HudImGui::pinnedToLegacy();
 }
 
 void GameTacMap::update()

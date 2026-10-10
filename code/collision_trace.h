@@ -26,6 +26,7 @@
 
 #include "../GameOS/gameos/diagnostic_trace.h"
 #include <cstdio>
+#include "Gates/gate.h"
 #include <cstdlib>
 #include <chrono>
 
@@ -60,8 +61,7 @@ inline bool gateActive() {
 	if (cached < 0) {
 		bool on = mc2_diag::tagEnabled("COLLISION");
 		if (!on) {
-			const char* e = getenv("MC2_COLLISION_FACTS");
-			on = (e && e[0] && e[0] != '0');
+			on = mc2::gate::get<"MC2_COLLISION_FACTS">();
 		}
 		cached = on ? 1 : 0;
 	}

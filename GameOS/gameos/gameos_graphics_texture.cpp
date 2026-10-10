@@ -9,6 +9,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <vector>
+#include "Gates/gate.h"
 
 // PNG-MAGENTA-KEY-1: MC2 art uses BOTH real alpha and magenta (0xFF00FF)
 // colour-keying for transparency. The modder's PNG conversions carry the
@@ -21,10 +22,7 @@
 // gos_Texture_Solid caller still wins (makeKindaSolid re-opaques after).
 // Killswitch: MC2_PNG_MAGENTA_KEY=0.
 static void keyMagentaToAlphaPNG(Image& img) {
-    static const bool s_on = []() {
-        const char* v = std::getenv("MC2_PNG_MAGENTA_KEY");
-        return !(v && v[0] == '0');
-    }();
+    static const bool s_on = mc2::gate::get<"MC2_PNG_MAGENTA_KEY">();
     if (!s_on || img.getFormat() != FORMAT_RGBA8)
         return;
     DWORD* pixels = (DWORD*)img.getPixels();
@@ -176,7 +174,7 @@ bool gosTexture::createHardwareTexture() {
         // MC2_OVERLAY_MAGENTA_TRACE + MC2_DIAG_TAGS=OVERLAY_MAGENTA; read via
         // get_diagnostic_events("OVERLAY_MAGENTA"). No behavior change.
         {
-            static const bool s_magentaTrace = (std::getenv("MC2_OVERLAY_MAGENTA_TRACE") != nullptr);
+            static const bool s_magentaTrace = mc2::gate::get<"MC2_OVERLAY_MAGENTA_TRACE">();
             if (s_magentaTrace && mc2_diag::tagEnabled("OVERLAY_MAGENTA")) {
                 char _mg_fn[256]; char _mg_tn[256];
                 const char* _mg_sfn = filename_ ? filename_ : "";

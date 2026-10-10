@@ -15,31 +15,6 @@ See hudimguipanel.h for the coordinate / exemption-bracket / pin-to-legacy contr
 namespace HudImGui
 {
 
-bool envGateOn( const char* name )
-{
-	// tiny fixed cache — HUD gates are a handful of literals
-	enum { MAX_GATES = 8 };
-	static const char* names[MAX_GATES];
-	static int values[MAX_GATES];
-	static int count = 0;
-
-	for ( int i = 0; i < count; ++i )
-	{
-		if ( 0 == strcmp( names[i], name ) )
-			return values[i] != 0;
-	}
-
-	const char* v = getenv( name );
-	const int on = ( v && v[0] && v[0] != '0' ) ? 1 : 0;
-	if ( count < MAX_GATES )
-	{
-		names[count] = name;   // caller passes string literals
-		values[count] = on;
-		++count;
-	}
-	return on != 0;
-}
-
 static bool s_pinnedToLegacy = false;
 
 bool pinnedToLegacy()

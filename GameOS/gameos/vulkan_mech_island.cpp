@@ -38,6 +38,7 @@
 #include <volk.h>
 #include <GL/glew.h>
 #include "Gates/gate.h"
+#include "Gates/gate_cold.h"   // str<>()
 
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
@@ -177,8 +178,7 @@ struct FeedNativeStats {
 FeedNativeStats g_feedNative;
 
 std::string spv_dir() {
-    const char* env = std::getenv("MC2_VULKAN_SPV_DIR");
-    std::string d = (env && *env) ? env : "shaders/vulkan";
+    std::string d = mc2::gate::str<"MC2_VULKAN_SPV_DIR">();   // row default shaders/vulkan, empty reads the default
     if (!d.empty() && d.back() != '/' && d.back() != '\\') d += '/';
     return d;
 }
@@ -993,7 +993,7 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     // to GL's [MECHBATCHER v1] event=summary instances=. Gated by the same stats env so
     // controls stay clean (no default-on spam). extern frame counter (tgl.cpp).
     {
-        static const bool s_cullWitness = (getenv("MC2_MECH_BATCHER_STATS") != nullptr);
+        static const bool s_cullWitness = mc2::gate::get<"MC2_MECH_BATCHER_STATS">();
         if (s_cullWitness) {
             // Ordinal = per-drawn-frame (usedVulkan+1); the GL batcher builds one feed
             // per frame the island draws, so the ordered sequence of vk_instances must
