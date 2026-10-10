@@ -283,7 +283,7 @@ TEST_CASE("axis_convert: the conversion is an involution, so renderToMc2 is the 
     CHECK(sameVec(mc2ToRender(v), renderToMc2(v).x, renderToMc2(v).y, renderToMc2(v).z));
     Stuff::Vector3D inPlace = v;
     mc2ToRender(inPlace, inPlace);                 // in == out is allowed
-    CHECK(sameVec(inPlace, -v.x, v.z, v.y));
+    CHECK(sameVec(inPlace, -v.x, v.z, v.y));   // axis-swizzle: allow (the expected values are typed on purpose)
 }
 
 TEST_CASE("axis_convert: works across the vector types the engine mixes at these sites") {
