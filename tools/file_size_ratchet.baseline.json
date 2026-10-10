@@ -44,7 +44,7 @@
   "code/mechlopedia.cpp": 1660,
   "code/mission.cpp": 5867,
   "code/missionbegin.cpp": 2136,
-  "code/missiongui.cpp": 7905,
+  "code/missiongui.cpp": 7888,
   "code/mover.h": 1911,
   "code/mpparameterscreen.cpp": 2415,
   "code/multplyr.h": 1849,
@@ -93,7 +93,7 @@
   "mclib/vfxtile.cpp": 2944,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "dd683ae1c",
+ "head": "74fa629c7",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -135,7 +135,7 @@
    "files": 329,
    "files_over_1500": 28,
    "files_over_3000": 6,
-   "max_lines": 7905
+   "max_lines": 7888
   },
   "editor": {
    "files": 225,
@@ -177,7 +177,7 @@
   },
   {
    "file": "code/missiongui.cpp",
-   "lines": 7905
+   "lines": 7888
   },
   {
    "file": "code/mission.cpp",

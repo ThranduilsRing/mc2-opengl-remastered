@@ -7,7 +7,7 @@ Neither may decide anything: a decision made from them skips the row's rule, ran
 defect the typed registry removes.
 
   E1  raw<"X"> may appear only inside a printf-family / MC2_DIAGFE / MC2_EVENT argument list, or be assigned to a
-      local that is afterwards used only as `name ? name : "(unset)"` (or `name && name[0] ? ...`).
+      local that is afterwards used only as `name ? name : "<fallback text>"` (or `name && name[0] ? ...`).
   E2  envText( may be called only from GameOS/gameos/gameosmain.cpp (the [LAUNCHER_ENV v1] block, at most two
       call lines) -- everywhere else the typed readers apply.
 
@@ -64,7 +64,7 @@ def check_text(rel: str, text: str) -> list[str]:
             name = m.group(1)
             use_rx = re.compile(r"\b%s\b" % re.escape(name))
             n_ = re.escape(name)
-            echo_rx = re.compile(r"\b%s\s*(?:&&\s*%s\s*\[\s*0\s*\]\s*)?\?\s*%s\s*:\s*\"\(unset\)\"" % (n_, n_, n_))
+            echo_rx = re.compile(r"\b%s\s*(?:&&\s*%s\s*\[\s*0\s*\]\s*)?\?\s*%s\s*:\s*\"[^\"]*\"" % (n_, n_, n_))
             bad = False
             for j in range(i + 1, min(len(lines), i + 1 + LOOKAHEAD)):
                 if use_rx.search(lines[j]) and not echo_rx.search(lines[j]):

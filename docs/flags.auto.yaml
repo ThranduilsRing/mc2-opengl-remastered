@@ -5,7 +5,7 @@
 generator_version: "3.0.0"
 gate_count: 1139
 registry_entry_count: 354
-verified_count: 798
+verified_count: 810
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -299,6 +299,7 @@ flags:
     rule: Prefix
     owner: code
     doc: "PAUSE-IMGUI-SLICE-0: =N auto-toggles the in-mission pause menu ONCE at frame >= N (MissionInterfaceManager::update)."
+    verified: true
     registry: {feature_id: MC2_TRACE_BOOT_PAUSED, kind: Trace, order: -1, default_on: false}
   - name: MC2_BOOT_PAUSED_CONFIRM
     kind: Bool
@@ -313,12 +314,14 @@ flags:
     rule: Prefix
     owner: code
     doc: ""
+    verified: true
   - name: MC2_BOOT_QUICKSAVE_AT
     kind: Int
     default: 0
     rule: Prefix
     owner: code
     doc: ""
+    verified: true
   - name: MC2_BOOT_TIMER
     kind: Int
     default: 0
@@ -1084,6 +1087,7 @@ flags:
     rule: Prefix
     owner: code
     doc: "DEBUG-VIEW-SWEEP-1: =N (1..6) boot-seeds the global full-scene debug render view: 1=shadow-factor 2=normalized-depth 3=unlit-albedo 4=overdraw-proxy..."
+    verified: true
     registry: {feature_id: MC2_DIAG_DEBUG_VIEW, kind: Trace, order: -1, default_on: false}
   - name: MC2_DEBUG_VIEW_SWEEP
     kind: String
@@ -1091,6 +1095,7 @@ flags:
     rule: Std
     owner: code
     doc: "DEBUG-VIEW-SWEEP-1: ='<startFrame>,<settleFrames>' frame-scheduled auto-sweep of the six MC2_DEBUG_VIEW views (missiongui.cpp update)."
+    verified: true
     registry: {feature_id: MC2_DIAG_DEBUG_VIEW_SWEEP, kind: Trace, order: -1, default_on: false}
   - name: MC2_DECAL_GLPROBE
     kind: Bool
@@ -2131,6 +2136,7 @@ flags:
     rule: Presence
     owner: code
     doc: "Center-probe knob: unattended smoke parks the cursor at (0,0), so the primary cursor-driven oracle never samples real terrain (compared=0)."
+    verified: true
   - name: MC2_GPU_GROUND_PICK_PARITY_SAMPLE
     kind: Int
     default: 30
@@ -2139,6 +2145,7 @@ flags:
     doc: "Sample every Nth frame for the ground-pick parity oracle; below 1 reads the default 30."
     range: {lo: 1, hi: 2147483647, style: reject}
     smoke_passthrough: true
+    verified: true
   - name: MC2_GPU_GROUND_PICK_PARITY_TAG
     kind: String
     default: ""
@@ -2146,6 +2153,7 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_GPU_GV_SHADOW_SKIP
     kind: Bool
     default: true
@@ -2473,6 +2481,7 @@ flags:
     owner: code
     doc: "MISSION-INTERFACE-PERF-1: chrono cost-split of MissionInterfaceManager::update() (the GameLogic.Mission.Interface Tracy zone) incl."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TRACE_IFACE_COST_SPLIT, kind: Trace, order: -1, default_on: false}
   - name: MC2_IMGUI
     kind: Bool
@@ -3178,6 +3187,7 @@ flags:
     rule: Lead0
     owner: code
     doc: "Default OFF: anchored zoom still reads as a pan in practice; use the legacy fixed-pivot wheel zoom."
+    verified: true
   - name: MC2_M2D_PZ_PARITY
     kind: Bool
     default: false
@@ -3533,6 +3543,7 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_MISSING_RUNWAY_FIX
     kind: Bool
     default: true
@@ -5991,6 +6002,7 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_TERRAIN_ADMISSION_LEGACY
     kind: Bool
     default: false
