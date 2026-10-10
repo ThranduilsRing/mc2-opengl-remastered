@@ -89,8 +89,8 @@
    "LG16": 0,
    "LG17": 2,
    "LG18": 0,
-   "LG19": 27,
-   "LG20": 49
+   "LG19": 19,
+   "LG20": 44
   },
   "HostServices": {
    "LG01": 0,
@@ -1469,8 +1469,7 @@
    "LG06": 1,
    "LG09": 1,
    "LG17": 2,
-   "LG19": 8,
-   "LG20": 16
+   "LG20": 11
   },
   "GuiRuntime/GraphicsOptionsWindow_internal.h": {
    "LG05": 1,
@@ -5768,7 +5767,7 @@
    "LG20": 1
   }
  },
- "head": "30fbf53fe",
+ "head": "072755b65",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

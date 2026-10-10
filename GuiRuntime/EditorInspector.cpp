@@ -1,7 +1,7 @@
 #include "EditorInspector.h"
 #include "imgui.h"
 #include <cstdio>    // snprintf, fopen, fprintf, fclose
-#include <cstdlib>   // getenv
+#include <cstdlib>
 
 // HZB camera-view dump: thin C helper defined in code/gamecam.cpp so we don't
 // have to pull the full camera.h -> terrain.h chain into GuiRuntime.
@@ -16,6 +16,8 @@ extern "C" void mc2_save_camera_bookmark(char* outPath, int outPathLen);
 #include "../RenderCore/RendererFeatureRegistry.h"
 #include "../RenderCore/RenderPassContract.h"  // RENDERPASS-CONTRACT-2.5 (descriptive table)
 #include "RenderDebugView.h"                   // DEBUG-VIEW-REGISTRY-1
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"   // str<>()
 
 // Terrain tunable C-API used to be forward-declared here for an inline
 // Terrain Pass tunables panel; those controls were moved to
@@ -108,8 +110,7 @@ namespace {
 static bool isEnabled() {
     static int cached = -1;
     if (cached < 0) {
-        const char* v = std::getenv("MC2_IMGUI_INSPECTOR");
-        cached = (!v || v[0] != '0') ? 1 : 0;
+        cached = mc2::gate::get<"MC2_IMGUI_INSPECTOR">();
     }
     return cached == 1;
 }
@@ -389,13 +390,13 @@ void EditorInspector::drawImGui() {
                     } else if (!d.envVar) {
                         ImGui::TextColored(ImVec4(0.4f, 1.f, 0.4f, 1.f), "always-on");
                     } else {
-                        const char* v = std::getenv(d.envVar);
+                        const auto st = mc2::gate::boolState(d.envVar);   // the name comes from the registry table
                         bool on;
                         const char* src;
-                        if (!v) {
+                        if (!st || !st->set) {
                             on  = d.defaultOn;
                             src = d.defaultOn ? "on (default)" : "off (default)";
-                        } else if (v[0] == '0') {
+                        } else if (!st->on) {
                             on  = false;
                             src = "off (forced)";
                         } else {
@@ -679,8 +680,7 @@ void EditorInspector::drawImGui() {
                 // V-AMBIENT-STATIC-1: hemisphere ambient fill mode (default-OFF).
                 // Inspect the env var directly (cheap; this panel only runs
                 // when MC2_IMGUI_INSPECTOR is on).
-                const char* ambEnv = std::getenv("MC2_STATIC_PROP_AMBIENT_V1");
-                bool ambOn = (ambEnv != nullptr && ambEnv[0] != '0' && ambEnv[0] != '\0');
+                bool ambOn = mc2::gate::get<"MC2_STATIC_PROP_AMBIENT_V1">();
                 ImGui::Text("  ambient        %s", ambOn ? "hemisphere_v1" : "off");
                 if (ImGui::IsItemHovered())
                     ImGui::SetTooltip("V-AMBIENT-STATIC-1 hemisphere ambient fill in\n"
@@ -723,8 +723,7 @@ void EditorInspector::drawImGui() {
                 // byte-identical pre-flip OFF behavior. ImGui slider below
                 // tunes runtime strength when gate is on.
                 // MUST match s_iblShEnabled lambda in gos_static_prop_batcher.cpp.
-                const char* iblEnv = std::getenv("MC2_STATIC_PROP_IBL_SH");
-                bool iblOn = !(iblEnv != nullptr && iblEnv[0] == '0');
+                bool iblOn = mc2::gate::get<"MC2_STATIC_PROP_IBL_SH">();
                 if (iblOn) {
                     // V-IBL-STATIC-2: surface active per-mission SH set name.
                     const char* shSetName = ibl_sh_runtime_currentSetName();
@@ -748,9 +747,7 @@ void EditorInspector::drawImGui() {
 
                 // V-MATERIAL-PBR-2: per-vertex Schlick-Fresnel + power-lobe
                 // specular status (read-only here; slider in Graphics Options).
-                const char* pbrEnv = std::getenv("MC2_STATIC_PROP_PBR_V1");
-                bool pbrOn = pbrEnv != nullptr && pbrEnv[0] != '0'
-                                                && pbrEnv[0] != '\0';
+                bool pbrOn = mc2::gate::get<"MC2_STATIC_PROP_PBR_V1">();
                 if (pbrOn) {
                     ImGui::Text("  pbr v1         on (strength=%.2f)",
                                 g_pbrV1Strength);
@@ -785,11 +782,8 @@ void EditorInspector::drawImGui() {
                 { "pbr v1",              "MC2_STATIC_PROP_PBR_V1",          false },
             };
             for (const auto& fb : kFallbacks) {
-                const char* v = std::getenv(fb.envVar);
-                bool on;
-                if (!v)               on = fb.defaultOn;
-                else if (v[0] == '0') on = false;
-                else                  on = true;
+                const auto st = mc2::gate::boolState(fb.envVar);
+                const bool on = (!st || !st->set) ? fb.defaultOn : st->on;
                 ImGui::Text("  %-22s", fb.label);
                 ImGui::SameLine(0.f, 4.f);
                 if (on)
@@ -1270,8 +1264,7 @@ void EditorInspector::drawImGui() {
             }
             static int s_drEnabled = -1;
             if (s_drEnabled < 0) {
-                const char* v = std::getenv("MC2_DEBUG_RENDERER");
-                s_drEnabled = (v && v[0] && v[0] != '0') ? 1 : 0;  // default-OFF (matches debug_renderer.cpp envFlagDefaultOff)
+                s_drEnabled = mc2::gate::get<"MC2_DEBUG_RENDERER">();  // default-OFF (matches debug_renderer.cpp envFlagDefaultOff)
             }
             if (!s_drEnabled)
                 ImGui::TextDisabled("Highlight: off (MC2_DEBUG_RENDERER=0)");
@@ -1598,13 +1591,13 @@ void EditorInspector::drawImGui() {
             { "MC2_DEBUG_RENDERER",   true  },
         };
         for (const auto& g : kGates) {
-            const char* v = std::getenv(g.name);
+            const auto st = mc2::gate::boolState(g.name);
             bool on;
             const char* src;
-            if (!v) {
+            if (!st || !st->set) {
                 on  = g.defaultOn;
                 src = g.defaultOn ? "(default ON)" : "(default OFF)";
-            } else if (v[0] == '0') {
+            } else if (!st->on) {
                 on  = false;
                 src = "(=0)";
             } else {
