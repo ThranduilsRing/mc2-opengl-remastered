@@ -1,5 +1,7 @@
 
 #include "diagnostic_trace.h"
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"   // str<>()
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>  // GetCurrentThreadId, MoveFileExW
@@ -84,8 +86,9 @@ DiagState& state() {
 // Returns true if "all tags" mode (*), false otherwise.
 // Sets disabled=true if "none".
 bool parseTagsEnv(std::unordered_set<std::string>& outTags, bool& outDisabled) {
-    const char* val = std::getenv("MC2_DIAG_TAGS");
-    if (!val || !val[0]) {
+    const std::string valText = mc2::gate::str<"MC2_DIAG_TAGS">();   // "" when unset or empty
+    const char* val = valText.c_str();
+    if (!val[0]) {
         // Default: use high-value whitelist
         outTags     = defaultWhitelist();
         outDisabled = false;
@@ -126,8 +129,8 @@ bool parseTagsEnv(std::unordered_set<std::string>& outTags, bool& outDisabled) {
 
 // Get output path from env or default
 std::filesystem::path outputPath() {
-    const char* p = std::getenv("MC2_DIAGNOSTIC_TRACE_FILE");
-    if (p && p[0]) return std::filesystem::path(p);
+    const std::string p = mc2::gate::str<"MC2_DIAGNOSTIC_TRACE_FILE">();   // "" when unset or empty
+    if (!p.empty()) return std::filesystem::path(p);
     return std::filesystem::path("debug_state/diagnostic_trace.jsonl");
 }
 
@@ -163,8 +166,7 @@ void init(const char* sessionId, int pid) {
     s.pid = pid;
 
     // Check if disabled
-    const char* fileEnv = std::getenv("MC2_DIAGNOSTIC_TRACE_FILE");
-    if (fileEnv && std::strcmp(fileEnv, "off") == 0) {
+    if (mc2::gate::str<"MC2_DIAGNOSTIC_TRACE_FILE">() == "off") {
         s.disabled = true;
         return;
     }
