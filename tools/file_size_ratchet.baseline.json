@@ -17,7 +17,7 @@
   "GameOS/gameos/gameos_graphics.cpp": 11533,
   "GameOS/gameos/gameosmain.cpp": 2810,
   "GameOS/gameos/gos_mech_batcher.cpp": 3408,
-  "GameOS/gameos/gos_static_prop_batcher.cpp": 11002,
+  "GameOS/gameos/gos_static_prop_batcher.cpp": 11025,
   "GameOS/gameos/gos_static_prop_registry.cpp": 2226,
   "GameOS/gameos/gos_terrain_lighting.cpp": 1697,
   "GameOS/gameos/gos_terrain_water_stream.cpp": 2455,
@@ -42,7 +42,7 @@
   "code/mechicon.cpp": 1969,
   "code/mechlabscreen.cpp": 1949,
   "code/mechlopedia.cpp": 1660,
-  "code/mission.cpp": 5893,
+  "code/mission.cpp": 5867,
   "code/missionbegin.cpp": 2136,
   "code/missiongui.cpp": 7905,
   "code/mover.h": 1911,
@@ -93,7 +93,7 @@
   "mclib/vfxtile.cpp": 2944,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "b86a66ac2",
+ "head": "e2dd6bead",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -173,7 +173,7 @@
   },
   {
    "file": "GameOS/gameos/gos_static_prop_batcher.cpp",
-   "lines": 11002
+   "lines": 11025
   },
   {
    "file": "code/missiongui.cpp",
@@ -181,7 +181,7 @@
   },
   {
    "file": "code/mission.cpp",
-   "lines": 5893
+   "lines": 5867
   },
   {
    "file": "code/objmgr.cpp",
