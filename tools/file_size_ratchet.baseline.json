@@ -28,8 +28,8 @@
   "GameOS/gameos/vulkan_terrain_island.cpp": 3505,
   "GameOS/include/gameos.hpp": 3753,
   "GameOS/include/imagehlp.h": 1799,
-  "GuiRuntime/EditorInspector.cpp": 1659,
-  "RenderCore/RendererFeatureRegistry.h": 2917,
+  "GuiRuntime/EditorInspector.cpp": 1652,
+  "RenderCore/RendererFeatureRegistry.h": 2918,
   "code/artlry.cpp": 1816,
   "code/bldng.cpp": 1702,
   "code/brain_special_dispatch.cpp": 3273,
@@ -42,7 +42,7 @@
   "code/mechicon.cpp": 1967,
   "code/mechlabscreen.cpp": 1952,
   "code/mechlopedia.cpp": 1663,
-  "code/mission.cpp": 5867,
+  "code/mission_init.cpp": 2317,
   "code/missionbegin.cpp": 2132,
   "code/mover.h": 1911,
   "code/mpparameterscreen.cpp": 2415,
@@ -91,7 +91,7 @@
   "mclib/vfxtile.cpp": 2944,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "1af09dd12",
+ "head": "e8aaccaa1",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -109,19 +109,19 @@
    "files": 10,
    "files_over_1500": 1,
    "files_over_3000": 0,
-   "max_lines": 1659
+   "max_lines": 1652
   },
   "HostServices": {
    "files": 3,
    "files_over_1500": 0,
    "files_over_3000": 0,
-   "max_lines": 120
+   "max_lines": 121
   },
   "RenderCore": {
    "files": 55,
    "files_over_1500": 1,
    "files_over_3000": 0,
-   "max_lines": 2917
+   "max_lines": 2918
   },
   "RenderWorld": {
    "files": 6,
@@ -130,10 +130,10 @@
    "max_lines": 1159
   },
   "code": {
-   "files": 338,
+   "files": 342,
    "files_over_1500": 27,
-   "files_over_3000": 5,
-   "max_lines": 5867
+   "files_over_3000": 4,
+   "max_lines": 5668
   },
   "editor": {
    "files": 225,
@@ -165,10 +165,6 @@
   3000
  ],
  "top": [
-  {
-   "file": "code/mission.cpp",
-   "lines": 5867
-  },
   {
    "file": "code/objmgr.cpp",
    "lines": 5668
@@ -219,7 +215,7 @@
   },
   {
    "file": "RenderCore/RendererFeatureRegistry.h",
-   "lines": 2917
+   "lines": 2918
   },
   {
    "file": "mclib/inifile.cpp",
@@ -278,6 +274,10 @@
    "lines": 2346
   },
   {
+   "file": "code/mission_init.cpp",
+   "lines": 2317
+  },
+  {
    "file": "GameOS/gameos/gos_static_prop_registry.cpp",
    "lines": 2207
   },
@@ -287,10 +287,10 @@
   }
  ],
  "total": {
-  "files": 1762,
+  "files": 1766,
   "files_over_1500": 77,
-  "files_over_3000": 12,
-  "max_lines": 5867
+  "files_over_3000": 11,
+  "max_lines": 5668
  },
  "version": 1
 }
