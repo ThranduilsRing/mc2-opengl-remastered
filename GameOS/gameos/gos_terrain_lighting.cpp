@@ -1605,7 +1605,9 @@ void CopyResultsToVertexPool(TerrainQuad* quadList, int numberQuads) {
 // Design doc Q3: walk quadList, filter calcThisFrame&1, index outputs[vertexNum].
 // ---------------------------------------------------------------------------
 
-static void Parity_PrintMismatch(uint64_t frame, int vn, const char* field,
+// Kept out of line: inlined into the per-vertex compare loop, the format call's template body costs the
+// parity pass about a third of its frame rate.
+[[msvc::noinline]] static void Parity_PrintMismatch(uint64_t frame, int vn, const char* field,
                                  uint32_t legacy, uint32_t gpu)
 {
     if (s_parityMismatchesThisFrame >= 16) return;  // throttle 16/frame
