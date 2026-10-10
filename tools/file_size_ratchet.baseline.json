@@ -21,19 +21,18 @@
   "GameOS/gameos/vulkan_color_prop_island.cpp": 1785,
   "GameOS/gameos/vulkan_shadow_island_live.cpp": 1645,
   "GameOS/include/gameos.hpp": 3753,
-  "GuiRuntime/EditorInspector.cpp": 1652,
   "RenderCore/RendererFeatureRegistry.h": 2917,
   "code/artlry.cpp": 1816,
   "code/bldng.cpp": 1702,
-  "code/brain_special_dispatch.cpp": 3273,
-  "code/gamecam.cpp": 1564,
+  "code/brain_special_dispatch.cpp": 2772,
+  "code/gamecam.cpp": 1591,
   "code/gameobj.cpp": 2366,
   "code/infowindow.cpp": 1732,
   "code/logisticsdialog.cpp": 2149,
   "code/mechicon.cpp": 1967,
   "code/mechlabscreen.cpp": 1952,
   "code/mechlopedia.cpp": 1663,
-  "code/missionbegin.cpp": 2132,
+  "code/missionbegin.cpp": 2164,
   "code/mover.h": 1911,
   "code/mpparameterscreen.cpp": 2415,
   "code/multplyr.h": 1849,
@@ -62,10 +61,10 @@
   "mclib/render_contract.cpp": 1592,
   "mclib/stuff/rotation.cpp": 1672,
   "mclib/terrtxm.cpp": 1778,
-  "mclib/tgl.h": 1689,
+  "mclib/tgl.h": 1702,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "123daceb2",
+ "head": "77a6a7f21",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -74,16 +73,16 @@
    "max_lines": 523
   },
   "GameOS": {
-   "files": 317,
+   "files": 318,
    "files_over_1500": 8,
    "files_over_3000": 1,
    "max_lines": 3753
   },
   "GuiRuntime": {
-   "files": 10,
-   "files_over_1500": 1,
+   "files": 12,
+   "files_over_1500": 0,
    "files_over_3000": 0,
-   "max_lines": 1652
+   "max_lines": 1365
   },
   "RenderCore": {
    "files": 55,
@@ -98,10 +97,10 @@
    "max_lines": 1159
   },
   "code": {
-   "files": 364,
+   "files": 368,
    "files_over_1500": 22,
-   "files_over_3000": 1,
-   "max_lines": 3273
+   "files_over_3000": 0,
+   "max_lines": 2772
   },
   "editor": {
    "files": 225,
@@ -116,7 +115,7 @@
    "max_lines": 1513
   },
   "mclib": {
-   "files": 588,
+   "files": 590,
    "files_over_1500": 16,
    "files_over_3000": 0,
    "max_lines": 2685
@@ -138,12 +137,12 @@
    "lines": 3753
   },
   {
-   "file": "code/brain_special_dispatch.cpp",
-   "lines": 3273
-  },
-  {
    "file": "RenderCore/RendererFeatureRegistry.h",
    "lines": 2917
+  },
+  {
+   "file": "code/brain_special_dispatch.cpp",
+   "lines": 2772
   },
   {
    "file": "GameOS/gameos/engine_present_vk.cpp",
@@ -190,12 +189,12 @@
    "lines": 2171
   },
   {
-   "file": "code/logisticsdialog.cpp",
-   "lines": 2149
+   "file": "code/missionbegin.cpp",
+   "lines": 2164
   },
   {
-   "file": "code/missionbegin.cpp",
-   "lines": 2132
+   "file": "code/logisticsdialog.cpp",
+   "lines": 2149
   },
   {
    "file": "mclib/mlr/mlrtriangleclipping.hpp",
@@ -255,9 +254,9 @@
   }
  ],
  "total": {
-  "files": 1770,
-  "files_over_1500": 51,
-  "files_over_3000": 2,
+  "files": 1779,
+  "files_over_1500": 50,
+  "files_over_3000": 1,
   "max_lines": 3753
  },
  "version": 1
