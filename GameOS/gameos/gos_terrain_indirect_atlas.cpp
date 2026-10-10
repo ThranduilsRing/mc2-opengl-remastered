@@ -3,6 +3,9 @@
 #include "gos_terrain_indirect_internal.h"
 
 
+// ---------------------------------------------------------------------------
+// Stage 2 — dense recipe SSBO storage and helpers
+// ---------------------------------------------------------------------------
 
 namespace gos_terrain_indirect_detail {
 

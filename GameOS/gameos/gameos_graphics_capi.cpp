@@ -4,6 +4,9 @@
 
 
 
+// GAMEOS-GRAPHICS-SPLIT-1 slice 1: gosFont implementation moved to
+// gameos_graphics_font.cpp. These shims give that TU renderer access without
+// exporting the gosRenderer class definition.
 DWORD gosRendererAddFontBmpTexture(const char* textureName)
 {
     gosTexture* ptex = new gosTexture(gos_Texture_Alpha, textureName, 0, NULL, 0, false);

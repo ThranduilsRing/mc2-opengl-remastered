@@ -5,6 +5,7 @@
 
 namespace gos_static_prop_batcher_detail {
 
+// Slice 1 (global instance pool). Default global cap and base-instance SSBO binding.
 constexpr uint32_t STATIC_PROP_GLOBAL_CAP_DEFAULT = 131072u;
 
 // Immutable per-map geometry.

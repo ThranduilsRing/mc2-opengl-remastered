@@ -3,6 +3,9 @@
 #include "gos_terrain_indirect_internal.h"
 
 
+// ---------------------------------------------------------------------------
+// Stage 3 — per-frame thin-record packer, indirect-command builder,
+//            preflight arming, and DrawIndirect thin executor.
 //
 // Bridge function (gos_terrain_bridge_drawIndirect) lives in gameos_graphics.cpp
 // where gosRenderer state is accessible.  This file owns the CPU-side logic;

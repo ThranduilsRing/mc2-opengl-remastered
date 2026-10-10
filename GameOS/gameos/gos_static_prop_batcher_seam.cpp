@@ -3,6 +3,9 @@
 #include "gos_static_prop_batcher_internal.h"
 
 
+// ---------------------------------------------------------------------------
+// Slice 2, Stage 2.A — new method and free-function definitions
+// ---------------------------------------------------------------------------
 
 // GpuStaticPropBatcher::wasLastFailureLateRegistration (lines added below)
 // Returns whether the most recent submitMultiShape() call returned false

@@ -164,6 +164,7 @@ void gosPostProcess::createFBOs(int w, int h)
     const bool vkDirectSceneResources = mc2VkSharedSceneDirectResourceEnabled();
 #endif
 
+    // Color attachment: RGBA16F
     // TEX-CLASS: render-target -- scene HDR color (MRT0, FBO attach)
     //
     // VK-P11 TIER-1 SHARED SCENE COLOR (gated): when MC2_VK_PROP_COLOR_TIER1 is ON
@@ -238,6 +239,7 @@ void gosPostProcess::createFBOs(int w, int h)
         }
     }
 
+    // Depth/stencil texture (sampleable for post-process depth reconstruction)
     // TEX-CLASS: render-target -- scene depth (sampleable, FBO attach)
     //
     // VK-TIER1 SHARED SCENE DEPTH (gated, GL-only slice): when the gate is ON and
@@ -305,6 +307,7 @@ void gosPostProcess::createFBOs(int w, int h)
         glBindTexture(GL_TEXTURE_2D, 0);
     }
 
+    // Normal buffer: MRT attachment 1 (rgb=world normal encoded, a=shadow skip flag)
     // TEX-CLASS: render-target -- GBuffer normal (MRT1, FBO attach)
     //
     // VK-P11 TIER-1 SHARED SCENE NORMAL (gated): mirror of the color slot above.

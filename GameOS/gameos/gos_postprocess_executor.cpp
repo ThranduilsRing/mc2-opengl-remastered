@@ -3,6 +3,8 @@
 #include "gos_postprocess_internal.h"
 
 
+// ============================================================================
+// FRAME-GRAPH-EXECUTOR-ISLAND-1
 //
 // Executor-owned PostProcess island: validate -> call pp->endScene() unchanged
 // -> validate. Gate MC2_FRAMEGRAPH_EXECUTOR (default-OFF) -> byte-identical.
@@ -486,6 +488,7 @@ extern "C" unsigned long mc2_framegraph_executor_apply_state_passes_impl()
 }
 
 // PER-PASS-APPLY-COUNTERS-1: per-pass getter. Returns the count for one
+// ApplyPassId, or 0 for an out-of-range id.
 extern "C" unsigned long mc2_framegraph_executor_apply_state_by_pass_impl(unsigned id)
 {
     return id < (unsigned)RenderCore::framegraph::ApplyPassId::Count ? g_applyStateByPass[id] : 0;

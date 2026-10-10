@@ -3,7 +3,9 @@
 #include "gos_postprocess_internal.h"
 
 
+// ===========================================================================
 // VK-REGION-SSAO-1: PostprocessSSAO region (second region through runRegion).
+// ===========================================================================
 //
 // 1A: the extracted GL SSAO region wrapper. Calls the UNCHANGED runSSAO()
 // inline body. No interface, no Vulkan: pure code-move. Under the master
