@@ -3,7 +3,7 @@
 
 #include <cassert>
 #include <cstdio>
-#include "utils/camera.h"
+#include "utils/vec.h"
 #include "utils/shader_builder.h"
 #include "utils/render_constants.h"
 
@@ -99,16 +99,6 @@ void draw_quad(float x0, float y0, float x1, float y1);
 struct glsl_program;
 void applyTexture(glsl_program* program, int unit, const char* name, GLuint texid);
 void applyPBO(glsl_program* program, int unit, const char* name, const Texture pbo, const Texture tex);
-
-void normalize(float (&v)[3]);
-void cross(float v1[3], float v2[3], float result[3]);
-float dot(float (&v1)[3], float (&v2)[3]);
-
-int glu_InvertMatrixf(const float m[16], float invOut[16]);
-void glu_MakeIdentityf(GLfloat m[16]);
-void glu_LookAt2(GLdouble eyex, GLdouble eyey, GLdouble eyez, GLdouble centerx,
-          GLdouble centery, GLdouble centerz, GLdouble upx, GLdouble upy,
-          GLdouble upz);
 
 
 typedef void (*render_func_t)(int w, int h, void* puserdata);
@@ -267,159 +257,5 @@ glMesh<VERTEX>::~glMesh()
 void draw_textured_cube(GLuint textureId);
 
 Texture load_texture_from_file(const char* texName);
-
-struct SIMPLE_VERTEX_PTN;
-glMesh<SIMPLE_VERTEX_PTN>* make_mesh_from_file(const char* filepath);
-
-template<typename T>
-void  draw_mesh_indexed_pt(bool b_wireframe, camera* pcam, glsl_program* pmat, glMesh<T>* pmesh, int num_indices=0)
-{
-	GLint posaddr = pmat->getAttribLocation("pos");
-	assert(posaddr!=-1);
-	GLint tcaddr = pmat->getAttribLocation("texcoord");
-	assert(tcaddr!=-1);
-
-	if(pcam)
-	{
-		mat4 proj, view;
-		pcam->get_projection(&proj);
-		pcam->get_view(&view);
-		mat4 viewproj = proj*view;
-		pmat->setMat4("ModelViewProjectionMatrix", (const float*)viewproj);
-		pmat->apply();
-	}
-	
-	glBindBuffer(GL_ARRAY_BUFFER, pmesh->vb_);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, pmesh->ib_);
-
-	glEnableVertexAttribArray(posaddr);
-	glEnableVertexAttribArray(tcaddr);
-
-	glVertexAttribPointer(posaddr, 3, GL_FLOAT, GL_FALSE, sizeof(T), (void*)0);
-	glVertexAttribPointer(tcaddr, 2, GL_FLOAT, GL_FALSE, sizeof(T), BUFFER_OFFSET(3*sizeof(float)));
-
-	if(b_wireframe)
-	    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	int idx2draw = num_indices!=0 ? num_indices : pmesh->num_indices_;
-	glDrawElements(pmesh->prim_type_, idx2draw , GL_UNSIGNED_INT, 0);
-	if(b_wireframe)
-	    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-	glDisableVertexAttribArray(posaddr);
-	glDisableVertexAttribArray(tcaddr);
-
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-	glUseProgram(0);
-}
-
-
-template<typename T>
-void  draw_mesh_indexed_pn(bool b_wireframe, camera* pcam, glsl_program* pmat, glMesh<T>* pmesh)
-{
-	GLint posaddr = pmat->getAttribLocation("pos");
-	assert(posaddr!=-1);
-	GLint normaddr = pmat->getAttribLocation("norm");
-	assert(normaddr!=-1);
-
-	mat4 proj, view;
-	pcam->get_projection(&proj);
-	pcam->get_view(&view);
-	mat4 viewproj = proj*view;
-
-	pmat->setMat4("ModelViewProjectionMatrix", (const float*)viewproj);
-	pmat->apply();
-	
-	glBindBuffer(GL_ARRAY_BUFFER, pmesh->vb_);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, pmesh->ib_);
-
-	glEnableVertexAttribArray(posaddr);
-	glEnableVertexAttribArray(normaddr);
-
-	glVertexAttribPointer(posaddr, 3, GL_FLOAT, GL_FALSE, sizeof(T), (void*)0);
-	glVertexAttribPointer(normaddr, 3, GL_FLOAT, GL_FALSE, sizeof(T), BUFFER_OFFSET(3*sizeof(float)));
-
-	if(b_wireframe)
-	    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	glDrawElements(pmesh->prim_type_, pmesh->num_indices_, GL_UNSIGNED_INT, 0);
-	if(b_wireframe)
-	    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-	glDisableVertexAttribArray(posaddr);
-	glDisableVertexAttribArray(normaddr);
-
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-	glUseProgram(0);
-}
-
-template<typename T>
-void  draw_mesh_ptn(bool b_wireframe, camera* pcam, glsl_program* pmat, glMesh<T>* pmesh)
-{
-	GLint posaddr = pmat->getAttribLocation("pos");
-	assert(posaddr!=-1);
-	GLint normaddr = pmat->getAttribLocation("norm");
-	//assert(normaddr!=-1);
-	GLint tcaddr = pmat->getAttribLocation("texcoord");
-	//assert(tcaddr!=-1);
-	GLint instaddr = pmat->getAttribLocation("inst_data");
-
-	mat4 proj, view;
-	pcam->get_projection(&proj);
-	pcam->get_view(&view);
-	mat4 viewproj = proj*view;
-
-	pmat->setMat4("ModelViewProjectionMatrix", (const float*)viewproj);
-	pmat->apply();
-	
-	glBindBuffer(GL_ARRAY_BUFFER, pmesh->vb_);
-
-	glEnableVertexAttribArray(posaddr);
-	glVertexAttribPointer(posaddr, 3, GL_FLOAT, GL_FALSE, sizeof(T), (void*)0);
-			
-	if(tcaddr) {
-		glEnableVertexAttribArray(tcaddr);
-		glVertexAttribPointer(tcaddr, 2, GL_FLOAT, GL_FALSE, sizeof(T), BUFFER_OFFSET(3*sizeof(float)));
-	}
-
-	if(normaddr!=-1) {
-		glEnableVertexAttribArray(normaddr);
-		glVertexAttribPointer(normaddr, 3, GL_FLOAT, GL_FALSE, sizeof(T), BUFFER_OFFSET(5*sizeof(float)));
-	}
-
-	bool draw_instanced = false;
-	if(instaddr!=-1 && pmesh->instance_vb_!=0)
-	{
-		draw_instanced = true;
-		glBindBuffer(GL_ARRAY_BUFFER, pmesh->instance_vb_);
-		glEnableVertexAttribArray(instaddr);
-		glVertexAttribPointer(instaddr, 3, GL_FLOAT, GL_FALSE, sizeof(vec3), (void*)0);
-		glVertexAttribDivisor(instaddr, 1);
-	}
-	
-	if(b_wireframe)
-	    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	if(!draw_instanced)
-		glDrawArrays(pmesh->prim_type_, 0, pmesh->num_vertices_);
-	else
-		glDrawArraysInstanced(pmesh->prim_type_, 0, pmesh->num_vertices_, pmesh->instance_count_);
-	if(b_wireframe)
-	    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-	glDisableVertexAttribArray(posaddr);
-	glDisableVertexAttribArray(normaddr);
-	glDisableVertexAttribArray(tcaddr);
-
-	if(draw_instanced)
-	{
-		glDisableVertexAttribArray(instaddr);
-		glVertexAttribDivisor(instaddr, 0);
-	}
-
-
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-	glUseProgram(0);
-}
 
 #endif // __GL_UTILS_H__

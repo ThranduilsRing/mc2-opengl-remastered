@@ -9,7 +9,6 @@
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
-#include "utils/camera.h"
 #include "utils/shader_builder.h"
 #include "utils/gl_utils.h"
 
