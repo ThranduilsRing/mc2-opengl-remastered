@@ -37,7 +37,7 @@
   "void clearList (void);",
   "void clearMoverList (void);"
  ],
- "split_commit": "PENDING",
+ "split_commit": "b9cc28a1f",
  "exclude_files": [
   "terrain_runtime.cpp"
  ]
