@@ -1,5 +1,4 @@
 // Shared surface of the txmmgr translation units (txmmgr*.cpp).
-//
 // txmmgr.cpp keeps the manager lifecycle, addRenderShape and the node pin/update code; the rest of
 // MC_TextureManager is split by responsibility (see DOC in each piece).
 #ifndef TXMMGR_INTERNAL_H
@@ -104,7 +103,6 @@ extern const bool s_spflushTxmEnabled;
 extern unsigned long long s_spflush_baseinstance_upload_cyc;
 extern unsigned long long s_spflush_recipe_rebuilds_txm;
 extern const bool s_txmLeakTrace;
-
 
 // Bump on every fresh node-slot creation (the three creation paths).
 inline void txmLeakNoteAlloc()

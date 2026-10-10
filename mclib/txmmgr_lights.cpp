@@ -2,7 +2,6 @@
 // Declared in the class headers; shared names in txmmgr_internal.h.
 #include "txmmgr_internal.h"
 
-
 // PERF FIX 2026-05-07: hash-based dedup map. The previous linear-scan
 // implementation walked all existing entries doing 900-byte memcmp per
 // comparison. Tracy capture (728 trees, default config) showed 8.5 ms
@@ -11,7 +10,6 @@
 // approach: O(1) average lookup; memcmp only on hash match (collision
 // verify). Map is reset by resetLightData() at frame start to mirror
 // lightDataStructuresCount=0 reset.
-//
 // Hash collisions: 64-bit FNV-1a over ~1KB struct. Birthday-paradox
 // probability ~10⁻⁷ per 728-actor frame; even on collision, memcmp
 // fails-safe by falling through to the append path. Logical duplicates
@@ -149,7 +147,7 @@ namespace {
 
     // [LIGHTBRIDGE v1] C5/C6 populate sizing recon (env-gated, measure-only,
     // demote-not-delete). The handoff's prescribed shape_emit_ns counter was
-    // grep-proven to wrap only the C1 legacy leaf (tgl.cpp:2602 scope, gated
+    // grep-proven to wrap only the C1 legacy leaf (tgl.cpp scope, gated
     // !eligibleForGpuObjects) which is structurally dead for the GPU-batched
     // population this slice targets; the C5/C6 path
     // (addLightDataStructureWithPerActorColor, the sole caller route from
@@ -264,7 +262,7 @@ namespace {
     // ★ PROP-BAKE-TIME-1 (2026-07-30): that invariant is TRUE on 45 of the 46
     // stock missions and FALSE on mc2_10, which authors live rain. Weather
     // rewrites Camera::ambient*/light* every frame as dayAmbient/rainLightLevel
-    // (code/weather.cpp:362) and mc2_10's storm ramps rainLightLevel 3.0 -> 4.0,
+    // (code/weather.cpp) and mc2_10's storm ramps rainLightLevel 3.0 -> 4.0,
     // so its published ambient walks 63/255 -> 48/255 across the mission while
     // every baked row stays frozen at whatever it read. Proven offline by
     // tools/object_light_row_harness ::mc2_10_storm_ambient_is_not_mission_constant
@@ -529,7 +527,7 @@ bool mc2IsStaticLightSlotBaked(int32_t recipeIndex)
 //           orientation-free `ambientTerm`.
 //   sun[] = FIRST TG_LIGHT_INFINITE/INFINITEWITHFALLOFF lightColor row ->
 //           the shader's `sunColor`, which is scaled by NdotL.
-// Mirrors the scan at shaders/static_prop.vert:720-729 exactly (type lives in
+// Mirrors the scan at shaders/static_prop.vert exactly (type lives in
 // lightDir[i][3], i.e. light_dir[i].w on the GLSL side).
 // Returns false when the slot was never written by mc2WriteStaticLightSlot.
 bool mc2PeekStaticLightSlotSummary(int32_t recipeIndex, int* outNumLights,
@@ -673,7 +671,7 @@ uint32_t MC_TextureManager::addLightDataStructureWithPerActorColor(TG_HWLightsDa
     // the key): actorLightSource == firstActiveLightSourceIndex() is the
     // SAME light decompose mutates into lightColor[0][0..3] AND the SAME
     // light sceneLightTemplateKey deliberately excludes from the template
-    // key (txmmgr.cpp ~:1017-1020). actorARGB closes exactly that excluded
+    // key (txmmgr.cpp). actorARGB closes exactly that excluded
     // gap. perActor==false => no decompose => template key alone suffices
     // (actorARGB folds to 0, combined == key).
     if (!s_lbRepointInit) lbRepointInitFromEnv();

@@ -2,7 +2,6 @@
 // Declared in the class headers; shared names in txmmgr_internal.h.
 #include "txmmgr_internal.h"
 
-
 DWORD actualTextureSize = 0;
 DWORD compressedTextureSize = 0;
 static int64_t gTxmRealizedTotal = 0;
@@ -21,7 +20,7 @@ static bool tryReadTgaLogicalSize(File& textureFile, DWORD uvScale, DWORD& logic
 	if (textureFile.fileSize() < sizeof(TGAFileHeader))
 		return false;
 
-	// [UI-PHASE1] carried from mc2r_ui_phase1 (base->theirs hunk @txmmgr.cpp:202+).
+	// [UI-PHASE1] carried from mc2r_ui_phase1 (base->theirs hunk @txmmgr.cpp+).
 	// PNG check first: the data/defs UI art is .png, and interpreting the
 	// PNG signature bytes as a TGA header yields garbage width/height.
 	// PNG IHDR stores big-endian width/height at offsets 16 and 20.
@@ -65,15 +64,12 @@ static bool tryReadTgaLogicalSize(File& textureFile, DWORD uvScale, DWORD& logic
 	return logicalWidth && logicalHeight;
 }
 
-//----------------------------------------------------------------------
 DWORD MC_TextureManager::textureFromMemory (DWORD *data, gos_TextureFormat key, DWORD hints, DWORD width, DWORD bitDepth)
 {
 	ZoneScopedN("MC_TextureManager::textureFromMemory");
 	long i=0;
 
-	//--------------------------------------------------------
 	// If we called this, we KNOW the texture is NOT loaded!
-	//
 	// Find first empty NODE
 	{
 		ZoneScopedN("MC_TextureManager::textureFromMemory findSlot");
@@ -89,7 +85,6 @@ DWORD MC_TextureManager::textureFromMemory (DWORD *data, gos_TextureFormat key, 
 	if (i == MC_MAXTEXTURES)
 		STOP(("TOO Many textures in game.  We have exceeded 4096 game handles"));
 		
-	//--------------------------------------------------------
 	// New Method.  Just store memory footprint of texture.
 	// DO NOT create GOS handle until we need it.
  	masterTextureNodes[i].gosTextureHandle = CACHED_OUT_HANDLE;
@@ -102,7 +97,6 @@ DWORD MC_TextureManager::textureFromMemory (DWORD *data, gos_TextureFormat key, 
 	masterTextureNodes[i].logicalWidth = width;
 	masterTextureNodes[i].logicalHeight = width;
 
-	//------------------------------------------
 	// Find and store the width.
 	masterTextureNodes[i].width = width;
 	long txmSize = width * width * bitDepth;
@@ -125,7 +119,6 @@ DWORD MC_TextureManager::textureFromMemory (DWORD *data, gos_TextureFormat key, 
 	}
 	compressedTextureSize += txmCompressSize;
 	
- 	//-------------------------------------------------------
 	// Create a block of cache memory to hold this texture.
 	if (!masterTextureNodes[i].textureData )
 	{
@@ -143,16 +136,13 @@ DWORD MC_TextureManager::textureFromMemory (DWORD *data, gos_TextureFormat key, 
 		masterTextureNodes[i].lzCompSize = txmCompressSize;
 	}
 	
-	//------------------	
 	return(i);
 }
 
-//----------------------------------------------------------------------
 DWORD MC_TextureManager::textureInstanceExists (const char *textureFullPathName, gos_TextureFormat key, DWORD hints, DWORD uniqueInstance, DWORD nFlush)
 {
 	long i=0;
 
-	//--------------------------------------
 	// Is this texture already Loaded?
 	for (i=0;i<MC_MAXTEXTURES;i++)
 	{
@@ -167,10 +157,8 @@ DWORD MC_TextureManager::textureInstanceExists (const char *textureFullPathName,
 				}
 				else
 				{
-					//------------------------------------------------
 					// Copy the texture from old Handle to a new one.
 					// Return the NEW handle.
-					//
 					// There should be no code here!!!
 				}
 			}
@@ -179,7 +167,6 @@ DWORD MC_TextureManager::textureInstanceExists (const char *textureFullPathName,
 	return 0;
 }
 
-//----------------------------------------------------------------------
 DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_TextureFormat key, DWORD hints, DWORD uniqueInstance, DWORD nFlush)
 {
 	ZoneScopedN("MC_TextureManager::loadTexture");
@@ -188,7 +175,7 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 	// Residency ground-truth trace (MC2_TEXMGR_LOAD_TRACE=1, default-off,
 	// zero-cost when unset): logs every loadTexture call's uniqueInstance +
 	// logical name. uniqueInstance != 0 == "modifiable / CPU-locked" (paint;
-	// txmmgr.h:136) -> the texture is CPU_RGBA_REQUIRED and its .tga must NOT be
+	// txmmgr.h) -> the texture is CPU_RGBA_REQUIRED and its .tga must NOT be
 	// slimmed. Consumed by tools/residency_slim.py to derive the keep/drop set
 	// from ground truth (mech *rgb AND plain-named vehicle bodies) instead of
 	// fragile filename heuristics.
@@ -202,7 +189,6 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 		}
 	}
 
-	//--------------------------------------
 	// Is this texture already Loaded?
 	for (i=0;i<MC_MAXTEXTURES;i++)
 	{
@@ -217,19 +203,15 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 			}
 			else
 			{
-				//------------------------------------------------
 				// Copy the texture from old Handle to a new one.
 				// Return the NEW handle.
-				//
 				// There should be no code here!!!
 			}
 		}
 	}
 
-	//--------------------------------------------------
 	// If we get here, texture has not been loaded yet.
 	// Load it now!
-	//
 	// Find first empty NODE
 	for (i=0;i<MC_MAXTEXTURES;i++)
 	{
@@ -249,7 +231,6 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 
  	if (mc2::gate::get<"MC2_LOG_MECH_ICON">() && strstr(textureFullPathName, "mechicon"))
 		printf("[MECHICON] loadTexture FRESH id=%ld: %s\n", i, textureFullPathName);
-	//--------------------------------------------------------
 	// New Method.  Just store memory footprint of texture.
 	// DO NOT create GOS handle until we need it.
  	masterTextureNodes[i].gosTextureHandle = CACHED_OUT_HANDLE;
@@ -266,7 +247,6 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 	masterTextureNodes[i].logicalWidth = 0;
 	masterTextureNodes[i].logicalHeight = 0;
 
-	//----------------------------------------------------------------------------------------------
 	// Store a cache-format marker and fileSize in width so that cache knows to create new texture from memory.
 	// This way, we never need to know anything about the texture AND we can store PMGs
 	// in memory instead of TGAs which use WAY less RAM!
@@ -402,7 +382,6 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 
 	//Try reading the RAW data out of the fastFile.
 	// If it succeeds, we just saved a complete compress, decompress and two memcpys!!
-	//
 	long result;
 	{
 		ZoneScopedN("MC_TextureManager::loadTexture readRAW");
@@ -451,11 +430,9 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 		masterTextureNodes[i].width = MC_TEXCACHE_FILE_LZ + txmSize;
 	}
 
- 	//-------------------
 	return(i);
 }
 
-//----------------------------------------------------------------------
 // DEV-SHELL texture_refresh (see txmmgr.h). Mirrors the loadTexture disk
 // read/compress path byte-for-byte so the refreshed cache entry is exactly
 // what a fresh loadTexture of the same file would have produced; the node's
@@ -552,7 +529,6 @@ long MC_TextureManager::refreshTexturesByName (const char *substring, long &skip
 	return refreshed;
 }
 
-//----------------------------------------------------------------------
 DWORD MC_TextureManager::textureFromMemoryRaw (DWORD *data, gos_TextureFormat key, DWORD hints, DWORD width, DWORD bitDepth)
 {
 	ZoneScopedN("MC_TextureManager::textureFromMemoryRaw");
@@ -603,7 +579,6 @@ DWORD MC_TextureManager::textureFromMemoryRaw (DWORD *data, gos_TextureFormat ke
 	return(i);
 }
 
-//----------------------------------------------------------------------
 long MC_TextureManager::saveTexture (DWORD textureIndex, const char *textureFullPathName)
 {
 	if ((MC_MAXTEXTURES <= textureIndex) || (NULL == masterTextureNodes[textureIndex].textureData))
@@ -626,7 +601,6 @@ long MC_TextureManager::saveTexture (DWORD textureIndex, const char *textureFull
 		}
 
 		{
-			//------------------------------------------
 			const DWORD cacheFormat = masterTextureNodes[textureIndex].width & 0xF0000000;
 			const DWORD originalSize = masterTextureNodes[textureIndex].width & MC_TEXCACHE_SIZE_MASK;
 			if (cacheFormat == MC_TEXCACHE_FILE_RAW || cacheFormat == MC_TEXCACHE_MEM_RAW)
@@ -668,7 +642,6 @@ DWORD MC_TextureManager::copyTexture( DWORD texNodeID )
 	return -1;
 
 }
-//----------------------------------------------------------------------
 // MC_TextureNode
 DWORD MC_TextureNode::get_gosTextureHandle (void)	//If texture is not in VidRAM, cache a texture out and cache this one in.
 {
@@ -723,7 +696,6 @@ DWORD MC_TextureNode::get_gosTextureHandle (void)	//If texture is not in VidRAM,
 			{
 				if (cacheFormat == MC_TEXCACHE_FILE_LZ)
 				{
-					//------------------------------------------
 					// Cache this badboy IN.
 					// Badboys are now LZ Compressed in texture cache.
 					long origSize;
@@ -779,7 +751,7 @@ DWORD MC_TextureNode::get_gosTextureHandle (void)	//If texture is not in VidRAM,
 				// texture is GPU-immutable / not CPU-lockable, so compressing it leaves
 				// the raw mask on screen (base blue + red/green, no team colors). Static
 				// shared textures (uniqueInstance == 0: terrain, trees, buildings) are
-				// never locked and keep the BC7 upload. See txmmgr.h:136 ("Texture is
+				// never locked and keep the BC7 upload. See txmmgr.h ("Texture is
 				// modifiable. DO NOT CACHE OUT").
 				if (s_texmgrCompressedUpload && nodeName && *nodeName && uniqueInstance == 0)
 				{
@@ -885,14 +857,12 @@ DWORD MC_TextureNode::get_gosTextureHandle (void)	//If texture is not in VidRAM,
 				mcTextureManager->peakUsedTextures = mcTextureManager->currentUsedTextures;
 			++gTxmRealizedTotal;
 
-			//------------------------------------------
 			// Cache this badboy IN.
 			TEXTUREPTR pTextureData;
 			{
 				gos_LockTexture(gosTextureHandle, 0, 0, &pTextureData);
 			}
 		 
-			//-------------------------------------------------------
 			// Create a block of cache memory to hold this texture.
 			DWORD txmSize = pTextureData.Height * pTextureData.Height * sizeof(DWORD);
 			gosASSERT(textureData);
@@ -904,7 +874,6 @@ DWORD MC_TextureNode::get_gosTextureHandle (void)	//If texture is not in VidRAM,
 				memcpy(pTextureData.pTexture,MC_TextureManager::lzBuffer2,txmSize);
 			}
 
-			//------------------------
 			// Unlock the texture
 			{
 				gos_UnLockTexture(gosTextureHandle);

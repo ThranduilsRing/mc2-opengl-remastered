@@ -1,25 +1,19 @@
-//---------------------------------------------------------------------
-//
-//
 // This class will manage the texture memory provided by GOS
 // GOS gives me a maximum of 256 256x256 pixel texture pages.
 // I want GOS to think I only use 256x256 textures.  This class
 // will insure that GOS believes that completely and provided
 // smaller texture surfaces out of the main surface if necessary
 // as well as returning the necessary UVs to get to the other surface.
-//
 //---------------------------------------------------------------------------//
 // Copyright (C) Microsoft Corporation. All rights reserved.                 //
 //===========================================================================//
 
 #include "txmmgr_internal.h"
 
-
 // NS3 boundary: effectStream belongs to the texture/effect subsystem, not
 // to whatever game/tool main links it. Previously redefined in every main.
 Stuff::MemoryStream *effectStream = NULL;
 
-//---------------------------------------------------------------------------
 // static globals
 MC_TextureManager *mcTextureManager = NULL;
 gos_VERTEXManager *MC_TextureManager::gvManager = NULL;
@@ -53,23 +47,19 @@ static const bool s_texLifecycleTrace = mc2::gate::get<"MC2_TEX_LIFECYCLE_TRACE"
 #define TEX_LC(fmt, ...) \
     do { if (s_texLifecycleTrace) { printf("[TEX_LIFECYCLE v1] " fmt "\n", ##__VA_ARGS__); fflush(stdout); } } while (0)
 
-// ---------------------------------------------------------------------------
 // [TXMMGR_TEXTURE_AUDIT v1] — texture-node-slot leak instrumentation.
 // Gate: MC2_TXM_LEAK_TRACE=1. Default OFF = byte-identical (no allocs, no emit).
 // Goal: name the texture classes that accumulate node slots across mission
 // unloads (the 4096 masterTextureNodes[] cap STOP at textureFromMemory /
 // loadTexture / textureFromMemoryRaw). Emitted from flush() (the per-mission
 // unload boundary, see Mission::destroy -> mcTextureManager->flush()).
-//
 //   [TXMMGR_TEXTURE_AUDIT] one line per mission unload with slot census.
 //   [TXMMGR_FLUSH]         keep/free decision counts around the flush loop.
 //   [TXMMGR_SURVIVOR]      top-10 surviving node-name prefixes after the flush.
-//
 // from_memory / anonymous heuristic: textureFromMemory + textureFromMemoryRaw
 // both set nodeName=NULL; loadTexture always sets a real name. So a node with
 // nodeName==NULL/empty is either a from-memory texture or the reserved empty
 // node[0]. We report both buckets off the same NULL-name test.
-// ---------------------------------------------------------------------------
 const bool s_txmLeakTrace = mc2::gate::get<"MC2_TXM_LEAK_TRACE">();
 static long s_txmMissionIndex      = 0;   // ++ per mission unload (flush)
 long s_txmAllocThisMission  = 0;   // nodes created since last unload boundary
@@ -121,7 +111,6 @@ static inline bool s_evictSkipShouldEmit(long nodeIdx, long curTurn) {
     return s_dedup.insert(key).second;
 }
 
-//------------------------------------------------------
 // Frees up gos_VERTEX manager memory
 void MC_TextureManager::freeVertices(void)
 {
@@ -143,7 +132,6 @@ void MC_TextureManager::freeShapes(void)
 	}
 }
 		
-//------------------------------------------------------
 // Creates gos_VERTEX Manager and allocates RAM.  Will not allocate if already done!
 void MC_TextureManager::startVertices (long maxVertices)
 {
@@ -165,14 +153,12 @@ void MC_TextureManager::startShapes(uint32_t maxShapes)
 	}
 }
 	 
-//----------------------------------------------------------------------
 // Class MC_TextureManager
 void MC_TextureManager::start (void)
 {
 	ZoneScopedN("MC_TextureManager::start");
 	init();
 
-	//------------------------------------------
 	// Create nodes from systemHeap.
 	long nodeRAM = MC_MAXTEXTURES * sizeof(MC_TextureNode);
 	masterTextureNodes = (MC_TextureNode *)systemHeap->Malloc(nodeRAM);
@@ -181,7 +167,6 @@ void MC_TextureManager::start (void)
 	for (long i=0;i<MC_MAXTEXTURES;i++)
 		masterTextureNodes[i].init();
 		
-	//-------------------------------------------
 	// Create VertexNodes from systemHeap
 	nodeRAM = MC_MAXTEXTURES * sizeof(MC_VertexArrayNode);
 	masterVertexNodes = (MC_VertexArrayNode *)systemHeap->Malloc(nodeRAM);
@@ -261,12 +246,10 @@ void MC_TextureManager::start (void)
 
 extern Stuff::MemoryStream *effectStream;
 extern MidLevelRenderer::MLRClipper * theClipper;
-//----------------------------------------------------------------------
 void MC_TextureManager::destroy (void)
 {
 	if (masterTextureNodes)
 	{
-		//-----------------------------------------------------
 		// Traverses list of texture nodes and frees each one.
 		long usedCount = 0;
 		for (long i=0;i<MC_MAXTEXTURES;i++)
@@ -285,7 +268,6 @@ void MC_TextureManager::destroy (void)
 	
 	gos_PopCurrentHeap();
 
-	//------------------------------------------------------
 	// Shutdown the GOS FX and MLR.
 	gos_PushCurrentHeap(gosFX::Heap);
 	
@@ -300,7 +282,6 @@ void MC_TextureManager::destroy (void)
 
 	gos_PopCurrentHeap();
 
-	//------------------------------------------
 	// free SystemHeap Memory
 	systemHeap->Free(masterTextureNodes);
 	masterTextureNodes = NULL;
@@ -327,7 +308,6 @@ void MC_TextureManager::destroy (void)
     sceneData_ = nullptr;
 }
 
-//----------------------------------------------------------------------
 MC_TextureManager::~MC_TextureManager (void)
 {
 	MC_TextureManager::iBufferRefCount--;
@@ -349,7 +329,6 @@ MC_TextureManager::~MC_TextureManager (void)
 	destroy();
 }
 
-//----------------------------------------------------------------------
 void MC_TextureManager::flush (bool justTextures)
 {
 	if (masterTextureNodes)
@@ -389,7 +368,6 @@ void MC_TextureManager::flush (bool justTextures)
 			}
 		}
 
-		//-----------------------------------------------------
 		// Traverses list of texture nodes and frees each one.
 		long usedCount = 0;
 		// [TXMMGR_FLUSH v1] keep/free decision tally.
@@ -471,7 +449,6 @@ void MC_TextureManager::flush (bool justTextures)
 	
 	gos_PopCurrentHeap();
 
-	//------------------------------------------------------
 	// Shutdown the GOS FX and MLR.
 	gos_PushCurrentHeap(gosFX::Heap);
 	
@@ -486,7 +463,6 @@ void MC_TextureManager::flush (bool justTextures)
 
 	gos_PopCurrentHeap();
 
-	//------------------------------------------------------
 	//Restart MLR and the GOSFx
 	gos_PushCurrentHeap(MidLevelRenderer::Heap);
 
@@ -498,7 +474,6 @@ void MC_TextureManager::flush (bool justTextures)
 	
 	gos_PopCurrentHeap();
 
-	//------------------------------------------------------
 	// ReStart the GOS FX.
 	gos_PushCurrentHeap(gosFX::Heap);
 	
@@ -528,12 +503,10 @@ void MC_TextureManager::flush (bool justTextures)
 	systemHeap->Free(effectsData);
 }
 
-//----------------------------------------------------------------------
 void MC_TextureManager::removeTextureNode (DWORD textureNode)
 {
 	if (textureNode != 0xffffffff)
 	{
-		//-----------------------------------------------------------
 		masterTextureNodes[textureNode].destroy();
 		if (masterTextureNodes[textureNode].textureData)
 		{
@@ -549,10 +522,8 @@ void MC_TextureManager::removeTextureNode (DWORD textureNode)
 	}
 }
 
-//----------------------------------------------------------------------
 void MC_TextureManager::removeTexture (DWORD gosHandle)
 {
-	//-----------------------------------------------------------
     long i = 0;
 	for (;i<MC_MAXTEXTURES;i++)
 	{
@@ -581,7 +552,6 @@ void MC_TextureManager::removeTexture (DWORD gosHandle)
 }
 
 #define cache_Threshold		150
-//----------------------------------------------------------------------
 bool MC_TextureManager::flushCache (void)
 {
 	bool cacheNotFull = false;
@@ -631,7 +601,6 @@ bool MC_TextureManager::flushCache (void)
 					EVICT_SKIPPED(i, masterTextureNodes[i].pinRefCount, "flushCache_cacheThreshold");
 					continue;
 				}
-				//----------------------------------------------------------------
 				// Cache this badboy out.  Textures don't change.  Just Destroy!
 				if (masterTextureNodes[i].gosTextureHandle)
 					gos_DestroyTexture(masterTextureNodes[i].gosTextureHandle);
@@ -658,7 +627,6 @@ bool MC_TextureManager::flushCache (void)
 					EVICT_SKIPPED(i, masterTextureNodes[i].pinRefCount, "flushCache_turn30");
 					continue;
 				}
-				//----------------------------------------------------------------
 				// Cache this badboy out.  Textures don't change.  Just Destroy!
 				if (masterTextureNodes[i].gosTextureHandle)
 					gos_DestroyTexture(masterTextureNodes[i].gosTextureHandle);
@@ -684,7 +652,6 @@ bool MC_TextureManager::flushCache (void)
 					EVICT_SKIPPED(i, masterTextureNodes[i].pinRefCount, "flushCache_turn1");
 					continue;
 				}
-				//----------------------------------------------------------------
 				// Cache this badboy out.  Textures don't change.  Just Destroy!
 				if (masterTextureNodes[i].gosTextureHandle)
 					gos_DestroyTexture(masterTextureNodes[i].gosTextureHandle);
@@ -906,10 +873,8 @@ void MC_TextureManager::addRenderShape(DWORD nodeId, TG_RenderShape* render_shap
 	}
 }
 
-//----------------------------------------------------------------------
 // Registry-driven texture pinning. See
 // docs/superpowers/specs/2026-05-06-static-prop-texture-pin-fix.md
-//
 // pinNode    asserts the slot is in-range AND has a live texture allocation
 //            (numUsers > 0). Pinning a free slot is a bug — the texture might
 //            be reallocated to a different consumer before unpinNode runs.
@@ -936,7 +901,6 @@ DWORD MC_TextureManager::getPinCount (DWORD nodeIdx) const
 	return masterTextureNodes[nodeIdx].pinRefCount;
 }
 
-//----------------------------------------------------------------------
 DWORD MC_TextureManager::update (void)
 {
 	ZoneScopedN("MC_TextureManager::update");
@@ -958,7 +922,6 @@ DWORD MC_TextureManager::update (void)
 					if (masterTextureNodes[i].pinRefCount > 0) {
 						EVICT_SKIPPED(i, masterTextureNodes[i].pinRefCount, "update_turn60");
 					} else {
-						//----------------------------------------------------------------
 						// Cache this badboy out.  Textures don't change.  Just Destroy!
 						{
 							ZoneScopedN("MC_TextureManager::update cacheOut");
@@ -995,7 +958,6 @@ DWORD MC_TextureManager::update (void)
 	return numTexturesFreed;
 }
 
-//----------------------------------------------------------------------
 void MC_TextureNode::destroy (void)
 {
 	if ((gosTextureHandle != CACHED_OUT_HANDLE) && (gosTextureHandle != 0xffffffff) && (gosTextureHandle != 0x0))

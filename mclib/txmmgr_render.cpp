@@ -2,8 +2,6 @@
 // Declared in the class headers; shared names in txmmgr_internal.h.
 #include "txmmgr_internal.h"
 
-
-// ---------------------------------------------------------------------------
 // [RENDERLISTS_COST v1] — TXMMGR-PERF-EASYWINS-1 coarse per-phase CPU cost
 // split of MC_TextureManager::renderLists(). Smoke-visible complement of the
 // Tracy zones (smoke runs cannot take user-driven Tracy captures). Pattern =
@@ -13,7 +11,6 @@
 // Enable: MC2_RENDERLISTS_COST_SPLIT=1 -> one [RENDERLISTS_COST v1] stderr
 // summary every 60 frames: per-frame mean µs per phase + node-table sizes.
 // self_us = total minus the sum of instrumented phases (unattributed gaps).
-// ---------------------------------------------------------------------------
 namespace rlcost {
 static const bool s_enabled = mc2::gate::get<"MC2_RENDERLISTS_COST_SPLIT">();
 enum Phase {
@@ -156,7 +153,6 @@ mat4 gos2my(Stuff::LinearMatrix4D& m)
 	return m2;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 class ShapeRenderer {
 
@@ -219,26 +215,22 @@ public:
 		// See the u_legacyLitMc2Frame block in shaders/gos_tex_vertex_lighted.vert
 		// for the full root-cause writeup (vehicles received no point/spot light
 		// because the frames were mixed inside GetFalloff's distance test).
-		//
 		// VEHICLE-LIGHTING-PATH-1: PROMOTED TO DEFAULT-ON, and this is a
 		// CORRECTNESS REQUIREMENT of the CacheGpuLightData() call added at
 		// gvactor.cpp -- NOT an optional enhancement. DO NOT "clean up" this
 		// gate as inert.
-		//
 		// Why it looked inert before: until this slice, vehicles never
 		// populated lightData_ at all, so calc_light took its numLights==0
-		// early-return (lighting.hglsl:232-236) and returned vec3(1,1,1)
+		// early-return (lighting.hglsl) and returned vec3(1,1,1)
 		// regardless of frame. Correcting the FRAME of a row containing ZERO
 		// lights is necessarily a no-op -- which is exactly why
 		// VEHICLE-NIGHT-LIT-1 measured as "disproven" on its own. It was never
 		// wrong, only unreachable.
-		//
 		// Now that the row is populated, the frame becomes load-bearing:
 		// feeding Stuff-frame position/normal against MC2-frame light rows
 		// makes length(vertex_world_pos - light_pos) meaningless inside
 		// GetFalloff and puts the sun NdotL ~90 degrees off. Shipping the
 		// gather with this OFF would produce confidently-wrong lighting.
-		//
 		// Blast radius is now self-limiting: this program is shared with other
 		// legacy lit shapes, but any shape that does not gather still has
 		// numLights==0 and returns before the frame is ever read. Only shapes
@@ -250,21 +242,19 @@ public:
 
 		// SUN-AXIS-FIX-1. ObjectLights.light_dir is a STUFF-frame vector --
 		// GetLocalForwardInWorld() on a BuildRotation(EulerAngles(pitch,
-		// yaw+135, 0)) transform (this file :2621, mclib/camera.cpp:509/:1860/
-		// :2110/:4252) returns matrix row 2 = (cosP*sinY, -sinP, cosP*cosY).
+		// yaw+135, 0)) transform (this file, mclib/camera.cpp/
+		//) returns matrix row 2 = (cosP*sinY, -sinP, cosP*cosY).
 		// Applying the same Stuff->MC2 swap used for normals and negating for
 		// the toward-sun convention gives (cosP*cos a, cosP*sin a, sinP) with
 		// a = lightYaw + 45 -- the true spherical sun. The +90deg between
 		// yaw+135 and the terrain sun's yaw+45 is EXACTLY cancelled by the
-		// swap, which is why the one consumer that swaps (mech.vert:279,
+		// swap, which is why the one consumer that swaps (mech.vert,
 		// specular) has always been right and the ones that do not are wrong.
 		// Proven on all 24 shipping missions offline by
 		// tools/class_light_band_harness Stage B/D -- no launch required.
-		//
 		// Only meaningful on the u_legacyLitMc2Frame=1 branch, which is where
 		// the shader hands calc_light an MC2-frame normal; the shader applies
 		// it there and nowhere else.
-		//
 		// DEFAULT OFF. This is a correctness fix but a LARGE and TWO-SIDED
 		// visual one -- 22 of 24 missions move, up to 0.53 of full scale, and
 		// almost exactly as many surface normals get DARKER as brighter. No
@@ -280,8 +270,7 @@ public:
 		// VEHICLE-AMBIENT-FLOOR-1: DEFAULT-ON. Finishes VEHICLE-LIGHTING-PATH-1
 		// by giving this path the two terms mech.vert has and it did not --
 		// the kAmbientFloor = 0.35 seed handed to calc_light, and the
-		// clamp(...,0,1) on the result (shaders/mech.vert:204,:223).
-		//
+		// clamp(...,0,1) on the result (shaders/mech.vert).
 		// VEHICLE-LIGHTING-PATH-1 fixed "vehicles have no light row". It did
 		// NOT fix "the truck is darker than the mech next to it", because a
 		// vehicle computed base_light + A + S*ndl, unclamped, while a mech
@@ -296,13 +285,11 @@ public:
 		// on mc2_03 the vehicle peak is 0.796, below 1.0 at EVERY normal, so
 		// every vehicle pixel darkened. With this on, the vehicle expression is
 		// arithmetically identical to the mech expression for the same row.
-		//
 		// Blast radius is self-limiting for the same reason as
 		// MC2_LEGACY_LIT_MC2_FRAME above: a shape that never gathers still has
 		// numLights == 0, so calc_light returns vec3(1,1,1) before it reads the
-		// seed (lighting.hglsl:232-236), and clamp(vec3(1),0,1) == vec3(1).
+		// seed (lighting.hglsl), and clamp(vec3(1),0,1) == vec3(1).
 		// Only shapes carrying a real light row can observe the flip.
-		//
 		// MC2_VEHICLE_AMBIENT_FLOOR=0 -> u_vehicleAmbientFloor=0 -> no floor,
 		// no clamp -> byte-identical to the pre-slice shipped build.
 		static const bool s_vehicleAmbientFloor = mc2::gate::get<"MC2_VEHICLE_AMBIENT_FLOOR">();
@@ -355,8 +342,8 @@ public:
 		gos_ApplyRenderMaterial(mat);
 		gos_BindLightDataStorageBlock(mat);
 
-		// VEHICLE-LIGHTING-PATH-1: night light-pool parity. mech.frag:399 and
-		// static_prop.frag:456 both consume the pool; this legacy lit program
+		// VEHICLE-LIGHTING-PATH-1: night light-pool parity. mech.frag and
+		// static_prop.frag both consume the pool; this legacy lit program
 		// was the only object shader with no pool term and no upload, so
 		// vehicles received zero contribution from building pools, turret
 		// lamps and their own headlights at night. Must come after
@@ -384,8 +371,6 @@ public:
 
 };
 
-
-//----------------------------------------------------------------------
 // Draws all textures with isTerrain set that are solid first,
 // then draws all alpha with isTerrain set.
 void MC_TextureManager::renderLists (void)
@@ -478,7 +463,6 @@ void MC_TextureManager::renderLists (void)
 	}
 
 	DWORD fogColor = eye->fogColor;
-	//-----------------------------------------------------
 	// FOG time.  Set Render state to FOG on!
 	if (useFog)
 	{
@@ -531,7 +515,6 @@ void MC_TextureManager::renderLists (void)
         gos_LightDataSsbo_Upload(lightData_, totalBytes);   // legacy whole-buffer
     }
 	} // end RenderLists.LightDataUpload
-    //
 
     // update scene data uniform buffer
     Stuff::Vector3D cp = eye->getCameraOrigin();
@@ -563,8 +546,6 @@ void MC_TextureManager::renderLists (void)
         gos_UpdateBuffer(sceneDataBuffer_, sceneData_, 0, sizeof(TG_HWSceneData));
     }
     
-    
-
 	{
 		ZoneScopedN("Render.3DObjects");
 		TracyGpuZone("Render.3DObjects");
@@ -606,7 +587,6 @@ void MC_TextureManager::renderLists (void)
 					TG_RenderShape* rs = masterHardwareVertexNodes[i].shapes + sh;
 					gos_SetRenderViewport(rs->viewport_[2], rs->viewport_[3], rs->viewport_[0], rs->viewport_[1]);
 
-
 					//gos_SetRenderViewport(0, 0, Environment.drawableWidth, Environment.drawableHeight);
 					// TODO: set mvp_ in a separate function, like gos_set_render_camera(mvp_)...
 					gos_RenderIndexedArray(rs->ib_, rs->vb_, rs->vdecl_, (const float*)rs->mvp_);
@@ -615,7 +595,6 @@ void MC_TextureManager::renderLists (void)
 				{
 					DWORD texture = masterTextureNodes[textureIndex].get_gosTextureHandle();
 					TG_RenderShape* rs = masterHardwareVertexNodes[i].shapes + sh;
-
 
 					mat4 view_mat = gos2my(TG_Shape::s_worldToCamera);
 					mat4 world_mat = gos2my(rs->mw_);
@@ -783,11 +762,10 @@ void MC_TextureManager::renderLists (void)
 			// swap (x'=-x, y'=z, z'=y) ALREADY BAKED IN. So inverting it maps a GL-NDC
 			// corner straight back to MC2 world: NO manual (-x,z,y) swizzle and NO w<0
 			// negate (this matrix emits positive-w-in-front).
-			//
 			// PRIOR BUG: the code inverted getWorldToClip() (D3D pixel-homogeneous,
 			// Y-down, w<0 in front) but fed it the GL-NDC cube below. GL-NDC and that
 			// native clip differ by kPixelHomogToGLNDC (Y-flip + x offset + w sign-flip,
-			// camera.cpp:142-156), never applied -> the unprojected box was mirrored/
+			// camera.cpp), never applied -> the unprojected box was mirrored/
 			// offset, only ~correct when the frustum was axis-aligned/centered. That is
 			// why trees shadowed only at certain camera angles.
 			static const float ndc[8][3] = {
@@ -797,7 +775,7 @@ void MC_TextureManager::renderLists (void)
 				{-1.0f, 1.0f, 1.0f},{ 1.0f, 1.0f, 1.0f}
 			};
 			float cornersMC2[8][3];
-			// Invert(src) stores the inverse of src into *this (matrix.hpp:584).
+			// Invert(src) stores the inverse of src into *this (matrix.hpp).
 			Stuff::Matrix4D clipToWorldGL;
 			clipToWorldGL.Invert(eye->worldToClipGL());
 			for (int c = 0; c < 8; ++c) {
@@ -905,7 +883,6 @@ void MC_TextureManager::renderLists (void)
 					// filter the casters to only those whose origin projects inside the
 					// dynamic shadow frustum (+margin), using the EXACT same matrix the
 					// shadow VS uses (getDynamicLightSpaceMatrix(), column-major, GL_FALSE).
-					//
 					// World-position frame: shaders/shadow_static_prop.vert computes
 					//   worldStuff = vec4(a_position,1) * modelMatrix   (row-vector * M)
 					//   worldMC2   = vec3(-worldStuff.x, worldStuff.z, worldStuff.y)
@@ -914,7 +891,7 @@ void MC_TextureManager::renderLists (void)
 					// in the column-major float[16] (v*M picks element c*4+3), so
 					//   worldMC2 = (-M[3], M[11], M[7])
 					// This is EXACTLY the registry's actorWorldCenter extraction
-					// (gos_static_prop_registry.cpp:842-847) and the frame the light matrix
+					// (gos_static_prop_registry.cpp) and the frame the light matrix
 					// consumes — verified against both the VS and the SHADOWZRANGE probe.
 					// DEFAULT ON since 2026-06-16 (render-hygiene-s1). Off-map props
 					// never land their shadows on the playfield — filtering them saves
@@ -1266,7 +1243,6 @@ void MC_TextureManager::renderLists (void)
 			// back to flush() when DrawIndirect returns false (plan v2 advisor
 			// stop-the-line #1). A false return is a hard failure: logged, arming
 			// disabled process-wide; operator advice in event=hard_failure line.
-			//
 			// Phase 7.5 LOD chunk coexistence: when MC2_TERRAIN_LOD_CHUNK=1 the chunk
 			// path owns terrain rendering (flushDrawCommands in gamecam.cpp). Suppress
 			// DrawIndirect to prevent depth/color conflicts — both paths write the same
@@ -1281,7 +1257,7 @@ void MC_TextureManager::renderLists (void)
 				// MUST be true here: on armed frames setupTextures already fired SOLID gate-off so PatchStream
 				// has no SOLID records — a false value would fall through to the (now terrain-skipping) shared
 				// loop and could mis-fire the LegacyMLR tripwire. NOTE: DrawIndirect() itself is RETAINED
-				// (RenderWaterReflectionPass calls it internally, gos_terrain_indirect.cpp:3817); only this
+				// (RenderWaterReflectionPass calls it internally, gos_terrain_indirect.cpp); only this
 				// txmmgr SOLID-draw caller is retired.
 				RenderCore::framegraph::noteTerrainPath(RenderCore::framegraph::TerrainPath::IndirectBridge);
 				modernHandled = true;
@@ -1338,7 +1314,7 @@ void MC_TextureManager::renderLists (void)
 					(masterVertexNodes[i].vertices))
 				{
 					// LEGACY-MLR-DELETE-1: legacy masterVertexNode terrain draw retired. Terrain solid is
-					// owned by LOD-chunk (gamecam.cpp:508) / indirect bridge / patch-stream. A terrain node
+					// owned by LOD-chunk (gamecam.cpp) / indirect bridge / patch-stream. A terrain node
 					// must NOT draw via this shared MC2_DRAWSOLID loop. Always skip terrain here. If a terrain
 					// node arrives with modernHandled==false, no modern path drew terrain this frame — a real
 					// regression (terrain would be invisible). Fire the LegacyMLR telemetry counter as a loud
@@ -1798,7 +1774,6 @@ void MC_TextureManager::renderLists (void)
 	gos_render_pass_timer::End(gos_render_pass_timer::Pass_Water);
 	} // end RenderLists.TerrainAlphaWaterLoops
 
-
 	//<< sebi: added this section to draw objects which do not have terrain underlayer (those are added in quad.cpp, see (*) there )
 	{ ZoneScopedN("Render.NoUnderlayer");
 	  TracyGpuZone("Render.NoUnderlayer");
@@ -1943,7 +1918,6 @@ void MC_TextureManager::renderLists (void)
 #endif
 	gos_render_pass_timer::End(gos_render_pass_timer::Pass_Blobs);
 	} // end RenderLists.ShadowBlobs
-
 
 	{
 	ZoneScopedN("RenderLists.NonTerrainAlphaLoops");

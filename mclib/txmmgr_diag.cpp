@@ -2,13 +2,10 @@
 // Declared in the class headers; shared names in txmmgr_internal.h.
 #include "txmmgr_internal.h"
 
-
-// ---------------------------------------------------------------------------
 // [SPFLUSH_COST_SPLIT v1] — txmmgr-side RDTSC accumulator.
 // Measures the batcher_prepareBaseInstanceTable() + bucket-upload span each
 // frame. Gate mirrors the registry-side gate (same env var). The consume
 // function is called by the registry summary emit (extern declaration there).
-// ---------------------------------------------------------------------------
 const bool s_spflushTxmEnabled = mc2::gate::get<"MC2_STATIC_PROP_FLUSH_COST_SPLIT">();
 unsigned long long s_spflush_baseinstance_upload_cyc = 0;
 // recipe_rebuilds: monotonic + window delta. light_index_writes==recipe_rebuilds (same site).
@@ -33,14 +30,12 @@ unsigned long long spflush_GetRecipeRebuildTotal() {
     return s_spflush_recipe_rebuilds_total;
 }
 
-// ---------------------------------------------------------------------------
 // [TXMMGR_BOUNDS v1] — TXMMGR-BOUNDS-HARDEN-1 exhaustion counters.
 // Declared extern in txmmgr.h so the inline pool allocators + addVertices paths
 // can bump them. atomic+relaxed because addVertices/addRenderShape run on
 // frame-jobs workers; the increment only happens on the rare overflow path.
 // A teardown dump surfaces any nonzero counter even with the trace gate off, so
 // silent pool exhaustion can no longer pass unnoticed.
-// ---------------------------------------------------------------------------
 bool g_txmmgrBoundsTrace = mc2::gate::get<"MC2_TXMMGR_BOUNDS_TRACE">();
 std::atomic<unsigned long long> g_txmmgr_vertex_block_exhausted{0};
 std::atomic<unsigned long long> g_txmmgr_block_exhausted{0};
@@ -60,4 +55,3 @@ struct TxmmgrBoundsDump {
 };
 TxmmgrBoundsDump s_txmmgrBoundsDump;
 }
-

@@ -2,7 +2,6 @@
 // Declared in the class headers; shared names in txmmgr_internal.h.
 #include "txmmgr_internal.h"
 
-
 // T1.15 [SPOT_DIAG v1] pack-probe state (GatherLightsParameters).
 // First-shape always-on (one stderr line on the first call after process start).
 // Per-summary every 600 GatherLightsParameters calls when env=1. `calls=N`
@@ -35,14 +34,12 @@ static bool          s_lightClampFixtureYelled = false;
 // consumers actually read as the translation column. See the long comment at
 // the memcpy in GatherLightsParameters for the full derivation. Set
 // MC2_LIGHT_POS_COLUMN_FIX=0 to restore the shipped (0,0,0) upload.
-//
 // PROMOTED TO DEFAULT-ON. Its prior "sub-perceptual, 1/255 delta" measurement
 // NO LONGER CHARACTERISES THIS GATE and must not be cited as grounds to demote
 // it. That number was taken at sun-dominated fixture poses, where the only
 // meaningful contributor is the INFINITE sun -- which has no position term and
 // is therefore structurally immune to this bug. It measured the one condition
 // under which the fix cannot matter.
-//
 // It becomes load-bearing here. With the vehicle light row now populated
 // (VEHICLE-LIGHTING-PATH-1), vehicles are ground-level MOVERS that sit close to
 // exactly the light classes this bug breaks -- POINT (carnage.cpp explosions,
@@ -59,7 +56,6 @@ static const bool    s_lightPosColumnFix      = mc2::gate::get<"MC2_LIGHT_POS_CO
 // that ships is built from an EXPLICIT query (light list + declared per-class
 // policy) instead of being a by-product of the mutate-gather-restore dance.
 // =0 restores the legacy in-place packing loop below, byte-for-byte.
-//
 // WHY DEFAULT-OFF, and what would justify flipping it:
 // tools/object_light_row_harness proves the ALGORITHM byte-identical — that a
 // declared policy reproduces the mutation it replaces, across every class,
@@ -89,7 +85,6 @@ static unsigned long s_lightRowPureChecked    = 0;
 static unsigned long s_lightRowPureMismatch   = 0;
 
 // MC2_LIGHT_ROW_CENSUS (default OFF) — LIGHT-POS-COMBAT-1. Pure observation.
-//
 // The pre-existing MC2_OBJECT_PARITY_TRACE dump latches after the FIRST
 // GatherLightsParameters call of the session, so it can only ever sample a
 // static opening frame. The lights this lane cares about — carnage.cpp
@@ -115,7 +110,7 @@ struct LightRowCensusRec {
     float         falloff[2];
     float         maxSrcAbs; // largest |component| of src ever seen for this type
 };
-// TG_LIGHT_* ids are 0..5 (tgl.h:163-168); index defensively.
+// TG_LIGHT_* ids are 0..5 (tgl.h); index defensively.
 static LightRowCensusRec s_lightRowCensusTab[8] = {};
 static unsigned long     s_lightRowCensusCalls  = 0;
 static const char* lightRowCensusTypeName(unsigned t) {
@@ -144,14 +139,11 @@ static void lightRowCensusEmit(const char* tag, unsigned t) {
 }
 }
 
-//-----------------------------------------------------------------------------
 // LIGHT-ROW-PURE-1 — ARCH-LIGHTING slice 1. See mclib/object_light_row.h for
 // the design; this is the engine-coupled adapter and nothing else.
-//
 // LOCKSTEP: object_light_row::Row mirrors TG_HWLightsData field for field. If
 // either side gains a member, these fire at compile time rather than shipping a
 // row whose bytes the GPU reads differently than the harness compares.
-//-----------------------------------------------------------------------------
 namespace {
 
 namespace olr = object_light_row;
@@ -186,16 +178,15 @@ static_assert((uint32_t)olr::kTypeTerrain  == (uint32_t)TG_LIGHT_TERRAIN,  "type
 // The policy the appearance class currently being updated has DECLARED. It is
 // published immediately alongside the legacy mutation and cleared after, so it
 // describes exactly one class's row.
-//
 // WHY THE MUTATIONS ARE STILL THERE (do not "finish the job" without redoing
 // the census): a reader census over this tree found the shared-list mutations
 // are load-bearing for a consumer the row diff CANNOT see —
 // TG_Shape::MultiTransformShape, the CPU per-vertex lighting kernel
-// (mclib/tgl.cpp:2189-2192), reads the same TG_Light objects' active/GetaRGB
-// and runs INSIDE the tree's sun-off window (mclib/bdactor.cpp:7139, and
-// :7103 under dual-emit). It is live in this build: useVertexLighting is true
-// (mclib/terrain.cpp:353) and Environment.Renderer is 0, not 3
-// (code/mechcmd2.cpp:2974). Deleting the mutations would therefore change baked
+// (mclib/tgl.cpp), reads the same TG_Light objects' active/GetaRGB
+// and runs INSIDE the tree's sun-off window (mclib/bdactor.cpp, and
+// under dual-emit). It is live in this build: useVertexLighting is true
+// (mclib/terrain.cpp) and Environment.Renderer is 0, not 3
+// (code/mechcmd2.cpp). Deleting the mutations would therefore change baked
 // vertex colours — listOfColors / listOfTriangles[].aRGBLight — while every
 // gathered row stayed byte-identical. That is the one failure mode a row-memcmp
 // is structurally blind to, so the mutations stay and the policy is published
@@ -253,8 +244,8 @@ inline void flattenLight(const TG_LightPtr src, olr::LightInput& dst)
 // Resolve the declared policy's target lights BY ROLE rather than by array
 // index. The classes mutate worldLights[0] (the sun) and worldLights[1] (the
 // ambient) — allocated as TG_LIGHT_INFINITE and TG_LIGHT_AMBIENT at
-// mclib/camera.cpp:488/515 — but they GATHER against activeLights[], a
-// separately compacted view (mclib/camera.cpp:2635-2668). Role resolution is
+// mclib/camera.cpp — but they GATHER against activeLights[], a
+// separately compacted view (mclib/camera.cpp). Role resolution is
 // correct under any compaction order; an index would silently target the wrong
 // light the day a TG_LIGHT_TERRAIN sorts ahead of the sun.
 inline int32_t findFirstOfType(const olr::LightInput* lights, uint32_t n, uint32_t type)
@@ -385,13 +376,11 @@ void applyPureObjectLightRow(TG_HWLightsData* lights)
 
 }
 
-//-----------------------------------------------------------------------------
 // LIGHT-ROW-PURE-1 public policy declaration API (declared in txmmgr.h).
 // An appearance class publishes the policy it is about to apply, immediately
 // beside the legacy mutation, and clears it when its gather is done. Publishing
 // is inert by itself: it changes no light, no row and no pixel unless
 // MC2_LIGHT_ROW_PURE is on, and even then it reproduces the mutation exactly.
-//-----------------------------------------------------------------------------
 void mc2PublishObjectLightPolicy(uint32_t classPolicy,
                                  bool sunRecolour, uint32_t sunARGB,
                                  bool sunDisabled,
@@ -475,29 +464,26 @@ void GatherLightsParameters(TG_HWLightsData* lights)
 				light2world = Stuff::LinearMatrix4D::Identity;
 
 			// LIGHT-POS-COLUMN-1 — light world POSITION never reaches the GPU.
-			//
 			// Stuff::AffineMatrix4D is 3 columns x 4 rows, indexed
-			// entries[(column<<2)+row] (mclib/stuff/affinematrix.hpp:141), and
+			// entries[(column<<2)+row] (mclib/stuff/affinematrix.hpp), and
 			// BuildTranslation writes (W_Axis, {X,Y,Z}_Axis) — i.e. the world
 			// translation lives at entries[3], [7], [11]. BuildRotation only
-			// touches rows 0..2 (mclib/stuff/affinematrix.cpp:162-194), so a
-			// BuildTranslation-then-BuildRotation producer (bdactor.cpp:3435 /
-			// :3673, carnage.cpp:742, turret.cpp:917, weaponbolt.cpp:1451)
+			// touches rows 0..2 (mclib/stuff/affinematrix.cpp), so a
+			// BuildTranslation-then-BuildRotation producer (bdactor.cpp /
+			//, carnage.cpp, turret.cpp, weaponbolt.cpp)
 			// really does leave the position in those three slots.
-			//
 			// The memcpy below therefore lands the translation at GPU floats
 			// [3]/[7]/[11] — which, read as a column-major GLSL mat4, is
 			// m[0].w / m[1].w / m[2].w. But EVERY consumer decodes the light
 			// origin as m[3].xyz == floats [12][13][14]:
-			//     shaders/include/lighting.hglsl:246,256,274 (POINT/SPOT/
+			//     shaders/include/lighting.hglsl (POINT/SPOT/
 			//                                     INFINITEWITHFALLOFF)
-			//     shaders/vulkan/mech_tier1.vert:110,117,124
-			//     shaders/lightgrid_build.comp:112
+			//     shaders/vulkan/mech_tier1.vert
+			//     shaders/lightgrid_build.comp
 			// and the line below explicitly ZEROES exactly those three slots.
 			// Net effect in the shipped build: every object-path POINT / SPOT /
 			// INFINITEWITHFALLOFF light is evaluated as if it sat at the world
 			// origin.
-			//
 			// WHY THE FIX IS HERE AND NOT IN THE SHADERS: this is the single
 			// chokepoint feeding all seven read sites across three shader
 			// languages (GLSL, SPIR-V, compute), so one edit corrects them
@@ -505,10 +491,9 @@ void GatherLightsParameters(TG_HWLightsData* lights)
 			// the value currently uploaded is the constant (0,0,0), which carries
 			// no information, so no downstream consumer can possibly be
 			// compensating for it.
-			//
 			// NOT TOUCHED: lightDir is gathered separately below via
 			// GetLocalForwardInWorld and is already correct; the CPU mirror
-			// (msl.cpp:1792) sources POINT position from TG_Light::direction and
+			// (msl.cpp) sources POINT position from TG_Light::direction and
 			// never reads this matrix. The rotation 3x3 left in [0..11] stays as
 			// shipped — no consumer reads it.
 			memcpy(lights->lightToWorld[num_lights], (const float*)light2world, 12*sizeof(float));
@@ -543,7 +528,7 @@ void GatherLightsParameters(TG_HWLightsData* lights)
 			// GLSL `GetFalloff` reads .x=closeDistance, .y=farDistance,
 			// .z=oneOverDistance. Source on the CPU side is
 			// TG_Light::{closeDistance,farDistance,oneOverDistance} at
-			// mclib/tgl.h:193-195. AMBIENT lights don't use distance falloff
+			// mclib/tgl.h. AMBIENT lights don't use distance falloff
 			// (the GLSL kernel hits the AMBIENT case before reading falloff),
 			// but populate the fields anyway for cache uniformity.
 			lights->lightFalloff[num_lights][0] = listOfLights[iLight]->closeDistance;
@@ -749,13 +734,10 @@ void GatherLightsParameters(TG_HWLightsData* lights)
 	applyPureObjectLightRow(lights);
 }
 
-//----------------------------------------------------------------------
 // RENDERER-INPUT-READBACK-1: see the contract comment in mclib/tgl.h.
-//
 // Placed HERE, directly under GatherLightsParameters, because it must observe
 // the same TG_Shape statics from the same translation unit and because any
 // future edit to the gather must be seen by whoever maintains the probe.
-//
 // The save/restore is the load-bearing part. TG_Shape::s_listOfLights is live
 // renderer state: whatever actor drew last owns it, and the next
 // submitMultiShape()/GatherGpuObjectLightDataOnly() read will use it. A probe
@@ -772,7 +754,7 @@ void ProbeGatherLightsForList(TG_LightPtr* lights, unsigned long nLights,
 	TG_LightPtr* const savedList  = TG_Shape::s_listOfLights;
 	const DWORD        savedCount = TG_Shape::s_numLights;
 
-	// Mirror SetLightList's own null-normalisation (mclib/tgl.cpp:1821-1835):
+	// Mirror SetLightList's own null-normalisation (mclib/tgl.cpp):
 	// a NULL list forces the count to 0 there, and the gather's
 	// `listOfLights[iLight]` deref would otherwise run against a null base.
 	if (lights) {
