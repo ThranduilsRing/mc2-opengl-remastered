@@ -9,6 +9,7 @@
 
 #include "MechRenderAdapter.h"
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
+#include "Gates/gate.h"
 
 // Engine side.
 #include "../RenderWorld/RenderWorld.h"
@@ -38,11 +39,6 @@ uint64_t s_mechs_alive        = 0;
 uint64_t s_mechs_destroyed    = 0;
 uint64_t s_mech_register_fail = 0;
 
-bool envFlag(const char* name) {
-    const char* v = std::getenv(name);
-    return v && v[0] && v[0] != '0';
-}
-
 } // namespace
 
 namespace GameAdapters {
@@ -60,7 +56,7 @@ void beginMission() {
     s_mechs_alive        = 0;
     s_mechs_destroyed    = 0;
     s_mech_register_fail = 0;
-    if (envFlag("MC2_RENDER_WORLD_TRACE")) {
+    if (mc2::gate::get<"MC2_RENDER_WORLD_TRACE">()) {
         MC2_DIAGFE(stderr, "[RENDER_WORLD v1] event=mech_begin_mission\n");
     }
 }
@@ -112,7 +108,7 @@ RenderCore::RenderObjectHandle syncSpawn(Mech3DAppearance& mech,
         mech.setRenderWorldHandleForAdapter(h);
         ++s_mechs_registered;
         ++s_mechs_alive;
-        if (envFlag("MC2_RENDER_WORLD_TRACE")) {
+        if (mc2::gate::get<"MC2_RENDER_WORLD_TRACE">()) {
             MC2_DIAGFE(stderr,
                 "[RENDER_WORLD v1] event=mech_register mech=%p handle.index=%u "
                 "gameObjectId=%u\n",
@@ -135,7 +131,7 @@ void destroyMech(Mech3DAppearance& mech) {
         return;
     }
 
-    if (envFlag("MC2_RENDER_WORLD_TRACE")) {
+    if (mc2::gate::get<"MC2_RENDER_WORLD_TRACE">()) {
         MC2_DIAGFE(stderr,
             "[RENDER_WORLD v1] event=mech_destroy handle.index=%u\n",
             (unsigned)h.index());
@@ -205,9 +201,7 @@ BattleMech* findMechByHandle(RenderCore::RenderObjectHandle h) {
 // Free function in the global namespace so RenderWorld.cpp can
 // forward-declare and call it without a header dependency.
 void RunMechPickSelfTest() {
-    const char* envSelftest = std::getenv("MC2_MECH_PICK_SELFTEST");
-    const bool enabled = envSelftest && envSelftest[0] && envSelftest[0] != '0';
-    if (!enabled) return;
+    if (!mc2::gate::get<"MC2_MECH_PICK_SELFTEST">()) return;
     if (!RenderWorld::IsObjectIdBufferEnabled()) {
         std::fprintf(stderr,
             "[MECH_PICK_SELFTEST v1] result=SKIP reason=substrate_off\n");

@@ -29,7 +29,7 @@
    "LG03": 0,
    "LG04": 0,
    "LG05": 13,
-   "LG06": 6,
+   "LG06": 5,
    "LG07": 0,
    "LG08": 0,
    "LG09": 12,
@@ -43,8 +43,8 @@
    "LG16": 0,
    "LG17": 2,
    "LG18": 0,
-   "LG19": 5,
-   "LG20": 8
+   "LG19": 3,
+   "LG20": 4
   },
   "GameOS": {
    "LG01": 188,
@@ -275,10 +275,7 @@
   },
   "GameAdapters/MechRenderAdapter.cpp": {
    "LG05": 3,
-   "LG06": 1,
-   "LG09": 10,
-   "LG19": 2,
-   "LG20": 4
+   "LG09": 10
   },
   "GameAdapters/StaticPropRenderAdapter.cpp": {
    "LG05": 5,
@@ -5919,7 +5916,7 @@
    "LG20": 1
   }
  },
- "head": "cf009ec36",
+ "head": "86d14e294",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
