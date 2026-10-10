@@ -16,7 +16,7 @@ import console_child  # noqa: E402  (windowless console children without a conho
 sp = importlib.util.spec_from_file_location('spec', sys.argv[1])
 S = importlib.util.module_from_spec(sp)
 sp.loader.exec_module(S)
-structs = getattr(S, 'STRUCTS', None) or {'f': S.STRUCT}
+structs = S.STRUCTS if hasattr(S, 'STRUCTS') else {'f': S.STRUCT}
 members = [(m[0], m[1], m[2] if len(m) > 2 else 'f') for m in S.MEMBERS]
 method = getattr(S, 'METHOD_CLASS', None)
 hoist_lines = getattr(S, 'HOIST', [])
@@ -56,9 +56,9 @@ alias_rx = re.compile(r'^\s*' + one_alias + r'(?:\s+' + one_alias + r')*$')
 helpers = {}
 for (name, a, b, doc, *_r) in S.PHASES:
     if method:
-        sig_rx = re.compile(r'^void ' + method + '::' + name + r'\([^)]*\) \{$')
+        sig_rx = re.compile(r'^void ' + method + '::' + name + r'\(.*\) \{$')
     else:
-        sig_rx = re.compile(r'^(?:static void ' + name + r'\([^)]*\)|void \w+::' + name + r'\(\)) \{$')
+        sig_rx = re.compile(r'^(?:static void ' + name + r'\(.*\)|void \w+::' + name + r'\(\)) \{$')
     i = next((k for k, l in enumerate(new) if sig_rx.match(l)), None)
     if i is None:
         fail.append('helper missing: ' + name)

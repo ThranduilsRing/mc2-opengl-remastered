@@ -94,7 +94,7 @@ def main():
     fs = next(i for i, l in enumerate(L) if re.search(S.FUNC_SIG, l))           # 0-based signature line
     fe = next(i for i in range(fs, len(L)) if L[i].rstrip('\r') == '}')           # closing brace
     print('function', fs + 1, fe + 1, 'CRLF' if crlf else 'LF')
-    structs = getattr(S, 'STRUCTS', None) or {'f': S.STRUCT}
+    structs = S.STRUCTS if hasattr(S, 'STRUCTS') else {'f': S.STRUCT}
     members = [(m[0], m[1], m[2] if len(m) > 2 else 'f') for m in S.MEMBERS]
     edits = dict(S.EDITS)
     method = getattr(S, 'METHOD_CLASS', None)
@@ -156,7 +156,7 @@ def main():
             s = L[ln - 1]
             H.append(s[4:] if s.startswith('    ') else s)
         H.append('')
-    H += S.FRAME_DOC.split('\n')
+    H += S.FRAME_DOC.split(chr(10)) if structs else []
     for fid, sname in structs.items():
         H.append('struct ' + sname + ' {')
         for n, t, fr in members:
@@ -184,7 +184,7 @@ def main():
             H.append('// ' + d)
         if guard:
             H.append('#ifdef ' + guard)
-        params = ', '.join(['%s %s' % (t, n) for n, t in i['uparams']] + ['%s& %s' % (structs[fid], fid) for fid in frames])
+        params = ', '.join([(t if re.search(r'\b' + n + r'\b', t) else '%s %s' % (t, n)) for n, t in i['uparams']] +['%s& %s' % (structs[fid], fid) for fid in frames])
         if i['as_method']:
             H.append('void %s::%s() {' % (structs['f'], name))
             calls[i['a']] = 'f.%s();' % name
