@@ -15,13 +15,14 @@
 #include <cstdlib>
 
 #include <GL/glew.h>
+#include "Gates/gate.h"
 
 // Attach a debug label to a GL buffer object. No-op unless MC2_GPU_DEBUG_NAMES
 // is set AND glObjectLabel is available. glBufferHandle must be a valid,
 // already-created GL buffer name (label a buffer only after glGenBuffers +
 // first bind/storage, per the GL spec object-existence rule).
 inline void setGpuBufferDebugLabel(unsigned int glBufferHandle, const char* name) {
-    static const bool s_enabled = (std::getenv("MC2_GPU_DEBUG_NAMES") != nullptr);
+    static const bool s_enabled = mc2::gate::get<"MC2_GPU_DEBUG_NAMES">();
     if (!s_enabled) return;
     if (!glObjectLabel) return;
     glObjectLabel(GL_BUFFER, static_cast<GLuint>(glBufferHandle), -1,

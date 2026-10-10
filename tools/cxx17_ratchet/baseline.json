@@ -66,8 +66,8 @@
    "LG16": 7,
    "LG17": 81,
    "LG18": 11,
-   "LG19": 32,
-   "LG20": 61
+   "LG19": 31,
+   "LG20": 60
   },
   "GuiRuntime": {
    "LG01": 1,
@@ -1113,9 +1113,7 @@
    "LG12a": 3
   },
   "GameOS/gameos/utils/gpu_debug_labels.h": {
-   "LG06": 1,
-   "LG19": 1,
-   "LG20": 1
+   "LG06": 1
   },
   "GameOS/gameos/utils/gpu_ring_buffer.h": {
    "LG06": 2,
@@ -5809,7 +5807,7 @@
    "LG20": 1
   }
  },
- "head": "5fd255cbe",
+ "head": "286737384",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
