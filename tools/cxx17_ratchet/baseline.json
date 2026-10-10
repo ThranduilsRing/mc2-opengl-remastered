@@ -52,7 +52,7 @@
    "LG03": 301,
    "LG04": 6,
    "LG05": 123,
-   "LG06": 569,
+   "LG06": 568,
    "LG07": 0,
    "LG08": 274,
    "LG09": 2259,
@@ -66,8 +66,8 @@
    "LG16": 7,
    "LG17": 81,
    "LG18": 11,
-   "LG19": 692,
-   "LG20": 821
+   "LG19": 652,
+   "LG20": 781
   },
   "GuiRuntime": {
    "LG01": 1,
@@ -759,15 +759,13 @@
   },
   "GameOS/gameos/gos_terrain_indirect.cpp": {
    "LG05": 3,
-   "LG06": 3,
+   "LG06": 2,
    "LG08": 6,
    "LG09": 221,
    "LG10": 4,
    "LG12a": 43,
    "LG12b": 2,
-   "LG16": 1,
-   "LG19": 40,
-   "LG20": 40
+   "LG16": 1
   },
   "GameOS/gameos/gos_terrain_indirect.h": {
    "LG06": 1
@@ -5772,7 +5770,7 @@
    "LG20": 1
   }
  },
- "head": "800d54976",
+ "head": "815fd13c1",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

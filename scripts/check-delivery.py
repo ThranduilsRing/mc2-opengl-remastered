@@ -623,8 +623,32 @@ def read_default_at(sha: str | None, var: str) -> dict:
                 line = body.count("\n", 0, m.start()) + 1
                 found.setdefault(n, []).append(f"{p}:{line} numeric default")
 
+    # A gate read only through the typed registry (gate::get<"MC2_X">()) has no getenv idiom to classify: its default
+    # is the gate table row's, at the same commit.
+    if not found and not hits:
+        typed = [(p, body) for p, body in srcs
+                 if re.search(r'\b(?:get|state)\s*<\s*"' + re.escape(var) + '"', body)]
+        tbl = show(sha, "Gates/gate_table.json") if typed else None
+        if tbl:
+            try:
+                row = {g["name"]: g for g in json.loads(tbl)["gates"]}[var]
+            except (ValueError, KeyError):
+                row = None
+            if row is not None:
+                where = [f"{p} typed gate::get<>" for p, _ in typed]
+                if row["kind"] == "Bool":
+                    res["kind"] = "bool"
+                    res["default"] = "ON" if row["default"] else "OFF"
+                    res["readers"] = where
+                elif row["kind"] in ("Int", "Float"):
+                    res["kind"] = "numeric"
+                    res["default"] = canon_num("%.9g" % float(row["default"]))
+                    res["readers"] = where
+
     bool_verdicts = {h["verdict"] for h in hits}
-    if len(found) == 1:
+    if res.get("default") is not None and res.get("kind") in ("bool", "numeric") and not found and not hits:
+        pass
+    elif len(found) == 1:
         res["kind"] = "numeric"
         res["default"] = next(iter(found))
         res["readers"] = found[res["default"]]

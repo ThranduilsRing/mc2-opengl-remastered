@@ -86,8 +86,19 @@ DEFAULT_ON_IDIOMS = (
 )
 
 
-def classify_default_on(window: str) -> bool:
-    """True when the reader idiom in `window` yields ON for an unset var."""
+def classify_default_on(window: str, token: str = "") -> bool:
+    """True when the reader in `window` yields ON for an unset var.
+
+    A typed read (gate::get<"MC2_X">()) takes its default from the gate table row, the one place it is declared;
+    a raw getenv is classified by its idiom."""
+    if token and re.search(r'\b(?:get|state)\s*<\s*"%s"' % re.escape(token), window):
+        try:
+            import os
+            import gate_table_reader
+            row = gate_table_reader.gates(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))[token]
+            return row["kind"] == "Bool" and bool(row["default"])
+        except Exception:                                              # noqa: BLE001
+            return False
     return any(p.search(window) for p in DEFAULT_ON_IDIOMS)
 
 
@@ -220,7 +231,7 @@ def check(root: Path, quiet: bool = False) -> list[str]:
             # The reader's unset-case must leave the CPU term OFF.
             idx = reader_src.index(token)
             window = reader_src[max(0, idx - 400): idx + 400]
-            if not classify_default_on(window):
+            if not classify_default_on(window, token):
                 fail(pid, "R3-ORPHAN",
                      f"{token} does not read as a default-ON killswitch near its reader in "
                      f"{inert['reader_file']}; the orphaned CPU term would still be live by "
