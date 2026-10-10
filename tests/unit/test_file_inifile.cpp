@@ -207,23 +207,54 @@ TEST_CASE("File resolves and reads a loose disk file (base-loose branch)")
 
 } // TEST_SUITE("FileStack")
 
-TEST_CASE("FitIniFile block ids up to 47 characters index and seek; the block-id copy is bounded")
-{
-	// blockId is char[50]. A 47-character name is the longest the parser accepts (48 trips the STOP guard); the
-	// copy loop must stop at the bound instead of trusting the header to end in ']'.
-	const std::string longId(47, 'b');
-	std::string text = "FITini\r\n\r\n[" + longId + "]\r\nl Alpha = 7\r\n\r\n[Second]\r\nl Beta = 9\r\n\r\nFITend\r\n";
+extern bool g_mc2TestStopFatal;   // tests/unit/heap_shim.cpp: STOP counts and continues instead of aborting
+extern int  g_mc2TestStopCount;
 
-	FitIniFile fit;
-	REQUIRE(fit.open(text.data(), (int)text.size()) == NO_ERR);
-	REQUIRE(fit.seekBlock(longId.c_str()) == NO_ERR);
-	long l = 0;
-	CHECK(fit.readIdLong("Alpha", l) == NO_ERR);
-	CHECK(l == 7);
-	REQUIRE(fit.seekBlock("Second") == NO_ERR);
-	CHECK(fit.readIdLong("Beta", l) == NO_ERR);
-	CHECK(l == 9);
-	fit.close();
+namespace
+{
+
+// A .fit with a block named `id`, followed by [Second] { l Beta = 9 }.
+std::string fitWithBlock (const std::string &id)
+{
+	return "FITini\r\n\r\n[" + id + "]\r\nl Alpha = 7\r\n\r\n[Second]\r\nl Beta = 9\r\n\r\nFITend\r\n";
+}
+
+} // namespace
+
+TEST_CASE("FitIniFile block ids: the block-id copy is bounded for every header length")
+{
+	// blockId is char[50]. The engine only LOGS the 'BlockId To large' STOP and carries on; the shim does the
+	// same here. What must hold for any length: no write past the node, and the next block still seeks.
+	struct Case { size_t len; bool seekable_by_full_name; bool stops; };
+	const Case cases[] = {
+		{47, true, false},    // longest accepted without a STOP
+		{49, true, true},     // fills blockId[0..48] + NUL (the old code stored it whole); STOP logged
+		{300, false, true},   // mod-sized hostile name: used to overwrite ~250 bytes of heap; kept as its first 49
+	};
+
+	for (const Case &c : cases)
+	{
+		INFO("block id length " << c.len);
+		g_mc2TestStopFatal = false;
+		g_mc2TestStopCount = 0;
+
+		const std::string id(c.len, 'b');
+		std::string text = fitWithBlock(id);
+
+		FitIniFile fit;
+		REQUIRE(fit.open(text.data(), (int)text.size()) == NO_ERR);
+
+		CHECK((g_mc2TestStopCount >= 1) == c.stops);          // the guard fired exactly for the over-long names
+		CHECK((fit.seekBlock(id.c_str()) == NO_ERR) == c.seekable_by_full_name);
+
+		long l = 0;
+		REQUIRE(fit.seekBlock("Second") == NO_ERR);          // the block after the long one is intact
+		CHECK(fit.readIdLong("Beta", l) == NO_ERR);
+		CHECK(l == 9);
+		fit.close();
+
+		g_mc2TestStopFatal = true;
+	}
 }
 
 TEST_CASE("PacketFile rejects a negative packet index instead of reading seekTable[-n]")

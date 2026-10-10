@@ -231,6 +231,11 @@ gosEnvironment Environment = {};
 // STOP()/Fatal()/Assert() funnel (engine definition: gameos_debugging.cpp).
 // In tests a STOP is an unconditional hard failure: print and abort so the
 // test runner reports the crash instead of corrupting silently.
+// A test that exercises a path the engine only LOGS (STOP is a message box + continue there) can clear
+// g_mc2TestStopFatal; it then counts the STOPs and the code under test carries on, like the engine.
+bool g_mc2TestStopFatal = true;
+int  g_mc2TestStopCount = 0;
+
 int __cdecl InternalFunctionStop (const char *Message, ...)
 {
 	fprintf(stderr, "\n[mc2_tests heap_shim] STOP: ");
@@ -240,6 +245,7 @@ int __cdecl InternalFunctionStop (const char *Message, ...)
 	va_end(args);
 	fprintf(stderr, "\n");
 	fflush(stderr);
+	if (!g_mc2TestStopFatal) { ++g_mc2TestStopCount; return 0; }
 	abort();
 }
 
@@ -247,6 +253,7 @@ int __cdecl InternalFunctionStop (const char *Message, const char *value)
 {
 	fprintf(stderr, "\n[mc2_tests heap_shim] STOP: %s %s\n", Message, value);
 	fflush(stderr);
+	if (!g_mc2TestStopFatal) { ++g_mc2TestStopCount; return 0; }
 	abort();
 }
 
