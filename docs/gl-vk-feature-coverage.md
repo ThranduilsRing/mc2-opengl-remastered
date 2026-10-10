@@ -7,9 +7,9 @@ weaker of how directly the gate reaches the setter and how firm the VK evidence 
 
 | status | HIGH | MEDIUM | LOW |
 |---|---|---|---|
-| PORTED | 12 | 138 | 0 |
-| NOT_PORTED | 100 | 53 | 0 |
-| NO_TWIN | 27 | 74 | 0 |
+| PORTED | 11 | 139 | 0 |
+| NOT_PORTED | 96 | 51 | 0 |
+| NO_TWIN | 28 | 74 | 0 |
 
 ## NOT_PORTED: the VK twin lacks the feature
 
@@ -25,8 +25,6 @@ Each (gate, GL shader) pair is accounted for in `tools/vk_not_ported.allowlist`.
 | `MC2_DEBUG_RENDERER` | OFF | `shaders/static_prop.frag` | `MC2_OBJECT_ID_BUFFER` (define) | shaders/vulkan/color_prop_tier1.* | HIGH | yes |
 | `MC2_DEBUG_RENDERER` | OFF | `shaders/static_prop.vert` | `MC2_COALESCE` (define) | shaders/vulkan/color_prop_tier1.* | HIGH | yes |
 | `MC2_DEBUG_RENDERER` | OFF | `shaders/static_prop_depth.frag` | `MC2_COALESCE` (define) | shaders/vulkan/color_prop_tier1.* | HIGH | yes |
-| `MC2_HDRI_SKY_AZ_OFFSET` | OFF | `shaders/hdri_skybox.frag` | `frameFix` (uniform) | shaders/vulkan/hdri_sky.* | HIGH | yes |
-| `MC2_HDRI_SKY_AZ_OFFSET` | OFF | `shaders/hdri_skybox.frag` | `uvDebug` (uniform) | shaders/vulkan/hdri_sky.* | HIGH | yes |
 | `MC2_HDRI_SKY_FRAME_FIX` | OFF | `shaders/hdri_skybox.frag` | `frameFix` (uniform) | shaders/vulkan/hdri_sky.* | HIGH | yes |
 | `MC2_HDRI_SKY_UV_DEBUG` | OFF | `shaders/hdri_skybox.frag` | `uvDebug` (uniform) | shaders/vulkan/hdri_sky.* | HIGH | yes |
 | `MC2_LEGACY_LIT_MC2_FRAME` | **ON (live drift)** | `shaders/gos_tex_vertex_lighted.vert` | `u_legacyLitMc2Frame` (uniform) | shaders/vulkan/legacy_shape_tier1.* | MEDIUM | no |
@@ -113,10 +111,8 @@ Each (gate, GL shader) pair is accounted for in `tools/vk_not_ported.allowlist`.
 | `MC2_TERRAIN_LIGHT_POOLS` | **ON (live drift)** | `shaders/terrain_lod_chunk.frag` | `u_lightGridMin` (uniform) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | MEDIUM | no |
 | `MC2_TERRAIN_LOD_CHUNK_DIAG` | OFF | `shaders/terrain_lod_chunk.frag` | `u_diag` (uniform) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | HIGH | yes |
 | `MC2_TERRAIN_LOD_CHUNK_FORCE_COLOR` | OFF | `shaders/terrain_lod_chunk.frag` | `u_forceColor` (uniform) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | HIGH | yes |
-| `MC2_TERRAIN_LOD_GEOMORPH` | **ON (live drift)** | `shaders/terrain_lod_chunk.frag` | `u_lodStep` (uniform) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | MEDIUM | yes |
 | `MC2_TERRAIN_LOD_GEOMORPH` | **ON (live drift)** | `shaders/terrain_lod_chunk.frag` | `u_morphFactor` (uniform) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | HIGH | yes |
 | `MC2_TERRAIN_LOD_GEOMORPH` | **ON (live drift)** | `shaders/terrain_lod_chunk.vert` | `u_geomorphMips` (uniform) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | HIGH | yes |
-| `MC2_TERRAIN_LOD_GEOMORPH` | **ON (live drift)** | `shaders/terrain_lod_chunk.vert` | `u_lodStep` (uniform) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | MEDIUM | yes |
 | `MC2_TERRAIN_LOD_GEOMORPH` | **ON (live drift)** | `shaders/terrain_lod_chunk.vert` | `u_morphFactor` (uniform) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | HIGH | yes |
 | `MC2_TERRAIN_MACRO_VARIATION` | OFF | `shaders/terrain_lod_chunk.frag` | `macroVariationStrength` (uniform) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | HIGH | yes |
 | `MC2_TERRAIN_MACRO_VARIATION_STRENGTH` | **ON (live drift)** | `shaders/terrain_lod_chunk.frag` | `macroVariationStrength` (uniform) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | HIGH | yes |
@@ -138,9 +134,7 @@ Each (gate, GL shader) pair is accounted for in `tools/vk_not_ported.allowlist`.
 | `MC2_TERRAIN_SHORELINE` | **ON (live drift)** | `shaders/terrain_lod_chunk.frag` | `u_waterElevation` (uniform) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | MEDIUM | yes |
 | `MC2_TERRAIN_SHORELINE_EDGE_JITTER` | **ON (live drift)** | `shaders/terrain_lod_chunk.frag` | `u_shorelineEdgeJitter` (uniform) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | HIGH | yes |
 | `MC2_TERRAIN_SHORELINE_FOAM` | **ON (live drift)** | `shaders/terrain_lod_chunk.frag` | `u_shorelineFoamStrength` (uniform) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | HIGH | yes |
-| `MC2_TERRAIN_SHORELINE_FOAM` | **ON (live drift)** | `shaders/terrain_lod_chunk.frag` | `u_shorelineStrength` (uniform) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | HIGH | yes |
 | `MC2_TERRAIN_SHORELINE_FOAM_HEIGHT` | **ON (live drift)** | `shaders/terrain_lod_chunk.frag` | `u_shorelineFoamHeight` (uniform) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | HIGH | yes |
-| `MC2_TERRAIN_SHORELINE_FOAM_HEIGHT` | **ON (live drift)** | `shaders/terrain_lod_chunk.frag` | `u_shorelineWetHeight` (uniform) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | HIGH | yes |
 | `MC2_TERRAIN_SHORELINE_FOAM_RUN` | **ON (live drift)** | `shaders/terrain_lod_chunk.frag` | `u_shorelineFoamHeight` (uniform) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | HIGH | yes |
 | `MC2_TERRAIN_SHORELINE_STRENGTH` | **ON (live drift)** | `shaders/terrain_lod_chunk.frag` | `u_shorelineStrength` (uniform) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | HIGH | yes |
 | `MC2_TERRAIN_SHORELINE_WET_HEIGHT` | **ON (live drift)** | `shaders/terrain_lod_chunk.frag` | `u_shorelineWetHeight` (uniform) | shaders/vulkan/terrain_tier1.*, shaders/vulkan/terrain_tier1_skirt.* | HIGH | yes |
@@ -171,14 +165,14 @@ Each (gate, GL shader) pair is accounted for in `tools/vk_not_ported.allowlist`.
 | `MC2_WATER_SHORE_MEANDER_FREQ` | **ON (live drift)** | `shaders/gos_terrain_water_mdi.frag` | `u_shoreMeanderFreq` (uniform) | shaders/vulkan/water_geom.* | HIGH | yes |
 | `MC2_WATER_SHORE_MODE` | OFF | `shaders/gos_terrain_water_fast_mdi.vert` | `u_shoreDepthK` (uniform) | shaders/vulkan/water_geom.* | MEDIUM | no |
 
-- NOT_PORTED pairs: 125, of which already default ON: 55
+- NOT_PORTED pairs: 124, of which already default ON: 55
 - NEW gaps (not allowlisted): 0, STALE allowlist entries: 0
 
 ## PORTED
 
 | gate | GL shader | feature | VK twin | confidence |
 |---|---|---|---|---|
-| `MC2_HDRI_SKY_AZ_OFFSET` | `shaders/hdri_skybox.frag` | `skyYaw` | `shaders/vulkan/hdri_sky.frag` | HIGH |
+| `MC2_HDRI_SKY_AZ_OFFSET` | `shaders/hdri_skybox.frag` | `skyYaw` | `shaders/vulkan/hdri_sky.frag` | MEDIUM |
 | `MC2_LIGHT_POOL_COMPRESS` | `shaders/terrain_lod_chunk.frag` | `u_lightPoolCompress` | `shaders/vulkan/terrain_tier1.frag` | MEDIUM |
 | `MC2_LIGHT_POOL_COMPRESS` | `shaders/terrain_overlay.frag` | `u_lightPoolCompress` | `shaders/vulkan/terrain_decal_tier1.frag` | MEDIUM |
 | `MC2_LIGHT_POOL_MOVER_DIM` | `shaders/terrain_lod_chunk.frag` | `u_lightPoolMoverDim` | `shaders/vulkan/terrain_tier1.frag` | MEDIUM |
@@ -333,7 +327,7 @@ Each (gate, GL shader) pair is accounted for in `tools/vk_not_ported.allowlist`.
 
 | GL shader | gates |
 |---|---|
-| `shaders/box_decal.frag` | `MC2_BOX_DECAL_NORMAL_REJECT`, `MC2_SHADOW_CSM` |
+| `shaders/box_decal.frag` | `MC2_BOX_DECAL_NORMAL_REJECT`, `MC2_BOX_DECAL_YSPAN`, `MC2_SHADOW_CSM` |
 | `shaders/box_decal.vert` | `MC2_SHADOW_CSM` |
 | `shaders/building_pbr.vert` | `MC2_MECH_BATCHER_STATS`, `MC2_MECH_VIEWUNIFORMS`, `MC2_MECH_VIEWUNIFORMS_DIAG`, `MC2_PROP_FIXB_MVP`, `MC2_SHADOW_CSM`, `MC2_VEG_DEBUG_FORCE_VISIBLE`, `MC2_VEG_MAX_DIST` |
 | `shaders/gos_terrain_mask_solid.vert` | `MC2_MECH_BATCHER_STATS`, `MC2_MECH_VIEWUNIFORMS`, `MC2_MECH_VIEWUNIFORMS_DIAG`, `MC2_PROP_FIXB_MVP`, `MC2_SHADOW_CSM`, `MC2_VEG_DEBUG_FORCE_VISIBLE`, `MC2_VEG_MAX_DIST` |

@@ -95,7 +95,6 @@ MC2_DEBUG_RENDERER | shaders/mech.vert | define MC2_OBJECT_ID_BUFFER: no such na
 MC2_DEBUG_RENDERER | shaders/static_prop.frag | define MC2_OBJECT_ID_BUFFER: no such name in the VK twin (shaders/vulkan/color_prop_tier1.*) shader, island C++ or gpu_abi
 MC2_DEBUG_RENDERER | shaders/static_prop.vert | define MC2_COALESCE: no such name in the VK twin (shaders/vulkan/color_prop_tier1.*) shader, island C++ or gpu_abi
 MC2_DEBUG_RENDERER | shaders/static_prop_depth.frag | define MC2_COALESCE: no such name in the VK twin (shaders/vulkan/color_prop_tier1.*) shader, island C++ or gpu_abi
-MC2_HDRI_SKY_AZ_OFFSET | shaders/hdri_skybox.frag | uniform frameFix, uniform uvDebug: no such name in the VK twin (shaders/vulkan/hdri_sky.*) shader, island C++ or gpu_abi
 MC2_HDRI_SKY_FRAME_FIX | shaders/hdri_skybox.frag | uniform frameFix: no such name in the VK twin (shaders/vulkan/hdri_sky.*) shader, island C++ or gpu_abi
 MC2_HDRI_SKY_UV_DEBUG | shaders/hdri_skybox.frag | uniform uvDebug: no such name in the VK twin (shaders/vulkan/hdri_sky.*) shader, island C++ or gpu_abi
 MC2_LIGHTING_DEBUG_VIEW | shaders/static_prop.frag | uniform u_lightingDebugView: no such name in the VK twin (shaders/vulkan/color_prop_tier1.*) shader, island C++ or gpu_abi

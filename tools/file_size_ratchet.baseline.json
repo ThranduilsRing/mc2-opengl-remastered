@@ -17,7 +17,7 @@
   "GameOS/gameos/gameos_graphics.cpp": 11652,
   "GameOS/gameos/gameosmain.cpp": 2846,
   "GameOS/gameos/gos_mech_batcher.cpp": 3408,
-  "GameOS/gameos/gos_postprocess.cpp": 7336,
+  "GameOS/gameos/gos_postprocess.cpp": 7187,
   "GameOS/gameos/gos_static_prop_batcher.cpp": 11199,
   "GameOS/gameos/gos_static_prop_registry.cpp": 2226,
   "GameOS/gameos/gos_terrain_indirect.cpp": 6205,
@@ -77,6 +77,7 @@
   "mclib/heap.cpp": 2136,
   "mclib/inifile.cpp": 2876,
   "mclib/mapdata.cpp": 2633,
+  "mclib/mech3d.cpp": 6748,
   "mclib/mlr/mlrindexedpolymesh.cpp": 1846,
   "mclib/mlr/mlrlightmap.cpp": 1599,
   "mclib/mlr/mlrpolymesh.cpp": 1620,
@@ -91,12 +92,12 @@
   "mclib/terrtxm.cpp": 1778,
   "mclib/terrtxm2.cpp": 2785,
   "mclib/tgl.h": 1689,
-  "mclib/txmmgr_render.cpp": 2226,
+  "mclib/txmmgr.cpp": 5967,
   "mclib/vfx_translatedraw.cpp": 1742,
   "mclib/vfxtile.cpp": 2944,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "56242f472",
+ "head": "b3e48799d",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -153,10 +154,10 @@
    "max_lines": 1513
   },
   "mclib": {
-   "files": 613,
-   "files_over_1500": 31,
-   "files_over_3000": 4,
-   "max_lines": 4895
+   "files": 600,
+   "files_over_1500": 32,
+   "files_over_3000": 6,
+   "max_lines": 6748
   },
   "shaders": {
    "files": 171,
@@ -184,11 +185,19 @@
   },
   {
    "file": "GameOS/gameos/gos_postprocess.cpp",
-   "lines": 7336
+   "lines": 7187
+  },
+  {
+   "file": "mclib/mech3d.cpp",
+   "lines": 6748
   },
   {
    "file": "GameOS/gameos/gos_terrain_indirect.cpp",
    "lines": 6205
+  },
+  {
+   "file": "mclib/txmmgr.cpp",
+   "lines": 5967
   },
   {
    "file": "code/mission.cpp",
@@ -281,20 +290,12 @@
   {
    "file": "mclib/mapdata.cpp",
    "lines": 2633
-  },
-  {
-   "file": "GameOS/gameos/gos_terrain_water_stream.cpp",
-   "lines": 2455
-  },
-  {
-   "file": "code/mpparameterscreen.cpp",
-   "lines": 2415
   }
  ],
  "total": {
-  "files": 1704,
-  "files_over_1500": 82,
-  "files_over_3000": 18,
+  "files": 1691,
+  "files_over_1500": 83,
+  "files_over_3000": 20,
   "max_lines": 11652
  },
  "version": 1

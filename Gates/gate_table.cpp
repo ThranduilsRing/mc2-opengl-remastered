@@ -93,10 +93,10 @@ L(NonEmpty, "MC2_BOOT_TO_MISSION", Bool, false, "code", "", "MC2_BOOT_TO_MISSION
 L(NonEmpty, "MC2_BOOT_TO_SCREEN", Bool, false, "mech", "", ""),
 // history: docs/gate-history.md#MC2_BOOT_VIDEO
 L(Lead0, "MC2_BOOT_VIDEO", Bool, false, "code", "", "VIDEO-CAPTURE fixture: =1 overrides the smoke-mode movie skip in MC2Movie::init so in-mission comm videos (mc2_01 V1A.bik ~frame 1600) play under...", registry(Trace, "MC2_TRACE_BOOT_VIDEO", -1, false)),
-L(Lead0, "MC2_BOX_DECAL", Bool, false, "post", "", ""),
-P("MC2_BOX_DECAL_NORMAL_REJECT", Float, 0.0, "post", "", ""),  // default not derivable from the tree
-P("MC2_BOX_DECAL_STRENGTH", Float, 0.0, "post", "", ""),  // default not derivable from the tree
-P("MC2_BOX_DECAL_YSPAN", Float, 0.0, "post", "", ""),  // default not derivable from the tree
+L(Lead0, "MC2_BOX_DECAL", Bool, false, "post", "", "", verified),
+P("MC2_BOX_DECAL_NORMAL_REJECT", Float, 0.0, "post", "", "", verified),  // default not derivable from the tree
+P("MC2_BOX_DECAL_STRENGTH", Float, 0.0, "post", "", "", verified),  // default not derivable from the tree
+P("MC2_BOX_DECAL_YSPAN", Float, 0.0, "post", "", "", verified),  // default not derivable from the tree
 L(AtoiNZ, "MC2_BRAIN_ALIAS", Bool, false, "code", "", ""),
 L(AtoiNZ, "MC2_BRAIN_COMMIT_PHASE", Bool, false, "code", "", ""),
 // history: docs/gate-history.md#MC2_BRAIN_DISPATCH
@@ -181,7 +181,7 @@ L(Lead0, "MC2_CEMENT_ROAD_ART_DETECT", Bool, false, "terrain", "", "CEMENT-INTRA
 L(Lead0, "MC2_CEMENT_TRANSITION_FALLBACK", Bool, false, "terrain", "", "CEMENT-TRANSITION-FALLBACK-1 (MC2-03-CEMENT-PINK-1): cure MISSING ROAD SWATHS (user report, mc2_24).", passthrough | registry(Feature, "MC2_FEATURE_CEMENT_TRANSITION_FALLBACK", -1, false) | verified),
 L(Presence, "MC2_CHEAT_INFINITE_MONEY", Bool, false, "mech", "", "Interactive cheat gates -- read once at startup, default OFF (unset = nullptr = false)"),
 L(Presence, "MC2_CHEAT_SALVAGE_ALL", Bool, false, "mech", "", ""),
-L(Lead0, "MC2_CLOUD_SHADOW", Bool, false, "post", "", "", passthrough),
+L(Lead0, "MC2_CLOUD_SHADOW", Bool, false, "post", "", "", passthrough | verified),
 L(Lead0P, "MC2_CLUSTER_DEPTH_PYRAMID", Bool, false, "gameos", "", ""),
 L(Lead0P, "MC2_CLUSTER_DEPTH_PYRAMID_PLANT", Bool, false, "gameos", "", ""),
 L(Lead0P, "MC2_CLUSTER_DEPTH_PYRAMID_VERIFY", Bool, false, "gameos", "", ""),
@@ -219,9 +219,9 @@ G("MC2_DEBUG_OVERLAY_PREDICATE_MODE", Enum, "", "code", "", "", tokens("|Legacy|
 // history: docs/gate-history.md#MC2_DEBUG_RENDERER
 L(Lead0, "MC2_DEBUG_RENDERER", Bool, false, "code", "", "Debug overlay renderer (GuiRuntime/EditorInspector.cpp).", registry(Feature, "MC2_FEATURE_DEBUG_RENDERER", 8, false)),
 L(Lead0, "MC2_DEBUG_RENDERER_TEST", Bool, false, "gameos", "", ""),
-L(Presence, "MC2_DEBUG_SHADOW_FRUSTUM", Bool, false, "post", "", "[SHADOWFRUSTUM v1] VPL-#shadow: prove the static-shadow CLIPPER is correct (user suspected light/clipper; render-expert grep says it's feed-scope, not the..."),
+L(Presence, "MC2_DEBUG_SHADOW_FRUSTUM", Bool, false, "post", "", "[SHADOWFRUSTUM v1] VPL-#shadow: prove the static-shadow CLIPPER is correct (user suspected light/clipper; render-expert grep says it's feed-scope, not the...", verified),
 L(Presence, "MC2_DEBUG_SHADOW_STATIC", Bool, false, "code", "", "", verified),
-L(Presence, "MC2_DEBUG_SHADOW_ZRANGE", Bool, false, "post", "", "[SHADOWZRANGE v1] VPL-#10: prove the [0,1] ZERO_TO_ONE conversion is correct."),
+L(Presence, "MC2_DEBUG_SHADOW_ZRANGE", Bool, false, "post", "", "[SHADOWZRANGE v1] VPL-#10: prove the [0,1] ZERO_TO_ONE conversion is correct.", verified),
 // history: docs/gate-history.md#MC2_DEBUG_STATE_DUMP
 L(Lead0, "MC2_DEBUG_STATE_DUMP", Bool, false, "gameos", "", "DEBUG-STATE-DUMP-1: write a JSON render-state snapshot to debug_state/latest_render_state.json every 300 frames (and at frame 1).", passthrough | registry(Trace, "MC2_DIAG_DEBUG_STATE_DUMP", -1, false)),
 // history: docs/gate-history.md#MC2_DEBUG_STATE_DUMP_DIR
@@ -261,10 +261,10 @@ L(Lead1, "MC2_DRAW_PACKET_V3", Bool, false, "gameos", "", "", passthrough),
 L(Lead1, "MC2_DRAW_PACKET_WARN", Bool, false, "gameos", "", ""),
 // history: docs/gate-history.md#MC2_DYNAMIC_DECALS
 L(Lead0P, "MC2_DYNAMIC_DECALS", Bool, false, "code", "", "Dynamic decal ring (mclib/dynamic_decal_ring.cpp): spawn()/gatherToDecalBatch() are no-ops when off.", registry(Feature, "MC2_FEATURE_DYNAMIC_DECALS", -1, false) | verified),
-L(Lead0Kill, "MC2_EDGE_FOG", Bool, true, "post", "", ""),
-P("MC2_EDGE_FOG_HEIGHT", Float, 0.0, "post", "", ""),  // default not derivable from the tree
-P("MC2_EDGE_FOG_MAX", Float, 0.0, "post", "", ""),  // default not derivable from the tree
-P("MC2_EDGE_FOG_START", Float, 0.0, "post", "", ""),  // default not derivable from the tree
+L(Lead0Kill, "MC2_EDGE_FOG", Bool, true, "post", "", "", verified),
+P("MC2_EDGE_FOG_HEIGHT", Float, 0.0, "post", "", "", verified),  // default not derivable from the tree
+P("MC2_EDGE_FOG_MAX", Float, 0.0, "post", "", "", verified),  // default not derivable from the tree
+P("MC2_EDGE_FOG_START", Float, 0.0, "post", "", "", verified),  // default not derivable from the tree
 L(Lead0Kill, "MC2_EDITOR_AUTODOCK", Bool, true, "code", "", ""),
 L(Lead0, "MC2_EDITOR_BEAUTY_AUTOAPPLY", Bool, false, "editor", "", ""),
 L(Lead0Kill, "MC2_EDITOR_DOCK", Bool, true, "code", "", ""),
@@ -307,11 +307,11 @@ L(Lead0P, "MC2_FIXTURE_ORDER_LIVENESS", Bool, false, "code", "", "META-FIX desig
 L(Presence, "MC2_FLUSH_PROBE", Bool, false, "code", "", "TRACKV-CI-GATE-RESTORE-1: GPU pipeline flush probe via glFinish.", registry(Trace, "MC2_TRACE_FLUSH_PROBE", -1, false) | verified),
 // FOG-HORIZON-CLAMP-1: reshape OOB/edge fog to a horizon elevation profile.
 // history: docs/gate-history.md#MC2_FOG_HORIZON_CLAMP
-L(Lead0Kill, "MC2_FOG_HORIZON_CLAMP", Bool, true, "post", "", "FOG-HORIZON-CLAMP-1: reshape the out-of-bounds / edge fog to a horizon elevation profile (gos_postprocess).", registry(Feature, "MC2_FOG_HORIZON_CLAMP", -1, true)),
+L(Lead0Kill, "MC2_FOG_HORIZON_CLAMP", Bool, true, "post", "", "FOG-HORIZON-CLAMP-1: reshape the out-of-bounds / edge fog to a horizon elevation profile (gos_postprocess).", registry(Feature, "MC2_FOG_HORIZON_CLAMP", -1, true) | verified),
 // history: docs/gate-history.md#MC2_FOG_HORIZON_FADE_END
-P("MC2_FOG_HORIZON_FADE_END", Float, 0.0, "post", "", "FOG-HORIZON-CLAMP-1: override the horizon-fog fade band END (elevation).", registry(Feature, "MC2_FOG_HORIZON_FADE_END", -1, false)),  // default not derivable from the tree
+P("MC2_FOG_HORIZON_FADE_END", Float, 0.0, "post", "", "FOG-HORIZON-CLAMP-1: override the horizon-fog fade band END (elevation).", registry(Feature, "MC2_FOG_HORIZON_FADE_END", -1, false) | verified),  // default not derivable from the tree
 // history: docs/gate-history.md#MC2_FOG_HORIZON_FADE_START
-P("MC2_FOG_HORIZON_FADE_START", Float, 0.0, "post", "", "FOG-HORIZON-CLAMP-1: override the horizon-fog fade band START (elevation).", registry(Feature, "MC2_FOG_HORIZON_FADE_START", -1, false)),  // default not derivable from the tree
+P("MC2_FOG_HORIZON_FADE_START", Float, 0.0, "post", "", "FOG-HORIZON-CLAMP-1: override the horizon-fog fade band START (elevation).", registry(Feature, "MC2_FOG_HORIZON_FADE_START", -1, false) | verified),  // default not derivable from the tree
 L(Lead0, "MC2_FORCE_43", Bool, false, "gameos", "", "Default-OFF gate (matches the launcher toggle model: checked -> MC2_FORCE_43=1, unchecked -> unset).", passthrough),
 // history: docs/gate-history.md#MC2_FORCE_ALL_VISIBLE
 L(Lead0, "MC2_FORCE_ALL_VISIBLE", Bool, false, "code", "", "FORCE-ALL-VISIBLE-1: mark every unit (mechs, ground vehicles, elementals, all teams) fully visible and sensed, bypassing sensor / contact gating so nothing...", passthrough | registry(Trace, "MC2_TRACE_FORCE_ALL_VISIBLE", -1, false) | verified),
@@ -341,10 +341,10 @@ P("MC2_FRAME_PASS_STATS_EVERY", Int, 0, "gameos", "", "", passthrough),
 P("MC2_FREEZE_MOVERS_AT", Int, -1, "code", "", "FREEZE-MOVERS-1: =<frame> freezes every mover the first frame g_mc2FrameCounter >= <frame>, WITHOUT needing the command channel (the 'freeze_movers on...", passthrough | registry(Trace, "MC2_TRACE_FREEZE_MOVERS_AT", -1, false)),
 // history: docs/gate-history.md#MC2_FULLBAKE_DIAG
 L(Lead1, "MC2_FULLBAKE_DIAG", Bool, false, "props", "", "SPOTLIGHT-DIRECTION-1 measurement instrument.", passthrough | registry(Trace, "MC2_FULLBAKE_DIAG", -1, false) | verified),
-L(Lead0, "MC2_FXAA", Bool, false, "post", "", "", passthrough),
-P("MC2_FXAA_EDGE_THRESHOLD", Float, 0.0, "post", "", "", passthrough),  // default not derivable from the tree
-P("MC2_FXAA_EDGE_THRESHOLD_MIN", Float, 0.0, "post", "", "", passthrough),  // default not derivable from the tree
-P("MC2_FXAA_SUBPIX", Float, 0.0, "post", "", "", passthrough),  // default not derivable from the tree
+L(Lead0, "MC2_FXAA", Bool, false, "post", "", "", passthrough | verified),
+P("MC2_FXAA_EDGE_THRESHOLD", Float, 0.0, "post", "", "", passthrough | verified),  // default not derivable from the tree
+P("MC2_FXAA_EDGE_THRESHOLD_MIN", Float, 0.0, "post", "", "", passthrough | verified),  // default not derivable from the tree
+P("MC2_FXAA_SUBPIX", Float, 0.0, "post", "", "", passthrough | verified),  // default not derivable from the tree
 // history: docs/gate-history.md#MC2_FX_COST_SPLIT
 L(Exact1, "MC2_FX_COST_SPLIT", Bool, false, "code", "", "FX cost-split instrumentation (default-off).", passthrough | registry(Feature, "MC2_FX_COST_SPLIT", -1, false) | verified),
 L(Presence, "MC2_FX_COUNT_LOG", Bool, false, "mech", "", "MC2_FX_COUNT_LOG=1: env-gated per-effect-site GOSFX draw counter for the Mech3DAppearance::render() effect sites.", passthrough | verified),
@@ -447,10 +447,10 @@ L(Lead0P, "MC2_GROUND_CONTACT_BLOB", Bool, false, "code", "", "", passthrough),
 L(Lead0, "MC2_GV_LIGHTSOUT_CLEAR", Bool, false, "mech", "", "VEHICLE-NIGHT-LIT-2: GVAppearance::update (mclib/gvactor.cpp) calls gvShape->SetLightsOut(true) when a ground vehicle is OBJECT_STATUS_DESTROYED or...", passthrough | registry(Feature, "MC2_GV_LIGHTSOUT_CLEAR", 42, false) | verified),
 L(Presence, "MC2_HAZE_PARITY", Bool, false, "terrain", "", "Step 7 (VPL retirement): MC2_HAZE_PARITY probe - env-gated default-off.", verified),
 L(Lead0Kill, "MC2_HDRI_BC6H", Bool, true, "gameos", "", ""),
-L(Lead0Kill, "MC2_HDRI_SKY", Bool, true, "post", "", ""),
-P("MC2_HDRI_SKY_AZ_OFFSET", Float, 0.0, "post", "", ""),
-L(Lead0P, "MC2_HDRI_SKY_FRAME_FIX", Bool, false, "post", "", ""),
-L(Lead0P, "MC2_HDRI_SKY_UV_DEBUG", Bool, false, "post", "", ""),
+L(Lead0Kill, "MC2_HDRI_SKY", Bool, true, "post", "", "", verified),
+P("MC2_HDRI_SKY_AZ_OFFSET", Float, 0.0, "post", "", "", verified),
+L(Lead0P, "MC2_HDRI_SKY_FRAME_FIX", Bool, false, "post", "", "", verified),
+L(Lead0P, "MC2_HDRI_SKY_UV_DEBUG", Bool, false, "post", "", "", verified),
 L(Presence, "MC2_HEARTBEAT", Bool, false, "gameos", "", "", passthrough),
 P("MC2_HEIGHT", Int, 0, "gameos", "", "", passthrough),
 P("MC2_HITCH_MS", Float, 0.0, "gameos", "", "", passthrough),  // default not derivable from the tree
@@ -467,7 +467,7 @@ G("MC2_HUD_SIM_SPEED", Bool, false, "code", "", "SIM-SPEED-BUTTON-1: double-gate
 // history: docs/gate-history.md#MC2_HUD_TABS_TEST
 G("MC2_HUD_TABS_TEST", Bool, false, "code", "", "IN-MISSION-HUD-IMGUI-SCOPE-1 slice C witness: register a 4th 'test' tab (no legacy button; ImGui chrome via HudImGui::hudShrinkPoint + hudToDisplay, trivial...", registry(Feature, "MC2_FEATURE_HUD_TABS_TEST", -1, false)),
 // history: docs/gate-history.md#MC2_HZB_BUILD
-L(Lead0, "MC2_HZB_BUILD", Bool, false, "post", "", "TRACKRV-HZB-VISIBILITY-OPUS-1: build a reverse-Z Hi-Z depth pyramid from MainDepth each frame via a custom fragment MIN-reduction pass (hzb_reduce.frag)...", passthrough | registry(Feature, "MC2_FEATURE_HZB_BUILD", 30, false)),
+L(Lead0, "MC2_HZB_BUILD", Bool, false, "post", "", "TRACKRV-HZB-VISIBILITY-OPUS-1: build a reverse-Z Hi-Z depth pyramid from MainDepth each frame via a custom fragment MIN-reduction pass (hzb_reduce.frag)...", passthrough | registry(Feature, "MC2_FEATURE_HZB_BUILD", 30, false) | verified),
 L(Presence, "MC2_HZB_FORCE_HORIZON", Bool, false, "code", "", "", verified),
 P("MC2_HZB_FORCE_HORIZON_ALT", Float, 150.0, "code", "", ""),
 P("MC2_HZB_FORCE_HORIZON_ANGLE", Float, 12.0, "code", "", ""),
@@ -476,7 +476,7 @@ P("MC2_HZB_FORCE_HORIZON_ROT", Float, 135.0, "code", "", ""),
 P("MC2_HZB_FORCE_HORIZON_X", Float, 0.9, "code", "", "Corner position as a fraction of the half-map extent (map is centered at origin: vegHalfMap = worldUnitsMapSide*0.5)."),
 P("MC2_HZB_FORCE_HORIZON_Y", Float, -0.9, "code", "", ""),
 // history: docs/gate-history.md#MC2_HZB_PROBE
-L(Lead0, "MC2_HZB_PROBE", Bool, false, "post", "", "TRACKRV-HZB-VISIBILITY-OPUS-1: diagnostic-only HZB occlusion probe.", passthrough | registry(Feature, "MC2_FEATURE_HZB_PROBE", 31, false)),
+L(Lead0, "MC2_HZB_PROBE", Bool, false, "post", "", "TRACKRV-HZB-VISIBILITY-OPUS-1: diagnostic-only HZB occlusion probe.", passthrough | registry(Feature, "MC2_FEATURE_HZB_PROBE", 31, false) | verified),
 G("MC2_HZB_VIEW_FILE", String, "", "code", "", "HZB validation knob (debug only): force a low across-map HORIZON view so static props occlude each other."),  // default not derivable from the tree
 L(Lead1, "MC2_IBL_ASSET_STRICT", Bool, false, "unclassified", "", ""),
 // history: docs/gate-history.md#MC2_ICON_FAILLOUD
@@ -525,7 +525,7 @@ L(Lead0P, "MC2_LIGHTGRID_VERIFY", Bool, false, "gameos", "", ""),
 // not Trace: it REPLACES the lit render output
 // history: docs/gate-history.md#MC2_LIGHTING_DEBUG_VIEW
 G("MC2_LIGHTING_DEBUG_VIEW", Enum, "", "gameos", "", "DEBUG-VIEW-SWEEP-1: replace lit shading with a diagnostic channel across terrain, static props and mechs.", passthrough | tokens("|0|albedo|ambient|final|lightcount|lightindex|normal|off|overbright|shadow|sun") | registry(Feature, "MC2_FEATURE_LIGHTING_DEBUG_VIEW", -1, false)),
-L(Presence, "MC2_LIGHTING_LINEAR_AUDIT", Bool, false, "post", "", "LINEAR-COLOR-AUDIT-1: one-shot runtime color-pipeline probe."),
+L(Presence, "MC2_LIGHTING_LINEAR_AUDIT", Bool, false, "post", "", "LINEAR-COLOR-AUDIT-1: one-shot runtime color-pipeline probe.", verified),
 G("MC2_LIGHTING_SHADOW_PREDICATE_MODE", Enum, "", "code", "", "", tokens("|Legacy|Modern") | verified),
 L(Presence, "MC2_LIGHTSLOT_TRACE", Bool, false, "props", "", "", verified),
 L(Presence, "MC2_LIGHTSSBO_TRACE", Bool, false, "mech", "", ""),
@@ -713,9 +713,9 @@ L(DefOnAtoiNZ, "MC2_MVP_PUBLISH_EARLY", Bool, true, "code", "", ""),  // default
 P("MC2_NIGHT_AMBIENT_FLOOR", Int, 0, "code", "", "NIGHT-LIGHT-POOLS-1 knob: minimum per-channel output (0..64, clamped) of Camera::getLightRed/Green/Blue -- the family feeding the colormap night burn-in...", clampRange(0, 64) | registry(Trace, "MC2_TUNE_NIGHT_AMBIENT_FLOOR", -1, false) | verified),
 // NightFogDim (BACKDROP-BLIT-ATTRIB-1)
 // history: docs/gate-history.md#MC2_NIGHT_FOG_DIM
-L(Exact1, "MC2_NIGHT_FOG_DIM", Bool, false, "post", "", "BACKDROP-BLIT-ATTRIB-1: RenderDoc pixel-history on the pre-composite HDR scene FBO (231) pinned the mc2_10 night 'white horizon band' to the EDGE-FOG...", passthrough | registry(Feature, "MC2_NIGHT_FOG_DIM", 40, false)),
+L(Exact1, "MC2_NIGHT_FOG_DIM", Bool, false, "post", "", "BACKDROP-BLIT-ATTRIB-1: RenderDoc pixel-history on the pre-composite HDR scene FBO (231) pinned the mc2_10 night 'white horizon band' to the EDGE-FOG...", passthrough | registry(Feature, "MC2_NIGHT_FOG_DIM", 40, false) | verified),
 // history: docs/gate-history.md#MC2_NIGHT_FOG_DIM_SCALE
-P("MC2_NIGHT_FOG_DIM_SCALE", Float, 0.0, "post", "", "BACKDROP-BLIT-ATTRIB-1: multiplier applied per-channel to the edge-fog + OOB fog color when MC2_NIGHT_FOG_DIM=1.", passthrough | registry(Trace, "MC2_TUNE_NIGHT_FOG_DIM_SCALE", -1, false)),  // default not derivable from the tree
+P("MC2_NIGHT_FOG_DIM_SCALE", Float, 0.0, "post", "", "BACKDROP-BLIT-ATTRIB-1: multiplier applied per-channel to the edge-fog + OOB fog color when MC2_NIGHT_FOG_DIM=1.", passthrough | registry(Trace, "MC2_TUNE_NIGHT_FOG_DIM_SCALE", -1, false) | verified),  // default not derivable from the tree
 // history: docs/gate-history.md#MC2_NO_ACTIVATE
 L(Lead0, "MC2_NO_ACTIVATE", Bool, false, "editor", "", "Mission Editor (editor/EditorMFC.cpp, MainFrm.cpp): come up minimized and non-activating, never taking the foreground or keyboard focus.", registry(Trace, "MC2_TRACE_NO_ACTIVATE", -1, false)),
 // history: docs/gate-history.md#MC2_NO_CURSOR_GRAB
@@ -735,9 +735,9 @@ P("MC2_OBJECT_POLY_OFFSET_UNITS", Float, -1.0, "props", "", "", passthrough),
 L(Lead0, "MC2_OBJECT_RECON_TRACY", Bool, false, "unclassified", "", "", passthrough | verified),
 L(Lead0, "MC2_OBJECT_WALK_FACTS", Bool, false, "code", "", ""),
 L(Presence, "MC2_OBJ_MVP_STALE_FATAL", Bool, false, "gameos", "", ""),
-L(Lead0Kill, "MC2_OOB_FOG", Bool, true, "post", "", ""),
-L(Presence, "MC2_OOB_FOG_COLOR", Bool, false, "post", "", ""),
-L(Lead0Kill, "MC2_OOB_LETTERBOX", Bool, true, "post", "", ""),
+L(Lead0Kill, "MC2_OOB_FOG", Bool, true, "post", "", "", verified),
+G("MC2_OOB_FOG_COLOR", String, "", "post", "", "", verified),
+L(Lead0Kill, "MC2_OOB_LETTERBOX", Bool, true, "post", "", "", verified),
 L(Presence, "MC2_OS_CURSOR", Bool, false, "unclassified", "", "Hide the OS cursor.", verified),
 // RUNWAY-CLOSE-1: overlay-art flat-light exemption A/B arm (enum 63, LAST).
 // history: docs/gate-history.md#MC2_OVERLAY_ART_FLATLIGHT
@@ -790,20 +790,20 @@ L(Lead0, "MC2_PIPELINE_BIND_TRACE", Bool, false, "gameos", "", "", passthrough),
 L(Lead0, "MC2_PIPELINE_COLORMASK", Bool, false, "gameos", "", ""),
 P("MC2_PLAYTEST_EXE", Int, 0, "editor", "", ""),
 L(Lead0Kill, "MC2_PNG_MAGENTA_KEY", Bool, true, "gameos", "", ""),
-G("MC2_POSTPROCESS_BACKEND", Enum, "gl", "post", "", "", passthrough | tokens("gl|vk")),
+G("MC2_POSTPROCESS_BACKEND", Enum, "gl", "post", "", "", passthrough | tokens("gl|vk|vulkan") | verified),
 L(Lead0P, "MC2_POSTPROCESS_COMPUTE_BLUR", Bool, false, "post", "", ""),
 L(Lead0P, "MC2_POSTPROCESS_COMPUTE_BLUR_PLANT", Bool, false, "post", "", ""),
 L(Lead0P, "MC2_POSTPROCESS_COMPUTE_BLUR_VERIFY", Bool, false, "post", "", ""),
 // POST-FX-CAS-1: AMD FidelityFX Contrast Adaptive Sharpening (GL composite).
 // history: docs/gate-history.md#MC2_POST_CAS
-L(Lead0, "MC2_POST_CAS", Bool, false, "post", "", "POST-FX-CAS-1: gated AMD FidelityFX CAS sharpening folded into the final composite shader (after tonemap/grade, before UI).", registry(Feature, "MC2_POST_CAS", -1, false)),
+L(Lead0, "MC2_POST_CAS", Bool, false, "post", "", "POST-FX-CAS-1: gated AMD FidelityFX CAS sharpening folded into the final composite shader (after tonemap/grade, before UI).", registry(Feature, "MC2_POST_CAS", -1, false) | verified),
 // history: docs/gate-history.md#MC2_POST_CAS_SHARPNESS
-P("MC2_POST_CAS_SHARPNESS", Float, 0.0, "post", "", "POST-FX-CAS-1: CAS sharpness knob, clamped 0..1 (default 0.5).", clampRange(0.0, 1.0) | registry(Feature, "MC2_POST_CAS_SHARPNESS", -1, false)),  // default not derivable from the tree
+P("MC2_POST_CAS_SHARPNESS", Float, 0.0, "post", "", "POST-FX-CAS-1: CAS sharpness knob, clamped 0..1 (default 0.5).", clampRange(0.0, 1.0) | registry(Feature, "MC2_POST_CAS_SHARPNESS", -1, false) | verified),  // default not derivable from the tree
 L(Presence, "MC2_PRESWAP_FINISH", Bool, false, "gameos", "", "", passthrough),
 P("MC2_PREVIEW_FBO_SCALE", Int, 0, "gameos", "", ""),  // default not derivable from the tree
 L(Presence, "MC2_PREVIEW_NOCULL", Bool, false, "code", "", "EXPERIMENT (PREVIEW-FBO-FIXED-800x600-1 debug): the mech draws zero pixels anywhere in the FBO despite shouldRender=1."),
 L(Lead1, "MC2_PREVIEW_SCENE_DRAIN", Bool, false, "code", "", ""),
-L(Lead0, "MC2_PROJECTED_DECALS", Bool, false, "post", "", "DECAL-INTEGRATE-1: MC2_PROJECTED_DECALS (default OFF)."),
+L(Lead0, "MC2_PROJECTED_DECALS", Bool, false, "post", "", "DECAL-INTEGRATE-1: MC2_PROJECTED_DECALS (default OFF).", verified),
 // PPC / direct-fire projectile knobs (gameplay; launcher-toggleable)
 // history: docs/gate-history.md#MC2_PROJECTILE_SPEED_MULT
 P("MC2_PROJECTILE_SPEED_MULT", Float, 1.0, "code", "", "Direct-fire projectile speed multiplier (PPC/autocannon/gauss = non-arc bolts).", passthrough | registry(Feature, "MC2_PROJECTILE_SPEED_MULT", -1, false)),
@@ -825,7 +825,7 @@ L(Lead0, "MC2_PROP_LIGHT_LATCH_DIAG", Bool, false, "props", "", "FOGLIGHT-LATCH-
 // history: docs/gate-history.md#MC2_PROP_LIGHT_LATCH_DIAG_INTERVAL
 P("MC2_PROP_LIGHT_LATCH_DIAG_INTERVAL", Int, 120, "props", "", "FOGLIGHT-LATCH-1: frame throttle for the [PROPLATCH v1] compare line (default 120).", passthrough | registry(Trace, "MC2_PROP_LIGHT_LATCH_DIAG_INTERVAL", -1, false) | verified),
 // history: docs/gate-history.md#MC2_PROP_SHADOW_RECEIVE
-P("MC2_PROP_SHADOW_RECEIVE", Int, 0, "post", "", "PROP-SHADOW-RECEIVE-1: static props RECEIVE the dynamic CSM cascade shadow in shadow_screen.frag (building self-shadow + prop-on-prop; the cascades already...", passthrough | registry(Feature, "MC2_FEATURE_PROP_SHADOW_RECEIVE", -1, false)),
+P("MC2_PROP_SHADOW_RECEIVE", Int, 0, "post", "", "PROP-SHADOW-RECEIVE-1: static props RECEIVE the dynamic CSM cascade shadow in shadow_screen.frag (building self-shadow + prop-on-prop; the cascades already...", passthrough | registry(Feature, "MC2_FEATURE_PROP_SHADOW_RECEIVE", -1, false) | verified),
 L(Presence, "MC2_PURCHASE_ALL", Bool, false, "code", "", "MC2_PURCHASE_ALL (default OFF; launcher Engine Option): unlock every COMPONENT/weapon so modded gear (e.g."),
 L(Lead0Kill, "MC2_QUADSETUP_ARMED_SKIP", Bool, true, "terrain", "", "", passthrough | verified),
 L(Presence, "MC2_R2B_STATIC_NATURAL_TRACE", Bool, false, "code", "", "", passthrough),
@@ -849,8 +849,8 @@ L(Presence, "MC2_RENDERSTATES_TRACE", Bool, false, "gameos", "", "Optional diagn
 // history: docs/gate-history.md#MC2_RENDER_BACKEND
 L(NonEmpty, "MC2_RENDER_BACKEND", Bool, false, "unclassified", "", "VK-P13-SELECTOR-1: top-level render-backend selector, values gl|vulkan (default gl; unset/unrecognized -> gl, coercion logged).", passthrough | registry(Feature, "MC2_FEATURE_RENDER_BACKEND", -1, false)),
 // history: docs/gate-history.md#MC2_RENDER_BACKEND_IFACE
-L(Lead1, "MC2_RENDER_BACKEND_IFACE", Bool, false, "post", "", "RENDER-BACKEND-SEAMS arc: routes select GL calls (e.g.", passthrough | registry(Feature, "MC2_FEATURE_RENDER_BACKEND_IFACE", -1, false)),
-L(Lead1, "MC2_RENDER_BACKEND_REGION_IFACE", Bool, false, "post", "", "", passthrough),
+L(Lead1, "MC2_RENDER_BACKEND_IFACE", Bool, false, "post", "", "RENDER-BACKEND-SEAMS arc: routes select GL calls (e.g.", passthrough | registry(Feature, "MC2_FEATURE_RENDER_BACKEND_IFACE", -1, false) | verified),
+L(Lead1, "MC2_RENDER_BACKEND_REGION_IFACE", Bool, false, "post", "", "", passthrough | verified),
 L(Lead0, "MC2_RENDER_CONTRACT_ASSERT", Bool, false, "code", "", "", passthrough | verified),
 L(Presence, "MC2_RENDER_FRAME_DRIVER", Bool, false, "gameos", "", "GAME-EDITOR-RENDER-FRAME-DRIVER-1 (Slice 6): gated A/B adoption of the shared RenderFrameDriver seam."),
 L(Presence, "MC2_RENDER_FRAME_PLAN_TRACE", Bool, false, "gameos", "", "", passthrough),
@@ -874,7 +874,7 @@ G("MC2_RESOLVE_TRACE_FILE", String, "", "code", "", "META-FIX design E tier 3 (m
 // META-FIX-BATCH-2 (recurrence-proofing, designs D + F — 2026-07-16)
 // history: docs/gate-history.md#MC2_RES_ASSERT
 L(Lead0, "MC2_RES_ASSERT", Bool, false, "code", "", "META-FIX design D runtime tier (RenderCore/ResolutionContract.h): resolution/aspect contract audit.", passthrough | registry(Trace, "MC2_TRACE_RES_ASSERT", -1, false)),
-L(Presence, "MC2_RES_DIAG", Bool, false, "post", "", "[RES_DIAG v1] One-shot dump of the resolution split: scene FBO size (this object's width_/height_) vs the HUD canvas (Environment.screenWidth) vs the native...", passthrough),
+L(Presence, "MC2_RES_DIAG", Bool, false, "post", "", "[RES_DIAG v1] One-shot dump of the resolution split: scene FBO size (this object's width_/height_) vs the HUD canvas (Environment.screenWidth) vs the native...", passthrough | verified),
 L(Presence, "MC2_REVERSE_Z_TRACE", Bool, false, "unclassified", "", "", passthrough | verified),
 L(Presence, "MC2_RING_FORCE_FINISH", Bool, false, "terrain", "", "?? Probe 7 (MC2_RING_FORCE_FINISH) - directed barrier-hypothesis test ?? Forces full GPU pipeline drain after the compute dispatches.", passthrough | verified),
 L(Presence, "MC2_RING_TRACE", Bool, false, "terrain", "", "?? Probe 8: compare draw-time MVP fingerprint vs compute-time fingerprint.", passthrough | verified),
@@ -895,56 +895,56 @@ L(Lead0, "MC2_SENSOR_SCAN_FACTS", Bool, false, "code", "", ""),
 // history: docs/gate-history.md#MC2_SETUPTEXTURES_LEGACY_FORCE
 L(Presence, "MC2_SETUPTEXTURES_LEGACY_FORCE", Bool, false, "terrain", "", "TRACKV-CI-GATE-RESTORE-1: setupTextures legacy path kill-switch.", registry(Feature, "MC2_FEATURE_SETUPTEXTURES_LEGACY_FORCE", 37, false) | verified),
 L(Lead1, "MC2_SHADER_HOT_RELOAD", Bool, false, "gameos", "", ""),
-P("MC2_SHADER_PATH_TINT", Int, 0, "post", "", ""),
+P("MC2_SHADER_PATH_TINT", Int, 0, "post", "", "", verified),
 // SPIRV-CONSUMER-PILOT-BUILD-1: runtime SPIR-V consumer (postprocess pilot).
 // history: docs/gate-history.md#MC2_SHADER_SPIRV
 L(Lead1, "MC2_SHADER_SPIRV", Bool, false, "gameos", "", "SPIRV-CONSUMER-PILOT-BUILD-1: DEFAULT-OFF. =1 loads the offline-baked OpenGL SPIR-V (OFFLINE-SHADER-VARIANT-BUILD-1, shaders/spv/) for the postprocess...", registry(Feature, "MC2_SHADER_SPIRV", -1, false)),
 // history: docs/gate-history.md#MC2_SHADER_SPIRV_FATAL
 L(Lead1, "MC2_SHADER_SPIRV_FATAL", Bool, false, "gameos", "", "SPIRV-CONSUMER-PILOT-BUILD-1: DEFAULT-OFF debug gate.", registry(Trace, "MC2_SHADER_SPIRV_FATAL", -1, false)),
-L(Lead0Kill, "MC2_SHADOW_ALT_SCALE", Bool, true, "post", "", "", passthrough),
+L(Lead0Kill, "MC2_SHADOW_ALT_SCALE", Bool, true, "post", "", "", passthrough | verified),
 // history: docs/gate-history.md#MC2_SHADOW_BOUNDED_NEAR_FIT
-L(Lead0Kill, "MC2_SHADOW_BOUNDED_NEAR_FIT", Bool, true, "post", "", "SHADOW-BOUNDED-NEAR-FIT-1: cap the dynamic sun-shadow frustum fit radius to a small camera-centered region (radius from MC2_SHADOW_BOUNDED_NEAR_RADIUS...", passthrough | registry(Feature, "MC2_FEATURE_SHADOW_BOUNDED_NEAR_FIT", -1, true)),
+L(Lead0Kill, "MC2_SHADOW_BOUNDED_NEAR_FIT", Bool, true, "post", "", "SHADOW-BOUNDED-NEAR-FIT-1: cap the dynamic sun-shadow frustum fit radius to a small camera-centered region (radius from MC2_SHADOW_BOUNDED_NEAR_RADIUS...", passthrough | registry(Feature, "MC2_FEATURE_SHADOW_BOUNDED_NEAR_FIT", -1, true) | verified),
 // history: docs/gate-history.md#MC2_SHADOW_BOUNDED_NEAR_RADIUS
-P("MC2_SHADOW_BOUNDED_NEAR_RADIUS", Float, 2500.0, "post", "", "SHADOW-BOUNDED-NEAR-FIT-1 tunable: bounded near-fit radius in world units (default 2500, clamped 512..mapClampR).", passthrough | registry(Trace, "MC2_TUNE_SHADOW_BOUNDED_NEAR_RADIUS", -1, false)),
+P("MC2_SHADOW_BOUNDED_NEAR_RADIUS", Float, 2500.0, "post", "", "SHADOW-BOUNDED-NEAR-FIT-1 tunable: bounded near-fit radius in world units (default 2500, clamped 512..mapClampR).", passthrough | registry(Trace, "MC2_TUNE_SHADOW_BOUNDED_NEAR_RADIUS", -1, false) | rangeAbove(0.0, 3.4028234663852886e38) | verified),
 // history: docs/gate-history.md#MC2_SHADOW_CASTER_CULL_CACHE
 L(Lead0P, "MC2_SHADOW_CASTER_CULL_CACHE", Bool, false, "code", "", "SHADOW-CASTER-CULL-CACHE-1 (TXMMGR-PERF-EASYWINS-1): reuse the Shadow.CasterCull result (mclib/txmmgr.cpp DynamicShadowPass) across frames when BOTH the...", passthrough | registry(Feature, "MC2_SHADOW_CASTER_CULL_CACHE", -1, false) | verified),
 P("MC2_SHADOW_CASTER_CULL_MARGIN", Float, 0.25, "code", "", "", passthrough | range(0.0, 3.4028234663852886e38) | verified),
 L(Lead0Kill, "MC2_SHADOW_CASTER_LIGHTBOX_CULL", Bool, true, "code", "", "DEFAULT ON since 2026-06-16 (render-hygiene-s1).", passthrough | verified),
 // history: docs/gate-history.md#MC2_SHADOW_CSM
-L(Lead0Kill, "MC2_SHADOW_CSM", Bool, true, "post", "", "Cascaded shadow maps master gate (GameOS/gameos/gos_postprocess.cpp), reworked 2026-06-18 (commit 8ff13a36).", passthrough | registry(Feature, "MC2_FEATURE_SHADOW_CSM", -1, true)),
-P("MC2_SHADOW_CSM_COUNT", Int, 3, "post", "", "", range(1, 3)),
-P("MC2_SHADOW_CSM_LAMBDA", Float, 0.5, "post", "", "", range(0.0, 1.0)),
-P("MC2_SHADOW_CSM_R0", Float, 512.0, "post", "", ""),
-P("MC2_SHADOW_CSM_R1", Float, 4096.0, "post", "", ""),
-P("MC2_SHADOW_CSM_SOFTNESS", Float, 0.9, "unclassified", "", "", range(0.1, 6.0)),
+L(Lead0Kill, "MC2_SHADOW_CSM", Bool, true, "post", "", "Cascaded shadow maps master gate (GameOS/gameos/gos_postprocess.cpp), reworked 2026-06-18 (commit 8ff13a36).", passthrough | registry(Feature, "MC2_FEATURE_SHADOW_CSM", -1, true) | verified),
+P("MC2_SHADOW_CSM_COUNT", Int, 3, "post", "", "", clampRange(1, 3) | verified),
+P("MC2_SHADOW_CSM_LAMBDA", Float, 0.5, "post", "", "", clampRange(0.0, 1.0) | verified),
+P("MC2_SHADOW_CSM_R0", Float, 512.0, "post", "", "", verified),
+P("MC2_SHADOW_CSM_R1", Float, 4096.0, "post", "", "", verified),
+P("MC2_SHADOW_CSM_SOFTNESS", Float, 0.9, "unclassified", "", "", clampRange(static_cast<double>(0.1f), 6.0) | verified),
 L(Presence, "MC2_SHADOW_CULL_DEBUG", Bool, false, "code", "", "", passthrough | verified),
 // history: docs/gate-history.md#MC2_SHADOW_DEBUG_MODE
-L(Lead1, "MC2_SHADOW_DEBUG_MODE", Bool, false, "post", "", "SHADOW-ENV-DEBUG-MODE-1: selects shadow debug map overlay without ImGui.", passthrough | registry(Trace, "MC2_DIAG_SHADOW_DEBUG_MODE", -1, false)),
+G("MC2_SHADOW_DEBUG_MODE", String, "", "post", "", "SHADOW-ENV-DEBUG-MODE-1: selects shadow debug map overlay without ImGui.", passthrough | registry(Trace, "MC2_DIAG_SHADOW_DEBUG_MODE", -1, false) | verified),
 L(Presence, "MC2_SHADOW_DIAG", Bool, false, "props", "", ""),
-P("MC2_SHADOW_DIST_FADE", Float, 80.0, "post", "", "", passthrough | range(0.0, 100000.0)),
-P("MC2_SHADOW_DIST_FADE_MAX", Float, 0.65, "post", "", "", passthrough | range(0.0, 1.0)),
+P("MC2_SHADOW_DIST_FADE", Float, 80.0, "post", "", "", passthrough | clampRange(0.0, 100000.0) | verified),
+P("MC2_SHADOW_DIST_FADE_MAX", Float, 0.65, "post", "", "", passthrough | clampRange(0.0, 1.0) | verified),
 // history: docs/gate-history.md#MC2_SHADOW_DYNAMIC_PROP_CASTERS
 G("MC2_SHADOW_DYNAMIC_PROP_CASTERS", Enum, "1", "props", "", "SHADOW-DYNAMIC-PROP-CASTERS-1: feed the per-frame DYNAMIC sun-shadow caster pass from the full registry (registered props, visibility-independent) instead...", passthrough | registry(Feature, "MC2_FEATURE_SHADOW_DYNAMIC_PROP_CASTERS", -1, true) | tokens("1|0|2") | verified),
 L(Lead0Kill, "MC2_SHADOW_DYNAMIC_PROP_DIRTY_ONLY", Bool, true, "code", "", "DEFAULT-ON since 2026-06-04 (smoke-clean mc2_24; proven s_registryGeneration dirty-only pattern, shadow pass reads only modelMatrix+typeID): only literal...", verified),
 // history: docs/gate-history.md#MC2_SHADOW_ENABLE
 L(Lead0Kill, "MC2_SHADOW_ENABLE", Bool, true, "unclassified", "", "Dynamic object shadow caster pass (GpuStaticPropBatcher + GpuMechBatcher flushShadow).", passthrough | registry(Feature, "MC2_FEATURE_SHADOW_MAPS", 5, true)),
-L(Lead0Kill, "MC2_SHADOW_FADE_CONT", Bool, true, "post", "", "", passthrough),
-L(Lead0Kill, "MC2_SHADOW_FADE_RAMP0", Bool, true, "post", "", "", passthrough),
-L(Lead0Kill, "MC2_SHADOW_FOCUS_CENTER", Bool, true, "post", "", "", passthrough),
+L(Lead0Kill, "MC2_SHADOW_FADE_CONT", Bool, true, "post", "", "", passthrough | verified),
+L(Lead0Kill, "MC2_SHADOW_FADE_RAMP0", Bool, true, "post", "", "", passthrough | verified),
+L(Lead0Kill, "MC2_SHADOW_FOCUS_CENTER", Bool, true, "post", "", "", passthrough | verified),
 // history: docs/gate-history.md#MC2_SHADOW_FRUSTUM_DIAG
-L(Presence, "MC2_SHADOW_FRUSTUM_DIAG", Bool, false, "post", "", "SHADOW-FRUSTUM-AUDIT-1: read-only per-frame dynamic sun-shadow coverage probe in buildDynamicLightMatrix (sun dir, frustum XY, fit/xy radius, map clamp...", passthrough | registry(Trace, "MC2_TRACE_SHADOW_FRUSTUM", -1, false)),
-L(Lead0Kill, "MC2_SHADOW_FULLMAP_SEPARATE", Bool, true, "post", "", ""),
-P("MC2_SHADOW_FULLMAP_SIZE", Int, 4096, "post", "", ""),
+L(Presence, "MC2_SHADOW_FRUSTUM_DIAG", Bool, false, "post", "", "SHADOW-FRUSTUM-AUDIT-1: read-only per-frame dynamic sun-shadow coverage probe in buildDynamicLightMatrix (sun dir, frustum XY, fit/xy radius, map clamp...", passthrough | registry(Trace, "MC2_TRACE_SHADOW_FRUSTUM", -1, false) | verified),
+L(Lead0Kill, "MC2_SHADOW_FULLMAP_SEPARATE", Bool, true, "post", "", "", verified),
+P("MC2_SHADOW_FULLMAP_SIZE", Int, 4096, "post", "", "", verified),
 // history: docs/gate-history.md#MC2_SHADOW_GUARD_CLAMPED_SUN
-L(Lead0Kill, "MC2_SHADOW_GUARD_CLAMPED_SUN", Bool, true, "post", "", "SHADOW-SUNCLAMP-1: feed the shadow_screen.frag back-face guard (`if (NdotL < 0.05) return 1.0;`) the SAME altitude-clamped sun the shadow matrices are built...", passthrough | registry(Feature, "MC2_FEATURE_SHADOW_GUARD_CLAMPED_SUN", -1, true)),
-P("MC2_SHADOW_MAP_SIZE", Int, 8192, "post", "", ""),
-P("MC2_SHADOW_MECH_SOFT", Float, 1.0, "unclassified", "", "", range(0.0, 4.0)),
+L(Lead0Kill, "MC2_SHADOW_GUARD_CLAMPED_SUN", Bool, true, "post", "", "SHADOW-SUNCLAMP-1: feed the shadow_screen.frag back-face guard (`if (NdotL < 0.05) return 1.0;`) the SAME altitude-clamped sun the shadow matrices are built...", passthrough | registry(Feature, "MC2_FEATURE_SHADOW_GUARD_CLAMPED_SUN", -1, true) | verified),
+P("MC2_SHADOW_MAP_SIZE", Int, 8192, "post", "", "", verified),
+P("MC2_SHADOW_MECH_SOFT", Float, 1.0, "unclassified", "", "", clampRange(0.0, 4.0) | verified),
 // history: docs/gate-history.md#MC2_SHADOW_MIN_SUN_ALT
-P("MC2_SHADOW_MIN_SUN_ALT", Float, 15.0, "post", "", "SHADOW-SUN-ALT-CLAMP-1 tunable: minimum EFFECTIVE sun altitude in DEGREES used by the shadow projection matrices (mc2ClampShadowSunAltitude...", passthrough | registry(Trace, "MC2_TUNE_SHADOW_MIN_SUN_ALT", -1, false)),
-P("MC2_SHADOW_OBJ_NORMAL_BIAS", Float, 2.0, "unclassified", "", "", range(0.0, 20.0)),
+P("MC2_SHADOW_MIN_SUN_ALT", Float, 15.0, "post", "", "SHADOW-SUN-ALT-CLAMP-1 tunable: minimum EFFECTIVE sun altitude in DEGREES used by the shadow projection matrices (mc2ClampShadowSunAltitude...", passthrough | registry(Trace, "MC2_TUNE_SHADOW_MIN_SUN_ALT", -1, false) | verified),
+P("MC2_SHADOW_OBJ_NORMAL_BIAS", Float, 2.0, "unclassified", "", "", clampRange(0.0, 16.0) | verified),
 L(Lead0Kill, "MC2_SHADOW_PROP_ALPHA", Bool, true, "props", "", "", passthrough),
 L(Lead0Kill, "MC2_SHADOW_PROP_ALPHA_ATLAS", Bool, true, "props", "", "", passthrough),
-L(Lead0Kill, "MC2_SHADOW_ROBUST_BASIS", Bool, true, "post", "", ""),
+L(Lead0Kill, "MC2_SHADOW_ROBUST_BASIS", Bool, true, "post", "", "", verified),
 L(Lead0, "MC2_SHADOW_STATE_TRACE", Bool, false, "gameos", "", "", passthrough),
 L(Lead0Kill, "MC2_SHADOW_STATIC_BANDFIX", Bool, true, "gameos", "", "SHADOW-BANDING-DEFAULT-ON (2026-07-18): field bug report confirmed the banding persists in the shipped default config (\"this was never fixed\") - the fix..."),
 L(Lead0Kill, "MC2_SHADOW_STATIC_BANDFIX_V2", Bool, true, "gameos", "", "SHADOW-BANDING-DEFAULT-ON (2026-07-18): field bug report (banding in and around mech shadows on terrain) verified A/B in-engine: default config shows..."),
@@ -990,7 +990,7 @@ L(Presence, "MC2_SKIP_STATIC_TREES_DIAG", Bool, false, "code", "", ""),
 // BACKEND-DEFAULT-PARITY-1: skybox fog exclusion (was unregistered, and that
 // is what let two readers disagree in silence for the whole life of the gate).
 // history: docs/gate-history.md#MC2_SKYBOX_FOG_EXCLUDE
-L(Lead0Kill, "MC2_SKYBOX_FOG_EXCLUDE", Bool, true, "post", "", "SKYBOX-FOG-EXCLUDE-1/2.", passthrough | registry(Feature, "MC2_FEATURE_SKYBOX_FOG_EXCLUDE", -1, true)),
+L(Lead0Kill, "MC2_SKYBOX_FOG_EXCLUDE", Bool, true, "post", "", "SKYBOX-FOG-EXCLUDE-1/2.", passthrough | registry(Feature, "MC2_FEATURE_SKYBOX_FOG_EXCLUDE", -1, true) | verified),
 // history: docs/gate-history.md#MC2_SMART_LOAD
 L(Lead0Kill, "MC2_SMART_LOAD", Bool, true, "code", "", "SMART-LOAD startup/mission-load perf path (logisticsdata.cpp).", registry(Feature, "MC2_FEATURE_SMART_LOAD", -1, true)),
 L(Presence, "MC2_SMART_LOAD_TRACE", Bool, false, "code", "", ""),
@@ -1030,17 +1030,17 @@ L(Lead0P, "MC2_SP_ALPHASCAN_GATE", Bool, false, "props", "", "SP-BATCHER-ALPHASC
 // history: docs/gate-history.md#MC2_SP_GLASS_DITHER
 L(Lead0Kill, "MC2_SP_GLASS_DITHER", Bool, true, "unclassified", "", "BUILDING-GLASS-1: ordered-dither (Bayer 4x4) translucency for partial-alpha texels on static-prop ALPHA_TEST materials (window glass).", passthrough | registry(Feature, "MC2_SP_GLASS_DITHER", -1, true)),
 // history: docs/gate-history.md#MC2_SSAO
-L(Lead0, "MC2_SSAO", Bool, false, "post", "", "SSAO-GTAO-LITE-MVP-1 (Track V): lightweight half-res screen-space ambient-occlusion grounding pass (gosPostProcess::runSSAO) reusing the scene depth +...", passthrough | registry(Feature, "MC2_FEATURE_SSAO", 26, false)),
+L(Lead0, "MC2_SSAO", Bool, false, "post", "", "SSAO-GTAO-LITE-MVP-1 (Track V): lightweight half-res screen-space ambient-occlusion grounding pass (gosPostProcess::runSSAO) reusing the scene depth +...", passthrough | registry(Feature, "MC2_FEATURE_SSAO", 26, false) | verified),
 // SSAO-BLUR-1: the missing denoise. Killswitch, NOT an opt-in -- default ON
 // whenever SSAO runs, because the un-blurred chain is not a shippable config.
 // history: docs/gate-history.md#MC2_SSAO_BLUR
-L(Lead0Kill, "MC2_SSAO_BLUR", Bool, true, "post", "", "SSAO-BLUR-1: separable depth-aware (joint bilateral) blur over the half-res AO buffer, inserted between the AO gen pass and the apply pass...", passthrough | registry(Feature, "MC2_FEATURE_SSAO_BLUR", -1, true)),
+L(Lead0Kill, "MC2_SSAO_BLUR", Bool, true, "post", "", "SSAO-BLUR-1: separable depth-aware (joint bilateral) blur over the half-res AO buffer, inserted between the AO gen pass and the apply pass...", passthrough | registry(Feature, "MC2_FEATURE_SSAO_BLUR", -1, true) | verified),
 // history: docs/gate-history.md#MC2_SSAO_BLUR_SIGMA
-P("MC2_SSAO_BLUR_SIGMA", Float, 0.0, "post", "", "SSAO-BLUR-1 tunable: RELATIVE depth tolerance (|d-dc|/dc) for the SSAO bilateral blur's edge-stopping weight.", passthrough | range(0.001, 1.0) | registry(Feature, "MC2_FEATURE_SSAO_BLUR_SIGMA", -1, false)),  // default not derivable from the tree
+P("MC2_SSAO_BLUR_SIGMA", Float, 0.0, "post", "", "SSAO-BLUR-1 tunable: RELATIVE depth tolerance (|d-dc|/dc) for the SSAO bilateral blur's edge-stopping weight.", passthrough | clampRange(static_cast<double>(0.001f), 1.0) | registry(Feature, "MC2_FEATURE_SSAO_BLUR_SIGMA", -1, false) | verified),  // default not derivable from the tree
 // history: docs/gate-history.md#MC2_SSAO_DEBUG
-L(Lead0, "MC2_SSAO_DEBUG", Bool, false, "post", "", "SSAO-GTAO-LITE-MVP-1: when set with MC2_SSAO=1, the SSAO apply pass OVERWRITES the scene with the half-res AO buffer as grayscale (blend disabled) instead...", passthrough | registry(Trace, "MC2_DIAG_SSAO_DEBUG", -1, false)),
+L(Lead0, "MC2_SSAO_DEBUG", Bool, false, "post", "", "SSAO-GTAO-LITE-MVP-1: when set with MC2_SSAO=1, the SSAO apply pass OVERWRITES the scene with the half-res AO buffer as grayscale (blend disabled) instead...", passthrough | registry(Trace, "MC2_DIAG_SSAO_DEBUG", -1, false) | verified),
 // history: docs/gate-history.md#MC2_SSAO_RADIUS
-P("MC2_SSAO_RADIUS", Float, 0.0, "post", "", "SSAO-RADIUS-REVERT-1 (VERIFY-DEBT-1): explicit launch-time override for the SSAO world-unit sample radius.", range(0.1, 64.0) | registry(Feature, "MC2_FEATURE_SSAO_RADIUS", -1, false)),  // default not derivable from the tree
+P("MC2_SSAO_RADIUS", Float, 0.0, "post", "", "SSAO-RADIUS-REVERT-1 (VERIFY-DEBT-1): explicit launch-time override for the SSAO world-unit sample radius.", clampRange(static_cast<double>(0.1f), 64.0) | registry(Feature, "MC2_FEATURE_SSAO_RADIUS", -1, false) | verified),  // default not derivable from the tree
 G("MC2_STABLE_LIGHT_SKIP", Bool, false, "props", "", "Std Bool row: any text other than 0/false/off/no/1/true/on/yes (e.g. =2) still reads as on but is reported badvalue, which MC2_CONFIG_STRICT=1 turns fatal.", passthrough | verified),
 G("MC2_STABLE_LIGHT_SKIP_DIAG", Bool, false, "props", "", "Std Bool row: any text other than 0/false/off/no/1/true/on/yes (e.g. =2) still reads as on but is reported badvalue, which MC2_CONFIG_STRICT=1 turns fatal.", verified | passthrough),
 G("MC2_STABLE_LIGHT_SKIP_TOUCH", Bool, false, "props", "", "Std Bool row: any text other than 0/false/off/no/1/true/on/yes (e.g. =2) still reads as on but is reported badvalue, which MC2_CONFIG_STRICT=1 turns fatal.", verified | passthrough),
@@ -1393,7 +1393,7 @@ L(Presence, "MC2_TOBJ_COST_SPLIT", Bool, false, "unclassified", "", "[TOBJSPLIT 
 L(Presence, "MC2_TOBJ_PARITY", Bool, false, "terrain", "", "[TOBJPARITY v1] env-gated STANDALONE readback-vs-coarse superset-parity instrument.", passthrough),
 // POST-FX-TONEMAP-V2 (SCOUR-1 #3): filmic tonemap on the composite.
 // history: docs/gate-history.md#MC2_TONEMAP_V2
-L(Lead1, "MC2_TONEMAP_V2", Bool, false, "post", "", "POST-FX-TONEMAP-V2: optional filmic tonemap curve on the final composited colour (postprocess.frag).", passthrough | registry(Feature, "MC2_TONEMAP_V2", -1, false)),
+G("MC2_TONEMAP_V2", String, "", "post", "", "POST-FX-TONEMAP-V2: optional filmic tonemap curve on the final composited colour (postprocess.frag).", passthrough | registry(Feature, "MC2_TONEMAP_V2", -1, false) | verified),
 L(Presence, "MC2_TRACE_EXIT", Bool, false, "gameos", "", ""),
 // ── TREE-DIAG-REGISTER-1 (closed by GATE-PARITY-CLOSE-1) ───────────────
 // Lives in kAuxEnvVars and NOT in kFeatureTable: kFeatureTable is indexed
@@ -1485,17 +1485,17 @@ L(Lead1, "MC2_VFX_SCENECOLOR_GRAB", Bool, false, "gameos", "", ""),
 L(Lead1, "MC2_VFX_SOFT_PARTICLES", Bool, false, "gameos", "", "VFX-SOFT-PARTICLES-MVP-1 (Track V): depth-fade GPU particles at scene intersections.", passthrough | registry(Feature, "MC2_FEATURE_VFX_SOFT_PARTICLES", 27, false)),
 L(Lead0, "MC2_VFX_TUBE_UPLOAD_STATS", Bool, false, "gameos", "", ""),
 // history: docs/gate-history.md#MC2_VIEWMODE_FRAMEWORK
-L(Lead0, "MC2_VIEWMODE_FRAMEWORK", Bool, false, "post", "", "VIEWMODE-POSTPROCESS-PRESENTATION-1: enables the view-mode presentation framework that wires ViewMode::ObjectIdDebug (and future sensor modes) through the...", passthrough | registry(Feature, "MC2_FEATURE_VIEWMODE_FRAMEWORK", 29, false)),
+L(Lead0, "MC2_VIEWMODE_FRAMEWORK", Bool, false, "post", "", "VIEWMODE-POSTPROCESS-PRESENTATION-1: enables the view-mode presentation framework that wires ViewMode::ObjectIdDebug (and future sensor modes) through the...", passthrough | registry(Feature, "MC2_FEATURE_VIEWMODE_FRAMEWORK", 29, false) | verified),
 // history: docs/gate-history.md#MC2_VIEWMODE_LOWLIGHT_GAIN
-P("MC2_VIEWMODE_LOWLIGHT_GAIN", Float, 0.0, "post", "", "LOWLIGHT-NIGHTVISION-MVP-1: night-vision luminance amplification (clamped 0.1..16, default 2.5).", passthrough | clampRange(0.1, 16.0) | registry(Trace, "MC2_TUNE_VIEWMODE_LOWLIGHT_GAIN", -1, false)),  // default not derivable from the tree
+P("MC2_VIEWMODE_LOWLIGHT_GAIN", Float, 0.0, "post", "", "LOWLIGHT-NIGHTVISION-MVP-1: night-vision luminance amplification (clamped 0.1..16, default 2.5).", passthrough | clampRange(static_cast<double>(0.1f), 16.0) | registry(Trace, "MC2_TUNE_VIEWMODE_LOWLIGHT_GAIN", -1, false) | verified),  // default not derivable from the tree
 // history: docs/gate-history.md#MC2_VIEWMODE_LOWLIGHT_TINT
-L(NonEmpty, "MC2_VIEWMODE_LOWLIGHT_TINT", Bool, false, "post", "", "LOWLIGHT-NIGHTVISION-MVP-1: night-vision tint as 'r,g,b' floats (default 0.7,1.0,0.6 green-phosphor).", passthrough | registry(Trace, "MC2_TUNE_VIEWMODE_LOWLIGHT_TINT", -1, false)),
+G("MC2_VIEWMODE_LOWLIGHT_TINT", String, "", "post", "", "LOWLIGHT-NIGHTVISION-MVP-1: night-vision tint as 'r,g,b' floats (default 0.7,1.0,0.6 green-phosphor).", passthrough | registry(Trace, "MC2_TUNE_VIEWMODE_LOWLIGHT_TINT", -1, false) | verified),
 // TRACKV-TACTICAL-PRESENTATION: ViewMode seed + LowLight tunables + tactical
 // overlay. All default-OFF/inert; Visual path byte-identical when unset.
 // (MC2_VIEWMODE_FRAMEWORK itself is the RendererFeature::ViewmodeFramework
 // enum entry, registered in kFeatureTable above.)
 // history: docs/gate-history.md#MC2_VIEW_MODE
-P("MC2_VIEW_MODE", Int, 0, "post", "", "VIEWMODE-POSTPROCESS-PRESENTATION-1: seeds the startup presentation mode (matches RenderCore::ViewMode).", passthrough | registry(Trace, "MC2_TUNE_VIEW_MODE", -1, false)),  // default not derivable from the tree
+G("MC2_VIEW_MODE", String, "", "post", "", "VIEWMODE-POSTPROCESS-PRESENTATION-1: seeds the startup presentation mode (matches RenderCore::ViewMode).", passthrough | registry(Trace, "MC2_TUNE_VIEW_MODE", -1, false) | verified),  // default not derivable from the tree
 // history: docs/gate-history.md#MC2_VIEW_UNIFORMS
 L(Lead0Kill, "MC2_VIEW_UNIFORMS", Bool, true, "props", "", "ViewUniforms UBO at binding=3.", passthrough | registry(Feature, "MC2_FEATURE_VIEW_UNIFORMS", 16, true)),
 L(Presence, "MC2_VISUAL_BOOKMARK_CAPTURE", Bool, false, "vk", "", "", passthrough),

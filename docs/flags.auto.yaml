@@ -5,7 +5,7 @@
 generator_version: "3.0.0"
 gate_count: 1139
 registry_entry_count: 354
-verified_count: 502
+verified_count: 576
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -361,24 +361,28 @@ flags:
     rule: Lead0
     owner: post
     doc: ""
+    verified: true
   - name: MC2_BOX_DECAL_NORMAL_REJECT
     kind: Float
     default: 0
     rule: Prefix
     owner: post
     doc: ""
+    verified: true
   - name: MC2_BOX_DECAL_STRENGTH
     kind: Float
     default: 0
     rule: Prefix
     owner: post
     doc: ""
+    verified: true
   - name: MC2_BOX_DECAL_YSPAN
     kind: Float
     default: 0
     rule: Prefix
     owner: post
     doc: ""
+    verified: true
   - name: MC2_BRAIN_ALIAS
     kind: Bool
     default: false
@@ -817,6 +821,7 @@ flags:
     owner: post
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_CLUSTER_DEPTH_PYRAMID
     kind: Bool
     default: false
@@ -988,6 +993,7 @@ flags:
     rule: Presence
     owner: post
     doc: "[SHADOWFRUSTUM v1] VPL-#shadow: prove the static-shadow CLIPPER is correct (user suspected light/clipper; render-expert grep says it's feed-scope, not the..."
+    verified: true
   - name: MC2_DEBUG_SHADOW_STATIC
     kind: Bool
     default: false
@@ -1001,6 +1007,7 @@ flags:
     rule: Presence
     owner: post
     doc: "[SHADOWZRANGE v1] VPL-#10: prove the [0,1] ZERO_TO_ONE conversion is correct."
+    verified: true
   - name: MC2_DEBUG_STATE_DUMP
     kind: Bool
     default: false
@@ -1213,24 +1220,28 @@ flags:
     rule: Lead0Kill
     owner: post
     doc: ""
+    verified: true
   - name: MC2_EDGE_FOG_HEIGHT
     kind: Float
     default: 0
     rule: Prefix
     owner: post
     doc: ""
+    verified: true
   - name: MC2_EDGE_FOG_MAX
     kind: Float
     default: 0
     rule: Prefix
     owner: post
     doc: ""
+    verified: true
   - name: MC2_EDGE_FOG_START
     kind: Float
     default: 0
     rule: Prefix
     owner: post
     doc: ""
+    verified: true
   - name: MC2_EDITOR_AUTODOCK
     kind: Bool
     default: true
@@ -1447,6 +1458,7 @@ flags:
     rule: Lead0Kill
     owner: post
     doc: "FOG-HORIZON-CLAMP-1: reshape the out-of-bounds / edge fog to a horizon elevation profile (gos_postprocess)."
+    verified: true
     registry: {feature_id: MC2_FOG_HORIZON_CLAMP, kind: Feature, order: -1, default_on: true}
   - name: MC2_FOG_HORIZON_FADE_END
     kind: Float
@@ -1454,6 +1466,7 @@ flags:
     rule: Prefix
     owner: post
     doc: "FOG-HORIZON-CLAMP-1: override the horizon-fog fade band END (elevation)."
+    verified: true
     registry: {feature_id: MC2_FOG_HORIZON_FADE_END, kind: Feature, order: -1, default_on: false}
   - name: MC2_FOG_HORIZON_FADE_START
     kind: Float
@@ -1461,6 +1474,7 @@ flags:
     rule: Prefix
     owner: post
     doc: "FOG-HORIZON-CLAMP-1: override the horizon-fog fade band START (elevation)."
+    verified: true
     registry: {feature_id: MC2_FOG_HORIZON_FADE_START, kind: Feature, order: -1, default_on: false}
   - name: MC2_FORCE_43
     kind: Bool
@@ -1644,6 +1658,7 @@ flags:
     owner: post
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_FXAA_EDGE_THRESHOLD
     kind: Float
     default: 0
@@ -1651,6 +1666,7 @@ flags:
     owner: post
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_FXAA_EDGE_THRESHOLD_MIN
     kind: Float
     default: 0
@@ -1658,6 +1674,7 @@ flags:
     owner: post
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_FXAA_SUBPIX
     kind: Float
     default: 0
@@ -1665,6 +1682,7 @@ flags:
     owner: post
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_FX_COST_SPLIT
     kind: Bool
     default: false
@@ -2187,24 +2205,28 @@ flags:
     rule: Lead0Kill
     owner: post
     doc: ""
+    verified: true
   - name: MC2_HDRI_SKY_AZ_OFFSET
     kind: Float
     default: 0
     rule: Prefix
     owner: post
     doc: ""
+    verified: true
   - name: MC2_HDRI_SKY_FRAME_FIX
     kind: Bool
     default: false
     rule: Lead0P
     owner: post
     doc: ""
+    verified: true
   - name: MC2_HDRI_SKY_UV_DEBUG
     kind: Bool
     default: false
     rule: Lead0P
     owner: post
     doc: ""
+    verified: true
   - name: MC2_HEARTBEAT
     kind: Bool
     default: false
@@ -2291,6 +2313,7 @@ flags:
     owner: post
     doc: "TRACKRV-HZB-VISIBILITY-OPUS-1: build a reverse-Z Hi-Z depth pyramid from MainDepth each frame via a custom fragment MIN-reduction pass (hzb_reduce.frag)..."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_HZB_BUILD, kind: Feature, order: 30, default_on: false}
   - name: MC2_HZB_FORCE_HORIZON
     kind: Bool
@@ -2342,6 +2365,7 @@ flags:
     owner: post
     doc: "TRACKRV-HZB-VISIBILITY-OPUS-1: diagnostic-only HZB occlusion probe."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_HZB_PROBE, kind: Feature, order: 31, default_on: false}
   - name: MC2_HZB_VIEW_FILE
     kind: String
@@ -2547,6 +2571,7 @@ flags:
     rule: Presence
     owner: post
     doc: "LINEAR-COLOR-AUDIT-1: one-shot runtime color-pipeline probe."
+    verified: true
   - name: MC2_LIGHTING_SHADOW_PREDICATE_MODE
     kind: Enum
     default: ""
@@ -3570,6 +3595,7 @@ flags:
     owner: post
     doc: "BACKDROP-BLIT-ATTRIB-1: RenderDoc pixel-history on the pre-composite HDR scene FBO (231) pinned the mc2_10 night 'white horizon band' to the EDGE-FOG..."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_NIGHT_FOG_DIM, kind: Feature, order: 40, default_on: false}
   - name: MC2_NIGHT_FOG_DIM_SCALE
     kind: Float
@@ -3578,6 +3604,7 @@ flags:
     owner: post
     doc: "BACKDROP-BLIT-ATTRIB-1: multiplier applied per-channel to the edge-fog + OOB fog color when MC2_NIGHT_FOG_DIM=1."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TUNE_NIGHT_FOG_DIM_SCALE, kind: Trace, order: -1, default_on: false}
   - name: MC2_NO_ACTIVATE
     kind: Bool
@@ -3695,18 +3722,21 @@ flags:
     rule: Lead0Kill
     owner: post
     doc: ""
+    verified: true
   - name: MC2_OOB_FOG_COLOR
-    kind: Bool
-    default: false
-    rule: Presence
+    kind: String
+    default: ""
+    rule: Std
     owner: post
     doc: ""
+    verified: true
   - name: MC2_OOB_LETTERBOX
     kind: Bool
     default: true
     rule: Lead0Kill
     owner: post
     doc: ""
+    verified: true
   - name: MC2_OS_CURSOR
     kind: Bool
     default: false
@@ -4003,8 +4033,9 @@ flags:
     rule: Std
     owner: post
     doc: ""
-    tokens: "gl|vk"
+    tokens: "gl|vk|vulkan"
     smoke_passthrough: true
+    verified: true
   - name: MC2_POSTPROCESS_COMPUTE_BLUR
     kind: Bool
     default: false
@@ -4029,6 +4060,7 @@ flags:
     rule: Lead0
     owner: post
     doc: "POST-FX-CAS-1: gated AMD FidelityFX CAS sharpening folded into the final composite shader (after tonemap/grade, before UI)."
+    verified: true
     registry: {feature_id: MC2_POST_CAS, kind: Feature, order: -1, default_on: false}
   - name: MC2_POST_CAS_SHARPNESS
     kind: Float
@@ -4037,6 +4069,7 @@ flags:
     owner: post
     doc: "POST-FX-CAS-1: CAS sharpness knob, clamped 0..1 (default 0.5)."
     range: {lo: 0, hi: 1, style: clamp}
+    verified: true
     registry: {feature_id: MC2_POST_CAS_SHARPNESS, kind: Feature, order: -1, default_on: false}
   - name: MC2_PRESWAP_FINISH
     kind: Bool
@@ -4069,6 +4102,7 @@ flags:
     rule: Lead0
     owner: post
     doc: "DECAL-INTEGRATE-1: MC2_PROJECTED_DECALS (default OFF)."
+    verified: true
   - name: MC2_PROJECTILE_SPEED_MULT
     kind: Float
     default: 1
@@ -4166,6 +4200,7 @@ flags:
     owner: post
     doc: "PROP-SHADOW-RECEIVE-1: static props RECEIVE the dynamic CSM cascade shadow in shadow_screen.frag (building self-shadow + prop-on-prop; the cascades already..."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_PROP_SHADOW_RECEIVE, kind: Feature, order: -1, default_on: false}
   - name: MC2_PURCHASE_ALL
     kind: Bool
@@ -4301,6 +4336,7 @@ flags:
     owner: post
     doc: "RENDER-BACKEND-SEAMS arc: routes select GL calls (e.g."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_RENDER_BACKEND_IFACE, kind: Feature, order: -1, default_on: false}
   - name: MC2_RENDER_BACKEND_REGION_IFACE
     kind: Bool
@@ -4309,6 +4345,7 @@ flags:
     owner: post
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_RENDER_CONTRACT_ASSERT
     kind: Bool
     default: false
@@ -4447,6 +4484,7 @@ flags:
     owner: post
     doc: "[RES_DIAG v1] One-shot dump of the resolution split: scene FBO size (this object's width_/height_) vs the HUD canvas (Environment.screenWidth) vs the native..."
     smoke_passthrough: true
+    verified: true
   - name: MC2_REVERSE_Z_TRACE
     kind: Bool
     default: false
@@ -4562,6 +4600,7 @@ flags:
     rule: Prefix
     owner: post
     doc: ""
+    verified: true
   - name: MC2_SHADER_SPIRV
     kind: Bool
     default: false
@@ -4583,6 +4622,7 @@ flags:
     owner: post
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_SHADOW_BOUNDED_NEAR_FIT
     kind: Bool
     default: true
@@ -4590,6 +4630,7 @@ flags:
     owner: post
     doc: "SHADOW-BOUNDED-NEAR-FIT-1: cap the dynamic sun-shadow frustum fit radius to a small camera-centered region (radius from MC2_SHADOW_BOUNDED_NEAR_RADIUS..."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_SHADOW_BOUNDED_NEAR_FIT, kind: Feature, order: -1, default_on: true}
   - name: MC2_SHADOW_BOUNDED_NEAR_RADIUS
     kind: Float
@@ -4597,7 +4638,9 @@ flags:
     rule: Prefix
     owner: post
     doc: "SHADOW-BOUNDED-NEAR-FIT-1 tunable: bounded near-fit radius in world units (default 2500, clamped 512..mapClampR)."
+    range: {lo: 0, hi: 3.4028234663852886e+38, style: reject, lo_exclusive: true}
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TUNE_SHADOW_BOUNDED_NEAR_RADIUS, kind: Trace, order: -1, default_on: false}
   - name: MC2_SHADOW_CASTER_CULL_CACHE
     kind: Bool
@@ -4632,6 +4675,7 @@ flags:
     owner: post
     doc: "Cascaded shadow maps master gate (GameOS/gameos/gos_postprocess.cpp), reworked 2026-06-18 (commit 8ff13a36)."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_SHADOW_CSM, kind: Feature, order: -1, default_on: true}
   - name: MC2_SHADOW_CSM_COUNT
     kind: Int
@@ -4639,33 +4683,38 @@ flags:
     rule: Prefix
     owner: post
     doc: ""
-    range: {lo: 1, hi: 3, style: reject}
+    range: {lo: 1, hi: 3, style: clamp}
+    verified: true
   - name: MC2_SHADOW_CSM_LAMBDA
     kind: Float
     default: 0.5
     rule: Prefix
     owner: post
     doc: ""
-    range: {lo: 0, hi: 1, style: reject}
+    range: {lo: 0, hi: 1, style: clamp}
+    verified: true
   - name: MC2_SHADOW_CSM_R0
     kind: Float
     default: 512
     rule: Prefix
     owner: post
     doc: ""
+    verified: true
   - name: MC2_SHADOW_CSM_R1
     kind: Float
     default: 4096
     rule: Prefix
     owner: post
     doc: ""
+    verified: true
   - name: MC2_SHADOW_CSM_SOFTNESS
     kind: Float
     default: 0.899999976
     rule: Prefix
     owner: unclassified
     doc: ""
-    range: {lo: 0.1, hi: 6, style: reject}
+    range: {lo: 0.10000000149011612, hi: 6, style: clamp}
+    verified: true
   - name: MC2_SHADOW_CULL_DEBUG
     kind: Bool
     default: false
@@ -4675,12 +4724,13 @@ flags:
     smoke_passthrough: true
     verified: true
   - name: MC2_SHADOW_DEBUG_MODE
-    kind: Bool
-    default: false
-    rule: Lead1
+    kind: String
+    default: ""
+    rule: Std
     owner: post
     doc: "SHADOW-ENV-DEBUG-MODE-1: selects shadow debug map overlay without ImGui."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_DIAG_SHADOW_DEBUG_MODE, kind: Trace, order: -1, default_on: false}
   - name: MC2_SHADOW_DIAG
     kind: Bool
@@ -4694,16 +4744,18 @@ flags:
     rule: Prefix
     owner: post
     doc: ""
-    range: {lo: 0, hi: 100000, style: reject}
+    range: {lo: 0, hi: 100000, style: clamp}
     smoke_passthrough: true
+    verified: true
   - name: MC2_SHADOW_DIST_FADE_MAX
     kind: Float
     default: 0.649999976
     rule: Prefix
     owner: post
     doc: ""
-    range: {lo: 0, hi: 1, style: reject}
+    range: {lo: 0, hi: 1, style: clamp}
     smoke_passthrough: true
+    verified: true
   - name: MC2_SHADOW_DYNAMIC_PROP_CASTERS
     kind: Enum
     default: "1"
@@ -4736,6 +4788,7 @@ flags:
     owner: post
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_SHADOW_FADE_RAMP0
     kind: Bool
     default: true
@@ -4743,6 +4796,7 @@ flags:
     owner: post
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_SHADOW_FOCUS_CENTER
     kind: Bool
     default: true
@@ -4750,6 +4804,7 @@ flags:
     owner: post
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_SHADOW_FRUSTUM_DIAG
     kind: Bool
     default: false
@@ -4757,6 +4812,7 @@ flags:
     owner: post
     doc: "SHADOW-FRUSTUM-AUDIT-1: read-only per-frame dynamic sun-shadow coverage probe in buildDynamicLightMatrix (sun dir, frustum XY, fit/xy radius, map clamp..."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TRACE_SHADOW_FRUSTUM, kind: Trace, order: -1, default_on: false}
   - name: MC2_SHADOW_FULLMAP_SEPARATE
     kind: Bool
@@ -4764,12 +4820,14 @@ flags:
     rule: Lead0Kill
     owner: post
     doc: ""
+    verified: true
   - name: MC2_SHADOW_FULLMAP_SIZE
     kind: Int
     default: 4096
     rule: Prefix
     owner: post
     doc: ""
+    verified: true
   - name: MC2_SHADOW_GUARD_CLAMPED_SUN
     kind: Bool
     default: true
@@ -4777,6 +4835,7 @@ flags:
     owner: post
     doc: "SHADOW-SUNCLAMP-1: feed the shadow_screen.frag back-face guard (`if (NdotL < 0.05) return 1.0;`) the SAME altitude-clamped sun the shadow matrices are built..."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_SHADOW_GUARD_CLAMPED_SUN, kind: Feature, order: -1, default_on: true}
   - name: MC2_SHADOW_MAP_SIZE
     kind: Int
@@ -4784,13 +4843,15 @@ flags:
     rule: Prefix
     owner: post
     doc: ""
+    verified: true
   - name: MC2_SHADOW_MECH_SOFT
     kind: Float
     default: 1
     rule: Prefix
     owner: unclassified
     doc: ""
-    range: {lo: 0, hi: 4, style: reject}
+    range: {lo: 0, hi: 4, style: clamp}
+    verified: true
   - name: MC2_SHADOW_MIN_SUN_ALT
     kind: Float
     default: 15
@@ -4798,6 +4859,7 @@ flags:
     owner: post
     doc: "SHADOW-SUN-ALT-CLAMP-1 tunable: minimum EFFECTIVE sun altitude in DEGREES used by the shadow projection matrices (mc2ClampShadowSunAltitude..."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TUNE_SHADOW_MIN_SUN_ALT, kind: Trace, order: -1, default_on: false}
   - name: MC2_SHADOW_OBJ_NORMAL_BIAS
     kind: Float
@@ -4805,7 +4867,8 @@ flags:
     rule: Prefix
     owner: unclassified
     doc: ""
-    range: {lo: 0, hi: 20, style: reject}
+    range: {lo: 0, hi: 16, style: clamp}
+    verified: true
   - name: MC2_SHADOW_PROP_ALPHA
     kind: Bool
     default: true
@@ -4826,6 +4889,7 @@ flags:
     rule: Lead0Kill
     owner: post
     doc: ""
+    verified: true
   - name: MC2_SHADOW_STATE_TRACE
     kind: Bool
     default: false
@@ -4938,6 +5002,7 @@ flags:
     owner: post
     doc: "SKYBOX-FOG-EXCLUDE-1/2."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_SKYBOX_FOG_EXCLUDE, kind: Feature, order: -1, default_on: true}
   - name: MC2_SMART_LOAD
     kind: Bool
@@ -5119,6 +5184,7 @@ flags:
     owner: post
     doc: "SSAO-GTAO-LITE-MVP-1 (Track V): lightweight half-res screen-space ambient-occlusion grounding pass (gosPostProcess::runSSAO) reusing the scene depth +..."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_SSAO, kind: Feature, order: 26, default_on: false}
   - name: MC2_SSAO_BLUR
     kind: Bool
@@ -5127,6 +5193,7 @@ flags:
     owner: post
     doc: "SSAO-BLUR-1: separable depth-aware (joint bilateral) blur over the half-res AO buffer, inserted between the AO gen pass and the apply pass..."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_SSAO_BLUR, kind: Feature, order: -1, default_on: true}
   - name: MC2_SSAO_BLUR_SIGMA
     kind: Float
@@ -5134,8 +5201,9 @@ flags:
     rule: Prefix
     owner: post
     doc: "SSAO-BLUR-1 tunable: RELATIVE depth tolerance (|d-dc|/dc) for the SSAO bilateral blur's edge-stopping weight."
-    range: {lo: 0.001, hi: 1, style: reject}
+    range: {lo: 0.0010000000474974513, hi: 1, style: clamp}
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_SSAO_BLUR_SIGMA, kind: Feature, order: -1, default_on: false}
   - name: MC2_SSAO_DEBUG
     kind: Bool
@@ -5144,6 +5212,7 @@ flags:
     owner: post
     doc: "SSAO-GTAO-LITE-MVP-1: when set with MC2_SSAO=1, the SSAO apply pass OVERWRITES the scene with the half-res AO buffer as grayscale (blend disabled) instead..."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_DIAG_SSAO_DEBUG, kind: Trace, order: -1, default_on: false}
   - name: MC2_SSAO_RADIUS
     kind: Float
@@ -5151,7 +5220,8 @@ flags:
     rule: Prefix
     owner: post
     doc: "SSAO-RADIUS-REVERT-1 (VERIFY-DEBT-1): explicit launch-time override for the SSAO world-unit sample radius."
-    range: {lo: 0.1, hi: 64, style: reject}
+    range: {lo: 0.10000000149011612, hi: 64, style: clamp}
+    verified: true
     registry: {feature_id: MC2_FEATURE_SSAO_RADIUS, kind: Feature, order: -1, default_on: false}
   - name: MC2_STABLE_LIGHT_SKIP
     kind: Bool
@@ -6750,12 +6820,13 @@ flags:
     doc: "[TOBJPARITY v1] env-gated STANDALONE readback-vs-coarse superset-parity instrument."
     smoke_passthrough: true
   - name: MC2_TONEMAP_V2
-    kind: Bool
-    default: false
-    rule: Lead1
+    kind: String
+    default: ""
+    rule: Std
     owner: post
     doc: "POST-FX-TONEMAP-V2: optional filmic tonemap curve on the final composited colour (postprocess.frag)."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TONEMAP_V2, kind: Feature, order: -1, default_on: false}
   - name: MC2_TRACE_EXIT
     kind: Bool
@@ -7169,6 +7240,7 @@ flags:
     owner: post
     doc: "VIEWMODE-POSTPROCESS-PRESENTATION-1: enables the view-mode presentation framework that wires ViewMode::ObjectIdDebug (and future sensor modes) through the..."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_VIEWMODE_FRAMEWORK, kind: Feature, order: 29, default_on: false}
   - name: MC2_VIEWMODE_LOWLIGHT_GAIN
     kind: Float
@@ -7176,24 +7248,27 @@ flags:
     rule: Prefix
     owner: post
     doc: "LOWLIGHT-NIGHTVISION-MVP-1: night-vision luminance amplification (clamped 0.1..16, default 2.5)."
-    range: {lo: 0.1, hi: 16, style: clamp}
+    range: {lo: 0.10000000149011612, hi: 16, style: clamp}
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TUNE_VIEWMODE_LOWLIGHT_GAIN, kind: Trace, order: -1, default_on: false}
   - name: MC2_VIEWMODE_LOWLIGHT_TINT
-    kind: Bool
-    default: false
-    rule: NonEmpty
+    kind: String
+    default: ""
+    rule: Std
     owner: post
     doc: "LOWLIGHT-NIGHTVISION-MVP-1: night-vision tint as 'r,g,b' floats (default 0.7,1.0,0.6 green-phosphor)."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TUNE_VIEWMODE_LOWLIGHT_TINT, kind: Trace, order: -1, default_on: false}
   - name: MC2_VIEW_MODE
-    kind: Int
-    default: 0
-    rule: Prefix
+    kind: String
+    default: ""
+    rule: Std
     owner: post
     doc: "VIEWMODE-POSTPROCESS-PRESENTATION-1: seeds the startup presentation mode (matches RenderCore::ViewMode)."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TUNE_VIEW_MODE, kind: Trace, order: -1, default_on: false}
   - name: MC2_VIEW_UNIFORMS
     kind: Bool
