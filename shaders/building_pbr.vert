@@ -2,7 +2,6 @@
 
 #include <include/lighting.hglsl>
 #include <include/terrain_depth_bias.hglsl>  // TERRAIN-DEPTH-BIAS-OWNERSHIP-1: OBJECT_DEPTH_BIAS
-#include <include/axis.hglsl>
 
 layout(location = 0) in vec3 pos;
 layout(location = 1) in vec3 normal;
