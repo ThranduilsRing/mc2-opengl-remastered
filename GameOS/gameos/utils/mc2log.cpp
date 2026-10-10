@@ -1,5 +1,7 @@
 // mc2log.cpp -- logging facade implementation (see mc2log.h).
 #include "mc2log.h"
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"   // str<>()
 
 #include <chrono>
 #include <cstdlib>
@@ -167,21 +169,18 @@ bool topicEnabled(Cat c, std::string_view topic) noexcept {
     return false;
 }
 
-static std::optional<std::string_view> envView(std::string_view name) noexcept {
-    const std::string key(name);   // getenv needs a NUL-terminated name
-    if (const auto raw = std::getenv(key.c_str())) return std::string_view(raw);
-    return std::nullopt;
-}
-
 bool init() noexcept {
-    const std::optional<std::string_view> v = envView("MC2_LOG");
-    const bool live = streamsLiveFor(v.has_value());
+    const bool logSet = mc2::gate::isSet<"MC2_LOG">();
+    const std::string logText = logSet ? mc2::gate::str<"MC2_LOG">() : std::string();
+    const bool live = streamsLiveFor(logSet);
     detail::g_live.store(live, std::memory_order_relaxed);
     try {
-        if (const std::optional<std::string_view> d = envView("MC2_LOG_DECORATE"))
-            detail::g_decorate.store(!d->empty() && (*d)[0] == '1', std::memory_order_relaxed);
-        if (v) {
-            ParsedSpec p = parseSpec(*v);
+        if (mc2::gate::isSet<"MC2_LOG_DECORATE">()) {
+            const std::string d = mc2::gate::str<"MC2_LOG_DECORATE">();
+            detail::g_decorate.store(!d.empty() && d[0] == '1', std::memory_order_relaxed);
+        }
+        if (logSet) {
+            ParsedSpec p = parseSpec(std::string_view(logText));
             applyParsed(p);
             if (p.errors > 0) {
                 std::string m = "[MC2_LOG] ignored " + std::to_string(p.errors) + " invalid spec token(s)\n";
