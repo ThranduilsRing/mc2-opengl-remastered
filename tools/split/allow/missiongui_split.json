@@ -16,7 +16,7 @@
   "tools/gate_codemod.py"
  ],
  "_scripts_reason": "Reviewed: check-mover-registry-coherence reads the select-all trio and the #42b hover guard from every missiongui*.cpp piece (guard now in missiongui_update.cpp; its self-test revert-simulation concatenates the pieces); counter-honesty keys the s_stage limiter to missiongui_update.cpp; camera_sweep_smoke, run_visual_capture, cursor_guard and gate-defaults-allowlist cite missiongui.cpp lines in comments only; tools/gate_codemod.py (lane 1 gate tooling) lists the file for its codemod and is not edited here.",
- "split_commit": "PENDING",
+ "split_commit": "1af09dd12",
  "exclude_files": [
   "missiongui_uicmd.cpp",
   "missiongui_uicmd_fixture.cpp",
