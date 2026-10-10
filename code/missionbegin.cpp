@@ -715,8 +715,9 @@ long MissionBegin::getCurrentScreenId()
 	return (screenId);
 }
 
-const char* MissionBegin::update()
-{
+
+// Dump the front-end state to the LOGISTICS diagnostic event when the screen changes.
+void MissionBegin::updateDumpFrontEndState() {
 	// LOGISTICS capture: on each front-end screen change, dump the screen + bay/
 	// purchase/loadout/launch state to an MCP-readable LOGISTICS diagnostic event.
 	// Self-gated on the LOGISTICS diag tag (no cost unless enabled). curScreenX==-1
@@ -743,7 +744,10 @@ const char* MissionBegin::update()
 			LogisticsData::instance->dumpFrontEndState( nm );
 		}
 	}
+}
 
+// Run the main menu and leave it for the first screen or a restart.
+bool MissionBegin::updateSplash() {
 	if ( bSplash )
 	{
 		mainMenu->update();
@@ -856,149 +860,841 @@ const char* MissionBegin::update()
 			}
 				
 		}
-		return NULL;
+		return true;
 	}
+	return false;
+}
+
+// Move the mouse and flash the target of the running tutorial callout.
+void MissionBegin::updateTutorialAnimation(LogisticsScreen* pCurScreen) {
+	//--------------------
+	//For Tutorial
+	if (animationRunning)
+	{
+		//Move mouse to correct position.
+		if (targetIsButton)
+		{
+			aButton *targetButton = pCurScreen->getButton(targetButtonId);
+			if (!targetButton)
+			{
+				animationRunning = false;
+			}
+			else
+			{
+				userInput->setMouseCursor(mState_TUTORIALS);
+
+				//Get button position.
+				float buttonPosX = (targetButton->left() + targetButton->right()) * 0.5f;
+
+				float buttonPosY = (targetButton->top() + targetButton->bottom()) * 0.5f;
+
+				//-------------------
+				// Mouse Checks Next
+				float realMouseX = userInput->realMouseX();
+				float realMouseY = userInput->realMouseY();
+
+				if (timeLeftToScroll > 0.0f)
+				{
+					float xDistLeft = buttonPosX - realMouseX;
+					float yDistLeft = buttonPosY - realMouseY;
+
+					float xDistThisFrame = xDistLeft / timeLeftToScroll * frameLength;
+					float yDistThisFrame = yDistLeft / timeLeftToScroll * frameLength;
+
+					userInput->setMousePos(realMouseX + xDistThisFrame, realMouseY+yDistThisFrame);
+
+					timeLeftToScroll -= frameLength;
+				}
+				else
+				{
+					userInput->setMousePos(buttonPosX,buttonPosY);
+
+					//We are there.  Start flashing.
+					if (buttonNumFlashes)
+					{
+						buttonFlashTime += frameLength;
+						if ( buttonFlashTime > .5f )
+						{
+							pCurScreen->getButton( targetButtonId )->setColor( 0xffffffff );
+							buttonFlashTime = 0.0f;
+							buttonNumFlashes--;
+						}
+						else if ( buttonFlashTime > .25f )
+						{
+							pCurScreen->getButton( targetButtonId )->setColor( 0xff7f7f7f );
+						}
+					}
+					else
+					{
+						//Flashing is done.  We now return you to your regularly scheduled program.
+						animationRunning = false;
+						pCurScreen->getButton( targetButtonId )->setColor( 0xffffffff );
+					}
+				}
+			}
+		}
+		else
+		{
+			aRect *targetButton = pCurScreen->getRect(targetButtonId);
+			if (!targetButton)
+			{
+				animationRunning = false;
+			}
+			else
+			{
+				userInput->setMouseCursor(mState_TUTORIALS);
+	
+				//Get button position.
+				float buttonPosX = (targetButton->left() + targetButton->right()) * 0.5f;
+	
+				float buttonPosY = (targetButton->top() + targetButton->bottom()) * 0.5f;
+	
+				//-------------------
+				// Mouse Checks Next
+				float realMouseX = userInput->realMouseX();
+				float realMouseY = userInput->realMouseY();
+	
+				if (timeLeftToScroll > 0.0f)
+				{
+					float xDistLeft = buttonPosX - realMouseX;
+					float yDistLeft = buttonPosY - realMouseY;
+	
+					float xDistThisFrame = xDistLeft / timeLeftToScroll * frameLength;
+					float yDistThisFrame = yDistLeft / timeLeftToScroll * frameLength;
+	
+					userInput->setMousePos(realMouseX + xDistThisFrame, realMouseY+yDistThisFrame);
+	
+					timeLeftToScroll -= frameLength;
+				}
+				else
+				{
+					userInput->setMousePos(buttonPosX,buttonPosY);
+	
+					//We are there.  Start flashing.
+					if (buttonNumFlashes)
+					{
+						buttonFlashTime += frameLength;
+						if ( buttonFlashTime > .5f )
+						{
+							pCurScreen->getRect( targetButtonId )->setColor( 0xff000000 );
+							buttonFlashTime = 0.0f;
+							buttonNumFlashes--;
+						}
+						else if ( buttonFlashTime > .25f )
+						{
+							pCurScreen->getRect( targetButtonId )->setColor( 0xffffffff );
+						}
+					}
+					else
+					{
+						//Flashing is done.  We now return you to your regularly scheduled program.
+						animationRunning = false;
+						pCurScreen->getRect( targetButtonId )->setColor( 0xff000000 );
+					}
+				}
+			}
+		}
+	}
+}
+
+// Buy and deploy a mech so a purchase-required mission can launch under auto-advance.
+void MissionBegin::updateSoakAutoPurchase() {
+		// SOAK-AUTO-PURCHASE-1: buy + deploy a mech so purchase-required campaign
+		// missions can launch under auto-advance. Runs once per fresh bay visit at
+		// [2][1]; the latch resets whenever we leave the bay (next mission re-buys).
+		static bool  s_autoPurchasedThisBay = false;
+		static float s_purchaseSettle       = 0.0f;
+		if ( s_soakAutoPurchase && curScreenX == 2 && curScreenY == 1 )
+		{
+			s_purchaseSettle += frameLength;
+			if ( !s_autoPurchasedThisBay && s_purchaseSettle >= 0.3f &&
+			     LogisticsData::instance )
+			{
+				LogisticsData* ld = LogisticsData::instance;
+				EList<LogisticsMech*, LogisticsMech*> fg;
+				ld->getForceGroup( fg );
+				if ( fg.Count() > 0 )
+				{
+					// Already have a lance (e.g. campaigns that pre-stage mechs).
+					s_autoPurchasedThisBay = true;
+				}
+				else
+				{
+					ld->addCBills( 100000000 );          // effectively infinite money
+					const int CAP = 512;
+					LogisticsVariant* pool[CAP];
+					int count = CAP;
+					ld->getPurchasableMechs( pool, count );
+					int n = ( count < CAP ) ? count : CAP;
+					int maxDrop = ld->getMaxDropWeight();
+
+					// Build a compact mech-only index into pool (weight >= 20t).
+					// Both code paths (single-buy and lance-random) use this filter.
+					const int MECH_MIN_TONS = 20;
+					int mechIdx[CAP];
+					int mechCount = 0;
+					for ( int i = 0; i < n; ++i )
+					{
+						if ( pool[i] && (int)pool[i]->getMaxWeight() >= MECH_MIN_TONS )
+							mechIdx[mechCount++] = i;
+					}
+
+					if ( s_soakLanceRandom )
+					{
+						// SOAK-LANCE-RANDOM-2: deploy MAX-SIZE lance with MAX MECH VARIETY.
+						// Goal: stress-test as many distinct mech loadouts as possible each
+						// mission.  Lance size = min(12, pilots, distinctCandidates).
+						// Sources (in priority order, deduplicated by variant pointer):
+						//   (a) Salvaged inventory mechs already owned (getForceGroup()==0),
+						//       accumulated by MC2_SOAK_KILL_ENEMY. No weight filter needed.
+						//   (b) Purchasable mechs (weight >= 20t) covering additional variants.
+						// Combined list is Fisher-Yates shuffled by per-mission LCG so each
+						// mission gets a different ordering (deterministic, no srand).
+
+						static unsigned int s_soakLanceMissionNum = 0;
+						++s_soakLanceMissionNum;
+						// Thomas Wang 32-bit mix -> per-mission shuffle seed
+						unsigned int seed = s_soakLanceMissionNum;
+						seed = (seed ^ 61u) ^ (seed >> 16);
+						seed = seed + (seed << 3);
+						seed ^= seed >> 4;
+						seed = seed * 0x27d4eb2du;
+						seed ^= seed >> 15;
+
+						const int LANCE_MAX = 12;
+
+						// Candidate: salvage (invMech!=null, no buy) or purchasable (invMech==null).
+						struct Candidate {
+							LogisticsMech*    invMech;
+							LogisticsVariant* variant;
+						};
+						const int CAND_CAP = 256;
+						Candidate cands[CAND_CAP];
+						int       nCands = 0;
+
+						// Variant dedup table (pointer equality).
+						LogisticsVariant* seenVariants[CAND_CAP];
+						int               nSeen = 0;
+						auto variantSeen = [&]( LogisticsVariant* v ) -> bool {
+							for ( int i = 0; i < nSeen; ++i )
+								if ( seenVariants[i] == v ) return true;
+							return false;
+						};
+						auto markVariant = [&]( LogisticsVariant* v ) {
+							if ( nSeen < CAND_CAP ) seenVariants[nSeen++] = v;
+						};
+
+						// -- (a) salvaged inventory mechs (unassigned) ----------------------
+						{
+							EList<LogisticsMech*, LogisticsMech*> inv;
+							ld->getInventory( inv );
+							for ( EList<LogisticsMech*, LogisticsMech*>::EIterator it = inv.Begin();
+							      !it.IsDone() && nCands < CAND_CAP; it++ )
+							{
+								LogisticsMech* m = (*it);
+								if ( !m ) continue;
+								if ( m->getForceGroup() ) continue;
+								LogisticsVariant* v = m->getVariant();
+								if ( !v ) continue;
+								if ( variantSeen(v) ) continue;
+								cands[nCands++] = { m, v };
+								markVariant(v);
+							}
+						}
+						int nSalvageCands = nCands;
+
+						// -- (b) purchasable mechs (weight>=20t) not covered by salvage -----
+						for ( int i = 0; i < mechCount && nCands < CAND_CAP; ++i )
+						{
+							LogisticsVariant* v = pool[ mechIdx[i] ];
+							if ( !v ) continue;
+							if ( variantSeen(v) ) continue;
+							cands[nCands++] = { nullptr, v };
+							markVariant(v);
+						}
+
+						// -- Fisher-Yates shuffle (Knuth LCG) -------------------------------
+						for ( int i = nCands - 1; i > 0; --i )
+						{
+							seed = seed * 1664525u + 1013904223u;
+							int j = (int)( seed % (unsigned int)( i + 1 ) );
+							Candidate tmp = cands[i]; cands[i] = cands[j]; cands[j] = tmp;
+						}
+
+						// -- deploy down shuffled list --------------------------------------
+						int deployed    = 0;
+						int fromSalvage = 0;
+						int fromBuy     = 0;
+						const char* firstName = "none";
+
+						for ( int slot = 1; slot <= LANCE_MAX && (slot - 1) < nCands; ++slot )
+						{
+							Candidate&        cand    = cands[slot - 1];
+							LogisticsMech*    mech    = cand.invMech;
+							LogisticsVariant* variant = cand.variant;
+							const char*       src     = mech ? "salvage" : "buy";
+
+							if ( !mech )
+							{
+								// (b) buy path: purchase then locate fresh instance
+								if ( ld->purchaseMech( variant ) != 0 )
+								{
+									printf("[SOAK] lance-add slot=%d FAILED purchase variant=%s\n",
+									    slot, (const char*)variant->getName());
+									continue;
+								}
+								EList<LogisticsMech*, LogisticsMech*> inv;
+								ld->getInventory( inv );
+								for ( EList<LogisticsMech*, LogisticsMech*>::EIterator it = inv.Begin();
+								      !it.IsDone(); it++ )
+								{
+									LogisticsMech* m = (*it);
+									if ( m && m->getVariant() == variant && !m->getForceGroup() )
+									{ mech = m; break; }
+								}
+								if ( !mech )
+								{
+									printf("[SOAK] lance-add slot=%d WARN bought-not-found variant=%s\n",
+									    slot, (const char*)variant->getName());
+									continue;
+								}
+							}
+
+							// Pilot check BEFORE force-group assignment
+							LogisticsPilot* pilot = ld->getFirstAvailablePilot();
+							if ( !pilot )
+							{
+								printf("[SOAK] lance-add slot=%d STOPPED no-pilot mech=%s\n",
+								    slot, (const char*)variant->getName());
+								break;
+							}
+
+							if ( ld->addMechToForceGroup( mech, slot ) != 0 )
+							{
+								printf("[SOAK] lance-add slot=%d REJECTED addMechToForceGroup mech=%s\n",
+								    slot, (const char*)variant->getName());
+								continue;
+							}
+							mech->setPilot( pilot );
+
+							if ( deployed == 0 )
+							{
+								ld->setMechToModify( mech );
+								firstName = (const char*)variant->getName();
+							}
+
+							printf("[SOAK] lance-add slot=%d mech=%s tons=%d src=%s\n",
+							    slot, (const char*)variant->getName(),
+							    (int)variant->getMaxWeight(), src);
+							++deployed;
+							if ( src[0] == 's' ) ++fromSalvage; else ++fromBuy;
+						}
+
+						// Count remaining available pilots for summary
+						int pilotsAvail = 0;
+						{
+							LogisticsPilot* pp[256];
+							long pc = 256;
+							ld->getPilots( pp, pc );
+							for ( long pi = 0; pi < pc; ++pi )
+								if ( pp[pi] && pp[pi]->isAvailable() )
+									++pilotsAvail;
+						}
+
+						printf("[SOAK] lance-v2 deployed=%d distinct=%d pilots=%d fromSalvage=%d fromBuy=%d salvageCands=%d buyCands=%d missionNum=%u\n",
+						    deployed, deployed, pilotsAvail,
+						    fromSalvage, fromBuy,
+						    nSalvageCands, nCands - nSalvageCands,
+						    s_soakLanceMissionNum);
+						fflush( stdout );
+					}
+					else
+					{
+						// Original single-mech path (MC2_SOAK_LANCE_RANDOM not set).
+						// Prefer HEAVIEST mech within drop-weight cap; fall back to lightest.
+						int cap = ( maxDrop > 0 ) ? maxDrop : 0x7fffffff;
+						LogisticsVariant* pick      = nullptr;
+						int               pickW     = -1;
+						LogisticsVariant* lightest  = nullptr;
+						int               lightestW = 0x7fffffff;
+						for ( int i = 0; i < mechCount; ++i )
+						{
+							LogisticsVariant* v = pool[ mechIdx[i] ];
+							int w = (int)v->getMaxWeight();
+							if ( w < lightestW ) { lightestW = w; lightest = v; }
+							if ( w <= cap && w > pickW ) { pickW = w; pick = v; }
+						}
+						if ( !pick )
+							pick = lightest;
+						if ( !pick && n > 0 )
+							pick = pool[n - 1];
+
+						if ( pick && ld->purchaseMech( pick ) == 0 )
+						{
+							LogisticsMech* bought = nullptr;
+							EList<LogisticsMech*, LogisticsMech*> inv;
+							ld->getInventory( inv );
+							for ( EList<LogisticsMech*, LogisticsMech*>::EIterator it = inv.Begin();
+							      !it.IsDone(); it++ )
+								if ( (*it) && (*it)->getVariant() == pick && !(*it)->getForceGroup() )
+									bought = (*it);
+							if ( bought )
+							{
+								ld->addMechToForceGroup( bought, 1 );
+								LogisticsPilot* pilot = ld->getFirstAvailablePilot();
+								if ( pilot )
+									bought->setPilot( pilot );
+								ld->setMechToModify( bought );
+								printf("[SOAK] auto-purchase mech=%s tons=%d pilot=%d deployed=slot1 maxDrop=%d pool=%d\n",
+									(const char*)pick->getName(), (int)pick->getMaxWeight(),
+									pilot ? 1 : 0, maxDrop, n);
+							}
+							else
+							{
+								printf("[SOAK] auto-purchase WARN bought-not-found variant=%s\n",
+									(const char*)pick->getName());
+							}
+						}
+						else
+						{
+							printf("[SOAK] auto-purchase FAILED reason=%s pool=%d maxDrop=%d\n",
+								pick ? "purchase-rejected" : "empty-pool", n, maxDrop);
+						}
+						fflush( stdout );
+					}
+					s_autoPurchasedThisBay = true;
+				}
+			}
+		}
+		else if ( s_soakAutoPurchase )
+		{
+			// Left the bay (or feature off): reset so the next mission re-purchases.
+			s_autoPurchasedThisBay = false;
+			s_purchaseSettle       = 0.0f;
+		}
+}
+
+// Walk the settled screen toward launch, through the optional screen-check detour.
+void MissionBegin::updateSoakScreenWalk(LogisticsScreen* pCurScreen, bool& soakForceNext) {
+		static long  s_soakLastAdvX = -99;
+		static long  s_soakLastAdvY = -99;
+		static float s_soakSettleTimer = 0.0f;
+
+		// SOAK-SCREEN-CHECK-1: state machine that detours through purchase [2][0]
+		// and loadout [2][2] before the normal autowin advance from mech_bay [2][1].
+		// Statics here so they persist across frames (dwell states run every frame).
+		static SoakCheckState s_checkState = SoakCheckState::IDLE;
+		static float          s_checkDwell = 0.0f;
+		static bool           s_checkDone  = false;
+		// Mission serial: incremented each time we depart [2][1] toward a launch.
+		// s_checkDone is valid only for the current value of this counter.
+		static int            s_checkMissionSerial = 0;
+		static int            s_checkDoneSerial    = -1;
+
+		// s_checkDone is true iff we already ran the walk for this mission arrival.
+		// Keyed by serial so it auto-resets across missions without touching
+		// s_soakLastAdvX (which would re-trigger the mission-boundary detector).
+		s_checkDone = ( s_checkDoneSerial == s_checkMissionSerial );
+
+		// Detect mission-boundary: a fresh arrival at [2][1] (last-adv was not
+		// [2][1]) while the machine is idle AND we haven't done a walk yet for
+		// this mission.  The !s_checkDone guard prevents re-triggering when the
+		// walk completion sets lastAdv=-99 to unblock the normal advance path.
+		if ( s_soakCheckScreens &&
+		     curScreenX == 2 && curScreenY == 1 &&
+		     !( s_soakLastAdvX == 2 && s_soakLastAdvY == 1 ) &&
+		     s_checkState == SoakCheckState::IDLE &&
+		     !s_checkDone )
+		{
+			++s_checkMissionSerial;
+			s_checkDone  = false;   // new serial != doneSerial
+			s_checkDwell = 0.0f;
+		}
+
+		// Run the screen-check state machine every frame while it is active.
+		// When the machine is active we suppress the normal settle-timer advance.
+		bool checkMachineActive = ( s_soakCheckScreens && !s_checkDone &&
+		                            s_checkState != SoakCheckState::IDLE );
+		// True while we are at [2][1] waiting for the kick-off settle timer:
+		// this suppresses the normal advance path (else branch) so we don't
+		// double-accumulate s_soakSettleTimer.
+		bool checkKickoffPending = false;
+
+		if ( s_soakCheckScreens && !s_checkDone &&
+		     s_checkState == SoakCheckState::IDLE &&
+		     curScreenX == 2 && curScreenY == 1 )
+		{
+			checkKickoffPending = true;
+			// Kick off once the settle timer fires for the first time at [2][1].
+			// We only start the machine when the settle period has elapsed so
+			// the bay screen has had a chance to fully initialise.
+			if ( curScreenX != s_soakLastAdvX || curScreenY != s_soakLastAdvY )
+				s_soakSettleTimer += frameLength;
+			else
+				s_soakSettleTimer = 0.0f;
+
+			if ( s_soakSettleTimer >= 0.5f )
+			{
+				s_soakSettleTimer  = 0.0f;
+				s_checkState       = SoakCheckState::ENTER_PURCHASE;
+				checkMachineActive = true;
+				checkKickoffPending = false;
+			}
+		}
+
+		if ( checkMachineActive )
+		{
+			// Keep the settle-tracker pointed at the current cell so the normal
+			// advance path is suppressed while the machine runs.
+			s_soakLastAdvX = curScreenX;
+			s_soakLastAdvY = curScreenY;
+
+			switch ( s_checkState )
+			{
+			case SoakCheckState::ENTER_PURCHASE:
+			{
+				// Purchase screen [2][0] does NOT need getMechToModify — it lists
+				// buyable inventory regardless of force-group selection.
+				// Transition [2][1] -> [2][0].
+				pCurScreen->end();
+				curScreenY = 0;
+				if ( screens[curScreenX][curScreenY] )
+					screens[curScreenX][curScreenY]->begin();
+				// dumpFrontEndState fires next frame when the top-of-update
+				// curScreenX/Y change detector sees the new cell.
+				s_checkDwell = 0.0f;
+				s_checkState = SoakCheckState::DWELL_PURCHASE;
+				break;
+			}
+			case SoakCheckState::DWELL_PURCHASE:
+			{
+				s_checkDwell += frameLength;
+				if ( s_checkDwell >= 0.5f )
+				{
+					// Emit purchase screen-check marker.
+					// items = LogisticsData inventory count (mechs available to buy).
+					// ok=1 if any exist; ok=0 if inventory empty.
+					// Limitation: reflects LogisticsData list, NOT rendered widget asset
+					// validity (no per-icon load signal available cheaply here).
+					int items = 0;
+					if ( LogisticsData::instance )
+					{
+						EList<LogisticsMech*, LogisticsMech*> inv;
+						LogisticsData::instance->getInventory( inv );
+						items = (int)inv.Count();
+					}
+					printf("[SOAK] screen-check screen=purchase ok=%d items=%d\n",
+						(items > 0) ? 1 : 0, items);
+					fflush(stdout);
+					// Return to [2][1] briefly before going to loadout.
+					if ( screens[curScreenX][curScreenY] )
+						screens[curScreenX][curScreenY]->end();
+					curScreenY = 1;
+					if ( screens[curScreenX][curScreenY] )
+						screens[curScreenX][curScreenY]->begin();
+					s_checkDwell = 0.0f;
+					s_checkState = SoakCheckState::ENTER_LOADOUT;
+				}
+				break;
+			}
+			case SoakCheckState::ENTER_LOADOUT:
+			{
+				// MechLabScreen::begin() dereferences getMechToModify() at
+				// mechlabscreen.cpp:237 — crash if null.  Guard here so we never call
+				// begin() when no mech is selected (e.g. PoaR / campaign missions where
+				// logistics force-group is not staged before the screen walk).
+				bool mechReady = ( LogisticsData::instance &&
+				                   LogisticsData::instance->getMechToModify() != nullptr );
+				if ( !mechReady )
+				{
+					printf("[SOAK] screen-check screen=loadout ok=0 reason=no-mech-selected\n");
+					fflush(stdout);
+					// Return to [2][1] and mark done; normal advance takes over.
+					if ( screens[curScreenX][curScreenY] )
+						screens[curScreenX][curScreenY]->end();
+					curScreenY = 1;
+					if ( screens[curScreenX][curScreenY] )
+						screens[curScreenX][curScreenY]->begin();
+					s_checkDoneSerial = s_checkMissionSerial;  // latch: done for THIS mission
+					s_checkDone  = true;
+					s_checkState = SoakCheckState::IDLE;
+					// Reset lastAdv so the normal advance path sees [2][1] as a new
+					// cell and fires.  The boundary detector is guarded by !s_checkDone
+					// so it will NOT re-trigger the walk even with lastAdv=-99.
+					s_soakLastAdvX = -99;
+					s_soakLastAdvY = -99;
+					s_soakSettleTimer = 0.0f;
+					break;
+				}
+				// Transition [2][1] -> [2][2] (loadout/mechlab).
+				if ( screens[curScreenX][curScreenY] )
+					screens[curScreenX][curScreenY]->end();
+				curScreenY = 2;
+				if ( screens[curScreenX][curScreenY] )
+					screens[curScreenX][curScreenY]->begin();
+				s_checkDwell = 0.0f;
+				s_checkState = SoakCheckState::DWELL_LOADOUT;
+				break;
+			}
+			case SoakCheckState::DWELL_LOADOUT:
+			{
+				s_checkDwell += frameLength;
+				if ( s_checkDwell >= 0.5f )
+				{
+					// Emit loadout screen-check marker.
+					// items = force-group mech count (mechs assigned to this lance).
+					// ok=1 if at least one mech is in the force group.
+					// Same limitation as purchase: list count, not rendered icon validity.
+					int items = 0;
+					if ( LogisticsData::instance )
+					{
+						EList<LogisticsMech*, LogisticsMech*> fg;
+						LogisticsData::instance->getForceGroup( fg );
+						items = (int)fg.Count();
+					}
+					printf("[SOAK] screen-check screen=loadout ok=%d items=%d\n",
+						(items > 0) ? 1 : 0, items);
+					fflush(stdout);
+					// Return to [2][1] and mark done so normal advance fires.
+					if ( screens[curScreenX][curScreenY] )
+						screens[curScreenX][curScreenY]->end();
+					curScreenY = 1;
+					if ( screens[curScreenX][curScreenY] )
+						screens[curScreenX][curScreenY]->begin();
+					s_checkDwell = 0.0f;
+					s_checkDoneSerial = s_checkMissionSerial;  // latch: done for THIS mission
+					s_checkDone  = true;
+					s_checkState = SoakCheckState::IDLE;
+					// Reset lastAdv so the normal advance path sees [2][1] as a fresh
+					// cell and fires soakForceNext (else it idles on "same cell" and the
+					// soak HANGS at the bay). The mission-boundary detector is guarded by
+					// !s_checkDone (now latched true), so this will NOT restart the walk.
+					s_soakLastAdvX = -99;
+					s_soakLastAdvY = -99;
+					s_soakSettleTimer = 0.0f;
+				}
+				break;
+			}
+			default:
+				break;
+			}
+			// Machine is consuming this frame — do not fall through to normal advance.
+		}
+		else if ( !checkMachineActive && !checkKickoffPending )
+		{
+			// Normal autowin advance path (no check-screens, or check already done,
+			// or not at [2][1]).
+			if ( curScreenX != s_soakLastAdvX || curScreenY != s_soakLastAdvY )
+			{
+				s_soakSettleTimer += frameLength;
+				// SOAK-STOP-AT-BAY-1: park here instead of advancing. Still latch
+				// s_soakLastAdvX/Y so this doesn't re-fire/spam every frame, and
+				// skip the soakForceNext assignment (leave it false).
+				// SOAK-STOP-AT-BAY-1 (+ boot-target extension): with
+				// MC2_BOOT_TO_SCREEN set, park at THAT cell (e.g. purchase
+				// [2][0], briefing [1][1]) instead of only the bay, so
+				// single-screen capture harnesses hold any target screen.
+				int stopX = 2, stopY = 1;
+				mc2BootScreenXY( stopX, stopY );
+				// MC2_BOOT_TO_MECHLAB auto-clicks Modify Mech from the bay,
+				// landing on mech_lab_loadout [2][2] -- park THERE.
+				if ( mc2::gate::get<"MC2_BOOT_TO_MECHLAB">() )
+				{
+					stopX = 2; stopY = 2;
+				}
+				if ( s_soakStopAtBay && curScreenX == stopX && curScreenY == stopY )
+				{
+					s_soakLastAdvX = curScreenX;
+					s_soakLastAdvY = curScreenY;
+					s_soakSettleTimer = 0.0f;
+					printf("[SOAK] parked screen=%d,%d (MC2_SOAK_STOP_AT_BAY)\n",
+						(int)curScreenX, (int)curScreenY);
+					fflush(stdout);
+				}
+				else
+				if ( s_soakSettleTimer >= 0.5f )
+				{
+					soakForceNext = true;
+					s_soakLastAdvX = curScreenX;
+					s_soakLastAdvY = curScreenY;
+					s_soakSettleTimer = 0.0f;
+					printf("[SOAK] advance screen=%d,%d\n", (int)curScreenX, (int)curScreenY);
+					if ( LogisticsData::instance )
+						printf("[SOAK] launch mission=%s stage=%d\n",
+							(const char*)LogisticsData::instance->getCurrentMission(),
+							(int)LogisticsData::instance->getCurrentMissionNum());
+					fflush(stdout);
+				}
+			}
+			else
+			{
+				s_soakSettleTimer = 0.0f; // same cell already advanced; idle
+			}
+		}
+}
+
+// Return to the splash screen when the screen asks for it or the host left.
+bool MissionBegin::updateGotoSplash(LogisticsScreen* pCurScreen) {
+	if ( pCurScreen->getStatus() == LogisticsScreen::GOTOSPLASH || ( MPlayer && MPlayer->hostLeft ) )
+	{
+		pCurScreen->end();
+		beginSplash();
+		if ( MPlayer &&  MPlayer->hostLeft )
+		{
+			MPlayer->closeSession();
+			delete MPlayer;
+			MPlayer = NULL;
+		}
+			
+		return true;
+	}
+	return false;
+}
+
+// End the finished screen and begin the next or the previous one.
+void MissionBegin::updateScreenAdvance(LogisticsScreen* pCurScreen, bool& soakForceNext) {
+	if ( pCurScreen->getStatus() != LogisticsScreen::RUNNING || soakForceNext )
+	{
+		soundSystem->stopBettySample(); // don't want to carry droning on to next screen
+		soundSystem->stopSupportSample();
+		if ( pCurScreen->getStatus() == LogisticsScreen::NEXT || soakForceNext )
+		{
+			pCurScreen->end();
+			if ( curScreenX < 4 )
+			{
+				if ( MPlayer )// different rules for multiplayer
+				{
+					if ( dynamic_cast<MPParameterScreen*>( screens[curScreenX][curScreenY] ) )
+					{
+						if ( curScreenX == 2 )
+						{
+							
+							if ( !MPlayer->missionSettings.quickStart)
+							{
+								setUpMultiplayerLogisticsScreens();	
+							}						
+						}
+						else if ( curScreenX == 3 )
+						{
+							bDone = true;
+						}
+					}
+				}
+				if ( screens[curScreenX+1][curScreenY] )
+				{
+					if ( screens[curScreenX+1][curScreenY] == placeHolderScreen )
+						curScreenX++;
+					screens[curScreenX+1][curScreenY]->begin();
+				}
+
+
+				leftAnim.begin();
+				curScreenX++;
+				soundSystem->playDigitalSample( LOG_NEXTBACKBUTTONS );
+				animJustBegun = true;
+			}
+			else
+			{
+				bDone = true;
+			}
+
+			
+		}
+		else if ( pCurScreen->getStatus() == LogisticsScreen::PREVIOUS )
+		{
+			pCurScreen->end();
+			if (screens[curScreenX-1][curScreenY] ) 
+			{
+				if ( screens[curScreenX-1][curScreenY] == placeHolderScreen )
+					curScreenX--;
+			
+				screens[curScreenX-1][curScreenY]->begin();
+			}
+			rightAnim.begin();
+			curScreenX--;
+			soundSystem->playDigitalSample( LOG_NEXTBACKBUTTONS );
+			animJustBegun = true;
+		}
+		else if ( pCurScreen->getStatus() == LogisticsScreen::DOWN )
+		{
+			pCurScreen->end();
+			if ( screens[curScreenX][curScreenY+1] )
+				screens[curScreenX][curScreenY+1]->begin();
+			upAnim.begin();
+			curScreenY++;
+			soundSystem->playDigitalSample( LOG_NEXTBACKBUTTONS );
+			animJustBegun = true;
+		}
+		else if ( pCurScreen->getStatus() == LogisticsScreen::UP )
+		{
+			pCurScreen->end();
+			if (screens[curScreenX][curScreenY-1]) 
+				screens[curScreenX][curScreenY-1]->begin();
+			downAnim.begin();
+			curScreenY--;
+			soundSystem->playDigitalSample( LOG_NEXTBACKBUTTONS );
+			animJustBegun = true;
+		}
+		else if ( pCurScreen->getStatus() == LogisticsScreen::MAINMENU )
+		{
+			bSplash = true;
+			mainMenu->setDrawBackground( false );
+			mainMenu->begin();
+			animJustBegun = true;
+		}
+		else if ( pCurScreen->getStatus() == LogisticsScreen::SKIPONENEXT )
+		{
+			pCurScreen->end();
+			if ( curScreenX < 3 - 1 )
+			{
+				if ( screens[curScreenX+1+1][curScreenY] )
+					screens[curScreenX+1+1][curScreenY]->begin();
+				leftAnim.begin();
+				curScreenX++;
+				curScreenX++;
+				soundSystem->playDigitalSample( LOG_NEXTBACKBUTTONS );
+				animJustBegun = true;
+			}
+			else
+			{
+				bDone = true;
+			}
+		}
+		else if ( pCurScreen->getStatus() == LogisticsScreen::SKIPONEPREVIOUS )
+		{
+			pCurScreen->end();
+			if (screens[curScreenX-1-1][curScreenY] ) 
+				screens[curScreenX-1-1][curScreenY]->begin();
+			rightAnim.begin();
+			curScreenX--;
+			curScreenX--;
+			soundSystem->playDigitalSample( LOG_NEXTBACKBUTTONS );
+			animJustBegun = true;
+		}
+	} 
+}
+
+// Per-frame front-end update. The screen lookup, the logistics brain call, the screen update, the soak gate and the
+// ready-to-load latch stay here; each other phase is a member helper declared in missionbegin.h, run in the
+// original order. A phase that leaves the update returns true and the orchestrator returns NULL.
+const char* MissionBegin::update()
+{
+	updateDumpFrontEndState();
+
+	if (updateSplash()) return NULL;
 
 	leftAnim.update();
 	rightAnim.update();
 	downAnim.update();
 	upAnim.update();
 
-	
 	LogisticsScreen*		pCurScreen = screens[curScreenX][curScreenY];
 	if ( pCurScreen )
 	{
 		if (logisticsBrain && !MPlayer)
 			logisticsBrain->execute();
 
-		//--------------------
-		//For Tutorial
-		if (animationRunning)
-		{
-			//Move mouse to correct position.
-			if (targetIsButton)
-			{
-				aButton *targetButton = pCurScreen->getButton(targetButtonId);
-				if (!targetButton)
-				{
-					animationRunning = false;
-				}
-				else
-				{
-					userInput->setMouseCursor(mState_TUTORIALS);
-
-					//Get button position.
-					float buttonPosX = (targetButton->left() + targetButton->right()) * 0.5f;
-
-					float buttonPosY = (targetButton->top() + targetButton->bottom()) * 0.5f;
-
-					//-------------------
-					// Mouse Checks Next
-					float realMouseX = userInput->realMouseX();
-					float realMouseY = userInput->realMouseY();
-
-					if (timeLeftToScroll > 0.0f)
-					{
-						float xDistLeft = buttonPosX - realMouseX;
-						float yDistLeft = buttonPosY - realMouseY;
-
-						float xDistThisFrame = xDistLeft / timeLeftToScroll * frameLength;
-						float yDistThisFrame = yDistLeft / timeLeftToScroll * frameLength;
-
-						userInput->setMousePos(realMouseX + xDistThisFrame, realMouseY+yDistThisFrame);
-
-						timeLeftToScroll -= frameLength;
-					}
-					else
-					{
-						userInput->setMousePos(buttonPosX,buttonPosY);
-
-						//We are there.  Start flashing.
-						if (buttonNumFlashes)
-						{
-							buttonFlashTime += frameLength;
-							if ( buttonFlashTime > .5f )
-							{
-								pCurScreen->getButton( targetButtonId )->setColor( 0xffffffff );
-								buttonFlashTime = 0.0f;
-								buttonNumFlashes--;
-							}
-							else if ( buttonFlashTime > .25f )
-							{
-								pCurScreen->getButton( targetButtonId )->setColor( 0xff7f7f7f );
-							}
-						}
-						else
-						{
-							//Flashing is done.  We now return you to your regularly scheduled program.
-							animationRunning = false;
-							pCurScreen->getButton( targetButtonId )->setColor( 0xffffffff );
-						}
-					}
-				}
-			}
-			else
-			{
-				aRect *targetButton = pCurScreen->getRect(targetButtonId);
-				if (!targetButton)
-				{
-					animationRunning = false;
-				}
-				else
-				{
-					userInput->setMouseCursor(mState_TUTORIALS);
-		
-					//Get button position.
-					float buttonPosX = (targetButton->left() + targetButton->right()) * 0.5f;
-		
-					float buttonPosY = (targetButton->top() + targetButton->bottom()) * 0.5f;
-		
-					//-------------------
-					// Mouse Checks Next
-					float realMouseX = userInput->realMouseX();
-					float realMouseY = userInput->realMouseY();
-		
-					if (timeLeftToScroll > 0.0f)
-					{
-						float xDistLeft = buttonPosX - realMouseX;
-						float yDistLeft = buttonPosY - realMouseY;
-		
-						float xDistThisFrame = xDistLeft / timeLeftToScroll * frameLength;
-						float yDistThisFrame = yDistLeft / timeLeftToScroll * frameLength;
-		
-						userInput->setMousePos(realMouseX + xDistThisFrame, realMouseY+yDistThisFrame);
-		
-						timeLeftToScroll -= frameLength;
-					}
-					else
-					{
-						userInput->setMousePos(buttonPosX,buttonPosY);
-		
-						//We are there.  Start flashing.
-						if (buttonNumFlashes)
-						{
-							buttonFlashTime += frameLength;
-							if ( buttonFlashTime > .5f )
-							{
-								pCurScreen->getRect( targetButtonId )->setColor( 0xff000000 );
-								buttonFlashTime = 0.0f;
-								buttonNumFlashes--;
-							}
-							else if ( buttonFlashTime > .25f )
-							{
-								pCurScreen->getRect( targetButtonId )->setColor( 0xffffffff );
-							}
-						}
-						else
-						{
-							//Flashing is done.  We now return you to your regularly scheduled program.
-							animationRunning = false;
-							pCurScreen->getRect( targetButtonId )->setColor( 0xff000000 );
-						}
-					}
-				}
-			}
-		}
+		updateTutorialAnimation(pCurScreen);
 
 		pCurScreen->update();
 
@@ -1016,675 +1712,17 @@ const char* MissionBegin::update()
 		if ( s_soakAutoWin && !MPlayer && curScreenX < 4 &&
 			 pCurScreen->getStatus() == LogisticsScreen::RUNNING && !animJustBegun )
 		{
-			// SOAK-AUTO-PURCHASE-1: buy + deploy a mech so purchase-required campaign
-			// missions can launch under auto-advance. Runs once per fresh bay visit at
-			// [2][1]; the latch resets whenever we leave the bay (next mission re-buys).
-			static bool  s_autoPurchasedThisBay = false;
-			static float s_purchaseSettle       = 0.0f;
-			if ( s_soakAutoPurchase && curScreenX == 2 && curScreenY == 1 )
-			{
-				s_purchaseSettle += frameLength;
-				if ( !s_autoPurchasedThisBay && s_purchaseSettle >= 0.3f &&
-				     LogisticsData::instance )
-				{
-					LogisticsData* ld = LogisticsData::instance;
-					EList<LogisticsMech*, LogisticsMech*> fg;
-					ld->getForceGroup( fg );
-					if ( fg.Count() > 0 )
-					{
-						// Already have a lance (e.g. campaigns that pre-stage mechs).
-						s_autoPurchasedThisBay = true;
-					}
-					else
-					{
-						ld->addCBills( 100000000 );          // effectively infinite money
-						const int CAP = 512;
-						LogisticsVariant* pool[CAP];
-						int count = CAP;
-						ld->getPurchasableMechs( pool, count );
-						int n = ( count < CAP ) ? count : CAP;
-						int maxDrop = ld->getMaxDropWeight();
-
-						// Build a compact mech-only index into pool (weight >= 20t).
-						// Both code paths (single-buy and lance-random) use this filter.
-						const int MECH_MIN_TONS = 20;
-						int mechIdx[CAP];
-						int mechCount = 0;
-						for ( int i = 0; i < n; ++i )
-						{
-							if ( pool[i] && (int)pool[i]->getMaxWeight() >= MECH_MIN_TONS )
-								mechIdx[mechCount++] = i;
-						}
-
-						if ( s_soakLanceRandom )
-						{
-							// SOAK-LANCE-RANDOM-2: deploy MAX-SIZE lance with MAX MECH VARIETY.
-							// Goal: stress-test as many distinct mech loadouts as possible each
-							// mission.  Lance size = min(12, pilots, distinctCandidates).
-							// Sources (in priority order, deduplicated by variant pointer):
-							//   (a) Salvaged inventory mechs already owned (getForceGroup()==0),
-							//       accumulated by MC2_SOAK_KILL_ENEMY. No weight filter needed.
-							//   (b) Purchasable mechs (weight >= 20t) covering additional variants.
-							// Combined list is Fisher-Yates shuffled by per-mission LCG so each
-							// mission gets a different ordering (deterministic, no srand).
-
-							static unsigned int s_soakLanceMissionNum = 0;
-							++s_soakLanceMissionNum;
-							// Thomas Wang 32-bit mix -> per-mission shuffle seed
-							unsigned int seed = s_soakLanceMissionNum;
-							seed = (seed ^ 61u) ^ (seed >> 16);
-							seed = seed + (seed << 3);
-							seed ^= seed >> 4;
-							seed = seed * 0x27d4eb2du;
-							seed ^= seed >> 15;
-
-							const int LANCE_MAX = 12;
-
-							// Candidate: salvage (invMech!=null, no buy) or purchasable (invMech==null).
-							struct Candidate {
-								LogisticsMech*    invMech;
-								LogisticsVariant* variant;
-							};
-							const int CAND_CAP = 256;
-							Candidate cands[CAND_CAP];
-							int       nCands = 0;
-
-							// Variant dedup table (pointer equality).
-							LogisticsVariant* seenVariants[CAND_CAP];
-							int               nSeen = 0;
-							auto variantSeen = [&]( LogisticsVariant* v ) -> bool {
-								for ( int i = 0; i < nSeen; ++i )
-									if ( seenVariants[i] == v ) return true;
-								return false;
-							};
-							auto markVariant = [&]( LogisticsVariant* v ) {
-								if ( nSeen < CAND_CAP ) seenVariants[nSeen++] = v;
-							};
-
-							// -- (a) salvaged inventory mechs (unassigned) ----------------------
-							{
-								EList<LogisticsMech*, LogisticsMech*> inv;
-								ld->getInventory( inv );
-								for ( EList<LogisticsMech*, LogisticsMech*>::EIterator it = inv.Begin();
-								      !it.IsDone() && nCands < CAND_CAP; it++ )
-								{
-									LogisticsMech* m = (*it);
-									if ( !m ) continue;
-									if ( m->getForceGroup() ) continue;
-									LogisticsVariant* v = m->getVariant();
-									if ( !v ) continue;
-									if ( variantSeen(v) ) continue;
-									cands[nCands++] = { m, v };
-									markVariant(v);
-								}
-							}
-							int nSalvageCands = nCands;
-
-							// -- (b) purchasable mechs (weight>=20t) not covered by salvage -----
-							for ( int i = 0; i < mechCount && nCands < CAND_CAP; ++i )
-							{
-								LogisticsVariant* v = pool[ mechIdx[i] ];
-								if ( !v ) continue;
-								if ( variantSeen(v) ) continue;
-								cands[nCands++] = { nullptr, v };
-								markVariant(v);
-							}
-
-							// -- Fisher-Yates shuffle (Knuth LCG) -------------------------------
-							for ( int i = nCands - 1; i > 0; --i )
-							{
-								seed = seed * 1664525u + 1013904223u;
-								int j = (int)( seed % (unsigned int)( i + 1 ) );
-								Candidate tmp = cands[i]; cands[i] = cands[j]; cands[j] = tmp;
-							}
-
-							// -- deploy down shuffled list --------------------------------------
-							int deployed    = 0;
-							int fromSalvage = 0;
-							int fromBuy     = 0;
-							const char* firstName = "none";
-
-							for ( int slot = 1; slot <= LANCE_MAX && (slot - 1) < nCands; ++slot )
-							{
-								Candidate&        cand    = cands[slot - 1];
-								LogisticsMech*    mech    = cand.invMech;
-								LogisticsVariant* variant = cand.variant;
-								const char*       src     = mech ? "salvage" : "buy";
-
-								if ( !mech )
-								{
-									// (b) buy path: purchase then locate fresh instance
-									if ( ld->purchaseMech( variant ) != 0 )
-									{
-										printf("[SOAK] lance-add slot=%d FAILED purchase variant=%s\n",
-										    slot, (const char*)variant->getName());
-										continue;
-									}
-									EList<LogisticsMech*, LogisticsMech*> inv;
-									ld->getInventory( inv );
-									for ( EList<LogisticsMech*, LogisticsMech*>::EIterator it = inv.Begin();
-									      !it.IsDone(); it++ )
-									{
-										LogisticsMech* m = (*it);
-										if ( m && m->getVariant() == variant && !m->getForceGroup() )
-										{ mech = m; break; }
-									}
-									if ( !mech )
-									{
-										printf("[SOAK] lance-add slot=%d WARN bought-not-found variant=%s\n",
-										    slot, (const char*)variant->getName());
-										continue;
-									}
-								}
-
-								// Pilot check BEFORE force-group assignment
-								LogisticsPilot* pilot = ld->getFirstAvailablePilot();
-								if ( !pilot )
-								{
-									printf("[SOAK] lance-add slot=%d STOPPED no-pilot mech=%s\n",
-									    slot, (const char*)variant->getName());
-									break;
-								}
-
-								if ( ld->addMechToForceGroup( mech, slot ) != 0 )
-								{
-									printf("[SOAK] lance-add slot=%d REJECTED addMechToForceGroup mech=%s\n",
-									    slot, (const char*)variant->getName());
-									continue;
-								}
-								mech->setPilot( pilot );
-
-								if ( deployed == 0 )
-								{
-									ld->setMechToModify( mech );
-									firstName = (const char*)variant->getName();
-								}
-
-								printf("[SOAK] lance-add slot=%d mech=%s tons=%d src=%s\n",
-								    slot, (const char*)variant->getName(),
-								    (int)variant->getMaxWeight(), src);
-								++deployed;
-								if ( src[0] == 's' ) ++fromSalvage; else ++fromBuy;
-							}
-
-							// Count remaining available pilots for summary
-							int pilotsAvail = 0;
-							{
-								LogisticsPilot* pp[256];
-								long pc = 256;
-								ld->getPilots( pp, pc );
-								for ( long pi = 0; pi < pc; ++pi )
-									if ( pp[pi] && pp[pi]->isAvailable() )
-										++pilotsAvail;
-							}
-
-							printf("[SOAK] lance-v2 deployed=%d distinct=%d pilots=%d fromSalvage=%d fromBuy=%d salvageCands=%d buyCands=%d missionNum=%u\n",
-							    deployed, deployed, pilotsAvail,
-							    fromSalvage, fromBuy,
-							    nSalvageCands, nCands - nSalvageCands,
-							    s_soakLanceMissionNum);
-							fflush( stdout );
-						}
-						else
-						{
-							// Original single-mech path (MC2_SOAK_LANCE_RANDOM not set).
-							// Prefer HEAVIEST mech within drop-weight cap; fall back to lightest.
-							int cap = ( maxDrop > 0 ) ? maxDrop : 0x7fffffff;
-							LogisticsVariant* pick      = nullptr;
-							int               pickW     = -1;
-							LogisticsVariant* lightest  = nullptr;
-							int               lightestW = 0x7fffffff;
-							for ( int i = 0; i < mechCount; ++i )
-							{
-								LogisticsVariant* v = pool[ mechIdx[i] ];
-								int w = (int)v->getMaxWeight();
-								if ( w < lightestW ) { lightestW = w; lightest = v; }
-								if ( w <= cap && w > pickW ) { pickW = w; pick = v; }
-							}
-							if ( !pick )
-								pick = lightest;
-							if ( !pick && n > 0 )
-								pick = pool[n - 1];
-
-							if ( pick && ld->purchaseMech( pick ) == 0 )
-							{
-								LogisticsMech* bought = nullptr;
-								EList<LogisticsMech*, LogisticsMech*> inv;
-								ld->getInventory( inv );
-								for ( EList<LogisticsMech*, LogisticsMech*>::EIterator it = inv.Begin();
-								      !it.IsDone(); it++ )
-									if ( (*it) && (*it)->getVariant() == pick && !(*it)->getForceGroup() )
-										bought = (*it);
-								if ( bought )
-								{
-									ld->addMechToForceGroup( bought, 1 );
-									LogisticsPilot* pilot = ld->getFirstAvailablePilot();
-									if ( pilot )
-										bought->setPilot( pilot );
-									ld->setMechToModify( bought );
-									printf("[SOAK] auto-purchase mech=%s tons=%d pilot=%d deployed=slot1 maxDrop=%d pool=%d\n",
-										(const char*)pick->getName(), (int)pick->getMaxWeight(),
-										pilot ? 1 : 0, maxDrop, n);
-								}
-								else
-								{
-									printf("[SOAK] auto-purchase WARN bought-not-found variant=%s\n",
-										(const char*)pick->getName());
-								}
-							}
-							else
-							{
-								printf("[SOAK] auto-purchase FAILED reason=%s pool=%d maxDrop=%d\n",
-									pick ? "purchase-rejected" : "empty-pool", n, maxDrop);
-							}
-							fflush( stdout );
-						}
-						s_autoPurchasedThisBay = true;
-					}
-				}
-			}
-			else if ( s_soakAutoPurchase )
-			{
-				// Left the bay (or feature off): reset so the next mission re-purchases.
-				s_autoPurchasedThisBay = false;
-				s_purchaseSettle       = 0.0f;
-			}
-
-			static long  s_soakLastAdvX = -99;
-			static long  s_soakLastAdvY = -99;
-			static float s_soakSettleTimer = 0.0f;
-
-			// SOAK-SCREEN-CHECK-1: state machine that detours through purchase [2][0]
-			// and loadout [2][2] before the normal autowin advance from mech_bay [2][1].
-			// Statics here so they persist across frames (dwell states run every frame).
-			static SoakCheckState s_checkState = SoakCheckState::IDLE;
-			static float          s_checkDwell = 0.0f;
-			static bool           s_checkDone  = false;
-			// Mission serial: incremented each time we depart [2][1] toward a launch.
-			// s_checkDone is valid only for the current value of this counter.
-			static int            s_checkMissionSerial = 0;
-			static int            s_checkDoneSerial    = -1;
-
-			// s_checkDone is true iff we already ran the walk for this mission arrival.
-			// Keyed by serial so it auto-resets across missions without touching
-			// s_soakLastAdvX (which would re-trigger the mission-boundary detector).
-			s_checkDone = ( s_checkDoneSerial == s_checkMissionSerial );
-
-			// Detect mission-boundary: a fresh arrival at [2][1] (last-adv was not
-			// [2][1]) while the machine is idle AND we haven't done a walk yet for
-			// this mission.  The !s_checkDone guard prevents re-triggering when the
-			// walk completion sets lastAdv=-99 to unblock the normal advance path.
-			if ( s_soakCheckScreens &&
-			     curScreenX == 2 && curScreenY == 1 &&
-			     !( s_soakLastAdvX == 2 && s_soakLastAdvY == 1 ) &&
-			     s_checkState == SoakCheckState::IDLE &&
-			     !s_checkDone )
-			{
-				++s_checkMissionSerial;
-				s_checkDone  = false;   // new serial != doneSerial
-				s_checkDwell = 0.0f;
-			}
-
-			// Run the screen-check state machine every frame while it is active.
-			// When the machine is active we suppress the normal settle-timer advance.
-			bool checkMachineActive = ( s_soakCheckScreens && !s_checkDone &&
-			                            s_checkState != SoakCheckState::IDLE );
-			// True while we are at [2][1] waiting for the kick-off settle timer:
-			// this suppresses the normal advance path (else branch) so we don't
-			// double-accumulate s_soakSettleTimer.
-			bool checkKickoffPending = false;
-
-			if ( s_soakCheckScreens && !s_checkDone &&
-			     s_checkState == SoakCheckState::IDLE &&
-			     curScreenX == 2 && curScreenY == 1 )
-			{
-				checkKickoffPending = true;
-				// Kick off once the settle timer fires for the first time at [2][1].
-				// We only start the machine when the settle period has elapsed so
-				// the bay screen has had a chance to fully initialise.
-				if ( curScreenX != s_soakLastAdvX || curScreenY != s_soakLastAdvY )
-					s_soakSettleTimer += frameLength;
-				else
-					s_soakSettleTimer = 0.0f;
-
-				if ( s_soakSettleTimer >= 0.5f )
-				{
-					s_soakSettleTimer  = 0.0f;
-					s_checkState       = SoakCheckState::ENTER_PURCHASE;
-					checkMachineActive = true;
-					checkKickoffPending = false;
-				}
-			}
-
-			if ( checkMachineActive )
-			{
-				// Keep the settle-tracker pointed at the current cell so the normal
-				// advance path is suppressed while the machine runs.
-				s_soakLastAdvX = curScreenX;
-				s_soakLastAdvY = curScreenY;
-
-				switch ( s_checkState )
-				{
-				case SoakCheckState::ENTER_PURCHASE:
-				{
-					// Purchase screen [2][0] does NOT need getMechToModify — it lists
-					// buyable inventory regardless of force-group selection.
-					// Transition [2][1] -> [2][0].
-					pCurScreen->end();
-					curScreenY = 0;
-					if ( screens[curScreenX][curScreenY] )
-						screens[curScreenX][curScreenY]->begin();
-					// dumpFrontEndState fires next frame when the top-of-update
-					// curScreenX/Y change detector sees the new cell.
-					s_checkDwell = 0.0f;
-					s_checkState = SoakCheckState::DWELL_PURCHASE;
-					break;
-				}
-				case SoakCheckState::DWELL_PURCHASE:
-				{
-					s_checkDwell += frameLength;
-					if ( s_checkDwell >= 0.5f )
-					{
-						// Emit purchase screen-check marker.
-						// items = LogisticsData inventory count (mechs available to buy).
-						// ok=1 if any exist; ok=0 if inventory empty.
-						// Limitation: reflects LogisticsData list, NOT rendered widget asset
-						// validity (no per-icon load signal available cheaply here).
-						int items = 0;
-						if ( LogisticsData::instance )
-						{
-							EList<LogisticsMech*, LogisticsMech*> inv;
-							LogisticsData::instance->getInventory( inv );
-							items = (int)inv.Count();
-						}
-						printf("[SOAK] screen-check screen=purchase ok=%d items=%d\n",
-							(items > 0) ? 1 : 0, items);
-						fflush(stdout);
-						// Return to [2][1] briefly before going to loadout.
-						if ( screens[curScreenX][curScreenY] )
-							screens[curScreenX][curScreenY]->end();
-						curScreenY = 1;
-						if ( screens[curScreenX][curScreenY] )
-							screens[curScreenX][curScreenY]->begin();
-						s_checkDwell = 0.0f;
-						s_checkState = SoakCheckState::ENTER_LOADOUT;
-					}
-					break;
-				}
-				case SoakCheckState::ENTER_LOADOUT:
-				{
-					// MechLabScreen::begin() dereferences getMechToModify() at
-					// mechlabscreen.cpp:237 — crash if null.  Guard here so we never call
-					// begin() when no mech is selected (e.g. PoaR / campaign missions where
-					// logistics force-group is not staged before the screen walk).
-					bool mechReady = ( LogisticsData::instance &&
-					                   LogisticsData::instance->getMechToModify() != nullptr );
-					if ( !mechReady )
-					{
-						printf("[SOAK] screen-check screen=loadout ok=0 reason=no-mech-selected\n");
-						fflush(stdout);
-						// Return to [2][1] and mark done; normal advance takes over.
-						if ( screens[curScreenX][curScreenY] )
-							screens[curScreenX][curScreenY]->end();
-						curScreenY = 1;
-						if ( screens[curScreenX][curScreenY] )
-							screens[curScreenX][curScreenY]->begin();
-						s_checkDoneSerial = s_checkMissionSerial;  // latch: done for THIS mission
-						s_checkDone  = true;
-						s_checkState = SoakCheckState::IDLE;
-						// Reset lastAdv so the normal advance path sees [2][1] as a new
-						// cell and fires.  The boundary detector is guarded by !s_checkDone
-						// so it will NOT re-trigger the walk even with lastAdv=-99.
-						s_soakLastAdvX = -99;
-						s_soakLastAdvY = -99;
-						s_soakSettleTimer = 0.0f;
-						break;
-					}
-					// Transition [2][1] -> [2][2] (loadout/mechlab).
-					if ( screens[curScreenX][curScreenY] )
-						screens[curScreenX][curScreenY]->end();
-					curScreenY = 2;
-					if ( screens[curScreenX][curScreenY] )
-						screens[curScreenX][curScreenY]->begin();
-					s_checkDwell = 0.0f;
-					s_checkState = SoakCheckState::DWELL_LOADOUT;
-					break;
-				}
-				case SoakCheckState::DWELL_LOADOUT:
-				{
-					s_checkDwell += frameLength;
-					if ( s_checkDwell >= 0.5f )
-					{
-						// Emit loadout screen-check marker.
-						// items = force-group mech count (mechs assigned to this lance).
-						// ok=1 if at least one mech is in the force group.
-						// Same limitation as purchase: list count, not rendered icon validity.
-						int items = 0;
-						if ( LogisticsData::instance )
-						{
-							EList<LogisticsMech*, LogisticsMech*> fg;
-							LogisticsData::instance->getForceGroup( fg );
-							items = (int)fg.Count();
-						}
-						printf("[SOAK] screen-check screen=loadout ok=%d items=%d\n",
-							(items > 0) ? 1 : 0, items);
-						fflush(stdout);
-						// Return to [2][1] and mark done so normal advance fires.
-						if ( screens[curScreenX][curScreenY] )
-							screens[curScreenX][curScreenY]->end();
-						curScreenY = 1;
-						if ( screens[curScreenX][curScreenY] )
-							screens[curScreenX][curScreenY]->begin();
-						s_checkDwell = 0.0f;
-						s_checkDoneSerial = s_checkMissionSerial;  // latch: done for THIS mission
-						s_checkDone  = true;
-						s_checkState = SoakCheckState::IDLE;
-						// Reset lastAdv so the normal advance path sees [2][1] as a fresh
-						// cell and fires soakForceNext (else it idles on "same cell" and the
-						// soak HANGS at the bay). The mission-boundary detector is guarded by
-						// !s_checkDone (now latched true), so this will NOT restart the walk.
-						s_soakLastAdvX = -99;
-						s_soakLastAdvY = -99;
-						s_soakSettleTimer = 0.0f;
-					}
-					break;
-				}
-				default:
-					break;
-				}
-				// Machine is consuming this frame — do not fall through to normal advance.
-			}
-			else if ( !checkMachineActive && !checkKickoffPending )
-			{
-				// Normal autowin advance path (no check-screens, or check already done,
-				// or not at [2][1]).
-				if ( curScreenX != s_soakLastAdvX || curScreenY != s_soakLastAdvY )
-				{
-					s_soakSettleTimer += frameLength;
-					// SOAK-STOP-AT-BAY-1: park here instead of advancing. Still latch
-					// s_soakLastAdvX/Y so this doesn't re-fire/spam every frame, and
-					// skip the soakForceNext assignment (leave it false).
-					// SOAK-STOP-AT-BAY-1 (+ boot-target extension): with
-					// MC2_BOOT_TO_SCREEN set, park at THAT cell (e.g. purchase
-					// [2][0], briefing [1][1]) instead of only the bay, so
-					// single-screen capture harnesses hold any target screen.
-					int stopX = 2, stopY = 1;
-					mc2BootScreenXY( stopX, stopY );
-					// MC2_BOOT_TO_MECHLAB auto-clicks Modify Mech from the bay,
-					// landing on mech_lab_loadout [2][2] -- park THERE.
-					if ( mc2::gate::get<"MC2_BOOT_TO_MECHLAB">() )
-					{
-						stopX = 2; stopY = 2;
-					}
-					if ( s_soakStopAtBay && curScreenX == stopX && curScreenY == stopY )
-					{
-						s_soakLastAdvX = curScreenX;
-						s_soakLastAdvY = curScreenY;
-						s_soakSettleTimer = 0.0f;
-						printf("[SOAK] parked screen=%d,%d (MC2_SOAK_STOP_AT_BAY)\n",
-							(int)curScreenX, (int)curScreenY);
-						fflush(stdout);
-					}
-					else
-					if ( s_soakSettleTimer >= 0.5f )
-					{
-						soakForceNext = true;
-						s_soakLastAdvX = curScreenX;
-						s_soakLastAdvY = curScreenY;
-						s_soakSettleTimer = 0.0f;
-						printf("[SOAK] advance screen=%d,%d\n", (int)curScreenX, (int)curScreenY);
-						if ( LogisticsData::instance )
-							printf("[SOAK] launch mission=%s stage=%d\n",
-								(const char*)LogisticsData::instance->getCurrentMission(),
-								(int)LogisticsData::instance->getCurrentMissionNum());
-						fflush(stdout);
-					}
-				}
-				else
-				{
-					s_soakSettleTimer = 0.0f; // same cell already advanced; idle
-				}
-			}
+			updateSoakAutoPurchase();
+			updateSoakScreenWalk(pCurScreen, soakForceNext);
 		}
 
-		if ( pCurScreen->getStatus() == LogisticsScreen::GOTOSPLASH || ( MPlayer && MPlayer->hostLeft ) )
-		{
-			pCurScreen->end();
-			beginSplash();
-			if ( MPlayer &&  MPlayer->hostLeft )
-			{
-				MPlayer->closeSession();
-				delete MPlayer;
-				MPlayer = NULL;
-			}
-				
-			return NULL;
-		}
+		if (updateGotoSplash(pCurScreen)) return NULL;
 
 		if ( pCurScreen->getStatus() == LogisticsScreen::READYTOLOAD && 
 			(curScreenX == 4 ||( MPlayer && curScreenX == 3 )) )
 			bReadyToLoad = true;
 
-
-		if ( pCurScreen->getStatus() != LogisticsScreen::RUNNING || soakForceNext )
-		{
-			soundSystem->stopBettySample(); // don't want to carry droning on to next screen
-			soundSystem->stopSupportSample();
-			if ( pCurScreen->getStatus() == LogisticsScreen::NEXT || soakForceNext )
-			{
-				pCurScreen->end();
-				if ( curScreenX < 4 )
-				{
-					if ( MPlayer )// different rules for multiplayer
-					{
-						if ( dynamic_cast<MPParameterScreen*>( screens[curScreenX][curScreenY] ) )
-						{
-							if ( curScreenX == 2 )
-							{
-								
-								if ( !MPlayer->missionSettings.quickStart)
-								{
-									setUpMultiplayerLogisticsScreens();	
-								}						
-							}
-							else if ( curScreenX == 3 )
-							{
-								bDone = true;
-							}
-						}
-					}
-					if ( screens[curScreenX+1][curScreenY] )
-					{
-						if ( screens[curScreenX+1][curScreenY] == placeHolderScreen )
-							curScreenX++;
-						screens[curScreenX+1][curScreenY]->begin();
-					}
-
-
-					leftAnim.begin();
-					curScreenX++;
-					soundSystem->playDigitalSample( LOG_NEXTBACKBUTTONS );
-					animJustBegun = true;
-				}
-				else
-				{
-					bDone = true;
-				}
-
-				
-			}
-			else if ( pCurScreen->getStatus() == LogisticsScreen::PREVIOUS )
-			{
-				pCurScreen->end();
-				if (screens[curScreenX-1][curScreenY] ) 
-				{
-					if ( screens[curScreenX-1][curScreenY] == placeHolderScreen )
-						curScreenX--;
-				
-					screens[curScreenX-1][curScreenY]->begin();
-				}
-				rightAnim.begin();
-				curScreenX--;
-				soundSystem->playDigitalSample( LOG_NEXTBACKBUTTONS );
-				animJustBegun = true;
-			}
-			else if ( pCurScreen->getStatus() == LogisticsScreen::DOWN )
-			{
-				pCurScreen->end();
-				if ( screens[curScreenX][curScreenY+1] )
-					screens[curScreenX][curScreenY+1]->begin();
-				upAnim.begin();
-				curScreenY++;
-				soundSystem->playDigitalSample( LOG_NEXTBACKBUTTONS );
-				animJustBegun = true;
-			}
-			else if ( pCurScreen->getStatus() == LogisticsScreen::UP )
-			{
-				pCurScreen->end();
-				if (screens[curScreenX][curScreenY-1]) 
-					screens[curScreenX][curScreenY-1]->begin();
-				downAnim.begin();
-				curScreenY--;
-				soundSystem->playDigitalSample( LOG_NEXTBACKBUTTONS );
-				animJustBegun = true;
-			}
-			else if ( pCurScreen->getStatus() == LogisticsScreen::MAINMENU )
-			{
-				bSplash = true;
-				mainMenu->setDrawBackground( false );
-				mainMenu->begin();
-				animJustBegun = true;
-			}
-			else if ( pCurScreen->getStatus() == LogisticsScreen::SKIPONENEXT )
-			{
-				pCurScreen->end();
-				if ( curScreenX < 3 - 1 )
-				{
-					if ( screens[curScreenX+1+1][curScreenY] )
-						screens[curScreenX+1+1][curScreenY]->begin();
-					leftAnim.begin();
-					curScreenX++;
-					curScreenX++;
-					soundSystem->playDigitalSample( LOG_NEXTBACKBUTTONS );
-					animJustBegun = true;
-				}
-				else
-				{
-					bDone = true;
-				}
-			}
-			else if ( pCurScreen->getStatus() == LogisticsScreen::SKIPONEPREVIOUS )
-			{
-				pCurScreen->end();
-				if (screens[curScreenX-1-1][curScreenY] ) 
-					screens[curScreenX-1-1][curScreenY]->begin();
-				rightAnim.begin();
-				curScreenX--;
-				curScreenX--;
-				soundSystem->playDigitalSample( LOG_NEXTBACKBUTTONS );
-				animJustBegun = true;
-			}
-		} 
+		updateScreenAdvance(pCurScreen, soakForceNext);
 	}
 	else
 		bDone = true;

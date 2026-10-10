@@ -28,6 +28,7 @@
 #   FRAME_GLOBAL               keep the frame struct out of an anonymous namespace (block-scope externs in its methods)
 #   ALIAS_PER_LINE             alias declarations packed per line (keeps identical alias runs short)
 #   {'exits': 'continue'}: the phase's `continue;` statements leave the enclosing loop iteration instead; the orchestrator call is `if (helper()) continue;`
+#   {'noparams': [names]}: PARAMS names the phase declares itself (a shadowing local) and must not receive
 #   FILE_NAMESPACE             namespace wrapped around the helper blocks written to other files (after their includes)
 #   a phase tuple may end in {'dedent': prefix} to strip a different indent from that helper body
 #   INDENT, DEDENT, ORCH_DOC   indentation unit, prefix stripped from helper bodies, comment above function
@@ -189,7 +190,7 @@ def main():
             body = [re.sub(stmt_rx, 'return true;', x) for x in body]
             body = body + [indent + 'return false;']
         code = '\n'.join(strip_code(x) for x in body)
-        uparams = [(n, t) for n, t in getattr(S, 'PARAMS', []) if re.search(r'\b' + n + r'\b', code)]
+        uparams = [(n, t) for n, t in getattr(S, 'PARAMS', []) if re.search(r'\b' + n + r'\b', code) and n not in opts.get('noparams', ())]
         info.append(dict(exits=exits, exit_val=exit_val, file=opts.get('file'), name=name, a=a, doc=doc, guard=guard, body=body, used=used, frames=frames, as_method=as_method, uparams=uparams))
     H = []
     anon = not method and not getattr(S, 'FRAME_GLOBAL', False)
