@@ -16,6 +16,10 @@ set(SOURCES ${SOURCES}
     mathfunc.cpp
     mouse.cpp
     msl.cpp
+    msl_load.cpp
+    msl_shape.cpp
+    msl_transform.cpp
+    msl_anim.cpp
     paths.cpp
     pqueue.cpp
     routines.cpp

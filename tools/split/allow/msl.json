@@ -1,0 +1,21 @@
+{
+ "base": "dcdcfb240",
+ "src": "mclib/msl.cpp",
+ "stem": "msl",
+ "scripts": [
+  "scripts/check-light-row-freshness.py",
+  "scripts/check-tgl-load-callers.sh",
+  "tests/smoke/smoke_missions.txt",
+  "tools/asset_viewer/asset_viewer_game_stubs.cpp",
+  "tools/asset_viewer/engine_stubs.cpp",
+  "tools/gate_codemod.py",
+  "tools/tg_import_dump/stubs.cpp",
+  "tools/tg_import_dump/tgdump_seams.cpp"
+ ],
+ "_scripts_reason": "Reviewed: check-tgl-load-callers allows the msl pieces in its P1 confinement and reads the PART-0 parse_fail chokepoint from msl_load.cpp (check and self-test pass); check-light-row-freshness passes unchanged; the asset_viewer and tg_import_dump builds list the four new pieces in their CMake files (mc2_asset_viewer links); the stubs and smoke list cite msl.cpp in comments only; tools/gate_codemod.py (lane 1) is not edited here.",
+ "add": [
+  "void GetNextLine (char *rawData, char *result);   // defined in msl.cpp",
+  "extern std::atomic<int> g_workerResubmitCalls;   // defined in msl.cpp; counts worker-thread resubmits"
+ ],
+ "split_commit": "PENDING"
+}
