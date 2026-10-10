@@ -8056,7 +8056,7 @@ static bool vkHudQueueEnabled()
     // VK-RUNG8-ITEM8 the native VK composite is the sole present-image producer -- the GL 2D
     // HUD draws into the DISCARDED GL backbuffer, so under the umbrella an unarmed VK HUD queue
     // means the HUD VANISHES (the field bug; pre-b0b8ae2b the HUD survived only because present
-    // fell back to the GL backbuffer). So arm from the umbrella (subGate): MC2_VK_SHARED_GBUFFER=1
+    // fell back to the GL backbuffer). So arm from the umbrella (mc2vkgate::armed<>): MC2_VK_SHARED_GBUFFER=1
     // queues the HUD into the VK present tail; explicit "1"/"0" still wins. The strict proof armed
     // MC2_VK_HUD=1 and passed. (Representable-draw filtering + the SKIP_GL all-or-nothing guard
     // below still apply -- a non-representable HUD element keeps GL HUD live for parity.)
@@ -8405,7 +8405,7 @@ void gosRenderer::flushHUDBatch()
     bool nativeHudCanSkipGl = vkHudSkipGlEnabled();
     if (vkHudQueueEnabled()) {
         // VK-HUD-GATE-HOIST-1: resolve the VFX umbrella sub-gate ONCE PER FLUSH,
-        // not per draw (3x subGate() + a raw getenv per draw was ~380-450 CRT env
+        // not per draw (3x env-reading gate calls + a raw getenv per draw was ~380-450 CRT env
         // scans/frame at field HUD density, thousands during weapon fire).
         // DISARM-1/2 semantics preserved: armed<>() reads g_mc2VkSessionForcedGL
         // on THIS call, so a mid-session fail-soft still

@@ -1607,7 +1607,7 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
         out->glDynamicShadowTex = 0;
         out->dynamicShadowSize = 0;
         std::memset(out->dynamicLightSpaceMatrix, 0, sizeof(out->dynamicLightSpaceMatrix));
-        // Umbrella member; requires lighting (its own precondition) + subGate.
+        // Umbrella member (mc2vkgate::armed<>); requires lighting (its own precondition).
         int dynShadowGate = 0;
         if (out->lightingEnabled)
             dynShadowGate = mc2vkgate::armed<"MC2_VK_TERRAIN_DYNSHADOW">() ? 1 : 0;

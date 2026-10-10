@@ -243,8 +243,8 @@ int mc2_vk_terrain_skirts_enabled();
 // exclusion for mode-2 (lodStep>1, non-stitched) patches: the island captures them
 // with visualMode=2 and Z-swaps their heights from the fine bake exactly like GL's
 // terrain_lod_chunk.vert mode-2 branch. Mode-1 (LOD0 4x topology) and stitched
-// patches stay GL-owned. Same envTriState opt-in pattern as MC2_VK_TERRAIN_SKIRTS
-// (unset -> OFF regardless of umbrella state). Default-OFF -> capture unchanged.
+// patches stay GL-owned. An explicit opt-in (an Exact1 row: only "1" arms it;
+// unset -> OFF regardless of umbrella state). Default-OFF -> capture unchanged.
 int mc2_vk_terrain_visualdisplace_far_enabled();
 
 // FAIL-SOFT ready predicate. True only when the gate is on AND the island is in a state

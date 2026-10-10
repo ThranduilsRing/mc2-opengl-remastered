@@ -7538,7 +7538,7 @@ flags:
     default: null
     rule: Std
     owner: vk
-    doc: "VK-FIELD-ENV-CONTENT-STACK-ARM-1 (2026-07-11): now an umbrella family member (subGate)."
+    doc: "VK-FIELD-ENV-CONTENT-STACK-ARM-1 (2026-07-11): now an umbrella family member (mc2vkgate::armed<>)."
     inherits: MC2_VK_SHARED_GBUFFER
     smoke_passthrough: true
     verified: true

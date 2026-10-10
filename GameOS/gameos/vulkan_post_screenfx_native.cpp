@@ -26,9 +26,8 @@
 // purpose. It stays GL until ladder rung 2 (VK shadow ownership) makes the
 // cascades VK-produced.
 //
-// GATES: master MC2_VK_POST_SCREENFX (envTriState OPT-IN, default-OFF, new-rung
-// pattern; unset -> OFF regardless of MC2_VK_SHARED_GBUFFER, explicit 0 forces
-// OFF). Per-pass bisect sub-gates MC2_VK_POST_SCREENFX_CLOUD /
+// GATES: master MC2_VK_POST_SCREENFX (explicit OPT-IN: an Exact1 row, only "1" arms it,
+// default-OFF; unset -> OFF regardless of MC2_VK_SHARED_GBUFFER). Per-pass bisect sub-gates MC2_VK_POST_SCREENFX_CLOUD /
 // MC2_VK_POST_SCREENFX_SHORELINE: explicit 0 forces that pass back to GL,
 // unset/1 follows the master. Each pass additionally runs ONLY when its GL
 // body would run (cloud: enableCloudShadow_+sceneHasTerrain_+prog valid;
@@ -705,9 +704,8 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
 } // namespace
 
 // ---------------------------------------------------------------------------
-// vkPostScreenFxNativeEnabled(): envTriState OPT-IN, default-OFF (new-rung
-// pattern — unset -> OFF regardless of MC2_VK_SHARED_GBUFFER, explicit 0 forces
-// OFF). Gate name per the rung-8 ladder: MC2_VK_POST_SCREENFX. Per-pass bisect
+// vkPostScreenFxNativeEnabled(): explicit OPT-IN, default-OFF (an Exact1 row: only "1"
+// arms it; unset -> OFF regardless of MC2_VK_SHARED_GBUFFER). Gate name per the rung-8 ladder: MC2_VK_POST_SCREENFX. Per-pass bisect
 // sub-gates resolved here too (explicit 0 forces that pass to GL).
 // ---------------------------------------------------------------------------
 bool gosPostProcess::vkPostScreenFxNativeEnabled()

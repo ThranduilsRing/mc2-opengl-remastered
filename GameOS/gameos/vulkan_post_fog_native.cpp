@@ -20,9 +20,8 @@
 // the subgraph's (cross-checked offline by tools/check_ubo_layout.py labels
 // postfog_edge / postfog_oob).
 //
-// GATE: MC2_VK_POST_FOG_NATIVE — envTriState OPT-IN, default-OFF (new-rung pattern,
-// same as MC2_VK_TERRAIN_SKIRTS / MC2_VK_WATER_TIER1: unset -> OFF regardless of
-// MC2_VK_SHARED_GBUFFER, explicit 0 forces OFF). Runs ONLY when BOTH GL fog passes
+// GATE: MC2_VK_POST_FOG_NATIVE — an umbrella member (mc2vkgate::armed<>, see the block above
+// vkPostFogNativeEnabled): MC2_VK_SHARED_GBUFFER=1 arms it, explicit "1"/"0" wins. Runs ONLY when BOTH GL fog passes
 // would run (sceneHasTerrain_, edgeFogEnabled_, fogOobEnabled_, mapHalfExtent_>0)
 // AND the shared GBuffer substrate is live; ANY not-ready condition returns false
 // and the caller falls through to the unchanged subgraph/island/GL precedence chain
@@ -523,13 +522,13 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
 } // namespace
 
 // ---------------------------------------------------------------------------
-// vkPostFogNativeEnabled(): UMBRELLA-ARMED subGate, NOT an opt-in.
+// vkPostFogNativeEnabled(): UMBRELLA-ARMED (mc2vkgate::armed<>), NOT an opt-in.
 //
-// GATE-PARITY-CLOSE-1: this block used to read "envTriState OPT-IN, default-OFF
-// (new-rung pattern — unset -> OFF regardless of MC2_VK_SHARED_GBUFFER, explicit
-// 0 forces OFF)". That is the opposite of what the line below does, and had been
-// since VK-FIELD-ENV-CONTENT-STACK-ARM-1 swapped envTriState() for subGate().
-// mc2vkgate::subGate() (vk_shared_gbuffer_gate.h:95) resolves explicit "1"/"0"
+// GATE-PARITY-CLOSE-1: this block used to read "OPT-IN, default-OFF (new-rung
+// pattern — unset -> OFF regardless of MC2_VK_SHARED_GBUFFER, explicit 0 forces
+// OFF)". That is the opposite of what the line below does, and had been since
+// VK-FIELD-ENV-CONTENT-STACK-ARM-1 made it an umbrella member.
+// mc2vkgate::armed<>() (vk_shared_gbuffer_gate.h) resolves explicit "1"/"0"
 // first and otherwise returns umbrellaOn() — so unset does NOT mean OFF, it
 // means "whatever MC2_VK_SHARED_GBUFFER says", which is the precise clause the
 // old comment denied. Actual resolution:
@@ -547,7 +546,7 @@ bool gosPostProcess::vkPostFogNativeEnabled()
     static int state = -1;
     if (state == -1) {
         // VK-FIELD-ENV-CONTENT-STACK-ARM-1 (2026-07-11): now an umbrella family member
-        // (subGate). Post-VK-RUNG8-ITEM8 the GL fog pass this used to fail-soft to draws
+        // (armed<>). Post-VK-RUNG8-ITEM8 the GL fog pass this used to fail-soft to draws
         // into the DISCARDED GL backbuffer under VK-only present, so an unarmed native fog
         // means the scene atmospheric fog VANISHES (the user's "OOB fog missing"). Native
         // fog still engages only when upstream is direct-chain (postDirectChainUpstreamOn),

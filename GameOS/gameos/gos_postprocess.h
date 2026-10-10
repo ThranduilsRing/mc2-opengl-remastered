@@ -518,7 +518,7 @@ public:
     // the SHARED scene depth and blending into the SHARED scene color0 IN PLACE —
     // zero copies, zero CPU readbacks, no private device (supersedes the subgraph
     // when its gate is on; highest precedence at the fog site). Gate
-    // MC2_VK_POST_FOG_NATIVE (envTriState opt-in, default-OFF). runVkPostFogNative()
+    // MC2_VK_POST_FOG_NATIVE (an umbrella member: mc2vkgate::armed<>). runVkPostFogNative()
     // returns true only when BOTH fogs rendered via VK (caller skips BOTH GL sites);
     // any not-ready condition returns false -> unchanged subgraph/island/GL chain.
     // destroyVkPostFogNative(): torn down from destroyFBOs() (resize; the shared
@@ -536,7 +536,7 @@ public:
     // and MULTIPLYING into the SHARED scene color0 IN PLACE — zero copies, zero CPU
     // readbacks, no private device (retires the old SSAO island's readback pattern
     // when its gate is on; highest precedence at the SSAO site). Gate MC2_VK_POST_SSAO
-    // (envTriState opt-in, default-OFF; the rung-8 ladder's prescribed name).
+    // (an explicit opt-in: an Exact1 row, only "1" arms it; the rung-8 ladder's prescribed name).
     // runVkPostSsaoNative() returns true only when both passes rendered via VK
     // (caller skips the GL SSAO site); any not-ready condition (incl. ssaoDebug_!=0,
     // an unported diagnostic mode) returns false -> unchanged region-iface/GL chain.
@@ -556,7 +556,7 @@ public:
     // the SHARED scene color0 IN PLACE -- zero copies, zero CPU readbacks, no
     // private device. Screen-shadow is NOT ported (its CSM cascade array has no
     // zero-copy VK producer until ladder rung 2 -- see the TU header). Gate
-    // MC2_VK_POST_SCREENFX (envTriState opt-in, default-OFF) + per-pass bisect
+    // MC2_VK_POST_SCREENFX (an explicit opt-in: an Exact1 row, only "1" arms it) + per-pass bisect
     // sub-gates MC2_VK_POST_SCREENFX_CLOUD / _SHORELINE (explicit 0 forces that
     // pass to GL). runVkPostScreenFxNative() returns a bitmask (bit0=cloud,
     // bit1=shoreline rendered via VK) -- the caller skips EXACTLY those GL pass

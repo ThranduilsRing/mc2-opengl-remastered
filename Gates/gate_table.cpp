@@ -1555,7 +1555,7 @@ L(Presence, "MC2_VK_PICK_PROBE", Bool, false, "code", "", "BUG-A pick regression
 G("MC2_VK_POST_COMPOSITE", Tri, false, "vk", "", "VK-FIELD-ENV-COMPOSITE-ARM-1: arm from the umbrella (see directFboGateEnabled).", inherits("MC2_VK_SHARED_GBUFFER") | verified | passthrough),
 // history: docs/gate-history.md#MC2_VK_POST_COMPOSITE_DIRECT_CHAIN
 G("MC2_VK_POST_COMPOSITE_DIRECT_CHAIN", Tri, false, "vk", "", "VK-POST-COMPOSITE-DIRECT-CHAIN: opt-in deletion-readiness proof gate, default OFF.", passthrough | registry(Feature, "MC2_FEATURE_VK_POST_COMPOSITE_DIRECT_CHAIN", -1, false) | inherits("MC2_VK_SHARED_GBUFFER") | verified),
-G("MC2_VK_POST_FOG_NATIVE", Tri, false, "vk", "", "VK-FIELD-ENV-CONTENT-STACK-ARM-1 (2026-07-11): now an umbrella family member (subGate).", inherits("MC2_VK_SHARED_GBUFFER") | verified | passthrough),
+G("MC2_VK_POST_FOG_NATIVE", Tri, false, "vk", "", "VK-FIELD-ENV-CONTENT-STACK-ARM-1 (2026-07-11): now an umbrella family member (mc2vkgate::armed<>).", inherits("MC2_VK_SHARED_GBUFFER") | verified | passthrough),
 L(Exact1, "MC2_VK_POST_HZB", Bool, false, "vk", "", "", verified | passthrough),
 L(Exact1, "MC2_VK_POST_SCREENFX", Bool, false, "vk", "", "", verified | passthrough),
 L(Lead0Kill, "MC2_VK_POST_SCREENFX_CLOUD", Bool, true, "vk", "", "", verified | passthrough),

@@ -1,4 +1,3 @@
-#include "Gates/gate_cold.h"   // gate::get<>() and str<>()
 // vulkan_color_prop_island.cpp — VK-P11 STATIC-PROP COLOR: the FIRST VK-native COLOR
 // GEOMETRY region rendering REAL static-prop triangle geometry.
 // Renders static props in Vulkan directly into the shared scene GBuffer. The
@@ -22,6 +21,7 @@
 
 #include <volk.h>
 #include <GL/glew.h>
+#include "Gates/gate_cold.h"   // gate::get<>() and str<>()
 
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0

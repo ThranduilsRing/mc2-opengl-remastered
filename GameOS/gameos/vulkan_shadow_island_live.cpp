@@ -1,4 +1,3 @@
-#include "Gates/gate.h"
 // vulkan_shadow_island_live.cpp — VK-P8a SHADOW-INTEROP: the SECOND Vulkan GEOMETRY
 // region and the FIRST VK-PRODUCES-DEPTH region (water was the first geometry region,
 // GL-produces-color / VK-consumes; shadow REVERSES the direction).
@@ -41,6 +40,7 @@
 
 #include <volk.h>
 #include <GL/glew.h>
+#include "Gates/gate.h"
 
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0

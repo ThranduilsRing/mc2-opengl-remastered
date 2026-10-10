@@ -7,7 +7,7 @@
 #include <vk_mem_alloc.h>
 
 #include "vk_shared_light_feed.h"
-#include "vk_shared_gbuffer_gate.h"   // mc2vkgate::envTriState
+#include "Gates/gate.h"                // gate::get<> (MC2_VK_LIGHTFEED_DEDUP)
 #include "gos_frame_context.h"        // g_mc2FrameCounter (engine frame clock)
 
 #include <cstdio>

@@ -2,7 +2,7 @@
 // shared engine VulkanContext, sampling the shared scene depth directly and
 // writing one separate R32F image per ceil-ladder level.
 //
-// GATE: MC2_VK_POST_HZB - envTriState OPT-IN, default-OFF. Highest precedence
+// GATE: MC2_VK_POST_HZB - explicit OPT-IN (an Exact1 row: only "1" arms it), default-OFF. Highest precedence
 // at the HZB site when MC2_HZB_BUILD=1. The native path is fail-soft: on any
 // not-ready condition it declines and the caller falls back to the unchanged
 // GL runHzbReduce() body. MC2_HZB_PROBE=1 intentionally forces the native path

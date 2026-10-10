@@ -555,6 +555,22 @@ TEST_CASE("invalidateAll keeps pre-main values and the dump flags the ones that 
     CHECK_FALSE(hasLine(capture({}), "[CONFIG v1] warn=premain name=MC2_BOOT_INFO"));
 }
 
+TEST_CASE("a VK gate read before main is reported even when its value did not change") {
+    constexpr std::size_t vk = gate::detail::indexOf("MC2_VK_MECH_TIER1");
+    constexpr std::size_t other = gate::detail::indexOf("MC2_BOOT_INFO");
+    EnvVar vkEnv("MC2_VK_MECH_TIER1");
+    EnvVar otherEnv("MC2_BOOT_INFO");
+    vkEnv.set(nullptr);
+    otherEnv.set("5");
+    gate::detail::g_slot[vk].store(gate::detail::kResolvedBit | gate::detail::kPreMainBit);  // Tri unset
+    gate::detail::g_slot[other].store(gate::detail::kResolvedBit | gate::detail::kPreMainBit | 5u);
+    gate::invalidateAll();
+    const std::string out = capture({});
+    CHECK(hasLine(out, "[CONFIG v1] warn=premain_read name=MC2_VK_MECH_TIER1 premain_value=unset"));
+    CHECK_FALSE(hasLine(out, "[CONFIG v1] warn=premain name=MC2_VK_MECH_TIER1"));  // the value did not change
+    CHECK_FALSE(hasLine(out, "[CONFIG v1] warn=premain_read name=MC2_BOOT_INFO"));  // only VK gates are flagged
+}
+
 // ---------------------------------------------------------------------------
 // G1b: the numeric rows of the terrain pilot read exactly what the lambdas they replace read
 // ---------------------------------------------------------------------------

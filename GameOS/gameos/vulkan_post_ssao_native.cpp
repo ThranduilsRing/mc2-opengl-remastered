@@ -25,9 +25,9 @@
 // interfaces; UBO PODs byte-identical to the island's (offline-checked by
 // tools/check_ubo_layout.py labels ssaonat_occ / ssaonat_apply).
 //
-// GATE: MC2_VK_POST_SSAO — envTriState OPT-IN, default-OFF (new-rung pattern, the
-// name the rung-8 ladder prescribes; unset -> OFF regardless of
-// MC2_VK_SHARED_GBUFFER, explicit 0 forces OFF). Runs ONLY when the GL runSSAO()
+// GATE: MC2_VK_POST_SSAO — explicit OPT-IN, default-OFF (an Exact1 row: only "1" arms
+// it; the name the rung-8 ladder prescribes; unset -> OFF regardless of
+// MC2_VK_SHARED_GBUFFER). Runs ONLY when the GL runSSAO()
 // would run (ssaoEnabled_, sceneHasTerrain_, programs valid, half-res FBO present)
 // AND ssaoDebug_ == 0 (the debug grayscale-overwrite mode is a diagnostic; it is
 // NOT ported — debug ON falls through to GL so the diagnostic stays exact) AND the
@@ -667,8 +667,8 @@ bool build_state(gosPostProcess::VkPostSsaoNative* s, int w, int h, int halfW, i
 } // namespace
 
 // ---------------------------------------------------------------------------
-// vkPostSsaoNativeEnabled(): envTriState OPT-IN, default-OFF (new-rung pattern —
-// unset -> OFF regardless of MC2_VK_SHARED_GBUFFER, explicit 0 forces OFF).
+// vkPostSsaoNativeEnabled(): explicit OPT-IN, default-OFF (an Exact1 row: only "1" arms
+// it; unset -> OFF regardless of MC2_VK_SHARED_GBUFFER).
 // Gate name per the rung-8 ladder: MC2_VK_POST_SSAO.
 // ---------------------------------------------------------------------------
 bool gosPostProcess::vkPostSsaoNativeEnabled()

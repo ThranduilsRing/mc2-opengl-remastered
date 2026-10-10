@@ -12,7 +12,7 @@
 // route is armed, take the IMMEDIATE gos_DrawTriangles path instead (the exact
 // mechanism the selection brackets / health bars use, PROVEN visible) so the bolt
 // verts are issued while objmgr has gos_State_IsHUD=1 -> composited into the VK HUD
-// tail. Umbrella OFF -> subGate false -> drawOldWay path unchanged -> byte-identical GL.
+// tail. Umbrella OFF -> vfxArmed() false -> drawOldWay path unchanged -> byte-identical GL.
 static bool vkVfxImmediateDraw()
 {
 	const bool s_on = mc2vkgate::vfxArmed();   // per-call: VK-FAILSOFT-DISARM-1

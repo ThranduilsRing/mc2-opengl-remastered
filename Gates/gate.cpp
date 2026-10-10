@@ -472,6 +472,15 @@ DumpSummary dumpConfigWith(std::FILE* out, const DumpOptions& opts) noexcept {
     for (const auto& snap : snapshots()) {
         if (snap.idx >= n) continue;
         const Row& r = rows[snap.idx];
+        // A VK gate resolved before main() was read by a static initializer, ahead of the launcher's
+        // environment apply. The VK gates are read lazily, so say so whether or not the value changed.
+        if (r.name.substr(0, 7) == "MC2_VK_") {
+            std::string w = "[CONFIG v1] warn=premain_read name=";
+            w += r.name;
+            w += " premain_value=" + valueText(r, snap.slot, nullptr);
+            w += '\n';
+            warnings.push_back(std::move(w));
+        }
         const std::uint64_t now = parseRow(r, envOf(r));
         if (((now ^ snap.slot) & kValueMask) != 0) {
             ++sum.premainStale;

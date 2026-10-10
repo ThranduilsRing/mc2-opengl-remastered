@@ -9,7 +9,7 @@
 #include "../../RenderCore/MaterialGpu.h"  // RenderCore::MaterialGpu for g_dpSelProp albedoTex fill
 #include "build_fingerprint.h"          // MC2_BUILD_GIT_SHA (real macro; MC2_BUILD_HASH never defined)
 #include "../../RenderCore/ResolutionContract.h"  // META-FIX design D: MC2_RES_ASSERT audit
-#include "vk_shared_gbuffer_gate.h"        // mc2vkgate::directChainGate (umbrella-default direct-chain)
+#include "vk_shared_gbuffer_gate.h"        // mc2vkgate::terrainNativeFirstOwnerOn (the VK umbrella adapter)
 #include <stdio.h>
 #include <stdlib.h>
 #include <vector>

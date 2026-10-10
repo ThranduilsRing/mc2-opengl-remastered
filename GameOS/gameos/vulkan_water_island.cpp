@@ -1,4 +1,3 @@
-#include "Gates/gate.h"
 // vulkan_water_island.cpp - Vulkan water island.
 // =============================================================================
 // Renders the MC2 armed water fast-path mesh (base layer) in Vulkan. Tier-1
@@ -35,6 +34,7 @@
 
 #include <volk.h>
 #include <GL/glew.h>
+#include "Gates/gate.h"
 
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
@@ -129,13 +129,13 @@ void vlog(const char* fmt, ...) {
 // the terrain/prop/mech Tier-1 islands — no offscreen target, no GL composite,
 // no depth readback.
 //
-// VK-FIELD-ENV-CONTENT-STACK-ARM-1 (2026-07-11): now resolved via mc2vkgate::subGate
+// VK-FIELD-ENV-CONTENT-STACK-ARM-1 (2026-07-11): now resolved via mc2vkgate::armed<>
 // so MC2_VK_SHARED_GBUFFER=1 arms it (explicit "1"/"0" still wins). Water is BASE scene
 // content, not an enhancement -- post-VK-RUNG8-ITEM8 the native VK composite is the sole
 // present-image producer and there is no per-layer GL fallback, so an unarmed water layer
 // VANISHES (the field bug). This ALSO reconciles a latent inconsistency: gos_postprocess.cpp
 // and vk_shared_gbuffer_gate.h::postDirectChainUpstreamOn() already read MC2_VK_WATER_TIER1
-// via subGate, while this producer read it via envTriState==1 -- so under the umbrella the
+// as an umbrella member, while this producer read it as an explicit "1" -- so under the umbrella the
 // post chain believed water was armed while the island declined. Now both agree. The strict
 // proof armed WATER_TIER1=1 and passed its parity check.
 bool waterTier1Requested() {

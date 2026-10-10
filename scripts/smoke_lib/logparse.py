@@ -78,10 +78,11 @@ class MarkerBucket:
                                                  # red -> advisory per mission
 
 MARKER_BUCKETS: tuple = (
-    # G4: a VK umbrella gate resolved before main() (a static initializer) is read before launcher_env.json
-    # is applied, so it can disagree with the environment the game then runs under. The VK gates are read
-    # lazily; this line is the registry reporting one that was not. Emitter: Gates/gate.cpp dumpConfig.
-    MarkerBucket(re.compile(r"\[CONFIG v1\] warn=premain name=MC2_VK_"),
+    # G4: a VK gate resolved before main() was read by a static initializer, i.e. ahead of the launcher's
+    # environment apply, so it can disagree with the environment the game then runs under. The VK gates
+    # are read lazily; Gates/gate.cpp dumpConfig reports every snapshotted pre-main VK slot as
+    # warn=premain_read (whether or not its value changed; warn=premain is the changed-value case).
+    MarkerBucket(re.compile(r"\[CONFIG v1\] warn=premain_read name=MC2_VK_"),
                  "config_premain_vk", "red", None),
     # Design C runtime tier (META-FIX-BATCH-1): any [SPLIT_PATH_PARITY] event
     # with match=0 is a silent split-path divergence -> red. Emitter:

@@ -85,7 +85,6 @@ def umbrella_members() -> tuple:
     return tuple(sorted(n for n, g in rows.items() if g.get("inherits")))
 
 
-DIRECT_CHAIN_GATES = umbrella_members()
 
 
 def repo_root() -> Path:
@@ -116,18 +115,17 @@ def main() -> int:
     stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
     out_dir = Path(args.out_dir) if args.out_dir else root / ".claude" / f"vk-nointerop-strict-visible-{stamp}"
 
+    members = umbrella_members() if args.minimal_promotion else ()   # reads the gate table only when asked to
     strict_env = dict(STRICT_ENV)
-    if args.minimal_promotion:
-        for key in DIRECT_CHAIN_GATES:
-            strict_env.pop(key, None)
+    for key in members:
+        strict_env.pop(key, None)
 
     env = os.environ.copy()
     env.update(strict_env)
     # Ensure a stale outer-shell direct-chain gate can't leak into a minimal-promotion
     # proof (would defeat the point). Explicitly remove them from the child env.
-    if args.minimal_promotion:
-        for key in DIRECT_CHAIN_GATES:
-            env.pop(key, None)
+    for key in members:
+        env.pop(key, None)
     # Clean shutdown after the bookmark sweep so the VK island destroy lines
     # (forbidden_* counters) + final [VK_PRESENT] logHealth reach the capture log --
     # the hardened checker REQUIRES them. Without this the game is killed on timeout

@@ -1,4 +1,3 @@
-#include "Gates/gate.h"
 // vulkan_mech_island.cpp — VK-P14 MECH TIER-1: the FIRST VK-native SKINNED mech region.
 // =============================================================================
 // Co-writes the GL mech batcher's visible instances IN-PLACE into the SHARED scene
@@ -38,6 +37,7 @@
 
 #include <volk.h>
 #include <GL/glew.h>
+#include "Gates/gate.h"
 
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0

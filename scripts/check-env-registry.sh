@@ -1010,24 +1010,24 @@ ALLOWLIST=(
     MC2_VEGETATION_MAX                        # override -- read via envInt in VegetationAdapter.cpp
     MC2_VISUAL_DIFF_FRAME_N                   # feature -- read via envInt in gos_visual_diff.cpp
     MC2_VISUAL_DIFF_MAX_FRAMES                # feature -- read via envInt in gos_visual_diff.cpp
-    MC2_VK_HUD                                # feature -- read via mc2vkgate::subGate in gameos_graphics.cpp
-    MC2_VK_HUD_COLOR_PROOF                    # feature -- read via mc2vkgate::directChainGate in engine_present_vk.cpp
-    MC2_VK_HUD_SKIP_GL                        # feature -- read via mc2vkgate::subGate in gameos_graphics.cpp
-    MC2_VK_MECH_FEED_AUDIT                    # trace -- read via mc2vkgate::envTriState in vulkan_mech_island.cpp
-    MC2_VK_MECH_FEED_NATIVE                   # feature -- read via mc2vkgate::envTriState in gos_mech_batcher.cpp
-    MC2_VK_POST_COMPOSITE                     # feature -- read via mc2vkgate::directChainGate in engine_present_vk.cpp
-    MC2_VK_POST_FOG_NATIVE                    # feature -- read via mc2vkgate::subGate in vulkan_post_fog_native.cpp
-    MC2_VK_POST_HZB                           # feature -- read via mc2vkgate::envTriState in vulkan_post_hzb_native.cpp
-    MC2_VK_POST_SCREENFX                      # feature -- read via mc2vkgate::envTriState in vulkan_post_screenfx_native.cpp
-    MC2_VK_POST_SCREENFX_CLOUD                # feature -- read via mc2vkgate::envTriState in vulkan_post_screenfx_native.cpp
-    MC2_VK_POST_SCREENFX_SHADOW               # feature -- read via mc2vkgate::envTriState in vulkan_post_screenfx_native.cpp
-    MC2_VK_POST_SCREENFX_SHORELINE            # feature -- read via mc2vkgate::envTriState in vulkan_post_screenfx_native.cpp
-    MC2_VK_POST_SSAO                          # feature -- read via mc2vkgate::envTriState in vulkan_post_ssao_native.cpp
-    MC2_VK_PRESENT_DIRECT_FBO                 # feature -- read via mc2vkgate::directChainGate in engine_present_vk.cpp
-    MC2_VK_TERRAIN_ALL_LODS                   # feature -- read via mc2vkgate::subGate in vulkan_terrain_island.cpp
-    MC2_VK_TERRAIN_SKIRTS                     # feature -- read via mc2vkgate::subGate in vulkan_terrain_island.cpp
-    MC2_VK_TERRAIN_VISUALDISPLACE_FAR         # feature -- read via mc2vkgate::envTriState in vulkan_terrain_island.cpp
-    MC2_VK_WATER_FENCE_DEFER                  # feature -- read via mc2vkgate::envTriState in vulkan_water_island.cpp
+    MC2_VK_HUD                                # feature -- read via mc2vkgate::armed<> in gameos_graphics.cpp
+    MC2_VK_HUD_COLOR_PROOF                    # feature -- read via mc2vkgate::armed<> in engine_present_vk.cpp
+    MC2_VK_HUD_SKIP_GL                        # feature -- read via mc2vkgate::armed<> in gameos_graphics.cpp
+    MC2_VK_MECH_FEED_AUDIT                    # trace -- read via gate::get<> in vulkan_mech_island.cpp
+    MC2_VK_MECH_FEED_NATIVE                   # feature -- read via gate::get<> in gos_mech_batcher.cpp
+    MC2_VK_POST_COMPOSITE                     # feature -- read via mc2vkgate::armed<> in engine_present_vk.cpp
+    MC2_VK_POST_FOG_NATIVE                    # feature -- read via mc2vkgate::armed<> in vulkan_post_fog_native.cpp
+    MC2_VK_POST_HZB                           # feature -- read via gate::get<> in vulkan_post_hzb_native.cpp
+    MC2_VK_POST_SCREENFX                      # feature -- read via gate::get<> in vulkan_post_screenfx_native.cpp
+    MC2_VK_POST_SCREENFX_CLOUD                # feature -- read via gate::get<> in vulkan_post_screenfx_native.cpp
+    MC2_VK_POST_SCREENFX_SHADOW               # feature -- read via gate::get<> in vulkan_post_screenfx_native.cpp
+    MC2_VK_POST_SCREENFX_SHORELINE            # feature -- read via gate::get<> in vulkan_post_screenfx_native.cpp
+    MC2_VK_POST_SSAO                          # feature -- read via gate::get<> in vulkan_post_ssao_native.cpp
+    MC2_VK_PRESENT_DIRECT_FBO                 # feature -- read via mc2vkgate::armed<> in engine_present_vk.cpp
+    MC2_VK_TERRAIN_ALL_LODS                   # feature -- read via mc2vkgate::armed<> in vulkan_terrain_island.cpp
+    MC2_VK_TERRAIN_SKIRTS                     # feature -- read via mc2vkgate::armed<> in vulkan_terrain_island.cpp
+    MC2_VK_TERRAIN_VISUALDISPLACE_FAR         # feature -- read via gate::get<> in vulkan_terrain_island.cpp
+    MC2_VK_WATER_FENCE_DEFER                  # feature -- read via gate::get<> in vulkan_water_island.cpp
     MC2_VK_WATER_TIER1                        # feature -- read via mc2vkgate::subGate,subGate in engine_present_vk.cpp,vk_shared_gbuffer_gate.h,vulkan_water_island.cpp
 
     # --- typed gate registry (Gates/): the module's own rows, and synthetic names in its unit test ---
