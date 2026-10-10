@@ -1,6 +1,7 @@
 // UiDefs: page scaling and per-element drawing.
 // Declared in UiDefs_internal.h.
 #include "UiDefs_internal.h"
+#include "Gates/gate.h"
 
 namespace uidefs_detail {
 
@@ -283,7 +284,7 @@ bool drawUiImageElement(UiElement& e, int xOffset, int yOffset, const PageScale&
 
     // PILOT-PHOTO-UV-1 diagnostic: full number dump for the pilot portrait
     // element (red-striped-panel bug). Env-gated, one line per texture change.
-    if (getenv("MC2_LOG_PREVIEW") && e.key.find("this_rect_defines") != std::string::npos) {
+    if (mc2::gate::get<"MC2_LOG_PREVIEW">() && e.key.find("this_rect_defines") != std::string::npos) {
         static std::string s_lastDump;
         if (s_lastDump != e.texturePath) {
             s_lastDump = e.texturePath;
