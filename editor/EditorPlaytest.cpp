@@ -31,6 +31,8 @@
 //         appends the exit code into the archived log itself.
 //-------------------------------------------------------------------------------------------------
 #include "stdafx.h"   // MFC / <windows.h>
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"   // str<>()
 
 #include "EditorPlaytest.h"
 #include "EditorPlaytestResults.h"
@@ -159,11 +161,10 @@ void ResolveExe()
 	if (s_exeResolved && s_exePath[0])
 		return;
 
-	char envBuf[512] = "";
-	DWORD n = GetEnvironmentVariableA("MC2_PLAYTEST_EXE", envBuf, sizeof(envBuf));
-	if (n > 0 && n < sizeof(envBuf) && envBuf[0])
+	const std::string envExe = mc2::gate::str<"MC2_PLAYTEST_EXE">();   // "" when unset or empty
+	if (!envExe.empty() && envExe.size() < 512)
 	{
-		std::string abs = AbsPath(envBuf);
+		std::string abs = AbsPath(envExe.c_str());
 		strncpy(s_exePath, abs.c_str(), sizeof(s_exePath) - 1);
 		s_exePath[sizeof(s_exePath) - 1] = 0;
 		s_exeResolved = true;
@@ -911,9 +912,7 @@ void Start()
 		// harness verifies. Passive smoke (the default) is a frozen-scenario fly-through
 		// and emits no mover state. This only forwards an existing engine flag; it adds
 		// no new telemetry.
-		char actEnv[8] = "";
-		if (GetEnvironmentVariableA("MC2_SMOKE_ACTIVE", actEnv, sizeof(actEnv)) > 0 &&
-			actEnv[0] && actEnv[0] != '0')
+		if (mc2::gate::get<"MC2_SMOKE_ACTIVE">())
 		{
 			const char* act = " --smoke-active";
 			if (strlen(cmd) + strlen(act) < sizeof(cmd))
