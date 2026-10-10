@@ -52,7 +52,7 @@
    "LG03": 301,
    "LG04": 6,
    "LG05": 119,
-   "LG06": 525,
+   "LG06": 522,
    "LG07": 0,
    "LG08": 274,
    "LG09": 2163,
@@ -66,8 +66,8 @@
    "LG16": 7,
    "LG17": 81,
    "LG18": 11,
-   "LG19": 134,
-   "LG20": 186
+   "LG19": 131,
+   "LG20": 169
   },
   "GuiRuntime": {
    "LG01": 1,
@@ -324,12 +324,10 @@
    "LG06": 1
   },
   "GameOS/gameos/debug_state_dump.cpp": {
-   "LG06": 5,
+   "LG06": 2,
    "LG09": 1,
    "LG11": 2,
-   "LG12b": 1,
-   "LG19": 3,
-   "LG20": 17
+   "LG12b": 1
   },
   "GameOS/gameos/diagnostic_trace.cpp": {
    "LG05": 1,
@@ -5893,7 +5891,7 @@
    "LG20": 1
   }
  },
- "head": "d54df5914",
+ "head": "955a54a03",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

@@ -162,6 +162,8 @@ extern "C" void mc2_render_backend_mech_region_health(
 #include <string>
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"   // str<>()
 
 extern char missionName[1024];
 // Per-mission asset globals — set by game layer (code/logmain.cpp, code/gamecam.cpp,
@@ -178,17 +180,6 @@ constexpr uint32_t kHistorySlots       = 8u;
 // while render state (postprocess, static props) is still valid. Zero-initialized;
 // populated on the first maybeWriteRenderState() call when MC2_DEBUG_STATE_DUMP=1.
 static RenderSnapshot s_lastSnap{};
-
-bool envFlagOn(const char* name) {
-    const char* v = std::getenv(name);
-    return v && v[0] && v[0] != '0';
-}
-
-bool featureActive(const char* envVar, bool defaultOn) {
-    const char* v = std::getenv(envVar);
-    if (!v || !v[0]) return defaultOn;
-    return v[0] != '0';
-}
 
 std::string jsonEscape(const char* s) {
     std::string out;
@@ -218,9 +209,8 @@ std::string jsonEscape(const char* s) {
 }
 
 std::filesystem::path outputDir() {
-    if (const char* dir = std::getenv("MC2_DEBUG_STATE_DUMP_DIR")) {
-        if (dir[0]) return std::filesystem::path(dir);
-    }
+    const std::string dir = mc2::gate::str<"MC2_DEBUG_STATE_DUMP_DIR">();   // "" when unset or empty
+    if (!dir.empty()) return std::filesystem::path(dir);
     return std::filesystem::path("debug_state");
 }
 
@@ -478,15 +468,15 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
     s << "  },\n";
     s << "  \"features\": {\n";
     s << "    \"MC2_DEBUG_STATE_DUMP\": true,\n";
-    s << "    \"MC2_VIEW_UNIFORMS\": "; b(s, featureActive("MC2_VIEW_UNIFORMS", true)); s << ",\n";
-    s << "    \"MC2_SNAPSHOT_STATIC_PROP_BUILD\": "; b(s, featureActive("MC2_SNAPSHOT_STATIC_PROP_BUILD", true)); s << ",\n";
-    s << "    \"MC2_MATERIAL_GPU\": "; b(s, featureActive("MC2_MATERIAL_GPU", true)); s << ",\n";
-    s << "    \"MC2_MATERIAL_GPU_SAMPLE\": "; b(s, featureActive("MC2_MATERIAL_GPU_SAMPLE", true)); s << ",\n";
-    s << "    \"MC2_STATIC_PROP_IBL_SH\": "; b(s, featureActive("MC2_STATIC_PROP_IBL_SH", true)); s << ",\n";
-    s << "    \"MC2_STATIC_PROP_PBR_V1\": "; b(s, featureActive("MC2_STATIC_PROP_PBR_V1", false)); s << ",\n";
-    s << "    \"MC2_QUADSETUP_ARMED_SKIP\": "; b(s, featureActive("MC2_QUADSETUP_ARMED_SKIP", true)); s << ",\n";
-    s << "    \"MC2_WATER_GPU_FULL_RECIPE_AUTHORITATIVE\": "; b(s, featureActive("MC2_WATER_GPU_FULL_RECIPE_AUTHORITATIVE", true)); s << ",\n";
-    s << "    \"MC2_VEGETATION_CARDS\": "; b(s, featureActive("MC2_VEGETATION_CARDS", false)); s << "\n";
+    s << "    \"MC2_VIEW_UNIFORMS\": "; b(s, mc2::gate::get<"MC2_VIEW_UNIFORMS">()); s << ",\n";
+    s << "    \"MC2_SNAPSHOT_STATIC_PROP_BUILD\": "; b(s, mc2::gate::get<"MC2_SNAPSHOT_STATIC_PROP_BUILD">()); s << ",\n";
+    s << "    \"MC2_MATERIAL_GPU\": "; b(s, mc2::gate::get<"MC2_MATERIAL_GPU">()); s << ",\n";
+    s << "    \"MC2_MATERIAL_GPU_SAMPLE\": "; b(s, mc2::gate::get<"MC2_MATERIAL_GPU_SAMPLE">()); s << ",\n";
+    s << "    \"MC2_STATIC_PROP_IBL_SH\": "; b(s, mc2::gate::get<"MC2_STATIC_PROP_IBL_SH">()); s << ",\n";
+    s << "    \"MC2_STATIC_PROP_PBR_V1\": "; b(s, mc2::gate::get<"MC2_STATIC_PROP_PBR_V1">()); s << ",\n";
+    s << "    \"MC2_QUADSETUP_ARMED_SKIP\": "; b(s, mc2::gate::get<"MC2_QUADSETUP_ARMED_SKIP">()); s << ",\n";
+    s << "    \"MC2_WATER_GPU_FULL_RECIPE_AUTHORITATIVE\": "; b(s, mc2::gate::get<"MC2_WATER_GPU_FULL_RECIPE_AUTHORITATIVE">()); s << ",\n";
+    s << "    \"MC2_VEGETATION_CARDS\": "; b(s, mc2::gate::get<"MC2_VEGETATION_CARDS">()); s << "\n";
     s << "  },\n";
     s << "  \"engineView\": {\n";
     s << "    \"known\": "; b(s, viewKnown); s << ",\n";
@@ -590,7 +580,7 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
     // not force the extract on.
     {
         constexpr uint32_t kMechPacketCap = 32u;
-        const bool extractEnabled = featureActive("MC2_SNAPSHOT_MECH_EXTRACT", false);
+        const bool extractEnabled = mc2::gate::get<"MC2_SNAPSHOT_MECH_EXTRACT">();
         // Determine whether data is present: mirrors EditorInspector.cpp gate check.
         const bool gateOn = extractEnabled
             && (snap.mechSnapshotCount > 0u
@@ -714,7 +704,7 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
     // UNIT-PROFILE-SEAM-1 proof: per-mover fact (baseline/current) vs
     // executability (canPerform). Additive section, present ONLY when
     // MC2_UNIT_PROFILE_DATA=1 — schema byte-for-byte unchanged when absent.
-    if (envFlagOn("MC2_UNIT_PROFILE_DATA")) {
+    if (mc2::gate::get<"MC2_UNIT_PROFILE_DATA">()) {
         constexpr int kCap = 64;
         UnitProfileWitnessRow rows[kCap];
         const int nrows = mc2_unitprofile_collect_witness(rows, kCap);
@@ -750,7 +740,7 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
     // unchanged when absent. weapon_shadow_compare.py joins masterId <-> the
     // converter's legacy_master_id and diffs kind/category/damage/heat/recycle/
     // range/CV/ammo per stock component.
-    if (envFlagOn("MC2_UNIT_PROFILE_DATA")) {
+    if (mc2::gate::get<"MC2_UNIT_PROFILE_DATA">()) {
         constexpr int kCompCap = 512;
         static ComponentWitnessRow crows[kCompCap];
         const int ncomp = mc2_component_collect_witness(crows, kCompCap);
@@ -782,7 +772,7 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
     // WITHOUT an interactive mission). Additive section, present ONLY under the
     // same MC2_UNIT_PROFILE_DATA gate — schema byte-for-byte unchanged when absent.
     // Read-only from already-loaded type data (de-duped per ObjectType).
-    if (envFlagOn("MC2_UNIT_PROFILE_DATA")) {
+    if (mc2::gate::get<"MC2_UNIT_PROFILE_DATA">()) {
         constexpr int kPrevCap = 64;
         static UnitPreviewWitnessRow prows[kPrevCap];
         const int nprev = mc2_unitpreview_collect_witness(prows, kPrevCap);
@@ -1177,7 +1167,7 @@ bool writeFile(const std::filesystem::path& path, const std::string& content) {
 namespace mc2_debug_state {
 
 void maybeWriteRenderState(const RenderSnapshot& snap) {
-    static const bool s_enabled = envFlagOn("MC2_DEBUG_STATE_DUMP");
+    static const bool s_enabled = mc2::gate::get<"MC2_DEBUG_STATE_DUMP">();
     if (!s_enabled) return;
     s_lastSnap = snap;  // cache for writeShutdownState()
     if (snap.frameIndex != 1u && (snap.frameIndex % kDumpIntervalFrames) != 0u)
@@ -1197,7 +1187,7 @@ void maybeWriteRenderState(const RenderSnapshot& snap) {
 
     writeFileAtomic(dir, "latest_render_state.json", json);
 
-    static const bool s_historyEnabled = envFlagOn("MC2_DEBUG_STATE_DUMP_HISTORY");
+    static const bool s_historyEnabled = mc2::gate::get<"MC2_DEBUG_STATE_DUMP_HISTORY">();
     if (s_historyEnabled) {
         static uint32_t s_historySlot = 0u;
         char name[32];
@@ -1208,7 +1198,7 @@ void maybeWriteRenderState(const RenderSnapshot& snap) {
 }
 
 void writeShutdownState() {
-    static const bool s_enabled = envFlagOn("MC2_DEBUG_STATE_DUMP");
+    static const bool s_enabled = mc2::gate::get<"MC2_DEBUG_STATE_DUMP">();
     if (!s_enabled) return;
 
     const std::filesystem::path dir = outputDir();
