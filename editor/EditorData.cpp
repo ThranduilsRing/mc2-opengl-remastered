@@ -11,6 +11,7 @@
  #define EDITORDATA_CPP
 
 #include "EditorData_internal.h"
+#include "Gates/gate.h"
 
 
 // Patch savefix: MOVE packet readiness is tracked separately from terrain readiness.
@@ -35,7 +36,7 @@ void EditorDataTrace(const char* fmt, ...)
 	// appears in crashes/<timestamp>/last_trace.txt on any CTD.
 	crashbundle_append(buf);
 
-	if (getenv("MC2_EDITOR_TRACE") == NULL)
+	if (!mc2::gate::get<"MC2_EDITOR_TRACE">())
 		return;
 
 	FILE* f = fopen("editor-startup.log", "a");
