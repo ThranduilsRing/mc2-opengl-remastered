@@ -33,7 +33,6 @@
   "code/artlry.cpp": 1816,
   "code/bldng.cpp": 1702,
   "code/brain_special_dispatch.cpp": 3273,
-  "code/controlgui.cpp": 4991,
   "code/gamecam.cpp": 1564,
   "code/gameobj.cpp": 2366,
   "code/infowindow.cpp": 1732,
@@ -61,7 +60,6 @@
   "mclib/ablenv.cpp": 1553,
   "mclib/ablrtn.cpp": 1781,
   "mclib/assimp_importer.cpp": 1630,
-  "mclib/camera.cpp": 4613,
   "mclib/camera.h": 1800,
   "mclib/echarstring.cpp": 1622,
   "mclib/estring.cpp": 1596,
@@ -82,7 +80,6 @@
   "mclib/quad.cpp": 4256,
   "mclib/render_contract.cpp": 1592,
   "mclib/stuff/rotation.cpp": 1672,
-  "mclib/terrain.cpp": 4895,
   "mclib/terrtxm.cpp": 1778,
   "mclib/terrtxm2.cpp": 2785,
   "mclib/tgl.h": 1689,
@@ -90,7 +87,7 @@
   "mclib/vfxtile.cpp": 2944,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "b1c691c57",
+ "head": "f4c986566",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -129,10 +126,10 @@
    "max_lines": 1159
   },
   "code": {
-   "files": 348,
-   "files_over_1500": 26,
-   "files_over_3000": 3,
-   "max_lines": 4991
+   "files": 356,
+   "files_over_1500": 25,
+   "files_over_3000": 2,
+   "max_lines": 3438
   },
   "editor": {
    "files": 225,
@@ -147,10 +144,10 @@
    "max_lines": 1513
   },
   "mclib": {
-   "files": 617,
-   "files_over_1500": 30,
-   "files_over_3000": 4,
-   "max_lines": 4895
+   "files": 629,
+   "files_over_1500": 28,
+   "files_over_3000": 2,
+   "max_lines": 4256
   },
   "shaders": {
    "files": 172,
@@ -164,18 +161,6 @@
   3000
  ],
  "top": [
-  {
-   "file": "code/controlgui.cpp",
-   "lines": 4991
-  },
-  {
-   "file": "mclib/terrain.cpp",
-   "lines": 4895
-  },
-  {
-   "file": "mclib/camera.cpp",
-   "lines": 4613
-  },
   {
    "file": "mclib/quad.cpp",
    "lines": 4256
@@ -283,13 +268,25 @@
   {
    "file": "code/logisticsdialog.cpp",
    "lines": 2149
+  },
+  {
+   "file": "mclib/heap.cpp",
+   "lines": 2136
+  },
+  {
+   "file": "code/missionbegin.cpp",
+   "lines": 2132
+  },
+  {
+   "file": "mclib/mlr/mlrtriangleclipping.hpp",
+   "lines": 2112
   }
  ],
  "total": {
-  "files": 1772,
-  "files_over_1500": 76,
-  "files_over_3000": 10,
-  "max_lines": 4991
+  "files": 1792,
+  "files_over_1500": 73,
+  "files_over_3000": 7,
+  "max_lines": 4256
  },
  "version": 1
 }

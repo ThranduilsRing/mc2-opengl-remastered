@@ -24,7 +24,7 @@ import sys
 import tempfile
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CAMERA = os.path.join(REPO, "mclib", "camera.cpp")
+CAMERA = os.path.join(REPO, "mclib", "camera_internal.h")   # the NIGHT_* defines moved there with the camera split
 HEADER = os.path.join(REPO, "GameOS", "gameos", "utils", "terrain_daylight.h")
 
 # camera.cpp: #define NIGHT_START_PITCH		(25.0f)

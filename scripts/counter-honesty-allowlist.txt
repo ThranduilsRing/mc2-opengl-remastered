@@ -84,8 +84,8 @@ mclib/apprtype.cpp::g_loadRaceApprNull < 50
 mclib/apprtype.cpp::g_loadRaceApprNull < 50
 mclib/assimp_importer.cpp::s_warnJoint++ < 8
 mclib/assimp_importer.cpp::s_warnName++ < 8
-mclib/camera.cpp::s_camTestFrame <= 240
-mclib/camera.cpp::s_camTestFrame <= 420
+mclib/camera_update.cpp::s_camTestFrame <= 240
+mclib/camera_update.cpp::s_camTestFrame <= 420
 mclib/cone_glow.cpp::s_bcalls <= 64
 mclib/cone_glow.cpp::s_calls <= 48
 mclib/cone_glow.cpp::s_qcalls <= 48
@@ -102,9 +102,9 @@ mclib/render_contract.cpp::g_topLevelFailures <= kMaxTopLevelFailureLog
 mclib/render_contract.cpp::g_topLevelFailures <= kMaxTopLevelFailureLog
 mclib/render_contract.cpp::g_topLevelFailures <= kMaxTopLevelFailureLog
 mclib/terrain.cpp::s_camDiagFrame <= 5
-mclib/terrain.cpp::s_framesPrinted < 5
-mclib/terrain.cpp::s_framesPrinted2 < 5
-mclib/terrain.cpp::s_prodFrame <= 3
+mclib/terrain_render.cpp::s_framesPrinted < 5
+mclib/terrain_render.cpp::s_framesPrinted2 < 5
+mclib/terrain_geometry.cpp::s_prodFrame <= 3
 mclib/terrtxm.cpp::s_hiresLogged < 8
 mclib/tex_resolve_table.cpp::s_mismatchCount++ < kMaxMismatchPrints
 mclib/tex_resolve_table.cpp::s_oobCount++ < kMaxOobPrints

@@ -180,7 +180,7 @@ def rule_b(ctx: Ctx) -> list[str]:
 GAMEOSMAIN = "GameOS/gameos/gameosmain.cpp"
 GRAPHICS_MODE = "GameOS/gameos/gameos_graphics_capi.cpp"      # gos_SetScreenMode
 GRAPHICS_EVENTS = "GameOS/gameos/gameos_graphics_draw.cpp"    # gosRenderer::handleEvents
-CAMERA = "mclib/camera.cpp"
+CAMERA = "mclib/camera_matrix.cpp"   # Camera::setOrthogonal (the #45 override) lives in the matrix piece
 
 
 def rule_c(ctx: Ctx) -> list[str]:
