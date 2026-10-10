@@ -8,17 +8,17 @@ The conversion is `(x, y, z) -> (-x, z, y)`; it is its own inverse, so the same 
 
 | Metric | Count |
 |---|---:|
-| Hand-written sites (ratcheted) | 184 |
+| Hand-written sites (ratcheted) | 149 |
 | Waived (`axis-swizzle: allow`) | 0 |
-| Helper-call sites (centralized) | 13 |
-| Helper definitions | 1 |
+| Helper-call sites (centralized) | 48 |
+| Helper definitions | 3 |
 | Matrix-form references (`kAxisSwapMC2toGL`, `makeAxisSwapMC2toGL`) | 8 |
 
 ## Shapes
 
 | Shape | Example | Sites |
 |---|---|---:|
-| triplet-ctor | `vec3(-a.x, a.z, a.y)` | 36 |
+| triplet-ctor | `vec3(-a.x, a.z, a.y)` | 1 |
 | triplet-brace | `{ -a.x, a.z, a.y }` | 3 |
 | triplet-arglist | `f(.., -a.x, a.z, a.y)` | 1 |
 | decl-chain | `float lx = -d.x, ly = d.z, lz = d.y;` | 1 |
@@ -33,10 +33,7 @@ The conversion is `(x, y, z) -> (-x, z, y)`; it is its own inverse, so the same 
 |---|---:|
 | `mclib` | 90 |
 | `code` | 52 |
-| `shaders` | 24 |
-| `shaders/vulkan` | 9 |
 | `editor` | 4 |
-| `shaders/include` | 2 |
 | `tools` | 2 |
 | `GameOS` | 1 |
 
@@ -46,26 +43,6 @@ Shaders that carry sites, with their counterpart in the other backend. Twins mus
 
 | Shader | Sites | Counterpart | Why paired | Counterpart sites |
 |---|---:|---|---|---:|
-| `shaders/building_pbr.vert` | 1 | _no counterpart found_ | | |
-| `shaders/gos_tex_vertex_lighted.vert` | 2 | _no counterpart found_ | | |
-| `shaders/include/lighting.hglsl` | 2 | `shaders/vulkan/mech_tier1.vert` | glsl_port_diff registry | 4 |
-| `shaders/mech.vert` | 4 | `shaders/vulkan/mech_tier1.vert` | _tier1 name | 4 |
-| `shaders/particle_billboard.vert` | 1 | _no counterpart found_ | | |
-| `shaders/shadow_mech.vert` | 1 | _no counterpart found_ | | |
-| `shaders/shadow_object.vert` | 1 | _no counterpart found_ | | |
-| `shaders/shadow_screen.frag` | 2 | _no counterpart found_ | | |
-| `shaders/shadow_static_prop.vert` | 1 | _no counterpart found_ | | |
-| `shaders/static_prop.frag` | 2 | _no counterpart found_ | | |
-| `shaders/static_prop.vert` | 3 | _no counterpart found_ | | |
-| `shaders/terrain_lod_chunk.frag` | 4 | _no counterpart found_ | | |
-| `shaders/tube_ribbon.vert` | 1 | _no counterpart found_ | | |
-| `shaders/vfx_mesh.vert` | 1 | _no counterpart found_ | | |
-| `shaders/vulkan/color_prop_tier1.vert` | 2 | _no counterpart found_ | | |
-| `shaders/vulkan/mech_tier1.vert` | 4 | `shaders/include/lighting.hglsl` | glsl_port_diff registry | 2 |
-| `shaders/vulkan/mech_tier1.vert` | 4 | `shaders/mech.vert` | _tier1 name | 4 |
-| `shaders/vulkan/screen_shadow_csm.frag` | 1 | _no counterpart found_ | | |
-| `shaders/vulkan/shadow_prop.vert` | 1 | _no counterpart found_ | | |
-| `shaders/vulkan/vfx_particle.vert` | 1 | _no counterpart found_ | | |
 
 ## Sites
 
@@ -214,27 +191,6 @@ Shaders that carry sites, with their counterpart in the other backend. Twins mus
 - `mclib/mech3d_type.cpp:839` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
 - `mclib/mech3d_type.cpp:881` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
 
-### `shaders/mech.vert` (4)
-
-- `shaders/mech.vert:174` triplet-ctor: `-worldStuff.x, worldStuff.z, worldStuff.y`
-- `shaders/mech.vert:176` triplet-ctor: `-normalStuff.x, normalStuff.z, normalStuff.y`
-- `shaders/mech.vert:257` triplet-ctor: `-tStuff.x, tStuff.z, tStuff.y`
-- `shaders/mech.vert:285` triplet-ctor: `-sdStuff.x, sdStuff.z, sdStuff.y`
-
-### `shaders/terrain_lod_chunk.frag` (4)
-
-- `shaders/terrain_lod_chunk.frag:692` triplet-ctor: `-cameraPos.x, cameraPos.z, cameraPos.y`
-- `shaders/terrain_lod_chunk.frag:1504` triplet-ctor: `-cameraPos.x, cameraPos.z, cameraPos.y`
-- `shaders/terrain_lod_chunk.frag:1663` triplet-ctor: `-cameraPos.x, cameraPos.z, cameraPos.y`
-- `shaders/terrain_lod_chunk.frag:2112` triplet-ctor: `-cameraPos.x, cameraPos.z, cameraPos.y`
-
-### `shaders/vulkan/mech_tier1.vert` (4)
-
-- `shaders/vulkan/mech_tier1.vert:143` triplet-ctor: `-worldStuff.x, worldStuff.z, worldStuff.y`
-- `shaders/vulkan/mech_tier1.vert:145` triplet-ctor: `-normalStuff.x, normalStuff.z, normalStuff.y`
-- `shaders/vulkan/mech_tier1.vert:185` triplet-ctor: `-tStuff.x, tStuff.z, tStuff.y`
-- `shaders/vulkan/mech_tier1.vert:200` triplet-ctor: `-sdStuff.x, sdStuff.z, sdStuff.y`
-
 ### `code/terrobj.cpp` (3)
 
 - `code/terrobj.cpp:948` assign-triple: `actualPosition.x = -position.x; actualPosition.y = position.z; actualPosition.z = position.y;`
@@ -271,12 +227,6 @@ Shaders that carry sites, with their counterpart in the other backend. Twins mus
 - `mclib/mech3d.cpp:444` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
 - `mclib/mech3d.cpp:497` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
 
-### `shaders/static_prop.vert` (3)
-
-- `shaders/static_prop.vert:371` triplet-ctor: `-world_stuff.x, world_stuff.z, world_stuff.y`
-- `shaders/static_prop.vert:420` triplet-ctor: `-origin_stuff.x, origin_stuff.z, origin_stuff.y`
-- `shaders/static_prop.vert:653` triplet-ctor: `-worldNormal.x, worldNormal.z, worldNormal.y`
-
 ### `code/gamecam.cpp` (2)
 
 - `code/gamecam.cpp:652` triplet-brace: `-stuffRight.x, stuffRight.z, stuffRight.y`
@@ -306,31 +256,6 @@ Shaders that carry sites, with their counterpart in the other backend. Twins mus
 
 - `mclib/genactor.cpp:661` assign-triple: `objPosition.x = -position.x; objPosition.y = position.z; objPosition.z = position.y;`
 - `mclib/genactor.cpp:1134` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
-
-### `shaders/gos_tex_vertex_lighted.vert` (2)
-
-- `shaders/gos_tex_vertex_lighted.vert:152` triplet-ctor: `-WorldPos.x, WorldPos.z, WorldPos.y`
-- `shaders/gos_tex_vertex_lighted.vert:204` triplet-ctor: `-Normal.x, Normal.z, Normal.y`
-
-### `shaders/include/lighting.hglsl` (2)
-
-- `shaders/include/lighting.hglsl:284` triplet-ctor (port `calc_light`): `-ld.light_dir[i].x, ld.light_dir[i].z, ld.light_dir[i].y`
-- `shaders/include/lighting.hglsl:302` triplet-ctor (port `calc_light`): `-ld.light_dir[i].x, ld.light_dir[i].z, ld.light_dir[i].y`
-
-### `shaders/shadow_screen.frag` (2)
-
-- `shaders/shadow_screen.frag:270` triplet-ctor: `-N_stuff.x, N_stuff.z, N_stuff.y`
-- `shaders/shadow_screen.frag:317` triplet-ctor: `-objN_stuff.x, objN_stuff.z, objN_stuff.y`
-
-### `shaders/static_prop.frag` (2)
-
-- `shaders/static_prop.frag:544` triplet-ctor: `-N_stuff.x, N_stuff.z, N_stuff.y`
-- `shaders/static_prop.frag:547` triplet-ctor: `-L_stuff.x, L_stuff.z, L_stuff.y`
-
-### `shaders/vulkan/color_prop_tier1.vert` (2)
-
-- `shaders/vulkan/color_prop_tier1.vert:111` triplet-ctor: `-world_stuff.x, world_stuff.z, world_stuff.y`
-- `shaders/vulkan/color_prop_tier1.vert:193` triplet-ctor: `-worldNormalStuff.x, worldNormalStuff.z, worldNormalStuff.y`
 
 ### `tools/asset_viewer/TglMeshLoader.cpp` (2)
 
@@ -381,46 +306,25 @@ Shaders that carry sites, with their counterpart in the other backend. Twins mus
 
 - `mclib/terrain.cpp:3004` decl-chain: `-lookDir.x, ly = lookDir.z, lz = lookDir.y`
 
-### `shaders/building_pbr.vert` (1)
-
-- `shaders/building_pbr.vert:36` triplet-ctor: `-WorldPos.x, WorldPos.z, WorldPos.y`
-
-### `shaders/particle_billboard.vert` (1)
-
-- `shaders/particle_billboard.vert:115` triplet-ctor: `-stuffCenter.x, stuffCenter.z, stuffCenter.y`
-
-### `shaders/shadow_mech.vert` (1)
-
-- `shaders/shadow_mech.vert:39` triplet-ctor: `-worldStuff.x, worldStuff.z, worldStuff.y`
-
-### `shaders/shadow_object.vert` (1)
-
-- `shaders/shadow_object.vert:14` triplet-ctor: `-stuffPos.x, stuffPos.z, stuffPos.y`
-
-### `shaders/shadow_static_prop.vert` (1)
-
-- `shaders/shadow_static_prop.vert:36` triplet-ctor: `-worldStuff.x, worldStuff.z, worldStuff.y`
-
-### `shaders/tube_ribbon.vert` (1)
-
-- `shaders/tube_ribbon.vert:37` triplet-ctor: `-stuffPos.x, stuffPos.z, stuffPos.y`
-
-### `shaders/vfx_mesh.vert` (1)
-
-- `shaders/vfx_mesh.vert:34` triplet-ctor: `-stuffWorld.x, stuffWorld.z, stuffWorld.y`
-
-### `shaders/vulkan/screen_shadow_csm.frag` (1)
-
-- `shaders/vulkan/screen_shadow_csm.frag:139` triplet-ctor: `-objN_stuff.x, objN_stuff.z, objN_stuff.y`
-
-### `shaders/vulkan/shadow_prop.vert` (1)
-
-- `shaders/vulkan/shadow_prop.vert:60` triplet-ctor: `-worldStuff.x, worldStuff.z, worldStuff.y`
-
-### `shaders/vulkan/vfx_particle.vert` (1)
-
-- `shaders/vulkan/vfx_particle.vert:66` triplet-ctor: `-stuffCenter.x, stuffCenter.z, stuffCenter.y`
-
 ## Helper-call sites
 
+- `shaders/building_pbr.vert`: 1
+- `shaders/gos_tex_vertex_lighted.vert`: 2
+- `shaders/include/lighting.hglsl`: 2
+- `shaders/mech.vert`: 4
+- `shaders/particle_billboard.vert`: 1
+- `shaders/shadow_mech.vert`: 1
+- `shaders/shadow_object.vert`: 1
+- `shaders/shadow_screen.frag`: 2
+- `shaders/shadow_static_prop.vert`: 1
+- `shaders/static_prop.frag`: 2
+- `shaders/static_prop.vert`: 3
+- `shaders/terrain_lod_chunk.frag`: 4
+- `shaders/tube_ribbon.vert`: 1
+- `shaders/vfx_mesh.vert`: 1
+- `shaders/vulkan/color_prop_tier1.vert`: 2
+- `shaders/vulkan/mech_tier1.vert`: 4
+- `shaders/vulkan/screen_shadow_csm.frag`: 1
+- `shaders/vulkan/shadow_prop.vert`: 1
+- `shaders/vulkan/vfx_particle.vert`: 1
 - `tools/class_light_band_harness/class_light_band_harness.cpp`: 13
