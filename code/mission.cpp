@@ -97,8 +97,7 @@ float simSpeedGetMultiplier()
 {
 	if (s_simSpeedRuntime < 0.0f)
 	{
-		const char* env = getenv("MC2_SIM_SPEED");
-		s_simSpeedRuntime = env ? simSpeedClamp((float)atof(env)) : 1.0f;
+		s_simSpeedRuntime = mc2::gate::get<"MC2_SIM_SPEED">();   // the row clamps to [0.25, 4]
 	}
 	return s_simSpeedRuntime;
 }
@@ -148,7 +147,7 @@ static bool devShellSimSpeed(const char* paramsJson,
 
 static void simClockTraceTick(float scenarioTimeNow)
 {
-	static const bool s_traceEnabled = (getenv("MC2_SIM_CLOCK_TRACE") != nullptr);
+	static const bool s_traceEnabled = mc2::gate::get<"MC2_SIM_CLOCK_TRACE">();
 	if (!s_traceEnabled)
 		return;
 
@@ -281,6 +280,8 @@ static void simClockTraceTick(float scenarioTimeNow)
 #include "../GameOS/gameos/gpu_cull_compute.h"   // C1a: GPU visibility compute dispatch
 #include "../GameOS/gameos/gpu_cull_readback.h"  // C2: async readback ring buffer
 #include "../GameOS/gameos/gos_terrain_lighting.h"  // Phase 1: terrain lighting GPU compute
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"   // str<>()
 
 //----------------------------------------------------------------------------------
 // Macro Definitions
@@ -493,7 +494,7 @@ extern bool 			invulnerableON;		//Used for tutorials so mechs can take damage, b
 #include "brain_order_intent.h"  // ABL-VM-FACTS-1: getBrainTickIndex()
 extern int32_t NumStateTransitions;  // ABL-VM-FACTS-1: read at mission-brain fire exit
 namespace {
-	static const bool s_misSplit = (getenv("MC2_MISSION_SPLIT") != nullptr);
+	static const bool s_misSplit = mc2::gate::get<"MC2_MISSION_SPLIT">();
 	enum { MS_LAND_UPDATE=0, MS_PATHMGR, MS_CLEAR_BLOCKS, MS_CLEAR_VERTS,
 	       MS_TERRAIN_TEX, MS_GEOMETRY, MS_OBJMGR,
 	       MS_TOTAL, MS_CLEARARRAYS, MS_INTERFACE, MS_CAMERA, MS_VTOL, MS_WEATHER, MS_WAYPOINTS,
@@ -541,14 +542,10 @@ namespace {
 // docs/superpowers/strategy/runtime-bridge-architecture.md Phase 3 sec 11.
 //----------------------------------------------------------------------------------
 namespace {
-	static const bool  s_bridgeMoverState =
-		(getenv("MC2_BRIDGE_MOVER_STATE") != nullptr);
+	static const bool  s_bridgeMoverState = mc2::gate::get<"MC2_BRIDGE_MOVER_STATE">();
 	static float s_bridgeNextEmitTime = 0.0f;   // scenarioTime of next burst
 	static float bridgeMoverPeriodSec() {
-		const char* e = getenv("MC2_BRIDGE_MOVER_PERIOD_SEC");
-		float p = e ? (float)atof(e) : 2.0f;
-		if (p < 0.25f) p = 0.25f;
-		return p;
+		return mc2::gate::get<"MC2_BRIDGE_MOVER_PERIOD_SEC">();   // the row clamps to >= 0.25
 	}
 
 	// Short name for the warrior status enum (see warrior.h WARRIOR_STATUS_*).
@@ -672,21 +669,16 @@ namespace {
 	// Auto-win the running mission after MC2_SOAK_WIN_AFTER_SEC of scenario
 	// time so a campaign booted via MC2_BOOT_TO_BAY walks itself end-to-end
 	// unattended. Gated entirely on the env flag; default OFF = byte-identical.
-	static const bool s_soakAutoWin =
-		(getenv("MC2_SOAK_AUTOWIN") != nullptr);
+	static const bool s_soakAutoWin = mc2::gate::get<"MC2_SOAK_AUTOWIN">();
 	static float soakWinAfterSec() {
-		const char* e = getenv("MC2_SOAK_WIN_AFTER_SEC");
-		float p = e ? (float)atof(e) : 5.0f;
-		if (p < 0.0f) p = 0.0f;
-		return p;
+		return mc2::gate::get<"MC2_SOAK_WIN_AFTER_SEC">();   // the row clamps to >= 0
 	}
 
 	// --- MC2_SOAK_KILL_ENEMY -------------------------------------------------
 	// When set, kills one random live enemy BattleMech before autowin fires so
 	// the salvage screen has a candidate, and then programmatically salvages it
 	// into LogisticsData inventory.  Default OFF = byte-identical when unset.
-	static const bool s_soakKillEnemy =
-		(getenv("MC2_SOAK_KILL_ENEMY") != nullptr);
+	static const bool s_soakKillEnemy = mc2::gate::get<"MC2_SOAK_KILL_ENEMY">();
 
 	// Stores the variantName of the enemy killed this mission so the next
 	// mission can assert it reached the load-bay inventory.
@@ -702,8 +694,7 @@ namespace {
 	// -> tradeMover -> orderPowerUp) on ONE disabled enemy mech before autowin,
 	// so LogisticsData::setMissionCompleted's recovered-mech carry-over branch
 	// is what the Phase-3 load-bay check verifies. Default OFF = byte-identical.
-	static const bool s_soakSalvageTrademover =
-		(getenv("MC2_SOAK_SALVAGE_TRADEMOVER") != nullptr);
+	static const bool s_soakSalvageTrademover = mc2::gate::get<"MC2_SOAK_SALVAGE_TRADEMOVER">();
 	static bool s_soakTradeDone = false;     // armed once per mission
 
 	// --- MC2_SOAK_PILOT_PROMOTE ----------------------------------------------
@@ -711,8 +702,7 @@ namespace {
 	// threshold, then runs the same promotePilot() call the UI uses.
 	// Throttled to mission-index 2 and 5 within a campaign (1-based).
 	// Default OFF = byte-identical when unset.
-	static const bool s_soakPilotPromote =
-		(getenv("MC2_SOAK_PILOT_PROMOTE") != nullptr);
+	static const bool s_soakPilotPromote = mc2::gate::get<"MC2_SOAK_PILOT_PROMOTE">();
 	static bool s_soakPromoteFired = false;  // armed once per mission
 
 	// --- MC2_FIXTURE_ORDER_LIVENESS (META-FIX design F) -----------------------
@@ -736,8 +726,7 @@ namespace {
 	// env (VEG-SMOKE-FLOOR activation pattern); consumed by
 	// scripts/check-order-liveness.py. Default OFF = byte-identical.
 	static const bool s_fixtureOrderLiveness =
-		(getenv("MC2_FIXTURE_ORDER_LIVENESS") != nullptr &&
-		 getenv("MC2_FIXTURE_ORDER_LIVENESS")[0] != '0');
+		mc2::gate::get<"MC2_FIXTURE_ORDER_LIVENESS">();
 	struct OrderLivenessEntry {
 		unsigned long   wid;
 		Stuff::Vector3D startPos;
@@ -793,8 +782,7 @@ namespace {
 	// MOVER-COHERENCE-AUDIT-BEGIN (S6 scan region: position-free by contract —
 	// scripts/check-mover-registry-coherence.sh forbids positional terms in
 	// this whole block; off-map staging is a legitimate mover state.)
-	static const bool s_moverCoherenceAudit =
-		mc2AuditLatch("MC2_MOVER_COHERENCE_AUDIT");
+	static const bool s_moverCoherenceAudit = mc2::gate::get<"MC2_MOVER_COHERENCE_AUDIT">();
 	static float s_cohNextAuditTime = 0.0f;
 	static long  s_cohChecked    = 0;   // mover-rule evaluations (cumulative)
 	static long  s_cohViolations = 0;
@@ -1154,10 +1142,7 @@ long Mission::update (void)
 		// pans and the editor run their own loops and self-publish, so this
 		// never clobbers their publish.
 		{
-			static const bool s_mvpPublishEarly = []() {
-				const char* v = getenv("MC2_MVP_PUBLISH_EARLY");
-				return !(v && atoi(v) == 0);  // default ON; only =0 reverts
-			}();
+			static const bool s_mvpPublishEarly = mc2::gate::get<"MC2_MVP_PUBLISH_EARLY">();
 			if (s_mvpPublishEarly && eye && eye->active && turn > 1)
 			{
 				gos_SetWorldToClipGL(eye->worldToClipGL());
@@ -1256,13 +1241,7 @@ long Mission::update (void)
 				s_moverCells.push_back((mp.x + halfMap) / wupv);
 				s_moverCells.push_back((halfMap - mp.y) / wupv);
 			}
-			static const float s_objfadeRadiusWu = []() {
-				const char* v = getenv("MC2_TERRAIN_VISUAL_DISPLACE_OBJFADE_RADIUS");
-				float r = (v && v[0]) ? (float)atof(v) : 256.0f;
-				if (r < 32.0f) r = 32.0f;
-				if (r > 1024.0f) r = 1024.0f;
-				return r;
-			}();
+			static const float s_objfadeRadiusWu = mc2::gate::get<"MC2_TERRAIN_VISUAL_DISPLACE_OBJFADE_RADIUS">();   // the row clamps to [32, 1024]
 			gos_TerrainLodChunk_UpdateVisualDampMovers(
 				s_moverCells.data(), (int)(s_moverCells.size() / 2),
 				s_objfadeRadiusWu / wupv, 48.0f / wupv);
@@ -2929,13 +2908,12 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 	// Seed = hash(missionName), overridable with MC2_RNG_SEED for manual pinning.
 	// Gate OFF: this block is a no-op (no gos_srand call) => OFF byte-identical.
 	{
-		const char* detEnv = getenv("MC2_DETERMINISTIC_RNG");
-		const bool detRng = (detEnv && detEnv[0] != '\0' && detEnv[0] != '0');
+		const bool detRng = mc2::gate::get<"MC2_DETERMINISTIC_RNG">();
 		if (detRng) {
 			uint32_t seed = mc2_det_rng::hashMissionName(missionName);
-			const char* seedEnv = getenv("MC2_RNG_SEED");
-			if (seedEnv && seedEnv[0] != '\0')
-				seed = (uint32_t)strtoul(seedEnv, nullptr, 0);
+			const std::string seedText = mc2::gate::str<"MC2_RNG_SEED">();   // "" when unset or empty
+			if (!seedText.empty())
+				seed = (uint32_t)strtoul(seedText.c_str(), nullptr, 0);
 			gos_srand(seed);
 			std::fprintf(stderr, "[DET_RNG] mission=%s reseed=0x%08X (MC2_DETERMINISTIC_RNG=1)\n",
 			             missionName ? missionName : "(null)", seed);
@@ -3344,7 +3322,7 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 	// verify; a helper that forgot the home aliases leaves them dangling. The
 	// statics are left empty (as at entry), so the real init below is untouched.
 	{
-		static const bool s_missionCycleTest = (getenv("MC2_MISSION_CYCLE_TEST") != nullptr);
+		static const bool s_missionCycleTest = mc2::gate::get<"MC2_MISSION_CYCLE_TEST">();
 		if (s_missionCycleTest) {
 			// State must be quiescent here (the reset above just ran).
 			MC2_VERIFY(Team::numTeams == 0 && Commander::numCommanders == 0,
@@ -3759,7 +3737,7 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 		{ "corebrain", false },   // MCO / wolfman-MC2X core
 		{ "mc2xcore",  false },   // cveg / MC2X-R52 core
 	};
-	const bool ablCoreTrace = (std::getenv("MC2_ABL_CORE_TRACE") && std::atoi(std::getenv("MC2_ABL_CORE_TRACE")) != 0);
+	const bool ablCoreTrace = mc2::gate::get<"MC2_ABL_CORE_TRACE">();
 	for (const AblCoreLib& lib : kAblCoreLibs) {
 		FullPathFileName libPath;
 		libPath.init(missionPath, lib.name, ".abx");
@@ -3800,8 +3778,7 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 	// drives. Gate MC2_BRAIN_INLINE_EMPTY_SKIP (default OFF); stock ScenarioScript is never empty
 	// so stock is byte-identical.
 	if (missionScriptName[0] == '\0' &&
-	    std::getenv("MC2_BRAIN_INLINE_EMPTY_SKIP") &&
-	    std::atoi(std::getenv("MC2_BRAIN_INLINE_EMPTY_SKIP")) != 0) {
+	    mc2::gate::get<"MC2_BRAIN_INLINE_EMPTY_SKIP">()) {
 		char legacyScriptName[80] = {0};
 		if (missionFile->readIdString("LegacyScenarioScript", legacyScriptName, 79) == NO_ERR &&
 		    legacyScriptName[0] != '\0') {
@@ -3951,8 +3928,7 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 			// (default OFF). Stock missions always name a brain, so stock is byte-identical — the
 			// guard only fires on an empty, non-MPlayer name.
 			static const bool inlineEmptySkip =
-				(std::getenv("MC2_BRAIN_INLINE_EMPTY_SKIP") &&
-				 std::atoi(std::getenv("MC2_BRAIN_INLINE_EMPTY_SKIP")) != 0);
+				mc2::gate::get<"MC2_BRAIN_INLINE_EMPTY_SKIP">();
 			if (inlineEmptySkip && !MPlayer && moduleName[0] == '\0')
 			{
 				// No legacy ABL brain; the inline Brain{} block drives this warrior.
@@ -3979,7 +3955,7 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 			}
 		}
 	}
-	if (std::getenv("MC2_SOAK_AUTOWIN") != nullptr || soakBrainsFailed > 0)
+	if (mc2::gate::get<"MC2_SOAK_AUTOWIN">() || soakBrainsFailed > 0)
 	{
 		printf("[SOAK] abl mission brains loaded=%ld failed=%ld\n",
 			soakBrainsLoaded, soakBrainsFailed);
@@ -3992,8 +3968,7 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 		// BRAIN-EMPTY-BRAIN-SKIP-1: inline-Brain warriors carry no ABL brain (skipped above),
 		// so loadBrainParameters would Fatal(0,"NULL brain"). Skip them under the same gate.
 		static const bool inlineEmptySkipParams =
-			(std::getenv("MC2_BRAIN_INLINE_EMPTY_SKIP") &&
-			 std::atoi(std::getenv("MC2_BRAIN_INLINE_EMPTY_SKIP")) != 0);
+			mc2::gate::get<"MC2_BRAIN_INLINE_EMPTY_SKIP">();
 		for (unsigned long i = 1; i <= numWarriors; i++) {
 			if (inlineEmptySkipParams && MechWarrior::warriorList[i] &&
 			    !MechWarrior::warriorList[i]->getBrain())
@@ -4016,7 +3991,7 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 	// NOT fopen). Gate MC2_BRAIN_MISSIONFIT_OPORD (default OFF). Populates the existing
 	// MechBrainRuntime patrol structures (BRAIN-OPORD-COREPATROL-1); the brain bundle drives them
 	// (the patrol FIELDS persist through later _ai.fit/tactic loaders, which only touch mode).
-	if (std::getenv("MC2_BRAIN_MISSIONFIT_OPORD") && std::atoi(std::getenv("MC2_BRAIN_MISSIONFIT_OPORD")) != 0) {
+	if (mc2::gate::get<"MC2_BRAIN_MISSIONFIT_OPORD">()) {
 		File mfFile;
 		if (mfFile.open(missionFileName) == NO_ERR) {
 			unsigned long mfSz = mfFile.getLength();
@@ -4161,7 +4136,7 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 	// Gate: MC2_BRAIN_RUNTIME=1 (default OFF). File absence is silent (no fixture = all Legacy).
 	// Single-warrior fixture only: one Brain block keyed "Brain". unitRef "Warrior%d" -> idx.
 	// MC2_BRAIN_RUNTIME_FORCE_MODE (if set) overrides all per-unit modes as a post-load global.
-	if (std::getenv("MC2_BRAIN_RUNTIME") && std::atoi(std::getenv("MC2_BRAIN_RUNTIME")) != 0) {
+	if (mc2::gate::get<"MC2_BRAIN_RUNTIME">()) {
 		char aiFitName[256];
 		// missionName is the raw name like "mc2_01"; missionPath is "data/missions/".
 		std::snprintf(aiFitName, sizeof(aiFitName), "%s%s_ai.fit", missionPath, missionName);
@@ -4205,11 +4180,10 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 			aiFit->close();
 		}
 		// MC2_BRAIN_RUNTIME_FORCE_MODE overrides all per-unit modes (post-load global override).
-		const char* forceModeEnv = std::getenv("MC2_BRAIN_RUNTIME_FORCE_MODE");
-		if (forceModeEnv) {
-			BrainRuntimeMode forced = BrainRuntimeMode::Legacy;
-			if      (std::strcmp(forceModeEnv, "hybrid")   == 0) forced = BrainRuntimeMode::Hybrid;
-			else if (std::strcmp(forceModeEnv, "enhanced") == 0) forced = BrainRuntimeMode::Enhanced;
+		if (mc2::gate::isSet<"MC2_BRAIN_RUNTIME_FORCE_MODE">()) {
+			BrainRuntimeMode forced = BrainRuntimeMode::Legacy;   // "legacy" and any other text force Legacy
+			if      (mc2::gate::is<"MC2_BRAIN_RUNTIME_FORCE_MODE", "hybrid">())   forced = BrainRuntimeMode::Hybrid;
+			else if (mc2::gate::is<"MC2_BRAIN_RUNTIME_FORCE_MODE", "enhanced">()) forced = BrainRuntimeMode::Enhanced;
 			for (unsigned long i = 1; i <= numWarriors; i++) {
 				MechWarriorPtr w = MechWarrior::warriorList[i];
 				if (w && w->getBrainRuntime())
@@ -4226,7 +4200,7 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 	// Normalisation is enforced at load time (sum→1); weightsNormalized flag set.
 	// Both raw-zero and absent-block warriors keep tacticWeights all-zero (FIT fallback
 	// uses uniform weights via the all-zero branch in applyPilotModulation).
-	if (std::getenv("MC2_TACTIC_WEIGHTS") && std::atoi(std::getenv("MC2_TACTIC_WEIGHTS")) != 0) {
+	if (mc2::gate::get<"MC2_TACTIC_WEIGHTS">()) {
 		char tacFitName[256];
 		std::snprintf(tacFitName, sizeof(tacFitName), "%s%s_ai.fit", missionPath, missionName);
 		FitIniFile* tacFit = new FitIniFile;
@@ -4297,10 +4271,10 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 	// Scan is done once per mission (not per-warrior) because the file is mission-level.
 	// Gate-OFF: byte-identical to pre-1C; no extra parsing, no extra traces.
 	{
-		const bool dispatchOn   = (std::getenv("MC2_BRAIN_DISPATCH")         && std::atoi(std::getenv("MC2_BRAIN_DISPATCH"))         != 0);
-		const bool fsmTodoOn    = (std::getenv("MC2_BRAIN_DISPATCH_FSM_TODO") && std::atoi(std::getenv("MC2_BRAIN_DISPATCH_FSM_TODO")) != 0);
-		const bool dispatchVarOn = (std::getenv("MC2_BRAIN_DISPATCH_VAR")     && std::atoi(std::getenv("MC2_BRAIN_DISPATCH_VAR"))     != 0);
-		const bool missionVarOn  = (std::getenv("MC2_BRAIN_VAR_MISSION")      && std::atoi(std::getenv("MC2_BRAIN_VAR_MISSION"))      != 0);
+		const bool dispatchOn   = mc2::gate::get<"MC2_BRAIN_DISPATCH">();
+		const bool fsmTodoOn    = mc2::gate::get<"MC2_BRAIN_DISPATCH_FSM_TODO">();
+		const bool dispatchVarOn = mc2::gate::get<"MC2_BRAIN_DISPATCH_VAR">();
+		const bool missionVarOn  = mc2::gate::get<"MC2_BRAIN_VAR_MISSION">();
 
 		// GAP-A: reset the mission-level specials cache at every mission load (unconditional;
 		// produces no trace, so gate-OFF runs stay byte-identical). Prevents a stale cache
@@ -4328,8 +4302,8 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 			// DISPATCH-EFFECT-UNITEJECT-1: MC2_BRAIN_SPECIAL_FIT allows test-fixture override.
 			// When set, ALL warriors load from <override>_specials.fit instead of <mission>_specials.fit.
 			// Intended for smoke gate verification only. Default: missionName (standard behavior).
-			const char* specialFitEnv = std::getenv("MC2_BRAIN_SPECIAL_FIT");
-			const char* specialFitName = (specialFitEnv && specialFitEnv[0] != '\0') ? specialFitEnv : missionName;
+			const std::string specialFitText = mc2::gate::str<"MC2_BRAIN_SPECIAL_FIT">();   // "" when unset or empty
+			const char* specialFitName = specialFitText.empty() ? missionName : specialFitText.c_str();
 
 			std::fprintf(stderr, "[BRAIN_DISPATCH] mission load: MC2_BRAIN_DISPATCH=1 mission=%s special_fit=%s\n",
 			             missionName, specialFitName);
@@ -4827,7 +4801,7 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 	// the previous mission's state into this mission).
 	gos_ResetStaticShadowPriming();
 	mc_ResetTerrainShadowPrimed();
-	if (getenv("MC2_DECOR_SHADOW_TRACE")) {
+	if (mc2::gate::get<"MC2_DECOR_SHADOW_TRACE">()) {
 		printf("[DECOR_SHADOW v1] event=mission_reset_priming frame=%u\n",
 		       g_mc2FrameCounter); fflush(stdout);
 	}
@@ -5205,7 +5179,7 @@ void Mission::start (void)
 	// visibility term (no getPosition, no canBeSeen, no in-view test);
 	// check-tgl-load-callers.sh pins this region position-free.)
 	{
-		static const bool s_appearAudit = mc2AuditLatch("MC2_APPEAR_AUDIT");
+		static const bool s_appearAudit = mc2::gate::get<"MC2_APPEAR_AUDIT">();
 		if (s_appearAudit && ObjectManager)
 		{
 			long scanned = 0, missing = 0;
