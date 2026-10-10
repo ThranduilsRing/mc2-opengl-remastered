@@ -1461,7 +1461,7 @@ L(Lead1, "MC2_VFX_BLACKBODY", Bool, false, "gameos", "", "", verified),
 // history: docs/gate-history.md#MC2_VFX_DEBUG_MODE
 P("MC2_VFX_DEBUG_MODE", Int, 0, "gameos", "", "VFX-DEBUG-VIEWS-1: GPU particle billboard fragment-shader debug-mode selector (particle_billboard.frag u_debugMode, uploaded by gos_particle_bridge).", passthrough | range(0.0, 5.0) | registry(Trace, "MC2_DIAG_VFX_DEBUG_MODE", -1, false) | verified),  // default not derivable from the tree
 L(Lead1, "MC2_VFX_DISTORTION", Bool, false, "gameos", "", "", verified),
-P("MC2_VFX_DISTORT_AMP", Float, 0.04, "gameos", "", "Screen-UV wobble amplitude of the distortion pass; outside (0, 0.5] reads the default.", rangeAbove(0.0, 0.5) | verified),
+P("MC2_VFX_DISTORT_AMP", Float, 0.04, "gameos", "", "Screen-UV wobble amplitude of the distortion pass; outside (0, 0.5) reads the default.", rangeAbove(0.0, 0.4999999701976776) | verified),
 L(Lead1, "MC2_VFX_DISTORT_FIXTURE", Bool, false, "gameos", "", "", verified),
 // history: docs/gate-history.md#MC2_VFX_GPU_SIM_CARDCLOUD
 L(Lead1, "MC2_VFX_GPU_SIM_CARDCLOUD", Bool, false, "code", "", "VFX-GPU-SIM-CARDCLOUD-BUFFER-1 (Stage 2 of the originals-restoration arc; docs/vfx-gpu-sim-spec.md).", registry(Feature, "MC2_FEATURE_VFX_GPU_SIM_CARDCLOUD", 24, false) | verified),

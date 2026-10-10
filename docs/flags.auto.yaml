@@ -7674,8 +7674,8 @@ flags:
     default: 0.0399999991
     rule: Prefix
     owner: gameos
-    doc: "Screen-UV wobble amplitude of the distortion pass; outside (0, 0.5] reads the default."
-    range: {lo: 0, hi: 0.5, style: reject, lo_exclusive: true}
+    doc: "Screen-UV wobble amplitude of the distortion pass; outside (0, 0.5) reads the default."
+    range: {lo: 0, hi: 0.4999999701976776, style: reject, lo_exclusive: true}
     verified: true
   - name: MC2_VFX_DISTORT_FIXTURE
     kind: Bool
