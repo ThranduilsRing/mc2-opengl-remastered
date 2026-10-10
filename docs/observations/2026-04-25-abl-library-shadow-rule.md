@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # ABL native-vs-library shadow rule
 
 ## TL;DR
