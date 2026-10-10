@@ -30,6 +30,11 @@ set(SOURCES ${SOURCES}
     tgl_types.cpp
     timing.cpp
     txmmgr.cpp
+    txmmgr_diag.cpp
+    txmmgr_lightrow.cpp
+    txmmgr_lights.cpp
+    txmmgr_render.cpp
+    txmmgr_texture.cpp
     tex_resolve_table.cpp
     userinput.cpp
     vk_umbrella_gate.cpp

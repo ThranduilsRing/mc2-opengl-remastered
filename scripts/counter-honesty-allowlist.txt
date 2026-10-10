@@ -111,11 +111,11 @@ mclib/tex_resolve_table.cpp::s_oobCount++ < kMaxOobPrints
 mclib/tgl_types.cpp::s_mslBoundsWarnings++ < 8
 mclib/tgl_render.cpp::s_pbrRenderTrace < 64
 mclib/tgl_render.cpp::s_seenCount < 64
-mclib/txmmgr.cpp::s_cullProbeFrames < 8
-mclib/txmmgr.cpp::s_frames < 60
-mclib/txmmgr.cpp::s_lbFirstSeenIndex.size() <= 32
-mclib/txmmgr.cpp::s_lbParityChecks <= 32
-mclib/txmmgr.cpp::s_lbStabilityViolations <= 32
+mclib/txmmgr_render.cpp::s_cullProbeFrames < 8
+mclib/txmmgr_render.cpp::s_frames < 60
+mclib/txmmgr_lights.cpp::s_lbFirstSeenIndex.size() <= 32
+mclib/txmmgr_lights.cpp::s_lbParityChecks <= 32
+mclib/txmmgr_lights.cpp::s_lbStabilityViolations <= 32
 
 # ---------------------------------------------------------------------------
 # FALSE "DECLARED" SITES, exposed when R2 was tightened to require the token in
@@ -136,4 +136,4 @@ editor/EditorDebugOverlay.cpp::s_warned < 3
 editor/EditorDebugOverlay.cpp::s_logged < 3
 mclib/move_recon.cpp::s_pcBurstPrints < 30
 mclib/move_recon.cpp::s_chunkShadowSamplePrints < 40
-mclib/txmmgr.cpp::s_pbrRenderTrace < 64
+mclib/txmmgr_render.cpp::s_pbrRenderTrace < 64

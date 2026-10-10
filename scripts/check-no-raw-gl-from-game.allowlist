@@ -11,7 +11,7 @@ mclib/render_contract.cpp
 # Calls: glFinish (~2003, gated by s_finishProbe/MC2_FLUSH_PROBE),
 #        glMemoryBarrier (~2282), glGetNamedBufferSubData (~2286, ~2288, ~2294)
 #        (all gated by MC2_CAMERA_MOVE_DIAG, diagnostic-only, default-OFF)
-mclib/txmmgr.cpp
+mclib/txmmgr_render.cpp
 
 # MERGE-WAVE-2 reconcile (2026-07-22):
 # Diagnostic-only preview probes, all env-gated default-OFF (MC2_LOG_PREVIEW
