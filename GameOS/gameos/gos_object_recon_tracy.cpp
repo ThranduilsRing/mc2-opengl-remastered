@@ -25,6 +25,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include "Gates/gate.h"
 
 extern "C" void crashbundle_append(const char* line); // mclib/tgl.cpp helper
 
@@ -92,8 +93,7 @@ void initFromEnv() {
     if (s_initDone) return;
     s_initDone = true;
 
-    const char* env = std::getenv("MC2_OBJECT_RECON_TRACY");
-    g_enabled = (env != nullptr && env[0] != '\0' && env[0] != '0');
+    g_enabled = mc2::gate::get<"MC2_OBJECT_RECON_TRACY">();
 
     if (g_enabled) {
         std::puts("[OBJECT_RECON v1] event=enabled note=accumulators_active");
