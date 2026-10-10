@@ -66,8 +66,8 @@
    "LG16": 7,
    "LG17": 81,
    "LG18": 11,
-   "LG19": 63,
-   "LG20": 96
+   "LG19": 59,
+   "LG20": 92
   },
   "GuiRuntime": {
    "LG01": 1,
@@ -998,9 +998,7 @@
   "GameOS/gameos/gpu_cull_readback.cpp": {
    "LG03": 2,
    "LG09": 14,
-   "LG12b": 2,
-   "LG19": 4,
-   "LG20": 4
+   "LG12b": 2
   },
   "GameOS/gameos/gpu_cull_record.cpp": {
    "LG09": 1
@@ -5833,7 +5831,7 @@
    "LG20": 1
   }
  },
- "head": "b9bd8b60d",
+ "head": "ff417c694",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
