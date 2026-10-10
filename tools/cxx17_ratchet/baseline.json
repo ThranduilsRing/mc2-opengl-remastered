@@ -1874,16 +1874,10 @@
    "LG02": 1
   },
   "code/controlgui.cpp": {
-   "LG01": 21,
-   "LG03": 34,
-   "LG06": 7,
-   "LG09": 119,
-   "LG10": 1,
-   "LG11": 1,
-   "LG12a": 8,
-   "LG12b": 21,
-   "LG13": 2,
-   "LG14": 1
+   "LG01": 7,
+   "LG03": 15,
+   "LG09": 12,
+   "LG12a": 1
   },
   "code/controlgui.h": {
    "LG01": 1,
@@ -1891,6 +1885,53 @@
    "LG13": 5,
    "LG14": 3,
    "LG17": 2
+  },
+  "code/controlgui_chat.cpp": {
+   "LG01": 4,
+   "LG03": 2,
+   "LG06": 2,
+   "LG09": 2,
+   "LG11": 1
+  },
+  "code/controlgui_hudtabs.cpp": {
+   "LG06": 1,
+   "LG09": 13,
+   "LG12a": 2,
+   "LG12b": 1
+  },
+  "code/controlgui_init.cpp": {
+   "LG01": 1,
+   "LG03": 16,
+   "LG06": 1,
+   "LG09": 4,
+   "LG12a": 1,
+   "LG12b": 10
+  },
+  "code/controlgui_internal.h": {
+   "LG13": 2
+  },
+  "code/controlgui_objectives.cpp": {
+   "LG01": 6,
+   "LG06": 3,
+   "LG09": 55,
+   "LG12b": 4
+  },
+  "code/controlgui_render.cpp": {
+   "LG09": 19,
+   "LG10": 1,
+   "LG12b": 4
+  },
+  "code/controlgui_update.cpp": {
+   "LG01": 2,
+   "LG03": 1,
+   "LG09": 10,
+   "LG12a": 4,
+   "LG14": 1
+  },
+  "code/controlgui_vehicle.cpp": {
+   "LG01": 1,
+   "LG09": 4,
+   "LG12b": 2
   },
   "code/damage_schema.h": {
    "LG06": 3,
@@ -3719,13 +3760,8 @@
    "LG17": 1
   },
   "mclib/camera.cpp": {
-   "LG01": 10,
-   "LG05": 3,
-   "LG09": 65,
-   "LG10": 12,
-   "LG12a": 7,
-   "LG12b": 1,
-   "LG13": 13
+   "LG01": 7,
+   "LG09": 14
   },
   "mclib/camera.h": {
    "LG01": 7,
@@ -3733,9 +3769,39 @@
    "LG13": 6,
    "LG14": 1
   },
+  "mclib/camera_daylight.cpp": {
+   "LG09": 15,
+   "LG10": 6
+  },
   "mclib/camera_frustum_math.h": {
    "LG05": 1,
    "LG09": 3
+  },
+  "mclib/camera_input.cpp": {
+   "LG10": 4,
+   "LG13": 1
+  },
+  "mclib/camera_internal.h": {
+   "LG13": 9
+  },
+  "mclib/camera_matrix.cpp": {
+   "LG09": 17,
+   "LG12a": 3,
+   "LG12b": 1,
+   "LG13": 3
+  },
+  "mclib/camera_project.cpp": {
+   "LG01": 2,
+   "LG05": 2,
+   "LG09": 18,
+   "LG12a": 2
+  },
+  "mclib/camera_update.cpp": {
+   "LG01": 1,
+   "LG05": 1,
+   "LG09": 1,
+   "LG10": 2,
+   "LG12a": 2
   },
   "mclib/celine.h": {
    "LG01": 1
@@ -5581,23 +5647,43 @@
    "LG13": 1
   },
   "mclib/terrain.cpp": {
-   "LG01": 59,
-   "LG03": 16,
+   "LG01": 44,
+   "LG03": 10,
    "LG05": 1,
-   "LG09": 144,
-   "LG10": 2,
-   "LG11": 9,
-   "LG12a": 66,
-   "LG12b": 11,
-   "LG13": 4,
-   "LG14": 1,
-   "LG17": 1
+   "LG09": 19,
+   "LG12a": 1
   },
   "mclib/terrain.h": {
    "LG01": 1,
    "LG02": 2,
    "LG13": 21,
    "LG14": 2
+  },
+  "mclib/terrain_geometry.cpp": {
+   "LG01": 2,
+   "LG09": 15,
+   "LG12a": 7,
+   "LG13": 3,
+   "LG14": 1
+  },
+  "mclib/terrain_init.cpp": {
+   "LG01": 13,
+   "LG03": 6,
+   "LG09": 69,
+   "LG11": 9,
+   "LG12a": 30,
+   "LG12b": 10
+  },
+  "mclib/terrain_internal.h": {
+   "LG13": 1,
+   "LG17": 1
+  },
+  "mclib/terrain_raycast.cpp": {
+   "LG09": 4
+  },
+  "mclib/terrain_render.cpp": {
+   "LG09": 21,
+   "LG12a": 10
   },
   "mclib/terrain_runtime.cpp": {
    "LG09": 1,
@@ -5611,6 +5697,12 @@
   },
   "mclib/terrain_surface_trace.h": {
    "LG12a": 1
+  },
+  "mclib/terrain_update.cpp": {
+   "LG09": 16,
+   "LG10": 2,
+   "LG12a": 18,
+   "LG12b": 1
   },
   "mclib/terrtxm.cpp": {
    "LG01": 41,
@@ -5908,7 +6000,7 @@
    "LG20": 2
   }
  },
- "head": "a51e094d1",
+ "head": "701b05933",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
