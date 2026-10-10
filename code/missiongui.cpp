@@ -57,7 +57,7 @@ namespace missiongui_detail {
 }
 using namespace missiongui_detail;
 
-	static const char* terrainStr[NUM_TERRAIN_TYPES] = {
+	const char* terrainStr[NUM_TERRAIN_TYPES] = {
 			"Blue Water",	//MC_BLUEWATER_TYPE
 			"Green Water",	//MC_GREEN_WATER_TYPE
 			"Mud",	//MC_MUD_TYPE
