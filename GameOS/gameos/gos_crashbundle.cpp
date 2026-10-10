@@ -10,6 +10,7 @@
 //     the stack — no resource file required.
 
 #include "gos_crashbundle.h"
+#include "Gates/gate.h"
 #include "build_fingerprint.h"  // MC2_BUILD_GIT_SHA (real macro; MC2_BUILD_HASH never defined)
 
 #ifndef _WIN32
@@ -107,11 +108,6 @@ extern "C" void crashbundle_append(const char* line)
     g_ring[(cur + n) % kRingBytes] = '\n';
     g_ring_cursor = cur + (LONG64)n + 1;
     InterlockedExchange(&g_ring_lock, 0);
-}
-
-static void read_env_flag(const char* name, int* out)
-{
-    *out = (getenv(name) != NULL) ? 1 : 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -673,22 +669,22 @@ extern "C" void crashbundle_init(void)
     if (g_cfg.initialized) return;
     g_cfg.initialized = 1;
 
-    read_env_flag("MC2_TGL_POOL_TRACE",       &g_cfg.tgl_pool_trace);
-    read_env_flag("MC2_DESTROY_TRACE",        &g_cfg.destroy_trace);
-    read_env_flag("MC2_GL_ERROR_DRAIN_SILENT",&g_cfg.gl_error_silent);
-    read_env_flag("MC2_HEARTBEAT",            &g_cfg.heartbeat);
-    read_env_flag("MC2_ABL_TRACE",            &g_cfg.abl_trace);
-    read_env_flag("MC2_ABL_REG_TRACE",        &g_cfg.abl_reg_trace);
-    read_env_flag("MC2_FF_TRACE",             &g_cfg.ff_trace);
+    g_cfg.tgl_pool_trace = mc2::gate::get<"MC2_TGL_POOL_TRACE">() ? 1 : 0;
+    g_cfg.destroy_trace = mc2::gate::get<"MC2_DESTROY_TRACE">() ? 1 : 0;
+    g_cfg.gl_error_silent = mc2::gate::get<"MC2_GL_ERROR_DRAIN_SILENT">() ? 1 : 0;
+    g_cfg.heartbeat = mc2::gate::get<"MC2_HEARTBEAT">() ? 1 : 0;
+    g_cfg.abl_trace = mc2::gate::get<"MC2_ABL_TRACE">() ? 1 : 0;
+    g_cfg.abl_reg_trace = mc2::gate::get<"MC2_ABL_REG_TRACE">() ? 1 : 0;
+    g_cfg.ff_trace = mc2::gate::get<"MC2_FF_TRACE">() ? 1 : 0;
     // Headless crash fast-exit: write the bundle, then terminate WITHOUT the
     // modal dialog so an automated soak/harness process exits immediately on
     // crash (the watcher sees it now, not at the WaitForExit timeout). Auto-on
     // under the crash-soak; also settable directly.
-    read_env_flag("MC2_CRASH_FAST_EXIT",      &g_cfg.crash_fast_exit);
-    { int soak = 0; read_env_flag("MC2_SOAK_AUTOWIN", &soak); if (soak) g_cfg.crash_fast_exit = 1; }
+    g_cfg.crash_fast_exit = mc2::gate::get<"MC2_CRASH_FAST_EXIT">() ? 1 : 0;
+    { int soak = 0; soak = mc2::gate::get<"MC2_SOAK_AUTOWIN">() ? 1 : 0; if (soak) g_cfg.crash_fast_exit = 1; }
 
     // CURSOR-GRAB-FIX-1: an unattended run implies fast-exit. Declared here
-    // rather than by adding another read_env_flag() line per variable so this
+    // rather than by adding another gate read per variable so this
     // file agrees with the engine's ONE definition of "no user is watching"
     // (gos_render.h / gameos_input.cpp) instead of re-deriving it and drifting.
     //
