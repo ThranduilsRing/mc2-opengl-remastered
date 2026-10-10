@@ -35,9 +35,6 @@
 // points to a slot whose content was filled by a different actor).
 extern uint32_t g_mc2FrameCounter;
 
-// FRAME-JOBS-2D: counts ResubmitCachedGpuLightData calls made from worker threads.
-// Must remain 0 every frame — nonzero means the split boundary is broken.
-std::atomic<int> g_workerResubmitCalls{0};
 
 #ifndef CIDENT_H
 #include"cident.h"
@@ -74,6 +71,10 @@ std::atomic<int> g_workerResubmitCalls{0};
 #include "Gates/gate.h"
 #include "../RenderCore/axis_convert.h"
 using namespace Microsoft::Xna::Arm;
+
+// FRAME-JOBS-2D: counts ResubmitCachedGpuLightData calls made from worker threads.
+// Must remain 0 every frame — nonzero means the split boundary is broken.
+std::atomic<int> g_workerResubmitCalls{0};
 
 //-------------------------------------------------------------------------------
 extern void GetNumberData (char *rawData, char *result);
