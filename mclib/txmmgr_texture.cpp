@@ -781,7 +781,6 @@ DWORD MC_TextureNode::get_gosTextureHandle (void)	//If texture is not in VidRAM,
 							FILE* probe = std::fopen(sidecar, "rb");
 							if (!probe)
 							{
-								// No sidecar — common; quiet fall-through.
 							}
 							else
 							{
@@ -794,7 +793,6 @@ DWORD MC_TextureNode::get_gosTextureHandle (void)	//If texture is not in VidRAM,
 									GLenum glIF = (img.vkFormat == 146)
 										? GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM
 										: GL_COMPRESSED_RGBA_BPTC_UNORM;
-									// Upload MIP 0 only (single level).
 									size_t mip0Bytes = (img.mipCount > 1 && img.mipByteOffsets.size() > 1)
 										? (size_t)img.mipByteOffsets[1]
 										: img.pixels.size();
@@ -845,7 +843,6 @@ DWORD MC_TextureNode::get_gosTextureHandle (void)	//If texture is not in VidRAM,
 				mcTextureManager->peakUsedTextures = mcTextureManager->currentUsedTextures;
 			++gTxmRealizedTotal;
 
-			// Cache this badboy IN.
 			TEXTUREPTR pTextureData;
 			{
 				gos_LockTexture(gosTextureHandle, 0, 0, &pTextureData);

@@ -188,7 +188,6 @@ inline long MoveMap::markGoals (Stuff::Vector3D finalGoal) {
 	// store it in the moveOrders data...
 	int finalGoalR, finalGoalC;
 	land->worldToCell(finalGoal, finalGoalR, finalGoalC);
-	// Localize the coords for this move map...
 	finalGoalR -= ULr;
 	finalGoalC -= ULc;
 
@@ -196,14 +195,12 @@ inline long MoveMap::markGoals (Stuff::Vector3D finalGoal) {
 
 	int numGoalCells = 0;
 	if ((doorDirection == 0) || (doorDirection == 2)) {
-		// Mark the door cells as goals...
 		int cellR = goalR;
 		int cellC = goalC - (doorLength / 2);
 		bool nextToGoal = false;
 		if (doorSide == 0) {
 			if (finalGoalR == (cellR + 1))
 					if ((finalGoalC >= cellC) && (finalGoalC < (cellC + doorLength))) {
-						// Our global goal is on the other side of this door...
 						map[cellR * width + finalGoalC].setFlag(MOVEFLAG_GOAL);
 						numGoalCells++;
 						nextToGoal = true;
@@ -212,7 +209,6 @@ inline long MoveMap::markGoals (Stuff::Vector3D finalGoal) {
 		else {
 			if (finalGoalR == (cellR - 1))
 					if ((finalGoalC >= cellC) && (finalGoalC < (cellC + doorLength))) {
-						// Our global goal is on the other side of this door...
 						map[cellR * maxWidth + finalGoalC].setFlag(MOVEFLAG_GOAL);
 						numGoalCells++;
 						nextToGoal = true;
@@ -252,7 +248,6 @@ inline long MoveMap::markGoals (Stuff::Vector3D finalGoal) {
 		bool nextToGoal = false;
 		if (finalGoalC == (cellC + 1 - doorSide * 2))
 			if ((finalGoalR >= cellR) && (finalGoalR < (cellR + doorLength))) {
-				// Our global goal is on the other side of this door...
 				map[finalGoalR * maxWidth + cellC].setFlag(MOVEFLAG_GOAL);
 				numGoalCells++;
 				nextToGoal = true;
@@ -293,8 +288,6 @@ inline long MoveMap::markEscapeGoals (Stuff::Vector3D finalGoal) {
 
 	long numGoalCells = 0;
 
-	// Ultimately, we should do this conversion once for the finalGoal and then
-	// store it in the moveOrders data...
 	int finalGoalR, finalGoalC;
 	land->worldToCell(finalGoal, finalGoalR, finalGoalC);
 	int finalGoalArea = GlobalMoveMap[moveLevel]->calcArea(finalGoalR, finalGoalC);
@@ -430,11 +423,6 @@ long MoveMap::setUp (long mapULr,
 							teamID = GlobalMoveMap[moveLevel]->areas[areaID].teamID;
 							//Its possible for the ownerWIDs to be invalid for one or two frames after a quick save.
 							// We handle this ok later on!!  OwnerWIDs restablish themselves right after the first unpaused update!
-							/*
-							if (!EditorSave)
-								if (GlobalMoveMap[moveLevel]->areas[areaID].ownerWID < 1)
-									PAUSE(("Gate has no ownerWID.  CellR: %d, CellC: %d, WID: %d, MoveLvl: %d",cellRow,cellCol,GlobalMoveMap[moveLevel]->areas[areaID].ownerWID,moveLevel));
-							*/
 						}
 						if (!EditorSave && (areaID > -1) && GlobalMoveMap[moveLevel]->isGateDisabledCallback(GlobalMoveMap[moveLevel]->areas[areaID].ownerWID))
 							cost = COST_BLOCKED;
@@ -458,9 +446,6 @@ long MoveMap::setUp (long mapULr,
 				}
 				map[moveMapIndex].cost = cost;
 
-				// NOTE: With gates, we may want them to set the cell cost rather
-				// than just adjust it. Let's see how they play. Since they're
-				// set as an overlay, we'll just treat them as such for now.
 				
 				if (mapCell->getPathlock(moveLevel == 2))
 					adjustMoveMapCellCost(&map[cellRow * maxWidth + cellCol], pathLockCost);
@@ -493,9 +478,6 @@ long MoveMap::setUp (long level,
 
 	ZoneScopedN("GameLogic.PathManager.CalcPath2");
 
-	// If the map has not been allocated yet, then the tile height and width passed
-	// is used as both the max and current dimensions. Otherwise, they are only
-	// used as the current dimensions...
 	if (!map)
 		init(SECTOR_DIM*2, SECTOR_DIM*2);
 	else {
@@ -641,11 +623,6 @@ long MoveMap::setUp (long level,
 						long teamID = -1;
 						if (areaID > -1) {
 							teamID = GlobalMoveMap[moveLevel]->areas[areaID].teamID;
-							/*  See Above
-							if (!EditorSave)
-								if (GlobalMoveMap[moveLevel]->areas[areaID].ownerWID < 1)
-									PAUSE(("Gate has no ownerWID"));
-							*/
 						}
 						if (!EditorSave && (areaID > -1) && GlobalMoveMap[moveLevel]->isGateDisabledCallback(GlobalMoveMap[moveLevel]->areas[areaID].ownerWID))
 							cost = COST_BLOCKED;

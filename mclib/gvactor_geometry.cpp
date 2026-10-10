@@ -341,9 +341,6 @@ void GVAppearance::debugUpdate (void)
 
 	float velMag = debugVelMag;
 
-	//-----------------------------------------
-	// Take slope being walked on into account.
-	// Use for ground vehicles for sure.
 	Stuff::Vector3D currentNormal = land->getTerrainNormal(debugGVActorPosition);
 	float angle = angle_from(velocity,currentNormal);
 	if (angle != 90.0)

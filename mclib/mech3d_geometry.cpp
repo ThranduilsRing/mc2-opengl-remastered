@@ -1014,7 +1014,6 @@ void Mech3DAppearance::updateGeometry (void)
 		
 		if (isSmoking > 0)
 		{
-			//Loops until told to stop.
 			criticalSmoke->Execute(&info);
 		}
 		else
@@ -1074,12 +1073,6 @@ void Mech3DAppearance::updateGeometry (void)
  		shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 		shapeOrigin.BuildTranslation(wakePos);
 				
-		/*
-		Stuff::UnitQuaternion effectRot;
-		effectRot = Stuff::EulerAngles(0.0f,rotation * DEGREES_TO_RADS,0.0f);
-		localToWorld.Multiply(gosFX::Effect_Against_Motion,effectRot);
-		localResult.Multiply(localToWorld,shapeOrigin);
-		*/
 		
  		Stuff::OBB boundingBox;
 		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,&boundingBox);
@@ -1118,8 +1111,6 @@ bool Mech3DAppearance::leftArmRecalc (void)
 
 	leftArmInView = false;
 	float eyeDistance = 0.0f;
-	// First, if we are using perspective, figure out
-	// if object too far from camera.  Far Clip Plane.
 	if (eye->usePerspective)
 	{
 		Stuff::Point3D Distance;
@@ -1145,9 +1136,6 @@ bool Mech3DAppearance::leftArmRecalc (void)
 			leftArmInView = true;
 		}
 
-		// If inside farClip plane, check if behind camera.
-		// Find angle between lookVector of Camera and vector from camPos
-		// to Target.  If angle is less then halfFOV, object is visible.
 		const bool armParentVisL = s_gpuCullLifecycle
 			? gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(actorHandle_))
 			: inView;
@@ -1173,8 +1161,6 @@ bool Mech3DAppearance::rightArmRecalc (void)
 
 	rightArmInView = false;
 	float eyeDistance = 0.0f;
-	// First, if we are using perspective, figure out
-	// if object too far from camera.  Far Clip Plane.
 	if (eye->usePerspective)
 	{
 		Stuff::Point3D Distance;
@@ -1200,9 +1186,6 @@ bool Mech3DAppearance::rightArmRecalc (void)
 			rightArmInView = true;
 		}
 
-		// If inside farClip plane, check if behind camera.
-		// Find angle between lookVector of Camera and vector from camPos
-		// to Target.  If angle is less then halfFOV, object is visible.
 		const bool armParentVisR = s_gpuCullLifecycle
 			? gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(actorHandle_))
 			: inView;

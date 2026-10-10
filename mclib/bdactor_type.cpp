@@ -86,7 +86,6 @@ void BldgAppearanceType::init (const char * fileName)
 	result = iniFile.readIdString("FileName",aseFileName,511);
 	if (result != NO_ERR)
 	{
-		//Check for LOD filenames instead
 		for (int i=0;i<MAX_LODS;i++)
 		{
 			char baseName[256];
@@ -379,7 +378,6 @@ void BldgAppearanceType::init (const char * fileName)
 		}
 	}
 	
-	// We can also load the node to pitch and yaw for spotlights/turrets.
 	result = iniFile.seekBlock("AnimationNode");
 	if (result == NO_ERR)
 	{
@@ -538,7 +536,6 @@ void TreeAppearanceType::init (const char * fileName)
 	result = iniFile.readIdString("FileName",aseFileName,511);
 	if (result != NO_ERR)
 	{
-		//Check for LOD filenames instead
 		for (long i=0;i<MAX_LODS;i++)
 		{
 			char baseName[256];
@@ -766,7 +763,6 @@ void TreeAppearanceType::init (const char * fileName)
 		treeDmgShape = NULL;
 	}
 
- 	//No Animations at present.
 }
 
 void TreeAppearanceType::destroy (void)
@@ -782,7 +778,6 @@ void TreeAppearanceType::destroy (void)
 		}
 	}
 
-	// MODEL-OVERRIDE dual-shape: free every populated render override LOD.
 	for (long i = 0; i < MAX_LODS; i++)
 	{
 		if (treeRenderShape[i])

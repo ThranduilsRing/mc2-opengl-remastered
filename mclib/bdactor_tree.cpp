@@ -33,7 +33,6 @@ void TreeAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 	fogLightSet = false;
 	lightRGB = fogRGB = 0xffffffff;
 
-    // sebi: init so will not be garbage
     status = OBJECT_STATUS_NORMAL;
     forceLightsOut = false;
     // Slice 2 (object-offload) substrate flag; set true by GPU batcher on late
