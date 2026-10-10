@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # MC2 Mod Virtual Filesystem — Layered Override Model
 
 **Status:** Strategy / design doc (long-term), 2026-06-11.
@@ -24,7 +25,7 @@ This is what actually runs, precisely. All citations are `mclib/file.cpp` in thi
 
 ### 2.1 Index construction — `InitModSearchPaths(modsRoot)` (`file.cpp:487-560`)
 
-- `MC2_ACTIVE_MOD` env unset → prints `[mod] base game mode`, `g_modIndex` stays empty, **zero per-open overhead** (`TryModOpen` bails on `g_modIndex.empty()`, `file.cpp:413`). The env var is set by the launcher/bat before spawning mc2.exe (`file.cpp:64`).
+- `MC2_ACTIVE_MOD` env unset → prints `[mod] base game mode`, `g_modIndex` stays empty, **zero per-open overhead** (`TryModOpen` bails on `g_modIndex.empty()`, `mclib/file.cpp:592`). The env var is set by the launcher/bat before spawning mc2.exe (`file.cpp:64`).
 - Set → reads `mods/<id>/mod.json` for `id`, `name`, `dependencies[]` via the minimal extractor (`JsonGetString`/`JsonGetStringArray`, `file.cpp:350-390`). Missing `mod.json` → folder name becomes id, no deps (`file.cpp:516-521`).
 - Indexing order is **highest priority first, first-wins**: active mod's `data/` (`file.cpp:536-546`), then `dep[0]`, `dep[1]`, … (`file.cpp:549-566`). A later (lower-priority) file at an already-indexed key is dropped and logged as `[mod-dup] key winner=[...] loser=[...]` when `MC2_LOG_FILE_RESOLVE=1` (`file.cpp:147-152` inside `IndexModData`).
 - Effective priority: **active mod > dep[0] > … > dep[N-1] > base `data/` > FastFile > CD** (`file.cpp:68`, and the printed load-order banner at `file.cpp:526-533`).

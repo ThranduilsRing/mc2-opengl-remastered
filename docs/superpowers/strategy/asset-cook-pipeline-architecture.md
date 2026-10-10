@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # MC2 Asset Cook Pipeline Architecture
 
 **Status:** Strategy / design doc (long-term), 2026-06-10.
@@ -13,7 +14,7 @@
 
 Load-bearing consequences:
 
-1. **No flag-day conversion.** Every cooked format ships as a sidecar probe next to a working legacy path. This pattern is already proven three times: `.ktx2` same-stem sidecar in `mclib/txmmgr.cpp:3426-3521` (BC7 → RGBA8 fallback), terrain colormap probe chain in `mclib/terrtxm2.cpp` (`<name>.burnin.jpg` → `.burnin.ktx2` BC7 via `gos_terrain_indirect.cpp` `BuildColormapAtlas` (~:873, vkFormat 145/146, gate `MC2_COLORMAP_KTX2`) → `.tga`), and `.tgl` compiled from `.ase` (`mclib/msl.cpp:563 LoadTGMultiShapeFromASE`). New cooks copy this shape; they never replace a loader.
+1. **No flag-day conversion.** Every cooked format ships as a sidecar probe next to a working legacy path. This pattern is already proven three times: `.ktx2` same-stem sidecar in `mclib/txmmgr.cpp:3426-3521` (BC7 → RGBA8 fallback), terrain colormap probe chain in `mclib/terrtxm2.cpp` (`<name>.burnin.jpg` → `.burnin.ktx2` BC7 via `gos_terrain_indirect.cpp` `BuildColormapAtlas` (~:873, vkFormat 145/146, gate `MC2_COLORMAP_KTX2`) → `.tga`), and `.tgl` compiled from `.ase` (`mclib/msl_load.cpp:365 LoadTGMultiShapeFromASE`). New cooks copy this shape; they never replace a loader.
 2. **Cook ≠ authoring.** Cooked artifacts are derived, deterministic, and deletable — deleting `out/` or a `.ktx2` tier must never lose information. Hand-authored data (`.ase`, `.fit`, `.pak`, source GLB, PSD) is never overwritten by a cook.
 3. **The Asset Viewer is the cook front-end, not the cook.** Cooking logic lives in headless Python (`tools/asset_cook/trackg_cook.py`, `tools/mc2texcook/*`); the Viewer/Workbench drives it, previews it, and gates export on validation. The editor and mc2.exe only *consume*.
 
@@ -26,7 +27,7 @@ Three tiers, per asset. "Source" = hand-authored truth, versioned/archived. "Coo
 | Asset class | Source of truth | Cooked runtime record (sidecar) | Generated cache (never shipped) |
 |---|---|---|---|
 | Terrain colormap (burnin) | `<map>.burnin.tga` (or 4× upscale archives, `release_assets/0.3/mc2-burnins-4x-*`) | `<map>.burnin.jpg` (shipped; `tools/mc2texcook/burnin_jpeg.py`, decoded `mclib/burnin_jpeg_decode.cpp`) → target `<map>.burnin.ktx2` stored-BC7 (loader exists: `BuildColormapAtlas`; **cook unfinished**, §8.1) | merged colormap atlas GL texture (built per mission load) |
-| Terrain detail/water/overlay | `data/textures/{tier}/*.tga` | per-tier BC7 `.ktx2` sidecars (same `txmmgr` probe) | runtime cement/overlay atlas (`gos_terrain_indirect.cpp:4140`) |
+| Terrain detail/water/overlay | `data/textures/{tier}/*.tga` | per-tier BC7 `.ktx2` sidecars (same `txmmgr` probe) | runtime cement/overlay atlas (`GameOS/gameos/gos_terrain_indirect_dispatch.cpp:302`) |
 | Heightmap | mission `.pak` quad verts | none — procedural (`gos_terrain_height_tex.cpp:38`) | R32F GL texture |
 | Static prop / tree geometry | `.ase` (2,947 in `mc2srcdata/tgl/`) + compiled `.tgl`/`tgl.fst`; override source = authored `.glb` | cooked override GLB + per-asset `manifest.json` + `models.generated.json` (`tools/asset_cook/trackg_cook.py stage/assemble`; 2,015 props proven via `cook_all_stock.py`) | meshdump JSONs (workbench `--export-tgl-meshdump-all`) |
 | Static prop textures | 128² originals + upscale archives (`mc2-tgl.zip`) | `data/tgl/{128,256,512,1024}/*.ktx2` BC7 tiers (`cook_tgl_tiers.py`; shipped 2026-06-02) | — |
@@ -122,7 +123,7 @@ Stage 3 findings feed back as warnings the Viewer surfaces *live* during authori
 
 Binding rules for every cooked format (the contract that keeps legacy content loading forever):
 
-1. **Probe order = cheapest-acceptable first, legacy last, never fail on absence.** Colormap: `.burnin.jpg` → `.burnin.ktx2` (BC7) → `.tga` (terrtxm2.cpp probe chain). Textures: `.ktx2` sidecar → RGBA8 → legacy TGA (`txmmgr.cpp:3426`). Models: override registry hit → `LoadTGMultiShapeFromASE`.
+1. **Probe order = cheapest-acceptable first, legacy last, never fail on absence.** Colormap: `.burnin.jpg` → `.burnin.ktx2` (BC7) → `.tga` (terrtxm2.cpp probe chain). Textures: `.ktx2` sidecar → RGBA8 → legacy TGA (`mclib/txmmgr_render_phases.cpp:480`). Models: override registry hit → `LoadTGMultiShapeFromASE`.
 2. **Invalid cooked record = log + fall back, never abort.** A corrupt `.ktx2` or schema-stale manifest behaves like an absent one, with one `SPEW`-class line naming the file and reason (feeds the telemetry-oracle cockpit lane).
 3. **Env-gated kill switches per format** during rollout (`MC2_COLORMAP_KTX2`, `MC2_TEXMGR_COMPRESSED_UPLOAD` pattern); default flips ON only after a tier1 smoke + visual confirm, and the opt-out stays for one release after.
 4. **No cooked format may change game semantics** — cooks affect memory/bandwidth/load-time only. Anything that changes gameplay-visible data (mission `.pak`, FIT) is out of the cook lane by definition.
@@ -133,7 +134,7 @@ Binding rules for every cooked format (the contract that keeps legacy content lo
 ## 8. First asset classes to cook (priority order)
 
 1. **Terrain colormaps → stored-BC7 KTX2 (finish the started cook).** Loader is *already shipped and default-on* (`BuildColormapAtlas`, `MC2_COLORMAP_KTX2`); only the cook is missing. Blocker is tooling: `ktx.exe create` rejects raw `BC7_UNORM_BLOCK` (only basis-lz/uastc) — route = **texconv/nvtt → raw BC7 blocks → `ktx create --raw`** (per the 2026-06-08 handoff), packaged as `tools/mc2texcook/cook_burnin_bc7.py`. Win: stays GPU-compressed in VRAM (the q95 JPEG decodes to full RGBA8 RAM — 67 MB for the 4096² 1K-map case); per-map disk ~16 MB vs 75 MB TGA. Highest leverage per line of new code in the project.
-2. **IBL prefilter cook** (`V-IBL-STATIC-0`, `docs/ibl-plan.md`). Offline `cook_ibl.py`: EXR → equirect-to-cube → GGX prefiltered specular mips + irradiance + BRDF LUT, all RGBA16F (or BC6H later) `.ktx2`. Runtime gains a sidecar probe in the `gos_hdri.cpp`/`gos_postprocess.cpp:181-208` init (gate shape = `MC2_STATIC_PROP_AMBIENT_V1` precedent); absent sidecars → current raw-EXR sky path unchanged. This is the *only* item where a cook unlocks a feature (real IBL ambient) rather than just shrinking one.
+2. **IBL prefilter cook** (`V-IBL-STATIC-0`, `docs/ibl-plan.md`). Offline `cook_ibl.py`: EXR → equirect-to-cube → GGX prefiltered specular mips + irradiance + BRDF LUT, all RGBA16F (or BC6H later) `.ktx2`. Runtime gains a sidecar probe in the `gos_hdri.cpp`/`GameOS/gameos/gos_postprocess_gates.cpp:108-135` init (gate shape = `MC2_STATIC_PROP_AMBIENT_V1` precedent); absent sidecars → current raw-EXR sky path unchanged. This is the *only* item where a cook unlocks a feature (real IBL ambient) rather than just shrinking one.
 3. **Static prop/model manifests at authoring quality.** The bulk machinery exists (2,015 stock props cooked, 0 errors); the work is the §6 stage-3 texture-resolution gate + Viewer export wiring, converting "386 untextured" from silent to waived-or-blocked. Mech/vehicle classes follow via the `[Import] Source=` recipe (recon §1) once `claude/assimp-mech-import-1` merges.
 4. **UI/HUD + mech texture BC7** — blocked on the GameOS/`MC_TextureManager` compressed-upload path (recon §3/§4 TEXMGR-COMPRESSED-UPLOAD); sequenced after 1–3 because it needs engine work, not cook work.
 5. **VFX meshes/cards — last.** gosFX `mc2.fx` is a monolith with CPU-legacy consumers; cooking it buys little until the GPU particle path fully owns rendering. Near-term: nothing. Long-term: atlas the MLR texture pool to BC7 once (4) lands.
