@@ -1495,7 +1495,9 @@
   "GuiRuntime/EditorInspector.cpp": {
    "LG06": 1,
    "LG09": 1,
-   "LG17": 2,
+   "LG17": 2
+  },
+  "GuiRuntime/EditorInspector_sections.cpp": {
    "LG20": 11
   },
   "GuiRuntime/GraphicsOptionsWindow_internal.h": {
