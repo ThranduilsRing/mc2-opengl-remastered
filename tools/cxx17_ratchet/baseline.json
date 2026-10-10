@@ -112,7 +112,7 @@
    "LG16": 0,
    "LG17": 0,
    "LG18": 0,
-   "LG19": 2,
+   "LG19": 0,
    "LG20": 0
   },
   "RenderCore": {
@@ -1506,8 +1506,7 @@
   },
   "HostServices/DefaultHostServices.cpp": {
    "LG05": 1,
-   "LG06": 5,
-   "LG19": 2
+   "LG06": 5
   },
   "HostServices/DefaultHostServices.h": {
    "LG05": 1,
@@ -5760,7 +5759,7 @@
    "LG20": 1
   }
  },
- "head": "7663b8680",
+ "head": "352438d19",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

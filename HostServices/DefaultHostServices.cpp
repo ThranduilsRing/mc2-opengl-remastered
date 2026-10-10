@@ -91,14 +91,15 @@ const char* EnvConfig::str(const char* key, const char* dflt) const {
     if (key == nullptr) {
         return dflt;
     }
-    const char* v = std::getenv(key);
+    // The key is a caller-supplied runtime name (the EnvConfig interface), so this asks the environment directly.
+    const char* v = mc2::gate::envText(key);
     return v ? v : dflt;
 }
 
 bool EnvConfig::flag(const char* key, bool dflt) const {
     // The one boolean parser of the tree: unset/empty -> dflt, 0/false/off/no -> false,
     // anything else present -> true.
-    return mc2::gate::parseBool((key != nullptr) ? std::getenv(key) : nullptr, dflt);
+    return mc2::gate::parseBool((key != nullptr) ? mc2::gate::envText(key) : nullptr, dflt);
 }
 
 // --- Bundle ----------------------------------------------------------------
