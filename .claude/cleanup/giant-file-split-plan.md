@@ -19,12 +19,13 @@ Priority by agent-cost saving per unit of risk:
 |---|---:|---:|---|---|
 | `mclib/bdactor.cpp` | 8,317 | 931 | 10 pieces + `bdactor_internal.h` | done (split commit 6456f46eb) |
 | `mclib/mech3d.cpp` | 6,877 | 474 | 6 pieces + `mech3d_internal.h` | done (de0dbab39) |
-| `mclib/txmmgr.cpp` | 6,064 | 1,009 | 5 pieces + `txmmgr_internal.h` | done (16460b02e); `txmmgr_render.cpp` stays 2,226 lines, `renderLists` is one function |
+| `mclib/txmmgr.cpp` | 6,064 | 1,009 | 5 pieces + `txmmgr_internal.h` | done (16460b02e); `renderLists` became a 35-line orchestrator over 12 phase helpers (a8c3c03e2), moved into `txmmgr_render_{phases,passes,overlays}.cpp` + `txmmgr_render_internal.h` (719d7e38f): `txmmgr_render.cpp` is 181 lines, largest piece 964 |
 | `GameOS/gameos/gos_postprocess.cpp` | 7,184 | 1,270 | gates, diag, fbo, effects, region, skybox, shadow, executor + `gos_postprocess_internal.h` | done (b29481493) |
 | `GameOS/gameos/gos_terrain_indirect.cpp` | 6,221 | 307 | diag, atlas, cement, pack, dispatch, mine_decal + `gos_terrain_indirect_internal.h` | done (2f2457147); state design in `terrain-indirect-state-design.md`, no state struct |
 | `GameOS/gameos/gos_terrain_lod_chunk.cpp` | 4,054 | 833 | gates, matalbedo, patch, feed, draw, upload + `gos_terrain_lod_chunk_internal.h` | done (5289c5285); `SubmitDrawCommands` stays one 1,385-line function in the draw piece |
 | `GameOS/gameos/gameos_graphics.cpp` | 11,583 | 999 | draw, water, bridge, shadow, tparams, hud, capi, overlay + `gameos_graphics_{material,renderer}_internal.h` | done (569dc0ebb); `gosRenderer` (1,311 lines) has its own header; largest piece bridge 1,318 |
 | `GameOS/gameos/gos_static_prop_batcher.cpp` | 11,076 | 378 | state, program, mapload, finalize, submit, flush, shadow, seam + `gos_static_prop_batcher_internal.h` | done (4361bc735); pieces are contiguous slices linked in file order (`static-prop-batcher-state-design.md`); `finalizeGeometry` (2,054) and `flush` (2,366) are single functions and stay the oversized pieces until a phase-helper refactor |
+| `code/missiongui.cpp` | 7,908 | 531 | diag, update, style, orders, cursor, support, debugkeys, input + `missiongui_shared_internal.h` (the UI-command pieces keep `missiongui_internal.h`) | done (1af09dd12); largest piece update 1,309; shared hover state and the MIF/GPU-pick diag block became external names in two prep commits |
 
 Ratchet ruling (2026-10-10): the two single-function static-prop pieces raise the oversized-file count by one against the file they replace (repo-wide 79 files over 1,500, from 82 when the lane-2 split program started); accepted with the same reasoning as `txmmgr_render.cpp`.
 
