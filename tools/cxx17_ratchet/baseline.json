@@ -185,15 +185,15 @@
    "LG20": 9
   },
   "mclib": {
-   "LG01": 2536,
-   "LG02": 298,
+   "LG01": 2007,
+   "LG02": 294,
    "LG03": 1139,
    "LG04": 16,
    "LG05": 136,
    "LG06": 667,
    "LG07": 0,
    "LG08": 75,
-   "LG09": 2410,
+   "LG09": 2396,
    "LG10": 32,
    "LG11": 67,
    "LG12a": 449,
@@ -3556,9 +3556,8 @@
    "LG18": 2
   },
   "mclib/ablexpr.cpp": {
-   "LG01": 5,
    "LG06": 1,
-   "LG09": 6
+   "LG09": 1
   },
   "mclib/ablgen.h": {
    "LG02": 1,
@@ -3597,11 +3596,9 @@
    "LG17": 6
   },
   "mclib/ablstd.cpp": {
-   "LG01": 5,
    "LG04": 1
   },
   "mclib/ablstmt.cpp": {
-   "LG01": 15,
    "LG06": 1,
    "LG09": 1
   },
@@ -3638,7 +3635,6 @@
    "LG12b": 3
   },
   "mclib/alphapalette.cpp": {
-   "LG01": 1,
    "LG03": 2,
    "LG09": 7,
    "LG13": 1,
@@ -3655,9 +3651,6 @@
    "LG06": 3,
    "LG09": 1
   },
-  "mclib/appear.cpp": {
-   "LG01": 21
-  },
   "mclib/appear.h": {
    "LG01": 3,
    "LG05": 4,
@@ -3665,7 +3658,7 @@
    "LG13": 11
   },
   "mclib/apprtype.cpp": {
-   "LG01": 32,
+   "LG01": 6,
    "LG03": 11,
    "LG05": 2,
    "LG06": 3,
@@ -3773,7 +3766,7 @@
    "LG09": 7
   },
   "mclib/bitflag.cpp": {
-   "LG01": 7,
+   "LG01": 1,
    "LG03": 8,
    "LG04": 1,
    "LG09": 3
@@ -4049,7 +4042,6 @@
    "LG09": 2
   },
   "mclib/fastfile.cpp": {
-   "LG01": 5,
    "LG03": 2,
    "LG05": 2,
    "LG06": 2,
@@ -4099,7 +4091,7 @@
    "LG17": 1
   },
   "mclib/floathelp.cpp": {
-   "LG01": 3,
+   "LG01": 1,
    "LG09": 1
   },
   "mclib/floathelp.h": {
@@ -4201,7 +4193,6 @@
    "LG14": 1
   },
   "mclib/gosfx/effectcloud.cpp": {
-   "LG01": 5,
    "LG03": 7
   },
   "mclib/gosfx/effectcloud.hpp": {
@@ -4209,7 +4200,6 @@
    "LG14": 1
   },
   "mclib/gosfx/effectlibrary.cpp": {
-   "LG01": 2,
    "LG03": 1,
    "LG06": 1
   },
@@ -4226,9 +4216,6 @@
   "mclib/gosfx/fcurve.hpp": {
    "LG09": 2,
    "LG14": 1
-  },
-  "mclib/gosfx/gosfx.cpp": {
-   "LG01": 2
   },
   "mclib/gosfx/gosfx.hpp": {
    "LG14": 2
@@ -4258,7 +4245,6 @@
    "LG14": 1
   },
   "mclib/gosfx/pointlight.cpp": {
-   "LG01": 3,
    "LG03": 4
   },
   "mclib/gosfx/pointlight.hpp": {
@@ -4273,7 +4259,6 @@
    "LG02": 1
   },
   "mclib/gosfx/shapecloud.cpp": {
-   "LG01": 5,
    "LG03": 4
   },
   "mclib/gosfx/shapecloud.hpp": {
@@ -4289,7 +4274,6 @@
    "LG14": 1
   },
   "mclib/gosfx/singleton.cpp": {
-   "LG01": 4,
    "LG03": 2,
    "LG09": 1
   },
@@ -4381,7 +4365,6 @@
    "LG17": 1
   },
   "mclib/inifile_read.cpp": {
-   "LG01": 1,
    "LG06": 14,
    "LG09": 13,
    "LG11": 1,
@@ -4396,7 +4379,6 @@
   },
   "mclib/lzdecomp.cpp": {
    "LG01": 1,
-   "LG02": 1,
    "LG05": 1,
    "LG09": 11,
    "LG13": 7,
@@ -4537,30 +4519,23 @@
   "mclib/mlr/gosvertexpool.hpp": {
    "LG09": 8
   },
-  "mclib/mlr/mlr.cpp": {
-   "LG01": 11
-  },
   "mclib/mlr/mlr.hpp": {
    "LG13": 3,
    "LG14": 3
   },
   "mclib/mlr/mlr_i_c_det_pmesh.cpp": {
-   "LG01": 6,
    "LG03": 30,
    "LG09": 1
   },
   "mclib/mlr/mlr_i_c_det_tmesh.cpp": {
-   "LG01": 6,
    "LG03": 17,
    "LG09": 1
   },
   "mclib/mlr/mlr_i_c_dt_pmesh.cpp": {
-   "LG01": 6,
    "LG03": 30,
    "LG09": 1
   },
   "mclib/mlr/mlr_i_c_dt_tmesh.cpp": {
-   "LG01": 6,
    "LG03": 17,
    "LG09": 1
   },
@@ -4570,12 +4545,10 @@
    "LG09": 1
   },
   "mclib/mlr/mlr_i_c_tmesh.cpp": {
-   "LG01": 6,
    "LG03": 17,
    "LG09": 1
   },
   "mclib/mlr/mlr_i_det_pmesh.cpp": {
-   "LG01": 6,
    "LG03": 26,
    "LG09": 1
   },
@@ -4583,52 +4556,42 @@
    "LG01": 1
   },
   "mclib/mlr/mlr_i_det_tmesh.cpp": {
-   "LG01": 7,
    "LG03": 15,
    "LG09": 1
   },
   "mclib/mlr/mlr_i_dt_pmesh.cpp": {
-   "LG01": 6,
    "LG03": 30,
    "LG09": 2
   },
   "mclib/mlr/mlr_i_dt_tmesh.cpp": {
-   "LG01": 6,
    "LG03": 19,
    "LG09": 2
   },
   "mclib/mlr/mlr_i_l_det_pmesh.cpp": {
-   "LG01": 4,
    "LG03": 21,
    "LG09": 1
   },
   "mclib/mlr/mlr_i_l_det_tmesh.cpp": {
-   "LG01": 5,
    "LG03": 19,
    "LG09": 1
   },
   "mclib/mlr/mlr_i_l_dt_pmesh.cpp": {
-   "LG01": 4,
    "LG03": 21,
    "LG09": 1
   },
   "mclib/mlr/mlr_i_l_dt_tmesh.cpp": {
-   "LG01": 5,
    "LG03": 19,
    "LG09": 1
   },
   "mclib/mlr/mlr_i_l_pmesh.cpp": {
-   "LG01": 4,
    "LG03": 21,
    "LG09": 1
   },
   "mclib/mlr/mlr_i_l_tmesh.cpp": {
-   "LG01": 5,
    "LG03": 19,
    "LG09": 1
   },
   "mclib/mlr/mlr_i_mt_pmesh.cpp": {
-   "LG01": 3,
    "LG03": 24,
    "LG09": 3
   },
@@ -4671,11 +4634,9 @@
    "LG14": 2
   },
   "mclib/mlr/mlreffect.cpp": {
-   "LG01": 3,
    "LG03": 6
   },
   "mclib/mlr/mlrindexedprimitivebase.cpp": {
-   "LG01": 4,
    "LG03": 6
   },
   "mclib/mlr/mlrindexedtrianglecloud.cpp": {
@@ -4687,11 +4648,9 @@
    "LG03": 2
   },
   "mclib/mlr/mlrinfinitelightwithfalloff.cpp": {
-   "LG01": 2,
    "LG03": 2
   },
   "mclib/mlr/mlrlight.cpp": {
-   "LG01": 4,
    "LG03": 12
   },
   "mclib/mlr/mlrlight.hpp": {
@@ -4709,12 +4668,11 @@
    "LG14": 1
   },
   "mclib/mlr/mlrlinecloud.cpp": {
-   "LG01": 3,
    "LG03": 2,
    "LG09": 3
   },
   "mclib/mlr/mlrlookuplight.cpp": {
-   "LG01": 11,
+   "LG01": 1,
    "LG03": 12,
    "LG06": 1,
    "LG12b": 3,
@@ -4728,11 +4686,9 @@
    "LG03": 10
   },
   "mclib/mlr/mlrpointcloud.cpp": {
-   "LG01": 3,
    "LG03": 2
   },
   "mclib/mlr/mlrpointlight.cpp": {
-   "LG01": 6,
    "LG03": 6
   },
   "mclib/mlr/mlrprimitivebase.cpp": {
@@ -4755,7 +4711,7 @@
    "LG16": 10
   },
   "mclib/mlr/mlrshape.cpp": {
-   "LG01": 8,
+   "LG01": 3,
    "LG03": 12,
    "LG05": 1
   },
@@ -4763,7 +4719,6 @@
    "LG03": 1
   },
   "mclib/mlr/mlrsortbyorder.cpp": {
-   "LG01": 10,
    "LG03": 4,
    "LG09": 2
   },
@@ -4779,12 +4734,10 @@
    "LG14": 1
   },
   "mclib/mlr/mlrspotlight.cpp": {
-   "LG01": 6,
    "LG03": 6,
    "LG09": 4
   },
   "mclib/mlr/mlrstate.cpp": {
-   "LG01": 1,
    "LG03": 1,
    "LG09": 1,
    "LG12a": 2
@@ -4799,7 +4752,7 @@
    "LG01": 1
   },
   "mclib/mlr/mlrtexturepool.cpp": {
-   "LG01": 13,
+   "LG01": 8,
    "LG06": 2
   },
   "mclib/mlr/mlrtexturepool.hpp": {
@@ -4874,10 +4827,10 @@
    "LG16": 14
   },
   "mclib/move_globalmap_doors.cpp": {
-   "LG01": 8,
+   "LG01": 1,
    "LG03": 2,
    "LG05": 1,
-   "LG09": 10,
+   "LG09": 9,
    "LG13": 1,
    "LG16": 6
   },
@@ -4898,9 +4851,9 @@
    "LG16": 4
   },
   "mclib/move_movemap_escape.cpp": {
-   "LG01": 9,
+   "LG01": 5,
    "LG03": 9,
-   "LG09": 14,
+   "LG09": 10,
    "LG11": 3,
    "LG12a": 1,
    "LG12b": 23,
@@ -4923,7 +4876,7 @@
    "LG09": 78
   },
   "mclib/msl.cpp": {
-   "LG01": 5,
+   "LG01": 2,
    "LG03": 1,
    "LG09": 1
   },
@@ -4935,10 +4888,10 @@
    "LG17": 3
   },
   "mclib/msl_anim.cpp": {
-   "LG01": 26,
+   "LG01": 9,
    "LG05": 2,
    "LG06": 3,
-   "LG09": 35,
+   "LG09": 31,
    "LG11": 1,
    "LG12b": 3
   },
@@ -5065,7 +5018,7 @@
    "LG13": 4
   },
   "mclib/pqueue.cpp": {
-   "LG01": 2,
+   "LG01": 1,
    "LG09": 1
   },
   "mclib/pqueue.h": {
@@ -5197,7 +5150,6 @@
    "LG09": 1
   },
   "mclib/stuff/chain.cpp": {
-   "LG01": 21,
    "LG03": 6
   },
   "mclib/stuff/chain.hpp": {
@@ -5212,7 +5164,7 @@
    "LG12a": 1
   },
   "mclib/stuff/filestream.cpp": {
-   "LG01": 30,
+   "LG01": 1,
    "LG03": 11,
    "LG05": 1,
    "LG06": 1,
@@ -5225,7 +5177,6 @@
    "LG14": 2
   },
   "mclib/stuff/filestreammanager.cpp": {
-   "LG01": 3,
    "LG03": 1,
    "LG09": 3,
    "LG11": 2
@@ -5234,7 +5185,7 @@
    "LG02": 1
   },
   "mclib/stuff/hash.cpp": {
-   "LG01": 29,
+   "LG01": 2,
    "LG03": 6,
    "LG09": 1,
    "LG16": 1
@@ -5277,7 +5228,7 @@
    "LG12a": 3
   },
   "mclib/stuff/mstring.cpp": {
-   "LG01": 28,
+   "LG01": 1,
    "LG03": 19,
    "LG05": 1,
    "LG06": 3,
@@ -5313,7 +5264,6 @@
    "LG14": 1
   },
   "mclib/stuff/note.cpp": {
-   "LG01": 12,
    "LG09": 14,
    "LG12b": 7,
    "LG13": 1
@@ -5331,7 +5281,6 @@
    "LG12a": 3
   },
   "mclib/stuff/page.cpp": {
-   "LG01": 7,
    "LG03": 4,
    "LG06": 4,
    "LG09": 11,
@@ -5347,7 +5296,6 @@
    "LG12a": 2
   },
   "mclib/stuff/plug.cpp": {
-   "LG01": 26,
    "LG03": 5
   },
   "mclib/stuff/plug.hpp": {
@@ -5358,11 +5306,9 @@
    "LG12a": 3
   },
   "mclib/stuff/random.cpp": {
-   "LG01": 2,
    "LG03": 2
   },
   "mclib/stuff/registeredclass.cpp": {
-   "LG01": 6,
    "LG03": 2,
    "LG06": 1
   },
@@ -5398,7 +5344,7 @@
    "LG03": 1
   },
   "mclib/stuff/sortedchain.cpp": {
-   "LG01": 38,
+   "LG01": 1,
    "LG03": 3,
    "LG09": 1
   },
@@ -5411,7 +5357,6 @@
    "LG12a": 2
   },
   "mclib/stuff/stuff.cpp": {
-   "LG01": 4,
    "LG03": 2
   },
   "mclib/stuff/stuff.hpp": {
@@ -5539,7 +5484,6 @@
    "LG13": 10
   },
   "mclib/terrtxm2.cpp": {
-   "LG01": 19,
    "LG03": 2,
    "LG05": 1,
    "LG06": 3,
@@ -5590,8 +5534,6 @@
    "LG09": 1
   },
   "mclib/tgainfo.cpp": {
-   "LG01": 1,
-   "LG02": 1,
    "LG03": 1,
    "LG04": 2,
    "LG09": 9
@@ -5600,7 +5542,6 @@
    "LG14": 1
   },
   "mclib/tgl.cpp": {
-   "LG01": 9,
    "LG06": 2,
    "LG09": 3,
    "LG12a": 4,
@@ -5639,7 +5580,6 @@
    "LG13": 3
   },
   "mclib/tgl_shadows.cpp": {
-   "LG01": 1,
    "LG04": 1,
    "LG09": 2
   },
@@ -5782,7 +5722,6 @@
    "LG09": 3
   },
   "mclib/vfx_transform.cpp": {
-   "LG02": 2,
    "LG09": 2,
    "LG13": 4
   },
@@ -5830,7 +5769,7 @@
    "LG20": 2
   }
  },
- "head": "2e3b92cf8",
+ "head": "cda700a5e",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

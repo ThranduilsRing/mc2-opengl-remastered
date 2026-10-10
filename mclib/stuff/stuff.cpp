@@ -119,9 +119,9 @@ void
 	AddDebuggerMenuItem("Libraries\\Stuff\\Armor Level 3", Check_3, Activate_3, Greyed );
 	AddDebuggerMenuItem("Libraries\\Stuff\\Armor Level 4", Check_4, Activate_4, Greyed );
 
-	AddDebuggerMenuItem("Libraries\\Stuff\\4hz min", Check_4hz, Activate_4hz, NULL );
-	AddDebuggerMenuItem("Libraries\\Stuff\\40hz min", Check_40hz, Activate_40hz, NULL );
-	AddDebuggerMenuItem("Libraries\\Stuff\\400hz min", Check_400hz, Activate_400hz, NULL );
+	AddDebuggerMenuItem("Libraries\\Stuff\\4hz min", Check_4hz, Activate_4hz, nullptr );
+	AddDebuggerMenuItem("Libraries\\Stuff\\40hz min", Check_40hz, Activate_40hz, nullptr );
+	AddDebuggerMenuItem("Libraries\\Stuff\\400hz min", Check_400hz, Activate_400hz, nullptr );
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -159,5 +159,5 @@ void
 	RegisteredClass::TerminateClass();
 	Check_Pointer(FileStreamManager::Instance);
 	delete FileStreamManager::Instance;
-	FileStreamManager::Instance = NULL;
+	FileStreamManager::Instance = nullptr;
 }

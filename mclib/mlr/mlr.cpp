@@ -72,8 +72,8 @@ unsigned
 	Limits::Max_Size_Of_LightMap_MemoryStream;
 
 HGOSHEAP
-	MidLevelRenderer::Heap = NULL,
-	MidLevelRenderer::StaticHeap = NULL;
+	MidLevelRenderer::Heap = nullptr,
+	MidLevelRenderer::StaticHeap = nullptr;
 
 DEFINE_TIMER(MidLevelRenderer, Scene_Draw_Time);
 
@@ -202,20 +202,20 @@ void
 		"Libraries\\MLR\\Show Clipped Polygons",
 		Check_ShowClippedPolys,
 		Toggle_ShowClippedPolys,
-		NULL
+		nullptr
 	);
 	AddDebuggerMenuItem(
 		"Libraries\\MLR\\Show Bird View",
 		Check_ShowBirdView,
 		Toggle_ShowBirdView,
-		NULL
+		nullptr
 	);
 
-	AddDebuggerMenuItem("Libraries\\MLR\\Texture Sort", CheckTextureSort, EnableTextureSort, NULL );
-	AddDebuggerMenuItem("Libraries\\MLR\\Enable Detail Texture", CheckDetailTexture, EnableDetailTexture, NULL );
-	AddDebuggerMenuItem("Libraries\\MLR\\Alpha Sort", CheckAlphaSort, EnableAlphaSort, NULL );
-	AddDebuggerMenuItem("Libraries\\MLR\\MultiTexture Enabled", CheckMultiTexture, EnableMultiTexture, NULL );
-	AddDebuggerMenuItem("Libraries\\MLR\\LightMaps Enabled", CheckLightMaps, EnableLightMaps, NULL );
+	AddDebuggerMenuItem("Libraries\\MLR\\Texture Sort", CheckTextureSort, EnableTextureSort, nullptr );
+	AddDebuggerMenuItem("Libraries\\MLR\\Enable Detail Texture", CheckDetailTexture, EnableDetailTexture, nullptr );
+	AddDebuggerMenuItem("Libraries\\MLR\\Alpha Sort", CheckAlphaSort, EnableAlphaSort, nullptr );
+	AddDebuggerMenuItem("Libraries\\MLR\\MultiTexture Enabled", CheckMultiTexture, EnableMultiTexture, nullptr );
+	AddDebuggerMenuItem("Libraries\\MLR\\LightMaps Enabled", CheckLightMaps, EnableLightMaps, nullptr );
 
 	//
 	//---------------------
@@ -315,11 +315,11 @@ void
 
 	Check_Pointer(Heap);
 	gos_DestroyMemoryHeap(Heap);
-	Heap = NULL;
+	Heap = nullptr;
 
 	Check_Pointer(StaticHeap);
 	gos_DestroyMemoryHeap(StaticHeap);
-	StaticHeap = NULL;
+	StaticHeap = nullptr;
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

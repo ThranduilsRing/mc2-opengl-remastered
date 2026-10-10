@@ -13,8 +13,8 @@
 
 //-------------------------------------------------------------------------------
 // Statics
-Stuff::LinearMatrix4D 	*TG_Shape::s_cameraOrigin = NULL;
-Stuff::Matrix4D			*TG_Shape::s_cameraToClip = NULL;
+Stuff::LinearMatrix4D 	*TG_Shape::s_cameraOrigin = nullptr;
+Stuff::Matrix4D			*TG_Shape::s_cameraToClip = nullptr;
 Stuff::LinearMatrix4D	TG_Shape::s_worldToCamera;
 Stuff::Matrix4D			TG_Shape::s_worldToClip;
 
@@ -27,7 +27,7 @@ DWORD					TG_Shape::fogColor = 0xffffffff;
 float					TG_Shape::fogStart = 0.0f;
 float					TG_Shape::fogFull = 0.0f;
 
-TG_LightPtr				*TG_Shape::s_listOfLights = NULL;
+TG_LightPtr				*TG_Shape::s_listOfLights = nullptr;
 DWORD					TG_Shape::s_numLights = 0;
 
 Stuff::LinearMatrix4D 	TG_Shape::s_lightToShape[MAX_LIGHTS_IN_WORLD];
@@ -35,15 +35,15 @@ Stuff::Vector3D			TG_Shape::s_lightDir[MAX_LIGHTS_IN_WORLD];
 Stuff::Vector3D			TG_Shape::s_rootLightDir[MAX_LIGHTS_IN_WORLD];
 Stuff::Vector3D			TG_Shape::s_spotDir[MAX_LIGHTS_IN_WORLD];
 
-UserHeapPtr 			TG_Shape::tglHeap = NULL;
+UserHeapPtr 			TG_Shape::tglHeap = nullptr;
 
 DWORD					TG_Shape::lighteningLevel = 0;
 
-TG_VertexPool 			*colorPool = NULL;
-TG_GOSVertexPool 		*vertexPool = NULL;
-TG_DWORDPool			*facePool = NULL;
-TG_ShadowPool			*shadowPool = NULL;
-TG_TrianglePool			*trianglePool = NULL;
+TG_VertexPool 			*colorPool = nullptr;
+TG_GOSVertexPool 		*vertexPool = nullptr;
+TG_DWORDPool			*facePool = nullptr;
+TG_ShadowPool			*shadowPool = nullptr;
+TG_TrianglePool			*trianglePool = nullptr;
 
 // Encyclopedia 3D-preview auto-framing: when armed, the software vertex
 // transform accumulates the projected screen-space bounding box of the

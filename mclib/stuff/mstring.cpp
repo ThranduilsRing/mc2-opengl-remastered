@@ -43,7 +43,7 @@ MStringRepresentation::MStringRepresentation()
 {
 	stringLength = 0;
 	stringSize = 0;
-	stringText = NULL;
+	stringText = nullptr;
 	referenceCount = 0;
 }
 
@@ -57,9 +57,9 @@ MStringRepresentation::MStringRepresentation(const MStringRepresentation &str)
 	stringLength = str.stringLength;
 	stringSize = str.stringSize;
 
-	if (str.stringText == NULL)
+	if (str.stringText == nullptr)
 	{
-		stringText = NULL;
+		stringText = nullptr;
 	}
 	else
 	{
@@ -76,11 +76,11 @@ MStringRepresentation::MStringRepresentation(const MStringRepresentation &str)
 //
 MStringRepresentation::MStringRepresentation(const char *cstr)
 {
-	if ((cstr == NULL) || (cstr[0] == '\x00'))
+	if ((cstr == nullptr) || (cstr[0] == '\x00'))
 	{
 		stringLength = 0;
 		stringSize = 0;
-		stringText = NULL;
+		stringText = nullptr;
 	}
 	else
 	{
@@ -100,7 +100,7 @@ MStringRepresentation::MStringRepresentation(const char *cstr)
 //
 MStringRepresentation::~MStringRepresentation()
 {
-	if (stringText != NULL)
+	if (stringText != nullptr)
 	{
 		#if defined(_ARMOR)
 			memset(stringText, DELETE_FILL_CHAR, stringSize);
@@ -136,7 +136,7 @@ void
 {
 	Check_Object(this);
 
-	if (stringText != NULL)
+	if (stringText != nullptr)
 	{
       #if defined(_ARMOR)
 			memset(stringText, DELETE_FILL_CHAR, stringSize);
@@ -149,7 +149,7 @@ void
 	{
 		stringLength = 0;
 		stringSize = 0;
-		stringText = NULL;
+		stringText = nullptr;
 	}
 	else
 	{
@@ -172,7 +172,7 @@ MStringRepresentation
 	if (this == &str)
 		return *this;
 
-	if (stringText != NULL)
+	if (stringText != nullptr)
 	{
       #if defined(_ARMOR)
 			memset(stringText, DELETE_FILL_CHAR, stringSize);
@@ -187,7 +187,7 @@ MStringRepresentation
 
 	if (stringSize == 0)
    {
-		stringText = NULL;
+		stringText = nullptr;
    }
 	else
 	{
@@ -208,7 +208,7 @@ MStringRepresentation
 {
 	Check_Object(this);
 
-	if (stringText != NULL)
+	if (stringText != nullptr)
 	{
       #if defined(_ARMOR)
 			memset(stringText, DELETE_FILL_CHAR, stringSize);
@@ -217,11 +217,11 @@ MStringRepresentation
 		delete[] stringText;
 	}
 
-	if ((cstr == NULL) || (cstr[0] == '\x00'))
+	if ((cstr == nullptr) || (cstr[0] == '\x00'))
 	{
 		stringLength = 0;
 		stringSize = 0;
-		stringText = NULL;
+		stringText = nullptr;
 	}
 	else
 	{
@@ -267,13 +267,13 @@ MStringRepresentation
    Verify(temp.stringSize >= 1);
 	temp.stringText[0] = '\000';
 
-	if (str1.stringText != NULL)
+	if (str1.stringText != nullptr)
 	{
 		Mem_Copy(temp.stringText, str1.stringText, str1.stringLength + 1, temp.stringSize);
 		temp.stringLength = str1.stringLength;
 	}
 
-	if (str2.stringText != NULL)
+	if (str2.stringText != nullptr)
 	{
 		Verify(temp.stringLength < temp.stringSize);
 		Mem_Copy(
@@ -300,7 +300,7 @@ MStringRepresentation
 
 	MStringRepresentation temp;
 
-	if (str.stringText == NULL)
+	if (str.stringText == nullptr)
 	{
 		temp.stringLength = 1;
 		temp.stringSize = MStringRepresentation::allocationIncrement;
@@ -347,14 +347,14 @@ int
 	Check_Object(&str);
 
 	// handle special cases where one string is empty
-	if (stringText == NULL)
+	if (stringText == nullptr)
 	{
-		if (str.stringText == NULL)
+		if (str.stringText == nullptr)
 			return 0;
 		else
 			return -1;
 	}
-	if (str.stringText == NULL)
+	if (str.stringText == nullptr)
    {
 		return 1;
    }
@@ -379,7 +379,7 @@ MStringRepresentation
 	//
 	const char *delimter_string = " \t,";
 
-	if (delimiters != NULL)
+	if (delimiters != nullptr)
 	{
 		delimter_string = delimiters;
 	}
@@ -390,7 +390,7 @@ MStringRepresentation
    //
 	MStringRepresentation temp(*this);
 
-   if (temp.stringText == NULL)
+   if (temp.stringText == nullptr)
 		return temp;
 
    //
@@ -403,11 +403,11 @@ MStringRepresentation
 	ptr = strtok(temp.stringText, delimter_string);
 	for (i = 0; i < nth_token; i++)
 	{
-		if ((ptr = strtok(NULL, delimter_string)) == NULL)
+		if ((ptr = strtok(nullptr, delimter_string)) == nullptr)
 			break;
 	}
 
-	if (ptr == NULL)
+	if (ptr == nullptr)
 	{
 		MStringRepresentation null_return;
 		return null_return;
@@ -424,7 +424,7 @@ void
 	MStringRepresentation::ToUpper()
 {
 	Check_Object(this);
-	if (stringText != NULL)
+	if (stringText != nullptr)
 	{
 		for (int i = 0; i < stringLength; i++)
 		{
@@ -440,7 +440,7 @@ void
 void MStringRepresentation::ToLower()
 {
 	Check_Object(this);
-	if (stringText != NULL)
+	if (stringText != nullptr)
 	{
 		CharLower(stringText);
 	}
@@ -516,11 +516,11 @@ void
 		Check_Object(value);
 		*value = str;
 	#else
-		if (str == NULL)
+		if (str == nullptr)
 		{
 			STOP(("Convert_From_Ascii - str == NULL"));
 		}
-		if (value == NULL)
+		if (value == nullptr)
 		{
 			STOP(("Convert_From_Ascii - value == NULL"));
 		}

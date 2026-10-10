@@ -13,7 +13,7 @@
 //#############################################################################
 
 MLR_I_L_TMesh::ClassData*
-	MLR_I_L_TMesh::DefaultData = NULL;
+	MLR_I_L_TMesh::DefaultData = nullptr;
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
@@ -44,7 +44,7 @@ void
 {
 	Unregister_Object(DefaultData);
 	delete DefaultData;
-	DefaultData = NULL;
+	DefaultData = nullptr;
 
 	#if defined(TRACE_ENABLED) && defined(MLR_TRACE)
 		Unregister_Object(MLR_I_L_TMesh_Clip);
@@ -312,7 +312,7 @@ MLRShape*
 	Point3D *coords = new Point3D [nrTri*3];
 	Register_Pointer(coords);
 	
-	Point3D *collapsedCoords = NULL;
+	Point3D *collapsedCoords = nullptr;
 	if(icoInfo.indexed==true)
 	{
 		collapsedCoords = new Point3D [nrTri*3];
@@ -344,7 +344,7 @@ MLRShape*
 		}
 		subdivide (coords, v[0], v[1], v[2], icoInfo.depth, nrTri, icoInfo.radius);
 
-		mesh->SetSubprimitiveLengths(NULL, nrTri);
+		mesh->SetSubprimitiveLengths(nullptr, nrTri);
 
 		if(icoInfo.indexed==true)
 		{
@@ -383,7 +383,7 @@ MLRShape*
 
 		mesh->FindFacePlanes();
 
-		if(state == NULL)
+		if(state == nullptr)
 		{
 			for(i=0;i<uniquePoints;i++)
 			{

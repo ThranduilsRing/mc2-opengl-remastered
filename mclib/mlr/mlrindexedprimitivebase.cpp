@@ -12,7 +12,7 @@ DynamicArrayOf<unsigned short>
 	*MLRIndexedPrimitiveBase::clipExtraIndex;
 
 MLRIndexedPrimitiveBase::ClassData*
-	MLRIndexedPrimitiveBase::DefaultData = NULL;
+	MLRIndexedPrimitiveBase::DefaultData = nullptr;
 
 unsigned short
 	*indexOffset;
@@ -29,7 +29,7 @@ void
 			MLRIndexedPrimitiveBaseClassID,
 			"MidLevelRenderer::MLRIndexedPrimitiveBase",
 			MLRPrimitiveBase::DefaultData,
-			NULL
+			nullptr
 		);
 	Register_Object(DefaultData);
 	
@@ -53,7 +53,7 @@ void
 
 	Unregister_Object(DefaultData);
 	delete DefaultData;
-	DefaultData = NULL;
+	DefaultData = nullptr;
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -130,7 +130,7 @@ void
 {
 	MLRPrimitiveBase::InitializeDrawPrimitive(vis, parameter);
 
-	gos_indices = NULL;
+	gos_indices = nullptr;
 	numGOSIndices = -1;
 
 	visibleIndexedVerticesKey = false;

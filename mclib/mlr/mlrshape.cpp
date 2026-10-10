@@ -9,7 +9,7 @@
 //#############################################################################
 
 MLRShape::ClassData*
-	MLRShape::DefaultData = NULL;
+	MLRShape::DefaultData = nullptr;
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
@@ -34,7 +34,7 @@ void
 {
 	Unregister_Object(DefaultData);
 	delete DefaultData;
-	DefaultData = NULL;
+	DefaultData = nullptr;
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -56,7 +56,7 @@ MLRShape::MLRShape(
 
 	for(i=0;i<numPrimitives;i++)
 	{
-		MLRPrimitiveBase *pt = NULL;
+		MLRPrimitiveBase *pt = nullptr;
 		switch(version)
 		{
 			case 1:
@@ -446,7 +446,7 @@ MLRPrimitiveBase*
 
 	if(nr < 0)
 	{
-		return NULL;
+		return nullptr;
 	}
 
 	for(i=nr;i<numPrimitives-1;i++)
@@ -474,7 +474,7 @@ MLRPrimitiveBase*
 
 	if(nr < 0 || nr >= numPrimitives)
 	{
-		return NULL;
+		return nullptr;
 	}
 
 	for(i=nr;i<numPrimitives-1;i++)

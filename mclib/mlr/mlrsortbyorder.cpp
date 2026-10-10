@@ -8,7 +8,7 @@ extern DWORD gEnableTextureSort, gEnableAlphaSort, gEnableLightMaps;
 
 
 MLRSortByOrder::ClassData*
-	MLRSortByOrder::DefaultData = NULL;
+	MLRSortByOrder::DefaultData = nullptr;
 
 //#############################################################################
 //############################    MLRSortByOrder    ################################
@@ -37,7 +37,7 @@ void
 {
 	Unregister_Object(DefaultData);
 	delete DefaultData;
-	DefaultData = NULL;
+	DefaultData = nullptr;
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -102,7 +102,7 @@ void
 	Check_Object(this); 
 	Check_Object(pt);
 
-	SortData *sd = NULL;
+	SortData *sd = nullptr;
 
 	switch(pt->GetSortDataMode())
 	{
@@ -113,7 +113,7 @@ void
 	}
 
 	unsigned priority = pt->GetCurrentState(pass).GetPriority();
-	if(sd != NULL)
+	if(sd != nullptr)
 	{
 		priorityBuckets[priority][lastUsedInBucket[priority]++] = sd;
 	}
@@ -127,7 +127,7 @@ void
 	Check_Object(this); 
 	Check_Object(ef);
 
-	SortData *sd = NULL;
+	SortData *sd = nullptr;
 
 	switch(ef->GetSortDataMode())
 	{
@@ -173,7 +173,7 @@ void
 	}
 
 	unsigned priority = state.GetPriority();
-	if(sd != NULL)
+	if(sd != nullptr)
 	{
 		priorityBuckets[priority][lastUsedInBucket[priority]++] = sd;
 	}
@@ -199,7 +199,7 @@ void
 		);
 
 	unsigned priority = dInfo->state.GetPriority();
-	if(sd != NULL)
+	if(sd != nullptr)
 	{
 		priorityBuckets[priority][lastUsedInBucket[priority]++] = sd;
 	}
@@ -212,7 +212,7 @@ void
 {
 	Check_Object(this); 
 	
-	if(sd==NULL)
+	if(sd==nullptr)
 	{
 		return;
 	}
@@ -296,7 +296,7 @@ void
 					for(k=0;k<tbdp->nrOfActiveLights;k++)
 					{
 						Check_Object(tbdp->activeLights[k]);
-						nrOfLightMaps += (tbdp->activeLights[k]->GetLightMap() != NULL) ? 1 : 0;
+						nrOfLightMaps += (tbdp->activeLights[k]->GetLightMap() != nullptr) ? 1 : 0;
 						tbdp->activeLights[k]->SetLightToShapeMatrix(tbdp->worldToShape);
 					}
 
@@ -379,7 +379,7 @@ void
 			}
 			else
 			{
-				SortData *sd = NULL;
+				SortData *sd = nullptr;
 
 				for(j=0;j<lastUsedInBucketNotDrawn[i];j++)
 				{

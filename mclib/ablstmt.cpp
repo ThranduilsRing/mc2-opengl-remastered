@@ -128,7 +128,7 @@ void whileStatement (void) {
 
 	// NEW STYLE, using endwhile keyword...
 	getToken();
-	char* loopEndLocation = crunchAddressMarker(NULL);
+	char* loopEndLocation = crunchAddressMarker(nullptr);
 	
 	TypePtr exprType = expression();
 	if (exprType != BooleanTypePtr)
@@ -157,7 +157,7 @@ void whileStatement (void) {
 void ifStatement (void) {
 
 	getToken();
-	char* falseLocation = crunchAddressMarker(NULL);
+	char* falseLocation = crunchAddressMarker(nullptr);
 	
 	TypePtr exprType = expression();
 	if (exprType != BooleanTypePtr)
@@ -180,7 +180,7 @@ void ifStatement (void) {
 	// ELSE branch, if necessary...
 	if (curToken == TKN_ELSE) {
 		getToken();
-		char* ifEndLocation = crunchAddressMarker(NULL);
+		char* ifEndLocation = crunchAddressMarker(nullptr);
 
 		if (curToken != TKN_END_IF)
 			do {
@@ -202,11 +202,11 @@ void ifStatement (void) {
 void forStatement (void) {
 
 	getToken();
-	char* loopEndLocation = crunchAddressMarker(NULL);
+	char* loopEndLocation = crunchAddressMarker(nullptr);
 	
-	TypePtr forType = NULL;
+	TypePtr forType = nullptr;
 	if (curToken == TKN_IDENTIFIER) {
-		SymTableNodePtr forIdPtr = NULL;
+		SymTableNodePtr forIdPtr = nullptr;
 		searchAndFindAllSymTables(forIdPtr);
 		crunchSymTableNodePtr(forIdPtr);
 		if (/*(forIdPtr->level != level) ||*/ (forIdPtr->defn.key != DFN_VAR))
@@ -272,7 +272,7 @@ TypePtr caseLabel (CaseItemPtr& caseItemHead, CaseItemPtr& caseItemTail, long& c
 		}
 	else
 		caseItemHead = caseItemTail = newCaseItem;
-	newCaseItem->next = NULL;
+	newCaseItem->next = nullptr;
 	caseLabelCount++;
 
 	TokenCodeType sign = TKN_PLUS;
@@ -364,7 +364,7 @@ void caseBranch (CaseItemPtr& caseItemHead, CaseItemPtr& caseItemTail, long& cas
 
 	//--------------
 	// Error sync...
-	synchronize(FollowCaseLabelList, statementStartList, NULL);
+	synchronize(FollowCaseLabelList, statementStartList, nullptr);
 	ifTokenGetElseError(TKN_COLON, ABL_ERR_SYNTAX_MISSING_COLON);
 
 	//-----------------------------------------------------------------
@@ -396,10 +396,10 @@ void switchStatement (void) {
 	//-------------------------
 	// Init the branch table...
 	getToken();
-	char* branchTableLocation = crunchAddressMarker(NULL);
+	char* branchTableLocation = crunchAddressMarker(nullptr);
 
-CaseItemPtr	caseItemHead = NULL;
-CaseItemPtr	caseItemTail = NULL;
+CaseItemPtr	caseItemHead = nullptr;
+CaseItemPtr	caseItemTail = nullptr;
 long caseLabelCount = 0;
 	
 //CaseItemHead = CaseItemTail = NULL;
@@ -413,12 +413,12 @@ long caseLabelCount = 0;
 	if (((expressionType->form != FRM_SCALAR) && (expressionType->form != FRM_ENUM)) || (expressionType == RealTypePtr))
 		syntaxError(ABL_ERR_SYNTAX_INCOMPATIBLE_TYPES);
 
-	synchronize(FollowSwitchExpressionList, NULL, NULL);
+	synchronize(FollowSwitchExpressionList, nullptr, nullptr);
 
 	//----------------------------
 	// Process each CASE branch...
 	bool moreBranches = (curToken == TKN_CASE);
-	char* caseEndChain = NULL;
+	char* caseEndChain = nullptr;
 	while (moreBranches) {
 		getToken();
 		if (tokenIn(CaseLabelStartList))
@@ -494,7 +494,7 @@ void statement (void) {
 	
 	switch (curToken) {
 		case TKN_IDENTIFIER: {
-			SymTableNodePtr IdPtr = NULL;
+			SymTableNodePtr IdPtr = nullptr;
 			
 			//--------------------------------------------------------------
 			// First, do we have an assignment statement or a function call?		
@@ -555,7 +555,7 @@ void statement (void) {
 	//---------------------------------------------------------------------
 	// Now, make sure the statement is closed off with the proper block end
 	// statement, if necessary (which is usually the case :).
-	synchronize(statementEndList, NULL, NULL);
+	synchronize(statementEndList, nullptr, nullptr);
 	if (tokenIn(statementStartList))
 		syntaxError(ABL_ERR_SYNTAX_MISSING_SEMICOLON);
 }

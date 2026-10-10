@@ -32,7 +32,7 @@ void EffectClipPolygon::Destroy()
 
 
 MLREffect::ClassData*
-	MLREffect::DefaultData = NULL;
+	MLREffect::DefaultData = nullptr;
 EffectClipPolygon
 	*MLREffect::clipBuffer;
 
@@ -80,7 +80,7 @@ void
 
 	Unregister_Object(DefaultData);
 	delete DefaultData;
-	DefaultData = NULL;
+	DefaultData = nullptr;
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -103,7 +103,7 @@ MLREffect::MLREffect(int nr, ClassData *class_data):
 
 	worldToEffect = LinearMatrix4D::Identity;
 
-	gos_vertices = NULL;
+	gos_vertices = nullptr;
 	numGOSVertices = 0;
 }
 

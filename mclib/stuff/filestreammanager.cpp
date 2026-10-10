@@ -148,12 +148,12 @@ void
 //#############################################################################
 
 FileStreamManager*
-	FileStreamManager::Instance = NULL;
+	FileStreamManager::Instance = nullptr;
 	
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
 FileStreamManager::FileStreamManager():
-	compareCache(NULL, true)
+	compareCache(nullptr, true)
 {	
 }	
 
@@ -182,7 +182,7 @@ bool
 	//
 	FileStatPlug *stat_plug;
 	
-	if ((stat_plug = compareCache.Find(file_name)) != NULL)
+	if ((stat_plug = compareCache.Find(file_name)) != nullptr)
 	{
 		Check_Object(stat_plug);
 		Check_Pointer(stat_plug->GetPointer());

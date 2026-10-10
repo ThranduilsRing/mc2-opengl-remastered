@@ -22,7 +22,7 @@
 
 #include <zlib.h>
 
-typedef unsigned char* MemoryPtr;
+using MemoryPtr = unsigned char*;
 
 
 #include"gameos.hpp"

@@ -165,7 +165,7 @@ int PriorityQueue::findByKey (int32_t key, uint32_t id, int startIndex/* = 1*/) 
 void PriorityQueue::destroy (void) {
 
 	systemHeap->Free(pqList);
-	pqList = NULL;
+	pqList = nullptr;
 	maxItems = 0;
 	numItems = 0;
 }

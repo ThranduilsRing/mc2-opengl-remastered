@@ -18,8 +18,8 @@ Directory::Directory(
 	char *find_files,
 	bool directories
 ):
-	fileEntries(NULL,false),
-	folderEntries(NULL,false)
+	fileEntries(nullptr,false),
+	folderEntries(nullptr,false)
 {
 	Check_Pointer(find_files);
 
@@ -53,7 +53,7 @@ Directory::Directory(
 	// Look through the directories if we are supposed to
 	//---------------------------------------------------
 	//
-	folderWalker = NULL;
+	folderWalker = nullptr;
 	if (directories)
 	{
 		file_name = gos_FindDirectories(new_directory_string);
@@ -80,7 +80,7 @@ Directory::~Directory(void)
 	fileWalker->DeletePlugs();
 	Check_Object(fileWalker);
 	delete fileWalker;
-	if (folderWalker != NULL)
+	if (folderWalker != nullptr)
 	{
 		Check_Object(folderWalker);
 		folderWalker->DeletePlugs();
@@ -99,12 +99,12 @@ char*
 
 	DirectoryEntry *entry;
 	
-	if ((entry = fileWalker->GetCurrent()) != NULL)
+	if ((entry = fileWalker->GetCurrent()) != nullptr)
 	{
 		Check_Object(entry);
 		return entry->GetItem();
 	}
-	return NULL;
+	return nullptr;
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -122,18 +122,18 @@ void
 char * Directory::GetCurrentFolderName( void )
 {
 	Check_Object(this);
-	if (folderWalker == NULL)
+	if (folderWalker == nullptr)
 		STOP(("Directory class was instantiated without directory support:\n           Set the <directories> parameter to true to enable."));
 	Check_Object(folderWalker);
 
 	DirectoryFolder *entry;
 	
-	if ((entry = folderWalker->GetCurrent()) != NULL)
+	if ((entry = folderWalker->GetCurrent()) != nullptr)
 	{
 		Check_Object(entry);
 		return entry->GetItem();
 	}
-	return NULL;
+	return nullptr;
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -141,7 +141,7 @@ char * Directory::GetCurrentFolderName( void )
 void Directory::AdvanceCurrentFolder( void )
 {
 	Check_Object(this);
-	if (folderWalker == NULL)
+	if (folderWalker == nullptr)
 		STOP(("Directory class was instantiated without directory support:\n           Set the <directories> parameter to true to enable."));
 	Check_Object(folderWalker);
 	folderWalker->Next();
@@ -152,7 +152,7 @@ void Directory::AdvanceCurrentFolder( void )
 //#############################################################################
 
 FileStream::ClassData*
-	FileStream::DefaultData = NULL;
+	FileStream::DefaultData = nullptr;
 
 const char *
 	FileStream::WhiteSpace = " \t\n";
@@ -185,7 +185,7 @@ void
 {
 	Check_Object(DefaultData);
 	delete DefaultData;
-	DefaultData = NULL;
+	DefaultData = nullptr;
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -199,11 +199,11 @@ void
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
 FileStream::FileStream():
-	MemoryStream(DefaultData, NULL, 0)
+	MemoryStream(DefaultData, nullptr, 0)
 {
-	fileName = NULL;
+	fileName = nullptr;
 	isOpen = false;
-	fileHandle = NULL;
+	fileHandle = nullptr;
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -212,9 +212,9 @@ FileStream::FileStream(
 	const char* file_name,
 	WriteStatus writable
 ):
-	MemoryStream(DefaultData, NULL, 0)
+	MemoryStream(DefaultData, nullptr, 0)
 {
-	fileName = NULL;
+	fileName = nullptr;
 	isOpen = false;
 	Open(file_name, writable);
 }
@@ -238,9 +238,9 @@ void
 	Check_Pointer(file_name);
 
 	writeEnabled = writable;
-	currentPosition = streamStart = NULL;
+	currentPosition = streamStart = nullptr;
 	streamSize = 0;
-	fileHandle = NULL;
+	fileHandle = nullptr;
 
 	//
 	//------------------------------------------------
@@ -252,7 +252,7 @@ void
 		if (IsRedirected)
 		{
 			void (__stdcall *old_hook)(const char*, BYTE**, DWORD*) = Environment.HookGetFile;
-			Environment.HookGetFile = NULL;
+			Environment.HookGetFile = nullptr;
 			gos_GetFile(RedirectedName, &streamStart, &streamSize);
 			Environment.HookGetFile = old_hook;
 			fileName = _strdup(RedirectedName);
@@ -280,7 +280,7 @@ void
 		if (IgnoreReadOnlyFlag)
 		{
 			bool (__stdcall *old_hook)(const char*) = Environment.HookDoesFileExist;
-			Environment.HookDoesFileExist = NULL;
+			Environment.HookDoesFileExist = nullptr;
 			if (gos_DoesFileExist(file_name))
 				gos_FileSetReadWrite(file_name);
 			Environment.HookDoesFileExist = old_hook;
@@ -317,7 +317,7 @@ void
 	//
 	if (fileHandle)
 		gos_CloseFile(fileHandle);
-	else if (streamStart != NULL)
+	else if (streamStart != nullptr)
 		gos_Free(streamStart);
 
 	//
@@ -330,7 +330,7 @@ void
 	{
 		Check_Pointer(fileName);
 		free(fileName);
-		fileName = NULL;
+		fileName = nullptr;
 	}
 }
 
@@ -420,7 +420,7 @@ bool
 
     PAUSE(("")); // sebi
 	
-	if (directory_path == NULL)
+	if (directory_path == nullptr)
 		return false;
 
 	Check_Pointer(directory_path);
@@ -432,9 +432,9 @@ bool
 	if (*current_position != '\\')
 	{
 	
-		if ((current_position + 1) != NULL)
+		if ((current_position + 1) != nullptr)
 		{
-			if((current_position + 2) != NULL)
+			if((current_position + 2) != nullptr)
 			{
 				if ( *(current_position + 1) == ':' && *(current_position + 2) == '\\')
 				{
@@ -448,15 +448,15 @@ bool
 		return false;
 
 
-	while((current_position != NULL))
+	while((current_position != nullptr))
 	{
 		//make a substring with the path...
 		const char *next_slash;
 		next_slash = strchr( current_position + 1, '\\' );
 
-		char *new_string = NULL;
+		char *new_string = nullptr;
 
-		if (next_slash == NULL)
+		if (next_slash == nullptr)
 		{
 			//copy the whole string
 			size_t length = strlen(start_position)+1;

@@ -84,7 +84,7 @@ struct VkHudRouteScope {
 // class Appearance
 void * Appearance::operator new (size_t mySize)
 {
-	void* result = NULL;
+	void* result = nullptr;
 	if (AppearanceTypeList::appearanceHeap && AppearanceTypeList::appearanceHeap->heapReady())
 	{
 		result = AppearanceTypeList::appearanceHeap->Malloc(mySize);
@@ -177,115 +177,115 @@ void Appearance::drawSelectBox (DWORD color)
 	// Must scale the magic numbers for select bracket
 	offsets = 5.0f * eye->getScaleFactor();
 
-	pos1.x = float(ul.x-offsets);
-	pos1.y = float(ul.y-offsets);
+	pos1.x = (ul.x-offsets);
+	pos1.y = (ul.y-offsets);
 	pos1.z = ul.z;
 
-	pos2.x = float(ul.x-offsets);
+	pos2.x = (ul.x-offsets);
 	pos2.y = float(ul.y);
 	pos2.z = ul.z;
 	pos2.w = pos1.w = 1.0f;
 	
 	{
-		LineElement newElement(pos1,pos2,color,NULL,-1);
+		LineElement newElement(pos1,pos2,color,nullptr,-1);
 		newElement.draw();
 	}
 	
-	pos1.x = float(ul.x-offsets);
-	pos1.y = float(ul.y-offsets);
+	pos1.x = (ul.x-offsets);
+	pos1.y = (ul.y-offsets);
 	pos1.z = ul.z;
 
 	pos2.x = float(ul.x);
-	pos2.y = float(ul.y-offsets);
+	pos2.y = (ul.y-offsets);
 	pos2.z = ul.z;
 	pos2.w = pos1.w = 1.0f;
 	
 	{
-		LineElement newElement(pos1,pos2,color,NULL,-1);
+		LineElement newElement(pos1,pos2,color,nullptr,-1);
 		newElement.draw();
 	}
 	
-	pos1.x = float(br.x+offsets);
-	pos1.y = float(ul.y-offsets);
+	pos1.x = (br.x+offsets);
+	pos1.y = (ul.y-offsets);
 	pos1.z = ul.z;
 
-	pos2.x = float(br.x+offsets);
+	pos2.x = (br.x+offsets);
 	pos2.y = float(ul.y);
 	pos2.z = ul.z;
 	pos2.w = pos1.w = 1.0f;
 	
 	{
-		LineElement newElement(pos1,pos2,color,NULL,-1);
+		LineElement newElement(pos1,pos2,color,nullptr,-1);
 		newElement.draw();
 	}
 	
-	pos1.x = float(br.x+offsets);
-	pos1.y = float(ul.y-offsets);
+	pos1.x = (br.x+offsets);
+	pos1.y = (ul.y-offsets);
 	pos1.z = ul.z;
 
 	pos2.x = float(br.x);
-	pos2.y = float(ul.y-offsets);
+	pos2.y = (ul.y-offsets);
 	pos2.z = ul.z;
 	pos2.w = pos1.w = 1.0f;
 	
 	{
-		LineElement newElement(pos1,pos2,color,NULL,-1);
+		LineElement newElement(pos1,pos2,color,nullptr,-1);
 		newElement.draw();
 	}
 	
-	pos1.x = float(br.x+offsets);
-	pos1.y = float(br.y+offsets);
+	pos1.x = (br.x+offsets);
+	pos1.y = (br.y+offsets);
 	pos1.z = ul.z;
 
-	pos2.x = float(br.x+offsets);
+	pos2.x = (br.x+offsets);
 	pos2.y = float(br.y);
 	pos2.z = ul.z;
 	pos2.w = pos1.w = 1.0f;
 	
 	{
-		LineElement newElement(pos1,pos2,color,NULL,-1);
+		LineElement newElement(pos1,pos2,color,nullptr,-1);
 		newElement.draw();
 	}
 	
-	pos1.x = float(br.x+offsets);
-	pos1.y = float(br.y+offsets);
+	pos1.x = (br.x+offsets);
+	pos1.y = (br.y+offsets);
 	pos1.z = ul.z;
 
 	pos2.x = float(br.x);
-	pos2.y = float(br.y+offsets);
+	pos2.y = (br.y+offsets);
 	pos2.z = ul.z;
 	pos2.w = pos1.w = 1.0f;
 	
 	{
-		LineElement newElement(pos1,pos2,color,NULL,-1);
+		LineElement newElement(pos1,pos2,color,nullptr,-1);
 		newElement.draw();
 	}
 	
-	pos1.x = float(ul.x-offsets);
-	pos1.y = float(br.y+offsets);
+	pos1.x = (ul.x-offsets);
+	pos1.y = (br.y+offsets);
 	pos1.z = ul.z;
 
-	pos2.x = float(ul.x-offsets);
+	pos2.x = (ul.x-offsets);
 	pos2.y = float(br.y);
 	pos2.z = ul.z;
 	pos2.w = pos1.w = 1.0f;
 	
 	{
-		LineElement newElement(pos1,pos2,color,NULL,-1);
+		LineElement newElement(pos1,pos2,color,nullptr,-1);
 		newElement.draw();
 	}
 	
-	pos1.x = float(ul.x-offsets);
-	pos1.y = float(br.y+offsets);
+	pos1.x = (ul.x-offsets);
+	pos1.y = (br.y+offsets);
 	pos1.z = ul.z;
 
 	pos2.x = float(ul.x);
-	pos2.y = float(br.y+offsets);
+	pos2.y = (br.y+offsets);
 	pos2.z = ul.z;
 	pos2.w = pos1.w = 1.0f;
 	
 	{
-		LineElement newElement(pos1,pos2,color,NULL,-1);
+		LineElement newElement(pos1,pos2,color,nullptr,-1);
 		newElement.draw();
 	}
 }
@@ -319,7 +319,7 @@ void Appearance::drawSelectBrackets (DWORD color)
 	pos2.w = pos1.w = 1.0f;
 	
 	{
-		LineElement newElement(pos1,pos2,color,NULL,-1);
+		LineElement newElement(pos1,pos2,color,nullptr,-1);
 		newElement.draw();
 	}
 
@@ -333,7 +333,7 @@ void Appearance::drawSelectBrackets (DWORD color)
 	pos2.w = pos1.w = 1.0f;
 	
 	{
-		LineElement newElement(pos1,pos2,color,NULL,-1);
+		LineElement newElement(pos1,pos2,color,nullptr,-1);
 		newElement.draw();
 	}
 	
@@ -347,7 +347,7 @@ void Appearance::drawSelectBrackets (DWORD color)
 	pos2.w = pos1.w = 1.0f;
 	
 	{
-		LineElement newElement(pos1,pos2,color,NULL,-1);
+		LineElement newElement(pos1,pos2,color,nullptr,-1);
 		newElement.draw();
 	}
 	
@@ -361,7 +361,7 @@ void Appearance::drawSelectBrackets (DWORD color)
 	pos2.w = pos1.w = 1.0f;
 	
 	{
-		LineElement newElement(pos1,pos2,color,NULL,-1);
+		LineElement newElement(pos1,pos2,color,nullptr,-1);
 		newElement.draw();
 	}
 
@@ -375,7 +375,7 @@ void Appearance::drawSelectBrackets (DWORD color)
 	pos2.w = pos1.w = 1.0f;
 	
 	{
-		LineElement newElement(pos1,pos2,color,NULL,-1);
+		LineElement newElement(pos1,pos2,color,nullptr,-1);
 		newElement.draw();
 	}
 	
@@ -389,7 +389,7 @@ void Appearance::drawSelectBrackets (DWORD color)
 	pos2.w = pos1.w = 1.0f;
 	
 	{
-		LineElement newElement(pos1,pos2,color,NULL,-1);
+		LineElement newElement(pos1,pos2,color,nullptr,-1);
 		newElement.draw();
 	}
 	
@@ -404,7 +404,7 @@ void Appearance::drawSelectBrackets (DWORD color)
 	pos2.w = pos1.w = 1.0f;
 	
 	{
-		LineElement newElement(pos1,pos2,color,NULL,-1);
+		LineElement newElement(pos1,pos2,color,nullptr,-1);
 		newElement.draw();
 	}
 	
@@ -418,7 +418,7 @@ void Appearance::drawSelectBrackets (DWORD color)
 	pos2.w = pos1.w = 1.0f;
 	
 	{
-		LineElement newElement(pos1,pos2,color,NULL,-1);
+		LineElement newElement(pos1,pos2,color,nullptr,-1);
 		newElement.draw();
 	}
 }
@@ -439,7 +439,7 @@ void DrawBox(float l, float t, float r, float b)
 	p2.w = 1.0;
 
 	{
-		LineElement newElement(p1,p2,SD_BLACK,NULL,-1);
+		LineElement newElement(p1,p2,SD_BLACK,nullptr,-1);
 		newElement.draw();
 	}
 
@@ -450,7 +450,7 @@ void DrawBox(float l, float t, float r, float b)
 	p2.y = b;
 
 	{
-		LineElement newElement(p1,p2,SD_BLACK,NULL,-1);
+		LineElement newElement(p1,p2,SD_BLACK,nullptr,-1);
 		newElement.draw();
 	}
 
@@ -461,7 +461,7 @@ void DrawBox(float l, float t, float r, float b)
 	p2.y = b;
 
 	{
-		LineElement newElement(p1,p2,SD_BLACK,NULL,-1);
+		LineElement newElement(p1,p2,SD_BLACK,nullptr,-1);
 		newElement.draw();
 	}
 
@@ -472,7 +472,7 @@ void DrawBox(float l, float t, float r, float b)
 	p2.y = b;
 
 	{
-		LineElement newElement(p1,p2,SD_BLACK,NULL,-1);
+		LineElement newElement(p1,p2,SD_BLACK,nullptr,-1);
 		newElement.draw();
 	}
 }

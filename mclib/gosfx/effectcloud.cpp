@@ -84,7 +84,7 @@ void
 //############################################################################
 
 gosFX::EffectCloud::ClassData*
-	gosFX::EffectCloud::DefaultData = NULL;
+	gosFX::EffectCloud::DefaultData = nullptr;
 
 //------------------------------------------------------------------------------
 //
@@ -111,7 +111,7 @@ void
 {
 	Check_Object(DefaultData);
 	delete DefaultData;
-	DefaultData = NULL;
+	DefaultData = nullptr;
 }
 
 //------------------------------------------------------------------------------
@@ -208,7 +208,7 @@ void
 		local_info(
 			m_lastRan,
 			&m_localToWorld,
-			NULL,
+			nullptr,
 			particle->m_seed
 		);
 	local_info.m_age = particle->m_age;
@@ -270,7 +270,7 @@ bool
 
 	particle->m_radius = 0.0f;
 	delete particle->m_effect;
-	particle->m_effect = NULL;
+	particle->m_effect = nullptr;
 	return false;
 }
 
@@ -286,7 +286,7 @@ void gosFX::EffectCloud::DestroyParticle(unsigned index)
 	{
 		Check_Object(particle->m_effect);
 		delete particle->m_effect;
-		particle->m_effect = NULL;
+		particle->m_effect = nullptr;
 	}
 	SpinningCloud::DestroyParticle(index);
 }

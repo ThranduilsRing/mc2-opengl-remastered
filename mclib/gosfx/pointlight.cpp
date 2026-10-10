@@ -164,7 +164,7 @@ void
 //############################################################################
 
 gosFX::PointLight::ClassData*
-	gosFX::PointLight::DefaultData = NULL;
+	gosFX::PointLight::DefaultData = nullptr;
 
 //------------------------------------------------------------------------------
 //
@@ -193,7 +193,7 @@ void
 	{
 		Unregister_Object(DefaultData);
 		delete DefaultData;
-		DefaultData = NULL;
+		DefaultData = nullptr;
 	}
 }
 
@@ -316,7 +316,7 @@ void
 	Effect::Kill();
 	Check_Pointer(m_light);
 	LightManager::Instance->DeleteLight(m_light);
-	m_light = NULL;
+	m_light = nullptr;
 }
 
 //------------------------------------------------------------------------------

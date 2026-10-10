@@ -17,12 +17,12 @@
 #include<string.h>
 #include<gameos.hpp>
 //---------------------------------------------------------------------------
-typedef struct _RGB
+using RGB = struct _RGB
 {
 	unsigned char r;
 	unsigned char g;
 	unsigned char b;
-} RGB;
+};
 
 //---------------------------------------------------------------------------
 void tgaDecomp(MemoryPtr dest, MemoryPtr source, TGAFileHeader *tga_header)
@@ -207,7 +207,7 @@ void tgaCopy (MemoryPtr dest, MemoryPtr src, long size)
 //---------------------------------------------------------------------------
 static const int g_textureCache_BufferSize = 16384/*64*64*sizeof(DWORD)*/;
 static BYTE g_textureCache_Buffer[g_textureCache_BufferSize];
-EString *g_textureCache_FilenameOfLastLoadedTexture = NULL;/*This is an (EString *) instead of an EString because apparently gos memory management has a problem with global static allocation of EStrings.*/
+EString *g_textureCache_FilenameOfLastLoadedTexture = nullptr;/*This is an (EString *) instead of an EString because apparently gos memory management has a problem with global static allocation of EStrings.*/
 static int g_textureCache_WidthOfLastLoadedTexture = 0;/*just to be sure*/
 static int g_textureCache_HeightOfLastLoadedTexture = 0;/*just to be sure*/
 static int g_textureCache_NumberOfConsecutiveLoads = 0;

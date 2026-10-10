@@ -20,8 +20,8 @@ SortedChainLink::SortedChainLink(
 ):
 	Link(vchain, plug)
 {
-	next = NULL;
-	prev = NULL;
+	next = nullptr;
+	prev = nullptr;
 }
 
 //
@@ -46,7 +46,7 @@ SortedChainLink::~SortedChainLink()
 	// Remove from existing links
 	//---------------------------
 	//
-	if (prev != NULL)
+	if (prev != nullptr)
 	{
 		Check_Object(prev);
 		prev->next = next;
@@ -56,7 +56,7 @@ SortedChainLink::~SortedChainLink()
 		Check_Object(vchain);
 		vchain->head = next;
 	}
-	if (next != NULL)
+	if (next != nullptr)
 	{
 		Check_Object(next);
 		next->prev = prev;
@@ -66,7 +66,7 @@ SortedChainLink::~SortedChainLink()
    	Check_Object(vchain);
 		vchain->tail = prev;
 	}
-	prev = next = NULL;
+	prev = next = nullptr;
 
 	//
 	//------------------------------------------
@@ -82,7 +82,7 @@ SortedChainLink::~SortedChainLink()
 	// time.
 	//-------------------------------------------------------------
 	//
-	if (vchain->GetReleaseNode() != NULL)
+	if (vchain->GetReleaseNode() != nullptr)
 	{
 		Check_Object(vchain->GetReleaseNode());
 		vchain->GetReleaseNode()->ReleaseLinkHandler(vchain, plug);
@@ -99,11 +99,11 @@ void
 {
 	Link::TestInstance();
 	
-	if (next != NULL)
+	if (next != nullptr)
 	{
 		Check_Signature(next);
 	}
-	if (prev != NULL)
+	if (prev != nullptr)
 	{
 		Check_Signature(prev);
 	}
@@ -138,8 +138,8 @@ SortedChain::SortedChain(
 ):
 	SortedSocket(node, has_unique_entries)
 {
-	head = NULL;
-	tail = NULL;
+	head = nullptr;
+	tail = nullptr;
 }
 
 //
@@ -150,7 +150,7 @@ SortedChain::SortedChain(
 SortedChain::~SortedChain()
 {
 	Check_Object(this);
-	SetReleaseNode(NULL);
+	SetReleaseNode(nullptr);
 	SortedChainLink *link = head;
 	while (link)
 	{
@@ -172,11 +172,11 @@ void
 {
 	SortedSocket::TestInstance();
 	
-	if (head != NULL)
+	if (head != nullptr)
 	{
 		Check_Object(head);
 	}
-	if (tail != NULL)
+	if (tail != nullptr)
 	{
 		Check_Object(tail);
 	}
@@ -195,7 +195,7 @@ SortedChainLink
 {
 	Check_Object(this);
 	STOP(("SortedChain::MakeSortedChainLink - Should never reach here"));
-   return NULL;
+   return nullptr;
 }
 
 //
@@ -279,9 +279,9 @@ void
 	// Find insertion point for the new link
 	//-------------------------------------------------------------
 	//
-	if (head == NULL)
+	if (head == nullptr)
 	{
-		link->SetupSortedChainLinks(NULL, NULL);
+		link->SetupSortedChainLinks(nullptr, nullptr);
 		head = link;
       tail = link;
 	}
@@ -294,7 +294,7 @@ void
 
 		for (
 			greater_link = head;
-			greater_link != NULL;
+			greater_link != nullptr;
 			greater_link = greater_link->next
 		)
 		{
@@ -303,12 +303,12 @@ void
 				break;
 		}
 
-		if (greater_link == NULL)
+		if (greater_link == nullptr)
 		{
 			//
 			// Add after tail
 			//
-			link->SetupSortedChainLinks(NULL, tail);
+			link->SetupSortedChainLinks(nullptr, tail);
 			tail->next = link;
 			tail = link;
 		}
@@ -317,7 +317,7 @@ void
 			//
 			// Add before head
 			//
-			link->SetupSortedChainLinks(head, NULL);
+			link->SetupSortedChainLinks(head, nullptr);
 			head->prev = link;
 			head = link;
 		}
@@ -348,12 +348,12 @@ Plug*
 	Check_Object(this);
 	SortedChainLink *link;
 
-	if ((link = SearchForValue(value)) != NULL)
+	if ((link = SearchForValue(value)) != nullptr)
 	{
 		Check_Object(link);
 		return link->GetPlug();
 	}
-	return NULL;
+	return nullptr;
 }
 
 //
@@ -365,7 +365,7 @@ bool
 	SortedChain::IsEmpty()
 {
 	Check_Object(this);
-	return (head == NULL);
+	return (head == nullptr);
 }
 
 //
@@ -382,13 +382,13 @@ SortedChainLink*
 	SortedChainLink *link;
 	int ret;
 	
-	for (link = head; link != NULL; link = link->next)
+	for (link = head; link != nullptr; link = link->next)
 	{
 		Check_Object(link);
 		if ((ret = CompareValueToSortedChainLink(value, link)) == 0)
 			break;
 		if (ret < 0)
-      	return(NULL);
+      	return(nullptr);
 	}
 	return link;
 }
@@ -443,7 +443,7 @@ void
 {
 	SortedIterator::TestInstance();
 	
-	if (currentLink != NULL)
+	if (currentLink != nullptr)
 	{
 		Check_Object(currentLink);
 	}
@@ -508,7 +508,7 @@ void
 	*SortedChainIterator::ReadAndNextImplementation()
 {
 	Check_Object(this);
-	if (currentLink != NULL)
+	if (currentLink != nullptr)
 	{
 		Plug *plug;
 
@@ -517,7 +517,7 @@ void
 		currentLink = currentLink->next;
 		return plug;
 	}
-	return NULL;
+	return nullptr;
 }
 
 //
@@ -529,7 +529,7 @@ void
 	*SortedChainIterator::ReadAndPreviousImplementation()
 {
 	Check_Object(this);
-	if (currentLink != NULL) 
+	if (currentLink != nullptr) 
 	{
 		Plug *plug;
 		
@@ -538,7 +538,7 @@ void
 		currentLink = currentLink->prev;
 		return plug;
 	}
-	return NULL;
+	return nullptr;
 }
 
 //
@@ -550,12 +550,12 @@ void
 	*SortedChainIterator::GetCurrentImplementation()
 {
 	Check_Object(this);
-	if (currentLink != NULL) 
+	if (currentLink != nullptr) 
 	{
 		Check_Object(currentLink);
 		return currentLink->GetPlug();
 	}
-	return NULL;
+	return nullptr;
 }
 
 //
@@ -573,7 +573,7 @@ CollectionSize
 	count = 0;
 	for (
 		link = Cast_Object(SortedChain*, socket)->head;
-		link != NULL;
+		link != nullptr;
 		link = link->next
 	)
 	{
@@ -600,7 +600,7 @@ void
 	count = 0;
 	for (
 		link = Cast_Object(SortedChain*, socket)->head;
-		link != NULL;
+		link != nullptr;
 		link = link->next
 	) 
 	{
@@ -612,7 +612,7 @@ void
 		}
 		count++;
 	}
-	return NULL;
+	return nullptr;
 }
 
 //
@@ -642,12 +642,12 @@ Plug*
 	Check_Object(this);
 	SortedChainLink *link;
 	
-	if ((link = Cast_Object(SortedChain*, socket)->SearchForValue(value)) != NULL)
+	if ((link = Cast_Object(SortedChain*, socket)->SearchForValue(value)) != nullptr)
 	{
 		Check_Object(link);
 		return (currentLink = link)->GetPlug();
 	}
-	return NULL;
+	return nullptr;
 }
 
 //

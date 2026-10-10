@@ -8,7 +8,7 @@
 static const uint32_t gosFX_fourccGFX = 0x47465823;
 
 HGOSHEAP
-	gosFX::Heap = NULL;
+	gosFX::Heap = nullptr;
 
 DEFINE_TIMER(gosFX, Animation_Time);
 DEFINE_TIMER(gosFX, Draw_Time);
@@ -115,7 +115,7 @@ void
 
 	Check_Pointer(Heap);
 	gos_DestroyMemoryHeap(Heap,true);
-	Heap = NULL;
+	Heap = nullptr;
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

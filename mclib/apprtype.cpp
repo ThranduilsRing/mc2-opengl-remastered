@@ -42,8 +42,8 @@
 
 //---------------------------------------------------------------------------
 // static Globals
-UserHeapPtr AppearanceTypeList::appearanceHeap = NULL;
-AppearanceTypeListPtr appearanceTypeList = NULL;
+UserHeapPtr AppearanceTypeList::appearanceHeap = nullptr;
+AppearanceTypeListPtr appearanceTypeList = nullptr;
 
 //---------------------------------------------------------------------------
 // MC2_LOAD_RACE_TRACE: gated, one-shot mission-load residency-race diagnostics.
@@ -71,7 +71,7 @@ long g_loadRaceLastTerrainPath           = 0;    // last preflight: 0=none 1=gpu
 // Class AppearanceType
 void* AppearanceType::operator new (size_t memSize)
 {
-	void* result = NULL;
+	void* result = nullptr;
 	if (AppearanceTypeList::appearanceHeap && AppearanceTypeList::appearanceHeap->heapReady())
 	{
 		result = AppearanceTypeList::appearanceHeap->Malloc(memSize);
@@ -233,7 +233,7 @@ void AppearanceType::reinit (void)
 void AppearanceType::destroy (void)
 {
 	AppearanceTypeList::appearanceHeap->Free(name);
-	name = NULL;
+	name = nullptr;
 }
 
 //---------------------------------------------------------------------------
@@ -258,7 +258,7 @@ AppearanceTypePtr AppearanceTypeList::getAppearance (unsigned long apprNum, cons
 	// and store the number.  To get the appearance type, we right shift
 	// by 24.
 	long appearanceClass = apprNum >> 24;
-	AppearanceTypePtr appearanceType = NULL;
+	AppearanceTypePtr appearanceType = nullptr;
 	
 	//----------------------------------------------------
 	// If these top bits are wrong, return NULL
@@ -272,7 +272,7 @@ AppearanceTypePtr AppearanceTypeList::getAppearance (unsigned long apprNum, cons
 				appearFile ? appearFile : "<null>");
 			std::fflush(stdout);
 		}
-		return(NULL);
+		return(nullptr);
 	}
 
 	//----------------------------------------------------
@@ -286,7 +286,7 @@ AppearanceTypePtr AppearanceTypeList::getAppearance (unsigned long apprNum, cons
 				"apprNum=0x%08lx class=%ld\n", apprNum, appearanceClass);
 			std::fflush(stdout);
 		}
-		return NULL;
+		return nullptr;
 	}
 
 	//-----------------------------------------------------------
@@ -319,9 +319,9 @@ AppearanceTypePtr AppearanceTypeList::getAppearance (unsigned long apprNum, cons
 				//----------------------------------------
 				// We have a new one, add it to the list.				
 				appearanceType->numUsers = 1;
-				appearanceType->next = NULL;
+				appearanceType->next = nullptr;
 
-				if (head == NULL)
+				if (head == nullptr)
 				{
 					head = appearanceType;
 					last = head;
@@ -346,9 +346,9 @@ AppearanceTypePtr AppearanceTypeList::getAppearance (unsigned long apprNum, cons
 				//----------------------------------------
 				// We have a new one, add it to the list.				
 				appearanceType->numUsers = 1;
-				appearanceType->next = NULL;
+				appearanceType->next = nullptr;
 
-				if (head == NULL)
+				if (head == nullptr)
 				{
 					head = appearanceType;
 					last = head;
@@ -373,9 +373,9 @@ AppearanceTypePtr AppearanceTypeList::getAppearance (unsigned long apprNum, cons
 				//----------------------------------------
 				// We have a new one, add it to the list.				
 				appearanceType->numUsers = 1;
-				appearanceType->next = NULL;
+				appearanceType->next = nullptr;
 
-				if (head == NULL)
+				if (head == nullptr)
 				{
 					head = appearanceType;
 					last = head;
@@ -400,9 +400,9 @@ AppearanceTypePtr AppearanceTypeList::getAppearance (unsigned long apprNum, cons
 				//----------------------------------------
 				// We have a new one, add it to the list.				
 				appearanceType->numUsers = 1;
-				appearanceType->next = NULL;
+				appearanceType->next = nullptr;
 
-				if (head == NULL)
+				if (head == nullptr)
 				{
 					head = appearanceType;
 					last = head;
@@ -427,9 +427,9 @@ AppearanceTypePtr AppearanceTypeList::getAppearance (unsigned long apprNum, cons
 				//----------------------------------------
 				// We have a new one, add it to the list.				
 				appearanceType->numUsers = 1;
-				appearanceType->next = NULL;
+				appearanceType->next = nullptr;
 
-				if (head == NULL)
+				if (head == nullptr)
 				{
 					head = appearanceType;
 					last = head;
@@ -443,7 +443,7 @@ AppearanceTypePtr AppearanceTypeList::getAppearance (unsigned long apprNum, cons
 			break;
 
 			default:
-				return(NULL);
+				return(nullptr);
 		}
 	}
 
@@ -471,7 +471,7 @@ AppearanceTypePtr AppearanceTypeList::getAppearance (unsigned long apprNum, cons
 long AppearanceTypeList::removeAppearance (AppearanceTypePtr which)
 {
 	AppearanceTypePtr appearanceType = head;
-	AppearanceTypePtr previous = NULL;
+	AppearanceTypePtr previous = nullptr;
 	
 	while (appearanceType && (appearanceType != which))
 	{
@@ -491,7 +491,7 @@ long AppearanceTypeList::removeAppearance (AppearanceTypePtr which)
 	{
 		//------------------------------------------------------
 		// Check if there is no previous appearanceType in list
-		if (previous == NULL)
+		if (previous == nullptr)
 		{
 			//----------------------------------------------------
 			// if there was no previous, head is the next in list
@@ -508,7 +508,7 @@ long AppearanceTypeList::removeAppearance (AppearanceTypePtr which)
 			last = previous;
 			
 		delete appearanceType;
-		appearanceType = NULL;
+		appearanceType = nullptr;
 	}
 //#endif
 	
@@ -532,27 +532,27 @@ void AppearanceTypeList::destroy (void)
 	}
 	
 
-	head = last = NULL;
+	head = last = nullptr;
 	
 	delete appearanceHeap;
-	appearanceHeap = NULL;
+	appearanceHeap = nullptr;
 	
  	if (GVAppearanceType::SensorCircleShape)
 	{
 		delete GVAppearanceType::SensorCircleShape;
-		GVAppearanceType::SensorCircleShape = NULL;
+		GVAppearanceType::SensorCircleShape = nullptr;
 	}
 	
 	if (GVAppearanceType::SensorTriangleShape)
 	{
 		delete GVAppearanceType::SensorTriangleShape;
-		GVAppearanceType::SensorTriangleShape = NULL;
+		GVAppearanceType::SensorTriangleShape = nullptr;
 	}
 	
 	if (Mech3DAppearanceType::SensorSquareShape)
 	{
 		delete Mech3DAppearanceType::SensorSquareShape;
-		Mech3DAppearanceType::SensorSquareShape = NULL;
+		Mech3DAppearanceType::SensorSquareShape = nullptr;
 	}
 }
 

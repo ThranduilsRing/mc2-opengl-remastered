@@ -22,7 +22,7 @@
 //
 
 gosFX::EffectLibrary*
-	gosFX::EffectLibrary::Instance = NULL;
+	gosFX::EffectLibrary::Instance = nullptr;
 
 //------------------------------------------------------------------------------
 //
@@ -41,7 +41,7 @@ void
 	{
 		Unregister_Object(Instance);
 		delete Instance;
-		Instance=NULL;
+		Instance=nullptr;
 	}
 	// Tear down the underlying SpecLibrary so a subsequent mission load
 	// reparses cleanly. Safe to call repeatedly.
