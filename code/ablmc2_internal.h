@@ -183,7 +183,7 @@ inline bool isTeamId (long partId) {
 
 inline GameObjectPtr getObject (long partId, bool existsOnly) {
 
-	GameObjectPtr obj = NULL;
+	GameObjectPtr obj = nullptr;
 	if (partId == -1)
 		obj = CurObject;
 	else
@@ -191,7 +191,7 @@ inline GameObjectPtr getObject (long partId, bool existsOnly) {
 	if (existsOnly) {
 		if (obj && obj->getExists())
 			return(obj);
-		return(NULL);
+		return(nullptr);
 	}
 	return(obj);
 }

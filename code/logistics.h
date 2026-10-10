@@ -67,10 +67,10 @@ class Logistics
 		void init (void)
 		{
 			active = FALSE;
-			missionResults = 0;
-			missionBegin = 0;
+			missionResults = nullptr;
+			missionBegin = nullptr;
 			logisticsState = log_SPLASH;
-			bMovie = NULL;
+			bMovie = nullptr;
 		}
 		
 		void destroy (void);

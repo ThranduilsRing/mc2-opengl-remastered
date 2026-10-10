@@ -70,6 +70,19 @@ QUIET=0
 JOBS="${CONTRACTS_JOBS:-}"
 SELFTEST=0
 SELFTEST_RENDER=0
+# --rows REGEX runs only the rows whose label matches (ERE, unanchored): the inner-loop filter for iterating on one check. It is a
+# PARTIAL board and says so; the full board stays mandatory per batch.
+ROWS_RE=""
+ROWS_SKIPPED=0
+_ARGS=()
+while [ $# -gt 0 ]; do
+    if [ "$1" = "--rows" ]; then
+        [ $# -ge 2 ] || { echo "--rows needs a regex" >&2; exit 1; }
+        ROWS_RE="$2"; shift 2; continue
+    fi
+    _ARGS+=("$1"); shift
+done
+set -- ${_ARGS[@]+"${_ARGS[@]}"}
 for arg in "$@"; do
     case "$arg" in
         --quiet|-q) QUIET=1 ;;
@@ -77,11 +90,14 @@ for arg in "$@"; do
         --serial) JOBS=1 ;;
         -j[0-9]*) JOBS="${arg#-j}" ;;
         --jobs=*) JOBS="${arg#--jobs=}" ;;
+        --rows=*) ROWS_RE="${arg#--rows=}" ;;
         # Internal. Registers synthetic rows instead of the real board so the
         # selftest can grade what the REAL runners render. Not for humans.
         --selftest-render) SELFTEST_RENDER=1 ;;
         --help|-h)
-            echo "Usage: bash $0 [--quiet] [--selftest] [--serial | -jN | --jobs=N]"
+            echo "Usage: bash $0 [--quiet] [--selftest] [--serial | -jN | --jobs=N] [--rows REGEX]"
+            echo "  --rows REGEX  run only rows whose label matches (ERE, unanchored), e.g. --rows 'ratchet|dup_lines'."
+            echo "                A PARTIAL board: it is for iterating mid-batch, never a substitute for the full board."
             echo "  Rows run in parallel by default (CONTRACTS_JOBS / -jN size the pool,"
             echo "  --serial = old behaviour). Rows that build, launch or write shared"
             echo "  files are detected (_is_serial_row) and run alone after the pool."
@@ -158,6 +174,13 @@ _now_ms() { date +%s%N 2>/dev/null | cut -c1-13; }
 # again: re-running it would put the inflated count right back.
 SEEN_LABELS=""
 SEEN_CMDS=""
+
+_row_selected() {   # 0 = run this row (no --rows filter, or the label matches)
+    [ -z "$ROWS_RE" ] && return 0
+    if [[ "$1" =~ $ROWS_RE ]]; then return 0; fi
+    ROWS_SKIPPED=$((ROWS_SKIPPED + 1))
+    return 1
+}
 
 _register_row() {   # 0 = ok to run, 1 = duplicate (already reported)
     local label="$1" cmd="$2" why=""
@@ -330,6 +353,7 @@ run_check() {
     local label="$1"
     local cmd="$2"
 
+    _row_selected "$label" || return 0
     _register_row "$label" "$cmd" || return 0
 
     if [ "$PARALLEL" -eq 1 ]; then
@@ -449,6 +473,7 @@ run_check_tri() {
     local cmd="$2"
     local out rc
 
+    _row_selected "$label" || return 0
     _register_row "$label" "$cmd" || return 0
 
     if [ "$PARALLEL" -eq 1 ]; then
@@ -1619,6 +1644,15 @@ if [ "$KNOWN_COUNT" -gt 0 ]; then
     echo "  FAIL so that a FAIL row still means: action required by you, now."
     echo "  A ledger entry that matches no finding is itself a FAIL, so this"
     echo "  cannot quietly outlive its condition -- nor hide a blind checker."
+fi
+if [ -n "$ROWS_RE" ]; then
+    echo ""
+    echo "  PARTIAL BOARD: --rows '$ROWS_RE' ran $((PASS_COUNT + FAIL_COUNT + KNOWN_COUNT)) row(s) and skipped $ROWS_SKIPPED."
+    echo "  This is NOT a green board; run the full board (no --rows) before committing a batch."
+    if [ "$((PASS_COUNT + FAIL_COUNT + KNOWN_COUNT))" -eq 0 ]; then
+        echo "  No row label matched '$ROWS_RE' -- nothing was checked."
+        FAIL_COUNT=$((FAIL_COUNT + 1))
+    fi
 fi
 echo "====================================================================="
 

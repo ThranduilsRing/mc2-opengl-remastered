@@ -415,7 +415,7 @@ struct WeaponFacet {
 // unchanged -- there is exactly ONE top type (EquipmentDefinition, which embeds a
 // WeaponFacet); `WeaponDefinition` means "a weapon facet on its own". Do NOT grow
 // a second competing aggregator here.
-typedef WeaponFacet WeaponDefinition;
+using WeaponDefinition = WeaponFacet;
 
 // -------------------------------------------------------------------------
 // Pure helpers -- the contract later weapon slices / validators call.

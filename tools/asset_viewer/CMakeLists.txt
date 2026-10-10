@@ -46,6 +46,7 @@ add_library(mc2_tglloader STATIC
     "${CMAKE_SOURCE_DIR}/mclib/tgl_render.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/tgl_shadows.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/tgl_transform.cpp"
+    "${CMAKE_SOURCE_DIR}/mclib/tgl_transform_light.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/tgl_types.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/cident.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/mathfunc.cpp"

@@ -104,7 +104,7 @@ class Weather
 			
 			baseRainChance = 0;
 			
-			rainDrops = NULL;
+			rainDrops = nullptr;
 			
 			thunderSFX = 0xffffffff;
 			thunderTime = 0.0f;

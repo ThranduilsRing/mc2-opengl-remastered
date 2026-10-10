@@ -66,8 +66,43 @@ EXCLUDED = (
 DEFAULT_TREE = "build64-ninja"
 
 
+#: The other builder lane's branch: every file it changed since it forked is off limits to a tidy batch, so the two lanes never edit
+#: the same file (tools/lane_merge.py refuses a dirty overlap).
+DEFAULT_LANE = "claude/lane2-s3"
+LANE_FILES: set = set()
+
+
+def lane_changed_files(branch: str, root: str = ROOT) -> set:
+    """Repo-relative files `branch` changed since it diverged from HEAD (empty once it is fully merged)."""
+    base = _git_util.git_out(root, "merge-base", "HEAD", branch)
+    out = _git_util.git(root, "diff", "--name-only", "-z", base, branch).stdout
+    return {p for p in out.split("\0") if p}
+
+
+def add_lane_args(ap) -> None:
+    ap.add_argument("--exclude-lane", action="append", default=None, metavar="BRANCH",
+                    help=f"exclude every file this branch changed since the fork (repeatable; default {DEFAULT_LANE} when it exists; "
+                         "pass an empty string to disable)")
+
+
+def apply_lane_args(args) -> None:
+    """Load LANE_FILES from --exclude-lane; sets args.lane_excluded_note for the run report."""
+    explicit = args.exclude_lane is not None
+    branches = [b for b in (args.exclude_lane if explicit else [DEFAULT_LANE]) if b]
+    LANE_FILES.clear()
+    args.lane_excluded_note = ""
+    for b in branches:
+        if _git_util.git(ROOT, "rev-parse", "--verify", "--quiet", b).returncode != 0:
+            if explicit:
+                sys.exit(f"run_tidy_safe: --exclude-lane {b}: no such branch")
+            continue
+        LANE_FILES.update(lane_changed_files(b))
+        args.lane_excluded_note += f"excluding {len(LANE_FILES)} file(s) changed on {b}\n"
+    args.lane_excluded_note = args.lane_excluded_note.strip()
+
+
 def is_excluded(rel: str) -> bool:
-    return any(fnmatch.fnmatch(rel, pat) for pat in EXCLUDED)
+    return rel in LANE_FILES or any(fnmatch.fnmatch(rel, pat) for pat in EXCLUDED)
 
 
 def clang_tidy_exe() -> str:
@@ -183,6 +218,8 @@ def run(args, tidy=None, build=None) -> int:
     kept, skipped = select(sorted(set(paths)), load_compile_db(tree), dirty_files())
     if args.limit:
         kept = kept[:args.limit]
+    if getattr(args, "lane_excluded_note", ""):
+        print(args.lane_excluded_note)
     for rel, why in skipped:
         print(f"SKIP  {rel}  ({why})")
     if not kept:
@@ -282,13 +319,22 @@ def main(argv=None) -> int:
     ap.add_argument("--checks", help="comma-separated clang-tidy checks to run instead of the whole safe set "
                                      "(each must be in SAFE_CHECKS), e.g. modernize-use-override")
     ap.add_argument("--list-excluded", action="store_true")
+    add_lane_args(ap)
     args = ap.parse_args(argv)
+    apply_lane_args(args)
     if args.list_excluded:
-        print("\n".join(EXCLUDED))
+        print("\n".join(EXCLUDED) + ("\n" + "\n".join(sorted(LANE_FILES)) if LANE_FILES else ""))
         return 0
     if not args.files and not args.dir:
         ap.error("give files or --dir")
-    return run(args)
+    import tidy_lock
+    tree_abs = os.path.abspath(os.path.join(ROOT, args.tree)) if not os.path.isabs(args.tree) else args.tree
+    try:
+        with tidy_lock.TidyLock(tree_abs):
+            return run(args)
+    except tidy_lock.TidyBusy as e:
+        print(f"run_tidy_safe: {e}", file=sys.stderr)
+        return 3
 
 
 if __name__ == "__main__":

@@ -139,8 +139,8 @@
    "LG20": 0
   },
   "code": {
-   "LG01": 326,
-   "LG02": 231,
+   "LG01": 321,
+   "LG02": 226,
    "LG03": 957,
    "LG04": 21,
    "LG05": 204,
@@ -1680,7 +1680,6 @@
    "LG17": 2
   },
   "code/ablmc2_internal.h": {
-   "LG01": 2,
    "LG06": 2,
    "LG09": 2,
    "LG12a": 1
@@ -2037,7 +2036,6 @@
    "LG02": 2
   },
   "code/equipment_definition.h": {
-   "LG02": 1,
    "LG06": 1,
    "LG09": 1,
    "LG14": 2
@@ -2310,7 +2308,6 @@
    "LG12a": 2
   },
   "code/logistics.h": {
-   "LG01": 1,
    "LG06": 2,
    "LG13": 5
   },
@@ -2418,7 +2415,6 @@
    "LG12b": 11
   },
   "code/logisticsmissioninfo.h": {
-   "LG02": 2,
    "LG06": 8,
    "LG13": 1
   },
@@ -2630,7 +2626,6 @@
    "LG17": 1
   },
   "code/mechlistbox.h": {
-   "LG01": 1,
    "LG13": 1,
    "LG17": 1
   },
@@ -2648,9 +2643,6 @@
    "LG09": 9,
    "LG12b": 1,
    "LG13": 2
-  },
-  "code/mechpurchasescreen.h": {
-   "LG02": 1
   },
   "code/mission.cpp": {
    "LG01": 2,
@@ -3362,7 +3354,6 @@
    "LG12b": 5
   },
   "code/weapon_definition.h": {
-   "LG02": 1,
    "LG06": 8,
    "LG09": 3,
    "LG14": 5
@@ -3402,7 +3393,6 @@
    "LG09": 2
   },
   "code/weather.h": {
-   "LG01": 1,
    "LG02": 1,
    "LG13": 15
   },
@@ -5643,7 +5633,7 @@
    "LG20": 2
   }
  },
- "head": "d1671eb91",
+ "head": "eb772b8d1",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

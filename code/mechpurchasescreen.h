@@ -31,18 +31,18 @@ class MechPurchaseScreen: public LogisticsScreen
 		static MechPurchaseScreen* instance() { return s_instance; }
 
 		MechPurchaseScreen();
-		virtual				~MechPurchaseScreen();
+		~MechPurchaseScreen() override;
 
 		int					init( FitIniFile& file );
 
-		virtual void		begin();
-		virtual void		end();
-		virtual void		update();
-		virtual void		render(int xOffset, int yOffset);
+		void		begin() override;
+		void		end() override;
+		void		update() override;
+		void		render(int xOffset, int yOffset) override;
 
 		void				setMech( LogisticsMech* pMech, bool bFromLB = 0 );
 		void				beginDrag( LogisticsMech* pMech );
-		virtual int			handleMessage( unsigned long, unsigned long );
+		int			handleMessage( unsigned long, unsigned long ) override;
 
 	private:
 	
@@ -65,7 +65,7 @@ class MechPurchaseScreen: public LogisticsScreen
 		bool				dragStartLeft;
 
 		
-		typedef EList<LogisticsMech, LogisticsMech > MECH_LIST;	
+		using MECH_LIST = EList<LogisticsMech, LogisticsMech >;	
 		MECH_LIST		prevInventory;
 
 		float				countDownTime;
