@@ -144,25 +144,30 @@ def strip_file(text):
 
 
 def find_target(rel):
+    """(ninja object target, built) for the TU; a source no target builds borrows a sibling's compile flags."""
     out = subprocess.check_output([NINJA, '-C', DEFAULT_TREE, '-t', 'targets', 'all'], text=True,
                                   **console_child.child_kwargs(redirected=True))
-    key = '/' + rel.replace('\\', '/').split('/', 1)[-1] + '.obj'
-    base = rel.replace('\\', '/').split('/')[-1] + '.obj'
-    cands = [l.split(':')[0] for l in out.splitlines() if l.split(':')[0].endswith(base)]
-    best = [c for c in cands if c.replace('\\', '/').endswith(key)] or cands
-    if not best:
-        raise SystemExit('no ninja object target for ' + rel)
-    return best[0]
+    rel = rel.replace('\\', '/')
+    names = [l.split(':')[0].replace('\\', '/') for l in out.splitlines() if l.split(':')[0].endswith('.obj')]
+    key = '/' + rel.split('/', 1)[-1] + '.obj'
+    exact = [n for n in names if n.endswith(key)] or [n for n in names if n.endswith('/' + rel.split('/')[-1] + '.obj')]
+    if exact:
+        return exact[0], True
+    sib = [n for n in names if n.startswith('out/' + os.path.dirname(rel) + '/')]
+    if not sib:
+        raise SystemExit('no ninja object target (or sibling) for ' + rel)
+    return sib[0], False
 
 
 def preprocess(tu):
     """Normalised /EP output of the TU as the project compiles it (non-blank lines, trailing whitespace dropped)."""
-    target = find_target(tu)
+    target, built = find_target(tu)
     out = subprocess.check_output([NINJA, '-C', DEFAULT_TREE, '-t', 'commands', target], text=True,
                                   **console_child.child_kwargs(redirected=True))
-    base = os.path.basename(tu)
-    cmd = [l for l in out.splitlines() if base in l][-1]
-    cmd = re.sub(r' -c ', ' /EP /nologo -c ', cmd, 1) if ' -c ' in cmd else cmd + ' /EP'
+    cmd = [l for l in out.splitlines() if ' -c ' in l][-1]
+    if not built:
+        cmd = re.sub(r'-c\s+\S+$', lambda m: '-c ' + os.path.abspath(tu), cmd)
+    cmd = re.sub(r' -c ', ' /EP /nologo -c ', cmd, 1)
     cmd = re.sub(r'/Fo\S+|-Fo\S+|/Fd\S+|-Fd\S+|/showIncludes|-showIncludes', '', cmd)
     with tempfile.NamedTemporaryFile(suffix='.i', delete=False) as t:
         dst = t.name
