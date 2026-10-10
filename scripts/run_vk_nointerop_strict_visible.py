@@ -94,7 +94,7 @@ def repo_root() -> Path:
 def main() -> int:
     root = repo_root()
     ap = argparse.ArgumentParser()
-    ap.add_argument("--exe", default="A:/Games/mc2-opengl/mc2-win64-v0.4c/mc2.exe")
+    ap.add_argument("--exe", default="A:/Games/mc2-opengl/mc2-win64-v0.4/mc2.exe")
     ap.add_argument("--mission", default="mc2_01")
     ap.add_argument("--out-dir")
     ap.add_argument("--duration", type=int, default=210)
