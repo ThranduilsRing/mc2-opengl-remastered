@@ -161,45 +161,8 @@ extern unsigned long missionHeapSize;
 
 //--------------------------------------------------
 // Game System Constants -- Declarations here.
-extern float maxVisualRange;
-extern float MaxVisualRadius;
-extern float fireVisualRange;
-extern float WeaponRange[];		   
-extern float DefaultAttackRange;   
-extern float baseSensorRange;
-extern long visualRangeTable[];
-
-extern unsigned char godMode;	   
-extern unsigned char revealTacMap; 
-extern unsigned char footPrints;   
-extern bool CantTouchThis;
-
-extern long tonnageDivisor;		   
-extern long resourcesPerTonDivided;
-
+#include "mission_globals.h"
 extern GameObjectPtr DebugGameObject[];
-
-extern float MineDamage;		   
-extern float MineSplashDamage;	   
-extern float MineSplashRange;	   
-extern long MineExplosion;		   
-extern long MineLayThrottle;	   
-extern long MineSweepThrottle;	   
-extern float StrikeWaitTime;	   
-extern float StrikeTimeToImpact;   
-extern float MineWaitTime;		   
-
-extern long totalSmokeSpheres;	   
-extern long totalSmokeShapeSize;   
-
-extern long maxFiresBurning;	   
-extern float maxFireBurnTime;	   
-
-extern bool force64MB;			   
-extern bool force32Mb;			   
-
-extern float InfluenceRadius;	   
-extern float InfluenceTime;		   
 
 extern float BaseHeadShotElevation;
 
