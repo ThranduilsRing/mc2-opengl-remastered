@@ -181,8 +181,8 @@
    "LG16": 7,
    "LG17": 47,
    "LG18": 4,
-   "LG19": 5,
-   "LG20": 6
+   "LG19": 3,
+   "LG20": 4
   },
   "mclib": {
    "LG01": 2850,
@@ -3194,9 +3194,7 @@
   },
   "code/unitprofile.cpp": {
    "LG06": 6,
-   "LG09": 3,
-   "LG19": 2,
-   "LG20": 2
+   "LG09": 3
   },
   "code/unitprofile.h": {
    "LG06": 8,
@@ -5803,7 +5801,7 @@
    "LG20": 1
   }
  },
- "head": "bf4749a83",
+ "head": "028788df2",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
