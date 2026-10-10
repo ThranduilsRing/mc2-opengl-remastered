@@ -583,3 +583,41 @@ Shared state / header: `weaponbolt_internal.h` with the include bundle, externs 
 Surface that must not change: `WeaponBolt`/`WeaponBoltType` (weaponbolt.h).
 Risks: `update` is a single 1325-line function, so this file cannot drop below ~1350 lines without refactoring `update` itself (out of scope); name pins to check with `split_verify`.
 First cut: all three files in one commit.
+
+## 20. code/mechcmd2.cpp (3068 lines after the LAB_ONLY purge)
+Counts: 4 raw `getenv` (`MC2_DETERMINISTIC_RNG`/`MC2_RNG_SEED` and `MC2_FX_DEFS` in `InitializeGameEngine`, `MC2_FRAMECAP_TRACE` in `DoGameLogic`, all function-local); no registrars; `versionStamp` is DEFINED by `version.h`, so only one TU may include it. Tracy 8.
+
+| Lines | Responsibility | ~Lines |
+|---|---|---:|
+| 1-315 | includes, global tables and flags (heap sizes, logs, device state, `testShape`/`testAnim`/`pos[36]` static-init objects), debug-window globals | 315 |
+| 316-685 | `DEBUGWINS_*`, `initDialogs`/`endDialogs` | 370 |
+| 686-698 | `GetGameInformation`, `SnifferTime` macro, `startTime`/`endTime` | 13 |
+| 699-867 | `UpdateRenderers` | 170 |
+| 868-1975 | `FirstRunEula`, `InitializeGameEngine` (1092 lines, one function; prints the `[BUILD_FINGERPRINT v1]` line) | 1110 |
+| 1976-2646 | `TerminateGameEngine`, frame globals, `DoGameLogic` (447) | 670 |
+| 2647-3065 | `textToLong`, `ParseCommandLine`, `GetGameOSEnvironment` | 420 |
+
+Split (4 files): `mechcmd2_debugwins.cpp` (316-685, ~370), `mechcmd2_frame.cpp` (699-867 + 1976-2646, ~840), `mechcmd2_cmdline.cpp` (2647-3065, ~420), core `mechcmd2.cpp` (globals incl. every static-init object, `InitializeGameEngine` and its fingerprint, ~1120).
+Shared state / header: `mechcmd2_internal.h` with the include bundle (minus `version.h`, which stays in the core file; the header declares `extern char versionStamp[1024]`), the macros/enum the tables need (`NUM_DEBUG_WINDOWS`, `MAX_KILL_AT_START`, `MAX_HARDWARE_CARDS`, `ProcType`), externs for the core globals, prototypes for `GetGameInformation`/`InitializeGameEngine`. All globals stay defined in the core file in their original order, so static-init order is unchanged.
+Surface that must not change: every exported function and global (`DEBUGWINS_*` are called from other TUs), the `[BUILD_FINGERPRINT v1]` printf (pinned by `exe_fingerprint.py`, `provenance_gate.py`, `check-capture-provenance.py`, `smoke_lib/fingerprint.py`).
+Risks: `InitializeGameEngine` stays one 1092-line function (not refactored); a second include of `version.h` is a link error (multiply defined).
+First cut: the purge, then the four files in one commit.
+
+## 21. mclib/gvactor.cpp (3475 lines)
+Counts: 6 raw `getenv` (all file-scope eager caches or helpers: `s_lcTraceGV`, `g_useGpuGVShadowSkip`, `s_vehicleLitPath`, `s_spotDiagGvEnabled`, one inside `textureOrKtxSidecarExists`, one in the shared `gvEnvFlagDefaultOn`); no registrars. Not compiled by any tool target (unlike tgl.cpp/msl.cpp).
+
+| Lines | Responsibility | ~Lines |
+|---|---|---:|
+| 1-187 | includes, the gate caches above, `LCGV_TRACE` macro, `textureOrKtxSidecarExists` | 187 |
+| 188-550 | `GVAppearanceType::init` (297), `destroy`, `setAnimation` | 360 |
+| 551-1301 | weapon/smoke/dust node lookups, `GVAppearance::init` (383), `setObjStatus` | 750 |
+| 1302-2199 | paint schemes, `setGesture`, `getHitNode`, set*Parameters, `debugUpdate`, `isMouseOver`, `recalcBounds` (352), `playDestruction`, node positions | 900 |
+| 2200-2533 | `renderShadows`, `render` (307; reads `s_vehicleLitPath`) | 335 |
+| 2534-3240 | `updateGeometry` (524; reads `g_useGpuGVShadowSkip` and the `s_spotDiag*` counters), `update` | 710 |
+| 3241-3475 | `destroy`, water wake, activity effects, `PerPolySelect`, `flashBuilding` | 235 |
+
+Split (4 files): `gvactor_geometry.cpp` (1302-2199, ~900), `gvactor_render.cpp` (2200-2533 + `s_vehicleLitPath`, ~340), `gvactor_update.cpp` (2534-3240 + `g_useGpuGVShadowSkip`, `s_spotDiag*`, ~720), core `gvactor.cpp` (type, nodes, init, `s_lcTraceGV` + `LCGV_TRACE` + `s_lcSkipCountGV` which only nodes/init use, destroy/effects, ~1700 before the externs move; the 3241-3475 effects tail moves with update to stay under 1500).
+Shared state / header: the only shared helper is `gvEnvFlagDefaultOn` (used by two caches in different pieces), which becomes `inline` in `gvactor_internal.h` (an ALLOW'd linkage edit; the caches themselves stay eager file-scope statics next to their single user, so no init-form change).
+Surface that must not change: `GVAppearance`/`GVAppearanceType` (gvactor.h), `counter-honesty-allowlist.txt` entry `mclib/gvactor.cpp::s_spotDiagGvActors <= 8`, `check-env-registry.sh` comment naming `gvEnvFlagDefaultOn`.
+Risks: the cache declarations are moved next to their users in the source BEFORE the split (text-identical lines, so `split_verify` sees only the one inline edit).
+First cut: pre-move the caches, then the four files in one commit.
