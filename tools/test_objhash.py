@@ -71,3 +71,15 @@ def test_same_basename_in_two_directories_resolves_to_the_sources_own_object(tmp
     assert len(own) == 1 and own[0].replace("\\", "/").endswith("out/mclib/CMakeFiles/mclib.dir/color.cpp.obj")
     nested = objhash.find_objs(str(build), "mclib/stuff/color.cpp")
     assert len(nested) == 1 and "stuff.dir" in nested[0]
+
+
+def test_digest_masks_the_build_fingerprint_literal_in_rdata(tmp_path):
+    lit_clean = b"MC2FP1|3f45f77dfeb8|0|claude/x|2026-10-10T10:00:00|A:/Games/mc2-main|FP1END\x00"
+    lit_dirty = b"MC2FP1|3f45f77dfeb8|1|claude/x|2026-10-10T10:09:55|A:/Games/mc2-main|FP1END\x00"
+    assert len(lit_clean) == len(lit_dirty)
+    a, b, c = tmp_path / "a.obj", tmp_path / "b.obj", tmp_path / "c.obj"
+    a.write_bytes(make_obj(rdata=b"hello" + lit_clean))
+    b.write_bytes(make_obj(rdata=b"hello" + lit_dirty))                    # dirty flag + build time differ only
+    c.write_bytes(make_obj(rdata=b"jello" + lit_clean))                    # a real data change
+    da, db, dc = (objhash.obj_digest(str(p)) for p in (a, b, c))
+    assert da["code_sha256"] == db["code_sha256"] != dc["code_sha256"]

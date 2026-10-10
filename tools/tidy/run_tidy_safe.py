@@ -146,7 +146,10 @@ def ninja_objects(tree: str, rels, jobs: int) -> int:
     if not targets:
         return 0
     inner = subprocess.list2cmdline([cn.NINJA, "-C", tree, f"-j{jobs}"] + targets)
+    # Freeze the build-fingerprint header: the edit makes the tree dirty, which would otherwise change the dirty flag compiled into
+    # every TU that embeds it (see cmake/GenerateBuildFingerprint.cmake).
     r = subprocess.run(f'call "{cn.VCVARS}" >nul && {inner}', shell=True,
+                       env={**os.environ, "MC2_FINGERPRINT_FREEZE": "1"},
                        **console_child.child_kwargs(redirected=False))
     return r.returncode
 
