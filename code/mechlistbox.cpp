@@ -7,6 +7,7 @@ MechListBox.cpp			: Implementation of the MechListBox component.
 \*************************************************************************************************/
 
 #include <cstdio>
+#include "Gates/gate.h"
 #include <cstdlib>
 #include"mechlistbox.h"
 #include"icon_atlas_cell.h"
@@ -22,7 +23,9 @@ MechListBox.cpp			: Implementation of the MechListBox component.
 #include"gamesound.h"
 
 // Interactive cheat gate (set in logisticsdata.cpp; extern here for UI bypass)
-static const bool s_cheatInfiniteMoney = (getenv("MC2_CHEAT_INFINITE_MONEY") != nullptr);
+// The launcher writes these into launcher_env.json, which main() applies after static initialization, so they
+// are read at first use rather than in a namespace-scope initializer.
+static bool cheatInfiniteMoney() { static const bool on = mc2::gate::get<"MC2_CHEAT_INFINITE_MONEY">(); return on; }
 #include"txmmgr.h"
 
 MechListBoxItem* MechListBoxItem::s_templateItem = NULL;
@@ -195,7 +198,7 @@ MechListBoxItem::MechListBoxItem( LogisticsMech* pRefMech, long count )
 	weightText.setText( text );
 
 	// ---- MC2_LOG_LOGISTICS mech-list item diagnostic (env-gated, no behavior change) ----
-	if ( pMech && getenv("MC2_LOG_LOGISTICS") ) {
+	if ( pMech && mc2::gate::get<"MC2_LOG_LOGISTICS">() ) {
 		char chassisBuf[256] = "";
 		cLoadString( pMech->getChassisName(), chassisBuf, sizeof(chassisBuf) );
 		FILE* mechListLog = fopen("logistics_debug.log", "a");
@@ -547,7 +550,7 @@ void MechListBox::initIcon( LogisticsMech* pMech, aObject& mechIcon )
 	mechIcon.setFileHeight( fileH );
 	mechIcon.setUVs( u, v, u2, v2 );
 
-	if ( getenv("MC2_LOG_MECH_ICON") )
+	if ( mc2::gate::get<"MC2_LOG_MECH_ICON">() )
 	{
 		// getChassisName() returns a long string-table id, not a char* -- using it
 		// with %s dereferences the id value and crashes (READ at the id). Log the
@@ -651,7 +654,7 @@ void MechListBox::disableItemsThatCostMoreThanRP()
 	bool bDisabledSel = 0;
 	for ( int i = 0; i < itemCount; i++ )
 	{
-		if ( !s_cheatInfiniteMoney && ((MechListBoxItem*)items[i])->pMech->getCost() > LogisticsData::instance->getCBills() )
+		if ( !cheatInfiniteMoney() && ((MechListBoxItem*)items[i])->pMech->getCost() > LogisticsData::instance->getCBills() )
 		{
 			items[i]->setState( aListItem::DISABLED );
 			if ( itemSelected == i )
