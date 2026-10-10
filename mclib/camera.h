@@ -130,6 +130,7 @@ struct LegacyProjectionResult {
 // Must appear after LegacyProjectionResult (trace.h forward-declares it).
 #include "projectz_trace.h"
 #include "object_admission_predicate.h"
+#include "../RenderCore/axis_convert.h"
 
 // gos_GetViewport is declared in gameos.hpp which is transitively included via tgl.h.
 // No forward declaration needed here.
@@ -609,9 +610,7 @@ class Camera
 			// Now run the NEW project code
 			Stuff::Vector4D xformCoords;
 			Stuff::Point3D coords;
-			coords.x = -point.x;
-			coords.y = point.z;
-			coords.z = point.y;
+			mc2ToRender(coords, point);
 
 			xformCoords.Multiply(coords,worldToClip);
 
