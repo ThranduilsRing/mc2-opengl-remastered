@@ -177,8 +177,7 @@ void
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-void
-	MLRLightMap::DrawLightMaps(MLRSorter *sorter)
+void MLRLightMap::DrawLightMaps(MLRSorter *sorter)
 {
 	Check_Object(stream);
 
