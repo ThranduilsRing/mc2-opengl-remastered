@@ -177,7 +177,7 @@
    "LG19": 272
   },
   "mclib": {
-   "LG01": 2912,
+   "LG01": 2897,
    "LG02": 316,
    "LG03": 1325,
    "LG04": 17,
@@ -185,15 +185,15 @@
    "LG06": 734,
    "LG07": 0,
    "LG08": 75,
-   "LG09": 2578,
+   "LG09": 2575,
    "LG10": 36,
    "LG11": 69,
    "LG12a": 588,
-   "LG12b": 585,
+   "LG12b": 578,
    "LG13": 1312,
    "LG14": 128,
    "LG15": 0,
-   "LG16": 160,
+   "LG16": 158,
    "LG17": 93,
    "LG18": 6,
    "LG19": 335
@@ -2274,18 +2274,9 @@
    "LG06": 1
   },
   "code/mech.cpp": {
-   "LG01": 51,
-   "LG02": 1,
-   "LG03": 9,
-   "LG04": 1,
-   "LG05": 5,
-   "LG06": 2,
-   "LG09": 89,
-   "LG12a": 5,
-   "LG12b": 13,
-   "LG13": 19,
-   "LG14": 1,
-   "LG19": 5
+   "LG01": 7,
+   "LG03": 1,
+   "LG09": 9
   },
   "code/mech.h": {
    "LG01": 4,
@@ -2296,6 +2287,66 @@
   },
   "code/mech_brain_runtime.h": {
    "LG06": 4
+  },
+  "code/mech_damage.cpp": {
+   "LG01": 4,
+   "LG04": 1,
+   "LG09": 8,
+   "LG12b": 3
+  },
+  "code/mech_init.cpp": {
+   "LG01": 3,
+   "LG03": 2,
+   "LG09": 11,
+   "LG12b": 5
+  },
+  "code/mech_internal.h": {
+   "LG19": 1
+  },
+  "code/mech_loadout.cpp": {
+   "LG01": 2,
+   "LG02": 1,
+   "LG03": 3,
+   "LG05": 5,
+   "LG06": 1,
+   "LG09": 17,
+   "LG12a": 2,
+   "LG12b": 1,
+   "LG13": 16,
+   "LG14": 1,
+   "LG19": 1
+  },
+  "code/mech_move.cpp": {
+   "LG01": 2,
+   "LG03": 2,
+   "LG09": 4,
+   "LG12a": 1,
+   "LG12b": 1,
+   "LG13": 2
+  },
+  "code/mech_move_net.cpp": {
+   "LG01": 1
+  },
+  "code/mech_type.cpp": {
+   "LG01": 8,
+   "LG03": 1,
+   "LG09": 16,
+   "LG12b": 1
+  },
+  "code/mech_update.cpp": {
+   "LG01": 7,
+   "LG09": 13,
+   "LG12a": 2,
+   "LG12b": 1,
+   "LG13": 1,
+   "LG19": 1
+  },
+  "code/mech_weapons.cpp": {
+   "LG01": 17,
+   "LG06": 1,
+   "LG09": 11,
+   "LG12b": 1,
+   "LG19": 2
   },
   "code/mechbayscreen.cpp": {
    "LG01": 11,
@@ -4349,17 +4400,13 @@
    "LG09": 14
   },
   "mclib/move.cpp": {
-   "LG01": 123,
-   "LG02": 1,
-   "LG03": 58,
-   "LG05": 2,
-   "LG09": 176,
-   "LG11": 5,
-   "LG12a": 13,
-   "LG12b": 67,
-   "LG13": 8,
-   "LG14": 1,
-   "LG16": 78,
+   "LG01": 30,
+   "LG03": 26,
+   "LG09": 25,
+   "LG11": 1,
+   "LG12a": 10,
+   "LG13": 1,
+   "LG16": 15,
    "LG17": 1
   },
   "mclib/move.h": {
@@ -4371,6 +4418,60 @@
    "LG14": 4,
    "LG16": 50,
    "LG17": 1
+  },
+  "mclib/move_globalmap_build.cpp": {
+   "LG01": 33,
+   "LG05": 1,
+   "LG09": 95,
+   "LG12b": 7,
+   "LG13": 1,
+   "LG16": 14
+  },
+  "mclib/move_globalmap_doors.cpp": {
+   "LG01": 8,
+   "LG03": 2,
+   "LG05": 1,
+   "LG09": 10,
+   "LG13": 1,
+   "LG16": 6
+  },
+  "mclib/move_globalmap_path.cpp": {
+   "LG01": 14,
+   "LG03": 3,
+   "LG09": 4,
+   "LG11": 1,
+   "LG12b": 16,
+   "LG13": 2,
+   "LG16": 3
+  },
+  "mclib/move_internal.h": {
+   "LG02": 1,
+   "LG12b": 2,
+   "LG13": 3,
+   "LG14": 1,
+   "LG16": 4
+  },
+  "mclib/move_movemap_escape.cpp": {
+   "LG01": 9,
+   "LG03": 9,
+   "LG09": 14,
+   "LG11": 3,
+   "LG12a": 1,
+   "LG12b": 23,
+   "LG16": 19
+  },
+  "mclib/move_movemap_goals.cpp": {
+   "LG01": 4,
+   "LG09": 5,
+   "LG16": 6
+  },
+  "mclib/move_movemap_path.cpp": {
+   "LG01": 10,
+   "LG03": 18,
+   "LG09": 20,
+   "LG12a": 2,
+   "LG12b": 12,
+   "LG16": 9
   },
   "mclib/move_recon.cpp": {
    "LG09": 78,
@@ -5311,7 +5412,7 @@
    "LG13": 31
   }
  },
- "head": "c7322627c",
+ "head": "f0329f9f9",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

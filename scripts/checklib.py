@@ -8,7 +8,7 @@ not use this module.
 
 Provides:
   * comment stripping (// and /* */) — MANDATORY before any return-scan
-    (design F refutation (b): commented-out `return(4)`s in code/mech.cpp);
+    (design F refutation (b): commented-out `return(4)`s in code/mech_weapons.cpp);
   * whitespace normalization for regex rules (design C);
   * brace-matched function-body extraction (design F; same technique as the
     check-*-ownership.py family);

@@ -7,9 +7,9 @@ gate must be OBSERVABLE (fireGateTrace) or DECLARED (KNOWN_UNCOVERED) — drift
 in either direction fails check-contracts.sh with zero game launches.
 
 Assertions:
-  1. code/mech.cpp BattleMech::fireWeapon carries the FIREGATE-REGION-END
+  1. code/mech_weapons.cpp BattleMech::fireWeapon carries the FIREGATE-REGION-END
      sentinel comment; every `return` between the signature and the sentinel
-     (COMMENT-STRIPPED FIRST — mech.cpp has four commented-out `return(4)`s
+     (COMMENT-STRIPPED FIRST — mech_weapons.cpp has four commented-out `return(4)`s
      inside /* */ blocks that a naive scanner false-positives on) has a
      fireGateTrace() on the same line or within the 4 preceding lines, or a
      KNOWN_UNCOVERED entry.
@@ -48,7 +48,7 @@ EXIT_OK = checklib.EXIT_OK
 EXIT_VIOLATION = checklib.EXIT_VIOLATION
 EXIT_HARNESS_ERROR = checklib.EXIT_HARNESS_ERROR
 
-MECH = "code/mech.cpp"
+MECH = "code/mech_weapons.cpp"
 WARRIOR = "code/warrior.cpp"
 
 SENTINEL = "FIREGATE-REGION-END"

@@ -20,10 +20,9 @@
 //     value 0 for readLong/readUChar.
 //   * loadout: rows 26+off..96+off col 5 = compbas ordinal
 //     (LogisticsVariant::init, code/logisticsvariant.cpp:429-442; in-sim twin
-//     BattleMech::init, code/mech.cpp:1718). 0xff = empty-slot sentinel.
+//     BattleMech::init, code/mech_loadout.cpp). 0xff = empty-slot sentinel.
 //     Unresolvable ids are DROPPED SILENTLY by both consumers.
-//   * armor/internal-structure: rows 114+off / 115+off (code/mech.cpp:1656-1686,
-//     1967) — a truncated block reads armor 0 => mech spawns paper-thin.
+//   * armor/internal-structure: rows 114+off / 115+off (code/mech_loadout.cpp) — a truncated block reads armor 0 => mech spawns paper-thin.
 //   * getVariant(file, num) masks the variant index to 8 bits
 //     (code/logisticsdata.cpp:1224 `(ID>>16)&0xff`) => >256 blocks collide.
 //

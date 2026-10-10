@@ -847,7 +847,7 @@ flags:
     doc: "ISSUE-9 called-shot effectiveness (gameplay gate, default OFF = stock): (S1) Mover::calcAttackChance floors the aimed-shot modifiers at Head 0.30 / Arm 0.45 / Leg 0.50 (stock gamesys.fit 0.08/0.15/..."
     referenced_at:
       - code/gvehicl.cpp
-      - code/mech.cpp
+      - code/mech_weapons.cpp
       - code/mover_attack.cpp
     registered: yes
     in_smoke_passthrough: yes
@@ -1677,7 +1677,7 @@ flags:
     declared_in: null
     referenced_at:
       - code/logisticsvariant.cpp
-      - code/mech.cpp
+      - code/mech_loadout.cpp
       - code/mechlabscreen.cpp
     registered: no
     in_smoke_passthrough: no
@@ -1776,7 +1776,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "ISSUE-17 fire-refusal instrumentation (default OFF = byte-identical; needs MC2_DIAG_TAGS=...,COMBAT). (1) code/warrior.cpp combatDecisionTree: when a combat order is active and NO weapon fired this..."
     referenced_at:
-      - code/mech.cpp
+      - code/mech_weapons.cpp
       - code/warrior.cpp
     registered: yes
     in_smoke_passthrough: yes
@@ -2349,7 +2349,7 @@ flags:
     declared_in: null
     referenced_at:
       - code/gvehicl.cpp
-      - code/mech.cpp
+      - code/mech_internal.h
       - code/objmgr.cpp
     referenced_at_more: 2
     registered: no
@@ -3430,7 +3430,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "ISSUE-50 diagnostics (code/mech.cpp BattleMech::update): for every off-GUI mech, periodically (~1/s) logs [LINKUP] part/name/status/los, plus [LINKUP] linkup-complete when the link-up fires — makes..."
     referenced_at:
-      - code/mech.cpp
+      - code/mech_update.cpp
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes

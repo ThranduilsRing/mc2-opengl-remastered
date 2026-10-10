@@ -1830,7 +1830,7 @@
   "editor",
   "gui"
  ],
- "source": "commit 8e7b4724c",
+ "source": "commit 4efdf2b1b",
  "totals": {
   "conflict_gates": 6,
   "gates_with_literal": 1131,

@@ -1224,7 +1224,7 @@ run_check "launcher_ascii_selftest" "py -3 scripts/check-launcher-ascii.py --sel
 # META-FIX-BATCH-2 (design F): silent-order chokepoint — every fireWeapon
 # pre-delivery early-return is traced (fireGateTrace) or declared
 # (KNOWN_UNCOVERED); comment-stripped scan (four commented return(4)s in
-# mech.cpp are the trap); nofire emitter presence; both-ways-live ledger.
+# mech_weapons.cpp are the trap); nofire emitter presence; both-ways-live ledger.
 run_check "order_gate_coverage"    "py -3 scripts/check-order-gate-coverage.py --quiet"
 run_check "order_gate_selftest"    "py -3 scripts/check-order-gate-coverage.py --self-test 2>/dev/null"
 # META-FIX-BATCH-3 (design A): mover-registry coherence — setOnGUI/isOnGui

@@ -2642,7 +2642,7 @@
      "idiom": "Lead0P"
     },
     {
-     "at": "code/mech.cpp:7984",
+     "at": "code/mech_weapons.cpp:337",
      "idiom": "Lead0P"
     },
     {
@@ -5405,7 +5405,7 @@
      "idiom": "Presence"
     },
     {
-     "at": "code/mech.cpp:2306",
+     "at": "code/mech_loadout.cpp:946",
      "idiom": "Presence"
     },
     {
@@ -5675,7 +5675,7 @@
    "doc": "ISSUE-17 fire-refusal instrumentation (default OFF = byte-identical; needs MC2_DIAG_TAGS=...,COMBAT).",
    "readers": [
     {
-     "at": "code/mech.cpp:7662",
+     "at": "code/mech_weapons.cpp:15",
      "idiom": "Lead0P"
     },
     {
@@ -7560,7 +7560,7 @@
      "idiom": "Presence"
     },
     {
-     "at": "code/mech.cpp:142",
+     "at": "code/mech_internal.h:236",
      "idiom": "Presence"
     },
     {
@@ -11464,7 +11464,7 @@
    "doc": "ISSUE-50 diagnostics (code/mech.cpp BattleMech::update): for every off-GUI mech, periodically (~1/s) logs [LINKUP] part/name/status/los, plus [LINKUP] linkup-complete when the link-up fires \u2014 makes the link-up latch (hidden reinforcement mech never appearing) observable in the field.",
    "readers": [
     {
-     "at": "code/mech.cpp:5677",
+     "at": "code/mech_update.cpp:97",
      "idiom": "Presence"
     }
    ],
