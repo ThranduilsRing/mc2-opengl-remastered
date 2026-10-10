@@ -112,7 +112,7 @@ bool GosVegetation::isEnabled() {
         cached = mc2::gate::get<"MC2_VEGETATION_CARDS">();
         MC2_DIAGFE(stderr, "[VEG v1] feature enabled=%d reason=%s\n",
             cached,
-            !mc2::gate::isSet<"MC2_VEGETATION_CARDS">() ? "env_missing" :
+            !mc2::gate::raw<"MC2_VEGETATION_CARDS">() ? "env_missing" :   // echo only: unset vs set
             !cached ? "env_zero"  : "env_set");
         fflush(stderr);
     }
