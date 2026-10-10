@@ -453,6 +453,7 @@ set(SOURCES
     "code/gamecam.cpp"
     "code/mission.cpp"
     "code/mission_update.cpp"
+    "code/mission_update_audit.cpp"
     "code/mission_movers.cpp"
     "code/mission_init.cpp"
     "code/mission_init_load.cpp"
