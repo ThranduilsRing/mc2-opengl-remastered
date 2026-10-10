@@ -1,0 +1,475 @@
+// EditorObjectMgr: per-frame update and render, building appearance lookup/priming and static-prop registration.
+// Declared in the class headers; shared names in EditorObjectMgr_internal.h.
+#include "EditorObjectMgr_internal.h"
+
+
+// --------------------------------------------------------------------------
+// GV-slide diagnostics + fix knobs (editor-only).
+//
+// Placed ground-vehicles (VEHICLE_APPR_TYPE) ride GpuStaticPropBatcher, which
+// draws them every frame with the LIVE terrain MVP while reading each GV's
+// last-baked shapeToWorld (gvactor.cpp TransformMultiShape, run only from
+// GVAppearance::update()->updateGeometry()).  The editor gated that refresh
+// behind recalcBounds()==inView, so a cluster of GVs swinging to the frustum
+// edge on camera rotate skipped update() and rendered with a stale,
+// terrain-conformed transform -> the group slid off the ground.  Buildings
+// don't (static, no per-frame terrain conform); mechs use a different batcher.
+//
+// MC2_EDITOR_MOVER_REFRESH (default-ON): refresh placed-mover transforms every
+//   frame regardless of inView, matching what BldgAppearance already does.
+//   Set =0 to restore the legacy inView-gated behavior (bisect / A-B).
+static bool editorMoverRefreshOn()
+{
+	static int v = -1;
+	if (v < 0) { const char* e = getenv("MC2_EDITOR_MOVER_REFRESH");
+		v = (e && e[0] == '0' && e[1] == '\0') ? 0 : 1; }   // default-on; exactly "0" disables
+	return v == 1;
+}
+
+//*************************************************************************************************
+void EditorObjectMgr::update()
+{
+	static long homeRelations[9] = {0, 0, 2, 1, 1, 1, 1, 1, 1};
+	if (renderObjects)
+	{
+		for ( BUILDING_LIST::EIterator iter = buildings.Begin();
+			!iter.IsDone(); iter++ )
+			{
+				currentFloatHelp = 0;
+				// Guard: objects with no loaded appearance are skipped.
+				ObjectAppearance* pBAppr = (*iter) ? (*iter)->appearance() : NULL;
+				if (!pBAppr) continue;
+				if (renderTrees || (!renderTrees && (pBAppr->getAppearanceClass() != TREE_APPR_TYPE)))
+				{
+					if ( pBAppr->recalcBounds() )
+					{
+						Stuff::Vector3D pos = pBAppr->position;
+						// Keep the building level with the terrain WITHOUT snapping it to the
+						// cell grid. The legacy path called moveBuilding(worldToCell(pos)) here,
+						// which re-derived x,y from the cell CENTRE every frame -- making free
+						// (sub-cell) placement impossible (a dragged building snapped straight
+						// back to tile intersections). We only need to refresh z to the terrain
+						// height at the building's (possibly sub-cell) x,y.
+						pos.z = land->getTerrainElevation(pos);
+						pBAppr->position = pos;
+						gosASSERT((8 > pBAppr->teamId) && (-1 <= pBAppr->teamId));
+						pBAppr->setObjectParameters(pos, pBAppr->rotation, pBAppr->selected, pBAppr->teamId, homeRelations[pBAppr->teamId+1]);
+						pBAppr->update();
+						pBAppr->setVisibility(true,true);
+					}
+				}
+			}
+	}
+
+	//Always draw the Mechs/Vehicles
+		const bool moverRefresh = editorMoverRefreshOn();
+		for ( UNIT_LIST::EIterator mIter = units.Begin();
+		!mIter.IsDone(); mIter++ )
+		{
+			EditorObject* pObj = (*mIter);
+			currentFloatHelp = 0;
+			// Guard: units with no loaded appearance are skipped.
+			ObjectAppearance* pUAppr = pObj ? pObj->appearance() : NULL;
+			if (!pUAppr) continue;
+			const bool uInView = pUAppr->recalcBounds();
+			// GV-slide fix: refresh the mover transform every frame (not only when
+			// inView), so static-prop-batched GVs never render with a shapeToWorld
+			// stale from a frame they swung off the rotating frustum.  Visibility is
+			// still only asserted when actually in view.
+			if ( uInView || moverRefresh )
+			{
+				// Vehicles and mech forced to ground in Object classes in game now.
+				// NOT in the appearance anymore since they can fly when they die!
+				// Must force here as well.
+				Stuff::Vector3D pos = pUAppr->position;
+				pos.z = land->getTerrainElevation(pos);
+				if (getIsHoverCraft(pObj->id)) {
+					float waterElevation = land->getWaterElevation();
+					if (waterElevation > pos.z) {
+						pos.z = waterElevation;
+					}
+				}
+				gosASSERT((8 > pUAppr->teamId) && (-1 <= pUAppr->teamId));
+				pUAppr->setObjectParameters(pos, pUAppr->rotation, pUAppr->selected, pUAppr->teamId, homeRelations[pUAppr->teamId+1]);
+				if (pObj->getSpecialType() == HELICOPTER)
+					pUAppr->setMoverParameters(0.0f,0.0f,0.0f,true);
+				pUAppr->update();
+				if ( uInView )
+					pUAppr->setVisibility(true,true);
+			}
+		}
+}
+
+//*************************************************************************************************
+void EditorObjectMgr::render()
+{
+	// S2.5 (2026-05-25): actor walk only. Frame-level orchestration
+	// (renderLists, MVP, batcher flush, terrain dispatch) lives in the
+	// canonical game render-world chain wired by S2 -- DO NOT re-add here.
+	// Each appearance()->render() enqueues into the static-prop / mech
+	// batcher; the flush happens later via mcTextureManager->renderLists().
+	// See docs/superpowers/plans/2026-05-25-editor-rebuild.md S2 followup.
+
+	// EDITOR-STATIC-PREWARM-1: the editor registers static props (registerStatic
+	// arms needsFullBakeNextFrame) but, unlike the game's Mission::init -> objmgr
+	// prewarmStaticPropLightBakes, NEVER drains the H4 latch. A static editor scene
+	// never re-bakes in-view, so a prop's per-instance lightDataIndex is captured by
+	// markVisible() while still stale (latch armed / slot not yet baked) and, being
+	// static, is never re-captured -> STABLE wrong light on the same few props:
+	// RED when the stale slot aliases a neighbour's live row (e.g. an LRM unit's
+	// pulsing highlight), BLACK when it lands on a zero/empty slot. Drain the latch
+	// here -- once the camera has lights and BEFORE the buildings/trees render loop
+	// below captures slots -- by baking each latched prop's correct light slot
+	// (prewarmStaticLightBake sets cachedGpuLightIndex + clears the latch,
+	// bdactor.cpp:4131-4135). Retries each frame until lights are up and all latched
+	// props are baked; then one-shot done. Killswitch MC2_EDITOR_STATIC_PREWARM_OFF.
+	{
+		static bool s_prewarmDone = false;
+		static const bool s_prewarmOff = (getenv("MC2_EDITOR_STATIC_PREWARM_OFF") != nullptr);
+		if (!s_prewarmDone && !s_prewarmOff && eye && eye->getNumLights() > 0)
+		{
+			int attempted = 0, baked = 0, remaining = 0;
+			for (BUILDING_LIST::EIterator it = buildings.Begin(); !it.IsDone(); it++)
+			{
+				EditorObject* o = *it;
+				if (!o || !o->appearance()) continue;
+				ObjectAppearance* a = o->appearance();
+				if (!a->isStaticRegistered() || !a->needsPrewarmBake()) continue;
+				++attempted;
+				if (a->prewarmStaticLightBake(eye)) ++baked;
+			}
+			for (BUILDING_LIST::EIterator it = buildings.Begin(); !it.IsDone(); it++)
+			{
+				EditorObject* o = *it;
+				if (o && o->appearance() && o->appearance()->needsPrewarmBake()) ++remaining;
+			}
+			if (remaining == 0) s_prewarmDone = true;
+			fprintf(stderr, "[EDITOR_STATIC_PREWARM] attempted=%d baked=%d remaining=%d done=%d\n",
+			        attempted, baked, remaining, s_prewarmDone ? 1 : 0);
+			fflush(stderr);
+		}
+	}
+
+	static long s_emrFrame = 0;
+	++s_emrFrame;
+	const bool s_emrLog = (s_emrFrame == 1 || s_emrFrame == 5 || s_emrFrame == 30 || s_emrFrame == 120);
+	if (s_emrLog)
+		EditorObjMgrTrace("EditorObjectMgr::render frame=%ld renderObjects=%d renderTrees=%d buildings=%ld units=%ld links=%ld dropZones=%ld",
+			s_emrFrame, renderObjects ? 1 : 0, renderTrees ? 1 : 0,
+			(long)buildings.Count(), (long)units.Count(),
+			(long)links.Count(), (long)dropZones.Count());
+
+	long bTreeFiltered = 0;
+	long bRecalcPassed = 0;
+	long bRendered = 0;
+	if (renderObjects)
+	{
+		if (s_emrLog)
+			EditorObjMgrTrace("EditorObjectMgr::render frame=%ld buildings-loop enter count=%ld",
+				s_emrFrame, (long)buildings.Count());
+		for ( BUILDING_LIST::EIterator iter = buildings.Begin();
+			!iter.IsDone(); iter++ )
+		{
+			currentFloatHelp = 0;
+			const bool passTreeFilter =
+				renderTrees || (!renderTrees && ((*iter)->appearance()->getAppearanceClass() != TREE_APPR_TYPE));
+			if (passTreeFilter)
+			{
+				++bTreeFiltered;
+				const bool rb = (*iter)->appearance()->recalcBounds();
+				if ( rb )
+				{
+					++bRecalcPassed;
+					if ( (*iter)->getDamage() )
+						(*iter)->appearance()->drawBars();
+					// BldgAppearance::render() submits into the static-prop batcher's
+					// per-frame buckets via submitMultiShape() (bdactor.cpp).
+					// Flush is issued later from mcTextureManager->renderLists().
+					(*iter)->appearance()->render();
+					++bRendered;
+					if ( (*iter)->isSelected() )
+						(*iter)->appearance()->drawSelectBrackets( 0xffffff00 );  // selection highlight (yellow)
+					else if ( (*iter)->getColor() & 0xff000000 )
+						(*iter)->appearance()->drawSelectBrackets( (*iter)->getColor() );
+				}
+			}
+		}
+		if (s_emrLog)
+			EditorObjMgrTrace("EditorObjectMgr::render frame=%ld buildings-loop exit treeFiltered=%ld recalcPassed=%ld rendered=%ld",
+				s_emrFrame, bTreeFiltered, bRecalcPassed, bRendered);
+	}
+	else if (s_emrLog)
+	{
+		EditorObjMgrTrace("EditorObjectMgr::render frame=%ld buildings-loop SKIPPED (renderObjects=false)", s_emrFrame);
+	}
+
+	// Always draw the Mechs/Vehicles
+	long uRecalcPassed = 0;
+	long uRendered = 0;
+	if (s_emrLog)
+		EditorObjMgrTrace("EditorObjectMgr::render frame=%ld units-loop enter count=%ld",
+			s_emrFrame, (long)units.Count());
+	for ( UNIT_LIST::EIterator mIter = units.Begin();
+		!mIter.IsDone(); mIter++ )
+	{
+		EditorObject* pObj = (*mIter);
+		currentFloatHelp = 0;
+		// Capture recalcBounds() ONCE (it has LOD-swap / inView side effects;
+		// calling it twice would re-swap and re-invalidate the baked transform).
+		const bool rInView = pObj->appearance()->recalcBounds();
+		if ( rInView )
+		{
+			++uRecalcPassed;
+			// Mech3DAppearance::render() submits into the mech batcher via
+			// submitActor() (mech3d.cpp). Flush is via renderLists().
+			pObj->appearance()->render();
+			++uRendered;
+			if ( (*mIter)->getDamage() )
+				pObj->appearance()->drawBars();
+			if ( (*mIter)->isSelected() )
+				pObj->appearance()->drawSelectBrackets( 0xffffff00 );  // selection highlight (yellow)
+			else if ( (*mIter)->getColor() & 0xff000000 )
+				pObj->appearance()->drawSelectBrackets( pObj->getColor() );
+		}
+	}
+	if (s_emrLog)
+		EditorObjMgrTrace("EditorObjectMgr::render frame=%ld units-loop exit recalcPassed=%ld rendered=%ld",
+			s_emrFrame, uRecalcPassed, uRendered);
+
+	// Building links -- 2D overlay, NOT batcher scope.
+	for ( LINK_LIST::EIterator lIter = links.Begin();
+		!lIter.IsDone(); lIter++ )
+	{
+		(*lIter)->render();
+	}
+
+	// Drop zones -- 2D overlay, NOT batcher scope.
+	for ( DROP_LIST::EIterator dIter = dropZones.Begin();
+		!dIter.IsDone(); dIter++ )
+	{
+		Stuff::Vector3D pos = (*dIter)->getPosition();
+		Stuff::Vector4D screen;
+
+		// Modern zoom-correct projection — legacy projectZ X-collapses on zoom.
+		if ( !EditorObjectMgr_ProjectScreenXY_GL( pos, screen ) )
+			continue;  // behind near plane -> skip marker
+
+		GUI_RECT Rect;
+		Rect.top = screen.y - 3;
+		Rect.left = screen.x - 3;
+		Rect.bottom = screen.y + 3;
+		Rect.right = screen.x + 3;
+		drawRect( Rect, (*dIter)->isVTol() ? 0xff0000ff : 0xffffff00 );
+	}
+}
+
+ObjectAppearance* EditorObjectMgr::getAppearance( EditorObjectMgr::Building* pBuilding )
+{
+	ObjectAppearance* appearance = NULL;
+
+	if ( !appearanceTypeList )
+	{
+		appearanceTypeList = new AppearanceTypeList;
+		gosASSERT(appearanceTypeList != NULL);
+		
+		appearanceTypeList->init(81920000);   // 10x the real engine's spriteHeapSize (8192000); editor edits many appearances/forests
+	}
+
+	//MUST ALWAYS CALL GET, EVEN IF WE HAVE AN APPEARANCE TYPE OR REFERENCE COUNT DOES NOT INCREASE!
+	pBuilding->appearanceType = appearanceTypeList->getAppearance( pBuilding->type << 24, pBuilding->fileName );
+	
+	if ( pBuilding->type == BLDG_TYPE )
+		appearance = new BldgAppearance;
+	
+	else if ( pBuilding->type == MECH_TYPE )
+		appearance = new Mech3DAppearance;
+		
+	else if ( pBuilding->type == GV_TYPE )
+		appearance = new GVAppearance;
+	
+	else
+		appearance = new TreeAppearance;
+
+
+	appearance->init( pBuilding->appearanceType );
+	appearance->setObjectNameId( pBuilding->nameID );
+
+	return appearance;
+
+}
+
+ObjectAppearance* EditorObjectMgr::getAppearance( unsigned long group, unsigned long indexWithinGroup )
+{
+	gosASSERT( group >= 0 && group < groups.Count() );
+
+	Group* pGroup = &groups[group];
+
+	gosASSERT( pGroup->buildings.Count() > indexWithinGroup );
+	Building* pBuilding = &pGroup->buildings[indexWithinGroup];
+
+	return getAppearance( pBuilding );
+
+}
+
+// Pre-loads every building AppearanceType from the object catalogue and
+// registers its TG_TypeMultiShape(s) with GpuStaticPropBatcher so that all
+// object types are available before finalizeGeometry() is called.  Without
+// this, any object type not already present on the loaded map hits the
+// late-register path (registerType after s_geometryFinalized == true) and
+// renders solid black when first placed.
+//
+// Bridges and other rarely-used building types are the most common victims
+// because they are absent from most stock starter maps.
+void EditorObjectMgr::primeAllBuildingAppearanceTypes()
+{
+	EditorObjMgrTrace("EditorObjectMgr::primeAllBuildingAppearanceTypes enter groups=%ld",
+		(long)groups.Count());
+
+	if (!appearanceTypeList)
+	{
+		appearanceTypeList = new AppearanceTypeList;
+		gosASSERT(appearanceTypeList != NULL);
+		appearanceTypeList->init(2048000);
+	}
+
+	long nPrimed = 0;
+	for (GROUP_LIST::EIterator groupIter = groups.Begin(); !groupIter.IsDone(); groupIter++)
+	{
+		Group& grp = *groupIter;
+		for (EList<Building, Building&>::EIterator bldgIter = grp.buildings.Begin();
+			 !bldgIter.IsDone(); bldgIter++)
+		{
+			Building& bldg = *bldgIter;
+
+			// Skip types that are not rendered via the GPU static-prop batcher
+			// (mechs, vehicles, nav-markers are handled by their own batchers).
+			if (bldg.type != BLDG_TYPE && bldg.type != TREED_TYPE)
+				continue;
+
+			// Load the AppearanceType if not already cached (idempotent).
+			// MUST ALWAYS CALL GET even if non-null — the reference count must
+			// be incremented (see comment in getAppearance(Building*)).
+			bldg.appearanceType = appearanceTypeList->getAppearance(
+				bldg.type << 24, bldg.fileName);
+
+			if (!bldg.appearanceType)
+				continue;
+
+			if (bldg.type == BLDG_TYPE)
+			{
+				BldgAppearanceType* bat = static_cast<BldgAppearanceType*>(bldg.appearanceType);
+				for (int lod = 0; lod < MAX_LODS; ++lod)
+				{
+					EditorBridge::registerStaticPropShape(bat->bldgShape[lod]);
+					// EDITOR-RUNTIME-STATIC-TYPE-PRIME-1: register the RENDER shape too.
+					// BldgAppearance::registerStatic (bdactor.cpp) registers
+					// getBldgRenderShape(lod), and the static-prop draw replays that
+					// shape — it differs from stock bldgShape[lod] when a render
+					// override is present. Priming only bldgShape[] left such a type's
+					// render geometry unregistered, so a runtime placement after the
+					// one-shot finalizeGeometry() late-dropped to CPU-fallback and drew
+					// nothing. Idempotent for stock (getBldgRenderShape == bldgShape).
+					TG_TypeMultiShape* bRenderShape = bat->getBldgRenderShape(lod);
+					EditorBridge::registerStaticPropShape(bRenderShape);
+					// EDITOR-STATIC-TEXTURE-PREWARM-1: load the render-shape's
+					// textures from disk now so finalizeGeometry()'s
+					// getWidth(nodeIdx) probe sees a real width (else
+					// layerForPacket=-1 -> packet dropped -> invisible body).
+					// Mirrors the stock on-map per-instance loader; damage shapes
+					// are intentionally NOT prewarmed (they load at destruction).
+					if (bRenderShape)
+						Bldg_ForceRenderShapeTexturesResident(bRenderShape);
+				}
+				EditorBridge::registerStaticPropShape(bat->bldgDmgShape);
+				++nPrimed;
+			}
+			else
+			{
+				// TREED_TYPE — previously SKIPPED here on the assumption that
+				// TreeAppearance::init registers the shape at placement and tree
+				// types are always present in the map. That assumption FAILS for a
+				// tree type placed from the asset browser that is NOT on the loaded
+				// map: its registerMultiShape runs AFTER the one-shot
+				// finalizeGeometry() latch -> [GPUPROPS] late registerType ->
+				// CPU-fallback -> invisible body (shadow still draws). Prime the tree
+				// RENDER shapes here, before finalize, mirroring
+				// TreeAppearance::registerStatic (bdactor.cpp): the render shape per
+				// populated LOD (stock treeShape[] when no override) + the damage
+				// shape. registerStaticPropShape ignores NULL shapes.
+				TreeAppearanceType* tat = static_cast<TreeAppearanceType*>(bldg.appearanceType);
+				const int lodCount = (tat->treeRenderShapeLodCount > 0)
+				                       ? (int)tat->treeRenderShapeLodCount : MAX_LODS;
+				for (int lod = 0; lod < lodCount; ++lod)
+				{
+					EditorBridge::registerStaticPropShape(tat->treeShape[lod]);
+					TG_TypeMultiShape* tRenderShape = tat->getTreeRenderShape(lod);
+					EditorBridge::registerStaticPropShape(tRenderShape);
+					// EDITOR-STATIC-TEXTURE-PREWARM-1: same prewarm as buildings —
+					// force tree render-shape textures resident before finalize so
+					// the texture probe yields a valid width. Damage shape excluded.
+					if (tRenderShape)
+						Bldg_ForceRenderShapeTexturesResident(tRenderShape);
+				}
+				EditorBridge::registerStaticPropShape(tat->treeDmgShape);
+				++nPrimed;
+			}
+		}
+	}
+
+	EditorObjMgrTrace("EditorObjectMgr::primeAllBuildingAppearanceTypes exit nPrimed=%ld", nPrimed);
+}
+
+EditorObject* EditorObjectMgr::findObjectByStaticRecipeIndex(int32_t recipeIndex)
+{
+	// EDITOR-OBJECTID-PICK-BRIDGE-1 (Slice 3). recipeIndex < 0 is the "no
+	// static recipe" sentinel (Appearance::getStaticRecipeIndex default) and
+	// must never match -- guard so an unregistered object is not spuriously
+	// returned.
+	if (recipeIndex < 0)
+		return nullptr;
+
+	// buildings holds EditorObject* for set-dressing; units holds Unit*
+	// (Unit : public EditorObject). Both expose appearance()->getStaticRecipeIndex().
+	for (BUILDING_LIST::EIterator iter = buildings.Begin(); !iter.IsDone(); iter++)
+	{
+		EditorObject* obj = *iter;
+		if (!obj || !obj->appearance())
+			continue;
+		if (obj->appearance()->getStaticRecipeIndex() == recipeIndex)
+			return obj;
+	}
+	for (UNIT_LIST::EIterator mIter = units.Begin(); !mIter.IsDone(); mIter++)
+	{
+		Unit* unit = *mIter;
+		if (!unit || !unit->appearance())
+			continue;
+		if (unit->appearance()->getStaticRecipeIndex() == recipeIndex)
+			return unit;
+	}
+	return nullptr;
+}
+
+void EditorObjectMgr::registerStaticPropsForMissionLoad()
+{
+	if (!EditorBridge::staticPropMissionLoadRegEnabled())
+		return;
+	static const long homeRelations[9] = {0, 0, 2, 1, 1, 1, 1, 1, 1};
+	int total = 0, registered = 0;
+	for (BUILDING_LIST::EIterator iter = buildings.Begin(); !iter.IsDone(); iter++)
+	{
+		EditorObject* obj = *iter;
+		if (!obj || !obj->appearance())
+			continue;
+		++total;
+		ObjectAppearance* app = obj->appearance();
+		int teamIdx = (app->teamId + 1 >= 0 && app->teamId + 1 < 9) ? app->teamId + 1 : 0;
+		app->setObjectParameters(app->position, app->rotation, app->selected,
+		                         app->teamId, homeRelations[teamIdx]);
+		app->registerStatic();
+		if (app->isStaticRegistered())
+			++registered;
+	}
+	MC2_DIAGFE(stderr, "[STATIC_PROP_REG v1] event=editor_load enumerated=%d registered=%d skipped=%d\n",
+	        total, registered, total - registered);
+	fflush(stderr);
+}

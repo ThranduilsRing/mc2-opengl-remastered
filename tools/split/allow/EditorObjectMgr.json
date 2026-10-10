@@ -1,0 +1,20 @@
+{
+ "base": "246ea9381",
+ "src": "editor/EditorObjectMgr.cpp",
+ "stem": "EditorObjectMgr",
+ "edits": [
+  [
+   "static void EditorObjMgrTrace(const char* fmt, ...)",
+   "void EditorObjMgrTrace(const char* fmt, ...)"
+  ],
+  [
+   "static bool EditorObjectMgr_ProjectScreenXY_GL(const Stuff::Vector3D& wp, Stuff::Vector4D& sp);",
+   "bool EditorObjectMgr_ProjectScreenXY_GL(const Stuff::Vector3D& wp, Stuff::Vector4D& sp);"
+  ],
+  [
+   "static bool EditorObjectMgr_ProjectScreenXY_GL(const Stuff::Vector3D& wp, Stuff::Vector4D& sp)",
+   "bool EditorObjectMgr_ProjectScreenXY_GL(const Stuff::Vector3D& wp, Stuff::Vector4D& sp)"
+  ]
+ ],
+ "_reason": "EditorObjMgrTrace and EditorObjectMgr_ProjectScreenXY_GL lose 'static': each is called from several pieces (trace from render/io, projection from pick/render/select). The trace keeps its per-call MC2_EDITOR_TRACE read inside the function."
+}
