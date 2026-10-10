@@ -1,0 +1,6 @@
+{
+ "base": "246ea9381",
+ "src": "editor/Objective.cpp",
+ "stem": "Objective",
+ "_reason": "No linkage change: the static read/write helpers move to the internal header as static functions."
+}
