@@ -276,6 +276,16 @@ Split commit: `708c5e445`.
 | `UiDefs_parse.cpp` | UiDefs: defs-file text parsing, path resolution, drawing primitives. |
 | `UiDefs_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
+## `mclib/abldbug.cpp`
+
+Split commit: `dd946d83d`.
+
+| Piece | What it holds |
+|---|---|
+| `abldbug.cpp` | keeps the watch and breakpoint managers, the Debugger setup and the command loop |
+| `abldbug_print.cpp` | ABL debugger: the statement / value printers, the execution trace hooks, showValue, assignVariable and the module-instance listing. |
+| `abldbug_internal.h` | shared include bundle, extern globals and declarations of the pieces |
+
 ## `mclib/bdactor.cpp`
 
 Split commit: `6456f46eb`.
@@ -308,6 +318,16 @@ Split commit: `f4c986566`.
 | `camera_project.cpp` | Camera: screen-to-world projection: the ground-plane and terrain approximations and inverseProject. |
 | `camera_update.cpp` | Camera: the camera goal updates, Camera::update and render. |
 | `camera_internal.h` | shared include bundle, extern globals and declarations of the pieces |
+
+## `mclib/genactor.cpp`
+
+Split commit: `0196b20c5`.
+
+| Piece | What it holds |
+|---|---|
+| `genactor.cpp` | keeps the type loader, the appearance setup and the bounds recalculation |
+| `genactor_frame.cpp` | GenericAppearance: render, renderShadows, update and the appearance teardown. |
+| `genactor_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
 ## `mclib/gvactor.cpp`
 
