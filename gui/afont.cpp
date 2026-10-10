@@ -5,6 +5,7 @@
 #include"afont.h"
 #include"mclib.h"
 #include"platform_mbstring.h"
+#include "Gates/gate.h"
 
 aFont::aFont()
 {
@@ -28,8 +29,7 @@ static bool mc2HudReadabilityV1()
 	static int cached = -1;
 	if (cached < 0)
 	{
-		const char* v = getenv("MC2_HUD_READABILITY_V1");
-		cached = (v && v[0] && v[0] != '0') ? 1 : 0;
+		cached = mc2::gate::get<"MC2_HUD_READABILITY_V1">();
 	}
 	return cached == 1;
 }
