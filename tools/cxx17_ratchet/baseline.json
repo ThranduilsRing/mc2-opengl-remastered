@@ -66,8 +66,8 @@
    "LG16": 7,
    "LG17": 81,
    "LG18": 11,
-   "LG19": 115,
-   "LG20": 153
+   "LG19": 110,
+   "LG20": 148
   },
   "GuiRuntime": {
    "LG01": 1,
@@ -497,8 +497,7 @@
   "GameOS/gameos/gameos_input.cpp": {
    "LG09": 23,
    "LG12a": 1,
-   "LG19": 5,
-   "LG20": 6
+   "LG20": 1
   },
   "GameOS/gameos/gameos_res.cpp": {
    "LG01": 9,
@@ -5875,7 +5874,7 @@
    "LG20": 1
   }
  },
- "head": "f3c6d4abf",
+ "head": "f3729029f",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
