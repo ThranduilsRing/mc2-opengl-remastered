@@ -448,14 +448,13 @@ def build_gate_dump(root, outdir):
     vs = ("C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/Common7/IDE/CommonExtensions/"
           "Microsoft/CMake/CMake/bin/cmake.exe")
     cm = vs if os.path.isfile(vs) else "cmake"
-    flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
     r = subprocess.run([cm, "-S", src, "-B", outdir, "-A", "x64"], capture_output=True, text=True,
-                       creationflags=flags)
+                       creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     if r.returncode != 0:
         print((r.stdout + r.stderr)[-2000:])
         return None
     r = subprocess.run([cm, "--build", outdir, "--config", "RelWithDebInfo"], capture_output=True, text=True,
-                       creationflags=flags)
+                       creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     if r.returncode != 0:
         print((r.stdout + r.stderr)[-4000:])
         return None
