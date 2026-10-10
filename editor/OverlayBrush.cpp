@@ -14,9 +14,9 @@ OverlayBrush.cpp			: Implementation of the OverlayBrush component.
 
 
 class OTMap : public std::map<int, Overlays> {};
-static OTMap *pOverlaysToTransitionMapping = 0;
+static OTMap *pOverlaysToTransitionMapping = nullptr;
 class TOMap : public std::map<Overlays, int> {};
-static TOMap *pTransitionToOverlaysMapping = 0;
+static TOMap *pTransitionToOverlaysMapping = nullptr;
 
 static int UP = 0;
 static int RIGHT = 1;
@@ -250,7 +250,7 @@ static int ConnectivityMaskToTextureMapping(int mask, Overlays currentbrush = IN
 			}
 			i++;
 		}
-		if (0 == pOverlaysToTransitionMapping) {
+		if (nullptr == pOverlaysToTransitionMapping) {
 			pOverlaysToTransitionMapping = new OTMap;
 			int pair;
 			pair = (OverlayTypeToInt(DIRT_ROAD) << 16) + OverlayTypeToInt(PAVED_ROAD);
@@ -365,7 +365,7 @@ static int TextureToConnectivityMaskMapping(int iTexture) {
 		}
 		return mask;
 	} else if ((X_DIRT_PAVED == tmpType) || (X_DIRT_2LANEDIRT == tmpType) || (X_DIRT_DAMAGED == tmpType) || (X_2LANEDIRT_PAVED == tmpType) || (X_DAMAGED_PAVED == tmpType) || (X_2LANEDIRT_DAMAGED == tmpType) || (X_PAVED_ROAD_BRIDGE == tmpType)) {
-		if (0 == pTransitionToOverlaysMapping) {
+		if (nullptr == pTransitionToOverlaysMapping) {
 			pTransitionToOverlaysMapping = new TOMap;
 			int pair;
 			pair = (OverlayTypeToInt(DIRT_ROAD) << 16) + OverlayTypeToInt(PAVED_ROAD);
@@ -608,7 +608,7 @@ Action*  OverlayBrush::endPaint()
 	// painted cells don't render black.
 	EditorData::refreshTerrainAfterEdit();
 	Action* pRetAction = pAction;
-	pAction  = NULL;
+	pAction  = nullptr;
 	return pRetAction;
 }
 

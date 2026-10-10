@@ -143,7 +143,7 @@ bool Fail(const char* file, int line, const char* cond, const char* fmt, ...)
         // fatal mode must never resume into the code the check guards.
         InternalFunctionStop("%s", lineBuf);
 #ifdef _WIN32
-        RaiseException(0xE0564631 /* 'VF1' */, EXCEPTION_NONCONTINUABLE, 0, NULL);
+        RaiseException(0xE0564631 /* 'VF1' */, EXCEPTION_NONCONTINUABLE, 0, nullptr);
         TerminateProcess(GetCurrentProcess(), 0xE0564631);
 #else
         std::abort();

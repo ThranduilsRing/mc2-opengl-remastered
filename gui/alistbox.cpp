@@ -30,7 +30,7 @@ aListBox::aListBox()
 	itemCount = 0;
 	itemSelected = -1;
 	memset( items, 0, sizeof( aListItem*) * MAX_LIST_ITEMS );
-	scrollBar = 0;
+	scrollBar = nullptr;
 	skipAmount = 1;
 	singleCheck = 1;
 	topSkip = 0;
@@ -54,7 +54,7 @@ long aListBox::init(long xPos, long yPos,long w, long h )
 	{
 		scrollBar->destroy();
 		delete scrollBar;
-		scrollBar = NULL;
+		scrollBar = nullptr;
 	}
 
 	scrollBar = new mcScrollBar;
@@ -87,7 +87,7 @@ void aListBox::destroy()
 	{
 		scrollBar->destroy();
 		delete scrollBar;
-		scrollBar = NULL;
+		scrollBar = nullptr;
 	}
 
 	removeAllItems( true );
@@ -105,7 +105,7 @@ void aListBox::removeAllItems( bool bDelete )
 			if ( items[i] && bDelete )
 				delete items[i];
 
-			items[i] = 0;
+			items[i] = nullptr;
 		}
 	}
 
@@ -501,7 +501,7 @@ long	aListBox::RemoveItem( aListItem* item, bool bDelete )
 			}
 			else
 			{
-				items[i] = NULL;
+				items[i] = nullptr;
 				if ( itemSelected == i )
 					itemSelected = -1;
 			}
@@ -514,7 +514,7 @@ long	aListBox::RemoveItem( aListItem* item, bool bDelete )
 				items[i]->move( 0, -height - skipAmount );
 			}
 			else
-				items[i] = NULL;
+				items[i] = nullptr;
 		}
 	}
 
@@ -577,7 +577,7 @@ void	aListBox::enableAllItems()
 aListItem* aListBox::GetItem(long itemNumber)
 {
 	if (itemNumber >= itemCount)
-		return NULL;
+		return nullptr;
 
 	return items[itemNumber];
 	
@@ -652,7 +652,7 @@ aDropList::aDropList(void)
 	listBoxMaxHeight = 0.0;
 	selectionIndex = -1;
 
-	rects = NULL;
+	rects = nullptr;
 }	
 
 aDropList& aDropList::operator=( const aDropList& src)
@@ -668,7 +668,7 @@ aDropList& aDropList::operator=( const aDropList& src)
 	if ( rects )
 	{
 		delete [] rects;
-		rects = NULL;
+		rects = nullptr;
 	}
 
 	listBox.removeAllItems( 0 );
@@ -786,7 +786,7 @@ void aDropList::destroy()
 	if ( rects )
 	{
 		delete [] rects;
-		rects = NULL;
+		rects = nullptr;
 	}
 	aObject::destroy();
 }
@@ -799,7 +799,7 @@ void aDropList::specialDestroy()
 	if ( rects )
 	{
 		delete [] rects;
-		rects = NULL;
+		rects = nullptr;
 	}
 	aObject::destroy();
 }
@@ -989,7 +989,7 @@ aComboBox::aComboBox(void) : templateItem( 27333 )
 {
 	listBoxMaxHeight = 0.0;
 	selectionIndex = -1;
-	rects = NULL;
+	rects = nullptr;
 }
 
 aComboBox& aComboBox::operator=(const aComboBox& src )
@@ -1008,7 +1008,7 @@ aComboBox& aComboBox::operator=(const aComboBox& src )
 	if ( rects )
 	{
 		delete [] rects;
-		rects = NULL;
+		rects = nullptr;
 	}
 
 	listBox = src.listBox;
@@ -1132,7 +1132,7 @@ void aComboBox::destroy()
 	aObject::destroy();
 
 	delete [] rects;
-	rects = NULL;
+	rects = nullptr;
 }
 
 void aComboBox::render()
@@ -1177,7 +1177,7 @@ void aComboBox::update()
 
 			aListItem *pListItem = ListBox().GetItem(selectionIndex);
 			aTextListItem *pTextListItem = dynamic_cast<aTextListItem *>(pListItem);
-			if (0 != pTextListItem)
+			if (nullptr != pTextListItem)
 			{
 				entry.setEntry(pTextListItem->getText());
 			}

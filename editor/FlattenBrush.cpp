@@ -10,7 +10,7 @@ FlattenBrush.cpp			: Implementation of the FlattenBrush component.
 //-------------------------------------------------------------------------------------------------
 FlattenBrush::FlattenBrush()
 {
-	pCurAction = NULL;
+	pCurAction = nullptr;
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -34,14 +34,14 @@ Action* FlattenBrush::endPaint()
 		if ( !pCurAction->vertexInfoList.Count() )
 		{
 			delete pCurAction;
-			pRetAction = NULL;
+			pRetAction = nullptr;
 
 		}
 	}
 
 //	land->reCalcLight();
 	land->recalcWater();
-	pCurAction = NULL;
+	pCurAction = nullptr;
 	return pRetAction;
 }
 
@@ -84,7 +84,7 @@ bool FlattenBrush::paint( Stuff::Vector3D& worldPos, int screenX, int screenY )
 Action* FlattenBrush::applyToSelection()
 {
 	if ( !land )
-		return NULL;  // EDITOR-CRASH-HARDENING-1: no terrain -> NULL deref (sibling StampBrush.cpp:66)
+		return nullptr;  // EDITOR-CRASH-HARDENING-1: no terrain -> NULL deref (sibling StampBrush.cpp:66)
 
 	float height = getAverageHeightOfSelection();
 

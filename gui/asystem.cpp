@@ -259,7 +259,7 @@ void aObject::update()
 aObject::aObject()
 {
 	pNumberOfChildren = 0;
-	pParent = NULL;
+	pParent = nullptr;
 	textureHandle = 0;
 	memset( location, 0, sizeof ( gos_VERTEX ) * 4 );
 	for ( int i = 0; i < 4;i++ )
@@ -301,7 +301,7 @@ long aObject::init(long xPos, long yPos,long w, long h)
 	showWindow = TRUE;
 
 	pNumberOfChildren = 0;
-	pParent = NULL;
+	pParent = nullptr;
 	return (NO_ERR);
 }
 
@@ -415,18 +415,18 @@ void aObject::init(FitIniFile* file, const char* blockName, DWORD neverFlush)
 			location[k].z = 0.f;
 			location[k].rhw = .5;
 			if ( fileWidth )
-				location[k].u = (float)u/(float)fileWidth + (.1f / (float)fileWidth);
+				location[k].u = (float)u/fileWidth + (.1f / fileWidth);
 			if ( fileWidth )
-				location[k].v = (float)v/(float)fileWidth + (.1f / (float)fileWidth);
+				location[k].v = (float)v/fileWidth + (.1f / fileWidth);
 		}
 
 		location[3].x = location[2].x = x + width;
 		location[2].y = location[1].y = y + height;
 
 		if ( fileWidth )
-			location[2].u = location[3].u = ((float)(u + uWidth))/((float)fileWidth) + (.1f / (float)fileWidth);
+			location[2].u = location[3].u = ((float)(u + uWidth))/(fileWidth) + (.1f / fileWidth);
 		if ( fileWidth )
-			location[1].v = location[2].v = ((float)(v + vHeight))/((float)fileWidth) + (.1f / (float)fileWidth);
+			location[1].v = location[2].v = ((float)(v + vHeight))/(fileWidth) + (.1f / fileWidth);
 
 		// Opt-in 1-pixel destination-rect overlap for chrome widgets so
 		// upscaler-softened edges between adjacent panels blend into each
@@ -444,15 +444,15 @@ void aObject::init(FitIniFile* file, const char* blockName, DWORD neverFlush)
 		if ( bRotated )
 		{
 
-			location[0].u = (u + uWidth)/(float)fileWidth + (.1f / (float)fileWidth);;
-			location[1].u = u/(float)fileWidth + (.1f / (float)fileWidth);;
-			location[2].u = u/(float)fileWidth + (.1f / (float)fileWidth);
-			location[3].u = (u + uWidth)/(float)fileWidth + (.1f / (float)fileWidth);
+			location[0].u = (u + uWidth)/fileWidth + (.1f / fileWidth);;
+			location[1].u = u/fileWidth + (.1f / fileWidth);;
+			location[2].u = u/fileWidth + (.1f / fileWidth);
+			location[3].u = (u + uWidth)/fileWidth + (.1f / fileWidth);
 
-			location[0].v = v/(float)fileWidth + (.1f / (float)fileWidth);;
-			location[1].v = v/(float)fileWidth + (.1f / (float)fileWidth);;
-			location[2].v = (v + vHeight)/(float)fileWidth + (.1f / (float)fileWidth);;
-			location[3].v = (v + vHeight)/(float)fileWidth + (.1f / (float)fileWidth);;
+			location[0].v = v/fileWidth + (.1f / fileWidth);;
+			location[1].v = v/fileWidth + (.1f / fileWidth);;
+			location[2].v = (v + vHeight)/fileWidth + (.1f / fileWidth);;
+			location[3].v = (v + vHeight)/fileWidth + (.1f / fileWidth);;
 		}
 	}
 
@@ -476,7 +476,7 @@ void aObject::destroy()
 	{
 		pParent->removeChild(this);
 	}
-	pParent = NULL;
+	pParent = nullptr;
 	
 }
 
@@ -528,7 +528,7 @@ aObject* aObject::findObject(long xPos, long yPos)
 	if (showWindow && pointInside(xPos,yPos))
 		return (this);
 
-	return NULL;
+	return nullptr;
 }
 
 
@@ -548,7 +548,7 @@ void aObject::addChild(aObject* c)
 {
 	ZoneScopedN("aObject::addChild");
 	Assert (pNumberOfChildren < MAX_CHILDREN, pNumberOfChildren+1, "Too many children!");
-	Assert(c->getParent() == NULL || c->getParent() == this, 0, " Adding child that's someone else's ");
+	Assert(c->getParent() == nullptr || c->getParent() == this, 0, " Adding child that's someone else's ");
 	if (!c)
 		return;
 	removeChild(c);	//	make sure this isn't already my child (Duplicate children screws up bringToFront())
@@ -564,7 +564,7 @@ void aObject::removeChild(aObject* c)
 	if (!c)			//If this is NULL, shouldn't we still remove it from the list?
 		return;
 			
-	if ((c->getParent() == this) || (c->getParent() == NULL))	//Normal situation
+	if ((c->getParent() == this) || (c->getParent() == nullptr))	//Normal situation
 	{
 		for (long cc = 0; cc < pNumberOfChildren; cc++)
 		{
@@ -573,9 +573,9 @@ void aObject::removeChild(aObject* c)
 				// found the child, remove it and shift the rest of the children up
 				for (long sc = cc; sc < pNumberOfChildren - 1; sc++)
 					pChildren[sc] = pChildren[sc+1];
-				pChildren[pNumberOfChildren] = NULL;
+				pChildren[pNumberOfChildren] = nullptr;
 				pNumberOfChildren--;
-				c->setParent(NULL);
+				c->setParent(nullptr);
 				return;
 			}
 		}
@@ -591,7 +591,7 @@ void aObject::removeChild(aObject* c)
 aObject* aObject::child(long w)
 {
 	if (w > pNumberOfChildren - 1)
-		return NULL;
+		return nullptr;
 
 	return pChildren[w];
 }
@@ -821,8 +821,8 @@ void aObject::setColor( uint32_t newColor, bool bRecurse )
 void	aObject::setUVs( float u1, float v1, float u2, float v2 )
 {
 	// U-axis: always divided by fileWidth (horizontal texture dimension).
-	location[0].u = location[1].u = u1/fileWidth + (.1f / (float)fileWidth);
-	location[2].u = location[3].u = u2/fileWidth + (.1f / (float)fileWidth);
+	location[0].u = location[1].u = u1/fileWidth + (.1f / fileWidth);
+	location[2].u = location[3].u = u2/fileWidth + (.1f / fileWidth);
 	// V-axis: divided by fileHeight when set (non-square atlas), else fileWidth.
 	// This lets a 256x512 atlas address rows 0-16 while leaving square atlases
 	// (fileHeight==0) fully backward-compatible.
@@ -835,7 +835,7 @@ void aObject::removeAllChildren( bool bDelete)
 {
 	for ( int i = 0; i < pNumberOfChildren; i++ )
 	{
-		pChildren[i]->setParent( 0 );
+		pChildren[i]->setParent( nullptr );
 		if ( bDelete )
 			delete pChildren[i];
 	}

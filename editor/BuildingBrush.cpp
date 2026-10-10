@@ -57,10 +57,10 @@ BuildingBrush.cpp	: Implementation of the BuildingBrush component.
 // getHeapPtr() in newInit(). We also require the heap to cover realVerticesMapSide^2.
 static inline bool editorTerrainMeshReady()
 {
-	if ( land == NULL || Terrain::mapData == NULL )
+	if ( land == nullptr || Terrain::mapData == nullptr )
 		return false;
 
-	if ( Terrain::mapData->getHeapPtr() == NULL || Terrain::mapData->getBlocks() == NULL )
+	if ( Terrain::mapData->getHeapPtr() == nullptr || Terrain::mapData->getBlocks() == nullptr )
 		return false;
 
 	if ( Terrain::realVerticesMapSide <= 0 )
@@ -135,7 +135,7 @@ BuildingBrush::BuildingBrush( int Group, int IndexInGroup, int Alignment )
 {
 	group = Group;
 	indexInGroup = IndexInGroup;
-	pAction = NULL;
+	pAction = nullptr;
 	pCursor = EditorObjectMgr::instance()->getAppearance( Group, IndexInGroup );
 	pCursor->teamId = Alignment;
 	pCursor->setInView(true);
@@ -155,9 +155,9 @@ BuildingBrush::BuildingBrush( int Group, int IndexInGroup, int Alignment )
 
 BuildingBrush::BuildingBrush()
 {
-	pCursor = NULL;
+	pCursor = nullptr;
 	group = indexInGroup = -1;
-	pAction = NULL;
+	pAction = nullptr;
 }
 
 BuildingBrush::~BuildingBrush()
@@ -198,7 +198,7 @@ bool BuildingBrush::paint( Stuff::Vector3D& worldPos, int screenX, int screenY )
 	if ( pInfo && pAction )
 		pAction->addBuildingInfo( *pInfo );
 
-	return (pInfo != NULL);
+	return (pInfo != nullptr);
 }
 
 Action* BuildingBrush::endPaint( )
@@ -208,11 +208,11 @@ Action* BuildingBrush::endPaint( )
 		if ( !pAction->objInfoPtrList.Count() )
 		{
 			delete pAction;
-			pAction = NULL;
+			pAction = nullptr;
 		}
 	}
 	Action* pRetAction = pAction;
-	pAction = NULL;
+	pAction = nullptr;
 	return pRetAction;
 }
 

@@ -27,28 +27,28 @@ class file_stream: public stream
 public:
 
 	file_stream(void);
-	virtual ~file_stream(void);
-	virtual int open(const char *, const char *);
-	virtual int close();
-	virtual size_t write(const void* pbuf, size_t size);
-	virtual size_t write(const void* pbuf, size_t size, size_t count);
-	virtual size_t write_byte(char b);
-	virtual size_t write_word(short sh);
-	virtual size_t write_dword(unsigned int i);
-	virtual size_t write_float(float f);
-	virtual size_t write_cstr(const char* str);
+	~file_stream(void) override;
+	int open(const char *, const char *) override;
+	int close() override;
+	size_t write(const void* pbuf, size_t size) override;
+	size_t write(const void* pbuf, size_t size, size_t count) override;
+	size_t write_byte(char b) override;
+	size_t write_word(short sh) override;
+	size_t write_dword(unsigned int i) override;
+	size_t write_float(float f) override;
+	size_t write_cstr(const char* str) override;
 
-	virtual size_t read(void* pbuf, size_t size) const;
-	virtual size_t read(void* pbuf, size_t size, size_t count) const;
-	virtual char read_byte();
-	virtual short read_word();
-	virtual unsigned int read_dword() const;
-	virtual float read_float() const;
-	virtual size_t read_cstr(char* ) const;
+	size_t read(void* pbuf, size_t size) const override;
+	size_t read(void* pbuf, size_t size, size_t count) const override;
+	char read_byte() override;
+	short read_word() override;
+	unsigned int read_dword() const override;
+	float read_float() const override;
+	size_t read_cstr(char* ) const override;
 
-	virtual int seek(int bytes, SEEK_TYPE type);
-    virtual int tell();
-	virtual const char* get_path() const { return _path; }
+	int seek(int bytes, SEEK_TYPE type) override;
+    int tell() override;
+	const char* get_path() const override { return _path; }
 
     //virtual int get_fstat(struct _stat* pstat);
 };
@@ -63,7 +63,7 @@ void stream::releaseStream(stream* pstream)
 	delete pstream;
 }
 
-file_stream::file_stream(void):_file(0), _path(0)
+file_stream::file_stream(void):_file(nullptr), _path(nullptr)
 {
 }
 
@@ -79,7 +79,7 @@ int file_stream::open(const char * fpath, const char * mode)
 {
 	if(_file)
 		fclose(_file);
-	if((_file = fopen(fpath, mode))==NULL)
+	if((_file = fopen(fpath, mode))==nullptr)
 		return -1;
 
 	//save path for different purposes
@@ -211,7 +211,7 @@ int file_stream::close()
 	{
 		int rv = fclose(_file);
 		if(rv==0)
-			_file=0;
+			_file=nullptr;
 		//maybe i should free _path here also?
 		return rv;
 	}

@@ -237,7 +237,7 @@ static std::filesystem::path executableDirectory()
 {
 #if defined(_WIN32)
     char buffer[MAX_PATH] = {0};
-    const DWORD len = GetModuleFileNameA(NULL, buffer, MAX_PATH);
+    const DWORD len = GetModuleFileNameA(nullptr, buffer, MAX_PATH);
     if (len > 0 && len < MAX_PATH)
         return std::filesystem::path(buffer).parent_path();
 #else

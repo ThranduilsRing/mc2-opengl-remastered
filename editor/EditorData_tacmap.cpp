@@ -407,7 +407,7 @@ void EditorData::drawTacMap( BYTE* pDest, long dataSize, int tacMapSize )
 				strcmp(EditorObjectMgr::instance()->getTGAFileName(pObj->getID()),"NONE") != 0 )
 			{
 				long recNum = -1;
-				MemoryPtr tgaRAM = NULL;
+				MemoryPtr tgaRAM = nullptr;
 				long tHeight = 0, tWidth = 0;
 				for (long it = 0;it<255;it++)
 				{
@@ -523,12 +523,12 @@ void EditorData::drawTacMap( BYTE* pDest, long dataSize, int tacMapSize )
 		if (tRecs[it].tgaData)
 		{
 			systemHeap->Free(tRecs[it].tgaData);
-			tRecs[it].tgaData = NULL;	
+			tRecs[it].tgaData = nullptr;	
 		}
 	}
 	
 	systemHeap->Free(tRecs);
-	tRecs = NULL;
+	tRecs = nullptr;
 	
 	double xRatio = 3. * (land->realVerticesMapSide)/tacMapSize;
 	double yRatio = 3. * (land->realVerticesMapSide)/tacMapSize;
@@ -596,7 +596,7 @@ void EditorData::loadTacMap(PacketFile *file, BYTE*& pReturn, long dataSize, int
 	
 	long outputSize = 128 * 128 * 4;
 
-	BYTE* pOutput = (BYTE*)new BYTE[ outputSize + sizeof( TGAFileHeader )];
+	BYTE* pOutput = new BYTE[ outputSize + sizeof( TGAFileHeader )];
 	pReturn = pOutput;
 	BYTE* pShrunken = pOutput + sizeof( TGAFileHeader );
 	
@@ -617,7 +617,7 @@ void EditorData::loadTacMap(PacketFile *file, BYTE*& pReturn, long dataSize, int
 //---------------------------------------------------------------------------
 bool EditorData::saveTacMap (PacketFile* file, long whichPacket )
 {
-	BYTE* data = NULL;
+	BYTE* data = nullptr;
 	long size = 0;
 
 	makeTacMap( data, size, 128 );

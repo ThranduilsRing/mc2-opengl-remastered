@@ -35,7 +35,7 @@ void EditorObjectMgr::update()
 			!iter.IsDone(); iter++ )
 			{
 				currentFloatHelp = 0;
-				ObjectAppearance* pBAppr = (*iter) ? (*iter)->appearance() : NULL;
+				ObjectAppearance* pBAppr = (*iter) ? (*iter)->appearance() : nullptr;
 				if (!pBAppr) continue;
 				if (renderTrees || (!renderTrees && (pBAppr->getAppearanceClass() != TREE_APPR_TYPE)))
 				{
@@ -65,7 +65,7 @@ void EditorObjectMgr::update()
 		{
 			EditorObject* pObj = (*mIter);
 			currentFloatHelp = 0;
-			ObjectAppearance* pUAppr = pObj ? pObj->appearance() : NULL;
+			ObjectAppearance* pUAppr = pObj ? pObj->appearance() : nullptr;
 			if (!pUAppr) continue;
 			const bool uInView = pUAppr->recalcBounds();
 			// GV-slide fix: refresh the mover transform every frame (not only when
@@ -259,7 +259,7 @@ void EditorObjectMgr::render()
 
 ObjectAppearance* EditorObjectMgr::getAppearance( EditorObjectMgr::Building* pBuilding )
 {
-	ObjectAppearance* appearance = NULL;
+	ObjectAppearance* appearance = nullptr;
 
 	if ( !appearanceTypeList )
 	{

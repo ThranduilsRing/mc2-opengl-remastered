@@ -67,7 +67,7 @@ class SoundEngine {
         gosAudio* getAudio(DWORD audio_id) {
             // TODO: return default audio
             if(audio_id == INVALID_AUDIO_ID) {
-                return NULL;
+                return nullptr;
             }
             gosASSERT(audioList_.size() > audio_id);
             gosASSERT(audioList_[audio_id] != 0);
@@ -182,7 +182,7 @@ void SoundEngine::destroy() {
     is_initialized_ = false;
 }
 
-SoundEngine* g_sound_engine = NULL;
+SoundEngine* g_sound_engine = nullptr;
 
 ////////////////////////////////////////////////////////////////////////////////
 // possibly pass parameters
@@ -199,7 +199,7 @@ void gos_DestroyAudio() {
     if(g_sound_engine) {
         g_sound_engine->destroy();
         delete g_sound_engine;
-        g_sound_engine = NULL;
+        g_sound_engine = nullptr;
     }
 }
 
@@ -221,7 +221,7 @@ void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_Reso
     //WORD  wBitsPerSample;			// Bits per sample for the wFormatTag format type. If wFormatTag is 1 (PCM), then wBitsPerSample should be equal to 8 or 16.
 	//WORD  cbSize;					// Size, in bytes, of extra format information appended to the end of the WAVEFORMATEX structure. For PCM's, this should be set to 0. For ADPCM, this should be set to 32.
 
-    uint8_t* databuf = NULL;
+    uint8_t* databuf = nullptr;
     uint32_t src_datasize = 0;
 
     SDL_AudioFormat src_fmt = 0;
@@ -230,7 +230,7 @@ void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_Reso
     bool from_file = false;
 
 #ifdef USE_MIX_LOAD
-    Mix_Chunk* chunk = NULL;
+    Mix_Chunk* chunk = nullptr;
 #endif
 
     const SDL_AudioFormat dst_fmt = g_sound_engine->getFormat();
@@ -265,9 +265,9 @@ void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_Reso
         }
 #else
         chunk = Mix_LoadWAV(file_name);
-        if(NULL == chunk) {
+        if(nullptr == chunk) {
             SPEW(("AUDIO", "gosAudio_CreateResource: Failed to load %s, %s\n", file_name, Mix_GetError()));
-            *hgosaudio = NULL;
+            *hgosaudio = nullptr;
             return;
         }
         databuf = chunk->abuf;
@@ -295,7 +295,7 @@ void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_Reso
 
     uint8_t* audio_data = new uint8_t[audio_data_size];
     memset(audio_data, 0, audio_data_size);
-    uint8_t* tmp_req_buf = NULL;
+    uint8_t* tmp_req_buf = nullptr;
 
     const bool needs_conversion = g_sound_engine->needsConversion(src_fmt, src_channels, src_freq);
     if(needs_conversion) {
@@ -310,7 +310,7 @@ void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_Reso
             delete[] audio_data;
             if(from_file)
                 SDL_FreeWAV(databuf);
-            *hgosaudio = NULL;
+            *hgosaudio = nullptr;
             return;
         }
 
@@ -333,7 +333,7 @@ void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_Reso
             delete[] audio_data;
             if(from_file)
                 SDL_FreeWAV(databuf);
-            *hgosaudio = NULL;
+            *hgosaudio = nullptr;
             delete[] tmp_req_buf;
             return;
         }
@@ -387,12 +387,12 @@ void __stdcall gosAudio_DestroyResource( HGOSAUDIO* hgosaudio )
     if(!audio)
         return;
 
-    *hgosaudio = NULL;
+    *hgosaudio = nullptr;
 
     for(int i=0; i<g_sound_engine->NUM_CHANNELS;++i) {
         if(pci[i].hAudio == audio) {
             Mix_HaltChannel(i);
-            pci[i].hAudio = NULL;
+            pci[i].hAudio = nullptr;
             pci[i].ePlayMode = gosAudio_Stop;
 
             g_sound_engine->deleteAudio(audio);

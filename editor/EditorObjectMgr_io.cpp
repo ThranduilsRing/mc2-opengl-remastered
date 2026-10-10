@@ -492,8 +492,8 @@ bool		EditorObjectMgr::saveMechs( FitIniFile& file )
 		(*iter)->save( &file, counter );
 
 		mechAssetPtr->Close();
-		mechAssetPtr = NULL;
-		mechAsset = NULL;
+		mechAssetPtr = nullptr;
+		mechAsset = nullptr;
 		
 		file.writeIdULong( "AlternativeStartIndex", alternativeInstancesCounter + 1 );
 

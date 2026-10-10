@@ -42,7 +42,7 @@ bool ReadWholeFile(const char* path, std::string& out)
 	out.clear();
 	if (!path || !path[0])
 		return false;
-	FILE* f = NULL;
+	FILE* f = nullptr;
 	if (fopen_s(&f, path, "rb") != 0 || !f)
 		return false;
 	char buf[8192];
@@ -347,7 +347,7 @@ void Draw()
 	{
 		// explorer /select,"<path>" highlights the log in its folder.
 		std::string param = "/select,\"" + s.logPath + "\"";
-		ShellExecuteA(NULL, "open", "explorer.exe", param.c_str(), NULL, SW_SHOWNORMAL);
+		ShellExecuteA(nullptr, "open", "explorer.exe", param.c_str(), nullptr, SW_SHOWNORMAL);
 	}
 
 	ImGui::SameLine();

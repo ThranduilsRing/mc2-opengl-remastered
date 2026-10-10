@@ -126,7 +126,7 @@ unsigned long long FileSizeBytes(const char* p)
 std::string AbsPath(const std::string& in)
 {
 	char buf[1024];
-	DWORD n = GetFullPathNameA(in.c_str(), sizeof(buf), buf, NULL);
+	DWORD n = GetFullPathNameA(in.c_str(), sizeof(buf), buf, nullptr);
 	if (n > 0 && n < sizeof(buf))
 		return std::string(buf);
 	return in;
@@ -228,12 +228,12 @@ std::string ArchiveLog(const std::string& missionPak, const std::string& log,
 		std::string dir, base;
 		SplitPath(missionPak, dir, base);
 		logDir = dir + "/playtest-logs";
-		CreateDirectoryA(logDir.c_str(), NULL);   // ignore "already exists"
+		CreateDirectoryA(logDir.c_str(), nullptr);   // ignore "already exists"
 		fileName = std::string(prefix ? prefix : "") + TimeStamp() + ".log";
 	}
 
 	std::string logPath = logDir + "/" + fileName;
-	FILE* f = NULL;
+	FILE* f = nullptr;
 	if (fopen_s(&f, logPath.c_str(), "wb") == 0 && f)
 	{
 		fwrite(log.data(), 1, log.size(), f);
@@ -246,7 +246,7 @@ std::string ArchiveLog(const std::string& missionPak, const std::string& log,
 // Format the current local time as yyyymmdd-hhmmss.
 std::string TimeStamp()
 {
-	time_t t = time(NULL);
+	time_t t = time(nullptr);
 	struct tm lt;
 	localtime_s(&lt, &t);
 	char stamp[32];
@@ -265,9 +265,9 @@ void MakeDirTree(const std::string& dir)
 		char c = dir[i];
 		acc.push_back(c);
 		if (c == '\\' || c == '/')
-			CreateDirectoryA(acc.c_str(), NULL);
+			CreateDirectoryA(acc.c_str(), nullptr);
 	}
-	CreateDirectoryA(acc.c_str(), NULL);
+	CreateDirectoryA(acc.c_str(), nullptr);
 }
 
 // Returns the last-write FILETIME of a file as a 64-bit value, or 0 if missing.
@@ -512,7 +512,7 @@ void OnFinished(const EditorTaskRunner::TaskResult& res)
 		logBody += tail;
 	}
 
-	const char* missionPath = EditorData::instance ? EditorData::instance->getMapName() : 0;
+	const char* missionPath = EditorData::instance ? EditorData::instance->getMapName() : nullptr;
 	std::string logPath = (missionPath && missionPath[0])
 		? ArchiveLog(missionPath, logBody)
 		: std::string();
@@ -527,7 +527,7 @@ void OnFinished(const EditorTaskRunner::TaskResult& res)
 	// no engine telemetry added. Skipped only when the archive write failed (no path).
 	EditorPlaytestResults::SetResult(
 		EditorPlaytestResults::ParseLogText(logBody,
-			logPath.empty() ? NULL : logPath.c_str()));
+			logPath.empty() ? nullptr : logPath.c_str()));
 
 	char modTag[160] = "";
 	if (s_modActive)
@@ -548,7 +548,7 @@ void OnCancelled()
 	s_state = State::Idle;
 	s_task  = EditorTaskRunner::kInvalidTask;
 
-	const char* missionPath = EditorData::instance ? EditorData::instance->getMapName() : 0;
+	const char* missionPath = EditorData::instance ? EditorData::instance->getMapName() : nullptr;
 	(void)missionPath;
 	snprintf(s_status, sizeof(s_status), "Stopped (playtest terminated).");
 }
@@ -603,7 +603,7 @@ bool CanPlaytest()
 {
 	if (IsRunning())
 		return false;
-	const char* missionPath = EditorData::instance ? EditorData::instance->getMapName() : 0;
+	const char* missionPath = EditorData::instance ? EditorData::instance->getMapName() : nullptr;
 	return (missionPath && missionPath[0]);
 }
 
@@ -974,7 +974,7 @@ void Stop()
 	// to OnCancelMainThread (which carries no TaskResult/log).  Archive a "stopped-" marker
 	// note now, BEFORE CancelTask, so a user-terminated run still leaves a breadcrumb next
 	// to the mission instead of dropping the record entirely.
-	const char* missionPath = EditorData::instance ? EditorData::instance->getMapName() : 0;
+	const char* missionPath = EditorData::instance ? EditorData::instance->getMapName() : nullptr;
 	if (missionPath && missionPath[0])
 	{
 		std::string note = "Playtest STOPPED by user (process terminated).\n";

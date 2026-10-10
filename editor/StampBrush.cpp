@@ -38,7 +38,7 @@ static bool projectPtGL_brush( Camera* eye, const Stuff::Vector3D& wp, float& sx
 
 StampBrush::StampBrush( Type type, float radius, float strength )
 	: m_type( type ), m_radius( radius ), m_strength( strength ),
-	  m_applied( false ), m_pAction( NULL )
+	  m_applied( false ), m_pAction( nullptr )
 {
 }
 
@@ -137,11 +137,11 @@ Action* StampBrush::endPaint()
 	if ( m_pAction && !m_pAction->vertexInfoList.Count() )
 	{
 		delete m_pAction;
-		pRet = NULL;
+		pRet = nullptr;
 	}
 	if ( land )
 		land->recalcWater();
-	m_pAction = NULL;
+	m_pAction = nullptr;
 	m_applied = false;
 	return pRet;
 }

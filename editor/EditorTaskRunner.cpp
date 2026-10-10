@@ -53,7 +53,7 @@ struct Task
 	// spec.onLineMainThread is set, so non-bridge tasks pay nothing.
 	std::deque<std::string> pendingLines;
 
-	HANDLE       hProcess = NULL;            // valid while running (guard with s_mutex)
+	HANDLE       hProcess = nullptr;            // valid while running (guard with s_mutex)
 	std::thread  worker;
 };
 
@@ -68,15 +68,15 @@ static TaskId                             s_nextId = 1;
 // the clean-exit belt-and-suspenders. Children are killed only because they are
 // OUR children in OUR job -- never by image name, so concurrent smoke / standalone
 // mc2.exe instances (not in this job) are never touched.
-static HANDLE s_jobObject = NULL;
+static HANDLE s_jobObject = nullptr;
 
 // Lazily create the kill-on-close job. Caller holds s_mutex. NULL job is tolerated
 // (assignment simply skipped) -- the ShutdownKillRunning sweep still covers clean exit.
 static void EnsureJobObject_locked()
 {
-	if (s_jobObject != NULL)
+	if (s_jobObject != nullptr)
 		return;
-	HANDLE job = CreateJobObjectA(NULL, NULL);
+	HANDLE job = CreateJobObjectA(nullptr, nullptr);
 	if (!job)
 		return;
 	JOBOBJECT_EXTENDED_LIMIT_INFORMATION info{};
@@ -149,9 +149,9 @@ static void WorkerMain(std::shared_ptr<Task> t)
 	SECURITY_ATTRIBUTES sa{};
 	sa.nLength        = sizeof(sa);
 	sa.bInheritHandle = TRUE;
-	sa.lpSecurityDescriptor = NULL;
+	sa.lpSecurityDescriptor = nullptr;
 
-	HANDLE hRead = NULL, hWrite = NULL;
+	HANDLE hRead = nullptr, hWrite = nullptr;
 	if (!CreatePipe(&hRead, &hWrite, &sa, 0))
 	{
 		std::lock_guard<std::mutex> lk(s_mutex);
@@ -176,14 +176,14 @@ static void WorkerMain(std::shared_ptr<Task> t)
 	// CreateProcessA needs a mutable command buffer.
 	std::vector<char> cmd(t->spec.commandLine.begin(), t->spec.commandLine.end());
 	cmd.push_back('\0');
-	const char* cwd = t->spec.workingDirectory.empty() ? NULL : t->spec.workingDirectory.c_str();
+	const char* cwd = t->spec.workingDirectory.empty() ? nullptr : t->spec.workingDirectory.c_str();
 
 	// Build a full ANSI env block only when envExtra is set; else pass NULL (inherit).
 	std::vector<char> envBlock = BuildEnvBlock(t->spec.envExtra);
-	LPVOID envPtr = envBlock.empty() ? NULL : (LPVOID)envBlock.data();
+	LPVOID envPtr = envBlock.empty() ? nullptr : (LPVOID)envBlock.data();
 
 	BOOL ok = CreateProcessA(
-		NULL, cmd.data(), NULL, NULL,
+		nullptr, cmd.data(), nullptr, nullptr,
 		TRUE,                              // inherit handles (the pipe write end)
 		CREATE_NO_WINDOW,                  // ANSI block -> do NOT set CREATE_UNICODE_ENVIRONMENT
 		envPtr, cwd, &si, &pi);
@@ -225,7 +225,7 @@ static void WorkerMain(std::shared_ptr<Task> t)
 	for (;;)
 	{
 		DWORD n = 0;
-		BOOL r = ReadFile(hRead, buf, sizeof(buf), &n, NULL);
+		BOOL r = ReadFile(hRead, buf, sizeof(buf), &n, nullptr);
 		if (!r || n == 0)
 			break;                          // pipe closed (child exited) or error
 
@@ -260,7 +260,7 @@ static void WorkerMain(std::shared_ptr<Task> t)
 		// so CancelTask/ImGui (which read t->hProcess under the same lock) can never observe
 		// a stale handle and TerminateProcess a closed/recycled handle (TOCTOU).
 		HANDLE h = t->hProcess;
-		t->hProcess = NULL;
+		t->hProcess = nullptr;
 		if (h) CloseHandle(h);
 	}
 	CloseHandle(pi.hThread);
@@ -371,7 +371,7 @@ TaskId StartTask(const TaskSpec& spec)
 
 void CancelTask(TaskId id)
 {
-	HANDLE hProc = NULL;
+	HANDLE hProc = nullptr;
 	std::string cancelFile;
 	{
 		std::lock_guard<std::mutex> lk(s_mutex);
@@ -386,8 +386,8 @@ void CancelTask(TaskId id)
 	// Cooperative: touch the cancel file so a well-behaved generator can stop cleanly.
 	if (!cancelFile.empty())
 	{
-		HANDLE f = CreateFileA(cancelFile.c_str(), GENERIC_WRITE, 0, NULL,
-		                       CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+		HANDLE f = CreateFileA(cancelFile.c_str(), GENERIC_WRITE, 0, nullptr,
+		                       CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
 		if (f != INVALID_HANDLE_VALUE) CloseHandle(f);
 	}
 
@@ -554,7 +554,7 @@ void RenderImGui()
 				if (!t->spec.cancelFile.empty())
 				{
 					HANDLE f = CreateFileA(t->spec.cancelFile.c_str(), GENERIC_WRITE, 0,
-					                       NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+					                       nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
 					if (f != INVALID_HANDLE_VALUE) CloseHandle(f);
 				}
 			}
@@ -601,7 +601,7 @@ int RunBlockingHidden(const std::string& commandLine, const char* logPath)
 	sa.nLength        = sizeof(sa);
 	sa.bInheritHandle = TRUE;
 	HANDLE hNul = CreateFileA("NUL", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
-	                          &sa, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	                          &sa, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
 
 	HANDLE hLog = INVALID_HANDLE_VALUE;
 	if (logPath && logPath[0])
@@ -611,15 +611,15 @@ int RunBlockingHidden(const std::string& commandLine, const char* logPath)
 		if (cut != std::string::npos)
 		{
 			dir.resize(cut);
-			CreateDirectoryA(dir.c_str(), NULL);
+			CreateDirectoryA(dir.c_str(), nullptr);
 		}
 		hLog = CreateFileA(logPath, FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE,
-		                   &sa, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+		                   &sa, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
 		if (hLog != INVALID_HANDLE_VALUE)
 		{
 			const std::string banner = "\r\n=== " + commandLine + " ===\r\n";
 			DWORD wrote = 0;
-			WriteFile(hLog, banner.data(), static_cast<DWORD>(banner.size()), &wrote, NULL);
+			WriteFile(hLog, banner.data(), static_cast<DWORD>(banner.size()), &wrote, nullptr);
 		}
 	}
 	HANDLE hOut = (hLog != INVALID_HANDLE_VALUE) ? hLog : hNul;
@@ -636,7 +636,7 @@ int RunBlockingHidden(const std::string& commandLine, const char* logPath)
 	cmd.push_back('\0');
 
 	PROCESS_INFORMATION pi{};
-	const BOOL ok = CreateProcessA(NULL, cmd.data(), NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi);
+	const BOOL ok = CreateProcessA(nullptr, cmd.data(), nullptr, nullptr, TRUE, CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi);
 	if (hNul != INVALID_HANDLE_VALUE)
 		CloseHandle(hNul);
 	if (hLog != INVALID_HANDLE_VALUE)

@@ -36,7 +36,7 @@
 
 // Forward-declare mod file enumeration from mclib/file.cpp.
 // MC2Strings must not pull in all of file.h; this thin seam is intentional.
-typedef void (*ModFitCallback)(const char* absPath, void* userData);
+using ModFitCallback = void (*)(const char* absPath, void* userData);
 void EnumerateModFitFiles(const char* keyPrefix, ModFitCallback cb, void* userData);
 
 #ifdef PLATFORM_WINDOWS
@@ -111,7 +111,7 @@ namespace
 #endif
         va_end(args);
 
-        FILE* fp = 0;
+        FILE* fp = nullptr;
 #ifdef _MSC_VER
         fopen_s(&fp, "mc2-strings.log", "a");
 #else
@@ -173,7 +173,7 @@ namespace
         if (trimmed.empty())
             return fallback;
 
-        char* end = 0;
+        char* end = nullptr;
         const long result = std::strtol(trimmed.c_str(), &end, 10);
         if (!end || *end != 0)
             return fallback;
@@ -825,7 +825,7 @@ namespace MC2Strings
 
         state.attempted = true;
 
-        FILE* fp = 0;
+        FILE* fp = nullptr;
 #ifdef _MSC_VER
         fopen_s(&fp, "mc2-strings.log", "w");
 #else
@@ -899,13 +899,13 @@ namespace MC2Strings
     const char* Get(const char* key)
     {
         if (!key || !key[0])
-            return 0;
+            return nullptr;
 
         Load();
 
         const std::map<std::string, StringRecord>::const_iterator it = State().byKey.find(key);
         if (it == State().byKey.end())
-            return 0;
+            return nullptr;
 
         return it->second.text.c_str();
     }
@@ -913,7 +913,7 @@ namespace MC2Strings
     const char* GetByLegacyId(long legacyId)
     {
         if (legacyId <= 0)
-            return 0;
+            return nullptr;
 
         Load();
 
@@ -933,7 +933,7 @@ namespace MC2Strings
 
         const std::map<long, std::string>::const_iterator it = State().keyByLegacyId.find(legacyId);
         if (it == State().keyByLegacyId.end())
-            return 0;
+            return nullptr;
 
         return Get(it->second.c_str());
     }
@@ -952,13 +952,13 @@ namespace MC2Strings
     const char* GetByResourceSymbol(const char* resourceSymbol)
     {
         if (!resourceSymbol || !resourceSymbol[0])
-            return 0;
+            return nullptr;
 
         Load();
 
         const std::map<std::string, std::string>::const_iterator it = State().keyByResourceSymbol.find(resourceSymbol);
         if (it == State().keyByResourceSymbol.end())
-            return 0;
+            return nullptr;
 
         return Get(it->second.c_str());
     }
@@ -966,14 +966,14 @@ namespace MC2Strings
     const char* GetMenuText(const char* menuId, const char* commandId)
     {
         if (!menuId || !menuId[0] || !commandId || !commandId[0])
-            return 0;
+            return nullptr;
 
         Load();
 
         const std::string bindingKey = MenuBindingKey(menuId, commandId);
         const std::map<std::string, std::string>::const_iterator it = State().keyByMenuBinding.find(bindingKey);
         if (it == State().keyByMenuBinding.end())
-            return 0;
+            return nullptr;
 
         return Get(it->second.c_str());
     }
@@ -994,27 +994,27 @@ namespace MC2Strings
 
     bool HasKey(const char* key)
     {
-        return Get(key) != 0;
+        return Get(key) != nullptr;
     }
 
     bool HasLegacyId(long legacyId)
     {
-        return GetByLegacyId(legacyId) != 0;
+        return GetByLegacyId(legacyId) != nullptr;
     }
 
     bool HasResourceId(unsigned int resourceId)
     {
-        return GetByResourceId(resourceId) != 0;
+        return GetByResourceId(resourceId) != nullptr;
     }
 
     bool HasResourceSymbol(const char* resourceSymbol)
     {
-        return GetByResourceSymbol(resourceSymbol) != 0;
+        return GetByResourceSymbol(resourceSymbol) != nullptr;
     }
 
     bool HasMenuBinding(const char* menuId, const char* commandId)
     {
-        return GetMenuText(menuId, commandId) != 0;
+        return GetMenuText(menuId, commandId) != nullptr;
     }
 
     const char* MissingKey(const char* key)

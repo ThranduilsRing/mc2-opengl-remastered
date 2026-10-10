@@ -36,7 +36,7 @@ void EditorObjectMgr::select( const Stuff::Vector4D& pos1, const Stuff::Vector4D
 		!iter.IsDone(); iter++ )
 		{
 			EditorObject* pObject = (*iter);
-			ObjectAppearance* pAppearance = pObject ? pObject->appearance() : NULL;
+			ObjectAppearance* pAppearance = pObject ? pObject->appearance() : nullptr;
 			if ( !pAppearance )
 				continue;
 
@@ -58,7 +58,7 @@ void EditorObjectMgr::select( const Stuff::Vector4D& pos1, const Stuff::Vector4D
 		!mIter.IsDone(); mIter++ )
 		{
 			EditorObject* pObject = (*mIter);
-			ObjectAppearance* pAppearance = pObject ? pObject->appearance() : NULL;
+			ObjectAppearance* pAppearance = pObject ? pObject->appearance() : nullptr;
 			if ( !pAppearance )
 				continue;
 
@@ -80,7 +80,7 @@ void EditorObjectMgr::select( const Stuff::Vector4D& pos1, const Stuff::Vector4D
 		!dIter.IsDone(); dIter++ )
 		{
 			EditorObject* pObject = (*dIter);
-			ObjectAppearance* pAppearance = pObject ? pObject->appearance() : NULL;
+			ObjectAppearance* pAppearance = pObject ? pObject->appearance() : nullptr;
 			if ( !pAppearance )
 				continue;
 
@@ -136,7 +136,7 @@ void EditorObjectMgr::unselectAll()
 		!iter.IsDone(); iter++ )
 		{
 			EditorObject* pObject = (*iter);
-			ObjectAppearance* pAppearance = pObject ? pObject->appearance() : NULL;
+			ObjectAppearance* pAppearance = pObject ? pObject->appearance() : nullptr;
 			if ( pAppearance )
 				pAppearance->selected = false;
 		}
@@ -144,7 +144,7 @@ void EditorObjectMgr::unselectAll()
 		!mIter.IsDone(); mIter++ )
 		{
 			EditorObject* pObject = (*mIter);
-			ObjectAppearance* pAppearance = pObject ? pObject->appearance() : NULL;
+			ObjectAppearance* pAppearance = pObject ? pObject->appearance() : nullptr;
 			if ( pAppearance )
 				pAppearance->selected = false;
 		}
@@ -153,7 +153,7 @@ void EditorObjectMgr::unselectAll()
 		!dIter.IsDone(); dIter++ )
 		{
 			EditorObject* pObject = (*dIter);
-			ObjectAppearance* pAppearance = pObject ? pObject->appearance() : NULL;
+			ObjectAppearance* pAppearance = pObject ? pObject->appearance() : nullptr;
 			if ( pAppearance )
 				pAppearance->selected = false;
 		}
@@ -229,7 +229,7 @@ void EditorObjectMgr::syncSelectedObjectPointerList()
 		;!iter.IsDone(); iter++ )
 	{
 		const EditorObject* pObject = (*iter);
-		const ObjectAppearance* pAppearance = pObject ? pObject->appearance() : NULL;
+		const ObjectAppearance* pAppearance = pObject ? pObject->appearance() : nullptr;
 		if (pAppearance && pAppearance->selected )				
 			selectedObjects.Append(*iter);
 	}
@@ -237,7 +237,7 @@ void EditorObjectMgr::syncSelectedObjectPointerList()
 	!mIter.IsDone(); mIter++ )
 	{
 		const EditorObject* pObject = (*mIter);
-		const ObjectAppearance* pAppearance = pObject ? pObject->appearance() : NULL;
+		const ObjectAppearance* pAppearance = pObject ? pObject->appearance() : nullptr;
 		if (pAppearance && pAppearance->selected )				
 			selectedObjects.Append(*mIter);
 	}
@@ -245,7 +245,7 @@ void EditorObjectMgr::syncSelectedObjectPointerList()
 	!dIter.IsDone(); dIter++ )
 	{
 		const EditorObject* pObject = (*dIter);
-		const ObjectAppearance* pAppearance = pObject ? pObject->appearance() : NULL;
+		const ObjectAppearance* pAppearance = pObject ? pObject->appearance() : nullptr;
 		if (pAppearance && pAppearance->selected )				
 			selectedObjects.Append(*dIter);
 	}
@@ -596,7 +596,7 @@ const Forest* EditorObjectMgr::getForest( long ID )
 
 	gosASSERT( 0 ); // you shouldn't get here
 
-	return NULL;
+	return nullptr;
 }
 
 long EditorObjectMgr::getForests( Forest** pForests, long& count )

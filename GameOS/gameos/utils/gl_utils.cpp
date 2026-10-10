@@ -208,7 +208,7 @@ Texture createDynamicTexture(int w, int h, TexFormat fmt)
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexImage2D(GL_TEXTURE_2D, 0, textureInternalFormats[fmt], 
-            w, h, 0, textureFormats[fmt], textureFormatChannelType[fmt], NULL);
+            w, h, 0, textureFormats[fmt], textureFormatChannelType[fmt], nullptr);
     CHECK_GL_ERROR
 
 	Texture t;
@@ -234,7 +234,7 @@ Texture create3DTextureF(int w, int h, int depth)
 	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP);
 	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexImage3D(GL_TEXTURE_3D, 0, GL_R32F, w, h, depth, 0, GL_RED, GL_FLOAT, NULL);
+	glTexImage3D(GL_TEXTURE_3D, 0, GL_R32F, w, h, depth, 0, GL_RED, GL_FLOAT, nullptr);
 
 	Texture t;
 	t.id = texID;
@@ -253,7 +253,7 @@ Texture createPBO(int w, int h, GLenum fmt, int el_size)
 	GLuint pbo;
 	glGenBuffers(1, &pbo);
 	glBindBuffer(GL_ARRAY_BUFFER, pbo);
-	glBufferData(GL_ARRAY_BUFFER,	w*h*4*el_size,	NULL, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER,	w*h*4*el_size,	nullptr, GL_STATIC_DRAW);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	Texture t;
 	t.id = pbo;
@@ -366,7 +366,7 @@ void applyPBO(glsl_program* program, int unit, const char* name, const Texture p
 		glActiveTexture(GL_TEXTURE0 + unit);
 		glBindTexture(GL_TEXTURE_2D, tex.id);
 		glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo.id);
-		glTexImage2D(GL_TEXTURE_2D, 0, pbo.format, pbo.w, pbo.h, 0, pbo.format, GL_UNSIGNED_BYTE, 0);
+		glTexImage2D(GL_TEXTURE_2D, 0, pbo.format, pbo.w, pbo.h, 0, pbo.format, GL_UNSIGNED_BYTE, nullptr);
 		glUniform1i(program->samplers_[ name ]->index_, unit);
 		// Restore the default (client-memory) unpack source. Leaving the PBO
 		// bound here makes any later glTexSubImage2D/glTexImage2D that passes a

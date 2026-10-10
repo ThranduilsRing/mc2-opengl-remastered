@@ -55,7 +55,7 @@ static EditorObject* inspectorFirstSelected(int* selCount)
     if (!mgr)
     {
         if (selCount) *selCount = 0;
-        return NULL;
+        return nullptr;
     }
     EditorObjectMgr::EDITOR_OBJECT_LIST sel = mgr->getSelectedObjectList();
     if (selCount) *selCount = (int)sel.Count();
@@ -64,7 +64,7 @@ static EditorObject* inspectorFirstSelected(int* selCount)
         if (*it)
             return (*it);
     }
-    return NULL;
+    return nullptr;
 }
 
 // True when ID maps to an in-range catalog slot, so the asset-name accessors
@@ -116,7 +116,7 @@ static const char* inspectorTeamLabel(int team)
     // -1 (and the editor's magic 8) read as Neutral; others as a numbered team.
     if (team < 0 || team == 8)
         return "Neutral";
-    return NULL; // caller prints the number
+    return nullptr; // caller prints the number
 }
 
 // ---------------------------------------------------------------------------
@@ -127,7 +127,7 @@ bool InspectorPanel::GetSelectionSummary(char* outType, unsigned int typeLen)
     if (outType && typeLen)
         outType[0] = '\0';
 
-    EditorObject* obj = inspectorFirstSelected(NULL);
+    EditorObject* obj = inspectorFirstSelected(nullptr);
     if (!obj)
     {
         if (outType && typeLen)
@@ -222,12 +222,12 @@ void InspectorPanel::Draw()
     {
         ImGui::Separator();
         ImGui::Text("Variant:  %d", unit->getVariant());
-        ImGui::Text("Squad:    %lu", (unsigned long)unit->getSquad());
+        ImGui::Text("Squad:    %lu", unit->getSquad());
         int lance = -1, lanceIdx = -1;
         unit->getLanceInfo(lance, lanceIdx);
         ImGui::Text("Lance:    %d (slot %d)", lance, lanceIdx);
         Pilot* pilot = unit->getPilot();
-        const char* pilotName = (pilot && pilot->info) ? pilot->getName() : NULL;
+        const char* pilotName = (pilot && pilot->info) ? pilot->getName() : nullptr;
         ImGui::Text("Pilot:    %s", (pilotName && pilotName[0]) ? pilotName : "(none)");
     }
 
@@ -267,10 +267,10 @@ void InspectorPanel::Draw()
     ImGui::Separator();
     ImGui::TextUnformatted("Transform");
 
-    const bool transformSupported = (app != NULL) && (obj->getForestID() == -1);
+    const bool transformSupported = (app != nullptr) && (obj->getForestID() == -1);
 
     // Per-target edit buffers; reload whenever the selected object changes.
-    static EditorObject* s_editTarget = NULL;
+    static EditorObject* s_editTarget = nullptr;
     static float s_ex = 0.f, s_ey = 0.f, s_ez = 0.f, s_eyaw = 0.f;
 
     auto reloadFields = [&]() {

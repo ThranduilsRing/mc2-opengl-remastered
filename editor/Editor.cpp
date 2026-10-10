@@ -33,12 +33,12 @@ gosRenderer* getGosRenderer();
 extern void InitWLib(void);
 
 
-UserHeapPtr guiHeap = NULL;
+UserHeapPtr guiHeap = nullptr;
 
 
 extern Stuff::MemoryStream *effectStream;	// NS3: def in mclib/txmmgr.cpp
 extern DWORD BaseVertexColor;	// NS3: def in mclib/quad.cpp (used at ParseCmdLine/prefs)
-static MemoryPtr effectsData = NULL;  // kept alive until effectStream is deleted at shutdown
+static MemoryPtr effectsData = nullptr;  // kept alive until effectStream is deleted at shutdown
 
 // 128 MB for editor (original 8 MB was a 1999-era constraint).
 // Editor-only: game binary unchanged.
@@ -59,13 +59,13 @@ extern char MissingTitleString[];
 
 extern char CDInstallPath[];
 
-FloatHelpPtr globalFloatHelp = NULL;
+FloatHelpPtr globalFloatHelp = nullptr;
 unsigned long currentFloatHelp = 0;
 extern float CliffTerrainAngle;
 
 extern bool gNoDialogs;
 
-char* ExceptionGameMsg = NULL; // some debugging thing I think
+char* ExceptionGameMsg = nullptr; // some debugging thing I think
 
 bool quitGame = FALSE;
 
@@ -84,14 +84,14 @@ extern unsigned char godMode;			//Can I simply see everything, enemy and friendl
 
 void InitDW (void);
 
-TimerManagerPtr timerManager = NULL;
+TimerManagerPtr timerManager = nullptr;
 
 long FilterState = gos_FilterNone;
 
 extern int TERRAIN_TXM_SIZE;
 extern int ObjectTextureSize;	// NS3: def in mclib/bdactor.cpp
 
-Editor* editor = NULL;
+Editor* editor = nullptr;
 
 extern char missionName[1024];	// NS3: def in GameOS/gameos/gos_crashbundle.cpp
 
@@ -212,11 +212,11 @@ void InitializeGameEngine()
 	InEditor = true;
 
 	if (fileExists("mc2resUS.dll"))
-		gosResourceHandle = gos_OpenResourceDLL("mc2resUS.dll", NULL, 0);
+		gosResourceHandle = gos_OpenResourceDLL("mc2resUS.dll", nullptr, 0);
 	else
-		gosResourceHandle = gos_OpenResourceDLL("mc2res.dll", NULL, 0);
+		gosResourceHandle = gos_OpenResourceDLL("mc2res.dll", nullptr, 0);
 
-	gameResourceHandle = gos_OpenResourceDLL("editores.dll", NULL, 0);
+	gameResourceHandle = gos_OpenResourceDLL("editores.dll", nullptr, 0);
 
 
 	EditorResourceCatalog::Load();
@@ -263,7 +263,7 @@ void InitializeGameEngine()
 	}
 	else
 	{
-		gosFontHandle = 0;
+		gosFontHandle = nullptr;
 	}
 
 
@@ -297,7 +297,7 @@ void InitializeGameEngine()
 		MidLevelRenderer::MLRTexturePool::Instance = new MidLevelRenderer::MLRTexturePool(pool);
 
 	MidLevelRenderer::MLRSortByOrder *cameraSorter = new MidLevelRenderer::MLRSortByOrder(MidLevelRenderer::MLRTexturePool::Instance);
-		theClipper = new MidLevelRenderer::MLRClipper(0, cameraSorter);
+		theClipper = new MidLevelRenderer::MLRClipper(nullptr, cameraSorter);
 	
 	gos_PopCurrentHeap();
 	
@@ -543,7 +543,7 @@ void InitializeGameEngine()
 
 	systemFile->close();
 	delete systemFile;
-	systemFile = NULL;
+	systemFile = nullptr;
 
 	FitIniFilePtr prefs = new FitIniFile;
 
@@ -662,7 +662,7 @@ void InitializeGameEngine()
 	prefs->close();
 	
 	delete prefs;
-	prefs = NULL;
+	prefs = nullptr;
 
 
 	TG_Shape::tglHeap = new UserHeap;
@@ -777,20 +777,20 @@ void TerminateGameEngine()
 	destroyColorTables();
 
 	delete timerManager;
-	timerManager = NULL;
+	timerManager = nullptr;
 
 	if ( editor )
 		delete editor;
-	editor = NULL;
+	editor = nullptr;
 
 	if (weaponEffects)
 		delete weaponEffects;
-	weaponEffects = NULL;
+	weaponEffects = nullptr;
 
 	if (userInput)
 	{
 		delete userInput;
-		userInput = NULL;
+		userInput = nullptr;
 	}
 
 	MOVE_cleanup();
@@ -802,7 +802,7 @@ void TerminateGameEngine()
 
 		mcTextureManager->destroy();
 		delete mcTextureManager;
-		mcTextureManager = NULL;
+		mcTextureManager = nullptr;
 	}
 
 	if (TG_Shape::tglHeap)
@@ -811,41 +811,41 @@ void TerminateGameEngine()
 		{
 			colorPool->destroy();
 			delete colorPool;
-			colorPool = NULL;
+			colorPool = nullptr;
 		}
 		
 		if (vertexPool)
 		{
 			vertexPool->destroy();
 			delete vertexPool;
-			vertexPool = NULL;
+			vertexPool = nullptr;
 		}
 
 		if (facePool)
 		{
 			facePool->destroy();
 			delete facePool;
-			facePool = NULL;
+			facePool = nullptr;
 		}
 
 		if (shadowPool)
 		{
 			shadowPool->destroy();
 			delete shadowPool;
-			shadowPool = NULL;
+			shadowPool = nullptr;
 		}
 
 		if (trianglePool)
 		{
 			trianglePool->destroy();
 			delete trianglePool;
-			trianglePool = NULL;
+			trianglePool = nullptr;
 		}
  
 		TG_Shape::tglHeap->destroy();
 
 		delete TG_Shape::tglHeap;
-		TG_Shape::tglHeap = NULL;
+		TG_Shape::tglHeap = nullptr;
 	}
 
 	//
@@ -853,28 +853,28 @@ void TerminateGameEngine()
 	FastFileFini();
 
 	delete globalFloatHelp;
-	globalFloatHelp = NULL;
+	globalFloatHelp = nullptr;
 
 	gos_PushCurrentHeap(gosFX::Heap);
 
 	delete effectStream;
-	effectStream = NULL;
+	effectStream = nullptr;
 	// Now safe to free the backing buffer -- effectStream no longer holds a pointer into it.
 	if (effectsData)
 	{
 		systemHeap->Free(effectsData);
-		effectsData = NULL;
+		effectsData = nullptr;
 	}
 	delete gosFX::LightManager::Instance;
-	gosFX::LightManager::Instance = NULL;
+	gosFX::LightManager::Instance = nullptr;
 
 	gos_PopCurrentHeap();
 
 	delete theClipper;
-	theClipper = NULL;
+	theClipper = nullptr;
 
 	delete MidLevelRenderer::MLRTexturePool::Instance;
-	MidLevelRenderer::MLRTexturePool::Instance = NULL;
+	MidLevelRenderer::MLRTexturePool::Instance = nullptr;
 
 	gosFX::TerminateClasses();
 	MidLevelRenderer::TerminateClasses();
@@ -885,7 +885,7 @@ void TerminateGameEngine()
 		systemHeap->destroy();
 
 		delete systemHeap;
-		systemHeap = NULL;
+		systemHeap = nullptr;
 	}
 
 	if (globalHeapList)
@@ -893,7 +893,7 @@ void TerminateGameEngine()
 		globalHeapList->destroy();
 
 		delete globalHeapList;
-		globalHeapList = NULL;
+		globalHeapList = nullptr;
 	}
 
 
@@ -913,13 +913,13 @@ void TerminateGameEngine()
 	if (globalPane)
 	{
 		delete globalPane;
-		globalPane = NULL;
+		globalPane = nullptr;
 	}
 
 	if (globalWindow)
 	{
 		delete globalWindow;
-		globalWindow = NULL;
+		globalWindow = nullptr;
 	}
 
 	extern void EditorGameOS_Shutdown();
@@ -986,7 +986,7 @@ void ParseCommandLine(char *command_line)
 							strcat(missionName," ");
 							strcat(missionName,argv[i]);
 
-							if (strstr(argv[i],"\"") != NULL)
+							if (strstr(argv[i],"\"") != nullptr)
 							{
 								scanName = false;
 								missionName[strlen(missionName)-1] = 0;
@@ -1086,7 +1086,7 @@ void GetGameOSEnvironment( char* CommandLine )
 	Environment.Suppress3DFullScreenWarning = 1;
 
 
-	EditorData::setMapName( NULL );
+	EditorData::setMapName( nullptr );
 }
 
 

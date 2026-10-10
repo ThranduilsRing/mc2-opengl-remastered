@@ -480,7 +480,7 @@ DWORD __stdcall RunGameOSLogic()
     }
 
     // Keep GameOS dimensions synchronized with the embedded MFC child window.
-    HWND hwnd = EditorInterface::instance() ? EditorInterface::instance()->m_hWnd : NULL;
+    HWND hwnd = EditorInterface::instance() ? EditorInterface::instance()->m_hWnd : nullptr;
     if (hwnd && ::IsWindow(hwnd))
     {
         RECT rc = {};

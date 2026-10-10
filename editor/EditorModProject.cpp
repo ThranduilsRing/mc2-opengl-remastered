@@ -62,7 +62,7 @@ bool DirExists(const char* p)
 std::string AbsPath(const std::string& in)
 {
 	char buf[1024];
-	DWORD n = GetFullPathNameA(in.c_str(), sizeof(buf), buf, NULL);
+	DWORD n = GetFullPathNameA(in.c_str(), sizeof(buf), buf, nullptr);
 	if (n > 0 && n < sizeof(buf))
 		return std::string(buf);
 	return in;
@@ -94,21 +94,21 @@ void MakeDirTree(const std::string& dir)
 		char c = dir[i];
 		acc.push_back(c);
 		if (c == '\\' || c == '/')
-			CreateDirectoryA(acc.c_str(), NULL);
+			CreateDirectoryA(acc.c_str(), nullptr);
 	}
-	CreateDirectoryA(acc.c_str(), NULL);
+	CreateDirectoryA(acc.c_str(), nullptr);
 }
 
 std::string ReadFileText(const char* path)
 {
-	HANDLE fh = CreateFileA(path, GENERIC_READ, FILE_SHARE_READ, NULL,
-		OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	HANDLE fh = CreateFileA(path, GENERIC_READ, FILE_SHARE_READ, nullptr,
+		OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
 	if (fh == INVALID_HANDLE_VALUE)
 		return std::string();
 	std::string out;
 	char buf[4096];
 	DWORD read = 0;
-	while (ReadFile(fh, buf, sizeof(buf), &read, NULL) && read > 0)
+	while (ReadFile(fh, buf, sizeof(buf), &read, nullptr) && read > 0)
 		out.append(buf, read);
 	CloseHandle(fh);
 	return out;
@@ -116,12 +116,12 @@ std::string ReadFileText(const char* path)
 
 bool WriteFileText(const char* path, const std::string& text)
 {
-	HANDLE fh = CreateFileA(path, GENERIC_WRITE, 0, NULL,
-		CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	HANDLE fh = CreateFileA(path, GENERIC_WRITE, 0, nullptr,
+		CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
 	if (fh == INVALID_HANDLE_VALUE)
 		return false;
 	DWORD written = 0;
-	BOOL ok = WriteFile(fh, text.data(), (DWORD)text.size(), &written, NULL);
+	BOOL ok = WriteFile(fh, text.data(), (DWORD)text.size(), &written, nullptr);
 	CloseHandle(fh);
 	return ok && written == text.size();
 }
@@ -257,7 +257,7 @@ const char* StatusLine(){ return s_status; }
 const char* SaveDirOverride()
 {
 	if (!s_active || s_saveDir.empty())
-		return NULL;
+		return nullptr;
 	return s_saveDir.c_str();
 }
 
@@ -502,7 +502,7 @@ std::string PickFolder(const char* title)
 // Modal MFC file picker for an existing .pak. Returns selected path or "" on cancel.
 std::string PickPakFile()
 {
-	CFileDialog dlg(TRUE /*open*/, "pak", NULL,
+	CFileDialog dlg(TRUE /*open*/, "pak", nullptr,
 		OFN_FILEMUSTEXIST | OFN_HIDEREADONLY | OFN_NOCHANGEDIR,
 		"Mission Packs (*.pak)\0*.pak\0All Files (*.*)\0*.*\0\0");
 	if (dlg.DoModal() != IDOK)
@@ -601,7 +601,7 @@ void Draw()
 		ImGui::OpenPopup("Confirm Import Overwrite");
 		s_openImportConfirm = false;
 	}
-	if (ImGui::BeginPopupModal("Confirm Import Overwrite", NULL, ImGuiWindowFlags_AlwaysAutoResize))
+	if (ImGui::BeginPopupModal("Confirm Import Overwrite", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
 	{
 		ImGui::TextWrapped("%s", s_status);
 		ImGui::TextUnformatted("Overwrite the existing copy in data\\missions?");
@@ -626,7 +626,7 @@ void Draw()
 		ImGui::OpenPopup("New Mod Project");
 		s_openNewPopup = false;
 	}
-	if (ImGui::BeginPopupModal("New Mod Project", NULL, ImGuiWindowFlags_AlwaysAutoResize))
+	if (ImGui::BeginPopupModal("New Mod Project", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
 	{
 		ImGui::TextUnformatted("Creates <parent>\\<id>\\{mod.json, data\\missions\\, .modproject\\}");
 		ImGui::SetNextItemWidth(300.f);

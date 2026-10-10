@@ -54,7 +54,7 @@ static inline float    frand01( unsigned& s ) { return (float)( lcgNext( s ) >> 
 
 ScatterBrush::ScatterBrush( int group, int indexInGroup, int alignment )
 	: m_group( group ), m_indexInGroup( indexInGroup ), m_alignment( alignment ),
-	  m_pAction( NULL ), m_rng( 0x12345u ), m_haveLast( false ), m_lastX( 0.0f ), m_lastY( 0.0f )
+	  m_pAction( nullptr ), m_rng( 0x12345u ), m_haveLast( false ), m_lastX( 0.0f ), m_lastY( 0.0f )
 {
 }
 
@@ -75,9 +75,9 @@ Action* ScatterBrush::endPaint()
 	if ( pAct && !pAct->objInfoPtrList.Count() )
 	{
 		delete pAct;
-		pAct = NULL;
+		pAct = nullptr;
 	}
-	m_pAction = NULL;
+	m_pAction = nullptr;
 	return pAct;
 }
 

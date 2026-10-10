@@ -9,4 +9,4 @@
 #include "stdafx.h"
 #include "mainmenu.h"
 
-MainMenu* pMainMenu = NULL;
+MainMenu* pMainMenu = nullptr;
