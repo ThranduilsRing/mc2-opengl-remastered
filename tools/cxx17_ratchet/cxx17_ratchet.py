@@ -50,13 +50,17 @@ BASELINE = os.path.join(HERE, "baseline.json")
 # .clang-tidy owned dirs + the small seam dirs. editor/, gui/, Viewer/ are legacy tools:
 # opt in with --dirs (they are not in HeaderFilterRegex either).
 DEFAULT_DIRS = ["GameOS", "mclib", "code", "RenderCore", "GuiRuntime",
-                "RenderWorld", "GameAdapters", "HostServices", "EditorBridge"]
+                "RenderWorld", "GameAdapters", "HostServices", "EditorBridge", "tools", "tests"]
+# Scanned for LG20 only (the other idioms are not tracked in the harnesses and tools).
+LG20_ONLY_DIRS = ("tools", "tests")
 # LG19 only: the legacy tool dirs that are not owned yet. Counted into baseline["tracked"], warned on, never failed.
 TRACKED_DIRS = ["editor", "gui", "Viewer"]
 # LG19 may only be read raw inside the gate module itself (Gates/gate.cpp parses the environment).
 LG19_EXEMPT_PREFIXES = ("Gates/",)
 # Idioms whose per-FILE count may never rise (drive-to-zero), whatever happens to the repo total.
-STRICT_FILE_IDIOMS = ("LG19",)
+STRICT_FILE_IDIOMS = ("LG19", "LG20")
+# LG20: the gate module, its unit test and the generated registry header name gates as rows and fixtures, not as raw reads.
+LG20_EXEMPT = ("Gates/", "tests/unit/test_gate.cpp", "RenderCore/RendererFeatureRegistry.h")
 EXTS = (".cpp", ".cc", ".cxx", ".h", ".hpp", ".hxx", ".inl")
 EXCLUDE_PARTS = {"3rdparty", "graphify-out", "__pycache__", ".git", "out", "Tracy"}
 
@@ -83,6 +87,8 @@ IDIOMS = {
     "LG19": ("raw MC2_ environment read (getenv/GetEnvironmentVariable/_dupenv_s/getenv_s/_environ/non-literal getenv)",
              "gate::get<\"MC2_X\">() (Gates/gate.h)"),
 }
+IDIOMS["LG20"] = ("MC2_ name literal outside a typed gate reader (helper-call reads, #define lines, putenv, messages)",
+                  "gate::get<\"MC2_X\">() / state / isSet / str / is")
 IDS = list(IDIOMS)
 
 # ---------------------------------------------------------------- lexing helpers
@@ -167,6 +173,11 @@ R_ENVREAD = re.compile(
     r"""|\bGetEnvironmentVariable[AW]?\s*\(\s*L?"MC2_"""
     r"""|\b_dupenv_s\b|\bgetenv_s\b|\b_wdupenv_s\b"""
     r"""|\b_environ\b|\bGetEnvironmentStrings[AW]?\b|\bSDL_getenv\b""")
+# LG20: every "MC2_NAME" literal that is not the first template argument of a typed reader. It is the net the
+# getenv matcher (LG19) cannot cast: helper calls (subGate("MC2_X"), envFlag("MC2_X")), #define lines, putenv
+# writes, tool and test code.
+R_MC2LIT = re.compile(r'''L?"MC2_[A-Z0-9_]+"''')
+R_TYPED_READER = re.compile(r'''(?<![A-Za-z_])(?:get|state|isSet|str|is)\s*<\s*L?"MC2_[A-Z0-9_]+"''')
 R_LEGACY = re.compile(r"\b(?:auto_ptr|bind1st|bind2nd|ptr_fun|mem_fun|mem_fun_ref|unary_function|binary_function|"
                       r"random_shuffle|register)\b|\)\s*throw\s*\([^)]*\)\s*(?:[{;]|$)")
 
@@ -280,6 +291,10 @@ def scan_text(text: str, path: str = "") -> dict:
         # LG19 (strings kept; Gates/ is the one place allowed to read the environment)
         if not pp and R_ENVREAD.search(c) and not path.startswith(LG19_EXEMPT_PREFIXES):
             hits["LG19"].append(ln)
+        # LG20 (strings kept; comments already stripped; preprocessor lines count)
+        if not path.startswith(LG20_EXEMPT) and "MC2_" in c:
+            for _ in R_MC2LIT.findall(R_TYPED_READER.sub("", c)):
+                hits["LG20"].append(ln)
         # LG12a (logging) / LG12b (buffer formatting)
         if R_LOG.search(b):
             hits["LG12a"].append(ln)
@@ -384,7 +399,10 @@ def git_blobs(dirs, mode):
 
 def _scan_item(item):
     rel, data = item
-    return rel, scan_text(data.decode("latin-1"), rel)
+    hits = scan_text(data.decode("latin-1"), rel)
+    if rel.split("/")[0] in LG20_ONLY_DIRS:
+        hits = {k: v for k, v in hits.items() if k == "LG20"}
+    return rel, hits
 
 
 def _scan_file(rel):

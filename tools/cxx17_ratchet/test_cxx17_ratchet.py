@@ -257,3 +257,47 @@ class CommittedTree(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class NameLiterals(unittest.TestCase):
+    """LG20: every "MC2_X" literal that is not a typed reader's name (companion of LG19)."""
+
+    def test_helper_call_reads_count(self):
+        self.assertEqual(n('bool b = subGate("MC2_VK_X");\n', "LG20"), 1)
+        self.assertEqual(n('bool b = envFlag("MC2_X", false);\n', "LG20"), 1)
+        self.assertEqual(n('const char* v = getenv("MC2_X");\n', "LG20"), 1)
+
+    def test_define_lines_count(self):
+        self.assertEqual(n('#define GATE_NAME "MC2_X"\n', "LG20"), 1)
+
+    def test_typed_readers_do_not_count(self):
+        self.assertEqual(n('bool b = gate::get<"MC2_X">();\n', "LG20"), 0)
+        self.assertEqual(n('bool b = mc2::gate::get<"MC2_X", Rule::Presence>();\n', "LG20"), 0)
+        self.assertEqual(n('auto s = gate::str<"MC2_LOG">(); bool a = gate::isSet<"MC2_Y">();\n', "LG20"), 0)
+        self.assertEqual(n('bool a = gate::is<"MC2_CONFIG_DUMP", "all">();\n', "LG20"), 0)
+        self.assertEqual(n('auto t = gate::state<"MC2_Z">();\n', "LG20"), 0)
+
+    def test_two_literals_on_one_line_count_once(self):
+        self.assertEqual(n('a = f("MC2_A") && f("MC2_B");\n', "LG20"), 1)
+
+    def test_non_gate_strings_and_comments_do_not_count(self):
+        self.assertEqual(n('puts("MC2 is a game");\n', "LG20"), 0)
+        self.assertEqual(n('// getenv("MC2_X")\nint a;\n', "LG20"), 0)
+        self.assertEqual(n('const char* s = "prefix MC2_X suffix";\n', "LG20"), 0)   # not a whole-literal name
+
+    def test_gate_module_and_its_unit_test_are_exempt(self):
+        self.assertEqual(n('_putenv_s("MC2_UNITTEST_INT", "1");\n', "LG20", "tests/unit/test_gate.cpp"), 0)
+        self.assertEqual(n('x("MC2_A");\n', "LG20", "Gates/gate.cpp"), 0)
+        self.assertEqual(n('x("MC2_A");\n', "LG20", "tests/unit/test_other.cpp"), 1)
+
+    def test_tools_and_tests_dirs_keep_only_lg20(self):
+        _, hits = r._scan_item(("tools/x/h.cpp", b'NULL; char* p = (char*)q; bool b = f("MC2_X");\n'))
+        self.assertEqual(set(hits), {"LG20"})
+        _, hits = r._scan_item(("code/x.cpp", b'void* p = NULL; bool b = f("MC2_X");\n'))
+        self.assertIn("LG01", hits)
+
+    def test_strict_per_file(self):
+        base = {"head": "t", "counts": {"tools": {"LG20": 2}}, "files": {"tools/a.cpp": {"LG20": 2}}}
+        res = {"tools/a.cpp": {"LG20": [1]}, "tools/b.cpp": {"LG20": [3]}}   # a drops, b is new: fails per file
+        self.assertEqual(r.check(res, base, out=io.StringIO()), 1)
+        self.assertEqual(r.check({"tools/a.cpp": {"LG20": [1, 2]}}, base, out=io.StringIO()), 0)
