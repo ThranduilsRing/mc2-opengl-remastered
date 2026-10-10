@@ -79,6 +79,7 @@ add_executable(mc2_tests
     test_file_inifile.cpp   # MINIMAL-VIABLE-HARNESS-1: real file/inifile/packet stack, game-free
     test_path_permutations.cpp  # META-FIX design E: canonical-key permutation matrix (issue #8 family)
     test_csvfile.cpp        # MINIMAL-VIABLE-HARNESS-2: real csvfile.cpp (Buildings.csv-shaped)
+    test_memorystream.cpp   # Stuff::MemoryStream::ReadBytes bounds check (truncated mod .fx)
     test_fst_roundtrip.cpp  # MINIMAL-VIABLE-HARNESS-2: FST create/writeFast -> loose-vs-FST ladder
     test_paths_mod.cpp      # MINIMAL-VIABLE-HARNESS-2: paths.cpp globals + mod-index (TryModOpen) resolution
     test_pilot_profile_preserve.cpp  # PILOT-PROFILE-PRESERVE-1: editor Profile save decision kernel (offline)
@@ -123,6 +124,11 @@ add_executable(mc2_tests
     # MINIMAL-VIABLE-HARNESS-2: csvfile.cpp is a File subclass -> zero new link
     # frontier (same shim, same base class). Completes the data-ingest spine.
     ${MC2_WORKTREE_ROOT}/mclib/csvfile.cpp    # CSVFile (Excel-CSV reader, Buildings.csv)
+    ${MC2_WORKTREE_ROOT}/mclib/stuff/memorystream.cpp      # Stuff::MemoryStream (gosFX .fx reader)
+    ${MC2_WORKTREE_ROOT}/mclib/stuff/registeredclass.cpp   # its RegisteredClass base
+    ${MC2_WORKTREE_ROOT}/mclib/stuff/scalar.cpp            # Scaled_*_Bits used by its bit I/O
+    ${MC2_WORKTREE_ROOT}/mclib/stuff/mstring.cpp           # MString used by its string I/O
+    ${MC2_WORKTREE_ROOT}/mclib/stuff/style.cpp             # Stuff::SMALL and the other global constants
 
     # MINIMAL-VIABLE-HARNESS-2: paths.cpp is a pure leaf TU (path string globals
     # only -- no TryModOpen/mod-index; that logic lives in file.cpp, already
