@@ -91,8 +91,7 @@ const char* EnvConfig::str(const char* key, const char* dflt) const {
     if (key == nullptr) {
         return dflt;
     }
-    // The key is a caller-supplied runtime name (the EnvConfig interface), so this asks the environment directly.
-    const char* v = mc2::gate::envText(key);
+    const char* v = mc2::gate::envText(key);   // caller-supplied runtime key (the EnvConfig interface)
     return v ? v : dflt;
 }
 
