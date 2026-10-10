@@ -613,6 +613,10 @@ _TYPED_RE = re.compile(
 
 GATE_TABLE_JSON = os.path.join(WORKTREE, "Gates", "gate_table.json")
 
+#: Gates whose env var expresses the OPPOSITE of the registry feature, read only as `!get<>()`. Explicit on
+#: purpose: a syntactic "every read is negated" rule would bless any future row/registry disagreement.
+INVERTED_KILL_VARS = frozenset({"MC2_STATIC_PROP_LEGACY_DISPATCH"})
+
 
 def load_typed_rows(path=GATE_TABLE_JSON):
     """-> {gate name: row dict} from the compiled gate table, or {} when it is absent."""
@@ -629,11 +633,11 @@ def _typed_hits(sources, typed_rows):
 
     The unset answer of a typed read is the row's default, so the reader's verdict is that default -- a `!` in
     front of the call is control flow (`if (!get<"X">()) return;`) and does not change what the gate means.
-    The one place the sense is inverted is a kill-var whose registry feature has the opposite default
-    (MC2_STATIC_PROP_LEGACY_DISPATCH: row default false, feature defaultOn true, read only as `!get<>()`): when
-    the registry default differs from the row's and EVERY value read of the gate is negated, the gate is read as
-    the feature's inverse and the verdict is the registry's. A plain read in that situation keeps the row's
-    verdict, so a genuine disagreement still reports.
+    A typed-only verdict is therefore the row compared with a registry default generated from the same row: it
+    proves the table is self-consistent, not what any reader does (the report counts those entries separately).
+    The one gate whose sense is inverted on purpose is named in INVERTED_KILL_VARS (a kill-var whose registry
+    feature has the opposite default, read only as `!get<>()`); its verdict is the registry's. Any other gate
+    whose registry default differs from its row default reports as a disagreement.
     Presence tests (isSet/isNonEmpty) answer OFF when unset and count only when the gate has no value read."""
     reads = {}
     for path, body in sources:
@@ -651,8 +655,8 @@ def _typed_hits(sources, typed_rows):
         reg = row.get("registry") or {}
         value_reads = [r for r in rs if r[2] in ("get", "is")]
         use = value_reads if value_reads else rs
-        inverted = (bool(value_reads) and "defaultOn" in reg and bool(reg["defaultOn"]) != row_on
-                    and all(r[3] for r in value_reads))
+        inverted = (name in INVERTED_KILL_VARS and bool(value_reads) and "defaultOn" in reg
+                    and bool(reg["defaultOn"]) != row_on and all(r[3] for r in value_reads))
         for path, line, fn, neg in use:
             if fn in ("get", "is"):
                 on = bool(reg["defaultOn"]) if inverted else row_on
@@ -855,6 +859,18 @@ def comment_claims(lines, path, prose=False):
     return out
 
 
+def _tracked_md(root):
+    """Tracked *.md paths (forward slashes, relative to root), or None when git cannot say."""
+    import subprocess
+    try:
+        r = subprocess.run(["git", "-C", root, "ls-files", "--", "*.md"], capture_output=True, text=True, timeout=60)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if r.returncode != 0:
+        return None
+    return [l.strip() for l in r.stdout.splitlines() if l.strip()]
+
+
 def load_comment_claims(root=WORKTREE, scan_dirs=None, exclude=(REGISTRY,),
                         claim_dirs=None):
     scan_dirs = SCAN_DIRS if scan_dirs is None else scan_dirs
@@ -898,16 +914,17 @@ def load_comment_claims(root=WORKTREE, scan_dirs=None, exclude=(REGISTRY,),
     # docs/**/*.md (minus docs/archive/, frozen history) and .claude/*.md.
     # Same one-var-per-line, unconditional-claim rule as above.
     md_files = []
-    # docs/superpowers/plans holds dated implementation plans and handoffs: each states the default AS OF its
-    # authoring day ("ships opt-in", "default-off for this slice"), so a later default flip makes them stale by
-    # design, exactly like docs/archive. Excluded for the same reason; the live docs stay swept.
-    frozen_plans = os.path.normcase(os.path.join(root, "docs", "superpowers", "plans"))
-    for dirpath, dirnames, filenames in os.walk(os.path.join(root, "docs")):
-        dirnames[:] = [x for x in dirnames if x != "archive"]
-        if os.path.normcase(dirpath).startswith(frozen_plans):
-            continue
-        md_files.extend(os.path.join(dirpath, f) for f in filenames
-                        if f.endswith(".md"))
+    # Only TRACKED docs are swept: an untracked local directory (dated plans, scratch notes) is not part of the
+    # tree, and which of them exist differs per checkout. Falls back to the directory walk outside a git tree.
+    tracked = _tracked_md(root)
+    if tracked is not None:
+        md_files.extend(os.path.join(root, f) for f in tracked
+                        if f.startswith("docs/") and not f.startswith("docs/archive/"))
+    else:
+        for dirpath, dirnames, filenames in os.walk(os.path.join(root, "docs")):
+            dirnames[:] = [x for x in dirnames if x != "archive"]
+            md_files.extend(os.path.join(dirpath, f) for f in filenames
+                            if f.endswith(".md"))
     cdir = os.path.join(root, ".claude")
     if os.path.isdir(cdir):
         md_files.extend(os.path.join(cdir, f) for f in os.listdir(cdir)
@@ -972,7 +989,7 @@ def analyse(registry_text, sources, allow, claims=None, typed_rows=None):
     all_readers = find_all_readers(sources, helpers, typed_rows)
     findings = []
     implemented_by_var: dict = {}
-    stats = {"feature_entries": 0, "checked": 0, "no_reader": 0,
+    stats = {"feature_entries": 0, "checked": 0, "typed_only": 0, "no_reader": 0,
              "agree": 0, "disagree": 0, "unclassifiable": 0,
              "unclassifiable_nonfeature": 0,
              "comment_claims": 0, "comment_agree": 0, "comment_disagree": 0,
@@ -1026,6 +1043,8 @@ def analyse(registry_text, sources, allow, claims=None, typed_rows=None):
             continue
 
         stats["checked"] += 1
+        if all(r.get("typed") for r in readers):
+            stats["typed_only"] += 1
         verdicts = {r["verdict"] for r in readers}
         impl0 = implemented_default(readers)
         if impl0 is not None:
@@ -1137,7 +1156,9 @@ def run(quiet=False):
         print("=" * 70)
         print(f"  Registry entries with an env var: {stats['feature_entries']}"
               "   (ALL kinds)")
-        print(f"  ... with a reader found         : {stats['checked']}")
+        print(f"  ... with a reader found         : {stats['checked']}"
+              f"   (of which {stats['typed_only']} typed-only = the row against a registry default generated from "
+              "the same row, table self-consistency; the rest compare a getenv-idiom reader)")
         print(f"  ... no reader in scanned source : {stats['no_reader']}")
         print(f"  allowlisted (explicit reason)   : {stats['allowlisted']}")
         print(f"  AGREE                           : {stats['agree']}")
@@ -1592,8 +1613,20 @@ static constexpr EnvVarDesc kFeatureTable[] = {
         "MC2_TY_CTRL":     {"name": "MC2_TY_CTRL",     "kind": "Bool", "rule": "Lead0Kill", "default": True,
                             "registry": {"defaultOn": True}},
     }
-    tf_, ts_ = analyse(typed_registry, typed_src, allow={}, claims=[], typed_rows=rows)
+    global INVERTED_KILL_VARS
+    saved_inverted = INVERTED_KILL_VARS
+    try:
+        # MC2_TY_INVERTED is named as an inverted kill-var; MC2_TY_LIAR reads like one (row false, registry true,
+        # every read negated below) but is not named, so it must report.
+        INVERTED_KILL_VARS = frozenset({"MC2_TY_INVERTED"})
+        tf_, ts_ = analyse(typed_registry, typed_src, allow={}, claims=[], typed_rows=rows)
+        INVERTED_KILL_VARS = frozenset()
+        tf2_, _ = analyse(typed_registry, typed_src, allow={}, claims=[], typed_rows=rows)
+    finally:
+        INVERTED_KILL_VARS = saved_inverted
     tby = {f["var"]: f["kind"] for f in tf_}
+    check("typed reader: without the explicit allowlist the negated-only gate reports",
+          any(f["var"] == "MC2_TY_INVERTED" for f in tf2_), str([f["var"] for f in tf2_]))
     check("typed reader: straight read of an agreeing row is consistent", "MC2_TY_HONEST" not in tby, str(tby))
     check("typed reader: an inverted kill-var read only through ! is consistent", "MC2_TY_INVERTED" not in tby, str(tby))
     check("typed reader: a straight read of a row whose default contradicts the registry is caught",

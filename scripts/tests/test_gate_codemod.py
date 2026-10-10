@@ -794,3 +794,18 @@ def test_a_parenthesised_paired_read_assigned_to_a_variable_loses_the_extra_pare
     new, applied, _ = cm.apply_edits(code, cm.analyze_text("snippet.cpp", code, rows, None))
     assert applied
     assert 's_a =\n\tmc2::gate::get<"MC2_X">();' in new, new
+
+
+def test_edge_sites_in_a_lambda_or_a_multi_statement_span_are_left_to_a_human():
+    lam_code = "static const bool s_on = %s;\n" % EXACT0["lambda"]
+    res = cm.analyze_text("snippet.cpp", lam_code, mk("Lead0Kill", default=True), None)
+    assert res[0].verdict == "EDGE" and res[0].shape == "lambda-static"
+    new, applied, skipped = cm.apply_edits(lam_code, res)
+    assert not applied and new == lam_code and skipped
+    multi = ("void f() {\n  static int cached = -1;\n  if (cached < 0) {\n    const char* v = getenv(\"MC2_X\");\n"
+             "    cached = (v && v[0] == '0' && v[1] == '\0') ? 0 : 1;\n  }\n}\n")
+    res = cm.analyze_text("snippet.cpp", multi, mk("Lead0Kill", default=True), None)
+    edge = [r for r in res if r.verdict == "EDGE"]
+    if edge:
+        new, applied, _ = cm.apply_edits(multi, res)
+        assert not applied and new == multi

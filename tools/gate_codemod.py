@@ -1704,6 +1704,12 @@ def apply_edits(raw, results):
     applied, skipped, limit = [], [], len(raw) + 1
     for r in todo:
         a, b, new = r.edit
+        # An EDGE verdict means the old reader and the row differ on some probe input. A lambda body or a
+        # multi-statement span can carry clamps, snaps and fallbacks the probes do not exercise, so those sites are
+        # a human's job: only NO-CHANGE is applied automatically there (G7 Opus review F5).
+        if r.verdict == "EDGE" and (r.shape == "lambda-static" or T[a:b].count(";") > 1):
+            skipped.append(r)
+            continue
         while a < b and T[a].isspace():
             a += 1
         new = _kept_comments(raw, T, a, b) + new.lstrip(" 	")
