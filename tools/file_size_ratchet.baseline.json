@@ -14,9 +14,9 @@
  ],
  "files_over_1500": {
   "GameOS/gameos/engine_present_vk.cpp": 2749,
-  "GameOS/gameos/gameosmain.cpp": 2810,
+  "GameOS/gameos/gameosmain.cpp": 2811,
   "GameOS/gameos/gos_mech_batcher.cpp": 3299,
-  "GameOS/gameos/gos_static_prop_batcher_finalize.cpp": 2023,
+  "GameOS/gameos/gos_static_prop_batcher_finalize.cpp": 2028,
   "GameOS/gameos/gos_static_prop_batcher_flush.cpp": 2324,
   "GameOS/gameos/gos_static_prop_registry.cpp": 2207,
   "GameOS/gameos/gos_terrain_lighting.cpp": 1697,
@@ -36,12 +36,11 @@
   "code/gamecam.cpp": 1564,
   "code/gameobj.cpp": 2366,
   "code/infowindow.cpp": 1732,
-  "code/logisticsdata.cpp": 3438,
   "code/logisticsdialog.cpp": 2149,
   "code/mechicon.cpp": 1967,
   "code/mechlabscreen.cpp": 1952,
   "code/mechlopedia.cpp": 1663,
-  "code/mission_init.cpp": 2183,
+  "code/mission_init.cpp": 2184,
   "code/missionbegin.cpp": 2132,
   "code/mover.h": 1911,
   "code/mpparameterscreen.cpp": 2415,
@@ -77,7 +76,6 @@
   "mclib/mlr/mlrtriangleclipping.hpp": 2112,
   "mclib/move.h": 1822,
   "mclib/msl.cpp": 3066,
-  "mclib/quad.cpp": 4256,
   "mclib/render_contract.cpp": 1592,
   "mclib/stuff/rotation.cpp": 1672,
   "mclib/terrtxm.cpp": 1778,
@@ -87,7 +85,7 @@
   "mclib/vfxtile.cpp": 2944,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "f4c986566",
+ "head": "009e31493",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -126,10 +124,10 @@
    "max_lines": 1159
   },
   "code": {
-   "files": 356,
-   "files_over_1500": 25,
-   "files_over_3000": 2,
-   "max_lines": 3438
+   "files": 362,
+   "files_over_1500": 24,
+   "files_over_3000": 1,
+   "max_lines": 3273
   },
   "editor": {
    "files": 225,
@@ -144,10 +142,10 @@
    "max_lines": 1513
   },
   "mclib": {
-   "files": 629,
-   "files_over_1500": 28,
-   "files_over_3000": 2,
-   "max_lines": 4256
+   "files": 634,
+   "files_over_1500": 27,
+   "files_over_3000": 1,
+   "max_lines": 3066
   },
   "shaders": {
    "files": 172,
@@ -162,20 +160,12 @@
  ],
  "top": [
   {
-   "file": "mclib/quad.cpp",
-   "lines": 4256
-  },
-  {
    "file": "GameOS/include/gameos.hpp",
    "lines": 3753
   },
   {
    "file": "GameOS/gameos/vulkan_terrain_island.cpp",
    "lines": 3505
-  },
-  {
-   "file": "code/logisticsdata.cpp",
-   "lines": 3438
   },
   {
    "file": "GameOS/gameos/gos_mech_batcher.cpp",
@@ -203,7 +193,7 @@
   },
   {
    "file": "GameOS/gameos/gameosmain.cpp",
-   "lines": 2810
+   "lines": 2811
   },
   {
    "file": "mclib/terrtxm2.cpp",
@@ -259,7 +249,7 @@
   },
   {
    "file": "code/mission_init.cpp",
-   "lines": 2183
+   "lines": 2184
   },
   {
    "file": "code/warrior.h",
@@ -280,13 +270,21 @@
   {
    "file": "mclib/mlr/mlrtriangleclipping.hpp",
    "lines": 2112
+  },
+  {
+   "file": "code/tacordr.cpp",
+   "lines": 2072
+  },
+  {
+   "file": "GameOS/gameos/gos_static_prop_batcher_finalize.cpp",
+   "lines": 2028
   }
  ],
  "total": {
-  "files": 1792,
-  "files_over_1500": 73,
-  "files_over_3000": 7,
-  "max_lines": 4256
+  "files": 1803,
+  "files_over_1500": 71,
+  "files_over_3000": 5,
+  "max_lines": 3753
  },
  "version": 1
 }

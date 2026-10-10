@@ -1,0 +1,16 @@
+{
+ "base": "6494578b9",
+ "src": "mclib/quad.cpp",
+ "stem": "quad",
+ "scripts": [
+  "scripts/counter-honesty-allowlist.txt",
+  "tests/unit/test_terrain_material.cpp",
+  "tools/gate_codemod.py"
+ ],
+ "_scripts_reason": "Reviewed: counter-honesty keys the s_framesPrinted limiter to quad_draw.cpp and the s_mismatches limiters to quad_setup.cpp (check passes); test_terrain_material.cpp cites quad.cpp in a comment; tools/gate_codemod.py (lane 1 gate tooling) lists the file and is not edited here.",
+ "add": [
+  "",
+  "void enqueueTerrainMineState(TerrainQuad& quad);   // defined in quad.cpp; the mine grid enqueue, setup and draw call it"
+ ],
+ "split_commit": "08c557e04"
+}

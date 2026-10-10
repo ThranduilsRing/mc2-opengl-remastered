@@ -126,6 +126,20 @@ Split commit: `217255c68`.
 | `gvehicl_weapons.cpp` | GroundVehicle: hit and attack helpers, status/move chunks, handleWeaponHit, fireWeapon and handleWeaponFire. |
 | `gvehicl_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
+## `code/logisticsdata.cpp`
+
+Split commit: `009e31493`.
+
+| Piece | What it holds |
+|---|---|
+| `logisticsdata.cpp` | keeps the constructor / destructor, the campaign and multiplayer start and the small accessors |
+| `logisticsdata_availability.cpp` | LogisticsData: updateAvailability, the front-end state dump and the availability append. |
+| `logisticsdata_init.cpp` | LogisticsData: the front-end data load (components, pilots, variants, vehicles), the smart-load gate and the mission availability queries. |
+| `logisticsdata_inventory.cpp` | LogisticsData: components, mech purchase and sale, force groups, inventory lists and the vehicle pilot (with the infinite-money cheat gate). |
+| `logisticsdata_modify.cpp` | LogisticsData: current-mission accessors, mech modification accept / cancel, and the encrypt / decrypt helpers. |
+| `logisticsdata_save.cpp` | LogisticsData: removeMechsInForceGroup, pilot ranking, save / load, setMissionCompleted and the mech / pilot / variant lookups. |
+| `logisticsdata_internal.h` | shared include bundle, extern globals and declarations of the pieces |
+
 ## `code/mechcmd2.cpp`
 
 | Piece | What it holds |
@@ -288,6 +302,19 @@ Split commit: `de0dbab39`.
 | `mech3d_type.cpp` | Mech3DAppearance: Mech3DAppearanceType init/destroy/setAnimation and the weapon-node lookups. |
 | `mech3d_update.cpp` | Mech3DAppearance: Mech3DAppearance::update, arm destruction, smoke, water wake and ejection. |
 | `mech3d_internal.h` | shared include bundle, extern globals and declarations of the pieces |
+
+## `mclib/quad.cpp`
+
+Split commit: `08c557e04`.
+
+| Piece | What it holds |
+|---|---|
+| `quad.cpp` | keeps the mine-grid enqueue, init and the mine texture handles |
+| `quad_draw.cpp` | TerrainQuad: TerrainQuad::draw: the SOLID / DRAWALPHA terrain and overlay submission, the M2d decal producer and its parity probe. |
+| `quad_lines.cpp` | TerrainQuad: the passability / LOS / debug-cell line draws and the mine draw. |
+| `quad_setup.cpp` | TerrainQuad: the editor-only legacy per-quad texture setup (setupTextures) with the terrain recipe cache and the projectZ overlay emit. |
+| `quad_water.cpp` | TerrainQuad: TerrainQuad::drawWater, the CPU water draw and its depth-transition probe. |
+| `quad_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
 ## `mclib/terrain.cpp`
 
