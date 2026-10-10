@@ -89,8 +89,8 @@
    "LG16": 0,
    "LG17": 2,
    "LG18": 0,
-   "LG19": 16,
-   "LG20": 42
+   "LG19": 10,
+   "LG20": 36
   },
   "HostServices": {
    "LG01": 0,
@@ -1487,9 +1487,7 @@
   "GuiRuntime/GraphicsOptionsWindow_terrain.cpp": {
    "LG09": 4,
    "LG10": 1,
-   "LG12b": 2,
-   "LG19": 6,
-   "LG20": 6
+   "LG12b": 2
   },
   "GuiRuntime/GuiRuntime.cpp": {
    "LG01": 1,
@@ -5764,7 +5762,7 @@
    "LG20": 1
   }
  },
- "head": "d383129e6",
+ "head": "105bfd766",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

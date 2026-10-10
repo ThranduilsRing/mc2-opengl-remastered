@@ -1,6 +1,7 @@
 // Graphics options window: terrain, static-prop and water tuning sections.
 // Declared in GraphicsOptionsWindow_internal.h.
 #include "GraphicsOptionsWindow_internal.h"
+#include "Gates/gate.h"
 
 namespace GraphicsOptionsWindow {
 
@@ -394,8 +395,7 @@ void drawTerrainTuningSection() {
 
     // CLIFF SHADOW FLOOR: lifts shadow-side steep terrain faces off near-black.
     {
-        const char* cliffEnv = std::getenv("MC2_TERRAIN_CLIFF_SHADOW_FLOOR");
-        bool cliffGateOn = (cliffEnv && cliffEnv[0] && cliffEnv[0] != '0');
+        bool cliffGateOn = mc2::gate::get<"MC2_TERRAIN_CLIFF_SHADOW_FLOOR">();
         if (cliffGateOn)
             ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "Cliff Shadow Floor: ON");
         else
@@ -418,8 +418,7 @@ void drawTerrainTuningSection() {
 
     // MC2_DYNAMIC_DECALS: live ring-buffer status (gate-off shows 0/64 inactive).
     {
-        const char* ddEnv = std::getenv("MC2_DYNAMIC_DECALS");
-        bool ddOn = (ddEnv && ddEnv[0] != '0');
+        bool ddOn = mc2::gate::get<"MC2_DYNAMIC_DECALS">();
         int live = DynDecal::liveCount();
         if (ddOn) {
             ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f),
@@ -511,8 +510,7 @@ void drawStaticPropTuningSection() {
     // strength when MC2_STATIC_PROP_IBL_SH != 0 (default-on).
     ImGui::SeparatorText("IBL SH ambient");
     {
-        const char* env = std::getenv("MC2_STATIC_PROP_IBL_SH");
-        bool iblOn = !(env != nullptr && env[0] == '0');
+        bool iblOn = mc2::gate::get<"MC2_STATIC_PROP_IBL_SH">();
         const char* setName = ibl_sh_runtime_currentSetName();
         if (iblOn) {
             ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f),
@@ -537,8 +535,7 @@ void drawStaticPropTuningSection() {
     // slider controls strength. Default value 0.5 (dialled back from 1.0).
     ImGui::SeparatorText("PBR V1 specular");
     {
-        const char* env = std::getenv("MC2_STATIC_PROP_PBR_V1");
-        bool pbrOn = (env && env[0] && env[0] != '0');
+        bool pbrOn = mc2::gate::get<"MC2_STATIC_PROP_PBR_V1">();
         if (pbrOn) {
             ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f),
                 "PBR V1: ON (strength=%.2f)", g_pbrV1Strength);
@@ -565,8 +562,7 @@ void drawStaticPropTuningSection() {
     // legacy assets too glossy.
     ImGui::SeparatorText("PBR roughness override");
     {
-        const char* env = std::getenv("MC2_STATIC_PROP_PBR_V1");
-        bool pbrOn = (env && env[0] && env[0] != '0');
+        bool pbrOn = mc2::gate::get<"MC2_STATIC_PROP_PBR_V1">();
         if (pbrOn) {
             ImGui::TextColored(g_pbrV1RoughnessOverrideEnabled
                                    ? ImVec4(0.4f, 1.0f, 0.4f, 1.0f)
@@ -673,8 +669,7 @@ void drawWaterSection() {
 
     ImGui::SeparatorText("Sky Tint (gated, camera-independent)");
     {
-        const char* env = std::getenv("MC2_WATER_SKYTINT");
-        bool gateOn = (env && env[0] && env[0] != '0');
+        bool gateOn = mc2::gate::get<"MC2_WATER_SKYTINT">();
         if (gateOn) ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "MC2_WATER_SKYTINT: ON (default strength 0.15)");
         else        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "MC2_WATER_SKYTINT: off (strength 0 = no-op; slider still works)");
 
