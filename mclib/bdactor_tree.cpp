@@ -2,10 +2,6 @@
 // Declared in the class headers; shared names in bdactor_internal.h.
 #include "bdactor_internal.h"
 
-
-//-----------------------------------------------------------------------------
-
-//-----------------------------------------------------------------------------
 // class TreeAppearance
 void TreeAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 {
@@ -48,7 +44,6 @@ void TreeAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
         staticReg[_l] = StaticRegistration{};
     activeLOD = 0;  // pinned 0 until Task 5 adds distance selection
     treeShape = NULL;
-    //
 
 	if (appearType)
 	{
@@ -57,7 +52,6 @@ void TreeAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		// markLOS) rebuilds this member from stock treeShape[lod] when needed.
 		treeShape = appearType->getTreeRenderShape(0)->CreateFrom();
 
-		//-------------------------------------------------
 		// Load the texture and store its handle.
 		for (long i=0;i<treeShape->GetNumTextures();i++)
 		{
@@ -138,7 +132,6 @@ void TreeAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 				OBBRadius = testRadius;
 		}
 
-		
 		appearType->boundsUpperLeftX = (-OBBRadius * 2.0);
 		appearType->boundsUpperLeftY = (-OBBRadius * 2.0);
 		   					 
@@ -170,7 +163,6 @@ void TreeAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 	pitch = yaw = 0.0f;
 }
 
-//-----------------------------------------------------------------------------
 void TreeAppearance::setObjStatus (long oStatus)
 {
 	if (status != oStatus)
@@ -211,7 +203,6 @@ void TreeAppearance::setObjStatus (long oStatus)
 
 		}
 
-		//-------------------------------------------------
 		// Load the texture and store its handle.
 		if (treeShape)
 		{
@@ -256,7 +247,6 @@ void TreeAppearance::setObjStatus (long oStatus)
 	status = oStatus;
 }
 
-//-----------------------------------------------------------------------------
 void TreeAppearance::setObjectParameters (const Stuff::Vector3D &pos, float Rot, long sel, long team, long homeRelations)
 {
 	rotation = Rot;
@@ -271,13 +261,11 @@ void TreeAppearance::setObjectParameters (const Stuff::Vector3D &pos, float Rot,
 	homeTeamRelationship = homeRelations;
 }
 
-//-----------------------------------------------------------------------------
 void TreeAppearance::setMoverParameters (float pitchAngle, float lArmRot, float rArmRot, bool isAirborne)
 {
 	pitch = pitchAngle;
 }
 
-//-----------------------------------------------------------------------------
 bool TreeAppearance::isMouseOver (float px, float py)
 {
 	if (inView)
@@ -297,7 +285,6 @@ bool TreeAppearance::isMouseOver (float px, float py)
 	return(inView);
 }	
 
-//-----------------------------------------------------------------------------
 bool TreeAppearance::recalcBounds (void)
 {
 	// F3 CPU projection cost-baseline: aggregate per-actor scope into the
@@ -313,7 +300,6 @@ bool TreeAppearance::recalcBounds (void)
 
 	if (eye)
 	{
-		//-------------------------------------------------------------------
 		//NEW METHOD from the WAY BACK Days
 		setVisibilityGatesFromLegacy(true);
 
@@ -378,7 +364,6 @@ bool TreeAppearance::recalcBounds (void)
 	return(inView);
 }
 
-//-----------------------------------------------------------------------------
 void TreeAppearance::recalcBoundsAndStamp() {
 	// FRAME-JOBS-1 worker path. Do not call from game logic.
 	extern uint32_t g_mc2FrameCounter;
@@ -387,7 +372,6 @@ void TreeAppearance::recalcBoundsAndStamp() {
 	boundsFrame = g_mc2FrameCounter;
 }
 
-//-----------------------------------------------------------------------------
 long TreeAppearance::update (bool animate)
 {
 	::mc2_object_recon::Scope _recon_tree_(
@@ -404,7 +388,6 @@ long TreeAppearance::update (bool animate)
 	// selecting only in update() froze activeLOD at first registration.
 	selectActiveLOD();
 
-	//-------------------------------------------
 	// Does math necessary to draw Tree
 	Stuff::UnitQuaternion rot;
 	float yawAngle = (rotation * DEGREES_TO_RADS) + (yaw * DEGREES_TO_RADS);
@@ -488,13 +471,13 @@ long TreeAppearance::update (bool animate)
 		light->active = false;
 
 		// LIGHT-ROW-PURE-1: declare BOTH tree mutations — the ambient-slot
-		// recolour at :7031 and the sun deactivation immediately above. This is
+		// recolour and the sun deactivation immediately above. This is
 		// the policy PROP-BAKE-ORDER-VS-TIME-1 turns on: with the sun filtered
 		// out of the row, the AMBIENT becomes row slot 0 and
 		// decomposeFirstActiveLightColor overwrites it instead of the sun.
 		// Declaring it makes that a property of ONE query rather than of a
 		// global window other classes can bake inside. The mutations above
-		// STAY -- mclib/tgl.cpp:2189's CPU vertex kernel reads them inside this
+		// STAY -- mclib/tgl.cpp's CPU vertex kernel reads them inside this
 		// window and a row memcmp cannot see that; see mclib/txmmgr.cpp.
 		mc2PublishObjectLightPolicy(/*kClassTree*/2,
 		                            /*sunRecolour*/false, 0u,
@@ -596,9 +579,9 @@ long TreeAppearance::update (bool animate)
 				treeShape->TransformMultiShape_HierarchyOnly (&xlatPosition,&rot);
 			else
 				treeShape->TransformMultiShape (&xlatPosition,&rot);
-			// 2026-05-10: mirror of the BldgAppearance fix at :2339-2341.
+			// 2026-05-10: mirror of the BldgAppearance fix.
 			// Seed cachedGpuLightIndex_ in the full-bake branch so the
-			// next render() doesn't fail the UINT32_MAX gate at :4341
+			// next render() doesn't fail the UINT32_MAX gate
 			// and invalidate the freshly-set staticReg.
 			// TREE-OVERRIDE-LOD-MVP K×M FIX (2026-06-03): bake keyed on LOD0, share slot
 			// to active LOD (see gpuEligible branch above for rationale).
@@ -629,8 +612,6 @@ long TreeAppearance::update (bool animate)
 	return TRUE;
 }
 
-//-----------------------------------------------------------------------------
-
 void TreeAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int counter)
 {
 	//MUST force tree to HIGHEST LOD!!!  Impassability data is only valid at this LOD!!
@@ -646,7 +627,6 @@ void TreeAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 		treeShape = appearType->treeShape[currentLOD]->CreateFrom();
 	}
 
-	//-------------------------------------------------------------
 	// New way.  For each vertex in each shape, translate to world
 	for (int i=0;i<treeShape->GetNumShapes();i++)
 	{
@@ -684,7 +664,6 @@ void TreeAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 	}
 }
 
-//-----------------------------------------------------------------------------
 void TreeAppearance::markLOS (bool clearIt)
 {
 	//MUST force building to HIGHEST LOD!!!  IMpassability data is only valid at this LOD!!
@@ -700,7 +679,6 @@ void TreeAppearance::markLOS (bool clearIt)
 		treeShape = appearType->treeShape[currentLOD]->CreateFrom();
 	}
 
-	//-------------------------------------------------------------
 	// New way.  For each vertex in each shape, translate to world
 	for (int i=0;i<treeShape->GetNumShapes();i++)
 	{
@@ -725,7 +703,6 @@ void TreeAppearance::markLOS (bool clearIt)
 					continue;
 				}
 				
-				//----------------
 				// Mark the map...
 				MapCellPtr curCell = GameMap->getCell(cellR, cellC);
 
@@ -748,8 +725,6 @@ void TreeAppearance::markLOS (bool clearIt)
 		}
 	}
 }
-
-//-----------------------------------------------------------------------------
 
 bool TreeAppearance::IsStaticNow() const
 {
@@ -807,8 +782,6 @@ void TreeAppearance::selectActiveLOD()
 			needsFullBakeNextFrame = true;
 	}
 }
-
-//-----------------------------------------------------------------------------
 
 void TreeAppearance::destroy (void)
 {

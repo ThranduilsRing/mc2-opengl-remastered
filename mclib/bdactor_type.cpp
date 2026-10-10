@@ -2,13 +2,11 @@
 // Declared in the class headers; shared names in bdactor_internal.h.
 #include "bdactor_internal.h"
 
-//-----------------------------------------------------------------------------
 // class BldgAppearanceType
 void BldgAppearanceType::init (const char * fileName)
 {
 	AppearanceType::init(fileName);
 
-	//----------------------------------------------
 	FullPathFileName iniName;
 	iniName.init(tglPath,fileName,".ini");
 
@@ -107,7 +105,6 @@ void BldgAppearanceType::init (const char * fileName)
 				// at greater zoom-out. See visual_preference_knobs.md.
 				lodDistance[i] *= 5.0f;
 
-				//----------------------------------------------
 				// Base LOD shape.  In stand Pose by default.
 				bldgShape[i] = new TG_TypeMultiShape;
 				gosASSERT(bldgShape[i] != NULL);
@@ -141,7 +138,6 @@ void BldgAppearanceType::init (const char * fileName)
 	}
 	else
 	{
-		//----------------------------------------------
 		// Base shape.  In stand Pose by default.
 		bldgShape[0] = new TG_TypeMultiShape;
 		gosASSERT(bldgShape[0] != NULL);
@@ -249,7 +245,6 @@ void BldgAppearanceType::init (const char * fileName)
 		}
 	}
 
-
 	//destroyed state.
 	result = iniFile.seekBlock("TGLDamage");
 	if (result == NO_ERR)
@@ -281,7 +276,7 @@ void BldgAppearanceType::init (const char * fileName)
 			// damage-shape packets get layerForPacket=-1 and either render
 			// with the wrong texture (orange-rectangle ghost) or get culled
 			// from the multidraw, leaving destroyed buildings invisible.
-			// Mirror the per-instance loop (bdactor.cpp:618-653) at the
+			// Mirror the per-instance loop (bdactor.cpp) at the
 			// type-level: load textures into mcTextureManager, set the
 			// handles + alpha bits on the shared TG_TypeMultiShape so
 			// every per-instance clone via CreateFrom inherits them.
@@ -340,7 +335,6 @@ void BldgAppearanceType::init (const char * fileName)
 		destructEffect[0] = 0;
 	}
 
-	//--------------------------------------------------------------------
 	// Load Animation Information.
 	// We can load up to 10 Animation States.
 	for (int i=0;i<MAX_BD_ANIMATIONS;i++)
@@ -368,7 +362,6 @@ void BldgAppearanceType::init (const char * fileName)
 			if (result != NO_ERR)
 				bdStartF[i] = 0;
 				
- 			//-------------------------------
 			// We have an animation to load.
 			FullPathFileName animPath;
 			animPath.init(tglPath,animName,".ase");
@@ -381,7 +374,6 @@ void BldgAppearanceType::init (const char * fileName)
 				bdAnimData[i] = new TG_AnimateShape;
 				gosASSERT(bdAnimData[i] != NULL);
 	
-				//--------------------------------------------------------
 				// If this animation does not exist, it is not a problem!
 				// Building will simply freeze until animation is "over"
 				bdAnimData[i]->LoadTGMultiShapeAnimationFromASE(animPath,bldgShape[0]);
@@ -395,7 +387,6 @@ void BldgAppearanceType::init (const char * fileName)
 		}
 	}
 	
-	//--------------------------------------------------------------------
 	// We can also load the node to pitch and yaw for spotlights/turrets.
 	result = iniFile.seekBlock("AnimationNode");
 	if (result == NO_ERR)
@@ -414,7 +405,6 @@ void BldgAppearanceType::init (const char * fileName)
 			setFrameRate(i,nFrameRate);
 	}
 
-	//-----------------------------------------------
 	// Load up the Weapon Node Data.
 	numWeaponNodes = 0;
 	nodeData = NULL;
@@ -452,7 +442,6 @@ void BldgAppearanceType::init (const char * fileName)
 	}
 }
 
-//----------------------------------------------------------------------------
 void BldgAppearanceType::destroy (void)
 {
 	AppearanceType::destroy();
@@ -506,7 +495,6 @@ void BldgAppearanceType::destroy (void)
 	}
 }
 
-//-----------------------------------------------------------------------------
 void BldgAppearanceType::setAnimation (TG_MultiShapePtr shape, DWORD animationNum)
 {
 	gosASSERT(shape != NULL);
@@ -519,7 +507,6 @@ void BldgAppearanceType::setAnimation (TG_MultiShapePtr shape, DWORD animationNu
 		shape->ClearAnimation();
 }
 
-//-----------------------------------------------------------------------------
 // class TreeAppearanceType
 void TreeAppearanceType::init (const char * fileName)
 {
@@ -579,7 +566,6 @@ void TreeAppearanceType::init (const char * fileName)
 				// at greater zoom-out. See visual_preference_knobs.md.
 				lodDistance[i] *= 5.0f;
 
-				//----------------------------------------------
 				// Base LOD shape.  In stand Pose by default.
 				treeShape[i] = new TG_TypeMultiShape;
 				gosASSERT(treeShape[i] != NULL);
@@ -602,7 +588,6 @@ void TreeAppearanceType::init (const char * fileName)
 					treeShape[i]->LoadTGMultiShapeFromASE(treeName); // TGL-LOAD-EXEMPT(declared LOD>0 absent = stock degradation; LOD0 is required)
 				}
 
-				//---------------------------------------------------------
 				// Should only be necessary for trees.  Easy to data drive
 				treeShape[i]->SetAlphaTest(true);
 				treeShape[i]->SetFilter(true);
@@ -618,7 +603,6 @@ void TreeAppearanceType::init (const char * fileName)
 	}
 	else
 	{
-		//----------------------------------------------
 		// Base shape.  In stand Pose by default.
 		treeShape[0] = new TG_TypeMultiShape;
 		gosASSERT(treeShape[0] != NULL);
@@ -636,7 +620,6 @@ void TreeAppearanceType::init (const char * fileName)
 				"bdactor.tree_base", &baseShapeLoadFailed);
 		}
 
-		//---------------------------------------------------------
 		// Should only be necessary for trees.  Easy to data drive
 		treeShape[0]->SetAlphaTest(true);
 		treeShape[0]->SetFilter(true);
@@ -799,7 +782,6 @@ void TreeAppearanceType::init (const char * fileName)
  	//No Animations at present.
 }
 
-//----------------------------------------------------------------------------
 void TreeAppearanceType::destroy (void)
 {
 	AppearanceType::destroy();

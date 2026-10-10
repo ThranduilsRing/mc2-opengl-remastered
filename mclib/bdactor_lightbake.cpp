@@ -2,7 +2,6 @@
 // Declared in the class headers; shared names in bdactor_internal.h.
 #include "bdactor_internal.h"
 
-
 // [BAKEORD v1] PROP-BAKE-ORDER-VS-TIME-1 -----------------------------------
 // PROP-RECIPE-BAKE-1 measured that among SUNLIT props the orientation-free
 // ambient term splits per INSTANCE, not per type (Mesh01 28 bright / 132 dim,
@@ -11,30 +10,28 @@
 // prop baking inside TreeAppearance's global sun-off window inherits
 // sun-inactive, so decomposeFirstActiveLightColor overwrites the AMBIENT slot
 // instead of the sun slot, collapsing it, frozen by the per-recipe bake).
-//
 // It explicitly did NOT prove that, and named a competing cause the data
 // cannot exclude: the split may be by bake TIME -- before vs after the
 // LIGHTBAKE-REBAKE-ON-READY-1 soft invalidation -- with no tree involvement at
 // all. Both hypotheses predict per-instance within-type variation, so the
 // outcome table alone cannot separate them.
-//
 // ★ PROP-BAKE-SUNWINDOW-1 (2026-07-30) -- THE ORDER HYPOTHESIS IS REFUTED AT
 // SOURCE. Do not build a fix on it; three files had copied it forward as fact.
 // Two independent links fail:
 //   (1) NOTHING ELSE CAN BAKE INSIDE THE WINDOW. `getWorldLight(0)->active =
-//       false` occurs at exactly ONE site repo-wide (:7110; mech3d.cpp:4133 is a
-//       per-actor pointLight, not the sun) and is restored at :7242 in the same
+//       false` occurs at exactly ONE site repo-wide (mech3d.cpp is a
+//       per-actor pointLight, not the sun) and is restored in the same
 //       function. Between them there is no early return (the only `return` in
-//       TreeAppearance::update between :7096 and :7251 is the tail `return
+//       TreeAppearance::update inside it is the tail `return
 //       TRUE`) and no call that touches another actor -- only this tree's own
 //       SetLightList / TransformMultiShape* / mc2CacheOrBakeStaticGpuLight. And
 //       appearance updates are serial on a default launch (MC2_FRAME_JOBS is
 //       default-OFF), so no worker thread can bake against the mutated global
 //       either. The window is global in TYPE, confined in EXTENT.
 //   (2) THE "COLLAPSE" STEP IS A NO-OP. GatherLightsParameters COMPACTS --
-//       num_lights advances only inside the `active` branch (txmmgr.cpp:2835,
-//       ++ at :2983) -- so with the sun filtered out row slot 0 already holds
-//       the AMBIENT, and decomposeFirstActiveLightColor (txmmgr.cpp:1480) picks
+//       num_lights advances only inside the `active` branch (txmmgr.cpp,
+//       ++) -- so with the sun filtered out row slot 0 already holds
+//       the AMBIENT, and decomposeFirstActiveLightColor (txmmgr.cpp) picks
 //       the first ACTIVE light off the SAME list and writes those same bytes
 //       back. Proven by execution, not prose:
 //       tools/object_light_row_harness ::decompose_slot0_is_a_noop_after_gather
@@ -44,19 +41,18 @@
 // foliage look -- and that is ALL the window does. It does not dim any
 // neighbouring prop, so the BRIGHT/DIM split above is NOT explained by it, and
 // the competing bake-TIME hypothesis is the one left standing.
-//
 // WHERE THE NEXT LANE SHOULD LOOK (leads, verified as SOURCE FACTS; the
 // mechanism itself is NOT proven -- do not repeat this file's mistake of
 // promoting a plausible chain to fact):
 //   * The AMBIENT the DIM term reports has exactly ONE per-frame producer:
 //     `eye->setLightColor(1, (ambientRed<<16)|(ambientGreen<<8)|ambientBlue)`,
-//     gamecam.cpp:263-265, inside GameCamera::render(), re-evaluated every
+//     gamecam.cpp, inside GameCamera::render(), re-evaluated every
 //     frame from Camera::ambientRed/Green/Blue.
-//   * Camera::ambientRed IS mutated during a mission: weather.cpp:362 divides
-//     it by rainLightLevel while raining and :380/:443 restore it; and
-//     Camera::updateDaylight writes it at camera.cpp:2100 from the sun pitch --
+//   * Camera::ambientRed IS mutated during a mission: weather.cpp divides
+//     it by rainLightLevel while raining and restore it; and
+//     Camera::updateDaylight writes it at camera.cpp from the sun pitch --
 //     though that body is entirely inside `if (day2NightTransitionTime > 0)`
-//     (camera.cpp:1877) and missions with no DayToNightTime park that at -1, so
+//     (camera.cpp) and missions with no DayToNightTime park that at -1, so
 //     it does not run on every mission. CHECK PER MISSION before assuming it.
 //   * A per-recipe bake freezes whatever value was live, permanently
 //     (mc2StaticLightEnvironmentGeneration is a constant 0), and the only
@@ -64,14 +60,12 @@
 //     recipe first rendered while the ambient differed keeps that ambient for
 //     the mission -- which is exactly a per-instance, within-type, frozen,
 //     zoom-invariant split.
-//   * mission.cpp:1993-2032 also swings the ambient to 0xFFFFFF, but only under
+//   * mission.cpp also swings the ambient to 0xFFFFFF, but only under
 //     `KillAmbientLight`, which is false unless the `-killambient` command-line
-//     switch is passed (mechcmd2.cpp:143/:2899) -- NOT a default-launch factor.
-//
+//     switch is passed (mechcmd2.cpp) -- NOT a default-launch factor.
 // The `sunActive=` field below therefore no longer discriminates anything; it is
 // kept because a NON-tree bake reading sunActive=0 would falsify (1) and that is
 // worth continuing to watch for.
-//
 // This probe therefore logs BOTH discriminators at every bake, or it would
 // confirm whichever hypothesis it was pointed at:
 //   ord=            monotonic bake ordinal      -> ORDER
@@ -80,89 +74,83 @@
 //                                                  invalidation specifically
 //   sunActive=      getWorldLight(0)->active    -> ORDER, the tree-window state
 // plus the resulting amb/sun so each bake carries its own BRIGHT/DIM outcome.
-//
 // Diagnostic only, read-only, default OFF. Reuses the
 // MC2_GPU_CULL_STATIC_LIGHT_ZERO_PROBE gate (no new env var). That gate was
 // described here as "already-registered" but was in fact registered NOWHERE
 // until GATE-HYGIENE-CLOSE-1 added it to kAuxEnvVars, docs/tier1_env_vars.md
 // and run_smoke.py's passthrough allowlist. NOTE: MC2_DIAGF
 // is additionally gated on MC2_DIAG_VERBOSE=1 -- without it this emits nothing.
-//
 // ★★ PROP-BAKE-TIME-1 (2026-07-30) -- THE TIME HYPOTHESIS IS CONFIRMED, AND THE
 // MUTATOR IS WEATHER. Both field constants are now derived, to the bit, from
 // mc2_10's own authored bytes. This closes PROP-BAKE-ORDER-VS-TIME-1: ORDER was
 // refuted above, TIME is confirmed here, and no third hypothesis is needed.
-//
 //   * mc2_10.fit [Cameras] `uc AmbientRed/Green/Blue = 192` and [Weather]
 //     `f StartingRainLevel = 3.0`, `l ChanceOfRain = 100`, `ul MaxRainDrops = 500`
 //     (verified in mc2srcdata-fresh/missions/mc2_10.fit, which md5-matches
 //     tools/mc2data/stock_missions.md5).
 //   * BRIGHT 0.7529 == 192/255 EXACTLY == the authored ambient with NO weather
 //     division. Camera::update() publishes setLightColor(1, ambient) at
-//     camera.cpp:2418-2420 and mission.cpp orders eye->update() (:1151) BEFORE
-//     weather->update() (:1189) BEFORE ObjectManager->update() (:1239, every
+//     camera.cpp and mission.cpp orders eye->update() BEFORE
+//     weather->update() BEFORE ObjectManager->update() (every
 //     appearance bake). So the frame-1 bake reads an ambient published one stage
 //     ahead of the weather that modifies it -- a value the mission never renders
 //     a frame with.
 //   * DIM 0.2471 == 63/255 EXACTLY == trunc(192 / rainLightLevel) for
-//     rainLightLevel in (3.0, 3.0476] -- i.e. weather.cpp:362 one tick past
+//     rainLightLevel in (3.0, 3.0476] -- i.e. weather.cpp one tick past
 //     mc2_10's authored StartingRainLevel. Camera::ambientRed is `unsigned char`,
 //     so the quotient truncates.
-//   * ChanceOfRain 100 makes invRainChance 0 at weather.cpp:238, so the `!= 0.0f`
-//     guard at :239 never fires and rainTrend never flips: mc2_10 is a permanent
-//     storm that ramps rainLevel to the 4.0 cap (:245-246) and stays there. The
+//   * ChanceOfRain 100 makes invRainChance 0 at weather.cpp, so the `!= 0.0f`
+//     guard never fires and rainTrend never flips: mc2_10 is a permanent
+//     storm that ramps rainLevel to the 4.0 cap and stays there. The
 //     LIVE ambient therefore SETTLES at 192/4 = 48/255,
 //     while the frozen rows keep 63/255 (post-rebake) or 192/255 (frame 1).
-//
 // DIRECTION, and why this is NOT the standing "props render too dark" report.
 // Scoped precisely to the shader's orientation-free ambientTerm
-// (static_prop.vert:718-722 sums it, :823 adds it at coefficient 1.0): the
+// (static_prop.vert sums it, adds it at coefficient 1.0): the
 // freeze leaves that term ABOVE the live scene's, never below -- +15/255
 // post-rebake, +144/255 for a frame-1 recipe. Fixing it DARKENS props on
 // mc2_10. This says nothing about the sun slot or the final pixel, only about
 // the one term this lane measured.
-//
 // SCOPE: one mission. Enumerated at source, the writers of Camera::ambientRed are
-// camera.cpp:286/:423 (init, once), camera.cpp:2100 (updateDaylight),
-// weather.cpp:362/:380/:443, and mission.cpp:1997 (-killambient only). Of those:
-//   - camera.cpp:2100 is UNREACHABLE in a mission. Correcting the bullet above:
+// camera.cpp (init, once), camera.cpp (updateDaylight),
+// weather.cpp, and mission.cpp (-killambient only). Of those:
+//   - camera.cpp is UNREACHABLE in a mission. Correcting the bullet above:
 //     the gate is not "missions with no DayToNightTime" -- all 46 stock missions
 //     that have a [Cameras] block AUTHOR the key (43 with a value <= 0), so the
 //     readIdFloat fallback is dead data. The real reason is dispatch:
-//     updateDaylight's per-frame call site is commented out (camera.cpp:2238) and
-//     its only other caller is Camera::activate() (camera.cpp:2818-2824) -- which
-//     `eye` never reaches, because activate() is virtual (camera.h:1285),
-//     `eye = new GameCamera` (mission.cpp:5108), and GameCamera::activate
-//     (gamecam.cpp:1024) fully overrides it without chaining, with its own
-//     updateDaylight(true) commented out at gamecam.cpp:1060. All three game-side
-//     callers (mechcmd2.cpp:1847, logistics.cpp:875, saveload.cpp:1654) dispatch
+//     updateDaylight's per-frame call site is commented out (camera.cpp) and
+//     its only other caller is Camera::activate() (camera.cpp) -- which
+//     `eye` never reaches, because activate() is virtual (camera.h),
+//     `eye = new GameCamera` (mission.cpp), and GameCamera::activate
+//     (gamecam.cpp) fully overrides it without chaining, with its own
+//     updateDaylight(true) commented out at gamecam.cpp. All three game-side
+//     callers (mechcmd2.cpp, logistics.cpp, saveload.cpp) dispatch
 //     there. Only Camera::setDaylightFraction (the MC2_UI_COMMAND_FILE driver)
 //     can still reach it.
-//   - weather's write is an IDENTITY assignment when rainLevel == 0 (:443).
+//   - weather's write is an IDENTITY assignment when rainLevel == 0.
 //   Leaving WEATHER as the only default-launch mutator, and mc2_10 as the only
 //   stock mission that can ever rain. Scanned across the whole stock corpus,
 //   mc2_10 is the ONLY .fit with MaxRainDrops > 0 and a non-zero
 //   StartingRainLevel/ChanceOfRain (mc2_19 authors StartingRainLevel 3.0 but
-//   MaxRainDrops 0, and weather.cpp:174 clears weatherActive when maxDrops == 0).
+//   MaxRainDrops 0, and weather.cpp clears weatherActive when maxDrops == 0).
 //   And rain cannot start spontaneously either: Weather's ctor seeds
-//   rainTrend = +1, rainFactor = 0 (weather.h:101-102), so with rainLevel 0 the
+//   rainTrend = +1, rainFactor = 0 (weather.h), so with rainLevel 0 the
 //   only branch that can arm rain -- `(rainLevel <= 1.5f) && (rainTrend < 0.0f)`
-//   at weather.cpp:221 -- is unreachable and rainLevel stays pinned at 0.
+//   at weather.cpp -- is unreachable and rainLevel stays pinned at 0.
 //   On the other 45 missions Camera::ambient* is constant from Camera::init to
 //   mission end, so NO bake moment can produce a divergent row there.
-//
 // AND THE INVALIDATION CANNOT REACH MOST PROPS ANYWAY -- this is independent of
 // weather and is the harder half. Every live caller of
 // mc2CacheOrBakeStaticGpuLight() sits inside an update(): BldgAppearance::update
-// at :4214/:4290 and TreeAppearance::update at :7248/:7323 (the gpuEligible and
+// and TreeAppearance::update (the gpuEligible and
 // full-bake arms of each). The only other callers are the default-OFF
-// prewarmStaticLightBake pair (:5086 bldg, :8069 tree). The touch() family never
+// prewarmStaticLightBake pair ( bldg, tree). The touch() family never
 // calls it: BldgAppearance touch/touchSerialCommit reach only
-// ResubmitCachedGpuLightData() (:5196, :5432) and TreeAppearance only (:7589,
-// :7684) -- and that function (mclib/msl.cpp:2127) re-submits the leaf's
+// ResubmitCachedGpuLightData() and TreeAppearance only (
+//) -- and that function (mclib/msl.cpp) re-submits the leaf's
 // ALREADY-CACHED lightData_. It never re-gathers from eye->getWorldLights() and
 // never consults s_bakedStaticLight. MC2_STATIC_UPDATE_SKIP defaults TRUE
-// (terrobj.cpp:96), so once a prop's IsStaticNow() holds, terrobj.cpp routes it
+// (terrobj.cpp), so once a prop's IsStaticNow() holds, terrobj.cpp routes it
 // to touch() for the rest of the mission. A prop that went static before
 // mission_ready+8 therefore keeps its FIRST-EVER row forever: clearing the cache
 // map is a no-op for it, because nothing will ever ask the map again.
@@ -174,7 +162,6 @@
 // The [BAKEORD v1] probe below already logs `frame=` and `postInvalidate=` per
 // bake, which is exactly the discriminator; it needs one gated run, not more
 // reading. Do not promote a guess about the partition to fact here.
-//
 // EXECUTABLE PROOF (no launch, no GL, no engine link):
 //   tools/object_light_row_harness ::ambient_state_changes_the_baked_row
 //                                  ::mc2_10_storm_ambient_is_not_mission_constant
@@ -184,13 +171,12 @@
 // byte-identical rows, then injects the rain those missions do not author and
 // requires the rows to stop agreeing. Both regressions were injected into this
 // tree and observed RED before the tests were kept.
-//
 // THE FIX, DESIGNED BUT DELIBERATELY NOT SHIPPED. The seam already exists:
-// mc2StaticLightEnvironmentGeneration (bdactor.cpp:2767) returns a constant 0
+// mc2StaticLightEnvironmentGeneration (bdactor.cpp) returns a constant 0
 // and is already consulted by the STABLE_LIGHT_SKIP eligibility test. Deriving
 // it from the published scene lighting (Camera::ambient{Red,Green,Blue} +
 // light{Red,Green,Blue}) and invalidating the bake cache on change repairs the
-// invariant txmmgr.cpp:1663 asserts, and self-quiesces: those are 8-bit values,
+// invariant txmmgr.cpp asserts, and self-quiesces: those are 8-bit values,
 // so a full storm ramp costs ~16 re-bakes and a non-rainy mission costs zero.
 // It is NOT flipped here because its only visible effect on stock data is to
 // darken props on mc2_10, which is the opposite direction to the user's standing
@@ -318,29 +304,24 @@ void mc2CacheOrBakeStaticGpuLight(TG_MultiShape* shape,
 	}
 }
 
-//-----------------------------------------------------------------------------
 // CONE-SPILL-COUPLING-1 (2026-07-25). User, third framing of the same
 // complaint: "the actual 'light triangles' need to be more transparent, and
 // where they intersect the ground needs to be center of light spill on the
 // ground."
-//
 // LIGHT-CONE-MODELS-1 already moved the pool off the tower base to the beam's
 // far end, but it computed that point as `apex + aim*len` and then SNAPPED z
 // to getTerrainElevation — a vertical DROP, not an intersection. For a tower
 // searchlight raked across rising ground the beam meets terrain well BEFORE
 // its far end, so the pool landed past (or beside) the bright patch the cone
 // visibly makes: the "cone points one way, pool sits elsewhere" decoupling.
-//
 // This is the real thing: march the beam ray against the heightfield and
 // return the FIRST crossing. f(t) = ray.z - terrainHeight(ray.xy) changes sign
 // exactly at the surface, so a coarse march to bracket + bisection to refine
 // lands on the true intersection for any terrain profile.
-//
 // Cost is bounded and independent of beam length: a FIXED step count (not a
 // fixed step size), so a long beam takes coarser steps rather than more
 // samples. ~34 heightfield lookups per fixture per frame worst case, and it
 // returns early on the common near-hit.
-//
 // Returns false when the beam never meets ground within its own length —
 // aimed at a wall, over a cliff edge, or off the map. Callers must then emit
 // NO pool at all; planting one anyway is the phantom-pool artefact.

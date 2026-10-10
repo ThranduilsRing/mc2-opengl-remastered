@@ -2,10 +2,7 @@
 // Declared in the class headers; shared names in bdactor_internal.h.
 #include "bdactor_internal.h"
 
-
 #define HEIGHT_THRESHOLD 10.0f
-
-//-----------------------------------------------------------------------------
 
 long BldgAppearance::calcCellsCovered (Stuff::Vector3D& pos, short* cellList) {
 
@@ -29,7 +26,6 @@ long BldgAppearance::calcCellsCovered (Stuff::Vector3D& pos, short* cellList) {
 			appearType->setAnimation(bldgShape,bdAnimationState);
 	}
 
-	//-------------------------------------------------------------
 	// New way.  For each vertex in each shape, translate to world
 	for (int i=0;i<bldgShape->GetNumShapes();i++)
 	{
@@ -58,7 +54,6 @@ long BldgAppearance::calcCellsCovered (Stuff::Vector3D& pos, short* cellList) {
 						continue;
 					}
 	//				if (GameMap->inBounds(cellR, cellC)) {
-						//-------------------
 						// Record the cell...
 						if (numCoords > (maxCoords - 2))
 							Fatal(numCoords, "BldgAppearance.markMoveMap: too many coords for cellList ");
@@ -73,8 +68,6 @@ long BldgAppearance::calcCellsCovered (Stuff::Vector3D& pos, short* cellList) {
 	
 	return(numCoords);
 }
-
-//-----------------------------------------------------------------------------
 
 void BldgAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int counter)
 {
@@ -101,7 +94,6 @@ void BldgAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 	land->worldToCell(position, cellR, cellC);
 	if (appearType->isForestClump)
 	{
-		//-------------------------------------------------------------
 		// New way.  For each vertex in each shape, translate to world
 		for (int i=0;i<bldgShape->GetNumShapes();i++)
 		{
@@ -176,7 +168,6 @@ void BldgAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 			}
 		}
 
-		//-------------------------------------------------------------
 		// New way.  For each vertex in each shape, translate to world
 		for (int i=0;i<bldgShape->GetNumShapes();i++)
 		{
@@ -275,8 +266,6 @@ void BldgAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 			}
 		}
 
-			
-		//-------------------------------------------------------------
 		// New way.  For each vertex in each shape, translate to world
 		for (int i=0;i<bldgShape->GetNumShapes();i++)
 		{
@@ -343,8 +332,6 @@ void BldgAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 	}
 }
 
-//-----------------------------------------------------------------------------
-
 long BldgAppearance::markMoveMap (bool passable, long* lineOfSightRect, bool useHeight, short* cellList)
 {
 	int minRow = 9999;
@@ -366,10 +353,8 @@ long BldgAppearance::markMoveMap (bool passable, long* lineOfSightRect, bool use
 	int numCoords = 0;
 	if (cellList) {
 		gosASSERT(!useHeight);
-		//----------------------------------------------------------------------------------
 		// Store the max number of coords allowed in the first cell. Can overwrite it now...
 		int maxCoords = cellList[0];
-		//-------------------------------------------------------------
 		// New way.  For each vertex in each shape, translate to world
 		for (int i = 0; i < tempBldgShape->GetNumShapes(); i++) 
 		{
@@ -390,7 +375,6 @@ long BldgAppearance::markMoveMap (bool passable, long* lineOfSightRect, bool use
 						continue;
 					}
 					
-					//----------------------------
 					// Building lineOfSightRect...
 					if (cellR < minRow)
 						minRow = cellR;
@@ -401,7 +385,6 @@ long BldgAppearance::markMoveMap (bool passable, long* lineOfSightRect, bool use
 					if (cellC > maxCol)
 						maxCol = cellC;
 						
-					//-------------------
 					// Record the cell...
 					if (numCoords > (maxCoords - 2))
 						Fatal(numCoords, "BldgAppearance.markMoveMap: too many coords for cellList ");
@@ -413,7 +396,6 @@ long BldgAppearance::markMoveMap (bool passable, long* lineOfSightRect, bool use
 	}
 	else 
 	{
-		//-------------------------------------------------------------
 		// New way.  For each vertex in each shape, translate to world
 		for (int i=0;i<tempBldgShape->GetNumShapes();i++)
 		{
@@ -434,7 +416,6 @@ long BldgAppearance::markMoveMap (bool passable, long* lineOfSightRect, bool use
 						continue;
 					}
 					
-					//----------------------------
 					// Building lineOfSightRect...
 					if (cellR < minRow)
 						minRow = cellR;
@@ -445,7 +426,6 @@ long BldgAppearance::markMoveMap (bool passable, long* lineOfSightRect, bool use
 					if (cellC > maxCol)
 						maxCol = cellC;
 						
-					//----------------
 					// Mark the map...
 					MapCellPtr curCell = GameMap->getCell(cellR, cellC);
 					if (appearType->isForestClump) {
@@ -478,8 +458,6 @@ long BldgAppearance::markMoveMap (bool passable, long* lineOfSightRect, bool use
 	return(numCoords/2);
 }
 
-//-----------------------------------------------------------------------------
-
 void BldgAppearance::markLOS (bool clearIt)
 {
 	//MUST force building to HIGHEST LOD!!!  IMpassability data is only valid at this LOD!!
@@ -492,7 +470,6 @@ void BldgAppearance::markLOS (bool clearIt)
 			appearType->setAnimation(tempBldgShape,bdAnimationState);
 	}
 
-	//-------------------------------------------------------------
 	// New way.  For each vertex in each shape, translate to world
 	for (int i=0;i<tempBldgShape->GetNumShapes();i++)
 	{
@@ -517,7 +494,6 @@ void BldgAppearance::markLOS (bool clearIt)
 					continue;
 				}
 				
-				//----------------
 				// Mark the map...
 				MapCellPtr curCell = GameMap->getCell(cellR, cellC);
 
@@ -548,8 +524,6 @@ void BldgAppearance::markLOS (bool clearIt)
 	}
 }
 
-//-----------------------------------------------------------------------------
-
 void BldgAppearance::calcAdjCell (long& row, long& col)
 {
 	//MUST force building to HIGHEST LOD!!!  IMpassability data is only valid at this LOD!!
@@ -568,7 +542,6 @@ void BldgAppearance::calcAdjCell (long& row, long& col)
 			appearType->setAnimation(bldgShape,bdAnimationState);
 	}
 
-	//-------------------------------------------------------------
 	// New way.  For each vertex in each shape, translate to world
 	int numVert = 0;
 	for (int i=0;i<bldgShape->GetNumShapes();i++)

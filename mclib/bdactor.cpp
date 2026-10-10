@@ -1,9 +1,5 @@
-//---------------------------------------------------------------------------
-//
 //	bdactor.cpp - This file contains the code for the building and tree appearance classes
-//
 //	MechCommander 2
-//
 //---------------------------------------------------------------------------//
 // Copyright (C) Microsoft Corporation. All rights reserved.                 //
 //===========================================================================//
@@ -16,37 +12,34 @@
 
 // File-scope gate: one gate read per TU, process-start-constant, shared across
 // BldgAppearance::recalcBounds and TreeAppearance::recalcBounds. Matches the
-// file-scope pattern in code/terrobj.cpp:176.
+// file-scope pattern in code/terrobj.cpp.
 bool s_tobjSplitBdOn = mc2::gate::get<"MC2_TOBJ_COST_SPLIT">();
 
 // FOLIAGE-ALPHAFLAG-1: MC2_PROP_FOLIAGE_ALPHAFLAG (default OFF).
-//
 // THE BUG. Both recipe paths (BldgAppearance/TreeAppearance::registerStatic)
 // built their per-instance flags word with
 //     if (child->GetIsSpotlight()) flags |= (1u << 2);
 // but bit 2 was repurposed to kFlagIsAlphaTest in T3.2 (see the lockstep note
-// at gos_static_prop_batcher.cpp:5590-5600 and the shader-side declaration at
-// static_prop.vert:690). Spotlight children are `continue`-skipped ~10 lines
+// at gos_static_prop_batcher.cpp and the shader-side declaration at
+// static_prop.vert). Spotlight children are `continue`-skipped ~10 lines
 // above both sites, so bit 2 was NEVER set on the recipe path at all. Two
 // shader features that key off it were consequently dead there:
 //   1. the alpha-test EXCLUSION in the MC2_PROP_BASE_LIGHT_DIR wrap term
-//      (static_prop.vert:800) — foliage was modulated by a directional term
+//      (static_prop.vert) — foliage was modulated by a directional term
 //      explicitly designed to exclude it;
-//   2. two-sided abs(NdotL) foliage lighting (static_prop.vert:731).
-//
+//   2. two-sided abs(NdotL) foliage lighting (static_prop.vert).
 // WHY GATED, AND WHY GATED *HERE*. GpuStaticPropBatcher::submitMultiShape
 // already sets bit 2 correctly from the same alphaTestOn source
-// (gos_static_prop_batcher.cpp:5575), so two-sided foliage lighting is ALREADY
+// (gos_static_prop_batcher.cpp), so two-sided foliage lighting is ALREADY
 // LIVE on that path in the shipped render. Gating the shader-side abs() branch
 // would therefore have CHANGED shipped pixels. Gating at this emission site
 // instead makes default-OFF byte-identical by construction (the recipe path
 // emits the same zero bit it emits today, and submitMultiShape is untouched),
 // and makes gate-ON *converge* the two paths rather than diverge them.
-//
 // NOT a GBuffer1 classification change either way: the alpha-test shadow class
 // (a=0.1875, PROP-ALPHA-SHADOW-CLASS-1) is driven by the per-PACKET
 // materialFlags baked at registerType from the same alphaTestOn
-// (gos_static_prop_batcher.cpp:2894), which is an independent channel from this
+// (gos_static_prop_batcher.cpp), which is an independent channel from this
 // per-INSTANCE flags word. So this cannot double-classify and cannot move
 // shipped shoreline pixels.
 const bool s_propFoliageAlphaFlag = mc2::gate::get<"MC2_PROP_FOLIAGE_ALPHAFLAG">();
@@ -145,7 +138,6 @@ int ObjectTextureSize = 128;
 bool reloadBounds = false;
 MidLevelRenderer::MLRClipper * theClipper = NULL;
 
-//-----------------------------------------------------------------------------
 // class BldgAppearance
 void BldgAppearance::setWeaponNodeUsed (long weaponNode)
 {
@@ -157,7 +149,6 @@ void BldgAppearance::setWeaponNodeUsed (long weaponNode)
 	}
 }
 
-//-----------------------------------------------------------------------------
 Stuff::Vector3D BldgAppearance::getWeaponNodePosition (long nodeId)
 {
 	Stuff::Vector3D result = position;
@@ -166,7 +157,6 @@ Stuff::Vector3D BldgAppearance::getWeaponNodePosition (long nodeId)
 	
 	//We already know we are using this node.  Do NOT increment recycle or nodeUsed!
 		
-   	//-------------------------------------------
    	// Create Matrix to conform to.
    	Stuff::UnitQuaternion qRotation;
    	float yaw = rotation * DEGREES_TO_RADS;
@@ -200,7 +190,6 @@ Stuff::Vector3D BldgAppearance::getWeaponNodePosition (long nodeId)
  	return result;
 }
 
-//-----------------------------------------------------------------------------
 Stuff::Vector3D BldgAppearance::getHitNode (void)
 {
 	if (hitNodeId == -1)
@@ -210,10 +199,8 @@ Stuff::Vector3D BldgAppearance::getHitNode (void)
  	return result;
 }
 
-//-----------------------------------------------------------------------------
 long BldgAppearance::getWeaponNode (long weaponType)
 {
-	//------------------------------------------------
 	// Scan all weapon nodes and find least used one.
 	long leastUsed = 999999999;
 	long bestNode = -1;
@@ -232,7 +219,6 @@ long BldgAppearance::getWeaponNode (long weaponType)
  	return bestNode;
 }
 		
-//-----------------------------------------------------------------------------
 float BldgAppearance::getWeaponNodeRecycle (long node)
 {
 	if ((node >= 0) && (node < appearType->numWeaponNodes))
@@ -241,7 +227,6 @@ float BldgAppearance::getWeaponNodeRecycle (long node)
 	return 0.0f;
 }
 
-//-----------------------------------------------------------------------------
 void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 {
 	Appearance::init(tree,obj);
@@ -322,7 +307,6 @@ void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		bldgShape = appearType->getBldgRenderShape(0)->CreateFrom();
 		buildingPbrRenderActive = appearType->buildingPbrEnabled;
 
-		//-------------------------------------------------
 		// Load the texture and store its handle.
 		for (int i=0;i<bldgShape->GetNumTextures();i++)
 		{
@@ -461,7 +445,6 @@ void bldgTriggerStaticShadowRebakeIfArmed(bool wasRegistered, int32_t recipeInde
                                                   const char* reason);
 bool bldgStaticShadowRebakeGatesActive();
 
-//-----------------------------------------------------------------------------
 void BldgAppearance::setObjStatus (long oStatus)
 {
 	if (status != oStatus)
@@ -471,7 +454,6 @@ void BldgAppearance::setObjStatus (long oStatus)
 		// Building::setDamage -> here). Only OBJECT_STATUS_DESTROYED, not
 		// OBJECT_STATUS_DISABLED (disabled is a reversible non-destroy state
 		// -- e.g. a powered-down building -- and should keep its shadow).
-		//
 		// MEASURED (2026-07-16, MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE_TEST_
 		// DESTROY_AT_FRAME repro on mc2_24): re-arming the shadow latch alone
 		// and relying on the ordinary shape-swap auto-detection (a LATER
@@ -490,7 +472,6 @@ void BldgAppearance::setObjStatus (long oStatus)
 		// the new rubble shape instead of the shape-swap path -- same
 		// eventual outcome, no double-invalidate risk (the guard inside is
 		// `if (staticReg.registered ...)`).
-		//
 		// GATED (byte-identical when off): only take the synchronous path
 		// when the rebake would actually fire -- gates() checked BEFORE
 		// invalidateStaticRegistration() runs, not just inside the trigger
@@ -553,7 +534,6 @@ void BldgAppearance::setObjStatus (long oStatus)
 
 		if (bldgShape)
 		{
-			//-------------------------------------------------
 			// Load the texture and store its handle.
 			for (long i=0;i<bldgShape->GetNumTextures();i++)
 			{
@@ -596,12 +576,10 @@ void BldgAppearance::setObjStatus (long oStatus)
 	status = oStatus;
 }
 
-//-----------------------------------------------------------------------------
 Stuff::Vector3D BldgAppearance::getNodeNamePosition (const char *nodeName)
 {
 	Stuff::Vector3D result = position;
 	
-   	//-------------------------------------------
    	// Create Matrix to conform to.
    	Stuff::UnitQuaternion qRotation;
    	float yaw = rotation * DEGREES_TO_RADS;
@@ -622,12 +600,10 @@ Stuff::Vector3D BldgAppearance::getNodeNamePosition (const char *nodeName)
 	return result;
 }
 
-//-----------------------------------------------------------------------------
 Stuff::Vector3D BldgAppearance::getNodeIdPosition (long nodeId)
 {
 	Stuff::Vector3D result = position;
 	
-   	//-------------------------------------------
    	// Create Matrix to conform to.
    	Stuff::UnitQuaternion qRotation;
    	float yaw = rotation * DEGREES_TO_RADS;
@@ -648,21 +624,17 @@ Stuff::Vector3D BldgAppearance::getNodeIdPosition (long nodeId)
 	return result;
 }
 
-//-----------------------------------------------------------------------------
 bool BldgAppearance::PerPolySelect (long mouseX, long mouseY)
 {
 	return bldgShape->PerPolySelect(mouseX,mouseY);
 }
 
-//-----------------------------------------------------------------------------
 void BldgAppearance::setGesture (unsigned long gestureId)
 {
-	//------------------------------------------------------------
 	// Check if state is possible.
 	if (gestureId >= MAX_BD_ANIMATIONS)
 		return;
 
-	//------------------------------------------------------------
 	// Check if object destroyed.  If so, no animation!
 	if ((status == OBJECT_STATUS_DESTROYED) || (status == OBJECT_STATUS_DISABLED))
 		return;
@@ -703,7 +675,6 @@ void BldgAppearance::setGesture (unsigned long gestureId)
 		++s_animStateToStateGesture;
 	}
 
-	//----------------------------------------------------------------------
 	// If state is OK, set animation data, set first frame, set loop and
 	// reverse flag, and start it going until you hear otherwise.
 	appearType->setAnimation(bldgShape,gestureId);
@@ -736,14 +707,12 @@ void BldgAppearance::setGesture (unsigned long gestureId)
 		canTransition = true;		//We can change immediately to another animation because we have no animation for this state!
 }
 
-//-----------------------------------------------------------------------------
 void BldgAppearance::setMoverParameters (float turretRot, float lArmRot, float rArmRot, bool isAirborne)
 {
 	turretYaw = turretRot;
 	turretPitch = lArmRot;
 }
 
-//-----------------------------------------------------------------------------
 void BldgAppearance::setObjectParameters (const Stuff::Vector3D &pos, float Rot, long sel, long team, long homeRelations)
 {
 	rotation = Rot;
@@ -758,7 +727,6 @@ void BldgAppearance::setObjectParameters (const Stuff::Vector3D &pos, float Rot,
 	homeTeamRelationship = homeRelations;
 }
 
-//-----------------------------------------------------------------------------
 bool BldgAppearance::isMouseOver (float px, float py)
 {
 	if (inView)
@@ -778,7 +746,6 @@ bool BldgAppearance::isMouseOver (float px, float py)
 	return(inView);
 }	
 
-//-----------------------------------------------------------------------------
 bool BldgAppearance::recalcBounds (void)
 {
 	// F3 CPU projection cost-baseline: aggregate per-actor scope into the
@@ -794,7 +761,6 @@ bool BldgAppearance::recalcBounds (void)
 
 	if (eye)
 	{
-		//-------------------------------------------------------------------
 		//NEW METHOD from the WAY BACK Days
 		setVisibilityGatesFromLegacy(true);
 
@@ -855,11 +821,9 @@ bool BldgAppearance::recalcBounds (void)
 		// ONLY; LOD-1+ would be unloaded after any LOD swap.
 	}
 
-
 	return(inView);
 }
 
-//-----------------------------------------------------------------------------
 void BldgAppearance::recalcBoundsAndStamp() {
 	// FRAME-JOBS-1 worker path. Do not call from game logic.
 	extern uint32_t g_mc2FrameCounter;
@@ -868,13 +832,11 @@ void BldgAppearance::recalcBoundsAndStamp() {
 	boundsFrame = g_mc2FrameCounter;
 }
 
-//-----------------------------------------------------------------------------
 bool BldgAppearance::playDestruction (void)
 {
 	//Check if there is a Destruct FX
 	if (appearType->destructEffect[0])
 	{
-		//--------------------------------------------
 		// Yes, load it on up.
 		unsigned flags = gosFX::Effect::ExecuteFlag;
 

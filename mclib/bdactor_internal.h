@@ -1,10 +1,8 @@
 // Shared surface of the bdactor translation units (bdactor*.cpp).
-//
 // bdactor.cpp keeps the shared globals and the Bldg accessors/init/status/bounds code; the rest of the
 // BldgAppearance / TreeAppearance implementation is split by responsibility (see DOC in each piece).
 #ifndef BDACTOR_INTERNAL_H
 #define BDACTOR_INTERNAL_H
-
 
 #include <map>    // STATIC-REGISTRY-COVERAGE-RECON-1: top shape names
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
@@ -168,7 +166,6 @@ namespace mc2_lightslot_trace {
 }
 
 inline bool propFoliageAlphaFlag() { return s_propFoliageAlphaFlag; }
-//******************************************************************************************
 // GPU-VENDOR-DETECT-1: defined in GameOS/gameos/gos_render.cpp. True only on
 // NVIDIA GPUs. The GPU-driven static-prop stack (compute cull -> indirect
 // multidraw -> persistent-mapped readback) was only validated on AMD RDNA3; on

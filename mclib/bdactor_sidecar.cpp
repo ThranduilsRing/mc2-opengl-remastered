@@ -2,7 +2,6 @@
 // Declared in the class headers; shared names in bdactor_internal.h.
 #include "bdactor_internal.h"
 
-
 bool buildingPbrGateEnabled()
 {
 	return mc2::gate::get<"MC2_BUILDING_PBR">();
@@ -419,14 +418,13 @@ void submitBuildingFootprintShadow(const BldgAppearance* appearance)
 	pushFootprintTri(o01, i00, i01, outer, inner, inner);
 }
 
-//-----------------------------------------------------------------------------
 // MODEL-OVERRIDE texture binding. The dual-shape override RENDER multishape
 // (bldgRenderShape / treeRenderShape) is what the GPU static-prop batcher
 // registers + draws (BldgAppearance/TreeAppearance::registerStatic). Its
 // per-material texture NAMES are assigned by the Assimp importer
 // (BuildTextureList -> data/tgl/<size>/<name>.tga). But those names are NOT
 // resolved to GOS texture handles anywhere on the *type* shape — the stock
-// per-instance loaders (~bdactor.cpp:3786/935) only touch the CreateFrom'd
+// per-instance loaders (~bdactor.cpp) only touch the CreateFrom'd
 // per-instance shape, leaving the registered type render shape with
 // gosTextureHandle=0xFFFFFFFF. The batcher then sees W<=0 and falls back to a
 // borrowed (wrong) layer. Resolve them here, on the type render multishape,

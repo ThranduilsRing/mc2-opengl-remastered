@@ -2,7 +2,6 @@
 // Declared in the class headers; shared names in bdactor_internal.h.
 #include "bdactor_internal.h"
 
-
 void TreeAppearance::touch()
 {
 	// FRAME-JOBS-2F: if touchSerialCommit() already ran this frame (split path active),
@@ -51,7 +50,7 @@ void TreeAppearance::touch()
 		// [LIGHTBRIDGE v1] C6 retirement: repoint to the primed 38d8720 slot
 		// (zero FNV/memcmp; cachedFrame_ stamped). MISS keeps the legacy
 		// resubmit (NOT CacheGpuLightData -- terrain-color-staleness,
-		// msl.cpp:1874-1887). MC2_LIGHTBAKE=0 -> legacy path bit-for-bit.
+		// msl.cpp). MC2_LIGHTBAKE=0 -> legacy path bit-for-bit.
 		extern bool mc2LightBakeEnabled();
 		extern bool mc2IsBakedStaticLightPresent(int32_t);
 		// [LIGHTBRIDGE-BAKED-PROBE-1] probe only — EmitBakedGpuLightData discards baked
@@ -71,7 +70,7 @@ void TreeAppearance::touch()
 
 // FRAME-JOBS-2D: lock-free per-instance prep; runs on worker threads.
 // selectActiveLOD() reads per-instance state only (no shared mutation).
-// treeShape->Touch() is lock-free (verified: sets lastTurnTransformed only, tgl.cpp:4073).
+// treeShape->Touch() is lock-free (verified: sets lastTurnTransformed only, tgl.cpp).
 void TreeAppearance::touchWorkerPrepass()
 {
 	selectActiveLOD();
@@ -228,7 +227,6 @@ void TreeAppearance::registerStatic() {
 	// transformed render-instance, its own buildRecipeFromShape pass, its own
 	// syncStaticProp recipe index, and (via the post-register bake re-arm) its
 	// own permanent baked light slot.
-	//
 	// LOD0 reuses the existing per-instance `treeShape` (which is
 	// CreateFrom(getTreeRenderShape(0))) so the LOD0 recipe + the IsStaticNow
 	// `staticReg[0].shape == treeShape` key are byte-identical to pre-LOD
@@ -237,7 +235,6 @@ void TreeAppearance::registerStatic() {
 	// the immutable per-type VBO (registered above), and only its recipe/light
 	// slot are persisted in staticReg[lod]. treeShape stays collision/bounds +
 	// LOD0 render; collision reads stock treeShape[] (untouched).
-	//
 	// M4: a buildRecipe MISS for a given LOD marks ONLY that LOD unavailable and
 	// CONTINUES — never aborts the whole instance or half-populates. LOD0 MISS
 	// still leaves staticReg[0].registered=false (first-render fallback covers

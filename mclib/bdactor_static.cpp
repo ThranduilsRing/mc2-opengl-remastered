@@ -2,7 +2,6 @@
 // Declared in the class headers; shared names in bdactor_internal.h.
 #include "bdactor_internal.h"
 
-
 // BLDG-TYPE-ANIM-GATE-FIX-1 kill-switch.
 // Unset/1 = new: idle animatable-type buildings eligible for static path.
 // 0       = legacy: bldgTypeHasAnimations disqualifies entire type.
@@ -28,7 +27,6 @@ static std::atomic<int64_t> g_rc_isStaticEligibleNo{0};  // unregistered and not
 static std::mutex            g_rc_shapeMu;
 static std::map<std::string, int> g_rc_shapeNames;
 
-//-----------------------------------------------------------------------------
 // Stage 3.D: BldgAppearance static-registry path. Mirror of TreeAppearance's
 // IsStaticNow / touch / invalidateStaticRegistration / isStaticEligible.
 // Registry-replay eligibility for buildings is stricter than for trees because
@@ -36,13 +34,12 @@ static std::map<std::string, int> g_rc_shapeNames;
 // memory/bldg_animation_lod_swap_unsafe.md WAS the load-bearing reason: animated
 // types share LOD-0 node-index state across instances, so replaying a recipe
 // for an animated building drives the wrong node when LOD swaps.
-//
 // ENV-DROP-CLOSE-1 (2026-07-30) -- THAT MECHANISM IS DEAD TODAY. Building LOD is
-// pinned to 0: every currentLOD write in this file assigns 0 (:1499 :1678 :5268
-// :5336 :5807 :6183 :7081 :7135), no path assigns nonzero, and the LOD-select
-// body was deleted from recalcBounds (see the LATENT HAZARD note at :2002). There
+// pinned to 0: every currentLOD write in this file assigns 0 (  
+//    ), no path assigns nonzero, and the LOD-select
+// body was deleted from recalcBounds (see the LATENT HAZARD note). There
 // is no LOD swap for the shared shapeId cache to be wrong about. The cache defect
-// itself is unfixed (msl.cpp:3003 shapeIdsSet is still per-type), so the hazard is
+// itself is unfixed (msl.cpp shapeIdsSet is still per-type), so the hazard is
 // LATENT, not gone -- it re-arms the moment the TEMP LOD-0 pin is lifted.
 // Do NOT cite it to explain a present-day building/turret symptom; several lanes
 // were sent chasing this dead path on 2026-07-30.
@@ -174,7 +171,7 @@ void BldgAppearance::registerStatic() {
 
 	// Compute transform — same coordinate convention as BldgAppearance::update().
 	// At mission-load time position.z may not yet hold terrain elevation (set by
-	// bldng.cpp:810 on first update), so use getTerrainElevation() directly.
+	// bldng.cpp on first update), so use getTerrainElevation() directly.
 	float yaw = rotation * DEGREES_TO_RADS;
 	Stuff::UnitQuaternion rot;
 	rot = Stuff::EulerAngles(0.0f, yaw, 0.0f);
@@ -254,7 +251,7 @@ void BldgAppearance::registerStatic() {
 		TG_Shape* child = rec->node;
 		// 2026-05-10 fix: skip non-SHAPE_NODE children (helpers, spotlight
 		// emitters, animation roots) — mirrors GpuStaticPropBatcher::submitMultiShape
-		// at gos_static_prop_batcher.cpp:2047. Without this, the loop hits a
+		// at gos_static_prop_batcher.cpp. Without this, the loop hits a
 		// helper, buildRecipeFromShape's static_cast<TG_TypeShape*>(myType)
 		// produces a pointer that isn't in s_typeIndex, returns false, and
 		// the entire building registration aborts on its FIRST helper. This
@@ -294,10 +291,9 @@ void BldgAppearance::registerStatic() {
 		// by MC2_LIGHT_CONE_GLOW=0). The bit-2 instanceFlag it used to set was
 		// already dead (shader read deleted in T3.2).
 		// Killswitch MC2_STATICPROP_RECIPE_SPOTLIGHT_SKIP=0 restores the bake.
-		//
 		// CONE-LEAF-NAME INVARIANT (batch-8C -- DO NOT WIDEN THIS PREDICATE):
 		// GetIsSpotlight() is TRUE only for leaves whose node name carries the exact
-		// 10-char "SpotLight_" prefix (tgl.cpp:345/561, case-insensitive). The mc2_10
+		// 10-char "SpotLight_" prefix (tgl.cpp, case-insensitive). The mc2_10
 		// saved_212019 "cream wedge" belongs to the standalone `Spotlight` prop (leaf
 		// 'L_SpotLight', a TEXTURED 16-vert lamp head, bitmap L_Spotlight.tga), which is
 		// NOT "SpotLight_"-prefixed, so it is legit geometry this skip must leave alone.
@@ -360,7 +356,7 @@ void BldgAppearance::registerStatic() {
 			fprintf(stderr, "[SEAMPROBE] bldg buildRecipe HIT name=%s leaf=%d child=%p node=%s typeID=%u\n",
 				appearType->name, i, (void*)child, child->getNodeName(), inst.typeID), fflush(stderr);
 		// EDITOR-STATIC-RECIPE-FROM-TYPE-1: the recipe is built from the INSTANCE
-		// bldgShape (a CreateFrom copy, bdactor.cpp:1440). For a building placed at
+		// bldgShape (a CreateFrom copy, bdactor.cpp). For a building placed at
 		// runtime in the editor, that copy's leaf child->myType registers AFTER the
 		// one-shot finalizeGeometry() latch -> it gets a typeID in s_typeIndex but
 		// its geometry is NOT in the immutable VBO (batcher_getTypeDrawInfo
@@ -439,7 +435,7 @@ void BldgAppearance::registerStatic() {
 		// → all-zero lighting slot → black actor. Setting needsFullBakeNextFrame
 		// uses the existing late-reg recovery mechanism: IsStaticNow() returns
 		// false until the next update() runs a full TransformMultiShape and clears
-		// the flag (bdactor.cpp:2313). One-time cost of one extra update() per
+		// the flag (bdactor.cpp). One-time cost of one extra update() per
 		// mission-load-registered actor; recovers the UPDATE_SKIP perf win
 		// every frame thereafter. Spec:
 		// docs/superpowers/specs/2026-05-06-update-skip-touch-residual-debug-strategy.md
@@ -562,7 +558,7 @@ void BldgAppearance::touch()
 	// currently registered (staticReg.registered). Nonzero delta proves fix works.
 	if (bldgTypeHasAnimations(appearType) && bdAnimationState == -1 && staticReg.registered)
 		s_animTypeIdleNowStatic.fetch_add(1, std::memory_order_relaxed);
-	// MC2_STATIC_UPDATE_SKIP defaults TRUE (terrobj.cpp:92); touch() is the
+	// MC2_STATIC_UPDATE_SKIP defaults TRUE (terrobj.cpp); touch() is the
 	// DEFAULT path. update() runs only when the env var is explicitly cleared.
 	if (bldgShape) {
 		const bool stableLightSkipArmed = mc2StableLightSkipEnabled();
@@ -596,7 +592,7 @@ void BldgAppearance::touch()
 		// write advancing lastTurnTransformed) before returning — the non-split
 		// path bundles Touch() with the resubmit, whereas the split path runs Touch()
 		// in touchWorkerPrepass(). Skipping only the expensive resubmit keeps the
-		// legacy CPU-render staleness guard (tgl.cpp:3000) byte-identical. staticReg
+		// legacy CPU-render staleness guard (tgl.cpp) byte-identical. staticReg
 		// fields are already correct from the last full update()/resubmit. Gate:
 		// mc2StableLightSkipTouchEnabled() (default OFF => resubmit still runs).
 		if (mc2StableLightSkipTouchEnabled() && mc2LightbridgeStableSkipEnabled()
@@ -610,7 +606,7 @@ void BldgAppearance::touch()
 		// [LIGHTBRIDGE v1] C6 retirement: repoint to the primed 38d8720 slot
 		// (zero FNV/memcmp; cachedFrame_ stamped). MISS keeps the legacy
 		// resubmit (NOT CacheGpuLightData -- terrain-color-staleness,
-		// msl.cpp:1874-1887). MC2_LIGHTBAKE=0 -> legacy path bit-for-bit.
+		// msl.cpp). MC2_LIGHTBAKE=0 -> legacy path bit-for-bit.
 		extern bool mc2LightBakeEnabled();
 		extern bool mc2IsBakedStaticLightPresent(int32_t);
 		// THREAD-SAFETY CLASSIFICATION: EmitBakedGpuLightData — WORKER_SAFE.
@@ -618,7 +614,7 @@ void BldgAppearance::touch()
 		//     on the TG_MultiShape pointed to by bldgShape (unique per BldgAppearance
 		//     instance, never aliased across actors). (2) Makes NO GL calls
 		//     (glBufferSubData, glMapBuffer, etc.). (3) The 'baked' struct is
-		//     explicitly discarded ((void)baked in msl.cpp:2114) — the slot index IS
+		//     explicitly discarded ((void)baked in msl.cpp) — the slot index IS
 		//     recipeIndex, which is per-recipe-constant. Two calls on different shape
 		//     instances cannot conflict. ResubmitCachedGpuLightData (the else branch)
 		//     also writes only per-instance members on the same hot path; no shared
@@ -644,7 +640,7 @@ void BldgAppearance::touch()
 }
 
 // FRAME-JOBS-2D: lock-free per-instance prep; runs on worker threads.
-// bldgShape->Touch() is lock-free (verified: sets lastTurnTransformed only, tgl.cpp:4073).
+// bldgShape->Touch() is lock-free (verified: sets lastTurnTransformed only, tgl.cpp).
 // s_animTypeIdleNowStatic.fetch_add is atomic — worker-safe.
 void BldgAppearance::touchWorkerPrepass()
 {
@@ -829,7 +825,6 @@ void BldgAppearance::touchSerialCommit()
 	// [LIGHTBRIDGE-STABLE-SKIP-WIRE-1]: skip Section C (EmitBakedGpuLightData +
 	// getCachedGpuLightIndex + staticReg writes) when MC2_LIGHTBRIDGE_STABLE_SKIP=1
 	// and this object's baked light slot is known valid for this frame.
-	//
 	// INVARIANT proof (verified 2026-06-20):
 	//   Q1: resetLightData() rebases lightDataStructuresCount to s_staticLightHighWater
 	//       (not 0) when MC2_LIGHTBAKE is on. lightData_[0..s_staticLightHighWater) is
@@ -931,7 +926,6 @@ void BldgAppearance::invalidateStaticRegistration()
 	staticReg = {};
 }
 
-//-----------------------------------------------------------------------------
 void BldgAppearance::destroy (void)
 {
 	// Capture BEFORE invalidateStaticRegistration() clears staticReg below.

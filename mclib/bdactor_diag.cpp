@@ -2,8 +2,6 @@
 // Declared in the class headers; shared names in bdactor_internal.h.
 #include "bdactor_internal.h"
 
-
-//-----------------------------------------------------------------------------
 // [LIGHTBAKE-PROOF v1] A/B parity trace (defined in mclib/txmmgr.cpp). File-scope
 // declaration — never declared inside a function body. Proves the baked permanent
 // slot == the gathered transient record byte/hash.
@@ -24,7 +22,6 @@ extern void mc2LightBakeParityCheck(int32_t recipeIndex, const TG_HWLightsData* 
 // CacheGpuLightData directly); generic props take the no-actor-light
 // path. C++-only. See docs/superpowers/plans/
 // 2026-05-17-static-lighting-bake-SIMPLIFIED.md
-// ============================================================================
 // [LIGHTSLOT v1] Task 0 — light-slot cardinality PROOF GATE (diagnostic only,
 // env-gated MC2_LIGHTSLOT_TRACE, ZERO behavior change). Proves whether the
 // unique static-prop light slots consumed by an override forest are bounded by
@@ -32,7 +29,6 @@ extern void mc2LightBakeParityCheck(int32_t recipeIndex, const TG_HWLightsData* 
 // baked table, or scale with INSTANCES (K). Pure counting; emits ONE line per
 // map at mission_ready (NOT per-frame). All txmmgr numbers read via accessor
 // free fns (defined mclib/txmmgr.cpp).
-// ============================================================================
 extern uint32_t g_mc2FrameCounter;  // mclib/tgl.cpp
 bool mc2StableLightSkipEnabled() {
     static const bool s_enabled = mc2::gate::get<"MC2_STABLE_LIGHT_SKIP">();
@@ -162,11 +158,9 @@ void recordStableLightSkipDiag(bool armed, bool eligible,
     }
 }
 
-// ============================================================================
 // [LIGHTBRIDGE-STABLE-SKIP-WIRE-1] Gate + diagnostics
 // MC2_LIGHTBRIDGE_STABLE_SKIP=1  — enable the skip path (default OFF)
 // MC2_LIGHTBRIDGE_STABLE_SKIP_DIAG=1 — enable per-frame diagnostic print (independent)
-// ============================================================================
 extern uint32_t mc2StaticLightHighWater();  // txmmgr.cpp — s_staticLightHighWater accessor
 
 bool mc2LightbridgeStableSkipEnabled() {
@@ -273,11 +267,9 @@ void lbssRecordTree(bool taken, bool blk_idx)
     if (blk_idx) ++s_lbssDiag.t_blk_idx;
 }
 
-// ============================================================================
 // FRAME-JOBS-2F: TOUCH-ENTRY-UNIFICATION diagnostics
 // MC2_FRAME_JOBS_TOUCH_DIAG=1 — enable per-300-frame print (independent of lbss diag)
 // Counters are cumulative per-frame accumulators, reset every 300 frames.
-// ============================================================================
 bool mc2FrameJobsTouchDiagEnabled() {
     static const bool s_enabled = mc2::gate::get<"MC2_FRAME_JOBS_TOUCH_DIAG">();
     return s_enabled;
@@ -302,7 +294,6 @@ void touchEntryDiagRollFrame(uint32_t frame)
     s_touchEntryDiag = TouchEntryDiag{};
     s_touchEntryDiag.frame = frame;
 }
-
 
 // [LIGHTSLOT v1] accessor free fns (defined mclib/txmmgr.cpp, global scope).
 extern uint32_t mc2LightSlotBakedHighWater();
@@ -403,8 +394,6 @@ namespace mc2_lightslot_trace {
     }
 }
 
-//-----------------------------------------------------------------------------
-//---------------------------------------------------------------------------
 // FOGLIGHT-LATCH-1 (diagnostic): `fogLightSet` makes `lightRGB` a ONE-SHOT
 // per-actor latch -- sampled from land->getTerrainLight(position) at whatever
 // moment this actor first ran update(), then fed to eye->setLightColor(0,...)
@@ -413,7 +402,6 @@ namespace mc2_lightslot_trace {
 // the SAME actor at the SAME position would sample RIGHT NOW. If a dark truck's
 // latched value differs from its current value while a correctly-lit building's
 // agree, the latch is the defect.
-//
 // MC2_PROP_LIGHT_LATCH_DIAG=1 enables. MC2_PROP_LIGHT_LATCH_DIAG_INTERVAL sets
 // the per-frame re-sample throttle (default 120 frames). Default OFF: zero cost
 // (one boot-cached bool test on the per-frame path).

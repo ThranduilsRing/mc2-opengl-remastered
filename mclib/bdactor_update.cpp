@@ -2,7 +2,6 @@
 // Declared in the class headers; shared names in bdactor_internal.h.
 #include "bdactor_internal.h"
 
-
 // T1.15 SpotLight_ illumination diagnostic — registration probe (bldg class).
 // Env-gated per Debug Instrumentation Rule. First-hit is always-on (one stderr
 // line per BldgAppearance instance that walks the lazy-init block). Periodic
@@ -43,7 +42,6 @@ long BldgAppearance::update (bool animate)
 	Stuff::Point3D xlatPosition;
 	Stuff::UnitQuaternion rot;
 
-	//----------------------------------------
 	// Recycle the weapon Nodes
 	if (nodeRecycle)
 	{
@@ -110,9 +108,9 @@ long BldgAppearance::update (bool animate)
 	{
 		if (!spotlightsRegistered_ && eye && eye->isNight)
 		{
-			// Public accessors (msl.h:431 GetNumShapes, msl.h:438 GetShapeRec)
+			// Public accessors (msl.h GetNumShapes, msl.h GetShapeRec)
 			// because BldgAppearance is NOT in the TG_MultiShape friend list at
-			// msl.h:251-256 (C-r4 C1 fix).
+			// msl.h (C-r4 C1 fix).
 			// [SPOT_DIAG v1] T1.15 per-actor registration counters.
 			int diagChildrenWalked = 0;
 			int diagSpotlightsFound = 0;
@@ -124,15 +122,15 @@ long BldgAppearance::update (bool animate)
 				if (!recp) continue;
 				TG_Shape* child = recp->node;
 				// Mirror canonical batcher guards at
-				// gos_static_prop_batcher.cpp:2477 (C-r3 M1).
+				// gos_static_prop_batcher.cpp (C-r3 M1).
 				if (!child || !recp->processMe) continue;
 				++diagChildrenWalked;
-				if (!child->GetIsSpotlight()) continue;  // tgl.h:951
+				if (!child->GetIsSpotlight()) continue;  // tgl.h
 				++diagSpotlightsFound;
 
 				// Resolve node-NAME id (NOT listOfShapes index) per the anubis
-				// pattern at mech3d.cpp:3336-3338 (C-r3 C1).
-				const char* nodeName = child->getNodeName();  // tgl.h:964
+				// pattern at mech3d.cpp (C-r3 C1).
+				const char* nodeName = child->getNodeName();  // tgl.h
 				if (!nodeName) continue;
 				long nodeId = bldgShape->GetNodeNameId(nodeName);
 				if (nodeId == -1) continue;
@@ -143,7 +141,7 @@ long BldgAppearance::update (bool animate)
 				light->SetIntensity(0.5f);              // OQ4 initial
 				light->SetFalloffDistances(20.0f, 80.0f); // OQ4
 
-				long slotId = eye->addWorldLight(light);  // camera.h:805
+				long slotId = eye->addWorldLight(light);  // camera.h
 				if (slotId < 0) { free(light); continue; }  // pool overflow
 
 				spotlightLights_.push_back(light);
@@ -342,26 +340,25 @@ long BldgAppearance::update (bool animate)
 			}
 			spotlightLights_[k]->SetPosition(&childPos);
 			// Rule-2 correctness fix: lightToWorld is consumed at
-			// msl.cpp:1659 (s_lightToShape = lightToWorld * worldToShape).
+			// msl.cpp (s_lightToShape = lightToWorld * worldToShape).
 			// Without setting it, lightToShape collapses to worldToShape
 			// alone and the light's effective world position falls back to
 			// origin regardless of the `position` field for some consumers.
 			// Anubis sets this same matrix; existing per-building pointLight
-			// at bdactor.cpp:1955 also sets it. Translation-only suffices
+			// at bdactor.cpp also sets it. Translation-only suffices
 			// for POINT lights (matches the anubis/terrain-light pattern).
 			Stuff::LinearMatrix4D lightToWorldMatrix;
 			Stuff::Point3D childPosP;
 			if (mc2_cone_glow::spot_direction_fix_enabled())
 			{
 				// SPOTLIGHT-DIRECTION-1. TRAP: despite the name, TG_Light::
-				// direction is a POSITION for POINT/SPOT lights -- tgl.h:213
+				// direction is a POSITION for POINT/SPOT lights -- tgl.h
 				// says "This is the light spot center for POINT and SPOT", and
 				// the consumer in mclib/msl.cpp reads it as
 				//     lightPos = light->direction; shapePosition -= lightPos;
 				// i.e. it SUBTRACTS it from a world position to derive the
 				// per-vertex light vector. Writing a normalized aim vector here
 				// would be a silent wrong fix (it nearly happened twice).
-				//
 				// Both fields below use the same MC2 -> Stuff position swizzle
 				// (-x, z, y) as the sibling terrain-light registration earlier
 				// in this file; the historical code left `direction` at the
@@ -389,9 +386,9 @@ long BldgAppearance::update (bool animate)
 			lightToWorldMatrix.BuildTranslation(childPosP);
 			lightToWorldMatrix.BuildRotation(Stuff::EulerAngles(0.0f, 0.0f, 0.0f));
 			spotlightLights_[k]->SetLightToWorld(&lightToWorldMatrix);
-			// eye->isNight is a bare field at camera.h:272 (C-r3 C2). visible
-			// matches anubis at mech3d.cpp:3353 (C-r1 C5). forceLightsOut
-			// matches the existing per-building pointLight gate at :1933.
+			// eye->isNight is a bare field at camera.h (C-r3 C2). visible
+			// matches anubis at mech3d.cpp (C-r1 C5). forceLightsOut
+			// matches the existing per-building pointLight gate.
 			// Owner intent: is this lamp switched on at all? Kept SEPARATE from
 			// the pool predicate below — CONE-SPILL-COUPLING-1 suppresses the
 			// ground pool of a beam that lands nowhere, but the beam VOLUME is
@@ -423,7 +420,6 @@ long BldgAppearance::update (bool animate)
 		// beacon card. Deliberately outside the spotlightLights_ loop — a
 		// building can carry beacons WITHOUT carrying any SpotLight_ node
 		// (runway light strips are exactly that case).
-		//
 		// Owner predicate mirrors the spotlight one above (visible, not
 		// lights-out); night gating + the MC2_LIGHT_REALISM gate (default ON
 		// since CONE-SPILL-POLICY-1; =0 reverts)
@@ -466,7 +462,6 @@ long BldgAppearance::update (bool animate)
 		if (rotation < -180)
 			rotation += 360;
 
-		//-------------------------------------------
 		// Does math necessary to draw Tree
 		float yaw = rotation * DEGREES_TO_RADS;
 		rot = Stuff::EulerAngles(0.0f, yaw, 0.0f);
@@ -586,11 +581,9 @@ long BldgAppearance::update (bool animate)
 	float oldFrame = currentFrame;
 	if (animate && bdFrameRate != 0.0f)
 	{
-		//--------------------------------------------------------
 		// Make sure animation runs no faster than bdFrameRate fps.
 		float frameInc = bdFrameRate * frameLength;
 		
-		//---------------------------------------
 		// Increment Frames -- Everything else!
 		if (frameInc != 0.0f)
 		{
@@ -606,7 +599,6 @@ long BldgAppearance::update (bool animate)
 				setFirstFrame = false;
 			}
 	
-			//--------------------------------------
 			//Check Positive overflow of Animation
 			if (currentFrame >= appearType->getNumFrames(bdAnimationState))
 			{
@@ -618,8 +610,6 @@ long BldgAppearance::update (bool animate)
 				canTransition = true;		//Whenever we have completed one cycle or at last frame, OK to move on!
 			}
 			
-	
-			//--------------------------------------
 			//Check negative overflow of gesture
 			if (currentFrame < 0)
 			{
@@ -642,7 +632,7 @@ long BldgAppearance::update (bool animate)
 	{
 		bldgShape->SetUseShadow(false);
 
-		// LIGHT-ROW-PURE-1: declare the policy the mutation at :3918 applied
+		// LIGHT-ROW-PURE-1: declare the policy the mutation applied
 		// (sun-slot recolour with the latched terrain-light sample). Inert
 		// unless MC2_LIGHT_ROW_PURE / _VERIFY is on; reproduces that mutation
 		// exactly, and lets the verify gate prove the declaration still matches.
@@ -778,14 +768,14 @@ long BldgAppearance::update (bool animate)
 			}
 			// 2026-05-10: also seed cachedGpuLightIndex_ in the full-bake
 			// branch. Without this, the first-frame transition out of the
-			// H4 latch (set by registerStatic at :2754) leaves the index
-			// at UINT32_MAX, and the static-path render gate at :1612
+			// H4 latch (set by registerStatic) leaves the index
+			// at UINT32_MAX, and the static-path render gate
 			// (`getCachedGpuLightIndex() == UINT32_MAX → invalidate`)
 			// invalidates the registration on the very next render —
 			// markVisible() never fires, registry::flush() short-circuits,
 			// substrate gets no static-prop records, and the cull writes
 			// 0 to all bucketCountData. The fix mirrors the gpuEligible
-			// branch's CacheGpuLightData call at :2314 so any path
+			// branch's CacheGpuLightData call so any path
 			// through update() seeds the light index. Cheap: same call
 			// already runs unconditionally in submitMultiShape; here we
 			// just hoist its effect to be visible to render() this frame.
@@ -798,7 +788,6 @@ long BldgAppearance::update (bool animate)
 		if ((turn > 3) && useShadows)
 			beenInView = true;
 			
-		//------------------------------------------------
 		// Update GOSFX
 		if (destructFX && destructFX->IsExecuted())
 		{
@@ -936,7 +925,6 @@ long BldgAppearance::update (bool animate)
 						activity1 = NULL;
 					}
 				}
-				//
 
 			}
 		}
@@ -945,7 +933,6 @@ long BldgAppearance::update (bool animate)
 	return TRUE;
 }
 
-//-----------------------------------------------------------------------------
 void BldgAppearance::startActivity (long effectId, bool loop)
 {
 	//Check if we are already playing one.  If not, be active!
@@ -956,7 +943,6 @@ void BldgAppearance::startActivity (long effectId, bool loop)
 	{
    		if (strcmp(weaponEffects->GetEffectName(effectId),"NONE") != 0)
    		{
-			//--------------------------------------------
 			// Yes, load it on up.
 			unsigned flags = gosFX::Effect::ExecuteFlag|gosFX::Effect::LoopFlag;
 			if (!loop)
@@ -1063,7 +1049,6 @@ void BldgAppearance::startActivity (long effectId, bool loop)
 	}
 }
 
-//-----------------------------------------------------------------------------
 void BldgAppearance::stopActivity (void)
 {
 	if (isActivitying)		//Stop the effect if we are running it!!
@@ -1077,7 +1062,6 @@ void BldgAppearance::stopActivity (void)
 	isActivitying = false;
 }
 
-//-----------------------------------------------------------------------------
 void BldgAppearance::flashBuilding (float dur, float fDuration, DWORD color)
 {
 	duration = dur;

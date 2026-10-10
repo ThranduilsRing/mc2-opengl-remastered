@@ -2,8 +2,6 @@
 // Declared in the class headers; shared names in bdactor_internal.h.
 #include "bdactor_internal.h"
 
-
-//-----------------------------------------------------------------------------
 long BldgAppearance::render (long depthFixup)
 {
 	// GPU-batcher path bypasses inView here — the whole point of C2 is
@@ -37,12 +35,10 @@ long BldgAppearance::render (long depthFixup)
 			bldgShape->SetARGBHighLight(flashColor);
 		}
 		
-		//---------------------------------------------
 		// Call Multi-shape render stuff here.
 		// Slice 1 path (g_useGpuObjects). No cull bypass; submitMultiShape
 		// is per-child Layer-B by construction. Returns false only when
 		// EVERY child is ineligible.
-		//
 		// Caller-side accounting: recordEligibleActor() fires unconditionally
 		// when slice 1 reaches this site (so a null shape or skipped submit
 		// still counts toward eligible_actors). recordCpuFallback() fires
@@ -59,7 +55,7 @@ long BldgAppearance::render (long depthFixup)
 				GpuStaticPropPopulation::Building);
 
 			// Stage 3.D: static registry fast path (mirror of TreeAppearance
-			// at bdactor.cpp:4123). Set MC2_FORCE_DYNAMIC_BUILDINGS=1 to force
+			// at bdactor.cpp). Set MC2_FORCE_DYNAMIC_BUILDINGS=1 to force
 			// fallback to dynamic submitMultiShape for boundary diagnosis.
 			// 2026-05-10 diag: per-frame counters to localise buildings-don't-
 			// render bug (substrate=ON misses buildings; killswitch shows them).
@@ -335,7 +331,6 @@ long BldgAppearance::render (long depthFixup)
 			}
 		}
 		
-		//------------------------------------------
 		// Render GOS FX if necessary
 		if (destructFX && destructFX->IsExecuted())
 		{
@@ -471,19 +466,16 @@ long BldgAppearance::render (long depthFixup)
 			}
 		}
 
- 			   
 //		selected = FALSE;
 	}
 	return NO_ERR;
 }
 
-//-----------------------------------------------------------------------------
 long BldgAppearance::renderShadows (void)
 {
 	return NO_ERR;
 }
 
-//-----------------------------------------------------------------------------
 long TreeAppearance::render (long depthFixup)
 {
 	// Mirror BldgAppearance::render: bypass inView under GPU path — the
@@ -499,7 +491,6 @@ long TreeAppearance::render (long depthFixup)
 			color = colorTable[homeTeamRelationship];
 			//highLight = highLightTable[homeTeamRelationship];
 		}
-		//---------------------------------------------
 		// Call Multi-shape render stuff here.
 		// Slice 1 path (g_useGpuObjects). Same shape as BldgAppearance::render.
 		bool submittedToGpu = false;
@@ -528,7 +519,7 @@ long TreeAppearance::render (long depthFixup)
 				// ── [GUARD_FORWARD v1] ZERO-LIGHT-ROW-1 divergence census ──────
 				// Same measurement as BldgAppearance::render. Trees are the
 				// WEAKER of the two sites: TreeAppearance::touch/touchSerialCommit
-				// (:7604 / :7698) assign staticReg[activeLOD].lightDataIndex with
+				// assign staticReg[activeLOD].lightDataIndex with
 				// no sentinel test at all, where the building touch paths at least
 				// record one into hasValidStaticLight. Counting only.
 				{
@@ -617,7 +608,7 @@ long TreeAppearance::render (long depthFixup)
 			{
 				// Stage 3.C / M1: shape-swap invalidation. IsStaticNow()'s
 				// staticReg.shape==treeShape check routes us here when treeShape was
-				// reassigned (LOD swap at bdactor.cpp:3984, damage at ~3596/3626), but
+				// reassigned (LOD swap at bdactor.cpp, damage at ~3596/3626), but
 				// staticReg.registered==true still blocks the registration block below.
 				// Invalidate the stale entry first so the new shape gets registered.
 				// PERF DIAGNOSTIC 2026-05-07: count this branch — per capture 3
@@ -663,7 +654,7 @@ long TreeAppearance::render (long depthFixup)
 					staticReg[activeLOD].shape        = treeShape;
 					if (staticReg[activeLOD].registered) {
 						// COUNTER-HONESTY-1: tag Tree on the dynamic re-register
-						// path too (mirror of the Building tag at :2288). See
+						// path too (mirror of the Building tag). See
 						// TreeAppearance::registerStatic for the full rationale —
 						// behaviour-neutral, census-honest.
 						GpuStaticPropRegistry::setRecipePopulation(
@@ -720,13 +711,11 @@ long TreeAppearance::render (long depthFixup)
 		// I don't want my selection reset each time I draw HKG
 //		selected = FALSE;
 
-		//---------------------------------------------------------
 		// Render the Bounding Box to see if it is OK.
 	}
 	return NO_ERR;
 }
 
-//-----------------------------------------------------------------------------
 long TreeAppearance::renderShadows (void)
 {
 	return NO_ERR;
