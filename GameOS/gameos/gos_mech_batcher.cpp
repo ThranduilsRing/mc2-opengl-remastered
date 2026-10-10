@@ -506,7 +506,7 @@ struct ShadowDrawEntry {
     uint32_t instanceBase;
     uint32_t instanceCount;
 };
-static std::vector<ShadowDrawEntry> s_lastDrawCalls;
+std::vector<ShadowDrawEntry> s_lastDrawCalls;
 size_t                       s_lastTotalInstances = 0;
 size_t                       s_lastTotalBones     = 0;
 
