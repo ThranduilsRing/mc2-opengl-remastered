@@ -112,3 +112,19 @@ def test_icon_oob_red_and_appear_audit_advisory():
     assert "icon_oob" in v.buckets           # armed red
     assert "appear_audit" not in v.buckets   # disarmed (advisory detail only)
     assert any("appear_audit" in d for d in v.details)
+
+
+# G4: a VK gate resolved before main() fails the smoke run (the lazy-read contract of the VK gates).
+
+def test_premain_vk_gate_line_is_a_red_marker():
+    s = parse_log("[CONFIG v1] warn=premain name=MC2_VK_MECH_TIER1 premain_value=0 now=1\n")
+    assert s.marker_counts.get("config_premain_vk") == 1
+    r = _base()
+    r.marker_counts = dict(s.marker_counts)
+    v = evaluate(r, CFG, exit_code=0, walltime_s=31)
+    assert not v.passed and "config_premain_vk" in v.buckets
+
+
+def test_premain_line_for_a_non_vk_gate_is_not_this_bucket():
+    s = parse_log("[CONFIG v1] warn=premain name=MC2_TERRAIN_LOD_CHUNK premain_value=0 now=1\n")
+    assert s.marker_counts.get("config_premain_vk", 0) == 0
