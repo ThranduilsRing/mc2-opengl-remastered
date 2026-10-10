@@ -13,7 +13,7 @@ Mechlopedia.cpp			: Implementation of the Mechlopedia component.
 #include"logisticsdata.h"
 #include"unitprofile.h"   // EQUIP-ADD-UI-NAME-1 (S3): equipmentAddUiTextForStringId
 #include"mission.h"   // ENCYCLO-LAZYLOAD-1: initTGLForLogistics
-#include <cstdlib>    // ENCYCLO-3D-2: std::getenv (boot-tab harness target)
+#include <cstdlib>
 #include"platform_str.h"   // S_stricmp (encyclopedia_<tab> parse)
 #include"../resource.h"
 #include"prefs.h"

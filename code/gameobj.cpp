@@ -75,7 +75,7 @@
 #include"comndr.h"
 #endif
 
-#include <stdlib.h>  // getenv
+#include <stdlib.h>
 #include <stdio.h>   // printf, fflush
 #include <stdint.h>
 #include "../GameOS/gameos/diagnostic_trace.h"   // COMBAT-TRACE-1: weapon-fire JSONL events

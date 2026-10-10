@@ -6,7 +6,7 @@ SalvageMechArea.cpp			: Implementation of the SalvageMechArea component.
 //===========================================================================//
 \*************************************************************************************************/
 
-#include <cstdlib>   // getenv (MC2_SOAK_AUTOWIN fast-dismiss)
+#include <cstdlib>
 #include"pilotreviewarea.h"
 #include"inifile.h"
 #include"objmgr.h"

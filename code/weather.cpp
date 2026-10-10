@@ -25,7 +25,7 @@
 #include"tgl.h"
 #endif
 
-#include <cstdlib>  // getenv
+#include <cstdlib>
 #include <vector>   // MC2_RAIN_BATCH staging buffer
 #include "Gates/gate.h"
 

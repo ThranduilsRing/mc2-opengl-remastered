@@ -16,7 +16,7 @@
 #include "objtype.h"
 #include "cmponent.h"                    // WEAPON-SHADOW-COMPARE-1: MasterComponent::masterList
 #include <cstdio>                        // printf (report-only finding log)
-#include <cstdlib>                       // getenv (throwaway test hook)
+#include <cstdlib>
 #include <cstring>                        // strncpy (chassis stem copy)
 #include <cctype>                         // tolower (UNIT-SOURCE-FLIP-SWITCH-1)
 #include "modder_finding.h"              // MODDER-FIRST-ERROR-SURFACE-1: shared context format

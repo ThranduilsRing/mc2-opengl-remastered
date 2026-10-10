@@ -24,7 +24,7 @@
 
 #include"mc2video.h"
 #include "../GameOS/gameos/gos_smoke.h"
-#include <cstdlib>   // std::getenv (MC2_BOOT_VIDEO capture fixture)
+#include <cstdlib>
 
 #include "../resource.h"
 #include"gameos.hpp"
