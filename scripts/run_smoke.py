@@ -579,12 +579,17 @@ def main():
     ap.add_argument("--baseline-update", action="store_true")
     ap.add_argument("--kill-existing", action="store_true")
     # Safety hatch: restore old global-block behavior (ANY mc2.exe, regardless
-    # of deploy path, blocks the run). Default is path-aware (foreign exes are
-    # ignored with an advisory).
+    # of deploy path, blocks the run at once). Default is path-aware here and the
+    # host-wide lease then waits for any foreign engine.
     ap.add_argument("--block-any-mc2", action="store_true",
                     help="block on any running mc2.exe regardless of its deploy "
                          "path (legacy global-block behavior; default is "
                          "path-aware)")
+    ap.add_argument("--no-wait", action="store_true",
+                    help="fail at once (exit 4) when another lane's engine is running or holds the host game lease; the default is "
+                         "to wait for it (the lease is host-wide and covers every install)")
+    ap.add_argument("--wait-timeout", type=float, default=None, metavar="SECONDS",
+                    help="how long to wait for the host game lease (default 3600, or MC2_HOST_LEASE_TIMEOUT)")
     ap.add_argument("--duration", type=int)
     ap.add_argument("--lite", action="store_true",
                     help="SMOKE-LITE-1 inner-loop profile: mc2_10 (night/urban, "
@@ -1103,9 +1108,8 @@ def main():
         if pid in _same_pids:
             continue
         foreign.append((pid, path or cmd))
-    for pid, path in foreign:
-        print(f"[runner] ignoring foreign mc2.exe PID {pid} at {path}",
-              file=sys.stderr)
+    # A foreign engine (another install, another lane, the owner's game) no longer runs beside this one: the host-wide lease below
+    # waits until it is gone.
     if args.block_any_mc2:
         blockers = same_path + foreign
     else:
@@ -1131,6 +1135,17 @@ def main():
             print(f"[runner] ERROR: mc2.exe already running (PIDs {block_pids}); "
                   f"--kill-existing ends only orphans of a dead smoke run.", file=sys.stderr)
             sys.exit(4)
+
+    # Host-wide game lease (scripts/smoke_lib/host_lease.py): one lane's harness at a time may have an engine running on this host,
+    # whatever install it uses. Waits by default; --no-wait fails at once.
+    from scripts.smoke_lib import host_lease as _host_lease
+    try:
+        if not _host_lease.disabled():
+            _host_lease.acquire(f"run_smoke {_lane_token}", wait=not args.no_wait, timeout_s=args.wait_timeout,
+                                kill_orphans=args.kill_existing)
+    except _host_lease.HostLeaseBusy as _busy:
+        print(f"[runner] ERROR: {_busy}", file=sys.stderr)
+        sys.exit(4)
 
     if args.menu_canary or args.with_menu_canary:
         _why = _menu_canary_refusal()

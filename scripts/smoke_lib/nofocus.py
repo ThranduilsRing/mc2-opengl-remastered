@@ -358,6 +358,16 @@ class ExeRefused(RuntimeError):
     """The engine exe cannot keep itself off the user's desktop (see smoke_lib/exe_guard.py)."""
 
 
+def _hold_host_lease(argv: Sequence[str]) -> None:
+    """Wait for the host-wide game lease before an engine (game or editor) launch; a launcher that starts the engine counts too."""
+    try:
+        from . import exe_guard, host_lease
+    except ImportError:
+        from smoke_lib import exe_guard, host_lease
+    if any(exe_guard.engine_kind(a) is not None for a in argv or ()):
+        host_lease.ensure_held("nofocus " + os.path.basename(sys.argv[0]))
+
+
 def _vet_engine_exe(argv: Sequence[str]) -> None:
     """Refuse to launch a stale or fingerprint-less mc2.exe / editor exe.
 
@@ -411,6 +421,7 @@ def spawn(argv: Sequence[str], *, show_window: bool = False,
     if offscreen is None:
         offscreen = True
     _vet_engine_exe(argv)
+    _hold_host_lease(argv)
     proc = subprocess.Popen(
         list(argv),
         env=apply_env(env, small_window=small_window, offscreen=offscreen),
@@ -430,6 +441,7 @@ def run(argv: Sequence[str], *, show_window: bool = False,
     if offscreen is None:
         offscreen = True
     _vet_engine_exe(argv)
+    _hold_host_lease(argv)
     return subprocess.run(
         list(argv),
         env=apply_env(env, small_window=small_window, offscreen=offscreen),
