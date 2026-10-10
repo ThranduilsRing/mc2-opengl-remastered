@@ -1,0 +1,25 @@
+{
+ "base": "c1a7633ee",
+ "src": "GameOS/gameos/gos_mech_batcher.cpp",
+ "stem": "gos_mech_batcher",
+ "scripts": [
+  "scripts/check-gate-default-agreement.py",
+  "scripts/check-gpu-buffer-owners.py",
+  "scripts/check-raw-gl-depthfunc.py",
+  "scripts/check-raw-gl-depthmask.py",
+  "scripts/checklib.py",
+  "scripts/counter-honesty-allowlist.txt",
+  "scripts/gate_default_classifier.py",
+  "scripts/gl_shader_variants.json",
+  "tools/asset_viewer/asset_viewer_game_stubs.cpp",
+  "tools/gate_codemod.py",
+  "tools/gate_conflicts.py",
+  "tools/shader_offline_build/pilots.json"
+ ],
+ "_scripts_reason": "Reviewed: the raw-GL depthfunc / depthmask allowlists and the counter-honesty keys follow their code to gos_mech_batcher_flush.cpp (each check passes); gl_shader_variants.json is regenerated (231 variants compile and link); check-gpu-buffer-owners and check-texture-owners pass unchanged; the other scripts and stubs cite gos_mech_batcher.cpp lines in comments only; tools/gate_codemod.py, tools/gate_conflicts.py and the gate classifiers (lane 1 gate tooling) are not edited here.",
+ "add": [
+  "#ifdef MC2_VULKAN_ISLAND",
+  "#endif"
+ ],
+ "split_commit": "d9f3d13b6"
+}

@@ -15,7 +15,6 @@
  "files_over_1500": {
   "GameOS/gameos/engine_present_vk.cpp": 2749,
   "GameOS/gameos/gameosmain.cpp": 2811,
-  "GameOS/gameos/gos_mech_batcher.cpp": 3299,
   "GameOS/gameos/gos_static_prop_batcher_finalize.cpp": 2028,
   "GameOS/gameos/gos_static_prop_batcher_flush.cpp": 2324,
   "GameOS/gameos/gos_static_prop_registry.cpp": 2207,
@@ -25,7 +24,6 @@
   "GameOS/gameos/utils/shader_builder.cpp": 1546,
   "GameOS/gameos/vulkan_color_prop_island.cpp": 1785,
   "GameOS/gameos/vulkan_shadow_island_live.cpp": 1645,
-  "GameOS/gameos/vulkan_terrain_island.cpp": 3505,
   "GameOS/include/gameos.hpp": 3753,
   "GameOS/include/imagehlp.h": 1799,
   "GuiRuntime/EditorInspector.cpp": 1652,
@@ -85,7 +83,7 @@
   "mclib/vfxtile.cpp": 2944,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "009e31493",
+ "head": "f15cb970d",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -94,9 +92,9 @@
    "max_lines": 523
   },
   "GameOS": {
-   "files": 303,
-   "files_over_1500": 15,
-   "files_over_3000": 3,
+   "files": 312,
+   "files_over_1500": 13,
+   "files_over_3000": 1,
    "max_lines": 3753
   },
   "GuiRuntime": {
@@ -162,14 +160,6 @@
   {
    "file": "GameOS/include/gameos.hpp",
    "lines": 3753
-  },
-  {
-   "file": "GameOS/gameos/vulkan_terrain_island.cpp",
-   "lines": 3505
-  },
-  {
-   "file": "GameOS/gameos/gos_mech_batcher.cpp",
-   "lines": 3299
   },
   {
    "file": "code/brain_special_dispatch.cpp",
@@ -278,12 +268,20 @@
   {
    "file": "GameOS/gameos/gos_static_prop_batcher_finalize.cpp",
    "lines": 2028
+  },
+  {
+   "file": "code/mechicon.cpp",
+   "lines": 1967
+  },
+  {
+   "file": "code/mechlabscreen.cpp",
+   "lines": 1952
   }
  ],
  "total": {
-  "files": 1803,
-  "files_over_1500": 71,
-  "files_over_3000": 5,
+  "files": 1812,
+  "files_over_1500": 69,
+  "files_over_3000": 3,
   "max_lines": 3753
  },
  "version": 1

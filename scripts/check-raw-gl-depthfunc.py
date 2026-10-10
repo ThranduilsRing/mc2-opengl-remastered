@@ -95,7 +95,7 @@ FROZEN_BACKLOG = {
     "GameOS/gameos/gos_terrain_lod_chunk_draw.cpp",
     "GameOS/gameos/gos_vegetation.cpp",
     "GameOS/gameos/gos_render_context.cpp",
-    "GameOS/gameos/gos_mech_batcher.cpp",
+    "GameOS/gameos/gos_mech_batcher_flush.cpp",
     "GameOS/gameos/gos_static_prop_batcher_flush.cpp",
 }
 
