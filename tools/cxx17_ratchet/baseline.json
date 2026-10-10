@@ -67,7 +67,7 @@
    "LG17": 81,
    "LG18": 11,
    "LG19": 240,
-   "LG20": 304
+   "LG20": 305
   },
   "GuiRuntime": {
    "LG01": 1,
@@ -484,7 +484,7 @@
    "LG11": 4,
    "LG12a": 60,
    "LG12b": 11,
-   "LG20": 1
+   "LG20": 2
   },
   "GameOS/gameos/gl_state_guard.h": {
    "LG19": 1,
@@ -5857,7 +5857,7 @@
    "LG20": 1
   }
  },
- "head": "def2125b9",
+ "head": "638ca5ff9",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

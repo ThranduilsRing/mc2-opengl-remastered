@@ -795,6 +795,8 @@ run_check "gate_reader_conflicts"           "py -3 tools/gate_conflicts.py --che
 # would skip the session fail-soft veto), and the per-call readers stay uncached so a mid-session fail-soft disarms them.
 run_check "vk_umbrella_readers"             "py -3 scripts/check-vk-umbrella-readers.py --quiet"
 run_check "vk_umbrella_readers_selftest"    "py -3 scripts/check-vk-umbrella-readers.py --selftest"
+run_check "gate_echo_reads"                 "py -3 scripts/check-gate-echo-reads.py --quiet"
+run_check "gate_echo_reads_selftest"        "py -3 scripts/check-gate-echo-reads.py --selftest"
 # GATE-TABLE-G1A (typed-gate-registry G1a, 2026-10-09): the compiled gate table is the truth.
 # gate_gen --check proves Gates/gate_index.gen.h is what Gates/gate_table.json generates, every
 # seed gate is still a row, registered gates agree with the feature registry, and the per-site
