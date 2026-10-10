@@ -66,8 +66,8 @@
    "LG16": 7,
    "LG17": 81,
    "LG18": 11,
-   "LG19": 17,
-   "LG20": 40
+   "LG19": 15,
+   "LG20": 38
   },
   "GuiRuntime": {
    "LG01": 1,
@@ -1257,9 +1257,7 @@
    "LG06": 3,
    "LG09": 31,
    "LG11": 1,
-   "LG13": 2,
-   "LG19": 2,
-   "LG20": 2
+   "LG13": 2
   },
   "GameOS/gameos/vulkan_post_fog_native.cpp": {
    "LG03": 2,
@@ -5793,7 +5791,7 @@
    "LG20": 1
   }
  },
- "head": "808832ad7",
+ "head": "e073b25b2",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
