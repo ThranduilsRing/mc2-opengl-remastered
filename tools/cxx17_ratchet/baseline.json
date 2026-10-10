@@ -5759,7 +5759,7 @@
    "LG20": 1
   }
  },
- "head": "728eb9037",
+ "head": "675a44e8f",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
@@ -5786,7 +5786,7 @@
  "tracked": {
   "LG19": {
    "Viewer": 0,
-   "editor": 20,
+   "editor": 19,
    "gui": 13
   }
  },

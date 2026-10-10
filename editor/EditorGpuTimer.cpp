@@ -13,6 +13,7 @@
 #include <chrono>
 
 #include "EditorGpuTimer.h"
+#include "Gates/gate.h"
 
 namespace {
 
@@ -38,8 +39,7 @@ double nowMs()
 bool enabled()
 {
     if (!s_inited) {
-        const char* v = std::getenv("MC2_EDITOR_GPU_TIMERS");
-        s_on = (v && v[0] == '1' && v[1] == '\0');
+        s_on = mc2::gate::get<"MC2_EDITOR_GPU_TIMERS">();
         s_inited = true;
     }
     return s_on;
