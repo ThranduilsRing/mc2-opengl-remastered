@@ -972,7 +972,7 @@ ALLOWLIST=(
     MC2_CRASH_FAST_EXIT                       # feature -- read via read_env_flag in gos_crashbundle.cpp
     MC2_DEBUG_RENDERER_TEST                   # feature -- read via envFlagDefaultOff in debug_renderer.cpp
     MC2_FOO_AUDIT                             # infra -- NOT A REAL GATE -- doc/test fixture literal, newly visible to the broadened scan
-    MC2_FRAME_JOBS_TOUCH_DIAG                 # trace -- read via ParseEnvBool in bdactor.cpp
+    MC2_FRAME_JOBS_TOUCH_DIAG                 # trace -- read through the typed gate registry in mclib/bdactor_*.cpp
     MC2_GPU_GV_SHADOW_SKIP                    # feature -- read via gvEnvFlagDefaultOn in gvactor.cpp
     MC2_HOSTSVC_DEFINITELY_UNSET_KEY_XYZ      # infra -- NOT A REAL GATE -- doc/test fixture literal, newly visible to the broadened scan
     MC2_HUD_IMGUI_TACMAP                      # feature -- read via HudImGui::envGateOn in gametacmap.cpp
@@ -981,8 +981,8 @@ ALLOWLIST=(
     MC2_HZB_FORCE_HORIZON_ROT                 # override -- read via envf in gamecam.cpp
     MC2_HZB_FORCE_HORIZON_X                   # override -- read via envf in gamecam.cpp
     MC2_HZB_FORCE_HORIZON_Y                   # override -- read via envf in gamecam.cpp
-    MC2_LIGHTBRIDGE_STABLE_SKIP               # feature -- read via ParseEnvBool in bdactor.cpp
-    MC2_LIGHTBRIDGE_STABLE_SKIP_DIAG          # trace -- read via ParseEnvBool in bdactor.cpp
+    MC2_LIGHTBRIDGE_STABLE_SKIP               # feature -- read through the typed gate registry in mclib/bdactor_*.cpp
+    MC2_LIGHTBRIDGE_STABLE_SKIP_DIAG          # trace -- read through the typed gate registry in mclib/bdactor_*.cpp
     MC2_LIGHTGRID_BUILD                       # feature -- read via envFlagDefaultOff in gos_lightgrid_build.cpp
     MC2_LIGHTGRID_PLANT                       # feature -- read via envFlagDefaultOff in gos_lightgrid_build.cpp
     MC2_LIGHTGRID_VERIFY                      # trace -- read via envFlagDefaultOff in gos_lightgrid_build.cpp
@@ -995,8 +995,8 @@ ALLOWLIST=(
     MC2_POSTPROCESS_COMPUTE_BLUR_VERIFY       # trace -- read via envFlagDefaultOff in gos_postprocess_blur.cpp
     MC2_RDC_MAX_WAIT                          # override -- read via envInt in gos_rdoc_capture.cpp
     MC2_SMOKE_ACTIVE                          # feature -- read via GetEnvironmentVariableA in EditorPlaytest.cpp
-    MC2_STABLE_LIGHT_SKIP_DIAG                # trace -- read via ParseEnvBool in bdactor.cpp
-    MC2_STABLE_LIGHT_SKIP_TOUCH               # feature -- read via ParseEnvBool in bdactor.cpp
+    MC2_STABLE_LIGHT_SKIP_DIAG                # trace -- read through the typed gate registry in mclib/bdactor_*.cpp
+    MC2_STABLE_LIGHT_SKIP_TOUCH               # feature -- read through the typed gate registry in mclib/bdactor_*.cpp
     MC2_STATIC_PER_INSTANCE_LIGHT             # feature -- read via parseEnvBoolWithDefault in gos_static_prop_registry.cpp
     MC2_STATIC_PROP_LATE_SPAWN_REG            # feature -- read via parseEnvBoolWithDefault in gos_static_prop_registry.cpp
     MC2_STATIC_PROP_MISSION_LOAD_REG          # feature -- read via parseEnvBoolWithDefault in gos_static_prop_registry.cpp

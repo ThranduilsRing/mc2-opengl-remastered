@@ -15,7 +15,7 @@
 #   declare itself or be added here deliberately.  It is a ratchet.
 #
 # WHY THE STATIC-PROP FAMILY IS ABSENT
-#   gos_static_prop_batcher.cpp / gos_static_prop_registry.cpp / mclib/bdactor.cpp
+#   gos_static_prop_batcher.cpp / gos_static_prop_registry.cpp / mclib/bdactor*.cpp
 #   were FIXED in this lane rather than allowlisted -- that subsystem is where a
 #   sampled [TREE_DIAG] stream and a dynamic-path-only submit_trees counter twice
 #   produced published-but-false "no trees" conclusions.  Every limiter in those

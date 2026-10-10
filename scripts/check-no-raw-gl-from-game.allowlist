@@ -23,4 +23,5 @@ code/simplecamera.cpp
 # gos_getRenderMaterial("building_pbr"); arrived via the PBR GLB payload lineage).
 # FOLLOW-UP (post v0.5.1): route through the GpuBufferOwner/engine buffer API and
 # remove this entry — RENDERING exception tolerated as a v1 freeze only.
-mclib/bdactor.cpp
+mclib/bdactor_sidecar.cpp
+mclib/bdactor_type.cpp

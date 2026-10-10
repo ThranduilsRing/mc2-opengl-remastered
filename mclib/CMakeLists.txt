@@ -93,6 +93,16 @@ set(SOURCES ${SOURCES}
     appear.cpp
     apprtype.cpp
     bdactor.cpp
+    bdactor_diag.cpp
+    bdactor_lightbake.cpp
+    bdactor_render.cpp
+    bdactor_sidecar.cpp
+    bdactor_static.cpp
+    bdactor_terrain.cpp
+    bdactor_tree.cpp
+    bdactor_tree_static.cpp
+    bdactor_type.cpp
+    bdactor_update.cpp
     cliff_decal_tuning.cpp
     genactor.cpp
     gvactor.cpp
