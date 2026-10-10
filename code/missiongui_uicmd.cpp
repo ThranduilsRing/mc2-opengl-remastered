@@ -168,7 +168,7 @@ void MissionInterfaceManager::processUiCommandChannel()
 	for (size_t i = 0; i < lines.size(); ++i) {
 		const std::string& line = lines[i];
 
-		UiCmdCtx c(line);
+		UiCmdCtx c{line};
 		// Groups run in the original verb-chain order: prefix matches are order-sensitive
 		// ("order move " before "order ", "list buildings" before "list").
 		(void)(uiCmdBasic(c) || uiCmdWorld(c) || uiCmdReadback(c) || uiCmdProbe(c) || uiCmdFixture(c));

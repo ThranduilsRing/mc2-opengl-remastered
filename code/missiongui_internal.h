@@ -147,7 +147,6 @@
 
 // One UI-command line being executed: the verb groups fill result/note/extra for the ack.
 struct UiCmdCtx {
-	explicit UiCmdCtx(const std::string& l) : line(l) {}
 	const std::string& line;
 	const char* result = "unknown";
 	std::string note;
