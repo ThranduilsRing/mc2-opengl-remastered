@@ -1,0 +1,20 @@
+{
+ "base": "246ea9381",
+ "src": "editor/EditorData.cpp",
+ "stem": "EditorData",
+ "edits": [
+  [
+   "static bool gEditorDataMoveDataReadyForFullSave = false;",
+   "bool gEditorDataMoveDataReadyForFullSave = false;"
+  ],
+  [
+   "static void EditorDataTrace(const char* fmt, ...)",
+   "void EditorDataTrace(const char* fmt, ...)"
+  ]
+ ],
+ "scripts": [
+  "scripts/check-editor-build.sh",
+  "tools/terrain_gen/terrain_gen.py"
+ ],
+ "_reason": "gEditorDataMoveDataReadyForFullSave (constant-initialised false) and EditorDataTrace lose 'static': both are used by the terrain, save and core pieces. Scripts only name the file in comments."
+}
