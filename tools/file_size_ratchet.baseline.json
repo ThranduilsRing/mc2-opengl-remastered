@@ -38,7 +38,6 @@
   "code/mechicon.cpp": 1967,
   "code/mechlabscreen.cpp": 1952,
   "code/mechlopedia.cpp": 1663,
-  "code/mission_init.cpp": 2184,
   "code/missionbegin.cpp": 2132,
   "code/mover.h": 1911,
   "code/mpparameterscreen.cpp": 2415,
@@ -79,7 +78,7 @@
   "mclib/vfx_translatedraw.cpp": 1742,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "77145463f",
+ "head": "a81c71a5a",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -118,8 +117,8 @@
    "max_lines": 1159
   },
   "code": {
-   "files": 362,
-   "files_over_1500": 24,
+   "files": 364,
+   "files_over_1500": 23,
    "files_over_3000": 1,
    "max_lines": 3273
   },
@@ -218,10 +217,6 @@
    "lines": 2207
   },
   {
-   "file": "code/mission_init.cpp",
-   "lines": 2184
-  },
-  {
    "file": "code/warrior.h",
    "lines": 2171
   },
@@ -272,11 +267,15 @@
   {
    "file": "mclib/mlr/mlrindexedpolymesh.cpp",
    "lines": 1846
+  },
+  {
+   "file": "code/pilotreviewarea.cpp",
+   "lines": 1845
   }
  ],
  "total": {
-  "files": 1826,
-  "files_over_1500": 65,
+  "files": 1828,
+  "files_over_1500": 64,
   "files_over_3000": 2,
   "max_lines": 3753
  },

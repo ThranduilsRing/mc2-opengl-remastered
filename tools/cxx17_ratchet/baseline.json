@@ -2759,13 +2759,20 @@
    "LG09": 15
   },
   "code/mission_init.cpp": {
-   "LG01": 26,
-   "LG03": 26,
-   "LG04": 2,
+   "LG01": 17,
+   "LG03": 15,
    "LG06": 2,
-   "LG09": 35,
-   "LG12a": 4,
-   "LG12b": 9,
+   "LG09": 14,
+   "LG12a": 1,
+   "LG12b": 2
+  },
+  "code/mission_init_load.cpp": {
+   "LG01": 9,
+   "LG03": 11,
+   "LG04": 2,
+   "LG09": 21,
+   "LG12a": 3,
+   "LG12b": 7,
    "LG13": 2
   },
   "code/mission_internal.h": {
@@ -6148,7 +6155,7 @@
    "LG20": 2
   }
  },
- "head": "05a64152b",
+ "head": "a81c71a5a",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
