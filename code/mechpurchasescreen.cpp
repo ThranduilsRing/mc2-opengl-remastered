@@ -19,7 +19,7 @@ MechPurchaseScreen.cpp			: Implementation of the MechPurchaseScreen component.
 #include"multplyr.h"
 #include"../GuiRuntime/GuiRuntime.h"
 
-MechPurchaseScreen* MechPurchaseScreen::s_instance = NULL;
+MechPurchaseScreen* MechPurchaseScreen::s_instance = nullptr;
 
 // Interactive cheat gate
 // The launcher writes these into launcher_env.json, which main() applies after static initialization, so they
@@ -39,7 +39,7 @@ MechPurchaseScreen::MechPurchaseScreen(  )
 	gosASSERT( !s_instance );
 	s_instance = this;
 	acceptPressed = 0;
-	pDragMech = NULL;
+	pDragMech = nullptr;
 	dragStartLeft = 0;
 	helpTextArrayID = 4; 
 	inventoryListBox.setID( INVENTORY_ID );
@@ -58,7 +58,7 @@ MechPurchaseScreen::MechPurchaseScreen(  )
 
 MechPurchaseScreen::~MechPurchaseScreen()
 {
-	s_instance = NULL;
+	s_instance = nullptr;
 
 	variantListBox.destroy();
 	inventoryListBox.destroy();
@@ -185,7 +185,7 @@ void MechPurchaseScreen::update()
 	{
 		if ( !cheatInfiniteMoney() && pCurBuy->getCost() > LogisticsData::instance->getCBills() )
 		{
-			pCurBuy = NULL;
+			pCurBuy = nullptr;
 		}
 
 		setMech( pCurBuy );
@@ -293,7 +293,7 @@ void MechPurchaseScreen::begin()
 	LogisticsData::instance->getInventory( mechList );
 	prevInventory.Clear();
 
-	LogisticsMech* pSelMech = 0;
+	LogisticsMech* pSelMech = nullptr;
 
 	oldCBillsAmount = LogisticsData::instance->getCBills();
 
@@ -369,7 +369,7 @@ void MechPurchaseScreen::begin()
 	
 	setMech( pSelMech );
 
-	pDragMech = NULL;
+	pDragMech = nullptr;
 
 }
 //-------------------------------------------------------------------------------------------------
@@ -400,7 +400,7 @@ void MechPurchaseScreen::end()
 	variantListBox.removeAllItems(true);
 	inventoryListBox.removeAllItems(true);
 
-	mechDisplay.setMech( NULL );
+	mechDisplay.setMech( nullptr );
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -476,7 +476,7 @@ void MechPurchaseScreen::endDrag( )
 	inventoryListBox.undimAll();
 	variantListBox.undimAll();
 
-	pDragMech = NULL;
+	pDragMech = nullptr;
 }
 
 

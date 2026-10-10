@@ -222,7 +222,7 @@ long DefaultMechCrashBlockPath = 1;
 float DefaultMechCrashYieldTime = 2.0;
 long DefaultMechJumpCost = COST_BLOCKED / 3;
 
-GameObjectPtr BadGuy = NULL;
+GameObjectPtr BadGuy = nullptr;
 
 //#define USE_MECHDEBUGFILE
 #ifdef USE_MECHDEBUGFILE
@@ -516,7 +516,7 @@ void BattleMech::destroy (void)
 	        GameAdapters::Mech::destroyMech(*m3d);
 	    }
 		delete appearance;
-		appearance = NULL;
+		appearance = nullptr;
 	}
 }
 
@@ -582,11 +582,11 @@ void BattleMech::mineCheck (void)
 			// Mine here, deal with it...
 			Stuff::Vector3D explosionPosition;
 			explosionPosition = getPosition();
-			ObjectManager->createExplosion(MINE_EXPLOSION_ID, NULL, explosionPosition, MineSplashDamage, MineSplashRange * worldUnitsPerMeter);
+			ObjectManager->createExplosion(MINE_EXPLOSION_ID, nullptr, explosionPosition, MineSplashDamage, MineSplashRange * worldUnitsPerMeter);
 			
 			WeaponShotInfo shot;
-			shot.init(0, -2, MineDamage, calcHitLocation(NULL,-1,ATTACKSOURCE_MINE,0), 0);
-			handleWeaponHit(&shot, (MPlayer != NULL));
+			shot.init(0, -2, MineDamage, calcHitLocation(nullptr,-1,ATTACKSOURCE_MINE,0), 0);
+			handleWeaponHit(&shot, (MPlayer != nullptr));
 		}
 	}
 }

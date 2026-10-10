@@ -32,7 +32,7 @@ Mechlopedia.cpp			: Implementation of the Mechlopedia component.
 
 #define PERSONALITY_COUNT 11
 
-MechlopediaListItem* MechlopediaListItem::s_templateItem = NULL;				
+MechlopediaListItem* MechlopediaListItem::s_templateItem = nullptr;				
 
 
 
@@ -43,7 +43,7 @@ Mechlopedia::Mechlopedia(  )
 
 	for ( int i = 0; i < 6; i++ )
 	{
-		subScreens[i] = 0;
+		subScreens[i] = nullptr;
 	}
 
 	currentScreen = 0;
@@ -236,7 +236,7 @@ int Mechlopedia::SubScreen::init( FitIniFile& file )
 
 void Mechlopedia::SubScreen::end(  )
 {
-	camera.setMech( NULL );
+	camera.setMech( nullptr );
 }
 
 

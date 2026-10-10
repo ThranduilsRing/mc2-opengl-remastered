@@ -174,7 +174,7 @@ long BattleMech::update (void)
 
 		bool emergencyStop = false;
 		if (!isDisabled()) {
-			MoverPtr ramTarget = NULL;
+			MoverPtr ramTarget = nullptr;
 			if ((getPilot()->getCurTacOrder()->code == TACTICAL_ORDER_ATTACK_OBJECT) && (getPilot()->getCurTacOrder()->attackParams.method == ATTACKMETHOD_RAMMING))
 				ramTarget = (MoverPtr)getPilot()->getCurTacOrder()->getRamTarget();
 			if (ramTarget)
@@ -305,7 +305,7 @@ long BattleMech::update (void)
 			windowsVisible = turn;
 			
 		if (withdrawing && !inView && (pilot->getStatus() != WARRIOR_STATUS_WITHDRAWN))
-			ObjectManager->getObjectType(typeHandle)->handleDestruction(this, NULL);
+			ObjectManager->getObjectType(typeHandle)->handleDestruction(this, nullptr);
 
 		if (appearance) {
 			MovePathPtr path = pilot->getMovePath();
@@ -386,7 +386,7 @@ long BattleMech::update (void)
 				if (getPilot()->alive())
 				{
 					Stuff::Vector3D cockpitPos = appearance->getNodeNamePosition("cockpit");
-					ObjectManager->createExplosion(MECH_DISABLE_EXPLOSION_ID,NULL,cockpitPos,0.0f,0.0f);
+					ObjectManager->createExplosion(MECH_DISABLE_EXPLOSION_ID,nullptr,cockpitPos,0.0f,0.0f);
 				}
 
 				appearance->startSmoking(-1);
@@ -450,9 +450,9 @@ long BattleMech::update (void)
 			{
 				Stuff::Vector3D cockpitPos = appearance->getNodeNamePosition("cockpit");
 				if (getMoveType() != MOVETYPE_AIR)
-					ObjectManager->createExplosion(MECH_EXPLOSION_ID,NULL,cockpitPos,((BattleMechTypePtr)getObjectType())->explDmg,((BattleMechTypePtr)getObjectType())->explRad);
+					ObjectManager->createExplosion(MECH_EXPLOSION_ID,nullptr,cockpitPos,((BattleMechTypePtr)getObjectType())->explDmg,((BattleMechTypePtr)getObjectType())->explRad);
 				else
-					ObjectManager->createExplosion(VEHICLE_EXPLOSION_ID,NULL,cockpitPos,0.0f,0.0f);
+					ObjectManager->createExplosion(VEHICLE_EXPLOSION_ID,nullptr,cockpitPos,0.0f,0.0f);
 
 				craterManager->addCrater(CRATER_4,position,RandomNumber(180));
 				exploding = true;
@@ -788,7 +788,7 @@ void BattleMech::render (void)
 
 					lineStart.z = lineEnd.z = HUD_DEPTH;
 
-					LineElement newElement(lineStart,lineEnd,SD_BLUE,NULL,-1);
+					LineElement newElement(lineStart,lineEnd,SD_BLUE,nullptr,-1);
 					newElement.draw();
 				}
 			}

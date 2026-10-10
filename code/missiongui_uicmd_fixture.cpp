@@ -163,7 +163,7 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 					// side by side under identical light for a lighting A/B.
 					const ObjectClass wantCls =
 						(strcmp(kind, "vehicle") == 0) ? GROUNDVEHICLE : BATTLEMECH;
-					Mover* tmpl = NULL;
+					Mover* tmpl = nullptr;
 					Team* pTeam = Team::home;
 					for (long i = 0; pTeam && i < pTeam->getRosterSize(); i++) {
 						Mover* m = (Mover*)pTeam->getMover(i);
@@ -198,7 +198,7 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 					data.controlType = (data.commanderID == (char)homeCmdr && !MPlayer)
 						? CONTROL_PLAYER : CONTROL_AI;
 					const long h = mission ? mission->addMover(&data) : -1;
-					MoverPtr nm = (h > 0) ? (MoverPtr)ObjectManager->get(h) : NULL;
+					MoverPtr nm = (h > 0) ? (MoverPtr)ObjectManager->get(h) : nullptr;
 					if (!nm) { result = "blocked"; if (note.empty()) note = "addMover failed"; }
 					else {
 						// NOTE: do NOT call nm->setOnGUI(true) here. The
@@ -402,7 +402,7 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 		} else {
 			GameObjectPtr obj = ObjectManager->findByPartId(pid);
 			BldgAppearance* ba = obj
-				? dynamic_cast<BldgAppearance*>(obj->getAppearance()) : NULL;
+				? dynamic_cast<BldgAppearance*>(obj->getAppearance()) : nullptr;
 			const uint32_t invBefore = g_bldgAnimGate_animStartInvalidated();
 			long before = -1;
 			int regBefore = 0;

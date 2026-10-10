@@ -176,20 +176,20 @@ void __stdcall TerminateGameEngine()
 		ShutdownNetworking();
 
 		delete theClipper;
-		theClipper = NULL;
+		theClipper = nullptr;
 
 		if (mission)
 		{
 			mission->destroy(false);
 			delete mission;
-			mission = NULL;
+			mission = nullptr;
 		}
 
 		if (logistics)
 		{
 			logistics->destroy();
 			delete logistics;
-			logistics = NULL;
+			logistics = nullptr;
 		}
 
 		endDialogs();
@@ -198,7 +198,7 @@ void __stdcall TerminateGameEngine()
 		{
 			optionsScreenWrapper->destroy();
 			delete optionsScreenWrapper;
-			optionsScreenWrapper = NULL;
+			optionsScreenWrapper = nullptr;
 		}
 
 		destroyColorTables();
@@ -206,18 +206,18 @@ void __stdcall TerminateGameEngine()
 		GameLog::cleanup();
 
 		delete timerManager;
-		timerManager = NULL;
+		timerManager = nullptr;
 
 		if (globalPane)
 		{
 			delete globalPane;
-			globalPane = NULL;
+			globalPane = nullptr;
 		}
 
 		if (globalWindow)
 		{
 			delete globalWindow;
-			globalWindow = NULL;
+			globalWindow = nullptr;
 		}
 
 		if (soundSystem)
@@ -225,7 +225,7 @@ void __stdcall TerminateGameEngine()
 			soundSystem->destroy();
 
 			delete soundSystem;
-			soundSystem = NULL;
+			soundSystem = nullptr;
 		}
 
 		if (mcTextureManager)
@@ -237,18 +237,18 @@ void __stdcall TerminateGameEngine()
 			//mcTextureManager->destroy();
 
 			delete mcTextureManager;
-			mcTextureManager = NULL;
+			mcTextureManager = nullptr;
 		}
 
 		delete globalFloatHelp;
-		globalFloatHelp = NULL;
+		globalFloatHelp = nullptr;
 
 		if (systemHeap)
 		{
 			systemHeap->destroy();
 
 			delete systemHeap;
-			systemHeap = NULL;
+			systemHeap = nullptr;
 		}
 
 		if (guiHeap)
@@ -256,7 +256,7 @@ void __stdcall TerminateGameEngine()
 			guiHeap->destroy();
 
 			delete guiHeap;
-			guiHeap = NULL;
+			guiHeap = nullptr;
 		}
 
 		if (globalHeapList)
@@ -264,7 +264,7 @@ void __stdcall TerminateGameEngine()
 			globalHeapList->destroy();
 
 			delete globalHeapList;
-			globalHeapList = NULL;
+			globalHeapList = nullptr;
 		}
 
 		gos_PushCurrentHeap(gosFX::Heap);
@@ -281,7 +281,7 @@ void __stdcall TerminateGameEngine()
 		Stuff::TerminateClasses();
 
 		delete userInput;
-		userInput = NULL;
+		userInput = nullptr;
 
 		//Redundant.  Something else is shutting this down.
 		//GOS sure does think its bad to delete something multiple times though.
@@ -299,33 +299,33 @@ void __stdcall TerminateGameEngine()
 		if (g_textureCache_FilenameOfLastLoadedTexture)
 		{
 			delete g_textureCache_FilenameOfLastLoadedTexture;
-			g_textureCache_FilenameOfLastLoadedTexture = NULL;
+			g_textureCache_FilenameOfLastLoadedTexture = nullptr;
 		}
 
 		if (ForceGroupIcon::jumpJetIcon)
 		{
 			delete ForceGroupIcon::jumpJetIcon;
-			ForceGroupIcon::jumpJetIcon = NULL;
+			ForceGroupIcon::jumpJetIcon = nullptr;
 		}
 
 		if (MechIcon::s_MechTextures)
 		{
 			delete [] MechIcon::s_MechTextures;
-			MechIcon::s_MechTextures = NULL;
+			MechIcon::s_MechTextures = nullptr;
 		}
 
 		if (ForceGroupIcon::s_textureMemory)
 		{
 			delete [] ForceGroupIcon::s_textureMemory; 
-			ForceGroupIcon::s_textureMemory = NULL; 
+			ForceGroupIcon::s_textureMemory = nullptr; 
 		}
 	}
 	else
 	{
 		free(testVertex);
-		testVertex = NULL;
+		testVertex = nullptr;
 		free(indexArray);
-		indexArray = NULL;
+		indexArray = nullptr;
 	}
 }
 
@@ -538,7 +538,7 @@ void __stdcall DoGameLogic()
 				if (result == 9999) {
 					mission->destroy();
 					for (long i = 0; i < 3; i++) {
-						DebugGameObject[i] = NULL;
+						DebugGameObject[i] = nullptr;
 						DebugWindow[i + 1]->clear();
 					}
 					if (MPlayer && MPlayer->isServer())
@@ -569,7 +569,7 @@ void __stdcall DoGameLogic()
 					}
 	
 					for (long i = 0; i < 3; i++) {
-						DebugGameObject[i] = NULL;
+						DebugGameObject[i] = nullptr;
 						DebugWindow[i + 1]->clear();
 					}
 	

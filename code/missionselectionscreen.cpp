@@ -25,7 +25,7 @@ MissionSelectionScreen::MissionSelectionScreen(  )
 {
 	status = RUNNING;
 	LogisticsScreen::helpTextArrayID = 3;
-	bMovie = 0;
+	bMovie = nullptr;
 
 	missionCount = 0;
 	// pressedButton was left uninitialized -> update() reads garbage at line 177
@@ -48,7 +48,7 @@ MissionSelectionScreen::~MissionSelectionScreen()
 	if (bMovie)
 	{
 		delete bMovie;
-		bMovie = NULL;
+		bMovie = nullptr;
 	}
 
 	missionDescriptionListBox.destroy();
@@ -276,7 +276,7 @@ void MissionSelectionScreen::begin()
 			{
 				bMovie->stop();
 				delete bMovie;
-				bMovie = NULL;
+				bMovie = nullptr;
 			}
 
 			bMovie = new MC2Movie;
@@ -357,7 +357,7 @@ void MissionSelectionScreen::end()
 		bMovie->stop();
 
 		delete bMovie;
-		bMovie = NULL;
+		bMovie = nullptr;
 	}
 
 	beginFadeOut( 0 );

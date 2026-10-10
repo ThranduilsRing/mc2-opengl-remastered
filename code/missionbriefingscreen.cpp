@@ -85,7 +85,7 @@ MissionBriefingScreen::MissionBriefingScreen(  )
 	LogisticsScreen::helpTextArrayID = 4;
 
 	for ( int i = 0; i < MAX_OBJECTIVES; i++ )
-		objectiveButtons[i] = NULL;
+		objectiveButtons[i] = nullptr;
 }
 
 MissionBriefingScreen::~MissionBriefingScreen()
@@ -95,7 +95,7 @@ MissionBriefingScreen::~MissionBriefingScreen()
 		if (objectiveButtons[i])
 		{
 			delete objectiveButtons[i];
-			objectiveButtons[i] = NULL;
+			objectiveButtons[i] = nullptr;
 		}
 	}
 
@@ -289,7 +289,7 @@ void MissionBriefingScreen::update()
 			}
 			else
 			{
-				camera.setObject( NULL, -1 );
+				camera.setObject( nullptr, -1 );
 
 				statics[35].showGUIWindow( true );
 			}
@@ -358,7 +358,7 @@ void MissionBriefingScreen::update()
 			}
 			else
 			{
-				camera.setObject( NULL, -1 );
+				camera.setObject( nullptr, -1 );
 
 				statics[35].showGUIWindow( 1 );
 			}
@@ -465,7 +465,7 @@ long	MissionBriefingScreen::getMissionTGA( const char* missionName, bool swizzle
 			if ( pHeader->pixel_depth == 32 )
 			{
 				DWORD* px = (DWORD*)(pHeader + 1);
-				const long pxCount = (long)bmpWidth * (long)bmpHeight;
+				const long pxCount = bmpWidth * bmpHeight;
 				for ( long p = 0; p < pxCount; ++p )
 					px[p] |= 0xff000000;
 			}
@@ -806,7 +806,7 @@ void MissionBriefingScreen::addObjectiveButton( float fX, float fY, int count, i
 	if (i >= MAX_OBJECTIVES)
 	{
 		delete pButtonText;
-		pButtonText = NULL;
+		pButtonText = nullptr;
 	}
 }
 
@@ -850,7 +850,7 @@ void MissionBriefingScreen::end()
 //	statics[MAP_INDEX].setTexture( (long)0 );
 // 	statics[MAP_INDEX].setColor( 0 );
 
-	camera.setMech( NULL );
+	camera.setMech( nullptr );
 
 }
 

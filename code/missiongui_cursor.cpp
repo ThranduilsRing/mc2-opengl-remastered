@@ -328,7 +328,7 @@ void MissionInterfaceManager::doDrag(bool bGui)
 
 			if ( count )
 			{
-				controlGui.setInfoWndMover( NULL );
+				controlGui.setInfoWndMover( nullptr );
 
 				if ( !userInput->shift() )
 				{
@@ -570,7 +570,7 @@ long MissionInterfaceManager::makeTargetCursor( bool lineOfSight, long moverCoun
 				}
 				else
 				{
-					target = NULL;
+					target = nullptr;
 					// find out if this position is passable.  Landbridges kinda are, or they'd be useless.
 					int cellR, cellC;
 					bool passable = 1;
@@ -610,7 +610,7 @@ long MissionInterfaceManager::makeTargetCursor( bool lineOfSight, long moverCoun
 		break;
 
 		case BRIDGE:
-			target = NULL;
+			target = nullptr;
 			return makeNoTargetCursor( false, lineOfSight, 0, 0, moverCount, nonMoverCount );
 			break;
 

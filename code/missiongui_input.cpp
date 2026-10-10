@@ -184,7 +184,7 @@ void MissionInterfaceManager::Load (FitIniFilePtr file)
 			shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 			shapeOrigin.BuildTranslation(wakePos);
 
-			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,NULL);
+			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
 
 			dustCloud[commanderID]->SetLoopOff();
 			dustCloud[commanderID]->SetExecuteOn();

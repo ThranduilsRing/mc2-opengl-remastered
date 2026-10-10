@@ -19,7 +19,7 @@ MechBayScreen.cpp			: Implementation of the MechBayScreen component.
 #include"../GuiRuntime/GuiRuntime.h"
 #include "Gates/gate.h"
 
-MechBayScreen* MechBayScreen::s_instance = NULL;
+MechBayScreen* MechBayScreen::s_instance = nullptr;
 
 // Mirror a populated weapon/component ComponentListBox into a defs-page GuiList,
 // preserving the per-item range colours (short=olive, medium=blue, long=red,
@@ -50,8 +50,8 @@ void syncWeaponLoadout( LogisticsScreen* screen, ComponentListBox& box, const ch
 
 MechBayScreen::MechBayScreen() : mechListBox( 1, 0 )
 {
-	pCurMech = NULL;
-	pIcons = NULL;
+	pCurMech = nullptr;
+	pIcons = nullptr;
 	status = LogisticsScreen::RUNNING;
 	s_instance = this;
 	forceGroupCount = 0;
@@ -59,7 +59,7 @@ MechBayScreen::MechBayScreen() : mechListBox( 1, 0 )
 
 	addWeightAmount = 0;
 	removeWeightAmount = 0;
-	pDragMech = 0;
+	pDragMech = nullptr;
 	dragLeft = 0;
 
 	helpTextArrayID = 13;
@@ -116,7 +116,7 @@ void MechBayScreen::init(FitIniFile* file)
         int i = 0;
 		for (; i < ICON_COUNT_X; i++ )
 		{
-			pIcons[count].setMech( 0 );
+			pIcons[count].setMech( nullptr );
 			pIcons[count].move( x, y );
 			x+= pIcons[count].width();
 			x+=4;
@@ -172,7 +172,7 @@ void MechBayScreen::init(FitIniFile* file)
 	{
 		attributeMeters[i].setValue(0);
 	}
-	setMech( NULL, 0 );
+	setMech( nullptr, 0 );
 
 }
 
@@ -180,7 +180,7 @@ void MechBayScreen::begin()
 {
 	status = RUNNING;
 
-	pDragMech = NULL;
+	pDragMech = nullptr;
 
 	mechListBox.removeAllItems( true );
 	reinitMechs();	
@@ -232,13 +232,13 @@ void MechBayScreen::begin()
 		if ( !selectFirstFGItem() )
 		{
 			if ( !selectFirstViableLBMech() )
-				setMech( NULL );
+				setMech( nullptr );
 		}
 	}
 	else
 	{
 		LogisticsMech* pMech = pCurMech;
-		setMech( NULL ); // need to make sure the guy is still running
+		setMech( nullptr ); // need to make sure the guy is still running
 		setMech( pMech );
 
 		bool bFound = 0;
@@ -594,7 +594,7 @@ void MechBayScreen::update()
 				}
 			}
 		
-			pDragMech = 0;
+			pDragMech = nullptr;
 		}
 
 	}
@@ -866,7 +866,7 @@ void MechBayScreen::removeSelectedMech()
 
 void MechBayScreen::end()
 {
-	mechCamera->setMech( NULL );
+	mechCamera->setMech( nullptr );
 }
 
 void MechBayScreen::setMech( LogisticsMech* pMech,  bool bCommandFromLB )
@@ -889,7 +889,7 @@ void MechBayScreen::setMech( LogisticsMech* pMech,  bool bCommandFromLB )
 		mechCamera->setScale( pMech->getVariant()->getChassis()->getScale() );
 	}
 	else
-		loadoutListBox.setMech( 0 );
+		loadoutListBox.setMech( nullptr );
 
 	if ( bCommandFromLB ) // clicked on a disabled mech
 	{
@@ -906,7 +906,7 @@ void MechBayScreen::setMech( LogisticsMech* pMech,  bool bCommandFromLB )
 
 		// weight
 		cLoadString( IDS_MB_MECH_WEIGHT, tmpStr, 63 );
-		sprintf( str, tmpStr, pCurMech->getMaxWeight(), (const char*)pCurMech->getMechClass() );
+		sprintf( str, tmpStr, pCurMech->getMaxWeight(), pCurMech->getMechClass() );
 		textObjects[7].setText( str );
 		setDefsElementText( "game.mcl_mb_layout.text.mech_info_tonnage", str );
 
@@ -1008,7 +1008,7 @@ void MechBayScreen::beginDrag( LogisticsMech* pMech )
 
 		if ( !LogisticsData::instance->canAddMechToForceGroup( pMech ) )
 		{
-			pDragMech = 0;
+			pDragMech = nullptr;
 			return;
 		}
 
@@ -1043,8 +1043,8 @@ void MechBayScreen::beginDrag( LogisticsMech* pMech )
 
 				if ( i < ICON_COUNT )
 				{
-					pIcons[i].setMech( NULL );
-					pIcons[i].setPilot( NULL );
+					pIcons[i].setMech( nullptr );
+					pIcons[i].setPilot( nullptr );
 				}
 
 
@@ -1080,7 +1080,7 @@ void MechBayScreen::reinitMechs()
 	{
 		for ( int i = 0; i < ICON_COUNT_X; i++ )
 		{
-			pIcons[count].setMech( 0 );
+			pIcons[count].setMech( nullptr );
 			if ( count >= maxUnits )
 				pIcons[count].disable( true );
 			else
@@ -1170,6 +1170,6 @@ LogisticsMech* MechBayScreen::getFGSelMech()
 			return pIcons[i].getMech();
 	}
 
-	return NULL;
+	return nullptr;
 }
 

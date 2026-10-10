@@ -8,7 +8,7 @@ static long textToLong (char *num)
 	long result = 0;
 	
 	char *hexOffset = strstr(num,"0x");
-	if (hexOffset == NULL)
+	if (hexOffset == nullptr)
 	{
 		result = atol(num);
 	}
@@ -102,7 +102,7 @@ void ParseCommandLine(const char *command_line)
 							strcat(missionName," ");
 							strcat(missionName,argv[i]);
 
-							if (strstr(argv[i],"\"") != NULL)
+							if (strstr(argv[i],"\"") != nullptr)
 							{
 								scanName = false;
 								missionName[strlen(missionName)-1] = 0;

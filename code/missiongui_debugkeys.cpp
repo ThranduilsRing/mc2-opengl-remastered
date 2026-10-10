@@ -291,7 +291,7 @@ int MissionInterfaceManager::goalPlan() {
 			Mover* mover = (Mover*)pTeam->getMover( i );
 			if (mover->isSelected() && mover ->getCommander()->getId() == Commander::home->getId()) {
 				((MoverPtr)mover)->getPilot()->setUseGoalPlan(!((MoverPtr)mover)->getPilot()->getUseGoalPlan());
-				((MoverPtr)mover)->getPilot()->setMainGoal(GOAL_ACTION_NONE, NULL, NULL, -1.0);
+				((MoverPtr)mover)->getPilot()->setMainGoal(GOAL_ACTION_NONE, nullptr, nullptr, -1.0);
 			}
 		}
 		lastTime = gos_GetElapsedTime();
@@ -310,7 +310,7 @@ int MissionInterfaceManager::enemyGoalPlan() {
 			Mover* mover = ObjectManager->getMover(i);
 			if (mover->getTeam() != Team::home) {
 				((MoverPtr)mover)->getPilot()->setUseGoalPlan(EnemiesGoalPlan);
-				((MoverPtr)mover)->getPilot()->setMainGoal(GOAL_ACTION_NONE, NULL, NULL, -1.0);
+				((MoverPtr)mover)->getPilot()->setMainGoal(GOAL_ACTION_NONE, nullptr, nullptr, -1.0);
 			}
 		}
 		lastTime = gos_GetElapsedTime();
@@ -343,12 +343,12 @@ void damageObject (GameObjectPtr victim, float damage) {
 	switch (victim->getObjectClass()) {
 		case BATTLEMECH:
 		case GROUNDVEHICLE:
-			shot.init(0, -2, damage, victim->calcHitLocation(NULL,-1,ATTACKSOURCE_WEAPONFIRE,0), 0);
-			victim->handleWeaponHit(&shot, (MPlayer != NULL));
+			shot.init(0, -2, damage, victim->calcHitLocation(nullptr,-1,ATTACKSOURCE_WEAPONFIRE,0), 0);
+			victim->handleWeaponHit(&shot, (MPlayer != nullptr));
 			break;
 		default:
 			shot.init(0, -1, damage, 0, 0);
-			victim->handleWeaponHit(&shot, (MPlayer != NULL));
+			victim->handleWeaponHit(&shot, (MPlayer != nullptr));
 			break;
 	}
 }
@@ -654,7 +654,7 @@ void MissionInterfaceManager::doEject( GameObject* who )
 {
 	TacticalOrder tacOrder;
 	tacOrder.init(ORDER_ORIGIN_PLAYER, TACTICAL_ORDER_EJECT, true);
-	tacOrder.pack(NULL, NULL);
+	tacOrder.pack(nullptr, nullptr);
 	MoverPtr pMover = (MoverPtr)who;
 	if (MPlayer && !MPlayer->isServer())
 		MPlayer->sendPlayerOrder(&tacOrder, false, 1, &pMover);

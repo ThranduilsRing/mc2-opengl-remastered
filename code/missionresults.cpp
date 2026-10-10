@@ -26,8 +26,8 @@ MissionResults.cpp			: Implementation of the MissionResults component.
 bool MissionResults::FirstTimeResults = true;
 MissionResults::MissionResults()
 {
-	pSalvageScreen = 0;
-	pPilotScreen = 0;
+	pSalvageScreen = nullptr;
+	pPilotScreen = nullptr;
 	bDone = 0;
 	bPilotStarted = 0;
 }
@@ -36,11 +36,11 @@ MissionResults::~MissionResults()
 {
 	if (pSalvageScreen)
 		delete pSalvageScreen;
-	pSalvageScreen = NULL;
+	pSalvageScreen = nullptr;
 
 	if (pPilotScreen)
 		delete pPilotScreen;
-	pPilotScreen = NULL;
+	pPilotScreen = nullptr;
 }
 
 void MissionResults::begin()
@@ -197,7 +197,7 @@ void MissionResults::update()
 		{
 			pSalvageScreen->updateSalvage();
 			delete pSalvageScreen;
-			pSalvageScreen = NULL;
+			pSalvageScreen = nullptr;
 
 			if ( !pPilotScreen )
 			{
@@ -213,7 +213,7 @@ void MissionResults::update()
 		{
 			pPilotScreen->updatePilots();
 			delete pPilotScreen;
-			pPilotScreen = 0;
+			pPilotScreen = nullptr;
 			// take this out!
 		 
 			bDone = true;

@@ -21,7 +21,7 @@ void Mission::createPartObject (long partIndex, MoverPtr mover) {
 	if (parts[partIndex].objectWID == 0)
 	{
 		ObjectTypePtr objType = ObjectManager->getObjectType(parts[partIndex].objNumber);
-		Assert(objType != NULL, partIndex, " Mission.createPartObject: unable to get objType ");
+		Assert(objType != nullptr, partIndex, " Mission.createPartObject: unable to get objType ");
 		// Mod-tolerance: if objType is a stub (no appearance name) but the
 		// mission provided a CSVFile, back-fill it so BattleMech::init can
 		// open the chassis .csv. Without this, stub-only mechs crash at
@@ -191,7 +191,7 @@ long Mission::addMover (MoverInitData* moverSpec) {
 
 	pilotFile->close();
 	delete pilotFile;
-	pilotFile = NULL;
+	pilotFile = nullptr;
 
 	if (moverSpec->overrideLoadedPilot)
 	{
@@ -248,7 +248,7 @@ typedef struct _MoverInitData {
 	if (!objType)
 		objType = ObjectManager->getObjectType(moverSpec->objNumber);
 	if (objType) {
-		MoverPtr mover = NULL;
+		MoverPtr mover = nullptr;
 		switch (objType->getObjectTypeClass()) {
 			case BATTLEMECH_TYPE:
 				mover = (MoverPtr)ObjectManager->newMech();
@@ -457,7 +457,7 @@ long Mission::addMover (MoverInitData* moveSpec, LogisticsMech* mechData)
 		
 	long totalComponents = mechData->getComponentCount();
 
-	long *componentList = NULL;
+	long *componentList = nullptr;
 	
 	if ( totalComponents )
 	{
@@ -611,7 +611,7 @@ bool Mission::calcComplexDropZones (char* missionName, char dropZoneCID[MAX_MC_P
 
 	missionFile->close();
 	delete missionFile;
-	missionFile = NULL;
+	missionFile = nullptr;
 
 
 	return(true);

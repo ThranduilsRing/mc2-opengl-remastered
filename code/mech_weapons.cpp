@@ -197,7 +197,7 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 			hitLocation = aimLocation;
 	}
 
-	MechWarriorPtr targetPilot = NULL;
+	MechWarriorPtr targetPilot = nullptr;
 	if (target && target->isMover()) {
 		targetPilot = ((MoverPtr)target)->getPilot();
 		targetPilot->updateAttackerStatus(getWatchID(), scenarioTime);
@@ -206,7 +206,7 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 	// Weapon must recycle...
 	startWeaponRecycle(weaponIndex);
 	
-	WeaponBoltPtr weaponFX = NULL;
+	WeaponBoltPtr weaponFX = nullptr;
 	if (hitRoll < attackChance) {
 
 		if (numShots != UNLIMITED_SHOTS) {
@@ -292,7 +292,7 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 					land->worldToCell(*targetPoint, cellRow, cellCol);
 					if (GameMap->getMine(cellRow, cellCol) == 1) 
 					{
-						ObjectManager->createExplosion(MINE_EXPLOSION_ID, NULL, *targetPoint, MineSplashDamage, MineSplashRange * worldUnitsPerMeter);
+						ObjectManager->createExplosion(MINE_EXPLOSION_ID, nullptr, *targetPoint, MineSplashDamage, MineSplashRange * worldUnitsPerMeter);
 						GameMap->setMine(cellRow, cellCol, 2);
 					}
 				}
@@ -378,7 +378,7 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 					land->worldToCell(*targetPoint, cellRow, cellCol);
 					if (GameMap->getMine(cellRow, cellCol) == 1)
 					{
-						ObjectManager->createExplosion(MINE_EXPLOSION_ID, NULL, *targetPoint, MineSplashDamage, MineSplashRange * worldUnitsPerMeter);
+						ObjectManager->createExplosion(MINE_EXPLOSION_ID, nullptr, *targetPoint, MineSplashDamage, MineSplashRange * worldUnitsPerMeter);
 						GameMap->setMine(cellRow, cellCol, 2);
 					}
 				}
@@ -500,7 +500,7 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 						land->worldToCell(positionOffset, cellRow, cellCol);
 						if (GameMap->getMine(cellRow, cellCol) == 1)
 						{
-							ObjectManager->createExplosion(MINE_EXPLOSION_ID, NULL, positionOffset, MineSplashDamage, MineSplashRange * worldUnitsPerMeter);
+							ObjectManager->createExplosion(MINE_EXPLOSION_ID, nullptr, positionOffset, MineSplashDamage, MineSplashRange * worldUnitsPerMeter);
 							GameMap->setMine(cellRow, cellCol, 2);
 						}
 					}
@@ -596,7 +596,7 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 					land->worldToCell(positionOffset, cellRow, cellCol);
 					if (GameMap->getMine(cellRow, cellCol) == 1)
 					{
-						ObjectManager->createExplosion(MINE_EXPLOSION_ID, NULL, positionOffset, MineSplashDamage, MineSplashRange * worldUnitsPerMeter);
+						ObjectManager->createExplosion(MINE_EXPLOSION_ID, nullptr, positionOffset, MineSplashDamage, MineSplashRange * worldUnitsPerMeter);
 						GameMap->setMine(cellRow, cellCol, 2);
 					}
 				}
@@ -644,7 +644,7 @@ long BattleMech::handleWeaponFire (long weaponIndex,
 
 	bool isStreakMissile = MasterComponent::masterList[inventory[weaponIndex].masterID].getWeaponStreak(); 
 
-	WeaponBoltPtr weaponFX = NULL;
+	WeaponBoltPtr weaponFX = nullptr;
 	
 	long sourceHotSpot;
 	if (MasterComponent::masterList[inventory[weaponIndex].masterID].getForm() == COMPONENT_FORM_WEAPON_MISSILE)
@@ -686,7 +686,7 @@ long BattleMech::handleWeaponFire (long weaponIndex,
 						land->worldToCell(*targetPoint, cellRow, cellCol);
 						if (GameMap->getMine(cellRow, cellCol) == 1)
 						{
-							ObjectManager->createExplosion(MINE_EXPLOSION_ID, NULL, *targetPoint, MineSplashDamage, MineSplashRange * worldUnitsPerMeter);
+							ObjectManager->createExplosion(MINE_EXPLOSION_ID, nullptr, *targetPoint, MineSplashDamage, MineSplashRange * worldUnitsPerMeter);
 							GameMap->setMine(cellRow, cellCol, 2);
 						}
 					}
@@ -743,7 +743,7 @@ long BattleMech::handleWeaponFire (long weaponIndex,
 					land->worldToCell(*targetPoint, cellRow, cellCol);
 					if (GameMap->getMine(cellRow, cellCol) == 1)
 					{
-						ObjectManager->createExplosion(MINE_EXPLOSION_ID, NULL, *targetPoint, MineSplashDamage, MineSplashRange * worldUnitsPerMeter);
+						ObjectManager->createExplosion(MINE_EXPLOSION_ID, nullptr, *targetPoint, MineSplashDamage, MineSplashRange * worldUnitsPerMeter);
 						GameMap->setMine(cellRow, cellCol, 2);
 					}
 				}
@@ -759,11 +759,11 @@ long BattleMech::handleWeaponFire (long weaponIndex,
 		}
 		}
 	else {
-		Assert(target == NULL, 0, " Mech.handleWeaponFire: target should be NULL with network miss! ");
-		Assert(targetPoint != NULL, 0, " Mech.handleWeaponFire: MUST have targetpoint with network miss! ");
+		Assert(target == nullptr, 0, " Mech.handleWeaponFire: target should be NULL with network miss! ");
+		Assert(targetPoint != nullptr, 0, " Mech.handleWeaponFire: MUST have targetpoint with network miss! ");
 		if (isStreakMissile) {
 			CurMoverWeaponFireChunk.unpack(this);
-			DebugWeaponFireChunk(&CurMoverWeaponFireChunk, NULL, this);
+			DebugWeaponFireChunk(&CurMoverWeaponFireChunk, nullptr, this);
 			Assert(false, 0, " Mech.handleWeaponFire: streaks shouldn't miss! (save wfchunk.dbg file) ");
 		}
 
@@ -785,7 +785,7 @@ long BattleMech::handleWeaponFire (long weaponIndex,
 						land->worldToCell(*targetPoint, cellRow, cellCol);
 						if (GameMap->getMine(cellRow, cellCol) == 1) 
 						{
-							ObjectManager->createExplosion(MINE_EXPLOSION_ID, NULL, *targetPoint, MineSplashDamage, MineSplashRange * worldUnitsPerMeter);
+							ObjectManager->createExplosion(MINE_EXPLOSION_ID, nullptr, *targetPoint, MineSplashDamage, MineSplashRange * worldUnitsPerMeter);
 							GameMap->setMine(cellRow, cellCol, 2);
 						}
 					}
@@ -821,7 +821,7 @@ long BattleMech::handleWeaponFire (long weaponIndex,
 					land->worldToCell(*targetPoint, cellRow, cellCol);
 					if (GameMap->getMine(cellRow, cellCol) == 1) 
 					{
-						ObjectManager->createExplosion(MINE_EXPLOSION_ID, NULL, *targetPoint, MineSplashDamage, MineSplashRange * worldUnitsPerMeter);
+						ObjectManager->createExplosion(MINE_EXPLOSION_ID, nullptr, *targetPoint, MineSplashDamage, MineSplashRange * worldUnitsPerMeter);
 						GameMap->setMine(cellRow, cellCol, 2);
 					}
 				}
@@ -832,7 +832,7 @@ long BattleMech::handleWeaponFire (long weaponIndex,
 		}
 	}
 
-	MechWarriorPtr targetPilot = NULL;
+	MechWarriorPtr targetPilot = nullptr;
 	if (target && target->isMover()) {
 		targetPilot = ((MoverPtr)target)->getPilot();
 		targetPilot->updateAttackerStatus(getWatchID(), scenarioTime);

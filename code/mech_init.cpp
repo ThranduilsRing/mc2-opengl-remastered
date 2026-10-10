@@ -186,7 +186,7 @@ void BattleMech::init (bool create, ObjectTypePtr _type) {
 
 float BattleMech::getStatusRating (void) {
 
-	float weaponEffect = (float)weaponEffectiveness / (float)maxWeaponEffectiveness;
+	float weaponEffect = weaponEffectiveness / maxWeaponEffectiveness;
 
 	float armorHead = armor[MECH_ARMOR_LOCATION_HEAD].curArmor / armor[MECH_ARMOR_LOCATION_HEAD].maxArmor * 0.6 + 0.4;
 
@@ -638,7 +638,7 @@ long BattleMech::init (FitIniFile* mechFile) {
 		if (result != NO_ERR)
 			return(result);
 
-		float damageLevel = (float)body[curLocation].curInternalStructure / body[curLocation].maxInternalStructure;
+		float damageLevel = body[curLocation].curInternalStructure / body[curLocation].maxInternalStructure;
 
 		if (damageLevel <= 0.0)
 			body[curLocation].damageState = IS_DAMAGE_DESTROYED;
