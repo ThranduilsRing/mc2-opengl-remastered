@@ -531,6 +531,7 @@ set(SOURCES
     "code/logisticspilotlistbox.cpp"
     "gui/logisticsscreen.cpp"
     "code/logisticsvariant.cpp"
+    "code/logisticsvariant_stats.cpp"
     "code/mainmenu.cpp"
     "code/mechbayscreen.cpp"
     "code/mechlabscreen.cpp"

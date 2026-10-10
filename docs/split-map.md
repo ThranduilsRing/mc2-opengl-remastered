@@ -178,6 +178,14 @@ Split commit: `009e31493`.
 | `logisticsmissioninfo_query.cpp` | LogisticsMissionInfo: the per-mission accessors (purchase / operation files, videos, tune, flags) and the skip / multiplayer switches. |
 | `logisticsmissioninfo_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
+## `code/logisticsvariant.cpp`
+
+| Piece | What it holds |
+|---|---|
+| `logisticsvariant.cpp` | keeps LogisticsChassis and the LogisticsVariant construction, init and addComponent |
+| `logisticsvariant_stats.cpp` | LogisticsVariant: the variant stat getters, component placement checks and lookups, save, and the LogisticsVehicle setup. |
+| `logisticsvariant_internal.h` | shared include bundle, extern globals and declarations of the pieces |
+
 ## `code/mechcmd2.cpp`
 
 | Piece | What it holds |
