@@ -26,7 +26,9 @@ static char THIS_FILE[] = __FILE__;
 ObjectivesDlg::ObjectivesDlg(CWnd* pParent /*=NULL*/)
 	: CDialog(ObjectivesDlg::IDD, pParent)
 {
+	//{{AFX_DATA_INIT(ObjectivesDlg)
 	m_TeamEdit = 0;
+	//}}AFX_DATA_INIT
 
 	nSelectionIndex = -1;
 }
@@ -35,14 +37,17 @@ ObjectivesDlg::ObjectivesDlg(CWnd* pParent /*=NULL*/)
 void ObjectivesDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
+	//{{AFX_DATA_MAP(ObjectivesDlg)
 	DDX_Control(pDX, IDC_OBJECTIVES_EDIT_BUTTON, m_EditButton);
 	DDX_Control(pDX, IDC_OBJECTIVES_ADD_BUTTON, m_AddButton);
 	DDX_Control(pDX, IDC_OBJECTIVES_LIST, m_List);
 	DDX_Text(pDX, IDC_OBJECTIVES_TEAM_EDIT, m_TeamEdit);
+	//}}AFX_DATA_MAP
 }
 
 
 BEGIN_MESSAGE_MAP(ObjectivesDlg, CDialog)
+	//{{AFX_MSG_MAP(ObjectivesDlg)
 	ON_BN_CLICKED(IDC_OBJECTIVES_ADD_BUTTON, OnObjectivesAddButton)
 	ON_BN_CLICKED(IDC_OBJECTIVES_ADD_FROM_TEMPLATE_BUTTON, OnObjectivesAddFromTemplateButton)
 	ON_BN_CLICKED(IDC_OBJECTIVES_REMOVE_BUTTON, OnObjectivesRemoveButton)
@@ -50,6 +55,7 @@ BEGIN_MESSAGE_MAP(ObjectivesDlg, CDialog)
 	ON_BN_CLICKED(IDC_OBJECTIVES_COPY_BUTTON, OnObjectivesCopyButton)
 	ON_BN_CLICKED(IDC_OBJECTIVES_MOVE_UP_BUTTON, OnObjectivesMoveUpButton)
 	ON_BN_CLICKED(IDC_OBJECTIVES_MOVE_DOWN_BUTTON, OnObjectivesMoveDownButton)
+	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
 
@@ -353,6 +359,7 @@ void ObjectivesDlg::OnObjectivesRemoveButton()
 {
 	nSelectionIndex = m_List.GetCurSel();
 	if ((0 <= nSelectionIndex) && (m_ModifiedObjectives.Count() > nSelectionIndex)) {
+		// should put up confirmation box here
 		delete *(m_ModifiedObjectives.Iterator(nSelectionIndex));
 		m_ModifiedObjectives.Delete(nSelectionIndex);
 		syncObjectivesListWithListBox(&m_ModifiedObjectives, &m_List);

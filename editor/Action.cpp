@@ -626,6 +626,9 @@ void ModifyBuildingAction::updateNotedObjectPositions()
     }
 }
 
+//*************************************************************************************************
+// ModifyUnitOrderAction — undo/redo for patrol/move order authoring (UnitBrainPanel)
+//*************************************************************************************************
 
 static void EditorOrderSnapFromUnit( Unit* unit, int& orderType, int& stance,
 	std::vector<Stuff::Vector3D>& waypoints )

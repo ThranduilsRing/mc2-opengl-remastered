@@ -304,6 +304,7 @@ static void s_cli_parse(const char* cmd)
 		else if (s_cli_starts_with(tok, "-new-map=", &rest) ||
 		         s_cli_starts_with(tok, "--new-map=", &rest))
 		{
+			// rest = "size" or "size,terrain"
 			g_cliNewMap = true;
 			g_cliNewMapSize = atol(rest);
 			const char* comma = strchr(rest, ',');
@@ -687,6 +688,8 @@ void EditorMFCApp::OnAppAbout()
 	aboutDlg.DoModal();
 }
 
+/////////////////////////////////////////////////////////////////////////////
+// EditorMFCApp message handlers
 
 
 // Emit the machine-readable smoke summary exactly once (idempotent). Written to

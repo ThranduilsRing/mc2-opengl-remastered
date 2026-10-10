@@ -534,6 +534,8 @@ void Editor::update()
 			land->update();
 		}
 
+		// S2.13-surgical: hoist camera projection-state refresh from
+		// EditorCamera::render() to BEFORE land->geometry().
 		{
 			// Use the SCENE viewport size (Environment.drawable*), NOT gos_GetViewport's
 			// viewMul*. With the docked map-resize, the GL scene renders into a centralW
@@ -572,6 +574,7 @@ void Editor::update()
 }
 
 BEGIN_MESSAGE_MAP(EditorInterface,CWnd )
+	//{{AFX_MSG_MAP(EditorInterface)
 	ON_WM_CREATE()
 	ON_WM_LBUTTONDOWN()
 	ON_WM_LBUTTONUP()
@@ -610,6 +613,7 @@ BEGIN_MESSAGE_MAP(EditorInterface,CWnd )
 	ON_COMMAND(ID_VIEW_SHOWPASSABILITYMAP, OnViewShowpassabilitymap)
 	ON_WM_MBUTTONUP()
 	ON_WM_TIMER()
+	//}}AFX_MSG_MAP
 	ON_UPDATE_COMMAND_UI_RANGE(0, 0xffff, UpdateButton ) 
 	ON_COMMAND_RANGE( 0, 0xffff, OnCommand )
 END_MESSAGE_MAP()

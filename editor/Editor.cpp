@@ -926,6 +926,8 @@ void TerminateGameEngine()
 	EditorGameOS_Shutdown();
 }
 
+//----------------------------------------------------------------------------
+// Same command line Parser as MechCommander
 void ParseCommandLine(char *command_line)
 {
 	int i;

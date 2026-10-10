@@ -318,6 +318,11 @@ int EditorInterface::runPlaceOobSmoke()
 	return 1; // every off-map input snapped back onto the valid cell grid
 }
 
+//-------------------------------------------------------------------------------------------------
+// Phase 5 PCG foliage commands. Generate runs the Python generator's foliage pass
+// on the current generated-map recipe and loads the resulting sidecar; the rest
+// are pure overlay-state toggles. None touch terrain/save/load.
+//-------------------------------------------------------------------------------------------------
 void EditorInterface::OnFoliageGenerate()
 {
 	extern bool g_cliSuppressModals;   // smoke/headless: skip the modal feedback below

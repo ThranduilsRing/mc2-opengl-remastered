@@ -193,6 +193,7 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 	}
 
 	EditorDataTrace("EditorData::initTerrainFromPCV: before EditorObjectMgr::load");
+	// Step 10 — editor's only inserted step (actor spawn).
 	EditorObjectMgr::instance()->load( pFile, 1 );
 	EditorDataTrace("EditorData::initTerrainFromPCV: after EditorObjectMgr::load");
 
@@ -803,6 +804,7 @@ bool CreateScaledColorMap(long mapWidth, char *localColorMapName, MemoryPtr tmpR
 	}
 	else
 	{
+		// Flat neutral fallback (only if the JPEG genuinely won't decode).
 		for (long y = 0; y < newWidth; y++)
 		{
 			DWORD *dst = (DWORD *)(newImage + (size_t)y * physWidth);
@@ -1095,6 +1097,10 @@ bool EditorData::initTerrainFromTGA( int mapSize, int min, int max, int terrain 
 		{
 			char name2[1024];
 			strcpy(name2,"newMap");
+			//Copy the base map to the new mapname in the data textures directory.
+			// OVERWRITE IT if it exists.
+			// DELETE any burnin version of the map!!
+			// Maybe we should warn here?
 			FullPathFileName localColorMapName;
 			localColorMapName.init(texturePath,name2,".tga");
 			
