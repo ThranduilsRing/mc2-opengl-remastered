@@ -29,6 +29,34 @@
 #include "Gates/gate_cold.h"   // str<>(), raw<>()
 #include "../RenderCore/axis_convert.h"
 
+// MC2_MIF_SPLIT / MC2_IFACE_COST_SPLIT phase timing and the GPU-ground-pick parity oracle: used by update() and the
+// order-style paths, defined in missiongui_diag.cpp.
+namespace missiongui_detail {
+	enum MifPhase { MF_TOTAL=0, MF_INVPROJ, MF_LOS, MF_CTRLGUI, MF_UPDTGT, MF_POSTTGT, MF_DRAWBARS, MF_ROLLOVERS,
+		// ControlGui::update sub-phases, folded from g_ifaceCgFrameNs[] --
+		// order matches CgPhase in controlgui.cpp.
+		MF_CG_PAUSE, MF_CG_BTNHOVER, MF_CG_ROSTER, MF_CG_MOVERSTATE, MF_CG_TACMAP, MF_CG_INFOWND, MF_CG_VEHTAB, MF_CG_FGBAR,
+		MF_COUNT };
+	const int MF_CG_FIRST = MF_CG_PAUSE;
+	extern const bool s_mfOn;
+	extern unsigned long long s_mfFrameNs[MF_COUNT];
+	extern unsigned long long s_mfInvWalks, s_mfInvHits, s_mfWinWalks, s_mfWinHits;
+	extern const bool s_gpParityOn;
+	extern const bool s_gpCenter;
+	struct MifScope {
+		int idx; std::chrono::steady_clock::time_point t0;
+		explicit MifScope(int i):idx(i){ if(s_mfOn) t0=std::chrono::steady_clock::now(); }
+		~MifScope(){ if(!s_mfOn) return; s_mfFrameNs[idx]+=(unsigned long long)
+			std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now()-t0).count(); }
+	};
+	void mfEmitWindow(std::string_view event);
+	void mfFrameEnd(unsigned long long totalNs);
+	void gpCenterProbe(int cxPix, int cyPix, float ccx, float ccy, float ccz);
+	void gpParitySite(int mouseX, int mouseY, unsigned long long cpuNs,
+	                  float cx, float cy, float cz, std::string_view site);
+}
+using namespace missiongui_detail;
+
 	static const char* terrainStr[NUM_TERRAIN_TYPES] = {
 			"Blue Water",	//MC_BLUEWATER_TYPE
 			"Green Water",	//MC_GREEN_WATER_TYPE
@@ -101,27 +129,27 @@ gosEnum_KeyIndex MissionInterfaceManager::WAYPOINT_KEY = (gosEnum_KeyIndex)-1;
 // first Mission::update -> updateTarget ran with a STALE target / hover cache from the
 // PREVIOUS mission, then issued a virtual call through a freed object's vtable -> crash.
 // invalidateHoverTarget() clears all of it on mission begin AND end.
-static int           s_hoverLastMouseX = -1;
-static int           s_hoverLastMouseY = -1;
-static GameObject*   s_hoverCachedTarget = nullptr;
-static unsigned long s_hoverCachedTargetWID = 0;   // watch-ID of the cached hover target — validate by handle before any deref of the raw pointer
-static bool          s_hoverCacheValid  = false;
+int           s_hoverLastMouseX = -1;
+int           s_hoverLastMouseY = -1;
+GameObject*   s_hoverCachedTarget = nullptr;
+unsigned long s_hoverCachedTargetWID = 0;   // watch-ID of the cached hover target — validate by handle before any deref of the raw pointer
+bool          s_hoverCacheValid  = false;
 // Generation stamp: bumped on every mission begin/end invalidate. A cached target is only
 // trusted while its stamp matches; any boundary crossing discards it cheaply.
-static unsigned      s_hoverMissionSerial = 0;
+unsigned      s_hoverMissionSerial = 0;
 // Suppress hover picking until the mission is fully live (objects loaded). Set true by
 // invalidateHoverTarget() at mission END (and at init), cleared at mission BEGIN once the
 // world is ready. While true updateTarget() is a no-op for picking.
-static bool          s_hoverSuppressed = true;
+bool          s_hoverSuppressed = true;
 // After arming, keep picking OFF for a few live frames: the first updates of a mission can
 // still pick a not-yet-settled world (findObjectByMouse returns a stale/garbage pointer).
-static long          s_hoverSettleFrames = 0;
+long          s_hoverSettleFrames = 0;
 // Watch-IDs of the persistent target + oldTargets, captured when each was set to a LIVE
 // object. updateTarget re-validates via ObjectManager->getByWatchID() (registry lookup, no
 // deref) before touching them, so a target whose object DIED since last frame is dropped,
 // not crashed-on. MAX_ICONS == oldTargets[] size (forcegroupbar.h).
-static unsigned long  s_targetWatchID = 0;
-static unsigned long  s_oldTargetWatchID[MAX_ICONS] = {0};
+unsigned long  s_targetWatchID = 0;
+unsigned long  s_oldTargetWatchID[MAX_ICONS] = {0};
 
 
 extern bool drawTerrainTiles;
@@ -426,21 +454,18 @@ void MissionInterfaceManager::setTutorialText(const char *text)
 // Index order MUST match the MF_CG_* tail of MifPhase below (fold loop in
 // mfFrameEnd is the single mapping point).
 extern unsigned long long g_ifaceCgFrameNs[8];
-namespace {
-	enum MifPhase { MF_TOTAL=0, MF_INVPROJ, MF_LOS, MF_CTRLGUI, MF_UPDTGT, MF_POSTTGT, MF_DRAWBARS, MF_ROLLOVERS,
-		// ControlGui::update sub-phases, folded from g_ifaceCgFrameNs[] --
-		// order matches CgPhase in controlgui.cpp.
-		MF_CG_PAUSE, MF_CG_BTNHOVER, MF_CG_ROSTER, MF_CG_MOVERSTATE, MF_CG_TACMAP, MF_CG_INFOWND, MF_CG_VEHTAB, MF_CG_FGBAR,
-		MF_COUNT };
-	const int MF_CG_FIRST = MF_CG_PAUSE;
+namespace missiongui_detail {
 	static const char* s_mfNames[MF_COUNT] = {"TOTAL","invProj","LOS","controlGui","updateTarget","postTarget","drawBars","rollovers",
 		"cg.pauseWnd","cg.btnHover","cg.rosterScan","cg.moverState","cg.tacMap","cg.infoWnd","cg.vehicleTab","cg.fgBar"};
-	static const bool s_mfOn = mc2::gate::get<"MC2_MIF_SPLIT">() || mc2::gate::get<"MC2_IFACE_COST_SPLIT">();
-	static unsigned long long s_mfSum[MF_COUNT]={0}, s_mfMax[MF_COUNT]={0}, s_mfFrameNs[MF_COUNT]={0};
-	static unsigned long long s_mfFrames=0, s_mfInvWalks=0, s_mfInvHits=0;
+	const bool s_mfOn = mc2::gate::get<"MC2_MIF_SPLIT">() || mc2::gate::get<"MC2_IFACE_COST_SPLIT">();
+	static unsigned long long s_mfSum[MF_COUNT]={0}, s_mfMax[MF_COUNT]={0};
+	unsigned long long s_mfFrameNs[MF_COUNT]={0};
+	static unsigned long long s_mfFrames=0;
+	unsigned long long s_mfInvWalks=0, s_mfInvHits=0;
 	// [IFACE_PERF v1] window accumulators (reset each emission).
 	static unsigned long long s_mfWinSum[MF_COUNT]={0}, s_mfWinMax[MF_COUNT]={0};
-	static unsigned long long s_mfWinFrames=0, s_mfWinWalks=0, s_mfWinHits=0;
+	static unsigned long long s_mfWinFrames=0;
+	unsigned long long s_mfWinWalks=0, s_mfWinHits=0;
 	static const unsigned long long MF_WINDOW_FRAMES = 900ULL;
 	static bool s_mfAtexit=false;
 	static void mfEmit() {
@@ -453,10 +478,10 @@ namespace {
 		std::printf("\n"); std::fflush(stdout);
 	}
 	// One [IFACE_PERF v1] line per window (or partial window at mission end).
-	static void mfEmitWindow(const char* event) {
+	void mfEmitWindow(std::string_view event) {
 		if (!s_mfOn || !s_mfWinFrames) return;
-		std::printf("[IFACE_PERF v1] event=%s frames=%llu invProj_walks=%llu invProj_cacheHits=%llu",
-			event, s_mfWinFrames, s_mfWinWalks, s_mfWinHits);
+		std::printf("[IFACE_PERF v1] event=%.*s frames=%llu invProj_walks=%llu invProj_cacheHits=%llu",
+			(int)event.size(), event.data(), s_mfWinFrames, s_mfWinWalks, s_mfWinHits);
 		for (int i=0;i<MF_COUNT;i++)
 			std::printf(" %s={avg_us:%.1f,max_us:%.1f}", s_mfNames[i],
 				(double)s_mfWinSum[i]/s_mfWinFrames/1000.0, (double)s_mfWinMax[i]/1000.0);
@@ -464,13 +489,7 @@ namespace {
 		for (int i=0;i<MF_COUNT;i++) { s_mfWinSum[i]=0; s_mfWinMax[i]=0; }
 		s_mfWinFrames=0; s_mfWinWalks=0; s_mfWinHits=0;
 	}
-	struct MifScope {
-		int idx; std::chrono::steady_clock::time_point t0;
-		explicit MifScope(int i):idx(i){ if(s_mfOn) t0=std::chrono::steady_clock::now(); }
-		~MifScope(){ if(!s_mfOn) return; s_mfFrameNs[idx]+=(unsigned long long)
-			std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now()-t0).count(); }
-	};
-	static void mfFrameEnd(unsigned long long totalNs) {
+	void mfFrameEnd(unsigned long long totalNs) {
 		if (!s_mfOn) return;
 		if (!s_mfAtexit) { s_mfAtexit=true; std::atexit(mfEmit); }
 		++s_mfFrames; s_mfFrameNs[MF_TOTAL]=totalNs;
@@ -495,8 +514,8 @@ namespace {
 //   (a) delta distribution (world units) + >2wu flag lines with context,
 //   (b) synchronous readback stall us vs the CPU quad-walk us (R1 verdict),
 //   (c) buffer-unavailable frame count (pause/menu/ortho fallback -> R3 data).
-namespace {
-	static const bool s_gpParityOn = RenderWorld::IsGpuGroundPickParityEnabled();
+namespace missiongui_detail {
+	const bool s_gpParityOn = RenderWorld::IsGpuGroundPickParityEnabled();
 	// Sample knob: run the GPU pick every Nth eligible site. Default 30 (NOT 1):
 	// the synchronous single-pixel glReadPixels stalls the pipeline (measured
 	// avg ~1.2ms, max tens of ms, worst-case >1s when the prior-frame FBO write
@@ -516,7 +535,7 @@ namespace {
 	// GPU-vs-CPU ground-pos delta over the terrain the camera is looking at
 	// (incl. displaced terrain), which the parked-cursor path cannot. Same
 	// throttle as the cursor path. Diagnostic-only; result never consumed.
-	static const bool s_gpCenter = mc2::gate::get<"MC2_GPU_GROUND_PICK_PARITY_CENTER">();
+	const bool s_gpCenter = mc2::gate::get<"MC2_GPU_GROUND_PICK_PARITY_CENTER">();
 	// Counters (process-lifetime; atexit summary).
 	static unsigned long long s_gpSites=0;          // eligible parity sites seen
 	static unsigned long long s_gpCompared=0;        // both CPU+GPU produced a point
@@ -582,7 +601,7 @@ namespace {
 	// inverseProject result at the CENTER pixel (ccx/y/z) + the center pixel
 	// coords. Runs the GPU depth-unproject at the same center pixel and records
 	// the delta. Throttled by the same sample counter. Result never consumed.
-	static void gpCenterProbe(int cxPix, int cyPix, float ccx, float ccy, float ccz) {
+	void gpCenterProbe(int cxPix, int cyPix, float ccx, float ccy, float ccz) {
 		if (!s_gpParityOn || !s_gpCenter) return;
 		if ((s_gpSites % (unsigned long long)s_gpSampleN) != 0) return;
 		if (!RenderWorld::IsObjectIdBufferEnabled()) return;
@@ -624,8 +643,8 @@ namespace {
 	// Called at each ground-pick site. cpuNs = measured CPU inverseProject cost
 	// for this site; (cx,cy,cz) = the CPU wPos it produced. mouseX/Y = raw cursor.
 	// site = short label ("hover"/"Lmove"/"Rmove") for >2wu flag context.
-	static void gpParitySite(int mouseX, int mouseY, unsigned long long cpuNs,
-	                         float cx, float cy, float cz, const char* site) {
+	void gpParitySite(int mouseX, int mouseY, unsigned long long cpuNs,
+	                         float cx, float cy, float cz, std::string_view site) {
 		if (!s_gpParityOn) return;
 		if (!s_gpAtexit) { s_gpAtexit = true; std::atexit(gpEmit); }
 		++s_gpSites;
@@ -699,9 +718,9 @@ namespace {
 		if (dHoriz > 2.0) {
 			++s_gpOver2wu;
 			std::fprintf(stderr,
-				"[GPU_PICK_PARITY] over_2wu site=%s mission=%s screen=(%d,%d) gl=(%d,%d) "
+				"[GPU_PICK_PARITY] over_2wu site=%.*s mission=%s screen=(%d,%d) gl=(%d,%d) "
 				"cpu=(%.1f,%.1f,%.1f) gpu=(%.1f,%.1f,%.1f) dxy=%.2f dz=%.2f\n",
-				site, s_gpMissionTag, mouseX, mouseY, ctx.glX, ctx.glY,
+				(int)site.size(), site.data(), s_gpMissionTag, mouseX, mouseY, ctx.glX, ctx.glY,
 				cx, cy, cz, res.worldX, res.worldY, res.worldZ, dHoriz, dVert);
 		}
 	}
