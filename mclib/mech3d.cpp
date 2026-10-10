@@ -1,11 +1,6 @@
-//-------------------------------------------------------------------------------
-//
 // Mech 3D layer.  Controls how the mech moves through animations
-//
 // For MechCommander 2
-//
 // Replace Mactor for better looking mechs!
-//
 //---------------------------------------------------------------------------//
 // Copyright (C) Microsoft Corporation. All rights reserved.                 //
 //===========================================================================//
@@ -16,11 +11,9 @@
 
 #include "mech3d_internal.h"
 
-
 #ifndef MSTATES_H
 #include"mstates.h"
 #endif
-
 
 // MC2_GPU_CULL_LIFECYCLE_TRACE=1: verbose per-actor lifecycle boundary prints.
 // Default off (too noisy for production). Fires at: init, first GPU-cull skip per actor.
@@ -70,14 +63,11 @@ TG_TypeMultiShapePtr Mech3DAppearanceType::SensorSquareShape = NULL;
 
 bool Mech3DAppearanceType::animationLoadingEnabled = true;
 
-//-----------------------------------------------------------------------------
-
 #define MAX_MECHS					1
 Stuff::Vector3D debugMechActorPosition[MAX_MECHS];
 float mechDebugAngle[MAX_MECHS];
 float torsoDebugAngle[MAX_MECHS];
 
-//-----------------------------------------------------------------------------
 void Mech3DAppearance::setObjectParameters (const Stuff::Vector3D &pos, float Rot, long sel, long team, long homeRelations)
 {
 	movedThisFrame = false;
@@ -106,7 +96,6 @@ void Mech3DAppearance::setObjectParameters (const Stuff::Vector3D &pos, float Ro
 	homeTeamRelationship = homeRelations;
 }
 
-//-----------------------------------------------------------------------------
 void Mech3DAppearance::setMoverParameters (float turretRot, float lArmRot, float rArmRot, bool isAirborne)
 {
 	isHelicopter = isAirborne;
@@ -129,13 +118,11 @@ void Mech3DAppearance::setMoverParameters (float turretRot, float lArmRot, float
 	}
 }	
 
-//-----------------------------------------------------------------------------
 void Mech3DAppearance::updateFootprints (void)
 {
 
 }
 
-//-----------------------------------------------------------------------------
 bool Mech3DAppearance::isMouseOver (float px, float py)
 {
 	if (inView)
@@ -157,7 +144,6 @@ bool Mech3DAppearance::isMouseOver (float px, float py)
 
 bool oneMechPlease = false;
 
-//-----------------------------------------------------------------------------
 void Mech3DAppearance::destroy (void)
 {
 	AppearanceTypeList::appearanceHeap->Free(paintSchemata);
@@ -282,7 +268,6 @@ void Mech3DAppearance::destroy (void)
 	}
 }
 
-//*****************************************************************************
 void Mech3DAppearance::copyTo (MechAppearanceData *data)
 {
 	data->frameNum = frameNum;
@@ -330,7 +315,6 @@ void Mech3DAppearance::copyTo (MechAppearanceData *data)
 	data->jumpVelocity = jumpVelocity;
 }
 
-//*****************************************************************************
 void Mech3DAppearance::copyFrom (MechAppearanceData *data)
 {
 	frameNum = data->frameNum;
@@ -414,7 +398,7 @@ void Mech3DAppearance::copyFrom (MechAppearanceData *data)
 	jumpVelocity = 		data->jumpVelocity;
 
 	// [MECHRESTORE v1] restore boundary. status is deliberately NOT
-	// copied (see :5327) — emit the post-restore value + type/LOD so a
+	// copied — emit the post-restore value + type/LOD so a
 	// single savegame load correlates each mech's restored type against
 	// its later submit/register events.
 	{
@@ -451,7 +435,6 @@ Stuff::Vector3D Mech3DAppearance::getHitNodeLeft (void)
 			return result;
 	}
 
-   	//-------------------------------------------
    	// Create Matrix to conform to.
    	Stuff::UnitQuaternion qRotation;
    	float yaw = rotation * DEGREES_TO_RADS;
@@ -505,7 +488,6 @@ Stuff::Vector3D Mech3DAppearance::getHitNodeRight (void)
 			return result;
 	}
 
-   	//-------------------------------------------
    	// Create Matrix to conform to.
    	Stuff::UnitQuaternion qRotation;
    	float yaw = rotation * DEGREES_TO_RADS;

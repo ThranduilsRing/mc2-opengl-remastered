@@ -2,8 +2,6 @@
 // Declared in the class headers; shared names in mech3d_internal.h.
 #include "mech3d_internal.h"
 
-
-//-----------------------------------------------------------------------------
 long Mech3DAppearance::update (bool animate) 
 {
 
@@ -27,7 +25,6 @@ long Mech3DAppearance::update (bool animate)
 	if (!mechShape)
 		return TRUE;
 
-	//----------------------------------------
 	// Recycle the weapon Nodes
 	if (nodeRecycle)
 	{
@@ -70,7 +67,6 @@ long Mech3DAppearance::update (bool animate)
 		}
 	}
 	
-	//----------------------------------------------
 	//If mech is in 2 and does NOT have a target.
 	//Fix please
 	// FREEZE-MOVERS-1: idleTime is a wall-clock accumulator that FLIPS THE
@@ -98,11 +94,9 @@ long Mech3DAppearance::update (bool animate)
 		currentFrame = 0;
 	}
 	
-	//--------------------------------------------------------------
 	// Check to see if we need to stop NOW!!!!!!!!!
 	if (checkStop() && !inDebugMoveMode && !jumpSetup && (getVelocityMagnitude() != 0.0f) && (currentGestureId != GestureJump))
 	{
-		//--------------------------------
 		// We are at the goal.  Store off
 		// our current gesture state.
 		currentGestureId = 2;		//Force us to the stand gesture
@@ -114,14 +108,12 @@ long Mech3DAppearance::update (bool animate)
 	
 	long newGestureId = -1;			//Assume we do not need to transition.
 	
-	//--------------------------------------------------------------
 	// Check if currentStateGoal is -1.
 	// If it is not, we need to move to a new gesture to get to our goal.
 	// Check if we can change gestures.  If yes, go through change over.
 	// Combines three separate old chunks o code.
 	if (currentStateGoal != -1)
 	{
-		//--------------------------------------------
 		// Find out how we get to Goal.  If result is
 		// -1, we are already at goal.
 		long arrayIdx = (oldStateGoal * GESTURE_OFFSET_SIZE) + (currentStateGoal *  MAX_TRANSITION_GESTURES) + transitionState;
@@ -134,7 +126,6 @@ long Mech3DAppearance::update (bool animate)
 			long firstFrame = currentFrame;
 			if (newGestureId == -1)		//We have reached our goal.
 			{
-				//--------------------------------
 				// We are at the goal.  Store off
 				// our current gesture state.
 				oldStateGoal = currentStateGoal;
@@ -149,13 +140,10 @@ long Mech3DAppearance::update (bool animate)
 					inReverse = true;
 			}
 			else
-			//----------------------------------------------------
 			// reset all frames to zero for this gesture.
 			// NOTE:  This may be a two way gesture.  Most will be
 			// set to zero, but some may need to be set to last.
-			//
 			{
-				//----------------------------------------------
 				// Now actually reset everything and setup flags
 				// to facilitate the playing of the new gesture
 				currentGestureId = newGestureId;
@@ -180,7 +168,6 @@ long Mech3DAppearance::update (bool animate)
 		
 	if ((status == OBJECT_STATUS_DESTROYED) || (status == OBJECT_STATUS_DISABLED))
 	{
-		//----------------------------------------------------
 		// This will bypass animation if we go the old way.
 		// Just set stateGoal to 7 or 8 if its not.
 		if (currentStateGoal < 7)
@@ -196,27 +183,23 @@ long Mech3DAppearance::update (bool animate)
 		}
 	}
 
-	//------------------------------------------------------------
 	mechFrameRate = mechType->getFrameRate(currentGestureId);
 
 	if (mechFrameRate < 0.0)
 		mechFrameRate = -mechFrameRate;
 
-	//---------------------
 	// Do jump magic here.
 	if ((currentGestureId == GestureJump) && !inJump)
 	{
 		inJump = true;
 		jumpSetup = false;
 		
-		//-----------------------------------------------------
 		// Distance is straight line distance.  This is only
 		// the case if the mech is FACING the correct way.  If
 		// not, we must increase distance based on facing.
 		float takeoffFrame = mechType->getJumpTakeoffFrame();
 		float landingFrame = mechType->getJumpLandFrame();
 
-		//-----------------------------------------
 		// Get mech flying toward targetPosition.
 		Stuff::Vector3D ownerPosition = position;
 		Stuff::Vector3D targetPosition = jumpDestination;
@@ -226,7 +209,6 @@ long Mech3DAppearance::update (bool animate)
 		jumpVelocity.Normalize(jumpVelocity);
 		jumpVelocity *= velMag;
 		
-		//---------------------------------------------
 		// Jump Velocity is now a velocity vector which 
 		// will move the mech WITHOUT turning to the landing point.
 	}
@@ -250,7 +232,6 @@ long Mech3DAppearance::update (bool animate)
 		}
 	}
  	
-	//--------------------------------------------------------
 	// Force frames to last frame of FALL if fallen
 	fallen = FALSE;
 	if ((currentGestureId == GestureFallenForward) || (currentGestureId == GestureFallenBackward))
@@ -289,24 +270,21 @@ long Mech3DAppearance::update (bool animate)
 			}
 			else if (!singleStepMode)
 			{
-				//--------------------------------------------------------
 				// Make sure animation runs no faster than mechFrameRate fps.
 				frameInc = mechFrameRate * frameLength;
 			}
 			
-			//------------------------------------------
 			// Always ASSUME we cannot transition yet.
 			// Saves myriad compares below.
 			atTransitionToNextGesture = FALSE;
 					
-			//---------------------------------------
 			// Increment Frames -- Everything else!
 			if ((frameInc != 0.0f) || (singleStepMode))
 			{
 				if (!setFirstFrame)		//DO NOT ANIMATE ON FIRST FRAME!  Wait a bit!
 				{
 					// ANIM-CADENCE-FIX (gate MC2_ANIM_CADENCE_FIX): advance the gait at MOST
-					// once per render frame. Mover::getLOSPosition() (mover.cpp:3528) calls a
+					// once per render frame. Mover::getLOSPosition() (mover.cpp) calls a
 					// second appearance->update() in combat to refresh weapon-node geometry,
 					// which otherwise ticks the animation a 2nd time the same frame => visible
 					// double-step (proven: 19390 advanced_twice events, gestures 2/4/7 == the
@@ -327,7 +305,7 @@ long Mech3DAppearance::update (bool animate)
 					// whenever no MC2_VISUAL_* capture is active -> byte-identical live
 					// behavior. See gos_visual_capture.cpp mc2CaptureGaitFreezeActive().
 					// FREEZE-MOVERS-1: the cadence guard alone is NOT enough under
-					// freeze_movers. Mover::getLOSPosition (code/mover.cpp:3697)
+					// freeze_movers. Mover::getLOSPosition (code/mover.cpp)
 					// calls appearance->update() with the DEFAULT animate=true, and
 					// LOS resolution still runs while movers are frozen. Because the
 					// normal walk is skipped, lastAnimAdvanceFrame was never stamped
@@ -385,7 +363,6 @@ long Mech3DAppearance::update (bool animate)
 					}
 				}
 
-				//--------------------------------------
 				//Check Positive overflow of gesture
 				if (currentFrame >= mechType->getNumFrames(currentGestureId))
 				{
@@ -395,7 +372,6 @@ long Mech3DAppearance::update (bool animate)
 					}
 					else
 					{
-						//-------------------------------------------
 						// We are at the end and ready to transition
 						// Force us back to the previous frame so draw
 						// doesn't go off into lala land.
@@ -411,7 +387,6 @@ long Mech3DAppearance::update (bool animate)
 					}
 				}
 	
-				//--------------------------------------
 				//Check negative overflow of gesture
 				if (currentFrame < 0)
 				{
@@ -421,7 +396,6 @@ long Mech3DAppearance::update (bool animate)
 					}
 					else
 					{
-						//-------------------------------------------
 						// We are at the end and ready to transition
 						// Force us back to the previous frame so draw
 						// doesn't go off into lala land.
@@ -476,7 +450,7 @@ long Mech3DAppearance::update (bool animate)
 		mc2_vis::trace("mech", (const void*)this, vs_);
 		if (pointLight)
 			// The legacy `sensorLevel > 4` here excluded every home mech whose
-			// BattleMech::render() had just reset sensorLevel to 0 (mech.cpp:6896)
+			// BattleMech::render() had just reset sensorLevel to 0 (mech.cpp)
 			// — the "no mech searchlights at all" regression. Job (c) again.
 			pointLight->ownerEnabled =
 				(!InEditor && mc2_vis::emitsLight(vs_)) ? 1 : 0;
@@ -529,15 +503,14 @@ long Mech3DAppearance::update (bool animate)
 			updateGeometry();
 
 		// Slice B1: refresh per-actor LightsData UBO slot index for the
-		// GPU mech batcher path. Mirrors bdactor.cpp:2314 pattern. No-op
+		// GPU mech batcher path. Mirrors bdactor.cpp pattern. No-op
 		// when killswitch is off; cheap (one hash lookup + dedup-cache
-		// slot write) when on. Source: msl.cpp:1828.
+		// slot write) when on. Source: msl.cpp.
 		if (g_useGpuMechs && mechShape) {
 			mechShape->CacheGpuLightData();
 		}
 	}
 
-	//----------------------------------------------------------------------
 	// If currentGestureId is 2 and baseRootNodeHeight is not set, set it!!
 	if (baseRootNodeHeight == -99999.9f)
 	{
@@ -556,14 +529,12 @@ long Mech3DAppearance::update (bool animate)
 	// blown-arm mechs. Tracy zone fires unconditionally so we can
 	// confirm typical mechs have ~0 mass here.
 	{ ZoneScopedN("Mech3D.UpdateGeometry.Arms");
-	//------------------------------------------------
 	// If arms are off, process their geometry here!
 	// MUST do every frame.  We don't know where the arms are!!!
 	Stuff::Point3D xlatPosition;
 	Stuff::UnitQuaternion qRotation;
  	if (leftArmOff && leftArm && leftArmRecalc())
 	{
-		//--------------------------------------------------------
 		// Update the dynamics and position here for leftArm
 		float speed = dVel[1].GetLength();
 		if (speed)
@@ -647,7 +618,6 @@ long Mech3DAppearance::update (bool animate)
 	
 	if (rightArmOff && rightArm && rightArmRecalc())
 	{
-		//--------------------------------------------------------
 		// Update the dynamics and position here for leftArm
 		float speed = dVel[0].GetLength();
 		if (speed)
@@ -735,7 +705,6 @@ long Mech3DAppearance::update (bool animate)
 	return TRUE;
 }
 
-//-----------------------------------------------------------------------------
 void Mech3DAppearance::blowLeftArm (void)
 {
 	if (leftArmOff)
@@ -743,10 +712,8 @@ void Mech3DAppearance::blowLeftArm (void)
 		
 	// For now, the shoulder just gets a location which does not change.
 	// Can easily move to a node if a node becomes available.
-	//
 	if (strcmp(weaponEffects->GetEffectName(SHOULDER_POP_ID),"NONE") != 0)
 	{
-		//--------------------------------------------
 		// Yes, load it on up.
 		unsigned flags = gosFX::Effect::ExecuteFlag;
 
@@ -764,7 +731,6 @@ void Mech3DAppearance::blowLeftArm (void)
 		
 	if (strcmp(weaponEffects->GetEffectName(ARM_FLYING_ID),"NONE") != 0)
 	{
-		//--------------------------------------------
 		// Yes, load it on up.
 		unsigned flags = gosFX::Effect::ExecuteFlag;
 
@@ -861,7 +827,6 @@ void Mech3DAppearance::blowLeftArm (void)
 	mechShape->StopUsing("joint_luarm");
 }
 
-//-----------------------------------------------------------------------------
 void Mech3DAppearance::blowRightArm (void)
 {
 	if (rightArmOff)
@@ -869,10 +834,8 @@ void Mech3DAppearance::blowRightArm (void)
 		
 	// For now, the shoulder just gets a location which does not change.
 	// Can easily move to a node if a node becomes available.
-	//
 	if (strcmp(weaponEffects->GetEffectName(SHOULDER_POP_ID),"NONE") != 0)
 	{
-		//--------------------------------------------
 		// Yes, load it on up.
 		unsigned flags = gosFX::Effect::ExecuteFlag;
 
@@ -890,7 +853,6 @@ void Mech3DAppearance::blowRightArm (void)
 		
 	if (strcmp(weaponEffects->GetEffectName(ARM_FLYING_ID),"NONE") != 0)
 	{
-		//--------------------------------------------
 		// Yes, load it on up.
 		unsigned flags = gosFX::Effect::ExecuteFlag;
 
@@ -987,7 +949,6 @@ void Mech3DAppearance::blowRightArm (void)
 	mechShape->StopUsing("joint_ruarm");
 }
 		
-//-----------------------------------------------------------------------------
 void Mech3DAppearance::startSmoking (long smokeLvl)
 {
 	//Check if we are already playing one.  If not, smoke away
@@ -1002,7 +963,6 @@ void Mech3DAppearance::startSmoking (long smokeLvl)
 	{
    		if (strcmp(weaponEffects->GetEffectName(CRITICAL_SMOKE_ID),"NONE") != 0)
    		{
-			//--------------------------------------------
 			// Yes, load it on up.
 			unsigned flags = gosFX::Effect::ExecuteFlag|gosFX::Effect::LoopFlag;
 
@@ -1023,7 +983,6 @@ void Mech3DAppearance::startSmoking (long smokeLvl)
 	{
    		if (strcmp(weaponEffects->GetEffectName(MECH_SMOKE_ID),"NONE") != 0)
    		{
-			//--------------------------------------------
 			// Yes, load it on up.
 			unsigned flags = gosFX::Effect::ExecuteFlag|gosFX::Effect::LoopFlag;
 
@@ -1076,7 +1035,6 @@ void Mech3DAppearance::startSmoking (long smokeLvl)
 	isSmoking = smokeLvl;
 }
 
-//-----------------------------------------------------------------------------
 void Mech3DAppearance::startWaterWake (void)
 {
 	//Check if we are already playing one.  If not, wake city.
@@ -1094,7 +1052,6 @@ void Mech3DAppearance::startWaterWake (void)
 	{
    		if (strcmp(weaponEffects->GetEffectName(MECH_WATER_WAKE),"NONE") != 0)
    		{
-			//--------------------------------------------
 			// Yes, load it on up.
 			unsigned flags = gosFX::Effect::ExecuteFlag|gosFX::Effect::LoopFlag;
 
@@ -1140,7 +1097,6 @@ void Mech3DAppearance::startWaterWake (void)
 	}
 }
 
-//-----------------------------------------------------------------------------
 void Mech3DAppearance::stopWaterWake (void)
 {
 	if (waterWake && isWaking)		//Stop the effect if we are running it!!
@@ -1149,7 +1105,6 @@ void Mech3DAppearance::stopWaterWake (void)
 	isWaking = false;
 }
 
-//-----------------------------------------------------------------------------
 void Mech3DAppearance::playEjection (void)
 {
 	if (InEditor)
@@ -1163,7 +1118,6 @@ void Mech3DAppearance::playEjection (void)
 	{
    		if (strcmp(weaponEffects->GetEffectName(HELICOPTER_DUST_CLOUD),"NONE") != 0)
    		{
-			//--------------------------------------------
 			// Yes, load it on up.
 			unsigned flags = gosFX::Effect::ExecuteFlag;
 

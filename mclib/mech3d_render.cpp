@@ -2,7 +2,6 @@
 // Declared in the class headers; shared names in mech3d_internal.h.
 #include "mech3d_internal.h"
 
-
 // M2.5 (Q6 amendment 2): always-on MLR mech draw counter. Incremented
 // at the legacy mechShape->Render(true) fallback site (~line 2623) so
 // the M2.6 readiness decision rule has live data on Path-B incidence.
@@ -23,12 +22,10 @@ extern "C" uint64_t consumeAndResetMlrMechDraws() {
 // MC2_MECH_LOD_TRACE=1: per-actor LOD-swap boundary print.
 static const bool s_mechLodTrace = mc2::gate::get<"MC2_MECH_LOD_TRACE">();
 
-// ---------------------------------------------------------------------------
 // MECH-LIGHTROW-FRESHNESS-1 gate. DEFAULT-ON kill-switch.
 // MC2_MECH_LIGHT_FRESHNESS=0 restores the pre-slice read at the GPU-mech submit
 // site (sentinel-only test, slot-0 substitution, no range check) bit-for-bit,
 // which is the only way to grade a suspected regression against it.
-// ---------------------------------------------------------------------------
 static bool mechLightFreshnessEnabled() {
     static const bool s_on = mc2::gate::get<"MC2_MECH_LIGHT_FRESHNESS">();
     return s_on;
@@ -39,7 +36,6 @@ static bool mechLightFreshnessEnabled() {
 // s_mechStaleLightRowStale is the instrument that decides whether this gate
 // is inert or load-bearing: zero in steady state means the mech submit path
 // never actually holds a stale stamp, and the gate is inert rather than wrong.
-//
 // MECH-DECLINE-FIX-1: renamed from s_mechStaleLightRowDeclines. Nothing is
 // declined any more (see the submit site) -- the counter records DETECTIONS.
 static uint64_t s_mechStaleLightRowStale    = 0;
@@ -88,7 +84,7 @@ namespace {
 		}
 	}
 	// Shutdown emit via atexit() — mirrors the proven shutdownTexResolveTable
-	// pattern (tex_resolve_table.cpp:78). A static with a CONSTRUCTOR side
+	// pattern (tex_resolve_table.cpp). A static with a CONSTRUCTOR side
 	// effect runs reliably at dynamic-init; the registered handler fires at
 	// clean process exit and always prints final per-site totals (even total=0
 	// if a short/idle mission drew no effects — proves the chain end to end).
@@ -109,7 +105,6 @@ namespace {
 	// path guaranteed to run), not from a discardable anon-namespace static.
 }
 
-//-----------------------------------------------------------------------------
 bool Mech3DAppearance::recalcBounds (void)
 {
 	// F3 CPU projection cost-baseline: aggregate per-actor scope into the
@@ -137,7 +132,6 @@ bool Mech3DAppearance::recalcBounds (void)
 		// [PROJECTZ:ScreenXYOracle id=mech3d_screen_pos]
 		eye->projectForScreenXY(position,screenPos);
 		
- 		//--------------------------------------------------
 		// First, if we are using perspective, figure out
 		// if object too far from camera.  Far Clip Plane.
 		if (eye->usePerspective)
@@ -167,7 +161,6 @@ bool Mech3DAppearance::recalcBounds (void)
 				setVisibilityGatesFromLegacy(true);
 			}
 			
-			//-----------------------------------------------------------------
 			// If inside farClip plane, check if behind camera.
 			// Find angle between lookVector of Camera and vector from camPos
 			// to Target.  If angle is less then halfFOV, object is visible.
@@ -203,7 +196,6 @@ bool Mech3DAppearance::recalcBounds (void)
 
 			//mechType->boundsLowerRightY = (OBBRadius * eye->getTiltFactor() * 2.0f);
 			
-			//-------------------------------------------------------------------------
 			// do a rough check if on screen.  If no where near, do NOT do the below.
 			// Mighty mighty slow!!!!
 			// Use the original check done before all this 3D madness.  Dig out sourceSafe tomorrow!
@@ -339,7 +331,6 @@ bool Mech3DAppearance::recalcBounds (void)
 						DWORD selectLOD = 0;
 						if (useHighObjectDetail)
 						{
-							//-------------------------------------------------------------------------------
 							//Set LOD of Model here because we have the distance and we KNOW we can see it!
 							for (long i=1;i<MAX_LODS;i++)
 							{
@@ -433,7 +424,6 @@ bool Mech3DAppearance::recalcBounds (void)
 	return(inView);
 }
 
-//-----------------------------------------------------------------------------
 long Mech3DAppearance::render (long depthFixup)
 {
 	// FX_COUNT one-time init: register the shutdown emit from a code path that
@@ -526,9 +516,7 @@ long Mech3DAppearance::render (long depthFixup)
 			{
 				mechShape->SetARGBHighLight(flashColor);
 			}
-			//---------------------------------------------
 			// Call Multi-shape render stuff here.
-			//
 			// GPU mech batcher Slice A: try GPU submit first; fall back to CPU
 			// path if registration / capacity / shader-init says so. Counter
 			// recorded BEFORE registration check so eligible-actor totals are
@@ -543,7 +531,6 @@ long Mech3DAppearance::render (long depthFixup)
 			// has already run by the time render() is called, so AI/lifecycle/
 			// damage all proceed normally for offscreen actors. Independent of
 			// MC2_GPU_CULL_LIFECYCLE which gates a separate concern.
-			//
 			// Stale readback semantics: returns true (visible) for actors with
 			// no readback record yet (newly spawned), so this is fail-open in
 			// uncertainty. One frame of stale "invisible" → one frame of
@@ -600,79 +587,69 @@ long Mech3DAppearance::render (long depthFixup)
 				// if normalValid, so the shader samples unit 7 iff a real normal map loaded.
 				desc.slot7TexHandle = normalValid ? (uint32_t)normalTextureHandle : 0u;
 				// Slice B1: use the dedup-cache slot populated by
-				// CacheGpuLightData() in update() (mech3d.cpp:5635 — the ONLY
+				// CacheGpuLightData() in update() (mech3d.cpp — the ONLY
 				// writer that ever runs on a mech shape).
-				//
-				// ----------------------------------------------------------
 				// MECH-LIGHTROW-FRESHNESS-1 (default-ON; =0 reverts bit-for-bit)
-				//
 				// THE DEFECT. cachedGpuLightIndex_ names a DYNAMIC light-table
 				// slot, and dynamic slots are rebased EVERY FRAME:
-				// MC_TextureManager::resetLightData (mclib/txmmgr.cpp:2137)
+				// MC_TextureManager::resetLightData (mclib/txmmgr.cpp)
 				// resets lightDataStructuresCount to the static high-water and
-				// clears every dedup map, its own comment (txmmgr.cpp:2153-2157)
+				// clears every dedup map, its own comment (txmmgr.cpp)
 				// stating that prior-frame hash->slot entries "are invalid". An
 				// index minted on frame N can therefore name a DIFFERENT actor's
 				// row -- or no written row at all -- on frame N+1. cachedFrame_
 				// is the companion stamp saying which frame it was minted on.
-				//
 				// This site was the ONLY one of the four consumers of that field
 				// that never read the stamp. The other three all do:
-				//   msl.cpp:2147-2149          requires it, re-gathers at :2171
-				//   gos_static_prop_registry.cpp:1051  requires it, drops the draw
-				//   gos_static_prop_batcher.cpp:6011   requires it, re-gathers
-				// shaders/mech.vert:229 and :292 index light[] with NO bounds
+				//   msl.cpp          requires it, re-gathers
+				//   gos_static_prop_registry.cpp  requires it, drops the draw
+				//   gos_static_prop_batcher.cpp   requires it, re-gathers
+				// shaders/mech.vert and index light[] with NO bounds
 				// check, so a stale or never-written row shades the mech with
 				// zeroes. The pre-slice fallback was `= 0` -- a REAL slot, not a
 				// sentinel -- which is exactly what made the failure silent.
-				//
 				// WHY THIS PATH NO LONGER DECLINES -- MECH-DECLINE-FIX-1.
-				//
 				// db221dcc2 shipped a DECLINE here on the stated ground that
 				// "declining leaves gpuMechSubmitted false and the CPU MLR path
 				// draws the mech at mechShape->Render(true)". THAT IS FALSE IN
 				// THE CONFIGURATION WHERE THE DECLINE CAN FIRE, and the proof is
 				// the enclosing gate of this very block:
-				//
 				//     if (g_useGpuMechs && !mechGpuCullSkip && g_drawMechs
-				//         && !previewContext)                     <-- :3142
-				//
+				//         && !previewContext)                     <--
 				// Both surviving terms are exactly the conditions under which
 				// updateGeometry picks a FAST-TRANSFORM variant for mechShape
-				// (:4567-4576): previewContext forces the full TransformMultiShape,
+				//: previewContext forces the full TransformMultiShape,
 				// and !g_useGpuMechs falls to the full transform in the else arm.
 				// So whenever we are inside this block, mechShape was transformed
 				// by _HierarchyOnly (the default: MC2_GPU_MECHS and
 				// MC2_GPU_MECH_LEAF_SKIP are both envFlagDefaultOn,
-				// gos_mech_batcher.cpp:134/:214, and the modern shadow path is
+				// gos_mech_batcher.cpp, and the modern shadow path is
 				// active) or by _PositionsOnly. _HierarchyOnly delegates to
-				// TransformMultiShape_BuildRecipe (msl.cpp:2003), which sets
-				// s_buildRecipeOnly, and msl.cpp:1910 then does `continue` BEFORE
+				// TransformMultiShape_BuildRecipe (msl.cpp), which sets
+				// s_buildRecipeOnly, and msl.cpp then does `continue` BEFORE
 				// the per-leaf dispatch -- so TG_Shape::MultiTransformShape never
 				// runs, `lastTurnTransformed` is never advanced (its only writers
-				// are tgl.cpp:1911/:1972/:2984, all inside the skipped per-leaf
-				// dispatchers, plus Touch() at :4352 which is called on building
+				// are tgl.cpp, all inside the skipped per-leaf
+				// dispatchers, plus Touch() which is called on building
 				// and tree shapes only, never on mechShape), and TG_Shape::Render
-				// returns at the staleness guard tgl.cpp:3190 without drawing.
-				//
+				// returns at the staleness guard tgl.cpp without drawing.
 				// The engine already documents this twice, in-tree:
-				//   :4560-4563 "The GPU fast-transform variants (_PositionsOnly /
+				// "The GPU fast-transform variants (_PositionsOnly /
 				//        _HierarchyOnly) leave listOfVertices stale, so
 				//        TG_Shape::Render early-returns and the preview goes blank."
-				//   :3117-3124 (MECH-CULL-CPU-FIX) "we skipped the GPU submit and
+				// (MECH-CULL-CPU-FIX) "we skipped the GPU submit and
 				//        fell back to the CPU mechShape->Render() path, WHICH DOES
 				//        NOT ACTUALLY DRAW while GPU mech batching owns rendering
 				//        -> the mech vanished for that frame -> center-screen
 				//        flicker."
 				// That second one is an OBSERVED runtime bug this file already
 				// fixed once. Declining here reintroduced it.
-				//
 				// AND THE DECLINE WAS WORST IN ITS OWN TARGET CASE. It cannot fire
 				// in steady state: Mission::update() calls clearArrays() ->
-				// resetLightData() (mission.cpp:1146), then CacheGpuLightData()
-				// stamps cachedFrame_ = g_mc2FrameCounter (:5793, ungated by cull),
+				// resetLightData() (mission.cpp), then CacheGpuLightData()
+				// stamps cachedFrame_ = g_mc2FrameCounter (ungated by cull),
 				// then draw_screen() runs this check -- and g_mc2FrameCounter is
-				// only incremented AFTER draw_screen (gameosmain.cpp:2207). Reset,
+				// only incremented AFTER draw_screen (gameosmain.cpp). Reset,
 				// stamp and check therefore all sit in one counter epoch and the
 				// stamp always matches. The stamp can only go stale when
 				// Mech3DAppearance::update() does not run at render cadence, i.e.
@@ -681,7 +658,6 @@ long Mech3DAppearance::render (long depthFixup)
 				// not run either, the light table is NOT rebased, and the "stale"
 				// index still names its own correct row. Pre-fix those frames
 				// rendered CORRECTLY; post-fix they declined and the mech vanished.
-				//
 				// SO: keep the detection, drop the diversion. The freshness verdict
 				// is now RECORDED and reported (per-mission, always-on, via
 				// consumeAndResetMechLightRowCounters) and the submit proceeds with
@@ -689,15 +665,13 @@ long Mech3DAppearance::render (long depthFixup)
 				// back non-zero on a supervised run, the right repair is the one
 				// the original slice itself named -- re-stamp the row at update()
 				// time -- not a render-time decline onto a path that does not draw.
-				//
-				// The range check SURVIVES, because mech.vert:229/:292 index light[]
+				// The range check SURVIVES, because mech.vert index light[]
 				// with no bounds check and an out-of-range read is undefined. But it
 				// now CLAMPS to slot 0 instead of declining: clamping is the
 				// pre-slice substitute (a defined, in-range row -- the static/baked
 				// prefix under LIGHTBAKE), and unlike declining it still draws. An
 				// invisible mech is a worse outcome than a mistinted one for the
 				// actors the player aims at and is shot by.
-				// ----------------------------------------------------------
 				const uint32_t cachedLI = mechShape->getCachedGpuLightIndex();
 				if (!mechLightFreshnessEnabled()) {
 					// Pre-slice behaviour, bit-for-bit.
@@ -752,7 +726,7 @@ long Mech3DAppearance::render (long depthFixup)
 					desc.lightDataIndex = resolvedLI;
 				}
 				// Slice B+ (2026-05-09): per-actor lightsOut from object
-				// status. CPU path at mech3d.cpp:3154 sets
+				// status. CPU path at mech3d.cpp sets
 				// mechShape->SetLightsOut(true) for these states; GPU path
 				// reads bit 1 of inst.renderFlags in mech.vert and skips
 				// per-light contributions, leaving only the ambient floor.
@@ -777,12 +751,10 @@ long Mech3DAppearance::render (long depthFixup)
 				// to the GPU. M2 stored the handle on Mech3DAppearance::mechRenderHandle
 				// via GameAdapters::Mech::registerMech. M2.5 emits the bits to
 				// attachment-2 via mech.frag under MC2_OBJECT_ID_BUFFER.
-				//
 				// CPU fill is UNCONDITIONAL per spec Q3: env-OFF still pays the
 				// load+store (< 10 ns per instance) so instance data shape stays
 				// stable; the env gate lives at the GLSL macro level. Realistic
 				// cost at mc2_24 (46 mechs): < 1 us per frame.
-				//
 				// Handle::invalid().raw() == 0 by definition, so any pre-register
 				// frame or actor that missed registration writes 0 -- correctly
 				// classified as "background" by RenderWorld::lookupAtPixel.
@@ -934,7 +906,6 @@ long Mech3DAppearance::render (long depthFixup)
 
 			}
 
-			//------------------------------------------------
 			// Render GOSFX
 			if (!InEditor)
 			{
@@ -1011,7 +982,6 @@ long Mech3DAppearance::render (long depthFixup)
 						jumpJetEffect->Draw(&drawInfo); if (s_fxCountLog) fxCountTick(FX_JUMP);
 				}
 						
-				//----------------------------------------------------------------
 				// Arm Blown FX
 				if (leftShoulderBoom)
 				{
@@ -1067,7 +1037,6 @@ long Mech3DAppearance::render (long depthFixup)
 						rightShoulderBoom->Draw(&drawInfo); if (s_fxCountLog) fxCountTick(FX_RBOOM);
 				}
 				
-				//------------------------------------------------
 				// All other FXs
 				if (isSmoking != -1)
 				{
@@ -1157,7 +1126,6 @@ long Mech3DAppearance::render (long depthFixup)
 		
 		if ((sensorLevel > 0) && (sensorLevel < 5))
 		{
-			//---------------------------------------
 			// Draw Sensor Contact here.
 			if (sensorLevel > 1)
 			{
@@ -1257,7 +1225,6 @@ long Mech3DAppearance::render (long depthFixup)
  	return NO_ERR;
 }
 
-//-----------------------------------------------------------------------------
 long Mech3DAppearance::renderShadows (void)
 {
 	// Skip legacy blob shadows when shadow maps are active
@@ -1279,10 +1246,8 @@ long Mech3DAppearance::renderShadows (void)
 		: (inView && visible);
 	if (mechShadowVisible)
 	{
-		//---------------------------------------------
 		// Call Multi-shape render stuff here.
 		// DONT RENDER UNTIL FINAL MECH DATA FROM MR CHOI
-		//---------------------------------------------
 		// Call Multi-shape render stuff here.
 		if (mechShadowShape)
 			mechShadowShape->RenderShadows(true);

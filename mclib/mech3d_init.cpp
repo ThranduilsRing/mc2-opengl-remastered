@@ -2,7 +2,6 @@
 // Declared in the class headers; shared names in mech3d_internal.h.
 #include "mech3d_internal.h"
 
-
 // Returns true if the texture file or its .ktx2 BC7 sidecar exists.
 // Used to gate TGL texture loading so sensor shapes work when .tga is absent
 // in a slim deploy (route-2 in txmmgr.cpp will decode the .ktx2 instead).
@@ -29,7 +28,6 @@ static bool textureOrKtxSidecarExists(const char* tgaPath)
 #define FX_JUMP_ID					43
 #define FX_SMOKE_ID					48
 
-//-----------------------------------------------------------------------------
 void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 {
 	Appearance::init(tree,obj);
@@ -126,7 +124,6 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 	flashColor = 0x00000000;
 	drawFlash = false;
 
-
 	//Default to Bright RGB.
 	psRed = psGreen = psBlue = 0xffffffff;
 
@@ -177,7 +174,6 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		if (mechType->rightArm)
 			rightArm = mechType->rightArm->CreateFrom();
 		
-		//-------------------------------------------------
 		// Load the texture and store its handle.
 		for (long i=0;i<sensorTriangleShape->GetNumTextures();i++)
 		{
@@ -215,7 +211,6 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		if (mechType->numJumpNodes)
 		{
 			sensorSquareShape = Mech3DAppearanceType::SensorSquareShape->CreateFrom();
-			//-------------------------------------------------
 			// Load the texture and store its handle.
 			for (int i=0;i<sensorSquareShape->GetNumTextures();i++)
 			{
@@ -253,7 +248,6 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		else
 		{
 			sensorSquareShape = GVAppearanceType::SensorCircleShape->CreateFrom();
-			//-------------------------------------------------
 			// Load the texture and store its handle.
 			for (int i=0;i<sensorSquareShape->GetNumTextures();i++)
 			{
@@ -471,7 +465,6 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 	{
 		mechShadowShape = mechType->mechShadowShape->CreateFrom();
 
-		//-------------------------------------------------
 		// Load the texture and store its handle.
 		for (long i=0;i<mechShadowShape->GetNumTextures();i++)
 		{
@@ -515,13 +508,11 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 
 void Mech3DAppearance::initFX (void)
 {
-	//-----------------------------------------------
 	//Create FX here so they are always ready to go!
 	if (!InEditor)
 	{
    		if (useNonWeaponEffects && strcmp(weaponEffects->GetEffectName(FX_POOF_ID),"NONE") != 0)
    		{
-			//--------------------------------------------
 			// Yes, load it on up.
 			unsigned flags = gosFX::Effect::ExecuteFlag;
 
@@ -542,7 +533,6 @@ void Mech3DAppearance::initFX (void)
 		
    		if (useNonWeaponEffects && strcmp(weaponEffects->GetEffectName(FX_POOF_ID),"NONE") != 0)
    		{
-			//--------------------------------------------
 			// Yes, load it on up.
 			unsigned flags = gosFX::Effect::ExecuteFlag;
 
@@ -563,7 +553,6 @@ void Mech3DAppearance::initFX (void)
 		
    		if (useNonWeaponEffects && strcmp(weaponEffects->GetEffectName(FX_SMOKE_ID),"NONE") != 0)
    		{
-			//--------------------------------------------
 			// Yes, load it on up.
 			unsigned flags = gosFX::Effect::ExecuteFlag|gosFX::Effect::LoopFlag;
 
@@ -581,7 +570,6 @@ void Mech3DAppearance::initFX (void)
 
    		if (strcmp(weaponEffects->GetEffectName(FX_JUMP_ID),"NONE") != 0)
    		{
-			//--------------------------------------------
 			// Yes, load it on up.
 			unsigned flags = gosFX::Effect::ExecuteFlag|gosFX::Effect::LoopFlag;
 
@@ -599,7 +587,6 @@ void Mech3DAppearance::initFX (void)
 	}
 }
 
-//------------------------------------------------------------------------------------------
 //Puts mech into hit mode IF and ONLY IF the mech is standing, walking, reversing, running or limping.
 // NO OTHER GESTURE IS VALID!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 void Mech3DAppearance::hitFront (void)
@@ -624,7 +611,6 @@ void Mech3DAppearance::hitFront (void)
 	}
 }
 
-//-----------------------------------------------------------------------------
 void Mech3DAppearance::hitBack (void)
 {
 	if ((currentGestureId == GestureStand) ||
@@ -647,7 +633,6 @@ void Mech3DAppearance::hitBack (void)
 	}
 }
 
-//-----------------------------------------------------------------------------
 void Mech3DAppearance::hitLeft (void)
 {
 	if ((currentGestureId == GestureStand) ||
@@ -670,7 +655,6 @@ void Mech3DAppearance::hitLeft (void)
 	}
 }
 
-//-----------------------------------------------------------------------------
 void Mech3DAppearance::hitRight (void)
 {
 	if ((currentGestureId == GestureStand) ||
@@ -689,12 +673,10 @@ void Mech3DAppearance::hitRight (void)
 		
 		inReverse = false;
 		
-			
 		currentFrame = firstFrame;
 	}
 }
 
-//-----------------------------------------------------------------------------
 bool Mech3DAppearance::PerPolySelect (long mouseX, long mouseY)
 {
 	// DEGRADE-DON'T-CRASH: partial import with no base shape -> not selectable.
@@ -703,7 +685,6 @@ bool Mech3DAppearance::PerPolySelect (long mouseX, long mouseY)
 	return mechShape->PerPolySelect(mouseX,mouseY);
 }
 
-//-----------------------------------------------------------------------------
 void Mech3DAppearance::LoadPaintSchemata (void)
 {
 	FullPathFileName paintName;
@@ -744,20 +725,17 @@ void Mech3DAppearance::LoadPaintSchemata (void)
 	paintFile.close();
 }	
 
-//-----------------------------------------------------------------------------
 void Mech3DAppearance::setPaintScheme (void)
 {
 	// DEGRADE-DON'T-CRASH: partial import with no base shape -> nothing to paint.
 	if (!mechShape)
 		return;
 
-	//----------------------------------------------------------------------------
 	// Simple really.  Get the texture memory, apply the paint scheme, let it go!
 	DWORD gosHandle = mcTextureManager->get_gosTextureHandle(mechShape->GetTextureHandle(0));
 
 	if (gosHandle && gosHandle != 0xffffffff)
 	{
-		//-------------------
 		// Lock the texture.
 		TEXTUREPTR textureData;
 		gos_LockTexture(gosHandle, 0, 0, &textureData);
@@ -778,7 +756,6 @@ void Mech3DAppearance::setPaintScheme (void)
 			}
 		}
 
-		//-------------------------------------------------------
 		// Dominant-channel paint classifier. A pixel belongs to a paint slot
 		// iff its R/G/B dominates the other two by at least kRatio. Boundary
 		// (antialiased) pixels blend tint vs original proportional to how
@@ -872,13 +849,11 @@ void Mech3DAppearance::setPaintScheme (void)
 			}
 		}
 
-		//------------------------
 		// Unlock the texture
 		gos_UnLockTexture(gosHandle);
 	}
 }	
 
-//---------------------------------------------------------------------------
 DWORD bgrTorgb (DWORD frontRGB)
 {
 	DWORD tmp;
@@ -887,7 +862,6 @@ DWORD bgrTorgb (DWORD frontRGB)
 	return(tmp);
 }
 
-//-----------------------------------------------------------------------------
 void Mech3DAppearance::setPaintScheme (DWORD mcRed, DWORD mcGreen, DWORD mcBlue)
 {
 	psRed = mcRed;
@@ -897,7 +871,6 @@ void Mech3DAppearance::setPaintScheme (DWORD mcRed, DWORD mcGreen, DWORD mcBlue)
 	setPaintScheme();	
 }	
 
-//-----------------------------------------------------------------------------
 void Mech3DAppearance::getPaintScheme( DWORD& red, DWORD& green, DWORD& blue )
 {
 	red = psRed;
@@ -905,7 +878,6 @@ void Mech3DAppearance::getPaintScheme( DWORD& red, DWORD& green, DWORD& blue )
 	green = psGreen;
 }
 
-//-----------------------------------------------------------------------------
 void Mech3DAppearance::resetPaintScheme (DWORD red, DWORD green, DWORD blue)
 {
 	// DEGRADE-DON'T-CRASH: partial import with no base shape -> no texture to
@@ -987,13 +959,11 @@ void Mech3DAppearance::resetPaintScheme (DWORD red, DWORD green, DWORD blue)
 		}
 	}
 
-	//---------------------------------------------------------------------------------
 	// Simple really.  Toss the current texture, reload the RGB and reapply the colors
 
 	DWORD gosHandle = mcTextureManager->get_gosTextureHandle(localTextureHandle);
 	mcTextureManager->removeTexture(gosHandle);
 	
-	//-------------------------------------------------
 	// Load the texture and store its handle.
 	char txmName[1024];
 	mechShape->GetTextureName(0,txmName,256);

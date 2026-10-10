@@ -1,10 +1,8 @@
 // Shared surface of the mech3d translation units (mech3d*.cpp).
-//
 // mech3d.cpp keeps the shared globals, the accessors and destroy/copy code; the rest of the
 // Mech3DAppearance implementation is split by responsibility (see DOC in each piece).
 #ifndef MECH3D_INTERNAL_H
 #define MECH3D_INTERNAL_H
-
 
 #include "gos_static_prop_killswitch.h"  // g_useGpuStaticProps
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1

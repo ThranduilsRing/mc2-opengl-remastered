@@ -2,7 +2,6 @@
 // Declared in the class headers; shared names in mech3d_internal.h.
 #include "mech3d_internal.h"
 
-
 // T1.15 SpotLight_ illumination diagnostic — registration probe (mech class).
 // First-hit always-on; per-summary every 600 updateGeometry calls when env=1.
 static const bool s_spotDiagMechEnabled = mc2::gate::get<"MC2_SPOT_DIAG">();
@@ -15,7 +14,6 @@ static unsigned long s_spotDiagMechCalls      = 0;
 
 #define FOOTPRINT_SLOP			2
 
-//-----------------------------------------------------------------------------
 void Mech3DAppearance::setObjStatus (long oStatus)
 {
 	if ( (status != oStatus) && (!InEditor))
@@ -49,7 +47,6 @@ void Mech3DAppearance::setObjStatus (long oStatus)
 
 			currentLOD = 0;
 
-			//-------------------------------------------------
 			// Load the texture and store its handle.
 			for (long i=0;i<mechShape->GetNumTextures();i++)
 			{
@@ -117,7 +114,6 @@ void Mech3DAppearance::setObjStatus (long oStatus)
 	status = oStatus;
 }
 
-//-----------------------------------------------------------------------------
 void Mech3DAppearance::updateGeometry (void)
 {
 	ZoneScopedN("GameLogic.Mech3D.UpdateGeometry");
@@ -189,7 +185,7 @@ void Mech3DAppearance::updateGeometry (void)
 	// exists in this configuration: instance-state setters feed only
 	// TransformMultiShape (already retired by D-shadow-skip), and the
 	// global-static side effect (SetLightList writing s_listOfLights) is
-	// overwritten by mechShape's identical call at mech3d.cpp:3407 before
+	// overwritten by mechShape's identical call at mech3d.cpp before
 	// any consumer reads it.
 	// MECH-KILLSWITCH-SHADOW-PAIR-RETIRE-1: former MC2_GPU_MECH_SHADOW_STATE_STRIP
 	// (default-ON, strict no-op on tessellated GPU-mech path) retired to constant.
@@ -235,7 +231,6 @@ void Mech3DAppearance::updateGeometry (void)
 
 	//if (visible)
 	{
-		//-------------------------------------------
 		// Does math necessary to draw mech.
 		Stuff::UnitQuaternion qRotation;
 		float yaw = rotation * DEGREES_TO_RADS;
@@ -293,7 +288,6 @@ void Mech3DAppearance::updateGeometry (void)
 		else
 			mechShape->SetFogRGB(0xffffffff);
 
-		//-----------------------------------
 		//Test of Mech as Point Light Source
 		if (!pointLight && eye->isNight)
 		{
@@ -366,9 +360,9 @@ void Mech3DAppearance::updateGeometry (void)
 		// path to the SLCircle_anubis pointLight block above (R7: distinct
 		// node-name prefixes, no double-registration). Lazy first-night
 		// register; per-frame in-place update afterwards (T1.7: no per-frame
-		// pool churn). Public accessors (msl.h:431 GetNumShapes, msl.h:438
-		// GetShapeRec, tgl.h:951 GetIsSpotlight) because Mech3DAppearance is
-		// NOT in the TG_MultiShape friend list at msl.h:251-256.
+		// pool churn). Public accessors (msl.h GetNumShapes, msl.h
+		// GetShapeRec, tgl.h GetIsSpotlight) because Mech3DAppearance is
+		// NOT in the TG_MultiShape friend list at msl.h.
 		// (E) T3.1: gate retired; behavior is now unconditional. Coexists with
 		// the SLCircle_anubis pointLight block above (R7: distinct node-name
 		// prefix, no double-registration).
@@ -489,10 +483,10 @@ void Mech3DAppearance::updateGeometry (void)
 				}
 				spotlightLights_[k]->SetPosition(&childPos);
 				// Rule-2 correctness fix: lightToWorld is consumed at
-				// msl.cpp:1659. Without it, the precomputed s_lightToShape
+				// msl.cpp. Without it, the precomputed s_lightToShape
 				// collapses to worldToShape alone and the light's effective
 				// world position is lost. Matches the existing anubis
-				// pattern at mech3d.cpp:3373-3377 (translation-only).
+				// pattern at mech3d.cpp (translation-only).
 				Stuff::LinearMatrix4D lightToWorldMatrix;
 				Stuff::Point3D childPosP;
 				childPosP.x = childPos.x; childPosP.y = childPos.y; childPosP.z = childPos.z;
@@ -501,7 +495,7 @@ void Mech3DAppearance::updateGeometry (void)
 				spotlightLights_[k]->SetLightToWorld(&lightToWorldMatrix);
 				// T1.13: dropped (sensorLevel > 4) gate. The original gate
 				// was inherited verbatim from the anubis-specific pointLight
-				// branch above (~:3358) where "show enemy searchlight only when
+				// branch above where "show enemy searchlight only when
 				// player has sensor lock" is the correct semantic. For the
 				// generalized SpotLight_ vector path this is overly
 				// restrictive: player-owned mechs (sensorLevel=5) work, but
@@ -519,7 +513,7 @@ void Mech3DAppearance::updateGeometry (void)
 				// emit nothing (user report: wrecks kept glowing).
 				// GHOST-LIGHT-VISIBILITY-1: the T1.13 note above is WRONG —
 				// `visible` is NOT the mesh-drawn fog-of-war predicate.
-				// code/mech.cpp:6816-6866 calls setVisibility(true,true) on
+				// code/mech.cpp calls setVisibility(true,true) on
 				// EVERY contact branch including CONTACT_SENSOR_QUALITY_1..4,
 				// so a mech the player only holds as a sensor blip had
 				// visible==true and lit up the terrain / drew a searchlight
@@ -530,7 +524,7 @@ void Mech3DAppearance::updateGeometry (void)
 				// always emit; a foreign mech emits only while its mesh is
 				// actually drawn (meshAlpha != 0), which is the real
 				// fog-of-war mechanism. `visible` is deliberately NOT read —
-				// it is true for every live mech every frame (mech.cpp:6638).
+				// it is true for every live mech every frame (mech.cpp).
 				// Gate MC2_VIS_SEMANTICS=0 restores the pre-lane predicate.
 				spotlightLights_[k]->active =
 					(eye->isNight && !InEditor
@@ -553,7 +547,6 @@ void Mech3DAppearance::updateGeometry (void)
 		// shapes, plus the shadow-shape transform conditional. Per-stage
 		// attribution for the trimodal Mech3D.UpdateGeometry histogram.
 		{ ZoneScopedN("Mech3D.UpdateGeometry.AnimPose");
-		//----------------------------------------------------
 		// Set Animation State Here.
 		// ONLY ONE case now:
 		//		-We are in an art generated state,  Just playback animation
@@ -592,24 +585,22 @@ void Mech3DAppearance::updateGeometry (void)
 			// Slice D-shadow-skip: when GPU mech path is on AND skip
 			// killswitch is on AND tessellation is active (modern shadow
 			// path engaged), omit the call entirely. Mech3DAppearance::
-			// renderShadows early-returns on tessellation (mech3d.cpp:3054),
+			// renderShadows early-returns on tessellation (mech3d.cpp),
 			// so no consumer of TransformMultiShape's outputs exists in
 			// this configuration. Modern dynamic shadows use g_shadowShapes[]
-			// (txmmgr.cpp:130, 1589-1620), a separate data path that does
+			// (txmmgr.cpp-1620), a separate data path that does
 			// NOT consume mechShadowShape state. See D-shadow-skip spec
 			// §Recon for full grep-verified consumer enumeration including
 			// opposite-direction grep on addShadowShape.
-			//
 			// Tessellation gate is belt-and-suspenders: if a user disables
 			// tessellation, the legacy RenderShadows path becomes reachable
 			// and would need TransformMultiShape outputs.
-			//
 			// Slice C3-shadow (FAST_TRANSFORM): when SKIP is off but
 			// FAST_TRANSFORM is on, use _PositionsOnly to skip the per-
-			// vertex CPU lighting kernel only. RenderShadows (tgl.cpp:3577)
+			// vertex CPU lighting kernel only. RenderShadows (tgl.cpp)
 			// hardcodes gVertex.argb to 0x3f000000 and reads
 			// listOfShadowTVertices populated by MultiTransformShadows
-			// (which still dispatches at msl.cpp:1765 in that branch).
+			// (which still dispatches at msl.cpp in that branch).
 			// MECH-KILLSWITCH-SHADOW-PAIR-RETIRE-1: former MC2_GPU_MECH_SHADOW_SKIP retired.
 			// ISSUE-34: modern-shadow-path predicate (was tess-keyed), matching
 			// the renderShadows early-return that makes the consumer unreachable.
@@ -671,7 +662,6 @@ void Mech3DAppearance::updateGeometry (void)
 	if (visible && (sensorLevel > 4) && !InEditor && useNonWeaponEffects)
 	{
 		ZoneScopedN("Mech3D.UpdateGeometry.Effects");
-		//--------------------------------------------------------------
 		// Having already transformed the mech, the foot poofs go here.
 		Stuff::Vector3D rFootPos, lFootPos;
 		long footId1 = mechType->getTotalNodes() - 2;
@@ -848,10 +838,9 @@ void Mech3DAppearance::updateGeometry (void)
 	// D-gpu-pose-instrument: Sensors stage — sensorTriangleShape +
 	// sensorSquareShape transforms. Per user: ALL mechs have sensors;
 	// need attribution.
-	//
 	// MECH-KILLSWITCH-SENSORSKIP-RETIRE-1: on the GPU mech path, skip the entire
 	// sensor block when sensorLevel ∈ {0, 5}. Sensor SHAPES only render when
-	// sensorLevel ∈ [1,4] (mech3d.cpp:2948-2960); for player mechs (sensorLevel=5)
+	// sensorLevel ∈ [1,4] (mech3d.cpp); for player mechs (sensorLevel=5)
 	// and undetected enemies (sensorLevel=0) the transform work has no consumer.
 	// Skip gate is the exact INVERSE of the Render gate — strict no-op. sensorSpin
 	// drift while skipped is imperceptible (a continuously-rotating marker that pops
@@ -882,13 +871,11 @@ void Mech3DAppearance::updateGeometry (void)
 		baseRootNodeDifference -= HELICOPTER_FACTOR;
 
 	xlatPosition.y += baseRootNodeDifference;
-	//----------------------------------------------
 	// Do geometry here to draw sensor contact
 	sensorTriangleShape->SetFogRGB(0xffffffff);
 	sensorTriangleShape->SetLightList(eye->getWorldLights(),eye->getNumLights());
 	sensorTriangleShape->TransformMultiShape(&xlatPosition,&totalRotation);
 
-	//----------------------------------------------
 	// Do geometry here to draw sensor contact
 	sensorSquareShape->SetFogRGB(0xffffffff);
 	sensorSquareShape->SetLightList(eye->getWorldLights(),eye->getNumLights());
@@ -896,7 +883,6 @@ void Mech3DAppearance::updateGeometry (void)
 	} // end !skipSensors
 	} // end Sensors zone
 	
-	//-----------------------------------------
 	// Create Jump FX Here.
 	if (!jumpFXSetup && (currentGestureId == GestureJump) && inJump && jumpJetEffect)
 	{
@@ -926,7 +912,6 @@ void Mech3DAppearance::updateGeometry (void)
 		jumpFXSetup = true;
 	}
 	
-	//------------------------------------------------
 	// Update GOSFX
 	for (long i=0;i<MAX_DUST_POOFS;i++)
 	{
@@ -1000,7 +985,6 @@ void Mech3DAppearance::updateGeometry (void)
 		jumpFXSetup = false;
 	}
 	
-	//----------------------------------------------------------------
 	// Arm Blown FX
 	if (leftShoulderBoom)
 	{
@@ -1068,7 +1052,6 @@ void Mech3DAppearance::updateGeometry (void)
 		}
 	}
 	
-	//-------------------------------------------------
 	// All other effects
 	if ((criticalSmoke && (isSmoking > 0)) || (smokeEffect && (isSmoking == 0)))
 	{
@@ -1175,7 +1158,6 @@ void Mech3DAppearance::updateGeometry (void)
 FilePtr logFile = NULL;
 #endif
 
-//-----------------------------------------------------------------------------
 bool Mech3DAppearance::setJumpParameters (Stuff::Vector3D &end)
 {
 	if (!inJump)
@@ -1189,7 +1171,6 @@ bool Mech3DAppearance::setJumpParameters (Stuff::Vector3D &end)
 	return false;
 }
 
-//-----------------------------------------------------------------------------
 bool Mech3DAppearance::leftArmRecalc (void)
 {
 	if (!leftArm)
@@ -1197,7 +1178,6 @@ bool Mech3DAppearance::leftArmRecalc (void)
 
 	leftArmInView = false;
 	float eyeDistance = 0.0f;
-	//--------------------------------------------------
 	// First, if we are using perspective, figure out
 	// if object too far from camera.  Far Clip Plane.
 	if (eye->usePerspective)
@@ -1227,7 +1207,6 @@ bool Mech3DAppearance::leftArmRecalc (void)
 			leftArmInView = true;
 		}
 
-		//-----------------------------------------------------------------
 		// If inside farClip plane, check if behind camera.
 		// Find angle between lookVector of Camera and vector from camPos
 		// to Target.  If angle is less then halfFOV, object is visible.
@@ -1249,7 +1228,6 @@ bool Mech3DAppearance::leftArmRecalc (void)
 	return leftArmInView;
 }
 
-//-----------------------------------------------------------------------------
 bool Mech3DAppearance::rightArmRecalc (void)
 {
 	if (!rightArm)
@@ -1257,7 +1235,6 @@ bool Mech3DAppearance::rightArmRecalc (void)
 
 	rightArmInView = false;
 	float eyeDistance = 0.0f;
-	//--------------------------------------------------
 	// First, if we are using perspective, figure out
 	// if object too far from camera.  Far Clip Plane.
 	if (eye->usePerspective)
@@ -1287,7 +1264,6 @@ bool Mech3DAppearance::rightArmRecalc (void)
 			rightArmInView = true;
 		}
 
-		//-----------------------------------------------------------------
 		// If inside farClip plane, check if behind camera.
 		// Find angle between lookVector of Camera and vector from camPos
 		// to Target.  If angle is less then halfFOV, object is visible.

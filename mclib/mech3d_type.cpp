@@ -36,13 +36,11 @@ const char* MechAnimationNames[MaxGestures+2] =
 	"FallForwardDam"	//Destroyed States
 };																
 
-//-------------------------------------------------------------------------------
 // class Mech3DAppearanceType
 void Mech3DAppearanceType::init (const char * fileName)
 {
 	AppearanceType::init(fileName);
 
-	//---------------------------------------------------
 	// Load the Gesture Data.  Should be in filename.ini
 	FullPathFileName mechIniName;
 	mechIniName.init(tglPath,fileName,".ini");
@@ -148,7 +146,6 @@ void Mech3DAppearanceType::init (const char * fileName)
 				// at greater zoom-out. See visual_preference_knobs.md.
 				lodDistance[i] *= 5.0f;
 
-				//----------------------------------------------
 				// Base LOD shape.  In stand Pose by default.
 				mechShape[i] = new TG_TypeMultiShape;
 				gosASSERT(mechShape[i] != NULL);
@@ -187,7 +184,6 @@ void Mech3DAppearanceType::init (const char * fileName)
 	}
 	else
 	{
-		//----------------------------------------------
 		// Base shape.  In stand Pose by default.
 		mechShape[0] = new TG_TypeMultiShape;
 		gosASSERT(mechShape[0] != NULL);
@@ -218,7 +214,6 @@ void Mech3DAppearanceType::init (const char * fileName)
 	result = mechFile.readIdString("ShadowName",aseFileName,511);
 	if (result == NO_ERR)
 	{
-		//----------------------------------------------
 		// Base Shadow shape.
 		mechShadowShape = new TG_TypeMultiShape;
 		gosASSERT(mechShadowShape != NULL);
@@ -229,7 +224,6 @@ void Mech3DAppearanceType::init (const char * fileName)
 		mechShadowShape->LoadTGMultiShapeFromASE(gvName); // TGL-LOAD-EXEMPT(optional shadow; loader-side PART-0 logging; GetNumShapes-checked delete-on-fail below)
 	}
 
-	//------------------------------------
 	// Load Arms to blow off Next.
 	char leftArmName[1024];
 	sprintf(leftArmName,"%sLeftArm",fileName);
@@ -262,12 +256,9 @@ void Mech3DAppearanceType::init (const char * fileName)
 		delete leftArm;
 		leftArm = NULL;
 	}
- 	//----------------------------------------------
 	
-	//-----------------------------------------------
 	// Load Damaged States
 	// They are named mechnamefallForward and mechnameFallBackward
-	//
 	char forwardName[1024];
 	sprintf(forwardName,"%sFallForwardDam",fileName);
 
@@ -304,7 +295,6 @@ void Mech3DAppearanceType::init (const char * fileName)
 		}
 	}
 
- 	//-----------------------
 	// Load Animations Next.
 	if (animationLoadingEnabled)
 	{
@@ -339,7 +329,6 @@ void Mech3DAppearanceType::init (const char * fileName)
 				mechAnim[i] = new TG_AnimateShape;
 				gosASSERT(mechAnim[i] != NULL);
 
-				//---------------------------------------------------------------------------------------------
 				// If this animation does not exist, it is not a problem!
 				// Mech will simply freeze until animation is "over" and then move to next animation in chain.
 				mechAnim[i]->LoadTGMultiShapeAnimationFromASE(animPath,mechShape[0]);
@@ -352,7 +341,6 @@ void Mech3DAppearanceType::init (const char * fileName)
 		}
 	}
 
-	//------------------------------
 	// Load up the foot print type.
 	result = mechFile.seekBlock("FootPrint");
 	if (result != NO_ERR)
@@ -380,7 +368,6 @@ void Mech3DAppearanceType::init (const char * fileName)
 		leftFootprintType = rightFootprintType;
 	}
 	
-	//-----------------------------------------------
 	// Load up the Node Data.
 	result = mechFile.seekBlock("Nodes");
 	if (result != NO_ERR)
@@ -485,7 +472,6 @@ void Mech3DAppearanceType::init (const char * fileName)
 		}
 	}
 	
-  	//----------------------------------------------
 	// Load up sensor textures if not yet defined.
 	// For helicopters, load up the vehicle one!!
 	if (SensorSquareShape == NULL && numJumpNodes)
@@ -619,7 +605,6 @@ void Mech3DAppearanceType::init (const char * fileName)
 
 }
 
-//----------------------------------------------------------------------------
 void Mech3DAppearanceType::destroy (void)
 {
 	AppearanceType::destroy();
@@ -682,7 +667,6 @@ void Mech3DAppearanceType::destroy (void)
 	numSmokeNodes = numWeaponNodes = numJumpNodes = 0;
 }
 
-//----------------------------------------------------------------------------
 void Mech3DAppearanceType::setAnimation (TG_MultiShapePtr shape, DWORD animationNum)
 {
 	gosASSERT(shape != NULL);
@@ -694,7 +678,6 @@ void Mech3DAppearanceType::setAnimation (TG_MultiShapePtr shape, DWORD animation
 	else
 		shape->ClearAnimation();
 }
-//-----------------------------------------------------------------------------
 // class Mech3DAppearance
 void Mech3DAppearance::resetWeaponNodes (void)
 {
@@ -706,7 +689,6 @@ void Mech3DAppearance::resetWeaponNodes (void)
 	}
 }
 
-//-----------------------------------------------------------------------------
 void Mech3DAppearance::setWeaponNodeUsed (long weaponNode)
 {
 	//THis should never be called after the game inits!!
@@ -718,7 +700,6 @@ void Mech3DAppearance::setWeaponNodeUsed (long weaponNode)
 	}
 }
 
-//-----------------------------------------------------------------------------
 void Mech3DAppearance::setWeaponNodeRecycle(long nodeId, float time)
 {
 	nodeId -= mechType->numSmokeNodes;
@@ -726,7 +707,6 @@ void Mech3DAppearance::setWeaponNodeRecycle(long nodeId, float time)
 		nodeRecycle[nodeId] = time;
 }
 
-//-----------------------------------------------------------------------------
 Stuff::Vector3D Mech3DAppearance::getWeaponNodePosition (long nodeId)
 {
 	Stuff::Vector3D result = position;
@@ -770,7 +750,6 @@ Stuff::Vector3D Mech3DAppearance::getWeaponNodePosition (long nodeId)
 		}
 	}
 
-   	//-------------------------------------------
    	// Create Matrix to conform to.
    	Stuff::UnitQuaternion qRotation;
    	float yaw = rotation * DEGREES_TO_RADS;
@@ -798,7 +777,6 @@ Stuff::Vector3D Mech3DAppearance::getWeaponNodePosition (long nodeId)
 	return result;
 }
 
-//-----------------------------------------------------------------------------
 Stuff::Vector3D Mech3DAppearance::getNodeNamePosition (const char *nodeName)
 {
 	Stuff::Vector3D result = position;
@@ -812,7 +790,6 @@ Stuff::Vector3D Mech3DAppearance::getNodeNamePosition (const char *nodeName)
 			return result;
 	}
 
-   	//-------------------------------------------
    	// Create Matrix to conform to.
    	Stuff::UnitQuaternion qRotation;
    	float yaw = rotation * DEGREES_TO_RADS;
@@ -840,7 +817,6 @@ Stuff::Vector3D Mech3DAppearance::getNodeNamePosition (const char *nodeName)
 	return result;
 }
 
-//-----------------------------------------------------------------------------
 Stuff::Vector3D Mech3DAppearance::getNodeIdPosition (long nodeId)
 {
 	Stuff::Vector3D result = position;
@@ -854,7 +830,6 @@ Stuff::Vector3D Mech3DAppearance::getNodeIdPosition (long nodeId)
 			return result;
 	}
 
-   	//-------------------------------------------
    	// Create Matrix to conform to.
    	Stuff::UnitQuaternion qRotation;
    	float yaw = rotation * DEGREES_TO_RADS;
@@ -882,7 +857,6 @@ Stuff::Vector3D Mech3DAppearance::getNodeIdPosition (long nodeId)
 	return result;
 }
 
-//-----------------------------------------------------------------------------
 Stuff::Vector3D Mech3DAppearance::getNodePosition (long nodeId)
 {
 	Stuff::Vector3D result = position;
@@ -898,7 +872,6 @@ Stuff::Vector3D Mech3DAppearance::getNodePosition (long nodeId)
 			return result;
 	}
 
-   	//-------------------------------------------
    	// Create Matrix to conform to.
    	Stuff::UnitQuaternion qRotation;
    	float yaw = rotation * DEGREES_TO_RADS;
@@ -921,10 +894,8 @@ Stuff::Vector3D Mech3DAppearance::getNodePosition (long nodeId)
 	return result;
 }
 
-//-----------------------------------------------------------------------------
 long Mech3DAppearance::getLowestWeaponNode (void)
 {
-	//------------------------------------------------
 	// Scan all weapon nodes and find least used one.
 	long bestNode = -1;
 	float lowestPosZ;
@@ -946,10 +917,8 @@ long Mech3DAppearance::getLowestWeaponNode (void)
  	return bestNode;
 }
 
-//-----------------------------------------------------------------------------
 long Mech3DAppearance::getWeaponNode (long weaponType)
 {
-	//------------------------------------------------
 	// Scan all weapon nodes and find least used one.
 	// BIG change here.  This is ONLY called at load time.
 	// NEVER during actual game execution.  In this way,
@@ -1055,7 +1024,6 @@ long Mech3DAppearance::getWeaponNode (long weaponType)
  	return bestNode;
 }
 
-//-----------------------------------------------------------------------------
 // GETWEAPONNODE-HARDPOINT-ADAPTER-1 (Phase-2 slice 4): socket NAME -> weapon-node
 // INDEX. Scans ONLY the weapon-node range of nodeData[] (the same range
 // getWeaponNode() picks from) and returns the matching index, or -1. Read-only:
@@ -1076,7 +1044,6 @@ long Mech3DAppearance::resolveWeaponNodeBySocketName (const char* socketName)
 	return -1;
 }
 
-//-----------------------------------------------------------------------------
 float Mech3DAppearance::getWeaponNodeRecycle (long node)
 {
 	node -= mechType->numSmokeNodes;

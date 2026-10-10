@@ -2,14 +2,11 @@
 // Declared in the class headers; shared names in mech3d_internal.h.
 #include "mech3d_internal.h"
 
-
-//-----------------------------------------------------------------------------
 void Mech3DAppearance::debugUpdate (long whichOne)
 {
 	if (!inDebugMoveMode)
 		return;
 
-	//----------------------------------------
 	// Adjust mechDebugAngle based on Input
 	if (userInput->getKeyDown(KEY_LEFT) && userInput->ctrl())
 	{
@@ -25,7 +22,6 @@ void Mech3DAppearance::debugUpdate (long whichOne)
 			mechDebugAngle[whichOne] += 360.0;
 	}
 
-	//----------------------------------------
 	// Adjust torsoDebugAngle based on Input
 	if (userInput->getKeyDown(KEY_UP) && userInput->ctrl())
 	{
@@ -41,7 +37,6 @@ void Mech3DAppearance::debugUpdate (long whichOne)
 			torsoDebugAngle[whichOne] += 360.0;
 	}
 
-	//----------------------------------------
 	// Adjust GestureGoal based on Input
 	if (userInput->getKeyDown(KEY_0) && userInput->ctrl())
 	{
@@ -88,7 +83,6 @@ void Mech3DAppearance::debugUpdate (long whichOne)
 		setGestureGoal(8);		//FALL BACKWARD
 	}
 
-	//------------------------------------------------------------------
 	// Adjust position based on mech Velocity which is based on gesture
 	Stuff::Vector3D velocity;
 	velocity.x = 0.7071f;
@@ -99,7 +93,6 @@ void Mech3DAppearance::debugUpdate (long whichOne)
 
 	float velMag = getVelocityMagnitude();
 
-	//-----------------------------------------
 	// Take slope being walked on into account.
 	// Use for ground vehicles for sure.
 	/*
