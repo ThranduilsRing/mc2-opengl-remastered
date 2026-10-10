@@ -63,7 +63,6 @@ const std::unordered_set<std::string>& defaultWhitelist() {
     return tags;
 }
 
-// ---- State ----
 struct DiagState {
     std::mutex       mtx;
     FILE*            file        = nullptr;
@@ -89,7 +88,6 @@ bool parseTagsEnv(std::unordered_set<std::string>& outTags, bool& outDisabled) {
     const std::string valText = mc2::gate::str<"MC2_DIAG_TAGS">();   // "" when unset or empty
     const char* val = valText.c_str();
     if (!val[0]) {
-        // Default: use high-value whitelist
         outTags     = defaultWhitelist();
         outDisabled = false;
         return false;  // not allTags
@@ -103,7 +101,6 @@ bool parseTagsEnv(std::unordered_set<std::string>& outTags, bool& outDisabled) {
         return false;
     }
 
-    // Parse comma-separated list
     outTags.clear();
     outDisabled = false;
     const std::string s(val);
@@ -112,7 +109,6 @@ bool parseTagsEnv(std::unordered_set<std::string>& outTags, bool& outDisabled) {
         size_t comma = s.find(',', pos);
         if (comma == std::string::npos) comma = s.size();
         std::string tag = s.substr(pos, comma - pos);
-        // Trim whitespace
         while (!tag.empty() && (tag.front() == ' ' || tag.front() == '\t')) tag.erase(0, 1);
         while (!tag.empty() && (tag.back()  == ' ' || tag.back()  == '\t')) tag.pop_back();
         if (!tag.empty()) {
@@ -127,7 +123,6 @@ bool parseTagsEnv(std::unordered_set<std::string>& outTags, bool& outDisabled) {
     return false;  // not allTags
 }
 
-// Get output path from env or default
 std::filesystem::path outputPath() {
     const std::string p = mc2::gate::str<"MC2_DIAGNOSTIC_TRACE_FILE">();   // "" when unset or empty
     if (!p.empty()) return std::filesystem::path(p);
@@ -136,17 +131,14 @@ std::filesystem::path outputPath() {
 
 constexpr uintmax_t kRotateThreshold = 10u * 1024u * 1024u;  // 10 MB
 
-// Rotate file if oversized: rename to .prev.jsonl
 void maybeRotate(const std::filesystem::path& path) {
     std::error_code ec;
     const auto size = std::filesystem::file_size(path, ec);
     if (ec || size < kRotateThreshold) return;
 
-    // Build prev path: replace .jsonl extension with .prev.jsonl
     std::filesystem::path prev = path;
     prev.replace_extension(".prev.jsonl");
 
-    // Overwrite any existing .prev.jsonl
     std::filesystem::rename(path, prev, ec);
     // If rename fails, proceed and overwrite the main file (don't lose events)
 }
@@ -165,17 +157,14 @@ void init(const char* sessionId, int pid) {
     s.sessionId = sessionId ? sessionId : "";
     s.pid = pid;
 
-    // Check if disabled
     if (mc2::gate::str<"MC2_DIAGNOSTIC_TRACE_FILE">() == "off") {
         s.disabled = true;
         return;
     }
 
-    // Parse tag list
     s.allTags = parseTagsEnv(s.enabledTags, s.disabled);
     if (s.disabled) return;
 
-    // Determine output path and create directory
     const std::filesystem::path path = outputPath();
     std::error_code ec;
     std::filesystem::create_directories(path.parent_path(), ec);
@@ -186,7 +175,6 @@ void init(const char* sessionId, int pid) {
         return;
     }
 
-    // Rotate if oversized
     if (std::filesystem::exists(path)) {
         maybeRotate(path);
     }
@@ -200,7 +188,6 @@ void init(const char* sessionId, int pid) {
     //   on the subsequent narrow fwrite() call.
     s.file = _wfopen(path.wstring().c_str(), L"ab");
     if (!s.file) {
-        // Try ASCII path as fallback
         s.file = fopen(path.string().c_str(), "ab");
     }
     if (!s.file) {
@@ -250,11 +237,9 @@ bool writeEvent(const char* tag, int version, uint64_t frame, const char* dataJs
 
     DiagState& s = state();
 
-    // Fast path without lock
     if (!s.initialized || s.disabled || !s.file) return false;
     if (!s.allTags && s.enabledTags.count(tag) == 0) return false;
 
-    // Compute timestamps
     const auto nowUs = std::chrono::duration_cast<std::chrono::microseconds>(
         std::chrono::system_clock::now().time_since_epoch()).count();
     const auto elapsedMs = std::chrono::duration_cast<std::chrono::milliseconds>(

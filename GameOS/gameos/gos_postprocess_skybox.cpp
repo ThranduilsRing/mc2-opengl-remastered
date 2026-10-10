@@ -90,7 +90,6 @@ void gosPostProcess::renderHdriSkybox(const float* viewMat, const float* projMat
     glGetIntegerv(GL_MAX_DRAW_BUFFERS, &maxDrawBuffers);
     const int nAtt = (maxDrawBuffers < 3) ? maxDrawBuffers : 3;
 
-    // --- Save state ---
     GLboolean prevDepthMask = GL_TRUE;
     glGetBooleanv(GL_DEPTH_WRITEMASK, &prevDepthMask);
     GLboolean prevDepthTest  = glIsEnabled(GL_DEPTH_TEST);
@@ -212,7 +211,6 @@ void gosPostProcess::renderHdriSkybox(const float* viewMat, const float* projMat
         }
     }
 
-    // Bind shader + uniforms + texture.
     skyYaw_ = skyYaw;  // WATER-HDRI-REFL-1: cache for water shader uniform
     hdriSkyboxProg_->apply();
     hdriSkyboxProg_->setMat4("invProj", invProjArray);
@@ -306,7 +304,6 @@ void gosPostProcess::renderHdriSkybox(const float* viewMat, const float* projMat
         }
     }
 
-    // --- Restore state (exact) ---
     glBindVertexArray(prevVAO);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, (GLuint)prevTex2DBind);
@@ -356,7 +353,6 @@ void gosPostProcess::renderHdriSkyboxBasis(const float* camFwd,
     glGetIntegerv(GL_MAX_DRAW_BUFFERS, &maxDrawBuffers);
     const int nAtt = (maxDrawBuffers < 3) ? maxDrawBuffers : 3;
 
-    // --- Save state ---
     GLboolean prevDepthMask = GL_TRUE;
     glGetBooleanv(GL_DEPTH_WRITEMASK, &prevDepthMask);
     GLboolean prevDepthTest  = glIsEnabled(GL_DEPTH_TEST);
@@ -390,7 +386,6 @@ void gosPostProcess::renderHdriSkyboxBasis(const float* camFwd,
     glDisable(GL_BLEND);
     glDisable(GL_CULL_FACE);
 
-    // --- Sub-flag resolution (env read once). ---
     static const int s_uvDebug = mc2::gate::get<"MC2_HDRI_SKY_UV_DEBUG">();
     static const bool  s_azOffsetSet = mc2::gate::isSet<"MC2_HDRI_SKY_AZ_OFFSET">();
     static const float s_azOffsetRad = hdriAzOffsetRadians();
@@ -415,7 +410,6 @@ void gosPostProcess::renderHdriSkyboxBasis(const float* camFwd,
         static bool s_loggedCenterBasis = false;
         if (!s_loggedCenterBasis) {
             s_loggedCenterBasis = true;
-            // Center pixel: vNdc=(0,0) -> worldDir = normalize(camFwd).
             float wd[3] = { camFwd[0], camFwd[1], camFwd[2] };
             float len = std::sqrt(wd[0]*wd[0] + wd[1]*wd[1] + wd[2]*wd[2]);
             if (len > 0.0f) { wd[0]/=len; wd[1]/=len; wd[2]/=len; }
@@ -428,7 +422,6 @@ void gosPostProcess::renderHdriSkyboxBasis(const float* camFwd,
         }
     }
 
-    // Bind shader + uniforms + texture (direct-basis path).
     skyYaw_ = skyYaw;  // WATER-HDRI-REFL-1: cache for water shader uniform
     hdriSkyboxProg_->apply();
     hdriSkyboxProg_->setFloat3("camFwd",   camFwd);
@@ -451,7 +444,6 @@ void gosPostProcess::renderHdriSkyboxBasis(const float* camFwd,
     }
     glDrawArrays(GL_TRIANGLES, 0, 3);
 
-    // --- Restore state (exact) ---
     glBindVertexArray(prevVAO);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, (GLuint)prevTex2DBind);
@@ -492,7 +484,6 @@ void gosPostProcess::renderHdriSkyboxInvVP(const float* invVP16)
     glGetIntegerv(GL_MAX_DRAW_BUFFERS, &maxDrawBuffers);
     const int nAtt = (maxDrawBuffers < 3) ? maxDrawBuffers : 3;
 
-    // --- Save state ---
     GLboolean prevDepthMask = GL_TRUE;
     glGetBooleanv(GL_DEPTH_WRITEMASK, &prevDepthMask);
     GLboolean prevDepthTest  = glIsEnabled(GL_DEPTH_TEST);
@@ -567,7 +558,6 @@ void gosPostProcess::renderHdriSkyboxInvVP(const float* invVP16)
         }
     }
 
-    // Bind shader + uniforms + texture (inverse-worldToClipGL path).
     skyYaw_ = skyYaw;  // WATER-HDRI-REFL-1: cache for water shader uniform
     hdriSkyboxProg_->apply();
     hdriSkyboxProg_->setMat4("invWorldToClipGL", invVP16);
@@ -619,7 +609,6 @@ void gosPostProcess::renderHdriSkyboxInvVP(const float* invVP16)
     }
     glDrawArrays(GL_TRIANGLES, 0, 3);
 
-    // --- Restore state (exact) ---
     glBindVertexArray(prevVAO);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, (GLuint)prevTex2DBind);

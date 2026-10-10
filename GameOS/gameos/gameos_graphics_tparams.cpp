@@ -26,7 +26,6 @@ static void uploadDynamicShadowUniforms(const Locs& tl, gosPostProcess* pp, GLin
                                pp->getDynamicCascadeMatrices());
         if (tl.dynamicCsmCount >= 0)
             glUniform1i(tl.dynamicCsmCount, pp->getDynamicShadowCascadeCount());
-        // Stage 3: per-cascade texel-scaled depth bias inputs.
         if (tl.dynamicCascadeTexelWorld >= 0)
             glUniform1fv(tl.dynamicCascadeTexelWorld,
                          pp->getDynamicShadowCascadeCount(),
@@ -313,7 +312,6 @@ int gosRenderer::terrainBindThinUniformsForPatchStream(glsl_program* overridePro
     cacheThinTerrainUniformLocations(shp);
     const auto& tl = thinTerrainLocs_;
 
-    // VS uniforms: projection chain
     if (terrain_mvp_valid_ && tl.terrainMVP >= 0)
         glUniformMatrix4fv(tl.terrainMVP, 1, GL_FALSE, (const float*)&terrain_mvp_);
     // projection_: row-major Stuff matrix — upload GL_TRUE (column-major interpretation).
@@ -337,7 +335,6 @@ int gosRenderer::terrainBindThinUniformsForPatchStream(glsl_program* overridePro
         fflush(stderr);
     }
 
-    // FS uniforms (same as terrainBindUniformsForPatchStream, minus tess-only params)
     if (tl.cameraPos >= 0)        glUniform4fv(tl.cameraPos, 1, (const float*)&terrain_camera_pos_);
     if (tl.terrainLightDir >= 0)  glUniform4fv(tl.terrainLightDir, 1, (const float*)&terrain_light_dir_);
     // tessDebug: matches non-thin path (line ~4080). The thin path historically
@@ -440,7 +437,6 @@ int gosRenderer::terrainBindThinUniformsForPatchStream(glsl_program* overridePro
     return tl.ssboRecordBase;
 }
 
-// Terrain tessellation API
 void __stdcall gos_SetTerrainTessParams(float level, float near_dist, float far_dist) {
     if (g_gos_renderer) g_gos_renderer->setTerrainTessParams(level, near_dist, far_dist);
 }
@@ -749,9 +745,6 @@ void gos_SetTerrainDaylightLevel(float level) {
 float gos_GetTerrainDaylightLevel() {
     return s_gosTerrainDaylight;
 }
-// VK-TERRAIN-LODFADE: reuses the existing gos_GetTerrainCameraPos free function
-// (defined above at the gos_SetShadowMode block) for the camera-distance fade port --
-// no new accessor needed.
 
 // CEMENT-NIGHT-LIGHT-1: mission flat-pad light colour feed (gamecam.cpp, per
 // frame). Killswitch MC2_CEMENT_MISSION_LIGHT=0 -> force (1,1,1) (repro of the
@@ -797,7 +790,6 @@ void gos_SetTerrainViewDir(float x, float y, float z) {
 }
 unsigned int gos_CreateTerrainNormalTexture(const unsigned char* rgbaData, int width) {
     GLuint texId = 0;
-    // TEX-CLASS: asset-pool -- terrain normal content texture factory
     glGenTextures(1, &texId);
     glBindTexture(GL_TEXTURE_2D, texId);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, width, 0, GL_RGBA, GL_UNSIGNED_BYTE, rgbaData);
@@ -831,7 +823,6 @@ void gos_GetTerrainMatTiling(float* rock, float* grass, float* dirt, float* conc
     if (g_gos_renderer) g_gos_renderer->getTerrainMatTiling(rock, grass, dirt, concrete, snow);
     else { *rock = 3.0f; *grass = 2.0f; *dirt = 1.0f; *concrete = 6.0f; *snow = 1.0f; }
 }
-// TERRAIN-CLASSIFY-TUNING-1
 void gos_SetTerrainClassGrass(float gMinusRLo, float gMinusRHi, float gBrightLo, float gBrightHi) {
     if (!g_gos_renderer) return;
     const float v[4] = { gMinusRLo, gMinusRHi, gBrightLo, gBrightHi };
@@ -860,21 +851,18 @@ void gos_SetTerrainTintStrengthScale(float s) {
 float gos_GetTerrainTintStrengthScale() {
     return g_gos_renderer ? g_gos_renderer->getTerrainTintStrengthScale() : 1.0f;
 }
-// TERRAIN-CONTROLMAP-ALBEDO-1
 void gos_SetTerrainControlAlbedoStrength(float s) {
     if (g_gos_renderer) g_gos_renderer->setTerrainControlAlbedoStrength(s);
 }
 float gos_GetTerrainControlAlbedoStrength() {
     return g_gos_renderer ? g_gos_renderer->getTerrainControlAlbedoStrength() : 0.0f;
 }
-// TERRAIN-MATERIAL-LIB-1
 void gos_SetTerrainSnowBrightnessDampen(float v) {
     if (g_gos_renderer) g_gos_renderer->setTerrainSnowBrightnessDampen(v);
 }
 float gos_GetTerrainSnowBrightnessDampen() {
     return g_gos_renderer ? g_gos_renderer->getTerrainSnowBrightnessDampen() : 0.78f;
 }
-// TERRAIN-TINT-UI-1
 void gos_SetTerrainTintRock(float r, float g, float b) {
     if (g_gos_renderer) g_gos_renderer->setTerrainTintRock(r, g, b);
 }
@@ -896,7 +884,6 @@ void gos_GetTerrainTintDirt(float* r, float* g, float* b) {
     if (g_gos_renderer) g_gos_renderer->getTerrainTintDirt(r, g, b);
     else { *r = 0.48f; *g = 0.42f; *b = 0.33f; }
 }
-// TERRAIN-MATERIAL-LIB-1: promoted frag-literal tints + roughness/AO scalars.
 void gos_SetTerrainTintConcrete(float r, float g, float b) {
     if (g_gos_renderer) g_gos_renderer->setTerrainTintConcrete(r, g, b);
 }
@@ -940,14 +927,12 @@ void gos_GetTerrainMatHeight(float* rock, float* grass, float* dirt, float* conc
 bool gos_TerrainMaterialLibEnabled() {
     return terrainMaterialLibEnabled();
 }
-// TERRAIN-TUNING-UI-1
 void gos_SetTerrainNormalsFromHeightStrength(float s) {
     if (g_gos_renderer) g_gos_renderer->setTerrainNormalsFromHeightStrength(s);
 }
 float gos_GetTerrainNormalsFromHeightStrength() {
     return g_gos_renderer ? g_gos_renderer->getTerrainNormalsFromHeightStrength() : 1.0f;
 }
-// CLIFF SHADOW FLOOR
 void gos_SetTerrainCliffShadowFloor(float f) {
     if (g_gos_renderer) g_gos_renderer->setTerrainCliffShadowFloor(f);
 }

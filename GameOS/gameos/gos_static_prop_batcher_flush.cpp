@@ -87,7 +87,6 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
 
     batcher_buildCandidateLog();
 
-    // Slice 2 (object-offload) — Stage 2.D.1: parity readback handshake.
     //
     // uploadAllBucketsIfNeeded() above just glClientWaitSync'd on
     // s_fence[s_frameSlot] (the fence from RING_FRAMES frames ago). At
@@ -140,8 +139,6 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
                 }
             }
         }
-        // Reset this slot's usage; it will be re-populated by the per-type
-        // bind loop below.
         s_parityBytesUsedPerSlot[s_frameSlot] = 0;
     }
     s_parityBytesUsedThisFrame = 0;
@@ -309,8 +306,6 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
     // If visual corruption occurs, re-enable by reverting this comment block to the
     // original glBufferSubData loop (see git history for the shadow mode code).
 
-    // =======================================================================
-    // Substrate Multi-Draw Coalesce — flush() extensions (plan v3.8 Step 11).
     //
     // The CPU write loop below (11.2) and the draw branch later (11.7) form
     // the runtime side of the coalesce path. Per-frame write happens
@@ -338,8 +333,6 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
         s_coalesceFence[s_coalesceFrameSlot] = nullptr;
     }
 
-    // Steps 11.2 / 11.3 / 11.4 / 11.5 — coalesce per-frame CPU write loop.
-    // Step 4.7 — split into global-pool (sorted prefix-sum) and legacy (per-type-cap) branches.
     const auto _btf_t_writeStart = std::chrono::steady_clock::now();
     if (IsCoalesceEnabled() && !s_globalPoolLegacy) {
         // Global-pool path: iterate s_sortedTypeOrder (same order as
@@ -366,7 +359,6 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
 
             // Overflow gate is dead under global-pool mode: detected in prepare-table.
 
-            // Eviction-detect (adapted from legacy loop — same logic, loop-local var names).
             const TG_TypeShape* src = type.source;
             if (src && src->listOfTextures && type.packetCount > 0u &&
                 type.lastSeenGosHandle != 0xFFFFFFFFu) {
@@ -412,12 +404,10 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
             if (typeID >= s_types.size()) continue;
             GpuStaticPropType& type = s_types[typeID];
 
-            // Peak tracker.
             if (typeID >= s_perTypePeak.size()) s_perTypePeak.resize(typeID + 1, 0u);
             const uint32_t cnt = static_cast<uint32_t>(bucket.instances.size());
             if (cnt > s_perTypePeak[typeID]) s_perTypePeak[typeID] = cnt;
 
-            // Per-type overflow guard.
             if (bucket.instances.size() > type.instanceCap) {
                 MC2_DIAGFE(stderr, "[COALESCE v1] event=disarmed reason=type_overflow "
                              "type=%u count=%zu cap=%u\n",
@@ -426,7 +416,6 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
                 break;
             }
 
-            // Eviction-detect.
             const TG_TypeShape* src = type.source;
             if (src && src->listOfTextures && type.packetCount > 0u &&
                 type.lastSeenGosHandle != 0xFFFFFFFFu) {
@@ -445,7 +434,6 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
                 }
             }
 
-            // Per-type-cap memcpy into group-relative slot.
             const size_t groupBase_bytes =
                 (type.alphaClass == 1u) ? s_offGroupTotalBytes : 0u;
             uint8_t* dst = coalesceMapBase
@@ -559,8 +547,6 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
                 }
             }
         }
-        // ---- Step 11.7 coalesce draw branch ----
-        // Step 4.8 — use s_coalesceFrameSlot (coalesce ring slot).
         const size_t fr_off_bytes_d =
             static_cast<size_t>(s_coalesceFrameSlot) * batcher_getCoalescePerFrameInstanceBytes();
         // Legacy mode: separate off/on group byte boundaries.
@@ -591,8 +577,6 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
         guardSsbo4.emplace(4);
         guardTex2DArray.emplace(0, GL_TEXTURE_2D_ARRAY);
 
-        // 11.7.b — legacy prologue at lines ~2192-2247 ran unconditionally
-        // (slot 2 perTypeSsbo bind inherited). Verified by inspection.
 
         // 11.7.c — program already bound by applyPipeline() above (v1: PipelineRegistry
         // holds s_staticPropProgramCoalesce after loadProgramsIfNeeded; no explicit
@@ -803,7 +787,6 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
         // unread in any live shader path; coalesce branch does not bind
         // it, and the legacy bind site at the per-type loop is dead state).
 
-        // 11.7.f — bind slot 4 (PerDraw SSBO).
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, s_perDrawSsbo);
         // MaterialGpu-2/v3: v3+ static_prop.frag declares MaterialTable at binding 5.
         // The terrain pass uses slot 5 for WaterRecipeBuf in a different GL program —
@@ -871,7 +854,6 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
             else if (s_materialGpuSsbo.backendHandle == 0)        reason = "no_ssbo";
             else if (!s_materialGpuSidecarValid)           reason = "sidecar_invalid";
             else if (s_locsCoalesce.materialGpuSample < 0) reason = "uniform_missing";
-            // else: reason == "ok" -> sampleOn is true (all 5 conditions met)
 
             char buf[96];
             if (sampleOn) {
@@ -1065,8 +1047,6 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
             const bool retireLiveBuilderPlanned =
                 !s_keepLiveBuilder && s_snapshotBuildEnabled && !s_snapCullEnabled;
 
-            // v8: snapshot is now the SOLE owner when retired. Consume the planned
-            // predicate, set telemetry, emit the one-shot arm log.
             retireLiveBuilder = retireLiveBuilderPlanned;
             if (!s_v8ArmLogged) {
                 s_v8ArmLogged = true;
@@ -1098,7 +1078,6 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
                 g_mc2HitchAccum.staticDrawCmds = totalCmds;
             }
 
-            // Ring-slot base-instance map pointer (same arithmetic as v5).
             const size_t fr_off_bi_v6 =
                 static_cast<size_t>(s_coalesceFrameSlot) * s_baseInstanceByCmdBytesPerFrame;
             const uint32_t* baseInstanceMap = reinterpret_cast<const uint32_t*>(
@@ -1129,7 +1108,6 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
             const uint32_t* baseInstanceMapDisp = reinterpret_cast<const uint32_t*>(
                 static_cast<const uint8_t*>(s_baseInstanceByCmdMap) + fr_off_bi_disp);
 
-            // Unconditionally bind SSBO slot 0 (same as v5).
             {
                 const size_t totalUsed = s_totalUsedBytesThisFrame;
                 gpuBindSsboRange(0, s_coalesceInstanceSsbo,
@@ -1173,9 +1151,6 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
                 snapN          = static_cast<uint32_t>(snap->staticPropPackets.count);
             }
 
-            // ---------------------------------------------------------------
-            // v3 snapshot builder: activation guard → build → compare
-            // ---------------------------------------------------------------
             bool snapBuilt = false;
             s_spBuildAttempted = s_snapshotBuildEnabled ? 1u : 0u;
 
@@ -1204,13 +1179,11 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
                          snap->spTexLayerMismatch     != 0u) {
                     /* no counter — v2.2 gate failed; ordering unreliable */
                 }
-                // Stage 4: count mismatch → record and fall back.
                 else if (snap->staticPropPackets.count != totalCmds) {
                     ++s_spBuildCountMismatch;
                     ++s_spBuildFallback;
                 }
                 else {
-                    // All guards passed — build snapshot arrays.
                     {
                     ZoneScopedN("StaticProp.SnapshotBuild");
                     mc2_hitch::HitchScope _hitchSnap(mc2_hitch::HitchSpanKind::GpuStaticPropsSnapshot);
@@ -1238,7 +1211,6 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
                         }
                         const GpuStaticPropPacket& spkt = s_packets[row.globalPacketIdx];
 
-                        // Guard: typeId in type table.
                         if (row.typeId >= static_cast<uint32_t>(s_types.size())) {
                             ++s_spBuildMetaMismatch;
                             s_snapV6Meta[si]    = {};
@@ -1307,7 +1279,6 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
                 }
             }
 
-            // Dispatch ref-swap.
             bool useSnapshot;
             bool skipDispatch = false;
             if (retireLiveBuilder) {
@@ -1420,13 +1391,11 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
                     if (scRow.sortedSlot != i) {
                         // Slot identity mismatch — snapshot and live order diverged.
                         ++s_snapCullSlotMismatch;
-                        // Fall through to current-frame logic.
                     } else if (scRow.instanceCount == 0u) {
                         // Prev-frame zero — safe to skip.
                         ++s_snapCullSkipped;
                         continue;
                     } else {
-                        // Prev-frame non-zero — draw; count as snap-cull active.
                         ++s_snapCullActive;
                     }
                 }
@@ -1565,7 +1534,6 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
                                  "sp.coalesce.v5");
             }
 
-            // Bind alpha-OFF texture array before loop.
             glActiveTexture(GL_TEXTURE0);
             // COMPRESSION-BC7-STATICPROP-2: gate ON binds per-bucket in-loop.
             const bool bc7Buckets = s_staticPropBc7Enabled && !s_slotBucketIndex.empty();
@@ -1659,12 +1627,10 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
                 ++s_v5FrameDrawsIssued;
             }
 
-            // Restore texture array if loop entered the alpha-ON group.
             if (enteredOnGroup) {
                 glBindTexture(GL_TEXTURE_2D_ARRAY, s_texArrayOff);
             }
 
-            // GL error check (one glGetError per v5-active flush).
             {
                 const GLenum err = glGetError();
                 if (err != GL_NO_ERROR) {
@@ -1675,7 +1641,6 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
                 }
             }
 
-            // Per-frame summary log: every 600 frames.
             if ((s_v5TotalFrameCount % 600u) == 0u) {
                 const int ok = (s_v5FrameSortedOob       == 0u &&
                                 s_v5FramePacketOob        == 0u &&
@@ -1762,8 +1727,6 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
             // until the shader declares it.
             if (s_locsCoalesce.ormSampleEnable >= 0)
                 glUniform1i(s_locsCoalesce.ormSampleEnable, 0);
-            // 11.7.g — alpha-OFF group draw.
-            // Step 4.8: under global-pool mode bind once covering both groups; under legacy bind per-group.
             if (s_alphaOffCmdCount > 0u) {
                 if (s_locsCoalesce.drawIDBase >= 0)
                     glUniform1i(s_locsCoalesce.drawIDBase, 0);
@@ -1788,7 +1751,6 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
                     0);
             }
 
-            // 11.7.h — alpha-ON group draw.
             if (s_alphaOnCmdCount > 0u) {
                 if (s_locsCoalesce.drawIDBase >= 0)
                     glUniform1i(s_locsCoalesce.drawIDBase, static_cast<GLint>(s_alphaOffCmdCount));
@@ -1811,7 +1773,6 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
             }
         }
 
-        // 11.7.i — restore indirect-buffer binding.
         glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
 
         // STATICPROP-MATERIAL-ORM-1: unbind the ORM unit and restore active unit 0
@@ -1844,7 +1805,6 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
             s_coalesceFirstFlushDone = true;
         }
     } else {
-        // ---- Step 11.8 legacy per-type/per-packet draw loop (unchanged) ----
 
         // GPU-SYNC-CONTRACT: the legacy instance/color SSBOs were CPU-written this
         // frame through a persistent GL_MAP_COHERENT_BIT mapping (instMapBase /
@@ -2103,7 +2063,6 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
         const int maxID = (type.vertexCount > 0u) ? (int)(type.vertexCount - 1u) : 0;
         glUniform1i(glGetUniformLocation(s_staticPropProgram, "u_maxLocalVertexID"), maxID);
 
-        // Slice 2 (object-offload) — Stage 2.D.1: per-type parity bind.
         //
         // The shader writes parityOut[gl_InstanceID * vertsPerType + gl_VertexID].
         // We bind a tight glBindBufferRange so that index always lands inside
@@ -2258,7 +2217,6 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
     // ring-slot lifecycle so the next visit (RING_FRAMES frames from now)
     // can wait on this fence before overwriting the slot's CPU writes.
     if (IsCoalesceEnabled()) {
-        // Step 4.4 — use s_coalesceFrameSlot (coalesce ring), not s_frameSlot (legacy ring).
         s_coalesceFence[s_coalesceFrameSlot] = MC2_GL_FenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
     }
     // Stage 2.D.1: record this slot's parity-byte usage so the next visit
@@ -2299,7 +2257,6 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
     // when MC2_OBJECT_PARITY_CHECK is unset.
     gos_object_parity::ParityFrameTick();
 
-    // Stage 2.D.3 — round-robin sampler pick for next frame.
     //
     // Called AFTER ParityFrameTick so the summary's parity_compared_actors
     // sees the just-finalized count, and AFTER AdvanceDualEmitToWaiting so

@@ -3,19 +3,12 @@
 #include "gos_terrain_indirect_internal.h"
 
 
-// ---------------------------------------------------------------------------
-// PR2c Stage 1c — mine static-bake infrastructure.
 //
 // Builds a per-mission mine VBO + 2-layer mine/blown texture-array. Both are
 // populated lazily on first dirty event (i.e., first MissionMap::setMine
 // call after Reset, including the per-cell init-time setMine loop). Per spec
 // at 2026-05-08-pr2c-mine-static-bake-design.md.
 //
-// Stage 1c is build-and-invalidate scaffolding only — RebuildMineStaticVBOIfDirty
-// is callable but not yet wired into per-frame from the bridge. Stage 2c
-// adds the bridge + draw + legacy gate-off (single-PR per N2 partial-landing
-// rule).
-// ---------------------------------------------------------------------------
 
 namespace {
 
@@ -103,7 +96,6 @@ void BuildMineTextureArray() {
     std::vector<uint32_t> mineBuf((size_t)kW * kH, 0u);
     std::vector<uint32_t> blownBuf((size_t)kW * kH, 0u);
 
-    // Save GL state (mirrors PR1 BuildCementCatalogAtlas pattern).
     GLint savedActive = GL_TEXTURE0;
     glGetIntegerv(GL_ACTIVE_TEXTURE, &savedActive);
     glActiveTexture(GL_TEXTURE0);
@@ -143,7 +135,6 @@ void BuildMineTextureArray() {
     MC2_GL_BindTexture(GL_TEXTURE_2D_ARRAY, 0);
     MINE_GLPROBE("after_teximage3d");
 
-    // Restore state.
     glPixelStorei(GL_PACK_ALIGNMENT, savedPackAlign);
     glPixelStorei(GL_UNPACK_ALIGNMENT, savedUnpackAlign);
     MC2_GL_BindTexture(GL_TEXTURE_2D, (GLuint)savedTex0);
@@ -215,11 +206,9 @@ void BuildMineStaticVBO() {
                         mv.layer  = layer;
                         verts.push_back(mv);
                     };
-                    // Tri 1: c00 → c10 → c11
                     pushVert(c00, 0.0f, 0.0f);
                     pushVert(c10, 1.0f, 0.0f);
                     pushVert(c11, 1.0f, 1.0f);
-                    // Tri 2: c00 → c11 → c01
                     pushVert(c00, 0.0f, 0.0f);
                     pushVert(c11, 1.0f, 1.0f);
                     pushVert(c01, 0.0f, 1.0f);
@@ -326,8 +315,6 @@ void gos_terrain_indirect_MarkMineDirty() {
     gos_terrain_indirect::MarkMineDirty();
 }
 
-// ---------------------------------------------------------------------------
-// Slice A — cement-overlay (decal) static-bake infrastructure.
 //
 // STRUCTURAL MIRROR of the PR2c mine static-bake (BuildMineStaticVBO /
 // RebuildMineStaticVBOIfDirty / MarkMineDirty / ResetMineStaticVBO /
@@ -771,20 +758,16 @@ void BuildDecalStaticVBO() {
             // (quad.cpp:2412-2443), but UNCONDITIONAL (no pzTri1/pzTri2).
             // tileMin/Max == kOld* constants unless OVERLAY-TILE-HIRES is on.
             if (uvMode == BOTTOMLEFT) {
-                // tri1: corners 0,1,3
                 emit(c[0], tileMinU, tileMinV,
                      c[1], tileMaxU, tileMinV,
                      c[3], tileMinU, tileMaxV);
-                // tri2: corners 1,2,3
                 emit(c[1], tileMaxU, tileMinV,
                      c[2], tileMaxU, tileMaxV,
                      c[3], tileMinU, tileMaxV);
             } else {
-                // BOTTOMRIGHT — tri1: corners 0,1,2
                 emit(c[0], tileMinU, tileMinV,
                      c[1], tileMaxU, tileMinV,
                      c[2], tileMaxU, tileMaxV);
-                // tri2: corners 0,2,3
                 emit(c[0], tileMinU, tileMinV,
                      c[2], tileMaxU, tileMaxV,
                      c[3], tileMinU, tileMaxV);

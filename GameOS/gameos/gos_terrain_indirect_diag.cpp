@@ -3,9 +3,6 @@
 #include "gos_terrain_indirect_internal.h"
 
 
-// ---------------------------------------------------------------------------
-// Parity-printer + 600-frame summary
-// ---------------------------------------------------------------------------
 namespace {
 int       s_parityMismatchesThisFrame = 0;
 long long s_paritySummaryFrames       = 0;
@@ -143,9 +140,6 @@ void ParityFrameTick(int quadsCheckedThisFrame) {
 
 namespace gos_terrain_indirect {
 
-// ---------------------------------------------------------------------------
-// Stage 2 parity body
-// ---------------------------------------------------------------------------
 //
 // Walks the live quadList, looks up the dense recipe by top-left vertexNum,
 // and byte-compares recipe input fields against the legacy-equivalent values
@@ -182,24 +176,20 @@ int ParityCompareRecipeFrame() {
     for (long qi = 0; qi < total; ++qi) {
         const TerrainQuad& q = quads[qi];
 
-        // Null-pointer guards
         if (!q.vertices[0] || !q.vertices[1] || !q.vertices[2] || !q.vertices[3]) continue;
         if (!q.vertices[0]->pVertex || !q.vertices[1]->pVertex ||
             !q.vertices[2]->pVertex || !q.vertices[3]->pVertex) continue;
 
-        // Blank-vertex skip
         if (q.vertices[0]->vertexNum < 0 || q.vertices[1]->vertexNum < 0 ||
             q.vertices[2]->vertexNum < 0 || q.vertices[3]->vertexNum < 0) continue;
 
         const int32_t vn0 = (int32_t)q.vertices[0]->vertexNum;
 
-        // Recipe coverage gate
         const TerrainQuadRecipe* rec = RecipeForVertexNum(vn0);
         if (!rec) continue;
 
         ++quadsChecked;
 
-        // Derive expected corner positions from map index arithmetic
         const long  mx = vn0 % mapSide;
         const long  my = vn0 / mapSide;
         const float e_wx0 = float(mx     - halfSide) * wupv;
@@ -211,7 +201,6 @@ int ParityCompareRecipeFrame() {
         const float e_wx3 = e_wx0;
         const float e_wy3 = e_wy2;
 
-        // Expected elevations and normals from live pVertex
         const float e_wz0 = q.vertices[0]->pVertex->elevation;
         const float e_wz1 = q.vertices[1]->pVertex->elevation;
         const float e_wz2 = q.vertices[2]->pVertex->elevation;
@@ -254,7 +243,6 @@ int ParityCompareRecipeFrame() {
             }
         }
 
-        // Expected _wp0 (terrainType pack)
         const uint32_t e_m0 = terrainTypeToMaterialLocal(q.vertices[0]->pVertex->terrainType);
         const uint32_t e_m1 = terrainTypeToMaterialLocal(q.vertices[1]->pVertex->terrainType);
         const uint32_t e_m2 = terrainTypeToMaterialLocal(q.vertices[2]->pVertex->terrainType);

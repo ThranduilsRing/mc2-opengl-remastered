@@ -4,15 +4,8 @@
 #include "mdi_submit.h"                            // MDI-SUBMISSION-SCAFFOLD-1: this piece issues indirect draws
 
 
-// gos_terrain_bridge_bindThinUniforms deleted by DEAD-BRIDGE-DELETE-1: zero external
-// callers (the internal terrainBindThinUniformsForPatchStream IS live; this standalone
-// wrapper is not). Whole-repo grep clean.
 
-// gos_terrain_bridge_drawSingleBucketTriangles deleted by TERRAIN-BRIDGE-BODY-DELETE-2:
-// callerless after TerrainPatchStream::flush() retired (TERRAIN-BRIDGE-BODY-DELETE-1).
 
-// gos_terrain_bridge_getWaterFastShaderProgram deleted by DEAD-BRIDGE-DELETE-1:
-// zero external callers tree-wide. Wrapper around live getWaterFastProgram().
 
 // WaterPerCmd — per-draw data for glMultiDrawArraysIndirect, indexed by gl_DrawID.
 // 32 B std430-aligned; lockstep with gos_terrain_water_fast_mdi.vert binding 7.
@@ -317,15 +310,12 @@ void gosRenderer::renderWaterFastPath(
         }
     }
     if (s_perCmdSsbo == 0 && gpu_driven::IsWaterEnabled()) {
-        // TIER2-EXCLUDED: dead-path
         glGenBuffers(1, &s_perCmdSsbo);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_perCmdSsbo);
         glBufferData(GL_SHADER_STORAGE_BUFFER, 2 * (GLsizeiptr)sizeof(WaterPerCmd), nullptr, GL_DYNAMIC_DRAW);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
     }
 
-    // Save state for restore. Water is alpha-blended overlay; we set blend +
-    // depth-mask off temporarily.
     GLint savedProgram   = 0; glGetIntegerv(GL_CURRENT_PROGRAM, &savedProgram);
     GLboolean savedBlend = glIsEnabled(GL_BLEND);
     GLint savedSrcRGB    = 0; glGetIntegerv(GL_BLEND_SRC_RGB, &savedSrcRGB);
@@ -512,7 +502,6 @@ void gosRenderer::renderWaterFastPath(
     // matching REPEAT.
     static GLuint s_waterFastSampler = 0;
     if (s_waterFastSampler == 0) {
-        // TEX-CLASS: per-pass-rebind -- water-fast sampler object (REPEAT+LINEAR)
         glGenSamplers(1, &s_waterFastSampler);
         glSamplerParameteri(s_waterFastSampler, GL_TEXTURE_WRAP_S, GL_REPEAT);
         glSamplerParameteri(s_waterFastSampler, GL_TEXTURE_WRAP_T, GL_REPEAT);
@@ -532,18 +521,12 @@ void gosRenderer::renderWaterFastPath(
                        ? (GLuint)gos_terrain_bridge_glTextureForGosHandle(waterDetailGosHandle)
                        : 0u;
 
-    // Determine whether MDI path is fully operational.
     const bool mdiValid = gpuArmed
                           && s_waterMdiProg != 0 && s_waterMdiProg != (GLuint)~0u
                           && s_perCmdSsbo  != 0
                           && baseTex       != 0;
 
     if (mdiValid) {
-        // ─────────────────────────────────────────────────────────────
-        // GPU-driven MDI path
-        // Thin records: already cull-packed by compute + bound to slot 6
-        // by ComputeDispatchAndBindThinRecords() (M2 fix).
-        // ─────────────────────────────────────────────────────────────
 
         // Atlas accessors: defined only in gos_terrain_indirect.cpp (no header).
         // Precedent: sibling terrain-solid functions declare identical extern blocks
@@ -553,7 +536,6 @@ void gosRenderer::renderWaterFastPath(
         extern float  gos_terrain_indirect_getAtlasMapTopLeftY();
         extern float  gos_terrain_indirect_getAtlasOneOverWorldUnits();
 
-        // Upload per-draw data (base + detail).
         WaterPerCmd cmds[2];
         cmds[0] = { 0u, 1, 0, oneOverTF,      cloudOffsetX, cloudOffsetY, 0u, 0u };
         cmds[1] = { 1u, 2, 1, oneOverWaterTF, sprayOffsetX, sprayOffsetY, 0u, 0u };
@@ -561,10 +543,8 @@ void gosRenderer::renderWaterFastPath(
         glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, (GLsizeiptr)sizeof(cmds), cmds);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
-        // Switch to MDI program.
         glUseProgram(s_waterMdiProg);
 
-        // Re-define lambdas that target s_waterMdiProg.
         auto setMF = [&](const char* name, float a) {
             GLint loc = glGetUniformLocation(s_waterMdiProg, name);
             if (loc >= 0) glUniform1f(loc, a);
@@ -807,7 +787,6 @@ void gosRenderer::renderWaterFastPath(
             setMF("u_waterHdriLod", hdriAvail ? mc2WaterHdriLodDefault() : -1.0f);
         }
 
-        // Bind SSBOs.
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, recipeBuf);
         // Slot 6 (thin records) was already bound by ComputeDispatchAndBindThinRecords.
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7, s_perCmdSsbo);
@@ -965,7 +944,6 @@ void gosRenderer::renderWaterFastPath(
         }
 #endif
 
-        // MDI: 2 draws (base + detail); 1 if detail not present.
         const GLsizei drawCount = (detailTex != 0) ? 2 : 1;
         if (!vkWaterHandled) {
             glBindBuffer(GL_DRAW_INDIRECT_BUFFER, WaterStream::GetIndirectCmdBuffer());
@@ -975,7 +953,6 @@ void gosRenderer::renderWaterFastPath(
             glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
         }
 
-        // Restore unit 2 — mirror unit-1 force-clear + sampler restore.
         if (bindRefl) {
             glActiveTexture(GL_TEXTURE0 + 2);
             glBindTexture(GL_TEXTURE_2D, 0);    // force-clear; mirrors unit-1 post-draw
@@ -983,7 +960,6 @@ void gosRenderer::renderWaterFastPath(
             glBindSampler(2, savedSampler2);    // restore sampler only
         }
 
-        // Restore unit 3 — WATER-HDRI-REFL-1: unbind HDRI.
         if (bindHdri) {
             glActiveTexture(GL_TEXTURE0 + 3);
             glBindTexture(GL_TEXTURE_2D, 0);
@@ -1000,7 +976,6 @@ void gosRenderer::renderWaterFastPath(
         // against the GPU compute output byte-for-byte. No-op when disabled.
         WaterStream::ComputeDispatchParity_Check();
 
-        // Restore GL state.
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, 0);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, 0);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7, 0);
@@ -1014,9 +989,6 @@ void gosRenderer::renderWaterFastPath(
         glUseProgram((GLuint)savedProgram);
         glBindVertexArray((GLuint)savedVAO);
     } else {
-        // ─────────────────────────────────────────────────────────────
-        // Legacy CPU-pack path (unchanged)
-        // ─────────────────────────────────────────────────────────────
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, recipeBuf);
         const uint32_t thinCount = WaterStream::UploadAndBindThinRecords();
         if (thinCount == 0) {
@@ -1032,7 +1004,6 @@ void gosRenderer::renderWaterFastPath(
             return;
         }
 
-        // One-time diagnostic for the fast path.
         static bool s_fastDiagPrinted = false;
         if (!s_fastDiagPrinted) {
             s_fastDiagPrinted = true;
@@ -1059,7 +1030,6 @@ void gosRenderer::renderWaterFastPath(
 
         const GLsizei drawVerts = (GLsizei)(thinCount * 6u);
 
-        // --- Base water layer ---
         if (baseTex != 0) {
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, baseTex);
@@ -1070,7 +1040,6 @@ void gosRenderer::renderWaterFastPath(
             setVec2("uvOffset", cloudOffsetX, cloudOffsetY);
 
             glDrawArrays(GL_TRIANGLES, 0, drawVerts);
-            // GL error diagnostic.
             {
                 GLenum err = glGetError();
                 if (err != GL_NO_ERROR) {
@@ -1085,7 +1054,6 @@ void gosRenderer::renderWaterFastPath(
             }
         }
 
-        // --- Detail/spray layer ---
         if (detailTex != 0) {
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, detailTex);
@@ -1098,7 +1066,6 @@ void gosRenderer::renderWaterFastPath(
             glDrawArrays(GL_TRIANGLES, 0, drawVerts);
         }
 
-        // Restore GL state.
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, 0);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, 0);
         glBindSampler(0, savedSampler);

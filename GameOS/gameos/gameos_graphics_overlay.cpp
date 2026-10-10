@@ -35,9 +35,6 @@ static int mc2OverlayBiasLegacy() {
     return mode;
 }
 
-// GAMEOS-GRAPHICS-SPLIT-1 slice 2: makeKindaSolid/doesLookLikeAlpha/
-// convertIfNecessary + gosTexture::createHardwareTexture moved to
-// gameos_graphics_texture.cpp.
 static gosTexture* lookupBatchTextureOrWarn(const std::vector<gosTexture*>& textureList,
                                             DWORD textureId,
                                             const char* batchName) {
@@ -77,7 +74,6 @@ GLuint g_overlayFallbackTex = 0;
 GLuint getOverlayFallbackTexture() {
     if (g_overlayFallbackTex == 0) {
         const unsigned char magenta[4] = { 255, 0, 255, 255 };  // 1x1 RGBA debug
-        // TEX-CLASS: asset-pool -- overlay magenta/fallback content texture
         glGenTextures(1, &g_overlayFallbackTex);
         glBindTexture(GL_TEXTURE_2D, g_overlayFallbackTex);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, magenta);
@@ -150,11 +146,7 @@ void overlayTexTraceSummary() {
 }
 } // anonymous namespace (OMT-1)
 
-// GAMEOS-GRAPHICS-SPLIT-1 slice 5: HUD-scale + UI-canvas gos_* accessors
-// (SetHudScale/Exempt, canvas asserts, ComputeUiCanvasBox/HudCanvasBox,
-// HudInverseMousePoint) moved to gameos_graphics_params.cpp.
 
-// ── World-space overlay batch API ────────────────────────────────────────────
 
 // Private helper: push one triangle into a batch, grouping consecutive same-texture
 // calls into a single draw entry.  Batches are cleared at the END of the draw
@@ -223,14 +215,12 @@ static void setupOverlayShadowsForShp(GLuint shp)
         loc = glGetUniformLocation(shp, "enableDynamicShadows");
         if (loc >= 0) glUniform1i(loc, 1);
         if (mc2ShadowCsmEnabled() && pp->getDynamicShadowArrayTexture()) {
-            // Item 1 CSM: array-sampler variant.
             loc = glGetUniformLocation(shp, "dynamicCascadeMatrices");
             if (loc >= 0)
                 glUniformMatrix4fv(loc, pp->getDynamicShadowCascadeCount(), GL_FALSE,
                                    pp->getDynamicCascadeMatrices());
             loc = glGetUniformLocation(shp, "dynamicCsmCount");
             if (loc >= 0) glUniform1i(loc, pp->getDynamicShadowCascadeCount());
-            // Stage 3: per-cascade texel-scaled depth bias inputs.
             loc = glGetUniformLocation(shp, "dynamicCascadeTexelWorld");
             if (loc >= 0) glUniform1fv(loc, pp->getDynamicShadowCascadeCount(),
                                        pp->getDynamicCascadeTexelWorld());
@@ -242,7 +232,6 @@ static void setupOverlayShadowsForShp(GLuint shp)
                 glActiveTexture(GL_TEXTURE0 + kTerrainTexUnitDynamicShadow);
                 glBindTexture(GL_TEXTURE_2D_ARRAY, pp->getDynamicShadowArrayTexture());
             }
-            // Per-cascade shadow resolution: separate full-map (last) cascade.
             loc = glGetUniformLocation(shp, "dynamicFullMapTexelWorld");
             if (loc >= 0) glUniform1f(loc, pp->getDynamicFullMapTexelWorld());
             loc = glGetUniformLocation(shp, "dynamicFullMapShadow");
@@ -270,7 +259,6 @@ static void setupOverlayShadowsForShp(GLuint shp)
     glActiveTexture(GL_TEXTURE0);
 }
 
-// Private member: common uniform upload for both draw paths.
 void gosRenderer::uploadOverlayUniforms_(GLuint shp, const OverlayUniformLocs_& L, float elapsed, const float* terrainMvpOverride)
 {
     if (L.terrainMVP >= 0) {
@@ -437,10 +425,8 @@ void gosRenderer::uploadOverlayUniforms_(GLuint shp, const OverlayUniformLocs_& 
         glUniform1i(L.numPoolLights, poolCount);
         if (L.lightPoolSoft >= 0)     glUniform1i(L.lightPoolSoft, s_poolSoft ? 1 : 0);
         if (L.lightPoolMoverDim >= 0) glUniform1f(L.lightPoolMoverDim, s_poolMoverDim);
-        // NIGHT-LIGHT-POOLS-3: summed-pool tone compression (default ON).
         static const bool s_poolCompress = mc2::gate::get<"MC2_LIGHT_POOL_COMPRESS">();
         if (L.lightPoolCompress >= 0)  glUniform1i(L.lightPoolCompress, s_poolCompress ? 1 : 0);
-        // NIGHT-LIGHT-POOLS-4: mover radius scale + max-blend.
         if (L.lightPoolMoverScale >= 0) glUniform1f(L.lightPoolMoverScale, s_poolMoverRadius);
         if (L.lightPoolMoverMax >= 0)   glUniform1i(L.lightPoolMoverMax, s_poolMoverMax ? 1 : 0);
     }
@@ -603,7 +589,6 @@ void gosRenderer::drawTerrainOverlays()
                                   "gosRenderer_drawTerrainOverlays");
 }
 
-// Slice A — draw the mission-static cement-overlay bake.
 //
 // Byte-for-byte mirror of gosRenderer::drawTerrainOverlays()'s render-state
 // block + program + uniform upload + per-draw texture bind + glDrawArrays,
@@ -995,7 +980,6 @@ void applyTopLevelGenericAxes(const TopLevelStateDesc& d, unsigned fbo, int vpW,
 }
 }} // namespace RenderCore::framegraph
 
-// ── Thin exported wrappers ────────────────────────────────────────────────────
 
 void __stdcall gos_PushTerrainOverlay(const WorldOverlayVert* verts3, unsigned int texHandle) {
     // PR2b Stage 0b probe — counts every entry into the producer regardless

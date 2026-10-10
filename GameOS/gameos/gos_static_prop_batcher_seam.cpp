@@ -3,9 +3,6 @@
 #include "gos_static_prop_batcher_internal.h"
 
 
-// ---------------------------------------------------------------------------
-// Slice 2, Stage 2.A — new method and free-function definitions
-// ---------------------------------------------------------------------------
 
 // GpuStaticPropBatcher::wasLastFailureLateRegistration (lines added below)
 // Returns whether the most recent submitMultiShape() call returned false
@@ -81,7 +78,6 @@ int gos_GpuPropsGetDebugMode() {
     return GpuStaticPropBatcher::instance().getDebugAddrMode();
 }
 
-// Stage 3.C ----------------------------------------------------------------
 
 const std::vector<GpuStaticPropInstance>& GpuStaticPropBatcher::getLastBuiltBatch() const {
     return s_lastBuiltBatch;
@@ -185,7 +181,6 @@ void GpuStaticPropBatcher::submitCachedInstanceRange(const GpuStaticPropInstance
     }
 }
 
-// 2b Stage 2 (Mechanism B-reinject) -----------------------------------------
 uint64_t GpuStaticPropBatcher::persistentStaticGen() { return s_persistentStaticGen; }
 void GpuStaticPropBatcher::setPersistentStaticGen(uint64_t g) { s_persistentStaticGen = g; }
 uint64_t GpuStaticPropBatcher::persistentStaticTotalCount() {
@@ -269,7 +264,6 @@ void GpuStaticPropBatcher::reinjectPersistentStatic() {
     }
 }
 
-// Track B -----------------------------------------------------------------
 
 bool GpuStaticPropBatcher::buildRecipeFromShape(
         TG_Shape* shape,
@@ -888,9 +882,6 @@ void batcher_getStaticPropOpaqueDebugState(StaticPropOpaqueDebugState* out) {
     out->materialInventorySize       = static_cast<uint32_t>(s_materialInventory.size());
 }
 
-// ---------------------------------------------------------------------------
-// Type-desc table accessors (v0)
-// ---------------------------------------------------------------------------
 
 uint32_t batcher_getStaticPropTypeDescCount() {
     return static_cast<uint32_t>(s_typeDescTable.size());
@@ -920,7 +911,6 @@ void batcher_buildCandidateLog() {
         return;
     }
 
-    // Compute expected: sum of packetCount over all table entries (zero-packet entries contribute 0).
     uint32_t expected = 0u;
     for (const auto& d : s_typeDescTable) { expected += d.packetCount; }
 
@@ -1084,7 +1074,6 @@ void batcher_prepareBaseInstanceTable() {
         rebuildStaticDrawCmdsIfDirty();   // Task 3: own indirect cmds (not drawn until Task 4)
     }
 
-    // Write baseInstanceByCmd[c] for each cmd.
     const uint32_t pktCount = static_cast<uint32_t>(s_sortedPacketOrder.size());
     const size_t fr_off = s_coalesceFrameSlot * s_baseInstanceByCmdBytesPerFrame;
     uint32_t* dst = reinterpret_cast<uint32_t*>(

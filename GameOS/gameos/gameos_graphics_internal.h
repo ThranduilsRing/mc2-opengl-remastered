@@ -28,9 +28,6 @@ struct gosTextureInfo {
     gos_TextureFormat format_;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-// GlPixelStoreGuard - moved verbatim from gameos_graphics.cpp (SPLIT-1
-// slice 2); used by gosTexture::Lock/Unlock below and by main-TU callers.
 struct GlPixelStoreGuard {
     GLint packBuffer = 0, unpackBuffer = 0;
     GLint packAlign = 0, unpackAlign = 0;
@@ -84,16 +81,11 @@ struct GlPixelStoreGuard {
     }
 };
 
-////////////////////////////////////////////////////////////////////////////////
-// gosTexture - definition moved verbatim from gameos_graphics.cpp (SPLIT-1
-// slice 2). createHardwareTexture lives in gameos_graphics_texture.cpp.
 class gosTexture {
     public:
         gosTexture(gos_TextureFormat fmt, const char* fname, DWORD hints, BYTE* pdata, DWORD size, bool from_memory)
         {
 
-	        //if(fmt == gos_Texture_Detect || /*fmt == gos_Texture_Keyed ||*/ fmt == gos_Texture_Bump || fmt == gos_Texture_Normal)
-            //     PAUSE((""));
 
             format_ = fmt;
             if(fname) {
@@ -125,8 +117,6 @@ class gosTexture {
 
         gosTexture(gos_TextureFormat fmt, DWORD hints, DWORD w, DWORD h, const char* texname)
         {
-	        //if(fmt == gos_Texture_Detect /*|| fmt == gos_Texture_Keyed*/ || fmt == gos_Texture_Bump || fmt == gos_Texture_Normal)
-            //     PAUSE((""));
 
             format_ = fmt;
             if(texname) {
@@ -183,7 +173,6 @@ class gosTexture {
 
         ~gosTexture() {
 
-            //SPEW(("Destroying texture: %s\n", filename_));
 
             gosASSERT(is_locked_ == false);
 
@@ -401,9 +390,6 @@ class gosTexture {
         uint32_t mirror_gpu_attempt_serial_ = 0xffffffffu;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-// gosFont — definition moved verbatim from gameos_graphics.cpp (SPLIT-1
-// slice 1). Implementation lives in gameos_graphics_font.cpp.
 class gosFont {
         friend class gosRenderer;
     public:
@@ -439,9 +425,6 @@ class gosFont {
         DWORD tex_id_;
         uint32_t ref_count_;
 };
-// ── SPLIT-1 slice 5: HUD-scale / UI-canvas shared state ─────────────────────
-// Defined in gameos_graphics_params.cpp; referenced by the main TU
-// (flushHUDBatch remaps, HUD record sites) and by the params accessors.
 extern float s_hud_scale;
 extern bool  s_hud_scale_active;
 extern bool  s_hud_scale_exempt;
@@ -467,7 +450,6 @@ DWORD gosRendererAddFontBmpTexture(const char* textureName);
 // TU can publish the rgba mirror on the freshly-built atlas.
 gosTexture* gosRendererGetTexture(DWORD texId);
 
-// gosFont::~gosFont: release the font page texture.
 void gosRendererDeleteTexture(DWORD texId);
 
 #endif // GAMEOS_GRAPHICS_INTERNAL_H

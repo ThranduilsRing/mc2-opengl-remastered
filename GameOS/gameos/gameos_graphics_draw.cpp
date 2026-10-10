@@ -225,7 +225,6 @@ void gosMesh::drawIndexed(HGOSBUFFER ib, HGOSBUFFER vb, HGOSVERTEXDECLARATION vd
 
 	vdecl->end();
 
-	//material->end();
 	glUseProgram(0);
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -381,7 +380,6 @@ void gosRenderer::applyRenderStates() {
 
     rsApplied_++;
 
-	////////////////////////////////////////////////////////////////////////////////
 	switch (renderStates_[gos_State_Culling]) {
 		case gos_Cull_None: glDisable(GL_CULL_FACE); break;
 		case gos_Cull_CW:	
@@ -394,13 +392,10 @@ void gosRenderer::applyRenderStates() {
 	}
 	curStates_[gos_State_Culling] = renderStates_[gos_State_Culling];
 
-	////////////////////////////////////////////////////////////////////////////////
 
-	////////////////////////////////////////////////////////////////////////////////
 	fog_color_ = uint32_to_vec4(renderStates_[gos_State_Fog]);
 	curStates_[gos_State_Fog] = renderStates_[gos_State_Fog];
 
-   ////////////////////////////////////////////////////////////////////////////////
    switch(renderStates_[gos_State_ZWrite]) {
        case 0: glDepthMask(GL_FALSE); break;
        case 1: glDepthMask(GL_TRUE); break;
@@ -408,7 +403,6 @@ void gosRenderer::applyRenderStates() {
    }
    curStates_[gos_State_ZWrite] = renderStates_[gos_State_ZWrite];
 
-   ////////////////////////////////////////////////////////////////////////////////
    if(0 == renderStates_[gos_State_ZCompare]) {
        glDisable(GL_DEPTH_TEST);
    } else {
@@ -430,7 +424,6 @@ void gosRenderer::applyRenderStates() {
    }
    curStates_[gos_State_ZCompare] = renderStates_[gos_State_ZCompare];
 
-   ////////////////////////////////////////////////////////////////////////////////
    bool disable_blending = renderStates_[gos_State_AlphaMode] == gos_Alpha_OneZero;
    if(disable_blending) {
        glDisable(GL_BLEND);
@@ -447,7 +440,6 @@ void gosRenderer::applyRenderStates() {
    }
    curStates_[gos_State_AlphaMode] = renderStates_[gos_State_AlphaMode];
 
-   ////////////////////////////////////////////////////////////////////////////////
    #if 0 // now in shaders (this is not supported in CORE OpenGL profile
    bool enable_alpha_test = renderStates_[gos_State_AlphaTest] == 1;
    if(enable_alpha_test) {
@@ -459,7 +451,6 @@ void gosRenderer::applyRenderStates() {
    #endif
    curStates_[gos_State_AlphaTest] = renderStates_[gos_State_AlphaTest];
 
-   ////////////////////////////////////////////////////////////////////////////////
    TexFilterMode filter = TFM_NONE;
    switch(renderStates_[gos_State_Filter]) {
        case gos_FilterNone: filter = TFM_NEAREST; break;
@@ -475,13 +466,11 @@ void gosRenderer::applyRenderStates() {
    // in this case does not necessaily mean, that state was set, because in OpenGL this is binded to texture (unless separate sampler state extension is used, which is not currently)
    curStates_[gos_State_Filter] = renderStates_[gos_State_Filter];
   
-   ////////////////////////////////////////////////////////////////////////////////
    TexAddressMode address_mode = 
        renderStates_[gos_State_TextureAddress] == gos_TextureWrap ? TAM_REPEAT : TAM_CLAMP_TO_EDGE;
    // in this case does not necessarily mean, that state was set, because in OpenGL this is binded to texture (unless separate sampler state extension is used, which is not currently)
    curStates_[gos_State_TextureAddress] = renderStates_[gos_State_TextureAddress];
 
-   ////////////////////////////////////////////////////////////////////////////////
    uint32_t tex_states[] = { gos_State_Texture, gos_State_Texture2, gos_State_Texture3 };
    for(int i=0; i<sizeof(tex_states) / sizeof(tex_states[0]); ++i) {
        DWORD gosTextureHandle = renderStates_[tex_states[i]];
@@ -559,7 +548,6 @@ void gosRenderer::beginFrame()
     num_draw_calls_ = 0;
 
     TerrainPatchStream::beginFrame();
-    // gos_terrain_indirect::BeginFrame() moved to endFrame() — see comment there.
 }
 
 // Lazy-eval gate for the dev-only shader hot-reload sweep. Default OFF in
@@ -599,7 +587,6 @@ void gosRenderer::endFrame()
         --s_resCountdown;
     }
 
-    // RENDER_STATES v1: 600-frame summary line. Always-on counter; gated print.
     rsFrames_++;
     if (rsFrames_ >= 600) {
         MC2_DIAGF("[RENDER_STATES v1] event=summary frames=%u calls=%u skipped_count=%u applied_count=%u\n",
@@ -614,7 +601,6 @@ void gosRenderer::endFrame()
     if (!gos_ShaderHotReloadEnabled())
         return;
 
-    // check for file changes every half second
     static uint64_t last_check_time = timing::get_wall_time_ms();
     const uint64_t now = timing::get_wall_time_ms();
     if(now - last_check_time > 500)
@@ -1032,11 +1018,6 @@ void gosRenderer::terrainOverrideThinMVP(const float* mvp4x4)
     glUniformMatrix4fv(tl.terrainMVP, 1, GL_FALSE, mvp4x4);
 }
 
-// TERRAIN-DEADCODE-DELETE-1: gosRenderer::terrainDrawIndexedPatches deleted.
-// The legacy tess-solid terrain funnel is retired — terrain renders via the LOD-chunk path.
-// The sole call site at gameos_graphics.cpp (the :7291 if-branch) is now a skip+tripwire.
-// Helpers called by this function (cacheTerrainUniformLocations, terrainBindThinUniformsForPatchStream,
-// bindTerrainHeightTexUniforms) remain in use by the shadow pre-pass and bridge paths.
 
 void gosRenderer::drawIndexedTris(gos_VERTEX* vertices, int num_vertices, WORD* indices, int num_indices) {
     ZoneScopedN("DrawIndexedTris.Basic");
@@ -1085,7 +1066,6 @@ void gosRenderer::drawIndexedTris(gos_VERTEX* vertices, int num_vertices, WORD* 
     // for now draw anyway because no render state saved for draw calls
     applyRenderStates();
 
-    // Terrain tessellation path
     if (curStates_[gos_State_Terrain] && !curStates_[gos_State_Overlay] && terrain_material_ && terrain_batch_extras_count_ > 0 && terrain_draw_enabled_) {
         // TERRAIN-DEADCODE-DELETE-1: the legacy gosRenderer tess-solid terrain draw
         // (terrainDrawIndexedPatches) is retired — all terrain renders via the LOD-chunk
@@ -1123,8 +1103,6 @@ void gosRenderer::drawIndexedTris(gos_VERTEX* vertices, int num_vertices, WORD* 
                 }
             }
 
-            // Overlay.SplitDraw removed — alpha cement and decals now go through
-            // gos_DrawTerrainOverlays() / gos_DrawDecals() typed world-space batches.
             {
                 ZoneScopedN("BasicDraw.Indexed");
                 indexed_tris_->drawIndexed(mat);
@@ -1161,7 +1139,6 @@ void gosRenderer::drawIndexedTris(HGOSBUFFER ib, HGOSBUFFER vb, HGOSVERTEXDECLAR
 	mat->getShader()->setMat4("projection_", projection_);
 
     mat->setTransform(transform);
-    //mat->setFogColor(fog_color_);
 
 	// [LIGHTSSBO v1] FORK-2: this legacy lit material's LightsData is now
 	// an SSBO; UBO reflection no longer binds it. Bind the storage block
@@ -1184,10 +1161,6 @@ void gosRenderer::drawIndexedTris(HGOSBUFFER ib, HGOSBUFFER vb, HGOSVERTEXDECLAR
 
     applyRenderStates();
 
-	// maybe getCurMaterial->set.... to not set it from outer code?
-	//vec4 vp = g_gos_renderer->getRenderViewport();
-	//mat->getShader()->setFloat4("vp", vp);
-	//mat->getShader()->setMat4("projection_", projection_);
 
 	gosMesh::drawIndexed(ib, vb, vdecl);
 

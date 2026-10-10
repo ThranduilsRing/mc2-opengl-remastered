@@ -4,9 +4,6 @@
 
 
 
-// GAMEOS-GRAPHICS-SPLIT-1 slice 1: gosFont implementation moved to
-// gameos_graphics_font.cpp. These shims give that TU renderer access without
-// exporting the gosRenderer class definition.
 DWORD gosRendererAddFontBmpTexture(const char* textureName)
 {
     gosTexture* ptex = new gosTexture(gos_Texture_Alpha, textureName, 0, NULL, 0, false);
@@ -16,7 +13,6 @@ DWORD gosRendererAddFontBmpTexture(const char* textureName)
     return getGosRenderer()->addTexture(ptex);
 }
 
-// MERGE-WAVE-1 shim: texture fetch for the font TU (rgba-mirror publication).
 gosTexture* gosRendererGetTexture(DWORD texId)
 {
     return g_gos_renderer ? g_gos_renderer->getTexture(texId) : nullptr;
@@ -27,8 +23,6 @@ void gosRendererDeleteTexture(DWORD texId)
     getGosRenderer()->deleteTexture(texId);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// graphics
 //
 void _stdcall gos_DrawLines(gos_VERTEX* Vertices, int NumVertices)
 {
@@ -197,7 +191,6 @@ DWORD __stdcall gos_NewCompressedTexture2D( uint32_t glInternalFormat, int w, in
     while(glGetError() != GL_NO_ERROR) { /* drain */ }
 
     GLuint texID = 0;
-    // TEX-CLASS: asset-pool -- gos_NewCompressedTexture2D content factory (BC7)
     glGenTextures(1, &texID);
     if(texID == 0)
         return INVALID_TEXTURE_ID;
@@ -255,7 +248,6 @@ void __stdcall gos_LockTexture( DWORD Handle, DWORD MipMapSize, bool ReadOnly, T
 {
     // TODO: does not really locks texture
     
-    // not implemented yet
     gosASSERT(MipMapSize == 0);
     int mip_level = 0; //func(MipMapSize);
 
@@ -271,7 +263,6 @@ void __stdcall gos_LockTexture( DWORD Handle, DWORD MipMapSize, bool ReadOnly, T
     TextureInfo->Pitch = pitch;
     TextureInfo->Type = info.format_;
 
-    //gosASSERT(0 && "Not implemented");
 }
 
 void __stdcall gos_UnLockTexture( DWORD Handle )
@@ -279,7 +270,6 @@ void __stdcall gos_UnLockTexture( DWORD Handle )
     gosTexture* ptex = g_gos_renderer->getTexture(Handle);
     ptex->Unlock();
 
-    //gosASSERT(0 && "Not implemented");
 }
 
 uint32_t __stdcall gos_GetTextureGLId( DWORD Handle )
@@ -491,7 +481,6 @@ void __stdcall gos_GetRenderViewport(float* x, float* y, float* w, float* h)
 	*h = vp.w;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 size_t __stdcall gos_GetMachineInformation( MachineInfo mi, int Param1/*=0*/, int Param2/*=0*/, int Param3/*=0*/, int Param4/*=0*/)
 {
     // TODO:
@@ -535,9 +524,6 @@ bool gos_GetDisplayModeByIndex(int DisplayIndex, int ModeIndex, int* XRes, int* 
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-// GPU Buffers management code
-////////////////////////////////////////////////////////////////////////////////
 
 GLenum getGLBufferType(gosBUFFER_TYPE type)
 {
@@ -663,7 +649,6 @@ void __stdcall gos_ApplyRenderMaterial(HGOSRENDERMATERIAL material)
 {
 	gosASSERT(material);
 
-	//setup commoin stuff
 	gos_SetCommonMaterialParameters(material);
 
 	material->apply();
@@ -750,7 +735,6 @@ void __stdcall gos_ForceApplyRenderStates() {
     glEnable(GL_DEPTH_TEST);
     glDisable(GL_BLEND);
     glBlendFunc(GL_ONE, GL_ZERO);
-    // Then sync applyRenderStates tracking
     g_gos_renderer->applyRenderStates();
 }
 
@@ -774,7 +758,6 @@ void __stdcall gos_PrepareForPostImGuiRender() {
     // applyRenderStates() has no gos_State_ColorMask and never fixes this.
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 
-    // Ensure we are on the default framebuffer and scissor is not clipping.
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glDisable(GL_SCISSOR_TEST);
 
@@ -858,7 +841,6 @@ namespace {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, s_camPreviewColorTex, 0);
 
-        // TEX-CLASS: render-target -- camera-preview FBO depth renderbuffer
         glGenRenderbuffers(1, &s_camPreviewDepthRbo);
         glBindRenderbuffer(GL_RENDERBUFFER, s_camPreviewDepthRbo);
         glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT32F, w, h);
@@ -918,7 +900,6 @@ void __stdcall gos_BeginCameraPreviewRender()
     glViewport(0, 0, 800 * sc, 600 * sc);
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
     glDepthMask(GL_TRUE);
-    // 3D-viewer background: black, matching the surrounding panel.
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClearDepth(0.0);  // reverse-Z: far=0, near=1
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -926,8 +907,6 @@ void __stdcall gos_BeginCameraPreviewRender()
     if (g_gos_renderer) g_gos_renderer->invalidateRenderStateCache();
 }
 
-// Restore the default framebuffer (and its real-resolution glViewport) after
-// camera preview rendering.
 void __stdcall gos_EndCameraPreviewRender()
 {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);

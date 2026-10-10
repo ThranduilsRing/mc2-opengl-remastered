@@ -115,7 +115,6 @@ void buildProgramIfNeeded() {
 
 void ensureCapacity(GLsizei needRecords) {
     if (s_ssbo == 0) {
-        // TIER2-EXCLUDED: substrate-gated
         glGenBuffers(1, &s_ssbo);
         if (s_ssbo == 0) { s_bufFailed = true; return; }
     }
@@ -150,7 +149,6 @@ extern "C" void gos_cardcloud_sim_submit(
     unsigned int                                cpuActiveCount)
 {
     if (records == nullptr || count == 0) return;
-    // Accumulate this instance's compacted live records for the frame.
     s_frameRecords.insert(s_frameRecords.end(), records, records + count);
     ++s_frameInstances;
     s_frameCpuActiveSum += cpuActiveCount;
@@ -169,13 +167,11 @@ extern "C" void gos_cardcloud_sim_flush(void)
     // (s_frameRecords IS the input; we read back into a separate vector.)
     GLint savedProgram = 0; glGetIntegerv(GL_CURRENT_PROGRAM, &savedProgram);
 
-    // Upload accumulated input.
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_ssbo);
     glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0,
                     (GLsizeiptr)(n * sizeof(mc2::particles::CardCloudSimParticle)),
                     s_frameRecords.data());
 
-    // Dispatch the integration compute pass.
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, /*binding=*/0, s_ssbo);
     glUseProgram(s_program);
     if (s_loc_dt    >= 0) glUniform1f(s_loc_dt, kValidationDt);
@@ -223,7 +219,6 @@ extern "C" void gos_cardcloud_sim_flush(void)
         for (unsigned i = 0; i < n; ++i) {
             const mc2::particles::CardCloudSimParticle& in  = s_frameRecords[i]; // input
             const mc2::particles::CardCloudSimParticle& out = s_readback[i];      // GPU result
-            // CPU reference: identical step applied to the input.
             const bool inAlive = (in.flags & mc2::particles::kCardCloudSimFlagAlive) != 0;
             float refAge = in.age;
             float refPos[3] = { in.position[0], in.position[1], in.position[2] };
@@ -267,7 +262,6 @@ extern "C" void gos_cardcloud_sim_flush(void)
         }
     }
 
-    // Restore state.
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, /*binding=*/0, 0);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
     glUseProgram((GLuint)savedProgram);

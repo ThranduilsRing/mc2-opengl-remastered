@@ -42,7 +42,6 @@
 #endif
 
 
-// Declarations, types and constants the split pieces share.
 
 
 // Terrain MVP matrix — exposed by gameos_graphics.cpp for all terrain draw paths.
@@ -114,7 +113,6 @@ extern void  gos_GetTerrainMatHeight(float*, float*, float*, float*);  // POM-PE
 
 extern bool  gos_TerrainMaterialLibEnabled();
 
-// Remaining legacy tunables.
 extern float gos_GetTerrainCliffShadowFloor();  // CLIFF SHADOW FLOOR
 
 extern float gos_GetTerrainNormalsFromHeightStrength();
@@ -128,14 +126,12 @@ extern void  gos_GetTerrainCameraPos(float*, float*, float*);
 
 extern int   g_terrainMaterialProfile;   // global; 0 = legacy
 
-// Step 5c: cement catalog atlas (tex3) accessors from gos_terrain_indirect.cpp.
 extern unsigned int gos_terrain_indirect_getCementAtlasGLTex();
 
 extern int          gos_terrain_indirect_getCementAtlasGridSide();
 
 extern bool         gos_terrain_indirect_isCementAtlasReady();
 
-// Stage B: transition mask array (GL_TEXTURE_2D_ARRAY, unit 11).
 extern GLuint gos_terrain_indirect_getTransitionMaskArrayGL();
 
 extern bool   gos_terrain_indirect_isTransitionMaskReady();
@@ -212,7 +208,6 @@ struct PatchShape {
 
 namespace gos_terrain_indirect { bool IsFrameSolidArmed(); }
 
-// Globals defined in gos_terrain_lod_chunk.cpp (or elsewhere in the engine) that the split pieces share.
 
 // State and helpers shared between the pieces. Each is defined once, in the piece that owns it.
 bool glStateGuardTerrainEnabled();

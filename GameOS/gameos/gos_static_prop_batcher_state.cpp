@@ -5,7 +5,6 @@
 
 namespace gos_static_prop_batcher_detail {
 
-// Slice 1 (global instance pool). Default global cap and base-instance SSBO binding.
 constexpr uint32_t STATIC_PROP_GLOBAL_CAP_DEFAULT = 131072u;
 
 // Immutable per-map geometry.
@@ -58,7 +57,6 @@ RenderCore::GpuBufferOwner s_dynamicPropShadowOwner{
 // DYNAMIC pass so buildings don't cast a redundant (fuzzy) second shadow.
 std::unordered_set<uint32_t> s_buildingShadowTypeIDs;
 
-// Per-frame persistent-mapped rings.
 GLuint   s_instanceSsbo = 0;
 GLuint   s_colorSsbo    = 0;
 // VK-SHADOW-RING-OWNER-1: parallel GpuBufferOwner identity records for the two ring
@@ -107,7 +105,6 @@ std::unordered_map<uint32_t, PerTypeBucket> s_bucketsByType;
 // is untouched.
 extern const bool s_staticPropColorsFill = mc2::gate::get<"MC2_STATIC_PROP_COLORS_FILL">();
 
-// 2b Stage 2 Task-0: bucket static/dynamic order + overlap probe (throwaway).
 extern const bool s_bucketOrderTrace = mc2::gate::get<"MC2_BUCKET_ORDER_TRACE">();
 
 // 2b Stage 2 (Mechanism B-reinject): persistent per-type static instance store,
@@ -151,7 +148,6 @@ std::vector<uint32_t> s_perTypePeak;
 uint32_t s_coalesceFrameSlot = 0;
 
 
-// CPU-side staging during registration (cleared after finalizeGeometry).
 std::vector<uint8_t>  s_stagingVbo;
 std::vector<uint32_t> s_stagingIbo;
 
@@ -182,7 +178,6 @@ GLint s_loc_u_parityBaseVertex   = -1;
 bool s_programLoadTried  = false;
 bool s_programLoadFailed = false;
 
-// --- Step 2.1: GL handles for coalesce SSBOs and texture arrays ---
 GLuint s_coalesceInstanceSsbo      = 0;  // ring-buffered, persistent-mapped
 GLuint s_perDrawSsbo               = 0;  // PerDrawEntry per type, sorted (binding 4)
 
@@ -288,7 +283,6 @@ extern const float s_nightTagScale = []() {
     return (s_nightTagMode == 2) ? 4.0f : 1.0f;
 }();
 
-// BEACON-FIXTURE-ID-1: fixture-scoped night emission.
 //
 // MC2_STATIC_PROP_NIGHT_TAGS (above) restores the stock night vertex tags for
 // EVERY tagged prop, which is why it ships default-OFF: 738 of 2947 stock .ase
@@ -896,11 +890,9 @@ GLuint s_staticPropProgramCoalesce = 0;  // coalesce variant (Step 7.5)
 GLuint s_staticPropDepthProgram = 0;
 DepthCoalesceLocs s_locsDepthCoalesce;
 
-// Step 2.1 — persistent map pointer + fence ring.
 void*  s_coalesceInstanceMap = nullptr;
 GLsync s_coalesceFence[RING_FRAMES] = {};
 
-// Step 2.1 — sort vectors / counts (populated in Step 5.7).
 std::vector<uint32_t> s_sortedTypeOrder;
 uint32_t s_alphaOffCount = 0;
 uint32_t s_alphaOnCount  = 0;
@@ -926,15 +918,12 @@ uint32_t s_alphaOffCmdCount = 0;               // number of packets in alpha-OFF
 uint32_t s_alphaOnCmdCount  = 0;               // number of packets in alpha-ON group
 GLuint   s_cmdToBucketSsbo  = 0;               // uint typeID per cmd (binding 7, patch shader)
 
-// Step 2.1 — pin tracker (refcount-aware unpin in Step 4.1).
 std::vector<DWORD> s_coalescePinnedNodes;
 
-// Step 2.1 — state-machine flags (§7).
 bool s_coalesceLayoutReady = false;
 bool s_coalesceEnabled     = false;
 bool s_coalesceArmed       = false;
 
-// Step 2.1 — per-mission ready latch (reset in onMapLoad, set in 11.7.k).
 bool s_coalesceFirstFlushDone = false;
 
 // Step 2.1 — env-resolved-once + extension-probe-persisting flags.
@@ -992,7 +981,6 @@ GLuint   s_baseInstanceByCmdSsbo          = 0;
 void*    s_baseInstanceByCmdMap           = nullptr;
 size_t   s_baseInstanceByCmdBytesPerFrame = 0;
 
-// Per-frame accumulators — zeroed by batcher_prepareBaseInstanceTable() each frame (step 4).
 uint32_t s_offGroupCountThisFrame  = 0;
 size_t   s_offGroupBytesThisFrame  = 0;
 size_t   s_onGroupBytesThisFrame   = 0;
@@ -1019,7 +1007,6 @@ void allocPermutationSsboAsIdentity(uint32_t typeCount) {
     if (typeCount == 0) return;
     std::vector<uint32_t> identity(typeCount);
     for (uint32_t i = 0; i < typeCount; ++i) identity[i] = i;
-    // TIER2-EXCLUDED: dead-path
     if (s_permutationSsbo == 0) glGenBuffers(1, &s_permutationSsbo);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_permutationSsbo);
     MC2_GL_BufferData(GL_SHADER_STORAGE_BUFFER,
@@ -1067,8 +1054,6 @@ void staticPropReleaseBuckets() {
     s_packetBucketIndex.clear();
     s_slotBucketIndex.clear();
     s_bucketCmdCount.clear();
-    // STATICPROP-MATERIAL-ORM-1 — release the per-bucket ORM sibling arrays.
-    // Empty (no-op) when the gate is OFF.
     for (GLuint a : s_ormBucketArrays) {
         if (a) glDeleteTextures(1, &a);
     }

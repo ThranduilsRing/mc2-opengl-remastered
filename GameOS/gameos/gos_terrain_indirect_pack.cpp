@@ -3,9 +3,6 @@
 #include "gos_terrain_indirect_internal.h"
 
 
-// ---------------------------------------------------------------------------
-// Stage 3 — per-frame thin-record packer, indirect-command builder,
-//            preflight arming, and DrawIndirect thin executor.
 //
 // Bridge function (gos_terrain_bridge_drawIndirect) lives in gameos_graphics.cpp
 // where gosRenderer state is accessible.  This file owns the CPU-side logic;
@@ -41,10 +38,6 @@ bool  s_processArmingDisabled     = false;
 // before VisualDiff's post-PP hook fires, so a sticky cousin is needed.
 bool  s_everFrameSolidArmed       = false;
 
-// first_draw lifecycle latch (reset by ResetDenseRecipe / mission teardown).
-// Declared extern in the anonymous ns of the Stage 2 block; re-stated here
-// via file-scope bool below.  Use the existing s_firstDrawPrintedThisMission
-// that's already declared in the Stage 2 anonymous namespace above.
 
 // ResourcesReady lazy-alloc state.
 static bool  s_resourcesAllocated = false;
@@ -164,7 +157,6 @@ bool ResourcesReady() {
 
     // Thin-record SSBO: triple-buffered, GL_STREAM_DRAW.
     if (g_thinRecordSSBO == 0) {
-        // TIER2-EXCLUDED: dead-path
         glGenBuffers(1, &g_thinRecordSSBO);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, g_thinRecordSSBO);
         MC2_GL_BufferData(GL_SHADER_STORAGE_BUFFER,
@@ -198,7 +190,6 @@ bool ResourcesReady() {
 
     // Indirect command buffer.
     if (g_indirectCmdBuffer == 0) {
-        // TIER2-EXCLUDED: dead-path
         glGenBuffers(1, &g_indirectCmdBuffer);
         glBindBuffer(GL_DRAW_INDIRECT_BUFFER, g_indirectCmdBuffer);
         // Step 2b (VPL retirement, C2): pre-initialize {count=0,
@@ -438,14 +429,6 @@ int PackThinRecordsForFrame() {
                 }
             }
         }
-        // Old nodeIdx-based lookup — kept as dead code for one commit; the
-        // slot-keyed lookup above is what drives correctness now.  Slot is
-        // stable across frames; nodeIdx is not.
-        // const DWORD nodeIdx = (DWORD)q.terrainHandle;
-        // if (nodeIdx < (DWORD)MC_MAXTEXTURES) {
-        //     const uint16_t idx2 = g_cementLayerIndexByNodeIdx[nodeIdx];
-        //     ...
-        // }
         tr.cementWord    = cementWord;
         tr.lightRGB0     = lightRGBc(0);
         tr.lightRGB1     = lightRGBc(1);
@@ -547,7 +530,6 @@ uint32_t UploadTerrainHandleLUT() {
     constexpr GLsizeiptr kLutBytes = MC_MAXTEXTURES * sizeof(uint32_t);
 
     if (g_terrainHandleLutSSBO == 0) {
-        // TIER2-EXCLUDED: dead-path
         glGenBuffers(1, &g_terrainHandleLutSSBO);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, g_terrainHandleLutSSBO);
         MC2_GL_BufferData(GL_SHADER_STORAGE_BUFFER, kLutBytes, nullptr, GL_DYNAMIC_DRAW);
@@ -636,7 +618,6 @@ uint32_t BuildSolidQuadWindowSSBO(int* outUseWindow) {
     if (g_solidQuadWindowSsbo == 0) {
         const uint32_t cap =
             (uint32_t)(kMaxThinRecords * sizeof(uint32_t));
-        // TIER2-EXCLUDED: dead-path
         glGenBuffers(1, &g_solidQuadWindowSsbo);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, g_solidQuadWindowSsbo);
         MC2_GL_BufferData(GL_SHADER_STORAGE_BUFFER, (GLsizeiptr)cap, nullptr,

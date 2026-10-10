@@ -63,7 +63,6 @@ extern "C" void mc2_vk_color_prop_island_invalidate_geometry();  // vulkan_color
 #include <vector>
 #include "vk_feed_dump.h"  // VK-OFFLINE-PROOFS-1: MC2_VK_FEED_DUMP golden dump
 
-// Declarations, macros, constants and types the split pieces share.
 
 
 // LIGHTROW-FRESHNESS-1: the per-frame stamp that cachedFrame_ is compared
@@ -151,7 +150,6 @@ constexpr uint32_t BASE_INSTANCE_SSBO_BINDING     = 16u;
 namespace gos_static_prop_batcher_detail {
 
 
-// Slice 2 (object-offload) — Stage 2.D.1: parity readback harness.
 //
 // The parity SSBO is allocated lazily by gos_object_parity::EnsureParityOutputSSBO()
 // the first time flush() runs with MC2_OBJECT_PARITY_CHECK=1 set. It's sized
@@ -355,9 +353,6 @@ static constexpr GLuint kOrmTexUnit = 1;
 static constexpr GLuint kColormapTexUnit = 4;
 
 
-// ---------------------------------------------------------------------------
-// Counter state added in Task 6 (Stage 1.D — Gate F + late-registration).
-// ---------------------------------------------------------------------------
 
 // Population indexed by GpuStaticPropPopulation enum value:
 //   0=Building, 1=Tree, 2=Generic, 3=Legacy.
@@ -398,7 +393,6 @@ struct ObjBatcherCounters {
 };
 
 
-// Forward declaration; defined below.
 void accumulateMonotonicAndMaybeEmit(bool forceEmit);
 }  // namespace gos_static_prop_batcher_detail
 
@@ -413,9 +407,7 @@ extern "C" void mc2_framegraph_executor_bump_apply_state(unsigned id);
 namespace gos_static_prop_batcher_detail {}
 using namespace gos_static_prop_batcher_detail;
 
-// Globals defined in gos_static_prop_batcher.cpp (or elsewhere in the engine) that the split pieces share.
 
-// State and helpers shared between the pieces. Each is defined once, in the slice that owns it.
 extern bool g_useGpuObjects;
 extern const bool s_alphaTrace;
 const float* gos_GetObjectFixBMVPMat4();
@@ -710,19 +702,14 @@ static std::string deriveOrmSidecar(const char* srcName) {
 // so the existing fallback / miss path handles it gracefully.
 static std::string deriveTieredKtxPath(const char* srcName, int tier) {
     std::string s(srcName ? srcName : "");
-    // Strip extension: find last dot after the last path separator.
     const size_t sep = s.find_last_of("/\\");
     const size_t dot = s.find_last_of('.');
     if (dot != std::string::npos && (sep == std::string::npos || dot > sep))
         s.erase(dot);
-    // s is now the path without extension, e.g. "data/tgl/foo"
-    // Find the last separator again to split directory from filename stem.
     const size_t lastSep = s.find_last_of("/\\");
     if (lastSep == std::string::npos) {
-        // No directory component — just prepend tier and append .ktx2.
         return std::to_string(tier) + "/" + s + ".ktx2";
     }
-    // Insert tier directory: "data/tgl" + "/" + "512" + "/" + "foo" + ".ktx2"
     return s.substr(0, lastSep + 1) + std::to_string(tier) + "/"
            + s.substr(lastSep + 1) + ".ktx2";
 }

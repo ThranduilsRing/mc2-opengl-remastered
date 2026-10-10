@@ -560,7 +560,6 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
     uint32_t lightDataIndex = 0;
     bool     lightRowResolved = false;
     if (cacheSet && (!freshnessOn || cacheFresh)) {
-        // Happy path: lights were gathered at update() time (correct per-actor).
         lightDataIndex   = multi->cachedGpuLightIndex_;
         lightRowResolved = true;
     } else if (firstShapeNodeLeaf != nullptr) {
@@ -764,9 +763,6 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
     return true;
 }
 
-// ---------------------------------------------------------------------------
-// Task 10: flush() — per-packet instanced draw
-// ---------------------------------------------------------------------------
 namespace gos_static_prop_batcher_detail {
 
 // Per-frame upload state shared between flushShadow() (Task 13) and flush().
@@ -804,7 +800,6 @@ bool uploadAllBucketsIfNeeded() {
         return (v + (a - 1)) & ~(a - 1);
     };
 
-    // Compute EXACT total byte usage with per-bucket alignment padding.
     size_t instBytesNeeded = 0;
     size_t colBytesNeeded  = 0;
     for (auto& kv : s_bucketsByType) {
@@ -881,7 +876,6 @@ bool uploadAllBucketsIfNeeded() {
         s_typeRanges[typeID] = r;
     }
 
-    // 2b Stage 2 Task-0 diagnostic: aggregate static/dynamic type overlap + order.
     if (s_bucketOrderTrace) {
         static uint64_t s_botCall = 0, s_botEmitted = 0;
         ++s_botCall;
@@ -924,7 +918,6 @@ uint32_t buildLiveV6Arrays(
 
     constexpr uint32_t kNoObjectIndex = 0xFFFFFFFFu;
 
-    // --- Builder loop ---
     for (uint32_t i = 0u; i < totalCmds; ++i) {
         // Guard 1: sorted_oob — i must be valid index into s_sortedPacketOrder
         if (i >= static_cast<uint32_t>(s_sortedPacketOrder.size())) {

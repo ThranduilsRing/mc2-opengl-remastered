@@ -3,8 +3,6 @@
 #include "gos_postprocess_internal.h"
 
 
-// ============================================================================
-// FRAME-GRAPH-EXECUTOR-ISLAND-1
 //
 // Executor-owned PostProcess island: validate -> call pp->endScene() unchanged
 // -> validate. Gate MC2_FRAMEGRAPH_EXECUTOR (default-OFF) -> byte-identical.
@@ -15,7 +13,6 @@
 // mc2_framegraph_executor_validation_failures().
 // ============================================================================
 
-// --- gosPostProcess executor accessor implementations -----------------------
 
 bool gosPostProcess::executorCompositeProgramValid() const
 {
@@ -74,7 +71,6 @@ bool gosPostProcess::executorScreenShadowWillRun() const
         && shadowsEnabled_;
 }
 
-// --- Gate helper (read once, static lambda) ---------------------------------
 
 static bool executorEnabled()
 {
@@ -105,7 +101,6 @@ static void applyStateBump(RenderCore::framegraph::ApplyPassId id) {
 // Max log lines for validation failures — prevent log flooding in pathological cases.
 static constexpr unsigned kMaxExecutorFailureLog = 32u;
 
-// --- Pre-call validation wrapper -------------------------------------------
 //
 // Checks the IslandContract preconditions for the PostProcess island.
 // NON-FATAL: on any failure increments g_executorValidationFailures + logs.
@@ -161,11 +156,7 @@ static void executorOwnBegin(gosPostProcess* pp)
     (void)ok;  // all failures are non-fatal; pp->endScene() always runs
 }
 
-// --- Post-call validation wrapper ------------------------------------------
 //
-// Checks the IslandContract postconditions for the PostProcess island.
-// On success -> increments g_executorOwnedPasses (this island owned+validated).
-// On failure -> increments g_executorValidationFailures + logs.
 //
 // NOTE: calls glGetError() which clears the GL error flag. Acceptable here:
 // (a) we are post-endScene which already calls drainGLErrors("post_process"),
@@ -197,7 +188,6 @@ static void executorOwnEnd(gosPostProcess* /*pp*/)
         }
     }
 
-    // 2. No GL errors after the composite blit.
     {
         const GLenum err = glGetError();
         if (err != GL_NO_ERROR) {
@@ -215,7 +205,6 @@ static void executorOwnEnd(gosPostProcess* /*pp*/)
         ++g_executorOwnedPasses;
 }
 
-// --- FRAMEGRAPH-APPLY-STATE-ISLAND-1: EdgeFog pre-apply -----------------------
 //
 // Pre-applies the 4 GL state calls that runEdgeFog() makes at entry, in the
 // SAME ORDER as the body (glBindFramebuffer → setSceneDrawBuffers → glViewport
@@ -304,7 +293,6 @@ void gosPostProcess::executorApplyScreenShadowState()
     screenShadowStateAppliedByExecutor_ = true;
 }
 
-// --- FRAME-GRAPH-EXECUTOR-ISLAND-2: sub-stage wrappers (EdgeFog + FogOob) ----
 //
 // Each pair gates on executorEnabled(). Begin: if WillRun()==false the sub-pass
 // is gated off this frame -> return WITHOUT counting (legitimately not owned).
@@ -328,7 +316,6 @@ void executorOwnBeginSub(gosPostProcess* pp, RenderCore::framegraph::ExecutorIsl
     if (islandId == ExecutorIslandId::ScreenShadow)  willRun = pp->executorScreenShadowWillRun();
     if (!willRun) return;
 
-    // Island name for diagnostics.
     const char* name = "Unknown";
     if (islandId == ExecutorIslandId::EdgeFog)       name = "EdgeFog";
     if (islandId == ExecutorIslandId::FogOob)        name = "FogOob";
@@ -336,7 +323,6 @@ void executorOwnBeginSub(gosPostProcess* pp, RenderCore::framegraph::ExecutorIsl
     if (islandId == ExecutorIslandId::CloudShadow)   name = "CloudShadow";
     if (islandId == ExecutorIslandId::ScreenShadow)  name = "ScreenShadow";
 
-    // Pre-call validation (non-fatal).
     if (c->requiresProgramValid) {
         // Program validity is encoded in WillRun() — already proven above.
         // Defensive: no separate accessor needed (WillRun mirrors the gate).
@@ -380,7 +366,6 @@ void executorOwnBeginSub(gosPostProcess* pp, RenderCore::framegraph::ExecutorIsl
         if (findSubStageState(ExecutorIslandId::CloudShadow) != nullptr)
             pp->executorApplyCloudShadowState();
     }
-    // APPLY-STATE-SCREENSHADOW-1: ScreenShadow wired.
     if (islandId == ExecutorIslandId::ScreenShadow) {
         using namespace RenderCore::framegraph;
         if (findSubStageState(ExecutorIslandId::ScreenShadow) != nullptr)
@@ -448,7 +433,6 @@ void executorOwnEndSub(gosPostProcess* pp, RenderCore::framegraph::ExecutorIslan
         }
     }
 
-    // 3. No GL errors after the sub-stage draw.
     {
         const GLenum err = glGetError();
         if (err != GL_NO_ERROR) {
@@ -466,7 +450,6 @@ void executorOwnEndSub(gosPostProcess* pp, RenderCore::framegraph::ExecutorIslan
         ++g_executorOwnedPasses;
 }
 
-// --- Public entry points (called from gameosmain.cpp) -----------------------
 
 void mc2_executor_own_begin_postprocess(gosPostProcess* pp)
 {
@@ -478,7 +461,6 @@ void mc2_executor_own_end_postprocess(gosPostProcess* pp)
     executorOwnEnd(pp);
 }
 
-// --- extern "C" counter accessors for debug_state_dump.cpp -----------------
 
 extern "C" unsigned long mc2_framegraph_executor_owned_passes()
 {
@@ -503,8 +485,6 @@ extern "C" unsigned long mc2_framegraph_executor_apply_state_passes_impl()
     return total;
 }
 
-// PER-PASS-APPLY-COUNTERS-1: per-pass getter. Returns the count for one
-// ApplyPassId, or 0 for an out-of-range id.
 extern "C" unsigned long mc2_framegraph_executor_apply_state_by_pass_impl(unsigned id)
 {
     return id < (unsigned)RenderCore::framegraph::ApplyPassId::Count ? g_applyStateByPass[id] : 0;

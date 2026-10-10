@@ -67,7 +67,6 @@ int gos_getDynShadowMapSize() {
     gosPostProcess* pp = getGosPostProcess();
     return pp ? pp->getDynamicShadowMapSize() : 0;
 }
-// Phase 10 Step 5: material normal sampler2DArray handle for the LOD chunk path.
 unsigned int gos_GetTerrainNormalArrayTex() {
     gosRenderer* r = getGosRenderer();
     return r ? r->getTerrainNormalArrayTexEnsureBuilt() : 0u;
@@ -77,17 +76,12 @@ unsigned int gos_GetTerrainNormalArrayTex() {
 // Defined here because the full gosRenderer type is visible in this TU.
 // Declarations live in gos_terrain_bridge.h.
 
-// gos_terrain_bridge_getMaterial and gos_terrain_bridge_getShaderProgram deleted by
-// DEAD-BRIDGE-DELETE-1: zero external callers tree-wide (whole-repo grep incl. editor/
-// tools/shaders/scripts). Provably-dead public wrappers around live gosRenderer members.
 
 void gos_terrain_bridge_bindUniforms(gosRenderMaterial* material) {
     if (g_gos_renderer && material)
         g_gos_renderer->terrainBindUniformsForPatchStream(material);
 }
 
-// gos_terrain_bridge_applyVertexDeclaration deleted by TERRAIN-BRIDGE-BODY-DELETE-2:
-// callerless after TerrainPatchStream::flush() retired (TERRAIN-BRIDGE-BODY-DELETE-1).
 
 unsigned int gos_terrain_bridge_glTextureForGosHandle(unsigned int gosHandle) {
     if (!g_gos_renderer) return 0;
@@ -97,8 +91,6 @@ unsigned int gos_terrain_bridge_glTextureForGosHandle(unsigned int gosHandle) {
     return (unsigned int)tex->getTextureId();
 }
 
-// gos_terrain_bridge_drawPatchStreamBucket deleted by TERRAIN-BRIDGE-BODY-DELETE-2:
-// callerless after TerrainPatchStream::flush() retired (TERRAIN-BRIDGE-BODY-DELETE-1).
 
 static const bool s_patchStreamDirectBind = mc2::gate::get<"MC2_PATCHSTREAM_DIRECT_TEXTURE_BIND">();
 
@@ -112,8 +104,6 @@ static GLuint s_terrainBucketSampler = 0;
 // TERRAIN-BRIDGE-BODY-DELETE-1: called only from TerrainPatchStream::flush() (retired
 // in PATCHSTREAM-THIN-RETIRE-1, 026e7276).
 
-// gos_terrain_bridge_endBucketLoop deleted by TERRAIN-BRIDGE-BODY-DELETE-2:
-// callerless after TerrainPatchStream::flush() retired (TERRAIN-BRIDGE-BODY-DELETE-1).
 
 unsigned int gos_terrain_bridge_getThinShaderProgram() {
     if (!g_gos_renderer) return 0u;
@@ -124,8 +114,6 @@ unsigned int gos_terrain_bridge_getThinShaderProgram() {
 // TU-wide near the top of this file (after g_terrainMaterialProfile) so that
 // renderWaterFastPath (which precedes this block) can see them.
 
-// ──────────────────────────────────────────────────────────────────────────
-// [TERRAIN_SURFACE] PR-2 — continuous indexed-surface validation draw bridge.
 //
 // Plan : docs/superpowers/plans/.../terrain-continuous-surface-producer-plan.md
 //        PR-2 (Wave 1, ADDITIVE / DEFAULT-OFF / DELETES NOTHING). Behind the
@@ -181,9 +169,7 @@ void gos_terrain_surface_bridge_draw()
     // SSBO-bound at slots 20/21/22 for the meshlet-validation draw only.
     // TIER2-EXCLUDED: substrate-gated
     if (s_surfaceVB == 0) glGenBuffers(1, &s_surfaceVB);
-    // TIER2-EXCLUDED: substrate-gated
     if (s_surfaceIB == 0) glGenBuffers(1, &s_surfaceIB);
-    // TIER2-EXCLUDED: substrate-gated
     if (s_surfaceTB == 0) glGenBuffers(1, &s_surfaceTB);
     if (epoch != s_uploadedEpoch) {
         const void* vd = gos_terrain_surface::GetVertexData();
@@ -216,7 +202,6 @@ void gos_terrain_surface_bridge_draw()
                  (unsigned)s_surfaceTB);
     }
 
-    // ---- Save state (mirrors gos_terrain_bridge_drawIndirect) -------------
     GLint     savedProgram   = 0; glGetIntegerv(GL_CURRENT_PROGRAM,    &savedProgram);
     GLboolean savedBlend     = glIsEnabled(GL_BLEND);
     GLint     savedSrcRGB    = 0; glGetIntegerv(GL_BLEND_SRC_RGB,      &savedSrcRGB);
@@ -250,7 +235,6 @@ void gos_terrain_surface_bridge_draw()
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
     glDisable(GL_BLEND);
 
-    // ---- Sampler 0: CLAMP_TO_EDGE / LINEAR (matches indirect atlas path) --
     static GLuint s_surfaceSampler = 0;
     if (s_surfaceSampler == 0) {
         // TEX-CLASS: per-pass-rebind -- surface sampler object (CLAMP+LINEAR)
@@ -348,7 +332,6 @@ void gos_terrain_surface_bridge_draw()
         if (locUAC >= 0) glUniform1i(locUAC, 0);
     }
 
-    // ---- Restore state ----------------------------------------------------
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 20, 0);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 21, 0);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 22, 0);  // META-FIX tile SSBO
@@ -370,8 +353,6 @@ void gos_terrain_surface_bridge_draw()
     if (g_gos_renderer) g_gos_renderer->invalidateRenderStateCache();
 }
 
-// ──────────────────────────────────────────────────────────────────────────
-// Terrain indirect draw bridge (Stage 3 of indirect-terrain SOLID PR1)
 //
 // Called by gos_terrain_indirect::DrawIndirect() after preflight arming.
 // Mirrors gos_terrain_bridge_renderWaterFast structure but for opaque terrain:
@@ -400,7 +381,6 @@ bool gos_terrain_bridge_drawIndirect(int cmdCount, unsigned int recipeSSBO,
 
     const GLuint prog = p->shp_;
 
-    // ---- Save state --------------------------------------------------------
     GLint       savedProgram   = 0; glGetIntegerv(GL_CURRENT_PROGRAM,   &savedProgram);
     GLboolean   savedBlend     = glIsEnabled(GL_BLEND);
     GLint       savedSrcRGB    = 0; glGetIntegerv(GL_BLEND_SRC_RGB,     &savedSrcRGB);
@@ -465,7 +445,6 @@ bool gos_terrain_bridge_drawIndirect(int cmdCount, unsigned int recipeSSBO,
     render_contract::assertPassContract(render_contract::PassIdentity::TerrainBase,
                                         "gos_TerrainLodChunk_SubmitDrawCommands");
 
-    // ---- Sampler: CLAMP_TO_EDGE / LINEAR (matches M2 atlas-tiled path) ----
     static GLuint s_indirectTerrainSampler = 0;
     if (s_indirectTerrainSampler == 0) {
         // TEX-CLASS: per-pass-rebind -- indirect-terrain sampler object
@@ -567,7 +546,6 @@ bool gos_terrain_bridge_drawIndirect(int cmdCount, unsigned int recipeSSBO,
         }
     }
 
-    // ---- Bind transition mask array at unit 4 (Stage B) --------------------
     GLint  savedTex4Binding2D     = 0;
     GLuint savedTex4Binding2DArr  = 0;
     const bool transitionMaskReady = gos_terrain_indirect_isTransitionMaskReady();
@@ -585,9 +563,6 @@ bool gos_terrain_bridge_drawIndirect(int cmdCount, unsigned int recipeSSBO,
         if (locUseTM >= 0) glUniform1i(locUseTM, transitionMaskReady ? 1 : 0);
     }
 
-    // ---- SSBO bindings + indirect buffer -----------------------------------
-    // Slot 1 = recipe (static, mission-stable)
-    // Slot 2 = thin record (per-frame ring) — will be re-bound via range below
     if (recipeSSBO != 0)
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, (GLuint)recipeSSBO);
     glBindBuffer(GL_DRAW_INDIRECT_BUFFER, (GLuint)indirectCmdBuffer);
@@ -695,9 +670,7 @@ bool gos_terrain_bridge_drawIndirect(int cmdCount, unsigned int recipeSSBO,
             }
         }
     } }
-    // ── end probe 8 ────────────────────────────────────────────────────────
 
-    // ---- Draw (wireframe support mirrors tessellated path at ~5386) ---------
     const bool indirectWireframe = g_gos_renderer->getTerrainWireframe();
     if (indirectWireframe) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     glMultiDrawArraysIndirect(GL_TRIANGLES, nullptr, (GLsizei)cmdCount, 0);
@@ -719,14 +692,12 @@ bool gos_terrain_bridge_drawIndirect(int cmdCount, unsigned int recipeSSBO,
         if (locUCA  >= 0) glUniform1i(locUCA,  0);
         if (locUseTM >= 0) glUniform1i(locUseTM, 0);
     }
-    // Restore unit 3 (texture binding + sampler).
     if (cementAtlasReady) {
         glActiveTexture(GL_TEXTURE3);
         glBindSampler(3, savedTex3Sampler);
         glBindTexture(GL_TEXTURE_2D, (GLuint)savedTex3Binding);
         glActiveTexture(GL_TEXTURE0);
     }
-    // Restore unit 4 (transition mask array).
     if (transitionMaskReady) {
         glActiveTexture(GL_TEXTURE4);
         glBindTexture(GL_TEXTURE_2D_ARRAY, savedTex4Binding2DArr);
@@ -734,7 +705,6 @@ bool gos_terrain_bridge_drawIndirect(int cmdCount, unsigned int recipeSSBO,
         glActiveTexture(GL_TEXTURE0);
     }
 
-    // ---- Restore state -----------------------------------------------------
     glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, 0);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, 0);
@@ -811,8 +781,6 @@ void maskOrphanUploadCmd(GLenum target, GLsizeiptr bytes, const void* data) {
 }
 }  // namespace
 
-// ──────────────────────────────────────────────────────────────────────────
-// B4 Slice Stage 1b — Mask-SOLID dual-run draw bridge.
 //
 // Called by gos_terrain_mask_dispatch::DrawMaskSolid() from
 // Render.TerrainMask.Solid. Reads the per-frame SOLID mask SSBO at binding 17,
@@ -835,7 +803,6 @@ bool gos_terrain_bridge_drawMaskSolid(uint32_t solidMaskSSBO,
 
     const GLuint prog = p->shp_;
 
-    // ---- Save state (same set as drawIndirect) -----------------------------
     GLint     savedProgram   = 0; glGetIntegerv(GL_CURRENT_PROGRAM,     &savedProgram);
     GLboolean savedBlend     = glIsEnabled(GL_BLEND);
     GLint     savedSrcRGB    = 0; glGetIntegerv(GL_BLEND_SRC_RGB,       &savedSrcRGB);
@@ -859,7 +826,6 @@ bool gos_terrain_bridge_drawMaskSolid(uint32_t solidMaskSSBO,
     // shader (cache is keyed by program, so it re-fetches locations on switch).
     g_gos_renderer->terrainBindThinUniformsForPatchStream(p);
 
-    // ---- mapSide uniform ---------------------------------------------------
     {
         const GLint locMS = glGetUniformLocation(prog, "mapSide");
         if (locMS >= 0) glUniform1i(locMS, mapSide);
@@ -888,7 +854,6 @@ bool gos_terrain_bridge_drawMaskSolid(uint32_t solidMaskSSBO,
     glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
     glDisable(GL_BLEND);
 
-    // ---- Sampler unit 0: CLAMP_TO_EDGE / LINEAR (matches drawIndirect) -----
     static GLuint s_maskSolidSampler = 0;
     if (s_maskSolidSampler == 0) {
         // TEX-CLASS: per-pass-rebind -- mask-solid sampler object
@@ -901,7 +866,6 @@ bool gos_terrain_bridge_drawMaskSolid(uint32_t solidMaskSSBO,
     }
     glBindSampler(0, s_maskSolidSampler);
 
-    // ---- Atlas colormap at unit 0 ------------------------------------------
     GLint savedTex0Binding = 0;
     glActiveTexture(GL_TEXTURE0);
     glGetIntegerv(GL_TEXTURE_BINDING_2D, &savedTex0Binding);
@@ -919,7 +883,6 @@ bool gos_terrain_bridge_drawMaskSolid(uint32_t solidMaskSSBO,
         if (locUAC  >= 0) glUniform1i(locUAC,  1);
     }
 
-    // ---- Cement atlas at unit 3 (if ready) ---------------------------------
     GLint  savedTex3Binding = 0;
     GLuint savedTex3Sampler = 0;
     const bool cementReady = gos_terrain_indirect_isCementAtlasReady();
@@ -946,7 +909,6 @@ bool gos_terrain_bridge_drawMaskSolid(uint32_t solidMaskSSBO,
         }
     }
 
-    // ---- Bind transition mask array at unit 4 (Stage B) --------------------
     GLint  savedTex4Binding2D_b    = 0;
     GLuint savedTex4Binding2DArr_b = 0;
     const bool transitionMaskReady2 = gos_terrain_indirect_isTransitionMaskReady();
@@ -964,7 +926,6 @@ bool gos_terrain_bridge_drawMaskSolid(uint32_t solidMaskSSBO,
         if (locUseTM >= 0) glUniform1i(locUseTM, transitionMaskReady2 ? 1 : 0);
     }
 
-    // ---- SSBO bindings -----------------------------------------------------
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 17, (GLuint)solidMaskSSBO);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 19, (GLuint)recipeSSBO);
     if (lightingSSBO != 0)
@@ -972,7 +933,6 @@ bool gos_terrain_bridge_drawMaskSolid(uint32_t solidMaskSSBO,
         // gos_terrain_mask_solid.vert). Slot 2 kept clear for ThinRecordBufFrag.
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, (GLuint)lightingSSBO);
 
-    // ---- Build and issue one DrawArraysIndirect ----------------------------
     struct DrawArraysIndirectCommand {
         uint32_t count;
         uint32_t instanceCount;
@@ -995,7 +955,6 @@ bool gos_terrain_bridge_drawMaskSolid(uint32_t solidMaskSSBO,
     mdi_submit::trace("TerrainMaskSolid", "DrawArraysIndirect", 1,
                       "CPU", "s_indirectCmdBuf", false);
 
-    // ---- Restore -----------------------------------------------------------
     glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 17, 0);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 19, 0);
@@ -1041,8 +1000,6 @@ bool gos_terrain_bridge_drawMaskSolid(uint32_t solidMaskSSBO,
     return true;
 }
 
-// ──────────────────────────────────────────────────────────────────────────
-// B4 Slice Stage 1c — Mask-water dual-run draw bridge.
 //
 // Called by gos_terrain_mask_dispatch::DrawMaskWater() from
 // Render.TerrainMask.Water. Reads the per-frame water mask SSBO at binding 18,
@@ -1066,7 +1023,6 @@ bool gos_terrain_bridge_drawMaskWater(uint32_t waterMaskSSBO,
 
     const GLuint prog = p->shp_;
 
-    // ---- Save state --------------------------------------------------------
     GLint     savedProgram   = 0; glGetIntegerv(GL_CURRENT_PROGRAM,      &savedProgram);
     GLboolean savedBlend     = glIsEnabled(GL_BLEND);
     GLint     savedSrcRGB    = 0; glGetIntegerv(GL_BLEND_SRC_RGB,        &savedSrcRGB);
@@ -1110,7 +1066,6 @@ bool gos_terrain_bridge_drawMaskWater(uint32_t waterMaskSSBO,
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    // ---- Sampler unit 0 ----------------------------------------------------
     static GLuint s_maskWaterSampler = 0;
     if (s_maskWaterSampler == 0) {
         // TEX-CLASS: per-pass-rebind -- mask-water sampler object
@@ -1130,7 +1085,6 @@ bool gos_terrain_bridge_drawMaskWater(uint32_t waterMaskSSBO,
     glGetIntegerv(GL_TEXTURE_BINDING_2D, &savedTex0Binding);
     glBindTexture(GL_TEXTURE_2D, gos_terrain_indirect_getAtlasGLTex());
 
-    // ---- SSBO bindings -----------------------------------------------------
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 18, (GLuint)waterMaskSSBO);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER,  5, (GLuint)recipeSSBO);
     if (lightingSSBO != 0)
@@ -1138,7 +1092,6 @@ bool gos_terrain_bridge_drawMaskWater(uint32_t waterMaskSSBO,
         // gos_terrain_mask_water.vert). Slot 2 kept clear for ThinRecordBufFrag.
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, (GLuint)lightingSSBO);
 
-    // ---- Build and issue one DrawArraysIndirect ----------------------------
     struct DrawArraysIndirectCommand {
         uint32_t count;
         uint32_t instanceCount;
@@ -1161,7 +1114,6 @@ bool gos_terrain_bridge_drawMaskWater(uint32_t waterMaskSSBO,
     mdi_submit::trace("TerrainMaskWater", "DrawArraysIndirect", 1,
                       "CPU", "s_waterIndirectCmdBuf", false);
 
-    // ---- Restore -----------------------------------------------------------
     glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 18, 0);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER,  5, 0);
@@ -1185,8 +1137,6 @@ bool gos_terrain_bridge_drawMaskWater(uint32_t waterMaskSSBO,
     return true;
 }
 
-// ──────────────────────────────────────────────────────────────────────────
-// PR2c Stage 2c — Mine static-bake bridge.
 //
 // Issues ONE glDrawArrays(GL_TRIANGLES) against the mission-static MineStaticVBO,
 // with the 2-layer mine sprite array bound at unit 5. State save/restore mirrors
@@ -1208,7 +1158,6 @@ bool gos_terrain_bridge_drawMineStatic(int          vertCount,
 
     const GLuint prog = p->shp_;
 
-    // ---- Save state ---------------------------------------------------------
     GLint     savedProgram   = 0; glGetIntegerv(GL_CURRENT_PROGRAM,         &savedProgram);
     GLboolean savedBlend     = glIsEnabled(GL_BLEND);
     GLint     savedSrcRGB    = 0; glGetIntegerv(GL_BLEND_SRC_RGB,           &savedSrcRGB);
@@ -1230,7 +1179,6 @@ bool gos_terrain_bridge_drawMineStatic(int          vertCount,
     extern void gos_RendererRebindVAO();
     gos_RendererRebindVAO();
 
-    // ---- Program -----------------------------------------------------------
     glUseProgram(prog);
 
     // terrainMVP (mirrors PR1 thin-VS upload — GL_FALSE + row-major per
@@ -1242,7 +1190,6 @@ bool gos_terrain_bridge_drawMineStatic(int          vertCount,
                                (const float*)&g_gos_renderer->getTerrainMVP());
     }
 
-    // mineSpriteArray uniform → unit 5
     {
         const GLint loc = glGetUniformLocation(prog, "mineSpriteArray");
         if (loc >= 0) glUniform1i(loc, 5);
@@ -1262,13 +1209,11 @@ bool gos_terrain_bridge_drawMineStatic(int          vertCount,
     glEnableVertexAttribArray(2);
     glVertexAttribIPointer(2, 1, GL_UNSIGNED_INT,    kStride, (const void*)20);
 
-    // ---- Bind texture-array at unit 5 + clear sampler-object override ------
     glActiveTexture(GL_TEXTURE5);
     glBindSampler(5, 0);  // use the texture's own params (NEAREST/CLAMP_TO_EDGE)
     glBindTexture(GL_TEXTURE_2D_ARRAY, (GLuint)textureArrayGL);
     glActiveTexture(GL_TEXTURE0);
 
-    // ---- Depth + blend + color state ---------------------------------------
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_GEQUAL);   // reverse-Z (U2): was GL_LEQUAL (scene terrain)
     glDepthMask(GL_TRUE);
@@ -1277,10 +1222,8 @@ bool gos_terrain_bridge_drawMineStatic(int          vertCount,
     // Mine sprite uses alpha-test discard (in FS); no blend needed.
     glDisable(GL_BLEND);
 
-    // ---- Draw --------------------------------------------------------------
     glDrawArrays(GL_TRIANGLES, 0, (GLsizei)vertCount);
 
-    // ---- Restore state -----------------------------------------------------
     glDisableVertexAttribArray(2);
     glDisableVertexAttribArray(1);
     // Leave attr-0 enabled — AMD attribute-0 trap (other paths assume it on).

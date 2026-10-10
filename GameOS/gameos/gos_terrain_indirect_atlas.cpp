@@ -3,9 +3,6 @@
 #include "gos_terrain_indirect_internal.h"
 
 
-// ---------------------------------------------------------------------------
-// Stage 2 — dense recipe SSBO storage and helpers
-// ---------------------------------------------------------------------------
 
 namespace gos_terrain_indirect_detail {
 
@@ -73,11 +70,9 @@ void buildRecipeSlot(int32_t vn, TerrainQuadRecipe& out) {
     const long mapSide = Terrain::realVerticesMapSide;
     if (mapSide <= 0) { memset(&out, 0, sizeof(TerrainQuadRecipe)); return; }
 
-    // vn = top-left corner vertexNum = mx + my * mapSide
     const long mx = vn % mapSide;
     const long my = vn / mapSide;
 
-    // Edge vertex: no valid quad. Zero out.
     if (mx >= mapSide - 1 || my >= mapSide - 1) {
         memset(&out, 0, sizeof(TerrainQuadRecipe));
         return;
@@ -231,7 +226,6 @@ void BuildColormapAtlas() {
                 ? (size_t)img.mipByteOffsets[1]
                 : img.pixels.size();
 
-            // TEX-CLASS: asset-pool -- terrain colormap atlas (content)
             if (g_atlasGLTex == 0) glGenTextures(1, &g_atlasGLTex);
             MC2_GL_BindTexture(GL_TEXTURE_2D, g_atlasGLTex);
             glCompressedTexImage2D(GL_TEXTURE_2D, 0, glIF,
@@ -261,7 +255,6 @@ void BuildColormapAtlas() {
                 tcm->cpuDispAlphaSize = 0;
             }
         } else {
-            // KTX2 load/format check failed — clear path, fall through to RGBA8.
             printf("[COLORMAP] COLORMAP-BC7-KTX2-1: KTX2 load failed or wrong format "
                    "(%s), falling back to RGBA8\n", tcm->ktx2ColormapPath);
             tcm->ktx2ColormapPath[0] = '\0';
@@ -279,7 +272,6 @@ void BuildColormapAtlas() {
             return;
         }
 
-        // TEX-CLASS: asset-pool -- terrain colormap atlas (content, alt path)
         if (g_atlasGLTex == 0) glGenTextures(1, &g_atlasGLTex);
         MC2_GL_BindTexture(GL_TEXTURE_2D, g_atlasGLTex);
         // cpuColorMap is BGRA-in-memory (mc2_argb_packing memory note: MC2's
@@ -395,7 +387,6 @@ void BuildCementCatalogAtlas() {
         if (tt->isAlpha((DWORD)slot)) continue;  // pure-cement only (brainstorm Q1)
         const DWORD nodeIdx = tt->peekTextureHandle((DWORD)slot);
 
-        // CEMENT_DIAG per-slot line.
         const int isBase = (firstTransition < 0 || slot < firstTransition) ? 1 : 0;
         ++diagTotal;
         if (isBase) ++diagBase; else ++diagTransition;
@@ -473,7 +464,6 @@ void BuildCementCatalogAtlas() {
            CementAlphaAtlasEnabled() ? 1 : 0, nSolidCells, alphaAdmitted, alphaSkipped);
     fflush(stdout);
 
-    // CEMENT_DIAG summary — always emit when trace on, regardless of cap.
     if (traceOn()) {
         printf("[CEMENT_DIAG] summary mission=%s total_cement=%ld base=%ld transitions=%ld nextAvailable=%ld firstTransition=%ld\n",
                (::missionName[0] ? ::missionName : "unknown"),
@@ -492,7 +482,6 @@ void BuildCementCatalogAtlas() {
         return;
     }
 
-    // Build nodeIdx → layer-index map.
     memset(g_cementLayerIndexByNodeIdx, 0xFF, sizeof(g_cementLayerIndexByNodeIdx));
     for (int k = 0; k < N; ++k) {
         g_cementLayerIndexByNodeIdx[cementNodeIndices[k]] = (uint16_t)k;
@@ -521,7 +510,6 @@ void BuildCementCatalogAtlas() {
     std::vector<uint32_t> atlasBuf((size_t)atlasPixelSide * atlasPixelSide, 0u);
     std::vector<uint32_t> tileBuf((size_t)txmSize * txmSize, 0u);
 
-    // Save GL state (V24).
     GLint savedActive = GL_TEXTURE0;
     glGetIntegerv(GL_ACTIVE_TEXTURE, &savedActive);
     glActiveTexture(GL_TEXTURE0);
@@ -581,7 +569,6 @@ void BuildCementCatalogAtlas() {
         fflush(stdout);
     }
 
-    // Solid (non-alpha) cement cells.
     const int NT = nSolidCells;
 
     // ---- CEMENT-ATLAS-CELL-2: concrete-family classification + the two arms.
@@ -754,7 +741,6 @@ void BuildCementCatalogAtlas() {
         }
     }
 
-    // TEX-CLASS: asset-pool -- cement/road overlay atlas (content)
     if (g_cementAtlasGLTex == 0) glGenTextures(1, &g_cementAtlasGLTex);
     MC2_GL_BindTexture(GL_TEXTURE_2D, g_cementAtlasGLTex);
     MC2_GL_TexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8,
@@ -765,7 +751,6 @@ void BuildCementCatalogAtlas() {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
-    // Restore state (V24).
     glPixelStorei(GL_PACK_ALIGNMENT, savedPackAlign);
     glPixelStorei(GL_UNPACK_ALIGNMENT, savedUnpackAlign);
     MC2_GL_BindTexture(GL_TEXTURE_2D, (GLuint)savedTex0Binding);
@@ -776,7 +761,6 @@ void BuildCementCatalogAtlas() {
     g_cementCatalogTruncated = truncated ? 1 : 0;
     g_cementLayerMapReady    = true;
 
-    // REGISTRY-TERRAIN-SSBO-1: register the cement catalog atlas (observe-only).
     {
         RenderCore::RenderResourceDesc d;
         d.id        = RenderCore::RenderResourceId::CementAtlas;
@@ -831,9 +815,6 @@ float  gos_terrain_indirect_getWorldUnitsPerVertex() { return Terrain::worldUnit
 GLuint gos_terrain_indirect_getTransitionMaskArrayGL() { return g_transitionMaskArrayGL; }
 bool   gos_terrain_indirect_isTransitionMaskReady()    { return g_transitionMaskReady && g_transitionMaskArrayGL != 0; }
 
-// ---------------------------------------------------------------------------
-// Stage 2 public API
-// ---------------------------------------------------------------------------
 
 namespace gos_terrain_indirect {
 
@@ -906,7 +887,6 @@ void BuildDenseRecipe() {
                  GL_DYNAMIC_DRAW);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
-    // REGISTRY-TERRAIN-SSBO-1: register the dense recipe SSBO (observe-only).
     {
         RenderCore::RenderResourceDesc d;
         d.id        = RenderCore::RenderResourceId::TerrainRecipeBuffer;
@@ -981,7 +961,6 @@ void ResetDenseRecipe() {
         glDeleteTextures(1, &g_cementAtlasGLTex);
         g_cementAtlasGLTex = 0;
 
-        // REGISTRY-TERRAIN-SSBO-1: mark the cement atlas slot unavailable on teardown.
         RenderCore::RenderResourceDesc invalid;
         invalid.id = RenderCore::RenderResourceId::CementAtlas;
         RenderCore::registerOrUpdateRenderResource(invalid);

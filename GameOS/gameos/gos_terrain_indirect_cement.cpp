@@ -3,8 +3,6 @@
 #include "gos_terrain_indirect_internal.h"
 
 
-// ---------------------------------------------------------------------------
-// Colormap atlas — single GL texture covering the full merged colormap.
 //
 // cpuColorMap (terrtxm2.h:93) already holds the entire RGBA atlas in CPU
 // memory, retained at mission load.  We upload it once as a plain
@@ -64,7 +62,6 @@ uint16_t g_cementLayerIndexByNodeIdx[MC_MAXTEXTURES];
 // 0xFFFF = "not cement / not in atlas".
 uint16_t g_cementLayerIndexBySlot[MC_MAX_TERRAIN_TXMS];
 
-// Stage B — cement transitions in recipe.
 static constexpr uint32_t kCementTransitionBit = 0x40000000u;  // IS_TRANSITION in cementWord
 static constexpr uint32_t kCementMaskIdShift    = 24u;         // bits 29:24 = maskId
 static constexpr uint32_t kCementMaskIdMask     = 0x3Fu;       // 6 bits (14 shapes used)
@@ -570,7 +567,6 @@ int ClassifyConcreteFamily(std::vector<CementCellStats>& st, int NT,
     };
     admit(seedL);
 
-    // Re-centre on the admitted family, then re-admit once.
     std::vector<float> famL;
     for (int k = 0; k < NT; ++k) if (st[(size_t)k].family) famL.push_back(st[(size_t)k].lum);
     if (!famL.empty()) {
@@ -647,7 +643,6 @@ static bool TileIsRoadArt(long r, long c, long mapSide, PostcompVertexPtr blocks
              || cemCorner(r + 1, c + 1) || cemCorner(r + 1, c));
 }
 
-// True when any of the 8 neighbors of tile (r,c) is road art.
 bool TileRoadAdjacent8(long r, long c, long mapSide, PostcompVertexPtr blocks) {
     for (long dr = -1; dr <= 1; ++dr)
         for (long dc = -1; dc <= 1; ++dc) {
@@ -731,7 +726,6 @@ void PopulateRecipeCementWords() {
     const size_t N = g_denseRecipes.size();
     constexpr uint32_t kCementLayerValidBit = 0x80000000u;
 
-    // Per-vertex terrain type array for corner lookup in transition handling.
     PostcompVertexPtr blocks = Terrain::mapData->getBlocks();
     auto* tt = Terrain::terrainTextures;
 
@@ -777,8 +771,6 @@ void PopulateRecipeCementWords() {
     // PAVED-OVERLAY-CLASS-1: the census and the repair pass below MUST agree on
     // what "paved" means, so both now call the one file-scope predicate.
     auto IsPavedOverlay = [](Overlays t) -> bool { return IsPavedOverlayType(t); };
-    // Step 5c: also collect a full per-vn cement-word array for the terrain LOD
-    // chunk path (indexed vn = mx + my*mapSide, matching its heightfield SSBO).
     std::vector<uint32_t> chunkCementWords((size_t)mapSide * (size_t)mapSide, 0u);
     for (size_t vn = 0; vn < N; ++vn) {
         const long mx = (long)vn % mapSide;
@@ -792,7 +784,6 @@ void PopulateRecipeCementWords() {
             if (slot < (DWORD)MC_MAX_TERRAIN_TXMS) {
                 const uint16_t idx = g_cementLayerIndexBySlot[slot];
                 if (idx != 0xFFFFu) {
-                    // Solid cement quad — existing path, unchanged.
                     cementWord = kCementLayerValidBit | ((uint32_t)idx & 0xFFFFu);
                     ++cementQuadCount;
                 } else if (blocks && tt
@@ -816,7 +807,6 @@ void PopulateRecipeCementWords() {
                     const bool c2 = (l2 != 0xFFFFu);
                     const bool c3 = (l3 != 0xFFFFu);
                     const int maskId = deriveMaskIdFromCorners(c0, c1, c2, c3);
-                    // Cement atlas layer from first cement corner.
                     const uint16_t cementLayerIdx = c0 ? l0 : (c1 ? l1 : (c2 ? l2 : l3));
                     // PAD-EDGE-ROAD-2 (regression fix on PAD-EDGE-ROAD-1, user
                     // field report 2026-07-21b): the -1 form baked NO cement
