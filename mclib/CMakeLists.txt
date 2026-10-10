@@ -97,6 +97,10 @@ set(SOURCES ${SOURCES}
     dynamic_decal_ring.cpp
     mapdata.cpp
     quad.cpp
+    quad_setup.cpp
+    quad_draw.cpp
+    quad_water.cpp
+    quad_lines.cpp
     terrain.cpp
     terrain_init.cpp
     terrain_raycast.cpp

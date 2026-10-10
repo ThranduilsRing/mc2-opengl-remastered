@@ -94,10 +94,10 @@ mclib/mech3d_init.cpp::g_loadRaceMechDegrade <= 50
 mclib/mech3d_type.cpp::s_diagN++ < 24
 mclib/mech3d_render.cpp::s_mechRestoreEmits < 2000
 mclib/mech3d_geometry.cpp::s_spotDiagMechActors <= 8
-mclib/quad.cpp::s_framesPrinted < 5
-mclib/quad.cpp::s_mismatches < 10
-mclib/quad.cpp::s_mismatches < 10
-mclib/quad.cpp::s_mismatches < 10
+mclib/quad_draw.cpp::s_framesPrinted < 5
+mclib/quad_setup.cpp::s_mismatches < 10
+mclib/quad_setup.cpp::s_mismatches < 10
+mclib/quad_setup.cpp::s_mismatches < 10
 mclib/render_contract.cpp::g_topLevelFailures <= kMaxTopLevelFailureLog
 mclib/render_contract.cpp::g_topLevelFailures <= kMaxTopLevelFailureLog
 mclib/render_contract.cpp::g_topLevelFailures <= kMaxTopLevelFailureLog
