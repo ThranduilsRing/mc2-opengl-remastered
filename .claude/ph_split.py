@@ -1,11 +1,26 @@
 # Phase-helper split of one oversized function: moves each lexical phase of the body, verbatim, into a
-# file-local helper that takes a small shared-state struct; the original function keeps only the glue.
-# usage: py -3 .claude/ph_split.py .claude/ph_spec_<name>.py   (reads the committed text from git HEAD,
-#        so it is re-runnable; writes the working file)
+# helper that takes the small shared-state struct(s) holding the locals that cross phases; the original
+# function keeps only the glue (calls, early-outs, scoping).
+# usage: py -3 .claude/ph_split.py .claude/ph_spec_<name>.py
+# Reads the text at the spec's BASE commit (default HEAD) so it is re-runnable; writes the working file.
+#
+# Spec fields:
+#   BASE, SRC, FUNC_SIG        commit to start from, source file, regex of the function's signature line
+#   STRUCTS                    {frame id: struct name}; FRAME_DOC: comment above the structs
+#   MEMBERS                    [(name, type[, frame id])] locals that live in a struct (default frame 'f')
+#   HOIST                      first lines of function-local types moved to file scope unchanged
+#   EDITS                      {line: (old, new)} statements the declaration-lift rule cannot rewrite
+#   ORCH_BEFORE                {line: text} glue lines inserted before that original line
+#   PHASES                     [(helper name, first line, last line, doc[, #ifdef guard])]
+#   METHOD_CLASS               helpers are members of this class (default: file-static functions)
+#   ONLY                       {frame id: [phase names]} frames only those phases may alias (name clashes)
+#   INDENT, DEDENT, ORCH_DOC   indentation unit, prefix stripped from helper bodies, comment above function
 import importlib.util
 import re
 import subprocess
 import sys
+
+MEMBER_COMMENTS = {}
 
 
 def load(path):
@@ -22,12 +37,13 @@ def strip_code(s):
     return re.sub(r'//.*', '', s)
 
 
-MEMBER_COMMENTS = {}
+def ident(name):
+    return re.match(r'\w+', name).group(0)
 
 
 def member_rx(typ, name):
     t = re.escape(typ).replace(r'\ ', r'\s*')
-    return re.compile(r'^(\s*)' + t + r'\s*' + name + r'\b(\s*=\s*[^;,]+)?\s*;\s*(.*)$')
+    return re.compile(r'^(\s*)' + t + r'\s*' + re.escape(name) + r'(?!\w)(\s*=\s*[^;,]+)?\s*;\s*(.*)$')
 
 
 def transform(line, members, edits, lineno):
@@ -36,14 +52,14 @@ def transform(line, members, edits, lineno):
         old, new = edits[lineno]
         assert old in line, (lineno, old)
         return line.replace(old, new)
-    for name, typ in members:
+    for name, typ, _fr in members:
         m = member_rx(typ, name).match(line)
         if not m:
             continue
         ind, init, rest = m.group(1), m.group(2), m.group(3)
         out = ''
         if init:
-            out = name + ' ' + init.strip() + ';'
+            out = ident(name) + ' ' + init.strip() + ';'
         if rest:
             if rest.startswith('//'):
                 if out:
@@ -61,15 +77,22 @@ def transform(line, members, edits, lineno):
 def main():
     S = load(sys.argv[1])
     raw = subprocess.check_output(['git', 'show', getattr(S, 'BASE', 'HEAD') + ':' + S.SRC])
-    L = raw.decode('utf-8').split('\n')
+    crlf = raw.count(b'\r\n') * 2 > raw.count(b'\n')
+    text = raw.decode('utf-8')
+    if crlf:
+        text = text.replace('\r\n', '\n')
+    L = text.split('\n')
     fs = next(i for i, l in enumerate(L) if re.search(S.FUNC_SIG, l))           # 0-based signature line
     fe = next(i for i in range(fs, len(L)) if L[i].rstrip('\r') == '}')           # closing brace
-    print('function', fs + 1, fe + 1)
-    members = [(n, t) for n, t in S.MEMBERS]
+    print('function', fs + 1, fe + 1, 'CRLF' if crlf else 'LF')
+    structs = getattr(S, 'STRUCTS', None) or {'f': S.STRUCT}
+    members = [(m[0], m[1], m[2] if len(m) > 2 else 'f') for m in S.MEMBERS]
     edits = dict(S.EDITS)
-    # hoisted local types: from the `struct X {` line to the matching `};`
+    method = getattr(S, 'METHOD_CLASS', None)
+    indent = getattr(S, 'INDENT', '    ')
+    dedent = getattr(S, 'DEDENT', '')
     hoist = {}
-    for a in S.HOIST:
+    for a in getattr(S, 'HOIST', []):
         b = next(i for i in range(a - 1, fe) if L[i].strip() == '};')
         hoist[a] = b + 1
     hoisted_lines = set()
@@ -81,7 +104,6 @@ def main():
     ph.sort(key=lambda p: p[1])
     for x, y in zip(ph, ph[1:]):
         assert x[2] < y[1], (x[0], y[0])
-    names = [n for n, _t in members]
 
     def body_for(a, b):
         out = []
@@ -90,84 +112,101 @@ def main():
                 continue
             t = transform(L[ln - 1], members, edits, ln)
             if t is not None:
+                if dedent and t.startswith(dedent):
+                    t = t[len(dedent):]
                 out.append(t)
         return out
 
-    def used_members(lines):
+    only = getattr(S, 'ONLY', {})
+
+    def used_members(lines, phase):
         code = '\n'.join(strip_code(x) for x in lines)
-        return [n for n in names if re.search(r'\b' + re.escape(n) + r'\b', code)]
+        return [(n, fr) for n, _t, fr in members
+                if (fr not in only or phase in only[fr]) and re.search(r'\b' + ident(n) + r'\b', code)]
 
     bodies = {a: body_for(a, b) for (_n, a, b, *_r) in ph}
     H = []
-    H.append('namespace {')
-    H.append('')
+    if not method:
+        H.append('namespace {')
+        H.append('')
     for a in sorted(hoist):
         for ln in range(a, hoist[a] + 1):
             s = L[ln - 1]
             H.append(s[4:] if s.startswith('    ') else s)
         H.append('')
-    H.append(S.FRAME_DOC)
-    H.append('struct ' + S.STRUCT + ' {')
-    for n, t in members:
-        H.append('    ' + t + ' ' + n + ';' + (('  ' + MEMBER_COMMENTS[n]) if n in MEMBER_COMMENTS else ''))
-    H.append('};')
-    H.append('')
-    H.append('}  // namespace')
+    H += S.FRAME_DOC.split('\n')
+    for fid, sname in structs.items():
+        H.append('struct ' + sname + ' {')
+        for n, t, fr in members:
+            if fr == fid:
+                H.append(indent + t + ' ' + n + ';' + (('  ' + MEMBER_COMMENTS[n]) if n in MEMBER_COMMENTS else ''))
+        H.append('};')
+        H.append('')
+    if not method:
+        H.append('}  // namespace')
     calls = {}
+    decls = []
     for (name, a, b, doc, *rest) in ph:
         guard = rest[0] if rest else None
         body = bodies[a]
-        used = used_members(body)
+        used = used_members(body, name)
+        frames = [fid for fid in structs if any(fr == fid for _n, fr in used)]
         H.append('')
         for d in doc.split('\n'):
             H.append('// ' + d)
         if guard:
             H.append('#ifdef ' + guard)
-        if used:
-            H.append('static void %s(%s& %s) {' % (name, S.STRUCT, S.FRAME_VAR))
-            for n in used:
-                H.append('    auto& %s = %s.%s;' % (n, S.FRAME_VAR, n))
-            calls[a] = '%s(%s);' % (name, S.FRAME_VAR)
-        else:
-            H.append('static void %s() {' % name)
-            calls[a] = '%s();' % name
+        params = ', '.join('%s& %s' % (structs[fid], fid) for fid in frames)
+        head = ('void %s::%s(%s) {' if method else 'static void %s%s(%s) {') % ((method, name, params) if method else ('', name, params))
+        H.append(head)
+        decls.append('void %s(%s);' % (name, params))
+        for n, fr in used:
+            H.append('%sauto& %s = %s.%s;' % (indent, ident(n), fr, ident(n)))
+        calls[a] = '%s(%s);' % (name, ', '.join(frames))
         H += body
         H.append('}')
         if guard:
             H.append('#endif')
     H.append('')
-    # orchestrator
     O = []
     in_ph = {}
     for (name, a, b, *_r) in ph:
         for ln in range(a, b + 1):
             in_ph[ln] = a
+
+    def before(ln):
+        v = S.ORCH_BEFORE[ln]
+        return v if v[:1] in ' \t' else indent + v
+
     for ln in range(fs + 1, fe + 2):
         if ln in hoisted_lines:
             continue
         if ln in in_ph:
             if in_ph[ln] == ln:
                 if ln in S.ORCH_BEFORE:
-                    O.append('    ' + S.ORCH_BEFORE[ln])
-                O.append('    ' + calls[ln])
+                    O.append(before(ln))
+                lead = re.match(r'\s*', L[ln - 1]).group(0) if method else indent
+                O.append(lead + calls[ln])
             continue
-        if ln in S.ORCH_BEFORE and ln not in in_ph:
-            O.append('    ' + S.ORCH_BEFORE[ln])
+        if ln in S.ORCH_BEFORE:
+            O.append(before(ln))
         t = transform(L[ln - 1], members, edits, ln)
         if t is None:
             continue
         if t.strip() == '' and O and O[-1].strip() == '':
             continue
         O.append(t)
-    # a blank line between two bare phase calls separates nothing
+
     def is_call(x):
-        return re.match(r'^    \w+\(.*\);$', x) is not None or x.startswith('    ' + S.STRUCT + ' ')
+        return re.match(r'^\s*\w+\(.*\);$', x) is not None or re.match(r'^\s*(%s) \w+;$' % '|'.join(structs.values()), x) is not None
     O = [x for i, x in enumerate(O) if not (x.strip() == '' and 0 < i < len(O) - 1 and is_call(O[i - 1]) and is_call(O[i + 1]))]
-    # blank lines between consecutive calls for readability are left to the source blanks; drop blanks that
-    # now separate nothing (leading/trailing)
-    new = L[:fs] + H + (S.ORCH_DOC.split(chr(10)) if S.ORCH_DOC else [])
+    new = L[:fs] + H + (S.ORCH_DOC.split('\n') if getattr(S, 'ORCH_DOC', '') else [])
     new = new + O + L[fe + 1:]
-    open(S.SRC, 'wb').write('\n'.join(new).encode('utf-8'))
+    out = '\n'.join(new)
+    if crlf:
+        out = out.replace('\n', '\r\n')
+    open(S.SRC, 'wb').write(out.encode('utf-8'))
+    open('.claude/ph_decls_%s.txt' % re.sub(r'\W', '_', S.SRC), 'w').write('\n'.join(decls) + '\n')
     print('lines', len(L), '->', len(new), ' orchestrator', len(O), ' helpers', len(ph))
 
 

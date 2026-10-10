@@ -1,7 +1,7 @@
 # Inline-expansion proof for a ph_split.py phase split: expand every helper call in the new orchestrator back
-# into the helper body and require the result to equal the original function body line for line (modulo
-# the spec's listed declaration lifts / edits and the scaffolding), and require everything outside the
-# function to be byte-identical.
+# into the helper body and require the result to equal the original function body statement for statement
+# (modulo the spec's listed declaration lifts / edits and the scaffolding), and require everything outside
+# the function and the added helper block to be byte-identical.
 # usage: py -3 .claude/ph_verify.py .claude/ph_spec_<name>.py
 import collections
 import importlib.util
@@ -12,9 +12,22 @@ import sys
 sp = importlib.util.spec_from_file_location('spec', sys.argv[1])
 S = importlib.util.module_from_spec(sp)
 sp.loader.exec_module(S)
+structs = getattr(S, 'STRUCTS', None) or {'f': S.STRUCT}
+members = [(m[0], m[1], m[2] if len(m) > 2 else 'f') for m in S.MEMBERS]
+method = getattr(S, 'METHOD_CLASS', None)
+hoist_lines = getattr(S, 'HOIST', [])
 
-old = subprocess.check_output(['git', 'show', getattr(S, 'BASE', 'HEAD') + ':' + S.SRC]).decode('utf-8').split('\n')
-new = open(S.SRC, 'rb').read().decode('utf-8').split('\n')
+
+def ident(name):
+    return re.match(r'\w+', name).group(0)
+
+
+def lines_of(raw):
+    return raw.decode('utf-8').replace('\r\n', '\n').split('\n')
+
+
+old = lines_of(subprocess.check_output(['git', 'show', getattr(S, 'BASE', 'HEAD') + ':' + S.SRC]))
+new = lines_of(open(S.SRC, 'rb').read())
 
 
 def fn_range(L, sig):
@@ -27,32 +40,38 @@ os_, oe = fn_range(old, S.FUNC_SIG)
 ns_, ne = fn_range(new, S.FUNC_SIG)
 fail = []
 
-# 1. outside the function: prefix and suffix identical
+# 1. outside the function (and the helper block inserted before it): prefix and suffix identical
 if old[:os_] != new[:os_]:
     fail.append('text before the function changed')
 if old[oe + 1:] != new[ne + 1:]:
     fail.append('text after the function changed')
 
-# 2. helpers: name -> body (alias lines dropped)
+# 2. helpers: name -> body with alias lines dropped
+alias_rx = re.compile(r'^\s*auto& \w+ = (?:%s)\.\w+;$' % '|'.join(structs))
 helpers = {}
 for (name, a, b, doc, *_r) in S.PHASES:
-    sig_rx = re.compile(r'^static void ' + name + r'\((?:' + S.STRUCT + r'& ' + S.FRAME_VAR + r')?\) \{$')
+    if method:
+        sig_rx = re.compile(r'^void ' + method + '::' + name + r'\([^)]*\) \{$')
+    else:
+        sig_rx = re.compile(r'^static void ' + name + r'\([^)]*\) \{$')
     i = next((k for k, l in enumerate(new) if sig_rx.match(l)), None)
     if i is None:
         fail.append('helper missing: ' + name)
         continue
     j = next(k for k in range(i, len(new)) if new[k] == '}')
     body = new[i + 1:j]
-    while body and re.match(r'^    auto& \w+ = ' + S.FRAME_VAR + r'\.\w+;$', body[0]):
+    while body and alias_rx.match(body[0]):
         body.pop(0)
     for x in body:
-        if re.match(r'^    auto& \w+ = ' + S.FRAME_VAR + r'\.\w+;$', x):
+        if alias_rx.match(x):
             fail.append('alias line inside body of ' + name)
     helpers[name] = body
 
 # 3. expand the orchestrator
 orch = new[ns_ + 1:ne]
-call_rx = re.compile(r'^    (\w+)\((?:' + S.FRAME_VAR + r')?\);$')
+fr = '|'.join(structs)
+call_rx = re.compile(r'^\s*(\w+)\((?:%s)?(?:, (?:%s))*\);$' % (fr, fr))
+decl_rx = re.compile(r'^\s*(%s) \w+;$' % '|'.join(structs.values()))
 expanded = []
 frame_decls = 0
 used_calls = []
@@ -61,12 +80,13 @@ for x in orch:
     if m and m.group(1) in helpers:
         used_calls.append(m.group(1))
         expanded += helpers[m.group(1)]
-    elif x.strip() == S.STRUCT + ' ' + S.FRAME_VAR + ';':
+    elif decl_rx.match(x):
         frame_decls += 1
     else:
         expanded.append(x)
-if frame_decls != 1:
-    fail.append('expected exactly one frame declaration, found %d' % frame_decls)
+want_decls = sum(1 for v in S.ORCH_BEFORE.values() for x in v.split('\n') if decl_rx.match(x))
+if frame_decls != want_decls:
+    fail.append('frame declarations in the orchestrator: %d, spec lists %d' % (frame_decls, want_decls))
 if sorted(used_calls) != sorted(h[0] for h in S.PHASES):
     fail.append('call set differs from the phase list')
 want_order = [h[0] for h in sorted(S.PHASES, key=lambda p: p[1])]
@@ -76,16 +96,14 @@ if used_calls != want_order:
 # 4. expected body from the original: hoisted types removed, listed declaration lifts / edits applied
 hoisted = set()
 hoist_text = []
-for a in S.HOIST:
-    b = next(i for i in range(a - 1, oe) if old[i].strip() == ';' or old[i].strip() == '};') + 1
+for a in hoist_lines:
+    b = next(i for i in range(a - 1, oe) if old[i].strip() == '};') + 1
     hoisted.update(range(a, b + 1))
     hoist_text.append([old[k - 1].strip() for k in range(a, b + 1)])
 
 lifts = []
 expected = []
-for ln in range(os_ + 2, oe + 2):
-    if ln - 1 >= oe:
-        break
+for ln in range(os_ + 2, oe + 1):
     if ln in hoisted:
         continue
     t = old[ln - 1]
@@ -96,12 +114,12 @@ for ln in range(os_ + 2, oe + 2):
         t = t.replace(o, n)
         lifts.append((ln, 'edit', old[ln - 1].strip()[:70], t.strip()[:70]))
     else:
-        for name, typ in S.MEMBERS:
+        for name, typ, _fr in members:
             tp = re.escape(typ).replace(r'\ ', r'\s*')
-            m = re.match(r'^(\s*)' + tp + r'\s*' + name + r'\b(\s*=\s*[^;,]+)?\s*;\s*(.*)$', t)
+            m = re.match(r'^(\s*)' + tp + r'\s*' + re.escape(name) + r'(?!\w)(\s*=\s*[^;,]+)?\s*;\s*(.*)$', t)
             if m:
                 init, rest = m.group(2), m.group(3)
-                out = (name + ' ' + init.strip() + ';') if init else ''
+                out = (ident(name) + ' ' + init.strip() + ';') if init else ''
                 if rest and not rest.startswith('//'):
                     out = (out + ' ' + rest) if out else rest
                 elif rest and out:
@@ -117,9 +135,7 @@ def norm(seq):
     return [x.strip() for x in seq if x.strip()]
 
 
-# preprocessor lines may differ in indent only; compare stripped
 a, b = norm(expected), norm(expanded)
-# the orchestrator keeps the opening brace line of the signature; both sides start after it
 if a != b:
     for i, (x, y) in enumerate(zip(a, b)):
         if x != y:
@@ -132,11 +148,10 @@ if a != b:
 newn = norm(new)
 for ht in hoist_text:
     ht = [x.strip() for x in ht if x.strip()]
-    found = any(newn[i:i + len(ht)] == ht for i in range(len(newn)))
-    if not found:
+    if not any(newn[i:i + len(ht)] == ht for i in range(len(newn))):
         fail.append('hoisted type block not found verbatim: ' + ht[0])
 
-# 6. scaffolding census: statements present only in one side (ignoring order)
+# 6. scaffolding census over the old function vs the new helper block + function
 co = collections.Counter(norm(old[os_:oe + 1]))
 cn = collections.Counter(norm(new[os_:ne + 1]))
 only_new = cn - co

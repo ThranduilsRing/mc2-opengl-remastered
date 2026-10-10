@@ -3,6 +3,7 @@
 import re, sys
 BS = chr(92)
 path, sig = sys.argv[1], sys.argv[2]
+DEPTH = int(sys.argv[3]) if len(sys.argv) > 3 else 1
 L = open(path, encoding='utf-8', errors='replace').read().replace('\r', '').split('\n')
 s = next(i for i, l in enumerate(L) if re.search(sig, l))
 inblock = [False]
@@ -47,7 +48,7 @@ rows = []
 for i in range(s, len(L)):
     c = clean(L[i])
     if c.lstrip().startswith('#'):
-        if started and depth == 1:
+        if started and depth == DEPTH:
             rows.append((i + 1, 'PP ' + L[i].strip()[:100]))
         continue
     d0 = depth
@@ -57,7 +58,7 @@ for i in range(s, len(L)):
             started = True
         elif ch == '}':
             depth -= 1
-    if started and d0 == 1 and L[i].strip():
+    if started and d0 == DEPTH and L[i].strip():
         rows.append((i + 1, L[i].strip()[:110]))
     if started and depth == 0:
         end = i + 1
