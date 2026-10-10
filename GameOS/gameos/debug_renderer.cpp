@@ -9,6 +9,7 @@
 #include <GL/glew.h>
 
 #include "utils/shader_builder.h"  // glsl_program::makeProgram
+#include "Gates/gate.h"
 
 // Forward-declare the scene viewproj getter (defined in gameos_graphics.cpp).
 // Upload with the same transpose convention as the existing terrain MVP upload sites.
@@ -25,21 +26,11 @@ struct DbgVert { float x, y, z, r, g, b, a; };
 static constexpr int kVertCapacity = 65536;
 
 // ---------------------------------------------------------------------------
-// Env helper (default OFF -- absent, empty or "0" = disabled)
-// MUST be defined before the static bools that call it.
-// ---------------------------------------------------------------------------
-
-static bool envFlagDefaultOff(const char* name) {
-    const char* v = getenv(name);
-    return v && v[0] && v[0] != '0';
-}
-
-// ---------------------------------------------------------------------------
 // Static state
 // ---------------------------------------------------------------------------
 
-static bool              s_enabled       = envFlagDefaultOff("MC2_DEBUG_RENDERER");
-static bool              s_testCanary    = envFlagDefaultOff("MC2_DEBUG_RENDERER_TEST");
+static bool              s_enabled       = mc2::gate::get<"MC2_DEBUG_RENDERER">();
+static bool              s_testCanary    = mc2::gate::get<"MC2_DEBUG_RENDERER_TEST">();
 static bool              s_initialized        = false;
 static bool              s_capWarnedOnce      = false;
 static bool              s_restoreWarnedOnce  = false;
