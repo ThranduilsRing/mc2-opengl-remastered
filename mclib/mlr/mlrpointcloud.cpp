@@ -9,7 +9,7 @@
 //#############################################################################
 
 MLRPointCloud::ClassData*
-	MLRPointCloud::DefaultData = NULL;
+	MLRPointCloud::DefaultData = nullptr;
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
@@ -34,7 +34,7 @@ void
 {
 	Unregister_Object(DefaultData);
 	delete DefaultData;
-	DefaultData = NULL;
+	DefaultData = nullptr;
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -43,7 +43,7 @@ MLRPointCloud::MLRPointCloud(int nr, int _type) :
 	MLREffect(nr, DefaultData), type(_type)
 {
 	Verify(gos_GetCurrentHeap() == Heap);
-	usedNrOfVertices = NULL;
+	usedNrOfVertices = nullptr;
 
 	Check_Pointer(this);
 	

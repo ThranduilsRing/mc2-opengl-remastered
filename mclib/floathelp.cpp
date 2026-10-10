@@ -20,12 +20,12 @@
 // NS3 boundary: the GOS font handle/scale used by float-help text belong to
 // this subsystem, not to whatever game/tool main links it. extern'd for all
 // consumers in floathelp.h. Previously redefined in every main.
-HGOSFONT3D	gosFontHandle = 0;
+HGOSFONT3D	gosFontHandle = nullptr;
 float		gosFontScale  = 1.0f;
 
 //-----------------------------------------------------------------------------------------
 DWORD		FloatHelp::currentFloatHelp = 0;		//How many of them are we using at present
-FloatHelp*	FloatHelp::floatHelps = NULL;			//POinters to all of them.
+FloatHelp*	FloatHelp::floatHelps = nullptr;			//POinters to all of them.
 
 //-----------------------------------------------------------------------------------------
 // class FloatHelp
@@ -53,7 +53,7 @@ void FloatHelp::init (long maxHelps)
 void FloatHelp::destroy (void)
 {
 	systemHeap->Free(floatHelps);
-	floatHelps = NULL;
+	floatHelps = nullptr;
 	currentFloatHelp = 0;
 }
 

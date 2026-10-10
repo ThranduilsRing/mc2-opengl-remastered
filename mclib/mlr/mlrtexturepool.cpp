@@ -7,7 +7,7 @@
 MLRTexturePool *MLRTexturePool::Instance;
 
 MLRTexturePool::ClassData*
-	MLRTexturePool::DefaultData = NULL;
+	MLRTexturePool::DefaultData = nullptr;
 
 //#############################################################################
 //############################    MLRTexture    ###############################
@@ -28,7 +28,7 @@ void
 		);
 	Register_Object(DefaultData);
 
-	MLRTexturePool::Instance = NULL;
+	MLRTexturePool::Instance = nullptr;
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -44,7 +44,7 @@ void
 
 	Unregister_Object(DefaultData);
 	delete DefaultData;
-	DefaultData = NULL;
+	DefaultData = nullptr;
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -382,7 +382,7 @@ void
 	{
 		imagePool->RemoveImage(tex->image);
 
-		tex->image = NULL;
+		tex->image = nullptr;
 
 		freeHandle[lastFreeHandle&(handleMax-1)] = (tex->textureHandle-1) >> instanceDepth;
 
@@ -427,7 +427,7 @@ MLRTexture*
 		}
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

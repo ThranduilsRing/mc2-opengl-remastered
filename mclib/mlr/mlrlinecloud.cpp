@@ -13,7 +13,7 @@
 //#############################################################################
 
 MLRLineCloud::ClassData*
-	MLRLineCloud::DefaultData = NULL;
+	MLRLineCloud::DefaultData = nullptr;
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
@@ -38,7 +38,7 @@ void
 {
 	Unregister_Object(DefaultData);
 	delete DefaultData;
-	DefaultData = NULL;
+	DefaultData = nullptr;
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -47,7 +47,7 @@ MLRLineCloud::MLRLineCloud(int nr, int _type) :
 	MLREffect(2*nr, DefaultData), type(_type)
 {
 	Verify(gos_GetCurrentHeap() == Heap);
-	usedNrOfVertices = NULL;
+	usedNrOfVertices = nullptr;
 
 	Check_Pointer(this);
 	

@@ -13,7 +13,7 @@ int
 	Random::Index = -1;
 
 Random*
-	Random::Instance = NULL;
+	Random::Instance = nullptr;
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
@@ -33,7 +33,7 @@ void
 {
 	Unregister_Pointer(Random::Instance);
 	delete Random::Instance;
-	Random::Instance = NULL;
+	Random::Instance = nullptr;
 	Index = -1;
 }
 

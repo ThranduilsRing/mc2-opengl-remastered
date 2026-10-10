@@ -315,7 +315,7 @@ void
 	if( renderState & MLRState::TextureMask )
 		gos_SetRenderState( 
 			gos_State_Texture, 
-			(*texturePool)[renderState & MLRState::TextureMask]->GetImage(NULL)->GetHandle()
+			(*texturePool)[renderState & MLRState::TextureMask]->GetImage(nullptr)->GetHandle()
 		);
 	else
 		gos_SetRenderState( gos_State_Texture, 0 );

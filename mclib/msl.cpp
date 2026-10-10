@@ -69,7 +69,7 @@ void *TG_TypeMultiShape::operator new (size_t mySize)
 //That must be destroyed or memory will leak!
 TG_MultiShapePtr TG_TypeMultiShape::CreateFrom (void)
 {
-	TG_MultiShapePtr newShape = NULL;
+	TG_MultiShapePtr newShape = nullptr;
 	newShape = new TG_MultiShape;
 	gosASSERT(newShape != NULL);
 	
@@ -93,8 +93,8 @@ TG_MultiShapePtr TG_TypeMultiShape::CreateFrom (void)
 	//Setup Heirarchy again because pointers are not valid!
 	for (int i=0;i<numTG_TypeShapes;i++)
 	{
-		newShape->listOfShapes[i].parentNode = NULL;
-		newShape->listOfShapes[i].currentAnimation = NULL;
+		newShape->listOfShapes[i].parentNode = nullptr;
+		newShape->listOfShapes[i].currentAnimation = nullptr;
 		newShape->listOfShapes[i].shapeToWorld = Stuff::LinearMatrix4D::Identity;
 		newShape->listOfShapes[i].worldToShape = Stuff::LinearMatrix4D::Identity;
 		newShape->listOfShapes[i].calcedThisFrame = -1;

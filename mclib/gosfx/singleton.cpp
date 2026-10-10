@@ -154,7 +154,7 @@ void
 //############################################################################
 
 gosFX::Singleton::ClassData*
-	gosFX::Singleton::DefaultData = NULL;
+	gosFX::Singleton::DefaultData = nullptr;
 
 //------------------------------------------------------------------------------
 //
@@ -168,8 +168,8 @@ void
 			SingletonClassID,
 			"gosFX::Singleton",
 			Effect::DefaultData,
-			NULL,
-			NULL
+			nullptr,
+			nullptr
 		);
 	Register_Object(DefaultData);
 }
@@ -181,7 +181,7 @@ void
 {
 	Unregister_Object(DefaultData);
 	delete DefaultData;
-	DefaultData = NULL;
+	DefaultData = nullptr;
 }
 
 //------------------------------------------------------------------------------

@@ -9,7 +9,7 @@
 //#############################################################################
 
 MLRLight::ClassData*
-	MLRLight::DefaultData = NULL;
+	MLRLight::DefaultData = nullptr;
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
@@ -34,7 +34,7 @@ void
 {
 	Unregister_Object(DefaultData);
 	delete DefaultData;
-	DefaultData = NULL;
+	DefaultData = nullptr;
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -125,7 +125,7 @@ MLRLight*
 {
 	gos_PushCurrentHeap(Heap);
 	int type;
-	MLRLight *light = NULL;
+	MLRLight *light = nullptr;
 	*stream >> type;
 	switch (type)
 	{
@@ -160,7 +160,7 @@ MLRLight*
 	const char* type;
 	
 	page->GetEntry("LightType", &type, true);
-	MLRLight *light = NULL;
+	MLRLight *light = nullptr;
 	if (!S_stricmp(type, "Ambient"))
 		light = new MLRAmbientLight(page);
 	else if (!S_stricmp(type, "Infinite"))

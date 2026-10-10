@@ -9,7 +9,7 @@
 //#############################################################################
 
 MLRSpotLight::ClassData*
-	MLRSpotLight::DefaultData = NULL;
+	MLRSpotLight::DefaultData = nullptr;
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
@@ -34,7 +34,7 @@ void
 {
 	Unregister_Object(DefaultData);
 	delete DefaultData;
-	DefaultData = NULL;
+	DefaultData = nullptr;
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -43,7 +43,7 @@ MLRSpotLight::MLRSpotLight() :
 	MLRInfiniteLightWithFalloff(DefaultData)
 {
 	Verify(gos_GetCurrentHeap() == Heap);
-	lightMap = NULL;
+	lightMap = nullptr;
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -56,7 +56,7 @@ MLRSpotLight::MLRSpotLight(
 {
 	Check_Object(stream);
 	Verify(gos_GetCurrentHeap() == Heap);
-	lightMap = NULL;
+	lightMap = nullptr;
 	if (version > 7)
 	{
 		MString name;
@@ -85,7 +85,7 @@ MLRSpotLight::MLRSpotLight(Stuff::Page *page):
 {
 	Check_Object(page);
 	Verify(gos_GetCurrentHeap() == Heap);
-	lightMap = NULL;
+	lightMap = nullptr;
 	const char* lightmap;
 	if (page->GetEntry("LightMap", &lightmap))
 	{
@@ -301,7 +301,7 @@ void
 	}
 	lightMap = light_map;
 
-	if (lightMap == NULL)
+	if (lightMap == nullptr)
 	{
 		lightMask &= ~MLRState::LightMapLightingMode;
 	}

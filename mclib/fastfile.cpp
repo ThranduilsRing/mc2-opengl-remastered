@@ -16,7 +16,7 @@
 // NS3 boundary: the FastFile registry storage belongs to the FastFile
 // subsystem (this TU), not to whatever game/tool main happens to link it.
 // extern'd for all consumers in ffile.h. Previously redefined in every main.
-FastFile	**fastFiles = NULL;
+FastFile	**fastFiles = nullptr;
 long		numFastFiles = 0;
 long		maxFastFiles = 0;
 
@@ -60,7 +60,7 @@ void FastFileFini (void)
 				fastFiles[currentFastFile]->close();
 	
 				delete fastFiles[currentFastFile];
-				fastFiles[currentFastFile] = NULL;
+				fastFiles[currentFastFile] = nullptr;
 			}
 	
 			currentFastFile++;
@@ -68,7 +68,7 @@ void FastFileFini (void)
 	}
 
 	free(fastFiles);
-	fastFiles = NULL;
+	fastFiles = nullptr;
 	numFastFiles= 0;
 }
 
@@ -87,7 +87,7 @@ FastFile *FastFileFind (const char *fname, long &fastFileHandle)
 		// Uppercase-named FST entries were already unreachable via
 		// File::open's lowered path — this is strictly widening.
 		char normName[1024];
-		if (!fname) return NULL;
+		if (!fname) return nullptr;
 		strncpy(normName, fname, sizeof(normName) - 1);
 		normName[sizeof(normName) - 1] = '\0';
 		fst_normalize_loose_key_inplace(normName);
@@ -137,7 +137,7 @@ FastFile *FastFileFind (const char *fname, long &fastFileHandle)
 	}
 
 
-	return NULL;
+	return nullptr;
 }
 
 //------------------------------------------------------------------

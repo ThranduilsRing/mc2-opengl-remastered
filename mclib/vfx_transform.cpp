@@ -15,8 +15,8 @@ extern unsigned int lookaside;
 int SqrtCount=0;
 
 
-typedef unsigned int DWORD;
-typedef struct
+using DWORD = unsigned int;
+using SHAPEHEADER = struct
 {
 
 	DWORD	bounds;
@@ -26,7 +26,7 @@ typedef struct
 	DWORD	xmax;
 	DWORD	ymax;
 
-} SHAPEHEADER;
+};
 
 //
 // Sprite format
