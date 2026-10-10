@@ -54,6 +54,22 @@ import sys
 CREATE_NO_WINDOW = 0x08000000
 
 
+def _tolerate_unencodable_output() -> None:
+    """Make this process's stdout/stderr print any character instead of raising.
+
+    WHY: every tool imports this module, and a tool that prints an arrow or an em dash must not crash under a cp1252 console. The
+    streams are reconfigured once, to UTF-8 with replacement, and left alone when they are not text streams (a captured pipe object).
+    """
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError, OSError):
+            pass
+
+
+_tolerate_unencodable_output()
+
+
 def has_console() -> bool:
     """True when this process is attached to a console (visible or hidden).
 

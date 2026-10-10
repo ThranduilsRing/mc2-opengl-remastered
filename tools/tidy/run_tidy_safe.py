@@ -40,6 +40,8 @@ sys.path.insert(0, os.path.join(ROOT, "tools"))
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
 import console_child  # noqa: E402
 import objhash  # noqa: E402
+sys.path.insert(0, os.path.join(ROOT, "tools"))
+import _git_util  # noqa: E402  (shared git helpers)
 
 #: Checks whose rewrite is a behavioural no-op. Anything that can reorder initialisation, change overload
 #: resolution of a call, or alter evaluation (modernize-use-default-member-init, modernize-loop-convert,
@@ -99,12 +101,11 @@ def load_compile_db(tree: str) -> set:
 
 
 def git(*args) -> str:
-    return subprocess.run(["git", "-C", ROOT, *args], capture_output=True, text=True,
-                          **console_child.child_kwargs(redirected=True)).stdout
+    return _git_util.git(ROOT, *args).stdout
 
 
 def dirty_files() -> set:
-    return {ln[3:].strip().strip('"') for ln in git("status", "--porcelain").splitlines()}
+    return _git_util.dirty_paths(ROOT)
 
 
 def select(paths, in_db: set, dirty: set):

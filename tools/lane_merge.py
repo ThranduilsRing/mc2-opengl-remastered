@@ -33,6 +33,8 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(HERE, "..", "scripts"))
 import console_child  # noqa: E402  (windowless console children without a conhost each)
+sys.path.insert(0, HERE)
+import _git_util  # noqa: E402  (shared git helpers)
 
 TRAILER = "Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 FOLLOWUP_SUBJECT = "merge follow-up: ratchet baselines tightened at merged HEAD"
@@ -70,13 +72,13 @@ class Stop(Exception):
         self.code = code
 
 
-def run(root: str, cmd: list[str]) -> subprocess.CompletedProcess:
+def run(root: str, cmd: list[str]) -> subprocess.CompletedProcess:  # non-git commands (the ratchets)
     return subprocess.run(cmd, cwd=root, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
                           encoding="utf-8", errors="replace", **console_child.child_kwargs(redirected=True))
 
 
 def git(root: str, *args: str) -> subprocess.CompletedProcess:
-    return run(root, ["git", *args])
+    return _git_util.git(root, *args, merge_stderr=True)
 
 
 def git_out(root: str, *args: str) -> str:
@@ -91,28 +93,11 @@ def lines(text: str) -> list[str]:
 
 
 def status_entries(root: str) -> list[tuple[str, str]]:
-    """(XY, path) for every worktree entry; a rename lists both its paths."""
-    raw = git(root, "status", "--porcelain", "-z", "--untracked-files=all").stdout
-    parts = raw.split("\0")
-    out: list[tuple[str, str]] = []
-    i = 0
-    while i < len(parts):
-        e = parts[i]
-        i += 1
-        if len(e) < 4:
-            continue
-        xy, path = e[:2], e[3:]
-        out.append((xy, path))
-        if "R" in xy or "C" in xy:
-            if i < len(parts) and parts[i]:
-                out.append((xy, parts[i]))
-            i += 1
-    return out
+    return _git_util.status_entries(root)
 
 
 def merge_in_progress(root: str) -> bool:
-    p = git(root, "rev-parse", "--git-path", "MERGE_HEAD").stdout.strip()
-    return os.path.exists(p if os.path.isabs(p) else os.path.join(root, p))
+    return _git_util.merge_in_progress(root)
 
 
 def plan(root: str, ref: str) -> dict:
@@ -199,11 +184,10 @@ def commit_tightened(root: str, pre_dirty: set[str]) -> str | None:
               file=sys.stderr)
     if not changed:
         return None
-    a = git(root, "add", "--", *changed)
-    c = git(root, "commit", "-m", FOLLOWUP_SUBJECT, "-m", TRAILER, "--", *changed) if a.returncode == 0 else a
-    if c.returncode != 0:
-        raise Stop(5, "follow-up commit failed: " + c.stdout.strip())
-    return git_out(root, "rev-parse", "--short=9", "HEAD")
+    try:
+        return _git_util.commit_paths(root, changed, FOLLOWUP_SUBJECT, TRAILER)
+    except _git_util.GitError as e:
+        raise Stop(5, "follow-up commit failed: " + str(e))
 
 
 def build_parser() -> argparse.ArgumentParser:

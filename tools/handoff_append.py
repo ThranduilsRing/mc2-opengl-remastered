@@ -37,12 +37,14 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(HERE, "..", "scripts"))
 import console_child  # noqa: E402  (windowless console children without a conhost each)
+sys.path.insert(0, HERE)
+import _git_util  # noqa: E402  (shared git helpers)
 
 DEFAULT_FILE = ".claude/cleanup/ORCHESTRATOR-HANDOFF.md"
 TRAILER = "Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 STATE_HEADING = "## State at handoff"
 QUEUE_HEADING = "## Ordered queue"
-UNMERGED = {"DD", "AU", "UD", "UA", "DU", "AA", "UU"}
+UNMERGED = _git_util.UNMERGED
 ITEM_RE = re.compile(r"^(\d+)\. ")
 
 
@@ -53,9 +55,7 @@ class Refusal(Exception):
 
 
 def git(root: str, *args: str) -> subprocess.CompletedProcess:
-    return subprocess.run(["git", "-C", root, *args], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                          text=True, encoding="utf-8", errors="replace",
-                          **console_child.child_kwargs(redirected=True))
+    return _git_util.git(root, *args)
 
 
 def check_repo_state(root: str, rel: str) -> None:
