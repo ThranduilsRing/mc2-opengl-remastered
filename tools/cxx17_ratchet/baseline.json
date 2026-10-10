@@ -181,8 +181,8 @@
    "LG16": 7,
    "LG17": 47,
    "LG18": 4,
-   "LG19": 98,
-   "LG20": 101
+   "LG19": 97,
+   "LG20": 100
   },
   "mclib": {
    "LG01": 2850,
@@ -2156,9 +2156,7 @@
   },
   "code/ground_contact_blob.cpp": {
    "LG09": 4,
-   "LG10": 2,
-   "LG19": 1,
-   "LG20": 1
+   "LG10": 2
   },
   "code/group.cpp": {
    "LG01": 16,
@@ -5888,7 +5886,7 @@
    "LG20": 1
   }
  },
- "head": "1966f650e",
+ "head": "762bc6f0a",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
