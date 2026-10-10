@@ -127,6 +127,7 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 				
 	turn = 0;
 	terminationCounterStarted = 0;
+	// GAMEPLAY-DRIVER-2: scope a forced outcome to the mission that forced it.
 	forcedTerminationResult = mis_PLAYING;
 
 	#ifdef LAB_ONLY

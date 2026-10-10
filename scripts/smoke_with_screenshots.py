@@ -40,13 +40,6 @@ DEFAULT_EXE = Path(r"A:/Games/mc2-opengl/mc2-win64-v0.4/mc2.exe")
 ARTIFACT_ROOT = ROOT / "tests" / "smoke" / "artifacts"
 
 
-def kill_existing_mc2() -> None:
-    subprocess.run(["taskkill", "/F", "/IM", "mc2.exe"],
-                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                   **nofocus.hidden_kwargs())
-    time.sleep(1)
-
-
 def park_mouse_center() -> tuple[int, int] | None:
     """No-op. Retained as a call site only.
 
@@ -142,7 +135,6 @@ def run_mission(exe: Path, mission: str, duration: int, screenshot_at: int,
     shot_path = artifact_dir / f"{mission}.png"
     result_path = artifact_dir / f"{mission}.result"
 
-    kill_existing_mc2()
     park_mouse_center()
 
     log_fp = open(log_path, "w", encoding="utf-8", errors="replace")

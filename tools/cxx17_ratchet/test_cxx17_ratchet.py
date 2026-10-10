@@ -219,7 +219,25 @@ class RawEnvReads(unittest.TestCase):
 
     def test_tracked_counts_group_by_top_level_dir(self):
         res = {"editor/a.cpp": {"LG19": [1, 2]}, "gui/b.cpp": {"LG19": [3]}, "editor/c.cpp": {}}
-        self.assertEqual(r.tracked_counts(res), {"editor": 2, "gui": 1, "Viewer": 0})
+        old = r.TRACKED_DIRS
+        r.TRACKED_DIRS = ["editor", "gui", "Viewer"]
+        try:
+            self.assertEqual(r.tracked_counts(res), {"editor": 2, "gui": 1, "Viewer": 0})
+        finally:
+            r.TRACKED_DIRS = old
+
+    def test_launcher_raw_reads_are_counted_other_tools_are_not(self):
+        text = 'void f() { GetEnvironmentVariableA("MC2_IMPORTER_DIR", b, n); }'
+        self.assertTrue(r._scan_item(("tools/mc2_launcher/x.cpp", text.encode()))[1].get("LG19"))
+        self.assertFalse(r._scan_item(("tools/other/x.cpp", text.encode()))[1].get("LG19"))
+
+    def test_legacy_tool_dirs_are_strict_for_the_gate_idioms_only(self):
+        for d in ("editor", "gui", "Viewer"):
+            self.assertIn(d, r.DEFAULT_DIRS)
+        text = 'void f() { NULL; getenv("MC2_X"); }'
+        hits = r._scan_item(("editor/a.cpp", text.encode()))[1]
+        self.assertEqual(set(hits) - {"LG19", "LG20"}, set())
+        self.assertTrue(hits.get("LG19"))
 
 
 def _git(cwd, *a):

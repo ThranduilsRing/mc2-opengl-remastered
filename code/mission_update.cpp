@@ -467,6 +467,7 @@ namespace {
 					COH_I4, "detail=icon_unit_unregistered");
 		}
 	}
+	// MOVER-COHERENCE-AUDIT-END
 } // namespace
 
 long Mission::update (void)

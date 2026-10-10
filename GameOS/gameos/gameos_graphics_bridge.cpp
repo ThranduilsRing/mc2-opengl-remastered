@@ -169,7 +169,9 @@ void gos_terrain_surface_bridge_draw()
     // SSBO-bound at slots 20/21/22 for the meshlet-validation draw only.
     // TIER2-EXCLUDED: substrate-gated
     if (s_surfaceVB == 0) glGenBuffers(1, &s_surfaceVB);
+    // TIER2-EXCLUDED: substrate-gated
     if (s_surfaceIB == 0) glGenBuffers(1, &s_surfaceIB);
+    // TIER2-EXCLUDED: substrate-gated
     if (s_surfaceTB == 0) glGenBuffers(1, &s_surfaceTB);
     if (epoch != s_uploadedEpoch) {
         const void* vd = gos_terrain_surface::GetVertexData();

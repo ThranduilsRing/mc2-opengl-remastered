@@ -105,13 +105,6 @@ TRACKED_FLAGS = (
 )
 
 
-def kill_existing_mc2() -> None:
-    subprocess.run(["taskkill", "/F", "/IM", "mc2.exe"],
-                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                   **nofocus.hidden_kwargs())
-    time.sleep(1)
-
-
 def park_mouse_center() -> None:
     """Conditional cursor park -- VERIFY-INTEGRITY-3.
 
@@ -243,7 +236,6 @@ def run_capture(exe: Path, preset_name: str, preset: dict,
     warmup = int(preset["warmup_s"])
     duration = int(preset.get("duration_s", warmup + 2))
 
-    kill_existing_mc2()
     park_mouse_center()
 
     log_path = out_png.with_suffix(".log")

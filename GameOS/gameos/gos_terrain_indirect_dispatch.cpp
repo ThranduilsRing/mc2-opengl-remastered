@@ -5,6 +5,9 @@
 
 namespace gos_terrain_indirect {
 
+// ---------------------------------------------------------------------------
+// Stage 3 public API
+// ---------------------------------------------------------------------------
 
 bool IsFrameSolidArmed() {
     return s_frameSolidArmed && !s_processArmingDisabled;

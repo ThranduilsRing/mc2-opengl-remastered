@@ -6,7 +6,9 @@
 #ifndef GOS_TERRAIN_INDIRECT_INTERNAL_H
 #define GOS_TERRAIN_INDIRECT_INTERNAL_H
 
+// GameOS/gameos/gos_terrain_indirect.cpp
 //
+// Indirect terrain SOLID-only PR1 — Stage 0 + Stage 2 implementation.
 //
 // See gos_terrain_indirect.h for the slice overview, the Tracy zone name
 // reservations, and the public API contract (counter units = per-quad,

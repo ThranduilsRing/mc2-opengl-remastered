@@ -1,5 +1,14 @@
 #ifndef EDITOROBJECTMGR_H
 #define EDITOROBJECTMGR_H
+/***************************************************************
+* FILENAME: EditorObjectMgr.h
+* DESCRIPTION: Declares Editor object catalog, lookup, and selection management.
+* AUTHOR: Microsoft Corporation
+* COPYRIGHT: Copyright (C) Microsoft Corporation. All rights reserved.
+* DATE: 04/28/2026
+* MODIFICATION: by Methuselas
+* CHANGES: Added screen-space single-click object picking for the remastered Editor input path.
+****************************************************************/
 
 
 

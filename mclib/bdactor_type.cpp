@@ -446,6 +446,7 @@ void BldgAppearanceType::destroy (void)
 		}
 	}
 
+	// MODEL-OVERRIDE dual-shape: free the render override shape if loaded.
 	if (bldgRenderShape)
 	{
 		delete bldgRenderShape;
@@ -781,6 +782,7 @@ void TreeAppearanceType::destroy (void)
 		}
 	}
 
+	// MODEL-OVERRIDE dual-shape: free every populated render override LOD.
 	for (long i = 0; i < MAX_LODS; i++)
 	{
 		if (treeRenderShape[i])

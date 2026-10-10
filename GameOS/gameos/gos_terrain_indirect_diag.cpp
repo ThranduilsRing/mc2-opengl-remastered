@@ -3,6 +3,9 @@
 #include "gos_terrain_indirect_internal.h"
 
 
+// ---------------------------------------------------------------------------
+// Parity-printer + 600-frame summary
+// ---------------------------------------------------------------------------
 namespace {
 int       s_parityMismatchesThisFrame = 0;
 long long s_paritySummaryFrames       = 0;

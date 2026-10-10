@@ -58,7 +58,7 @@ APPLY_PASS_NAMES: tuple[str, ...] = (
 )
 
 # Default deploy path for the 0.4c release folder.
-_DEFAULT_EXE = "A:/Games/mc2-opengl/mc2-win64-0.4c/mc2.exe"
+_DEFAULT_EXE = "A:/Games/mc2-opengl/mc2-win64-v0.4/mc2.exe"
 _DEFAULT_MISSIONS = ["mc2_01", "mc2_24"]
 
 # Executor counter assertions (gate-ON mode).

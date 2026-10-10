@@ -3,6 +3,8 @@
 #include "gos_terrain_indirect_internal.h"
 
 
+// ---------------------------------------------------------------------------
+// Colormap atlas — single GL texture covering the full merged colormap.
 //
 // cpuColorMap (terrtxm2.h:93) already holds the entire RGBA atlas in CPU
 // memory, retained at mission load.  We upload it once as a plain

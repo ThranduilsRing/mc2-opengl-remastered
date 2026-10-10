@@ -61,6 +61,7 @@ float gos_GetWaterSkyTintStrength();
 void  gos_SetWaterSkyTintStrength(float v);
 void  gos_GetWaterSkyTintColor(float* rgb);
 void  gos_SetWaterSkyTintColor(float r, float g, float b);
+// WATER-SKY-REFLECTION-1 — gated camera-dependent SH-L2 sky reflection.
 float gos_GetWaterReflStrength();
 void  gos_SetWaterReflStrength(float v);
 int   gos_GetWaterReflectionGate();

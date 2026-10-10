@@ -29,18 +29,8 @@ COMMON_ENV = {
     "MC2_WATER_DEBUG": "1",
 }
 
-def kill_existing():
-    try:
-        subprocess.run(["taskkill", "/F", "/IM", "mc2.exe"],
-                       capture_output=True, text=True,
-                       **nofocus.hidden_kwargs())
-    except Exception:
-        pass
-    time.sleep(1)
-
 def run_and_screenshot(mode_label, fast_path: bool, mission="mc2_01", wait_sec=35,
                        fastpath_debug=None):
-    kill_existing()
     env = os.environ.copy()
     env.update(COMMON_ENV)
     if fast_path:

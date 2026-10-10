@@ -56,22 +56,44 @@ def _ancestor_of(descendants):
 
 # ---------------------------------------------------------------- exe guard
 
+def _fresh(sha=FRESH_SHA):
+    return lambda p: (sha, "")
+
+
+def _no_fingerprint(p):
+    return None, "banner-absent: no [BUILD_FINGERPRINT v1] literal"
+
+
 def test_read_src_commit_from_manifest(tmp_path):
     exe = _install(tmp_path, "mc2-win64-x", FRESH_SHA)
     assert exe_guard.read_src_commit(exe.parent) == FRESH_SHA
     assert exe_guard.read_src_commit(tmp_path) is None
 
 
-def test_current_exe_with_descendant_commit_passes(tmp_path):
+def test_current_exe_with_descendant_embedded_commit_passes(tmp_path):
     exe = _install(tmp_path, "mc2-win64-x", FRESH_SHA)
-    v = exe_guard.check_exe(exe, env={}, is_ancestor=_ancestor_of({FRESH_SHA}))
+    v = exe_guard.check_exe(exe, env={}, is_ancestor=_ancestor_of({FRESH_SHA}), commit_of=_fresh())
     assert v.ok, v.reasons
     assert v.banner() == f"[SMOKE] exe={exe.resolve()} src_commit={FRESH_SHA}"
 
 
+def test_ancestry_uses_the_commit_embedded_in_the_exe_not_the_deploy_manifest(tmp_path):
+    # deploy_payload records git HEAD at deploy time: a stale exe copied from a current tree has a fresh manifest.
+    exe = _install(tmp_path, "mc2-win64-x", FRESH_SHA)
+    v = exe_guard.check_exe(exe, env={}, is_ancestor=_ancestor_of({FRESH_SHA}), commit_of=_fresh(STALE_SHA))
+    assert not v.ok
+    assert STALE_SHA in v.refusal() and v.manifest_commit == FRESH_SHA
+
+
+def test_exe_without_an_embedded_fingerprint_is_refused_whatever_the_manifest_says(tmp_path):
+    exe = _install(tmp_path, "mc2-win64-x", FRESH_SHA)
+    v = exe_guard.check_exe(exe, env={}, is_ancestor=_ancestor_of({FRESH_SHA}), commit_of=_no_fingerprint)
+    assert not v.ok and "fingerprint" in v.refusal() and "mc2-win64-x" in v.refusal()
+
+
 def test_exe_without_offscreen_capability_is_refused_naming_install_and_commit(tmp_path):
     exe = _install(tmp_path, "mc2-win64-x", FRESH_SHA, with_mark=False)
-    v = exe_guard.check_exe(exe, env={}, is_ancestor=_ancestor_of({FRESH_SHA}))
+    v = exe_guard.check_exe(exe, env={}, is_ancestor=_ancestor_of({FRESH_SHA}), commit_of=_fresh())
     assert not v.ok
     msg = v.refusal()
     assert "mc2-win64-x" in msg and FRESH_SHA in msg and "MC2_WINDOW_OFFSCREEN" in msg
@@ -79,32 +101,70 @@ def test_exe_without_offscreen_capability_is_refused_naming_install_and_commit(t
 
 def test_exe_built_before_the_fix_commit_is_refused(tmp_path):
     exe = _install(tmp_path, "mc2-win64-x", STALE_SHA)
-    v = exe_guard.check_exe(exe, env={}, is_ancestor=_ancestor_of(set()))
+    v = exe_guard.check_exe(exe, env={}, is_ancestor=_ancestor_of(set()), commit_of=_fresh(STALE_SHA))
     assert not v.ok
     assert STALE_SHA in v.refusal() and exe_guard.MIN_COMMIT in v.refusal()
 
 
 def test_dirty_suffix_is_stripped_for_the_ancestry_test(tmp_path):
-    exe = _install(tmp_path, "mc2-win64-x", FRESH_SHA + "-dirty")
-    v = exe_guard.check_exe(exe, env={}, is_ancestor=_ancestor_of({FRESH_SHA}))
+    exe = _install(tmp_path, "mc2-win64-x", FRESH_SHA)
+    v = exe_guard.check_exe(exe, env={}, is_ancestor=_ancestor_of({FRESH_SHA}), commit_of=_fresh(FRESH_SHA + "-dirty"))
     assert v.ok, v.reasons
     assert v.src_commit.endswith("-dirty")
 
 
+def test_editor_exe_is_judged_by_the_offscreen_capability_alone(tmp_path):
+    d = tmp_path / "mc2-win64-x"
+    d.mkdir()
+    (d / "Mission Editor.exe").write_bytes(b"MZ" + exe_guard.OFFSCREEN_MARK)
+    assert exe_guard.engine_kind(d / "Mission Editor.exe") == "editor"
+    assert exe_guard.check_exe(d / "Mission Editor.exe", env={}, commit_of=_no_fingerprint).ok
+    (d / "EditRel.exe").write_bytes(b"MZ")
+    assert not exe_guard.check_exe(d / "EditRel.exe", env={}, commit_of=_no_fingerprint).ok
+
+
 def test_owner_override_waives_staleness_only(tmp_path):
     old = _install(tmp_path, "mc2-win64-x", STALE_SHA, with_mark=False)
-    v = exe_guard.check_exe(old, env={"MC2_OWNER_VISIBLE_OK": "1"}, is_ancestor=_ancestor_of(set()))
+    v = exe_guard.check_exe(old, env={"MC2_OWNER_VISIBLE_OK": "1"}, is_ancestor=_ancestor_of(set()),
+                            commit_of=_no_fingerprint)
     assert v.ok
     golden = _install(tmp_path, "mc2-win64-v0.4c", FRESH_SHA)
-    v = exe_guard.check_exe(golden, env={"MC2_OWNER_VISIBLE_OK": "1"}, is_ancestor=_ancestor_of({FRESH_SHA}))
+    v = exe_guard.check_exe(golden, env={"MC2_OWNER_VISIBLE_OK": "1"}, is_ancestor=_ancestor_of({FRESH_SHA}),
+                            commit_of=_fresh())
     assert not v.ok and "golden" in v.refusal()
 
 
 def test_golden_install_is_never_a_smoke_target_even_when_current(tmp_path):
     golden = _install(tmp_path, "mc2-win64-v0.4c", FRESH_SHA)
     anc = _ancestor_of({FRESH_SHA})
-    assert not exe_guard.check_exe(golden, purpose="smoke", env={}, is_ancestor=anc).ok
-    assert exe_guard.check_exe(golden, purpose="capture", env={}, is_ancestor=anc).ok
+    assert not exe_guard.check_exe(golden, purpose="smoke", env={}, is_ancestor=anc, commit_of=_fresh()).ok
+    assert exe_guard.check_exe(golden, purpose="capture", env={}, is_ancestor=anc, commit_of=_fresh()).ok
+
+
+def test_nofocus_spawn_and_run_refuse_a_stale_engine_exe_before_any_process_is_created(tmp_path, monkeypatch):
+    exe = _install(tmp_path, "mc2-win64-stale", STALE_SHA, with_mark=False)
+
+    def _boom(*a, **k):
+        raise AssertionError("a process was created for a refused exe")
+
+    monkeypatch.setattr(subprocess, "Popen", _boom)
+    monkeypatch.setattr(subprocess, "run", _boom)
+    for launch in (nofocus.spawn, nofocus.run):
+        try:
+            launch([str(exe), "--mission", "m"])
+        except nofocus.ExeRefused as e:
+            assert "mc2-win64-stale" in str(e)
+        else:
+            raise AssertionError("expected ExeRefused")
+
+
+def test_nofocus_does_not_vet_non_engine_programs(monkeypatch):
+    seen = []
+    monkeypatch.setattr(subprocess, "Popen",
+                        lambda argv, **k: seen.append(argv) or types.SimpleNamespace(pid=1, poll=lambda: 0))
+    monkeypatch.setattr(nofocus, "park_window_offscreen", lambda *a, **k: None)
+    nofocus.spawn([sys.executable, "-c", "pass"])
+    assert seen
 
 
 def test_marker_found_across_read_chunk_boundary(tmp_path):
@@ -130,24 +190,16 @@ def _smoke(args, env_extra=None):
                           **console_child.child_kwargs(redirected=True))
 
 
-def test_run_smoke_refuses_stale_exe_and_names_install_and_commit(tmp_path):
+def test_run_smoke_refuses_an_unfingerprinted_exe_and_names_the_install(tmp_path):
     exe = _install(tmp_path, "mc2-win64-stale", STALE_SHA, with_mark=False)
     r = _smoke(["--lite", "--no-lease", "--exe", str(exe), "--resolve-only"], {"MC2_OWNER_NO_LEASE": "1"})
     assert r.returncode == 7, r.stderr
-    assert f"[SMOKE] exe={exe.resolve()} src_commit={STALE_SHA}" in r.stderr
-    assert "mc2-win64-stale" in r.stderr and STALE_SHA in r.stderr
-
-
-def test_run_smoke_accepts_current_exe_and_logs_selection(tmp_path):
-    exe = _install(tmp_path, "mc2-win64-ok", _head())
-    r = _smoke(["--no-lease", "--exe", str(exe), "--mission", "mc2_01", "--resolve-only"],
-               {"MC2_OWNER_NO_LEASE": "1"})
-    assert r.returncode == 0, r.stderr
-    assert f"[SMOKE] exe={exe.resolve()} src_commit={_head()}" in r.stderr
+    assert f"[SMOKE] exe={exe.resolve()} src_commit=unknown" in r.stderr
+    assert "mc2-win64-stale" in r.stderr and "fingerprint" in r.stderr
 
 
 def test_run_smoke_no_lease_is_owner_only(tmp_path):
-    exe = _install(tmp_path, "mc2-win64-ok", _head())
+    exe = _install(tmp_path, "mc2-win64-ok", FRESH_SHA)
     r = _smoke(["--no-lease", "--exe", str(exe), "--mission", "mc2_01", "--resolve-only"])
     assert r.returncode == 6
     assert "MC2_OWNER_NO_LEASE" in r.stderr and "--clear-dead" in r.stderr
@@ -160,13 +212,13 @@ def test_tier1_never_picks_an_install_on_its_own():
 
 
 def test_run_smoke_refuses_golden_for_smoke(tmp_path):
-    exe = _install(tmp_path, "mc2-win64-v0.4c", _head())
+    exe = _install(tmp_path, "mc2-win64-v0.4c", FRESH_SHA)
     r = _smoke(["--lite", "--no-lease", "--exe", str(exe), "--resolve-only"],
                {"MC2_OWNER_NO_LEASE": "1", "MC2_OWNER_VISIBLE_OK": "1"})
     assert r.returncode == 7 and "golden" in r.stderr
 
 
-def test_capture_refuses_stale_exe_before_any_launch(tmp_path):
+def test_capture_refuses_a_stale_exe_before_any_launch(tmp_path):
     exe = _install(tmp_path, "mc2-win64-stale", STALE_SHA, with_mark=False)
     (exe.parent / "saved_bookmarks").mkdir()
     (exe.parent / "saved_bookmarks" / "a.json").write_text("{}")
@@ -176,7 +228,7 @@ def test_capture_refuses_stale_exe_before_any_launch(tmp_path):
                        capture_output=True, text=True, timeout=120, env=env,
                        **console_child.child_kwargs(redirected=True))
     assert r.returncode == 7, r.stderr
-    assert "mc2-win64-stale" in r.stderr and STALE_SHA in r.stderr
+    assert "mc2-win64-stale" in r.stderr and "Traceback" not in r.stderr
 
 
 # ------------------------------------------------------------- lease selection
@@ -315,3 +367,27 @@ def test_off_switch_makes_every_entry_point_a_noop_with_no_win32_call(monkeypatc
     assert cursor_guard.park_cursor_if_edge() in ("inert", "disabled")
     assert cursor_guard.restore_parked_cursor() is False
     assert capsys.readouterr().err.count("MC2_CURSOR_GUARD_OFF=1, all pointer and clip calls disabled") == 1
+
+
+def test_every_win32_entry_raises_under_pytest_without_the_off_switch(monkeypatch):
+    monkeypatch.delenv("MC2_CURSOR_GUARD_OFF", raising=False)
+    for call in (cursor_guard.get_cursor_pos, cursor_guard.unclip_cursor, cursor_guard.get_clip_rect,
+                 cursor_guard.find_foreign_game_pids, lambda: cursor_guard.set_cursor_pos((1, 1))):
+        try:
+            call()
+        except RuntimeError as e:
+            assert "MC2_CURSOR_GUARD_OFF" in str(e)
+        else:
+            raise AssertionError("expected the pytest tripwire")
+
+
+def test_nofocus_window_calls_are_inert_with_the_off_switch(monkeypatch):
+    monkeypatch.setenv("MC2_HARNESS_ALLOW_FOREGROUND", "1")
+    monkeypatch.setenv("MC2_CURSOR_GUARD_OFF", "1")
+    assert nofocus.raise_noactivate(12345) is False
+    assert nofocus.park_window_offscreen(1, force=True) is None
+
+
+def test_root_pytest_ini_and_conftest_exist_so_any_folder_gets_the_switch():
+    assert (ROOT / "pytest.ini").is_file()
+    assert "MC2_CURSOR_GUARD_OFF" in (ROOT / "conftest.py").read_text(encoding="utf-8")

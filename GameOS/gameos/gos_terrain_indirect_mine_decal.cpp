@@ -3,12 +3,19 @@
 #include "gos_terrain_indirect_internal.h"
 
 
+// ---------------------------------------------------------------------------
+// PR2c Stage 1c — mine static-bake infrastructure.
 //
 // Builds a per-mission mine VBO + 2-layer mine/blown texture-array. Both are
 // populated lazily on first dirty event (i.e., first MissionMap::setMine
 // call after Reset, including the per-cell init-time setMine loop). Per spec
 // at 2026-05-08-pr2c-mine-static-bake-design.md.
 //
+// Stage 1c is build-and-invalidate scaffolding only — RebuildMineStaticVBOIfDirty
+// is callable but not yet wired into per-frame from the bridge. Stage 2c
+// adds the bridge + draw + legacy gate-off (single-PR per N2 partial-landing
+// rule).
+// ---------------------------------------------------------------------------
 
 namespace {
 

@@ -48,7 +48,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from smoke_lib import nofocus  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[1]
-DEFAULT_EXE = r"A:\Games\mc2-opengl\mc2-win64-0.4c\Mission Editor.exe"
+DEFAULT_EXE = r"A:\Games\mc2-opengl\mc2-win64-v0.4\Mission Editor.exe"
 ARTIFACT_ROOT = REPO / "tests" / "smoke" / "editor"
 
 # Strong crash signatures (the editor trace is verbose; weak tokens false-positive).

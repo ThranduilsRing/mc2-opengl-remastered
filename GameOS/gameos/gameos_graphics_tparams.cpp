@@ -790,6 +790,7 @@ void gos_SetTerrainViewDir(float x, float y, float z) {
 }
 unsigned int gos_CreateTerrainNormalTexture(const unsigned char* rgbaData, int width) {
     GLuint texId = 0;
+    // TEX-CLASS: asset-pool -- terrain normal content texture factory
     glGenTextures(1, &texId);
     glBindTexture(GL_TEXTURE_2D, texId);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, width, 0, GL_RGBA, GL_UNSIGNED_BYTE, rgbaData);

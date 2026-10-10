@@ -20,15 +20,6 @@ OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 DURATION = int(max(TIMES) + 10)
 
-def kill():
-    try:
-        subprocess.run(["taskkill", "/F", "/IM", "mc2.exe"], capture_output=True, text=True, **nofocus.hidden_kwargs())
-    except Exception:
-        pass
-    time.sleep(1)
-
-kill()
-
 env = os.environ.copy()
 env.update({
     "MC2_GPU_CULL": "1",
@@ -97,6 +88,6 @@ for t in TIMES:
 remain = (start + DURATION) - time.time()
 if remain > 0:
     time.sleep(min(remain, 5))
-kill()
+proc.kill()
 print(f"[sweep] log saved {log_path}")
 print(f"[sweep] DONE")

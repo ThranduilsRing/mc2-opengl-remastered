@@ -4,8 +4,15 @@
 #include "mdi_submit.h"                            // MDI-SUBMISSION-SCAFFOLD-1: this piece issues indirect draws
 
 
+// gos_terrain_bridge_bindThinUniforms deleted by DEAD-BRIDGE-DELETE-1: zero external
+// callers (the internal terrainBindThinUniformsForPatchStream IS live; this standalone
+// wrapper is not). Whole-repo grep clean.
 
+// gos_terrain_bridge_drawSingleBucketTriangles deleted by TERRAIN-BRIDGE-BODY-DELETE-2:
+// callerless after TerrainPatchStream::flush() retired (TERRAIN-BRIDGE-BODY-DELETE-1).
 
+// gos_terrain_bridge_getWaterFastShaderProgram deleted by DEAD-BRIDGE-DELETE-1:
+// zero external callers tree-wide. Wrapper around live getWaterFastProgram().
 
 // WaterPerCmd — per-draw data for glMultiDrawArraysIndirect, indexed by gl_DrawID.
 // 32 B std430-aligned; lockstep with gos_terrain_water_fast_mdi.vert binding 7.
@@ -310,6 +317,7 @@ void gosRenderer::renderWaterFastPath(
         }
     }
     if (s_perCmdSsbo == 0 && gpu_driven::IsWaterEnabled()) {
+        // TIER2-EXCLUDED: dead-path
         glGenBuffers(1, &s_perCmdSsbo);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_perCmdSsbo);
         glBufferData(GL_SHADER_STORAGE_BUFFER, 2 * (GLsizeiptr)sizeof(WaterPerCmd), nullptr, GL_DYNAMIC_DRAW);
@@ -502,6 +510,7 @@ void gosRenderer::renderWaterFastPath(
     // matching REPEAT.
     static GLuint s_waterFastSampler = 0;
     if (s_waterFastSampler == 0) {
+        // TEX-CLASS: per-pass-rebind -- water-fast sampler object (REPEAT+LINEAR)
         glGenSamplers(1, &s_waterFastSampler);
         glSamplerParameteri(s_waterFastSampler, GL_TEXTURE_WRAP_S, GL_REPEAT);
         glSamplerParameteri(s_waterFastSampler, GL_TEXTURE_WRAP_T, GL_REPEAT);

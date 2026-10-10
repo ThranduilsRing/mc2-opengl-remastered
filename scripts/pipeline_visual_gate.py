@@ -36,7 +36,7 @@ import console_child  # noqa: E402  (stdio-inheriting children keep their output
 
 ROOT = Path(__file__).resolve().parents[1]
 RVC = ROOT / "scripts" / "run_visual_capture.py"
-DEFAULT_EXE = "A:/Games/mc2-opengl/mc2-win64-v0.4c/mc2.exe"
+DEFAULT_EXE = "A:/Games/mc2-opengl/mc2-win64-v0.4/mc2.exe"
 
 # Per-pass profiles. Each names the ledger pass it proves, the mission +
 # bookmark that frames the pass, capture timing, the [PIPELINE_BIND] row whose

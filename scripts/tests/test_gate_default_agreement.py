@@ -55,3 +55,13 @@ def test_generated_gate_history_is_exempt_and_its_claims_do_not_surface(tmp_path
           "MC2_OLD default-off; =1 enables. Second sentence.\n")
     assert "default-off" in md                      # the verbatim history is really there
     assert _claims(tmp_path, {"gate-history.md": md}) == []
+
+
+def test_graded_floor_catches_a_table_that_lost_its_bool_rows(monkeypatch):
+    # Claims are still swept, but nothing matches a Bool row: the comparison graded nothing and must not pass.
+    monkeypatch.setattr(chk, "load_defaults", lambda *a, **k: {})
+    assert chk.run(quiet=True) == 1
+
+
+def test_real_tree_grades_above_the_floor():
+    assert chk.run(quiet=True) == 0

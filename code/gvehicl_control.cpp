@@ -7,6 +7,9 @@
 Stuff::Vector3D GroundVehicle::getPositionFromHS (long nodeId) 
 {
 
+	// NEED TO IMPLEMENT PROPER HOTSPOTS FOR VEHICLES...
+	// How about now?
+	// -fs
 
 	Stuff::Vector3D hsPos = position;
 	if (appearance)

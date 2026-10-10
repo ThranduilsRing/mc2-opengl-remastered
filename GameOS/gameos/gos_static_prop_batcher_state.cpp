@@ -5,6 +5,7 @@
 
 namespace gos_static_prop_batcher_detail {
 
+// Slice 1 (global instance pool). Default global cap and base-instance SSBO binding.
 constexpr uint32_t STATIC_PROP_GLOBAL_CAP_DEFAULT = 131072u;
 
 // Immutable per-map geometry.
@@ -1007,6 +1008,7 @@ void allocPermutationSsboAsIdentity(uint32_t typeCount) {
     if (typeCount == 0) return;
     std::vector<uint32_t> identity(typeCount);
     for (uint32_t i = 0; i < typeCount; ++i) identity[i] = i;
+    // TIER2-EXCLUDED: dead-path
     if (s_permutationSsbo == 0) glGenBuffers(1, &s_permutationSsbo);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_permutationSsbo);
     MC2_GL_BufferData(GL_SHADER_STORAGE_BUFFER,

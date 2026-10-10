@@ -121,6 +121,7 @@ void GpuStaticPropBatcher::finalizeGeometry() {
                              " as emissive fixtures (scale=%.2f)\n",
                      s_fixtureTypeCount, s_types.size(), s_fixtureLightsScale);
 
+        // TIER2-EXCLUDED: dead-path
         glGenBuffers(1, &s_perTypeSsbo);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_perTypeSsbo);
         glBufferStorage(GL_SHADER_STORAGE_BUFFER,
@@ -416,6 +417,7 @@ void GpuStaticPropBatcher::finalizeGeometry() {
             (unsigned long long)gpuSsboOffsetAlignment());
         const size_t totalBytes =
             static_cast<size_t>(RING_FRAMES) * alignedPerFrame;
+        // TIER2-EXCLUDED: ring
         glGenBuffers(1, &s_coalesceInstanceSsbo);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_coalesceInstanceSsbo);
         const GLbitfield mapFlags =
@@ -1883,6 +1885,7 @@ void GpuStaticPropBatcher::finalizeGeometry() {
             MC2_DIAG_FPUTS(buf, stderr);
         }
 
+        // TIER2-EXCLUDED: dead-path
         glGenBuffers(1, &s_perDrawSsbo);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_perDrawSsbo);
         MC2_GL_BufferData(GL_SHADER_STORAGE_BUFFER,
@@ -1895,6 +1898,7 @@ void GpuStaticPropBatcher::finalizeGeometry() {
         // maps to its parent typeID so the patch shader can write the
         // type's instanceCount into all cmds (= all packets) of that type.
         if (s_cmdToBucketSsbo == 0) {
+            // TIER2-EXCLUDED: dead-path
             glGenBuffers(1, &s_cmdToBucketSsbo);
         }
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_cmdToBucketSsbo);
@@ -1933,6 +1937,7 @@ void GpuStaticPropBatcher::finalizeGeometry() {
         const size_t totalBytes =
             static_cast<size_t>(RING_FRAMES) * s_baseInstanceByCmdBytesPerFrame;
         if (totalBytes > 0) {
+            // TIER2-EXCLUDED: dead-path
             glGenBuffers(1, &s_baseInstanceByCmdSsbo);
             glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_baseInstanceByCmdSsbo);
             const GLbitfield mapFlags =

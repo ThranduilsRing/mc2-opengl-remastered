@@ -13,15 +13,6 @@ EXE = Path(r"A:/Games/mc2-opengl/mc2-win64-v0.3/mc2.exe")
 OUT_DIR = Path(r"A:/Games/mc2-main/tests/smoke/artifacts/diag-shots")
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-def kill():
-    try:
-        subprocess.run(["taskkill", "/F", "/IM", "mc2.exe"], capture_output=True, text=True, **nofocus.hidden_kwargs())
-    except Exception:
-        pass
-    time.sleep(1)
-
-kill()
-
 env = os.environ.copy()
 env.update({
     "MC2_GPU_CULL": "1",
@@ -89,6 +80,6 @@ except Exception as e:
 
 # Tear down
 time.sleep(1)
-kill()
+proc.kill()
 print(f"[shot] log saved {log_path}")
 print(f"[shot] DONE")

@@ -1,5 +1,8 @@
 #ifndef EDITORDATA_H
 #define EDITORDATA_H
+//===========================================================================//
+// Copyright (C) Microsoft Corporation. All rights reserved.                 //
+//===========================================================================//
 
 #include <string>
 #include "mclib.h"

@@ -115,6 +115,7 @@ void buildProgramIfNeeded() {
 
 void ensureCapacity(GLsizei needRecords) {
     if (s_ssbo == 0) {
+        // TIER2-EXCLUDED: substrate-gated
         glGenBuffers(1, &s_ssbo);
         if (s_ssbo == 0) { s_bufFailed = true; return; }
     }

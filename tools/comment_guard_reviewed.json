@@ -1,0 +1,167 @@
+[
+ {
+  "file": "GameOS/gameos/gameos_graphics_renderer_internal.h",
+  "base_line": 12,
+  "reason": "separator/banner line with no content"
+ },
+ {
+  "file": "GameOS/gameos/gos_static_prop_batcher_program.cpp",
+  "base_line": 8,
+  "reason": "end-of-section marker"
+ },
+ {
+  "file": "GuiRuntime/GraphicsOptionsWindow_mech.cpp",
+  "base_line": 9,
+  "reason": "separator/banner line with no content"
+ },
+ {
+  "file": "GuiRuntime/GraphicsOptionsWindow_passes.cpp",
+  "base_line": 9,
+  "reason": "separator/banner line with no content"
+ },
+ {
+  "file": "GuiRuntime/GraphicsOptionsWindow_terrain.cpp",
+  "base_line": 8,
+  "reason": "separator/banner line with no content"
+ },
+ {
+  "file": "code/ablmc2_internal.h",
+  "base_line": 9,
+  "reason": "include-section banner"
+ },
+ {
+  "file": "code/ablmc2_misc.cpp",
+  "base_line": 13,
+  "reason": "commented-out code"
+ },
+ {
+  "file": "code/gvehicl_control.cpp",
+  "base_line": 6,
+  "reason": "end-of-section marker"
+ },
+ {
+  "file": "code/gvehicl_move.cpp",
+  "base_line": 6,
+  "reason": "separator/banner line with no content"
+ },
+ {
+  "file": "code/gvehicl_update.cpp",
+  "base_line": 11,
+  "reason": "separator/banner line with no content"
+ },
+ {
+  "file": "code/gvehicl_weapons.cpp",
+  "base_line": 7,
+  "reason": "separator/banner line with no content"
+ },
+ {
+  "file": "code/mechcmd2_cmdline.cpp",
+  "base_line": 6,
+  "reason": "separator/banner line with no content"
+ },
+ {
+  "file": "code/mechcmd2_cmdline.cpp",
+  "base_line": 11,
+  "reason": "banner naming the next function"
+ },
+ {
+  "file": "code/mechcmd2_debugwins.cpp",
+  "base_line": 6,
+  "reason": "separator/banner line with no content"
+ },
+ {
+  "file": "code/mechcmd2_frame.cpp",
+  "base_line": 7,
+  "reason": "stale plan label (Track C3-B)"
+ },
+ {
+  "file": "code/mission_internal.h",
+  "base_line": 8,
+  "reason": "include-section banner"
+ },
+ {
+  "file": "code/mission_movers.cpp",
+  "base_line": 7,
+  "reason": "separator/banner line with no content"
+ },
+ {
+  "file": "code/mission_movers.cpp",
+  "base_line": 14,
+  "reason": "narration restating the next lines"
+ },
+ {
+  "file": "code/missiongui_input.cpp",
+  "base_line": 6,
+  "reason": "separator/banner line with no content"
+ },
+ {
+  "file": "code/missiongui_input.cpp",
+  "base_line": 14,
+  "reason": "filler remark"
+ },
+ {
+  "file": "code/missiongui_style.cpp",
+  "base_line": 8,
+  "reason": "filler remark"
+ },
+ {
+  "file": "code/missiongui_style.cpp",
+  "base_line": 14,
+  "reason": "restates next line"
+ },
+ {
+  "file": "code/mover_path.cpp",
+  "base_line": 734,
+  "reason": "commented-out code"
+ },
+ {
+  "file": "editor/EditorObjectMgr_io.cpp",
+  "base_line": 6,
+  "reason": "separator/banner line with no content"
+ },
+ {
+  "file": "mclib/bdactor_render.cpp",
+  "base_line": 354,
+  "reason": "commented-out code"
+ },
+ {
+  "file": "mclib/bdactor_tree.cpp",
+  "base_line": 6,
+  "reason": "class-name banner"
+ },
+ {
+  "file": "mclib/bdactor_type.cpp",
+  "base_line": 5,
+  "reason": "class-name banner"
+ },
+ {
+  "file": "mclib/gvactor_geometry.cpp",
+  "base_line": 7,
+  "reason": "separator/banner line with no content"
+ },
+ {
+  "file": "mclib/gvactor_geometry.cpp",
+  "base_line": 10,
+  "reason": "narration"
+ },
+ {
+  "file": "mclib/gvactor_render.cpp",
+  "base_line": 8,
+  "reason": "separator/banner line with no content"
+ },
+ {
+  "file": "mclib/move_globalmap_doors.cpp",
+  "base_line": 167,
+  "reason": "commented-out code"
+ },
+ {
+  "file": "mclib/tgl_shadows.cpp",
+  "base_line": 5,
+  "reason": "function-name narration"
+ },
+ {
+  "file": "mclib/tgl_shadows.cpp",
+  "base_line": 13,
+  "reason": "filler remark"
+ }
+]

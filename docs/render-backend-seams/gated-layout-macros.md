@@ -390,7 +390,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/gos_terrain_lod_chunk_internal.h:68`
+- Header: `GameOS/gameos/gos_terrain_lod_chunk_internal.h:67`
 - Class: `TerrainGlFallbackAudit`  (data-member)
 - Member: `int total = 0;`
 - Consuming targets: gameos
@@ -398,7 +398,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/gos_terrain_lod_chunk_internal.h:69`
+- Header: `GameOS/gameos/gos_terrain_lod_chunk_internal.h:68`
 - Class: `TerrainGlFallbackAudit`  (data-member)
 - Member: `int captured = 0;`
 - Consuming targets: gameos
@@ -406,7 +406,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/gos_terrain_lod_chunk_internal.h:70`
+- Header: `GameOS/gameos/gos_terrain_lod_chunk_internal.h:69`
 - Class: `TerrainGlFallbackAudit`  (data-member)
 - Member: `int glFallback = 0;`
 - Consuming targets: gameos
@@ -414,7 +414,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/gos_terrain_lod_chunk_internal.h:71`
+- Header: `GameOS/gameos/gos_terrain_lod_chunk_internal.h:70`
 - Class: `TerrainGlFallbackAudit`  (data-member)
 - Member: `int inactive = 0;`
 - Consuming targets: gameos
@@ -422,7 +422,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/gos_terrain_lod_chunk_internal.h:72`
+- Header: `GameOS/gameos/gos_terrain_lod_chunk_internal.h:71`
 - Class: `TerrainGlFallbackAudit`  (data-member)
 - Member: `int band = 0;`
 - Consuming targets: gameos
@@ -430,7 +430,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/gos_terrain_lod_chunk_internal.h:73`
+- Header: `GameOS/gameos/gos_terrain_lod_chunk_internal.h:72`
 - Class: `TerrainGlFallbackAudit`  (data-member)
 - Member: `int displace = 0;`
 - Consuming targets: gameos
@@ -438,7 +438,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/gos_terrain_lod_chunk_internal.h:81`
+- Header: `GameOS/gameos/gos_terrain_lod_chunk_internal.h:80`
 - Class: `TerrainGlFallbackAudit`  (data-member)
 - Member: `int other = 0;`
 - Consuming targets: gameos
@@ -446,7 +446,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/gos_terrain_lod_chunk_internal.h:82`
+- Header: `GameOS/gameos/gos_terrain_lod_chunk_internal.h:81`
 - Class: `TerrainGlFallbackAudit`  (data-member)
 - Member: `int skirtEdges = 0;`
 - Consuming targets: gameos

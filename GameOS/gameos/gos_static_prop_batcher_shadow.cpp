@@ -404,6 +404,7 @@ void GpuStaticPropBatcher::drawStaticBuildingShadows(
     mc2gl::GlScopedVertexArray   guardVao;
     mc2gl::GlScopedSsboBinding   guardSsbo0(0);
 
+    // TIER2-EXCLUDED: substrate-gated
     if (s_staticBldgShadowSsbo == 0) glGenBuffers(1, &s_staticBldgShadowSsbo);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_staticBldgShadowSsbo);
     // GPU-UPDATE-BUFFER-COUNTER-1: per-render transient shadow SSBO orphan-on-write.

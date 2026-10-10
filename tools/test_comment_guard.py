@@ -62,7 +62,8 @@ def test_selftest_cli_exit_zero():
 def test_selftest_has_the_required_coverage():
     names = " ".join(f.__name__ for f in cg.SELFTEST_CASES)
     for needle in ("string_literal", "protected_deletion", "adding_comment", "multiline_block", "raw_string",
-                   "gates", "blank_line", "crlf", "bom", "moved_comment"):
+                   "gates", "blank_line", "crlf", "bom", "moved_comment", "checker_needle",
+                   "begin_end", "fenced", "split_piece", "needle_extraction"):
         assert needle in names, needle
 
 
@@ -449,3 +450,112 @@ def test_allowlist_entry_covers_one_comment_only(gates):
     al = cg.Allowlist([{"file": "code/x.cpp", "base_line": 3, "reason": "r"}])
     rep = cg.check_texts("code/x.cpp", _enc(two), _enc("int a;\nint b;\n"), al)
     assert [k for k, _m in rep.findings] == ["protected"] and len(rep.allowed) == 1
+
+
+# ---------------------------------------------------------------- checker needles, begin/end markers, split pieces
+@pytest.fixture(autouse=True)
+def _hermetic_env():
+    """Unit tests never read the real repo's needles; the tests below that want some build their own tree."""
+    cg.set_env(cg.Env({}, []))
+    yield
+    cg.set_env(None)
+
+
+SENTINEL_CPP = "void f() {\n\tscan();\n\t// NOFOCUS-HARDEN-1\n}\n"
+SENTINEL_GONE = "void f() {\n\tscan();\n}\n"
+
+
+def _checker_repo(repo, checker_text, rel="scripts/check-sentinel.sh"):
+    _write(repo / rel, checker_text)
+    _write(repo / "code" / "a.cpp", SENTINEL_CPP)
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-q", "-m", "base")
+    _write(repo / "code" / "a.cpp", SENTINEL_GONE)
+
+
+def test_cli_deleted_sentinel_is_reported_with_needle_and_script(repo):
+    _checker_repo(repo, "#!/bin/sh\ngrep -q 'NOFOCUS-HARDEN-1' code/a.cpp\n")
+    rc, out = _run("--repo", str(repo), "--check", str(repo / "code" / "a.cpp"))
+    assert rc == 1, out
+    assert "checker-needle" in out and "NOFOCUS-HARDEN-1" in out and "scripts/check-sentinel.sh" in out, out
+
+
+def test_cli_same_tag_absent_from_checkers_is_not_protected(repo):
+    _checker_repo(repo, "#!/bin/sh\ngrep -q 'SOME-OTHER-TAG-9' code/a.cpp\n")
+    rc, out = _run("--repo", str(repo), "--check", str(repo / "code" / "a.cpp"))
+    assert rc == 0, out
+
+
+def test_cli_needle_in_a_plain_python_string_counts(repo):
+    _checker_repo(repo, "TAG = \"NOFOCUS-HARDEN-1\"\n\n\ndef check(text):\n    return TAG in text\n", rel="scripts/check_s.py")
+    rc, out = _run("--repo", str(repo), "--check", str(repo / "code" / "a.cpp"))
+    assert rc == 1 and "scripts/check_s.py" in out, out
+
+
+def test_needle_in_a_checker_comment_or_docstring_does_not_count(repo):
+    _checker_repo(repo, '"""Mentions NOFOCUS-HARDEN-1 in prose."""\n# NOFOCUS-HARDEN-1 again\n', rel="scripts/check_s.py")
+    rc, out = _run("--repo", str(repo), "--check", str(repo / "code" / "a.cpp"))
+    assert rc == 0, out
+
+
+def test_cli_needles_lists_needle_and_first_defining_file(repo):
+    _write(repo / "scripts" / "a_check.sh", "grep -n 'FIRST-SENTINEL-END' x\n")
+    _write(repo / "scripts" / "b_check.sh", "grep -n 'FIRST-SENTINEL-END' x\ngrep -c 'SECOND_MARKER:' x\n")
+    _write(repo / "tools" / "test_skipped.py", "X = 'TEST-ONLY-TAG-1'\n")
+    _write(repo / "tools" / "comment_guard.py", "X = 'SELF-ONLY-TAG-1'\n")
+    _write(repo / "tests" / "t.py", "X = 'TESTS-DIR-TAG-1'\n")
+    _write(repo / "cmake" / "c.cmake", "if(x MATCHES \"CMAKE-SENTINEL-1\")\nendif()\n")
+    rc, out = _run("--repo", str(repo), "--needles")
+    lines = out.strip().splitlines()
+    assert rc == 0
+    assert "FIRST-SENTINEL-END\tscripts/a_check.sh" in lines and "SECOND_MARKER:\tscripts/b_check.sh" in lines, out
+    assert "TESTS-DIR-TAG-1\ttests/t.py" in lines and "CMAKE-SENTINEL-1\tcmake/c.cmake" in lines, out
+    assert "TEST-ONLY-TAG-1" not in out and "SELF-ONLY-TAG-1" not in out
+
+
+def test_cli_needles_on_this_repo_lists_the_mover_sentinel():
+    rc, out = _run("--needles")
+    assert rc == 0
+    assert "MOVER-COHERENCE-AUDIT-END\tscripts/check-mover-registry-coherence.sh" in out.splitlines(), out[:400]
+
+
+def test_begin_end_and_fenced_markers_are_protected_without_any_checker():
+    for line in ("S6-REGION-BEGIN", "S6-REGION-END (scan region)", "@@ keep me @@", "=== section ==="):
+        rep = cg.check_texts("code/x.cpp", _enc("int a;\n// %s\nint b;\n" % line), _enc("int a;\nint b;\n"))
+        assert [k for k, _m in rep.findings] == ["protected"], line
+
+
+def _split_repo(repo, with_allow=True):
+    if with_allow:
+        _write(repo / "tools" / "split" / "allow" / "foo.json",
+               json.dumps({"src": "code/foo.cpp", "stem": "foo", "base": "abc1234"}))
+    _write(repo / "code" / "foo_bar.cpp", '#include "foo_internal.h"\n// plain description of this piece\nint a;\n')
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-q", "-m", "base")
+    _write(repo / "code" / "foo_bar.cpp", '#include "foo_internal.h"\nint a;\n')
+
+
+def test_split_piece_description_is_protected_when_the_stem_has_an_allow_entry(repo):
+    _split_repo(repo)
+    rc, out = _run("--repo", str(repo), "--check", str(repo / "code" / "foo_bar.cpp"))
+    assert rc == 1 and "split-piece header" in out, out
+
+
+def test_split_piece_description_not_protected_without_an_allow_entry(repo):
+    _split_repo(repo, with_allow=False)
+    rc, out = _run("--repo", str(repo), "--check", str(repo / "code" / "foo_bar.cpp"))
+    assert rc == 0, out
+
+
+def test_cli_needles_keep_markers_and_drop_prose_and_identifiers(repo):
+    _write(repo / "scripts" / "c.sh", "grep -q 'byte-identical' x\ngrep -q gos_terrain x\ngrep -q MC2_VK x\n"
+           "grep -q 'TIER2-EXCLUDED' x\ngrep -q 'SAMPLE_MARKER:' x\ngrep -q 'Some-long-Marker-word' x\n")
+    rc, out = _run("--repo", str(repo), "--needles")
+    got = [l.split("\t")[0] for l in out.strip().splitlines()]
+    assert rc == 0 and sorted(got) == ["SAMPLE_MARKER:", "Some-long-Marker-word", "TIER2-EXCLUDED"], got
+
+
+def test_marker_rule_and_stoplist_unit():
+    assert cg.looks_like_marker("TEX-CLASS:") and cg.looks_like_marker("TIER2-EXCLUDED")
+    assert not any(cg.looks_like_marker(w) for w in cg.NEEDLE_STOPLIST)
+    assert not cg.looks_like_marker("any_lowercase_stem") and not cg.looks_like_marker("short-Id")

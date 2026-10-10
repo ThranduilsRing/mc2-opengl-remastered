@@ -54,7 +54,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from smoke_lib import nofocus  # noqa: E402
 
-DEFAULT_EXE = r"A:\Games\mc2-opengl\mc2-win64-0.4c\Mission Editor.exe"
+DEFAULT_EXE = r"A:\Games\mc2-opengl\mc2-win64-v0.4\Mission Editor.exe"
 
 # Run the editor window minimized/non-activating during smoke (set from --minimized).
 MINIMIZED = True

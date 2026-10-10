@@ -1018,6 +1018,11 @@ void gosRenderer::terrainOverrideThinMVP(const float* mvp4x4)
     glUniformMatrix4fv(tl.terrainMVP, 1, GL_FALSE, mvp4x4);
 }
 
+// TERRAIN-DEADCODE-DELETE-1: gosRenderer::terrainDrawIndexedPatches deleted.
+// The legacy tess-solid terrain funnel is retired — terrain renders via the LOD-chunk path.
+// The sole call site at gameos_graphics.cpp (the :7291 if-branch) is now a skip+tripwire.
+// Helpers called by this function (cacheTerrainUniformLocations, terrainBindThinUniformsForPatchStream,
+// bindTerrainHeightTexUniforms) remain in use by the shadow pre-pass and bridge paths.
 
 void gosRenderer::drawIndexedTris(gos_VERTEX* vertices, int num_vertices, WORD* indices, int num_indices) {
     ZoneScopedN("DrawIndexedTris.Basic");

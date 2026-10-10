@@ -135,13 +135,8 @@ def _save_cursor() -> None:
     if os.name != "nt" or _ORIG_CURSOR is not None:
         return
     try:
-        import ctypes
-        pt = ctypes.wintypes.POINT() if hasattr(ctypes, "wintypes") else None
-        if pt is None:
-            import ctypes.wintypes
-            pt = ctypes.wintypes.POINT()
-        ctypes.windll.user32.GetCursorPos(ctypes.byref(pt))
-        _ORIG_CURSOR = (int(pt.x), int(pt.y))
+        from smoke_lib import cursor_guard
+        _ORIG_CURSOR = cursor_guard.get_cursor_pos()   # None when guarded off or headless
     except Exception as e:
         print(f"[viscap] WARN save cursor: {e}", file=sys.stderr)
 

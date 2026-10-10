@@ -13,8 +13,15 @@ So the runner and the capture tool check the exe BEFORE launching:
 
   * the exe binary must contain the MC2_WINDOW_OFFSCREEN gate name (the
     capability itself, which a manifest cannot misreport), and
-  * when the install's deploy manifest names a src_commit, that commit must be a
-    descendant of MIN_COMMIT (the commit that introduced the cursor-grab fix).
+  * a game exe must carry a build fingerprint (scripts/exe_fingerprint.py) whose
+    commit is a descendant of MIN_COMMIT (the commit that introduced the
+    cursor-grab fix). The deploy manifest's src_commit is NOT trusted: it is git
+    HEAD at deploy time, so a stale exe copied out of a current tree would pass.
+    No fingerprint means refuse. The editor exe has no fingerprint and is judged
+    by the capability string alone.
+
+nofocus.spawn()/run() call this for mc2.exe and the editor exes, so every
+harness launcher is covered, not only the ones that remembered to ask.
 
 The golden install is additionally never a smoke target: it is a reference for
 visual goldens, not a build under test.
@@ -119,12 +126,55 @@ def is_golden(exe) -> bool:
     return Path(exe).resolve().parent.name.casefold() in GOLDEN_INSTALL_NAMES
 
 
+GAME_EXE_NAMES = frozenset({"mc2.exe"})
+EDITOR_EXE_NAMES = frozenset({"editrel.exe", "mission editor.exe"})
+
+
+def engine_kind(exe) -> Optional[str]:
+    """"game" / "editor" for the engine executables the harness must vet, else None."""
+    name = Path(str(exe)).name.casefold()
+    if name in GAME_EXE_NAMES:
+        return "game"
+    if name in EDITOR_EXE_NAMES:
+        return "editor"
+    return None
+
+
+_FP_CACHE: dict = {}
+
+
+def embedded_commit(exe) -> "tuple[Optional[str], str]":
+    """-> (commit compiled into the exe, reason it is unavailable).
+
+    The commit is read from the binary itself (scripts/exe_fingerprint.py). The deploy
+    manifest's src_commit is NOT used: deploy_payload records git HEAD at deploy time, so a
+    stale exe copied out of a current tree would look current.
+    """
+    p = Path(exe)
+    st = p.stat()
+    key = (str(p), st.st_mtime_ns, st.st_size)
+    if key not in _FP_CACHE:
+        try:
+            from .. import exe_fingerprint
+        except ImportError:
+            import exe_fingerprint
+        _FP_CACHE[key] = exe_fingerprint.extract(p)
+    fp = _FP_CACHE[key]
+    if not fp.get("present"):
+        return None, f"{fp.get('reason', 'unreadable')}: {fp.get('detail', '')}".strip()
+    sha = fp.get("sha")
+    if not sha or sha == "unknown":
+        return None, "the build fingerprint carries no commit (built outside git)"
+    return sha + ("-dirty" if fp.get("dirty") else ""), ""
+
+
 @dataclass
 class Verdict:
     exe: str
     install: str
     src_commit: Optional[str]
     reasons: List[str] = field(default_factory=list)
+    manifest_commit: Optional[str] = None
 
     @property
     def ok(self) -> bool:
@@ -135,18 +185,29 @@ class Verdict:
 
     def refusal(self) -> str:
         return (f"[exe-guard] REFUSING to launch install '{self.install}' "
-                f"(src_commit={self.src_commit or 'unknown'}): " + " ".join(self.reasons))
+                f"(embedded commit {self.src_commit or 'unknown'}): " + " ".join(self.reasons))
 
 
 def check_exe(exe, *, purpose: str = "smoke", env: Optional[Mapping[str, str]] = None,
               is_ancestor: GitAncestor = git_is_ancestor,
-              has_offscreen: Callable[[object], bool] = exe_has_offscreen) -> Verdict:
-    """Judge whether `exe` may be launched. `purpose` is "smoke" or "capture"."""
+              has_offscreen: Callable[[object], bool] = exe_has_offscreen,
+              commit_of: Callable[[object], "tuple[Optional[str], str]"] = embedded_commit) -> Verdict:
+    """Judge whether `exe` may be launched. `purpose` is "smoke" (golden refused), "capture" or "spawn".
+
+    A game exe must carry a build fingerprint whose commit descends from MIN_COMMIT; an exe
+    with no fingerprint is refused (nothing proves what it is). The editor exe has no
+    fingerprint, so it is judged by the MC2_WINDOW_OFFSCREEN capability alone.
+    """
     env = os.environ if env is None else env
     exe_p = Path(exe).resolve()
-    install = exe_p.parent.name
-    sha = read_src_commit(exe_p.parent)
-    v = Verdict(exe=str(exe_p), install=install, src_commit=sha)
+    kind = engine_kind(exe_p) or "game"
+    v = Verdict(exe=str(exe_p), install=exe_p.parent.name, src_commit=None,
+                manifest_commit=read_src_commit(exe_p.parent))
+    why_unknown = ""
+    if kind == "game":
+        v.src_commit, why_unknown = commit_of(exe_p)
+    else:
+        v.src_commit = "n/a (editor)"
 
     if purpose == "smoke" and is_golden(exe_p):
         v.reasons.append("the golden install is a visual-golden reference and is never a smoke target; "
@@ -157,9 +218,13 @@ def check_exe(exe, *, purpose: str = "smoke", env: Optional[Mapping[str, str]] =
         if not has_offscreen(exe_p):
             stale.append(f"the exe lacks the {OFFSCREEN_MARK.decode()} capability, so it would open a "
                          f"visible window on the user's desktop.")
-        if sha and is_ancestor(MIN_COMMIT, sha.removesuffix("-dirty")) is False:
-            stale.append(f"src_commit {sha} is not a descendant of {MIN_COMMIT} "
-                         f"(the background-launch fix); redeploy a current build.")
+        if kind == "game":
+            if v.src_commit is None:
+                stale.append(f"the exe has no usable embedded build fingerprint ({why_unknown}); "
+                             f"nothing proves it postdates {MIN_COMMIT}.")
+            elif is_ancestor(MIN_COMMIT, v.src_commit.removesuffix("-dirty")) is False:
+                stale.append(f"embedded commit {v.src_commit} is not a descendant of {MIN_COMMIT} "
+                             f"(the background-launch fix); redeploy a current build.")
         if stale:
             stale.append(f"Only the owner may override this, with {OWNER_OVERRIDE_ENV}=1.")
         v.reasons.extend(stale)

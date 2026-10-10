@@ -248,7 +248,7 @@ def props_pose_assert(install: Path, mission: str, wait: int) -> bool:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--install", default="A:/Games/mc2-opengl/mc2-win64-0.4c")
+    ap.add_argument("--install", default="A:/Games/mc2-opengl/mc2-win64-v0.4")
     ap.add_argument("--mission", default="mc2_01")
     ap.add_argument("--wait", type=int, default=32)
     ap.add_argument("--out-png", default=None)

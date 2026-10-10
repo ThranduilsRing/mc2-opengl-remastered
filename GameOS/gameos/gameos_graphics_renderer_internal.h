@@ -6,6 +6,7 @@
 // Include gameos_graphics_material_internal.h, not this file: it relies on the declarations that header makes before including it.
 
 
+// The renderer class and the types only it uses.
 
 
 class gosRenderer {
