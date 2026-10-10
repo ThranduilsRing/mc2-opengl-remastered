@@ -226,6 +226,11 @@ class RawEnvReads(unittest.TestCase):
         finally:
             r.TRACKED_DIRS = old
 
+    def test_launcher_raw_reads_are_counted_other_tools_are_not(self):
+        text = 'void f() { GetEnvironmentVariableA("MC2_IMPORTER_DIR", b, n); }'
+        self.assertTrue(r._scan_item(("tools/mc2_launcher/x.cpp", text.encode()))[1].get("LG19"))
+        self.assertFalse(r._scan_item(("tools/other/x.cpp", text.encode()))[1].get("LG19"))
+
     def test_legacy_tool_dirs_are_strict_for_the_gate_idioms_only(self):
         for d in ("editor", "gui", "Viewer"):
             self.assertIn(d, r.DEFAULT_DIRS)

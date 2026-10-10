@@ -273,7 +273,7 @@
    "LG16": 0,
    "LG17": 0,
    "LG18": 0,
-   "LG19": 0,
+   "LG19": 1,
    "LG20": 58
   }
  },
@@ -5901,13 +5901,14 @@
    "LG20": 2
   },
   "tools/mc2_launcher/mc2_launcher.cpp": {
+   "LG19": 1,
    "LG20": 54
   },
   "tools/render_state_contract_harness/render_state_contract_harness.cpp": {
    "LG20": 2
   }
  },
- "head": "20e160328",
+ "head": "a51e094d1",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

@@ -53,6 +53,9 @@ DEFAULT_DIRS = ["GameOS", "mclib", "code", "RenderCore", "GuiRuntime",
                 "RenderWorld", "GameAdapters", "HostServices", "EditorBridge", "tools", "tests",
                 "editor", "gui", "Viewer"]
 GATE_ONLY_DIRS = ("editor", "gui", "Viewer")
+# The launcher is a standalone exe that does not link the gate library, so its one raw MC2_IMPORTER_DIR read is a
+# legitimate exception; it is still counted (LG19, strict per file) so a second raw read cannot appear unseen.
+LG19_TOOL_PREFIXES = ("tools/mc2_launcher/",)
 # Scanned for LG20 only (the other idioms are not tracked in the harnesses and tools).
 LG20_ONLY_DIRS = ("tools", "tests")
 # LG19 only, warned on and never failed: dirs a baseline does not own yet. Empty since G8 moved editor/gui/Viewer
@@ -405,7 +408,8 @@ def _scan_item(item):
     hits = scan_text(data.decode("latin-1"), rel)
     top = rel.split("/")[0]
     if top in LG20_ONLY_DIRS:
-        hits = {k: v for k, v in hits.items() if k == "LG20"}
+        keep = ("LG19", "LG20") if rel.startswith(LG19_TOOL_PREFIXES) else ("LG20",)
+        hits = {k: v for k, v in hits.items() if k in keep}
     elif top in GATE_ONLY_DIRS:
         hits = {k: v for k, v in hits.items() if k in ("LG19", "LG20")}
     return rel, hits
