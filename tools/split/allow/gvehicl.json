@@ -1,0 +1,7 @@
+{
+ "base": "b813d3512~0",
+ "src": "code/gvehicl.cpp",
+ "stem": "gvehicl",
+ "scripts": ["scripts/check-order-gate-coverage.py", "scripts/run_smoke.py"],
+ "_scripts_reason": "check-order-gate-coverage.py now reads code/gvehicl_weapons.cpp (fireWeapon moved); run_smoke.py names gvehicl.cpp only in a comment."
+}
