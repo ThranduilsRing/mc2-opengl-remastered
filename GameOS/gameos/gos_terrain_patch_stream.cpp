@@ -2,6 +2,7 @@
 #include "gos_terrain_patch_stream.h"
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "utils/mc2log.h"  // LOGGING-FACADE-P1 pilot: MC2_EVENT for structured lines
+#include "Gates/gate.h"   // typed gate registry: gate::get<"MC2_X">()
 #include "gos_terrain_bridge.h"   // gos_terrain_bridge_* free functions (Task 0)
 #include "../../RenderCore/terrain_path_telemetry.h"  // TERRAIN-PATH-TELEMETRY-1
 
@@ -45,14 +46,14 @@ namespace {
     bool s_traceOn    = false;
 
     static const bool s_directBindOn =
-        (getenv("MC2_PATCHSTREAM_DIRECT_TEXTURE_BIND") != nullptr);
+        mc2::gate::get<"MC2_PATCHSTREAM_DIRECT_TEXTURE_BIND">();
     static const bool s_directBindCheck =
-        (getenv("MC2_PATCHSTREAM_DIRECT_TEXTURE_BIND_CHECK") != nullptr);
+        mc2::gate::get<"MC2_PATCHSTREAM_DIRECT_TEXTURE_BIND_CHECK">();
     static bool s_directBindBannerSeen       = false;
     static bool s_directBindFirstDrawChecked = false;
 
-    static const bool s_quadRecordsOn     = (getenv("MC2_PATCHSTREAM_QUAD_RECORDS")      != nullptr);
-    static const bool s_quadRecordsDrawOn = (getenv("MC2_PATCHSTREAM_QUAD_RECORDS_DRAW") != nullptr);
+    static const bool s_quadRecordsOn     = mc2::gate::get<"MC2_PATCHSTREAM_QUAD_RECORDS">();
+    static const bool s_quadRecordsDrawOn = mc2::gate::get<"MC2_PATCHSTREAM_QUAD_RECORDS_DRAW">();
 
     // Record SSBO — persistent-mapped, triple-buffered alongside color/extras VBOs.
     // Only allocated when s_quadRecordsOn. SSBO binding point 0.
@@ -66,10 +67,10 @@ namespace {
     // Not slot-indexed — written and consumed within the same frame.
     static TerrainQuadRecord s_recordShadow[kPatchStreamMaxRecordsPerSlot];
 
-    static const bool s_thinRecordsOn     = (getenv("MC2_PATCHSTREAM_THIN_RECORDS")      != nullptr);
-    static const bool s_thinRecordsDrawOn = (getenv("MC2_PATCHSTREAM_THIN_RECORDS_DRAW") != nullptr);
-    static const bool s_fastPathOn        = (getenv("MC2_PATCHSTREAM_THIN_RECORD_FASTPATH") != nullptr);
-    static const bool s_thinDebugOn       = (getenv("MC2_THIN_DEBUG") != nullptr);
+    static const bool s_thinRecordsOn     = mc2::gate::get<"MC2_PATCHSTREAM_THIN_RECORDS">();
+    static const bool s_thinRecordsDrawOn = mc2::gate::get<"MC2_PATCHSTREAM_THIN_RECORDS_DRAW">();
+    static const bool s_fastPathOn        = mc2::gate::get<"MC2_PATCHSTREAM_THIN_RECORD_FASTPATH">();
+    static const bool s_thinDebugOn       = mc2::gate::get<"MC2_THIN_DEBUG">();
     static bool       s_thinDebugPrinted  = false;
 
     // Recipe SSBO — single-buffered, persistent-mapped. Written once per new quad.
@@ -308,10 +309,9 @@ static GLuint allocPersistentSSBO(GLsizeiptr totalBytes, void** outMappedPtr) {
 
 bool TerrainPatchStream::init()
 {
-    const char* env = getenv("MC2_MODERN_TERRAIN_SURFACE");
-    s_killswitch = (env == nullptr) || (env[0] != '0');
-    s_traceOn    = (getenv("MC2_PATCH_STREAM_TRACE") != nullptr);
-    s_censusOn   = (getenv("MC2_BUCKET_CENSUS") != nullptr);
+    s_killswitch = mc2::gate::get<"MC2_MODERN_TERRAIN_SURFACE">();
+    s_traceOn    = mc2::gate::get<"MC2_PATCH_STREAM_TRACE">();
+    s_censusOn   = mc2::gate::get<"MC2_BUCKET_CENSUS">();
 
     if (s_censusOn) {
         MC2_EVENT(Terrain, "BUCKET_CENSUS", 1,
@@ -325,7 +325,7 @@ bool TerrainPatchStream::init()
     // Step 4 bailout — env-gated forced init failure for testing the
     // fallback path without driver stress. Default off; intentional debug
     // instrumentation, leave in tree (memory/debug_instrumentation_rule.md).
-    if (getenv("MC2_PATCH_STREAM_FORCE_INIT_FAIL")) {
+    if (mc2::gate::get<"MC2_PATCH_STREAM_FORCE_INIT_FAIL">()) {
         MC2_EVENT(Terrain, "PATCH_STREAM", 1,
             "event=init_fail reason=force_env");
         fflush(stderr);
