@@ -22,6 +22,7 @@
 #include "utils/timing.h"
 #include "utils/file_utils.h"
 #include "gos_profiler.h"
+#include "Gates/gate.h"
 
 
 std::map<std::string, glsl_shader*> glsl_shader::s_shaders[glsl_shader::NUM_SHADER_TYPES];
@@ -417,10 +418,8 @@ namespace {
 
 bool spirvPilotEnabled()
 {
-    const char* e = std::getenv("MC2_SHADER_SPIRV");
-    if (!e || e[0] != '1') return false;                 // default OFF
-    const char* hr = std::getenv("MC2_SHADER_HOT_RELOAD");
-    if (hr && hr[0] == '1') return false;                // dev loop stays GLSL
+    if (!mc2::gate::get<"MC2_SHADER_SPIRV">()) return false;      // default OFF
+    if (mc2::gate::get<"MC2_SHADER_HOT_RELOAD">()) return false;  // dev loop stays GLSL
     // GL 4.3 context request does NOT imply SPIR-V support — check at runtime.
     if (!(GLEW_ARB_gl_spirv || GLEW_VERSION_4_6)) return false;
     return true;
@@ -428,8 +427,7 @@ bool spirvPilotEnabled()
 
 bool spirvFatal()
 {
-    const char* e = std::getenv("MC2_SHADER_SPIRV_FATAL");
-    return e && e[0] == '1';
+    return mc2::gate::get<"MC2_SHADER_SPIRV_FATAL">();
 }
 
 static bool spirvEndsWith(const char* fname, const char* suffix)

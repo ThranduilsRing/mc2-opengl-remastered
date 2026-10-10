@@ -66,8 +66,8 @@
    "LG16": 7,
    "LG17": 81,
    "LG18": 11,
-   "LG19": 30,
-   "LG20": 58
+   "LG19": 27,
+   "LG20": 55
   },
   "GuiRuntime": {
    "LG01": 1,
@@ -1149,9 +1149,7 @@
    "LG12a": 8,
    "LG12b": 4,
    "LG13": 1,
-   "LG17": 1,
-   "LG19": 3,
-   "LG20": 3
+   "LG17": 1
   },
   "GameOS/gameos/utils/shader_builder.h": {
    "LG02": 5,
@@ -5805,7 +5803,7 @@
    "LG20": 1
   }
  },
- "head": "c5eb1e10a",
+ "head": "879c51ca2",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
