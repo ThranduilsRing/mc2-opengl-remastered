@@ -65,22 +65,8 @@ def _load_lease(repo_root: Path):
 
 
 def _lane_names(repo_root: Path) -> dict:
-    """name -> path, merged from check-deploy-target GOOD_DIRS + deploy_lease."""
-    names: dict = {}
-    try:
-        for name, path in _load_lease(repo_root).DEPLOY_FOLDERS:
-            names[name] = path
-    except Exception:
-        pass
-    try:
-        for name, path in _load_cdt(repo_root).GOOD_DIRS:
-            names.setdefault(name, path)
-    except Exception:
-        pass
-    # Builder lanes the smoke-lease/GOOD_DIRS lists do not carry (e.g. lane2).
-    for name, path in lane_model.install_paths():
-        names.setdefault(name, path)
-    return names
+    """name -> path, from the one lane model."""
+    return dict(lane_model.install_paths())
 
 
 def _git_head(repo_root: Path) -> Optional[str]:

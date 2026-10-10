@@ -36,6 +36,12 @@ from pathlib import Path
 from typing import Optional
 from . import nofocus  # noqa: E402  (OWNER RULE: no window for any child process)
 
+# The lane names and install paths live in ONE model (tools/repo_intel/lane_model.py); this module only decides
+# which of them the unattended walk may lease.
+import sys as _sys  # noqa: E402
+_sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools" / "repo_intel"))
+import lane_model  # noqa: E402
+
 # ── Constants ──────────────────────────────────────────────────────────────────
 
 # Shared registry path — MUST be an absolute path outside any worktree so every
@@ -51,14 +57,12 @@ _WRITE_RETRY_SLEEP = 0.05  # seconds
 
 # Canonical deploy folders in preference order.
 # (name -> absolute path string)
-DEPLOY_FOLDERS: list[tuple[str, str]] = [
-    # 2026-10-05 reset: one dev lane + the golden. Older lanes archived to
-    # E:/mc2-archive-2026-10/installs.
-    ("0.4",         r"A:/Games/mc2-opengl/mc2-win64-v0.4"),
-    ("0.4c",        r"A:/Games/mc2-opengl/mc2-win64-v0.4c"),
-]
+# 2026-10-05 reset: one dev lane + the golden walk automatically; another builder lane (lane2) is leased only
+# by name (--deploy lane2), never picked by the walk. Older lanes are archived to E:/mc2-archive-2026-10/installs.
+_WALK_LANES = ("0.4", "0.4c")
+DEPLOY_FOLDERS: list[tuple[str, str]] = [(n, p) for n, p in lane_model.install_paths() if n in _WALK_LANES]
 
-_NAME_TO_PATH: dict[str, str] = {name: path for name, path in DEPLOY_FOLDERS}
+_NAME_TO_PATH: dict[str, str] = dict(lane_model.install_paths())
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────

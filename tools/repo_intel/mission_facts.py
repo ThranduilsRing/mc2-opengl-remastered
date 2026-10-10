@@ -31,6 +31,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
+import lane_model
+
 PACKET_MAGIC = 0xFEEDFACE
 TYPE_SHIFT = 29
 OFFSET_MASK = (1 << TYPE_SHIFT) - 1
@@ -43,29 +45,9 @@ VALID_GRID_SIDES = (60, 80, 100, 120)
 SIDECAR_FILES = ("control_map.png", "shoreline_mask.png",
                  "visual_height_4x.r32", "sidecar.json")
 
-# Fallback lane map — the lanes that exist after the 2026-10-05 install
-# reorganisation (see lane_model.LANES). DEPLOY_FOLDERS is imported live when
-# available; lane2 is appended below because the lease list does not carry it.
-_FALLBACK_LANES: list[tuple[str, str]] = [
-    ("0.4",   r"A:/Games/mc2-opengl/mc2-win64-v0.4"),
-    ("0.4c",  r"A:/Games/mc2-opengl/mc2-win64-v0.4c"),
-    ("lane2", r"A:/Games/mc2-opengl/mc2-win64-lane2"),
-]
-
-
 def deploy_lanes(repo_root: Path) -> list[tuple[str, str]]:
-    """Canonical (name, path) deploy lanes; live-imported from deploy_lease."""
-    try:
-        scripts = str(Path(repo_root) / "scripts")
-        if scripts not in sys.path:
-            sys.path.insert(0, scripts)
-        from smoke_lib.deploy_lease import DEPLOY_FOLDERS  # type: ignore
-        lanes = list(DEPLOY_FOLDERS)
-    except Exception:
-        return list(_FALLBACK_LANES)
-    # Add builder lanes the lease list does not carry (lane2).
-    seen = {n for n, _ in lanes}
-    return lanes + [(n, p) for n, p in _FALLBACK_LANES if n not in seen]
+    """Canonical (name, path) deploy lanes, from the one lane model."""
+    return list(lane_model.install_paths())
 
 
 # ---------------------------------------------------------------------------

@@ -70,10 +70,11 @@ LANE_LOCK_TTL_SECS = 3600
 # ---------------------------------------------------------------------------
 
 # Canonical GOOD deploy dirs, preference order (used for free-dir suggestion).
-GOOD_DIRS: list[tuple[str, str]] = [
-    # 2026-10-05 reset: single dev lane (0.4c is the golden, not a deploy target).
-    ("0.4",         r"A:/Games/mc2-opengl/mc2-win64-v0.4"),
-]
+# The lane names and paths come from the one lane model; 0.4c is the golden, not a deploy target.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools" / "repo_intel"))
+import lane_model  # noqa: E402
+
+GOOD_DIRS: list[tuple[str, str]] = [(n, p) for n, p in lane_model.install_paths() if n != "0.4c"]
 
 # KNOWN-BAD trees. basename (casefolded) -> reason. mc2-win64-0.4c is the broken
 # tree: stock AND modified exe both crash_silent / PAUSE-loop, 0 frames. Smoking
