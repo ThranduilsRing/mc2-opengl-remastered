@@ -49,6 +49,7 @@
 #include "editorinterface.h"
 
 #include <SDL2/SDL.h>
+#include "Gates/gate.h"
 
 #ifdef TRACY_ENABLE
 #  include "tracy/Tracy.hpp"
@@ -112,7 +113,7 @@ static bool g_editorAudioCreated = false;
 // ---------------------------------------------------------------------------
 static void EditorGameOSTrace(const char* fmt, ...)
 {
-	if (getenv("MC2_EDITOR_TRACE") == NULL)
+	if (!mc2::gate::get<"MC2_EDITOR_TRACE">())
 		return;
 
     FILE* f = fopen("editor-startup.log", "a");
@@ -530,8 +531,8 @@ DWORD __stdcall RunGameOSLogic()
             // MC2_EDITOR_RTT=0 disables (full-window scene, panels overlay).
             static int s_panelLogical = -1;   // logical (96-dpi) panel width
             if (s_panelLogical < 0) {
-                const char* p = std::getenv("MC2_EDITOR_PANEL_W");
-                s_panelLogical = (p && atoi(p) > 0) ? atoi(p) : 320;
+                const int pw = mc2::gate::get<"MC2_EDITOR_PANEL_W">();   // row default 320
+                s_panelLogical = (pw > 0) ? pw : 320;
             }
             int sw = w, sh = h;
             if (GuiRuntime::RttEnabled() && w > 0 && h > 0) {
