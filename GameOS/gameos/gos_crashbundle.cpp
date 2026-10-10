@@ -291,6 +291,7 @@ static size_t format_crash_txt(EXCEPTION_POINTERS* ep, char* out, size_t cap)
     sbuff(out, cap, &pos, "Time: %04u-%02u-%02u %02u:%02u:%02u\n",
           st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
     sbuff(out, cap, &pos, "Build: %s\n", MC2_BUILD_GIT_SHA);
+    sbuff(out, cap, &pos, "Fingerprint: %s\n", MC2_BUILD_FP_LITERAL);   // also keeps the MC2FP1 literal in the exe
     sbuff(out, cap, &pos, "Code: 0x%08lX  Flags: 0x%08lX  Addr: %p\n",
           ep->ExceptionRecord->ExceptionCode,
           ep->ExceptionRecord->ExceptionFlags,
