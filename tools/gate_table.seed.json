@@ -65,11 +65,11 @@
    "doc": "",
    "readers": [
     {
-     "at": "code/ablmc2.cpp:8398",
+     "at": "code/ablmc2_repro.cpp:15",
      "idiom": "Lead1"
     },
     {
-     "at": "code/ablmc2.cpp:8445",
+     "at": "code/ablmc2_repro.cpp:56",
      "idiom": "Lead1"
     }
    ],
@@ -250,36 +250,12 @@
    "kind": "Bool",
    "default": false,
    "rule": "Presence",
-   "owner": "code",
+   "owner": "unclassified",
    "retireBy": "",
    "doc": "",
    "readers": [
     {
      "at": "GameOS/gameos/gos_crashbundle.cpp:680",
-     "idiom": "Presence"
-    },
-    {
-     "at": "code/ablmc2.cpp:7210",
-     "idiom": "Presence"
-    },
-    {
-     "at": "code/ablmc2.cpp:7256",
-     "idiom": "Presence"
-    },
-    {
-     "at": "code/ablmc2.cpp:7274",
-     "idiom": "Presence"
-    },
-    {
-     "at": "code/ablmc2.cpp:7287",
-     "idiom": "Presence"
-    },
-    {
-     "at": "code/ablmc2.cpp:7300",
-     "idiom": "Presence"
-    },
-    {
-     "at": "code/ablmc2.cpp:7325",
      "idiom": "Presence"
     },
     {
@@ -2666,11 +2642,11 @@
      "idiom": "Lead0P"
     },
     {
-     "at": "code/mech.cpp:8689",
+     "at": "code/mech.cpp:7984",
      "idiom": "Lead0P"
     },
     {
-     "at": "code/mover.cpp:6645",
+     "at": "code/mover_attack.cpp:199",
      "idiom": "Lead0P"
     }
    ],
@@ -5429,7 +5405,7 @@
      "idiom": "Presence"
     },
     {
-     "at": "code/mech.cpp:2463",
+     "at": "code/mech.cpp:2306",
      "idiom": "Presence"
     },
     {
@@ -5699,7 +5675,7 @@
    "doc": "ISSUE-17 fire-refusal instrumentation (default OFF = byte-identical; needs MC2_DIAG_TAGS=...,COMBAT).",
    "readers": [
     {
-     "at": "code/mech.cpp:8350",
+     "at": "code/mech.cpp:7662",
      "idiom": "Lead0P"
     },
     {
@@ -7584,7 +7560,7 @@
      "idiom": "Presence"
     },
     {
-     "at": "code/mech.cpp:146",
+     "at": "code/mech.cpp:142",
      "idiom": "Presence"
     },
     {
@@ -11488,7 +11464,7 @@
    "doc": "ISSUE-50 diagnostics (code/mech.cpp BattleMech::update): for every off-GUI mech, periodically (~1/s) logs [LINKUP] part/name/status/los, plus [LINKUP] linkup-complete when the link-up fires \u2014 makes the link-up latch (hidden reinforcement mech never appearing) observable in the field.",
    "readers": [
     {
-     "at": "code/mech.cpp:6183",
+     "at": "code/mech.cpp:5677",
      "idiom": "Presence"
     }
    ],
@@ -22919,7 +22895,7 @@
      "idiom": "Presence"
     },
     {
-     "at": "code/mover.cpp:3352",
+     "at": "code/mover_combat.cpp:17",
      "idiom": "Presence"
     }
    ],

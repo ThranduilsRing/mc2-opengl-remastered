@@ -6,16 +6,16 @@ Probes: **U** unset, **E** `""`, **Z** `"0"`, **F** `"false"`, **O** `"1"`, **X*
 
 ## Totals
 
-Scanned: commit c6c99049e.
+Scanned: commit 8e7b4724c.
 
 | Measure | Count |
 |---|---|
 | gates named by a literal in scanned code | 1131 |
 | gates with at least one classified reader | 1117 |
-| `"MC2_*"` literal occurrences | 1701 |
+| `"MC2_*"` literal occurrences | 1695 |
 | literals not passed to an env read (tables, writers, indirect names) | 43 |
-| read sites analysed | 1658 |
-| reader sites with an outcome vector | 1567 |
+| read sites analysed | 1652 |
+| reader sites with an outcome vector | 1561 |
 | reader sites comparing a token no probe hits (not comparable) | 51 |
 | sites where the probe decides nothing (prints, paths) | 17 |
 | sites the tool could not classify | 23 |
@@ -103,7 +103,7 @@ Source: `tools/gate_g0_ledger.json`. `resolved` = the readers now agree; `enum` 
 
 | Class | Reader sites |
 |---|---|
-| Presence | 480 |
+| Presence | 474 |
 | Lead0Kill | 199 |
 | Lead0 | 192 |
 | Num(atof,raw) | 157 |
