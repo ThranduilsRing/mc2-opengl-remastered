@@ -5,7 +5,7 @@ so a split must keep the branch sequence; comparing comment- and whitespace-stri
 Usage: py -3 tools/split/verb_chain_equiv.py --old-rev REV --old-file PATH --dispatcher PATH FILE...
   The old chain is the text between 'if (line == "toggle_pause")' and the 'if (ack) {' epilogue of the old file; the new chain is
   the bodies of the uiCmd<Group> functions found in FILE... concatenated in the order the dispatcher calls them."""
-import argparse, re, subprocess, sys
+import argparse, os, re, subprocess, sys
 
 
 def strip_comments(t):
@@ -48,8 +48,11 @@ ap.add_argument("--old-file", required=True)
 ap.add_argument("--dispatcher", required=True)
 ap.add_argument("files", nargs="+")
 a = ap.parse_args()
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "scripts"))
+import console_child  # noqa: E402
+
 old = subprocess.run(["git", "show", "%s:%s" % (a.old_rev, a.old_file)], capture_output=True, text=True, encoding="utf-8",
-                     creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)).stdout
+                     **console_child.child_kwargs(redirected=True)).stdout
 s = old.index('if (line == "toggle_pause")')
 e = old.index("if (ack) {", s)
 old_chain = norm(old[s:e])
