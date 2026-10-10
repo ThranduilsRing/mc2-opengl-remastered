@@ -179,7 +179,7 @@ L(Lead0, "MC2_CEMENT_RAMP_WORD", Bool, false, "terrain", "", "CEMENT-WORD-RAMP-1
 L(Lead0, "MC2_CEMENT_ROAD_ART_DETECT", Bool, false, "terrain", "", "CEMENT-INTRACELL-1 ARM C: detect the BAKED ASPHALT ROAD TILESET authored inside SOLID cement catalog cells, and exclude those cells from every concrete...", passthrough | registry(Feature, "MC2_FEATURE_CEMENT_ROAD_ART_DETECT", -1, false) | verified),
 // history: docs/gate-history.md#MC2_CEMENT_TRANSITION_FALLBACK
 L(Lead0, "MC2_CEMENT_TRANSITION_FALLBACK", Bool, false, "terrain", "", "CEMENT-TRANSITION-FALLBACK-1 (MC2-03-CEMENT-PINK-1): cure MISSING ROAD SWATHS (user report, mc2_24).", passthrough | registry(Feature, "MC2_FEATURE_CEMENT_TRANSITION_FALLBACK", -1, false) | verified),
-L(Presence, "MC2_CHEAT_INFINITE_MONEY", Bool, false, "mech", "", "Interactive cheat gates -- read once at startup, default OFF (unset = nullptr = false)"),
+L(Presence, "MC2_CHEAT_INFINITE_MONEY", Bool, false, "mech", "", "Interactive cheat gates -- read once at startup, default OFF (unset = nullptr = false)", verified),
 L(Presence, "MC2_CHEAT_SALVAGE_ALL", Bool, false, "mech", "", ""),
 L(Lead0, "MC2_CLOUD_SHADOW", Bool, false, "post", "", "", passthrough | verified),
 L(Lead0P, "MC2_CLUSTER_DEPTH_PYRAMID", Bool, false, "gameos", "", ""),
@@ -614,11 +614,11 @@ L(Presence, "MC2_LOG_CURSOR", Bool, false, "code", "", "---- MC2_LOG_CURSOR diag
 G("MC2_LOG_DECORATE", String, "", "gameos", "", ""),  // default not derivable from the tree
 // history: docs/gate-history.md#MC2_LOG_FILE_RESOLVE
 G("MC2_LOG_FILE_RESOLVE", String, "", "code", "", "META-FIX design E tier 3 (mclib/file.cpp, parsed at InitModSearchPaths): file-resolution ladder diagnostics.", passthrough | registry(Trace, "MC2_TRACE_LOG_FILE_RESOLVE", -1, false) | verified),
-L(Presence, "MC2_LOG_LOGISTICS", Bool, false, "mech", "", "", passthrough),
-L(Presence, "MC2_LOG_LOGISTICS_FLOW", Bool, false, "code", "", ""),
+L(Presence, "MC2_LOG_LOGISTICS", Bool, false, "mech", "", "", passthrough | verified),
+L(Presence, "MC2_LOG_LOGISTICS_FLOW", Bool, false, "code", "", "", verified),
 L(Presence, "MC2_LOG_MECHICON", Bool, false, "mech", "", ""),
 L(Presence, "MC2_LOG_MECH_ICON", Bool, false, "mech", "", "", verified),
-L(Presence, "MC2_LOG_PILOTS", Bool, false, "code", "", "PILOTS-ROSTER diagnostic (MC2_LOG_PILOTS=1): how many pilots loaded + the roster path."),
+L(Presence, "MC2_LOG_PILOTS", Bool, false, "code", "", "PILOTS-ROSTER diagnostic (MC2_LOG_PILOTS=1): how many pilots loaded + the roster path.", verified),
 L(Presence, "MC2_LOG_PREVIEW", Bool, false, "mech", "", "", verified),
 L(Presence, "MC2_LOG_STRINGS", Bool, false, "gameos", "", ""),
 L(Lead0Kill, "MC2_LOWCAM_OBJ_NEARPAD", Bool, true, "code", "", "Default ON for this low-camera build; set MC2_LOWCAM_OBJ_NEARPAD=0 to disable.", verified),
@@ -826,7 +826,7 @@ L(Lead0, "MC2_PROP_LIGHT_LATCH_DIAG", Bool, false, "props", "", "FOGLIGHT-LATCH-
 P("MC2_PROP_LIGHT_LATCH_DIAG_INTERVAL", Int, 120, "props", "", "FOGLIGHT-LATCH-1: frame throttle for the [PROPLATCH v1] compare line (default 120).", passthrough | registry(Trace, "MC2_PROP_LIGHT_LATCH_DIAG_INTERVAL", -1, false) | verified),
 // history: docs/gate-history.md#MC2_PROP_SHADOW_RECEIVE
 P("MC2_PROP_SHADOW_RECEIVE", Int, 0, "post", "", "PROP-SHADOW-RECEIVE-1: static props RECEIVE the dynamic CSM cascade shadow in shadow_screen.frag (building self-shadow + prop-on-prop; the cascades already...", passthrough | registry(Feature, "MC2_FEATURE_PROP_SHADOW_RECEIVE", -1, false) | verified),
-L(Presence, "MC2_PURCHASE_ALL", Bool, false, "code", "", "MC2_PURCHASE_ALL (default OFF; launcher Engine Option): unlock every COMPONENT/weapon so modded gear (e.g."),
+L(Presence, "MC2_PURCHASE_ALL", Bool, false, "code", "", "MC2_PURCHASE_ALL (default OFF; launcher Engine Option): unlock every COMPONENT/weapon so modded gear (e.g.", verified),
 L(Lead0Kill, "MC2_QUADSETUP_ARMED_SKIP", Bool, true, "terrain", "", "", passthrough | verified),
 L(Presence, "MC2_R2B_STATIC_NATURAL_TRACE", Bool, false, "code", "", "", passthrough | verified),
 L(Lead0Kill, "MC2_R2B_TOUCH_PRESERVE", Bool, true, "code", "", "", passthrough | verified),
@@ -992,8 +992,8 @@ L(Presence, "MC2_SKIP_STATIC_TREES_DIAG", Bool, false, "code", "", "", verified)
 // history: docs/gate-history.md#MC2_SKYBOX_FOG_EXCLUDE
 L(Lead0Kill, "MC2_SKYBOX_FOG_EXCLUDE", Bool, true, "post", "", "SKYBOX-FOG-EXCLUDE-1/2.", passthrough | registry(Feature, "MC2_FEATURE_SKYBOX_FOG_EXCLUDE", -1, true) | verified),
 // history: docs/gate-history.md#MC2_SMART_LOAD
-L(Lead0Kill, "MC2_SMART_LOAD", Bool, true, "code", "", "SMART-LOAD startup/mission-load perf path (logisticsdata.cpp).", registry(Feature, "MC2_FEATURE_SMART_LOAD", -1, true)),
-L(Presence, "MC2_SMART_LOAD_TRACE", Bool, false, "code", "", ""),
+L(Lead0Kill, "MC2_SMART_LOAD", Bool, true, "code", "", "SMART-LOAD startup/mission-load perf path (logisticsdata.cpp).", registry(Feature, "MC2_FEATURE_SMART_LOAD", -1, true) | verified),
+L(Presence, "MC2_SMART_LOAD_TRACE", Bool, false, "code", "", "", verified),
 L(NonEmpty, "MC2_SMOKE_ACTIVE", Bool, false, "editor", "", ""),
 L(Presence, "MC2_SMOKE_FIXED_TIMESTEP", Bool, false, "gameos", "", "S9D deterministic clock.", passthrough),
 L(Presence, "MC2_SMOKE_MODE", Bool, false, "gameos", "", "", passthrough | verified),

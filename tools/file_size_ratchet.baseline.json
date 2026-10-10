@@ -37,7 +37,7 @@
   "code/gamecam.cpp": 1572,
   "code/gameobj.cpp": 2365,
   "code/infowindow.cpp": 1746,
-  "code/logisticsdata.cpp": 3442,
+  "code/logisticsdata.cpp": 3438,
   "code/logisticsdialog.cpp": 2149,
   "code/mechicon.cpp": 1969,
   "code/mechlabscreen.cpp": 1949,
@@ -93,7 +93,7 @@
   "mclib/vfxtile.cpp": 2944,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "7254bdcb7",
+ "head": "07e0af54b",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -213,7 +213,7 @@
   },
   {
    "file": "code/logisticsdata.cpp",
-   "lines": 3442
+   "lines": 3438
   },
   {
    "file": "GameOS/gameos/gos_mech_batcher.cpp",

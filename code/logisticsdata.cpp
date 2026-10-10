@@ -29,10 +29,12 @@ LogisticsData.cpp			: Implementation of the LogisticsData component.
 #include<string>
 #include<future>
 #include"../GameOS/gameos/diagnostic_trace.h"   // LOGISTICS front-end state capture
+#include "Gates/gate.h"
 
 // Interactive cheat gates -- read once at startup, default OFF (unset = nullptr = false)
-static const bool s_cheatInfiniteMoney = (getenv("MC2_CHEAT_INFINITE_MONEY") != nullptr);
-static const bool s_cheatSalvageAll    = (getenv("MC2_CHEAT_SALVAGE_ALL")    != nullptr);
+// The launcher writes this into launcher_env.json, which main() applies after static initialization, so it
+// is read at first use rather than in a namespace-scope initializer.
+static bool cheatInfiniteMoney() { static const bool on = mc2::gate::get<"MC2_CHEAT_INFINITE_MONEY">(); return on; }
 
 // SMART-LOAD-1: defer mech-bay data (components/pilots/variants) until first mech-bay accessor.
 // SMART-LOAD-DEFAULT-ON-1: default flipped ON (was default-OFF). Kill-switch preserved --
@@ -41,14 +43,8 @@ static const bool s_cheatSalvageAll    = (getenv("MC2_CHEAT_SALVAGE_ALL")    != 
 // code/logistics.cpp:248); smoke/tier1's justStartMission fast-path (mechcmd2.cpp:1813) calls
 // Mission::init() directly and never touches LogisticsData, so this flip is a no-op for smoke
 // mission_ready_ms -- validated via soak on the real splash/logistics path instead.
-static bool mc2_smartLoadDefaultOn()
-{
-    const char* v = getenv("MC2_SMART_LOAD");
-    if (!v) return true; // default ON
-    return !(v[0] == '0' && v[1] == '\0');
-}
-static const bool s_smartLoad      = mc2_smartLoadDefaultOn();
-static const bool s_smartLoadTrace = (getenv("MC2_SMART_LOAD_TRACE") != nullptr);
+static const bool s_smartLoad      = mc2::gate::get<"MC2_SMART_LOAD">();   // default ON
+static const bool s_smartLoadTrace = mc2::gate::get<"MC2_SMART_LOAD_TRACE">();
 
 #define SMART_LOAD_TRACE_LOG(fmt, ...) do { \
     if (s_smartLoadTrace) { printf("[SMART_LOAD] " fmt "\n", ##__VA_ARGS__); fflush(stdout); } \
@@ -143,7 +139,7 @@ void LogisticsData::init()
 	}
 
 #define LOG_INIT_TIME(label) do { \
-	if ( getenv("MC2_LOG_LOGISTICS") ) { \
+	if ( mc2::gate::get<"MC2_LOG_LOGISTICS">() ) { \
 		ULONGLONG _t = GetTickCount64(); \
 		printf("[LOGISTICS_INIT] " label " t=%llums\n", (unsigned long long)_t); fflush(stdout); \
 	} } while(0)
@@ -401,7 +397,7 @@ void LogisticsData::initPilots()
 	// roster path. Stock ~52; an MC2X/MCO compat roster (mc2x-compat/mco-compat
 	// data/objects/pilots.csv, VFS-overlaid) should report ~100+. Confirms whether
 	// the campaign/compat roster won over base stock.
-	if ( getenv("MC2_LOG_PILOTS") )
+	if ( mc2::gate::get<"MC2_LOG_PILOTS">() )
 	{
 		printf("[PILOTS] loaded=%d roster=%s\n", (int)pilots.Count(), pilotPath);
 		fflush(stdout);
@@ -416,11 +412,11 @@ void LogisticsData::initVariants()
 
 	// ---- MC2_LOG_LOGISTICS diagnostics (instrumentation only, no behavior change) ----
 	static FILE* s_logFile = nullptr;
-	if ( getenv("MC2_LOG_LOGISTICS") && !s_logFile ) {
+	if ( mc2::gate::get<"MC2_LOG_LOGISTICS">() && !s_logFile ) {
 		s_logFile = fopen("logistics_debug.log", "a");
 	}
 #define LOG_LOGISTICS(fmt, ...) do { \
-	if ( getenv("MC2_LOG_LOGISTICS") ) { \
+	if ( mc2::gate::get<"MC2_LOG_LOGISTICS">() ) { \
 		printf("[LOGISTICS] " fmt "\n", ##__VA_ARGS__); fflush(stdout); \
 		if (s_logFile) { fprintf(s_logFile, "[LOGISTICS] " fmt "\n", ##__VA_ARGS__); fflush(s_logFile); } \
 	} } while(0)
@@ -430,7 +426,7 @@ void LogisticsData::initVariants()
 
 	CSVFile variantFile;
 	long csvOpenResult = variantFile.open( variantPath );
-	if ( getenv("MC2_LOG_LOGISTICS") ) {
+	if ( mc2::gate::get<"MC2_LOG_LOGISTICS">() ) {
 		const char* modOwner = LookupModOwner(variantPath);
 		unsigned long fsz = (csvOpenResult == NO_ERR) ? variantFile.fileSize() : 0;
 		LOG_LOGISTICS("initVariants: buildings.csv open=%s size=%lu tier=%s",
@@ -522,7 +518,7 @@ void LogisticsData::initVariants()
 
 		// ENCYCLO-3D-2 diagnostic: what does the buildings.csv scale column
 		// actually yield per mech row? (fresh-boot chassis scale observed 0.0)
-		if ( getenv("MC2_LOG_PREVIEW") )
+		if ( mc2::gate::get<"MC2_LOG_PREVIEW">() )
 		{
 			if ( FILE* f = fopen("preview_debug.log","a") )
 			{
@@ -587,7 +583,7 @@ void LogisticsData::initVariants()
 	}
 
 	// ---- post-load diagnostics ----
-	if ( getenv("MC2_LOG_LOGISTICS") ) {
+	if ( mc2::gate::get<"MC2_LOG_LOGISTICS">() ) {
 		int totalVariants = 0;
 		bool shadowhawkFound = false;
 		for ( VARIANT_LIST::EIterator it = variants.Begin(); !it.IsDone(); it++ ) {
@@ -731,12 +727,12 @@ int LogisticsData::purchaseMech( LogisticsVariant* pVariant )
 
 	int RP = pVariant->getCost();
 
-	if ( s_cheatInfiniteMoney || missionInfo->getCBills() - RP >= 0 )
+	if ( cheatInfiniteMoney() || missionInfo->getCBills() - RP >= 0 )
 	{
 		int count = instance->createInstanceID( pVariant );
 		LogisticsMech* pMech = new LogisticsMech( pVariant, count );
 		instance->inventory.Append( pMech );
-		if ( !s_cheatInfiniteMoney )
+		if ( !cheatInfiniteMoney() )
 			missionInfo->decrementCBills( pVariant->getCost() );
 		return 0;
 	}
@@ -749,7 +745,7 @@ int LogisticsData::canPurchaseMech( LogisticsVariant* pVar )
 	if ( !pVar )
 		return INVALID_ID;
 
-	if ( s_cheatInfiniteMoney )
+	if ( cheatInfiniteMoney() )
 		return 0;
 
 	int RP = pVar->getCost();
@@ -1705,7 +1701,7 @@ void	LogisticsData::setMissionCompleted( )
 			// (on_gui / type_class / move_type AIR). Gate MC2_LOG_LOGISTICS_FLOW +
 			// MC2_DIAG_TAGS=LOGISTICS; read via get_diagnostic_events("LOGISTICS"). No behavior change.
 			{
-				static const bool s_logiFlowTrace = (getenv("MC2_LOG_LOGISTICS_FLOW") != nullptr);
+				static const bool s_logiFlowTrace = mc2::gate::get<"MC2_LOG_LOGISTICS_FLOW">();
 				if ( s_logiFlowTrace && pMover && mc2_diag::tagEnabled("LOGISTICS") )
 				{
 					int  _lg_otc  = pMover->getObjectType() ? (int)pMover->getObjectType()->getObjectTypeClass() : -1;
@@ -1744,7 +1740,7 @@ void	LogisticsData::setMissionCompleted( )
 				// (pPilot) survive — a pilotless re-add or a getMech miss is how a
 				// surviving Mad Dog still vanishes. Gate MC2_LOG_LOGISTICS_FLOW.
 				{
-					static const bool s_lfResolve = (getenv("MC2_LOG_LOGISTICS_FLOW") != nullptr);
+					static const bool s_lfResolve = mc2::gate::get<"MC2_LOG_LOGISTICS_FLOW">();
 					if ( s_lfResolve && mc2_diag::tagEnabled("LOGISTICS") )
 					{
 						const char* _r_pn = (pMover->getPilot() && pMover->getPilot()->getName()) ? pMover->getPilot()->getName() : "";
@@ -1809,7 +1805,7 @@ void	LogisticsData::setMissionCompleted( )
 								        vname );
 								fflush( stdout );
 								// LOGISTICS T4c: the actual deletion — variant unresolved, mech dropped.
-								if ( getenv("MC2_LOG_LOGISTICS_FLOW") && mc2_diag::tagEnabled("LOGISTICS") )
+								if ( mc2::gate::get<"MC2_LOG_LOGISTICS_FLOW">() && mc2_diag::tagEnabled("LOGISTICS") )
 								{
 									char _ml_vn[80]; const char* _ml_s = vname ? vname : "";
 									size_t _ml_k; for(_ml_k=0;_ml_k<79 && _ml_s[_ml_k];++_ml_k) _ml_vn[_ml_k]=(_ml_s[_ml_k]=='\\'||_ml_s[_ml_k]=='"')?'_':_ml_s[_ml_k]; _ml_vn[_ml_k]='\0';
@@ -1919,11 +1915,11 @@ long LogisticsData::updateAvailability()
 {
 	// ---- MC2_LOG_LOGISTICS diagnostics ----
 	static FILE* s_logFileUA = nullptr;
-	if ( getenv("MC2_LOG_LOGISTICS") && !s_logFileUA ) {
+	if ( mc2::gate::get<"MC2_LOG_LOGISTICS">() && !s_logFileUA ) {
 		s_logFileUA = fopen("logistics_debug.log", "a");
 	}
 #define LOG_LOGISTICS_UA(fmt, ...) do { \
-	if ( getenv("MC2_LOG_LOGISTICS") ) { \
+	if ( mc2::gate::get<"MC2_LOG_LOGISTICS">() ) { \
 		printf("[LOGISTICS] " fmt "\n", ##__VA_ARGS__); fflush(stdout); \
 		if (s_logFileUA) { fprintf(s_logFileUA, "[LOGISTICS] " fmt "\n", ##__VA_ARGS__); fflush(s_logFileUA); } \
 	} } while(0)
@@ -1937,7 +1933,7 @@ long LogisticsData::updateAvailability()
 	// roster (no random modded chassis like the imported Marauder leaking in;
 	// stock campaign mechs all become buildable since every component is now
 	// available).
-	static const bool s_purchaseAll = ( getenv( "MC2_PURCHASE_ALL" ) != nullptr );
+	static const bool s_purchaseAll = mc2::gate::get<"MC2_PURCHASE_ALL">();
 
 	EString purchaseFileName = missionInfo->getCurrentPurchaseFile();
 	purchaseFileName.MakeLower();
@@ -2327,7 +2323,7 @@ void LogisticsData::appendAvailability(const char* pFileName, bool* availableArr
 		// pre-fb4d2e52 backslash-vs-elfHash FST lookup failure) ate pilots /
 		// weapons unlocks with zero evidence. Env-gated trace so future
 		// purchase-file misses are visible in the field.
-		if ( getenv("MC2_LOG_LOGISTICS") )
+		if ( mc2::gate::get<"MC2_LOG_LOGISTICS">() )
 		{
 			printf( "[LOGISTICS] appendAvailability: open FAILED '%s' -- purchase file skipped\n",
 			        pFileName ? pFileName : "(null)" );

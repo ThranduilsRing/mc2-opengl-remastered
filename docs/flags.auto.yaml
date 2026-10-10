@@ -5,7 +5,7 @@
 generator_version: "3.0.0"
 gate_count: 1139
 registry_entry_count: 354
-verified_count: 820
+verified_count: 827
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -856,6 +856,7 @@ flags:
     rule: Presence
     owner: mech
     doc: "Interactive cheat gates -- read once at startup, default OFF (unset = nullptr = false)"
+    verified: true
   - name: MC2_CHEAT_SALVAGE_ALL
     kind: Bool
     default: false
@@ -3117,12 +3118,14 @@ flags:
     owner: mech
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_LOG_LOGISTICS_FLOW
     kind: Bool
     default: false
     rule: Presence
     owner: code
     doc: ""
+    verified: true
   - name: MC2_LOG_MECHICON
     kind: Bool
     default: false
@@ -3142,6 +3145,7 @@ flags:
     rule: Presence
     owner: code
     doc: "PILOTS-ROSTER diagnostic (MC2_LOG_PILOTS=1): how many pilots loaded + the roster path."
+    verified: true
   - name: MC2_LOG_PREVIEW
     kind: Bool
     default: false
@@ -4342,6 +4346,7 @@ flags:
     rule: Presence
     owner: code
     doc: "MC2_PURCHASE_ALL (default OFF; launcher Engine Option): unlock every COMPONENT/weapon so modded gear (e.g."
+    verified: true
   - name: MC2_QUADSETUP_ARMED_SKIP
     kind: Bool
     default: true
@@ -5169,6 +5174,7 @@ flags:
     rule: Lead0Kill
     owner: code
     doc: "SMART-LOAD startup/mission-load perf path (logisticsdata.cpp)."
+    verified: true
     registry: {feature_id: MC2_FEATURE_SMART_LOAD, kind: Feature, order: -1, default_on: true}
   - name: MC2_SMART_LOAD_TRACE
     kind: Bool
@@ -5176,6 +5182,7 @@ flags:
     rule: Presence
     owner: code
     doc: ""
+    verified: true
   - name: MC2_SMOKE_ACTIVE
     kind: Bool
     default: false
