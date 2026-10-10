@@ -66,8 +66,8 @@
    "LG16": 7,
    "LG17": 81,
    "LG18": 11,
-   "LG19": 15,
-   "LG20": 38
+   "LG19": 14,
+   "LG20": 37
   },
   "GuiRuntime": {
    "LG01": 1,
@@ -1264,9 +1264,7 @@
    "LG06": 3,
    "LG09": 24,
    "LG11": 1,
-   "LG13": 2,
-   "LG19": 1,
-   "LG20": 1
+   "LG13": 2
   },
   "GameOS/gameos/vulkan_post_hzb_native.cpp": {
    "LG03": 1,
@@ -5791,7 +5789,7 @@
    "LG20": 1
   }
  },
- "head": "e073b25b2",
+ "head": "84cae3c85",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
