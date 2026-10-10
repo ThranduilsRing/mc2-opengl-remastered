@@ -6,20 +6,20 @@ Probes: **U** unset, **E** `""`, **Z** `"0"`, **F** `"false"`, **O** `"1"`, **X*
 
 ## Totals
 
-Scanned: commit 45aa51906.
+Scanned: commit 43dcfdb0b.
 
 | Measure | Count |
 |---|---|
 | gates named by a literal in scanned code | 1131 |
-| gates with at least one classified reader | 1117 |
-| `"MC2_*"` literal occurrences | 1701 |
-| literals not passed to an env read (tables, writers, indirect names) | 45 |
-| read sites analysed | 1656 |
-| reader sites with an outcome vector | 1543 |
-| reader sites comparing a token no probe hits (not comparable) | 74 |
+| gates with at least one classified reader | 1118 |
+| `"MC2_*"` literal occurrences | 1708 |
+| literals not passed to an env read (tables, writers, indirect names) | 47 |
+| read sites analysed | 1661 |
+| reader sites with an outcome vector | 1510 |
+| reader sites comparing a token no probe hits (not comparable) | 113 |
 | sites where the probe decides nothing (prints, paths) | 17 |
-| sites the tool could not classify | 22 |
-| **gates with conflicting readers** | 6 |
+| sites the tool could not classify | 21 |
+| **gates with conflicting readers** | 5 |
 | **of which unresolved** (not ledgered as `enum` or `divergent`) | 0 |
 
 ## Design section 4: confirmed or corrected
@@ -34,8 +34,8 @@ Line numbers are checked against the scanned tree (see Totals for which); `corre
 | MC2_DISABLE_GOSFX | **no** | `mclib/mlr/mlr_gate.cpp:37` | confirmed | `mclib/mlr/mlr_gate.cpp:37` | Lead1 |  |
 |  |  | `GameOS/gameos/gameosmain.cpp:1340` | not-found | `` |  |  |
 |  |  | `GuiRuntime/GraphicsOptionsWindow.cpp:1477` | not-found | `` |  |  |
-| MC2_VK_TERRAIN_CSM | **no** | `GameOS/gameos/gos_terrain_lod_chunk.cpp:1858` | corrected | `GameOS/gameos/gos_terrain_lod_chunk.cpp:1765` | Tri(inherit) |  |
-|  |  | `GameOS/gameos/gos_terrain_lod_chunk.cpp:1900` | corrected | `GameOS/gameos/gos_terrain_lod_chunk.cpp:1765` | Tri(inherit) |  |
+| MC2_VK_TERRAIN_CSM | **no** | `GameOS/gameos/gos_terrain_lod_chunk.cpp:1858` | corrected | `GameOS/gameos/gos_terrain_lod_chunk.cpp:1696` | Tri(inherit) |  |
+|  |  | `GameOS/gameos/gos_terrain_lod_chunk.cpp:1900` | corrected | `GameOS/gameos/gos_terrain_lod_chunk.cpp:1696` | Tri(inherit) |  |
 | MC2_TERRAIN_HEIGHT_RESAMPLE_FACTOR | **no** | `GameOS/gameos/gos_terrain_height_tex.cpp:51` | corrected | `GameOS/gameos/gos_terrain_height_tex.cpp:53` | Typed(is) | one reader; the hazard is reader vs a proposed clamp row (accepts only 2 or 4), not reader vs reader |
 | MC2_LIGHT_GRID_DIM | **no** | `GameOS/gameos/gos_terrain_lighting.cpp:276` | corrected | `GameOS/gameos/gos_terrain_lighting.cpp:266` | Typed(get) | one reader; the hazard is reader vs a proposed clamp row (out of range falls back to the default) |
 | MC2_LIGHT_POOL_MAX | **no** | `GameOS/gameos/gos_terrain_lighting.cpp:859` | corrected | `GameOS/gameos/gos_terrain_lighting.cpp:814` | Typed(get) | one reader; the hazard is reader vs a proposed clamp row (out of range falls back to the default) |
@@ -55,7 +55,6 @@ Line numbers are checked against the scanned tree (see Totals for which); `corre
 | `MC2_SHADOW_DYNAMIC_PROP_CASTERS` | `GameOS/gameos/gos_static_prop_batcher.cpp:9776` Custom[00000001]<br>`mclib/txmmgr.cpp:3674` Lead0Kill<br>`mclib/txmmgr.cpp:3675` Lead0Kill | U: off vs on; E: off vs on; F: off vs on; O: off vs on; X: off vs on; X10: off vs on | yes (tests/smoke/matrices/shadow.json, tools/gate_g0_ledger.json, +1) | Enum/Int row: a reader compares a leading character (levels), so a Bool row would collapse them (owner decision) -- custom outcome vector(s): Custom[00000001] | n/a (owner decision) |
 | `MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE` | `mclib/bdactor.cpp:5566` Lead0Kill<br>`mclib/bdactor.cpp:5577` Custom[00000001]<br>`mclib/bdactor.cpp:5578` Custom[00000001] | U: off vs on; E: off vs on; F: off vs on; O: off vs on; X: off vs on; X10: off vs on | yes (tools/gate_g0_ledger.json, tools/gate_table.seed.json) | Enum/Int row: a reader compares a leading character (levels), so a Bool row would collapse them (owner decision) -- custom outcome vector(s): Custom[00000001] | n/a (owner decision) |
 | `MC2_SPOTLIGHT_DIRECTION_FIX` | `mclib/cone_glow.cpp:223` AtoiNZ<br>`mclib/cone_glow.cpp:243` Custom[00000001] | O: off vs on; X10: off vs on | yes (tools/gate_g0_ledger.json, tools/gate_table.seed.json) | Enum/Int row: a reader compares a leading character (levels), so a Bool row would collapse them (owner decision) -- custom outcome vector(s): Custom[00000001] | n/a (owner decision) |
-| `MC2_TERRAIN_DETAIL_MACRO_STRENGTH` | `GameOS/gameos/gameos_graphics.cpp:7269` Num(atof,raw)<br>`GameOS/gameos/gos_terrain_lod_chunk.cpp:929` Num(atof,raw) | U: 0 vs 0.35; E: 0 vs 0.35 | yes (tools/gate_g0_ledger.json, tools/gate_table.seed.json) | Int/Float row: whole-string parse, out-of-range falls back to the one default -- readers use atof; defaults disagree: 0, 0.35 | n/a (owner decision) |
 
 ## G0 resolution ledger
 
@@ -87,14 +86,14 @@ Source: `tools/gate_g0_ledger.json`. `resolved` = the readers now agree; `enum` 
 | `MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE` | enum | yes | `mclib/bdactor.cpp:5566 Lead0Kill`<br>`mclib/bdactor.cpp:5577 Custom[00000001]`<br>`mclib/bdactor.cpp:5578 Custom[00000001]` | levels: =0 kill-switch (default ON), 2 adds a trace line | code unchanged | levels are intentional |
 | `MC2_STATIC_PROP_TRACE` | resolved | no | `GameOS/gameos/gos_static_prop_batcher.cpp:5896 Lead0`<br>`GameOS/gameos/gos_static_prop_batcher.cpp:5897 Lead0`<br>`GameOS/gameos/gos_static_prop_batcher.cpp:5898 Lead0`<br>`GameOS/gameos/gos_static_prop_registry.cpp:138 Lead0` | Lead0 | =false now reads as on in the registry reader | matches the batcher reader |
 | `MC2_STATIC_UPDATE_SKIP` | resolved | no | `GameOS/gameos/gameosmain.cpp:1270 Std(def=on)`<br>`code/bldng.cpp:815 Std(def=on)`<br>`code/terrobj.cpp:96 Std(def=on)` | ParseEnvBool, default ON (0/false/off/no disable) | =false/off/no now disable the building skip as well | terrobj.cpp and the launch banner already used this rule |
-| `MC2_TERRAIN_DETAIL_MACRO_STRENGTH` | divergent | yes | `GameOS/gameos/gameos_graphics.cpp:7269 Num(atof,raw)`<br>`GameOS/gameos/gos_terrain_lod_chunk.cpp:929 Num(atof,raw)` | owner decision: legacy path defaults 0.35, chunk path defaults 0.0 | unifying would change one path's default-config result | gameos_graphics.cpp (legacy, vestigial) vs gos_terrain_lod_chunk.cpp (live) |
+| `MC2_TERRAIN_DETAIL_MACRO_STRENGTH` | divergent | no | `GameOS/gameos/gameos_graphics.cpp:7269 Num(atof,raw)`<br>`GameOS/gameos/gos_terrain_lod_chunk.cpp:876 Typed(get)` | owner decision: legacy path defaults 0.35, chunk path defaults 0.0 | unifying would change one path's default-config result | gameos_graphics.cpp (legacy, vestigial) vs gos_terrain_lod_chunk.cpp (live) |
 | `MC2_TERRAIN_HEIGHT_RESAMPLE_FACTOR` | note | no | `GameOS/gameos/gos_terrain_height_tex.cpp:53 Typed(is)`<br>`GameOS/gameos/gos_terrain_height_tex.cpp:54 Typed(is)` | Enum {1,2,4}; other values rejected | code unchanged | single reader; a clamp row would change it |
 | `MC2_TERRAIN_MATERIAL_LIB` | resolved | no | `GameOS/gameos/gameos_graphics.cpp:364 Lead0`<br>`GameOS/gameos/terrain_material_lib.cpp:231 Lead0` | Lead0 | =0 now disables the material-library JSON load | matches the host reader |
-| `MC2_TERRAIN_MATERIAL_TEXTURES` | resolved | no | `GameOS/gameos/gos_terrain_lod_chunk.cpp:170 Lead0`<br>`GameOS/gameos/terrain_material_lib.cpp:196 Lead0`<br>`GameOS/gameos/terrain_material_lib.cpp:233 Lead0` | Lead0 | =0 now disables the material-texture config load | matches the chunk reader |
+| `MC2_TERRAIN_MATERIAL_TEXTURES` | resolved | no | `GameOS/gameos/gos_terrain_lod_chunk.cpp:128 Lead0`<br>`GameOS/gameos/terrain_material_lib.cpp:196 Lead0`<br>`GameOS/gameos/terrain_material_lib.cpp:233 Lead0` | Lead0 | =0 now disables the material-texture config load | matches the chunk reader |
 | `MC2_TEXMGR_KTX_PRIMARY` | resolved | no | `mclib/bdactor.cpp:179 Num(atoi,raw)`<br>`mclib/gvactor.cpp:36 Num(atoi,raw)`<br>`mclib/mech3d.cpp:186 Num(atoi,raw)`<br>`mclib/txmmgr.cpp:5394 Num(atoi,raw)` | numeric mode via atoi, default 1 (0 tga only, 1 ktx fallback, 2 ktx first) | non-numeric values (false, yes) now read as mode 0 at the three sidecar readers, as they already did in the texture manager | txmmgr.cpp is the mode authority |
 | `MC2_UI_DEFS_TRACE` | resolved | no | `GuiRuntime/GuiRuntime.cpp:105 Lead0`<br>`gui/UiDefs_parse.cpp:34 Lead0` | Lead0 | =false/off/no now read as on in the defs reader | matches the runtime reader |
 | `MC2_VK_PROP_DIRECT_CHAIN` | resolved | no | `GameOS/gameos/engine_present_vk.cpp:296 Tri(inherit)`<br>`GameOS/gameos/vk_shared_gbuffer_gate.h:146 Tri(inherit)` | Tri: explicit 1/0 wins, else inherit the umbrella | none: the island's deprecation-note reader is deleted (prop is unconditionally direct-chain) | owner ruling: the umbrella is canonical |
-| `MC2_VK_TERRAIN_CSM` | resolved | no | `GameOS/gameos/gos_terrain_lod_chunk.cpp:1723 Tri(inherit)`<br>`GameOS/gameos/gos_terrain_lod_chunk.cpp:1765 Tri(inherit)` | Tri (subGate): explicit 1/0 wins, else inherit the umbrella | the near-cascade subset check now inherits the umbrella; it still also requires MC2_VK_TERRAIN_CSM_FULLMAP_EXPERIMENTAL=1, so the default render is unchanged | owner ruling; VK captures unchanged |
+| `MC2_VK_TERRAIN_CSM` | resolved | no | `GameOS/gameos/gos_terrain_lod_chunk.cpp:1655 Tri(inherit)`<br>`GameOS/gameos/gos_terrain_lod_chunk.cpp:1696 Tri(inherit)` | Tri (subGate): explicit 1/0 wins, else inherit the umbrella | the near-cascade subset check now inherits the umbrella; it still also requires MC2_VK_TERRAIN_CSM_FULLMAP_EXPERIMENTAL=1, so the default render is unchanged | owner ruling; VK captures unchanged |
 | `MC2_VK_VFX` | resolved | no | `GameOS/gameos/gameos_graphics.cpp:7591 Tri(inherit)`<br>`GameOS/gameos/gameos_graphics.cpp:8420 Tri(inherit)`<br>`GameOS/gameos/vulkan_vfx_island.cpp:434 Tri(inherit)`<br>`code/gamecam.cpp:732 Tri(inherit)`<br>`code/gamecam.cpp:843 Tri(inherit)`<br>`code/gamecam.cpp:967 Tri(inherit)`<br>`... +2 more` | Tri (subGate): explicit 1/0 wins, else inherit the umbrella | none: the HUD indexed-draw route now reads the same sub-gate through a named local | owner ruling |
 | `MC2_VK_WATER_DIRECT_CHAIN` | resolved | no | `GameOS/gameos/engine_present_vk.cpp:298 Tri(inherit)`<br>`GameOS/gameos/vk_shared_gbuffer_gate.h:148 Tri(inherit)` | Tri: explicit 1/0 wins, else inherit the umbrella | none: the island's deprecation-note reader is deleted (water is unconditionally direct-chain) | owner ruling: the umbrella is canonical |
 | `MC2_WATER_SKYTINT` | resolved | no | `GameOS/gameos/gameos_graphics.cpp:2839 Token/State`<br>`GameOS/gameos/visual_tuning_profile.cpp:175 Lead0`<br>`GuiRuntime/GraphicsOptionsWindow_terrain.cpp:676 Lead0` | Lead0 | =0 no longer blocks the profile's waterSkyTintStrength | matches the options-window reader |
@@ -103,16 +102,16 @@ Source: `tools/gate_g0_ledger.json`. `resolved` = the readers now agree; `enum` 
 
 | Class | Reader sites |
 |---|---|
-| Presence | 477 |
-| Lead0Kill | 201 |
-| Lead0 | 192 |
-| Num(atof,raw) | 144 |
+| Presence | 479 |
+| Lead0Kill | 202 |
+| Lead0 | 193 |
 | Lead1 | 129 |
+| Num(atof,raw) | 111 |
 | AtoiNZ | 60 |
 | Lead0P | 59 |
 | Tri(inherit) | 50 |
-| Num(atoi,raw) | 45 |
 | Exact1 | 44 |
+| Num(atoi,raw) | 42 |
 | NonEmpty | 41 |
 | Num(atol,raw) | 21 |
 | Std(def=off) | 14 |
@@ -121,7 +120,7 @@ Source: `tools/gate_g0_ledger.json`. `resolved` = the readers now agree; `enum` 
 | Num(atoi,guarded) | 6 |
 | Custom[00000001] | 6 |
 | Num(strtoul,guarded) | 5 |
-| Custom[10001011] | 5 |
+| Custom[10001011] | 4 |
 | Partial[D,on,off,on,on,on,on,on] | 4 |
 | Num(strtoul,raw) | 3 |
 | Str[dflt,dflt] | 3 |
@@ -129,14 +128,14 @@ Source: `tools/gate_g0_ledger.json`. `resolved` = the readers now agree; `enum` 
 | Num(num,raw) | 2 |
 | Partial[D,D,off,on,on,on,on,on] | 1 |
 | Str[null,null] | 1 |
-| Partial[D,D,off,D,on,D,D,D] | 1 |
+| DefOnAtoiNZ | 1 |
 | Str[null,pass] | 1 |
 | DefOnLead0 | 1 |
 | Num(atof+atoi,raw) | 1 |
 | Num(atol,guarded) | 1 |
 | Partial[D,off,off,off,off,off,off,on] | 1 |
 
-## Sites the tool could not classify (22)
+## Sites the tool could not classify (21)
 
 Mostly string- and path-valued reads whose only use is a library call (`fopen`, `snprintf`). They are listed in the JSON; the ratchet forbids the number rising so a new idiom cannot hide.
 
