@@ -289,6 +289,19 @@ Split commit: `de0dbab39`.
 | `mech3d_update.cpp` | Mech3DAppearance: Mech3DAppearance::update, arm destruction, smoke, water wake and ejection. |
 | `mech3d_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
+## `mclib/quad.cpp`
+
+Split commit: `08c557e04`.
+
+| Piece | What it holds |
+|---|---|
+| `quad.cpp` | keeps the mine-grid enqueue, init and the mine texture handles |
+| `quad_draw.cpp` | TerrainQuad: TerrainQuad::draw: the SOLID / DRAWALPHA terrain and overlay submission, the M2d decal producer and its parity probe. |
+| `quad_lines.cpp` | TerrainQuad: the passability / LOS / debug-cell line draws and the mine draw. |
+| `quad_setup.cpp` | TerrainQuad: the editor-only legacy per-quad texture setup (setupTextures) with the terrain recipe cache and the projectZ overlay emit. |
+| `quad_water.cpp` | TerrainQuad: TerrainQuad::drawWater, the CPU water draw and its depth-transition probe. |
+| `quad_internal.h` | shared include bundle, extern globals and declarations of the pieces |
+
 ## `mclib/terrain.cpp`
 
 Split commit: `b9cc28a1f`.
