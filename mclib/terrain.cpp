@@ -221,26 +221,26 @@ static const float LOD_DIST_THRESH[5] = {
 // Phase 10.2b: per-draw-command skirt EDGE mask (bit 0=N,1=S,2=W,3=E). Parallel
 // to s_drawCmds / s_skirtDepths; sized to the block count, written in Pass 3 so
 // the driver draws a skirt only on edges whose neighbour LOD differs.
-static std::vector<uint8_t> s_skirtEdgeMaskVec;
+std::vector<uint8_t> s_skirtEdgeMaskVec;
 
 // Phase 10.4: per-draw-command edge-STITCH packing. For each edge bordering a
 // COARSER visible neighbour, pack that neighbour's vertex stride into a byte
 // (N=bits0-7, S=8-15, W=16-23, E=24-31; 0 = no stitch). The vertex shader snaps
 // the fine edge's intermediate verts onto the coarse edge line -> bit-identical
 // shared edge -> no T-junction crack (neighbour-min technique, cf c2d7eb46).
-static std::vector<uint32_t> s_stitchStepVec;
+std::vector<uint32_t> s_stitchStepVec;
 
 // Slice B: per-draw-command SHADOW TIER. Parallel to s_drawCmds; written in Pass
 // 3 in lockstep with s_cmdCount. 0=high-res dynamic (near), 1=low-res dynamic
 // (mid), 2=static-only (far), 3=none/culled. Classify+visualize only — feeds the
 // MC2_TERRAIN_LOD_CHUNK_DIAG=40 tier-tint; does NOT change shadow sampling.
-static std::vector<int> s_shadowTierVec;
+std::vector<int> s_shadowTierVec;
 
 // TERRAIN-LOD-GEOMORPH-1: per-draw-command geomorph factor m in [0,1]. Parallel
 // to s_drawCmds; written in Pass 3 in lockstep with s_cmdCount from the block's
 // FINAL lodLevel (post cement/neighbor clamps) + its center distance. Fed to the
 // vert as u_morphFactor; only consumed when the bake shipped max mips.
-static std::vector<float> s_morphFactorVec;
+std::vector<float> s_morphFactorVec;
 
 // Camera-isolation diagnostic: MC2_TERRAIN_LOD_CHUNK_FORCE_LOD=k forces every
 // block to LOD k (0=finest). With FORCE_LOD=0 + NO_CULL + NO_SKIRTS, rotation
@@ -415,7 +415,7 @@ void clearMoverList (void)
 // Terrain LOD chunk Phase 1 static helpers.
 // Only called when MC2_TERRAIN_LOD_CHUNK is set; all access already gated.
 
-static void recomputeBlockAabb(TerrainBlockMeta& bm)
+void recomputeBlockAabb(TerrainBlockMeta& bm)
 {
     // Scan the (quadCountX+1) x (quadCountY+1) inclusive vertex footprint.
     // OOB vertices (past map edge) use blankVertex elevation (33.0f).
@@ -441,7 +441,7 @@ static void recomputeBlockAabb(TerrainBlockMeta& bm)
     bm.dirtyAabb = false;
 }
 
-static void recomputeSuperchunkAabb(int scX, int scY)
+void recomputeSuperchunkAabb(int scX, int scY)
 {
     SuperchunkMeta& sc = Terrain::s_superchunkMeta[scX + scY * Terrain::s_superchunkSide];
     float xMin =  1e30f, xMax = -1e30f;
