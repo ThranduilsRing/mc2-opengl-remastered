@@ -27,6 +27,7 @@
 #include <cstdlib>
 #include <unordered_map>
 #include <vector>
+#include "Gates/gate.h"
 
 // terrainMVP — same world->GL-clip matrix the particle bridge and terrain use
 // (row-major direct upload, GL_FALSE; see memory/terrain_mvp_gl_false.md).
@@ -66,8 +67,7 @@ bool s_log_initialized = false;
 bool s_log_value       = false;
 bool logEnabled() {
     if (!s_log_initialized) {
-        const char* v = std::getenv("MC2_VFX_ORACLE_SHAPE_LOG");
-        s_log_value       = (v && v[0] == '1');
+        s_log_value = mc2::gate::get<"MC2_VFX_ORACLE_SHAPE_LOG">();
         s_log_initialized = true;
     }
     return s_log_value;

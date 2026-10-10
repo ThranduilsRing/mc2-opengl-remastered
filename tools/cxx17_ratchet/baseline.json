@@ -66,8 +66,8 @@
    "LG16": 7,
    "LG17": 81,
    "LG18": 11,
-   "LG19": 77,
-   "LG20": 111
+   "LG19": 76,
+   "LG20": 110
   },
   "GuiRuntime": {
    "LG01": 1,
@@ -959,9 +959,7 @@
   "GameOS/gameos/gos_vfx_mesh_bridge.cpp": {
    "LG05": 1,
    "LG08": 1,
-   "LG09": 5,
-   "LG19": 1,
-   "LG20": 1
+   "LG09": 5
   },
   "GameOS/gameos/gos_visual_capture.cpp": {
    "LG05": 3,
@@ -5841,7 +5839,7 @@
    "LG20": 1
   }
  },
- "head": "4ef002dff",
+ "head": "a49724046",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
