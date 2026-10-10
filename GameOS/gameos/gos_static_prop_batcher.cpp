@@ -208,7 +208,7 @@ struct TypeRangeSsbo {
 
 // Step 2.3 — forward decl so coalesce_resetEnvOnce / IsCoalesceEnabled can
 // reference each other across the helpers below.
-static bool IsCoalesceEnabled();
+bool IsCoalesceEnabled();
 }  // namespace gos_static_prop_batcher_detail
 
 static const float (*s_iblShRotatedSrc)[3] = nullptr;
