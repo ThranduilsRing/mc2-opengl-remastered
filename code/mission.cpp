@@ -494,6 +494,47 @@ extern bool 			invulnerableON;		//Used for tutorials so mechs can take damage, b
 // ---- MC2_MISSION_SPLIT: wall-ms split of the Mission::update sub-calls -----
 // Locate which logic sub-call owns the 1K-map ~50ms (HITCH logic phase). Default
 // OFF, zero behavior change. Emits per-call ns totals + averages at exit (stdout).
+//--------------------------------------------------
+// Game System Constants -- Definitions here.
+float maxVisualRange = 0.0;
+unsigned long MaxTreeLOSCellBlock = 0;
+float MaxVisualRadius = 0.0;
+float fireVisualRange = 0.0;
+extern float WeaponRange[];						//MOVER
+extern float DefaultAttackRange;				//MOVER
+float baseSensorRange = 0.0;
+extern long visualRangeTable[];
+
+extern unsigned char godMode;		//Can I simply see everything, enemy and friendly?
+unsigned char revealTacMap = 0;		//Is Tacmap always revealed?
+unsigned char footPrints = 0;		//Do we use/draw footprints?
+bool CantTouchThis = false;
+
+long tonnageDivisor = 1.0;			//Amount we divide tons under drop weight by to calc resource bonus
+long resourcesPerTonDivided = 0;	//Tons per above divided number
+
+float MineDamage = 0.0;			//Damage mine does per tile
+float MineSplashDamage = 0.0;	//Damage mine explosion does to all in tile.
+float MineSplashRange = 0.0;	//Range of Splash Damage
+long MineExplosion = -1;		//Object ID of mine explosion
+long MineLayThrottle = 0;		//Throttle setting of mine Layer
+long MineSweepThrottle = 0;		//Throttle setting of mine sweeper
+float StrikeWaitTime = 0.0f;	//Time between aerospace Spotter strike calls
+float StrikeTimeToImpact = 0.0f;//Time it takes air strike to come in.
+float MineWaitTime = 0.0;		//Time Mine Layer must sit in Tile before mine is laid.
+
+long totalSmokeSpheres = 0;			//Maximum number of smoke spheres in world.
+long totalSmokeShapeSize = 0;		//Amount we allocate to smoke heap for spheres/textures.
+
+long maxFiresBurning = 0;			//Maximum number of fires allowed in world.
+float maxFireBurnTime = 0.0;		//Maximum time a fire can be burning before it dies out.
+
+bool force64MB = TRUE;				//Do we have between 64 and 32 Mb of memory?
+bool force32Mb = FALSE;				//Do we have 32Mb of memory only?
+
+float InfluenceRadius = -1.0;		//Capture Radius
+float InfluenceTime = 0.0;			//Time inside to Capture
+
 extern int32_t NumStateTransitions;  // ABL-VM-FACTS-1: read at mission-brain fire exit
 namespace {
 	static const bool s_misSplit = mc2::gate::get<"MC2_MISSION_SPLIT">();
@@ -2124,46 +2165,6 @@ void InitDifficultySettings (FitIniFile *gameSystemFile)
 	MC2_VERIFY(result == NO_ERR, "InitDifficultySettings: [DifficultySettings] missing EnemyWeapons");
 }	
 
-//--------------------------------------------------
-// Game System Constants -- Definitions here.
-float maxVisualRange = 0.0;
-unsigned long MaxTreeLOSCellBlock = 0;
-float MaxVisualRadius = 0.0;
-float fireVisualRange = 0.0;
-extern float WeaponRange[];						//MOVER
-extern float DefaultAttackRange;				//MOVER
-float baseSensorRange = 0.0;
-extern long visualRangeTable[];
-
-extern unsigned char godMode;		//Can I simply see everything, enemy and friendly?
-unsigned char revealTacMap = 0;		//Is Tacmap always revealed?
-unsigned char footPrints = 0;		//Do we use/draw footprints?
-bool CantTouchThis = false;
-
-long tonnageDivisor = 1.0;			//Amount we divide tons under drop weight by to calc resource bonus
-long resourcesPerTonDivided = 0;	//Tons per above divided number
-
-float MineDamage = 0.0;			//Damage mine does per tile
-float MineSplashDamage = 0.0;	//Damage mine explosion does to all in tile.
-float MineSplashRange = 0.0;	//Range of Splash Damage
-long MineExplosion = -1;		//Object ID of mine explosion
-long MineLayThrottle = 0;		//Throttle setting of mine Layer
-long MineSweepThrottle = 0;		//Throttle setting of mine sweeper
-float StrikeWaitTime = 0.0f;	//Time between aerospace Spotter strike calls
-float StrikeTimeToImpact = 0.0f;//Time it takes air strike to come in.
-float MineWaitTime = 0.0;		//Time Mine Layer must sit in Tile before mine is laid.
-
-long totalSmokeSpheres = 0;			//Maximum number of smoke spheres in world.
-long totalSmokeShapeSize = 0;		//Amount we allocate to smoke heap for spheres/textures.
-
-long maxFiresBurning = 0;			//Maximum number of fires allowed in world.
-float maxFireBurnTime = 0.0;		//Maximum time a fire can be burning before it dies out.
-
-bool force64MB = TRUE;				//Do we have between 64 and 32 Mb of memory?
-bool force32Mb = FALSE;				//Do we have 32Mb of memory only?
-
-float InfluenceRadius = -1.0;		//Capture Radius
-float InfluenceTime = 0.0;			//Time inside to Capture
 
 //----------------------------------------------------------------------------------
 
