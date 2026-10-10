@@ -1830,7 +1830,7 @@
   "editor",
   "gui"
  ],
- "source": "commit bddaa172c",
+ "source": "commit 71cf0e206",
  "totals": {
   "conflict_gates": 6,
   "gates_with_literal": 1131,
@@ -1975,7 +1975,7 @@
    "callee": "getenv",
    "file": "code/mission.cpp",
    "gate": "MC2_BRAIN_SPECIAL_FIT",
-   "line": 4376,
+   "line": 4331,
    "why": "unclassified:opaque"
   },
   {

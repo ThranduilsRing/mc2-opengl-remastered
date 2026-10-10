@@ -147,7 +147,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "code/mission.cpp:3807",
+     "at": "code/mission.cpp:3762",
      "idiom": "AtoiNZ"
     }
    ],
@@ -484,7 +484,7 @@
    "doc": "META-FIX design B PART 4 (code/mission.cpp Mission::start beside mission_phase_mark('mission_ready')): default OFF, OBSERVATIONAL-FIRST.",
    "readers": [
     {
-     "at": "code/mission.cpp:5253",
+     "at": "code/mission.cpp:5208",
      "idiom": "Lead0"
     }
    ],
@@ -1556,7 +1556,7 @@
      "idiom": "AtoiNZ"
     },
     {
-     "at": "code/mission.cpp:4345",
+     "at": "code/mission.cpp:4300",
      "idiom": "AtoiNZ"
     },
     {
@@ -1644,7 +1644,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "code/mission.cpp:4346",
+     "at": "code/mission.cpp:4301",
      "idiom": "AtoiNZ"
     }
    ],
@@ -1678,7 +1678,7 @@
      "idiom": "Token/State"
     },
     {
-     "at": "code/mission.cpp:4347",
+     "at": "code/mission.cpp:4302",
      "idiom": "AtoiNZ"
     }
    ],
@@ -1900,27 +1900,27 @@
    "doc": "FULL-CAMPAIGN-1: TechScript/Enhanced-converted missions (carver_v_enhanced) leave ScenarioScript empty \u2014 the per-warrior brains move to inline Brain{} blocks and mission logic to *_specials.fit \u2014 but preserve the original scenario name as LegacyScenarioScript.",
    "readers": [
     {
-     "at": "code/mission.cpp:3848",
+     "at": "code/mission.cpp:3803",
      "idiom": "AtoiNZ"
     },
     {
-     "at": "code/mission.cpp:3849",
+     "at": "code/mission.cpp:3804",
      "idiom": "AtoiNZ"
     },
     {
-     "at": "code/mission.cpp:3999",
+     "at": "code/mission.cpp:3954",
      "idiom": "AtoiNZ"
     },
     {
-     "at": "code/mission.cpp:4000",
+     "at": "code/mission.cpp:3955",
      "idiom": "AtoiNZ"
     },
     {
-     "at": "code/mission.cpp:4040",
+     "at": "code/mission.cpp:3995",
      "idiom": "AtoiNZ"
     },
     {
-     "at": "code/mission.cpp:4041",
+     "at": "code/mission.cpp:3996",
      "idiom": "AtoiNZ"
     }
    ],
@@ -1993,7 +1993,7 @@
    "doc": "BRAIN-MISSIONFIT-OPORD-CONSUMER-1: drive declarative patrol from the inline Brain{} PrimaryOPORD blocks in mission.fit (carver_v_enhanced format).",
    "readers": [
     {
-     "at": "code/mission.cpp:4064",
+     "at": "code/mission.cpp:4019",
      "idiom": "AtoiNZ"
     }
    ],
@@ -2075,7 +2075,7 @@
    "doc": "TechBrain declarative-brain runtime master gate (warrior.cpp).",
    "readers": [
     {
-     "at": "code/mission.cpp:4209",
+     "at": "code/mission.cpp:4164",
      "idiom": "AtoiNZ"
     },
     {
@@ -2135,7 +2135,7 @@
    "doc": "MC2_BRAIN_RUNTIME_FORCE_MODE overrides all per-unit modes (post-load global override).",
    "readers": [
     {
-     "at": "code/mission.cpp:4253",
+     "at": "code/mission.cpp:4208",
      "idiom": "Token/State"
     },
     {
@@ -2250,7 +2250,7 @@
    "doc": "DISPATCH-EFFECT-UNITEJECT-1: MC2_BRAIN_SPECIAL_FIT allows test-fixture override.",
    "readers": [
     {
-     "at": "code/mission.cpp:4376",
+     "at": "code/mission.cpp:4331",
      "idiom": "Unclassified"
     }
    ],
@@ -2362,7 +2362,7 @@
      "idiom": "Token/State"
     },
     {
-     "at": "code/mission.cpp:4348",
+     "at": "code/mission.cpp:4303",
      "idiom": "AtoiNZ"
     }
    ],
@@ -2634,7 +2634,7 @@
    "doc": "ISSUE-9 called-shot effectiveness (gameplay gate, default OFF = stock): (S1) Mover::calcAttackChance floors the aimed-shot modifiers at Head 0.30 / Arm 0.45 / Leg 0.50 (stock gamesys.fit 0.08/0.15/0.20 leaves head calls at the 5% clamp); (S2) a successful AIMED area-effect (LRM) hit delivers its located damage to the called location (weaponbolt.cpp deliverAimedAreaHit, single-player only) with the splash explosion kept cosmetic, instead of stock's randomly-located explosion damage.",
    "readers": [
     {
-     "at": "code/gvehicl.cpp:4812",
+     "at": "code/gvehicl.cpp:4637",
      "idiom": "Lead0P"
     },
     {
@@ -4105,7 +4105,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "code/mission.cpp:4875",
+     "at": "code/mission.cpp:4830",
      "idiom": "Presence"
     }
    ],
@@ -4263,7 +4263,7 @@
      "idiom": "Lead0"
     },
     {
-     "at": "code/mission.cpp:2941",
+     "at": "code/mission.cpp:2932",
      "idiom": "Lead0"
     },
     {
@@ -7553,7 +7553,7 @@
      "idiom": "Presence"
     },
     {
-     "at": "code/mech_internal.h:236",
+     "at": "code/mech_update.cpp:7",
      "idiom": "Presence"
     },
     {
@@ -11362,7 +11362,7 @@
    "doc": "ISSUE-50 diagnostics (code/mech.cpp BattleMech::update): for every off-GUI mech, periodically (~1/s) logs [LINKUP] part/name/status/los, plus [LINKUP] linkup-complete when the link-up fires \u2014 makes the link-up latch (hidden reinforcement mech never appearing) observable in the field.",
    "readers": [
     {
-     "at": "code/mech_update.cpp:97",
+     "at": "code/mech_update.cpp:101",
      "idiom": "Presence"
     }
    ],
@@ -13678,7 +13678,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "code/mission.cpp:3392",
+     "at": "code/mission.cpp:3347",
      "idiom": "Presence"
     }
    ],
@@ -14159,7 +14159,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "code/mission.cpp:1167",
+     "at": "code/mission.cpp:1158",
      "idiom": "Custom[10001011]"
     }
    ],
@@ -17746,7 +17746,7 @@
      "idiom": "Num(strtoul,guarded)"
     },
     {
-     "at": "code/mission.cpp:2945",
+     "at": "code/mission.cpp:2936",
      "idiom": "Num(strtoul,guarded)"
     }
    ],
@@ -19922,7 +19922,7 @@
      "idiom": "Presence"
     },
     {
-     "at": "code/mission.cpp:4027",
+     "at": "code/mission.cpp:3982",
      "idiom": "Presence"
     },
     {
@@ -22684,7 +22684,7 @@
    "doc": "TACTIC-WEIGHTS-A: load [Tactics] block from <missionName>_ai.fit into tacticWeights[].",
    "readers": [
     {
-     "at": "code/mission.cpp:4274",
+     "at": "code/mission.cpp:4229",
      "idiom": "AtoiNZ"
     },
     {
@@ -25916,7 +25916,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "code/mission.cpp:1269",
+     "at": "code/mission.cpp:1260",
      "idiom": "Num(atof,raw)"
     }
    ],

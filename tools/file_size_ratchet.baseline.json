@@ -40,7 +40,7 @@
   "code/controlgui.cpp": 5016,
   "code/gamecam.cpp": 1569,
   "code/gameobj.cpp": 2365,
-  "code/gvehicl.cpp": 5636,
+  "code/gvehicl.cpp": 5419,
   "code/infowindow.cpp": 1746,
   "code/logisticsdata.cpp": 3442,
   "code/logisticsdialog.cpp": 2149,
@@ -48,7 +48,7 @@
   "code/mechicon.cpp": 1969,
   "code/mechlabscreen.cpp": 1949,
   "code/mechlopedia.cpp": 1660,
-  "code/mission.cpp": 5938,
+  "code/mission.cpp": 5893,
   "code/missionbegin.cpp": 2136,
   "code/missiongui.cpp": 7922,
   "code/mover.h": 1911,
@@ -59,7 +59,7 @@
   "code/optionsarea.cpp": 1841,
   "code/pilotreviewarea.cpp": 1844,
   "code/saveload.cpp": 1723,
-  "code/tacordr.cpp": 2162,
+  "code/tacordr.cpp": 2072,
   "code/terrobj.cpp": 1753,
   "code/turret.cpp": 2349,
   "code/warrior.cpp": 2740,
@@ -108,7 +108,7 @@
   "mclib/vfxtile.cpp": 2944,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "bddaa172c",
+ "head": "71cf0e206",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -216,7 +216,7 @@
   },
   {
    "file": "code/mission.cpp",
-   "lines": 5938
+   "lines": 5893
   },
   {
    "file": "code/objmgr.cpp",
@@ -224,7 +224,7 @@
   },
   {
    "file": "code/gvehicl.cpp",
-   "lines": 5636
+   "lines": 5419
   },
   {
    "file": "code/controlgui.cpp",

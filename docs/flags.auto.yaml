@@ -2349,7 +2349,7 @@ flags:
     declared_in: null
     referenced_at:
       - code/gvehicl.cpp
-      - code/mech_internal.h
+      - code/mech_update.cpp
       - code/objmgr.cpp
     referenced_at_more: 2
     registered: no
