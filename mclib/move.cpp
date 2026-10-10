@@ -1,4 +1,4 @@
-//	move.cp - This file contains the Movement\Pathfinding routines
+//	move.cpp - This file contains the Movement\Pathfinding routines
 //---------------------------------------------------------------------------//
 // Copyright (C) Microsoft Corporation. All rights reserved.                 //
 //===========================================================================//
@@ -79,7 +79,6 @@ static int readDoorLinksMCO(PacketFilePtr packetFile, int packetNum,
     return result;
 }
 
-#define	USE_SEPARATE_WATER_MAPS	FALSE
 
 #ifndef TEAM_H
 typedef enum {
@@ -2625,25 +2624,6 @@ long GlobalMap::calcLinkCost (long startDoor, long thruArea, long goalDoor) {
 			moveParams |= (MOVEPARAM_WATER_SHALLOW + MOVEPARAM_WATER_DEEP);
 		else if (!blank)
 			moveParams |= MOVEPARAM_WATER_SHALLOW;
-#if USE_SEPARATE_WATER_MAPS
-		// To REALLY fix the separate water maps, we should do this for vehicles and mechs separately (and vehicles
-		// don't use shallow). But, if nothing else, this fixes the bug where we weren't passing in the moveParams.
-		PathFindMap[SECTOR_PATHMAP]->setUp(mapULr,
-					   mapULc,
-					   SECTOR_DIM,
-					   SECTOR_DIM,
-					   hover ? 1 : 0,
-					   NULL,
-					   startRow,
-					   startCol,
-					   goalWorldPos,
-					   goalRow - mapULr,
-					   goalCol - mapULc,
-					   10,
-					   0,
-					   8,
-					   moveParams);
-#else
 		PathFindMap[SECTOR_PATHMAP]->setUp(mapULr,
 					   mapULc,
 					   SECTOR_DIM,
@@ -2659,7 +2639,6 @@ long GlobalMap::calcLinkCost (long startDoor, long thruArea, long goalDoor) {
 					   0,
 					   8,
 					   MOVEPARAM_NONE);
-#endif
 		int goalCell[2];
 		PathFindMap[SECTOR_PATHMAP]->calcPath(&newPath, NULL, goalCell);
 		ClearBridgeTiles = false;
@@ -2794,7 +2773,6 @@ long GlobalMap::getPathCost (int startArea, int goalArea, bool withSpecialAreas,
 	if (startArea == goalArea)
 		return(1);
 
-#if 1
 	GlobalPathStep path[MAX_GLOBAL_PATH];
 	if (withSpecialAreas)
 		useClosedAreas = true;
@@ -2804,68 +2782,6 @@ long GlobalMap::getPathCost (int startArea, int goalArea, bool withSpecialAreas,
 	useClosedAreas = false;
 	confidence = GLOBAL_CONFIDENCE_GOOD;
 	return(cost);
-#else
-	calcedPathCost = false;
-	unsigned char data = pathCostTable[startArea * numAreas + goalArea];
-	if (withSpecialAreas) {
-		unsigned char cost = (data & 0x0C) >> 2;
-		if (data & GLOBAL_FLAG_SPECIAL_IMPOSSIBLE) {
-			cost = 0;
-			confidence = GLOBAL_CONFIDENCE_GOOD;
-			}
-		else if (data & GLOBAL_FLAG_SPECIAL_CALC) {
-			if (calcIt) {
-				GlobalPathStep path[MAX_GLOBAL_PATH];
-				useClosedAreas = true;
-				calcPath(startArea, goalArea, path);
-				useClosedAreas = false;
-				cost = getPathCost(startArea, goalArea, true, confidence, false);
-				calcedPathCost = true;
-				confidence = GLOBAL_CONFIDENCE_GOOD;
-				}
-			else
-				confidence = GLOBAL_CONFIDENCE_BAD;
-			}
-		else
-			confidence = GLOBAL_CONFIDENCE_GOOD;
-		return(cost);
-		}
-	else {
-		unsigned char cost = (data & 0x03);
-		if (data & GLOBAL_FLAG_SPECIAL_IMPOSSIBLE) {
-			cost = 0;
-			confidence = GLOBAL_CONFIDENCE_GOOD;
-			}
-		else if (data & GLOBAL_FLAG_NORMAL_CLOSES) {
-			if (calcIt) {
-				GlobalPathStep path[MAX_GLOBAL_PATH];
-				calcPath(startArea, goalArea, path);
-				cost = getPathCost(startArea, goalArea, false, confidence, false);
-				calcedPathCost = true;
-				confidence = GLOBAL_CONFIDENCE_GOOD;
-				}
-			else if (cost)
-				confidence = GLOBAL_CONFIDENCE_BAD;
-			else
-				confidence = GLOBAL_CONFIDENCE_GOOD;
-			}
-		else if (data & GLOBAL_FLAG_NORMAL_OPENS) {
-			if (calcIt) {
-				GlobalPathStep path[MAX_GLOBAL_PATH];
-				calcPath(startArea, goalArea, path);
-				cost = getPathCost(startArea, goalArea, false, confidence, false);
-				calcedPathCost = true;
-				confidence = GLOBAL_CONFIDENCE_GOOD;
-				}
-			else
-				confidence = GLOBAL_CONFIDENCE_AT_LEAST;
-			}
-		else
-			confidence = GLOBAL_CONFIDENCE_GOOD;
-		return(cost);
-	}
-	return(0);
-#endif
 }
 
 void GlobalMap::clearPathExistsTable (void) {
@@ -3800,7 +3716,6 @@ bool GlobalMap::toggleLog (void) {
 		long err = log->open("lrmove.log");
 		if (err)
 			Fatal(0, " Couldn't open lrmove log ");
-#if 1
 		GlobalMapPtr map = GlobalMoveMap[0];
 		if (true) {
 			char s[256];
@@ -3841,7 +3756,6 @@ bool GlobalMap::toggleLog (void) {
 			}
 			log->write(" ");
 		}
-#endif
 	}
 	logEnabled = !logEnabled;
 	return(logEnabled);

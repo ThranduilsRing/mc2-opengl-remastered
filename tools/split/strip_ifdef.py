@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """What: removes conditional blocks guarded by macros that nothing defines ('#ifdef M', '#if M', '#if defined(M)'); the '#else' branch is kept; blocks with '#elif' are reported only.
+With the macro name '1', '#if 1' blocks are unwrapped instead: the directives and the '#else' branch go, the first branch stays.
 Why: code behind a never-defined macro is dead, and carrying it into a split only spreads it; byte-preserving (each line keeps its CRLF/LF).
 Usage: py -3 tools/split/strip_ifdef.py [--apply] MACRO[,MACRO...] FILE...   (dry run by default; prove each macro is undefined everywhere first)"""
 import re, sys
@@ -18,6 +19,8 @@ def guarded(directive, rest):
     rest = rest.split(b"//")[0].strip()
     if directive == b"ifdef":
         return rest.decode() in macros
+    if directive == b"if" and "1" in macros and rest == b"1":
+        return True
     if directive == b"if":
         m = re.fullmatch(rb"(?:defined\s*\(\s*(\w+)\s*\)|defined\s+(\w+)|(\w+))", rest)
         return bool(m) and (m.group(1) or m.group(2) or m.group(3)).decode() in macros
@@ -47,6 +50,11 @@ for f in files:
             j += 1
         if elif_at is not None:
             report.append(i + 1); out.append(raw[i]); i += 1; continue
+        if m.group(2).split(b"//")[0].strip() == b"1" and m.group(1) == b"if":
+            out.extend(raw[i + 1:else_at if else_at is not None else j])
+            removed += 2 if else_at is None else j - i + 1 - (else_at - i - 1)
+            i = j + 1
+            continue
         if else_at is not None:
             out.extend(raw[else_at + 1:j])
         removed += j - i + 1 - (j - else_at - 1 if else_at is not None else 0)
