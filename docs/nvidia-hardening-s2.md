@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # NVIDIA Hardening S2 — plan
 
 Branch target: `claude/nvidia-hardening-s2` (off nifty after render-hygiene-s1 lands)

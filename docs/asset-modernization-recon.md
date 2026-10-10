@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Asset modernization recon — geometry import + texture compression
 
 Recon for extending the (mech) glTF import path to all object classes, and for

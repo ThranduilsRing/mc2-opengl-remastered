@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Renderer Feature Flags
 
 All `MC2_*` environment variables that control renderer behavior. Set before launching `mc2.exe`.

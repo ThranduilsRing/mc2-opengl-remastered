@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # BT2018-SKEL-ENGINE-1B-GPU-SKINNING-RECON-2 — compatibility PROVEN
 
 **Central question:** can the imported merged mesh use the existing skinned-GPU path,
@@ -14,13 +15,13 @@ logic, not a structural wall.
 ### The lanes already exist
 - `GpuMechVertex` (`gos_mech_batcher.h:15-31`, 48B, static_assert-locked): `boneIndices[4]`
   uint8 @loc3 via `glVertexAttribIPointer` (integer, **not** normalized,
-  `gos_mech_batcher.cpp:1192`) → `uvec4`; `boneWeights[4]` uint8 @loc4 normalized
+  `GameOS/gameos/gos_mech_batcher_geometry.cpp:24`) → `uvec4`; `boneWeights[4]` uint8 @loc4 normalized
   (`:1193`) → `vec4` in [0,1]. Stock packs `boneIndices[0]=nodeIdx`, `boneWeights[0]=255`
   (`:1218-1227`). Writing an arbitrary 0–27 bone index here is a value change, **no
   struct change**.
 - Bone SSBO (binding 1) is an **unbounded flat array** `GpuMechBone bones[]`
   (`mech.vert:65-68`, `shadow_mech.vert:21`). No `MAX_BONES`. Per-actor slice is
-  **contiguous, variable-length**, written at `gos_mech_batcher.cpp:1709-1716`; the
+  **contiguous, variable-length**, written at `GameOS/gameos/gos_mech_batcher_geometry.cpp:541-548`; the
   shader indexes `bones[a_boneIndices[i] + inst.baseBoneOffset]`
   (`mech.vert:144/150`, `shadow_mech.vert:36/41`). 28 bones ≪ the only cap (uint8 ⇒
   numBones ≤ 255, `gos_mech_batcher.cpp:1109-1116`).
@@ -42,7 +43,7 @@ merged mesh — not the buffer or shader.
 
 ### Matrix packing contract (must match exactly)
 `submitActor` packs `GpuMechBone` from Stuff `LinearMatrix4D.entries`
-(`gos_mech_batcher.cpp:1518-1523`): `row0=(e0,e4,e8,0)`, `row1=(e1,e5,e9,0)`,
+(`GameOS/gameos/gos_mech_batcher_geometry.cpp:350-355`): `row0=(e0,e4,e8,0)`, `row1=(e1,e5,e9,0)`,
 `row2=(e2,e6,e10,0)`, `row3=(e3,e7,e11,1)`. Shader `mat4(row0..row3)` is the
 **transpose** of the Stuff matrix (row-vector math, `mech.vert:6-7,131-133`). My
 `EvaluateClipGpuBones` output (row-major float[16]) must be converted to this exact

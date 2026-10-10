@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # GPU-MATERIAL-CONTRACT-RECON-1 — material binding model recon → **DEFER**
 
 **Arc:** VULKAN-CONTRACT-MANIFEST-ARC · recon only, no code (this doc only) · 2026-06-22
@@ -44,7 +45,7 @@ So two of the three `MaterialGpu` SSBOs are not consumed as material records by 
 | Field | In the SSBO record? | Actual GPU residence | Notes |
 |---|---|---|---|
 | `albedoTex` | yes (uint32) | static props: it IS a `GL_TEXTURE_2D_ARRAY` *layer index* sampled by `static_prop.frag:213` via `texture(u_texArr, vec3(uv, layer))`. mech-per-actor: it is a `mcTextureManager` slot — never sampled; CPU resolves slot→gos handle→GL tex, binds to `u_tex`. | the texture *object* is bound to a sampler unit by the consumer; the record holds only an *index/slot/id*, never the GL object |
-| `normalTex` / `metallicRoughnessTex` | yes (uint32) | static props: `kMaterialTexAbsent` today (ORM read at `static_prop.frag:263,396` but unwired in live data). mech profile: a **raw GL id** (`gos_materials.cpp:303-308`) — but consumed as `u_normalTex`/`u_ormTex` *samplers* (`gos_mech_batcher.cpp:2023-2033`), **not** by reading the SSBO | RawGlId-in-a-record is the most divergent case; the value is a GL name, not an index |
+| `normalTex` / `metallicRoughnessTex` | yes (uint32) | static props: `kMaterialTexAbsent` today (ORM read at `static_prop.frag:263,396` but unwired in live data). mech profile: a **raw GL id** (`gos_materials.cpp:303-308`) — but consumed as `u_normalTex`/`u_ormTex` *samplers* (`GameOS/gameos/gos_mech_batcher_flush.cpp:267-277`), **not** by reading the SSBO | RawGlId-in-a-record is the most divergent case; the value is a GL name, not an index |
 | `emissiveTex` | yes (uint32) | `kMaterialTexAbsent` for all live entries | unwired everywhere |
 | `flags` | yes (uint32) | static props: read from record. mech: pushed as a plain `u_materialFlags` uniform (`material-abi-unification-recon.md` §a.3), not from the SSBO | same bits, two delivery paths |
 | `baseColorFactor`/`metallicFactor`/`roughnessFactor` | yes (float) | static props: read from record (`static_prop.frag:390-391`). mech/profile/viewer: loose uniforms or defaults | M0 pinned roughness default to 1.0 across sites (`material-m0-contract.md` §1) |
@@ -63,7 +64,7 @@ The full picture (the prior recon's "5 vs 7" undercounted):
 | Binding | Buffer | Owner / file | Draw hint | Lifetime | Semantic | Shader-sampled? |
 |---|---|---|---|---|---|---|
 | **5** | `s_materialGpuSsbo` | `gos_static_prop_batcher.cpp` (bind `:5150`,`:5841`; upload `:3872`) | `GL_STATIC_DRAW` | map/mission | `TextureArrayLayer` | **YES** — `static_prop.frag`, `static_prop_depth.frag`, `building_pbr.frag` |
-| **7** | `s_ssbo` | `gos_materials.cpp` (`kMechMaterialTableBinding=7`, bind `:503`, upload `:77-83`) | `GL_STATIC_DRAW` | process (global profiles) | `RawGlId` | **NO** — bound by `bindMaterialTable()` (`gos_mech_batcher.cpp:1945`) but no GLSL block reads binding 7; mech.frag uses `u_normalTex`/`u_ormTex` samplers |
+| **7** | `s_ssbo` | `gos_materials.cpp` (`kMechMaterialTableBinding=7`, bind `:503`, upload `:77-83`) | `GL_STATIC_DRAW` | process (global profiles) | `RawGlId` | **NO** — bound by `bindMaterialTable()` (`GameOS/gameos/gos_mech_batcher_flush.cpp:506`) but no GLSL block reads binding 7; mech.frag uses `u_normalTex`/`u_ormTex` samplers |
 | **2** | `s_mechMaterialSsbo` | `gos_mech_batcher.cpp` (bind `:1941`, upload `:1810-1812`) | `GL_DYNAMIC_DRAW` | mission (persists, grows) | `TextureManagerSlot` | **NO** — compare-only; mech shader never reads it |
 
 **The D-material-unify note (verbatim), `gos_materials.cpp:61-63`:**
@@ -114,7 +115,7 @@ All three pack the same `sizeof(RenderCore::MaterialGpu)` stride. Static-prop + 
 | Class | Data | Vulkan shape |
 |---|---|---|
 | **Immutable per material** (→ static descriptor set / read-only SSBO) | the `MaterialGpu` record itself: texture index/slot/id, flags, PBR factors. All three tables are map/mission/process-lifetime, never mutated in place. | a per-lane material-table SSBO bound once; descriptor stable for the map |
-| **Per-draw / per-instance** (→ push-constant or per-instance attribute) | `materialIdx`: static-prop `PerDrawEntry.materialIdx`, mech `GpuMechInstance.materialIdx` (byte 52, `gos_mech_batcher.h:50`). This selects WHICH record, it is not material content. | per-instance vertex/SSBO field, already exists |
+| **Per-draw / per-instance** (→ push-constant or per-instance attribute) | `materialIdx`: static-prop `PerDrawEntry.materialIdx`, mech `GpuMechInstance.materialIdx` (byte 52, `GameOS/gameos/gos_mech_batcher.h:230`). This selects WHICH record, it is not material content. | per-instance vertex/SSBO field, already exists |
 | **Per-pass** (→ pass-level uniform, NOT per-material) | IBL participation (`u_iblSh`), fog, the mech surface-material *selection* (`s_mechSurfaceMaterialIdx` chooses one global profile per pass), `u_buildingPbrControls`, `u_pbrTileScale` | pass uniform block; correctly NOT in the record |
 
 The record/index split is already clean and Vulkan-shaped. The thing that is NOT clean is the texture *field*: in three lanes it means three things, and only one is an index a shader can use.

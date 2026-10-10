@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # VFX Overdraw & Draw-Coverage Audit (VFX-OVERDRAW-AUDIT-0)
 
 Measures current GPU-particle cost and resolves two correctness/coverage

@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # Sensor / contact presentation — recon (SENSOR-CONTACT-PRESENTATION-RECON-1)
 
 Status: **DEFER. No renderer-only implementation is possible today.** This doc

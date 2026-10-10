@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # VFX R→V Lane — Arc Recon (VFX-ARC-RECON-0)
 
 Read-only end-to-end map of the VFX / effects render lane, modeled on the

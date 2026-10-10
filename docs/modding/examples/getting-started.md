@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Chapter 0 — Getting Started With MC2 Data Mods
 
 > **AVAILABILITY**
@@ -25,7 +26,7 @@ If you just want to swap a weapon stat, add a mech variant, or drop in a replace
 
 A data mod is a folder under the game's `mods/` directory (next to `mc2.exe`) that **shadows** files in the base game's `data/` tree. When the mod is active, any file the mod ships at a given relative path is used *instead of* the base game's file at that same path — whole file, no merging, no diffing. Files the mod doesn't ship fall through to the base game unchanged.
 
-This is implemented in `mclib/file.cpp` (`InitModSearchPaths`, `mclib/file.cpp:632`), which builds an in-memory index (`g_modIndex`) at startup and consults it before any base-game file lookup.
+This is implemented in `mclib/file.cpp` (`InitModSearchPaths`, `mclib/file.cpp:679`), which builds an in-memory index (`g_modIndex`) at startup and consults it before any base-game file lookup.
 
 ### Folder anatomy
 
@@ -79,7 +80,7 @@ active mod  >  dependency[0]  >  dependency[1]  >  ...  >  base data/  >  FastFi
 - Its declared `dependencies` are indexed next, in the order listed in `mod.json` — the first dependency in the array outranks the second, and so on.
 - Anything none of those ship falls through to the base game's `data/` tree, then packed FastFiles, then (practically unreachable on a modern install) the original CD path.
 - Indexing is **first-wins**: once a relative path (e.g. `data/objects/compbas.csv`) is claimed by a higher-priority layer, a lower-priority layer's file at the same path is simply never looked at. There is no field-level or line-level merging — if you want to change one row of a CSV, you ship the *entire* CSV.
-- Matching is case-insensitive and backslash/forward-slash-insensitive (`mclib/file.cpp:202`, `NormalizeKey`).
+- Matching is case-insensitive and backslash/forward-slash-insensitive (`mclib/file.cpp:215`, `NormalizeKey`).
 
 This whole mechanism is session-scoped: it's built once at process startup from the `MC2_ACTIVE_MOD` value and never changes for the life of that `mc2.exe` process.
 

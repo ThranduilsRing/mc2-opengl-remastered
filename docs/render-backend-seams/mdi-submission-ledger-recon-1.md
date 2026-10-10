@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # MDI-SUBMISSION-LEDGER-RECON-1
 
 Read-only recon. The pass contracts say what a pass writes/reads; this catalogues **how
@@ -10,16 +11,16 @@ of real `gl*Indirect(` statements (not comments).
 
 | # | Site | Family / variant | Draw fn | Indirect buffer | Cmd struct (stride) | drawcount source | Producer | Barrier before | Fallback |
 |---|---|---|---|---|---|---|---|---|---|
-| 1 | `gameos_graphics.cpp:4260` | **Terrain solid** (GPU-driven) | `glMultiDrawArraysIndirect` | `g_indirectCmdBuffer` (ring) | DrawArraysIndirect (16B) | `cmdCount` (=1) | **GPU** (atomicAdd in cull/pack) | `SSBO\|COMMAND` (terrain_indirect.cpp:3558) | CPU legacy tessellation |
-| 2 | `gameos_graphics.cpp:3531` | **Water fast-path** | `glMultiDrawArraysIndirect` | `WaterStream::GetIndirectCmdBuffer()` | DrawArraysIndirect (16B) | `drawCount` (1 or 2: base±detail) | **GPU** (WaterStream compute) | UNKNOWN (likely in WaterStream dispatch) | none (path is optional) |
+| 1 | `GameOS/gameos/gameos_graphics_bridge.cpp:405` | **Terrain solid** (GPU-driven) | `glMultiDrawArraysIndirect` | `g_indirectCmdBuffer` (ring) | DrawArraysIndirect (16B) | `cmdCount` (=1) | **GPU** (atomicAdd in cull/pack) | `SSBO\|COMMAND` (terrain_indirect.cpp:3558) | CPU legacy tessellation |
+| 2 | `GameOS/gameos/gameos_graphics_water.cpp:685` | **Water fast-path** | `glMultiDrawArraysIndirect` | `WaterStream::GetIndirectCmdBuffer()` | DrawArraysIndirect (16B) | `drawCount` (1 or 2: base±detail) | **GPU** (WaterStream compute) | UNKNOWN (likely in WaterStream dispatch) | none (path is optional) |
 | 3 | `gameos_graphics.cpp:4493` | **Terrain mask solid** | `glDrawArraysIndirect` | `s_indirectCmdBuf` (static) | DrawArraysIndirect (16B) | 1 (count=quadCount*6) | **CPU** (`glBufferSubData`) | none (CPU-filled) | none (mask optional) |
 | 4 | `gameos_graphics.cpp:4652` | **Terrain mask water** | `glDrawArraysIndirect` | `s_waterIndirectCmdBuf` (static) | DrawArraysIndirect (16B) | 1 (count=recipeCount*6) | **CPU** (`glBufferSubData`) | none | none |
-| 5 | `gos_static_prop_batcher.cpp:6058` | **StaticProp M2a alpha-OFF** | `glMultiDrawElementsIndirect` | `s_staticIndirectCmdBuf` | DrawElementsIndirect (20B) | `s_alphaOffCmdCount` (CPU packets) | CPU coherent map; counts CPU | `gpuSyncBarrier` @6052 | legacy per-type loop |
-| 6 | `gos_static_prop_batcher.cpp:6067` | StaticProp M2a alpha-ON | `glMultiDrawElementsIndirect` | `s_staticIndirectCmdBuf` | (20B) | `s_alphaOnCmdCount` | CPU | shared @6052 | legacy |
-| 7 | `gos_static_prop_batcher.cpp:6783` | StaticProp coalesce BC7 bucket | `glMultiDrawElementsIndirect` | `gpu_cull::compute_getIndirectCmdBuf()` | (20B) | `s_bucketCmdCount[b]` | **GPU** (patch shader) | `SSBO\|COMMAND` (gpu_cull_compute.cpp:1297) | V5 / legacy |
-| 8 | `gos_static_prop_batcher.cpp:6820` | StaticProp coalesce v6 alpha-OFF | `glMultiDrawElementsIndirect` | `compute_getIndirectCmdBuf()` | (20B) | `s_alphaOffCmdCount` (packets); instanceCount GPU | **GPU** (patch) | @1297 | V5 / legacy |
-| 9 | `gos_static_prop_batcher.cpp:6842` | StaticProp coalesce v6 alpha-ON | `glMultiDrawElementsIndirect` | `compute_getIndirectCmdBuf()` | (20B) | `s_alphaOnCmdCount` | **GPU** (patch) | @1297 | V5 / legacy |
-| 10 | `gos_static_prop_batcher.cpp:7188` | StaticProp C1b per-type | `glDrawElementsIndirect` | `compute_getIndirectCmdBuf()` | (20B) | 1 per typeID (instanceCount GPU) | **GPU** (patch) | @1297 | CPU `glDrawElementsInstancedBaseVertex` |
+| 5 | `GameOS/gameos/gos_static_prop_batcher_submit.cpp:708` | **StaticProp M2a alpha-OFF** | `glMultiDrawElementsIndirect` | `s_staticIndirectCmdBuf` | DrawElementsIndirect (20B) | `s_alphaOffCmdCount` (CPU packets) | CPU coherent map; counts CPU | `gpuSyncBarrier` @6052 | legacy per-type loop |
+| 6 | `GameOS/gameos/gos_static_prop_batcher_submit.cpp:717` | StaticProp M2a alpha-ON | `glMultiDrawElementsIndirect` | `s_staticIndirectCmdBuf` | (20B) | `s_alphaOnCmdCount` | CPU | shared @6052 | legacy |
+| 7 | `GameOS/gameos/gos_static_prop_batcher_flush.cpp:177` | StaticProp coalesce BC7 bucket | `glMultiDrawElementsIndirect` | `gpu_cull::compute_getIndirectCmdBuf()` | (20B) | `s_bucketCmdCount[b]` | **GPU** (patch shader) | `SSBO\|COMMAND` (gpu_cull_compute.cpp:1297) | V5 / legacy |
+| 8 | `GameOS/gameos/gos_static_prop_batcher_flush.cpp:214` | StaticProp coalesce v6 alpha-OFF | `glMultiDrawElementsIndirect` | `compute_getIndirectCmdBuf()` | (20B) | `s_alphaOffCmdCount` (packets); instanceCount GPU | **GPU** (patch) | @1297 | V5 / legacy |
+| 9 | `GameOS/gameos/gos_static_prop_batcher_flush.cpp:236` | StaticProp coalesce v6 alpha-ON | `glMultiDrawElementsIndirect` | `compute_getIndirectCmdBuf()` | (20B) | `s_alphaOnCmdCount` | **GPU** (patch) | @1297 | V5 / legacy |
+| 10 | `GameOS/gameos/gos_static_prop_batcher_flush.cpp:571` | StaticProp C1b per-type | `glDrawElementsIndirect` | `compute_getIndirectCmdBuf()` | (20B) | 1 per typeID (instanceCount GPU) | **GPU** (patch) | @1297 | CPU `glDrawElementsInstancedBaseVertex` |
 
 ## Producer / consumer split
 
@@ -42,7 +43,7 @@ of real `gl*Indirect(` statements (not comments).
 
 Both GPU-producer families gate the indirect read behind
 `glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT)` — terrain at
-`gos_terrain_indirect.cpp:3558`, static-prop at `gpu_cull_compute.cpp:1297` (documented
+`GameOS/gameos/gos_terrain_indirect_pack.cpp:491`, static-prop at `gpu_cull_compute.cpp:1297` (documented
 AMD command-processor reorder mitigation). CPU-filled paths need no barrier. **Water's
 barrier site is UNKNOWN** (not in the render block; presumed inside WaterStream dispatch) —
 flag for the scaffold to confirm.

@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # V-MATERIAL-PBR-2 — Cheap Specular for StaticPropOpaque (PLAN)
 
 **Status:** DRAFT — plan-only. Awaiting reviewer.

@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # VFX Originals Restoration — Design (CPU-oracle → GPU-sim arc)
 
 **Status:** approved strategy; Phase 1 pending spec sign-off.

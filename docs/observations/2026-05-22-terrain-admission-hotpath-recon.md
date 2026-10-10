@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # Terrain Admission Hot-Path Recon
 **Date:** 2026-05-22
 **Branch:** claude/nifty-mendeleev (HEAD 308625e)
@@ -49,7 +50,7 @@ for (long ri = 0; ri < numberVertices; ++ri, ++rv)
 Iteration shape: O(N) per frame where N = `numberVertices` = `realVerticesMapSide^2`.
 - Typical mc2 maps: `realVerticesMapSide` = 120 -> ~14,400 calls/frame.
   (Validated: `terrain.cpp:326` lists 120 as a canonical map side;
-  `terrain.cpp:1683` computes `ssNumActiveVerts = realVerticesMapSide * realVerticesMapSide`.)
+  `mclib/terrain_init.cpp:1065` computes `ssNumActiveVerts = realVerticesMapSide * realVerticesMapSide`.)
 - Guard: `(onScreenR || !clipUsesOnScreen)` skips the call when perspective is on
   (`usePerspective && Environment.Renderer != 3`) and the angular pre-cull rejected
   the vertex. In practice the angular cull saves roughly 30-60% of calls depending
@@ -63,7 +64,7 @@ Iteration shape: O(N) per frame where N = `numberVertices` = `realVerticesMapSid
    `clipR = clipUsesOnScreen ? onScreenR : inViewR` (`:1787`), so in the default
    perspective branch clipR == onScreenR and the projectZ call is used only for
    `inViewR`, which feeds the `px/py/pz/pw` raster write below.
-2. `rv->px/py/pz/pw` at `terrain.cpp:1843-1846` -- raster coordinates for legacy
+2. `rv->px/py/pz/pw` at `mclib/terrain_raycast.cpp:22-25` -- raster coordinates for legacy
    `TerrainQuad::draw()` immediate path (runs on un-armed frames: mission deployment
    screen, unit-select screen, any frame where `IsFrameSolidArmed()` is false).
 
@@ -120,7 +121,7 @@ for this slice.
 |---|---|---|
 | VPL (VertexProjectLoop) | RETIRED 2026-05-18 | `docs/render-perf-snapshot.md:29,52`; commits `5296de4`, `0c8e06b`, `63a0b3e` |
 | `slimReduce` loop | LIVE (permanent replacement for VPL) | `terrain.cpp:1670` `ZoneScopedN("Terrain::geometry slimReduce")` |
-| `slimReduce` RED reduction (leastZ/mostZ etc.) | DELETED Phase 4 2026-05-19 | `terrain.cpp:1862-1866` confirms deletion; consumer chain retired in Phase 3 |
+| `slimReduce` RED reduction (leastZ/mostZ etc.) | DELETED Phase 4 2026-05-19 | `mclib/terrain_raycast.cpp:41-45` confirms deletion; consumer chain retired in Phase 3 |
 | drawPass `Terrain::render drawPass` per-quad loop | RETIRED default-ON 2026-05-17 | `CLAUDE.md:152`; `docs/render-perf-snapshot.md:24` (~1.7ms -> ~20us armed) |
 | inverseProject / setInverseProject chain | RETIRED | `docs/superpowers/plans/2026-05-19-inverseproject-consumer-collapse.md` |
 | `ProjectZBypassMode` on non-terrain wrappers | Default=Off (legacy path); Bypass available | `object_admission_predicate.h:71-74`; F3/F4/F5 shipped |
@@ -201,7 +202,7 @@ call count.
 - Already used by `projectForObjectAdmission` in Bypass mode.
 - Produces GL-NDC clip coords from `worldToClipGL` (F2 product).
 - Cost: one mat-vec mul, no divide.
-- `clipSpaceFrustumAdmitGL` at `object_admission_predicate.h:68` -- checks
+- `clipSpaceFrustumAdmitGL` at `mclib/object_admission_predicate.h:78` -- checks
   `clip.xy in [-w,w]`, `clip.z in [0,w]` which handles GL-NDC `clip.w > 0`
   convention correctly.
 - Fitness: viable but requires `worldToClipGL` to be stable at slimReduce time.
@@ -322,7 +323,7 @@ if (s_admissionModern) {
 Note: `clipR = clipUsesOnScreen ? onScreenR : inViewR` at `terrain.cpp:1787` --
 in the default perspective path `clipR == onScreenR` regardless of `inViewR`,
 so the cull-cascade write is unaffected by the admission change. Only the
-`px/py/pz/pw` raster write at `terrain.cpp:1843-1846` consumes `sp`. Under the
+`px/py/pz/pw` raster write at `mclib/terrain_raycast.cpp:22-25` consumes `sp`. Under the
 Modern path `sp` stays sentinel (-10000) which is the existing off-screen value;
 the legacy raster path reads `rv->px/py` as the screen coordinate, so un-armed
 frames with `legacyDraw` active will use sentinel coords. If this is a problem
@@ -373,7 +374,7 @@ See Section 10 below.
 - Solve every red-band edge case (canary gate protects; unsolved cases stay Legacy default).
 - Rebuild `cameraToClip` or `worldToClipGL` (F1 campaign handles that separately).
 - Prove every terrain caller is modern (only slimReduce hot path targeted).
-- Modernize `quad.cpp:1070-1205` water sites (deferred follow-up).
+- Modernize `mclib/quad_setup.cpp:631-766` water sites (deferred follow-up).
 - Remove the `projectForTerrainAdmission` wrapper (survives as fallback).
 - Touch `quad.cpp:2114` pz-validity gate (different semantic; not frustum admission).
 

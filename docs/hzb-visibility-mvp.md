@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # HZB Visibility Substrate (MVP)
 
 `TRACKRV-HZB-VISIBILITY-OPUS-1`. A debuggable reverse-Z Hi-Z (HZB) depth pyramid

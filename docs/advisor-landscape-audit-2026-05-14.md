@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Advisor Landscape Audit - 2026-05-14
 
 ## Scope

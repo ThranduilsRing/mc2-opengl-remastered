@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # HUD tab registry (MC2_HUD_IMGUI_TABS, slice C)
 
 Data-driven command-bar tab strip for the in-mission HUD

@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Modding weapons — annotated `equipmentdef.fit` reference
 
 Field-by-field reference for a modded **EquipmentDefinition** (`equipmentdef.fit`),

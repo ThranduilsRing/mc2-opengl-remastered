@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # MC2R engine support for your TechScript / mission_specials system
 
 Hey — wanted to give you a status update, because your **Carver V Enhanced** campaign and its `mission_specials.fit` / TechScript design turned out to be the perfect reference for a feature we've been building into the MC2 Remastered engine. Short version: **the engine can now load, parse, and execute your TechScript specials directly, and we adopted your file format as the native format** rather than inventing our own. Thank you — it saved us from guessing what a good shape looks like, because you'd already built one that works.

@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # FX Pipeline Map — GPU particle path (post-B2 beta)
 
 > Branch: `claude/nifty-mendeleev` · Gate: `MC2_GPU_PARTICLES=1` (default OFF)
@@ -213,7 +214,7 @@ sequenceDiagram
 | `code/gamecam.cpp:268-272` | `Batcher::ResolveTextures()` + `Flush()` sandwich; camera basis set/clear wraps this |
 | `code/weaponbolt.cpp:380` (update entry) | snapshot + ring push + Spawn loop (B2 hook) |
 | `code/weaponbolt.cpp:1155` | `laserPosition += laserVelocity` — the real in-flight position (NOT `position`, which is launcher hotspot) |
-| `code/weaponbolt.cpp:411-413` | gosFX axis swap pattern (source of truth; mirrored in trail push) |
+| `code/weaponbolt_update.cpp:12-14` | gosFX axis swap pattern (source of truth; mirrored in trail push) |
 | `code/weaponbolt.cpp:~2519` | `init()` — hardcoded `gpu_trail_kind = MissileSmoke` for every bolt (P3 will replace with INI table) |
 | `mclib/particles/batcher.h:40` | `GroupInfo` struct (no `kind` field — P3 work adds it) |
 | `mclib/particles/batcher.cpp:111` | `BeginGroup` — pushes new `GroupInfo` every call, no coalescing by handle |

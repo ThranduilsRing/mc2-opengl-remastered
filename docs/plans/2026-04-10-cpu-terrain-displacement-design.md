@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # CPU Terrain Displacement — Design Doc
 **Date:** 2026-04-10
 
@@ -8,7 +9,7 @@
 > **That stopped being true on 2026-06-29.** Commit `75b8ebef`
 > (TERRAIN-DEADCODE-DELETE-1) deleted the legacy tess-solid terrain draw, and
 > `shaders/gos_terrain.tese` has had no reachable draw since — both surviving call
-> sites of the old funnel (`GameOS/gameos/gameos_graphics.cpp:7590`, `:7603`) only
+> sites of the old funnel (`GameOS/gameos/gameos_graphics_draw.cpp:1054`, `:7603`) only
 > `rewind()`. The ground is rasterized by `shaders/terrain_lod_chunk.vert` +
 > `.frag` (VS+FS, no TCS/TES — `gos_terrain_lod_chunk.cpp:1257`), which applies
 > **neither** Phong smoothing **nor** displacement.

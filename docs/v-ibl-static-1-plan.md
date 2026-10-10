@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # V-IBL-STATIC-1 Plan (recon + implementation slice)
 
 Parent plan: `docs/ibl-plan.md` (HEAD `cfad795c`). This doc resolves the
@@ -18,7 +19,7 @@ Worktree HEAD at plan time: `cfad795c`.
   (matches `ibl-plan.md` §2.1). License sidecar
   `DaySkyHDRI063B_LICENSE.txt` present. No other `.hdr` / `.exr` /
   cubemap / BRDF-LUT assets in the worktree.
-- Runtime loader: `GameOS/gameos/gos_hdri.cpp:12` `loadHdriTexture()`
+- Runtime loader: `GameOS/gameos/gos_hdri.cpp:111` `loadHdriTexture()`
   decodes the EXR via **tinyexr** (header-only, `#define
   TINYEXR_IMPLEMENTATION` at `gos_hdri.cpp:9`), uploads RGBA16F to
   GL_TEXTURE_2D. miniz is compiled in a separate TU.

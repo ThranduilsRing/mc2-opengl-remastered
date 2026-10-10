@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Baseline A — post-8z frozen render/perf reference
 
 **Stamp:** post-8z, pre-GlStateGuard, pre-visual-lanes
@@ -105,7 +106,7 @@ Per-mission, end-of-run / last-dump values:
   >
   > - **`submit_trees` / `submit_buildings` / `submit_generics` / `submit_legacy`**
   >   are `submitted_instances_by_pop[]`, incremented ONLY at
-  >   `GameOS/gameos/gos_static_prop_batcher.cpp:5613`, on the **dynamic**
+  >   `GameOS/gameos/gos_static_prop_batcher_submit.cpp:264`, on the **dynamic**
   >   `submitMultiShape` path. Once an actor registers a persistent recipe it
   >   replays every frame via `submitCachedInstance()` (`:9516`), which
   >   **deliberately does not tick them** (comment at `:9526`). In a steady-state

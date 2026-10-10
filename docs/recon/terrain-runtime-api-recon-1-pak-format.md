@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # TERRAIN-RUNTIME-API-RECON-1 - On-disk .pak terrain format and load path
 
 Read-only recon (2026-06-25, worktree nifty-mendeleev). All file:line verified this pass.
@@ -13,16 +14,16 @@ spec docs/terrain-height-audit.md:76-81; reader mclib/packet.h / mclib/packet.cp
 - Packet body size = delta between consecutive entry offsets; last runs to EOF.
 - LZD/ZLIB bodies: first 4 bytes = uint32 unpacked size, payload at +4.
 
-Per-mission <mission>.pak packet indices (editor save, editor/EditorData.cpp:2178-2215):
-- Packet 0 - terrain land grid. land->save(file,0,...) (EditorData.cpp:2181). Raw
+Per-mission <mission>.pak packet indices (editor save, editor/EditorData_save.cpp:441-478):
+- Packet 0 - terrain land grid. land->save(file,0,...) (editor/EditorData_save.cpp:444). Raw
   PostcompVertex[side*side] row-major (y outer). Python PakExporter.build_packet0 /
   patch_pak writes this (pak_exporter.py:64-91,114-144).
-- Packet 1 - objects/buildings. EditorObjectMgr::save(file,1) (EditorData.cpp:2183);
-  load EditorObjectMgr::load(pFile,1) (EditorData.cpp:501, def EditorObjectMgr.cpp:1693).
-- Packet 3 - TacMap (saveTacMap(file,3), EditorData.cpp:2188).
-- Packet 4 - MOVE / pathfinding data (MOVE_saveData(file,4), EditorData.cpp:2193).
-- Last packet - GUID multiplayer version stamp (EditorData.cpp:2211-2215).
-- numPackets = 6 (or 5+movePacketCount), EditorData.cpp:2184.
+- Packet 1 - objects/buildings. EditorObjectMgr::save(file,1) (editor/EditorData_save.cpp:446);
+  load EditorObjectMgr::load(pFile,1) (editor/EditorData_terrain.cpp:183, def editor/EditorObjectMgr_io.cpp:77).
+- Packet 3 - TacMap (saveTacMap(file,3), editor/EditorData_save.cpp:451).
+- Packet 4 - MOVE / pathfinding data (MOVE_saveData(file,4), editor/EditorData_save.cpp:456).
+- Last packet - GUID multiplayer version stamp (editor/EditorData_save.cpp:474-478).
+- numPackets = 6 (or 5+movePacketCount), editor/EditorData_save.cpp:447.
 
 NOTE: object TYPES (chassis/building defs) live in a SEPARATE global object2.pak keyed by
 objTypeNum (code/objtype.cpp:355 seekPacket), NOT the per-mission .pak. Packet 1 holds
@@ -33,12 +34,12 @@ object instances/placements.
 Game (code/mission.cpp:2759-2797):
 1. terrainFileName.init(missionPath, missionName, .pak) - .pak named off mission stem,
    sibling to the mission .fit (missionFile).
-2. PacketFile pakFile; pakFile.open(terrainFileName) (mission.cpp:2762-2764).
+2. PacketFile pakFile; pakFile.open(terrainFileName) (code/mission_movers.cpp:540-542).
 3. land->getColorMapName(missionFile) - colormap name from .fit ColorMap block (terrain.cpp:529).
-4. land->init(pakFile, 0, ...) (mission.cpp:2782) -> Terrain::init (terrain.cpp:495):
+4. land->init(pakFile, 0, ...) (code/mission_movers.cpp:558) -> Terrain::init (terrain.cpp:495):
    seekPacket(0), getPacketSize(), realVerticesMapSide = sqrt(size/sizeof(PostcompVertex))
    (terrain.cpp:505-506), range-check [60,2048] (terrain.cpp:510), then init(...) (terrain.cpp:523,575).
-5. land->load(missionFile) (mission.cpp:2797, def terrain.cpp:3872) - reads mission .fit, NOT .pak.
+5. land->load(missionFile) (code/mission_movers.cpp:573, def mclib/terrain_geometry.cpp:133) - reads mission .fit, NOT .pak.
 - Save-game variant: identical land->init(pakFile,0,...) at code/saveload.cpp:1135.
 
 In-memory: Terrain (mclib/terrain.cpp/.h) owns mapData (MapData, mclib/mapdata.*) holding the
@@ -49,10 +50,10 @@ PostcompVertex block array (getBlocks(), terrain.cpp:375).
 - Spacing: worldUnitsPerVertex = 128 wu; world coord tables terrain.cpp:480-491.
 - Per-vertex elevation: float in each PostcompVertex; python elevation = h*max_elev+min_elev
   (pak_exporter.py:82-85).
-- Elevation slider range: [Terrain] UserMin/UserMax in mission .fit (terrain.cpp:3898-3899;
+- Elevation slider range: [Terrain] UserMin/UserMax in mission .fit (mclib/terrain_geometry.cpp:159-160;
   python terrain_gen.py:100-101).
 - Water: mission .fit [Water] block - Elevation (authoritative water test), Frequency,
-  Ampliture, AlphaShallow/Middle/Deep, AlphaDepth, ShallowDepth (terrain.cpp:3875-3895). NOT .pak.
+  Ampliture, AlphaShallow/Middle/Deep, AlphaDepth, ShallowDepth (mclib/terrain_geometry.cpp:136-156). NOT .pak.
 
 ## 3. Per-vertex on-disk attributes (PostcompVertex, packet 0)
 
@@ -110,8 +111,8 @@ Attach to a mission TWO ways:
   refuse mismatched/modified base terrain.
 - Loose binary planes (.r32/.r8/.u32) row-major side*side, one per modern attribute (material
   splat ids, normal/PBR aux, overlay codes), NEVER mutating the stock .pak.
-- Engine load: after land->init(pakFile,0,...) (mission.cpp:2782) and land->load
-  (mission.cpp:2797), add an opt-in (MC2_* gate) sidecar pass that recomputes baseHash of the
+- Engine load: after land->init(pakFile,0,...) (code/mission_movers.cpp:558) and land->load
+  (code/mission_movers.cpp:573), add an opt-in (MC2_* gate) sidecar pass that recomputes baseHash of the
   open pakFile and applies only on match - degrade to stock generation on miss/absent
   (stock-must-be-playable). Mirror BeautySidecarPreview snapshot/restore for live use; mirror
   python apply for offline bake.

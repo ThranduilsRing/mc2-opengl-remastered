@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # MC2 Debug State JSON Schema
 
 Schema version: `MC2_DEBUG_STATE_V1`

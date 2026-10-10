@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Modding Effects (FX-DEFS Sidecar)
 
 How to **retune or replace a weapon/explosion effect** without recompiling the engine and

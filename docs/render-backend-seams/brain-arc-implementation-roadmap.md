@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Brain & AI 2.14 — Implementation Roadmap
 
 We own this lane. The modder (carver_v_enhanced author) had the idea + a working ABL/FIT reference; we're the ones building it in the engine. This doc replaces the "handoff for someone else" — it's our plan to drive against.

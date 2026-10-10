@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # HANDOFF — Model-Override + Tree LOD (resume cold)
 
 **Branch:** `claude/model-override-system-recon-1` (worktree `A:/Games/mc2-model-override-recon`). **HEAD:** `9957a3ab`.
@@ -28,7 +29,7 @@ Make per-instance `lightDataIndex` resolve through a key INDEPENDENT of LOD mesh
 Use **`cost-split`** CostSplit buckets (`.claude/skills/cost-split-recon-bucket-design.md`; shipped pattern `gos_terrain_indirect.cpp`, env `MC2_*_COST_SPLIT`) for frame-rate/call-count/zone decomposition — **summary cadence at 10 frames** (not 600) so `--validate --frames 20` emits it. Honor 100ns floor / <10% overhead. Relay the summary line back each run.
 
 ## Key file:line anchors (re-grep — lines drift)
-`TreeAppearance::registerStatic` `bdactor.cpp:4806`; tree `markVisible` `:4226`; `getTreeRenderShape` `bdactor.h:518`; `treeRenderShape[MAX_LODS]` `bdactor.h:478`; tree pinned `currentLOD=0` `:3834`; `lodDistance[]` read (×5 zoom-push) `:3634`; light dedup `addLightDataStructure` `txmmgr.cpp:1278` (memcmp `:1290`); `mc2CacheOrBakeStaticGpuLight` `bdactor.cpp:1903`; `finalizeGeometry` one-shot immutable VBO + `s_geometryFinalized` `gos_static_prop_batcher.cpp`. LOD-swap-black cure (re-arm `needsFullBakeNextFrame`) `docs/superpowers/specs/2026-05-07-lod-swap-static-registry-churn.md`.
+`TreeAppearance::registerStatic` `bdactor.cpp:4806`; tree `markVisible` `:4226`; `getTreeRenderShape` `mclib/bdactor.h:603`; `treeRenderShape[MAX_LODS]` `mclib/bdactor.h:603`; tree pinned `currentLOD=0` `:3834`; `lodDistance[]` read (×5 zoom-push) `:3634`; light dedup `addLightDataStructure` `mclib/txmmgr_lights.cpp:586` (memcmp `:1290`); `mc2CacheOrBakeStaticGpuLight` `mclib/bdactor_lightbake.cpp:186`; `finalizeGeometry` one-shot immutable VBO + `s_geometryFinalized` `gos_static_prop_batcher.cpp`. LOD-swap-black cure (re-arm `needsFullBakeNextFrame`) `docs/superpowers/specs/2026-05-07-lod-swap-static-registry-churn.md`.
 
 ## Deploy / run
 Build (VS cmake `C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe`, `build64`, RelWithDebInfo) → deploy to `A:/Games/mc2-opengl/mc2-win64-v0.3` (v0.4 also valid; NOT v0.3's `mission.fst`-only set — `mc2_01` works on both). Run `mc2.exe --validate --frames 20 --log X.json --screenshot X.tga -mission mc2_01 2> X.txt`. Deployed demo manifest = lush 6-type (tc1_1..4, palm1, palms → tree_lush.glb); shipped repo manifest stays `{"overrides":[]}` (no-mod identity). Env-gated traces left in: `MC2_LIGHTSLOT_TRACE`, `MC2_MODOVERRIDE_TRACE`, `MC2_SUBSTRATE_COALESCE_TRACE`, SEAMPROBE.

@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Render Pass Contract Registry — Spec
 
 **Slice:** RENDERPASS-CONTRACT-2.5

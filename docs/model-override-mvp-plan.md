@@ -1,10 +1,11 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # Model Override MVP Implementation Plan (`MODEL-OVERRIDE-MVP-1`)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Let a modder replace one stock visual model (static prop, then tree) by dropping a glTF/GLB into a mod folder and declaring it in `model_overrides/models.json`, render-only, with stock gameplay/collision frozen and stock fallback on any failure.
 
-**Architecture:** A new engine-independent `model_override_registry` translation unit parses the manifest into plain structs (unit-testable, no engine deps). The existing `TG_TypeMultiShape::LoadFromFile` probe funnel (`mclib/msl.cpp:438`) gains an override-resolution step keyed by `<class>:<appearanceName>`, and the static-prop/tree appearance loaders in `mclib/bdactor.cpp` are redirected from the direct `LoadTGMultiShapeFromASE(fullPath)` call to `LoadFromFile(basename, class)`. Render bounds (`OBBRadius`, `highZ`) are already recomputed in `BldgAppearance::init` from the loaded shape's box — the override rides that path; the work is verifying the override mesh's box is accurate and proving collision (`cellsCovered`) is untouched.
+**Architecture:** A new engine-independent `model_override_registry` translation unit parses the manifest into plain structs (unit-testable, no engine deps). The existing `TG_TypeMultiShape::LoadFromFile` probe funnel (`mclib/msl_load.cpp:301`) gains an override-resolution step keyed by `<class>:<appearanceName>`, and the static-prop/tree appearance loaders in `mclib/bdactor.cpp` are redirected from the direct `LoadTGMultiShapeFromASE(fullPath)` call to `LoadFromFile(basename, class)`. Render bounds (`OBBRadius`, `highZ`) are already recomputed in `BldgAppearance::init` from the loaded shape's box — the override rides that path; the work is verifying the override mesh's box is accurate and proving collision (`cellsCovered`) is untouched.
 
 **Tech Stack:** C++14 (engine TU discipline — no `std::filesystem`/`optional`/`string_view` in production), `nlohmann/json` (vendored single-header, isolated to one TU), existing Assimp importer (`mclib/assimp_importer.cpp`, `ENABLE_ASSIMP_IMPORTER`), CMake 3.10, MSVC `RelWithDebInfo`, Python smoke harness (`scripts/run_smoke.py`).
 
@@ -634,7 +635,7 @@ git commit -m "feat(modoverride): LoadFromFile gains optional overrideClass para
 ### Task 6: Insert override resolution into `LoadFromFile`
 
 **Files:**
-- Modify: `mclib/msl.cpp:438-479`
+- Modify: `mclib/msl_load.cpp:240-281`
 
 - [ ] **Step 1: Add the include + resolution block at the top of the function body**
 
@@ -707,7 +708,7 @@ git commit -m "feat(modoverride): resolve render-only overrides in LoadFromFile"
 
 - [ ] **Step 1: Redirect the building base-LOD and base call sites**
 
-At `mclib/bdactor.cpp:217` change:
+At `mclib/bdactor_update.cpp:22` change:
 ```cpp
 				bldgShape[i]->LoadTGMultiShapeFromASE(bldgName);
 ```
@@ -731,7 +732,7 @@ Leave the damage-state load at `:252` on `LoadTGMultiShapeFromASE` (damage overr
 
 - [ ] **Step 2: Redirect the tree base-LOD and base call sites**
 
-At `mclib/bdactor.cpp:3391` change:
+At `mclib/bdactor_lightbake.cpp:371` change:
 ```cpp
 				treeShape[i]->LoadTGMultiShapeFromASE(treeName);
 ```
@@ -739,7 +740,7 @@ to:
 ```cpp
 				treeShape[i]->LoadFromFile(aseFileName, "tree");
 ```
-At `mclib/bdactor.cpp:3414` change:
+At `mclib/bdactor_lightbake.cpp:394` change:
 ```cpp
 		treeShape[0]->LoadTGMultiShapeFromASE(treeName);
 ```

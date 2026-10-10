@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # AI order triage playbook (META-FIX design F)
 
 Field guide for "I ordered a unit to do X and nothing happened" reports —

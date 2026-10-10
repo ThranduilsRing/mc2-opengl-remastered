@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # FRAME-SKIP-SAFETY-AUDIT-1
 
 ## Executive Summary
@@ -77,7 +78,7 @@ Ranked by consumer-boundary impact and confidence that instrumentation will catc
 
 ### 1. **GpuStaticPropRegistry::flush() — stale_after_drawn counter** (Priority: CRITICAL)
    - **Counter Name:** `s_diag_ranges_stale_after_drawn` (already exists, gos_static_prop_registry.cpp:1012)
-   - **Consumer Boundary:** registry flush loop (line 987–1036) vs. update/touch stamping paths (objmgr.cpp:2750, bdactor.cpp:4246, 6573)
+   - **Consumer Boundary:** registry flush loop (line 987–1036) vs. update/touch stamping paths (code/objmgr_update.cpp:746, mclib/bdactor_update.cpp:820, 6573)
    - **Why Instrument:** This counter directly detects the R2B-STATIC-NATURAL-TOUCH-PRESERVE-1 regression class. If a skip path fails to stamp cachedFrame_, the registry drop happens silently unless this counter is monitored. **Rising or persistent per-frame counts for on-screen typeIDs = upstream stamping bug.**
    - **Deployment:** Wire into smoke CI: alert if `stale_after_drawn` > 0 for any on-screen mission (mc2_01, mc2_10, mc2_24). Current status: implemented (stderr emit + `MC2_STATIC_STALE_DROP_FATAL` gate for CI).
    - **Related Env Vars:** `MC2_STATIC_STALE_DROP_FATAL` (abort on regression), `MC2_SKIP_STATIC_TREES_DIAG` (legacy per-type summary), `MC2_R2B_STATIC_NATURAL_TRACE` (R2B skip path trace)
@@ -97,7 +98,7 @@ Ranked by consumer-boundary impact and confidence that instrumentation will catc
    - **Related Env Vars:** `MC2_LIGHTBRIDGE_STABLE_SKIP` (enable), `MC2_LIGHTBRIDGE_STABLE_SKIP_DIAG` (diagnostic)
 
 ### 4. **GpuStaticPropRegistry::flush() — proxy candidate classification** (Priority: MEDIUM-LOW)
-   - **Counter Name:** `g_spr_proxyCandidate`, `g_spr_rejNoStaticReg`, etc. (already exist, bdactor.cpp:52–62)
+   - **Counter Name:** `g_spr_proxyCandidate`, `g_spr_rejNoStaticReg`, etc. (already exist, mclib/bdactor_internal.h:44–62)
    - **Consumer Boundary:** touchSerialCommit() stableLightSkipEligible evaluation vs. STATIC-SCENE-PROXY-RECON classification (bdactor.cpp:4287–4409, 6596–6620)
    - **Why Instrument:** RECON-only (no behavior change). Identifies buildings/trees stable enough to skip touch() entirely. Rejection breakdown (no_shape, no_static_reg, bad_light_idx, needs_full_bake) reveals structural issues (e.g., mc2_24 72% rej_no_static_reg = off-screen buildings never registered). Baseline mission profiles guide future STATIC-SCENE-PROXY optimization slices.
    - **Deployment:** Archive per-mission baseline profiles (recon=1 soak runs). Compare new baseline after changes to detect registration/stability regressions early.
@@ -114,14 +115,14 @@ Ranked by consumer-boundary impact and confidence that instrumentation will catc
 
 ## Key Findings
 
-1. **R2B-STATIC-NATURAL-TOUCH-PRESERVE-1 is the historical regression class:** The skip at objmgr.cpp:2753 (continue for static trees) and 2788 (continue for static buildings) now preserve cachedFrame_ via mc2R2bTouchStaticLiveness() when MC2_R2B_TOUCH_PRESERVE=1 (default-ON). Regression signature: GpuStaticPropRegistry::flush() detects stale multi-shapes at line 987 and emits `[STATIC_PROP_REGISTRY]...stale_frame_drop_after_drawn`. The counter `s_diag_ranges_stale_after_drawn` is the regression detector.
+1. **R2B-STATIC-NATURAL-TOUCH-PRESERVE-1 is the historical regression class:** The skip at code/objmgr_update.cpp:749 (continue for static trees) and 2788 (continue for static buildings) now preserve cachedFrame_ via mc2R2bTouchStaticLiveness() when MC2_R2B_TOUCH_PRESERVE=1 (default-ON). Regression signature: GpuStaticPropRegistry::flush() detects stale multi-shapes at line 987 and emits `[STATIC_PROP_REGISTRY]...stale_frame_drop_after_drawn`. The counter `s_diag_ranges_stale_after_drawn` is the regression detector.
 
-2. **FRAME-JOBS-2F split-phase introduces new stamp contract:** touchSerialCommit() sets touchSerialCommitFrame unconditionally (bdactor.cpp:4246, 6573) BEFORE the stable-skip return. This allows Path B touch() to stamp-check and early-return correctly, preventing double-work. The contract is verified by `s_touchEntryDiag.legacy_skipped` counter (printed when `MC2_FRAME_JOBS_TOUCH_DIAG=1`).
+2. **FRAME-JOBS-2F split-phase introduces new stamp contract:** touchSerialCommit() sets touchSerialCommitFrame unconditionally (mclib/bdactor_update.cpp:820, 6573) BEFORE the stable-skip return. This allows Path B touch() to stamp-check and early-return correctly, preventing double-work. The contract is verified by `s_touchEntryDiag.legacy_skipped` counter (printed when `MC2_FRAME_JOBS_TOUCH_DIAG=1`).
 
 3. **LIGHTBRIDGE-STABLE-SKIP-WIRE-1 preserves slot liveness via INVARIANT:** Baked static-prop light slots [0..s_staticLightHighWater) persist frame-to-frame; skipping EmitBakedGpuLightData doesn't stale them because the GPU buffer upload keeps them valid (renderLists() always covers the range). The cached slot index from prior frame remains correct.
 
 4. **Most skip sites are trivial gate-checks (NULL, bounds, conditions):** Only the following are load-bearing per-frame skips that warrant regression tests:
-   - objmgr.cpp:2753, 2788 (R2B-STATIC-NATURAL) — instrumented by `s_diag_ranges_stale_after_drawn`
+   - code/objmgr_update.cpp:749, 2788 (R2B-STATIC-NATURAL) — instrumented by `s_diag_ranges_stale_after_drawn`
    - bdactor.cpp:4440, 6633 (LIGHTBRIDGE-STABLE-SKIP) — instrumented by `s_stableLightSkipDiag.skip`
    - bdactor.cpp:6521, 6526 (touch Path B early-return) — instrumented by `s_touchEntryDiag.legacy_skipped`
    - gos_static_prop_registry.cpp:976 (cachedFrame stale check) — detector counter `s_diag_ranges_stale_after_drawn`

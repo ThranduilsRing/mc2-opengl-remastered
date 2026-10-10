@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # FIT-PARSE-HARNESS-1-RECON
 
 **Status:** RECON ONLY — no code changes. **Verdict: DEFER** (parser is welded to

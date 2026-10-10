@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # MechCommander 2 (OpenGL remaster) — Starter Guide
 
 A modernized, OpenGL build of MechCommander 2 that plays the original campaign plus a

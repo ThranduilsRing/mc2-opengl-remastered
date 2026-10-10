@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # SCOPE-BRAIN-FIT-SCHEMA-1 — Brain FIT Schema, Key/Alias Registry, and Checker
 
 **Slice:** BRAIN-FIT-SCHEMA-1  

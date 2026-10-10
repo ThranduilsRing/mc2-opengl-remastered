@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Engine Standalone Seams — `ENGINE-STANDALONE-SEAMS-RECON-1`
 
 **Status:** recon / design only. No production code changes. Companion branch
@@ -99,11 +100,11 @@ The singleton-heavy reputation is mostly wrong for the **render** layer. Evidenc
 | # | Blocker | Where | Severity |
 |---|---|---|---|
 | B1 | **RenderWorld → GameOS downward include** (`#include "../GameOS/gameos/gos_postprocess.h"`) — the "agnostic" module depends on the GL backend. Firewall guards *upward* (game types) but not *downward*. | `RenderWorld/RenderWorld.cpp:28` | **HARD** — needs a backend interface, not a re-route |
-| B2 | `mcTextureManager` reached as a **global pointer** from many `mclib/` sites (class itself is already construct-anywhere: 5 ctor sites incl. `editor/`, `Viewer/`). | `mclib/txmmgr.cpp:86`, `txmmgr.h:1310` | MODERATE — thread a handle or host-inject |
+| B2 | `mcTextureManager` reached as a **global pointer** from many `mclib/` sites (class itself is already construct-anywhere: 5 ctor sites incl. `editor/`, `Viewer/`). | `mclib/txmmgr_internal.h:78`, `txmmgr.h:1310` | MODERATE — thread a handle or host-inject |
 | B3 | Per-call **behavioral env gates** inside draw fns (terrain lighting v1/v2, water reflection/skytint). | `gameos_graphics.cpp:5395-5719,2274-2356` | MODERATE — become explicit render-config fields |
 | B4 | `eye->` reach-ups inside the legacy flush (scene-UBO fog + shadow dynamic-projection box). | `mclib/txmmgr.cpp:1770,1807-1818,2039` | MODERATE — feed from an `EngineView`/scene-params struct |
 | B5 | **Logging**: RenderWorld logs via hard-coded `fprintf(stderr)` (20+ sites); engine-wide uses `SPEW`/`gosASSERT`. No host-logger callback. | `RenderWorld.cpp:215+` | MODERATE — route through injected sink |
-| B6 | Material-table build/upload/bind **welded into the static-prop batcher** (file-scope statics + `mcTextureManager`). | `gos_static_prop_batcher.cpp:3109-3260` | MODERATE — extract to a RenderCore service |
+| B6 | Material-table build/upload/bind **welded into the static-prop batcher** (file-scope statics + `mcTextureManager`). | `GameOS/gameos/gos_static_prop_batcher_mapload.cpp:282-433` | MODERATE — extract to a RenderCore service |
 | B7 | Filesystem path resolution is a **global** (`fastFiles[]` registry + `CDInstallPath`). Escape hatch: `File::open` works on raw disk path with no registry; `KtxLoader`/BC7 sidecar already use raw `fopen`. | `mclib/fastfile.cpp:17-74`, `file.cpp:90-99` | MODERATE — accept resolved abs path; FastFile = optional provider |
 
 Trace-only env gates (`static const bool`, read-once) are TRIVIAL: hoist to an
@@ -175,7 +176,7 @@ To drive one frame with no Mission, a host supplies exactly three things — non
 game globals:
 
 1. **A current GL context.** GameOS already creates one Mission-independently via SDL
-   (`gos_render.cpp:340-361` → `SDL_GL_CreateContext`; `gameosmain.cpp:1019` `glewInit`).
+   (`gos_render.cpp:340-361` → `SDL_GL_CreateContext`; `GameOS/gameos/gameosmain.cpp:1572` `glewInit`).
    The asset viewer proves a tool can create its own (`tools/asset_viewer/main.cpp:23-73`).
    Pure-RenderCore (registries, PipelineDesc, view POD, KTX parse, SH lookup) runs with
    **no context at all**.
@@ -260,10 +261,10 @@ exact-pixel goldens.
 | PipelineDesc → GL apply | `GameOS/gameos/pipeline_binder.*` | NEEDS-ADAPTER (GL context only) |
 | RenderWorld scene/handle/visibility | `RenderWorld/RenderWorld.*` | NEEDS-ADAPTER (init pure; impl pulls `gos_postprocess.h` — see B1) |
 | GL context + window (SDL) | `gos_render.cpp:340`, `gameosmain.cpp:1019` | NEEDS-ADAPTER (Mission-independent; reusable as host service) |
-| `loadTexture` CPU cache | `mclib/txmmgr.cpp:3070` | NEEDS-ADAPTER (needs `File` + `mcTextureManager` injected) |
-| GL texture realize | `mclib/txmmgr.cpp:3335` | NEEDS-ADAPTER (GL context + `g_gos_renderer` + `mcTextureManager`) |
-| BC7 uploaders (2D + array) | `txmmgr.cpp:3426`, `gos_static_prop_batcher.cpp:2750` | NEEDS-ADAPTER (GL context + BPTC) |
-| Material-table assembly/upload/bind | `gos_static_prop_batcher.cpp:3109-3260` | NEEDS-ADAPTER (extract from batcher; reaches `mcTextureManager`) |
+| `loadTexture` CPU cache | `mclib/txmmgr_lightrow.cpp:701` | NEEDS-ADAPTER (needs `File` + `mcTextureManager` injected) |
+| GL texture realize | `mclib/txmmgr_render_phases.cpp:385` | NEEDS-ADAPTER (GL context + `g_gos_renderer` + `mcTextureManager`) |
+| BC7 uploaders (2D + array) | `mclib/txmmgr_render_phases.cpp:480`, `GameOS/gameos/gos_static_prop_batcher_program.cpp:770` | NEEDS-ADAPTER (GL context + BPTC) |
+| Material-table assembly/upload/bind | `GameOS/gameos/gos_static_prop_batcher_mapload.cpp:282-433` | NEEDS-ADAPTER (extract from batcher; reaches `mcTextureManager`) |
 | sRGB/linear policy | `gl_utils.cpp:53-64`, batcher `:2790` | NEEDS-ADAPTER (inconsistent; make explicit per-slot) |
 | Filesystem path resolution | `mclib/fastfile.cpp`, `file.cpp` | NEEDS-ADAPTER (global registry; accept resolved abs path) |
 | EditorBridge | `EditorBridge/EditorRenderBridge.h` | NEEDS-ADAPTER (non-game host precedent) |

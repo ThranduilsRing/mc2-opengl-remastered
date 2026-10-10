@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Debugging Render Issues
 
 How to use the built-in ImGui panels to diagnose rendering problems at runtime.

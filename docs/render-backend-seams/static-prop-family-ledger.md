@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Static-Prop Family Ledger
 
 Ownership ledger for the static-prop draw-path nest. Companion to

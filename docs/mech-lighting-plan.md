@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # Mech Lighting Plan — First Safe Visual Improvement (MECH-LIGHTING-PLAN-0)
 
 Planning doc only. **No implementation in this slice.** Decides the
@@ -38,7 +39,7 @@ normal for screen-shadow eligibility) + optional objectId. Plus 9 raw
 |---|---|---|
 | Albedo | YES | live `u_tex` (per-draw 2D, not array) |
 | Geometric normal (per-vertex) | YES | `worldNormal` from `a_normal` x boneT (`mech.vert:130`) |
-| Team color | YES, but **CPU-baked into the albedo texture** at load (`mech3d.cpp:1725`, dominant-channel classifier) — invisible to the shader |
+| Team color | YES, but **CPU-baked into the albedo texture** at load (`mclib/mech3d_init.cpp:317`, dominant-channel classifier) — invisible to the shader |
 | Sun + per-actor lights | YES | `calc_light` / LightsData UBO |
 | Normal **map** (tangent-space) | NO | `a_tangentOct` declared but zero-filled/unused; no normal-map sampler |
 | Roughness / metallic | NO | none |

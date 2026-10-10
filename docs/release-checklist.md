@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Release checklist (publishing the public zips)
 
 The release artifacts must be self-contained: a user who downloads the zips and

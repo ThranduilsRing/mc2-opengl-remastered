@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # VFX 3D Mesh GPU Substrate Recon
 
 **Slice:** VFX-3D-MESH-PARTICLE-SUBSTRATE-RECON-1  

@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # VFX-DISTORTION-1 — heat-haze refraction (procedural, clean-room)
 
 Status: **BUILT** (gate default OFF).

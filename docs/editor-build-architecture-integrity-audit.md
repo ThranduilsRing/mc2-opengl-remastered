@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Editor Build — Architecture Integrity Audit
 
 **Audit ID:** `EDITOR-ARCHITECTURE-INTEGRITY-OPUS-1`
@@ -31,7 +32,7 @@ Two themes dominate:
 | P1 | A | `EditorData.cpp` includes GPU-pipeline internals directly (`gos_static_prop_batcher.h`, `gos_static_prop_registry.h`, `gpu_cull_substrate/compute/readback.h`) — bypasses EditorBridge | `editor/EditorData.cpp` | Couples editor to GPU internals; undetected (firewall script ignores `editor/`) | M |
 | P1 | A | Raw GL in editor pick handler (`glGetIntegerv`/`glBindFramebuffer`/`glReadBuffer`/`glReadPixels`) outside EditorBridge | `editor/EditorInterface.cpp:3682-3720` | Firewall breach; OID-scan diagnostic. Gated by `s_pickDiagDone` (fires until first pick) — partial mitigation | S |
 | P1 | A | Raw GL state driven in editor frame loop (`glViewport`/`glEnable`/`glDepthFunc`/`glClear`) outside gosRenderer state machine | `editor/EditorGameOS.cpp` | Can collide with gosRenderer state expectations; partial doc mitigation (comment warns vs `glUseProgram(0)`) | M |
-| P1 | C | **Editor 3D depth convention wrong**: `GL_LEQUAL` forward-Z setup, but `glClipControl(ZERO_TO_ONE)` is never linked into the editor while it runs reverse-Z shaders → all editor 3D depth testing against default `[-1,1]` NDC | `editor/EditorGameOS.cpp:498`; `glClipControl` only in unlinked `gameosmain.cpp` | Editor 3D preview depth-sorts wrong. Pre-existing | S |
+| P1 | C | **Editor 3D depth convention wrong**: `GL_LEQUAL` forward-Z setup, but `glClipControl(ZERO_TO_ONE)` is never linked into the editor while it runs reverse-Z shaders → all editor 3D depth testing against default `[-1,1]` NDC | `editor/EditorGameOS.cpp:351`; `glClipControl` only in unlinked `gameosmain.cpp` | Editor 3D preview depth-sorts wrong. Pre-existing | S |
 | P1 | B | **Neither editor target has CI/smoke/test/ASan coverage** — default-built on MSVC but never verified | `editor/CMakeLists.txt`, `tools/asset_viewer/CMakeLists.txt`; no smoke matrix entry | RenderCore/gameos/imgui API change silently breaks editor link until manual build | M |
 | P1 | B | `find_package(SDL2_ttf REQUIRED)` but SDL2_ttf is **never in `target_link_libraries(EditRel)`** (only DLL-copied); vendored `sdl2_ttf-config.cmake` calls `cmake_minimum_required(3.0...3.5)` → policy warning that becomes a hard error in future CMake | `editor/CMakeLists.txt:78`; `…/cmake/sdl2_ttf-config.cmake:10` | REQUIRED hard-fails configure for a lib EditRel doesn't link; future-CMake break | S |
 | P2 | B | ASan DLL copied next to `mc2.exe` under `MC2_ASAN=ON` but **not** next to `EditRel` | editor CMake post-build vs main target | ASan build of editor launches with `0xC0000139` (entry point not found) | XS |

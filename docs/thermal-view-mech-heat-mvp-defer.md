@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Thermal ViewMode — engine-bearing units read hot (THERMAL-VIEW-MECH-HOT-1)
 
 Status: **SHIPPED (mechs).** Slice 2 of `GAMEADAPTERS-VISUAL-STATE-BRIDGE-OPUS-1`.

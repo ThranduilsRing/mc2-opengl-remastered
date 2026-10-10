@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Tactical-presentation visual-state capture & validation
 
 Capture/validation matrix for `GAMEADAPTERS-VISUAL-STATE-BRIDGE-OPUS-1`.

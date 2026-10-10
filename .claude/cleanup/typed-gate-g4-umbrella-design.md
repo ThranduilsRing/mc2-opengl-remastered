@@ -1,4 +1,4 @@
-<!-- doc-status: stale | reviewed:2026-10-11 -->
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # G4 — VK umbrella as typed effective<> over Tri rows (design 2026-10-10 at ec57ac1a2; status: ready, runs after G3 on the terrain files)
 
 Condensed by the orchestrator from the planner's report. Counts at HEAD ec57ac1a2.

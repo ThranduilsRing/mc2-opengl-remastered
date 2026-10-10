@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Split-path pair ledger (META-FIX design C)
 
 Machine-checked by `scripts/check-split-path-contracts.py` (wired into

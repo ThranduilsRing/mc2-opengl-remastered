@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Animated Prop Cook Recon
 
 **Goal:** Understand what a NODE_ANIMATED_PROP cook should look like for Path A

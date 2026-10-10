@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Asset Viewer — Mech Assembly Inspector (Recon + Design)
 
 **Slice:** `ASSET-VIEWER-MECH-ASSEMBLY-INSPECTOR-1`
@@ -89,7 +90,7 @@ Key relationships:
 - Texture path resolution: name pulled from the shape
   (`GetTextureName(0,...)`), assembled as `data/tgl/<tier>/<name>.txm`
   with tier ∈ {128,256,512,1024} (`mclib/mech3d.cpp:1918-1924`), loaded via
-  `mcTextureManager->loadTexture(...)` (`mclib/mech3d.cpp:1950-1952`).
+  `mcTextureManager->loadTexture(...)` (`mclib/mech3d_init.cpp:534-536`).
 - **Team color / paint scheme**: predefined schemes in
   `data/tgl/paintSchemata.fit` (`PaintSchemata`, `mclib/mech3d.h:53-58`).
   Applied by CPU pixel recolor of a masked texture (R/G/B dominance classifier),

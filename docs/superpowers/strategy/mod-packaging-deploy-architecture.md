@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # MC2 Mod Packaging & Deployment Architecture
 
 **Status:** Strategy / design doc (long-term), 2026-06-10.
@@ -61,7 +62,7 @@ Declaration = **putting the file at the path the engine already resolves**, plus
 | Textures | shadow file at same relative path: `data/tgl/<tier>/*.ktx2`, `data/textures/...` | mod index first-wins → `txmmgr`/`KtxLoader` (unchanged) |
 | Appearances | `data/tgl/*.ini` (+ `.tgl`) shadowing or adding entries | `bdactor.cpp`/`msl.cpp` loaders via the same file open path |
 | Missions | `data/missions/<name>.fit` + `<name>.pak` (PacketFile — format frozen, MOVE packet 4 rules per `editor/EditorData.cpp`) | `code/mission.cpp` |
-| Campaigns | `data/campaign/<name>.fit` | `EnumerateModCampaignFiles` (`file.cpp:443`) |
+| Campaigns | `data/campaign/<name>.fit` | `EnumerateModCampaignFiles` (`mclib/file.cpp:644`) |
 | Effects | `data/effects/mc2.fx` shadow (whole-file; finer-grain split is engine work, out of scope here) | gosFX loader |
 | Sounds | `data/sound/*.wav` shadow | `gameos_sound.cpp` |
 | Scripts | `data/missions/*.abl` (incl. `nop.abl` stub pattern proven in mc2x-compat) | ABL loader |

@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # VFX bloom participation (VFX-BLOOM-PARTICIPATION-1)
 
 Track V VFX-payoff opus, slice 4. **Status: no code change — VFX already feed
@@ -57,7 +58,7 @@ threshold via accumulation and need no help.
 ## Caveats
 
 - **Do not globally lower `bloomThreshold`.** It was deliberately doubled to 1.2
-  (`gos_postprocess.cpp:115`) because stock bloom was too strong; lowering it
+  (`GameOS/gameos/gos_postprocess_gates.cpp:69`) because stock bloom was too strong; lowering it
   globally washes terrain/skies. Tune per-mission instead.
 - **Additive accumulation can saturate to white.** Dense overlapping additive
   draws ramp toward white over ~1s in the float buffer (`gos_postprocess.cpp:

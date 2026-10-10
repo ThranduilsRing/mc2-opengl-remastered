@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # OBJMGR-CONTRACT-HARNESS-1 — RECON (REFRESHED) + PLAN
 
 **Status:** RECON REFRESH — no code changes. Supersedes the stale recon cut from
@@ -27,8 +28,8 @@ needed.** (Process lesson logged below.)
 |---|---|---|
 | `setWatchID` | objmgr.cpp:959 | `nextWatchID > maxObjects` → leave un-watchable (no OOB write), cursor unchanged; else `watchList[nextWatchID]=obj; obj->watchID=nextWatchID++`. |
 | `getByWatchID` | objmgr.h:500 | `(id>0 && id<nextWatchID) ? watchList[id] : NULL`. |
-| `Save` | objmgr.cpp:4830 | `_watchHi = min(nextWatchID, maxObjects)` — never reads/writes past `maxObjects`. |
-| `CopyFrom` (load) | objmgr.cpp:4801 | clamp untrusted `nextWatchId` to `[0, maxObjects+1]`; OOB → clamp + `WATCHID_LOAD` diag. |
+| `Save` | code/objmgr_misc.cpp:581 | `_watchHi = min(nextWatchID, maxObjects)` — never reads/writes past `maxObjects`. |
+| `CopyFrom` (load) | code/objmgr_misc.cpp:552 | clamp untrusted `nextWatchId` to `[0, maxObjects+1]`; OOB → clamp + `WATCHID_LOAD` diag. |
 | `Load` restore | objmgr.cpp:5467 | each `watchSave[j]` validated in `[0, maxObjects]` before indexing `objList`; invalid → `watchList[j]=NULL` + diag; loop bounded by `maxObjects`, not any serialized value. |
 
 These are exactly the edge cases that are hard to hit in tier1 smoke (corrupt /

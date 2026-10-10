@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Visual Tuning Profiles — MISSION-VISUAL-TUNING-1
 
 Per-mission renderer tuning profiles. Lets specific missions set their own

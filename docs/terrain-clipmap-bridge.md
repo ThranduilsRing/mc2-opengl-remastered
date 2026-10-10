@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Terrain clipmap bridge — bake-mip / morph interface contract
 
 **Status: HAND-OFF DOC ONLY.** No engine code, no renderer, no new gate in this
@@ -21,7 +22,7 @@ which was written before this merge).
 
 `tools/terrain_beautify/visual_heightfield.py:1104` `MIP_STRIDES = (2, 4, 5,
 10, 20)` — one max-reduced level per renderer LOD stride
-(`mclib/terrain.cpp:205` `LOD_STEPS[6] = {1, 2, 4, 5, 10, 20}`; stride 1 needs
+(`mclib/terrain_update.cpp:14` `LOD_STEPS[6] = {1, 2, 4, 5, 10, 20}`; stride 1 needs
 no mip, it reads the fine bake directly). `build_max_mips`
 (`visual_heightfield.py:1116`) emits, **for every one of the `side*side`
 coarse vertices** (full resolution, not decimated to `side/stride`), the MAX
@@ -43,12 +44,12 @@ generator**, not re-derive a reduction formula. The MAX-reduction property
 requires) is exactly the silhouette-preservation invariant a clipmap needs
 when a coarse ring approximates a region no longer covered by a finer one.
 
-**Storage layout** (as shipped, `mclib/terrain.cpp:1289-1296`,
+**Storage layout** (as shipped, `mclib/terrain_init.cpp:671-678`,
 `shaders/terrain_lod_chunk.vert:54-63`): binding-26 SSBO holds
 `[fine V*V | mip(2) mapSide² | mip(4) mapSide² | mip(5) mapSide² | mip(10)
 mapSide² | mip(20) mapSide²]` — one flat buffer, all levels always resident
 together (size-checked as a single `5*mapSide²*sizeof(float)` blob,
-`terrain.cpp:1308-1310`). A toroidal-update clipmap would instead want each
+`mclib/terrain_init.cpp:690-692`). A toroidal-update clipmap would instead want each
 ring level individually addressable/updatable; the **level boundaries in this
 blob are already fixed offsets** (`lvl * mapSide * mapSide` floats past the
 fine block, `shaders/terrain_lod_chunk.vert:77` `mipH()`), so splitting the
@@ -135,7 +136,7 @@ verbatim to per-ring transition bands:
   block's own `m`, so adjacent blocks (or, in a clipmap, adjacent ring cells)
   never disagree at a seam. This is the seam-ownership invariant a clipmap's
   ring-boundary blend must preserve.
-- **Levels 0 and 5 (finest and coarsest) never morph** (`terrain.cpp:311`) —
+- **Levels 0 and 5 (finest and coarsest) never morph** (`mclib/terrain_update.cpp:96`) —
   maps directly to "innermost ring has no finer neighbor to blend from,
   outermost ring has no coarser neighbor to blend to."
 - **`FORCE_LOD` pins `m=0`** (`terrain.cpp:312`) — the debug isolation

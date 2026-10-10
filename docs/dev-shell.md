@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Dev Shell — live-edit playbook
 
 The edit→see loop for MC2, no relaunch, no smoke run. Any agent (or human)

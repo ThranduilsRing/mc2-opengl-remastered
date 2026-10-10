@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Perf budget + oracle harness
 
 The shared vocabulary that turns smoke runs into **comparable** results. Seeded

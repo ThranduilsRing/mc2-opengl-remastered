@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # GLSTATE-GUARD-EPILOGUE-RECON-1
 
 Recon-only classification of the `gos_InvalidateRenderStateCache()`-terminated GL
@@ -82,7 +83,7 @@ Structurally identical to Site 2, **plus**:
 
 ## Site 5 — `GpuStaticPropBatcher` (gos_static_prop_batcher.cpp) — CLASSIFY ONLY
 
-- The **template** both mech `flush()` and the particle epilogues copied (mech comment: *"Mirrors gos_static_prop_batcher.cpp:1791"*). 8910-line TU, largest batcher; multiple flush paths (opaque flush / shadow / substrate); 10 SSBO save/restore sites, 21 state-save sites (grep).
+- The **template** both mech `flush()` and the particle epilogues copied (mech comment: *"Mirrors GameOS/gameos/gos_static_prop_batcher_flush.cpp:11"*). 8910-line TU, largest batcher; multiple flush paths (opaque flush / shadow / substrate); 10 SSBO save/restore sites, 21 state-save sites (grep).
 - Same epilogue class as Site 1: big save block + (likely) restore-previous SSBO + render-state + invalidate. SSBO convertibility per-path = **TBD (not inspected — classify-only per scope)**.
 - **Largest blast radius** of all sites.
 **RECOMMENDATION:** **LAST, own slice, after the guard-vocabulary expansion.** Do NOT touch in ADOPTION-3. A dedicated recon (`...-STATICPROP`) should confirm each path's SSBO is restore-previous (not bind-then-zero) before any conversion.

@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Baseline-A Capture Runbook (S9 in-engine, warmup-stabilized)
 
 **Status:** v1, 2026-06-13. Owns the *procedure* for producing and blessing a

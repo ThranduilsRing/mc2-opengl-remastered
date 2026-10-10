@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # ImGui UI port — integration guide (for the UI modder)
 
 State as of 2026-07-05 on `claude/ui-phase1-integration`. This is the map of

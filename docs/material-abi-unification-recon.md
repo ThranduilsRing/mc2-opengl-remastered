@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # Material ABI Unification Recon — `MATERIAL-ABI-UNIFICATION-RECON-1`
 
 **Status:** recon only. No code, shader, or ABI changes. Snapshot of
@@ -46,7 +47,7 @@ Sentinel `kMaterialTexAbsent = 0xFFFFFFFF` (`MaterialGpu.h:83`).
   via MaterialTable SSBO binding 5).
 - mechs: `mcTextureManager` texHandle — **compare-only**, not shader-actionable
   (`gos_mech_batcher.cpp:1549-1583` builds `s_mechMaterialTable`, SSBO binding 2
-  at `gos_mech_batcher.cpp:1700-1702`; shader never reads it). Per-instance
+  at `GameOS/gameos/gos_mech_batcher_geometry.cpp:532-534`; shader never reads it). Per-instance
   `materialIdx` at `GpuMechInstance` byte 52 (`gos_mech_batcher.h:49-50,68`).
 - VFX/future: undefined.
 A typed `MaterialTextureSemantic` enum is already sketched in the header
@@ -67,7 +68,7 @@ MaterialGpu is the substrate.
   flags pushed as plain uniform `u_materialFlags` (`gos_mech_batcher.cpp:1894-1895`).
 - Lighting/material data the mech shader actually uses: per-draw `u_tex` 2D albedo
   + per-vertex `calc_light`; **no MaterialGpu sampling, no roughness/metallic, team
-  color CPU-baked into albedo** (`docs/mech-lighting-plan.md` table; `mech3d.cpp:1725`).
+  color CPU-baked into albedo** (`docs/mech-lighting-plan.md` table; `mclib/mech3d_init.cpp:317`).
 
 ### 4. Terrain splat "material" (palette, NOT a record)
 There is **no per-surface material record**. Terrain materials are **5 fixed
@@ -222,7 +223,7 @@ mechs binding 2 per `docs/render-binding-registry.md`), indexed by per-draw/per-
 3. **GL blend/depth/cull state itself** — records describe, passes enact. A record
    field can't switch GL blend mid-draw; sorting into passes by alphaMode remains a
    CPU batcher responsibility in every lane.
-4. **Mech team color** — CPU-baked into albedo at load (`mech3d.cpp:1725`); there is
+4. **Mech team color** — CPU-baked into albedo at load (`mclib/mech3d_init.cpp:317`); there is
    no GPU mask source, so no record field can represent it yet (reserved0 candidate
    once a team-mask arc exists; `mech-lighting-plan.md` explicitly forbids inventing
    one).
@@ -243,7 +244,7 @@ mechs binding 2 per `docs/render-binding-registry.md`), indexed by per-draw/per-
    zero game risk.
 3. **M2 — ABI bump 32→48 B** (one PR, all lockstep gates): add emissiveFactor /
    alphaTestThreshold / atlasGrid / reserved0 + alphaMode/texSemantic bits. Both
-   live producers (`gos_static_prop_batcher.cpp:3144`, `gos_mech_batcher.cpp:1566`)
+   live producers (`gos_static_prop_batcher.cpp:3144`, `GameOS/gameos/gos_mech_batcher_geometry.cpp:398`)
    updated; behavior byte-identical (new fields = defaults).
 4. **M3 — Static-prop ORM wiring** (already specced as
    `STATICPROP-ORM-TEXTURE-ARRAYS-1` → `STATICPROP-SHADER-ORM-GATED-1` in
@@ -281,7 +282,7 @@ The authoring chain is already shaped for exactly this record:
 - **Runtime resolve**: cook does NOT bake `albedoTex` indices — they are
   load-time-assigned (array layer dedup at `finalizeGeometry`,
   `gos_static_prop_batcher.cpp:2536-2699`; mech handle map
-  `gos_mech_batcher.cpp:2056-2063`). The sidecar feeds *names + factors + flags*;
+  `GameOS/gameos/gos_mech_batcher_flush.cpp:300-307`). The sidecar feeds *names + factors + flags*;
   the lane's table builder resolves names → its texSemantic and writes the record.
   This split (cook = semantic intent, runtime = texture identity) is what lets one
   record shape serve lanes with different texture backends.

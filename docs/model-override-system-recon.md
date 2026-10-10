@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # Model Override System — Recon & Design (`MODEL-OVERRIDE-SYSTEM-RECON-1`)
 
 **Status:** Recon / design only. No runtime replacement implemented in this slice.
@@ -25,7 +26,7 @@ appearance .ini "FileName" → .ase basename → .tgl compiled name → runtime 
 ```
 - `.ase` filename read from appearance INI: buildings `mclib/bdactor.cpp:188,199`; trees `mclib/bdactor.cpp:3362,3373` (`iniFile.readIdString("FileName", aseFileName, 511)`).
 - `.tgl` name is **derived** from `.ase` basename — no independent mapping: `mclib/msl.cpp:586` (`_splitpath`), `mclib/msl.cpp:594` (`binaryFileName.init(tglPath, name, ".tgl")`). So `warehouse01.ase → data/tgl/warehouse01.tgl`.
-- `AppearanceType::name` is set once at type load (`mclib/apprtype.cpp:68-69`, `strcpy(name, fileName)`), looked up via case-insensitive compare (`mclib/apprtype.cpp:230`), and captured into the static-prop registry (`GameOS/gameos/gos_static_prop_registry.cpp:251-256`, `RecipeRange::shapeName[128]`). Stable across all instances; never mutates.
+- `AppearanceType::name` is set once at type load (`mclib/apprtype.cpp:68-69`, `strcpy(name, fileName)`), looked up via case-insensitive compare (`mclib/apprtype.cpp:97`), and captured into the static-prop registry (`GameOS/gameos/gos_static_prop_registry.cpp:251-256`, `RecipeRange::shapeName[128]`). Stable across all instances; never mutates.
 
 ### Candidate ranking for `"replaces"`
 | Candidate | Stability | Uniqueness | Verdict |
@@ -84,7 +85,7 @@ The registry is built once when mods are mounted (directory scan + manifest pars
 - **Manifest schema + validator** already drafted: `docs/asset-manifest-schema.md`, `scripts/check-asset-manifests.py`, `tools/asset_cook/validate_asset_manifest.py`.
 
 ### What is missing / explicitly deferred (MVP scope statement at `assimp_importer.cpp:3-6`)
-Animation, LOD swap, shadow mesh, palette swap, `.tglc` cook cache. None of these block a static-prop/tree render-only MVP (props don't animate; trees are static). The binary cook path (`SaveBinaryCopy/LoadBinaryCopy`, `msl.cpp:482-503`) exists but is legacy-ASE-only and **not** wired to the importer — cook-at-startup is a Phase-2 optimization, not an MVP requirement.
+Animation, LOD swap, shadow mesh, palette swap, `.tglc` cook cache. None of these block a static-prop/tree render-only MVP (props don't animate; trees are static). The binary cook path (`SaveBinaryCopy/LoadBinaryCopy`, `mclib/msl_load.cpp:284-305`) exists but is legacy-ASE-only and **not** wired to the importer — cook-at-startup is a Phase-2 optimization, not an MVP requirement.
 
 ### Decision: **(a) direct glTF runtime import**
 The MVP is **direct glTF/GLB runtime import**, because the path is ~95% implemented, isolated, opt-in, and already falls back to stock on miss. Rejecting the alternatives:
@@ -124,7 +125,7 @@ If a replacement mesh is **smaller** than stock, the frozen `cellsCovered` still
 ## 5. Material / texture mapping
 
 ### MC2 static-prop material model (`RenderCore/MaterialGpu.h:88-107`)
-4 texture slots — `albedoTex` (live, TEXTURE_2D_ARRAY layer), `normalTex` (slot exists, **not yet wired** / needs tangents), `metallicRoughnessTex` = ORM R=AO/G=rough/B=metal (live when `s_ormSlotsEnabled`), `emissiveTex` (designed, slice 6). Plus a flags word (`kAlphaTest, kNormalMap, kMetallicRoughness, kEmissive, kDoubleSided, kWindow`) and scalar factors (`baseColorFactor, metallicFactor, roughnessFactor`). Population at `GameOS/gameos/gos_static_prop_batcher.cpp:3390-3414`.
+4 texture slots — `albedoTex` (live, TEXTURE_2D_ARRAY layer), `normalTex` (slot exists, **not yet wired** / needs tangents), `metallicRoughnessTex` = ORM R=AO/G=rough/B=metal (live when `s_ormSlotsEnabled`), `emissiveTex` (designed, slice 6). Plus a flags word (`kAlphaTest, kNormalMap, kMetallicRoughness, kEmissive, kDoubleSided, kWindow`) and scalar factors (`baseColorFactor, metallicFactor, roughnessFactor`). Population at `GameOS/gameos/gos_static_prop_batcher_finalize.cpp:91-115`.
 
 ### glTF → MC2 slot map
 | glTF | MC2 slot | Status |
@@ -144,7 +145,7 @@ If a replacement mesh is **smaller** than stock, the frozen `cellsCovered` still
 Foliage uses the single hard 0.5 alpha-test cutout on the albedo alpha channel (`static_prop.frag:215-216`); the shadow pass also alpha-discards. No alpha-blend, no smooth AA falloff, no per-leaf normal mapping. **Leaf rule for MVP:** author leaf cards with `alphaMode="mask"`, hard-edged alpha, cutoff baked to ~0.5. "foliage alpha-discard" remains tracked debt (`docs/active_campaigns.md:88`).
 
 ### Color space
-Authority `tools/asset_cook/validate_asset_manifest.py:79-85`: albedo/emissive = **sRGB** (BC7 vkFormat 146 → `GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM`), normal/orm = **linear** (vkFormat 145 → `GL_COMPRESSED_RGBA_BPTC_UNORM`). Binding at `mclib/txmmgr.cpp:3486-3488`; HW linearizes sRGB on sample.
+Authority `tools/asset_cook/validate_asset_manifest.py:79-85`: albedo/emissive = **sRGB** (BC7 vkFormat 146 → `GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM`), normal/orm = **linear** (vkFormat 145 → `GL_COMPRESSED_RGBA_BPTC_UNORM`). Binding at `mclib/txmmgr_render_phases.cpp:540-542`; HW linearizes sRGB on sample.
 
 ### Texture sidecar reuse — yes, cleanly
 - **Loose TGA override:** `File::open` strips the `/{size}/` subdir and retries (`mclib/file.cpp`, commit `5327c4b1`); a loose `data/tgl/<name>.tga` wins over `data/tgl/{size}/<name>.tga` and sets `uvScale=4`. Model-override textures reuse this verbatim.

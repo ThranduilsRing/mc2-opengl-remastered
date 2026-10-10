@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # LIGHTING + STATIC-PROP HARNESS TARGET RECON-1
 
 **Status:** RECON ONLY — no code changes. Surveys lighting and static-prop for

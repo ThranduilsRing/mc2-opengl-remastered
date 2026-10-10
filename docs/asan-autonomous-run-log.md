@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # ASan Autonomous Run Log — 2026-04-24
 
 Running log for the autonomous batch started by user. One line per task

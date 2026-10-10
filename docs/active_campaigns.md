@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Active campaigns
 
 > Pointer doc. Detail in memory/ handoffs and docs/. Add new campaigns at top.
@@ -143,7 +144,7 @@ Run as a ledger, not a cleanup binge: `docs/render-backend-seams/opengl-correctn
 | SAVE-LOAD-FAST-1: skip redundant save-game scan on campaign start | `77f0478c` | **SHIPPED** | `beginLoad(bSkipSaveScan)` + dedup `isCorrectVersionSaveGame`; fixed memory leak on rejected entries |
 | STARTUP-INIT-ASYNC-1: bg-thread LogisticsData::init + null guard | `4da59f21` | **SHIPPED** | `std::async` in `Logistics::start(log_SPLASH)`; blocking join before menu; `getCurrentABLScript()` null guard |
 | STARTUP-PARALLEL-VARIANTS-1: parallel mech CSV reads | `8ede25b5` | **SHIPPED** | `std::async` per mech job inside `initVariants()`; serial scan + parallel read + serial merge |
-| SMART-LOAD-1: defer mech-bay Phase B until first accessor | `bcc6359d` `27768580` | **SHIPPED** | Phase A (campaign.fit only) on bg thread; Phase B (components/pilots/variants + updateAvailability) lazy on first mech-bay call. Gate `MC2_SMART_LOAD` now default ON (`=0` restores eager init; reader `code/logisticsdata.cpp:44-49`; see SMART-LOAD-DEFAULT-ON-1 below). Smoke mc2_01 PASS gate-OFF + gate-ON. |
+| SMART-LOAD-1: defer mech-bay Phase B until first accessor | `bcc6359d` `27768580` | **SHIPPED** | Phase A (campaign.fit only) on bg thread; Phase B (components/pilots/variants + updateAvailability) lazy on first mech-bay call. Gate `MC2_SMART_LOAD` now default ON (`=0` restores eager init; reader `code/logisticsdata_init.cpp:7-12`; see SMART-LOAD-DEFAULT-ON-1 below). Smoke mc2_01 PASS gate-OFF + gate-ON. |
 | SMART-LOAD-DEFAULT-ON-1: flip `MC2_SMART_LOAD` default OFF->ON | (this branch) | **SHIPPED** | Kill-switch preserved: `MC2_SMART_LOAD=0` restores legacy eager `LogisticsData::init()`. Caveat: only affects the interactive splash->logistics->mech-bay flow (`Logistics::initializeLogData()`); smoke/tier1's `justStartMission` fast-path calls `Mission::init()` directly and never touches `LogisticsData`, so this flip does not move smoke `mission_ready_ms` -- the win is on the real player-facing load path. |
 
 ---

@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Example: Live-Tuning With the In-Game ImGui Panels
 
 > **AVAILABILITY**

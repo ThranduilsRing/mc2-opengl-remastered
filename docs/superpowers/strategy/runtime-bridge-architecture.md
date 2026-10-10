@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # MC2 Runtime Bridge Architecture
 
 **Status:** Strategy / design doc (no code yet)
@@ -67,7 +68,7 @@ Rules:
 
 - **One event per line, ≤ 512 bytes**, ASCII, no embedded newlines. Values with spaces are forbidden in v0 (use IDs, not names; names resolve editor-side via the partId map).
 - **Versioned prefix.** `[BRIDGE v0]` is the namespace; unknown `ev=` values are ignored by the editor (forward compatibility), unknown prefix lines pass through to the raw log view (smoke markers, `[TerrainLOD prod]`, FATAL lines all still visible).
-- **`t=` is the mission turn counter** (`Mission::update` `turn++`, mission.cpp:381) and `ts=` is `scenarioTime` — every event carries both so panels can order and align events without wall-clock games.
+- **`t=` is the mission turn counter** (`Mission::update` `turn++`, code/mission_update.cpp:473) and `ts=` is `scenarioTime` — every event carries both so panels can order and align events without wall-clock games.
 - **Rate discipline.** stdout is a shared, blocking, line-buffered channel also carrying smoke/diag output. v0 events are budgeted: lifecycle events are unthrottled (they're rare); periodic snapshots (object census, perf) emit at ≤ 2 Hz; per-entity events (damage, death) are unthrottled but the emitter drops to a `ev=overflow dropped=<n>` line if a frame would emit > 64 events. **No per-frame-per-object streaming on stdout — that's what v1 is for.**
 - **Emission point.** A single game-side module, `BridgeEmitter` (new file, pattern of `gos_smoke.cpp`): env-gated by `MC2_BRIDGE=1`, zero-cost when off, called from a handful of existing seams (mission lifecycle, end-of-`Mission::update`, object death notification). No scattered printf — all bridge output goes through one choke point so rate limiting and versioning are enforceable.
 
@@ -134,7 +135,7 @@ The correlation problem: an editor placement must map to a runtime entity and ba
 
 - **Pause/resume.** Game already has `gamePaused` + `MissionInterfaceManager::togglePauseWithoutMenu()` (missiongui.h:269-272). v0: pause is observed only (game reports `mission.paused` when the user hits the hotkey). v1: editor sends `command.pause` / `command.resume`, applied at the frame-boundary command drain, acked, and confirmed by the same `mission.paused` telemetry — the panel state always reflects what the game *said*, never what the editor *asked*.
 - **Stop (graceful).** Editor touches the runner's existing `cancelFile` mechanism (or v1 `command.stop`); `BridgeEmitter` polls it once per frame and triggers the game's normal quit path → `session.goodbye reason=stop_requested` → clean exit 0. Grace window 5 s.
-- **Stop (hard).** After the grace window, `TerminateProcess` (already in `CancelTask`, EditorTaskRunner.cpp:254). Session marked `Killed`, last 64 KB of log retained.
+- **Stop (hard).** After the grace window, `TerminateProcess` (already in `CancelTask`, editor/EditorTaskRunner.cpp:372). Session marked `Killed`, last 64 KB of log retained.
 - **Restart.** Always **full process restart with a fresh snapshot save** — never an in-process mission reload. Rationale: re-snapshot picks up edits made while watching (the actual iteration loop modders want), and process death is the only reliable way to reset global state in this engine. Sequence: Stop → wait Exited → Saving → … One button in the panel.
 - **Exit-code interpretation:** 0 = clean; 2 = argument/smoke parse failure (config error, show command line); other nonzero or pipe-EOF-without-goodbye = crash → `Crashed` state, crash workflow (§9).
 

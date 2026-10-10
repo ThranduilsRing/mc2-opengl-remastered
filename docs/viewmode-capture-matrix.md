@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # ViewMode capture matrix (TACTICAL-PRESENTATION-CAPTURE-MATRIX-1)
 
 Track V tactical-presentation opus (`TRACKV-TACTICAL-PRESENTATION-OPUS-1`).

@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # RenderWorld Arc — Status Ledger
 
 **Last update:** 2026-05-24

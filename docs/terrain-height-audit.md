@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Terrain Height Audit (TERRAIN-HEIGHT-AUDIT-0)
 
 Recon variant per slice spec. The `.pak` mission format is parseable

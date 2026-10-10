@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # MC2 Telemetry Debugger / Oracle Cockpit Architecture
 
 **Status:** Strategy / design doc (no code yet), 2026-06-10.
@@ -12,7 +13,7 @@
 
 Load-bearing consequences:
 
-1. **mc2.exe is the only producer of truth.** The engine already emits versioned bracketed tags (`[MECH_MATERIAL_GPU v1]` in `GameOS/gameos/gos_mech_batcher.cpp:1589-1681`, `[FASTPATH_DROP]` in `mclib/terrain.cpp:3728-3773`, `[OBJBATCHER v1]` in `GameOS/gameos/gos_static_prop_batcher.cpp:1681`, `[GPU_CULL v1]` readback diagnostics, `[SPFLUSH_COST_SPLIT v1]`, `[SNAPSHOT_BRIDGE_COMPARE v1]` — see `docs/tier1_env_vars.md`). The cockpit never computes a counter the engine could emit; it only aggregates, diffs, and displays.
+1. **mc2.exe is the only producer of truth.** The engine already emits versioned bracketed tags (`[MECH_MATERIAL_GPU v1]` in `GameOS/gameos/gos_mech_batcher_geometry.cpp:421-513`, `[FASTPATH_DROP]` in `mclib/terrain.cpp:3728-3773`, `[OBJBATCHER v1]` in `GameOS/gameos/gos_static_prop_batcher_state.cpp:903`, `[GPU_CULL v1]` readback diagnostics, `[SPFLUSH_COST_SPLIT v1]`, `[SNAPSHOT_BRIDGE_COMPARE v1]` — see `docs/tier1_env_vars.md`). The cockpit never computes a counter the engine could emit; it only aggregates, diffs, and displays.
 2. **run_smoke's verdict path is sacred.** `scripts/smoke_lib/gates.py::evaluate` (LogSummary → buckets → Verdict) and `scripts/smoke_lib/report.py` (report.md/report.json) remain the *sole* pass/fail authority for smoke gates. The cockpit reads the same artifacts; it never inserts itself between `run_smoke.py` and its exit code, and adding cockpit features must never change a smoke verdict.
 3. **Files first, sockets later.** v1 is entirely file/log based: a run is a folder of artifacts (`tests/smoke/artifacts/<timestamp>/` today). The live lane (editor Playtest, bridge sessions) reuses the *same schema* over the stdout pipe defined in `runtime-bridge-architecture.md` §3 — one event grammar, two transports.
 4. **Headless-useful by construction.** Every cockpit conclusion must be derivable from artifacts on disk by a script or an agent with no GUI — the panels are a *view*, never the only access path. (The existing `mc2-render-state` MCP server, `scripts/mcp/mc2_render_state_server.py`, is the proof-of-pattern: JSON on disk, tools as readers.)
@@ -25,7 +26,7 @@ Five concept types, with crisp definitions. Everything the engine emits maps to 
 
 | Concept | Definition | Existing examples |
 |---|---|---|
-| **Event** | A timestamped fact that something *happened once*. No expected value; interesting for sequencing and attribution. | `[TIMING v1] event=mission_ready` (bridge protocol), `[FASTPATH_DROP] frame=N transition=... reason=...` (terrain.cpp:3773), `[OBJBATCHER v1] event=legacy_toggle_blocked` (gameosmain.cpp:389), crash-handler banner |
+| **Event** | A timestamped fact that something *happened once*. No expected value; interesting for sequencing and attribution. | `[TIMING v1] event=mission_ready` (bridge protocol), `[FASTPATH_DROP] frame=N transition=... reason=...` (mclib/terrain_geometry.cpp:34), `[OBJBATCHER v1] event=legacy_toggle_blocked` (gameosmain.cpp:389), crash-handler banner |
 | **Counter** | A monotonic or per-interval numeric emitted periodically or at summary time. Interesting as a *value*, compared against bands/baselines. | `[FX_COUNT v1]` per-site draw counts, `[OBJBATCHER v1] event=summary frames=...`, FPS samples parsed by `smoke_lib/logparse.py`, `destroys` total |
 | **Oracle** | A *self-checking* counter: the engine computes both the fast path and an independent reference and emits the **mismatch count**. Expected value is axiomatically 0. | `[MECH_MATERIAL_GPU v1] mismatches=0`, `[MATERIAL_GPU v4] mismatches=0`, `[TEX_RESOLVE v1] mismatches=0 oob=0`, `[RENDER_SNAPSHOT v3] count_mismatch=0 ...`, `[TERRAIN_INDIRECT_PARITY v1] total_mismatches=0`, `[SNAPSHOT_BRIDGE_COMPARE v1] immutableMismatch=0`, TerrainLOD 8a/8b FN counters, VFX oracle (`docs/vfx-oracle-coverage.md`) |
 | **Budget** | An externally declared bound on a counter (perf or resource), versioned outside the engine. The engine doesn't know budgets exist. | `tests/smoke/baselines.json` destroys mean (keyed `<profile>@<stem>@<tier>@<duration>`, `smoke_lib/baselines.py`), avg_fps tracking band in `docs/oracle-dynamic-pipeline-gate.md`, future per-pass GPU-ms budgets from Baseline A |

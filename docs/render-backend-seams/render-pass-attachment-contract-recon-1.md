@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # RENDER-PASS-ATTACHMENT-CONTRACT-RECON-1
 
 Read-only recon. Defines the **per-pass attachment I/O contract** for the 14 major

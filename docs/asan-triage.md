@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # ASan Findings Triage — 2026-04-24
 
 Full inventory of ASan MVP findings across base game + mod content, with

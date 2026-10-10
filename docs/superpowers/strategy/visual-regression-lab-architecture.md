@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # MC2 Visual Regression Lab Architecture
 
 **Status:** Strategy / design doc (no code yet), 2026-06-11.

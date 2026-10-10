@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # VFX Oracle Coverage Matrix
 
 > STATUS: all GPU oracle paths are default-OFF since 4ad31a9e. The tables and notes below describe the opt-in path (`MC2_VFX_ORACLE_RENDER=1`, inside `MC2_GPU_PARTICLES=1`), not the default.

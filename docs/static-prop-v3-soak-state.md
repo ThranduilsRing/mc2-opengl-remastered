@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Static-Prop Extraction v3 — Soak State (pre-authority-flip)
 
 **Date:** 2026-05-27

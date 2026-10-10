@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # CAMERA HARNESS TARGET RECON-1
 
 **Status:** RECON ONLY (read-only, no code changes). Verdict: **GREEN on a

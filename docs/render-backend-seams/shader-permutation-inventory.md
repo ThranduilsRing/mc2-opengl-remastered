@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Shader-permutation inventory — SHADER-PERMUTATION-INVENTORY-1
 
 > **Recon + governance checker only. No shader/runtime/offline-compiler changes.**
@@ -19,7 +20,7 @@ verified this session:
 
 - `gameos_graphics.cpp:399-403` — `gosGLOBAL_SHADER_FLAGS` is exactly two flags:
   `ALPHA_TEST`, `IS_OVERLAY`.
-- `gameos_graphics.cpp:408-411` — `g_shader_flags[]` = `{"ALPHA_TEST","IS_OVERLAY"}`.
+- `GameOS/gameos/gameos_graphics_material_internal.h:413-416` — `g_shader_flags[]` = `{"ALPHA_TEST","IS_OVERLAY"}`.
 - `gameos_graphics.cpp:4849-4868` — `combinations[]` is a **static 4-entry array**
   (`0`, `ALPHA_TEST`, `IS_OVERLAY`, both), looped over a **fixed 6-shader list**.
   The `defines` vector handed to `getMaterialVariation` only ever receives names
@@ -27,11 +28,11 @@ verified this session:
 
 The earlier string-grep "mystery ALPHA_TEST has no injector" was a false negative:
 the macro name comes from the `g_shader_flags[]` array variable and is emitted as
-`#define <var> = 1` (`gameos_graphics.cpp:350-354`), so a literal `"#define ALPHA_TEST"`
+`#define <var> = 1` (`GameOS/gameos/gameos_graphics_material_internal.h:355-359`), so a literal `"#define ALPHA_TEST"`
 grep misses it. **`DATA_DRIVEN_BLOCKER` count = 0.**
 
 ## Injection mechanism
-- **Primary:** `glsl_shader::makeShader` (`shader_builder.cpp:446`) glues `prefix`
+- **Primary:** `glsl_shader::makeShader` (`GameOS/gameos/utils/shader_builder.cpp:638`) glues `prefix`
   as a separate `glShaderSource` string before the file source; no `#version` in
   `.vert`/`.frag`. `makeProgram2` passes the same prefix to all stages; `prefix_`
   is cached and reused verbatim on `reload()`.

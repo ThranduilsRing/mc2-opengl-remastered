@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # MC2 Superpowers — Execution Roadmap (Synthesis)
 
 **Status:** Synthesis v1, 2026-06-11. This is NOT a 13th lane. It is the one document that tells the team what to build first across the 12-doc strategy corpus (+2 pre-existing siblings), how the lanes depend on each other, and how the corpus's internal conflicts are resolved. Every recommendation cites its source doc; this document invents no systems.

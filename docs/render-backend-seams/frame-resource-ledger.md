@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Frame Resource Ledger — MRT layout + draw-buffer / attachment ownership
 
 **Audit class:** `FRAME_RESOURCE_LEDGER`. Source-verified 2026-06-24 against nifty

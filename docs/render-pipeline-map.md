@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Render Pipeline Map
 
 > **Branch:** `claude/nifty-mendeleev` · **Verified:** 2026-06-04 (full re-trace, file:line grep-confirmed)
@@ -16,7 +17,7 @@ Line numbers drift — symbols are stable. Grep the symbol when precision matter
 ## The big picture: two render spines
 
 Almost everything is a **TGL shape** (`.ase` authored → `.tgl` binary cache) loaded by one shared
-loader (`TG_TypeMultiShape::LoadTGMultiShapeFromASE`, `mclib/msl.cpp:563`). What differs is *which of
+loader (`TG_TypeMultiShape::LoadTGMultiShapeFromASE`, `mclib/msl_load.cpp:441`). What differs is *which of
 two spines* carries it to the screen.
 
 ```
@@ -39,7 +40,7 @@ two spines* carries it to the screen.
 **Load-bearing convention** (`memory/render_functions_are_enqueuers_not_submitters.md`): an object's
 `render()` method does **not** issue GL. Spine A enqueues into `masterHardwareVertexNodes[]`; Spine-B
 batchers stage SSBOs. The actual `glDraw*` happens inside `MC_TextureManager::renderLists()`
-(`mclib/txmmgr.cpp:1922`) — or, for terrain/water, in a GPU-direct fast-path hook *after* it
+(`mclib/txmmgr_lights.cpp:530`) — or, for terrain/water, in a GPU-direct fast-path hook *after* it
 (`memory/render_order_post_renderlists_hook.md`). The MLR path (`mclib/mlr/`, used by some gosFX) is
 the one immediate-draw exception.
 
@@ -48,7 +49,7 @@ the one immediate-draw exception.
 ```
 1.  HDRI skybox        → sceneFBO_                      (gamecam.cpp:279)
 2.  Shadow pre-passes  → shadowFBO_ / dynShadowFBO_     (txmmgr.cpp:2153–2330)
-3.  renderLists() flush:                                (txmmgr.cpp:1922)
+3.  renderLists() flush:                                (mclib/txmmgr_lights.cpp:530)
        Terrain DrawIndirect
        GpuStaticPropRegistry.flush → GPU cull → GpuStaticPropBatcher.flush   (props/trees/buildings)
        GpuMechBatcher.flush                                                  (mechs)
@@ -71,12 +72,12 @@ mission .pak (PostcompVertex: elevation, terrainType, water bits)
  + <mission>.burnin.ktx2   (5120² BC7 colormap atlas)  [or .jpg/.tga fallback]
         │ load
         ▼
-Terrain::init + MapData::newInit            (mclib/terrain.cpp:387, terrtxm2.cpp:1804)
+Terrain::init + MapData::newInit            (mclib/terrain.cpp:387, mclib/terrtxm2_load.cpp:108)
    → R32F height texture (unit 11)  +  BC7 colormap atlas (unit 0)
         │ per-mission bake
         ▼
 BuildDenseRecipe() → TerrainQuadRecipe[] SSBO (binding 0, 144B/quad, world-indexed)
-                                            (gos_terrain_indirect.cpp:1201)
+                                            (GameOS/gameos/gos_terrain_indirect_cement.cpp:422)
         │ per-frame
         ▼
 makeLists() camera window  +  gos_terrain_lighting.comp → per-vertex light SSBO (binding 1)
@@ -85,7 +86,7 @@ gpu_driven_terrain_solid.comp  → culls every recipe, atomicAdds visible quads,
                                  packs TerrainQuadThinRecord[] (binding 2/3) + indirect cmd
         │ draw — inside renderLists flush
         ▼
-DrawIndirect() → glMultiDrawArraysIndirect(GL_TRIANGLES)   (gameos_graphics.cpp:3470)
+DrawIndirect() → glMultiDrawArraysIndirect(GL_TRIANGLES)   (GameOS/gameos/gameos_graphics_water.cpp:624)
         ▼
 RENDERED BY: gos_terrain_thin.vert  +  gos_terrain.frag
    (PBR splat: colormap HSV-classified into rock/grass/dirt/concrete, POM, normals-from-height,
@@ -139,24 +140,24 @@ uploaded once to an immutable VBO; instances are GPU-culled and drawn via indire
 <name>.ase/.tgl  +  <type>.ini (FitIni LOD/filenames)  +  mission placement
         │ load
         ▼
-LoadTGMultiShapeFromASE()                              (msl.cpp:563)
+LoadTGMultiShapeFromASE()                              (mclib/msl_load.cpp:365)
         │ register ONCE at mission load
         ▼
-GpuStaticPropBatcher::registerType → finalizeGeometry  (gos_static_prop_batcher.cpp:1841 / 2009)
+GpuStaticPropBatcher::registerType → finalizeGeometry  (GameOS/gameos/gos_static_prop_batcher_state.cpp:1034 / 2009)
    → immutable VBO/IBO (glBufferStorage), texture arrays (alpha-OFF + alpha-ON groups),
      MaterialGpu table SSBO (binding 5)
    → GpuStaticPropRegistry::registerRecipe   (permanent per-instance recipe + baked light slot)
         │ per-frame
         ▼
-ExtractRenderSnapshot (dirty-only memcpy fast path) → registry.flush()  (txmmgr.cpp:2218)
+ExtractRenderSnapshot (dirty-only memcpy fast path) → registry.flush()  (mclib/txmmgr_lights.cpp:821)
    → fills instance SSBO (binding 0) + substrate_appendStaticPropRecord
         ▼
 gpu_cull::compute_dispatch()  → frustum-culls instances, writes GPU-authoritative
-                                instanceCount into indirect cmd buffer   (txmmgr.cpp:2510)
+                                instanceCount into indirect cmd buffer   (mclib/txmmgr_lightrow.cpp:148)
         │ draw — inside renderLists ("Render.GpuStaticProps")
         ▼
 GpuStaticPropBatcher::flush()  → glMultiDrawElementsIndirect ×2 (alpha-OFF, then alpha-ON groups)
-                                            (gos_static_prop_batcher.cpp:6170 / 6191)
+                                            (GameOS/gameos/gos_static_prop_batcher_submit.cpp:816 / 6191)
         ▼
 RENDERED BY: static_prop.vert  +  static_prop.frag
    (instance modelMatrix from SSBO, Stuff→GL axis swap, calc_light via per-instance lightDataIndex,
@@ -188,18 +189,18 @@ fallback. Animated, articulated units get per-node bone matrices.
 <mech>.ini + <name>.ase (mc2srcdata/tgl)   [optional GLB via Assimp, opt-in [Import]]
         │ load
         ▼
-Mech3DAppearanceType::init → LoadTGMultiShapeFromASE + registerTypeLod   (mech3d.cpp:239 / 385)
+Mech3DAppearanceType::init → LoadTGMultiShapeFromASE + registerTypeLod   (mclib/mech3d_render.cpp:103 / 385)
 BattleMech::init → new Mech3DAppearance::init/initFX                     (mech.cpp:1328)
         │ per-frame
         ▼
-Mech3DAppearance::updateGeometry()         (mech3d.cpp:3327)
+Mech3DAppearance::updateGeometry()         (mclib/mech3d_render.cpp:722)
    anim/node transforms, LOD select, paint-scheme (team color) bake, terrain light sample,
    heat/damage MechVisualState, CacheGpuLightData (dedup light slot)
         │ enqueue
         ▼
 render() → submitActor()  → per-node bone matrices (shapeToWorld rows) + texture handles
-                            into PendingSubmits           (mech3d.cpp:2675 → gos_mech_batcher.cpp:1329)
-        │ draw — inside renderLists ("Render.GpuMechs", txmmgr.cpp:2568)
+                            into PendingSubmits           (mech3d.cpp:2675 → GameOS/gameos/gos_mech_batcher_geometry.cpp:161)
+        │ draw — inside renderLists ("Render.GpuMechs", mclib/txmmgr_lightrow.cpp:205)
         ▼
 GpuMechBatcher::flush()
    instance SSBO (binding 0), bone SSBO (binding 1), material SSBO (binding 2),
@@ -228,7 +229,7 @@ GVAppearanceType::init → LoadTGMultiShapeFromASE   (gvactor.cpp:151)
 GroundVehicle::init → new GVAppearance::init       (gvehicl.cpp:940)
         │ per-frame (when inView)
         ▼
-GVAppearance::updateGeometry → TransformMultiShape   (gvactor.cpp:2389 / 2542)
+GVAppearance::updateGeometry → TransformMultiShape   (mclib/gvactor_render.cpp:195 / 2542)
    CPU vertex projection + per-vertex lighting + frustum clip; turret-node yaw;
    body pitch/roll from terrain; team color
         │ enqueue
@@ -236,7 +237,7 @@ GVAppearance::updateGeometry → TransformMultiShape   (gvactor.cpp:2389 / 2542)
 TG_Shape::Render → mcTextureManager->addRenderShape → masterHardwareVertexNodes[]   (txmmgr.cpp:764)
         │ draw — inside renderLists ("Render.3DObjects")
         ▼
-ShapeRenderer::render → gos_RenderIndexedArray (glDrawElements)   (txmmgr.cpp:2088 / 1750)
+ShapeRenderer::render → gos_RenderIndexedArray (glDrawElements)   (mclib/txmmgr_lights.cpp:692 / 1750)
         ▼
 RENDERED BY: gos_tex_vertex_lighted.vert  +  gos_tex_vertex_lighted.frag
    (per-vertex SSBO lighting, diffuse × VertexLight, fog, GBuffer1 normal)
@@ -264,7 +265,7 @@ smoke, trails, and "lights" (which are CardCloud billboards).
 data/effects/mc2.fx  (binary gosFX stream: Fireball, Missile_Flare, PPC_Trail, ...)
         │ load
         ▼
-EffectLibrary::Load → SpecLibrary   (txmmgr.cpp:581, spec_library.cpp:53)
+EffectLibrary::Load → SpecLibrary   (mclib/txmmgr_texture.cpp:40, spec_library.cpp:53)
         │ spawn (weapon fire / explosion) + per-frame Effect::Execute (age, curves, physics)
         ▼
 CardCloud/ShardCloud/PointCloud/Card::Draw()  ← oracle: harvest live particle state
@@ -333,9 +334,9 @@ Sampled by color shaders via calcShadow()/calcDynamicShadow() (Poisson PCF, shad
 
 ## Cross-cutting infrastructure
 
-- **Shared TGL loader:** `TG_TypeMultiShape::LoadTGMultiShapeFromASE` (`msl.cpp:563`) compiles `.ase`
+- **Shared TGL loader:** `TG_TypeMultiShape::LoadTGMultiShapeFromASE` (`mclib/msl_load.cpp:441`) compiles `.ase`
   → `.tgl` binary cache; `LoadFromFile` probes `.glb` (Assimp) first.
-- **Lights SSBO:** `TG_HWLightsData[]` uploaded once/frame in `txmmgr.cpp:1978`; static-prop prefix is
+- **Lights SSBO:** `TG_HWLightsData[]` uploaded once/frame in `mclib/txmmgr_lights.cpp:586`; static-prop prefix is
   split (dirty-only) from the per-frame suffix (`MC2_STATIC_LIGHT_UPLOAD_SPLIT`). Indexed by
   `lightDataIndex`. Lighting is a mission-load constant — no dynamic emitters
   (`memory/lighting_is_mission_load_static_no_dynamic_emitters.md`).

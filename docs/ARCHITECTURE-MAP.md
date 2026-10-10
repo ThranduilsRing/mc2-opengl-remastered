@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # MC2 Architecture Map (orientation, not reference)
 
 Branch `claude/nifty-mendeleev`, written 2026-10-08. Detail lives in `CLAUDE.md`, `docs/render-pipeline-map.md`

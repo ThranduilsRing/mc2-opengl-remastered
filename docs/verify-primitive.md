@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # MC2_VERIFY — the live data-contract guard primitive
 
 Slice: **MC2-VERIFY-LIVE-1** (roadmap Tier 1 #1, the modernization keystone).

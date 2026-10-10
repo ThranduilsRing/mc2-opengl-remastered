@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # TRACKV-LIGHTING-CONSISTENCY-OPUS-1
 
 Cross-lane visual-balance consistency reference for the five mature R->V lanes
@@ -24,7 +25,7 @@ Symbols are stable; line numbers drift — re-grep before relying on a number.
 The gameplay sun (direction + color used by terrain/mech/prop lighting) is
 **map data**, not a render knob:
 
-- Direction: `eye->lightDirection` (`mclib/mapdata.cpp:703`, `mclib/terrtxm2.cpp:615`).
+- Direction: `eye->lightDirection` (`mclib/mapdata.cpp:703`, `mclib/terrtxm2_bake.cpp:234`).
 - Color: packed `startLight` (`mclib/txmmgr.cpp:992-995`).
 
 There is **no env / profile / ImGui override** for sun color, direction or
@@ -39,16 +40,16 @@ cross-mission consistency. Out of scope for this opus (would be a new feature).
 | Lane | Tunable | Controls | Mechanism | Location | Default |
 |------|---------|----------|-----------|----------|---------|
 | Post | Exposure | HDR exposure pre-tonemap | **profile** `exposure` + ImGui | `gos_postprocess.cpp:72-73,110`; `visual_tuning_profile.cpp:141` | `1.0` (mc2_24=`1.1`) |
-| Post | HDR master gate | enables whole HDR stack | env `MC2_HDR_POST` | `gos_postprocess.cpp:252-253` | OFF |
+| Post | HDR master gate | enables whole HDR stack | env `MC2_HDR_POST` | `GameOS/gameos/gos_postprocess_gates.cpp:179-180` | OFF |
 | Post | Tonemap (ACES) | ACES tonemap | env `MC2_TONEMAP_ACES` (needs HDR) | `gos_postprocess.cpp:273-275` | OFF |
-| Post | Bloom enable | bloom pass | env `MC2_BLOOM` (needs HDR) | `gos_postprocess.cpp:261-263` | OFF |
+| Post | Bloom enable | bloom pass | env `MC2_BLOOM` (needs HDR) | `GameOS/gameos/gos_postprocess_gates.cpp:188-190` | OFF |
 | Post | Bloom threshold | bright-pass cutoff | **profile** `bloomThreshold` + ImGui | `gos_postprocess.cpp:78-79,84,115`; `vtp.cpp:173` | `1.2` |
 | Post | Bloom intensity | composite weight | **profile** `bloomIntensity` + ImGui | `gos_postprocess.cpp:81-82,85,114`; `vtp.cpp:178` | `0.15` |
-| Post | SSAO enable | AO pass | env `MC2_SSAO` | `gos_postprocess.cpp:325-326` | OFF |
+| Post | SSAO enable | AO pass | env `MC2_SSAO` | `GameOS/gameos/gos_postprocess_gates.cpp:252-253` | OFF |
 | Post | AO radius/strength/bias | SSAO params | **profile** `aoRadius`/`aoStrength`/`aoBias` + ImGui | `gos_postprocess.cpp:89-94,156-158`; `vtp.cpp:181-189` | `3.0`/`0.7`/`0.0025` |
-| Terrain | Tint strength scale | colormap tint blend | **ImGui-only** | `gameos_graphics.cpp:7731-7736` | `1.0` |
-| Terrain | Normals-from-height strength | slope normal contribution | **ImGui-only** | `gameos_graphics.cpp:7738-7743` | `1.0` |
-| Terrain | Mat normal boost (rock/grass/dirt/concrete) | per-material normal intensity | **ImGui-only** + GLSL fallback | `gameos_graphics.cpp:7724-7730` | `{0.9,1.1,1.1,2.5}` |
+| Terrain | Tint strength scale | colormap tint blend | **ImGui-only** | `GameOS/gameos/gameos_graphics_hud.cpp:18-23` | `1.0` |
+| Terrain | Normals-from-height strength | slope normal contribution | **ImGui-only** | `GameOS/gameos/gameos_graphics_hud.cpp:25-30` | `1.0` |
+| Terrain | Mat normal boost (rock/grass/dirt/concrete) | per-material normal intensity | **ImGui-only** + GLSL fallback | `GameOS/gameos/gameos_graphics_hud.cpp:11-17` | `{0.9,1.1,1.1,2.5}` |
 | Static prop | IBL SH strength | SH-L2 ambient | **profile** `staticPropIblStrength` + ImGui + env `MC2_STATIC_PROP_IBL_SH_STRENGTH`, gate `MC2_STATIC_PROP_IBL_SH` | `gos_static_prop_batcher.cpp:203-210,485`; `vtp.cpp:153` | `0.5`, gate **ON** |
 | Static prop | PBR V1 specular strength | Schlick-Fresnel spec | env `MC2_STATIC_PROP_PBR_V1_STRENGTH` + ImGui, gate `MC2_STATIC_PROP_PBR_V1` | `gos_static_prop_batcher.cpp:218-230,498` | `0.5`, gate **OFF** |
 | Static prop | Ambient V1 | hemisphere ambient | env gate `MC2_STATIC_PROP_AMBIENT_V1` only | `gos_static_prop_batcher.cpp:468-471` | OFF |
@@ -64,7 +65,7 @@ cross-mission consistency. Out of scope for this opus (would be a new feature).
 | VFX | Alpha scale | alpha-blend particle opacity | env `MC2_TUNE_VFX_ALPHA_SCALE` + ImGui | `gos_particle_bridge.cpp:113` | `1.0` |
 | Shadow | Softness | PCF penumbra radius | **profile** `shadowSoftness` + ImGui | `gameos_graphics.cpp:7717`; `vtp.cpp:144` | `0.9` |
 | Shadow | Bias factor/units | glPolygonOffset depth bias | **ImGui-only** | `gos_postprocess.h:72-73`; `GraphicsOptionsWindow.cpp:1542,1545` | `2.0`/`4.0` |
-| Shadow | Master enable | shadow pass | env `MC2_SHADOW_ENABLE` | `gos_static_prop_batcher.cpp:5467` | OFF |
+| Shadow | Master enable | shadow pass | env `MC2_SHADOW_ENABLE` | `GameOS/gameos/gos_static_prop_batcher_submit.cpp:118` | OFF |
 | Shadow | Dynamic prop casters | moving casters | env `MC2_SHADOW_DYNAMIC_PROP_CASTERS` | (under shadow enable) | ON |
 | Shadow | Screen-shadow softness (post) | screen-space PCF | **hardcoded `0.9f`** (duplicates softness; drift risk) | `gos_postprocess.cpp:938` | `0.9` |
 
@@ -73,7 +74,7 @@ cross-mission consistency. Out of scope for this opus (would be a new feature).
 ## 2. Profile system (MISSION-VISUAL-TUNING-1)
 
 Files: data `data/visual_tuning.json`; loader `GameOS/gameos/visual_tuning_profile.cpp`
-+ `.h`; load call `code/mission.cpp:2405` (keyed on ScenarioScript name, e.g.
++ `.h`; load call `code/mission_movers.cpp:214` (keyed on ScenarioScript name, e.g.
 `"mc2_24"`); ImGui panel `GuiRuntime/GraphicsOptionsWindow.cpp:1638-1672`; doc
 `docs/visual-tuning-profiles.md`.
 
@@ -143,7 +144,7 @@ Ranked by cross-lane consistency value:
    urgency. (Setter exists? verify before wiring.)
 3. **Water reflection strength** (`g_waterReflStrength`) — env+ImGui only while
    the sibling `waterSkyTintStrength` is backed. CAVEAT: `MC2_WATER_REFLECTION`
-   is a *hard gate* (`gos_GetWaterReflectionGate`, `gameos_graphics.cpp:2296`) —
+   is a *hard gate* (`gos_GetWaterReflectionGate`, `GameOS/gameos/gameos_graphics_water.cpp:107`) —
    when off, reflection is not applied at all, so a profile strength is inert; when
    on (env set), the env-guard skips the profile. Profile-backing it is therefore
    largely ineffective unless the gate is decoupled from the strength. **Defer.**
@@ -151,7 +152,7 @@ Ranked by cross-lane consistency value:
    no getter for snapshot. `shadowSoftness` is backed but bias is not. Would need
    new getters/setters. **Defer.**
 5. **Terrain tint-scale / normals-from-height / mat-normal-boost**
-   (`gameos_graphics.cpp:7724-7743`) — ImGui-only; materially change terrain look
+   (`GameOS/gameos/gameos_graphics_hud.cpp:11-30`) — ImGui-only; materially change terrain look
    but cannot be pinned per-mission. **Defer.**
 6. **Screen-shadow softness literal** (`gos_postprocess.cpp:938`) — hardcoded
    `0.9f` duplicating the softness default; will drift if `shadowSoftness`

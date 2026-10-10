@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # GPU static-prop path — cull infrastructure lessons
 
 Written after the 2026-04-20 sessions that landed commits `f0b85f0`
@@ -16,7 +17,7 @@ have the GPU's own clipper decide what's visible, trusting the
 hardware instead of the broken screen-space math.
 
 Multiple sessions have investigated. The core cull math in
-`mclib/terrain.cpp:1040-1053` and `mclib/bdactor.cpp:1090-1167`
+`mclib/terrain_init.cpp:422-435` and `mclib/bdactor.cpp:1090-1167`
 (recalcBounds) is intricate enough that nobody has cracked it.
 
 This doc is about the **secondary problem**: every bypass attempt
@@ -27,7 +28,7 @@ load-bearing for much more than visibility.
 
 ```
  terrain.cpp:geometry() — per-terrain-vertex angular cull
-  → terrain.cpp:1127 if (clipInfo) setObjBlockActive + setObjVertexActive
+  → mclib/terrain_init.cpp:509 if (clipInfo) setObjBlockActive + setObjVertexActive
     → objmgr.cpp:1488 iterate terrain objects (update pass)
       │   gated by objBlockInfo[block].active
       │   inner gated by objVertexActive[obj->getVertexNum()]
@@ -68,7 +69,7 @@ load-bearing for much more than visibility.
 
 ### 1. Update iteration
 
-`GameObjectManager::update` (code/objmgr.cpp:1731) iterates only
+`GameObjectManager::update` (code/objmgr_update.cpp:417) iterates only
 `objBlockInfo[block].active` blocks AND checks
 `objVertexActive[obj->getVertexNum()]` per object. Out-of-block
 objects **never get update() called**. Their per-frame state —
@@ -91,10 +92,10 @@ objects are deleted. Visible buildings count goes DOWN, not up.
 ### 3. TGL vertex pool budget
 
 The TGL pool is shared across all TG_Shapes drawn per frame. Init'd
-in `code/mission.cpp:3097` (now 500K after the `4888084` bump).
+in `code/mission_init.cpp:243` (now 500K after the `4888084` bump).
 `getVerticesFromPool(n)` (mclib/tgl.h:1022) returns NULL when
 exhausted. `TransformShape` stores NULL in `listOfVertices`.
-`TG_Shape::Render` (mclib/tgl.cpp:2536) silently returns on null.
+`TG_Shape::Render` (mclib/tgl_render.cpp:52) silently returns on null.
 
 Render order per frame:
 1. `objmgr::update` runs TransformShape for buildings/trees in
@@ -114,7 +115,7 @@ what makes it non-obvious.
 
 ### 4. Per-instance transform freshness
 
-`Mech3DAppearance::update` at mech3d.cpp:4170 has:
+`Mech3DAppearance::update` at mclib/mech3d_update.cpp:6 has:
 ```c
 if ((turn < 3) || inView || (currentGestureId == GestureJump))
     updateGeometry();
@@ -126,7 +127,7 @@ time the mech was in view. `TG_Shape::Render` silent early-outs on
 stale data (`lastTurnTransformed != turn-1`). Mech model disappears,
 but health bars still draw.
 
-GVAppearance (gvactor.cpp:2702) has the identical pattern.
+GVAppearance (mclib/gvactor_update.cpp:187) has the identical pattern.
 
 Fixed in both by adding `|| g_useGpuStaticProps` to the gate
 (`aef7e14` for mech, `e23746c` for GV). They still CPU-render (no
@@ -175,7 +176,7 @@ code paths:
 | If you change this | You may also need to change |
 |---|---|
 | Cull gate (inView, canBeSeen) | TGL pool size (pre-cull budget) |
-| Pool size | tglHeap size (`mission.cpp:3091`) |
+| Pool size | tglHeap size (`code/mission_init.cpp:237`) |
 | Bypass active-block iteration | The update path too, or state goes stale |
 | Force objects to update | Accept that some will `setExists(false)` |
 | D3D-style clip.w math | Guard for w <= 0 (ea96c13 pattern) |
