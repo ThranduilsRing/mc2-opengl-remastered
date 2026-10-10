@@ -14,3 +14,9 @@ include_directories(${COMMON_INCLUDE_DIRS} "../../" "./")
 include_directories(${THIRDPARTY_INCLUDE_DIRS})
 
 add_library(fx_trace ${SOURCES})
+
+# Typed gate registry (Gates/): any source in this library may call gate::get<>(); a library that does
+# not link it breaks every standalone tool that links this one (makefst, pak, aseconv, ...).
+if(TARGET fx_trace)
+    target_link_libraries(fx_trace PUBLIC mc2_gate)
+endif()

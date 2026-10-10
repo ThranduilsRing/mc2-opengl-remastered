@@ -28,3 +28,9 @@ target_include_directories(editorbridge PRIVATE
 target_include_directories(editorbridge PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 target_compile_features(editorbridge PUBLIC cxx_std_17)
+
+# Typed gate registry (Gates/): any source in this library may call gate::get<>(); a library that does
+# not link it breaks every standalone tool that links this one (makefst, pak, aseconv, ...).
+if(TARGET editorbridge)
+    target_link_libraries(editorbridge PUBLIC mc2_gate)
+endif()

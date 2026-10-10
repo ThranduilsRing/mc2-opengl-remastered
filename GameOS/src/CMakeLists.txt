@@ -18,3 +18,9 @@ include_directories("../include" )
 
 add_library(windows ${SOURCES})
 
+
+# Typed gate registry (Gates/): any source in this library may call gate::get<>(); a library that does
+# not link it breaks every standalone tool that links this one (makefst, pak, aseconv, ...).
+if(TARGET windows)
+    target_link_libraries(windows PUBLIC mc2_gate)
+endif()

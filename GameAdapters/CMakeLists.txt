@@ -32,3 +32,9 @@ target_include_directories(gameadapters PRIVATE
 target_include_directories(gameadapters PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 target_compile_features(gameadapters PUBLIC cxx_std_17)
+
+# Typed gate registry (Gates/): any source in this library may call gate::get<>(); a library that does
+# not link it breaks every standalone tool that links this one (makefst, pak, aseconv, ...).
+if(TARGET gameadapters)
+    target_link_libraries(gameadapters PUBLIC mc2_gate)
+endif()
