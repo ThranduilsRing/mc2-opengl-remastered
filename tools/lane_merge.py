@@ -1,0 +1,276 @@
+#!/usr/bin/env python3
+"""Merge a lane tip into the current branch (nifty) and re-tighten the ratchets, fail-closed.
+
+WHY: lane merges follow the same ceremony every time -- check the lane does not collide
+with uncommitted work in this shared worktree, merge --no-ff, regenerate the ratchet
+baselines that always conflict, re-run the ratchets at the merged HEAD, and commit only
+the baselines that tightened. Doing it by hand risks sweeping another lane's dirty or
+staged files into the merge commit.
+
+Usage:
+  py -3 tools/lane_merge.py <sha-or-branch> [--message "..."] [--dry-run]
+  --message   merge commit subject (default: "merge lane: <subject of the lane tip>")
+  --dry-run   print the plan (base, file counts, overlap, predicted conflicts); change nothing
+  --root DIR  repo to operate on (default: this checkout)
+  --tools-dir DIR  where the ratchet scripts live (default: <root>/tools); same relative layout
+
+Steps: (a) dirty-overlap and staged-index refusal, (b) git merge --no-ff with regenerable
+baseline conflicts resolved to the lane's side, (c) ratchet checks with --tighten at the merged
+HEAD, (d) a follow-up commit of exactly the tightened baseline files.
+
+Exit codes: 0 merged (or lane already contained); 2 bad ref; 3 merge already in progress or
+unmerged paths; 4 dirty overlap / staged changes; 5 merge failed or conflicts outside the
+regenerable set (merge aborted); 6 a ratchet failed (merge commit stays).
+Final line: MERGED <sha> (+<follow-up sha>) files=<n> ratchets=OK/FAIL overlap=0
+"""
+from __future__ import annotations
+
+import argparse
+import os
+import subprocess
+import sys
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.join(HERE, "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each)
+
+TRAILER = "Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
+FOLLOWUP_SUBJECT = "merge follow-up: ratchet baselines tightened at merged HEAD"
+
+# Files that are pure functions of the tree: on conflict the lane's copy is taken and the
+# ratchet --tighten run below regenerates them against the merged result.
+REGENERABLE = {
+    "tools/file_size_ratchet.baseline.json",
+    "tools/cxx17_ratchet/baseline.json",
+    "tools/dup_lines_ratchet.baseline.json",
+    "tools/axis_swizzle_ratchet.baseline.json",
+    "scripts/gl_shader_variants.json",
+}
+# The baselines the follow-up commit may contain (never a glob over tools/).
+TIGHTENED_BASELINES = [
+    "tools/file_size_ratchet.baseline.json",
+    "tools/cxx17_ratchet/baseline.json",
+    "tools/dup_lines_ratchet.baseline.json",
+    "tools/axis_swizzle_ratchet.baseline.json",
+]
+# (label, script relative to the tools dir, args)
+RATCHETS = [
+    ("file_size", "file_size_ratchet.py", ["--check", "--tighten"]),
+    ("cxx17", "cxx17_ratchet/cxx17_ratchet.py", ["--check", "--tighten"]),
+    ("dup_lines", "dup_lines_ratchet.py", ["--check", "--tighten"]),
+    ("axis_swizzle", "axis_swizzle_ratchet.py", ["--check", "--tighten"]),
+    ("split_map", "split/split_map.py", ["--check"]),
+]
+UNMERGED = {"DD", "AU", "UD", "UA", "DU", "AA", "UU"}
+
+
+class Stop(Exception):
+    def __init__(self, code: int, msg: str):
+        super().__init__(msg)
+        self.code = code
+
+
+def run(root: str, cmd: list[str]) -> subprocess.CompletedProcess:
+    return subprocess.run(cmd, cwd=root, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                          encoding="utf-8", errors="replace", **console_child.child_kwargs(redirected=True))
+
+
+def git(root: str, *args: str) -> subprocess.CompletedProcess:
+    return run(root, ["git", *args])
+
+
+def git_out(root: str, *args: str) -> str:
+    r = git(root, *args)
+    if r.returncode != 0:
+        raise Stop(2, f"git {' '.join(args)} failed: {r.stdout.strip()}")
+    return r.stdout.strip()
+
+
+def lines(text: str) -> list[str]:
+    return [ln for ln in text.splitlines() if ln]
+
+
+def status_entries(root: str) -> list[tuple[str, str]]:
+    """(XY, path) for every worktree entry; a rename lists both its paths."""
+    raw = git(root, "status", "--porcelain", "-z", "--untracked-files=all").stdout
+    parts = raw.split("\0")
+    out: list[tuple[str, str]] = []
+    i = 0
+    while i < len(parts):
+        e = parts[i]
+        i += 1
+        if len(e) < 4:
+            continue
+        xy, path = e[:2], e[3:]
+        out.append((xy, path))
+        if "R" in xy or "C" in xy:
+            if i < len(parts) and parts[i]:
+                out.append((xy, parts[i]))
+            i += 1
+    return out
+
+
+def merge_in_progress(root: str) -> bool:
+    p = git(root, "rev-parse", "--git-path", "MERGE_HEAD").stdout.strip()
+    return os.path.exists(p if os.path.isabs(p) else os.path.join(root, p))
+
+
+def plan(root: str, ref: str) -> dict:
+    """Facts that decide whether the merge may proceed. Raises Stop on a refusal."""
+    sha = git_out(root, "rev-parse", "--verify", "--quiet", ref + "^{commit}")
+    if merge_in_progress(root):
+        raise Stop(3, "a merge is already in progress; finish or abort it first")
+    entries = status_entries(root)
+    unmerged = sorted({p for xy, p in entries if xy in UNMERGED})
+    if unmerged:
+        raise Stop(3, "unmerged paths present:\n  " + "\n  ".join(unmerged))
+    staged = lines(git_out(root, "diff", "--cached", "--name-only"))
+    if staged:
+        raise Stop(4, "index has staged changes that the merge commit would sweep in:\n  " + "\n  ".join(staged))
+    head = git_out(root, "rev-parse", "HEAD")
+    contained = git(root, "merge-base", "--is-ancestor", sha, "HEAD").returncode == 0
+    base = git_out(root, "merge-base", "HEAD", sha) if not contained else sha
+    lane_files = lines(git_out(root, "diff", "--name-only", base, sha))
+    nifty_files = lines(git_out(root, "diff", "--name-only", base, head))
+    dirty = {p for _, p in entries}
+    overlap = sorted(set(lane_files) & dirty)
+    return {"sha": sha, "head": head, "base": base, "contained": contained, "lane_files": lane_files,
+            "nifty_files": nifty_files, "overlap": overlap}
+
+
+def predicted_conflicts(root: str, sha: str) -> list[str] | None:
+    """Conflicted paths a real merge would hit (None when git cannot predict)."""
+    r = git(root, "merge-tree", "--write-tree", "--name-only", "--no-messages", "HEAD", sha)
+    if r.returncode == 0:
+        return []
+    if r.returncode == 1:
+        out = lines(r.stdout)
+        return out[1:] if out else []  # first line is the result tree
+    return None
+
+
+def tip_subject(root: str, sha: str) -> str:
+    return git_out(root, "log", "-1", "--format=%s", sha)
+
+
+def do_merge(root: str, sha: str, message: str) -> None:
+    """Merge --no-ff; auto-resolve regenerable conflicts to the lane's side, abort on anything else."""
+    r = git(root, "merge", "--no-ff", "-m", message, "-m", TRAILER, sha)
+    if r.returncode == 0:
+        return
+    conflicted = lines(git(root, "diff", "--name-only", "--diff-filter=U").stdout)
+    if not merge_in_progress(root):
+        raise Stop(5, "merge failed before it started:\n" + r.stdout.strip())
+    foreign = [p for p in conflicted if p not in REGENERABLE]
+    if foreign or not conflicted:
+        git(root, "merge", "--abort")
+        what = foreign or ["(merge failed without conflicts)"]
+        raise Stop(5, "conflicts outside the regenerable set; merge aborted:\n  " + "\n  ".join(what)
+                   + ("" if foreign else "\n" + r.stdout.strip()))
+    for p in conflicted:
+        c = git(root, "checkout", "--theirs", "--", p)
+        a = git(root, "add", "--", p) if c.returncode == 0 else c
+        if c.returncode != 0 or a.returncode != 0:
+            git(root, "merge", "--abort")
+            raise Stop(5, f"could not take the lane's {p}; merge aborted: {(c.stdout + a.stdout).strip()}")
+    c = git(root, "commit", "-m", message, "-m", TRAILER)
+    if c.returncode != 0:
+        git(root, "merge", "--abort")
+        raise Stop(5, "merge commit failed; merge aborted: " + c.stdout.strip())
+
+
+def run_ratchets(root: str, tools_dir: str) -> list[tuple[str, int, str]]:
+    results = []
+    for label, rel, args in RATCHETS:
+        script = os.path.join(tools_dir, *rel.split("/"))
+        r = run(root, [sys.executable, "-B", script, *args])
+        tail = "\n".join(lines(r.stdout)[-3:])
+        results.append((label, r.returncode, tail))
+    return results
+
+
+def commit_tightened(root: str, pre_dirty: set[str]) -> str | None:
+    """Commit exactly the baselines the ratchets tightened; skip any that was already dirty."""
+    now_dirty = {p for _, p in status_entries(root)}
+    changed = [p for p in TIGHTENED_BASELINES if p in now_dirty and p not in pre_dirty]
+    skipped = [p for p in TIGHTENED_BASELINES if p in now_dirty and p in pre_dirty]
+    if skipped:
+        print("lane_merge: baseline already had uncommitted edits, left alone: " + ", ".join(skipped),
+              file=sys.stderr)
+    if not changed:
+        return None
+    a = git(root, "add", "--", *changed)
+    c = git(root, "commit", "-m", FOLLOWUP_SUBJECT, "-m", TRAILER, "--", *changed) if a.returncode == 0 else a
+    if c.returncode != 0:
+        raise Stop(5, "follow-up commit failed: " + c.stdout.strip())
+    return git_out(root, "rev-parse", "--short=9", "HEAD")
+
+
+def build_parser() -> argparse.ArgumentParser:
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("ref", help="lane tip: sha or branch")
+    ap.add_argument("--message")
+    ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--root", default=os.path.abspath(os.path.join(HERE, "..")))
+    ap.add_argument("--tools-dir")
+    return ap
+
+
+def main(argv: list[str] | None = None) -> int:
+    for stream in (sys.stdout, sys.stderr):
+        stream.reconfigure(errors="replace")
+    args = build_parser().parse_args(argv)
+    root = args.root
+    tools_dir = args.tools_dir or os.path.join(root, "tools")
+    try:
+        p = plan(root, args.ref)
+        message = args.message or f"merge lane: {tip_subject(root, p['sha'])}"
+        if args.dry_run:
+            print(f"PLAN lane={p['sha'][:9]} head={p['head'][:9]} base={p['base'][:9]} "
+                  f"lane_files={len(p['lane_files'])} nifty_files={len(p['nifty_files'])} "
+                  f"overlap={len(p['overlap'])}")
+            if p["contained"]:
+                print("PLAN lane tip is already contained in HEAD: nothing to merge")
+            elif p["overlap"]:
+                raise Stop(4, "lane files are also dirty in the worktree:\n  " + "\n  ".join(p["overlap"]))
+            else:
+                conf = predicted_conflicts(root, p["sha"])
+                if conf is None:
+                    print("PLAN conflicts: unknown (git merge-tree unavailable)")
+                else:
+                    regen = [c for c in conf if c in REGENERABLE]
+                    other = [c for c in conf if c not in REGENERABLE]
+                    print(f"PLAN conflicts={len(conf)} regenerable={len(regen)} blocking={len(other)}"
+                          + ("" if not other else " (merge would abort): " + ", ".join(other)))
+                print(f'PLAN merge --no-ff -m "{message}"')
+            print("PLAN then: " + ", ".join(label for label, _, _ in RATCHETS)
+                  + "; follow-up commit of tightened baselines only")
+            print("[dry-run] nothing changed")
+            return 0
+        if p["contained"]:
+            print(f"MERGED {p['head'][:9]} lane tip already contained files=0 ratchets=SKIPPED overlap=0")
+            return 0
+        if p["overlap"]:
+            raise Stop(4, "lane files are also dirty in the worktree; no merge attempted:\n  "
+                       + "\n  ".join(p["overlap"]))
+        pre_dirty = {path for _, path in status_entries(root)}
+        do_merge(root, p["sha"], message)
+        merge_sha = git_out(root, "rev-parse", "--short=9", "HEAD")
+        results = run_ratchets(root, tools_dir)
+        follow = commit_tightened(root, pre_dirty)
+        failed = [(label, rc, tail) for label, rc, tail in results if rc != 0]
+        line = (f"MERGED {merge_sha}" + (f" (+{follow})" if follow else "")
+                + f" files={len(p['lane_files'])} ratchets={'FAIL' if failed else 'OK'} overlap=0")
+        print(line)
+        if failed:
+            for label, rc, tail in failed:
+                print(f"lane_merge: ratchet {label} exited {rc}; last lines:\n{tail}", file=sys.stderr)
+            return 6
+        return 0
+    except Stop as e:
+        print(f"lane_merge: {e}", file=sys.stderr)
+        return e.code
+
+
+if __name__ == "__main__":
+    sys.exit(main())
