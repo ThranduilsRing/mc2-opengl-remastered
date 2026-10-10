@@ -46,6 +46,7 @@
 //----------------------------------------------------------------------------
 
 #include <cstdio>
+#include "Gates/gate.h"
 #include <cstdlib>
 
 // True when MC2_DIAG_VERBOSE is set to something other than "0".
@@ -53,10 +54,7 @@
 // getenv-seeded-static convention, so behaviour cannot drift mid-run).
 inline bool mc2DiagVerbose()
 {
-    static const bool s_on = []() -> bool {
-        const char* v = std::getenv("MC2_DIAG_VERBOSE");
-        return v && v[0] && !(v[0] == '0' && v[1] == '\0');
-    }();
+    static const bool s_on = mc2::gate::get<"MC2_DIAG_VERBOSE">();
     return s_on;
 }
 

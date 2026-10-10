@@ -66,8 +66,8 @@
    "LG16": 7,
    "LG17": 81,
    "LG18": 11,
-   "LG19": 3,
-   "LG20": 26
+   "LG19": 2,
+   "LG20": 25
   },
   "GuiRuntime": {
    "LG01": 1,
@@ -1365,10 +1365,6 @@
    "LG09": 1,
    "LG13": 52,
    "LG14": 4
-  },
-  "GameOS/include/mc2_diag_verbose.h": {
-   "LG19": 1,
-   "LG20": 1
   },
   "GameOS/include/mc2_dialog.h": {
    "LG01": 1,
@@ -5774,7 +5770,7 @@
    "LG20": 1
   }
  },
- "head": "d8842e6e0",
+ "head": "fbabc78b8",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
