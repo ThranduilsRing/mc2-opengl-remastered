@@ -52,6 +52,8 @@ extern "C" void mc2_vk_color_prop_island_invalidate_geometry();  // vulkan_color
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <vector>
+#include "vk_feed_dump.h"  // VK-OFFLINE-PROOFS-1: MC2_VK_FEED_DUMP golden dump
 
 // Declarations, macros, constants and types the split pieces share.
 
@@ -65,6 +67,31 @@ extern uint32_t g_mc2FrameCounter;
 
 #define ALPHA_TRACE(fmt, ...) \
     do { if (s_alphaTrace) { printf("[ALPHA_TEST] " fmt "\n", ##__VA_ARGS__); fflush(stdout); } } while (0)
+
+
+// PROP-FIXB-MVP: symmetric-mirror of the terrain Fix-B frame-of-reference (see
+// gos_terrain_lod_chunk.cpp ~:33-41 + docs/superpowers/specs/
+// 2026-05-18-AUTHORITATIVE-zfight-matrix-share-design.md §11). When the solid
+// pass is armed, the LOD-chunk terrain draws with the snapshotted dispatch MVP
+// (frame N-1), but objects upload the LIVE current-frame MVP -> a 1-frame
+// matrix-share lag -> depth shimmer at the object/terrain contact under camera
+// motion. Mirroring the SAME consume expression here makes object draws agree
+// with the terrain depth they sit on. The snapshot itself is NOT touched; this
+// only CONSUMES the already-published terrain snapshot. Signatures copied
+// verbatim from gos_terrain_lod_chunk.cpp.
+#include "gos_object_draw_mvp.h"  // RENDER-VIEW-CURRENCY-1 currency-checked accessor
+
+
+// ---------------------------------------------------------------------------
+// [SPFLUSH_COST_SPLIT v1] — batcher-side RDTSC cycle accumulators.
+// Implemented here (submitCachedInstance is in this TU).
+// Gate: MC2_STATIC_PROP_FLUSH_COST_SPLIT=1, default OFF.
+// Adder functions are declared in gos_static_prop_batcher.h (file scope);
+// the registry + txmmgr TUs call them after measuring spans with __rdtsc().
+// ---------------------------------------------------------------------------
+#include <intrin.h>  // __rdtsc (MSVC intrinsic)
+
+#include "mc2_hitch_trace.h"
 
 
 #define TREE_DIAG(fmt, ...) \
@@ -212,6 +239,20 @@ struct StaticPropBucketInfo {
     GLuint   glArray;
 };
 
+// FOLIAGE-STATICPROP-DEPTH-PREPASS-1 GL_EQUAL-parity (review CRITICAL-1/IMPORTANT-1):
+// the depth program is a DISTINCT GL program object, so its uniform state is
+// independent of the color program's. The depth frag mirrors the color frag's
+// alpha-derivation, so it needs the SAME u_materialGpuSample (texArrayLayer vs
+// MaterialTable.albedoTex select) and u_debugAddrMode (mode-8 LODBUG bypass)
+// uploaded to ITS program — uninitialized GL uniforms default to 0, which would
+// make the prepass discard differently than the color pass under GL_EQUAL and
+// make foliage vanish. Coalesce-only locations; -1 (legacy/absent) skips upload.
+struct DepthCoalesceLocs {
+    GLint drawIDBase        = -1;
+    GLint materialGpuSample = -1;   // CRITICAL-1: u_materialGpuSample
+    GLint debugAddrMode     = -1;   // IMPORTANT-1: u_debugAddrMode
+};
+
 
 // Step 12B.1 — forced-disarm test hook env state. Plan v3.8: process-once,
 // resolved by coalesce_resetEnvOnce() from MC2_COALESCE_FORCE_DISARM.
@@ -244,6 +285,59 @@ struct StaticDrawCmd { uint32_t count; uint32_t instanceCount; uint32_t firstInd
 static_assert(sizeof(StaticDrawCmd) == 20, "StaticDrawCmd must be 20 bytes");
 
 
+// --- Step 2.2: ProgramLocs uniform-location cache (§6.X). ---
+// One instance per program. -1 in any field means glGetUniformLocation
+// reported "uniform absent" — treat as skip-upload. Default-initialize
+// every field to -1 so an uncached program still skips cleanly.
+struct ProgramLocs {
+    // Shared (both programs).
+    GLint terrainMVP       = -1;
+    GLint mvp              = -1;
+    GLint fogValue         = -1;
+    GLint debugAddrMode    = -1;
+    // Legacy-only.
+    GLint maxLocalVertexID = -1;
+    GLint materialFlags    = -1;
+    GLint packetID         = -1;
+    // Coalesce-only.
+    GLint drawIDBase          = -1;
+    GLint texArr              = -1;
+    GLint materialGpuSample   = -1;   // MaterialGpu-3: u_materialGpuSample
+    GLint ambientV1Strength   = -1;   // V-AMBIENT-STATIC-1: u_ambientV1Strength
+    GLint propBaseLightDirStrength = -1; // PROP-BASE-LIGHT-DIR-1: u_propBaseLightDirStrength
+    GLint debugMaterialMode   = -1;   // V-MATERIAL-DEBUG-1: u_debugMaterialMode
+    GLint iblSh               = -1;   // V-IBL-STATIC-1: u_iblSh[9] (vec3 array)
+    GLint iblShStrength       = -1;   // V-IBL-STATIC-1: u_iblShStrength
+    GLint pbrV1Strength       = -1;   // V-MATERIAL-PBR-2: u_pbrV1Strength
+    GLint pbrV1RoughnessOverride = -1; // V-MATERIAL-PBR-2-TUNE-UI: u_pbrV1RoughnessOverride
+    GLint pbrV1DiagSunFound   = -1;   // V-MATERIAL-PBR-2-DIAG: u_pbrV1DiagSunFound
+    GLint ormTexArr           = -1;   // STATICPROP-MATERIAL-ORM-1: u_ormTexArr (sampler2DArray)
+    GLint ormSampleEnable     = -1;   // STATICPROP-MATERIAL-ORM-1: u_ormSampleEnable (int)
+    GLint pathTint            = -1;   // MC2_SHADER_PATH_TINT debug: u_pathTint (int)
+    GLint terrainSunMC2       = -1;   // GREYBEARD-DIFFUSE-TEST: u_terrainSunMC2 (vec3)
+    // EDGE-LIGHT-EMISSION-1: stock night-tag emission state.
+    GLint isNight            = -1;   // u_isNight (int 0/1)
+    GLint nightFactor        = -1;   // u_nightFactor (float 0..1)
+    GLint nightEmissiveScale = -1;   // u_nightEmissiveScale (float)
+    GLint fixtureEmissiveScale = -1; // u_fixtureEmissiveScale (BEACON-FIXTURE-ID-1)
+    GLint fixtureGlowStrength  = -1; // u_fixtureGlowStrength  (FIXTURE-GLOW-1)
+    GLint terrainDecalFill    = -1;   // TERRAIN-DECAL-FILL-1: u_terrainDecalFill (float)
+    // TERRAIN-DECAL-COLORBLEND-1: colormap sampler + atlas UV params + blend.
+    GLint terrainColormap        = -1;  // u_terrainColormap (sampler2D)
+    GLint decalAtlasTLX          = -1;  // u_decalAtlasTLX (float)
+    GLint decalAtlasTLY          = -1;  // u_decalAtlasTLY (float)
+    GLint decalAtlasOOW          = -1;  // u_decalAtlasOOW (float)
+    GLint terrainDecalColorBlend = -1;  // u_terrainDecalColorBlend (float)
+    GLint glassDither            = -1;  // BUILDING-GLASS-1: u_glassDither (float)
+    // FAR-BACKDROP-LIT: night-shade substitution for far/impostor LODs.
+    GLint farBackdropLit         = -1;  // u_farBackdropLit (int, 0=off)
+    GLint farBackdropNear        = -1;  // u_farBackdropNear (float)
+    GLint farBackdropFar         = -1;  // u_farBackdropFar (float)
+    GLint farBackdropStrength    = -1;  // u_farBackdropStrength (float)
+    GLint farBackdropTint        = -1;  // u_farBackdropTint (vec3)
+};
+
+
 // STATICPROP-MATERIAL-ORM-1 — texture unit reserved for the per-bucket ORM
 // sibling array. Unit 0 stays the albedo array (u_texArr); unit 1 is ORM.
 static constexpr GLuint kOrmTexUnit = 1;
@@ -251,6 +345,49 @@ static constexpr GLuint kOrmTexUnit = 1;
 // TERRAIN-DECAL-COLORBLEND-1 — texture unit for the terrain colormap atlas,
 // sampled only by the flagged cliff decal. Clear of albedo(0)/ORM(1).
 static constexpr GLuint kColormapTexUnit = 4;
+
+
+// ---------------------------------------------------------------------------
+// Counter state added in Task 6 (Stage 1.D — Gate F + late-registration).
+// ---------------------------------------------------------------------------
+
+// Population indexed by GpuStaticPropPopulation enum value:
+//   0=Building, 1=Tree, 2=Generic, 3=Legacy.
+// Legacy is excluded from Gate F's fallback-rate computation
+// (slice-1 populations only).
+constexpr int kPopCount = 4;
+
+
+struct ObjBatcherCounters {
+    // Per-frame, indexed by population:
+    uint32_t eligible_actors_by_pop[kPopCount]     = {0};
+    uint32_t submitted_instances_by_pop[kPopCount] = {0};  // success only
+    uint32_t cpu_fallback_by_pop[kPopCount]        = {0};
+    uint32_t submitted_children                    = 0;
+    uint32_t skipped_children                      = 0;
+    // Per-flush:
+    uint32_t gpu_drawn_instances                   = 0;
+    // Monotonic since process start:
+    uint64_t mono_eligible_actors_by_pop[kPopCount]     = {0};
+    uint64_t mono_submitted_instances_by_pop[kPopCount] = {0};
+    uint64_t mono_cpu_fallback_by_pop[kPopCount]        = {0};
+    uint64_t mono_submitted_children                = 0;
+    uint64_t mono_skipped_children                  = 0;
+    uint64_t mono_gpu_drawn_instances               = 0;
+    uint64_t frame_count                            = 0;
+    // LIGHTROW-FRESHNESS-1: dynamic-path light-row staleness accounting.
+    // stale_light_row_regathered = the defect this slice fixes -- a multi whose
+    // cachedGpuLightIndex_ was stamped on an EARLIER frame and would previously
+    // have been trusted verbatim, now re-gathered. Non-zero here in steady state
+    // means the bug was live on this run.
+    uint64_t mono_stale_light_row_regathered        = 0;
+    // Could not re-gather (no SHAPE_NODE leaf) -- the row is unresolvable and the
+    // actor is dropped rather than drawn against an arbitrary slot.
+    uint64_t mono_stale_light_row_unresolvable      = 0;
+    // Invariant break: a resolved row index outside [0, getLightStructCount()).
+    // The shader indexes light[] unchecked, so this must be zero.
+    uint64_t mono_light_row_out_of_range            = 0;
+};
 
 
 // Forward declaration; defined below.
@@ -267,8 +404,6 @@ extern "C" void mc2_framegraph_executor_bump_apply_state(unsigned id);
 
 namespace gos_static_prop_batcher_detail {}
 using namespace gos_static_prop_batcher_detail;
-#include <vector>
-#include "vk_feed_dump.h"  // VK-OFFLINE-PROOFS-1: MC2_VK_FEED_DUMP golden dump
 
 // Global runtime toggle for the GPU static-prop renderer. Defined here
 // (in the gameos lib) so every consumer — mc2.exe, aseconv, other data
@@ -282,18 +417,6 @@ bool g_useGpuStaticProps = false;
 bool g_useGpuObjects = true;
 
 static const bool s_alphaTrace = mc2::gate::get<"MC2_ALPHA_TEST_TRACE">();
-
-// PROP-FIXB-MVP: symmetric-mirror of the terrain Fix-B frame-of-reference (see
-// gos_terrain_lod_chunk.cpp ~:33-41 + docs/superpowers/specs/
-// 2026-05-18-AUTHORITATIVE-zfight-matrix-share-design.md §11). When the solid
-// pass is armed, the LOD-chunk terrain draws with the snapshotted dispatch MVP
-// (frame N-1), but objects upload the LIVE current-frame MVP -> a 1-frame
-// matrix-share lag -> depth shimmer at the object/terrain contact under camera
-// motion. Mirroring the SAME consume expression here makes object draws agree
-// with the terrain depth they sit on. The snapshot itself is NOT touched; this
-// only CONSUMES the already-published terrain snapshot. Signatures copied
-// verbatim from gos_terrain_lod_chunk.cpp.
-#include "gos_object_draw_mvp.h"  // RENDER-VIEW-CURRENCY-1 currency-checked accessor
 // NOTE: raw gos_terrain_indirect_getDispatchMvp16() is phase-private to terrain/
 // water passes — object draw uses gos_GetObjectDrawMVP() (the accessor above).
 // Enforced by scripts/check-object-mvp-currency.py.
@@ -335,16 +458,6 @@ static const bool s_treeDiagTrace = mc2::gate::get<"MC2_TREE_DIAG_TRACE">();
 // default. Pattern mirrors the [INSTR v1] schema family + the 600-frame window
 // used by [OBJBATCHER v1] / [TGL_POOL v1].
 static const bool s_spotlightRealTrace = mc2::gate::get<"MC2_SPOTLIGHT_REAL_TRACE">();
-
-// ---------------------------------------------------------------------------
-// [SPFLUSH_COST_SPLIT v1] — batcher-side RDTSC cycle accumulators.
-// Implemented here (submitCachedInstance is in this TU).
-// Gate: MC2_STATIC_PROP_FLUSH_COST_SPLIT=1, default OFF.
-// Adder functions are declared in gos_static_prop_batcher.h (file scope);
-// the registry + txmmgr TUs call them after measuring spans with __rdtsc().
-// ---------------------------------------------------------------------------
-#include <intrin.h>  // __rdtsc (MSVC intrinsic)
-#include "mc2_hitch_trace.h"
 
 // SP-BATCHER-ALPHASCAN-GATE-1: see header. Starts at 1 so a fresh scan (cached
 // gen 0) always runs its first pass regardless of any early destruction events.
@@ -1552,19 +1665,6 @@ GLuint s_staticPropProgramCoalesce = 0;  // coalesce variant (Step 7.5)
 // program's. 0 = the program failed to link this session → flushDepthPrepass()
 // must no-op (color path unaffected).
 GLuint s_staticPropDepthProgram = 0;
-// FOLIAGE-STATICPROP-DEPTH-PREPASS-1 GL_EQUAL-parity (review CRITICAL-1/IMPORTANT-1):
-// the depth program is a DISTINCT GL program object, so its uniform state is
-// independent of the color program's. The depth frag mirrors the color frag's
-// alpha-derivation, so it needs the SAME u_materialGpuSample (texArrayLayer vs
-// MaterialTable.albedoTex select) and u_debugAddrMode (mode-8 LODBUG bypass)
-// uploaded to ITS program — uninitialized GL uniforms default to 0, which would
-// make the prepass discard differently than the color pass under GL_EQUAL and
-// make foliage vanish. Coalesce-only locations; -1 (legacy/absent) skips upload.
-struct DepthCoalesceLocs {
-    GLint drawIDBase        = -1;
-    GLint materialGpuSample = -1;   // CRITICAL-1: u_materialGpuSample
-    GLint debugAddrMode     = -1;   // IMPORTANT-1: u_debugAddrMode
-};
 DepthCoalesceLocs s_locsDepthCoalesce;
 
 // Step 2.1 — persistent map pointer + fence ring.
@@ -1668,58 +1768,6 @@ uint32_t s_offGroupCountThisFrame  = 0;
 size_t   s_offGroupBytesThisFrame  = 0;
 size_t   s_onGroupBytesThisFrame   = 0;
 size_t   s_totalUsedBytesThisFrame = 0;
-
-// --- Step 2.2: ProgramLocs uniform-location cache (§6.X). ---
-// One instance per program. -1 in any field means glGetUniformLocation
-// reported "uniform absent" — treat as skip-upload. Default-initialize
-// every field to -1 so an uncached program still skips cleanly.
-struct ProgramLocs {
-    // Shared (both programs).
-    GLint terrainMVP       = -1;
-    GLint mvp              = -1;
-    GLint fogValue         = -1;
-    GLint debugAddrMode    = -1;
-    // Legacy-only.
-    GLint maxLocalVertexID = -1;
-    GLint materialFlags    = -1;
-    GLint packetID         = -1;
-    // Coalesce-only.
-    GLint drawIDBase          = -1;
-    GLint texArr              = -1;
-    GLint materialGpuSample   = -1;   // MaterialGpu-3: u_materialGpuSample
-    GLint ambientV1Strength   = -1;   // V-AMBIENT-STATIC-1: u_ambientV1Strength
-    GLint propBaseLightDirStrength = -1; // PROP-BASE-LIGHT-DIR-1: u_propBaseLightDirStrength
-    GLint debugMaterialMode   = -1;   // V-MATERIAL-DEBUG-1: u_debugMaterialMode
-    GLint iblSh               = -1;   // V-IBL-STATIC-1: u_iblSh[9] (vec3 array)
-    GLint iblShStrength       = -1;   // V-IBL-STATIC-1: u_iblShStrength
-    GLint pbrV1Strength       = -1;   // V-MATERIAL-PBR-2: u_pbrV1Strength
-    GLint pbrV1RoughnessOverride = -1; // V-MATERIAL-PBR-2-TUNE-UI: u_pbrV1RoughnessOverride
-    GLint pbrV1DiagSunFound   = -1;   // V-MATERIAL-PBR-2-DIAG: u_pbrV1DiagSunFound
-    GLint ormTexArr           = -1;   // STATICPROP-MATERIAL-ORM-1: u_ormTexArr (sampler2DArray)
-    GLint ormSampleEnable     = -1;   // STATICPROP-MATERIAL-ORM-1: u_ormSampleEnable (int)
-    GLint pathTint            = -1;   // MC2_SHADER_PATH_TINT debug: u_pathTint (int)
-    GLint terrainSunMC2       = -1;   // GREYBEARD-DIFFUSE-TEST: u_terrainSunMC2 (vec3)
-    // EDGE-LIGHT-EMISSION-1: stock night-tag emission state.
-    GLint isNight            = -1;   // u_isNight (int 0/1)
-    GLint nightFactor        = -1;   // u_nightFactor (float 0..1)
-    GLint nightEmissiveScale = -1;   // u_nightEmissiveScale (float)
-    GLint fixtureEmissiveScale = -1; // u_fixtureEmissiveScale (BEACON-FIXTURE-ID-1)
-    GLint fixtureGlowStrength  = -1; // u_fixtureGlowStrength  (FIXTURE-GLOW-1)
-    GLint terrainDecalFill    = -1;   // TERRAIN-DECAL-FILL-1: u_terrainDecalFill (float)
-    // TERRAIN-DECAL-COLORBLEND-1: colormap sampler + atlas UV params + blend.
-    GLint terrainColormap        = -1;  // u_terrainColormap (sampler2D)
-    GLint decalAtlasTLX          = -1;  // u_decalAtlasTLX (float)
-    GLint decalAtlasTLY          = -1;  // u_decalAtlasTLY (float)
-    GLint decalAtlasOOW          = -1;  // u_decalAtlasOOW (float)
-    GLint terrainDecalColorBlend = -1;  // u_terrainDecalColorBlend (float)
-    GLint glassDither            = -1;  // BUILDING-GLASS-1: u_glassDither (float)
-    // FAR-BACKDROP-LIT: night-shade substitution for far/impostor LODs.
-    GLint farBackdropLit         = -1;  // u_farBackdropLit (int, 0=off)
-    GLint farBackdropNear        = -1;  // u_farBackdropNear (float)
-    GLint farBackdropFar         = -1;  // u_farBackdropFar (float)
-    GLint farBackdropStrength    = -1;  // u_farBackdropStrength (float)
-    GLint farBackdropTint        = -1;  // u_farBackdropTint (vec3)
-};
 
 // BUILDING-GLASS-1: ordered-dither translucency for partial-alpha (glass)
 // texels on ALPHA_TEST packets. Default ON; MC2_SP_GLASS_DITHER=0 kills it
@@ -2412,47 +2460,6 @@ void ensureRingCapacity(size_t neededInstances, size_t neededColorEntries) {
         s_fatalRegistrationFailure = true;
     }
 }
-
-// ---------------------------------------------------------------------------
-// Counter state added in Task 6 (Stage 1.D — Gate F + late-registration).
-// ---------------------------------------------------------------------------
-
-// Population indexed by GpuStaticPropPopulation enum value:
-//   0=Building, 1=Tree, 2=Generic, 3=Legacy.
-// Legacy is excluded from Gate F's fallback-rate computation
-// (slice-1 populations only).
-constexpr int kPopCount = 4;
-
-struct ObjBatcherCounters {
-    // Per-frame, indexed by population:
-    uint32_t eligible_actors_by_pop[kPopCount]     = {0};
-    uint32_t submitted_instances_by_pop[kPopCount] = {0};  // success only
-    uint32_t cpu_fallback_by_pop[kPopCount]        = {0};
-    uint32_t submitted_children                    = 0;
-    uint32_t skipped_children                      = 0;
-    // Per-flush:
-    uint32_t gpu_drawn_instances                   = 0;
-    // Monotonic since process start:
-    uint64_t mono_eligible_actors_by_pop[kPopCount]     = {0};
-    uint64_t mono_submitted_instances_by_pop[kPopCount] = {0};
-    uint64_t mono_cpu_fallback_by_pop[kPopCount]        = {0};
-    uint64_t mono_submitted_children                = 0;
-    uint64_t mono_skipped_children                  = 0;
-    uint64_t mono_gpu_drawn_instances               = 0;
-    uint64_t frame_count                            = 0;
-    // LIGHTROW-FRESHNESS-1: dynamic-path light-row staleness accounting.
-    // stale_light_row_regathered = the defect this slice fixes -- a multi whose
-    // cachedGpuLightIndex_ was stamped on an EARLIER frame and would previously
-    // have been trusted verbatim, now re-gathered. Non-zero here in steady state
-    // means the bug was live on this run.
-    uint64_t mono_stale_light_row_regathered        = 0;
-    // Could not re-gather (no SHAPE_NODE leaf) -- the row is unresolvable and the
-    // actor is dropped rather than drawn against an arbitrary slot.
-    uint64_t mono_stale_light_row_unresolvable      = 0;
-    // Invariant break: a resolved row index outside [0, getLightStructCount()).
-    // The shader indexes light[] unchecked, so this must be zero.
-    uint64_t mono_light_row_out_of_range            = 0;
-};
 ObjBatcherCounters s_counters;
 
 // LIGHTROW-FRESHNESS-1 gate. DEFAULT-ON kill-switch; MC2_STATIC_PROP_LIGHT_FRESHNESS=0
