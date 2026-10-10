@@ -66,8 +66,8 @@
    "LG16": 7,
    "LG17": 81,
    "LG18": 11,
-   "LG19": 118,
-   "LG20": 156
+   "LG19": 117,
+   "LG20": 155
   },
   "GuiRuntime": {
    "LG01": 1,
@@ -451,9 +451,7 @@
   "GameOS/gameos/gameos_graphics_params.cpp": {
    "LG05": 1,
    "LG09": 8,
-   "LG10": 1,
-   "LG19": 1,
-   "LG20": 1
+   "LG10": 1
   },
   "GameOS/gameos/gameos_graphics_renderer_internal.h": {
    "LG01": 2,
@@ -5879,7 +5877,7 @@
    "LG20": 1
   }
  },
- "head": "14c52d6b5",
+ "head": "3446e2bf1",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
