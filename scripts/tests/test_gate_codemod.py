@@ -420,9 +420,28 @@ def test_apply_refuses_without_the_confirmation_flag(capsys):
     assert "refused" in capsys.readouterr().err
 
 
-def test_apply_does_nothing_even_when_confirmed(capsys):
+def test_apply_needs_files(capsys):
     assert cm.main(["--apply", "--i-mean-it"]) == 2
-    assert "not implemented" in capsys.readouterr().err
+    assert "--files" in capsys.readouterr().err
+
+
+def test_apply_rewrites_only_no_change_and_edge_sites_and_adds_the_include():
+    code = ("#include <cstdlib>\n#include \"x.h\"\n\nnamespace {\n"
+            "static const bool a = (getenv(\"MC2_X\") != nullptr);\n"
+            "static const bool b = std::string(getenv(\"MC2_X\")).empty();\n}\n")
+    results = cm.analyze_text("snippet.cpp", code, mk("Presence"))
+    new, applied, skipped = cm.apply_edits(code, results)
+    assert len(applied) == 1 and not skipped
+    assert 'static const bool a = mc2::gate::get<"MC2_X">();' in new
+    assert 'std::string(getenv("MC2_X")).empty()' in new          # the UNHANDLED site is untouched
+    assert new.index('#include "Gates/gate.h"') > new.index('#include "x.h"')
+    assert cm.apply_edits(new, cm.analyze_text("snippet.cpp", new, mk("Presence")))[0].count("Gates/gate.h") == 1
+
+
+def test_apply_keeps_crlf_line_endings():
+    code = "#include <cstdlib>\r\nstatic const bool a = (getenv(\"MC2_X\") != nullptr);\r\n"
+    new, applied, _ = cm.apply_edits(code, cm.analyze_text("snippet.cpp", code, mk("Presence")))
+    assert applied and "\r\n#include \"Gates/gate.h\"\r\n" in new and "\n" not in new.replace("\r\n", "")
 
 
 def test_summary_counts():

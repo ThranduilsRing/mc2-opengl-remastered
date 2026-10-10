@@ -9,8 +9,8 @@ observe change, and what exact text keeps it from changing?"  Design: .claude/cl
 typed-gate-registry-design.md section 5.7 (migration mechanics) and the review amendments 1, 2 and 9
 (per-site rule override, numeric range=Reject, caching shape preserved).
 
-It writes NO C++.  `--apply` exists only so the flag is reserved; it refuses unless `--i-mean-it`
-is also given, and even then it does nothing in this slice.
+It writes NO C++ unless `--apply --i-mean-it --files F` is given: that rewrites F's NO-CHANGE / EDGE sites in the
+working tree (one file per commit) and refuses without `--i-mean-it`.
 
 HOW A SITE IS JUDGED
 --------------------
@@ -421,7 +421,7 @@ def _norm_ws(s, limit=320):
 class Result:
     __slots__ = ("file", "line", "gate", "callee", "idiom", "shape", "replacement", "verdict", "why", "old",
                  "row_edit", "diff", "harness_hits", "override", "reason", "mode", "kind", "helper_def",
-                 "paired", "pp", "helper_read")
+                 "paired", "pp", "helper_read", "edit")
 
     def __init__(self, file, line, gate, callee):
         self.file, self.line, self.gate, self.callee = file, line, gate, callee
@@ -442,6 +442,7 @@ class Result:
         self.helper_read = ""       # what the interpreter makes of a helper-call reader (evidence only, no rewrite)
         self.pp = ""                # preprocessor context holding the site ("inside #else of ...")
         self.paired = False         # the statement reads the same gate twice (presence test, then a character test)
+        self.edit = None            # (start, end, new_text) in raw-file offsets: what --apply replaces
 
     @property
     def where(self):
@@ -1105,9 +1106,11 @@ def _bool_emit(res, row, jd, unit, mode, notes, T, raw, inv):
     if mode == "local":
         res.replacement = "%s%s;" % (unit["tgt"], e)
         res.old = _norm_ws(T[unit["span"][0]:unit["span2"][1]])
+        res.edit = (unit["span"][0], unit["span2"][1], res.replacement)
     else:
         res.replacement = "%s = %s;" % (_norm_ws(_lhs_text(lhs)), e)
         res.old = _norm_ws(T[unit["span"][0]:unit["span"][1]])
+        res.edit = (unit["span"][0], unit["span"][1], res.replacement)
     res.mode = mode
     res.idiom = res.idiom or jd["rule"]
     if jd["neg"]:
@@ -1222,6 +1225,7 @@ def _expr_emit(res, row, T, raw, p, cs, ce, sub, notes, presence_only=False):
     new_line = re.sub(r"=\s*\(\s*(%s)\s*\)\s*;" % re.escape(new_e), r"= \1;", new_line)
     res.old = _norm_ws(old_line)
     res.replacement = _norm_ws(new_line)
+    res.edit = (la, lb, new_line)
     return res
 
 
@@ -1246,6 +1250,7 @@ def _numeric(res, row, interp, path, T, p, cs, ce, unit, mode, notes, raw):
     res.diff = [("unset" if x is None else repr(x)) for x in jd["diff"]]
     res.replacement = "%s = %s;" % (_norm_ws(_lhs_text(lhs)), e)
     res.old = _norm_ws(T[unit["span"][0]:unit["span"][1]])
+    res.edit = (unit["span"][0], unit["span"][1], res.replacement)
     res.mode = mode
     res.row_edit = jd["edit"]
     hits = [h for h in row.harness if h != "String" and h in [x for x in jd["diff"] if x is not None]]
@@ -1278,6 +1283,31 @@ def run(files, root=ROOT, rev="HEAD", helpers=()):
         others = [(p, t) for p, t in srcs if p != rel] + extra
         results.extend(analyze_text(rel, raw, rows, ledger, others))
     return results, rows
+
+
+GATE_INCLUDE = '#include "Gates/gate.h"'
+
+
+def apply_edits(raw, results):
+    """The file text with every NO-CHANGE / EDGE site rewritten (descending offsets, overlaps skipped) and the gate
+    include added. Returns (new_text, applied, skipped)."""
+    todo = sorted((r for r in results if r.edit and r.verdict in ("NO-CHANGE", "EDGE")), key=lambda r: -r.edit[0])
+    applied, skipped, limit = [], [], len(raw) + 1
+    for r in todo:
+        a, b, new = r.edit
+        if b > limit:
+            skipped.append(r)
+            continue
+        raw = raw[:a] + new + raw[b:]
+        limit = a
+        applied.append(r)
+    if applied and "Gates/gate.h" not in raw and "Gates/gate_cold.h" not in raw:
+        nl = "\r\n" if "\r\n" in raw else "\n"
+        lines = raw.split(nl)
+        last = max((i for i, ln in enumerate(lines[:300]) if ln.lstrip().startswith("#include")), default=-1)
+        lines.insert(last + 1, GATE_INCLUDE)
+        raw = nl.join(lines)
+    return raw, applied, skipped
 
 
 def summarize(results):
@@ -1892,17 +1922,38 @@ def main(argv=None):
     ap.add_argument("--worktree", action="store_true", help="read the working tree instead of git")
     ap.add_argument("--write", action="store_true", help="write the family's .md and .tsv under docs/ (g1b: %s, %s)" % (OUT_MD, OUT_TSV))
     ap.add_argument("--summary", action="store_true", help="print only the summary counts")
-    ap.add_argument("--apply", action="store_true", help="reserved; refuses unless --i-mean-it, does nothing in this slice")
+    ap.add_argument("--apply", action="store_true",
+                    help="rewrite the NO-CHANGE / EDGE sites of --files in the working tree (needs --i-mean-it)")
     ap.add_argument("--i-mean-it", action="store_true")
     a = ap.parse_args(argv)
     if a.apply:
         if not a.i_mean_it:
-            print("gate_codemod: --apply refused: pass --i-mean-it as well (and note this slice is dry-run only)",
-                  file=sys.stderr)
+            print("gate_codemod: --apply refused: pass --i-mean-it as well", file=sys.stderr)
             return 2
-        print("gate_codemod: --apply is not implemented: the G1b pilot commit rewrites C++ by hand from the reviewed "
-              "table; this tool writes no C++", file=sys.stderr)
-        return 2
+        if not a.files:
+            print("gate_codemod: --apply needs --files (one file per commit)", file=sys.stderr)
+            return 2
+        # Reads and rewrites the WORKING TREE files; rows come from the committed table at HEAD.
+        rows = load_rows(ROOT, "HEAD")
+        ledger = load_ledger(ROOT)
+        total = 0
+        for rel in a.files:
+            path = os.path.join(ROOT, rel)
+            with open(path, "r", encoding="utf-8", newline="") as fh:
+                raw = fh.read()
+            results = analyze_text(rel, raw, rows, ledger, [])
+            new, applied, skipped = apply_edits(raw, results)
+            with open(path, "w", encoding="utf-8", newline="") as fh:
+                fh.write(new)
+            left = [r for r in results if r not in applied]
+            print("gate_codemod: %s: rewrote %d site(s), skipped %d overlapping, %d left (UNHANDLED %d)" % (
+                rel, len(applied), len(skipped), len(left), sum(1 for r in left if r.verdict == "UNHANDLED")))
+            for r in applied:
+                if r.verdict == "EDGE":
+                    print("  EDGE  %s:%d %s: %s" % (rel, r.line, r.gate, r.why))
+            total += len(applied)
+        print("gate_codemod: %d site(s) rewritten" % total)
+        return 0
     fam = FAMILIES[a.family]
     files = a.files or list(fam["files"])
     rev = None if a.worktree else a.rev
