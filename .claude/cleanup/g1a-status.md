@@ -60,9 +60,11 @@ Reading:
 - `gos_terrain_patch_stream.cpp.obj`: 504,961 bytes; the TU includes no Gates header and was not rebuilt, so unchanged by construction.
 - Deploy to `mc2-win64-v0.4`: rc 0 (hygiene warning about pre-existing byproducts only).
 
-## Pending launch hold
+## Launch-gated verification (hold lifted for lane 1; PIA crash dumps stayed 5, conhost.exe 33-34 at every step)
 
-- lite smoke (fingerprint line, result line, `[CONFIG v1]` summary with `unregistered=`, no `[LAUNCHER_ENV` line)
-- `scripts/run_editor_smoke.py --case outliner` and its `[CONFIG v1]` line
-- GL day capture `mc2_01_saved_205644` compared against the latest post-`MC2_LAUNCHER_ENV_JSON=0` set under `tests/visual/captures/`
-- full `check-contracts.sh` re-run
+- Fixed on the way: the first lite smoke exited 78 on both missions. `MC2_CONFIG_STRICT=1` (forced by the runner) correctly caught `MC2_CURSOR_NO_PARK`, which the capture/smoke workflow sets ambient and which reached mc2.exe, as `unregistered=1`. The table lacked the names only harness Python reads. Registered 16 of them (owner `harness`): 009ed0e62. Index change rebuilt only 14 steps (few TUs include `gate.h`).
+- Lite smoke at 009ed0e62: `[DEPLOY_FINGERPRINT] OK: exe sha=009ed0e62fcd matches worktree HEAD`; `result=PASS (2/2 passed)` (mc2_01 1393 frames 141 fps; mc2_10 887 frames 90 fps). Game log, both missions: `[CONFIG v1] summary total=1155 set=14 nondefault=12 unregistered=0 badvalue=0 premain_stale=0`. No `[LAUNCHER_ENV` line (only the `MC2_LAUNCHER_ENV_JSON=0` CONFIG row).
+- Full `check-contracts.sh`: 167 passed, 0 failed.
+- `build_contract_harnesses.py --run --unit`: 16/16 built, 20 harnesses PASS, doctest 664/664 (re-run after the table change).
+- Editor: `run_editor_smoke.py --case outliner` PASS 1/1; `[CONFIG v1] summary total=1155 set=9 nondefault=9 unregistered=0 badvalue=0 premain_stale=0`. The runner now reports that line and `--keep-logs` saves the captured stderr (54e9088df).
+- GL day capture `mc2_01_saved_205644`, `tests/visual/captures/g1a_after_gl` vs `g1a_before_gl` (taken 19:04 with the `MC2_LAUNCHER_ENV_JSON=0` harness, pre-G1a exe): NOT byte-identical (sha 275b765d vs 6ded58e4), MAD 0.02, 0.05% of pixels over 24. Viewed by the builder: terrain, water, sky and props identical; the only difference is one mech's animation pose. Two captures of the same post-G1a exe differ from each other by MAD 0.05 / 0.10% (`g1a_after_gl2`), so the delta is inside run-to-run noise. Montage: `tests/visual/captures/g1a_ab/mc2_01_saved_205644/montage.jpg`.
