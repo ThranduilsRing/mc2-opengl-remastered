@@ -2285,16 +2285,9 @@ DWORD bgrTorgb (DWORD frontRGB)
 //-----------------------------------------------------------------------------
 void Mech3DAppearance::setPaintScheme (DWORD mcRed, DWORD mcGreen, DWORD mcBlue)
 {
-#if defined(BGR)
-	// These come into here bgr instead of RGB.  CONVERT!
-	psRed = bgrTorgb(mcRed);
-	psBlue = bgrTorgb(mcBlue);
-	psGreen = bgrTorgb(mcGreen);
-#else /*BGR*/
 	psRed = mcRed;
 	psBlue = mcBlue;
 	psGreen = mcGreen;
-#endif /*BGR*/
 
 	setPaintScheme();	
 }	
@@ -2302,15 +2295,9 @@ void Mech3DAppearance::setPaintScheme (DWORD mcRed, DWORD mcGreen, DWORD mcBlue)
 //-----------------------------------------------------------------------------
 void Mech3DAppearance::getPaintScheme( DWORD& red, DWORD& green, DWORD& blue )
 {
-#if defined(BGR)
-	red = bgrTorgb(psRed);
-	blue = bgrTorgb(psBlue);
-	green = bgrTorgb(psGreen);
-#else /*BGR*/
 	red = psRed;
 	blue = psBlue;
 	green = psGreen;
-#endif /*BGR*/
 }
 
 //-----------------------------------------------------------------------------
@@ -3730,111 +3717,6 @@ long Mech3DAppearance::render (long depthFixup)
 				}
 			}
 				   
-#ifdef DRAW_BOX
-			//---------------------------------------------------------
-			// Render the Bounding Box to see if it is OK.
-			Stuff::Vector3D nodeCenter = mechShape->GetRootNodeCenter();
-
-			Stuff::Vector3D boxCoords[8];
-			boxCoords[0].x = position.x + mechType->typeUpperLeft.x;
-			boxCoords[0].y = position.y + mechType->typeUpperLeft.y;
-			boxCoords[0].z = position.z + mechType->typeUpperLeft.z;
-
-			boxCoords[1].x = position.x + mechType->typeUpperLeft.x;
-			boxCoords[1].y = position.y + mechType->typeLowerRight.y;
-			boxCoords[1].z = position.z + mechType->typeUpperLeft.z;
-
-			boxCoords[2].x = position.x + mechType->typeLowerRight.x;
-			boxCoords[2].y = position.y + mechType->typeUpperLeft.y;
-			boxCoords[2].z = position.z + mechType->typeUpperLeft.z;
-
-			boxCoords[3].x = position.x + mechType->typeLowerRight.x;
-			boxCoords[3].y = position.y + mechType->typeLowerRight.y;
-			boxCoords[3].z = position.z + mechType->typeUpperLeft.z;
-
-			boxCoords[4].x = position.x + mechType->typeLowerRight.x;
-			boxCoords[4].y = position.y + mechType->typeLowerRight.y;
-			boxCoords[4].z = position.z + mechType->typeLowerRight.z;
-
-			boxCoords[5].x = position.x + mechType->typeLowerRight.x;
-			boxCoords[5].y = position.y + mechType->typeUpperLeft.y;
-			boxCoords[5].z = position.z + mechType->typeLowerRight.z;
-
-			boxCoords[6].x = position.x + mechType->typeUpperLeft.x;
-			boxCoords[6].y = position.y + mechType->typeLowerRight.y;
-			boxCoords[6].z = position.z + mechType->typeLowerRight.z;
-
-			boxCoords[7].x = position.x + mechType->typeUpperLeft.x;
-			boxCoords[7].y = position.y + mechType->typeUpperLeft.y;
-			boxCoords[7].z = position.z + mechType->typeLowerRight.z;
-			
- 			Stuff::Vector4D screenPos[8];
-			for (long i=0;i<8;i++)
-			{
-				// [PROJECTZ:ScreenXYOracle id=mech3d_box_wire]
-				eye->projectForScreenXY(boxCoords[i],screenPos[i]);
-			}
-
-			{
-				LineElement newElement(screenPos[0],screenPos[1],XP_WHITE,NULL,-1);
-				newElement.draw();
-			}
-			
-			{
-				LineElement newElement(screenPos[0],screenPos[4],XP_WHITE,NULL,-1);
-				newElement.draw();
-			}
-			
-			{
-				LineElement newElement(screenPos[0],screenPos[3],XP_WHITE,NULL,-1);
-				newElement.draw();
-			}
-			
-			{
-				LineElement newElement(screenPos[5],screenPos[4],XP_WHITE,NULL,-1);
-				newElement.draw();
-			}
-			
-			{
-				LineElement newElement(screenPos[5],screenPos[6],XP_WHITE,NULL,-1);
-				newElement.draw();
-			}
-			
-			{
-				LineElement newElement(screenPos[5],screenPos[3],XP_WHITE,NULL,-1);
-				newElement.draw();
-			}
-			
-			{
-				LineElement newElement(screenPos[2],screenPos[3],XP_WHITE,NULL,-1);
-				newElement.draw();
-			}
-			
-			{
-				LineElement newElement(screenPos[2],screenPos[6],XP_WHITE,NULL,-1);
-				newElement.draw();
-			}
-			
-			{
-				LineElement newElement(screenPos[2],screenPos[1],XP_WHITE,NULL,-1);
-				newElement.draw();
-			}
-			
-			{
-				LineElement newElement(screenPos[7],screenPos[1],XP_WHITE,NULL,-1);
-				newElement.draw();
-			}
-			
-			{
-				LineElement newElement(screenPos[7],screenPos[6],XP_WHITE,NULL,-1);
-				newElement.draw();
-			}
-			
-			{
-				LineElement newElement(screenPos[7],screenPos[4],XP_WHITE,NULL,-1);
-				newElement.draw();
-			}
-#endif					
 		}
 		
 		if ((sensorLevel > 0) && (sensorLevel < 5))
