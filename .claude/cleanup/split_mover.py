@@ -3,7 +3,7 @@
 bytes kept); the generated mover_internal.h carries the include bundle, GOALMAP_CELL_DIM and externs/prototypes for what the
 split pieces share."""
 import re, sys, os
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "tools", "split"))
 import cpp_units
 
 SRC = "code/mover.cpp"
