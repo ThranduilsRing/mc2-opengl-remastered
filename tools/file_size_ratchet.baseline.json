@@ -54,7 +54,7 @@
   "code/pilotreviewarea.cpp": 1845,
   "code/saveload.cpp": 1720,
   "code/tacordr.cpp": 2072,
-  "code/terrobj.cpp": 1748,
+  "code/terrobj.cpp": 1740,
   "code/turret.cpp": 2346,
   "code/warrior.cpp": 2727,
   "code/warrior.h": 2171,
@@ -93,7 +93,7 @@
   "mclib/vfxtile.cpp": 2944,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "3c5ddf57a",
+ "head": "bf4749a83",
  "per_dir": {
   "GameAdapters": {
    "files": 8,

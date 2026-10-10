@@ -17,6 +17,7 @@
 
 #ifndef TERROBJ_H
 #include"terrobj.h"
+#include "Gates/gate.h"
 #endif
 
 #include "gos_static_prop_killswitch.h"  // g_useGpuStaticProps
@@ -77,24 +78,15 @@
 //---------------------------------------------------------------------------
 extern uint32_t g_mc2FrameCounter;  // defined in mclib/tgl.cpp:3718
 
-// Env bool parser: unset returns `def`; "0"/"false"/"off"/"no" disable;
-// everything else enables. Do NOT regress to `getenv(...) != nullptr` —
-// that would treat MC2_STATIC_UPDATE_SKIP=0 as ENABLED (this is the
-// GPU_OBJECTS class of bug the user explicitly told us to avoid).
-static bool ParseEnvBool(const char* name, bool def = false) {
-    const char* v = getenv(name);
-    if (!v || !*v) return def;
-    if (v[0]=='0' && !v[1]) return false;
-    if (!_stricmp(v, "false") || !_stricmp(v, "off") || !_stricmp(v, "no")) return false;
-    return true;
-}
-
-static const bool s_staticUpdateTrace = ParseEnvBool("MC2_STATIC_UPDATE_TRACE");
+// Both rows are Std: unset reads the row default, "0"/"false"/"off"/"no" disable, anything else enables.
+// Do NOT regress to a presence test -- that would treat MC2_STATIC_UPDATE_SKIP=0 as ENABLED (the GPU_OBJECTS
+// class of bug).
+static const bool s_staticUpdateTrace = mc2::gate::get<"MC2_STATIC_UPDATE_TRACE">();
 // 2026-05-11: default-on after the per-instance lightDataIndex fix
 // (commit e568985) retired the wrong-RGB-during-motion residual under
 // UPDATE_SKIP=1. Set MC2_STATIC_UPDATE_SKIP=0 to opt back into the
 // historical full-update path.
-static const bool s_staticUpdateSkip  = ParseEnvBool("MC2_STATIC_UPDATE_SKIP", true);
+static const bool s_staticUpdateSkip  = mc2::gate::get<"MC2_STATIC_UPDATE_SKIP">();
 
 namespace {
 struct StaticUpdateCounters {
@@ -207,7 +199,7 @@ void g_staticUpdateEmitSummary(uint32_t frame) {
 #include <intrin.h>
 #include <stdlib.h>
 #include <stdio.h>
-static bool s_tobjSplitEnabled = (getenv("MC2_TOBJ_COST_SPLIT") != nullptr);
+static bool s_tobjSplitEnabled = mc2::gate::get<"MC2_TOBJ_COST_SPLIT">();
 std::atomic<unsigned long long> g_tobjAngularCyc{0ULL};
 std::atomic<unsigned long long> g_tobjProjCyc{0ULL};
 unsigned long long g_tobjUpdateCyc  = 0ULL;
@@ -274,7 +266,7 @@ void g_tobjSplitRollAndMaybeEmit() {
 // Demote-not-delete (debug_instrumentation_rule.md).
 // Mirrors [TOBJSPLIT v1]: file-static enable flag, same 120-frame roll
 // interval, accumulators defined here, roll called from objmgr.cpp.
-static bool s_tobjParityEnabled = (getenv("MC2_TOBJ_PARITY") != nullptr);
+static bool s_tobjParityEnabled = mc2::gate::get<"MC2_TOBJ_PARITY">();
 static unsigned long long g_tobjParitySamples   = 0ULL;
 static unsigned long long g_tobjParityViolation = 0ULL;
 static unsigned long long g_tobjParityFrameCount = 0ULL;
