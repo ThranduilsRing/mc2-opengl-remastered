@@ -183,20 +183,20 @@ long GroundVehicle::update (void)
 			if (!appearance->playDestruction())
 			{
 				if (((GroundVehicleTypePtr)getObjectType())->explDmg > 0.0f)
-					ObjectManager->createExplosion(SPLASH_VEHICLE_EXPLOSION_ID,NULL,position, ((GroundVehicleTypePtr)getObjectType())->explDmg,((GroundVehicleTypePtr)getObjectType())->explRad);
+					ObjectManager->createExplosion(SPLASH_VEHICLE_EXPLOSION_ID,nullptr,position, ((GroundVehicleTypePtr)getObjectType())->explDmg,((GroundVehicleTypePtr)getObjectType())->explRad);
 				else if (pathLocks)
 				{
-					ObjectManager->createExplosion(VEHICLE_EXPLOSION_ID,NULL,position, 0.0f,0.0f);
+					ObjectManager->createExplosion(VEHICLE_EXPLOSION_ID,nullptr,position, 0.0f,0.0f);
 				}
 				else
 				{
 					if (RollDice(25))
 					{
-						ObjectManager->createExplosion(INFANTRY_BLOOD_EFFECT,NULL,position, 0.0f,0.0f);
+						ObjectManager->createExplosion(INFANTRY_BLOOD_EFFECT,nullptr,position, 0.0f,0.0f);
 					}
 					else
 					{
-						ObjectManager->createExplosion(INFANTRY_BOOM_EFFECT,NULL,position, 0.0f,0.0f);
+						ObjectManager->createExplosion(INFANTRY_BOOM_EFFECT,nullptr,position, 0.0f,0.0f);
 					}
 				}
 					
@@ -290,7 +290,7 @@ long GroundVehicle::update (void)
 
 
 	if (withdrawing && !inView && (pilot->getStatus() != WARRIOR_STATUS_WITHDRAWN))
-		getObjectType()->handleDestruction(this, NULL);
+		getObjectType()->handleDestruction(this, nullptr);
 
 	if (isVehiclePilot && !inView)
 		MC2_DESTROY(this, "vehicle_pilot_offscreen");
@@ -435,7 +435,7 @@ long GroundVehicle::update (void)
 						}
 						WeaponShotInfo shot;
 						shot.init(0, -2, 1.0, GROUNDVEHICLE_LOCATION_TURRET, 0);
-						handleWeaponHit(&shot, MPlayer != NULL);
+						handleWeaponHit(&shot, MPlayer != nullptr);
 					}
 				}
 			}
@@ -792,7 +792,7 @@ void GroundVehicle::render (void)
 
 					lineStart.z = lineEnd.z = HUD_DEPTH;
 
-					LineElement newElement(lineStart,lineEnd,SD_GREEN,NULL,-1);
+					LineElement newElement(lineStart,lineEnd,SD_GREEN,nullptr,-1);
 					newElement.draw();
 				}
 			}

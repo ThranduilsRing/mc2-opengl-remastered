@@ -17,7 +17,7 @@
 #include"gamesound.h"
 #include "Gates/gate.h"
 
-LogisticsMechIcon*	LogisticsMechIcon::s_pTemplateIcon = NULL;
+LogisticsMechIcon*	LogisticsMechIcon::s_pTemplateIcon = nullptr;
 
 
 LogisticsMechIcon::LogisticsMechIcon( )
@@ -25,7 +25,7 @@ LogisticsMechIcon::LogisticsMechIcon( )
 	if( s_pTemplateIcon )
 		*this = *s_pTemplateIcon;
 
-	pMech = 0;
+	pMech = nullptr;
 	state = 0;
 	bJustSelected = 0;
 	bDisabled = 0;
@@ -352,7 +352,7 @@ LogisticsPilot* LogisticsMechIcon::getPilot()
 	if ( pMech )
 		return pMech->getPilot();
 
-	return NULL;
+	return nullptr;
 }
 
 void LogisticsMechIcon::setPilot( LogisticsPilot* pPilot )

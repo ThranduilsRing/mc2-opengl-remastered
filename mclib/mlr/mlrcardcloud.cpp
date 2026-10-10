@@ -27,7 +27,7 @@ DynamicArrayOf<int>
 	*MLRCardCloud::clipExtraLength;
 
 MLRCardCloud::ClassData*
-	MLRCardCloud::DefaultData = NULL;
+	MLRCardCloud::DefaultData = nullptr;
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
@@ -76,7 +76,7 @@ void
 
 	Unregister_Object(DefaultData);
 	delete DefaultData;
-	DefaultData = NULL;
+	DefaultData = nullptr;
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -85,7 +85,7 @@ MLRCardCloud::MLRCardCloud(int nr) :
 	MLREffect(nr, DefaultData)
 {
 	Verify(gos_GetCurrentHeap() == Heap);
-	usedNrOfCards = NULL;
+	usedNrOfCards = nullptr;
 
 	Check_Pointer(this);
 	

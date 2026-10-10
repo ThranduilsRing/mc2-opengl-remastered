@@ -60,7 +60,7 @@ void MC2Movie::init (const char *MC2Name, RECT mRect, bool useWaveFile)
 {
     // Copy the short-name from the full path.
     char shortName[1024];
-    _splitpath(MC2Name, NULL, NULL, shortName, NULL);
+    _splitpath(MC2Name, nullptr, nullptr, shortName, nullptr);
 
     m_MC2Name = new char[strlen(shortName) + 1];
     strcpy(m_MC2Name, shortName);

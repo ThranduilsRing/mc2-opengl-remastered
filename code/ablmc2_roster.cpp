@@ -389,8 +389,8 @@ void execGetTargetRelativePosition (void) {
 	Stuff::Vector3D tgtPos = tgt->getPosition();
 	float dx = tgtPos.x - myPos.x;
 	float dy = tgtPos.y - myPos.y;
-	float range = (float)sqrt(dx * dx + dy * dy);
-	float angle = (float)atan2(dy, dx);
+	float range = sqrt(dx * dx + dy * dy);
+	float angle = atan2(dy, dx);
 	if (rangeOut) rangeOut[0] = range * metersPerWorldUnit;
 	if (angleOut) angleOut[0] = angle;
 }
@@ -422,7 +422,7 @@ void execGetRelativePositionToTarget (void) {
 	Stuff::Vector3D tgtPos = tgt->getPosition();
 	float dx = tgtPos.x - myPos.x;
 	float dy = tgtPos.y - myPos.y;
-	float len = (float)sqrt(dx * dx + dy * dy);
+	float len = sqrt(dx * dx + dy * dy);
 	if (len > 0.0001f) {
 		float nx = dx / len;
 		float ny = dy / len;
@@ -466,7 +466,7 @@ void execNewDistanceToPosition (void) {
 			Stuff::Vector3D p1 = m->getPosition();
 			float dx = position2.x - p1.x;
 			float dy = position2.y - p1.y;
-			float d = (float)sqrt(dx * dx + dy * dy);
+			float d = sqrt(dx * dx + dy * dy);
 			if (d < minDistance)
 				minDistance = d;
 		}
@@ -479,7 +479,7 @@ void execNewDistanceToPosition (void) {
 			Stuff::Vector3D p1 = obj->getPosition();
 			float dx = position2.x - p1.x;
 			float dy = position2.y - p1.y;
-			float d = (float)sqrt(dx * dx + dy * dy);
+			float d = sqrt(dx * dx + dy * dy);
 			ABLi_pokeReal(d * metersPerWorldUnit);
 		}
 	}
@@ -829,7 +829,7 @@ void execMCPrint (void) {
 			DEBUGWINS_print(s, 0);
 			break;
 		case ABL_STACKITEM_CHAR_PTR:
-			sprintf(s, "char*=%s", (char*)value.data.characterPtr);
+			sprintf(s, "char*=%s", value.data.characterPtr);
 			DEBUGWINS_print(s, 0);
 			break;
 		case ABL_STACKITEM_INTEGER_PTR:
@@ -1044,7 +1044,7 @@ void execSetGoalPlanning (void) {
 		oldSetting = ((MoverPtr)CurObject)->getPilot()->getUseGoalPlan();
 		((MoverPtr)CurObject)->getPilot()->setUseGoalPlan(setting);
 		if (oldSetting != setting)
-			((MoverPtr)CurObject)->getPilot()->setMainGoal(GOAL_ACTION_NONE, NULL, NULL, -1.0);
+			((MoverPtr)CurObject)->getPilot()->setMainGoal(GOAL_ACTION_NONE, nullptr, nullptr, -1.0);
 	}
 	ABLi_pushBoolean(oldSetting);
 }

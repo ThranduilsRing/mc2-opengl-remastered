@@ -53,7 +53,7 @@ long InfoWindow::MECHBACKLEFT = 0;
 long InfoWindow::MECHBACKRIGHT = 0;
 long InfoWindow::MECHBACKHEIGHT = 0;
 long InfoWindow::SCROLLBUTTONV = 0;
-StaticInfo* InfoWindow::skillInfos = 0;
+StaticInfo* InfoWindow::skillInfos = nullptr;
 long InfoWindow::SCROLLBUTTONU = 0;
 long InfoWindow::SCROLLBUTTONHEIGHT = 0;
 long InfoWindow::SCROLLBUTTONWIDTH = 0;
@@ -83,7 +83,7 @@ GUI_RECT InfoWindow::NameRect = { 0 };
 
 ControlButton InfoWindow::buttons[2] = {0};
 
-InfoWindow* InfoWindow::s_instance = NULL;
+InfoWindow* InfoWindow::s_instance = nullptr;
 
 
 #define SCROLLAMOUNT		3.f * Environment.screenWidth/640.f
@@ -96,11 +96,11 @@ extern bool useUnlimitedAmmo;
 
 InfoWindow::InfoWindow()
 {
-	pUnit = NULL;
+	pUnit = nullptr;
 	scrollLength = 0;
 	scrollPos = 0;
 	backgroundTexture = 0;
-	icon = NULL;
+	icon = nullptr;
 	infoLength = 0;
 
 	skillInfos = new StaticInfo[7];
@@ -328,10 +328,10 @@ void InfoWindow::setUnit(Mover* pNewMover)
 		if ( icon )
 		{
 			delete icon;
-			icon = NULL;
+			icon = nullptr;
 		}
 
-		icon = NULL;
+		icon = nullptr;
 
 		scrollPos = 0;
 		infoLength = 0;
@@ -1053,7 +1053,7 @@ void InfoWindow::update()
 		( CONTACT_VISUAL != (pUnit->getContactStatus(Team::home->getId(), true)) 
 		&& !pUnit->isDisabled() ) ) )
 	{
-		setUnit( 0 );
+		setUnit( nullptr );
 		return;
 	}
 
@@ -1550,7 +1550,7 @@ void InfoWindow::drawScrollingStuff()
 			{
 				if ( pilotRows.active )
 					icon->renderPilotIcon( PILOTLEFT, curY, PILOTRIGHT, curY + PILOTHEIGHT );
-				GUI_RECT tmpRect = { (long)PILOTLEFT, (long)curY, (long)(PILOTRIGHT + 1), (long)(curY + PILOTHEIGHT + 1) };
+				GUI_RECT tmpRect = { PILOTLEFT, (long)curY, (PILOTRIGHT + 1), (long)(curY + PILOTHEIGHT + 1) };
 				drawEmptyRect( tmpRect, SCROLLCOLOR, SCROLLCOLOR  );
 
 				float right = SCROLLLEFT;

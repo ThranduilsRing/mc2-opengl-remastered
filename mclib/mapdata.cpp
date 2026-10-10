@@ -158,7 +158,7 @@ void MapData::destroy (void)
 	if (blankVertex)
 	{
 		delete blankVertex;
-		blankVertex = NULL;
+		blankVertex = nullptr;
 	}
 }
 
@@ -225,7 +225,7 @@ void MapData::invalidateTerrainFaceCache (void)
 	if (terrainFaceCache)
 	{
 		Terrain::terrainHeap->Free(terrainFaceCache);
-		terrainFaceCache = NULL;
+		terrainFaceCache = nullptr;
 	}
 }
 
@@ -233,11 +233,11 @@ void MapData::invalidateTerrainFaceCache (void)
 const MapData::WorldQuadTerrainCacheEntry* MapData::getTerrainFaceCacheEntry (long tileR, long tileC) const
 {
 	if (!terrainFaceCache)
-		return NULL;
+		return nullptr;
 
 	const long maxTile = Terrain::realVerticesMapSide - 1;
 	if ((tileR < 0) || (tileC < 0) || (tileR >= maxTile) || (tileC >= maxTile))
-		return NULL;
+		return nullptr;
 
 	return &terrainFaceCache[worldQuadCacheIndex(tileR, tileC)];
 }
@@ -291,14 +291,14 @@ void MapData::buildTerrainFaceCache (volatile float* progress, float progressRan
 				const long uvMode = worldQuadUVMode(tileR, tileC);
 				VertexPtr vMin = (uvMode == BOTTOMRIGHT) ? &worldVertices[0] : &worldVertices[1];
 				VertexPtr vMax = (uvMode == BOTTOMRIGHT) ? &worldVertices[2] : &worldVertices[3];
-				entry.terrainHandle = Terrain::terrainTextures2->resolveTextureHandle(vMin, vMax, &entry.uvData, NULL, false);
+				entry.terrainHandle = Terrain::terrainTextures2->resolveTextureHandle(vMin, vMax, &entry.uvData, nullptr, false);
 				entry.terrainDetailHandle = Terrain::terrainTextures2->peekDetailHandle();
 				entry.flags |= TERRAIN_CACHE_COLORMAP;
 			}
 			else if (isAlpha)
 			{
 				entry.overlayHandle = Terrain::terrainTextures->peekTextureHandle(baseTexture);
-				entry.terrainHandle = Terrain::terrainTextures2->resolveTextureHandle(&worldVertices[1], &worldVertices[3], &entry.uvData, NULL, false);
+				entry.terrainHandle = Terrain::terrainTextures2->resolveTextureHandle(&worldVertices[1], &worldVertices[3], &entry.uvData, nullptr, false);
 				entry.terrainDetailHandle = Terrain::terrainTextures2->peekDetailHandle();
 				entry.flags |= TERRAIN_CACHE_COLORMAP;
 			}
@@ -1106,7 +1106,7 @@ void MapData::makeLists (VertexPtr vertexList, long &numVerts, TerrainQuadPtr qu
 		topLeftY = float2long(topLeftVertex.y);
 	}
 
-	PostcompVertexPtr Pvertex = NULL;
+	PostcompVertexPtr Pvertex = nullptr;
 	VertexPtr currentVertex = vertexList;
 	numVerts = 0;
 
@@ -1523,12 +1523,12 @@ void MapData::setTerrain( long indexY, long indexX, int Type )
 				const long uvm = worldQuadUVMode(tr, tc);
 				VertexPtr vMin = (uvm == BOTTOMRIGHT) ? &wv[0] : &wv[1];
 				VertexPtr vMax = (uvm == BOTTOMRIGHT) ? &wv[2] : &wv[3];
-				e.terrainHandle      = Terrain::terrainTextures2->resolveTextureHandle(vMin, vMax, &e.uvData, NULL, false);
+				e.terrainHandle      = Terrain::terrainTextures2->resolveTextureHandle(vMin, vMax, &e.uvData, nullptr, false);
 				e.terrainDetailHandle = Terrain::terrainTextures2->peekDetailHandle();
 				e.flags |= TERRAIN_CACHE_COLORMAP;
 			} else if (isAlp) {
 				e.overlayHandle      = Terrain::terrainTextures->peekTextureHandle(baseTex);
-				e.terrainHandle      = Terrain::terrainTextures2->resolveTextureHandle(&wv[1], &wv[3], &e.uvData, NULL, false);
+				e.terrainHandle      = Terrain::terrainTextures2->resolveTextureHandle(&wv[1], &wv[3], &e.uvData, nullptr, false);
 				e.terrainDetailHandle = Terrain::terrainTextures2->peekDetailHandle();
 				e.flags |= TERRAIN_CACHE_COLORMAP;
 			} else {

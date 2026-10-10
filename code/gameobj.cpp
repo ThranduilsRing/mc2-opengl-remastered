@@ -357,7 +357,7 @@ void DebugWeaponFireChunk (WeaponFireChunkPtr chunk1, WeaponFireChunkPtr chunk2,
 	if (chunk1) {
 		strcat(ChunkDebugMsg, "\nCHUNK1\n");
 
-		GameObjectPtr target = NULL;
+		GameObjectPtr target = nullptr;
 		Stuff::Vector3D targetPoint;
 		targetPoint.Zero();
 		bool isTargetPoint = false;
@@ -370,7 +370,7 @@ void DebugWeaponFireChunk (WeaponFireChunkPtr chunk1, WeaponFireChunkPtr chunk2,
 		else if (chunk1->targetType == WEAPONFIRECHUNK_TARGET_LOCATION) {
 			targetPoint.x = (float)chunk1->targetCell[1] * Terrain::worldUnitsPerCell + Terrain::worldUnitsPerCell / 2 - Terrain::worldUnitsMapSide / 2;
 			targetPoint.y = (Terrain::worldUnitsMapSide / 2) - ((float)chunk1->targetCell[0] * Terrain::worldUnitsPerCell) - Terrain::worldUnitsPerCell / 2;
-			targetPoint.z = (float)TerrainRuntime::groundElevation(targetPoint);
+			targetPoint.z = TerrainRuntime::groundElevation(targetPoint);
 			isTargetPoint = true;
 		}
 
@@ -429,7 +429,7 @@ void DebugWeaponFireChunk (WeaponFireChunkPtr chunk1, WeaponFireChunkPtr chunk2,
 	if (chunk2) {
 		strcat(ChunkDebugMsg, "\nCHUNK2\n");
 
-		GameObjectPtr target = NULL;
+		GameObjectPtr target = nullptr;
 		Stuff::Vector3D targetPoint;
 		targetPoint.Zero();
 		bool isTargetPoint = false;
@@ -442,7 +442,7 @@ void DebugWeaponFireChunk (WeaponFireChunkPtr chunk1, WeaponFireChunkPtr chunk2,
 		else if (chunk2->targetType == WEAPONFIRECHUNK_TARGET_LOCATION) {
 			targetPoint.x = (float)chunk2->targetCell[1] * Terrain::worldUnitsPerCell + Terrain::worldUnitsPerCell / 2 - Terrain::worldUnitsMapSide / 2;
 			targetPoint.y = (Terrain::worldUnitsMapSide / 2) - ((float)chunk2->targetCell[0] * Terrain::worldUnitsPerCell) - Terrain::worldUnitsPerCell / 2;
-			targetPoint.z = (float)TerrainRuntime::groundElevation(targetPoint);
+			targetPoint.z = TerrainRuntime::groundElevation(targetPoint);
 			isTargetPoint = true;
 		}
 
@@ -503,7 +503,7 @@ void DebugWeaponFireChunk (WeaponFireChunkPtr chunk1, WeaponFireChunkPtr chunk2,
 	debugFile->writeString(ChunkDebugMsg);
 	debugFile->close();
 	delete debugFile;
-	debugFile = NULL;
+	debugFile = nullptr;
 
 	ExceptionGameMsg = ChunkDebugMsg;
 }
@@ -1036,57 +1036,57 @@ void WeaponFireChunk::unpack (GameObjectPtr attacker) {
 bool WeaponFireChunk::equalTo (WeaponFireChunkPtr chunk) {
 
 	if (targetType != chunk->targetType) {
-		DebugWeaponFireChunk(this, chunk, NULL);
+		DebugWeaponFireChunk(this, chunk, nullptr);
 		return(false);
 	}
 
 	if (targetId != chunk->targetId) {
-		DebugWeaponFireChunk(this, chunk, NULL);
+		DebugWeaponFireChunk(this, chunk, nullptr);
 		return(false);
 	}
 
 	if (targetCell[0] != chunk->targetCell[0]) {
-		DebugWeaponFireChunk(this, chunk, NULL);
+		DebugWeaponFireChunk(this, chunk, nullptr);
 		return(false);
 	}
 
 	if (targetCell[1] != chunk->targetCell[1]) {
-		DebugWeaponFireChunk(this, chunk, NULL);
+		DebugWeaponFireChunk(this, chunk, nullptr);
 		return(false);
 	}
 
 	if (specialType != chunk->specialType) {
-		DebugWeaponFireChunk(this, chunk, NULL);
+		DebugWeaponFireChunk(this, chunk, nullptr);
 		return(false);
 	}
 
 	if (specialId != chunk->specialId) {
-		DebugWeaponFireChunk(this, chunk, NULL);
+		DebugWeaponFireChunk(this, chunk, nullptr);
 		return(false);
 	}
 
 	if (weaponIndex != chunk->weaponIndex) {
-		DebugWeaponFireChunk(this, chunk, NULL);
+		DebugWeaponFireChunk(this, chunk, nullptr);
 		return(false);
 	}
 
 	if (hit != chunk->hit) {
-		DebugWeaponFireChunk(this, chunk, NULL);
+		DebugWeaponFireChunk(this, chunk, nullptr);
 		return(false);
 	}
 
 	if (entryAngle != chunk->entryAngle) {
-		DebugWeaponFireChunk(this, chunk, NULL);
+		DebugWeaponFireChunk(this, chunk, nullptr);
 		return(false);
 	}
 
 	if (numMissiles != chunk->numMissiles) {
-		DebugWeaponFireChunk(this, chunk, NULL);
+		DebugWeaponFireChunk(this, chunk, nullptr);
 		return(false);
 	}
 
 	if (hitLocation != chunk->hitLocation) {
-		DebugWeaponFireChunk(this, chunk, NULL);
+		DebugWeaponFireChunk(this, chunk, nullptr);
 		return(false);
 	}
 
@@ -1106,7 +1106,7 @@ void DebugWeaponHitChunk (WeaponHitChunkPtr chunk1, WeaponHitChunkPtr chunk2) {
 	if (chunk1) {
 		strcat(ChunkDebugMsg, "\nCHUNK1\n");
 
-		GameObjectPtr target = NULL;
+		GameObjectPtr target = nullptr;
 		bool isTargetPoint = false;
 		if (chunk1->targetType == WEAPONHITCHUNK_TARGET_MOVER)
 			target = (GameObjectPtr)MPlayer->moverRoster[chunk1->targetId];
@@ -1163,7 +1163,7 @@ void DebugWeaponHitChunk (WeaponHitChunkPtr chunk1, WeaponHitChunkPtr chunk2) {
 	if (chunk2) {
 		strcat(ChunkDebugMsg, "\nCHUNK2\n");
 
-		GameObjectPtr target = NULL;
+		GameObjectPtr target = nullptr;
 		bool isTargetPoint = false;
 		if (chunk2->targetType == WEAPONHITCHUNK_TARGET_MOVER)
 			target = (GameObjectPtr)MPlayer->moverRoster[chunk2->targetId];
@@ -1222,7 +1222,7 @@ void DebugWeaponHitChunk (WeaponHitChunkPtr chunk1, WeaponHitChunkPtr chunk2) {
 	debugFile->writeString(ChunkDebugMsg);
 	debugFile->close();
 	delete debugFile;
-	debugFile = NULL;
+	debugFile = nullptr;
 
 	ExceptionGameMsg = ChunkDebugMsg;
 }
@@ -1469,7 +1469,7 @@ void WeaponHitChunk::unpack (void) {
 			entryAngle = (tempData & WEAPONHITCHUNK_ENTRYQUAD_MASK);
 			break;
 		default:
-			DebugWeaponHitChunk(this, NULL);
+			DebugWeaponHitChunk(this, nullptr);
 			Fatal(0, " Bad WeaponHitChunk Target Type ");
 	}
 }
@@ -1537,7 +1537,7 @@ bool WeaponHitChunk::valid (long from) {
 		if (!target) {
 			if (CombatLog)
 				CombatLog->write("WeaponHitChunk INVALID: refit has NULL target");
-			DebugWeaponHitChunk(this, NULL);
+			DebugWeaponHitChunk(this, nullptr);
 			return(false);
 		}
 		}
@@ -1572,7 +1572,7 @@ bool WeaponHitChunk::valid (long from) {
 						CombatLog->dump();
 						//CombatLog->close();
 					}
-					DebugWeaponHitChunk(this, NULL);
+					DebugWeaponHitChunk(this, nullptr);
 					return(false);
 				}
 				}
@@ -1582,7 +1582,7 @@ bool WeaponHitChunk::valid (long from) {
 					CombatLog->write("WeaponHitChunk INVALID: bad targetType");
 					CombatLog->dump();
 				}
-				DebugWeaponHitChunk(this, NULL);
+				DebugWeaponHitChunk(this, nullptr);
 				return(false);
 		}
 	}
@@ -1614,7 +1614,7 @@ void GameObject::init (bool create) {
 	objectClass = GAMEOBJECT;
 	if (initialize) {
 		handle = 0;
-		appearance = NULL;
+		appearance = nullptr;
 		threatRating = 0;
 	}
 	partId = 0;

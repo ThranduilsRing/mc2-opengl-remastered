@@ -94,7 +94,7 @@ bool GroundVehicle::injureBodyLocation (long bodyLocation, float damage) {
 	}
 
 	location->curInternalStructure -= damage;
-	float damageLevel = (float)body[bodyLocation].curInternalStructure / body[bodyLocation].maxInternalStructure;
+	float damageLevel = body[bodyLocation].curInternalStructure / body[bodyLocation].maxInternalStructure;
 	if (damageLevel == 0.0)
 		body[bodyLocation].damageState = IS_DAMAGE_DESTROYED;
 	else if (damageLevel <= 0.5)
@@ -170,7 +170,7 @@ long GroundVehicle::handleStatusChunk (long updateAge, unsigned long chunk) {
 
 	if (pilot) {
 		if (lastTargetId == 0)
-			pilot->setLastTarget(NULL);
+			pilot->setLastTarget(nullptr);
 		else {
 			GameObjectPtr curTarget = pilot->getLastTarget();
 			if (!curTarget || (curTarget->getPartId() != lastTargetId)) {
@@ -333,7 +333,7 @@ long GroundVehicle::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultipl
 	if (vehicleDestroyed) 
 	{
 		pilot->handleOwnVehicleIncapacitation(0);
-		getObjectType()->handleDestruction(this, NULL);
+		getObjectType()->handleDestruction(this, nullptr);
 		setFlag(OBJECT_FLAG_TANGIBLE,false);
 	}
 
@@ -494,7 +494,7 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 		return(4);
 
 
-	MechWarriorPtr targetPilot = NULL;
+	MechWarriorPtr targetPilot = nullptr;
 	if (target && target->isMover()) {
 		targetPilot = ((MoverPtr)target)->getPilot();
 		targetPilot->updateAttackerStatus(getWatchID(), scenarioTime);
@@ -566,7 +566,7 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 	// Weapon must recycle...
 	startWeaponRecycle(weaponIndex);
 
- 	WeaponBoltPtr weaponFX = NULL;	
+ 	WeaponBoltPtr weaponFX = nullptr;	
 	if (hitRoll < attackChance) {
 
 		if (numShots != UNLIMITED_SHOTS) {
@@ -647,14 +647,14 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 			if (!weaponFX) 
 			{
 				if (target)
-					target->handleWeaponHit(&curShotInfo, MPlayer != NULL);
+					target->handleWeaponHit(&curShotInfo, MPlayer != nullptr);
 				else if (targetPoint) 
 				{
 					int cellRow, cellCol;
 					land->worldToCell(*targetPoint, cellRow, cellCol);
 					if (GameMap->getMine(cellRow, cellCol) == 1) 
 					{
-						ObjectManager->createExplosion(MINE_EXPLOSION_ID, NULL, *targetPoint, MineSplashDamage, MineSplashRange * worldUnitsPerMeter);
+						ObjectManager->createExplosion(MINE_EXPLOSION_ID, nullptr, *targetPoint, MineSplashDamage, MineSplashRange * worldUnitsPerMeter);
 						GameMap->setMine(cellRow, cellCol, 2);	//Mark Exploded
 					}
 				}
@@ -737,14 +737,14 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 			weaponFX = ObjectManager->createWeaponBolt(effectType);
 			if (!weaponFX) {
 				if (target)
-					target->handleWeaponHit(&shotInfo, MPlayer != NULL);
+					target->handleWeaponHit(&shotInfo, MPlayer != nullptr);
 				else if (targetPoint) 
 				{
 					int cellRow, cellCol;
 					land->worldToCell(*targetPoint, cellRow, cellCol);
 					if (GameMap->getMine(cellRow, cellCol) == 1)
 					{
-						ObjectManager->createExplosion(MINE_EXPLOSION_ID, NULL, *targetPoint, MineSplashDamage, MineSplashRange * worldUnitsPerMeter);
+						ObjectManager->createExplosion(MINE_EXPLOSION_ID, nullptr, *targetPoint, MineSplashDamage, MineSplashRange * worldUnitsPerMeter);
 						GameMap->setMine(cellRow, cellCol, 2);	//Mark Exploded
 					}
 				}
@@ -859,7 +859,7 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 						land->worldToCell(positionOffset, cellRow, cellCol);
 						if (GameMap->getMine(cellRow, cellCol) == 1) 
 						{
-							ObjectManager->createExplosion(MINE_EXPLOSION_ID, NULL, positionOffset, MineSplashDamage, MineSplashRange * worldUnitsPerMeter);
+							ObjectManager->createExplosion(MINE_EXPLOSION_ID, nullptr, positionOffset, MineSplashDamage, MineSplashRange * worldUnitsPerMeter);
 							GameMap->setMine(cellRow, cellCol, 2); // Mark Exploded
 						}
 						}
@@ -955,7 +955,7 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 					land->worldToCell(positionOffset, cellRow, cellCol);
 					if (GameMap->getMine(cellRow, cellCol) == 1) 
 					{
-						ObjectManager->createExplosion(MINE_EXPLOSION_ID, NULL, positionOffset, MineSplashDamage, MineSplashRange * worldUnitsPerMeter);
+						ObjectManager->createExplosion(MINE_EXPLOSION_ID, nullptr, positionOffset, MineSplashDamage, MineSplashRange * worldUnitsPerMeter);
 						GameMap->setMine(cellRow, cellCol, 2);	//Mark Exploded
 					}
 					}
@@ -1000,7 +1000,7 @@ long GroundVehicle::handleWeaponFire (long weaponIndex,
 
 	bool isStreakMissile = MasterComponent::masterList[inventory[weaponIndex].masterID].getWeaponStreak(); 
 
-	WeaponBoltPtr weaponFX = NULL;
+	WeaponBoltPtr weaponFX = nullptr;
 	
 	long sourceHotSpot;
 	if (MasterComponent::masterList[inventory[weaponIndex].masterID].getForm() == COMPONENT_FORM_WEAPON_MISSILE)
@@ -1100,11 +1100,11 @@ long GroundVehicle::handleWeaponFire (long weaponIndex,
 		}
 		}
 	else {
-		Assert(target == NULL, 0, " GVehicl.handleWeaponFire: target should be NULL with network miss! ");
-		Assert(targetPoint != NULL, 0, " GVehicl.handleWeaponFire: MUST have targetpoint with network miss! ");
+		Assert(target == nullptr, 0, " GVehicl.handleWeaponFire: target should be NULL with network miss! ");
+		Assert(targetPoint != nullptr, 0, " GVehicl.handleWeaponFire: MUST have targetpoint with network miss! ");
 		if (isStreakMissile) {
 			CurMoverWeaponFireChunk.unpack(this);
-			DebugWeaponFireChunk(&CurMoverWeaponFireChunk, NULL, this);
+			DebugWeaponFireChunk(&CurMoverWeaponFireChunk, nullptr, this);
 			Assert(false, 0, " GVehicl.handleWeaponFire: streaks shouldn't miss! ");
 		}
 
@@ -1150,7 +1150,7 @@ long GroundVehicle::handleWeaponFire (long weaponIndex,
 		}
 	}
 
-	MechWarriorPtr targetPilot = NULL;
+	MechWarriorPtr targetPilot = nullptr;
 	if (target && target->isMover()) {
 		targetPilot = ((MoverPtr)target)->getPilot();
 		targetPilot->updateAttackerStatus(getWatchID(), scenarioTime);
@@ -1175,7 +1175,7 @@ float maxRear, curRear, armorRear, maxTurret, curTurret, armorTurret, armorEffec
 			return 0.0;
 
 		if (maxWeaponEffectiveness)
-			weaponEffect = (float)weaponEffectiveness / (float)maxWeaponEffectiveness;
+			weaponEffect = weaponEffectiveness / maxWeaponEffectiveness;
 		else
 			weaponEffect = 1.0;
 

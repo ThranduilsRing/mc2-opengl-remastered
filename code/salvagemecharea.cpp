@@ -25,22 +25,22 @@ SalvageMechArea.cpp			: Implementation of the SalvageMechArea component.
 static bool cheatInfiniteMoney() { static const bool on = mc2::gate::get<"MC2_CHEAT_INFINITE_MONEY">(); return on; }
 static bool cheatSalvageAll() { static const bool on = mc2::gate::get<"MC2_CHEAT_SALVAGE_ALL">(); return on; }
 
-aAnimButton* SalvageListItem::templateCheckButton = NULL;
+aAnimButton* SalvageListItem::templateCheckButton = nullptr;
 
-SalvageMechArea* SalvageMechArea::instance = NULL;
+SalvageMechArea* SalvageMechArea::instance = nullptr;
 
-aText*		SalvageListItem::variantNameText = NULL;
-aText*		SalvageListItem::mechNameText = NULL;
-aText*		SalvageListItem::weightText = NULL;
-aText*		SalvageListItem::costText = NULL;
-aObject*	SalvageListItem::cBillsIcon = NULL;
-aObject*	SalvageListItem::weightIcon = NULL;
+aText*		SalvageListItem::variantNameText = nullptr;
+aText*		SalvageListItem::mechNameText = nullptr;
+aText*		SalvageListItem::weightText = nullptr;
+aText*		SalvageListItem::costText = nullptr;
+aObject*	SalvageListItem::cBillsIcon = nullptr;
+aObject*	SalvageListItem::weightIcon = nullptr;
 GUI_RECT	SalvageListItem::iconRect;
 GUI_RECT	SalvageListItem::rect;
 
-aAnimation*	SalvageListItem::s_pressedAnim = NULL;
-aAnimation*	SalvageListItem::s_highlightAnim = NULL;
-aAnimation*	SalvageListItem::s_normalAnim = NULL;
+aAnimation*	SalvageListItem::s_pressedAnim = nullptr;
+aAnimation*	SalvageListItem::s_highlightAnim = nullptr;
+aAnimation*	SalvageListItem::s_normalAnim = nullptr;
 
 
 #define RP_TEXTID	3
@@ -79,32 +79,32 @@ SalvageMechScreen::SalvageMechScreen()
 SalvageMechScreen::~SalvageMechScreen()
 {
 	delete SalvageListItem::s_pressedAnim;
-	SalvageListItem::s_pressedAnim = NULL;
+	SalvageListItem::s_pressedAnim = nullptr;
 	delete SalvageListItem::s_highlightAnim;
-	SalvageListItem::s_highlightAnim = NULL;
+	SalvageListItem::s_highlightAnim = nullptr;
 	delete SalvageListItem::s_normalAnim;
-	SalvageListItem::s_normalAnim = NULL;
+	SalvageListItem::s_normalAnim = nullptr;
 
 	delete SalvageListItem::templateCheckButton;
-	SalvageListItem::templateCheckButton = NULL;
+	SalvageListItem::templateCheckButton = nullptr;
 
 	delete SalvageListItem::weightText;
-	SalvageListItem::weightText = NULL;
+	SalvageListItem::weightText = nullptr;
 
 	delete SalvageListItem::costText;
-	SalvageListItem::costText = NULL;
+	SalvageListItem::costText = nullptr;
 
 	delete SalvageListItem::variantNameText;
-	SalvageListItem::variantNameText = NULL;
+	SalvageListItem::variantNameText = nullptr;
 
 	delete SalvageListItem::mechNameText;
-	SalvageListItem::mechNameText = NULL;
+	SalvageListItem::mechNameText = nullptr;
 
 	delete SalvageListItem::weightIcon;
-	SalvageListItem::weightIcon = NULL;
+	SalvageListItem::weightIcon = nullptr;
 
 	delete SalvageListItem::cBillsIcon;
-	SalvageListItem::cBillsIcon = NULL;
+	SalvageListItem::cBillsIcon = nullptr;
 
 
 
@@ -319,7 +319,7 @@ void SalvageMechScreen::updateSalvage()
 		SalvageListItem* item = (SalvageListItem*)salvageListBox.GetItem( i );
 		if ( item && item->isChecked() )
 		{
-			LogisticsData::instance->addMechToInventory( item->getMech(), (LogisticsPilot*)NULL, 0 );
+			LogisticsData::instance->addMechToInventory( item->getMech(), (LogisticsPilot*)nullptr, 0 );
 		}
 	}
 }
@@ -330,7 +330,7 @@ void SalvageMechScreen::updateSalvage()
 SalvageListItem::~SalvageListItem()
 {
 	removeAllChildren( true );  // frees checkButton (it is a child)
-	checkButton = NULL;         // don't leave a dangling member behind
+	checkButton = nullptr;         // don't leave a dangling member behind
 }
 
 void	SalvageListItem::init( FitIniFile* file )
@@ -390,7 +390,7 @@ SalvageListItem::SalvageListItem( BattleMech* pMech )
 {
 	gosASSERT( pMech );
 
-	checkButton = NULL;  // ensure valid even on early-return (null pVariant) path
+	checkButton = nullptr;  // ensure valid even on early-return (null pVariant) path
 
 	long width = rect.right - rect.left;
 	aObject::init( 0, 2, width, rect.bottom - rect.top );
@@ -624,18 +624,18 @@ int SalvageListItem::handleMessage( unsigned long message, unsigned long who )
 
 SalvageMechArea::SalvageMechArea()
 {
-	statics = 0;
-	rects = 0;
+	statics = nullptr;
+	rects = nullptr;
 	staticCount = rectCount = textCount = 0;
-	textObjects = 0;
+	textObjects = nullptr;
 	gosASSERT( !instance );
 	instance = this;
-	unit = 0;
+	unit = nullptr;
 }
 
 SalvageMechArea::~SalvageMechArea()
 {
-	instance = NULL;	
+	instance = nullptr;	
 }
 
 void SalvageMechArea::init( FitIniFile* file )
@@ -659,7 +659,7 @@ void SalvageMechArea::init( FitIniFile* file )
 
 
 
-	LogisticsScreen::init(*file, 0, "SalvageAreaMechText", 0, 0 );
+	LogisticsScreen::init(*file, nullptr, "SalvageAreaMechText", nullptr, nullptr );
 
 	char blockName[64];
 	for ( int i = 0; i < 3; i++ )
@@ -719,7 +719,7 @@ void SalvageMechArea::setMech( LogisticsVariant* pMech, long red, long green, lo
 		attributeMeters[0].setValue( 0 );
 		attributeMeters[1].setValue( 0 );
 		attributeMeters[2].setValue( 0 );
-		mechCamera.setMech( 0 );
+		mechCamera.setMech( nullptr );
 
 	}
 

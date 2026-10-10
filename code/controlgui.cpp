@@ -17,10 +17,10 @@ controlGui.cpp			: Implementation of the controlGui component.
 // calls when both envs unset. Default OFF.
 unsigned long long g_ifaceCgFrameNs[8] = {0};
 
-ControlGui* ControlGui::instance = 0;
+ControlGui* ControlGui::instance = nullptr;
 
-ButtonData*	ControlGui::buttonData = NULL;
-ButtonData* ControlGui::vehicleData = NULL;
+ButtonData*	ControlGui::buttonData = nullptr;
+ButtonData* ControlGui::vehicleData = nullptr;
 
 long ControlGui::hiResOffsetX = 0;
 long ControlGui::hiResOffsetY = 0;
@@ -113,25 +113,25 @@ ControlGui::ControlGui()
 	addingSalvage = 0;
 	wasLayingMines = 0;
 
-	bMovie = NULL;
+	bMovie = nullptr;
 	moviePlaying = 0;
 
 	helpTextHeaderID = 0;
 	helpTextID = 0;
 
-	rectInfos = NULL;
+	rectInfos = nullptr;
 	rectCount = 0;	
-	staticInfos = 0;
+	staticInfos = nullptr;
 	staticCount = 0;
-	buttons = 0;
-	buttonData = 0;
-	vehicleButtons = 0;
-	vehicleData = 0;
+	buttons = nullptr;
+	buttonData = nullptr;
+	vehicleButtons = nullptr;
+	vehicleData = nullptr;
 
-	videoInfos = 0;
+	videoInfos = nullptr;
 	videoInfoCount = 0;
 
-	timerInfos = 0;
+	timerInfos = nullptr;
 	timerInfoCount = 0;
 
 	curOrder = 0;
@@ -140,11 +140,11 @@ ControlGui::ControlGui()
 	pauseWnd = new PauseWindow;
 
 	renderStatusInfo = 0;
-	missionStatusInfos = 0;
+	missionStatusInfos = nullptr;
 
 	objectiveTime = 0.0f;
 
-	infoWnd = 0;
+	infoWnd = nullptr;
 	bChatting = 0;
 
 	if ( !infoWnd )
@@ -152,7 +152,7 @@ ControlGui::ControlGui()
 		infoWnd = new InfoWindow;
 	}
 
-	objectiveInfos = 0;
+	objectiveInfos = nullptr;
 
 	swapResolutions( Environment.screenWidth, Environment.screenHeight );
 	resultsTime = 0;
@@ -179,7 +179,7 @@ ControlGui::~ControlGui()
 {
 	if ( staticInfos )
 		delete [] staticInfos;
-	staticInfos = 0;
+	staticInfos = nullptr;
 
 	if ( videoInfos )
 		delete [] videoInfos;
@@ -190,46 +190,46 @@ ControlGui::~ControlGui()
 	if ( timerInfos )
 		delete [] timerInfos;
 
-	timerInfos = 0;
+	timerInfos = nullptr;
 
 	if ( rectInfos )
 		delete [] rectInfos;
-	rectInfos = 0;
+	rectInfos = nullptr;
 
 	if ( buttonData )
 		delete [] buttonData;
-	buttonData = 0;
+	buttonData = nullptr;
 
 	if ( buttons )
 		delete [] buttons;
-	buttons = 0;
+	buttons = nullptr;
 
 	if ( infoWnd )
 		delete infoWnd;
-	infoWnd = 0;
+	infoWnd = nullptr;
 
 	if ( pauseWnd )
 		delete pauseWnd;
-	pauseWnd = 0;
+	pauseWnd = nullptr;
 
 	if ( vehicleButtons )
 		delete [] vehicleButtons;
-	vehicleButtons = 0;
+	vehicleButtons = nullptr;
 
 	if ( vehicleData )
 		delete [] vehicleData;
-	vehicleData = 0;
+	vehicleData = nullptr;
 
 	if ( missionStatusInfos )
 		delete [] missionStatusInfos;
 
-	missionStatusInfos = 0;
-	instance = NULL;
+	missionStatusInfos = nullptr;
+	instance = nullptr;
 
 	if (bMovie)
 	{
 		delete bMovie;
-		bMovie = NULL;
+		bMovie = nullptr;
 	}
 }
 
@@ -572,7 +572,7 @@ ControlButton*		ControlGui::getButton( int ID )
 	}
 
 
-	return NULL;
+	return nullptr;
 }
 
 void ControlButton::makeUVs( gos_VERTEX* vertices, int State, ButtonData& data )

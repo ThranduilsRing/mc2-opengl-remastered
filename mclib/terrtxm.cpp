@@ -278,18 +278,18 @@ long TerrainTextures::init (const char *fileName, const char *baseName)
 			result = textureFile.readIdLong( "NameID", types[i].nameId );
 			gosASSERT( result == NO_ERR );
 	
-			types[i].textureData = NULL;
-			types[i].maskData = NULL;
+			types[i].textureData = nullptr;
+			types[i].maskData = nullptr;
 		}
 		else			//MUST load up blank ones or overlays will get trashed whenever we add a terrain type!!
 		{
 			types[i].terrainId = types[0].terrainId;
-			types[i].terrainName = NULL;
-			types[i].maskName = NULL;
+			types[i].terrainName = nullptr;
+			types[i].maskName = nullptr;
 			types[i].terrainPriority = types[0].terrainPriority;
 			types[i].terrainMapRGB = types[0].terrainMapRGB;
-			types[i].textureData = NULL;
-			types[i].maskData = NULL;
+			types[i].textureData = nullptr;
+			types[i].maskData = nullptr;
 		}
 	}
 
@@ -365,8 +365,8 @@ long TerrainTextures::init (const char *fileName, const char *baseName)
    		result = textureFile.readIdULong("TerrainTacRGB",overlays[i].terrainMapRGB);
    		gosASSERT(result == NO_ERR);
 		
- 		overlays[i].overlayData = NULL;		//Contains MLR shape or TerrainTXM Data
- 		overlays[i].overlayDataSizes = NULL;	//OVERLAY-TILE-HIRES-1: per-tile edge sizes
+ 		overlays[i].overlayData = nullptr;		//Contains MLR shape or TerrainTXM Data
+ 		overlays[i].overlayDataSizes = nullptr;	//OVERLAY-TILE-HIRES-1: per-tile edge sizes
 	}
 
 	//--------------------------------------------------------------
@@ -426,7 +426,7 @@ long TerrainTextures::init (const char *fileName, const char *baseName)
 		result = textureFile.readIdFloat("TilingFactor",details[i].tilingFactor);
 		gosASSERT(result == NO_ERR);
 		
- 		details[i].detailData = NULL;
+ 		details[i].detailData = nullptr;
 	}
 
 	//--------------------------------------------------------------
@@ -1145,7 +1145,7 @@ void TerrainTextures::combineOverlayTxm (MemoryPtr dest, long type, long mipLeve
 	}
 
 	MemoryPtr combineRAM = overlays[oType].overlayData[oIndx];
-	if (combineRAM == NULL)
+	if (combineRAM == nullptr)
 	{
 		// Overlay texture slot unloaded or missing (e.g. quickLoad path skipped
 		// TGA fill, or 'type' matched no overlay range leaving default oType/oIndx=0).
@@ -1385,7 +1385,7 @@ long TerrainTextures::createTransition (DWORD typeInfo, DWORD overlayInfo)
 		if (!listTransitionFile)
 		{
 			//Check for the magic list and then for all of the textures on the magic list.
-			CreateDirectory(texturePath,NULL);
+			CreateDirectory(texturePath,nullptr);
 
 			FullPathFileName listPath;
 			listPath.init(texturePath,localBaseName,".lst");
@@ -1710,32 +1710,32 @@ void TerrainTextures::update (void)
 	{
 		//We can now safely purge all transitions cause the MC2 texture manager has them all!!
 		numTypes = 0;
-		types = NULL;
+		types = nullptr;
 
 		numOverlays = 0;
-		overlays = NULL;
+		overlays = nullptr;
 		
 		numTransitions = 0;
-		transitions = NULL;
+		transitions = nullptr;
 		nextTransition = 0;
 
 		for (long i=0;i<numDetails;i++)
 		{
-			details[i].detailName = NULL;
-			details[i].detailData = NULL;
+			details[i].detailName = nullptr;
+			details[i].detailData = nullptr;
 		}
 			
 		if (listTransitionFile)
 		{
 			listTransitionFile->close();
 			delete listTransitionFile;
-			listTransitionFile = NULL;
+			listTransitionFile = nullptr;
 		}
 
-		localBaseName = NULL;
+		localBaseName = nullptr;
 
 		delete tileRAMHeap;
-		tileRAMHeap = NULL;
+		tileRAMHeap = nullptr;
 	}
 }
 
@@ -1768,7 +1768,7 @@ void TerrainTextures::destroy (void)
 	update();
 
 	delete tileHeap;
-	tileHeap = NULL;
+	tileHeap = nullptr;
 }
 
 //---------------------------------------------------------------------------

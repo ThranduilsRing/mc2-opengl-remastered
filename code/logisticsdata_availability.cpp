@@ -195,7 +195,7 @@ long LogisticsData::updateAvailability()
 		{
 			EString mechName = (*vIter)->getFileName();
 			char realName[1024];
-			_splitpath( mechName, NULL, NULL, realName, NULL );
+			_splitpath( mechName, nullptr, nullptr, realName, nullptr );
 			if ( S_stricmp( realName, chassisFileName ) == 0 )
 			{
 				componentCount = 255;
@@ -485,7 +485,7 @@ void LogisticsData::appendAvailability(const char* pFileName, bool* availableArr
 		{
 			EString mechName = (*vIter)->getFileName();
 			char realName[255];
-			_splitpath( mechName, NULL, NULL, realName, NULL );
+			_splitpath( mechName, nullptr, nullptr, realName, nullptr );
 			if ( S_stricmp( realName, chassisFileName ) == 0 )
 			{
 				long componentCount = 255;

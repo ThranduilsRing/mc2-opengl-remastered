@@ -378,7 +378,7 @@ void GVAppearance::updateGeometry (void)
 		{
 			destructFX->Kill();
 			delete destructFX;
-			destructFX = NULL;
+			destructFX = nullptr;
 		}
 	}
 	
@@ -441,7 +441,7 @@ void GVAppearance::updateGeometry (void)
 			localToWorld.Multiply(gosFX::Effect_Against_Motion,effectRot);
 			localResult.Multiply(localToWorld,shapeOrigin);
 				
-			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&localResult,NULL);
+			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&localResult,nullptr);
 	
 			dustCloud->Start(&info);
 			dustCloudStart = true;
@@ -718,53 +718,53 @@ void GVAppearance::destroy (void)
 	if (gvShape)
 	{
 		delete gvShape;
-		gvShape = NULL;
+		gvShape = nullptr;
 	}
 	
 	if (gvShadowShape)
 	{
 		delete gvShadowShape;
-		gvShadowShape = NULL;
+		gvShadowShape = nullptr;
 	}
 	
 	if (sensorCircleShape)
 	{
 		delete sensorCircleShape;
-		sensorCircleShape = NULL;	
+		sensorCircleShape = nullptr;	
 	}
 	   
 	if (sensorTriangleShape)
 	{
 		delete sensorTriangleShape;
-		sensorTriangleShape = NULL;	
+		sensorTriangleShape = nullptr;	
 	}
 
 	if (destructFX)
 	{
 		destructFX->Kill();
 		delete destructFX;
-		destructFX = NULL;
+		destructFX = nullptr;
 	}
 
 	if (waterWake)
 	{
 		waterWake->Kill();
 		delete waterWake;
-		waterWake = NULL;
+		waterWake = nullptr;
 	}
 
 	if (dustCloud)
 	{
 		dustCloud->Kill();
 		delete dustCloud;
-		dustCloud = NULL;
+		dustCloud = nullptr;
 	}
 
 	if (activity)
 	{
 		activity->Kill();
 		delete activity;
-		activity = NULL;
+		activity = nullptr;
 	}
 
 	appearanceTypeList->removeAppearance(appearType);
@@ -811,7 +811,7 @@ void GVAppearance::startWaterWake (void)
 		localToWorld.Multiply(gosFX::Effect_Against_Motion,effectRot);
 		localResult.Multiply(localToWorld,shapeOrigin);
 			
- 		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&localResult,NULL);
+ 		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&localResult,nullptr);
 
 		waterWake->Start(&info);
 
@@ -873,7 +873,7 @@ void GVAppearance::startActivity (long effectId, bool loop)
 		shapeOrigin.BuildTranslation(wakePos);
 				
 			
- 		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,NULL);
+ 		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
 
 		activity->Start(&info);
 		

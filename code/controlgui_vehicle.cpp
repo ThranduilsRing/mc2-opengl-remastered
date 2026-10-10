@@ -297,7 +297,7 @@ void ControlGui::handleVehicleClick( int ID )
 
 					if (!MPlayer->isHost())
 					{
-						MPlayer->sendPlayerUpdate( 0, 5, MPlayer->commanderID );
+						MPlayer->sendPlayerUpdate( nullptr, 5, MPlayer->commanderID );
 					}
 
 				}
@@ -355,7 +355,7 @@ const char* ControlGui::getVehicleName( long& ID)
 //	char s[1024];
 //	sprintf(s, "getvehiclename: ID = %d", ID);
 //	PAUSE((s));
-	return 0;
+	return nullptr;
 }
 
 const char* ControlGui::getVehicleNameFromID (long ID) {
@@ -363,7 +363,7 @@ const char* ControlGui::getVehicleNameFromID (long ID) {
 	for (long i = 0; i < 5; i++)
 		if (vehicleIDs[i] == ID)
 			return(vehiclePilots[i]);
-	return(NULL);
+	return(nullptr);
 }
 
 bool ControlGui::getMines()

@@ -571,12 +571,12 @@ static std::vector<std::string> JsonGetStringArray(const char* json, const char*
 static bool ReadModJson(const char* jsonPath,
                         std::string& outId, std::string& outName,
                         std::vector<std::string>& outDeps) {
-    HANDLE fh = CreateFileA(jsonPath, GENERIC_READ, FILE_SHARE_READ, NULL,
-                             OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    HANDLE fh = CreateFileA(jsonPath, GENERIC_READ, FILE_SHARE_READ, nullptr,
+                             OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
     if (fh == INVALID_HANDLE_VALUE) return false;
     char buf[4096] = {};
     DWORD read = 0;
-    ReadFile(fh, buf, sizeof(buf)-1, &read, NULL);
+    ReadFile(fh, buf, sizeof(buf)-1, &read, nullptr);
     CloseHandle(fh);
     buf[read] = '\0';
 
@@ -907,7 +907,7 @@ void InitModSearchPaths(const char* modsRoot) {
 unsigned long File::lastError = NO_ERR;
 bool		  File::logFileTraffic = FALSE;
 
-FilePtr fileTrafficLog = NULL;
+FilePtr fileTrafficLog = nullptr;
 char CDInstallPath[1024];
 void EnterWindowMode();
 void EnterFullScreenMode();
@@ -1011,7 +1011,7 @@ bool file1OlderThan2 (const char* file1, const char* file2)
 //	class File member functions
 void *File::operator new (size_t mySize)
 {
-	void *result = NULL;
+	void *result = nullptr;
 	
 	result = systemHeap->Malloc(mySize);
 	
@@ -1027,25 +1027,25 @@ void File::operator delete (void *us)
 //---------------------------------------------------------------------------
 File::File (void)
 {
-	fileName = NULL;
+	fileName = nullptr;
 	fileMode = NOMODE;
 	handle = INVALID_HANDLE_VALUE;
 	length = 0;
 	logicalPosition = 0;
 	bufferResult = 0;
 
-	parent = NULL;
+	parent = nullptr;
 	parentOffset = 0;
 	physicalLength = 0;
 
     maxChildren = 0;
-	childList = NULL;
+	childList = nullptr;
 	numChildren = 0;
 
 	inRAM = FALSE;
-	fileImage = NULL;
+	fileImage = nullptr;
 
-	fastFile = NULL;
+	fastFile = nullptr;
 }
 			
 //---------------------------------------------------------------------------
@@ -1061,11 +1061,11 @@ inline void File::setup (void)
 	else
 		length = 0;
 
-	parent = NULL;
+	parent = nullptr;
 	parentOffset = 0;
 	physicalLength = length;
 	
-	childList = NULL;
+	childList = nullptr;
 	numChildren = 0;
 }
 
@@ -1295,7 +1295,7 @@ long File::open (const char* fName, FileMode _mode, long numChild, bool doNotLow
 					numChildren = 0;
 					for (long i=0;i<(long)maxChildren;i++)
 					{
-						childList[i] = NULL;
+						childList[i] = nullptr;
 					}	
 
 					return (NO_ERR);
@@ -1375,7 +1375,7 @@ long File::open (const char* fName, FileMode _mode, long numChild, bool doNotLow
 			numChildren = 0;
 			for (long i=0;i<(long)maxChildren;i++)
 			{
-				childList[i] = NULL;
+				childList[i] = nullptr;
 			}	
 	
 			return (NO_ERR);
@@ -1388,7 +1388,7 @@ long File::open (const char* fName, FileMode _mode, long numChild, bool doNotLow
 //---------------------------------------------------------------------------
 long File::open (FilePtr _parent, unsigned long fileSize, long numChild)
 {
-	if (_parent && (_parent->fastFile == NULL))
+	if (_parent && (_parent->fastFile == nullptr))
 	{
 		parent = _parent;
 		if (parent->getFileMode() != READ)
@@ -1447,7 +1447,7 @@ long File::open (FilePtr _parent, unsigned long fileSize, long numChild)
 			numChildren = 0;
 			for (long i=0;i<(long)maxChildren;i++)
 			{
-				childList[i] = NULL;
+				childList[i] = nullptr;
 			}	
 		}
 		else
@@ -1535,7 +1535,7 @@ long File::addChild (FilePtr child)
 	{
 		for (long i=0;i < (long)maxChildren;i++)
 		{
-			if (childList[i] == NULL)
+			if (childList[i] == nullptr)
 			{
 				childList[i] = child;
 				return NO_ERR;
@@ -1557,7 +1557,7 @@ void File::removeChild (FilePtr child)
 			{
 				if (childList[i] == child)
 				{
-					childList[i] = NULL;
+					childList[i] = nullptr;
 					break;
 				}
 			}
@@ -1577,18 +1577,18 @@ void File::close (void)
 
 	bool bFast = false;
 
-	if ((parent == NULL) && (fileName != NULL))
+	if ((parent == nullptr) && (fileName != nullptr))
 	{
 		systemHeap->Free(fileName);
 	}
 
-	fileName = NULL;
+	fileName = nullptr;
 	length = 0;
 
 	if (isOpen())
 	{
-		if ((parent == NULL) && (handle != CLOSED_HANDLE_VALUE) && (-1 != handle))
-			_close((int)handle);
+		if ((parent == nullptr) && (handle != CLOSED_HANDLE_VALUE) && (-1 != handle))
+			_close(handle);
 			
 		handle = CLOSED_HANDLE_VALUE;
 
@@ -1598,7 +1598,7 @@ void File::close (void)
 			bFast = true; // save that it was a fast file
 		}
 
-		fastFile = NULL;			//DO NOT DELETE THE FASTFILE!!!!!!!!!!!!!
+		fastFile = nullptr;			//DO NOT DELETE THE FASTFILE!!!!!!!!!!!!!
 		fastFileHandle = -1;
 	}
 	
@@ -1621,17 +1621,17 @@ void File::close (void)
 			systemHeap->Free(childList);
 	}
 	
-	if (parent != NULL)
+	if (parent != nullptr)
 		parent->removeChild(this);
 
-	childList = NULL;
+	childList = nullptr;
 	numChildren = 0;
 
 	if (inRAM && (bFast || parent)) // don't want to delete memFiles
 	{
 		if (fileImage)
 			free(fileImage);
-		fileImage = NULL;
+		fileImage = nullptr;
 		inRAM = FALSE;
 	}
 }
@@ -1642,7 +1642,7 @@ void File::deleteFile (void)
 	//--------------------------------------------------------------
 	// Must be the ultimate parent to delete this file.  Close will
 	// make sure all of the children close themselves.
-	if (isOpen() && (parent == NULL))
+	if (isOpen() && (parent == nullptr))
 		close();
 }
 
@@ -2233,7 +2233,7 @@ long File::write (unsigned long pos, MemoryPtr buffer, long bytes)
 {
 	unsigned long result = 0;
 
-	if (parent == NULL)	
+	if (parent == nullptr)	
 	{
 		if (isOpen())
 		{
@@ -2273,7 +2273,7 @@ long File::writeByte (byte value)
 {
 	long result = 0;
 
-	if (parent == NULL)
+	if (parent == nullptr)
 	{
 		if (isOpen())	
 		{
@@ -2314,7 +2314,7 @@ long File::writeWord (short value)
 {
 	unsigned long result = 0;
 	
-	if (parent == NULL)
+	if (parent == nullptr)
 	{
 		if (isOpen())
 		{
@@ -2365,7 +2365,7 @@ long File::writeLong (long value)
 
 	unsigned long result = 0;
 	
-	if (parent == NULL)
+	if (parent == nullptr)
 	{
 		if (isOpen())
 		{
@@ -2406,7 +2406,7 @@ long File::writeInt (int value)
 {
 	unsigned long result = 0;
 	
-	if (parent == NULL)
+	if (parent == nullptr)
 	{
 		if (isOpen())
 		{
@@ -2449,7 +2449,7 @@ long File::writeFloat (float value)
 	unsigned long result = 0;
 
 	gosASSERT(!isNAN(&value));
-	if (parent == NULL)
+	if (parent == nullptr)
 	{
 		if (isOpen())
 		{
@@ -2492,7 +2492,7 @@ long File::writeString (const char *buffer)
 {
 	long result = -1;
 	
-	if (parent == NULL)
+	if (parent == nullptr)
 	{
 		if (isOpen())
 		{
@@ -2521,7 +2521,7 @@ long File::writeLine (char *buffer)
 {
 	long result = -1;
 	
-	if (parent == NULL)
+	if (parent == nullptr)
 	{
 		if (isOpen())
 		{
@@ -2553,7 +2553,7 @@ long File::write(MemoryPtr buffer, size_t bytes)
 {
 	long result = 0;
 	
-	if (parent == NULL)
+	if (parent == nullptr)
 	{
 		if (isOpen())
 		{
@@ -2592,7 +2592,7 @@ long File::write(MemoryPtr buffer, size_t bytes)
 //---------------------------------------------------------------------------
 bool File::isOpen (void)
 {
-	return ((handle != CLOSED_HANDLE_VALUE && handle != -1) || (fileImage != NULL));
+	return ((handle != CLOSED_HANDLE_VALUE && handle != -1) || (fileImage != nullptr));
 }
 
 //---------------------------------------------------------------------------

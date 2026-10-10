@@ -48,7 +48,7 @@ ReservedWord reservedWord2[] = {
 	{"or", TKN_OR},
 	{"do", TKN_DO},
 	{"to", TKN_TO},
-	{NULL, TKN_NONE}
+	{nullptr, TKN_NONE}
 };
 
 ReservedWord reservedWord3[] = {
@@ -58,7 +58,7 @@ ReservedWord reservedWord3[] = {
 	{"not", TKN_NOT},
 	{"var", TKN_VAR},
 	{"fsm", TKN_FSM},
-	{NULL, TKN_NONE}
+	{nullptr, TKN_NONE}
 };
 
 ReservedWord reservedWord4[] = {
@@ -67,7 +67,7 @@ ReservedWord reservedWord4[] = {
 	{"case", TKN_CASE},
 	{"code", TKN_CODE},
 	{"type", TKN_TYPE},
-	{NULL, TKN_NONE}
+	{nullptr, TKN_NONE}
 };
 
 ReservedWord reservedWord5[] = {
@@ -78,7 +78,7 @@ ReservedWord reservedWord5[] = {
 	{"order", TKN_ORDER},
 	{"state", TKN_STATE},
 	{"trans", TKN_TRANS},
-	{NULL, TKN_NONE}
+	{nullptr, TKN_NONE}
 };
 
 ReservedWord reservedWord6[] = {
@@ -88,14 +88,14 @@ ReservedWord reservedWord6[] = {
 	{"switch", TKN_SWITCH},
 	{"static", TKN_STATIC},
 	{"endfsm", TKN_END_FSM},
-	{NULL, TKN_NONE}
+	{nullptr, TKN_NONE}
 };
 
 ReservedWord reservedWord7[] = {
 	{"endcase", TKN_END_CASE},
 	{"eternal", TKN_ETERNAL},
 	{"library", TKN_LIBRARY},
-	{NULL, TKN_NONE}
+	{nullptr, TKN_NONE}
 };
 
 ReservedWord reservedWord8[] = {
@@ -103,29 +103,29 @@ ReservedWord reservedWord8[] = {
 	{"endwhile", TKN_END_WHILE},
 	{"endorder", TKN_END_ORDER},
 	{"endstate", TKN_END_STATE},
-	{NULL, TKN_NONE}
+	{nullptr, TKN_NONE}
 };
 
 ReservedWord reservedWord9[] = {
 	{"endswitch", TKN_END_SWITCH},
 	{"endmodule", TKN_END_MODULE},
 	{"transback", TKN_TRANS_BACK},
-	{NULL, TKN_NONE}					//This was missing.  Thank You Symantec!!!!		1/24/97 -fs
+	{nullptr, TKN_NONE}					//This was missing.  Thank You Symantec!!!!		1/24/97 -fs
 };
 
 ReservedWord reservedWord10[] = {
 	{"endlibrary", TKN_END_LIBRARY},
-	{NULL, TKN_NONE}
+	{nullptr, TKN_NONE}
 };
 
 ReservedWord reservedWord11[] = {
 	{"endfunction", TKN_END_FUNCTION},
-	{NULL, TKN_NONE}
+	{nullptr, TKN_NONE}
 };
 
 ReservedWord* reservedWordTable[] = {
-	NULL,
-	NULL,
+	nullptr,
+	nullptr,
 	reservedWord2,
 	reservedWord3,
 	reservedWord4,
@@ -266,12 +266,12 @@ Literal			curLiteral;
 int32_t         level = 0;
 int32_t         lineNumber = 0;
 int32_t         FileNumber = 0;
-ABLFile*		sourceFile = NULL;
+ABLFile*		sourceFile = nullptr;
 bool			printFlag = true;
 bool			blockFlag = false;
 BlockType		blockType = BLOCK_MODULE;
-SymTableNodePtr	CurModuleIdPtr = NULL;
-SymTableNodePtr	CurRoutineIdPtr = NULL;
+SymTableNodePtr	CurModuleIdPtr = nullptr;
+SymTableNodePtr	CurRoutineIdPtr = nullptr;
 bool			DumbGetCharOn = false;
 
 long			NumOpenFiles = 0;
@@ -303,20 +303,20 @@ extern bool		DebugCodeEnabled;
 
 extern ABLModulePtr	CurLibrary;
 
-long (*ABLFile::createCB) (void** file, const char* fName) = NULL;
-long (*ABLFile::openCB) (void** file, const char* fName) = NULL;
-long (*ABLFile::closeCB) (void** file) = NULL;
-bool (*ABLFile::eofCB) (void* file) = NULL;
-long (*ABLFile::readCB) (void* file, unsigned char* buffer, long length) = NULL;
-int32_t (*ABLFile::readIntCB) (void* file) = NULL;
-long (*ABLFile::readLongCB) (void* file) = NULL;
-long (*ABLFile::readStringCB) (void* file, unsigned char* buffer) = NULL;
-long (*ABLFile::readLineExCB) (void* file, unsigned char* buffer, long maxLength) = NULL;
-long (*ABLFile::writeCB) (void* file, unsigned char* buffer, long length) = NULL;
-long (*ABLFile::writeByteCB) (void* file, unsigned char byte) = NULL;
-long (*ABLFile::writeIntCB) (void* file, int32_t val) = NULL;
-long (*ABLFile::writeLongCB) (void* file, long value) = NULL;
-long (*ABLFile::writeStringCB) (void* file, const char* buffer) = NULL;
+long (*ABLFile::createCB) (void** file, const char* fName) = nullptr;
+long (*ABLFile::openCB) (void** file, const char* fName) = nullptr;
+long (*ABLFile::closeCB) (void** file) = nullptr;
+bool (*ABLFile::eofCB) (void* file) = nullptr;
+long (*ABLFile::readCB) (void* file, unsigned char* buffer, long length) = nullptr;
+int32_t (*ABLFile::readIntCB) (void* file) = nullptr;
+long (*ABLFile::readLongCB) (void* file) = nullptr;
+long (*ABLFile::readStringCB) (void* file, unsigned char* buffer) = nullptr;
+long (*ABLFile::readLineExCB) (void* file, unsigned char* buffer, long maxLength) = nullptr;
+long (*ABLFile::writeCB) (void* file, unsigned char* buffer, long length) = nullptr;
+long (*ABLFile::writeByteCB) (void* file, unsigned char byte) = nullptr;
+long (*ABLFile::writeIntCB) (void* file, int32_t val) = nullptr;
+long (*ABLFile::writeLongCB) (void* file, long value) = nullptr;
+long (*ABLFile::writeStringCB) (void* file, const char* buffer) = nullptr;
 
 //***************************************************************************
 // ABL FILE routines
@@ -339,8 +339,8 @@ void ABLFile::operator delete (void* us) {
 
 void ABLFile::init (void) {
 
-	fileName = 0;
-	file = NULL;
+	fileName = nullptr;
+	file = nullptr;
 }
 
 //-----------------------------------------------------------------------------
@@ -349,9 +349,9 @@ void ABLFile::destroy (void) {
 
 	if (fileName) {
 		ABLSystemFreeCallback(fileName);
-		fileName = NULL;
+		fileName = nullptr;
 	}
-	file = NULL;
+	file = nullptr;
 }
 
 //---------------------------------------------------------------------------
@@ -502,7 +502,7 @@ long isReservedWord (void)
 	long wordLength = static_cast<long>(strlen(wordString));
 	if ((wordLength >= MINLEN_RESERVED_WORD) && (wordLength <= MAXLEN_RESERVED_WORD) && reservedWordTable[wordLength])
 	{
-		for (ReservedWord* rwPtr = reservedWordTable[wordLength]; rwPtr->string != NULL; rwPtr++)
+		for (ReservedWord* rwPtr = reservedWordTable[wordLength]; rwPtr->string != nullptr; rwPtr++)
 		{
 			if (strcmp(wordString, rwPtr->string) == 0) 
 			{
@@ -559,7 +559,7 @@ void quitScanner (void) {
 	sourceFile->close();
 
 	delete sourceFile;
-	sourceFile = NULL;
+	sourceFile = nullptr;
 }
 
 //***************************************************************************
@@ -1294,7 +1294,7 @@ long openSourceFile (const char* sourceFileName) {
 	if (NumSourceFiles == MAX_SOURCE_FILES)
 		return(-3);
 
-	ABLFile* sFile = NULL;
+	ABLFile* sFile = nullptr;
 	sFile = new ABLFile;
 
 	if (sFile->open(sourceFileName) != ABL_NO_ERR) {
@@ -1331,9 +1331,9 @@ long closeSourceFile (void) {
 	sourceFile->close();
 
 	delete sourceFile;
-	sourceFile = NULL;
+	sourceFile = nullptr;
 
-	openFiles[NumOpenFiles].filePtr = NULL;
+	openFiles[NumOpenFiles].filePtr = nullptr;
 	NumOpenFiles--;
 
 	if (NumOpenFiles > 0) {
@@ -1356,7 +1356,7 @@ void printLine (char* line) {
 		lineCount = 1;
 	}
 
-	char* saveChPtr = NULL;
+	char* saveChPtr = nullptr;
 	char saveCh = ' ';
 	if (strlen(line) > MAXLEN_PRINTLINE) {
 		saveCh = line[MAXLEN_PRINTLINE];

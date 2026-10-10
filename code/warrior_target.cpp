@@ -91,9 +91,9 @@ int32_t TargetPriorityList::calcTarget (MechWarriorPtr pilot, Stuff::Vector3D lo
 				// param 0 = object WID
 				// param 1 = engage radius
 				// param 2 = contact criteria
-				GameObjectPtr obj = NULL;
+				GameObjectPtr obj = nullptr;
 				if (list[i].params[0])
-					obj = (GameObjectPtr)ObjectManager->findByPartId(list[i].params[0]);
+					obj = ObjectManager->findByPartId(list[i].params[0]);
 				//HACK! For now, we will not target unarmed movers...
 				list[i].params[2] += CONTACT_CRITERIA_ARMED;
 				/*
@@ -140,9 +140,9 @@ int32_t TargetPriorityList::calcTarget (MechWarriorPtr pilot, Stuff::Vector3D lo
 				// param 0 = object WID
 				// param 1 = engage radius
 				// param 2 = contact criteria
-				GameObjectPtr obj = NULL;
+				GameObjectPtr obj = nullptr;
 				if (list[i].params[0])
-					obj = (GameObjectPtr)ObjectManager->findByPartId(list[i].params[0]);
+					obj = ObjectManager->findByPartId(list[i].params[0]);
 				//HACK! For now, we will not target unarmed movers...
 				list[i].params[2] += CONTACT_CRITERIA_ARMED;
 				if (!obj) {
@@ -184,9 +184,9 @@ int32_t TargetPriorityList::calcTarget (MechWarriorPtr pilot, Stuff::Vector3D lo
 				// param 0 = object WID
 				// param 1 = engage radius
 				// param 2 = if -1, looks for any enemy building. Else, specified alignment.
-				GameObjectPtr obj = NULL;
+				GameObjectPtr obj = nullptr;
 				if (list[i].params[0])
-					obj = (GameObjectPtr)ObjectManager->findByPartId(list[i].params[0]);
+					obj = ObjectManager->findByPartId(list[i].params[0]);
 				if (!obj) {
 					if (list[i].params[2] == -1) {
 						float smallestDistance = 999999.0;
@@ -217,7 +217,7 @@ int32_t TargetPriorityList::calcTarget (MechWarriorPtr pilot, Stuff::Vector3D lo
 				// param 0 = disengage relative to point # (-1 for cur position)
 				// param 1 = disengage radius
 				// param 2 = contact criteria (0 for doesn't matter)
-				GameObjectPtr target = NULL;
+				GameObjectPtr target = nullptr;
 				// For now, the current order's target is considered the "current target",
 				// even if the mover is moving while shooting. This can be changed easily,
 				// if we want it to act differently...
@@ -225,7 +225,7 @@ int32_t TargetPriorityList::calcTarget (MechWarriorPtr pilot, Stuff::Vector3D lo
 					target = ObjectManager->get(pilot->getCurTacOrder()->targetWID);
 					if (target && target->isDisabled())
 						if (!pilot->getCurTacOrder()->attackParams.obliterate)
-							target = NULL;
+							target = nullptr;
 				}
 				if (!target) {
 					target = pilot->getLastTarget();
@@ -260,7 +260,7 @@ int32_t TargetPriorityList::calcTarget (MechWarriorPtr pilot, Stuff::Vector3D lo
 				break;
 			case TARGET_PRIORITY_TURRET: {
 				float shortestDistance = 999999.0;
-				GameObjectPtr closestTurret = NULL;
+				GameObjectPtr closestTurret = nullptr;
                 int i;
 				for (i = 0; i < ObjectManager->getNumTurrets(); i++) {
 					GameObjectPtr turret = (GameObjectPtr)ObjectManager->getTurret(i);
@@ -285,7 +285,7 @@ int32_t TargetPriorityList::calcTarget (MechWarriorPtr pilot, Stuff::Vector3D lo
 				// For now, we'll pick the closest Turret Control...
 				// WE CANNOT ASSUME CAPTURE OR ATTACK HERE! FIX BELOW...
 				float shortestDistance = 999999.0;
-				GameObjectPtr closestControl = NULL;
+				GameObjectPtr closestControl = nullptr;
 				for (long i = 0; i < ObjectManager->getNumTurretControls(); i++) {
 					GameObjectPtr turretControl = (GameObjectPtr)ObjectManager->getTurretControl(i);
 					if (!turretControl->getTeam()->isFriendly(pilot->getTeam()) && turretControl->isCaptureable(pilot->getTeam()->getId())) {
@@ -308,7 +308,7 @@ int32_t TargetPriorityList::calcTarget (MechWarriorPtr pilot, Stuff::Vector3D lo
 				// For now, we'll pick the closest Turret Control...
 				// WE CANNOT ASSUME CAPTURE OR ATTACK HERE! FIX BELOW...
 				float shortestDistance = 999999.0;
-				GameObjectPtr closestControl = NULL;
+				GameObjectPtr closestControl = nullptr;
 				for (long i = 0; i < ObjectManager->getNumGateControls(); i++) {
 					GameObjectPtr gateControl = (GameObjectPtr)ObjectManager->getGateControl(i);
 					if (!gateControl->getTeam()->isFriendly(pilot->getTeam()) && gateControl->isCaptureable(pilot->getTeam()->getId())) {
@@ -449,7 +449,7 @@ GameObjectPtr MechWarrior::calcTurretThreats (float threatRange, long minThreat)
 
 	if (biggestThreat > -1)
 		return(ObjectManager->getTurretControl(biggestThreat));
-	return(NULL);
+	return(nullptr);
 }
 
 AttackerRecPtr MechWarrior::getAttackerInfo (unsigned long attackerWID) {
@@ -457,7 +457,7 @@ AttackerRecPtr MechWarrior::getAttackerInfo (unsigned long attackerWID) {
 	for (long i = 0; i < numAttackers; i++)
 		if (attackers[i].WID == attackerWID)
 			return(&attackers[i]);
-	return(NULL);
+	return(nullptr);
 }
 
 long MechWarrior::getAttackers (unsigned int* attackerList, float seconds) {
@@ -491,13 +491,13 @@ GameObjectPtr MechWarrior::getLastTarget (void) {
 						   (target->isDisabled() && !lastTargetObliterate) ||
 						   (target->isFriendly(getVehicle()) && !lastTargetFriendly);
 		if (clearTarget) {
-			setLastTarget(NULL);
+			setLastTarget(nullptr);
 			lastTargetTime = -1.0;
 			lastTargetObliterate = false;
 			lastTargetFriendly = false;
 			if (curTacOrder.isCombatOrder())
 				clearCurTacOrder();
-			return(NULL);
+			return(nullptr);
 		}
 	}
 
@@ -509,7 +509,7 @@ GameObjectPtr MechWarrior::getLastTarget (void) {
 
 void MechWarrior::setLastTarget (GameObjectPtr target, bool obliterate, bool conserveAmmo) {
 
-	Assert(getVehicle() != NULL, vehicleWID, " MechWarrior.setLastTarget: NULL vehicle ");
+	Assert(getVehicle() != nullptr, vehicleWID, " MechWarrior.setLastTarget: NULL vehicle ");
 	if (getCommander() == Commander::home) {
 		if (lastTargetWID) {
 			GameObjectPtr lastTarget = ObjectManager->getByWatchID(lastTargetWID);
@@ -549,7 +549,7 @@ GameObjectPtr MechWarrior::getAttackTargetPosition (Stuff::Vector3D& pos) {
 	GameObjectPtr object = ObjectManager->getByWatchID(attackOrders.targetWID);
 	if (!object) {
 		clearAttackOrders();
-		return(NULL);
+		return(nullptr);
 	}
 	pos = object->getPosition();
 	return(object);
@@ -567,8 +567,8 @@ void MechWarrior::clearAttackOrders (void) {
 
 void MechWarrior::clearMoveOrders (void) {
 
-	setMoveGoal(MOVEGOAL_NONE, NULL);
-	setMoveWayPath(0);
+	setMoveGoal(MOVEGOAL_NONE, nullptr);
+	setMoveWayPath(nullptr);
 	for (long i = 0; i < 2; i++)
 		clearMovePath(i);
 	setMoveState(MOVESTATE_FORWARD);
@@ -578,7 +578,7 @@ void MechWarrior::clearMoveOrders (void) {
 	setMoveWaitForPointTime(-1.0);
 	setMoveTimeOfLastStep(-1.0);
 	setMoveTwisting(false);
-	setMoveGlobalPath(NULL, 0);
+	setMoveGlobalPath(nullptr, 0);
 	PathManager->remove(this);
 }
 
@@ -663,7 +663,7 @@ long MechWarrior::calcWeaponsStatus (GameObjectPtr target, int* weaponList, Stuf
 						long aimLocation = -1;
 						if (curTacOrder.isCombatOrder())
 							aimLocation = curTacOrder.attackParams.aimLocation;
-						float odds = myVehicle->calcAttackChance(target, aimLocation, scenarioTime, weaponIndex, 0.0, NULL, targetPoint);
+						float odds = myVehicle->calcAttackChance(target, aimLocation, scenarioTime, weaponIndex, 0.0, nullptr, targetPoint);
 						if (odds < 1.0)
 							weaponList[curWeapon] = WEAPON_STATUS_NO_CHANCE;
 						else 

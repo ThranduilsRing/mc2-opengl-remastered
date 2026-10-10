@@ -50,7 +50,7 @@ void ControlGui::update( bool bPaused, bool bLOS )
 						getButton( VEHICLE_TAB )->press( false );
 						getButton( INFO_TAB )->press( true );
 						printf("[BOOT_INFO] selected mover teamId=%ld -> INFO tab (frame %u)\n",
-							(long)m->getTeamId(), (unsigned)g_mc2FrameCounter);
+							m->getTeamId(), (unsigned)g_mc2FrameCounter);
 						fflush(stdout);
 						break;
 					}
@@ -110,7 +110,7 @@ void ControlGui::update( bool bPaused, bool bLOS )
 						continue;
 					pObjective->Status( OS_SUCCESSFUL );
 					printf("[BOOT_OBJ_COMPLETE] objective '%s' -> OS_SUCCESSFUL (frame %u)\n",
-						(const char*)pObjective->LocalizedDescription().Data(),
+						pObjective->LocalizedDescription().Data(),
 						(unsigned)g_mc2FrameCounter);
 					fflush(stdout);
 					break;
@@ -162,7 +162,7 @@ void ControlGui::update( bool bPaused, bool bLOS )
 		{
 			moviePlaying = false;
 			delete bMovie;
-			bMovie = NULL;
+			bMovie = nullptr;
 		}
 	}
 
@@ -239,7 +239,7 @@ void ControlGui::update( bool bPaused, bool bLOS )
 	bool bGuardTower = 1;
 	bool bPressGuardTower = 1;
 
-	Mover* pSelectedMover = 0;
+	Mover* pSelectedMover = nullptr;
 	int holdPositionCount = 0;
 
 	{ ZoneScopedN("CGui.RosterScan"); CgScope _c(CG_ROSTER);
@@ -639,7 +639,7 @@ void ControlGui::doStop()
 		if ( pMover->isSelected() && pMover->getCommander()->getId() == Commander::home->getId() )
 		{
 			tacOrder.attackParams.range = (FireRangeType)pMover->attackRange;
-			tacOrder.pack(NULL, NULL);
+			tacOrder.pack(nullptr, nullptr);
 
 			//---------------------------------------------------------------------
 			// Helper function--perhaps this should just be a part of the mover and

@@ -48,7 +48,7 @@ void PacketFile::clear (void)
 	if (seekTable)
 		systemHeap->Free(seekTable);
 
-	seekTable 		= NULL;
+	seekTable 		= nullptr;
 }
 
 //---------------------------------------------------------------------------
@@ -191,7 +191,7 @@ long PacketFile::afterOpen (void)
 //---------------------------------------------------------------------------
 PacketFile::PacketFile (void)
 {
-	seekTable = NULL;
+	seekTable = nullptr;
 	usesCheckSum = FALSE;
 	clear();
 }
@@ -558,7 +558,7 @@ void PacketFile::reserve (unsigned int count, bool useCheckSum)
 	{
 		seekTable = (int*)systemHeap->Malloc(numPackets * sizeof(int));
    			
-   		if (seekTable != NULL)
+   		if (seekTable != nullptr)
    		{
    			seek(sizeof(int)*2);							//File Version & File Length
    			read(MemoryPtr(seekTable),(numPackets*sizeof(int)));
@@ -581,7 +581,7 @@ int PacketFile::writePacket (int packet, MemoryPtr buffer, unsigned int nbytes, 
 	// right now doesn't allow anything but same size.
 	int result = 0;
 
-	MemoryPtr workBuffer = NULL;
+	MemoryPtr workBuffer = nullptr;
 
 	if (pType == ANY_PACKET_TYPE || pType == STORAGE_TYPE_LZD || pType == STORAGE_TYPE_ZLIB)
 	{
@@ -657,7 +657,7 @@ int PacketFile::writePacket (int packet, MemoryPtr buffer, unsigned int nbytes, 
 		seekTable[packet] = SetPacketType(packetBase,packetType);
 	}
 
-	int *currentEntry = NULL;
+	int *currentEntry = nullptr;
 	if (seekTable)
 	{
 		packet++;

@@ -31,14 +31,14 @@
 
 //----------------------------------------------------------------------------------
 // Macro Definitions
-Weather *weather = NULL;
+Weather *weather = nullptr;
 
 //----------------------------------------------------------------------------------
 // Class Weather
 void Weather::destroy (void)
 {
 	systemHeap->Free(rainDrops);
-	rainDrops = NULL;
+	rainDrops = nullptr;
 	
 	init();
 }

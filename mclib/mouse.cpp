@@ -63,7 +63,7 @@ extern volatile bool mc2HasLostFocus;
 volatile bool mc2MouseThreadStarted = false;
 volatile bool mc2UseAsyncMouse = true;
 
-MemoryPtr mouseBuffer = NULL;
+MemoryPtr mouseBuffer = nullptr;
 #ifndef LINUX_BUILD
 MMRESULT HTimer = 0;
 #endif
@@ -75,12 +75,12 @@ volatile char mc2MouseHotSpotY = 0;
 volatile char mc2MouseWidth = 32;
 volatile char mc2MouseHeight = 32;
 
-volatile MemoryPtr mc2MouseData = NULL;
+volatile MemoryPtr mc2MouseData = nullptr;
 
 //Timing in Hz to update mouse
 long MOUSE_REFRESH_RATE = 30;
 
-void (*AsynFunc)(RECT& WinRect,DDSURFACEDESC2& mouseSurfaceDesc ) = 0;
+void (*AsynFunc)(RECT& WinRect,DDSURFACEDESC2& mouseSurfaceDesc ) = nullptr;
 #ifndef LINUX_BUILD
 void CALLBACK MouseTimer(UINT wTimerID, UINT msg, DWORD dwUser, DWORD dw1, DWORD dw2);
 

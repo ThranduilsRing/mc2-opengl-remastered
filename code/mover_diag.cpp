@@ -24,7 +24,7 @@ void DebugMoveChunk (MoverPtr mover, MoveChunkPtr chunk1, MoveChunkPtr chunk2) {
 		mover->getCellPosition(cellPos[0], cellPos[1]);
 		sprintf(outString, "Mover Obj Cell Pos = [%d, %d]\n", cellPos[0], cellPos[1]);
 		strcat(ChunkDebugMsg, outString);
-		if (mover->getPilot() == NULL)
+		if (mover->getPilot() == nullptr)
 			strcat(ChunkDebugMsg, "NULL pilot!\n");
 		if ((mover->getObjectClass() == BATTLEMECH) && ((BattleMechPtr)mover)->inJump) {
 			int jumpDest[2];
@@ -94,7 +94,7 @@ void DebugMoveChunk (MoverPtr mover, MoveChunkPtr chunk1, MoveChunkPtr chunk2) {
 	debugFile->writeString(ChunkDebugMsg);
 	debugFile->close();
 	delete debugFile;
-	debugFile = NULL;
+	debugFile = nullptr;
 
 	ExceptionGameMsg = ChunkDebugMsg;
 }
@@ -116,7 +116,7 @@ void DebugStatusChunk (MoverPtr mover, StatusChunkPtr chunk1, StatusChunkPtr chu
 	if (chunk1) {
 		strcat(ChunkDebugMsg, "\nCHUNK1\n");
 
-		GameObjectPtr target = NULL;
+		GameObjectPtr target = nullptr;
 		Stuff::Vector3D targetPoint;
 		targetPoint.Zero();
 		bool isTargetPoint = false;
@@ -129,7 +129,7 @@ void DebugStatusChunk (MoverPtr mover, StatusChunkPtr chunk1, StatusChunkPtr chu
 		else if (chunk1->targetType == STATUSCHUNK_TARGET_LOCATION) {
 			targetPoint.x = (float)chunk1->targetCellRC[1] * Terrain::worldUnitsPerCell + Terrain::worldUnitsPerCell / 2 - Terrain::worldUnitsMapSide / 2;
 			targetPoint.y = (Terrain::worldUnitsMapSide / 2) - ((float)chunk1->targetCellRC[0] * Terrain::worldUnitsPerCell) - Terrain::worldUnitsPerCell / 2;
-			targetPoint.z = (float)land->getTerrainElevation(targetPoint);
+			targetPoint.z = land->getTerrainElevation(targetPoint);
 			isTargetPoint = true;
 		}
 
@@ -205,7 +205,7 @@ void DebugStatusChunk (MoverPtr mover, StatusChunkPtr chunk1, StatusChunkPtr chu
 	if (chunk2) {
 		strcat(ChunkDebugMsg, "\nCHUNK2\n");
 
-		GameObjectPtr target = NULL;
+		GameObjectPtr target = nullptr;
 		Stuff::Vector3D targetPoint;
 		targetPoint.Zero();
 		bool isTargetPoint = false;
@@ -218,7 +218,7 @@ void DebugStatusChunk (MoverPtr mover, StatusChunkPtr chunk1, StatusChunkPtr chu
 		else if (chunk1->targetType == STATUSCHUNK_TARGET_LOCATION) {
 			targetPoint.x = (float)chunk2->targetCellRC[1] * Terrain::worldUnitsPerCell + Terrain::worldUnitsPerCell / 2 - Terrain::worldUnitsMapSide / 2;
 			targetPoint.y = (Terrain::worldUnitsMapSide / 2) - ((float)chunk2->targetCellRC[0] * Terrain::worldUnitsPerCell) - Terrain::worldUnitsPerCell / 2;
-			targetPoint.z = (float)land->getTerrainElevation(targetPoint);
+			targetPoint.z = land->getTerrainElevation(targetPoint);
 			isTargetPoint = true;
 		}
 
@@ -296,7 +296,7 @@ void DebugStatusChunk (MoverPtr mover, StatusChunkPtr chunk1, StatusChunkPtr chu
 	debugFile->writeString(ChunkDebugMsg);
 	debugFile->close();
 	delete debugFile;
-	debugFile = NULL;
+	debugFile = nullptr;
 
 	ExceptionGameMsg = ChunkDebugMsg;
 }
@@ -385,7 +385,7 @@ void Mover::updateDebugWindow (GameDebugWindow* debugWindow) {
 				numConts = sensorSystem->numContacts;
 			for (long i = 0; i < numConts; i++) {
 				MoverPtr contact = (MoverPtr)ObjectManager->get(sensorSystem->contacts[i] & 0x7FFF);
-				Assert(contact != NULL, sensorSystem->contacts[i] & 0x7FFF, " null contact ");
+				Assert(contact != nullptr, sensorSystem->contacts[i] & 0x7FFF, " null contact ");
 				char s2[10];
 				sprintf(s2, " %d.%d", sensorSystem->contacts[i] & 0x7FFF, contact->getContactStatus(teamId, true));
 				strcat(s, s2);

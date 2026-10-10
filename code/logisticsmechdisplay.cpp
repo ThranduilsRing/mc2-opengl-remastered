@@ -37,7 +37,7 @@ void syncWeaponLoadout( LogisticsScreen* screen, ComponentListBox& box, const ch
 
 LogisticsMechDisplay::LogisticsMechDisplay(  )
 {
-	pCurMech = NULL;
+	pCurMech = nullptr;
 
 	helpTextArrayID = 7;
 }
@@ -164,7 +164,7 @@ void LogisticsMechDisplay::setMech( LogisticsMech* pMech, bool bFromLB )
 				char text[64];
 				char tmpStr[64];
 				cLoadString( IDS_MB_MECH_WEIGHT, tmpStr, 63 );
-				sprintf( text, tmpStr, pCurMech->getMaxWeight(), (const char*)pCurMech->getMechClass() );
+				sprintf( text, tmpStr, pCurMech->getMaxWeight(), pCurMech->getMechClass() );
 				textObjects[3].setText( text );
 				setDefsElementText( "game.mcl_mechinfo.text.for_mech_weight", text );
 
@@ -221,9 +221,9 @@ void LogisticsMechDisplay::setMech( LogisticsMech* pMech, bool bFromLB )
 				attributeMeters[1].setValue( 0 );
 				attributeMeters[2].setValue( 0 );
 
-				componentListBox.setMech( 0 );
+				componentListBox.setMech( nullptr );
 				syncWeaponLoadout( this, componentListBox, "game.mcl_mechinfo.list.loadout" );
-				mechCamera.setMech( NULL );
+				mechCamera.setMech( nullptr );
 			}
 		}
 }

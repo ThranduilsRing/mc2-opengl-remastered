@@ -16,7 +16,7 @@ long getMoversWithinRadius (MoverPtr* moverList, Stuff::Vector3D center, float r
 	}
 	Team::sortList->clear(sortDescending);
 
-	TeamPtr team = NULL;
+	TeamPtr team = nullptr;
 	if (teamID > -1)
 		team = Team::teams[teamID];
 
@@ -87,7 +87,7 @@ void calcAttackPlan (long numAttackers, GameObjectPtr* attackers, long numDefend
 	for (long i = 0; i < numDefenders; i++) {
 		attackTotal[i] = 0;
 		attackRatio[i] = 0.0;
-		target[i] = NULL;
+		target[i] = nullptr;
 	}
 
 	// Calc who they should attack, trying to spread the wealth, so to speak...
@@ -117,7 +117,7 @@ GameObjectPtr calcBestTarget (MoverPtr attacker, long numAttackers, MoverPtr* at
 	// in descending order...
 
 	if (numDefenders == 0)
-		return(NULL);
+		return(nullptr);
 
 	float attackRatio[MAX_MOVERS];
 	long attackTotal[MAX_MOVERS];
@@ -126,7 +126,7 @@ GameObjectPtr calcBestTarget (MoverPtr attacker, long numAttackers, MoverPtr* at
 	for (; i < numDefenders; i++) {
 		attackTotal[i] = 0;
 		attackRatio[i] = 0.0;
-		target[i] = NULL;
+		target[i] = nullptr;
 	}
 
 	for (long a = 0; a < numAttackers; a++) {
@@ -818,7 +818,7 @@ void execRequestTarget (void) {
 		}
 		long numFriendlies = getMoversWithinRadius(friendlies, friendlyPos, radius, CurWarrior->getTeam()->getId(), commanderID, false, true, true);
 		long numEnemies = getMoversWithinRadius(enemies, friendlyPos, radius, CurWarrior->getTeam()->getId(), -1,true, true, true);
-		GameObjectPtr bestTarget = NULL;
+		GameObjectPtr bestTarget = nullptr;
 		if (numEnemies > 0)
 			bestTarget = calcBestTarget(CurWarrior->getVehicle(), numFriendlies, friendlies, numEnemies, enemies);
 	

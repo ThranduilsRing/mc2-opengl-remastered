@@ -185,7 +185,7 @@ void execOrderMoveToObject (void) {
 	}
 
 	long result = 1;
-	GameObjectPtr object = NULL;
+	GameObjectPtr object = nullptr;
 	if ((objectId >= MIN_UNIT_PART_ID) && (objectId <= MAX_UNIT_PART_ID)) {
 		// We have a group.  Act accordingly.
 		// Run through all objects fitting the group.
@@ -279,7 +279,7 @@ void execOrderAttackObject (void) {
 		if (pursue)
 			params |= TACORDER_PARAM_PURSUE;
 
-		GameObjectPtr object = NULL;
+		GameObjectPtr object = nullptr;
 		if ((objectId >= MIN_UNIT_PART_ID) && (objectId <= MAX_UNIT_PART_ID)) {
 			// We have a group.  Act accordingly.
 			// Run through all objects fitting the group.
@@ -351,7 +351,7 @@ void execObjectInWithdrawal(void) {
 	long objectId1 = ABLi_popInteger();
 
 	long result = 1;
-	GameObjectPtr object1 = NULL;
+	GameObjectPtr object1 = nullptr;
 	if ((objectId1 >= MIN_UNIT_PART_ID) && (objectId1 <= MAX_UNIT_PART_ID)) {
 		// We have a group.  Act accordingly.
 		// Run through all objects fitting the group.
@@ -464,7 +464,7 @@ void execCoreCapture (void) {
 	long targetID = 0;
 	GameObjectPtr obj = getObject(objectID);
 	if (CurWarrior && ((objectID == 0) || obj))
-		targetID = CurWarrior->coreCapture((objectID == 0) ? NULL : obj, params);
+		targetID = CurWarrior->coreCapture((objectID == 0) ? nullptr : obj, params);
 
 	ABLi_pushInteger(targetID);
 }
@@ -482,7 +482,7 @@ void execCoreScan (void) {
 	long targetID = 0;
 	GameObjectPtr obj = getObject(objectID);
 	if (CurWarrior && ((objectID == 0) || obj))
-		targetID = CurWarrior->coreScan((objectID == 0) ? NULL : obj, params);
+		targetID = CurWarrior->coreScan((objectID == 0) ? nullptr : obj, params);
 
 	ABLi_pushInteger(targetID);
 }
@@ -500,7 +500,7 @@ void execCoreControl (void) {
 	long targetID = 0;
 	GameObjectPtr obj = getObject(objectID);
 	if (CurWarrior && ((objectID == 0) || obj))
-		targetID = CurWarrior->coreControl((objectID == 0) ? NULL : obj, params);
+		targetID = CurWarrior->coreControl((objectID == 0) ? nullptr : obj, params);
 
 	ABLi_pushInteger(targetID);
 }

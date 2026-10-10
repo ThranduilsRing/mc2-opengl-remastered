@@ -55,7 +55,7 @@ Objective.cpp			: Implementation of the Objective component.
 float CObjective::s_blinkLength = .5;
 float CObjective::s_lastBlinkTime = 0.f;
 unsigned long CObjective::s_blinkColor = SB_YELLOW;
-aFont* CObjective::s_markerFont = 0;
+aFont* CObjective::s_markerFont = nullptr;
 float MaxExtractUnitDistance = 0.0f;
 
 static const char *g_actionSpeciesStringArray[] = {
@@ -431,7 +431,7 @@ bool CSpecificEnemyUnitObjectiveCondition::Read( FitIniFile* missionFile )
 		if (NO_ERR != result) { return false; }
 		result = sReadIdFloat(missionFile, "PositionY", positionY);
 		if (NO_ERR != result) { return false; }
-		MoverPtr pMover = NULL;
+		MoverPtr pMover = nullptr;
 		if (ObjectManager) {
 			long numMovers = ObjectManager->getNumMovers();
 			long i;
@@ -486,13 +486,13 @@ bool CSpecificStructureObjectiveCondition::Read( FitIniFile* missionFile )
 		if (NO_ERR != result) { return false; }
 		result = sReadIdFloat(missionFile, "PositionY", positionY);
 		if (NO_ERR != result) { return false; }
-		BuildingPtr pBuilding = 0;
+		BuildingPtr pBuilding = nullptr;
 		if (ObjectManager) {
 			pBuilding = ObjectManager->getBuilding(0);
 			long i;
-			for (i = 0; (0 != pBuilding); i+= 1) {
+			for (i = 0; (nullptr != pBuilding); i+= 1) {
 				pBuilding = ObjectManager->getBuilding(i);
-				if ((0 != pBuilding) && areCloseEnough(pBuilding->getPosition().x, positionX)  && areCloseEnough(pBuilding->getPosition().y, positionY)) {
+				if ((nullptr != pBuilding) && areCloseEnough(pBuilding->getPosition().x, positionX)  && areCloseEnough(pBuilding->getPosition().y, positionY)) {
 					break;
 				}
 			}
@@ -565,7 +565,7 @@ bool CCaptureOrDestroySpecificEnemyUnit::Read( FitIniFile* missionFile )
 		if (NO_ERR != result) { return false; }
 		result = sReadIdFloat(missionFile, "PositionY", positionY);
 		if (NO_ERR != result) { return false; }
-		MoverPtr pMover = 0;
+		MoverPtr pMover = nullptr;
 		if (ObjectManager) {
 			long numMovers = ObjectManager->getNumMovers();
 			long i;
@@ -610,13 +610,13 @@ bool CCaptureOrDestroySpecificStructure::Read( FitIniFile* missionFile )
 		if (NO_ERR != result) { return false; }
 		result = sReadIdFloat(missionFile, "PositionY", positionY);
 		if (NO_ERR != result) { return false; }
-		BuildingPtr pBuilding = 0;
+		BuildingPtr pBuilding = nullptr;
 		if (ObjectManager) {
 			pBuilding = ObjectManager->getBuilding(0);
 			long i;
-			for (i = 0; (0 != pBuilding); i+= 1) {
+			for (i = 0; (nullptr != pBuilding); i+= 1) {
 				pBuilding = ObjectManager->getBuilding(i);
-				if ((0 != pBuilding) && areCloseEnough(pBuilding->getPosition().x, positionX)  && areCloseEnough(pBuilding->getPosition().y, positionY)) {
+				if ((nullptr != pBuilding) && areCloseEnough(pBuilding->getPosition().x, positionX)  && areCloseEnough(pBuilding->getPosition().y, positionY)) {
 					break;
 				}
 			}
@@ -704,7 +704,7 @@ bool CCaptureUnit::Read( FitIniFile* missionFile )
 		if (NO_ERR != result) { return false; }
 		result = sReadIdFloat(missionFile, "PositionY", positionY);
 		if (NO_ERR != result) { return false; }
-		MoverPtr pMover = 0;
+		MoverPtr pMover = nullptr;
 		if (ObjectManager) {
 			long numMovers = ObjectManager->getNumMovers();
 			long i;
@@ -755,15 +755,15 @@ bool CCaptureStructure::Read( FitIniFile* missionFile )
 		if (NO_ERR != result) { return false; }
 		result = sReadIdFloat(missionFile, "PositionY", positionY);
 		if (NO_ERR != result) { return false; }
-		BuildingPtr pBuilding = 0;
+		BuildingPtr pBuilding = nullptr;
 		if (ObjectManager) 
 		{
 			pBuilding = ObjectManager->getBuilding(0);
 			long i;
-			for (i = 0; (0 != pBuilding); i+= 1) 
+			for (i = 0; (nullptr != pBuilding); i+= 1) 
 			{
 				pBuilding = ObjectManager->getBuilding(i);
-				if ((0 != pBuilding) && areCloseEnough(pBuilding->getPosition().x, positionX)  && areCloseEnough(pBuilding->getPosition().y, positionY)) 
+				if ((nullptr != pBuilding) && areCloseEnough(pBuilding->getPosition().x, positionX)  && areCloseEnough(pBuilding->getPosition().y, positionY)) 
 				{
 					break;
 				}
@@ -809,7 +809,7 @@ bool CGuardSpecificUnit::Read( FitIniFile* missionFile )
 		if (NO_ERR != result) { return false; }
 		result = sReadIdFloat(missionFile, "PositionY", positionY);
 		if (NO_ERR != result) { return false; }
-		MoverPtr pMover = 0;
+		MoverPtr pMover = nullptr;
 		if (ObjectManager) {
 			long numMovers = ObjectManager->getNumMovers();
 			long i;
@@ -1324,14 +1324,14 @@ int CMakeNewTechnologyAvailable::Execute()
 
 bool C_RemoveStructure::SetParams(float positionX, float positionY) {
 
-	BuildingPtr pBuilding = 0;
+	BuildingPtr pBuilding = nullptr;
 	if (ObjectManager) 
 	{
 		pBuilding = ObjectManager->getBuilding(0);
 		long i;
-		for (i = 0; (0 != pBuilding); i+= 1) {
+		for (i = 0; (nullptr != pBuilding); i+= 1) {
 			pBuilding = ObjectManager->getBuilding(i);
-			if ((0 != pBuilding) && (pBuilding->getPosition().x == positionX) && (pBuilding->getPosition().y == positionY)) {
+			if ((nullptr != pBuilding) && (pBuilding->getPosition().x == positionX) && (pBuilding->getPosition().y == positionY)) {
 				break;
 			}
 		}
@@ -1357,13 +1357,13 @@ bool C_RemoveStructure::Read( FitIniFile* missionFile )
 		if (NO_ERR != result) { return false; }
 		result = sReadIdFloat(missionFile, "PositionY", positionY);
 		if (NO_ERR != result) { return false; }
-		BuildingPtr pBuilding = 0;
+		BuildingPtr pBuilding = nullptr;
 		if (ObjectManager) {
 			pBuilding = ObjectManager->getBuilding(0);
 			long i;
-			for (i = 0; (0 != pBuilding); i+= 1) {
+			for (i = 0; (nullptr != pBuilding); i+= 1) {
 				pBuilding = ObjectManager->getBuilding(i);
-				if ((0 != pBuilding) && (pBuilding->getPosition().x == positionX) && (pBuilding->getPosition().y == positionY)) {
+				if ((nullptr != pBuilding) && (pBuilding->getPosition().x == positionX) && (pBuilding->getPosition().y == positionY)) {
 					break;
 				}
 			}
@@ -1388,7 +1388,7 @@ EString C_RemoveStructure::InstanceDescription() {
 }
 
 CObjectiveCondition *CObjective::new_CObjectiveCondition(condition_species_type conditionSpecies, int alignment) {
-	CObjectiveCondition *retval = 0;
+	CObjectiveCondition *retval = nullptr;
 	switch (conditionSpecies) {
 	case DESTROY_ALL_ENEMY_UNITS: retval = new CDestroyAllEnemyUnits(alignment); break;
 	case DESTROY_NUMBER_OF_ENEMY_UNITS: retval = new CDestroyNumberOfEnemyUnits(alignment); break;
@@ -1417,7 +1417,7 @@ CObjectiveCondition *CObjective::new_CObjectiveCondition(condition_species_type 
 		// no-op in RelWithDebInfo, so this silently returned null -> null-deref at
 		// the CastAndCopy consumers. Warn loudly; consumers now null-guard.
 		PAUSE(("CObjective: unimplemented condition species %d (skipping)", (int)conditionSpecies));
-		retval = 0;
+		retval = nullptr;
 		break;
 	}
 	return retval;
@@ -1426,7 +1426,7 @@ CObjectiveCondition *CObjective::new_CObjectiveCondition(condition_species_type 
 EString CObjective::DescriptionOfConditionSpecies(condition_species_type conditionSpecies) {
 	EString retval = "<unimplemented condition>" /* needs to be put somewhere localizable */;
 	CObjectiveCondition *tmpCondition = new_CObjectiveCondition(conditionSpecies, 0/*dummy alignment*/);
-	if (0 != tmpCondition) {
+	if (nullptr != tmpCondition) {
 		retval = tmpCondition->Description();
 	}
 	delete tmpCondition;
@@ -1434,7 +1434,7 @@ EString CObjective::DescriptionOfConditionSpecies(condition_species_type conditi
 }
 
 CObjectiveAction *CObjective::new_CObjectiveAction(action_species_type actionSpecies, int alignment) {
-	CObjectiveAction *retval = 0;
+	CObjectiveAction *retval = nullptr;
 	switch (actionSpecies) {
 	case PLAY_BIK: retval = new CPlayBIK(alignment); break;
 	case PLAY_WAV: retval = new CPlayWAV(alignment); break;
@@ -1447,7 +1447,7 @@ CObjectiveAction *CObjective::new_CObjectiveAction(action_species_type actionSpe
 	case _REMOVE_STRUCTURE: retval = new C_RemoveStructure(alignment); break;
 	default:
 		assert(false);
-		retval = 0;
+		retval = nullptr;
 		break;
 	}
 	return retval;
@@ -1456,7 +1456,7 @@ CObjectiveAction *CObjective::new_CObjectiveAction(action_species_type actionSpe
 EString CObjective::DescriptionOfActionSpecies(action_species_type actionSpecies) {
 	EString retval = "<unimplemented action>" /* needs to be put somewhere localizable */;
 	CObjectiveAction *tmpAction = new_CObjectiveAction(actionSpecies, 0/*dummy alignment*/);
-	if (0 != tmpAction) {
+	if (nullptr != tmpAction) {
 		retval = tmpAction->Description();
 	}
 	delete tmpAction;
@@ -2433,7 +2433,7 @@ bool CNumberOfUnitsObjectiveCondition::Save( FitIniFile* file )
 
 bool CSpecificUnitObjectiveCondition::Save( FitIniFile* file )
 {
-	if (ObjectManager->getByWatchID(m_pUnitWID) == NULL)
+	if (ObjectManager->getByWatchID(m_pUnitWID) == nullptr)
 		STOP(("Tried to save specific unit objective with NULL unit"));
 
 	file->writeIdLong( "MoverWID", m_pUnitWID );
@@ -2443,7 +2443,7 @@ bool CSpecificUnitObjectiveCondition::Save( FitIniFile* file )
 
 bool C_RemoveStructure::Save( FitIniFile* file )
 {
-	if (ObjectManager->getByWatchID(m_pBuildingWID) == NULL)
+	if (ObjectManager->getByWatchID(m_pBuildingWID) == nullptr)
 		STOP(("Tried to save specific Building objective with NULL Building"));
 
 	file->writeIdLong( "BuildingWID", m_pBuildingWID );
@@ -2453,7 +2453,7 @@ bool C_RemoveStructure::Save( FitIniFile* file )
 
 bool CSpecificStructureObjectiveCondition::Save( FitIniFile* file )
 {
-	if (ObjectManager->getByWatchID(m_pBuildingWID) == NULL)
+	if (ObjectManager->getByWatchID(m_pBuildingWID) == nullptr)
 		STOP(("Tried to save specific Bduiling objective with NULL Building"));
 
 	file->writeIdLong( "BuildingWID", m_pBuildingWID );

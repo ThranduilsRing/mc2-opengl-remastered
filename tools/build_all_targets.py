@@ -29,6 +29,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, ".."))
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
 import configure_ninja as cn  # noqa: E402
+import console_child  # noqa: E402
 from bootstrap_worktree_build import cache_args, find_cmake  # noqa: E402
 
 TREE = "build-alltargets"
@@ -66,12 +67,12 @@ def build_standalone(src: str, tree: str, target: str, jobs: str) -> int:
     cmake = find_cmake()
     src_abs, tree_abs = os.path.join(ROOT, src), os.path.join(ROOT, tree)
     print(f"[build_all_targets] standalone {src} -> {tree}", flush=True)
-    rc = subprocess.run([cmake, "-S", src_abs, "-B", tree_abs, "-G", "Visual Studio 17 2022", "-A", "x64"]).returncode
+    rc = subprocess.run([cmake, "-S", src_abs, "-B", tree_abs, "-G", "Visual Studio 17 2022", "-A", "x64"], **console_child.child_kwargs()).returncode
     if rc:
         print(f"[build_all_targets] FAIL: cmake generate of {src} (rc={rc})", file=sys.stderr)
         return rc
     rc = subprocess.run([cmake, "--build", tree_abs, "--config", "RelWithDebInfo", "--target", target,
-                         "--parallel", str(jobs).lstrip("j")]).returncode
+                         "--parallel", str(jobs).lstrip("j")], **console_child.child_kwargs()).returncode
     if rc:
         print(f"[build_all_targets] FAIL: build of {src} (rc={rc})", file=sys.stderr)
     return rc
@@ -94,7 +95,8 @@ def main(argv=None) -> int:
     for src, tree, target in STANDALONE:
         if build_standalone(src, tree, target, args.jobs):
             failed.append(src)
-    rc = subprocess.run([sys.executable, os.path.join(HERE, "build_contract_harnesses.py"), "--unit"]).returncode
+    rc = subprocess.run([sys.executable, os.path.join(HERE, "build_contract_harnesses.py"), "--unit"],
+                        **console_child.child_kwargs()).returncode
     if rc:
         failed.append("contract harnesses + unit tier")
     if failed:

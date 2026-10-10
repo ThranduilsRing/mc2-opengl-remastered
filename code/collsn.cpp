@@ -41,8 +41,8 @@ namespace mc2_collision_trace { Counters g_counters = {false,0,0,0,0,0,0}; }
 //------------------------------------------------------------------------------
 // Static globals
 //CollisionSystem *collisionSystem = NULL;
-GlobalCollisionAlert *globalCollisionAlert = NULL;
-UserHeapPtr CollisionSystem::collisionHeap = NULL;
+GlobalCollisionAlert *globalCollisionAlert = nullptr;
+UserHeapPtr CollisionSystem::collisionHeap = nullptr;
 unsigned long CollisionSystem::maxObjects = 0;
 unsigned long CollisionSystem::gridRadius = 0;
 unsigned long CollisionSystem::xGridSize = 0;
@@ -69,7 +69,7 @@ long GlobalCollisionAlert::init (unsigned long maxCollisionAlerts)
 void GlobalCollisionAlert::destroy (void)
 {
 	systemHeap->Free(collisionAlerts);
-	collisionAlerts = NULL;
+	collisionAlerts = nullptr;
 	maxAlerts = nextRecord = 0;
 }
 
@@ -121,7 +121,7 @@ CollisionAlertRecordPtr GlobalCollisionAlert::findAlert (GameObjectPtr object, C
 		}
 	}
 		
-	return(NULL);
+	return(nullptr);
 }
 
 //------------------------------------------------------------------------------
@@ -131,8 +131,8 @@ void GlobalCollisionAlert::purgeRecords (void)
 	
 	for (long i=0;i<(long)maxAlerts;i++)
 	{
-		collisionAlerts[i].object1 = NULL;
-		collisionAlerts[i].object2 = NULL;
+		collisionAlerts[i].object1 = nullptr;
+		collisionAlerts[i].object2 = nullptr;
 
 		collisionAlerts[i].currentDistance = 0.0;
 		collisionAlerts[i].timeToImpact = 0.0;
@@ -143,7 +143,7 @@ void GlobalCollisionAlert::purgeRecords (void)
 // class CollisionGrid 
 void * CollisionGrid::operator new (size_t mySize)
 {
-	void *result = NULL;
+	void *result = nullptr;
 	
 	if (CollisionSystem::collisionHeap && CollisionSystem::collisionHeap->heapReady())
 		result = CollisionSystem::collisionHeap->Malloc(mySize);
@@ -203,7 +203,7 @@ long CollisionGrid::init (Stuff::Vector3D &newOrigin)
 	nextAvailableNode = 0;
 	gridOrigin = newOrigin;
 	
-	giantObjects = NULL;
+	giantObjects = nullptr;
 
 	return(NO_ERR);
 }
@@ -216,10 +216,10 @@ void CollisionGrid::destroy (void)
 		if (CollisionSystem::collisionHeap && CollisionSystem::collisionHeap->heapReady())
 		{
 			CollisionSystem::collisionHeap->Free(nodes);
-			nodes = NULL;
+			nodes = nullptr;
 			
 			CollisionSystem::collisionHeap->Free(grid);
-			grid = NULL;			
+			grid = nullptr;			
 		}
 		
 		gridIsGo = FALSE;
@@ -413,7 +413,7 @@ void CollisionGrid::checkGrid (GameObjectPtr obj1, CollisionGridNodePtr area)
 // class CollisionSystem
 void * CollisionSystem::operator new (size_t mySize)
 {
-	void *result = NULL;
+	void *result = nullptr;
 	
 	result = systemHeap->Malloc(mySize);
 	
@@ -471,7 +471,7 @@ void CollisionSystem::checkObjects (void)
 	
 #if 1
 
-	GameObjectPtr* objList = NULL;
+	GameObjectPtr* objList = nullptr;
 	long numCollidables = ObjectManager->getCollidableList(objList);
 	for (long i = 0; i < numCollidables; i++) 
 	{
@@ -820,13 +820,13 @@ float CollisionSystem::timeToImpact (GameObjectPtr obj1, GameObjectPtr obj2)
 void CollisionSystem::destroy (void)
 {
 	delete collisionGrid;
-    collisionGrid = NULL;
+    collisionGrid = nullptr;
 
 	delete collisionHeap;
-    collisionHeap = NULL;
+    collisionHeap = nullptr;
 	
 	delete globalCollisionAlert;
-	globalCollisionAlert = NULL;
+	globalCollisionAlert = nullptr;
 }
 
 //------------------------------------------------------------------------------

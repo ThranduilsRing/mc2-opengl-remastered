@@ -9,7 +9,7 @@
 #endif
 
 MLRSorter::ClassData*
-	MLRSorter::DefaultData = NULL;
+	MLRSorter::DefaultData = nullptr;
 
 bool dontSeeMe = true;
 
@@ -317,14 +317,14 @@ int
 //
 ToBeDrawnPrimitive::ToBeDrawnPrimitive()
 {
-	primitive = NULL;
+	primitive = nullptr;
 
 	cameraPosition = Stuff::LinearMatrix4D::Identity;
 	shapeToClipMatrix = Stuff::LinearMatrix4D::Identity;
 
 	for(int i=0;i<Limits::Max_Number_Of_Lights_Per_Primitive;i++)
 	{
-		activeLights[i] = NULL;
+		activeLights[i] = nullptr;
 	}
 	nrOfActiveLights = 0;
 }
@@ -357,7 +357,7 @@ void
 {
 	Unregister_Object(DefaultData);
 	delete DefaultData;
-	DefaultData = NULL;
+	DefaultData = nullptr;
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -423,7 +423,7 @@ void
 	Check_Object(this); 
 	Check_Object(pt);
 
-	SortData *sd = NULL;
+	SortData *sd = nullptr;
 
 	switch(pt->GetSortDataMode())
 	{
@@ -442,7 +442,7 @@ void
 			{
 				gos_SetRenderState( 
 					gos_State_Texture2, 
-					(*texturePool)[sd->texture2]->GetImage(NULL)->GetHandle());
+					(*texturePool)[sd->texture2]->GetImage(nullptr)->GetHandle());
 
 				switch(sd->state.GetMultiTextureMode())
 				{
@@ -496,7 +496,7 @@ SortData *
 	Verify (numVertices > 0);
 
 	(sd + lastUsedRaw)->vertices = vertices;
-	(sd + lastUsedRaw)->indices = 0;
+	(sd + lastUsedRaw)->indices = nullptr;
 
 	(sd + lastUsedRaw)->state = state;
 
@@ -595,7 +595,7 @@ SortData *
 			);
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 #ifdef CalDraw
@@ -631,7 +631,7 @@ bool
 				Verify((*texturePool)[newer.renderState & MLRState::TextureMask]);
 				gos_SetRenderState( 
 					gos_State_Texture, 
-					(*texturePool)[newer.renderState & MLRState::TextureMask]->GetImage(NULL)->GetHandle()
+					(*texturePool)[newer.renderState & MLRState::TextureMask]->GetImage(nullptr)->GetHandle()
 				);
 			}
 			else

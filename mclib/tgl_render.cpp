@@ -5,7 +5,7 @@
 
 
 struct TG_RenderShapePbrOverrideState {
-	HGOSRENDERMATERIAL program = NULL;
+	HGOSRENDERMATERIAL program = nullptr;
 	DWORD normalTexture = 0;
 	DWORD ormTexture = 0;
 	DWORD materialSsbo = 0;
@@ -231,7 +231,7 @@ void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool is
 						s_seenNodes[s_seenCount++] = nodeIdx;
 						if ( FILE* f = fopen("preview_debug.log","a") )
 						{
-							const char* nm = mcTextureManager ? mcTextureManager->getTextureName(nodeIdx) : NULL;
+							const char* nm = mcTextureManager ? mcTextureManager->getTextureName(nodeIdx) : nullptr;
 							fprintf(f,"[PREVIEW-TEX] local=%ld node=%lu gosHandle=%lu alpha=%d name=%s\n",
 								(long)triType.localTextureHandle,
 								(unsigned long)nodeIdx,
@@ -355,7 +355,7 @@ void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool is
 	// FIXME: this (listOfTypeTriangles[0]) is not correct if model has more than 1 texture!
 	const TG_TypeTriangle firstTriType = theShape->listOfTypeTriangles[0];
 	const bool firstTextureAlpha = theShape->listOfTextures[firstTriType.localTextureHandle].textureAlpha;
-	const bool pbrOverrideActive = s_activeRenderShapePbrOverride.program != 0;
+	const bool pbrOverrideActive = s_activeRenderShapePbrOverride.program != nullptr;
 	if (!isSpotlight && !isWindow && (!firstTextureAlpha || pbrOverrideActive) && (alphaValue == 0xff))
 	{
 		DWORD addFlags = 0;

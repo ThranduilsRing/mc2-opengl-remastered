@@ -32,7 +32,7 @@ GameObjectPtr LightType::createInstance (void) {
 
 	LightPtr newLight = new Light;
 	if (!newLight)
-		return(NULL);
+		return(nullptr);
 
 	newLight->init(true, this);
 

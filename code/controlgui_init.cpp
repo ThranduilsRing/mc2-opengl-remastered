@@ -173,31 +173,31 @@ void ControlGui::initStatics( FitIniFile& file )
 	ZoneScopedN("ControlGui::initStatics");
 
 	if ( infoWnd )
-		infoWnd->setUnit( 0 );
+		infoWnd->setUnit( nullptr );
 
 	if ( staticInfos )
 		delete [] staticInfos;
-	staticInfos = NULL;
+	staticInfos = nullptr;
 
 	if ( objectiveInfos )
 		delete [] objectiveInfos;
 
-	objectiveInfos = 0;
+	objectiveInfos = nullptr;
 
 	if ( videoInfos )
 		delete [] videoInfos;
 
-	videoInfos = 0;
+	videoInfos = nullptr;
 
 	if ( timerInfos )
 		delete [] timerInfos;
 
-	timerInfos = 0;
+	timerInfos = nullptr;
 
 	if ( missionStatusInfos )
 		delete [] missionStatusInfos;
 
-	missionStatusInfos = 0;
+	missionStatusInfos = nullptr;
 
 	staticCount = 0;
 
@@ -420,7 +420,7 @@ void ControlGui::initRects( FitIniFile& file )
 	if ( rectInfos )
 		delete[] rectInfos;
 
-	rectInfos = 0;
+	rectInfos = nullptr;
 	rectCount = 0;
 	
 	if ( NO_ERR != file.seekBlock( "Rects" ) )

@@ -53,7 +53,7 @@ void MechWarrior::clearCurTacOrder (bool updateTacOrder) {
 
 		}
 		if (newTacOrder.code != TACTICAL_ORDER_NONE) {
-			Assert((moveOrders.path[0] != NULL) && (moveOrders.path[1] != NULL), 0, " bad warrior path ");
+			Assert((moveOrders.path[0] != nullptr) && (moveOrders.path[1] != nullptr), 0, " bad warrior path ");
 			MovePathPtr tempPath[2];
 			for (long i = 0; i < 2; i++) {
 				tempPath[i] = moveOrders.path[i];
@@ -78,16 +78,16 @@ void MechWarrior::clearCurTacOrder (bool updateTacOrder) {
 				if (!newTacOrder.subOrder)
 					switch (newTacOrder.code) {
 						case TACTICAL_ORDER_MOVETO_POINT:
-							setMainGoal(GOAL_ACTION_MOVE, NULL, &movePoint, -1.0);
+							setMainGoal(GOAL_ACTION_MOVE, nullptr, &movePoint, -1.0);
 							break;
 						case TACTICAL_ORDER_ATTACK_OBJECT:
-							setMainGoal(GOAL_ACTION_ATTACK, newTacOrder.getTarget(), NULL, -1.0);
+							setMainGoal(GOAL_ACTION_ATTACK, newTacOrder.getTarget(), nullptr, -1.0);
 							break;
 						case TACTICAL_ORDER_CAPTURE:
-							setMainGoal(GOAL_ACTION_CAPTURE, newTacOrder.getTarget(), NULL, 400.0);
+							setMainGoal(GOAL_ACTION_CAPTURE, newTacOrder.getTarget(), nullptr, 400.0);
 							break;
 						default:
-							setMainGoal(GOAL_ACTION_NONE, NULL, NULL, -1.0);
+							setMainGoal(GOAL_ACTION_NONE, nullptr, nullptr, -1.0);
 					}
 			}
 			timeOfLastOrders = -1.0;
@@ -220,7 +220,7 @@ long MechWarrior::getNextEventHistory (int* paramList) {
 long MechWarrior::handleAlarm (long alarmCode, unsigned long triggerId) {
 
 	MoverPtr myVehicle = getVehicle();
-	Assert(myVehicle != NULL, 0, " bad vehicle for pilot ");
+	Assert(myVehicle != nullptr, 0, " bad vehicle for pilot ");
 
 	if (!myVehicle->getAwake())
 		return(NO_ERR);
@@ -258,16 +258,16 @@ long MechWarrior::handleAlarm (long alarmCode, unsigned long triggerId) {
 		CurObject = (GameObjectPtr)getVehicle();
 		CurObjectClass = getVehicle()->getObjectClass();
 		CurWarrior = this;
-		CurContact = NULL;
+		CurContact = nullptr;
 		CurAlarm = alarmCode;
 
-		brain->execute(NULL, brainAlarmCallback[alarmCode]);
+		brain->execute(nullptr, brainAlarmCallback[alarmCode]);
 		
-		CurGroup = NULL;
-		CurObject = NULL;
+		CurGroup = nullptr;
+		CurObject = nullptr;
 		CurObjectClass = 0;
-		CurWarrior = NULL;
-		CurContact = NULL;
+		CurWarrior = nullptr;
+		CurContact = nullptr;
 	}
 
 	return(NO_ERR);
@@ -314,7 +314,7 @@ long MechWarrior::checkAlarms (void) {
 		CurObject = (GameObjectPtr)getVehicle();
 		CurObjectClass = getVehicle()->getObjectClass();
 		CurWarrior = this;
-		CurContact = NULL;
+		CurContact = nullptr;
 	}
 
 	for (long code = 0; code < NUM_PILOT_ALARMS; code++)
@@ -394,13 +394,13 @@ long MechWarrior::checkAlarms (void) {
 				if (MPlayer->isServer())
 					if (brain && brainAlarmCallback[code]) {
 						CurAlarm = code;
-						brain->execute(NULL, brainAlarmCallback[code]);
+						brain->execute(nullptr, brainAlarmCallback[code]);
 					}
 				}
 			else {
 				if (brain && brainAlarmCallback[code]) {
 					CurAlarm = code;
-					brain->execute(NULL, brainAlarmCallback[code]);
+					brain->execute(nullptr, brainAlarmCallback[code]);
 				}
 			}
 			// Clear these alarms every frame...
@@ -408,11 +408,11 @@ long MechWarrior::checkAlarms (void) {
 		}
 
 	if (brain) {
-		CurGroup = NULL;
-		CurObject = NULL;
+		CurGroup = nullptr;
+		CurObject = nullptr;
 		CurObjectClass = 0;
-		CurWarrior = NULL;
-		CurContact = NULL;
+		CurWarrior = nullptr;
+		CurContact = nullptr;
 	}
 
 	return(NO_ERR);

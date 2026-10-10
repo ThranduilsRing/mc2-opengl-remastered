@@ -193,7 +193,7 @@ long MechWarrior::coreMoveTo (Stuff::Vector3D location, unsigned long params) {
 	if (setOrder)
 		clearCurTacOrder();
 
-	setMoveWayPath(NULL, 0);
+	setMoveWayPath(nullptr, 0);
 	setMoveGoal(MOVEGOAL_LOCATION, &location);
 	moveOrders.timeOfLastStep = scenarioTime;
 	setMoveRun(run);
@@ -207,9 +207,9 @@ long MechWarrior::coreMoveTo (Stuff::Vector3D location, unsigned long params) {
 	if (setOrder) {
 		setGeneralTacOrder(tacOrder);
 		if (useGoalPlan)
-			setMainGoal(GOAL_ACTION_MOVE, NULL, &location, -1.0);
+			setMainGoal(GOAL_ACTION_MOVE, nullptr, &location, -1.0);
 		else
-			setMainGoal(GOAL_ACTION_NONE, NULL, NULL, -1.0);
+			setMainGoal(GOAL_ACTION_NONE, nullptr, nullptr, -1.0);
 	}
 
 	return(0);
@@ -226,7 +226,7 @@ long MechWarrior::coreMoveToObject (GameObjectPtr object, unsigned long params) 
 
 	if (!object) {
 		if (!coreScanTargetWID)
-			coreScan(NULL, params);
+			coreScan(nullptr, params);
 		object = ObjectManager->getByWatchID(coreScanTargetWID);
 	}
 	if (!object)
@@ -288,9 +288,9 @@ long MechWarrior::coreMoveToObject (GameObjectPtr object, unsigned long params) 
 	if (setOrder) {
 		setGeneralTacOrder(tacOrder);
 		if (useGoalPlan)
-			setMainGoal(GOAL_ACTION_MOVE, object, NULL, -1.0);
+			setMainGoal(GOAL_ACTION_MOVE, object, nullptr, -1.0);
 		else
-			setMainGoal(GOAL_ACTION_NONE, NULL, NULL, -1.0);
+			setMainGoal(GOAL_ACTION_NONE, nullptr, nullptr, -1.0);
 	}
 
 	return(0);
@@ -449,7 +449,7 @@ long MechWarrior::coreAttack (GameObjectPtr target, unsigned long params) {
 
 	if (!target) {
 		if (!coreScanTargetWID)
-			coreScan(NULL, params);
+			coreScan(nullptr, params);
 		target = ObjectManager->getByWatchID(coreScanTargetWID);
 	}
 	LastCoreAttackTarget = target;
@@ -498,9 +498,9 @@ long MechWarrior::coreAttack (GameObjectPtr target, unsigned long params) {
 	setGeneralTacOrder(tacOrder);
 
 	if (useGoalPlan)
-		setMainGoal(GOAL_ACTION_ATTACK, target, NULL, -1.0);
+		setMainGoal(GOAL_ACTION_ATTACK, target, nullptr, -1.0);
 	else
-		setMainGoal(GOAL_ACTION_NONE, NULL, NULL, -1.0);
+		setMainGoal(GOAL_ACTION_NONE, nullptr, nullptr, -1.0);
 
 	return(0);
 }
@@ -509,7 +509,7 @@ long MechWarrior::coreCapture (GameObjectPtr object, unsigned long params) {
 
 	if (!object) {
 		if (!coreScanTargetWID)
-			coreScan(NULL, params);
+			coreScan(nullptr, params);
 		object = ObjectManager->getByWatchID(coreScanTargetWID);
 	}
 
@@ -551,9 +551,9 @@ long MechWarrior::coreCapture (GameObjectPtr object, unsigned long params) {
 	setGeneralTacOrder(tacOrder);
 
 	if (useGoalPlan)
-		setMainGoal(GOAL_ACTION_CAPTURE, object, NULL, 250.0);
+		setMainGoal(GOAL_ACTION_CAPTURE, object, nullptr, 250.0);
 	else
-		setMainGoal(GOAL_ACTION_NONE, NULL, NULL, -1.0);
+		setMainGoal(GOAL_ACTION_NONE, nullptr, nullptr, -1.0);
 
 	return(0);
 }
@@ -587,7 +587,7 @@ long MechWarrior::coreControl (GameObjectPtr object, unsigned long params) {
 
 	if (!object) {
 		if (!coreScanTargetWID)
-			coreScan(NULL, params);
+			coreScan(nullptr, params);
 		object = ObjectManager->getByWatchID(coreScanTargetWID);
 	}
 	if (!object)

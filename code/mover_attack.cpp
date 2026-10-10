@@ -17,8 +17,8 @@ float Mover::calcAttackChance (GameObjectPtr target, long aimLocation, float tar
 		return(-9999.0);
 
 	Stuff::Vector3D targetPosition;
-	BattleMechPtr mech = NULL;
-	GroundVehiclePtr vehicle = NULL;
+	BattleMechPtr mech = nullptr;
+	GroundVehiclePtr vehicle = nullptr;
 	
 	if (target) 
 	{
@@ -315,19 +315,19 @@ void Mover::disable (unsigned long cause)
 		{
 			Stuff::Vector3D explosionLoc;
 			explosionLoc = appearance->getNodeNamePosition("cockpit");
-			ObjectManager->createExplosion(MECH_CRITICAL_HIT_ID,NULL,explosionLoc,0.0f,0.0f);
+			ObjectManager->createExplosion(MECH_CRITICAL_HIT_ID,nullptr,explosionLoc,0.0f,0.0f);
 
 			explosionLoc = appearance->getNodeNamePosition("hit_left");
-			ObjectManager->createExplosion(MECH_CRITICAL_HIT_ID,NULL,explosionLoc,0.0f,0.0f);
+			ObjectManager->createExplosion(MECH_CRITICAL_HIT_ID,nullptr,explosionLoc,0.0f,0.0f);
 			
 			explosionLoc = appearance->getNodeNamePosition("hit_right");
-			ObjectManager->createExplosion(MECH_CRITICAL_HIT_ID,NULL,explosionLoc,0.0f,0.0f);
+			ObjectManager->createExplosion(MECH_CRITICAL_HIT_ID,nullptr,explosionLoc,0.0f,0.0f);
 
 			explosionLoc = appearance->getNodeNamePosition("weapon_righttorso");
-			ObjectManager->createExplosion(MECH_CRITICAL_HIT_ID,NULL,explosionLoc,0.0f,0.0f);
+			ObjectManager->createExplosion(MECH_CRITICAL_HIT_ID,nullptr,explosionLoc,0.0f,0.0f);
 
  			explosionLoc = appearance->getNodeNamePosition("weapon_lefttorso");
-			ObjectManager->createExplosion(MECH_CRITICAL_HIT_ID,NULL,explosionLoc,0.0f,0.0f);
+			ObjectManager->createExplosion(MECH_CRITICAL_HIT_ID,nullptr,explosionLoc,0.0f,0.0f);
 		}
 	}
 }

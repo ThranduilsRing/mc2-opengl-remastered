@@ -5,20 +5,20 @@
 #include "ablmc2_internal.h"
 
 
-MoverGroupPtr			CurGroup = NULL;
-GameObjectPtr			CurObject = NULL;
+MoverGroupPtr			CurGroup = nullptr;
+GameObjectPtr			CurObject = nullptr;
 long					CurObjectClass = 0;
-MechWarriorPtr			CurWarrior = NULL;
-GameObjectPtr			CurContact = NULL;
+MechWarriorPtr			CurWarrior = nullptr;
+GameObjectPtr			CurContact = nullptr;
 long					CurAlarm;
 MoverPtr				moverList[256];
 bool					TacOrderOrigin = ORDER_ORIGIN_COMMANDER;
 long					CurMultiplayCode = 0;
 long					CurMultiplayParam = 0;
 
-UserHeapPtr				AblStackHeap = NULL;
-UserHeapPtr				AblCodeHeap = NULL;
-UserHeapPtr				AblSymbolHeap = NULL;
+UserHeapPtr				AblStackHeap = nullptr;
+UserHeapPtr				AblCodeHeap = nullptr;
+UserHeapPtr				AblSymbolHeap = nullptr;
 
 void* ablSystemMallocCallback (unsigned long memSize) {
 
@@ -75,7 +75,7 @@ void ablSymbolFreeCallback (void* memBlock) {
 long ablFileCreateCB (void** file, const char* fName) {
 
 	*file = new File;
-	if (*file == NULL)
+	if (*file == nullptr)
 		Fatal(0, " unable to create ABL file");
 	if (((FilePtr)*file)->create(fName) != NO_ERR) {
 		char s[256];
@@ -88,7 +88,7 @@ long ablFileCreateCB (void** file, const char* fName) {
 long ablFileOpenCB (void** file, const char* fName) {
 
 	*file = new File;
-	if (*file == NULL)
+	if (*file == nullptr)
 		Fatal(0, " unable to create ABL file");
 
 	//Filenames MUST be all lowercase or Hash won't find 'em!
@@ -105,7 +105,7 @@ long ablFileCloseCB (void** file) {
 	((FilePtr)*file)->close();
 
 	delete (FilePtr)*file;
-	*file = NULL;
+	*file = nullptr;
 
 	return(0);
 }
@@ -335,9 +335,9 @@ void initABL (void) {
 	// ABL-BAD-NATIVE-ARG-REPRO-1: run guard repro before any scripts load.
 	runAblArgGuardRepro();
 
-	ABLi_addFunction("getid", false, NULL, "i", execGetId);
-	ABLi_addFunction("gettime", false, NULL, "r", execGetTime);
-	ABLi_addFunction("gettimeleft", false, NULL, "r", execGetTimeLeft);
+	ABLi_addFunction("getid", false, nullptr, "i", execGetId);
+	ABLi_addFunction("gettime", false, nullptr, "r", execGetTime);
+	ABLi_addFunction("gettimeleft", false, nullptr, "r", execGetTimeLeft);
 	ABLi_addFunction("selectobject", false, "i", "i", execSelectObject);
 	//ABLi_addFunction("selectunit", false, "i", "i", execSelectUnit);
 	ABLi_addFunction("selectwarrior", false, "i", "i", execSelectWarrior);
@@ -345,31 +345,31 @@ void initABL (void) {
 	ABLi_addFunction("getcontacts", false, "Iii", "i", execGetContacts);
 	ABLi_addFunction("getenemycount", false, "i", "i", execGetEnemyCount);
 	ABLi_addFunction("selectcontact", false, "ii", "i", execSelectContact);
-	ABLi_addFunction("getcontactid", false, NULL, "i", execGetContactId);
+	ABLi_addFunction("getcontactid", false, nullptr, "i", execGetContactId);
 	ABLi_addFunction("iscontact", false, "iii", "i", execIsContact);
 	ABLi_addFunction("getcontactstatus", false, "I", "i", execGetContactStatus);
 	ABLi_addFunction("getcontactrelativeposition", false, "rr", "i", execGetContactRelativePosition);
-	ABLi_addFunction("settarget", false, "ii", NULL, execSetTarget);
+	ABLi_addFunction("settarget", false, "ii", nullptr, execSetTarget);
 	ABLi_addFunction("gettarget", false, "i", "i", execGetTarget);
 	ABLi_addFunction("getweaponsready", false, "Ii", "i", execGetWeaponsReady);
 	ABLi_addFunction("getweaponslocked", false, "Ii", "i", execGetWeaponsLocked);
 	ABLi_addFunction("getweaponsinrange", false, "Ii", "i", execGetWeaponsInRange);
 	ABLi_addFunction("getweaponshots", false, "i", "i", execGetWeaponShots);
-	ABLi_addFunction("getweaponranges", false, "iR", NULL, execGetWeaponRanges);
-	ABLi_addFunction("getobjectposition", false, "iR", NULL, execGetObjectPosition);
+	ABLi_addFunction("getweaponranges", false, "iR", nullptr, execGetWeaponRanges);
+	ABLi_addFunction("getobjectposition", false, "iR", nullptr, execGetObjectPosition);
 	ABLi_addFunction("getintegermemory", false, "i", "i", execGetIntegerMemory);
 	ABLi_addFunction("getrealmemory", false, "i", "r", execGetRealMemory);
 	ABLi_addFunction("getalarmtriggers", false, "I", "i", execGetAlarmTriggers);
 	ABLi_addFunction("getchallenger", false, "i", "i", execGetChallenger);
-	ABLi_addFunction("gettimewithoutorders", false, NULL, "r", execGetTimeWithoutOrders);
-	ABLi_addFunction("getfireranges", false, "R", NULL, execGetFireRanges);
+	ABLi_addFunction("gettimewithoutorders", false, nullptr, "r", execGetTimeWithoutOrders);
+	ABLi_addFunction("getfireranges", false, "R", nullptr, execGetFireRanges);
 	ABLi_addFunction("getattackers", false, "Ir", "i", execGetAttackers);
 	ABLi_addFunction("getattackerinfo", false, "i", "r", execGetAttackerInfo);
 	ABLi_addFunction("setchallenger", false, "ii", "i", execSetChallenger);
-	ABLi_addFunction("setintegermemory", false, "ii", NULL, execSetIntegerMemory);
-	ABLi_addFunction("setrealmemory", false, "ir", NULL, execSetRealMemory);
-	ABLi_addFunction("hasmovegoal", false, NULL, "b", execHasMoveGoal);
-	ABLi_addFunction("hasmovepath", false, NULL, "b", execHasMovePath);
+	ABLi_addFunction("setintegermemory", false, "ii", nullptr, execSetIntegerMemory);
+	ABLi_addFunction("setrealmemory", false, "ir", nullptr, execSetRealMemory);
+	ABLi_addFunction("hasmovegoal", false, nullptr, "b", execHasMoveGoal);
+	ABLi_addFunction("hasmovepath", false, nullptr, "b", execHasMovePath);
 	ABLi_addFunction("sortweapons", false, "Ii", "i", execSortWeapons);
 	ABLi_addFunction("getvisualrange", false, "i", "r", execGetVisualRange);
 	ABLi_addFunction("getunitmates", false, "iI", "i", execGetUnitMates);
@@ -380,29 +380,29 @@ void initABL (void) {
 	ABLi_addFunction("ordermoveto", false, "Rb", "i", execOrderMoveTo);
 	ABLi_addFunction("ordermovetoobject", false, "ib", "i", execOrderMoveToObject);
 	ABLi_addFunction("ordermovetocontact", false, "b", "i", execOrderMoveToContact);
-	ABLi_addFunction("orderpowerdown", false, NULL, "i", execOrderPowerDown);
-	ABLi_addFunction("orderpowerup", false, NULL, "i", execOrderPowerUp);
+	ABLi_addFunction("orderpowerdown", false, nullptr, "i", execOrderPowerDown);
+	ABLi_addFunction("orderpowerup", false, nullptr, "i", execOrderPowerUp);
 	ABLi_addFunction("orderattackobject", false, "iiiib", "i", execOrderAttackObject);
 	ABLi_addFunction("orderattackcontact", false, "iiib", "i", execOrderAttackContact);
-	ABLi_addFunction("orderwithdraw", false, NULL, "i", execOrderWithdraw);
+	ABLi_addFunction("orderwithdraw", false, nullptr, "i", execOrderWithdraw);
 	ABLi_addFunction("objectinwithdrawal", false, "i", "i", execObjectInWithdrawal);
 	ABLi_addFunction("damageobject", false, "iiirirr", "i", execDamageObject);
 	ABLi_addFunction("setattackradius", false, "r", "r", execSetAttackRadius);
-	ABLi_addFunction("objectchangesides", false, "ii", NULL, execObjectChangeSides);
+	ABLi_addFunction("objectchangesides", false, "ii", nullptr, execObjectChangeSides);
 	ABLi_addFunction("distancetoobject", false, "ii", "r", execDistanceToObject);
 	ABLi_addFunction("distancetoposition", false, "iR", "r", execDistanceToPosition);
-	ABLi_addFunction("objectsuicide", false, "i", NULL, execObjectSuicide);
+	ABLi_addFunction("objectsuicide", false, "i", nullptr, execObjectSuicide);
 	ABLi_addFunction("objectcreate", false, "i", "i", execObjectCreate);
 	ABLi_addFunction("objectexists", false, "i", "i", execObjectExists);
 	ABLi_addFunction("objectstatus", false, "i", "i", execObjectStatus);
-	ABLi_addFunction("objectstatuscount", false, "iI", NULL, execObjectStatusCount);
+	ABLi_addFunction("objectstatuscount", false, "iI", nullptr, execObjectStatusCount);
 	ABLi_addFunction("objectvisible", false, "ii", "i", execObjectVisible);
 	ABLi_addFunction("objectside", false, "i", "i", execObjectTeam);
 	ABLi_addFunction("objectcommander", false, "i", "i", execObjectCommander);
 	ABLi_addFunction("objectclass", false, "i", "i", execObjectClass);
 	ABLi_addFunction("settimer", false, "i*", "i", execSetTimer);
 	ABLi_addFunction("checktimer", false, "i", "r", execCheckTimer);
-	ABLi_addFunction("endtimer", false, "i", NULL, execEndTimer);
+	ABLi_addFunction("endtimer", false, "i", nullptr, execEndTimer);
 //	ABLi_addFunction("setobjectivetimer", false, "i*", "i", execSetObjectiveTimer);
 //	ABLi_addFunction("checkobjectivetimer", false, "i", "r", execCheckObjectiveTimer);
 	ABLi_addFunction("setobjectivestatus", false, "ii", "i", execSetObjectiveStatus);
@@ -410,7 +410,7 @@ void initABL (void) {
 	ABLi_addFunction("setobjectivetype", false, "ii", "i", execSetObjectiveType);
 	ABLi_addFunction("checkobjectivetype", false, "i", "i", execCheckObjectiveType);
 	ABLi_addFunction("playdigitalmusic", false, "i", "i", execPlayDigitalMusic);
-	ABLi_addFunction("stopmusic", false, NULL, "i", execStopMusic);
+	ABLi_addFunction("stopmusic", false, nullptr, "i", execStopMusic);
 	ABLi_addFunction("playsoundeffect", false, "i", "i", execPlaySoundEffect);
 	ABLi_addFunction("playvideo", false, "C", "i", execPlayVideo);
 	ABLi_addFunction("setradio", false, "ib", "i", execSetRadio);
@@ -424,64 +424,64 @@ void initABL (void) {
 	ABLi_addFunction("createinfantry", false, "Ri", "i", execCreateInfantry);
 	ABLi_addFunction("getsensorsworking", false, "i", "i", execGetSensorsWorking);
 	ABLi_addFunction("getcurrentbrvalue", false, "i", "i", execGetCurrentBRValue);
-	ABLi_addFunction("setcurrentbrvalue", false, "ii", NULL, execSetCurrentBRValue);
+	ABLi_addFunction("setcurrentbrvalue", false, "ii", nullptr, execSetCurrentBRValue);
 	ABLi_addFunction("getarmorpts", false, "i", "i", execGetArmorPts);
 	ABLi_addFunction("getmaxarmor", false, "i", "i", execGetMaxArmor);
 	ABLi_addFunction("getpilotid", false, "i", "i", execGetPilotID);
 	ABLi_addFunction("getpilotwounds", false, "i", "r", execGetPilotWounds);
-	ABLi_addFunction("setpilotwounds", false, "ii", NULL, execSetPilotWounds);
+	ABLi_addFunction("setpilotwounds", false, "ii", nullptr, execSetPilotWounds);
 	ABLi_addFunction("getobjectactive", false, "i", "i", execGetObjectActive);
 	ABLi_addFunction("getobjectdamage", false, "i", "i", execGetObjectDamage);
 	ABLi_addFunction("getobjectdmgpts", false, "i", "i", execGetObjectDmgPts);
 	ABLi_addFunction("getobjectmaxdmg", false, "i", "i", execGetObjectMaxDmg);
 	ABLi_addFunction("setobjectdamage", false, "ii", "i", execSetObjectDamage);
 	ABLi_addFunction("getglobalvalue", false, "i", "r", execGetGlobalValue);
-	ABLi_addFunction("setglobalvalue", false, "i*", NULL, execSetGlobalValue);
-	ABLi_addFunction("setobjectivepos", false, "i***", NULL, execSetObjectivePos);
-	ABLi_addFunction("setsensorrange", false, "ir", NULL, execSetSensorRange);
-	ABLi_addFunction("settonnage", false, "ir", NULL, execSetTonnage);
-	ABLi_addFunction("setexplosiondamage", false, "ir", NULL, execSetExplosionDamage);
-	ABLi_addFunction("setexplosionradius", false, "ir", NULL, execSetExplosionRadius);
+	ABLi_addFunction("setglobalvalue", false, "i*", nullptr, execSetGlobalValue);
+	ABLi_addFunction("setobjectivepos", false, "i***", nullptr, execSetObjectivePos);
+	ABLi_addFunction("setsensorrange", false, "ir", nullptr, execSetSensorRange);
+	ABLi_addFunction("settonnage", false, "ir", nullptr, execSetTonnage);
+	ABLi_addFunction("setexplosiondamage", false, "ir", nullptr, execSetExplosionDamage);
+	ABLi_addFunction("setexplosionradius", false, "ir", nullptr, execSetExplosionRadius);
 	ABLi_addFunction("setsalvage", false, "iii", "b", execSetSalvage);
 	ABLi_addFunction("setsalvagestatus", false, "ib", "b", execSetSalvageStatus);
-	ABLi_addFunction("setanimation", false, "iii", NULL, execSetAnimation);
-	ABLi_addFunction("setrevealed", false, "i*R", NULL, execSetRevealed);
-	ABLi_addFunction("getsalvage", false, "iiII", NULL, execGetSalvage);
-	ABLi_addFunction("orderrefit", false, "ii", NULL, execOrderRefit);
-	ABLi_addFunction("setcaptured", false, "i", NULL, execSetCaptured);
-	ABLi_addFunction("ordercapture", false, "ii", NULL, execOrderCapture);
-	ABLi_addFunction("setcapturable", false, "ib", NULL, execSetCapturable);
+	ABLi_addFunction("setanimation", false, "iii", nullptr, execSetAnimation);
+	ABLi_addFunction("setrevealed", false, "i*R", nullptr, execSetRevealed);
+	ABLi_addFunction("getsalvage", false, "iiII", nullptr, execGetSalvage);
+	ABLi_addFunction("orderrefit", false, "ii", nullptr, execOrderRefit);
+	ABLi_addFunction("setcaptured", false, "i", nullptr, execSetCaptured);
+	ABLi_addFunction("ordercapture", false, "ii", nullptr, execOrderCapture);
+	ABLi_addFunction("setcapturable", false, "ib", nullptr, execSetCapturable);
 	ABLi_addFunction("iscaptured", false, "i", "i", execIsCaptured);
 	ABLi_addFunction("iscapturable", false, "ii", "b", execIsCapturable);
 	ABLi_addFunction("wasevercapturable", false, "i", "b", execWasEverCapturable);
-	ABLi_addFunction("setbuildingname", false, "ii", NULL, execSetBuildingName);
-	ABLi_addFunction("callstrike", false, "iirrrb", NULL, execCallStrike);
-	ABLi_addFunction("callstrikeex", false, "iirrrbr", NULL, execCallStrikeEx);
-	ABLi_addFunction("orderloadelementals", false, "i", NULL, execOrderLoadElementals);
-	ABLi_addFunction("orderdeployelementals", false, "i", NULL, execOrderDeployElementals);
+	ABLi_addFunction("setbuildingname", false, "ii", nullptr, execSetBuildingName);
+	ABLi_addFunction("callstrike", false, "iirrrb", nullptr, execCallStrike);
+	ABLi_addFunction("callstrikeex", false, "iirrrbr", nullptr, execCallStrikeEx);
+	ABLi_addFunction("orderloadelementals", false, "i", nullptr, execOrderLoadElementals);
+	ABLi_addFunction("orderdeployelementals", false, "i", nullptr, execOrderDeployElementals);
 	ABLi_addFunction("addprisoner", false, "ii", "i", execAddPrisoner);
-	ABLi_addFunction("lockgateopen", false, "i", NULL, execLockGateOpen);
-	ABLi_addFunction("lockgateclosed", false, "i", NULL, execLockGateClosed);
-	ABLi_addFunction("releasegatelock", false, "i", NULL, execReleaseGateLock);
+	ABLi_addFunction("lockgateopen", false, "i", nullptr, execLockGateOpen);
+	ABLi_addFunction("lockgateclosed", false, "i", nullptr, execLockGateClosed);
+	ABLi_addFunction("releasegatelock", false, "i", nullptr, execReleaseGateLock);
 	ABLi_addFunction("isgateopen", false, "i", "b", execIsGateOpen);
-	ABLi_addFunction("getrelativepositiontopoint", false, "RrriR", NULL, execGetRelativePositionToPoint);
-	ABLi_addFunction("getrelativepositiontoobject", false, "irriR", NULL, execGetRelativePositionToObject);
+	ABLi_addFunction("getrelativepositiontopoint", false, "RrriR", nullptr, execGetRelativePositionToPoint);
+	ABLi_addFunction("getrelativepositiontoobject", false, "irriR", nullptr, execGetRelativePositionToObject);
 	ABLi_addFunction("getunitstatus", false, "i", "r", execGetUnitStatus);
-	ABLi_addFunction("repair", false, "ir", NULL, execRepair);
+	ABLi_addFunction("repair", false, "ir", nullptr, execRepair);
 	ABLi_addFunction("getfixed", false, "iii", "i", execGetFixed);
 	ABLi_addFunction("getrepairstate", false, "i", "i", execGetRepairState);
 	ABLi_addFunction("isteamtargeting", false, "iii", "b", execIsTeamTargeting);
 	ABLi_addFunction("isteamcapturing", false, "iii", "b", execIsTeamCapturing);
-	ABLi_addFunction("sendmessage", false, "ii", NULL, execSendMessage);
+	ABLi_addFunction("sendmessage", false, "ii", nullptr, execSendMessage);
 	ABLi_addFunction("getmessage", false, "i", "i", execGetMessage);
-	ABLi_addFunction("gethometeam", false, NULL, "i", execGetHomeTeam);
+	ABLi_addFunction("gethometeam", false, nullptr, "i", execGetHomeTeam);
 //	ABLi_addFunction("getstrikes", false, "ii", "i", execGetStrikes);
 //	ABLi_addFunction("setstrikes", false, "iii", NULL, execSetStrikes);
 //	ABLi_addFunction("addstrikes", false, "iii", NULL, execAddStrikes);
-	ABLi_addFunction("isserver", false, NULL, "b", execIsServer);
+	ABLi_addFunction("isserver", false, nullptr, "b", execIsServer);
 	ABLi_addFunction("calcpartid", false, "iiii", "i", execCalcPartID);
-	ABLi_addFunction("setdebugstring", false, "iiC", NULL, execSetDebugString);
-	ABLi_addFunction("break", false, NULL, NULL, execBreak);
+	ABLi_addFunction("setdebugstring", false, "iiC", nullptr, execSetDebugString);
+	ABLi_addFunction("break", false, nullptr, nullptr, execBreak);
 	ABLi_addFunction("pathexists", false, "iiiii", "i", execPathExists);
 	ABLi_addFunction("convertcoords", false, "iRI", "i", execConvertCoords);
 	ABLi_addFunction("newmoveto", true, "Ri", "i", execCoreMoveTo);
@@ -498,71 +498,71 @@ void initABL (void) {
 	ABLi_addFunction("corecapture", true, "ii", "i", execCoreCapture);
 	ABLi_addFunction("corescan", true, "ii", "i", execCoreScan);
 	ABLi_addFunction("corecontrol", true, "ii", "i", execCoreControl);
-	ABLi_addFunction("coreeject", true, NULL, "i", execCoreEject);
+	ABLi_addFunction("coreeject", true, nullptr, "i", execCoreEject);
 	ABLi_addFunction("setpilotstate", false, "i", "i", execSetPilotState);
-	ABLi_addFunction("getpilotstate", false, NULL, "i", execGetPilotState);
+	ABLi_addFunction("getpilotstate", false, nullptr, "i", execGetPilotState);
 	ABLi_addFunction("getnextpilotevent", false, "I", "i", execGetNextPilotEvent);
 	ABLi_addFunction("settargetpriority", false, "iiiii", "i", execSetTargetPriority);
 	ABLi_addFunction("setdebugwindow", false, "ii", "i", execSetDebugWindow);
 	
-	ABLi_addFunction("setmoviemode", false, NULL, NULL, execSetMovieMode);
-	ABLi_addFunction("endmoviemode", false, NULL, NULL, execEndMovieMode);
-	ABLi_addFunction("fadetocolor", false, "ir", NULL, execFadeToColor);
-	ABLi_addFunction("forcemovieend", false, NULL, "i", execForceMovieEnd);
+	ABLi_addFunction("setmoviemode", false, nullptr, nullptr, execSetMovieMode);
+	ABLi_addFunction("endmoviemode", false, nullptr, nullptr, execEndMovieMode);
+	ABLi_addFunction("fadetocolor", false, "ir", nullptr, execFadeToColor);
+	ABLi_addFunction("forcemovieend", false, nullptr, "i", execForceMovieEnd);
 	
-	ABLi_addFunction("getcameraposition", false, "R", NULL, execGetCameraPosition);
-	ABLi_addFunction("setcameraposition", false, "R", NULL, execSetCameraPosition);
-	ABLi_addFunction("setcameragoalposition", false, "Rr", NULL, execSetCameraGoalPosition);
-	ABLi_addFunction("getcameragoalposition", false, "R", NULL, execGetCameraGoalPosition);
-	ABLi_addFunction("getcamerarotation", false, "R", NULL, execGetCameraRotation);
-	ABLi_addFunction("setcamerarotation", false, "R", NULL, execSetCameraRotation);
-	ABLi_addFunction("setcameragoalrotation", false, "Rr", NULL, execSetCameraGoalRotation);
-	ABLi_addFunction("getcameragoalrotation", false, "R", NULL, execGetCameraGoalRotation);
-	ABLi_addFunction("getcamerazoom", false, NULL, "r", execGetCameraZoom);
-	ABLi_addFunction("setcamerazoom", false, "r", NULL, execSetCameraZoom);
-	ABLi_addFunction("getcameragoalzoom", false, NULL, "r", execGetCameraGoalZoom);
-	ABLi_addFunction("setcameragoalzoom", false, "rr", NULL, execSetCameraGoalZoom);
-	ABLi_addFunction("setcameravelocity", false, "R", NULL, execSetCameraVelocity);
-	ABLi_addFunction("getcameravelocity", false, "R", NULL, execGetCameraVelocity);
-	ABLi_addFunction("setcameragoalvelocity", false, "Rr", NULL, execSetCameraGoalVelocity);
-	ABLi_addFunction("getcameragoalvelocity", false, "R", NULL, execGetCameraGoalVelocity);
-	ABLi_addFunction("setcameralookobject", false, "i", NULL, execSetCameraLookObject);
-	ABLi_addFunction("getcameralookobject", false, NULL, "i", execGetCameraLookObject);
-	ABLi_addFunction("getcameraframelength", false, NULL, "r", execGetCameraFrameLength);
+	ABLi_addFunction("getcameraposition", false, "R", nullptr, execGetCameraPosition);
+	ABLi_addFunction("setcameraposition", false, "R", nullptr, execSetCameraPosition);
+	ABLi_addFunction("setcameragoalposition", false, "Rr", nullptr, execSetCameraGoalPosition);
+	ABLi_addFunction("getcameragoalposition", false, "R", nullptr, execGetCameraGoalPosition);
+	ABLi_addFunction("getcamerarotation", false, "R", nullptr, execGetCameraRotation);
+	ABLi_addFunction("setcamerarotation", false, "R", nullptr, execSetCameraRotation);
+	ABLi_addFunction("setcameragoalrotation", false, "Rr", nullptr, execSetCameraGoalRotation);
+	ABLi_addFunction("getcameragoalrotation", false, "R", nullptr, execGetCameraGoalRotation);
+	ABLi_addFunction("getcamerazoom", false, nullptr, "r", execGetCameraZoom);
+	ABLi_addFunction("setcamerazoom", false, "r", nullptr, execSetCameraZoom);
+	ABLi_addFunction("getcameragoalzoom", false, nullptr, "r", execGetCameraGoalZoom);
+	ABLi_addFunction("setcameragoalzoom", false, "rr", nullptr, execSetCameraGoalZoom);
+	ABLi_addFunction("setcameravelocity", false, "R", nullptr, execSetCameraVelocity);
+	ABLi_addFunction("getcameravelocity", false, "R", nullptr, execGetCameraVelocity);
+	ABLi_addFunction("setcameragoalvelocity", false, "Rr", nullptr, execSetCameraGoalVelocity);
+	ABLi_addFunction("getcameragoalvelocity", false, "R", nullptr, execGetCameraGoalVelocity);
+	ABLi_addFunction("setcameralookobject", false, "i", nullptr, execSetCameraLookObject);
+	ABLi_addFunction("getcameralookobject", false, nullptr, "i", execGetCameraLookObject);
+	ABLi_addFunction("getcameraframelength", false, nullptr, "r", execGetCameraFrameLength);
 	
-	ABLi_addFunction("getmissionwon", false, NULL, "b", execGetMissionWon);
-	ABLi_addFunction("getmissionlost", false, NULL, "b", execGetMissionLost);
-	ABLi_addFunction("getobjectivesuccess", false, NULL, "b", execGetObjectiveSuccess);
-	ABLi_addFunction("getobjectivefailed", false, NULL, "b", execGetObjectiveFailed);
-	ABLi_addFunction("getenemydestroyed", false, NULL, "b", execGetEnemyDestroyed);
-	ABLi_addFunction("getfriendlydestroyed", false, NULL, "b", execGetFriendlyDestroyed);
-	ABLi_addFunction("getplayerincombat", false, NULL, "b", execPlayerInCombat);
-	ABLi_addFunction("getsensorsactive", false, NULL, "b", execGetSensorsActive);
-	ABLi_addFunction("getcurrentmusicid", false, NULL, "i", execGetCurrentMusicId);
-	ABLi_addFunction("getmissiontune", false, NULL, "i", execGetMissionTuneId);
+	ABLi_addFunction("getmissionwon", false, nullptr, "b", execGetMissionWon);
+	ABLi_addFunction("getmissionlost", false, nullptr, "b", execGetMissionLost);
+	ABLi_addFunction("getobjectivesuccess", false, nullptr, "b", execGetObjectiveSuccess);
+	ABLi_addFunction("getobjectivefailed", false, nullptr, "b", execGetObjectiveFailed);
+	ABLi_addFunction("getenemydestroyed", false, nullptr, "b", execGetEnemyDestroyed);
+	ABLi_addFunction("getfriendlydestroyed", false, nullptr, "b", execGetFriendlyDestroyed);
+	ABLi_addFunction("getplayerincombat", false, nullptr, "b", execPlayerInCombat);
+	ABLi_addFunction("getsensorsactive", false, nullptr, "b", execGetSensorsActive);
+	ABLi_addFunction("getcurrentmusicid", false, nullptr, "i", execGetCurrentMusicId);
+	ABLi_addFunction("getmissiontune", false, nullptr, "i", execGetMissionTuneId);
 	
 	ABLi_addFunction("requesthelp", false, "iRrRri", "r", execRequestHelp);
 	ABLi_addFunction("requesttarget", false, "Rr", "i", execRequestTarget);
 	ABLi_addFunction("requestshelter", false, "*", "i", execRequestShelter);
-	ABLi_addFunction("mcprint", false, "?", NULL, execMCPrint);
+	ABLi_addFunction("mcprint", false, "?", nullptr, execMCPrint);
 
-	ABLi_addFunction("getmissionstatus", false, NULL, "i", execGetMissionStatus);
+	ABLi_addFunction("getmissionstatus", false, nullptr, "i", execGetMissionStatus);
 	ABLi_addFunction("addtriggerarea", false, "iiiiii", "i", execAddTriggerArea);
 	ABLi_addFunction("istriggerareahit", false, "i", "b", execIsTriggerAreaHit);
-	ABLi_addFunction("resettriggerarea", false, "i", NULL, execResetTriggerArea);
-	ABLi_addFunction("removetriggerarea", false, "i", NULL, execRemoveTriggerArea);
+	ABLi_addFunction("resettriggerarea", false, "i", nullptr, execResetTriggerArea);
+	ABLi_addFunction("removetriggerarea", false, "i", nullptr, execRemoveTriggerArea);
 	ABLi_addFunction("getweapons", false, "Ii", "i", execGetWeapons);
-	ABLi_addFunction("setmovearea", false, "Rr", NULL, execSetMoveArea);
+	ABLi_addFunction("setmovearea", false, "Rr", nullptr, execSetMoveArea);
 	ABLi_addFunction("getweaponsstatus", false, "I", "i", execGetWeaponsStatus);
-	ABLi_addFunction("cleartacorder", false, NULL, NULL, execClearTacOrder);
+	ABLi_addFunction("cleartacorder", false, nullptr, nullptr, execClearTacOrder);
 	ABLi_addFunction("playwave", false, "Ci", "i", execPlayWave);
 	ABLi_addFunction("objectteam", false, "i", "i", execObjectTeam);
 	ABLi_addFunction("setwillhelp", false, "b", "b", execSetWillHelp);
-	ABLi_addFunction("getlastscan", false, NULL, "i", execGetLastScan);
-	ABLi_addFunction("getmapinfo", false, "I", NULL, execGetMapInfo);
+	ABLi_addFunction("getlastscan", false, nullptr, "i", execGetLastScan);
+	ABLi_addFunction("getmapinfo", false, "I", nullptr, execGetMapInfo);
 	
-	ABLi_addFunction("getgeneralalarm", false, NULL, "i", execGetGeneralAlarm);
-	ABLi_addFunction("setgeneralalarm", false, "i", NULL, execSetGeneralAlarm);
+	ABLi_addFunction("getgeneralalarm", false, nullptr, "i", execGetGeneralAlarm);
+	ABLi_addFunction("setgeneralalarm", false, "i", nullptr, execSetGeneralAlarm);
 
 	ABLi_addFunction("isoffmap", false, "R", "b", execIsOffMap);
 	ABLi_addFunction("setgoalplanning", false, "b", "b", execSetGoalPlanning);
@@ -572,17 +572,17 @@ void initABL (void) {
 
 	//Tutorial Functions
 	ABLi_addFunction("animationcallout", false, "ibbri", "b", execAnimationCallout);
-	ABLi_addFunction("tutorialtext", false, "i", NULL, execTutorialText);
-	ABLi_addFunction("guiisaoe", false, NULL, "b", execGUIIsAOEStyle);
-	ABLi_addFunction("logisticsscreenid", false, NULL, "i", execLogisticsScreenId);
+	ABLi_addFunction("tutorialtext", false, "i", nullptr, execTutorialText);
+	ABLi_addFunction("guiisaoe", false, nullptr, "b", execGUIIsAOEStyle);
+	ABLi_addFunction("logisticsscreenid", false, nullptr, "i", execLogisticsScreenId);
 	ABLi_addFunction("logisticsanimationcallout", false, "ibri", "b", execLogisticsAnimationCallout);
-	ABLi_addFunction("logisticsincallout", false, NULL, "b", execLogisticsInCallout);
-	ABLi_addFunction("isplayingvoiceover", false, NULL, "b", execIsPlayingVoiceOver);
-	ABLi_addFunction("getlogisticstime", false, NULL, "r", execGetLogisticsTime);
-	ABLi_addFunction("stopvoiceover", false, NULL, NULL, execStopVoiceOver);
-	ABLi_addFunction("incallout", false, NULL, "b", execInCallout);
-	ABLi_addFunction("setinvulnerable", false, "b", NULL, execSetInvulnerable);
-	ABLi_addFunction("freezegui", false, "b", NULL, execFreezeGUI);
+	ABLi_addFunction("logisticsincallout", false, nullptr, "b", execLogisticsInCallout);
+	ABLi_addFunction("isplayingvoiceover", false, nullptr, "b", execIsPlayingVoiceOver);
+	ABLi_addFunction("getlogisticstime", false, nullptr, "r", execGetLogisticsTime);
+	ABLi_addFunction("stopvoiceover", false, nullptr, nullptr, execStopVoiceOver);
+	ABLi_addFunction("incallout", false, nullptr, "b", execInCallout);
+	ABLi_addFunction("setinvulnerable", false, "b", nullptr, execSetInvulnerable);
+	ABLi_addFunction("freezegui", false, "b", nullptr, execFreezeGUI);
 
 	// --- Omnitech ABL extensions, tier-2 (FSM primitives observed in Carver5O/MCO .abl) ---
 	// Note: PatrolState and PatrolPath are MCO-fork custom types (PatrolPath is 2D:
@@ -607,66 +607,66 @@ void initABL (void) {
 	// would shadow the library and break MCO proactive AI (same shadow rule as
 	// magicattack/coreguard/corepatrol above).
 	// docs/observations/2026-04-25-abl-library-shadow-rule.md
-	ABLi_addFunction("setwillrequesthelp",   false, "b",   NULL, execSetWillRequestHelp);
-	ABLi_addFunction("tdebugstring",         false, "C",   NULL, execTDebugString);
+	ABLi_addFunction("setwillrequesthelp",   false, "b",   nullptr, execSetWillRequestHelp);
+	ABLi_addFunction("tdebugstring",         false, "C",   nullptr, execTDebugString);
 	ABLi_addFunction("isdeadorfled",         false, "i",   "b",  execIsDeadOrFled);
-	ABLi_addFunction("printteamstatus",      false, "i",   NULL, execPrintTeamStatus);
+	ABLi_addFunction("printteamstatus",      false, "i",   nullptr, execPrintTeamStatus);
 
 	// --- Omnitech ABL extensions ---
 	// Mission / messaging / economy
-	ABLi_addFunction("settextmsg",           false, "i*i", NULL, execSetTextMsg);
-	ABLi_addFunction("setlargemsg",          false, "i*i", NULL, execSetLargeMsg);
-	ABLi_addFunction("setmissiontune",       false, "i",   NULL, execSetMissionTune);
-	ABLi_addFunction("addresourcepoints",    false, "i",   NULL, execAddResourcePoints);
-	ABLi_addFunction("addmoney",             false, "i",   NULL, execAddMoney);
-	ABLi_addFunction("settxtbuildingname",   false, "iC",  NULL, execSetTxtBuildingName);
-	ABLi_addFunction("ablprint",             false, "C*",  NULL, execAblPrint);
+	ABLi_addFunction("settextmsg",           false, "i*i", nullptr, execSetTextMsg);
+	ABLi_addFunction("setlargemsg",          false, "i*i", nullptr, execSetLargeMsg);
+	ABLi_addFunction("setmissiontune",       false, "i",   nullptr, execSetMissionTune);
+	ABLi_addFunction("addresourcepoints",    false, "i",   nullptr, execAddResourcePoints);
+	ABLi_addFunction("addmoney",             false, "i",   nullptr, execAddMoney);
+	ABLi_addFunction("settxtbuildingname",   false, "iC",  nullptr, execSetTxtBuildingName);
+	ABLi_addFunction("ablprint",             false, "C*",  nullptr, execAblPrint);
 
 	// Object / mover manipulation
-	ABLi_addFunction("teleporttopoint",      false, "iR",  NULL, execTeleportToPoint);
-	ABLi_addFunction("addmovertoplayer",     false, "iii", NULL, execAddMoverToPlayer);
-	ABLi_addFunction("removemoverfromplayer",false, "iii", NULL, execRemoveMoverFromPlayer);
-	ABLi_addFunction("setbrain",             false, "iC",  NULL, execSetBrainFixed);
-	ABLi_addFunction("setbrainnew",          false, "iC",  NULL, execSetBrainNew);
-	ABLi_addFunction("destroymechbodylocation", false, "ii", NULL, execDestroyMechBodyLocation);
-	ABLi_addFunction("damagemecharmor",      false, "i",   NULL, execDamageMechArmor);
-	ABLi_addFunction("setmechgesture",       false, "ii",  NULL, execSetMechGesture);
-	ABLi_addFunction("setunitforcegroup",    false, "ii",  NULL, execSetUnitForceGroup);
+	ABLi_addFunction("teleporttopoint",      false, "iR",  nullptr, execTeleportToPoint);
+	ABLi_addFunction("addmovertoplayer",     false, "iii", nullptr, execAddMoverToPlayer);
+	ABLi_addFunction("removemoverfromplayer",false, "iii", nullptr, execRemoveMoverFromPlayer);
+	ABLi_addFunction("setbrain",             false, "iC",  nullptr, execSetBrainFixed);
+	ABLi_addFunction("setbrainnew",          false, "iC",  nullptr, execSetBrainNew);
+	ABLi_addFunction("destroymechbodylocation", false, "ii", nullptr, execDestroyMechBodyLocation);
+	ABLi_addFunction("damagemecharmor",      false, "i",   nullptr, execDamageMechArmor);
+	ABLi_addFunction("setmechgesture",       false, "ii",  nullptr, execSetMechGesture);
+	ABLi_addFunction("setunitforcegroup",    false, "ii",  nullptr, execSetUnitForceGroup);
 
 	// Support toggles
-	ABLi_addFunction("toggleairstrike",      false, NULL,  NULL, execToggleAirStrike);
-	ABLi_addFunction("togglesensorstrike",   false, NULL,  NULL, execToggleSensorStrike);
-	ABLi_addFunction("toggleartillerypiece", false, NULL,  NULL, execToggleArtilleryPiece);
-	ABLi_addFunction("togglerepairtruck",    false, NULL,  NULL, execToggleRepairTruck);
-	ABLi_addFunction("togglesalvagecraft",   false, NULL,  NULL, execToggleSalvageCraft);
-	ABLi_addFunction("setrepairtruckenabled",  false, "b", NULL, execSetRepairTruckEnabled);
-	ABLi_addFunction("setsalvagecraftenabled", false, "b", NULL, execSetSalvageCraftEnabled);
+	ABLi_addFunction("toggleairstrike",      false, nullptr,  nullptr, execToggleAirStrike);
+	ABLi_addFunction("togglesensorstrike",   false, nullptr,  nullptr, execToggleSensorStrike);
+	ABLi_addFunction("toggleartillerypiece", false, nullptr,  nullptr, execToggleArtilleryPiece);
+	ABLi_addFunction("togglerepairtruck",    false, nullptr,  nullptr, execToggleRepairTruck);
+	ABLi_addFunction("togglesalvagecraft",   false, nullptr,  nullptr, execToggleSalvageCraft);
+	ABLi_addFunction("setrepairtruckenabled",  false, "b", nullptr, execSetRepairTruckEnabled);
+	ABLi_addFunction("setsalvagecraftenabled", false, "b", nullptr, execSetSalvageCraftEnabled);
 
 	// Queries
-	ABLi_addFunction("gettargetrelativeposition",    false, "iRR", NULL, execGetTargetRelativePosition);
-	ABLi_addFunction("getrelativepositiontotarget",  false, "iriR", NULL, execGetRelativePositionToTarget);
+	ABLi_addFunction("gettargetrelativeposition",    false, "iRR", nullptr, execGetTargetRelativePosition);
+	ABLi_addFunction("getrelativepositiontotarget",  false, "iriR", nullptr, execGetRelativePositionToTarget);
 	ABLi_addFunction("newdistancetoposition", false, "iR", "r", execNewDistanceToPosition);
 	ABLi_addFunction("numfriendswithinradius", false, "ir", "i", execNumFriendsWithinRadius);
 	ABLi_addFunction("numenemieswithinradius", false, "ir", "i", execNumEnemiesWithinRadius);
 	ABLi_addFunction("hasorderfromplayer",   false, "i",   "b",  execHasOrderFromPlayer);
-	ABLi_addFunction("isselected",           false, NULL,  "b",  execIsSelected);
-	ABLi_addFunction("isrefit",              false, NULL,  "b",  execIsRefit);
-	ABLi_addFunction("needsrefit",           false, NULL,  "b",  execNeedsRefit);
+	ABLi_addFunction("isselected",           false, nullptr,  "b",  execIsSelected);
+	ABLi_addFunction("isrefit",              false, nullptr,  "b",  execIsRefit);
+	ABLi_addFunction("needsrefit",           false, nullptr,  "b",  execNeedsRefit);
 
 	// Pilot / brain / tactics
-	ABLi_addFunction("hirepilot",            false, "C",   NULL, execHirePilot);
-	ABLi_addFunction("addnewpilot",          false, "iCC", NULL, execAddNewPilot);
-	ABLi_addFunction("addnewpilottoplayer",  false, "iCC", NULL, execAddNewPilotToPlayer);
-	ABLi_addFunction("autorepairwithinradius", false, "ir", NULL, execAutoRepairWithinRadius);
-	ABLi_addFunction("scanareacapture",      false, "r",   NULL, execScanAreaCapture);
-	ABLi_addFunction("scanarearepair",       false, "r",   NULL, execScanAreaRepair);
-	ABLi_addFunction("setcampaignglobalvar", false, "ii",  NULL, execSetCampaignGlobalVar);
+	ABLi_addFunction("hirepilot",            false, "C",   nullptr, execHirePilot);
+	ABLi_addFunction("addnewpilot",          false, "iCC", nullptr, execAddNewPilot);
+	ABLi_addFunction("addnewpilottoplayer",  false, "iCC", nullptr, execAddNewPilotToPlayer);
+	ABLi_addFunction("autorepairwithinradius", false, "ir", nullptr, execAutoRepairWithinRadius);
+	ABLi_addFunction("scanareacapture",      false, "r",   nullptr, execScanAreaCapture);
+	ABLi_addFunction("scanarearepair",       false, "r",   nullptr, execScanAreaRepair);
+	ABLi_addFunction("setcampaignglobalvar", false, "ii",  nullptr, execSetCampaignGlobalVar);
 	ABLi_addFunction("getcampaignglobalvar", false, "i",   "i",  execGetCampaignGlobalVar);
-	ABLi_addFunction("setfixedbuildingrp",   false, "ii",  NULL, execSetFixedBuildingRp);
-	ABLi_addFunction("gettimeoflaststep",    false, NULL,  "r",  execGetTimeOfLastStep);
-	ABLi_addFunction("iscurtacordermoveorder", false, NULL, "b", execIsCurTacOrderMoveOrder);
-	ABLi_addFunction("getcurtacordertime",   false, NULL,  "r",  execGetCurTacOrderTime);
-	ABLi_addFunction("clearmoveorders",      false, NULL,  NULL, execClearMoveOrdersOmni);
+	ABLi_addFunction("setfixedbuildingrp",   false, "ii",  nullptr, execSetFixedBuildingRp);
+	ABLi_addFunction("gettimeoflaststep",    false, nullptr,  "r",  execGetTimeOfLastStep);
+	ABLi_addFunction("iscurtacordermoveorder", false, nullptr, "b", execIsCurTacOrderMoveOrder);
+	ABLi_addFunction("getcurtacordertime",   false, nullptr,  "r",  execGetCurTacOrderTime);
+	ABLi_addFunction("clearmoveorders",      false, nullptr,  nullptr, execClearMoveOrdersOmni);
 
 	//static long Godzilla = 120;
 	//static long GodzillaList[5] = {10, 20, 30, 40, 50};
@@ -682,14 +682,14 @@ void closeABL (void) {
 
 	if (AblSymbolHeap) {
 		delete AblSymbolHeap;
-		AblSymbolHeap = NULL;
+		AblSymbolHeap = nullptr;
 	}
 	if (AblStackHeap) {
 		delete AblStackHeap;
-		AblStackHeap = NULL;
+		AblStackHeap = nullptr;
 	}
 	if (AblCodeHeap) {
 		delete AblCodeHeap;
-		AblCodeHeap = NULL;
+		AblCodeHeap = nullptr;
 	}
 }

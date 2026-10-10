@@ -185,7 +185,7 @@ void LogisticsData::initComponents()
 	}
 
 	delete [] data;
-	data = NULL;
+	data = nullptr;
 
 	// EQUIP-ADD-FILL-1 (S2): second consumer of the ADD pass -- the filled rows
 	// are NOT in compbas.csv, so append them here too (gate OFF -> empty list).
@@ -541,7 +541,7 @@ int LogisticsData::getAvailableMissions( const char** missionNames, long& count 
 	int numberOfEm = 0;
 
 	// first figure out how many there are
-	missionInfo->getAvailableMissions( 0, numberOfEm );
+	missionInfo->getAvailableMissions( nullptr, numberOfEm );
 
 	// next make sure the array is big enough
 	if ( count < numberOfEm )
@@ -561,7 +561,7 @@ int LogisticsData::getCurrentMissions( const char** missionNames, long& count )
 	int numberOfEm = 0;
 
 	// first figure out how many there are
-	missionInfo->getCurrentMissions( 0, numberOfEm );
+	missionInfo->getCurrentMissions( nullptr, numberOfEm );
 
 	// next make sure the array is big enough
 	if ( count < numberOfEm )

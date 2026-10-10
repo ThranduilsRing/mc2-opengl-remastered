@@ -115,31 +115,31 @@ void TG_TypeNode::destroy (void)
 // This function creates an instance of a TG_Shape from a TG_TypeNode.  Saves RAM.
 TG_ShapePtr TG_TypeNode::CreateFrom (void)
 {
-	TG_ShapePtr newShape = NULL;
+	TG_ShapePtr newShape = nullptr;
 	newShape = (TG_ShapePtr)TG_Shape::tglHeap->Malloc(sizeof(TG_Shape));
 	gosASSERT(newShape != NULL);
 	
 	//listOfVertices
 	newShape->numVertices = 0;
-	newShape->listOfColors = NULL;
-	newShape->listOfVertices = NULL;
-	newShape->listOfShadowVertices = NULL;
+	newShape->listOfColors = nullptr;
+	newShape->listOfVertices = nullptr;
+	newShape->listOfShadowVertices = nullptr;
 
 	//listOfTriangles
 	newShape->numTriangles = 0;
-	newShape->listOfTriangles = NULL;
+	newShape->listOfTriangles = nullptr;
 
 	//listOfVisibleFaces
 	newShape->numVisibleFaces = 0;
-	newShape->listOfVisibleFaces = NULL;
+	newShape->listOfVisibleFaces = nullptr;
 
 	//listOfVisibleShadows
 	newShape->numVisibleShadows = 0;
-	newShape->listOfVisibleShadows = NULL;
+	newShape->listOfVisibleShadows = nullptr;
 
 	//Other Data
 	newShape->myType = this;
-	if (newShape->myType == NULL)
+	if (newShape->myType == nullptr)
 		STOP(("ShapeType NULL.  BAD Shape in MAX FILE"));
 		
 	newShape->aRGBHighlight = 0x00000000;
@@ -190,12 +190,12 @@ long TG_TypeNode::MakeFromHelper (BYTE *aseBuffer, const char *fileName)
 	strncpy(nodeId,nodeString, TG_NODE_ID-1);
 	nodeId[TG_NODE_ID - 1] = '\0'; //sebi
 		 
-	char* parentName = strstr((char *)nodeName,ASE_NODE_PARENT);
+	char* parentName = strstr(nodeName,ASE_NODE_PARENT);
 
 	//-------------------------------------------------------------------
 	// Must also check to make sure we HAVE a parent.
 	// We will get the next GeomObject's parent if we don't check length!
-	if ((parentName != NULL) && ((parentName - nodeName) < MAX_SCAN_LENGTH))
+	if ((parentName != nullptr) && ((parentName - nodeName) < MAX_SCAN_LENGTH))
 	{
 		parentName += strlen(ASE_NODE_PARENT)+1;
 		GetNameData(parentName,nodeString);
@@ -271,7 +271,7 @@ void TG_TypeNode::SaveBinaryCopy (File &binFile)
 // This function creates an instance of a TG_Shape from a TG_TypeShape.  Saves RAM.
 TG_ShapePtr TG_TypeShape::CreateFrom (void)
 {
-	TG_ShapePtr newShape = NULL;
+	TG_ShapePtr newShape = nullptr;
 	void* memarea = TG_Shape::tglHeap->Malloc(sizeof(TG_Shape));
 	newShape = ::new(memarea) TG_Shape();
 	gosASSERT(newShape != NULL);
@@ -281,14 +281,14 @@ TG_ShapePtr TG_TypeShape::CreateFrom (void)
 	if (numTypeVertices)
 	{
 		//Mark with invalid pointer so we now to get RAM from POOL! 	
-		newShape->listOfVertices = NULL;
-		newShape->listOfColors = NULL;
+		newShape->listOfVertices = nullptr;
+		newShape->listOfColors = nullptr;
 	}
 	else
 	{
 		//Otherwise mark with NULL so we know not to reference!!
-		newShape->listOfVertices = NULL;
-		newShape->listOfColors = NULL;
+		newShape->listOfVertices = nullptr;
+		newShape->listOfColors = nullptr;
 	}
 
 	//listOfShadowVertices
@@ -302,13 +302,13 @@ TG_ShapePtr TG_TypeShape::CreateFrom (void)
 		memset(newShape->listOfShadowVertices,0xff,sizeof(TG_ShadowVertex) * numTypeVertices * MAX_SHADOWS);
 		
 		//Mark with invalid pointer so we now to get RAM from POOL! 	
-		newShape->listOfShadowTVertices = NULL;
+		newShape->listOfShadowTVertices = nullptr;
 	}
 	else
 	{
 		//Otherwise mark with NULL so we know not to reference!!
-		newShape->listOfShadowVertices = NULL;
-		newShape->listOfShadowTVertices = NULL;
+		newShape->listOfShadowVertices = nullptr;
+		newShape->listOfShadowTVertices = nullptr;
 	}
 
 	//listOfTriangles
@@ -316,12 +316,12 @@ TG_ShapePtr TG_TypeShape::CreateFrom (void)
 	if (numTypeTriangles)
 	{
 		//Mark with invalid pointer so we now to get RAM from POOL! 	
-		newShape->listOfTriangles = NULL;
+		newShape->listOfTriangles = nullptr;
 	}
 	else
 	{
 		//Otherwise mark with NULL so we know not to reference!!
-		newShape->listOfTriangles = NULL;
+		newShape->listOfTriangles = nullptr;
 	}
 
 	//listOfVisibleFaces
@@ -329,12 +329,12 @@ TG_ShapePtr TG_TypeShape::CreateFrom (void)
 	if (numTypeTriangles)
 	{
 		//Mark with invalid pointer so we now to get RAM from POOL! 	
-		newShape->listOfVisibleFaces = NULL;
+		newShape->listOfVisibleFaces = nullptr;
 	}
 	else
 	{
 		//Otherwise mark with NULL so we know not to reference!!
-		newShape->listOfVisibleFaces = NULL;
+		newShape->listOfVisibleFaces = nullptr;
 	}
 
 	//listOfVisibleShadows
@@ -342,17 +342,17 @@ TG_ShapePtr TG_TypeShape::CreateFrom (void)
 	if (numTypeTriangles)
 	{
 		//Mark with invalid pointer so we now to get RAM from POOL! 	
-		newShape->listOfVisibleShadows = NULL;
+		newShape->listOfVisibleShadows = nullptr;
 	}
 	else
 	{
 		//Otherwise mark with NULL so we know not to reference!!
-		newShape->listOfVisibleShadows = NULL;
+		newShape->listOfVisibleShadows = nullptr;
 	}
 
 	//Other Data
 	newShape->myType = this;
-	if (newShape->myType == NULL)
+	if (newShape->myType == nullptr)
 		STOP(("ShapeType NULL.  BAD Shape in MAX FILE"));
  	
 	newShape->aRGBHighlight = 0x00000000;
@@ -401,7 +401,7 @@ void TG_TypeShape::LoadBinaryCopy (File &binFile)
 	}
 	else
 	{
-		listOfTypeVertices = NULL;
+		listOfTypeVertices = nullptr;
 	}
 
 	//listOfTypeTriangles
@@ -415,7 +415,7 @@ void TG_TypeShape::LoadBinaryCopy (File &binFile)
 	}
 	else
 	{
-		listOfTypeTriangles = NULL;
+		listOfTypeTriangles = nullptr;
 	}
 
 	//listOfTextures
@@ -429,7 +429,7 @@ void TG_TypeShape::LoadBinaryCopy (File &binFile)
 	}
 	else
 	{
-		listOfTextures = NULL;
+		listOfTextures = nullptr;
 	}
 
 	if (numTypeVertices)
@@ -545,31 +545,31 @@ void TG_TypeShape::destroy (void)
 {
 	if (listOfTypeVertices)
 		TG_Shape::tglHeap->Free(listOfTypeVertices);
-	listOfTypeVertices = NULL;
+	listOfTypeVertices = nullptr;
 
 	if (listOfTypeTriangles)
 		TG_Shape::tglHeap->Free(listOfTypeTriangles);
-	listOfTypeTriangles = NULL;
+	listOfTypeTriangles = nullptr;
 
 	if (listOfTextures)
 		TG_Shape::tglHeap->Free(listOfTextures);
-	listOfTextures = NULL;
+	listOfTextures = nullptr;
 
 	numTypeVertices = numTypeTriangles = numTextures = 0;
 
 	if (vb_) {
 		gos_DestroyBuffer(vb_);
-		vb_ = 0;
+		vb_ = nullptr;
 	}
 
 	if (ib_) {
 		gos_DestroyBuffer(ib_);
-		ib_ = 0;
+		ib_ = nullptr;
 	}
 
 	if (vdecl_) {
 		gos_DestroyVertexDeclaration(vdecl_);
-		vdecl_ = 0;
+		vdecl_ = nullptr;
 	}
 }	
 
@@ -596,16 +596,16 @@ void TG_Shape::destroy (void)
 {
 	//THIS IS CORRECT!!!!
 	// They come from a common pool now, Deleteing them would be BAD!!
-	listOfVertices = NULL;
-	listOfColors = NULL;
-	listOfTriangles = NULL;
-	listOfVisibleFaces = NULL;
-	listOfVisibleShadows = NULL;
-	listOfShadowTVertices = NULL;
+	listOfVertices = nullptr;
+	listOfColors = nullptr;
+	listOfTriangles = nullptr;
+	listOfVisibleFaces = nullptr;
+	listOfVisibleShadows = nullptr;
+	listOfShadowTVertices = nullptr;
 
 	if (listOfShadowVertices)
 		tglHeap->Free(listOfShadowVertices);
-	listOfShadowVertices = NULL;
+	listOfShadowVertices = nullptr;
 
 	numVertices = numTriangles = numVisibleFaces = 0;
 }	
@@ -638,12 +638,12 @@ long TG_TypeShape::MakeFromHelper (BYTE *aseBuffer, const char *fileName)
 	strncpy(nodeId,nodeString, TG_NODE_ID-1);
 	nodeId[TG_NODE_ID - 1] = '\0';
 		 
-	char* parentName = strstr((char *)nodeName,ASE_NODE_PARENT);
+	char* parentName = strstr(nodeName,ASE_NODE_PARENT);
 
 	//-------------------------------------------------------------------
 	// Must also check to make sure we HAVE a parent.
 	// We will get the next GeomObject's parent if we don't check length!
-	if ((parentName != NULL) && ((parentName - nodeName) < MAX_SCAN_LENGTH))
+	if ((parentName != nullptr) && ((parentName - nodeName) < MAX_SCAN_LENGTH))
 	{
 		parentName += strlen(ASE_NODE_PARENT)+1;
 		GetNameData(parentName,nodeString);

@@ -31,7 +31,7 @@
 // NS3 boundary: the engine system allocator belongs to the heap subsystem
 // (this TU), not to whatever game/tool main links it. extern'd for all
 // consumers in heap.h. Previously redefined in every main.
-UserHeapPtr systemHeap = NULL;
+UserHeapPtr systemHeap = nullptr;
 
 //---------------------------------------------------------------------------
 // Static Globals
@@ -39,7 +39,7 @@ static const char CorruptMsg[] = "Heap check failed.\n";
 static const char pformat[] = "%s %s\n";
 
 GlobalHeapRec HeapList::heapRecords[MAX_HEAPS];
-HeapListPtr globalHeapList = NULL;
+HeapListPtr globalHeapList = nullptr;
 
 unsigned long memCoreLeft = 0;
 unsigned long memTotalLeft = 0;
@@ -111,11 +111,11 @@ HeapManager::HeapManager (void)
 //---------------------------------------------------------------------------
 void HeapManager::init (void)
 {
-	heap = NULL;
+	heap = nullptr;
 	memReserved = FALSE;
 	totalSize = 0;
 	committedSize = 0;
-	nxt = NULL;
+	nxt = nullptr;
 }
 		
 //---------------------------------------------------------------------------
@@ -130,13 +130,13 @@ MemoryPtr HeapManager::getHeapPtr (void)
 	if (memReserved && totalSize && committedSize && heap)
 		return heap;
 
-	return NULL;
+	return nullptr;
 }
 
 //---------------------------------------------------------------------------
 long HeapManager::createHeap (unsigned long memSize)
 {
-	heap = (MemoryPtr)VirtualAlloc(NULL,memSize,MEM_RESERVE,PAGE_READWRITE);
+	heap = (MemoryPtr)VirtualAlloc(nullptr,memSize,MEM_RESERVE,PAGE_READWRITE);
 
 	if (heap)
 	{
@@ -245,9 +245,9 @@ long HeapManager::decommitHeap (unsigned long decommitSize)
 // Class UserHeap Member Functions
 UserHeap::UserHeap (void) : HeapManager()
 {
-	heapStart = NULL;
-	heapEnd = NULL;
-	firstNearBlock = NULL;
+	heapStart = nullptr;
+	heapEnd = nullptr;
+	firstNearBlock = nullptr;
 	heapSize = 0;
 	
 	#ifdef CHECK_HEAP
@@ -268,12 +268,12 @@ long UserHeap::init (unsigned long memSize, const char *heapId, bool useGOS)
 		gosHeap = gos_CreateMemoryHeap(heapId,memSize);
 		useGOSGuardPage = true;
 
-		heapStart = NULL;
-		heapEnd = NULL;
-		firstNearBlock = NULL;
+		heapStart = nullptr;
+		heapEnd = nullptr;
+		firstNearBlock = nullptr;
 		heapSize = 0;
 
-		heapName = NULL;
+		heapName = nullptr;
 		heapState = NO_ERR;
 
 		#ifdef _DEBUG
@@ -322,7 +322,7 @@ void UserHeap::destroy (void)
 	HeapManager::destroy();
 	{
 		gos_DestroyMemoryHeap(gosHeap,false);
-		gosHeap = NULL;
+		gosHeap = nullptr;
 	}
 }
 		
@@ -351,7 +351,7 @@ unsigned long UserHeap::coreLeft (void)
 //---------------------------------------------------------------------------
 void * UserHeap::Malloc (size_t memSize)
 {
-	void * result = NULL;
+	void * result = nullptr;
 	if (gosHeap)
 	{
 		gos_PushCurrentHeap( gosHeap );
@@ -410,7 +410,7 @@ void HeapList::addHeap (HeapManagerPtr newHeap)
 {
 	for (long i=0;i<MAX_HEAPS;i++)
 	{
-		if (heapRecords[i].thisHeap == NULL)
+		if (heapRecords[i].thisHeap == nullptr)
 		{
 			heapRecords[i].thisHeap = newHeap;
 			heapRecords[i].heapSize = newHeap->tSize();
@@ -426,7 +426,7 @@ void HeapList::removeHeap (HeapManagerPtr oldHeap)
 	{
 		if (heapRecords[i].thisHeap == oldHeap)
 		{
-			heapRecords[i].thisHeap = NULL;
+			heapRecords[i].thisHeap = nullptr;
 			heapRecords[i].heapSize = 0;
 			return;
 		}
@@ -572,7 +572,7 @@ long getStringFromMap (File &mapFile, unsigned long addr, char *result)
 	
 	mapFile.seek(0);
 	mapFile.readLine((MemoryPtr)mapFileLine,511);
-	while (strstr(mapFileLine,"  Address") == NULL)
+	while (strstr(mapFileLine,"  Address") == nullptr)
 	{
 		mapFile.readLine((MemoryPtr)mapFileLine,511);
 	}
@@ -587,7 +587,7 @@ long getStringFromMap (File &mapFile, unsigned long addr, char *result)
 	char previousAddress[511] = { 0 };
 	strncpy(previousAddress,&(mapFileLine[6]),510);
 	
-	while (strstr(mapFileLine,"0001:") != NULL)
+	while (strstr(mapFileLine,"0001:") != nullptr)
 	{
 		if (S_strnicmp(currentAddress,actualAddr,8) > 0)
 		{
@@ -624,7 +624,7 @@ void HeapList::dumpLog (void)
 	#endif
 	#endif	
 
-	HeapManagerPtr currentHeap = NULL;
+	HeapManagerPtr currentHeap = nullptr;
 	unsigned long heapNumber = 1;
 	unsigned long mapStringSize = 0;
 	char msg[1024];

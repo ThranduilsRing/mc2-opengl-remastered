@@ -13,7 +13,7 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MemoryBlockBase ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 MemoryBlockBase*
-	MemoryBlockBase::firstBlock = NULL;
+	MemoryBlockBase::firstBlock = nullptr;
 
 //
 //#############################################################################
@@ -74,7 +74,7 @@ MemoryBlockBase::MemoryBlockBase(
 				new(blockHeap) BYTE[sizeof(MemoryBlockHeader) + blockSize]
 			);
 		Check_Object(blockMemory);
-		blockMemory->nextBlock = NULL;
+		blockMemory->nextBlock = nullptr;
 		blockMemory->blockSize = blockSize;
 
 		//
@@ -87,7 +87,7 @@ MemoryBlockBase::MemoryBlockBase(
 		firstHeaderRecord = Cast_Pointer(BYTE*, blockMemory + 1);
 		Check_Pointer(firstHeaderRecord);
 		freeRecord = firstHeaderRecord;
-		deletedRecord = NULL;
+		deletedRecord = nullptr;
 	#endif
 
 	//
@@ -161,7 +161,7 @@ MemoryBlockBase::~MemoryBlockBase()
 	{
 		if (nextBlock == this)
 		{
-			firstBlock = NULL;
+			firstBlock = nullptr;
 		}
 		else
 		{
@@ -231,7 +231,7 @@ void*
 	firstHeaderRecord = new_block;
 	header = Cast_Pointer(MemoryBlockHeader*, firstHeaderRecord);
 	Check_Object(header);
-	header->nextBlock = NULL;
+	header->nextBlock = nullptr;
 	header->blockSize = deltaSize;
 
 	//
@@ -524,7 +524,7 @@ Real_Block:
 	// pointers
 	//--------------------------------------------------------------------
 	//
-	deletion = NULL;
+	deletion = nullptr;
 	for (i=0; i<deletion_count; ++i)
 	{
 		Check_Pointer(deletions[i]);
@@ -541,7 +541,7 @@ Real_Block:
 	// be marked as full
 	//--------------------------------------------------------------------------
 	//
-	last_real_block->nextBlock = NULL;
+	last_real_block->nextBlock = nullptr;
 	if (
 		firstHeaderRecord !=
 			Cast_Pointer(BYTE*, last_real_block) + sizeof(*last_real_block)
@@ -767,7 +767,7 @@ void*
 	// The record doesn't exist, so return NULL
 	//-----------------------------------------
 	//
-	return NULL;
+	return nullptr;
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MemoryStack ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -865,7 +865,7 @@ void
 				}
 
 				delete new_block;
-				block->nextBlock = NULL;
+				block->nextBlock = nullptr;
 				firstHeaderRecord = Cast_Pointer(BYTE*, block + 1);
 				blockSize = block->blockSize;
 			}
@@ -888,7 +888,7 @@ void
 		//
 		else if (!blockMemory->nextBlock)
 		{
-			topOfStack = NULL;
+			topOfStack = nullptr;
 		}
 
 		//

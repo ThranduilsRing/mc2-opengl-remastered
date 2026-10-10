@@ -644,7 +644,7 @@ void GlobalMap::print (char* fileName) {
 
 	debugFile->close();
 	delete debugFile;
-	debugFile = NULL;
+	debugFile = nullptr;
 }
 
 void GlobalMap::destroy (void) {
@@ -654,7 +654,7 @@ void GlobalMap::destroy (void) {
 
 	if (areaMap) {
 		systemHeap->Free(areaMap);
-		areaMap = NULL;
+		areaMap = nullptr;
 	}
 
 	if (areas) {
@@ -664,26 +664,26 @@ void GlobalMap::destroy (void) {
 			for (long i = 0; i < (numAreas + 1); i++) {
 				if (areas_cellsCovered && areas_cellsCovered[i]) {
 					systemHeap->Free(areas_cellsCovered[i]);
-				    areas_cellsCovered[i] = NULL;
+				    areas_cellsCovered[i] = nullptr;
 				}
 				if (areas_doors && areas_doors[i]) {
 					systemHeap->Free(areas_doors[i]);
-					areas_doors[i] = NULL;
+					areas_doors[i] = nullptr;
 				}
 			}
 		}
 		systemHeap->Free(areas);
-		areas = NULL;
+		areas = nullptr;
 	}
 	// Free the pointer arrays themselves — they are systemHeap-allocated in both
 	// the build path (calcAreas) and the load path (init(PacketFile,packet)).
 	if (areas_cellsCovered) {
 		systemHeap->Free(areas_cellsCovered);
-		areas_cellsCovered = NULL;
+		areas_cellsCovered = nullptr;
 	}
 	if (areas_doors) {
 		systemHeap->Free(areas_doors);
-		areas_doors = NULL;
+		areas_doors = nullptr;
 	}
 
 	if (doors) {
@@ -694,32 +694,32 @@ void GlobalMap::destroy (void) {
 				for (long s = 0; s < 2; s++) {
 					if (doors_links && doors_links[i][s]) {
 						systemHeap->Free(doors_links[i][s]);
-						doors_links[i][s] = NULL;
+						doors_links[i][s] = nullptr;
 					}
 				}
 		}
 		systemHeap->Free(doors);
-		doors = NULL;
+		doors = nullptr;
 	}
 	// Free the doors_links pointer array itself — allocated in both paths.
 	if (doors_links) {
 		systemHeap->Free(doors_links);
-		doors_links = NULL;
+		doors_links = nullptr;
 	}
 
 	if (doorInfos) {
 		systemHeap->Free(doorInfos);
-		doorInfos = NULL;
+		doorInfos = nullptr;
 	}
 
 	if (doorLinks) {
 		systemHeap->Free(doorLinks);
-		doorLinks = NULL;
+		doorLinks = nullptr;
 	}
 
 	if (pathExistsTable) {
 		systemHeap->Free(pathExistsTable);
-		pathExistsTable = NULL;
+		pathExistsTable = nullptr;
 	}
 
 }

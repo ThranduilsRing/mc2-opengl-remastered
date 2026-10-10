@@ -55,10 +55,10 @@ MoveInfo PauseWindow::moveInfo[8] =
 
 PauseWindow::PauseWindow()
 {
-	buttons = 0;
-	buttonData = 0;
+	buttons = nullptr;
+	buttonData = nullptr;
 	buttonCount = 0;
-	statics = 0;
+	statics = nullptr;
 	staticCount = 0;
 
 	finalReference = 0;
@@ -297,7 +297,7 @@ void PauseWindow::update()
 
 	const char * campaignName = LogisticsData::instance->getCampaignName().Data();
 	char campName[1024];
-	_splitpath(campaignName,NULL,NULL,campName,NULL);
+	_splitpath(campaignName,nullptr,nullptr,campName,nullptr);
 	if ( MPlayer || 
 		LogisticsData::instance->isSingleMission() ||
 		(S_stricmp("tutorial",campName) == 0))
@@ -462,7 +462,7 @@ bool PauseWindow::renderImGui()
 		// visual ink bounds — in authored pixels.
 		char label[256];
 		label[0] = 0;
-		HGOSFONT3D bf = 0;
+		HGOSFONT3D bf = nullptr;
 		ImU32 col = enabled
 			? ( hovered ? IM_COL32( 0xC8, 0xE6, 0xFF, 255 ) : IM_COL32( 0x5C, 0x96, 0xC2, 255 ) )
 			: IM_COL32( 0x7B, 0x7B, 0x7B, 255 );
@@ -812,9 +812,9 @@ void PauseWindow::init( FitIniFile& file )
 	if ( statics )
 		delete [] statics;
 
-	buttonData = 0;
-	buttons = 0;
-	statics = 0;
+	buttonData = nullptr;
+	buttons = nullptr;
+	statics = nullptr;
 		
 
 	if ( buttonCount )

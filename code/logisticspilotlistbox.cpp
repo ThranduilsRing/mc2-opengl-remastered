@@ -11,7 +11,7 @@ LogisticsPilotListBox.cpp			: Implementation of the LogisticsPilotListBox compon
 #include "../resource.h"
 #include"pilotreadyscreen.h"
 
-LogisticsPilotListBoxItem* LogisticsPilotListBoxItem::s_templateItem = NULL;
+LogisticsPilotListBoxItem* LogisticsPilotListBoxItem::s_templateItem = nullptr;
 
 LogisticsPilotListBox::LogisticsPilotListBox( )
 {
@@ -21,7 +21,7 @@ LogisticsPilotListBox::LogisticsPilotListBox( )
 LogisticsPilotListBox::~LogisticsPilotListBox()
 {
 	delete LogisticsPilotListBoxItem::s_templateItem;
-	LogisticsPilotListBoxItem::s_templateItem = NULL;
+	LogisticsPilotListBoxItem::s_templateItem = nullptr;
 
 	aListBox::destroy();
 }
@@ -120,7 +120,7 @@ LogisticsPilotListBoxItem::LogisticsPilotListBoxItem( LogisticsPilot* pNewPilot 
 int LogisticsPilotListBoxItem::init( FitIniFile* file )
 {
 	if ( !s_templateItem )
-		s_templateItem = new LogisticsPilotListBoxItem( NULL );
+		s_templateItem = new LogisticsPilotListBoxItem( nullptr );
 
 	MemSet(s_templateItem->pChildAnimations, 0);
 

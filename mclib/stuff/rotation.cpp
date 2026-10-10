@@ -464,21 +464,21 @@ DWORD
 //#############################################################################
 //
 
-const int QuaternionLerpTableSize=static_cast<int>(1024);
-const int SinTableSize=static_cast<int>(1024);
+const int QuaternionLerpTableSize=1024;
+const int SinTableSize=1024;
 
 
-const float MinCosom = static_cast<float>(-1.0f);
-const float MaxCosom = static_cast<float>(1.0f);
-const float CosomRangeOverOne = static_cast<float>(1.0f/(MaxCosom-MinCosom));
-const float CosBiggestNumber = (float)static_cast<unsigned int>(0xffffffff>>(32-10));
+const float MinCosom = (-1.0f);
+const float MaxCosom = 1.0f;
+const float CosomRangeOverOne = (1.0f/(MaxCosom-MinCosom));
+const float CosBiggestNumber = (float)(0xffffffff>>(32-10));
 
 
 const float MinSin = static_cast<float>(-1.3);
 const float MaxSin = static_cast<float>(1.3);
-const float SinRangeOverOne = static_cast<float>(1.0f/(MaxSin-MinSin));
-const float SinIncrement = static_cast<float>((MaxSin - MinSin) / SinTableSize);
-const float SinBiggestNumber = (float)static_cast<unsigned int>(0xffffffff>>(32-10));
+const float SinRangeOverOne = (1.0f/(MaxSin-MinSin));
+const float SinIncrement = ((MaxSin - MinSin) / SinTableSize);
+const float SinBiggestNumber = (float)(0xffffffff>>(32-10));
 
 
 float Omega_Table[QuaternionLerpTableSize];
@@ -503,8 +503,8 @@ void
 	Initialize_Timer(SlerpTime, "Slerp Time");
 	AddStatistic( "Quat Slerp Count",	"slerps",	gos_DWORD, &SlerpCount, Stat_AutoReset);
 
-	AddDebuggerMenuItem("Libraries\\Animation\\Use Fast Lerp", Check_UseFastLerp, Activate_UseFastLerp, NULL );
-	AddDebuggerMenuItem("Libraries\\Animation\\Use Fast Normalize", Check_UseFastNormalize, Activate_UseFastNormalize, NULL );
+	AddDebuggerMenuItem("Libraries\\Animation\\Use Fast Lerp", Check_UseFastLerp, Activate_UseFastLerp, nullptr );
+	AddDebuggerMenuItem("Libraries\\Animation\\Use Fast Normalize", Check_UseFastNormalize, Activate_UseFastNormalize, nullptr );
 	
 
 	float increment_step = (MaxCosom - MinCosom) / QuaternionLerpTableSize;

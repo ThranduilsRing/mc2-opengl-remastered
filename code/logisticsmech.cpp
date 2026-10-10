@@ -13,7 +13,7 @@ LogisticsMech.cpp			: Implementation of the LogisticsMech component.
 LogisticsMech::LogisticsMech( LogisticsVariant* pVar, int Count ) : pVariant( pVar )
 {
 	ID = (Count << 24 | pVar->getID() );
-	pilot = 0;
+	pilot = nullptr;
 	forceGroup = 0;
 }
 
@@ -22,7 +22,7 @@ LogisticsMech::~LogisticsMech()
 	if ( pilot )
 		pilot->setUsed( 0 );
 
-	pilot = NULL;
+	pilot = nullptr;
 }
 
 void LogisticsMech::setPilot( LogisticsPilot* pPilot )

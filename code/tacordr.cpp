@@ -282,7 +282,7 @@ GameObjectPtr TacticalOrder::getRamTarget (void) {
 	if (code == TACTICAL_ORDER_ATTACK_OBJECT)
 		if (attackParams.method == ATTACKMETHOD_RAMMING)
 			return(ObjectManager->getByWatchID(targetWID));
-	return(NULL);
+	return(nullptr);
 }
 
 //---------------------------------------------------------------------------
@@ -291,7 +291,7 @@ GameObjectPtr TacticalOrder::getJumpTarget (void) {
 
 	if (code == TACTICAL_ORDER_JUMPTO_POINT)
 		return(ObjectManager->get(targetWID));
-	return(NULL);
+	return(nullptr);
 }
 
 //---------------------------------------------------------------------------
@@ -400,7 +400,7 @@ long TacticalOrder::pack (MoverGroupPtr group, MoverPtr point) {
 
 	//--------------------
 	// First data DWORD...
-	tempData |= (long)(attackParams.aimLocation + 2);
+	tempData |= (attackParams.aimLocation + 2);
 	tempData <<= TACORDERCHUNK_ATTACKMETHOD_BITS;
 
 	tempData |= (long)attackParams.method;
@@ -743,7 +743,7 @@ long TacticalOrder::getGroup (long commanderID, MoverPtr* moverList, MoverPtr* p
 		gFlags >>= 1;
 	}
 
-	*point = NULL;
+	*point = nullptr;
 	if (pointLocalMoverId != 0x0F)
 		*point = MPlayer->playerMoverRoster[commanderID][pointLocalMoverId];
 
@@ -965,7 +965,7 @@ long TacticalOrder::execute (MechWarriorPtr warrior, long& message) {
 			{
 				//--------------------------------
 				// Targeting a terrain location...
-				warrior->setLastTarget(NULL);
+				warrior->setLastTarget(nullptr);
 				warrior->getVehicle()->calcFireRanges();
 				//-------------------------------------------------------------------
 				// If we want to refuse the order if the range is beyond our personal
@@ -997,7 +997,7 @@ long TacticalOrder::execute (MechWarriorPtr warrior, long& message) {
 			result = -1;
 			//--------------------------------
 			// Targeting a terrain location...
-			warrior->setLastTarget(NULL);
+			warrior->setLastTarget(nullptr);
 			warrior->getVehicle()->calcFireRanges();
 			//-------------------------------------------------------------------
 			// If we want to refuse the order if the range is beyond our personal
@@ -1249,7 +1249,7 @@ long TacticalOrder::execute (MechWarriorPtr warrior, long& message) {
 		if (warrior->getVehicle()->getStatus() != OBJECT_STATUS_DESTROYED) {
 			//-------------------------------------------------------------------
 			// Any non-withdraw order forces us out of withdraw mode, if in it...
-			((MoverPtr)warrior->getVehicle())->withdrawing = false;
+			(warrior->getVehicle())->withdrawing = false;
 		}
 	}
 
@@ -1432,7 +1432,7 @@ long TacticalOrder::status (MechWarriorPtr warrior) {
 				switch(stage) 
 				{
 					case 1:	// move
-						if (warrior->getMovePath()->numStepsWhenNotPaused == 0 && warrior->getMovePathRequest() == NULL)
+						if (warrior->getMovePath()->numStepsWhenNotPaused == 0 && warrior->getMovePathRequest() == nullptr)
 						{
 							if (warrior->getVehicle()->distanceFrom(target->getPosition()) < Mover::refitRange)
 							{
@@ -1533,7 +1533,7 @@ long TacticalOrder::status (MechWarriorPtr warrior) {
 				result = TACORDER_FAILURE;
 				switch(stage) {
 					case 1:	// move
-						if (warrior->getMovePath()->numStepsWhenNotPaused == 0 && warrior->getMovePathRequest() == NULL)
+						if (warrior->getMovePath()->numStepsWhenNotPaused == 0 && warrior->getMovePathRequest() == nullptr)
 							stage++;
 						break;
 					case 2: // power-down (or other cool animation...)
@@ -1599,7 +1599,7 @@ long TacticalOrder::status (MechWarriorPtr warrior) {
 						break;
 
 					case 4: // walking off...
-						if (warrior->getMovePath()->numStepsWhenNotPaused == 0 && warrior->getMovePathRequest() == NULL)
+						if (warrior->getMovePath()->numStepsWhenNotPaused == 0 && warrior->getMovePathRequest() == nullptr)
 							stage++;
 						break;
 

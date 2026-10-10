@@ -502,7 +502,7 @@ extern "C" int mc2_unitpreview_collect_witness(UnitPreviewWitnessRow* out, int m
             for (int a = 0; a < UNIT_PREVIEW_ANIM_TAG_COUNT; ++a) {
                 const bool ok = animTagResolves(kPreviewAnimTags[a],
                     [mtype](int g) {
-                        return g >= 0 && g < MaxGestures && mtype->mechAnim[g] != NULL;
+                        return g >= 0 && g < MaxGestures && mtype->mechAnim[g] != nullptr;
                     });
                 r.animTagAvailable[a] = ok ? 1 : 0;
             }

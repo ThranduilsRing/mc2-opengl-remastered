@@ -112,7 +112,7 @@ GameObjectPtr TurretType::createInstance (void) {
 
 	TurretPtr newTurret = new Turret;
 	if (!newTurret)
-		return(NULL);
+		return(nullptr);
 
 	newTurret->init(true, this);
 
@@ -334,7 +334,7 @@ void Turret::init (bool create) {
 	setFlag(OBJECT_FLAG_ONFIRE, false);
 	setFlag(OBJECT_FLAG_CHECKED_ONSCREEN, false);
 
-	appearance = NULL;
+	appearance = nullptr;
 			
 	vertexNumber = 0;
 	blockNumber = 0;
@@ -347,7 +347,7 @@ void Turret::init (bool create) {
 			
 	targetWID = 0;
 
-	pointLight = NULL;
+	pointLight = nullptr;
 
 	maxRange = 0.0f;
 	
@@ -398,7 +398,7 @@ long Turret::setTeamId (long _teamId, bool setup) {
 TeamPtr Turret::getTeam (void) {
 
 	if (teamId == -1)
-		return(NULL);
+		return(nullptr);
 	return(Team::teams[teamId]);
 }
 
@@ -569,7 +569,7 @@ long Turret::update (void)
 		{
 			eye->removeWorldLight(lightId,pointLight);
 			free(pointLight);
-			pointLight = NULL;
+			pointLight = nullptr;
 		}
 
 		appearance->setObjectParameters(position, rotation, TacticalOverview::maskWorldBars(drawFlags), teamId,Team::getRelation(teamId, Team::home->getId()));
@@ -825,7 +825,7 @@ long Turret::update (void)
 		// Move it with turret's rotation below.
 		//
 		// For E3, have the spotlights create the light immediately or we run out of light sources!
-		if (active && eye->getIsNight() && (pointLight == NULL) && (getStatus() != OBJECT_STATUS_DESTROYED))
+		if (active && eye->getIsNight() && (pointLight == nullptr) && (getStatus() != OBJECT_STATUS_DESTROYED))
 		{
 			pointLight = (TG_LightPtr)malloc(sizeof(TG_Light));
 			pointLight->init(TG_LIGHT_SPOT);
@@ -840,7 +840,7 @@ long Turret::update (void)
 		{
 			eye->removeWorldLight(lightId,pointLight);
 			free(pointLight);
-			pointLight = NULL;
+			pointLight = nullptr;
 		}
 	}
 
@@ -1002,8 +1002,8 @@ float Turret::calcAttackChance (GameObjectPtr target, long* range, long weaponId
 	//-------------------------------------------------------------
 	// First, let's find out what kind of object we're targeting...
 	Stuff::Vector3D targetPosition(0.0f,0.0f,0.0f);
-	BattleMechPtr mech = NULL;
-	GroundVehiclePtr vehicle = NULL;
+	BattleMechPtr mech = nullptr;
+	GroundVehiclePtr vehicle = nullptr;
 	
  	if (target) 
 	{
@@ -1167,7 +1167,7 @@ long Turret::updateWeaponFireChunks (long which)
 			if (target) 
 				handleWeaponFire(chunk.weaponIndex,
 							 target,
-							 NULL,
+							 nullptr,
 							 chunk.hit,
 							 entryQuadTable[chunk.entryAngle],
 							 chunk.numMissiles,
@@ -1176,14 +1176,14 @@ long Turret::updateWeaponFireChunks (long which)
 		else if (chunk.targetType == 1) 
 		{
 			GameObjectPtr target = ObjectManager->findByPartId(chunk.targetId);
-			if (target == NULL) 
+			if (target == nullptr) 
 			{
-				DebugWeaponFireChunk (&chunk, NULL, this);
+				DebugWeaponFireChunk (&chunk, nullptr, this);
 				Assert(FALSE, 0, " Turret.updateWeaponFireChunks: NULL Terrain Target (save wfchunk.dbg file) ");
 			}
 			handleWeaponFire(chunk.weaponIndex,
 							 target,
-							 NULL,
+							 nullptr,
 							 chunk.hit,
 							 entryQuadTable[chunk.entryAngle],
 							 chunk.numMissiles,
@@ -1192,14 +1192,14 @@ long Turret::updateWeaponFireChunks (long which)
 		else if (chunk.targetType == 2) 
 		{
 			GameObjectPtr target = ObjectManager->findByPartId(chunk.targetId);
-			if (target == NULL) 
+			if (target == nullptr) 
 			{
-				DebugWeaponFireChunk (&chunk, NULL, this);
+				DebugWeaponFireChunk (&chunk, nullptr, this);
 				Assert(FALSE, 0, " Turret.updateWeaponFireChunks: NULL Special Target (save wfchunk.dbg file) ");
 			}
 			handleWeaponFire(chunk.weaponIndex,
 							 target,
-							 NULL,
+							 nullptr,
 							 chunk.hit,
 							 entryQuadTable[chunk.entryAngle],
 							 chunk.numMissiles,
@@ -1211,7 +1211,7 @@ long Turret::updateWeaponFireChunks (long which)
 			targetPoint.x = (float)chunk.targetCell[1] * Terrain::worldUnitsPerCell + Terrain::worldUnitsPerCell / 2 - Terrain::worldUnitsMapSide / 2;
 			targetPoint.y = (Terrain::worldUnitsMapSide / 2) - ((float)chunk.targetCell[0] * Terrain::worldUnitsPerCell) - Terrain::worldUnitsPerCell / 2;
 			targetPoint.z = (float)0;
-			handleWeaponFire(chunk.weaponIndex, NULL, &targetPoint, chunk.hit, 0.0, 0, 0);
+			handleWeaponFire(chunk.weaponIndex, nullptr, &targetPoint, chunk.hit, 0.0, 0, 0);
 		}
 		else
 			Fatal(0, " Mover.updateWeaponFireChunk: bad targetType ");
@@ -1402,7 +1402,7 @@ void Turret::fireWeapon (GameObjectPtr target, long weaponId) {
 	bool isStreakMissile = MasterComponent::masterList[weaponMasterId].getWeaponStreak();
 
 	long range;
-	long attackChance = (float)calcAttackChance(target,&range,weaponId);
+	long attackChance = calcAttackChance(target,&range,weaponId);
 	if (attackChance == -1.0)
 		return;
 		
@@ -1410,7 +1410,7 @@ void Turret::fireWeapon (GameObjectPtr target, long weaponId) {
 	
 	long hitLocation = -2;
 
-	MechWarriorPtr targetPilot = NULL;
+	MechWarriorPtr targetPilot = nullptr;
 	if (target && target->isMover()) {
 		targetPilot = ((MoverPtr)target)->getPilot();
 		targetPilot->updateAttackerStatus(partId, scenarioTime);
@@ -1523,7 +1523,7 @@ void Turret::fireWeapon (GameObjectPtr target, long weaponId) {
 
 				if (target) {
 					weaponFX->connect(this, target, &curShotInfo, sourceHotSpot, targetHotSpot);
-					printFireWeaponDebugInfo(target, NULL, attackChance, hitRoll, &curShotInfo);
+					printFireWeaponDebugInfo(target, nullptr, attackChance, hitRoll, &curShotInfo);
 				}
 			}
 		}
@@ -1592,7 +1592,7 @@ void Turret::fireWeapon (GameObjectPtr target, long weaponId) {
 				if (target->getObjectClass() == BATTLEMECH)
 					targetHotSpot = ((BattleMechPtr)target)->body[hitLocation].hotSpotNumber;
 				weaponFX->connect(this, target, &shotInfo, sourceHotSpot, targetHotSpot);
-				printFireWeaponDebugInfo(target, NULL, attackChance, hitRoll, &shotInfo);
+				printFireWeaponDebugInfo(target, nullptr, attackChance, hitRoll, &shotInfo);
 			}
 		}
 	}
@@ -1840,7 +1840,7 @@ long Turret::handleWeaponFire (long weaponIndex,
 	// Weapon must recycle...
 	startWeaponRecycle(weaponIndex);
 
-	WeaponBoltPtr weaponFX = NULL;
+	WeaponBoltPtr weaponFX = nullptr;
 	
 	if (hit) {
 		//------------
@@ -2007,7 +2007,7 @@ long Turret::handleWeaponFire (long weaponIndex,
 	// Trigger the WEAPON TARGET event. For now, this assumes the target
 	// KNOWS we were targeting him. Of course, the target wouldn't always
 	// be aware of this, would they?
-	MechWarriorPtr targetPilot = NULL;
+	MechWarriorPtr targetPilot = nullptr;
 	if (target && target->isMover()) {
 		targetPilot = ((MoverPtr)target)->getPilot();
 		targetPilot->updateAttackerStatus(partId, scenarioTime);
@@ -2097,7 +2097,7 @@ void Turret::destroy (void)
 	if (appearance)
 	{
 		delete appearance;
-		appearance = NULL;
+		appearance = nullptr;
 	}
 }
 
@@ -2123,7 +2123,7 @@ void Turret::init (bool create, ObjectTypePtr _type) {
 	// MechCmdr2 features much simpler objects which only use 1 type of sprite!
 	long appearanceType = (BLDG_TYPE << 24);
 
-	AppearanceTypePtr buildingAppearanceType = NULL;
+	AppearanceTypePtr buildingAppearanceType = nullptr;
 	if (!appearName)
 	{
 		//------------------------------------------------------
@@ -2202,7 +2202,7 @@ long Turret::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayChunk
 		//-----------------------------------------------------
 		// Now, blow the building up using its type->explosion
 		// (this won't do anything if a building type doesn't have an explosion)
-		ObjectManager->createExplosion(TURRET_EXPLOSION_ID,NULL,position,explDamage,explRadius);
+		ObjectManager->createExplosion(TURRET_EXPLOSION_ID,nullptr,position,explDamage,explRadius);
 		if (CombatLog) {
 			char s[1024];
 			sprintf(s, "[%.2f] turret.destroyed: (%05d)%s", scenarioTime, getPartId(), getName());
@@ -2226,7 +2226,7 @@ long Turret::calcFireRanges (void) {
 	for (long curWeapon = 0; curWeapon < MAX_TURRET_WEAPONS; curWeapon++) {
 		long weaponMasterId = ((TurretTypePtr)getObjectType())->weaponMasterId[curWeapon];
 		if (weaponMasterId != -1) {
-			long range = (long)MasterComponent::masterList[weaponMasterId].getWeaponRange();
+			long range = MasterComponent::masterList[weaponMasterId].getWeaponRange();
 			float minWeaponRange = WeaponRanges[range][0];
 			float maxWeaponRange = WeaponRanges[range][1];
 			if (maxWeaponRange > maxRange)

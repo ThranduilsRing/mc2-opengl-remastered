@@ -95,7 +95,7 @@ void CheckMouse(void);
 
 long				MaxBreaks = 50;
 long				MaxWatches = 50;
-DebuggerPtr			debugger = NULL;
+DebuggerPtr			debugger = nullptr;
 
 char Debugger::message[512];
 
@@ -145,7 +145,7 @@ void WatchManager::destroy (void) {
 
 	if (watches) {
 		ABLStackFreeCallback(watches);
-		watches = NULL;
+		watches = nullptr;
 	}
 
 	maxWatches = 0;
@@ -179,7 +179,7 @@ WatchPtr WatchManager::add (SymTableNodePtr idPtr) {
         default: ;
 	}
 
-	return(NULL);
+	return(nullptr);
 }
 
 //---------------------------------------------------------------------------
@@ -201,7 +201,7 @@ long WatchManager::remove (SymTableNodePtr idPtr) {
 
 	//--------------------------------------------------------
 	// The id no longer points to a watch in the watch list...
-	idPtr->info = NULL;
+	idPtr->info = nullptr;
 	numWatches--;
 
 	//-------------------------------------
@@ -223,8 +223,8 @@ long WatchManager::remove (SymTableNodePtr idPtr) {
 long WatchManager::removeAll (void) {
 
 	for (long i = 0; i < numWatches; i++) {
-		watches[i].idPtr->info = NULL;
-		watches[i].idPtr = NULL;
+		watches[i].idPtr->info = nullptr;
+		watches[i].idPtr = nullptr;
 		watches[i].store = false;
 		watches[i].breakOnStore = false;
 		watches[i].fetch = false;
@@ -360,7 +360,7 @@ void BreakPointManager::destroy (void) {
 
 	if (breakPoints) {
 		ABLStackFreeCallback(breakPoints);
-		breakPoints = NULL;
+		breakPoints = nullptr;
 	}
 
 	maxBreakPoints = 0;
@@ -523,7 +523,7 @@ long Debugger::setWatch (long states) {
 			break;
 		case TKN_IDENTIFIER:
             {
-			SymTableNodePtr idPtr = NULL;
+			SymTableNodePtr idPtr = nullptr;
 			searchAndFindAllSymTables(idPtr);
 			getToken();
 			//-----------------
@@ -692,7 +692,7 @@ long Debugger::sprintSimpleValue (char* dest, SymTableNodePtr symbol) {
 	//--------------------------------------------------------------------
 	// This code is adapted from execVariable(). If that function changes,
 	// this better too!
-	TypePtr	typePtr = (TypePtr)(symbol->typePtr);
+	TypePtr	typePtr = symbol->typePtr;
 
 	if (symbol->defn.key == DFN_CONST) {
 		if (typePtr == IntegerTypePtr)
@@ -707,7 +707,7 @@ long Debugger::sprintSimpleValue (char* dest, SymTableNodePtr symbol) {
 		// First, point to the variable's stack item. If the variable's scope
 		// level is less than the current scope level, follow the static links
 		// to the proper stack frame base...
-		StackItemPtr dataPtr = NULL;
+		StackItemPtr dataPtr = nullptr;
 		switch (symbol->defn.info.data.varType) {
 			case VAR_TYPE_NORMAL: {
 				StackFrameHeaderPtr headerPtr = (StackFrameHeaderPtr)stackFrameBasePtr;
@@ -721,7 +721,7 @@ long Debugger::sprintSimpleValue (char* dest, SymTableNodePtr symbol) {
 				dataPtr = (StackItemPtr)stack + symbol->defn.info.data.offset;
 				break;
 			case VAR_TYPE_STATIC:
-				dataPtr = (StackItemPtr)StaticDataPtr + symbol->defn.info.data.offset;
+				dataPtr = StaticDataPtr + symbol->defn.info.data.offset;
 				break;
             default:;
 		}
@@ -733,7 +733,7 @@ long Debugger::sprintSimpleValue (char* dest, SymTableNodePtr symbol) {
 			dataPtr = (StackItemPtr)dataPtr->address;
 
 		if ((typePtr->form != FRM_ARRAY) /*&& (typePtr->form != FRM_RECORD)*/) {
-			ABL_Assert(dataPtr != NULL, 0, " Debugger.sprintSimpleValue(): dataPtr is NULL ");
+			ABL_Assert(dataPtr != nullptr, 0, " Debugger.sprintSimpleValue(): dataPtr is NULL ");
 			if ((typePtr == IntegerTypePtr) || (typePtr->form == FRM_ENUM))
 				sprintf(dest, "%d", *((int*)dataPtr));
 			else if (typePtr == CharTypePtr)
@@ -763,7 +763,7 @@ long Debugger::sprintArrayValue (char* dest, SymTableNodePtr symbol, char* subsc
 	if (symbol->defn.key == DFN_CONST)
 		sprintf(dest, "\"%s\"", symbol->defn.info.constant.value.stringPtr);
 	else {
-		StackItemPtr dataPtr = NULL;
+		StackItemPtr dataPtr = nullptr;
 		switch (symbol->defn.info.data.varType) {
 			case VAR_TYPE_NORMAL: {
 				StackFrameHeaderPtr headerPtr = (StackFrameHeaderPtr)stackFrameBasePtr;
@@ -777,16 +777,16 @@ long Debugger::sprintArrayValue (char* dest, SymTableNodePtr symbol, char* subsc
 				dataPtr = (StackItemPtr)stack + symbol->defn.info.data.offset;
 				break;
 			case VAR_TYPE_STATIC:
-				dataPtr = (StackItemPtr)StaticDataPtr + symbol->defn.info.data.offset;
+				dataPtr = StaticDataPtr + symbol->defn.info.data.offset;
 				break;
             default:;
 		}
 
-		TypePtr	typePtr = (TypePtr)(symbol->typePtr);
+		TypePtr	typePtr = symbol->typePtr;
 
-		ABL_Assert(dataPtr != NULL, 0, " Debugger.sprintArrayValue(): dataPtr is NULL ");
+		ABL_Assert(dataPtr != nullptr, 0, " Debugger.sprintArrayValue(): dataPtr is NULL ");
 
-		Address elementAddress = (Address)dataPtr->address;
+		Address elementAddress = dataPtr->address;
 		if (subscriptString) {
 			char* cp = subscriptString;
 		
@@ -807,7 +807,7 @@ long Debugger::sprintArrayValue (char* dest, SymTableNodePtr symbol, char* subsc
 
 				typePtr = typePtr->info.array.elementTypePtr;
 
-				token = strtok(NULL, ",]");
+				token = strtok(nullptr, ",]");
 			}
 		}
 
@@ -865,7 +865,7 @@ long Debugger::sprintValue (char* dest, char* exprString) {
 		SymTableNodePtr symbol = debugModule->findSymbol(exprString, CurRoutineIdPtr);
 		if (!symbol)
 			return(1);
-		sprintArrayValue(dest, symbol, NULL);
+		sprintArrayValue(dest, symbol, nullptr);
 	}
 
 	//-----------------------------------------------

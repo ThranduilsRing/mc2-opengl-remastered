@@ -49,10 +49,10 @@
 // SENSOR-SCAN-FACTS-1: TU-local telemetry accumulator (default-OFF).
 namespace mc2_sensor_trace { Counters g_counters = {false,0,0,0,0,0,0}; }
 
-SensorSystemManagerPtr		SensorManager = NULL;
+SensorSystemManagerPtr		SensorManager = nullptr;
 
 long						SensorSystem::numSensors = 0;
-SortListPtr					SensorSystem::sortList = NULL;
+SortListPtr					SensorSystem::sortList = nullptr;
 float						SensorSystem::scanFrequency = 0.5;
 
 bool						TeamSensorSystem::homeTeamInContact = false;
@@ -103,9 +103,9 @@ void SensorSystem::operator delete (void* us) {
 void SensorSystem::init (void) {
 
 	//id = 0			// this should be set by the sensor system manager only!
-	master = NULL;
+	master = nullptr;
 	masterIndex = -1;
-	owner = NULL;
+	owner = nullptr;
 	range = -1.0;
 	skill = -1;
 	broken = false;
@@ -143,7 +143,7 @@ void SensorSystem::destroy (void) {
 	numSensors--;
 	if (numSensors == 0) {
 		delete sortList;
-		sortList = NULL;
+		sortList = nullptr;
 	}
 }
 
@@ -440,7 +440,7 @@ void SensorSystem::removeContact (long contactIndex) {
 	// This assumes the contactIndex is legitimate...
 
 	MoverPtr contact = (MoverPtr)ObjectManager->get(contacts[contactIndex] & 0x7FFF);
-	Assert(contact != NULL, contacts[contactIndex] & 0x7FFF, " SensorSystem.removeContact: bad contact ");
+	Assert(contact != nullptr, contacts[contactIndex] & 0x7FFF, " SensorSystem.removeContact: bad contact ");
 	
 	numContacts--;
 	if ((numContacts > 0) && (contactIndex != numContacts)) {
@@ -608,7 +608,7 @@ long SensorSystem::scanBattlefield (void)
 	for (long i = 0; i < numMovers; i++)
 	{
 		if (_sfacts) mc2_sensor_trace::g_counters.pairsTested++;	// true O(n.m) count
-		MoverPtr mover = (MoverPtr)ObjectManager->getMover(i);
+		MoverPtr mover = ObjectManager->getMover(i);
 		if (mover->getExists() && (mover->getTeamId() != owner->getTeamId()))
 		{
 			long contactStatus = calcContactStatus(mover);
@@ -686,7 +686,7 @@ long SensorSystem::scanMover (Mover* mover) {
 
 long SensorSystem::getTeamContacts (int* contactList, int contactCriteria, int sortType) {
 
-	Assert(master != NULL, 0, " SensorSystem.getTeamContacts: null master ");
+	Assert(master != nullptr, 0, " SensorSystem.getTeamContacts: null master ");
 	return(master->getContacts(owner, contactList, contactCriteria, sortType));
 }
 
@@ -719,8 +719,8 @@ void TeamSensorSystem::init (void) {
 	numEnemyContacts = 0;
 	numSensors = 0;
 	capLoggedThisMission = false;
-	ecms = NULL;
-	jammers = NULL;
+	ecms = nullptr;
+	jammers = nullptr;
 }
 
 //---------------------------------------------------------------------------
@@ -753,7 +753,7 @@ void TeamSensorSystem::addSensor (SensorSystemPtr sensor) {
 			char _cbbuf[128];
 			snprintf(_cbbuf, sizeof(_cbbuf),
 				"[CONTACT v1] event=sensor_cap_hit team=%ld numSensors=%ld max=%d",
-				(long)teamId, (long)numSensors, MAX_SENSORS_PER_TEAM);
+				teamId, numSensors, MAX_SENSORS_PER_TEAM);
 			puts(_cbbuf);
 			fflush(stdout);
 		}
@@ -772,11 +772,11 @@ void TeamSensorSystem::removeSensor (SensorSystemPtr sensor) {
 	long index = sensor->getMasterIndex();
 	sensor->setMasterIndex(-1);
 
-	sensors[index] = NULL;
+	sensors[index] = nullptr;
 	if (index < (numSensors - 1)) {
 		sensors[index] = sensors[numSensors - 1];
 		sensors[index]->setMasterIndex(index);
-		sensors[numSensors - 1] = NULL;
+		sensors[numSensors - 1] = nullptr;
 	}
 	numSensors--;
 }
@@ -874,7 +874,7 @@ bool TeamSensorSystem::meetsCriteria (GameObjectPtr looker, MoverPtr mover, long
 			return(false);
 
 	if (contactCriteria & CONTACT_CRITERIA_NOT_CHALLENGED) {
-		if (mover->getChallenger() != NULL)
+		if (mover->getChallenger() != nullptr)
 			return(false);
 	}
 
@@ -1054,7 +1054,7 @@ SensorSystemPtr TeamSensorSystem::findBestSpotter (MoverPtr contact, long* statu
 		sprintf(s, "TeamSensorSystem.findBestSpotter: NULL contactInfo for objClass %d partID %d team %d", contact->getObjectClass(), contact->getPartId(), contact->getTeamId());
 		STOP((s));
 	}
-	SensorSystemPtr bestSensor = NULL;
+	SensorSystemPtr bestSensor = nullptr;
 	long bestStatus = CONTACT_NONE;
 	for (long i = 0; i < MAX_SENSORS; i++)
 		if (contactInfo->sensors[i] != 255) {
@@ -1127,7 +1127,7 @@ void TeamSensorSystem::removeContact (SensorSystemPtr sensor, MoverPtr contact) 
 		}
 	else if (contactInfo->teamSpotter[teamId] == sensor->owner->getHandle()) {
 		if (sensor->owner->getObjectClass() == BATTLEMECH)
-			Assert(sensor != NULL, 0, " dumb ");
+			Assert(sensor != nullptr, 0, " dumb ");
 		long bestStatus;
 		SensorSystemPtr bestSensor = findBestSpotter(contact, &bestStatus);
 //		Assert(bestSensor != NULL, 0, " hit ");
@@ -1181,7 +1181,7 @@ long SensorSystemManager::init (bool debug) {
 	// This assumes we have at least 2 sensors in the pool
 	// when initializing the pool...
 	sensorPool[0]->id = 0;
-	sensorPool[0]->prev = NULL;
+	sensorPool[0]->prev = nullptr;
 	sensorPool[0]->next = sensorPool[1];
 
 	for (int i = 1; i < (MAX_SENSORS - 1); i++) {
@@ -1192,7 +1192,7 @@ long SensorSystemManager::init (bool debug) {
 
 	sensorPool[MAX_SENSORS - 1]->id = MAX_SENSORS - 1;
 	sensorPool[MAX_SENSORS - 1]->prev = sensorPool[MAX_SENSORS - 2];
-	sensorPool[MAX_SENSORS - 1]->next = NULL;
+	sensorPool[MAX_SENSORS - 1]->next = nullptr;
 
 	//------------------------------
 	// All start on the free list...
@@ -1200,7 +1200,7 @@ long SensorSystemManager::init (bool debug) {
 	freeSensors = MAX_SENSORS;
 
 	for (int i = 0; i < MAX_TEAMS; i++)
-		teamSensors[i] = NULL;
+		teamSensors[i] = nullptr;
 
 	Assert (!debug || (Team::numTeams > 0), 0, " SensorSystemManager.init: 0 teams ");
 
@@ -1255,11 +1255,11 @@ SensorSystemPtr SensorSystemManager::newSensor (void) {
 	// Cut the new sensor from the free list...
 	freeList = freeList->next;
 	if (freeList)
-		freeList->prev = NULL;
+		freeList->prev = nullptr;
 
 	//----------------------------------------------------
 	// New system has no next. Already has no previous...
-	sensor->next = NULL;
+	sensor->next = nullptr;
 
 	return(sensor);
 }
@@ -1270,7 +1270,7 @@ void SensorSystemManager::freeSensor (SensorSystemPtr sensor) {
 
 	freeSensors++;
 
-	sensor->prev = NULL;
+	sensor->prev = nullptr;
 	sensor->next = freeList;
 	freeList->prev = sensor;
 	freeList = sensor;
@@ -1285,26 +1285,26 @@ void SensorSystemManager::destroy (void) {
 		for (long i = 0; i < MAX_SENSORS; i++) 
 		{
 			delete sensorPool[i];
-			sensorPool[i] = NULL;
+			sensorPool[i] = nullptr;
 		}
 		
 		missionHeap->Free(sensorPool);
-		sensorPool = NULL;
+		sensorPool = nullptr;
 	}
 
 	freeSensors = 0;
-	freeList = NULL;
+	freeList = nullptr;
 
 	for (long i = 0; i < Team::numTeams; i++) 
 	{
 		delete teamSensors[i];
-		teamSensors[i] = NULL;
+		teamSensors[i] = nullptr;
 	}
 
 	if (SensorSystem::sortList)
 	{
 		delete SensorSystem::sortList;
-		SensorSystem::sortList = NULL;
+		SensorSystem::sortList = nullptr;
 	}
 }
 
@@ -1326,7 +1326,7 @@ void SensorSystemManager::removeTeamSensor (long teamId, SensorSystemPtr sensor)
 	if (teamId == -1)
 		return;
 	teamSensors[teamId]->removeSensor(sensor);
-	sensor->setMaster(NULL);
+	sensor->setMaster(nullptr);
 }
 
 //---------------------------------------------------------------------------

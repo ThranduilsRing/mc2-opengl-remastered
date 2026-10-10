@@ -593,7 +593,7 @@ bool GVAppearance::recalcBounds (void)
 							BYTE alphaValue = gvShape->GetAlphaValue();
 							gvShape->ClearAnimation();
 							delete gvShape;
-							gvShape = NULL;
+							gvShape = nullptr;
 
 							gvShape = appearType->gvShape[currentLOD]->CreateFrom();
 							if (gvAnimationState != -1)
@@ -646,7 +646,7 @@ bool GVAppearance::recalcBounds (void)
 							BYTE alphaValue = gvShape->GetAlphaValue();
 							gvShape->ClearAnimation();
 							delete gvShape;
-							gvShape = NULL;
+							gvShape = nullptr;
 							
 							gvShape = appearType->gvShape[currentLOD]->CreateFrom();
 							gvShape->SetAlphaValue(alphaValue);
@@ -731,7 +731,7 @@ bool GVAppearance::playDestruction (void)
 			shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 			shapeOrigin.BuildTranslation(tPosition);
 			
-			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,NULL);
+			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
 			destructFX->Start(&info);
 			
 			return true;

@@ -25,7 +25,7 @@ DynamicArrayOf<int>
 	*MLRTriangleCloud::clipExtraLength;
 
 MLRTriangleCloud::ClassData*
-	MLRTriangleCloud::DefaultData = NULL;
+	MLRTriangleCloud::DefaultData = nullptr;
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
@@ -70,7 +70,7 @@ void
 
 	Unregister_Object(DefaultData);
 	delete DefaultData;
-	DefaultData = NULL;
+	DefaultData = nullptr;
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -79,7 +79,7 @@ MLRTriangleCloud::MLRTriangleCloud(int nr) :
 	MLREffect(nr, DefaultData)
 {
 	Verify(gos_GetCurrentHeap() == Heap);
-	usedNrOfTriangles = NULL;
+	usedNrOfTriangles = nullptr;
 
 	Check_Pointer(this);
 	

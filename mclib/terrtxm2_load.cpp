@@ -92,7 +92,7 @@ void TerrainColorMap::getScaledColorMap (MemoryPtr bfr, long dWidth)
 			}
 			
 			free(tgaFileImage);
-			tgaFileImage = NULL;
+			tgaFileImage = nullptr;
 			
 			DWORD numTextures = colorMapInfo.width / COLOR_MAP_TEXTURE_SIZE;
 			numTexturesAcross = numTextures;
@@ -135,9 +135,9 @@ void TerrainColorMap::getScaledColorMap (MemoryPtr bfr, long dWidth)
 	if (!wasColorMapAround)
 	{
 		delete colorMapRAMHeap;
-		colorMapRAMHeap = NULL;
+		colorMapRAMHeap = nullptr;
 
-		ColorMap = NULL;
+		ColorMap = nullptr;
 	}
 }
 
@@ -278,7 +278,7 @@ long TerrainColorMap::init (char *fileName)
 		// .burnin.tga path, so we can skip the TGA read/parse/flip entirely.
 		long jpgColorMapWidth = 0;
 		MemoryPtr jpgColorMap = tryLoadBurninJpg(texturePath, fileName, colorMapRAMHeap, &jpgColorMapWidth);
-		if (jpgColorMap != NULL)
+		if (jpgColorMap != nullptr)
 		{
 			ColorMap = jpgColorMap;
 
@@ -332,7 +332,7 @@ long TerrainColorMap::init (char *fileName)
 			// (same as the TGA path below — required for terrain displacement
 			// HSV classification + colormap atlas upload).
 			if (ColorMap) {
-				if (cpuColorMap) { free(cpuColorMap); cpuColorMap = NULL; }
+				if (cpuColorMap) { free(cpuColorMap); cpuColorMap = nullptr; }
 				long pixels = jpgColorMapWidth * jpgColorMapWidth;
 				cpuColorMap = (unsigned char*)malloc(pixels * 4);
 				gosASSERT(cpuColorMap != NULL);
@@ -345,9 +345,9 @@ long TerrainColorMap::init (char *fileName)
 		else
 		{
 			bool burnedIn = false;
-			MemoryPtr tgaFileImage = NULL;
+			MemoryPtr tgaFileImage = nullptr;
 
-			if (tgaFileImage == NULL)
+			if (tgaFileImage == nullptr)
 			{
 				File colorMapFile;
 				result = colorMapFile.open(burnInName);
@@ -415,7 +415,7 @@ long TerrainColorMap::init (char *fileName)
 				}
 
 				free(tgaFileImage);
-				tgaFileImage = NULL;
+				tgaFileImage = nullptr;
 
 				numTextures = colorMapInfo.width / COLOR_MAP_TEXTURE_SIZE;
 				numTexturesAcross = numTextures;
@@ -491,7 +491,7 @@ long TerrainColorMap::init (char *fileName)
 			// here (inside the TGA scope where colorMapInfo is in scope and
 			// ColorMap is still valid) before the cleanup block frees ColorMap.
 			if (colorMapInfo.image_type == UNC_TRUE && ColorMap) {
-				if (cpuColorMap) { free(cpuColorMap); cpuColorMap = NULL; }
+				if (cpuColorMap) { free(cpuColorMap); cpuColorMap = nullptr; }
 				long pixels = (long)colorMapInfo.width * (long)colorMapInfo.width;
 				cpuColorMap = (unsigned char*)malloc(pixels * 4);
 				gosASSERT(cpuColorMap != NULL);
@@ -525,28 +525,28 @@ long TerrainColorMap::init (char *fileName)
 		for (unsigned long i=0;i<numTextures;i++)
 		{
 			colorMapRAMHeap->Free(txmRAM[i].ourRAM);
-			txmRAM[i].ourRAM = NULL;
+			txmRAM[i].ourRAM = nullptr;
 		}
 
 		colorMapRAMHeap->Free(txmRAM);
-		txmRAM = NULL;
+		txmRAM = nullptr;
 		}
 		
 		if (usedJPG)
 		{
 			gos_Free(ColorMap);
-			ColorMap = NULL;
+			ColorMap = nullptr;
 		}
 		else
 		{
 			colorMapRAMHeap->Free(ColorMap);
-			ColorMap = NULL;
+			ColorMap = nullptr;
 		}
 		
 		if (colorMapRAMHeap)
 		{
 			delete colorMapRAMHeap;
-			colorMapRAMHeap = NULL;
+			colorMapRAMHeap = nullptr;
 		}
 	}
 
@@ -566,7 +566,7 @@ long TerrainColorMap::init (char *fileName)
 			File nmFile;
 			if (nmFile.open(normalMapPath) == NO_ERR)
 			{
-				MemoryPtr nmData = NULL;
+				MemoryPtr nmData = nullptr;
 				{
 					ZoneScopedN("TerrainColorMap::init normalMap read");
 					nmData = (MemoryPtr)malloc(nmFile.fileSize());
@@ -616,7 +616,7 @@ long TerrainColorMap::init (char *fileName)
 					}
 
 					// Slice and upload tiles (same grid as colormap)
-					MemoryPtr tileRAM = NULL;
+					MemoryPtr tileRAM = nullptr;
 					{
 						ZoneScopedN("TerrainColorMap::init normalMap allocTileBuffer");
 						tileRAM = (MemoryPtr)malloc(sizeof(DWORD) * COLOR_MAP_TEXTURE_SIZE * COLOR_MAP_TEXTURE_SIZE);
@@ -759,8 +759,8 @@ long TerrainColorMap::init (char *fileName)
 			"mat0_displacement", "mat1_displacement", "mat2_displacement", "mat3_displacement", "mat4_displacement",
 			"mat5_displacement", "mat6_displacement", "mat7_displacement", "mat8_displacement"
 		};
-		const unsigned char* normalLayers[9] = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
-		const unsigned char* dispLayers[9] = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
+		const unsigned char* normalLayers[9] = {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr};
+		const unsigned char* dispLayers[9] = {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr};
 		int arrayWidth = 0;
 		bool allLoaded = true;
 
@@ -857,7 +857,7 @@ long TerrainColorMap::init (char *fileName)
 
 		// Retain CPU copy of matNormal2 alpha for terrain elevation displacement
 		if (normalLayers[2]) {
-			if (cpuDispAlpha) { free(cpuDispAlpha); cpuDispAlpha = NULL; }
+			if (cpuDispAlpha) { free(cpuDispAlpha); cpuDispAlpha = nullptr; }
 			long pixels = (long)arrayWidth * (long)arrayWidth;
 			cpuDispAlpha = (unsigned char*)malloc(pixels);
 			gosASSERT(cpuDispAlpha != NULL);

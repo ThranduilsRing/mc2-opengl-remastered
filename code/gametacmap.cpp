@@ -64,7 +64,7 @@ GameTacMap::GameTacMap()
 	right = 0;
 	bottom = 0;
 
-	buildingPoints = NULL;
+	buildingPoints = nullptr;
 	buildingCount = 0;
 
 	navMarkerCount = 0;
@@ -143,7 +143,7 @@ void GameTacMap::update()
 		else
 		{
 			eye->setPosition( world, false );
-			((GameCamera*)(eye))->setTarget( 0 );
+			((GameCamera*)(eye))->setTarget( nullptr );
 		}
 	}
 	else if ( userInput->isRightClick() && useLeftRightMouseProfile )
@@ -677,7 +677,7 @@ bool GameTacMap::renderImGui()
 			// click OR drag: continuous camera pan while held (click-to-move
 			// parity on the initial press)
 			eye->setPosition( world, false );
-			((GameCamera*)(eye))->setTarget( 0 );
+			((GameCamera*)(eye))->setTarget( nullptr );
 		}
 		else if ( rightClick && useLeftRightMouseProfile )
 		{
@@ -707,7 +707,7 @@ void GameTacMap::initBuildings( unsigned char* data, int size )
 		if ( buildingCount < 0 || buildingCount > maxCount )
 		{
 			printf("[TACMAP] initBuildings: buildingCount=%d exceeds packet capacity %d (size=%d) -- clamping to 0\n",
-				(int)buildingCount, (int)maxCount, size);
+				buildingCount, (int)maxCount, size);
 			buildingCount = 0;
 		}
 

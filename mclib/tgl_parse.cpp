@@ -33,12 +33,12 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 	strncpy(nodeId,nodeString, TG_NODE_ID-1);
 	nodeId[TG_NODE_ID - 1] = '\0';
 	
-	char* parentName = strstr((char *)nodeName,ASE_NODE_PARENT);
+	char* parentName = strstr(nodeName,ASE_NODE_PARENT);
 
 	//-------------------------------------------------------------------
 	// Must also check to make sure we HAVE a parent.
 	// We will get the next GeomObject's parent if we don't check length!
-	if ((parentName != NULL) && ((parentName - nodeName) < MAX_SCAN_LENGTH))
+	if ((parentName != nullptr) && ((parentName - nodeName) < MAX_SCAN_LENGTH))
 	{
 		parentName += strlen(ASE_NODE_PARENT)+1;
 		GetNameData(parentName,nodeString);
@@ -499,7 +499,7 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 
 		char vertexID[256];
 		sprintf(vertexID,"%s",ASE_VERTEX_NORMAL_ID);
-		char *vertexData = strstr((char *)faceData,vertexID);
+		char *vertexData = strstr(faceData,vertexID);
 		GetNumberData(vertexData,numberData);
 		int vertexNum = atol(numberData);
 		vertexNormalCount[vertexNum]++;
@@ -517,7 +517,7 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 			GetNumberData(vertexData,numberData);
 			listOfTypeVertices[vertexNum].normal.y += (float)atof(numberData);
 
-		vertexData = strstr((char *)vertexData,vertexID);
+		vertexData = strstr(vertexData,vertexID);
 		GetNumberData(vertexData,numberData);
 		vertexNum = atol(numberData);
 		vertexNormalCount[vertexNum]++;
@@ -535,7 +535,7 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 			GetNumberData(vertexData,numberData);
 			listOfTypeVertices[vertexNum].normal.y += (float)atof(numberData);
 
-		vertexData = strstr((char *)vertexData,vertexID);
+		vertexData = strstr(vertexData,vertexID);
 		GetNumberData(vertexData,numberData);
 		vertexNum = atol(numberData);
 		vertexNormalCount[vertexNum]++;
@@ -679,7 +679,7 @@ int TG_TypeShape::LoadTGShapeFromASE (const char *fileName)
 	long parseResult = ParseASEFile(aseContents,fileName);
 
 	TG_Shape::tglHeap->Free(aseContents);
-	aseContents = NULL;
+	aseContents = nullptr;
 
 	return(parseResult);
 }	
@@ -706,7 +706,7 @@ void TG_TypeShape::CreateListOfTextures (TG_TexturePtr list, DWORD numTxms)
 	   }
  	}
 	else
-		listOfTextures = NULL;
+		listOfTextures = nullptr;
 }	
 
 //-------------------------------------------------------------------------------

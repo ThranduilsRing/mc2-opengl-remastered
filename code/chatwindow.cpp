@@ -10,7 +10,7 @@
 #include"multplyr.h"
 #include "../resource.h"
 
-ChatWindow* ChatWindow::s_instance = NULL;
+ChatWindow* ChatWindow::s_instance = nullptr;
 
 #define MP_CHAT_HELPTOGGLE	300
 #define MP_CHAT_EXPAND		301
@@ -35,7 +35,7 @@ void ChatWindow::static_destroy()
 	if (s_instance)
 	{
 		delete s_instance;
-		s_instance = NULL;
+		s_instance = nullptr;
 	}
 }
 
@@ -221,7 +221,7 @@ void ChatWindow::update()
 				MPlayer->getPlayerInfo( MPlayer->commanderID )->team : -1;
 			if ( text.Length() )
 			{
-				MPlayer->sendChat( 0, team, (char*)(const char*)text );
+				MPlayer->sendChat( nullptr, team, (char*)(const char*)text );
 			}
 			edits[0].setEntry( "" );
 			edits[0].setFocus( false );

@@ -83,7 +83,7 @@ extern SymTableNodePtr	CurModuleIdPtr;
 extern long				CurModuleHandle;
 extern bool				CallModuleInit;
 extern StackItemPtr		StaticDataPtr;
-unsigned long*	OrderCompletionFlags = NULL;
+unsigned long*	OrderCompletionFlags = nullptr;
 extern ModuleEntryPtr	ModuleRegistry;
 extern ABLModulePtr*	ModuleInstanceRegistry;
 extern ABLModulePtr		CurModule;
@@ -119,7 +119,7 @@ void execStatement (void) {
 	switch (codeToken) {
 		case TKN_IDENTIFIER: {
 			SymTableNodePtr idPtr = getCodeSymTableNodePtr();
-			ABL_Assert(idPtr != NULL, 0, " oops ");
+			ABL_Assert(idPtr != nullptr, 0, " oops ");
 			// Tier-1 crash guard: ABL_Assert is print-and-continue in release.
 			// If the parser bailed on a syntax error earlier, the symbol table
 			// may have a NULL slot here; executing its .defn.key dereferences
@@ -327,7 +327,7 @@ TypePtr execDeclaredRoutineCall (SymTableNodePtr routineIdPtr, bool skipOrder) {
 		getCodeToken();
 		tos = curStackFrameBase;
 		pushInteger(1);
-		return((TypePtr)(routineIdPtr->typePtr));
+		return(routineIdPtr->typePtr);
 	}
 
 	long oldLevel = level;						// level of caller
@@ -362,7 +362,7 @@ TypePtr execDeclaredRoutineCall (SymTableNodePtr routineIdPtr, bool skipOrder) {
 	//---------------------------------------------------------
 	// If we're calling a library function, we need to set some
 	// module-specific info...
-	ABLModulePtr PrevModule = NULL;
+	ABLModulePtr PrevModule = nullptr;
 	if (isLibraryCall) {
 		PrevModule = CurModule;
 		CurModule = routineIdPtr->library;
@@ -413,7 +413,7 @@ TypePtr execDeclaredRoutineCall (SymTableNodePtr routineIdPtr, bool skipOrder) {
 	getCodeToken();
 	CallStackLevel--;
 
-	return((TypePtr)(routineIdPtr->typePtr));
+	return(routineIdPtr->typePtr);
 }
 
 //***************************************************************************
@@ -434,11 +434,11 @@ void execActualParams (SymTableNodePtr routineIdPtr) {
 	//--------------------------
 	// Execute the parameters...
 
-	for (SymTableNodePtr formalIdPtr = (SymTableNodePtr)(routineIdPtr->defn.info.routine.params);
-		 formalIdPtr != NULL;
+	for (SymTableNodePtr formalIdPtr = routineIdPtr->defn.info.routine.params;
+		 formalIdPtr != nullptr;
 		 formalIdPtr = formalIdPtr->next) {
 
-		TypePtr formalTypePtr = (TypePtr)(formalIdPtr->typePtr);
+		TypePtr formalTypePtr = formalIdPtr->typePtr;
 		getCodeToken();
 
 		if (formalIdPtr->defn.key == DFN_VALPARAM) {
@@ -505,7 +505,7 @@ void execSwitchStatement (void) {
 	getCodeToken();
 	int caseLabelCount = getCodeInteger();
 	bool done = false;
-	char* caseBranchLocation = NULL;
+	char* caseBranchLocation = nullptr;
 	while (!done && caseLabelCount--) {
 		int caseLabelValue = getCodeInteger();
 		caseBranchLocation = getCodeAddress();

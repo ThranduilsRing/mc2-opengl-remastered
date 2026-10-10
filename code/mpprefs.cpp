@@ -22,7 +22,7 @@ mpprefs.cpp			: Implementation of the mpprefs component.ef
 #define BASE_RECT	35
 #define STRIPE_RECT	36
 
-MPPrefs* MPPrefs::s_instance = NULL;
+MPPrefs* MPPrefs::s_instance = nullptr;
 
 static const char* path2insignia = "data" PATH_SEPARATOR "multiplayer" PATH_SEPARATOR "insignia" PATH_SEPARATOR;
 
@@ -239,7 +239,7 @@ void MPPrefs::begin()
 }
 void MPPrefs::end()
 {
-	camera.setMech(NULL);
+	camera.setMech(nullptr);
 	status = NEXT;
 }
 
@@ -297,7 +297,7 @@ void MPPrefs::update()
 
 		strcpy( pInfo->insigniaFile, pName );
 
-		MPlayer->sendPlayerUpdate( 0, 5, -1 );
+		MPlayer->sendPlayerUpdate( nullptr, 5, -1 );
 
 	
 		FullPathFileName path;
@@ -369,7 +369,7 @@ void MPPrefs::setColor( unsigned long color )
 	//GD:MPlayer->setPlayerBaseColor( MPlayer->commanderID, getColorIndex( color ) );
 	MC2Player* player = MPlayer->getPlayerInfo( MPlayer->commanderID );
 	player->baseColor[BASECOLOR_PREFERENCE] = getColorIndex(color);
-	MPlayer->sendPlayerUpdate( 0, 6, -1 );
+	MPlayer->sendPlayerUpdate( nullptr, 6, -1 );
 
 	//GD:camera.setMech( "Bushwacker", color, MPlayer->colors[player->stripeColor], MPlayer->colors[player->stripeColor] );
 	//GD:camera.zoomIn( 1.5 );
@@ -380,7 +380,7 @@ void MPPrefs::setHighlightColor( unsigned long color )
 {
 	MC2Player* player = MPlayer->getPlayerInfo( MPlayer->commanderID );
 	player->stripeColor = getColorIndex( color );
-	MPlayer->sendPlayerUpdate( 0, 6, -1 );
+	MPlayer->sendPlayerUpdate( nullptr, 6, -1 );
 
 	camera.setMech( "Bushwacker", MPlayer->colors[player->baseColor[BASECOLOR_PREFERENCE]], color, color );
 	camera.zoomIn( 1.5 );
@@ -412,7 +412,7 @@ void MPPrefs::updateBaseColors( const MC2Player* players, long playerCount, bool
 				{
 					if ( MPlayer->colors[players[i].baseColor[BASECOLOR_PREFERENCE]] == rects[j].getColor() )
 					{
-						GUI_RECT rect = { (long)(rects[j].globalX() - 1), (long)(rects[j].globalY() - 1),
+						GUI_RECT rect = { (rects[j].globalX() - 1), (rects[j].globalY() - 1),
 							(long)rects[j].right(), (long)rects[j].bottom() };
 
 						if ( bDrawRect )
@@ -456,7 +456,7 @@ void MPPrefs::updateStripeColors(const MC2Player* players, long playerCount, boo
 				{
 					if ( MPlayer->colors[players[i].stripeColor] == rects[j].getColor() )
 					{
-						GUI_RECT rect = { (long)(rects[j].globalX() - 1), (long)(rects[j].globalY() - 1),
+						GUI_RECT rect = { (rects[j].globalX() - 1), (rects[j].globalY() - 1),
 							(long)(rects[j].right()), (long)(rects[j].bottom()) };
 
 						if ( bDrawRect )
@@ -478,7 +478,7 @@ void MPPrefs ::render(int OffsetX, int OffsetY )
 	LogisticsScreen::render( OffsetX, OffsetY );
 	statics[21].showGUIWindow( 1 );
 
-	aObject* pObject = NULL;
+	aObject* pObject = nullptr;
 	if ( OffsetX == 0 && OffsetY == 0 )
 	{
 
@@ -618,7 +618,7 @@ void MPPrefs::saveSettings()
 		prefs.highlightColor = MPlayer->colors[pInfo->stripeColor];
 	}
 
-	MPlayer->sendPlayerUpdate( 0, 5, -1 );
+	MPlayer->sendPlayerUpdate( nullptr, 5, -1 );
 	prefs.save();
 
 
@@ -634,7 +634,7 @@ void MPPrefs::cancelSettings()
 	strcpy( pInfo->unitName, prefs.unitName[0] );
 	strcpy( pInfo->insigniaFile, prefs.insigniaFile );
 
-	MPlayer->sendPlayerUpdate( 0, 5, -1 );
+	MPlayer->sendPlayerUpdate( nullptr, 5, -1 );
 	prefs.save();
 
 

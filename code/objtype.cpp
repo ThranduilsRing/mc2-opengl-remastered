@@ -66,9 +66,9 @@
 
 //---------------------------------------------------------------------------
 
-PacketFilePtr			ObjectTypeManager::objectFile = NULL;
-UserHeapPtr				ObjectTypeManager::objectTypeCache = NULL;
-UserHeapPtr				ObjectTypeManager::objectCache = NULL;
+PacketFilePtr			ObjectTypeManager::objectFile = nullptr;
+UserHeapPtr				ObjectTypeManager::objectTypeCache = nullptr;
+UserHeapPtr				ObjectTypeManager::objectCache = nullptr;
 long					ObjectTypeManager::bridgeTypeHandle = 0xFFFFFFFF;
 long					ObjectTypeManager::forestTypeHandle = 0xFFFFFFFF;
 long					ObjectTypeManager::wallHeavyTypeHandle = 0xFFFFFFFF;
@@ -115,7 +115,7 @@ void ObjectType::destroy (void) {
 
 	// Nothing at the moment!
 	ObjectTypeManager::objectTypeCache->Free(appearName);
-	appearName = NULL;
+	appearName = nullptr;
 }
 		
 //---------------------------------------------------------------------------
@@ -180,7 +180,7 @@ void ObjectType::createExplosion (Stuff::Vector3D& position, float dmg, float ra
 		if (rad == 0.0)
 			rad = getExtentRadius();
 
- 		ObjectManager->createExplosion(effectId, NULL, position, dmg, rad);
+ 		ObjectManager->createExplosion(effectId, nullptr, position, dmg, rad);
 	}
 }
 
@@ -262,7 +262,7 @@ long ObjectTypeManager::init (const char* objectFileName, long objectTypeCacheSi
 	if (!table)
 		Fatal(0, " ObjectTypeManager.init: unable to create table ");
 	for (long i = 0; i < numObjectTypes; i++)
-		table[i] = NULL;
+		table[i] = nullptr;
 
 	//---------------------------------------------------------------------------
 	// Since MC1 handled all of these MiscTerrainObjectTypes with one ObjectType,
@@ -286,7 +286,7 @@ void ObjectTypeManager::destroy(void)
 	if (table) 
 	{
 		objectTypeCache->Free(table);
-		table = NULL;
+		table = nullptr;
 		numObjectTypes = 0;
 	}
 
@@ -294,19 +294,19 @@ void ObjectTypeManager::destroy(void)
 	{
 		objectFile->close();
 		delete objectFile;
-		objectFile = NULL;
+		objectFile = nullptr;
 	}
 	
 	if (objectTypeCache) 
 	{
 		delete objectTypeCache;
-		objectTypeCache = NULL;
+		objectTypeCache = nullptr;
 	}
 
 	if (objectCache) 
 	{
 		delete objectCache;
-		objectCache = NULL;
+		objectCache = nullptr;
 	}
 }
 
@@ -330,18 +330,18 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 
 	if ((objTypeNum < 0) || (objTypeNum >= numObjectTypes)) {
 		PAUSE((" ObjectTypeManager.load: bad objTypeNum %d (max %d) — mod content; returning NULL ", (int)objTypeNum, (int)numObjectTypes));
-		return NULL;
+		return nullptr;
 	}
 
 	if (objTypeNum == 0)		//First Object always NULL!
-		return NULL;
+		return nullptr;
 
 	if (!forceLoad && get(objTypeNum, false))
-		return(NULL);
+		return(nullptr);
 
 	bool isMiscTerrObj = false;
 	long objectTypeNum = -1;
-	ObjectTypePtr objType = NULL;
+	ObjectTypePtr objType = nullptr;
 	if ((objTypeNum == bridgeTypeHandle) ||
 		(objTypeNum == forestTypeHandle) ||
 		(objTypeNum == wallHeavyTypeHandle) ||
@@ -531,7 +531,7 @@ void ObjectTypeManager::remove (long objTypeNum) {
 		table[objTypeNum]->removeUser();
 		if (!table[objTypeNum]->inUse() && !table[objTypeNum]->lovable()) {
 			delete table[objTypeNum];
-			table[objTypeNum] = NULL;
+			table[objTypeNum] = nullptr;
 		}
 	}
 }
@@ -549,7 +549,7 @@ ObjectTypePtr ObjectTypeManager::get (ObjectTypeNumber objTypeNum, bool loadIt) 
 
 	if ((objTypeNum < 0) || (objTypeNum >= numObjectTypes)) {
 		PAUSE((" ObjectTypeManager.find: bad objTypeNum %d (max %d) — mod content; returning NULL ", (int)objTypeNum, (int)numObjectTypes));
-		return NULL;
+		return nullptr;
 	}
 
 	//---------------------------
@@ -592,7 +592,7 @@ GameObjectPtr ObjectTypeManager::create (ObjectTypeNumber objTypeNum) {
 	}
 	
 	Fatal(objTypeNum, " ObjectTypeManager.create: unable to load object type ");
-	return(NULL);
+	return(nullptr);
 }
 
 //***************************************************************************

@@ -29,7 +29,7 @@ int LogisticsChassis::weightClasses[5] = { 0, 35, 55, 75, 100};
 
 LogisticsChassis::LogisticsChassis()
 {
-	appearance = 0;
+	appearance = nullptr;
 	chassisNameID = 0;
 	baseCost = 0;
 	maxWeight = 0;
@@ -292,7 +292,7 @@ LogisticsVariant::LogisticsVariant()
 {
 	componentCount = 0;
 	ID = -1;
-	chassis = 0;
+	chassis = nullptr;
 	availableToUser = 0;
 
 	memset( components, 0, sizeof( components ) );
@@ -322,7 +322,7 @@ LogisticsVariant::~LogisticsVariant()
 	if ( chassis->refCount == 0 )
 		delete chassis;
 
-	chassis = NULL;
+	chassis = nullptr;
 }
 
 LogisticsVariant::LogisticsVariant( const LogisticsVariant& src )
@@ -828,7 +828,7 @@ int LogisticsVariant::canAddComponent( LogisticsComponent* pComponent, long& x, 
 const LogisticsChassis::ComponentInfo* LogisticsVariant::getComponentAtLocation( long x, long y ) const
 {
 	if ( x == -1 && y == -1 )
-		return NULL;
+		return nullptr;
 
 	for ( int i = 0; i < componentCount; ++i )
 	{
@@ -847,7 +847,7 @@ const LogisticsChassis::ComponentInfo* LogisticsVariant::getComponentAtLocation(
 		}
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 bool LogisticsVariant::hasJumpJets() const
@@ -1027,7 +1027,7 @@ LogisticsComponent*	LogisticsVariant::getCompAtLocation( int i, int j, long& rea
 		return pInfo->component;
 	}
 
-	return 0;
+	return nullptr;
 }
 
 int	LogisticsVariant::getComponentLocation( LogisticsComponent* pComp, long& x, long& y )

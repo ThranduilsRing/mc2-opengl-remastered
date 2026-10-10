@@ -201,7 +201,7 @@ void ForceGroupBar::renderOverviewIcons( Camera* eye, float alpha )
 	// Additive: RGB scales the texel, so encode the cross-fade in RGB (not alpha).
 	const unsigned long iconArgb = 0xff000000 | (aByte << 16) | (aByte << 8) | aByte;
 
-	HGOSFONT3D font = ForceGroupIcon::gosFontHandle ? ForceGroupIcon::gosFontHandle->getTempHandle() : 0;
+	HGOSFONT3D font = ForceGroupIcon::gosFontHandle ? ForceGroupIcon::gosFontHandle->getTempHandle() : nullptr;
 
 	for ( int i = 0; i < n; i++ )
 	{
@@ -338,7 +338,7 @@ int ForceGroupBar::renderOverviewSquadCards( Camera* eye, float alpha,
 	const float texH = (float)ForceGroupIcon::s_textureMemory->height;
 	const float uIX = ForceGroupIcon::unitIconX, uIY = ForceGroupIcon::unitIconY;
 	const int perLine = (int)( texW / uIX ), iconsPerPage = (int)( texH / uIY );  // rows: texH/cellH
-	HGOSFONT3D font = ForceGroupIcon::gosFontHandle ? ForceGroupIcon::gosFontHandle->getTempHandle() : 0;
+	HGOSFONT3D font = ForceGroupIcon::gosFontHandle ? ForceGroupIcon::gosFontHandle->getTempHandle() : nullptr;
 	const unsigned long iconArgb = 0xff000000 | ( aB << 16 ) | ( aB << 8 ) | aB;
 
 	bool prevExempt = gos_GetHudScaleExempt();
@@ -417,7 +417,7 @@ int ForceGroupBar::renderOverviewSquadCards( Camera* eye, float alpha,
 		if ( hitsOut && nHits < maxHits )
 		{
 			hitsOut[nHits].forceGroup = cards[i].fg;
-			hitsOut[nHits].unit = ( cards[i].fg < 0 ) ? (void*)icons[cards[i].mem[0]]->unit : 0;
+			hitsOut[nHits].unit = ( cards[i].fg < 0 ) ? (void*)icons[cards[i].mem[0]]->unit : nullptr;
 			hitsOut[nHits].l = l; hitsOut[nHits].t = t; hitsOut[nHits].r = r; hitsOut[nHits].b = b;
 			nHits++;
 		}
@@ -432,7 +432,7 @@ float ForceGroupBar::iconWidth = 48;
 float ForceGroupBar::iconHeight = 42;
 int	  ForceGroupBar::iconsPerRow = 8;
 
-StaticInfo*  ForceGroupBar::s_coverIcon = NULL;
+StaticInfo*  ForceGroupBar::s_coverIcon = nullptr;
 
 extern bool useLeftRightMouseProfile;
 extern char CDInstallPath[];
@@ -452,7 +452,7 @@ ForceGroupBar::ForceGroupBar()
 {
 	for ( int i = 0; i < MAX_ICONS; ++i )
 	{
-		icons[i] = 0;
+		icons[i] = nullptr;
 	}
 
 	iconCount = 0;
@@ -468,7 +468,7 @@ ForceGroupBar::~ForceGroupBar()
 	if ( ForceGroupIcon::gosFontHandle )
 		delete ForceGroupIcon::gosFontHandle;
 
-	ForceGroupIcon::gosFontHandle  = NULL;
+	ForceGroupIcon::gosFontHandle  = nullptr;
 }
 
 
@@ -519,7 +519,7 @@ void ForceGroupBar::removeMover (Mover* mover) {
 			delete icons[i];
 			iconCount --;
 			memmove( &icons[i], &icons[i] + 1, (iconCount - i) * sizeof (ForceGroupIcon*) );
-			icons[iconCount] = 0;
+			icons[iconCount] = nullptr;
 			break;
 		}
 }
@@ -537,7 +537,7 @@ bool ForceGroupBar::hasMover (const Mover* pMover) const {
 Mover* ForceGroupBar::getIconMover (int index) const {
 
 	if (index < 0 || index >= iconCount || !icons[index])
-		return NULL;
+		return nullptr;
 	return icons[index]->unit;
 }
 
@@ -607,7 +607,7 @@ void ForceGroupBar::update( )
 				delete icons[t];
 				iconCount --;
 				memmove( &icons[t], &icons[t] + 1, (iconCount - t) * sizeof (ForceGroupIcon*) );
-				icons[iconCount] = 0;
+				icons[iconCount] = nullptr;
 			}
 		}
 	}
@@ -798,7 +798,7 @@ void ForceGroupBar::removeAll()
 		if ( icons[i] )
 			delete icons[i];
 
-		icons[i] = NULL;
+		icons[i] = nullptr;
 	}
 
 	iconCount = 0;
@@ -843,14 +843,14 @@ bool ForceGroupBar::setPilotVideo( const char* pVideo, MechWarrior* pPilot )
 		if ( ForceGroupIcon::bMovie )
 		{
 			delete ForceGroupIcon::bMovie;
-			ForceGroupIcon::bMovie = NULL;
+			ForceGroupIcon::bMovie = nullptr;
 			
 		}
 		else if ( ForceGroupIcon::pilotVideoTexture )
 			gos_DestroyTexture( ForceGroupIcon::pilotVideoTexture );
 		
 		ForceGroupIcon::pilotVideoTexture = 0;
-		ForceGroupIcon::pilotVideoPilot = 0;
+		ForceGroupIcon::pilotVideoPilot = nullptr;
 	}
 
 	else if  (ForceGroupIcon::bMovie || ControlGui::instance->isMoviePlaying()
@@ -900,7 +900,7 @@ bool ForceGroupBar::setPilotVideo( const char* pVideo, MechWarrior* pPilot )
 					{
 						char realMovieName[256];
 						char realMoviePath[1024];
-						_splitpath(path,NULL,realMoviePath,realMovieName,NULL);
+						_splitpath(path,nullptr,realMoviePath,realMovieName,nullptr);
 
 						//Not in main installed directory and not in fastfile.  Look on CD.
 						char actualPath[2048];

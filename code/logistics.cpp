@@ -93,7 +93,7 @@ void DEBUGWINS_print (const char* s, long window = 0);
 
 //----------------------------------------------------------------------------------
 //class Logistics
-Logistics *logistics = NULL;
+Logistics *logistics = nullptr;
 
 
 		
@@ -101,10 +101,10 @@ Logistics *logistics = NULL;
 void Logistics::destroy (void)
 {
 	delete missionBegin;
-	missionBegin = NULL;
+	missionBegin = nullptr;
 
 	delete missionResults;
-	missionResults = NULL;
+	missionResults = nullptr;
 }	
 		
 //----------------------------------------------------------------------------------
@@ -233,7 +233,7 @@ void Logistics::start (long startMode)
 				if ( MPlayer )
 				{
 					delete MPlayer;
-					MPlayer = NULL;
+					MPlayer = nullptr;
 				}
 			}
 
@@ -351,7 +351,7 @@ long Logistics::update (void)
 				//OLD Movie's Over.
 				//Whack it.
 				delete bMovie;
-				bMovie = NULL;
+				bMovie = nullptr;
 
 				FullPathFileName path;
 				path.init( moviePath, "credits", ".bik" );
@@ -371,7 +371,7 @@ long Logistics::update (void)
 				//Movie's Over.
 				//Whack it.
 				delete bMovie;
-				bMovie = NULL;
+				bMovie = nullptr;
 
 				soundSystem->playDigitalMusic(LogisticsData::instance->getCurrentMissionTune());
 				userInput->mouseOn();	
@@ -440,11 +440,11 @@ long Logistics::update (void)
 
 				if ( MPlayer->hostLeft || MPlayer->commanderID < 0 )
 				{
-					missionBegin->beginSplash( NULL );
+					missionBegin->beginSplash( nullptr );
 					MPlayer->closeSession();
 				}
 				else
-					missionBegin->restartMPlayer(NULL);
+					missionBegin->restartMPlayer(nullptr);
 
 
 				
@@ -481,7 +481,7 @@ long Logistics::update (void)
 
 				lastMissionResult = 0;
 
-				if (!beginMission(0, 0, 0)) {
+				if (!beginMission(nullptr, 0, nullptr)) {
 					missionBegin->beginAtConnectionScreen();
 					return(logisticsState);
 				}
@@ -538,7 +538,7 @@ int _stdcall Logistics::beginMission(void*, int, void*[])
 					long oldCommanderID = CID;
 					MPlayer->playerInfo[CID].commanderID = curCommanderID;
 					memcpy(&MPlayer->playerInfo[curCommanderID], &MPlayer->playerInfo[CID], sizeof(MC2Player));
-					MPlayer->playerInfo[CID].player = NULL;
+					MPlayer->playerInfo[CID].player = nullptr;
 					MPlayer->playerInfo[CID].commanderID = -1;
 					for (long j = 0; j < MAX_MC_PLAYERS; j++)
 						if (MPlayer->playerList[j].player == MPlayer->playerInfo[curCommanderID].player)
@@ -588,7 +588,7 @@ int _stdcall Logistics::beginMission(void*, int, void*[])
 					MPlayer->commandersToLoad[i][1] = (dropZoneList[i] > -1) ? MPlayer->playerInfo[dropZoneList[i]].team : 0; //-1;
 					MPlayer->commandersToLoad[i][2] = hqs[i];
 				}
-			MPlayer->sendMissionSetup(0, 0, NULL);
+			MPlayer->sendMissionSetup(nullptr, 0, nullptr);
 		}
 		if (!MPlayer->waitTillStartLoading()) {
 			// SERVER DROPPED
@@ -694,7 +694,7 @@ int _stdcall Logistics::beginMission(void*, int, void*[])
 					for (long i = 0; i < mechData.numComponents; i++)
 						mechData.components[i] = (unsigned char)componentList[i];
 				}
-				MPlayer->sendMissionSetup(0, 1, &mechData);
+				MPlayer->sendMissionSetup(nullptr, 1, &mechData);
 			}
 
 			if (!MPlayer->waitTillMechDataReceived()) {
@@ -784,7 +784,7 @@ int _stdcall Logistics::beginMission(void*, int, void*[])
 		
 		CompressedMech mechData;
 		mechData.commanderID = MPlayer->commanderID;
-		MPlayer->sendMissionSetup(0, 2, &mechData);
+		MPlayer->sendMissionSetup(nullptr, 2, &mechData);
 		if (!MPlayer->waitTillMissionLoaded()) {
 			// SERVER DROPPED
 			mission->destroy();
@@ -881,7 +881,7 @@ int _stdcall Logistics::beginMission(void*, int, void*[])
 	if (MPlayer) {
 		CompressedMech mechData;
 		mechData.commanderID = MPlayer->commanderID;
-		MPlayer->sendMissionSetup(0, 4, &mechData);
+		MPlayer->sendMissionSetup(nullptr, 4, &mechData);
 		if (!MPlayer->waitTillMissionSetup()) {
 			// SERVER DROPPED
 				mission->destroy();

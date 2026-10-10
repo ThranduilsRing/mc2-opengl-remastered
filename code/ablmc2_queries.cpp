@@ -128,7 +128,7 @@ void execGetContacts (void) {
 
 	for (long i = 0; i < numContacts; i++) {
 		GameObjectPtr obj = ObjectManager->get(contactList[i]);
-		Assert(obj != NULL, 0, " NULL contact");
+		Assert(obj != nullptr, 0, " NULL contact");
 		contactList[i] = obj->getPartId();
 	}
 }
@@ -322,7 +322,7 @@ void execGetTarget (void) {
 		GameObjectPtr object = getObject(objectId);
 		if (object && object->isMover()) {
 			MechWarriorPtr pilot = ((MoverPtr)object)->getPilot();
-			Assert(pilot != NULL, 0, " execHbGetTarget:No pilot in mover! ");
+			Assert(pilot != nullptr, 0, " execHbGetTarget:No pilot in mover! ");
 			GameObjectPtr target = pilot->getCurrentTarget();
 			if (target)
 				partID = target->getPartId();
@@ -664,7 +664,7 @@ void execGetVisualRange (void) {
 	long objectId = ABLi_popInteger();
 
 	float range = 0.0;
-	GameObjectPtr object = NULL;
+	GameObjectPtr object = nullptr;
 	if ((objectId >= MIN_UNIT_PART_ID) && (objectId <= MAX_UNIT_PART_ID)) {
 		range = -1;
 		}
@@ -739,7 +739,7 @@ void execGetTacOrder(void) {
 			MechWarriorPtr pilot = ((MoverPtr)object)->getPilot();
 			if (pilot) {
 				code = pilot->getCurTacOrder()->getParamData(time, paramList);
-				GameObjectPtr goalObj = NULL;
+				GameObjectPtr goalObj = nullptr;
 				Stuff::Vector3D goalLoc;
 				float goalRange = 0.0;
 				paramList[17] = pilot->getMainGoal(goalObj, goalLoc, goalRange);

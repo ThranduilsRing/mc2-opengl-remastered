@@ -14,7 +14,7 @@ long MechWarrior::orderWait (bool unitOrder, long origin, long seconds, bool cle
 	clearAttackOrders();
 
 	if (clearLastTarget)
-		setLastTarget(NULL);
+		setLastTarget(nullptr);
 
 	if (origin == ORDER_ORIGIN_COMMANDER)
 		setGeneralTacOrder(tacOrder);
@@ -32,7 +32,7 @@ long MechWarrior::orderStop (bool unitOrder, bool setTacOrder) {
 	clearMoveOrders();
 	clearAttackOrders();
 
-		setLastTarget(NULL);
+		setLastTarget(nullptr);
 
 
 	getVehicle()->suppressionFire = 0;
@@ -64,8 +64,8 @@ long MechWarrior::orderMoveToPoint (bool unitOrder, bool setTacOrder, long origi
 	if (result == TACORDER_SUCCESS)
 		return(TACORDER_SUCCESS);
 
-	setMoveGoal(MOVEGOAL_NONE, NULL);
-	setMoveWayPath(NULL, 0);
+	setMoveGoal(MOVEGOAL_NONE, nullptr);
+	setMoveWayPath(nullptr, 0);
 	
 	setMoveGoal(MOVEGOAL_LOCATION, &location);
 	moveOrders.timeOfLastStep = scenarioTime;
@@ -537,13 +537,13 @@ long MechWarrior::orderAttackPoint (bool unitOrder, long origin, Stuff::Vector3D
 		clearMoveOrders();
 
 	setAttackType(type);
-	setAttackTarget(NULL);
+	setAttackTarget(nullptr);
 	setAttackTargetPoint(location);
 	setAttackAimLocation(-1);
 	setAttackPursuit(pursue);
 	setSituationOpenFire(true);
 
-	setLastTarget(NULL);
+	setLastTarget(nullptr);
 
 	if (origin == ORDER_ORIGIN_COMMANDER)
 		setGeneralTacOrder(tacOrder);
@@ -579,7 +579,7 @@ long MechWarrior::orderWithdraw (bool unitOrder, long origin, Stuff::Vector3D lo
 	location = calcWithdrawGoal();
 	long result = orderMoveToPoint(unitOrder, true, origin, location, -1, TACORDER_PARAM_RUN);
 	MoverPtr myVehicle = getVehicle();
-	Assert(myVehicle != NULL, 0, " orderWithdraw:Warrior has no Vehicle ");
+	Assert(myVehicle != nullptr, 0, " orderWithdraw:Warrior has no Vehicle ");
 
 	myVehicle->withdrawing = true;
 
@@ -597,7 +597,7 @@ long MechWarrior::orderEject (bool unitOrder, bool setTacOrder, long origin) {
 	tacOrder.init((OrderOriginType)origin, TACTICAL_ORDER_EJECT, unitOrder);
 
 	MoverPtr myVehicle = getVehicle();
-	Assert(myVehicle != NULL, 0, " orderWithdraw:Warrior has no Vehicle ");
+	Assert(myVehicle != nullptr, 0, " orderWithdraw:Warrior has no Vehicle ");
 
 	myVehicle->handleEjection();
 
@@ -790,7 +790,7 @@ long MechWarrior::handleUnitMateDeath (void) {
 	unsigned long mateWID = alarm[PILOT_ALARM_DEATH_OF_MATE].trigger[0];
 
 	MoverPtr myVehicle = getVehicle();
-	if ((unsigned long)myVehicle->getWatchID() == mateWID)
+	if (myVehicle->getWatchID() == mateWID)
 		return(NO_ERR);
 	MoverPtr mateVehicle = (MoverPtr)ObjectManager->getByWatchID(mateWID);
 	if (!mateVehicle)
@@ -812,7 +812,7 @@ long MechWarrior::handleFriendlyVehicleDestruction (void) {
 long MechWarrior::handleOwnVehicleIncapacitation (unsigned long cause) {
 
 	MoverPtr myVehicle = getVehicle();
-	Assert(myVehicle != NULL, 0, " pilot has no vehicle ");
+	Assert(myVehicle != nullptr, 0, " pilot has no vehicle ");
 
 	switch (cause) {
 		case 0:
@@ -836,7 +836,7 @@ long MechWarrior::handleOwnVehicleIncapacitation (unsigned long cause) {
 	moveOrders.path[0] = tempPath[0];
 	moveOrders.path[1] = tempPath[1];
 	attackOrders.init();
-	setLastTarget(NULL);
+	setLastTarget(nullptr);
 
 	// Let's let the unit know we're dying if we're a point...
 	// No, Don't!!!
@@ -1065,7 +1065,7 @@ void MechWarrior::updateMissionSkills()
 
 	float MaxPilotSkill = 80.f;
 	
-	skillRank[MWS_GUNNERY] += (float)skillPoints[MWS_GUNNERY] * 0.01f;
+	skillRank[MWS_GUNNERY] += skillPoints[MWS_GUNNERY] * 0.01f;
 	if (skillRank[MWS_GUNNERY] > MaxPilotSkill)
 		skillRank[MWS_GUNNERY] = MaxPilotSkill;
 
