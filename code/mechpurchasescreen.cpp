@@ -7,6 +7,7 @@ MechPurchaseScreen.cpp			: Implementation of the MechPurchaseScreen component.
 \*************************************************************************************************/
 
 #include"mechpurchasescreen.h"
+#include "Gates/gate.h"
 #include"mclib.h"
 #include"logisticsdata.h"
 #include"mechbayscreen.h"
@@ -21,7 +22,9 @@ MechPurchaseScreen.cpp			: Implementation of the MechPurchaseScreen component.
 MechPurchaseScreen* MechPurchaseScreen::s_instance = NULL;
 
 // Interactive cheat gate
-static const bool s_cheatInfiniteMoney = (getenv("MC2_CHEAT_INFINITE_MONEY") != nullptr);
+// The launcher writes these into launcher_env.json, which main() applies after static initialization, so they
+// are read at first use rather than in a namespace-scope initializer.
+static bool cheatInfiniteMoney() { static const bool on = mc2::gate::get<"MC2_CHEAT_INFINITE_MONEY">(); return on; }
 
 #define INVENTORY_ID 88
 #define VARIANT_ID	89
@@ -180,7 +183,7 @@ void MechPurchaseScreen::update()
 
 	if ( pCurBuy )
 	{
-		if ( !s_cheatInfiniteMoney && pCurBuy->getCost() > LogisticsData::instance->getCBills() )
+		if ( !cheatInfiniteMoney() && pCurBuy->getCost() > LogisticsData::instance->getCBills() )
 		{
 			pCurBuy = NULL;
 		}
