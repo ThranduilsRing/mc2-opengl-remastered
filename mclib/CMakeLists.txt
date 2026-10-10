@@ -94,6 +94,12 @@ set(SOURCES ${SOURCES}
     mech3d.cpp
     soundsys.cpp
     move.cpp
+    move_globalmap_build.cpp
+    move_globalmap_doors.cpp
+    move_globalmap_path.cpp
+    move_movemap_escape.cpp
+    move_movemap_goals.cpp
+    move_movemap_path.cpp
     move_recon.cpp
     echarstring.cpp
     estring.cpp
