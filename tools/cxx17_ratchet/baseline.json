@@ -29,7 +29,7 @@
    "LG03": 0,
    "LG04": 0,
    "LG05": 13,
-   "LG06": 5,
+   "LG06": 4,
    "LG07": 0,
    "LG08": 0,
    "LG09": 12,
@@ -43,8 +43,8 @@
    "LG16": 0,
    "LG17": 2,
    "LG18": 0,
-   "LG19": 3,
-   "LG20": 4
+   "LG19": 2,
+   "LG20": 2
   },
   "GameOS": {
    "LG01": 188,
@@ -279,11 +279,9 @@
   },
   "GameAdapters/StaticPropRenderAdapter.cpp": {
    "LG05": 5,
-   "LG06": 2,
+   "LG06": 1,
    "LG09": 2,
-   "LG17": 1,
-   "LG19": 1,
-   "LG20": 2
+   "LG17": 1
   },
   "GameAdapters/StaticPropRenderAdapter.h": {
    "LG05": 5,
@@ -5916,7 +5914,7 @@
    "LG20": 1
   }
  },
- "head": "86d14e294",
+ "head": "4d15bb638",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
