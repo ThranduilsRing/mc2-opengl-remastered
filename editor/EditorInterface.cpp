@@ -9,6 +9,7 @@
 ****************************************************************/
 
 #include "EditorInterface_internal.h"
+#include "../RenderCore/axis_convert.h"
 
 
 // ---------------------------------------------------------------------------
@@ -238,9 +239,7 @@ void EditorInterface::handleKeyDown( int Key )
 		{
 			Stuff::Point3D eyePosition(eye->getCameraOrigin());
 			Stuff::Point3D objPosition;
-			objPosition.x = -pAppearance->position.x;
-			objPosition.y = pAppearance->position.z;
-			objPosition.z = pAppearance->position.y;
+			mc2ToRender(objPosition, pAppearance->position);
 
 			Stuff::Vector3D Distance;
 			Distance.Subtract(objPosition,eyePosition);
