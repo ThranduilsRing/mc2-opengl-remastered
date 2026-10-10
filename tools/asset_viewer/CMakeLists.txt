@@ -38,6 +38,11 @@ add_library(mc2_tglloader STATIC
     # --- mclib TUs (geometry loader closure) ---
     "${CMAKE_SOURCE_DIR}/mclib/msl.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/tgl.cpp"
+    "${CMAKE_SOURCE_DIR}/mclib/tgl_parse.cpp"
+    "${CMAKE_SOURCE_DIR}/mclib/tgl_render.cpp"
+    "${CMAKE_SOURCE_DIR}/mclib/tgl_shadows.cpp"
+    "${CMAKE_SOURCE_DIR}/mclib/tgl_transform.cpp"
+    "${CMAKE_SOURCE_DIR}/mclib/tgl_types.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/cident.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/mathfunc.cpp"
     "${CMAKE_SOURCE_DIR}/GameOS/src/platform_str.cpp"

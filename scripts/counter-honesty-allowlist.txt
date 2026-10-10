@@ -108,9 +108,9 @@ mclib/terrain.cpp::s_prodFrame <= 3
 mclib/terrtxm.cpp::s_hiresLogged < 8
 mclib/tex_resolve_table.cpp::s_mismatchCount++ < kMaxMismatchPrints
 mclib/tex_resolve_table.cpp::s_oobCount++ < kMaxOobPrints
-mclib/tgl.cpp::s_mslBoundsWarnings++ < 8
-mclib/tgl.cpp::s_pbrRenderTrace < 64
-mclib/tgl.cpp::s_seenCount < 64
+mclib/tgl_types.cpp::s_mslBoundsWarnings++ < 8
+mclib/tgl_render.cpp::s_pbrRenderTrace < 64
+mclib/tgl_render.cpp::s_seenCount < 64
 mclib/txmmgr.cpp::s_cullProbeFrames < 8
 mclib/txmmgr.cpp::s_frames < 60
 mclib/txmmgr.cpp::s_lbFirstSeenIndex.size() <= 32

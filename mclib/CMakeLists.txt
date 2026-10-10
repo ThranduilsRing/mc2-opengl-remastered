@@ -23,6 +23,11 @@ set(SOURCES ${SOURCES}
     sortlist.cpp
     tgainfo.cpp
     tgl.cpp
+    tgl_parse.cpp
+    tgl_render.cpp
+    tgl_shadows.cpp
+    tgl_transform.cpp
+    tgl_types.cpp
     timing.cpp
     txmmgr.cpp
     tex_resolve_table.cpp
