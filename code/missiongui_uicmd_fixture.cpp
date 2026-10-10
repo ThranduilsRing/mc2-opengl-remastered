@@ -3,6 +3,7 @@
 #include "missiongui_internal.h"
 #include "Gates/gate.h"
 
+//--------------------------------------------------------------------------
 // FREEZE-MOVERS-1 (GAMEPLAY-DRIVER-3): deterministic mover freeze.
 //
 // WHY: any capture pose that frames a mover drifts run-to-run, because
