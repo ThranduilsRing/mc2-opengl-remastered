@@ -1,6 +1,7 @@
 // BldgAppearance / TreeAppearance: BldgAppearance and TreeAppearance render and renderShadows.
 // Declared in the class headers; shared names in bdactor_internal.h.
 #include "bdactor_internal.h"
+#include "../RenderCore/axis_convert.h"
 
 long BldgAppearance::render (long depthFixup)
 {
@@ -360,9 +361,7 @@ long BldgAppearance::render (long depthFixup)
 			Stuff::Vector3D actualPosition = position;
 			//actualPosition.Add(position,offsetPosition);
 
-			tPosition.x = -actualPosition.x;
-			tPosition.y = actualPosition.z;
-			tPosition.z = actualPosition.y;
+			mc2ToRender(tPosition, actualPosition);
 
 			float yaw = (180.0f + rotation) * DEGREES_TO_RADS;
 			Stuff::UnitQuaternion rot;
@@ -410,9 +409,7 @@ long BldgAppearance::render (long depthFixup)
 				dustPos = getNodeIdPosition(rotationalNodeId);
 				
 			Stuff::Point3D wakePos;
-			wakePos.x = -dustPos.x;
-			wakePos.y = dustPos.z;
-			wakePos.z = dustPos.y;
+			mc2ToRender(wakePos, dustPos);
 			
 			shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 			shapeOrigin.BuildTranslation(wakePos);
@@ -446,9 +443,7 @@ long BldgAppearance::render (long depthFixup)
 					dustPos = getNodeIdPosition(rotationalNodeId);
 					
 				Stuff::Point3D wakePos;
-				wakePos.x = -dustPos.x;
-				wakePos.y = dustPos.z;
-				wakePos.z = dustPos.y;
+				mc2ToRender(wakePos, dustPos);
 				
 				shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 				shapeOrigin.BuildTranslation(wakePos);
