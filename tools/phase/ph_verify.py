@@ -38,7 +38,10 @@ if hasattr(S, 'FRAME_HEADER'):
     inc = '#include "%s"' % S.FRAME_HEADER.split('/')[-1]
     assert inc in new, 'frame header include missing'
     new.remove(inc)
-extra = lines_of(open(S.SPLIT_SRC, 'rb').read()) if hasattr(S, 'SPLIT_SRC') else []
+extra_paths = [sp for _sn, sp, _sh in getattr(S, 'SPLITS', [])] + ([S.SPLIT_SRC] if hasattr(S, 'SPLIT_SRC') else []) + list(getattr(S, 'FILE_HEADS', {}))
+extra = []
+for _p in extra_paths:
+    extra += lines_of(open(_p, 'rb').read()) + ['']
 
 
 def fn_range(L, sig):
@@ -52,6 +55,8 @@ ns_, ne = fn_range(new, S.FUNC_SIG)
 fail = []
 
 # 1. outside the function (and the helper block inserted before it): prefix and suffix identical
+for _ln, _txt in getattr(S, 'PREFIX_EDITS', {}).items():
+    old[_ln - 1] = _txt
 if old[:os_] != new[:os_]:
     fail.append('text before the function changed')
 if old[oe + 1:] != new[ne + 1:]:

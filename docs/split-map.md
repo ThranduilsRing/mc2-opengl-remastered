@@ -51,7 +51,9 @@ Split commit: `d9f3d13b6`.
 |---|---|
 | `gos_static_prop_batcher.cpp` | keeps what the pieces below did not take |
 | `gos_static_prop_batcher_finalize.cpp` | GpuStaticPropBatcher: GpuStaticPropBatcher::finalizeGeometry (one 2,050-line function). |
-| `gos_static_prop_batcher_flush.cpp` | GpuStaticPropBatcher: GpuStaticPropBatcher::flush (one 2,362-line function). |
+| `gos_static_prop_batcher_flush.cpp` | GpuStaticPropBatcher: GpuStaticPropBatcher::flush -- the orchestrator and the setup / coalesce-write helpers. |
+| `gos_static_prop_batcher_flush_dispatch.cpp` | GpuStaticPropBatcher: the flush gate arming, DrawPacket build, v5 / v6 dispatch, legacy setup and the fence / restore tail. The orchestrator is in gos_static_prop_batcher_flush.cpp. |
+| `gos_static_prop_batcher_flush_prep.cpp` | GpuStaticPropBatcher: the flush setup phases -- candidate log, GL guards, coalesce instance write, alpha flags and the coalesce program uniforms. The orchestrator is in gos_static_prop_batcher_flush.cpp. |
 | `gos_static_prop_batcher_mapload.cpp` | GpuStaticPropBatcher: StaticPropViewToShaderMode, onMapLoad, setMissionForIbl, onMapUnload, registerType and registerMultiShape. |
 | `gos_static_prop_batcher_program.cpp` | GpuStaticPropBatcher: loadProgramsIfNeeded, ring capacity, light-freshness gate and the late-register / submit telemetry. |
 | `gos_static_prop_batcher_seam.cpp` | GpuStaticPropBatcher: eligibility, persistent static instances, cached-instance submits, the batcher_* RenderCore seam accessors and the base-instance table. |
