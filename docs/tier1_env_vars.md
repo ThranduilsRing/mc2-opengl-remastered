@@ -7,7 +7,7 @@
 1. Register FIRST in `RenderCore/RendererFeatureRegistry.h` (`kFeatureTable` for a renderer feature gate, `kAuxEnvVars` for a trace/aux var).
 2. Read it via `getenv`/`envFlag`/`selftestEnvFlag`/`envFlagDefaultOn` (the last is the default-ON kill-switch pattern — see `MC2_SMART_LOAD` below).
 3. `sh scripts/check-env-registry.sh` must pass — unregistered `MC2_*` reads are CI-blocking (exit 1 on unknown vars; see header comment at the top of the script).
-4. Add it to the `run_smoke.py` env passthrough allowlist (the `env_extra={...}` dict built around `scripts/run_smoke.py:1149`), or the harness spawns the game process without it ("Popen drops it and the gate-ON smoke does nothing" — see the surrounding comments in that file). `scripts/check-env-allowlist.sh` is an ADVISORY drift check for this allowlist (always exits 0 unless run with `--strict`) — it is not CI-blocking, so don't rely on it catching a miss.
+4. Mark the gate `passthrough` in its `Gates/gate_table.cpp` row; `scripts/run_smoke.py` generates its passthrough list from those rows (the parent environment is inherited anyway, see below).
 5. Document it here in `docs/tier1_env_vars.md`: default value, polarity, one-line effect.
 6. Prove gate-ON vs gate-OFF smoke: `py -3 scripts/run_smoke.py --tier tier1 --duration 30 --keep-logs`
 
@@ -1318,8 +1318,7 @@ the current code** and believing it will send you chasing the wrong bug:
 `scripts/smoke_lib/runner.py:83` does `env = os.environ.copy()` before
 `env.update(cfg.env_extra)` at `:119`, so the parent environment **is** inherited
 and a gate set in your shell **does** reach `mc2.exe` even when unallowlisted.
-`scripts/check-env-allowlist.sh:13-19` documents this and is advisory for exactly
-that reason.
+The old hand-kept allowlist and its advisory checker are gone for the same reason.
 
 The two real costs of a missing entry are:
 1. the harness itself cannot **drive** the gate (only the operator's shell can),

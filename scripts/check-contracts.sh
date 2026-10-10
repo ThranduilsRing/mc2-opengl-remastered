@@ -821,18 +821,9 @@ run_check "cpu_gpu_cogating_selftest" "py -3 scripts/check-cpu-gpu-cogating.py -
 # gate-OFF path and report "no difference" for the wrong reason. Also asserts
 # the genuinely-undriveable guard still fails CLOSED (non-zero sys.exit).
 run_check "smoke_env_inheritance"  "py -3 scripts/check-smoke-env-inheritance.py"
-# GATE-PARITY-CLOSE-1: the OTHER half of the same problem. The check above keeps
-# the harness INHERITING the parent env; this one keeps the declared passthrough
-# allowlist honest, so the contract holds whichever mechanism is load-bearing.
-# Step 1 of the "Adding a new MC2_* gate" checklist (register) is CI-blocking via
-# check-env-registry.sh; step 4 (allowlist) was enforced by nothing --
-# check-env-allowlist.sh is advisory by design AND is not wired into this file,
-# and the only section it fails on under --strict is harness refs, not engine
-# reads. MC2_TREE_DIAG_TRACE lived in that gap: registered nowhere, allowlisted
-# nowhere, documented nowhere, so a smoke run driving it ON emitted no [TREE_DIAG]
-# lines at all. Ratchets against a frozen 82-entry debt list; only NEW drops fail.
-run_check "registered_gate_passthrough" "py -3 scripts/check-registered-gate-passthrough.py --quiet"
-run_check "registered_gate_passthrough_selftest" "py -3 scripts/check-registered-gate-passthrough.py --selftest"
+# The smoke passthrough list is generated from the smokePassthrough rows of the gate
+# table (scripts/run_smoke.py reads Gates/gate_table.json), so a registered gate
+# cannot be missing from it; the old allowlist ratchet and its debt file are gone.
 run_check "material_gpu_mirror"    "sh scripts/check-material-gpu-mirror.sh"
 run_check "visibility_log_schema"  "sh scripts/check-visibility-log-schema.sh"
 run_check "include_firewall"       "sh scripts/check-include-firewall.sh"

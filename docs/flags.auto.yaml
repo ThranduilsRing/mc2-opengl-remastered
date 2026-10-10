@@ -1590,6 +1590,7 @@ flags:
     rule: Std
     owner: props
     doc: ""
+    smoke_passthrough: true
     verified: true
   - name: MC2_FRAME_JOBS_TRACE
     kind: Bool
@@ -2503,6 +2504,7 @@ flags:
     rule: Std
     owner: props
     doc: ""
+    smoke_passthrough: true
     verified: true
   - name: MC2_LIGHTBRIDGE_STABLE_SKIP_DIAG
     kind: Bool
@@ -2884,6 +2886,7 @@ flags:
     rule: Exact1
     owner: code
     doc: "MC2_LIGHT_ROW_CENSUS (default OFF) - LIGHT-POS-COMBAT-1."
+    smoke_passthrough: true
     verified: true
   - name: MC2_LIGHT_ROW_PURE
     kind: Bool
@@ -5163,6 +5166,7 @@ flags:
     rule: Std
     owner: props
     doc: ""
+    smoke_passthrough: true
     verified: true
   - name: MC2_STABLE_LIGHT_SKIP_TOUCH
     kind: Bool
@@ -5170,6 +5174,7 @@ flags:
     rule: Std
     owner: props
     doc: ""
+    smoke_passthrough: true
     verified: true
   - name: MC2_STANDARD_LIT_V1
     kind: Bool
@@ -5869,6 +5874,7 @@ flags:
     rule: Lead0
     owner: terrain
     doc: ""
+    smoke_passthrough: true
   - name: MC2_TERRAIN_CONTROLMAP_ALBEDO_STRENGTH
     kind: Float
     default: 0
@@ -7292,6 +7298,7 @@ flags:
     rule: Lead0Kill
     owner: code
     doc: "ONE gate."
+    smoke_passthrough: true
     verified: true
   - name: MC2_VIS_SEMANTICS_TRACE
     kind: Bool
@@ -7299,6 +7306,7 @@ flags:
     rule: Lead0
     owner: code
     doc: ""
+    smoke_passthrough: true
     verified: true
   - name: MC2_VIS_SEMANTICS_TRACE_EVERY
     kind: Int
@@ -7358,12 +7366,14 @@ flags:
     rule: Std
     owner: gameos
     doc: "VK-FIELD-ENV-CONTENT-STACK-ARM-1 (2026-07-11): the game HUD is UI CONTENT, and post- VK-RUNG8-ITEM8 the native VK composite is the sole present-image..."
+    smoke_passthrough: true
   - name: MC2_VK_HUD_COLOR_PROOF
     kind: Tri
     default: null
     rule: Std
     owner: vk
     doc: "VK-FIELD-ENV-CONTENT-STACK-ARM-1 (2026-07-11): despite the legacy \"COLOR_PROOF\" name this is the ACTUAL native VK HUD renderer --..."
+    smoke_passthrough: true
   - name: MC2_VK_HUD_DRAW_DUMP
     kind: Bool
     default: false
@@ -7376,6 +7386,7 @@ flags:
     rule: Std
     owner: gameos
     doc: "VK-FIELD-ENV-CONTENT-STACK-ARM-1: arm from the umbrella too."
+    smoke_passthrough: true
   - name: MC2_VK_IMGUI
     kind: Bool
     default: false
@@ -7390,24 +7401,28 @@ flags:
     rule: Lead0Kill
     owner: vk
     doc: ""
+    smoke_passthrough: true
   - name: MC2_VK_MECH_FEED_AUDIT
     kind: Bool
     default: false
     rule: Exact1
     owner: vk
     doc: ""
+    smoke_passthrough: true
   - name: MC2_VK_MECH_FEED_NATIVE
     kind: Bool
     default: false
     rule: Is01
     owner: mech
     doc: ""
+    smoke_passthrough: true
   - name: MC2_VK_MECH_FENCE_DEFER
     kind: Bool
     default: true
     rule: Lead0Kill
     owner: vk
     doc: ""
+    smoke_passthrough: true
   - name: MC2_VK_MECH_LIGHTING
     kind: Tri
     default: null
@@ -7477,6 +7492,7 @@ flags:
     rule: Std
     owner: vk
     doc: "VK-FIELD-ENV-COMPOSITE-ARM-1: arm from the umbrella (see directFboGateEnabled)."
+    smoke_passthrough: true
   - name: MC2_VK_POST_COMPOSITE_DIRECT_CHAIN
     kind: Tri
     default: null
@@ -7491,48 +7507,56 @@ flags:
     rule: Std
     owner: vk
     doc: "VK-FIELD-ENV-CONTENT-STACK-ARM-1 (2026-07-11): now an umbrella family member (subGate)."
+    smoke_passthrough: true
   - name: MC2_VK_POST_HZB
     kind: Bool
     default: false
     rule: Exact1
     owner: vk
     doc: ""
+    smoke_passthrough: true
   - name: MC2_VK_POST_SCREENFX
     kind: Bool
     default: false
     rule: Exact1
     owner: vk
     doc: ""
+    smoke_passthrough: true
   - name: MC2_VK_POST_SCREENFX_CLOUD
     kind: Bool
     default: true
     rule: Lead0Kill
     owner: vk
     doc: ""
+    smoke_passthrough: true
   - name: MC2_VK_POST_SCREENFX_SHADOW
     kind: Bool
     default: true
     rule: Lead0Kill
     owner: vk
     doc: ""
+    smoke_passthrough: true
   - name: MC2_VK_POST_SCREENFX_SHORELINE
     kind: Bool
     default: true
     rule: Lead0Kill
     owner: vk
     doc: ""
+    smoke_passthrough: true
   - name: MC2_VK_POST_SSAO
     kind: Bool
     default: false
     rule: Exact1
     owner: vk
     doc: ""
+    smoke_passthrough: true
   - name: MC2_VK_PRESENT_DIRECT_FBO
     kind: Tri
     default: null
     rule: Std
     owner: vk
     doc: "VK-FIELD-ENV-COMPOSITE-ARM-1: after VK-RUNG8-ITEM8 deleted the GL copy-1 present FBO, the native VK composite is the ONLY producer of the present image for..."
+    smoke_passthrough: true
   - name: MC2_VK_PRESENT_DUMP_FRAME
     kind: Int
     default: 0
@@ -7614,6 +7638,7 @@ flags:
     rule: Lead0Kill
     owner: vk
     doc: ""
+    smoke_passthrough: true
   - name: MC2_VK_PROP_LIGHT_PROBE
     kind: Bool
     default: false
@@ -7735,6 +7760,7 @@ flags:
     rule: Std
     owner: vk
     doc: ""
+    smoke_passthrough: true
   - name: MC2_VK_TERRAIN_COPY_STATS
     kind: Bool
     default: false
@@ -7794,6 +7820,7 @@ flags:
     rule: Lead0Kill
     owner: vk
     doc: ""
+    smoke_passthrough: true
   - name: MC2_VK_TERRAIN_GL_FALLBACK_AUDIT
     kind: Bool
     default: false
@@ -7856,6 +7883,7 @@ flags:
     rule: Std
     owner: vk
     doc: ""
+    smoke_passthrough: true
   - name: MC2_VK_TERRAIN_TIER1
     kind: Tri
     default: null
@@ -7870,6 +7898,7 @@ flags:
     rule: Exact1
     owner: vk
     doc: ""
+    smoke_passthrough: true
   - name: MC2_VK_VFX
     kind: Tri
     default: null
@@ -7907,6 +7936,7 @@ flags:
     rule: Lead0Kill
     owner: vk
     doc: ""
+    smoke_passthrough: true
   - name: MC2_VK_WATER_PERF
     kind: Bool
     default: false
@@ -7920,6 +7950,7 @@ flags:
     rule: Std
     owner: vk
     doc: "Direct-chain members default ON under the umbrella; MC2_VK_WATER_TIER1 is a normal umbrella sub-gate."
+    smoke_passthrough: true
   - name: MC2_VPL_CULL
     kind: Bool
     default: false
