@@ -3,6 +3,7 @@
 #include "gos_postprocess_internal.h"
 
 
+// VK-REGION-SSAO-1: PostprocessSSAO region (second region through runRegion).
 //
 // 1A: the extracted GL SSAO region wrapper. Calls the UNCHANGED runSSAO()
 // inline body. No interface, no Vulkan: pure code-move. Under the master
@@ -99,6 +100,7 @@ void gosPostProcess::clearGBuffer1()
     glClearBufferfv(GL_COLOR, 1, sentinel);
 }
 
+// RENDER-BACKEND-REGION-IFACE-1 (Layer-6 ENTRY): PostprocessFog region.
 //
 // 1A: the extracted GL fog region wrapper. Calls the UNCHANGED runEdgeFog() +
 // runFogOob() inline bodies, in the same order the endScene() sites call them.
@@ -331,6 +333,7 @@ void gosPostProcess::runFogRegionThroughBackend()
         RenderCore::region_impl_to_string(out.impl));
 }
 
+// VK-REGION-SSAO-1: SSAO region routing -- selector + GL backend impl + health
 namespace {
 
 struct SsaoRegionSelectHealth {
@@ -497,6 +500,7 @@ void gosPostProcess::runSSAORegionThroughBackend()
         RenderCore::region_impl_to_string(out.impl));
 }
 
+// VK-REGION-HZB-1: HZB region routing -- selector + GL backend impl + health
 
 // 1A: the extracted GL HZB region wrapper. Calls the UNCHANGED runHzbReduce()
 // inline body (pure code-move). Returns 1 if HZB's own gates let it run this

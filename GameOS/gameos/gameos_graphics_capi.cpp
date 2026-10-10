@@ -13,6 +13,7 @@ DWORD gosRendererAddFontBmpTexture(const char* textureName)
     return getGosRenderer()->addTexture(ptex);
 }
 
+// MERGE-WAVE-1 shim: texture fetch for the font TU (rgba-mirror publication).
 gosTexture* gosRendererGetTexture(DWORD texId)
 {
     return g_gos_renderer ? g_gos_renderer->getTexture(texId) : nullptr;
@@ -191,6 +192,7 @@ DWORD __stdcall gos_NewCompressedTexture2D( uint32_t glInternalFormat, int w, in
     while(glGetError() != GL_NO_ERROR) { /* drain */ }
 
     GLuint texID = 0;
+    // TEX-CLASS: asset-pool -- gos_NewCompressedTexture2D content factory (BC7)
     glGenTextures(1, &texID);
     if(texID == 0)
         return INVALID_TEXTURE_ID;
@@ -841,6 +843,7 @@ namespace {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, s_camPreviewColorTex, 0);
 
+        // TEX-CLASS: render-target -- camera-preview FBO depth renderbuffer
         glGenRenderbuffers(1, &s_camPreviewDepthRbo);
         glBindRenderbuffer(GL_RENDERBUFFER, s_camPreviewDepthRbo);
         glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT32F, w, h);

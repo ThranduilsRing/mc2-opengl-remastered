@@ -46,7 +46,9 @@ void gosPostProcess::destroy()
     // destroy() runs after destroyFBOs, so this is usually a no-op that also
     // prints the health line.)
     destroyVkPostFogNative();
+    // VK-POST-SSAO-NATIVE-1 (rung 8.2): same teardown for the native SSAO pass.
     destroyVkPostSsaoNative();
+    // VK-POST-SCREENFX-NATIVE-1 (rung 8.3): same teardown for the native
     destroyVkPostScreenFxNative();
     destroyVkPostHzbNative();
 #endif
@@ -162,6 +164,7 @@ void gosPostProcess::createFBOs(int w, int h)
     const bool vkDirectSceneResources = mc2VkSharedSceneDirectResourceEnabled();
 #endif
 
+    // TEX-CLASS: render-target -- scene HDR color (MRT0, FBO attach)
     //
     // VK-P11 TIER-1 SHARED SCENE COLOR (gated): when MC2_VK_PROP_COLOR_TIER1 is ON
     // (requires shared depth), back sceneColorTex_ with a VK-built exportable RGBA16F
@@ -235,6 +238,7 @@ void gosPostProcess::createFBOs(int w, int h)
         }
     }
 
+    // TEX-CLASS: render-target -- scene depth (sampleable, FBO attach)
     //
     // VK-TIER1 SHARED SCENE DEPTH (gated, GL-only slice): when the gate is ON and
     // the island is compiled, back sceneDepthTex_ with a VK-built exportable
@@ -288,6 +292,7 @@ void gosPostProcess::createFBOs(int w, int h)
     // without per-bind mode toggling on one shared object. Gated on
     // MC2_SKYBOX_FOG_EXCLUDE=1 -- skipped entirely when OFF (zero cost OFF).
     if (skyboxFogExcludeEnabled()) {
+        // TEX-CLASS: render-target -- stencil texture-view over sceneDepthTex_
         glGenTextures(1, &sceneStencilViewTex_);
         glTextureView(sceneStencilViewTex_, GL_TEXTURE_2D, sceneDepthTex_,
                       GL_DEPTH24_STENCIL8, 0, 1, 0, 1);
@@ -300,6 +305,7 @@ void gosPostProcess::createFBOs(int w, int h)
         glBindTexture(GL_TEXTURE_2D, 0);
     }
 
+    // TEX-CLASS: render-target -- GBuffer normal (MRT1, FBO attach)
     //
     // VK-P11 TIER-1 SHARED SCENE NORMAL (gated): mirror of the color slot above.
     // Backed by a VK-built exportable RGBA16F imported as GL_RGBA16F so the VK prop
@@ -374,6 +380,7 @@ void gosPostProcess::createFBOs(int w, int h)
         }
 #endif
         if (!sceneObjectIdShared) {
+            // TEX-CLASS: render-target -- objectID GBuffer (MRT2, FBO attach)
             glGenTextures(1, &sceneObjectIdTex_);
             glBindTexture(GL_TEXTURE_2D, sceneObjectIdTex_);
             glTexImage2D(GL_TEXTURE_2D, 0, GL_R32UI, w, h, 0,
@@ -468,6 +475,7 @@ void gosPostProcess::createFBOs(int w, int h)
         ssaoW_ = w / 2; if (ssaoW_ < 1) ssaoW_ = 1;
         ssaoH_ = h / 2; if (ssaoH_ < 1) ssaoH_ = 1;
 
+        // TEX-CLASS: render-target -- SSAO occlusion (FBO attach)
         glGenTextures(1, &ssaoColorTex_);
         glBindTexture(GL_TEXTURE_2D, ssaoColorTex_);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_R16F, ssaoW_, ssaoH_, 0, GL_RED, GL_FLOAT, nullptr);
@@ -527,6 +535,7 @@ void gosPostProcess::createFBOs(int w, int h)
         waterReflW_ = w / 4; if (waterReflW_ < 1) waterReflW_ = 1;
         waterReflH_ = h / 4; if (waterReflH_ < 1) waterReflH_ = 1;
 
+        // TEX-CLASS: render-target -- water reflection color (FBO attach)
         glGenTextures(1, &waterReflColorTex_);
         glBindTexture(GL_TEXTURE_2D, waterReflColorTex_);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, waterReflW_, waterReflH_, 0, GL_RGBA, GL_FLOAT, nullptr);
@@ -535,6 +544,7 @@ void gosPostProcess::createFBOs(int w, int h)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
+        // TEX-CLASS: render-target -- water reflection depth (FBO attach)
         glGenTextures(1, &waterReflDepthTex_);
         glBindTexture(GL_TEXTURE_2D, waterReflDepthTex_);
         // GL_FLOAT type + CLAMP_TO_EDGE wrap: match the project's other depth
@@ -603,6 +613,7 @@ void gosPostProcess::createFBOs(int w, int h)
         // read/write feedback (source and dest are distinct objects).
         int lw = w, lh = h;
         for (int level = 0; level < hzbMipCount_; ++level) {
+            // TEX-CLASS: render-target -- Hi-Z pyramid per-level (FBO attach)
             glGenTextures(1, &hzbLevelTex_[level]);
             glBindTexture(GL_TEXTURE_2D, hzbLevelTex_[level]);
             glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, lw, lh, 0,
@@ -657,6 +668,7 @@ void gosPostProcess::copySceneDepthForParticles()
     if (width_ <= 0 || height_ <= 0 || sceneDepthTex_ == 0) return;
 
     if (sceneDepthCopyTex_ == 0) {
+        // TEX-CLASS: render-target -- depth snapshot for soft particles (copy dst)
         glGenTextures(1, &sceneDepthCopyTex_);
         glBindTexture(GL_TEXTURE_2D, sceneDepthCopyTex_);
         glTexStorage2D(GL_TEXTURE_2D, 1, GL_DEPTH24_STENCIL8, width_, height_);
@@ -703,6 +715,7 @@ void gosPostProcess::copySceneColorForVfx()
     if (width_ <= 0 || height_ <= 0 || sceneColorTex_ == 0) return;
 
     if (sceneColorCopyTex_ == 0) {
+        // TEX-CLASS: render-target -- scene-color snapshot for VFX feedback (copy dst)
         glGenTextures(1, &sceneColorCopyTex_);
         glBindTexture(GL_TEXTURE_2D, sceneColorCopyTex_);
         glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA16F, width_, height_);

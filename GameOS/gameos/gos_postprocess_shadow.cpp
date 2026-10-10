@@ -472,6 +472,7 @@ void gosPostProcess::initDynamicShadows()
     RenderCore::framegraph::fboLedger().registerFbo(dynShadowFBO_, RenderCore::RenderResourceId::ShadowDynamicMap);  // FBO-LEDGER-1
     glBindFramebuffer(GL_FRAMEBUFFER, dynShadowFBO_);
 
+    // TEX-CLASS: render-target -- DYNAMIC shadow map depth (FBO attach)
     glGenTextures(1, &dynShadowDepthTex_);
     glBindTexture(GL_TEXTURE_2D, dynShadowDepthTex_);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24,
@@ -547,6 +548,7 @@ void gosPostProcess::initDynamicShadows()
         const int nearCascades = (csmCount_ > 1) ? (csmCount_ - 1) : 0;
         const int arrayLayers  = (nearCascades > 0) ? nearCascades : 1;
 
+        // TEX-CLASS: render-target -- CSM near-cascade 2D_ARRAY (layered FBO attach)
         glGenTextures(1, &dynShadowArrayTex_);
         glBindTexture(GL_TEXTURE_2D_ARRAY, dynShadowArrayTex_);
         glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_DEPTH_COMPONENT24,
@@ -626,6 +628,7 @@ void gosPostProcess::initDynamicShadows()
                               ? mc2ShadowFullMapSize()
                               : dynShadowMapSize_;
 
+        // TEX-CLASS: render-target -- CSM full-map cascade depth (FBO attach)
         glGenTextures(1, &dynamicFullMapTex_);
         glBindTexture(GL_TEXTURE_2D, dynamicFullMapTex_);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24,

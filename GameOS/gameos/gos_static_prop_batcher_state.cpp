@@ -1007,6 +1007,7 @@ void allocPermutationSsboAsIdentity(uint32_t typeCount) {
     if (typeCount == 0) return;
     std::vector<uint32_t> identity(typeCount);
     for (uint32_t i = 0; i < typeCount; ++i) identity[i] = i;
+    // TIER2-EXCLUDED: dead-path
     if (s_permutationSsbo == 0) glGenBuffers(1, &s_permutationSsbo);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_permutationSsbo);
     MC2_GL_BufferData(GL_SHADER_STORAGE_BUFFER,

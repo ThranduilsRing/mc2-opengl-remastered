@@ -485,6 +485,7 @@ extern "C" unsigned long mc2_framegraph_executor_apply_state_passes_impl()
     return total;
 }
 
+// PER-PASS-APPLY-COUNTERS-1: per-pass getter. Returns the count for one
 extern "C" unsigned long mc2_framegraph_executor_apply_state_by_pass_impl(unsigned id)
 {
     return id < (unsigned)RenderCore::framegraph::ApplyPassId::Count ? g_applyStateByPass[id] : 0;

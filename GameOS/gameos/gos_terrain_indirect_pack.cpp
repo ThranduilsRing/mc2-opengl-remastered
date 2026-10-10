@@ -157,6 +157,7 @@ bool ResourcesReady() {
 
     // Thin-record SSBO: triple-buffered, GL_STREAM_DRAW.
     if (g_thinRecordSSBO == 0) {
+        // TIER2-EXCLUDED: dead-path
         glGenBuffers(1, &g_thinRecordSSBO);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, g_thinRecordSSBO);
         MC2_GL_BufferData(GL_SHADER_STORAGE_BUFFER,
@@ -190,6 +191,7 @@ bool ResourcesReady() {
 
     // Indirect command buffer.
     if (g_indirectCmdBuffer == 0) {
+        // TIER2-EXCLUDED: dead-path
         glGenBuffers(1, &g_indirectCmdBuffer);
         glBindBuffer(GL_DRAW_INDIRECT_BUFFER, g_indirectCmdBuffer);
         // Step 2b (VPL retirement, C2): pre-initialize {count=0,
@@ -530,6 +532,7 @@ uint32_t UploadTerrainHandleLUT() {
     constexpr GLsizeiptr kLutBytes = MC_MAXTEXTURES * sizeof(uint32_t);
 
     if (g_terrainHandleLutSSBO == 0) {
+        // TIER2-EXCLUDED: dead-path
         glGenBuffers(1, &g_terrainHandleLutSSBO);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, g_terrainHandleLutSSBO);
         MC2_GL_BufferData(GL_SHADER_STORAGE_BUFFER, kLutBytes, nullptr, GL_DYNAMIC_DRAW);
@@ -618,6 +621,7 @@ uint32_t BuildSolidQuadWindowSSBO(int* outUseWindow) {
     if (g_solidQuadWindowSsbo == 0) {
         const uint32_t cap =
             (uint32_t)(kMaxThinRecords * sizeof(uint32_t));
+        // TIER2-EXCLUDED: dead-path
         glGenBuffers(1, &g_solidQuadWindowSsbo);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, g_solidQuadWindowSsbo);
         MC2_GL_BufferData(GL_SHADER_STORAGE_BUFFER, (GLsizeiptr)cap, nullptr,

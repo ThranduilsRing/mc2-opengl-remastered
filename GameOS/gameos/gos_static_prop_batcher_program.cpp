@@ -147,6 +147,7 @@ void loadProgramsIfNeeded() {
     s_locsLegacy.maxLocalVertexID  = glGetUniformLocation(s_staticPropProgram, "u_maxLocalVertexID");
     s_locsLegacy.materialFlags     = glGetUniformLocation(s_staticPropProgram, "u_materialFlags");
     s_locsLegacy.packetID          = glGetUniformLocation(s_staticPropProgram, "u_packetID");
+    // V-AMBIENT-STATIC-1: hemisphere ambient strength uniform (default 0.0 = OFF).
     s_locsLegacy.ambientV1Strength = glGetUniformLocation(s_staticPropProgram, "u_ambientV1Strength");
     s_locsLegacy.propBaseLightDirStrength = glGetUniformLocation(s_staticPropProgram, "u_propBaseLightDirStrength");
     s_locsLegacy.debugMaterialMode = glGetUniformLocation(s_staticPropProgram, "u_debugMaterialMode");
@@ -163,12 +164,14 @@ void loadProgramsIfNeeded() {
     s_locsLegacy.decalAtlasTLY          = glGetUniformLocation(s_staticPropProgram, "u_decalAtlasTLY");
     s_locsLegacy.decalAtlasOOW          = glGetUniformLocation(s_staticPropProgram, "u_decalAtlasOOW");
     s_locsLegacy.terrainDecalColorBlend = glGetUniformLocation(s_staticPropProgram, "u_terrainDecalColorBlend");
+    // BUILDING-GLASS-1: dither-glass toggle (flag-gated in frag).
     s_locsLegacy.glassDither            = glGetUniformLocation(s_staticPropProgram, "u_glassDither");
     s_locsLegacy.farBackdropLit         = glGetUniformLocation(s_staticPropProgram, "u_farBackdropLit");
     s_locsLegacy.farBackdropNear        = glGetUniformLocation(s_staticPropProgram, "u_farBackdropNear");
     s_locsLegacy.farBackdropFar         = glGetUniformLocation(s_staticPropProgram, "u_farBackdropFar");
     s_locsLegacy.farBackdropStrength    = glGetUniformLocation(s_staticPropProgram, "u_farBackdropStrength");
     s_locsLegacy.farBackdropTint        = glGetUniformLocation(s_staticPropProgram, "u_farBackdropTint");
+    // V-IBL-STATIC-1: SH-L2 coeffs + strength (default strength 0.0 = OFF).
     s_locsLegacy.iblSh             = glGetUniformLocation(s_staticPropProgram, "u_iblSh");
     s_locsLegacy.iblShStrength     = glGetUniformLocation(s_staticPropProgram, "u_iblShStrength");
     s_locsLegacy.pbrV1Strength     = glGetUniformLocation(s_staticPropProgram, "u_pbrV1Strength");
@@ -205,6 +208,7 @@ void loadProgramsIfNeeded() {
             s_locsCoalesce.drawIDBase        = glGetUniformLocation(s_staticPropProgramCoalesce, "u_drawIDBase");
             s_locsCoalesce.texArr            = glGetUniformLocation(s_staticPropProgramCoalesce, "u_texArr");
             s_locsCoalesce.materialGpuSample = glGetUniformLocation(s_staticPropProgramCoalesce, "u_materialGpuSample");
+            // V-AMBIENT-STATIC-1: hemisphere ambient strength uniform (default 0.0 = OFF).
             s_locsCoalesce.ambientV1Strength = glGetUniformLocation(s_staticPropProgramCoalesce, "u_ambientV1Strength");
             s_locsCoalesce.propBaseLightDirStrength = glGetUniformLocation(s_staticPropProgramCoalesce, "u_propBaseLightDirStrength");
             s_locsCoalesce.debugMaterialMode = glGetUniformLocation(s_staticPropProgramCoalesce, "u_debugMaterialMode");
@@ -221,12 +225,14 @@ void loadProgramsIfNeeded() {
             s_locsCoalesce.decalAtlasTLY          = glGetUniformLocation(s_staticPropProgramCoalesce, "u_decalAtlasTLY");
             s_locsCoalesce.decalAtlasOOW          = glGetUniformLocation(s_staticPropProgramCoalesce, "u_decalAtlasOOW");
             s_locsCoalesce.terrainDecalColorBlend = glGetUniformLocation(s_staticPropProgramCoalesce, "u_terrainDecalColorBlend");
+            // BUILDING-GLASS-1: dither-glass toggle (flag-gated in frag).
             s_locsCoalesce.glassDither            = glGetUniformLocation(s_staticPropProgramCoalesce, "u_glassDither");
             s_locsCoalesce.farBackdropLit         = glGetUniformLocation(s_staticPropProgramCoalesce, "u_farBackdropLit");
             s_locsCoalesce.farBackdropNear        = glGetUniformLocation(s_staticPropProgramCoalesce, "u_farBackdropNear");
             s_locsCoalesce.farBackdropFar         = glGetUniformLocation(s_staticPropProgramCoalesce, "u_farBackdropFar");
             s_locsCoalesce.farBackdropStrength    = glGetUniformLocation(s_staticPropProgramCoalesce, "u_farBackdropStrength");
             s_locsCoalesce.farBackdropTint        = glGetUniformLocation(s_staticPropProgramCoalesce, "u_farBackdropTint");
+            // V-IBL-STATIC-1: SH-L2 coeffs + strength (default strength 0.0 = OFF).
             s_locsCoalesce.iblSh             = glGetUniformLocation(s_staticPropProgramCoalesce, "u_iblSh");
             s_locsCoalesce.iblShStrength     = glGetUniformLocation(s_staticPropProgramCoalesce, "u_iblShStrength");
             s_locsCoalesce.pbrV1Strength     = glGetUniformLocation(s_staticPropProgramCoalesce, "u_pbrV1Strength");
@@ -459,6 +465,7 @@ void ensureRingCapacity(size_t neededInstances, size_t neededColorEntries) {
     const GLbitfield storageFlags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
     const GLbitfield mapFlags     = storageFlags;
 
+    // VK-SHADOW-RING-OWNER-1: now OWNED (GpuBufferOwner) — TIER2-EXCLUDED:ring removed.
     glGenBuffers(1, &s_instanceSsbo);
     s_instanceSsboOwner.backendHandle = s_instanceSsbo;  // mirror handle into owner
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_instanceSsbo);
@@ -482,6 +489,7 @@ void ensureRingCapacity(size_t neededInstances, size_t neededColorEntries) {
         RenderCore::registerOrUpdateRenderResource(d);
     }
 
+    // VK-SHADOW-RING-OWNER-1: now OWNED (GpuBufferOwner) — TIER2-EXCLUDED:ring removed.
     glGenBuffers(1, &s_colorSsbo);
     s_colorSsboOwner.backendHandle = s_colorSsbo;  // mirror handle into owner
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_colorSsbo);

@@ -262,6 +262,7 @@ bool MissionInterfaceManager::uiCmdBasic(UiCmdCtx& c)
 		}
 	}
 	else if (line.compare(0, 10, "debugview ") == 0) {
+		// DEBUG-VIEW-SWEEP-1: runtime global debug-view switch.
 		static const char* kViewNames[7] = {
 			"off", "shadow-factor", "normalized-depth", "unlit-albedo",
 			"overdraw-proxy", "world-normals", "chunk-tint"
@@ -302,6 +303,7 @@ bool MissionInterfaceManager::uiCmdBasic(UiCmdCtx& c)
 	return true;
 }
 
+// GAMEPLAY-DRIVER-1 world verbs (select, order, camera, time_scale, status). Returns true when a verb of this group matched.
 bool MissionInterfaceManager::uiCmdWorld(UiCmdCtx& c)
 {
 	const std::string& line = c.line;
@@ -588,6 +590,7 @@ bool MissionInterfaceManager::uiCmdWorld(UiCmdCtx& c)
 	return true;
 }
 
+// GAMEPLAY-DRIVER-2 game-state readback and lighting verbs (list, unit, mission_status, end_mission, time_of_day, sun_pitch, light_state). Returns true when a verb of this group matched.
 bool MissionInterfaceManager::uiCmdReadback(UiCmdCtx& c)
 {
 	const std::string& line = c.line;

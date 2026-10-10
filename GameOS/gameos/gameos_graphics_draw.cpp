@@ -1018,6 +1018,7 @@ void gosRenderer::terrainOverrideThinMVP(const float* mvp4x4)
     glUniformMatrix4fv(tl.terrainMVP, 1, GL_FALSE, mvp4x4);
 }
 
+// TERRAIN-DEADCODE-DELETE-1: gosRenderer::terrainDrawIndexedPatches deleted.
 
 void gosRenderer::drawIndexedTris(gos_VERTEX* vertices, int num_vertices, WORD* indices, int num_indices) {
     ZoneScopedN("DrawIndexedTris.Basic");

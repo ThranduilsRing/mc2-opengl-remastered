@@ -310,6 +310,7 @@ void gosRenderer::renderWaterFastPath(
         }
     }
     if (s_perCmdSsbo == 0 && gpu_driven::IsWaterEnabled()) {
+        // TIER2-EXCLUDED: dead-path
         glGenBuffers(1, &s_perCmdSsbo);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_perCmdSsbo);
         glBufferData(GL_SHADER_STORAGE_BUFFER, 2 * (GLsizeiptr)sizeof(WaterPerCmd), nullptr, GL_DYNAMIC_DRAW);
@@ -502,6 +503,7 @@ void gosRenderer::renderWaterFastPath(
     // matching REPEAT.
     static GLuint s_waterFastSampler = 0;
     if (s_waterFastSampler == 0) {
+        // TEX-CLASS: per-pass-rebind -- water-fast sampler object (REPEAT+LINEAR)
         glGenSamplers(1, &s_waterFastSampler);
         glSamplerParameteri(s_waterFastSampler, GL_TEXTURE_WRAP_S, GL_REPEAT);
         glSamplerParameteri(s_waterFastSampler, GL_TEXTURE_WRAP_T, GL_REPEAT);

@@ -74,6 +74,7 @@ GLuint g_overlayFallbackTex = 0;
 GLuint getOverlayFallbackTexture() {
     if (g_overlayFallbackTex == 0) {
         const unsigned char magenta[4] = { 255, 0, 255, 255 };  // 1x1 RGBA debug
+        // TEX-CLASS: asset-pool -- overlay magenta/fallback content texture
         glGenTextures(1, &g_overlayFallbackTex);
         glBindTexture(GL_TEXTURE_2D, g_overlayFallbackTex);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, magenta);
