@@ -26,7 +26,6 @@ Objective.cpp			: Implementation of the Objective component.
 #include "../resource.h"/*this is mc2res.dll's header file*/
 
 #include "EString.h"
-#include "ECharString.h"
 
 #ifndef INIFILE_H
 #include "IniFile.h"
@@ -85,7 +84,7 @@ static long sReadIdWholeNum(FitIniFile* missionFile, const char *varName, int &v
 	return result;
 }
 
-static long sReadIdString(FitIniFile* missionFile, const char *varName, ECharString &ECStr) {
+static long sReadIdString(FitIniFile* missionFile, const char *varName, EString &ECStr) {
 	long result = 0;
 	char buffer[2001/*buffer size*/]; buffer[0] = '\0';
 	result = missionFile->readIdString((char *)varName, buffer, 2001/*buffer size*/ - 1);

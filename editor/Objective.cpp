@@ -338,7 +338,7 @@ static action_species_type ActionSpeciesMap(const char *speciesString) {
 bool CObjective::Read( FitIniFile* missionFile, int objectiveNum, int version )
 {
 	long result = 0;
-	ECharString tmpECStr;
+	EString tmpECStr;
 	result = sReadIdString(missionFile, "Title", tmpECStr);
 	Title(_T(tmpECStr.Data()));
 	result = sReadIdBoolean(missionFile, "TitleUseResourceString", m_titleUseResourceString);
@@ -412,7 +412,7 @@ bool CObjective::Read( FitIniFile* missionFile, int objectiveNum, int version )
 	{
 		int i;
 		for (i = 0; i < numConditions; i += 1) {
-			ECharString tmpStr;
+			EString tmpStr;
 			if (2 == version) {
 				tmpStr.Format("Objective%dCondition%d", objectiveNum, i);
 			} else {
@@ -443,7 +443,7 @@ bool CObjective::Read( FitIniFile* missionFile, int objectiveNum, int version )
 	{
 		int i;
 		for (i = 0; i < numActions; i += 1) {
-			ECharString tmpStr;
+			EString tmpStr;
 			tmpStr.Format("Team%dObjective%dAction%d", Alignment(), objectiveNum, i);
 			result = missionFile->seekBlock(tmpStr.Data());
 			if (NO_ERR != result) { assert(false); continue; }
@@ -463,7 +463,7 @@ bool CObjective::Read( FitIniFile* missionFile, int objectiveNum, int version )
 	{
 		int i;
 		for (i = 0; i < numFailureConditions; i += 1) {
-			ECharString tmpStr;
+			EString tmpStr;
 			tmpStr.Format("Team%dObjective%dFailureCondition%d", Alignment(), objectiveNum, i);
 			result = missionFile->seekBlock(tmpStr.Data());
 			if (NO_ERR != result) { assert(false); continue; }
@@ -483,7 +483,7 @@ bool CObjective::Read( FitIniFile* missionFile, int objectiveNum, int version )
 	{
 		int i;
 		for (i = 0; i < numFailureActions; i += 1) {
-			ECharString tmpStr;
+			EString tmpStr;
 			tmpStr.Format("Team%dObjective%dFailureAction%d", Alignment(), objectiveNum, i);
 			result = missionFile->seekBlock(tmpStr.Data());
 			if (NO_ERR != result) { assert(false); continue; }
@@ -570,7 +570,7 @@ bool CObjective::Save( FitIniFile* file, int objectiveNum )
 		int i = 0;
 		EIterator it = Begin();
 		while (!it.IsDone()) {
-			ECharString tmpStr;
+			EString tmpStr;
 			tmpStr.Format("Team%dObjective%dCondition%d", Alignment(), objectiveNum, i);
 			file->writeBlock( tmpStr.Data() );
 			file->writeIdULong( "ConditionSpecies", (unsigned long)(*it)->Species());
@@ -585,7 +585,7 @@ bool CObjective::Save( FitIniFile* file, int objectiveNum )
 		int i = 0;
 		action_list_type::EIterator it = m_actionList.Begin();
 		while (!it.IsDone()) {
-			ECharString tmpStr;
+			EString tmpStr;
 			tmpStr.Format("Team%dObjective%dAction%d", Alignment(), objectiveNum, i);
 			file->writeBlock( tmpStr.Data() );
 			file->writeIdULong( "ActionSpecies", (unsigned long)(*it)->Species());
@@ -600,7 +600,7 @@ bool CObjective::Save( FitIniFile* file, int objectiveNum )
 		int i = 0;
 		condition_list_type::EIterator it = m_failureConditionList.Begin();
 		while (!it.IsDone()) {
-			ECharString tmpStr;
+			EString tmpStr;
 			tmpStr.Format("Team%dObjective%dFailureCondition%d", Alignment(), objectiveNum, i);
 			file->writeBlock( tmpStr.Data() );
 			file->writeIdULong( "FailureConditionSpecies", (unsigned long)(*it)->Species());
@@ -615,7 +615,7 @@ bool CObjective::Save( FitIniFile* file, int objectiveNum )
 		int i = 0;
 		action_list_type::EIterator it = m_failureActionList.Begin();
 		while (!it.IsDone()) {
-			ECharString tmpStr;
+			EString tmpStr;
 			tmpStr.Format("Team%dObjective%dFailureAction%d", Alignment(), objectiveNum, i);
 			file->writeBlock( tmpStr.Data() );
 			file->writeIdULong( "FailureActionSpecies", (unsigned long)(*it)->Species());
@@ -812,7 +812,7 @@ bool CObjectives::Read( FitIniFile* missionFile )
 			}
 			result = missionFile->seekBlock("Objectives");
 		} else {
-			ECharString tmpStr;
+			EString tmpStr;
 			tmpStr.Format("Team%dObjectives", Alignment());
 			result = missionFile->seekBlock(tmpStr.Data());
 		}
@@ -822,7 +822,7 @@ bool CObjectives::Read( FitIniFile* missionFile )
 		if (NO_ERR != result) { return false; }
 		int i;
 		for (i = 0; i < numObjectives; i += 1) {
-			ECharString tmpStr;
+			EString tmpStr;
 			if (2 == objectivesVersion) {
 				tmpStr.Format("Objective%d", i);
 			} else {
@@ -841,14 +841,14 @@ bool CObjectives::Read( FitIniFile* missionFile )
 
 bool CObjectives::Save( FitIniFile* file )
 {
-	ECharString tmpStr;
+	EString tmpStr;
 	tmpStr.Format("Team%dObjectives", Alignment());
 	file->writeBlock( tmpStr.Data() );
 	file->writeIdULong( "NumObjectives", Count() );
 	int i = 0;
 	EIterator it = Begin();
 	while (!it.IsDone()) {
-		ECharString tmpStr;
+		EString tmpStr;
 		tmpStr.Format("Team%dObjective%d", Alignment(), i);
 		file->writeBlock( tmpStr.Data() );
 		(*it)->Save(file, i);

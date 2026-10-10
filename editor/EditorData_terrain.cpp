@@ -238,7 +238,7 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 		result = file.seekBlock("MissionSettings");
 		if (NO_ERR == result)
 		{
-			ECharString tmpECStr = "";
+			EString tmpECStr = "";
 			result = sReadIdString(&file, "MissionName", tmpECStr);
 			if (NO_ERR == result)
 			{

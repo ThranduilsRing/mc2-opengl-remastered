@@ -6,7 +6,6 @@
 #include "CampaignData.h"
 
 #include "EString.h"
-#include "ECharString.h"
 
 #include "assert.h"
 
@@ -132,7 +131,7 @@ bool CGroupData::Save(FitIniFile &fitFile, const char *groupName) {
 	CMissionList::EIterator it;
 	int index;
 	for (it = m_MissionList.Begin(), index = 0; !it.IsDone(); it++, index+=1) {
-		ECharString blockName;
+		EString blockName;
 		blockName.Format("%sMission%d", groupName, index);
 		fitFile.writeBlock(blockName.Data());
 		(*it).Save(fitFile);
@@ -155,7 +154,7 @@ bool CGroupData::Read(FitIniFile &fitFile, const char *groupName) {
 
 	int index;
 	for (index = 0; missionCount > index; index+=1) {
-		ECharString blockName;
+		EString blockName;
 		blockName.Format("%sMission%d", groupName, index);
 		result = fitFile.seekBlock(blockName.Data());
 		if (NO_ERR != result) { assert(false); continue; }
@@ -209,7 +208,7 @@ bool CCampaignData::Save(CString pathName) {
 	CGroupList::EIterator it;
 	int index;
 	for (it = m_GroupList.Begin(), index = 0; !it.IsDone(); it++, index+=1) {
-		ECharString blockName;
+		EString blockName;
 		blockName.Format("Group%d", index);
 		fitFile.writeBlock(blockName.Data());
 		(*it).Save(fitFile, blockName.Data());
@@ -239,7 +238,7 @@ bool CCampaignData::Read(CString pathName) {
 
 	int index;
 	for (index = 0; groupCount > index; index+=1) {
-		ECharString blockName;
+		EString blockName;
 		blockName.Format("Group%d", index);
 		result = fitFile.seekBlock(blockName.Data());
 		if (NO_ERR != result) { assert(false); continue; }

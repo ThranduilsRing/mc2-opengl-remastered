@@ -568,7 +568,7 @@ endif()
 # Deploy fingerprint: embed git identity (sha/dirty/branch/build-time/worktree)
 # in the exe. Regenerated on every BUILD (not just configure) by the custom
 # target below; the script writes only-if-changed so no-op rebuilds stay no-op.
-# Consumed by code/logmain.cpp ("[BUILD_FINGERPRINT v1]" startup banner) and
+# Consumed by code/mechcmd2.cpp ("[BUILD_FINGERPRINT v1]" startup banner) and
 # asserted by scripts/run_smoke.py.
 set(MC2_BUILD_FINGERPRINT_H "${CMAKE_BINARY_DIR}/generated/build_fingerprint.h")
 execute_process(COMMAND ${CMAKE_COMMAND}

@@ -7,7 +7,6 @@
 #include "utils/shader_builder.h"
 #include "utils/gl_utils.h"
 #include "utils/vec.h"
-#include "utils/camera.h"
 #include "utils/gl_render_constants.h"
 #include "utils/Image.h"
 #include "../mc2_hitch_trace.h"  // GPU-UPDATE-BUFFER-COUNTER-1: MC2_GL_BufferData_Owner (after GL/glew.h)
@@ -562,34 +561,3 @@ Texture load_texture_from_file(const char* texName)
 	return t;
 }
 
-/*
-glMesh<SIMPLE_VERTEX_PTN>* make_mesh_from_file(const char* filepath)
-{
-	assert(filepath);
-	COMMON_MESH* pcomesh = load_mesh_from_binary(filepath);
-	assert(pcomesh);
-
-	if(pcomesh->va.stride != sizeof(SIMPLE_VERTEX_PTN))
-		return 0;
-	if(pcomesh->vd.decl.size() !=3)
-		return 0;
-	if(pcomesh->vd.decl[0].comp_type!=TYPE_FLOAT || pcomesh->vd.decl[0].num_comp!=3)
-		return 0;
-	if(pcomesh->vd.decl[1].comp_type!=TYPE_FLOAT || pcomesh->vd.decl[1].num_comp!=2)
-		return 0;
-	if(pcomesh->vd.decl[2].comp_type!=TYPE_FLOAT || pcomesh->vd.decl[2].num_comp!=3)
-		return 0;
-	
-	glMesh<SIMPLE_VERTEX_PTN>* pmesh = new glMesh<SIMPLE_VERTEX_PTN>();
-	pmesh->num_indices_ = 0;
-	pmesh->num_vertices_ = pcomesh->va.num_vertices;
-	pmesh->prim_type_ = GL_TRIANGLES;
-	pmesh->pvertices_ = new SIMPLE_VERTEX_PTN[pcomesh->va.num_vertices];
-	memcpy(pmesh->pvertices_, pcomesh->va.data, pcomesh->va.num_vertices*sizeof(SIMPLE_VERTEX_PTN));
-
-	delete pcomesh;
-
-	pmesh->gen_hw(GL_STATIC_DRAW);
-	return pmesh;
-}
-*/

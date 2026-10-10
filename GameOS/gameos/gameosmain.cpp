@@ -126,7 +126,6 @@ static LONG WINAPI mc2_unhandled_exception_filter(EXCEPTION_POINTERS* ep)
 #include <SDL2/SDL.h>
 #include "gos_input.h"
 
-#include "utils/camera.h"
 #include "utils/shader_builder.h"
 #include "utils/gl_utils.h"
 #include "utils/timing.h"

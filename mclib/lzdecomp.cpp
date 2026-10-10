@@ -211,33 +211,9 @@ static size_t LZDecompClassicLZW_(MemoryPtr dest, MemoryPtr src, size_t srcLen, 
     return (size_t)(dest - destStart);
 }
 
-//-------------------------------------------------------------------------------
-// LZ DeCompress Routine — tries zlib first (covers FSTs we packed), falls back
-// to classic LZW (covers original Microsoft-packed FSTs like Wolfman's MC2X).
-size_t LZDecomp (MemoryPtr dest, MemoryPtr src, size_t srcLen)
-{
-    if (!dest || !src || srcLen == 0) return 0;
-
-    // Fast-path: zlib. First 2 bytes of a zlib stream satisfy (src[0]*256+src[1]) % 31 == 0
-    // and the low-nybble of src[0] is 8 (deflate method). This is cheap to check and
-    // avoids uselessly invoking inflate() on LZW-framed data.
-    bool looksZlib = (srcLen >= 2)
-                     && ((src[0] & 0x0F) == 0x08)
-                     && (((unsigned int)src[0] * 256u + (unsigned int)src[1]) % 31u == 0u);
-    // No true dest bound known in the 3-arg overload — fall back to the same
-    // 8x expansion heuristic used by the classic-LZW path. Callers that know
-    // the real allocated dest size should use the 4-arg overload below.
-    size_t destGuess = srcLen * 16 + 4096;
-    if (looksZlib) {
-        size_t n = LZDecompZlib_(dest, src, srcLen, destGuess);
-        if (n > 0) return n;
-    }
-
-    return LZDecompClassicLZW_(dest, src, srcLen, destGuess);
-}
-
-// 4-arg overload — prefer this when the caller knows the allocated dest size; prevents
-// heap overflow on both the zlib fast-path and the classic-LZW fallback.
+// LZ DeCompress: tries zlib first (covers FSTs we packed), falls back to classic LZW (covers original
+// Microsoft-packed FSTs like Wolfman's MC2X). destMax is the allocated size of dest: it bounds both the zlib
+// fast-path and the classic-LZW fallback, so a corrupt stream cannot overflow the caller's buffer.
 size_t LZDecomp (MemoryPtr dest, MemoryPtr src, size_t srcLen, size_t destMax)
 {
     if (!dest || !src || srcLen == 0) return 0;

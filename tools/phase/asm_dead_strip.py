@@ -6,7 +6,9 @@
 # branch that can never be taken contains inline asm. The collapsed group is replaced by the text of its live branch
 # (or by nothing); nested groups in the live branch are processed the same way. Everything else is copied verbatim.
 #
-# usage: py -3 tools/phase/asm_dead_strip.py FILE [--tu SOURCE.cpp] [--apply]
+# usage: py -3 tools/phase/asm_dead_strip.py FILE [--tu SOURCE.cpp] [--apply] [--define NAME=VAL ...] [--all-dead]
+#   --define NAME=VAL  one more macro the build fixes (e.g. USE_GOS_HEAP=1, which heap.h defines under LINUX_BUILD)
+#   --all-dead         collapse every group with a branch that can never be taken, not only those holding inline asm
 #   without --apply: dry run (prints the groups it would collapse and the line counts)
 #   with    --apply: rewrite FILE, then compare `cl /EP` output of the TU before and after (non-blank lines, trailing
 #            whitespace ignored). --tu names the TU to preprocess when FILE is a header (default: FILE itself).
@@ -21,6 +23,7 @@ import console_child  # noqa: E402  (windowless console children without a conho
 from configure_ninja import NINJA, under_vcvars, DEFAULT_TREE  # noqa: E402
 
 KNOWN = {'LINUX_BUILD': 1, 'USE_ASSEMBLER_CODE': 0}
+ALL_DEAD = False
 ASM = re.compile(r'(?<![\w])(__asm|_asm|asm\s+volatile|__asm__)\b')
 
 
@@ -119,7 +122,7 @@ def emit(lines, items, report, out):
             continue
         branches, endif = it[1], it[2]
         eff = effective(branches)
-        has_dead_asm = any(e is False and any(ASM.search(re.sub(r'//.*', '', lines[j])) for j in flat(sub))
+        has_dead_asm = any(e is False and (ALL_DEAD or any(ASM.search(re.sub(r'//.*', '', lines[j])) for j in flat(sub)))
                            for e, (_d, _k, _r, sub) in zip(eff, branches))
         if has_dead_asm and None not in eff:
             first, last = branches[0][0], endif
@@ -181,12 +184,18 @@ def preprocess(tu):
 
 
 def main():
+    global ALL_DEAD
     args = sys.argv[1:]
     apply = '--apply' in args
+    ALL_DEAD = '--all-dead' in args
+    defines = [args[i + 1] for i, a in enumerate(args) if a == '--define']
+    for d in defines:
+        name, _eq, val = d.partition('=')
+        KNOWN[name] = int(val or '1')
     tu = None
     if '--tu' in args:
         tu = args[args.index('--tu') + 1]
-    path = [a for a in args if not a.startswith('--') and a != tu][0]
+    path = [a for a in args if not a.startswith('--') and a != tu and a not in defines][0]
     text = open(path, 'rb').read().decode('utf-8', errors='surrogateescape')
     new, report, nl = strip_file(text)
     old_lines = text.count('\n') + 1

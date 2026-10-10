@@ -43,9 +43,6 @@ using namespace Stuff;
 #include<mlr/mlr_i_c_tmesh.hpp>
 #include<mlr/mlr_i_l_tmesh.hpp>
 
-#include<mlr/mlr_terrain.hpp>
-#include<mlr/mlr_terrain2.hpp>
-
 #include<mlr/mlrlinecloud.hpp>
 #include<mlr/mlrindexedtrianglecloud.hpp>
 

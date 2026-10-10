@@ -463,7 +463,7 @@ bool CBooleanFlagIsSet::operator==(const CObjectiveCondition &rhs) const {
 bool CBooleanFlagIsSet::Read( FitIniFile* missionFile )
 {
 	long result = 0;
-	ECharString tmpECStr;
+	EString tmpECStr;
 	result = sReadIdString(missionFile, "FlagID", tmpECStr);
 	if (NO_ERR != result) {
 		/*for backward compatibility*/
