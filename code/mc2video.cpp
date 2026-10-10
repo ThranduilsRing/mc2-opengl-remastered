@@ -33,13 +33,14 @@ extern "C" {
 #include <libswscale/swscale.h>
 #include <libswresample/swresample.h>
 }
+#include "Gates/gate.h"
 
 //-----------------------------------------------------------------------------
 // Availability gate
 //-----------------------------------------------------------------------------
 bool g_ffmpegAvailable = true;
 
-static const bool s_videoTrace = (getenv("MC2_DEBUG_VIDEO") != nullptr);
+static const bool s_videoTrace = mc2::gate::get<"MC2_DEBUG_VIDEO">();
 #define VIDEO_TRACE(fmt, ...) do { \
     if (s_videoTrace) { \
         char _cbbuf[512]; \
