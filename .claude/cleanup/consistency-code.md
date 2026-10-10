@@ -29,7 +29,7 @@ Method: rg + manual read. No builds. tools/check_ubo_layout.py already guards te
 ### H4. VK color-prop vertex lighting skips instance flags that GL honours
 - GL `shaders/static_prop.vert`: lightsOut bit0 (`:558-559`), isWindow bit1 (`:685,697-700`, `lit = base_light` only, no sun/ambient), light billboard bits 4/5 (`:426-428,482`), highlight `lit = clamp(lit + inst.aRGBHighlight.rgb, 0, 1)` (`:1102`); the frag also adds `v_highlight` (`static_prop.frag:468`).
 - VK `shaders/vulkan/color_prop_tier1.vert:~160-322` reads only bit 2. Windows are lit like walls; selection/objective highlight, lightsOut and billboards are ignored. Base light is a daytime-only stub (`isNight=false`, comment `:186-190`), so night hot-colour tags give 0.
-- Stale header: `gos_static_prop_batcher.h:~32` says "bit 2: isSpotlight"; GL (`static_prop.vert:690`, `kFlagIsAlphaTest = 1<<2`) and `GameOS/gameos/gos_static_prop_batcher_submit.cpp:832` use bit 2 for alpha-test. Define the bits once (C++ enum + .hglsl defines).
+- Stale header: `gos_static_prop_batcher.h:~32` says "bit 2: isSpotlight"; GL (`static_prop.vert:690`, `kFlagIsAlphaTest = 1<<2`) and `GameOS/gameos/gos_static_prop_batcher_submit.cpp:833` use bit 2 for alpha-test. Define the bits once (C++ enum + .hglsl defines).
 - Right side: GL. Fix: port isWindow/highlight/lightsOut branches; document or implement night base-light.
 
 ## MEDIUM
@@ -46,7 +46,7 @@ Layouts match when compared by hand, but nothing enforces them:
 - Fix: one shared `RenderCore/GpuStaticPropInstance.h`, per-field offsetof asserts, extend check_ubo_layout.py to SSBO structs and the unregistered blocks.
 
 ### M3. Vertex stride literals
-- `vulkan_color_prop_island.cpp:1175` `vib.stride = 40` (literal; post-upload assert only) vs `vulkan_shadow_island_live.cpp:567` `mc2_static_prop_vertex_stride()` vs `GameOS/gameos/gos_static_prop_batcher_shadow.cpp:785` `kVertexStride = 40`. Use the accessor in the colour island.
+- `vulkan_color_prop_island.cpp:1175` `vib.stride = 40` (literal; post-upload assert only) vs `vulkan_shadow_island_live.cpp:567` `mc2_static_prop_vertex_stride()` vs `GameOS/gameos/gos_static_prop_batcher_shadow.cpp:791` `kVertexStride = 40`. Use the accessor in the colour island.
 - `vulkan_mech_island.cpp:873` `s->vertexStride ? s->vertexStride : 48`: same "stride baked before feed" hazard; the literal fallback masks a 0 stride. Use sizeof(GpuMechVertex) (`gos_mech_batcher.h:24` asserts 48).
 
 ### M4. Hand-retyped Bayer / alpha-test blocks

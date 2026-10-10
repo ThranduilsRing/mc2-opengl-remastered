@@ -1164,6 +1164,20 @@ def _src(n, marks):
     return "\n".join(ls) + "\n"
 
 
+def _dup(first, last, head=None, marks=None):
+    """Lines '// d N' for N in first..last, with the base file's 'x = 1;' at N == 10; marks replaces lines by N."""
+    marks = marks or {}
+    ls = ([head] if head else []) + [marks.get(n, "  x = 1;" if n == 10 else "// d %d" % n) for n in range(first, last + 1)]
+    return "\n".join(ls) + "\n"
+
+
+def _shift_body(extra):
+    """12 lines whose marker line is 8 (13 after extra=5 comment lines are inserted above it)."""
+    ls = ["// s%d" % i for i in range(1, 13)]
+    ls[6], ls[7], ls[8] = "// before marker", "int unique_marker_value = 42;", "// after marker"
+    return "\n".join(["// inserted %d" % i for i in range(extra)] + ls) + "\n"
+
+
 def make_world(root):
     """A temp repo holding every situation the checks classify: valid, split (kept and removed), deleted, renamed."""
     _git_in(root, "init", "-q")
@@ -1173,9 +1187,16 @@ def make_world(root):
         "src/gone.cpp": _src(20, {10: "void moved_fn() {"}),
         "src/old_name.cpp": _src(10, {}),
         "src/ren_old.cpp": _src(15, {4: "void ren_fn() {"}),
+        "src/dup.cpp": _dup(1, 20),
+        "src/shift.cpp": _shift_body(0),
         "docs/target.md": "# target\n",
     }, "base")
+    _git_in(root, "tag", "shift-base")
     commit_files(root, {
+        "src/dup.cpp": _dup(1, 5),
+        "src/dup_a.cpp": _dup(6, 20, "// piece", {9: "// changed9", 11: "// changed11"}),
+        "src/dup_b.cpp": "// piece b\n// d 6\n// d 7\n// d 8\n",
+        "tools/split/allow/dup.json": json.dumps({"base": base, "src": "src/dup.cpp", "stem": "dup"}),
         "src/big.cpp": _src(10, {3: "int big_head() {"}),
         "src/big_part.cpp": "\n".join(["// piece"] + ["// line %d" % i for i in range(11, 41)]).replace(
             "// line 25", "int big_tail_unique_line_here() {") + "\n",
@@ -1188,6 +1209,7 @@ def make_world(root):
     commit_files(root, {}, "delete old_name", remove=("src/old_name.cpp",))
     _git_in(root, "mv", "src/ren_old.cpp", "src/ren_new.cpp")
     _git_in(root, "commit", "-q", "-m", "rename")
+    commit_files(root, {"src/shift.cpp": _shift_body(5)}, "comment lines inserted above the cited line")
     return root
 
 
@@ -1401,6 +1423,49 @@ def st_cli_fix_suggest_lines(repo):
     assert rc == 0 and lines[0] == "fix-suggest docs/f.md: 2 cite(s) need repair", lines
     assert re.match(r"^docs/f\.md:1:7: STALE-LINE \| REPLACE `src/a\.cpp:25 \(beta\)` WITH `src/a\.cpp:12 \(beta\)` \|", lines[1]), lines[1]
     assert re.match(r"^docs/f\.md:2:7: DELETED \| KEEP `src/old_name\.cpp:3` \| deleted in ", lines[2]), lines[2]
+
+
+def _fixes(repo, text):
+    return [(c.text, new) for c, _r, new in suggest_for(repo, parse_doc("docs/d.md", text))]
+
+
+@case
+def st_content_match_is_tight(repo):
+    # the text moved with a matching neighbour and is unique: offered
+    assert _fixes(repo, "src/dup.cpp:12\n") == [("src/dup.cpp:12", "src/dup_a.cpp:8")]
+    # same text but both neighbours differ: never offered
+    r = _ev(repo, "src/dup.cpp:10\n")[0][1]
+    assert r.status == "STALE-LINE" and r.sugg is None, r.sugg
+    # same text and neighbours twice in the unit: not unique, never offered
+    assert _fixes(repo, "src/dup.cpp:7\n") == [("src/dup.cpp:7", None)]
+
+
+@case
+def st_multi_number_cites_are_all_or_nothing(repo):
+    assert _fixes(repo, "src/big.cpp:25/26\n") == [("src/big.cpp:25/26", "src/big_part.cpp:16/17")]
+    assert _fixes(repo, "src/big.cpp:25/99\n") == [("src/big.cpp:25/99", None)]
+    assert _fixes(repo, "src/big.cpp:25/3\n") == [("src/big.cpp:25/3", None)]
+    assert _guard(repo, "src/big.cpp:25/26\n", "src/big_part.cpp:16/17\n").ok
+    assert not _guard(repo, "src/big.cpp:25/26\n", "src/big_part.cpp:16/20\n").ok
+    assert not _guard(repo, "src/big.cpp:25/99\n", "src/big_part.cpp:16/99\n").ok
+
+
+@case
+def st_line_shift(repo):
+    repo.src_base = "shift-base"
+    try:
+        r = _ev(repo, "src/shift.cpp:8\n")[0][1]
+        assert r.status == "STALE-LINE" and r.sugg["how"] == "line-shift" and r.sugg["nums"] == [13], (r.status, r.sugg)
+        assert _fixes(repo, "see src/shift.cpp:8/9\n") == [("src/shift.cpp:8/9", "src/shift.cpp:13/14")]
+        g = _guard(repo, "see src/shift.cpp:8\n", "see src/shift.cpp:13\n")
+        assert g.ok and any("line-shift" in n for n in g.notes), (g.findings, g.notes)
+        assert not _guard(repo, "see src/shift.cpp:8\n", "see src/shift.cpp:12\n").ok
+        assert _statuses(repo, "src/shift.cpp:50\n") == ["STALE-LINE"]
+    finally:
+        repo.src_base = None
+    # without a base rev the cite is just valid and unverifiable, and nothing may repoint it
+    assert _statuses(repo, "src/shift.cpp:8\n") == ["OK"]
+    assert not _guard(repo, "see src/shift.cpp:8\n", "see src/shift.cpp:13\n").ok
 
 
 @case

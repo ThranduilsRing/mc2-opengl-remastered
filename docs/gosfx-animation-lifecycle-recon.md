@@ -34,7 +34,7 @@
 ## STAGE 2 — SPAWN / ACTIVATION (template → live instance)
 - Game spawns via `EffectLibrary::MakeEffect(name,flags)` (`effectlibrary.cpp:97-119`) → factory `new` (NO pool). Then `Effect::Start(ExecuteInfo)` (`effect.cpp:525`) seeds age/seed/world-transform (`m_localToParent*parentToWorld`, effect.cpp:587).
 - Call sites: weapon trail/muzzle/hit/miss `weaponbolt.cpp:2530/2550/2570/2590`; mech dust-poof `mech3d.cpp:1604/1625`; jumpjet `mech3d.cpp:1662`; artillery `artlry.cpp:797/815`; bldg destruct `terrobj.cpp:1299`.
-- Attach = world matrix passed each frame (foot node `mclib/mech3d_render.cpp:283`, jumpjet node `mclib/mech3d_render.cpp:310`). EffectCloud children follow via `m_localToParent` (`effectcloud.cpp:205`).
+- Attach = world matrix passed each frame (foot node `mclib/mech3d_render.cpp:284`, jumpjet node `mclib/mech3d_render.cpp:311`). EffectCloud children follow via `m_localToParent` (`effectcloud.cpp:205`).
 - **No global active list.** Effect stored on owner object (WeaponBolt/Mech field); owner re-drives it each frame guarded by `IsExecuted()`. Children live in parent `m_children` chain.
 - **Variant selection = which spec name at spawn.** No mid-flight swap; trail→hit = kill+delete one, spawn another instance (`code/weaponbolt_update.cpp:204-208`). Seed (`-1`→random, effect.cpp:557) = only per-instance variation knob.
 

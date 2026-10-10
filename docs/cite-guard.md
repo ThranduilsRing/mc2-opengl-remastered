@@ -14,24 +14,24 @@ to repair a cite without also "improving" the prose around it, so the proof is m
    no unique answer (deleted file, ambiguous symbol, unknown path), so the cite stays or the doc is marked stale.
 3. The model applies only `REPLACE` rows and may add the status header.
 4. `--diff-guard --base HEAD <doc>...` exits 1 on any other byte change and names the first divergent line pair. Revert the doc
-   on failure; commit one directory at a time by explicit pathspec.
+   on failure; commit one directory at a time by explicit pathspec. A revert of a bad repair is checked the same way, against the
+   pre-repair rev (`--base <that sha>`), never against HEAD.
 
 `--check [paths]` verifies cites against HEAD (exit 1 on a finding). It is not a contract row yet: the repo is red by design
 until the triage pass lands. Classes: SPLIT, DELETED (commit and date), RENAMED, UNKNOWN, STALE-LINE (line missing, symbol not
 within +-3 lines, or line differs from the pre-split file), MISSING-SYMBOL.
-
 Status header, first line only: `<!-- doc-status: current|stale|superseded-by:<path> | reviewed:<YYYY-MM-DD> -->`; the path must be tracked.
-
 ## What the guard accepts
 A replacement must check out (file, line, symbol), keep the cite's shape and symbol, and, with no symbol, land on the only
-candidate (content match against the pre-split file) or stay in the same file, split unit or rename target. A valid symbol-less
-cite changes only by gaining a symbol that sits there.
-
+candidate or stay in the same file, split unit or rename target. A content match needs the same text (whitespace aside), one
+matching non-blank neighbour line, and uniqueness across the split unit; a cite with several numbers (`:7453/7604`) is repaired only
+if every number resolves, else `KEEP`. With `--base <rev>` (the rev the doc was right at), a symbol-less cite valid there follows
+its line text to the one place it sits at HEAD in the same file (`line-shift`, e.g. after comments moved lines). Otherwise a valid
+symbol-less cite changes only by gaining a symbol that sits there.
 ## Exempt (INFO, immutable)
 Cites in a fence tagged `text`/`log`/`console`/`output` or holding `[X v1]`, PASS, FAIL or a sha; a line with `(quoted history)`;
 the block after `<!-- history -->`. Not scanned: `docs/archive/**`, `build64*`, untracked docs (unless `--include-untracked`),
 data lists (`*allowlist*.txt`, `*baseline*.txt`).
-
 ## What the reviewer samples
 Whether a moved cite still means the same thing: a symbol within 3 lines proves location, not intent, and a content match
 assumes the doc was written against the pre-split file. Sample `REPLACE` rows with several candidates and any doc where more

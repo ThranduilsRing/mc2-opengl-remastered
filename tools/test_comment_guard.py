@@ -646,3 +646,25 @@ def test_mfc_classwizard_markers_survive_the_cli(tmp_path):
     _write(new, "class C {\n\tvoid f();\n};\n")
     rc, out = _run("--repo", str(tmp_path), "--base-file", str(base), str(new))
     assert rc == 1 and "ClassWizard" in out, out
+
+
+# ---------------------------------------------------------------- --allow entries after a restore
+def test_cli_allow_entry_for_comment_present_in_base_and_new_is_unused_info_exit0(tmp_path):
+    base, new = tmp_path / "base.cpp", tmp_path / "new.cpp"
+    _write(base, HELD)
+    _write(new, HELD)
+    al = _allow_file(tmp_path, [{"file": "new.cpp", "base_line": 2, "reason": "deleted before the restore"}])
+    rc, out = _run("--repo", str(tmp_path), "--base-file", str(base), "--allow", al, str(new))
+    assert rc == 0, out
+    assert "UNUSED-ALLOW new.cpp:2 deleted before the restore" in out, out
+
+
+def test_cli_allow_entry_for_comment_absent_in_base_is_stale_exit2(tmp_path):
+    base, new = tmp_path / "base.cpp", tmp_path / "new.cpp"
+    _write(base, "int a;\n// plain narration\nint b;\n")
+    _write(new, "int a;\nint b;\n")
+    al = _allow_file(tmp_path, [{"file": "new.cpp", "base_line": 2, "reason": "nothing to forgive"}])
+    r = subprocess.run([sys.executable, "-B", TOOL, "--repo", str(tmp_path), "--base-file", str(base), "--allow", al,
+                        str(new)], stdout=subprocess.PIPE, stderr=subprocess.PIPE, **console_child.child_kwargs(redirected=True))
+    assert r.returncode == 2
+    assert "STALE-ALLOW new.cpp:2" in r.stderr.decode("utf-8", "replace") and b"UNUSED-ALLOW" not in r.stdout

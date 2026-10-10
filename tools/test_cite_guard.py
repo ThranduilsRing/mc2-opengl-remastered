@@ -242,3 +242,48 @@ def test_scope_rules():
     assert cg.in_scope("docs/a.md") and cg.in_scope("README.md") and cg.in_scope(".claude/cleanup/x.md")
     assert not cg.in_scope("docs/archive/a.md") and not cg.in_scope("code/a.md") and not cg.in_scope("tools/CMakeLists.txt")
     assert not cg.in_scope("scripts/x-allowlist.txt") and not cg.in_scope("a/build64-x/b.md")
+
+
+def fixes(world, text):
+    return [(c.text, new) for c, _r, new in cg.suggest_for(world, cg.parse_doc("docs/d.md", text))]
+
+
+def test_content_match_needs_text_neighbour_and_uniqueness(world):
+    assert fixes(world, "src/dup.cpp:12\n") == [("src/dup.cpp:12", "src/dup_a.cpp:8")]
+    r = ev(world, "src/dup.cpp:10\n")[0][1]
+    assert r.status == "STALE-LINE" and r.sugg is None
+    assert fixes(world, "src/dup.cpp:7\n") == [("src/dup.cpp:7", None)]
+
+
+def test_multi_number_cites_resolve_every_number_or_keep(world):
+    assert cg.parse_line("src/big.cpp:25/26", 1)[0].text == "src/big.cpp:25/26"
+    assert fixes(world, "src/big.cpp:25/26\n") == [("src/big.cpp:25/26", "src/big_part.cpp:16/17")]
+    assert fixes(world, "src/big.cpp:25/99\n") == [("src/big.cpp:25/99", None)]
+    assert fixes(world, "src/big.cpp:25/3\n") == [("src/big.cpp:25/3", None)]
+    assert guard(world, "src/big.cpp:25/26\n", "src/big_part.cpp:16/17\n").ok
+    assert not guard(world, "src/big.cpp:25/26\n", "src/big_part.cpp:16/20\n").ok
+
+
+def test_line_shift_with_comment_lines_inserted_above(world):
+    world.src_base = "shift-base"
+    try:
+        r = ev(world, "src/shift.cpp:8\n")[0][1]
+        assert r.status == "STALE-LINE" and r.sugg["how"] == "line-shift" and r.sugg["nums"] == [13]
+        assert fixes(world, "see src/shift.cpp:8/9\n") == [("src/shift.cpp:8/9", "src/shift.cpp:13/14")]
+        g = guard(world, "see src/shift.cpp:8\n", "see src/shift.cpp:13\n")
+        assert g.ok and any("line-shift" in n for n in g.notes)
+        assert not guard(world, "see src/shift.cpp:8\n", "see src/shift.cpp:12\n").ok
+    finally:
+        world.src_base = None
+    assert statuses(world, "src/shift.cpp:8\n") == ["OK"]
+    assert not guard(world, "see src/shift.cpp:8\n", "see src/shift.cpp:13\n").ok
+
+
+def test_cli_base_enables_line_shift_and_checks_the_rev(world):
+    root = world.root
+    cg.commit_files(root, {"docs/shift.md": "Marker at src/shift.cpp:8.\n"}, "shift doc")
+    rc, out = _run("--repo", root, "--fix-suggest", "--base", "shift-base", "docs/shift.md")
+    assert rc == 0 and "REPLACE `src/shift.cpp:8` WITH `src/shift.cpp:13`" in out, out
+    rc, out = _run("--repo", root, "--fix-suggest", "docs/shift.md")
+    assert rc == 0 and "0 cite(s) need repair" in out
+    assert _run("--repo", root, "--check", "--base", "no-such-rev", "docs/shift.md")[0] == 2

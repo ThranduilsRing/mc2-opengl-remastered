@@ -26,7 +26,7 @@ Shape for every Tier B and terrain row is delete-ON-path unless stated. Default 
 | Gate | Plan / verdict | Rd | Extra consumers and notes | Verdict, why |
 |---|---|---|---|---|
 | ANIMATED_PROP_PROBE | B/DEL | 1 (`bdactor.cpp:1071`) | none | SAFE |
-| ANIM_ADVANCE_TRACE | B/DEL | 1 (`mclib/mech3d_update.cpp:440`) | ANDed with `mc2_diag::tagEnabled("ANIM_ADVANCE")` | SAFE, delete the whole block, not just the env term |
+| ANIM_ADVANCE_TRACE | B/DEL | 1 (`mclib/mech3d_update.cpp:442`) | ANDed with `mc2_diag::tagEnabled("ANIM_ADVANCE")` | SAFE, delete the whole block, not just the env term |
 | BRAIN_ENGAGE_TRACE | B/DEL | 1 (`brain_special_dispatch.cpp:2012`) | `check-brain-opord.py` parses `[BRAIN_ENGAGE]`, a different tag | SAFE |
 | CLOUD_DIAG | B/DEL | 1 (`GameOS/gameos/gos_postprocess_effects.cpp:652`) | manifest regen | SAFE-WITH-CONSUMER-FIX |
 | DEPLOY_KIND_TRACE | B/DEL | 1 (`mission.cpp:2697`) | none | SAFE |
@@ -37,13 +37,13 @@ Shape for every Tier B and terrain row is delete-ON-path unless stated. Default 
 | FRAME_JOBS_PATHB_DIAG | B/DEL | 2 (`objmgr.cpp:2768,2772`) | `run_smoke.py:2472`; three code regions (preamble 2765-2795, loop 2945-2962, post-loop 3261-3305) | SAFE, but it is a hot loop. `smoke --lite` and tier1 are required |
 | GPU_SCENE_SCALE_PROBE | B/DEL | 1 (`gos_static_prop_registry.cpp:1742`) | none | SAFE |
 | HDRI_SKY_STATE_PROBE | B/DEL | 3 (`gos_postprocess.cpp:5334,5627,5813`) | manifest regen; sky has a VK port, but this is print-only | SAFE-WITH-CONSUMER-FIX |
-| LIGHTBRIDGE_COMMIT_TRACE | B/DEL | 1 (`code/objmgr_update.cpp:743`) | `run_smoke.py:2475`; also delete `g_baked*` atomics at `mclib/txmmgr_lights.cpp:483-485`; `g_bakedProbeCalls.fetch_add` runs on a hot path, the other two are never incremented | SAFE, plan under-scoped |
-| LIGHT_DEDUP_TRACE | B/DEL | 1 (`mclib/txmmgr_lights.cpp:663`) | its own comment says "demote-not-delete" | SAFE, see policy note |
+| LIGHTBRIDGE_COMMIT_TRACE | B/DEL | 1 (`code/objmgr_update.cpp:743`) | `run_smoke.py:2475`; also delete `g_baked*` atomics at `mclib/txmmgr_lights.cpp:484-486`; `g_bakedProbeCalls.fetch_add` runs on a hot path, the other two are never incremented | SAFE, plan under-scoped |
+| LIGHT_DEDUP_TRACE | B/DEL | 1 (`mclib/txmmgr_lights.cpp:664`) | its own comment says "demote-not-delete" | SAFE, see policy note |
 | LODBUG_TRACE | B/DEL | 1 (`bdactor.cpp:2479`) | `tests/shader_variants/static_prop.frag.splice-regression` mentions a "LODBUG probe", which is a shader debug mode, not this env var. Leave it | SAFE |
-| MATERIALLIB_TRACE | B/DEL | 1 (`GameOS/gameos/gos_terrain_lod_chunk_draw.cpp:935`) | manifest regen | SAFE-WITH-CONSUMER-FIX |
-| MVP_EARLY_TRACE | B/DEL | 1 (`GameOS/gameos/gos_terrain_indirect_dispatch.cpp:899`) | manifest regen | SAFE-WITH-CONSUMER-FIX |
+| MATERIALLIB_TRACE | B/DEL | 1 (`GameOS/gameos/gos_terrain_lod_chunk_draw.cpp:936`) | manifest regen | SAFE-WITH-CONSUMER-FIX |
+| MVP_EARLY_TRACE | B/DEL | 1 (`GameOS/gameos/gos_terrain_indirect_dispatch.cpp:900`) | manifest regen | SAFE-WITH-CONSUMER-FIX |
 | OBJECT_ID_BRIDGE_TRACE | B/DEL | 2 (`RenderWorld.cpp:619,938`) | pick diagnostic, the pick-parity surface | SAFE, weak-keep |
-| PATROL_TRACE | B/DEL | 2 (`EditorObjects.cpp:700,855`) | `run-editor.bat:11-13` sets it (consumer). The reads are ORed with `MC2_EDITOR_TRACE` (kept; `EditorMFC.cpp:177` forces it ON) | SAFE-WITH-CONSUMER-FIX; shape is drop the OR term, `[PATROL]` prints survive |
+| PATROL_TRACE | B/DEL | 2 (`editor/EditorObjects.cpp:700,856`) | `run-editor.bat:11-13` sets it (consumer). The reads are ORed with `MC2_EDITOR_TRACE` (kept; `EditorMFC.cpp:177` forces it ON) | SAFE-WITH-CONSUMER-FIX; shape is drop the OR term, `[PATROL]` prints survive |
 | SHADOW_CASTER_DIAG | B/DEL | 1 (`GameOS/gameos/gos_mech_batcher_geometry.cpp:100`) | manifest regen; the file's `.h` is dirty (seam#2) | SAFE in principle. Defer until seam#2 lands |
 | SHADOW_FOCUS_DIAG | B/DEL | 1 (`gos_postprocess.cpp:6926`) | ORed with registered `MC2_SHADOW_FRUSTUM_DIAG`; the block stays | SAFE-WITH-CONSUMER-FIX; shape is drop one OR term (about 1 line, not 5) |
 | STABLE_LIGHT_SKIP_DIAG | B/DEL | 1 (`mclib/bdactor_diag.cpp:263`) | `run_smoke.py:2483`; no yaml row (`ParseEnvBool` idiom is invisible to the generator); about 110 lines of struct and flush | HOLD, see disagreement 3 |
@@ -73,7 +73,7 @@ Shape for every Tier B and terrain row is delete-ON-path unless stated. Default 
 ## Verified plan claims
 - `terrain-gates-plan.md` line numbers still match HEAD: enum rows 137, 140, 143 and 235; `gos_terrain_lod_chunk.cpp` 184, 927, 2872 and 4277; `gameos_graphics.cpp` 7160, 7175 and 7188. Anchor edits by text anyway: commit `c47bc6892` touched comments in `gos_terrain_lod_chunk.cpp`.
 - The V1 corner case holds. The chunk reader is `getenv != nullptr`, so `=0` meant ON. The legacy reader tests `e[0] != '0'`.
-- `gos_TerrainAmbientDayGate` is clamped to 0..1 (`GameOS/gameos/gameos_graphics_tparams.cpp:895`). Making `max(raw, 0)` into `raw` is byte-identical for the VK feed. This applies if NIGHT is ever deleted.
+- `gos_TerrainAmbientDayGate` is clamped to 0..1 (`GameOS/gameos/gameos_graphics_tparams.cpp:898`). Making `max(raw, 0)` into `raw` is byte-identical for the VK feed. This applies if NIGHT is ever deleted.
 - The enum renumber (61 to 57) is safe in-repo. Only `RendererFeature::` names are used (`EditorInspector.cpp:356` loops by count), and no script parses the enum.
 - There is no data, launcher, `.bat` or capture-profile consumer, apart from `run-editor.bat` (PATROL), `terrain.json`, and `capture_baseline.py`.
 - `tests/visual/baselines/*.json` hold historical env records. `check-capture-env-declared.py` only checks the scrub record of new manifests, so leave them.

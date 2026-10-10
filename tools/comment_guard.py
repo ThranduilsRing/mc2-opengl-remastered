@@ -899,6 +899,7 @@ class Allowlist:
     def __init__(self, entries):
         self.entries = [{"file": _norm_rel(e["file"]), "line": e["base_line"], "reason": e["reason"],
                          "used": False} for e in entries]
+        self.base_protected = {}        # file -> start lines of protected comments seen in the base text this run
 
     @classmethod
     def load(cls, path):
@@ -925,10 +926,26 @@ class Allowlist:
             best["used"] = True
         return best
 
-    def stale(self, checked_rels):
-        """Unmatched entries for files that were part of this run (entries for other files are not judged)."""
+    def note_base(self, rel, lines):
+        self.base_protected[_norm_rel(rel)] = list(lines)
+
+    def _unmatched(self, checked_rels):
         checked = set(_norm_rel(r) for r in checked_rels)
         return [e for e in self.entries if not e["used"] and e["file"] in checked]
+
+    def _in_base(self, e):
+        return any(abs(ln - e["line"]) <= ALLOW_TOLERANCE for ln in self.base_protected.get(e["file"], ()))
+
+    def stale(self, checked_rels):
+        """Unmatched entries whose protected comment is absent from the base too: nothing to forgive, so an error.
+
+        Entries for files outside this run are not judged.
+        """
+        return [e for e in self._unmatched(checked_rels) if not self._in_base(e)]
+
+    def unused(self, checked_rels):
+        """Unmatched entries whose comment still stands in the base and the new text (restored): info only."""
+        return [e for e in self._unmatched(checked_rels) if self._in_base(e)]
 
 
 def check_texts(rel, base, new, allow=None, env=None):
@@ -978,7 +995,10 @@ def check_texts(rel, base, new, allow=None, env=None):
             break
 
     env = env or current_env()
-    lost = missing_protected(build_units(bl, env, rel), build_units(nl, env, rel))
+    base_units = build_units(bl, env, rel)
+    if allow is not None:
+        allow.note_base(rel, [u.start for u in base_units if u.reasons])
+    lost = missing_protected(base_units, build_units(nl, env, rel))
     if allow is not None:
         kept = []
         for u in lost:
@@ -1126,9 +1146,11 @@ def run_check(args):
             print("\n".join(_note_lines(rep) + _allowed_lines(rep)))
         bad += 0 if rep.ok else 1
     print("comment_guard: %d file(s) checked, %d ok, %d FAILED" % (len(reports), len(reports) - bad, bad))
+    for e in (allow.unused(r.rel for r in reports) if allow else []):
+        print("UNUSED-ALLOW %s:%d %s" % (e["file"], e["line"], e["reason"]))
     stale = allow.stale(r.rel for r in reports) if allow else []
     for e in stale:
-        print("STALE-ALLOW %s:%d %s (matched no missing protected comment)" % (e["file"], e["line"], e["reason"]),
+        print("STALE-ALLOW %s:%d %s (matched no missing protected comment and none stands in the base)" % (e["file"], e["line"], e["reason"]),
               file=sys.stderr)
     if stale:
         return 2
@@ -1695,6 +1717,17 @@ def st_mfc_classwizard_markers_protected():
         rep = R("int a;\n%s\nint b;\n" % m, "int a;\nint b;\n")
         assert _kinds(rep) == ["protected"] and "ClassWizard" in _msgs(rep), m
     assert R("int a;\n// AFX_MSG_MAP is generated\nint b;\n", "int a;\nint b;\n").ok     # prose about the macro is not a marker
+
+
+@case
+def st_allowlist_entry_for_restored_comment_is_unused_not_stale():
+    held = "int a;\n// the lock must be held\nint b;\n"
+    al = Allowlist([{"file": "code/x.cpp", "base_line": 2, "reason": "was deleted before the restore"}])
+    rep = R(held, held, allow=al)                       # comment stands on both sides
+    assert rep.ok and not al.stale(["code/x.cpp"]) and len(al.unused(["code/x.cpp"])) == 1
+    al = Allowlist([{"file": "code/x.cpp", "base_line": 2, "reason": "r"}])
+    R("int a;\n// plain narration\nint b;\n", "int a;\nint b;\n", allow=al)   # nothing protected in the base
+    assert len(al.stale(["code/x.cpp"])) == 1 and not al.unused(["code/x.cpp"])
 
 
 def run_selftest():

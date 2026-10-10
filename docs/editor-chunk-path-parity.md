@@ -118,7 +118,7 @@ Yes. The evidence:
 | GPU-indirect solid/overlay surface render | YES (when recipes armed) | terrain.cpp:2221 suppresses legacy draw() loop under chunk=ON; GPU-indirect path handles surface |
 | Chunk LOD mesh draw (`gos_TerrainLodChunk_SubmitDrawCommands`) | **NO** | flushDrawCommands() only at code/gamecam.cpp:388; absent from editor render chain |
 | `mc2TerrainLodChunkEnabled()` returns true | YES | Env-gated static bool; same in both editor and game |
-| `EditorDebugOverlay` queries chunk state | YES | EditorDebugOverlay.cpp:211: `s_probe.chunkPath = mc2TerrainLodChunkEnabled()` |
+| `EditorDebugOverlay` queries chunk state | YES | editor/EditorDebugOverlay.cpp:213: `s_probe.chunkPath = mc2TerrainLodChunkEnabled()` |
 
 ### Memory claim reconciliation
 

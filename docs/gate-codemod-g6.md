@@ -213,8 +213,8 @@ The code line is the reader as written.
 | `mclib/spotlight_diag.cpp:73` | `MC2_LIGHT_POOL_MOVER_COLOR` |  | lambda-static | - | UNHANDLED | row kind String: read through str<> (G3 Enum / G4 Tri / String via str<>) |
 | `mclib/terrtxm.cpp:68` | `MC2_OVERLAY_TILE_HIRES` |  | per-call | - | UNHANDLED | numeric reader is not a lambda/declaration initializer (e.g. multi-statement local) |
 | `mclib/tex_resolve_table.cpp:54` | `MC2_MODERN_TEX_RESOLVE` | Std(def=on) | per-call | - | UNHANDLED | pointer env is consumed by a block/branch statement: not a single expression |
-| `mclib/tgl_render.cpp:220` | `MC2_LOG_PREVIEW` | Presence | per-call | - | UNHANDLED | paired reads: the statement reads this gate 3 times; as one reader it is Presence vs row Presence: NO-CHANGE -- replace the whole expression by hand |
-| `mclib/tgl_render.cpp:248` | `MC2_LOG_PREVIEW` | Presence | per-call | - | UNHANDLED | paired reads: the statement reads this gate 2 times; as one reader it is Presence vs row Presence: NO-CHANGE -- replace the whole expression by hand |
+| `mclib/tgl_render.cpp:223` | `MC2_LOG_PREVIEW` | Presence | per-call | - | UNHANDLED | paired reads: the statement reads this gate 3 times; as one reader it is Presence vs row Presence: NO-CHANGE -- replace the whole expression by hand |
+| `mclib/tgl_render.cpp:251` | `MC2_LOG_PREVIEW` | Presence | per-call | - | UNHANDLED | paired reads: the statement reads this gate 2 times; as one reader it is Presence vs row Presence: NO-CHANGE -- replace the whole expression by hand |
 | `mclib/txmmgr.cpp:169` | `MC2_LIGHT_CLAMP_PROBE` |  | per-call | - | UNHANDLED | helper-call reader lightClampEnvFlagDefaultOff(): helper mapping lands in G4/G6 |
 | `mclib/txmmgr.cpp:177` | `MC2_LIGHT_CLAMP_FIXTURE` |  | per-call | - | UNHANDLED | helper-call reader lightClampEnvFlagDefaultOff(): helper mapping lands in G4/G6 |
 | `mclib/txmmgr.cpp:201` | `MC2_LIGHT_POS_COLUMN_FIX` |  | per-call | - | UNHANDLED | helper-call reader lightClampEnvFlagDefaultOn(): helper mapping lands in G4/G6 |
@@ -518,8 +518,8 @@ Helper: mclib/mc2_audit.cpp:35 `{ if (!envVar \|\| !envVar[0]) return false; con
 | `mclib/ablxstd.cpp:61` | `MC2_ABL_RUNTIME_SOFTFAIL` | Bool Lead1 default=off | `bool s_ablRuntimeSoftfail = (getenv("MC2_ABL_RUNTIME_SOFTFAIL") != NULL && getenv("MC2_ABL_RUNTIME_SOFTFAIL")[0] == '1');` | paired reads: the statement reads this gate 2 times; as one reader it is Lead1 vs row Lead1: NO-CHANGE -- replace the whole expression by hand |
 | `mclib/bdactor.cpp:4854` | `MC2_TERRAIN_DECAL` | Bool Lead0P default=off | `(getenv("MC2_TERRAIN_DECAL") != nullptr && getenv("MC2_TERRAIN_DECAL")[0] != '0');` | paired reads: the statement reads this gate 2 times; as one reader it is Lead0P vs row Lead0P: NO-CHANGE -- replace the whole expression by hand |
 | `mclib/bdactor.cpp:4854` | `MC2_TERRAIN_DECAL` | Bool Lead0P default=off | `(getenv("MC2_TERRAIN_DECAL") != nullptr && getenv("MC2_TERRAIN_DECAL")[0] != '0');` | paired reads: the statement reads this gate 2 times; as one reader it is Lead0P vs row Lead0P: NO-CHANGE -- replace the whole expression by hand |
-| `mclib/tgl_render.cpp:220` | `MC2_LOG_PREVIEW` | Bool Presence default=off | `if ( getenv("MC2_LOG_PREVIEW") && g_mechPreviewRenderDepth > 0` | paired reads: the statement reads this gate 3 times; as one reader it is Presence vs row Presence: NO-CHANGE -- replace the whole expression by hand |
-| `mclib/tgl_render.cpp:248` | `MC2_LOG_PREVIEW` | Bool Presence default=off | `if ( getenv("MC2_LOG_PREVIEW") && g_mechPreviewRenderDepth > 0 )` | paired reads: the statement reads this gate 2 times; as one reader it is Presence vs row Presence: NO-CHANGE -- replace the whole expression by hand |
+| `mclib/tgl_render.cpp:223` | `MC2_LOG_PREVIEW` | Bool Presence default=off | `if ( getenv("MC2_LOG_PREVIEW") && g_mechPreviewRenderDepth > 0` | paired reads: the statement reads this gate 3 times; as one reader it is Presence vs row Presence: NO-CHANGE -- replace the whole expression by hand |
+| `mclib/tgl_render.cpp:251` | `MC2_LOG_PREVIEW` | Bool Presence default=off | `if ( getenv("MC2_LOG_PREVIEW") && g_mechPreviewRenderDepth > 0 )` | paired reads: the statement reads this gate 2 times; as one reader it is Presence vs row Presence: NO-CHANGE -- replace the whole expression by hand |
 
 ### lambda body names `X`, which is state outside the read -- 7 sites
 
@@ -959,7 +959,7 @@ None.
 | `mclib/render_contract.cpp:1357` | `MC2_RENDER_PASS_CONTRACT_TRACE` | Lead1 | per-call | - | UNHANDLED | pointer t is not used by the following statement |
 | `mclib/render_contract.cpp:1358` | `MC2_RENDER_PASS_CONTRACT_ASSERT` | Lead1 | per-call | - | UNHANDLED | expression using a also names `t` |
 | `mclib/render_contract.cpp:1450` | `MC2_FRAMEGRAPH_EXECUTOR` | Lead1 | lambda-static | `static const bool s_on = mc2::gate::get<"MC2_FRAMEGRAPH_EXECUTOR">();` | NO-CHANGE | site Lead1 vs row Lead1 |
-| `mclib/routines.cpp:198` | `MC2_DETERMINISTIC_RNG` | Lead0 | per-call | `s_det = mc2::gate::get<"MC2_DETERMINISTIC_RNG">();` | NO-CHANGE | site Lead0 vs row Lead0 |
+| `mclib/routines.cpp:72` | `MC2_DETERMINISTIC_RNG` | Lead0 | per-call | `s_det = mc2::gate::get<"MC2_DETERMINISTIC_RNG">();` | NO-CHANGE | site Lead0 vs row Lead0 |
 | `mclib/spotlight_diag.cpp:25` | `MC2_SPOT_DIAG` | Presence | namespace-static | `bool s_enabled_cached = mc2::gate::get<"MC2_SPOT_DIAG">();` | NO-CHANGE | site Presence vs row Presence |
 | `mclib/spotlight_diag.cpp:73` | `MC2_LIGHT_POOL_MOVER_COLOR` |  | lambda-static | - | UNHANDLED | row kind String: read through str<> (G3 Enum / G4 Tri / String via str<>) |
 | `mclib/spotlight_diag.cpp:89` | `MC2_LIGHT_POOL_MOVER_FWD` | Num(atof) | lambda-static | `static const float s_fwd = mc2::gate::get<"MC2_LIGHT_POOL_MOVER_FWD">();` | EDGE | no row edit needed; inputs whose result changes after the row edit: '1e999'; harness sets none of them |
@@ -976,9 +976,9 @@ None.
 | `mclib/tgl.cpp:107` | `MC2_TGL_POOL_TRACE` | Presence | namespace-static | `static const bool s_tglPoolTrace = mc2::gate::get<"MC2_TGL_POOL_TRACE">();` | NO-CHANGE | site Presence vs row Presence |
 | `mclib/tgl_load_guard.cpp:22` | `MC2_ASSET_FAILLOUD` | Lead0Kill | lambda-static | `static const bool s_on = mc2::gate::get<"MC2_ASSET_FAILLOUD">();` | NO-CHANGE | site Lead0Kill vs row Lead0Kill |
 | `mclib/tgl_render.cpp:53` | `MC2_BUILDING_PBR_TRACE` | Presence | per-call | `const bool traceBuildingPbr = s_activeRenderShapePbrOverride.program && mc2::gate::get<"MC2_BUILDING_PBR_TRACE">();` | NO-CHANGE | site Presence vs row Presence |
-| `mclib/tgl_render.cpp:220` | `MC2_LOG_PREVIEW` | Presence | per-call | - | UNHANDLED | paired reads: the statement reads this gate 3 times; as one reader it is Presence vs row Presence: NO-CHANGE -- replace the whole expression by hand |
-| `mclib/tgl_render.cpp:248` | `MC2_LOG_PREVIEW` | Presence | per-call | - | UNHANDLED | paired reads: the statement reads this gate 2 times; as one reader it is Presence vs row Presence: NO-CHANGE -- replace the whole expression by hand |
-| `mclib/tgl_render.cpp:276` | `MC2_LOG_PREVIEW` | Presence | per-call | `else if ( mc2::gate::get<"MC2_LOG_PREVIEW">() && g_mechPreviewRenderDepth > 0 )` | NO-CHANGE | site Presence vs row Presence |
+| `mclib/tgl_render.cpp:223` | `MC2_LOG_PREVIEW` | Presence | per-call | - | UNHANDLED | paired reads: the statement reads this gate 3 times; as one reader it is Presence vs row Presence: NO-CHANGE -- replace the whole expression by hand |
+| `mclib/tgl_render.cpp:251` | `MC2_LOG_PREVIEW` | Presence | per-call | - | UNHANDLED | paired reads: the statement reads this gate 2 times; as one reader it is Presence vs row Presence: NO-CHANGE -- replace the whole expression by hand |
+| `mclib/tgl_render.cpp:279` | `MC2_LOG_PREVIEW` | Presence | per-call | `else if ( mc2::gate::get<"MC2_LOG_PREVIEW">() && g_mechPreviewRenderDepth > 0 )` | NO-CHANGE | site Presence vs row Presence |
 | `mclib/tgl_transform.cpp:21` | `MC2_LIGHT_BILLBOARD_TWOSIDED` | Lead0 | lambda-static | `static const bool s = mc2::gate::get<"MC2_LIGHT_BILLBOARD_TWOSIDED">();` | NO-CHANGE | site Lead0 vs row Lead0 |
 | `mclib/tgl_transform.cpp:32` | `MC2_OBJECT_PARITY_TRACE` | Exact1 | lambda-static | `static bool s_hotGreenLightTraceEnabled = mc2::gate::get<"MC2_OBJECT_PARITY_TRACE">();` | NO-CHANGE | site Exact1 vs row Exact1 |
 | `mclib/txmmgr.cpp:137` | `MC2_TEX_LIFECYCLE_TRACE` | Presence | namespace-static | `static const bool s_texLifecycleTrace = mc2::gate::get<"MC2_TEX_LIFECYCLE_TRACE">();` | NO-CHANGE | site Presence vs row Presence |
@@ -1743,7 +1743,7 @@ None.
 * `mclib/render_contract.cpp:1450` MC2_FRAMEGRAPH_EXECUTOR (NO-CHANGE, lambda-static)
   * before: `static const bool s_on = []() { const char* v = ::getenv("MC2_FRAMEGRAPH_EXECUTOR"); return v && v[0] == '1'; }();`
   * after: `static const bool s_on = mc2::gate::get<"MC2_FRAMEGRAPH_EXECUTOR">();`
-* `mclib/routines.cpp:198` MC2_DETERMINISTIC_RNG (NO-CHANGE, per-call)
+* `mclib/routines.cpp:72` MC2_DETERMINISTIC_RNG (NO-CHANGE, per-call)
   * before: `const char* v = getenv("MC2_DETERMINISTIC_RNG"); s_det = (v && v[0] != '\0' && v[0] != '0');`
   * after: `s_det = mc2::gate::get<"MC2_DETERMINISTIC_RNG">();`
 * `mclib/spotlight_diag.cpp:25` MC2_SPOT_DIAG (NO-CHANGE, namespace-static)
@@ -1794,13 +1794,13 @@ None.
 * `mclib/tgl_render.cpp:53` MC2_BUILDING_PBR_TRACE (NO-CHANGE, per-call)
   * before: `const bool traceBuildingPbr = s_activeRenderShapePbrOverride.program && getenv("MC2_BUILDING_PBR_TRACE");`
   * after: `const bool traceBuildingPbr = s_activeRenderShapePbrOverride.program && mc2::gate::get<"MC2_BUILDING_PBR_TRACE">();`
-* `mclib/tgl_render.cpp:220` MC2_LOG_PREVIEW (UNHANDLED, per-call)
+* `mclib/tgl_render.cpp:223` MC2_LOG_PREVIEW (UNHANDLED, per-call)
   * before: `if ( getenv("MC2_LOG_PREVIEW") && g_mechPreviewRenderDepth > 0`
   * after: `-`
-* `mclib/tgl_render.cpp:248` MC2_LOG_PREVIEW (UNHANDLED, per-call)
+* `mclib/tgl_render.cpp:251` MC2_LOG_PREVIEW (UNHANDLED, per-call)
   * before: `if ( getenv("MC2_LOG_PREVIEW") && g_mechPreviewRenderDepth > 0 )`
   * after: `-`
-* `mclib/tgl_render.cpp:276` MC2_LOG_PREVIEW (NO-CHANGE, per-call)
+* `mclib/tgl_render.cpp:279` MC2_LOG_PREVIEW (NO-CHANGE, per-call)
   * before: `else if ( getenv("MC2_LOG_PREVIEW") && g_mechPreviewRenderDepth > 0 )`
   * after: `else if ( mc2::gate::get<"MC2_LOG_PREVIEW">() && g_mechPreviewRenderDepth > 0 )`
 * `mclib/tgl_transform.cpp:21` MC2_LIGHT_BILLBOARD_TWOSIDED (NO-CHANGE, lambda-static)
