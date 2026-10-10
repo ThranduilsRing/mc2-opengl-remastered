@@ -19,6 +19,7 @@ namespace mc2::gate::rows {
 
 using enum Kind;
 using enum Rule;
+using enum EvKind;
 
 // Optional row fields, combined with `|`: `reread | passthrough | range(1, 8)`.
 struct Opts {
@@ -26,6 +27,7 @@ struct Opts {
     bool divergent = false;
     bool passthrough = false;
     bool verified = false;
+    Registry registry;
     Range range;
     std::string_view tokens;
     std::string_view logTopic;
@@ -36,6 +38,7 @@ constexpr Opts operator|(Opts a, const Opts& b) {
     a.divergent = a.divergent || b.divergent;
     a.passthrough = a.passthrough || b.passthrough;
     a.verified = a.verified || b.verified;
+    if (b.registry.kind != EvKind::None) a.registry = b.registry;
     if (b.range.has) a.range = b.range;
     if (!b.tokens.empty()) a.tokens = b.tokens;
     if (!b.logTopic.empty()) a.logTopic = b.logTopic;
@@ -46,6 +49,10 @@ inline constexpr Opts reread{.reread = true};
 inline constexpr Opts divergent{.divergent = true};
 inline constexpr Opts passthrough{.passthrough = true};
 inline constexpr Opts verified{.verified = true};
+// A registry entry in kFeatureTable (order = its RendererFeature index) or, with order -1, kAuxEnvVars.
+constexpr Opts registry(EvKind kind, std::string_view featureId, int order, bool defaultOn) {
+    return Opts{.registry = Registry{kind, featureId, order, defaultOn}};
+}
 // Out-of-range values fall back to the default.
 constexpr Opts range(double lo, double hi) { return Opts{.range = Range{true, false, lo, hi}}; }
 // Same, with the lower bound exclusive: accepts (lo, hi]. For `f > lo && f <= hi` readers.
@@ -72,6 +79,7 @@ constexpr Row make(Rule rule, std::string_view name, Kind kind, std::string_view
     r.divergent = o.divergent;
     r.smokePassthrough = o.passthrough;
     r.verified = o.verified;
+    r.registry = o.registry;
     return r;
 }
 }  // namespace detail

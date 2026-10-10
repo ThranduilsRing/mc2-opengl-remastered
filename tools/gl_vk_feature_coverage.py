@@ -44,7 +44,7 @@ DOC_COV = "docs/gl-vk-feature-coverage.md"
 DOC_JSON = "docs/gl-vk-feature-coverage.json"
 VARIANTS = "scripts/gl_shader_variants.json"
 GATE_SEED = "tools/gate_table.seed.json"
-REGISTRY_H = "RenderCore/RendererFeatureRegistry.h"
+REGISTRY_H = "Gates/gate_table.json"   # the compiled gate table; its registry rows carry defaultOn
 CPP_DIRS = ("GameOS/", "mclib/", "code/", "RenderCore/", "RenderWorld/", "GameAdapters/", "gui/", "HostServices/")
 VK_CPP_GLOBS = (("GameOS/gameos/vulkan_", (".cpp", ".h")), ("GameOS/gameos/engine_present_vk", (".cpp", ".h")),
                 ("RenderCore/gpu_abi/", (".h",)))
@@ -404,12 +404,12 @@ def _truthy(d):
 
 
 def gate_defaults(text_registry, text_seed):
-    """{gate: default_on} from the registry header and the typed gate seed (either may be None)."""
+    """{gate: default_on} from the gate table registry rows and the typed gate seed (either may be None)."""
     out = {}
     if text_registry:
         sys.path.insert(0, os.path.join(ROOT, "scripts"))
-        import registry_parse as rp
-        for key, ent in rp.parse_registry_text(text_registry, REGISTRY_H).items():
+        import gate_table_reader as gtr
+        for key, ent in gtr.registry_entries_from_text(text_registry).items():
             if ent.get("envVar"):
                 out[ent["envVar"]] = bool(ent["defaultOn"])
     if text_seed:

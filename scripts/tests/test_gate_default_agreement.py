@@ -14,7 +14,6 @@ sys.path.insert(0, os.path.join(ROOT, "scripts"))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 
 import gate_idioms as gi  # noqa: E402
-import gate_gen as gg  # noqa: E402
 
 _spec = importlib.util.spec_from_file_location(
     "check_gate_default_agreement",
@@ -52,12 +51,7 @@ def test_marker_far_below_the_head_does_not_exempt_the_doc(tmp_path):
 
 
 def test_generated_gate_history_is_exempt_and_its_claims_do_not_surface(tmp_path):
-    registry = (
-        "static constexpr EnvVarDesc kFeatureTable[] = {\n"
-        '    { "MC2_OLD", "MC2_OLD", EnvVarKind::Feature, true,\n'
-        '      "MC2_OLD default-off; =1 enables. Second sentence." },\n};\n'
-        "static constexpr EnvVarDesc kAuxEnvVars[] = {\n"
-        '    { "MC2_AUX", "MC2_AUX", EnvVarKind::Trace, false, "One sentence." },\n};\n')
-    md = gg.render_history(gg.Inputs({}, registry))
+    md = ("# Gate history\n" + gi.QUOTED_HISTORY_MARKER + "\n\n## MC2_OLD\n\n"
+          "MC2_OLD default-off; =1 enables. Second sentence.\n")
     assert "default-off" in md                      # the verbatim history is really there
     assert _claims(tmp_path, {"gate-history.md": md}) == []

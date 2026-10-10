@@ -1,7 +1,7 @@
 {
  "schema": "mc2-review-pack/1",
  "pack_dir": "release_assets/0.5.2/REVIEW",
- "registry_header": "RenderCore/RendererFeatureRegistry.h",
+ "registry_header": "Gates/gate_table.json",
  "title": "MC2 v0.5.2 Review \u2014 fresh page 2026-08-03",
  "h1": "MC2 v0.5.2 &mdash; fresh review page (2026-08-03)",
  "lede": "<b>Everything on this page is NEW &mdash; nothing you have already graded is repeated.</b> All 137 poses (every bookmark in every per-mission JSON, plus all 10 of your saved camera poses) re-captured 2026-08-03 on the new default-ON alpha-atlas exe (<code>99e9c46d43a3</code>), 3840&times;2160, shipped defaults. The previous pack (everything you graded through 2026-08-02) lives in git history of <code>release_assets_src/0.5.2/review_pack.json</code>.",

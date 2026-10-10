@@ -29,8 +29,8 @@ namespace {
 
 // ---- env knobs (parse-once) -------------------------------------------------
 // NOTE: each std::getenv("MC2_...") literal is kept on its own line at the
-// call site (no name-forwarding helper) so scripts/flag-registry-auto-gen.py's
-// single-line getenv sweep and check-env-registry.sh both see the readers.
+// call site (no name-forwarding helper) so check-env-registry.sh and the repo_intel reader scan both
+// see the readers.
 
 float clampf(float f, float lo, float hi)
 {

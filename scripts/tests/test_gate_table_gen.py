@@ -1,103 +1,30 @@
-"""tools/gate_table_gen.py: seed -> table rows, index rendering and the stage-A checks."""
+"""tools/gate_table_gen.py and tools/gate_registry_gen.py: index rendering, the derived registry rows and yaml,
+and the stage-A checks; scripts/gate_table_reader.py: the JSON reader the Python tools share."""
 import json
 import os
 import sys
 
+import pytest
+
 HERE = os.path.dirname(os.path.abspath(__file__))
-TOOLS = os.path.join(os.path.dirname(os.path.dirname(HERE)), "tools")
-sys.path.insert(0, TOOLS)
+REPO = os.path.dirname(os.path.dirname(HERE))
+sys.path.insert(0, os.path.join(REPO, "tools"))
+sys.path.insert(0, os.path.join(REPO, "scripts"))
+import gate_registry_gen as grg  # noqa: E402
 import gate_table_gen as tg  # noqa: E402
+import gate_table_reader as gtr  # noqa: E402
 
 
-def rec(name, kind="Bool", rule="Std", default=False, **kw):
-    r = {"name": name, "kind": kind, "rule": rule, "default": default, "owner": "code", "retireBy": "",
-         "doc": "", "readers": [], "numericRange": None, "registered": False, "seedDefaultSource": "reader-idiom"}
-    r.update(kw)
-    return r
+def gate(name, kind="Bool", rule="Std", default=False, registry=None, **kw):
+    g = {"name": name, "kind": kind, "rule": rule, "default": default, "owner": "code", "retireBy": "",
+         "doc": "doc of " + name, "tokens": "", "range": None, "reread": False, "divergent": False,
+         "smokePassthrough": False, "verified": False, "registry": registry, "logTopic": ""}
+    g.update(kw)
+    return g
 
 
-def rows(*recs, ledger=None, smoke=(), history=()):
-    return tg.rows_from_seed({"gates": list(recs)}, ledger or {}, set(smoke), set(history))
-
-
-def by_name(rs):
-    return {r["name"]: r for r in rs}
-
-
-def test_rows_are_sorted_and_include_the_gate_modules_own_rows():
-    rs = rows(rec("MC2_ZED"), rec("MC2_ALPHA"))
-    names = [r["name"] for r in rs]
-    assert names == sorted(names)
-    assert "MC2_CONFIG_STRICT" in names and "MC2_CONFIG_DUMP" in names
-
-
-def test_bool_default_follows_the_rule_when_the_rule_implies_it():
-    rs = by_name(rows(rec("MC2_A", rule="Lead0Kill", default=False), rec("MC2_B", rule="Presence", default=True),
-                      rec("MC2_C", rule="Std", default=True)))
-    assert rs["MC2_A"]["default"] is True      # unset is on under Lead0Kill
-    assert rs["MC2_B"]["default"] is False     # unset is off under Presence
-    assert rs["MC2_C"]["default"] is True      # Std carries the default
-
-
-def test_partial_and_custom_rules_map_to_named_rules():
-    r = by_name(rows(
-        rec("MC2_P1", rule="Partial", default=True, readers=[{"at": "x", "idiom": "Partial[D,on,off,on,on,on,on,on]"}]),
-        rec("MC2_P2", rule="Partial", default=False, readers=[{"at": "x", "idiom": "Partial[D,on,off,on,on,on,on,on]"}]),
-        rec("MC2_P3", rule="Partial", default=False, readers=[{"at": "x", "idiom": "Partial[D,D,off,on,on,on,on,on]"}]),
-        rec("MC2_C1", rule="Custom", default=True, readers=[{"at": "x", "idiom": "Custom[10001011]"}])))
-    assert r["MC2_P1"]["rule"] == "Lead0Kill"
-    assert r["MC2_P2"]["rule"] == "Lead0P"
-    assert r["MC2_P3"]["rule"] == "Lead0Def"
-    assert r["MC2_C1"]["rule"] == "DefOnAtoiNZ"
-
-
-def test_numeric_rows_keep_the_prefix_parse_and_only_reject_style_ranges():
-    r = by_name(rows(
-        rec("MC2_I", kind="Int", rule="Prefix", default=64,
-            numericRange={"lo": 16, "hi": 256, "style": "compare-reject"}),
-        rec("MC2_F", kind="Float", rule="Prefix", default=1.5,
-            numericRange={"lo": 0.0, "hi": 1.0, "style": "compare"}),
-        rec("MC2_K", kind="Int", rule="Prefix", default=3,
-            numericRange={"lo": 1, "hi": 9, "style": "clamp"})))
-    assert r["MC2_I"]["rule"] == "Prefix" and r["MC2_I"]["range"] == ("range", 16, 256)
-    assert r["MC2_F"]["range"] is None
-    assert r["MC2_K"]["range"] == ("clampRange", 1, 9)
-
-
-def test_enum_tokens_start_with_the_default_token():
-    r = by_name(rows(rec("MC2_E", kind="Enum", default="", numericRange={"enum": ["a", "b"]}),
-                     rec("MC2_E2", kind="Enum", default="a", numericRange={"enum": ["a", "b"]})))
-    assert r["MC2_E"]["tokens"] == "|a|b"
-    assert r["MC2_E2"]["tokens"] == "a|b"
-
-
-def test_doc_is_one_ascii_line_within_the_limit():
-    long_doc = "First sentence. " + "word " * 80 + "— end"
-    r = by_name(rows(rec("MC2_D", doc=long_doc), rec("MC2_D2", doc="Short one. Second sentence.")))
-    assert len(r["MC2_D"]["doc"]) <= tg.MAX_DOC and r["MC2_D"]["doc"].isascii()
-    assert r["MC2_D2"]["doc"] == "Short one."
-
-
-def test_flags_come_from_the_ledger_smoke_and_history_sets():
-    r = by_name(rows(rec("MC2_ACTIVE_MOD"), rec("MC2_X"), rec("MC2_Y"),
-                     ledger={"MC2_X": {"status": "divergent"}}, smoke=["MC2_Y"], history=["MC2_Y"]))
-    assert r["MC2_ACTIVE_MOD"]["reread"] and r["MC2_ACTIVE_MOD"]["kind"] == "String"
-    assert r["MC2_X"]["divergent"] and not r["MC2_Y"]["divergent"]
-    assert r["MC2_Y"]["smokePassthrough"] and r["MC2_Y"]["history"]
-
-
-def test_row_line_shapes():
-    base = dict(name="MC2_A", kind="Bool", rule="Std", default=True, owner="code", retireBy="", doc="d", tokens="",
-                range=None, reread=False, divergent=False, smokePassthrough=False, logTopic="", history=False,
-                defaultUnknown=False)
-    assert tg.row_line(base) == 'G("MC2_A", Bool, true, "code", "", "d"),'
-    assert tg.row_line(dict(base, rule="Lead0Kill")).startswith('L(Lead0Kill, "MC2_A", Bool, true,')
-    num = dict(base, kind="Int", rule="Prefix", default=64, range=("range", 16, 256), reread=True)
-    assert tg.row_line(num) == 'P("MC2_A", Int, 64, "code", "", "d", reread | range(16, 256)),'
-    flt = dict(base, kind="Float", rule="Prefix", default=754.0)
-    assert ", Float, 754.0," in tg.row_line(flt)
-    enum = dict(base, kind="Enum", default="a", tokens="a|b")
-    assert tg.row_line(enum).endswith('tokens("a|b")),')
+def doc_of(*gates):
+    return {"version": 1, "count": len(gates), "gates": sorted(gates, key=lambda g: g["name"])}
 
 
 def test_cpp_string_escapes_quotes_backslashes_and_non_ascii():
@@ -106,28 +33,20 @@ def test_cpp_string_escapes_quotes_backslashes_and_non_ascii():
 
 
 def test_index_lists_every_row_with_kind_rule_and_tokens():
-    rs = rows(rec("MC2_A", kind="Enum", default="x", numericRange={"enum": ["y"]}), rec("MC2_B"))
+    rs = tg.rows_from_json(doc_of(gate("MC2_A", kind="Enum", tokens="x|y"), gate("MC2_B")))
     text = tg.render_index(rs)
-    assert "kGateCount = %d;" % len(rs) in text
+    assert "kGateCount = 2;" in text
     assert '{"MC2_A", Kind::Enum, Rule::Std, "x|y"},' in text
     assert '{"MC2_B", Kind::Bool, Rule::Std, {}},' in text
     assert text.index('"MC2_A"') < text.index('"MC2_B"')
 
 
-def _json_doc(rs):
-    return {"version": 1, "count": len(rs), "gates": [
-        {"name": r["name"], "kind": r["kind"], "rule": r["rule"], "default": r["default"], "owner": r["owner"],
-         "retireBy": r["retireBy"], "doc": r["doc"], "tokens": r["tokens"], "range": None,
-         "reread": r["reread"], "divergent": r["divergent"], "smokePassthrough": r["smokePassthrough"],
-         "logTopic": ""} for r in rs]}
-
-
 def _tree(tmp_path, stale_index=False):
-    rs = rows(rec("MC2_A"), rec("MC2_B"))
+    doc = doc_of(gate("MC2_A"), gate("MC2_B"))
     gdir = tmp_path / "Gates"
     gdir.mkdir()
-    (gdir / "gate_table.json").write_text(json.dumps(_json_doc(rs)), encoding="utf-8")
-    text = tg.render_index(rs)
+    (gdir / "gate_table.json").write_text(json.dumps(doc), encoding="utf-8")
+    text = tg.render_index(tg.rows_from_json(doc))
     if stale_index:
         text = text.replace("MC2_A", "MC2_AA")
     (gdir / "gate_index.gen.h").write_text(text, encoding="utf-8", newline="\n")
@@ -136,20 +55,19 @@ def _tree(tmp_path, stale_index=False):
 
 def test_check_accepts_a_matching_index(tmp_path):
     fails = tg.check(_tree(tmp_path))
-    assert [f for f in fails if "stale" in f or "sorted" in f] == []
+    assert [f for f in fails if "stale" in f and "index" in f or "sorted" in f] == []
 
 
 def test_check_flags_a_stale_index(tmp_path):
-    fails = tg.check(_tree(tmp_path, stale_index=True))
-    assert any("stale" in f for f in fails)
+    assert any("gate_index.gen.h is stale" in f for f in tg.check(_tree(tmp_path, stale_index=True)))
 
 
 def test_check_flags_an_unsorted_table(tmp_path):
     root = _tree(tmp_path)
     p = tmp_path / "Gates" / "gate_table.json"
-    doc = json.loads(p.read_text(encoding="utf-8"))
-    doc["gates"].reverse()
-    p.write_text(json.dumps(doc), encoding="utf-8")
+    d = json.loads(p.read_text(encoding="utf-8"))
+    d["gates"].reverse()
+    p.write_text(json.dumps(d), encoding="utf-8")
     assert any("sorted" in f for f in tg.check(root))
 
 
@@ -157,14 +75,11 @@ def test_the_committed_table_is_consistent():
     assert tg.check(tg.ROOT) == []
 
 
-def test_exclusive_lower_bound_survives_the_json_round_trip_and_renders_as_range_above():
-    doc = {"gates": [{
-        "name": "MC2_X_RADIUS", "kind": "Float", "rule": "Prefix", "default": 0.6, "owner": "t", "retireBy": "",
-        "doc": "d", "tokens": "", "range": {"lo": 0, "hi": 1, "clamp": False, "loExclusive": True},
-    }]}
-    (row,) = tg.rows_from_json(doc)
+def test_exclusive_lower_bound_survives_the_json_round_trip():
+    g = gate("MC2_X_RADIUS", kind="Float", rule="Prefix", default=0.6,
+             range={"lo": 0, "hi": 1, "clamp": False, "loExclusive": True})
+    (row,) = tg.rows_from_json(doc_of(g))
     assert row["range"] == ("rangeAbove", 0, 1)
-    assert "rangeAbove(0.0, 1.0)" in tg.row_line(row)
 
 
 def test_top_level_args_ignores_commas_in_strings_and_calls():
@@ -187,3 +102,86 @@ def test_override_counter_matches_the_using_enum_spelling(tmp_path):
         'a = gate::get<"MC2_A", Rule::Presence>(); b = gate::get<"MC2_B", Presence>(); c = gate::get<"MC2_C">();\n',
         encoding="utf-8")
     assert tg.count_overrides(str(tmp_path)) == 2
+
+
+# ---------------------------------------------------------------------------
+# Registry rows and yaml, generated from the table
+# ---------------------------------------------------------------------------
+
+HEADER = ("// header\nenum class RendererFeature : int { A = 0, B = 1, COUNT = 2 };\n"
+          "static constexpr EnvVarDesc kFeatureTable[] = {\n    OLD ROWS\n};\n\n"
+          "static constexpr EnvVarDesc kAuxEnvVars[] = {\n    OLD AUX\n};\n\ninline void dump() {}\n")
+
+
+def reg(fid, kind="Feature", order=-1, on=False):
+    return {"featureId": fid, "kind": kind, "order": order, "defaultOn": on}
+
+
+def _registry_doc():
+    return doc_of(
+        gate("MC2_B_GATE", registry=reg("MC2_FEATURE_B", order=1, on=True), doc="second"),
+        gate("MC2_A_GATE", registry=reg("MC2_FEATURE_A", order=0), doc='first "quoted"'),
+        gate("MC2_Z_TRACE", registry=reg("MC2_TRACE_Z", kind="Trace")),
+        gate("MC2_C_TRACE", registry=reg("MC2_TRACE_C", kind="Trace", on=True)),
+        gate("MC2_UNREGISTERED"))
+
+
+def test_header_rows_are_generated_in_enum_order_and_aux_rows_by_name():
+    text = grg.patch_header(HEADER, grg.entries(_registry_doc(), []))
+    assert text.index('"MC2_FEATURE_A"') < text.index('"MC2_FEATURE_B"')
+    assert text.index('"MC2_TRACE_C"') < text.index('"MC2_TRACE_Z"')
+    assert "MC2_UNREGISTERED" not in text
+    assert 'first \\"quoted\\"' in text
+    assert "OLD ROWS" not in text and "OLD AUX" not in text
+    assert text.startswith("// header\nenum class RendererFeature") and text.endswith("inline void dump() {}\n")
+
+
+def test_header_generation_is_idempotent_and_keeps_crlf():
+    ents = grg.entries(_registry_doc(), [])
+    once = grg.patch_header(HEADER, ents)
+    assert grg.patch_header(once, ents) == once
+    crlf = grg.patch_header(HEADER.replace("\n", "\r\n"), ents)
+    assert "\r\n" in crlf and "\n" not in crlf.replace("\r\n", "")
+
+
+def test_a_gap_in_the_feature_order_is_refused():
+    d = doc_of(gate("MC2_A", registry=reg("MC2_FEATURE_A", order=0)), gate("MC2_C", registry=reg("MC2_FEATURE_C", order=2)))
+    with pytest.raises(SystemExit):
+        grg.feature_rows(grg.entries(d, []))
+
+
+def test_rows_without_an_env_var_come_from_the_feature_only_list():
+    only = [{"featureId": "MC2_FEATURE_REVERSE_Z", "kind": "Feature", "order": 0, "defaultOn": True, "doc": "always on"}]
+    d = doc_of(gate("MC2_B", registry=reg("MC2_FEATURE_B", order=1)))
+    text = grg.patch_header(HEADER, grg.entries(d, only))
+    assert text.index('"MC2_FEATURE_REVERSE_Z"') < text.index('"MC2_FEATURE_B"')
+    assert "nullptr" in text
+
+
+def test_yaml_is_a_pure_function_of_the_table():
+    d = _registry_doc()
+    y = grg.render_yaml(d, [])
+    assert y == grg.render_yaml(d, [])
+    assert y.count("  - name: ") == 5
+    assert "registry: {feature_id: MC2_FEATURE_B, kind: Feature, order: 1, default_on: true}" in y
+    assert 'doc: "first \\"quoted\\""' in y
+
+
+def test_the_reader_orders_registry_entries_like_the_generated_header():
+    d = _registry_doc()
+    entries = gtr.registry_entries_from_text(json.dumps(d))
+    assert list(entries) == ["MC2_A_GATE", "MC2_B_GATE", "MC2_C_TRACE", "MC2_Z_TRACE"]
+    assert entries["MC2_B_GATE"]["table"] == "kFeatureTable"
+    assert entries["MC2_Z_TRACE"]["table"] == "kAuxEnvVars"
+
+
+def test_the_reader_refuses_a_torn_or_inconsistent_table():
+    good = json.dumps(_registry_doc())
+    for bad in (good[:40], good.replace('"count": 5', '"count": 6')):
+        with pytest.raises(gtr.GateTableError):
+            gtr.registry_entries_from_text(bad)
+
+
+def test_the_committed_header_and_yaml_are_current():
+    d = gtr.load_table(tg.ROOT)
+    assert grg.check_all(tg.ROOT, d) == []

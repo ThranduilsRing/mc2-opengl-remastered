@@ -8,8 +8,8 @@ makes the pack reproducible:
   * all human-authored content (title, lede, prose, captions, image ordering)
     lives in a TRACKED manifest -- release_assets_src/<ver>/review_pack.json
   * the GATE INVENTORY table (section 0) is rebuilt FROM SOURCE at render time
-    by parsing RenderCore/RendererFeatureRegistry.h, so the published defaults
-    can never drift from the compiled ones.  Gate defaults are deliberately
+    by reading the registry rows of Gates/gate_table.json (the compiled gate table), so the
+    published defaults can never drift from the compiled ones.  Gate defaults are deliberately
     NOT stored in the manifest.  A registry that does not parse CLEANLY and
     COMPLETELY aborts the build (exit 2, page not written) -- see
     parse_registry().  A partial parse used to warn on stderr and publish
@@ -48,38 +48,37 @@ IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".gif", ".webp")
 
 
 # ---------------------------------------------------------------------------
-# RendererFeatureRegistry.h parsing
+# Gate registry rows (Gates/gate_table.json)
 # ---------------------------------------------------------------------------
 #
-# REGISTRY-PARSER-TRUTH-1 (2026-07-31): the parser this file used to carry
-# privately now lives in scripts/registry_parse.py, unchanged, because two OTHER
-# tools carried their own private copies of the same grammar and both were wrong
-# -- tools/repo_intel/env_index.py at 359 of 360 rows (which made the gate_status
-# MCP tool answer `registered: false, verdict: OK` about a registered gate while
-# citing the registry line it had failed to parse), and
-# scripts/flag-registry-auto-gen.py at 248 of 360, whose output is the TRACKED
-# docs/flags.auto.yaml and asserted `registered: no` about 73 registered gates.
-# One implementation, one set of invariants; see that module's header for the
-# three measured row-drop causes and why the invariants are self-referential.
-#
-# selftest_registry_guard() below still corrupts the REAL header four ways and
-# requires a refusal from each, so the shared parser is exercised from here.
+# The registry is the registry(...) rows of the compiled gate table, emitted as JSON by tools/gate_dump.
+# scripts/gate_table_reader.py reads it and REFUSES (GateTableError) on a missing, torn or inconsistent
+# document instead of returning a short answer; selftest_registry_guard() below corrupts the REAL table four
+# ways and requires a refusal from each, so the reader is exercised from here.
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from registry_parse import (          # noqa: E402
-    ENTRY_RE as _ENTRY_RE,
-    ROW_OPENER_RE as _ROW_OPENER_RE,
-    RegistryParseError,
-    parse_registry,
-)
+from gate_table_reader import GateTableError as RegistryParseError, registry_entries_from_text  # noqa: E402
 
+
+def parse_registry(path):
+    """{key: entry} for the registry rows of the gate table JSON at `path`; raises RegistryParseError."""
+    try:
+        with open(path, "rb") as fh:
+            raw = fh.read()
+    except OSError as exc:
+        raise RegistryParseError("cannot read %s: %s" % (path, exc))
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise RegistryParseError("%s is not valid UTF-8: %s" % (path, exc))
+    return registry_entries_from_text(text)
 
 
 # ---------------------------------------------------------------------------
 # READER-SOURCE default resolution (for gates with no registry entry)
 # ---------------------------------------------------------------------------
 #
-# RendererFeatureRegistry.h is authoritative when it has an entry, but 18 of the
+# The gate table registry rows are authoritative when a gate has one, but 18 of the
 # gates named in this pack have none, so a registry-only table can say nothing
 # about their real defaults.  Rather than let the manifest assert a default (the
 # exact drift AUDIT-TRUTH-1 had to repair), resolve it from the C++ READER at
@@ -763,53 +762,39 @@ def selftest_registry_guard(registry_path: str) -> int:
 
     orig = open(registry_path, "rb").read()
     txt = orig.decode("utf-8")
-
-    # A row that is present in kAuxEnvVars today; the arms below need a real
-    # anchor rather than a synthetic one, so a registry edit that removes it
-    # breaks the test loudly instead of quietly weakening it.
-    anchor = '    {\n        "MC2_TUNE_LIGHT_POOL_MAX"'
+    anchor = '"name": "MC2_NIGHT_FOG_DIM"'
     if anchor not in txt:
-        print("SELF-TEST INCONCLUSIVE: anchor row not in %s -- pick another and "
+        print("SELF-TEST INCONCLUSIVE: anchor gate not in %s -- pick another and "
               "re-verify the arms" % registry_path, file=sys.stderr)
         return 1
     cut = txt.index(anchor)
-    grammar_break = txt.replace(
-        "EnvVarKind::Trace,\n        false,\n        \"LIGHT-POOL-CAP-1:",
-        "EnvVarKind::Trace,\n        0,\n        false,\n        \"LIGHT-POOL-CAP-1:", 1)
-
     arms = [
-        ("torn read (prefix of the file)", orig[:24000], "opens but never closes"),
+        ("torn read (prefix of the file)", orig[:24000], "not valid JSON"),
         ("undecodable byte inside a gate name",
-         orig.replace(b'"MC2_NIGHT_FOG_DIM"', b'"MC2_NIGHT_F\xffG_DIM"', 1),
-         "not valid UTF-8"),
-        ("one row silently skipped by the grammar",
-         grammar_break.encode("utf-8"), "were silently skipped"),
-        ("truncated at a row boundary inside the second table",
-         txt[:cut].encode("utf-8"), "opens but never closes"),
+         orig.replace(b'"MC2_NIGHT_FOG_DIM"', b'"MC2_NIGHT_F\xffG_DIM"', 1), "not valid UTF-8"),
+        ("count field disagrees with the rows",
+         txt.replace('"count": ', '"count": 1', 1).encode("utf-8"), "not a complete gate table"),
+        ("truncated at a row boundary",
+         (txt[:txt.rfind("{", 0, cut)].rstrip().rstrip(",") + "\n ]\n}\n").encode("utf-8"),
+         "not a complete gate table"),
     ]
 
     failures = 0
     tmpdir = tempfile.mkdtemp(prefix="mc2_regguard_")
-    tmp = os.path.join(tmpdir, "RendererFeatureRegistry.h")
+    tmp = os.path.join(tmpdir, "gate_table.json")
     try:
-        # the uncorrupted control: must parse, and must reconcile row-for-row
+        # the uncorrupted control: must read, and must carry registry rows
         with open(tmp, "wb") as fh:
             fh.write(orig)
         try:
             reg = parse_registry(tmp)
         except RegistryParseError as exc:
-            print("  FAIL  clean registry was REFUSED: %s" % exc)
+            print("  FAIL  clean table was REFUSED: %s" % exc)
             failures += 1
         else:
-            declared = len(_ROW_OPENER_RE.findall(txt))
-            ok = len(reg) == declared
-            print("  %s  clean registry parses: %d entries, %d declared"
-                  % ("OK  " if ok else "FAIL", len(reg), declared))
+            ok = len(reg) > 300
+            print("  %s  clean table reads: %d registry entries" % ("OK  " if ok else "FAIL", len(reg)))
             failures += 0 if ok else 1
-
-        if grammar_break == txt:
-            print("  FAIL  grammar-break arm did not modify anything -- BLIND")
-            failures += 1
 
         for label, blob, expect in arms:
             with open(tmp, "wb") as fh:
@@ -824,7 +809,7 @@ def selftest_registry_guard(registry_path: str) -> int:
                     failures += 1
             else:
                 print("  FAIL  ACCEPTED %s -- %d entries published from a corrupt "
-                      "registry" % (label, len(got)))
+                      "table" % (label, len(got)))
                 failures += 1
     finally:
         try:
@@ -837,7 +822,7 @@ def selftest_registry_guard(registry_path: str) -> int:
         print("SELF-TEST FAIL: %d arm(s) did not behave" % failures)
         return 1
     print("SELF-TEST PASS: the registry guard refuses a torn read, an "
-          "undecodable byte, a skipped row and a mid-table truncation")
+          "undecodable byte, a count mismatch and a mid-table truncation")
     return 0
 
 
@@ -849,7 +834,7 @@ def main(argv=None) -> int:
     ap.add_argument("--manifest", default=DEFAULT_MANIFEST)
     ap.add_argument("--out", default=DEFAULT_OUT)
     ap.add_argument("--registry", default=None,
-                    help="path to RendererFeatureRegistry.h (default: from manifest)")
+                    help="path to Gates/gate_table.json (default: from manifest)")
     ap.add_argument("--pack-dir", default=None,
                     help="image root (default: from manifest 'pack_dir')")
     ap.add_argument("--check", action="store_true",
@@ -859,7 +844,7 @@ def main(argv=None) -> int:
                          "(no rendering; used by the id-stability test)")
     ap.add_argument("--selftest", action="store_true",
                     help="prove the registry fail-loud guard FIRES: corrupt a "
-                         "copy of the real registry four ways and require a "
+                         "copy of the real gate table four ways and require a "
                          "refusal from each (no rendering, nothing written)")
     ap.add_argument("--no-annotate", action="store_true",
                     help="render without the annotation layer (diff/regression aid)")

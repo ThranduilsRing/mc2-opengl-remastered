@@ -126,6 +126,18 @@ int main() {
         out += r.smokePassthrough ? "true" : "false";
         out += ", \"verified\": ";
         out += r.verified ? "true" : "false";
+        out += ", \"registry\": ";
+        if (r.registry.kind != mc2::gate::EvKind::None) {
+            out += "{\"featureId\": ";
+            str(out, r.registry.featureId);
+            out += ", \"kind\": ";
+            out += r.registry.kind == mc2::gate::EvKind::Feature ? "\"Feature\""
+                 : r.registry.kind == mc2::gate::EvKind::Trace ? "\"Trace\"" : "\"Retired\"";
+            out += ", \"order\": " + std::to_string(r.registry.order);
+            out += ", \"defaultOn\": ";
+            out += r.registry.defaultOn ? "true" : "false";
+            out += "}";
+        } else out += "null";
         out += ", \"logTopic\": ";
         str(out, r.logTopic);
         out += "}";

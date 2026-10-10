@@ -5,7 +5,7 @@ One-verdict MC2_* gate audit: merges FOUR sources that today live in four
 different places and drifted independently (2 observed ENV-DROP incidents +
 11 unregistered vars on 2026-07-01):
 
-  1. RenderCore/RendererFeatureRegistry.h        (env_index registry parse)
+  1. Gates/gate_table.json registry rows         (env_index registry read)
   2. docs/tier1_env_vars.md                      (env_index tier1 parse)
   3. scripts/run_smoke.py passthrough allowlist  (anchors `if k in (` .. `)},`
                                                   — same extraction as
@@ -16,7 +16,7 @@ plus a live `git grep` for code readers (fast single-var path; env_index's
 full source walk is only used as fallback).
 
 Verdict flags map 1:1 to the failure classes:
-  REGISTRY_UNPARSED — RendererFeatureRegistry.h did not parse COMPLETELY, so
+  REGISTRY_UNPARSED — the gate table could not be read COMPLETELY, so
                     `registered` is the string "UNKNOWN" and the verdict is
                     "UNDETERMINED". This is a THIRD state, added by
                     REGISTRY-PARSER-TRUTH-1 (2026-07-31) because the tool used
@@ -29,7 +29,7 @@ Verdict flags map 1:1 to the failure classes:
   ENV_DROP_RISK   — read by engine but NOT in the run_smoke passthrough tuple
                     AND the runner has stopped inheriting os.environ, so the
                     tuple is load-bearing again (see below). Conditional.
-  UNREGISTERED    — not in RendererFeatureRegistry.h AND not in the
+  UNREGISTERED    — no registry(...) row in the gate table AND not in the
                     check-env-registry.sh ALLOWLIST -> CI gate fails
   UNDOCUMENTED    — no docs/tier1_env_vars.md entry
   GHOST           — registered/documented but no code reader found
@@ -269,11 +269,11 @@ def gate_status(repo_root: Path, var: str) -> dict:
     flags: list[str] = []
     if registry_error is not None:
         flags.append(
-            "REGISTRY_UNPARSED: RenderCore/RendererFeatureRegistry.h could not "
-            "be parsed completely, so whether this gate is registered is "
+            "REGISTRY_UNPARSED: Gates/gate_table.json could not "
+            "be read completely, so whether this gate is registered is "
             "UNKNOWN -- NOT 'no'. Do not record an UNREGISTERED finding, do not "
             "add it to an allowlist, and do not file it as a dead gate off this "
-            "answer. Fix the registry or the parser first. Reason: "
+            "answer. Fix the table or the reader first. Reason: "
             + registry_error)
     # REAL undriveability, independent of the vestigial passthrough tuple.
     if in_popped:
@@ -297,7 +297,7 @@ def gate_status(repo_root: Path, var: str) -> dict:
     reg_known = registry is not None
     if reg_known:
         if has_readers and not in_registry and not in_check_allow:
-            flags.append("UNREGISTERED: not in RendererFeatureRegistry.h and not in "
+            flags.append("UNREGISTERED: no registry(...) row in the gate table and not in "
                          "check-env-registry.sh ALLOWLIST — CI env-registry gate fails")
     if has_readers and not in_tier1:
         flags.append("UNDOCUMENTED: no docs/tier1_env_vars.md entry")

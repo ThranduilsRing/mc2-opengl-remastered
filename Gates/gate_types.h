@@ -18,6 +18,10 @@ enum class Kind : std::uint8_t { Bool, Tri, Int, Float, String, Enum };
 // silently mean "is set", which is the presence semantics this type exists to prevent.
 enum class Tri : std::uint8_t { Unset, Off, On };
 
+// What RenderCore/RendererFeatureRegistry.h calls a registered gate: a feature switch, a trace-only
+// variable, or a retired one. None = the gate has no registry entry.
+enum class EvKind : std::uint8_t { None, Feature, Trace, Retired };
+
 // Index of an Enum row's current token in the row's token list. An enum class on purpose: a bare int
 // would let `if (get<"MC2_X">())` compile and silently mean "not the first token".
 enum class Token : std::int32_t {};

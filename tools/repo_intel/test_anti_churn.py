@@ -182,7 +182,6 @@ def _mini_repo(tmp_path: Path) -> Path:
     root = tmp_path / "repo"
     (root / "scripts").mkdir(parents=True)
     (root / "docs").mkdir()
-    (root / "RenderCore").mkdir()
     (root / "scripts" / "run_smoke.py").write_text(
         "env = {k: v for k, v in os.environ.items()\n"
         '       if k in ("MC2_ALLOWED_GATE",\n'
@@ -194,34 +193,20 @@ def _mini_repo(tmp_path: Path) -> Path:
         ")\n")
     (root / "docs" / "tier1_env_vars.md").write_text(
         "- `MC2_ALLOWED_GATE=1` — does a thing. Default **OFF**.\n")
-    # REGISTRY-PARSER-TRUTH-1: this fixture used to be a single bare row with no
-    # table declarations at all -- so it exercised nothing about the real file's
-    # structure, and passed against a parser that was dropping a live row. It is
-    # now a STRUCTURALLY REAL mini registry: both arrays, declared and closed,
-    # and it deliberately uses all three legal row forms that the shipped
-    # grammars used to choke on (adjacent string literals, an inline comment
-    # between fields, a trailing comma after the doc).
-    (root / "RenderCore" / "RendererFeatureRegistry.h").write_text(
-        "static constexpr EnvVarDesc kFeatureTable[] = {\n"
-        "    {\n"
-        '        "MC2_FEATURE_ALLOWED",\n'
-        '        "MC2_ALLOWED_GATE",\n'
-        "        EnvVarKind::Feature,   // inline comment between two fields\n"
-        "        false,\n"
-        '        "allowed gate"\n'
-        "    },\n"
-        "};\n"
-        "\n"
-        "static constexpr EnvVarDesc kAuxEnvVars[] = {\n"
-        "    {\n"
-        '        "MC2_TRACE_SPLIT_DOC",\n'
-        '        "MC2_SPLIT_DOC_GATE",\n'
-        "        EnvVarKind::Trace,\n"
-        "        true,\n"
-        '        "doc written as "\n'
-        '        "two adjacent literals",\n'
-        "    },\n"
-        "};\n")
+    # A structurally real mini gate table (Gates/gate_table.json): one feature-table row and one aux row,
+    # as tools/gate_dump emits them.
+    (root / "Gates").mkdir()
+    (root / "Gates" / "gate_table.json").write_text(json.dumps({
+        "version": 1, "count": 2, "gates": [
+            {"name": "MC2_ALLOWED_GATE", "kind": "Bool", "rule": "Std", "default": False, "owner": "t",
+             "retireBy": "", "doc": "allowed gate", "tokens": "", "range": None, "reread": False,
+             "divergent": False, "smokePassthrough": True, "verified": False,
+             "registry": {"featureId": "MC2_FEATURE_ALLOWED", "kind": "Feature", "order": 0, "defaultOn": False}},
+            {"name": "MC2_SPLIT_DOC_GATE", "kind": "Bool", "rule": "Std", "default": True, "owner": "t",
+             "retireBy": "", "doc": "doc written as two adjacent literals", "tokens": "", "range": None,
+             "reread": False, "divergent": False, "smokePassthrough": False, "verified": False,
+             "registry": {"featureId": "MC2_TRACE_SPLIT_DOC", "kind": "Trace", "order": -1, "defaultOn": True}},
+        ]}))
     return root
 
 
@@ -322,20 +307,14 @@ def test_gate_status_flags_genuinely_undriveable():
     assert any(f.startswith("ENV_UNDRIVEABLE") for f in r["flags"])
 
 
-def test_gate_status_parses_every_legal_row_form(tmp_path):
-    """All three row forms the shipped grammars used to drop must parse.
-
-    Adjacent string literals cost scripts/flag-registry-auto-gen.py 99 rows, an
-    inline comment between fields cost this module's parser MC2_LIGHTING_DEBUG_VIEW,
-    and a trailing comma after the doc cost 12 more. All three are legal C++ that
-    the header actually uses.
-    """
+def test_registry_rows_are_read_from_the_gate_table(tmp_path):
+    """Feature rows and aux rows both come from Gates/gate_table.json; the doc and default carry over."""
     root = _mini_repo(tmp_path)
     reg = ei._parse_registry(root)
     assert set(reg) == {"MC2_ALLOWED_GATE", "MC2_SPLIT_DOC_GATE"}, reg
-    # the doc must be the CONCATENATION, not just the first literal
     assert reg["MC2_SPLIT_DOC_GATE"]["doc"] == "doc written as two adjacent literals"
     assert reg["MC2_SPLIT_DOC_GATE"]["default"] == "on"
+    assert reg["MC2_ALLOWED_GATE"]["feature_id"] == "MC2_FEATURE_ALLOWED"
 
 
 def test_registry_parse_failure_is_not_unregistered(tmp_path):
@@ -348,9 +327,9 @@ def test_registry_parse_failure_is_not_unregistered(tmp_path):
     verdict, and a flag that says so in words.
     """
     root = _mini_repo(tmp_path)
-    hdr = root / "RenderCore" / "RendererFeatureRegistry.h"
+    hdr = root / "Gates" / "gate_table.json"
 
-    # 1. header truncated mid-table (a torn read / concurrent write)
+    # 1. table truncated mid-document (a torn read / concurrent write)
     hdr.write_text(hdr.read_text()[:120])
     r = gs.gate_status(root, "MC2_ALLOWED_GATE")
     assert r["registered"] == "UNKNOWN", r["registered"]
@@ -367,7 +346,7 @@ def test_registry_parse_failure_is_not_unregistered(tmp_path):
     r = gs.gate_status(root, "MC2_ALLOWED_GATE")
     assert r["registered"] == "UNKNOWN"
     assert r["verdict"] == "UNDETERMINED"
-    assert any("does not exist" in f for f in r["flags"]), r["flags"]
+    assert any("cannot read Gates/gate_table.json" in f for f in r["flags"]), r["flags"]
 
 
 def test_gate_status_env_drop_fails_closed_without_runner(tmp_path):

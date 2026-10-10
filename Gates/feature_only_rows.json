@@ -1,0 +1,9 @@
+[
+ {
+  "featureId": "MC2_FEATURE_REVERSE_Z",
+  "kind": "Feature",
+  "order": 4,
+  "defaultOn": true,
+  "doc": "Reverse-Z depth via glClipControl GL_ZERO_TO_ONE (gameosmain.cpp:992). Always-on; MC2_REVERSE_Z_TRACE for trace."
+ }
+]

@@ -2,7 +2,7 @@
 """
 REPO-INTEL-1b: env_index.py
 Build a unified env var index by merging three sources:
-  1. RenderCore/RendererFeatureRegistry.h  — structured C++ (most authoritative)
+  1. Gates/gate_table.json                — the compiled gate table (most authoritative)
   2. docs/tier1_env_vars.md               — bullet-prose user docs
   3. getenv("MC2_*") grep across source   — ground truth for all vars
 """
@@ -13,42 +13,28 @@ import subprocess
 import sys
 from pathlib import Path
 
-# REGISTRY-PARSER-TRUTH-1 (2026-07-31): the registry grammar this file used to
-# carry privately joined a row's fields with `\s*`, which tolerates whitespace
-# but not an inline comment.  One live row has one --
-#   EnvVarKind::Feature,   // not Trace: it REPLACES the lit render output
-# -- so the parse silently returned 359 of the header's 360 rows, and the ONE it
-# dropped was MC2_LIGHTING_DEBUG_VIEW.  gate_status() then answered
-#   registered: false, registry_entry: null, verdict: "OK", flags: []
-# about a correctly registered gate, WHILE ITS OWN reader list cited
-# RendererFeatureRegistry.h:2556 -- the very line it had failed to parse.  A
-# confident wrong answer, with no flag, from the tool sessions call to decide
-# whether a gate is registered.
-#
-# The grammar now lives in scripts/registry_parse.py (one implementation, five
-# self-referential invariants) and REFUSES rather than returning a short dict.
-# Callers MUST NOT turn that refusal into `registered: false`; see gate_status().
+# The registry is read from the compiled gate table (Gates/gate_table.json, emitted by tools/gate_dump), never
+# parsed from C++. A reader that cannot read it RAISES (GateTableError, kept under its old name
+# RegistryParseError for callers): "I could not read the source" must never be reported as "this gate is
+# not registered". See gate_status().
 _SCRIPTS_DIR = str(Path(__file__).resolve().parents[2] / "scripts")
 if _SCRIPTS_DIR not in sys.path:
     sys.path.insert(0, _SCRIPTS_DIR)
 try:
-    from registry_parse import RegistryParseError, parse_registry as _parse_registry_strict
+    from gate_table_reader import GateTableError as RegistryParseError, registry_entries as _registry_entries
 except ImportError as _exc:                                   # pragma: no cover
-    # Deliberately NOT a module-level hard failure: this module is imported by
-    # the MCP server, and taking the whole server down would also take out
-    # mission_facts, preflight and lane_registry, none of which read the
-    # registry.  Scope the failure to the registry question instead -- but make
-    # it a REFUSAL there, never an empty registry.
+    # Deliberately NOT a module-level hard failure: this module is imported by the MCP server, and taking the
+    # whole server down would also take out mission_facts, preflight and lane_registry, none of which read the
+    # registry. Scope the failure to the registry question instead, as a refusal.
     _IMPORT_ERROR = _exc
 
     class RegistryParseError(Exception):
         pass
 
-    def _parse_registry_strict(path):
+    def _registry_entries(root):
         raise RegistryParseError(
-            "the shared registry parser (scripts/registry_parse.py) could not "
-            "be imported (%s) -- refusing to report an empty gate registry"
-            % _IMPORT_ERROR)
+            "the gate table reader (scripts/gate_table_reader.py) could not be imported (%s) -- refusing to "
+            "report an empty gate registry" % _IMPORT_ERROR)
 
 
 # ---------------------------------------------------------------------------
@@ -88,7 +74,7 @@ _TIER1_DEFAULT = re.compile(r'Default\s+\*\*(ON|OFF)\*\*', re.IGNORECASE)
 # ---------------------------------------------------------------------------
 
 def _parse_registry(repo_root: Path) -> dict:
-    """Returns {envVarName: {feature_id, kind, default, doc}} from RendererFeatureRegistry.h.
+    """Returns {envVarName: {feature_id, kind, default, doc}} from the compiled gate table (registry(...) rows).
 
     RAISES RegistryParseError when the header is missing, unreadable, or does
     not parse completely.  It used to return {} for all of those AND for "the
@@ -97,8 +83,7 @@ def _parse_registry(repo_root: Path) -> dict:
     opposite facts, and a caller that cannot tell them apart will publish the
     wrong one with a straight face.
     """
-    path = repo_root / "RenderCore" / "RendererFeatureRegistry.h"
-    reg = _parse_registry_strict(path)
+    reg = _registry_entries(repo_root)
 
     out = {}
     for entry in reg.values():
@@ -109,7 +94,7 @@ def _parse_registry(repo_root: Path) -> dict:
             "kind":       entry["kind"],
             "default":    "on" if entry["defaultOn"] else "off",
             "doc":        entry["doc"],
-            "source":     "RenderCore/RendererFeatureRegistry.h",
+            "source":     "Gates/gate_table.json",
         }
     return out
 

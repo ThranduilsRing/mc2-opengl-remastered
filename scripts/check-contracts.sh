@@ -755,61 +755,17 @@ run_check "env_registry"           "sh scripts/check-env-registry.sh"
 run_check "env_registry_selftest"  "sh scripts/check-env-registry.sh --selftest"
 
 # ---------------------------------------------------------------------------
-# REGISTRY-PARSER-TRUTH-1 (2026-07-31)
+# GATE-TABLE-G2 (2026-10-10): the registry is generated, not parsed
 # ---------------------------------------------------------------------------
-# env_registry above proves which gate NAMES appear in the header. It says
-# nothing about whether the tools that parse the header's ROWS can actually read
-# them -- and three of them could not. Measured on 399b2218f, against 360
-# declared rows:
-#
-#   scripts/build_review_pack.py       10 of 359 under a torn read, exit 0
-#                                      (fixed by PACK-FAILLOUD-1)
-#   tools/repo_intel/env_index.py      359 of 360 -- so the gate_status MCP tool
-#                                      answered `registered: false, verdict: OK,
-#                                      flags: []` about MC2_LIGHTING_DEBUG_VIEW,
-#                                      a REGISTERED gate, while its own reader
-#                                      list cited the registry line it had
-#                                      failed to parse
-#   scripts/flag-registry-auto-gen.py  248 of 360 -- and its output is the
-#                                      TRACKED docs/flags.auto.yaml, which
-#                                      asserted `registered: no` about 73 gates
-#                                      that are registered
-#
-# All three now share scripts/registry_parse.py. Causes of the 112 lost rows:
-# 99 adjacent string literals in the doc, 12 a trailing comma after it, 1 an
-# inline comment between fields -- all legal C++ the header actually uses.
-#
-# The TOLERANCE half is the half nothing was testing, and it is the half that
-# broke: a refusal-only guard cannot catch a grammar narrowed back into dropping
-# legal rows. registry_parser_selftest proves, against the LIVE header, that each
-# construct still occurs AND still parses (INCONCLUSIVE, not PASS, if the header
-# stops using one), then proves refusal on a row the grammar cannot see.
-run_check "registry_parser_selftest" "py -3 scripts/registry_parse.py --selftest"
-# The generator half: a refusal must become exit 2 with the previous file left
-# alone. A generator that writes a partial parse turns a silent parser bug into a
-# durable, quotable falsehood in a tracked document.
-run_check "flag_registry_generator_selftest" "py -3 scripts/flag-registry-auto-gen.py --selftest"
-# And the committed artifact itself: docs/flags.auto.yaml is TRACKED, and it
-# asserted `registered: no` about 73 registered gates from 2026-07-23 until this
-# lane. Both sides of this grade are committed artifacts -- HEAD's registry
-# against the committed doc -- so it answers "would every clone of this commit
-# see agreement?", the same question check-contract-coverage.py asks when it
-# grades HEAD rather than the index.
-#
-# check-flag-registry-drift.sh was advisory until 2026-10-09 (see FLAG-DRIFT-STRICT below;
-# historical reasoning follows)
-# scripts/manual-checks.allowlist). Two reasons, both measured here: it
-# regenerates with the SAME parser and diffs, so a wrong-but-stable generator
-# reads as "up to date" -- it could never have caught this class; and it records
-# getenv `file:line` swept from the WORKING TREE, so any lane's uncommitted C++
-# edit that shifts a line makes it red. On this worktree that was red within
-# minutes, and a row that is red every day teaches everyone to skip red.
-run_check "flag_registry_truth"    "py -3 scripts/check-flag-registry-truth.py --quiet"
-run_check "flag_registry_truth_selftest" "py -3 scripts/check-flag-registry-truth.py --selftest"
-# FLAG-DRIFT-STRICT (2026-10-09): generator 2.1.0 records reader FILES only (no :line),
-# so line shifts no longer redden it; strict now catches a forgotten regen after a
-# gate/reader-file change. Generator-correctness is still flag_registry_truth's job.
-run_check "flag_registry_drift"    "bash scripts/check-flag-registry-drift.sh --strict"
+# The kFeatureTable / kAuxEnvVars rows of RendererFeatureRegistry.h and docs/flags.auto.yaml (v3) are generated
+# from the compiled gate table (Gates/gate_table.json). The C++ grammar parser (registry_parse.py), the getenv
+# sweep generator (flag-registry-auto-gen.py) and the registry truth check that graded one against the other are
+# deleted with it; the tools that need the registry read the JSON through scripts/gate_table_reader.py, which
+# refuses a torn or inconsistent table (build_review_pack --selftest keeps that proven below).
+# env_registry above still proves which gate NAMES appear in the header.
+# flag_registry_drift is the fast hermetic half of gate_gen_check: the generated header rows, yaml and index
+# match the committed JSON, `verified` matches the typed readers, registered defaults agree.
+run_check "flag_registry_drift"    "py -3 tools/gate_gen.py --check"
 
 # ---------------------------------------------------------------------------
 # GATE-DEFAULT-TRUTH-1 (2026-07-30)

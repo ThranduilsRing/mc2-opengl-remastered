@@ -23,6 +23,17 @@ struct Range {
     bool loExcl = false;
 };
 
+// The registry entry a gate generates (RenderCore/RendererFeatureRegistry.h, tools/gate_gen.py --write).
+// order >= 0 puts the row in kFeatureTable at that index (the hand-ordered RendererFeature enum names it);
+// order < 0 puts it in kAuxEnvVars. defaultOn is the FEATURE's default, which for kill-switch variables
+// and numeric knobs is not the variable's own default.
+struct Registry {
+    EvKind kind = EvKind::None;
+    std::string_view featureId;
+    int order = -1;
+    bool defaultOn = false;
+};
+
 struct Row {
     std::string_view name;
     Kind kind = Kind::Bool;
@@ -44,6 +55,7 @@ struct Row {
     // a real reader. MC2_CONFIG_STRICT fails on a bad value only for verified rows; the rest
     // stay warnings because their kind is still the seed's guess.
     bool verified = false;
+    Registry registry;
 };
 
 inline constexpr std::size_t kMaxDocLen = 160;
