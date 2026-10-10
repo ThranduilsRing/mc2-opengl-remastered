@@ -2,7 +2,10 @@
 """What: splits one oversized C++ file into <stem>_<responsibility>.cpp pieces plus a generated <stem>_internal.h, driven by a config module.
 Why: the file-size program moves whole top-level units verbatim (CRLF/LF bytes kept); the header carries the verbatim include bundle,
 the externs of the preamble globals and prototypes of shared free functions, so the split compiles with no logic change.
-Usage: py -3 tools/split/split_cpp.py CONFIG.py   (writes <stem>_*.cpp, <stem>_internal.h next to the source and <src>.new; the caller moves .new over the source)
+Usage: py -3 tools/split/split_cpp.py CONFIG.py [--stage-dir DIR]   (writes <stem>_*.cpp, <stem>_internal.h next to the source and <src>.new; the caller moves .new over the source)
+       With --stage-dir the pieces, the header and the core (as <src basename>.new) are written under DIR instead and are verified as if installed; the tree is untouched
+       until `split_cpp.py CONFIG.py --stage-dir DIR --install` moves them into place (so staged pieces never reach split_map or the ratchets).
+       A config reads its allow json as os.path.join(os.environ.get("SPLIT_ALLOW_DIR", "tools/split/allow"), "<stem>.json"); a <stem>.json in DIR is installed to tools/split/allow/.
 Config names: SRC, STEM, INCLUDE_RAW=(first,last) 1-based raw lines copied into the header, PREAMBLE_END (first post-preamble line),
 KEEP_FROM (first preamble line the core keeps), GROUPS=[(name,[(a,b)...])] with a 'core' group, DOC={name:text},
 PREAMBLE_MOVES={group:[(a,b)...]} (preamble line ranges moved to the top of a group file), HEADER_EXTRA=[lines], BANNER=[lines].
@@ -15,6 +18,13 @@ import importlib.util, os, re, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import cpp_units
 
+def _opt(name):
+    return sys.argv[sys.argv.index(name) + 1] if name in sys.argv else None
+
+
+STAGE = _opt("--stage-dir")
+if STAGE:
+    os.environ["SPLIT_ALLOW_DIR"] = STAGE      # configs read their allow json from here when staging: <STEM>.json next to the staged pieces
 spec = importlib.util.spec_from_file_location("cfg", sys.argv[1])
 C = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(C)
@@ -32,6 +42,17 @@ def text(u):
 
 
 OUT = getattr(C, "OUT", os.path.dirname(C.SRC) or ".")
+WOUT = STAGE if STAGE else OUT                                   # where files are written; OUT stays the installed location
+NEW_PATH = os.path.join(STAGE, os.path.basename(C.SRC) + ".new") if STAGE else C.SRC + ".new"
+if STAGE:
+    os.makedirs(STAGE, exist_ok=True)
+if STAGE and "--install" in sys.argv:
+    import shutil
+    for name in sorted(os.listdir(STAGE)):
+        dest = C.SRC if name == os.path.basename(C.SRC) + ".new" else os.path.join("tools/split/allow", name) if name.endswith(".json") else os.path.join(OUT, name)
+        shutil.move(os.path.join(STAGE, name), dest)
+        print("installed", dest)
+    sys.exit(0)
 PRE_MOVES = getattr(C, "HEADER_PRE_MOVES", [])
 POST_MOVES = getattr(C, "HEADER_MOVES", [])
 
@@ -168,7 +189,7 @@ if hasattr(C, "HEADER2_NAME"):
     hdr += ["// Second shared header: the class definitions that no other piece may redefine.", '#include "%s"' % C.HEADER2_NAME, ""]
 hdr.append("#endif // " + G)
 hdr.append("")
-open(os.path.join(OUT, H1), "wb").write("\r\n".join(hdr).encode("utf-8"))
+open(os.path.join(WOUT, H1), "wb").write("\r\n".join(hdr).encode("utf-8"))
 if hasattr(C, "HEADER2_NAME"):
     G2 = os.path.splitext(C.HEADER2_NAME)[0].upper() + "_H"
     a2, b2 = C.HEADER2_RAW
@@ -176,7 +197,7 @@ if hasattr(C, "HEADER2_NAME"):
         "// Include %s, not this file: it relies on the declarations that header makes before including it." % H1, ""]
     h2 += [l.decode("utf-8", "replace").rstrip(chr(13)) for l in raw[a2 - 1:b2]]
     h2 += ["", "#endif // " + G2, ""]
-    open(os.path.join(OUT, C.HEADER2_NAME), "wb").write("\r\n".join(h2).encode("utf-8"))
+    open(os.path.join(WOUT, C.HEADER2_NAME), "wb").write("\r\n".join(h2).encode("utf-8"))
 
 # ---- groups ---------------------------------------------------------------------------------------------
 bodies = {g: [] for g, _ in C.GROUPS}
@@ -213,14 +234,14 @@ for u, c in core_pre:
 core_head = b"\n".join(raw[0:C.INCLUDE_RAW[0] - 1]).rstrip() + b"\r\n\r\n#include \"%s\"\r\n\r\n" % H1.encode()
 if CORE_ONLY:
     core_head += b"\n".join(b"\n".join(raw[x - 1:y]) for x, y in CORE_ONLY) + b"\n\n"
-open(C.SRC + ".new", "wb").write(core_head + b"\n".join(core_keep) + b"\n" + b"\n".join(bodies["core"]) + b"\n")
+open(NEW_PATH, "wb").write(core_head + b"\n".join(core_keep) + b"\n" + b"\n".join(bodies["core"]) + b"\n")
 for g, _ in C.GROUPS:
     if g == "core":
         continue
     head = ("// %s: %s.\r\n// Declared in the class headers; shared names in %s.\r\n#include \"%s\"\r\n\r\n"
             % (C.TITLE, C.DOC[g], H1, H1)).encode("utf-8")
     pm = (b"\n".join(pre_moves.get(g, [])) + b"\n") if pre_moves.get(g) else b""
-    open(os.path.join(OUT, "%s_%s.cpp" % (C.STEM, g)), "wb").write(head + pm + b"\n".join(bodies[g]) + b"\n")
+    open(os.path.join(WOUT, "%s_%s.cpp" % (C.STEM, g)), "wb").write(head + pm + b"\n".join(bodies[g]) + b"\n")
 print("externs", len(seen), "protos", len(protos))
 for g, _ in C.GROUPS:
     print(g, sum(c.count(b"\n") + 1 for c in bodies[g]))
@@ -230,12 +251,12 @@ import split_verify
 _old = split_verify._git(["show", "%s:%s" % (getattr(C, "BASE_REV", "HEAD"), getattr(C, "BASE_SRC", C.SRC).replace(chr(92), "/"))])
 if not _old:
     raise SystemExit("split_verify: cannot read %s from %s" % (C.SRC, getattr(C, "BASE_REV", "HEAD")))
-_files = {C.SRC: open(C.SRC + ".new", "rb").read(),
-          os.path.join(OUT, H1): open(os.path.join(OUT, H1), "rb").read()}
+_files = {C.SRC: open(NEW_PATH, "rb").read(),
+          os.path.join(OUT, H1): open(os.path.join(WOUT, H1), "rb").read()}
 if hasattr(C, "HEADER2_NAME"):
-    _files[os.path.join(OUT, C.HEADER2_NAME)] = open(os.path.join(OUT, C.HEADER2_NAME), "rb").read()
+    _files[os.path.join(OUT, C.HEADER2_NAME)] = open(os.path.join(WOUT, C.HEADER2_NAME), "rb").read()
 for g, _ in C.GROUPS:
     if g != "core":
-        _p = os.path.join(OUT, "%s_%s.cpp" % (C.STEM, g))
-        _files[_p] = open(_p, "rb").read()
+        _name = "%s_%s.cpp" % (C.STEM, g)
+        _files[os.path.join(OUT, _name)] = open(os.path.join(WOUT, _name), "rb").read()
 sys.exit(split_verify.report(split_verify.verify(_old, _files, C.STEM, getattr(C, "BASE_SRC", C.SRC).replace(chr(92), "/"), getattr(C, "ALLOW", {}))))
