@@ -409,7 +409,7 @@ def gate_defaults(text_registry, text_seed):
     if text_registry:
         sys.path.insert(0, os.path.join(ROOT, "scripts"))
         import gate_table_reader as gtr
-        for key, ent in gtr.registry_entries_from_text(text_registry).items():
+        for key, ent in gtr.registry_entries_from_text(text_registry, without_only=True).items():
             if ent.get("envVar"):
                 out[ent["envVar"]] = bool(ent["defaultOn"])
     if text_seed:

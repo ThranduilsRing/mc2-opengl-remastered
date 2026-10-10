@@ -196,6 +196,7 @@ def _mini_repo(tmp_path: Path) -> Path:
     # A structurally real mini gate table (Gates/gate_table.json): one feature-table row and one aux row,
     # as tools/gate_dump emits them.
     (root / "Gates").mkdir()
+    (root / "Gates" / "feature_only_rows.json").write_text("[]")
     (root / "Gates" / "gate_table.json").write_text(json.dumps({
         "version": 1, "count": 2, "gates": [
             {"name": "MC2_ALLOWED_GATE", "kind": "Bool", "rule": "Std", "default": False, "owner": "t",

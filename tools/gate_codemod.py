@@ -1014,7 +1014,9 @@ def _analyze_site(res, interp, path, raw, T, p, cs, ce, is_raw, rows, ledger):
         st_ = ledger_row.get("status", "")
         notes.append("G0 ledger %s: %s" % (st_, ledger_row.get("rule", "")))
         if st_ in ("divergent", "enum"):
-            notes.append("OWNER DECISION PENDING: do not migrate until resolved")
+            # A level-valued or divergent gate is a Bool row with no tokens: migrating it would drop the levels.
+            return _fail(res, "G0 ledger %s: %s -- level-valued or divergent, not migratable as a Bool until the row "
+                              "models the levels" % (st_, ledger_row.get("rule", "")))
     if row.conflict:
         notes.append("readers disagree (seed conflict flag)")
 

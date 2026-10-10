@@ -108,7 +108,7 @@ def test_override_counter_matches_the_using_enum_spelling(tmp_path):
 # Registry rows and yaml, generated from the table
 # ---------------------------------------------------------------------------
 
-HEADER = ("// header\nenum class RendererFeature : int { A = 0, B = 1, COUNT = 2 };\n"
+HEADER = ("// header\nenum class RendererFeature : int {\n    A = 0,   // MC2_A_GATE\n    B = 1,   // MC2_B_GATE\n    COUNT = 2,\n};\n"
           "static constexpr EnvVarDesc kFeatureTable[] = {\n    OLD ROWS\n};\n\n"
           "static constexpr EnvVarDesc kAuxEnvVars[] = {\n    OLD AUX\n};\n\ninline void dump() {}\n")
 
@@ -153,7 +153,7 @@ def test_a_gap_in_the_feature_order_is_refused():
 def test_rows_without_an_env_var_come_from_the_feature_only_list():
     only = [{"featureId": "MC2_FEATURE_REVERSE_Z", "kind": "Feature", "order": 0, "defaultOn": True, "doc": "always on"}]
     d = doc_of(gate("MC2_B", registry=reg("MC2_FEATURE_B", order=1)))
-    text = grg.patch_header(HEADER, grg.entries(d, only))
+    text = grg.patch_header(HEADER.replace("// MC2_A_GATE", "// (no env var)").replace("// MC2_B_GATE", "// MC2_B"), grg.entries(d, only))
     assert text.index('"MC2_FEATURE_REVERSE_Z"') < text.index('"MC2_FEATURE_B"')
     assert "nullptr" in text
 
@@ -169,7 +169,7 @@ def test_yaml_is_a_pure_function_of_the_table():
 
 def test_the_reader_orders_registry_entries_like_the_generated_header():
     d = _registry_doc()
-    entries = gtr.registry_entries_from_text(json.dumps(d))
+    entries = gtr.registry_entries_from_text(json.dumps(d), "[]")
     assert list(entries) == ["MC2_A_GATE", "MC2_B_GATE", "MC2_C_TRACE", "MC2_Z_TRACE"]
     assert entries["MC2_B_GATE"]["table"] == "kFeatureTable"
     assert entries["MC2_Z_TRACE"]["table"] == "kAuxEnvVars"
@@ -179,9 +179,33 @@ def test_the_reader_refuses_a_torn_or_inconsistent_table():
     good = json.dumps(_registry_doc())
     for bad in (good[:40], good.replace('"count": 5', '"count": 6')):
         with pytest.raises(gtr.GateTableError):
-            gtr.registry_entries_from_text(bad)
+            gtr.registry_entries_from_text(bad, "[]")
 
 
 def test_the_committed_header_and_yaml_are_current():
     d = gtr.load_table(tg.ROOT)
     assert grg.check_all(tg.ROOT, d) == []
+
+
+def test_the_reader_refuses_a_missing_feature_only_list_a_gap_in_the_order_and_unsorted_names():
+    good = json.dumps(_registry_doc())
+    with pytest.raises(gtr.GateTableError):
+        gtr.registry_entries_from_text(good)                     # reverse-Z would be silently dropped
+    assert gtr.registry_entries_from_text(good, None, without_only=True)
+    gap = doc_of(gate("MC2_A", registry=reg("MC2_FEATURE_A", order=0)), gate("MC2_C", registry=reg("MC2_FEATURE_C", order=2)))
+    with pytest.raises(gtr.GateTableError):
+        gtr.registry_entries_from_text(json.dumps(gap), "[]")
+    unsorted = _registry_doc()
+    unsorted["gates"].reverse()
+    with pytest.raises(gtr.GateTableError):
+        gtr.registry_entries_from_text(json.dumps(unsorted), "[]")
+
+
+def test_enum_names_are_emitted_and_checked_against_the_table():
+    ents = grg.entries(_registry_doc(), [])
+    text = grg.patch_header(HEADER, ents)
+    assert "// [0] A" in text and "// [1] B" in text
+    with pytest.raises(SystemExit):
+        grg.patch_header(HEADER.replace("// MC2_B_GATE", "// MC2_SOMETHING_ELSE"), ents)
+    with pytest.raises(SystemExit):
+        grg.patch_header(HEADER.replace("    B = 1,   // MC2_B_GATE\n", ""), ents)

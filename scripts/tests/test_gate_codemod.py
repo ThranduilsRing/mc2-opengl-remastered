@@ -281,10 +281,11 @@ def test_win32_reader_is_not_rewritten():
     assert res and res[0].verdict == "UNHANDLED"
 
 
-def test_ledger_divergence_is_flagged_in_the_why():
-    led = {G: {"status": "divergent", "rule": "owner decision"}}
-    r = one("static const bool s = (getenv(\"%s\") != nullptr);\n" % G, mk(), led)
-    assert "OWNER DECISION PENDING" in r.why
+def test_a_level_valued_or_divergent_gate_is_never_migrated_as_a_bool():
+    for status in ("divergent", "enum"):
+        led = {G: {"status": status, "rule": "levels 0/1/2"}}
+        r = one("static const bool s = (getenv(\"%s\") != nullptr);\n" % G, mk(), led)
+        assert r.verdict == "UNHANDLED" and status in r.why and "levels" in r.why
 
 
 # ---------------------------------------------------------------------------

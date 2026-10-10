@@ -71,7 +71,13 @@ def parse_registry(path):
         text = raw.decode("utf-8")
     except UnicodeDecodeError as exc:
         raise RegistryParseError("%s is not valid UTF-8: %s" % (path, exc))
-    return registry_entries_from_text(text)
+    sibling = os.path.join(os.path.dirname(path), "feature_only_rows.json")
+    try:
+        with open(sibling, "r", encoding="utf-8") as fh:
+            only = fh.read()
+    except (OSError, UnicodeDecodeError) as exc:
+        raise RegistryParseError("cannot read %s: %s" % (sibling, exc))
+    return registry_entries_from_text(text, only)
 
 
 # ---------------------------------------------------------------------------
@@ -758,6 +764,7 @@ def do_check(manifest: dict, pack_dir: str) -> int:
 # its arm goes green-with-no-error and the test fails.
 
 def selftest_registry_guard(registry_path: str) -> int:
+    import shutil
     import tempfile
 
     orig = open(registry_path, "rb").read()
@@ -782,6 +789,7 @@ def selftest_registry_guard(registry_path: str) -> int:
     failures = 0
     tmpdir = tempfile.mkdtemp(prefix="mc2_regguard_")
     tmp = os.path.join(tmpdir, "gate_table.json")
+    shutil.copy(os.path.join(os.path.dirname(registry_path), "feature_only_rows.json"), tmpdir)
     try:
         # the uncorrupted control: must read, and must carry registry rows
         with open(tmp, "wb") as fh:

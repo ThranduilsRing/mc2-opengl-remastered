@@ -8,7 +8,7 @@ Read-only. HEAD `2f55cdddc` on `claude/nifty-mendeleev`. The tree is dirty with 
 
 ## Consumers every batch must handle (the plans do not list the first two)
 
-1. **`docs/flags.auto.yaml` regen.** `check-contracts` runs `flag_registry_drift --strict` (`check-contracts.sh:812`). The generator records reader files, so deleting any getenv in a file needs `py -3 scripts/flag-registry-auto-gen.py` in the same commit.
+1. **`docs/flags.auto.yaml` regen.** `check-contracts` runs `flag_registry_drift --strict` (`check-contracts.sh:812`). The generator records reader files, so deleting any getenv in a file needs `py -3 tools/gate_gen.py --write` in the same commit.
 2. **`scripts/gl_shader_variants.json`.** The `gl_shader_variants` contract demands it equal a fresh re-extraction. Each of the 231 entries carries `source: file:line` of a `makeProgram` call.
    - Any edit that shifts lines in a source file requires `py -3 scripts/extract_gl_shader_variants.py`. It is not in `terrain-gates-plan.md` or `tierA-gates-plan.md`.
    - Affected files: `gameos_graphics.cpp` (153 entries), `gos_postprocess.cpp` (20), `gos_static_prop_batcher.cpp` (20), `gos_terrain_lod_chunk.cpp` (12), `gos_mech_batcher.cpp`, `gos_terrain_indirect.cpp`, `gos_terrain_lighting.cpp` and others.

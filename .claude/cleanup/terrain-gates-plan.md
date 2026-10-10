@@ -184,7 +184,7 @@ ADVERSARIAL: none in data/mods/scripts. GL_MAX_TESS_GEN_LEVEL / tess-capable GL 
 
 ## 3. Generated artifacts
 
-* docs/flags.auto.yaml: `py -3 scripts/flag-registry-auto-gen.py` (deterministic, writes docs/flags.auto.yaml; full-file churn in `referenced_at` line numbers is expected). Then `py -3 scripts/check-flag-registry-truth.py` and `sh scripts/check-flag-registry-drift.sh` (advisory).
+* docs/flags.auto.yaml: `py -3 tools/gate_gen.py --write` (deterministic, writes docs/flags.auto.yaml; full-file churn in `referenced_at` line numbers is expected). Then `py -3 scripts/check-flag-registry-truth.py` and `sh scripts/check-flag-registry-drift.sh` (advisory).
 * tools/shader_reflect/expected/shaders__gos_terrain.frag__default.json (uniforms at ~223-240) and shaders__terrain_overlay.frag__default.json (~62-80): `py -3 tools/shader_reflect/reflect.py --update` (contract `shader_schema` reads these tracked goldens). terrain_lod_chunk.frag has no golden. Review the diff: only the removed uniforms (+ possibly now-unused height-tex uniforms on overlay) should go.
 
 ## 4. Adversarial risk register
@@ -211,7 +211,7 @@ ADVERSARIAL: none in data/mods/scripts. GL_MAX_TESS_GEN_LEVEL / tess-capable GL 
 8. RendererFeatureRegistry.h (enum + table + aux rows), single pass.
 9. scripts: registered-gate-passthrough-debt.txt, run_smoke.py (5 spots: NIGHT 1750-1755, CONCRETE 1796, PROP_LOD 1851-1855, CLIFF 2905-2910; leave CONTROLMAP_FILE/OVERLAY_V2_FILE), capture_baseline.py, check-lighting-divergence.py, tests/smoke/matrices/terrain.json.
 10. Docs: tier1_env_vars.md, visual-tuning-profiles.md, lighting-divergence-map.md, trackv doc, render-pipeline-map.md, VISUAL-CAPTURE-MATRIX-1-DESIGN.md.
-11. Regenerate: flag-registry-auto-gen.py; shader_reflect.py --update.
+11. Regenerate: `py -3 tools/gate_gen.py --write`; shader_reflect.py --update.
 12. Leftover sweep (must be empty outside tests/visual/baselines, tests/smoke/artifacts, docs/superpowers, .claude, graphify-out, build*):
     `grep -rnE "TERRAIN_LIGHTING_V[12]|TERRAIN_NORMALS_FROM_HEIGHT|TERRAIN_CLIFF_DISPLACE|AMBIENT_FLOOR_NIGHT|CONCRETE_DETAIL_NORMAL|PROP_LOD_SHADOW_CAST|terrainLightingV|useTerrainNormalsFromHeight|s_cliffTess|AmbientNightFloor" .`
     (expect hits only: the two kept _FILE vars are NOT in this pattern; chunk-path terrainNormalsFromHeightStrength is NOT in this pattern).

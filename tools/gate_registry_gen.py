@@ -59,6 +59,38 @@ def entries(doc, only):
     return out
 
 
+_ENUM_RE = re.compile(r"^\s*(\w+)\s*=\s*(\d+),?\s*(?://\s*(.*))?$")
+
+
+def parse_enum(text):
+    """{index: (EnumName, trailing comment)} of `enum class RendererFeature` (COUNT excluded)."""
+    t = text.replace("\r\n", "\n")
+    m = re.search(r"enum class RendererFeature : int \{\n", t)
+    if not m:
+        raise SystemExit("gate_registry_gen: enum class RendererFeature not found in %s" % HEADER_REL)
+    end = t.index("\n};", m.end())
+    out = {}
+    for line in t[m.end():end].split("\n"):
+        mm = _ENUM_RE.match(line)
+        if mm and mm.group(1) != "COUNT":
+            out[int(mm.group(2))] = (mm.group(1), (mm.group(3) or "").strip())
+    return out
+
+
+def check_enum(enum, rows):
+    """The enum and kFeatureTable must name the same positions; an env var named in the enum's trailing
+    comment must be the row's."""
+    if sorted(enum) != list(range(len(rows))):
+        raise SystemExit("gate_registry_gen: RendererFeature has %d entries (indices %s) but kFeatureTable has %d rows"
+                         % (len(enum), sorted(enum)[:3], len(rows)))
+    for r in rows:
+        name, comment = enum[r[1]]
+        m = re.match(r"(MC2_[A-Z0-9_]+)\b", comment)
+        if m and m.group(1) != r[3]:
+            raise SystemExit("gate_registry_gen: %s (index %d) says %s but the table row is %s"
+                             % (name, r[1], m.group(1), r[3] or r[2]))
+
+
 def feature_rows(ents):
     rows = sorted((e for e in ents if e[0] == "feature"), key=lambda e: e[1])
     for i, e in enumerate(rows):
@@ -72,9 +104,13 @@ def aux_rows(ents):
     return sorted((e for e in ents if e[0] == "aux"), key=lambda e: (e[3] or e[2], e[2]))
 
 
-def render_rows(rows, trailing_comma):
+def render_rows(rows, trailing_comma, enum=None, comments=None):
     lines = [GENERATED_NOTE]
     for _t, _o, fid, env, kind, don, doc in rows:
+        if enum is not None:
+            lines.append("    // [%d] %s\n" % (_o, enum[_o][0]))
+        for c in (comments or {}).get(fid, []):
+            lines.append("    %s\n" % c)
         lines.append("    {\n")
         lines.append("        %s,\n" % _cpp(fid))
         lines.append("        %s,\n" % (_cpp(env) if env else "nullptr"))
@@ -85,17 +121,20 @@ def render_rows(rows, trailing_comma):
     return "".join(lines)
 
 
-def patch_header(text, ents):
+def patch_header(text, ents, comments=None):
     """The header with both row tables replaced by the generated rows."""
     crlf = "\r\n" in text
     t = text.replace("\r\n", "\n")
-    for name, rows, comma in (("kFeatureTable", feature_rows(ents), False), ("kAuxEnvVars", aux_rows(ents), True)):
+    frows = feature_rows(ents)
+    enum = parse_enum(t)
+    check_enum(enum, frows)
+    for name, rows, comma in (("kFeatureTable", frows, False), ("kAuxEnvVars", aux_rows(ents), True)):
         start_pat = re.compile(r"static constexpr EnvVarDesc %s\[\] = \{\n" % name)
         m = start_pat.search(t)
         if not m:
             raise SystemExit("gate_registry_gen: %s declaration not found in %s" % (name, HEADER_REL))
         end = t.index("\n};\n", m.end())
-        t = t[:m.end()] + render_rows(rows, comma) + t[end + 1:]
+        t = t[:m.end()] + render_rows(rows, comma, enum if name == "kFeatureTable" else None, comments) + t[end + 1:]
     return t.replace("\n", "\r\n") if crlf else t
 
 
@@ -156,7 +195,8 @@ def generate(root, doc):
     """(header_text, yaml_text) for the current table document."""
     only = load_only_rows(root)
     ents = entries(doc, only)
-    return patch_header(_read(root, HEADER_REL), ents), render_yaml(doc, only)
+    comments = {o["featureId"]: o["comment"] for o in only if o.get("comment")}
+    return patch_header(_read(root, HEADER_REL), ents, comments), render_yaml(doc, only)
 
 
 def write_all(root, doc):

@@ -30,7 +30,7 @@ def _read(root, rel):
     try:
         with open(p, "r", encoding="utf-8") as fh:
             return fh.read()
-    except OSError as ex:
+    except (OSError, UnicodeDecodeError) as ex:      # a missing, unreadable or non-UTF-8 file is a refusal
         raise GateTableError("cannot read %s: %s" % (rel, ex))
 
 
@@ -41,6 +41,12 @@ def parse_table(text):
         raise GateTableError("%s is not valid JSON: %s" % (TABLE_REL, ex))
     if not isinstance(doc, dict) or not isinstance(doc.get("gates"), list) or doc.get("count") != len(doc["gates"]):
         raise GateTableError("%s is not a complete gate table (count/gates mismatch)" % TABLE_REL)
+    try:
+        names = [g["name"] for g in doc["gates"]]
+    except (KeyError, TypeError):
+        raise GateTableError("%s is not a complete gate table (a row has no name)" % TABLE_REL)
+    if names != sorted(names) or len(set(names)) != len(names):
+        raise GateTableError("%s is not a complete gate table (names are not sorted and unique)" % TABLE_REL)
     return doc
 
 
@@ -52,9 +58,17 @@ def gates(root):
     return {g["name"]: g for g in load_table(root)["gates"]}
 
 
-def registry_entries_from_text(table_text, only_text=None):
+def registry_entries_from_text(table_text, only_text=None, without_only=False):
+    """Registry entries from the table JSON text and the feature-only rows JSON text (rows with no env var,
+    e.g. reverse-Z). Omitting the second is a refusal unless the caller says it only wants env-var rows."""
     doc = parse_table(table_text)
-    only = json.loads(only_text) if only_text else []
+    if only_text is None and not without_only:
+        raise GateTableError("%s is required: without it the entries that have no env var (reverse-Z) would be "
+                             "silently dropped" % ONLY_REL)
+    try:
+        only = json.loads(only_text) if only_text else []
+    except ValueError as ex:
+        raise GateTableError("%s is not valid JSON: %s" % (ONLY_REL, ex))
     feat, aux = [], []
     for g in doc["gates"]:
         r = g.get("registry")
@@ -68,6 +82,11 @@ def registry_entries_from_text(table_text, only_text=None):
              "doc": o["doc"], "table": "kFeatureTable" if o["order"] >= 0 else "kAuxEnvVars"}
         (feat if o["order"] >= 0 else aux).append((o["order"], o["featureId"], e))
     feat.sort(key=lambda t: t[0])
+    if [f[0] for f in feat] != list(range(len(feat))) and not without_only:
+        raise GateTableError("kFeatureTable order is not 0..N-1 (a gap or a duplicate index): %s"
+                             % [f[0] for f in feat][:8])
+    if len({f[1] for f in feat + aux}) != len(feat) + len(aux):
+        raise GateTableError("two registry entries share a key (env var or feature id)")
     aux.sort(key=lambda t: (t[1], t[2]["featureId"]))
     out = {}
     for _o, key, e in feat + aux:
@@ -76,8 +95,4 @@ def registry_entries_from_text(table_text, only_text=None):
 
 
 def registry_entries(root):
-    try:
-        only = _read(root, ONLY_REL)
-    except GateTableError:
-        only = None
-    return registry_entries_from_text(_read(root, TABLE_REL), only)
+    return registry_entries_from_text(_read(root, TABLE_REL), _read(root, ONLY_REL))

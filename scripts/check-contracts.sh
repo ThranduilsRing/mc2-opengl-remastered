@@ -763,9 +763,8 @@ run_check "env_registry_selftest"  "sh scripts/check-env-registry.sh --selftest"
 # deleted with it; the tools that need the registry read the JSON through scripts/gate_table_reader.py, which
 # refuses a torn or inconsistent table (build_review_pack --selftest keeps that proven below).
 # env_registry above still proves which gate NAMES appear in the header.
-# flag_registry_drift is the fast hermetic half of gate_gen_check: the generated header rows, yaml and index
-# match the committed JSON, `verified` matches the typed readers, registered defaults agree.
-run_check "flag_registry_drift"    "py -3 tools/gate_gen.py --check"
+# gate_gen_check (below) covers the derived header rows, yaml and index, `verified`, and the compiler check; the
+# fast hermetic half that used to be its own row (flag_registry_drift) was a strict subset and is retired.
 
 # ---------------------------------------------------------------------------
 # GATE-DEFAULT-TRUTH-1 (2026-07-30)

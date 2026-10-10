@@ -3,7 +3,7 @@
 //   if (gate::get<"MC2_TERRAIN_LOD_CHUNK">()) ...        // Bool row -> bool
 //   int dim = gate::get<"MC2_LIGHT_GRID_DIM">();          // Int row  -> std::int32_t
 //   gate::Tri t = gate::get<"MC2_VK_SHARED_GBUFFER">();   // Tri row  -> Tri (never a bool)
-//   gate::Token k = gate::get<"MC2_TONEMAP_V2">();        // Enum row -> Token (never a bool or int)
+//   gate::Token k = gate::get<"MC2_CONFIG_DUMP">();       // Enum row -> Token (never a bool or int)
 //   bool legacy = gate::get<"MC2_X", gate::Rule::Presence>();  // per-site rule override
 //
 // A misspelt name is a compile error. The first read of a name parses the environment
