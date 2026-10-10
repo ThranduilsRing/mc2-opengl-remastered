@@ -5038,16 +5038,9 @@
    "LG09": 78
   },
   "mclib/msl.cpp": {
-   "LG01": 84,
-   "LG03": 11,
-   "LG05": 7,
-   "LG06": 16,
-   "LG09": 75,
-   "LG11": 3,
-   "LG12a": 3,
-   "LG12b": 8,
-   "LG13": 3,
-   "LG17": 2
+   "LG01": 5,
+   "LG03": 1,
+   "LG09": 1
   },
   "mclib/msl.h": {
    "LG01": 13,
@@ -5055,6 +5048,41 @@
    "LG05": 1,
    "LG06": 13,
    "LG17": 3
+  },
+  "mclib/msl_anim.cpp": {
+   "LG01": 26,
+   "LG05": 2,
+   "LG06": 3,
+   "LG09": 35,
+   "LG11": 1,
+   "LG12b": 3
+  },
+  "mclib/msl_internal.h": {
+   "LG13": 3
+  },
+  "mclib/msl_load.cpp": {
+   "LG01": 34,
+   "LG03": 9,
+   "LG05": 4,
+   "LG06": 8,
+   "LG09": 33,
+   "LG11": 1,
+   "LG12a": 2,
+   "LG12b": 4
+  },
+  "mclib/msl_shape.cpp": {
+   "LG01": 8,
+   "LG03": 1,
+   "LG05": 1,
+   "LG06": 5,
+   "LG09": 6,
+   "LG11": 1,
+   "LG12a": 1,
+   "LG12b": 1,
+   "LG17": 2
+  },
+  "mclib/msl_transform.cpp": {
+   "LG01": 11
   },
   "mclib/msodw.h": {
    "LG02": 1,
@@ -6082,7 +6110,7 @@
    "LG20": 2
   }
  },
- "head": "9a9ff6a8a",
+ "head": "d12925470",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
