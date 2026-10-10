@@ -1288,6 +1288,23 @@ def run(files, root=ROOT, rev="HEAD", helpers=()):
 GATE_INCLUDE = '#include "Gates/gate.h"'
 
 
+def _kept_comments(raw, T, a, b):
+    """The comment-only lines inside the old statement raw[a:b], re-emitted above the replacement (they hold the WHY
+    of the old reader: default history, measurements). Trailing comments on code lines are dropped with the code."""
+    ls = raw.rfind("\n", 0, a) + 1
+    indent = raw[ls:a] if not raw[ls:a].strip() else ""
+    nl = "\r\n" if "\r\n" in raw else "\n"
+    out = []
+    pos = a
+    for rl in raw[a:b].split("\n"):
+        seg_t = T[pos:pos + len(rl)]
+        pos += len(rl) + 1
+        stripped = rl.strip()
+        if stripped and not seg_t.strip():
+            out.append(stripped.rstrip("\r"))
+    return "".join(c + nl + indent for c in out)
+
+
 def apply_edits(raw, results):
     """The file text with every NO-CHANGE / EDGE site rewritten (descending offsets, overlaps skipped) and the gate
     include added. Returns (new_text, applied, skipped)."""
@@ -1300,6 +1317,7 @@ def apply_edits(raw, results):
         a, b, new = r.edit
         while a < b and T[a].isspace():
             a += 1
+        new = _kept_comments(raw, T, a, b) + new
         if b > limit:
             skipped.append(r)
             continue
