@@ -16,17 +16,6 @@ file(GLOB MC2FX_MLR_SRC       "${CMAKE_SOURCE_DIR}/mclib/mlr/*.cpp")
 file(GLOB MC2FX_PARTICLES_SRC "${CMAKE_SOURCE_DIR}/mclib/particles/*.cpp")
 file(GLOB MC2FX_STUFF_SRC     "${CMAKE_SOURCE_DIR}/mclib/stuff/*.cpp")
 
-# Dead MLR TUs (not in mclib/mlr/CMakeLists.txt; include missing mlrstuff.hpp).
-list(REMOVE_ITEM MC2FX_MLR_SRC
-    "${CMAKE_SOURCE_DIR}/mclib/mlr/gospoint.cpp"
-    "${CMAKE_SOURCE_DIR}/mclib/mlr/mlrindexedpolymesh.cpp"
-    "${CMAKE_SOURCE_DIR}/mclib/mlr/mlrindexedprimitive.cpp"
-    "${CMAKE_SOURCE_DIR}/mclib/mlr/mlrloadobj.cpp"
-    "${CMAKE_SOURCE_DIR}/mclib/mlr/mlrpolymesh.cpp"
-    "${CMAKE_SOURCE_DIR}/mclib/mlr/mlrprimitive.cpp"
-    "${CMAKE_SOURCE_DIR}/mclib/mlr/mlrvertex.cpp"
-)
-
 # Stuff *_test.cpp are test mains / include missing munga.hpp — drop them all.
 file(GLOB MC2FX_STUFF_TEST_SRC "${CMAKE_SOURCE_DIR}/mclib/stuff/*_test.cpp")
 if(MC2FX_STUFF_TEST_SRC)
