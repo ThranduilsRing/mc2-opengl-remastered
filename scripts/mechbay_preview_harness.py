@@ -34,7 +34,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from smoke_lib.cursor_guard import CursorGuard  # noqa: E402
 from smoke_lib import nofocus  # noqa: E402
 
-DEFAULT_DEPLOY = "A:/Games/mc2-opengl/releases/mc2-win64-v0.5.0"
+DEFAULT_DEPLOY = "A:/Games/mc2-opengl/mc2-win64-v0.4"
 
 
 def main():

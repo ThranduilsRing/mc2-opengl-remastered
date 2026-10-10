@@ -22,7 +22,7 @@ _sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..
 import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 HERE = Path(__file__).resolve().parent
-DEFAULT_DEPLOY = os.environ.get("MC2_DEPLOY_DIR", "A:/Games/mc2-opengl/releases/mc2-win64-v0.4d-rc1")
+DEFAULT_DEPLOY = os.environ.get("MC2_DEPLOY_DIR", "A:/Games/mc2-opengl/mc2-win64-v0.4")
 
 # Optional FST reader (base textures.fst / misc.fst). Absent -> FST layer skipped (loose only).
 def _load_fst():

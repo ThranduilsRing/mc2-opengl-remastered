@@ -32,7 +32,7 @@ artifact on the same identity fields (scripts/manifest_schema.py).
 
 Usage:
   py -3 scripts/run_visual_capture.py --mission mc2_01 \
-      --exe "A:/Games/mc2-opengl/releases/mc2-win64-v0.4d-rc1/mc2.exe"
+      --exe "A:/Games/mc2-opengl/mc2-win64-v0.4/mc2.exe"
   py -3 scripts/run_visual_capture.py --mission mc2_01 --verify   # 2x, byte-diff
 """
 from __future__ import annotations
@@ -95,7 +95,7 @@ from smoke_lib.cursor_guard import CursorGuard, park_cursor_if_edge  # noqa: E40
 from smoke_lib import nofocus  # noqa: E402
 from smoke_lib import exe_guard  # noqa: E402
 
-DEFAULT_EXE = Path(r"A:/Games/mc2-opengl/releases/mc2-win64-v0.4d-rc1/mc2.exe")
+DEFAULT_EXE = Path(r"A:/Games/mc2-opengl/mc2-win64-v0.4/mc2.exe")
 BOOKMARK_DIR = (Path(os.environ["MC2_VISUAL_BOOKMARK_DIR"])
                 if os.environ.get("MC2_VISUAL_BOOKMARK_DIR")
                 else ROOT / "tests" / "visual" / "bookmarks")

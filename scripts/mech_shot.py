@@ -26,7 +26,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from smoke_lib import nofocus  # noqa: E402
 
-DEFAULT_EXE = Path(r"A:/Games/mc2-opengl/releases/mc2-win64-v0.5.0/mc2.exe")
+DEFAULT_EXE = Path(r"A:/Games/mc2-opengl/mc2-win64-v0.4/mc2.exe")
 
 
 def main():
