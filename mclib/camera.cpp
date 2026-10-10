@@ -59,6 +59,7 @@
 #include "xform_conventions.h"  // XFORM-CONVENTION-HARNESS-1: lifted clip-space convention matrices
 #include "RenderCore/ResolutionContract.h"  // META-FIX design D: MC2_RES_ASSERT audit
 #include "Gates/gate.h"
+#include "../RenderCore/axis_convert.h"
 
 extern void AG_ellipse_draw(PANE *pane, LONG xc, LONG yc, LONG width, LONG height, LONG color);
 extern void AG_ellipse_fill(PANE *pane, LONG xc, LONG yc, LONG width, LONG height, LONG color);
@@ -947,7 +948,7 @@ bool Camera::screenToGroundPlaneApprox (long screenX, long screenY, Stuff::Vecto
 	};
 	// GL-swapped (x'=-x, y'=z, z'=y) -> MC2 world (x=-glX, y=glZ, z=glY).
 	auto glToMC2 = [](const Stuff::Vector3D& g) -> Stuff::Vector3D {
-		Stuff::Vector3D r; r.x = -g.x; r.y = g.z; r.z = g.y; return r;
+		Stuff::Vector3D r; mc2ToRender(r, g); return r;
 	};
 
 	// REVERSE-Z, ZERO_TO_ONE: near plane is NDC z=1, far is z=0 (see inverseProject).
@@ -993,7 +994,7 @@ bool Camera::screenToTerrainApprox (long screenX, long screenY, Stuff::Vector3D 
 		return v;
 	};
 	auto glToMC2 = [](const Stuff::Vector3D& g) -> Stuff::Vector3D {
-		Stuff::Vector3D r; r.x = -g.x; r.y = g.z; r.z = g.y; return r;
+		Stuff::Vector3D r; mc2ToRender(r, g); return r;
 	};
 
 	// REVERSE-Z, ZERO_TO_ONE: near plane is NDC z=1, far is z=0.
@@ -1106,9 +1107,7 @@ unsigned long Camera::inverseProject (Stuff::Vector2DOf<long> &screenPos, Stuff:
 		//   mc2X = -glX,  mc2Y = glZ,  mc2Z = glY
 		auto glToMC2 = [](const Stuff::Vector3D& g) -> Stuff::Vector3D {
 			Stuff::Vector3D r;
-			r.x = -g.x;
-			r.y =  g.z;
-			r.z =  g.y;
+			mc2ToRender(r, g);
 			return r;
 		};
 		Stuff::Vector3D nearMc = glToMC2(nearPt);
