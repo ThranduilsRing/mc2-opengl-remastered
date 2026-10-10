@@ -546,3 +546,40 @@ Shared state / header: this is the hard part. A `gos_terrain_indirect_internal.h
 Surface that must not change: everything in `gos_terrain_indirect.h` (88 declarations, 29 includers, e.g. `MarkMineDirty` from move.cpp), `gos_terrain_indirect_getRingSlot`, the MVP snapshot getter used by `check-object-mvp-currency.py`, `[TERRAIN_INDIRECT v1]` log lines.
 Risks: (1) heavy pins by file name: `check-buffer-lifetime-ownership.py` (ring fence scan list, line 35), `check-cpu-gpu-cogating.py` (`reader_file`, 136), `check-object-mvp-currency.py` (32: "defines the snapshot + getter", so `g_dispatchMvp*` must stay in the named file), `check-raw-gl-fbobind.py`, `predict_cement_adopt.py` (5 refs, cement block), `scripts/delivery-fixes.json` (3), `gl_shader_variants.json`, `counter-honesty-allowlist.txt`, `.claude/maintenance-rules.json:37`. (2) Gate churn: B2 deletes `MVP_EARLY_TRACE` (4731-4743, inside `ComputeDispatch`); G1 rewrites the 105-446 wall and the 13 cement-block reads. Cut after B2; cut the gate wall and cement block only after G1. (3) Namespace-scope `getenv` initialisers (97, 3231) and `GLsync g_thinRingFences[3] = {0,0,0}` are constant or lazily read; no cross-TU order hazard, but each must have exactly one definition. (4) `PROBE_LOG` and `FCMP` are local-scope macros: copy their definitions with the code that uses them, do not put them in the header. (5) The 963-line `ComputeDispatch` stays one function (a ~1330-line file); splitting it is a refactor, not part of this plan.
 First cut: `gos_terrain_indirect_mine_decal.cpp` = 5479-6330 (~850 lines, ~5 getenv, its own `g_mine*`/`g_decal*` statics, ~10 shared names). Do after B2; leave the cement/dispatch cuts until G1 and the `IndirectState` header exist.
+
+## 18. code/gvehicl.cpp (5328 lines after the dead-branch purge)
+Counts: 778 comment lines, 0 stale refs; getenv 2 (file-scope `s_gpuCullLifecycle` read only by `update`, function-local `MC2_CALLED_SHOT_FIX` in `fireWeapon`); Tracy 4; the PROFILE/MC_PROFILE/USEHEAT/USE_ELEMENTALS/USE_SMOKE/DEBUG_CHUNKS branches (90 lines, macros never defined) are gone.
+
+| Lines | Responsibility | ~Lines |
+|---|---|---:|
+| 1-257 | includes, `s_gpuCullLifecycle`, extern block, vehicle tables (`vehicleTurnRate`, critical-hit and incline tables, collision/crash defaults) | 257 |
+| 258-616 | `GroundVehicleType`: `init` (FIT parse 118), `handleCollision`, `handleDestruction`, `loadHotSpots`, `createInstance` | 360 |
+| 617-1352 | `GroundVehicle::loadGameSystem`, `init` x3 (FitIni 280), `calcCV`, `pilotingCheck`, `destroy`, `mineCheck` | 740 |
+| 1353-2423 | movement: `pivotTo` 228, `updateMoveStateGoal`, `updateMovePath` 311, `setControlSettings`, `updateTurret`, `updateMovement`, `netUpdateMovePath` 197, `netUpdateMovement` | 1070 |
+| 2424-2967 | `getPositionFromHS`, `disable`, `getStatusRating`, `crashAvoidanceSystem`, `createVehiclePilot`, AI/network/player control, `updateDynamics`, `updateAnimations`, `setTeamId` | 545 |
+| 2968-3806 | `update` 670 (the only reader of `s_gpuCullLifecycle`), `renderShadows`, `render` | 840 |
+| 3807-5111 | hit/attack helpers, status and move chunks, `handleWeaponHit` 190, `fireWeapon` 640 (`MC2_CALLED_SHOT_FIX`; no fireGateTrace, declared uncovered in `check-order-gate-coverage.py`), `handleWeaponFire` 211 | 1305 |
+| 5112-5325 | `getTotalEffectiveness`, `Save`/`CopyTo`/`Load`, `burnRefitPoints` | 215 |
+
+Split (5 files): `gvehicl_move.cpp` (1353-2423 + 2490-2581 `crashAvoidanceSystem`, ~1165), `gvehicl_control.cpp` (2424-2489 + 2582-2951 + 3638-3806, ~620), `gvehicl_update.cpp` (2968-3637 + 5192-5325 + `s_gpuCullLifecycle`, ~840), `gvehicl_weapons.cpp` (3807-5191, ~1385), core `gvehicl.cpp` (tables, type, init/destroy/mineCheck, `setTeamId`, ~1380).
+Shared state / header: `gvehicl_internal.h` carries the include bundle and the extern block; no file statics are shared (`s_gpuCullLifecycle` stays a file-scope eager read in `gvehicl_update.cpp`, the same init form as before the split).
+Surface that must not change: `GroundVehicle`/`GroundVehicleType` (gvehicl.h), the tables `vehicleTurnRate`, `GroundVehicleAttackerMoveModifier`, `GroundVehicleCriticalHitTable`, `gv*` thresholds (extern'd by mission/mover code).
+Risks: `scripts/check-order-gate-coverage.py` reads `code/gvehicl.cpp` for the uncovered `GroundVehicle::fireWeapon` (widen to `gvehicl_weapons.cpp`, update its self-test); `#pragma optimize("",off)` around `handleMoveChunk` must stay inside one piece (it does: weapons).
+First cut: the purge, then the five files in one commit.
+
+## 19. code/weaponbolt.cpp (3025 lines)
+Counts: 316 comment lines, 0 `#if 0`; getenv 3 (`MC2_VK_VFX_TRACE`, `MC2_DIRECT_FIRE_STRAIGHT`, `MC2_PROJECTILE_SPEED_MULT`, all lazy function-local statics); Tracy 1.
+
+| Lines | Responsibility | ~Lines |
+|---|---|---:|
+| 1-87 | includes, externs, `vkVfxImmediateDraw`/`vkVfxTraceOn` (render only), effect macros | 87 |
+| 88-405 | `WeaponBoltType`: `createInstance`, `destroy`, `init` (FIT parse 235), collision/destruction, `getLight`; `WeaponBolt::isVisible` | 320 |
+| 406-1755 | `directFireStraightEnabled`/`directFireSpeedMult` (update only) and `WeaponBolt::update` (1325 lines, one function) | 1350 |
+| 1756-2523 | `WeaponBolt::render` (768) | 770 |
+| 2524-3022 | `destroy`, GPU trail kind helpers (`init` only), `init`, setters, `Save`/`CopyTo`/`Load`, `deliverAimedAreaHit`, `finishNow` | 500 |
+
+Split (3 files): `weaponbolt_update.cpp` (406-1755, ~1350), `weaponbolt_render.cpp` (58-81 + 1756-2523, ~790), core `weaponbolt.cpp` (type, init/destroy/state, ~890).
+Shared state / header: `weaponbolt_internal.h` with the include bundle, externs and the effect macros; every file-static helper is used by exactly one piece and moves with it, so no linkage changes.
+Surface that must not change: `WeaponBolt`/`WeaponBoltType` (weaponbolt.h).
+Risks: `update` is a single 1325-line function, so this file cannot drop below ~1350 lines without refactoring `update` itself (out of scope); name pins to check with `split_verify`.
+First cut: all three files in one commit.
