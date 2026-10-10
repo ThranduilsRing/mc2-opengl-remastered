@@ -874,72 +874,6 @@ TEST_CASE("MC2_WATER_SHORE_MODE tokens 0..3 resolve, anything else is the first 
     gate::invalidate("MC2_WATER_SHORE_MODE");
 }
 
-
-// ---------------------------------------------------------------------------
-// G6: mclib rows. The old readers are transcribed with the environment text as a parameter.
-// ---------------------------------------------------------------------------
-
-namespace g6 {
-float oldMoverFwd(const char* v) {
-    float f = 24.0f;
-    if (v && v[0]) f = static_cast<float>(std::atof(v));
-    if (f < 0.0f) f = 0.0f;
-    if (f > 120.0f) f = 120.0f;
-    return f;
-}
-float oldCullMargin(const char* v) {
-    const float m = (v && v[0]) ? static_cast<float>(std::atof(v)) : 0.25f;
-    return (m >= 0.0f) ? m : 0.25f;
-}
-long oldNightFloor(const char* v) {
-    if (!v || !v[0]) return 0L;
-    long f = std::atol(v);
-    if (f < 0) f = 0;
-    if (f > 64) f = 64;
-    return f;
-}
-float oldClampKnob(const char* v, float dflt, float lo, float hi) {
-    float f = dflt;
-    if (v && v[0]) f = static_cast<float>(std::atof(v));
-    if (f < lo) return lo;
-    if (f > hi) return hi;
-    return f;
-}
-}  // namespace g6
-
-TEST_CASE("G6 numeric rows reproduce the old mclib readers on every probe") {
-    const gate::Row& fwd = g1b::rowNamed("MC2_LIGHT_POOL_MOVER_FWD");
-    const gate::Row& margin = g1b::rowNamed("MC2_SHADOW_CASTER_CULL_MARGIN");
-    const gate::Row& floor = g1b::rowNamed("MC2_NIGHT_AMBIENT_FLOOR");
-    for (const char* t : g1b::kProbes) {
-        INFO((t ? t : "(unset)"));
-        if (t && std::string(t) == "1e999") continue;   // inf: listed EDGE for the float rows (no harness sets it)
-        if (t && std::string(t) == "-1e999") continue;
-        CHECK(asFloat(gate::detail::parseRow(fwd, t)) == g6::oldMoverFwd(t));
-        CHECK(asFloat(gate::detail::parseRow(margin, t)) == g6::oldCullMargin(t));
-        CHECK(static_cast<long>(g1b::intOf(floor, t)) == g6::oldNightFloor(t));
-    }
-}
-
-TEST_CASE("G6 clamped float knobs reproduce the old lambda readers (defaults and bounds included)") {
-    struct Knob { const char* name; float dflt; float lo; float hi; };
-    const Knob knobs[] = {
-        {"MC2_CAMERA_SMOOTH", 100.0f, 0.0f, 2000.0f},
-        {"MC2_CONE_POOL_REACH", 4.0f, 1.0f, 16.0f},
-        {"MC2_LIGHT_CONE_GLOW_ALPHA", 40.0f, 0.0f, 255.0f},
-        {"MC2_LIGHT_CONE_SPILL", 1.0f, 0.0f, 3.0f},
-        {"MC2_LIGHT_REALISM_CONE_OPACITY", 0.40f, 0.0f, 4.0f},
-        {"MC2_LIGHT_REALISM_CONE_FEATHER", 2.5f, 0.0f, 8.0f},
-        {"MC2_LIGHT_REALISM_BEACON", 70.0f, 0.0f, 255.0f},
-        {"MC2_LIGHT_REALISM_BEACON_RADIUS", 40.0f, 1.0f, 200.0f},
-    };
-    for (const Knob& k : knobs) {
-        const gate::Row& row = g1b::rowNamed(k.name);
-        CHECK(row.kind == Kind::Float);
-        CHECK(row.range.clamp);
-        for (const char* t : g1b::kProbes) {
-            INFO(k.name << " <- " << (t ? t : "(unset)"));
-            CHECK(asFloat(gate::detail::parseRow(row, t)) == g6::oldClampKnob(t, k.dflt, k.lo, k.hi));
 // ---------------------------------------------------------------------------
 // G4: Tri rows that inherit the VK umbrella (gate::effective<>)
 // ---------------------------------------------------------------------------
@@ -1097,6 +1031,75 @@ TEST_CASE("the VK opt-in and kill-switch rows read like the envTriState expressi
         for (const char* v : kProbe) {
             INFO(name << " = " << (v != nullptr ? v : "<unset>"));
             CHECK(rowValue(row, v) == (old(v) != -1));
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// G6: mclib rows. The old readers are transcribed with the environment text as a parameter.
+// ---------------------------------------------------------------------------
+
+namespace g6 {
+float oldMoverFwd(const char* v) {
+    float f = 24.0f;
+    if (v && v[0]) f = static_cast<float>(std::atof(v));
+    if (f < 0.0f) f = 0.0f;
+    if (f > 120.0f) f = 120.0f;
+    return f;
+}
+float oldCullMargin(const char* v) {
+    const float m = (v && v[0]) ? static_cast<float>(std::atof(v)) : 0.25f;
+    return (m >= 0.0f) ? m : 0.25f;
+}
+long oldNightFloor(const char* v) {
+    if (!v || !v[0]) return 0L;
+    long f = std::atol(v);
+    if (f < 0) f = 0;
+    if (f > 64) f = 64;
+    return f;
+}
+float oldClampKnob(const char* v, float dflt, float lo, float hi) {
+    float f = dflt;
+    if (v && v[0]) f = static_cast<float>(std::atof(v));
+    if (f < lo) return lo;
+    if (f > hi) return hi;
+    return f;
+}
+}  // namespace g6
+
+TEST_CASE("G6 numeric rows reproduce the old mclib readers on every probe") {
+    const gate::Row& fwd = g1b::rowNamed("MC2_LIGHT_POOL_MOVER_FWD");
+    const gate::Row& margin = g1b::rowNamed("MC2_SHADOW_CASTER_CULL_MARGIN");
+    const gate::Row& floor = g1b::rowNamed("MC2_NIGHT_AMBIENT_FLOOR");
+    for (const char* t : g1b::kProbes) {
+        INFO((t ? t : "(unset)"));
+        if (t && std::string(t) == "1e999") continue;   // inf: listed EDGE for the float rows (no harness sets it)
+        if (t && std::string(t) == "-1e999") continue;
+        CHECK(asFloat(gate::detail::parseRow(fwd, t)) == g6::oldMoverFwd(t));
+        CHECK(asFloat(gate::detail::parseRow(margin, t)) == g6::oldCullMargin(t));
+        CHECK(static_cast<long>(g1b::intOf(floor, t)) == g6::oldNightFloor(t));
+    }
+}
+
+TEST_CASE("G6 clamped float knobs reproduce the old lambda readers (defaults and bounds included)") {
+    struct Knob { const char* name; float dflt; float lo; float hi; };
+    const Knob knobs[] = {
+        {"MC2_CAMERA_SMOOTH", 100.0f, 0.0f, 2000.0f},
+        {"MC2_CONE_POOL_REACH", 4.0f, 1.0f, 16.0f},
+        {"MC2_LIGHT_CONE_GLOW_ALPHA", 40.0f, 0.0f, 255.0f},
+        {"MC2_LIGHT_CONE_SPILL", 1.0f, 0.0f, 3.0f},
+        {"MC2_LIGHT_REALISM_CONE_OPACITY", 0.40f, 0.0f, 4.0f},
+        {"MC2_LIGHT_REALISM_CONE_FEATHER", 2.5f, 0.0f, 8.0f},
+        {"MC2_LIGHT_REALISM_BEACON", 70.0f, 0.0f, 255.0f},
+        {"MC2_LIGHT_REALISM_BEACON_RADIUS", 40.0f, 1.0f, 200.0f},
+    };
+    for (const Knob& k : knobs) {
+        const gate::Row& row = g1b::rowNamed(k.name);
+        CHECK(row.kind == Kind::Float);
+        CHECK(row.range.clamp);
+        for (const char* t : g1b::kProbes) {
+            INFO(k.name << " <- " << (t ? t : "(unset)"));
+            CHECK(asFloat(gate::detail::parseRow(row, t)) == g6::oldClampKnob(t, k.dflt, k.lo, k.hi));
         }
     }
 }
