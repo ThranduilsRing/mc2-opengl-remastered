@@ -497,7 +497,7 @@
    "in_conflict": false,
    "readers": [
     "GameOS/gameos/gos_static_prop_batcher.cpp:9568 Custom[00000001]",
-    "mclib/bdactor.cpp:5526 Typed(is)",
+    "mclib/bdactor_static.cpp:907 Typed(is)",
     "mclib/txmmgr.cpp:3469 Typed(is)",
     "mclib/txmmgr.cpp:3471 Typed(is)",
     "mclib/txmmgr.cpp:3608 Typed(is)"
@@ -511,8 +511,8 @@
    "gate": "MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE",
    "in_conflict": false,
    "readers": [
-    "mclib/bdactor.cpp:5528 Typed(is)",
-    "mclib/bdactor.cpp:5536 Typed(is)"
+    "mclib/bdactor_static.cpp:909 Typed(is)",
+    "mclib/bdactor_static.cpp:917 Typed(is)"
    ],
    "rule": "levels: =0 kill-switch (default ON), 2 adds a trace line",
    "status": "enum"
@@ -599,7 +599,7 @@
    "gate": "MC2_TEXMGR_KTX_PRIMARY",
    "in_conflict": false,
    "readers": [
-    "mclib/bdactor.cpp:170 Typed(get)",
+    "mclib/bdactor.cpp:98 Typed(get)",
     "mclib/gvactor.cpp:37 Typed(get)",
     "mclib/mech3d.cpp:184 Typed(get)",
     "mclib/txmmgr.cpp:5324 Typed(get)"
@@ -899,7 +899,7 @@
   "editor",
   "gui"
  ],
- "source": "commit 025648b3a",
+ "source": "commit 6456f46eb",
  "totals": {
   "conflict_gates": 1,
   "gates_with_literal": 1131,
