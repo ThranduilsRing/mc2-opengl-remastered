@@ -181,8 +181,8 @@
    "LG16": 7,
    "LG17": 47,
    "LG18": 4,
-   "LG19": 1,
-   "LG20": 2
+   "LG19": 0,
+   "LG20": 1
   },
   "mclib": {
    "LG01": 2850,
@@ -3309,9 +3309,7 @@
   },
   "code/weather.cpp": {
    "LG01": 3,
-   "LG09": 2,
-   "LG19": 1,
-   "LG20": 1
+   "LG09": 2
   },
   "code/weather.h": {
    "LG01": 1,
@@ -5799,7 +5797,7 @@
    "LG20": 1
   }
  },
- "head": "1a68b5bb7",
+ "head": "4da3dfc9c",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

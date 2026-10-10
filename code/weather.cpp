@@ -27,6 +27,7 @@
 
 #include <cstdlib>  // getenv
 #include <vector>   // MC2_RAIN_BATCH staging buffer
+#include "Gates/gate.h"
 
 //----------------------------------------------------------------------------------
 // Macro Definitions
@@ -490,10 +491,9 @@ void Weather::render (void)
 		// Default OFF (unset or "0") until validated on mc2_17.
 		static int s_rainBatchMode = -1; // -1 = uninitialised
 		if (s_rainBatchMode < 0) {
-			const char* ev = ::getenv("MC2_RAIN_BATCH");
 			// DEFAULT-ON since 2026-06-04 (smoke-clean mc2_17, geometrically identical
 			// to legacy — same verts/one draw call): only literal "0" opts out.
-			s_rainBatchMode = (ev && ev[0] == '0' && ev[1] == '\0') ? 0 : 1;
+			s_rainBatchMode = mc2::gate::get<"MC2_RAIN_BATCH">();
 		}
 
 		if (s_rainBatchMode) {
