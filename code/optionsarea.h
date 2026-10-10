@@ -29,13 +29,13 @@ class OptionsXScreen : public LogisticsScreen
 public:
 	
 	OptionsXScreen();
-	virtual ~OptionsXScreen();
+	~OptionsXScreen() override;
 	
 	void init(FitIniFile* file);
 	bool isDone();
-	virtual void render();
-	virtual void update();
-	virtual int			handleMessage( unsigned long, unsigned long );
+	void render() override;
+	void update() override;
+	int			handleMessage( unsigned long, unsigned long ) override;
 
 	void updateOptions(); // put into inventory
 
@@ -59,9 +59,9 @@ public:
 
 	ScrollX();
 	long	init(aButton* pLeft, aButton* pRight, aButton* pTab );
-	virtual void	update();
+	void	update() override;
 
-	virtual int		handleMessage( unsigned long message, unsigned long fromWho );
+	int		handleMessage( unsigned long message, unsigned long fromWho ) override;
 
 	void			SetScrollMax(float newMax);
 	void			SetScrollPos(float newPos);
@@ -107,13 +107,13 @@ public:
     OptionsGraphics();
 
 	void init(long xOffset, long yOffset);
-	virtual void render();
-	virtual void update();
-	virtual void begin();
-	virtual void end();
+	void render() override;
+	void update() override;
+	void begin() override;
+	void end() override;
 	void reset( const CPrefs& newPrefs);
 
-	virtual int		handleMessage( unsigned long message, unsigned long fromWho );
+	int		handleMessage( unsigned long message, unsigned long fromWho ) override;
 
 private:
 	aDropList		resolutionList;
@@ -130,13 +130,13 @@ class OptionsAudio : public LogisticsScreen
 {
 	public:
 		void init(long xOffset, long yOffset);
-		virtual void render();
-		virtual void update();
-		virtual void begin();
-		virtual void end();
+		void render() override;
+		void update() override;
+		void begin() override;
+		void end() override;
 		void reset(const CPrefs& newPrefs);
 
-		virtual int		handleMessage( unsigned long message, unsigned long fromWho );
+		int		handleMessage( unsigned long message, unsigned long fromWho ) override;
 
 	private:
 
@@ -149,13 +149,13 @@ class OptionsHotKeys : public LogisticsScreen
 
 public:
 		void init(long xOffset, long yOffset);
-		virtual void render();
-		virtual void update();
-		virtual void begin();
-		virtual void end();
+		void render() override;
+		void update() override;
+		void begin() override;
+		void end() override;
 		void reset(bool bUseOld);
 
-		virtual int		handleMessage( unsigned long message, unsigned long fromWho );
+		int		handleMessage( unsigned long message, unsigned long fromWho ) override;
 
 private:
 
@@ -173,13 +173,13 @@ class OptionsGamePlay : public LogisticsScreen
 {
 public:
 	void init(long xOffset, long yOffset);
-	virtual void render();
-	virtual void update();
-	virtual void begin();
-	virtual void end();
+	void render() override;
+	void update() override;
+	void begin() override;
+	void end() override;
 	void reset(const CPrefs& newPrefs);
 
-	virtual int		handleMessage( unsigned long message, unsigned long fromWho );
+	int		handleMessage( unsigned long message, unsigned long fromWho ) override;
 
 	void resetCamera();
 
@@ -193,14 +193,14 @@ class HotKeyListItem : public aListItem
 public:
 
 	static void init();
-	virtual void render();
-	virtual void update();
+	void render() override;
+	void update() override;
 	
 	void setDescription( const char* pText );
 	void setKey( const char* pText );
 
 	HotKeyListItem( );
-	~HotKeyListItem();
+	~HotKeyListItem() override;
 
 	void	setHotKey( long lNew ){ hotKey = lNew; }
 	void	setCommand( long lCommand ) { command = lCommand; }

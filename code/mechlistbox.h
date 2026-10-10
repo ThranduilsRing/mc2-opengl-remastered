@@ -31,17 +31,17 @@ class MechListBoxItem : public aListItem
 {
 public:
 	
-	virtual ~MechListBoxItem();
+	~MechListBoxItem() override;
 	MechListBoxItem( LogisticsMech* pMech, long count );
 
 	static void init( FitIniFile& file );
 
-	virtual void update();
-	virtual void render();
+	void update() override;
+	void render() override;
 
 	LogisticsMech* getMech( ){ return pMech; }
-	void	resetMech( ) {pMech = NULL; }
-	virtual bool		pointInside(long xPos, long yPos) const;
+	void	resetMech( ) {pMech = nullptr; }
+	bool		pointInside(long xPos, long yPos) const override;
 
 	bool		bOrange;
 	static bool	bAddCalledThisFrame;
@@ -103,18 +103,18 @@ public:
 	void	setScrollBarOrange();
 	void	setScrollBarGreen();
 
-	virtual ~MechListBox();
+	~MechListBox() override;
 	
 	static int		init();
 	void	drawCBills( bool bDraw );
 
-	virtual void update();
+	void update() override;
 
 	LogisticsMech* getCurrentMech();
 
 	static void initIcon( LogisticsMech* pMec, aObject& icon );
 
-	virtual long		AddItem(aListItem* itemString);
+	long		AddItem(aListItem* itemString) override;
 
 	void	dimItem( LogisticsMech* pMech, bool bDim );
 	void	undimAll();

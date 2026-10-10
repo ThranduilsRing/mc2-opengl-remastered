@@ -157,8 +157,8 @@ class LogisticsMissionInfo
 			bool enableMineLayer;
 		};	
 
-		typedef EList<MissionInfo*, MissionInfo*> MISSION_LIST;
-		typedef EList< char*, char* > FILE_LIST;
+		using MISSION_LIST = EList<MissionInfo*, MissionInfo*>;
+		using FILE_LIST = EList< char*, char* >;
 
 
 		class MissionGroup

@@ -69,7 +69,7 @@ enum EquipmentTag {
     NUM_EQUIPMENT_TAGS        // keep last; must stay <= 32
 };
 
-typedef unsigned int EquipmentTagMask;
+using EquipmentTagMask = unsigned int;
 
 inline EquipmentTagMask equipmentTagBit(EquipmentTag t) {
     return (EquipmentTagMask)1u << (unsigned)t;
