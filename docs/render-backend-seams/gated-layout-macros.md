@@ -353,40 +353,40 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 - Header: `GameOS/gameos/gos_postprocess.h:531`
 - Class: `gosPostProcess`  (data-member)
 - Member: `VkPostFogNative* vkPostFogNative_ = nullptr;`
-- Consuming targets: gameadapters, gameos, gameos_editor, gameos_main, gui_runtime, mc2, mclib, renderworld
-- Reached by define: gameadapters[gameadapters(PRIVATE)], gameos[gameos(PUBLIC)], gameos_editor[gameos_editor(PRIVATE)], gameos_main[gameos_main(PRIVATE)], gui_runtime[gui_runtime(PRIVATE)], mc2[mc2(PRIVATE)], mclib[mclib(PRIVATE)], renderworld[renderworld(PRIVATE)]
+- Consuming targets: gameadapters, gameos, gameos_editor, gameos_main, mc2, mclib, renderworld
+- Reached by define: gameadapters[gameadapters(PRIVATE)], gameos[gameos(PUBLIC)], gameos_editor[gameos_editor(PRIVATE)], gameos_main[gameos_main(PRIVATE)], mc2[mc2(PRIVATE)], mclib[mclib(PRIVATE)], renderworld[renderworld(PRIVATE)]
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
 - Header: `GameOS/gameos/gos_postprocess.h:550`
 - Class: `gosPostProcess`  (data-member)
 - Member: `VkPostSsaoNative* vkPostSsaoNative_ = nullptr;`
-- Consuming targets: gameadapters, gameos, gameos_editor, gameos_main, gui_runtime, mc2, mclib, renderworld
-- Reached by define: gameadapters[gameadapters(PRIVATE)], gameos[gameos(PUBLIC)], gameos_editor[gameos_editor(PRIVATE)], gameos_main[gameos_main(PRIVATE)], gui_runtime[gui_runtime(PRIVATE)], mc2[mc2(PRIVATE)], mclib[mclib(PRIVATE)], renderworld[renderworld(PRIVATE)]
+- Consuming targets: gameadapters, gameos, gameos_editor, gameos_main, mc2, mclib, renderworld
+- Reached by define: gameadapters[gameadapters(PRIVATE)], gameos[gameos(PUBLIC)], gameos_editor[gameos_editor(PRIVATE)], gameos_main[gameos_main(PRIVATE)], mc2[mc2(PRIVATE)], mclib[mclib(PRIVATE)], renderworld[renderworld(PRIVATE)]
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
 - Header: `GameOS/gameos/gos_postprocess.h:572`
 - Class: `gosPostProcess`  (data-member)
 - Member: `VkPostScreenFx* vkPostScreenFx_ = nullptr;`
-- Consuming targets: gameadapters, gameos, gameos_editor, gameos_main, gui_runtime, mc2, mclib, renderworld
-- Reached by define: gameadapters[gameadapters(PRIVATE)], gameos[gameos(PUBLIC)], gameos_editor[gameos_editor(PRIVATE)], gameos_main[gameos_main(PRIVATE)], gui_runtime[gui_runtime(PRIVATE)], mc2[mc2(PRIVATE)], mclib[mclib(PRIVATE)], renderworld[renderworld(PRIVATE)]
+- Consuming targets: gameadapters, gameos, gameos_editor, gameos_main, mc2, mclib, renderworld
+- Reached by define: gameadapters[gameadapters(PRIVATE)], gameos[gameos(PUBLIC)], gameos_editor[gameos_editor(PRIVATE)], gameos_main[gameos_main(PRIVATE)], mc2[mc2(PRIVATE)], mclib[mclib(PRIVATE)], renderworld[renderworld(PRIVATE)]
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
 - Header: `GameOS/gameos/gos_postprocess.h:586`
 - Class: `gosPostProcess`  (data-member)
 - Member: `VkPostHzbNative* vkPostHzbNative_ = nullptr;`
-- Consuming targets: gameadapters, gameos, gameos_editor, gameos_main, gui_runtime, mc2, mclib, renderworld
-- Reached by define: gameadapters[gameadapters(PRIVATE)], gameos[gameos(PUBLIC)], gameos_editor[gameos_editor(PRIVATE)], gameos_main[gameos_main(PRIVATE)], gui_runtime[gui_runtime(PRIVATE)], mc2[mc2(PRIVATE)], mclib[mclib(PRIVATE)], renderworld[renderworld(PRIVATE)]
+- Consuming targets: gameadapters, gameos, gameos_editor, gameos_main, mc2, mclib, renderworld
+- Reached by define: gameadapters[gameadapters(PRIVATE)], gameos[gameos(PUBLIC)], gameos_editor[gameos_editor(PRIVATE)], gameos_main[gameos_main(PRIVATE)], mc2[mc2(PRIVATE)], mclib[mclib(PRIVATE)], renderworld[renderworld(PRIVATE)]
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
 - Header: `GameOS/gameos/gos_postprocess.h:778`
 - Class: `gosPostProcess`  (data-member)
 - Member: `GLuint dynShadowInteropTex_ = 0;`
-- Consuming targets: gameadapters, gameos, gameos_editor, gameos_main, gui_runtime, mc2, mclib, renderworld
-- Reached by define: gameadapters[gameadapters(PRIVATE)], gameos[gameos(PUBLIC)], gameos_editor[gameos_editor(PRIVATE)], gameos_main[gameos_main(PRIVATE)], gui_runtime[gui_runtime(PRIVATE)], mc2[mc2(PRIVATE)], mclib[mclib(PRIVATE)], renderworld[renderworld(PRIVATE)]
+- Consuming targets: gameadapters, gameos, gameos_editor, gameos_main, mc2, mclib, renderworld
+- Reached by define: gameadapters[gameadapters(PRIVATE)], gameos[gameos(PUBLIC)], gameos_editor[gameos_editor(PRIVATE)], gameos_main[gameos_main(PRIVATE)], mc2[mc2(PRIVATE)], mclib[mclib(PRIVATE)], renderworld[renderworld(PRIVATE)]
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
