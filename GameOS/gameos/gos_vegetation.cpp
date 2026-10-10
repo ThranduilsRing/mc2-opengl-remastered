@@ -24,6 +24,8 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"   // str<>()
 
 // ---------------------------------------------------------------------------
 // File-local state
@@ -107,12 +109,11 @@ static const char* s_atlasPathOverride = nullptr;
 bool GosVegetation::isEnabled() {
     static int cached = -1;
     if (cached < 0) {
-        const char* v = getenv("MC2_VEGETATION_CARDS");
-        cached = (v && v[0] && v[0] != '0') ? 1 : 0;
+        cached = mc2::gate::get<"MC2_VEGETATION_CARDS">();
         MC2_DIAGFE(stderr, "[VEG v1] feature enabled=%d reason=%s\n",
             cached,
-            !v         ? "env_missing" :
-            (!v[0] || v[0]=='0') ? "env_zero"  : "env_set");
+            !mc2::gate::isSet<"MC2_VEGETATION_CARDS">() ? "env_missing" :
+            !cached ? "env_zero"  : "env_set");
         fflush(stderr);
     }
     return cached == 1;
@@ -244,9 +245,9 @@ void GosVegetation::init() {
                           : "data/textures/vegetation_atlas_v2.png";
 
     // Allow env-var override at runtime too.
-    const char* envPath = getenv("MC2_VEGETATION_ATLAS");
-    if (envPath && envPath[0] != '\0') {
-        atlasPath = envPath;
+    const std::string envPath = mc2::gate::str<"MC2_VEGETATION_ATLAS">();   // "" when unset or empty
+    if (!envPath.empty()) {
+        atlasPath = envPath.c_str();
     }
 
     Texture atlasTex = load_texture_from_file(atlasPath);
@@ -439,8 +440,7 @@ void GosVegetation::flush(float lightDirX, float lightDirY, float lightDirZ, flo
     {
         static int s_forceVis = -1;
         if (s_forceVis < 0) {
-            const char* v = getenv("MC2_VEG_DEBUG_FORCE_VISIBLE");
-            s_forceVis = (v && v[0] && v[0] != '0') ? 1 : 0;
+            s_forceVis = mc2::gate::get<"MC2_VEG_DEBUG_FORCE_VISIBLE">();
         }
         const GLint loc = glGetUniformLocation(progId, "u_forceVisible");
         if (loc >= 0) glProgramUniform1i(progId, loc, s_forceVis);
@@ -451,8 +451,7 @@ void GosVegetation::flush(float lightDirX, float lightDirY, float lightDirZ, flo
     {
         static float s_vegMaxDist = -1.0f;
         if (s_vegMaxDist < 0.0f) {
-            const char* v = getenv("MC2_VEG_MAX_DIST");
-            s_vegMaxDist = (v && v[0]) ? static_cast<float>(atof(v)) : 4096.0f;
+            s_vegMaxDist = mc2::gate::get<"MC2_VEG_MAX_DIST">();   // row default 4096
         }
         const float vegFadeStart = s_vegMaxDist * 0.50f;  // clump cull starts at half max (4096 for default 8192)
         {

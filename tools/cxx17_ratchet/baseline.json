@@ -66,8 +66,8 @@
    "LG16": 7,
    "LG17": 81,
    "LG18": 11,
-   "LG19": 81,
-   "LG20": 115
+   "LG19": 77,
+   "LG20": 111
   },
   "GuiRuntime": {
    "LG01": 1,
@@ -950,9 +950,7 @@
   "GameOS/gameos/gos_vegetation.cpp": {
    "LG06": 1,
    "LG12a": 1,
-   "LG17": 2,
-   "LG19": 4,
-   "LG20": 4
+   "LG17": 2
   },
   "GameOS/gameos/gos_vegetation.h": {
    "LG06": 1,
@@ -5843,7 +5841,7 @@
    "LG20": 1
   }
  },
- "head": "ff1de8bc6",
+ "head": "4ef002dff",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
