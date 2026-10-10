@@ -68,41 +68,6 @@ Radian&
 	return *this;
 }
 
-#if 0
-SinCosPair&
-	SinCosPair::operator=(const Radian &radian)
-{
-	Check_Pointer(this);
-	Check_Object(&radian);
-
-#if USE_ASSEMBLER_CODE
-	Scalar *f = &sine;
-	_asm {
-		push	ebx
-		push	edx
-
-		mov		ebx, f
-		mov		edx, radian.angle
-
-		fld		dword ptr [edx]
-		fsincos
-		fstp	dword ptr [ebx + 4]
-		fstp	dword ptr [ebx]
-
-		pop		edx
-		pop		ebx
-	}
-
-#else
-	cosine = cos(radian);
-	sine = sin(radian);
-#endif
-	
-	Check_Object(this);
-	
-	return *this;
-}
-#endif
 
 //
 //#############################################################################
