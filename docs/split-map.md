@@ -313,6 +313,17 @@ Split commit: `f4c986566`.
 | `gvactor_update.cpp` | GVAppearance: updateGeometry (reads the shadow-skip gate and the spot-light diagnostic counters), update, destroy, water wake and activity effects. |
 | `gvactor_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
+## `mclib/inifile.cpp`
+
+Split commit: `9d341e854`.
+
+| Piece | What it holds |
+|---|---|
+| `inifile.cpp` | keeps the constructor, the block parser, the text conversions, open / close and the writers |
+| `inifile_arrays.cpp` | FitIniFile: the readId*Array readers and the getId*ArrayElements counters. |
+| `inifile_read.cpp` | FitIniFile: seekBlock and the scalar readId* readers, readIdString and getIdStringLength. |
+| `inifile_internal.h` | shared include bundle, extern globals and declarations of the pieces |
+
 ## `mclib/mech3d.cpp`
 
 Split commit: `de0dbab39`.

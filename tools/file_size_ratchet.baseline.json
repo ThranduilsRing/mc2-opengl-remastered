@@ -65,7 +65,6 @@
   "mclib/gosfx/fcurve.cpp": 1923,
   "mclib/gosfx/tube.cpp": 1528,
   "mclib/heap.cpp": 2136,
-  "mclib/inifile.cpp": 2876,
   "mclib/mapdata.cpp": 2633,
   "mclib/mlr/mlrindexedpolymesh.cpp": 1846,
   "mclib/mlr/mlrlightmap.cpp": 1599,
@@ -82,7 +81,7 @@
   "mclib/vfxtile_line.cpp": 1938,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "517458d7a",
+ "head": "9d341e854",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -139,10 +138,10 @@
    "max_lines": 1513
   },
   "mclib": {
-   "files": 642,
-   "files_over_1500": 26,
+   "files": 645,
+   "files_over_1500": 25,
    "files_over_3000": 0,
-   "max_lines": 2876
+   "max_lines": 2785
   },
   "shaders": {
    "files": 172,
@@ -167,10 +166,6 @@
   {
    "file": "RenderCore/RendererFeatureRegistry.h",
    "lines": 2917
-  },
-  {
-   "file": "mclib/inifile.cpp",
-   "lines": 2876
   },
   {
    "file": "GameOS/gameos/gameosmain.cpp",
@@ -275,11 +270,15 @@
   {
    "file": "mclib/gosfx/fcurve.cpp",
    "lines": 1923
+  },
+  {
+   "file": "code/mover.h",
+   "lines": 1911
   }
  ],
  "total": {
-  "files": 1820,
-  "files_over_1500": 68,
+  "files": 1823,
+  "files_over_1500": 67,
   "files_over_3000": 2,
   "max_lines": 3753
  },
