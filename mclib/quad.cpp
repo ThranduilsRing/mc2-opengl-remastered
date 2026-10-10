@@ -51,6 +51,7 @@
 
 #include <chrono>
 #include "Gates/gate.h"
+#include "terrain_depth_bias.h"
 
 // Stage 1 cost-split RAII timers — bracket SOLID and DRAWALPHA admit clusters
 // inside TerrainQuad::setupTextures so we can split the per-frame
@@ -1328,7 +1329,6 @@ void TerrainQuad::setupTextures (void)
 // see the two-regime rationale + git 89d7c4f-vs-6ff6c5c reconciliation in
 // terrain_depth_bias.h. Consumers below use TERRAIN_DEPTH_FUDGE /
 // WATER_DEPTH_FUDGE (== RASTER) unqualified.
-#include "terrain_depth_bias.h"
 using mc2depth::TERRAIN_DEPTH_FUDGE;
 using mc2depth::WATER_DEPTH_FUDGE;
 #define OVERLAY_ELEV_OFFSET		0.15f
