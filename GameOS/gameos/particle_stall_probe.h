@@ -14,11 +14,12 @@
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
+#include "Gates/gate.h"
 
 namespace mc2 {
 
 inline bool particleStallTraceEnabled() {
-    static const bool s = (std::getenv("MC2_PARTICLE_FLUSH_STALL_TRACE") != nullptr);
+    static const bool s = mc2::gate::get<"MC2_PARTICLE_FLUSH_STALL_TRACE">();
     return s;
 }
 
