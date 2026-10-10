@@ -357,6 +357,22 @@ class Mission
 		void loadLogistics(MissionLoadFrame& f);
 		void loadActivateAndFinalize();
 		void loadRestoreInput(MissionLoadFrame& f);
+
+	// Mission::update phases (mission_update.cpp); callers use update().
+		void updateDevHotkeys();
+		void updateFrameClock();
+		void updateFrontEnd();
+		void updateTerrainGeometry();
+		void updateObjectManager();
+		void updateCratersAndDamp();
+		void updateSimSystems();
+		void updateTraceHooks();
+		void updateTermination();
+		void updateCheatsAndFrameRate();
+		void updateSoakAutoWin();
+		void updateSoakKillEnemy();
+		void updateOrderLiveness();
+		void updateSoakPilotPromote();
 	public:
 
 		// TEAM-COMMANDER-OWNERSHIP-1: single teardown authority for the

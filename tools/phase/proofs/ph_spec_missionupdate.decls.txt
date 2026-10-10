@@ -1,0 +1,14 @@
+void updateDevHotkeys();
+void updateFrameClock();
+void updateFrontEnd();
+void updateTerrainGeometry();
+void updateObjectManager();
+void updateCratersAndDamp();
+void updateSimSystems();
+void updateTraceHooks();
+void updateTermination();
+void updateCheatsAndFrameRate();
+void updateSoakAutoWin();
+void updateSoakKillEnemy();
+void updateOrderLiveness();
+void updateSoakPilotPromote();
