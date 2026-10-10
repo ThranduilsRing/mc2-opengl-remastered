@@ -34,11 +34,14 @@ def parse(path):
     lines = raw.split("\n")
     st = {"blk": False}; depth = 0; pp = 0; units = []; cur_start = 0; ns_depth = 0
     cont = False  # preprocessor line continuation
+    pending = None
     code_seen = False; name = None
     for i, l in enumerate(lines):
         t = l.rstrip("\r")
         if cont:
-            cont = t.endswith("\\"); 
+            cont = t.endswith("\\")
+            if not cont and pending:
+                units.append({"start": cur_start, "end": i, "kind": "pp", "name": pending}); cur_start = i + 1; pending = None
             continue
         s = t.strip()
         if s.startswith("#") and not st["blk"]:
@@ -48,7 +51,10 @@ def parse(path):
             cont = t.endswith("\\")
             code_seen = code_seen or depth > 0
             if depth == 0 and pp == 0 and d in ("endif", "include", "define", "undef", "pragma", "error") and not code_seen:
-                units.append({"start": cur_start, "end": i, "kind": "pp", "name": s[:60]}); cur_start = i + 1
+                if cont:
+                    pending = s[:60]          # a multi-line macro is one unit: emitted after its last continuation line
+                else:
+                    units.append({"start": cur_start, "end": i, "kind": "pp", "name": s[:60]}); cur_start = i + 1
             elif d == "endif" and depth == 0 and pp == 0 and code_seen:
                 # a complete top-level #if region holding definitions ends here, not at the next definition after it
                 body = chr(10).join(x.rstrip(chr(13)) for x in lines[cur_start:i+1])
