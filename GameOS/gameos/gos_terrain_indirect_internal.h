@@ -262,6 +262,21 @@ uint32_t BuildSolidQuadWindowSSBO(int* outUseWindow);
 }  // namespace gos_terrain_indirect_detail
 using namespace gos_terrain_indirect_detail;
 
+namespace gos_terrain_indirect {
+// ComputeDispatch phases (gos_terrain_indirect_compute.cpp).
+bool computeBuildProgram();
+void computeAllocDebugBuffers(bool s_bucketHeaderTrace);
+void computeFingerprintMvp(bool s_ringTrace, uint32_t& mvpFp);
+void computeRingFenceWait(int probedSlot, GLenum& waitResult, uint64_t& waitUs);
+void computeTripwireMiss(FILE* s_probeSink, uint64_t ringFrameIdx, int probedSlot, bool fencePresent, uint32_t& mvpFp, GLenum& waitResult, uint64_t& waitUs);
+void computeBucketHeaderReadback(FILE* s_probeSink, bool s_ringTrace, uint64_t ringFrameIdx, int probedSlot, bool fencePresent, uint32_t& mvpFp, GLenum& waitResult, uint64_t& waitUs);
+bool computeRingSkipGuard(FILE* s_probeSink, uint64_t ringFrameIdx, int probedSlot, GLenum& waitResult);
+void computeClearCounters();
+bool computeBindAndUniforms(GLuint lightSsbo, bool s_bucketHeaderTrace, uint32_t windowCount, int s_solidUseWindow, GLintptr thinSlotOffset);
+void computeDepthTransitionProbe();
+void computePostDispatchProbes(FILE* s_probeSink, bool s_ringTrace, uint64_t ringFrameIdx);
+}  // namespace gos_terrain_indirect
+
 // Ring-hazard probe line: stderr plus the ring_trace.log sink. Names the sink handle (s_probeSink) the caller has in
 // scope, so it is only valid where ComputeDispatch or one of its phases holds that handle.
 #define PROBE_LOG(fmt, ...) do { \

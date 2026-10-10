@@ -189,7 +189,7 @@ def main():
             stmt_rx = r'\bcontinue\s*;' if exit_val == 'continue' else r'\breturn' + ((' ' + re.escape(exit_val)) if exit_val else '') + r'\s*;'
             body = [re.sub(stmt_rx, 'return true;', x) for x in body]
             body = body + [indent + 'return false;']
-        code = '\n'.join(strip_code(x) for x in body)
+        code = '\n'.join(strip_code(x) for x in body) + ' ' + ' '.join(opts.get('uses', ()))   # 'uses': names a macro in the body expands to
         uparams = [(n, t) for n, t in getattr(S, 'PARAMS', []) if re.search(r'\b' + n + r'\b', code) and n not in opts.get('noparams', ())]
         info.append(dict(exits=exits, exit_val=exit_val, file=opts.get('file'), name=name, a=a, doc=doc, guard=guard, body=body, used=used, frames=frames, as_method=as_method, uparams=uparams))
     H = []

@@ -69,6 +69,7 @@ set(SOURCES ${SOURCES}
     gos_terrain_indirect_cement.cpp
     gos_terrain_indirect_pack.cpp
     gos_terrain_indirect_dispatch.cpp
+    gos_terrain_indirect_compute.cpp
     gos_terrain_indirect_mine_decal.cpp
     gos_terrain_surface.cpp
     gos_terrain_mask_dispatch.cpp

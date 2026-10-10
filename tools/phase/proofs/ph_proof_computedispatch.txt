@@ -1,0 +1,646 @@
+inline expansion: 866 statements, helpers 11, orchestrator lines 182
+declaration lifts / edits applied (0):
+scaffolding only in new (15 distinct):
+   + // Runs the solid-terrain cull/pack compute. The arming guards, the lighting guard, the per-frame ring locals, 
+   + // dispatch returns true and the orchestrator returns. 
+   + // helper declared in gos_terrain_indirect_internal.h, run in the original order. A phase that abandons the 
+   + // window build, the MVP upload, the dispatch with its barrier and the unbinds stay here; each other phase bod 
+   + computeAllocDebugBuffers(s_bucketHeaderTrace); 
+   + computeBucketHeaderReadback(s_probeSink, s_ringTrace, ringFrameIdx, probedSlot, fencePresent, mvpFp, waitResul 
+   + computeClearCounters(); 
+   + computeDepthTransitionProbe(); 
+   + computeFingerprintMvp(s_ringTrace, mvpFp); 
+   + computePostDispatchProbes(s_probeSink, s_ringTrace, ringFrameIdx); 
+   + computeRingFenceWait(probedSlot, waitResult, waitUs); 
+   + computeTripwireMiss(s_probeSink, ringFrameIdx, probedSlot, fencePresent, mvpFp, waitResult, waitUs); 
+   + if (computeBindAndUniforms(lightSsbo, s_bucketHeaderTrace, windowCount, s_solidUseWindow, thinSlotOffset)) ret 
+   + if (computeBuildProgram()) return; 
+   + if (computeRingSkipGuard(s_probeSink, ringFrameIdx, probedSlot, waitResult)) return; 
+statements only in old (626 distinct, all lifted declarations / hoisted-type lines):
+   - "[RING_CANARY_FLAGS v1] frame=%llu visible=%u prior_slot=%d " 
+   - "[RING_CANARY_RECIPE v1] frame=%llu visible=%u prior_slot=%d " 
+   - "[RING_CMDPATCH v1] frame=%llu cmd_count=%u expected=%u " 
+   - "[RING_NEARW v1] frame=%llu near_w_count=%u total_near_w_frames=%u " 
+   - "[RING_OVERSHOOT v1] frame=%llu prev_visible=%u cap=%zu " 
+   - "[RING_PEAK v1] frame=%llu peak_visible=%u cap=%zu " 
+   - "[RING_SPREAD v1] frame=%llu spread_count=%u spread_frames=%u " 
+   - "[RING_TRIPWIRE v1] frame=%llu slot=%d fence=%d wait=0x%x wait_us=%llu " 
+   - "[TERRAIN_INDIRECT v1] event=error msg=solid_compute_missing_uniform " 
+   - "cpuw_fresh=%d cpuw_any=%d cpuw_stamp=%llu " 
+   - "cpuw_stamp_delta=%lld decal_ok=%d decal_z_approx=0\n", 
+   - "dz_cpuw=%.7f dz_gpuw=%.7f dz_decal=%.7f " 
+   - "first_bad_canary=%u first_bad_thin=%u " 
+   - "first_bad_canary=0x%x first_bad_thin=0x%x " 
+   - "frames=%u total=%llu mvpFp=0x%08x\n", x2
+   - "maxMvpDelta=%.7f " 
+   - "mismatch_in_frame=%u first_bad_idx=%u " x2
+   - "overshootCount=%u peak=%u mvpFp=0x%08x\n", 
+   - "overshootCount=%u peak_near_w=%u near_w_frames=%u\n", 
+   - "peak_near_w=%u prev_visible=%u mvpFp=0x%08x\n", 
+   - "peak_spread=%u prev_visible=%u mvpFp=0x%08x\n", 
+   - "prev_visible=%u near_w=%u peak=%u peakNearW=%u mvpFp=0x%08x\n", 
+   - "shaders/gpu_driven_terrain_solid.comp", nullptr, 0, "gpu_driven_terrain_solid"); 
+   - "terrain.thinRecord"); 
+   - "terrain_indirect_count_clear"); 
+   - "totalMiss=%u totalTimeout=%u mvpFp=0x%08x\n", 
+   - "u_windowCount=%d u_terrainMVP=%d\n", 
+   - "visible=%u inst=%u first=%u base=%u mismatchCount=%u\n", 
+   - "z_terr=%.7f z_cpuw=%.7f z_gpuw=%.7f z_decal=%.7f " 
+   - && !s_lodChunkActive; 
+   - (!fencePresent) && (ringFrameIdx > (uint64_t)(2 * kThinRingFrames)) 
+   - (GLsizeiptr)(2u * kMaxThinRecords * sizeof(uint32_t)), 
+   - (GLsizeiptr)(vis * 2u * sizeof(uint32_t)), 
+   - (GLsizeiptr)(vis * 32u), 
+   - (GLsizeiptr)sizeof(s_hdr4Cached), s_hdr4Cached); 
+   - (L.cAny && cpuStampDelta != 0) ? 1 : 0; 
+   - (czT / cwT) + mc2depth::OVERLAY_DEPTH_BIAS; 
+   - (czT / cwT) + mc2depth::TERRAIN_DEPTH_FUDGE; 
+   - (czT / cwT) + mc2depth::WATER_DEPTH_FUDGE_FAST; 
+   - (double)(L.zc - L.zt), 
+   - (double)(L.zd - L.zt), 
+   - (double)(L.zg - L.zt), 
+   - (double)L.md, 
+   - (double)L.zg, (double)L.zd, 
+   - (double)L.zt, (double)L.zc, 
+   - (long long)L.cStamp - (long long)s_prevCpuStamp; 
+   - (long long)thinSlotOffset, (long long)kThinRecordBytes, 
+   - (unsigned long long)L.cStamp, 
+   - (unsigned long long)L.f, 
+   - (unsigned long long)ringFrameIdx, (unsigned)cmdQuad[0], 
+   - (unsigned long long)ringFrameIdx, (unsigned)prevNearW, 
+   - (unsigned long long)ringFrameIdx, (unsigned)prevSpread, 
+   - (unsigned long long)ringFrameIdx, (unsigned)prevVisible, 
+   - (unsigned long long)ringFrameIdx, (unsigned)s_peakVisible, 
+   - (unsigned long long)ringFrameIdx, (unsigned)vis, priorSlot, x2
+   - (unsigned long long)ringFrameIdx, probedSlot, 
+   - (unsigned long long)ringFrameIdx, probedSlot, (int)fencePresent, x3
+   - (unsigned long long)s_flagsMismatchTotal, (unsigned)mvpFp); 
+   - (unsigned long long)s_recipeIdxMismatchTotal, (unsigned)mvpFp); 
+   - (unsigned)cmdQuad[1], (unsigned)cmdQuad[2], (unsigned)cmdQuad[3], 
+   - (unsigned)expectedCount, (unsigned)vis, 
+   - (unsigned)firstBadCanaryF, (unsigned)firstBadThinF, 
+   - (unsigned)firstBadCanaryR, (unsigned)firstBadThinR, 
+   - (unsigned)flagsMismatchInFrame, (unsigned)firstBadIdxF, 
+   - (unsigned)prevVisible, (unsigned)mvpFp); x2
+   - (unsigned)prevVisible, (unsigned)prevNearW, 
+   - (unsigned)recipeMismatchInFrame, (unsigned)firstBadIdxR, 
+   - (unsigned)s_cmdMismatchCount); 
+   - (unsigned)s_flagsMismatchFrames, 
+   - (unsigned)s_nearWFrames, (unsigned)s_peakNearW, 
+   - (unsigned)s_peakNearW, (unsigned)s_nearWFrames); 
+   - (unsigned)s_peakVisible, (unsigned)mvpFp); 
+   - (unsigned)s_peakVisible, (unsigned)s_peakNearW, (unsigned)mvpFp); 
+   - (unsigned)s_recipeIdxMismatchFrames, 
+   - (unsigned)s_spreadFrames, (unsigned)s_peakSpread, 
+   - (unsigned)totalMiss, (unsigned)totalTimeout, (unsigned)mvpFp); 
+   - (unsigned)waitResult, (unsigned long long)waitUs, x2
+   - (unsigned)waitResult, (unsigned long long)waitUs, (unsigned)mvpFp); 
+   - (unsigned)waitResult, (unsigned)s_ringSkipCount); 
+   - (vis < (uint32_t)kMaxThinRecords ? vis : (uint32_t)kMaxThinRecords) * 6u; 
+   - (waitResult == GL_TIMEOUT_EXPIRED || waitResult == GL_WAIT_FAILED); 
+   - + Terrain::worldUnitsMapSide * 0.5f; 
+   - ++flagsMismatchInFrame; ++s_flagsMismatchTotal; 
+   - ++recipeMismatchInFrame; ++s_recipeIdxMismatchTotal; 
+   - ++s_cmdMismatchCount; 
+   - ++s_flagsMismatchFrames; 
+   - ++s_overshootCount; 
+   - ++s_recipeIdxMismatchFrames; 
+   - ++s_ringSkipCount; 
+   - ++s_spreadFrames; 
+   - - Terrain::worldUnitsMapSide * 0.5f; 
+   - --s_emitTail; 
+   - // x4
+   - //           7=canary, 8=cmdbuf, 9=solid window (Approach A). 
+   - //    Canary layout: word 0=recipeIdx, word 1=flags (paired per record). 
+   - //    Layout: [recipeIdx_0, flags_0, recipeIdx_1, flags_1, ...] 
+   - //    Thin record layout: dword 0=recipeIdx, dword 1=terrainHandle, 
+   - //    dword 2=flags, dword 3=cementWord, dwords 4..7=lightRGB0..3. 
+   - //   [0]=visibleCount, [1]=pad0_ (unused), [2]=pad1_ (near-zero clip.w count, 
+   - //   probe 4), [3]=pad2_ (recipe-spread corruption count, probe 5). 
+   - // (5 indices) almost certainly missed it; full coverage will catch it. 
+   - // (== g_dispatchMvp16; gos_terrain_water_stream.cpp:1409-1413) 
+   - // (GL_DRAW_INDIRECT_BUFFER for the draw, GL_SHADER_STORAGE_BUFFER for 
+   - // (declared at global file scope above - unqualified lookup 
+   - // (full-range fallback == current HEAD behavior).  CPU-side value, no 
+   - // (map geometry constants + waterElevation, NOT camera): the 
+   - // (one-frame-back latch) and the 1 steady frame AFTER, so the 
+   - // (parity_probe_100pct: probe must equal producer). z_decal is 
+   - // (projection scale + translation) by >>1e-4 in one frame. A 
+   - // (see comment in that block). 
+   - // (the matrix the decal overlay binds), and the cross-TU sampled CPU 
+   - // (this code) only runs ARMED, i.e. exactly when CPU water is 
+   - // --- Emit (transition frames only, latched) ---------------- 
+   - // --- Fixed probe point P ----------------------------------- 
+   - // --- Transition detector ----------------------------------- 
+   - // ------------------------------------------------------------------ x2
+   - // 0.0025) for the water vertex nearest the SAME fixed P. 
+   - // 1) Bulk-read canary[0..2*vis-1] (single readback, vis*8 bytes). 
+   - // 120 -> generated 260) had the shader skip ~79% of quads (edge + index 
+   - // 2) Read full thin records as packed block (vis * 32 bytes). 
+   - // 3) Compare BOTH recipeIdx AND flags. 
+   - // Also emit the 1 steady frame immediately BEFORE a transition 
+   - // Always stash the latest (steady or not) for the next 
+   - // Approach A: 1 == read vn0 from solidWin[id]; 0 == identity vn0 = id 
+   - // Approach A: camera-windowed recipe-index buffer.  Only meaningful when 
+   - // Approach A: window-vs-identity gate for the solid index buffer. 
+   - // Binding 9 is the first free slot — chosen to avoid the collision the 
+   - // Bindings: 0=recipe, 1=lighting, 2=terrainHandleLut, 3=thin, 6=header, 
+   - // C-02: if the fence for this slot was not signaled (timeout=0 above), the 
+   - // C-02: use timeout=0 (non-blocking) instead of 10ms so the CPU never 
+   - // C-04 (non-blocking): only issue glGetBufferSubData when the fence for 
+   - // CLAUDE.md Known issues), which jumps several matrix entries 
+   - // CPU WATER: SAMPLED real produced value (NOT a CPU re-derive; 
+   - // CPU readback sees correct data in VRAM (probe 6 full coverage silent). 
+   - // CRITICAL: CPU water and the GPU fast path are mutually 
+   - // Cost: one 16-byte readback per frame (one DrawArraysIndirectCommand). 
+   - // Cost: one 4-byte readback per frame.  The fence wait above guarantees 
+   - // Cost: visibleCount * 4 bytes for canary + visibleCount * 4 bytes for 
+   - // DECAL (post-Fix B, probe==producer): the armed overlay/ 
+   - // DISPATCH 1: cull/pack (gpu_driven_terrain_solid.comp) 
+   - // Deterministic mid-map XY at the water plane. FRAME-STABLE 
+   - // DrawIndirect is suppressed — no fences are ever written, so every frame 
+   - // EXACTLY g_dispatchMvp16 -- see :1521 decl + :1894 bake); 
+   - // Env-gated MC2_DEPTH_TRANSITION_PROBE (cached static const bool; 
+   - // FNV-1a over rotation/translation rows (skip projection row mvp[12..15]) 
+   - // Fence signaled (GL_ALREADY_SIGNALED or GL_CONDITION_SATISFIED). 
+   - // Forces full GPU pipeline drain after the compute dispatches. 
+   - // GL_COMMAND_BARRIER_BIT means the GPU has finished cmd-patch; no stall. 
+   - // GPU WATER (fast MDI): mirror 
+   - // GPU readback. 
+   - // GPU-SYNC-CONTRACT: order the cmd-count clear (and the recipe/window/LUT 
+   - // GPU-water producer's exact matrix this frame. screen.z = 
+   - // If GL_TIMEOUT_EXPIRED: fence NOT deleted; slot still in-flight. 
+   - // If a cmd-patch race is occurring under fast rotation, cmd.count may not equal 
+   - // If silent AND bug visible, recipe is fine — corruption is in the 
+   - // If the giant-triangle bug DISAPPEARS with this on, the barrier is 
+   - // LAST get dropped — atomicAdd ordering is race-dependent → different 
+   - // Lazy-allocate bucket header SSBO (16 B GpuDrivenBucketHeader) ONLY when 
+   - // Lazy-build compute programs and cache uniform locations + constant uniforms. 
+   - // MVP not yet valid).  This is benign startup, not a bug. 
+   - // Maintain prev MVP snapshot AFTER the diff (copy current -> 
+   - // NOTE: the plan named binding 7 for the window SSBO, but on this branch 
+   - // OVERLAY_DEPTH_BIAS (single-sourced mc2depth). This code is 
+   - // Per-frame: the current map's side. Stale-from-first-map here = all-black on 
+   - // Periodic peak summary even when MC2_RING_TRACE is off so manual 
+   - // Probe 4 tripwire: any frame where pad1_ > 0 means at least one quad 
+   - // Probe 5 tripwire: any frame where pad2_ > 0 means at least one 
+   - // Probe 6 (FULL COVERAGE): compare thin[i].recipeIdx vs canary[i] 
+   - // Probe 6 + 7a: lazy-allocate canary SSBO — 2*kMaxThinRecords uints, 
+   - // Project P with a given GL_FALSE row-major MVP using the 
+   - // RECIPE entry has worldPos corners spanning more than 2.5 cells — 
+   - // Read all 16 bytes of GpuDrivenBucketHeader: 
+   - // SKIPPED -- so g_cpuWaterProbeZ is the LAST un-armed steady 
+   - // Severe perf cost (every-frame stall); diagnostic-only, default OFF. 
+   - // Step 2b: bind the indirect-cmd buffer as SSBO at slot 8.  The primary 
+   - // Step 2b: bucket-header SSBO (when traced) gets the same per-frame clear 
+   - // Step 2b: bucket-header SSBO only bound when MC2_BUCKET_HEADER_TRACE 
+   - // Step 2b: parity probe retired with cmd-patch (commit 2a's safety net no 
+   - // Step 2b: u_bucketHeaderTrace — gate for hdr.{visibleCount,pad1_,pad2_} 
+   - // Step 2b: upload u_bucketHeaderTrace gate every frame.  Uniform values 
+   - // Step 2b: with cmd-patch retired the [RING_CMDPATCH] tripwire can no 
+   - // Step 2b: zero the indirect-cmd buffer's count slot (offset 0, 4 bytes) 
+   - // Strong candidate for the "huge garbage triangle" bug per 
+   - // TIER2-EXCLUDED: dead-path x2
+   - // The cull compute shader does atomicAdd(visibleCount, 1) unconditionally, 
+   - // The tripwire block below will log it, then we return early. 
+   - // This prevents a per-frame CPU stall on the default-ON GPU-driven path. 
+   - // Tripwire #1: missing fence past warmup OR fence timeout. 
+   - // Tripwire #2: prev-frame visibleCount overshoot. 
+   - // User-reported symptom: giant grey-banded triangle that appears in 
+   - // VS or downstream. 
+   - // WATER-REFLECTION-CLIP-1: armed ONLY for the duration of the reflection 
+   - // WATER-REFLECTION-CLIP-1: may be optimized out if unused by the 
+   - // Warmup window = 2*kThinRingFrames frames; first slot 1 wrap can miss 
+   - // When MC2_TERRAIN_LOD_CHUNK=1 the chunk path owns terrain rendering and 
+   - // a fence if frame-1's DrawIndirect didn't issue (recipe not ready / 
+   - // above).  If the fence was absent / still in-flight, reuse the last 
+   - // accounting) so there is nothing to cross-check; we still surface 
+   - // against).  The surviving MC2_RING_TRACE probe below still reads 
+   - // all hdr.* writes (including the slot-counter atomicAdd on visibleCount). 
+   - // all prior GPU commands are complete, so glGetBufferSubData is stall- 
+   - // and ComputeDispatch only runs armed, so this is the live 
+   - // any later different-size map (the shader's edge cull + index decompose use it). 
+   - // armed-only (ComputeDispatch), so the faithful producer model 
+   - // armed.  When unbound, the shader sees u_bucketHeaderTrace=0 and skips 
+   - // baked in the FIRST map's side and a later, larger map (e.g. editor blank 
+   - // baseInstance were initialized to {1,0,0} at allocation and are never 
+   - // below, which atomicAdds into cmds[0].count. Without this, NVIDIA may reorder 
+   - // bindings 7 (canary) and 8 (cmdbuf) are already occupied (post-VPL 
+   - // bridge.  If for any i the two disagree, the thin SSBO has been 
+   - // bug only reproduces on zoom/elevation-change, NOT pan — see 
+   - // by construction (Fix B). Retired the pre-Fix-B model (stale 
+   - // by gos_terrain_thin.vert:210) and to the `terrainMVP*vec4` 
+   - // bytes column-major, so clip[i] = sum_j m[j*4+i]*P[j]. This 
+   - // cached header values — a 1-frame-stale overshoot LOG is harmless. 
+   - // calculation now derives from the primary's atomicAdd accounting 
+   - // candidate root cause for the "huge garbage triangle on fast rotation" 
+   - // climb past the cap; in that case the records that ran the atomicAdd 
+   - // clip = (dispatch MVP) * P (the compute bakes tr.clipPos with 
+   - // clip.z/clip.w + WATER_DEPTH_FUDGE_FAST (0.0025). 
+   - // clobbered between compute write and our readback. 
+   - // cmds[0].count for the [RING_CMDPATCH] tripwire; its expected-value 
+   - // compute atomicAdds 6u into cmds[0].count per admitted record and uses 
+   - // compute write and VS read EVEN AT THE SAME RING SLOT.  This is the 
+   - // counterfactual constant dz_decal blind to the fix 
+   - // covers cross-target visibility within the frame. 
+   - // cpuw_fresh=1 only if the CPU sampler advanced its stamp 
+   - // decal callers (drawTerrainOverlays / drawDecalStaticBatch / 
+   - // decompose use the stale side) -> all-black terrain. Cache the location; 
+   - // diagnostic tracing is requested.  Default-off: zero allocation, zero 
+   - // does. Justification: a per-frame camera pan changes the MVP 
+   - // drawDecals) bind the symmetric-mirror MVP -- armed -> 
+   - // driver in some future shader revision; -1 is handled below (skip 
+   - // dumps each flat consumer's ACTUAL resulting screen-z for a FIXED 
+   - // dz across the transition is therefore attributable purely to 
+   - // entries) stay below it, small enough that a discrete zoom 
+   - // event AND on every 100x increase in s_nearWFrames so we don't 
+   - // every frame before the primary dispatch.  instanceCount / first / 
+   - // every other call site (main SOLID dispatch) -> byte-identical pzOk. 
+   - // evidence, a fabricated this-frame CPU value would be false). 
+   - // exact matrix terrain-solid's Fix-B clipPos bake + the armed GPU 
+   - // exclusive per frame (terrain.cpp:1225-1229). ComputeDispatch 
+   - // fast path binds gos_terrain_indirect_getDispatchMvp16() 
+   - // file's authoritative convention (see :1881-1898 and 
+   - // fires AND the bug is visible, recipe data is the root cause. 
+   - // flood and let useful diagnostics from the LOD chunk path show up in logs. 
+   - // flood the log when the bug is continuous. 
+   - // for EVERY i in [0, visibleCount).  Compute writes both at the same 
+   - // frames drop different records → thin-SSBO content varies between 
+   - // frames print, never rendering. 
+   - // free here on AMD/NV (driver fast-path for already-signaled buffers). 
+   - // from mapTopLeft3d.x, Y decreases from mapTopLeft3d.y. 
+   - // g_solidBucketHeaderSsbo is 0. 
+   - // garbage/giant terrain triangles on fast camera motion. AMD tolerated the 
+   - // gate, not a control path; over/under-trip only changes which 
+   - // glBufferSubData uploads earlier this frame) BEFORE the cull/pack dispatch 
+   - // gos_terrain_indirect_getDispatchMvp16() == g_dispatchMvp16, 
+   - // gos_terrain_water_fast_mdi.vert:291 exactly. The armed water 
+   - // gos_terrain_water_stream.cpp:1429 — raw printf+fflush). HIGH STAKES: 
+   - // ground-truth evidence that the recipe SSBO is corrupt.  If this 
+   - // header SSBO is also armed (MC2_BUCKET_HEADER_TRACE).  When it is 
+   - // here binds the global ::g_cpuWaterProbe* defined in quad.cpp) 
+   - // in gameos_graphics.cpp) -- and terrain_overlay.vert adds 
+   - // in gos_terrain_water_fast_mdi.vert:283 and 
+   - // inactive the shader uses identity (vn0 = id) and never reads solidWin[]. 
+   - // insufficient on AMD — VS reads stale thin records via L1$ even though 
+   - // is byte-identical to gpu_driven_terrain_solid.comp's 
+   - // is czT/cwT + OVERLAY_DEPTH_BIAS, co-planar with z_terr/z_gpuw 
+   - // is safer than once-at-compile. 
+   - // is still in use by the GPU; skip this dispatch entirely (return below) 
+   - // is structurally blind (it FNV-hashes the MVP, not the downstream 
+   - // it always had.  No-op when MC2_BUCKET_HEADER_TRACE is unset because 
+   - // jumps ~1e-2+) trips it decisively. This is a DIAGNOSTIC 
+   - // liveMvp gos_GetTerrainMVPMat4 + kPolyOffsetNdcApprox modelling 
+   - // loads. The program is compiled once per process, so uploading it here 
+   - // longer needed once cmd-patch is gone -- there is nothing to compare 
+   - // longer recompute expected from hdr.visibleCount unless the bucket- 
+   - // maxDelta = max_i |g_dispatchMvp16[i] - prev[i]|. kEps chosen 
+   - // memory/clip_w_sign_trap.md.  Rate-limit by printing only on first 
+   - // memory/terrain_mvp_gl_false.md): GLSL reads our row-major 
+   - // min(visibleCount, kMaxThinRecords) * 6.  Reading it here after the 
+   - // models over real data; a flagged-stale real value is honest 
+   - // motion. MC2 world layout (terrain.h:367-368): X increases 
+   - // never bound by the bridge.  Compute writes [recipeIdx, flags] per record. 
+   - // never silently trusted (we have been wrong 3x trusting 
+   - // now exact, not an approximation. 
+   - // off, cmdQuad[0] IS the authoritative count (primary's atomicAdd 
+   - // omission. (Routed through the typed helper, not a hand-placed barrier.) 
+   - // outSlot in the SAME dispatch; canary buffer is never bound by the 
+   - // pass's own ComputeDispatch() call (see RenderWaterReflectionPass). 0 on 
+   - // passed the pzOk gate while having a corner with |clip.w| < 0.05. 
+   - // past warmup triggers fenceMissedAfterWarmup. Gate it out to silence the 
+   - // per-consumer depth-fudge). RenderDoc cannot capture a 1-frame 
+   - // per-frame pan deltas (empirically ~1e-5..1e-4 in these 
+   - // per-frame work, zero binding. 
+   - // plan explicitly warned against. 
+   - // pointing to different recipes each occurrence.  Sample-based probe 
+   - // possible but acceptable for diagnostic. 
+   - // preserved: the fence is only deleted when it has signaled. 
+   - // prev). s_prevValid gates the first frame (no prior to diff). 
+   - // print; s_havePrevSteady stashes the immediately-preceding 
+   - // prior GPU consumer is still reading it.  Skip the dispatch to preserve ring 
+   - // probedSlot already signaled (GPU-done confirmed by the timeout=0 wait 
+   - // projectClip() (terrain-solid's clipPos source, read verbatim 
+   - // re-written (cmd-patch dispatch retired). 
+   - // reachable here). TerrainQuad::drawWater (mclib/quad.cpp 
+   - // reset across glUseProgram cycles on some drivers, so per-frame upload 
+   - // retirement additions that did not exist when 08bd3b2 freed binding 2). 
+   - // rotation rate but is insensitive to projection-only mutation. 
+   - // runs without env-var still surface the peak visible count. 
+   - // s_emitTail counts down post-transition steady frames to 
+   - // s_solidUseWindow==1; bound unconditionally (when allocated) so the 
+   - // safety; the slot fence is left intact so the next frame can retry. 
+   - // sample, NOT this-frame data. We emit cpuw_stamp + its delta 
+   - // screen.z = clip.z/clip.w + TERRAIN_DEPTH_FUDGE (0.002, 
+   - // shader's solidWin[] declaration always resolves.  When the window is 
+   - // signature: cmd-patch clamps the count to 65536*6 but the records past 
+   - // silent default; matches the [WATER_DEPTHPROBE v2] idiom at 
+   - // since the previous emitted line AND it found a vertex. 
+   - // single-sourced mc2depth::TERRAIN_DEPTH_FUDGE). 
+   - // smooth same-magnitude pan would also trip a too-small kEps, 
+   - // so a smooth pan does NOT trip but a DISCRETE zoom-level step 
+   - // so kEps=1e-3f is used: large enough that normalized 
+   - // so we never overwrite an in-flight ring slot.  Ring-overwrite safety is 
+   - // speed); MC2's zoom is a DISCRETE camera-distance step (the 
+   - // stalls waiting for the GPU.  If the fence is not yet signaled the slot 
+   - // steady line so we can print it retroactively when a 
+   - // step (whole-number camera-distance change -> matrix entry 
+   - // terrain SOLID: mirror gos_terrain_thin.vert:219 exactly. 
+   - // terrain_overlay.vert:31 (same upload convention). 
+   - // the REMOVED glPolygonOffset(-1,-1)); that produced a 
+   - // the SAME matrix z_terr/z_gpuw use here (uploadOverlayUniforms_ 
+   - // the Stuff eye->projectForTerrainAdmission pipeline is not 
+   - // the atomicAdd).  Coherent qualifier on the shader-side declaration 
+   - // the bucket-header trace path is off.  Buffer is double-bound 
+   - // the clear after the dispatch -> atomicAdd accumulates onto a stale count -> 
+   - // the kept records are race-dependent. 
+   - // the normalized clip-matrix entries per frame at normal pan 
+   - // the per-consumer depth-fudge x MVP interaction, not point 
+   - // the raw cmd values via the existing RING_PEAK summary. 
+   - // the returned-before-increment value as the thin-record slot index when 
+   - // then early-returns if outSlot >= kMaxThinRecords.  So visibleCount can 
+   - // thin.recipeIdx = ~80KB/frame at peak visibleCount=10000. PCIe stall 
+   - // this zoom-step depth-pop root-cause has been WRONG 3x. The probe 
+   - // transient. ZERO behavior change: pure reads of g_dispatchMvp16 (the 
+   - // transition is detected (cheap: 4 floats). 
+   - // transition's retroactive "pre" line. 
+   - // transition-frame dz can be compared to adjacent steady dz. 
+   - // translation row by a small continuous increment (sub-1e-4 in 
+   - // u_mapSide is NOT a constant: it changes whenever a different-size map 
+   - // upload the live value per frame in ComputeDispatch(). 
+   - // upload, shader-side uniform defaults to 0 = main-pass behavior). 
+   - // variance is ONE thin record per frame having a corrupt recipeIdx 
+   - // varied screen locations (skybox / mid-screen / behind terrain at 
+   - // vs the previous dump so a stale CPU value is VISIBLE and 
+   - // water fast path both project with this frame), live terrain_mvp_ 
+   - // water level) frame-to-frame.  Only mechanism that explains location 
+   - // water value; O(1)/frame; printf only on transition frames (latched). 
+   - // world point ONLY on the MVP-transition (zoom-step) frame so the 
+   - // writes in the primary compute shader. 
+   - // ~0.1-unit 1-frame pop is numerically visible. [WATER_DEPTHPROBE v2] 
+   - // ~:3345) latches vertices[k]->wz + WATER_DEPTH_FUDGE (raster 
+   - // — gives a stable fingerprint that changes proportionally to camera 
+   - // ── Probe 3 (MC2_RING_TRACE) — read back the indirect cmd's count after patch ── 
+   - // ── Probe 7 (MC2_RING_FORCE_FINISH) — directed barrier-hypothesis test ── 
+   - // ── [DEPTH_TRANSITION v1] zoom-step depth-pop diagnostic ─────────── 
+   - // ── end [DEPTH_TRANSITION v1] ────────────────────────────────────── 
+   - : (s_nextNearWReportAt * 10); 
+   - : (s_nextSpreadReportAt * 10); 
+   - ? (s_nextFlagsReportAt + 1) : (s_nextFlagsReportAt * 10); 
+   - ? (s_nextRecipeReportAt + 1) : (s_nextRecipeReportAt * 10); 
+   - ? prevVisible : (uint32_t)kMaxThinRecords; 
+   - DtLine cur; 
+   - ForceDisableArmingForProcess(); x2
+   - GL_RED_INTEGER, GL_UNSIGNED_INT, &zero); x2
+   - GL_SYNC_FLUSH_COMMANDS_BIT, 0u /*non-blocking*/); 
+   - MC2_DIAGFE(stderr, 
+   - MC2_DIAGFE(stderr, "[TERRAIN_INDIRECT v1] event=error msg=solid_compute_compile_failed\n"); 
+   - MC2_GL_BufferData(GL_SHADER_STORAGE_BUFFER, 
+   - MC2_GL_BufferData(GL_SHADER_STORAGE_BUFFER, 16, nullptr, GL_DYNAMIC_DRAW); 
+   - MC2_GL_UseProgram(0); x2
+   - MC2_GL_UseProgram(g_solidComputeProgram); x2
+   - PROBE_LOG( x8
+   - PROBE_LOG("[RING_SKIP v1] frame=%llu slot=%d wait=0x%x skip_total=%u\n", 
+   - auto emitLine = [&](const DtLine& L, const char* kind) { 
+   - auto projZ = [](const float* m, 
+   - const GLint locMTR  = glGetUniformLocation(g_solidComputeProgram, "u_maxThinRecords"); 
+   - const GLint locWUPV = glGetUniformLocation(g_solidComputeProgram, "u_worldUnitsPerVertex"); 
+   - const GLintptr thinSlotByteOffset = (GLintptr)(priorSlot * kThinRecordBytes); 
+   - const auto t0 = std::chrono::steady_clock::now(); 
+   - const auto t1 = std::chrono::steady_clock::now(); 
+   - const bool fenceMissedAfterWarmup = 
+   - const bool gpuDone = (waitResult == GL_ALREADY_SIGNALED || 
+   - const bool overshot = (prevVisible >= (uint32_t)kMaxThinRecords); 
+   - const bool s_lodChunkActive = mc2TerrainLodChunkEnabled();  // default-on aware 
+   - const bool timeoutFired = 
+   - const bool transition = s_prevValid && (maxDelta > kEps); 
+   - const float Px = Terrain::mapTopLeft3d.x 
+   - const float Py = Terrain::mapTopLeft3d.y 
+   - const float Pz = Terrain::waterElevation; 
+   - const float cw = 
+   - const float cz = 
+   - const float d = 
+   - const float kEps = 1.0e-3f; 
+   - const float z_cpuw = g_cpuWaterProbeZ; 
+   - const float z_decal = 
+   - const float z_gpuw = 
+   - const float z_terr = 
+   - const float* mvpProbe = gos_GetTerrainMVPMat4(); 
+   - const int   cpuwAny = g_cpuWaterProbeAny ? 1 : 0; 
+   - const int cpuwFresh = 
+   - const int decalOk = 1; 
+   - const int priorSlot = (g_thinRingSlot + kThinRingFrames - 1) % kThinRingFrames; 
+   - const long long cpuStampDelta = 
+   - const size_t thinDwords = (size_t)vis * 8u; 
+   - const uint32_t canaryF = s_canaryBuf[i * 2u + 1u]; 
+   - const uint32_t canaryR = s_canaryBuf[i * 2u]; 
+   - const uint32_t prevNearW   = s_hdr4Cached[2]; 
+   - const uint32_t prevSpread  = s_hdr4Cached[3]; 
+   - const uint32_t prevVisible = s_hdr4Cached[0]; 
+   - const uint32_t thinF   = s_thinBlock[i * 8u + 2u];   // flags 
+   - const uint32_t thinR   = s_thinBlock[i * 8u];        // recipeIdx 
+   - const uint32_t vis = prevVisible < (uint32_t)kMaxThinRecords 
+   - const uint32_t zero = 0u; x2
+   - const unsigned long long cpuStampNow = g_cpuWaterProbeStamp; 
+   - const unsigned long long f = ++s_dtFrame; 
+   - cpuStampDelta, decalOk); 
+   - cpuwFresh, L.cAny, 
+   - cur.cAny = cpuwAny; cur.cStamp = cpuStampNow; 
+   - cur.f = f; cur.md = maxDelta; 
+   - cur.zg = z_gpuw; cur.zd = z_decal; 
+   - cur.zt = z_terr; cur.zc = z_cpuw; 
+   - emitLine(cur, "post"); 
+   - emitLine(cur, "trans"); 
+   - emitLine(s_prevSteady, "pre"); 
+   - expectedCount = 
+   - fflush(stderr); x2
+   - fflush(stdout); x3
+   - firstBadCanaryF = canaryF; 
+   - firstBadCanaryR = canaryR; 
+   - firstBadIdxF    = i; 
+   - firstBadIdxR    = i; 
+   - firstBadThinF   = thinF; 
+   - firstBadThinR   = thinR; 
+   - float czT, cwT; 
+   - float maxDelta = 0.0f; 
+   - float x, float y, float z, 
+   - float& outZ, float& outW) { 
+   - for (int i = 0; i < 16; ++i) { 
+   - for (int k = 0; k < 12; ++k) { 
+   - for (uint32_t i = 0; i < vis; ++i) { 
+   - g_locSolidAO  = glGetUniformLocation(g_solidComputeProgram, "u_alphaOverride"); 
+   - g_locSolidBHT = glGetUniformLocation(g_solidComputeProgram, "u_bucketHeaderTrace"); 
+   - g_locSolidMS  = glGetUniformLocation(g_solidComputeProgram, "u_mapSide"); 
+   - g_locSolidMVP = glGetUniformLocation(g_solidComputeProgram, "u_worldToClipGL"); 
+   - g_locSolidReflPass = glGetUniformLocation(g_solidComputeProgram, "u_reflectionPass"); 
+   - g_locSolidUW  = glGetUniformLocation(g_solidComputeProgram, "u_useWindow"); 
+   - g_locSolidWC  = glGetUniformLocation(g_solidComputeProgram, "u_windowCount"); 
+   - g_locSolidWC, g_locSolidMVP); 
+   - g_solidComputeProgram = gpu_driven::BuildComputeProgramFromFile( 
+   - g_terrainHandleLutSSBO ? g_terrainHandleLutSSBO : 0); 
+   - g_thinRingFences[probedSlot] = 0; 
+   - glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0); x2
+   - glBindBuffer(GL_DRAW_INDIRECT_BUFFER, g_indirectCmdBuffer); x2
+   - glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0); x6
+   - glBindBuffer(GL_SHADER_STORAGE_BUFFER, g_solidBucketHeaderSsbo); x4
+   - glBindBuffer(GL_SHADER_STORAGE_BUFFER, g_thinCanarySSBO); x2
+   - glBindBuffer(GL_SHADER_STORAGE_BUFFER, g_thinRecordSSBO); 
+   - glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, g_recipeSSBO); 
+   - glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, lightSsbo); 
+   - glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, 
+   - glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, g_solidBucketHeaderSsbo); 
+   - glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7, g_thinCanarySSBO);  // probe 6 
+   - glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 8, g_indirectCmdBuffer); 
+   - glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 9, g_solidQuadWindowSsbo); 
+   - glClearBufferSubData(GL_DRAW_INDIRECT_BUFFER, GL_R32UI, 0, 4, 
+   - glClearBufferSubData(GL_SHADER_STORAGE_BUFFER, GL_R32UI, 0, 16, 
+   - glDeleteSync(g_thinRingFences[probedSlot]); 
+   - glFinish(); 
+   - glGenBuffers(1, &g_solidBucketHeaderSsbo); 
+   - glGenBuffers(1, &g_thinCanarySSBO); 
+   - glGetBufferSubData(GL_DRAW_INDIRECT_BUFFER, 0, (GLsizeiptr)sizeof(cmdQuad), cmdQuad); 
+   - glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, x2
+   - glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, (GLsizeiptr)sizeof(vis), &vis); 
+   - glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, thinSlotByteOffset, 
+   - glUniform1i(g_locSolidAO, Terrain::terrainTextures2 != nullptr ? 1 : 0); 
+   - glUniform1i(g_locSolidBHT, s_bucketHeaderTrace ? 1 : 0); 
+   - glUniform1i(g_locSolidMS, (int)Terrain::realVerticesMapSide); 
+   - glUniform1i(g_locSolidReflPass, s_solidReflectionPassActive ? 1 : 0); 
+   - glUniform1i(g_locSolidUW, s_solidUseWindow); 
+   - glUniform1i(g_locSolidWC, (int)windowCount); 
+   - gpuBindSsboRange(3, g_thinRecordSSBO, 
+   - gpuSyncBarrier(GpuProducer::ClearBuffer, GpuConsumer::ComputeShader, 
+   - if (canaryF != thinF) { 
+   - if (canaryR != thinR) { 
+   - if (d > maxDelta) maxDelta = d; 
+   - if (fenceMissedAfterWarmup || timeoutFired) { 
+   - if (flagsMismatchInFrame == 0) { 
+   - if (flagsMismatchInFrame > 0) { 
+   - if (g_locSolidAO >= 0) 
+   - if (g_locSolidBHT >= 0) 
+   - if (g_locSolidMS >= 0) 
+   - if (g_locSolidReflPass >= 0) 
+   - if (g_locSolidUW >= 0) 
+   - if (g_locSolidWC < 0 || g_locSolidMVP < 0) { 
+   - if (g_solidBucketHeaderSsbo != 0 && cmdQuad[0] != expectedCount) { 
+   - if (g_solidBucketHeaderSsbo != 0 && ringFrameIdx > 1) { 
+   - if (g_solidBucketHeaderSsbo != 0) 
+   - if (g_solidBucketHeaderSsbo != 0) { x2
+   - if (g_solidComputeProgram == 0) { x2
+   - if (g_solidQuadWindowSsbo != 0) 
+   - if (g_thinCanarySSBO == 0) { 
+   - if (g_thinRingFences[probedSlot]) { 
+   - if (gpuDone) { 
+   - if (locMTR  >= 0) glUniform1i(locMTR, (int)kMaxThinRecords); 
+   - if (locWUPV >= 0) glUniform1f(locWUPV, Terrain::worldUnitsPerVertex); 
+   - if (mvpProbe) { 
+   - if (overshot) { 
+   - if (prevNearW   > s_peakNearW  ) s_peakNearW   = prevNearW; 
+   - if (prevNearW > 0) ++s_nearWFrames; 
+   - if (prevNearW > 0) { 
+   - if (prevSpread > 0) { 
+   - if (prevSpread > s_peakSpread) s_peakSpread = prevSpread; 
+   - if (prevVisible > s_peakVisible) s_peakVisible = prevVisible; 
+   - if (recipeMismatchInFrame == 0) { 
+   - if (recipeMismatchInFrame > 0) { 
+   - if (ringFrameIdx - s_lastSummary >= 600) { 
+   - if (s_bucketHeaderTrace && g_solidBucketHeaderSsbo == 0) { 
+   - if (s_canaryBuf.size() < (size_t)vis * 2u) s_canaryBuf.resize((size_t)vis * 2u); 
+   - if (s_depthTransProbe) { 
+   - if (s_flagsMismatchFrames == s_nextFlagsReportAt) { 
+   - if (s_havePrevSteady) 
+   - if (s_nearWFrames == s_nextNearWReportAt) { 
+   - if (s_recipeIdxMismatchFrames == s_nextRecipeReportAt) { 
+   - if (s_ringForceFinish) { 
+   - if (s_ringTrace && g_indirectCmdBuffer != 0) { 
+   - if (s_ringTrace) { x2
+   - if (s_spreadFrames == s_nextSpreadReportAt) { 
+   - if (s_thinBlock.size() < thinDwords) s_thinBlock.resize(thinDwords); 
+   - if (s_thinCanaryEnabled && g_thinCanarySSBO != 0 && g_thinRecordSSBO != 0 && prevVisible > 0) { 
+   - if (transition) { 
+   - if (waitResult != GL_TIMEOUT_EXPIRED && waitResult != GL_WAIT_FAILED) { 
+   - if (waitResult == GL_TIMEOUT_EXPIRED || waitResult == GL_WAIT_FAILED) { 
+   - int cAny; unsigned long long cStamp; 
+   - kMaxThinRecords, (unsigned)s_overshootCount, x2
+   - kind, 
+   - m[0 * 4 + 2] * x + m[1 * 4 + 2] * y + 
+   - m[0 * 4 + 3] * x + m[1 * 4 + 3] * y + 
+   - m[2 * 4 + 2] * z + m[3 * 4 + 2]; 
+   - m[2 * 4 + 3] * z + m[3 * 4 + 3]; 
+   - memcpy(&bits, &mvpProbe[k], sizeof(bits)); 
+   - memcpy(g_prevDispatchMvp16, g_dispatchMvp16, 
+   - mvpFp *= 16777619u; 
+   - mvpFp = 2166136261u; 
+   - mvpFp ^= bits; 
+   - nullptr, GL_DYNAMIC_DRAW); 
+   - outZ = cz; outW = cw; 
+   - printf("[DEPTH_TRANSITION v1] kind=%s f=%llu " 
+   - printf("[RING v1] frame=%llu slot=%d fence=%d wait=0x%x wait_us=%llu " 
+   - printf("[RING v1] frame=%llu slot=%d fence=%d wait=0x%x wait_us=%llu mvpFp=0x%08x\n", 
+   - projZ(g_dispatchMvp16, Px, Py, Pz, czT, cwT); 
+   - return; x3
+   - s_canaryBuf.data()); 
+   - s_emitTail = 1;  // print 1 steady frame after 
+   - s_havePrevSteady = true; 
+   - s_lastSummary = ringFrameIdx; 
+   - s_nextFlagsReportAt = s_nextFlagsReportAt < 100 
+   - s_nextNearWReportAt = s_nextNearWReportAt < 100 ? (s_nextNearWReportAt + 1) 
+   - s_nextRecipeReportAt = s_nextRecipeReportAt < 100 
+   - s_nextSpreadReportAt = s_nextSpreadReportAt < 100 ? (s_nextSpreadReportAt + 1) 
+   - s_prevCpuStamp = L.cStamp; 
+   - s_prevSteady = cur; 
+   - s_prevValid = true; 
+   - s_thinBlock.data()); 
+   - sizeof(float) * 16); 
+   - static DtLine s_prevSteady = {0,0,0,0,0,0,0,0}; 
+   - static bool   s_havePrevSteady = false; 
+   - static bool  s_prevValid = false; 
+   - static const bool s_depthTransProbe = mc2::gate::get<"MC2_DEPTH_TRANSITION_PROBE">(); 
+   - static const bool s_ringForceFinish = mc2::gate::get<"MC2_RING_FORCE_FINISH">(); 
+   - static float g_prevDispatchMvp16[16] = { 0.0f }; 
+   - static int    s_emitTail = 0; 
+   - static std::vector<uint32_t> s_canaryBuf; 
+   - static std::vector<uint32_t> s_thinBlock; 
+   - static uint32_t s_cmdMismatchCount = 0; 
+   - static uint32_t s_flagsMismatchFrames     = 0; 
+   - static uint32_t s_hdr4Cached[4] = { 0, 0, 0, 0 }; 
+   - static uint32_t s_nearWFrames    = 0; 
+   - static uint32_t s_nextFlagsReportAt       = 1; 
+   - static uint32_t s_nextNearWReportAt = 1; 
+   - static uint32_t s_nextRecipeReportAt      = 1; 
+   - static uint32_t s_nextSpreadReportAt = 1; 
+   - static uint32_t s_overshootCount = 0; 
+   - static uint32_t s_peakNearW      = 0; 
+   - static uint32_t s_peakSpread   = 0; 
+   - static uint32_t s_peakVisible    = 0; 
+   - static uint32_t s_recipeIdxMismatchFrames = 0; 
+   - static uint32_t s_ringSkipCount = 0; 
+   - static uint32_t s_spreadFrames = 0; 
+   - static uint32_t s_tripwireMissCount    = 0; 
+   - static uint32_t s_tripwireTimeoutCount = 0; 
+   - static uint64_t s_flagsMismatchTotal      = 0; 
+   - static uint64_t s_lastSummary    = 0; 
+   - static uint64_t s_recipeIdxMismatchTotal  = 0; 
+   - static unsigned long long s_dtFrame = 0; 
+   - static unsigned long long s_prevCpuStamp = 0; 
+   - std::abs(g_dispatchMvp16[i] - g_prevDispatchMvp16[i]); 
+   - struct DtLine { 
+   - uint32_t bits = 0; 
+   - uint32_t cmdQuad[4] = { 0, 0, 0, 0 }; 
+   - uint32_t expectedCount = cmdQuad[0]; 
+   - uint32_t firstBadIdxF = 0, firstBadCanaryF = 0, firstBadThinF = 0; 
+   - uint32_t firstBadIdxR = 0, firstBadCanaryR = 0, firstBadThinR = 0; 
+   - uint32_t recipeMismatchInFrame = 0, flagsMismatchInFrame = 0; 
+   - uint32_t totalMiss    = (fenceMissedAfterWarmup ? ++s_tripwireMissCount    : s_tripwireMissCount); 
+   - uint32_t totalTimeout = (timeoutFired           ? ++s_tripwireTimeoutCount : s_tripwireTimeoutCount); 
+   - uint32_t vis = 0; 
+   - unsigned long long f; float md; float zt, zc, zg, zd; 
+   - waitResult = glClientWaitSync(g_thinRingFences[probedSlot], 
+   - waitResult == GL_CONDITION_SATISFIED); 
+   - waitUs = (uint64_t)std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0).count(); 
+   - { x3
+   - } x42
+   - } else if (s_emitTail > 0) { 
+   - } else if (s_ringTrace) { 
+   - }; x3
+PASS: inline expansion of the new function equals the original body

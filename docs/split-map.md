@@ -70,6 +70,7 @@ Split commit: `d9f3d13b6`.
 | `gos_terrain_indirect.cpp` | keeps the gate readers, N1 counters and cost-split roll-ups |
 | `gos_terrain_indirect_atlas.cpp` | gos_terrain_indirect: dense recipe storage, recipe slot build/flush, colormap atlas and cement catalog atlas upload. |
 | `gos_terrain_indirect_cement.cpp` | gos_terrain_indirect: cement and concrete classification, transition masks and PopulateRecipeCementWords. |
+| `gos_terrain_indirect_compute.cpp` | gos_terrain_indirect: the ComputeDispatch phases -- program build, ring fence wait and tripwires, counter clears, compute bindings and uniforms, the depth-transition probe and the post-dispatch probes. The orchestrator is in |
 | `gos_terrain_indirect_diag.cpp` | gos_terrain_indirect: parity printer, 600-frame summary and the recipe-versus-live parity comparison. |
 | `gos_terrain_indirect_dispatch.cpp` | gos_terrain_indirect: preflight arming, ComputeDispatch, DrawIndirect, the water reflection pass and the ring/MVP bridge accessors. |
 | `gos_terrain_indirect_mine_decal.cpp` | gos_terrain_indirect: mine static VBO and texture array, decal static VBO and their dirty tracking. |
