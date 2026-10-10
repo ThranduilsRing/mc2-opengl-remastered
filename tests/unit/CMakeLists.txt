@@ -22,8 +22,7 @@
 cmake_minimum_required(VERSION 3.16)
 project(mc2_tests CXX)
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+include("${CMAKE_CURRENT_LIST_DIR}/../../cmake/Mc2Standalone.cmake")
 
 # Resolve the worktree root (this CMakeLists lives at <root>/tests/unit/).
 get_filename_component(MC2_WORKTREE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
@@ -38,6 +37,7 @@ add_executable(mc2_tests
     test_frame_arena.cpp    # FRAME-ARENA-1: FrameArena typed L2 allocator invariants
     test_depth_hzb.cpp      # HZB-DEPTH-CONVENTION-TESTS-1: reverse-Z / HZB reduction contract
     test_host_services.cpp  # ENGINE-HOST-SERVICES-0: host-service contract + default impls
+    test_gate.cpp           # GATE-REGISTRY-G1A: truthiness matrix, slot cache, [CONFIG v1] dump
     test_tactical_overview.cpp   # TACTICAL-OVERVIEW-1: blend-state pure logic
     test_xform_convention.cpp    # XFORM-CONVENTION-HARNESS-1: clip-space convention lock
     test_capability.cpp     # UNIT-PROFILE-SEAM-1
@@ -130,6 +130,7 @@ add_executable(mc2_tests
     # globals (objectPath/artPath/...) instead of stand-ins.
     ${MC2_WORKTREE_ROOT}/mclib/paths.cpp      # path string globals (leaf)
 )
+mc2_link_gate(mc2_tests)
 
 # LOGGING-FACADE-P0: mc2log.h needs <format>/consteval (C++20); engine headers already build at 23.
 set_target_properties(mc2_tests PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON)

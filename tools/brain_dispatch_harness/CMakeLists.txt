@@ -1,8 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 project(brain_dispatch_harness CXX)
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+include("${CMAKE_CURRENT_LIST_DIR}/../../cmake/Mc2Standalone.cmake")
 
 # REPO_ROOT must be passed as -DREPO_ROOT=<abs_path>
 if(NOT DEFINED REPO_ROOT)
@@ -31,6 +30,7 @@ add_executable(brain_dispatch_harness
     stubs/brain_tick_stub.cpp   # BRAIN-DECISION-INTENT-QUEUE-1: stub for getBrainTickIndex()
     stubs/tac_order_sink.cpp    # BRAIN-DISPATCH-HARNESS-V2: g_activeSink global
 )
+mc2_link_gate(brain_dispatch_harness)
 
 # Include path order is critical:
 #   1. stubs/include   — stub warrior.h, tacordr.h, gameobj.h, objmgr.h, inifile.h, dstd.h

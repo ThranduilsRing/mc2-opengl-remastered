@@ -14,8 +14,7 @@
 cmake_minimum_required(VERSION 3.16)
 project(mech_import_harness CXX)
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+include("${CMAKE_CURRENT_LIST_DIR}/../../cmake/Mc2Standalone.cmake")
 
 get_filename_component(MC2_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
 
@@ -40,6 +39,7 @@ add_executable(mech_import_harness
     mech_import_harness.cpp
     ${MC2_ROOT}/mclib/mech_skel_import.cpp
 )
+mc2_link_gate(mech_import_harness)
 target_include_directories(mech_import_harness PRIVATE ${MC2_ROOT}/mclib)
 target_link_libraries(mech_import_harness PRIVATE assimp::assimp)
-target_compile_features(mech_import_harness PRIVATE cxx_std_17)
+target_compile_features(mech_import_harness PRIVATE cxx_std_20)

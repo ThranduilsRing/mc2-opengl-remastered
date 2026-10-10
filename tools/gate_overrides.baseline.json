@@ -1,0 +1,4 @@
+{
+ "count": 0,
+ "note": "Per-site gate::get<name, Rule::...> overrides outside Gates/: tools/gate_gen.py --check fails when the count rises. Each override carries a retireBy and exists only for a reader G0 did not unify."
+}

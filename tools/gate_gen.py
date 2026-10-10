@@ -66,6 +66,10 @@ SEED_VERSION = 1
 CPP_DIRS = ["code", "mclib", "GameOS", "RenderCore", "GuiRuntime", "RenderWorld",
             "GameAdapters", "HostServices", "EditorBridge", "editor", "gui", "tools", "tests"]
 
+#: C++ files whose "MC2_*" literals are synthetic rows or negative cases, not gates the engine reads
+#: (the gate module's own unit test): excluded from the seed so it cannot invent gates.
+CPP_EXCLUDE = {"tests/unit/test_gate.cpp"}
+
 #: Where a gate being ASSIGNED a value is visible to routine runs.
 CONFIG_DIRS = ["scripts", "tests", "tools", "run", "data"]
 CONFIG_EXTS = (".py", ".sh", ".bat", ".ps1", ".cmd", ".json", ".yaml", ".yml")
@@ -583,7 +587,7 @@ class Inputs:
 
 
 def load_inputs(tree):
-    rels = [r for r in tree.list(CPP_DIRS, gi.SCAN_EXTS) if r != REGISTRY_REL]
+    rels = [r for r in tree.list(CPP_DIRS, gi.SCAN_EXTS) if r != REGISTRY_REL and r not in CPP_EXCLUDE]
     cpp = tree.read_all(rels)
     crels = set(tree.list(CONFIG_DIRS, CONFIG_EXTS))
     crels |= set(tree.list(CONFIG_DIRS, CONFIG_ROOT_EXTS, root_level=True))
@@ -1014,7 +1018,27 @@ def main(argv=None):
     ap.add_argument("--check-history", action="store_true")
     ap.add_argument("--worktree", action="store_true", help="read the working tree instead of a git revision")
     ap.add_argument("--rev", default="HEAD")
+    ap.add_argument("--init-table", action="store_true",
+                    help="write Gates/gate_table.cpp and the index from the seed (once; see gate_table_gen.py)")
+    ap.add_argument("--force", action="store_true", help="with --init-table: overwrite an existing table")
+    ap.add_argument("--write", action="store_true", help="regenerate Gates/gate_index.gen.h from Gates/gate_table.json")
+    ap.add_argument("--check", action="store_true", help="gate table checks (stage A; --rebuild adds stage B)")
+    ap.add_argument("--rebuild", action="store_true", help="with --check: rebuild tools/gate_dump and diff its JSON")
     args = ap.parse_args(argv)
+    if args.init_table or args.write or args.check:
+        import gate_table_gen as tg  # noqa: E402
+        if args.init_table:
+            return tg.init_table(args.root, args.force)
+        if args.write:
+            return tg.write_index(args.root)
+        fails = tg.check(args.root, args.rebuild)
+        if fails:
+            print("GATE-TABLE check FAILED")
+            for f in fails:
+                print("  - " + f)
+            return 1
+        print("gate_gen: gate table is consistent")
+        return 0
     if not (args.import_legacy or args.check_seed or args.stats or args.gate_history or args.check_history):
         ap.print_help()
         return 2

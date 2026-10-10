@@ -19,8 +19,7 @@
 cmake_minimum_required(VERSION 3.16)
 project(tg_import_dump CXX)
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+include("${CMAKE_CURRENT_LIST_DIR}/../../cmake/Mc2Standalone.cmake")
 
 get_filename_component(MC2_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
 
@@ -43,6 +42,7 @@ add_executable(tg_import_dump
     main.cpp
     stubs.cpp
     tgdump_seams.cpp
+    ${MC2_ROOT}/mclib/mc2_audit.cpp                             # leaf audit emitter msl.cpp calls
     # --- real importer + shared FK ---
     ${MC2_ROOT}/mclib/assimp_importer.cpp
     ${MC2_ROOT}/mclib/mech_skel_import.cpp
@@ -117,6 +117,7 @@ add_executable(tg_import_dump
     ${MC2_ROOT}/mclib/stuff/trace.cpp
     ${MC2_ROOT}/mclib/stuff/stuff.cpp
 )
+mc2_link_gate(tg_import_dump)
 
 target_compile_definitions(tg_import_dump PRIVATE
     PLATFORM_WINDOWS
@@ -138,4 +139,4 @@ target_include_directories(tg_import_dump PRIVATE
 
 # assimp::assimp = importer; zlibstatic = the one zlib (FastFile + assimp share it).
 target_link_libraries(tg_import_dump PRIVATE assimp::assimp zlibstatic)
-target_compile_features(tg_import_dump PRIVATE cxx_std_17)
+target_compile_features(tg_import_dump PRIVATE cxx_std_20)
