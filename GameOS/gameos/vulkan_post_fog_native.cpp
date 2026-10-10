@@ -52,6 +52,7 @@
 #include <vk_mem_alloc.h>
 
 #include "vk_image_resource.h"
+#include "vk_island_util.h"
 #include "vulkan_context.h"
 // Expose the VkImageResource getters (island-side halves).
 #define MC2_VULKAN_SHARED_SCENE_COLOR_IMPL_ISLAND
@@ -75,12 +76,9 @@
 namespace {
 
 void vlog(const char* fmt, ...) {
-    char buf[512];
     va_list ap; va_start(ap, fmt);
-    std::vsnprintf(buf, sizeof(buf), fmt, ap);
+    vk_island_util::vlogv512("[VK_POST_FOG_NATIVE] ", fmt, ap);
     va_end(ap);
-    std::fprintf(stderr, "[VK_POST_FOG_NATIVE] %s\n", buf);
-    std::fflush(stderr);
 }
 
 // Health snapshot — read by debug_state_dump.cpp via the extern "C" getter below
@@ -116,24 +114,7 @@ std::string spv_dir() {
 }
 
 VkShaderModule load_spv(VkDevice device, const std::string& path) {
-    std::FILE* f = std::fopen(path.c_str(), "rb");
-    if (!f) { vlog("cannot open spv '%s'.", path.c_str()); return VK_NULL_HANDLE; }
-    std::fseek(f, 0, SEEK_END);
-    long len = std::ftell(f);
-    std::fseek(f, 0, SEEK_SET);
-    if (len <= 0 || (len % 4) != 0) { vlog("spv '%s' bad size %ld.", path.c_str(), len); std::fclose(f); return VK_NULL_HANDLE; }
-    std::vector<uint32_t> code((size_t)len / 4);
-    size_t got = std::fread(code.data(), 1, (size_t)len, f);
-    std::fclose(f);
-    if (got != (size_t)len) { vlog("spv short read '%s'.", path.c_str()); return VK_NULL_HANDLE; }
-    VkShaderModuleCreateInfo smci{};
-    smci.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    smci.codeSize = (size_t)len; smci.pCode = code.data();
-    VkShaderModule mod = VK_NULL_HANDLE;
-    if (vkCreateShaderModule(device, &smci, nullptr, &mod) != VK_SUCCESS) {
-        vlog("vkCreateShaderModule('%s') failed.", path.c_str()); return VK_NULL_HANDLE;
-    }
-    return mod;
+    return vk_island_util::loadSpv(device, path, vlog);
 }
 
 // std140 PODs for the same edge/oob fog shaders as the retired subgraph path;`r`n// offsets are offline-checked by check_ubo_layout.py postfog_edge/postfog_oob.
