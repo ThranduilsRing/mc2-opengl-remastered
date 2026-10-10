@@ -39,6 +39,9 @@ import subprocess
 import sys
 from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
@@ -353,7 +356,7 @@ def list_files(dirs):
 
 def _git(args, inp=None):
     return subprocess.run(["git"] + args, cwd=ROOT, input=inp, stdout=subprocess.PIPE,
-                          stderr=subprocess.PIPE, check=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)).stdout
+                          stderr=subprocess.PIPE, check=True, **console_child.child_kwargs(redirected=True)).stdout
 
 
 def git_blobs(dirs, mode):
@@ -427,7 +430,7 @@ def per_file_counts(res):
 def git_head():
     try:
         return subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT,
-                                       stderr=subprocess.DEVNULL, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)).strip()
+                                       stderr=subprocess.DEVNULL, text=True, **console_child.child_kwargs(redirected=True)).strip()
     except Exception:
         return ""
 
@@ -452,7 +455,7 @@ def added_lines(rel):
     """{line numbers added vs HEAD} from git diff -U0, or None when git cannot tell."""
     try:
         d = subprocess.check_output(["git", "diff", "-U0", "HEAD", "--", rel], cwd=ROOT,
-                                    stderr=subprocess.DEVNULL, text=True, errors="replace", creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                                    stderr=subprocess.DEVNULL, text=True, errors="replace", **console_child.child_kwargs(redirected=True))
     except Exception:
         return None
     added = set()

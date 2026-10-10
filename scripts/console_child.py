@@ -32,9 +32,18 @@ server, a hook, a GUI-launched or DETACHED_PROCESS parent). So:
     are passed EXPLICITLY (stdin/stdout/stderr), which restores STARTF_USESTDHANDLES
     so the child writes to the parent's pipe/file instead of its hidden console.
 
-Use `child_kwargs()` for spawns that inherit stdio. Spawns that capture
-(capture_output / stdout=PIPE) never lose output and can keep a plain
-`creationflags=CREATE_NO_WINDOW`.
+Use `child_kwargs()` for EVERY console-child spawn. Spawns that redirect any
+std stream (capture_output / stdout=PIPE / stdin=DEVNULL / check_output) pass
+`child_kwargs(redirected=True)`: they never lose output, so only the flag is added.
+
+WHY NOT A BARE `creationflags=CREATE_NO_WINDOW`
+-----------------------------------------------
+Every child spawned with the flag from a parent that already has a console
+allocates ITS OWN hidden console, i.e. one `conhost.exe` per child. A
+check-contracts run spawns hundreds; enough of them crashed the owner's VPN
+split-tunnel process monitor (Private Internet Access, 2026-10-09). A consoled
+parent's children share its console, so no window can appear and no conhost is
+created -- the flag is only ever needed when the parent has no console.
 """
 from __future__ import annotations
 
@@ -72,13 +81,18 @@ def _std_arg(fd: int):
         return subprocess.DEVNULL
 
 
-def child_kwargs(**extra) -> dict:
-    """Kwargs to splat into a stdio-INHERITING subprocess call.
+def child_kwargs(*, redirected: bool = False, **extra) -> dict:
+    """Kwargs to splat into a console-child subprocess call.
 
     `subprocess.run(cmd, **console_child.child_kwargs())`. Returns `extra`
     unchanged when a console is present (or off Windows); otherwise adds
     CREATE_NO_WINDOW plus explicit stdin/stdout/stderr forwarding so the child's
     output and exit code reach the caller. Keys already in `extra` win.
+
+    `redirected=True` says the call itself redirects at least one std stream
+    (capture_output, stdout=, stderr=, stdin=, input=, check_output): Popen then
+    already hands the child explicit handles, so forwarding ours would clash with
+    the call's own arguments and only the flag is added.
     """
     kw = dict(extra)
     # Our own buffered text must land before the child's, or the two interleave
@@ -92,6 +106,8 @@ def child_kwargs(**extra) -> dict:
     if sys.platform != "win32" or has_console():
         return kw
     kw["creationflags"] = kw.get("creationflags", 0) | CREATE_NO_WINDOW
+    if redirected:
+        return kw
     for name, fd in (("stdin", 0), ("stdout", 1), ("stderr", 2)):
         kw.setdefault(name, _std_arg(fd))
     return kw

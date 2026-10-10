@@ -58,13 +58,16 @@ STOCK_OVERLAYS = _ovl.member(_OVERLAY_TILES[0]).parent if _ovl else None
 sys.path.insert(0, str(HERE))
 import marking_glyphs as mg  # noqa: E402
 import cook_markings as cm  # noqa: E402
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 
 def run(*args) -> subprocess.CompletedProcess:
     return subprocess.run(
         [sys.executable, str(TOOL), *args],
         capture_output=True, text=True,
-        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        **console_child.child_kwargs(redirected=True),
     )
 
 

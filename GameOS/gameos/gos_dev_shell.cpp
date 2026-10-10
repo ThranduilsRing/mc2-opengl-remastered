@@ -23,6 +23,7 @@
 #include "gos_frame_pass_stats.h"
 #include "gos_render_pass_timer.h"
 #include "RenderCore/RenderPassContract.h"
+#include "Gates/gate_cold.h"  // invalidate(): a typed gate re-parses after _putenv_s
 #include "../../mclib/txmmgr.h"  // texture_refresh: mcTextureManager->refreshTexturesByName
 
 namespace gos_dev_shell {
@@ -295,6 +296,8 @@ std::string cmdSetGate(const std::string& req)
         return makeReply(false, "set_gate: only MC2_* gates are settable", "");
     if (_putenv_s(name.c_str(), value.c_str()) != 0)
         return makeReply(false, "set_gate: _putenv_s failed", "");
+    // Typed gates cache their parse; drop it so live-read sites see the new value.
+    mc2::gate::invalidate(name);
     return makeReply(true, "",
         "{\"name\":\"" + jsonEscape(name) + "\",\"value\":\"" + jsonEscape(value)
         + "\",\"applied\":\"process_env_only\",\"note\":\"live-read gates apply on next check;"

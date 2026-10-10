@@ -94,6 +94,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools" / "mc2data"
 from stock_missions import (  # noqa: E402
     StockDataError, add_allow_nonstock_arg, verify_pak_from_args,
 )
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 WORLD_UNITS_PER_VERTEX = 128.0
 
@@ -352,7 +355,7 @@ def _esrgan_upscale(rgba: np.ndarray, exe: Path, model: str) -> np.ndarray | Non
         try:
             r = subprocess.run([str(exe), "-i", str(src), "-o", str(dst),
                                 "-n", model, "-s", str(TWIN_REF_SCALE)],
-                               capture_output=True, text=True, timeout=120, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                               capture_output=True, text=True, timeout=120, **console_child.child_kwargs(redirected=True))
         except (OSError, subprocess.TimeoutExpired) as e:
             print(f"[twins] WARN esrgan failed ({e}); bicubic fallback", file=sys.stderr)
             return None

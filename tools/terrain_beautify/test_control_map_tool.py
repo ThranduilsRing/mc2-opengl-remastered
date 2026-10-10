@@ -36,13 +36,16 @@ sys.path.insert(0, str(HERE))
 from control_map_tool import (  # noqa: E402
     compute_slope_deg, classify_weights, area_average_downsample, weights_to_rgba,
 )
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 
 def run(*args) -> subprocess.CompletedProcess:
     return subprocess.run(
         [sys.executable, str(TOOL), *args],
         capture_output=True, text=True,
-        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        **console_child.child_kwargs(redirected=True),
     )
 
 

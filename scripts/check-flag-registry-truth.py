@@ -51,6 +51,9 @@ sys.path.insert(0, HERE)
 
 from registry_parse import (RegistryParseError, parse_registry,  # noqa: E402
                             parse_registry_text)
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 YAML_PATH = os.path.join(REPO_ROOT, "docs", "flags.auto.yaml")
 HEADER_PATH = os.path.join(REPO_ROOT, "RenderCore", "RendererFeatureRegistry.h")
@@ -80,7 +83,7 @@ def registry_from_head():
         r = subprocess.run(["git", "show", "HEAD:" + HEADER_REL],
                            cwd=REPO_ROOT, capture_output=True, text=True,
                            encoding="utf-8", timeout=20,
-                           stdin=subprocess.DEVNULL, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                           stdin=subprocess.DEVNULL, **console_child.child_kwargs(redirected=True))
         if r.returncode == 0 and r.stdout:
             return parse_registry_text(r.stdout, "HEAD:" + HEADER_REL), "HEAD"
     except (OSError, subprocess.SubprocessError):

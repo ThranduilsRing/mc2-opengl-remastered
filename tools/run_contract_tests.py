@@ -25,6 +25,9 @@ import os
 import subprocess
 import sys
 import time
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 # Explicit registries (NOT discovery — explicit beats clever; never auto-scan
 # build dirs for stray/experimental harnesses).
@@ -117,7 +120,7 @@ def run_harness(cmd):
     Works for native exes ([exe]) and Python harnesses ([python, script])."""
     try:
         proc = subprocess.run(list(cmd) + ["--json"], capture_output=True,
-                              text=True, timeout=60, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                              text=True, timeout=60, **console_child.child_kwargs(redirected=True))
     except Exception as e:  # noqa: BLE001
         return False, {"error": str(e)}
     ok = proc.returncode == 0

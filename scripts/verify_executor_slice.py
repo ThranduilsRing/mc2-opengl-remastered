@@ -27,6 +27,9 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 # ---------------------------------------------------------------------------
 # Gate-counter map (also used by run_smoke.py --require-gate).
@@ -193,7 +196,7 @@ def _run_smoke(
         capture_output=True,
         text=True,
         env=env,
-        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        **console_child.child_kwargs(redirected=True),
     )
     return result.returncode, result.stderr
 
@@ -331,7 +334,7 @@ def check_deploy_current(exe: str) -> tuple[str, str, str]:
         result = subprocess.run(
             ["git", "rev-parse", "HEAD"],
             capture_output=True, text=True,
-            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            **console_child.child_kwargs(redirected=True),
         )
         head = result.stdout.strip()
         if not head:

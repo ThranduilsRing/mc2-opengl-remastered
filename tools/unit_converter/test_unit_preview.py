@@ -17,6 +17,9 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(_HERE))  # so `import unit_converter` works
 
 from unit_converter import unit_preview as UP  # noqa: E402
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 
 def _row(**kw):
@@ -189,7 +192,7 @@ def test_report_deterministic_across_hashseed(tmp_path):
     for seed in ("0", "1", "12345"):
         env = dict(os.environ, PYTHONHASHSEED=seed)
         r = subprocess.run([sys.executable, "-c", script], env=env,
-                           capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                           capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
         assert r.returncode == 0, r.stderr
         outs.append(r.stdout)
     assert outs[0] == outs[1] == outs[2]

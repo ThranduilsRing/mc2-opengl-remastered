@@ -30,6 +30,9 @@ import json
 import os
 import subprocess
 import sys
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 # Oracle missions known to produce autonomous headless combat.
 ORACLES = [
@@ -80,7 +83,7 @@ def run_oracle(oracle, exe, root, duration, quiet):
     cmd = [sys.executable, os.path.join(root, "scripts", "run_smoke.py"),
            "--exe", exe, "--no-lease", "--mission", mission,
            "--duration", str(duration), "--keep-logs"]
-    proc = subprocess.run(cmd, env=env, capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    proc = subprocess.run(cmd, env=env, capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
     smoke_ok = (proc.returncode == 0)
 
     counts = count_combat_events(jsonl_path)

@@ -23,6 +23,9 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 ROOT = Path(__file__).resolve().parent.parent
 DEF_GLB = Path(r"A:/Games/mc2-opengl/BattleTech_2018_Dump/MadCat/marauder_fbx2gltf.glb")
@@ -60,7 +63,7 @@ def main():
     # Oracle: harness gpu-bones (--rest | --clip/--frame).
     oracle_cmd = [args.harness, "gpu-bones", args.glb, "--out", str(oracle_json)]
     oracle_cmd += (["--clip", args.clip, "--frame", str(args.frame)] if posed else ["--rest"])
-    subprocess.run(oracle_cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    subprocess.run(oracle_cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, **console_child.child_kwargs(redirected=True))
 
     # Engine: tg_import_dump runs the real import bake; MC2_MECH_SKEL_BONE_DUMP writes
     # bones. MC2_MECH_IMPORT_FORCE_CLIP/_FRAME pose the bake to the same clip frame.
@@ -73,7 +76,7 @@ def main():
         env.pop("MC2_MECH_IMPORT_FORCE_CLIP", None)
         env.pop("MC2_MECH_IMPORT_FORCE_FRAME", None)
     subprocess.run([args.tgdump, args.glb], check=True, env=env,
-                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, **console_child.child_kwargs(redirected=True))
 
     if not oracle_json.exists() or not engine_json.exists():
         sys.exit("FAIL: one side produced no bone dump")

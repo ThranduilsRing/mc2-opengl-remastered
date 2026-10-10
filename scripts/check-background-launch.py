@@ -447,19 +447,45 @@ CHILD_ARGV = re.compile(
     r"tasklist|wmic)(\.exe)?[\"']|\.exe\b|\bexe\b|_exe\b|\bcmd\b|\bargv\b|\bargs\b|"
     r"\bbash\b|\bcommand\b", re.IGNORECASE)
 
+#: Files allowed a literal CREATE_NO_WINDOW (RULE 10 bare-flag ban), with the reason.
+#: scripts/smoke_lib/ is owned by the smoke-lane and spawns once per smoke run.
+BARE_FLAG_EXEMPT = {
+    "scripts/smoke_lib/isolation.py":
+        "one-shot isolation canary per smoke run, owned by smoke_lib",
+}
+
 CHILD_SPAWN_CALLS = LAUNCH_CALLS + ("os.startfile", "os.popen")
 
 
-def _is_hidden_spawn(node: ast.Call, src: str) -> bool:
-    """True when the call carries a no-window creation flag or the nofocus kwargs."""
-    seg = ast.get_source_segment(src, node) or ""
+def _spawn_kind(node: ast.Call, src: str):
+    """How a console-child spawn handles its window.
+
+    "child"    -- **console_child.child_kwargs(): the required form. It adds
+                  CREATE_NO_WINDOW only when the parent has no console.
+    "hidden"   -- **nofocus.hidden_kwargs()/popen_kwargs(): the smoke library's own form
+                  (hidden_kwargs applies the same flag-only-without-a-console rule).
+    "detached" -- creationflags=DETACHED_PROCESS: no console and no conhost at all.
+    "bare"     -- a literal creationflags=...CREATE_NO_WINDOW / 0x08000000. FORBIDDEN:
+                  from a parent that already has a console it allocates a NEW
+                  hidden console (one conhost.exe per child). check-contracts
+                  spawns hundreds; that crashed the owner's VPN split-tunnel
+                  process monitor on 2026-10-09.
+    None       -- no window handling at all.
+    """
+    bare = False
     for kw in node.keywords:
         ks = ast.get_source_segment(src, kw.value) or ""
-        if kw.arg == "creationflags" and re.search(r"NO_WINDOW|DETACHED_PROCESS|0x08000000", ks):
-            return True
-        if kw.arg is None and re.search(r"hidden_kwargs|popen_kwargs|child_kwargs", ks):
-            return True
-    return False
+        if kw.arg == "creationflags":
+            if re.search(r"NO_WINDOW|0x08000000", ks):
+                bare = True
+            elif re.search(r"DETACHED_PROCESS", ks):
+                return "detached"
+        if kw.arg is None:
+            if re.search(r"child_kwargs", ks):
+                return "child"
+            if re.search(r"hidden_kwargs|popen_kwargs", ks):
+                return "hidden"
+    return "bare" if bare else None
 
 
 def argv_variants(node: ast.Call, src: str, assigns: dict) -> list:
@@ -538,6 +564,8 @@ def check(root: Path = ROOT, use_git: bool = True):
     unhidden: dict[str, list] = {}
     #: file -> {lineno: reason} for console spawns carrying the allow marker.
     allowed_child: dict[str, dict] = {}
+    #: file -> [lineno] of console-child spawns using a literal CREATE_NO_WINDOW.
+    bare_flag: dict[str, list] = {}
 
     for path in iter_py(root, use_git):
         r = rel(path, root)
@@ -631,13 +659,19 @@ def check(root: Path = ROOT, use_git: bool = True):
                 continue
             if not any(CHILD_ARGV.search(v) for v in variants) and not CHILD_ARGV.search(seg):
                 continue
-            if _is_hidden_spawn(node, src):
+            kind = _spawn_kind(node, src)
+            if kind in ("child", "hidden", "detached"):
                 continue
             why = allow_reason(lines, node)
             if why:
                 allowed_child.setdefault(r, {})[node.lineno] = why
                 continue
-            unhidden.setdefault(r, []).append(node.lineno)
+            if kind == "bare" and r in BARE_FLAG_EXEMPT:
+                continue
+            if kind == "bare":
+                bare_flag.setdefault(r, []).append(node.lineno)
+            else:
+                unhidden.setdefault(r, []).append(node.lineno)
 
         # ---- RULE 2: env policies must not strip the windowing vars ----
         if r in ENV_DENY_BY_DEFAULT or r in ENV_FORCE_POLICIES:
@@ -794,6 +828,18 @@ def check(root: Path = ROOT, use_git: bool = True):
             if root == ROOT and CHILD_BASELINE_PATH.is_file() else {}
     except Exception:
         baseline = {}
+    for r, lns in sorted(bare_flag.items()):
+        shown = ", ".join(str(n) for n in lns[:6])
+        problems.append(
+            f"{r}:{lns[0]}: {len(lns)} console-child spawn(s) with a bare "
+            f"creationflags=CREATE_NO_WINDOW (lines {shown}"
+            f"{'...' if len(lns) > 6 else ''}). From a parent that already has a "
+            f"console the flag allocates a NEW hidden console per child -- one "
+            f"conhost.exe each; hundreds per check-contracts run crashed the "
+            f"owner's VPN split-tunnel monitor. Use "
+            f"**console_child.child_kwargs() (add redirected=True when the call "
+            f"captures/redirects stdio), which adds the flag only when this "
+            f"process has no console, or add `# background-launch: allow <why>`.")
     for r, lns in sorted(unhidden.items()):
         strict = r in STRICT_CHILD_FILES or r.startswith(STRICT_CHILD_PREFIXES) \
             or r in launch_files
@@ -807,8 +853,8 @@ def check(root: Path = ROOT, use_git: bool = True):
                 + ("" if strict else f"; baseline allows {allowed_n}")
                 + ". OWNER RULE: no window may appear, including a console "
                   "window of a helper spawned during a run. Pass "
-                  "**nofocus.hidden_kwargs() (and redirect stdout/stderr), or "
-                  "add `# background-launch: allow <why>`.")
+                  "**console_child.child_kwargs() (redirected=True if the call "
+                  "captures stdio), or add `# background-launch: allow <why>`.")
 
     extras = {"allowed_raw": allowed_raw, "shell": shell_launchers,
               "unhidden": {k: len(v) for k, v in unhidden.items()},
@@ -932,10 +978,22 @@ _SELFTEST_FILES = {
         "def go():\n"
         "    return subprocess.run([sys.executable, 'x.py'], capture_output=True,\n"
         "                          **nofocus.hidden_kwargs())\n"
-        "def go2():\n"
-        "    return subprocess.run(['cmd'], creationflags=subprocess.CREATE_NO_WINDOW)\n"
         "def go3():\n"
         "    return subprocess.run(['cmd'], **console_child.child_kwargs())\n"),
+    # RULE 10: a bare CREATE_NO_WINDOW on a console child is forbidden (conhost per child).
+    "scripts/bare_flag.py": (
+        "import subprocess, sys\n"
+        "def go():\n"
+        "    return subprocess.run(['cmd'], creationflags=subprocess.CREATE_NO_WINDOW)\n"
+        "def go2():\n"
+        "    return subprocess.run([sys.executable, 'x.py'], capture_output=True,\n"
+        "                          creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))\n"),
+    # same, but carrying the allow marker -> passes.
+    "scripts/bare_flag_allowed.py": (
+        "import subprocess\n"
+        "def go():\n"
+        "    # background-launch: allow selftest fixture\n"
+        "    return subprocess.run(['cmd'], creationflags=subprocess.CREATE_NO_WINDOW)\n"),
     # python launcher that merely takes an exe path -> not an engine launch.
     "scripts/py_wrapper.py": (
         "import subprocess, sys\n"
@@ -987,7 +1045,11 @@ def selftest() -> int:
         expect(flagged("scripts/mcp/unhidden.py", "CREATE_NO_WINDOW"),
                "console child without a no-window flag FAILS in a strict path")
         expect(not flagged("scripts/mcp/hidden.py"),
-               "hidden_kwargs()/child_kwargs()/CREATE_NO_WINDOW children pass RULE 10")
+               "hidden_kwargs()/child_kwargs() children pass RULE 10")
+        expect(flagged("scripts/bare_flag.py", "bare creationflags=CREATE_NO_WINDOW"),
+               "bare creationflags=CREATE_NO_WINDOW on a console child FAILS (conhost per child)")
+        expect(not flagged("scripts/bare_flag_allowed.py"),
+               "bare CREATE_NO_WINDOW with `# background-launch: allow <why>` passes")
         expect(not flagged("scripts/py_wrapper.py", "launches the engine"),
                "python wrapper taking an exe path is not an engine launch")
         expect(flagged("launch_bad.bat", "shell launcher"),

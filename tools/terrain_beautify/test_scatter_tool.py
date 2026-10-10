@@ -44,6 +44,9 @@ import scatter_tool as st  # noqa: E402
 
 sys.path.insert(0, str(HERE.parent))
 import pak_append  # noqa: E402
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 
 def run(*args, env=None) -> subprocess.CompletedProcess:
@@ -53,7 +56,7 @@ def run(*args, env=None) -> subprocess.CompletedProcess:
     return subprocess.run(
         [sys.executable, str(TOOL), *args],
         capture_output=True, text=True, env=full_env,
-        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        **console_child.child_kwargs(redirected=True),
     )
 
 

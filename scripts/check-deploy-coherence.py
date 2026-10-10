@@ -71,6 +71,9 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 MANIFEST_NAME = ".deploy-manifest.json"
 CSV_MANIFEST_NAME = ".deployed_manifest.csv"  # written by scripts/deploy_payload.py
@@ -100,7 +103,7 @@ def _git(worktree: Path, *args: str) -> str:
     try:
         return subprocess.check_output(
             ["git", "-C", str(worktree), *args],
-            text=True, stderr=subprocess.DEVNULL, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)).strip()
+            text=True, stderr=subprocess.DEVNULL, **console_child.child_kwargs(redirected=True)).strip()
     except Exception:
         return ""
 

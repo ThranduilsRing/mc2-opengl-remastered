@@ -3,6 +3,9 @@ tools/mc2x_import/manifest.py -- provenance manifest + marker emission for the
 MC2X importer. Stdlib only, no emoji.
 """
 import csv, json, os, subprocess
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 
 def tool_version(): return "1.0"
@@ -11,7 +14,7 @@ def tool_version(): return "1.0"
 def git_commit(repo_hint):
     try:
         return subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=repo_hint,
-                              capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)).stdout.strip() or "unknown"
+                              capture_output=True, text=True, **console_child.child_kwargs(redirected=True)).stdout.strip() or "unknown"
     except Exception:
         return "unknown"
 

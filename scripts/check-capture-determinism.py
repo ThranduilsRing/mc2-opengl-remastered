@@ -242,7 +242,7 @@ def selftest() -> int:
         def run(setdir, extra=()):
             argv = [sys.executable, str(Path(__file__).resolve()),
                     "--set-dir", str(setdir), *base, *extra]
-            p = subprocess.run(argv, capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+            p = subprocess.run(argv, capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
             return p.returncode, (p.stdout + p.stderr)
 
         def expect(label, got, want):

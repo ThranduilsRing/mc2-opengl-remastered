@@ -17,6 +17,9 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(_HERE))  # so `import unit_converter` works
 
 from unit_converter import shadow_compare as SC  # noqa: E402
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 
 # --- fixture builders (neutral dicts mirroring the two real inputs) ---------
@@ -190,7 +193,7 @@ def test_cli_json_and_strict_exit(tmp_path):
         f"sys.exit(main(['--engine-dump', {json.dumps(str(dump_p))}, "
         f"'--converter-report', {json.dumps(str(conv_p))}, '--json', '--strict']))"
     )
-    r = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    r = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
     assert r.returncode == 1                      # --strict + mismatch
     payload = json.loads(r.stdout)
     assert payload["verdict"] == "MISMATCH"
@@ -220,7 +223,7 @@ def test_deterministic_under_hash_randomization(tmp_path):
     )
     env1 = dict(os.environ, PYTHONHASHSEED="0")
     env2 = dict(os.environ, PYTHONHASHSEED="98765")
-    out1 = subprocess.check_output([sys.executable, "-c", script], env=env1, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
-    out2 = subprocess.check_output([sys.executable, "-c", script], env=env2, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    out1 = subprocess.check_output([sys.executable, "-c", script], env=env1, **console_child.child_kwargs(redirected=True))
+    out2 = subprocess.check_output([sys.executable, "-c", script], env=env2, **console_child.child_kwargs(redirected=True))
     assert out1 == out2
     assert json.loads(out1)["verdict"] == "PASS"

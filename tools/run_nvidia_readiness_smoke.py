@@ -55,7 +55,7 @@ def run_checkers() -> int:
     for c in SEAM_CHECKERS:
         p = ROOT / "scripts" / c
         r = subprocess.run([sys.executable, str(p), "--quiet"],
-                           capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                           capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
         ok = (r.returncode == 0)
         print(f"  {'PASS' if ok else 'FAIL'}  {c}")
         if not ok:

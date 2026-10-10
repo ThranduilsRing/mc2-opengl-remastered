@@ -17,6 +17,9 @@ import sys
 from pathlib import Path
 
 import pytest
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 SCRIPTS = Path(__file__).resolve().parents[1]
 
@@ -111,7 +114,7 @@ def test_missing_manifest_advisory_exit0(tmp_path):
     r = subprocess.run(
         [sys.executable, str(SCRIPTS / "check-deploy-coherence.py"),
          str(d), "--worktree", str(tmp_path)],
-        capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
     assert r.returncode == 0
     assert "[DEPLOY_COHERENCE]" in r.stdout
 
@@ -121,7 +124,7 @@ def test_check_exit0_even_with_drift(deploy, tmp_path):
     r = subprocess.run(
         [sys.executable, str(SCRIPTS / "check-deploy-coherence.py"),
          str(deploy), "--worktree", str(tmp_path)],
-        capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
     assert r.returncode == 0  # advisory only, never hard-fail
     assert "WARN" in r.stdout
 
@@ -134,7 +137,7 @@ def test_writer_cli_writes_manifest_only_when_invoked(tmp_path):
     r = subprocess.run(
         [sys.executable, str(SCRIPTS / "write-deploy-manifest.py"),
          str(d), "mc2.exe", "--worktree", str(tmp_path)],
-        capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
     assert r.returncode == 0, r.stderr
     data = json.loads((d / writer.MANIFEST_NAME).read_text())
     assert data["files"][0]["path"] == "mc2.exe"
@@ -150,7 +153,7 @@ def test_writer_merge_keeps_other_entries(tmp_path):
         r = subprocess.run(
             [sys.executable, str(SCRIPTS / "write-deploy-manifest.py"),
              str(d), *argset, "--worktree", str(tmp_path)],
-            capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+            capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
         assert r.returncode == 0, r.stderr
     paths = {e["path"] for e in
              json.loads((d / writer.MANIFEST_NAME).read_text())["files"]}
@@ -163,7 +166,7 @@ def test_staleness_warn_against_real_repo(deploy):
     repo = SCRIPTS.parent
     old = subprocess.check_output(
         ["git", "-C", str(repo), "rev-list", "--max-parents=0", "HEAD"],
-        text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)).splitlines()[0].strip()
+        text=True, **console_child.child_kwargs(redirected=True)).splitlines()[0].strip()
     mpath = deploy / writer.MANIFEST_NAME
     data = json.loads(mpath.read_text())
     data["git_head"] = old
@@ -346,8 +349,8 @@ def test_strict_flag_turns_drift_into_exit_1(deploy, tmp_path):
     (deploy / "mc2.exe").write_bytes(b"stale!")
     argv = [sys.executable, str(SCRIPTS / "check-deploy-coherence.py"),
             str(deploy), "--worktree", str(tmp_path)]
-    assert subprocess.run(argv, capture_output=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)).returncode == 0
-    r = subprocess.run(argv + ["--strict"], capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    assert subprocess.run(argv, capture_output=True, **console_child.child_kwargs(redirected=True)).returncode == 0
+    r = subprocess.run(argv + ["--strict"], capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
     assert r.returncode == 1
     assert "WARN" in r.stdout
 
@@ -356,7 +359,7 @@ def test_strict_exit_0_when_clean(deploy, tmp_path):
     r = subprocess.run(
         [sys.executable, str(SCRIPTS / "check-deploy-coherence.py"),
          str(deploy), "--worktree", str(tmp_path), "--strict"],
-        capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
     assert r.returncode == 0
 
 

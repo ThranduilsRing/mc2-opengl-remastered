@@ -49,6 +49,7 @@ def poll():
         u.EnumWindows(WNDENUMPROC(cb), 0)
         time.sleep(0.25)
 th = threading.Thread(target=poll, daemon=True); th.start()
+# background-launch: allow proof tool that must observe the spawned process tree's own windows; adding a creation flag would hide the very console windows it exists to detect
 p = subprocess.Popen(cmd)
 while time.time() - t0 < a.seconds or p.poll() is None:
     if p.poll() is not None and time.time() - t0 >= a.seconds: break

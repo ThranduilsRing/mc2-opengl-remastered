@@ -24,7 +24,7 @@ def _git_init_with_commit(root: Path) -> str:
     subprocess.run(["git", "add", "."], cwd=root, check=True, **console_child.child_kwargs())
     subprocess.run(["git", "commit", "-q", "-m", "init"], cwd=root, check=True, **console_child.child_kwargs())
     out = subprocess.run(["git", "rev-parse", "HEAD"], cwd=root,
-                         capture_output=True, text=True, check=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                         capture_output=True, text=True, check=True, **console_child.child_kwargs(redirected=True))
     return out.stdout.strip()
 
 

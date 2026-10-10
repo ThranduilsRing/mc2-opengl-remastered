@@ -18,6 +18,9 @@ from __future__ import annotations
 import subprocess
 import sys
 from pathlib import Path
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "..", "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 HERE = Path(__file__).resolve().parent
 VALIDATOR = HERE.parent / "validate_asset_manifest.py"
@@ -50,7 +53,7 @@ def main() -> int:
         proc = subprocess.run(
             [sys.executable, str(VALIDATOR), str(path)],
             capture_output=True, text=True,
-            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            **console_child.child_kwargs(redirected=True),
         )
         got = proc.returncode
         out = proc.stdout + proc.stderr
@@ -75,7 +78,7 @@ def main() -> int:
     # G1 stage geometry gate
     for sub_test in ("test_g1_stage.py", "test_g2_textures.py", "test_g3b_assemble.py",
                      "test_g_pathb_2civliving.py"):
-        r = subprocess.run([sys.executable, str(HERE / sub_test)], capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        r = subprocess.run([sys.executable, str(HERE / sub_test)], capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
         print(r.stdout.strip() + (("\n" + r.stderr.strip()) if r.stderr.strip() else ""))
         if r.returncode != 0:
             failures += 1

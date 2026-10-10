@@ -69,6 +69,11 @@ import sys
 import time
 from typing import List, Optional, Sequence
 
+try:    # imported as scripts.smoke_lib (package context)
+    from ..console_child import has_console
+except ImportError:    # imported as top-level smoke_lib with scripts/ on sys.path
+    from console_child import has_console
+
 __all__ = [
     "DesktopOccupancyRefused",
     "NOFOCUS_ENV",
@@ -300,19 +305,26 @@ def hidden_kwargs(**extra) -> dict:
     from a parent that has no console of its own -- an MCP server, a hook, a GUI
     app, anything started detached -- gets a NEW visible console window.
 
-    CREATE_NO_WINDOW suppresses that window; STARTF_USESHOWWINDOW/SW_HIDE covers
-    children that create their own window anyway. Use ONLY for console tools,
-    never for the game/editor (use spawn()/run(): they need the SDL window, just
-    offscreen and non-activating).
+    CREATE_NO_WINDOW suppresses that window, but ONLY when this process has no
+    console: a consoled parent's children share its console (no window can pop),
+    whereas the flag would allocate a hidden console -- one conhost.exe -- per
+    child, and hundreds of those crashed the owner's VPN split-tunnel monitor
+    (2026-10-09). So the flag is added only when `has_console()` is false, the
+    same rule as scripts/console_child.child_kwargs(). STARTF_USESHOWWINDOW/
+    SW_HIDE covers children that create their own window anyway. Use ONLY for
+    console tools, never for the game/editor (use spawn()/run(): they need the
+    SDL window, just offscreen and non-activating).
 
-    The child's console is hidden, so inherited stdout/stderr go nowhere:
-    redirect them (capture_output=True / stdout=PIPE / a log file) at the call
-    site. Merged into a call as `subprocess.run(cmd, **nofocus.hidden_kwargs())`.
+    With no console the child's console is hidden, so inherited stdout/stderr go
+    nowhere: redirect them (capture_output=True / stdout=PIPE / a log file) at
+    the call site. Merged into a call as
+    `subprocess.run(cmd, **nofocus.hidden_kwargs())`.
     """
     kw = dict(extra)
     if sys.platform != "win32":
         return kw
-    kw["creationflags"] = kw.get("creationflags", 0) | CREATE_NO_WINDOW
+    if not has_console():
+        kw["creationflags"] = kw.get("creationflags", 0) | CREATE_NO_WINDOW
     si = kw.get("startupinfo") or subprocess.STARTUPINFO()
     si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
     si.wShowWindow = SW_HIDE

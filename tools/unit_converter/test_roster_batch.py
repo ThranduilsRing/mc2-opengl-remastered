@@ -25,6 +25,9 @@ sys.path.insert(0, os.path.dirname(_HERE))  # so `import unit_converter` works
 from unit_converter import roster as R                    # noqa: E402
 from unit_converter import shadow_compare as SC           # noqa: E402
 from unit_converter import roster_shadow_compare as RSC   # noqa: E402
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 FIXTURES = os.path.join(_HERE, "tests", "fixtures")
 SRCDATA = os.path.join(FIXTURES, "stock")
@@ -254,7 +257,7 @@ def test_batch_report_deterministic_under_hash_randomization():
     )
     env1 = dict(os.environ, PYTHONHASHSEED="0")
     env2 = dict(os.environ, PYTHONHASHSEED="424242")
-    out1 = subprocess.check_output([sys.executable, "-c", script], env=env1, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
-    out2 = subprocess.check_output([sys.executable, "-c", script], env=env2, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    out1 = subprocess.check_output([sys.executable, "-c", script], env=env1, **console_child.child_kwargs(redirected=True))
+    out2 = subprocess.check_output([sys.executable, "-c", script], env=env2, **console_child.child_kwargs(redirected=True))
     assert out1 == out2
     assert json.loads(out1)["units_converted"] == 4

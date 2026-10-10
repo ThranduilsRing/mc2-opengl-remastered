@@ -22,6 +22,9 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 
 def find_compiler(explicit_glslang, explicit_glslc):
@@ -55,7 +58,7 @@ def compile_one(kind, exe, src_path):
         else:
             cmd = [exe, src_path, "-o", spv]
         try:
-            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=60, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=60, **console_child.child_kwargs(redirected=True))
         except FileNotFoundError:
             return False, f"compiler not found: {exe}"
         ok = proc.returncode == 0 and os.path.isfile(spv)

@@ -42,6 +42,9 @@ import os
 import subprocess
 import sys
 import time
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_ROOT = os.path.abspath(os.path.join(HERE, ".."))
@@ -139,7 +142,7 @@ def top_files(res, k):
 # ---------------------------------------------------------------- git / fs sources
 def _git(root, args, inp=None):
     return subprocess.run(["git"] + args, cwd=root, input=inp, stdout=subprocess.PIPE,
-                          stderr=subprocess.PIPE, check=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)).stdout
+                          stderr=subprocess.PIPE, check=True, **console_child.child_kwargs(redirected=True)).stdout
 
 
 def _git_try(root, args):

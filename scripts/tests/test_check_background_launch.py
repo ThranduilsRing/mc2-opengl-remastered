@@ -9,13 +9,16 @@ tree is clean, i.e. the committed inventory/baseline match the source.
 import subprocess
 import sys
 from pathlib import Path
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 SCRIPT = Path(__file__).resolve().parents[1] / "check-background-launch.py"
 
 
 def _run(*args):
     return subprocess.run([sys.executable, str(SCRIPT), *args],
-                          capture_output=True, text=True, timeout=300, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                          capture_output=True, text=True, timeout=300, **console_child.child_kwargs(redirected=True))
 
 
 def test_selftest_catches_each_rule():

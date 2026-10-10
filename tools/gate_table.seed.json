@@ -332,7 +332,8 @@
    "registryDefault": null,
    "seedDefaultSource": "reader-idiom",
    "harnessValues": [
-    ""
+    "",
+    "String"
    ],
    "numericRange": null,
    "readerDefault": false,
@@ -1959,11 +1960,11 @@
      "idiom": "AtoiNZ"
     },
     {
-     "at": "tools/brain_dispatch_harness/harness_main.cpp:619",
+     "at": "tools/brain_dispatch_harness/harness_main.cpp:620",
      "idiom": "Presence(inv)"
     },
     {
-     "at": "tools/brain_dispatch_harness/harness_main.cpp:645",
+     "at": "tools/brain_dispatch_harness/harness_main.cpp:647",
      "idiom": "AtoiNZ"
     }
    ],
@@ -3916,7 +3917,7 @@
      "idiom": "Lead0"
     },
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1050",
+     "at": "GameOS/gameos/gameosmain.cpp:1053",
      "idiom": "Lead0"
     }
    ],
@@ -4224,7 +4225,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1219",
+     "at": "GameOS/gameos/gameosmain.cpp:1228",
      "idiom": "Presence"
     },
     {
@@ -4514,7 +4515,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1026",
+     "at": "GameOS/gameos/gameosmain.cpp:1029",
      "idiom": "Lead1(inv)"
     }
    ],
@@ -4592,7 +4593,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1870",
+     "at": "GameOS/gameos/gameosmain.cpp:1879",
      "idiom": "Lead1"
     }
    ],
@@ -4674,7 +4675,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1881",
+     "at": "GameOS/gameos/gameosmain.cpp:1890",
      "idiom": "Lead1"
     }
    ],
@@ -4706,7 +4707,7 @@
      "idiom": "Lead1"
     },
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1924",
+     "at": "GameOS/gameos/gameosmain.cpp:1933",
      "idiom": "Lead1"
     }
    ],
@@ -6004,7 +6005,7 @@
    "doc": "MC2_FPS_CAP: max FPS override.",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1765",
+     "at": "GameOS/gameos/gameosmain.cpp:1774",
      "idiom": "Num(atoi,raw)"
     }
    ],
@@ -6032,7 +6033,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:2714",
+     "at": "GameOS/gameos/gameosmain.cpp:2723",
      "idiom": "Presence"
     },
     {
@@ -7014,7 +7015,7 @@
    "doc": "Install GL debug callback only when MC2_GL_DEBUG is set.",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1688",
+     "at": "GameOS/gameos/gameosmain.cpp:1697",
      "idiom": "Presence"
     },
     {
@@ -7056,7 +7057,7 @@
    "doc": "Tier 1.2 (docs/testing-strategy.md): opt-in fatal abort on GL_DEBUG_SEVERITY_HIGH.",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1002",
+     "at": "GameOS/gameos/gameosmain.cpp:1003",
      "idiom": "Presence"
     }
    ],
@@ -7084,7 +7085,7 @@
    "doc": "GL_ERROR is default-on; the env var suppresses it.",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1221",
+     "at": "GameOS/gameos/gameosmain.cpp:1230",
      "idiom": "Presence(inv)"
     },
     {
@@ -7382,7 +7383,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1265",
+     "at": "GameOS/gameos/gameosmain.cpp:1274",
      "idiom": "Lead0P"
     },
     {
@@ -7829,7 +7830,7 @@
    "doc": "Default ON; MC2_GPU_CULL_SUBSTRATE=0 opts out.",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1263",
+     "at": "GameOS/gameos/gameosmain.cpp:1272",
      "idiom": "Lead0Kill"
     },
     {
@@ -8340,7 +8341,7 @@
    "doc": "[RETIRED] Indirect-draw static-prop batcher (gos_static_prop_batcher).",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1233",
+     "at": "GameOS/gameos/gameosmain.cpp:1242",
      "idiom": "Partial[D,on,off,on,on,on,on,on]"
     }
    ],
@@ -8812,11 +8813,11 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1049",
+     "at": "GameOS/gameos/gameosmain.cpp:1052",
      "idiom": "Presence"
     },
     {
-     "at": "GameOS/gameos/gameosmain.cpp:2685",
+     "at": "GameOS/gameos/gameosmain.cpp:2694",
      "idiom": "Presence"
     },
     {
@@ -8848,11 +8849,11 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:658",
+     "at": "GameOS/gameos/gameosmain.cpp:659",
      "idiom": "Num(atoi,raw)"
     },
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1432",
+     "at": "GameOS/gameos/gameosmain.cpp:1441",
      "idiom": "Num(atoi,guarded)"
     }
    ],
@@ -9702,11 +9703,11 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1046",
+     "at": "GameOS/gameos/gameosmain.cpp:1049",
      "idiom": "Presence"
     },
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1094",
+     "at": "GameOS/gameos/gameosmain.cpp:1097",
      "idiom": "Presence"
     }
    ],
@@ -9734,7 +9735,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1095",
+     "at": "GameOS/gameos/gameosmain.cpp:1098",
      "idiom": "Lead0Kill(inv)"
     }
    ],
@@ -11515,7 +11516,7 @@
    "doc": "gameosmain.cpp: overrides the comma-separated list of frame numbers at which the mission-load residency-race one-shot diagnostics probe fires (see MC2_LOAD_RACE_TRACE).",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:2359",
+     "at": "GameOS/gameos/gameosmain.cpp:2368",
      "idiom": "Presence"
     }
    ],
@@ -11567,7 +11568,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:2295",
+     "at": "GameOS/gameos/gameosmain.cpp:2304",
      "idiom": "Num(atol,raw)"
     }
    ],
@@ -11593,11 +11594,11 @@
    "doc": "Master stdout log gate (gameosmain.cpp, right after setvbuf). stdout is unbuffered, so per-mission telemetry printf flushes synchronously and causes 400ms+ console hitches when stdout is connected.",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1051",
+     "at": "GameOS/gameos/gameosmain.cpp:1054",
      "idiom": "Presence"
     },
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1145",
+     "at": "GameOS/gameos/gameosmain.cpp:1148",
      "idiom": "Presence"
     },
     {
@@ -11610,7 +11611,8 @@
    "registryDefault": false,
    "seedDefaultSource": "registry",
    "harnessValues": [
-    "1"
+    "1",
+    "String"
    ],
    "numericRange": null,
    "readerDefault": false,
@@ -11671,7 +11673,9 @@
    "registered": false,
    "registryDefault": null,
    "seedDefaultSource": "unknown",
-   "harnessValues": [],
+   "harnessValues": [
+    "String"
+   ],
    "numericRange": null,
    "readerDefault": null,
    "defaultDisagreement": "",
@@ -12275,7 +12279,7 @@
      "idiom": "Lead0Kill"
     },
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1325",
+     "at": "GameOS/gameos/gameosmain.cpp:1334",
      "idiom": "Lead0Kill"
     },
     {
@@ -12319,7 +12323,7 @@
      "idiom": "Lead0Kill"
     },
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1327",
+     "at": "GameOS/gameos/gameosmain.cpp:1336",
      "idiom": "Lead0Kill"
     },
     {
@@ -14076,7 +14080,9 @@
    "registered": false,
    "registryDefault": null,
    "seedDefaultSource": "reader-idiom",
-   "harnessValues": [],
+   "harnessValues": [
+    "String"
+   ],
    "numericRange": null,
    "readerDefault": false,
    "defaultDisagreement": "",
@@ -14374,7 +14380,7 @@
    "doc": "Mission Editor (editor/EditorMFC.cpp, MainFrm.cpp): come up minimized and non-activating, never taking the foreground or keyboard focus.",
    "readers": [
     {
-     "at": "editor/EditorMFC.cpp:456",
+     "at": "editor/EditorMFC.cpp:457",
      "idiom": "Lead0"
     }
    ],
@@ -14429,11 +14435,11 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1048",
+     "at": "GameOS/gameos/gameosmain.cpp:1051",
      "idiom": "Presence"
     },
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1093",
+     "at": "GameOS/gameos/gameosmain.cpp:1096",
      "idiom": "Presence"
     }
    ],
@@ -14517,7 +14523,7 @@
    "doc": "Optional startup selftest \u2014 hard-fails on any boundary violation so the operator knows immediately if the predicate body has a regression.",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1201",
+     "at": "GameOS/gameos/gameosmain.cpp:1210",
      "idiom": "Exact1"
     }
    ],
@@ -16155,7 +16161,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:2522",
+     "at": "GameOS/gameos/gameosmain.cpp:2531",
      "idiom": "Presence"
     }
    ],
@@ -17235,7 +17241,7 @@
    "doc": "GAME-EDITOR-RENDER-FRAME-DRIVER-1 (Slice 6): gated A/B adoption of the shared RenderFrameDriver seam.",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:779",
+     "at": "GameOS/gameos/gameosmain.cpp:780",
      "idiom": "Presence"
     }
    ],
@@ -17481,7 +17487,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1945",
+     "at": "GameOS/gameos/gameosmain.cpp:1954",
      "idiom": "Lead1"
     },
     {
@@ -17513,7 +17519,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1223",
+     "at": "GameOS/gameos/gameosmain.cpp:1232",
      "idiom": "Presence"
     },
     {
@@ -17575,7 +17581,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1224",
+     "at": "GameOS/gameos/gameosmain.cpp:1233",
      "idiom": "Presence"
     },
     {
@@ -17797,7 +17803,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1267",
+     "at": "GameOS/gameos/gameosmain.cpp:1276",
      "idiom": "Presence"
     },
     {
@@ -17995,15 +18001,15 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:2218",
+     "at": "GameOS/gameos/gameosmain.cpp:2227",
      "idiom": "Num(atol,raw)"
     },
     {
-     "at": "GameOS/gameos/gameosmain.cpp:2219",
+     "at": "GameOS/gameos/gameosmain.cpp:2228",
      "idiom": "Num(atol,raw)"
     },
     {
-     "at": "GameOS/gameos/gameosmain.cpp:2296",
+     "at": "GameOS/gameos/gameosmain.cpp:2305",
      "idiom": "Num(atol,raw)"
     }
    ],
@@ -18034,7 +18040,7 @@
    "doc": "Oracle: deterministic backbuffer screenshot at a target frame.",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:2217",
+     "at": "GameOS/gameos/gameosmain.cpp:2226",
      "idiom": "Presence"
     }
    ],
@@ -18066,7 +18072,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:2232",
+     "at": "GameOS/gameos/gameosmain.cpp:2241",
      "idiom": "Token/State"
     }
    ],
@@ -18218,7 +18224,7 @@
      "idiom": "Lead1"
     },
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1266",
+     "at": "GameOS/gameos/gameosmain.cpp:1275",
      "idiom": "Lead1"
     },
     {
@@ -19856,11 +19862,11 @@
      "idiom": "Presence"
     },
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1049",
+     "at": "GameOS/gameos/gameosmain.cpp:1052",
      "idiom": "Presence"
     },
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1222",
+     "at": "GameOS/gameos/gameosmain.cpp:1231",
      "idiom": "Presence"
     },
     {
@@ -19924,7 +19930,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1048",
+     "at": "GameOS/gameos/gameosmain.cpp:1051",
      "idiom": "Presence"
     },
     {
@@ -21182,7 +21188,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1355",
+     "at": "GameOS/gameos/gameosmain.cpp:1364",
      "idiom": "Presence"
     }
    ],
@@ -22467,7 +22473,7 @@
    "doc": "Skip the per-frame static building/tree update walk when nothing is dirty (GameOS/gameos/gameosmain.cpp, code/terrobj.cpp, code/bldng.cpp).",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1261",
+     "at": "GameOS/gameos/gameosmain.cpp:1270",
      "idiom": "Std(def=on)"
     },
     {
@@ -22501,7 +22507,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1259",
+     "at": "GameOS/gameos/gameosmain.cpp:1268",
      "idiom": "Std(def=off)"
     },
     {
@@ -26384,7 +26390,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1218",
+     "at": "GameOS/gameos/gameosmain.cpp:1227",
      "idiom": "Presence"
     },
     {
@@ -27576,7 +27582,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1225",
+     "at": "GameOS/gameos/gameosmain.cpp:1234",
      "idiom": "Presence"
     }
    ],
@@ -27602,7 +27608,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1226",
+     "at": "GameOS/gameos/gameosmain.cpp:1235",
      "idiom": "Presence"
     }
    ],
@@ -28478,7 +28484,7 @@
    "doc": "VK-PARITY-F2: MC2_VISUAL_CAPTURE_POST=1 (default OFF = byte-identical) reads the composited back buffer (post exposure/sunset grade, what the player sees) instead of the pre-composite scene FBO, so GL captures are comparable with VK captures (which read the presented image).",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:2490",
+     "at": "GameOS/gameos/gameosmain.cpp:2499",
      "idiom": "Lead0"
     }
    ],
@@ -29689,7 +29695,7 @@
      "idiom": "Num(strtoul,guarded)"
     },
     {
-     "at": "GameOS/gameos/gameosmain.cpp:2584",
+     "at": "GameOS/gameos/gameosmain.cpp:2593",
      "idiom": "Num(strtoul,raw)"
     }
    ],
@@ -29719,7 +29725,7 @@
      "idiom": "Presence"
     },
     {
-     "at": "GameOS/gameos/gameosmain.cpp:2593",
+     "at": "GameOS/gameos/gameosmain.cpp:2602",
      "idiom": "Presence"
     },
     {
@@ -29887,7 +29893,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:2605",
+     "at": "GameOS/gameos/gameosmain.cpp:2614",
      "idiom": "Presence"
     }
    ],
@@ -32433,11 +32439,11 @@
    "doc": "(c) #49 windowed-resolution oracle.",
    "readers": [
     {
-     "at": "GameOS/gameos/gameosmain.cpp:656",
+     "at": "GameOS/gameos/gameosmain.cpp:657",
      "idiom": "Num(atoi,raw)"
     },
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1431",
+     "at": "GameOS/gameos/gameosmain.cpp:1440",
      "idiom": "Num(atoi,guarded)"
     }
    ],
@@ -32481,11 +32487,11 @@
      "idiom": "Lead0"
     },
     {
-     "at": "GameOS/gameos/gameosmain.cpp:660",
+     "at": "GameOS/gameos/gameosmain.cpp:661",
      "idiom": "Lead0"
     },
     {
-     "at": "GameOS/gameos/gameosmain.cpp:1536",
+     "at": "GameOS/gameos/gameosmain.cpp:1545",
      "idiom": "Lead0"
     },
     {
@@ -32529,7 +32535,7 @@
      "idiom": "Lead0"
     },
     {
-     "at": "editor/EditorMFC.cpp:457",
+     "at": "editor/EditorMFC.cpp:458",
      "idiom": "Lead0"
     }
    ],

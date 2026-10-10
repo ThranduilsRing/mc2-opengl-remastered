@@ -21,6 +21,9 @@ import sys
 import tempfile
 import time
 from pathlib import Path
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 DEFAULT_RDOC_DIR = Path(r"C:/Program Files/RenderDoc")
 HERE = Path(__file__).resolve().parent
@@ -212,7 +215,7 @@ def _pid_alive(pid: int) -> bool:
     try:
         out = subprocess.run(
             ["tasklist", "/FI", "PID eq %d" % pid, "/NH"],
-            capture_output=True, text=True, timeout=10, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+            capture_output=True, text=True, timeout=10, **console_child.child_kwargs(redirected=True))
         return str(pid) in out.stdout
     except Exception:
         return False

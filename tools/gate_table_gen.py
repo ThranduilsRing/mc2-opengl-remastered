@@ -29,6 +29,10 @@ import re
 import subprocess
 import sys
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "scripts"))
+# Owner rule: no window for any child process (cmake, the gate_dump exe).
+from smoke_lib import nofocus  # noqa: E402
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 
@@ -449,12 +453,12 @@ def build_gate_dump(root, outdir):
           "Microsoft/CMake/CMake/bin/cmake.exe")
     cm = vs if os.path.isfile(vs) else "cmake"
     r = subprocess.run([cm, "-S", src, "-B", outdir, "-A", "x64"], capture_output=True, text=True,
-                       creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                       **nofocus.hidden_kwargs())
     if r.returncode != 0:
         print((r.stdout + r.stderr)[-2000:])
         return None
     r = subprocess.run([cm, "--build", outdir, "--config", "RelWithDebInfo"], capture_output=True, text=True,
-                       creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                       **nofocus.hidden_kwargs())
     if r.returncode != 0:
         print((r.stdout + r.stderr)[-4000:])
         return None
@@ -517,7 +521,7 @@ def check(root, rebuild=False):
             if exe is None:
                 fails.append("tools/gate_dump did not build")
             else:
-                r = subprocess.run([exe], capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                r = subprocess.run([exe], capture_output=True, text=True, **nofocus.hidden_kwargs())
                 want = open(os.path.join(root, TABLE_JSON_REL.replace("/", os.sep)), "r", encoding="utf-8",
                             newline="").read()
                 if r.returncode != 0:

@@ -85,6 +85,9 @@ _HERE = str(Path(__file__).resolve().parent)
 if _HERE not in sys.path:
     sys.path.insert(0, _HERE)
 import exe_fingerprint  # noqa: E402
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 SCHEMA = "mc2-manifest/1"
 
@@ -141,7 +144,7 @@ def _git(repo_root: str | os.PathLike, *args: str) -> str | None:
         out = subprocess.check_output(
             ["git", "-C", str(repo_root), *args],
             stderr=subprocess.DEVNULL,
-            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            **console_child.child_kwargs(redirected=True),
         )
         return out.decode("utf-8", "replace").strip()
     except Exception:

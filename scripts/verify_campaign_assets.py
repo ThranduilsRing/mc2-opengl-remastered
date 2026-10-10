@@ -17,6 +17,9 @@ Exit code: 0 = all checked campaigns OK, 1 = at least one missing asset.
 """
 import argparse, importlib.util, json, os, subprocess, sys
 from pathlib import Path
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 HERE = Path(__file__).resolve().parent
 DEFAULT_DEPLOY = os.environ.get("MC2_DEPLOY_DIR", "A:/Games/mc2-opengl/releases/mc2-win64-v0.4d-rc1")
@@ -38,7 +41,7 @@ FST = _load_fst()
 
 def resolve(deploy, name):
     out = subprocess.run([sys.executable, str(HERE / "resolve_campaign_config.py"), deploy, name],
-                         capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                         capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
     try:
         return json.loads(out.stdout)
     except Exception:

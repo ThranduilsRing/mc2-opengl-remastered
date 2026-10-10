@@ -52,6 +52,9 @@ sys.path.insert(0, str(ROOT / "tools" / "visual_verify"))
 
 import regions as regionlib  # noqa: E402
 from bless import crop_stats, degeneracy_reason  # noqa: E402
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 GOLDENS = ROOT / "tests" / "visual" / "goldens"
 REQUIRED_HOLE_KEYS = ("bookmark", "region", "rule", "reason", "subject_protected")
@@ -133,7 +136,7 @@ def git_tracked_under(relpath: str, root: "Path | None" = None) -> "list[str]":
     try:
         cp = subprocess.run(
             ["git", "-C", str(root), "ls-files", "-z", "--", relpath],
-            capture_output=True, timeout=120, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+            capture_output=True, timeout=120, **console_child.child_kwargs(redirected=True))
     except (OSError, subprocess.SubprocessError) as exc:
         raise GitQueryError(f"could not run git: {exc}") from exc
     if cp.returncode != 0:

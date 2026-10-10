@@ -202,7 +202,7 @@ def _perceptual_stable(out_dir: Path, mission: str, bookmark: str,
     worst = "all pairs within tolerance"
     for cand in pngs[1:]:
         rc = subprocess.run([sys.executable, str(vc), str(pngs[0]), str(cand),
-                             "--family", family], capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                             "--family", family], capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
         if rc.returncode != 0:
             return False, f"{pngs[0].parent.name} vs {cand.parent.name}: " \
                           f"{rc.stdout.strip() or rc.stderr.strip()}"

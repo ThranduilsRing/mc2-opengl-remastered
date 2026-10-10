@@ -37,6 +37,9 @@ from pygltflib import GLTF2
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "scripts"))
 from bt2018_retarget_clips import retarget_file  # noqa: E402
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 FBX_GLOB = "Animator/chrPrfMech_*Base-001/chrPrfMech_*Base-001.fbx"
 BTNAME_RE = re.compile(r"chrPrfMech_(.+)Base-001", re.IGNORECASE)
@@ -84,7 +87,7 @@ def convert_one(fbx, btname, args):
     # 1. FBX2glTF (skip if present unless --force)
     if args.force or not os.path.isfile(glb):
         r = subprocess.run([args.fbx2gltf, "-i", fbx, "-o", os.path.join(out_dir, btname), "-b"],
-                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, **console_child.child_kwargs(redirected=True))
         if not os.path.isfile(glb):
             print(f"[FAIL] {btname}: FBX2glTF produced no glb\n{r.stdout[-400:]}")
             return None

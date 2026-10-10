@@ -28,6 +28,9 @@ import time
 import struct
 import io
 import numpy as np
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 try:
     import OpenEXR
@@ -98,7 +101,7 @@ def run_texconv_bc6h(hdr_path, out_dir, texconv_exe):
         '-m', '1',    # single mip level
         hdr_path,
     ]
-    result = subprocess.run(cmd, capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    result = subprocess.run(cmd, capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
     if result.returncode != 0:
         print(f"texconv failed (rc={result.returncode}):", file=sys.stderr)
         print(result.stdout, file=sys.stderr)
@@ -294,7 +297,7 @@ def cook(exr_path, ktx2_path, ktx_exe, texconv_exe):
             raw_tmp,
             ktx2_path,
         ]
-        result = subprocess.run(cmd, capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        result = subprocess.run(cmd, capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
         if result.returncode != 0:
             print(f"ktx.exe error (rc={result.returncode}): {result.stderr}", file=sys.stderr)
             sys.exit(1)
@@ -328,7 +331,7 @@ def main():
     cook(exr_path, ktx2_path, ktx_exe, texconv_exe)
 
     # Run ktx info to verify output
-    result = subprocess.run([ktx_exe, 'info', ktx2_path], capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    result = subprocess.run([ktx_exe, 'info', ktx2_path], capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
     for line in result.stdout.split('\n')[:20]:
         print(line)
 

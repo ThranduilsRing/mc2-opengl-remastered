@@ -44,6 +44,9 @@ BINDING_OCC = ROOT / "docs" / "render-backend-seams" / "binding-slot-occupancy.j
 
 
 import re as _re
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 def sha256(text_or_bytes) -> str:
     h = hashlib.sha256()
@@ -160,7 +163,7 @@ def _tool_version(exe) -> str:
     if not exe:
         return "not-found"
     try:
-        r = subprocess.run([exe, "--version"], capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        r = subprocess.run([exe, "--version"], capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
         line = (r.stdout or r.stderr).splitlines()
         return line[0].strip() if line else "unknown"
     except Exception:
@@ -242,7 +245,7 @@ def main():
                     r = subprocess.run(
                         [glslang, "-G", "--auto-map-locations", "-S", stage,
                          str(tmp), "-o", str(out)],
-                        capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                        capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
                     if r.returncode != 0 or not out.exists():
                         fails.append(f"{art}: glslang failed: "
                                      f"{(r.stdout + r.stderr).strip()[:300]}")

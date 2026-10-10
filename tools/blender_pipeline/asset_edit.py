@@ -41,6 +41,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import batch_driver as bd  # noqa: E402  (reuse GLB/ini/inject helpers)
 from blender_runner import find_blender_exe, run_blender_script  # noqa: E402
 from srcdata import SRCDATA_ROOT_PROBES  # noqa: E402
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 TOOL_DIR = Path(__file__).resolve().parent
 ASE_TO_GLB = TOOL_DIR.parent / "ase_to_glb.py"
@@ -343,7 +346,7 @@ def _extract(ase, ini, paths, asset_class):
            "--out-sidecar", str(paths["sidecar"]),
            "--asset-class", asset_class]
     proc = subprocess.run(cmd, capture_output=True, text=True,
-                          encoding="utf-8", errors="replace", creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                          encoding="utf-8", errors="replace", **console_child.child_kwargs(redirected=True))
     if proc.returncode != 0:
         raise RuntimeError(
             f"extract failed:\n{proc.stdout[-1500:]}\n{proc.stderr[-1500:]}")

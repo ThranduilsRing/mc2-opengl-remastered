@@ -21,6 +21,9 @@ TOOL = HERE / "overlay_extract.py"
 # a test that cannot get stock data SKIPS rather than passing on wrong data.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools" / "mc2data"))
 from stock_missions import stock_missions_dir_or_none  # noqa: E402
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 STOCK_MISSIONS = stock_missions_dir_or_none()
 
@@ -37,7 +40,7 @@ def run(*args) -> subprocess.CompletedProcess:
     return subprocess.run(
         [sys.executable, str(TOOL), *args],
         capture_output=True, text=True,
-        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        **console_child.child_kwargs(redirected=True),
     )
 
 

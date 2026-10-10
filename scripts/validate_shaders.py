@@ -72,6 +72,9 @@ from pathlib import Path
 # ensure scripts/ dir is importable when invoked as `py -3 scripts/validate_shaders.py`
 sys.path.insert(0, str(Path(__file__).parent))
 import shader_common
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 ROOT = shader_common.ROOT
 SHADERS = shader_common.SHADERS
@@ -175,7 +178,7 @@ def validate_one(shader: Path, vulkan: bool,
         spv_path = tmp.with_suffix(tmp.suffix + ".spv")
         cmd += ["-o", str(spv_path)]
 
-        proc = subprocess.run(cmd, capture_output=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        proc = subprocess.run(cmd, capture_output=True, **console_child.child_kwargs(redirected=True))
         stdout = _decode(proc.stdout)
         stderr = _decode(proc.stderr)
         if proc.returncode != 0:

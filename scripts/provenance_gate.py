@@ -156,6 +156,9 @@ _HERE = Path(__file__).resolve().parent
 if str(_HERE) not in sys.path:
     sys.path.insert(0, str(_HERE))
 import exe_fingerprint as ef  # noqa: E402
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 ROOT = _HERE.parent
 
@@ -206,7 +209,7 @@ def git_object_db_available(repo_root: "str | Path" = None) -> bool:
         return _GITDIR_CACHE[root]
     try:
         r = subprocess.run(["git", "-C", root, "rev-parse", "--git-dir"],
-                           capture_output=True, timeout=30, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                           capture_output=True, timeout=30, **console_child.child_kwargs(redirected=True))
         avail = (r.returncode == 0)
     except Exception:  # noqa: BLE001 -- git missing entirely
         avail = False
@@ -235,7 +238,7 @@ def repo_has_commit(sha: "str | None", repo_root: "str | Path" = None) -> bool:
         return _COMMIT_CACHE[key]
     try:
         r = subprocess.run(["git", "-C", root, "cat-file", "-e", f"{sha}^{{commit}}"],
-                           capture_output=True, timeout=30, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                           capture_output=True, timeout=30, **console_child.child_kwargs(redirected=True))
         found = (r.returncode == 0)
     except Exception:  # noqa: BLE001 -- no git, not a repo: no witness, not a lie
         found = False
@@ -722,7 +725,7 @@ def _selftest() -> int:
         real_commit = None
         try:
             rc = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "HEAD"],
-                                capture_output=True, text=True, timeout=30, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                                capture_output=True, text=True, timeout=30, **console_child.child_kwargs(redirected=True))
             if rc.returncode == 0:
                 real_commit = rc.stdout.strip()[:12]
         except Exception:  # noqa: BLE001

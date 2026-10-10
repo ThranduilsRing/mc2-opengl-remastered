@@ -18,6 +18,9 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 CMAKE = ("C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/"
          "Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe")
@@ -48,7 +51,7 @@ def main():
     vcx_rx = re.compile(r"\.vcxproj\s*->\s*")
 
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                            text=True, errors="replace", creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                            text=True, errors="replace", **console_child.child_kwargs(redirected=True))
     for line in proc.stdout:
         line = line.rstrip()
         if err_rx.search(line):

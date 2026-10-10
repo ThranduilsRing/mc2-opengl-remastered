@@ -30,6 +30,9 @@ import os
 import re
 import subprocess
 import sys
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 BUNDLE = {
     "MC2_BRAIN_MISSIONFIT_OPORD": "1",
@@ -103,7 +106,7 @@ def main():
     cmd = [sys.executable, os.path.join(root, "scripts", "run_smoke.py"),
            "--exe", args.exe, "--no-lease", "--mission", args.mission,
            "--duration", str(args.duration), "--keep-logs"]
-    proc = subprocess.run(cmd, env=env, capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    proc = subprocess.run(cmd, env=env, capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
     smoke_ok = (proc.returncode == 0)
 
     log = latest_artifact_log(root, args.mission)
