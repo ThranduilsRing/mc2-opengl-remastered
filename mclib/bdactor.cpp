@@ -14,6 +14,7 @@
 
 #include <map>    // STATIC-REGISTRY-COVERAGE-RECON-1: top shape names
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
+#include <charconv>
 #include "Gates/gate_cold.h"  // gate::invalidate after the importer _putenv_s calls
 #include <mutex>  // STATIC-REGISTRY-COVERAGE-RECON-1: shape map guard
 
@@ -406,13 +407,13 @@ static void loadBuildingImportSourceWithSidecarAxis(TG_TypeMultiShape* shape, co
 
 	if (hasYaw) {
 		char oldYawText[32] = {0};   // "" removes the variable
-		if (hadYaw) snprintf(oldYawText, sizeof(oldYawText), "%.9g", oldYawNumber);
+		if (hadYaw) *std::to_chars(oldYawText, oldYawText + sizeof(oldYawText) - 1, oldYawNumber).ptr = '\0';
 		_putenv_s("MC2_GLTF_YAW_DEG", oldYawText);
 		mc2::gate::invalidate("MC2_GLTF_YAW_DEG");
 	}
 	if (hasAxis) {
 		char oldAxisText[16] = {0};
-		if (hadAxis) snprintf(oldAxisText, sizeof(oldAxisText), "%d", oldAxisNumber);
+		if (hadAxis) *std::to_chars(oldAxisText, oldAxisText + sizeof(oldAxisText) - 1, oldAxisNumber).ptr = '\0';
 		_putenv_s("MC2_GLTF_AXIS", oldAxisText);
 		mc2::gate::invalidate("MC2_GLTF_AXIS");
 	}
