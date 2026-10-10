@@ -16,6 +16,7 @@ MechIcon.cpp			: Implementation of the MechIcon component.
 #include"controlgui.h"
 #include"gamesound.h"
 #include"platform_windows.h"
+#include "Gates/gate.h"
 
 #ifndef MISSION_H
 #include"mission.h"
@@ -41,10 +42,7 @@ AssetScale::AssetKey MechIcon::s_MechTexturesKey;
 // MC2_ICON_FAILLOUD=1 (default OFF) does the blit substitute a magenta tile.
 static bool iconFailLoudEnabled()
 {
-	static const bool s_on = []() {
-		const char* v = getenv("MC2_ICON_FAILLOUD");
-		return v && v[0] && v[0] != '0';
-	}();
+	static const bool s_on = mc2::gate::get<"MC2_ICON_FAILLOUD">();
 	return s_on;
 }
 
@@ -561,7 +559,7 @@ bool MechIcon::initTextures()
 		file.read( (BYTE*)s_MechTextures, size );
 		BYTE* pTmp = (BYTE*)(s_MechTextures + 1);
 
-		if ( getenv("MC2_LOG_MECHICON") )
+		if ( mc2::gate::get<"MC2_LOG_MECHICON">() )
 		{
 			printf("[mechicon] atlas='%s' w=%u h=%u unitIconX=%.0f unitIconY=%.0f maxIndex=%d\n",
 				path, (unsigned)s_MechTextures->width, (unsigned)s_MechTextures->height,
@@ -639,7 +637,7 @@ bool MechIcon::init( long whichIndex )
 		const uint32_t actualW = (uint32_t)s_MechTextures->width;
 		const uint32_t actualH = (uint32_t)s_MechTextures->height;
 
-		if ( getenv("MC2_LOG_MECHICON") )
+		if ( mc2::gate::get<"MC2_LOG_MECHICON">() )
 		{
 			printf("[mechicon] init whichIndex=%ld srcOffsetX=%ld atlasW=%u atlasH=%u unitIconX=%.0f %s\n",
 				whichIndex, offsetX, actualW, actualH, unitIconX,

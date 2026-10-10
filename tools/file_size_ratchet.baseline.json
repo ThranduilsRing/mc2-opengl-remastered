@@ -39,7 +39,7 @@
   "code/infowindow.cpp": 1732,
   "code/logisticsdata.cpp": 3438,
   "code/logisticsdialog.cpp": 2149,
-  "code/mechicon.cpp": 1969,
+  "code/mechicon.cpp": 1967,
   "code/mechlabscreen.cpp": 1949,
   "code/mechlopedia.cpp": 1660,
   "code/mission.cpp": 5867,
@@ -93,7 +93,7 @@
   "mclib/vfxtile.cpp": 2944,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "36e059e86",
+ "head": "f6f13f8ef",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
