@@ -59,6 +59,19 @@ in the background.
 
 Total shell launchers: 4
 
+## User tools, not harness
+
+Launchers meant to be double-clicked or run by a person (shipped dist scripts, docs examples).
+They are not guarded; each is listed in `scripts/background-launch-allow.json` (`user_tools`).
+
+| file | why it is a user tool |
+| --- | --- |
+| `docs/modding/examples/imgui-editing/mod/launch-with-tuning.ps1` | modder example run by a person, shipped in docs |
+| `tools/mc2fx/dist/mc2fx-preview.bat` | shipped dist script: double-click launcher of the gosFX previewer |
+| `tools/mc2weapon_gui/dist/mc2weapon-gui.bat` | shipped dist script: double-click launcher of the weapon editor |
+
+Total user tools: 3
+
 ## Desktop-composite capture exceptions (NOFOCUS-FINISH-1)
 
 These harnesses screenshot the DESKTOP COMPOSITE (`pyautogui` / `mss` /
