@@ -17,9 +17,11 @@
 UnitSettingsDlg::UnitSettingsDlg( EList< Unit*, Unit* >& newList/*=NULL*/, ActionUndoMgr &undoMgr)
 	: CDialog(UnitSettingsDlg::IDD), units( newList )
 {
+	//{{AFX_DATA_INIT(UnitSettingsDlg)
 	m_Alignment = -1;
 	m_SquadEdit = _T("");
 	m_SelfRepairBehavior = -1;
+	//}}AFX_DATA_INIT
 
 	pUndoMgr = &undoMgr;
 	pAction = NULL;
@@ -29,6 +31,7 @@ UnitSettingsDlg::UnitSettingsDlg( EList< Unit*, Unit* >& newList/*=NULL*/, Actio
 void UnitSettingsDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
+	//{{AFX_DATA_MAP(UnitSettingsDlg)
 	DDX_Control(pDX, IDC_VARIANT, m_Variant);
 	DDX_Control(pDX, IDC_PILOT, m_Pilot);
 	DDX_Control(pDX, IDC_MECH, m_Mech);
@@ -36,10 +39,12 @@ void UnitSettingsDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Radio(pDX, IDC_ALIGN1, m_Alignment);
 	DDX_Text(pDX, IDC_SQUAD_EDIT, m_SquadEdit);
 	DDX_Radio(pDX, IDC_SELF_REPAIR1, m_SelfRepairBehavior);
+	//}}AFX_DATA_MAP
 }
 
 
 BEGIN_MESSAGE_MAP(UnitSettingsDlg, CDialog)
+	//{{AFX_MSG_MAP(UnitSettingsDlg)
 	ON_CBN_SELCHANGE(IDC_GROUP, OnSelchangeGroup)
 	ON_BN_CLICKED(IDC_HIGHILIGHT2EDIT, OnHighilight2edit)
 	ON_EN_CHANGE(IDC_HIGHLIGHT1, OnChangeHighlight1)
@@ -49,6 +54,7 @@ BEGIN_MESSAGE_MAP(UnitSettingsDlg, CDialog)
 	ON_BN_CLICKED(IDC_BASEEDIT, OnBaseedit)
 	ON_WM_CTLCOLOR()
 	ON_CBN_SELCHANGE(IDC_MECH, OnSelchangeMech)
+	//}}AFX_MSG_MAP
 	ON_CONTROL_RANGE( BN_CLICKED, IDC_ALIGN1, IDC_ALIGN1 + 8, OnAlign1)
 
 END_MESSAGE_MAP()
@@ -395,6 +401,7 @@ BOOL UnitSettingsDlg::OnInitDialog()
 	updatePossibiltyControls();
 
 	return TRUE;  // return TRUE unless you set the focus to a control
+	              // EXCEPTION: OCX Property Pages should return FALSE
 }
 
 void UnitSettingsDlg::updatePossibiltyControls()

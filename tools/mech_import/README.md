@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # mech_import — BattleTech-2018 mech → MC2 importer pipeline
 
 Converts ripped BattleTech 2018 (HBS) mech assets into MC2-ready GLB + textures.

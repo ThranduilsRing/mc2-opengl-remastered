@@ -610,6 +610,7 @@ bool BattleMech::updateMovePath (float& newRotate, char& newThrottleSetting, lon
 
 	if (goalReached) 
 	{
+		// Did we finish just a local part of a global path?
 		if (pilot->getMovePathType() == MOVEPATH_COMPLEX) 
 		{
 			if (pilot->getMovePathGlobalStep() < (pilot->getMoveNumGlobalSteps() - 1)) 

@@ -202,6 +202,7 @@ void MissionInterfaceManager::processUiCommandChannel()
 	}
 }
 
+// Pause menu, dialog and capture verbs (toggle_pause, press, debugview, screenshot). Returns true when a verb of this group matched.
 bool MissionInterfaceManager::uiCmdBasic(UiCmdCtx& c)
 {
 	const std::string& line = c.line;
@@ -389,6 +390,7 @@ bool MissionInterfaceManager::uiCmdWorld(UiCmdCtx& c)
 		}
 	}
 	else if (line.compare(0, 11, "order move ") == 0) {
+		// order move <x> <y> [run|walk]  (default run)
 		float x = 0, y = 0; char mode[16] = {0};
 		const int nf = sscanf(line.c_str() + 11, "%f %f %15s", &x, &y, mode);
 		if (nf < 2) {
@@ -493,6 +495,7 @@ bool MissionInterfaceManager::uiCmdWorld(UiCmdCtx& c)
 		}
 	}
 	else if (line.compare(0, 7, "camera ") == 0) {
+		// camera <x> <y> [rotDeg] [zoomAltitude]
 		float x = 0, y = 0, rot = 0, zoom = 0;
 		const int nf = sscanf(line.c_str() + 7, "%f %f %f %f", &x, &y, &rot, &zoom);
 		if (nf < 2) { note = "camera <x> <y> [rotDeg] [zoomAlt]"; }
@@ -565,6 +568,7 @@ bool MissionInterfaceManager::uiCmdWorld(UiCmdCtx& c)
 		}
 	}
 	else if (line == "status") {
+		// dump every selected player unit's id/name/pos/health to the ack file
 		Team* pTeam = Team::home;
 		const long homeCmdr = Commander::home ? Commander::home->getId() : -1;
 		long n = 0;
@@ -896,6 +900,7 @@ bool MissionInterfaceManager::uiCmdReadback(UiCmdCtx& c)
 		}
 	}
 	else if (line.compare(0, 10, "sun_pitch ") == 0) {
+		// sun_pitch <deg> [yawDeg]   -- direction only, colors unchanged
 		float pitch = 0, yaw = 0;
 		const int nf = sscanf(line.c_str() + 10, "%f %f", &pitch, &yaw);
 		if (nf < 1) { note = "sun_pitch <deg 0..360> [yawDeg]"; }

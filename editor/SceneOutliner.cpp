@@ -320,6 +320,7 @@ void SceneOutliner::Draw()
         }
     }
 
+    // Forests (separate Forest objects; selection via selectForest()).
     {
         char header[96];
         std::snprintf(header, sizeof(header), "Forests (%d)###Forests", counts.forests);

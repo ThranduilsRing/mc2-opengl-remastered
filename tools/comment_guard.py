@@ -366,16 +366,66 @@ def collect_needles(root):
     return found, len(files)
 
 
+EXTERNAL_NEEDLES_REL = "tools/comment_guard_needles.txt"
+EXTERNAL_LABEL = EXTERNAL_NEEDLES_REL + " (external)"
+_NEEDLE_LINE = re.compile(r"^(.*\S)\s+#\s*(\S.*)$")
+_AFX_MARKER = re.compile(r"//\s*[{}]{2}AFX_")      # MFC ClassWizard parses //{{AFX_...  and //}}AFX_...
+
+
+def parse_needle_file(text, name=EXTERNAL_NEEDLES_REL):
+    """-> ({literal: label}, [(compiled regex, 're:...', label)]); ValueError names the first malformed line.
+
+    One needle per line, `needle  # reason`; a `re:` prefix makes it a regex. Blank lines and `#` lines are skipped.
+    """
+    lits, regexes = {}, []
+    for i, raw in enumerate(text.split("\n"), 1):
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        m = _NEEDLE_LINE.match(line)
+        if not m:
+            raise ValueError("%s:%d: expected `needle  # reason`, got: %s" % (name, i, show(line, 60)))
+        needle = m.group(1)
+        if needle.startswith("re:"):
+            try:
+                rx = re.compile(needle[3:])
+            except re.error as e:
+                raise ValueError("%s:%d: bad regex: %s" % (name, i, e))
+            if not needle[3:] or rx.search(""):
+                raise ValueError("%s:%d: regex matches the empty string" % (name, i))
+            regexes.append((rx, needle, EXTERNAL_LABEL))
+        elif len(needle) < NEEDLE_MIN_TAG:
+            raise ValueError("%s:%d: literal needle shorter than %d characters" % (name, i, NEEDLE_MIN_TAG))
+        else:
+            lits[needle] = EXTERNAL_LABEL
+    return lits, regexes
+
+
+def load_external_needles(root):
+    data = read_file(os.path.join(root, *EXTERNAL_NEEDLES_REL.split("/")))
+    return parse_needle_file(data.decode("utf-8", "replace")) if data is not None else ({}, [])
+
+
 class NeedleSet:
-    def __init__(self, mapping):
+    def __init__(self, mapping, regexes=()):
         self.map = dict(mapping)
+        self.regexes = list(regexes)
         self.by_prefix = {}
         for n in self.map:
             if len(n) >= _NEEDLE_PREFIX:
                 self.by_prefix.setdefault(n[:_NEEDLE_PREFIX], []).append(n)
 
     def __len__(self):
-        return len(self.map)
+        return len(self.map) + len(self.regexes)
+
+    def find_regex(self, text):
+        """-> [(matched text, label)] for the external regex needles."""
+        out = []
+        for rx, _src, label in self.regexes:
+            m = rx.search(text)
+            if m:
+                out.append((m.group(0), label))
+        return out
 
     def find(self, text):
         """Needles occurring verbatim in text, longest first."""
@@ -405,8 +455,8 @@ def split_pieces(root):
 class Env:
     """Repo-derived protection inputs: the needle set and the split-piece stems (both loaded once per run)."""
 
-    def __init__(self, needles, pieces):
-        self.needles = needles if isinstance(needles, NeedleSet) else NeedleSet(needles)
+    def __init__(self, needles, pieces, regexes=()):
+        self.needles = needles if isinstance(needles, NeedleSet) else NeedleSet(needles, regexes)
         self.pieces = list(pieces)
 
     def is_piece(self, rel):
@@ -433,16 +483,27 @@ def set_env(env):
 def current_env():
     if _ENV["env"] is None:
         mapping, _n = collect_needles(_ENV["root"])
-        _ENV["env"] = Env(mapping, split_pieces(_ENV["root"]))
+        lits, regexes = load_external_needles(_ENV["root"])
+        for n, label in lits.items():
+            mapping.setdefault(n, label)
+        _ENV["env"] = Env(mapping, split_pieces(_ENV["root"]), regexes)
     return _ENV["env"]
 
 
 def run_needles(args):
     repo = os.path.abspath(args.repo or ROOT)
     mapping, nfiles = collect_needles(repo)
-    for n in sorted(mapping):
-        print("%s\t%s" % (n, mapping[n]))
-    print("comment_guard: %d checker needle(s) from %d file(s)" % (len(mapping), nfiles), file=sys.stderr)
+    try:
+        lits, regexes = load_external_needles(repo)
+    except ValueError as e:
+        print("comment_guard: %s" % e, file=sys.stderr)
+        return 2
+    for n, label in lits.items():
+        mapping.setdefault(n, label)
+    rows = sorted(list(mapping.items()) + [(src, label) for _rx, src, label in regexes])
+    for n, where in rows:
+        print("%s\t%s" % (n, where))
+    print("comment_guard: %d checker needle(s) from %d file(s)" % (len(rows), nfiles), file=sys.stderr)
     return 0
 
 
@@ -713,8 +774,12 @@ def mark_protected(u, lx, env=None, rel=""):
     if env is not None:
         for n in env.needles.find(txt)[:3]:
             u.reasons.append("checker-needle `%s` read by %s" % (n, env.needles.map.get(n) or "a checker script"))
+        for hit, label in env.needles.find_regex(txt)[:3]:
+            u.reasons.append("checker-needle `%s` read by %s" % (show(hit, 60), label))
         if env.is_piece(rel) and u.start <= PIECE_HEADER_LINES:
             u.reasons.append("split-piece header (read by split_map)")
+    if _AFX_MARKER.search(txt):
+        u.reasons.append("MFC ClassWizard marker")
     if _BEGIN_END.search(txt):
         u.reasons.append("begin/end marker")
     if _FENCED.search(txt):
@@ -1008,6 +1073,11 @@ def _allowed_lines(rep):
 def run_check(args):
     repo = os.path.abspath(args.repo or ROOT)
     use_repo(repo)
+    try:
+        current_env()
+    except ValueError as e:
+        print("comment_guard: %s" % e, file=sys.stderr)
+        return 2
     base_rev = args.base
     reports = []
     allow = None
@@ -1589,6 +1659,42 @@ def st_stoplisted_word_needle_does_not_protect():
     assert R("int a;\n// byte-identical when off\nint b;\n", "int a;\nint b;\n", env=env).ok
     assert R("int a;\n// MATERIAL table\nint b;\n", "int a;\nint b;\n", env=env).ok
     assert _kinds(R("int a;\n// ZONE-OPEN: here\nint b;\n", "int a;\nint b;\n", env=env)) == ["protected"]
+
+
+@case
+def st_external_needles_file_parsing():
+    lits, res = parse_needle_file("# header\n\nre:\\[PROJECTZ:[A-Za-z]+ id=[^\\]]+\\]  # oracle ids\nSIDE-CHANNEL-ID  # other tool\n")
+    assert list(lits) == ["SIDE-CHANNEL-ID"] and len(res) == 1 and res[0][2].endswith("(external)")
+    for bad in ("SIDE-CHANNEL-ID\n", "re:(unclosed  # r\n", "re:x*  # matches empty\n", "abc  # too short\n", "re:  # empty\n"):
+        try:
+            parse_needle_file(bad)
+        except ValueError as e:
+            assert "comment_guard_needles.txt:1" in str(e), e
+        else:
+            assert False, bad
+
+
+@case
+def st_external_regex_needle_protects_comment():
+    lits, res = parse_needle_file("re:\\[PROJECTZ:[A-Za-z]+ id=[^\\]]+\\]  # external oracle tool reads these ids\n")
+    env = Env(lits, [], res)
+    src = "void f() {\n\t// [PROJECTZ:ScreenXYOracle id=artlry_position_screen]\n\tg();\n}\n"
+    rep = R(src, "void f() {\n\tg();\n}\n", env=env)
+    assert _kinds(rep) == ["protected"] and "PROJECTZ:ScreenXYOracle id=artlry_position_screen" in _msgs(rep), _msgs(rep)
+    assert "comment_guard_needles.txt (external)" in _msgs(rep)
+    assert R(src, src, env=env).ok
+    assert R(src, "void f() {\n\tg();\n}\n").ok                      # without the needle file the comment is plain narration
+    assert R("int a;\n// [PROJECTZ:Other no id]\nint b;\n", "int a;\nint b;\n", env=env).ok
+
+
+@case
+def st_mfc_classwizard_markers_protected():
+    for m in ("//{{AFX_MSG_MAP(CMainFrame)", "//}}AFX_MSG_MAP", "//{{AFX_DATA_INIT(CAbout)", "//}}AFX_DATA_INIT",
+              "//{{AFX_DATA_MAP(CAbout)", "//{{AFX_VIRTUAL(CView)", "//}}AFX_VIRTUAL", "//{{AFX_MSG(CView)", "//}}AFX_MSG",
+              "//{{AFX_DATA(CAbout)", "//}}AFX_DATA", "//{{AFX_INSERT_LOCATION}}"):
+        rep = R("int a;\n%s\nint b;\n" % m, "int a;\nint b;\n")
+        assert _kinds(rep) == ["protected"] and "ClassWizard" in _msgs(rep), m
+    assert R("int a;\n// AFX_MSG_MAP is generated\nint b;\n", "int a;\nint b;\n").ok     # prose about the macro is not a marker
 
 
 def run_selftest():

@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # mech_import_harness — game-free mech importer harness
 
 Exercise the mech GLB/FBX importer from the CLI **without launching MC2**. Turns

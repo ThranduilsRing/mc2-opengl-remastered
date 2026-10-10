@@ -136,6 +136,7 @@ class EditorData
 		EditorData();
 		~EditorData();
 
+		// wipes all the data, the terrain, object etc.
 		static bool clear();
 
 		// ---------- Map-size helpers --------------------------------------------------
@@ -185,6 +186,9 @@ class EditorData
 		// False for newly generated blank maps (set to true only after packet-4 read).
 		static bool IsMoveDataReadyForFullSave();
 
+		// ---------------------------------------------------------------------------
+		// MOVE rebuild API — treat MOVE as cached derived data.
+		// ---------------------------------------------------------------------------
 
 		// Mark MOVE as dirty (needs rebuild).  Call after terrain generation or load
 		// completes, BEFORE terrain/object state is stable enough to rebuild.

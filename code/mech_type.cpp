@@ -243,6 +243,7 @@ long BattleMechType::init (FilePtr objFile, unsigned long fileSize)
 	// read so a stock-declared [UnitProfile] block still overrides last.
 	sourceGeneratedChassisFacets(fileType, profile(), mechFile.getFilename());
 
+	// UNIT-PROFILE-SEAM-1: optional .fit [UnitProfile] data read (additive).
 	populateProfileFromFit(mechFile, profile());
 
 	// UNITPROFILE-VALIDATOR-1 (slice 6): report-only construction-rules check,
@@ -351,6 +352,7 @@ bool BattleMechType::handleCollision (GameObjectPtr collidee, GameObjectPtr coll
 */
 				((MoverPtr)collidee)->bounceToAdjCell();
 
+				// Train will take care of administering damage from this collision...
 				soundSystem->playDigitalSample(MECH_COLLIDE,collidee->getPosition());
 				return(false);
 			}
@@ -427,6 +429,9 @@ bool BattleMechType::handleCollision (GameObjectPtr collidee, GameObjectPtr coll
 */
 				if (jumpCollision) 
 				{
+					// Since we reset the jumping mech's lastJumpTime right here,
+					// we should apply the damage to the collider here, as well.
+					// If both are jumping...well then, double damage is taken!
 					if (collideeJumping && !sameTeam) 
 					{
 						WeaponShotInfo shotInfo;

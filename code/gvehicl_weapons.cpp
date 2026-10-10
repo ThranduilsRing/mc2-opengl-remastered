@@ -258,6 +258,8 @@ long GroundVehicle::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultipl
 	if (mc2_diag::tagEnabled("COMBAT")) {
 		GameObjectPtr _cbAtk = ObjectManager->getByWatchID(shotInfo->attackerWID);
 		char _cbf[192];
+		// ISSUE-9 S3: "loc" = resolved hit location (vehicle location index) —
+		// keeps the hit-event schema uniform with BattleMech::handleWeaponHit.
 		snprintf(_cbf, sizeof(_cbf),
 			"{\"ev\":\"hit\",\"a_wid\":%u,\"a_team\":%ld,\"t_wid\":%lu,\"t_team\":%ld,\"dmg\":%.1f,\"loc\":%d}",
 			(unsigned)shotInfo->attackerWID, _cbAtk ? _cbAtk->getTeamId() : -1L,
@@ -825,6 +827,7 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 
 								if (!canSeeHit)
 								{
+									//OK, no miss location is visible.  Hit the target with ZERO damage!!
 									curShotInfo.init(this->getWatchID(),
 													 inventory[weaponIndex].masterID,
 													 0.0f,
@@ -920,6 +923,7 @@ long GroundVehicle::fireWeapon (GameObjectPtr target, float targetTime, long wea
 
 							if (!canSeeHit)
 							{
+								//OK, no miss location is visible.  Hit the target with ZERO damage!!
 								shotInfo.init(this->getWatchID(),
 											 inventory[weaponIndex].masterID,
 											 0.0f,

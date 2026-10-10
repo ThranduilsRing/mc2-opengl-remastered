@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # tg_import_dump — engine-import inspector (MECH-IMPORT-TGDUMP-1)
 
 Game-free CLI that runs the **real** mclib importer (`ImportGeometryFromFile`) on a

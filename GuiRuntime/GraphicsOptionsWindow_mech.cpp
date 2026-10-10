@@ -6,6 +6,10 @@
 
 namespace GraphicsOptionsWindow {
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Env gate table — baked at startup, shown read-only.
+// defaultOn=true means the feature is enabled when the var is absent/non-zero.
+// ─────────────────────────────────────────────────────────────────────────────
 struct EnvGate {
     const char* var;
     const char* desc;
@@ -238,6 +242,7 @@ void drawMechSection() {
                                   "Strength shared with Static Prop IBL SH slider.");
         }
 
+        // MECH-BACK-FILL-1: cool-sky fill for shadow hemisphere.
         float bf = batcher_getMechBackFillStrength();
         if (ImGui::SliderFloat("Back fill##pbr", &bf, 0.0f, 4.0f, "%.2f"))
             batcher_setMechBackFillStrength(bf);
@@ -345,6 +350,7 @@ void drawVfxTuningSection() {
         ImGui::SameLine();
         if (ImGui::SmallButton("Reset##vfxa")) gos_vfx_setAlphaScale(1.0f);
 
+        // VFX-SOFT-PARTICLES-MVP-1: depth-fade enable + world-unit fade band.
         ImGui::Separator();
         bool softOn = gos_vfx_getSoftEnabled() != 0;
         if (ImGui::Checkbox("Soft particles##vfx", &softOn))

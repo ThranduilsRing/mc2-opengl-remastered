@@ -626,6 +626,7 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
 
         finishCoalesceDraw(f);
     } else {
+        // ---- Step 11.8 legacy per-type/per-packet draw loop (unchanged) ----
 
         legacyPrepare();
     legacyCensus();

@@ -784,6 +784,7 @@ bool MechWarrior::movingOverBlownBridge (void) {
 
 	if (getMovePath()) {
 #ifdef USE_BRIDGES
+		// If on a blown bridge, return true...
 		MoverPtr myVehicle = getVehicle();
 		long tileRow = 0, tileCol = 0, cellRow = 0, cellCol = 0;
 		myVehicle->getTileCellPosition(tileRow, tileCol, cellRow, cellCol);

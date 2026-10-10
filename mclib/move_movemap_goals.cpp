@@ -446,6 +446,9 @@ long MoveMap::setUp (long mapULr,
 				}
 				map[moveMapIndex].cost = cost;
 
+				// NOTE: With gates, we may want them to set the cell cost rather
+				// than just adjust it. Let's see how they play. Since they're
+				// set as an overlay, we'll just treat them as such for now.
 				
 				if (mapCell->getPathlock(moveLevel == 2))
 					adjustMoveMapCellCost(&map[cellRow * maxWidth + cellCol], pathLockCost);

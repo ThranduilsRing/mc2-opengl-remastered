@@ -745,6 +745,9 @@ void gos_SetTerrainDaylightLevel(float level) {
 float gos_GetTerrainDaylightLevel() {
     return s_gosTerrainDaylight;
 }
+// VK-TERRAIN-LODFADE: reuses the existing gos_GetTerrainCameraPos free function
+// (defined above at the gos_SetShadowMode block) for the camera-distance fade port --
+// no new accessor needed.
 
 // CEMENT-NIGHT-LIGHT-1: mission flat-pad light colour feed (gamecam.cpp, per
 // frame). Killswitch MC2_CEMENT_MISSION_LIGHT=0 -> force (1,1,1) (repro of the

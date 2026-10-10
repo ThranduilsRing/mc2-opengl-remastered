@@ -29,6 +29,8 @@ void GlobalMap::calcGlobalDoors (void) {
 					for (long c = minCol; c < maxCol; c++) {
 						long curArea = areaMap[r * width + c];
 						if (curArea > -1) {
+							// The doorMap tracks, for each tile, what area is adjacent
+							// to it thru a door...
 							long adjR = r + adjTile[dir][0];
 							long adjC = c + adjTile[dir][1];
 							if ((adjR >= 0) && (adjR < height) && (adjC >= 0) && (adjC < width)) {

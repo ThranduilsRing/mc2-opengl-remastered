@@ -434,6 +434,14 @@ int PackThinRecordsForFrame() {
                 }
             }
         }
+        // Old nodeIdx-based lookup — kept as dead code for one commit; the
+        // slot-keyed lookup above is what drives correctness now.  Slot is
+        // stable across frames; nodeIdx is not.
+        // const DWORD nodeIdx = (DWORD)q.terrainHandle;
+        // if (nodeIdx < (DWORD)MC_MAXTEXTURES) {
+        //     const uint16_t idx2 = g_cementLayerIndexByNodeIdx[nodeIdx];
+        //     ...
+        // }
         tr.cementWord    = cementWord;
         tr.lightRGB0     = lightRGBc(0);
         tr.lightRGB1     = lightRGBc(1);

@@ -659,6 +659,8 @@ void GlobalMap::destroy (void) {
 
 	if (areas) {
 		if (!doorInfos) {
+			// Build path: areas_cellsCovered and areas_doors elements are individually
+			// heap-allocated in calcAreaDoors(). Free each one.
 			for (long i = 0; i < (numAreas + 1); i++) {
 				if (areas_cellsCovered && areas_cellsCovered[i]) {
 					systemHeap->Free(areas_cellsCovered[i]);
@@ -673,6 +675,8 @@ void GlobalMap::destroy (void) {
 		systemHeap->Free(areas);
 		areas = NULL;
 	}
+	// Free the pointer arrays themselves — they are systemHeap-allocated in both
+	// the build path (calcAreas) and the load path (init(PacketFile,packet)).
 	if (areas_cellsCovered) {
 		systemHeap->Free(areas_cellsCovered);
 		areas_cellsCovered = NULL;
@@ -684,6 +688,8 @@ void GlobalMap::destroy (void) {
 
 	if (doors) {
 		if (!doorLinks) {
+			// Build path: each doors_links[i][s] element is individually heap-allocated
+			// in calcDoorLinks(). Free each one.
 			for (long i = 0; i < (numDoors + NUM_DOOR_OFFSETS); i++)
 				for (long s = 0; s < 2; s++) {
 					if (doors_links && doors_links[i][s]) {
@@ -695,6 +701,7 @@ void GlobalMap::destroy (void) {
 		systemHeap->Free(doors);
 		doors = NULL;
 	}
+	// Free the doors_links pointer array itself — allocated in both paths.
 	if (doors_links) {
 		systemHeap->Free(doors_links);
 		doors_links = NULL;

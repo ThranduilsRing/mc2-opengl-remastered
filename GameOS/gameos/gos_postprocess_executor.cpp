@@ -159,6 +159,9 @@ static void executorOwnBegin(gosPostProcess* pp)
 }
 
 //
+// Checks the IslandContract postconditions for the PostProcess island.
+// On success -> increments g_executorOwnedPasses (this island owned+validated).
+// On failure -> increments g_executorValidationFailures + logs.
 //
 // NOTE: calls glGetError() which clears the GL error flag. Acceptable here:
 // (a) we are post-endScene which already calls drainGLErrors("post_process"),

@@ -10,11 +10,6 @@
   "reason": "end-of-section marker"
  },
  {
-  "file": "GuiRuntime/GraphicsOptionsWindow_mech.cpp",
-  "base_line": 9,
-  "reason": "separator/banner line with no content"
- },
- {
   "file": "GuiRuntime/GraphicsOptionsWindow_passes.cpp",
   "base_line": 9,
   "reason": "separator/banner line with no content"

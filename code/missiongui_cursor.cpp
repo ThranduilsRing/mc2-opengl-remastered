@@ -309,6 +309,8 @@ void MissionInterfaceManager::doDrag(bool bGui)
 			{
 				Stuff::Vector3D screenStart;
 				Stuff::Vector4D screenPos;
+				// [PROJECTZ:SelectionPicking id=picking_drag_select_origin]
+				// [PROJECTZ:SelectionPicking id=picking_drag_select_origin]
 				PROJECTZ_SITE("picking_drag_select_origin", "SelectionPicking");
 				eye->projectForSelectionPicking( dragStart, screenPos );
 				screenStart.x = screenPos.x;
@@ -911,8 +913,14 @@ long MissionInterfaceManager::calcRotation()
 	Stuff::Vector4D screenPosMover;
 	Stuff::Vector4D screenPosGoal;
 	actualPos.Add(camPos,actualPos);
+	// [PROJECTZ:ScreenXYOracle id=gui_mover_rotation_pos]
+	// [PROJECTZ:ScreenXYOracle id=gui_mover_rotation_pos]
 	eye->projectForScreenXY( actualPos, screenPosMover );
 
+	// need to find second position
+	// [PROJECTZ:ScreenXYOracle id=gui_cam_rotation_goal]
+	// need to find second position
+	// [PROJECTZ:ScreenXYOracle id=gui_cam_rotation_goal]
 	eye->projectForScreenXY( camPos, screenPosGoal );
 	
 

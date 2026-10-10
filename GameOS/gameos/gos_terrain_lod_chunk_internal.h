@@ -126,12 +126,14 @@ extern void  gos_GetTerrainCameraPos(float*, float*, float*);
 
 extern int   g_terrainMaterialProfile;   // global; 0 = legacy
 
+// Step 5c: cement catalog atlas (tex3) accessors from gos_terrain_indirect.cpp.
 extern unsigned int gos_terrain_indirect_getCementAtlasGLTex();
 
 extern int          gos_terrain_indirect_getCementAtlasGridSide();
 
 extern bool         gos_terrain_indirect_isCementAtlasReady();
 
+// Stage B: transition mask array (GL_TEXTURE_2D_ARRAY, unit 11).
 extern GLuint gos_terrain_indirect_getTransitionMaskArrayGL();
 
 extern bool   gos_terrain_indirect_isTransitionMaskReady();

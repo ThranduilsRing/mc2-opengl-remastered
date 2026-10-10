@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # ORM runtime manifest fixture
 
 `manifest.json` is a schema-valid asset manifest for the MC2 static-prop ORM

@@ -207,6 +207,9 @@ long BattleMech::init (DWORD variantNum)
 	{
 		inventory[curItem].masterID = 0xff;
 		inventory[realItemNum].disabled = true;
+		// LOADOUT-HARDPOINT-JOIN-1: default the optional logical-hardpoint join key
+		// to unset. Stock CSV loadouts carry no hardpoint column, so this stays 0
+		// (legacy positional-CSV mount unchanged). A data source may later set it.
 		inventory[curItem].hardpointId = 0;
 	}
 
@@ -214,6 +217,10 @@ long BattleMech::init (DWORD variantNum)
 	{
 		mechFile->readUChar((26 + (97 * variantNum)) + curItem, 5, inventory[realItemNum].masterID);
 
+		// LOADOUT-EQUIPMENT-ID-ALIAS-1 (E5): ADDITIVE string-id override. Gate-ON,
+		// if this row carries an optional EquipmentId="core:<slug>" token that
+		// resolves to a legacy ordinal in 0..254, use it; else keep the numeric
+		// masterID just read. Stock rows have no token -> no override (parity).
 		{
 			int aliasId = resolveOptionalEquipmentIdColumn(mechFile, (26 + (97 * variantNum)) + curItem);
 			if (aliasId >= 0)
@@ -270,9 +277,11 @@ long BattleMech::init (DWORD variantNum)
 				case COMPONENT_FORM_WEAPON_ENERGY:
 				case COMPONENT_FORM_WEAPON_BALLISTIC:
 				case COMPONENT_FORM_WEAPON_MISSILE:
+					//Ignore weapons until second pass
 					break;
 					
 				case COMPONENT_FORM_AMMO:
+					//Ignore AMMO until third pass
 					break;
 			}
 		}
@@ -282,6 +291,9 @@ long BattleMech::init (DWORD variantNum)
 	{
 		mechFile->readUChar((26 + (97 * variantNum)) + curItem, 5, inventory[realItemNum].masterID);
 
+		// LOADOUT-EQUIPMENT-ID-ALIAS-1 (E5): ADDITIVE string-id override (weapons
+		// pass). Same rule as the non-weapon pass above -- gate-ON optional
+		// EquipmentId token resolves to a legacy ordinal; else legacy numeric id.
 		{
 			int aliasId = resolveOptionalEquipmentIdColumn(mechFile, (26 + (97 * variantNum)) + curItem);
 			if (aliasId >= 0)
@@ -338,6 +350,11 @@ long BattleMech::init (DWORD variantNum)
 					inventory[realItemNum].disabled = false;
 					inventory[realItemNum].amount = 1;
 					inventory[realItemNum].ammoIndex = -1;
+					// GETWEAPONNODE-HARDPOINT-ADAPTER-1 (Phase-2 slice 4): route the
+					// weapon-node mount through the item's declared HardpointId when one
+					// resolves to a real model socket; else the legacy least-used
+					// round-robin. Stock items carry hardpointId==0 -> always fallback ->
+					// byte-identical mount (parity). Returns the same node-index domain.
 					inventory[realItemNum].facing = (unsigned char)resolveWeaponMountNode(inventory[realItemNum], sourceWeaponType);
 					inventory[realItemNum].readyTime = 0.0;
 					inventory[realItemNum].bodyLocation = 255;
@@ -786,6 +803,10 @@ LogisticsMasterLocationTableEntry logisticsTable[MAX_MOVER_INVENTORY_ITEMS] =
 #define WEAPONAMMO_SLOT					17
 void BattleMech::resetComponents (long totalComponents, long *componentList)
 {
+	// Create a master component list for this mech.
+	// Remove all of the components logistics can replace.
+	// Add back in all of the components logistics replaced.
+	// Put in the right body locations using the above table.
 	int32_t localMasterComponentList[MAX_MOVER_INVENTORY_ITEMS];
     MemSet(localMasterComponentList, 0xff);
 
@@ -993,9 +1014,11 @@ void BattleMech::resetComponents (long totalComponents, long *componentList)
 				case COMPONENT_FORM_WEAPON_ENERGY:
 				case COMPONENT_FORM_WEAPON_BALLISTIC:
 				case COMPONENT_FORM_WEAPON_MISSILE:
+					//Ignore weapons until second pass
 					break;
 					
 				case COMPONENT_FORM_AMMO:
+					//Ignore AMMO until third pass
 					break;
 			}
 		}
@@ -1044,6 +1067,11 @@ void BattleMech::resetComponents (long totalComponents, long *componentList)
 					inventory[realItemNum].disabled = false;
 					inventory[realItemNum].amount = 1;
 					inventory[realItemNum].ammoIndex = -1;
+					// GETWEAPONNODE-HARDPOINT-ADAPTER-1 (Phase-2 slice 4): route the
+					// weapon-node mount through the item's declared HardpointId when one
+					// resolves to a real model socket; else the legacy least-used
+					// round-robin. Stock items carry hardpointId==0 -> always fallback ->
+					// byte-identical mount (parity). Returns the same node-index domain.
 					inventory[realItemNum].facing = (unsigned char)resolveWeaponMountNode(inventory[realItemNum], sourceWeaponType);
 					inventory[realItemNum].readyTime = 0.0;
 					inventory[realItemNum].bodyLocation = 255;

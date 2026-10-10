@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Region manifests
 
 One JSON per bookmark pose. Each names the artifact-prone rectangles the visual

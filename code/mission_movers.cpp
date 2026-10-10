@@ -201,6 +201,10 @@ long Mission::addMover (MoverInitData* moverSpec) {
 		pilot->calcRank();
 	}
 
+	//*********************
+	// NOTE: Need to send packet to other players in MP with new pilot and
+	// mover data!
+	//*********************
 
 	long numErrors, numLinesProcessed;
 	FullPathFileName brainFullFileName;
@@ -342,6 +346,10 @@ typedef struct _MoverInitData {
 			else
 				MC2_DESTROY(mover, "mission_load_inactive");
 
+			//---------------------------------------------------------------------------------
+			// If we're not playing multiplayer, make sure all home commander movers have their
+			// localMoverId set to 0, so the iface can at least check if a mover is player
+			// controlled...
 			if (!MPlayer && (Commander::home->getId() == moverSpec->commanderID))
 				mover->setLocalMoverId(0);
 

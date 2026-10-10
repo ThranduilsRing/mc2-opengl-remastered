@@ -238,9 +238,11 @@ long BattleMech::resolveWeaponMountNode (const InventoryItem& item, long sourceW
 	// effect is preserved exactly (parity), whichever node we ultimately mount to.
 	const long roundRobinNode = appearance->getWeaponNode(sourceWeaponType);
 
+	// Fast path / stock parity: gate OFF or no declared hardpoint -> fallback.
 	if (!mc2UnitProfileDataEnabled() || item.hardpointId == 0)
 		return roundRobinNode;
 
+	// Declared hardpoint: resolve id -> profile -> socket name -> node index.
 	HardpointProfile hp;
 	long socketNode = -1;
 	if (resolveHardpoint(item.hardpointId, hp) && !hp.socket.empty())
@@ -782,6 +784,8 @@ long BattleMech::init (FitIniFile* mechFile) {
 	}
 
 	for (int item = numOther+numWeapons;item<(numOther+numWeapons+numAmmos);item++) {
+		// Each weapon should point to its appropriate ammo total in
+		// the ammo type total list...
 		for (long ammoIndex = 0; ammoIndex < numAmmoTypes; ammoIndex++) {
 			if (inventory[item].masterID == ammoTypeTotal[ammoIndex].masterId) {
 				inventory[item].ammoIndex = ammoIndex;
@@ -835,6 +839,8 @@ long BattleMech::init (FitIniFile* mechFile) {
 		}
 	}
 
+	// UNITPROFILE-TYPELOAD-SOURCE-1: numJumpJets is authoritative here; fold it
+	// into the type baseline + this instance's runtime via the single owner.
 	refreshDerivedCapabilities();
 
 	return(NO_ERR);

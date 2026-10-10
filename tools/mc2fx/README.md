@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # MC2 gosFX Effect Tools (`mc2fx`)
 
 Inspect, edit, author, and preview the game's particle/effect definitions in

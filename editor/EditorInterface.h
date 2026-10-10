@@ -200,13 +200,16 @@ public:
 
 	ActionUndoMgr				undoMgr;
 
+		//{{AFX_VIRTUAL(EditorInterface)
 	public:
 	virtual BOOL PreTranslateMessage(MSG* pMsg);
 	protected:
 	virtual LRESULT WindowProc(UINT message, WPARAM wParam, LPARAM lParam);
 	virtual BOOL PreCreateWindow(CREATESTRUCT& cs);
+	//}}AFX_VIRTUAL
 
 	protected:
+		//{{AFX_MSG(EditorInterface)
 		afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);
 	afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
 	afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
@@ -245,6 +248,7 @@ public:
 	afx_msg void OnViewShowpassabilitymap();
 	afx_msg void OnMButtonUp(UINT nFlags, CPoint point);
 	afx_msg void OnTimer(UINT_PTR nIDEvent);   // render-pump timer (freeze fix)
+	//}}AFX_MSG
 		DECLARE_MESSAGE_MAP()
 
 	enum { kRenderTimerId = 0xED20 };          // WM_TIMER id for the render pump

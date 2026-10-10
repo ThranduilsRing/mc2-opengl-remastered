@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Terrain Beautify — Arc B (stock-mission beautification)
 
 Non-destructive analysis + (future) beautification of **authored** stock missions.

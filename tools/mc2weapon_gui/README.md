@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # mc2weapon_gui
 
 Dear ImGui (SDL2 + OpenGL3) weapon editor for MechCommander 2. A **foolproof

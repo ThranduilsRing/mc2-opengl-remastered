@@ -1,4 +1,4 @@
-inline expansion: 2158 statements, helpers 29, orchestrator lines 179
+inline expansion: 2162 statements, helpers 29, orchestrator lines 180
 declaration lifts / edits applied (26):
   L105   lift GLuint parityBuffer = 0;  =>  parityBuffer = 0;
   L162   lift std::optional<mc2gl::GlScopedProgram>       guardProgram;  =>  (declaration only)
@@ -23,9 +23,9 @@ declaration lifts / edits applied (26):
   L1021  edit const bool runV6 = s_v6Enabled && !s_v6Disarmed;  =>  runV6 = s_v6Enabled && !s_v6Disarmed;
   L1025  lift uint32_t v6LockstepViolations = 0u;  =>  v6LockstepViolations = 0u;
   L1028  lift bool retireLiveBuilder = false;  =>  retireLiveBuilder = false;
-  L1098  edit const bool runV5 = s_v5Enabled && s_baseInstanceSupported && !s_v5Disa  =>  runV5 = s_v5Enabled && s_baseInstanceSupported && !s_v5Disarmed;
-  L1100  edit if (runV6 && v6LockstepViolations == 0u) {  =>  if (f.runV6 && f.v6LockstepViolations == 0u) {
-  L1504  edit } else if (runV5) {  =>  } else if (f.runV5) {
+  L1100  edit const bool runV5 = s_v5Enabled && s_baseInstanceSupported && !s_v5Disa  =>  runV5 = s_v5Enabled && s_baseInstanceSupported && !s_v5Disarmed;
+  L1102  edit if (runV6 && v6LockstepViolations == 0u) {  =>  if (f.runV6 && f.v6LockstepViolations == 0u) {
+  L1506  edit } else if (runV5) {  =>  } else if (f.runV5) {
 scaffolding only in new (50 distinct):
    + // Apply the opaque pipeline state, bind the shared VAO / IBO and per-type SSBO, clear the parity slot. 
    + // BC7 bucketed multidraw dispatch. 
@@ -77,7 +77,7 @@ scaffolding only in new (50 distinct):
    + void GpuStaticPropBatcher::legacyDrawLoop(StaticPropFlushFrame& f) { 
    + writeCoalesceInstances(); 
    + } else if (f.runV5) { 
-statements only in old (1266 distinct, all lifted declarations / hoisted-type lines):
+statements only in old (1269 distinct, all lifted declarations / hoisted-type lines):
    - !s_keepLiveBuilder && s_snapshotBuildEnabled && !s_snapCullEnabled; 
    - !s_snapshotBuildEnabled ? "snapshot_packet_build_disabled_keep_live" : 
    - " attempted=%u count_mismatch=%u pkt_mismatch=%u" 
@@ -358,6 +358,7 @@ statements only in old (1266 distinct, all lifted declarations / hoisted-type li
    - // State setup for C1b: three inheritance traps (gpu_direct_renderer_bringup_checklist.md): 
    - // Step 11.1 — unconditional coalesce fence cleanup. Runs whether or 
    - // Step 4.4 — legacy mode only: wait on coalesce fence here. 
+   - // Step 4.4 — use s_coalesceFrameSlot (coalesce ring), not s_frameSlot (legacy ring). 
    - // TERRAIN-DECAL-COLORBLEND-1: bind the terrain colormap atlas + atlas-UV 
    - // TERRAIN-DECAL-COLORBLEND-1: colormap atlas + UV params + blend 
    - // TERRAIN-DECAL-FILL-1: cliff-decal shadow-side ambient floor (legacy 
@@ -522,6 +523,7 @@ statements only in old (1266 distinct, all lifted declarations / hoisted-type li
    - // point below, instead of at this scope's natural end. Slice 2 
    - // pointer once, branch on it. Probe logs row0 (or "null") throttled 
    - // pre-change behavior, no re-applyPipeline issued). 
+   - // predicate, set telemetry, emit the one-shot arm log. 
    - // prevProgram/prevVao/prevArrayBuf/prevElemBuf/prevActiveTex/prevTexUnit0/ 
    - // prevSsbo{0,1,2,3,5} save + restore. gos_InvalidateRenderStateCache() is 
    - // program). Frag applies it only to kFlagDecalFill (bit 3) fragments. 
@@ -610,6 +612,7 @@ statements only in old (1266 distinct, all lifted declarations / hoisted-type li
    - // v8: retirement predicate. Consumed just below to gate the live builder, 
    - // v8: set retirement telemetry AFTER the unconditional reset above so it 
    - // v8: skip when the live builder is retired — v6Meta/v6Packets are 
+   - // v8: snapshot is now the SOLE owner when retired. Consume the planned 
    - // v8: snapshot-sole-owner decision. Set in the runV6 preamble, read again in 
    - // values match the existing legacy upload sites; -1 cached 
    - // var (s_iblShEnabled); when OFF -> upload 0.0 -> shader short-circuits 

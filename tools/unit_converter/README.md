@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # unit_converter — LEGACY-UNIT-CONVERTER-1
 
 Offline, deterministic Python tool (Phase-3 opener of the unit-profile arc).

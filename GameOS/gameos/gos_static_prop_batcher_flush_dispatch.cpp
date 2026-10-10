@@ -141,6 +141,8 @@ void GpuStaticPropBatcher::buildV6Packets(std::vector<RenderCore::DrawPacket>& v
             const bool retireLiveBuilderPlanned =
                 !s_keepLiveBuilder && s_snapshotBuildEnabled && !s_snapCullEnabled;
 
+            // v8: snapshot is now the SOLE owner when retired. Consume the planned
+            // predicate, set telemetry, emit the one-shot arm log.
             retireLiveBuilder = retireLiveBuilderPlanned;
             if (!s_v8ArmLogged) {
                 s_v8ArmLogged = true;
@@ -1013,6 +1015,7 @@ void GpuStaticPropBatcher::fenceAndParitySlot() {
     // ring-slot lifecycle so the next visit (RING_FRAMES frames from now)
     // can wait on this fence before overwriting the slot's CPU writes.
     if (IsCoalesceEnabled()) {
+        // Step 4.4 — use s_coalesceFrameSlot (coalesce ring), not s_frameSlot (legacy ring).
         s_coalesceFence[s_coalesceFrameSlot] = MC2_GL_FenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
     }
     // Stage 2.D.1: record this slot's parity-byte usage so the next visit

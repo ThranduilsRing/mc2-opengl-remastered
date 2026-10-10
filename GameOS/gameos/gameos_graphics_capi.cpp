@@ -913,6 +913,8 @@ void __stdcall gos_BeginCameraPreviewRender()
     if (g_gos_renderer) g_gos_renderer->invalidateRenderStateCache();
 }
 
+// Restore the default framebuffer (and its real-resolution glViewport) after
+// camera preview rendering.
 void __stdcall gos_EndCameraPreviewRender()
 {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);

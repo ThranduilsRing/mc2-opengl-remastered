@@ -107,6 +107,8 @@ long Mech3DAppearance::update (bool animate)
 	
 	if (currentStateGoal != -1)
 	{
+		// Find out how we get to Goal.  If result is
+		// -1, we are already at goal.
 		long arrayIdx = (oldStateGoal * GESTURE_OFFSET_SIZE) + (currentStateGoal *  MAX_TRANSITION_GESTURES) + transitionState;
 		newGestureId = transitionArray[arrayIdx];
 

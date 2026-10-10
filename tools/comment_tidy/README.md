@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # comment-tidy
 
 "clang-tidy for comments": finds stale, wrong or bloated comments in C++/GLSL/Python/shell/CMake.

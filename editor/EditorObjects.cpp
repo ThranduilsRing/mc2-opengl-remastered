@@ -710,6 +710,7 @@ static bool EditorAnalyzeBrain( const char* brainName, std::vector<Stuff::Vector
 		if ( n >= (long)sizeof( line ) ) n = (long)sizeof( line ) - 1;
 		line[n] = 0;
 
+		// fsm name: "fsm <name>;" (first occurrence).
 		if ( fsmOut && fsmCap && !fsmOut[0] )
 		{
 			const char* fp = strstr( line, "fsm " );
@@ -1240,6 +1241,7 @@ void Pilot::initPilots()
 				if ((strlen(pilotFileName) > strlen("pmw"))
 					&& (0 == strnicmp(pilotFileName, "pmw", strlen("pmw"))))
 				{
+					/*Good pilots that start with "pmw" are single-player pilots.*/
 					CString tmpStr;
 					tmpStr.LoadString(IDS_PILOT_SINGLE_PLAYER_VERSION);
 					postFix = tmpStr.GetBuffer(0);
@@ -1247,6 +1249,7 @@ void Pilot::initPilots()
 				else if ((strlen(pilotFileName) > strlen("pmp_"))
 					&& (0 == strnicmp(pilotFileName, "pmp_", strlen("pmp_"))))
 				{
+					/*Good pilots that start with "pmp_" are multi-player pilots.*/
 					CString tmpStr;
 					tmpStr.LoadString(IDS_PILOT_MULTIPLAYER_VERSION);
 					postFix = tmpStr.GetBuffer(0);
