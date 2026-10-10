@@ -194,6 +194,11 @@ _NON_READER_CALLEES = {"putenv", "_putenv", "_putenv_s", "setenv", "SetEnvironme
 
 VERDICTS = ("NO-CHANGE", "EDGE", "SEMANTICS", "UNHANDLED")
 SHAPES = ("namespace-static", "local-static", "lambda-static", "per-call")
+
+# Numeric inputs whose result may differ after a rewrite without the site needing a human: empty text and the
+# non-finite spellings (a registry row rejects them to its default). Any other input that changes means the old
+# reader does something the row does not.
+_BENIGN_NUMERIC_EDGES = ("''", "'1e999'", "'nan'", "'NaN'", "'inf'", "'-1e999'", "unset")
 PROBE_LABELS = tuple(gi.PROBE_LABELS)
 PROBE_VALUES = tuple(v for _, v in gi.PROBES)
 #: Probe labels whose result may differ in an EDGE (never U, Z or O: those are SEMANTICS).
@@ -525,7 +530,7 @@ def _norm_ws(s, limit=320):
 class Result:
     __slots__ = ("file", "line", "gate", "callee", "idiom", "shape", "replacement", "verdict", "why", "old",
                  "row_edit", "diff", "harness_hits", "override", "reason", "mode", "kind", "helper_def",
-                 "paired", "pp", "helper_read", "edit")
+                 "paired", "pp", "helper_read", "edit", "hand")
 
     def __init__(self, file, line, gate, callee):
         self.file, self.line, self.gate, self.callee = file, line, gate, callee
@@ -547,6 +552,7 @@ class Result:
         self.pp = ""                # preprocessor context holding the site ("inside #else of ...")
         self.paired = False         # the statement reads the same gate twice (presence test, then a character test)
         self.edit = None            # (start, end, new_text) in raw-file offsets: what --apply replaces
+        self.hand = ""              # why --apply must leave the site to a human (a planned site that is not applied)
 
     @property
     def where(self):
@@ -1071,6 +1077,10 @@ def _analyze_site(res, interp, path, raw, T, p, cs, ce, is_raw, rows, ledger):
         bad = body_impure(body)
         if bad:
             return _fail(res, "lambda body names `%s`, which is state outside the read" % bad)
+        gates_read = sorted(set(re.findall(r'"(MC2_[A-Z0-9_]+)"', body)))
+        if len(gates_read) > 1:
+            return _fail(res, "HAND: the lambda reads %d gates (%s); replacing it by one read would drop the others"
+                         % (len(gates_read), ", ".join(gates_read)))
         is_static = "static" in lhs["quals"]
         ns_scope = at_namespace_scope(T, ss)
         res.shape = shape_of(True, lhs["is_decl"], is_static, ns_scope)
@@ -1360,6 +1370,13 @@ def _numeric(res, row, interp, path, T, p, cs, ce, unit, mode, notes, raw):
     res.edit = (unit["span"][0], unit["span"][1], res.replacement)
     res.mode = mode
     res.row_edit = jd["edit"]
+    hand = []
+    if jd["edit"]:
+        hand.append("the row needs an edit first (%s) %s: apply it by hand after checking it against the reader" % (row.name, jd["edit"]))
+    bad_in = [d for d in res.diff if d not in _BENIGN_NUMERIC_EDGES]
+    if bad_in:
+        hand.append("the row reads %s differently from the old reader (the reader parses, converts or snaps beyond the "
+                    "row's parse+default+range)" % ", ".join(bad_in[:6]))
     hits = [h for h in row.harness if h != "String" and h in [x for x in jd["diff"] if x is not None]]
     res.harness_hits = hits
     parts = []
@@ -1372,6 +1389,12 @@ def _numeric(res, row, interp, path, T, p, cs, ce, unit, mode, notes, raw):
         parts.append("harness sets %s" % (",".join(repr(h) for h in hits) if hits else "none of them") +
                      (" (seed harnessValues=%s)" % row.harness if row.harness else ""))
     res.why = "; ".join(parts + list(notes))
+    if hand:
+        # The plan keeps its verdict (the row-edit proposals feed the row-edit section), but --apply never rewrites
+        # these: replacing the reader by get<>() would silently drop whatever it does besides parse (clamp to a set,
+        # snap, convert units, fall back to a second gate). A human rewrites the site.
+        res.hand = "; ".join(hand)
+        res.why = "HAND (not applied by the tool): " + res.hand + " [" + res.why + "]"
     return res
 
 
@@ -1418,7 +1441,8 @@ def apply_edits(raw, results):
     # A statement's span starts right after the previous `;`, `{` or `}`: skip the blanks and comment blocks that
     # precede it (the comment-stripped text keeps raw offsets, with comments blanked) so they and the indentation stay.
     T = gi.strip_comments(raw)
-    todo = sorted((r for r in results if r.edit and r.verdict in ("NO-CHANGE", "EDGE")), key=lambda r: -r.edit[0])
+    todo = sorted((r for r in results if r.edit and r.verdict in ("NO-CHANGE", "EDGE") and not getattr(r, "hand", "")),
+                  key=lambda r: -r.edit[0])
     applied, skipped, limit = [], [], len(raw) + 1
     for r in todo:
         a, b, new = r.edit

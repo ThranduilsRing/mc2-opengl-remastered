@@ -647,3 +647,57 @@ def test_exact_zero_reader_on_a_lead0kill_row_is_edge_not_no_change(form):
 def test_leading_zero_reader_on_a_lead0kill_row_stays_no_change():
     r = one("static const bool s_on = %s;\n" % lam("Lead0Kill"), mk("Lead0Kill"))
     assert r.verdict == "NO-CHANGE"
+
+
+# ---------------------------------------------------------------------------
+# G7: --apply never replaces a reader that does more than parse + default (HAND)
+# ---------------------------------------------------------------------------
+
+def num_rows(rng=None, default=0):
+    return {G: cm.Row(G, "Int", "Prefix", default, rng=rng)}
+
+
+def _apply(code, rows):
+    res = cm.analyze_text("snippet.cpp", code, rows, None)
+    new, applied, skipped = cm.apply_edits(code, res)
+    return res, new, applied
+
+
+def test_snapping_lambda_is_not_applied():
+    code = ("int f() {\n  static const int s = []() {\n    const char* v = getenv(\"MC2_X\");\n"
+            "    int n = (v && v[0]) ? atoi(v) : 8192;\n    if (n <= 2048) return 2048;\n    if (n <= 4096) return 4096;\n"
+            "    return 8192;\n  }();\n  return s;\n}\n")
+    res, new, applied = _apply(code, num_rows(default=8192))
+    assert not applied and new == code, (res[0].verdict, res[0].why)
+    assert "HAND" in res[0].why
+
+
+def test_lambda_reading_two_gates_is_a_hand_site():
+    code = ("long f() {\n  static const long s = []() {\n    const char* v = getenv(\"MC2_X\");\n"
+            "    if (!v) v = getenv(\"MC2_Y\");\n    return v ? atol(v) : -1L;\n  }();\n  return s;\n}\n")
+    rows = num_rows(default=-1)
+    rows["MC2_Y"] = cm.Row("MC2_Y", "Int", "Prefix", -1)
+    res, new, applied = _apply(code, rows)
+    assert not applied and new == code
+    assert any("reads 2 gates" in r.why for r in res), [(r.verdict, r.why) for r in res]
+
+
+def test_plain_parse_and_default_numeric_lambda_is_still_applied():
+    code = ("int f() {\n  static const int s = []() {\n    const char* v = getenv(\"MC2_X\");\n"
+            "    return (v && v[0]) ? atoi(v) : 7;\n  }();\n  return s;\n}\n")
+    res, new, applied = _apply(code, num_rows(default=7))
+    assert applied and "mc2::gate::get<\"MC2_X\">()" in new, (res[0].verdict, res[0].why)
+
+
+def test_unit_conversion_is_not_applied():
+    code = ("float f() {\n  static const float s = []() {\n    const char* e = getenv(\"MC2_X\");\n"
+            "    return e ? (float)(atof(e) * 3.14159265358979323846 / 180.0) : 0.0f;\n  }();\n  return s;\n}\n")
+    rows = {G: cm.Row(G, "Float", "Prefix", 0.0)}
+    res, new, applied = _apply(code, rows)
+    assert not applied and new == code, (res[0].verdict, res[0].why)
+
+
+def test_row_edit_needed_sites_are_planned_but_not_applied():
+    res, new, applied = _apply(INT_LAMBDA, mk("Prefix", "Int", 64))
+    assert res[0].row_edit
+    assert not applied and new == INT_LAMBDA
