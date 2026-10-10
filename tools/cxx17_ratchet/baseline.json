@@ -67,7 +67,7 @@
    "LG17": 81,
    "LG18": 11,
    "LG19": 1,
-   "LG20": 16
+   "LG20": 15
   },
   "GuiRuntime": {
    "LG01": 1,
@@ -548,7 +548,7 @@
    "LG11": 4,
    "LG12a": 60,
    "LG12b": 11,
-   "LG20": 2
+   "LG20": 1
   },
   "GameOS/gameos/gos_cardcloud_sim.cpp": {
    "LG03": 6,
@@ -2349,19 +2349,56 @@
    "LG17": 1
   },
   "code/logisticsdata.cpp": {
-   "LG01": 28,
-   "LG03": 33,
-   "LG05": 39,
-   "LG06": 26,
-   "LG09": 43,
-   "LG11": 18,
-   "LG12a": 12,
-   "LG12b": 17
+   "LG01": 6,
+   "LG03": 6,
+   "LG05": 3,
+   "LG06": 6,
+   "LG11": 3,
+   "LG12b": 3
   },
   "code/logisticsdata.h": {
    "LG02": 6,
    "LG05": 2,
    "LG06": 23
+  },
+  "code/logisticsdata_availability.cpp": {
+   "LG01": 2,
+   "LG06": 4,
+   "LG09": 14,
+   "LG11": 12,
+   "LG12a": 3,
+   "LG12b": 6
+  },
+  "code/logisticsdata_init.cpp": {
+   "LG01": 1,
+   "LG03": 8,
+   "LG06": 4,
+   "LG09": 10,
+   "LG12a": 8,
+   "LG12b": 1
+  },
+  "code/logisticsdata_inventory.cpp": {
+   "LG01": 8,
+   "LG03": 7,
+   "LG05": 18,
+   "LG06": 2
+  },
+  "code/logisticsdata_modify.cpp": {
+   "LG01": 7,
+   "LG03": 6,
+   "LG05": 5,
+   "LG06": 6,
+   "LG09": 8
+  },
+  "code/logisticsdata_save.cpp": {
+   "LG01": 4,
+   "LG03": 6,
+   "LG05": 13,
+   "LG06": 4,
+   "LG09": 11,
+   "LG11": 3,
+   "LG12a": 1,
+   "LG12b": 7
   },
   "code/logisticsdialog.cpp": {
    "LG01": 7,
@@ -5107,15 +5144,30 @@
    "LG13": 1
   },
   "mclib/quad.cpp": {
-   "LG01": 33,
-   "LG09": 15,
-   "LG12a": 11,
-   "LG13": 6,
-   "LG16": 1
+   "LG13": 2
   },
   "mclib/quad.h": {
    "LG01": 1,
    "LG02": 2
+  },
+  "mclib/quad_draw.cpp": {
+   "LG09": 13,
+   "LG12a": 7
+  },
+  "mclib/quad_internal.h": {
+   "LG13": 4
+  },
+  "mclib/quad_lines.cpp": {
+   "LG01": 31,
+   "LG16": 1
+  },
+  "mclib/quad_setup.cpp": {
+   "LG01": 2,
+   "LG09": 1,
+   "LG12a": 4
+  },
+  "mclib/quad_water.cpp": {
+   "LG09": 1
   },
   "mclib/render_contract.cpp": {
    "LG05": 1,
@@ -6000,7 +6052,7 @@
    "LG20": 2
   }
  },
- "head": "701b05933",
+ "head": "20ad5611f",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
