@@ -52,7 +52,7 @@
    "LG03": 301,
    "LG04": 6,
    "LG05": 119,
-   "LG06": 522,
+   "LG06": 521,
    "LG07": 0,
    "LG08": 274,
    "LG09": 2163,
@@ -66,8 +66,8 @@
    "LG16": 7,
    "LG17": 81,
    "LG18": 11,
-   "LG19": 109,
-   "LG20": 147
+   "LG19": 108,
+   "LG20": 144
   },
   "GuiRuntime": {
    "LG01": 1,
@@ -535,12 +535,10 @@
   "GameOS/gameos/gos_cluster_depth_pyramid.cpp": {
    "LG03": 3,
    "LG05": 3,
-   "LG06": 2,
+   "LG06": 1,
    "LG09": 9,
    "LG11": 1,
-   "LG12a": 1,
-   "LG19": 1,
-   "LG20": 3
+   "LG12a": 1
   },
   "GameOS/gameos/gos_crashbundle.cpp": {
    "LG01": 29,
@@ -5870,7 +5868,7 @@
    "LG20": 1
   }
  },
- "head": "2a97eeef0",
+ "head": "687b3031a",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
