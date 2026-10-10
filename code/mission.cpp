@@ -45,6 +45,122 @@
 #ifndef SOUNDS_H
 #include"sounds.h"
 #endif
+// Includes the rest of the file needs (formerly interleaved with the code below).
+#include "brain_special_dispatch.h"  // TECHSCRIPT-SPECIAL-DISPATCH-1A: parseBrainSpecialBody
+#include "brain_missionfit_oporbd.h"  // BRAIN-MISSIONFIT-OPORD-CONSUMER-1: declarative mission.fit OPORD parser
+#include "brain_archetype.h"  // BRAIN-ARCHETYPE-1
+#include "det_rng.h"  // DETERMINISTIC-RNG-1: hashMissionName for per-mission reseed
+
+#ifndef COLLSN_H
+#include"collsn.h"
+#endif
+
+#ifndef CMPONENT_H
+#include"cmponent.h"
+#include"unitprofile.h"		// EQUIPMENT-REGISTRY-FACADE-1: gated registry build hook
+#endif
+
+#ifndef OBJMGR_H
+#include"objmgr.h"
+#endif
+
+#ifndef MOVER_H
+#include"mover.h"
+#endif
+
+#ifndef MECH_H
+#include"mech.h"
+#endif
+
+#ifndef GVEHICL_H
+#include"gvehicl.h"
+#endif
+
+#ifndef CONTACT_H
+#include"contact.h"
+#endif
+
+#ifndef TEAM_H
+#include"team.h"
+#endif
+
+#ifndef COMNDR_H
+#include"comndr.h"
+#endif
+
+#ifndef GROUP_H
+#include"group.h"
+#endif
+
+#ifndef GAMECAM_H
+#include"gamecam.h"
+#endif
+
+#include "frame_jobs.h"  // FRAME-JOBS-1: fixed worker pool for parallel CPU prep
+#include <vector>        // TERRAIN-REAUTH-UNPIN-1 Half B: mover cell scratch
+#include "../GameOS/gameos/gos_terrain_lod_chunk.h"  // TERRAIN-REAUTH-UNPIN-1 Half B: visual-damp mover stamps
+
+#ifndef MULTPLYR_H
+#include"multplyr.h"
+#endif
+
+#ifndef WEAPONFX_H
+#include"weaponfx.h"
+#endif
+
+#ifndef WEATHER_H
+#include"weather.h"
+#endif
+
+#ifndef GATE_H
+#include"gate.h"
+#endif
+
+#ifndef LOGISTICSDATA_H
+#include"logisticsdata.h"
+#endif
+
+#ifndef LOGISTICSPILOT_H
+#include"logisticspilot.h"
+#endif
+
+#ifndef GAMELOG_H
+#include"gamelog.h"
+#endif
+
+#ifndef CELLIP_H
+#include"cellip.h"
+#endif
+
+#ifndef PREFS_H
+#include"prefs.h"
+#endif
+
+#include "../resource.h"
+
+#include<gameos.hpp>
+#include "mc2_verify.h"  // MC2-VERIFY-LIVE-1: live data-contract guards
+#include "mc2_audit.h"   // META-FIX INFRA-1: gated audit emitter (design A/B markers)
+#include "../GameOS/gameos/gpu_cull_substrate.h"  // C0-3: GPU cull substrate init/shutdown
+#include "../GameOS/gameos/gpu_cull_compute.h"   // C1a: GPU visibility compute dispatch
+#include "../GameOS/gameos/gpu_cull_readback.h"  // C2: async readback ring buffer
+#include "../GameOS/gameos/gos_terrain_lighting.h"  // Phase 1: terrain lighting GPU compute
+#include "gos_profiler.h"
+#include "../GameAdapters/StaticPropRenderAdapter.h"  // M1 Task 13: firewall bridge (was: gos_static_prop_batcher.h + gos_static_prop_registry.h)
+#include "../GameAdapters/MechRenderAdapter.h"          // M2: mech lifecycle adapter
+#include "../GameAdapters/VegetationAdapter.h"          // vegetation card system lifecycle
+#include "gos_mech_batcher.h"
+#include <chrono>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include "mech_brain_runtime.h"  // BRAIN-RUNTIME-1B: per-unit mode loading from _ai.fit
+#include "brain_task_queue.h"    // BRAIN-RUNTIME-1B: BrainTaskType
+#include "brain_tactic_select.h" // TACTIC-WEIGHTS-A: tacticName, applyPilotModulation (no mutation at load)
+#include "tacordr.h"             // TACTIC-WEIGHTS-A: TacticType enum + NUM_TACTICS
+#include "abl_trace.h"           // ABL-VM-FACTS-1: mission-brain fire + per-frame flush
+#include "brain_order_intent.h"  // ABL-VM-FACTS-1: getBrainTickIndex()
+
 
 extern void visualTuning_applyProfile(const char*);  // MISSION-VISUAL-TUNING-1
 extern void terrainMaterials_apply(const char*);     // TERRAIN-MATERIAL-LIB-1
@@ -183,105 +299,6 @@ static void simClockTraceTick(float scenarioTimeNow)
 	}
 }
 
-#include "brain_special_dispatch.h"  // TECHSCRIPT-SPECIAL-DISPATCH-1A: parseBrainSpecialBody
-#include "brain_missionfit_oporbd.h"  // BRAIN-MISSIONFIT-OPORD-CONSUMER-1: declarative mission.fit OPORD parser
-#include "brain_archetype.h"  // BRAIN-ARCHETYPE-1
-#include "det_rng.h"  // DETERMINISTIC-RNG-1: hashMissionName for per-mission reseed
-
-#ifndef COLLSN_H
-#include"collsn.h"
-#endif
-
-#ifndef CMPONENT_H
-#include"cmponent.h"
-#include"unitprofile.h"		// EQUIPMENT-REGISTRY-FACADE-1: gated registry build hook
-#endif
-
-#ifndef OBJMGR_H
-#include"objmgr.h"
-#endif
-
-#ifndef MOVER_H
-#include"mover.h"
-#endif
-
-#ifndef MECH_H
-#include"mech.h"
-#endif
-
-#ifndef GVEHICL_H
-#include"gvehicl.h"
-#endif
-
-#ifndef CONTACT_H
-#include"contact.h"
-#endif
-
-#ifndef TEAM_H
-#include"team.h"
-#endif
-
-#ifndef COMNDR_H
-#include"comndr.h"
-#endif
-
-#ifndef GROUP_H
-#include"group.h"
-#endif
-
-#ifndef GAMECAM_H
-#include"gamecam.h"
-#endif
-
-#include "frame_jobs.h"  // FRAME-JOBS-1: fixed worker pool for parallel CPU prep
-#include <vector>        // TERRAIN-REAUTH-UNPIN-1 Half B: mover cell scratch
-#include "../GameOS/gameos/gos_terrain_lod_chunk.h"  // TERRAIN-REAUTH-UNPIN-1 Half B: visual-damp mover stamps
-
-#ifndef MULTPLYR_H
-#include"multplyr.h"
-#endif
-
-#ifndef WEAPONFX_H
-#include"weaponfx.h"
-#endif
-
-#ifndef WEATHER_H
-#include"weather.h"
-#endif
-
-#ifndef GATE_H
-#include"gate.h"
-#endif
-
-#ifndef LOGISTICSDATA_H
-#include"logisticsdata.h"
-#endif
-
-#ifndef LOGISTICSPILOT_H
-#include"logisticspilot.h"
-#endif
-
-#ifndef GAMELOG_H
-#include"gamelog.h"
-#endif
-
-#ifndef CELLIP_H
-#include"cellip.h"
-#endif
-
-#ifndef PREFS_H
-#include"prefs.h"
-#endif
-
-#include "../resource.h"
-
-#include<gameos.hpp>
-#include "mc2_verify.h"  // MC2-VERIFY-LIVE-1: live data-contract guards
-#include "mc2_audit.h"   // META-FIX INFRA-1: gated audit emitter (design A/B markers)
-#include "../GameOS/gameos/gpu_cull_substrate.h"  // C0-3: GPU cull substrate init/shutdown
-#include "../GameOS/gameos/gpu_cull_compute.h"   // C1a: GPU visibility compute dispatch
-#include "../GameOS/gameos/gpu_cull_readback.h"  // C2: async readback ring buffer
-#include "../GameOS/gameos/gos_terrain_lighting.h"  // Phase 1: terrain lighting GPU compute
 
 //----------------------------------------------------------------------------------
 // Macro Definitions
@@ -450,11 +467,6 @@ unsigned long Mission::forcedTerminationResult = mis_PLAYING;
 extern float OneOverProcessorSpeed;
 extern PriorityQueuePtr	openList;
 
-#include "gos_profiler.h"
-#include "../GameAdapters/StaticPropRenderAdapter.h"  // M1 Task 13: firewall bridge (was: gos_static_prop_batcher.h + gos_static_prop_registry.h)
-#include "../GameAdapters/MechRenderAdapter.h"          // M2: mech lifecycle adapter
-#include "../GameAdapters/VegetationAdapter.h"          // vegetation card system lifecycle
-#include "gos_mech_batcher.h"
 
 // Phase-timing hooks implemented in GameOS/gameos/gameosmain.cpp.
 extern "C" void mission_phase_begin();
@@ -482,16 +494,6 @@ extern bool 			invulnerableON;		//Used for tutorials so mechs can take damage, b
 // ---- MC2_MISSION_SPLIT: wall-ms split of the Mission::update sub-calls -----
 // Locate which logic sub-call owns the 1K-map ~50ms (HITCH logic phase). Default
 // OFF, zero behavior change. Emits per-call ns totals + averages at exit (stdout).
-#include <chrono>
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
-#include "mech_brain_runtime.h"  // BRAIN-RUNTIME-1B: per-unit mode loading from _ai.fit
-#include "brain_task_queue.h"    // BRAIN-RUNTIME-1B: BrainTaskType
-#include "brain_tactic_select.h" // TACTIC-WEIGHTS-A: tacticName, applyPilotModulation (no mutation at load)
-#include "tacordr.h"             // TACTIC-WEIGHTS-A: TacticType enum + NUM_TACTICS
-#include "abl_trace.h"           // ABL-VM-FACTS-1: mission-brain fire + per-frame flush
-#include "brain_order_intent.h"  // ABL-VM-FACTS-1: getBrainTickIndex()
 extern int32_t NumStateTransitions;  // ABL-VM-FACTS-1: read at mission-brain fire exit
 namespace {
 	static const bool s_misSplit = mc2::gate::get<"MC2_MISSION_SPLIT">();
