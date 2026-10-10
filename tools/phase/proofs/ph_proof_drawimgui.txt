@@ -1,0 +1,72 @@
+inline expansion: 1219 statements, helpers 20, orchestrator lines 161
+declaration lifts / edits applied (1):
+  L522   edit n += std::snprintf(buf+n, sizeof(buf)-n, "Kind: %s\n", kindName);  =>  n += std::snprintf(buf+n, sizeof(buf)-n, "Kind: %s\n", pickKindName(s_
+scaffolding only in new (65 distinct):
+   + // Draw the Copy All button and copy the inspector text to the clipboard. 
+   + // Draw the Renderer Features window. 
+   + // Draw the VFX pass section. 
+   + // Draw the environment gates section. 
+   + // Draw the experimental mech lighting controls. 
+   + // Draw the experimental mech normals controls. 
+   + // Draw the lookup-result section. 
+   + // Draw the material handle lookup section. 
+   + // Draw the mech debug-view selector. 
+   + // Draw the mech game data section. 
+   + // Draw the mech snapshot panel. 
+   + // Draw the render-explain section for a valid render-world pick. 
+   + // Draw the render-pass contracts section. 
+   + // Draw the save-camera-bookmark and save-camera-view buttons. 
+   + // Draw the shadow pass section. 
+   + // Draw the static-prop game data section. 
+   + // Draw the static-prop material inventory section. 
+   + // Draw the static-prop render spine section. 
+   + // Draw the terrain pass section. 
+   + // Draw the terrain pick data section. 
+   + // Draws the Object Inspector, the Renderer Features window and the Frame Inspector. The toggles, the early re 
+   + // above, run in the original order. 
+   + // the window begin / end, the object-id header and the pick-kind chain stay here; each section body is a help 
+   + drawCameraBookmarkSave(); 
+   + drawCopyAll(lk); 
+   + drawEnvGates(); 
+   + drawFeaturesWindow(); 
+   + drawLookup(lk); 
+   + drawMaterialInventory(); 
+   + drawMaterialRwLookup(lk); 
+   + drawMechData(); 
+   + drawMechDebugView(); 
+   + drawMechLighting(); 
+   + drawMechNormals(); 
+   + drawMechSnapshot(); 
+   + drawRenderExplain(lk); 
+   + drawRenderPassContracts(); 
+   + drawRenderSpine(); 
+   + drawShadowPass(); 
+   + drawStaticPropData(); 
+   + drawTerrainData(); 
+   + drawTerrainPass(); 
+   + drawVfxPass(); 
+   + n += std::snprintf(buf+n, sizeof(buf)-n, "Kind: %s\n", pickKindName(s_selection.pickKind)); 
+   + static void drawCameraBookmarkSave() { 
+   + static void drawCopyAll(const RenderWorld::LookupResult& lk) { 
+   + static void drawEnvGates() { 
+   + static void drawFeaturesWindow() { 
+   + static void drawLookup(const RenderWorld::LookupResult& lk) { 
+   + static void drawMaterialInventory() { 
+   + static void drawMaterialRwLookup(const RenderWorld::LookupResult& lk) { 
+   + static void drawMechData() { 
+   + static void drawMechDebugView() { 
+   + static void drawMechLighting() { 
+   + static void drawMechNormals() { 
+   + static void drawMechSnapshot() { 
+   + static void drawRenderExplain(const RenderWorld::LookupResult& lk) { 
+   + static void drawRenderPassContracts() { 
+   + static void drawRenderSpine() { 
+   + static void drawShadowPass() { 
+   + static void drawStaticPropData() { 
+   + static void drawTerrainData() { 
+   + static void drawTerrainPass() { 
+   + static void drawVfxPass() { 
+   + } x20
+statements only in old (1 distinct, all lifted declarations / hoisted-type lines):
+   - n += std::snprintf(buf+n, sizeof(buf)-n, "Kind: %s\n", kindName); 
+PASS: inline expansion of the new function equals the original body
