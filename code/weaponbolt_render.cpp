@@ -15,7 +15,7 @@
 // tail. Umbrella OFF -> subGate false -> drawOldWay path unchanged -> byte-identical GL.
 static bool vkVfxImmediateDraw()
 {
-	const bool s_on = mc2vkgate::subGate("MC2_VK_VFX");   // per-call: VK-FAILSOFT-DISARM-1
+	const bool s_on = mc2vkgate::armed<"MC2_VK_VFX">();   // per-call: VK-FAILSOFT-DISARM-1
 	return s_on;
 }
 static bool vkVfxTraceOn()

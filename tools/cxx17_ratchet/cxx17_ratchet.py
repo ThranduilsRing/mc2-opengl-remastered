@@ -177,7 +177,7 @@ R_ENVREAD = re.compile(
 # getenv matcher (LG19) cannot cast: helper calls (subGate("MC2_X"), envFlag("MC2_X")), #define lines, putenv
 # writes, tool and test code.
 R_MC2LIT = re.compile(r'''L?"MC2_[A-Z0-9_]+"''')
-R_TYPED_READER = re.compile(r'''(?<![A-Za-z_])(?:get|state|isSet|isNonEmpty|str|is)\s*<\s*L?"MC2_[A-Z0-9_]+"''')
+R_TYPED_READER = re.compile(r'''(?<![A-Za-z_])(?:get|state|isSet|isNonEmpty|armed|regionTier1Armed|str|is)\s*<\s*L?"MC2_[A-Z0-9_]+"''')
 R_LEGACY = re.compile(r"\b(?:auto_ptr|bind1st|bind2nd|ptr_fun|mem_fun|mem_fun_ref|unary_function|binary_function|"
                       r"random_shuffle|register)\b|\)\s*throw\s*\([^)]*\)\s*(?:[{;]|$)")
 

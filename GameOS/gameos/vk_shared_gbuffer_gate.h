@@ -58,6 +58,8 @@
 #include <cstdlib>
 #include <cstring>
 
+#include "Gates/gate.h"
+
 // VK-FAILSOFT-DISARM-1: session-sticky "VK fail-softed to GL" flag, set by
 // mc2::forceGLFallback (render_backend_select.cpp), defined in mclib/tgl.cpp
 // (data-tool-link home). When true the umbrella reads as OFF so the whole
@@ -67,6 +69,8 @@
 extern bool g_mc2VkSessionForcedGL;
 
 namespace mc2vkgate {
+
+namespace gate = ::mc2::gate;
 
 // Raw tri-state read of an env var: -1 unset, 0 explicit "0", 1 explicit "1".
 // Anything else (unset / other value) is treated as unset (-1) so only the exact
@@ -87,8 +91,21 @@ inline int envTriState(const char* name)
 // overrides still win in subGate()/directChainGate() — those are debug knobs.
 inline bool umbrellaOn()
 {
-    static const bool s_on = (envTriState("MC2_VK_SHARED_GBUFFER") == 1);
-    return s_on && !g_mc2VkSessionForcedGL;
+    return gate::get<"MC2_VK_SHARED_GBUFFER">() && !g_mc2VkSessionForcedGL;
+}
+
+// The typed form of subGate()/directChainGate(): a Tri row of Gates/gate_table.cpp that declares
+// inherits("MC2_VK_SHARED_GBUFFER"). The row's explicit "1"/"0" wins; else on iff the umbrella is on
+// and the session has not fail-softed to GL. This is the only place the fail-soft flag enters, so a
+// caller never calls gate::effective<"MC2_VK_...">() directly (that would skip the veto).
+//
+// The env text is cached by the gate registry on first read; the veto is read on EVERY call. A caller
+// that must follow a mid-session fail-soft calls armed<>() per use and never caches the answer; a
+// region gate that is resolved once per process caches it at its own site, as before.
+template <gate::Name n>
+inline bool armed()
+{
+    return gate::effective<n>(g_mc2VkSessionForcedGL);
 }
 
 // Resolve a sub-gate that is a MEMBER of the umbrella family:
@@ -127,25 +144,29 @@ inline bool directChainGate(const char* name)
 // on color0/normal/depth, no GL<->VK semaphore handoff), so it is true exactly when the
 // terrain Tier-1 island is armed. Mirrors terrainTier1Requested() in
 // vulkan_terrain_island.cpp (keep in lockstep).
+// "tier-1 island armed AND shared scene depth armed": the pair every VK scene region requires before it
+// co-writes into the shared GBuffer.
+template <gate::Name n>
+inline bool regionTier1Armed()
+{
+    return armed<n>() && armed<"MC2_VK_SHARED_SCENE_DEPTH">();
+}
+
 inline bool terrainNativeFirstOwnerOn()
 {
-    return subGate("MC2_VK_TERRAIN_TIER1") && subGate("MC2_VK_SHARED_SCENE_DEPTH");
+    return regionTier1Armed<"MC2_VK_TERRAIN_TIER1">();
 }
 
 // Shared post-pass direct-chain prerequisite: the scene producers have kept the
 // shared color/depth/normal chain Vulkan-owned through water. The post passes need
 // only this plus the post-composite direct-chain gate (the shared-scene resolver in
-// gos_postprocess.cpp).
+// gos_postprocess.cpp). Mech is unconditionally native and has no term here.
 inline bool postDirectChainUpstreamOn()
 {
-    // Direct-chain members default ON under the umbrella (directChainGate);
-    // MC2_VK_WATER_TIER1 is a normal umbrella sub-gate (subGate). Terrain's term is
-    // the structural first-owner predicate (see above); mech is unconditionally
-    // native and has no term here.
     return terrainNativeFirstOwnerOn() &&
-           directChainGate("MC2_VK_PROP_DIRECT_CHAIN") &&
-           subGate("MC2_VK_WATER_TIER1") &&
-           directChainGate("MC2_VK_WATER_DIRECT_CHAIN");
+           armed<"MC2_VK_PROP_DIRECT_CHAIN">() &&
+           armed<"MC2_VK_WATER_TIER1">() &&
+           armed<"MC2_VK_WATER_DIRECT_CHAIN">();
 }
 
 } // namespace mc2vkgate

@@ -138,7 +138,7 @@ void vlog(const char* fmt, ...) {
 // post chain believed water was armed while the island declined. Now both agree. The strict
 // proof armed WATER_TIER1=1 and passed its parity check.
 bool waterTier1Requested() {
-    const bool s_on = mc2vkgate::subGate("MC2_VK_WATER_TIER1");   // per-call: VK-FAILSOFT-DISARM-1 (water must return to GL after fail-soft)
+    const bool s_on = mc2vkgate::armed<"MC2_VK_WATER_TIER1">();   // per-call: VK-FAILSOFT-DISARM-1 (water must return to GL after fail-soft)
     return s_on;
 }
 

@@ -7589,7 +7589,7 @@ void gosRenderer::drawIndexedTris(gos_VERTEX* vertices, int num_vertices, WORD* 
     // (scene.gosfx_clipper lost-draw samples). Expand to a plain triangle list and
     // route through drawTris' IsHUD batching, same as the non-indexed effect draws.
     // Only when IsHUD is set AND the VFX sub-gate is armed (VK) -> GL byte-identical.
-    const bool vkVfxArmed = mc2vkgate::subGate("MC2_VK_VFX");
+    const bool vkVfxArmed = mc2vkgate::armed<"MC2_VK_VFX">();
     if (renderStates_[gos_State_IsHUD] && num_indices > 0 && vkVfxArmed) {
         std::vector<gos_VERTEX> expanded;
         expanded.reserve((size_t)num_indices);
@@ -8066,7 +8066,7 @@ static bool vkHudQueueEnabled()
     // queues the HUD into the VK present tail; explicit "1"/"0" still wins. The strict proof armed
     // MC2_VK_HUD=1 and passed. (Representable-draw filtering + the SKIP_GL all-or-nothing guard
     // below still apply -- a non-representable HUD element keeps GL HUD live for parity.)
-    const bool enabled = mc2vkgate::subGate("MC2_VK_HUD");            // per-call: VK-FAILSOFT-DISARM-1
+    const bool enabled = mc2vkgate::armed<"MC2_VK_HUD">();            // per-call: VK-FAILSOFT-DISARM-1
     return enabled;
 }
 
@@ -8077,7 +8077,7 @@ static bool vkHudSkipGlEnabled()
     // an optimization under VK-only present (the GL backbuffer is discarded anyway), and it is
     // self-protecting: nativeHudCanSkipGl is AND-reduced over drawRepresentable, so GL HUD stays
     // live whenever any HUD element is not VK-representable. Explicit "1"/"0" still wins.
-    const bool enabled = mc2vkgate::subGate("MC2_VK_HUD_SKIP_GL");    // per-call: VK-FAILSOFT-DISARM-1 (GL HUD must return after fail-soft)
+    const bool enabled = mc2vkgate::armed<"MC2_VK_HUD_SKIP_GL">();    // per-call: VK-FAILSOFT-DISARM-1 (GL HUD must return after fail-soft)
     return enabled;
 }
 
@@ -8413,12 +8413,12 @@ void gosRenderer::flushHUDBatch()
         // VK-HUD-GATE-HOIST-1: resolve the VFX umbrella sub-gate ONCE PER FLUSH,
         // not per draw (3x subGate() + a raw getenv per draw was ~380-450 CRT env
         // scans/frame at field HUD density, thousands during weapon fire).
-        // DISARM-1/2 semantics preserved: subGate() reads g_mc2VkSessionForcedGL
-        // through umbrellaOn() on THIS call, so a mid-session fail-soft still
+        // DISARM-1/2 semantics preserved: armed<>() reads g_mc2VkSessionForcedGL
+        // on THIS call, so a mid-session fail-soft still
         // propagates at the next flush (frame-boundary granularity is the disarm
         // intent). Do NOT make this local `static`, and do NOT re-fuse the
         // per-draw reads below back into the loop.
-        const bool hudVfxGate = mc2vkgate::subGate("MC2_VK_VFX");
+        const bool hudVfxGate = mc2vkgate::armed<"MC2_VK_VFX">();
         // Env-token-only memo (no disarm interaction): the env block is
         // process-static, so one getenv per process is exact.
         static const bool s_hudDrawDumpEnv =

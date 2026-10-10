@@ -5,7 +5,7 @@
 generator_version: "3.0.0"
 gate_count: 1139
 registry_entry_count: 354
-verified_count: 189
+verified_count: 202
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -7120,6 +7120,7 @@ flags:
     owner: gameos
     doc: "VK-FIELD-ENV-CONTENT-STACK-ARM-1 (2026-07-11): the game HUD is UI CONTENT, and post- VK-RUNG8-ITEM8 the native VK composite is the sole present-image..."
     inherits: MC2_VK_SHARED_GBUFFER
+    verified: true
   - name: MC2_VK_HUD_COLOR_PROOF
     kind: Tri
     default: null
@@ -7127,6 +7128,7 @@ flags:
     owner: vk
     doc: "VK-FIELD-ENV-CONTENT-STACK-ARM-1 (2026-07-11): despite the legacy \"COLOR_PROOF\" name this is the ACTUAL native VK HUD renderer --..."
     inherits: MC2_VK_SHARED_GBUFFER
+    verified: true
   - name: MC2_VK_HUD_DRAW_DUMP
     kind: Bool
     default: false
@@ -7140,6 +7142,7 @@ flags:
     owner: gameos
     doc: "VK-FIELD-ENV-CONTENT-STACK-ARM-1: arm from the umbrella too."
     inherits: MC2_VK_SHARED_GBUFFER
+    verified: true
   - name: MC2_VK_IMGUI
     kind: Bool
     default: false
@@ -7245,6 +7248,7 @@ flags:
     owner: vk
     doc: "VK-FIELD-ENV-COMPOSITE-ARM-1: arm from the umbrella (see directFboGateEnabled)."
     inherits: MC2_VK_SHARED_GBUFFER
+    verified: true
   - name: MC2_VK_POST_COMPOSITE_DIRECT_CHAIN
     kind: Tri
     default: null
@@ -7304,6 +7308,7 @@ flags:
     owner: vk
     doc: "VK-FIELD-ENV-COMPOSITE-ARM-1: after VK-RUNG8-ITEM8 deleted the GL copy-1 present FBO, the native VK composite is the ONLY producer of the present image for..."
     inherits: MC2_VK_SHARED_GBUFFER
+    verified: true
   - name: MC2_VK_PRESENT_DUMP_FRAME
     kind: Int
     default: 0
@@ -7356,6 +7361,7 @@ flags:
     doc: "VK-TAIL-HOOK-1 (rung 8.6): default-OFF present-command-buffer seam for native final-tail rendering."
     inherits: MC2_VK_SHARED_GBUFFER
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_VK_PRESENT_TAIL_HOOK, kind: Feature, order: -1, default_on: false}
   - name: MC2_VK_PRESENT_VERIFY
     kind: Bool
@@ -7381,6 +7387,7 @@ flags:
     doc: "VK-PROP-DIRECT-CHAIN: opt-in deletion-readiness proof gate, default OFF."
     inherits: MC2_VK_SHARED_GBUFFER
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_VK_PROP_DIRECT_CHAIN, kind: Feature, order: -1, default_on: false}
   - name: MC2_VK_PROP_FENCE_DEFER
     kind: Bool
@@ -7479,6 +7486,7 @@ flags:
     owner: vk
     doc: "VK-P14 GATE-CONSOLIDATION-1: presence-gated =1, default OFF."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_VK_SHARED_GBUFFER, kind: Feature, order: -1, default_on: false}
   - name: MC2_VK_SHARED_SCENE_DEPTH
     kind: Tri
@@ -7488,6 +7496,7 @@ flags:
     doc: "VK-TIER1 SHARED SCENE DEPTH: presence-gated =1, default OFF."
     inherits: MC2_VK_SHARED_GBUFFER
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_VK_SHARED_SCENE_DEPTH, kind: Feature, order: -1, default_on: false}
   - name: MC2_VK_SHARED_SCENE_STRICT
     kind: Bool
@@ -7646,6 +7655,7 @@ flags:
     doc: "VK-P10 TERRAIN TIER-1: presence-gated =1, default OFF (requires MC2_VK_SHARED_SCENE_DEPTH)."
     inherits: MC2_VK_SHARED_GBUFFER
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_VK_TERRAIN_TIER1, kind: Feature, order: -1, default_on: false}
   - name: MC2_VK_TERRAIN_VISUALDISPLACE_FAR
     kind: Bool
@@ -7661,6 +7671,7 @@ flags:
     doc: "VK-FIELD-VFX-1: umbrella sub-gate, default-ON under MC2_VK_SHARED_GBUFFER (explicit =0 forces off, =1 forces on)."
     inherits: MC2_VK_SHARED_GBUFFER
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_VK_VFX, kind: Feature, order: -1, default_on: false}
   - name: MC2_VK_VFX_COALESCE
     kind: Bool
@@ -7685,6 +7696,7 @@ flags:
     doc: "VK-WATER-DIRECT-CHAIN: opt-in deletion-readiness proof gate, default OFF."
     inherits: MC2_VK_SHARED_GBUFFER
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_VK_WATER_DIRECT_CHAIN, kind: Feature, order: -1, default_on: false}
   - name: MC2_VK_WATER_FENCE_DEFER
     kind: Bool
@@ -7706,6 +7718,7 @@ flags:
     owner: vk
     doc: "Direct-chain members default ON under the umbrella; MC2_VK_WATER_TIER1 is a normal umbrella sub-gate."
     inherits: MC2_VK_SHARED_GBUFFER
+    verified: true
   - name: MC2_VPL_CULL
     kind: Bool
     default: false

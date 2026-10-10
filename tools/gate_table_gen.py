@@ -203,7 +203,7 @@ def count_overrides(root):
 
 READER_DIRS = ("code", "mclib", "GameOS", "RenderCore", "GuiRuntime", "RenderWorld", "GameAdapters", "HostServices",
                "EditorBridge", "editor", "gui", "tools")
-_READER_RE = re.compile(r'(?<![A-Za-z_])(?:get|state|isSet|str|is)\s*<\s*"(MC2_\w+)"')
+_READER_RE = re.compile(r'(?<![A-Za-z_])(?:get|state|isSet|armed|regionTier1Armed|str|is)\s*<\s*"(MC2_\w+)"')
 
 
 def typed_readers(root):

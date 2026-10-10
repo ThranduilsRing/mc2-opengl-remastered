@@ -431,7 +431,7 @@ bool init_island(VfxIsland* s, int w, int h) {
 // Gate: default-ON under the umbrella (content that would VANISH otherwise), explicit
 // MC2_VK_VFX=0 forces off, MC2_VK_VFX=1 forces on.
 bool vfxGateOn() {
-    const bool s_on = mc2vkgate::subGate("MC2_VK_VFX");   // per-call: VK-FAILSOFT-DISARM-1
+    const bool s_on = mc2vkgate::armed<"MC2_VK_VFX">();   // per-call: VK-FAILSOFT-DISARM-1
     return s_on;
 }
 

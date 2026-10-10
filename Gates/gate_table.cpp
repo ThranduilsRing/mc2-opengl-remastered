@@ -1526,10 +1526,10 @@ G("MC2_VK_FEED_DUMP", String, "", "vk", "", ""),
 // history: docs/gate-history.md#MC2_VK_FORCE_FAIL
 L(Lead0, "MC2_VK_FORCE_FAIL", Bool, false, "vk", "", "VK-P13-SELECTOR-1: presence-gated =1, default OFF.", passthrough | registry(Trace, "MC2_FEATURE_VK_FORCE_FAIL", -1, false)),
 L(Presence, "MC2_VK_GPU_TIMESTAMPS", Bool, false, "vk", "", "", passthrough),
-G("MC2_VK_HUD", Tri, false, "gameos", "", "VK-FIELD-ENV-CONTENT-STACK-ARM-1 (2026-07-11): the game HUD is UI CONTENT, and post- VK-RUNG8-ITEM8 the native VK composite is the sole present-image...", inherits("MC2_VK_SHARED_GBUFFER")),
-G("MC2_VK_HUD_COLOR_PROOF", Tri, false, "vk", "", "VK-FIELD-ENV-CONTENT-STACK-ARM-1 (2026-07-11): despite the legacy \"COLOR_PROOF\" name this is the ACTUAL native VK HUD renderer --...", inherits("MC2_VK_SHARED_GBUFFER")),
+G("MC2_VK_HUD", Tri, false, "gameos", "", "VK-FIELD-ENV-CONTENT-STACK-ARM-1 (2026-07-11): the game HUD is UI CONTENT, and post- VK-RUNG8-ITEM8 the native VK composite is the sole present-image...", inherits("MC2_VK_SHARED_GBUFFER") | verified),
+G("MC2_VK_HUD_COLOR_PROOF", Tri, false, "vk", "", "VK-FIELD-ENV-CONTENT-STACK-ARM-1 (2026-07-11): despite the legacy \"COLOR_PROOF\" name this is the ACTUAL native VK HUD renderer --...", inherits("MC2_VK_SHARED_GBUFFER") | verified),
 L(Presence, "MC2_VK_HUD_DRAW_DUMP", Bool, false, "gameos", "", "Env-token-only memo (no disarm interaction): the env block is process-static, so one getenv per process is exact."),
-G("MC2_VK_HUD_SKIP_GL", Tri, false, "gameos", "", "VK-FIELD-ENV-CONTENT-STACK-ARM-1: arm from the umbrella too.", inherits("MC2_VK_SHARED_GBUFFER")),
+G("MC2_VK_HUD_SKIP_GL", Tri, false, "gameos", "", "VK-FIELD-ENV-CONTENT-STACK-ARM-1: arm from the umbrella too.", inherits("MC2_VK_SHARED_GBUFFER") | verified),
 // history: docs/gate-history.md#MC2_VK_IMGUI
 L(Lead1, "MC2_VK_IMGUI", Bool, false, "code", "", "VK-IMGUI-NATIVE-1 (rung 8.6): default-OFF ImGui Vulkan renderer gate.", passthrough | registry(Feature, "MC2_FEATURE_VK_IMGUI", -1, false)),
 L(Lead0Kill, "MC2_VK_LIGHTFEED_DEDUP", Bool, true, "vk", "", ""),
@@ -1551,7 +1551,7 @@ L(Lead1, "MC2_VK_OBJECTID_DIRECT_CHAIN", Bool, false, "vk", "", "", passthrough)
 // BUG-A pick-probe fixture (mouse->pick DPI regression fence)
 // history: docs/gate-history.md#MC2_VK_PICK_PROBE
 L(Presence, "MC2_VK_PICK_PROBE", Bool, false, "code", "", "BUG-A pick regression fence: default-OFF.", passthrough | registry(Trace, "MC2_VK_PICK_PROBE", -1, false)),
-G("MC2_VK_POST_COMPOSITE", Tri, false, "vk", "", "VK-FIELD-ENV-COMPOSITE-ARM-1: arm from the umbrella (see directFboGateEnabled).", inherits("MC2_VK_SHARED_GBUFFER")),
+G("MC2_VK_POST_COMPOSITE", Tri, false, "vk", "", "VK-FIELD-ENV-COMPOSITE-ARM-1: arm from the umbrella (see directFboGateEnabled).", inherits("MC2_VK_SHARED_GBUFFER") | verified),
 // history: docs/gate-history.md#MC2_VK_POST_COMPOSITE_DIRECT_CHAIN
 G("MC2_VK_POST_COMPOSITE_DIRECT_CHAIN", Tri, false, "vk", "", "VK-POST-COMPOSITE-DIRECT-CHAIN: opt-in deletion-readiness proof gate, default OFF.", passthrough | registry(Feature, "MC2_FEATURE_VK_POST_COMPOSITE_DIRECT_CHAIN", -1, false) | inherits("MC2_VK_SHARED_GBUFFER")),
 G("MC2_VK_POST_FOG_NATIVE", Tri, false, "vk", "", "VK-FIELD-ENV-CONTENT-STACK-ARM-1 (2026-07-11): now an umbrella family member (subGate).", inherits("MC2_VK_SHARED_GBUFFER")),
@@ -1561,7 +1561,7 @@ L(Lead0Kill, "MC2_VK_POST_SCREENFX_CLOUD", Bool, true, "vk", "", ""),
 L(Lead0Kill, "MC2_VK_POST_SCREENFX_SHADOW", Bool, true, "vk", "", ""),
 L(Lead0Kill, "MC2_VK_POST_SCREENFX_SHORELINE", Bool, true, "vk", "", ""),
 L(Exact1, "MC2_VK_POST_SSAO", Bool, false, "vk", "", ""),
-G("MC2_VK_PRESENT_DIRECT_FBO", Tri, false, "vk", "", "VK-FIELD-ENV-COMPOSITE-ARM-1: after VK-RUNG8-ITEM8 deleted the GL copy-1 present FBO, the native VK composite is the ONLY producer of the present image for...", inherits("MC2_VK_SHARED_GBUFFER")),
+G("MC2_VK_PRESENT_DIRECT_FBO", Tri, false, "vk", "", "VK-FIELD-ENV-COMPOSITE-ARM-1: after VK-RUNG8-ITEM8 deleted the GL copy-1 present FBO, the native VK composite is the ONLY producer of the present image for...", inherits("MC2_VK_SHARED_GBUFFER") | verified),
 // history: docs/gate-history.md#MC2_VK_PRESENT_DUMP_FRAME
 P("MC2_VK_PRESENT_DUMP_FRAME", Int, 0, "vk", "", "VK-FIELD-VFX-3: frame pin for MC2_VK_PRESENT_DUMP_PPM.", registry(Trace, "MC2_TRACE_VK_PRESENT_DUMP_FRAME", -1, false)),
 // history: docs/gate-history.md#MC2_VK_PRESENT_DUMP_ON_FIRE
@@ -1574,14 +1574,14 @@ L(Lead1, "MC2_VK_PRESENT_NATIVE_STRICT", Bool, false, "vk", "", "VK present-tail
 L(Lead1, "MC2_VK_PRESENT_NO_GL_IMPORT", Bool, false, "vk", "", "VK present-tail ownership gate.", passthrough | registry(Feature, "MC2_FEATURE_VK_PRESENT_NO_GL_IMPORT", -1, false)),
 L(Lead1, "MC2_VK_PRESENT_SKIP_GL_HANDOFF", Bool, false, "vk", "", "", passthrough),
 // history: docs/gate-history.md#MC2_VK_PRESENT_TAIL_HOOK
-G("MC2_VK_PRESENT_TAIL_HOOK", Tri, false, "vk", "", "VK-TAIL-HOOK-1 (rung 8.6): default-OFF present-command-buffer seam for native final-tail rendering.", passthrough | registry(Feature, "MC2_FEATURE_VK_PRESENT_TAIL_HOOK", -1, false) | inherits("MC2_VK_SHARED_GBUFFER")),
+G("MC2_VK_PRESENT_TAIL_HOOK", Tri, false, "vk", "", "VK-TAIL-HOOK-1 (rung 8.6): default-OFF present-command-buffer seam for native final-tail rendering.", passthrough | registry(Feature, "MC2_FEATURE_VK_PRESENT_TAIL_HOOK", -1, false) | inherits("MC2_VK_SHARED_GBUFFER") | verified),
 L(Presence, "MC2_VK_PRESENT_VERIFY", Bool, false, "gameos", "", "", passthrough),
 // VK-P11 TIER-1 PROP COLOR: in-place shared-GBuffer co-write (Tier-1, supersedes Tier-0).
 // history: docs/gate-history.md#MC2_VK_PROP_COLOR_TIER1
 G("MC2_VK_PROP_COLOR_TIER1", Tri, false, "vk", "", "VK-P11 TIER-1 PROP COLOR: presence-gated =1, default OFF; REQUIRES MC2_VK_SHARED_SCENE_DEPTH.", passthrough | registry(Feature, "MC2_FEATURE_VK_PROP_COLOR_TIER1", -1, false) | inherits("MC2_VK_SHARED_GBUFFER")),
 // VK-PROP-DIRECT-CHAIN: proof slice for keeping prop color on the Vulkan-owned shared GBuffer.
 // history: docs/gate-history.md#MC2_VK_PROP_DIRECT_CHAIN
-G("MC2_VK_PROP_DIRECT_CHAIN", Tri, false, "vk", "", "VK-PROP-DIRECT-CHAIN: opt-in deletion-readiness proof gate, default OFF.", passthrough | registry(Feature, "MC2_FEATURE_VK_PROP_DIRECT_CHAIN", -1, false) | inherits("MC2_VK_SHARED_GBUFFER")),
+G("MC2_VK_PROP_DIRECT_CHAIN", Tri, false, "vk", "", "VK-PROP-DIRECT-CHAIN: opt-in deletion-readiness proof gate, default OFF.", passthrough | registry(Feature, "MC2_FEATURE_VK_PROP_DIRECT_CHAIN", -1, false) | inherits("MC2_VK_SHARED_GBUFFER") | verified),
 L(Lead0Kill, "MC2_VK_PROP_FENCE_DEFER", Bool, true, "vk", "", ""),
 L(Presence, "MC2_VK_PROP_LIGHT_PROBE", Bool, false, "vk", "", ""),
 L(Presence, "MC2_VK_PROP_LIGHT_VERTEX_PROBE", Bool, false, "vk", "", ""),
@@ -1604,10 +1604,10 @@ L(Lead1, "MC2_VK_SHADOW_INTEROP", Bool, false, "vk", "", "VK-P8a SHADOW-INTEROP:
 L(Lead0, "MC2_VK_SHADOW_MATRIX_DIAG", Bool, false, "vk", "", "VK shadow producer/consumer evidence (default OFF = zero cost; GameOS/gameos/vulkan_shadow_island_live.cpp).", passthrough | registry(Trace, "MC2_TRACE_VK_SHADOW_MATRIX_DIAG", -1, false)),
 // VK-P14 GATE-CONSOLIDATION-1: the ONE umbrella for the shared-GBuffer scene path.
 // history: docs/gate-history.md#MC2_VK_SHARED_GBUFFER
-L(Exact1, "MC2_VK_SHARED_GBUFFER", Bool, false, "vk", "", "VK-P14 GATE-CONSOLIDATION-1: presence-gated =1, default OFF.", passthrough | registry(Feature, "MC2_FEATURE_VK_SHARED_GBUFFER", -1, false)),
+L(Exact1, "MC2_VK_SHARED_GBUFFER", Bool, false, "vk", "", "VK-P14 GATE-CONSOLIDATION-1: presence-gated =1, default OFF.", passthrough | registry(Feature, "MC2_FEATURE_VK_SHARED_GBUFFER", -1, false) | verified),
 // VK-TIER1 SHARED SCENE DEPTH: the shared-depth substrate slice (step 2).
 // history: docs/gate-history.md#MC2_VK_SHARED_SCENE_DEPTH
-G("MC2_VK_SHARED_SCENE_DEPTH", Tri, false, "vk", "", "VK-TIER1 SHARED SCENE DEPTH: presence-gated =1, default OFF.", passthrough | registry(Feature, "MC2_FEATURE_VK_SHARED_SCENE_DEPTH", -1, false) | inherits("MC2_VK_SHARED_GBUFFER")),
+G("MC2_VK_SHARED_SCENE_DEPTH", Tri, false, "vk", "", "VK-TIER1 SHARED SCENE DEPTH: presence-gated =1, default OFF.", passthrough | registry(Feature, "MC2_FEATURE_VK_SHARED_SCENE_DEPTH", -1, false) | inherits("MC2_VK_SHARED_GBUFFER") | verified),
 // history: docs/gate-history.md#MC2_VK_SHARED_SCENE_STRICT
 L(Exact1, "MC2_VK_SHARED_SCENE_STRICT", Bool, false, "post", "", "VK shared-scene deletion-readiness canary.", passthrough | registry(Trace, "MC2_TRACE_VK_SHARED_SCENE_STRICT", -1, false)),
 // history: docs/gate-history.md#MC2_VK_STATIC_SHADOW_MAP
@@ -1642,19 +1642,19 @@ L(Lead1, "MC2_VK_TERRAIN_PERF", Bool, false, "vk", "", "", passthrough | verifie
 G("MC2_VK_TERRAIN_SKIRTS", Tri, false, "vk", "", "", inherits("MC2_VK_SHARED_GBUFFER")),
 // VK-P10 TERRAIN TIER-1: the terrain in-place shared-GBuffer co-write region.
 // history: docs/gate-history.md#MC2_VK_TERRAIN_TIER1
-G("MC2_VK_TERRAIN_TIER1", Tri, false, "vk", "", "VK-P10 TERRAIN TIER-1: presence-gated =1, default OFF (requires MC2_VK_SHARED_SCENE_DEPTH).", passthrough | registry(Feature, "MC2_FEATURE_VK_TERRAIN_TIER1", -1, false) | inherits("MC2_VK_SHARED_GBUFFER")),
+G("MC2_VK_TERRAIN_TIER1", Tri, false, "vk", "", "VK-P10 TERRAIN TIER-1: presence-gated =1, default OFF (requires MC2_VK_SHARED_SCENE_DEPTH).", passthrough | registry(Feature, "MC2_FEATURE_VK_TERRAIN_TIER1", -1, false) | inherits("MC2_VK_SHARED_GBUFFER") | verified),
 L(Exact1, "MC2_VK_TERRAIN_VISUALDISPLACE_FAR", Bool, false, "vk", "", ""),
 // history: docs/gate-history.md#MC2_VK_VFX
-G("MC2_VK_VFX", Tri, false, "vk", "", "VK-FIELD-VFX-1: umbrella sub-gate, default-ON under MC2_VK_SHARED_GBUFFER (explicit =0 forces off, =1 forces on).", passthrough | registry(Feature, "MC2_FEATURE_VK_VFX", -1, false) | inherits("MC2_VK_SHARED_GBUFFER")),
+G("MC2_VK_VFX", Tri, false, "vk", "", "VK-FIELD-VFX-1: umbrella sub-gate, default-ON under MC2_VK_SHARED_GBUFFER (explicit =0 forces off, =1 forces on).", passthrough | registry(Feature, "MC2_FEATURE_VK_VFX", -1, false) | inherits("MC2_VK_SHARED_GBUFFER") | verified),
 // history: docs/gate-history.md#MC2_VK_VFX_COALESCE
 L(Lead0Kill, "MC2_VK_VFX_COALESCE", Bool, true, "gameos", "", "VK-VFX-COALESCE-1: merges consecutive same-render-state HUD tri-batch draws (gosRenderer::drawTris IsHUD branch, gameos_graphics.cpp) into ONE hudBatch_...", passthrough | registry(Feature, "MC2_FEATURE_VK_VFX_COALESCE", -1, true)),
 // history: docs/gate-history.md#MC2_VK_VFX_TRACE
 L(Lead0, "MC2_VK_VFX_TRACE", Bool, false, "vk", "", "VK-FIELD-VFX-2: per-bolt weapon-fire pipeline trace.", registry(Trace, "MC2_TRACE_VK_VFX_TRACE", -1, false)),
 // history: docs/gate-history.md#MC2_VK_WATER_DIRECT_CHAIN
-G("MC2_VK_WATER_DIRECT_CHAIN", Tri, false, "vk", "", "VK-WATER-DIRECT-CHAIN: opt-in deletion-readiness proof gate, default OFF.", passthrough | registry(Feature, "MC2_FEATURE_VK_WATER_DIRECT_CHAIN", -1, false) | inherits("MC2_VK_SHARED_GBUFFER")),
+G("MC2_VK_WATER_DIRECT_CHAIN", Tri, false, "vk", "", "VK-WATER-DIRECT-CHAIN: opt-in deletion-readiness proof gate, default OFF.", passthrough | registry(Feature, "MC2_FEATURE_VK_WATER_DIRECT_CHAIN", -1, false) | inherits("MC2_VK_SHARED_GBUFFER") | verified),
 L(Lead0Kill, "MC2_VK_WATER_FENCE_DEFER", Bool, true, "vk", "", ""),
 L(Lead1, "MC2_VK_WATER_PERF", Bool, false, "vk", "", "", passthrough),
-G("MC2_VK_WATER_TIER1", Tri, false, "vk", "", "Direct-chain members default ON under the umbrella; MC2_VK_WATER_TIER1 is a normal umbrella sub-gate.", inherits("MC2_VK_SHARED_GBUFFER")),
+G("MC2_VK_WATER_TIER1", Tri, false, "vk", "", "Direct-chain members default ON under the umbrella; MC2_VK_WATER_TIER1 is a normal umbrella sub-gate.", inherits("MC2_VK_SHARED_GBUFFER") | verified),
 L(Presence, "MC2_VPL_CULL", Bool, false, "terrain", "", "VPL retirement: the MC2_VPL_CULL / MC2_VPL_REDUCE getenv reads are KEPT solely to gate the one-shot event=retired lifecycle lines emitted just before the...", verified),
 L(Presence, "MC2_VPL_PICK", Bool, false, "code", "", "VPL-retirement Step 3 (3a): recursion-free tile selection."),
 L(Presence, "MC2_VPL_REDUCE", Bool, false, "terrain", "", "", verified),
