@@ -14,8 +14,6 @@
  ],
  "files_over_1500": {
   "GameOS/gameos/engine_present_vk.cpp": 2749,
-  "GameOS/gameos/gameosmain.cpp": 2810,
-  "GameOS/gameos/gos_static_prop_registry.cpp": 2207,
   "GameOS/gameos/gos_terrain_lighting.cpp": 1697,
   "GameOS/gameos/gos_terrain_water_stream.cpp": 2455,
   "GameOS/gameos/gpu_cull_compute.cpp": 1557,
@@ -42,7 +40,6 @@
   "code/objective.cpp": 2656,
   "code/optionsarea.cpp": 1842,
   "code/pilotreviewarea.cpp": 1845,
-  "code/saveload.cpp": 1683,
   "code/tacordr.cpp": 2072,
   "code/terrobj.cpp": 1740,
   "code/turret.cpp": 2346,
@@ -54,7 +51,6 @@
   "mclib/ablrtn.cpp": 1781,
   "mclib/assimp_importer.cpp": 1630,
   "mclib/camera.h": 1800,
-  "mclib/estring.cpp": 1596,
   "mclib/file.cpp": 2685,
   "mclib/gosfx/fcurve.cpp": 1923,
   "mclib/gosfx/tube.cpp": 1528,
@@ -69,7 +65,7 @@
   "mclib/tgl.h": 1689,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "b08cf4c21",
+ "head": "123daceb2",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -78,8 +74,8 @@
    "max_lines": 523
   },
   "GameOS": {
-   "files": 311,
-   "files_over_1500": 10,
+   "files": 317,
+   "files_over_1500": 8,
    "files_over_3000": 1,
    "max_lines": 3753
   },
@@ -102,8 +98,8 @@
    "max_lines": 1159
   },
   "code": {
-   "files": 361,
-   "files_over_1500": 23,
+   "files": 364,
+   "files_over_1500": 22,
    "files_over_3000": 1,
    "max_lines": 3273
   },
@@ -121,7 +117,7 @@
   },
   "mclib": {
    "files": 588,
-   "files_over_1500": 17,
+   "files_over_1500": 16,
    "files_over_3000": 0,
    "max_lines": 2685
   },
@@ -148,10 +144,6 @@
   {
    "file": "RenderCore/RendererFeatureRegistry.h",
    "lines": 2917
-  },
-  {
-   "file": "GameOS/gameos/gameosmain.cpp",
-   "lines": 2810
   },
   {
    "file": "GameOS/gameos/engine_present_vk.cpp",
@@ -192,10 +184,6 @@
   {
    "file": "code/turret.cpp",
    "lines": 2346
-  },
-  {
-   "file": "GameOS/gameos/gos_static_prop_registry.cpp",
-   "lines": 2207
   },
   {
    "file": "code/warrior.h",
@@ -256,11 +244,19 @@
   {
    "file": "mclib/camera.h",
    "lines": 1800
+  },
+  {
+   "file": "GameOS/gameos/vulkan_color_prop_island.cpp",
+   "lines": 1785
+  },
+  {
+   "file": "mclib/ablrtn.cpp",
+   "lines": 1781
   }
  ],
  "total": {
-  "files": 1761,
-  "files_over_1500": 55,
+  "files": 1770,
+  "files_over_1500": 51,
   "files_over_3000": 2,
   "max_lines": 3753
  },
