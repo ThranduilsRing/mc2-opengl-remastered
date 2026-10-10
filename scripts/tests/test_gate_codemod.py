@@ -430,3 +430,169 @@ def test_summary_counts():
     s = cm.summarize(cm.analyze_text("snippet.cpp", code, mk("Presence")))
     assert s["total"] == 2
     assert s["verdicts"]["NO-CHANGE"] == 1 and s["verdicts"]["UNHANDLED"] == 1
+
+
+# ---------------------------------------------------------------------------
+# G3 additions: umbrella helpers, paired reads, preprocessor lines, family reports
+# ---------------------------------------------------------------------------
+
+def test_umbrella_helper_outside_the_scanned_files_is_reported_not_skipped():
+    code = "void f() { int a = mc2vkgate::envTriState(\"MC2_X\"); bool b = mc2vkgate::subGate(\"MC2_X\"); }"
+    res = cm.analyze_text("snippet.cpp", code, mk())
+    assert [(r.callee, r.verdict) for r in res] == [("envTriState", "UNHANDLED"), ("subGate", "UNHANDLED")]
+    assert all("umbrella helper" in r.reason and "G4" in r.reason for r in res)
+    assert all(cm.is_umbrella_result(r) and cm.is_helper_result(r) for r in res)
+
+
+def test_unknown_helper_outside_the_scanned_files_is_a_helper_call_reader():
+    res = cm.analyze_text("snippet.cpp", "bool f() { return tglc_envOn(\"MC2_X\"); }", mk())
+    assert len(res) == 1 and res[0].verdict == "UNHANDLED" and "helper-call reader tglc_envOn" in res[0].reason
+    assert res[0].helper_def == "defined outside the scanned files"
+    assert not cm.is_umbrella_result(res[0])
+
+
+def test_writes_and_log_lines_are_not_readers():
+    code = "void f() { _putenv_s(\"MC2_X\", \"1\"); printf(\"%s\", \"MC2_X\"); }"
+    assert cm.analyze_text("snippet.cpp", code, mk()) == []
+
+
+def test_helper_definition_is_recorded_for_the_builder():
+    helpers = [("h.h", "inline bool envFlag(const char* n) { const char* v = getenv(n); return v && v[0]; }")]
+    res = cm.analyze_text("snippet.cpp", "static const bool s = envFlag(\"MC2_X\");", mk("Lead0"), None, helpers)
+    assert res[0].helper_def.startswith("h.h:1 `{ const char* v = getenv(n);")
+    groups = cm.helper_groups(res)
+    assert list(groups) == ["envFlag"] and groups["envFlag"][0] is res[0]
+
+
+def test_paired_reads_are_judged_as_one_reader_and_never_get_an_invented_override():
+    code = "static const bool s = (getenv(\"MC2_X\") && getenv(\"MC2_X\")[0] == '1');"
+    res = cm.analyze_text("snippet.cpp", code, mk("Lead1"))
+    assert [r.verdict for r in res] == ["UNHANDLED", "UNHANDLED"]
+    assert all(r.paired and r.override == "" for r in res)
+    assert "as one reader it is Lead1 vs row Lead1: NO-CHANGE" in res[0].reason
+    # against a row with another rule the unit verdict says so, instead of a Presence override
+    res = cm.analyze_text("snippet.cpp", code, mk("Presence"))
+    assert "as one reader it is Lead1 vs row Presence: SEMANTICS" in res[0].reason
+    assert "paired reads" in cm.reason_class(res[0].reason)
+
+
+def test_statement_after_a_preprocessor_line_does_not_swallow_the_directive():
+    code = ("void f() {\n#ifdef FOO\n  const float s = 1.0f;\n#else\n"
+            "  static const bool s_on = [] { const char* v = getenv(\"MC2_X\"); return v && v[0] == '1' && v[1] == 0; }();\n"
+            "#endif\n}\n")
+    r = one(code, mk("Exact1"))
+    assert r.verdict == "NO-CHANGE"
+    assert r.replacement == "static const bool s_on = %s;" % getx()
+    assert "#" not in r.replacement
+    assert r.why.endswith("inside #else of #ifdef FOO")
+
+
+def test_preprocessor_context_names_define_bodies_and_nested_conditions():
+    T = "#if A\n#ifndef B\nint x;\n#endif\nint y;\n#endif\n#define M(t) do { \\\n  use(getenv(\"MC2_X\")); \\\n} while (0)\n"
+    assert cm.pp_context(T, T.index("int x")) == "inside #if A; #ifndef B"
+    assert cm.pp_context(T, T.index("int y")) == "inside #if A"
+    assert cm.pp_context(T, T.index("getenv")) == "inside a #define body"
+    assert cm.pp_context("int z;\n", 3) == ""
+
+
+def test_fmt_num_prints_enough_digits_to_tell_float32_defaults_apart():
+    third = cm._f32(1.0 / 384.0)
+    assert cm._f32(float(cm._fmt_num(third))) == third
+    assert cm._fmt_num(third) != cm._fmt_num(0.00260417)
+    assert cm._fmt_num(cm._f32(2.2)) == "2.2"
+    assert cm._fmt_num(0.25) == "0.25" and cm._fmt_num(3.0) == "3"
+
+
+def test_ledger_enum_ruling_on_an_int_row_becomes_a_row_edit_with_edge_inputs():
+    rows = {G: cm.Row(G, "Int", "Prefix", 1)}
+    ledger = {G: {"status": "note", "rule": "Enum {1,2,4}; other values rejected", "evidence": "single reader"}}
+    res = cm.analyze_text("snippet.cpp", "int f() { const char* v = getenv(\"MC2_X\"); return v ? atoi(v) : 1; }", rows, ledger)
+    edits = cm.ledger_kind_edits(res, rows, ledger)
+    assert list(edits) == [G] and edits[G]["tokens"] == ["1", "2", "4"]
+    assert {"02", "2abc", "+2", "2.5"} <= set(edits[G]["edge_inputs"]) and "2" not in edits[G]["edge_inputs"]
+    md = cm.render_md(res, rows, ["snippet.cpp"], "abc123", "g3", ledger)
+    assert "kind Int -> Enum, tokens `1|2|4`" in md
+    assert 'mc2::gate::is<"MC2_X", "2">()) return 2;' in md and "return 1;" in md
+    assert cm.ledger_kind_edits(res, {G: cm.Row(G, "Enum", "Std", "1")}, ledger) == {}
+
+
+def _write(tmp_path, name, text):
+    p = tmp_path / name
+    p.write_text(text, encoding="utf-8")
+    return name
+
+
+def test_umbrella_report_follows_wrappers_and_exported_predicates_across_files(tmp_path):
+    a = _write(tmp_path, "island.cpp",
+               "bool tier1() {\n  return mc2vkgate::subGate(\"MC2_VK_T\");\n}\n"
+               "bool lods() {\n  return tier1() && mc2vkgate::envTriState(\"MC2_VK_L\") == 1;\n}\n"
+               "extern \"C\" int mc2_vk_x_enabled() {\n  return lods() ? 1 : 0;\n}\n"
+               "int other() {\n  return tier1();\n}\n")
+    b = _write(tmp_path, "chunk.cpp", "void draw() {\n  if (mc2_vk_x_enabled()) go();\n  if (mc2_vk_y_enabled()) go();\n}\n")
+    rep_ = cm.umbrella_report([a, b], str(tmp_path), None, [])
+    got = [(s["file"], s["line"], s["helper"], s["role"], s["gate"], s["func"]) for s in rep_["sites"]]
+    assert ("island.cpp", 2, "subGate", "resolver", "MC2_VK_T", "tier1") in got
+    assert ("island.cpp", 5, "envTriState", "resolver", "MC2_VK_L", "lods") in got
+    assert ("chunk.cpp", 2, "mc2_vk_x_enabled", "consumer", "", "draw") in got
+    assert not any(g[2] == "mc2_vk_y_enabled" for g in got)         # not an umbrella-derived predicate
+    assert sorted(rep_["dependent"]) == ["draw", "lods", "mc2_vk_x_enabled", "other", "tier1"]
+    wr = {w["func"]: w["callers"] for w in rep_["wrappers"]}
+    assert wr == {"tier1": 2, "lods": 1}
+
+
+def test_enclosing_function_finds_the_column_zero_head_or_a_namespace_initializer():
+    T = "static bool a = [] {\n  return f(\"X\");\n}();\nint g(int x)\n{\n  return h(\"X\");\n}\n}\nint k;\n"
+    assert cm.enclosing_function(T, T.index("f(\"X\")"))[0] == "<namespace-scope initializer>"
+    assert cm.enclosing_function(T, T.index("h(\"X\")")) == ("g", 4)
+    assert cm.enclosing_function(T, T.index("int k"))[0] == "<namespace scope>"
+
+
+def test_runtime_writes_reads_the_gate_out_of_git_grep_lines(monkeypatch):
+    out = (b"HEAD:a/b.cpp:12:    _putenv_s(\"MC2_ACTIVE_MOD\", v);\n"
+           b"HEAD:c.cpp:7:  SetEnvironmentVariableA(\"MC2_FPS_CAP\", \"60\");\n"
+           b"HEAD:d.cpp:3:  putenv(\"NOT_A_GATE=1\");\n")
+
+    class Done:
+        stdout = out
+
+    monkeypatch.setattr(cm.subprocess, "run", lambda *a, **k: Done())
+    assert cm.runtime_writes("root", "HEAD") == {"MC2_ACTIVE_MOD": ["a/b.cpp:12"], "MC2_FPS_CAP": ["c.cpp:7"]}
+
+
+def test_per_call_reader_of_a_gate_written_at_run_time_is_called_out():
+    code = "void f() { if (getenv(\"MC2_X\")) go(); }"
+    rows = mk()
+    res = cm.analyze_text("snippet.cpp", code, rows)
+    # the family sections only render when something family-specific exists; a ledger note triggers them
+    ledger = {G: {"status": "note", "rule": "n/a", "delta": "-", "evidence": "-"}}
+    md = cm.render_md(res, rows, ["snippet.cpp"], "abc", "g3", ledger, None, {G: ["x.cpp:9"]})
+    assert "Caching hazard" in md and "`x.cpp:9`" in md
+    md = cm.render_md(res, rows, ["snippet.cpp"], "abc", "g3", ledger, None, {"MC2_OTHER": ["x.cpp:9"]})
+    assert "Caching hazard" not in md and "Caching check" in md
+
+
+def test_g3_family_is_registered_with_its_seven_files_and_own_outputs():
+    fam = cm.FAMILIES["g3"]
+    assert [f.rsplit("/", 1)[-1] for f in fam["files"]] == [
+        "gos_terrain_lod_chunk.cpp", "gos_terrain_indirect.cpp", "terrain.cpp", "gos_terrain_water_stream.cpp",
+        "vulkan_terrain_island.cpp", "gos_terrain_mask_dispatch.cpp", "gos_terrain_height_tex.cpp"]
+    assert (fam["md"], fam["tsv"]) == ("docs/gate-codemod-g3.md", "docs/gate-codemod-g3.tsv")
+    assert cm.FAMILIES["g1b"]["md"] == cm.OUT_MD
+
+
+def test_g3_markdown_groups_helpers_and_lists_umbrella_sites_apart():
+    helpers = [("h.h", "inline bool envFlag(const char* n) { const char* v = getenv(n); return v && v[0]; }")]
+    code = ("static const bool a = envFlag(\"MC2_X\");\nbool u() { return mc2vkgate::subGate(\"MC2_X\"); }\n")
+    rows = mk("Lead0")
+    res = cm.analyze_text("snippet.cpp", code, rows, None, helpers)
+    umb = {"sites": [{"file": "snippet.cpp", "line": 2, "helper": "subGate", "gate": G, "func": "u", "func_line": 2,
+                      "code": "bool u() ...", "role": "resolver"}], "wrappers": [], "vk_family": []}
+    md = cm.render_md(res, rows, ["snippet.cpp"], "abc", "g3", None, umb)
+    assert "### `envFlag()` -- 1 site" in md and "Helper: h.h:1" in md
+    assert "VK umbrella-coupled sites (G4" in md and "| `snippet.cpp:2` | `subGate` | resolver |" in md
+    assert "| UNHANDLED, helper-call reader (1 helpers) | 1 |" in md
+    assert "| UNHANDLED, VK umbrella resolver (G4) | 1 |" in md
+    # the G1b rendering is untouched when nothing family-specific exists
+    plain = cm.render_md(cm.analyze_text("snippet.cpp", "static const bool a = (getenv(\"MC2_X\") != nullptr);", mk()), mk(),
+                         ["snippet.cpp"], "abc")
+    assert "UNHANDLED sites, grouped" not in plain and plain.startswith("# Gate codemod, G1b pilot plan")

@@ -63,13 +63,41 @@ PILOT_FILES = (
     "GameOS/gameos/gos_terrain_surface.cpp",
     "GameOS/gameos/gos_terrain_lighting.cpp",
 )
+G3_FILES = (
+    "GameOS/gameos/gos_terrain_lod_chunk.cpp",
+    "GameOS/gameos/gos_terrain_indirect.cpp",
+    "mclib/terrain.cpp",
+    "GameOS/gameos/gos_terrain_water_stream.cpp",
+    "GameOS/gameos/vulkan_terrain_island.cpp",
+    "GameOS/gameos/gos_terrain_mask_dispatch.cpp",
+    "GameOS/gameos/gos_terrain_height_tex.cpp",
+)
 SEED_REL = "tools/gate_table.seed.json"
 TABLE_REL = "Gates/gate_table.json"
 LEDGER_REL = "tools/gate_g0_ledger.json"
 OUT_MD = "docs/gate-codemod-g1b.md"
 OUT_TSV = "docs/gate-codemod-g1b.tsv"
 
+# One entry per migration slice the planner prepares.  `g1b` is the pilot the planner was written for.
+FAMILIES = {
+    "g1b": {"title": "Gate codemod, G1b pilot plan (dry run)", "what": "pilot", "files": PILOT_FILES,
+            "md": OUT_MD, "tsv": OUT_TSV, "cmd": "py -3 tools/gate_codemod.py --write"},
+    "g3": {"title": "Gate codemod, G3 terrain-family plan (dry run)", "what": "G3 terrain migration", "files": G3_FILES,
+           "md": "docs/gate-codemod-g3.md", "tsv": "docs/gate-codemod-g3.tsv",
+           "cmd": "py -3 tools/gate_codemod.py --family g3 --write"},
+}
+
 NS = "mc2::gate"
+
+# Callers of the VK umbrella resolver (GameOS/gameos/vk_shared_gbuffer_gate.h).  A site that reads a gate
+# through one of these is NOT a plain env read: the answer depends on the umbrella (subGate,
+# directChainGate, terrainNativeFirstOwnerOn) or on the unset/0/1 distinction (envTriState).  They need
+# the Tri / state<> semantics of the G4 slice, so the planner lists them separately and never rewrites them.
+UMBRELLA_HELPERS = ("subGate", "directChainGate", "terrainNativeFirstOwnerOn", "envTriState")
+
+# Calls that mention a gate name but only WRITE the environment; they are not readers at all.
+_NON_READER_CALLEES = {"putenv", "_putenv", "_putenv_s", "setenv", "SetEnvironmentVariable",
+                       "SetEnvironmentVariableA", "SetEnvironmentVariableW"}
 
 VERDICTS = ("NO-CHANGE", "EDGE", "SEMANTICS", "UNHANDLED")
 SHAPES = ("namespace-static", "local-static", "lambda-static", "per-call")
@@ -164,8 +192,10 @@ def _probe_class(v):
 class Row:
     """One gate row as the migration sees it (committed table first, seed for the extras)."""
 
-    def __init__(self, name, kind, rule, default, rng=None, harness=(), readers=(), owner="", conflict=False):
+    def __init__(self, name, kind, rule, default, rng=None, harness=(), readers=(), owner="", conflict=False,
+                 tokens=""):
         self.name = name
+        self.tokens = tokens        # Enum rows: "|a|b|c" (empty for every other kind)
         self.kind = kind
         self.rule = rule
         self.default = default
@@ -205,7 +235,7 @@ def load_rows(root=ROOT, rev=None):
         rows[name] = Row(name, src.get("kind", "Bool"), src.get("rule", "Std"), default,
                          rng=(t or {}).get("range"), harness=s.get("harnessValues", []),
                          readers=s.get("readers", []), owner=src.get("owner", ""),
-                         conflict=bool(s.get("conflict")))
+                         conflict=bool(s.get("conflict")), tokens=src.get("tokens", "") or "")
     return rows
 
 
@@ -390,7 +420,8 @@ def _norm_ws(s, limit=320):
 
 class Result:
     __slots__ = ("file", "line", "gate", "callee", "idiom", "shape", "replacement", "verdict", "why", "old",
-                 "row_edit", "diff", "harness_hits", "override", "reason", "mode", "kind")
+                 "row_edit", "diff", "harness_hits", "override", "reason", "mode", "kind", "helper_def",
+                 "paired", "pp", "helper_read")
 
     def __init__(self, file, line, gate, callee):
         self.file, self.line, self.gate, self.callee = file, line, gate, callee
@@ -407,6 +438,10 @@ class Result:
         self.reason = ""
         self.mode = ""
         self.kind = ""
+        self.helper_def = ""        # helper-call readers: where the helper is defined and what it does
+        self.helper_read = ""       # what the interpreter makes of a helper-call reader (evidence only, no rewrite)
+        self.pp = ""                # preprocessor context holding the site ("inside #else of ...")
+        self.paired = False         # the statement reads the same gate twice (presence test, then a character test)
 
     @property
     def where(self):
@@ -433,7 +468,12 @@ def get_expr(name, rule=None, neg=False):
 def _fmt_num(x):
     if isinstance(x, float) and x == int(x) and abs(x) < 1e15:
         return str(int(x))
-    return "%g" % x if isinstance(x, float) else str(x)
+    if not isinstance(x, float):
+        return str(x)
+    short = "%g" % x
+    # A float32 constant such as 1.0f/384.0f needs more than six digits to stay distinguishable from the
+    # row's rounded default; print the shortest text that still names the same float32.
+    return short if _f32(float(short)) == _f32(x) else "%.9g" % x
 
 
 # ---------------------------------------------------------------------------
@@ -759,15 +799,117 @@ def analyze_text(path, raw, rows, ledger=None, extra_sources=()):
         line = T.count("\n", 0, m.start()) + 1
         is_raw = base in ("getenv", "_getenv")
         if not is_raw and fns.resolve(callee, path) is None and base not in gi._RAW_ENV_CALLEES:
-            continue                                # a table row, a _putenv, an indirect name
+            # A helper whose body is outside the scanned files (the umbrella resolver lives in a header).
+            # The site is still reported, so no reader is silently missing from the plan.
+            if base in _NON_READER_CALLEES or gi._LOG_CALLEE_RE.match(base):
+                continue                            # a _putenv or a log line: never a read
         res = Result(path, line, gate, base)
+        if not is_raw:
+            res.helper_def = _helper_definition(fns, callee, path)
         try:
             _analyze_site(res, interp, path, raw, T, m.start(), cs, ce, is_raw, rows, ledger)
         except Exception as exc:                    # a site must never abort the whole report
             res.verdict, res.reason = "UNHANDLED", "tool error: %s: %s" % (type(exc).__name__, exc)
             res.why = res.reason
+        ctx = pp_context(T, m.start())
+        if ctx:
+            res.pp = ctx
+            res.why = "%s; %s" % (res.why, ctx) if res.why else ctx
         results.append(res)
     return results
+
+
+def _helper_definition(fns, callee, path):
+    """Where a helper-call reader is defined and its body, or a note that it lives outside the scanned files."""
+    d = fns.resolve(callee, path)
+    if d is None:
+        return "defined outside the scanned files"
+    if d is gi._AMBIG:
+        return "several differing definitions"
+    return "%s:%d `%s`" % (d.path, d.text.count(chr(10), 0, d.body_lo) + 1,
+                           _norm_ws(d.text[d.body_lo:d.body_hi], 420))
+
+
+_PP_LINE_RE = re.compile(r"[ \t\r\n]*#(?:[^\\\n]|\\[\s\S])*")
+
+
+def _skip_pp(T, ss):
+    """`ss` moved past any preprocessor lines (and blanks) that sit between the previous statement and this one."""
+    while True:
+        m = _PP_LINE_RE.match(T, ss)
+        if not m or m.end() == ss:
+            return ss
+        ss = m.end()
+
+
+def _stmt_begin(T, pos):
+    """Start of the statement holding `pos`; a `#else` line above it is not part of the statement."""
+    return _skip_pp(T, gi._stmt_start(T, pos))
+
+
+def pp_context(T, pos):
+    """Text naming the preprocessor conditions (or #define body) that hold `pos`, or ''.
+
+    A site inside `#else` of `MC2_VULKAN_ISLAND` is compiled only in builds without the island, which the
+    builder has to know before deciding how to test the rewrite."""
+    stack = []
+    lines = T.split("\n")
+    target = T.count("\n", 0, pos)
+    for i in range(target + 1):
+        t = lines[i].strip()
+        if not t.startswith("#"):
+            continue
+        d = re.match(r"#\s*(ifdef|ifndef|if|elif|else|endif)\b\s*(.*)", t)
+        if not d:
+            continue
+        kind, cond = d.group(1), d.group(2).strip()
+        if kind in ("if", "ifdef", "ifndef"):
+            stack.append(["#%s %s" % (kind, cond), False])
+        elif kind == "elif" and stack:
+            stack[-1] = ["#elif %s" % cond, True]
+        elif kind == "else" and stack:
+            stack[-1] = ["#else of %s" % stack[-1][0], True]
+        elif kind == "endif" and stack:
+            stack.pop()
+    out = [e[0] for e in stack]
+    j = target
+    while j > 0 and lines[j - 1].rstrip().endswith("\\"):
+        j -= 1
+    if re.match(r"#\s*define\b", lines[j].strip()):
+        out.append("a #define body")
+    return "inside " + "; ".join(out) if out else ""
+
+
+def _helper_read(interp, path, T, p, gate, row):
+    """What the reader interpreter makes of a helper-call site: the idiom and, for a Bool row, the verdict it would get.
+
+    Evidence for the builder who writes the helper-aware rewrite; it proposes no replacement text."""
+    try:
+        r = gi.analyze_site(interp, path, T, p, gate)
+    except Exception as exc:                        # evidence is optional, never a reason to fail the report
+        return "interpreter error: %s" % type(exc).__name__
+    if r["status"] != "reader":
+        return "interpreter: %s" % r["status"]
+    d = gi.describe(r)
+    if not d:
+        return ""
+    fam, vec, cls, inv = d
+    if fam == "bool" and any(x not in ("on", "off") for x in vec):
+        return "bool %s; U,E,Z,F,O,X,X10,X25 = %s; inconclusive, the call sits in a larger expression" % (
+            cls, ",".join(str(x) for x in vec))
+    if fam == "bool" and row.kind == "Bool":
+        jd = judge_bool(row, [_flip(x) for x in vec] if inv else list(vec))
+        if "verdict" in jd:
+            return "%s%s; vs row %s: %s%s" % ("!" if inv else "", cls, row.rule, jd["verdict"],
+                                              (" (differs on %s)" % ",".join(jd["diff"])) if jd["diff"] else "")
+    return "%s %s; U,E,Z,F,O,X,X10,X25 = %s" % (fam, cls, ",".join(str(x) for x in vec))
+
+
+def _paired_reads(T, cs, gate):
+    """How many times the statement holding the call at cs spells this gate (a `getenv(X) && getenv(X)[0]` is 2)."""
+    ss = gi._stmt_start(T, cs)
+    se = gi._stmt_end(T, ss)
+    return T[ss:se].count('"%s"' % gate)
 
 
 def _fail(res, reason):
@@ -792,6 +934,9 @@ def _analyze_site(res, interp, path, raw, T, p, cs, ce, is_raw, rows, ledger):
         return _fail(res, "gate is not in the gate table (Gates/gate_table.cpp)")
     res.kind = row.kind
     if not is_raw:
+        if res.callee in UMBRELLA_HELPERS:
+            return _fail(res, "umbrella helper %s(): needs Tri/state<> semantics (G4), not migrated in G3" % res.callee)
+        res.helper_read = _helper_read(interp, path, T, p, gate, row)
         return _fail(res, "helper-call reader %s(): helper mapping lands in G4/G6" % res.callee)
 
     # ----- context ---------------------------------------------------------------------------------
@@ -802,7 +947,7 @@ def _analyze_site(res, interp, path, raw, T, p, cs, ce, is_raw, rows, ledger):
         return _fail(res, lam[1])
     if lam:
         _, lam_start, bo, bc, call_end = lam
-        ss = gi._stmt_start(T, lam_start)
+        ss = _stmt_begin(T, lam_start)
         head = T[ss:lam_start]
         eq = _split_assign(head + "=", len(head) + 1)
         hm = re.match(r"^(.*?)=\s*$", head, re.S)
@@ -825,7 +970,7 @@ def _analyze_site(res, interp, path, raw, T, p, cs, ce, is_raw, rows, ledger):
         unit = {"span": (ss, end), "lhs": lhs, "kind": "lambda", "text": T[lam_start:call_end], "var": lhs["name"]}
         mode = "lambda"
     else:
-        ss = gi._stmt_start(T, cs)
+        ss = _stmt_begin(T, cs)
         se = gi._stmt_end(T, ss)
         st = T[ss:se]
         if _CTRL_RE.match(st) and not st.lstrip().startswith("return"):
@@ -884,6 +1029,23 @@ def _analyze_site(res, interp, path, raw, T, p, cs, ce, is_raw, rows, ledger):
         return _fail(res, "row kind %s: read through %s (G3 Enum / G4 Tri / String via str<>)" %
                      (row.kind, {"Tri": "state<>/Tri", "Enum": "is<>/Enum token", "String": "str<>"}[row.kind]))
     # Bool row
+    if mode == "expr" and _paired_reads(T, cs, gate) > 1:
+        # `getenv(X) && getenv(X)[0] == '1'` is ONE reader.  Judging the first call as a bare presence test
+        # would invent a Presence override; judge the statement as the unit and leave the rewrite to a human.
+        res.paired = True
+        r = gi.analyze_site(interp, path, T, p, gate)
+        d = gi.describe(r) if r["status"] == "reader" else None
+        if d and d[0] == "bool":
+            fam, vec, cls, inv = d
+            res.idiom = cls
+            jd = judge_bool(row, [_flip(x) for x in vec] if inv else list(vec))
+            if "verdict" in jd:
+                return _fail(res, "paired reads: the statement reads this gate %d times; as one reader it is %s%s vs row "
+                                  "%s: %s%s -- replace the whole expression by hand" %
+                             (_paired_reads(T, cs, gate), "!" if inv else "", cls, row.rule, jd["verdict"],
+                              (" (differs on %s; override %s)" % (",".join(jd["diff"]), jd.get("override"))
+                               if jd["diff"] else "")))
+        return _fail(res, "paired reads: the statement reads this gate more than once; replace the whole expression by hand")
     if mode == "expr":
         sub = _expr_parts(T, cs, ce)
         if sub is None:
@@ -1046,10 +1208,12 @@ def _expr_emit(res, row, T, raw, p, cs, ce, sub, notes, presence_only=False):
         jd2["rule"] = "Presence"
         res.why = _why_bool(row, jd2, notes, res)
     # a declaration/assignment is shown whole (it may span lines); a control statement shows its own line
-    ss = gi._stmt_start(T, cs)
+    ss = _stmt_begin(T, cs)
     se = gi._stmt_end(T, ss)
     if not _CTRL_RE.match(T[ss:se]) and "{" not in T[ss:cs] and ss < la:
-        la, lb = ss, se
+        # the comment-stripped text keeps the raw offsets, so its first non-blank character is where the
+        # statement really starts (a comment block above it is not part of the statement)
+        la, lb = ss + (len(T[ss:se]) - len(T[ss:se].lstrip())), se
         old_line = raw[la:lb]
     new_line = raw[la:cs] + new_e + raw[sub["end"]:lb]
     # `x = (A);` loses the redundant parentheses a `!= nullptr` test needed
@@ -1148,15 +1312,16 @@ def _md_table(rs):
     return out
 
 
-def render_md(results, rows, files, rev_label):
+def render_md(results, rows, files, rev_label, family="g1b", ledger=None, umbrella=None, writes=None):
     s = summarize(results)
+    fam = FAMILIES[family]
     L = []
-    L.append("# Gate codemod, G1b pilot plan (dry run)")
+    L.append("# " + fam["title"])
     L.append("")
-    L.append("Generated by `py -3 tools/gate_codemod.py --write`. **No C++ was changed.** Each row says what happens if "
+    L.append("Generated by `%s`. **No C++ was changed.** Each row says what happens if "
              "the raw `getenv` read at `file:line` is rewritten to `%s::get<\"MC2_X\">()` against the gate row "
              "committed in `Gates/gate_table.json` (design `typed-gate-registry-design.md` section 5.7, review "
-             "amendments 1, 2, 9). Scanned: commit `%s` (files read from git, not the working tree)." % (NS, rev_label))
+             "amendments 1, 2, 9). Scanned: commit `%s` (files read from git, not the working tree)." % (fam["cmd"], NS, rev_label))
     L.append("")
     L.append("How to read the verdicts:")
     L.append("")
@@ -1186,6 +1351,13 @@ def render_md(results, rows, files, rev_label):
     L.append("| gates needing a row edit first | %d |" % len(s["row_edits"]))
     for sh in SHAPES:
         L.append("| shape `%s` | %d |" % (sh, s["shapes"][sh]))
+    n_help = sum(len(v) for v in helper_groups(results).values())
+    n_umb = sum(1 for r in results if r.verdict == "UNHANDLED" and is_umbrella_result(r))
+    n_pair = sum(1 for r in results if r.paired)
+    if n_help or n_umb or n_pair:
+        L.append("| UNHANDLED, helper-call reader (%d helpers) | %d |" % (len(helper_groups(results)), n_help))
+        L.append("| UNHANDLED, VK umbrella resolver (G4) | %d |" % n_umb)
+        L.append("| UNHANDLED, paired reads of one gate in one statement | %d |" % n_pair)
     L.append("")
     L.append("| File | " + " | ".join(VERDICTS) + " | total |")
     L.append("|---|" + "---|" * (len(VERDICTS) + 1))
@@ -1212,7 +1384,8 @@ def render_md(results, rows, files, rev_label):
             for r in rs:
                 L.append("* `%s` (%s): `%s`" % (r.where, r.gate, r.old or _code_line_hint(r)))
             L.append("")
-    L.append("## Row edits required before the pilot applies")
+    L.extend(render_family_sections(results, rows, ledger, umbrella, writes))
+    L.append("## Row edits required before the %s applies" % fam["what"])
     L.append("")
     L.append("These change `Gates/gate_table.cpp` only; every other reader of the gate is still a raw `getenv` until it migrates, "
              "so nothing observable moves. After the edit the listed sites verify as shown above.")
@@ -1277,12 +1450,441 @@ def unhandled_code_lines(results, root, rev):
             r.old = _norm_ws(lines[r.line - 1])
 
 
+# ---------------------------------------------------------------------------
+# Family reports (G3): helper groups, umbrella coupling, ledger kind edits
+#
+# The per-site verdicts above answer "may this raw getenv become get<>()".  A family such as the terrain
+# files also holds readers the planner must NOT guess at: helper-call readers (tglc_envOn, envF, ...), the VK
+# umbrella resolver (subGate, envTriState), reads that span several statements, and rows whose kind the
+# G0 ledger says is wrong.  These functions collect those so the migration builder starts from a list of
+# exactly what is left, grouped the way the work is split.
+# ---------------------------------------------------------------------------
+
+_RAW_READ_NAMES = frozenset(gi._RAW_ENV_CALLEES)
+
+
+def is_helper_result(r):
+    """True when the site reads the gate through a helper instead of a raw getenv."""
+    return r.callee not in _RAW_READ_NAMES
+
+
+def is_umbrella_result(r):
+    return r.callee in UMBRELLA_HELPERS
+
+
+def helper_groups(results):
+    """{helper name: [Result]} for UNHANDLED helper-call readers that are not the VK umbrella resolver."""
+    groups = {}
+    for r in results:
+        if r.verdict == "UNHANDLED" and is_helper_result(r) and not is_umbrella_result(r):
+            groups.setdefault(r.callee, []).append(r)
+    return groups
+
+
+_REASON_NORMALISERS = (
+    (re.compile(r"`[^`]*`"), "`X`"),
+    (re.compile(r"\bpointer \w+"), "pointer P"),
+    (re.compile(r" for input .*$"), ""),
+)
+
+
+def reason_class(reason):
+    """A reason with the names and numbers removed, so equal causes group together."""
+    if reason.startswith("paired reads"):
+        return "paired reads: one gate read twice in one statement (replace the whole expression by hand)"
+    for rx, sub in _REASON_NORMALISERS:
+        reason = rx.sub(sub, reason)
+    return reason.strip()
+
+
+def reason_groups(results):
+    """{reason class: [Result]} for UNHANDLED sites that are neither helper calls nor umbrella callers."""
+    groups = {}
+    for r in results:
+        if r.verdict == "UNHANDLED" and not is_helper_result(r):
+            groups.setdefault(reason_class(r.reason or r.why), []).append(r)
+    return groups
+
+
+_ENUM_TOKENS_RE = re.compile(r"Enum\s*\{([^}]*)\}")
+
+
+def ledger_kind_edits(results, rows, ledger):
+    """Gates the G0 ledger declares as an Enum while the committed row is another kind.
+
+    -> {gate: dict(row, tokens, rule, edge_inputs)}.  `edge_inputs` are atoi-prefix spellings that select a
+    token under the legacy reader but would not match a whole-token Enum row.
+    """
+    out = {}
+    for g in sorted({r.gate for r in results}):
+        entry = (ledger or {}).get(g)
+        row = rows.get(g)
+        if not entry or row is None or row.kind == "Enum":
+            continue
+        m = _ENUM_TOKENS_RE.search(entry.get("rule", ""))
+        if not m:
+            continue
+        toks = [t.strip() for t in m.group(1).split(",") if t.strip()]
+        probes = ("02", "+2", " 2", "2abc", "2.5", "04", "4.9", "1x")
+        edge = [p for p in probes if str(_prefix_num(p, True)) in toks and p not in toks]
+        out[g] = {"row": row, "tokens": toks, "rule": entry.get("rule", ""), "edge_inputs": edge,
+                  "evidence": entry.get("evidence", "")}
+    return out
+
+
+def ledger_notes(results, ledger):
+    """[(gate, entry, [sites])] for every gate of the plan the G0 ledger has something to say about."""
+    by_gate = {}
+    for r in results:
+        by_gate.setdefault(r.gate, []).append(r)
+    return [(g, (ledger or {})[g], by_gate[g]) for g in sorted(by_gate) if g in (ledger or {})]
+
+
+# ----- umbrella coupling -------------------------------------------------------------------------------
+
+# Resolvers read the environment through the umbrella; consumers only ask a wrapper for its answer, so a
+# consumer carries no gate-name literal yet still depends on the umbrella (the island's exported predicates
+# `mc2_vk_terrain_*_enabled`, and the header's umbrellaOn / terrainNativeFirstOwnerOn / postDirectChainUpstreamOn).
+UMBRELLA_CONSUMER_NAMES = ("umbrellaOn", "postDirectChainUpstreamOn")
+_DEF_PREFIX_RE = re.compile(r"\b(?:bool|int|void|inline|static)\s+$")
+_CTRL_HEAD_RE = re.compile(r"^(?:if|for|while|switch|else|return|do|namespace|struct|class|enum|union|typedef|using|case|catch|try)\b")
+
+
+def enclosing_function(T, pos):
+    """-> (name, line) of the function (or namespace-scope initializer) holding `pos`; best effort, column-0 heads only."""
+    lines = T.split("\n")
+    for i in range(T.count("\n", 0, pos), -1, -1):
+        t = lines[i]
+        if not t or t[0] in " \t}#/{":
+            if t[:1] == "}":
+                return "<namespace scope>", i + 1
+            continue
+        if _CTRL_HEAD_RE.match(t):
+            continue
+        if re.match(r"[\w:<>,\s\*&]+=\s*\[", t):
+            return "<namespace-scope initializer>", i + 1      # `T x = [] {` has no parameter list to find
+        if "(" not in t:
+            continue
+        pre = t.split("(", 1)[0]
+        if "=" in pre:
+            return "<namespace-scope initializer>", i + 1
+        mm = re.search(r"(~?\w+)\s*$", pre.rstrip())
+        if mm:
+            return mm.group(1), i + 1
+    return "<unknown>", 0
+
+
+def _umbrella_calls(T, names):
+    """[(match, name)] for each call of one of `names` in the comment-stripped text, definitions excluded."""
+    rx = re.compile(r"\b(%s)\s*\(" % "|".join(re.escape(n) for n in sorted(names)))
+    return [m for m in rx.finditer(T) if not _DEF_PREFIX_RE.search(T[max(0, m.start() - 12):m.start()])]
+
+
+def umbrella_report(files, root, rev, results):
+    """Every place in `files` that depends on the VK umbrella, with the function holding it.
+
+    Resolvers (subGate, envTriState, ...) read the environment through the umbrella.  A function that calls
+    one depends on the umbrella, and so does every function that calls such a function; the exported
+    `mc2_vk_*_enabled` predicates among them are the cross-file consumers (they carry no gate literal).
+
+    -> dict(sites=[...], wrappers=[...], vk_family=[(Result, nearest umbrella line)])."""
+    texts = {}
+    for rel in files:
+        raw = read_source(root, rel, rev)
+        texts[rel] = (raw, gi.strip_comments(raw))
+    roots = set(UMBRELLA_HELPERS) | set(UMBRELLA_CONSUMER_NAMES)
+
+    # functions that depend on the umbrella, to a fixed point
+    dependent = {}                                      # name -> (file, definition line)
+    frontier = set(roots)
+    while frontier:
+        found = set()
+        for rel, (_, T) in texts.items():
+            for m in _umbrella_calls(T, frontier):
+                fn, fn_line = enclosing_function(T, m.start())
+                if not fn.startswith("<") and fn not in dependent and fn not in roots:
+                    dependent[fn] = (rel, fn_line)
+                    found.add(fn)
+        frontier = found
+    exported = {n for n in dependent if re.fullmatch(r"mc2_vk_\w+_enabled", n)}
+
+    sites, funcs = [], {}
+    for rel, (raw, T) in texts.items():
+        src_lines = raw.split("\n")
+        for m in _umbrella_calls(T, roots | exported):
+            name = m.group(1)
+            open_at = m.end() - 1
+            ce = _match_paren(T, open_at)
+            arg = T[open_at + 1:ce - 1] if ce > 0 else ""
+            lit = re.match(r'\s*"(MC2_[A-Z0-9_]+)"', arg)
+            line = T.count("\n", 0, m.start()) + 1
+            fn, fn_line = enclosing_function(T, m.start())
+            is_resolver = name in UMBRELLA_HELPERS and name != "terrainNativeFirstOwnerOn"
+            sites.append({"file": rel, "line": line, "helper": name, "gate": lit.group(1) if lit else "",
+                          "func": fn, "func_line": fn_line, "code": _norm_ws(src_lines[line - 1]),
+                          "role": "resolver" if is_resolver else "consumer"})
+            if is_resolver and not fn.startswith("<"):
+                callers = len(re.findall(r"\b%s\s*\(" % re.escape(fn), T)) - 1
+                e = funcs.setdefault((rel, fn), {"file": rel, "func": fn, "line": fn_line, "callers": max(callers, 0),
+                                                 "helpers": [], "gates": []})
+                e["helpers"].append(name)
+                if lit:
+                    e["gates"].append(lit.group(1))
+    lines_by_file = {}
+    for st in sites:
+        lines_by_file.setdefault(st["file"], []).append(st["line"])
+    vk = []
+    for r in results:
+        if r.gate.startswith("MC2_VK_") and not is_umbrella_result(r):
+            near = [ln for ln in lines_by_file.get(r.file, []) if abs(ln - r.line) <= 12]
+            vk.append((r, min(near, key=lambda ln: abs(ln - r.line)) if near else 0))
+    wrappers = sorted(funcs.values(), key=lambda e: (e["file"], e["line"]))
+    return {"sites": sites, "wrappers": wrappers, "vk_family": vk, "dependent": dependent}
+
+
+_WRITE_RE = re.compile(r"\b(?:_?putenv(?:_s)?|setenv|SetEnvironmentVariable[AW]?)\s*\(\s*\"(MC2_[A-Z0-9_]+)")
+
+
+def runtime_writes(root=ROOT, rev="HEAD"):
+    """{gate: ["file:line", ...]} for every source that WRITES a gate into the environment (_putenv, setenv, ...).
+
+    A reader that re-reads the variable on every call sees such a write; a typed `get<>()` caches the first
+    answer, so a per-call site of a gate that is written at run time changes behavior unless the row is `reread`.
+    """
+    pat = r"(putenv|setenv|_putenv_s|SetEnvironmentVariable[AW]?)[[:space:]]*\([[:space:]]*\"MC2_"
+    cmd = ["git", "-C", root, "grep", "-n", "-E", pat] + ([rev] if rev else []) + ["--", "*.cpp", "*.h", "*.cc", "*.mm"]
+    try:
+        out = subprocess.run(cmd, **child_kwargs(redirected=True, capture_output=True)).stdout.decode("utf-8", "replace")
+    except OSError:
+        return {}
+    writes = {}
+    for ln in out.split("\n"):
+        m = _WRITE_RE.search(ln)
+        if not m:
+            continue
+        head = ln.split(":")                    # [rev:]path:line:text
+        if rev and head and head[0] == rev:
+            head = head[1:]
+        if len(head) >= 2:
+            writes.setdefault(m.group(1), []).append("%s:%s" % (head[0], head[1]))
+    return writes
+
+
+def row_now(rw):
+    """One-cell description of a committed gate row."""
+    if rw is None:
+        return "(no row)"
+    bits = ["%s %s" % (rw.kind, rw.rule)]
+    if rw.kind == "Bool":
+        bits.append("default=%s" % ("on" if rw.default else "off"))
+    elif rw.kind in ("Int", "Float"):
+        bits.append("default=%s" % rw.default)
+        bits.append("range=%s" % ("none" if not rw.range else "%s..%s%s" % (
+            rw.range.get("lo"), rw.range.get("hi"), " clamp" if rw.range.get("clamp") else " reject")))
+    elif rw.kind == "Enum":
+        bits.append("tokens=%s" % (rw.tokens or "none"))
+    return " ".join(bits)
+
+
+def _umbrella_note(st, rows):
+    """Factual remark about one umbrella site; never a replacement."""
+    if st["role"] == "consumer":
+        return "asks a wrapper for the umbrella answer; changes with the wrapper"
+    row = rows.get(st["gate"])
+    if st["helper"] == "envTriState" and row is not None:
+        if re.search(r"envTriState\(\"%s\"\)\s*==\s*1\b" % re.escape(st["gate"]), st["code"]) and row.rule == "Exact1":
+            return "`== 1` test on an Exact1 row: same truth table as get<> on that row"
+        return "unset/0/1 distinction is used: needs state<>()"
+    if st["helper"] == "subGate":
+        return "explicit 0/1 else the umbrella: needs the Tri row and state<>()"
+    return ""
+
+
+def render_family_sections(results, rows, ledger=None, umbrella=None, writes=None):
+    """Markdown lines for the UNHANDLED breakdown; empty when the run has nothing of the kinds below."""
+    helpers = helper_groups(results)
+    others = reason_groups(results)
+    kind_edits = ledger_kind_edits(results, rows, ledger)
+    umb = umbrella or {"sites": [], "wrappers": [], "vk_family": []}
+    hazard = [r for r in results if r.shape == "per-call" and r.gate in (writes or {})]
+    notes = ledger_notes(results, ledger)
+    if not (helpers or umb["sites"] or kind_edits or hazard or notes or any(r.paired for r in results)):
+        return []
+    L = []
+    umb_results = [r for r in results if r.verdict == "UNHANDLED" and is_umbrella_result(r)]
+    L.append("## UNHANDLED sites, grouped for the migration builder")
+    L.append("")
+    L.append("Every UNHANDLED site above falls in exactly one group below. Nothing here is guessed: a helper-call reader is "
+             "listed with the helper's own body so the builder can write a helper-aware rewrite and extend the tool.")
+    L.append("")
+    L.append("| group | sites |")
+    L.append("|---|---|")
+    for h in sorted(helpers):
+        L.append("| helper-call reader `%s()` | %d |" % (h, len(helpers[h])))
+    L.append("| VK umbrella resolver (G4, see the umbrella section) | %d |" % len(umb_results))
+    for rc in sorted(others):
+        L.append("| %s | %d |" % (_cell(rc), len(others[rc])))
+    L.append("")
+
+    if helpers:
+        L.append("## Helper-call readers, by helper (%d sites)" % sum(len(v) for v in helpers.values()))
+        L.append("")
+        for h in sorted(helpers, key=lambda k: (-len(helpers[k]), k)):
+            rs = helpers[h]
+            L.append("### `%s()` -- %d site%s" % (h, len(rs), "" if len(rs) == 1 else "s"))
+            L.append("")
+            L.append("Helper: %s" % _cell(rs[0].helper_def or "(unknown)"))
+            L.append("")
+            L.append("| file:line | gate | row now | code line | interpreter reading (evidence, not a rewrite) |")
+            L.append("|---|---|---|---|---|")
+            for r in rs:
+                L.append("| `%s` | `%s` | %s | `%s` | %s |" % (r.where, r.gate, _cell(row_now(rows.get(r.gate))),
+                                                            _cell(r.old or _code_line_hint(r)), _cell(r.helper_read)))
+            L.append("")
+
+    if others:
+        L.append("## Other UNHANDLED sites, by reason (%d sites)" % sum(len(v) for v in others.values()))
+        L.append("")
+        for rc in sorted(others, key=lambda k: (-len(others[k]), k)):
+            rs = others[rc]
+            L.append("### %s -- %d site%s" % (_cell(rc), len(rs), "" if len(rs) == 1 else "s"))
+            L.append("")
+            L.append("| file:line | gate | row now | code line | detail |")
+            L.append("|---|---|---|---|---|")
+            for r in rs:
+                L.append("| `%s` | `%s` | %s | `%s` | %s |" % (r.where, r.gate, _cell(row_now(rows.get(r.gate))),
+                                                              _cell(r.old or _code_line_hint(r)), _cell(r.reason or r.why)))
+            L.append("")
+
+    if kind_edits:
+        L.append("## Row edits the G0 ledger asks for (kind or token set)")
+        L.append("")
+        L.append("The ledger says the legitimate values are a closed set, but the committed row is not an Enum. These are row edits "
+                 "(`Gates/gate_table.cpp`), made before the site migrates; the site stays UNHANDLED because its reader is a "
+                 "multi-statement function the planner will not rewrite.")
+        L.append("")
+        L.append("| gate | row now | edit | ledger | inputs the legacy reader accepts that a whole-token Enum would not |")
+        L.append("|---|---|---|---|---|")
+        for g, e in kind_edits.items():
+            toks = "|".join(e["tokens"])
+            L.append("| `%s` | %s | kind %s -> Enum, tokens `%s`, default `%s` | %s | %s |" % (
+                g, _cell(row_now(e["row"])), e["row"].kind, toks, e["row"].default,
+                _cell(e["rule"] + " (" + e["evidence"] + ")"),
+                ", ".join("`%s`" % x for x in e["edge_inputs"]) or "none"))
+        L.append("")
+        L.append("Those inputs (`atoi` accepts a prefix, a leading blank and a sign) change result under an Enum row, which matches whole "
+                 "tokens only (case-insensitively, see `enumIndex` in `Gates/gate.cpp`): an EDGE, to be listed in the PR. An "
+                 "unmatched value keeps the default token, which is what the legacy reader returns for it (1).")
+        L.append("")
+        for g, e in kind_edits.items():
+            if e["tokens"]:
+                L.append("Indicative site rewrite for `%s` (hand-written from the `is<>` contract in `Gates/gate.h`, not produced or "
+                         "verified by this tool):" % g)
+                L.append("")
+                L.append("```cpp")
+                for t in e["tokens"][1:]:
+                    L.append("if (%s::is<\"%s\", \"%s\">()) return %s;" % (NS, g, t, t))
+                L.append("return %s;" % e["tokens"][0])
+                L.append("```")
+                L.append("")
+
+    if notes:
+        L.append("## G0 ledger entries that touch this plan")
+        L.append("")
+        L.append("| gate | status | ruling | delta | sites in this plan |")
+        L.append("|---|---|---|---|---|")
+        for g, e, rs in notes:
+            L.append("| `%s` | %s | %s | %s | %s |" % (
+                g, e.get("status", ""), _cell(e.get("rule", "")), _cell(e.get("delta", "")),
+                ", ".join("`%s` (%s)" % (r.where, r.verdict) for r in rs)))
+        L.append("")
+        pend = [g for g, e, _ in notes if e.get("status") in ("divergent", "enum")]
+        if pend:
+            L.append("Owner decision pending for: " + ", ".join("`%s`" % g for g in pend) +
+                     ". Do not migrate those sites until the ledger entry is resolved.")
+            L.append("")
+
+    if hazard:
+        L.append("## Caching hazard: per-call readers of gates that are written at run time")
+        L.append("")
+        L.append("A per-call `getenv` sees a later `_putenv`; a typed `get<>()` caches its first answer. These gates are written into "
+                 "the environment by the sources listed, so the site migrates only if the row is `reread` or the write happens before "
+                 "the first read (the writer must also call `gate::invalidate`). Sites whose shape is shown as per-call because the "
+                 "tool could not analyse them (UNHANDLED) are listed too.")
+        L.append("")
+        L.append("| file:line | gate | verdict | written by |")
+        L.append("|---|---|---|---|")
+        for r in hazard:
+            L.append("| `%s` | `%s` | %s | %s |" % (r.where, r.gate, r.verdict,
+                                                  ", ".join("`%s`" % w for w in (writes or {})[r.gate][:4])))
+        L.append("")
+
+    if writes is not None and not hazard:
+        per_call = sorted({r.gate for r in results if r.shape == "per-call"})
+        L.append("## Caching check: per-call readers versus run-time writers")
+        L.append("")
+        L.append("A typed `get<>()` caches its first answer, a per-call `getenv` does not. None of the %d gates read per call in this plan "
+                 "is written into the environment by a literal `_putenv`, `putenv`, `setenv` or `SetEnvironmentVariable` in the tracked C++ "
+                 "sources (%d other gates are), so no per-call site needs a `reread` row. A write through a computed name is not seen "
+                 "by this check." % (len(per_call), len(writes)))
+        L.append("")
+
+    if umb["sites"] or umb_results:
+        L.append("## VK umbrella-coupled sites (G4: Tri / state<> semantics; NOT migrated in G3)")
+        L.append("")
+        L.append("These read a gate through the umbrella resolver in `GameOS/gameos/vk_shared_gbuffer_gate.h`. `subGate(name)` is "
+                 "`explicit env, else the umbrella (MC2_VK_SHARED_GBUFFER)`; `directChainGate(name)` is the same with the direct-chain "
+                 "default; `terrainNativeFirstOwnerOn()` is the umbrella-derived owner test; `envTriState(name)` is the raw "
+                 "unset/0/1 read. A plain `get<>()` loses the unset case, which is what the umbrella keys on, so every row here "
+                 "needs a Tri row and `state<>()`. They are UNHANDLED on purpose.")
+        L.append("")
+        L.append("Sites that call `directChainGate` or `terrainNativeFirstOwnerOn`: %s." % (
+            ", ".join("`%s:%d`" % (st["file"], st["line"]) for st in umb["sites"]
+                      if st["helper"] in ("directChainGate", "terrainNativeFirstOwnerOn")) or "none in the scanned files"))
+        L.append("`terrainNativeFirstOwnerOn()` mirrors `terrainTier1Requested()` (`vulkan_terrain_island.cpp`); the header says to keep "
+                 "them in lockstep, so G4 moves both together.")
+        L.append("")
+        L.append("| file:line | helper | role | gate | row now | in function | code line | note |")
+        L.append("|---|---|---|---|---|---|---|---|")
+        for st in umb["sites"]:
+            note = _umbrella_note(st, rows)
+            L.append("| `%s:%d` | `%s` | %s | %s | %s | `%s` | `%s` | %s |" % (
+                st["file"], st["line"], st["helper"], st["role"], ("`%s`" % st["gate"]) if st["gate"] else "(no literal)",
+                _cell(row_now(rows.get(st["gate"]))) if st["gate"] else "-", st["func"], _cell(st["code"]), _cell(note)))
+        L.append("")
+        wr = [w for w in umb["wrappers"] if w["callers"] > 0]
+        if wr:
+            L.append("Functions that hold an umbrella read and are called from elsewhere in the same file (the umbrella answer reaches "
+                     "every caller, so none of those callers may be migrated independently of the Tri row):")
+            L.append("")
+            L.append("| function | defined | umbrella calls inside | in-file callers |")
+            L.append("|---|---|---|---|")
+            for w in wr:
+                L.append("| `%s` | `%s:%d` | %s | %d |" % (w["func"], w["file"], w["line"],
+                                                           _cell(", ".join(sorted(set(w["helpers"])))), w["callers"]))
+            L.append("")
+        vkf = umb["vk_family"]
+        if vkf:
+            L.append("Other `MC2_VK_*` readers in the same files. They do not call the resolver, so G3 may migrate them when the "
+                     "verdict says so; the `near` column marks the ones inside 12 lines of an umbrella call, which the builder "
+                     "should read in context first.")
+            L.append("")
+            L.append("| file:line | gate | verdict | near umbrella call at | detail |")
+            L.append("|---|---|---|---|---|")
+            for r, near in vkf:
+                L.append("| `%s` | `%s` | %s | %s | %s |" % (r.where, r.gate, r.verdict, ("line %d" % near) if near else "-",
+                                                          _cell((r.reason or r.why)[:200])))
+            L.append("")
+    return L
+
 def main(argv=None):
-    ap = argparse.ArgumentParser(description="DRY-RUN planner for the G1b gate migration pilot (writes no C++).")
-    ap.add_argument("--files", nargs="*", help="repo-relative files (default: the G1b pilot files)")
+    ap = argparse.ArgumentParser(description="DRY-RUN planner for the gate migration slices (writes no C++).")
+    ap.add_argument("--family", choices=sorted(FAMILIES), default="g1b",
+                    help="which slice to plan: sets the default files, the title and the --write targets (default g1b)")
+    ap.add_argument("--files", nargs="*", help="repo-relative files (default: the family's files)")
     ap.add_argument("--rev", default="HEAD", help="git revision to read C++ and tables from (default HEAD)")
     ap.add_argument("--worktree", action="store_true", help="read the working tree instead of git")
-    ap.add_argument("--write", action="store_true", help="write %s and %s" % (OUT_MD, OUT_TSV))
+    ap.add_argument("--write", action="store_true", help="write the family's .md and .tsv under docs/ (g1b: %s, %s)" % (OUT_MD, OUT_TSV))
     ap.add_argument("--summary", action="store_true", help="print only the summary counts")
     ap.add_argument("--apply", action="store_true", help="reserved; refuses unless --i-mean-it, does nothing in this slice")
     ap.add_argument("--i-mean-it", action="store_true")
@@ -1295,18 +1897,22 @@ def main(argv=None):
         print("gate_codemod: --apply is not implemented: the G1b pilot commit rewrites C++ by hand from the reviewed "
               "table; this tool writes no C++", file=sys.stderr)
         return 2
-    files = a.files or list(PILOT_FILES)
+    fam = FAMILIES[a.family]
+    files = a.files or list(fam["files"])
     rev = None if a.worktree else a.rev
     results, rows = run(files, ROOT, rev)
     unhandled_code_lines(results, ROOT, rev)
+    ledger = load_ledger(ROOT)
+    umbrella = umbrella_report(files, ROOT, rev, results)
+    writes = runtime_writes(ROOT, rev)
     s = summarize(results)
     if a.write:
         label = git_head(ROOT) if rev == "HEAD" else (a.rev if rev else "working tree")
-        with open(os.path.join(ROOT, OUT_MD), "w", encoding="utf-8", newline="\n") as fh:
-            fh.write(render_md(results, rows, files, label))
-        with open(os.path.join(ROOT, OUT_TSV), "w", encoding="utf-8", newline="\n") as fh:
+        with open(os.path.join(ROOT, fam["md"]), "w", encoding="utf-8", newline="\n") as fh:
+            fh.write(render_md(results, rows, files, label, a.family, ledger, umbrella, writes))
+        with open(os.path.join(ROOT, fam["tsv"]), "w", encoding="utf-8", newline="\n") as fh:
             fh.write(tsv_text(results))
-        print("gate_codemod: wrote %s and %s (%d sites)" % (OUT_MD, OUT_TSV, s["total"]))
+        print("gate_codemod: wrote %s and %s (%d sites)" % (fam["md"], fam["tsv"], s["total"]))
     elif not a.summary:
         sys.stdout.write(tsv_text(results))
     print("gate_codemod: %d sites: %s; overrides proposed %d; gates needing a row edit %d" % (
