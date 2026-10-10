@@ -31,7 +31,7 @@
   "GuiRuntime/EditorInspector.cpp": 1659,
   "RenderCore/RendererFeatureRegistry.h": 2917,
   "code/artlry.cpp": 1816,
-  "code/bldng.cpp": 1707,
+  "code/bldng.cpp": 1702,
   "code/brain_special_dispatch.cpp": 3273,
   "code/controlgui.cpp": 5016,
   "code/gamecam.cpp": 1564,
@@ -93,7 +93,7 @@
   "mclib/vfxtile.cpp": 2944,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "f2afe3ad3",
+ "head": "202df4521",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
