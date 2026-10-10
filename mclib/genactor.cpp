@@ -68,6 +68,7 @@
 
 #include "gos_static_prop_batcher.h"
 #include "gos_static_prop_killswitch.h"
+#include "../RenderCore/axis_convert.h"
 
 //******************************************************************************************
 extern float	worldUnitsPerMeter;
@@ -658,9 +659,7 @@ bool GenericAppearance::recalcBounds (void)
 				Stuff::Vector3D Distance;
 				Stuff::Point3D objPosition;
 				Stuff::Point3D eyePosition(eye->getCameraOrigin());
-				objPosition.x = -position.x;
-				objPosition.y = position.z;
-				objPosition.z = position.y;
+				mc2ToRender(objPosition, position);
 		
 				Distance.Subtract(objPosition,eyePosition);
 				Distance.Normalize(Distance);
@@ -1131,9 +1130,7 @@ long GenericAppearance::update (bool animate)
 		float fogStart = eye->fogStart;
 		float fogFull = eye->fogFull;
 	
-		xlatPosition.x = -position.x;
-		xlatPosition.y = position.z;
-		xlatPosition.z = position.y;
+		mc2ToRender(xlatPosition, position);
 	
 		if (xlatPosition.y < fogStart)
 		{
