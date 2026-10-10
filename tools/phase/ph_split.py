@@ -27,6 +27,8 @@
 #                              a phase tuple may end in {'free': True} to stay a file-static function
 #   FRAME_GLOBAL               keep the frame struct out of an anonymous namespace (block-scope externs in its methods)
 #   ALIAS_PER_LINE             alias declarations packed per line (keeps identical alias runs short)
+#   {'exits': 'continue'}: the phase's `continue;` statements leave the enclosing loop iteration instead; the orchestrator call is `if (helper()) continue;`
+#   FILE_NAMESPACE             namespace wrapped around the helper blocks written to other files (after their includes)
 #   a phase tuple may end in {'dedent': prefix} to strip a different indent from that helper body
 #   INDENT, DEDENT, ORCH_DOC   indentation unit, prefix stripped from helper bodies, comment above function
 import importlib.util
@@ -183,7 +185,8 @@ def main():
         exits = bool(opts.get('exits'))
         exit_val = opts['exits'] if isinstance(opts.get('exits'), str) else ''
         if exits:
-            body = [re.sub(r'\breturn' + ((' ' + re.escape(exit_val)) if exit_val else '') + r'\s*;', 'return true;', x) for x in body]
+            stmt_rx = r'\bcontinue\s*;' if exit_val == 'continue' else r'\breturn' + ((' ' + re.escape(exit_val)) if exit_val else '') + r'\s*;'
+            body = [re.sub(stmt_rx, 'return true;', x) for x in body]
             body = body + [indent + 'return false;']
         code = '\n'.join(strip_code(x) for x in body)
         uparams = [(n, t) for n, t in getattr(S, 'PARAMS', []) if re.search(r'\b' + n + r'\b', code)]
@@ -254,7 +257,7 @@ def main():
                 blk.append(indent + ' '.join('auto& %s = %s.%s;' % (ident(n), fr, ident(n)) for n, fr in used[k:k + per_line]))
             calls[i['a']] = '%s(%s);' % (name, ', '.join([n for n, _t in i['uparams']] + frames))
             if i['exits']:
-                calls[i['a']] = 'if (' + calls[i['a']][:-1] + ') return' + (' ' + i['exit_val'] if i['exit_val'] else '') + ';'
+                calls[i['a']] = 'if (' + calls[i['a']][:-1] + ') ' + ('continue;' if i['exit_val'] == 'continue' else 'return' + (' ' + i['exit_val'] if i['exit_val'] else '') + ';')
         blk += i['body']
         blk.append('}')
         if guard:
@@ -278,7 +281,7 @@ def main():
             if in_ph[ln] == ln:
                 if ln in S.ORCH_BEFORE:
                     O.append(before(ln))
-                lead = re.match(r'\s*', L[ln - 1]).group(0) if method and not L[ln - 1].startswith('#') else indent
+                lead = re.match(r'\s*', L[ln - 1]).group(0) if not L[ln - 1].startswith('#') else indent
                 O.append(lead + calls[ln])
             continue
         if ln in S.ORCH_BEFORE:
@@ -325,12 +328,15 @@ def main():
         L = L[:j + 1] + [S.PRIMARY_INCLUDE] + L[j + 1:]
         fs += 1
         fe += 1
+    fns = getattr(S, 'FILE_NAMESPACE', None)
+    ns_open = ['namespace ' + fns + ' {', ''] if fns else []
+    ns_close = ['', '}  // namespace ' + fns] if fns else []
     for path, body in FILE_BLOCKS.items():
         extra_inc = internal + (['#include "%s"' % S.FRAME_HEADER.split('/')[-1]] if hasattr(S, 'FRAME_HEADER') else [])
-        open(path, 'wb').write(('\n'.join(list(S.FILE_HEADS[path]) + extra_inc + [''] + body) + '\n').encode('utf-8'))
+        open(path, 'wb').write(('\n'.join(list(S.FILE_HEADS[path]) + extra_inc + [''] + ns_open + body + ns_close) + '\n').encode('utf-8'))
     for (sn, sp, sh), body in zip(splits, pieces):
         extra_inc = internal + (['#include "%s"' % S.FRAME_HEADER.split('/')[-1]] if hasattr(S, 'FRAME_HEADER') else [])
-        open(sp, 'wb').write(('\n'.join(list(sh) + extra_inc + [''] + body) + '\n').encode('utf-8'))
+        open(sp, 'wb').write(('\n'.join(list(sh) + extra_inc + [''] + ns_open + body + ns_close) + '\n').encode('utf-8'))
     new = L[:fs] + H + (S.ORCH_DOC.split('\n') if getattr(S, 'ORCH_DOC', '') else [])
     new = new + O + L[fe + 1:]
     out = '\n'.join(new)

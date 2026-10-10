@@ -92,14 +92,14 @@ for (name, a, b, doc, *_r) in S.PHASES:
     _ex = next((r['exits'] for r in _r if isinstance(r, dict) and r.get('exits')), None)
     if _ex:
         assert body and body[-1].strip() == 'return false;', 'exits helper must end in return false;'
-        _rv = ('return ' + _ex + ';') if isinstance(_ex, str) else 'return;'
+        _rv = ('continue;' if _ex == 'continue' else 'return ' + _ex + ';') if isinstance(_ex, str) else 'return;'
         body = [x.replace('return true;', _rv) for x in body[:-1]]
     helpers[name] = body
 
 # 3. expand the orchestrator
 orch = new[ns_ + 1:ne]
 fr = '|'.join(structs)
-call_rx = re.compile(r'^\s*(?:if \()?(?:f\.)?(\w+)\([\w, ]*\)(?:\) return[^;]*)?;$')
+call_rx = re.compile(r'^\s*(?:if \()?(?:f\.)?(\w+)\([\w, ]*\)(?:\) (?:return[^;]*|continue))?;$')
 decl_rx = re.compile(r'^\s*(%s) \w+;$' % '|'.join(structs.values()) if structs else r'(?!)')
 expanded = []
 frame_decls = 0

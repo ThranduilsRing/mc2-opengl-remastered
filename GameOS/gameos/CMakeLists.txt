@@ -49,6 +49,8 @@ set(SOURCES ${SOURCES}
     gos_static_prop_batcher_shadow.cpp
     gos_static_prop_batcher_seam.cpp
     gos_static_prop_registry.cpp
+    gos_static_prop_registry_flush_range.cpp
+    gos_static_prop_registry_flush_tail.cpp
     gos_particle_bridge.cpp
     gos_vfx_mesh_bridge.cpp
     gos_cardcloud_sim.cpp
