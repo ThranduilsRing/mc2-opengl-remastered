@@ -7,14 +7,14 @@
 #include <cstdlib>
 #include <set>
 #include <string>
+#include "Gates/gate.h"
 
 namespace {
 
 bool contractAssertEnabled() {
     static int cached = -1;
     if (cached < 0) {
-        const char* v = std::getenv("MC2_RENDER_CONTRACT_ASSERT");
-        cached = (v && v[0] && v[0] != '0') ? 1 : 0;
+        cached = mc2::gate::get<"MC2_RENDER_CONTRACT_ASSERT">();
     }
     return cached == 1;
 }
@@ -89,8 +89,7 @@ GLbitfield barrierBitsFor(GpuProducer p, GpuConsumer c) {
 bool traceEnabled() {
     static int cached = -1;
     if (cached < 0) {
-        const char* v = std::getenv("MC2_GPU_SYNC_TRACE");
-        cached = (v && v[0] == '1') ? 1 : 0;
+        cached = mc2::gate::get<"MC2_GPU_SYNC_TRACE">();
     }
     return cached == 1;
 }
