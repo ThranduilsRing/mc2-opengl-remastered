@@ -121,6 +121,28 @@ extern VfxPassSnapshot         s_vfxPass;
 extern bool s_open;
 extern bool s_featuresOpen;
 const char* pickKindName(InspectorPickKind k);
+
+// drawImGui sections (EditorInspector_sections.cpp).
+void drawFeaturesWindow();
+void drawCameraBookmarkSave();
+void drawCopyAll(const RenderWorld::LookupResult& lk);
+void drawRenderExplain(const RenderWorld::LookupResult& lk);
+void drawLookup(const RenderWorld::LookupResult& lk);
+void drawStaticPropData();
+void drawRenderSpine();
+void drawMechData();
+void drawMechDebugView();
+void drawMechNormals();
+void drawMechLighting();
+void drawMechSnapshot();
+void drawTerrainData();
+void drawTerrainPass();
+void drawShadowPass();
+void drawVfxPass();
+void drawRenderPassContracts();
+void drawMaterialInventory();
+void drawMaterialRwLookup(const RenderWorld::LookupResult& lk);
+void drawEnvGates();
 }  // namespace EditorInspector
 
 #endif  // GUIRUNTIME_EDITORINSPECTOR_INTERNAL_H
