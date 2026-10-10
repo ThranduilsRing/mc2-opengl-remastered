@@ -66,8 +66,8 @@
    "LG16": 7,
    "LG17": 81,
    "LG18": 11,
-   "LG19": 7,
-   "LG20": 30
+   "LG19": 6,
+   "LG20": 29
   },
   "GuiRuntime": {
    "LG01": 1,
@@ -1293,9 +1293,7 @@
    "LG09": 50,
    "LG11": 1,
    "LG13": 2,
-   "LG17": 5,
-   "LG19": 1,
-   "LG20": 1
+   "LG17": 5
   },
   "GameOS/gameos/vulkan_shared_scene_color.cpp": {
    "LG03": 1,
@@ -5782,7 +5780,7 @@
    "LG20": 1
   }
  },
- "head": "df729e104",
+ "head": "9ce2b865c",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
