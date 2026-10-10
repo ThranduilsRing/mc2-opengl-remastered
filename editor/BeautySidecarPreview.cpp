@@ -2,6 +2,7 @@
 // BeautySidecarPreview — EDITOR-SIDECAR-PREVIEW-1 (B7a). See header.
 //------------------------------------------------------------------------------
 #include "BeautySidecarPreview.h"
+#include "Gates/gate.h"
 
 #include "EditorData.h"
 #include "terrain.h"
@@ -243,8 +244,7 @@ namespace BeautySidecarPreview
 	void MaybeAutoApply()
 	{
 		if (s_autoApplyDone) return;
-		const char* e = getenv("MC2_EDITOR_BEAUTY_AUTOAPPLY");
-		if (!e || !e[0] || e[0] == '0') { s_autoApplyDone = true; return; }
+		if (!mc2::gate::get<"MC2_EDITOR_BEAUTY_AUTOAPPLY">()) { s_autoApplyDone = true; return; }
 		if (!land || !Terrain::mapData) return;  // wait until terrain is loaded
 		s_autoApplyDone = true;
 		bool ok = Apply();
