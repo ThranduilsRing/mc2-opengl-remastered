@@ -583,14 +583,20 @@ def shader_in_class(t):
     return "float", int(re.sub(r"\D", "", t) or 1)
 
 
-def check_file(path, text, sym, shaders, findings):
+def check_file(path, text, sym, shaders, findings, segs=None):
+    """segs: [(first_line, path, line_count)] when `text` is the concatenation of a split unit's pieces (see check_unit)."""
     clean, raw_lines, pipes = parse_pipelines(path, text, sym)
 
     def add(sev, rule, pos, msg):
         ln = lineno(clean, pos)
         if "vk-lint: ok" in raw_line(raw_lines, ln):
             return
-        findings.append(Finding(sev, rule, path, ln, msg))
+        fpath = path
+        for first, spath, count in (segs or ()):
+            if first <= ln < first + count:
+                fpath, ln = spath, ln - first + 1
+                break
+        findings.append(Finding(sev, rule, fpath, ln, msg))
 
     for p in pipes:
         vnames = p["vert"]
@@ -712,6 +718,38 @@ def check_file(path, text, sym, shaders, findings):
                             add("ERROR", "VK-PUSH-STAGE", pcr["pos"], f"[{sn}] push range stageFlags '{pcr['stage']}' lacks {bit}")
 
 
+def split_unit_key(path):
+    """The stem of the split unit a file belongs to (a core file or a <stem>_*.cpp piece of a stem that has a
+    <stem>_internal.h), or None for a stand-alone file."""
+    stem = Symbols.unit_stem(path)
+    return stem if os.path.exists(stem + "_internal.h") else None
+
+
+def _link_order(paths, root):
+    """Pieces in the order the build lists them: descriptor layouts built in one piece must precede the pipelines of a later one."""
+    cm = ""
+    for f in glob.glob(os.path.join(root, "GameOS", "gameos", "CMakeLists.txt")):
+        cm += read(f)
+
+    def key(p):
+        b = os.path.basename(p)
+        i = cm.find(b)
+        return (i if i >= 0 else len(cm), b)
+    return sorted(paths, key=key)
+
+
+def check_unit(paths, sym, shaders, findings):
+    """Lint the pieces of one split unit as one translation unit (the descriptor-set layout, pipeline layout and
+    pipeline may sit in different pieces); findings are reported against the piece and line they came from."""
+    texts = [read(p) for p in paths]
+    segs, first = [], 1
+    for p, t in zip(paths, texts):
+        n = t.count("\n") + 1
+        segs.append((first, p, n))
+        first += n
+    check_file(paths[0], "\n".join(texts), sym, shaders, findings, segs)
+
+
 def build_symbols(root, extra_dirs):
     sym = Symbols()
     pats = ["GameOS/gameos/*.h", "GameOS/gameos/*.cpp", "RenderCore/*.h"]
@@ -747,12 +785,18 @@ def main(argv=None):
     findings = []
     for n, e in sorted(shader_errs.items()):
         findings.append(Finding("ERROR", "VK-SHADER-COMPILE", os.path.join(shader_dir, n), 1, e))
+    groups = {}
     for c in cpps:
         c = os.path.abspath(c)
-        txt = read(c)
-        if "VkVertexInputBindingDescription" not in txt and "VkDescriptorSetLayoutBinding" not in txt:
+        groups.setdefault(split_unit_key(c) or c, []).append(c)
+    for members in groups.values():
+        members = _link_order(members, a.root) if len(members) > 1 else members
+        if not any("VkVertexInputBindingDescription" in read(m) or "VkDescriptorSetLayoutBinding" in read(m) for m in members):
             continue
-        check_file(c, txt, sym, shaders, findings)
+        if len(members) > 1:
+            check_unit(members, sym, shaders, findings)
+        else:
+            check_file(members[0], read(members[0]), sym, shaders, findings)
     errs = [f for f in findings if f.sev == "ERROR" or a.warn_as_error]
     for f in findings:
         if f.sev == "ERROR" or not a.quiet:
