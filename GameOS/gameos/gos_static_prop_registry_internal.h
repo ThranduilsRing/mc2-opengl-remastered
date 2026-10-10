@@ -1,0 +1,161 @@
+// State and helpers shared by the static-prop registry pieces: gos_static_prop_registry.cpp (registration, visibility,
+// extraction) and the flush phase helpers in gos_static_prop_registry_flush*.cpp.
+#ifndef GOS_STATIC_PROP_REGISTRY_INTERNAL_H
+#define GOS_STATIC_PROP_REGISTRY_INTERNAL_H
+
+#include "gos_static_prop_registry.h"
+#include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
+#include "../../mclib/txmmgr.h"  // 2026-05-05: peekLightSlotNumLights/getLightStructCount for flush trace
+#include "../../mclib/static_light_row_guard.h"  // ZERO-LIGHT-ROW-1: shared light-index validity contract
+#include "../../mclib/appear.h"   // Task 6: Appearance* for registerStaticProp()
+#include "../../mclib/apprtype.h"  // AppearanceType::name (inspector shapeName capture)
+#include "gpu_cull_substrate.h"  // C1b GPU authority flip: substrate_appendStaticPropRecord
+#include "gpu_cull_record.h"     // C1b: GpuActorRecord, Cat_StaticProp, CategoryMask
+#include "../../mclib/terrain.h" // C1b temporal-superset: Terrain::worldToBlockIdx()
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <climits>
+#include <algorithm>
+#include <array>
+#include <chrono>
+#include <set>
+#include <unordered_map>
+#include <intrin.h>  // __rdtsc — [SPFLUSH_COST_SPLIT v1]
+#include "diagnostic_trace.h"
+#include "Gates/gate.h"
+
+// MC_TextureManager singleton, defined in mclib/txmmgr.cpp.
+extern MC_TextureManager* mcTextureManager;
+
+// 2026-05-05: frame counter for cull-aware static replay. When an actor goes
+// offscreen, MC2's cull gate skips its update() (`cull_gates_are_load_bearing.md`),
+// which means CacheGpuLightData()/ResubmitCachedGpuLightData() also doesn't run,
+// so its cachedGpuLightIndex_ points at a UBO slot whose content was filled by
+// a different actor THIS frame (or is beyond the upload count). flush() must
+// detect this and skip emitting a draw for that recipe.
+extern uint32_t g_mc2FrameCounter;
+
+// [LIGHTBAKE-PROOF v1] stability trace observer (defined in mclib/txmmgr.cpp).
+// File-scope declaration — never declared inside flush(). Verifies the per-instance
+// permanent lightDataIndex is stable across frames + stays in the static prefix [0..S).
+extern void mc2LightBakeStabilityObserve(int32_t recipeIndex, uint32_t lightDataIndex);
+
+// [G1-STATIC-EAGER-LIGHT v1] Zero-slot probe helper (defined in mclib/txmmgr.cpp).
+// Returns true when lightData_[recipeIndex] has numLights_ > 0 (baked at least once).
+// File-scope so the declaration lands outside the GpuStaticPropRegistry namespace.
+extern bool mc2IsStaticLightSlotBaked(int32_t recipeIndex);
+
+// PROP-RECIPE-BAKE-1 per-recipe row summary (defined in mclib/txmmgr.cpp).
+// File-scope for the SAME reason as the declaration above — declaring it inside
+// flush() namespaces it into GpuStaticPropRegistry:: and fails to link (LNK2019).
+extern bool mc2PeekStaticLightSlotSummary(int32_t recipeIndex, int* outNumLights,
+                                          float amb[3], float sun[3]);
+
+// PROP-RECIPE-BAKE-1 typeID -> shape node name + alpha class (defined in
+// gos_static_prop_batcher.cpp). File-scope for the same LNK2019 reason.
+extern bool mc2PeekStaticPropTypeInfo(uint32_t typeID, const char** outName,
+                                      int* outAlphaClass);
+
+// [SPFLUSH_COST_SPLIT v1] txmmgr-side consume fns. Declared at FILE scope
+// (same reason as above — inside the namespace they mangle incorrectly).
+extern unsigned long long spflush_ConsumeBaseInstanceUploadCycles();
+extern unsigned long long spflush_ConsumeRecipeRebuildsDelta();
+extern unsigned long long spflush_GetRecipeRebuildTotal();
+
+#define SP_TRACE(fmt, ...) \
+    do { if (s_trace) { printf("[STATIC_PROP] " fmt "\n", ##__VA_ARGS__); \
+         fflush(stdout); } } while (0)
+
+namespace GpuStaticPropRegistry {
+
+struct RecipeRange {
+    uint32_t       first;   // index into s_recipes
+    uint32_t       count;   // 0 = invalidated (tombstone)
+    TG_MultiShape* multi;   // for per-frame lightDataIndex patch via
+                            // getCachedGpuLightIndex(); NULL when count==0
+    // Texture pin sibling (texture-pin-fix spec):
+    std::vector<DWORD> pinnedTextureNodes;  // mcTextureNodeIndex values pinned for this range
+    bool               pinsReleased;        // double-release guard for invalidate→destroy ordering
+    // [STATIC_FIRST_FRAME v1] proof-of-fix fields (Track B Task 4):
+    uint32_t           registeredOnFrame;   // g_mc2FrameCounter at registerRecipe()
+    bool               firstFlushSeen;      // cleared at registerRecipe; set on first successful flush
+    // 2026-05-11 per-instance light-idx capture (MC2_STATIC_PER_INSTANCE_LIGHT):
+    // populated by markVisible() with the slot the actor's update/touch wrote
+    // into multi->cachedGpuLightIndex_ before sibling actors overwrote it.
+    // UINT32_MAX = uncaptured (flush falls back to multi->getCachedGpuLightIndex()).
+    uint32_t           lightDataIndex;
+    // 2026-05-22 per-prop extent radius (F4 T3 static-prop pop-in fix):
+    // world-unit bounding sphere radius from bldgShape/treeShape->GetExtentRadius().
+    // Written to GpuActorRecord.boundingRadius in flush(). 0.0f = uncaptured;
+    // flush falls back to 200.0f (legacy placeholder) for unpatched callers.
+    float              extentRadius;
+    // Inspector: AppearanceType::name captured at registerStaticPropAndReturnRecipe
+    // time (late-spawn path only; bulk registerRecipe path has no name available
+    // in RelWithDebInfo). Empty string = name not captured.
+    char               shapeName[128];
+    // SHADOW-STATIC-BUILDINGS-2: population tag set at registration via
+    // setRecipePopulation() (caller knows Building vs Tree). 0xFF = unset
+    // (excluded from the static building shadow). Visibility-independent — the
+    // static building shadow pass replays from here, NOT per-frame buckets.
+    uint8_t            population;
+    // SHADOW-FOLIAGE-ALPHA-DISCARD: impostor / far-LOD recipes skip dynamic
+    // shadow casting (flat alpha cards otherwise cast solid blob shadows; the
+    // shadow depth pass has no alpha discard). Set via setRecipeNoShadow().
+    bool               noShadow;
+};
+
+// The SPFLUSH cost-split window accumulators and TSC calibration (gos_static_prop_registry.cpp).
+extern const bool s_spflushEnabled;
+extern double s_spflushCyclesPerNs;
+extern bool s_spflushCalibrated;
+void spflushCalibrate();
+extern unsigned long long s_w_submit_loop_total_cyc;
+extern unsigned long long s_w_inst_build_cyc;
+extern unsigned long long s_w_actor_record_build_cyc;
+extern unsigned long long s_w_world_to_block_idx_cyc;
+extern unsigned long long s_w_substrate_append_cyc;
+extern unsigned long long s_total_invalidates;
+extern unsigned long long s_total_registrations;
+extern unsigned long long s_win_invalidates;
+extern unsigned long long s_win_registrations;
+extern int s_spflushWindowFrames;
+extern unsigned long long s_win_leaves_appended;
+extern unsigned long long s_win_ranges_drawn;
+extern unsigned long long s_w_cached_total_cyc;
+extern unsigned long long s_w_cached_submit_cyc;
+extern unsigned long long s_w_cached_records_cyc;
+extern unsigned long long s_win_cache_builds;
+extern unsigned long long s_win_cache_hits;
+
+// Registry gates (read once at program start).
+extern const bool s_enabled;
+extern const bool s_trace;
+extern const bool s_perInstanceLight;
+extern const bool s_flushCachedBlob;
+extern const bool s_flushCachedBlobCompare;
+extern const bool s_persistentBuckets;
+extern const bool s_persistentBucketsCompare;
+extern const bool s_staticFrozenReg;
+
+// Registry state the flush phases read and write.
+extern uint64_t s_cullRecordVersion;
+extern std::vector<uint8_t> s_prevCullRecord;
+extern std::vector<GpuStaticPropInstance> s_recipes;
+extern std::vector<RecipeRange> s_recipeRanges;
+extern std::vector<gpu_cull::GpuActorRecord> s_cachedActorRecord;
+extern std::vector<uint8_t> s_cachedActorRecordValid;
+extern std::vector<uint32_t> s_recipeToStoreSlot;
+extern std::vector<uint32_t> s_goldenRecipeList;
+extern std::vector<uint32_t> s_pbStoreCursor;
+extern bool s_goldenDirty;
+extern std::vector<uint8_t> s_recipeHasSubstrateRecord;
+extern std::vector<uint32_t> s_liveRangeIndices;
+extern uint64_t s_firstFrameSkipCount;
+
+// Builds the immutable cull record for one recipe leaf.
+void buildCachedActorRecord(const RecipeRange& rng, uint32_t recipeIdx, gpu_cull::GpuActorRecord& out);
+
+}  // namespace GpuStaticPropRegistry
+
+#endif  // GOS_STATIC_PROP_REGISTRY_INTERNAL_H
