@@ -1,0 +1,19 @@
+#ifndef __AXIS_HGLSL__
+#define __AXIS_HGLSL__
+
+// MC2 (Stuff) space <-> render (GL/Vulkan) space: (x, y, z) -> (-x, z, y).
+//
+// WHY one conversion for both directions: the permutation is an involution. Applying it
+// twice gives (-(-x), y, z) = (x, y, z), so the spelling that takes a Stuff/MC2 vector
+// (x = east, y = north, z = elevation) to render space (x = -east, y = up, z = forward) is
+// also the one that brings it back. mc2ToRender / renderToMc2 carry the same body and exist
+// so that a call site says which way it is going.
+//
+// The C++ twin is RenderCore/axis_convert.h and the matrix form is
+// mc2xform::makeAxisSwapMC2toGL() (mclib/xform_conventions.cpp); a doctest holds all three
+// to the same answer on the basis vectors. Do not re-type the triple at a call site:
+// tools/axis_swizzle_ratchet.py counts hand-written copies and lets the count only fall.
+vec3 mc2ToRender(vec3 v) { return vec3(-v.x, v.z, v.y); }
+vec3 renderToMc2(vec3 v) { return vec3(-v.x, v.z, v.y); }
+
+#endif // __AXIS_HGLSL__

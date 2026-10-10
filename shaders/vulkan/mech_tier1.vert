@@ -48,6 +48,7 @@ layout(set = 0, binding = 2, std430) readonly buffer BoneBuffer {
 // the GL side's std430 LightsData; byte-identical layout (mat4/vec4-array+ivec4).
 // ---------------------------------------------------------------------------
 #include "../include/gpu_abi_object_lights.gen.hglsl"
+#include "../include/axis.hglsl"
 #define MAX_LIGHTS_IN_WORLD GPU_ABI_OBJECTLIGHTS_LIGHT_TO_WORLD_LEN
 #define TG_LIGHT_AMBIENT              0
 #define TG_LIGHT_INFINITE            1
@@ -140,9 +141,9 @@ void main() {
     }
 
     vec4 worldStuff = boneT * vec4(a_position, 1.0);
-    vec3 worldMC2 = vec3(-worldStuff.x, worldStuff.z, worldStuff.y);   // Stuff->MC2 swap
+    vec3 worldMC2 = mc2ToRender(worldStuff.xyz);   // Stuff->MC2 swap
     vec3 normalStuff = mat3(boneT) * a_normal;
-    vec3 worldNormal = normalize(vec3(-normalStuff.x, normalStuff.z, normalStuff.y));
+    vec3 worldNormal = normalize(mc2ToRender(normalStuff));
 
     vec4 clip = uFrame.worldToClipGL * vec4(worldMC2, 1.0);
     clip.z += uFrame.objectDepthBias * clip.w;   // mech.vert:187
@@ -182,7 +183,7 @@ void main() {
                         vec2(tLocal.x >= 0.0 ? 1.0 : -1.0, tLocal.y >= 0.0 ? 1.0 : -1.0);
         tLocal = normalize(tLocal);
         vec3 tStuff = mat3(boneT) * tLocal;
-        vec3 tGL    = vec3(-tStuff.x, tStuff.z, tStuff.y);       // same swap as worldNormal
+        vec3 tGL    = mc2ToRender(tStuff);       // same swap as worldNormal
         tGL = tGL - worldNormal * dot(worldNormal, tGL);
         float tLen = length(tGL);
         vTangentGL = (tLen > 1e-5) ? (tGL / tLen) : vec3(0.0);
@@ -197,7 +198,7 @@ void main() {
             int lt = int(ld_spec.light_dir[i].w);
             if (lt == TG_LIGHT_INFINITE || lt == TG_LIGHT_INFINITEWITHFALLOFF) {
                 vec3 sdStuff  = ld_spec.light_dir[i].xyz;
-                vMechSunDirGL = vec3(-sdStuff.x, sdStuff.z, sdStuff.y);
+                vMechSunDirGL = mc2ToRender(sdStuff);
                 vMechSunFound = 1;
                 break;
             }

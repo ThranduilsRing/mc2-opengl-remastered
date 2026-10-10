@@ -27,6 +27,7 @@
 // (mclib/txmmgr.cpp GatherLightsParameters).
 // NOTE (TRAP): this is NOT tgl.h's MAX_LIGHTS_IN_WORLD (=1024 global pool).
 #include <gpu_abi_object_lights.gen.hglsl>
+#include <axis.hglsl>
 #define MAX_LIGHTS_IN_WORLD GPU_ABI_OBJECTLIGHTS_LIGHT_TO_WORLD_LEN
 
 #define Stuff_SMALL                         1e-4
@@ -281,7 +282,7 @@ vec3 calc_light(in int lights_index, in vec3 normal, in vec3 vertex_world_pos, i
             // SUN-AXIS-FIX-1: see the header block. The swap is the SAME one
             // mech.vert:279 already applies for specular, not a new direction.
             vec3 sd = (sunAxisMc2Fix != 0)
-                    ? vec3(-ld.light_dir[i].x, ld.light_dir[i].z, ld.light_dir[i].y)
+                    ? mc2ToRender(ld.light_dir[i].xyz)
                     : ld.light_dir[i].xyz;
             float n_dot_l = clamp(dot(normal, -sd), 0.0, 1.0);
             final += n_dot_l * lcolor;
@@ -299,7 +300,7 @@ vec3 calc_light(in int lights_index, in vec3 normal, in vec3 vertex_world_pos, i
                 // the mission sun actually takes -- the type-1 branch above is
                 // the rarer one. Same swap, same reason.
                 vec3 sd = (sunAxisMc2Fix != 0)
-                        ? vec3(-ld.light_dir[i].x, ld.light_dir[i].z, ld.light_dir[i].y)
+                        ? mc2ToRender(ld.light_dir[i].xyz)
                         : ld.light_dir[i].xyz;
                 float n_dot_l = clamp(dot(normal, -sd), 0.0, 1.0);
                 final += n_dot_l * lcolor * falloff;
