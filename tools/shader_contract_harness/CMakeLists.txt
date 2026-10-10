@@ -24,3 +24,5 @@ target_include_directories(shader_contract_harness PRIVATE
 target_compile_definitions(shader_contract_harness PRIVATE
     MC2_REPO_ROOT="${MC2_ROOT}")
 target_compile_features(shader_contract_harness PRIVATE cxx_std_20)
+mc2_link_gate(shader_contract_harness)
+

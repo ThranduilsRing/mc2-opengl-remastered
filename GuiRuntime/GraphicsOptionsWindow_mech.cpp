@@ -1,6 +1,8 @@
 // Graphics options window: env gates, mech and VFX sections.
 // Declared in GraphicsOptionsWindow_internal.h.
 #include "GraphicsOptionsWindow_internal.h"
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"   // str<>()
 
 namespace GraphicsOptionsWindow {
 
@@ -47,16 +49,17 @@ void drawEnvGatesSection() {
 
     for (int i = 0; i < kEnvGateCount; ++i) {
         const EnvGate& g = kEnvGates[i];
-        const char* val  = getenv(g.var);
+        const auto st = mc2::gate::boolState(g.var);   // the name comes from the table above
+        const bool present = st && st->set;
 
         bool enabled;
         if (g.inverted) {
             // Present → feature disabled.  Absent → feature enabled.
-            enabled = (val == nullptr);
+            enabled = !present;
         } else if (g.defaultOn) {
-            enabled = (!val || val[0] != '0');
+            enabled = !present || st->on;
         } else {
-            enabled = (val && val[0] != '0');
+            enabled = present && st->on;
         }
 
         ImGui::TableNextRow();
@@ -230,8 +233,7 @@ void drawMechSection() {
         // PBR-IBL-MECH-1: IBL SH ambient status.
         // Strength slider lives in Static Prop Tuning (shared g_iblShStrength).
         {
-            const char* mechIblEnv = std::getenv("MC2_MECH_IBL_SH");
-            bool mechIblOn = !(mechIblEnv != nullptr && mechIblEnv[0] == '0');
+            bool mechIblOn = mc2::gate::get<"MC2_MECH_IBL_SH">();
             if (mechIblOn)
                 ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f),
                     "IBL SH ambient: ON (strength=%.2f from Static Prop Tuning)", g_iblShStrength);

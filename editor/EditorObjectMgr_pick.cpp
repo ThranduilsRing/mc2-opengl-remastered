@@ -1,6 +1,7 @@
 // EditorObjectMgr: object picking by position, screen position and location.
 // Declared in the class headers; shared names in EditorObjectMgr_internal.h.
 #include "EditorObjectMgr_internal.h"
+#include "Gates/gate.h"
 
 
 static bool EditorObjectMgr_PointInsideAppearance(ObjectAppearance* pAppearance, int screenX, int screenY, bool allowPerPoly)
@@ -317,7 +318,7 @@ EditorObject* EditorObjectMgr::getObjectAtScreenPosition( int screenX, int scree
 	// forward projection is wrong at this yaw (not a stale matrix). If it is NEAR but
 	// hit==NO, the failure is the pick tolerance / selection gate, not projection.
 	{
-		static const bool s_pickTrace = ( getenv("MC2_EDITOR_PICK_TRACE") != NULL );
+		static const bool s_pickTrace = mc2::gate::get<"MC2_EDITOR_PICK_TRACE">();
 		if ( s_pickTrace )
 		{
 			float nbest = 1.0e30f, nSx = -1.f, nSy = -1.f;

@@ -7,6 +7,7 @@
 #include <cstdlib>
 
 #include "EditorWatchdog.h"
+#include "Gates/gate.h"
 
 #pragma comment(lib, "dbghelp.lib")
 
@@ -24,8 +25,7 @@ bool         s_on = false;
 
 bool enabled()
 {
-    const char* v = std::getenv("MC2_EDITOR_WATCHDOG");
-    return v && v[0] == '1' && v[1] == '\0';
+    return mc2::gate::get<"MC2_EDITOR_WATCHDOG">();
 }
 
 void appendLog(const char* line)

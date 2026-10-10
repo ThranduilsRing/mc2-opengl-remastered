@@ -6,22 +6,6 @@
 #include "doctest.h"
 #include "equipment_registry.h"
 
-TEST_CASE("MC2_EQUIPMENT_DEFINITION_SOURCE gate parses only exact 'generated'") {
-    // Default legacy: unset / empty / null.
-    CHECK(mc2_equipment_definition_source_is_generated(nullptr) == false);
-    CHECK(mc2_equipment_definition_source_is_generated("") == false);
-    // The explicit legacy token and junk -> legacy (safe default).
-    CHECK(mc2_equipment_definition_source_is_generated("legacy") == false);
-    CHECK(mc2_equipment_definition_source_is_generated("0") == false);
-    CHECK(mc2_equipment_definition_source_is_generated("gen") == false);
-    CHECK(mc2_equipment_definition_source_is_generated("generatedX") == false);
-    CHECK(mc2_equipment_definition_source_is_generated(" generated") == false);
-    // Exact token (case-insensitive) -> generated.
-    CHECK(mc2_equipment_definition_source_is_generated("generated") == true);
-    CHECK(mc2_equipment_definition_source_is_generated("Generated") == true);
-    CHECK(mc2_equipment_definition_source_is_generated("GENERATED") == true);
-}
-
 TEST_CASE("range bucket string maps to WeaponRangeType ordinal") {
     // short/medium/long -> 0/1/2 (WEAPON_RANGE_SHORT/MEDIUM/LONG).
     CHECK(mc2GeneratedRangeBucketToOrdinal("short",  -1) == 0);

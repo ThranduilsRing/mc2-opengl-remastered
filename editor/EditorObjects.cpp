@@ -79,6 +79,7 @@ static void EditorFreeObjectAppearance( ObjectAppearance*& app )
 	}
 }
 #include "EditorResourceFallback.h"
+#include "Gates/gate.h"
 using namespace Microsoft::Xna::Arm;
 extern IProviderEngine* armProvider;
 
@@ -697,7 +698,7 @@ static bool EditorAnalyzeBrain( const char* brainName, std::vector<Stuff::Vector
 	sprintf( path, "%s%s.abl", warriorPath, brainName );
 	File f;
 	long openRc = f.open( path );
-	if ( getenv( "MC2_EDITOR_TRACE" ) )
+	if ( mc2::gate::get<"MC2_EDITOR_TRACE">() )
 	{
 		fprintf( stderr, "[PATROL] open '%s' rc=%ld (warriorPath='%s' brain='%s')\n",
 			path, openRc, warriorPath, brainName );
@@ -852,7 +853,7 @@ void Unit::importPatrolFromBrainIfNeeded()
 
 	// MC2_EDITOR_TRACE: dump unit position vs first imported waypoint so any
 	// coordinate-frame mismatch can be read off directly.
-	if ( getenv( "MC2_EDITOR_TRACE" ) && !wps.empty() && appearance() )
+	if ( mc2::gate::get<"MC2_EDITOR_TRACE">() && !wps.empty() && appearance() )
 	{
 		fprintf( stderr, "[PATROL] brain=%s unitPos=(%.0f,%.0f) wp0=(%.0f,%.0f) wpN=%u loop=%d\n",
 			brain.getBrainName(), appearance()->position.x, appearance()->position.y,

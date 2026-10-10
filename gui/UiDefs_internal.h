@@ -240,7 +240,6 @@ struct FRect {
 
 // Helpers used by more than one translation unit.
 std::string toLower(std::string v);
-bool envValueIsFalse(const char* v);
 bool uiDefsTraceEnabled();
 void uiDefsTrace(const char* fmt, ...);
 void uiDefsLog(const char* fmt, ...);

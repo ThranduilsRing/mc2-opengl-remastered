@@ -11,7 +11,7 @@
 #include <cctype>
 #include <cstdio>    // fprintf
 #include <cfloat>
-#include <cstdlib>   // getenv
+#include <cstdlib>
 #include <cstring>   // strcmp
 #include <cstdint>   // intptr_t (ImTextureID cast)
 #include <filesystem>
@@ -25,6 +25,7 @@
 
 #include "../GameOS/gameos/gos_render.h"
 #include "../GameOS/gameos/gos_input.h"
+#include "Gates/gate.h"
 #ifdef MC2_VULKAN
 #include "../GameOS/gameos/engine_present_vk.h"
 #include "../GameOS/gameos/render_backend_select.h"
@@ -85,8 +86,7 @@ static bool s_openGlRendererInitialized = false;
 static bool isEnabled() {
     static int cached = -1;
     if (cached < 0) {
-        const char* v = std::getenv("MC2_IMGUI");
-        cached = (!v || v[0] != '0') ? 1 : 0;
+        cached = mc2::gate::get<"MC2_IMGUI">();
     }
     return cached == 1;
 }
@@ -94,16 +94,14 @@ static bool isEnabled() {
 static bool vkImguiRequested() {
     static int cached = -1;
     if (cached < 0) {
-        const char* v = std::getenv("MC2_VK_IMGUI");
-        cached = (v && v[0] == '1') ? 1 : 0;
+        cached = mc2::gate::get<"MC2_VK_IMGUI">();
     }
     return cached == 1;
 }
 
 static bool traceEnabled()
 {
-    const char* v = std::getenv("MC2_UI_DEFS_TRACE");
-    return v && v[0] && v[0] != '0';
+    return mc2::gate::get<"MC2_UI_DEFS_TRACE">();
 }
 
 static std::string lower(std::string v)
@@ -432,8 +430,7 @@ void GuiRuntime::Init() {
     // false) we must NOT enable docking -- a docked window cannot be dragged out
     // and the central dockspace is editor UX. Game ImGui windows float.
     if (s_editorMode) {
-        const char* d = std::getenv("MC2_EDITOR_DOCK");
-        if (!d || strcmp(d, "0") != 0)
+        if (mc2::gate::get<"MC2_EDITOR_DOCK">())
             io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
     }
 
@@ -444,8 +441,7 @@ void GuiRuntime::Init() {
     // clean built layout with ALL panels docked. (MC2_EDITOR_AUTODOCK=0 keeps the
     // saved layout.) In-session re-docks still work; they just don't persist.
     if (s_editorMode) {
-        const char* a = std::getenv("MC2_EDITOR_AUTODOCK");
-        if (!a || strcmp(a, "0") != 0)
+        if (mc2::gate::get<"MC2_EDITOR_AUTODOCK">())
             io.IniFilename = nullptr;
     }
 
@@ -532,8 +528,7 @@ bool GuiRuntime::RttEnabled() {
     // map's right edge and are collapsible instead. Opt back in: MC2_EDITOR_RTT=1.
     static int s_on = -1;
     if (s_on < 0) {
-        const char* r = std::getenv("MC2_EDITOR_RTT");
-        s_on = (r && strcmp(r, "1") == 0) ? 1 : 0;   // default OFF
+        s_on = mc2::gate::get<"MC2_EDITOR_RTT">();   // default OFF
     }
     return s_on != 0;
 }
@@ -541,8 +536,7 @@ bool GuiRuntime::AutoDockActive() {
     if (!s_editorMode) return false;   // GAME: nothing auto-docks
     static int s = -1;
     if (s < 0) {
-        const char* a = std::getenv("MC2_EDITOR_AUTODOCK");
-        s = (a && strcmp(a, "0") == 0) ? 0 : 1;
+        s = mc2::gate::get<"MC2_EDITOR_AUTODOCK">() ? 1 : 0;
     }
     return s != 0;
 }
@@ -557,8 +551,7 @@ int  GuiRuntime::ViewportRectH() { return s_vpH; }
 
 static bool dockEnabled() {
     if (!s_editorMode) return false;   // GAME: no editor dockspace -> windows float
-    const char* d = std::getenv("MC2_EDITOR_DOCK");
-    return (!d || strcmp(d, "0") != 0);
+    return mc2::gate::get<"MC2_EDITOR_DOCK">();
 }
 
 // Build (first run) + drive the editor dockspace each frame. PassthruCentralNode keeps
@@ -580,8 +573,7 @@ static void BuildEditorDockspace() {
     // MC2_EDITOR_AUTODOCK=0 disables (saved imgui.ini layout wins).
     static int s_autodock = -1;
     if (s_autodock < 0) {
-        const char* a = std::getenv("MC2_EDITOR_AUTODOCK");
-        s_autodock = (a && strcmp(a, "0") == 0) ? 0 : 1;
+        s_autodock = mc2::gate::get<"MC2_EDITOR_AUTODOCK">() ? 1 : 0;
     }
     static bool s_built = false;
     static int  s_focusToolsFrames = 0;  // >0: re-issue SetWindowFocus("Tools") after autodock build
@@ -792,8 +784,7 @@ void GuiRuntime::NewFrame() {
 static bool demoEnabled() {
     static int cached = -1;
     if (cached < 0) {
-        const char* v = std::getenv("MC2_IMGUI_DEMO");
-        cached = (v && v[0] == '1') ? 1 : 0;
+        cached = mc2::gate::get<"MC2_IMGUI_DEMO">();
     }
     return cached == 1;
 }

@@ -1,4 +1,5 @@
 #include "UiDefs_internal.h"
+#include "Gates/gate.h"
 
 
 struct UiDefs::GameOSPage::Impl {
@@ -29,16 +30,14 @@ bool UiDefs::gameOsUiDefsEnabled()
     // The data/defs GameOS UI path is the replacement path, not an opt-in demo.
     // Set MC2_GAMEOS_UI_DEFS=0/false/off/no to force the legacy GameOS FIT path
     // when comparing behavior or bisecting UI regressions.
-    const char* v = std::getenv("MC2_GAMEOS_UI_DEFS");
-    return !envValueIsFalse(v);
+    return mc2::gate::get<"MC2_GAMEOS_UI_DEFS">();   // Std row, default on
 }
 
 bool UiDefs::editorUiDefsEnabled()
 {
     // Mission Editor shell overlay is data/defs-first by default.  Force it off
     // with MC2_EDITOR_UI_DEFS=0 when comparing against the old pure-MFC shell.
-    const char* v = std::getenv("MC2_EDITOR_UI_DEFS");
-    return !envValueIsFalse(v);
+    return mc2::gate::get<"MC2_EDITOR_UI_DEFS">();   // Std row, default on
 }
 
 std::string UiDefs::replacementPathForEditorShell()
@@ -72,7 +71,7 @@ std::string UiDefs::replacementPathForLegacyFit(const char* legacyFitPath)
     // pure legacy renders it correctly. Pin them to legacy until authored.
     // MC2_UI_DEFS_LOADSCREEN=1 opts back in for iteration.
     if (stem.rfind("mcl_loadingscreen", 0) == 0) {
-        static const bool s_loadDefs = (std::getenv("MC2_UI_DEFS_LOADSCREEN") != nullptr);
+        static const bool s_loadDefs = mc2::gate::get<"MC2_UI_DEFS_LOADSCREEN">();
         if (!s_loadDefs) {
             uiDefsTrace("legacy FIT %s -> LEGACY (loadscreen page opt-out)", legacyFitPath ? legacyFitPath : "<null>");
             return std::string();
@@ -80,7 +79,7 @@ std::string UiDefs::replacementPathForLegacyFit(const char* legacyFitPath)
     }
 
     if (stem == "mcui_mr_layout") {
-        static const bool s_resultsDefs = (std::getenv("MC2_UI_DEFS_RESULTS") != nullptr);
+        static const bool s_resultsDefs = mc2::gate::get<"MC2_UI_DEFS_RESULTS">();
         if (!s_resultsDefs) {
             uiDefsTrace("legacy FIT %s -> LEGACY (results page opt-out)", legacyFitPath ? legacyFitPath : "<null>");
             return std::string();

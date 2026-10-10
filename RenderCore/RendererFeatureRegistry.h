@@ -27,6 +27,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include "Gates/gate_cold.h"   // boolState(): the dump names gates from its own table
 
 namespace RenderCore {
 
@@ -2899,10 +2900,10 @@ inline void debugDumpFeatureRegistry(const DeviceCaps& caps) {
         } else if (!d.envVar) {
             curStr = "always-on";
         } else {
-            const char* v = std::getenv(d.envVar);
-            if (!v || !v[0]) {
+            const auto st = mc2::gate::boolState(d.envVar);   // the name comes from the table being dumped
+            if (!st || !st->set) {
                 curStr = d.defaultOn ? "on(default)" : "off(default)";
-            } else if (v[0] == '0') {
+            } else if (!st->on) {
                 curStr = "off(forced)";
             } else {
                 curStr = "on(forced)";

@@ -17,7 +17,7 @@ Exposes tools:
       coordination (JSON store under the MAIN repo's .claude/)
   repo.mission_facts  — pak grid geometry + water elev + per-lane sidecars
   repo.gate_status    — one-verdict MC2_* gate audit (registry + tier1 doc +
-      smoke allowlist + check-env-registry allowlist)
+      smoke allowlist)
   repo.deploy_status  — deploy-lane fingerprint/staleness/lock/lease health
 
 No build/deploy execution. Read-only EXCEPT the lane registry tools, which
@@ -686,9 +686,9 @@ def mission_facts(stem: str, pak_path: str = "") -> str:
 def gate_status(var: str) -> str:
     """
     ONE verdict for an MC2_* env gate: registered? smoke-allowlisted?
-    documented? default? readers? — merges four drift-prone sources
-    (RendererFeatureRegistry.h, docs/tier1_env_vars.md, the run_smoke.py
-    passthrough allowlist, and the check-env-registry.sh ALLOWLIST).
+    documented? default? readers? — merges three drift-prone sources
+    (the gate table, docs/tier1_env_vars.md, and the run_smoke.py
+    passthrough allowlist).
 
     Call BEFORE relying on a gate in a smoke run and AFTER adding a new gate.
 
@@ -703,7 +703,7 @@ def gate_status(var: str) -> str:
       ENV_DROP_RISK — read by code, absent from the run_smoke passthrough
                       tuple, AND the runner has stopped inheriting
                       os.environ so the tuple is load-bearing again.
-      UNREGISTERED  — check-env-registry.sh CI gate will fail.
+      UNREGISTERED  — no row in Gates/gate_table.cpp.
       UNDOCUMENTED  — no docs/tier1_env_vars.md entry.
       GHOST         — registered/documented but no code reader found.
 
@@ -727,7 +727,7 @@ def gate_status(var: str) -> str:
     default_source, registered (true|false|"UNKNOWN"), registry_parse_ok,
     registry_parse_error, registry_entry, tier1_documented, smoke_allowlisted,
     smoke_env_inherited, smoke_env_forced, smoke_env_popped,
-    smoke_env_soft_default, registry_check_allowlisted, reader_count, readers,
+    smoke_env_soft_default, reader_count, readers,
     parse_notes}.
     """
     root = _repo()

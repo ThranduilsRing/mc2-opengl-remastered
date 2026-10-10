@@ -1,6 +1,7 @@
 // EditorObjectMgr: per-frame update and render, building appearance lookup/priming and static-prop registration.
 // Declared in the class headers; shared names in EditorObjectMgr_internal.h.
 #include "EditorObjectMgr_internal.h"
+#include "Gates/gate.h"
 
 
 // --------------------------------------------------------------------------
@@ -21,8 +22,7 @@
 static bool editorMoverRefreshOn()
 {
 	static int v = -1;
-	if (v < 0) { const char* e = getenv("MC2_EDITOR_MOVER_REFRESH");
-		v = (e && e[0] == '0' && e[1] == '\0') ? 0 : 1; }   // default-on; exactly "0" disables
+	if (v < 0) v = mc2::gate::get<"MC2_EDITOR_MOVER_REFRESH">() ? 1 : 0;   // default-on kill switch
 	return v == 1;
 }
 
@@ -125,7 +125,7 @@ void EditorObjectMgr::render()
 	// props are baked; then one-shot done. Killswitch MC2_EDITOR_STATIC_PREWARM_OFF.
 	{
 		static bool s_prewarmDone = false;
-		static const bool s_prewarmOff = (getenv("MC2_EDITOR_STATIC_PREWARM_OFF") != nullptr);
+		static const bool s_prewarmOff = mc2::gate::get<"MC2_EDITOR_STATIC_PREWARM_OFF">();
 		if (!s_prewarmDone && !s_prewarmOff && eye && eye->getNumLights() > 0)
 		{
 			int attempted = 0, baked = 0, remaining = 0;

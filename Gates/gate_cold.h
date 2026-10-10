@@ -46,6 +46,16 @@ template <Name n>
     return detail::strRead(idx);
 }
 
+// What an inspector table shows for a gate it names at run time (a table of names, not a compile-time read):
+// `set` = the variable is present and non-empty, `on` = the gate's typed value for a Bool row (so Lead0Kill,
+// Presence and Exact1 rows each answer by their own rule), or `set && text[0] != '0'` for any other row kind.
+// nullopt for a name that is not a gate. Display use only: code that decides reads get<>() at compile time.
+struct BoolState {
+    bool set;
+    bool on;
+};
+[[nodiscard]] std::optional<BoolState> boolState(std::string_view name) noexcept;
+
 // The variable's current environment text, or nullptr when it is unset: for the diagnostic lines that echo
 // what the user typed next to the parsed value. Cold and uncached; decisions read get<>() instead.
 template <Name n>

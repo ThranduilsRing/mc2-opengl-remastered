@@ -11,6 +11,7 @@
 #include"userinput.h"
 #include "../GameOS/gameos/gos_profiler.h"
 #include "../GuiRuntime/GuiRuntime.h"
+#include "Gates/gate.h"
 
 // --- data/defs UI bridge ---------------------------------------------------
 // While active, aObject::render draws through GuiRuntime (ImGui HUD layer)
@@ -177,7 +178,7 @@ static void renderObjectViaGuiBridge(const gos_VERTEX* location, unsigned long t
 	{
 		// MECH-ICON-BLANK-1 diagnostic: alpha-0 skips are invisible by design,
 		// but a PERMANENTLY alpha-0 mech icon is the blank-icon bug signature.
-		if (getenv("MC2_LOG_MECH_ICON") && textureHandle && mcTextureManager)
+		if (mc2::gate::get<"MC2_LOG_MECH_ICON">() && textureHandle && mcTextureManager)
 		{
 			const char* nm = mcTextureManager->getTextureName(textureHandle);
 			if (nm && strstr(nm, "mechicon"))
@@ -207,7 +208,7 @@ static void renderObjectViaGuiBridge(const gos_VERTEX* location, unsigned long t
 	// MECH-ICON-BLANK-1 diagnostic: trace every bridge draw of the mech-icon
 	// atlas (texture handle 59 observed via [MECHICON] loadTexture log lines —
 	// name lookup keeps this robust across runs).
-	if (getenv("MC2_LOG_MECH_ICON") && textureHandle && mcTextureManager)
+	if (mc2::gate::get<"MC2_LOG_MECH_ICON">() && textureHandle && mcTextureManager)
 	{
 		const char* nm = mcTextureManager->getTextureName(textureHandle);
 		if (nm && strstr(nm, "mechicon"))
@@ -351,7 +352,7 @@ void aObject::init(FitIniFile* file, const char* blockName, DWORD neverFlush)
 				strcat( buffer, ".tga" );
 			int ID = mcTextureManager->loadTexture( buffer, bAlpha ? gos_Texture_Alpha : gos_Texture_Keyed, 0, 0, neverFlush);
 			textureHandle = ID;
-			if ( getenv("MC2_LOG_MECH_ICON") && strstr(buffer, "mechicon") )
+			if ( mc2::gate::get<"MC2_LOG_MECH_ICON">() && strstr(buffer, "mechicon") )
 			{
 				printf("[mechicon-load] aObject::init loading '%s' (blockName='%s')\n",
 				       buffer, blockName);
@@ -734,7 +735,7 @@ void	aObject::render(long x, long y)
 	
 void	aObject::setTexture( const char* fileName )
 {
-	if ( getenv("MC2_LOG_MECH_ICON") && strstr(fileName, "mechicon") )
+	if ( mc2::gate::get<"MC2_LOG_MECH_ICON">() && strstr(fileName, "mechicon") )
 	{
 		printf("[mechicon-load] aObject::setTexture '%s'\n", fileName);
 		fflush(stdout);

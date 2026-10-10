@@ -21,6 +21,7 @@
 #include <map>
 #include <string>
 #include <vector>
+#include "Gates/gate.h"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -383,7 +384,7 @@ return true;
 
         g_loaded = true;
         // Reset the catalog trace only when trace logging is explicitly enabled.
-        if (getenv("MC2_EDITOR_TRACE") != NULL)
+        if (mc2::gate::get<"MC2_EDITOR_TRACE">())
         {
             FILE* fp = 0;
 #ifdef _MSC_VER

@@ -50,7 +50,7 @@ recurring bug.
 
 RELATIONSHIP TO NEIGHBOURING CHECKS (this is not a fifth copy of them)
 ---------------------------------------------------------------------
-  check-env-registry.sh            every MC2_* read is REGISTERED.
+  the gate table (Gates/)          every MC2_* read is REGISTERED (a compile error otherwise).
   check-gate-default-agreement.py  a gate's STATED default equals its READER's.
   check-split-path-contracts.py    two shader paths for one draw stay in step.
   check-material-gpu-mirror.sh     one struct's C++ and GLSL field ORDER match.

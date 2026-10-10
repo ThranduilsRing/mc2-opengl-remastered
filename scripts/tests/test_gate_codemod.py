@@ -809,3 +809,11 @@ def test_edge_sites_in_a_lambda_or_a_multi_statement_span_are_left_to_a_human():
     if edge:
         new, applied, _ = cm.apply_edits(multi, res)
         assert not applied and new == multi
+
+
+def test_a_family_naming_a_split_translation_unit_also_reads_its_pieces():
+    files = cm.expand_split_pieces(["GameOS/gameos/gos_postprocess.cpp", "GameOS/gameos/gos_vegetation.cpp"])
+    assert "GameOS/gameos/gos_postprocess.cpp" in files
+    assert "GameOS/gameos/gos_postprocess_blur.cpp" in files            # a piece of the split
+    assert not any(f.endswith("gos_vegetation_x.cpp") for f in files)  # an unsplit file gets no siblings
+    assert files.count("GameOS/gameos/gos_postprocess.cpp") == 1

@@ -9,6 +9,7 @@
 ****************************************************************/
 
 #include "EditorObjectMgr_internal.h"
+#include "Gates/gate.h"
 
 void EditorObjMgrTrace(const char* fmt, ...)
 {
@@ -21,7 +22,7 @@ void EditorObjMgrTrace(const char* fmt, ...)
 	// Always feed crash ring — visible in last_trace.txt on CTD.
 	crashbundle_append(buf);
 
-	if (getenv("MC2_EDITOR_TRACE") == NULL)
+	if (!mc2::gate::get<"MC2_EDITOR_TRACE">())
 		return;
 	FILE* f = fopen("editor-startup.log", "a");
 	if (!f)

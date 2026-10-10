@@ -33,6 +33,8 @@
 
 #include "RenderCore/IblHdriRegistry.h"
 #include "RenderCore/IblShRegistry.h"
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"   // str<>()
 
 namespace fs = std::filesystem;
 using namespace contract_harness;
@@ -43,14 +45,13 @@ namespace rc = RenderCore;
 #endif
 
 static fs::path repoRoot() {
-    if (const char* e = std::getenv("MC2_CONTRACT_REPO_ROOT"); e && *e)
+    if (const std::string e = mc2::gate::str<"MC2_CONTRACT_REPO_ROOT">(); !e.empty())   // "" when unset or empty
         return fs::path(e);
     return fs::path(MC2_REPO_ROOT);
 }
 
 static bool assetStrictEnv() {
-    const char* e = std::getenv("MC2_IBL_ASSET_STRICT");
-    return e && e[0] == '1';
+    return mc2::gate::get<"MC2_IBL_ASSET_STRICT">();
 }
 
 // An HDRI is "present" if the source .exr OR its cooked .ktx2 sidecar exists.

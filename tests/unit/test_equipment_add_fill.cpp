@@ -33,15 +33,6 @@ bool hasCode(const std::vector<EquipmentFinding>& fs, EquipmentReasonCode c) {
 }
 } // namespace
 
-TEST_CASE("MC2_EQUIPMENT_ADD gate parse: unset/0 off, else on") {
-    CHECK(!mc2_equipment_add_parse_enabled(nullptr));
-    CHECK(!mc2_equipment_add_parse_enabled(""));
-    CHECK(!mc2_equipment_add_parse_enabled("0"));
-    CHECK(mc2_equipment_add_parse_enabled("1"));
-    CHECK(mc2_equipment_add_parse_enabled("true"));
-    CHECK(mc2_equipment_add_parse_enabled("01"));   // same rule as MC2_UNIT_PROFILE_DATA
-}
-
 TEST_CASE("equipmentDefPathForQualifiedId is namespace-aware") {
     CHECK(equipmentDefPathForQualifiedId("sample:hot_medium_laser") ==
           "data/defs/equipment/sample/hot_medium_laser/equipmentdef.fit");

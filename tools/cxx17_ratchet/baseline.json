@@ -20,8 +20,8 @@
    "LG16": 0,
    "LG17": 0,
    "LG18": 0,
-   "LG19": 1,
-   "LG20": 1
+   "LG19": 0,
+   "LG20": 0
   },
   "GameAdapters": {
    "LG01": 0,
@@ -47,15 +47,15 @@
    "LG20": 0
   },
   "GameOS": {
-   "LG01": 188,
+   "LG01": 187,
    "LG02": 265,
    "LG03": 301,
    "LG04": 6,
    "LG05": 119,
-   "LG06": 509,
+   "LG06": 512,
    "LG07": 0,
    "LG08": 274,
-   "LG09": 2159,
+   "LG09": 2147,
    "LG10": 40,
    "LG11": 107,
    "LG12a": 613,
@@ -66,8 +66,8 @@
    "LG16": 7,
    "LG17": 81,
    "LG18": 11,
-   "LG19": 2,
-   "LG20": 25
+   "LG19": 1,
+   "LG20": 16
   },
   "GuiRuntime": {
    "LG01": 1,
@@ -89,8 +89,8 @@
    "LG16": 0,
    "LG17": 2,
    "LG18": 0,
-   "LG19": 27,
-   "LG20": 49
+   "LG19": 0,
+   "LG20": 26
   },
   "HostServices": {
    "LG01": 0,
@@ -112,7 +112,7 @@
    "LG16": 0,
    "LG17": 0,
    "LG18": 0,
-   "LG19": 2,
+   "LG19": 0,
    "LG20": 0
   },
   "RenderCore": {
@@ -135,7 +135,7 @@
    "LG16": 0,
    "LG17": 11,
    "LG18": 1,
-   "LG19": 1,
+   "LG19": 0,
    "LG20": 3
   },
   "RenderWorld": {
@@ -167,10 +167,10 @@
    "LG03": 970,
    "LG04": 21,
    "LG05": 202,
-   "LG06": 456,
+   "LG06": 450,
    "LG07": 0,
    "LG08": 15,
-   "LG09": 2464,
+   "LG09": 2462,
    "LG10": 20,
    "LG11": 101,
    "LG12a": 220,
@@ -269,9 +269,7 @@
  ],
  "files": {
   "EditorBridge/EditorRenderBridge.cpp": {
-   "LG04": 1,
-   "LG19": 1,
-   "LG20": 1
+   "LG04": 1
   },
   "GameAdapters/MechRenderAdapter.cpp": {
    "LG05": 3,
@@ -541,15 +539,13 @@
    "LG12a": 1
   },
   "GameOS/gameos/gos_crashbundle.cpp": {
-   "LG01": 29,
-   "LG06": 6,
+   "LG01": 28,
+   "LG06": 5,
    "LG09": 24,
    "LG11": 11,
    "LG12a": 1,
    "LG12b": 9,
-   "LG14": 1,
-   "LG19": 1,
-   "LG20": 9
+   "LG14": 1
   },
   "GameOS/gameos/gos_crashbundle.h": {
    "LG06": 1
@@ -1215,6 +1211,9 @@
   "GameOS/gameos/vk_image_resource.cpp": {
    "LG06": 2
   },
+  "GameOS/gameos/vk_island_util.h": {
+   "LG06": 4
+  },
   "GameOS/gameos/vk_shared_light_feed.cpp": {
    "LG09": 7
   },
@@ -1262,7 +1261,7 @@
   "GameOS/gameos/vulkan_post_fog_native.cpp": {
    "LG03": 2,
    "LG06": 3,
-   "LG09": 24,
+   "LG09": 20,
    "LG11": 1,
    "LG13": 2
   },
@@ -1276,14 +1275,14 @@
   "GameOS/gameos/vulkan_post_screenfx_native.cpp": {
    "LG03": 3,
    "LG06": 3,
-   "LG09": 38,
+   "LG09": 34,
    "LG11": 1,
    "LG13": 2
   },
   "GameOS/gameos/vulkan_post_ssao_native.cpp": {
    "LG03": 2,
    "LG06": 3,
-   "LG09": 35,
+   "LG09": 31,
    "LG11": 1,
    "LG13": 2
   },
@@ -1470,8 +1469,7 @@
    "LG06": 1,
    "LG09": 1,
    "LG17": 2,
-   "LG19": 8,
-   "LG20": 16
+   "LG20": 11
   },
   "GuiRuntime/GraphicsOptionsWindow_internal.h": {
    "LG05": 1,
@@ -1479,22 +1477,17 @@
   },
   "GuiRuntime/GraphicsOptionsWindow_mech.cpp": {
    "LG09": 1,
-   "LG19": 2,
-   "LG20": 16
+   "LG20": 15
   },
   "GuiRuntime/GraphicsOptionsWindow_passes.cpp": {
    "LG09": 13,
    "LG10": 1,
-   "LG12b": 25,
-   "LG19": 1,
-   "LG20": 1
+   "LG12b": 25
   },
   "GuiRuntime/GraphicsOptionsWindow_terrain.cpp": {
    "LG09": 4,
    "LG10": 1,
-   "LG12b": 2,
-   "LG19": 6,
-   "LG20": 6
+   "LG12b": 2
   },
   "GuiRuntime/GuiRuntime.cpp": {
    "LG01": 1,
@@ -1505,9 +1498,7 @@
    "LG09": 26,
    "LG10": 2,
    "LG11": 1,
-   "LG12a": 7,
-   "LG19": 10,
-   "LG20": 10
+   "LG12a": 7
   },
   "GuiRuntime/GuiRuntime.h": {
    "LG05": 1,
@@ -1515,8 +1506,7 @@
   },
   "HostServices/DefaultHostServices.cpp": {
    "LG05": 1,
-   "LG06": 5,
-   "LG19": 2
+   "LG06": 5
   },
   "HostServices/DefaultHostServices.h": {
    "LG05": 1,
@@ -1568,8 +1558,7 @@
   },
   "RenderCore/RendererFeatureRegistry.h": {
    "LG09": 4,
-   "LG12a": 2,
-   "LG19": 1
+   "LG12a": 2
   },
   "RenderCore/ResolutionContract.h": {
    "LG06": 3,
@@ -1997,9 +1986,9 @@
   },
   "code/equipment_registry.h": {
    "LG05": 1,
-   "LG06": 15,
+   "LG06": 13,
    "LG08": 3,
-   "LG09": 9,
+   "LG09": 8,
    "LG11": 1,
    "LG14": 5
   },
@@ -3213,11 +3202,11 @@
    "LG13": 54
   },
   "code/unitprofile.cpp": {
-   "LG06": 6,
-   "LG09": 3
+   "LG06": 4,
+   "LG09": 2
   },
   "code/unitprofile.h": {
-   "LG06": 8,
+   "LG06": 6,
    "LG14": 1,
    "LG17": 1
   },
@@ -5817,7 +5806,7 @@
    "LG20": 1
   }
  },
- "head": "fbabc78b8",
+ "head": "edaa98816",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
@@ -5844,8 +5833,8 @@
  "tracked": {
   "LG19": {
    "Viewer": 0,
-   "editor": 31,
-   "gui": 13
+   "editor": 1,
+   "gui": 0
   }
  },
  "version": 2

@@ -2,34 +2,15 @@
 #
 # Format:  MC2_VAR_NAME<whitespace>reason
 #
-# The reason is MANDATORY and must be at least 20 characters. An entry without
-# one is itself a FAILURE (see check-gate-default-agreement.py, BAD_ALLOWLIST).
-# That rule exists because the defect this whole check was written for survived
-# for months as an unexplained `false` nobody could argue with.
+# The reason is MANDATORY and must be at least 20 characters; an entry without one is itself a FAILURE
+# (check-gate-default-agreement.py, BAD_ALLOWLIST).
 #
-# THIS IS A DEBT LIST, NOT AN EXEMPTION LIST. Every line below is one of:
-#   (a) a genuine semantic mismatch the checker cannot see (polarity inversion,
-#       non-boolean value), where the registry entry is CORRECT, or
-#   (b) a REAL OPEN DEFECT that is named here because fixing it changes shipped
-#       rendering behaviour and no capture pass was available to verify it.
-# Class (b) entries say "OPEN DEFECT" and are work, not paperwork.
-#
-# Adding a line here is a claim you have read both the registry entry and the
-# reader. Do not add one to silence a red build.
+# An entry exempts a gate's written-default claims from the comparison with the gate table. Since G8 the checker
+# only grades prose against the table, so only a gate whose prose legitimately describes the OPPOSITE of its row
+# belongs here: a polarity-inverted kill-var, where the sentence is about the feature and the row is the variable.
+# The older entries (non-boolean values, conditional defaults, open reader defects) went away with the readers they
+# described: every one of those gates now has exactly one reader, the typed row.
 
-# --- (a) polarity inversion: the env var expresses the OPPOSITE of the feature
+# --- polarity inversion: the env var expresses the OPPOSITE of the feature
 MC2_STATIC_PROP_LEGACY_DISPATCH  Polarity-inverted, registry is CORRECT. The feature is MC2_FEATURE_STATIC_PROP_PACKET_DISPATCH (v6/v7 DrawPacket dispatch) and it IS default-ON; the env var is its inverse kill-switch, so gos_static_prop_batcher.cpp:213-215 reads `!(kill && kill[0] == '1')`. The checker compares the var's own polarity and cannot see that the name is negated. Do not "fix" the defaultOn field to false -- that would make the registry wrong.
 MC2_VIEW_UNIFORMS  Polarity-inverted, registry is CORRECT. The ViewUniforms UBO is default-ON; the only reader binds the NEGATIVE predicate `s_viewUniformsDisabled` (gos_static_prop_batcher.cpp:1111-1114, `return v != nullptr && v[0] == '0'`), so a classifier reading the expression alone sees a presence test for the DISABLE case. The registry's true is the feature's default, which is right.
-
-# --- (a) not a boolean gate at all: defaultOn carries no meaning
-MC2_RENDER_BACKEND  String-valued, not boolean: it names a backend ("gl"/"vk") and is consumed as a label (code/missiongui.cpp:2777 and the VK selection path), so there is no ON/OFF default to compare. Registered as Feature for discoverability rather than as a two-state gate.
-MC2_FX_FORCE_SPAWN  Enum-valued, not boolean: the Enum row in Gates/gate_table.cpp has the tokens 0, 1, 2..9 and loop, and code/warrior.cpp (updateActions) reads fire-once as isSet && !is<"0"> and loop as is<"loop"> or is<"2".."9">, so "unset" means "no forcing" rather than a boolean OFF.
-MC2_UNIT_PROFILE_DATA  Parsed in another translation unit: code/unitprofile.cpp:10 passes getenv() straight into mc2_unitprofile_parse_enabled(), which is a multi-mode source selector rather than a boolean. The checker deliberately refuses to guess a default across a call boundary it cannot see.
-
-# --- (a) default is CONDITIONAL on another variable, so it is neither ON nor OFF
-MC2_NO_CURSOR_GRAB  Conditional default, registry is CORRECT. gameos_input.cpp:33-40 branches on presence first -- `if (v && v[0]) s_state = (v[0]=='0') ? 0 : 1; else s_state = getenv("MC2_SMOKE_MODE") ? 1 : 0;` -- so UNSET does not resolve to a constant: an interactive launch is OFF (cursor control normal, which is what defaultOn=false states) and a smoke launch is ON. The classifier sees only the `?:` inside the presence-gated branch and reads it as a kill-switch. Do not flip defaultOn to true; that would claim interactive play suppresses the cursor grab, which it does not.
-
-# --- (b) OPEN DEFECTS. Real disagreements, named because the fix is a shipped
-# --- behaviour change that needs a capture pass this lane could not run.
-MC2_SHADOW_ENABLE  OPEN DEFECT (cross-backend parity). Both GL readers are default-ON (gos_static_prop_batcher.cpp:8717-8719, gos_mech_batcher.cpp:1112-1114) but the VK reader is opt-in (vulkan_post_screenfx_native.cpp:760, `envTriState(...) == 1`), so a default Vulkan session takes NO dynamic caster pass while a default GL session does. The registry now states ON to match the shipping GL path. Fixing the VK side means turning dynamic shadows on for VK by default -- a visual change with no capture to check it against, so it is recorded rather than flipped blind.
-MC2_MATERIAL_GPU  OPEN DEFECT (suspected typo). Three readers are default-ON -- gameosmain.cpp:1311, gos_materials.cpp:46, gos_static_prop_batcher.cpp:740, all `v == nullptr || v[0] != '0'` -- while gos_mech_batcher.cpp:648-651 is `v != nullptr && (v[0] != '0')`, i.e. default-OFF. The mech reader contradicts BOTH its siblings and its OWN comment four lines above it ("MC2_MATERIAL_GPU defaults ON. Set MC2_MATERIAL_GPU=0 to disable"), and gos_materials.cpp's comment claims it "mirrors gos_mech_batcher.cpp". So on a default launch the GPU material table is active for props and materials but not for mechs. Almost certainly a `==`/`!=` slip, but correcting it enables a mech rendering path by default and needs a before/after capture first.

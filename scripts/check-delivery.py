@@ -12,7 +12,7 @@ and nothing in 117 check scripts ever asked that question, because each of its
 four parts lives in a different tool and no tool JOINs them:
 
   * scripts/exe_fingerprint.py     knows what commit a binary was built from
-  * check-gate-default-agreement.py knows what a gate's reader does when unset
+  * gate_default_classifier.py knows what a gate's reader does when unset
   * check-beauty-sidecars.py       knows whether one class of data reached a tree
   * check-deploy-coherence.py      knows whether a deploy drifted from its manifest
                                    -- and is documented "ALWAYS exits 0, advisory
@@ -66,7 +66,7 @@ THE FOUR AXES, AND WHAT EACH ONE REFUSES TO TRUST
    FROM -- not the tip, not the registry, not docs/tier1_env_vars.md, not a
    comment. Seventeen documented-vs-actual default lies were found in this tree
    in one day. A reader-vs-registry disagreement is a FAIL, not a warning.
-   Boolean readers are classified by check-gate-default-agreement.py's own rule
+   Boolean readers are classified by gate_default_classifier.py's own rule
    table (imported, not reimplemented, so the two can never drift). NUMERIC
    readers are classified here, because that checker deliberately skips them as
    "value-read (not a boolean gate)" -- which is how a numeric gate's retracted
@@ -262,7 +262,7 @@ ef = _load("exe_fingerprint", "exe_fingerprint.py")
 
 # THE CLASSIFIER IS BORROWED, SO ITS STATE IS PART OF THIS TOOL'S HONESTY.
 #
-# Every default verdict here is produced by check-gate-default-agreement.py's
+# Every default verdict here is produced by gate_default_classifier.py's
 # rule table. In a shared worktree that file is routinely mid-edit by another
 # lane -- it was during this tool's own bring-up (218 inserted lines touching
 # find_readers). A verdict that silently changes because a neighbour is halfway
@@ -272,14 +272,14 @@ ef = _load("exe_fingerprint", "exe_fingerprint.py")
 # check-contracts.sh always agree about what the rules ARE), and its dirtiness
 # is announced. --classifier committed pins the rules to HEAD for a
 # reproducible verdict.
-CLASSIFIER_DIRTY = _is_dirty("scripts/check-gate-default-agreement.py")
-gda = _load("gate_default_agreement", "check-gate-default-agreement.py")
+CLASSIFIER_DIRTY = _is_dirty("scripts/gate_default_classifier.py")
+gda = _load("gate_default_agreement", "gate_default_classifier.py")
 
 
 def use_committed_classifier(rev: str = "HEAD") -> None:
     global gda
     gda = _load_committed("gate_default_agreement_committed",
-                          "check-gate-default-agreement.py", rev)
+                          "gate_default_classifier.py", rev)
 
 
 # ---------------------------------------------------------------------------
@@ -391,7 +391,7 @@ def scan_binary(blob: bytes, needle: str) -> dict:
 # ---------------------------------------------------------------------------
 _CALLEE_BEFORE = re.compile(r"([A-Za-z_]\w*)\s*(?:::\s*)?$")
 
-# Numeric idioms. check-gate-default-agreement.py deliberately declines these
+# Numeric idioms. gate_default_classifier.py deliberately declines these
 # ("value-read (not a boolean gate)"), which is correct for ITS question and
 # leaves this one unanswered: a numeric gate still has a shipped default, and
 # MC2_PAVED_OVERLAY_CLASS's retracted default-ON lived in exactly this blind
@@ -1863,7 +1863,7 @@ def main(argv=None) -> int:
     ap.add_argument("--classifier", choices=("worktree", "committed"),
                     default="worktree",
                     help="whose gate-default rules to use: the working copy of "
-                         "check-gate-default-agreement.py (default, matches "
+                         "gate_default_classifier.py (default, matches "
                          "check-contracts.sh) or its committed bytes "
                          "(reproducible)")
     ap.add_argument("--json", action="store_true")
@@ -1873,7 +1873,7 @@ def main(argv=None) -> int:
     if args.classifier == "committed":
         use_committed_classifier()
     elif CLASSIFIER_DIRTY and not args.quiet:
-        print("[check-delivery] NOTE: scripts/check-gate-default-agreement.py "
+        print("[check-delivery] NOTE: scripts/gate_default_classifier.py "
               "is DIRTY; every default verdict below was produced by another "
               "lane's in-flight rules. Re-run with --classifier committed for "
               "a reproducible verdict.", file=sys.stderr)

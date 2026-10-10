@@ -59,7 +59,7 @@ both gate-ON and gate-OFF runs (see the gate checklist in
 Any new `MC2_*` environment variable must be registered, allowlisted for the
 smoke harness, and documented — the full checklist lives at the top of
 [docs/tier1_env_vars.md](docs/tier1_env_vars.md). Unregistered gate reads are
-CI-blocking (`scripts/check-env-registry.sh`).
+CI-blocking (check-env-registry.sh (retired in G8; the gate table is the registry)).
 
 ## Licensing
 

@@ -11,21 +11,6 @@
 #include "damage_schema.h"
 #include <cstring>
 
-TEST_CASE("source gate: generated ONLY on exact token") {
-    // The one true value.
-    CHECK(mc2_unit_definition_source_is_generated("generated"));
-    CHECK(mc2_unit_definition_source_is_generated("GENERATED"));   // case-insensitive
-    CHECK(mc2_unit_definition_source_is_generated("Generated"));
-    // Everything else -> legacy (default), so unset/typo/legacy stays byte-identical.
-    CHECK_FALSE(mc2_unit_definition_source_is_generated(nullptr));
-    CHECK_FALSE(mc2_unit_definition_source_is_generated(""));
-    CHECK_FALSE(mc2_unit_definition_source_is_generated("legacy"));
-    CHECK_FALSE(mc2_unit_definition_source_is_generated("0"));
-    CHECK_FALSE(mc2_unit_definition_source_is_generated("gen"));        // prefix, not full
-    CHECK_FALSE(mc2_unit_definition_source_is_generated("generatedx")); // trailing junk
-    CHECK_FALSE(mc2_unit_definition_source_is_generated("1"));
-}
-
 TEST_CASE("variant slug mirrors converter _variant_slug") {
     char buf[64];
     // "Atlas Prime" -> "atlas_prime"

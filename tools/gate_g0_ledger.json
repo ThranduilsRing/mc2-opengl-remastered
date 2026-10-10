@@ -26,7 +26,7 @@
   "MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE": {"status": "enum", "rule": "levels: =0 kill-switch (default ON), 2 adds a trace line", "delta": "code unchanged", "evidence": "levels are intentional"},
   "MC2_STATIC_PROP_TRACE": {"status": "resolved", "rule": "Lead0", "delta": "=false now reads as on in the registry reader", "evidence": "matches the batcher reader"},
   "MC2_STATIC_UPDATE_SKIP": {"status": "resolved", "rule": "ParseEnvBool, default ON (0/false/off/no disable)", "delta": "=false/off/no now disable the building skip as well", "evidence": "terrobj.cpp and the launch banner already used this rule"},
-  "MC2_TERRAIN_DETAIL_MACRO_STRENGTH": {"status": "divergent", "rule": "owner decision: legacy path defaults 0.35, chunk path defaults 0.0", "delta": "unifying would change one path's default-config result", "evidence": "gameos_graphics.cpp (legacy, vestigial) vs gos_terrain_lod_chunk.cpp (live)"},
+  "MC2_TERRAIN_DETAIL_MACRO_STRENGTH": {"status": "divergent", "rule": "owner decision: legacy path defaults 0.35, chunk path defaults 0.0", "delta": "unifying would change one path's default-config result", "evidence": "gameos_graphics_tparams.cpp (legacy, vestigial) vs gos_terrain_lod_chunk.cpp (live)"},
   "MC2_TERRAIN_HEIGHT_RESAMPLE_FACTOR": {"status": "note", "rule": "Enum {1,2,4}; other values rejected", "delta": "code unchanged", "evidence": "single reader; a clamp row would change it"},
   "MC2_TERRAIN_MATERIAL_LIB": {"status": "resolved", "rule": "Lead0", "delta": "=0 now disables the material-library JSON load", "evidence": "matches the host reader"},
   "MC2_TERRAIN_MATERIAL_TEXTURES": {"status": "resolved", "rule": "Lead0", "delta": "=0 now disables the material-texture config load", "evidence": "matches the chunk reader"},

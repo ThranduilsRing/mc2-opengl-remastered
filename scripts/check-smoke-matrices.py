@@ -10,9 +10,8 @@ What it validates, per tests/smoke/matrices/*.json:
   * JSON parses
   * required fields exist (matrix_id, entries[]; each entry has a unique id)
   * matrix_id == filename stem (run_smoke_matrix.py resolves matrices by stem)
-  * every entry env key is a syntactically valid MC2_* name AND is registered
-    in RenderCore/RendererFeatureRegistry.h or allowlisted in
-    scripts/check-env-registry.sh (same authority as check-env-registry.sh)
+  * every entry env key is a syntactically valid MC2_* name AND is a row of the typed gate table
+    (Gates/gate_table.json, generated from Gates/gate_table.cpp)
   * env values are scalars (str / int / bool), missions[] are known stems,
     duration is a positive int
   * mission stems exist in tests/smoke/smoke_missions.txt
@@ -37,8 +36,7 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 ROOT = SCRIPT_DIR.parent
 MATRICES_DIR = ROOT / "tests" / "smoke" / "matrices"
-REGISTRY_HEADER = ROOT / "RenderCore" / "RendererFeatureRegistry.h"
-ENV_REGISTRY_SH = SCRIPT_DIR / "check-env-registry.sh"
+GATE_TABLE_JSON = ROOT / "Gates" / "gate_table.json"
 MISSIONS_TXT = ROOT / "tests" / "smoke" / "smoke_missions.txt"
 RUN_SMOKE_MATRIX = SCRIPT_DIR / "run_smoke_matrix.py"
 
@@ -47,18 +45,10 @@ MC2_TOKEN_RE = re.compile(r"MC2_[A-Z0-9_]+")
 
 
 def load_known_env_vars() -> set:
-    """Registered (registry header) + allowlisted (check-env-registry.sh).
-
-    Mirrors check-env-registry.sh's authority exactly: registered names are the
-    quoted "MC2_*" literals in the header; the allowlist is every MC2_* token in
-    the bash allowlist script. Union is the set a matrix env key may use.
-    """
-    known = set()
-    if REGISTRY_HEADER.exists():
-        known |= set(re.findall(r'"(MC2_[A-Z0-9_]+)"', REGISTRY_HEADER.read_text(encoding="utf-8")))
-    if ENV_REGISTRY_SH.exists():
-        known |= set(MC2_TOKEN_RE.findall(ENV_REGISTRY_SH.read_text(encoding="utf-8")))
-    return known
+    """Every gate name of the compiled gate table: the one authority for which MC2_* variables exist."""
+    if not GATE_TABLE_JSON.exists():
+        return set()
+    return {g["name"] for g in json.loads(GATE_TABLE_JSON.read_text(encoding="utf-8"))["gates"]}
 
 
 def load_known_missions() -> set:
@@ -121,9 +111,7 @@ def check_matrix(path: Path, known_env: set, known_missions: set) -> list:
                 if not ENV_NAME_RE.match(k):
                     errs.append(f"{loc}: env key '{k}' is not a valid MC2_* name")
                 elif k not in known_env:
-                    errs.append(f"{loc}: env key '{k}' is not registered "
-                                f"(RendererFeatureRegistry.h) or allowlisted "
-                                f"(check-env-registry.sh)")
+                    errs.append(f"{loc}: env key '{k}' is not a row of Gates/gate_table.cpp")
                 if not isinstance(v, (str, int, bool)):
                     errs.append(f"{loc}: env['{k}'] must be a scalar (str/int/bool), got {type(v).__name__}")
 

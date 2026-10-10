@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 """
 MCP-ANTI-CHURN-1: gate_status.py
-One-verdict MC2_* gate audit: merges FOUR sources that today live in four
+One-verdict MC2_* gate audit: merges THREE sources that today live in four
 different places and drifted independently (2 observed ENV-DROP incidents +
 11 unregistered vars on 2026-07-01):
 
   1. Gates/gate_table.json registry rows         (env_index registry read)
   2. docs/tier1_env_vars.md                      (env_index tier1 parse)
   3. Gates/gate_table.json smokePassthrough rows (the run_smoke.py passthrough list is generated from them)
-  4. scripts/check-env-registry.sh ALLOWLIST=( ) (legacy/trace var allowlist)
 
 plus a live `git grep` for code readers (fast single-var path; env_index's
 full source walk is only used as fallback).
@@ -27,8 +26,7 @@ Verdict flags map 1:1 to the failure classes:
   ENV_DROP_RISK   — read by engine but NOT in the run_smoke passthrough tuple
                     AND the runner has stopped inheriting os.environ, so the
                     tuple is load-bearing again (see below). Conditional.
-  UNREGISTERED    — no registry(...) row in the gate table AND not in the
-                    check-env-registry.sh ALLOWLIST -> CI gate fails
+  UNREGISTERED    — no registry(...) row in the gate table
   UNDOCUMENTED    — no docs/tier1_env_vars.md entry
   GHOST           — registered/documented but no code reader found
 
@@ -75,7 +73,6 @@ from smoke_lib import nofocus  # noqa: E402
 
 _MC2_NAME = re.compile(r"^MC2_[A-Z0-9_]+$")
 _QUOTED_MC2 = re.compile(r'"(MC2_[A-Z0-9_]+)"')
-_BARE_MC2 = re.compile(r"^\s*(MC2_[A-Z0-9_]+)\b")
 
 _READER_DIRS = ("mclib", "GameOS", "code", "RenderCore", "RenderWorld",
                 "GameAdapters", "editor", "gui")
@@ -146,34 +143,6 @@ def parse_runner_env_policy(repo_root: Path) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Source 4: check-env-registry.sh ALLOWLIST
-# ---------------------------------------------------------------------------
-
-def parse_registry_check_allowlist(repo_root: Path) -> tuple[set, bool]:
-    """MC2_* names inside the ALLOWLIST=( .. ) block of check-env-registry.sh."""
-    path = Path(repo_root) / "scripts" / "check-env-registry.sh"
-    names: set = set()
-    found = False
-    try:
-        text = path.read_text(encoding="utf-8", errors="ignore")
-    except OSError:
-        return names, False
-    in_block = False
-    for line in text.splitlines():
-        if not in_block and line.strip().startswith("ALLOWLIST=("):
-            in_block = True
-            found = True
-            continue
-        if in_block:
-            if line.strip() == ")":
-                break
-            m = _BARE_MC2.match(line)
-            if m:
-                names.add(m.group(1))
-    return names, found
-
-
-# ---------------------------------------------------------------------------
 # Code readers (fast single-var git grep)
 # ---------------------------------------------------------------------------
 
@@ -228,7 +197,6 @@ def gate_status(repo_root: Path, var: str) -> dict:
 
     tier1 = ei._parse_tier1_docs(repo_root)
     smoke_allow, smoke_anchor_ok = parse_smoke_allowlist(repo_root)
-    check_allow, check_anchor_ok = parse_registry_check_allowlist(repo_root)
     runner_env = parse_runner_env_policy(repo_root)
     readers = _grep_readers(repo_root, var)
 
@@ -240,7 +208,6 @@ def gate_status(repo_root: Path, var: str) -> dict:
     in_registry = (reg is not None) if registry is not None else "UNKNOWN"
     in_tier1 = t1 is not None
     in_smoke_allow = var in smoke_allow
-    in_check_allow = var in check_allow
     has_readers = bool(readers)
 
     default = None
@@ -284,14 +251,13 @@ def gate_status(repo_root: Path, var: str) -> dict:
     # read are precisely the confident wrong answers this lane exists to remove.
     reg_known = registry is not None
     if reg_known:
-        if has_readers and not in_registry and not in_check_allow:
-            flags.append("UNREGISTERED: no registry(...) row in the gate table and not in "
-                         "check-env-registry.sh ALLOWLIST — CI env-registry gate fails")
+        if has_readers and not in_registry:
+            flags.append("UNREGISTERED: no row in the gate table (Gates/gate_table.cpp)")
     if has_readers and not in_tier1:
         flags.append("UNDOCUMENTED: no docs/tier1_env_vars.md entry")
     if reg_known and not has_readers:
-        if in_registry or in_tier1 or in_smoke_allow or in_check_allow:
-            flags.append("GHOST: registered/documented/allowlisted but no code reader "
+        if in_registry or in_tier1 or in_smoke_allow:
+            flags.append("GHOST: registered/documented but no code reader "
                          "found (removed feature? doc litter?)")
         else:
             flags.append("UNKNOWN: no trace of this var anywhere — typo?")
@@ -300,9 +266,6 @@ def gate_status(repo_root: Path, var: str) -> dict:
     if not smoke_anchor_ok:
         parse_notes.append("run_smoke.py allowlist anchors not found — "
                            "smoke_allowlist result unreliable")
-    if not check_anchor_ok:
-        parse_notes.append("check-env-registry.sh ALLOWLIST block not found — "
-                           "registry_check_allowlist result unreliable")
     if not runner_env["anchors_ok"]:
         parse_notes.append("smoke_lib/runner.py FORCED_ENV/SOFT_ENV/POPPED_ENV "
                            "tables not found — ENV_UNDRIVEABLE result unreliable")
@@ -352,7 +315,6 @@ def gate_status(repo_root: Path, var: str) -> dict:
         "smoke_env_forced": in_forced,
         "smoke_env_popped": in_popped,
         "smoke_env_soft_default": in_soft,
-        "registry_check_allowlisted": in_check_allow,
         "reader_count": len(readers),
         "readers": readers,
         "parse_notes": parse_notes,

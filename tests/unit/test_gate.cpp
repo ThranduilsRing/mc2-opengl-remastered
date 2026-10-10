@@ -1368,4 +1368,27 @@ TEST_CASE("G5 gameosmain rows and the runtime-name reader") {
     env.set(nullptr);
 }
 
+TEST_CASE("boolState answers by the row's own rule for a gate named at run time") {
+    CHECK_FALSE(gate::boolState("MC2_NOT_A_GATE").has_value());
+    EnvVar kill("MC2_SHADOW_ENABLE");          // Lead0Kill, default ON
+    kill.set(nullptr);
+    gate::invalidate("MC2_SHADOW_ENABLE");
+    auto st = gate::boolState("MC2_SHADOW_ENABLE");
+    REQUIRE(st.has_value());
+    CHECK_FALSE(st->set);
+    CHECK(st->on);
+    kill.set("0");
+    gate::invalidate("MC2_SHADOW_ENABLE");
+    st = gate::boolState("MC2_SHADOW_ENABLE");
+    CHECK(st->set);
+    CHECK_FALSE(st->on);
+    kill.set(nullptr);
+    gate::invalidate("MC2_SHADOW_ENABLE");
+    EnvVar str("MC2_VULKAN_SPV_DIR");          // not a Bool row: on = set and not a leading 0
+    str.set("shaders/x");
+    st = gate::boolState("MC2_VULKAN_SPV_DIR");
+    CHECK((st->set && st->on));
+    str.set(nullptr);
+}
+
 }  // TEST_SUITE

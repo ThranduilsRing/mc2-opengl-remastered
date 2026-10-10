@@ -32,6 +32,7 @@ EXTS = (".cpp", ".h", ".hpp", ".cc", ".inl")
 ENVTEXT_ALLOWED = {
     "GameOS/gameos/gameosmain.cpp": 2,   # the launcher_env.json apply asks "did the shell already set this key?"
     "GameOS/gameos/gos_dev_shell.cpp": 1,  # the dev shell's get_gate answers for a variable NAME the client sends
+    "HostServices/DefaultHostServices.cpp": 2,  # EnvConfig::str / flag take a caller-supplied runtime key
 }
 # Gates/ defines the two readers; the ratchet cares about their callers.
 DEFINING_DIR = "Gates/"
