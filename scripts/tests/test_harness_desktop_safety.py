@@ -277,3 +277,41 @@ def test_watchdog_restore_is_inert_while_user_is_active(monkeypatch):
     assert g._restore_to_anchor() is None
     g._restore()
     assert fake.writes == []
+
+
+# ------------------------------------------------- MC2_CURSOR_GUARD_OFF (test isolation)
+
+def test_cursor_guard_construction_under_pytest_requires_the_off_switch(monkeypatch):
+    monkeypatch.delenv("MC2_CURSOR_GUARD_OFF", raising=False)
+    try:
+        cursor_guard.CursorGuard()
+    except RuntimeError as e:
+        assert "MC2_CURSOR_GUARD_OFF" in str(e)
+    else:
+        raise AssertionError("CursorGuard() under pytest must refuse without MC2_CURSOR_GUARD_OFF=1")
+
+
+def test_conftest_sets_the_off_switch_for_the_whole_session():
+    assert os.environ.get("MC2_CURSOR_GUARD_OFF") == "1"
+
+
+def test_off_switch_makes_every_entry_point_a_noop_with_no_win32_call(monkeypatch, capsys):
+    class _Poison:
+        def __getattr__(self, name):
+            raise AssertionError(f"win32 call {name} reached with MC2_CURSOR_GUARD_OFF=1")
+
+    monkeypatch.setenv("MC2_CURSOR_GUARD_OFF", "1")
+    monkeypatch.setattr(ctypes, "windll", types.SimpleNamespace(user32=_Poison(), kernel32=_Poison()), raising=False)
+    monkeypatch.setattr(cursor_guard, "_guard_off_logged", False)
+    g = cursor_guard.CursorGuard().start()
+    assert g.active is False
+    g.set_owner_pid(1)
+    g.stop()
+    assert cursor_guard.get_cursor_pos() is None
+    assert cursor_guard.set_cursor_pos((1, 1)) is False
+    assert cursor_guard.unclip_cursor() is False
+    assert cursor_guard.get_clip_rect() is None
+    assert cursor_guard.find_foreign_game_pids() == []
+    assert cursor_guard.park_cursor_if_edge() in ("inert", "disabled")
+    assert cursor_guard.restore_parked_cursor() is False
+    assert capsys.readouterr().err.count("MC2_CURSOR_GUARD_OFF=1, all pointer and clip calls disabled") == 1

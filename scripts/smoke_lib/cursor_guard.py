@@ -97,8 +97,35 @@ class _PROCESSENTRY32W(ctypes.Structure):
                 ("szExeFile", ctypes.c_wchar * 260)]
 
 
+#: MC2_CURSOR_GUARD_OFF=1 makes every function here inert: no user32 or kernel32 call of any kind
+#: (no ClipCursor, SetCursorPos, GetCursorPos, SetCapture). Test runs set it so a suite that
+#: exercises the harness can never take the pointer from a person using the machine.
+GUARD_OFF_ENV = "MC2_CURSOR_GUARD_OFF"
+
+_guard_off_logged = False
+
+
+def guard_off() -> bool:
+    return os.environ.get(GUARD_OFF_ENV) == "1"
+
+
+def _note_guard_off() -> None:
+    global _guard_off_logged
+    if _guard_off_logged:
+        return
+    _guard_off_logged = True
+    try:
+        print(f"[CURSOR_GUARD] {GUARD_OFF_ENV}=1, all pointer and clip calls disabled",
+              file=sys.stderr, flush=True)
+    except Exception:
+        pass
+
+
 def _user32():
     """Return the user32 handle, or None when there is no usable desktop."""
+    if guard_off():
+        _note_guard_off()
+        return None
     if sys.platform != "win32":
         return None
     try:
@@ -309,7 +336,7 @@ def find_foreign_game_pids(exclude_pids: Optional[Set[int]] = None) -> List[Tupl
     Any game process alive when the guard starts is by definition NOT our child
     (runner.py starts the guard before Popen), i.e. it belongs to another lane.
     """
-    if sys.platform != "win32":
+    if sys.platform != "win32" or guard_off():
         return []
     exclude = exclude_pids or set()
     out: List[Tuple[int, str]] = []
@@ -376,6 +403,11 @@ class CursorGuard:
     """
 
     def __init__(self, poll_s: float = _POLL_S, sample_log: Optional[list] = None):
+        if "pytest" in sys.modules and not guard_off():
+            raise RuntimeError(
+                f"CursorGuard constructed under pytest without {GUARD_OFF_ENV}=1: it would call "
+                f"ClipCursor/SetCursorPos on the real desktop. The conftest.py files set the variable; "
+                f"set it yourself when running a test module from an unusual directory.")
         self.poll_s = poll_s
         self.active = False
         self.anchor: Optional[Point] = None
@@ -408,6 +440,9 @@ class CursorGuard:
     # -- lifecycle ---------------------------------------------------------
     def start(self) -> "CursorGuard":
         if os.environ.get("MC2_NO_CURSOR_GUARD") == "1":
+            return self
+        if guard_off():
+            _note_guard_off()
             return self
         # STARTUP DEFENCE, part 1: release any clamp BEFORE sampling the anchor.
         # If a foreign process has the cursor clipped, the position we are about

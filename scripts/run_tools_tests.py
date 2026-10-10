@@ -47,6 +47,9 @@ import console_child  # noqa: E402
 # Every spawn captures its output, so child_kwargs(redirected=True) adds the
 # no-window flag only when this process has no console (no conhost per child).
 
+# Every module below runs in a child that inherits this: no test may touch a person's pointer.
+os.environ["MC2_CURSOR_GUARD_OFF"] = "1"
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LEDGER = os.path.join(ROOT, "scripts", "tools_tests.known-failures")
 
