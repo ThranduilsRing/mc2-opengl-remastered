@@ -59,6 +59,13 @@ only defence that scales is making the two populations declare themselves.
     incident 2026-10-10). A new module calling the Win32 API directly, even
     from a policy file, FAILS.
 
+  RULE 12 -- tests never drive the real pointer. A file under tests/,
+    scripts/tests/ or tools/ that builds a CursorGuard, parks the cursor or names
+    ClipCursor must sit under a conftest.py (or itself) that sets
+    MC2_CURSOR_GUARD_OFF=1, which makes smoke_lib.cursor_guard issue no win32
+    call. A test suite that ran the real guard took the owner's mouse in 5-10 s
+    bursts (2026-10-10).
+
 OWNER RULE (2026-10-09, after a launch stole focus and the mouse while two lanes
 were smoking and capturing): the game/editor must ALWAYS launch in the
 background. That turns RULE 1 from "has a STARTUPINFO" into "goes through
@@ -599,6 +606,9 @@ def check(root: Path = ROOT, use_git: bool = True):
         if r != "scripts/check-background-launch.py":
             problems.extend(cursor_write_problems(r, tree))
 
+        # ---- RULE 12: test trees must disable the real cursor guard ----
+        problems.extend(test_cursor_isolation_problems(root, r, tree, src))
+
         # ---- RULE 3: raw focus/cursor Win32 outside the policy modules ----
         # AST, not grep: a docstring or a string constant naming the API is not
         # a call, and flagging those made the checker cry wolf.
@@ -1030,6 +1040,16 @@ _SELFTEST_FILES = {
         "    return False\n"
         "def set_cursor_pos(pos):\n"
         "    return u.SetCursorPos(pos[0], pos[1])\n"),
+    # RULE 12: a test that builds the real guard with / without a conftest that disables it.
+    "tests/unfixtured/test_guard.py": (
+        "from smoke_lib.cursor_guard import CursorGuard\n"
+        "def test_x():\n"
+        "    CursorGuard().start()\n"),
+    "tests/fixtured/conftest.py": "import os\nos.environ['MC2_CURSOR_GUARD_OFF'] = '1'\n",
+    "tests/fixtured/test_guard.py": (
+        "from smoke_lib.cursor_guard import CursorGuard\n"
+        "def test_x():\n"
+        "    CursorGuard().start()\n"),
     # RULE 9: shell launcher with and without a marker.
     "launch_bad.bat": "@echo off\nmc2.exe\n",
     "launch_ok.bat": "@echo off\nREM background-launch: allow selftest fixture\nmc2.exe\n",
@@ -1089,12 +1109,52 @@ def selftest() -> int:
                    "    return u.SetCursorPos(pos[0], pos[1])\n")
         expect(not cursor_write_problems(CURSOR_WRITE_OWNER, ast.parse(guarded)),
                "set_cursor_pos that checks user_is_active() first passes RULE 11")
+        expect(flagged("tests/unfixtured/test_guard.py", "MC2_CURSOR_GUARD_OFF"),
+               "CursorGuard() in a test with no MC2_CURSOR_GUARD_OFF conftest FAILS (RULE 12)")
+        expect(not flagged("tests/fixtured/test_guard.py"),
+               "CursorGuard() under a conftest that sets MC2_CURSOR_GUARD_OFF passes RULE 12")
         expect(flagged("launch_bad.bat", "shell launcher"),
                ".bat engine launcher without a marker FAILS (RULE 9)")
         expect(not flagged("launch_ok.bat"), ".bat engine launcher with marker passes")
         del text
     print("[background-launch] selftest " + ("PASS" if ok else "FAIL"))
     return 0 if ok else 1
+
+
+TEST_CURSOR_APIS = ("CursorGuard", "park_cursor_if_edge", "ClipCursor")
+TEST_CURSOR_OFF_ENV = "MC2_CURSOR_GUARD_OFF"
+
+
+def _is_test_tree_file(rel: str) -> bool:
+    return rel.startswith(("tests/", "scripts/tests/", "tools/")) or Path(rel).name.startswith("test_")
+
+
+def test_cursor_isolation_problems(root: Path, rel: str, tree: ast.AST, src: str) -> list:
+    """RULE 12: a test-tree file that can reach the real pointer needs MC2_CURSOR_GUARD_OFF set."""
+    if not _is_test_tree_file(rel) or Path(rel).name == "conftest.py":
+        return []
+    hits = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call):
+            leaf = call_name(node).rsplit(".", 1)[-1]
+            if leaf in TEST_CURSOR_APIS:
+                hits.append((node.lineno, leaf))
+        elif isinstance(node, ast.Attribute) and node.attr == "ClipCursor":
+            hits.append((node.lineno, "ClipCursor"))
+    if not hits or TEST_CURSOR_OFF_ENV in src:
+        return []
+    d = (root / rel).parent
+    while True:
+        conf = d / "conftest.py"
+        if conf.is_file() and TEST_CURSOR_OFF_ENV in conf.read_text(encoding="utf-8", errors="replace"):
+            return []
+        if d == root or d == d.parent:
+            break
+        d = d.parent
+    line, api = hits[0]
+    return [f"{rel}:{line}: {api} in a test tree with no {TEST_CURSOR_OFF_ENV}=1 fixture. Add it to a "
+            f"conftest.py above this file (or set it in the file): the real guard calls "
+            f"ClipCursor/SetCursorPos on the user's desktop."]
 
 
 def cursor_write_problems(rel: str, tree: ast.AST) -> list:

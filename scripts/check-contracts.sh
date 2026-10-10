@@ -53,6 +53,8 @@
 #   `--strict` additionally fails on any un-allowlisted WARN (future tightening).
 
 set -euo pipefail
+# Rows run test suites that build the harness cursor guard; none may touch a person's pointer.
+export MC2_CURSOR_GUARD_OFF=1
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 WORKTREE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
