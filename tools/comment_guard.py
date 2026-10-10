@@ -1070,101 +1070,14 @@ def run_rewrite_candidates(args):
 
 
 # ------------------------------------------------------------------ object proof
-_DBG_PREFIX = ".debug"
-_SCN_BSS = 0x80
-_SCN_NRELOC_OVFL = 0x01000000
+# The COFF digest is shared with tools/tidy/run_tidy_safe.py, so it lives in tools/objhash.py.
+sys.path.append(HERE)
+import objhash  # noqa: E402
 
-
-def _h(*parts):
-    m = hashlib.sha256()
-    for p in parts:
-        if isinstance(p, str):
-            p = p.encode("utf-8", "replace")
-        m.update(struct.pack("<I", len(p)))
-        m.update(p)
-    return m.hexdigest()
-
-
-def parse_coff(b):
-    """-> (fmt, sections[(name, chars, data, relocs)], symbols[(name,value,type,cls,secname)]) or None."""
-    try:
-        if b[:4] == b"\x00\x00\xff\xff" and len(b) >= 56 and struct.unpack_from("<H", b, 4)[0] >= 2:
-            nsec, symptr, nsym = struct.unpack_from("<III", b, 44)
-            hdr, symsz, opt, fmt = 56, 20, 0, "coff-bigobj"
-        else:
-            _m, nsec, _ts, symptr, nsym, opt, _c = struct.unpack_from("<HHIIIHH", b, 0)
-            hdr, symsz, fmt = 20, 18, "coff"
-        strtab = symptr + nsym * symsz
-        strsize = struct.unpack_from("<I", b, strtab)[0] if symptr and strtab + 4 <= len(b) else 0
-
-        def sname(raw):
-            if raw[:4] == b"\0\0\0\0":
-                off = struct.unpack_from("<I", raw, 4)[0]
-                end = b.index(b"\0", strtab + off)
-                return b[strtab + off:end].decode("latin-1")
-            return raw.split(b"\0", 1)[0].decode("latin-1")
-
-        secs = []
-        for k in range(nsec):
-            o = hdr + opt + 40 * k
-            name, _vs, _va, rawsz, rawptr, relptr, _lp, nrel, _nl, chars = struct.unpack_from("<8sIIIIIIHHI", b, o)
-            nm = name.rstrip(b"\0").decode("latin-1")
-            if nm.startswith("/") and nm[1:].isdigit():
-                off = int(nm[1:])
-                nm = b[strtab + off:b.index(b"\0", strtab + off)].decode("latin-1")
-            data = b"" if (chars & _SCN_BSS or not rawptr) else b[rawptr:rawptr + rawsz]
-            if chars & _SCN_NRELOC_OVFL and nrel == 0xFFFF and relptr:
-                nrel = struct.unpack_from("<I", b, relptr)[0]
-            rel = b[relptr:relptr + 10 * nrel] if relptr and nrel else b""
-            secs.append((nm, chars, rawsz, data, rel))
-        syms, i = [], 0
-        while i < nsym:
-            o = symptr + i * symsz
-            if fmt == "coff-bigobj":
-                nm_raw, val, secno, typ, cls, naux = struct.unpack_from("<8sIiHBB", b, o)
-            else:
-                nm_raw, val, secno, typ, cls, naux = struct.unpack_from("<8sIhHBB", b, o)
-            sec = secs[secno - 1][0] if 0 < secno <= len(secs) else "#%d" % secno
-            syms.append((sname(nm_raw), val, typ, cls, sec))
-            i += 1 + naux
-        return fmt, secs, syms
-    except (struct.error, ValueError, IndexError):
-        return None
-
-
-def obj_digest(path):
-    """Behavioural digest of an object file; see the module docstring for what is excluded."""
-    raw = read_file(path)
-    if raw is None:
-        return None
-    info = {"raw_sha256": hashlib.sha256(raw).hexdigest(), "size": len(raw)}
-    parsed = parse_coff(raw)
-    if not parsed:
-        info.update(format="raw", code_sha256=info["raw_sha256"], sections={})
-        return info
-    fmt, secs, syms = parsed
-    sec_hashes = {}
-    for k, (nm, chars, rawsz, data, rel) in enumerate(secs):
-        if nm.startswith(_DBG_PREFIX):
-            continue
-        sec_hashes["%d:%s" % (k, nm)] = _h(nm, str(chars), str(rawsz), data, rel)
-    sym_part = _h(*["%s|%d|%d|%d|%s" % s for s in syms if not s[4].startswith(_DBG_PREFIX)])
-    sec_hashes["symbols"] = sym_part
-    info.update(format=fmt, sections=sec_hashes,
-                code_sha256=_h(*["%s=%s" % kv for kv in sorted(sec_hashes.items())]))
-    return info
-
-
-def find_objs(build_dir, rel):
-    bd = glob.escape(build_dir.replace("\\", "/"))
-    r = glob.escape(rel)
-    hits = glob.glob("%s/CMakeFiles/*/%s.obj" % (bd, r))
-    if not hits:
-        base = glob.escape(os.path.basename(rel))
-        stem = glob.escape(os.path.splitext(os.path.basename(rel))[0])
-        for pat in ("%s/**/%s.obj" % (bd, base), "%s/**/%s.obj" % (bd, stem)):
-            hits += glob.glob(pat, recursive=True)
-    return sorted(set(os.path.abspath(h) for h in hits))
+parse_coff = objhash.parse_coff
+obj_digest = objhash.obj_digest
+find_objs = objhash.find_objs
+compare_files = objhash.compare_files
 
 
 def _line_warn(repo, rel):
@@ -1176,87 +1089,9 @@ def _line_warn(repo, rel):
     return ("uses %s: line shifts change the object" % "/".join(used)) if used else None
 
 
-def _stamp(path):
-    return os.stat(path).st_mtime_ns
-
-
 def hash_files(repo, build_dir, rels):
     """-> (document, problems[str])"""
-    doc = {"tool": "comment_guard", "version": 1,
-           "created": datetime.datetime.now().isoformat(timespec="seconds"),
-           "repo": repo.replace("\\", "/"), "build_dir": os.path.abspath(build_dir).replace("\\", "/"),
-           "files": {}}
-    problems = []
-    for rel in rels:
-        ent = {}
-        doc["files"][rel] = ent
-        if not rel.lower().endswith((".cpp", ".cc", ".cxx", ".c")):
-            ent.update(status="skip", reason="no object of its own (header/shader): rely on --check")
-            continue
-        src = os.path.join(repo, rel)
-        if not os.path.exists(src):
-            problems.append("%s: source missing" % rel)
-            ent.update(status="error", reason="source missing")
-            continue
-        objs = find_objs(build_dir, rel)
-        if not objs:
-            problems.append("%s: no object under %s - build first" % (rel, build_dir))
-            ent.update(status="error", reason="no object found")
-            continue
-        ent["warn"] = _line_warn(repo, rel)
-        ent["objs"] = []
-        ent["status"] = "ok"
-        for o in objs:
-            if _stamp(o) < _stamp(src):
-                problems.append("%s: %s is older than the source - not a base build" % (rel, o))
-                ent["status"] = "error"
-                ent["reason"] = "object older than source"
-            d = obj_digest(o)
-            d.update(path=o.replace("\\", "/"), mtime_ns=_stamp(o))
-            ent["objs"].append(d)
-    return doc, problems
-
-
-def compare_files(before):
-    repo = before.get("repo") or ROOT
-    out, bad = [], 0
-    for rel, ent in sorted(before["files"].items()):
-        if ent.get("status") == "skip":
-            out.append("SKIP  %s  (%s)" % (rel, ent["reason"]))
-            continue
-        if ent.get("status") != "ok":
-            out.append("FAIL  %s  unusable 'before' record: %s" % (rel, ent.get("reason")))
-            bad += 1
-            continue
-        src = os.path.join(repo, rel)
-        warn = ent.get("warn")
-        for o in ent["objs"]:
-            p = o["path"]
-            if not os.path.exists(p):
-                out.append("FAIL  %s  object vanished: %s" % (rel, p))
-                bad += 1
-                continue
-            if _stamp(p) == o["mtime_ns"]:
-                out.append("FAIL  %s  object not rebuilt since --hash-objs: %s" % (rel, p))
-                bad += 1
-                continue
-            if os.path.exists(src) and _stamp(p) < _stamp(src):
-                out.append("FAIL  %s  object older than the edited source - rebuild: %s" % (rel, p))
-                bad += 1
-                continue
-            now = obj_digest(p)
-            if now["code_sha256"] == o["code_sha256"]:
-                out.append("OK    %s  behaviour sections identical (%s)" % (rel, os.path.basename(p)))
-                continue
-            diff = sorted(k for k in set(o["sections"]) | set(now["sections"])
-                          if o["sections"].get(k) != now["sections"].get(k))
-            detail = "sections differ: %s%s" % (", ".join(diff[:6]), " ..." if len(diff) > 6 else "")
-            if warn:
-                out.append("WARN  %s  %s; %s" % (rel, detail, warn))
-            else:
-                out.append("FAIL  %s  %s" % (rel, detail))
-                bad += 1
-    return out, bad
+    return objhash.hash_files(repo, build_dir, rels, tool="comment_guard", warn_fn=_line_warn)
 
 
 def run_hash_objs(args):
