@@ -66,8 +66,8 @@
    "LG16": 7,
    "LG17": 81,
    "LG18": 11,
-   "LG19": 6,
-   "LG20": 29
+   "LG19": 5,
+   "LG20": 28
   },
   "GuiRuntime": {
    "LG01": 1,
@@ -1314,9 +1314,7 @@
    "LG08": 1,
    "LG09": 12,
    "LG11": 1,
-   "LG13": 2,
-   "LG19": 1,
-   "LG20": 1
+   "LG13": 2
   },
   "GameOS/gameos/vulkan_terrain_island.cpp": {
    "LG03": 6,
@@ -5780,7 +5778,7 @@
    "LG20": 1
   }
  },
- "head": "9ce2b865c",
+ "head": "c005148b7",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
