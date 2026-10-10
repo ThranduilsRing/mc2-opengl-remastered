@@ -23,6 +23,7 @@
 #include <vk_mem_alloc.h>
 
 #include "vk_image_resource.h"
+#include "vk_island_util.h"
 #include "vulkan_context.h"
 #include "vulkan_legacy_shape_island.h"
 #include "../../RenderCore/gpu_abi/GpuLegacyFrameUBO.h"  // single-source per-frame UBO
@@ -60,10 +61,7 @@ void setFallback(const char* r) {
 
 void vlog(const char* fmt, ...) {
     va_list ap; va_start(ap, fmt);
-    std::fprintf(stderr, "[VK_LEGACY_SHAPE] ");
-    std::vfprintf(stderr, fmt, ap);
-    std::fprintf(stderr, "\n");
-    std::fflush(stderr);
+    vk_island_util::vlogv("[VK_LEGACY_SHAPE] ", fmt, ap);
     va_end(ap);
 }
 
@@ -84,25 +82,7 @@ std::string spv_dir() {
 }
 
 VkShaderModule load_spv(VkDevice device, const std::string& path) {
-    std::FILE* f = std::fopen(path.c_str(), "rb");
-    if (!f) { vlog("cannot open spv '%s'.", path.c_str()); return VK_NULL_HANDLE; }
-    std::fseek(f, 0, SEEK_END);
-    long len = std::ftell(f);
-    std::fseek(f, 0, SEEK_SET);
-    if (len <= 0 || (len % 4) != 0) { vlog("spv '%s' bad size %ld.", path.c_str(), len); std::fclose(f); return VK_NULL_HANDLE; }
-    std::vector<uint32_t> code(static_cast<size_t>(len) / 4);
-    size_t got = std::fread(code.data(), 1, static_cast<size_t>(len), f);
-    std::fclose(f);
-    if (got != static_cast<size_t>(len)) { vlog("spv short read '%s'.", path.c_str()); return VK_NULL_HANDLE; }
-    VkShaderModuleCreateInfo smci{};
-    smci.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    smci.codeSize = static_cast<size_t>(len);
-    smci.pCode = code.data();
-    VkShaderModule mod = VK_NULL_HANDLE;
-    if (vkCreateShaderModule(device, &smci, nullptr, &mod) != VK_SUCCESS) {
-        vlog("vkCreateShaderModule('%s') failed.", path.c_str()); return VK_NULL_HANDLE;
-    }
-    return mod;
+    return vk_island_util::loadSpv(device, path, vlog);
 }
 
 // The per-frame std140 UBO (LegacyFrameUBO) is single-sourced in
