@@ -52,7 +52,7 @@
    "LG03": 301,
    "LG04": 6,
    "LG05": 119,
-   "LG06": 510,
+   "LG06": 509,
    "LG07": 0,
    "LG08": 274,
    "LG09": 2162,
@@ -66,8 +66,8 @@
    "LG16": 7,
    "LG17": 81,
    "LG18": 11,
-   "LG19": 27,
-   "LG20": 55
+   "LG19": 24,
+   "LG20": 47
   },
   "GuiRuntime": {
    "LG01": 1,
@@ -1197,13 +1197,11 @@
    "LG05": 2
   },
   "GameOS/gameos/visual_tuning_profile.cpp": {
-   "LG06": 3,
+   "LG06": 2,
    "LG08": 5,
    "LG09": 10,
    "LG11": 1,
-   "LG12a": 13,
-   "LG19": 3,
-   "LG20": 8
+   "LG12a": 13
   },
   "GameOS/gameos/visual_tuning_profile.h": {
    "LG06": 1
@@ -5803,7 +5801,7 @@
    "LG20": 1
   }
  },
- "head": "879c51ca2",
+ "head": "e5ef18f0b",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
