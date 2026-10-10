@@ -148,7 +148,7 @@
    "LG18": 0
   },
   "code": {
-   "LG01": 1832,
+   "LG01": 1830,
    "LG02": 232,
    "LG03": 972,
    "LG04": 21,
@@ -156,12 +156,12 @@
    "LG06": 465,
    "LG07": 0,
    "LG08": 15,
-   "LG09": 2503,
+   "LG09": 2498,
    "LG10": 22,
    "LG11": 101,
    "LG12a": 220,
-   "LG12b": 797,
-   "LG13": 1201,
+   "LG12b": 796,
+   "LG13": 1188,
    "LG14": 137,
    "LG15": 0,
    "LG16": 13,
@@ -2141,17 +2141,9 @@
    "LG06": 1
   },
   "code/mech.cpp": {
-   "LG01": 53,
-   "LG02": 1,
-   "LG03": 9,
-   "LG04": 1,
-   "LG05": 5,
-   "LG06": 2,
-   "LG09": 94,
-   "LG12a": 5,
-   "LG12b": 14,
-   "LG13": 32,
-   "LG14": 1
+   "LG01": 7,
+   "LG03": 1,
+   "LG09": 9
   },
   "code/mech.h": {
    "LG01": 4,
@@ -2162,6 +2154,60 @@
   },
   "code/mech_brain_runtime.h": {
    "LG06": 4
+  },
+  "code/mech_damage.cpp": {
+   "LG01": 4,
+   "LG04": 1,
+   "LG09": 8,
+   "LG12b": 3
+  },
+  "code/mech_init.cpp": {
+   "LG01": 3,
+   "LG03": 2,
+   "LG09": 11,
+   "LG12b": 5
+  },
+  "code/mech_loadout.cpp": {
+   "LG01": 2,
+   "LG02": 1,
+   "LG03": 3,
+   "LG05": 5,
+   "LG06": 1,
+   "LG09": 17,
+   "LG12a": 2,
+   "LG12b": 1,
+   "LG13": 16,
+   "LG14": 1
+  },
+  "code/mech_move.cpp": {
+   "LG01": 2,
+   "LG03": 2,
+   "LG09": 4,
+   "LG12a": 1,
+   "LG12b": 1,
+   "LG13": 2
+  },
+  "code/mech_move_net.cpp": {
+   "LG01": 1
+  },
+  "code/mech_type.cpp": {
+   "LG01": 8,
+   "LG03": 1,
+   "LG09": 16,
+   "LG12b": 1
+  },
+  "code/mech_update.cpp": {
+   "LG01": 7,
+   "LG09": 13,
+   "LG12a": 2,
+   "LG12b": 1,
+   "LG13": 1
+  },
+  "code/mech_weapons.cpp": {
+   "LG01": 17,
+   "LG06": 1,
+   "LG09": 11,
+   "LG12b": 1
   },
   "code/mechbayscreen.cpp": {
    "LG01": 11,
@@ -5087,7 +5133,7 @@
    "LG13": 31
   }
  },
- "head": "3b9581785",
+ "head": "d0fe71c74",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
