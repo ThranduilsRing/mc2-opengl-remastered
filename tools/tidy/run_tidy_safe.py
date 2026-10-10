@@ -138,25 +138,38 @@ def ninja_objects(tree: str, rels, jobs: int):
     """Build the objects of `rels` in one ninja run under the MSVC environment (keep going past failures).
 
     -> (returncode, [object targets that failed to compile])."""
-    import configure_ninja as cn
     targets = []
     for rel in rels:
         for o in objhash.find_objs(tree, rel):
             targets.append(os.path.relpath(o, tree).replace("\\", "/"))
+    return ninja_objects_targets(tree, targets, jobs)
+
+
+def ninja_objects_targets(tree: str, targets, jobs: int):
+    """ninja -k 0 over object targets given relative to the tree. -> (returncode, [targets that failed])."""
+    import configure_ninja as cn
     if not targets:
         return 0, []
-    inner = subprocess.list2cmdline([cn.NINJA, "-C", tree, f"-j{jobs}", "-k", "0"] + targets)
-    # Freeze the build-fingerprint header: the edit makes the tree dirty, which would otherwise change the dirty flag compiled into
-    # every TU that embeds it (see cmake/GenerateBuildFingerprint.cmake).
-    r = subprocess.run(f'call "{cn.VCVARS}" >nul && {inner}', shell=True, capture_output=True, text=True, errors="replace",
-                       env={**os.environ, "MC2_FINGERPRINT_FREEZE": "1"},
-                       **console_child.child_kwargs(redirected=True))
-    out = (r.stdout or "") + (r.stderr or "")
-    failed = re.findall(r"^FAILED: (\S+)", out, re.M)
-    for ln in out.splitlines():
-        if "error C" in ln or ln.startswith("FAILED:"):
-            print("  " + ln[:240], file=sys.stderr)
-    return r.returncode, failed
+    targets = list(targets)
+    rc_all, failed_all = 0, []
+    # The Windows command line is limited (~8 KB): build in chunks of 25 objects. -k 0 keeps going past compile errors within a chunk.
+    for i in range(0, len(targets), 25):
+        inner = subprocess.list2cmdline([cn.NINJA, "-C", tree, f"-j{jobs}", "-k", "0"] + targets[i:i + 25])
+        # Freeze the build-fingerprint header: the edit makes the tree dirty, which would otherwise change the dirty flag compiled
+        # into every TU that embeds it (see cmake/GenerateBuildFingerprint.cmake).
+        r = subprocess.run(f'call "{cn.VCVARS}" >nul && {inner}', shell=True, capture_output=True, text=True, errors="replace",
+                           env={**os.environ, "MC2_FINGERPRINT_FREEZE": "1"},
+                           **console_child.child_kwargs(redirected=True))
+        out = (r.stdout or "") + (r.stderr or "")
+        failed = re.findall(r"^FAILED: (\S+)", out, re.M)
+        for ln in out.splitlines():
+            if "error C" in ln or ln.startswith("FAILED:"):
+                print("  " + ln[:240], file=sys.stderr)
+        if r.returncode and not failed:
+            print("  ninja: " + " | ".join(out.strip().splitlines()[-3:])[:400], file=sys.stderr)
+        rc_all = rc_all or r.returncode
+        failed_all += failed
+    return rc_all, failed_all
 
 
 def run(args, tidy=None, build=None) -> int:
