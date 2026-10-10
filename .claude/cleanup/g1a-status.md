@@ -109,3 +109,9 @@ Queued (not done): Enum rows return a typed `Token` enum class (no bool conversi
 - TU cost (min of 11, compile front+back end): objmgr 3.69 -> 3.83 s (+3.6%), appear and gamecam unchanged, weaponbolt carries no Gates include. Including `Gates/gate.h` costs about +0.1 s per small translation unit, which is why those four use the out-of-line light header.
 - Lessons: `gate_codemod` reads rows from HEAD but files from the working tree; `cxx17_ratchet` counts the COMMITTED tree unless `--worktree`/`--staged` is given (baseline written with `--staged` at commit time); `sed -i` on a CRLF file in this checkout flips the whole file to LF (use a python read/write with newline=""); a strict-runner FAIL with missing shutdown lines under a concurrent lane build is load, rerun before chasing it.
 - Not done: full tier1 (needs the quiet window the coordinator holds lane 2 for); the five level gates' readers (code/warrior.cpp, mclib/txmmgr.cpp, cone_glow.cpp, bdactor.cpp) stay raw until their slices.
+
+## Lane 2 merge (81ff96aa3, merge of b5c23ea34)
+
+- Lane 2 had merged nifty through G4.5a (c97559907); the conflicts left were the G4.5b side: `Gates/gate_table.cpp` (five level gates), `test_gate.cpp`, generated files, baselines. Resolution: lane 2's Enum rows (default token first, same {0,1,2} token sets) for the four level gates its mclib readers use; `MC2_FX_FORCE_SPAWN` stays the G4.5b Enum row (reader in code/warrior.cpp raw until G7); 25 `inherits` rows, WHY comments and `verified` flags intact; both test_gate case sets kept; generated files from `gate_gen --sync-verified`; passthrough debt file deleted; baselines rewritten with `--staged`.
+- `check-new-gates.py` now counts gates declared in `Gates/gate_table.json` as known: a getenv that only moves into a split file (a merge shows up as 'added' lines) names a gate that already has its row.
+- Counts after the merge: LG19 857, LG20 1054; doctest 697.

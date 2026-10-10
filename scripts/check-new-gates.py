@@ -63,10 +63,16 @@ def default_base():
     return "HEAD"
 
 
+def table_set():
+    """Every gate of the typed gate table (Gates/gate_table.json): the table is where a gate is declared now,
+    so a getenv that merely moves into a new file (a split) names a gate that already has its row."""
+    return names_in_file(os.path.join(REPO_ROOT, "Gates", "gate_table.json"))
+
+
 def registered_set():
     reg = names_in_file(REGISTRY)
     doc = names_in_file(DOC)
-    return reg | doc
+    return reg | doc | table_set()
 
 
 def mode_a(base, known):
