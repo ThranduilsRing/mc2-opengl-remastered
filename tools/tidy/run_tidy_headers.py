@@ -26,6 +26,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import run_tidy_safe as rts  # noqa: E402
 import pick_batch  # noqa: E402
+import tidy_lock  # noqa: E402
 
 objhash = rts.objhash
 console_child = rts.console_child
@@ -180,7 +181,7 @@ class Proof:
         return keep, rejected
 
 
-def main(argv=None) -> int:
+def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("headers", nargs="*")
     ap.add_argument("--dir", action="append", default=[])
@@ -192,10 +193,17 @@ def main(argv=None) -> int:
     ap.add_argument("--done", help="ledger of headers already tried (skipped; picked ones are appended)")
     ap.add_argument("--build-jobs", type=int, default=6)
     ap.add_argument("--dry-run", action="store_true", help="list the batch and its proof set, change nothing")
+    ap.add_argument("--loop", action="store_true",
+                    help="keep running batches until no candidate header is left, a batch cannot be built, or a stop is requested")
+    ap.add_argument("--stop-after-batch", action="store_true",
+                    help="do not run a batch: ask the tool that holds this tree's lock to exit after its current batch (the stop "
+                         "request is the file <tree>/.tidy.stop)")
     rts.add_lane_args(ap)
-    args = ap.parse_args(argv)
-    rts.apply_lane_args(args)
+    return ap
 
+
+def run_batch(args):
+    """One batch. -> (exit code, True when no candidate header is left)."""
     tree_abs = os.path.join(ROOT, args.tree)
     includers = includer_map(tree_abs)
     t2s = target_to_source(tree_abs)
@@ -221,7 +229,7 @@ def main(argv=None) -> int:
                 break
     if not headers:
         print("run_tidy_headers: no candidate headers")
-        return 0
+        return 0, True
     if args.lane_excluded_note:
         print(args.lane_excluded_note)
     if args.done and not args.dry_run:
@@ -233,7 +241,7 @@ def main(argv=None) -> int:
     if args.dry_run:
         for h in headers:
             print(f"  {h}  ({len(includers.get(h, ()))} objects)")
-        return 0
+        return 0, True
 
     # Propose the edits first (clang-tidy only needs the sources), keep the original and edited text, and put the originals back:
     # the baseline build and the per-header proof then run over the headers that actually changed.
@@ -271,12 +279,12 @@ def main(argv=None) -> int:
         print(f"EDIT  {h}  ({len(includers[h])} objects)")
     if not edited:
         print("run_tidy_headers: no rewrites needed")
-        return 0
+        return 0, False
 
     proof = Proof(tree_abs, includers, orig, edited, args.build_jobs)
     if proof.baseline():
         print("run_tidy_headers: the base build of the proof set failed; refusing to edit", file=sys.stderr)
-        return 2
+        return 2, False
     kept, rejected = proof.solve()
     for h, why in rejected:
         rts.restore_file(h, mtimes[h])
@@ -285,7 +293,30 @@ def main(argv=None) -> int:
           f"object(s), {len(rejected)} reverted")
     if kept:
         print("kept (commit by pathspec): " + " ".join(kept))
-    return 1 if rejected else 0
+    return (1 if rejected else 0), False
+
+
+def main(argv=None) -> int:
+    args = build_parser().parse_args(argv)
+    rts.apply_lane_args(args)
+    tree_abs = os.path.join(ROOT, args.tree)
+    if args.stop_after_batch:
+        print("run_tidy_headers: " + tidy_lock.request_stop(tree_abs))
+        return 0
+    if args.dry_run:
+        return run_batch(args)[0]
+    try:
+        with tidy_lock.TidyLock(tree_abs):
+            tidy_lock.clear_stop(tree_abs)
+            while True:
+                rc, exhausted = run_batch(args)
+                if not args.loop or exhausted or rc == 2 or tidy_lock.stop_requested(tree_abs):
+                    break
+            tidy_lock.clear_stop(tree_abs)
+    except tidy_lock.TidyBusy as e:
+        print(f"run_tidy_headers: {e}", file=sys.stderr)
+        return 3
+    return rc
 
 
 if __name__ == "__main__":

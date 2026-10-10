@@ -327,7 +327,14 @@ def main(argv=None) -> int:
         return 0
     if not args.files and not args.dir:
         ap.error("give files or --dir")
-    return run(args)
+    import tidy_lock
+    tree_abs = os.path.abspath(os.path.join(ROOT, args.tree)) if not os.path.isabs(args.tree) else args.tree
+    try:
+        with tidy_lock.TidyLock(tree_abs):
+            return run(args)
+    except tidy_lock.TidyBusy as e:
+        print(f"run_tidy_safe: {e}", file=sys.stderr)
+        return 3
 
 
 if __name__ == "__main__":
