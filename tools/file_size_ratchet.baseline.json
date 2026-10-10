@@ -14,7 +14,7 @@
  ],
  "files_over_1500": {
   "GameOS/gameos/engine_present_vk.cpp": 2749,
-  "GameOS/gameos/gameosmain.cpp": 2811,
+  "GameOS/gameos/gameosmain.cpp": 2810,
   "GameOS/gameos/gos_static_prop_registry.cpp": 2207,
   "GameOS/gameos/gos_terrain_lighting.cpp": 1697,
   "GameOS/gameos/gos_terrain_water_stream.cpp": 2455,
@@ -23,7 +23,6 @@
   "GameOS/gameos/vulkan_color_prop_island.cpp": 1785,
   "GameOS/gameos/vulkan_shadow_island_live.cpp": 1645,
   "GameOS/include/gameos.hpp": 3753,
-  "GameOS/include/imagehlp.h": 1799,
   "GuiRuntime/EditorInspector.cpp": 1652,
   "RenderCore/RendererFeatureRegistry.h": 2917,
   "code/artlry.cpp": 1816,
@@ -40,7 +39,7 @@
   "code/mover.h": 1911,
   "code/mpparameterscreen.cpp": 2415,
   "code/multplyr.h": 1849,
-  "code/objective.cpp": 2657,
+  "code/objective.cpp": 2656,
   "code/optionsarea.cpp": 1842,
   "code/pilotreviewarea.cpp": 1845,
   "code/saveload.cpp": 1683,
@@ -55,17 +54,12 @@
   "mclib/ablrtn.cpp": 1781,
   "mclib/assimp_importer.cpp": 1630,
   "mclib/camera.h": 1800,
-  "mclib/echarstring.cpp": 1622,
   "mclib/estring.cpp": 1596,
-  "mclib/ewcharstring.cpp": 1636,
   "mclib/file.cpp": 2685,
   "mclib/gosfx/fcurve.cpp": 1923,
   "mclib/gosfx/tube.cpp": 1528,
-  "mclib/heap.cpp": 2136,
   "mclib/mapdata.cpp": 2633,
-  "mclib/mlr/mlrindexedpolymesh.cpp": 1776,
   "mclib/mlr/mlrlightmap.cpp": 1599,
-  "mclib/mlr/mlrpolymesh.cpp": 1550,
   "mclib/mlr/mlrprimitiveclipping.hpp": 1722,
   "mclib/mlr/mlrtriangleclipping.hpp": 2112,
   "mclib/move.h": 1822,
@@ -75,7 +69,7 @@
   "mclib/tgl.h": 1689,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "10f623597",
+ "head": "b08cf4c21",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -84,8 +78,8 @@
    "max_lines": 523
   },
   "GameOS": {
-   "files": 317,
-   "files_over_1500": 11,
+   "files": 311,
+   "files_over_1500": 10,
    "files_over_3000": 1,
    "max_lines": 3753
   },
@@ -94,12 +88,6 @@
    "files_over_1500": 1,
    "files_over_3000": 0,
    "max_lines": 1652
-  },
-  "HostServices": {
-   "files": 3,
-   "files_over_1500": 0,
-   "files_over_3000": 0,
-   "max_lines": 120
   },
   "RenderCore": {
    "files": 55,
@@ -114,7 +102,7 @@
    "max_lines": 1159
   },
   "code": {
-   "files": 364,
+   "files": 361,
    "files_over_1500": 23,
    "files_over_3000": 1,
    "max_lines": 3273
@@ -132,8 +120,8 @@
    "max_lines": 1513
   },
   "mclib": {
-   "files": 648,
-   "files_over_1500": 22,
+   "files": 588,
+   "files_over_1500": 17,
    "files_over_3000": 0,
    "max_lines": 2685
   },
@@ -163,7 +151,7 @@
   },
   {
    "file": "GameOS/gameos/gameosmain.cpp",
-   "lines": 2811
+   "lines": 2810
   },
   {
    "file": "GameOS/gameos/engine_present_vk.cpp",
@@ -179,7 +167,7 @@
   },
   {
    "file": "code/objective.cpp",
-   "lines": 2657
+   "lines": 2656
   },
   {
    "file": "mclib/mapdata.cpp",
@@ -216,10 +204,6 @@
   {
    "file": "code/logisticsdialog.cpp",
    "lines": 2149
-  },
-  {
-   "file": "mclib/heap.cpp",
-   "lines": 2136
   },
   {
    "file": "code/missionbegin.cpp",
@@ -268,11 +252,15 @@
   {
    "file": "code/artlry.cpp",
    "lines": 1816
+  },
+  {
+   "file": "mclib/camera.h",
+   "lines": 1800
   }
  ],
  "total": {
-  "files": 1833,
-  "files_over_1500": 61,
+  "files": 1761,
+  "files_over_1500": 55,
   "files_over_3000": 2,
   "max_lines": 3753
  },
