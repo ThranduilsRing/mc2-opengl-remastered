@@ -47,7 +47,7 @@
    "LG20": 0
   },
   "GameOS": {
-   "LG01": 78,
+   "LG01": 66,
    "LG02": 208,
    "LG03": 301,
    "LG04": 6,
@@ -55,7 +55,7 @@
    "LG06": 499,
    "LG07": 0,
    "LG08": 274,
-   "LG09": 2129,
+   "LG09": 2126,
    "LG10": 40,
    "LG11": 107,
    "LG12a": 613,
@@ -370,7 +370,6 @@
    "LG17": 1
   },
   "GameOS/gameos/gameos_graphics.cpp": {
-   "LG01": 1,
    "LG03": 7,
    "LG06": 2,
    "LG09": 20,
@@ -384,7 +383,6 @@
    "LG12a": 4
   },
   "GameOS/gameos/gameos_graphics_capi.cpp": {
-   "LG01": 2,
    "LG03": 7,
    "LG05": 6,
    "LG06": 10,
@@ -393,14 +391,12 @@
    "LG17": 1
   },
   "GameOS/gameos/gameos_graphics_draw.cpp": {
-   "LG01": 3,
    "LG08": 4,
-   "LG09": 14,
+   "LG09": 12,
    "LG12a": 6,
    "LG17": 5
   },
   "GameOS/gameos/gameos_graphics_font.cpp": {
-   "LG01": 4,
    "LG03": 31,
    "LG05": 3,
    "LG06": 2,
@@ -408,10 +404,9 @@
    "LG11": 1
   },
   "GameOS/gameos/gameos_graphics_hud.cpp": {
-   "LG01": 1,
    "LG04": 2,
    "LG06": 8,
-   "LG09": 66,
+   "LG09": 65,
    "LG12a": 5,
    "LG12b": 5,
    "LG17": 2
@@ -464,7 +459,6 @@
    "LG18": 1
   },
   "GameOS/gameos/gameos_graphics_shadow.cpp": {
-   "LG01": 1,
    "LG06": 2,
    "LG09": 10,
    "LG10": 1,
@@ -5603,7 +5597,7 @@
    "LG20": 2
   }
  },
- "head": "87f2ab9e5",
+ "head": "7de4684c7",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
