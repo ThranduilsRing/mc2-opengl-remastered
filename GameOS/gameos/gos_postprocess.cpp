@@ -51,7 +51,7 @@
 
 // MC2_POSTPROCESS_BACKEND selects the backend of every routed region: "vk" (or "vulkan") asks for the
 // Vulkan island, anything else (and unset) stays on GL.
-static bool postprocessBackendWantsVk()
+bool postprocessBackendWantsVk()
 {
     return mc2::gate::is<"MC2_POSTPROCESS_BACKEND", "vk">() || mc2::gate::is<"MC2_POSTPROCESS_BACKEND", "vulkan">();
 }
@@ -83,7 +83,7 @@ int mc2ShaderPathTint()
 // the shared VK context/interop is unavailable at scene-FBO creation, the plain
 // GL alloc is used, so gate-ON with no interop degrades to the GL path. Gate OFF
 // (or island not compiled) = byte-identical to today.
-static bool mc2VkSharedSceneDepthEnabled()
+bool mc2VkSharedSceneDepthEnabled()
 {
     // Umbrella family member: MC2_VK_SHARED_GBUFFER=1 arms it; explicit
     // MC2_VK_SHARED_SCENE_DEPTH=0/1 overrides. Default OFF (pure GL).
@@ -128,13 +128,13 @@ static bool mc2VkMechTier1Enabled()
 
 // The shared scene color(MRT0)+normal(MRT1) exportable substrate is needed when
 // the prop Tier-1 OR terrain Tier-1 OR mech Tier-1 in-place co-write gate is armed.
-static bool mc2VkSharedSceneColorNeeded()
+bool mc2VkSharedSceneColorNeeded()
 {
     return mc2VkPropColorTier1Enabled() || mc2VkTerrainTier1Enabled()
         || mc2VkMechTier1Enabled();
 }
 
-static bool mc2VkSharedSceneDirectResourceEnabled()
+bool mc2VkSharedSceneDirectResourceEnabled()
 {
     // VK-RUNG8-ITEM10: the two present-tail conditions
     // (MC2_VK_PRESENT_NO_GL_IMPORT==1 && MC2_VK_PRESENT_SKIP_GL_HANDOFF==1) were
@@ -162,7 +162,7 @@ static bool mc2VkSharedSceneStrictEnabled()
 // present composites the GL scene. That decline is normally silent (a valid pure-GL
 // session); MC2_VK_SHARED_SCENE_STRICT=1 makes it a hard abort so deletion-readiness
 // / Metal-gate proofs cannot pass through a hidden shared-scene decline.
-static void mc2VkSharedSceneStrictFallback(const char* slot, const char* reason)
+void mc2VkSharedSceneStrictFallback(const char* slot, const char* reason)
 {
     if (!mc2VkSharedSceneStrictEnabled())
         return;
@@ -175,7 +175,7 @@ static void mc2VkSharedSceneStrictFallback(const char* slot, const char* reason)
     std::abort();
 }
 
-static GLuint createSceneColorPlaceholderTex(int w, int h, GLint internalFormat,
+GLuint createSceneColorPlaceholderTex(int w, int h, GLint internalFormat,
                                              GLenum format, GLenum type,
                                              GLint minMagFilter)
 {
@@ -191,7 +191,7 @@ static GLuint createSceneColorPlaceholderTex(int w, int h, GLint internalFormat,
     return tex;
 }
 
-static GLuint createSceneDepthPlaceholderTex(int w, int h)
+GLuint createSceneDepthPlaceholderTex(int w, int h)
 {
     GLuint tex = 0;
     // TEX-CLASS: render-target -- scene-depth placeholder (depth24s8)
@@ -209,7 +209,7 @@ static GLuint createSceneDepthPlaceholderTex(int w, int h)
 // import substrate (exportable D32_SFLOAT image imported into GL) is deleted; the static
 // shadow map is now always the plain-GL GL_DEPTH_COMPONENT24 allocation. Setting the env
 // prints a one-shot deprecation note (item-9 pattern) and changes nothing.
-static void mc2VkStaticShadowMapDeprecationNote()
+void mc2VkStaticShadowMapDeprecationNote()
 {
     static const bool s_once = [] {
         if (mc2::gate::get<"MC2_VK_STATIC_SHADOW_MAP">())
@@ -408,7 +408,7 @@ int mc2PropShadowReceive()
 // scene brightness/colour is unaffected -- this only restores shadows that the
 // guard was wrongly discarding.
 // MC2_SHADOW_GUARD_CLAMPED_SUN, DEFAULT ON; =0 reverts to the raw-sun guard.
-static void mc2ClampShadowSunAltitude(float& fx, float& fy, float& fz);
+void mc2ClampShadowSunAltitude(float& fx, float& fy, float& fz);
 
 bool mc2ShadowGuardClampedSun()
 {
@@ -429,8 +429,6 @@ bool mc2CloudShadowEnabled()
     return s_on;
 }
 
-namespace {
-
 // M1.5 C1 fix + M3 plan-review fix: centralized scene-FBO draw-buffer
 // policy. Every site that calls glDrawBuffers against sceneFBO_ routes
 // through this helper. The caller passes objectIdAttachmentReady so the
@@ -445,7 +443,7 @@ namespace {
 // Spec: 2026-05-23-renderworld-slice-m1-5-objectid-buffer-spec.md sec 3.
 enum class SceneDrawBufferMode { MainSceneMRT, SingleColor };
 
-static void setSceneDrawBuffers(SceneDrawBufferMode mode,
+void setSceneDrawBuffers(SceneDrawBufferMode mode,
                                 bool objectIdAttachmentReady) {
     const bool oid =
         RenderWorld::IsObjectIdBufferEnabled() && objectIdAttachmentReady;
@@ -484,8 +482,6 @@ static void setSceneDrawBuffers(SceneDrawBufferMode mode,
     }
 }
 
-} // namespace
-
 // SKYBOX-FOG-EXCLUDE-1: gate helper (read once).
 // SKYBOX-FOG-EXCLUDE-DEFAULT-ON-1: flipped default OFF->ON. The gate is inert
 // on non-HDRI missions -- renderHdriSkybox() early-returns before the stencil-
@@ -495,7 +491,7 @@ static void setSceneDrawBuffers(SceneDrawBufferMode mode,
 // fog from true-sky pixels so the skybox is visible instead of being painted
 // over by the OOB cloud bank (the user-reported "can't see the skybox").
 // Kill-switch preserved: MC2_SKYBOX_FOG_EXCLUDE=0 restores the legacy OFF path.
-static bool skyboxFogExcludeEnabled()
+bool skyboxFogExcludeEnabled()
 {
     static const bool s_on = mc2::gate::get<"MC2_SKYBOX_FOG_EXCLUDE">();
     return s_on;
@@ -512,7 +508,7 @@ static bool skyboxFogExcludeEnabled()
 // now exactly one getenv site for this variable in the tree; the VK TU calls this.
 bool gos_SkyboxFogExcludeEnabled() { return skyboxFogExcludeEnabled(); }
 
-static bool sceneGlProducerQueryEnabled()
+bool sceneGlProducerQueryEnabled()
 {
     static const bool s_on = mc2::gate::get<"MC2_VK_SCENE_GL_PRODUCER_QUERY">();
     return s_on;
@@ -579,6 +575,8 @@ bool lostWanted()
         && mc2::renderBackend() == mc2::RenderBackend::Vulkan;
     return s_on;
 }
+} // namespace
+
 void lostFrameBegin()
 {
     if (!lostWanted() || s_lostDestroyed) return;
@@ -609,7 +607,6 @@ void lostShutdown()
     if (!s_lostFreeQ.empty()) glDeleteQueries((GLsizei)s_lostFreeQ.size(), s_lostFreeQ.data());
     s_lostFreeQ.clear();
 }
-} // namespace
 
 void gos_GlLostDrawsPush(const char* tag)
 {
@@ -626,13 +623,13 @@ void gos_GlLostDrawsPop()
     lostBeginCur();
 }
 
-static bool screenShadowGlCanaryEnabled()
+bool screenShadowGlCanaryEnabled()
 {
     static const bool s_on = mc2::gate::get<"MC2_VK_SCREENSHADOW_GL_CANARY">();
     return s_on;
 }
 
-static gosPostProcess* s_postProcess = nullptr;
+gosPostProcess* s_postProcess = nullptr;
 
 gosPostProcess* getGosPostProcess()
 {
@@ -4274,8 +4271,8 @@ void gosPostProcess::runHzbRegionThroughBackend()
 }
 
 // Forward declarations for ISLAND-2 sub-stage wrappers (defined below the executor section).
-static void executorOwnBeginSub(gosPostProcess*, RenderCore::framegraph::ExecutorIslandId);
-static void executorOwnEndSub(gosPostProcess*, RenderCore::framegraph::ExecutorIslandId);
+void executorOwnBeginSub(gosPostProcess*, RenderCore::framegraph::ExecutorIslandId);
+void executorOwnEndSub(gosPostProcess*, RenderCore::framegraph::ExecutorIslandId);
 
 void gosPostProcess::endScene()
 {
@@ -5657,7 +5654,7 @@ float mc2ShadowMinSunAltDeg()
     return s_minAltDeg;
 }
 
-static void mc2ClampShadowSunAltitude(float& fx, float& fy, float& fz)
+void mc2ClampShadowSunAltitude(float& fx, float& fy, float& fz)
 {
     const float s_minAltDeg = mc2ShadowMinSunAltDeg();
     if (s_minAltDeg <= 0.0f) return;
@@ -6977,7 +6974,7 @@ void gosPostProcess::executorApplyScreenShadowState()
 // End: validate postconditions declared in the IslandContract row; on success
 // increment g_executorOwnedPasses (aggregate — sub-stages contribute).
 
-static void executorOwnBeginSub(gosPostProcess* pp, RenderCore::framegraph::ExecutorIslandId islandId)
+void executorOwnBeginSub(gosPostProcess* pp, RenderCore::framegraph::ExecutorIslandId islandId)
 {
     if (!executorEnabled()) return;
 
@@ -7054,7 +7051,7 @@ static void executorOwnBeginSub(gosPostProcess* pp, RenderCore::framegraph::Exec
     }
 }
 
-static void executorOwnEndSub(gosPostProcess* pp, RenderCore::framegraph::ExecutorIslandId islandId)
+void executorOwnEndSub(gosPostProcess* pp, RenderCore::framegraph::ExecutorIslandId islandId)
 {
     if (!executorEnabled()) return;
 
