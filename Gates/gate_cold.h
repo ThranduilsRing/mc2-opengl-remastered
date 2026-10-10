@@ -17,7 +17,7 @@ namespace mc2::gate {
 
 // The one boolean parser: 0/false/off/no (case-insensitive) -> false, 1/true/on/yes ->
 // true, unset or empty -> `dflt`, any other non-empty string -> true and *bad = true.
-// HostServices::EnvConfig::flag and the Std rule of every Bool row use it.
+// The Std rule of every Bool row uses it.
 [[nodiscard]] bool parseBool(const char* value, bool dflt, bool* bad = nullptr) noexcept;
 
 struct NameInfo {

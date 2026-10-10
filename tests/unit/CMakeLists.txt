@@ -36,7 +36,6 @@ add_executable(mc2_tests
     test_rendercore.cpp     # RENDERCORE-UNIT-TESTS-1: GL-free substrate invariants
     test_frame_arena.cpp    # FRAME-ARENA-1: FrameArena typed L2 allocator invariants
     test_depth_hzb.cpp      # HZB-DEPTH-CONVENTION-TESTS-1: reverse-Z / HZB reduction contract
-    test_host_services.cpp  # ENGINE-HOST-SERVICES-0: host-service contract + default impls
     test_gate.cpp           # GATE-REGISTRY-G1A: truthiness matrix, slot cache, [CONFIG v1] dump
     test_tactical_overview.cpp   # TACTICAL-OVERVIEW-1: blend-state pure logic
     test_xform_convention.cpp    # XFORM-CONVENTION-HARNESS-1: clip-space convention lock
@@ -102,7 +101,6 @@ add_executable(mc2_tests
     ${MC2_WORKTREE_ROOT}/mclib/xform_conventions.cpp  # XFORM-CONVENTION-HARNESS-1: GL-free leaf TU
     ${MC2_WORKTREE_ROOT}/RenderCore/RenderResourceRegistry.cpp
     ${MC2_WORKTREE_ROOT}/RenderCore/RenderDebugView.cpp
-    ${MC2_WORKTREE_ROOT}/HostServices/DefaultHostServices.cpp  # ENGINE-HOST-SERVICES-0
     ${MC2_WORKTREE_ROOT}/code/tacticaloverview_state.cpp  # TACTICAL-OVERVIEW-1
     ${MC2_WORKTREE_ROOT}/code/unitprofile.cpp   # UNIT-PROFILE-SEAM-1
     ${MC2_WORKTREE_ROOT}/code/hudtabregistry.cpp  # HUD-IMGUI slice C (pure leaf TU)
@@ -145,7 +143,6 @@ target_include_directories(mc2_tests PRIVATE
     ${MC2_WORKTREE_ROOT}/GameOS/gameos    # XFORM-CONVENTION-HARNESS-1: utils/vec.h pulled by gameos.hpp
     ${MC2_WORKTREE_ROOT}/RenderWorld
     ${MC2_WORKTREE_ROOT}/RenderCore
-    ${MC2_WORKTREE_ROOT}/HostServices
     ${MC2_WORKTREE_ROOT}/code     # UNIT-PROFILE-SEAM-1: capability.h / unitprofile.h
     ${MC2_WORKTREE_ROOT}/3rdparty/include  # MINIMAL-VIABLE-HARNESS-1: zlib.h (ffile/packet)
     ${CMAKE_CURRENT_SOURCE_DIR}

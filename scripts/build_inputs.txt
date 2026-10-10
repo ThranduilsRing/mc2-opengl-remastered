@@ -10,7 +10,6 @@ RenderCore/
 GuiRuntime/
 RenderWorld/
 GameAdapters/
-HostServices/
 Gates/
 editor/
 gui/
