@@ -47,7 +47,7 @@
    "LG20": 0
   },
   "GameOS": {
-   "LG01": 106,
+   "LG01": 78,
    "LG02": 208,
    "LG03": 301,
    "LG04": 6,
@@ -185,7 +185,7 @@
    "LG20": 9
   },
   "mclib": {
-   "LG01": 938,
+   "LG01": 933,
    "LG02": 294,
    "LG03": 1139,
    "LG04": 16,
@@ -539,7 +539,6 @@
    "LG12a": 1
   },
   "GameOS/gameos/gos_crashbundle.cpp": {
-   "LG01": 28,
    "LG06": 5,
    "LG09": 24,
    "LG11": 11,
@@ -4575,7 +4574,6 @@
    "LG03": 6
   },
   "mclib/mlr/mlrprimitivebase.cpp": {
-   "LG01": 5,
    "LG03": 16,
    "LG04": 1,
    "LG09": 1
@@ -5642,7 +5640,7 @@
    "LG20": 2
   }
  },
- "head": "8334acdf2",
+ "head": "e9732ad8b",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
