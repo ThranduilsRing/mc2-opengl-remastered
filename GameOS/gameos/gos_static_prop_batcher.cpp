@@ -1855,7 +1855,7 @@ GLenum bptcInternalFormatFor(bool isSrgb) {
 // name (getTextureName returns the .tga/.txm source path, never .ktx2). Strip
 // the last extension that appears AFTER the last path separator (so a dot in a
 // directory name is never mistaken for an extension), then append ".orm.ktx2".
-std::string deriveOrmSidecar(const char* srcName) {
+static std::string deriveOrmSidecar(const char* srcName) {
     std::string s(srcName ? srcName : "");
     size_t sep = s.find_last_of("/\\");
     size_t dot = s.find_last_of('.');
@@ -1871,7 +1871,7 @@ std::string deriveOrmSidecar(const char* srcName) {
 // The tier subdirectory is inserted between the parent directory and the filename.
 // If no tier directory is found the plain sidecar path (flat .ktx2) is returned
 // so the existing fallback / miss path handles it gracefully.
-std::string deriveTieredKtxPath(const char* srcName, int tier) {
+static std::string deriveTieredKtxPath(const char* srcName, int tier) {
     std::string s(srcName ? srcName : "");
     // Strip extension: find last dot after the last path separator.
     const size_t sep = s.find_last_of("/\\");
@@ -2578,13 +2578,13 @@ bool                       s_submitTypeHistInit    = false;
 std::array<uint64_t, 1024> s_submitTypeHist{};
 uint64_t                   s_submitTypeHistCalls   = 0;
 
-void emitSubmitTypeHistDump(const char* trigger) {
+void emitSubmitTypeHistDump(std::string_view trigger) {
     if (!s_submitTypeHistEnabled) return;
     // Build a typeID → name lookup by walking s_typeIndex once. n is ≤ a few
     // hundred types; quadratic walk is trivial for a 3-dump cadence.
     std::fprintf(stderr,
         "[SUBMIT_TYPEHIST v1] trigger=%s calls=%llu non-zero buckets:\n",
-        trigger, (unsigned long long)s_submitTypeHistCalls);
+        std::string(trigger).c_str(), (unsigned long long)s_submitTypeHistCalls);
     for (size_t t = 0; t < s_submitTypeHist.size(); ++t) {
         if (s_submitTypeHist[t] > 0) {
             const char* name = "<unknown>";
