@@ -15,11 +15,12 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include "Gates/gate.h"
 
 namespace mdi_submit {
 
 inline bool traceEnabled() {
-    static const bool s = (std::getenv("MC2_MDI_SUBMIT_TRACE") != nullptr);
+    static const bool s = mc2::gate::get<"MC2_MDI_SUBMIT_TRACE">();
     return s;
 }
 
