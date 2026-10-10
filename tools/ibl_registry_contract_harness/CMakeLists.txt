@@ -26,3 +26,5 @@ target_include_directories(ibl_registry_contract_harness PRIVATE
 target_compile_definitions(ibl_registry_contract_harness PRIVATE
     MC2_REPO_ROOT="${MC2_ROOT}")
 target_compile_features(ibl_registry_contract_harness PRIVATE cxx_std_20)
+mc2_link_gate(ibl_registry_contract_harness)
+
