@@ -15,10 +15,10 @@
  "files_over_1500": {
   "GameOS/gameos/engine_present_vk.cpp": 2750,
   "GameOS/gameos/gameosmain.cpp": 2810,
-  "GameOS/gameos/gos_mech_batcher.cpp": 3408,
+  "GameOS/gameos/gos_mech_batcher.cpp": 3299,
   "GameOS/gameos/gos_static_prop_batcher_finalize.cpp": 2054,
   "GameOS/gameos/gos_static_prop_batcher_flush.cpp": 2367,
-  "GameOS/gameos/gos_static_prop_registry.cpp": 2226,
+  "GameOS/gameos/gos_static_prop_registry.cpp": 2207,
   "GameOS/gameos/gos_terrain_lighting.cpp": 1697,
   "GameOS/gameos/gos_terrain_water_stream.cpp": 2455,
   "GameOS/gameos/gpu_cull_compute.cpp": 1558,
@@ -31,32 +31,32 @@
   "GuiRuntime/EditorInspector.cpp": 1659,
   "RenderCore/RendererFeatureRegistry.h": 2917,
   "code/artlry.cpp": 1816,
-  "code/bldng.cpp": 1707,
-  "code/brain_special_dispatch.cpp": 3307,
-  "code/controlgui.cpp": 5016,
-  "code/gamecam.cpp": 1572,
-  "code/gameobj.cpp": 2365,
-  "code/infowindow.cpp": 1746,
-  "code/logisticsdata.cpp": 3442,
+  "code/bldng.cpp": 1702,
+  "code/brain_special_dispatch.cpp": 3273,
+  "code/controlgui.cpp": 4991,
+  "code/gamecam.cpp": 1564,
+  "code/gameobj.cpp": 2366,
+  "code/infowindow.cpp": 1732,
+  "code/logisticsdata.cpp": 3438,
   "code/logisticsdialog.cpp": 2149,
-  "code/mechicon.cpp": 1969,
-  "code/mechlabscreen.cpp": 1949,
-  "code/mechlopedia.cpp": 1660,
+  "code/mechicon.cpp": 1967,
+  "code/mechlabscreen.cpp": 1952,
+  "code/mechlopedia.cpp": 1663,
   "code/mission.cpp": 5867,
-  "code/missionbegin.cpp": 2136,
-  "code/missiongui.cpp": 7905,
+  "code/missionbegin.cpp": 2132,
+  "code/missiongui.cpp": 7888,
   "code/mover.h": 1911,
   "code/mpparameterscreen.cpp": 2415,
   "code/multplyr.h": 1849,
   "code/objective.cpp": 2657,
-  "code/objmgr.cpp": 5682,
-  "code/optionsarea.cpp": 1841,
-  "code/pilotreviewarea.cpp": 1844,
-  "code/saveload.cpp": 1723,
+  "code/objmgr.cpp": 5668,
+  "code/optionsarea.cpp": 1842,
+  "code/pilotreviewarea.cpp": 1845,
+  "code/saveload.cpp": 1720,
   "code/tacordr.cpp": 2072,
-  "code/terrobj.cpp": 1748,
+  "code/terrobj.cpp": 1740,
   "code/turret.cpp": 2346,
-  "code/warrior.cpp": 2741,
+  "code/warrior.cpp": 2727,
   "code/warrior.h": 2171,
   "editor/ObjectiveDlg.cpp": 1517,
   "gui/alistbox.cpp": 1513,
@@ -93,13 +93,13 @@
   "mclib/vfxtile.cpp": 2944,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "9c734dfc0",
+ "head": "b7ada2113",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
    "files_over_1500": 0,
    "files_over_3000": 0,
-   "max_lines": 536
+   "max_lines": 523
   },
   "GameOS": {
    "files": 302,
@@ -129,13 +129,13 @@
    "files": 6,
    "files_over_1500": 0,
    "files_over_3000": 0,
-   "max_lines": 1168
+   "max_lines": 1159
   },
   "code": {
    "files": 329,
    "files_over_1500": 28,
    "files_over_3000": 6,
-   "max_lines": 7905
+   "max_lines": 7888
   },
   "editor": {
    "files": 225,
@@ -169,7 +169,7 @@
  "top": [
   {
    "file": "code/missiongui.cpp",
-   "lines": 7905
+   "lines": 7888
   },
   {
    "file": "code/mission.cpp",
@@ -177,11 +177,11 @@
   },
   {
    "file": "code/objmgr.cpp",
-   "lines": 5682
+   "lines": 5668
   },
   {
    "file": "code/controlgui.cpp",
-   "lines": 5016
+   "lines": 4991
   },
   {
    "file": "mclib/terrain.cpp",
@@ -205,15 +205,15 @@
   },
   {
    "file": "code/logisticsdata.cpp",
-   "lines": 3442
+   "lines": 3438
   },
   {
    "file": "GameOS/gameos/gos_mech_batcher.cpp",
-   "lines": 3408
+   "lines": 3299
   },
   {
    "file": "code/brain_special_dispatch.cpp",
-   "lines": 3307
+   "lines": 3273
   },
   {
    "file": "mclib/msl.cpp",
@@ -245,7 +245,7 @@
   },
   {
    "file": "code/warrior.cpp",
-   "lines": 2741
+   "lines": 2727
   },
   {
    "file": "mclib/file.cpp",
@@ -277,14 +277,14 @@
   },
   {
    "file": "code/gameobj.cpp",
-   "lines": 2365
+   "lines": 2366
   },
   {
    "file": "code/turret.cpp",
    "lines": 2346
   },
   {
-   "file": "GameOS/gameos/gos_static_prop_registry.cpp",
+   "file": "mclib/txmmgr_render.cpp",
    "lines": 2226
   }
  ],
@@ -292,7 +292,7 @@
   "files": 1748,
   "files_over_1500": 79,
   "files_over_3000": 13,
-  "max_lines": 7905
+  "max_lines": 7888
  },
  "version": 1
 }
