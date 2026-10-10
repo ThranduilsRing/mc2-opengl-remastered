@@ -1,0 +1,32 @@
+{
+ "base": "7b3210ea5",
+ "src": "code/mission.cpp",
+ "stem": "mission",
+ "add": [
+  "",
+  "#ifndef FINAL",
+  "#endif",
+  "extern float CheatHitDamage;   // defined in mission.cpp",
+  "void InitDifficultySettings (FitIniFile *gameSystemFile);   // defined in mission.cpp"
+ ],
+ "scripts": [
+  "scripts/check-gate-default-agreement.py",
+  "scripts/check-mover-registry-coherence.sh",
+  "scripts/check-order-liveness.py",
+  "scripts/check-tgl-load-callers.sh",
+  "scripts/gate_default_classifier.py",
+  "scripts/run_smoke.py",
+  "scripts/smoke_lib/logparse.py",
+  "tools/class_light_band_harness/class_light_band_harness.cpp",
+  "tools/gate_codemod.py",
+  "tools/mco_import/build_mco_compat.py",
+  "tools/object_light_row_harness/object_light_row_harness.cpp",
+  "tools/repo_intel/test_anti_churn.py",
+  "tools/terrain_gen/terrain_gen.py"
+ ],
+ "_scripts_reason": "Reviewed: check-mover-registry-coherence counts the setOnGUI callers over every mission*.cpp piece and reads the S2 pairing windows and the S6 audit sentinels from the concatenated pieces (its self-test reverts the same concatenation); check-tgl-load-callers and check-order-liveness find their sentinels and fixtures across the pieces or in a deployed log and pass unchanged; the other scripts and harnesses cite mission.cpp lines in comments only; tools/gate_codemod.py and the gate classifiers (lane 1 gate tooling) list or cite the file and are not edited here.",
+ "exclude_files": [
+  "mission2.cpp"
+ ],
+ "split_commit": "e8aaccaa1"
+}
