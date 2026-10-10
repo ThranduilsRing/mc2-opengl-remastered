@@ -1291,10 +1291,15 @@ GATE_INCLUDE = '#include "Gates/gate.h"'
 def apply_edits(raw, results):
     """The file text with every NO-CHANGE / EDGE site rewritten (descending offsets, overlaps skipped) and the gate
     include added. Returns (new_text, applied, skipped)."""
+    # A statement's span starts right after the previous `;`, `{` or `}`: skip the blanks and comment blocks that
+    # precede it (the comment-stripped text keeps raw offsets, with comments blanked) so they and the indentation stay.
+    T = gi.strip_comments(raw)
     todo = sorted((r for r in results if r.edit and r.verdict in ("NO-CHANGE", "EDGE")), key=lambda r: -r.edit[0])
     applied, skipped, limit = [], [], len(raw) + 1
     for r in todo:
         a, b, new = r.edit
+        while a < b and T[a].isspace():
+            a += 1
         if b > limit:
             skipped.append(r)
             continue

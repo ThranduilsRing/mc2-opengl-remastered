@@ -5,7 +5,7 @@
 generator_version: "3.0.0"
 gate_count: 1139
 registry_entry_count: 354
-verified_count: 41
+verified_count: 55
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -4199,6 +4199,7 @@ flags:
     owner: terrain
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_RENDER_WORLD_SELFTEST
     kind: Bool
     default: false
@@ -7624,6 +7625,7 @@ flags:
     owner: terrain
     doc: "[WATER_DEPTHPROBE v1] RETAINED verification instrument (env-gated MC2_WATER_DEPTHPROBE, silent by default; demote-not-delete per the debug-instrumentation..."
     smoke_passthrough: true
+    verified: true
   - name: MC2_WATER_EDGE_FEATHER
     kind: Bool
     default: true
@@ -7642,6 +7644,7 @@ flags:
     rule: Presence
     owner: terrain
     doc: "WATER-FULL-RECIPE-GPU-TIMER-SPIKE-0 (MC2_WATER_FULL_RECIPE_SPIKE): measurement only."
+    verified: true
   - name: MC2_WATER_GATE_DIAG
     kind: Bool
     default: false
@@ -7655,12 +7658,14 @@ flags:
     rule: Lead0Kill
     owner: terrain
     doc: ""
+    verified: true
   - name: MC2_WATER_GPU_FULL_RECIPE_CULL
     kind: Bool
     default: false
     rule: Lead0P
     owner: terrain
     doc: "WATER-GPU-FULL-RECIPE-CULL-1A (MC2_WATER_GPU_FULL_RECIPE_CULL, default-OFF): runs the full-recipe cull path NON-AUTHORITATIVELY (candidate path still draws..."
+    verified: true
   - name: MC2_WATER_HDRI_LOD
     kind: Float
     default: 0
@@ -7681,6 +7686,7 @@ flags:
     rule: Presence
     owner: terrain
     doc: ""
+    verified: true
   - name: MC2_WATER_NO_DEPTH_WRITE
     kind: Bool
     default: false
@@ -7714,6 +7720,7 @@ flags:
     owner: terrain
     doc: "[WATER_RENDERPROBE v1] Fix B matrix-share release gate."
     smoke_passthrough: true
+    verified: true
   - name: MC2_WATER_S6_COST
     kind: Bool
     default: false
@@ -7750,6 +7757,7 @@ flags:
     owner: terrain
     doc: "Shore mode 3 (MC2_WATER_SHORE_MODE=3) tuning: extra world units added to the water admission extent beyond the sidecar contour so geometry exists for the..."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TUNE_WATER_SHORE3_EXTRA_WU, kind: Feature, order: -1, default_on: false}
   - name: MC2_WATER_SHORE_FEATHER
     kind: Float
@@ -7759,6 +7767,7 @@ flags:
     doc: ""
     range: {lo: 0, hi: 3.4028234663852886e+38, style: reject}
     smoke_passthrough: true
+    verified: true
   - name: MC2_WATER_SHORE_FEATHER_WU
     kind: Float
     default: 7
@@ -7781,6 +7790,7 @@ flags:
     doc: "SHORELINE-GEOMETRY-1: fBm meander amplitude in world units applied to the shore contour in gos_terrain_water_stream.cpp ShoreMeanderWu(); breaks the..."
     range: {lo: 0, hi: 3.4028234663852886e+38, style: reject}
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_WATER_SHORE_MEANDER, kind: Feature, order: -1, default_on: false}
   - name: MC2_WATER_SHORE_MEANDER_FREQ
     kind: Float
@@ -7788,8 +7798,9 @@ flags:
     rule: Prefix
     owner: terrain
     doc: "SHORELINE-GEOMETRY-1 companion tuning knob for MC2_WATER_SHORE_MEANDER: spatial frequency of the shore-contour fBm, in cycles per world unit..."
-    range: {lo: 0, hi: 3.4028234663852886e+38, style: reject}
+    range: {lo: 0, hi: 3.4028234663852886e+38, style: reject, lo_exclusive: true}
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TUNE_WATER_SHORE_MEANDER_FREQ, kind: Feature, order: -1, default_on: false}
   - name: MC2_WATER_SHORE_MODE
     kind: Enum
@@ -7811,6 +7822,7 @@ flags:
     owner: terrain
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_WATER_THINRING_TRACE
     kind: Bool
     default: false
@@ -7818,12 +7830,14 @@ flags:
     owner: terrain
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_WATER_UPLOAD_NARROW
     kind: Bool
     default: true
     rule: Lead0Kill
     owner: terrain
     doc: ""
+    verified: true
   - name: MC2_WIDTH
     kind: Int
     default: 0

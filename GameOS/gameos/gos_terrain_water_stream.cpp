@@ -50,6 +50,7 @@ extern int mc2WaterBiasLegacy();
 #include "mc2_hitch_trace.h"
 
 #include "../../RenderCore/GpuBufferOwner.h"  // WATER-REGISTRY-0: MDI water buffer owner records (L7.4 prep)
+#include "Gates/gate.h"
 
 // [WATER_DEPTHPROBE v1] cross-TU Probe-8 fingerprint accessors (terrain-solid
 // side). Paired per-frame against the water-upload MVP fingerprint to
@@ -70,12 +71,7 @@ namespace WaterStream {
 // dissolves into a soft, waterline-hugging alpha gradient. Read once; default
 // unset/<=0 -> returns 0 -> EffAlphaDepth is the identity -> byte-identical.
 float ShoreFeatherFloorWu() {
-    static const float s_floor = []() -> float {
-        const char* v = getenv("MC2_WATER_SHORE_FEATHER");
-        if (!v || !*v) return 0.0f;
-        const float f = (float)atof(v);
-        return f > 0.0f ? f : 0.0f;
-    }();
+    static const float s_floor = mc2::gate::get<"MC2_WATER_SHORE_FEATHER">();
     return s_floor;
 }
 
@@ -131,12 +127,7 @@ float EffAlphaDepth(float baseAlphaDepth) {
 // default needs a fix that separates the cure from the defect -- the |grad|-keyed
 // clamp provably cannot, because both have the same cause.
 float ShoreMeanderWu() {
-    static const float s_amp = []() -> float {
-        const char* v = getenv("MC2_WATER_SHORE_MEANDER");
-        if (!v || !*v) return 0.0f;       // OFF -- see the block above
-        const float f = (float)atof(v);
-        return f > 0.0f ? f : 0.0f;       // explicit 0 => off
-    }();
+    static const float s_amp = mc2::gate::get<"MC2_WATER_SHORE_MEANDER">();
     return s_amp;
 }
 
@@ -144,12 +135,7 @@ float ShoreMeanderFreq() {
     // Default 1/384 wu = one dominant fBm cycle per ~3 tiles (tile = 128 wu).
     // Long enough to bend a whole riser rather than serrate it, short enough
     // that a single tile edge never stays straight across its full length.
-    static const float s_freq = []() -> float {
-        const char* v = getenv("MC2_WATER_SHORE_MEANDER_FREQ");
-        if (!v || !*v) return 1.0f / 384.0f;
-        const float f = (float)atof(v);
-        return f > 0.0f ? f : 1.0f / 384.0f;
-    }();
+    static const float s_freq = mc2::gate::get<"MC2_WATER_SHORE_MEANDER_FREQ">();
     return s_freq;
 }
 
@@ -164,10 +150,7 @@ float EffShoreExt(float baseAlphaDepth) {
     // MC2_WATER_SHORE_MODE=3 (GL prototype): widen admission so geometry exists
     // beyond the true sidecar contour for the per-pixel discard to carve.
     if (gos_WaterShoreMode() == 3) {
-        static const float s_extra = []() {
-            const char* v = std::getenv("MC2_WATER_SHORE3_EXTRA_WU");
-            return v ? (float)atof(v) : 60.0f;
-        }();
+        static const float s_extra = mc2::gate::get<"MC2_WATER_SHORE3_EXTRA_WU">();
         ext += s_extra;
     }
     return ext;
@@ -210,8 +193,7 @@ uint64_t g_thinTraceFrame      = 0;
 bool ThinRingTraceOn() {
     if (!g_thinRingTraceQueried) {
         g_thinRingTraceQueried = true;
-        const char* v = getenv("MC2_WATER_THINRING_TRACE");
-        g_thinRingTraceEnabled = (v && v[0] == '1');
+        g_thinRingTraceEnabled = mc2::gate::get<"MC2_WATER_THINRING_TRACE">();
     }
     return g_thinRingTraceEnabled;
 }
@@ -247,8 +229,7 @@ bool s_narrowEnabledKnown = false;
 bool s_narrowEnabled = true;
 inline bool NarrowEnabledImpl() {
     if (!s_narrowEnabledKnown) {
-        const char* v = getenv("MC2_WATER_UPLOAD_NARROW");
-        s_narrowEnabled = !(v && v[0] == '0' && v[1] == '\0');
+        s_narrowEnabled = mc2::gate::get<"MC2_WATER_UPLOAD_NARROW">();
         s_narrowEnabledKnown = true;
     }
     return s_narrowEnabled;
@@ -271,7 +252,7 @@ bool s_debugEnabledKnown = false;
 bool s_debugEnabled = false;
 bool DebugOn() {
     if (!s_debugEnabledKnown) {
-        s_debugEnabled = (getenv("MC2_WATER_STREAM_DEBUG") != nullptr);
+        s_debugEnabled = mc2::gate::get<"MC2_WATER_STREAM_DEBUG">();
         s_debugEnabledKnown = true;
     }
     return s_debugEnabled;
@@ -386,8 +367,7 @@ bool IsFullRecipeAuthoritative() {
         // DEFAULT-ON since 2026-06-03 (1A byte-identical parity across tier1 +
         // user pan-across-water-edge + visual soak): only literal "0" opts out
         // (revert escape hatch); any other value INCLUDING UNSET opts in.
-        const char* v = getenv("MC2_WATER_GPU_FULL_RECIPE_AUTHORITATIVE");
-        s_val = !(v && v[0] == '0' && v[1] == '\0');
+        s_val = mc2::gate::get<"MC2_WATER_GPU_FULL_RECIPE_AUTHORITATIVE">();
         s_known = true;
     }
     return s_val;
@@ -554,8 +534,7 @@ void Build() {
     // Recomputes the VS thickness formula CPU-side over the populated recipes so a
     // smoke can assert the elevation path is live (max > 0), not a flat unbound read.
     {
-        static const bool s_waterMatProbe =
-            (getenv("MC2_WATER_MATERIAL_PROBE") != nullptr);
+        static const bool s_waterMatProbe = mc2::gate::get<"MC2_WATER_MATERIAL_PROBE">();
         if (s_waterMatProbe && !g_recipes.empty()) {
             float tmin = 1e30f, tmax = -1e30f;
             for (const WaterRecipe& r : g_recipes) {
@@ -1046,7 +1025,7 @@ inline uint32_t bitcastFloatToUint(float f) {
 
 void CheckParityFrame(const ParityFrameUniforms& u) {
     if (!s_parityEnabledKnown) {
-        s_parityEnabled = (getenv("MC2_RENDER_WATER_PARITY_CHECK") != nullptr);
+        s_parityEnabled = mc2::gate::get<"MC2_RENDER_WATER_PARITY_CHECK">();
         s_parityEnabledKnown = true;
         if (s_parityEnabled) {
             fprintf(stderr,
@@ -1798,8 +1777,7 @@ bool ComputeDispatchAndBindThinRecords(float frameCos) {
             // moved frames) means the MVP-consistency contract broke again.
             // FNV-1a over the water-uploaded MVP's first 12 floats, byte-
             // identical to gos_terrain_indirect.cpp Probe 8.
-            static const bool s_waterDepthProbe =
-                (getenv("MC2_WATER_DEPTHPROBE") != nullptr);
+            static const bool s_waterDepthProbe = mc2::gate::get<"MC2_WATER_DEPTHPROBE">();
             if (s_waterDepthProbe) {
                 uint32_t wfp = 2166136261u;
                 for (int k = 0; k < 12; ++k) {
@@ -1881,8 +1859,7 @@ bool ComputeDispatchAndBindThinRecords(float frameCos) {
             // NOTE: wfp/tfp/tfi/lcfp/armed/f are scoped inside if(s_waterDepthProbe)
             // above and are not visible here; all are recomputed locally using the
             // identical FNV-1a idiom so this block is fully self-contained.
-            static const bool s_waterRenderProbe =
-                (getenv("MC2_WATER_RENDERPROBE") != nullptr);
+            static const bool s_waterRenderProbe = mc2::gate::get<"MC2_WATER_RENDERPROBE">();
             if (s_waterRenderProbe) {
                 uint32_t wfp2 = 2166136261u;
                 for (int k = 0; k < 12; ++k) {
@@ -1959,15 +1936,14 @@ bool ComputeDispatchAndBindThinRecords(float frameCos) {
     // full-recipe cull dispatch over the whole world-indexed recipe set (GPU
     // eligibility predicate) to SCRATCH buffers never fed to draw, and logs the
     // GPU-us comparison every 600 frames. Default-off: zero behavior change.
-    static const bool s_spikeOn = (getenv("MC2_WATER_FULL_RECIPE_SPIKE") != nullptr);
+    static const bool s_spikeOn = mc2::gate::get<"MC2_WATER_FULL_RECIPE_SPIKE">();
     // WATER-GPU-FULL-RECIPE-CULL-1A (MC2_WATER_GPU_FULL_RECIPE_CULL, default-OFF):
     // runs the full-recipe cull path NON-AUTHORITATIVELY (candidate path still draws,
     // CPU narrow walk stays alive) and parity-compares the two GPU outputs. Authority
     // flip + walk-skip is 1B. [adversarial M-3: walk alive so the candidate reference
     // is non-empty; M-1: this whole function only runs when the GPU water path is
     // armed (fast path owns the draw); C-2: recipes stay at binding 0; M-2: u_worldToClipGL.]
-    static const bool s_cullOn = (getenv("MC2_WATER_GPU_FULL_RECIPE_CULL") != nullptr
-                                  && getenv("MC2_WATER_GPU_FULL_RECIPE_CULL")[0] != '0');
+    static const bool s_cullOn = mc2::gate::get<"MC2_WATER_GPU_FULL_RECIPE_CULL">();
     // The scratch full-recipe dispatch (spike timer / 1A parity) is the NON-authoritative
     // comparison harness — pointless in 1B authoritative mode (the live dispatch IS
     // full-recipe to the real buffers), so disable it there.

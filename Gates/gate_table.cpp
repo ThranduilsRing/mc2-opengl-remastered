@@ -864,7 +864,7 @@ L(Presence, "MC2_RENDER_PATH", Bool, false, "props", "", "G5 RENDER-PATH OBSERVA
 L(Lead1, "MC2_RENDER_SNAPSHOT_LOG", Bool, false, "gameos", "", "", passthrough),
 L(Presence, "MC2_RENDER_WATER_FASTPATH", Bool, false, "terrain", "", "", passthrough),
 P("MC2_RENDER_WATER_FASTPATH_DEBUG", Int, 0, "gameos", "", ""),
-L(Presence, "MC2_RENDER_WATER_PARITY_CHECK", Bool, false, "terrain", "", "", passthrough),
+L(Presence, "MC2_RENDER_WATER_PARITY_CHECK", Bool, false, "terrain", "", "", passthrough | verified),
 L(Lead0, "MC2_RENDER_WORLD_SELFTEST", Bool, false, "code", "", ""),
 // history: docs/gate-history.md#MC2_RENDER_WORLD_TRACE
 L(Lead0, "MC2_RENDER_WORLD_TRACE", Bool, false, "unclassified", "", "Per-frame [RENDER_WORLD v1] banner + per-event logs (RenderWorld.cpp).", registry(Trace, "MC2_TRACE_RENDER_WORLD", -1, false)),
@@ -1666,21 +1666,21 @@ L(Presence, "MC2_WATER_ASPECT_DIAG", Bool, false, "code", "", "[WATER_ASPECT_DIA
 L(Lead0, "MC2_WATER_BIAS_LEGACY", Bool, false, "gameos", "", ""),
 L(Presence, "MC2_WATER_DEBUG", Bool, false, "terrain", "", "MC2_WATER_DEBUG=1: post-warmup population recon for the renderWater slice.", passthrough),
 P("MC2_WATER_DEBUG_MODE", Int, 0, "gameos", "", ""),
-L(Presence, "MC2_WATER_DEPTHPROBE", Bool, false, "terrain", "", "[WATER_DEPTHPROBE v1] RETAINED verification instrument (env-gated MC2_WATER_DEPTHPROBE, silent by default; demote-not-delete per the debug-instrumentation...", passthrough),
+L(Presence, "MC2_WATER_DEPTHPROBE", Bool, false, "terrain", "", "[WATER_DEPTHPROBE v1] RETAINED verification instrument (env-gated MC2_WATER_DEPTHPROBE, silent by default; demote-not-delete per the debug-instrumentation...", passthrough | verified),
 L(Lead0Kill, "MC2_WATER_EDGE_FEATHER", Bool, true, "gameos", "", ""),
 P("MC2_WATER_EDGE_FEATHER_STRENGTH", Float, 1.0, "gameos", "", ""),
-L(Presence, "MC2_WATER_FULL_RECIPE_SPIKE", Bool, false, "terrain", "", "WATER-FULL-RECIPE-GPU-TIMER-SPIKE-0 (MC2_WATER_FULL_RECIPE_SPIKE): measurement only."),
+L(Presence, "MC2_WATER_FULL_RECIPE_SPIKE", Bool, false, "terrain", "", "WATER-FULL-RECIPE-GPU-TIMER-SPIKE-0 (MC2_WATER_FULL_RECIPE_SPIKE): measurement only.", verified),
 L(Presence, "MC2_WATER_GATE_DIAG", Bool, false, "terrain", "", "S2.15 gate diag: editor fails to arm FAST water path - print once per (mission/state-change) what gate fails.", passthrough),
-L(Lead0Kill, "MC2_WATER_GPU_FULL_RECIPE_AUTHORITATIVE", Bool, true, "terrain", "", ""),
-L(Lead0P, "MC2_WATER_GPU_FULL_RECIPE_CULL", Bool, false, "terrain", "", "WATER-GPU-FULL-RECIPE-CULL-1A (MC2_WATER_GPU_FULL_RECIPE_CULL, default-OFF): runs the full-recipe cull path NON-AUTHORITATIVELY (candidate path still draws..."),
+L(Lead0Kill, "MC2_WATER_GPU_FULL_RECIPE_AUTHORITATIVE", Bool, true, "terrain", "", "", verified),
+L(Lead0P, "MC2_WATER_GPU_FULL_RECIPE_CULL", Bool, false, "terrain", "", "WATER-GPU-FULL-RECIPE-CULL-1A (MC2_WATER_GPU_FULL_RECIPE_CULL, default-OFF): runs the full-recipe cull path NON-AUTHORITATIVELY (candidate path still draws...", verified),
 P("MC2_WATER_HDRI_LOD", Float, 0.0, "gameos", "", "", passthrough),  // default not derivable from the tree
 L(Lead0, "MC2_WATER_HDRI_REFL_FULL", Bool, false, "gameos", "", "", passthrough),
-L(Presence, "MC2_WATER_MATERIAL_PROBE", Bool, false, "terrain", "", ""),
+L(Presence, "MC2_WATER_MATERIAL_PROBE", Bool, false, "terrain", "", "", verified),
 L(Presence, "MC2_WATER_NO_DEPTH_WRITE", Bool, false, "gameos", "", ""),
 L(Lead0Kill, "MC2_WATER_REFLECTION", Bool, true, "gameos", "", ""),
 L(Lead0, "MC2_WATER_REFLECTION_RT", Bool, false, "terrain", "", "", passthrough),
 L(Lead0, "MC2_WATER_REFL_RT_PIXELPROOF", Bool, false, "terrain", "", "", passthrough),
-L(Presence, "MC2_WATER_RENDERPROBE", Bool, false, "terrain", "", "[WATER_RENDERPROBE v1] Fix B matrix-share release gate.", passthrough),
+L(Presence, "MC2_WATER_RENDERPROBE", Bool, false, "terrain", "", "[WATER_RENDERPROBE v1] Fix B matrix-share release gate.", passthrough | verified),
 L(Presence, "MC2_WATER_S6_COST", Bool, false, "terrain", "", "S6 coarse cost A/B instrument: ONE QPC pair around the WHOLE per-frame setupTextures loop (NOT per-quad - the per-quad std::chrono COST_SPLIT scopes are...", passthrough),
 L(Presence, "MC2_WATER_S6_TRACE", Bool, false, "terrain", "", ""),
 // ── WATER-SUN-SPEC-2 ───────────────────────────────────────────────────
@@ -1694,22 +1694,22 @@ L(Lead0, "MC2_WATER_SHINE", Bool, false, "gameos", "", "[DEFAULT-OFF OPT-IN.", p
 P("MC2_WATER_SHORE3_DEPTH_K", Float, 0.03, "gameos", "", "Shore mode 3 tuning: u_shoreDepthK, fraction of clip.z added to the flat water plane depth (depth-only lift so coarse terrain triangles do not carve...", passthrough | registry(Feature, "MC2_TUNE_WATER_SHORE3_DEPTH_K", -1, false)),
 // -- WATER-SHORE-MODE-3 tuning knobs (GL prototype) ----------------------
 // history: docs/gate-history.md#MC2_WATER_SHORE3_EXTRA_WU
-P("MC2_WATER_SHORE3_EXTRA_WU", Float, 60.0, "terrain", "", "Shore mode 3 (MC2_WATER_SHORE_MODE=3) tuning: extra world units added to the water admission extent beyond the sidecar contour so geometry exists for the...", passthrough | registry(Feature, "MC2_TUNE_WATER_SHORE3_EXTRA_WU", -1, false)),
-P("MC2_WATER_SHORE_FEATHER", Float, 0.0, "terrain", "", "", passthrough | range(0.0, 3.4028234663852886e38)),
+P("MC2_WATER_SHORE3_EXTRA_WU", Float, 60.0, "terrain", "", "Shore mode 3 (MC2_WATER_SHORE_MODE=3) tuning: extra world units added to the water admission extent beyond the sidecar contour so geometry exists for the...", passthrough | registry(Feature, "MC2_TUNE_WATER_SHORE3_EXTRA_WU", -1, false) | verified),
+P("MC2_WATER_SHORE_FEATHER", Float, 0.0, "terrain", "", "", passthrough | range(0.0, 3.4028234663852886e38) | verified),
 P("MC2_WATER_SHORE_FEATHER_WU", Float, 7.0, "gameos", "", ""),
 // WATER-SHORE-MASK-1 (3c864eac): shipped default-ON but was never registered.
 // history: docs/gate-history.md#MC2_WATER_SHORE_MASK
 G("MC2_WATER_SHORE_MASK", Bool, true, "terrain", "", "WATER-SHORE-MASK-1: per-mission shoreline mask sidecar (data/missions/<m>.beauty/shoreline_mask.png) drives the water shore edge.", passthrough | registry(Feature, "MC2_FEATURE_WATER_SHORE_MASK", -1, true)),
 // SHORELINE-GEOMETRY-1 / WATER-MEANDER-CLAMP-1: shore meander is DEFAULT OFF (0).
 // history: docs/gate-history.md#MC2_WATER_SHORE_MEANDER
-P("MC2_WATER_SHORE_MEANDER", Float, 0.0, "terrain", "", "SHORELINE-GEOMETRY-1: fBm meander amplitude in world units applied to the shore contour in gos_terrain_water_stream.cpp ShoreMeanderWu(); breaks the...", passthrough | registry(Feature, "MC2_FEATURE_WATER_SHORE_MEANDER", -1, false) | range(0.0, 3.4028234663852886e38)),
+P("MC2_WATER_SHORE_MEANDER", Float, 0.0, "terrain", "", "SHORELINE-GEOMETRY-1: fBm meander amplitude in world units applied to the shore contour in gos_terrain_water_stream.cpp ShoreMeanderWu(); breaks the...", passthrough | registry(Feature, "MC2_FEATURE_WATER_SHORE_MEANDER", -1, false) | range(0.0, 3.4028234663852886e38) | verified),
 // history: docs/gate-history.md#MC2_WATER_SHORE_MEANDER_FREQ
-P("MC2_WATER_SHORE_MEANDER_FREQ", Float, 1.0 / 384.0, "terrain", "", "SHORELINE-GEOMETRY-1 companion tuning knob for MC2_WATER_SHORE_MEANDER: spatial frequency of the shore-contour fBm, in cycles per world unit...", passthrough | registry(Feature, "MC2_TUNE_WATER_SHORE_MEANDER_FREQ", -1, false) | range(0.0, 3.4028234663852886e38)),
+P("MC2_WATER_SHORE_MEANDER_FREQ", Float, 1.0 / 384.0, "terrain", "", "SHORELINE-GEOMETRY-1 companion tuning knob for MC2_WATER_SHORE_MEANDER: spatial frequency of the shore-contour fBm, in cycles per world unit...", passthrough | registry(Feature, "MC2_TUNE_WATER_SHORE_MEANDER_FREQ", -1, false) | rangeAbove(0.0, 3.4028234663852886e38) | verified),
 G("MC2_WATER_SHORE_MODE", Enum, "", "terrain", "", "", tokens("|0|1|2|3")),
 L(Lead0, "MC2_WATER_SKYTINT", Bool, false, "gameos", "", ""),
-L(Presence, "MC2_WATER_STREAM_DEBUG", Bool, false, "terrain", "", "", passthrough),
-L(Lead1, "MC2_WATER_THINRING_TRACE", Bool, false, "terrain", "", "", passthrough),
-L(Lead0Kill, "MC2_WATER_UPLOAD_NARROW", Bool, true, "terrain", "", ""),
+L(Presence, "MC2_WATER_STREAM_DEBUG", Bool, false, "terrain", "", "", passthrough | verified),
+L(Lead1, "MC2_WATER_THINRING_TRACE", Bool, false, "terrain", "", "", passthrough | verified),
+L(Lead0Kill, "MC2_WATER_UPLOAD_NARROW", Bool, true, "terrain", "", "", verified),
 P("MC2_WIDTH", Int, 0, "gameos", "", "(c) #49 windowed-resolution oracle.", passthrough),
 L(Lead0, "MC2_WINDOWED", Bool, false, "gameos", "", "", passthrough),
 // ── NOFOCUS-HARDEN-1 ───────────────────────────────────────────────────
