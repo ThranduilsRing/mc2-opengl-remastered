@@ -35,7 +35,7 @@
   "code/brain_special_dispatch.cpp": 3273,
   "code/controlgui.cpp": 4991,
   "code/gamecam.cpp": 1564,
-  "code/gameobj.cpp": 2365,
+  "code/gameobj.cpp": 2366,
   "code/infowindow.cpp": 1746,
   "code/logisticsdata.cpp": 3438,
   "code/logisticsdialog.cpp": 2149,
@@ -93,7 +93,7 @@
   "mclib/vfxtile.cpp": 2944,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "757964d6f",
+ "head": "eb246ceb7",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -281,7 +281,7 @@
   },
   {
    "file": "code/gameobj.cpp",
-   "lines": 2365
+   "lines": 2366
   },
   {
    "file": "code/turret.cpp",

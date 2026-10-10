@@ -79,6 +79,7 @@
 #include <stdio.h>   // printf, fflush
 #include <stdint.h>
 #include "../GameOS/gameos/diagnostic_trace.h"   // COMBAT-TRACE-1: weapon-fire JSONL events
+#include "Gates/gate.h"
 
 //---------------------------------------------------------------------------
 extern GameLog* CombatLog;
@@ -103,7 +104,7 @@ bool GameObject::initialize = false;
 // Defined at file scope in mclib/tgl.cpp:3718.
 extern uint32_t g_mc2FrameCounter;
 
-static const bool s_destroyTrace = (getenv("MC2_DESTROY_TRACE") != nullptr);
+static const bool s_destroyTrace = mc2::gate::get<"MC2_DESTROY_TRACE">();
 
 // Out-of-line because canBeSeen() needs the full Appearance type.
 bool GameObject::canBeSeen_instr (void) const {
