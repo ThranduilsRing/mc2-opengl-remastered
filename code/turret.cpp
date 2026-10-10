@@ -70,6 +70,7 @@
 #endif
 
 #include "../resource.h"
+#include "../RenderCore/axis_convert.h"
 //***************************************************************************
 
 //extern float worldUnitsPerMeter;
@@ -901,15 +902,11 @@ long Turret::update (void)
 		}
 	
 		ourPosition = oldPosition;
-		xlatPos.x = -ourPosition.x;
-		xlatPos.y = ourPosition.z;
-		xlatPos.z = ourPosition.y;
+		mc2ToRender(xlatPos, ourPosition);
 
 		pointLight->direction = xlatPos;
 		
-		pointLight->spotDir.x = -position.x;
-		pointLight->spotDir.y = position.z;
-		pointLight->spotDir.z = position.y;
+		mc2ToRender(pointLight->spotDir, position);
 		
 		pointLight->maxSpotLength = ourExtentRadius * 1.5f;
 
