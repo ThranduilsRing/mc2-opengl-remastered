@@ -6,7 +6,7 @@ Probes: **U** unset, **E** `""`, **Z** `"0"`, **F** `"false"`, **O** `"1"`, **X*
 
 ## Totals
 
-Scanned: commit 00cc51a55.
+Scanned: commit c69bcd054.
 
 | Measure | Count |
 |---|---|
@@ -15,8 +15,8 @@ Scanned: commit 00cc51a55.
 | `"MC2_*"` literal occurrences | 1695 |
 | literals not passed to an env read (tables, writers, indirect names) | 43 |
 | read sites analysed | 1652 |
-| reader sites with an outcome vector | 1561 |
-| reader sites comparing a token no probe hits (not comparable) | 51 |
+| reader sites with an outcome vector | 1562 |
+| reader sites comparing a token no probe hits (not comparable) | 50 |
 | sites where the probe decides nothing (prints, paths) | 17 |
 | sites the tool could not classify | 23 |
 | **gates with conflicting readers** | 6 |
@@ -103,7 +103,7 @@ Source: `tools/gate_g0_ledger.json`. `resolved` = the readers now agree; `enum` 
 
 | Class | Reader sites |
 |---|---|
-| Presence | 474 |
+| Presence | 475 |
 | Lead0Kill | 199 |
 | Lead0 | 192 |
 | Num(atof,raw) | 157 |

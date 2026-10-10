@@ -6,8 +6,8 @@
 generator_version: "2.1.0"
 registry_entry_count: 354
 registry_env_flag_count: 353
-sweep_flag_count: 999
-flag_count: 1058
+sweep_flag_count: 990
+flag_count: 1049
 flags:
   - name: MC2_3DVIEW_DIAG
     default: unknown
@@ -779,7 +779,6 @@ flags:
     default: unknown
     declared_in: null
     referenced_at:
-      - GameOS/gameos/gos_terrain_patch_stream.cpp
       - mclib/txmmgr.cpp
     registered: no
     in_smoke_passthrough: no
@@ -4096,14 +4095,6 @@ flags:
     registered: no
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
-  - name: MC2_MODERN_TERRAIN_SURFACE
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/gos_terrain_patch_stream.cpp
-    registered: no
-    in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: no
   - name: MC2_MODERN_TEX_RESOLVE
     default: unknown
     declared_in: null
@@ -4522,73 +4513,8 @@ flags:
     declared_in: null
     referenced_at:
       - GameOS/gameos/gameos_graphics.cpp
-      - GameOS/gameos/gos_terrain_patch_stream.cpp
     registered: no
     in_smoke_passthrough: no
-    documented_in_tier1_env_vars: no
-  - name: MC2_PATCHSTREAM_DIRECT_TEXTURE_BIND_CHECK
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/gos_terrain_patch_stream.cpp
-    registered: no
-    in_smoke_passthrough: no
-    documented_in_tier1_env_vars: no
-  - name: MC2_PATCHSTREAM_QUAD_RECORDS
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/gos_terrain_patch_stream.cpp
-    registered: no
-    in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: no
-  - name: MC2_PATCHSTREAM_QUAD_RECORDS_DRAW
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/gos_terrain_patch_stream.cpp
-    registered: no
-    in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: no
-  - name: MC2_PATCHSTREAM_THIN_RECORDS
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/gos_terrain_patch_stream.cpp
-    registered: no
-    in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: no
-  - name: MC2_PATCHSTREAM_THIN_RECORDS_DRAW
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/gos_terrain_patch_stream.cpp
-    registered: no
-    in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: no
-  - name: MC2_PATCHSTREAM_THIN_RECORD_FASTPATH
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/gos_terrain_patch_stream.cpp
-    registered: no
-    in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: no
-  - name: MC2_PATCH_STREAM_FORCE_INIT_FAIL
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/gos_terrain_patch_stream.cpp
-    registered: no
-    in_smoke_passthrough: yes
-    documented_in_tier1_env_vars: no
-  - name: MC2_PATCH_STREAM_TRACE
-    default: unknown
-    declared_in: null
-    referenced_at:
-      - GameOS/gameos/gos_terrain_patch_stream.cpp
-    registered: no
-    in_smoke_passthrough: yes
     documented_in_tier1_env_vars: no
   - name: MC2_PATH_JUMP_FAIL_BACKOFF
     default: unknown
@@ -7949,7 +7875,6 @@ flags:
     declared_in: null
     referenced_at:
       - GameOS/gameos/gameos_graphics.cpp
-      - GameOS/gameos/gos_terrain_patch_stream.cpp
       - mclib/quad.cpp
     registered: no
     in_smoke_passthrough: yes

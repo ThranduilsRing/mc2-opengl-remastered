@@ -2448,10 +2448,6 @@
    "doc": "",
    "readers": [
     {
-     "at": "GameOS/gameos/gos_terrain_patch_stream.cpp:314",
-     "idiom": "Presence"
-    },
-    {
      "at": "mclib/txmmgr.cpp:4046",
      "idiom": "Presence"
     }
@@ -13879,24 +13875,19 @@
   {
    "name": "MC2_MODERN_TERRAIN_SURFACE",
    "kind": "Bool",
-   "default": true,
-   "rule": "Lead0Kill",
+   "default": null,
+   "rule": "Std",
    "owner": "terrain",
    "retireBy": "",
    "doc": "",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_terrain_patch_stream.cpp:311",
-     "idiom": "Lead0Kill"
-    }
-   ],
+   "readers": [],
    "conflict": false,
    "registered": false,
    "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
+   "seedDefaultSource": "unknown",
    "harnessValues": [],
    "numericRange": null,
-   "readerDefault": true,
+   "readerDefault": null,
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
@@ -15249,10 +15240,6 @@
     {
      "at": "GameOS/gameos/gameos_graphics.cpp:2744",
      "idiom": "Presence"
-    },
-    {
-     "at": "GameOS/gameos/gos_terrain_patch_stream.cpp:48",
-     "idiom": "Presence"
     }
    ],
    "conflict": false,
@@ -15270,24 +15257,19 @@
   {
    "name": "MC2_PATCHSTREAM_DIRECT_TEXTURE_BIND_CHECK",
    "kind": "Bool",
-   "default": false,
-   "rule": "Presence",
+   "default": null,
+   "rule": "Std",
    "owner": "terrain",
    "retireBy": "",
    "doc": "",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_terrain_patch_stream.cpp:50",
-     "idiom": "Presence"
-    }
-   ],
+   "readers": [],
    "conflict": false,
    "registered": false,
    "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
+   "seedDefaultSource": "unknown",
    "harnessValues": [],
    "numericRange": null,
-   "readerDefault": false,
+   "readerDefault": null,
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
@@ -15296,24 +15278,19 @@
   {
    "name": "MC2_PATCHSTREAM_QUAD_RECORDS",
    "kind": "Bool",
-   "default": false,
-   "rule": "Presence",
+   "default": null,
+   "rule": "Std",
    "owner": "terrain",
    "retireBy": "",
    "doc": "",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_terrain_patch_stream.cpp:54",
-     "idiom": "Presence"
-    }
-   ],
+   "readers": [],
    "conflict": false,
    "registered": false,
    "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
+   "seedDefaultSource": "unknown",
    "harnessValues": [],
    "numericRange": null,
-   "readerDefault": false,
+   "readerDefault": null,
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
@@ -15322,24 +15299,19 @@
   {
    "name": "MC2_PATCHSTREAM_QUAD_RECORDS_DRAW",
    "kind": "Bool",
-   "default": false,
-   "rule": "Presence",
+   "default": null,
+   "rule": "Std",
    "owner": "terrain",
    "retireBy": "",
    "doc": "",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_terrain_patch_stream.cpp:55",
-     "idiom": "Presence"
-    }
-   ],
+   "readers": [],
    "conflict": false,
    "registered": false,
    "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
+   "seedDefaultSource": "unknown",
    "harnessValues": [],
    "numericRange": null,
-   "readerDefault": false,
+   "readerDefault": null,
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
@@ -15348,26 +15320,21 @@
   {
    "name": "MC2_PATCHSTREAM_THIN_RECORDS",
    "kind": "Bool",
-   "default": false,
-   "rule": "Presence",
+   "default": null,
+   "rule": "Std",
    "owner": "terrain",
    "retireBy": "",
    "doc": "",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_terrain_patch_stream.cpp:69",
-     "idiom": "Presence"
-    }
-   ],
+   "readers": [],
    "conflict": false,
    "registered": false,
    "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
+   "seedDefaultSource": "unknown",
    "harnessValues": [
     "1"
    ],
    "numericRange": null,
-   "readerDefault": false,
+   "readerDefault": null,
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
@@ -15376,26 +15343,21 @@
   {
    "name": "MC2_PATCHSTREAM_THIN_RECORDS_DRAW",
    "kind": "Bool",
-   "default": false,
-   "rule": "Presence",
+   "default": null,
+   "rule": "Std",
    "owner": "terrain",
    "retireBy": "",
    "doc": "",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_terrain_patch_stream.cpp:70",
-     "idiom": "Presence"
-    }
-   ],
+   "readers": [],
    "conflict": false,
    "registered": false,
    "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
+   "seedDefaultSource": "unknown",
    "harnessValues": [
     "1"
    ],
    "numericRange": null,
-   "readerDefault": false,
+   "readerDefault": null,
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
@@ -15404,26 +15366,21 @@
   {
    "name": "MC2_PATCHSTREAM_THIN_RECORD_FASTPATH",
    "kind": "Bool",
-   "default": false,
-   "rule": "Presence",
+   "default": null,
+   "rule": "Std",
    "owner": "terrain",
    "retireBy": "",
    "doc": "",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_terrain_patch_stream.cpp:71",
-     "idiom": "Presence"
-    }
-   ],
+   "readers": [],
    "conflict": false,
    "registered": false,
    "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
+   "seedDefaultSource": "unknown",
    "harnessValues": [
     "1"
    ],
    "numericRange": null,
-   "readerDefault": false,
+   "readerDefault": null,
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
@@ -15432,24 +15389,19 @@
   {
    "name": "MC2_PATCH_STREAM_FORCE_INIT_FAIL",
    "kind": "Bool",
-   "default": true,
+   "default": null,
    "rule": "Std",
    "owner": "terrain",
    "retireBy": "",
    "doc": "Step 4 bailout \u2014 env-gated forced init failure for testing the fallback path without driver stress.",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_terrain_patch_stream.cpp:328",
-     "idiom": "Token/State"
-    }
-   ],
+   "readers": [],
    "conflict": false,
    "registered": false,
    "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
+   "seedDefaultSource": "unknown",
    "harnessValues": [],
    "numericRange": null,
-   "readerDefault": true,
+   "readerDefault": null,
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
@@ -15458,24 +15410,19 @@
   {
    "name": "MC2_PATCH_STREAM_TRACE",
    "kind": "Bool",
-   "default": false,
-   "rule": "Presence",
+   "default": null,
+   "rule": "Std",
    "owner": "terrain",
    "retireBy": "",
    "doc": "",
-   "readers": [
-    {
-     "at": "GameOS/gameos/gos_terrain_patch_stream.cpp:313",
-     "idiom": "Presence"
-    }
-   ],
+   "readers": [],
    "conflict": false,
    "registered": false,
    "registryDefault": null,
-   "seedDefaultSource": "reader-idiom",
+   "seedDefaultSource": "unknown",
    "harnessValues": [],
    "numericRange": null,
-   "readerDefault": false,
+   "readerDefault": null,
    "defaultDisagreement": "",
    "registryKind": "",
    "featureId": "",
@@ -26453,10 +26400,6 @@
    "readers": [
     {
      "at": "GameOS/gameos/gameos_graphics.cpp:7443",
-     "idiom": "Presence"
-    },
-    {
-     "at": "GameOS/gameos/gos_terrain_patch_stream.cpp:72",
      "idiom": "Presence"
     },
     {

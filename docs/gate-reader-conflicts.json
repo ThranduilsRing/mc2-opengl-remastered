@@ -25,7 +25,7 @@
   "Partial[D,D,off,on,on,on,on,on]": 1,
   "Partial[D,off,off,off,off,off,off,on]": 1,
   "Partial[D,on,off,on,on,on,on,on]": 4,
-  "Presence": 474,
+  "Presence": 475,
   "Std(def=off)": 14,
   "Std(def=on)": 11,
   "Str[dflt,dflt]": 3,
@@ -1830,7 +1830,7 @@
   "editor",
   "gui"
  ],
- "source": "commit 00cc51a55",
+ "source": "commit c69bcd054",
  "totals": {
   "conflict_gates": 6,
   "gates_with_literal": 1131,
@@ -1839,8 +1839,8 @@
   "non_call_literals": 43,
   "nonreader_sites": 17,
   "read_sites": 1652,
-  "reader_sites": 1561,
-  "token_sites": 51,
+  "reader_sites": 1562,
+  "token_sites": 50,
   "unclassified_sites": 23,
   "unresolved_conflicts": 0
  },
