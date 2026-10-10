@@ -44,6 +44,7 @@ add_library(mc2fx_corelib STATIC
     ${MC2FXP_MLR_SRC}
     ${MC2FXP_PARTICLES_SRC}
     ${MC2FXP_STUFF_SRC}
+    "${CMAKE_SOURCE_DIR}/mclib/fx_trace/fx_cost_split.cpp"
     "${CMAKE_SOURCE_DIR}/3rdparty/tracy/TracyClient.cpp"
 )
 

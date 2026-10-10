@@ -45,6 +45,8 @@ add_executable(mc2fx
     ${MC2FX_MLR_SRC}
     ${MC2FX_PARTICLES_SRC}
     ${MC2FX_STUFF_SRC}
+    # gosFX effect/clouds/tube time themselves with fx_cost_split (MC2_FX_COST_SPLIT, default off).
+    "${CMAKE_SOURCE_DIR}/mclib/fx_trace/fx_cost_split.cpp"
     # Tracy client (TRACY_ENABLE is global; any TU including gos_profiler.h
     # inline-instantiates the Tracy queue). Same gotcha asset_viewer hit.
     "${CMAKE_SOURCE_DIR}/3rdparty/tracy/TracyClient.cpp"

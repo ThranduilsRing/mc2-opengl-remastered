@@ -177,3 +177,13 @@ extern "C" void gos_particle_bridge_flush(const mc2::particles::GpuParticle*, un
 extern "C" void gos_cardcloud_sim_flush(void) {}
 extern "C" void gos_cardcloud_sim_submit(const mc2::particles::CardCloudSimParticle*,
                                          unsigned int, unsigned int) {}
+
+// ---------------------------------------------------------------------------
+// gosFX draw-side bridges (gos_particle_bridge.cpp / gos_vfx_mesh_bridge.cpp are render TUs we exclude).
+// Tube::Draw and Shape::Draw reference them; the spec LOAD / dump path never draws.
+// ---------------------------------------------------------------------------
+struct GosVfxMeshUpload; struct GosVfxMeshInstance;
+extern "C" void gos_tube_ribbon_enqueue(const float*, const float*, const float*, unsigned int,
+                                        const unsigned short*, unsigned int, unsigned int, int) {}
+extern "C" void gos_vfx_mesh_flush(const GosVfxMeshUpload*, unsigned int,
+                                   const GosVfxMeshInstance*, unsigned int) {}
