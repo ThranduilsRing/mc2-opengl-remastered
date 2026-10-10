@@ -76,58 +76,9 @@ GameOS/gameos/gos_terrain_lod_chunk.cpp:4126	MC2_TERRAIN_LIGHT_POOLS	Lead0Kill	l
 GameOS/gameos/gos_terrain_lod_chunk.cpp:4171	MC2_CEMENT_LIT	Num(atof)	lambda-static	static const float s_v = mc2::gate::get<"MC2_CEMENT_LIT">();	EDGE	no row edit needed; inputs whose result changes after the row edit: '1e999'; harness sets none of them
 GameOS/gameos/gos_terrain_lod_chunk.cpp:4191	MC2_CEMENT_RAMP_WORD	Lead0	lambda-static	static const int s_v = mc2::gate::get<"MC2_CEMENT_RAMP_WORD">();	NO-CHANGE	site Lead0 vs row Lead0
 GameOS/gameos/gos_terrain_lod_chunk.cpp:4200	MC2_PAD_AREA_GLOW_SPILL	Num(atof)	lambda-static	static const float s_v = mc2::gate::get<"MC2_PAD_AREA_GLOW_SPILL">();	EDGE	no row edit needed; inputs whose result changes after the row edit: '1e999'; harness sets none of them
-mclib/terrain.cpp:148	MC2_TERRAIN_LOD_CHUNK		per-call	-	UNHANDLED	lambda body names `printf`, which is state outside the read
-mclib/terrain.cpp:254	MC2_TERRAIN_LOD_CHUNK_FORCE_LOD	Num(atoi)	lambda-static	static const int s_forceLod = mc2::gate::get<"MC2_TERRAIN_LOD_CHUNK_FORCE_LOD">();	EDGE	no row edit needed; inputs whose result changes after the row edit: ''; harness sets none of them (seed harnessValues=['0'])
-mclib/terrain.cpp:266	MC2_TERRAIN_LOD_CHUNK_DIST_SCALE	Num(atof)	lambda-static	static const float s_distScale = mc2::gate::get<"MC2_TERRAIN_LOD_CHUNK_DIST_SCALE">();	EDGE	no row edit needed; inputs whose result changes after the row edit: '1e999', '0.05'; harness sets none of them
-mclib/terrain.cpp:316	MC2_TERRAIN_LOD_MORPH_START	Num(atof)	lambda-static	static const float s_morphStart = mc2::gate::get<"MC2_TERRAIN_LOD_MORPH_START">();	EDGE	no row edit needed; inputs whose result changes after the row edit: '', '1e999'; harness sets none of them
-mclib/terrain.cpp:881	MC2_TERRAIN_CONTROLMAP	Lead0	lambda-static	static const bool s_controlMapGate = mc2::gate::get<"MC2_TERRAIN_CONTROLMAP">();	NO-CHANGE	site Lead0 vs row Lead0
-mclib/terrain.cpp:888	MC2_TERRAIN_CONTROLMAP_FILE		per-call	-	UNHANDLED	getenv result is used as a pointer here (not a bare presence test)
-mclib/terrain.cpp:982	MC2_TERRAIN_OVERLAY_V2	Lead0	lambda-static	static const bool s_overlayV2Gate = mc2::gate::get<"MC2_TERRAIN_OVERLAY_V2">();	NO-CHANGE	site Lead0 vs row Lead0
-mclib/terrain.cpp:988	MC2_TERRAIN_OVERLAY_V2_FILE		per-call	-	UNHANDLED	getenv result is used as a pointer here (not a bare presence test)
-mclib/terrain.cpp:1123	MC2_TERRAIN_SHORELINE_FILE		per-call	-	UNHANDLED	getenv result is used as a pointer here (not a bare presence test)
-mclib/terrain.cpp:1246	MC2_TERRAIN_VISUAL_HEIGHT_FILE		per-call	-	UNHANDLED	getenv result is used as a pointer here (not a bare presence test)
-mclib/terrain.cpp:1326	MC2_TERRAIN_VISUAL_HEIGHT	Lead0	lambda-static	static const bool s_visualHeightGate = mc2::gate::get<"MC2_TERRAIN_VISUAL_HEIGHT">();	NO-CHANGE	site Lead0 vs row Lead0
-mclib/terrain.cpp:1327	MC2_TERRAIN_VISUAL_DISPLACE	Lead0	lambda-static	static const bool s_visualHeightGate = mc2::gate::get<"MC2_TERRAIN_VISUAL_DISPLACE">();	NO-CHANGE	site Lead0 vs row Lead0
-mclib/terrain.cpp:1335	MC2_TERRAIN_VISUAL_HEIGHT_FILE		per-call	-	UNHANDLED	getenv result is used as a pointer here (not a bare presence test)
-mclib/terrain.cpp:1513	MC2_TERRAIN_VISUAL_DISPLACE	Lead0	per-call	const bool displaceOn = mc2::gate::get<"MC2_TERRAIN_VISUAL_DISPLACE">();	NO-CHANGE	site Lead0 vs row Lead0
-mclib/terrain.cpp:1560	MC2_TERRAIN_VISUAL_DISPLACE_OBJFADE	Lead0Kill	lambda-static	static const bool s_objfadeGate = mc2::gate::get<"MC2_TERRAIN_VISUAL_DISPLACE_OBJFADE">();	NO-CHANGE	site Lead0Kill vs row Lead0Kill
-mclib/terrain.cpp:2455	MC2_TERRAIN_LOD_CHUNK_NO_CULL	Presence	local-static	static const bool s_noCull = mc2::gate::get<"MC2_TERRAIN_LOD_CHUNK_NO_CULL">();	NO-CHANGE	site Presence vs row Presence
-mclib/terrain.cpp:2461	MC2_LOWCAM_TERRAIN_NEAR	Lead0Kill	lambda-static	static const bool s_lowCamNear = mc2::gate::get<"MC2_LOWCAM_TERRAIN_NEAR">();	NO-CHANGE	site Lead0Kill vs row Lead0Kill
-mclib/terrain.cpp:2656	MC2_TERRAIN_LOD_CHUNK_NO_APRON	Presence	local-static	static const bool s_noApron = mc2::gate::get<"MC2_TERRAIN_LOD_CHUNK_NO_APRON">();	NO-CHANGE	site Presence vs row Presence
-mclib/terrain.cpp:2696	MC2_TERRAIN_LOD_CHUNK_CEMENT_MAXLOD	Num(atoi)	lambda-static	static const int s_cementMaxLod = mc2::gate::get<"MC2_TERRAIN_LOD_CHUNK_CEMENT_MAXLOD">();	NO-CHANGE	no row edit needed
-mclib/terrain.cpp:2845	MC2_TERRAIN_LOD_CHUNK_NO_SKIRTS	Presence	local-static	static const bool s_noSkirts = mc2::gate::get<"MC2_TERRAIN_LOD_CHUNK_NO_SKIRTS">();	NO-CHANGE	site Presence vs row Presence
-mclib/terrain.cpp:2859	MC2_TERRAIN_LOD_CHUNK_NO_STITCH	Presence	local-static	static const bool s_noStitch = mc2::gate::get<"MC2_TERRAIN_LOD_CHUNK_NO_STITCH">();	NO-CHANGE	site Presence vs row Presence
-mclib/terrain.cpp:2893	MC2_TERRAIN_LOD_CHUNK_SKIRT_MAX	Num(atof)	lambda-static	static const float s_skirtMax = mc2::gate::get<"MC2_TERRAIN_LOD_CHUNK_SKIRT_MAX">();	EDGE	no row edit needed; inputs whose result changes after the row edit: '', '1e999'; harness sets none of them
-mclib/terrain.cpp:2917	MC2_SHADOW_TIER_STATS	Presence	local-static	static const bool s_shadowTierStats = mc2::gate::get<"MC2_SHADOW_TIER_STATS">();	NO-CHANGE	site Presence vs row Presence
-mclib/terrain.cpp:3247	MC2_TERRAIN_MINE_AB	Presence	local-static	static bool s_mineAB = mc2::gate::get<"MC2_TERRAIN_MINE_AB">();	NO-CHANGE	site Presence vs row Presence
-mclib/terrain.cpp:3437	MC2_RENDER_WATER_FASTPATH	Presence	local-static	static const bool s_fastPath = (mc2::gate::get<"MC2_RENDER_WATER_FASTPATH">()) || gpu_driven::IsWaterEnabled();	NO-CHANGE	site Presence vs row Presence
-mclib/terrain.cpp:3448	MC2_MISSION_INTRO_LEGACY_RENDER	Presence	local-static	static const bool s_introLegacy = mc2::gate::get<"MC2_MISSION_INTRO_LEGACY_RENDER">();	NO-CHANGE	site Presence vs row Presence
-mclib/terrain.cpp:3457	MC2_WATER_GATE_DIAG	Presence	local-static	static const bool s_gateDiag = mc2::gate::get<"MC2_WATER_GATE_DIAG">();	NO-CHANGE	site Presence vs row Presence
-mclib/terrain.cpp:3486	MC2_WATER_DEBUG	Presence	local-static	static const bool s_waterDebugOn = mc2::gate::get<"MC2_WATER_DEBUG">();	NO-CHANGE	site Presence vs row Presence
-mclib/terrain.cpp:3507	MC2_WATER_S6_TRACE	Presence	local-static	static const bool s_waterS6Trace = mc2::gate::get<"MC2_WATER_S6_TRACE">();	NO-CHANGE	site Presence vs row Presence
-mclib/terrain.cpp:3535	MC2_DEPTH_TRANSITION_PROBE	Presence	local-static	static const bool s_depthTransProbe = mc2::gate::get<"MC2_DEPTH_TRANSITION_PROBE">();	NO-CHANGE	site Presence vs row Presence
-mclib/terrain.cpp:3641	MC2_RENDER_WATER_FASTPATH	Presence	local-static	static const bool s_fastPath = (mc2::gate::get<"MC2_RENDER_WATER_FASTPATH">()) || gpu_driven::IsWaterEnabled();	NO-CHANGE	site Presence vs row Presence
-mclib/terrain.cpp:3653	MC2_WATER_DEBUG	Presence	local-static	static const bool s_waterDebugOn = mc2::gate::get<"MC2_WATER_DEBUG">();	NO-CHANGE	site Presence vs row Presence
-mclib/terrain.cpp:3692	MC2_WATER_STREAM_DEBUG	Presence	per-call	if (!s_dumped && mc2::gate::get<"MC2_WATER_STREAM_DEBUG">()) {	NO-CHANGE	site Presence vs row Presence
-mclib/terrain.cpp:3806	MC2_GEOM_PHASE_SPLIT	Presence	namespace-static	static const bool s_gpOn = mc2::gate::get<"MC2_GEOM_PHASE_SPLIT">();	NO-CHANGE	site Presence vs row Presence
-mclib/terrain.cpp:3893	MC2_TERRAIN_CULL_WIDE	Presence	per-call	if (mc2::gate::get<"MC2_TERRAIN_CULL_WIDE">()) {	NO-CHANGE	site Presence vs row Presence
-mclib/terrain.cpp:3905	MC2_VPL_CULL	Presence	local-static	static const bool s_vplCull = mc2::gate::get<"MC2_VPL_CULL">();	NO-CHANGE	site Presence vs row Presence
-mclib/terrain.cpp:3906	MC2_VPL_REDUCE	Presence	local-static	static const bool s_vplReduce = mc2::gate::get<"MC2_VPL_REDUCE">();	NO-CHANGE	site Presence vs row Presence
-mclib/terrain.cpp:3985	MC2_BLOCK_FRUSTUM_FALLBACK	Presence	local-static	static const bool s_blockFrustumFallback = mc2::gate::get<"MC2_BLOCK_FRUSTUM_FALLBACK">();	NO-CHANGE	site Presence vs row Presence
-mclib/terrain.cpp:4070	MC2_LOWCAM_SOLID_NEAR	Num(atof)	lambda-static	static const float s_lowCamSolidNear = mc2::gate::get<"MC2_LOWCAM_SOLID_NEAR">();	EDGE	no row edit needed; inputs whose result changes after the row edit: '', '1e999'; harness sets none of them
-mclib/terrain.cpp:4208	MC2_WATER_S6_COST	Presence	local-static	static const bool s_s6CostOn = mc2::gate::get<"MC2_WATER_S6_COST">();	NO-CHANGE	site Presence vs row Presence
-mclib/terrain.cpp:4239	MC2_QUADSETUP_ARMED_SKIP	Lead0Kill	lambda-static	static const bool s_armedSkipOn = mc2::gate::get<"MC2_QUADSETUP_ARMED_SKIP">();	NO-CHANGE	site Lead0Kill vs row Lead0Kill
-mclib/terrain.cpp:4257	MC2_FASTPATH_DROP_LOG	Lead0P	lambda-static	static const bool s_fastpathDropLog = mc2::gate::get<"MC2_FASTPATH_DROP_LOG">();	NO-CHANGE	site Lead0P vs row Lead0P
-GameOS/gameos/vulkan_terrain_island.cpp:140	MC2_VK_NO_GL_INTEROP_STRICT	Lead1	lambda-static	static const int s = mc2::gate::get<"MC2_VK_NO_GL_INTEROP_STRICT">();	NO-CHANGE	site Lead1 vs row Lead1; inside #ifdef MC2_VULKAN_ISLAND
-GameOS/gameos/vulkan_terrain_island.cpp:165	MC2_VK_TERRAIN_FENCE_DEFER		per-call	-	UNHANDLED	umbrella helper envTriState(): needs Tri/state<> semantics (G4), not migrated in G3; inside #ifdef MC2_VULKAN_ISLAND
-GameOS/gameos/vulkan_terrain_island.cpp:175	MC2_VK_TERRAIN_PERF	Lead1	per-call	state = mc2::gate::get<"MC2_VK_TERRAIN_PERF">();	NO-CHANGE	site Lead1 vs row Lead1; inside #ifdef MC2_VULKAN_ISLAND
-GameOS/gameos/vulkan_terrain_island.cpp:188	MC2_VK_TERRAIN_TIER1		per-call	-	UNHANDLED	umbrella helper subGate(): needs Tri/state<> semantics (G4), not migrated in G3; inside #ifdef MC2_VULKAN_ISLAND
-GameOS/gameos/vulkan_terrain_island.cpp:189	MC2_VK_SHARED_SCENE_DEPTH		per-call	-	UNHANDLED	umbrella helper subGate(): needs Tri/state<> semantics (G4), not migrated in G3; inside #ifdef MC2_VULKAN_ISLAND
-GameOS/gameos/vulkan_terrain_island.cpp:218	MC2_VK_TERRAIN_ALL_LODS		per-call	-	UNHANDLED	umbrella helper subGate(): needs Tri/state<> semantics (G4), not migrated in G3; inside #ifdef MC2_VULKAN_ISLAND
-GameOS/gameos/vulkan_terrain_island.cpp:237	MC2_VK_TERRAIN_SKIRTS		per-call	-	UNHANDLED	umbrella helper subGate(): needs Tri/state<> semantics (G4), not migrated in G3; inside #ifdef MC2_VULKAN_ISLAND
-GameOS/gameos/vulkan_terrain_island.cpp:256	MC2_VK_TERRAIN_VISUALDISPLACE_FAR		per-call	-	UNHANDLED	umbrella helper envTriState(): needs Tri/state<> semantics (G4), not migrated in G3; inside #ifdef MC2_VULKAN_ISLAND
-GameOS/gameos/vulkan_terrain_island.cpp:262	MC2_VULKAN_SPV_DIR		per-call	-	UNHANDLED	row kind String: read through str<> (G3 Enum / G4 Tri / String via str<>); inside #ifdef MC2_VULKAN_ISLAND
-GameOS/gameos/vulkan_terrain_island.cpp:1388	MC2_VK_TERRAIN_HEIGHT_AUDIT	Exact1	per-call	state = mc2::gate::get<"MC2_VK_TERRAIN_HEIGHT_AUDIT">();	NO-CHANGE	site Exact1 vs row Exact1; inside #ifdef MC2_VULKAN_ISLAND
-GameOS/gameos/vulkan_terrain_island.cpp:1400	MC2_VK_TERRAIN_HEIGHT_AUDIT_CORRUPT	Exact1	per-call	state = mc2::gate::get<"MC2_VK_TERRAIN_HEIGHT_AUDIT_CORRUPT">();	NO-CHANGE	site Exact1 vs row Exact1; inside #ifdef MC2_VULKAN_ISLAND
-GameOS/gameos/vulkan_terrain_island.cpp:2443	MC2_VK_TERRAIN_CSM_DEBUG	Num(atoi)	lambda-static	static const int dbgMode = mc2::gate::get<"MC2_VK_TERRAIN_CSM_DEBUG">();	NO-CHANGE	no row edit needed; inside #ifdef MC2_VULKAN_ISLAND
-GameOS/gameos/vulkan_terrain_island.cpp:2564	MC2_VK_TERRAIN_COPY_STATS	Presence	local-static	static const bool s_copyStatsOn = mc2::gate::get<"MC2_VK_TERRAIN_COPY_STATS">();	NO-CHANGE	site Presence vs row Presence; inside #ifdef MC2_VULKAN_ISLAND
+GameOS/gameos/vulkan_terrain_island.cpp:163	MC2_VK_TERRAIN_FENCE_DEFER		per-call	-	UNHANDLED	umbrella helper envTriState(): needs Tri/state<> semantics (G4), not migrated in G3; inside #ifdef MC2_VULKAN_ISLAND
+GameOS/gameos/vulkan_terrain_island.cpp:185	MC2_VK_TERRAIN_TIER1		per-call	-	UNHANDLED	umbrella helper subGate(): needs Tri/state<> semantics (G4), not migrated in G3; inside #ifdef MC2_VULKAN_ISLAND
+GameOS/gameos/vulkan_terrain_island.cpp:186	MC2_VK_SHARED_SCENE_DEPTH		per-call	-	UNHANDLED	umbrella helper subGate(): needs Tri/state<> semantics (G4), not migrated in G3; inside #ifdef MC2_VULKAN_ISLAND
+GameOS/gameos/vulkan_terrain_island.cpp:215	MC2_VK_TERRAIN_ALL_LODS		per-call	-	UNHANDLED	umbrella helper subGate(): needs Tri/state<> semantics (G4), not migrated in G3; inside #ifdef MC2_VULKAN_ISLAND
+GameOS/gameos/vulkan_terrain_island.cpp:234	MC2_VK_TERRAIN_SKIRTS		per-call	-	UNHANDLED	umbrella helper subGate(): needs Tri/state<> semantics (G4), not migrated in G3; inside #ifdef MC2_VULKAN_ISLAND
+GameOS/gameos/vulkan_terrain_island.cpp:253	MC2_VK_TERRAIN_VISUALDISPLACE_FAR		per-call	-	UNHANDLED	umbrella helper envTriState(): needs Tri/state<> semantics (G4), not migrated in G3; inside #ifdef MC2_VULKAN_ISLAND

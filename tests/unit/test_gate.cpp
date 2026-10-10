@@ -824,4 +824,39 @@ TEST_CASE("MC2_MISSION_INTRO_LEGACY_RENDER is a presence gate that defaults off"
     CHECK(rowValue(r, "0"));
 }
 
+TEST_CASE("isNonEmpty is the old v && v[0] test, whatever the row kind") {
+    EnvVar env("MC2_TERRAIN_AMBIENT_FLOOR");
+    gate::invalidate("MC2_TERRAIN_AMBIENT_FLOOR");
+    CHECK_FALSE(gate::isNonEmpty<"MC2_TERRAIN_AMBIENT_FLOOR">());
+    CHECK_FALSE(gate::isSet<"MC2_TERRAIN_AMBIENT_FLOOR">());
+    CHECK(gate::get<"MC2_TERRAIN_AMBIENT_FLOOR">() == 0.35f);     // unset reads the default
+    env.set("0.5");
+    gate::invalidate("MC2_TERRAIN_AMBIENT_FLOOR");
+    CHECK(gate::isNonEmpty<"MC2_TERRAIN_AMBIENT_FLOOR">());
+    CHECK(gate::get<"MC2_TERRAIN_AMBIENT_FLOOR">() == 0.5f);
+    env.set("9");
+    gate::invalidate("MC2_TERRAIN_AMBIENT_FLOOR");
+    CHECK(gate::get<"MC2_TERRAIN_AMBIENT_FLOOR">() == 2.0f);      // clampRange(0, 2)
+    env.set(nullptr);
+    gate::invalidate("MC2_TERRAIN_AMBIENT_FLOOR");
+}
+
+TEST_CASE("MC2_WATER_SHORE_MODE tokens 0..3 resolve, anything else is the first (empty) token") {
+    EnvVar env("MC2_WATER_SHORE_MODE");
+    for (const char* v : {"0", "1", "2", "3"}) {
+        env.set(v);
+        gate::invalidate("MC2_WATER_SHORE_MODE");
+        INFO(v);
+        CHECK(gate::get<"MC2_WATER_SHORE_MODE">() == gate::Token{static_cast<std::int32_t>(v[0] - '0') + 1});
+    }
+    for (const char* v : {"4", "01", "x"}) {
+        env.set(v);
+        gate::invalidate("MC2_WATER_SHORE_MODE");
+        INFO(v);
+        CHECK(gate::get<"MC2_WATER_SHORE_MODE">() == gate::Token{0});
+    }
+    env.set(nullptr);
+    gate::invalidate("MC2_WATER_SHORE_MODE");
+}
+
 }  // TEST_SUITE
