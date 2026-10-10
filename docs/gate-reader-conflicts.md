@@ -6,7 +6,7 @@ Probes: **U** unset, **E** `""`, **Z** `"0"`, **F** `"false"`, **O** `"1"`, **X*
 
 ## Totals
 
-Scanned: commit ab9f52658.
+Scanned: commit 3ad51e033.
 
 | Measure | Count |
 |---|---|
@@ -15,8 +15,8 @@ Scanned: commit ab9f52658.
 | `"MC2_*"` literal occurrences | 1697 |
 | literals not passed to an env read (tables, writers, indirect names) | 45 |
 | read sites analysed | 1652 |
-| reader sites with an outcome vector | 1555 |
-| reader sites comparing a token no probe hits (not comparable) | 57 |
+| reader sites with an outcome vector | 1551 |
+| reader sites comparing a token no probe hits (not comparable) | 61 |
 | sites where the probe decides nothing (prints, paths) | 17 |
 | sites the tool could not classify | 23 |
 | **gates with conflicting readers** | 6 |
@@ -36,7 +36,7 @@ Line numbers are checked against the scanned tree (see Totals for which); `corre
 |  |  | `GuiRuntime/GraphicsOptionsWindow.cpp:1477` | corrected | `GuiRuntime/GraphicsOptionsWindow.cpp:1383` | Lead1 |  |
 | MC2_VK_TERRAIN_CSM | **no** | `GameOS/gameos/gos_terrain_lod_chunk.cpp:1858` | corrected | `GameOS/gameos/gos_terrain_lod_chunk.cpp:1765` | Tri(inherit) |  |
 |  |  | `GameOS/gameos/gos_terrain_lod_chunk.cpp:1900` | corrected | `GameOS/gameos/gos_terrain_lod_chunk.cpp:1765` | Tri(inherit) |  |
-| MC2_TERRAIN_HEIGHT_RESAMPLE_FACTOR | **no** | `GameOS/gameos/gos_terrain_height_tex.cpp:51` | confirmed | `GameOS/gameos/gos_terrain_height_tex.cpp:51` | Num(atoi,raw) | one reader; the hazard is reader vs a proposed clamp row (accepts only 2 or 4), not reader vs reader |
+| MC2_TERRAIN_HEIGHT_RESAMPLE_FACTOR | **no** | `GameOS/gameos/gos_terrain_height_tex.cpp:51` | corrected | `GameOS/gameos/gos_terrain_height_tex.cpp:53` | Typed(is) | one reader; the hazard is reader vs a proposed clamp row (accepts only 2 or 4), not reader vs reader |
 | MC2_LIGHT_GRID_DIM | **no** | `GameOS/gameos/gos_terrain_lighting.cpp:276` | corrected | `GameOS/gameos/gos_terrain_lighting.cpp:266` | Typed(get) | one reader; the hazard is reader vs a proposed clamp row (out of range falls back to the default) |
 | MC2_LIGHT_POOL_MAX | **no** | `GameOS/gameos/gos_terrain_lighting.cpp:859` | corrected | `GameOS/gameos/gos_terrain_lighting.cpp:814` | Typed(get) | one reader; the hazard is reader vs a proposed clamp row (out of range falls back to the default) |
 | MC2_SNAPSHOT_STATIC_PROP_BUILD | **no** | `GameOS/gameos/gos_static_prop_batcher.cpp:246` | corrected | `GameOS/gameos/gos_static_prop_batcher.cpp:239` | Lead0Kill | the editor's `!getenv(..)` write-guard counts as a Presence reader; the design's ordering hazard stands |
@@ -88,7 +88,7 @@ Source: `tools/gate_g0_ledger.json`. `resolved` = the readers now agree; `enum` 
 | `MC2_STATIC_PROP_TRACE` | resolved | no | `GameOS/gameos/gos_static_prop_batcher.cpp:5896 Lead0`<br>`GameOS/gameos/gos_static_prop_batcher.cpp:5897 Lead0`<br>`GameOS/gameos/gos_static_prop_batcher.cpp:5898 Lead0`<br>`GameOS/gameos/gos_static_prop_registry.cpp:138 Lead0` | Lead0 | =false now reads as on in the registry reader | matches the batcher reader |
 | `MC2_STATIC_UPDATE_SKIP` | resolved | no | `GameOS/gameos/gameosmain.cpp:1270 Std(def=on)`<br>`code/bldng.cpp:815 Std(def=on)`<br>`code/terrobj.cpp:96 Std(def=on)` | ParseEnvBool, default ON (0/false/off/no disable) | =false/off/no now disable the building skip as well | terrobj.cpp and the launch banner already used this rule |
 | `MC2_TERRAIN_DETAIL_MACRO_STRENGTH` | divergent | yes | `GameOS/gameos/gameos_graphics.cpp:7269 Num(atof,raw)`<br>`GameOS/gameos/gos_terrain_lod_chunk.cpp:929 Num(atof,raw)` | owner decision: legacy path defaults 0.35, chunk path defaults 0.0 | unifying would change one path's default-config result | gameos_graphics.cpp (legacy, vestigial) vs gos_terrain_lod_chunk.cpp (live) |
-| `MC2_TERRAIN_HEIGHT_RESAMPLE_FACTOR` | note | no | `GameOS/gameos/gos_terrain_height_tex.cpp:51 Num(atoi,raw)` | Enum {1,2,4}; other values rejected | code unchanged | single reader; a clamp row would change it |
+| `MC2_TERRAIN_HEIGHT_RESAMPLE_FACTOR` | note | no | `GameOS/gameos/gos_terrain_height_tex.cpp:53 Typed(is)`<br>`GameOS/gameos/gos_terrain_height_tex.cpp:54 Typed(is)` | Enum {1,2,4}; other values rejected | code unchanged | single reader; a clamp row would change it |
 | `MC2_TERRAIN_MATERIAL_LIB` | resolved | no | `GameOS/gameos/gameos_graphics.cpp:364 Lead0`<br>`GameOS/gameos/terrain_material_lib.cpp:231 Lead0` | Lead0 | =0 now disables the material-library JSON load | matches the host reader |
 | `MC2_TERRAIN_MATERIAL_TEXTURES` | resolved | no | `GameOS/gameos/gos_terrain_lod_chunk.cpp:170 Lead0`<br>`GameOS/gameos/terrain_material_lib.cpp:196 Lead0`<br>`GameOS/gameos/terrain_material_lib.cpp:233 Lead0` | Lead0 | =0 now disables the material-texture config load | matches the chunk reader |
 | `MC2_TEXMGR_KTX_PRIMARY` | resolved | no | `mclib/bdactor.cpp:179 Num(atoi,raw)`<br>`mclib/gvactor.cpp:143 Num(atoi,raw)`<br>`mclib/mech3d.cpp:186 Num(atoi,raw)`<br>`mclib/txmmgr.cpp:5394 Num(atoi,raw)` | numeric mode via atoi, default 1 (0 tga only, 1 ktx fallback, 2 ktx first) | non-numeric values (false, yes) now read as mode 0 at the three sidecar readers, as they already did in the texture manager | txmmgr.cpp is the mode authority |
@@ -104,14 +104,14 @@ Source: `tools/gate_g0_ledger.json`. `resolved` = the readers now agree; `enum` 
 | Class | Reader sites |
 |---|---|
 | Presence | 475 |
-| Lead0Kill | 199 |
+| Lead0Kill | 201 |
 | Lead0 | 192 |
-| Num(atof,raw) | 152 |
+| Num(atof,raw) | 148 |
 | Lead1 | 130 |
-| Lead0P | 60 |
 | AtoiNZ | 60 |
+| Lead0P | 59 |
 | Tri(inherit) | 50 |
-| Num(atoi,raw) | 48 |
+| Num(atoi,raw) | 47 |
 | Exact1 | 44 |
 | NonEmpty | 42 |
 | Num(atol,raw) | 21 |

@@ -23,7 +23,7 @@
   "GameOS/gameos/gos_terrain_indirect.cpp": 6301,
   "GameOS/gameos/gos_terrain_lighting.cpp": 1697,
   "GameOS/gameos/gos_terrain_lod_chunk.cpp": 4208,
-  "GameOS/gameos/gos_terrain_water_stream.cpp": 2479,
+  "GameOS/gameos/gos_terrain_water_stream.cpp": 2455,
   "GameOS/gameos/gpu_cull_compute.cpp": 1558,
   "GameOS/gameos/utils/shader_builder.cpp": 1548,
   "GameOS/gameos/vulkan_color_prop_island.cpp": 1810,
@@ -40,7 +40,6 @@
   "code/controlgui.cpp": 5016,
   "code/gamecam.cpp": 1569,
   "code/gameobj.cpp": 2365,
-  "code/gvehicl.cpp": 5419,
   "code/infowindow.cpp": 1746,
   "code/logisticsdata.cpp": 3442,
   "code/logisticsdialog.cpp": 2149,
@@ -64,7 +63,6 @@
   "code/turret.cpp": 2349,
   "code/warrior.cpp": 2740,
   "code/warrior.h": 2171,
-  "code/weaponbolt.cpp": 3024,
   "editor/EditorData.cpp": 3537,
   "editor/EditorObjectMgr.cpp": 3582,
   "editor/Objective.cpp": 2045,
@@ -108,7 +106,7 @@
   "mclib/vfxtile.cpp": 2944,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "efffdac47",
+ "head": "3ad51e033",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -147,9 +145,9 @@
    "max_lines": 1168
   },
   "code": {
-   "files": 317,
-   "files_over_1500": 31,
-   "files_over_3000": 9,
+   "files": 325,
+   "files_over_1500": 29,
+   "files_over_3000": 7,
    "max_lines": 7922
   },
   "editor": {
@@ -223,10 +221,6 @@
    "lines": 5685
   },
   {
-   "file": "code/gvehicl.cpp",
-   "lines": 5419
-  },
-  {
    "file": "code/controlgui.cpp",
    "lines": 5016
   },
@@ -291,22 +285,26 @@
    "lines": 3069
   },
   {
-   "file": "code/weaponbolt.cpp",
-   "lines": 3024
-  },
-  {
    "file": "mclib/vfxtile.cpp",
    "lines": 2944
   },
   {
    "file": "RenderCore/RendererFeatureRegistry.h",
    "lines": 2917
+  },
+  {
+   "file": "gui/UiDefs.cpp",
+   "lines": 2901
+  },
+  {
+   "file": "mclib/inifile.cpp",
+   "lines": 2876
   }
  ],
  "total": {
-  "files": 1636,
-  "files_over_1500": 94,
-  "files_over_3000": 28,
+  "files": 1644,
+  "files_over_1500": 92,
+  "files_over_3000": 26,
   "max_lines": 11658
  },
  "version": 1

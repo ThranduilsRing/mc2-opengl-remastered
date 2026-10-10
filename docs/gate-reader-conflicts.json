@@ -7,15 +7,15 @@
   "Exact1": 44,
   "Is01": 2,
   "Lead0": 192,
-  "Lead0Kill": 199,
-  "Lead0P": 60,
+  "Lead0Kill": 201,
+  "Lead0P": 59,
   "Lead1": 130,
   "NonEmpty": 42,
   "Num(atof+atoi,raw)": 1,
   "Num(atof,guarded)": 11,
-  "Num(atof,raw)": 152,
+  "Num(atof,raw)": 148,
   "Num(atoi,guarded)": 6,
-  "Num(atoi,raw)": 48,
+  "Num(atoi,raw)": 47,
   "Num(atol,guarded)": 1,
   "Num(atol,raw)": 21,
   "Num(num,raw)": 4,
@@ -128,17 +128,18 @@
   },
   {
    "all_readers": [
-    "GameOS/gameos/gos_terrain_height_tex.cpp:51 (Num(atoi,raw))"
+    "GameOS/gameos/gos_terrain_height_tex.cpp:53 (Typed(is))",
+    "GameOS/gameos/gos_terrain_height_tex.cpp:54 (Typed(is))"
    ],
    "gate": "MC2_TERRAIN_HEIGHT_RESAMPLE_FACTOR",
    "in_conflict": false,
    "note": "one reader; the hazard is reader vs a proposed clamp row (accepts only 2 or 4), not reader vs reader",
    "sites": [
     {
-     "actual": "GameOS/gameos/gos_terrain_height_tex.cpp:51",
+     "actual": "GameOS/gameos/gos_terrain_height_tex.cpp:53",
      "claim": "GameOS/gameos/gos_terrain_height_tex.cpp:51",
-     "class": "Num(atoi,raw)",
-     "verdict": "confirmed"
+     "class": "Typed(is)",
+     "verdict": "corrected"
     }
    ]
   },
@@ -572,7 +573,8 @@
    "gate": "MC2_TERRAIN_HEIGHT_RESAMPLE_FACTOR",
    "in_conflict": false,
    "readers": [
-    "GameOS/gameos/gos_terrain_height_tex.cpp:51 Num(atoi,raw)"
+    "GameOS/gameos/gos_terrain_height_tex.cpp:53 Typed(is)",
+    "GameOS/gameos/gos_terrain_height_tex.cpp:54 Typed(is)"
    ],
    "rule": "Enum {1,2,4}; other values rejected",
    "status": "note"
@@ -665,7 +667,7 @@
     "code/gamecam.cpp:843 Tri(inherit)",
     "code/gamecam.cpp:967 Tri(inherit)",
     "code/objmgr.cpp:2192 Tri(inherit)",
-    "code/weaponbolt.cpp:71 Tri(inherit)"
+    "code/weaponbolt_render.cpp:18 Tri(inherit)"
    ],
    "rule": "Tri (subGate): explicit 1/0 wins, else inherit the umbrella",
    "status": "resolved"
@@ -1830,7 +1832,7 @@
   "editor",
   "gui"
  ],
- "source": "commit ab9f52658",
+ "source": "commit 3ad51e033",
  "totals": {
   "conflict_gates": 6,
   "gates_with_literal": 1131,
@@ -1839,8 +1841,8 @@
   "non_call_literals": 45,
   "nonreader_sites": 17,
   "read_sites": 1652,
-  "reader_sites": 1555,
-  "token_sites": 57,
+  "reader_sites": 1551,
+  "token_sites": 61,
   "unclassified_sites": 23,
   "unresolved_conflicts": 0
  },
