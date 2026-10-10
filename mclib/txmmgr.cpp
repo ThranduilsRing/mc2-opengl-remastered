@@ -467,6 +467,26 @@ static void txmLeakKeyForName(const char* name, char* out, size_t outSz)
     if (len == 0) snprintf(out, outSz, "<numeric>");
 }
 
+// --- Shadow shape collection (file-scope global, no struct layout impact) ---
+struct ShadowShapeEntry {
+	HGOSBUFFER vb;
+	HGOSBUFFER ib;
+	HGOSVERTEXDECLARATION vdecl;
+	float worldMatrix[16];
+};
+static const int MAX_SHADOW_SHAPES = 512;
+static ShadowShapeEntry g_shadowShapes[MAX_SHADOW_SHAPES];
+
+#define EVICT_SKIPPED(nodeIdx, refcount, site)                                          \
+    do {                                                                                \
+        if (s_evictSkipShouldEmit((long)(nodeIdx), turn)) {                             \
+            printf("[TEX_LIFECYCLE v1] event=evict_skipped reason=pinned "              \
+                   "nodeIdx=%ld pinRefCount=%lu site=%s turn=%ld\n",                    \
+                   (long)(nodeIdx), (unsigned long)(refcount), (site), (long)turn);     \
+            fflush(stdout);                                                             \
+        }                                                                               \
+    } while (0)
+
 // Shared per-process dedup for event=evict_skipped across the four eviction
 // sites (one in MC_TextureManager::update, three in flushCache). Without
 // dedup, ~thousands of pinned nodes × 60Hz eviction sweeps = unsustainable
@@ -478,25 +498,7 @@ static inline bool s_evictSkipShouldEmit(long nodeIdx, long curTurn) {
     const uint64_t key = (uint64_t(curTurn >> 6) << 32) | uint64_t(uint32_t(nodeIdx));
     return s_dedup.insert(key).second;
 }
-#define EVICT_SKIPPED(nodeIdx, refcount, site)                                          \
-    do {                                                                                \
-        if (s_evictSkipShouldEmit((long)(nodeIdx), turn)) {                             \
-            printf("[TEX_LIFECYCLE v1] event=evict_skipped reason=pinned "              \
-                   "nodeIdx=%ld pinRefCount=%lu site=%s turn=%ld\n",                    \
-                   (long)(nodeIdx), (unsigned long)(refcount), (site), (long)turn);     \
-            fflush(stdout);                                                             \
-        }                                                                               \
-    } while (0)
 
-// --- Shadow shape collection (file-scope global, no struct layout impact) ---
-struct ShadowShapeEntry {
-	HGOSBUFFER vb;
-	HGOSBUFFER ib;
-	HGOSVERTEXDECLARATION vdecl;
-	float worldMatrix[16];
-};
-static const int MAX_SHADOW_SHAPES = 512;
-static ShadowShapeEntry g_shadowShapes[MAX_SHADOW_SHAPES];
 // FRAME-JOBS-2 precondition: atomic so worker threads can reserve shadow
 // shape slots without a mutex. ShadowShapeEntry fields are fully independent
 // per-slot (vb/ib/vdecl/worldMatrix — no aliased pointers), so fetch_add
