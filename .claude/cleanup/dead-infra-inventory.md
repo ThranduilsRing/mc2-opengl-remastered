@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Dead-weight inventory (2026-10-09, read-only at HEAD dcc40a886) — DELETE-now ≈224 files / 38k lines / 167 MB; engine #if 0 5.5k lines; ASK list of 11
 
 Owner rule (2026-10-09): superseded test infrastructure and dead code get deleted after a provenance audit; tag locally first (`archive/dead-infra-2026-10-09`).

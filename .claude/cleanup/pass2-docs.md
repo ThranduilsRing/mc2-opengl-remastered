@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # Pass 2: MC2_* default-state claims (report only)
 
 Method: registry defaults from `repo_query.py env --all`, cross-checked against the GL reader code. Scanned docs/ and .claude/*.md + CLAUDE.md, excluding docs/archive. Skipped history, plans, and specs.
@@ -15,4 +16,4 @@ Notes:
 - docs/tier1_env_vars.md:68 already corrects MC2_SHADOW_ENABLE to default ON, but the two rows above in engine-closure-audit.md were not updated.
 - Not flagged: umbrella sub-gate wording (VK_SHARED_GBUFFER, VK_VFX), history lines, and plan/spec "will flip" lines.
 - MC2_SMOKE_FIXED_TIMESTEP "default ON in the runner" (docs/superpowers/strategy/baseline-a-capture-runbook.md:58) was not verified. It is a script default, not an engine reader.
-- MC2_STATIC_PROP_LEGACY_DISPATCH is live (reader gos_static_prop_batcher.cpp:228). No retired-gate claim found in live docs. MC2_DRAW_PACKET_STATIC_PROP_V6 is correctly marked retired in docs/tier1_env_vars.md:571.
+- MC2_STATIC_PROP_LEGACY_DISPATCH is live (reader GameOS/gameos/gos_static_prop_batcher_internal.h:234). No retired-gate claim found in live docs. MC2_DRAW_PACKET_STATIC_PROP_V6 is correctly marked retired in docs/tier1_env_vars.md:571.

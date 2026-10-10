@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # Gate deletion audit (pre-G1) — 2026-10-09, read-only adversarial pass at HEAD 2f55cdddc
 
 Read-only. HEAD `2f55cdddc` on `claude/nifty-mendeleev`. The tree is dirty with the seam#2 agent's work: `GameOS/gameos/gos_mech_batcher.h`, `shaders/mech.vert`, `shaders/shadow_mech.vert`, `tools/gpu_abi_gen.py`, `shaders/spv/*`. Any edit batch must stage by path and leave those alone.
@@ -25,54 +26,54 @@ Shape for every Tier B and terrain row is delete-ON-path unless stated. Default 
 | Gate | Plan / verdict | Rd | Extra consumers and notes | Verdict, why |
 |---|---|---|---|---|
 | ANIMATED_PROP_PROBE | B/DEL | 1 (`bdactor.cpp:1071`) | none | SAFE |
-| ANIM_ADVANCE_TRACE | B/DEL | 1 (`mech3d.cpp:5636`) | ANDed with `mc2_diag::tagEnabled("ANIM_ADVANCE")` | SAFE, delete the whole block, not just the env term |
+| ANIM_ADVANCE_TRACE | B/DEL | 1 (`mclib/mech3d_update.cpp:440`) | ANDed with `mc2_diag::tagEnabled("ANIM_ADVANCE")` | SAFE, delete the whole block, not just the env term |
 | BRAIN_ENGAGE_TRACE | B/DEL | 1 (`brain_special_dispatch.cpp:2012`) | `check-brain-opord.py` parses `[BRAIN_ENGAGE]`, a different tag | SAFE |
-| CLOUD_DIAG | B/DEL | 1 (`gos_postprocess.cpp:3431`) | manifest regen | SAFE-WITH-CONSUMER-FIX |
+| CLOUD_DIAG | B/DEL | 1 (`GameOS/gameos/gos_postprocess_effects.cpp:652`) | manifest regen | SAFE-WITH-CONSUMER-FIX |
 | DEPLOY_KIND_TRACE | B/DEL | 1 (`mission.cpp:2697`) | none | SAFE |
 | EDITOR_DRAG_TRACE | B/DEL | 1 (`EditorInterface.cpp:1745`) | editor target | SAFE |
-| EDITOR_MOVER_TRACE | B/DEL | 1 (`EditorObjectMgr.cpp:1387`) | helper `editorMoverTraceOn()` has 4 users (1435, 1588, …) | SAFE, remove helper and all 4 |
+| EDITOR_MOVER_TRACE | B/DEL | 1 (`editor/EditorObjectMgr_render.cpp:33`) | helper `editorMoverTraceOn()` has 4 users (1435, 1588, …) | SAFE, remove helper and all 4 |
 | EDITOR_PROJECT_TRACE | B/DEL | 1 (`FoliageRender.cpp:239`) | `s_trace` at 331, 350 | SAFE |
-| FL_TRACE | B/DEL | 1 (`missiongui.cpp:3225`) | observe-only | SAFE |
+| FL_TRACE | B/DEL | 1 (`code/missiongui_orders.cpp:21`) | observe-only | SAFE |
 | FRAME_JOBS_PATHB_DIAG | B/DEL | 2 (`objmgr.cpp:2768,2772`) | `run_smoke.py:2472`; three code regions (preamble 2765-2795, loop 2945-2962, post-loop 3261-3305) | SAFE, but it is a hot loop. `smoke --lite` and tier1 are required |
 | GPU_SCENE_SCALE_PROBE | B/DEL | 1 (`gos_static_prop_registry.cpp:1742`) | none | SAFE |
 | HDRI_SKY_STATE_PROBE | B/DEL | 3 (`gos_postprocess.cpp:5334,5627,5813`) | manifest regen; sky has a VK port, but this is print-only | SAFE-WITH-CONSUMER-FIX |
-| LIGHTBRIDGE_COMMIT_TRACE | B/DEL | 1 (`objmgr.cpp:2747`) | `run_smoke.py:2475`; also delete `g_baked*` atomics at `txmmgr.cpp:1875-1877`; `g_bakedProbeCalls.fetch_add` runs on a hot path, the other two are never incremented | SAFE, plan under-scoped |
-| LIGHT_DEDUP_TRACE | B/DEL | 1 (`txmmgr.cpp:2059`) | its own comment says "demote-not-delete" | SAFE, see policy note |
+| LIGHTBRIDGE_COMMIT_TRACE | B/DEL | 1 (`code/objmgr_update.cpp:743`) | `run_smoke.py:2475`; also delete `g_baked*` atomics at `mclib/txmmgr_lights.cpp:483-485`; `g_bakedProbeCalls.fetch_add` runs on a hot path, the other two are never incremented | SAFE, plan under-scoped |
+| LIGHT_DEDUP_TRACE | B/DEL | 1 (`mclib/txmmgr_lights.cpp:663`) | its own comment says "demote-not-delete" | SAFE, see policy note |
 | LODBUG_TRACE | B/DEL | 1 (`bdactor.cpp:2479`) | `tests/shader_variants/static_prop.frag.splice-regression` mentions a "LODBUG probe", which is a shader debug mode, not this env var. Leave it | SAFE |
-| MATERIALLIB_TRACE | B/DEL | 1 (`gos_terrain_lod_chunk.cpp:2852`) | manifest regen | SAFE-WITH-CONSUMER-FIX |
-| MVP_EARLY_TRACE | B/DEL | 1 (`gos_terrain_indirect.cpp:4743`) | manifest regen | SAFE-WITH-CONSUMER-FIX |
+| MATERIALLIB_TRACE | B/DEL | 1 (`GameOS/gameos/gos_terrain_lod_chunk_draw.cpp:935`) | manifest regen | SAFE-WITH-CONSUMER-FIX |
+| MVP_EARLY_TRACE | B/DEL | 1 (`GameOS/gameos/gos_terrain_indirect_dispatch.cpp:899`) | manifest regen | SAFE-WITH-CONSUMER-FIX |
 | OBJECT_ID_BRIDGE_TRACE | B/DEL | 2 (`RenderWorld.cpp:619,938`) | pick diagnostic, the pick-parity surface | SAFE, weak-keep |
 | PATROL_TRACE | B/DEL | 2 (`EditorObjects.cpp:700,855`) | `run-editor.bat:11-13` sets it (consumer). The reads are ORed with `MC2_EDITOR_TRACE` (kept; `EditorMFC.cpp:177` forces it ON) | SAFE-WITH-CONSUMER-FIX; shape is drop the OR term, `[PATROL]` prints survive |
-| SHADOW_CASTER_DIAG | B/DEL | 1 (`gos_mech_batcher.cpp:1268`) | manifest regen; the file's `.h` is dirty (seam#2) | SAFE in principle. Defer until seam#2 lands |
+| SHADOW_CASTER_DIAG | B/DEL | 1 (`GameOS/gameos/gos_mech_batcher_geometry.cpp:100`) | manifest regen; the file's `.h` is dirty (seam#2) | SAFE in principle. Defer until seam#2 lands |
 | SHADOW_FOCUS_DIAG | B/DEL | 1 (`gos_postprocess.cpp:6926`) | ORed with registered `MC2_SHADOW_FRUSTUM_DIAG`; the block stays | SAFE-WITH-CONSUMER-FIX; shape is drop one OR term (about 1 line, not 5) |
-| STABLE_LIGHT_SKIP_DIAG | B/DEL | 1 (`bdactor.cpp:2866`) | `run_smoke.py:2483`; no yaml row (`ParseEnvBool` idiom is invisible to the generator); about 110 lines of struct and flush | HOLD, see disagreement 3 |
-| TERRAIN_CAM_DIAG | B/DEL | 1 (`terrain.cpp:2938`) | none | SAFE |
+| STABLE_LIGHT_SKIP_DIAG | B/DEL | 1 (`mclib/bdactor_diag.cpp:263`) | `run_smoke.py:2483`; no yaml row (`ParseEnvBool` idiom is invisible to the generator); about 110 lines of struct and flush | HOLD, see disagreement 3 |
+| TERRAIN_CAM_DIAG | B/DEL | 1 (`mclib/terrain_update.cpp:749`) | none | SAFE |
 | TERRAIN_LIGHTING_GPU_TRACE | B/DEL | 1 (`gos_terrain_lighting.cpp:55`) | `run_smoke.py:2081`; macro `TL_TRACE` has 5 uses; `telemetry_lift.py:260` expects 8 `TERRAIN_LIGHTING_GPU` records, but those come from ungated `MC2_DIAGF` lines | SAFE-WITH-CONSUMER-FIX (manifest regen) |
 | TERRAIN_MASK_DISPATCH_TRACE | B/DEL | 1 (`gos_terrain_mask_dispatch.cpp:94`) | `s_traceOn`, macro `MASK_TRACE` (4+ uses) and blocks at 288, 317; hit in untracked `docs/superpowers/...b4-mask-dispatch-design.md` | SAFE; plan's "no doc hit" is wrong for that file |
-| TERRAIN_SHORELINE_PROBE | B/DEL | 1 (`gos_terrain_lod_chunk.cpp:1538`) | `run_smoke.py:1795`; the function spans 1535-1629 (95 lines, not 25) plus call at 2711 | SAFE-WITH-CONSUMER-FIX; also removes `s_coarseHeightCpu` (420, 1542, 1551, 3621), a heightmap copy kept only for this probe |
-| TEX_HANDOFF_TRACE | B/DEL | 1 (`gos_static_prop_batcher.cpp:119`) | memory hit in `archive/black_tree_bug_investigation_state.md`, which violates the plan's own rule; macro `TEX_HANDOFF` has 2 use sites (3408, 8924-8941) | HOLD, should be MERGE by the plan's rule |
+| TERRAIN_SHORELINE_PROBE | B/DEL | 1 (`GameOS/gameos/gos_terrain_lod_chunk_feed.cpp:16`) | `run_smoke.py:1795`; the function spans 1535-1629 (95 lines, not 25) plus call at 2711 | SAFE-WITH-CONSUMER-FIX; also removes `s_coarseHeightCpu` (420, 1542, 1551, 3621), a heightmap copy kept only for this probe |
+| TEX_HANDOFF_TRACE | B/DEL | 1 (`GameOS/gameos/gos_static_prop_batcher_internal.h:126`) | memory hit in `archive/black_tree_bug_investigation_state.md`, which violates the plan's own rule; macro `TEX_HANDOFF` has 2 use sites (3408, 8924-8941) | HOLD, should be MERGE by the plan's rule |
 | VK_PROP_LIGHT_PROBE | B/DEL | 1 (`vulkan_color_prop_island.cpp:1604`) | documented as the "washout engagement probe" in `VK-ARC-STATE.md:2888,2929` | HOLD until VK prop-lighting parity closes |
 | CEMENT_EDGE_CURVE | A/DS | 0 | only comments and docs: `gos_terrain_lod_chunk.cpp:4358,4377`, `.h:283`, `terrain_lod_chunk.frag:307`, registry comment 2733, `tier1_env_vars.md:868` | SAFE, no code; tombstone comments only |
 | ROAD_PBR | A/DS | 0 | docs only: `tier1_env_vars.md:542,1323`, `active_campaigns.md:9` | SAFE |
 | DRAW_PACKET_STATIC_PROP_V6 | A/NRR | 0 | enum 14 (`RendererFeatureRegistry.h:107`), row 445, `tests/unit/test_rendercore.cpp:405`, `engine-closure-audit.md:154`; memory `dead-gate-scan-classifier-precision` says DO_NOT_DELETE | UNSAFE standalone: positional enum. Fold into the renumber pass or keep the tombstone |
-| VK_CSM_BISECT | A/NRR | 1 (`vulkan_terrain_island.cpp:168`, warn only) | allowlist row `check-env-registry.sh:191` | SAFE-WITH-CONSUMER-FIX |
-| VK_CSM_COPYMODE | A/NRR | 1 (`vulkan_terrain_island.cpp:164`, warn only) | row `:192` | SAFE-WITH-CONSUMER-FIX |
-| VK_TERRAIN_NATIVE_PREFIX_CLEAR | A/NRR | 1 (`vulkan_terrain_island.cpp:223`, warn) | strict runner `:41,88` sets it to 1; `run_smoke.py:2673`; registry row 1972 (kind Feature, text says no-op); `tier1_env_vars.md:126` | SAFE-WITH-CONSUMER-FIX |
+| VK_CSM_BISECT | A/NRR | 1 (`GameOS/gameos/vulkan_terrain_island_internal.h:141`, warn only) | allowlist row `check-env-registry.sh:191` | SAFE-WITH-CONSUMER-FIX |
+| VK_CSM_COPYMODE | A/NRR | 1 (`GameOS/gameos/vulkan_terrain_island_internal.h:137`, warn only) | row `:192` | SAFE-WITH-CONSUMER-FIX |
+| VK_TERRAIN_NATIVE_PREFIX_CLEAR | A/NRR | 1 (`GameOS/gameos/vulkan_terrain_island_internal.h:196`, warn) | strict runner `:41,88` sets it to 1; `run_smoke.py:2673`; registry row 1972 (kind Feature, text says no-op); `tier1_env_vars.md:126` | SAFE-WITH-CONSUMER-FIX |
 | VK_SHADOW_DIRECT_CHAIN | A/NRR | 1 (`vulkan_shadow_island_live.cpp:164`, warn) | `check_vk_nointerop_log.py:340-349` `explicit_dc` branch (the umbrella branch already reconciles it); strict runner `:18-22,54,97`; `run_smoke.py:2591,2858`; registry row 1783 (Trace kind, stale text) | SAFE-WITH-CONSUMER-FIX; rework the checker first |
 | VK_MECH_DIRECT_CHAIN | A/NRR | 3 (`engine_present_vk.cpp:299`, `vk_shared_gbuffer_gate.h:157`, `vulkan_mech_island.cpp:141`) | strict runner `:47,90`; `run_smoke.py:2642`; registry row 2135 (text 2151 stale). Delete-OFF-path: only `=0` changes behavior | SAFE-WITH-CONSUMER-FIX + OWNER OK. Header edit forces a wide rebuild |
 | VK_POST_FOG / SSAO / SCREENFX / HZB_DIRECT_CHAIN | A/NRR | 2 each (`gos_postprocess.cpp:150-153` gate term + `vulkan_post_*_native.cpp` warn) | strict runner `:59-68,92-95`; `run_smoke.py:2850-2853`; allowlist rows 1051/1054/1057/1061; manifest regen | SAFE-WITH-CONSUMER-FIX + OWNER OK; same `=0` override loss |
-| TERRAIN_LIGHTING_V1 | T/DEL | 3 (`gameos_graphics.cpp:7175`, `gos_terrain_lod_chunk.cpp:2872`, `GraphicsOptionsWindow.cpp:613`) | `capture_baseline.py:83`; debt `:65`; `terrain.json:17`; `data/visual_tuning.json` (8 keys, incl. the V2 key); `docs/modding/examples/imgui-editing/mod/data/visual_tuning.json:8`; `tools/shader_reflect` goldens (`gos_terrain.frag`, `terrain_overlay.frag`); `check-lighting-divergence.py` rows; manifest regen | SAFE-WITH-CONSUMER-FIX; shipped copies in `mc2-win64-v0.4` and `v0.4c` carry the JSON keys, so keep the retired-key branch in `visual_tuning_profile.cpp` |
-| TERRAIN_LIGHTING_V2 | T/DEL | 3 (`gameos_graphics.cpp:7188`, `gos_terrain_lod_chunk.cpp:2873`, `GraphicsOptionsWindow.cpp:643`) | `capture_baseline.py:85`; debt `:66`; `terrain.json:18`; same files as V1 | SAFE-WITH-CONSUMER-FIX |
-| TERRAIN_NORMALS_FROM_HEIGHT | T/DEL | 2 (`gameos_graphics.cpp:7160`, `GraphicsOptionsWindow.cpp:561`) | `capture_baseline.py:79`; debt `:68`; `terrain.json:16,25`; goldens. Effect is legacy `MC2_TERRAIN_LOD_CHUNK=0` path only | SAFE-WITH-CONSUMER-FIX |
+| TERRAIN_LIGHTING_V1 | T/DEL | 3 (`GameOS/gameos/gameos_graphics_tparams.cpp:70`, `GameOS/gameos/gos_terrain_lod_chunk_draw.cpp:952`, `GraphicsOptionsWindow.cpp:613`) | `capture_baseline.py:83`; debt `:65`; `terrain.json:17`; `data/visual_tuning.json` (8 keys, incl. the V2 key); `docs/modding/examples/imgui-editing/mod/data/visual_tuning.json:8`; `tools/shader_reflect` goldens (`gos_terrain.frag`, `terrain_overlay.frag`); `check-lighting-divergence.py` rows; manifest regen | SAFE-WITH-CONSUMER-FIX; shipped copies in `mc2-win64-v0.4` and `v0.4c` carry the JSON keys, so keep the retired-key branch in `visual_tuning_profile.cpp` |
+| TERRAIN_LIGHTING_V2 | T/DEL | 3 (`GameOS/gameos/gameos_graphics_tparams.cpp:83`, `GameOS/gameos/gos_terrain_lod_chunk_draw.cpp:953`, `GraphicsOptionsWindow.cpp:643`) | `capture_baseline.py:85`; debt `:66`; `terrain.json:18`; same files as V1 | SAFE-WITH-CONSUMER-FIX |
+| TERRAIN_NORMALS_FROM_HEIGHT | T/DEL | 2 (`GameOS/gameos/gameos_graphics_tparams.cpp:55`, `GraphicsOptionsWindow.cpp:561`) | `capture_baseline.py:79`; debt `:68`; `terrain.json:16,25`; goldens. Effect is legacy `MC2_TERRAIN_LOD_CHUNK=0` path only | SAFE-WITH-CONSUMER-FIX |
 | TERRAIN_CLIFF_DISPLACE (+MAXTESS) | T/DEL | 2 (`gos_terrain_lod_chunk.cpp:184,188`) | `run_smoke.py:2926-2927`; registry aux rows 2789, 2796; **`gl_shader_variants.json` tess entries (missed by plan)**; delete `terrain_lod_chunk.tesc` and `.tese` | SAFE-WITH-CONSUMER-FIX; confirm with owner that tess is dead (memory: 3b abandoned) |
 | TERRAIN_AMBIENT_FLOOR_NIGHT | T/DEL | 1 (`gos_terrain_lod_chunk.cpp:4277`) | `run_smoke.py:1772`; registry aux row 940; `tier1_env_vars.md:790` | UNSAFE pending owner, see disagreement 1 |
 | TERRAIN_CONCRETE_DETAIL_NORMAL | T/DEL | 1 (`gos_terrain_lod_chunk.cpp:927`) | `run_smoke.py:1813`; registry aux row 2815; `tier1_env_vars.md:867` | SAFE-WITH-CONSUMER-FIX; user ruling 2026-07-26 backs it |
-| PROP_LOD_SHADOW_CAST | T/DEL | 1 (`mclib/bdactor.cpp:36`) | `run_smoke.py:1872`; enum 47 (`:235`) and row 708 force renumber; `.claude/SHADOW-DECISIONS-1-STATUS.md` says "benefit undemonstrated" | SAFE-WITH-CONSUMER-FIX; making the default `setRecipeNoShadow(true)` unconditional leaves shadow behavior unchanged |
+| PROP_LOD_SHADOW_CAST | T/DEL | 1 (`mclib/bdactor_internal.h:28`) | `run_smoke.py:1872`; enum 47 (`:235`) and row 708 force renumber; `.claude/SHADOW-DECISIONS-1-STATUS.md` says "benefit undemonstrated" | SAFE-WITH-CONSUMER-FIX; making the default `setRecipeNoShadow(true)` unconditional leaves shadow behavior unchanged |
 
 ## Verified plan claims
 - `terrain-gates-plan.md` line numbers still match HEAD: enum rows 137, 140, 143 and 235; `gos_terrain_lod_chunk.cpp` 184, 927, 2872 and 4277; `gameos_graphics.cpp` 7160, 7175 and 7188. Anchor edits by text anyway: commit `c47bc6892` touched comments in `gos_terrain_lod_chunk.cpp`.
 - The V1 corner case holds. The chunk reader is `getenv != nullptr`, so `=0` meant ON. The legacy reader tests `e[0] != '0'`.
-- `gos_TerrainAmbientDayGate` is clamped to 0..1 (`gameos_graphics.cpp:10589`). Making `max(raw, 0)` into `raw` is byte-identical for the VK feed. This applies if NIGHT is ever deleted.
+- `gos_TerrainAmbientDayGate` is clamped to 0..1 (`GameOS/gameos/gameos_graphics_tparams.cpp:895`). Making `max(raw, 0)` into `raw` is byte-identical for the VK feed. This applies if NIGHT is ever deleted.
 - The enum renumber (61 to 57) is safe in-repo. Only `RendererFeature::` names are used (`EditorInspector.cpp:356` loops by count), and no script parses the enum.
 - There is no data, launcher, `.bat` or capture-profile consumer, apart from `run-editor.bat` (PATROL), `terrain.json`, and `capture_baseline.py`.
 - `tests/visual/baselines/*.json` hold historical env records. `check-capture-env-declared.py` only checks the scrub record of new manifests, so leave them.
@@ -82,7 +83,7 @@ Shape for every Tier B and terrain row is delete-ON-path unless stated. Default 
 2. **`MC2_TEX_HANDOFF_TRACE` (and `MC2_TERRAIN_MASK_DISPATCH_TRACE`) break tierB's own rule.** The rule says DELETE requires no memory or `.md` hit. TEX_HANDOFF has a memory hit; MASK_DISPATCH has a hit in an untracked spec. Treat them as MERGE or get explicit sign-off.
 3. **`MC2_STABLE_LIGHT_SKIP_DIAG`: bundle, don't delete alone.** It is the only observability for the live default-off family `MC2_STABLE_LIGHT_SKIP`, `_TOUCH` and `MC2_LIGHTBRIDGE_STABLE_SKIP`. Decide the family first (gate amnesty).
 4. **`MC2_VK_PROP_LIGHT_PROBE`: defer.** Active VK lit-prop parity probe, and the VK flip is not done.
-5. **Policy tension.** `memory/debug_instrumentation_rule.md` says to demote diagnostics, never delete them (`txmmgr.cpp:2057` repeats it). The 28-gate delete contradicts it unless the owner has superseded the rule. Get that acknowledged in one line before B1/B2.
+5. **Policy tension.** `memory/debug_instrumentation_rule.md` says to demote diagnostics, never delete them (`mclib/txmmgr_lights.cpp:661` repeats it). The 28-gate delete contradicts it unless the owner has superseded the rule. Get that acknowledged in one line before B1/B2.
 6. **`DRAW_PACKET_STATIC_PROP_V6` is not a clean delete.** It is a positional enum tombstone; memory says DO_NOT_DELETE. Do it only inside the renumber pass.
 7. **Under-scoped:** LIGHTBRIDGE_COMMIT_TRACE (the `txmmgr.cpp` atomics), TERRAIN_SHORELINE_PROBE (the heightmap copy, 95 lines), PATROL_TRACE and SHADOW_FOCUS_DIAG (OR terms, not blocks). Tier B's "39 sites" is mentions; the actual count is 33 env-read lines.
 

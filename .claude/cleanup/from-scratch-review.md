@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # From-scratch review: what we'd do differently (read-only survey, 2026-10-09)
 Evidence: grep counts + spot reads; Tracy needed for all perf claims.
 Facts: ~237 files call getenv (static-local bool per probe); 378 vkCreate*/463 vkDestroy* in GameOS, 0 RAII wrappers in vulkan_*.cpp;

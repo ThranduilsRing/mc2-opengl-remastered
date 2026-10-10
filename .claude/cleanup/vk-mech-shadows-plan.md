@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # VK shadow island: mech casters plan
 
 Reverted: be08b5575 (feat), reverted by 7cd819aff. Read-only analysis; nothing built.

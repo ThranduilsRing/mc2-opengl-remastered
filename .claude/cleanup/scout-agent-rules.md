@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # Scout: stale agent / skill / memory-index rules after the 2026-10-05 reset
 
 Read-only audit. Canonical rules: `A:/Games/mc2-main/CLAUDE.md` (ONE lane; deploy lanes `mc2-win64-v0.4` dev and `mc2-win64-v0.4c` golden only; features ship default-ON; local commits only; build and commit in `A:/Games/mc2-main`, never the root).

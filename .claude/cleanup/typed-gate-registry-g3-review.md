@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # G3 terrain family — Opus adversarial review (2026-10-10; ACCEPT-WITH-FIX; all 177 sites read; no reachable behavior change)
 
 Condensed by the orchestrator. Reviewer read every migrated site in the 7 diffs, ran `gate_gen --check`, the cogating/delivery selftests, lighting-divergence, `test_runner_env_drop`, feature-coverage + codemod tests (141), lane-name tests, plus one negative cogating test. No edits/builds/launches.
@@ -15,10 +16,10 @@ Condensed by the orchestrator. Reviewer read every migrated site in the 7 diffs,
 - Who sets edge values: nothing in scripts/tests/tools/data/golden_floors/launcher table.
 
 ## Findings (routed to lane 1)
-- **F1** `MC2_TERRAIN_LOD_CHUNK_DIST_SCALE` (`mclib/terrain.cpp:262`): old `s > 0.05f` (float vs float); row compares float-rounded 0.0500000007 against double 0.05 → `"0.05"` now passes. Fix: `rangeAbove((double)0.05f, FLT_MAX)`.
-- **F2** `MC2_TERRAIN_DETAIL_ANTITILE` (`lod_chunk.cpp:873`): old "non-empty and not exactly '0'", row Lead0 → `01`/`0.5`/`00` now off; raw reader `gameos_graphics.cpp:7258` still on → two readers disagree until that file migrates. Not in the notes.
+- **F1** `MC2_TERRAIN_LOD_CHUNK_DIST_SCALE` (`mclib/terrain_update.cpp:47`): old `s > 0.05f` (float vs float); row compares float-rounded 0.0500000007 against double 0.05 → `"0.05"` now passes. Fix: `rangeAbove((double)0.05f, FLT_MAX)`.
+- **F2** `MC2_TERRAIN_DETAIL_ANTITILE` (`lod_chunk.cpp:873`): old "non-empty and not exactly '0'", row Lead0 → `01`/`0.5`/`00` now off; raw reader `GameOS/gameos/gameos_graphics_tparams.cpp:153` still on → two readers disagree until that file migrates. Not in the notes.
 - **F3** `MC2_PAD_EDGE_ROAD_FIX`: `01`/`02` (0→1/2), `20` (2→1), `-0` (1→0); `MC2_PAVED_OVERLAY_CLASS`: `+1`/`" 1"` (0→1), `10`–`29` (1/2→0). Notes claimed only `12abc`/`abc`.
 - **F4** notes inaccurate both ways: `"nan"` → default (old passed NaN to the uniform) on MORPH_START, VISUAL_DISPLACE_FAR, PAD_AREA_GLOW, CEMENT_LIT, CLIFF_DISPLACE_MAXTESS, DETAIL_LOD1/MACRO_STRENGTH, SKIRT_MAX, LOWCAM_SOLID_NEAR, SNOW_BRIGHTNESS_DAMPEN, SHORE3_EXTRA_WU (improvement, unlisted); `1e999` over-claimed on SHORE3_EXTRA_WU and clamp rows.
-- **F5** strict-only: verified rows with reject ranges make `"0"`/`"-1"` a bad value (exit 78) on POM_SCALE/FAR, SHORELINE_*_RUN/HEIGHT, MEANDER_FREQ, CLIFF_* strengths; `gos_terrain_lod_chunk.cpp:96` comment `0 -> pure rgb-normal` was never true (helper mapped 0 → 2.0) → fix comment.
+- **F5** strict-only: verified rows with reject ranges make `"0"`/`"-1"` a bad value (exit 78) on POM_SCALE/FAR, SHORELINE_*_RUN/HEIGHT, MEANDER_FREQ, CLIFF_* strengths; `GameOS/gameos/gos_terrain_lod_chunk_internal.h:103` comment `0 -> pure rgb-normal` was never true (helper mapped 0 → 2.0) → fix comment.
 - **F6** cogating check reads the table from the script's own repo, ignores per-site `Rule` overrides and `!get<>`; no typed-reader selftest; `gl_vk_cpp_gates` + lighting-divergence regexes miss `isNonEmpty<>`.
-- Cosmetic: `vulkan_terrain_island.cpp:1` include above the banner; `gos_terrain_indirect.cpp:4212` stray indent.
+- Cosmetic: `vulkan_terrain_island.cpp:1` include above the banner; `GameOS/gameos/gos_terrain_indirect_dispatch.cpp:371` stray indent.

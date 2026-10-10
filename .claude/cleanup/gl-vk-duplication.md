@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # GL <-> VK duplication map and consolidation plan
 Read-only survey (no builds). Evidence is from file headers and greps; not every claim was re-verified line by line.
 

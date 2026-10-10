@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # Narrowing baseline (lane2, claude/lane2-s3 @ f1fa193b2)
 
 Source: full clean ninja build of `mc2` + `mc2_launcher` (741 steps, RelWithDebInfo, C++23), log `.claude/build-lane2-full.log`.

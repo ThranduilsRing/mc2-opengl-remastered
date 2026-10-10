@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # G1a status (typed gate registry infrastructure, zero migrated sites)
 
 Audited at HEAD d96d394ab (G1a commits c08ee6755, e113b7f45, d00f9d26d, then the lane-2 merge 8e7b4724c / c093dab70).

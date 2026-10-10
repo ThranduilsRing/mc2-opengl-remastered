@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # gos_terrain_indirect split: shared state design (2026-10-10)
 
 Decision: no `TerrainIndirectState` struct in this split. Every shared name keeps its spelling and its initialiser, so each

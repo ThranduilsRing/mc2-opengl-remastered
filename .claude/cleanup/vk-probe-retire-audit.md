@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # D7 — VK probe fixture retirement audit (2026-10-09, read-only at HEAD d628e1374; verdict DELETE all, phase 1 ≈ −9k lines)
 
 Read from HEAD `d628e1374`; nothing was edited, built or run. **Verdict: DELETE all eleven fixtures plus the `vulkan_shader_probe` harness. Keep nothing.** Phase 1 removes about 9.0k lines. The one thing to carry over is the ~47-line SPIR-V loader, and that only because `vulkan_present_object.cpp` still calls it.

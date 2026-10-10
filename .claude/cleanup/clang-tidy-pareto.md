@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # clang-tidy Pareto set (measured 2026-10-09)
 
 Config: `/.clang-tidy` (22 checks). clang-tidy 23.1.3, `-p .` against root `compile_commands.json`
@@ -26,7 +27,7 @@ All hits were in owned dirs (HeaderFilterRegex works). Only compile error: batch
 | modernize-use-emplace | 2 | 2 | REVIEW (GuiRuntime.cpp:1285/1292) |
 | readability-redundant-control-flow | 2 | 2 | AUTO-FIX SAFE (terrain.cpp:4561/4617) |
 | readability-redundant-string-init | 1 | 0 | AUTO-FIX SAFE (shader_builder.h:99) |
-| bugprone-integer-division | 1 | 1 | REVIEW (terrain.cpp:568, `sqrt(float(tmp/sizeof(..)))` truncation, maybe a real bug) |
+| bugprone-integer-division | 1 | 1 | REVIEW (mclib/terrain.cpp:365, `sqrt(float(tmp/sizeof(..)))` truncation, maybe a real bug) |
 | performance-unnecessary-copy-initialization | 1 | 1 | AUTO-FIX SAFE (tgl.cpp:3477 `TG_TypeTriangle` copy -> `const&`) |
 | use-after-move, suspicious-string-compare, sizeof-expression/container, container-size-empty, redundant-smartptr-get/string-cstr, for-range-copy, move-const-arg | 0 | 0 | KEEP (zero noise guards) |
 

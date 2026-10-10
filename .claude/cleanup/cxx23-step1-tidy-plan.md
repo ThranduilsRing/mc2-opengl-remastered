@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # C++23 step 1 -- the clang-tidy safe set
 
 WHAT: mechanically apply the rewrites whose result cannot change behaviour, and prove each translation unit (TU)

@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # Opus adversarial consistency/duplication review (2026-10-09, HEAD f980105df, read-only)
 
 Method: read the prior cleanup reports, then re-derived from code. Ran a throwaway token-window clone scanner (normalized lines, comments stripped; shaders W=15, C++ render dirs W=20). Ran the read-only Python checkers, including the ones nothing wires. I did no builds and no launches. All line numbers are from HEAD f980105df.
@@ -9,7 +10,7 @@ Clone totals: shaders have 86 clone runs (2768 duplicated lines). GameOS/RenderC
 
 ### A1. [HIGH, live data bug] terrainTypeToMaterial has 5 copies, and one is already stale
 - Canonical: `mclib/quad.cpp:301-321`. Cases 10, 13-20 map to Concrete; 20 is END_CEMENT_TYPE.
-- Copies that match: `mclib/terrain.cpp:863-869` (lambda), `mclib/terrain.cpp:4928-4934` (lambda), `GameOS/gameos/gos_terrain_indirect.cpp:621-629`.
+- Copies that match: `mclib/terrain_init.cpp:245-251` (lambda), `mclib/terrain.cpp:4928-4934` (lambda), `GameOS/gameos/gos_terrain_indirect_atlas.cpp:15-23`.
 - **Divergent copy:** `GameOS/gameos/gos_terrain_water_stream.cpp:360-368` has no `case 20`, so type 20 maps to Rock there and to Concrete everywhere else. Its comment (`:354-359`) says "any drift surfaces at the parity check's frgb_lo the next time PARITY_CHECK runs". No offline gate runs that.
 - Fix: one `constexpr` table in a leaf header (e.g. `mclib/terrain_material_map.h`) used by all 5 sites, plus a doctest. If a shader needs the table, emit it through gpu_abi.
 
@@ -24,7 +25,7 @@ Clone totals: shaders have 86 clone runs (2768 duplicated lines). GameOS/RenderC
 - `scripts/check-contract-coverage.py` and `manual-checks.allowlist` scan only `scripts/`, so orphaned checkers in `tools/` are invisible.
 
 ### A3. [HIGH, red now] gate_default_agreement fails at HEAD
-`py -3 scripts/check-gate-default-agreement.py --quiet` exits 1 with `READER_CONFLICT MC2_BUCKET_CENSUS`: `gos_terrain_patch_stream.cpp:314` is classified `[ON] if(unset) return true` and `mclib/txmmgr.cpp:4068` `[OFF]`. Both readers actually do `getenv()!=nullptr` (OFF). The conflict appeared with f980105df (logging facade P1 converted this file's fprintf calls to `MC2_EVENT`). The classifier's statement window probably now straddles `s_killswitch = (env == nullptr) || ...` on `:312`. Either fix the classifier or name the reader. **Tell the writer agent: check-contracts is not green.**
+`py -3 scripts/check-gate-default-agreement.py --quiet` exits 1 with `READER_CONFLICT MC2_BUCKET_CENSUS`: `gos_terrain_patch_stream.cpp:314` is classified `[ON] if(unset) return true` and `mclib/txmmgr_render_passes.cpp:555` `[OFF]`. Both readers actually do `getenv()!=nullptr` (OFF). The conflict appeared with f980105df (logging facade P1 converted this file's fprintf calls to `MC2_EVENT`). The classifier's statement window probably now straddles `s_killswitch = (env == nullptr) || ...` on `:312`. Either fix the classifier or name the reader. **Tell the writer agent: check-contracts is not green.**
 
 ### A4. [HIGH, structural] The VK terrain shaders are a 3-way copy, and the extracted include is unused
 - `shaders/vulkan/terrain_tier1_skirt.frag` is a byte copy of `terrain_tier1.frag`: 544 normalized lines; only the header differs, and the header itself says "keep in LOCKSTEP by copying". The `.vert` pair shares 92 lines.
@@ -44,7 +45,7 @@ Flipping any of these gates ON (CLAUDE.md "features ship ON") changes GL only. P
 - `GpuMechInstance`: C++ `gos_mech_batcher.h` plus 3 GLSL copies (`mech.vert`, `shadow_mech.vert`, `vulkan/mech_tier1.vert`; layouts agree, pad names differ). This is the struct of memory `mech_shadow_instance_struct_stride_bug`. No checker covers it. **Next gpu_abi candidate.**
 - `ObjLightsMirror` (`vulkan_color_prop_island.cpp:496`, literal `[32]`) is a 6th light-ABI site that `check-light-abi-lockstep.py` (5 sites) does not know about.
 - `TG_LIGHT_*` enum is defined 4 times: `mclib/tgl.h:163`, `shaders/include/lighting.hglsl:17`, `vulkan/mech_tier1.vert:75`, `vulkan/color_prop_tier1.vert:45`.
-- `shadowKnobFlags` bit meanings (b0 FADE_CONT, b1 RAMP0, b2 ALT_SCALE, b3 BANDFIX_V2) exist only as comments in 6 places (`gameos.hpp:2438`, `vulkan_terrain_island.cpp:434`, `.h:200`, 3 shaders).
+- `shadowKnobFlags` bit meanings (b0 FADE_CONT, b1 RAMP0, b2 ALT_SCALE, b3 BANDFIX_V2) exist only as comments in 6 places (`gameos.hpp:2438`, `GameOS/gameos/vulkan_terrain_island_run.cpp:272`, `.h:200`, 3 shaders).
 - Static-prop vertex attribute offsets 0/12/24/32/36 are hard-coded at `vulkan_color_prop_island.cpp:1174-1178`. The stride is single-sourced; the attribute offsets are not.
 - Same block name, different struct: `ShadowFrameUBO` is mat4 + instBase (`shadow_prop.vert:38`, "column-major") versus mat4[4] + cascadeIndex (`shadow_depth.vert:23`, "row-major"). Both are mirrored in C++ (`vulkan_shadow_island_live.cpp:206`, `vulkan_backend_skeleton.cpp:6248`).
 - UBO PODs carrying only a `static_assert(sizeof)` (no field check): MechFrameUBO, LegacyFrameUBO, SkyPC, OvlPC, HudTexPush (`engine_present_vk.cpp:628`), ScreenFxShadowStaticParams, HzbLevelParams.
@@ -60,13 +61,13 @@ The probe binds a smaller UBO than the shader block, which triggers validation e
 ### A8. [MED] VK island boilerplate copied 13 times
 - `spv_dir()` + `load_spv()` are copied in 13 TUs (`vulkan_{water,vfx,terrain,sky,shadow_island_live,mech,legacy_shape,color_prop}_island.cpp`, `vulkan_post_{ssao,screenfx,hzb,fog}_native.cpp`, `engine_present_vk.cpp:354-360`). `mc2_vulkan_load_spv` already exists (`vulkan_backend_skeleton.h:33`).
 - `vlog()` is copied in 13 TUs; `log()` appears in the skeleton and `asset_scale.cpp`.
-- The 2-color + depth LOAD render-pass setup is cloned across `vulkan_mech_island.cpp:761-809`, `vulkan_legacy_shape_island.cpp:389-437` and `vulkan_terrain_island.cpp:3289-3324`.
+- The 2-color + depth LOAD render-pass setup is cloned across `vulkan_mech_island.cpp:761-809`, `vulkan_legacy_shape_island.cpp:389-437` and `GameOS/gameos/vulkan_terrain_island_overlay.cpp:373-408`.
 - The post_{fog,ssao,screenfx} descriptor/pipeline setup is a 3-way clone (`vulkan_post_fog_native.cpp:325-365` ~ `screenfx:422-460` ~ `ssao:429-457`).
 - Risk: a fix to one (for example the SPV path resolution, or a subpass dependency mask) does not reach the others.
 - `docs/tier1_env_vars.md:110` says `MC2_VULKAN_SPV_DIR` is "Only consulted when MC2_VULKAN_PROBE is set". That is false: 13 islands read it. It is also only allowlisted (`check-env-registry.sh:877`), not registered.
 
 ### A9. [MED] Duplicated C++ helpers
-- `textureOrKtxSidecarExists` exists 3 times, identical: `mclib/bdactor.cpp:184`, `gvactor.cpp:139`, `mech3d.cpp:182`. A 4th reader of the same env var, `txmmgr.cpp:5416`, parses differently: int mode 0/1/2 via `atoi` versus `v[0]!='0'` bool. So `MC2_TEXMGR_KTX_PRIMARY=false` or `=2` behaves differently in the actor-existence probe and the actual loader. This matters for mod installs.
+- `textureOrKtxSidecarExists` exists 3 times, identical: `mclib/bdactor.cpp:88`, `mclib/gvactor.cpp:34`, `mclib/mech3d_init.cpp:8`. A 4th reader of the same env var, `mclib/txmmgr_texture.cpp:353`, parses differently: int mode 0/1/2 via `atoi` versus `v[0]!='0'` bool. So `MC2_TEXMGR_KTX_PRIMARY=false` or `=2` behaves differently in the actor-existence probe and the actual loader. This matters for mod installs.
 - `isAllConcreteTerrainBatch` exists twice, semantically identical: `mclib/txmmgr.cpp:529` (DWORD) and `GameOS/gameos/gameos_graphics.cpp:160` (int). It depends on the frgb material byte that A1 produces.
 - Others: TinyJson parser (`terrain_material_lib.cpp:37-85` ~ `visual_tuning_profile.cpp:51-98`, "kept independent on purpose"), `inMapBounds` (3), `agsqrt` (5), `rgb2hsi`/`hsi2rgb` (2), `envIsSet` (2), `executableDirectory` (2), `argbToImU32` (2).
 - GL-GL shader clones: `gos_terrain_water_fast.vert` ~ `gos_terrain_water_fast_mdi.vert` (~130 lines across 5 runs), `static_prop.frag:85-124` ~ `static_prop_depth.frag:37-74`, and `noise.hglsl` body re-typed into `cloud.frag`, `shadow_screen.frag`, `vulkan/cloud_shadow.frag` and `vulkan/shoreline.frag`. The port prover checks 2 of those 4; none uses the include.
@@ -78,7 +79,7 @@ The probe binds a smaller UBO than the shader block, which triggers validation e
 ### A10. [MED] Ten ways to read a boolean env var, with incompatible truthiness
 - Volume: 1016 distinct `MC2_*` vars read by raw `getenv`, at 1438 call sites in 211 files.
 - About 45 local helpers exist. A sample of semantic splits:
-  - `=false`/`=off` reads as **ON** in `envFlag` (`StaticPropRenderAdapter.cpp:30`, `RenderWorld.cpp:65`) and as **OFF** in `ParseEnvBool`/`parseEnvBoolWithDefault` (`bdactor.cpp:2852`, `terrobj.cpp`, `gos_static_prop_registry.cpp:122`, `UiDefs.cpp:97`).
+  - `=false`/`=off` reads as **ON** in `envFlag` (`StaticPropRenderAdapter.cpp:30`, `RenderWorld.cpp:65`) and as **OFF** in `ParseEnvBool`/`parseEnvBoolWithDefault` (`mclib/bdactor_diag.cpp:249`, `terrobj.cpp`, `GameOS/gameos/gos_static_prop_registry.cpp:117`, `UiDefs.cpp:97`).
   - Empty string reads as **ON** in `vis_semantics.cpp:13` `env_default_on` and as **OFF** in `RenderWorld.cpp:70` `envFlagDefaultOn`.
   - `vk_shared_gbuffer_gate.h:73` is tri-state, and `"10"` reads as unset.
 - The registry header claims to be "the single place to look up what env vars exist" (`RendererFeatureRegistry.h:5-8`). The facts: 362 registered; `check-env-registry.sh` ALLOWLIST holds 850 names; `docs/flags.auto.yaml` has 1099 flags, about 737 with `default: unknown`.
@@ -98,7 +99,7 @@ The permutation `(-x, z, y)` is hand-written at about 9 GLSL sites and about 8 C
 5. **Dead CLAUDE.md citations.** About 18 citations in `.claude/agents/*.md` point at CLAUDE.md sections that no longer exist: "Critical Rules", "Profiling", "Review discipline", "Documentation discipline", "Pending durable artifacts", "Debug instrumentation rule", "Do NOT upscale these atlases". CLAUDE.md is now 73 lines.
 6. **No Vulkan in render agents.** `mc2-render-expert.md`, `mc2-shader-expert.md` and `mc2-render-contract-synthesizer.md` never mention Vulkan, `shaders/vulkan`, or SPIR-V, even though VK is the destination backend. `mc2-shader-expert.md:105` says "some setups use code/shaders/".
 7. **New single-source tools are undocumented.** gpu_abi (`tools/gpu_abi_gen.py`, `RenderCore/gpu_abi/`) and the logging facade (`GameOS/gameos/utils/mc2log.h`, `MC2_EVENT`) appear in none of CLAUDE.md, ARCHITECTURE-MAP, agents, skills, or memory. Memory `cpp_glsl_ubo_struct_lockstep.md` (a Shaders must-read) still prescribes hand-lockstep. `project-cpp17-to-cpp23-goal.md:21` says seam #2 is "in progress", but it landed in 624a96ada.
-8. **Stray artifacts.** A literal `` `r`n `` (PowerShell escape) is committed in comments at `vulkan_post_fog_native.cpp:141` and `gos_postprocess.cpp:3929`. A tool wrote these.
+8. **Stray artifacts.** A literal `` `r`n `` (PowerShell escape) is committed in comments at `vulkan_post_fog_native.cpp:141` and `GameOS/gameos/gos_postprocess_region.cpp:369`. A tool wrote these.
 
 ---------------------------------------------------------------------------------------------------
 ## B. "ONE way" inventory and retirement path

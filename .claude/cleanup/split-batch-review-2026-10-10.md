@@ -1,9 +1,10 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # Split batch — Opus adversarial review (2026-10-10; ablmc2, mover, mech, move, missiongui, warrior; ACCEPT-WITH-FIX)
 
 Condensed by the orchestrator. Reviewed at parent vs split commits, line-multiset plus macro/include/extern diffs; `check-order-gate-coverage.py` and `check-mover-registry-coherence.sh` run read-only (pass).
 
 ## Finding (fix landed by lane 2)
-- **mech gate timing.** `d0fe71c74` replaced the eager file-scope `static const bool s_gpuCullLifecycle = (getenv("MC2_GPU_CULL_LIFECYCLE") != nullptr);` (old `mech.cpp:142`) with a lazy local-static `inline bool mech_gpuCullLifecycle()` in `mech_internal.h:235`, first read at `mech_update.cpp:726/748/783`. Values applied inside `main` (`launcher_env.json` via `_putenv_s`, dev-shell `set_gate`) are now seen by mechs but not by `objmgr.cpp:145` / `gvehicl.cpp:124` (still pre-main) → divergent gate state; `readback_isActorVisibleLagged` fails open. Fix: restore the file-scope static in `mech_update.cpp`, delete the helper (a typed shared gate later).
+- **mech gate timing.** `d0fe71c74` replaced the eager file-scope `static const bool s_gpuCullLifecycle = (getenv("MC2_GPU_CULL_LIFECYCLE") != nullptr);` (old `mech.cpp:142`) with a lazy local-static `inline bool mech_gpuCullLifecycle()` in `mech_internal.h:235`, first read at `mech_update.cpp:726/748/783`. Values applied inside `main` (`launcher_env.json` via `_putenv_s`, dev-shell `set_gate`) are now seen by mechs but not by `code/objmgr_update.cpp:9` / `gvehicl.cpp:124` (still pre-main) → divergent gate state; `readback_isActorVisibleLagged` fails open. Fix: restore the file-scope static in `mech_update.cpp`, delete the helper (a typed shared gate later).
 - Log-text change: `ablmc2_internal.h:75` `[ABL_ARG_GUARD]` em dash → `-` (nothing parses it; restored).
 - Nit: `StepAdjDir`, `adjTile`, `typeString` in `move_internal.h` → `inline constexpr`.
 

@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # Typed gate registry design v2 (S2) — 2026-10-09, amendments from Opus review folded; status: ready for G0
 
 Supersedes v1 (`9b8e02f81`). Input: `.claude/cleanup/typed-gate-registry-review.md` (no-go as written; go if G1 is split). All 12 review amendments are accepted; one is narrowed with code evidence (see "Rejected amendments"). Re-measured at HEAD `3eeafcdf0`. File:line references are pre-edit; the review's line numbers were re-checked against source.
@@ -14,7 +15,7 @@ v1 had three flaws that would have changed runtime behavior quietly: one `rule` 
 | Distinct names | **1176** | every `"MC2_*"` literal passed to any call, outside `RendererFeatureRegistry.h` (re-derived). The getenv-only sweep gives 997; 157 names are read only through helpers (`subGate`, `envFlag`, `read_env_flag`, `envIsSet`, `featureActive`). v1's 1010 was too low. |
 | Presence-only sites | **373** lines with `!= nullptr` alone; 492 counting `if (getenv(..))`, ternaries and `== nullptr` | v1 said 330 |
 | Pre-main initializers | **at least 146 at namespace scope (115 names)**, plus lambda-initialised statics | v1's 59 counted only column-0 `static`; it missed `const bool kX = []{..}()` inside namespaces |
-| In-process env writers | `gameosmain.cpp:1141`, `gos_dev_shell.cpp:296`, `bdactor.cpp:413-435`, `editor/EditorMFC.cpp:177,188`, **`editor/ModPicker.cpp:71`** (`MC2_ACTIVE_MOD`, every mod switch), **`tools/brain_dispatch_harness/harness_main.cpp:608-640`** (13 `_putenv`), **`render_state_contract_harness.cpp:120`**, **`job_system_harness.cpp:234`** | v1 listed 4 |
+| In-process env writers | `gameosmain.cpp:1141`, `gos_dev_shell.cpp:296`, `mclib/bdactor_sidecar.cpp:143-165`, `editor/EditorMFC.cpp:177,188`, **`editor/ModPicker.cpp:71`** (`MC2_ACTIVE_MOD`, every mod switch), **`tools/brain_dispatch_harness/harness_main.cpp:608-640`** (13 `_putenv`), **`render_state_contract_harness.cpp:120`**, **`tools/job_system_harness/job_system_harness.cpp:28`** | v1 listed 4 |
 | Registered / allowlisted | 363 registered; `ALLOWLIST` about 854 lines | unchanged |
 | Largest files | `gos_postprocess.cpp` 103 (102 literal), `gos_static_prop_batcher.cpp` 94, `gameos_graphics.cpp` 77, `gos_terrain_lod_chunk.cpp` 62, `gameosmain.cpp` 55, `bdactor.cpp` 49 | 16 files hold 751 sites |
 | Pilot paths | `mclib/terrain_admission_mode.h`, `mclib/terrain_surface_trace.h` (not GameOS); `gos_terrain_patch_stream.cpp` has **12** sites, not 13 | |
@@ -25,12 +26,12 @@ Input classes: U unset, E `""`, Z `"0"`, F `false`/`off`/`no`, O `"1"`, X other.
 
 | Rule name | Idiom and where | U | E | Z | F | O | X |
 |---|---|---|---|---|---|---|---|
-| **Std** | ParseEnvBool family: `terrobj.cpp:83`, `bdactor.cpp:2852`, `gos_static_prop_registry.cpp:122`, `sim_identity.cpp:71`, `DefaultHostServices.cpp:98`, `gui/UiDefs.cpp:97`, `suParseBool` (`gameosmain.cpp`) | def | def | off | off | on | on |
+| **Std** | ParseEnvBool family: `terrobj.cpp:83`, `mclib/bdactor_diag.cpp:249`, `gos_static_prop_registry.cpp:122`, `sim_identity.cpp:71`, `DefaultHostServices.cpp:98`, `gui/UiDefs.cpp:97`, `suParseBool` (`gameosmain.cpp`) | def | def | off | off | on | on |
 | Lead0 | `v && v[0] && v[0]!='0'`: `envFlag` x3 adapters, `envSet`, `envFlagOn`, `tglc_envOn`, `envGateOn`, `debugEnvEnabled`; **about 333 inline sites use the inverse `!(v && v[0]=='0')`** (`Lead0Kill`: unset on, empty on) | off | off | off | **on** | on | on |
 | DefaultOff-helper | `envFlagDefaultOff` x4 (`debug_renderer.cpp:32`, `gos_cluster_depth_pyramid.cpp:30`, `gos_lightgrid_build.cpp:66`, `gos_postprocess_blur.cpp:40`) | off | **on** | off | **on** | on | on |
-| DefaultOn-helper | `gos_mech_batcher.cpp:128`, `gvactor.cpp:111`, `txmmgr.cpp:158`; `RenderWorld.cpp:70` differs (E gives **off**) | on | on/off | off | **on** | on | on |
-| **Lead1** | first char only: `v[0]=='1'` at **`vulkan_mech_island.cpp:126` and `gameos_graphics.cpp:135`** (v1 wrongly called these exact-"1"; `"10"` reads ON); about 152 inline sites | off | off | off | off | on | on if starts with `1` |
-| Exact1 | `strcmp(v,"1")==0`: `gameplay_pick.cpp:172`, `txmmgr.cpp:151` | off | off | off | off | on | off |
+| DefaultOn-helper | `gos_mech_batcher.cpp:128`, `gvactor.cpp:111`, `mclib/txmmgr_lightrow.cpp:24`; `RenderWorld.cpp:70` differs (E gives **off**) | on | on/off | off | **on** | on | on |
+| **Lead1** | first char only: `v[0]=='1'` at **`vulkan_mech_island.cpp:126` and `GameOS/gameos/gameos_graphics_material_internal.h:143`** (v1 wrongly called these exact-"1"; `"10"` reads ON); about 152 inline sites | off | off | off | off | on | on if starts with `1` |
+| Exact1 | `strcmp(v,"1")==0`: `gameplay_pick.cpp:172`, `mclib/txmmgr_lightrow.cpp:17` | off | off | off | off | on | off |
 | NonEmpty | `v && *v` (about 46 sites). Differs from Std on Z, so SEMANTICS | off | off | **on** | **on** | on | on |
 | Presence | `!= nullptr` (373 sites) | off | **on** | **on** | **on** | on | on |
 | Atoi / Atof | `atoi(v) != 0` (about 19 gate sites); `atof` about 144 sites; both accept prefixes: `"12abc"` gives 12, `"2.0"` gives 2 through `atoi`, `"abc"` gives 0 | | | | | | |
@@ -44,8 +45,8 @@ Registry parsers and checkers are as in v1 (`registry_parse.py` 598 lines, `flag
 
 Runtime facts that shape the design:
 - **Caching shapes.** Namespace-scope initializers and lambda statics (read once, often pre-main), function-local statics, `static int state = -1` caches, and per-call reads (`SimpleCamera::render`, uncached `subGate`).
-- **Env mutation after caching.** `ModPicker::Activate` calls `_putenv_s("MC2_ACTIVE_MOD")` and then `InitModSearchPaths`, which re-reads it at `mclib/file.cpp:727`; other readers are `anim_override_registry.cpp:161`, `fx_def_registry.cpp:355`, `model_override_registry.cpp:203`. A cached slot without `invalidate` would mount the wrong mod. `brain_special_dispatch.cpp:226,234` is read fresh per call under harness `_putenv`.
-- **Editor.** `editor/CMakeLists.txt:71` builds with `DISABLE_GAMEOS_MAIN`, so no `gameosmain` hook runs in EditRel. `EditorMFC.cpp:188` sets `MC2_SNAPSHOT_STATIC_PROP_BUILD=0` in `InitInstance`; its reader (`gos_static_prop_batcher.cpp:246/247`) is a namespace-scope lambda static that has probably already run, so the override is likely ineffective today (verify in G0). Replacing that static with a call-time `get<>()` would start the override working, which is a behavior change.
+- **Env mutation after caching.** `ModPicker::Activate` calls `_putenv_s("MC2_ACTIVE_MOD")` and then `InitModSearchPaths`, which re-reads it at `mclib/file.cpp:679`; other readers are `anim_override_registry.cpp:161`, `fx_def_registry.cpp:355`, `model_override_registry.cpp:203`. A cached slot without `invalidate` would mount the wrong mod. `brain_special_dispatch.cpp:226,234` is read fresh per call under harness `_putenv`.
+- **Editor.** `editor/CMakeLists.txt:71` builds with `DISABLE_GAMEOS_MAIN`, so no `gameosmain` hook runs in EditRel. `editor/EditorMFC.cpp:448` sets `MC2_SNAPSHOT_STATIC_PROP_BUILD=0` in `InitInstance`; its reader (`GameOS/gameos/gos_static_prop_batcher_internal.h:252/247`) is a namespace-scope lambda static that has probably already run, so the override is likely ineffective today (verify in G0). Replacing that static with a call-time `get<>()` would start the override working, which is a behavior change.
 - **MC2_LOG** is a presence-and-spec gate read by the facade (`mc2log.cpp:171`); the gate module must stay below `mc2log`.
 - **Env writers** are listed in section 1; all of them must be hooked (section 5.5).
 ## 4. Known cross-reader conflicts (input to G0)
@@ -54,11 +55,11 @@ A single table row cannot keep these gates byte-identical, because their readers
 
 | # | Gate | Readers and what they do | Why one rule fails |
 |---|---|---|---|
-| 1 | `MC2_SHADOW_ENABLE` | `gos_mech_batcher.cpp:1167`, `gos_static_prop_batcher.cpp:9290`: Lead0Kill, unset is ON. `vulkan_post_screenfx_native.cpp:759`: `envTriState==1`, unset is OFF | A `Bool, default=true` row flips the VK direct-CSM path when unset (cross-backend parity defect already named in the registry text) |
+| 1 | `MC2_SHADOW_ENABLE` | `gos_mech_batcher.cpp:1167`, `GameOS/gameos/gos_static_prop_batcher_shadow.cpp:321`: Lead0Kill, unset is ON. `vulkan_post_screenfx_native.cpp:759`: `envTriState==1`, unset is OFF | A `Bool, default=true` row flips the VK direct-CSM path when unset (cross-backend parity defect already named in the registry text) |
 | 2 | `MC2_DISABLE_GOSFX` | `mclib/mlr/mlr_gate.cpp:37`: disables only on a leading `'1'`; `gameosmain.cpp:1340`: exactly `"0"`; `GraphicsOptionsWindow.cpp:1477`: presence | Presence row makes the documented dev override `=0` disable FX in `mlr_gate`; Std makes `true`/`yes` flip there |
-| 3 | `MC2_TERRAIN_LIGHTING_V1` | `gameos_graphics.cpp:7175`: `=0` gives strength 0; `gos_terrain_lod_chunk.cpp:2872`: presence, so `=0` applies strength; `GraphicsOptionsWindow.cpp:613` third reader | whichever rule is chosen, one site changes |
-| 4 | `MC2_TERRAIN_LIGHTING_V2` | same shape: `gameos_graphics.cpp:7188`, `gos_terrain_lod_chunk.cpp:2873`, `GraphicsOptionsWindow.cpp:643` | same |
-| 5 | `MC2_VK_TERRAIN_CSM` | `gos_terrain_lod_chunk.cpp:1858`: Lead1, no umbrella inheritance; `:1900`: `subGate`, inherits the umbrella | one Tri helper would arm the CSM subset under the umbrella |
+| 3 | `MC2_TERRAIN_LIGHTING_V1` | `GameOS/gameos/gameos_graphics_tparams.cpp:70`: `=0` gives strength 0; `GameOS/gameos/gos_terrain_lod_chunk_draw.cpp:952`: presence, so `=0` applies strength; `GraphicsOptionsWindow.cpp:613` third reader | whichever rule is chosen, one site changes |
+| 4 | `MC2_TERRAIN_LIGHTING_V2` | same shape: `GameOS/gameos/gameos_graphics_tparams.cpp:83`, `GameOS/gameos/gos_terrain_lod_chunk_draw.cpp:953`, `GraphicsOptionsWindow.cpp:643` | same |
+| 5 | `MC2_VK_TERRAIN_CSM` | `GameOS/gameos/gos_terrain_lod_chunk_feed.cpp:259`: Lead1, no umbrella inheritance; `:1900`: `subGate`, inherits the umbrella | one Tri helper would arm the CSM subset under the umbrella |
 | 6 | `MC2_TERRAIN_HEIGHT_RESAMPLE_FACTOR` | `gos_terrain_height_tex.cpp:51`: accepts only 2 or 4, everything else gives 1 | a `lo=1,hi=8` clamp passes 3 and 8; `"2.0"` changes under whole-string `from_chars` |
 | 7 | `MC2_LIGHT_GRID_DIM` and `MC2_LIGHT_POOL_MAX` | `gos_terrain_lighting.cpp:276`, `:859`: out-of-range falls back to the default | a clamp turns 300 into 256 |
 | 8 | `MC2_SNAPSHOT_STATIC_PROP_BUILD` | editor override ordering (section 3) | call-time reads change timing |
@@ -141,7 +142,7 @@ Default: env-set gates plus the summary; `MC2_CONFIG_DUMP=all` prints every row 
 
 Hooks, at every entry point (all three calls, in this order: `markMainEntered`, `invalidateAll`, `dumpConfig`):
 - `gameosmain.cpp`: `markMainEntered()` at the top of `main`; `invalidateAll()` right after the launcher_env apply loop (`:1141-1150`); `dumpConfig(stderr)` right after `mc2::log::init()` (`:1180`).
-- Editor: `EditorMFCApp::InitInstance` (`EditorMFC.cpp:462`) right after `editor_set_default_env_vars()` (`:464`); none of the `gameosmain` hooks run in EditRel.
+- Editor: `EditorMFCApp::InitInstance` (`editor/EditorMFC.cpp:448`) right after `editor_set_default_env_vars()` (`:464`); none of the `gameosmain` hooks run in EditRel.
 - `ModPicker::Activate` (`ModPicker.cpp:71`) calls `gate::invalidate("MC2_ACTIVE_MOD")` after its `_putenv_s`; the `MC2_ACTIVE_MOD` row is `reread`.
 - Harness mains that `_putenv` after static init (brain_dispatch, render_state_contract, job_system) call `invalidateAll()`. The `reread` flag goes on gates read fresh per call under `_putenv` (`brain_special_dispatch.cpp:226,234`).
 - `invalidateAll()` first **snapshots** every pre-main-resolved slot (value plus raw env), then clears; the `premain` warning compares the snapshot against a fresh parse. The pre-main bit is only meaningful once some entry point has called `markMainEntered`. The warning only sees migrated slots; gates still read raw are invisible to it.

@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # G2 single truth — Opus adversarial review (2026-10-10; ACCEPT-WITH-FIX: parity holds, restore the ~190 lost WHY comments, codemod must refuse ledger enum gates)
 
 Condensed by the orchestrator. Reviewer ran the old `registry_parse.py` (from 353ae96d5) against both header versions plus `gate_gen --check`, smoke-matrices, smoke-env-inheritance, registered-gate-passthrough, `build_review_pack --selftest`, contract-coverage and the gate pytests (all green; `--rebuild` not run).

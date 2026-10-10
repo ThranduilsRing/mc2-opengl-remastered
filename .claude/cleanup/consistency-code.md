@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # Code self-consistency audit (read-only, 2026-10-09)
 Method: rg + manual read. No builds. tools/check_ubo_layout.py already guards terrain/overlay/ColorFrameUBO(frag)/WaterFsParams/postfog/ssao/screenfx UBOs; this audit targets what it does NOT cover. Ranked by bug risk. "Right side" = which side I believe is correct.
 
@@ -19,16 +20,16 @@ Method: rg + manual read. No builds. tools/check_ubo_layout.py already guards te
 
 ### H3. `extern int mc2CaptureGaitFreezeActive();` has C++ linkage, definition is `extern "C"`
 - Declaration: `GameOS/gameos/vulkan_color_prop_island.cpp:1687` (block scope; no prior C-linkage declaration visible in that TU, it does not include vk_feed_dump.h).
-- Definition: `GameOS/gameos/gos_visual_capture.cpp:680` `extern "C" int mc2CaptureGaitFreezeActive()`. Other users (`mclib/mech3d.cpp:32`, `vk_feed_dump.h:36`) correctly use `extern "C"`.
+- Definition: `GameOS/gameos/gos_visual_capture.cpp:680` `extern "C" int mc2CaptureGaitFreezeActive()`. Other users (`mclib/mech3d_internal.h:22`, `vk_feed_dump.h:36`) correctly use `extern "C"`.
 - Under MSVC the C++ declaration mangles to `?mc2CaptureGaitFreezeActive@@YAHXZ`, so this is LNK2019 whenever `MC2_VULKAN_ISLAND` is compiled and linked. Not built to confirm.
 - I scanned every block-scope `extern` function declaration in GameOS, RenderCore, RenderWorld, mclib, code, GameAdapters, GuiRuntime and gui against `extern "C"` definitions: this is the only real mismatch. `mc2VisualCaptureGetPauseState` at `gos_visual_capture.cpp:682` is fine (earlier `extern "C" {}` at `:82-85` is visible).
-- `gos_GetTerrainLightDir` (your example) is consistent: `GameOS/include/gameos.hpp:2345` (C++), definition `gameos_graphics.cpp:10525` (C++), block-scope redeclarations at `gos_static_prop_batcher.cpp:7445` and `:10043` are outside the anonymous namespace, so OK (redundant, not wrong). The `::` call at `:1411` was already handled.
+- `gos_GetTerrainLightDir` (your example) is consistent: `GameOS/include/gameos.hpp:2345` (C++), definition `GameOS/gameos/gameos_graphics_tparams.cpp:667` (C++), block-scope redeclarations at `gos_static_prop_batcher.cpp:7445` and `:10043` are outside the anonymous namespace, so OK (redundant, not wrong). The `::` call at `:1411` was already handled.
 - Fix: delete the local extern and include vk_feed_dump.h, or declare it `extern "C"`.
 
 ### H4. VK color-prop vertex lighting skips instance flags that GL honours
 - GL `shaders/static_prop.vert`: lightsOut bit0 (`:558-559`), isWindow bit1 (`:685,697-700`, `lit = base_light` only, no sun/ambient), light billboard bits 4/5 (`:426-428,482`), highlight `lit = clamp(lit + inst.aRGBHighlight.rgb, 0, 1)` (`:1102`); the frag also adds `v_highlight` (`static_prop.frag:468`).
 - VK `shaders/vulkan/color_prop_tier1.vert:~160-322` reads only bit 2. Windows are lit like walls; selection/objective highlight, lightsOut and billboards are ignored. Base light is a daytime-only stub (`isNight=false`, comment `:186-190`), so night hot-colour tags give 0.
-- Stale header: `gos_static_prop_batcher.h:~32` says "bit 2: isSpotlight"; GL (`static_prop.vert:690`, `kFlagIsAlphaTest = 1<<2`) and `gos_static_prop_batcher.cpp:6186` use bit 2 for alpha-test. Define the bits once (C++ enum + .hglsl defines).
+- Stale header: `gos_static_prop_batcher.h:~32` says "bit 2: isSpotlight"; GL (`static_prop.vert:690`, `kFlagIsAlphaTest = 1<<2`) and `GameOS/gameos/gos_static_prop_batcher_submit.cpp:832` use bit 2 for alpha-test. Define the bits once (C++ enum + .hglsl defines).
 - Right side: GL. Fix: port isWindow/highlight/lightsOut branches; document or implement night base-light.
 
 ## MEDIUM
@@ -45,7 +46,7 @@ Layouts match when compared by hand, but nothing enforces them:
 - Fix: one shared `RenderCore/GpuStaticPropInstance.h`, per-field offsetof asserts, extend check_ubo_layout.py to SSBO structs and the unregistered blocks.
 
 ### M3. Vertex stride literals
-- `vulkan_color_prop_island.cpp:1175` `vib.stride = 40` (literal; post-upload assert only) vs `vulkan_shadow_island_live.cpp:567` `mc2_static_prop_vertex_stride()` vs `gos_static_prop_batcher.cpp:552` `kVertexStride = 40`. Use the accessor in the colour island.
+- `vulkan_color_prop_island.cpp:1175` `vib.stride = 40` (literal; post-upload assert only) vs `vulkan_shadow_island_live.cpp:567` `mc2_static_prop_vertex_stride()` vs `GameOS/gameos/gos_static_prop_batcher_shadow.cpp:785` `kVertexStride = 40`. Use the accessor in the colour island.
 - `vulkan_mech_island.cpp:873` `s->vertexStride ? s->vertexStride : 48`: same "stride baked before feed" hazard; the literal fallback masks a 0 stride. Use sizeof(GpuMechVertex) (`gos_mech_batcher.h:24` asserts 48).
 
 ### M4. Hand-retyped Bayer / alpha-test blocks
@@ -66,7 +67,7 @@ Layouts match when compared by hand, but nothing enforces them:
 - Verified equal across GL, VK and C++: depth biases (`mclib/terrain_depth_bias.h`, `shaders/include/terrain_depth_bias.hglsl`, VK UBO feed); 0.5 alpha cutoffs in all VK frags vs GL; GBuffer1 classes 0.25/0.1875; MC2_SHADOW_CSM_MAX=3 everywhere; shadow PCF/bias/Poisson constants (`lighting_shadow_vk.glsl` vs `shadow.hglsl`, VK shadow port is complete); water wave/reflection constants and SH table; sun-dir feed.
 - `mclib/terrain_depth_bias.h:27` comment says TERRAIN_DEPTH_FUDGE = -0.002; value is 0.0 (line 72).
 - `vulkan_water_island.cpp:223` p3 comment says "pad, pad, pad"; p3[1] = shoreFlat (set `:1289`), p3[2] = shoreDepthK read by water_geom.vert.
-- `isAllConcreteTerrainBatch`: `gameos_graphics.cpp:160` and `mclib/txmmgr.cpp:529` are logically identical (`(frgb & 0xFF) == 3` for all vertices; int vs DWORD count). Not diverged; dedupe into a header.
-- `MC2_TEXMGR_KTX_PRIMARY`: `txmmgr.cpp:5417` uses `atoi` (modes 0/1/2); `bdactor.cpp:188`, `gvactor.cpp:143`, `mech3d.cpp:186` use `v[0] != '0'`. Differ only on non-numeric values. Harmless.
+- `isAllConcreteTerrainBatch`: `GameOS/gameos/gameos_graphics.cpp:13` and `mclib/txmmgr_render.cpp:70` are logically identical (`(frgb & 0xFF) == 3` for all vertices; int vs DWORD count). Not diverged; dedupe into a header.
+- `MC2_TEXMGR_KTX_PRIMARY`: `mclib/txmmgr_texture.cpp:354` uses `atoi` (modes 0/1/2); `mclib/bdactor_static.cpp:18`, `gvactor.cpp:143`, `mclib/mech3d_render.cpp:50` use `v[0] != '0'`. Differ only on non-numeric values. Harmless.
 - `MC2_SP_GLASS_DITHER`, `MC2_CEMENT_ATLAS_SEAM_FIX`, `MC2_OVERLAY_CEMENT_ADOPT`, `MC2_SKYBOX_FOG_EXCLUDE`, `MC2_SHADOW_ROBUST_BASIS` are re-read at several sites, all with the same default-ON idiom today; consolidate into one reader each. My gate scan is heuristic and misses custom wrappers; check-gate-default-agreement.py stays the authority for registered gates.
 - `.claude/VK-PARITY-GAPS.md` is STALE: mech FS (row 2), terrain ambient floor (row 3), shadow include sync (row 4) and terrain night pools (row 1) are now ported (UBO fields and shader code present). Still real: VK post visual lacks GL CAS and tonemap-V2 (`postprocess.frag:~180-211` vs `vulkan/postprocess_visual.frag`), gated, default not checked.

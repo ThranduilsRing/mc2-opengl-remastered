@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # Tier B trace/diag gates: cleanup verdicts
 
 Source: `py -3 tools/repo_intel/repo_query.py dead-gate-scan` (Tier B, 106 gates). Generated 2026-10-08. Read-only analysis; nothing in the repo was edited.
