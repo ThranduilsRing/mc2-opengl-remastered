@@ -1134,7 +1134,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_WATER_RENDERPROBE", Kind::Bool, Rule::Presence, {}},
     {"MC2_WATER_S6_COST", Kind::Bool, Rule::Presence, {}},
     {"MC2_WATER_S6_TRACE", Kind::Bool, Rule::Presence, {}},
-    {"MC2_WATER_SHINE", Kind::Bool, Rule::Lead0, {}},
+    {"MC2_WATER_SHINE", Kind::String, Rule::Std, {}},
     {"MC2_WATER_SHORE3_DEPTH_K", Kind::Float, Rule::Prefix, {}},
     {"MC2_WATER_SHORE3_EXTRA_WU", Kind::Float, Rule::Prefix, {}},
     {"MC2_WATER_SHORE_FEATHER", Kind::Float, Rule::Prefix, {}},

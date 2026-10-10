@@ -1313,4 +1313,32 @@ TEST_CASE("G5 static-prop clamp rows reproduce the lambdas they replaced") {
     CHECK(g1b::rowNamed("MC2_FAR_BACKDROP_LIT_TINT").kind == Kind::String);
 }
 
+// ---------------------------------------------------------------------------
+// G5: gameos_graphics.cpp rows
+// ---------------------------------------------------------------------------
+
+TEST_CASE("G5 graphics rows reproduce the lambdas and helpers they replaced") {
+    auto fl = [&](const char* name, const char* text) { return asFloat(gate::detail::parseRow(g1b::rowNamed(name), text)); };
+    // `v > 0 ? v : default` readers: a non-positive value falls back to the default
+    CHECK(fl("MC2_WATER_SHORE_FEATHER_WU", nullptr) == 7.0f);
+    CHECK(fl("MC2_WATER_SHORE_FEATHER_WU", "0") == 7.0f);
+    CHECK(fl("MC2_WATER_SHORE_FEATHER_WU", "-3") == 7.0f);
+    CHECK(fl("MC2_WATER_SHORE_FEATHER_WU", "12") == 12.0f);
+    CHECK(fl("MC2_WATER_EDGE_FEATHER_STRENGTH", "0") == 1.0f);
+    CHECK(fl("MC2_WATER_EDGE_FEATHER_STRENGTH", "2.5") == 2.5f);
+    CHECK(fl("MC2_WATER_SHORE3_DEPTH_K", nullptr) == 0.03f);
+    CHECK(fl("MC2_TERRAIN_SNOW_BRIGHTNESS_DAMPEN", nullptr) == 0.78f);
+    CHECK(fl("MC2_TERRAIN_DETAIL_FADE_START", nullptr) == 1000.0f);
+    CHECK(fl("MC2_TERRAIN_DETAIL_FADE_END", nullptr) == 3000.0f);
+    CHECK(fl("MC2_TERRAIN_DETAIL_FADE_END", "") == 3000.0f);
+    // out of range -> default (the old `f >= 0 && f <= 1 ? f : 0.25f`)
+    CHECK(fl("MC2_LIGHT_POOL_MOVER_DIM", "2") == 0.25f);
+    CHECK(fl("MC2_LIGHT_POOL_MOVER_DIM", "0.5") == 0.5f);
+    const gate::Row& dv = g1b::rowNamed("MC2_LIGHTING_DEBUG_VIEW");
+    CHECK(dv.kind == Kind::Enum);
+    for (const char* t : {"off", "0", "albedo", "normal", "sun", "ambient", "shadow", "final", "overbright", "lightcount", "lightindex"})
+        CHECK(gate::rows::tokenListHas(dv.tokens, t));
+    CHECK(g1b::rowNamed("MC2_WATER_SHINE").kind == Kind::String);
+}
+
 }  // TEST_SUITE

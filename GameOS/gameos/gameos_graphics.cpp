@@ -94,7 +94,7 @@ namespace gosFX { void DiagFrameTick(); }
 #include "engine_present_vk.h"
 #endif
 #include "vk_shared_gbuffer_gate.h"  // VK-FIELD-ENV-CONTENT-STACK-ARM-1: umbrella HUD arming
-#include "Gates/gate.h"   // typed gate registry
+#include "Gates/gate_cold.h"   // typed gate registry: get<>(), str<>()
 #ifdef MC2_VULKAN_ISLAND
 #include "vulkan_terrain_island.h"    // VK-PARITY-OVERLAY-1: overlay/decal VK owner queue
 #endif
@@ -127,11 +127,6 @@ extern const float*     gos_GetTerrainMVPMat4();
 static const DWORD INVALID_TEXTURE_ID = 0;
 
 static gosRenderer* g_gos_renderer = NULL;
-
-static bool debugEnvEnabled(const char* name) {
-    const char* value = std::getenv(name);
-    return value && value[0] != '\0' && std::strcmp(value, "0") != 0;
-}
 
 // `armed` is the canary gate's value (MC2_VK_*_GL_CANARY), read by the caller.
 static GLuint vkScopedGlCanaryBegin(bool armed) {
@@ -208,10 +203,7 @@ static bool terrainNormalArrayEnabled() {
     // Visual is identical to the legacy individual-sampler path by design
     // (validated 5/5 ON). Explicit MC2_TERRAIN_NORMAL_ARRAY=0 forces the old
     // individual-sampler path.
-    static const bool enabled = []() {
-        const char* v = std::getenv("MC2_TERRAIN_NORMAL_ARRAY");
-        return !(v && std::strcmp(v, "0") == 0);
-    }();
+    static const bool enabled = mc2::gate::get<"MC2_TERRAIN_NORMAL_ARRAY">();
     return enabled;
 }
 
@@ -225,14 +217,11 @@ static bool terrainNormalArrayEnabled() {
 // varying receivers (rolling grass), NOT a shadow-map resolution or depth
 // issue. Killswitch "=0" => byte-identical legacy (shadowTaps stays 16/8/4).
 bool mc2ShadowStaticBandFixEnabled() {
-    static const bool enabled = []() {
-        // SHADOW-BANDING-DEFAULT-ON (2026-07-18): field bug report confirmed the
-        // banding persists in the shipped default config ("this was never
-        // fixed") — the fix existed but was left opt-in. DEFAULT ON now;
-        // killswitch: MC2_SHADOW_STATIC_BANDFIX=0 reverts to legacy taps.
-        const char* v = std::getenv("MC2_SHADOW_STATIC_BANDFIX");
-        return !(v && v[0] == '0' && v[1] == '\0');
-    }();
+    // SHADOW-BANDING-DEFAULT-ON (2026-07-18): field bug report confirmed the
+    // banding persists in the shipped default config ("this was never
+    // fixed") — the fix existed but was left opt-in. DEFAULT ON now;
+    // killswitch: MC2_SHADOW_STATIC_BANDFIX=0 reverts to legacy taps.
+    static const bool enabled = mc2::gate::get<"MC2_SHADOW_STATIC_BANDFIX">();
     return enabled;
 }
 
@@ -250,16 +239,13 @@ bool mc2ShadowStaticBandFixEnabled() {
 // typically paired with v1 (taps) but not required to be. Killswitch "=0" =>
 // byte-identical legacy (shadowN stays flat vec3(0,0,1)).
 bool mc2ShadowStaticBandFixV2Enabled() {
-    static const bool enabled = []() {
-        // SHADOW-BANDING-DEFAULT-ON (2026-07-18): field bug report (banding in
-        // and around mech shadows on terrain) verified A/B in-engine: default
-        // config shows diagonal contour striping across terrain
-        // (MC2_LIGHTING_DEBUG_VIEW=shadow, mc2_01 f1800: high-pass stripe
-        // amplitude 3.67 -> 1.12 with V2 on). DEFAULT ON now; killswitch:
-        // MC2_SHADOW_STATIC_BANDFIX_V2=0 reverts to flat-normal bias.
-        const char* v = std::getenv("MC2_SHADOW_STATIC_BANDFIX_V2");
-        return !(v && v[0] == '0' && v[1] == '\0');
-    }();
+    // SHADOW-BANDING-DEFAULT-ON (2026-07-18): field bug report (banding in
+    // and around mech shadows on terrain) verified A/B in-engine: default
+    // config shows diagonal contour striping across terrain
+    // (MC2_LIGHTING_DEBUG_VIEW=shadow, mc2_01 f1800: high-pass stripe
+    // amplitude 3.67 -> 1.12 with V2 on). DEFAULT ON now; killswitch:
+    // MC2_SHADOW_STATIC_BANDFIX_V2=0 reverts to flat-normal bias.
+    static const bool enabled = mc2::gate::get<"MC2_SHADOW_STATIC_BANDFIX_V2">();
     return enabled;
 }
 
@@ -275,10 +261,7 @@ bool mc2ShadowStaticBandFixV2Enabled() {
 // used restores them. No-op wherever sin(authored altitude) >= sin(15deg)
 // (mc2_01=50deg, mc2_03=46deg, mc2_24=75deg -> byte-identical).
 bool mc2TerrainShadowGuardClampedSun() {
-    static const bool enabled = []() {
-        const char* v = std::getenv("MC2_TERRAIN_SHADOW_GUARD_CLAMPED_SUN");
-        return !(v && v[0] == '0' && v[1] == '\0');   // DEFAULT ON
-    }();
+    static const bool enabled = mc2::gate::get<"MC2_TERRAIN_SHADOW_GUARD_CLAMPED_SUN">();
     return enabled;
 }
 
@@ -333,10 +316,7 @@ Mc2ShadowFadeKnobs mc2ShadowFadeKnobs() {
 // gpu_driven_water.comp pzOk admission gate (all three MUST agree; see
 // mclib/terrain_depth_bias.h). Exported via gameos.hpp for the water-stream TU.
 int mc2WaterBiasLegacy() {
-    static const int mode = []() {
-        const char* v = std::getenv("MC2_WATER_BIAS_LEGACY");
-        return (v && v[0] && v[0] != '0') ? 1 : 0;
-    }();
+    static const int mode = mc2::gate::get<"MC2_WATER_BIAS_LEGACY">();
     return mode;
 }
 
@@ -347,20 +327,14 @@ int mc2WaterBiasLegacy() {
 // constant NDC offset. Single consumer is the VS (no compute admission gate
 // mirrors the overlay bias). See mclib/terrain_depth_bias.h.
 static int mc2OverlayBiasLegacy() {
-    static const int mode = []() {
-        const char* v = std::getenv("MC2_OVERLAY_BIAS_LEGACY");
-        return (v && v[0] && v[0] != '0') ? 1 : 0;
-    }();
+    static const int mode = mc2::gate::get<"MC2_OVERLAY_BIAS_LEGACY">();
     return mode;
 }
 
 // TERRAIN-MATERIAL-LIB-1: default OFF. Drives u_useMaterialLib (chunk-path
 // roughness/AO branch). Evaluated once (static) -- matches terrainNormalArrayEnabled().
 static bool terrainMaterialLibEnabled() {
-    static const bool enabled = []() {
-        const char* v = std::getenv("MC2_TERRAIN_MATERIAL_LIB");
-        return v && v[0] && v[0] != '0';
-    }();
+    static const bool enabled = mc2::gate::get<"MC2_TERRAIN_MATERIAL_LIB">();
     return enabled;
 }
 
@@ -797,15 +771,15 @@ const std::string gosRenderMaterial::s_fog_color = std::string("fog_color");
 //   MC2_GPUBUF_RESIDENCY       : list the live HUD ring buffers once per frame.
 // Cached once on first query (single predicted-false branch when unset).
 static bool gosHudRingEnabled() {
-    static const bool s_on = (std::getenv("MC2_GPUBUF_RING") != nullptr);
+    static const bool s_on = mc2::gate::get<"MC2_GPUBUF_RING">();
     return s_on;
 }
 static bool gosHudRingForceWrap() {
-    static const bool s_on = (std::getenv("MC2_GPUBUF_RING_FORCE_WRAP") != nullptr);
+    static const bool s_on = mc2::gate::get<"MC2_GPUBUF_RING_FORCE_WRAP">();
     return s_on;
 }
 static bool gosHudRingResidency() {
-    static const bool s_on = (std::getenv("MC2_GPUBUF_RESIDENCY") != nullptr);
+    static const bool s_on = mc2::gate::get<"MC2_GPUBUF_RESIDENCY">();
     return s_on;
 }
 
@@ -1251,7 +1225,7 @@ GLuint getOverlayFallbackTexture() {
 
 bool overlayTexTraceOn() {
     static int c = -1;
-    if (c < 0) c = (getenv("MC2_OVERLAY_TEXTURE_TRACE") != nullptr) ? 1 : 0;
+    if (c < 0) c = (mc2::gate::get<"MC2_OVERLAY_TEXTURE_TRACE">()) ? 1 : 0;
     return c != 0;
 }
 
@@ -2265,7 +2239,7 @@ class gosRenderer {
         float terrain_control_albedo_strength_ = 0.0f;
         // Snow brightness dampen: <1 darkens detected-snow fragments. Default 0.78
         // (visibly turned down); MC2_TERRAIN_SNOW_BRIGHTNESS_DAMPEN overrides.
-        float terrain_snow_brightness_dampen_ = [](){ const char* v = getenv("MC2_TERRAIN_SNOW_BRIGHTNESS_DAMPEN"); return v ? (float)atof(v) : 0.78f; }();
+        float terrain_snow_brightness_dampen_ = mc2::gate::get<"MC2_TERRAIN_SNOW_BRIGHTNESS_DAMPEN">();
         // TERRAIN-TINT-UI-1: material base tint colors (defaults match shader)
         float terrain_tint_rock_[3]  = { 0.36f, 0.37f, 0.40f };
         float terrain_tint_grass_[3] = { 0.35f, 0.42f, 0.25f };
@@ -2737,8 +2711,7 @@ unsigned int gos_terrain_bridge_glTextureForGosHandle(unsigned int gosHandle) {
 // gos_terrain_bridge_drawPatchStreamBucket deleted by TERRAIN-BRIDGE-BODY-DELETE-2:
 // callerless after TerrainPatchStream::flush() retired (TERRAIN-BRIDGE-BODY-DELETE-1).
 
-static const bool s_patchStreamDirectBind =
-    (getenv("MC2_PATCHSTREAM_DIRECT_TEXTURE_BIND") != nullptr);
+static const bool s_patchStreamDirectBind = mc2::gate::get<"MC2_PATCHSTREAM_DIRECT_TEXTURE_BIND">();
 
 // GL sampler object used in the direct-bind fast path to enforce correct
 // filter/wrap state on unit 0 without per-bucket glTexParameteri calls.
@@ -2792,8 +2765,7 @@ int g_waterFsDebugMode = -1;
 int gos_GetWaterFsDebugMode()
 {
     if (g_waterFsDebugMode < 0) {
-        const char* wdm = getenv("MC2_WATER_DEBUG_MODE");
-        g_waterFsDebugMode = wdm ? atoi(wdm) : 0;
+        g_waterFsDebugMode = mc2::gate::get<"MC2_WATER_DEBUG_MODE">();
     }
     return g_waterFsDebugMode;
 }
@@ -2833,8 +2805,7 @@ float g_waterSkyTintColor[3] = { 0.55f, 0.70f, 0.85f };  // soft sky-blue/horizo
 float gos_GetWaterSkyTintStrength()
 {
     if (g_waterSkyTintStrength < 0.0f) {
-        const char* v = getenv("MC2_WATER_SKYTINT");
-        g_waterSkyTintStrength = (v && v[0] && v[0] != '0') ? 0.15f : 0.0f;
+        g_waterSkyTintStrength = mc2::gate::get<"MC2_WATER_SKYTINT">() ? 0.15f : 0.0f;
     }
     return g_waterSkyTintStrength;
 }
@@ -2851,10 +2822,9 @@ float g_waterReflStrength = -1.0f;
 float gos_GetWaterReflStrength()
 {
     if (g_waterReflStrength < 0.0f) {
-        const char* v = getenv("MC2_WATER_REFLECTION");
         // WATER-REFL-DEFAULT-ON: default ON (1.5); MC2_WATER_REFLECTION=0 kills it.
         // Higher default exposes the HDRI specular contribution at gameplay camera.
-        const bool reflOff = (v && v[0] == '0');
+        const bool reflOff = !mc2::gate::get<"MC2_WATER_REFLECTION">();
         g_waterReflStrength = reflOff ? 0.0f : 1.5f;
     }
     return g_waterReflStrength;
@@ -2864,8 +2834,7 @@ void  gos_SetWaterReflStrength(float v) { g_waterReflStrength = (v < 0.0f) ? 0.0
 // Resolved live each call (cheap). UI uses this to toggle gate-state label.
 int   gos_GetWaterReflectionGate()
 {
-    const char* v = getenv("MC2_WATER_REFLECTION");
-    return (v && v[0] == '0') ? 0 : 1;  // default ON; =0 disables
+    return mc2::gate::get<"MC2_WATER_REFLECTION">();  // default ON; =0 disables
 }
 
 // WATER-REFLECTION-SAMPLE-1: strength of the terrain reflection RT blended OVER
@@ -2876,16 +2845,14 @@ float g_waterRtStrength = -1.0f;
 float gos_GetWaterRtStrength()
 {
     if (g_waterRtStrength < 0.0f) {
-        const char* v = getenv("MC2_WATER_REFLECTION_RT");
-        g_waterRtStrength = (v && v[0] && v[0] != '0') ? 0.85f : 0.0f;
+        g_waterRtStrength = mc2::gate::get<"MC2_WATER_REFLECTION_RT">() ? 0.85f : 0.0f;
     }
     return g_waterRtStrength;
 }
 void gos_SetWaterRtStrength(float v) { g_waterRtStrength = (v < 0.0f) ? 0.0f : v; }
 int  gos_GetWaterReflectionRtGate()
 {
-    const char* v = getenv("MC2_WATER_REFLECTION_RT");
-    return (v && v[0] && v[0] != '0') ? 1 : 0;
+    return mc2::gate::get<"MC2_WATER_REFLECTION_RT">();
 }
 
 // WATER-SUN-SPEC-2 (repairs WATER-SUN-SPEC-1, c50e99a6). Blinn-Phong sun
@@ -2915,11 +2882,11 @@ float g_waterSpecIntensity = -1.0f;
 float gos_GetWaterSpecIntensity()
 {
     if (g_waterSpecIntensity < 0.0f) {
-        const char* v = getenv("MC2_WATER_SHINE");
-        const bool on = (v && v[0] && v[0] != '0');   // canonical default-OFF opt-in
+        const std::string v = mc2::gate::str<"MC2_WATER_SHINE">();   // "" when unset or empty
+        const bool on = (!v.empty() && v[0] != '0');   // canonical default-OFF opt-in
         float s = 0.0f;
         if (on) {
-            const float f = (float)atof(v);
+            const float f = (float)atof(v.c_str());
             s = (f > 0.0f) ? f : 0.25f;               // non-numeric truthy ("on", "yes") -> 0.25
         }
         g_waterSpecIntensity = s;
@@ -2980,18 +2947,14 @@ extern "C" int mc2_vk_water_island_run(
 // the two paths cannot drift. MC2_WATER_SHORE_FEATHER_WU overrides; default 7.
 static float mc2WaterShoreFeatherWu()
 {
-    static const float s_shoreFeatherWu = []() {
-        const char* s = getenv("MC2_WATER_SHORE_FEATHER_WU");
-        float v = s ? (float)atof(s) : 0.0f;
-        return v > 0.0f ? v : 7.0f;
-    }();
+    static const float s_shoreFeatherWu = mc2::gate::get<"MC2_WATER_SHORE_FEATHER_WU">();
     return s_shoreFeatherWu;
 }
 
 // Shore mode 3 depth-only lift K (fraction of clip.z). Shared by GL uniform + VK UBO.
 static float mc2WaterShore3DepthK()
 {
-    static const float s_k = []() { const char* v = getenv("MC2_WATER_SHORE3_DEPTH_K"); return v ? (float)atof(v) : 0.03f; }();
+    static const float s_k = mc2::gate::get<"MC2_WATER_SHORE3_DEPTH_K">();
     return s_k;
 }
 
@@ -3003,12 +2966,10 @@ static float mc2WaterHdriLodDefault()
 {
     static float s_lod = -999.0f;
     if (s_lod < -1.0f) {
-        const char* lv = getenv("MC2_WATER_HDRI_LOD");
-        if (lv && lv[0]) {
-            s_lod = (float)atof(lv);
+        if (mc2::gate::isNonEmpty<"MC2_WATER_HDRI_LOD">()) {
+            s_lod = mc2::gate::get<"MC2_WATER_HDRI_LOD">();
         } else {
-            const char* full = getenv("MC2_WATER_HDRI_REFL_FULL");
-            const bool fullRate = (full && full[0] && full[0] != '0');
+            const bool fullRate = mc2::gate::get<"MC2_WATER_HDRI_REFL_FULL">();
             s_lod = fullRate ? 1.0f : 4.0f;
         }
     }
@@ -3151,8 +3112,7 @@ void gosRenderer::renderWaterFastPath(
     // 0 = normal, 1 = magenta solid, 2 = green, 3 = yellow.
     static int s_debugMode = -1;
     if (s_debugMode < 0) {
-        const char* dm = getenv("MC2_RENDER_WATER_FASTPATH_DEBUG");
-        s_debugMode = dm ? atoi(dm) : 0;
+        s_debugMode = mc2::gate::get<"MC2_RENDER_WATER_FASTPATH_DEBUG">();
     }
     setI("debugMode", s_debugMode);
     setF   ("waterElevation",  waterElevation);
@@ -3266,9 +3226,7 @@ void gosRenderer::renderWaterFastPath(
     // Without depth writes, OOB fog classifies water pixels as empty sky and
     // overlays near-opaque white clouds over them.  MC2_WATER_NO_DEPTH_WRITE=1
     // restores the old broken behaviour for A/B bisect.
-    static const bool s_waterNoDepthWrite = [] {
-        return getenv("MC2_WATER_NO_DEPTH_WRITE") != nullptr;
-    }();
+    static const bool s_waterNoDepthWrite = mc2::gate::get<"MC2_WATER_NO_DEPTH_WRITE">();
     glDepthMask(s_waterNoDepthWrite ? GL_FALSE : GL_TRUE);
     // Invalidate after direct GL state set so subsequent applyRenderStates()
     // calls between here and the draw cannot short-circuit on stale cache.
@@ -3468,15 +3426,8 @@ void gosRenderer::renderWaterFastPath(
             // draws with gos_tex_vertex.frag (shared by other passes) and
             // stays un-feathered — acceptable because the non-MDI path is a
             // fail-soft fallback (mdiValid false), not the shipped default.
-            static const int s_waterEdgeFeather = []() {
-                const char* e = getenv("MC2_WATER_EDGE_FEATHER");
-                return (e && e[0] == '0') ? 0 : 1;
-            }();
-            static const float s_waterEdgeFeatherStr = []() {
-                const char* s = getenv("MC2_WATER_EDGE_FEATHER_STRENGTH");
-                float v = (s ? (float)atof(s) : 0.0f);
-                return v > 0.0f ? v : 1.0f;
-            }();
+            static const int s_waterEdgeFeather = mc2::gate::get<"MC2_WATER_EDGE_FEATHER">();
+            static const float s_waterEdgeFeatherStr = mc2::gate::get<"MC2_WATER_EDGE_FEATHER_STRENGTH">();
             gosPostProcess* ppW = getGosPostProcess();
             setMI("u_waterEdgeFeather",         s_waterEdgeFeather);
             setMF("u_waterEdgeFeatherStrength", s_waterEdgeFeatherStr);
@@ -3719,15 +3670,8 @@ void gosRenderer::renderWaterFastPath(
                 // the GL MDI bind block (edge feather killswitch/strength, map half extent,
                 // authored sky tint, frustum aspect).
                 {
-                    static const int s_vkWEdgeFeather = []() {
-                        const char* e = getenv("MC2_WATER_EDGE_FEATHER");
-                        return (e && e[0] == '0') ? 0 : 1;
-                    }();
-                    static const float s_vkWEdgeFeatherStr = []() {
-                        const char* sv = getenv("MC2_WATER_EDGE_FEATHER_STRENGTH");
-                        float v = (sv ? (float)atof(sv) : 0.0f);
-                        return v > 0.0f ? v : 1.0f;
-                    }();
+                    static const int s_vkWEdgeFeather = mc2::gate::get<"MC2_WATER_EDGE_FEATHER">();
+                    static const float s_vkWEdgeFeatherStr = mc2::gate::get<"MC2_WATER_EDGE_FEATHER_STRENGTH">();
                     extern bool g_cameraProjAspectNative;
                     const float vkVpAspect = ppVk->getHeight() > 0
                         ? (float)ppVk->getWidth() / (float)ppVk->getHeight() : (4.0f / 3.0f);
@@ -4418,7 +4362,7 @@ bool gos_terrain_bridge_drawIndirect(int cmdCount, unsigned int recipeSSBO,
     // load-bearing consumer); gated behind MC2_RING_TRACE like the rest of
     // the Step 9 demotion so the per-frame FNV + glGetBufferSubData on the
     // indirect buffer cost nothing in the default config.
-    { static const bool s_ringMvpProbe = (getenv("MC2_RING_TRACE") != nullptr); if (s_ringMvpProbe) {
+    { static const bool s_ringMvpProbe = mc2::gate::get<"MC2_RING_TRACE">(); if (s_ringMvpProbe) {
         const float* drawMvp = gos_GetTerrainMVPMat4();
         if (drawMvp) {
             uint32_t drawFp = 2166136261u;
@@ -4579,8 +4523,7 @@ MaskUploadStats s_maskUploadStats;
 bool maskUploadStatsEnabled() {
     static int cached = -1;
     if (cached < 0) {
-        const char* v = std::getenv("MC2_TERRAIN_MASK_UPLOAD_STATS");
-        cached = (v && v[0] && v[0] != '0') ? 1 : 0;
+        cached = mc2::gate::get<"MC2_TERRAIN_MASK_UPLOAD_STATS">();
     }
     return cached != 0;
 }
@@ -5235,8 +5178,7 @@ void gosRenderer::init() {
     // gos_IsModernShadowPathActive(), not on this material.
     {
         ZoneScopedN("gosRenderer::init terrainMaterial");
-        const char* tessEnv = getenv("MC2_TERRAIN_TESS");
-        if (tessEnv && tessEnv[0] == '0') {
+        if (!mc2::gate::get<"MC2_TERRAIN_TESS">()) {
             terrain_material_ = nullptr;
             printf("[TESS] MC2_TERRAIN_TESS=0 — terrain tessellation material load skipped (kill-switch)\n");
         } else {
@@ -5276,8 +5218,7 @@ void gosRenderer::init() {
     // (scripts/smoke_lib/logparse.py MARKER_BUCKETS). Default OFF, static
     // getenv latch — gate-off is one bool test, byte-identical unset.
     {
-        static bool splitPathParityTrace =
-            mc2AuditLatch("MC2_SPLIT_PATH_PARITY_TRACE");
+        static bool splitPathParityTrace = mc2::gate::get<"MC2_SPLIT_PATH_PARITY_TRACE">();
         if (splitPathParityTrace) {
             const int tessOn   = (terrain_material_ != nullptr) ? 1 : 0;
             const int shadowOn = (shadow_terrain_material_ != nullptr) ? 1 : 0;
@@ -5792,10 +5733,7 @@ void gosRenderer::popRenderStates()
 // RENDER_STATES v1: kill-switch (default-off → short-circuit path runs).
 // MC2_RENDERSTATES_LEGACY=1 forces unconditional apply behavior.
 static bool gos_renderStatesLegacyEnabled() {
-    static const bool s = []() {
-        const char* v = getenv("MC2_RENDERSTATES_LEGACY");
-        return v && v[0] == '1' && v[1] == '\0';
-    }();
+    static const bool s = mc2::gate::get<"MC2_RENDERSTATES_LEGACY">();
     return s;
 }
 
@@ -5836,7 +5774,7 @@ void gosRenderer::applyRenderStates() {
         // Optional diagnostic: print the first 8 mismatch reasons. Env-gated,
         // off by default per Debug Instrumentation Rule (keep, demote, don't
         // delete). MC2_RENDERSTATES_TRACE=1 to enable.
-        static const bool s_rsTrace = (getenv("MC2_RENDERSTATES_TRACE") != nullptr);
+        static const bool s_rsTrace = mc2::gate::get<"MC2_RENDERSTATES_TRACE">();
         static int s_mismatchPrints = 0;
         if (s_rsTrace && !equal && s_mismatchPrints < 8) {
             s_mismatchPrints++;
@@ -6060,10 +5998,7 @@ void gosRenderer::beginFrame()
 // last_check_time was never updated, so once 500 ms elapsed checkReload()
 // ran every frame over materialList_.
 static bool gos_ShaderHotReloadEnabled() {
-    static const bool s = []() {
-        const char* v = getenv("MC2_SHADER_HOT_RELOAD");
-        return v && v[0] == '1';
-    }();
+    static const bool s = mc2::gate::get<"MC2_SHADER_HOT_RELOAD">();
     return s;
 }
 
@@ -6407,7 +6342,7 @@ void gosRenderer::drawTris(gos_VERTEX* vertices, int count) {
 
     gosASSERT((count % 3) == 0);
 
-    if ( getenv("MC2_LOG_PREVIEW") ) {
+    if ( mc2::gate::get<"MC2_LOG_PREVIEW">() ) {
         GLint curFbo = 0; glGetIntegerv(GL_FRAMEBUFFER_BINDING, &curFbo);
         FILE* f = fopen("preview_debug.log","a");
         if (f) { fprintf(f,"[PREVIEW] drawTris count=%d isHUD=%d curFbo=%d\n", count, (int)renderStates_[gos_State_IsHUD], curFbo); fflush(f); fclose(f); }
@@ -6562,8 +6497,7 @@ static ShadowPassGLState s_dynamicPassEntry;
 static bool shadowStateTraceEnabled() {
     static int s_on = -1;
     if (s_on < 0) {
-        const char* v = std::getenv("MC2_SHADOW_STATE_TRACE");
-        s_on = (v && v[0] && v[0] != '0') ? 1 : 0;
+        s_on = mc2::gate::get<"MC2_SHADOW_STATE_TRACE">();
     }
     return s_on != 0;
 }
@@ -7084,12 +7018,10 @@ static void bindTerrainHeightTexUniforms(GLint heightTexLoc, GLint paramsLoc,
     // 0.0 (shader max(shadow, 0*blend) => no-op, byte-identical). When set to a
     // non-zero float the member value (ImGui-tunable) is uploaded, bounded 0..1.
     float effectiveCliffFloor = 0.0f;
-    if (const char* e = getenv("MC2_TERRAIN_CLIFF_SHADOW_FLOOR")) {
-        if (e[0] && e[0] != '0') {
-            effectiveCliffFloor = cliffShadowFloor;
-            if (effectiveCliffFloor < 0.0f) effectiveCliffFloor = 0.0f;
-            if (effectiveCliffFloor > 1.0f) effectiveCliffFloor = 1.0f;
-        }
+    if (mc2::gate::get<"MC2_TERRAIN_CLIFF_SHADOW_FLOOR">()) {
+        effectiveCliffFloor = cliffShadowFloor;
+        if (effectiveCliffFloor < 0.0f) effectiveCliffFloor = 0.0f;
+        if (effectiveCliffFloor > 1.0f) effectiveCliffFloor = 1.0f;
     }
     if (cliffShadowFloorLoc >= 0) {
         glUniform1f(cliffShadowFloorLoc, effectiveCliffFloor);
@@ -7172,19 +7104,19 @@ int mc2LightingDebugMode()
     // getenv() + up to 11 strcmp on a value that cannot change mid-process (no
     // setenv/putenv/ImGui setter exists for MC2_LIGHTING_DEBUG_VIEW). Resolve once.
     static const int s_mode = []() -> int {
-        const char* v = getenv("MC2_LIGHTING_DEBUG_VIEW");
-        if (!v || !*v) return -1;
-        if (!strcmp(v, "off") || !strcmp(v, "0")) return 0;   // explicit no-op render
-        if (!strcmp(v, "albedo"))     return 40;
-        if (!strcmp(v, "normal"))     return 41;   // final per-fragment N as RGB
-        if (!strcmp(v, "sun"))        return 42;   // sun N·L diffuse term
-        if (!strcmp(v, "ambient"))    return 43;   // hemisphere/ambient/SH fill only
-        if (!strcmp(v, "shadow"))     return 44;   // shadow factor (terrain) / no-shadow marker (props)
-        if (!strcmp(v, "final"))      return 45;   // == default lit render (falls through)
-        if (!strcmp(v, "overbright")) return 46;   // over/under-bright heatmap
-        if (!strcmp(v, "lightcount")) return 47;   // dynamic light-count heatmap (props/mech)
-        if (!strcmp(v, "lightindex")) return 48;   // baked-static-light-index palette (props/mech)
-        return -1;                                 // unknown -> safe fallback (keep existing)
+        using mc2::gate::is;
+        // Enum row: unset, empty and an unknown name all read the (empty) default token -> -1.
+        if (is<"MC2_LIGHTING_DEBUG_VIEW", "off">() || is<"MC2_LIGHTING_DEBUG_VIEW", "0">()) return 0;   // explicit no-op render
+        if (is<"MC2_LIGHTING_DEBUG_VIEW", "albedo">())     return 40;
+        if (is<"MC2_LIGHTING_DEBUG_VIEW", "normal">())     return 41;   // final per-fragment N as RGB
+        if (is<"MC2_LIGHTING_DEBUG_VIEW", "sun">())        return 42;   // sun N·L diffuse term
+        if (is<"MC2_LIGHTING_DEBUG_VIEW", "ambient">())    return 43;   // hemisphere/ambient/SH fill only
+        if (is<"MC2_LIGHTING_DEBUG_VIEW", "shadow">())     return 44;   // shadow factor (terrain) / no-shadow marker (props)
+        if (is<"MC2_LIGHTING_DEBUG_VIEW", "final">())      return 45;   // == default lit render (falls through)
+        if (is<"MC2_LIGHTING_DEBUG_VIEW", "overbright">()) return 46;   // over/under-bright heatmap
+        if (is<"MC2_LIGHTING_DEBUG_VIEW", "lightcount">()) return 47;   // dynamic light-count heatmap (props/mech)
+        if (is<"MC2_LIGHTING_DEBUG_VIEW", "lightindex">()) return 48;   // baked-static-light-index palette (props/mech)
+        return -1;                                                      // unset / unknown -> safe fallback (keep existing)
     }();
     // DEBUG-VIEW-SWEEP-1: runtime override wins over the env-resolved value.
     return (g_mc2LightingDebugOverride >= 0) ? g_mc2LightingDebugOverride : s_mode;
@@ -7252,16 +7184,15 @@ static const float* mc2_detailAntiTileYZW()
         s_init = true;
         const bool antiTile = mc2::gate::get<"MC2_TERRAIN_DETAIL_ANTITILE">();   // row: Lead0, same rule as the chunk reader
         if (antiTile) {
-            auto envF = [](const char* k, float def) -> float {
-                const char* v = getenv(k);
-                return (v && *v) ? (float)atof(v) : def;
-            };
-            float start = envF("MC2_TERRAIN_DETAIL_FADE_START", 1000.0f);
-            float end   = envF("MC2_TERRAIN_DETAIL_FADE_END",   3000.0f);
+            // The rows' defaults are the legacy ones for the fade band (1000 / 3000). MACRO_STRENGTH is the
+            // ledgered divergent gate: this legacy path defaults to 0.35, the chunk path to 0.
+            float start = mc2::gate::get<"MC2_TERRAIN_DETAIL_FADE_START">();
+            float end   = mc2::gate::get<"MC2_TERRAIN_DETAIL_FADE_END">();
             if (end < start + 1.0f) end = start + 1.0f;   // keep fade band positive
             s_yzw[0] = start;
             s_yzw[1] = end;
-            s_yzw[2] = envF("MC2_TERRAIN_DETAIL_MACRO_STRENGTH", 0.35f);
+            s_yzw[2] = mc2::gate::isNonEmpty<"MC2_TERRAIN_DETAIL_MACRO_STRENGTH">()
+                           ? mc2::gate::get<"MC2_TERRAIN_DETAIL_MACRO_STRENGTH">() : 0.35f;
         }
     }
     return s_yzw;
@@ -7287,9 +7218,8 @@ void gosRenderer::terrainBindUniformsForPatchStream(gosRenderMaterial* material)
     if (tl.tessDisplace >= 0)      glUniform4fv(tl.tessDisplace, 1, tessDisp);
     if (tl.cameraPos >= 0)         glUniform4fv(tl.cameraPos, 1, (const float*)&terrain_camera_pos_);
     float debugMode = terrain_debug_mode_;
-    if (const char* envDebug = getenv("MC2_TERRAIN_DEBUG_MODE")) {
-        debugMode = (float)atof(envDebug);
-    }
+    if (mc2::gate::isSet<"MC2_TERRAIN_DEBUG_MODE">())
+        debugMode = mc2::gate::get<"MC2_TERRAIN_DEBUG_MODE">();
     { int lvm = mc2LightingDebugMode(); if (lvm >= 0) debugMode = (float)lvm; }  // LIGHTING-DEBUG-VIEWS-1A
     float tessDebugVec[4] = { debugMode, 0.0f, 0.0f, 0.0f };
     if (tl.tessDebug >= 0)         glUniform4fv(tl.tessDebug, 1, tessDebugVec);
@@ -7306,7 +7236,7 @@ void gosRenderer::terrainBindUniformsForPatchStream(gosRenderMaterial* material)
         // Emit the live value (throttled to value changes) so we can tell Source-B
         // guard-fail from a Source-A missing-texture. Gated MC2_OVERLAY_MAGENTA_TRACE.
         {
-            static const bool s_magentaTrace = (std::getenv("MC2_OVERLAY_MAGENTA_TRACE") != nullptr);
+            static const bool s_magentaTrace = mc2::gate::get<"MC2_OVERLAY_MAGENTA_TRACE">();
             static float s_lastHalfExt = -99999.0f;
             if (s_magentaTrace && halfExt != s_lastHalfExt && mc2_diag::tagEnabled("OVERLAY_MAGENTA")) {
                 s_lastHalfExt = halfExt;
@@ -7435,7 +7365,7 @@ int gosRenderer::terrainBindThinUniformsForPatchStream(glsl_program* overridePro
     if (tl.mvp >= 0)
         glUniformMatrix4fv(tl.mvp, 1, GL_TRUE, (const float*)&projection_);
 
-    static const bool s_thinDebug   = (getenv("MC2_THIN_DEBUG") != nullptr);
+    static const bool s_thinDebug   = mc2::gate::get<"MC2_THIN_DEBUG">();
     static bool       s_thinDbgDone = false;
     if (s_thinDebug && !s_thinDbgDone && terrain_mvp_valid_) {
         s_thinDbgDone = true;
@@ -7460,9 +7390,8 @@ int gosRenderer::terrainBindThinUniformsForPatchStream(glsl_program* overridePro
     // mirrors the tessellated path so MC2_TERRAIN_DEBUG_MODE works uniformly.
     {
         float debugMode = terrain_debug_mode_;
-        if (const char* envDebug = getenv("MC2_TERRAIN_DEBUG_MODE")) {
-            debugMode = (float)atof(envDebug);
-        }
+        if (mc2::gate::isSet<"MC2_TERRAIN_DEBUG_MODE">())
+            debugMode = mc2::gate::get<"MC2_TERRAIN_DEBUG_MODE">();
         { int lvm = mc2LightingDebugMode(); if (lvm >= 0) debugMode = (float)lvm; }  // LIGHTING-DEBUG-VIEWS-1A
         float tessDebugVec[4] = { debugMode, 0.0f, 0.0f, 0.0f };
         if (tl.tessDebug >= 0) glUniform4fv(tl.tessDebug, 1, tessDebugVec);
@@ -8172,8 +8101,8 @@ void gosRenderer::flushHUDBatch()
         static bool s_envScaleDone = false;
         if (!s_envScaleDone) {
             s_envScaleDone = true;
-            if (const char* e = getenv("MC2_HUD_SCALE")) {
-                const float v = (float)atof(e);
+            if (mc2::gate::isNonEmpty<"MC2_HUD_SCALE">()) {
+                const float v = mc2::gate::get<"MC2_HUD_SCALE">();
                 if (v >= 0.2f && v <= 1.0f) s_hud_scale = v;
             }
         }
@@ -8182,7 +8111,7 @@ void gosRenderer::flushHUDBatch()
     // HUD-SCALE-SPACE-1 diagnostic: which coordinate space are the batched HUD
     // verts in vs the band test (width_/height_ = real drawable)? One line per
     // 300 flushes under MC2_LOG_PREVIEW.
-    if (getenv("MC2_LOG_PREVIEW")) {
+    if (mc2::gate::get<"MC2_LOG_PREVIEW">()) {
         static int s_hudDiagTick = 0;
         // Sample every flush while the shrink is supposed to be active (mission),
         // every 300th otherwise — the earlier cadence missed the mission window.
@@ -8231,7 +8160,7 @@ void gosRenderer::flushHUDBatch()
                 v.y = ay + (v.y - ay) * scale;
             }
         }
-        if (getenv("MC2_LOG_PREVIEW")) {
+        if (mc2::gate::get<"MC2_LOG_PREVIEW">()) {
             static int s_hudApplyTick = 0;
             if ((s_hudApplyTick++ % 60) == 0) {
                 float sampleY = -1.f;
@@ -8366,7 +8295,7 @@ void gosRenderer::flushHUDBatch()
     // byte-identical. Read-only glGet inside mc2_ui_pass_sample_entry_ambient() (samples
     // the same ambient axes the ambient contract tracks: colorMask/depthFunc/blend/
     // depthWrite); NO GL state change. Toward promoting UI DO_NOT_MODEL -> modeled.
-    static const bool s_uiPassMeasure = (::getenv("MC2_UI_PASS_MEASURE") != nullptr);
+    static const bool s_uiPassMeasure = mc2::gate::get<"MC2_UI_PASS_MEASURE">();
     if (s_uiPassMeasure) {
         // ONE ambient entry sample, taken after the VAO rebind, before the replay loop.
         mc2_ui_pass_sample_entry_ambient();
@@ -9143,8 +9072,7 @@ void __stdcall gos_SetScreenMode( DWORD Width, DWORD Height, DWORD bitDepth/*=16
     {
         static int s_forceWindowed = -1;
         if (s_forceWindowed < 0) {
-            const char* wv = getenv("MC2_WINDOWED");
-            s_forceWindowed = (wv && wv[0] && wv[0] != '0') ? 1 : 0;
+            s_forceWindowed = mc2::gate::get<"MC2_WINDOWED">();
         }
         if (s_forceWindowed) {
             GotoFullScreen = false;
@@ -9177,8 +9105,7 @@ bool __stdcall gos_Compute43Box( int w, int h, int* ox, int* oy, int* obw, int* 
     // Default-OFF gate (matches the launcher toggle model: checked -> MC2_FORCE_43=1,
     // unchecked -> unset). ON only when the var is present and not "0". Unset ->
     // byte-identical legacy (full surface), so smoke without the launcher is a no-op.
-    static const bool s_on =
-        []{ const char* e = getenv("MC2_FORCE_43"); return e && e[0] != '\0' && e[0] != '0'; }();
+    static const bool s_on = mc2::gate::get<"MC2_FORCE_43">();
     if (!s_on) {                            // gate off -> full surface, no-op
         if (ox) *ox = 0;
         if (oy) *oy = 0;
@@ -9753,10 +9680,7 @@ void __stdcall gos_SetupObjectShadows(HGOSRENDERMATERIAL material)
 			// Route through the view-epoch-checked accessor: snapshot only when its
 			// epoch is current, else live MVP. Killswitch shares the object family's
 			// MC2_PROP_FIXB_MVP gate.
-			static const bool s_objShadowFixB = []{
-				const char* v = std::getenv("MC2_PROP_FIXB_MVP");
-				return !(v && std::atoi(v) == 0);   // default ON; only =0 reverts
-			}();
+			static const bool s_objShadowFixB = mc2::gate::get<"MC2_PROP_FIXB_MVP">();
 			const float* mvp = gos_GetObjectDrawMVP(s_objShadowFixB);
 			if (!mvp) mvp = (const float*)&g_gos_renderer->getTerrainMVP();
 			glUniformMatrix4fv(mvpLoc, 1, GL_FALSE, mvp);
@@ -9903,7 +9827,7 @@ void __stdcall gos_PrepareForPostImGuiRender() {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glDisable(GL_SCISSOR_TEST);
 
-    static const bool s_diag = (getenv("MC2_3DVIEW_DIAG") != nullptr);
+    static const bool s_diag = mc2::gate::get<"MC2_3DVIEW_DIAG">();
     if (s_diag) {
         static bool s_diagDone = false;
         if (!s_diagDone) {
@@ -10013,8 +9937,8 @@ static int camPreviewScale()
     static int s_scale = -1;
     if (s_scale < 0) {
         s_scale = 4;
-        if (const char* v = getenv("MC2_PREVIEW_FBO_SCALE")) {
-            const int n = atoi(v);
+        if (mc2::gate::isNonEmpty<"MC2_PREVIEW_FBO_SCALE">()) {
+            const int n = mc2::gate::get<"MC2_PREVIEW_FBO_SCALE">();
             if (n >= 1 && n <= 8) s_scale = n;
         }
     }
@@ -10187,7 +10111,7 @@ static unsigned long g_framectxMismatchCount = 0;
 unsigned long gos_framectx_mismatch_count() { return g_framectxMismatchCount; }
 void gos_framectx_note_mismatch(const char* what) {
     ++g_framectxMismatchCount;
-    static const bool s_fatal = (std::getenv("MC2_FRAMECTX_MISMATCH_FATAL") != nullptr);
+    static const bool s_fatal = mc2::gate::get<"MC2_FRAMECTX_MISMATCH_FATAL">();
     if (s_fatal) {
         fprintf(stderr, "[FRAMECTX] FATAL: frame-context mirror diverged from "
                         "authoritative global (%s); count=%lu\n",
@@ -10198,7 +10122,7 @@ void gos_framectx_note_mismatch(const char* what) {
 }
 void gos_object_mvp_note_stale() {
     ++g_objMvpStaleCount;
-    static const bool s_fatal = (std::getenv("MC2_OBJ_MVP_STALE_FATAL") != nullptr);
+    static const bool s_fatal = mc2::gate::get<"MC2_OBJ_MVP_STALE_FATAL">();
     if (s_fatal) {
         fprintf(stderr, "[OBJ_MVP] FATAL: object draw read a stale-view dispatch "
                         "MVP snapshot (view-epoch mismatch); count=%lu\n",
@@ -10460,10 +10384,7 @@ float gos_GetTerrainDaylightLevel() {
 // frame). Killswitch MC2_CEMENT_MISSION_LIGHT=0 -> force (1,1,1) (repro of the
 // old bright-pads-at-night behaviour); default ON.
 void gos_SetTerrainMissionFlatLight(float r, float g, float b) {
-    static const bool s_enabled = []() {
-        const char* e = getenv("MC2_CEMENT_MISSION_LIGHT");
-        return !(e && e[0] == '0');
-    }();
+    static const bool s_enabled = mc2::gate::get<"MC2_CEMENT_MISSION_LIGHT">();
     if (!s_enabled) { r = 1.0f; g = 1.0f; b = 1.0f; }
     if (g_gos_renderer) g_gos_renderer->setTerrainMissionFlatLight(r, g, b);
 }
@@ -10827,11 +10748,7 @@ void gosRenderer::uploadOverlayUniforms_(GLuint shp, const OverlayUniformLocs_& 
     // multiply); 0 = exempt authored art from the flat-pad light (upload 1.0).
     // Boot-cached (Debug Instrumentation Rule).
     if (L.overlayArtFlatExempt >= 0) {
-        static const float s_artFlatExempt = [] {
-            const char* v = getenv("MC2_OVERLAY_ART_FLATLIGHT");
-            const bool flatLightOn = !(v && v[0] == '0');  // default ON
-            return flatLightOn ? 0.0f : 1.0f;
-        }();
+        static const float s_artFlatExempt = !mc2::gate::get<"MC2_OVERLAY_ART_FLATLIGHT">();
         glUniform1f(L.overlayArtFlatExempt, s_artFlatExempt);
     }
     // OVERLAY-BIAS-LINEARIZE-1: bias-mode selector (MC2_OVERLAY_BIAS_LEGACY).
@@ -10869,10 +10786,7 @@ void gosRenderer::uploadOverlayUniforms_(GLuint shp, const OverlayUniformLocs_& 
     // paved surface is split between them. Default OFF => uploads 0 => the
     // frag's first compare short-circuits => byte-identical.
     if (L.overlayCementShadowMatch >= 0) {
-        static const int s_overlayCementShadowMatch = [] {
-            const char* v = getenv("MC2_OVERLAY_CEMENT_SHADOW_MATCH");
-            return (v && v[0] && v[0] != '0') ? 1 : 0;
-        }();
+        static const int s_overlayCementShadowMatch = mc2::gate::get<"MC2_OVERLAY_CEMENT_SHADOW_MATCH">();
         glUniform1i(L.overlayCementShadowMatch, s_overlayCementShadowMatch);
     }
 
@@ -10892,10 +10806,7 @@ void gosRenderer::uploadOverlayUniforms_(GLuint shp, const OverlayUniformLocs_& 
         extern bool   gos_terrain_indirect_isCementAtlasReady();
         extern float  gos_terrain_indirect_getWorldUnitsPerVertex();
 
-        static const int s_overlayCementAdopt = [] {
-            const char* v = getenv("MC2_OVERLAY_CEMENT_ADOPT");
-            return (v && v[0] == '0') ? 0 : 1;   // default ON
-        }();
+        static const int s_overlayCementAdopt = mc2::gate::get<"MC2_OVERLAY_CEMENT_ADOPT">();
         glUniform1i(L.overlayCementAdopt, s_overlayCementAdopt);
 
         // gridSide force-uploads 0 unless the gate is on AND the atlas is
@@ -10934,10 +10845,7 @@ void gosRenderer::uploadOverlayUniforms_(GLuint shp, const OverlayUniformLocs_& 
         // the adoption exists to make seamless. Read the SAME env var with the
         // SAME default so the two shaders cannot drift apart.
         if (L.cementSeamFixOv >= 0) {
-            static const int s_cementSeamFixOv = [] {
-                const char* v = getenv("MC2_CEMENT_ATLAS_SEAM_FIX");
-                return (v && v[0] == '0') ? 0 : 1;   // default ON, matches the chunk
-            }();
+            static const int s_cementSeamFixOv = mc2::gate::get<"MC2_CEMENT_ATLAS_SEAM_FIX">();
             glUniform1i(L.cementSeamFixOv, s_cementSeamFixOv);
         }
     }
@@ -10948,32 +10856,13 @@ void gosRenderer::uploadOverlayUniforms_(GLuint shp, const OverlayUniformLocs_& 
     // disabled (legacy terrain path), and context binding state is not
     // guaranteed here. poolCount 0 -> frag loop skipped -> byte-identical.
     if (L.numPoolLights >= 0) {
-        static const bool s_lightPoolsGate = [] {
-            const char* v = getenv("MC2_TERRAIN_LIGHT_POOLS");
-            return !(v && v[0] == '0');
-        }();
-        static const bool s_poolSoft = [] {
-            const char* v = getenv("MC2_LIGHT_POOL_SOFT");
-            return !(v && v[0] == '0');
-        }();
+        static const bool s_lightPoolsGate = mc2::gate::get<"MC2_TERRAIN_LIGHT_POOLS">();
+        static const bool s_poolSoft = mc2::gate::get<"MC2_LIGHT_POOL_SOFT">();
         // NIGHT-LIGHT-POOLS-4: default 0.5 -> 0.25 (lockstep with the chunk
         // terrain consts in gos_terrain_lod_chunk.cpp).
-        static const float s_poolMoverDim = [] {
-            const char* s = getenv("MC2_LIGHT_POOL_MOVER_DIM");
-            if (!s || !s[0]) return 0.25f;
-            float f = (float)atof(s);
-            return (f >= 0.0f && f <= 1.0f) ? f : 0.25f;
-        }();
-        static const float s_poolMoverRadius = [] {
-            const char* s = getenv("MC2_LIGHT_POOL_MOVER_RADIUS");
-            if (!s || !s[0]) return 0.6f;
-            float f = (float)atof(s);
-            return (f > 0.0f && f <= 1.0f) ? f : 0.6f;
-        }();
-        static const bool s_poolMoverMax = [] {
-            const char* v = getenv("MC2_LIGHT_POOL_MOVER_MAXBLEND");
-            return !(v && v[0] == '0');
-        }();
+        static const float s_poolMoverDim = mc2::gate::get<"MC2_LIGHT_POOL_MOVER_DIM">();
+        static const float s_poolMoverRadius = mc2::gate::get<"MC2_LIGHT_POOL_MOVER_RADIUS">();
+        static const bool s_poolMoverMax = mc2::gate::get<"MC2_LIGHT_POOL_MOVER_MAXBLEND">();
         int poolCount = 0;
         if (s_lightPoolsGate) {
             const GLuint   poolSsbo = gos_terrain_lighting::GetLightPoolSsbo();
@@ -10988,10 +10877,7 @@ void gosRenderer::uploadOverlayUniforms_(GLuint shp, const OverlayUniformLocs_& 
         if (L.lightPoolSoft >= 0)     glUniform1i(L.lightPoolSoft, s_poolSoft ? 1 : 0);
         if (L.lightPoolMoverDim >= 0) glUniform1f(L.lightPoolMoverDim, s_poolMoverDim);
         // NIGHT-LIGHT-POOLS-3: summed-pool tone compression (default ON).
-        static const bool s_poolCompress = [] {
-            const char* v = getenv("MC2_LIGHT_POOL_COMPRESS");
-            return !(v && v[0] == '0');
-        }();
+        static const bool s_poolCompress = mc2::gate::get<"MC2_LIGHT_POOL_COMPRESS">();
         if (L.lightPoolCompress >= 0)  glUniform1i(L.lightPoolCompress, s_poolCompress ? 1 : 0);
         // NIGHT-LIGHT-POOLS-4: mover radius scale + max-blend.
         if (L.lightPoolMoverScale >= 0) glUniform1f(L.lightPoolMoverScale, s_poolMoverRadius);
@@ -11023,17 +10909,13 @@ extern "C" void mc2_vk_overlay_fill_frame(Mc2VkOverlayFrame* out)
         const vec4& fc = g_gos_renderer->getFogColor();
         out->fogColor[0] = fc.x; out->fogColor[1] = fc.y; out->fogColor[2] = fc.z; out->fogColor[3] = fc.w;
     }
-    static const float s_artFlatExempt = [] {
-        const char* v = getenv("MC2_OVERLAY_ART_FLATLIGHT");
-        const bool flatLightOn = !(v && v[0] == '0');  // default ON
-        return flatLightOn ? 0.0f : 1.0f;              // (same idiom as uploadOverlayUniforms_)
-    }();
+    static const float s_artFlatExempt = !mc2::gate::get<"MC2_OVERLAY_ART_FLATLIGHT">();
     out->artFlatExempt = s_artFlatExempt;
     gosPostProcess* pp = getGosPostProcess();
     out->mapHalfExtent = pp ? pp->getMapHalfExtent() : 0.0f;
     out->biasLegacy = mc2OverlayBiasLegacy();
-    static const int s_cementAdopt = [] { const char* v = getenv("MC2_OVERLAY_CEMENT_ADOPT"); return (v && v[0] == '0') ? 0 : 1; }();
-    static const int s_seamFix     = [] { const char* v = getenv("MC2_CEMENT_ATLAS_SEAM_FIX"); return (v && v[0] == '0') ? 0 : 1; }();
+    static const int s_cementAdopt = mc2::gate::get<"MC2_OVERLAY_CEMENT_ADOPT">();
+    static const int s_seamFix = mc2::gate::get<"MC2_CEMENT_ATLAS_SEAM_FIX">();
     out->cementAdopt = s_cementAdopt;
     out->seamFix = s_seamFix;
 }
@@ -11201,8 +11083,7 @@ bool gosRenderer::drawDecalStaticBatch(unsigned int vboGL,
     // [TEMP DECAL_GLPROBE] eager-drain probe — env MC2_DECAL_GLPROBE=1.
     // Removed once root cause is pinned. Attributes GL_INVALID_OPERATION to
     // the exact call instead of the deferred CHECK_GL_ERROR drain site.
-    static const bool s_decalGlProbe =
-        (getenv("MC2_DECAL_GLPROBE") && getenv("MC2_DECAL_GLPROBE")[0] == '1');
+    static const bool s_decalGlProbe = mc2::gate::get<"MC2_DECAL_GLPROBE">();
     #define DECAL_GLPROBE(tag) do { if (s_decalGlProbe) { \
         GLenum e; while ((e = glGetError()) != GL_NO_ERROR) \
             printf("[DECAL_GLPROBE] at=%s err=0x%x\n", tag, (unsigned)e); \
