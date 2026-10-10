@@ -66,8 +66,8 @@
    "LG16": 7,
    "LG17": 81,
    "LG18": 11,
-   "LG19": 56,
-   "LG20": 89
+   "LG19": 50,
+   "LG20": 83
   },
   "GuiRuntime": {
    "LG01": 1,
@@ -1018,9 +1018,7 @@
   "GameOS/gameos/gpu_driven_common.cpp": {
    "LG03": 4,
    "LG09": 1,
-   "LG12a": 5,
-   "LG19": 6,
-   "LG20": 6
+   "LG12a": 5
   },
   "GameOS/gameos/mc2_hitch_trace.cpp": {
    "LG09": 13,
@@ -5829,7 +5827,7 @@
    "LG20": 1
   }
  },
- "head": "16563b828",
+ "head": "f2ed0a020",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

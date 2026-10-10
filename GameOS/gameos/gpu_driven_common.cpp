@@ -24,38 +24,29 @@
 #include <GL/glew.h>
 
 #include "utils/shader_builder.h"  // load_shader — engine #include resolver
+#include "Gates/gate.h"
 
 namespace gpu_driven {
 
 bool IsGlobalEnabled() {
-    static const bool s_enabled = [] {
-        const char* env = getenv("MC2_GPU_DRIVEN");
-        return (env == nullptr) || (env[0] != '0');
-    }();
+    static const bool s_enabled = mc2::gate::get<"MC2_GPU_DRIVEN">();
     return s_enabled;
 }
 
 bool IsParityEnabled() {
-    static const bool s_enabled = [] {
-        const char* env = getenv("MC2_GPU_DRIVEN_PARITY");
-        return (env != nullptr) && (env[0] == '1');
-    }();
+    static const bool s_enabled = mc2::gate::get<"MC2_GPU_DRIVEN_PARITY">();
     return s_enabled;
 }
 
 bool IsTraceEnabled() {
-    static const bool s_enabled = [] {
-        const char* env = getenv("MC2_GPU_DRIVEN_TRACE");
-        return (env != nullptr) && (env[0] == '1');
-    }();
+    static const bool s_enabled = mc2::gate::get<"MC2_GPU_DRIVEN_TRACE">();
     return s_enabled;
 }
 
 bool IsWaterEnabled() {
     static const bool s_enabled = [] {
         if (!IsGlobalEnabled()) return false;
-        const char* env = getenv("MC2_GPU_DRIVEN_WATER");
-        return (env == nullptr) || (env[0] != '0');
+        return mc2::gate::get<"MC2_GPU_DRIVEN_WATER">();
     }();
     return s_enabled;
 }
@@ -63,8 +54,7 @@ bool IsWaterEnabled() {
 bool IsTerrainSolidEnabled() {
     static const bool s_enabled = [] {
         if (!IsGlobalEnabled()) return false;
-        const char* env = getenv("MC2_GPU_DRIVEN_TERRAIN_SOLID");
-        return (env == nullptr) || (env[0] != '0');
+        return mc2::gate::get<"MC2_GPU_DRIVEN_TERRAIN_SOLID">();
     }();
     return s_enabled;
 }
@@ -72,8 +62,7 @@ bool IsTerrainSolidEnabled() {
 bool IsOverlayEnabled() {
     static const bool s_enabled = [] {
         if (!IsGlobalEnabled()) return false;
-        const char* env = getenv("MC2_GPU_DRIVEN_OVERLAY");
-        return (env == nullptr) || (env[0] != '0');
+        return mc2::gate::get<"MC2_GPU_DRIVEN_OVERLAY">();
     }();
     return s_enabled;
 }
