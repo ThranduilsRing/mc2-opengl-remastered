@@ -136,6 +136,7 @@ extern std::atomic<int> g_workerResubmitCalls;  // FRAME-JOBS-2D: msl.cpp
 #ifndef GOS_PROFILER_H
 #include"gos_profiler.h"
 #endif
+#include "../RenderCore/axis_convert.h"
 
 // ---------------------------------------------------------------------------
 // C3: env-gated lifecycle routing killswitch.
@@ -3771,14 +3772,10 @@ static bool projectPickCandidateRect(BldgAppearance* ba,
 	Stuff::Vector4D bcsp[8];
 
 	Stuff::Vector3D boxStart;
-	boxStart.x = -appearType->typeUpperLeft.x;
-	boxStart.y = appearType->typeUpperLeft.z;
-	boxStart.z = appearType->typeUpperLeft.y;
+	mc2ToRender(boxStart, appearType->typeUpperLeft);
 
 	Stuff::Vector3D boxEnd;
-	boxEnd.x = -appearType->typeLowerRight.x;
-	boxEnd.y = appearType->typeLowerRight.z;
-	boxEnd.z = appearType->typeLowerRight.y;
+	mc2ToRender(boxEnd, appearType->typeLowerRight);
 
 	Stuff::Vector3D addCoords;
 
