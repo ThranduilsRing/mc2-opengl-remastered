@@ -17,6 +17,7 @@
 #include <GL/glew.h>
 
 #include "../../RenderCore/RenderResourceRegistry.h"
+#include "Gates/gate.h"   // typed gate registry
 
 namespace {
 
@@ -48,11 +49,9 @@ int    g_overrideFactor      = -1;
 // FROM-HEIGHT-1. Re-evaluated per upload — toggling the env var across
 // missions takes effect on next mission load.
 int read_resample_factor_env() {
-    const char* v = std::getenv("MC2_TERRAIN_HEIGHT_RESAMPLE_FACTOR");
-    if (!v || !v[0]) return 1;
-    int f = std::atoi(v);
-    if (f == 2) return 2;
-    if (f == 4) return 4;
+    // Row: Enum 1|2|4, default 1; any other text reads as 1 (and is flagged badvalue in [CONFIG v1]).
+    if (mc2::gate::is<"MC2_TERRAIN_HEIGHT_RESAMPLE_FACTOR", "2">()) return 2;
+    if (mc2::gate::is<"MC2_TERRAIN_HEIGHT_RESAMPLE_FACTOR", "4">()) return 4;
     return 1;
 }
 

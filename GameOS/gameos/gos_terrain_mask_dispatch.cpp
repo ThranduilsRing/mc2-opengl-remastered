@@ -10,6 +10,7 @@
 #include "../../mclib/vertex.h"
 #include "../../mclib/tex_resolve_table.h"
 #include "../../mclib/terrain.h"  // Terrain::waterElevation, Terrain::frameCos
+#include "Gates/gate.h"   // typed gate registry
 
 #include <vector>
 #include <algorithm>
@@ -69,10 +70,7 @@ static GLuint s_waterMaskSSBO = 0;
 static bool MasterEnabled() {
     // Cached at Init() time; re-read here for the IsMaskDispatchEnabled() path
     // which may be called before Init() (safe: returns false if not init'd).
-    const char* v = getenv("MC2_TERRAIN_MASK_DISPATCH");
-    if (!v || !v[0]) return false;
-    if (v[0] == '0' && v[1] == '\0') return false;
-    return true;
+    return mc2::gate::get<"MC2_TERRAIN_MASK_DISPATCH">();
 }
 
 // ---------------------------------------------------------------------------
@@ -143,16 +141,12 @@ void BeginFrame() {
 
 bool IsFrameMaskSolidArmed() {
     if (!s_readyThisFrame) return false;
-    const char* v = getenv("MC2_TERRAIN_MASK_DISPATCH_SOLID");
-    if (v && v[0] == '0' && v[1] == '\0') return false;
-    return true;
+    return mc2::gate::get<"MC2_TERRAIN_MASK_DISPATCH_SOLID">();
 }
 
 bool IsFrameMaskWaterArmed() {
     if (!s_readyThisFrame) return false;
-    const char* v = getenv("MC2_TERRAIN_MASK_DISPATCH_WATER");
-    if (v && v[0] == '0' && v[1] == '\0') return false;
-    return true;
+    return mc2::gate::get<"MC2_TERRAIN_MASK_DISPATCH_WATER">();
 }
 
 // ---------------------------------------------------------------------------
@@ -239,8 +233,7 @@ bool DrawMaskSolid() {
     if (!s_readyThisFrame) return false;
 
     // Per-bucket killswitch (allows armed-water-only configurations)
-    const char* armV = getenv("MC2_TERRAIN_MASK_DISPATCH_SOLID");
-    if (armV && armV[0] == '0' && armV[1] == '\0') return false;
+    if (!mc2::gate::get<"MC2_TERRAIN_MASK_DISPATCH_SOLID">()) return false;
 
     const uint32_t solidSSBO  = s_solidMaskSSBO;
     const uint32_t recipeSSBO = (uint32_t)gos_terrain_indirect_getRecipeSSBO();
@@ -261,8 +254,7 @@ bool DrawMaskWater() {
     if (!s_readyThisFrame) return false;
 
     // Per-bucket killswitch (allows armed-solid-only configurations)
-    const char* armV = getenv("MC2_TERRAIN_MASK_DISPATCH_WATER");
-    if (armV && armV[0] == '0' && armV[1] == '\0') return false;
+    if (!mc2::gate::get<"MC2_TERRAIN_MASK_DISPATCH_WATER">()) return false;
 
     const uint32_t waterMaskSSBO = s_waterMaskSSBO;
     const uint32_t recipeSSBO    = (uint32_t)WaterStream::EnsureRecipeBufferUploaded();

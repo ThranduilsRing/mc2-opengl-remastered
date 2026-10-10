@@ -5,7 +5,7 @@
 generator_version: "3.0.0"
 gate_count: 1139
 registry_entry_count: 354
-verified_count: 37
+verified_count: 41
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -5777,6 +5777,7 @@ flags:
     owner: terrain
     doc: "TERRAIN-RESAMPLE-1: CPU bilinear resample factor for the per-mission terrain height texture used by TERRAIN-NORMALS-FROM-HEIGHT-1."
     tokens: "1|2|4"
+    verified: true
     registry: {feature_id: MC2_TUNE_TERRAIN_HEIGHT_RESAMPLE_FACTOR, kind: Trace, order: -1, default_on: false}
   - name: MC2_TERRAIN_INDIRECT
     kind: Bool
@@ -5970,18 +5971,21 @@ flags:
     owner: terrain
     doc: "Cached at Init() time; re-read here for the IsMaskDispatchEnabled() path which may be called before Init() (safe: returns false if not init'd)."
     smoke_passthrough: true
+    verified: true
   - name: MC2_TERRAIN_MASK_DISPATCH_SOLID
     kind: Bool
     default: true
     rule: Lead0Kill
     owner: terrain
     doc: ""
+    verified: true
   - name: MC2_TERRAIN_MASK_DISPATCH_WATER
     kind: Bool
     default: true
     rule: Lead0Kill
     owner: terrain
     doc: ""
+    verified: true
   - name: MC2_TERRAIN_MASK_UPLOAD_STATS
     kind: Bool
     default: false
