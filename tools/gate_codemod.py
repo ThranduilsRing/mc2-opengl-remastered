@@ -361,6 +361,26 @@ FAMILIES = {
            "cmd": "py -3 tools/gate_codemod.py --family g8 --write"},
 }
 
+# Translation units that were split into <stem>_<piece>.cpp files (with a <stem>_internal.h): a family names the
+# original file, and the plan must read its pieces too, because the raw reads moved with the code.
+SPLIT_STEMS = ("gos_postprocess", "gos_terrain_indirect", "gos_terrain_lod_chunk")
+
+
+def expand_split_pieces(files):
+    out = []
+    for f in files:
+        if f not in out:
+            out.append(f)
+        stem = os.path.splitext(os.path.basename(f))[0]
+        if stem in SPLIT_STEMS:
+            d = os.path.dirname(os.path.join(ROOT, f))
+            for name in sorted(os.listdir(d)):
+                rel = os.path.join(os.path.dirname(f), name).replace(os.sep, "/")
+                if name.startswith(stem + "_") and name.endswith(".cpp") and rel not in out:
+                    out.append(rel)
+    return out
+
+
 NS = "mc2::gate"
 
 # Callers of the VK umbrella resolver (GameOS/gameos/vk_shared_gbuffer_gate.h).  A site that reads a gate
@@ -2410,7 +2430,7 @@ def main(argv=None):
         print("gate_codemod: %d site(s) rewritten" % total)
         return 0
     fam = FAMILIES[a.family]
-    files = a.files or list(fam["files"])
+    files = a.files or expand_split_pieces(list(fam["files"]))
     rev = None if a.worktree else a.rev
     results, rows = run(files, ROOT, rev)
     if a.gate_prefix:
