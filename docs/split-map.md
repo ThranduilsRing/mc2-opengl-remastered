@@ -276,6 +276,14 @@ Split commit: `708c5e445`.
 | `UiDefs_parse.cpp` | UiDefs: defs-file text parsing, path resolution, drawing primitives. |
 | `UiDefs_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
+## `mclib/abldbug.cpp`
+
+| Piece | What it holds |
+|---|---|
+| `abldbug.cpp` | keeps the watch and breakpoint managers, the Debugger setup and the command loop |
+| `abldbug_print.cpp` | ABL debugger: the statement / value printers, the execution trace hooks, showValue, assignVariable and the module-instance listing. |
+| `abldbug_internal.h` | shared include bundle, extern globals and declarations of the pieces |
+
 ## `mclib/bdactor.cpp`
 
 Split commit: `6456f46eb`.
