@@ -25,7 +25,7 @@
 #define WHITE_PIXEL	255.0f
 #define RESIZE_PI	3.1415926
 
-float CLAMP (float x, float min, float max)
+inline float CLAMP (float x, float min, float max)
 {
 	if (x < min)
 		return min;
@@ -42,7 +42,7 @@ typedef struct {
 	float 	*data;
 } Image;
 
-float getPixel (Image *image, long x, long y)
+inline float getPixel (Image *image, long x, long y)
 {
 	if ((x < 0) || (x >= image->xSize) || (y < 0) || (y > image->ySize))
 		return 0.0f;
@@ -51,7 +51,7 @@ float getPixel (Image *image, long x, long y)
 	return p[x];
 }
 
-void getRow (float *row, Image *image, long y)
+inline void getRow (float *row, Image *image, long y)
 {
 	if ((y < 0) || (y >= image->ySize))
 		return;
@@ -59,7 +59,7 @@ void getRow (float *row, Image *image, long y)
 	memcpy(row,image->data + (y * image->xSize), image->ySize * sizeof(float));
 }
 
-void getCol (float *col, Image *image, long x)
+inline void getCol (float *col, Image *image, long x)
 {
 	if ((x < 0) || (x >= image->xSize))
 		return;
@@ -71,7 +71,7 @@ void getCol (float *col, Image *image, long x)
 	}
 }
 
-float putPixel (Image *image, long x, long y, float data)
+inline float putPixel (Image *image, long x, long y, float data)
 {
 	if ((x < 0) || (x >= image->xSize) || (y < 0) || (y >= image->ySize))
 		return 0.0f;
@@ -90,7 +90,7 @@ float putPixel (Image *image, long x, long y, float data)
 #define Lanczos3Support (3.0)
 #define MitchellSupport	(2.0)
 
-double filter (double t)
+inline double filter (double t)
 {
 	if (t < 0.0)
 		t = -t;
@@ -101,7 +101,7 @@ double filter (double t)
 	return 0.0;
 }
 
-double boxFilter (double t)
+inline double boxFilter (double t)
 {
 	if ((t > -0.5) && (t <= 0.5))
 		return 1.0;
@@ -109,7 +109,7 @@ double boxFilter (double t)
 	return 0.0;
 }
 
-double triangleFilter (double t)
+inline double triangleFilter (double t)
 {
 	if (t < 0.0)
 		t = -t;
@@ -120,7 +120,7 @@ double triangleFilter (double t)
 	return 0.0;
 }
 
-double bellFilter (double t)
+inline double bellFilter (double t)
 {
 	if (t < 0.0)
 		t = -t;
@@ -137,7 +137,7 @@ double bellFilter (double t)
 	return 0.0;
 }
 
-double bSplineFilter (double t)
+inline double bSplineFilter (double t)
 {
 	double tt;
 	
@@ -158,7 +158,7 @@ double bSplineFilter (double t)
 	return 0.0;
 }
 
-double sinc (double t)
+inline double sinc (double t)
 {
 	t *= RESIZE_PI;
 	if (t != 0.0)
@@ -167,7 +167,7 @@ double sinc (double t)
 	return 1.0;
 }
 
-double lanczos3Filter (double t)
+inline double lanczos3Filter (double t)
 {
 	if (t < 0.0)
 		t = -t;
@@ -178,7 +178,7 @@ double lanczos3Filter (double t)
 	return 0.0;
 }
 
-double mitchellFilter (double t)
+inline double mitchellFilter (double t)
 {
 	double B = (1.0 / 3.0);
 	double C = (1.0 / 3.0);
@@ -220,9 +220,9 @@ typedef struct {
 	CONTRIB *p;
 } CLIST;
 
-CLIST *contrib;
+inline CLIST *contrib;
 
-Image *newImage(long xSize, long ySize)
+inline Image *newImage(long xSize, long ySize)
 {
 	Image *image = (Image *)malloc(sizeof(Image));
 	if (image)
@@ -237,13 +237,13 @@ Image *newImage(long xSize, long ySize)
 	return image;
 }
 
-void freeImage (Image *image)
+inline void freeImage (Image *image)
 {
 	free(image->data);
 	free(image);
 }
 
-void zoom (Image *dst, Image *src, double (*filter)(double t), double fwidth)
+inline void zoom (Image *dst, Image *src, double (*filter)(double t), double fwidth)
 {
 	Image *tmp;
 	double xscale, yscale;
