@@ -93,6 +93,8 @@ def main(argv=None) -> int:
     ap.add_argument("--tree", default="build-alltargets")
     ap.add_argument("--max-objs", type=int, default=300, help="stop adding headers once the union of includers exceeds this")
     ap.add_argument("--max-headers", type=int, default=50)
+    ap.add_argument("--max-header-includers", type=int, default=200,
+                    help="skip a header included by more objects than this (its proof is a near-full rebuild for a handful of sites)")
     ap.add_argument("--done", help="ledger of headers already tried (skipped; picked ones are appended)")
     ap.add_argument("--build-jobs", type=int, default=6)
     ap.add_argument("--dry-run", action="store_true", help="list the batch and its proof set, change nothing")
@@ -112,7 +114,7 @@ def main(argv=None) -> int:
     else:
         headers, union = [], set()
         for n, _sz, rel in candidate_headers(args.dir, includers, dirty):
-            if rel in done:
+            if rel in done or len(includers[rel]) > args.max_header_includers:
                 continue
             new_union = union | includers[rel]
             if headers and len(new_union) > args.max_objs:
@@ -145,20 +147,26 @@ def main(argv=None) -> int:
 
     # One representative including TU per header (smallest source), diagnostics restricted to the batch's headers.
     exe = rts.clang_tidy_exe()
-    by_tu = {}
+    # clang-tidy applies no fix-its from a TU it cannot parse (MSVC-only constructs), so try the including TUs smallest first until one
+    # rewrites the header (or none does).
     for h in headers:
-        tus = [(os.path.getsize(os.path.join(ROOT, t2s[o])), t2s[o]) for o in includers.get(h, ()) if o in t2s
-               and not rts.is_excluded(t2s[o]) and t2s[o].lower().endswith((".cpp", ".cc", ".cxx"))]
-        if tus:
-            by_tu.setdefault(min(tus)[1], []).append(h)
-    for tu, hs in by_tu.items():
-        cmd = rts.tidy_command(exe, args.tree, tu, fix=True)
-        cmd.insert(-1, "--line-filter=" + line_filter(hs))
-        cmd = [c for c in cmd if not c.startswith("--header-filter")] + ["--header-filter=.*"]
-        subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
-        # a TU that is not in the batch must stay untouched (the line filter should already guarantee it)
-        if rts.git("diff", "--numstat", "--", tu).strip():
-            rts.restore_file(tu, os.stat(os.path.join(ROOT, tu)).st_mtime_ns)
+        tus = sorted((os.path.getsize(os.path.join(ROOT, t2s[o])), t2s[o]) for o in includers.get(h, ()) if o in t2s
+                     and not rts.is_excluded(t2s[o]) and t2s[o].lower().endswith((".cpp", ".cc", ".cxx")))
+        seen = set()
+        for _sz, tu in tus:
+            if tu in seen:
+                continue
+            seen.add(tu)
+            if len(seen) > 6:
+                break
+            cmd = rts.tidy_command(exe, args.tree, tu, fix=True)
+            cmd.insert(-1, "--line-filter=" + line_filter([h]))
+            cmd = [c for c in cmd if not c.startswith("--header-filter")] + ["--header-filter=.*"]
+            subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
+            if rts.git("diff", "--numstat", "--", tu).strip():        # the line filter should prevent this; never keep a TU edit
+                rts.restore_file(tu, os.stat(os.path.join(ROOT, tu)).st_mtime_ns)
+            if rts.git("diff", "--numstat", "--", h).strip():
+                break
 
     changed = [h for h in headers if rts.git("diff", "--numstat", "--", h).strip()]
     for h in changed:

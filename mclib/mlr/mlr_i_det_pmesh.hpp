@@ -13,7 +13,7 @@ namespace MidLevelRenderer {
 	struct DetailTextureInfo {
 		DetailTextureInfo()
 		{
-			name = NULL;
+			name = nullptr;
 			xOff=0.0f; xFac=8.0f;
 			zOff=0.0f; zFac=8.0f;
 			dStart = 32.0f; dEnd = 64.0f;
@@ -51,7 +51,7 @@ namespace MidLevelRenderer {
 			Stuff::MemoryStream *stream,
 			int version
 		);
-		~MLR_I_DeT_PMesh();
+		~MLR_I_DeT_PMesh() override;
 
 	public:
 		MLR_I_DeT_PMesh(ClassData *class_data=MLR_I_DeT_PMesh::DefaultData);
@@ -63,7 +63,7 @@ namespace MidLevelRenderer {
 			);
 
 		void
-			Save(Stuff::MemoryStream *stream);
+			Save(Stuff::MemoryStream *stream) override;
 
 	public:
 		void
@@ -106,13 +106,13 @@ namespace MidLevelRenderer {
 					yFac = yScale;
 				}
 
-		virtual int	TransformAndClip(Stuff::Matrix4D *, MLRClippingState, GOSVertexPool*,bool=false);
+		int	TransformAndClip(Stuff::Matrix4D *, MLRClippingState, GOSVertexPool*,bool=false) override;
 
-		virtual void
-			TransformNoClip(Stuff::Matrix4D*, GOSVertexPool*,bool=false);
+		void
+			TransformNoClip(Stuff::Matrix4D*, GOSVertexPool*,bool=false) override;
 
-		virtual void
-			SetReferenceState(const MLRState& _state, int pass=0)
+		void
+			SetReferenceState(const MLRState& _state, int pass=0) override
 				{
 					Check_Object(this);
 					Verify(pass>=0 && pass<2);
@@ -126,8 +126,8 @@ namespace MidLevelRenderer {
 						referenceState2 = _state;
 					}
 				}
-		virtual const MLRState&
-			GetReferenceState(int pass=0) const
+		const MLRState&
+			GetReferenceState(int pass=0) const override
 				{
 					Check_Object(this); 
 					if(pass==0)
@@ -135,8 +135,8 @@ namespace MidLevelRenderer {
 					else
 						return referenceState2;
 				}
-		virtual const MLRState&
-			GetCurrentState(int pass=0) const
+		const MLRState&
+			GetCurrentState(int pass=0) const override
 				{
 					Check_Object(this);
 					if(pass==0)
@@ -145,16 +145,16 @@ namespace MidLevelRenderer {
 						return state2;
 				}
 
-		virtual void
-			CombineStates (const MLRState& master)
+		void
+			CombineStates (const MLRState& master) override
 				{
 					Check_Object(this);
 					state.Combine(master, referenceState); 
 					state2.Combine(master, referenceState2);
 				};
 
-		virtual GOSVertex*
-			GetGOSVertices(int pass=0)
+		GOSVertex*
+			GetGOSVertices(int pass=0) override
 				{
 					Check_Object(this); 
 					if(pass==0)
@@ -163,8 +163,8 @@ namespace MidLevelRenderer {
 						return gos_vertices+numGOSVertices;
 				}
 
-		virtual int
-			GetNumPasses();
+		int
+			GetNumPasses() override;
 
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// Class Data Support
@@ -180,8 +180,8 @@ namespace MidLevelRenderer {
 		void
 			TestInstance() const;
 
-	virtual size_t
-			GetSize()
+	size_t
+			GetSize() override
 		{ 
 			Check_Object(this);
 			size_t ret = MLR_I_PMesh::GetSize();
