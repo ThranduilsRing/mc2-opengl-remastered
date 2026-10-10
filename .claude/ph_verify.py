@@ -18,6 +18,7 @@ S = importlib.util.module_from_spec(sp)
 sp.loader.exec_module(S)
 structs = S.STRUCTS if hasattr(S, 'STRUCTS') else {'f': S.STRUCT}
 members = [(m[0], m[1], m[2] if len(m) > 2 else 'f') for m in S.MEMBERS]
+member_lines = {m[0]: set(m[3]) for m in S.MEMBERS if len(m) > 3}
 method = getattr(S, 'METHOD_CLASS', None)
 hoist_lines = getattr(S, 'HOIST', [])
 
@@ -32,6 +33,12 @@ def lines_of(raw):
 
 old = lines_of(subprocess.check_output(['git', 'show', getattr(S, 'BASE', 'HEAD') + ':' + S.SRC], **console_child.child_kwargs(redirected=True)))
 new = lines_of(open(S.SRC, 'rb').read())
+if hasattr(S, 'FRAME_HEADER'):
+    # the one include the split adds next to mission_internal.h; everything else must match the base
+    inc = '#include "%s"' % S.FRAME_HEADER.split('/')[-1]
+    assert inc in new, 'frame header include missing'
+    new.remove(inc)
+extra = lines_of(open(S.SPLIT_SRC, 'rb').read()) if hasattr(S, 'SPLIT_SRC') else []
 
 
 def fn_range(L, sig):
@@ -58,13 +65,17 @@ for (name, a, b, doc, *_r) in S.PHASES:
     if method:
         sig_rx = re.compile(r'^void ' + method + '::' + name + r'\(.*\) \{$')
     else:
-        sig_rx = re.compile(r'^(?:static void ' + name + r'\(.*\)|void \w+::' + name + r'\(\)) \{$')
-    i = next((k for k, l in enumerate(new) if sig_rx.match(l)), None)
+        sig_rx = re.compile(r'^(?:static void ' + name + r'\(.*\)|void \w+::' + name + r'\(.*\)) \{$')
+    src_lines = new
+    i = next((k for k, l in enumerate(src_lines) if sig_rx.match(l)), None)
+    if i is None:
+        src_lines = extra
+        i = next((k for k, l in enumerate(src_lines) if sig_rx.match(l)), None)
     if i is None:
         fail.append('helper missing: ' + name)
         continue
-    j = next(k for k in range(i, len(new)) if new[k] == '}')
-    body = new[i + 1:j]
+    j = next(k for k in range(i, len(src_lines)) if src_lines[k] == '}')
+    body = src_lines[i + 1:j]
     while body and alias_rx.match(body[0]):
         body.pop(0)
     for x in body:
@@ -79,6 +90,7 @@ call_rx = re.compile(r'^\s*(?:f\.)?(\w+)\([\w, ]*\);$')
 decl_rx = re.compile(r'^\s*(%s) \w+;$' % '|'.join(structs.values()))
 expanded = []
 frame_decls = 0
+extra_seen = 0
 used_calls = []
 for x in orch:
     m = call_rx.match(x)
@@ -87,11 +99,15 @@ for x in orch:
         expanded += helpers[m.group(1)]
     elif decl_rx.match(x):
         frame_decls += 1
+    elif x.strip() in getattr(S, 'ORCH_EXTRA', []):
+        extra_seen += 1
     else:
         expanded.append(x)
 want_decls = sum(1 for v in S.ORCH_BEFORE.values() for x in v.split('\n') if decl_rx.match(x))
 if frame_decls != want_decls:
     fail.append('frame declarations in the orchestrator: %d, spec lists %d' % (frame_decls, want_decls))
+if extra_seen != len(getattr(S, 'ORCH_EXTRA', [])):
+    fail.append('orchestrator extra statements: %d, spec lists %d' % (extra_seen, len(getattr(S, 'ORCH_EXTRA', []))))
 if sorted(used_calls) != sorted(h[0] for h in S.PHASES):
     fail.append('call set differs from the phase list')
 want_order = [h[0] for h in sorted(S.PHASES, key=lambda p: p[1])]
@@ -120,6 +136,8 @@ for ln in range(os_ + 2, oe + 1):
         lifts.append((ln, 'edit', old[ln - 1].strip()[:70], t.strip()[:70]))
     else:
         for name, typ, _fr in members:
+            if name in member_lines and ln not in member_lines[name]:
+                continue
             tp = re.escape(typ).replace(r'\ ', r'\s*')
             m = re.match(r'^(\s*)' + tp + r'\s*' + re.escape(name) + r'(?!\w)(\s*=\s*[^;,]+)?\s*;\s*(.*)$', t)
             if m:

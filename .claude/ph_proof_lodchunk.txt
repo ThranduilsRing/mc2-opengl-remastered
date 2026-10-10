@@ -1,0 +1,124 @@
+inline expansion: 1296 statements, helpers 13, orchestrator lines 73
+declaration lifts / edits applied (17):
+  L97    lift GLint prevProg = 0;  =>  prevProg = 0;
+  L99    lift GLint prevVAO = 0;  =>  prevVAO = 0;
+  L122   edit const bool useGuards = glStateGuardTerrainEnabled();  =>  useGuards = glStateGuardTerrainEnabled();
+  L124   edit std::optional<mc2gl::GlScopedCapability> gDepthTest, gBlend, gCull;  =>  
+  L125   lift std::optional<mc2gl::GlScopedDepthState> gDepthState;  =>  (declaration only)
+  L126   lift GLboolean prevCullFace  = glIsEnabled(GL_CULL_FACE);  =>  prevCullFace = glIsEnabled(GL_CULL_FACE);
+  L127   lift GLboolean prevDepthTest = GL_FALSE;  =>  prevDepthTest = GL_FALSE;
+  L128   lift GLboolean prevDepthMask = GL_TRUE;  =>  prevDepthMask = GL_TRUE;
+  L129   lift GLboolean prevBlend     = GL_FALSE;  =>  prevBlend = GL_FALSE;
+  L130   lift GLint     prevDepthFunc = GL_GEQUAL;  =>  prevDepthFunc = GL_GEQUAL;
+  L187   edit const bool visualDisplaceActive = s_visualDisplaceGate && s_visualHeig  =>  visualDisplaceActive = s_visualDisplaceGate && s_visualHeightSsbo.crea
+  L197   edit const bool visualDampActive = visualDisplaceActive && s_visualDampGate  =>  visualDampActive = visualDisplaceActive && s_visualDampGate
+  L221   edit const bool geomorphActive =  =>  geomorphActive =
+  L972   edit const bool s_vkTerrainEnabled = (mc2_vk_terrain_island_enabled() != 0)  =>  s_vkTerrainEnabled = (mc2_vk_terrain_island_enabled() != 0);
+  L983   edit const bool s_vkTerrainActive = s_vkTerrainEnabled && s_vkTerrainReady;  =>  s_vkTerrainActive = s_vkTerrainEnabled && s_vkTerrainReady;
+  L996   lift TerrainGlFallbackAudit s_vkTerrainGlAudit;  =>  (declaration only)
+  L997   edit const bool s_vkTerrainGlAuditOn = terrainGlFallbackAuditEnabled();  =>  s_vkTerrainGlAuditOn = terrainGlFallbackAuditEnabled();
+scaffolding only in new (87 distinct):
+   + #endif x4
+   + #ifdef MC2_VULKAN_ISLAND x4
+   + // (destroyed after the restore, in reverse declaration order, as they were as locals) and the feature flags. 
+   + // Apply the terrain pipeline, bind the program, VAO and height SSBOs and set the displacement uniforms. 
+   + // Bind the colormap atlas (with its UV params), the shadow maps and the light matrices. 
+   + // Bind the material normal array, the cement atlas, the transition mask and the control map. 
+   + // Bind the per-layer material albedo array and the overlay-v2 sidecar. 
+   + // Bind the shoreline mask and set the wet/foam band uniforms. 
+   + // Count the submit, reset the displaced-chunk counters and prepare the VK terrain island. 
+   + // Hand the captured LOD0 patches to the VK island once GL state is restored. 
+   + // Issue the draw for every queued command, then report the per-band displaced-chunk counts. 
+   + // Locals the terrain LOD-chunk submit phases share: the GL state saved for the restore, the RAII state guards 
+   + // Log the first non-empty submit and reset the zero-submit streak. 
+   + // Report the patches the VK island left to GL and mark terrain drawn for the post-process passes. 
+   + // Save the GL state the draw changes and apply the terrain depth/blend/cull state. 
+   + // Submits the LOD chunk draw commands. The early bail-outs, the top-level pass guard and the MVP fetch stay h 
+   + // Unbind the terrain buffers and restore the saved GL state. 
+   + // Upload the material tiling, tint, lighting and shadow tuning uniforms. 
+   + // each phase below is a verbatim helper, run in the original order. 
+   + GLboolean prevBlend; 
+   + GLboolean prevCullFace; 
+   + GLboolean prevDepthMask; 
+   + GLboolean prevDepthTest; 
+   + GLint prevDepthFunc; 
+   + GLint prevProg; 
+   + GLint prevVAO; 
+   + TerrainLodSubmitFrame f; 
+   + bindAtlasAndShadowMaps(); 
+   + bindAuxTextures(); 
+   + bindMaterialAndOverlay(); 
+   + bindShorelineMask(); 
+   + bool geomorphActive; 
+   + bool s_vkTerrainActive; 
+   + bool s_vkTerrainEnabled; 
+   + bool s_vkTerrainGlAuditOn; 
+   + bool useGuards; 
+   + bool visualDampActive; 
+   + bool visualDisplaceActive; 
+   + f.auditAndMarkDrawn(edgeStitch); 
+   + f.bindProgramAndVisualHeight(mvp); 
+   + f.countSubmitAndPrepVk(count, mvp, s_submitCount); 
+   + f.drawChunks(count, cmds, skirtDepths, skirtEdgeMasks, edgeStitch, shadowTiers, morphFactors); 
+   + f.restoreGlState(); 
+   + f.saveGlStateAndGuards(); 
+   + f.submitVkIsland(s_submitCount); 
+   + geomorphActive = 
+   + noteFirstSubmit(count); 
+   + prevBlend = GL_FALSE; 
+   + prevCullFace = glIsEnabled(GL_CULL_FACE); 
+   + prevDepthFunc = GL_GEQUAL; 
+   + prevDepthMask = GL_TRUE; 
+   + prevDepthTest = GL_FALSE; 
+   + prevProg = 0; 
+   + prevVAO = 0; 
+   + s_vkTerrainActive = s_vkTerrainEnabled && s_vkTerrainReady; 
+   + s_vkTerrainEnabled = (mc2_vk_terrain_island_enabled() != 0); 
+   + s_vkTerrainGlAuditOn = terrainGlFallbackAuditEnabled(); 
+   + static void bindAtlasAndShadowMaps() { 
+   + static void bindAuxTextures() { 
+   + static void bindMaterialAndOverlay() { 
+   + static void bindShorelineMask() { 
+   + static void noteFirstSubmit(int count) { 
+   + static void uploadTerrainTuning() { 
+   + std::optional<mc2gl::GlScopedCapability> gBlend; 
+   + std::optional<mc2gl::GlScopedCapability> gCull; 
+   + std::optional<mc2gl::GlScopedCapability> gDepthTest; 
+   + struct TerrainLodSubmitFrame { 
+   + uploadTerrainTuning(); 
+   + useGuards = glStateGuardTerrainEnabled(); 
+   + visualDampActive = visualDisplaceActive && s_visualDampGate 
+   + visualDisplaceActive = s_visualDisplaceGate && s_visualHeightSsbo.created() && s_visualSide > 0; 
+   + void TerrainLodSubmitFrame::auditAndMarkDrawn(const unsigned int* edgeStitch) { 
+   + void TerrainLodSubmitFrame::bindProgramAndVisualHeight(const float* mvp) { 
+   + void TerrainLodSubmitFrame::countSubmitAndPrepVk(int count, const float* mvp, int& s_submitCount) { 
+   + void TerrainLodSubmitFrame::drawChunks(int count, const TerrainDrawCommand* cmds, const float* skirtDepths, co 
+   + void TerrainLodSubmitFrame::restoreGlState() { 
+   + void TerrainLodSubmitFrame::saveGlStateAndGuards() { 
+   + void TerrainLodSubmitFrame::submitVkIsland(int& s_submitCount) { 
+   + void auditAndMarkDrawn(const unsigned int* edgeStitch); 
+   + void bindProgramAndVisualHeight(const float* mvp); 
+   + void countSubmitAndPrepVk(int count, const float* mvp, int& s_submitCount); 
+   + void drawChunks(int count, const TerrainDrawCommand* cmds, const float* skirtDepths, const unsigned char* skir 
+   + void restoreGlState(); 
+   + void saveGlStateAndGuards(); 
+   + void submitVkIsland(int& s_submitCount); 
+   + } x13
+   + }; 
+statements only in old (15 distinct, all lifted declarations / hoisted-type lines):
+   - GLboolean prevBlend     = GL_FALSE; 
+   - GLboolean prevCullFace  = glIsEnabled(GL_CULL_FACE); 
+   - GLboolean prevDepthMask = GL_TRUE; 
+   - GLboolean prevDepthTest = GL_FALSE; 
+   - GLint     prevDepthFunc = GL_GEQUAL; 
+   - GLint prevProg = 0; 
+   - GLint prevVAO = 0; 
+   - const bool geomorphActive = 
+   - const bool s_vkTerrainActive = s_vkTerrainEnabled && s_vkTerrainReady; 
+   - const bool s_vkTerrainEnabled = (mc2_vk_terrain_island_enabled() != 0); 
+   - const bool s_vkTerrainGlAuditOn = terrainGlFallbackAuditEnabled(); 
+   - const bool useGuards = glStateGuardTerrainEnabled(); 
+   - const bool visualDampActive = visualDisplaceActive && s_visualDampGate 
+   - const bool visualDisplaceActive = s_visualDisplaceGate && s_visualHeightSsbo.created() && s_visualSide > 0; 
+   - std::optional<mc2gl::GlScopedCapability> gDepthTest, gBlend, gCull; 
+PASS: inline expansion of the new function equals the original body

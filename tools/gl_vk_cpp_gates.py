@@ -44,11 +44,11 @@ _TYPE_RE = re.compile(r"^(namespace|class|struct|enum|union)\b|\b(?:class|struct
 
 
 class Block:
-    __slots__ = ("open", "close", "header", "parent", "kind", "name")
+    __slots__ = ("open", "close", "header", "parent", "kind", "name", "owner")
 
     def __init__(self, open_, header, parent):
         self.open, self.close, self.header, self.parent = open_, None, header, parent
-        self.kind, self.name = "other", ""
+        self.kind, self.name, self.owner = "other", "", ""
 
 
 def _header_start(skel, pos):
@@ -90,6 +90,7 @@ def _classify(b):
         m = re.search(r"([A-Za-z_~][\w:~]*)\s*$", core[:i])
         if m and m.group(1).split("::")[-1] not in _KEYWORDS:
             b.kind, b.name = "function", m.group(1).split("::")[-1]
+            b.owner = m.group(1).rpartition("::")[0]   # "Frame" of Frame::method (state shared by sibling methods)
             return
     b.kind = "other"
 
@@ -281,6 +282,20 @@ class GateIndex:
                 table.setdefault(m.group(1), []).append(fn_block.open + m.end())
             self._assigns[key] = table
         ends = [e for e in table.get(ident, ()) if e < before]
+        if not ends and fn_block.owner.endswith("Frame"):
+            # A function split into phase helpers hands its locals over in a state struct (named *Frame, the
+            # phase-helper convention): a member read here was set by an earlier method of the same struct, so
+            # take the last assignment in a preceding sibling method. Not applied to ordinary classes.
+            for g in f.blocks:
+                if g.kind == "function" and g.owner == fn_block.owner and g.open < fn_block.open:
+                    gk = (f.path, g.open)
+                    gt = self._assigns.get(gk)
+                    if gt is None:
+                        gt = {}
+                        for m in _ASSIGN_RE.finditer(f.skel[g.open:g.close]):
+                            gt.setdefault(m.group(1), []).append(g.open + m.end())
+                        self._assigns[gk] = gt
+                    ends = [e for e in gt.get(ident, ()) if e < before] or ends
         if not ends:
             return None
         start = ends[-1]
