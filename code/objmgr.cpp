@@ -137,13 +137,14 @@ extern std::atomic<int> g_workerResubmitCalls;  // FRAME-JOBS-2D: msl.cpp
 #include"gos_profiler.h"
 #endif
 #include "../RenderCore/axis_convert.h"
+#include "Gates/gate.h"
 
 // ---------------------------------------------------------------------------
 // C3: env-gated lifecycle routing killswitch.
 // MC2_GPU_CULL_LIFECYCLE=1 enables GPU visibility-based update() gating.
 // Default off — legacy inView/canBeSeen/blockActive path unchanged.
 // ---------------------------------------------------------------------------
-static const bool s_gpuCullLifecycle = (getenv("MC2_GPU_CULL_LIFECYCLE") != nullptr);
+static const bool s_gpuCullLifecycle = mc2::gate::get<"MC2_GPU_CULL_LIFECYCLE">();
 
 // ---------------------------------------------------------------------------
 // MF3-GENERATIONAL-HANDLE-1: generational watch-id validation killswitch.
@@ -152,14 +153,14 @@ static const bool s_gpuCullLifecycle = (getenv("MC2_GPU_CULL_LIFECYCLE") != null
 // in lockstep with watchList[] (always valid) but is never read/written, so
 // behavior is byte-identical to before. No slot reuse this slice.
 // ---------------------------------------------------------------------------
-static const bool s_watchGen = (getenv("MC2_WATCHID_GENERATION") != nullptr);
+static const bool s_watchGen = mc2::gate::get<"MC2_WATCHID_GENERATION">();
 
 // ---------------------------------------------------------------------------
 // GOM Recon: object type classification & mutation tracking (read-only).
 // MC2_GOM_RECON=1 enables per-frame logging of terrain object types and counts.
 // Zero overhead when disabled. Gated diagnostics only.
 // ---------------------------------------------------------------------------
-static const bool s_gomReconEnabled = (getenv("MC2_GOM_RECON") != nullptr);
+static const bool s_gomReconEnabled = mc2::gate::get<"MC2_GOM_RECON">();
 inline bool MC2_GOM_RECON_ENABLED() { return s_gomReconEnabled; }
 
 static bool mc2SkipStaticNaturalEnabled (void)
@@ -173,8 +174,7 @@ static bool mc2SkipStaticNaturalEnabled (void)
 	// so they still tick every frame regardless of this gate.
 	static int cached = -1;
 	if (cached < 0) {
-		const char* v = getenv("MC2_SKIP_STATIC_TREES");
-		cached = (v && v[0] == '0' && v[1] == '\0') ? 0 : 1;
+		cached = mc2::gate::get<"MC2_SKIP_STATIC_TREES">();
 	}
 	return(cached != 0);
 }
@@ -187,8 +187,7 @@ static bool mc2SkipStaticBuildingsEnabled (void)
 	// With this unset the binary is BYTE-IDENTICAL to the pre-broadening path.
 	static int cached = -1;
 	if (cached < 0) {
-		const char* v = getenv("MC2_SKIP_STATIC_BUILDINGS");
-		cached = (v && v[0] != '\0' && !(v[0] == '0' && v[1] == '\0')) ? 1 : 0;
+		cached = mc2::gate::get<"MC2_SKIP_STATIC_BUILDINGS">();
 	}
 	return(cached != 0);
 }
@@ -197,7 +196,7 @@ static bool mc2SkipStaticNaturalDiagEnabled (void)
 {
 	static int cached = -1;
 	if (cached < 0)
-		cached = (getenv("MC2_SKIP_STATIC_TREES_DIAG") != nullptr) ? 1 : 0;
+		cached = mc2::gate::get<"MC2_SKIP_STATIC_TREES_DIAG">() ? 1 : 0;
 	return(cached != 0);
 }
 
@@ -217,8 +216,7 @@ static bool mc2R2bTouchPreserveEnabled (void)
 {
 	static int cached = -1;
 	if (cached < 0) {
-		const char* v = getenv("MC2_R2B_TOUCH_PRESERVE");
-		cached = (v && v[0] == '0' && v[1] == '\0') ? 0 : 1;  // default-ON
+		cached = mc2::gate::get<"MC2_R2B_TOUCH_PRESERVE">();  // default-ON
 	}
 	return(cached != 0);
 }
@@ -227,7 +225,7 @@ static bool mc2R2bTouchTraceEnabled (void)
 {
 	static int cached = -1;
 	if (cached < 0)
-		cached = (getenv("MC2_R2B_STATIC_NATURAL_TRACE") != nullptr) ? 1 : 0;
+		cached = mc2::gate::get<"MC2_R2B_STATIC_NATURAL_TRACE">() ? 1 : 0;
 	return(cached != 0);
 }
 
@@ -309,7 +307,7 @@ static bool mc2StaticTypeNameStartsWith (const char* typeName, const char* prefi
 //
 // Env-gated MC2_INVIEW_CONFLATION_TRACE=1 per debug_instrumentation_rule.md.
 // 120-frame summary roll matches [TOBJPARITY v1] cadence.
-static bool s_inViewConflationEnabled = (getenv("MC2_INVIEW_CONFLATION_TRACE") != nullptr);
+static bool s_inViewConflationEnabled = mc2::gate::get<"MC2_INVIEW_CONFLATION_TRACE">();
 // Hysteresis floor for sim_cand (Stage 0 tunable knob per spec §9 Q3).
 // Default 4 frames matches conservative recommendation.
 static const uint8_t s_inViewConflationHysteresisN = 4u;
@@ -1688,8 +1686,8 @@ void GameObjectManager::registerStaticPropsForMissionLoad() {
 void GameObjectManager::prewarmStaticPropLightBakes(Camera* cam)
 {
 	ZoneScopedN("GameObjectManager::prewarmStaticPropLightBakes");
-	static const bool s_enabled  = (getenv("MC2_STATIC_REG_PREWARM")       != nullptr);
-	static const bool s_trace    = (getenv("MC2_STATIC_REG_PREWARM_TRACE") != nullptr);
+	static const bool s_enabled  = mc2::gate::get<"MC2_STATIC_REG_PREWARM">();
+	static const bool s_trace    = mc2::gate::get<"MC2_STATIC_REG_PREWARM_TRACE">();
 	if (!s_enabled) return;
 
 	auto t0 = std::chrono::steady_clock::now();
@@ -2387,10 +2385,7 @@ void GameObjectManager::renderShadows (bool terrain, bool movers, bool other) {
 // of instrumented phases (unattributed gaps: framesSinceActive sweep, captureList,
 // FRAME-JOBS prepass, etc.).
 namespace gomcost {
-static const bool s_enabled = []() {
-    const char* v = getenv("MC2_GOM_UPDATE_COST_SPLIT");
-    return v && v[0] != '0';
-}();
+static const bool s_enabled = mc2::gate::get<"MC2_GOM_UPDATE_COST_SPLIT">();
 enum Phase {
     kStaticTouch = 0, kMoverUpdate, kOtherFx, kSubstrateFlush, kTotal, kPhaseCount
 };
@@ -2456,10 +2451,7 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 	// the shadow-rebake trigger in mclib/bdactor.cpp. Off (default): a single
 	// getenv + integer compare, no behavior change.
 	{
-		static const long s_destroyTestFrame = []() -> long {
-			const char* v = getenv("MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE_TEST_DESTROY_AT_FRAME");
-			return (v && v[0] != '\0') ? atol(v) : -1L;
-		}();
+		static const long s_destroyTestFrame = static_cast<long>(mc2::gate::get<"MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE_TEST_DESTROY_AT_FRAME">());
 		if (s_destroyTestFrame >= 0 && (long)g_mc2FrameCounter == s_destroyTestFrame) {
 			for (long bi = 0; bi < numBuildings; ++bi) {
 				BuildingPtr b = buildings[bi];
@@ -3359,14 +3351,8 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 		// Each warrior with pendingIntentCount > 0 gets commitBrainIntents() called once.
 		// Emits: [BRAIN_COMMIT_PHASE] committed=<n> warriors in WID order
 		{
-			static const bool s_commitPhaseGate = ([](){
-				const char* v = std::getenv("MC2_BRAIN_COMMIT_PHASE");
-				return (v && std::atoi(v) != 0);
-			})();
-			static const bool s_intentQueueGate = ([](){
-				const char* v = std::getenv("MC2_BRAIN_INTENT_QUEUE");
-				return (v && std::atoi(v) != 0);
-			})();
+			static const bool s_commitPhaseGate = mc2::gate::get<"MC2_BRAIN_COMMIT_PHASE">();
+			static const bool s_intentQueueGate = mc2::gate::get<"MC2_BRAIN_INTENT_QUEUE">();
 			if (s_commitPhaseGate && s_intentQueueGate && numMovers > 0) {
 				// Collect (WID, mover) pairs for stable ordering.
 				static std::vector<std::pair<long, MoverPtr>> s_commitOrder;
@@ -3856,7 +3842,7 @@ static bool projectPickCandidateRect(BldgAppearance* ba,
 	// FIX: build the rect from in-front corners only (skip w<=1e-4). If ALL corners are
 	// behind the camera the object has no valid screen rect this frame -> not pickable.
 	// Killswitch MC2_PICK_BEHIND_LEGACY=1 restores the byte-identical legacy behavior.
-	static const bool s_pickBehindLegacy = (std::getenv("MC2_PICK_BEHIND_LEGACY") != nullptr);
+	static const bool s_pickBehindLegacy = mc2::gate::get<"MC2_PICK_BEHIND_LEGACY">();
 	int behindCount = 0;
 
 	for (long i=0;i<8;i++)
@@ -3903,7 +3889,7 @@ static bool projectPickCandidateRect(BldgAppearance* ba,
 	// Read via get_diagnostic_events("CURSOR_TARGET"). No behavior change.
 	if (behindCount > 0)
 	{
-		static const bool s_cursorTargetTrace = (std::getenv("MC2_CURSOR_TARGET_TRACE") != nullptr);
+		static const bool s_cursorTargetTrace = mc2::gate::get<"MC2_CURSOR_TARGET_TRACE">();
 		if (s_cursorTargetTrace && mc2_diag::tagEnabled("CURSOR_TARGET"))
 		{
 			char _ct_buf[256];
@@ -4106,7 +4092,7 @@ GameObjectPtr GameObjectManager::findMoverByMouse (long mouseX,
 // per-frame block scan. (NEXT-SESSION measurement scaffolding; see memory.)
 #include <chrono>
 namespace {
-	static const bool s_pickRecon = (getenv("MC2_PICK_RECON") != nullptr);
+	static const bool s_pickRecon = mc2::gate::get<"MC2_PICK_RECON">();
 	static unsigned long long s_pkCalls=0, s_pkCandidates=0, s_pkInRect=0, s_pkRectProj=0;
 	static unsigned long long s_pkNs=0, s_pkMaxNs=0, s_pkMaxCand=0;
 	static bool s_pkAtexit=false;

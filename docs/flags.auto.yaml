@@ -5,7 +5,7 @@
 generator_version: "3.0.0"
 gate_count: 1139
 registry_entry_count: 354
-verified_count: 783
+verified_count: 798
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -1004,6 +1004,7 @@ flags:
     rule: Presence
     owner: code
     doc: ""
+    verified: true
   - name: MC2_DEBUG_OVERLAY_PREDICATE_MODE
     kind: Enum
     default: ""
@@ -1881,6 +1882,7 @@ flags:
     rule: Presence
     owner: code
     doc: "GOM Recon: object type classification & mutation tracking (read-only)."
+    verified: true
   - name: MC2_GOM_UPDATE_COST_SPLIT
     kind: Bool
     default: false
@@ -1888,6 +1890,7 @@ flags:
     owner: code
     doc: "GOM_UPDATE_COST v1 (framebudget): =1 emits one coarse per-phase GameObjectManager update CPU-cost summary to stderr (objmgr.cpp)."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_GOM_UPDATE_COST_SPLIT, kind: Trace, order: -1, default_on: false}
   - name: MC2_GOSFX_GROUP_LOG
     kind: Bool
@@ -2513,6 +2516,7 @@ flags:
     owner: code
     doc: "alpha-Stage 1 ?5 Stage 0: candidate-predicate disagreement probe."
     smoke_passthrough: true
+    verified: true
   - name: MC2_JUMPJETS_ALL
     kind: Bool
     default: false
@@ -4082,6 +4086,7 @@ flags:
     rule: Presence
     owner: code
     doc: "INPUT-CURSOR-OFFSCREEN-TARGET-RECON-1 / -FIX-1: a near-plane-clipped OBB corner projects to (0,0) with w<=1e-4 (camera.h:860-862)."
+    verified: true
   - name: MC2_PICK_CAP_TRACE
     kind: Bool
     default: false
@@ -4106,6 +4111,7 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_PIPELINE_BIND_TRACE
     kind: Bool
     default: false
@@ -4331,6 +4337,7 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_R2B_TOUCH_PRESERVE
     kind: Bool
     default: true
@@ -4338,6 +4345,7 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_RAIN_BATCH
     kind: Bool
     default: true
@@ -5111,18 +5119,21 @@ flags:
     rule: Lead0
     owner: code
     doc: ""
+    verified: true
   - name: MC2_SKIP_STATIC_TREES
     kind: Bool
     default: true
     rule: Lead0Kill
     owner: code
     doc: ""
+    verified: true
   - name: MC2_SKIP_STATIC_TREES_DIAG
     kind: Bool
     default: false
     rule: Presence
     owner: code
     doc: ""
+    verified: true
   - name: MC2_SKYBOX_FOG_EXCLUDE
     kind: Bool
     default: true
@@ -5534,6 +5545,7 @@ flags:
     owner: code
     doc: "STATIC-BLDG-SHADOW-REBAKE-1: deterministic repro hook (test-only, no production callers)."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE_TEST_DESTROY_AT_FRAME, kind: Trace, order: -1, default_on: false}
   - name: MC2_STATIC_PROP_COLORS_FILL
     kind: Bool
@@ -5851,6 +5863,7 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_STATIC_REG_PREWARM_TRACE
     kind: Bool
     default: false
@@ -5858,6 +5871,7 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_STATIC_STALE_DROP_FATAL
     kind: Bool
     default: false
@@ -8381,6 +8395,7 @@ flags:
     owner: code
     doc: "MF3-GENERATIONAL-HANDLE-1: generational watch-id validation killswitch."
     smoke_passthrough: true
+    verified: true
   - name: MC2_WATER_ASPECT_DIAG
     kind: Bool
     default: false

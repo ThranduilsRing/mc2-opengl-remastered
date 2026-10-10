@@ -49,7 +49,7 @@
   "code/mpparameterscreen.cpp": 2415,
   "code/multplyr.h": 1849,
   "code/objective.cpp": 2657,
-  "code/objmgr.cpp": 5682,
+  "code/objmgr.cpp": 5668,
   "code/optionsarea.cpp": 1841,
   "code/pilotreviewarea.cpp": 1844,
   "code/saveload.cpp": 1723,
@@ -93,7 +93,7 @@
   "mclib/vfxtile.cpp": 2944,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "dc8ec5c6e",
+ "head": "dd683ae1c",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -185,7 +185,7 @@
   },
   {
    "file": "code/objmgr.cpp",
-   "lines": 5682
+   "lines": 5668
   },
   {
    "file": "code/controlgui.cpp",

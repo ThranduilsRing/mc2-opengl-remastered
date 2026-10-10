@@ -214,7 +214,7 @@ L(Presence, "MC2_CONTRACT_REPO_ROOT", Bool, false, "unclassified", "", ""),
 L(Lead0Kill, "MC2_CPU_PHONG_RETIRE", Bool, true, "code", "", "[DEFAULT-ON KILLSWITCH; '=0' is the only revert token -- MC2_TERRAIN_TESS / MC2_COLORMAP_CPU_RETIRE shape.]", passthrough | registry(Feature, "MC2_FEATURE_CPU_PHONG_RETIRE", -1, true) | verified),
 L(Lead1, "MC2_CPU_PROJ_COST_SPLIT", Bool, false, "code", "", "", passthrough | verified),
 L(Presence, "MC2_CRASH_FAST_EXIT", Bool, false, "gameos", "", "Headless crash fast-exit: write the bundle, then terminate WITHOUT the modal dialog so an automated soak/harness process exits immediately on crash (the..."),
-L(Presence, "MC2_CURSOR_TARGET_TRACE", Bool, false, "code", "", ""),
+L(Presence, "MC2_CURSOR_TARGET_TRACE", Bool, false, "code", "", "", verified),
 G("MC2_DEBUG_OVERLAY_PREDICATE_MODE", Enum, "", "code", "", "", tokens("|Legacy|Modern") | verified),
 // history: docs/gate-history.md#MC2_DEBUG_RENDERER
 L(Lead0, "MC2_DEBUG_RENDERER", Bool, false, "code", "", "Debug overlay renderer (GuiRuntime/EditorInspector.cpp).", registry(Feature, "MC2_FEATURE_DEBUG_RENDERER", 8, false)),
@@ -372,10 +372,10 @@ P("MC2_GLTF_YOFF", Float, 0.0, "code", "", "", verified),
 L(Presence, "MC2_GL_DEBUG", Bool, false, "gameos", "", "Install GL debug callback only when MC2_GL_DEBUG is set.", passthrough | verified),
 L(Presence, "MC2_GL_DEBUG_FATAL", Bool, false, "gameos", "", "Tier 1.2 (docs/testing-strategy.md): opt-in fatal abort on GL_DEBUG_SEVERITY_HIGH.", passthrough | verified),
 L(Presence, "MC2_GL_ERROR_DRAIN_SILENT", Bool, false, "gameos", "", "GL_ERROR is default-on; the env var suppresses it.", verified),
-L(Presence, "MC2_GOM_RECON", Bool, false, "code", "", "GOM Recon: object type classification & mutation tracking (read-only)."),
+L(Presence, "MC2_GOM_RECON", Bool, false, "code", "", "GOM Recon: object type classification & mutation tracking (read-only).", verified),
 // GOM_UPDATE_COST v1: per-phase GameObjectManager update CPU cost trace.
 // history: docs/gate-history.md#MC2_GOM_UPDATE_COST_SPLIT
-L(Lead0P, "MC2_GOM_UPDATE_COST_SPLIT", Bool, false, "code", "", "GOM_UPDATE_COST v1 (framebudget): =1 emits one coarse per-phase GameObjectManager update CPU-cost summary to stderr (objmgr.cpp).", passthrough | registry(Trace, "MC2_GOM_UPDATE_COST_SPLIT", -1, false)),
+L(Lead0P, "MC2_GOM_UPDATE_COST_SPLIT", Bool, false, "code", "", "GOM_UPDATE_COST v1 (framebudget): =1 emits one coarse per-phase GameObjectManager update CPU-cost summary to stderr (objmgr.cpp).", passthrough | registry(Trace, "MC2_GOM_UPDATE_COST_SPLIT", -1, false) | verified),
 L(Lead1, "MC2_GOSFX_GROUP_LOG", Bool, false, "gameos", "", ""),
 L(Presence, "MC2_GPUBUF_COUNTER", Bool, false, "gameos", "", "GPU-UPDATE-BUFFER-COUNTER-1: independent default-OFF gate."),
 // history: docs/gate-history.md#MC2_GPUBUF_LIGHT_GROWONCE
@@ -491,7 +491,7 @@ L(Lead0Kill, "MC2_IMGUI_INSPECTOR", Bool, true, "code", "", "ImGui inspector pan
 G("MC2_IMPORTER_DIR", String, "", "unclassified", "", ""),
 // history: docs/gate-history.md#MC2_IMPOSTOR_DIST
 P("MC2_IMPOSTOR_DIST", Float, 800.0, "props", "", "Static-prop / tree impostor LOD switch distance in world units (mclib/bdactor.cpp TreeAppearance::selectActiveLOD).", passthrough | registry(Trace, "MC2_TUNE_IMPOSTOR_DIST", -1, false) | verified),
-L(Presence, "MC2_INVIEW_CONFLATION_TRACE", Bool, false, "code", "", "alpha-Stage 1 ?5 Stage 0: candidate-predicate disagreement probe.", passthrough),
+L(Presence, "MC2_INVIEW_CONFLATION_TRACE", Bool, false, "code", "", "alpha-Stage 1 ?5 Stage 0: candidate-predicate disagreement probe.", passthrough | verified),
 L(Presence, "MC2_JUMPJETS_ALL", Bool, false, "code", "", ""),
 L(Presence, "MC2_LAUNCHED", Bool, false, "gameos", "", "", verified),
 L(Lead0Kill, "MC2_LAUNCHER_ENV_JSON", Bool, true, "gameos", "", "", verified),
@@ -781,11 +781,11 @@ P("MC2_PBR_TILE_SCALE", Float, 0.0, "mech", "", ""),  // default not derivable f
 L(Lead1, "MC2_PBR_TRIPLANAR", Bool, false, "mech", "", ""),
 P("MC2_PBR_TRIPLANAR_SCALE", Float, 0.2, "mech", "", ""),
 P("MC2_PBR_WEAR_STRENGTH", Float, 0.0, "mech", "", ""),  // default not derivable from the tree
-L(Presence, "MC2_PICK_BEHIND_LEGACY", Bool, false, "code", "", "INPUT-CURSOR-OFFSCREEN-TARGET-RECON-1 / -FIX-1: a near-plane-clipped OBB corner projects to (0,0) with w<=1e-4 (camera.h:860-862)."),
+L(Presence, "MC2_PICK_BEHIND_LEGACY", Bool, false, "code", "", "INPUT-CURSOR-OFFSCREEN-TARGET-RECON-1 / -FIX-1: a near-plane-clipped OBB corner projects to (0,0) with w<=1e-4 (camera.h:860-862).", verified),
 L(Presence, "MC2_PICK_CAP_TRACE", Bool, false, "code", "", "", passthrough | verified),
 // history: docs/gate-history.md#MC2_PICK_FALLBACK_COARSE
 L(Presence, "MC2_PICK_FALLBACK_COARSE", Bool, false, "code", "", "MISSION-INTERFACE-PERF-1: coarse-to-fine closest-vertex fallback in Camera::inverseProject (mclib/camera.cpp).", passthrough | registry(Feature, "MC2_PICK_FALLBACK_COARSE", -1, false) | verified),
-L(Presence, "MC2_PICK_RECON", Bool, false, "code", "", "", passthrough),
+L(Presence, "MC2_PICK_RECON", Bool, false, "code", "", "", passthrough | verified),
 L(Lead0, "MC2_PIPELINE_BIND_TRACE", Bool, false, "gameos", "", "", passthrough),
 L(Lead0, "MC2_PIPELINE_COLORMASK", Bool, false, "gameos", "", ""),
 P("MC2_PLAYTEST_EXE", Int, 0, "editor", "", ""),
@@ -828,8 +828,8 @@ P("MC2_PROP_LIGHT_LATCH_DIAG_INTERVAL", Int, 120, "props", "", "FOGLIGHT-LATCH-1
 P("MC2_PROP_SHADOW_RECEIVE", Int, 0, "post", "", "PROP-SHADOW-RECEIVE-1: static props RECEIVE the dynamic CSM cascade shadow in shadow_screen.frag (building self-shadow + prop-on-prop; the cascades already...", passthrough | registry(Feature, "MC2_FEATURE_PROP_SHADOW_RECEIVE", -1, false) | verified),
 L(Presence, "MC2_PURCHASE_ALL", Bool, false, "code", "", "MC2_PURCHASE_ALL (default OFF; launcher Engine Option): unlock every COMPONENT/weapon so modded gear (e.g."),
 L(Lead0Kill, "MC2_QUADSETUP_ARMED_SKIP", Bool, true, "terrain", "", "", passthrough | verified),
-L(Presence, "MC2_R2B_STATIC_NATURAL_TRACE", Bool, false, "code", "", "", passthrough),
-L(Lead0Kill, "MC2_R2B_TOUCH_PRESERVE", Bool, true, "code", "", "", passthrough),
+L(Presence, "MC2_R2B_STATIC_NATURAL_TRACE", Bool, false, "code", "", "", passthrough | verified),
+L(Lead0Kill, "MC2_R2B_TOUCH_PRESERVE", Bool, true, "code", "", "", passthrough | verified),
 L(Lead0Kill, "MC2_RAIN_BATCH", Bool, true, "code", "", ""),
 P("MC2_RDC_CAPTURE_FRAME", Int, 0, "gameos", "", ""),
 L(NonEmpty, "MC2_RDC_CAPTURE_PATH", Bool, false, "gameos", "", "Expand and VALIDATE the path template here, at arm time -- deliberately NOT down in resolveApiOnce()."),
@@ -984,9 +984,9 @@ G("MC2_SIM_IDENTITY_TRACE", Bool, false, "code", "", "SIM-IDENTITY-HASH-1: emit 
 // history: docs/gate-history.md#MC2_SIM_IDENTITY_TRACE_DETAIL
 G("MC2_SIM_IDENTITY_TRACE_DETAIL", Bool, false, "code", "", "SIM-IDENTITY-HASH-1: with MC2_SIM_IDENTITY_TRACE on, additionally emit one `[SIMID v1 mover]` line per mover per sim frame.", passthrough | registry(Trace, "MC2_SIM_IDENTITY_TRACE_DETAIL", -1, false)),
 P("MC2_SIM_SPEED", Float, 1.0, "code", "", "SIM-SPEED-BUTTON-1: seed for the runtime-settable sim-speed multiplier; the HUD speed tab and dev-shell sim_speed set it afterwards.", passthrough | clampRange(0.25, 4.0) | verified),
-L(Lead0, "MC2_SKIP_STATIC_BUILDINGS", Bool, false, "code", "", ""),
-L(Lead0Kill, "MC2_SKIP_STATIC_TREES", Bool, true, "code", "", ""),
-L(Presence, "MC2_SKIP_STATIC_TREES_DIAG", Bool, false, "code", "", ""),
+L(Lead0, "MC2_SKIP_STATIC_BUILDINGS", Bool, false, "code", "", "", verified),
+L(Lead0Kill, "MC2_SKIP_STATIC_TREES", Bool, true, "code", "", "", verified),
+L(Presence, "MC2_SKIP_STATIC_TREES_DIAG", Bool, false, "code", "", "", verified),
 // BACKEND-DEFAULT-PARITY-1: skybox fog exclusion (was unregistered, and that
 // is what let two readers disagree in silence for the whole life of the gate).
 // history: docs/gate-history.md#MC2_SKYBOX_FOG_EXCLUDE
@@ -1071,7 +1071,7 @@ G("MC2_STATIC_PROP_BUILDING_SHADOW", Enum, "0", "props", "", "SHADOW-STATIC-BUIL
 // history: docs/gate-history.md#MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE
 G("MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE", Enum, "1", "props", "", "STATIC-BLDG-SHADOW-REBAKE-1: re-arm the one-shot world-fixed static-shadow latch (gos_ResetStaticLightMatrix) when a registered building is destroyed --...", passthrough | registry(Feature, "MC2_FEATURE_SHADOW_STATIC_BUILDINGS_REBAKE", -1, true) | tokens("1|0|2") | verified),
 // history: docs/gate-history.md#MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE_TEST_DESTROY_AT_FRAME
-P("MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE_TEST_DESTROY_AT_FRAME", Int, -1, "code", "", "STATIC-BLDG-SHADOW-REBAKE-1: deterministic repro hook (test-only, no production callers).", passthrough | registry(Trace, "MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE_TEST_DESTROY_AT_FRAME", -1, false)),
+P("MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE_TEST_DESTROY_AT_FRAME", Int, -1, "code", "", "STATIC-BLDG-SHADOW-REBAKE-1: deterministic repro hook (test-only, no production callers).", passthrough | registry(Trace, "MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE_TEST_DESTROY_AT_FRAME", -1, false) | verified),
 // history: docs/gate-history.md#MC2_STATIC_PROP_COLORS_FILL
 L(Lead0P, "MC2_STATIC_PROP_COLORS_FILL", Bool, false, "props", "", "STATICPROP-COLORS-FILL-DEBUGONLY-1: per-static-instance Colors SSBO (binding 1) zero-fill.", passthrough | registry(Feature, "MC2_FEATURE_STATIC_PROP_COLORS_FILL", -1, false) | verified),
 // history: docs/gate-history.md#MC2_STATIC_PROP_DEBUG_MATERIAL
@@ -1145,8 +1145,8 @@ L(Lead0, "MC2_STATIC_PROP_TRACE", Bool, false, "props", "", "Stage 2.C+ instrume
 L(Presence, "MC2_STATIC_PROXY_RECON", Bool, false, "props", "", "StaticSceneProxy-arc recon instrumentation (mclib/bdactor.cpp) - counts touchSerialCommit calls for building/tree appearances ahead of the per-frame...", passthrough | registry(Feature, "MC2_FEATURE_STATIC_PROXY_RECON", -1, false) | verified),
 L(Lead0Kill, "MC2_STATIC_RECIPE_RECYCLE", Bool, true, "props", "", ""),
 L(Presence, "MC2_STATIC_REG_COVERAGE", Bool, false, "props", "", "STATIC-REGISTRY-COVERAGE-RECON-1: sub-classify the rej_no_static_reg population.", passthrough | verified),
-L(Presence, "MC2_STATIC_REG_PREWARM", Bool, false, "code", "", "", passthrough),
-L(Presence, "MC2_STATIC_REG_PREWARM_TRACE", Bool, false, "code", "", "", passthrough),
+L(Presence, "MC2_STATIC_REG_PREWARM", Bool, false, "code", "", "", passthrough | verified),
+L(Presence, "MC2_STATIC_REG_PREWARM_TRACE", Bool, false, "code", "", "", passthrough | verified),
 L(Presence, "MC2_STATIC_STALE_DROP_FATAL", Bool, false, "props", "", "Opt-in teeth for CI / bisection: abort on the regression signature.", passthrough),
 // history: docs/gate-history.md#MC2_STATIC_UPDATE_SKIP
 G("MC2_STATIC_UPDATE_SKIP", Bool, true, "terrain", "", "Skip the per-frame static building/tree update walk when nothing is dirty (GameOS/gameos/gameosmain.cpp, code/terrobj.cpp, code/bldng.cpp).", passthrough | registry(Feature, "MC2_FEATURE_STATIC_UPDATE_SKIP", -1, true) | verified),
@@ -1662,7 +1662,7 @@ L(Presence, "MC2_VPL_REDUCE", Bool, false, "terrain", "", "", verified),
 L(Lead1, "MC2_VSYNC", Bool, false, "vk", "", "", passthrough),
 G("MC2_VULKAN_SPV_DIR", String, "shaders/vulkan", "vk", "", "", passthrough | verified),  // default not derivable from the tree
 G("MC2_VULKAN_VALIDATION", Bool, false, "vk", "", "", passthrough),
-L(Presence, "MC2_WATCHID_GENERATION", Bool, false, "code", "", "MF3-GENERATIONAL-HANDLE-1: generational watch-id validation killswitch.", passthrough),
+L(Presence, "MC2_WATCHID_GENERATION", Bool, false, "code", "", "MF3-GENERATIONAL-HANDLE-1: generational watch-id validation killswitch.", passthrough | verified),
 L(Presence, "MC2_WATER_ASPECT_DIAG", Bool, false, "code", "", "[WATER_ASPECT_DIAG v1] env-gated one-shot (MC2_WATER_ASPECT_DIAG=1), silent by default.", verified),
 L(Lead0, "MC2_WATER_BIAS_LEGACY", Bool, false, "gameos", "", "", verified),
 L(Presence, "MC2_WATER_DEBUG", Bool, false, "terrain", "", "MC2_WATER_DEBUG=1: post-warmup population recon for the renderWater slice.", passthrough | verified),
