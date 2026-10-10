@@ -33,7 +33,7 @@ import cook_terrain_layers as ctl    # noqa: E402
 MANIFEST_PATH = _TOOLS_DIR / 'terrain_layer_manifest.json'
 _REPO_ROOT = _TOOLS_DIR.parent.parent
 FRAG_HEADER_PATH = _REPO_ROOT / 'shaders' / 'include' / 'terrain_mat_layers.hglsl'
-LOADER_CPP_PATH = _REPO_ROOT / 'GameOS' / 'gameos' / 'gos_terrain_lod_chunk.cpp'
+LOADER_CPP_PATH = _REPO_ROOT / 'GameOS' / 'gameos' / 'gos_terrain_lod_chunk_matalbedo.cpp'
 
 KTX2_MAGIC = b"\xabKTX 20\xbb\r\n\x1a\n"
 REQUIRED_CHANNELS = ('rock', 'grass', 'dirt', 'concrete', 'snow', 'cliff')

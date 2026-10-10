@@ -177,7 +177,7 @@ RE_SPL_DEFINE = re.compile(r"^\s*#\s*define\s+MC2_STATIC_PROP_LIGHTING\b", re.M)
 # (file, env var) -> the default literal returned when the var is unset. Read
 # FROM THE READER, never from the registry or the docs.
 CPP_FLOOR_GATES = (
-    ("GameOS/gameos/gos_terrain_lod_chunk.cpp", "MC2_TERRAIN_AMBIENT_FLOOR"),
+    ("GameOS/gameos/gos_terrain_lod_chunk_upload.cpp", "MC2_TERRAIN_AMBIENT_FLOOR"),
     ("mclib/camera.cpp", "MC2_NIGHT_AMBIENT_FLOOR"),
     ("mclib/txmmgr_render.cpp", "MC2_VEHICLE_AMBIENT_FLOOR"),
 )
@@ -343,7 +343,7 @@ BASELINE = {
         "shaders/static_prop.vert",
     ],
     "cpp_floor_gate_readers": [
-        ("GameOS/gameos/gos_terrain_lod_chunk.cpp", "MC2_TERRAIN_AMBIENT_FLOOR", "present"),
+        ("GameOS/gameos/gos_terrain_lod_chunk_upload.cpp", "MC2_TERRAIN_AMBIENT_FLOOR", "present"),
         ("mclib/camera.cpp", "MC2_NIGHT_AMBIENT_FLOOR", "present"),
         ("mclib/txmmgr_render.cpp", "MC2_VEHICLE_AMBIENT_FLOOR", "present"),
     ],

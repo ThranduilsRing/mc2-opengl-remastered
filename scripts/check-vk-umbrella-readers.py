@@ -51,10 +51,10 @@ PER_CALL = (
     ("GameOS/gameos/gameos_graphics.cpp", "MC2_VK_HUD"),
     ("GameOS/gameos/gameos_graphics.cpp", "MC2_VK_HUD_SKIP_GL"),
     # the terrain submit path fills the island's per-frame parameter block
-    ("GameOS/gameos/gos_terrain_lod_chunk.cpp", "MC2_VK_TERRAIN_LIGHTING"),
-    ("GameOS/gameos/gos_terrain_lod_chunk.cpp", "MC2_VK_TERRAIN_DYNSHADOW"),
-    ("GameOS/gameos/gos_terrain_lod_chunk.cpp", "MC2_VK_TERRAIN_CSM"),
-    ("GameOS/gameos/gos_terrain_lod_chunk.cpp", "MC2_VK_TERRAIN_DETAIL"),
+    ("GameOS/gameos/gos_terrain_lod_chunk_feed.cpp", "MC2_VK_TERRAIN_LIGHTING"),
+    ("GameOS/gameos/gos_terrain_lod_chunk_feed.cpp", "MC2_VK_TERRAIN_DYNSHADOW"),
+    ("GameOS/gameos/gos_terrain_lod_chunk_feed.cpp", "MC2_VK_TERRAIN_CSM"),
+    ("GameOS/gameos/gos_terrain_lod_chunk_feed.cpp", "MC2_VK_TERRAIN_DETAIL"),
     # the translation units outside the VK islands call the out-of-line functions (vk_umbrella_light.h)
     ("code/gamecam.cpp", "vfxArmed"),
     ("code/objmgr.cpp", "vfxArmed"),

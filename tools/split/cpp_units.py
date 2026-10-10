@@ -49,6 +49,11 @@ def parse(path):
             code_seen = code_seen or depth > 0
             if depth == 0 and pp == 0 and d in ("endif", "include", "define", "undef", "pragma", "error") and not code_seen:
                 units.append({"start": cur_start, "end": i, "kind": "pp", "name": s[:60]}); cur_start = i + 1
+            elif d == "endif" and depth == 0 and pp == 0 and code_seen:
+                # a complete top-level #if region holding definitions ends here, not at the next definition after it
+                body = chr(10).join(x.rstrip(chr(13)) for x in lines[cur_start:i+1])
+                kind = "func" if re.search(r"\)\s*(const)?\s*\{", body) else "decl"
+                units.append({"start": cur_start, "end": i, "kind": kind, "name": "#if region"}); cur_start = i + 1; code_seen = False
             continue
         code = strip_line(t, st)
         # namespace blocks are transparent: the opening line and the closing brace are units of their own, so a split can

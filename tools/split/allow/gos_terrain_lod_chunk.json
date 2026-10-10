@@ -1,0 +1,34 @@
+{
+ "base": "b86a66ac2",
+ "src": "GameOS/gameos/gos_terrain_lod_chunk.cpp",
+ "stem": "gos_terrain_lod_chunk",
+ "add": [
+  "#ifdef MC2_VULKAN_ISLAND",
+  "#endif"
+ ],
+ "_add_reason": "The shared VK-only state (version counters, draw-knob readers, capture statics) is declared in the internal header under the same MC2_VULKAN_ISLAND guard the original definitions sat in.",
+ "scripts": [
+  "scripts/check-cpu-gpu-cogating.py",
+  "scripts/check-delivery.py",
+  "scripts/check-env-registry.sh",
+  "scripts/check-gpu-buffer-owners.py",
+  "scripts/check-lighting-divergence.py",
+  "scripts/check-object-mvp-currency.py",
+  "scripts/check-raw-gl-depthfunc.py",
+  "scripts/check-raw-gl-depthmask.py",
+  "scripts/check-vk-umbrella-readers.py",
+  "scripts/counter-honesty-allowlist.txt",
+  "scripts/delivery-fixes.json",
+  "scripts/deploy_payload.py",
+  "scripts/gl_shader_variants.json",
+  "scripts/tests/test_gate_codemod.py",
+  "tools/gate_codemod.py",
+  "tools/gate_conflicts.py",
+  "tools/gate_g0_ledger.json",
+  "tools/mc2_launcher/mc2_launcher.cpp",
+  "tools/mc2texcook/tests/test_cook_terrain_layers.py",
+  "tools/terrain_beautify/control_map_tool.py",
+  "tools/terrain_beautify/test_visual_heightfield_clipmap_bridge.py"
+ ],
+ "_scripts_reason": "Reviewed: check-lighting-divergence reads the MC2_TERRAIN_AMBIENT_FLOOR default from the upload piece (gos_TerrainAmbientFloor); check-vk-umbrella-readers pins the four MC2_VK_TERRAIN_* reads in the feed piece; check-object-mvp-currency allows the draw piece and the internal header that declares the getter; the raw-GL depthfunc/depthmask allowlists name the draw piece; counter-honesty keys follow their limiters to the draw piece; test_cook_terrain_layers reads the channel/layer tables from the matalbedo piece; check-cpu-gpu-cogating's anchor (the terrain_lod_chunk.vert program) stays in the core piece; gl_shader_variants.json is regenerated; delivery-fixes.json code_evidence is read at the historical fix commit; tools/gate_codemod.py, tools/gate_conflicts.py, tools/gate_g0_ledger.json and the codemod test (lane 1 gate tooling) cite the file by name or old line numbers only; the rest cite it in comments."
+}

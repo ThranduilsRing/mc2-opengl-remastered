@@ -66,9 +66,9 @@ GameOS/gameos/gos_postprocess_diag.cpp::s_probeFrame <= 5
 GameOS/gameos/gos_postprocess_executor.cpp::s_warnCount < 4
 GameOS/gameos/gos_terrain_indirect_mine_decal.cpp::s_probeCount < 6
 GameOS/gameos/gos_terrain_lighting.cpp::s_frameIndex <= 1
-GameOS/gameos/gos_terrain_lod_chunk.cpp::s_auditFrame <= 60
-GameOS/gameos/gos_terrain_lod_chunk.cpp::s_mvpNullCount <= 5
-GameOS/gameos/gos_terrain_lod_chunk.cpp::s_visFrame <= 60
+GameOS/gameos/gos_terrain_lod_chunk_draw.cpp::s_auditFrame <= 60
+GameOS/gameos/gos_terrain_lod_chunk_draw.cpp::s_mvpNullCount <= 5
+GameOS/gameos/gos_terrain_lod_chunk_draw.cpp::s_visFrame <= 60
 GameOS/gameos/gos_terrain_water_stream.cpp::s_diagFramesPrinted < 5
 GameOS/gameos/utils/gl_utils.cpp::s_compressedReadCount <= 3
 GameOS/gameos/view_uniforms_gl.cpp::s_viewCount < kMaxRegisteredViews

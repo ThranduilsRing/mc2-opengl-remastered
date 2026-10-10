@@ -33,7 +33,8 @@ FULL_ALLOW = {
     "gos_terrain_indirect_dispatch.cpp",  # defines the getter
     "gos_terrain_indirect.h",
     "gos_object_draw_mvp.h",       # the currency-checked accessor (only sanctioned reader)
-    "gos_terrain_lod_chunk.cpp",   # terrain solid draw
+    "gos_terrain_lod_chunk_draw.cpp",   # terrain solid draw
+    "gos_terrain_lod_chunk_internal.h", # declares the dispatch-MVP getter for the draw piece
     "gos_terrain_water_stream.cpp",# water fast path (pure water)
     "gos_terrain_water_fast.vert", # (shader, never matches the C symbol; harmless)
     "debug_renderer.cpp",          # diagnostics dump
