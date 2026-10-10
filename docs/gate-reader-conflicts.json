@@ -22,7 +22,7 @@
   "Num(strtoul,raw)": 1,
   "Partial[D,D,off,on,on,on,on,on]": 1,
   "Partial[D,on,off,on,on,on,on,on]": 2,
-  "Presence": 485,
+  "Presence": 484,
   "Std(def=off)": 15,
   "Std(def=on)": 11,
   "Str[dflt,dflt]": 2,
@@ -38,7 +38,7 @@
     "GameOS/gameos/gos_mech_batcher.cpp:1162 (Lead0Kill)",
     "GameOS/gameos/gos_static_prop_batcher.cpp:9260 (Lead0Kill)",
     "GameOS/gameos/gos_static_prop_batcher.cpp:9261 (Lead0Kill)",
-    "GameOS/gameos/vulkan_post_screenfx_native.cpp:749 (Lead0Kill)"
+    "GameOS/gameos/vulkan_post_screenfx_native.cpp:747 (Lead0Kill)"
    ],
    "gate": "MC2_SHADOW_ENABLE",
    "in_conflict": false,
@@ -57,7 +57,7 @@
      "verdict": "corrected"
     },
     {
-     "actual": "GameOS/gameos/vulkan_post_screenfx_native.cpp:749",
+     "actual": "GameOS/gameos/vulkan_post_screenfx_native.cpp:747",
      "claim": "GameOS/gameos/vulkan_post_screenfx_native.cpp:759",
      "class": "Lead0Kill",
      "verdict": "corrected"
@@ -442,7 +442,7 @@
     "GameOS/gameos/gos_mech_batcher.cpp:1162 Lead0Kill",
     "GameOS/gameos/gos_static_prop_batcher.cpp:9260 Lead0Kill",
     "GameOS/gameos/gos_static_prop_batcher.cpp:9261 Lead0Kill",
-    "GameOS/gameos/vulkan_post_screenfx_native.cpp:749 Lead0Kill"
+    "GameOS/gameos/vulkan_post_screenfx_native.cpp:747 Lead0Kill"
    ],
    "rule": "Lead0Kill (default ON, =0 disables)",
    "status": "resolved"
@@ -596,7 +596,7 @@
    "readers": [
     "mclib/bdactor.cpp:91 Typed(get)",
     "mclib/gvactor.cpp:37 Typed(get)",
-    "mclib/mech3d.cpp:252 Typed(get)",
+    "mclib/mech3d_init.cpp:12 Typed(get)",
     "mclib/txmmgr.cpp:5324 Typed(get)"
    ],
    "rule": "numeric mode via atoi, default 1 (0 tga only, 1 ktx fallback, 2 ktx first)",
@@ -664,7 +664,7 @@
    "gate": "MC2_VK_POST_SCREENFX",
    "in_conflict": false,
    "readers": [
-    "GameOS/gameos/vulkan_post_screenfx_native.cpp:717 Exact1"
+    "GameOS/gameos/vulkan_post_screenfx_native.cpp:715 Exact1"
    ],
    "rule": "Exact1 explicit opt-in",
    "status": "intentional-optin"
@@ -892,27 +892,7 @@
    "set_in": [
     "scripts/pipeline_visual_gate.py",
     "tools/gate_g0_ledger.json",
-    "tools/gate_table.seed.json",
-    "run/bushwacker_ppc_158/mc2_01_werewolf_fire.json",
-    "run/bushwacker_ppc_162/mc2_01_werewolf_fire.json",
-    "run/ppc_fixed_162/mc2_01_werewolf_fire.json",
-    "run/tube_combat_on/mc2_01_enemy_cluster_low.json",
-    "run/tube_combat_on/mc2_01_enemy_cluster_mid.json",
-    "run/tube_combat_on/mc2_01_player_werewolf.json",
-    "run/tube_cov_on/mc2_01_werewolf_fire.json",
-    "run/tube_legacy_off/mc2_17_highangle_wide.json",
-    "run/tube_legacy_off/mc2_17_overview_center.json",
-    "run/tube_legacy_off/mc2_17_ridge_lowangle.json",
-    "run/tube_oracle_on/mc2_17_highangle_wide.json",
-    "run/tube_oracle_on/mc2_17_overview_center.json",
-    "run/tube_oracle_on/mc2_17_ridge_lowangle.json",
-    "run/ww_f158/mc2_01_werewolf_fire.json",
-    "run/ww_f158_legacy/mc2_01_werewolf_fire.json",
-    "run/ww_f162/mc2_01_werewolf_fire.json",
-    "run/ww_legacy_off/mc2_01_werewolf_fire.json",
-    "run/ww_legacy_off2/mc2_01_werewolf_fire.json",
-    "run/ww_oracle_on/mc2_01_werewolf_fire.json",
-    "run/ww_zoom_on/mc2_01_ww_zoom.json"
+    "tools/gate_table.seed.json"
    ],
    "sites": [
     {
@@ -995,16 +975,16 @@
   "editor",
   "gui"
  ],
- "source": "working tree",
+ "source": "commit bff70976b",
  "totals": {
   "conflict_gates": 1,
   "gates_with_literal": 1131,
   "gates_with_reader": 1093,
-  "literal_occurrences": 1695,
+  "literal_occurrences": 1694,
   "non_call_literals": 89,
   "nonreader_sites": 15,
-  "read_sites": 1606,
-  "reader_sites": 1394,
+  "read_sites": 1605,
+  "reader_sites": 1393,
   "token_sites": 179,
   "umbrella_members": 25,
   "umbrella_typed_sites": 36,
@@ -1067,7 +1047,7 @@
    "callee": "getenv",
    "file": "GameOS/gameos/vulkan_post_fog_native.cpp",
    "gate": "MC2_VULKAN_SPV_DIR",
-   "line": 112,
+   "line": 111,
    "why": "unclassified:opaque"
   },
   {
@@ -1081,7 +1061,7 @@
    "callee": "getenv",
    "file": "GameOS/gameos/vulkan_post_screenfx_native.cpp",
    "gate": "MC2_VULKAN_SPV_DIR",
-   "line": 143,
+   "line": 142,
    "why": "unclassified:opaque"
   },
   {

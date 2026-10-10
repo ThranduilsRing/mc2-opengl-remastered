@@ -6,16 +6,16 @@ Probes: **U** unset, **E** `""`, **Z** `"0"`, **F** `"false"`, **O** `"1"`, **X*
 
 ## Totals
 
-Scanned: working tree.
+Scanned: commit bff70976b.
 
 | Measure | Count |
 |---|---|
 | gates named by a literal in scanned code | 1131 |
 | gates with at least one classified reader | 1093 |
-| `"MC2_*"` literal occurrences | 1695 |
+| `"MC2_*"` literal occurrences | 1694 |
 | literals not passed to an env read (tables, writers, indirect names) | 89 |
-| read sites analysed | 1606 |
-| reader sites with an outcome vector | 1394 |
+| read sites analysed | 1605 |
+| reader sites with an outcome vector | 1393 |
 | reader sites comparing a token no probe hits (not comparable) | 179 |
 | sites where the probe decides nothing (prints, paths) | 15 |
 | sites the tool could not classify | 18 |
@@ -33,7 +33,7 @@ Line numbers are checked against the scanned tree (see Totals for which); `corre
 |---|---|---|---|---|---|---|
 | MC2_SHADOW_ENABLE | **no** | `GameOS/gameos/gos_mech_batcher.cpp:1167` | corrected | `GameOS/gameos/gos_mech_batcher.cpp:1162` | Lead0Kill |  |
 |  |  | `GameOS/gameos/gos_static_prop_batcher.cpp:9290` | corrected | `GameOS/gameos/gos_static_prop_batcher.cpp:9261` | Lead0Kill |  |
-|  |  | `GameOS/gameos/vulkan_post_screenfx_native.cpp:759` | corrected | `GameOS/gameos/vulkan_post_screenfx_native.cpp:749` | Lead0Kill |  |
+|  |  | `GameOS/gameos/vulkan_post_screenfx_native.cpp:759` | corrected | `GameOS/gameos/vulkan_post_screenfx_native.cpp:747` | Lead0Kill |  |
 | MC2_DISABLE_GOSFX | **no** | `mclib/mlr/mlr_gate.cpp:37` | corrected | `mclib/mlr/mlr_gate.cpp:40` | Lead1 |  |
 |  |  | `GameOS/gameos/gameosmain.cpp:1340` | not-found | `` |  |  |
 |  |  | `GuiRuntime/GraphicsOptionsWindow.cpp:1477` | not-found | `` |  |  |
@@ -53,7 +53,7 @@ Line numbers are checked against the scanned tree (see Totals for which); `corre
 
 | Gate | Reader sites (file:line, class) | Inputs that disagree | Default-visible? | Proposed unified rule | Behaviour delta if unified |
 |---|---|---|---|---|---|
-| `MC2_FX_FORCE_SPAWN` | `code/warrior.cpp:2134` Lead0P<br>`code/warrior.cpp:2134` Lead0P<br>`code/warrior.cpp:2140` Custom[00000001] | E: off vs on; F: off vs on; O: off vs on; X: off vs on; X10: off vs on | yes (scripts/pipeline_visual_gate.py, tools/gate_g0_ledger.json, +21) | Enum/Int row: a reader compares a leading character (levels), so a Bool row would collapse them (owner decision) -- custom outcome vector(s): Custom[00000001] | n/a (owner decision) |
+| `MC2_FX_FORCE_SPAWN` | `code/warrior.cpp:2134` Lead0P<br>`code/warrior.cpp:2134` Lead0P<br>`code/warrior.cpp:2140` Custom[00000001] | E: off vs on; F: off vs on; O: off vs on; X: off vs on; X10: off vs on | yes (scripts/pipeline_visual_gate.py, tools/gate_g0_ledger.json, +1) | Enum/Int row: a reader compares a leading character (levels), so a Bool row would collapse them (owner decision) -- custom outcome vector(s): Custom[00000001] | n/a (owner decision) |
 
 ## G0 resolution ledger
 
@@ -77,7 +77,7 @@ Source: `tools/gate_g0_ledger.json`. `resolved` = the readers now agree; `enum` 
 | `MC2_RENDER_CONTRACT_ASSERT` | resolved | no | `GameOS/gameos/gos_gpu_sync.cpp:16 Lead0`<br>`mclib/render_contract.cpp:570 Lead0` | Lead0 | empty string off in the GPU sync reader | matches the contract reader |
 | `MC2_SHADER_HOT_RELOAD` | resolved | no | `GameOS/gameos/gameos_graphics.cpp:6064 Lead1`<br>`GameOS/gameos/gameosmain.cpp:1275 Lead1`<br>`GameOS/gameos/gameosmain.cpp:1275 Lead1`<br>`GameOS/gameos/utils/shader_builder.cpp:422 Lead1` | Lead1 (=1) | main no longer reads any set value as on; the trailing-character test is dropped | matches the SPIR-V reader |
 | `MC2_SHADOW_DYNAMIC_PROP_CASTERS` | enum | no | `GameOS/gameos/gos_static_prop_batcher.cpp:9777 Custom[00000001]`<br>`mclib/txmmgr.cpp:3622 Typed(is)` | =0 kill-switch (default ON); =2 adds a trace line | code unchanged | levels are intentional |
-| `MC2_SHADOW_ENABLE` | resolved | no | `GameOS/gameos/gos_mech_batcher.cpp:1161 Lead0Kill`<br>`GameOS/gameos/gos_mech_batcher.cpp:1162 Lead0Kill`<br>`GameOS/gameos/gos_static_prop_batcher.cpp:9260 Lead0Kill`<br>`GameOS/gameos/gos_static_prop_batcher.cpp:9261 Lead0Kill`<br>`GameOS/gameos/vulkan_post_screenfx_native.cpp:749 Lead0Kill` | Lead0Kill (default ON, =0 disables) | DEFAULT: the VK screenfx caster check now defaults ON like the GL readers and the registry | owner ruling; VK day+night captures tests/visual/captures/g0_cmp_vk (MAD 0.00/0.01) |
+| `MC2_SHADOW_ENABLE` | resolved | no | `GameOS/gameos/gos_mech_batcher.cpp:1161 Lead0Kill`<br>`GameOS/gameos/gos_mech_batcher.cpp:1162 Lead0Kill`<br>`GameOS/gameos/gos_static_prop_batcher.cpp:9260 Lead0Kill`<br>`GameOS/gameos/gos_static_prop_batcher.cpp:9261 Lead0Kill`<br>`GameOS/gameos/vulkan_post_screenfx_native.cpp:747 Lead0Kill` | Lead0Kill (default ON, =0 disables) | DEFAULT: the VK screenfx caster check now defaults ON like the GL readers and the registry | owner ruling; VK day+night captures tests/visual/captures/g0_cmp_vk (MAD 0.00/0.01) |
 | `MC2_SNAPSHOT_MECH_EXTRACT` | resolved | no | `GameOS/gameos/debug_state_dump.cpp:593 Lead0`<br>`GameOS/gameos/gos_mech_batcher.cpp:2952 Lead0`<br>`GameOS/gameos/render_snapshot.cpp:245 Lead0` | Lead0 | values other than 1 now enable extraction in the mech batcher and the snapshot builder | matches the debug-state mirror |
 | `MC2_SNAPSHOT_STATIC_PROP_BUILD` | resolved | no | `GameOS/gameos/debug_state_dump.cpp:482 Lead0Kill`<br>`GameOS/gameos/gos_static_prop_batcher.cpp:240 Lead0Kill` | Lead0Kill (default ON, =0 disables) | none today: the editor's InitInstance override ran after the batcher cached the variable at file scope, so it never took effect; the override is deleted | gos_static_prop_batcher.cpp caches it in a file-scope static (runs before WinMain); EditRel links that TU |
 | `MC2_SPOTLIGHT_DIRECTION_FIX` | enum | no | `mclib/cone_glow.cpp:206 Typed(is)`<br>`mclib/cone_glow.cpp:207 Typed(is)`<br>`mclib/cone_glow.cpp:224 Typed(is)` | levels: 1 fix, 2 fix plus trace | code unchanged | readers compare a leading character on purpose |
@@ -89,13 +89,13 @@ Source: `tools/gate_g0_ledger.json`. `resolved` = the readers now agree; `enum` 
 | `MC2_TERRAIN_HEIGHT_RESAMPLE_FACTOR` | note | no | `GameOS/gameos/gos_terrain_height_tex.cpp:53 Typed(is)`<br>`GameOS/gameos/gos_terrain_height_tex.cpp:54 Typed(is)` | Enum {1,2,4}; other values rejected | code unchanged | single reader; a clamp row would change it |
 | `MC2_TERRAIN_MATERIAL_LIB` | resolved | no | `GameOS/gameos/gameos_graphics.cpp:361 Lead0`<br>`GameOS/gameos/terrain_material_lib.cpp:231 Lead0` | Lead0 | =0 now disables the material-library JSON load | matches the host reader |
 | `MC2_TERRAIN_MATERIAL_TEXTURES` | resolved | no | `GameOS/gameos/gos_terrain_lod_chunk.cpp:128 Lead0`<br>`GameOS/gameos/terrain_material_lib.cpp:196 Lead0`<br>`GameOS/gameos/terrain_material_lib.cpp:233 Lead0` | Lead0 | =0 now disables the material-texture config load | matches the chunk reader |
-| `MC2_TEXMGR_KTX_PRIMARY` | resolved | no | `mclib/bdactor.cpp:91 Typed(get)`<br>`mclib/gvactor.cpp:37 Typed(get)`<br>`mclib/mech3d.cpp:252 Typed(get)`<br>`mclib/txmmgr.cpp:5324 Typed(get)` | numeric mode via atoi, default 1 (0 tga only, 1 ktx fallback, 2 ktx first) | non-numeric values (false, yes) now read as mode 0 at the three sidecar readers, as they already did in the texture manager | txmmgr.cpp is the mode authority |
+| `MC2_TEXMGR_KTX_PRIMARY` | resolved | no | `mclib/bdactor.cpp:91 Typed(get)`<br>`mclib/gvactor.cpp:37 Typed(get)`<br>`mclib/mech3d_init.cpp:12 Typed(get)`<br>`mclib/txmmgr.cpp:5324 Typed(get)` | numeric mode via atoi, default 1 (0 tga only, 1 ktx fallback, 2 ktx first) | non-numeric values (false, yes) now read as mode 0 at the three sidecar readers, as they already did in the texture manager | txmmgr.cpp is the mode authority |
 | `MC2_UI_DEFS_TRACE` | resolved | no | `GuiRuntime/GuiRuntime.cpp:105 Lead0`<br>`gui/UiDefs_parse.cpp:34 Lead0` | Lead0 | =false/off/no now read as on in the defs reader | matches the runtime reader |
 | `MC2_VK_CSM_ARRAY_INTEROP` | intentional-optin | no | `GameOS/gameos/vulkan_shadow_island_live.cpp:147 Lead1` | Lead1 explicit opt-in | none (the umbrella ruling covers the 25 inherits rows only) | CSM array direct view; documented parity hazard, never armed by the umbrella |
 | `MC2_VK_CSM_FULLMAP_INTEROP` | intentional-optin | no | `GameOS/gameos/vulkan_shadow_island_live.cpp:139 Lead1` | Lead1 explicit opt-in | none (the umbrella ruling covers the 25 inherits rows only) | CSM full-map direct view; documented parity hazard, never armed by the umbrella |
 | `MC2_VK_IMGUI` | intentional-optin | no | `GuiRuntime/GuiRuntime.cpp:97 Lead1` | Lead1 explicit opt-in | none (the umbrella ruling covers the 25 inherits rows only) | ImGui Vulkan renderer: a tooling path, not scene content |
 | `MC2_VK_POST_HZB` | intentional-optin | no | `GameOS/gameos/vulkan_post_hzb_native.cpp:604 Exact1` | Exact1 explicit opt-in | none (the umbrella ruling covers the 25 inherits rows only) | native HZB is an enhancement; absence leaves the GL build intact |
-| `MC2_VK_POST_SCREENFX` | intentional-optin | no | `GameOS/gameos/vulkan_post_screenfx_native.cpp:717 Exact1` | Exact1 explicit opt-in | none (the umbrella ruling covers the 25 inherits rows only) | native screenfx is an enhancement; absence leaves the GL chain intact |
+| `MC2_VK_POST_SCREENFX` | intentional-optin | no | `GameOS/gameos/vulkan_post_screenfx_native.cpp:715 Exact1` | Exact1 explicit opt-in | none (the umbrella ruling covers the 25 inherits rows only) | native screenfx is an enhancement; absence leaves the GL chain intact |
 | `MC2_VK_POST_SSAO` | intentional-optin | no | `GameOS/gameos/vulkan_post_ssao_native.cpp:678 Exact1` | Exact1 explicit opt-in | none (the umbrella ruling covers the 25 inherits rows only) | native SSAO is an enhancement; absence leaves the GL SSAO chain intact |
 | `MC2_VK_PROP_DIRECT_CHAIN` | resolved | no |  | Tri: explicit 1/0 wins, else inherit the umbrella | none: the island's deprecation-note reader is deleted (prop is unconditionally direct-chain) | owner ruling: the umbrella is canonical |
 | `MC2_VK_SHADOW_INTEROP` | intentional-optin | no | `GameOS/gameos/vulkan_shadow_island_live.cpp:131 Lead1` | Lead1 explicit opt-in | none (the umbrella ruling covers the 25 inherits rows only) | shadow island; documented parity hazard (mech shadows parked), never armed by the umbrella |
@@ -110,7 +110,7 @@ Source: `tools/gate_g0_ledger.json`. `resolved` = the readers now agree; `enum` 
 
 | Class | Reader sites |
 |---|---|
-| Presence | 485 |
+| Presence | 484 |
 | Lead0Kill | 199 |
 | Lead0 | 188 |
 | Lead1 | 130 |
