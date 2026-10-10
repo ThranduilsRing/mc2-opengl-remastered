@@ -52,7 +52,7 @@
    "LG03": 301,
    "LG04": 6,
    "LG05": 119,
-   "LG06": 499,
+   "LG06": 498,
    "LG07": 0,
    "LG08": 274,
    "LG09": 2126,
@@ -507,16 +507,28 @@
    "LG17": 2
   },
   "GameOS/gameos/gameosmain.cpp": {
-   "LG01": 14,
-   "LG02": 1,
+   "LG01": 7,
    "LG03": 2,
    "LG04": 1,
-   "LG06": 3,
-   "LG09": 46,
-   "LG11": 4,
-   "LG12a": 60,
-   "LG12b": 11,
+   "LG06": 1,
+   "LG09": 18,
+   "LG12a": 42,
+   "LG12b": 7,
    "LG20": 1
+  },
+  "GameOS/gameos/gameosmain_frame.cpp": {
+   "LG09": 21,
+   "LG12a": 10,
+   "LG12b": 1
+  },
+  "GameOS/gameos/gameosmain_init.cpp": {
+   "LG01": 7,
+   "LG02": 1,
+   "LG06": 1,
+   "LG09": 7,
+   "LG11": 4,
+   "LG12a": 8,
+   "LG12b": 3
   },
   "GameOS/gameos/gos_cardcloud_sim.cpp": {
    "LG03": 6,
@@ -826,13 +838,26 @@
   },
   "GameOS/gameos/gos_static_prop_registry.cpp": {
    "LG05": 14,
-   "LG08": 46,
-   "LG09": 43,
-   "LG12a": 28,
-   "LG12b": 1
+   "LG08": 25,
+   "LG09": 10,
+   "LG12a": 4
   },
   "GameOS/gameos/gos_static_prop_registry.h": {
    "LG05": 8
+  },
+  "GameOS/gameos/gos_static_prop_registry_flush_range.cpp": {
+   "LG08": 16,
+   "LG09": 20,
+   "LG12a": 16
+  },
+  "GameOS/gameos/gos_static_prop_registry_flush_tail.cpp": {
+   "LG08": 5,
+   "LG09": 13,
+   "LG12a": 7,
+   "LG12b": 1
+  },
+  "GameOS/gameos/gos_static_prop_registry_internal.h": {
+   "LG12a": 1
   },
   "GameOS/gameos/gos_terrain_height_tex.cpp": {
    "LG09": 21,
@@ -858,18 +883,23 @@
    "LG12a": 4,
    "LG16": 1
   },
+  "GameOS/gameos/gos_terrain_indirect_compute.cpp": {
+   "LG06": 1,
+   "LG09": 36,
+   "LG12a": 3
+  },
   "GameOS/gameos/gos_terrain_indirect_diag.cpp": {
    "LG06": 1,
    "LG09": 3
   },
   "GameOS/gameos/gos_terrain_indirect_dispatch.cpp": {
-   "LG06": 1,
-   "LG09": 50,
-   "LG12a": 10
+   "LG09": 14,
+   "LG12a": 5
   },
   "GameOS/gameos/gos_terrain_indirect_internal.h": {
    "LG09": 1,
-   "LG10": 1
+   "LG10": 1,
+   "LG12a": 2
   },
   "GameOS/gameos/gos_terrain_indirect_mine_decal.cpp": {
    "LG08": 4,
@@ -1485,12 +1515,13 @@
   "GameOS/src/platform_winuser.cpp": {
    "LG12a": 2
   },
-  "GuiRuntime/EditorInspector.cpp": {
-   "LG06": 1,
-   "LG09": 1,
-   "LG17": 2
+  "GuiRuntime/EditorInspector_internal.h": {
+   "LG17": 1
   },
   "GuiRuntime/EditorInspector_sections.cpp": {
+   "LG06": 1,
+   "LG09": 1,
+   "LG17": 1,
    "LG20": 11
   },
   "GuiRuntime/GraphicsOptionsWindow_internal.h": {
@@ -1744,12 +1775,15 @@
    "LG06": 2,
    "LG17": 1
   },
+  "code/brain_special_apply.cpp": {
+   "LG09": 8
+  },
   "code/brain_special_dispatch.cpp": {
    "LG03": 5,
    "LG04": 1,
    "LG05": 5,
    "LG06": 23,
-   "LG09": 49,
+   "LG09": 41,
    "LG11": 1,
    "LG14": 1
   },
@@ -2670,12 +2704,18 @@
    "LG12b": 1
   },
   "code/mission_update.cpp": {
+   "LG09": 21,
+   "LG12a": 13,
+   "LG12b": 1,
+   "LG14": 1
+  },
+  "code/mission_update_audit.cpp": {
    "LG06": 2,
-   "LG09": 24,
+   "LG09": 3,
    "LG10": 1,
-   "LG12a": 15,
-   "LG12b": 2,
-   "LG14": 2
+   "LG12a": 2,
+   "LG12b": 1,
+   "LG14": 1
   },
   "code/missionbegin.cpp": {
    "LG01": 27,
@@ -3115,14 +3155,24 @@
    "LG13": 9
   },
   "code/saveload.cpp": {
-   "LG01": 21,
-   "LG03": 16,
+   "LG01": 5,
+   "LG03": 4,
    "LG06": 3,
-   "LG09": 20,
-   "LG11": 6,
-   "LG12a": 5,
-   "LG12b": 6,
+   "LG09": 14,
+   "LG11": 3,
+   "LG12a": 2,
+   "LG12b": 5
+  },
+  "code/saveload_internal.h": {
    "LG13": 1
+  },
+  "code/saveload_load.cpp": {
+   "LG01": 16,
+   "LG03": 12,
+   "LG09": 6,
+   "LG11": 3,
+   "LG12a": 3,
+   "LG12b": 1
   },
   "code/sensor_trace.h": {
    "LG12b": 1
@@ -5382,6 +5432,7 @@
    "LG17": 6
   },
   "mclib/tgl_internal.h": {
+   "LG13": 3,
    "LG14": 1
   },
   "mclib/tgl_load_guard.cpp": {
@@ -5408,11 +5459,14 @@
    "LG09": 2
   },
   "mclib/tgl_transform.cpp": {
-   "LG01": 5,
-   "LG04": 2,
-   "LG09": 25,
-   "LG13": 3,
+   "LG01": 3,
+   "LG09": 3,
    "LG17": 1
+  },
+  "mclib/tgl_transform_light.cpp": {
+   "LG01": 2,
+   "LG04": 2,
+   "LG09": 22
   },
   "mclib/tgl_types.cpp": {
    "LG01": 10,
@@ -5589,7 +5643,7 @@
    "LG20": 2
   }
  },
- "head": "c001830fe",
+ "head": "d1671eb91",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
