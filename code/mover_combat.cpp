@@ -1,6 +1,7 @@
 // Mover: tactical orders, weapon helpers, weapon-fire/critical-hit/radio chunk queues, contacts and weapon queries.
 // Declared in mover.h; shared names in mover_internal.h.
 #include "mover_internal.h"
+#include "Gates/gate.h"
 
 
 long Mover::handleTacticalOrder (TacticalOrder tacOrder, long priority, bool queuePlayerOrder) {
@@ -14,7 +15,7 @@ long Mover::handleTacticalOrder (TacticalOrder tacOrder, long priority, bool que
 	// range (target distance from the ordered mover — an absurd range is the "eligible
 	// across the whole map" symptom). Gate MC2_TARGETING_GUARD + MC2_DIAG_TAGS=TARGETING.
 	{
-		static const bool s_tgtGuard = (std::getenv("MC2_TARGETING_GUARD") != nullptr);
+		static const bool s_tgtGuard = mc2::gate::get<"MC2_TARGETING_GUARD">();
 		if (s_tgtGuard &&
 		    tacOrder.origin == ORDER_ORIGIN_PLAYER &&
 		    tacOrder.code == TACTICAL_ORDER_ATTACK_OBJECT &&
