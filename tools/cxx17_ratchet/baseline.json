@@ -796,14 +796,29 @@
    "LG17": 2
   },
   "GameOS/gameos/gos_static_prop_batcher_finalize.cpp": {
-   "LG08": 20,
-   "LG09": 20
+   "LG08": 5,
+   "LG09": 11
+  },
+  "GameOS/gameos/gos_static_prop_batcher_finalize_textures.cpp": {
+   "LG08": 15,
+   "LG09": 9
   },
   "GameOS/gameos/gos_static_prop_batcher_flush.cpp": {
-   "LG08": 9,
-   "LG09": 39,
-   "LG12a": 3,
-   "LG18": 5
+   "LG08": 2,
+   "LG09": 25,
+   "LG12a": 1,
+   "LG18": 2
+  },
+  "GameOS/gameos/gos_static_prop_batcher_flush_dispatch.cpp": {
+   "LG08": 4,
+   "LG09": 5,
+   "LG12a": 1,
+   "LG18": 3
+  },
+  "GameOS/gameos/gos_static_prop_batcher_flush_prep.cpp": {
+   "LG08": 3,
+   "LG09": 9,
+   "LG12a": 1
   },
   "GameOS/gameos/gos_static_prop_batcher_internal.h": {
    "LG06": 2,
@@ -6148,7 +6163,7 @@
    "LG20": 2
   }
  },
- "head": "43e0fc5f5",
+ "head": "10f623597",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

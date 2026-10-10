@@ -15,8 +15,6 @@
  "files_over_1500": {
   "GameOS/gameos/engine_present_vk.cpp": 2749,
   "GameOS/gameos/gameosmain.cpp": 2811,
-  "GameOS/gameos/gos_static_prop_batcher_finalize.cpp": 2028,
-  "GameOS/gameos/gos_static_prop_batcher_flush.cpp": 2324,
   "GameOS/gameos/gos_static_prop_registry.cpp": 2207,
   "GameOS/gameos/gos_terrain_lighting.cpp": 1697,
   "GameOS/gameos/gos_terrain_water_stream.cpp": 2455,
@@ -77,7 +75,7 @@
   "mclib/tgl.h": 1689,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "b78a04cfc",
+ "head": "10f623597",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -86,8 +84,8 @@
    "max_lines": 523
   },
   "GameOS": {
-   "files": 312,
-   "files_over_1500": 13,
+   "files": 317,
+   "files_over_1500": 11,
    "files_over_3000": 1,
    "max_lines": 3753
   },
@@ -208,10 +206,6 @@
    "lines": 2346
   },
   {
-   "file": "GameOS/gameos/gos_static_prop_batcher_flush.cpp",
-   "lines": 2324
-  },
-  {
    "file": "GameOS/gameos/gos_static_prop_registry.cpp",
    "lines": 2207
   },
@@ -240,10 +234,6 @@
    "lines": 2072
   },
   {
-   "file": "GameOS/gameos/gos_static_prop_batcher_finalize.cpp",
-   "lines": 2028
-  },
-  {
    "file": "code/mechicon.cpp",
    "lines": 1967
   },
@@ -270,11 +260,19 @@
   {
    "file": "code/optionsarea.cpp",
    "lines": 1842
+  },
+  {
+   "file": "mclib/move.h",
+   "lines": 1822
+  },
+  {
+   "file": "code/artlry.cpp",
+   "lines": 1816
   }
  ],
  "total": {
-  "files": 1828,
-  "files_over_1500": 63,
+  "files": 1833,
+  "files_over_1500": 61,
   "files_over_3000": 2,
   "max_lines": 3753
  },
