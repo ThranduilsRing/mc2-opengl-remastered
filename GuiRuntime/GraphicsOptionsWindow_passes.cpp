@@ -1,6 +1,7 @@
 // Graphics options window: draw-packet, render-pass and G-buffer sections.
 // Declared in GraphicsOptionsWindow_internal.h.
 #include "GraphicsOptionsWindow_internal.h"
+#include "Gates/gate.h"
 
 namespace GraphicsOptionsWindow {
 
@@ -440,8 +441,7 @@ void drawRenderPassesSection() {
     ImGui::Separator();
     ImGui::TextUnformatted("FX / Particles");
 
-    const char* fxEnv = getenv("MC2_DISABLE_GOSFX");
-    bool fxDisabled = (fxEnv && fxEnv[0] == '1');
+    bool fxDisabled = mc2::gate::get<"MC2_DISABLE_GOSFX">();
     if (fxDisabled) {
         ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0f), "[off]  FX/Particles");
         ImGui::SameLine();
