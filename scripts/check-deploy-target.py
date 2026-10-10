@@ -128,22 +128,12 @@ def _exe_launchable_sniff(target: str, exe_name: str) -> str | None:
 # ---------------------------------------------------------------------------
 
 def _pid_alive(pid: int) -> bool:
-    """Best-effort liveness. On Windows, OpenProcess via os.kill(pid, 0)-style
-    probe is unreliable; fall back to 'assume alive' so we never steal a lock
-    from a live sibling. Age is the primary staleness signal anyway."""
-    if pid <= 0:
-        return False
-    try:
-        os.kill(pid, 0)      # POSIX; on Windows raises unless same-ish access
-        return True
-    except (PermissionError,):
-        return True          # exists but not ours
-    except (ProcessLookupError,):
-        return False
-    except OSError:
-        return True          # unknown -> conservative: assume alive
-    except Exception:
-        return True
+    """Liveness of the lock owner. `os.kill(pid, 0)` is NOT a probe on Windows (it is TerminateProcess), and
+    the pid here comes from another lane's lock file, so the check goes through child_registry.pid_alive
+    (OpenProcess + GetExitCodeProcess), which only reads."""
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from smoke_lib import child_registry
+    return child_registry.pid_alive(pid)
 
 
 def read_lane_lock(target: str) -> dict | None:

@@ -126,7 +126,7 @@ def is_golden(exe) -> bool:
     return Path(exe).resolve().parent.name.casefold() in GOLDEN_INSTALL_NAMES
 
 
-GAME_EXE_NAMES = frozenset({"mc2.exe"})
+GAME_EXE_NAMES = frozenset({"mc2.exe", "mc2-asan.exe"})
 EDITOR_EXE_NAMES = frozenset({"editrel.exe", "mission editor.exe"})
 
 

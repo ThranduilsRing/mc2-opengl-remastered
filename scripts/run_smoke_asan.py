@@ -41,7 +41,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from smoke_lib import nofocus  # noqa: E402
+from smoke_lib import child_registry, nofocus  # noqa: E402
 
 ASAN_BUILD_DIR = ROOT / "build64-asan" / "RelWithDebInfo"
 DEPLOY_SRC = Path(r"A:/Games/mc2-opengl/mc2-win64-v0.4")
@@ -155,12 +155,20 @@ def main() -> int:
 
     if args.kill_existing:
         pids = _running_mc2_asan()
-        if pids:
-            print(f"[asan-smoke] killing existing {ASAN_EXE_NAME} PIDs {pids}",
+        stuck = []
+        for pid in pids:
+            # Only an orphan of a dead harness run is ended; an image-name kill would also end another
+            # lane's ASAN run or one the owner started.
+            killed, why = child_registry.kill_if_orphan(pid)
+            print(f"[asan-smoke] {ASAN_EXE_NAME} PID {pid}: {'killed, ' if killed else 'left running, '}{why}",
                   file=sys.stderr)
-            subprocess.run(["taskkill", "/F", "/IM", ASAN_EXE_NAME],
-                           stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
-                           **nofocus.hidden_kwargs())
+            if not killed:
+                stuck.append(pid)
+        if stuck:
+            print(f"[asan-smoke] ERROR: {ASAN_EXE_NAME} PIDs {stuck} were not started by a dead harness run",
+                  file=sys.stderr)
+            return 1
+        if pids:
             time.sleep(0.5)
     else:
         pids = _running_mc2_asan()
