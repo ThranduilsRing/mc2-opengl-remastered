@@ -195,14 +195,12 @@ namespace {
 // Printed every 300 frames when MC2_LIGHTBRIDGE_STABLE_SKIP_DIAG=1.
 struct LightbridgeStableSkipDiag {
     uint32_t frame         = 0xFFFFFFFFu;
-    // Building counters
     uint64_t b_armed       = 0;  // stableLightSkipArmed
     uint64_t b_eligible    = 0;  // stableLightSkipEligible
     uint64_t b_taken       = 0;  // skip actually fired
     uint64_t b_blk_idx     = 0;  // blocked: invalid lightDataIndex
     uint64_t b_blk_gen     = 0;  // blocked: generation mismatch
     uint64_t b_blk_noelig  = 0;  // blocked: armed but not eligible
-    // Tree counters
     uint64_t t_taken       = 0;
     uint64_t t_blk_idx     = 0;
     uint64_t t_total       = 0;
@@ -236,7 +234,6 @@ static void lbssDiagRollFrame(uint32_t frame)
 {
     if (!mc2LightbridgeStableSkipDiagEnabled()) return;
     if (frame == s_lbssDiag.frame) return;
-    // Print on new frame boundary (every 300 frames)
     if (s_lbssDiag.frame != 0xFFFFFFFFu && (s_lbssDiag.frame % 300u) == 0u)
         lbssDiagPrint(s_lbssDiag);
     s_lbssDiag = LightbridgeStableSkipDiag{};

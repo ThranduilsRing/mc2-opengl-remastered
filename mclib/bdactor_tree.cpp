@@ -3,7 +3,6 @@
 #include "bdactor_internal.h"
 #include "../RenderCore/axis_convert.h"
 
-// class TreeAppearance
 void TreeAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 {
 	Appearance::init(tree,obj);
@@ -40,7 +39,6 @@ void TreeAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
     // Slice 2 (object-offload) substrate flag; set true by GPU batcher on late
     // registration to force a full TransformMultiShape next frame.
     needsFullBakeNextFrame = false;
-    // TREE-OVERRIDE-LOD-MVP Task 2: zero-init per-LOD static registration.
     for (long _l = 0; _l < MAX_LODS; ++_l)
         staticReg[_l] = StaticRegistration{};
     activeLOD = 0;  // pinned 0 until Task 5 adds distance selection
@@ -53,7 +51,6 @@ void TreeAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		// markLOS) rebuilds this member from stock treeShape[lod] when needed.
 		treeShape = appearType->getTreeRenderShape(0)->CreateFrom();
 
-		// Load the texture and store its handle.
 		for (long i=0;i<treeShape->GetNumTextures();i++)
 		{
 			char txmName[1024];
@@ -84,7 +81,6 @@ void TreeAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 			}
 			else
 			{
-				//PAUSE(("Warning: %s texture name not found",textureName));
 				treeShape->SetTextureHandle(i,0xffffffff);
 			}
 		}
@@ -204,7 +200,6 @@ void TreeAppearance::setObjStatus (long oStatus)
 
 		}
 
-		// Load the texture and store its handle.
 		if (treeShape)
 		{
 			for (long i=0;i<treeShape->GetNumTextures();i++)
@@ -237,7 +232,6 @@ void TreeAppearance::setObjStatus (long oStatus)
 				}
 				else
 				{
-					//PAUSE(("Warning: %s texture name not found",textureName));
 					treeShape->SetTextureHandle(i,0xffffffff);
 				}
 			}
@@ -301,7 +295,6 @@ bool TreeAppearance::recalcBounds (void)
 
 	if (eye)
 	{
-		//NEW METHOD from the WAY BACK Days
 		setVisibilityGatesFromLegacy(true);
 
 		// [TOBJSPLIT v1] ANGULAR bracket: matrix-free sphere angular clip.
@@ -389,7 +382,6 @@ long TreeAppearance::update (bool animate)
 	// selecting only in update() froze activeLOD at first registration.
 	selectActiveLOD();
 
-	// Does math necessary to draw Tree
 	Stuff::UnitQuaternion rot;
 	float yawAngle = (rotation * DEGREES_TO_RADS) + (yaw * DEGREES_TO_RADS);
 	float pitchAngle = (pitch * DEGREES_TO_RADS);
@@ -605,7 +597,6 @@ long TreeAppearance::update (bool animate)
 			beenInView = true;
 	}
 	
-	//Set Ambient back to normal color.
 	eye->setLightColor(1,oldRGB);
 
 	return TRUE;
@@ -626,7 +617,6 @@ void TreeAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 		treeShape = appearType->treeShape[currentLOD]->CreateFrom();
 	}
 
-	// New way.  For each vertex in each shape, translate to world
 	for (int i=0;i<treeShape->GetNumShapes();i++)
 	{
 		//Check if the artists meant for this piece to NOT block passability!!
@@ -678,7 +668,6 @@ void TreeAppearance::markLOS (bool clearIt)
 		treeShape = appearType->treeShape[currentLOD]->CreateFrom();
 	}
 
-	// New way.  For each vertex in each shape, translate to world
 	for (int i=0;i<treeShape->GetNumShapes();i++)
 	{
 		//Check if the artists meant for this piece to NOT block LOS!!
@@ -691,7 +680,6 @@ void TreeAppearance::markLOS (bool clearIt)
 			{
 				Stuff::Vector3D vertexPos, worldPos;
 				vertexPos = treeShape->GetShapeVertexInEditor(i,j,-rotation);
-//				vertexPos = treeShape->GetShapeVertexInWorld(i,j,-rotation);
 				worldPos.Add(position,vertexPos);
 	
 				int cellR, cellC;
@@ -702,7 +690,6 @@ void TreeAppearance::markLOS (bool clearIt)
 					continue;
 				}
 				
-				// Mark the map...
 				MapCellPtr curCell = GameMap->getCell(cellR, cellC);
 
 				float currentCellHeight = curCell->getLocalHeight();

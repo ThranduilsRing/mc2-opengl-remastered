@@ -2,7 +2,6 @@
 // Declared in the class headers; shared names in bdactor_internal.h.
 #include "bdactor_internal.h"
 
-// class BldgAppearanceType
 void BldgAppearanceType::init (const char * fileName)
 {
 	AppearanceType::init(fileName);
@@ -105,7 +104,6 @@ void BldgAppearanceType::init (const char * fileName)
 				// at greater zoom-out. See visual_preference_knobs.md.
 				lodDistance[i] *= 5.0f;
 
-				// Base LOD shape.  In stand Pose by default.
 				bldgShape[i] = new TG_TypeMultiShape;
 				gosASSERT(bldgShape[i] != NULL);
 
@@ -138,7 +136,6 @@ void BldgAppearanceType::init (const char * fileName)
 	}
 	else
 	{
-		// Base shape.  In stand Pose by default.
 		bldgShape[0] = new TG_TypeMultiShape;
 		gosASSERT(bldgShape[0] != NULL);
 
@@ -185,7 +182,6 @@ void BldgAppearanceType::init (const char * fileName)
 		{
 #ifdef ENABLE_ASSIMP_IMPORTER
 			bldgRenderShape = new TG_TypeMultiShape;
-			// Source path = manifest dir + record source (see Slice 1 registry).
 			char overridePath[1024];
 			snprintf(overridePath, sizeof(overridePath), "%s/%s",
 			         ov->manifestDir.c_str(),
@@ -245,7 +241,6 @@ void BldgAppearanceType::init (const char * fileName)
 		}
 	}
 
-	//destroyed state.
 	result = iniFile.seekBlock("TGLDamage");
 	if (result == NO_ERR)
 	{
@@ -335,8 +330,6 @@ void BldgAppearanceType::init (const char * fileName)
 		destructEffect[0] = 0;
 	}
 
-	// Load Animation Information.
-	// We can load up to 10 Animation States.
 	for (int i=0;i<MAX_BD_ANIMATIONS;i++)
 	{
 		char blockId[512];
@@ -362,7 +355,6 @@ void BldgAppearanceType::init (const char * fileName)
 			if (result != NO_ERR)
 				bdStartF[i] = 0;
 				
-			// We have an animation to load.
 			FullPathFileName animPath;
 			animPath.init(tglPath,animName,".ase");
 
@@ -405,7 +397,6 @@ void BldgAppearanceType::init (const char * fileName)
 			setFrameRate(i,nFrameRate);
 	}
 
-	// Load up the Weapon Node Data.
 	numWeaponNodes = 0;
 	nodeData = NULL;
 	result = iniFile.seekBlock("WeaponNode");
@@ -455,7 +446,6 @@ void BldgAppearanceType::destroy (void)
 		}
 	}
 
-	// MODEL-OVERRIDE dual-shape: free the render override shape if loaded.
 	if (bldgRenderShape)
 	{
 		delete bldgRenderShape;
@@ -507,7 +497,6 @@ void BldgAppearanceType::setAnimation (TG_MultiShapePtr shape, DWORD animationNu
 		shape->ClearAnimation();
 }
 
-// class TreeAppearanceType
 void TreeAppearanceType::init (const char * fileName)
 {
 	AppearanceType::init(fileName);
@@ -566,7 +555,6 @@ void TreeAppearanceType::init (const char * fileName)
 				// at greater zoom-out. See visual_preference_knobs.md.
 				lodDistance[i] *= 5.0f;
 
-				// Base LOD shape.  In stand Pose by default.
 				treeShape[i] = new TG_TypeMultiShape;
 				gosASSERT(treeShape[i] != NULL);
 
@@ -603,7 +591,6 @@ void TreeAppearanceType::init (const char * fileName)
 	}
 	else
 	{
-		// Base shape.  In stand Pose by default.
 		treeShape[0] = new TG_TypeMultiShape;
 		gosASSERT(treeShape[0] != NULL);
 
@@ -675,7 +662,6 @@ void TreeAppearanceType::init (const char * fileName)
 					// texture names to GOS handles on the TYPE render shape so the
 					// GPU batcher draws with the override's OWN textures.
 					LoadOverrideRenderShapeTextures(treeRenderShape[0]);
-					// TREE-OVERRIDE-LOD-MVP Task 1: LOD0 populated.
 					treeRenderShapeLodCount = 1;
 					fprintf(stderr, "[MODOVERRIDE] tree '%s': render override applied (%s)\n",
 					        treeBaseName, overridePath);
@@ -795,8 +781,6 @@ void TreeAppearanceType::destroy (void)
 		}
 	}
 
-	// MODEL-OVERRIDE dual-shape: free every populated render override LOD.
-	// TREE-OVERRIDE-LOD-MVP Task 1: per-LOD chain.
 	for (long i = 0; i < MAX_LODS; i++)
 	{
 		if (treeRenderShape[i])

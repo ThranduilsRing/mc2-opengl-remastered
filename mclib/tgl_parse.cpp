@@ -13,8 +13,6 @@
 // Files will require user intervention to parse!!
 long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 {
-	//------------------------------------------
-	// Store off the Node Names.
 	char *nodeName = strstr((char *)aseBuffer,ASE_NODE_NAME);
 	gosASSERT(nodeName != NULL);
 
@@ -53,8 +51,6 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 		strcpy(parentId,"None");
 	}
 
-	//----------------------------------------------------
-	// Store off NODE ABS position for heirarchy
 	nodeName = strstr((char *)aseBuffer,ASE_NODE_POS);
 	gosASSERT(nodeName != NULL);
 
@@ -73,8 +69,6 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 	GetNumberData(nodeName,numData);
 	nodeCenter.y = (float)atof(numData);
 
-	//----------------------------------------
-	// Find the Number of Vertices
 	char *vertexCount = strstr((char *)aseBuffer,ASE_NUM_VERTEX);
 	gosASSERT(vertexCount != NULL);
 	
@@ -93,8 +87,6 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 		return (0);
 	}
 
-	//---------------------------------------
-	// Find the Number of faces
 	char *faceCount = strstr((char *)aseBuffer,ASE_NUM_FACE);
 	gosASSERT(faceCount != NULL);
 		
@@ -102,15 +94,11 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 	numTypeTriangles = atol(faceCount);
 	gosASSERT(numTypeTriangles != 0);
 
-	//-------------------
-	// Vertex Data Next.
 	listOfTypeVertices = (TG_TypeVertexPtr)TG_Shape::tglHeap->Malloc(sizeof(TG_TypeVertex) * numTypeVertices);
 	gosASSERT(listOfTypeVertices != NULL);
 
 	memset(listOfTypeVertices,0xff,sizeof(TG_TypeVertex) * numTypeVertices);
 
-	//---------------------------
-	// Create vertex normal list
 	int *vertexNormalCount = (int*)TG_Shape::tglHeap->Malloc(sizeof(int) * numTypeVertices);
 	gosASSERT(vertexNormalCount != NULL);
 
@@ -120,8 +108,6 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 	{
 		char numberData[256];
 
-		//------------------------------------------------
-		// First the Vertex Position
 		char vertexID[256];
 		sprintf(vertexID,"%s% 5d",ASE_MESH_VERTEX_ID,i);
 
@@ -153,16 +139,11 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 		listOfTypeVertices[i].normal.y = 
 		listOfTypeVertices[i].normal.z = 0.0f;
 
-		//-----------------------------------------------------
-		// Next, Read in Vertex Colors
 
 		listOfTypeVertices[i].aRGBLight 			= 0xff000000;
 
-		//-----------------------------------------------------
 	}
 
-	//---------------------------------------
-	// Face Data Next.
 	listOfTypeTriangles = (TG_TypeTrianglePtr)TG_Shape::tglHeap->Malloc(sizeof(TG_TypeTriangle) * numTypeTriangles);
 	gosASSERT(listOfTypeTriangles != NULL);
 
@@ -172,8 +153,6 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 	{
 		char numberData[256];
 
-		//-----------------------------------------------
-		// First the Vertices for the face
 		char faceId[256];
 		sprintf(faceId,"%s% 5d:",ASE_MESH_FACE_ID,i);
 
@@ -220,11 +199,7 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 
 		listOfTypeTriangles[i].renderStateFlags = 0;		//No Flags yet.
 
-		//---------------------------------------------------------------------
-		// UVData for the face.
-		// This should be nummies!
 		//
-		//Load up the TFaces
 		sprintf(faceId,"%s",ASE_NUM_TVFACES);
 
 		faceData = strstr((char *)aseBuffer,faceId);
@@ -253,7 +228,6 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 			GetNumberData(faceData,numberData);
 			tVFaces.z = (float)atol(numberData);
 	
-			//Load up the TVERT0
 			sprintf(faceId,"%s",ASE_NUM_TVERTEX);
 	
 			faceData = strstr((char *)aseBuffer,faceId);
@@ -292,7 +266,6 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 				listOfTypeTriangles[i].uvdata.v0 = 0.0f;
 			}
 	
-			//Load up the TVERT1
 			sprintf(faceId,"%s",ASE_NUM_TVERTEX);
 	
 			faceData = strstr((char *)aseBuffer,faceId);
@@ -329,7 +302,6 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 				listOfTypeTriangles[i].uvdata.v1 = 0.0f;
 			}
 	
-			//Load up the TVERT2
 			sprintf(faceId,"%s",ASE_NUM_TVERTEX);
 	
 			faceData = strstr((char *)aseBuffer,faceId);
@@ -376,11 +348,7 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
    			listOfTypeTriangles[i].uvdata.v2 = 0.0f;
 		}
 
-		//------------------------------------------------------------
 
-		//---------------------------------------------------------------------
-		// Color Data for the face.
-		//Load up the CFaces
 		sprintf(faceId,"%s",ASE_NUM_CVFACES);
 
 		faceData = strstr((char *)aseBuffer,faceId);
@@ -411,7 +379,6 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 			GetNumberData(faceData,numberData);
 			cVFaces.z = (float)atol(numberData);
 
-			//Load up the VERTCOL0
 			sprintf(faceId,"%s",ASE_NUM_CVERTEX);
 
 			faceData = strstr((char *)aseBuffer,faceId);
@@ -443,7 +410,6 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 
 			listOfTypeVertices[listOfTypeTriangles[i].Vertices[0]].aRGBLight = (0xff << 24) + (redC << 16) + (greenC << 8) + blueC;
 
-			//Load up the VERTCOL1
 			sprintf(faceId,"%s",ASE_NUM_CVERTEX);
 
 			faceData = strstr((char *)aseBuffer,faceId);
@@ -475,7 +441,6 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 
 			listOfTypeVertices[listOfTypeTriangles[i].Vertices[1]].aRGBLight = (0xff << 24) + (redC << 16) + (greenC << 8) + blueC;
 
-			//Load up the VERTCOL2
 			sprintf(faceId,"%s",ASE_NUM_CVERTEX);
 
 			faceData = strstr((char *)aseBuffer,faceId);
@@ -514,10 +479,7 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 			listOfTypeVertices[listOfTypeTriangles[i].Vertices[2]].aRGBLight = 0xff000000;
 		}
 
-		//------------------------------------------------------------
 
-		//------------------------------------------------------------
-		// Dig out the face Normal.
 		sprintf(faceId,"%s %d",ASE_FACE_NORMAL_ID,i);
 		faceData = strstr((char *)aseBuffer,faceId);
 		gosASSERT(faceData != NULL);		
@@ -535,7 +497,6 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 		GetNumberData(faceData,numberData);
 		listOfTypeTriangles[i].faceNormal.y = (float)atof(numberData);
 
-		//------------------------------------------------------------
 		char vertexID[256];
 		sprintf(vertexID,"%s",ASE_VERTEX_NORMAL_ID);
 		char *vertexData = strstr((char *)faceData,vertexID);
@@ -592,7 +553,6 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 			GetNumberData(vertexData,numberData);
 			listOfTypeVertices[vertexNum].normal.y += (float)atof(numberData);
 
-		//------------------------------------------------------------
 	}
 
 	//-----------------------------------------------
@@ -633,18 +593,12 @@ int TG_TypeShape::LoadTGShapeFromASE (const char *fileName)
 	// Fully loads and parses an ASE File.  These files are
 	// output by 3D Studio MAX's ASCII Scene Exporter.
 
-	//------------------------------------------
-	// Check if exists by getting size
 	long aseFileSize = gos_FileSize(fileName);
 	gosASSERT(aseFileSize > 0);
 
-	//---------------------------------------
-	// Create Buffer to read entire file into
 	BYTE *aseContents = (BYTE *)TG_Shape::tglHeap->Malloc(aseFileSize);
 	gosASSERT(aseContents != NULL);
 
-	//---------------------------------------
-	// Open File and read it and close it
 	HGOSFILE aseFile;
 	gos_OpenFile(&aseFile,fileName,READONLY);
 
@@ -656,12 +610,8 @@ int TG_TypeShape::LoadTGShapeFromASE (const char *fileName)
 
 	gos_CloseFile(aseFile);
 
-	//----------------------------------------
-	// Check for valid ASE Header data.
 	gosASSERT(S_strnicmp(ASE_HEADER,(char *)aseContents,strlen(ASE_HEADER)) == 0);
 
-	//---------------------------------------
-	// Find the number of Textures
 	char textureId[256];
 	char *textureData;
 
@@ -821,7 +771,6 @@ void TG_TypeShape::InitFromImportedMesh(const char* nodeIdIn, const char* parent
 	nodeCenter = center;
 	relativeNodeCenter = center;
 
-	// Take ownership of caller-allocated geometry buffers.
 	numTypeVertices    = numVerts;
 	numTypeTriangles   = numTris;
 	listOfTypeVertices  = vertexBuf;

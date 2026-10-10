@@ -422,11 +422,9 @@ void TreeAppearance::registerStatic() {
 				GpuStaticPropRegistry::setRecipeNoShadow(regIdx, true);
 			}
 		} else {
-			// M4: LOD unavailable — leave registered=false, continue.
 			staticReg[lod].registered  = false;
 		}
 
-		// Free the throwaway higher-LOD render-instance (LOD0 == treeShape, kept).
 		if (lod != 0 && lodShape) {
 			lodShape->ClearAnimation();
 			delete lodShape;
@@ -508,7 +506,6 @@ bool TreeAppearance::prewarmStaticLightBake(Camera* cam)
 
 	treeShape->TransformMultiShape_HierarchyOnly(&xlatPosition, &rot);
 
-	// Bake into permanent SSBO slot for LOD0.
 	mc2CacheOrBakeStaticGpuLight(treeShape, staticReg[lod].registered, staticReg[lod].recipeIndex);
 	const uint32_t lightIdx = treeShape->getCachedGpuLightIndex();
 	// Share light slot across all LODs (matches update() K×M fix).

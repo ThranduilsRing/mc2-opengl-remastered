@@ -398,7 +398,6 @@ void mc2LightBakeStabilityObserve(int32_t recipeIndex, uint32_t lightDataIndex)
                 mc2_diag::writeEvent("LIGHTBAKE_PROOF", 1, 0, diag_buf);
             }
         }
-        // Aggregate coverage so recipes beyond the 32 log-cap are accounted for.
         if ((s_lbFirstSeenIndex.size() % 256u) == 0u) {
             std::fprintf(stderr,
                 "[LIGHTBAKE-PROOF v1] event=coverage recipes_tracked=%zu max_index=%u S=%u out_of_prefix=%llu\n",
@@ -586,9 +585,6 @@ uint32_t mc2LightSlotTableCount()        { return mcTextureManager ? mcTextureMa
 
 uint32_t MC_TextureManager::addLightDataStructure(TG_HWLightsData* light_data)
 {
-    // Tracy zone retained — formerly named "scan", now wraps the whole
-    // function so old captures remain comparable. Should drop from
-    // ~12 µs/call (linear scan) to ~200-300 ns/call (hash + map ops).
     ZoneScopedN("addLightDataStructure scan");
     // FRAME-JOBS-2 precondition: lock covers map lookup + grow-if-needed +
     // table write + map insert as a single atomic sequence.
@@ -609,7 +605,6 @@ uint32_t MC_TextureManager::addLightDataStructure(TG_HWLightsData* light_data)
         // will continue to find the existing slot via memcmp-verify.
     }
 
-    // unique data passed, so add it
     if(lightDataStructuresCount + 1 >= lightDataStructuresCapacity)
     {
         TG_HWLightsData* new_lights_data = new TG_HWLightsData[lightDataStructuresCapacity + 128];
@@ -776,7 +771,6 @@ void MC_TextureManager::bakeStaticLightSlot(int32_t recipeIndex, const TG_HWLigh
         lightDataStructuresCount = s_staticLightHighWater;
 }
 
-// Diagnostic body — declaration in txmmgr.h. See header for rationale.
 MC_TextureManager::LightSlotPeek MC_TextureManager::peekLightSlot(uint32_t idx) const
 {
     LightSlotPeek p = {-1, -1, 0.0f, 0.0f, 0.0f};

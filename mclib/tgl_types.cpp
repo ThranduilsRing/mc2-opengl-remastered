@@ -23,8 +23,6 @@ static bool tgNameContainsCI(const char* hay, const char* needle)
 	return false;
 }
 
-//-------------------------------------------------------------------------------
-// Parse Functions
 void GetNumberData (char *rawData, char *result)
 {
 	long startIndex = 0;
@@ -52,7 +50,6 @@ void GetNumberData (char *rawData, char *result)
 	result[endIndex-startIndex] = 0;
 }	
 
-//-------------------------------------------------------------------------------
 void GetWordData (char *rawData, char *result)
 {
 	long startIndex = 0;
@@ -77,7 +74,6 @@ void GetWordData (char *rawData, char *result)
 	result[endIndex-startIndex] = 0;
 }	
 
-//-------------------------------------------------------------------------------
 void GetNameData (char *rawData, char *result)
 {
 	long startIndex = 0;
@@ -98,24 +94,18 @@ void GetNameData (char *rawData, char *result)
 	result[endIndex-startIndex] = 0;
 }	
 
-//-------------------------------------------------------------------------------
-// Class TG_TypeNode
 
-//-------------------------------------------------------------------------------
  void *TG_TypeNode::operator new (size_t mySize)
  {
 	void *result = TG_Shape::tglHeap->Malloc(mySize);
 	return result;
  }
  
-//-------------------------------------------------------------------------------
  void TG_TypeNode::operator delete (void *us)
  {
 	TG_Shape::tglHeap->Free(us);
  }
  
-//-------------------------------------------------------------------------------
-// Frees memory and resets locals to defaults.
 void TG_TypeNode::destroy (void)
 {
 	init();
@@ -182,8 +172,6 @@ TG_ShapePtr TG_TypeNode::CreateFrom (void)
 //
 long TG_TypeNode::MakeFromHelper (BYTE *aseBuffer, const char *fileName)
 {
-	//------------------------------------------
-	// Store off the Node Names.
 	char *nodeName = strstr((char *)aseBuffer,ASE_NODE_NAME);
 	gosASSERT(nodeName != NULL);
 
@@ -243,7 +231,6 @@ long TG_TypeNode::MakeFromHelper (BYTE *aseBuffer, const char *fileName)
 	return(0);
 }	
 
-//-------------------------------------------------------------------------------
 void TG_TypeNode::LoadBinaryCopy (File &binFile)
 {
 	//Other Data
@@ -259,10 +246,8 @@ void TG_TypeNode::LoadBinaryCopy (File &binFile)
 	binFile.read((MemoryPtr)parentId,TG_NODE_ID);
 }
 
-//-------------------------------------------------------------------------------
 void TG_TypeNode::SaveBinaryCopy (File &binFile)
 {
-	//What kind of thing is this
 	binFile.writeInt(TYPE_NODE);
 	
 	//Other Data
@@ -287,7 +272,6 @@ void TG_TypeNode::SaveBinaryCopy (File &binFile)
 TG_ShapePtr TG_TypeShape::CreateFrom (void)
 {
 	TG_ShapePtr newShape = NULL;
-	//newShape = (TG_ShapePtr)TG_Shape::tglHeap->Malloc(sizeof(TG_Shape));
 	void* memarea = TG_Shape::tglHeap->Malloc(sizeof(TG_Shape));
 	newShape = ::new(memarea) TG_Shape();
 	gosASSERT(newShape != NULL);
@@ -393,7 +377,6 @@ TG_ShapePtr TG_TypeShape::CreateFrom (void)
 	return newShape;
 }
 
-//-------------------------------------------------------------------------------
 void TG_TypeShape::LoadBinaryCopy (File &binFile)
 {
 	gosVERTEX_FORMAT_RECORD vdecl[] =
@@ -520,10 +503,8 @@ void TG_TypeShape::LoadBinaryCopy (File &binFile)
 	binFile.read((MemoryPtr)parentId,TG_NODE_ID);
 }
 
-//-------------------------------------------------------------------------------
 void TG_TypeShape::SaveBinaryCopy (File &binFile)
 {
-	//What kind of thing is this
 	binFile.writeInt(SHAPE_NODE);
 	
 	//listOfTypeVertices
@@ -560,8 +541,6 @@ void TG_TypeShape::SaveBinaryCopy (File &binFile)
 	binFile.write((MemoryPtr)parentId,TG_NODE_ID);
 }
 
-//-------------------------------------------------------------------------------
-//Frees memory and resets locals to defaults.
 void TG_TypeShape::destroy (void)
 {
 	if (listOfTypeVertices)
@@ -613,8 +592,6 @@ bool TG_Shape::GetIsAlphaTest() const
 	return static_cast<const TG_TypeShape*>(myType)->alphaTestOn;
 }
 
-//-------------------------------------------------------------------------------
-//Frees memory and resets locals to defaults.
 void TG_Shape::destroy (void)
 {
 	//THIS IS CORRECT!!!!
@@ -643,8 +620,6 @@ void TG_Shape::destroy (void)
 // Files will require user intervention to parse!!
 long TG_TypeShape::MakeFromHelper (BYTE *aseBuffer, const char *fileName)
 {
-	//------------------------------------------
-	// Store off the Node Names.
 	char *nodeName = strstr((char *)aseBuffer,ASE_NODE_NAME);
 	gosASSERT(nodeName != NULL);
 
@@ -681,8 +656,6 @@ long TG_TypeShape::MakeFromHelper (BYTE *aseBuffer, const char *fileName)
 		strcpy(parentId,"None");
 	}
 
-	//----------------------------------------------------
-	// Store off NODE ABS position for heirarchy
 	nodeName = strstr((char *)aseBuffer,ASE_NODE_POS);
 	gosASSERT(nodeName != NULL);
 
@@ -701,12 +674,8 @@ long TG_TypeShape::MakeFromHelper (BYTE *aseBuffer, const char *fileName)
 	GetNumberData(nodeName,numData);
 	nodeCenter.y = (float)atof(numData);
 
-	//----------------------------------------
-	// Find the Number of Vertices
 	numTypeVertices = 0;
 
-	//---------------------------------------
-	// Find the Number of faces
 	numTypeTriangles = 0;
 
 	return(0);

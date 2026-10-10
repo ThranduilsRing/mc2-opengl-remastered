@@ -3,7 +3,6 @@
 #include "move_internal.h"
 
 
-// MOVE MAP class
 
 void* MoveMap::operator new (size_t ourSize) {
 
@@ -203,7 +202,6 @@ inline long MoveMap::markGoals (Stuff::Vector3D finalGoal) {
 		bool nextToGoal = false;
 		if (doorSide == 0) {
 			if (finalGoalR == (cellR + 1))
-//				if (!doorCellBlocked(cellR, cellC))
 					if ((finalGoalC >= cellC) && (finalGoalC < (cellC + doorLength))) {
 						// Our global goal is on the other side of this door...
 						map[cellR * width + finalGoalC].setFlag(MOVEFLAG_GOAL);
@@ -213,7 +211,6 @@ inline long MoveMap::markGoals (Stuff::Vector3D finalGoal) {
 			}
 		else {
 			if (finalGoalR == (cellR - 1))
-//				if (!doorCellBlocked(cellR, cellC)
 					if ((finalGoalC >= cellC) && (finalGoalC < (cellC + doorLength))) {
 						// Our global goal is on the other side of this door...
 						map[cellR * maxWidth + finalGoalC].setFlag(MOVEFLAG_GOAL);
@@ -289,8 +286,6 @@ inline long MoveMap::markGoals (Stuff::Vector3D finalGoal) {
 		}
 	}
 	
-//	if (numGoalCells == 0)
-//		OutputDebugString("No Goal Cells");
 	return(numGoalCells);
 }
 
@@ -363,7 +358,6 @@ long MoveMap::setUp (long mapULr,
 	thruAreas[0] = -1;
 	thruAreas[1] = -1;
 
-	// First, gotta set some params for the calc...
 	ULr = mapULr;
 	ULc = mapULc;
 	minRow = 0;
@@ -398,10 +392,8 @@ long MoveMap::setUp (long mapULr,
 	if (params & MOVEPARAM_SWEEP_MINES)
 		avoidMines = false;
 
-	// Now that the params are set up, build the map...
 	long pathLockCost = clearCost << 3;
 
-	// Set the map costs based upon the tiles in the scenario map...
 	bool groundMover = ((moveLevel == 0) || (moveLevel == 1));
 	for (long cellRow = 0; cellRow < height; cellRow++)
 		for (long cellCol = 0; cellCol < width; cellCol++) {			
@@ -414,8 +406,6 @@ long MoveMap::setUp (long mapULr,
 				if (offMapCell)
 					map[moveMapIndex].setFlag(MOVEFLAG_OFFMAP);
 
-				// Tile (terrain) type...
-				//long tileType = curTile.getTileType();
 				if (offMapCell && !travelOffMap)
 					cost = COST_BLOCKED;
 				else if (groundMover) {
@@ -517,7 +507,6 @@ long MoveMap::setUp (long level,
 	thruAreas[0] = thruArea[0];
 	thruAreas[1] = thruArea[1];
 
-	// First, gotta set some params for the calc...
 	long firstSectorRow = GlobalMoveMap[level]->areas[thruArea[0]].sectorR;
 	long firstSectorCol = GlobalMoveMap[level]->areas[thruArea[0]].sectorC;
 	if (thruArea[1] == -1) {
@@ -579,7 +568,6 @@ long MoveMap::setUp (long level,
 				minCol = 0;
 				maxRow = SECTOR_DIM - 1;
 				maxCol = SECTOR_DIM - 1;
-				//STOP(("MoveMap.setup: same sectors not allowed"));
 			}
 		}
 	}
@@ -610,7 +598,6 @@ long MoveMap::setUp (long level,
 		cannotEnterOffMap = false;
 	}
 
-	// Now that the params are set up, build the map...
 	bool followRoads = ((params & MOVEPARAM_FOLLOW_ROADS) != 0);
 	bool traverseShallowWater = ((params & (MOVEPARAM_WATER_SHALLOW + MOVEPARAM_WATER_DEEP)) != 0);
 	bool traverseDeepWater = ((params & MOVEPARAM_WATER_DEEP) != 0);
@@ -618,7 +605,6 @@ long MoveMap::setUp (long level,
 	if (params & MOVEPARAM_SWEEP_MINES)
 		avoidMines = false;
 
-	// Set the map costs based upon the tiles in the scenario map...
 	bool groundMover = ((moveLevel == 0) || (moveLevel == 1));
 	for (long cellRow = 0; cellRow < height; cellRow++)
 		for (long cellCol = 0; cellCol < width; cellCol++) {			

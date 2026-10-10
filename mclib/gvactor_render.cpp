@@ -5,7 +5,6 @@
 #include "../RenderCore/axis_convert.h"
 
 
-//-----------------------------------------------------------------------------
 long GVAppearance::renderShadows (void)
 {
 	// Skip legacy blob shadows when shadow maps are active
@@ -22,8 +21,6 @@ long GVAppearance::renderShadows (void)
 		: (inView && visible);
 	if (gvShadowVisible)
 	{
-		//---------------------------------------------
-		// Call Multi-shape render stuff here.
 		if (gvShadowShape)
 			gvShadowShape->RenderShadows(true);
 		else
@@ -40,7 +37,6 @@ long GVAppearance::renderShadows (void)
 // reporting. See the long root-cause note at the call site.
 static const bool s_vehicleLitPath = mc2::gate::get<"MC2_VEHICLE_LIT_PATH">();
 
-//-----------------------------------------------------------------------------
 long GVAppearance::render (long depthFixup)
 {
 	gvShape->SetTextureHandle(0,localTextureHandle);
@@ -172,10 +168,7 @@ long GVAppearance::render (long depthFixup)
 			}
 		
 			
-			//selected = FALSE;
 			
-			//------------------------------------------
-			// Render GOS FX if necessary
 			if (destructFX && destructFX->IsExecuted())
 			{
 				gosFX::Effect::DrawInfo drawInfo;
@@ -326,8 +319,6 @@ long GVAppearance::render (long depthFixup)
 		
 		if ((sensorLevel > 0) && (sensorLevel < 5))
 		{
-			//---------------------------------------
-			// Draw Sensor Contact here.
 			if (sensorLevel > 1)
 			{
 				sensorCircleShape->Render();

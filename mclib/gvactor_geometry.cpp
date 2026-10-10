@@ -4,17 +4,12 @@
 #include "../RenderCore/axis_convert.h"
 
 
-//-----------------------------------------------------------------------------
 void GVAppearance::setPaintScheme (void)
 {
-	//----------------------------------------------------------------------------
-	// Simple really.  Get the texture memory, apply the paint scheme, let it go!
 	DWORD gosHandle = mcTextureManager->get_gosTextureHandle(gvShape->GetTextureHandle(0));
 
 	if (gosHandle && gosHandle != 0xffffffff)
 	{
-		//-------------------
-		// Lock the texture.
 		TEXTUREPTR textureData;
 		gos_LockTexture(gosHandle, 0, 0, &textureData);
 
@@ -99,16 +94,12 @@ void GVAppearance::setPaintScheme (void)
 			}
 		}
 
-		//------------------------
-		// Unlock the texture
 		gos_UnLockTexture(gosHandle);
 	}
 }	
 
-//---------------------------------------------------------------------------
 DWORD bgrTorgb (DWORD frontRGB);
 
-//-----------------------------------------------------------------------------
 void GVAppearance::setPaintScheme (DWORD mcRed, DWORD mcGreen, DWORD mcBlue)
 {
 #ifdef BGR
@@ -125,7 +116,6 @@ void GVAppearance::setPaintScheme (DWORD mcRed, DWORD mcGreen, DWORD mcBlue)
 	setPaintScheme();	
 }	
 
-//-----------------------------------------------------------------------------
 void GVAppearance::getPaintScheme( DWORD& red, DWORD& green, DWORD& blue )
 {
 #ifdef BGR
@@ -139,17 +129,12 @@ void GVAppearance::getPaintScheme( DWORD& red, DWORD& green, DWORD& blue )
 #endif /*BGR*/
 }
 
-//-----------------------------------------------------------------------------
 void GVAppearance::resetPaintScheme (DWORD red, DWORD green, DWORD blue)
 {
-	//---------------------------------------------------------------------------------
-	// Simple really.  Toss the current texture, reload the RGB and reapply the colors
 	
 	DWORD gosHandle = mcTextureManager->get_gosTextureHandle(localTextureHandle);
 	mcTextureManager->removeTexture(gosHandle);
 	
-	//-------------------------------------------------
-	// Load the texture and store its handle.
 	char txmName[1024];
 	gvShape->GetTextureName(0,txmName,256);
 
@@ -159,7 +144,6 @@ void GVAppearance::resetPaintScheme (DWORD red, DWORD green, DWORD blue)
    	FullPathFileName textureName;
    	textureName.init(texturePath,txmName,"");
 
-	//DWORD paintInstance = (red << 16) + (green << 8) + (blue);
 	/* The texture manager asks for a unique 32bit identifier for every texture instance.
 	However, it requires 72 bits to fully describe a mech texture (the base color (stored in
 	the variable "red"), highlight color1 (blue), and highlight color2 (green), each of which
@@ -193,7 +177,6 @@ void GVAppearance::resetPaintScheme (DWORD red, DWORD green, DWORD blue)
 				/* In this case, the texture returned should already have the paint scheme
 				applied. */
 	
-				//Still need to store psRed/psGreen/psBlue!!!!
 				psRed = red;
 				psGreen = green;
 				psBlue = blue;
@@ -215,7 +198,6 @@ void GVAppearance::resetPaintScheme (DWORD red, DWORD green, DWORD blue)
 				/* In this case, the texture returned should already have the paint scheme
 				applied. */
 	
-				//Still need to store psRed/psGreen/psBlue!!!!
 				psRed = red;
 				psGreen = green;
 				psBlue = blue;
@@ -225,29 +207,20 @@ void GVAppearance::resetPaintScheme (DWORD red, DWORD green, DWORD blue)
 	}
 	else
 	{
-		//PAUSE(("Warning: %s texture name not found",textureName));
 		gvShape->SetTextureHandle(0,0xffffffff);
 	}
 	
 	setPaintScheme(red,green,blue);
 }	
 
-//-----------------------------------------------------------------------------
 void GVAppearance::setGesture (unsigned long gestureId)
 {
-	//------------------------------------------------------------
-	// Check if state is possible.
 	if (gestureId >= MAX_GV_ANIMATIONS)
 		return;
 
-	//------------------------------------------------------------
-	// Check if object destroyed.  If so, no animation!
 	if ((status == OBJECT_STATUS_DESTROYED) || (status == OBJECT_STATUS_DISABLED))
 		return;
 		
-	//----------------------------------------------------------------------
-	// If state is OK, set animation data, set first frame, set loop and 
-	// reverse flag, and start it going until you hear otherwise.
 	appearType->setAnimation(gvShape,gestureId);
 	gvAnimationState = gestureId;
 	currentFrame = 0.0f;
@@ -275,7 +248,6 @@ void GVAppearance::setGesture (unsigned long gestureId)
 	canTransition = false;
 }
 
-//-----------------------------------------------------------------------------
 Stuff::Vector3D GVAppearance::getHitNode (void)
 {
 	if (hitNodeId == -1)
@@ -285,7 +257,6 @@ Stuff::Vector3D GVAppearance::getHitNode (void)
  	return result;
 }
 
-//-----------------------------------------------------------------------------
 void GVAppearance::setObjectParameters (const Stuff::Vector3D &pos, float Rot, long sel, long team, long homeRelations)
 {
 	movedThisFrame = false;
@@ -305,7 +276,6 @@ void GVAppearance::setObjectParameters (const Stuff::Vector3D &pos, float Rot, l
 	homeTeamRelationship = homeRelations;
 }
 
-//-----------------------------------------------------------------------------
 void GVAppearance::setMoverParameters (float turretRot, float lArmRot, float rArmRot, bool isAirborne)
 {
 	turretRotation = turretRot;
@@ -314,14 +284,11 @@ void GVAppearance::setMoverParameters (float turretRot, float lArmRot, float rAr
 	isInfantry = isAirborne;
 }	
 
-//-----------------------------------------------------------------------------
 void GVAppearance::debugUpdate (void)
 {
 	if (!inDebugMoveMode)
 		return;
 
-	//----------------------------------------
-	// Adjust mechDebugAngle based on Input
 	if (userInput->getKeyDown(KEY_LEFT) && userInput->ctrl())
 	{
 		vehicleDebugAngle += 11.25;
@@ -336,8 +303,6 @@ void GVAppearance::debugUpdate (void)
 			vehicleDebugAngle += 360.0;
 	}
 
-	//----------------------------------------
-	// Adjust torsoDebugAngle based on Input
 	if (userInput->getKeyDown(KEY_UP) && userInput->ctrl())
 	{
 		turretDebugAngle += 11.25;
@@ -352,8 +317,6 @@ void GVAppearance::debugUpdate (void)
 			turretDebugAngle += 360.0;
 	}
 
-	//------------------------------------------
-	// Adjust Speed Based on Input
 	if (userInput->getKeyDown(KEY_EQUALS) && userInput->ctrl())
 	{
 		debugVelMag += 10.0;
@@ -369,8 +332,6 @@ void GVAppearance::debugUpdate (void)
 		debugVelMag = 0.0;
 	}
 
-	//------------------------------------------------------------------
-	// Adjust position based on vehicle Velocity which is based on gesture
 	Stuff::Vector3D velocity;
 	velocity.x = 0.7071f;
 	velocity.z = 0.0;
@@ -403,7 +364,6 @@ void GVAppearance::debugUpdate (void)
 	recalcBounds();
 }
 
-//-----------------------------------------------------------------------------
 bool GVAppearance::isMouseOver (float px, float py)
 {
 	if (inView)
@@ -423,7 +383,6 @@ bool GVAppearance::isMouseOver (float px, float py)
 	return(inView);
 }	
 
-//-----------------------------------------------------------------------------
 bool GVAppearance::recalcBounds (void)
 {
 	// F3 CPU projection cost-baseline: aggregate per-actor scope into the
@@ -442,9 +401,6 @@ bool GVAppearance::recalcBounds (void)
 		// [PROJECTZ:ScreenXYOracle id=gvactor_screen_pos]
 		eye->projectForScreenXY(position,screenPos);
 		
-		//--------------------------------------------------
-		// First, if we are using perspective, figure out
-		// if object too far from camera.  Far Clip Plane.
 		if (eye->usePerspective)
 		{
 			Stuff::Point3D Distance;
@@ -470,10 +426,6 @@ bool GVAppearance::recalcBounds (void)
 				setVisibilityGatesFromLegacy(true);
 			}
 			
-			//-----------------------------------------------------------------
-			// If inside farClip plane, check if behind camera.
-			// Find angle between lookVector of Camera and vector from camPos
-			// to Target.  If angle is less then halfFOV, object is visible.
 			if (inView)
 			{
 				Stuff::Vector3D Distance;
@@ -525,7 +477,6 @@ bool GVAppearance::recalcBounds (void)
 				(upperLeft.x <= eye->getScreenResX()) &&
 				(upperLeft.y <= eye->getScreenResY()))
 			{
-				//We are on screen.  Figure out selection box.
 				Stuff::Vector3D boxCoords[8];
 				Stuff::Vector4D bcsp[8];
 
@@ -578,7 +529,6 @@ bool GVAppearance::recalcBounds (void)
 
 				for (long i=0;i<8;i++)
 				{
-					// [PROJECTZ:ScreenXYOracle id=gvactor_box_rect]
 					eye->projectForScreenXY(boxCoords[i],bcsp[i]);
 					if (!i)
 					{
@@ -638,7 +588,6 @@ bool GVAppearance::recalcBounds (void)
 							}
 						}
 						
-						// we are at this LOD level.
 						if (selectLOD != currentLOD)
 						{
 							currentLOD = selectLOD;
@@ -654,8 +603,6 @@ bool GVAppearance::recalcBounds (void)
 
 							gvShape->SetAlphaValue(alphaValue);
 
-							//-------------------------------------------------
-							// Load the texture and store its handle.
 							for (long j=0;j<gvShape->GetNumTextures();j++)
 							{
 								char txmName[1024];
@@ -686,7 +633,6 @@ bool GVAppearance::recalcBounds (void)
 								}
 								else
 								{
-									//PAUSE(("Warning: %s texture name not found",textureName));
 									gvShape->SetTextureHandle(j,0xffffffff);
 								}
 							}
@@ -695,10 +641,8 @@ bool GVAppearance::recalcBounds (void)
 							resetPaintScheme(r,g,b);
 						}
 
-						//ONLY change if we need
 						if (currentLOD && baseLOD)
 						{
-						// we are at the Base LOD level.
 							currentLOD = 0;
 							
 							BYTE alphaValue = gvShape->GetAlphaValue();
@@ -709,8 +653,6 @@ bool GVAppearance::recalcBounds (void)
 							gvShape = appearType->gvShape[currentLOD]->CreateFrom();
 							gvShape->SetAlphaValue(alphaValue);
 							
-							//-------------------------------------------------
-							// Load the texture and store its handle.
 							for (long i=0;i<gvShape->GetNumTextures();i++)
 							{
 								char txmName[1024];
@@ -741,7 +683,6 @@ bool GVAppearance::recalcBounds (void)
 								}
 								else
 								{
-									//PAUSE(("Warning: %s texture name not found",textureName));
 									gvShape->SetTextureHandle(i,0xffffffff);
 								}
 							}
@@ -767,14 +708,10 @@ bool GVAppearance::recalcBounds (void)
 	return(inView);
 }
 
-//-----------------------------------------------------------------------------
 bool GVAppearance::playDestruction (void)
 {
-	//Check if there is a Destruct FX
 	if (appearType->destructEffect[0])
 	{
-		//--------------------------------------------
-		// Yes, load it on up.
 		unsigned flags = gosFX::Effect::ExecuteFlag;
 
 		Check_Object(gosFX::EffectLibrary::Instance);
@@ -808,7 +745,6 @@ bool GVAppearance::playDestruction (void)
 	return false;		//We didn't have a destruct effect.  Tell the object to play its default.
 }
 
-//-----------------------------------------------------------------------------
 Stuff::Vector3D GVAppearance::getNodeNamePosition (const char *nodeName)
 {
 	Stuff::Vector3D result = position;
@@ -822,8 +758,6 @@ Stuff::Vector3D GVAppearance::getNodeNamePosition (const char *nodeName)
 			return result;
 	}
 
-   	//-------------------------------------------
-   	// Create Matrix to conform to.
    	Stuff::UnitQuaternion qRotation;
    	float yaw = rotation * DEGREES_TO_RADS;
    	qRotation = Stuff::EulerAngles(0.0f, yaw, 0.0f);
@@ -848,7 +782,6 @@ Stuff::Vector3D GVAppearance::getNodeNamePosition (const char *nodeName)
 	return result;
 }
 
-//-----------------------------------------------------------------------------
 Stuff::Vector3D GVAppearance::getNodeIdPosition (long nodeId)
 {
 	Stuff::Vector3D result = position;
@@ -862,8 +795,6 @@ Stuff::Vector3D GVAppearance::getNodeIdPosition (long nodeId)
 			return result;
 	}
 
-   	//-------------------------------------------
-   	// Create Matrix to conform to.
    	Stuff::UnitQuaternion qRotation;
    	float yaw = rotation * DEGREES_TO_RADS;
    	qRotation = Stuff::EulerAngles(0.0f, yaw, 0.0f);

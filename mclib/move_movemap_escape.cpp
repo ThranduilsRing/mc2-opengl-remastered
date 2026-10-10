@@ -5,10 +5,8 @@
 
 long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, long* goalCell) {
 
-	// PATHFINDING-SOLVER-ISOLATION-1: per-solve context (default-OFF).
 	mc2_move::SolveContext ctx;
 
-	// PATHFINDING-FACTS-1: gated per-solve telemetry (default-OFF, byte-identical).
 	mc2_path_trace::SolveScope _pt("escape");
 	const bool _pathTrace = _pt.active;
 	long _ptNodes = 0;
@@ -19,8 +17,6 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 		QueryPerformanceCounter(calcStart);
 	#endif
 
-	// Clear the start cell, in case we're starting in a blocked cell...
-	//map[startR * maxCellWidth + startC].cost = clearCost;
 
 	// If the start tile is blocked, let's clear it so we may move off of
 	// it, at least. Change the blocked tiles to just barely passable...
@@ -54,9 +50,6 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 	if (MaxHPrime < 500)
 		MaxHPrime = 500;
 	
-	// If we haven't already, create the OPEN list...
-	// PATHFINDING-SOLVER-ISOLATION-1: OFF owns/uses the shared global as before;
-	// ON uses the ctx private queue + flag snapshot via solveOpen/solveJumpOnBlocked.
 	if (!ctx.isolated && !openList) {
 		openList = new PriorityQueue;
 		gosASSERT(openList != NULL);
@@ -73,7 +66,6 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 	curMapNode->hPrime = 10; //calcHPrime(curRow, curCol);
 	curMapNode->fPrime = curMapNode->hPrime;
 
-	// Put the START vertex on the empty OPEN list...
 	PQNode initialVertex;
 	initialVertex.key = curMapNode->fPrime;
 	initialVertex.id = curRow * MAX_MAPWIDTH + curCol;
@@ -119,7 +111,6 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 			if (openN > _ptOpenPeak) _ptOpenPeak = openN;
 		}
 
-		// Grab the best node...
 		PQNode bestPQNode;
 		solveOpen->remove(bestPQNode);
 		if (_pathTrace) _ptNodes++;
@@ -130,10 +121,8 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 
 		long bestNodeG = bestMapNode->g;
 
-		// Now, close the best node...
 		bestMapNode->setFlag(MOVEFLAG_CLOSED);
 		
-		// Have we found the goal...
 		if (bestMapNode->flags & MOVEFLAG_GOAL) {
 			goalFound = true;
 			break;
@@ -151,12 +140,8 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 				}
 			}
 
-			// Now, process this direction. First, calc the cell to check,
-			// offset from the current cell...
 			long succRow = bestRow + cellShift[cellOffsetIndex++];
 			long succCol = bestCol + cellShift[cellOffsetIndex++];
-			// If it's on the map, check it...
-			//if (inMapBounds(succRow, succCol, height, width)) {
 			if (succRow > 0 && succRow < height && succCol > 0 && succCol < width) {
 
 				MoveMapNodePtr succMapNode = &map[succRow * maxWidth + succCol];
@@ -170,10 +155,8 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 							numNodesVisited++;
 						#endif
 				
-						// How can we get back to BESTNODE from SUCCESSOR...
 						char dirToParent = reverseShift[dir];
 
-						// What's our cost to go from START to this SUCCESSOR?
 						bool jumping = false;
 						long cost = succMapNode->cost;
 						// Diagonal movement is more costly...
@@ -197,7 +180,6 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 							// be processed. Let's check if we have a better
 							// path thru this route...
 							if (succNodeG < succMapNode->g) {
-								// This new path is cheaper...
 								succMapNode->parent = dirToParent;
 								succMapNode->g = succNodeG;
 								succMapNode->fPrime = succNodeG + succMapNode->hPrime;
@@ -218,13 +200,10 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 								// This new path is cheaper...
 								succMapNode->parent = dirToParent;
 
-								// Now, we have to propogate the new cost...
 								propogateCostJUMP(succRow, succCol, cost, bestNodeG);
 							}
 							}
 						else {
-							// This node is neither OPEN nor CLOSED, so toss it
-							// into the OPEN list...
 							succMapNode->parent = dirToParent;
 							succMapNode->g = succNodeG;
 							succMapNode->fPrime = succNodeG + succMapNode->hPrime;
@@ -258,15 +237,12 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 	#endif
 
 	if (goalFound) {
-		// First, let's count how long the path is...
 		long curRow = goalCell[0] = (long)bestRow;
 		long curCol = goalCell[1] = (long)bestCol;
 		long numCells = 0;
 		while ((curRow != startR) || (curCol != startC)) {
 			numCells += 1;
 			long cellOffsetIndex = map[curRow * maxWidth + curCol].parent * 2;
-			//if ((cellOffsetIndex < 0) || (cellOffsetIndex > 14))
-			//	OutputDebugString("PathFinder: whoops\n");
 			curRow += cellShift[cellOffsetIndex++];
 			curCol += cellShift[cellOffsetIndex];
 		}
@@ -275,7 +251,6 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 		if (doorDirection != -1)
 			numCells++;
 
-		// PATHFINDING-FACTS-1: record path length + MAX_STEPS truncation (release-silent today).
 		if (_pathTrace) {
 			_pt.len = (int)numCells;
 			_pt.fail = 0;
@@ -300,9 +275,7 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 			gosASSERT(numCells <= MAX_STEPS_PER_MOVEPATH);
 		}
 #endif
-		// Now, let's build the path...
 
-		// Grab the path and return it...
 		path->init();
 		if (numCells) {
 			
@@ -401,7 +374,6 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 				long cellOffsetIndex = map[curRow * maxWidth + curCol].parent << 1;
 				curRow += cellShift[cellOffsetIndex++];
 				curCol += cellShift[cellOffsetIndex];
-				//calcAdjNode(curRow, curCol, map[curRow * maxCellWidth + curCol].parent);
 			}
 			
 			#ifdef BLOCKED_PATH_TEST

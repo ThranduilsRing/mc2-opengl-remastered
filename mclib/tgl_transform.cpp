@@ -28,15 +28,12 @@ static bool tgLightBillboardTwoSided()
 static bool s_hotGreenLightTraceDone = false;
 static bool s_hotGreenLightTraceEnabled = mc2::gate::get<"MC2_OBJECT_PARITY_TRACE">();
 
-//-------------------------------------------------------------------------------
-// TG_Shape
 void *TG_Shape::operator new (size_t mySize)
 {
 	void *result = TG_Shape::tglHeap->Malloc(mySize);
 	return result;
 }
  
-//-------------------------------------------------------------------------------
  void TG_Shape::operator delete (void *us)
 {
 	TG_Shape::tglHeap->Free(us);
@@ -56,7 +53,6 @@ void TG_Shape::SetCameraMatrices (Stuff::LinearMatrix4D *camOrigin, Stuff::Matri
 	s_worldToClip.Multiply(s_worldToCamera, *s_cameraToClip);
 }	
 
-//-------------------------------------------------------------------------------
 void TG_Shape::SetFog (DWORD fRGB, float fStart, float fFull)
 {
 	fogColor = fRGB;
@@ -70,7 +66,6 @@ void TG_Shape::SetFog (DWORD fRGB, float fStart, float fFull)
 	}
 }	
 
-//-------------------------------------------------------------------------------
 void TG_Shape::SetViewport (float mulX, float mulY, float addX, float addY)
 {
 	viewMulX = mulX;
@@ -107,7 +102,6 @@ void TG_Shape::SetFogRGB (DWORD fRGB)
 	fogRGB = fRGB;
 }	
 
-//-------------------------------------------------------------------------------
 void TG_TypeShape::movePosRelativeCenterNode (void)
 {
 	for (long i=0;i<numTypeVertices;i++)
@@ -260,8 +254,6 @@ long TG_Shape::MultiTransformShape (Stuff::Matrix4D *shapeToClip, Stuff::Point3D
 
 		if (eye->usePerspective)
 		{
-			//---------------------------------------
-			// Perspective Transform
 			float rhw = 1.0f;
 			if (xformCoords.w != 0.0f)
 				rhw = 1.0f / xformCoords.w;
@@ -273,8 +265,6 @@ long TG_Shape::MultiTransformShape (Stuff::Matrix4D *shapeToClip, Stuff::Point3D
 		}
 		else
 		{
-			//---------------------------------------
-			// Parallel Transform	
 			screen.x = (1.0f - xformCoords.x) * viewMulX + viewAddX;
 			screen.y = (1.0f - xformCoords.y) * viewMulY + viewAddY;
 			screen.z = xformCoords.z;
@@ -304,8 +294,6 @@ long TG_Shape::MultiTransformShape (Stuff::Matrix4D *shapeToClip, Stuff::Point3D
 			if (screen.y > g_previewBoundsMaxY) g_previewBoundsMaxY = screen.y;
 		}
 
-		//----------------------------------------------------
-		// Lighting goes here.
 		DWORD redFinal=0, greenFinal=0, blueFinal=0;
 		DWORD redAmb = 0, greenAmb = 0, blueAmb = 0;
 		DWORD redSpec=0, greenSpec=0, blueSpec=0;
@@ -733,7 +721,6 @@ long TG_Shape::MultiTransformShape (Stuff::Matrix4D *shapeToClip, Stuff::Point3D
 			if (blueFinal > 255)
 				blueFinal = 255;
 
-			// Stage 2.D.2: print final CPU result for traced hot-green vertex.
 			if (doHotGreenTrace) {
 				std::fprintf(stderr,
 					"[PARITY_DIAG v2] CPU hot-green final: "
@@ -819,8 +806,6 @@ long TG_Shape::MultiTransformShape (Stuff::Matrix4D *shapeToClip, Stuff::Point3D
 			listOfVertices[j].frgb = (0xff << 24) + (redSpec << 16) + (greenSpec << 8) + (blueSpec);
 		}
 
-		//-------------------
-		// Distance FOG now.
 		if (useFog && Camera::HazeFactor != 0.0f)
 		{
 			float fogFactor = 1.0 - Camera::HazeFactor;
@@ -869,8 +854,6 @@ long TG_Shape::MultiTransformShape (Stuff::Matrix4D *shapeToClip, Stuff::Point3D
 		&::mc2_object_recon::g_per_frame.shape_flight_ns);
 	for (unsigned int j=0;j<numTriangles;j++,tri++)
 	{
-		//---------------------------------------
-		// Mark backfacing those that are.
 		float cosine = 0.0;
 		cosine = (*backFacePoint * (tri->faceNormal));
 		// EDGE-LIGHT-BILLBOARD-CULL-1 (master-FAIL #8): edge-light glow cards are
@@ -888,8 +871,6 @@ long TG_Shape::MultiTransformShape (Stuff::Matrix4D *shapeToClip, Stuff::Point3D
 	
 			if (useFaceLighting)
 			{
-				//--------------------------------------------
-				// Flat Shade any face which are flat shaded.
 				for (long i=0;i<s_numLights;i++)
 				{
 					if (s_listOfLights[i] != NULL)
@@ -1267,8 +1248,6 @@ long TG_Shape::MultiTransformShape_PositionsOnly (Stuff::Matrix4D *shapeToClip, 
 
 		if (eye->usePerspective)
 		{
-			//---------------------------------------
-			// Perspective Transform
 			float rhw = 1.0f;
 			if (xformCoords.w != 0.0f)
 				rhw = 1.0f / xformCoords.w;
@@ -1280,8 +1259,6 @@ long TG_Shape::MultiTransformShape_PositionsOnly (Stuff::Matrix4D *shapeToClip, 
 		}
 		else
 		{
-			//---------------------------------------
-			// Parallel Transform
 			screen.x = (1.0f - xformCoords.x) * viewMulX + viewAddX;
 			screen.y = (1.0f - xformCoords.y) * viewMulY + viewAddY;
 			screen.z = xformCoords.z;
@@ -1331,8 +1308,6 @@ long TG_Shape::MultiTransformShape_PositionsOnly (Stuff::Matrix4D *shapeToClip, 
 		&::mc2_object_recon::g_per_frame.shape_flight_ns);
 	for (unsigned int j=0;j<numTriangles;j++,tri++)
 	{
-		//---------------------------------------
-		// Mark backfacing those that are.
 		float cosine = 0.0;
 		cosine = (*backFacePoint * (tri->faceNormal));
 		// EDGE-LIGHT-BILLBOARD-CULL-1 (master-FAIL #8): edge-light glow cards are

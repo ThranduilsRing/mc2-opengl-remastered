@@ -26,7 +26,6 @@ long BldgAppearance::calcCellsCovered (Stuff::Vector3D& pos, short* cellList) {
 			appearType->setAnimation(bldgShape,bdAnimationState);
 	}
 
-	// New way.  For each vertex in each shape, translate to world
 	for (int i=0;i<bldgShape->GetNumShapes();i++)
 	{
 		//Check if the artists meant for this piece to NOT block passability!!
@@ -50,17 +49,13 @@ long BldgAppearance::calcCellsCovered (Stuff::Vector3D& pos, short* cellList) {
 					if ((0 > cellR) || (Terrain::realVerticesMapSide * MAPCELL_DIM <= cellR)
 						|| (0 > cellC) || (Terrain::realVerticesMapSide * MAPCELL_DIM <= cellC))
 					{
-						//gosASSERT(false);
 						continue;
 					}
-	//				if (GameMap->inBounds(cellR, cellC)) {
-						// Record the cell...
 						if (numCoords > (maxCoords - 2))
 							Fatal(numCoords, "BldgAppearance.markMoveMap: too many coords for cellList ");
 							
 						cellList[numCoords++] = (short)cellR;
 						cellList[numCoords++] = (short)cellC;
-	//				}
 				}
 			}
 		}
@@ -94,7 +89,6 @@ void BldgAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 	land->worldToCell(position, cellR, cellC);
 	if (appearType->isForestClump)
 	{
-		// New way.  For each vertex in each shape, translate to world
 		for (int i=0;i<bldgShape->GetNumShapes();i++)
 		{
 			//Check if the artists meant for this piece to NOT block passability!!
@@ -121,8 +115,6 @@ void BldgAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 						pTmp->passable = true;
 						pTmp->gate = false;
 						pTmp->forest = true;
-						//pTmp->specialType = type;
-						//pTmp->specialID = counter;
 					}
 					
 					float cellLocalHeight = vertexPos.z * metersPerWorldUnit * 0.25f;
@@ -168,7 +160,6 @@ void BldgAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 			}
 		}
 
-		// New way.  For each vertex in each shape, translate to world
 		for (int i=0;i<bldgShape->GetNumShapes();i++)
 		{
 			//Check if the artists meant for this piece to NOT block passability!!
@@ -266,7 +257,6 @@ void BldgAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 			}
 		}
 
-		// New way.  For each vertex in each shape, translate to world
 		for (int i=0;i<bldgShape->GetNumShapes();i++)
 		{
 			//Check if the artists meant for this piece to NOT block passability!!
@@ -355,7 +345,6 @@ long BldgAppearance::markMoveMap (bool passable, long* lineOfSightRect, bool use
 		gosASSERT(!useHeight);
 		// Store the max number of coords allowed in the first cell. Can overwrite it now...
 		int maxCoords = cellList[0];
-		// New way.  For each vertex in each shape, translate to world
 		for (int i = 0; i < tempBldgShape->GetNumShapes(); i++) 
 		{
 			//Check if the artists meant for this piece to NOT block passability!!
@@ -375,7 +364,6 @@ long BldgAppearance::markMoveMap (bool passable, long* lineOfSightRect, bool use
 						continue;
 					}
 					
-					// Building lineOfSightRect...
 					if (cellR < minRow)
 						minRow = cellR;
 					if (cellR > maxRow)
@@ -385,7 +373,6 @@ long BldgAppearance::markMoveMap (bool passable, long* lineOfSightRect, bool use
 					if (cellC > maxCol)
 						maxCol = cellC;
 						
-					// Record the cell...
 					if (numCoords > (maxCoords - 2))
 						Fatal(numCoords, "BldgAppearance.markMoveMap: too many coords for cellList ");
 					cellList[numCoords++] = (short)cellR;
@@ -396,7 +383,6 @@ long BldgAppearance::markMoveMap (bool passable, long* lineOfSightRect, bool use
 	}
 	else 
 	{
-		// New way.  For each vertex in each shape, translate to world
 		for (int i=0;i<tempBldgShape->GetNumShapes();i++)
 		{
 			//Check if the artists meant for this piece to NOT block passability!!
@@ -416,7 +402,6 @@ long BldgAppearance::markMoveMap (bool passable, long* lineOfSightRect, bool use
 						continue;
 					}
 					
-					// Building lineOfSightRect...
 					if (cellR < minRow)
 						minRow = cellR;
 					if (cellR > maxRow)
@@ -426,7 +411,6 @@ long BldgAppearance::markMoveMap (bool passable, long* lineOfSightRect, bool use
 					if (cellC > maxCol)
 						maxCol = cellC;
 						
-					// Mark the map...
 					MapCellPtr curCell = GameMap->getCell(cellR, cellC);
 					if (appearType->isForestClump) {
 						if (vertexPos.z <= 1.0f)
@@ -483,7 +467,6 @@ void BldgAppearance::markLOS (bool clearIt)
 			{
 				Stuff::Vector3D vertexPos, worldPos;
 				vertexPos = tempBldgShape->GetShapeVertexInEditor(i,j,-rotation);
-//				vertexPos = tempBldgShape->GetShapeVertexInWorld(i,j,-rotation);
 				worldPos.Add(position,vertexPos);
 	
 				int cellR, cellC;
@@ -494,7 +477,6 @@ void BldgAppearance::markLOS (bool clearIt)
 					continue;
 				}
 				
-				// Mark the map...
 				MapCellPtr curCell = GameMap->getCell(cellR, cellC);
 
 				if (!clearIt)
@@ -542,7 +524,6 @@ void BldgAppearance::calcAdjCell (long& row, long& col)
 			appearType->setAnimation(bldgShape,bdAnimationState);
 	}
 
-	// New way.  For each vertex in each shape, translate to world
 	int numVert = 0;
 	for (int i=0;i<bldgShape->GetNumShapes();i++)
 	{
@@ -557,8 +538,6 @@ void BldgAppearance::calcAdjCell (long& row, long& col)
 				int cellR, cellC;
 				land->worldToCell(worldPos,cellR,cellC);
 				
-				//MapCellPtr curCell = GameMap->getCell(cellR, cellC);
-				//curCell->setPassable(passable);	
 			}
 		}
 	}

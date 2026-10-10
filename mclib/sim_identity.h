@@ -96,7 +96,6 @@ struct MoverRecord {
     int32_t pathSteps  = 0;  // NON-VISUAL
 };
 
-// --- FNV-1a 64 -------------------------------------------------------------
 constexpr uint64_t kFnvOffset = 1469598103934665603ULL;
 constexpr uint64_t kFnvPrime  = 1099511628211ULL;
 
@@ -198,7 +197,6 @@ inline void sortRecords(MoverRecord* recs, size_t n) {
     }
 }
 
-// --- digests ---------------------------------------------------------------
 
 // Per-mover GRADED digest: quantized VISUAL + exact NON-VISUAL fields.
 inline uint64_t digestMoverGraded(const MoverRecord& r) {

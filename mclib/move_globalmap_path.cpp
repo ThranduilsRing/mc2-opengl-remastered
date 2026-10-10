@@ -23,7 +23,6 @@ void GlobalMap::setStartDoor (long startArea) {
 	startDoor->fromAreaIndex = 1;
 
 	for (long curLink = 0; curLink < startDoor->numLinks[0]; curLink++) {
-		// Point the goal "door" to its area's doors...
 		const long doorIndex = areas_doors[startArea][curLink].doorIndex;
 		const long doorSide = areas_doors[startArea][curLink].doorSide;
 		GlobalMapDoorPtr curDoor = &doors[doorIndex];
@@ -41,21 +40,12 @@ void GlobalMap::setStartDoor (long startArea) {
 				costSum += (curDoor->col - startCell[1]);
 		}
 
-		//startDoor->links[0][curLink].doorIndex = doorIndex;
-		//startDoor->links[0][curLink].doorSide = doorSide;
-		//startDoor->links[0][curLink].cost = costSum;
-		//startDoor->links[0][curLink].openCost = costSum;
         
 		startDoor_links[0][curLink].doorIndex = doorIndex;
 		startDoor_links[0][curLink].doorSide = doorSide;
 		startDoor_links[0][curLink].cost = costSum;
 		startDoor_links[0][curLink].openCost = costSum;
 		
-		// Make sure this area door points to the goal door...
-		//curDoor->links[doorSide][curDoor->numLinks[doorSide]].doorIndex = numDoors + DOOR_OFFSET_START;
-		//curDoor->links[doorSide][curDoor->numLinks[doorSide]].doorSide = 0;
-		//curDoor->links[doorSide][curDoor->numLinks[doorSide]].cost = costSum;
-		//curDoor->links[doorSide][curDoor->numLinks[doorSide]].openCost = costSum;
 
 		curDoor_links[doorSide][curDoor->numLinks[doorSide]].doorIndex = numDoors + DOOR_OFFSET_START;
 		curDoor_links[doorSide][curDoor->numLinks[doorSide]].doorSide = 0;
@@ -91,7 +81,6 @@ void GlobalMap::setAreaTeamID (long area, char teamID) {
 	for (long d = 0; d < curArea->numDoors; d++) {
 		doors[curArea_doors[d].doorIndex].teamID = teamID;
 	}
-	//opens = true;
 }
 
 void GlobalMap::setAreaOwnerWID (long area, long objWID) {
@@ -131,7 +120,6 @@ void GlobalMap::setGoalDoor (long goalArea) {
 	goalDoor->numLinks[1] = 0;
 	
 	for (long curLink = 0; curLink < goalDoor->numLinks[0]; curLink++) {
-		// Point the goal "door" to its area's doors...
 		long doorIndex = areas_doors[goalArea][curLink].doorIndex;
 		long doorSide = areas_doors[goalArea][curLink].doorSide;
 		gosASSERT((doorIndex >= 0) && (doorIndex < (numDoors + NUM_DOOR_OFFSETS)));
@@ -265,7 +253,6 @@ long GlobalMap::calcPath (long startArea,
 	if (g_moveReconEnabled) g_moveRecon_astar_global_calls++;
 
 	#ifdef _DEBUG
-	//systemHeap->walkHeap(false,false,"GlobalMap:calc BAD HEAP1\n");
 	#endif
 
 	if ((startArea == -1) || (goalArea == -1))
@@ -290,7 +277,6 @@ long GlobalMap::calcPath (long startArea,
 	// that we'd WANT to limit the search. If so, time to change the sectorDim,
 	// etc...
 
-	// If we haven't already, create the OPEN list...
 	if (!openList) {
 		openList = new PriorityQueue;
 		gosASSERT(openList != NULL);
@@ -313,7 +299,6 @@ long GlobalMap::calcPath (long startArea,
 		if ((uint64_t)numAreas > g_moveRecon_ag_maxNumAreas) g_moveRecon_ag_maxNumAreas = (uint64_t)numAreas;
 	}
 
-	// Clear the doors and prep 'em for the calc...
 	long initHPrime = ZeroHPrime ? 0 : HPRIME_NOT_CALCED;
 	for (long d = 0; d < numDoors + NUM_DOOR_OFFSETS; d++) {
 		doors[d].cost = 1;
@@ -355,8 +340,6 @@ long GlobalMap::calcPath (long startArea,
 				closeArea(i);
 		}
 
-	// Start with the area we're in, and process the possible doors
-	// we can start thru...
 
 	// Put the START vertex on the empty OPEN list...
 	// MC2_MOVE_RECON: close prologue, open search timer.
@@ -380,12 +363,10 @@ long GlobalMap::calcPath (long startArea,
 	gosASSERT(insertErr == NO_ERR);
 	doors[startDoor].flags |= MOVEFLAG_OPEN;
 
-	//THROW THE STARTING LINKS ON THE QUEUE...
 
 	bool goalFound = false;
 
 	while (!openList->isEmpty()) {
-		// Grab the best node...
 		PQNode bestPQNode;
 		openList->remove(bestPQNode);
 		if (g_moveReconEnabled) g_moveRecon_ag_nodesPopped++;
@@ -398,16 +379,13 @@ long GlobalMap::calcPath (long startArea,
 
 		long fromAreaIndex = bestMapDoor->fromAreaIndex;
 
-		// Now, close the best node...
 		bestMapDoor->flags |= MOVEFLAG_CLOSED;
 		
-		// Have we found the goal...
 		if (bestDoor == goalDoor) {
 			goalFound = true;
 			break;
 		}
 
-		// Now, check the door links for this door...
 		long toAreaIndex = 1 - fromAreaIndex;
 		long thruArea = bestMapDoor->area[toAreaIndex];
 		long numLinks = bestMapDoor->numLinks[toAreaIndex];
@@ -460,16 +438,11 @@ long GlobalMap::calcPath (long startArea,
 				if (succMapDoor->hPrime == HPRIME_NOT_CALCED)
 					succMapDoor->hPrime = calcHPrime(succDoor);
 
-				// What's our cost to go from START to this SUCCESSOR?
 				long succDoorG = bestDoorG + succDoorCost;
 
 				long succFromAreaIndex = (succMapDoor->area[1] == thruArea);
 				if (succMapDoor->flags & MOVEFLAG_OPEN) {
-					// This node is already in the OPEN queue to be
-					// be processed. Let's check if we have a better
-					// path thru this route...
 					if (succDoorG < succMapDoor->g) {
-						// This new path is cheaper...
 						succMapDoor->cost = succDoorCost;
 						succMapDoor->parent = bestDoor;
 						succMapDoor->fromAreaIndex = succFromAreaIndex;
@@ -485,11 +458,7 @@ long GlobalMap::calcPath (long startArea,
 					}
 					}
 				else if (succMapDoor->flags & MOVEFLAG_CLOSED) {
-					// This path may be better than this node's current
-					// path. If so, we may have to propogate thru...
 					if (succDoorG < succMapDoor->g) {
-						// This new path is cheaper. We
-						// have to propogate the new cost...
 						succMapDoor->cost = succDoorCost;
 						succMapDoor->parent = bestDoor;
 						succMapDoor->fromAreaIndex = succFromAreaIndex;
@@ -497,8 +466,6 @@ long GlobalMap::calcPath (long startArea,
 					}
 					}
 				else {
-					// This node is neither OPEN nor CLOSED, so toss it
-					// into the OPEN list...
 					succMapDoor->cost = succDoorCost;
 					succMapDoor->parent = bestDoor;
 					succMapDoor->fromAreaIndex = succFromAreaIndex;
@@ -535,7 +502,6 @@ long GlobalMap::calcPath (long startArea,
 		closeArea(goalArea);
 
 	if (goalFound) {
-		// First, let's count how long the path is...
 		long curDoor = goalDoor;
 		long numSteps = 1;
 		while (curDoor != startDoor) {
@@ -548,11 +514,9 @@ long GlobalMap::calcPath (long startArea,
 		long numDoors = numSteps - 1;
 		gosASSERT((numDoors < MAX_GLOBAL_PATH));
 
-		// Now, let's build the path...
 		curDoor = goalDoor;
 		long curPathDoor = numDoors;
 
-		// Do the doors leading to goal...
 		long costToGoal = 0;
 		while (curPathDoor > 0) {
 			path[curPathDoor - 1].thruArea = doors[curDoor].area[doors[curDoor].fromAreaIndex];
@@ -564,7 +528,6 @@ long GlobalMap::calcPath (long startArea,
 		}
 
 		#ifdef _DEBUG
-		//systemHeap->walkHeap(false,false,"GlobalMap:calc BAD HEAP2\n");
 		#endif
 
 		if (logEnabled) {
@@ -691,7 +654,6 @@ void GlobalMap::print (char* fileName) {
 void GlobalMap::destroy (void) {
 
 	#ifdef _DEBUG
-//	systemHeap->walkHeap(false,false,"GlobalMap BAD HEAP1\n");
 	#endif
 
 	if (areaMap) {

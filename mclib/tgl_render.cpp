@@ -106,13 +106,9 @@ void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool is
 		return;
 	}
 
-	// MECHOPAQUE-ORDER-FIX-2: enqueue-time OpaqueObject note removed — OpaqueObject is
-	// observed at its DRAW site (txmmgr.cpp:3271 GpuMechBatcher_flush), not enqueue;
-	// an enqueue note records before StaticProp's flush and lies about draw order.
 
 	if (fogColor != 0xffffffff)
 	{
-		//gos_SetRenderState( gos_State_Fog, (int)&(fogColor));
 		gos_SetRenderState( gos_State_Fog, fogColor); // sebi
 	}
 	else
@@ -304,7 +300,6 @@ void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool is
 						gVertex[2].z	= forceZ;
 					}
  				
-					//Can make this a flag to optimize!
 					if (isSpotlight)
 					{
 						mcTextureManager->addVertices(0xffffffff,gVertex,MC2_ISSPOTLGT);
@@ -518,7 +513,6 @@ bool TG_Shape::PerPolySelect (float mouseX, float mouseY)
 			v2.y = listOfVertices[triType.Vertices[2]].y;
 			v0.z = v1.z = v2.z = 0.0f;
 			
-			//Using the above vertex Data, determine if the mouse is over this poly!
 			//
 			//Theorem:
 			// Given the sides of the triangle defined by the lines v0v1, v1v2 and v2v0
