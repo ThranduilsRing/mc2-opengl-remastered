@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # TREE-OVERRIDE-LOD-SPEC-1 — Design spec
 
 **Status:** SPEC (design only — no implementation, no runtime behavior change, no collision/asset mutation). Feeds the plan→review→execute phase.
@@ -17,11 +18,11 @@ A model-override forest renders the full-detail 706k-tri override mesh **at ever
 
 ## 1. Current tree-LOD reality (recon §4.1, grep-verified)
 - `TreeAppearance` builds its per-instance render shape from **LOD index 0 only** and never swaps at runtime: `currentLOD=0` (`bdactor.cpp:3834`); `getTreeRenderShape(0)->CreateFrom()` at init (`:3856`) and setObjStatus NORMAL (`:3999`); `registerStatic` transforms LOD-0 geometry (`:4833`).
-- Tree `lodDistance[]` IS loaded (`bdactor.cpp:3634-3639`) but **never used** to swap the render shape. Buildings, by contrast, have distance LOD-swap blocks (`:3025,:3092,:3556`) — and those are the churn/black-prop source.
-- Type-level render shape is a **single** `treeRenderShape` (`bdactor.h:478`), NOT `treeRenderShape[MAX_LODS]`; `getTreeRenderShape(long lod)` discards `lod` when an override is present (`bdactor.h:518`). **This is the structural seam to change.**
+- Tree `lodDistance[]` IS loaded (`mclib/bdactor_update.cpp:223-228`) but **never used** to swap the render shape. Buildings, by contrast, have distance LOD-swap blocks (`:3025,:3092,:3556`) — and those are the churn/black-prop source.
+- Type-level render shape is a **single** `treeRenderShape` (`bdactor.h:478`), NOT `treeRenderShape[MAX_LODS]`; `getTreeRenderShape(long lod)` discards `lod` when an override is present (`mclib/bdactor.h:603`). **This is the structural seam to change.**
 
 ## 2. The black-tree regression class (recon §4.2 — the load-bearing constraint)
-Root cause (`lod-swap-churn spec:78-87`): after a shape/LOD swap the new `TG_MultiShape`'s `lightData_` is default-zero (only `TransformMultiShape_BuildRecipe` positions ran). Static replay `touch()` → `ResubmitCachedGpuLightData()` re-ships all-zero lighting → zero-light slot → **black prop/tree**. Cure already in code: every registration/swap site re-arms `needsFullBakeNextFrame=true` (`bdactor.cpp:4908,:4281,:4256,:2893,:1508,:1476`) forcing a full `update()` that populates `lightData_` before any `touch()`. **Live regression** (`known_issues.md:54` — a prior repoint "resurrected the 2026-05-05 black-tree class").
+Root cause (`lod-swap-churn spec:78-87`): after a shape/LOD swap the new `TG_MultiShape`'s `lightData_` is default-zero (only `TransformMultiShape_BuildRecipe` positions ran). Static replay `touch()` → `ResubmitCachedGpuLightData()` re-ships all-zero lighting → zero-light slot → **black prop/tree**. Cure already in code: every registration/swap site re-arms `needsFullBakeNextFrame=true` (`bdactor.cpp:4908,:4281,:4256,:2893,:1508,:1476`) forcing a full `update()` that populates `lightData_` before any `touch()`. **Live regression** (`docs/known_issues.md:125` — a prior repoint "resurrected the 2026-05-05 black-tree class").
 
 **LIGHTING SAFETY RULE (mandatory invariant for this slice):**
 > Any geometry that can be selected for draw (any LOD) MUST have been fully baked (its `lightData_` populated and a permanent baked light slot assigned) BEFORE it is first replayed. A LOD switch must never select a shape whose `lightData_` is still zero. Achieved by **pre-registering + pre-baking every LOD at mission load** (§4), so a switch is a lookup among already-baked recipes — never an invalidate+re-register. Belt-and-suspenders: any code path that does switch the active shape also sets `needsFullBakeNextFrame=true`.

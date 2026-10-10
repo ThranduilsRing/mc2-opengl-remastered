@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Thermal / IR view — design (THERMAL-IR-DESIGN-1)
 
 Status: **Phase 1 shipped as a labeled placeholder; Phase 2 deferred.**

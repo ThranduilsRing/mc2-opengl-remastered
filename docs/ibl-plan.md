@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # IBL Plan (V-IBL-STATIC-0)
 
 Track V Batch 2 slice 3/3. **Plan only** — no shader/code edits.
@@ -50,13 +51,13 @@ shader-reflect tooling tree).
 
 ### 2.2 Current skybox draw path
 
-- Load: `GameOS/gameos/gos_hdri.cpp:12` `loadHdriTexture(const char*)`
+- Load: `GameOS/gameos/gos_hdri.cpp:111` `loadHdriTexture(const char*)`
   decodes the EXR via tinyexr, uploads as `GL_RGBA16F`
   (`gos_hdri.cpp:55`), `GL_CLAMP_TO_EDGE` + `GL_LINEAR` (no mips,
   `gos_hdri.cpp:57-60`).
-- Init site: `GameOS/gameos/gos_postprocess.cpp:181-208` — env gate
+- Init site: `GameOS/gameos/gos_postprocess_gates.cpp:108-135` — env gate
   `MC2_HDRI_SKY` (default ON unless `=0`), loads
-  `data/hdr/DaySkyHDRI063B_4K.exr` (`gos_postprocess.cpp:185`),
+  `data/hdr/DaySkyHDRI063B_4K.exr` (`GameOS/gameos/gos_postprocess_gates.cpp:112`),
   compiles `hdri_skybox.vert` + `hdri_skybox.frag`.
 - Draw: `GameOS/gameos/gos_postprocess.cpp:981`
   `gosPostProcess::renderHdriSkybox(viewMat, projMat)`. Inverse-

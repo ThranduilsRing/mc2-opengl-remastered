@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # MC2 Automated Testing Strategy
 
 Captured 2026-05-19 from a meta-discussion about test coverage during the

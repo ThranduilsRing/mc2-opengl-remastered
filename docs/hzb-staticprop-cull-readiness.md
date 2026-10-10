@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # HZB Static-Prop Cull — Readiness
 
 `HZB-STATICPROP-CULL-READINESS-1`. Hardens the diagnostic static-prop HZB probe

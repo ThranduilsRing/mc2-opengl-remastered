@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # gosFX Modder Drop-In: New Effect → Tie to Weapon
 
 **Date:** 2026-06-10. Worktree: nifty-mendeleev. Companion: [gosfx-animation-lifecycle-recon.md](gosfx-animation-lifecycle-recon.md).

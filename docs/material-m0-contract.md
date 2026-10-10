@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Material M0 — GPU material contract pin
 
 **Status:** M0 done (contract pin only). No consumer rewiring, no new PBR

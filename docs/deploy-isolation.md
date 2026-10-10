@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Deploy isolation — is this install really mine?
 
 `LINK-GUARD-1`, 2026-07-30.

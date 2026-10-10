@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # Static-Prop Lighting Audit (V-LIGHTING-STATIC-0)
 
 Read-only audit of the current `StaticPropOpaque` lighting model. Captures
@@ -133,7 +134,7 @@ uniform int u_materialGpuSample;  // 0 = legacy texArrayLayer, 1 = material tabl
 
 Source: `shaders/static_prop.frag:53-63`. Kill switch
 `MC2_MATERIAL_GPU_SAMPLE=0` falls back to the per-draw `texArrayLayer`
-(`docs/tier1_env_vars.md:86-92`, `gos_static_prop_batcher.cpp:383-388`).
+(`docs/tier1_env_vars.md:86-92`, `GameOS/gameos/gos_static_prop_batcher_internal.h:386-391`).
 
 MaterialGpu fields actually **consumed** by the .frag today:
 
@@ -230,7 +231,7 @@ v_argb = vec4(lit, 1.0);
 ```
 
 Alpha is **always** 1.0 — the raw `a_aRGBLight` alpha byte is never
-propagated; CPU `tgl.cpp:2225` hardcodes the same.
+propagated; CPU `mclib/tgl_transform.cpp:479` hardcodes the same.
 
 ### 4.4 Fragment composition
 

@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # VFX GPU Simulation Spec — first class: CardCloud (VFX-GPU-SIM-SPEC-0)
 
 Spec for moving the gosFX **CardCloud** per-particle *simulation* onto the GPU,
@@ -29,13 +30,13 @@ Class hierarchy: `CardCloud : SpinningCloud : ParticleCloud : Effect`.
 
 | Concern | Site |
 |---|---|
-| Per-effect age advance | `ParticleCloud::Execute` `particlecloud.cpp:393` (`m_age += dT*m_ageRate`) |
+| Per-effect age advance | `ParticleCloud::Execute` `mclib/gosfx/particlecloud.cpp:370` (`m_age += dT*m_ageRate`) |
 | Birth accumulation | Start seeds `m_birthAccumulator += startingPopulation` (`particlecloud.cpp:350-353`); Execute adds `dT*particlesPerSecond` (`:398-401`) |
 | Birth realization (active++ ) | `ParticleCloud::Execute` `:456-470` (`while m_birthAccumulator>=1 && active<max: CreateNewParticle; AnimateParticle; birthAccumulator-=1`) |
 | Per-particle creation | `ParticleCloud::CreateNewParticle` `:523-592` — child seed, lifetime, emitter-volume offset, initial velocity |
 | Per-particle age | `ParticleCloud::Execute` `:423` (`particle->m_age += dT*particle->m_ageRate`) |
 | Death / removal | `m_age>=1` → `DestroyParticle` (`:466-467`, `:600` sets `m_age=1`); cloud finished when `Effect::HasFinished() && activeCount==0` (`:493`) |
-| **Per-particle motion** | **`SpinningCloud::AnimateParticle` `spinningcloud.cpp:44-…`** — drag (`m_pDrag`), ether (`m_pEtherVelocityX/Y/Z`), acceleration (`m_pAcceleration*`), velocity integrate (`AddScaled`), position integrate; CardCloud particles DO move + spin (`m_localRotation`) |
+| **Per-particle motion** | **`SpinningCloud::AnimateParticle` `mclib/gosfx/spinningcloud.cpp:406-…`** — drag (`m_pDrag`), ether (`m_pEtherVelocityX/Y/Z`), acceleration (`m_pAcceleration*`), velocity integrate (`AddScaled`), position integrate; CardCloud particles DO move + spin (`m_localRotation`) |
 | Per-particle color | `CardCloud::AnimateParticle` `cardcloud.cpp:423-426` → `m_P_color[i]` |
 | Per-particle size/aspect | `CardCloud::AnimateParticle` `:379-382` → `m_halfX/m_halfY` (birth-time from `m_halfHeight`*`m_aspectRatio`); `m_scale` per-frame (SpinningCloud) |
 

@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # HZB / Reverse-Z Depth Convention
 
 Status: **convention locked** (HZB-DEPTH-CONVENTION-TESTS-1). No runtime HZB

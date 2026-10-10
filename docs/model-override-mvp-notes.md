@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # MODEL-OVERRIDE-MVP-1 — Implementation Notes
 
 Running validation/decision log. See plan: `docs/model-override-mvp-plan.md`.
@@ -14,7 +15,7 @@ Running validation/decision log. See plan: `docs/model-override-mvp-plan.md`.
   engine behavior** (stock ALSO shows `U == K`), **not** override-specific, **not** a
   per-frame bake (allocated once + O(1) baked replay), and **not** the GPU raster cost
   (that's LOD/overdraw). Position-dependent gather (`txmmgr.cpp:1278`/`:1333`,
-  `msl.cpp:2061`) → per-instance slot. Recorded as **deferred lighting-ownership
+  `mclib/msl_transform.cpp:585`) → per-instance slot. Recorded as **deferred lighting-ownership
   cleanup** (`docs/model-override-lighting-ownership-recon.md`), NOT a blocker.
 - **NEW GATE — at Task 3** (after LOD1 imported + registered alongside LOD0, rerun LIGHTSLOT):
   - **PASS:** U stays ≈ K / bounded per instance — no multiplication by LOD count
@@ -78,7 +79,7 @@ lod_bake_count=0` — stock byte-identical, exit 0, gl=[]/shader=[].)
 
 ### Why LOD1 does not dedup (the failing site)
 The per-instance `lightDataIndex` comes from `TG_Shape::GatherGpuObjectLightDataOnly`
-(`tgl.cpp:2913`) → `addLightDataStructureWithPerActorColor` → FNV+memcmp dedup on
+(`mclib/tgl_transform.cpp:1367`) → `addLightDataStructureWithPerActorColor` → FNV+memcmp dedup on
 the leaf's `lightData_` (`txmmgr.cpp:1290`). The dedup is content-keyed on the
 gathered `TG_HWLightsData`. LOD0 and LOD1 of one instance share world POSITION,
 but they are DIFFERENT meshes (different first SHAPE_NODE leaf, different
@@ -125,9 +126,9 @@ correct and retained; only the light-slot ownership is the blocker.)
 **Collision/footprint is derived from the SAME `TG_TypeMultiShape` pointer the override would replace. A single-shape hook WOULD change gameplay. Render-only requires a DUAL-SHAPE architecture.**
 
 ### Evidence (read-only proof)
-1. **Buildings:** `BldgAppearance::calcCellsCovered` reads `appearType->bldgShape[currentLOD]` (`bdactor.cpp:2779`, vertex loop `:2786`) — the **same array** the base loader fills (`bdactor.cpp:211,235` `bldgShape[i]->LoadTGMultiShapeFromASE`).
+1. **Buildings:** `BldgAppearance::calcCellsCovered` reads `appearType->bldgShape[currentLOD]` (`mclib/bdactor_terrain.cpp:7`, vertex loop `:2786`) — the **same array** the base loader fills (`bdactor.cpp:211,235` `bldgShape[i]->LoadTGMultiShapeFromASE`).
 2. **Trees:** `TreeAppearance::markTerrain` reads `appearType->treeShape[currentLOD]` (`bdactor.cpp:4266`, vertex loop `:4271`) — the **same array** the tree base loader fills (`bdactor.cpp:3385,3408`).
-3. **Timing/cache:** `calcCellsCovered` runs once at scenario load (`objmgr.cpp:1569` → `terrobj.cpp:1373`), result cached in `cellsCovered` (`terrobj.cpp:1442`), never re-derived at runtime.
+3. **Timing/cache:** `calcCellsCovered` runs once at scenario load (`code/objmgr_io.cpp:330` → `terrobj.cpp:1373`), result cached in `cellsCovered` (`terrobj.cpp:1442`), never re-derived at runtime.
 4. **No separate authority:** `BldgAppearanceType` holds only `bldgShape[MAX_LODS]` + `bldgDmgShape` (visual damage); no `.FITS` footprint, no `collisionOffsetX/Y` consumer, no collision-only mesh. Trees identical. Passability is purely vertex-derived from the visual shape.
 
 ### Consequence — Slice 2 REDESIGNED to dual-shape (supersedes plan §Slice 2 single-shape redirect)
@@ -335,7 +336,7 @@ The dual-shape design is correct (collision stays stock — proven), and resolve
 Align any solution with `docs/asset-pipeline.md` (canonical; render-owner `GpuStaticPropBatcher`, gamedata-owner `BldgAppearance`/`TreeAppearance`) and add a **model-override** row there per its §7.
 
 ### Committed this session (correct + endorsed, even though render incomplete)
-- Caps 10x: `code/mission.cpp:3303-3316` (5M/2M), `code/mission2.cpp:111`, `MC_MAXFACES` `mclib/txmmgr.h:49`. (User: caps were artificial CPU-era limits.)
+- Caps 10x: `code/mission_init.cpp:437-450` (5M/2M), `code/mission2.cpp:111`, `MC_MAXFACES` `mclib/txmmgr.h:49`. (User: caps were artificial CPU-era limits.)
 - Batcher registers the RENDER shape: `bdactor.cpp` init sites (855/3787) + `registerStatic()` tops (both bldg + tree).
 - Env-gated `MC2_MODOVERRIDE_TRACE` discovery log.
 NOTE: the Slice-3 "static-prop render replaced" claim was a misread (bounds-cull, not rasterization) — same root cause. Static props have the same limitation; only the dual-shape collision-safety + resolve/import are proven.
@@ -381,7 +382,7 @@ manifest = stock).
   with `a_`**. `bdactor.cpp LoadOverrideRenderShapeTextures` already loads
   `a_`-prefixed names as `gos_Texture_Alpha` + `SetTextureAlpha(true)`, which
   propagates `textureAlpha` to the leaf type-shapes; the static-prop batcher's
-  per-packet alpha re-resolve (`gos_static_prop_batcher.cpp:4982`,
+  per-packet alpha re-resolve (`GameOS/gameos/gos_static_prop_batcher_finalize.cpp:1660`,
   `src->listOfTextures[slot].textureAlpha`) then sets
   `STATIC_PROP_FLAG_ALPHA_TEST` (0.5 cutoff in `static_prop.frag`).
 - **Trace proof:** `[MODOVERRIDE_TEX] slot=1 name='a_tree_small_02_leaves_diff_1k.tga'
@@ -443,7 +444,7 @@ sticks (`.claude/tree_closeup.png`). Collapse-decimate DOES reduce the leaf card
   122k = 706,628 tris**. Output `data/model_overrides/source/trees/tree_lush.glb`.
 
 ### Pools raised to 32M/16M (the per-instance retention wall)
-- `code/mission.cpp:3310-3322` vertex/color/shadow 16M→**32M**, face/triangle 8M→**16M**.
+- `code/mission_init.cpp:444-456` vertex/color/shadow 16M→**32M**, face/triangle 8M→**16M**.
 - `code/mission2.cpp:111` startVertices 16M→**32M**.
 - `mclib/txmmgr.h:49` `MC_MAXFACES` 8M→**16M**.
 

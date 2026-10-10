@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Next-Gen RTS Engine Vision
 
 **Date:** 2026-05-26  

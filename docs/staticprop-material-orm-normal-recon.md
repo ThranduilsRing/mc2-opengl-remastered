@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # Static-Prop Material ORM + Normal-Map Recon — `STATICPROP-MATERIAL-ORM-NORMAL-RECON-1`
 
 **Status:** recon / design only. No shader, C++, asset-format, ABI, cook, or behavior
@@ -36,7 +37,7 @@ location 3  uint  a_localVertexID
 location 4  uint  a_aRGBLight     // per-vertex light/window magic-color tag
 ```
 **No tangent. Location 5 is free.** CPU stride = 40 B, inline layout
-(`gos_static_prop_batcher.cpp:250-257`), attrib setup `:1887-1900`.
+(`GameOS/gameos/gos_static_prop_batcher_internal.h:256-263`), attrib setup `:1887-1900`.
 
 ### MaterialGpu (`RenderCore/MaterialGpu.h:88-117`) — **the slots already exist**
 ```cpp

@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # TRACKV-VFX-PAYOFF-OPUS-1 — recon synthesis + plan
 
 Branch `claude/trackv-vfx-payoff-1`, worktree `mc2-trackv-vfx-payoff`, off

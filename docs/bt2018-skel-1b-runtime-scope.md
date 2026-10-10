@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # BT2018-SKEL-ENGINE-1B-RUNTIME — imported mech per-frame animation
 
 Make an imported BattleTech mech MOVE: re-pose the merged TG type geometry every

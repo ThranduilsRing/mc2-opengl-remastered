@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # MC2 Render-State MCP Server
 
 Read-only MCP bridge from Claude agents to the running MC2 engine and smoke

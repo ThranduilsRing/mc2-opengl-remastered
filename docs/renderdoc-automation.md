@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # RenderDoc draw-call attribution automation
 
 `tools/renderdoc/` turns the manual "which draw painted these pixels?" hunt

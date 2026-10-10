@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # ASan MVP — Follow-up Findings
 
 Running log of issues surfaced by the ASan build that are **not** what we
@@ -116,7 +117,7 @@ GlobalMap::clearPathExistsTable   mclib/move.cpp:3069
 Building::update                   code/bldng.cpp:855
 GameObjectManager::update          code/objmgr.cpp:1769
 Mission::update                    code/mission.cpp:504
-DoGameLogic                        code/mechcmd2.cpp:2233
+DoGameLogic                        code/mechcmd2_frame.cpp:376
 ```
 
 ### Root cause (hypothesis)
@@ -208,7 +209,7 @@ execute                         mclib/ablexec.cpp:646
 ABLModule::execute              mclib/ablenv.cpp:920
 MechWarrior::runBrain           code/warrior.cpp:2160
 MechWarrior::mainDecisionTree   code/warrior.cpp:4975
-GroundVehicle::updateAIControl  code/gvehicl.cpp:2798
+GroundVehicle::updateAIControl  code/gvehicl_control.cpp:249
 ```
 
 ### Root cause
@@ -310,7 +311,7 @@ READ of size 1 at 0x7ff6cb96f17f
   Turret::update                 code/turret.cpp:588
   GameObjectManager::update      code/objmgr.cpp:1847
   Mission::update                code/mission.cpp:504
-  DoGameLogic                    code/mechcmd2.cpp:2233
+  DoGameLogic                    code/mechcmd2_frame.cpp:376
 
 0x7ff6cb96f17f is located 1 byte before global variable
   'Turret::turretsEnabled' defined in 'turret.cpp:96:13' (size 8)
@@ -476,7 +477,7 @@ all five tier1 missions under ASan (`docs/asan-triage.md`). On nifty.
 ### Differences from finding #5
 
 - Allocation size: **1533 bytes** (vs 31 bytes on mc2_10).
-- Call chain top: `MechWarrior::runBrain` (warrior.cpp:2160) rather
+- Call chain top: `MechWarrior::runBrain` (code/warrior.cpp:1310) rather
   than `MechWarrior::checkAlarms`.
 - Same backtrace from `getCodeToken` down; same 1-byte-past-end pattern.
 

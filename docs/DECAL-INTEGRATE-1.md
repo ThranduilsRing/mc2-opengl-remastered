@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # DECAL-INTEGRATE-1 — joining the two parked projected-decal branches
 
 Slice that joins the two previously-parked projected-decal branches into one coherent,

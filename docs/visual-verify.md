@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Visual-verify pipeline (`tools/visual_verify/`)
 
 One command set that automates what a manual verification fleet does by hand:

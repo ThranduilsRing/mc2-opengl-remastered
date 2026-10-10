@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # Terrain T3 Map-Compatibility Audit (Phase 8z Gate)
 
 **Purpose:** Identify any production or modded terrain map that hits the T3 condition
@@ -24,7 +25,7 @@ inline bool ShouldArmGpuTerrain(bool solidEnabled,
 }
 ```
 
-Called from `GameOS/gameos/gos_terrain_indirect.cpp:2528-2531`:
+Called from `GameOS/gameos/gos_terrain_indirect_atlas.cpp:707-710`:
 ```cpp
 if (gos_terrain_arm::ShouldArmGpuTerrain(
         gpu_driven::IsTerrainSolidEnabled(),
@@ -37,7 +38,7 @@ quad has a real tile-texture handle (cement/overlay tile), i.e. `_wp2 != 0 && _w
 and `< MC_MAXTEXTURES`. Derived by `CollectUniqueNodeIds()` scanning baked quad `_wp2` fields.
 
 **`hasColormapAtlas`** (`g_atlasGLTex != 0`) — true when the GPU atlas texture was successfully
-uploaded by `BuildColormapAtlas()` (`gos_terrain_indirect.cpp:871`).
+uploaded by `BuildColormapAtlas()` (`GameOS/gameos/gos_terrain_indirect_atlas.cpp:179`).
 
 The comment at `gos_terrain_arm_logic.h:40-41` explicitly names the T3 condition:
 > "A legacy non-colormap map has neither signal and falls back to the CPU path."
@@ -49,11 +50,11 @@ Source: `mclib/terrain.cpp:619-645`
 At map load, `Terrain::init()` extracts the base name from the `.pak` filename:
 
 ```cpp
-_splitpath(pakFile->getFilename(), NULL, NULL, name, NULL);   // terrain.cpp:626
+_splitpath(pakFile->getFilename(), NULL, NULL, name, NULL);   // mclib/terrain_init.cpp:8
 terrainName = new char[strlen(name)+1];
 strcpy(terrainName, name);
 
-if (colorMapName)           // overrides name if set (terrain.cpp:630-631)
+if (colorMapName)           // overrides name if set (mclib/terrain_init.cpp:12-13)
     strcpy(name, colorMapName);
 ```
 
@@ -70,27 +71,27 @@ if (file->readIdString("ColorMapName", mapName, 1023) == NO_ERR)
 2. Otherwise, atlas key = pak basename (stem of `.pak` filename)
 
 The engine probes (in order, first match wins):
-- `<texturePath>/<key>.burnin.jpg`  (terrain.cpp:1926 / terrtxm2.cpp BURNIN-DISK-JPEG)
+- `<texturePath>/<key>.burnin.jpg`  (mclib/terrain_raycast.cpp:105 / terrtxm2.cpp BURNIN-DISK-JPEG)
 - `<texturePath>/<key>.burnin.ktx2` (terrtxm2.cpp COLORMAP-BC7-KTX2-1, requires `GLEW_ARB_texture_compression_bptc`)
 - `<texturePath>/<key>.burnin.tga`  (terrtxm2.cpp legacy TGA path)
 - `<texturePath>/<key>.tga`         (legacy fallback, no burnin suffix)
 
-`terrainTextures2 != NULL` is set at `terrain.cpp:644` **only if** at least one of those
-files exists. `BuildColormapAtlas()` at `gos_terrain_indirect.cpp:871` then uploads the data
+`terrainTextures2 != NULL` is set at `mclib/terrain_init.cpp:26` **only if** at least one of those
+files exists. `BuildColormapAtlas()` at `GameOS/gameos/gos_terrain_indirect_atlas.cpp:179` then uploads the data
 to `g_atlasGLTex`.
 
 ### A.3 `terrainTextures2 == NULL` and T11
 
 `terrainTextures2` is the `TerrainColorMap*` at `mclib/terrain.cpp:100`, declared NULL.
-It is allocated at `terrain.cpp:644` iff a colormap file exists on disk.
+It is allocated at `mclib/terrain_init.cpp:26` iff a colormap file exists on disk.
 
 T11 (`terrainTextures2 == NULL` at `terrain.cpp:3658`) is part of the `fullyArmed`
-fast-path-skip gate (`terrain.cpp:3653-3660`). A map with no colormap has
+fast-path-skip gate (`mclib/terrain_render.cpp:554-561`). A map with no colormap has
 `terrainTextures2 == NULL` → `fullyArmed == false` → the `skipSetup` path (which skips
 `setupTextures`) cannot fire → legacy `setupTextures` runs unconditionally.
 
 T11 is a **downstream symptom of T3**: if T3 fires (map never arms GPU path), the water
-fast-path gate at `terrain.cpp:3658` also blocks. Fixing T3 for all maps resolves T11.
+fast-path gate at `mclib/terrain_render.cpp:559` also blocks. Fixing T3 for all maps resolves T11.
 
 ---
 
@@ -352,13 +353,13 @@ None — all discovered terrain `.pak` files have been classified.
    If additional mod directories exist outside this path (custom user mods, development
    worktrees, etc.), they were not audited. The v0.4 game install has no `mods/` directory.
 
-4. **`colorMapName` runtime override.** `Terrain::setColorMapName()` (`terrain.cpp:536`) can
+4. **`colorMapName` runtime override.** `Terrain::setColorMapName()` (`mclib/terrain.cpp:408`) can
    be called programmatically to override the atlas key at runtime. No call sites in the
    codebase scripts were found that pass a different name (all `.fit` files use `ColorMapName`
    matching the pak name). This path was not exhaustively audited via callsite analysis.
 
 5. **`skipColormapTiles()` fast-path.** Some maps invoke the `skipColormapTiles()` path
-   (`terrtxm2.cpp:1939`), which skips per-tile GL upload but still allocates `terrainTextures2`
+   (`mclib/terrtxm2_load.cpp:243`), which skips per-tile GL upload but still allocates `terrainTextures2`
    and uploads the atlas. This means `hasColormapAtlas` is still true for such maps; they
    are correctly classified as ARMED.
 

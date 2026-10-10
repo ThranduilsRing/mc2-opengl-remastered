@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # Mech R→V Lane — Arc Recon (MECH-RV-ARC-RECON-0)
 
 Read-only end-to-end map of the mech render lane, modeled on the
@@ -41,16 +42,16 @@ BattleMech (game AI/state)
 
 | Datum | Owner | Site |
 |---|---|---|
-| mesh geometry | `Mech3DAppearanceType::mechShape[lod]` (TG_TypeMultiShape from .ase) | `mech3d.cpp:350` |
+| mesh geometry | `Mech3DAppearanceType::mechShape[lod]` (TG_TypeMultiShape from .ase) | `mclib/mech3d_type.cpp:32` |
 | per-actor pose (bones) | `TG_MultiShape::listOfShapes[i].shapeToWorld` | staged at `gos_mech_batcher.cpp:1016` |
 | slot0 texHandle (paint) | mcTextureManager **slot index** (NOT gos handle) on `Mech3DAppearance` | `mech3d.cpp:2486` |
 | objectIdRaw | **RenderWorld** handle (`kMechHandleBase=0x10000`) | `RenderWorld.cpp:971`, stored `mech3d.h:478` |
-| materialIdx | `s_mechHandleToMaterialIdx[slot0TexHandle]` → `s_mechMaterialTable`; sentinel `0xFFFFFFFF` | `gos_mech_batcher.cpp:1204` |
+| materialIdx | `s_mechHandleToMaterialIdx[slot0TexHandle]` → `s_mechMaterialTable`; sentinel `0xFFFFFFFF` | `GameOS/gameos/gos_mech_batcher_geometry.cpp:36` |
 | skinning mode | `u_skinningMode` uniform (0=rigid, !=0=4-bone blend) | `mech.vert:73` |
 
 **RenderWorld relationship — route-only.** `MechRenderAdapter` (Slice M2,
 `GameAdapters/MechRenderAdapter.{h,cpp}`) registers a mech at spawn
-(`RenderWorld::registerMech`, `RenderWorld.cpp:971`) and stores the handle
+(`RenderWorld::registerMech`, `RenderWorld/RenderWorld.cpp:1002`) and stores the handle
 back on the appearance (`setRenderWorldHandleForAdapter`,
 `MechRenderAdapter.cpp:111`). RenderWorld is **not** authoritative for mech
 draw — it is an object-ID/handle ledger only. The adapter is explicitly
@@ -77,7 +78,7 @@ GL texture id). Mech textures are **live, per-draw-bound `GL_TEXTURE_2D`
 objects — NOT array layers**, confirmed in code:
 
 - `mech.frag:24` declares `uniform sampler2D u_tex;` (single 2D, not array).
-- `gos_mech_batcher.cpp:1454-1513`: per draw call, `dc.texHandle` (slot index,
+- `GameOS/gameos/gos_mech_batcher_geometry.cpp:286-345`: per draw call, `dc.texHandle` (slot index,
   comment "NOT a gos handle") → `get_gosTextureHandle()` (`:1459`) →
   `gos_GetGLTextureId()` (`:1461`) → bound at GL_TEXTURE0 (`:1513`).
 - `mech.frag:64` forces `textureLod(u_tex, v_uv, 0.0)` — AMD RX 7900 XTX
@@ -92,7 +93,7 @@ declares or samples that SSBO** — `mech.vert`/`mech.frag` have no
 (identity/compare only)" decision: mech textures are not array-able without
 a dedicated cook arc, so `materialIdx` stays a compare/substrate field.
 Gate `MC2_MATERIAL_GPU` (default ON) controls the upload; compare/mismatch
-logged at `gos_mech_batcher.cpp:1305-1323`.
+logged at `GameOS/gameos/gos_mech_batcher_geometry.cpp:137-155`.
 
 **Team color / paint scheme = CPU texture recolor at load, NOT a shader
 feature.** `Mech3DAppearance::setPaintScheme()` (`mech3d.cpp:1725-1836`):
@@ -130,7 +131,7 @@ unused — the ABI slot exists for a future normal-map slice.
 No mech geometry/tessellation shader. **View transport is legacy flat
 uniform**, NOT the ViewUniforms UBO (binding=3). CPU uploads via
 `gos_GetTerrainMVPMat4()` → `glUniformMatrix4fv(s_loc_terrainMVP,...)`
-(`gos_mech_batcher.cpp:1436`). The legacy `cameraToClip` consumer noted in
+(`GameOS/gameos/gos_mech_batcher_geometry.cpp:268`). The legacy `cameraToClip` consumer noted in
 memory is `tgl.cpp:1620,1624` (TG_Shape path); the batcher reads the same
 composed matrix.
 

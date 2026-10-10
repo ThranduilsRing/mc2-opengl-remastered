@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # gosFX Effect Animation — Full Lifecycle Recon (load → spawn → animate → hit → unload)
 
 **Goal:** clean path to replacing animations. **Date:** 2026-06-10. Branch: nifty-mendeleev worktree.
@@ -33,14 +34,14 @@
 ## STAGE 2 — SPAWN / ACTIVATION (template → live instance)
 - Game spawns via `EffectLibrary::MakeEffect(name,flags)` (`effectlibrary.cpp:97-119`) → factory `new` (NO pool). Then `Effect::Start(ExecuteInfo)` (`effect.cpp:525`) seeds age/seed/world-transform (`m_localToParent*parentToWorld`, effect.cpp:587).
 - Call sites: weapon trail/muzzle/hit/miss `weaponbolt.cpp:2530/2550/2570/2590`; mech dust-poof `mech3d.cpp:1604/1625`; jumpjet `mech3d.cpp:1662`; artillery `artlry.cpp:797/815`; bldg destruct `terrobj.cpp:1299`.
-- Attach = world matrix passed each frame (foot node `mech3d.cpp:2866`, jumpjet node `mech3d.cpp:2893`). EffectCloud children follow via `m_localToParent` (`effectcloud.cpp:205`).
+- Attach = world matrix passed each frame (foot node `mclib/mech3d_render.cpp:283`, jumpjet node `mclib/mech3d_render.cpp:310`). EffectCloud children follow via `m_localToParent` (`effectcloud.cpp:205`).
 - **No global active list.** Effect stored on owner object (WeaponBolt/Mech field); owner re-drives it each frame guarded by `IsExecuted()`. Children live in parent `m_children` chain.
-- **Variant selection = which spec name at spawn.** No mid-flight swap; trail→hit = kill+delete one, spawn another instance (`weaponbolt.cpp:629-633`). Seed (`-1`→random, effect.cpp:557) = only per-instance variation knob.
+- **Variant selection = which spec name at spawn.** No mid-flight swap; trail→hit = kill+delete one, spawn another instance (`code/weaponbolt_update.cpp:204-208`). Seed (`-1`→random, effect.cpp:557) = only per-instance variation knob.
 
 ---
 
 ## STAGE 3 — PER-FRAME ANIMATE + RENDER (the motion compute = replace target)
-- Tick: `Effect::Execute(ExecuteInfo)` `effect.cpp:491/601` — called by game objects with `scenarioTime` (e.g. artlry.cpp:894+). ParticleCloud override `particlecloud.cpp:358` loops particles → `AnimateParticle(i,matrix,time)`.
+- Tick: `Effect::Execute(ExecuteInfo)` `mclib/gosfx/effect.cpp:603/601` — called by game objects with `scenarioTime` (e.g. artlry.cpp:894+). ParticleCloud override `particlecloud.cpp:358` loops particles → `AnimateParticle(i,matrix,time)`.
 - **Curve eval per particle per frame** (CPU): `ComputeValue(age,seed)` `fcurve.hpp:131/187/246`. age=lifetime 0..1, seed=per-particle.
   - SpinningCloud base physics: drag/ether/accel `spinningcloud.cpp:454-511`, integrate `519-522`.
   - CardCloud: RGBA+UV+sprite-index `cardcloud.cpp:418-454`. ShardCloud: RGBA `shardcloud.cpp:249-252`. PointCloud: ether/accel `pointcloud.cpp:344-377`.
@@ -61,7 +62,7 @@
 - Death = `HasFinished()` (`effect.cpp:832-851`): age≥1.0 AND no children. Execute() at age≥1 → loop or `Kill()` (`effect.cpp:742`).
 - Destroy = direct `delete`, NO pool. dtor deletes m_children (`effect.cpp:484-495`), bumps `g_effectDestroys`. EffectCloud deletes particle->m_effect on expiry (`effectcloud.cpp:264-291`).
 - Owner = game side for top-level (weaponbolt/gameobj); parent for children.
-- Mission-end: `mechcmd2.cpp:2074 TerminateClasses` → `SpecLibrary::Shutdown` deletes all specs (`spec_library.cpp:43-50`).
+- Mission-end: `code/mechcmd2_frame.cpp:238 TerminateClasses` → `SpecLibrary::Shutdown` deletes all specs (`spec_library.cpp:43-50`).
 
 ---
 

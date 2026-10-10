@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Visual Baseline How-To (V-BASELINE-0)
 
 This doc explains how to capture and compare visual baselines for the

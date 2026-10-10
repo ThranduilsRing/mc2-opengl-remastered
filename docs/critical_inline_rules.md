@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Critical inline rules (every session reads these)
 
 Extracted from CLAUDE.md 2026-05-24. **Authoritative.** CLAUDE.md links here.

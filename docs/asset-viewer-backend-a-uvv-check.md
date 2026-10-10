@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Backend-A UV-V Verification Check (Task 8)
 
 ## Summary

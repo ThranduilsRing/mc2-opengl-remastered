@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Gameplay driver — driving a running mission from an agent
 
 `MC2_UI_COMMAND_FILE` turns a running mission into something an agent can drive:
@@ -327,7 +328,7 @@ setup error: the mission cannot witness this defect class, and the honest result
 is "cannot reproduce under harness" rather than arms that prove nothing.
 
 **Order `freeze_movers` BEFORE `animate`, and know what you get.** Verified by
-reading `GameObjectManager::updateAppearancesOnly` (`code/objmgr.cpp:4857`) and
+reading `GameObjectManager::updateAppearancesOnly` (`code/objmgr_misc.cpp:497`) and
 `BldgAppearance::update` (`mclib/bdactor.cpp:3873`):
 
 - Under freeze, `Building::update()` is **not** called at all — only
@@ -398,7 +399,7 @@ light_row 32771
 ```
 
 Runs the **same** `GatherLightsParameters()` the draw path calls
-(`mclib/txmmgr.cpp:2476`), against the **same** list this object's appearance
+(`mclib/txmmgr_render_phases.cpp:220`), against the **same** list this object's appearance
 class passes to `SetLightList`. It is not a reimplementation — a second copy of
 that arithmetic could agree with itself while disagreeing with the shipped draw.
 

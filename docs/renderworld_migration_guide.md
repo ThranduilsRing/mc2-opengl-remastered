@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # RenderWorld Contributor Migration Guide
 
 Onboarding doc for future contributors (and future Claude sessions) adding new
@@ -327,7 +328,7 @@ recipes).
 Mechs grow `GpuMechInstance` (std430) 48B -> 64B with an `objectIdRaw` field
 + 3 generic `_padN` reserved uints. Vert reads `flat out uint v_objectIdRaw`;
 frag writes location=2 under `#ifdef`. Submit site at
-`mclib/mech3d.cpp:2598` unconditionally fills
+`mclib/mech3d_diag.cpp:65` unconditionally fills
 `desc.objectIdRaw = getRenderWorldHandle().raw()`.
 
 Use this when your draw is "many instances per draw call" (mechs, particles,
@@ -444,7 +445,7 @@ End-to-end walk for a Shift+click on a mech (M2.6 path):
     `GameAdapters::Mech::findMechByHandle(result.handle)` -> `BattleMech*`
     or nullptr on stale handle.
 7.  **Fog predicate (mech-specific).** Respect `ShowMovers` + multiplayer
-    -defeat carve-outs (full predicate from `code/missiongui.cpp:1272-1278`).
+    -defeat carve-outs (full predicate from `code/missiongui_update.cpp:534-540`).
     `MC2_MECH_PICK_PIERCE_FOG=1` is the debug-only bypass.
 8.  **`[GAMEPLAY_PICK v1] hit kind=Mech handle=N idx=N gen=N mech=PTR
     screen=(x,y) gl=(x,y)`** emitted unconditionally on hit;

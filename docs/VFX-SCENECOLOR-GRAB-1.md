@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # VFX-SCENECOLOR-GRAB-1
 
 Feedback-safe **scene-color copy** frame resource. Gated, default-OFF. This is

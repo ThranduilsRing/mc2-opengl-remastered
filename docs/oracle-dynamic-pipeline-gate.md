@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Oracle Gate — Legacy Dynamic Pipeline (mech/vehicle/turret/effects)
 
 Regression gate for the dynamic-object render pipeline work (slices S2 TG render-path,

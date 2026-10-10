@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # Terrain Visual Resample Plan (TERRAIN-RESAMPLE-PLAN-0)
 
 Plan-only artifact. **No implementation in this slice.** Answers the

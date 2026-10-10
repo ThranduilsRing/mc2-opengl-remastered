@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # MODEL-OVERRIDE — Light-slot ownership recon (Task 0 M2 gate result: **STOP**)
 
 **Status:** DIAGNOSTIC measurement result + verdict. The TREE-OVERRIDE-LOD-MVP-1
@@ -44,14 +45,14 @@ is the 1:1 ratio, identical in both manifests.)
 
 The per-instance `lightDataIndex` that feeds `GpuStaticPropRegistry::markVisible`
 (`mclib/bdactor.cpp:4226`) and the GPU SSBO comes from
-`treeShape->getCachedGpuLightIndex()` (captured at `bdactor.cpp:4557` /
+`treeShape->getCachedGpuLightIndex()` (captured at `mclib/bdactor_static.cpp:88` /
 `:4700`). That index is set by:
 
-- `TG_MultiShape::CacheGpuLightData()` (`mclib/msl.cpp:2035`) → first SHAPE_NODE
-  leaf `TG_Shape::GatherGpuObjectLightDataOnly()` (`mclib/tgl.cpp:2910`)
+- `TG_MultiShape::CacheGpuLightData()` (`mclib/msl_transform.cpp:545`) → first SHAPE_NODE
+  leaf `TG_Shape::GatherGpuObjectLightDataOnly()` (`mclib/tgl_transform.cpp:1364`)
 - → `MC_TextureManager::addLightDataStructureWithPerActorColor()`
-  (`mclib/txmmgr.cpp:1333`) → `GatherLightsParameters()` then content dedup in
-  `addLightDataStructure()` (`txmmgr.cpp:1278`, FNV+memcmp `:1285-1297`).
+  (`mclib/txmmgr_lightrow.cpp:409`) → `GatherLightsParameters()` then content dedup in
+  `addLightDataStructure()` (`mclib/txmmgr_lights.cpp:586`, FNV+memcmp `:1285-1297`).
 
 `GatherLightsParameters` produces a **position-dependent** `TG_HWLightsData`
 (per-instance `getTerrainLight` at the tree's world position + per-actor color

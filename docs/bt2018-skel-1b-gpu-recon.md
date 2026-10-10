@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # BT2018-SKEL-1B-GPU — recon + plan (NOT yet implemented)
 
 Goal: make the imported BattleTech mech animate on the **default GPU mech path**
@@ -10,7 +11,7 @@ The GPU mech path is **rigid per-node skinning**:
   blob once; each vertex gets `boneIndices[0]=nodeIdx`, `boneWeights[0]=255`
   (`gos_mech_batcher.cpp:1219,1224`).
 - `uploadMechGeometryVbo()` uploads it via **`glBufferStorage(... 0)` = immutable**
-  (`gos_mech_batcher.cpp:1327-1329`, "CANNOT be re-uploaded in place" comment
+  (`GameOS/gameos/gos_mech_batcher_geometry.cpp:159-161`, "CANNOT be re-uploaded in place" comment
   1290-1291), once at `finalizeGeometry()` (1356, guard `s_geometryFinalized`).
 - Animation happens entirely through per-node `shapeToWorld` matrices gathered in
   `submitActor` (`gos_mech_batcher.cpp:1516-1524`) → `s_boneSsbo` (binding 1) each

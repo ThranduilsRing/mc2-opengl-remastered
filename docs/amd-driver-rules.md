@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # AMD Driver Rules (RX 7900 XTX, driver 26.3.1)
 
 Discovered through extensive debugging. MUST be followed.

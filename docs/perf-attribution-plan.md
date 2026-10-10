@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Perf Attribution Plan (R0–R3) — supersedes the S2-only framing
 
 **Date:** 2026-06-09 · Branch `claude/nifty-mendeleev`
@@ -215,7 +216,7 @@ Hypothesis under test: the 1K-map 50ms logic is mover-AI / pathfinding / MOVE-ma
 | Object appearance update | 0.07ms | OBJECT_RECON |
 | Terrain slimReduce/makeLists | **0 cycles** (gated off by default chunk path) | SLIMSPLIT |
 | Render draw | 0.45ms | HITCH_PHASE |
-| **Terrain-logic (mission.cpp:544/567/569)** | **~50ms (by elimination)** | wall-timer TODO |
+| **Terrain-logic (code/mission_update.cpp:68/567/569)** | **~50ms (by elimination)** | wall-timer TODO |
 
 ### The mc2_24 control (the decisive test)
 mc2_24 stresses AI movement hard: ~41 mechs pathfinding after a gate/wall event, 1287 replans.
@@ -236,7 +237,7 @@ exonerated as a perf bottleneck.
 ### Conclusion & next step
 - **Close the pathfinding-perf idea.** Measured cheap under max load. No new pathfinding arc.
 - **The 1K 50ms is terrain-logic** (`land->update` / `terrainTextures->update` / `land->geometry`
-  minus slimReduce). One wall-timer on mission.cpp:544/567/569 pinpoints which call. This is the
+  minus slimReduce). One wall-timer on code/mission_update.cpp:68/567/569 pinpoints which call. This is the
   **existing terrain-LOD-chunk arc's** territory (Phase 8z), not a new arc.
 - MC2_MOVE_RECON instrumentation left uncommitted (scaffolding; code/objmgr.cpp is mixed with
   pre-existing R2b work — split the hunk before persisting if desired).

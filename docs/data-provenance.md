@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Game Data Provenance
 
 Answers GitHub issue #32 ("Data Files: Patches Applied?"). Distinguishes what

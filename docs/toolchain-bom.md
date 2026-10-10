@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Toolchain bill-of-materials
 
 `TOOLCHAIN-BOM-CHECK-1` (VALIDATION-SCAFFOLD-PREFLIGHT-1).

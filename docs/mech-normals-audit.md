@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # MECH-NORMALS-AUDIT-0
 
 Why the Mad Cat looks "too smooth" and the mech normal debug view shows a
@@ -90,7 +91,7 @@ GPU-mech build path (`gos_mech_batcher.cpp registerTypeLod`) already builds
 triangle soup, so the fix can live there, mech-only:
 
 1. **Confirm first (mandatory, cheap):** the per-triangle `faceNormal`
-   (`listOfTypeTriangles[].faceNormal`, `tgl.cpp:1329`) is correct per-face.
+   (`listOfTypeTriangles[].faceNormal`, `mclib/tgl_parse.cpp:363`) is correct per-face.
    Temporarily write `tri.faceNormal` to all three corners in the batcher and
    capture the mech normal debug view. If it shows clean per-face facets (no
    rainbow garbage), the index-averaging diagnosis is confirmed.

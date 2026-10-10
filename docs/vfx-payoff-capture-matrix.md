@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # VFX payoff capture matrix (VFX-PAYOFF-CAPTURE-MATRIX-1)
 
 Track V VFX-payoff opus, slice 5. Capture presets + commands for the

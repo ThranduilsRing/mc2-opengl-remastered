@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # C++ Coding Rules (C++23)
 
 > **Standard: C++23** (default since commit `9493e60bf`; `MC2_CXX_STANDARD=23`, MSVC `/std:c++latest`).

@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Weapon Viewer / Modder Tool — Design
 
 `tools/mc2weapon/` — view, edit, and create MC2 weapons (stats + FX), output as a

@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Game Auto Tools
 
 `scripts/game_auto.py` is the lightweight MC2 UI automation helper.

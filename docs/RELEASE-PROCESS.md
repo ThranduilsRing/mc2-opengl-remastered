@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Release process (maintainer runbook)
 
 End-to-end recipe for cutting a public release. Wraps

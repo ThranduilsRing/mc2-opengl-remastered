@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Modding Mech Animations (Drop-In)
 
 How to **replace a mech's animation clips** (walk, run, idle, hit reactions, …) without
@@ -22,7 +23,7 @@ covers swapping weapon/explosion **FX**).
 
 ## The cook (why editing an `.ase` "just works")
 
-`TG_AnimateShape::LoadTGMultiShapeAnimationFromASE` (`mclib/msl.cpp:2608`):
+`TG_AnimateShape::LoadTGMultiShapeAnimationFromASE` (`mclib/msl_anim.cpp:171`):
 
 1. If a matching `.agl` exists **and** its version == `CURRENT_ANIM_VERSION` (`0xBADDECAF`),
    load the binary `.agl` directly (fast path).

@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # Static-Building Skip Broadening Recon
 
 **Branch:** claude/terrain-gen-pcg (nifty-mendeleev worktree)

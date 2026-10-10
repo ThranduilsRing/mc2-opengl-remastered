@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # VISUAL-CAPTURE-MATRIX-SOAK-1: Track V Post + Grounding MVP
 
 **Branch:** `claude/trackv-post-grounding-mvp`

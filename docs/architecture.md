@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # MC2 OpenGL Architecture Reference
 
 > **PARTIALLY STALE (banner added 2026-07-09; last full refresh 2026-04-11).**
@@ -16,8 +17,8 @@ Read this file when working on coordinate spaces; verify pipeline claims against
 - **terrainMVP:** DX6/7-era non-linear projection (explicit perspective divide, negative clip.w for visible). TES does clip->perspDiv->screen->NDC. Cannot be folded into single matrix.
 
 ## Map Dimensions
-- **worldUnitsPerVertex:** 128.0 (terrain.cpp:76)
-- **Map sizes:** 60, 80, 100, or 120 vertices/side (terrain.cpp:296-303, from pak)
+- **worldUnitsPerVertex:** 128.0 (mclib/terrain_internal.h:71)
+- **Map sizes:** 60, 80, 100, or 120 vertices/side (mclib/terrain_update.cpp:81-88, from pak)
 - **Coordinate range:** +/-(halfVerticesMapSide * 128), centered at origin
 - 60v=+/-3840, 80v=+/-5120, 100v=+/-6400, 120v=+/-7680
 - **Formula:** `vx = (col - half) * 128`, `vy = (half - row) * 128` (Y inverted)

@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Asset manifest schema (scaffold)
 
 `ASSET-MANIFEST-SCHEMA-SCAFFOLD-1` (VALIDATION-SCAFFOLD-PREFLIGHT-1).

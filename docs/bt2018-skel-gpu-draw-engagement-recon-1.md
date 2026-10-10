@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # BT2018-SKEL-GPU-DRAW-ENGAGEMENT-RECON-1 — findings
 
 An imported BT2018 mech, wired onto the existing GPU skinned-mech path

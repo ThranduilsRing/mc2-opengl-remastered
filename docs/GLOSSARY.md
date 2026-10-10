@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Glossary
 
 Short definitions of terms used across MC2 docs and commit messages.

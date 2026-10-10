@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # POSTPROCESS-COMPUTE-BLUR-1
 
 Greenfield, default-OFF, **INERT** GPU compute downsample + separable-Gaussian-blur

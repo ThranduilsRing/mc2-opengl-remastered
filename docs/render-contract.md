@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # MC2 OpenGL Render Contract
 
 This document defines the authoritative rendering contracts for the modernized
@@ -139,7 +140,7 @@ GPU depth/shadow logic to be authoritative.
        trail), docs/superpowers/reviews/2026-05-15-step8-vpl-body-deletion-
        adversarial-review.md, docs/superpowers/reviews/2026-05-15-overlay-
        pz-v2-bit-identity-proof.md
-     verification: terrain.cpp:1466 ZoneScopedN slimReduce, :1544
+     verification: mclib/terrain_init.cpp:848 ZoneScopedN slimReduce, :1544
        projectForTerrainAdmission, :1553-1559 cull cascade write,
        :1564 reduction gate, :1678 setInverseProject; zero
        vertexProjectLoop/VPParitySnap/s_vpFast/s_vpParity in mclib/code/
@@ -174,7 +175,7 @@ Projection owner:
   uniform REMOVED from the thin VS"). Fix A's per-slot MVP snapshot is
   DEMOTED behind `MC2_RING_TRACE=1` (default-off, inert: cached uniform
   loc is -1) - verified `g_envRingTrace` gate at
-  `GameOS/gameos/gos_terrain_indirect.cpp:1473`, writers skipped at
+  `GameOS/gameos/gos_terrain_indirect_cement.cpp:692`, writers skipped at
   `:1651` when unset.
 
 Shadow owner:
@@ -187,13 +188,13 @@ CPU cull + reduction producer (post-VPL-retirement, by design - NOT debt):
   (a) the cull cascade - `rv->clipInfo = clipR;` then, `if (rv->clipInfo)`,
       `setObjBlockActive` + `setObjVertexActive` at `terrain.cpp:1553-1559`,
       written BEFORE the reduction-admission gate `if (!clipR || !inViewR)
-      continue;` at `terrain.cpp:1564`;
+      continue;` at `mclib/terrain_init.cpp:946`;
   (b) the `leastZ/mostZ/leastW/mostW/leastWY/mostWY` reductions at
-      `terrain.cpp:1567-1587`, which derive `yzRange`/`ywRange` at
+      `mclib/terrain_init.cpp:949-969`, which derive `yzRange`/`ywRange` at
       `terrain.cpp:1671-1675` and feed `eye->setInverseProject(mostZ,
-      leastW,yzRange,ywRange)` at `terrain.cpp:1678`.
+      leastW,yzRange,ywRange)` at `mclib/terrain_init.cpp:1060`.
 - The per-vertex projection is RE-HOMED here, not eliminated:
-  `eye->projectForTerrainAdmission(vertex3D,sp)` at `terrain.cpp:1544`.
+  `eye->projectForTerrainAdmission(vertex3D,sp)` at `mclib/terrain_init.cpp:926`.
   It cannot be derived from world-AABB bounds because perspective divide
   under the oblique cinematic camera does not preserve z/w ordering over
   the per-frame in-rect-visible set (camera model:
@@ -203,7 +204,7 @@ CPU cull + reduction producer (post-VPL-retirement, by design - NOT debt):
   `if (!clipR || !inViewR) continue;` reduction gate. `clipR` uses the
   identical formula to the deleted VPL `clipInfo` write
   (`eye->usePerspective && Environment.Renderer != 3 ? onScreenR :
-  inViewR`, `terrain.cpp:1546`). Placing the cull write AFTER the gate, or
+  inViewR`, `mclib/terrain_init.cpp:928`). Placing the cull write AFTER the gate, or
   gating it on `inViewR`, makes the slim active-set a STRICT SUBSET of the
   loose 768u/384u-dilated legacy `{onScreen}` cull contract, and
   edge/off-rect objects and mechs VANISH (`memory/cull_gates_are_load_
@@ -405,12 +406,12 @@ How it was resolved:
   `vertices[c]->clipInfo == 0` sentinel (`quad.cpp:2172`, reproducing the
   old VPL `pz=-0.5` off-screen sentinel) and otherwise re-projects from
   the same `(vx,vy,elevation)` triple via
-  `eye->projectForTerrainAdmission(ov3D, osp)` at `quad.cpp:2176`. It does
+  `eye->projectForTerrainAdmission(ov3D, osp)` at `mclib/quad_draw.cpp:909`. It does
   NOT read `vertices[c]->pz`. Bit-identical-by-construction to the old
   VPL-cv->`pz` behavior (proof:
   `docs/superpowers/reviews/2026-05-15-overlay-pz-v2-bit-identity-proof.md`).
   The only `vertices[c]->pz` read is inside the demoted
-  `MC2_M2D_PZ_PARITY` probe-only local at `quad.cpp:2213`
+  `MC2_M2D_PZ_PARITY` probe-only local at `mclib/quad_draw.cpp:946`
   (belt-and-suspenders; default-off; see VPL-RETIREMENT-DEFERRED.md item 3).
 
 ### D2. IS_OVERLAY / `rhw=1.0` / terrainMVP bridge inside `gos_tex_vertex`
@@ -513,13 +514,13 @@ Terrain's dependency on projected-depth correctness is removed:
 Retired / demoted scaffolding family (demote-don't-delete per the
 worktree Debug-instrumentation rule - all default-off, inert):
 - bucket-header SSBO: `MC2_BUCKET_HEADER_TRACE`
-  (`GameOS/gameos/gos_terrain_indirect.cpp:2121`)
+  (`GameOS/gameos/gos_terrain_indirect_atlas.cpp:305`)
 - CPU-pack fallback: `MC2_TERRAIN_INDIRECT_CPU_FALLBACK`
-  (`GameOS/gameos/gos_terrain_indirect.cpp:1612`)
+  (`GameOS/gameos/gos_terrain_indirect_cement.cpp:826`)
 - Fix A per-slot MVP snapshot: `MC2_RING_TRACE`
-  (`GameOS/gameos/gos_terrain_indirect.cpp:1473`)
+  (`GameOS/gameos/gos_terrain_indirect_cement.cpp:692`)
 - `MC2_VPL_CULL` + `MC2_VPL_REDUCE`: retired to one-shot
-  `event=retired` lifecycle lines (`mclib/terrain.cpp:1445-1464`); the
+  `event=retired` lifecycle lines (`mclib/terrain_init.cpp:827-846`); the
   legacy reference they compared against died with the VPL body, so a
   relocated self-comparison would be tautological
 - parity-infra: FULLY DELETED (zero-consumer; zero `VPParity`/`s_vpParity`
@@ -527,8 +528,8 @@ worktree Debug-instrumentation rule - all default-off, inert):
 - Legacy CPU terrain-lighting path: HARD-RETIRED both-env. `MC2_TERRAIN_
   LIGHTING_GPU=0` AND `MC2_TERRAIN_LIGHTING_PARITY=1` no longer reach the
   CPU lighting block: `s_lightingGpuAuth = true` forces GPU authority at
-  `mclib/quad.cpp:1348`; the `!s_lightingGpuAuth` block at
-  `quad.cpp:1364` is unreachable. The VPL body was the sole writer of
+  `mclib/quad_draw.cpp:81`; the `!s_lightingGpuAuth` block at
+  `mclib/quad_draw.cpp:97` is unreachable. The VPL body was the sole writer of
   terrain `Vertex::hazeFactor`; a defensive `currentVertex->hazeFactor =
   0.0f` zero-init now lives at `mclib/mapdata.cpp:1154`. A one-shot
   `[TERRAIN_LIGHTING v1] event=legacy_cpu_path_retired` line fires if

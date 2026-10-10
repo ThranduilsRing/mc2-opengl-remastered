@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Cite guard
 
 WHAT: `tools/cite_guard.py` finds the `path:line` cites in docs that the giant-file splits made wrong, proposes the exact

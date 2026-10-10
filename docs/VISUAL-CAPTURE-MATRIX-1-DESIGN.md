@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # VISUAL-CAPTURE-MATRIX-1 Design
 
 ## Purpose

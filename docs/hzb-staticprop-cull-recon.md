@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # HZB Static-Prop Cull — Recon
 
 `HZB-STATICPROP-CULL-RECON-1`. Wires **real static-prop bounds** into the

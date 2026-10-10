@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Load-bearing memory pointers (read before touching the area)
 
 Extracted from CLAUDE.md 2026-05-24. These memory files contain non-obvious

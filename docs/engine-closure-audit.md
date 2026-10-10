@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # Engine Closure Audit — pre-Track-V receipt
 
 **Branch tip:** `828432b6` (`feat(rendercore): descriptive RenderPassContract registry`)
@@ -109,8 +110,8 @@ Log prefixes (all of form `[KEY vN]`) located by grep over `GameOS/gameos/*`:
 | Prefix | Source file:line | Gate | Default |
 |---|---|---|---|
 | `[RENDERER_FEATURES v1]` | `RenderCore/RendererFeatureRegistry.h:309-342` | startup banner | always-on |
-| `[RENDER_SNAPSHOT v3]` | `GameOS/gameos/gos_static_prop_batcher.cpp:4216`, `:4337`, `:4441` | `MC2_RENDER_SNAPSHOT_LOG` + v3 path | event-driven |
-| `[DRAW_PACKET_V6]` | `GameOS/gameos/gos_static_prop_batcher.cpp:3998`, `:4003`, `:4107`, `:4129`, `:4148`, `:4399`, `:4416`, `:4431` | v6 path active (default per `RendererFeatureRegistry.h:230-237`) | on (default-on path) |
+| `[RENDER_SNAPSHOT v3]` | `GameOS/gameos/gos_static_prop_batcher_finalize.cpp:907`, `:4337`, `:4441` | `MC2_RENDER_SNAPSHOT_LOG` + v3 path | event-driven |
+| `[DRAW_PACKET_V6]` | `GameOS/gameos/gos_static_prop_batcher_finalize.cpp:691`, `:4003`, `:4107`, `:4129`, `:4148`, `:4399`, `:4416`, `:4431` | v6 path active (default per `RendererFeatureRegistry.h:230-237`) | on (default-on path) |
 | `[PATCH_STREAM v1]` | `GameOS/gameos/gos_terrain_patch_stream.cpp:239,258,329,350,355,366,370,381,...` | always-on for init/overflow events | always-on |
 | `[BUCKET_CENSUS v1]` | `GameOS/gameos/gos_terrain_patch_stream.cpp:150,317`; declared header `:248` | `MC2_BUCKET_CENSUS` | opt-in |
 | `[THIN_DEBUG v1]` | `GameOS/gameos/gameos_graphics.cpp:5212` | per-event, no separate gate | event-driven |

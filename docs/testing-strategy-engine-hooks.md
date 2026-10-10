@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Engine-Side Hooks Required by the Testing Strategy
 
 Three short C++ patches that have to land in `GameOS/gameos/gameos_graphics.cpp`

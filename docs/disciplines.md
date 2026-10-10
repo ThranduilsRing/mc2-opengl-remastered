@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Disciplines (load-bearing)
 
 Extracted from CLAUDE.md 2026-05-24. These are the procedural disciplines that

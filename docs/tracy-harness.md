@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Tracy harness — capture, compare, baseline, regress
 
 `tools/tracy_capture_compare.py` is the canonical way to profile MC2 with

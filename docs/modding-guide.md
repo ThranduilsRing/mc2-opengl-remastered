@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # MC2 OpenGL Modding Guide
 
 A practical guide to modifying the MechCommander 2 OpenGL renderer. Covers building, shader editing, texture upscaling, debug tools, and autonomous development workflows.
