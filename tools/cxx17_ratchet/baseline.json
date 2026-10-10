@@ -52,7 +52,7 @@
    "LG03": 301,
    "LG04": 6,
    "LG05": 120,
-   "LG06": 529,
+   "LG06": 528,
    "LG07": 0,
    "LG08": 274,
    "LG09": 2166,
@@ -66,8 +66,8 @@
    "LG16": 7,
    "LG17": 81,
    "LG18": 11,
-   "LG19": 195,
-   "LG20": 256
+   "LG19": 175,
+   "LG20": 229
   },
   "GuiRuntime": {
    "LG01": 1,
@@ -756,13 +756,10 @@
   },
   "GameOS/gameos/gos_static_prop_registry.cpp": {
    "LG05": 14,
-   "LG06": 1,
    "LG08": 46,
    "LG09": 43,
    "LG12a": 28,
-   "LG12b": 1,
-   "LG19": 20,
-   "LG20": 27
+   "LG12b": 1
   },
   "GameOS/gameos/gos_static_prop_registry.h": {
    "LG05": 8
@@ -5795,7 +5792,7 @@
    "LG20": 1
   }
  },
- "head": "22e32e789",
+ "head": "c6e40308a",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

@@ -18,6 +18,7 @@
 #include <unordered_map>
 #include <intrin.h>  // __rdtsc — [SPFLUSH_COST_SPLIT v1]
 #include "diagnostic_trace.h"
+#include "Gates/gate.h"
 
 // MC_TextureManager singleton, defined in mclib/txmmgr.cpp.
 extern MC_TextureManager* mcTextureManager;
@@ -58,10 +59,7 @@ extern bool mc2PeekStaticPropTypeInfo(uint32_t typeID, const char** outName,
 // the top of flush() before any RDTSC reads, AND in the adder functions
 // in gos_static_prop_batcher.cpp for the callee-side buckets).
 // ---------------------------------------------------------------------------
-static const bool s_spflushEnabled = []() {
-    const char* v = getenv("MC2_STATIC_PROP_FLUSH_COST_SPLIT");
-    return v && v[0] == '1' && v[1] == '\0';
-}();
+static const bool s_spflushEnabled = mc2::gate::get<"MC2_STATIC_PROP_FLUSH_COST_SPLIT">();
 
 // TSC -> ns calibration. Computed once on first flush() call under the gate.
 // Spin std::chrono::steady_clock for ~1ms, measure __rdtsc() delta.
@@ -115,17 +113,8 @@ unsigned long long s_win_cache_builds            = 0;  // buildCachedActorRecord
 unsigned long long s_win_cache_hits              = 0;  // cached-record reuse (valid)
 }  // namespace
 
-// Rejects "0", "false", "off", "no"; accepts anything else (including "1") or
-// the unset/empty case (returns `defaultValue`). Matches the ParseEnvBool
-// pattern in code/terrobj.cpp:79-85, extended with a default for "0=disable
-// only, default-on" use.
-static bool parseEnvBoolWithDefault(const char* name, bool defaultValue) {
-    const char* v = getenv(name);
-    if (!v || !*v) return defaultValue;
-    if (v[0] == '0' && !v[1]) return false;
-    if (!_stricmp(v, "false") || !_stricmp(v, "off") || !_stricmp(v, "no")) return false;
-    return true;
-}
+// The Std rows ("0"/"false"/"off"/"no" are false, anything else true, unset/empty reads the row default) replace
+// the old parseEnvBoolWithDefault helper.
 
 // Parsed at file-scope (program start) so isEnabled() is valid before init()
 // is called and before the [INSTR v1] banner fires.
@@ -134,13 +123,13 @@ static bool parseEnvBoolWithDefault(const char* name, bool defaultValue) {
 // Set MC2_STATIC_PROP_REGISTRY=0 to disable (e.g., for A/B comparison or
 // when chasing a regression). The MC2_FORCE_DYNAMIC_TREES env in
 // TreeAppearance::render() still works as the per-tree operator escape.
-static const bool s_enabled             = parseEnvBoolWithDefault("MC2_STATIC_PROP_REGISTRY",          true);
-static const bool s_trace               = [] { const char* v = getenv("MC2_STATIC_PROP_TRACE"); return v && v[0] && v[0] != '0'; }();
+static const bool s_enabled             = mc2::gate::get<"MC2_STATIC_PROP_REGISTRY">();
+static const bool s_trace = mc2::gate::get<"MC2_STATIC_PROP_TRACE">();
 // Task 9 (Track B): mission-load + late-spawn registration ON by default.
 // Soak started 2026-05-06; all Task 8 parity gates passed.
 // Set MC2_STATIC_PROP_MISSION_LOAD_REG=0 to opt out.
 static const bool s_missionLoadRegEnabled =
-    parseEnvBoolWithDefault("MC2_STATIC_PROP_MISSION_LOAD_REG", true);
+    mc2::gate::get<"MC2_STATIC_PROP_MISSION_LOAD_REG">();
 // Set MC2_STATIC_PROP_LATE_SPAWN_REG=1 to opt in (default OFF as of 2026-05-20).
 //
 // Previously default-on (Task 9 Track B, 2026-05-06). The sole caller is
@@ -163,7 +152,7 @@ static const bool s_missionLoadRegEnabled =
 // no behavior loss. Operator can opt back in (MC2_STATIC_PROP_LATE_SPAWN_REG=1)
 // if revisiting Task 6/9 Track B's lighting-patch integration.
 static const bool s_lateSpawnRegEnabled =
-    parseEnvBoolWithDefault("MC2_STATIC_PROP_LATE_SPAWN_REG", false);
+    mc2::gate::get<"MC2_STATIC_PROP_LATE_SPAWN_REG">();
 
 // 2026-05-11 per-instance light-idx capture. flush() consumes the value
 // stored in RecipeRange.lightDataIndex by markVisible() when this is on;
@@ -178,7 +167,7 @@ static const bool s_lateSpawnRegEnabled =
 // follow-up). Set MC2_STATIC_PER_INSTANCE_LIGHT=0 to opt back into the
 // historical multi-cache path.
 static const bool s_perInstanceLight =
-    parseEnvBoolWithDefault("MC2_STATIC_PER_INSTANCE_LIGHT", true);
+    mc2::gate::get<"MC2_STATIC_PER_INSTANCE_LIGHT">();
 
 // STATICPROP-REGISTRY-FLUSH-CACHED-BLOB-2A: build cached immutable instance +
 // per-recipe actor-record content once and bulk-append per frame instead of
@@ -196,12 +185,12 @@ static const bool s_perInstanceLight =
 //   BUCKETS=0                        -> legacy per-leaf path (full revert)
 //   BUCKETS=0 + CACHED_BLOB=1        -> cached records + per-frame bulk submit
 static const bool s_flushCachedBlob =
-    parseEnvBoolWithDefault("MC2_STATIC_PROP_FLUSH_CACHED_BLOB", false);
+    mc2::gate::get<"MC2_STATIC_PROP_FLUSH_CACHED_BLOB">();
 // Diagnostic compare (patch 8): when the cached path is active, ALSO build the
 // legacy temp instance+record for each leaf and compare hash/count; log any
 // mismatch. Default OFF. Requires MC2_STATIC_PROP_FLUSH_CACHED_BLOB=1.
 static const bool s_flushCachedBlobCompare =
-    parseEnvBoolWithDefault("MC2_STATIC_PROP_FLUSH_CACHED_BLOB_COMPARE", false);
+    mc2::gate::get<"MC2_STATIC_PROP_FLUSH_CACHED_BLOB_COMPARE">();
 
 // STATICPROP-PERSISTENT-STATIC-BUCKETS-2B-STAGE2 (Mechanism B): keep the static
 // per-type instance block in a persistent batcher store, rebuilt only when the
@@ -210,9 +199,9 @@ static const bool s_flushCachedBlobCompare =
 // DEFAULT-ON 2026-06-03 (user-Tracy: StaticPropRegistryFlush 312us->68us at wolfman,
 // ~78%; compare-oracle clean; tier1 5/5). Kill-switch MC2_STATIC_PROP_PERSISTENT_BUCKETS=0.
 static const bool s_persistentBuckets =
-    parseEnvBoolWithDefault("MC2_STATIC_PROP_PERSISTENT_BUCKETS", true);
+    mc2::gate::get<"MC2_STATIC_PROP_PERSISTENT_BUCKETS">();
 static const bool s_persistentBucketsCompare =
-    parseEnvBoolWithDefault("MC2_STATIC_PROP_PERSISTENT_BUCKETS_COMPARE", false);
+    mc2::gate::get<"MC2_STATIC_PROP_PERSISTENT_BUCKETS_COMPARE">();
 
 // 2b Stage 2 dirty signal: monotonic generation bumped on every structural change
 // to the static-prop registry (spawn/despawn/immutable-field write). A clean
@@ -236,7 +225,7 @@ static std::vector<uint8_t>  s_prevCullRecord;  // copy of s_recipeHasSubstrateR
 // [TEX_LIFECYCLE v1] events stream together under one invocation.
 // See docs/superpowers/specs/2026-05-06-static-prop-texture-pin-fix.md
 static const bool s_texPinTrace =
-    (getenv("MC2_TEX_LIFECYCLE_TRACE") != nullptr);
+    mc2::gate::get<"MC2_TEX_LIFECYCLE_TRACE">();
 #define TEX_LC_PIN(fmt, ...)                                            \
     do { if (s_texPinTrace) {                                           \
         printf("[TEX_LIFECYCLE v1] " fmt "\n", ##__VA_ARGS__);          \
@@ -317,10 +306,7 @@ static uint8_t s_popsEverTagged = 0u;
 // Leaf storage (s_recipes) still appends -- that is a slower RAM-only growth, not the
 // per-frame cost this targets.
 static std::vector<uint32_t>              s_recipeRangeFreeList;
-static const bool s_recipeRecycle = [](){
-    const char* v = getenv("MC2_STATIC_RECIPE_RECYCLE");
-    return !(v && v[0] == '0');   // default ON; opt out with =0
-}();
+static const bool s_recipeRecycle = mc2::gate::get<"MC2_STATIC_RECIPE_RECYCLE">();
 
 // 2A: per-recipe cached immutable cull record (one per s_recipes[] entry).
 // Built lazily on first flush of a recipe; invalidated on any immutable-field write.
@@ -336,8 +322,7 @@ static std::vector<uint8_t>                  s_cachedActorRecordValid; // 0/1 pe
 // baseInstanceForType[typeID] + storeRank == the exact binding-0 slot the draw
 // indexes, so record-index == instance-pool-slot by construction. All gated;
 // gate-off leaves the per-frame substrate_appendStaticPropRecord path untouched.
-static const bool s_staticFrozenReg =
-    (getenv("MC2_GPU_CULL_STATIC_FROZEN_RECORDS") != nullptr);
+static const bool s_staticFrozenReg = mc2::gate::get<"MC2_GPU_CULL_STATIC_FROZEN_RECORDS">();
 static std::vector<uint32_t> s_recipeToStoreSlot;   // [ri] -> type-local store rank (dirty-built)
 static std::vector<uint32_t> s_goldenRecipeList;    // recipes placed this dirty, in store order
 static std::vector<uint32_t> s_pbStoreCursor;       // per-type store cursor (reset/grown at dirty)
@@ -430,7 +415,7 @@ static void buildCachedActorRecord(const RecipeRange& rng, uint32_t recipeIdx,
     out.category = (static_cast<uint32_t>(s_recipes[recipeIdx].typeID) << 4)
                  | static_cast<uint32_t>(gpu_cull::Cat_StaticProp);
     // Diagnostic force-admit flag (mirrors the flush() inline s_diag_forceAdmit check).
-    static const bool s_diag_forceAdmit = (getenv("MC2_STATIC_FORCE_ADMIT") != nullptr);
+    static const bool s_diag_forceAdmit = mc2::gate::get<"MC2_STATIC_FORCE_ADMIT">();
     out.flags          = s_diag_forceAdmit
                            ? static_cast<uint32_t>(gpu_cull::Flag_AlwaysVisible)
                            : gpu_cull::Flag_None;
@@ -892,8 +877,7 @@ void buildStaticPrefixGolden() {
     // sphere). A base+rank mis-scatter puts a DIFFERENT, far-away prop at the slot
     // => large position delta. This catches an ordering bug that per-type
     // counts-parity cannot see. MC2_GPU_CULL_STATIC_FROZEN_ORDER_ORACLE=1.
-    static const bool s_orderOracle =
-        (getenv("MC2_GPU_CULL_STATIC_FROZEN_ORDER_ORACLE") != nullptr);
+    static const bool s_orderOracle = mc2::gate::get<"MC2_GPU_CULL_STATIC_FROZEN_ORDER_ORACLE">();
     if (s_orderOracle) {
         uint32_t checked = 0u, mismatch = 0u;
         for (uint32_t ri : s_goldenRecipeList) {
@@ -941,7 +925,7 @@ void flush() {
     // + a consecutive-stale streak per regIdx. A streak crossing kVanishFrames = a
     // prop that is being dropped persistently = the impossible state (claimed live but
     // never drawn). Default-OFF (per-range map ops have cost); zero overhead when unset.
-    static const bool s_guard2 = (getenv("MC2_REGFLUSH_GUARD2") != nullptr);
+    static const bool s_guard2 = mc2::gate::get<"MC2_REGFLUSH_GUARD2">();
     static const uint32_t kVanishFrames = 16;  // off-screen returns in 1-2 frames; 16 (~0.3s) = not transient
     static std::unordered_map<int, uint64_t> s_staleByType;       // typeID -> total stale_after_drawn
     static std::unordered_map<uint32_t, uint32_t> s_staleStreak;  // regIdx -> consecutive stale-after-drawn frames
@@ -1019,7 +1003,7 @@ void flush() {
         // while staticReg.registered stays true (no submitMultiShape fallback). Frames 0-3
         // + every 120th. count=0 on a tree regIdx = the smoking gun. Default-off.
         {
-            static const bool s_td = (getenv("MC2_STATIC_LEAF_DIAG") != nullptr);
+            static const bool s_td = mc2::gate::get<"MC2_STATIC_LEAF_DIAG">();
             static uint32_t s_tdFrame = 0xFFFFFFFFu;
             static int s_tdN = 0;
             if (s_td) {
@@ -1113,8 +1097,7 @@ void flush() {
                 // GUARD-2 narrows the fatal to the persistent-vanish case so a few
                 // benign off-screen transients don't trip CI; the legacy fatal (no
                 // guard2) still aborts on first stale_after_drawn for strict bisection.
-                static const bool s_staleFatal =
-                    (getenv("MC2_STATIC_STALE_DROP_FATAL") != nullptr);
+                static const bool s_staleFatal = mc2::gate::get<"MC2_STATIC_STALE_DROP_FATAL">();
                 if (s_staleFatal && (!s_guard2 || persistentVanish)) {
                     fprintf(stderr,
                         "[STATIC_PROP_REGISTRY] FATAL stale_frame_drop_after_drawn typeID=%d "
@@ -1135,7 +1118,7 @@ void flush() {
         if (s_spflushEnabled) ++s_win_ranges_drawn; // [SPFLUSH_COST_SPLIT v1]
         // 2026-05-10 diag: env-gated dump of multi-leaf ranges (MC2_REGFLUSH_MULTI=1).
         {
-            static const bool s_traceMulti = (getenv("MC2_REGFLUSH_MULTI") != nullptr);
+            static const bool s_traceMulti = mc2::gate::get<"MC2_REGFLUSH_MULTI">();
             static std::set<uint32_t> s_seenMulti;
             if (s_traceMulti && rng.count > 1 && s_seenMulti.size() < 100 &&
                 s_seenMulti.find(regIdx) == s_seenMulti.end()) {
@@ -1315,7 +1298,7 @@ void flush() {
         // (admission gate). Env-gated diagnostic, independent of the cached-blob
         // gate below.
         {
-            static const bool s_seamFlush = (getenv("MC2_MODOVERRIDE_TRACE") != nullptr);
+            static const bool s_seamFlush = mc2::gate::get<"MC2_MODOVERRIDE_TRACE">();
             static int s_seamFlushLogged = 0;
             if (s_seamFlush && rng.count > 0 && s_seamFlushLogged < 200) {
                 const uint32_t t0 = s_recipes[rng.first].typeID;
@@ -1361,7 +1344,7 @@ void flush() {
         // which flush branch it takes and whether the recipe LEAF data it replays is
         // itself zero (the suspected root cause). Default-off: zero behavior change.
         {
-            static const bool s_leafDiag = (getenv("MC2_STATIC_LEAF_DIAG") != nullptr);
+            static const bool s_leafDiag = mc2::gate::get<"MC2_STATIC_LEAF_DIAG">();
             static int s_leafDiagLogged = 0;
             if (s_leafDiag && rng.count > 0 && s_leafDiagLogged < 48) {
                 ++s_leafDiagLogged;
@@ -1474,8 +1457,7 @@ void flush() {
                                 | static_cast<uint32_t>(gpu_cull::Cat_StaticProp);
                 // 2026-05-10 diag: temp force always-visible to A/B-test whether
                 // the cull is rejecting buildings.
-                static const bool s_diag_forceAdmit =
-                    (getenv("MC2_STATIC_FORCE_ADMIT") != nullptr);
+                static const bool s_diag_forceAdmit = mc2::gate::get<"MC2_STATIC_FORCE_ADMIT">();
                 gpuRec.flags          = s_diag_forceAdmit
                                           ? static_cast<uint32_t>(gpu_cull::Flag_AlwaysVisible)
                                           : gpu_cull::Flag_None;
@@ -1498,8 +1480,7 @@ void flush() {
                 // the helper == hand-rolled CPU block math for THIS prop's
                 // true raw position, plus zero_verify of the [2]-exclusion.
                 {
-                    static const bool s_blkidxTrace =
-                        (getenv("MC2_BLKIDX_TRACE") != nullptr);
+                    static const bool s_blkidxTrace = mc2::gate::get<"MC2_BLKIDX_TRACE">();
                     if (s_blkidxTrace) {
                         const float pwx = gpuRec.worldCenter[0];
                         const float pwy = gpuRec.worldCenter[1];
@@ -1544,7 +1525,7 @@ void flush() {
                     s_recipeHasSubstrateRecord[regIdx] = 1u;
                 // 2026-05-10 diag: typeID histogram. MC2_REGFLUSH_TYPEHIST=1 to enable.
                 {
-                    static const bool s_th = (getenv("MC2_REGFLUSH_TYPEHIST") != nullptr);
+                    static const bool s_th = mc2::gate::get<"MC2_REGFLUSH_TYPEHIST">();
                     static std::array<uint64_t, 1024> s_typeHist{};
                     if (s_th) {
                         if (inst.typeID < s_typeHist.size()) ++s_typeHist[inst.typeID];
@@ -1738,8 +1719,8 @@ void flush() {
     // With MC2_GPU_CULL_STATIC_EAGER_LIGHT_BAKE set, zeroLightSlots should reach 0 after
     // mission load. Without it, zeroLightSlots counts all props not yet on screen.
     // Emit every ~300 flushes. Gate default-OFF.
-    static const bool s_staticLightZeroProbe = (getenv("MC2_GPU_CULL_STATIC_LIGHT_ZERO_PROBE") != nullptr);
-    static const bool s_staticEagerGate      = (getenv("MC2_GPU_CULL_STATIC_EAGER_LIGHT_BAKE") != nullptr);
+    static const bool s_staticLightZeroProbe = mc2::gate::get<"MC2_GPU_CULL_STATIC_LIGHT_ZERO_PROBE">();
+    static const bool s_staticEagerGate      = mc2::gate::get<"MC2_GPU_CULL_STATIC_EAGER_LIGHT_BAKE">();
     if (s_staticLightZeroProbe && (s_diag_flush_calls % 300) == 0) {
         uint32_t aliveProps = 0u, zeroLightSlots = 0u;
         for (int32_t ri = 0; ri < static_cast<int32_t>(s_recipeRanges.size()); ++ri) {
@@ -1800,7 +1781,7 @@ void flush() {
         }
     }
 
-    static const bool s_regflushTrace = (getenv("MC2_REGFLUSH_DIAG_TRACE") != nullptr);
+    static const bool s_regflushTrace = mc2::gate::get<"MC2_REGFLUSH_DIAG_TRACE">();
     if (s_regflushTrace && (s_diag_flush_calls % 600) == 0) {
         const double mean_us = (s_diag_flush_calls > 0)
             ? (static_cast<double>(s_diag_total_ns) /
