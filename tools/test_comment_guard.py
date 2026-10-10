@@ -559,3 +559,33 @@ def test_marker_rule_and_stoplist_unit():
     assert cg.looks_like_marker("TEX-CLASS:") and cg.looks_like_marker("TIER2-EXCLUDED")
     assert not any(cg.looks_like_marker(w) for w in cg.NEEDLE_STOPLIST)
     assert not cg.looks_like_marker("any_lowercase_stem") and not cg.looks_like_marker("short-Id")
+
+
+# ---------------------------------------------------------------- line endings (autocrlf artifacts)
+def _eol_pair(tmp_path, base, new):
+    b, n = tmp_path / "b.cpp", tmp_path / "n.cpp"
+    b.write_bytes(base)
+    n.write_bytes(new)
+    return _run("--repo", str(tmp_path), "--base-file", str(b), str(n))
+
+
+def test_uniform_crlf_vs_lf_passes_with_a_note(tmp_path):
+    rc, out = _eol_pair(tmp_path, b"int z;\r\n// narration\r\nint a;\r\n", b"int z;\nint a;\n")
+    assert rc == 0 and "note: line endings normalised (CRLF" in out, out
+    rc, out = _eol_pair(tmp_path, b"int z;\n// narration\nint a;\n", b"int z;\r\nint a;\r\n")
+    assert rc == 0 and "line endings normalised" in out, out
+
+
+def test_uniform_eol_change_still_fails_on_a_code_change(tmp_path):
+    rc, out = _eol_pair(tmp_path, b"int z;\r\nint a;\r\n", b"int z;\nint b;\n")
+    assert rc == 1 and "code differs" in out, out
+
+
+def test_mixed_line_endings_fail(tmp_path):
+    rc, out = _eol_pair(tmp_path, b"int z;\r\n// n\r\nint a;\r\n", b"int z;\r\nint a;\n")
+    assert rc == 1 and "mixed" in out, out
+
+
+def test_bom_change_fails_even_with_uniform_endings(tmp_path):
+    rc, out = _eol_pair(tmp_path, b"\xef\xbb\xbfint z;\r\nint a;\r\n", b"int z;\nint a;\n")
+    assert rc == 1 and "BOM removed" in out, out

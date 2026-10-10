@@ -785,6 +785,7 @@ class Report:
         self.base_cb = None
         self.new_cb = None
         self.allowed = []        # [(base line, reason)] protected comments deleted under --allow
+        self.notes = []          # informational lines for the reviewer; never a finding
 
     @property
     def ok(self):
@@ -887,7 +888,10 @@ def check_texts(rel, base, new, allow=None, env=None):
     if bbom != nbom:
         rep.add("format", "UTF-8 BOM %s" % ("added" if nbom else "removed"))
     if "none" not in (bstyle, nstyle) and bstyle != nstyle:
-        rep.add("format", "line endings changed (%s -> %s)" % (bstyle, nstyle))
+        if "mixed" in (bstyle, nstyle):
+            rep.add("format", "line endings are mixed within a file (%s -> %s)" % (bstyle, nstyle))
+        else:
+            rep.notes.append(EOL_NOTE)      # autocrlf artifact: uniform on both sides, code compared after CRLF -> LF
 
     bl, nl = lex(bt), lex(nt)
     for side, lx in (("base", bl), ("new", nl)):
@@ -969,6 +973,21 @@ def changed_files(repo, base, staged):
     return [p.decode("utf-8", "replace") for p in out.split(b"\0") if p]
 
 
+EOL_NOTE = "note: line endings normalised (CRLF↔LF)"
+
+
+def _note_lines(rep):
+    enc = getattr(sys.stdout, "encoding", None) or "ascii"
+    out = []
+    for n in rep.notes:
+        try:
+            n.encode(enc)
+        except (UnicodeEncodeError, LookupError):
+            n = n.replace("↔", "<->")
+        out.append("      " + n)
+    return out
+
+
 def fmt_report(rep):
     if rep.base_cb is not None:
         pct = "%+.1f%%" % ((rep.new_cb - rep.base_cb) * 100.0 / rep.base_cb) if rep.base_cb else "n/a"
@@ -977,6 +996,7 @@ def fmt_report(rep):
         size = ""
     lines = ["%-5s %s%s" % ("OK" if rep.ok else "FAIL", rep.rel, size)]
     lines += ["      - [%s] %s" % f for f in rep.findings]
+    lines += _note_lines(rep)
     lines += _allowed_lines(rep)
     return "\n".join(lines)
 
@@ -1032,8 +1052,8 @@ def run_check(args):
     for rep in reports:
         if not args.quiet or not rep.ok:
             print(fmt_report(rep))
-        elif rep.allowed:
-            print("\n".join(_allowed_lines(rep)))
+        elif rep.allowed or rep.notes:
+            print("\n".join(_note_lines(rep) + _allowed_lines(rep)))
         bad += 0 if rep.ok else 1
     print("comment_guard: %d file(s) checked, %d ok, %d FAILED" % (len(reports), len(reports) - bad, bad))
     stale = allow.stale(r.rel for r in reports) if allow else []
@@ -1258,7 +1278,13 @@ def st_blank_line_only_diff_passes():
 def st_crlf_files():
     base = "int z;\r\n// narration\r\nint a;\r\nint b; // more\r\n"
     assert R(base, "int z;\r\nint a;\r\nint b;\r\n").ok
-    assert _kinds(R(base, "int z;\nint a;\nint b;\n")) == ["format"]
+    rep = R(base, "int z;\nint a;\nint b;\n")        # uniform CRLF -> uniform LF is an autocrlf artifact, not a finding
+    assert rep.ok and rep.notes == [EOL_NOTE], _msgs(rep)
+    assert R("int z;\nint a; // x\n", "int z;\r\nint a;\r\n").ok
+    assert "line endings normalised" in fmt_report(rep)
+    assert _kinds(R(base, "int z;\nint a;\nint c;\n")) == ["code"]                  # a code change is still caught
+    assert _kinds(R(base, "int z;\r\nint a;\nint b;\r\n")) == ["format"]            # mixed endings fail
+    assert _kinds(R("int z;\r\nint a;\nint b;\n", "int z;\nint a;\nint b;\n")) == ["format"]
     prot = "int z;\r\n// must stay\r\nint a;\r\n"
     assert _kinds(R(prot, "int z;\r\nint a;\r\n")) == ["protected"]
 
