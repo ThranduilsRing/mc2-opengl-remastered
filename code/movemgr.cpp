@@ -28,7 +28,7 @@
 long MovePathManager::numPaths = 0;
 long MovePathManager::peakPaths = 0;
 long MovePathManager::sourceTally[50];
-MovePathManagerPtr PathManager = NULL;
+MovePathManagerPtr PathManager = nullptr;
 
 // PATHFINDING-FACTS-1: per-frame path-queue activity counters (telemetry only).
 static long s_pathQueuedThisFrame = 0;
@@ -65,23 +65,23 @@ void MovePathManager::operator delete (void* us) {
 long MovePathManager::init (void) {
 
 	for (long i = 0; i < MAX_MOVERS; i++) {
-		pool[i].pilot = NULL;
+		pool[i].pilot = nullptr;
 		pool[i].selectionIndex = 0;
 		pool[i].moveParams = 0;
 		if (i > 0)
 			pool[i].prev = &pool[i - 1];
 		else
-			pool[i].prev = NULL;
+			pool[i].prev = nullptr;
 		if (i < (MAX_MOVERS - 1))
 			pool[i].next = &pool[i + 1];
 		else
-			pool[i].next = NULL;
+			pool[i].next = nullptr;
 	}
 
 	//------------------------------
 	// All start on the free list...
-	queueFront = NULL;
-	queueEnd = NULL;
+	queueFront = nullptr;
+	queueEnd = nullptr;
 	freeList = &pool[0];
 
 	numPaths = 0;
@@ -115,7 +115,7 @@ void MovePathManager::remove (PathQueueRecPtr rec) {
 
 	//------------------------------------
 	// Return the QRec to the free list...
-	rec->prev = NULL;
+	rec->prev = nullptr;
 	rec->next = freeList;
 	freeList = rec;
 
@@ -130,10 +130,10 @@ PathQueueRecPtr MovePathManager::remove (MechWarriorPtr pilot) {
 	PathQueueRecPtr rec = pilot->getMovePathRequest();
 	if (rec) {
 		remove(rec);
-		pilot->setMovePathRequest(NULL);
+		pilot->setMovePathRequest(nullptr);
 		return(rec);
 	}
-	return(NULL);
+	return(nullptr);
 }
 
 //---------------------------------------------------------------------------
@@ -157,7 +157,7 @@ void MovePathManager::request (MechWarriorPtr pilot, long selectionIndex, unsign
 	// Cut the new record from the free list...
 	freeList = freeList->next;
 	if (freeList)
-		freeList->prev = NULL;
+		freeList->prev = nullptr;
 
 	//---------------------------------------------------
 	// New record has no next. Already has no previous...
@@ -169,12 +169,12 @@ void MovePathManager::request (MechWarriorPtr pilot, long selectionIndex, unsign
 	if (queueEnd) {
 		queueEnd->next = pathQRec;
 		pathQRec->prev = queueEnd;
-		pathQRec->next = NULL;
+		pathQRec->next = nullptr;
 		queueEnd = pathQRec;
 		}
 	else {
-		pathQRec->prev = NULL;
-		pathQRec->next = NULL;
+		pathQRec->prev = nullptr;
+		pathQRec->next = nullptr;
 		queueFront = queueEnd = pathQRec;
 	}
 	pilot->setMovePathRequest(pathQRec);
@@ -205,7 +205,7 @@ void MovePathManager::calcPath (void) {
 		//--------------------------------------------------
 		// If the mover is no longer around, don't bother...
 		MechWarriorPtr pilot = curQRec->pilot;
-		pilot->setMovePathRequest(NULL);
+		pilot->setMovePathRequest(nullptr);
 		MoverPtr mover = pilot->getVehicle();
 		if (!mover)
 			return;
@@ -232,7 +232,7 @@ void MovePathManager::update (void) {
 	// FIFO, so queueFront at loop entry is the oldest request we will service this
 	// frame. Read before the loop (calcPath() pops queueFront). -1 == none serviced.
 	long oldestEnqueueFrame = queueFront ? queueFront->enqueueFrame : 0;
-	bool hadWorkAtEntry = (queueFront != NULL);
+	bool hadWorkAtEntry = (queueFront != nullptr);
 
 	long processedThisFrame = 0;  // PATHFINDING-FACTS-1 (telemetry only)
 	for (long i = 0; i < numPathsToProcess; i++) {
@@ -244,7 +244,7 @@ void MovePathManager::update (void) {
 
 	// PATHFINDING-FACTS-2: throttle-cap-hit -- did the 6-cap stop us with the queue
 	// still non-empty? (processed == cap AND queueFront still set after the loop).
-	int capHit = (processedThisFrame == numPathsToProcess && queueFront != NULL) ? 1 : 0;
+	int capHit = (processedThisFrame == numPathsToProcess && queueFront != nullptr) ? 1 : 0;
 	long oldestAge = hadWorkAtEntry ? (s_pathFrameCounter - oldestEnqueueFrame) : -1;
 
 	// PATHFINDING-FACTS-1/2: per-frame queue depth/throttle emit (gated, default-OFF).

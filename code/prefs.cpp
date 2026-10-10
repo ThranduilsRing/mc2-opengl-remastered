@@ -294,7 +294,7 @@ int CPrefs::load( const char* pFileName ) {
 	prefsFile->close();
 	
 	delete prefsFile;
-	prefsFile = NULL;
+	prefsFile = nullptr;
 
 	return 0;
 }
@@ -389,7 +389,7 @@ int CPrefs::save() {
 	
 	
 	delete prefsFile;
-	prefsFile = NULL;
+	prefsFile = nullptr;
 
 	return 0;
 }

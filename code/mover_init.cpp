@@ -408,13 +408,13 @@ void Mover::init (bool create) {
 		killed = false;
 		lost = false;
 		salvaged = false;
-		appearance = NULL;
+		appearance = nullptr;
 		lowestWeaponNodeID = -2;
-		sensorSystem = NULL;
+		sensorSystem = nullptr;
 		lastMapCell[0] = -1;
 		lastMapCell[1] = -1;
 		contactInfo = new ContactInfo;
-		pilot = NULL;
+		pilot = nullptr;
 		pilotHandle = 0;
 		numWeaponHitsHandled = 0;
 		prevTeamId = -1;
@@ -591,5 +591,5 @@ void Mover::release (void) {
 		getGroup()->remove(this);
 	setCommanderId(-1);
 	MechWarrior::freeWarrior(pilot);
-	pilot = NULL;
+	pilot = nullptr;
 }

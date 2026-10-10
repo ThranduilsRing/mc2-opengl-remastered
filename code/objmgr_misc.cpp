@@ -240,7 +240,7 @@ long GameObjectManager::buildCollidableList (void)
 	if (collidableList) 
 	{
 		ObjectTypeManager::objectCache->Free(collidableList);
-		collidableList = NULL;
+		collidableList = nullptr;
 	}
 
 	// First, how many collidables are there?
@@ -360,7 +360,7 @@ CarnagePtr GameObjectManager::createFire (ObjectTypeNumber fireObjTypeHandle,
 			// Make sure the object type we loaded is really a fire object
 			// type. If not, NULL out of here...
 			if (objectType->getObjectClass() != FIRE)
-				return(NULL);
+				return(nullptr);
 			fire->init(false, objectType);
 			fire->setOwner(owner);
 			fire->setTonnage(tonnage);
@@ -424,7 +424,7 @@ CarnagePtr GameObjectManager::createExplosion (long effectId,
 		}
 	}
 
-	return(NULL);
+	return(nullptr);
 }
 
 //---------------------------------------------------------------------------
@@ -460,10 +460,10 @@ WeaponBoltPtr GameObjectManager::createWeaponBolt (long effectId)
 			// explicitly: drop the effect (caller handles a NULL weaponFX) instead
 			// of crashing on objectType->getObjectClass() when an effect type has
 			// no registered WEAPONBOLT object (e.g. asset gap on a given map).
-			return(NULL);
+			return(nullptr);
 		}
 		if (objectType->getObjectClass() != WEAPONBOLT)
-			return(NULL);
+			return(nullptr);
 		//ALWAYS CALL IN THIS ORDER OR NO EFFECT!!!!!!!!!!!!!!!!!!!!
 		weaponBolt->init(effectId);
 		weaponBolt->init(false, objectType);

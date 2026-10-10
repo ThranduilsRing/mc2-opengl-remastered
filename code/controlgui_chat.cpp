@@ -86,7 +86,7 @@ void ControlGui::playMovie( const char* fileName )
 	// Assume extension is BIK.
 	// Assume the movie is in data\movies.
 	char realName[1024];
-	_splitpath(fileName,NULL,NULL,realName,NULL);
+	_splitpath(fileName,nullptr,nullptr,realName,nullptr);
 
 	FullPathFileName movieName;
 	movieName.init(moviePath,realName,".bik");
@@ -105,7 +105,7 @@ void ControlGui::playMovie( const char* fileName )
 		//If we couldn't play it cause of the frame Rate, TOSS it!!
 		moviePlaying = false;
 		delete bMovie;
-		bMovie = NULL;
+		bMovie = nullptr;
 	}
 }
 
@@ -161,7 +161,7 @@ void	ControlGui::toggleHoldPosition()
 						pMover->getPilot()->getCurTacOrder()->attackParams.pursue = false;
 					else
 						pMover->getPilot()->getCurTacOrder()->attackParams.pursue = true;
-					pMover->getPilot()->getCurTacOrder()->pack(NULL, NULL);
+					pMover->getPilot()->getCurTacOrder()->pack(nullptr, nullptr);
 					pMover->handleTacticalOrder(*pMover->getPilot()->getCurTacOrder());
 				}
 			}
@@ -197,7 +197,7 @@ void ControlGui::toggleChat(bool isTeamOnly)
 		{
 		
 			char team = chatIsTeamOnly ? MPlayer->getPlayerInfo( MPlayer->commanderID )->team : -1;
-			MPlayer->sendChat(0, team, (char*)(const char*)tmp);
+			MPlayer->sendChat(nullptr, team, (char*)(const char*)tmp);
 		}
 		personalEdit.setFocus( 0 );
 	}
@@ -392,7 +392,7 @@ bool ControlGui::playPilotVideo( MechWarrior* pPilot, char movieCode )
 
 void ControlGui::endPilotVideo()
 {
-	forceGroupBar.setPilotVideo( NULL, NULL );
+	forceGroupBar.setPilotVideo( nullptr, nullptr );
 }
 
 void ControlGui::cancelInfo()

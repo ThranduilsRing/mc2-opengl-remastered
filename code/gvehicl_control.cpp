@@ -38,7 +38,7 @@ float GroundVehicle::getStatusRating (void) {
 
 	float weaponEffect = 1.0;
 	if (maxWeaponEffectiveness)
-		weaponEffect = (float)weaponEffectiveness / (float)maxWeaponEffectiveness;
+		weaponEffect = weaponEffectiveness / maxWeaponEffectiveness;
 
 	float armorFront = armor[GROUNDVEHICLE_LOCATION_FRONT].curArmor / armor[GROUNDVEHICLE_LOCATION_FRONT].maxArmor * 0.6 + 0.4;
 	float armorLeft = armor[GROUNDVEHICLE_LOCATION_LEFT].curArmor / armor[GROUNDVEHICLE_LOCATION_LEFT].maxArmor * 0.6 + 0.4;
@@ -106,7 +106,7 @@ void GroundVehicle::createVehiclePilot (void)
 	if (vehiclePilot->sensorSystem)
 		SensorManager->removeTeamSensor(teamId, vehiclePilot->sensorSystem);
 
-	vehiclePilot->sensorSystem = NULL;
+	vehiclePilot->sensorSystem = nullptr;
 	vehiclePilot->isVehiclePilot = true;
 
 

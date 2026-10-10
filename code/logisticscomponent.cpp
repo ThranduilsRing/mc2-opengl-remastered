@@ -52,12 +52,12 @@ float LogisticsComponent::MAX_RANGE = 3.f;
 
 LogisticsComponent::LogisticsComponent()
 {
-	name = NULL;
+	name = nullptr;
 	ID = -1;
-	flavorText = NULL;		
+	flavorText = nullptr;		
 	bHead = bTorso = bLegs = 0;
-	iconFileName = 0;
-	pictureFileName = 0;
+	iconFileName = nullptr;
+	pictureFileName = nullptr;
 	iconX = iconY = 0;
 	bAvailable = 0;
 	recycleTime = 0.f;

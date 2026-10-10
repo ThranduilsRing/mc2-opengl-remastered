@@ -65,11 +65,11 @@ void GoalObject::init (void) {
 	type = GOAL_OBJECT;
 	id = -1;
 	name[0] = '\0';
-	links = NULL;
-	controller = NULL;
+	links = nullptr;
+	controller = nullptr;
 	info.object.WID = 0;
-	next = NULL;
-	prev = NULL;
+	next = nullptr;
+	prev = nullptr;
 }
 
 //---------------------------------------------------------------------------
@@ -132,8 +132,8 @@ void GoalManager::init (void) {
 
 	numGoalObjects = 0;
 	goalObjectPoolSize = 0;
-	goalObjects = NULL;
-	goalObjectPool = NULL;
+	goalObjects = nullptr;
+	goalObjectPool = nullptr;
 
 #ifdef USE_REGION_MAP
 	for (long r = 0; r < GameMap->height; r++)
@@ -142,7 +142,7 @@ void GoalManager::init (void) {
 #endif
 	numRegions = 0;
 
-	fillStack = NULL;
+	fillStack = nullptr;
 	fillStackIndex = 0;
 }
 
@@ -152,7 +152,7 @@ void GoalManager::destroy (void) {
 
 	if (goalObjectPool) {
 		missionHeap->Free(goalObjectPool);
-		goalObjectPool = NULL;
+		goalObjectPool = nullptr;
 	}
 	numGoalObjects = 0;
 	goalObjectPoolSize = 0;
@@ -162,7 +162,7 @@ void GoalManager::destroy (void) {
 
 void GoalManager::clear (void) {
 
-	goalObjects = NULL;
+	goalObjects = nullptr;
 	numGoalObjects = 0;
 	for (long i = 0; i < goalObjectPoolSize; i++)
 		goalObjectPool[i].used = false;
@@ -179,7 +179,7 @@ void GoalManager::clear (void) {
 
 GoalObjectPtr GoalManager::newGoalObject (void) {
 
-	GoalObjectPtr goalObject = NULL;
+	GoalObjectPtr goalObject = nullptr;
 	for (long i = 0; i < goalObjectPoolSize; i++)
 		if (!goalObjectPool[i].used) {
 			goalObjectPool[i].used = true;
@@ -401,7 +401,7 @@ void GoalManager::build (void) {
 	}
 */
 	free(fillStack);
-	fillStack = NULL;
+	fillStack = nullptr;
 	fillStackIndex = 0;
 }
 
@@ -466,21 +466,21 @@ GoalObjectPtr GoalManager::calcGoal (int startCell[2], int goalCell[2]) {
 
 	/* DO SEARCH HERE */
 
-	return(NULL);
+	return(nullptr);
 }
 
 //---------------------------------------------------------------------------
 
 GoalObjectPtr GoalManager::calcGoal (GameObjectPtr attacker, GameObjectPtr target) {
 
-	return(NULL);
+	return(nullptr);
 }
 
 //---------------------------------------------------------------------------
 
 GoalObjectPtr GoalManager::calcGoal (GameObjectPtr attacker, Stuff::Vector3D location) {
 
-	return(NULL);
+	return(nullptr);
 }
 
 //---------------------------------------------------------------------------

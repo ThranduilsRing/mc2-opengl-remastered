@@ -17,9 +17,9 @@ ComponentListBox.cpp			: Implementation of the ComponentListBox component.
 #include"gamesound.h"
 #include"logisticserrors.h"
 
-ComponentListItem* ComponentListItem::s_templateItem = NULL;
+ComponentListItem* ComponentListItem::s_templateItem = nullptr;
 
-ComponentIconListBox* ComponentIconListBox::s_instance = NULL;
+ComponentIconListBox* ComponentIconListBox::s_instance = nullptr;
 
 
 
@@ -106,7 +106,7 @@ int ComponentListItem::init( FitIniFile& file )
 {
 	if ( !s_templateItem )
 	{
-		s_templateItem = new ComponentListItem( NULL );
+		s_templateItem = new ComponentListItem( nullptr );
 		char animName[COMP_ANIMATION_COUNT][32];
 		for ( int i = 0; i < COMP_ANIMATION_COUNT; i++ )
 		{
@@ -148,7 +148,7 @@ int ComponentListItem::init( FitIniFile& file )
 void ComponentListItem::assignAnimation( FitIniFile& file, int whichChild, char animNames[COMP_ANIMATION_COUNT][32], 
 										aObject* object )
 {
-		s_templateItem->pChildAnims[whichChild] = 0;
+		s_templateItem->pChildAnims[whichChild] = nullptr;
 		char tmpAnimName[32];
   		file.readIdString("Animation", tmpAnimName, 31);
 		for ( int i = 0; i < COMP_ANIMATION_COUNT; i++ )
@@ -459,10 +459,10 @@ ComponentIconListBox::~ComponentIconListBox()
 {
 	masterComponentList.Clear();
 
-	s_instance = NULL;
+	s_instance = nullptr;
 
 	delete ComponentListItem::s_templateItem;
-	ComponentListItem::s_templateItem = NULL;
+	ComponentListItem::s_templateItem = nullptr;
 }
 
 LogisticsComponent* ComponentIconListBox::getComponent()
@@ -472,7 +472,7 @@ LogisticsComponent* ComponentIconListBox::getComponent()
 		return ((ComponentListItem*)items[itemSelected])->pComponent;
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 void ComponentIconListBox::addSortedItem( ComponentListItem* pItem )

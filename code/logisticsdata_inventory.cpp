@@ -142,7 +142,7 @@ int LogisticsData::sellMech( LogisticsMech* pVar )
 		if ( (*iter)->getVariant() == pVar->getVariant() )
 		{
 			int cost = ((*iter))->getCost();
-			(*iter)->setPilot( NULL );
+			(*iter)->setPilot( nullptr );
 			delete *iter;
 			instance->inventory.Delete( iter );
 
@@ -159,7 +159,7 @@ int LogisticsData::removeVariant( const char* varName )
 	if ( !varName )
 		return -1;
 
-	LogisticsVariant* pVar = 0;
+	LogisticsVariant* pVar = nullptr;
 
 	if ( currentlyModifiedMech->getName() == varName || oldVariant->getName() == varName )
 		return -1;
@@ -224,7 +224,7 @@ LogisticsVariant* LogisticsData::getVariant( int ID )
 	if ( instance->currentlyModifiedMech && ID == instance->currentlyModifiedMech->getID() )
 		return instance->currentlyModifiedMech->getVariant();
 
-	return NULL;
+	return nullptr;
 }
 
 LogisticsMech*	LogisticsData::getMech( int ID )
@@ -235,7 +235,7 @@ LogisticsMech*	LogisticsData::getMech( int ID )
 			return (*iter );
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 
@@ -274,7 +274,7 @@ int		LogisticsData::removeMechFromForceGroup( int slot )
 		if ( (*iter)->getForceGroup() == slot )
 		{
 			(*iter)->setForceGroup( 0 );
-			(*iter)->setPilot( 0 );
+			(*iter)->setPilot( nullptr );
 			return 0;
 		}
 	}
@@ -297,7 +297,7 @@ LogisticsMech*		LogisticsData::getMechWithoutForceGroup( LogisticsMech* pMech )
 			}
 		}
 	
-	return NULL;
+	return nullptr;
 }
 int LogisticsData::removeMechFromForceGroup( LogisticsMech* pMech, bool bRemovePilot )
 {
@@ -309,7 +309,7 @@ int LogisticsData::removeMechFromForceGroup( LogisticsMech* pMech, bool bRemoveP
 		pMech->setForceGroup( 0 );
 		// no mechs in inventory have pilots
 		if ( bRemovePilot )
-			pMech->setPilot( 0 );
+			pMech->setPilot( nullptr );
 		return 0;
 	}
 
@@ -321,7 +321,7 @@ int LogisticsData::removeMechFromForceGroup( LogisticsMech* pMech, bool bRemoveP
 			(*iter)->setForceGroup( 0 );
 
 			if ( bRemovePilot )
-				pMech->setPilot( 0 );
+				pMech->setPilot( nullptr );
 
 			return 0;
 		}
@@ -350,7 +350,7 @@ LogisticsPilot* LogisticsData::getFirstAvailablePilot()
 		 }
 	}
 
-	return NULL;
+	return nullptr;
 
 }
 
@@ -379,7 +379,7 @@ bool LogisticsData::isVehicleUnit( LogisticsMech* pMech )
 // -> the vehicle stays unpiloted, no worse than before.
 LogisticsPilot* LogisticsData::getVehiclePilot()
 {
-	static LogisticsPilot* s_vehiclePilot = NULL;
+	static LogisticsPilot* s_vehiclePilot = nullptr;
 	static bool s_tried = false;
 	if ( !s_tried )
 	{
@@ -389,7 +389,7 @@ LogisticsPilot* LogisticsData::getVehiclePilot()
 		if ( p->init( nm ) == -1 )
 		{
 			delete p;
-			p = NULL;
+			p = nullptr;
 		}
 		else
 		{
@@ -484,5 +484,5 @@ LogisticsVariant* LogisticsData::getVariant( const char* pCSVFileName, int Varia
 		}
 	}
 
-	return NULL;
+	return nullptr;
 }

@@ -36,12 +36,12 @@ MPConnectionType::MPConnectionType() : lanPanel(*this), tcpipPanel(*this)
 	bDone = 0;
 
 	connectionType = 0;
-	pPanel = 0;
+	pPanel = nullptr;
 
-	ppConnectionScreen = 0;
-	pLocalBrowserScreen = 0;
-	pDirectTcpipScreen = 0;
-	pMPPlaceHolderScreen = 0;
+	ppConnectionScreen = nullptr;
+	pLocalBrowserScreen = nullptr;
+	pDirectTcpipScreen = nullptr;
+	pMPPlaceHolderScreen = nullptr;
 
 	status = RUNNING;
 	LogisticsScreen::helpTextArrayID = 2;
@@ -307,7 +307,7 @@ int	MPConnectionType::handleMessage( unsigned long message, unsigned long who)
 
 		case ZONE_PANEL_FIRST_BUTTON_ID:
 			{
-				MPlayer->launchBrowser( NULL );
+				MPlayer->launchBrowser( nullptr );
 				(*ppConnectionScreen) = pMPPlaceHolderScreen;
 				// now I need to pop a connecting dialog...
 				status = NEXT;

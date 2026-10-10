@@ -89,7 +89,7 @@ void execObjectChangeSides (void) {
 	long objectId = ABLi_popInteger();
 	long newObjectSide = ABLi_popInteger();
 
-	GameObjectPtr object = NULL;
+	GameObjectPtr object = nullptr;
 	if ((objectId >= MIN_UNIT_PART_ID) && (objectId <= MAX_UNIT_PART_ID)) {
 		Fatal(0, " Cannot ABL:ObjectChangeSides for Mover Units ");
 
@@ -214,7 +214,7 @@ void execObjectSuicide (void) {
 	
 	long objectId = ABLi_popInteger();
 	
-	GameObjectPtr object1 = NULL;
+	GameObjectPtr object1 = nullptr;
 	if ((objectId >= MIN_UNIT_PART_ID) && (objectId <= MAX_UNIT_PART_ID)) {
 		long numObjects = getMovers(objectId, moverList);
 		for (long i = 0; i < numObjects; i++)
@@ -348,7 +348,7 @@ void execObjectVisible (void) {
 	long objectId1 = ABLi_popInteger();
 	long objectId2 = ABLi_popInteger();
 	
-	GameObjectPtr object1 = NULL;
+	GameObjectPtr object1 = nullptr;
 	GameObjectPtr object2 = getObject(objectId2);
 	long result = 0;
 	
@@ -432,7 +432,7 @@ void execSetTimer (void) {
 		timerNumber = 0;
 	else {
 		TimerPtr timer = timerManager->getTimer(timerNumber);
-		Assert(timer != NULL, timerNumber, " ABL.execHbSetTimer: NULL timer ");
+		Assert(timer != nullptr, timerNumber, " ABL.execHbSetTimer: NULL timer ");
 		timer->setTimer(duration);
 	}
 
@@ -450,7 +450,7 @@ void execCheckTimer (void) {
 	float timeLeft = 0.0;
 	if ((timerNumber >= 0) && (timerNumber < MAX_TIMERS)) {
 		TimerPtr timer = timerManager->getTimer(timerNumber);
-		Assert(timer != NULL, timerNumber, " ABL.execHbSetTimer: NULL timer ");
+		Assert(timer != nullptr, timerNumber, " ABL.execHbSetTimer: NULL timer ");
 		timeLeft = timer->getCurrentTime();
 	}
 

@@ -355,7 +355,7 @@ long LogisticsData::loadVariant( FitIniFile& file )
 	
 	file.readIdString( "Chassis", tmp, 255 );
 
-	const LogisticsChassis* pChassis  = NULL;
+	const LogisticsChassis* pChassis  = nullptr;
 	// go out and find that chassis
 	for ( VARIANT_LIST::EIterator vIter = variants.Begin(); !vIter.IsDone(); vIter++ )
 	{
@@ -648,7 +648,7 @@ LogisticsMech*  LogisticsData::getMech( const char* MechName, const char* pilotN
 		}
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 void LogisticsData::removeMechFromInventory( const char* mechName, const char* pilotName )
@@ -686,7 +686,7 @@ LogisticsPilot*	LogisticsData::getPilot( const char* pilotName )
 		}
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 LogisticsVariant* LogisticsData::getVariant( const char* mechName )
@@ -697,5 +697,5 @@ LogisticsVariant* LogisticsData::getVariant( const char* mechName )
 			return (*iter);
 	}
 
-	return NULL;
+	return nullptr;
 }

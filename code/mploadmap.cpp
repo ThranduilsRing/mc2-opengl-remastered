@@ -40,7 +40,7 @@ MPLoadMap::MPLoadMap()
 
 	status = RUNNING;
 	helpTextArrayID = 6;
-	mapListPage = NULL;
+	mapListPage = nullptr;
 }
 
 MPLoadMap::~MPLoadMap()
@@ -117,7 +117,7 @@ void MPLoadMap::init(FitIniFile* file)
 			if ( !mapListPage->load( replacementPath.c_str() ) )
 			{
 				delete mapListPage;
-				mapListPage = NULL;
+				mapListPage = nullptr;
 			}
 		}
 	}
@@ -688,7 +688,7 @@ void MPLoadMap::syncMapListPage()
 	{
 		aListItem* item = mapList.GetItem( i );
 		const aTextListItem* textItem = static_cast<const aTextListItem*>( item );
-		const char* text = textItem ? textItem->getText() : NULL;
+		const char* text = textItem ? textItem->getText() : nullptr;
 		items.push_back( text ? text : "" );
 	}
 

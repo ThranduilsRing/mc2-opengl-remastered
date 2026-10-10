@@ -190,7 +190,7 @@ void execGetFixed (void) {
 	long bayId = ABLi_popInteger();
 	long params = ABLi_popInteger();
 
-	BuildingPtr bay = NULL;
+	BuildingPtr bay = nullptr;
 	GameObjectPtr obj = getObject(bayId);
 	if (obj && obj->isBuilding() && obj->getFlag(OBJECT_FLAG_CANREFIT))
 		bay = (BuildingPtr)obj;
@@ -345,7 +345,7 @@ void execIsTeamCapturing (void) {
 				targeting = ObjectManager->isTeamCapturing(team, targetWID);
 			}
 		else if (teamId == 0) {
-			targeting = ObjectManager->isTeamCapturing(NULL, targetWID);
+			targeting = ObjectManager->isTeamCapturing(nullptr, targetWID);
 		}
 	}
 

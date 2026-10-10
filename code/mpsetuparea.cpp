@@ -32,10 +32,10 @@ MPSetupXScreen::MPSetupXScreen()
 	stripeColor = 0xff00ff00;
 	bPaintSchemeInitialized = false;
 
-	ppConnectionScreen = 0;
-	pLocalBrowserScreen = 0;
-	pDirectTcpipScreen = 0;
-	pModem2ModemScreen = 0;
+	ppConnectionScreen = nullptr;
+	pLocalBrowserScreen = nullptr;
+	pDirectTcpipScreen = nullptr;
+	pModem2ModemScreen = nullptr;
 
 	status = RUNNING;
 }
@@ -246,7 +246,7 @@ void MPSetupXScreen::begin()
 
 void MPSetupXScreen::end()
 {
-	mechCamera.setMech(NULL);
+	mechCamera.setMech(nullptr);
 }
 
 void MPSetupXScreen::render(int xOffset, int yOffset )

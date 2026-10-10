@@ -19,7 +19,7 @@ LogisticsData.cpp			: Implementation of the LogisticsData component.
 long SaveGameVersionNumber = 10004;
 //----------------------------------------------------------------------
 
-LogisticsData* LogisticsData::instance = NULL;
+LogisticsData* LogisticsData::instance = nullptr;
 
 //*************************************************************************************************
 LogisticsData::LogisticsData()
@@ -28,8 +28,8 @@ LogisticsData::LogisticsData()
 	instance = this;
 	resourcePoints = 0;
 
-	currentlyModifiedMech = 0;
-	missionInfo = 0;
+	currentlyModifiedMech = nullptr;
+	missionInfo = nullptr;
 	rpJustAdded = false;
 
 	bNewMechs = bNewWeapons = bNewPilots = 0;
@@ -58,7 +58,7 @@ LogisticsData::~LogisticsData()
 	vehicles.Clear();
 
 	delete missionInfo;
-	missionInfo = NULL;
+	missionInfo = nullptr;
 
 #ifndef VIEWER
 	ChatWindow::static_destroy();
@@ -77,7 +77,7 @@ void				LogisticsData::startNewCampaign( const char* fileName )
 	if ( MPlayer )
 	{
 		delete MPlayer;
-		MPlayer = NULL;
+		MPlayer = nullptr;
 	}
 #endif
 
@@ -304,7 +304,7 @@ LogisticsVehicle*	LogisticsData::getVehicle( const char* pName )
 		}
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 int LogisticsData::addBuilding( long fitID, PacketFile& objectFile, float scale )
@@ -389,7 +389,7 @@ LogisticsComponent* LogisticsData::getComponent( int componentID )
 				return &(*iter);
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 //*************************************************************************************************
@@ -402,7 +402,7 @@ LogisticsData::Building*			LogisticsData::getBuilding( int nameID )
 				return &(*iter);
 		}
 
-	return NULL;
+	return nullptr;
 }
 
 

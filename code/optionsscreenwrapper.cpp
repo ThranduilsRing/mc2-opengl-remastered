@@ -13,7 +13,7 @@ OptionsScreenWrapper.cpp			: Implementation of the OptionsScreenWrapper componen
 
 OptionsScreenWrapper::OptionsScreenWrapper()
 {
-	pOptionsScreen = 0;
+	pOptionsScreen = nullptr;
 	isActive = false;
 }
 
@@ -59,7 +59,7 @@ void OptionsScreenWrapper::destroy()
 void OptionsScreenWrapper::end()
 {
 	delete pOptionsScreen;
-	pOptionsScreen = NULL;
+	pOptionsScreen = nullptr;
 	isActive = false;
 }
 

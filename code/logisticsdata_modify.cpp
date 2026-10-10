@@ -34,7 +34,7 @@ void LogisticsData::clearInventory()
 {
 	for (MECH_LIST::EIterator iter = inventory.Begin(); !iter.IsDone(); iter++ )
 	{
-		(*iter)->setPilot( NULL );
+		(*iter)->setPilot( nullptr );
 		delete *iter;
 	}
 
@@ -191,9 +191,9 @@ void encryptFile (const char *inputFile, const char* outputFile)
 	//Now we encrypt this by zlib Compressing the file passed in.
 	// Then LZ Compressing the resulting zlib data.
 	// Since our LZ compression is pretty much non-standard, that should be enough.
-	MemoryPtr rawData = NULL;
-	MemoryPtr zlibData = NULL;
-	MemoryPtr LZData = NULL;
+	MemoryPtr rawData = nullptr;
+	MemoryPtr zlibData = nullptr;
+	MemoryPtr LZData = nullptr;
 
 	File dataFile;
 	dataFile.open(inputFile);
@@ -230,9 +230,9 @@ void decryptFile (char *inputFile, char *outputFile)
 	//Now we decrypt this by lz deCompressing the zlib file created.
 	// Then zlib deCompressing the resulting zlib data into the raw File again.
 	// Since our LZ compression is pretty much non-standard, that should be enough.
-	MemoryPtr rawData = NULL;
-	MemoryPtr zlibData = NULL;
-	MemoryPtr LZData = NULL;
+	MemoryPtr rawData = nullptr;
+	MemoryPtr zlibData = nullptr;
+	MemoryPtr LZData = nullptr;
 
 	File dataFile;
 	long result = dataFile.open(inputFile);
@@ -253,7 +253,7 @@ void decryptFile (char *inputFile, char *outputFile)
 		if (test2Size != zlibSize) 
 			STOP(("Didn't Decompress to same size as started with!!"));
 	
-		uncompress((MemoryPtr)rawData,&testSize,zlibData,zlibSize);
+		uncompress(rawData,&testSize,zlibData,zlibSize);
 		if (testSize != fileSize) 
 			STOP(("Didn't Decompress to correct format"));
 	
@@ -337,8 +337,8 @@ int LogisticsData::acceptMechModifications( const char* name )
 	variants.Append( currentlyModifiedMech->getVariant() );
 	missionInfo->decrementCBills( currentlyModifiedMech->getVariant()->getCost() );
 
-	currentlyModifiedMech = 0;
-	oldVariant = 0;
+	currentlyModifiedMech = nullptr;
+	oldVariant = nullptr;
 
 
 	// temporary, looking for dangling pointers
@@ -399,8 +399,8 @@ int LogisticsData::acceptMechModificationsUseOldVariant( const char* name )
 	currentlyModifiedMech->setVariant( pVar );
 	missionInfo->decrementCBills( pVar->getCost() );
 	
-	currentlyModifiedMech = 0;
-	oldVariant = 0;	
+	currentlyModifiedMech = nullptr;
+	oldVariant = nullptr;	
 
 	return 0;
 }
@@ -461,8 +461,8 @@ int LogisticsData::cancelMechModfications()
 
 	currentlyModifiedMech->setVariant( oldVariant );
 
-	oldVariant = 0;
-	currentlyModifiedMech = 0;
+	oldVariant = nullptr;
+	currentlyModifiedMech = nullptr;
 
 	return 0;
 }

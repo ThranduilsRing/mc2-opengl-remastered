@@ -17,7 +17,7 @@ PilotReadyScreen.cpp			: Implementation of the PilotReadyScreen component.
 #include"chatwindow.h"
 #include"../GuiRuntime/GuiRuntime.h"
 
-PilotReadyScreen* PilotReadyScreen::s_instance = NULL;
+PilotReadyScreen* PilotReadyScreen::s_instance = nullptr;
 
 
 #define PR_MSG_ADD 62
@@ -26,13 +26,13 @@ PilotReadyScreen* PilotReadyScreen::s_instance = NULL;
 
 PilotReadyScreen::PilotReadyScreen()
 {
-	pCurPilot = NULL;
-	pIcons = NULL;
+	pCurPilot = nullptr;
+	pIcons = nullptr;
 	status = LogisticsScreen::RUNNING;
 	s_instance = this;
 	forceGroupCount = 0;
 	
-	pDragPilot = 0;
+	pDragPilot = nullptr;
 	dragLeft = 0;
 
 	status = PAUSED;
@@ -46,7 +46,7 @@ PilotReadyScreen::~PilotReadyScreen()
 	if ( pIcons )
 		delete [] pIcons;
 
-	pIcons = NULL;
+	pIcons = nullptr;
 
 	LogisticsScreen::clear();
 }
@@ -84,7 +84,7 @@ void PilotReadyScreen::init(FitIniFile* file)
 		for (; i < ICON_COUNT_X; i++ )
 		{
 			pIcons[count].setHelpID( IDS_HELP_DEPLOYTEAMMW );
-			pIcons[count].setMech( 0 );
+			pIcons[count].setMech( nullptr );
 			pIcons[count].move( x, y );
 			x+= pIcons[count].width();
 			x+=4;
@@ -190,7 +190,7 @@ void PilotReadyScreen::begin()
 
 	for ( int i = 0; i < 12; i++ )
 	{
-		pIcons[i].setMech( 0 );
+		pIcons[i].setMech( nullptr );
 		pIcons[i].select( 0 );
 
 		if ( i >= maxUnits )
@@ -239,7 +239,7 @@ void PilotReadyScreen::begin()
 					// VEHICLE-AUTO-PILOT-1: vehicles/support units auto-get a standard
 					// vehicle pilot so they are launch-ready without a roster mech-pilot.
 					bool isVeh = LogisticsData::instance->isVehicleUnit( (*iter) );
-					LogisticsPilot* vp = isVeh ? LogisticsData::instance->getVehiclePilot() : NULL;
+					LogisticsPilot* vp = isVeh ? LogisticsData::instance->getVehiclePilot() : nullptr;
 					if ( isVeh && vp )
 					{
 						(*iter)->setPilot( vp );
@@ -285,7 +285,7 @@ void PilotReadyScreen::begin()
 
 void PilotReadyScreen::end()
 {
-	mechDisplay.setMech( NULL );
+	mechDisplay.setMech( nullptr );
 }
 
 void PilotReadyScreen::render(int xOffset, int yOffset )
@@ -437,7 +437,7 @@ void PilotReadyScreen::update()
 			{
 				beginDrag( pIcons[i].getMech()->getPilot() );
 				pIcons[i].dimPilot( true );
-				pIcons[i].setPilot( NULL );
+				pIcons[i].setPilot( nullptr );
 			}
 
 			// VEHICLE-AUTO-PILOT-1: vehicles/support units (incl. copters) do not consume a
@@ -525,7 +525,7 @@ void PilotReadyScreen::update()
 			dragIcon.moveTo( userInput->getMouseX() - dragIcon.width() / 2, 
 				userInput->getMouseY() - dragIcon.height() / 2 );
 
-			LogisticsMechIcon* pSelIcon = 0;
+			LogisticsMechIcon* pSelIcon = nullptr;
 			
 			for ( int i = 0; i < ICON_COUNT; i++ )
 			{
@@ -565,7 +565,7 @@ int	PilotReadyScreen::handleMessage( unsigned long message, unsigned long who )
 	case MB_MSG_NEXT:
 		if ( MPlayer )
 		{
-			MPlayer->sendMissionSetup(0, 7, NULL);
+			MPlayer->sendMissionSetup(nullptr, 7, nullptr);
 			getButton( MB_MSG_PREV )->disable( true );
 			getButton( MB_MSG_NEXT )->disable( true );
 			getButton( MB_MSG_MAINMENU )->disable( true );
@@ -573,7 +573,7 @@ int	PilotReadyScreen::handleMessage( unsigned long message, unsigned long who )
 			if ( pInfo )
 			{
 				const char* name = pInfo->name;
-				MPlayer->sendPlayerActionChat(NULL, name, IDS_MP_PLAYER_READY );
+				MPlayer->sendPlayerActionChat(nullptr, name, IDS_MP_PLAYER_READY );
 			}
 
 			pilotListBox.SelectItem( -1 );
@@ -609,7 +609,7 @@ int	PilotReadyScreen::handleMessage( unsigned long message, unsigned long who )
 
 void PilotReadyScreen::addSelectedPilot()
 {
-	aListItem* pItem = NULL;
+	aListItem* pItem = nullptr;
 	bool bFound = 0;
 
 	int index = pilotListBox.GetSelectedItem();
@@ -685,7 +685,7 @@ void PilotReadyScreen::removeSelectedPilot()
 				int oldSel = pilotListBox.GetSelectedItem();
 				LogisticsPilotListBoxItem* pNewItem = new LogisticsPilotListBoxItem( pIcons[i].getPilot() );
 				int newIndex = pilotListBox.AddItem( pNewItem );
-				pIcons[i].setPilot( NULL );
+				pIcons[i].setPilot( nullptr );
 				pIcons[i].select( 0 );
 				i++;
 				if ( i >= ICON_COUNT || !pIcons[i].getMech() )
@@ -709,7 +709,7 @@ void PilotReadyScreen::removeSelectedPilot()
 						LogisticsPilotListBoxItem* pItem = (LogisticsPilotListBoxItem*)pilotListBox.GetItem( index );
 						if ( pItem )
 						{
-							LogisticsPilot* pPilot = ((LogisticsPilotListBoxItem*)pItem)->getPilot();
+							LogisticsPilot* pPilot = (pItem)->getPilot();
 							if ( pPilot )
 							{
 								setPilot( pPilot );
@@ -758,7 +758,7 @@ void PilotReadyScreen::endDrag( LogisticsMechIcon* pIcon  )
 		putBackPilot( pDragPilot );
 	}
 
-	pDragPilot = 0;
+	pDragPilot = nullptr;
 
 }
 
@@ -769,7 +769,7 @@ void PilotReadyScreen::putBackPilot( LogisticsPilot* pPilot )
 	{
 		if ( pIcons[i].getPilot() == pPilot )
 		{
-			pIcons[i].setPilot( 0 );
+			pIcons[i].setPilot( nullptr );
 			pIcons[i].dimPilot( false );
 		}
 	}
@@ -826,7 +826,7 @@ void PilotReadyScreen::setPilot( LogisticsPilot* pPilot )
 		sprintf( str, "%ld", (long)pCurPilot->getGunnery() );
 		textObjects[5].setText( str );
 		setDefsElementText( "game.mcl_pr_layout.text.pilot_info_targeting_number", str );
-		attributeMeters[0].setValue( ((float)pCurPilot->getGunnery())/80.f );
+		attributeMeters[0].setValue( (pCurPilot->getGunnery())/80.f );
 
 		char number[64];
 		sprintf( number, "%ld", (long)pCurPilot->getPiloting() );

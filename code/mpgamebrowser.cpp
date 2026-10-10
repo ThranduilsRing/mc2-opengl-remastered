@@ -131,7 +131,7 @@ void MPGameBrowser::begin()
 	{
 		MPlayer->closeSession();
 //		MPlayer->leaveSession(); // make sure I'm not hosting or already in a game....
-		MPlayer->beginSessionScan (NULL);
+		MPlayer->beginSessionScan (nullptr);
 		MPlayer->setMode(MULTIPLAYER_MODE_BROWSER);
 	}
 
@@ -463,7 +463,7 @@ void aStyle3TextListItem::render()
 		animGroup.setState( aAnimGroup::NORMAL );
 		color = animGroup.getCurrentColor( aAnimGroup::NORMAL );
 	}
-	aTextListItem::setColor((unsigned long)color);
+	aTextListItem::setColor(color);
 
 	aTextListItem::render();
 }
@@ -703,7 +703,7 @@ const char* aGameListItem::getText( int which )
 	else if ( which == SORT_ORDER_MAP )
 		return mapName.getText();
 
-	return NULL;
+	return nullptr;
 
 }
 
