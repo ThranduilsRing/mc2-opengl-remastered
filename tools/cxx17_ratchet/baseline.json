@@ -66,8 +66,8 @@
    "LG16": 7,
    "LG17": 81,
    "LG18": 11,
-   "LG19": 41,
-   "LG20": 74
+   "LG19": 40,
+   "LG20": 73
   },
   "GuiRuntime": {
    "LG01": 1,
@@ -1055,9 +1055,7 @@
    "LG06": 1
   },
   "GameOS/gameos/render_frame_plan.h": {
-   "LG06": 1,
-   "LG19": 1,
-   "LG20": 1
+   "LG06": 1
   },
   "GameOS/gameos/render_pass_attachment.h": {
    "LG05": 2,
@@ -5815,7 +5813,7 @@
    "LG20": 1
   }
  },
- "head": "6d3aadafc",
+ "head": "3c1ea9db1",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
