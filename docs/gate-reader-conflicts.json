@@ -1,44 +1,37 @@
 {
  "class_histogram": {
-  "AtoiNZ": 60,
-  "Custom[00000001]": 6,
+  "AtoiNZ": 59,
+  "Custom[00000001]": 3,
   "Custom[10001011]": 4,
   "DefOnAtoiNZ": 1,
   "DefOnLead0": 1,
   "Exact1": 44,
   "Is01": 2,
   "Lead0": 193,
-  "Lead0Kill": 202,
-  "Lead0P": 59,
-  "Lead1": 129,
-  "NonEmpty": 41,
-  "Num(atof+atoi,raw)": 1,
-  "Num(atof,guarded)": 11,
-  "Num(atof,raw)": 111,
-  "Num(atoi,guarded)": 6,
-  "Num(atoi,raw)": 42,
-  "Num(atol,guarded)": 1,
-  "Num(atol,raw)": 21,
+  "Lead0Kill": 199,
+  "Lead0P": 53,
+  "Lead1": 127,
+  "NonEmpty": 34,
+  "Num(atof,guarded)": 8,
+  "Num(atof,raw)": 91,
+  "Num(atoi,guarded)": 5,
+  "Num(atoi,raw)": 31,
+  "Num(atol,raw)": 19,
   "Num(num,raw)": 2,
-  "Num(strtoul,guarded)": 5,
-  "Num(strtoul,raw)": 3,
+  "Num(strtoul,guarded)": 4,
+  "Num(strtoul,raw)": 2,
   "Partial[D,D,off,on,on,on,on,on]": 1,
-  "Partial[D,off,off,off,off,off,off,on]": 1,
-  "Partial[D,on,off,on,on,on,on,on]": 4,
-  "Presence": 479,
-  "Std(def=off)": 14,
+  "Partial[D,on,off,on,on,on,on,on]": 2,
+  "Presence": 485,
+  "Std(def=off)": 15,
   "Std(def=on)": 11,
-  "Str[dflt,dflt]": 3,
+  "Str[dflt,dflt]": 2,
   "Str[null,null]": 1,
   "Str[null,pass]": 1,
   "Tri(inherit)": 50
  },
  "conflict_gates": [
-  "MC2_FX_FORCE_SPAWN",
-  "MC2_SHADOW_DYNAMIC_PROP_CASTERS",
-  "MC2_SPOTLIGHT_DIRECTION_FIX",
-  "MC2_STATIC_PROP_BUILDING_SHADOW",
-  "MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE"
+  "MC2_FX_FORCE_SPAWN"
  ],
  "design_s4": [
   {
@@ -76,17 +69,17 @@
   {
    "all_readers": [
     "GuiRuntime/GraphicsOptionsWindow_passes.cpp:443 (Lead1)",
-    "mclib/mlr/mlr_gate.cpp:37 (Lead1)"
+    "mclib/mlr/mlr_gate.cpp:40 (Lead1)"
    ],
    "gate": "MC2_DISABLE_GOSFX",
    "in_conflict": false,
    "note": "",
    "sites": [
     {
-     "actual": "mclib/mlr/mlr_gate.cpp:37",
+     "actual": "mclib/mlr/mlr_gate.cpp:40",
      "claim": "mclib/mlr/mlr_gate.cpp:37",
      "class": "Lead1",
-     "verdict": "confirmed"
+     "verdict": "corrected"
     },
     {
      "actual": "",
@@ -199,38 +192,38 @@
   },
   {
    "all_readers": [
-    "mclib/anim_override_registry.cpp:161 (NonEmpty)",
-    "mclib/file.cpp:730 (NonEmpty)",
-    "mclib/fx_def_registry.cpp:355 (NonEmpty)",
-    "mclib/model_override_registry.cpp:203 (NonEmpty)"
+    "mclib/anim_override_registry.cpp:163 (Typed(str))",
+    "mclib/file.cpp:734 (Typed(str))",
+    "mclib/fx_def_registry.cpp:357 (Typed(str))",
+    "mclib/model_override_registry.cpp:205 (Typed(str))"
    ],
    "gate": "MC2_ACTIVE_MOD",
    "in_conflict": false,
    "note": "all readers agree (NonEmpty); the hazard is a re-read after _putenv_s, i.e. caching, not truthiness",
    "sites": [
     {
-     "actual": "mclib/file.cpp:730",
+     "actual": "mclib/file.cpp:734",
      "claim": "mclib/file.cpp:727",
-     "class": "NonEmpty",
+     "class": "Typed(str)",
      "verdict": "corrected"
     },
     {
-     "actual": "mclib/anim_override_registry.cpp:161",
+     "actual": "mclib/anim_override_registry.cpp:163",
      "claim": "mclib/anim_override_registry.cpp:161",
-     "class": "NonEmpty",
-     "verdict": "confirmed"
+     "class": "Typed(str)",
+     "verdict": "corrected"
     },
     {
-     "actual": "mclib/fx_def_registry.cpp:355",
+     "actual": "mclib/fx_def_registry.cpp:357",
      "claim": "mclib/fx_def_registry.cpp:355",
-     "class": "NonEmpty",
-     "verdict": "confirmed"
+     "class": "Typed(str)",
+     "verdict": "corrected"
     },
     {
-     "actual": "mclib/model_override_registry.cpp:203",
+     "actual": "mclib/model_override_registry.cpp:205",
      "claim": "mclib/model_override_registry.cpp:203",
-     "class": "NonEmpty",
-     "verdict": "confirmed"
+     "class": "Typed(str)",
+     "verdict": "corrected"
     }
    ]
   }
@@ -242,10 +235,10 @@
    "gate": "MC2_ACTIVE_MOD",
    "in_conflict": false,
    "readers": [
-    "mclib/anim_override_registry.cpp:161 NonEmpty",
-    "mclib/file.cpp:730 NonEmpty",
-    "mclib/fx_def_registry.cpp:355 NonEmpty",
-    "mclib/model_override_registry.cpp:203 NonEmpty"
+    "mclib/anim_override_registry.cpp:163 Typed(str)",
+    "mclib/file.cpp:734 Typed(str)",
+    "mclib/fx_def_registry.cpp:357 Typed(str)",
+    "mclib/model_override_registry.cpp:205 Typed(str)"
    ],
    "rule": "NonEmpty everywhere; must be re-read, never cached",
    "status": "note"
@@ -327,7 +320,7 @@
    "in_conflict": false,
    "readers": [
     "GuiRuntime/GraphicsOptionsWindow_passes.cpp:443 Lead1",
-    "mclib/mlr/mlr_gate.cpp:37 Lead1"
+    "mclib/mlr/mlr_gate.cpp:40 Lead1"
    ],
    "rule": "Lead1 (=1 disables; unset = enabled)",
    "status": "resolved"
@@ -351,8 +344,8 @@
    "gate": "MC2_GPU_PARTICLES",
    "in_conflict": false,
    "readers": [
-    "mclib/gosfx/effect.cpp:45 Lead1",
-    "mclib/particles/batcher.cpp:80 Lead1"
+    "mclib/gosfx/effect.cpp:46 Lead1",
+    "mclib/particles/batcher.cpp:84 Lead1"
    ],
    "rule": "Lead1 (=1 enables)",
    "status": "resolved"
@@ -400,8 +393,8 @@
    "gate": "MC2_MOD_DEPS",
    "in_conflict": false,
    "readers": [
-    "mclib/file.cpp:735 NonEmpty",
-    "mclib/file.cpp:785 NonEmpty"
+    "mclib/file.cpp:740 Typed(str)",
+    "mclib/file.cpp:789 Typed(str)"
    ],
    "rule": "NonEmpty",
    "status": "resolved"
@@ -413,7 +406,7 @@
    "in_conflict": false,
    "readers": [
     "GameOS/gameos/gos_gpu_sync.cpp:16 Lead0",
-    "mclib/render_contract.cpp:569 Lead0"
+    "mclib/render_contract.cpp:570 Lead0"
    ],
    "rule": "Lead0",
    "status": "resolved"
@@ -436,11 +429,10 @@
    "delta": "code unchanged",
    "evidence": "levels are intentional",
    "gate": "MC2_SHADOW_DYNAMIC_PROP_CASTERS",
-   "in_conflict": true,
+   "in_conflict": false,
    "readers": [
     "GameOS/gameos/gos_static_prop_batcher.cpp:9776 Custom[00000001]",
-    "mclib/txmmgr.cpp:3674 Lead0Kill",
-    "mclib/txmmgr.cpp:3675 Lead0Kill"
+    "mclib/txmmgr.cpp:3622 Typed(is)"
    ],
    "rule": "=0 kill-switch (default ON); =2 adds a trace line",
    "status": "enum"
@@ -489,10 +481,11 @@
    "delta": "code unchanged",
    "evidence": "readers compare a leading character on purpose",
    "gate": "MC2_SPOTLIGHT_DIRECTION_FIX",
-   "in_conflict": true,
+   "in_conflict": false,
    "readers": [
-    "mclib/cone_glow.cpp:223 AtoiNZ",
-    "mclib/cone_glow.cpp:243 Custom[00000001]"
+    "mclib/cone_glow.cpp:206 Typed(is)",
+    "mclib/cone_glow.cpp:207 Typed(is)",
+    "mclib/cone_glow.cpp:224 Typed(is)"
    ],
    "rule": "levels: 1 fix, 2 fix plus trace",
    "status": "enum"
@@ -501,15 +494,13 @@
    "delta": "code unchanged",
    "evidence": "readers compare a leading character on purpose",
    "gate": "MC2_STATIC_PROP_BUILDING_SHADOW",
-   "in_conflict": true,
+   "in_conflict": false,
    "readers": [
     "GameOS/gameos/gos_static_prop_batcher.cpp:9568 Custom[00000001]",
-    "mclib/bdactor.cpp:5562 Lead0P",
-    "mclib/txmmgr.cpp:3517 Lead0P",
-    "mclib/txmmgr.cpp:3518 Lead0P",
-    "mclib/txmmgr.cpp:3521 Partial[D,off,off,off,off,off,off,on]",
-    "mclib/txmmgr.cpp:3659 Lead0P",
-    "mclib/txmmgr.cpp:3660 Lead0P"
+    "mclib/bdactor.cpp:5526 Typed(is)",
+    "mclib/txmmgr.cpp:3469 Typed(is)",
+    "mclib/txmmgr.cpp:3471 Typed(is)",
+    "mclib/txmmgr.cpp:3608 Typed(is)"
    ],
    "rule": "levels: 0 off, 1 on, 2 on plus trace",
    "status": "enum"
@@ -518,11 +509,10 @@
    "delta": "code unchanged",
    "evidence": "levels are intentional",
    "gate": "MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE",
-   "in_conflict": true,
+   "in_conflict": false,
    "readers": [
-    "mclib/bdactor.cpp:5566 Lead0Kill",
-    "mclib/bdactor.cpp:5577 Custom[00000001]",
-    "mclib/bdactor.cpp:5578 Custom[00000001]"
+    "mclib/bdactor.cpp:5528 Typed(is)",
+    "mclib/bdactor.cpp:5536 Typed(is)"
    ],
    "rule": "levels: =0 kill-switch (default ON), 2 adds a trace line",
    "status": "enum"
@@ -609,10 +599,10 @@
    "gate": "MC2_TEXMGR_KTX_PRIMARY",
    "in_conflict": false,
    "readers": [
-    "mclib/bdactor.cpp:179 Num(atoi,raw)",
-    "mclib/gvactor.cpp:36 Num(atoi,raw)",
-    "mclib/mech3d.cpp:186 Num(atoi,raw)",
-    "mclib/txmmgr.cpp:5394 Num(atoi,raw)"
+    "mclib/bdactor.cpp:170 Typed(get)",
+    "mclib/gvactor.cpp:37 Typed(get)",
+    "mclib/mech3d.cpp:184 Typed(get)",
+    "mclib/txmmgr.cpp:5324 Typed(get)"
    ],
    "rule": "numeric mode via atoi, default 1 (0 tga only, 1 ktx fallback, 2 ktx first)",
    "status": "resolved"
@@ -884,826 +874,6 @@
      ]
     }
    ]
-  },
-  "MC2_SHADOW_DYNAMIC_PROP_CASTERS": {
-   "behaviour_delta": [],
-   "conflict": true,
-   "contradicts_registry": [],
-   "default_visible": "yes",
-   "disagree_inputs": [
-    "U",
-    "E",
-    "F",
-    "O",
-    "X",
-    "X(\"10\")"
-   ],
-   "disagreements": [
-    {
-     "classes": {
-      "off": [
-       "Custom[00000001]"
-      ],
-      "on": [
-       "Lead0Kill"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "off": [
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9776"
-      ],
-      "on": [
-       "mclib/txmmgr.cpp:3674",
-       "mclib/txmmgr.cpp:3675"
-      ]
-     },
-     "probe": "U"
-    },
-    {
-     "classes": {
-      "off": [
-       "Custom[00000001]"
-      ],
-      "on": [
-       "Lead0Kill"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "off": [
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9776"
-      ],
-      "on": [
-       "mclib/txmmgr.cpp:3674",
-       "mclib/txmmgr.cpp:3675"
-      ]
-     },
-     "probe": "E"
-    },
-    {
-     "classes": {
-      "off": [
-       "Custom[00000001]"
-      ],
-      "on": [
-       "Lead0Kill"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "off": [
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9776"
-      ],
-      "on": [
-       "mclib/txmmgr.cpp:3674",
-       "mclib/txmmgr.cpp:3675"
-      ]
-     },
-     "probe": "F"
-    },
-    {
-     "classes": {
-      "off": [
-       "Custom[00000001]"
-      ],
-      "on": [
-       "Lead0Kill"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "off": [
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9776"
-      ],
-      "on": [
-       "mclib/txmmgr.cpp:3674",
-       "mclib/txmmgr.cpp:3675"
-      ]
-     },
-     "probe": "O"
-    },
-    {
-     "classes": {
-      "off": [
-       "Custom[00000001]"
-      ],
-      "on": [
-       "Lead0Kill"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "off": [
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9776"
-      ],
-      "on": [
-       "mclib/txmmgr.cpp:3674",
-       "mclib/txmmgr.cpp:3675"
-      ]
-     },
-     "probe": "X"
-    },
-    {
-     "classes": {
-      "off": [
-       "Custom[00000001]"
-      ],
-      "on": [
-       "Lead0Kill"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "off": [
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9776"
-      ],
-      "on": [
-       "mclib/txmmgr.cpp:3674",
-       "mclib/txmmgr.cpp:3675"
-      ]
-     },
-     "probe": "X10"
-    }
-   ],
-   "families": {
-    "bool": 3
-   },
-   "kill_style_name": false,
-   "proposal_basis": "custom outcome vector(s): Custom[00000001]",
-   "proposed_rule": "Enum/Int row: a reader compares a leading character (levels), so a Bool row would collapse them (owner decision)",
-   "reader_sites": 3,
-   "registry": {
-    "default_on": true,
-    "kind": "Feature"
-   },
-   "set_in": [
-    "tests/smoke/matrices/shadow.json",
-    "tools/gate_g0_ledger.json",
-    "tools/gate_table.seed.json"
-   ],
-   "sites": [
-    {
-     "callee": "getenv",
-     "class": "Custom[00000001]",
-     "family": "bool",
-     "file": "GameOS/gameos/gos_static_prop_batcher.cpp",
-     "inverted": false,
-     "line": 9776,
-     "vector": [
-      "off",
-      "off",
-      "off",
-      "off",
-      "off",
-      "off",
-      "off",
-      "on"
-     ]
-    },
-    {
-     "callee": "getenv",
-     "class": "Lead0Kill",
-     "family": "bool",
-     "file": "mclib/txmmgr.cpp",
-     "inverted": false,
-     "line": 3674,
-     "vector": [
-      "on",
-      "on",
-      "off",
-      "on",
-      "on",
-      "on",
-      "on",
-      "on"
-     ]
-    },
-    {
-     "callee": "getenv",
-     "class": "Lead0Kill",
-     "family": "bool",
-     "file": "mclib/txmmgr.cpp",
-     "inverted": false,
-     "line": 3675,
-     "vector": [
-      "on",
-      "on",
-      "off",
-      "on",
-      "on",
-      "on",
-      "on",
-      "on"
-     ]
-    }
-   ]
-  },
-  "MC2_SPOTLIGHT_DIRECTION_FIX": {
-   "behaviour_delta": [],
-   "conflict": true,
-   "contradicts_registry": [],
-   "default_visible": "yes",
-   "disagree_inputs": [
-    "O",
-    "X(\"10\")"
-   ],
-   "disagreements": [
-    {
-     "classes": {
-      "off": [
-       "Custom[00000001]"
-      ],
-      "on": [
-       "AtoiNZ"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "off": [
-       "mclib/cone_glow.cpp:243"
-      ],
-      "on": [
-       "mclib/cone_glow.cpp:223"
-      ]
-     },
-     "probe": "O"
-    },
-    {
-     "classes": {
-      "off": [
-       "Custom[00000001]"
-      ],
-      "on": [
-       "AtoiNZ"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "off": [
-       "mclib/cone_glow.cpp:243"
-      ],
-      "on": [
-       "mclib/cone_glow.cpp:223"
-      ]
-     },
-     "probe": "X10"
-    }
-   ],
-   "families": {
-    "bool": 2
-   },
-   "kill_style_name": false,
-   "proposal_basis": "custom outcome vector(s): Custom[00000001]",
-   "proposed_rule": "Enum/Int row: a reader compares a leading character (levels), so a Bool row would collapse them (owner decision)",
-   "reader_sites": 2,
-   "registry": {
-    "default_on": false,
-    "kind": "Trace"
-   },
-   "set_in": [
-    "tools/gate_g0_ledger.json",
-    "tools/gate_table.seed.json"
-   ],
-   "sites": [
-    {
-     "callee": "getenv",
-     "class": "AtoiNZ",
-     "family": "bool",
-     "file": "mclib/cone_glow.cpp",
-     "inverted": false,
-     "line": 223,
-     "vector": [
-      "off",
-      "off",
-      "off",
-      "off",
-      "on",
-      "off",
-      "on",
-      "on"
-     ]
-    },
-    {
-     "callee": "getenv",
-     "class": "Custom[00000001]",
-     "family": "bool",
-     "file": "mclib/cone_glow.cpp",
-     "inverted": false,
-     "line": 243,
-     "vector": [
-      "off",
-      "off",
-      "off",
-      "off",
-      "off",
-      "off",
-      "off",
-      "on"
-     ]
-    }
-   ]
-  },
-  "MC2_STATIC_PROP_BUILDING_SHADOW": {
-   "behaviour_delta": [],
-   "conflict": true,
-   "contradicts_registry": [],
-   "default_visible": "yes",
-   "disagree_inputs": [
-    "E",
-    "F",
-    "O",
-    "X",
-    "X(\"10\")"
-   ],
-   "disagreements": [
-    {
-     "classes": {
-      "off": [
-       "Custom[00000001]",
-       "Partial[D,off,off,off,off,off,off,on]"
-      ],
-      "on": [
-       "Lead0P"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "off": [
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9568",
-       "mclib/txmmgr.cpp:3521"
-      ],
-      "on": [
-       "mclib/bdactor.cpp:5562",
-       "mclib/txmmgr.cpp:3517",
-       "mclib/txmmgr.cpp:3518",
-       "mclib/txmmgr.cpp:3659",
-       "mclib/txmmgr.cpp:3660"
-      ]
-     },
-     "probe": "E"
-    },
-    {
-     "classes": {
-      "off": [
-       "Custom[00000001]",
-       "Partial[D,off,off,off,off,off,off,on]"
-      ],
-      "on": [
-       "Lead0P"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "off": [
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9568",
-       "mclib/txmmgr.cpp:3521"
-      ],
-      "on": [
-       "mclib/bdactor.cpp:5562",
-       "mclib/txmmgr.cpp:3517",
-       "mclib/txmmgr.cpp:3518",
-       "mclib/txmmgr.cpp:3659",
-       "mclib/txmmgr.cpp:3660"
-      ]
-     },
-     "probe": "F"
-    },
-    {
-     "classes": {
-      "off": [
-       "Custom[00000001]",
-       "Partial[D,off,off,off,off,off,off,on]"
-      ],
-      "on": [
-       "Lead0P"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "off": [
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9568",
-       "mclib/txmmgr.cpp:3521"
-      ],
-      "on": [
-       "mclib/bdactor.cpp:5562",
-       "mclib/txmmgr.cpp:3517",
-       "mclib/txmmgr.cpp:3518",
-       "mclib/txmmgr.cpp:3659",
-       "mclib/txmmgr.cpp:3660"
-      ]
-     },
-     "probe": "O"
-    },
-    {
-     "classes": {
-      "off": [
-       "Custom[00000001]",
-       "Partial[D,off,off,off,off,off,off,on]"
-      ],
-      "on": [
-       "Lead0P"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "off": [
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9568",
-       "mclib/txmmgr.cpp:3521"
-      ],
-      "on": [
-       "mclib/bdactor.cpp:5562",
-       "mclib/txmmgr.cpp:3517",
-       "mclib/txmmgr.cpp:3518",
-       "mclib/txmmgr.cpp:3659",
-       "mclib/txmmgr.cpp:3660"
-      ]
-     },
-     "probe": "X"
-    },
-    {
-     "classes": {
-      "off": [
-       "Custom[00000001]",
-       "Partial[D,off,off,off,off,off,off,on]"
-      ],
-      "on": [
-       "Lead0P"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "off": [
-       "GameOS/gameos/gos_static_prop_batcher.cpp:9568",
-       "mclib/txmmgr.cpp:3521"
-      ],
-      "on": [
-       "mclib/bdactor.cpp:5562",
-       "mclib/txmmgr.cpp:3517",
-       "mclib/txmmgr.cpp:3518",
-       "mclib/txmmgr.cpp:3659",
-       "mclib/txmmgr.cpp:3660"
-      ]
-     },
-     "probe": "X10"
-    }
-   ],
-   "families": {
-    "bool": 7
-   },
-   "kill_style_name": false,
-   "proposal_basis": "custom outcome vector(s): Custom[00000001]",
-   "proposed_rule": "Enum/Int row: a reader compares a leading character (levels), so a Bool row would collapse them (owner decision)",
-   "reader_sites": 7,
-   "registry": {
-    "default_on": false,
-    "kind": "Feature"
-   },
-   "set_in": [
-    "tools/gate_g0_ledger.json",
-    "tools/gate_table.seed.json"
-   ],
-   "sites": [
-    {
-     "callee": "getenv",
-     "class": "Custom[00000001]",
-     "family": "bool",
-     "file": "GameOS/gameos/gos_static_prop_batcher.cpp",
-     "inverted": false,
-     "line": 9568,
-     "vector": [
-      "off",
-      "off",
-      "off",
-      "off",
-      "off",
-      "off",
-      "off",
-      "on"
-     ]
-    },
-    {
-     "callee": "getenv",
-     "class": "Lead0P",
-     "family": "bool",
-     "file": "mclib/bdactor.cpp",
-     "inverted": false,
-     "line": 5562,
-     "vector": [
-      "off",
-      "on",
-      "off",
-      "on",
-      "on",
-      "on",
-      "on",
-      "on"
-     ]
-    },
-    {
-     "callee": "getenv",
-     "class": "Lead0P",
-     "family": "bool",
-     "file": "mclib/txmmgr.cpp",
-     "inverted": false,
-     "line": 3517,
-     "vector": [
-      "off",
-      "on",
-      "off",
-      "on",
-      "on",
-      "on",
-      "on",
-      "on"
-     ]
-    },
-    {
-     "callee": "getenv",
-     "class": "Lead0P",
-     "family": "bool",
-     "file": "mclib/txmmgr.cpp",
-     "inverted": false,
-     "line": 3518,
-     "vector": [
-      "off",
-      "on",
-      "off",
-      "on",
-      "on",
-      "on",
-      "on",
-      "on"
-     ]
-    },
-    {
-     "callee": "getenv",
-     "class": "Partial[D,off,off,off,off,off,off,on]",
-     "family": "bool",
-     "file": "mclib/txmmgr.cpp",
-     "inverted": false,
-     "line": 3521,
-     "vector": [
-      "D",
-      "off",
-      "off",
-      "off",
-      "off",
-      "off",
-      "off",
-      "on"
-     ]
-    },
-    {
-     "callee": "getenv",
-     "class": "Lead0P",
-     "family": "bool",
-     "file": "mclib/txmmgr.cpp",
-     "inverted": false,
-     "line": 3659,
-     "vector": [
-      "off",
-      "on",
-      "off",
-      "on",
-      "on",
-      "on",
-      "on",
-      "on"
-     ]
-    },
-    {
-     "callee": "getenv",
-     "class": "Lead0P",
-     "family": "bool",
-     "file": "mclib/txmmgr.cpp",
-     "inverted": false,
-     "line": 3660,
-     "vector": [
-      "off",
-      "on",
-      "off",
-      "on",
-      "on",
-      "on",
-      "on",
-      "on"
-     ]
-    }
-   ]
-  },
-  "MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE": {
-   "behaviour_delta": [],
-   "conflict": true,
-   "contradicts_registry": [],
-   "default_visible": "yes",
-   "disagree_inputs": [
-    "U",
-    "E",
-    "F",
-    "O",
-    "X",
-    "X(\"10\")"
-   ],
-   "disagreements": [
-    {
-     "classes": {
-      "off": [
-       "Custom[00000001]"
-      ],
-      "on": [
-       "Lead0Kill"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "off": [
-       "mclib/bdactor.cpp:5577",
-       "mclib/bdactor.cpp:5578"
-      ],
-      "on": [
-       "mclib/bdactor.cpp:5566"
-      ]
-     },
-     "probe": "U"
-    },
-    {
-     "classes": {
-      "off": [
-       "Custom[00000001]"
-      ],
-      "on": [
-       "Lead0Kill"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "off": [
-       "mclib/bdactor.cpp:5577",
-       "mclib/bdactor.cpp:5578"
-      ],
-      "on": [
-       "mclib/bdactor.cpp:5566"
-      ]
-     },
-     "probe": "E"
-    },
-    {
-     "classes": {
-      "off": [
-       "Custom[00000001]"
-      ],
-      "on": [
-       "Lead0Kill"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "off": [
-       "mclib/bdactor.cpp:5577",
-       "mclib/bdactor.cpp:5578"
-      ],
-      "on": [
-       "mclib/bdactor.cpp:5566"
-      ]
-     },
-     "probe": "F"
-    },
-    {
-     "classes": {
-      "off": [
-       "Custom[00000001]"
-      ],
-      "on": [
-       "Lead0Kill"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "off": [
-       "mclib/bdactor.cpp:5577",
-       "mclib/bdactor.cpp:5578"
-      ],
-      "on": [
-       "mclib/bdactor.cpp:5566"
-      ]
-     },
-     "probe": "O"
-    },
-    {
-     "classes": {
-      "off": [
-       "Custom[00000001]"
-      ],
-      "on": [
-       "Lead0Kill"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "off": [
-       "mclib/bdactor.cpp:5577",
-       "mclib/bdactor.cpp:5578"
-      ],
-      "on": [
-       "mclib/bdactor.cpp:5566"
-      ]
-     },
-     "probe": "X"
-    },
-    {
-     "classes": {
-      "off": [
-       "Custom[00000001]"
-      ],
-      "on": [
-       "Lead0Kill"
-      ]
-     },
-     "family": "bool",
-     "outcomes": {
-      "off": [
-       "mclib/bdactor.cpp:5577",
-       "mclib/bdactor.cpp:5578"
-      ],
-      "on": [
-       "mclib/bdactor.cpp:5566"
-      ]
-     },
-     "probe": "X10"
-    }
-   ],
-   "families": {
-    "bool": 3
-   },
-   "kill_style_name": false,
-   "proposal_basis": "custom outcome vector(s): Custom[00000001]",
-   "proposed_rule": "Enum/Int row: a reader compares a leading character (levels), so a Bool row would collapse them (owner decision)",
-   "reader_sites": 3,
-   "registry": {
-    "default_on": true,
-    "kind": "Feature"
-   },
-   "set_in": [
-    "tools/gate_g0_ledger.json",
-    "tools/gate_table.seed.json"
-   ],
-   "sites": [
-    {
-     "callee": "getenv",
-     "class": "Lead0Kill",
-     "family": "bool",
-     "file": "mclib/bdactor.cpp",
-     "inverted": false,
-     "line": 5566,
-     "vector": [
-      "on",
-      "on",
-      "off",
-      "on",
-      "on",
-      "on",
-      "on",
-      "on"
-     ]
-    },
-    {
-     "callee": "getenv",
-     "class": "Custom[00000001]",
-     "family": "bool",
-     "file": "mclib/bdactor.cpp",
-     "inverted": false,
-     "line": 5577,
-     "vector": [
-      "off",
-      "off",
-      "off",
-      "off",
-      "off",
-      "off",
-      "off",
-      "on"
-     ]
-    },
-    {
-     "callee": "getenv",
-     "class": "Custom[00000001]",
-     "family": "bool",
-     "file": "mclib/bdactor.cpp",
-     "inverted": false,
-     "line": 5578,
-     "vector": [
-      "off",
-      "off",
-      "off",
-      "off",
-      "off",
-      "off",
-      "off",
-      "on"
-     ]
-    }
-   ]
   }
  },
  "probes": [
@@ -1729,18 +899,18 @@
   "editor",
   "gui"
  ],
- "source": "commit 43dcfdb0b",
+ "source": "commit 025648b3a",
  "totals": {
-  "conflict_gates": 5,
+  "conflict_gates": 1,
   "gates_with_literal": 1131,
-  "gates_with_reader": 1118,
-  "literal_occurrences": 1708,
-  "non_call_literals": 47,
-  "nonreader_sites": 17,
+  "gates_with_reader": 1117,
+  "literal_occurrences": 1713,
+  "non_call_literals": 52,
+  "nonreader_sites": 16,
   "read_sites": 1661,
-  "reader_sites": 1510,
-  "token_sites": 113,
-  "unclassified_sites": 21,
+  "reader_sites": 1450,
+  "token_sites": 177,
+  "unclassified_sites": 18,
   "unresolved_conflicts": 0
  },
  "unclassified": [
@@ -1869,27 +1039,6 @@
    "gate": "MC2_BRAIN_SPECIAL_FIT",
    "line": 4331,
    "why": "unclassified:opaque"
-  },
-  {
-   "callee": "getenv",
-   "file": "mclib/assimp_importer.cpp",
-   "gate": "MC2_MECH_IMPORT_FORCE_CLIP",
-   "line": 1430,
-   "why": "unclassified:opaque"
-  },
-  {
-   "callee": "getenv",
-   "file": "mclib/bdactor.cpp",
-   "gate": "MC2_GLTF_AXIS",
-   "line": 398,
-   "why": "unclassified:opaque-callee(_putenv_s)"
-  },
-  {
-   "callee": "getenv",
-   "file": "mclib/bdactor.cpp",
-   "gate": "MC2_GLTF_YAW_DEG",
-   "line": 399,
-   "why": "unclassified:opaque-callee(_putenv_s)"
   }
  ],
  "unresolved_gates": [],
