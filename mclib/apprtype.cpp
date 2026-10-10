@@ -38,6 +38,7 @@
 
 #include<cstdlib>
 #include<cstdio>
+#include "Gates/gate.h"
 
 //---------------------------------------------------------------------------
 // static Globals
@@ -50,7 +51,7 @@ AppearanceTypeListPtr appearanceTypeList = NULL;
 // the shared counters read by the per-run verdict in gameosmain.cpp and written
 // by the appearance (apprtype/mech3d) and terrain-residency (txmmgr) paths.
 // See docs/tier1_env_vars.md.
-bool g_loadRaceTrace                     = (getenv("MC2_LOAD_RACE_TRACE") != nullptr);
+bool g_loadRaceTrace                     = mc2::gate::get<"MC2_LOAD_RACE_TRACE">();
 long g_loadRaceApprNull                  = 0;    // getAppearance() NULL returns
 long g_loadRaceMechDegrade               = 0;    // Mech3DAppearance::init degrade-branch hits
 long g_loadRaceMechDegradeReal           = 0;    // ...of which real actors (obj != NULL)

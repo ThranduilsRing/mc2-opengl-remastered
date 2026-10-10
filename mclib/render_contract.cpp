@@ -24,7 +24,7 @@
 #include <GL/glew.h>
 
 #include <cstdio>   // fprintf
-#include <cstdlib>  // getenv
+#include <cstdlib>
 
 #include "RenderCore/RenderPassContract.h"
 #include "RenderCore/RenderResourceRegistry.h"
@@ -33,6 +33,7 @@
 #include "RenderCore/frame_pass_trace.h"           // FRAME-GRAPH-EXECUTOR-DRYRUN-1 pure kernel
 #include "RenderCore/terrain_subpass_contract.h"   // dominantTerrainPathLive / terrainPathsThatDrew
 #include "RenderCore/top_level_pass_executor.h"    // SAME-ORDER-EXECUTOR-VALIDATE-1 descriptor table
+#include "Gates/gate.h"
 
 namespace render_contract {
 
@@ -566,8 +567,7 @@ RenderCore::RenderPassId toRenderPassId(PassIdentity id) {
 }
 
 void initRenderContractAssert() {
-    const char* v = ::getenv("MC2_RENDER_CONTRACT_ASSERT");
-    s_assertEnabled = (v && v[0] != '\0' && v[0] != '0');
+    s_assertEnabled = mc2::gate::get<"MC2_RENDER_CONTRACT_ASSERT">();
     if (s_assertEnabled)
         fprintf(stderr, "[RENDER_CONTRACT v2] assert mode ACTIVE\n");
 }
@@ -651,8 +651,7 @@ bool          s_telemetryEverEmitted[16]   = {};
 } // namespace
 
 void initRenderPassTelemetry() {
-    const char* v = ::getenv("MC2_RENDER_PASS_TELEMETRY");
-    s_telemetryEnabled = (v != nullptr && v[0] == '1');
+    s_telemetryEnabled = mc2::gate::get<"MC2_RENDER_PASS_TELEMETRY">();
     if (s_telemetryEnabled) {
         printf("[RENDER_PASS v1] telemetry ACTIVE (sample every %u frames)\n",
                (unsigned)kTelemetryFrameInterval);
@@ -694,10 +693,7 @@ using namespace RenderCore;
 using namespace RenderCore::framegraph;
 
 bool dryrunEnabled() {
-    static const bool s = []{
-        const char* v = ::getenv("MC2_FRAMEGRAPH_DRYRUN");
-        return v && v[0] == '1';
-    }();
+    static const bool s = mc2::gate::get<"MC2_FRAMEGRAPH_DRYRUN">();
     return s;
 }
 
@@ -913,10 +909,8 @@ const RenderCore::RenderPassContract* findPassContract(RenderCore::RenderPassId 
 } // anonymous namespace (CONTRACT-3 helpers)
 
 void initRenderPassOrder() {
-    const char* v = getenv("MC2_RENDER_PASS_ORDER");
-    s_frame.orderEnabled = s_frame.forceEnabled || (v && v[0] == '1');
-    const char* t = getenv("MC2_RENDER_PASS_TELEMETRY");
-    s_frame.telEnabled = s_frame.forceEnabled || (t && t[0] == '1');
+    s_frame.orderEnabled = s_frame.forceEnabled || mc2::gate::get<"MC2_RENDER_PASS_ORDER">();
+    s_frame.telEnabled = s_frame.forceEnabled || mc2::gate::get<"MC2_RENDER_PASS_TELEMETRY">();
 }
 
 void _test_forceOrderAudit(bool enabled) {
@@ -1001,15 +995,10 @@ void ambientProbeAtPassBegin(RenderCore::RenderPassId id) {
     // The "fail dev/smoke if mismatch>0" tier is scripts/check-ambient-guard.py (reads
     // the dump counter), so a bad ambient handoff trips immediately instead of surfacing
     // later as flicker / missing geometry / wrong depth.
-    static const bool s_guardEnabled = []{
-        const char* v = ::getenv("MC2_FRAMEGRAPH_AMBIENT_GUARD");
-        return !(v && v[0] == '0');   // default ON; only =0 disables
-    }();
+    static const bool s_guardEnabled = mc2::gate::get<"MC2_FRAMEGRAPH_AMBIENT_GUARD">();
     if (!s_guardEnabled) return;
-    static const bool s_fatal = []{
-        return ::getenv("MC2_FRAMEGRAPH_AMBIENT_FATAL") != nullptr
-            || ::getenv("MC2_AMBIENT_ASSERT_FATAL") != nullptr;   // legacy alias
-    }();
+    static const bool s_fatal = mc2::gate::isSet<"MC2_FRAMEGRAPH_AMBIENT_FATAL">()
+        || mc2::gate::isSet<"MC2_AMBIENT_ASSERT_FATAL">();   // legacy alias
 
     // --- AMBIENT axes (colorMask / depthFunc / depthWrite) -----------------------
     if (const RenderCore::framegraph::AmbientContract* decl =
@@ -1354,10 +1343,8 @@ static void passScopeViolation(const char* what, PassIdentity id, const char* hi
 } // anonymous namespace (scope-tracking helpers)
 
 void initRenderPassScope() {
-    const char* t = ::getenv("MC2_RENDER_PASS_CONTRACT_TRACE");
-    const char* a = ::getenv("MC2_RENDER_PASS_CONTRACT_ASSERT");
-    s_scope.traceEnabled  = (t && t[0] == '1');
-    s_scope.assertEnabled = (a && a[0] == '1');
+    s_scope.traceEnabled  = mc2::gate::get<"MC2_RENDER_PASS_CONTRACT_TRACE">();
+    s_scope.assertEnabled = mc2::gate::get<"MC2_RENDER_PASS_CONTRACT_ASSERT">();
     s_scope.depth         = 0;
     s_scope.overflowed    = false;
     if (passScopeActive()) {
@@ -1446,10 +1433,7 @@ namespace {
 
 bool topLevelExecutorEnabled() {
     // Shares the same gate as the sub-stage island executor in gos_postprocess.cpp.
-    static const bool s_on = []() {
-        const char* v = ::getenv("MC2_FRAMEGRAPH_EXECUTOR");
-        return v && v[0] == '1';
-    }();
+    static const bool s_on = mc2::gate::get<"MC2_FRAMEGRAPH_EXECUTOR">();
     return s_on;
 }
 

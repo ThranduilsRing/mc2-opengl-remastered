@@ -10,6 +10,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <cstdio>
+#include "Gates/gate.h"
 
 namespace CliffDecalTuning {
 
@@ -23,20 +24,15 @@ Stuff::Vector3D  s_nAcc;           // accumulated world-axis terrain normal
 Knobs s_knobs;
 bool  s_knobsSeeded = false;
 
-float envFloat(const char* name, float dflt) {
-    const char* v = std::getenv(name);
-    return v ? (float)std::atof(v) : dflt;
-}
-
 void seedKnobsFromEnv() {
     if (s_knobsSeeded) return;
     s_knobsSeeded = true;
-    s_knobs.scale   = envFloat("MC2_TERRAIN_DECAL_SCALE",   1.0f);
-    s_knobs.offset  = envFloat("MC2_TERRAIN_DECAL_OFFSET",  8.0f);
-    s_knobs.lateral = envFloat("MC2_TERRAIN_DECAL_LATERAL", 0.0f);
-    s_knobs.lift    = envFloat("MC2_TERRAIN_DECAL_LIFT",    0.0f);
-    s_knobs.yawDeg  = envFloat("MC2_TERRAIN_DECAL_YAW",     0.0f);
-    s_knobs.pitchDeg = envFloat("MC2_TERRAIN_DECAL_PITCH",  0.0f);
+    s_knobs.scale    = mc2::gate::get<"MC2_TERRAIN_DECAL_SCALE">();
+    s_knobs.offset   = mc2::gate::get<"MC2_TERRAIN_DECAL_OFFSET">();
+    s_knobs.lateral  = mc2::gate::get<"MC2_TERRAIN_DECAL_LATERAL">();
+    s_knobs.lift     = mc2::gate::get<"MC2_TERRAIN_DECAL_LIFT">();
+    s_knobs.yawDeg   = mc2::gate::get<"MC2_TERRAIN_DECAL_YAW">();
+    s_knobs.pitchDeg = mc2::gate::get<"MC2_TERRAIN_DECAL_PITCH">();
 }
 
 } // namespace

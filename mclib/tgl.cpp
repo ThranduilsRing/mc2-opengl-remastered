@@ -9,6 +9,7 @@
 //===========================================================================//
 
 #include "tgl_internal.h"
+#include "Gates/gate.h"
 
 //-------------------------------------------------------------------------------
 // Statics
@@ -104,7 +105,7 @@ bool eligibleForGpuObjects(class TG_Shape* shape);
 // code/mission.cpp:3117). All calls happen on the render thread inside the
 // frame-end window — no locks needed.
 //-------------------------------------------------------------------------------
-static const bool s_tglPoolTrace = (getenv("MC2_TGL_POOL_TRACE") != nullptr);
+static const bool s_tglPoolTrace = mc2::gate::get<"MC2_TGL_POOL_TRACE">();
 
 // Tier-1 instrumentation canonical frame counter. Defined here (in mclib)
 // rather than GameOS/gameos/gameosmain.cpp so data-tool targets (aseconv,

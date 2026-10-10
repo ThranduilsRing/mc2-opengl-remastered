@@ -5,8 +5,9 @@
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "../GameOS/gameos/gos_profiler.h"   // ZoneScopedN
 #include <stdio.h>
-#include <stdlib.h>          // getenv
+#include <stdlib.h>
 #include <string.h>          // memset
+#include "Gates/gate.h"
 
 TexResolveTable g_texResolveTable = {};
 uint64_t        g_currentFrameId  = 0;
@@ -47,21 +48,13 @@ void initTexResolveTable(void)
 {
     // Default ON with explicit opt-out. MC2_MODERN_TEX_RESOLVE=0|false|off disables.
     // MC2_MODERN_TEX_RESOLVE_VALIDATE implies enabled regardless of the opt-out.
-    g_texResolveTable.validate = (getenv("MC2_MODERN_TEX_RESOLVE_VALIDATE") != nullptr);
+    g_texResolveTable.validate = mc2::gate::get<"MC2_MODERN_TEX_RESOLVE_VALIDATE">();
     if (g_texResolveTable.validate) {
         g_texResolveTable.enabled = true;
     } else {
-        const char* env = getenv("MC2_MODERN_TEX_RESOLVE");
-        if (env != nullptr) {
-            g_texResolveTable.enabled =
-                strcmp(env, "0")     != 0 &&
-                _stricmp(env, "false") != 0 &&
-                _stricmp(env, "off")   != 0;
-        } else {
-            g_texResolveTable.enabled = true;  // promoted default
-        }
+        g_texResolveTable.enabled = mc2::gate::get<"MC2_MODERN_TEX_RESOLVE">();   // promoted default ON
     }
-    g_texResolveTable.trace = (getenv("MC2_MODERN_TEX_RESOLVE_TRACE") != nullptr);
+    g_texResolveTable.trace = mc2::gate::get<"MC2_MODERN_TEX_RESOLVE_TRACE">();
 
     memset(g_texResolveTable.handles, 0xFF, sizeof(g_texResolveTable.handles));
     g_texResolveTable.buildGeneration   = 0;

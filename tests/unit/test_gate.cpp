@@ -940,6 +940,15 @@ TEST_CASE("G6 String rows keep path and text values verbatim") {
     CHECK(std::string(g1b::rowNamed("MC2_MECH_IMPORT_FORCE_BONE").defStr) == "j_LThigh");
 }
 
+TEST_CASE("G6 MC2_FORCE_LOD is an integer level (the reader was atoi)") {
+    const gate::Row& row = g1b::rowNamed("MC2_FORCE_LOD");
+    CHECK(row.kind == Kind::Int);
+    CHECK(g1b::intOf(row, nullptr) == 0);
+    CHECK(g1b::intOf(row, "2") == 2);
+    CHECK(g1b::intOf(row, "2.9") == 2);   // atoi stops at the dot
+    CHECK(g1b::intOf(row, "abc") == 0);
+}
+
 TEST_CASE("G6 the mod-cache refresh flag is re-read after an in-process putenv") {
     const gate::Row& row = g1b::rowNamed("MC2_REBUILD_MOD_CACHE");
     CHECK(row.reread);

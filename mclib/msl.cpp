@@ -71,6 +71,7 @@ std::atomic<int> g_workerResubmitCalls{0};
 
 
 #include "../ARM/Microsoft.Xna.Arm.h"
+#include "Gates/gate.h"
 using namespace Microsoft::Xna::Arm;
 
 //-------------------------------------------------------------------------------
@@ -216,7 +217,7 @@ TG_MultiShapePtr TG_TypeMultiShape::CreateFrom (void)
 //                  own always-on `required_missing` from tgl_load_guard.
 // Smoke: the `asset_load_fail` red bucket counts parse_fail (+
 // required_missing + appr_type_fail) — deliberately NOT bare file_missing.
-static const bool s_assetTrace_msl = mc2AuditLatch("MC2_ASSET_TRACE");
+static const bool s_assetTrace_msl = mc2::gate::get<"MC2_ASSET_TRACE">();
 
 static unsigned long long mslAssetKey(const char* event, const char* path)
 {
@@ -487,7 +488,7 @@ void TG_TypeMultiShape::SetImportedTextures(DWORD count,
 // Track D — env-gated diagnostic trace. Set MC2_ASSIMP_TRACE=1 in the env to
 // emit per-load probe + import-result lines on stderr. Default off; matches
 // the [TGL_POOL v1] / [DESTROY v1] convention (memory:debug_instrumentation_rule).
-static const bool s_assimpTrace_msl = (getenv("MC2_ASSIMP_TRACE") != NULL);
+static const bool s_assimpTrace_msl = mc2::gate::get<"MC2_ASSIMP_TRACE">();
 #define ASSIMP_TRACE_MSL(fmt, ...) \
     do { if (s_assimpTrace_msl) { \
         fprintf(stderr, "[ASSIMP_TRACE] " fmt "\n", ##__VA_ARGS__); \
@@ -510,8 +511,7 @@ long TG_TypeMultiShape::LoadFromFile(const char* baseName)
 	// than "0", or env var absent). Compile-time ENABLE_ASSIMP_IMPORTER is the
 	// master gate; this is the per-launch override.
 	{
-		const char* kEnv = getenv("MC2_ASSIMP_IMPORT");
-		if (!kEnv || strcmp(kEnv, "0") != 0) {
+		if (mc2::gate::get<"MC2_ASSIMP_IMPORT">()) {
 			// Probe order: .glb then .fbx. On any importer failure, fall
 			// through to ASE so a broken modder asset can't render the mech
 			// un-loadable. Stock-install playability is paramount.
@@ -1222,8 +1222,7 @@ long TG_TypeMultiShape::GetTextureName (DWORD textureNum, char *tName, long name
 // Logs every TG_TypeMultiShape::SetTextureHandle call (the bdactor.cpp/genactor.cpp
 // "actor.update() → re-cache" pathway). Absence of these logs for a given multiType
 // during gameplay = appearance->touch() ran instead of update() (UPDATE_SKIP=1 path).
-static const bool s_msl_texLifecycleTrace =
-    (getenv("MC2_TEX_LIFECYCLE_TRACE") != nullptr);
+static const bool s_msl_texLifecycleTrace = mc2::gate::get<"MC2_TEX_LIFECYCLE_TRACE">();
 
 long TG_TypeMultiShape::SetTextureHandle (DWORD textureNum, DWORD gosTextureHandle)
 {
@@ -1254,8 +1253,7 @@ long TG_TypeMultiShape::SetTextureHandle (DWORD textureNum, DWORD gosTextureHand
 	// for narrow-window debugging where flood is acceptable.
 	if (s_msl_texLifecycleTrace) {
 		static uint32_t s_eventCount = 0;
-		static const bool s_verbose =
-		    (getenv("MC2_TEX_LIFECYCLE_TRACE_VERBOSE") != nullptr);
+		static const bool s_verbose = mc2::gate::get<"MC2_TEX_LIFECYCLE_TRACE_VERBOSE">();
 		const bool firstWindow = (s_eventCount < 32);
 		const bool sample = ((s_eventCount & 0xFF) == 0);  // 1/256
 		if (s_verbose || firstWindow || sample) {

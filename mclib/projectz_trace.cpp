@@ -19,6 +19,7 @@
 #include <string.h>
 #include <math.h>
 #include <float.h>
+#include "Gates/gate.h"
 
 //--------------------------------------------------------------------
 // Global definitions (declared extern in projectz_trace.h)
@@ -174,11 +175,10 @@ static ProjectZPredicates compute_predicates(
 void projectz_trace_init() {
     if (s_initialized) return;
     s_initialized  = true;
-    g_pzDoTrace    = (getenv("MC2_PROJECTZ_TRACE")   != nullptr);
-    g_pzDoHeatmap  = (getenv("MC2_PROJECTZ_HEATMAP") != nullptr);
-    g_pzDoSummary  = (getenv("MC2_PROJECTZ_SUMMARY") != nullptr);
-    const char* gp = getenv("MC2_PROJECTZ_GUARD_PX");
-    if (gp && atoi(gp) > 0) g_pzGuardPx = atoi(gp);
+    g_pzDoTrace    = mc2::gate::get<"MC2_PROJECTZ_TRACE">();
+    g_pzDoHeatmap  = mc2::gate::get<"MC2_PROJECTZ_HEATMAP">();
+    g_pzDoSummary  = mc2::gate::get<"MC2_PROJECTZ_SUMMARY">();
+    if (const int guardPx = mc2::gate::get<"MC2_PROJECTZ_GUARD_PX">(); guardPx > 0) g_pzGuardPx = guardPx;
     g_pzTrace = g_pzDoTrace || g_pzDoHeatmap || g_pzDoSummary;
     if (g_pzDoTrace) {
         s_traceFile = fopen("mc2_projectz.log", "w");

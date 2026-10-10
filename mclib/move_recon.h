@@ -7,7 +7,7 @@
 #include <chrono>
 #include <cstdint>
 
-// Master enable flag — set once from getenv("MC2_MOVE_RECON") on first moveReconFrameTick().
+// Master enable flag — set once from the MC2_MOVE_RECON / *_SHADOW gates on first moveReconFrameTick().
 extern bool g_moveReconEnabled;
 
 // Monotonic (lifetime) accumulators — never reset.

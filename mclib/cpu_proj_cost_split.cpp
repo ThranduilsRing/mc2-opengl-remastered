@@ -10,6 +10,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <vector>
+#include "Gates/gate.h"
 
 namespace mc2_cpu_proj_cost {
 
@@ -199,8 +200,7 @@ void init_from_env() {
     if (s_initialized) return;
     s_initialized = true;
 
-    const char* v = std::getenv("MC2_CPU_PROJ_COST_SPLIT");
-    if (v && v[0] == '1') {
+    if (mc2::gate::get<"MC2_CPU_PROJ_COST_SPLIT">()) {
         g_cpuProjEnabled = true;
         std::fprintf(stderr,
             "[INSTR v1] enabled: CPU_PROJ_COST_SPLIT (spec v4, budget=%lldus)\n",

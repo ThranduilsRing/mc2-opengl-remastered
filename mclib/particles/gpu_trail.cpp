@@ -31,6 +31,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include "Gates/gate.h"
 
 static constexpr uint16_t kMissileSmokeTexId = 41;
 static constexpr uint16_t kPpcBoltTexId      = 33;  // MLR handle 33 = lozenge/flare atlas (energy-bolt)
@@ -77,8 +78,7 @@ constexpr float kEpsilonLength = 0.01f;
 bool trail_disabled() {
     static int gate = -1;
     if (gate < 0) {
-        const char* v = std::getenv("MC2_GPU_TRAIL_DISABLE");
-        gate = (v && v[0] == '1') ? 1 : 0;
+        gate = mc2::gate::get<"MC2_GPU_TRAIL_DISABLE">();
     }
     return gate != 0;
 }
@@ -103,8 +103,7 @@ void GpuTrailEmitter::Spawn(GpuTrailKind kind,
     {
         static bool probed = false;
         if (!probed) {
-            const char* v = std::getenv("MC2_GPU_PARTICLES_LOG");
-            if (v && v[0] == '1') {
+            if (mc2::gate::get<"MC2_GPU_PARTICLES_LOG">()) {
                 std::fprintf(stderr,
                     "[B2 TRAIL_PROBE] first spawn: kind=%u prev=(%.2f,%.2f,%.2f) cur=(%.2f,%.2f,%.2f) deltaT=%.4f len=%.3f\n",
                     (unsigned)kind,

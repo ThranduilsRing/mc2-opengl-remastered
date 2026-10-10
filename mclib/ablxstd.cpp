@@ -14,6 +14,7 @@
 #include"platform_str.h"
 #include<math.h>
 #include<time.h>
+#include "Gates/gate.h"
 
 #ifndef ABL_H
 #include"abl.h"
@@ -57,8 +58,8 @@ extern bool				NewStateSet;
 // MC2_ABL_ARG_GUARD=1      — enables dispatch-bounds soft path + out-ptr null guards
 // MC2_ABL_RUNTIME_SOFTFAIL=1 — log-and-continue instead of ABL_Fatal (requires ARG_GUARD)
 // Both default OFF: behaviour is byte-identical to pre-harden when gates are off.
-bool s_ablArgGuard      = (getenv("MC2_ABL_ARG_GUARD")        != NULL && getenv("MC2_ABL_ARG_GUARD")[0]        == '1');
-bool s_ablRuntimeSoftfail = (getenv("MC2_ABL_RUNTIME_SOFTFAIL") != NULL && getenv("MC2_ABL_RUNTIME_SOFTFAIL")[0] == '1');
+bool s_ablArgGuard      = mc2::gate::get<"MC2_ABL_ARG_GUARD">();
+bool s_ablRuntimeSoftfail = mc2::gate::get<"MC2_ABL_RUNTIME_SOFTFAIL">();
 
 //--------
 // GLOBALS

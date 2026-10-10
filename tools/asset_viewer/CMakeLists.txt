@@ -158,7 +158,8 @@ target_include_directories(mc2_tglloader PUBLIC
     "${CMAKE_SOURCE_DIR}/GameOS/include"
 )
 
-target_link_libraries(mc2_tglloader PRIVATE ${MC2_ZLIB})
+# mc2_gate: the mclib TUs compiled here read their gates through the typed registry.
+target_link_libraries(mc2_tglloader PRIVATE ${MC2_ZLIB} mc2_gate)
 
 # ---------------------------------------------------------------------------
 # End mc2_tglloader
@@ -297,7 +298,7 @@ target_include_directories(mc2_asset_viewer PRIVATE
     ${MC2R_AV_SDL_INCLUDE_DIRS}
 )
 
-target_link_libraries(mc2_asset_viewer PRIVATE imgui)
+target_link_libraries(mc2_asset_viewer PRIVATE imgui mc2_gate)
 
 # Assimp (glTF importer only, per root CMake ASSIMP_BUILD_GLTF_IMPORTER=ON).
 target_link_libraries(mc2_asset_viewer PRIVATE assimp::assimp)

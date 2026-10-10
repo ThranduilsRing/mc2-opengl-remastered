@@ -1,5 +1,6 @@
 // mclib/object_admission_predicate.cpp
 #include "object_admission_predicate.h"
+#include "Gates/gate.h"
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "stuff/stuff.hpp"   // Stuff::Vector4D
 #include "stuff/vector3d.hpp" // Stuff::Vector3D (for logProjectZBypassDisagreement)
@@ -21,8 +22,7 @@ const char* modeLabel(ObjectAdmissionPredicateMode m) {
 
 void objectAdmissionPredicate_init() {
     if (s_initialized) return;
-    const char* env = std::getenv("MC2_OBJECT_ADMISSION_PREDICATE");
-    if (env && std::strcmp(env, "legacy") == 0) {
+    if (mc2::gate::is<"MC2_OBJECT_ADMISSION_PREDICATE", "legacy">()) {
         s_mode = ObjectAdmissionPredicateMode::Legacy;
     } else {
         s_mode = ObjectAdmissionPredicateMode::Modern;  // default
@@ -51,8 +51,7 @@ const char* effectModeLabel(EffectAdmissionPredicateMode m) {
 
 void effectAdmissionPredicate_init() {
     if (s_effectInitialized) return;
-    const char* env = std::getenv("MC2_EFFECT_ADMISSION_PREDICATE");
-    if (env && std::strcmp(env, "legacy") == 0) {
+    if (mc2::gate::is<"MC2_EFFECT_ADMISSION_PREDICATE", "legacy">()) {
         s_effectMode = EffectAdmissionPredicateMode::Legacy;
     } else {
         s_effectMode = EffectAdmissionPredicateMode::Modern;  // default
@@ -81,8 +80,7 @@ const char* lshadowModeLabel(LightingShadowPredicateMode m) {
 
 void lightingShadowPredicate_init() {
     if (s_lshadowInitialized) return;
-    const char* env = std::getenv("MC2_LIGHTING_SHADOW_PREDICATE_MODE");
-    if (env && std::strcmp(env, "Legacy") == 0) {
+    if (mc2::gate::is<"MC2_LIGHTING_SHADOW_PREDICATE_MODE", "Legacy">()) {
         s_lshadowMode = LightingShadowPredicateMode::Legacy;
     } else {
         s_lshadowMode = LightingShadowPredicateMode::Modern;  // default
@@ -112,8 +110,7 @@ const char* dbgoverlayModeLabel(DebugOverlayPredicateMode m) {
 
 void debugOverlayPredicate_init() {
     if (s_dbgoverlayInitialized) return;
-    const char* env = std::getenv("MC2_DEBUG_OVERLAY_PREDICATE_MODE");
-    if (env && std::strcmp(env, "Legacy") == 0) {
+    if (mc2::gate::is<"MC2_DEBUG_OVERLAY_PREDICATE_MODE", "Legacy">()) {
         s_dbgoverlayMode = DebugOverlayPredicateMode::Legacy;
     } else {
         s_dbgoverlayMode = DebugOverlayPredicateMode::Modern;  // default
@@ -143,8 +140,7 @@ const char* selfpickModeLabel(SelectionPickingPredicateMode m) {
 
 void selectionPickingPredicate_init() {
     if (s_selfpickInitialized) return;
-    const char* env = std::getenv("MC2_SELECTION_PICKING_PREDICATE_MODE");
-    if (env && std::strcmp(env, "Legacy") == 0) {
+    if (mc2::gate::is<"MC2_SELECTION_PICKING_PREDICATE_MODE", "Legacy">()) {
         s_selfpickMode = SelectionPickingPredicateMode::Legacy;
     } else {
         s_selfpickMode = SelectionPickingPredicateMode::Modern;  // default
@@ -180,10 +176,9 @@ ProjectZBypassMode s_bypassMode = ProjectZBypassMode::Bypass;
 
 ProjectZBypassMode projectZBypassMode() {
     if (!s_bypassInitialized) {
-        const char* env = std::getenv("MC2_PROJECTZ_BYPASS_MODE");
-        if (env && std::strcmp(env, "Off") == 0) {
+        if (mc2::gate::is<"MC2_PROJECTZ_BYPASS_MODE", "Off">()) {
             s_bypassMode = ProjectZBypassMode::Off;
-        } else if (env && std::strcmp(env, "Compare") == 0) {
+        } else if (mc2::gate::is<"MC2_PROJECTZ_BYPASS_MODE", "Compare">()) {
             s_bypassMode = ProjectZBypassMode::Compare;
         } else {
             // Default: Bypass. Explicit "Bypass" or unset both land here.
@@ -266,8 +261,7 @@ const char* sxyModeLabel(ScreenXYPredicateMode m) {
 
 void screenXYPredicate_init() {
     if (s_sxyInitialized) return;
-    const char* env = std::getenv("MC2_SCREENXY_PREDICATE_MODE");
-    if (env && std::strcmp(env, "Legacy") == 0) {
+    if (mc2::gate::is<"MC2_SCREENXY_PREDICATE_MODE", "Legacy">()) {
         s_sxyMode = ScreenXYPredicateMode::Legacy;  // env-revert only
     } else {
         s_sxyMode = ScreenXYPredicateMode::Modern;  // default: Modern

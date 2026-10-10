@@ -1,6 +1,7 @@
 // TG shapes: TG_Shape::Render, per-poly selection and the render-shape PBR override.
 // Declared in the class headers; shared names in tgl_internal.h.
 #include "tgl_internal.h"
+#include "Gates/gate.h"
 
 
 struct TG_RenderShapePbrOverrideState {
@@ -50,7 +51,7 @@ void TG_ClearRenderShapePbrOverride()
 //   tgl.cpp:2700-2730. Phase 1 documents only; centralization is F4.
 void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool isClamped, const Stuff::Matrix4D* shapeToClip, const Stuff::Matrix4D* shapeToWorld)
 {
-	const bool traceBuildingPbr = s_activeRenderShapePbrOverride.program && getenv("MC2_BUILDING_PBR_TRACE");
+	const bool traceBuildingPbr = s_activeRenderShapePbrOverride.program && mc2::gate::get<"MC2_BUILDING_PBR_TRACE">();
 	if (traceBuildingPbr) {
 		static int s_pbrRenderTrace = 0;
 		if (s_pbrRenderTrace < 64) {
@@ -217,7 +218,7 @@ void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool is
 				// Black previews + healthy verts means the answer is here:
 				// handle 0 / 0xffffffff = untextured, valid handle with no
 				// pixel data = cold source (smart-load deferred mount).
-				if ( getenv("MC2_LOG_PREVIEW") && g_mechPreviewRenderDepth > 0
+				if ( mc2::gate::get<"MC2_LOG_PREVIEW">() && g_mechPreviewRenderDepth > 0
 					&& theShape->listOfTextures )
 				{
 					static DWORD s_seenNodes[64];
@@ -245,7 +246,7 @@ void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool is
 				// ENCYCLO-3D-1 diagnostic: dump a handful of transformed preview
 				// verts (screen-space x/y + z) — separates "drawn offscreen"
 				// from "z-rejected" from "degenerate". Throttled hard.
-				if ( getenv("MC2_LOG_PREVIEW") && g_mechPreviewRenderDepth > 0 )
+				if ( mc2::gate::get<"MC2_LOG_PREVIEW">() && g_mechPreviewRenderDepth > 0 )
 				{
 					static int s_vlog = 0;
 					if ( (s_vlog++ % 500) < 3 )
@@ -273,7 +274,7 @@ void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool is
 					// Do real cliping in geometry layer for software and hardware that needs it!
 					gos_DrawTriangles(gVertex, 3);
 				}
-				else if ( getenv("MC2_LOG_PREVIEW") && g_mechPreviewRenderDepth > 0 )
+				else if ( mc2::gate::get<"MC2_LOG_PREVIEW">() && g_mechPreviewRenderDepth > 0 )
 				{
 					static int s_zrej = 0;
 					if ( (s_zrej++ % 500) == 0 )

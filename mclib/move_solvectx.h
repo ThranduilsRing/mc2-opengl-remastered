@@ -25,6 +25,7 @@
 
 #include <cstdlib>
 #include "pqueue.h"
+#include "Gates/gate.h"
 
 // The file-static solver globals live in move.cpp. Declared here so the
 // SolveContext can alias them when the gate is OFF.
@@ -37,10 +38,7 @@ namespace mc2_move {
 
 // One-shot process gate cache. Default-OFF: only "1" enables isolation.
 inline bool pathSolveIsolated() {
-	static const bool s_on = [] {
-		const char* e = getenv("MC2_PATH_SOLVE_ISOLATED");
-		return (e != nullptr && e[0] == '1');
-	}();
+	static const bool s_on = mc2::gate::get<"MC2_PATH_SOLVE_ISOLATED">();
 	return s_on;
 }
 

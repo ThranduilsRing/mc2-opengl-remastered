@@ -19,6 +19,8 @@
 #include <fstream>
 #include <mutex>
 #include <utility>
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"
 
 using nlohmann::json;
 
@@ -352,8 +354,9 @@ EffectDefRegistry& EffectDefRegistry::instance() {
             fprintf(stderr, "[FXDEF] base registry: %d def(s)\n", base);
             fflush(stderr);
         }
-        const char* activeMod = getenv("MC2_ACTIVE_MOD");
-        if (activeMod && activeMod[0]) {
+        const std::string activeModStr = mc2::gate::str<"MC2_ACTIVE_MOD">();
+        const char* activeMod = activeModStr.c_str();
+        if (activeMod[0]) {
             std::string modDir = std::string("mods/") + activeMod + "/data/effects/defs";
             std::error_code ec;
             if (std::filesystem::is_directory(modDir, ec)) {

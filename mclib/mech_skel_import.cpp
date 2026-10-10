@@ -9,6 +9,8 @@
 #include <cstdlib>
 #include <cstring>
 #include <map>
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"
 
 namespace mc2skel {
 namespace {
@@ -25,8 +27,7 @@ namespace {
 // translation, which MC2 wants (the game positions the mech in the world).
 // Set MC2_MECH_ANIM_ROTATION_ONLY=0 to apply raw channels (old behaviour).
 bool rotationOnlyEnabled() {
-    const char* v = std::getenv("MC2_MECH_ANIM_ROTATION_ONLY");
-    return !(v && v[0] == '0');  // default ON; only explicit "0" disables
+    return mc2::gate::get<"MC2_MECH_ANIM_ROTATION_ONLY">();  // default ON; only explicit "0" disables
 }
 
 // DIAGNOSTIC (default OFF): MC2_MECH_IMPORT_FORCE_POSE forces a single known static
@@ -35,12 +36,10 @@ bool rotationOnlyEnabled() {
 // clip/time dependence, so it fires even when clip playback is broken.
 //   =1 -> j_LThigh +90deg about local X    =2 -> +90 about local Y    =3 -> +90 about local Z
 int forcePoseMode() {
-    const char* v = std::getenv("MC2_MECH_IMPORT_FORCE_POSE");
-    return v ? std::atoi(v) : 0;
+    return mc2::gate::get<"MC2_MECH_IMPORT_FORCE_POSE">();
 }
-const char* forcePoseBone() {
-    const char* v = std::getenv("MC2_MECH_IMPORT_FORCE_BONE");
-    return (v && v[0]) ? v : "j_LThigh";
+std::string forcePoseBone() {
+    return mc2::gate::str<"MC2_MECH_IMPORT_FORCE_BONE">();   // row default j_LThigh
 }
 
 // FK walk with an extra local rotation injected on one named bone; all others rest.
@@ -187,7 +186,7 @@ bool EvaluateClipGpuBones(const aiScene* scene,
         else if (fp == 2) aiMatrix4x4::RotationY(a, extra);
         else if (fp == 3) aiMatrix4x4::RotationZ(a, extra);
         std::map<std::string, aiMatrix4x4> globals;
-        computeGlobalsForced(scene->mRootNode, aiMatrix4x4(), forcePoseBone(), extra, globals);
+        computeGlobalsForced(scene->mRootNode, aiMatrix4x4(), forcePoseBone().c_str(), extra, globals);
         out.assign(boneNames.size(), GpuBone{});
         for (size_t i = 0; i < boneNames.size(); ++i) {
             auto g = globals.find(boneNames[i]);
@@ -197,7 +196,7 @@ bool EvaluateClipGpuBones(const aiScene* scene,
         if (outDurTicks) *outDurTicks = 1.0;
         return true;
     }
-    const bool clipDiag = std::getenv("MC2_MECH_IMPORT_CLIP_DIAG") != nullptr;
+    const bool clipDiag = mc2::gate::get<"MC2_MECH_IMPORT_CLIP_DIAG">();
     const aiAnimation* anim = nullptr;
     for (unsigned a = 0; a < scene->mNumAnimations; ++a)
         if (clip == scene->mAnimations[a]->mName.C_Str()) { anim = scene->mAnimations[a]; break; }

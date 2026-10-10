@@ -54,6 +54,7 @@
 #include<cstdio>
 #include<cstdint>		// BURNIN-DISK-JPEG: uint8_t for stb_image pixel buffer
 #include "mc2_dialog.h"
+#include "Gates/gate.h"
 
 #define COLOR_MAP_HEAP_SIZE				419430400
 #define COLOR_TXM_HEAP_SIZE				16384
@@ -101,7 +102,7 @@ static MemoryPtr tryLoadBurninJpg(const char* texturePath, const char* fileName,
 	if (outWidth) *outWidth = 0;
 
 	// Kill-switch: prefer the .tga path entirely.
-	if (getenv("MC2_BURNIN_NO_JPG") != NULL)
+	if (mc2::gate::get<"MC2_BURNIN_NO_JPG">())
 		return NULL;
 
 	char jName[1024];
@@ -186,24 +187,16 @@ static MemoryPtr tryLoadBurninJpg(const char* texturePath, const char* fileName,
 }
 
 static bool skipColormapTiles() {
-    static const bool s = []() {
-        if (getenv("MC2_SETUPTEXTURES_LEGACY_FORCE")) return false;
-        const char* ti = getenv("MC2_TERRAIN_INDIRECT");
-        if (ti && ti[0] == '0' && ti[1] == '\0') return false;
-        const char* ov = getenv("MC2_TERRAIN_INDIRECT_OVERLAY");
-        if (ov && ov[0] == '0' && ov[1] == '\0') return false;
-        return true;
-    }();
+    static const bool s = !mc2::gate::get<"MC2_SETUPTEXTURES_LEGACY_FORCE">()
+        && mc2::gate::get<"MC2_TERRAIN_INDIRECT">()
+        && mc2::gate::get<"MC2_TERRAIN_INDIRECT_OVERLAY">();
     return s;
 }
 
 // COLORMAP-BC7-KTX2-1: default ON; kill-switch MC2_COLORMAP_KTX2=0 disables.
 // When ON, BuildColormapAtlas will prefer the .burnin.ktx2 sidecar over cpuColorMap.
 static bool useKtx2Colormap() {
-    static const bool s = []() {
-        const char* v = getenv("MC2_COLORMAP_KTX2");
-        return !v || v[0] != '0';
-    }();
+    static const bool s = mc2::gate::get<"MC2_COLORMAP_KTX2">();
     return s;
 }
 

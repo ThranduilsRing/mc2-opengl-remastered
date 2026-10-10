@@ -11,6 +11,7 @@
 #include<stdlib.h>
 //sebi
 #include "platform_windows.h"
+#include "Gates/gate.h"
 
 void memclear(void *Dest,int Length);
 void memfill(void *Dest,int Length);
@@ -195,8 +196,7 @@ bool RollDice (long percent)
 	static bool s_det     = false;
 	if (!s_checked) {
 		s_checked = true;
-		const char* v = getenv("MC2_DETERMINISTIC_RNG");
-		s_det = (v && v[0] != '\0' && v[0] != '0');
+		s_det = mc2::gate::get<"MC2_DETERMINISTIC_RNG">();
 	}
 	if (s_det)
 		return (((gos_rand()*100)>>15) < percent);

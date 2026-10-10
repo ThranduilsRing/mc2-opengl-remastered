@@ -1,6 +1,7 @@
 // TG shapes: TG_Shape::MultiTransformShape and its positions-only variant, light gathering and billboard handling.
 // Declared in the class headers; shared names in tgl_internal.h.
 #include "tgl_internal.h"
+#include "Gates/gate.h"
 
 
 // MC2_LIGHT_BILLBOARD_TWOSIDED=1 suppresses legacy backface culling of edge-light
@@ -17,10 +18,7 @@
 // MC2_LIGHT_BILLBOARD_FACING (also default-OFF).
 static bool tgLightBillboardTwoSided()
 {
-	static const bool s = []() {
-		const char* v = std::getenv("MC2_LIGHT_BILLBOARD_TWOSIDED");
-		return v && v[0] && v[0] != '0';   // default OFF (AUDIT-TRUTH-1)
-	}();
+	static const bool s = mc2::gate::get<"MC2_LIGHT_BILLBOARD_TWOSIDED">();
 	return s;
 }
 
@@ -28,10 +26,7 @@ static bool tgLightBillboardTwoSided()
 // Fires once per session when MC2_OBJECT_PARITY_TRACE=1.
 // Prints s_lightDir direction, normal, cosine, contribution per vertex.
 static bool s_hotGreenLightTraceDone = false;
-static bool s_hotGreenLightTraceEnabled = [](){
-	const char* v = getenv("MC2_OBJECT_PARITY_TRACE");
-	return v && v[0] == '1' && v[1] == '\0';
-}();
+static bool s_hotGreenLightTraceEnabled = mc2::gate::get<"MC2_OBJECT_PARITY_TRACE">();
 
 //-------------------------------------------------------------------------------
 // TG_Shape

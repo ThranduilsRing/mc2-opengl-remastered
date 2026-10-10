@@ -52,12 +52,13 @@
 #include "cpu_proj_cost_split.h"  // F3 CPU projection cost-baseline (RAII scope)
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include <math.h>
-#include <cstdlib>  // std::getenv for [VPL_PICK v1] env-gated trace (Step 3 3a)
+#include <cstdlib>
 #include <cstdio>   // std::printf for [VPL_PICK v1] lifecycle print
 #include <vector>   // T1.15 [SPOT_DIAG v1] camera-overwrite probe state
 #include "spotlight_diag.h"  // T1.16 — (E)-owned per-slot probe registry
 #include "xform_conventions.h"  // XFORM-CONVENTION-HARNESS-1: lifted clip-space convention matrices
 #include "RenderCore/ResolutionContract.h"  // META-FIX design D: MC2_RES_ASSERT audit
+#include "Gates/gate.h"
 
 extern void AG_ellipse_draw(PANE *pane, LONG xc, LONG yc, LONG width, LONG height, LONG color);
 extern void AG_ellipse_fill(PANE *pane, LONG xc, LONG yc, LONG width, LONG height, LONG color);
@@ -102,17 +103,7 @@ static float s_scrollMomentum = 0.0f;
 // tight, not floaty. Clamped to [0, 2000].
 static float camSmoothTau (void)
 {
-	static float s_tau = -1.0f;
-	if (s_tau < 0.0f)
-	{
-		float ms = 100.0f;
-		const char* v = getenv("MC2_CAMERA_SMOOTH");
-		if (v && v[0])
-			ms = (float)atof(v);
-		if (ms < 0.0f)    ms = 0.0f;
-		if (ms > 2000.0f) ms = 2000.0f;
-		s_tau = ms * 0.001f;
-	}
+	static const float s_tau = mc2::gate::get<"MC2_CAMERA_SMOOTH">() * 0.001f;
 	return s_tau;
 }
 
@@ -1063,12 +1054,12 @@ unsigned long Camera::inverseProject (Stuff::Vector2DOf<long> &screenPos, Stuff:
 	// (projectForSelectionPicking uses the same matrix the GPU renders with), so
 	// picking uses IT even when the chunk RENDER path is on (MC2_TERRAIN_LOD_CHUNK).
 	// Opt back into the raycast picker with MC2_TERRAIN_RAYCAST_PICK to debug it.
-	static const bool s_lodChunkPick = (std::getenv("MC2_TERRAIN_RAYCAST_PICK") != nullptr);
+	static const bool s_lodChunkPick = mc2::gate::get<"MC2_TERRAIN_RAYCAST_PICK">();
 	// PARITY DIAGNOSTIC: when MC2_TERRAIN_PICK_PARITY is set we compute BOTH
 	// the heightfield raycast hit AND the legacy quadList result for the same
 	// screen coords, log the delta, and still return exactly what the active
 	// mode (raycast-if-flag-on-else-legacy) would have returned.
-	static const bool s_pickParity = (std::getenv("MC2_TERRAIN_PICK_PARITY") != nullptr);
+	static const bool s_pickParity = mc2::gate::get<"MC2_TERRAIN_PICK_PARITY">();
 	bool   parityRaycastHit = false;
 	Stuff::Vector3D parityRaycastPt;
 	parityRaycastPt.x = parityRaycastPt.y = parityRaycastPt.z = 0.0f;
@@ -1174,8 +1165,7 @@ unsigned long Camera::inverseProject (Stuff::Vector2DOf<long> &screenPos, Stuff:
 	// This path never calls inverseProjectForPicking / inverseProjectZ, so
 	// the !usePerspective recursion (inverseProjectZ) is structurally
 	// unreachable from picking regardless of CTRL+ALT+P toggle state.
-	static const bool s_vplPickTrace =
-		(std::getenv("MC2_VPL_PICK") != nullptr);
+	static const bool s_vplPickTrace = mc2::gate::get<"MC2_VPL_PICK">();
 	{
 		static bool s_announced = false;
 		if (s_vplPickTrace && !s_announced)
@@ -1246,9 +1236,8 @@ unsigned long Camera::inverseProject (Stuff::Vector2DOf<long> &screenPos, Stuff:
 	// Fix = single pass (no cap) + pick the FRONTMOST tile that CONTAINS the
 	// cursor (min eye-distance), reusing the same projection + containment test.
 	// Gated MC2_LOWCAM_PICK (default ON; =0 -> exact legacy two-stage below).
-	static const bool s_lowCamPick =
-		[]{ const char* v = std::getenv("MC2_LOWCAM_PICK"); return !(v && v[0]=='0'); }();
-	static const bool s_capTrace = (std::getenv("MC2_PICK_CAP_TRACE") != nullptr);
+	static const bool s_lowCamPick = mc2::gate::get<"MC2_LOWCAM_PICK">();
+	static const bool s_capTrace = mc2::gate::get<"MC2_PICK_CAP_TRACE">();
 
 	if (s_lowCamPick)
 	{
@@ -1516,8 +1505,7 @@ unsigned long Camera::inverseProject (Stuff::Vector2DOf<long> &screenPos, Stuff:
 		// already vertex-resolution approximate (return 1 below). With
 		// MC2_PICK_CAP_TRACE=1 also set, every 32nd walk re-runs the full
 		// brute force and logs a [PICK_FALLBACK] parity line.
-		static const bool s_fallbackCoarse =
-			(std::getenv("MC2_PICK_FALLBACK_COARSE") != nullptr);
+		static const bool s_fallbackCoarse = mc2::gate::get<"MC2_PICK_FALLBACK_COARSE">();
 
 		const long side = land->realVerticesMapSide;
 		auto sampleVertex = [&](long row, long col, float& bestDis,
@@ -2302,10 +2290,7 @@ long Camera::update (void)
 	// of the registry's stated OFF, reported as a DISAGREEMENT. The behaviour was
 	// right and the idiom was unreadable, which is exactly how the four gate-
 	// default defects found today survived. Do not "simplify" this back.
-	static const bool s_sunElevationFix = [](){
-		const char* v = getenv("MC2_SUN_ELEVATION_FIX");
-		return (v && v[0] && v[0] != '0');
-	}();
+	static const bool s_sunElevationFix = mc2::gate::get<"MC2_SUN_ELEVATION_FIX">();
 
 	const float sunAzimuthRad = (lightYaw + 45.0f) * DEGREES_TO_RADS;
 	const float sunPitchRad   = lightPitch * DEGREES_TO_RADS;
@@ -2579,10 +2564,8 @@ long Camera::update (void)
 				static unsigned s_camTestFrame = 0;
 				static FILE* s_camTraceFile = NULL;
 				if (s_camTest < 0) {
-					const char* t = getenv("MC2_CAM_SMOOTH_TEST");
-					s_camTest = (t && t[0] == '1') ? 1 : 0;
-					const char* tr = getenv("MC2_CAMERA_SMOOTH_TRACE");
-					s_camTrace = (tr && tr[0] == '1') ? 1 : 0;
+					s_camTest = mc2::gate::get<"MC2_CAM_SMOOTH_TEST">();
+					s_camTrace = mc2::gate::get<"MC2_CAMERA_SMOOTH_TRACE">();
 				}
 				if (s_camTest) {
 					s_camTestFrame++;
@@ -2698,7 +2681,7 @@ void Camera::render (void)
 // T1.15 [SPOT_DIAG v1] file-scope state for the camera-overwrite probe.
 // First-seen-per-slot is always-on (one stderr line per unique slot index seen
 // here); per-summary is env-gated every 600 frames.
-static const bool s_spotDiagCamEnabled = (getenv("MC2_SPOT_DIAG") != nullptr);
+static const bool s_spotDiagCamEnabled = mc2::gate::get<"MC2_SPOT_DIAG">();
 static std::vector<bool> s_spotDiagCamSeenSlot;  // sized to MAX_LIGHTS_IN_WORLD lazily
 static unsigned long s_spotDiagCamFrames        = 0;
 static unsigned long s_spotDiagCamPointSeen     = 0;  // window: distinct POINT slots seen
@@ -2772,10 +2755,7 @@ void Camera::updateLights()
 				// written by mech3d/gvactor/bdactor) instead of racing it.
 				// Killswitch MC2_LIGHT_CULL_RADIUS=0 -> legacy position-only
 				// overwrite.
-				static const bool s_cullRadius = []() {
-					const char* v = getenv("MC2_LIGHT_CULL_RADIUS");
-					return !(v && v[0] == '0');   // default ON
-				}();
+				static const bool s_cullRadius = mc2::gate::get<"MC2_LIGHT_CULL_RADIUS">();
 				bool lightOnScreen = projectForLightingShadow(light->position,dummy);
 				if (s_cullRadius)
 				{
@@ -3002,8 +2982,7 @@ void Camera::setOrthogonal(void)
 		extern bool InEditor;
 		float editorFar = 0.0f;
 		{
-			const char* v = getenv("MC2_EDITOR_FAR_CLIP");
-			if (v && *v) { float f = (float)atof(v); editorFar = (f > 1000.0f) ? f : 400000.0f; }
+			if (mc2::gate::isNonEmpty<"MC2_EDITOR_FAR_CLIP">()) { float f = mc2::gate::get<"MC2_EDITOR_FAR_CLIP">(); editorFar = (f > 1000.0f) ? f : 400000.0f; }
 			else if (InEditor) editorFar = 400000.0f;
 		}
 		if (editorFar > far_clip)
@@ -3019,8 +2998,7 @@ void Camera::setOrthogonal(void)
 		// the legacy stretched look.
 		float height2width = ((float)Environment.screenHeight / (float)Environment.screenWidth);
 		{
-			static const bool s_nativeAspect =
-				[]{ const char* e = getenv("MC2_CAMERA_ASPECT_NATIVE"); return !(e && e[0] == '0'); }();
+			static const bool s_nativeAspect = mc2::gate::get<"MC2_CAMERA_ASPECT_NATIVE">();
 			// Panel previews (SimpleCamera -> fixed 800x600 FBO) must keep the
 			// clamped ratio: their render target IS 4:3, not the window.
 			extern int g_mechPreviewRenderDepth;
@@ -3046,8 +3024,7 @@ void Camera::setOrthogonal(void)
 		// static bool test (tier1 byte-identical).
 		if (mc2res::armed())
 		{
-			static const bool s_resAuditNativeAspect =
-				[]{ const char* e = getenv("MC2_CAMERA_ASPECT_NATIVE"); return !(e && e[0] == '0'); }();
+			static const bool s_resAuditNativeAspect = mc2::gate::get<"MC2_CAMERA_ASPECT_NATIVE">();
 			extern int g_mechPreviewRenderDepth;
 			if (s_resAuditNativeAspect && g_mechPreviewRenderDepth == 0
 				&& Environment.drawableWidth > 0 && Environment.drawableHeight > 0)
@@ -3121,7 +3098,7 @@ void Camera::setOrthogonal(void)
 		// near and far planes: under reverse-Z near must map to NDC z=1 and
 		// far to NDC z=0. NDC z = (FF*z_cam + B) / z_cam, with FF and B the
 		// just-written cameraToClip terms.
-		static const bool s_rzTrace = (getenv("MC2_REVERSE_Z_TRACE") != nullptr);
+		static const bool s_rzTrace = mc2::gate::get<"MC2_REVERSE_Z_TRACE">();
 		if (s_rzTrace) {
 			static int s_rzBuild = 0;
 			++s_rzBuild;
@@ -3146,7 +3123,7 @@ void Camera::setOrthogonal(void)
 		// drawable). When those aspects differ, geometry is stretched in X by
 		// (vpAspect/projAspect) and the water FS screen-space derivatives
 		// (dFdx/dFdy) go anisotropic. stretchX != 1.0 => mismatch present.
-		static const bool s_waAspect = (getenv("MC2_WATER_ASPECT_DIAG") != nullptr);
+		static const bool s_waAspect = mc2::gate::get<"MC2_WATER_ASPECT_DIAG">();
 		if (s_waAspect) {
 			const float projAspect = (float)Environment.screenWidth /
 			                         (float)(Environment.screenHeight ? Environment.screenHeight : 1);
@@ -3317,7 +3294,7 @@ void Camera::setCameraOrigin (void)
 			actualPosition.z = translation.y - ELEVATION_BUFFER;
 
 			// [HZB_CAM v1] one-shot diagnostic (env-gated, at most once per second)
-			if (getenv("MC2_HZB_FORCE_HORIZON"))
+			if (mc2::gate::get<"MC2_HZB_FORCE_HORIZON">())
 			{
 				static double s_hzbCamLastPrint = -999.0;
 				double nowSec = (double)clock() / CLOCKS_PER_SEC;
@@ -4458,14 +4435,7 @@ float Camera::getCameraRotation (void)
 // never a wash-out.
 static long mc2NightAmbientFloor (void)
 {
-	static const long s_floor = [] {
-		const char* v = getenv("MC2_NIGHT_AMBIENT_FLOOR");
-		if (!v || !v[0]) return 0L;
-		long f = atol(v);
-		if (f < 0)  f = 0;
-		if (f > 64) f = 64;
-		return f;
-	}();
+	static const long s_floor = static_cast<long>(mc2::gate::get<"MC2_NIGHT_AMBIENT_FLOOR">());
 	return s_floor;
 }
 

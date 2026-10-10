@@ -25,6 +25,7 @@
 #include "terrain_runtime.h"   // TERRAIN-RUNTIME-CONSUMER-DECALS-1
 
 #include "gameos.hpp"  // gos_PushDecal, WorldOverlayVert
+#include "Gates/gate.h"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Internal state
@@ -39,8 +40,7 @@ bool isEnabled()
 {
     static int cached = -1;
     if (cached < 0) {
-        const char* v = getenv("MC2_DYNAMIC_DECALS");
-        cached = (v && v[0] != '0') ? 1 : 0;
+        cached = mc2::gate::get<"MC2_DYNAMIC_DECALS">();
     }
     return cached == 1;
 }

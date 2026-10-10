@@ -76,6 +76,8 @@
 #include <unordered_map>
 #include <string>
 #include <vector>
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"
 
 struct ModFileEntry {
     std::string path;   // absolute path to real file
@@ -440,7 +442,7 @@ static bool TryLoadModCache(
     const char* modId,        // e.g. "mc2x-pbr"
     const char* dataDir       // e.g. "...mods/mc2x-pbr/data/"
 ) {
-    if (getenv("MC2_REBUILD_MOD_CACHE")) {
+    if (mc2::gate::get<"MC2_REBUILD_MOD_CACHE">()) {
         printf("[mod-cache] refresh modid='%s' reason=MC2_REBUILD_MOD_CACHE\n", modId);
         fflush(stdout);
         return false;
@@ -682,8 +684,9 @@ void InitModSearchPaths(const char* modsRoot) {
     // Parse MC2_LOG_FILE_RESOLVE: absent/empty -> 0; any non-numeric non-empty -> 1 (compat);
     // numeric -> atoi (so "1" -> 1, "2" -> 2).
     {
-        const char* envLevel = getenv("MC2_LOG_FILE_RESOLVE");
-        if (!envLevel || !envLevel[0]) {
+        const std::string envLevelStr = mc2::gate::str<"MC2_LOG_FILE_RESOLVE">();
+        const char* envLevel = envLevelStr.c_str();
+        if (!envLevel[0]) {
             logFileResolve = 0;
         } else {
             // Check if purely numeric.
@@ -701,8 +704,9 @@ void InitModSearchPaths(const char* modsRoot) {
     if (logFileResolve >= 2) {
         QueryPerformanceFrequency(&g_qpcFreq);
         QueryPerformanceCounter(&g_startQPC);
-        const char* tracePath = getenv("MC2_RESOLVE_TRACE_FILE");
-        if (tracePath && tracePath[0]) {
+        const std::string tracePathStr = mc2::gate::str<"MC2_RESOLVE_TRACE_FILE">();
+        const char* tracePath = tracePathStr.c_str();
+        if (tracePath[0]) {
             g_traceFile = fopen(tracePath, "a");
             if (!g_traceFile)
                 printf("[mod] warning: MC2_RESOLVE_TRACE_FILE=%s could not be opened for append\n", tracePath);
@@ -727,13 +731,13 @@ void InitModSearchPaths(const char* modsRoot) {
 
     // MC2_ACTIVE_MOD is re-read here on every mount: the editor's mod picker changes it
     // with _putenv_s at run time, so no reader may cache it in a static.
-    const char* envMod = getenv("MC2_ACTIVE_MOD");
-    const bool stockMode = (!envMod || !envMod[0]);
+    const std::string envModStr = mc2::gate::str<"MC2_ACTIVE_MOD">();
+    const char* envMod = envModStr.c_str();
+    const bool stockMode = !envMod[0];
     if (stockMode) {
         // Stock campaign: no active mod. Add-on layers (MC2_MOD_DEPS) may still mount
         // (e.g. "stock + Omnitech mechs"). With NO deps either, this is pure base game.
-        const char* envDepsCheck = getenv("MC2_MOD_DEPS");
-        if (!envDepsCheck || !envDepsCheck[0]) {
+        if (mc2::gate::str<"MC2_MOD_DEPS">().empty()) {
             printf("[mod] base game mode (MC2_ACTIVE_MOD not set, MC2_MOD_DEPS not set)\n");
             fflush(stdout);
             return;
@@ -782,9 +786,9 @@ void InitModSearchPaths(const char* modsRoot) {
     // separated, highest-priority-first. Appended after any mod.json deps and
     // de-duplicated. This is how the player's "compatibility layer" selection
     // reaches the engine without baking it into a campaign's mod.json.
-    const char* envDeps = getenv("MC2_MOD_DEPS");
-    if (envDeps && envDeps[0]) {
-        std::string s(envDeps);
+    const std::string envDepsStr = mc2::gate::str<"MC2_MOD_DEPS">();
+    if (!envDepsStr.empty()) {
+        std::string s(envDepsStr);
         size_t i = 0;
         while (i < s.size()) {
             size_t j = s.find_first_of(",;", i);
@@ -1125,7 +1129,7 @@ long File::open (const char* fName, FileMode _mode, long numChild, bool doNotLow
 			{
 				handle = modHandle;
 				++g_resolveOpens;
-				if (getenv("MC2_LOG_MECH_ICON") && strstr(fileName, "mechicon"))
+				if (mc2::gate::get<"MC2_LOG_MECH_ICON">() && strstr(fileName, "mechicon"))
 					printf("[MECHICON] File::open MOD-HIT: %s\n", fileName);
 			}
 			else
@@ -1133,7 +1137,7 @@ long File::open (const char* fName, FileMode _mode, long numChild, bool doNotLow
 				handle = _open(fileName, _O_RDONLY | _O_BINARY);
 				if (handle != INVALID_HANDLE_VALUE)
 					++g_resolveOpens;
-				if (getenv("MC2_LOG_MECH_ICON") && strstr(fileName, "mechicon") && handle != INVALID_HANDLE_VALUE)
+				if (mc2::gate::get<"MC2_LOG_MECH_ICON">() && strstr(fileName, "mechicon") && handle != INVALID_HANDLE_VALUE)
 					printf("[MECHICON] File::open LOOSE: %s\n", fileName);
 				if (handle != INVALID_HANDLE_VALUE && logFileResolve >= 2) {
 					std::string key = NormalizeKey(fileName);
@@ -1179,7 +1183,7 @@ long File::open (const char* fName, FileMode _mode, long numChild, bool doNotLow
 			fastFile = FastFileFind(fileName,fastFileHandle);
 			if (fastFile)
 				++g_resolveOpens;
-			if (getenv("MC2_LOG_MECH_ICON") && fastFile && strstr(fileName, "mechicon"))
+			if (mc2::gate::get<"MC2_LOG_MECH_ICON">() && fastFile && strstr(fileName, "mechicon"))
 				printf("[MECHICON] File::open FST-HIT: %s\n", fileName);
 			if (fastFile && logFileResolve >= 2) {
 				std::string key = NormalizeKey(fileName);

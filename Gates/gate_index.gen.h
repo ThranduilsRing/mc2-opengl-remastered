@@ -223,7 +223,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_FORCE_ALL_VISIBLE", Kind::Bool, Rule::Lead0, {}},
     {"MC2_FORCE_DYNAMIC_BUILDINGS", Kind::Bool, Rule::Lead0P, {}},
     {"MC2_FORCE_DYNAMIC_TREES", Kind::Bool, Rule::Lead0P, {}},
-    {"MC2_FORCE_LOD", Kind::Float, Rule::Prefix, {}},
+    {"MC2_FORCE_LOD", Kind::Int, Rule::Prefix, {}},
     {"MC2_FORCE_TXM_REGEN", Kind::Bool, Rule::Presence, {}},
     {"MC2_FPS_CAP", Kind::Int, Rule::Prefix, {}},
     {"MC2_FRAMECAP_TRACE", Kind::Bool, Rule::Presence, {}},

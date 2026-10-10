@@ -39,6 +39,7 @@
 #include"platform_str.h"
 #include<gameos.hpp>
 #include "mc2_dialog.h"
+#include "Gates/gate.h"
 
 MemoryPtr 		LZPacketBuffer = NULL;
 unsigned int	LZPacketBufferSize = 512000;
@@ -536,7 +537,7 @@ long FastFile::readFast (DWORD fastFileHandle, void *bfr, DWORD size)
 				// by pfe->size == pfe->realSize. Previous code force-decompressed raw entries,
 				// producing silent zero-filled output when zlib rejected the stream.
 				unsigned long decompLength = 0;
-				static const bool s_ffTrace = (getenv("MC2_FF_TRACE") != nullptr);
+				static const bool s_ffTrace = mc2::gate::get<"MC2_FF_TRACE">();
 				if (files[fastFileHandle].pfe->size == files[fastFileHandle].pfe->realSize)
 				{
 					// size == realSize is AMBIGUOUS: either a raw-stored entry

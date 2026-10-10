@@ -5,7 +5,7 @@
 generator_version: "3.0.0"
 gate_count: 1139
 registry_entry_count: 354
-verified_count: 189
+verified_count: 351
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -20,6 +20,7 @@ flags:
     owner: code
     doc: "ABL crash-safety gates (ABL-OPCODE-BOUNDS-HARDEN) MC2_ABL_ARG_GUARD=1 - enables dispatch-bounds soft path + out-ptr null guards MC2_ABL_RUNTIME_SOFTFAIL=1 -..."
     smoke_passthrough: true
+    verified: true
   - name: MC2_ABL_ARG_GUARD_REPRO
     kind: Bool
     default: false
@@ -34,6 +35,7 @@ flags:
     owner: code
     doc: "ASAN-3-ABL-COMPILE-FATAL-1: fail at preprocess when ABL syntax errors leave partial bytecode; set =0 only for legacy execute-anyway diagnostics."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_ABL_COMPILE_FATAL, kind: Feature, order: -1, default_on: true}
   - name: MC2_ABL_COMPILE_FATAL_REPRO
     kind: String
@@ -42,6 +44,7 @@ flags:
     owner: code
     doc: "ASAN-3-ABL-COMPILE-FATAL-1: preprocess the supplied malformed-fixture path during ABL init to prove fail-loud behavior."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_ABL_COMPILE_FATAL_REPRO, kind: Trace, order: -1, default_on: false}
   - name: MC2_ABL_CORE_TRACE
     kind: Bool
@@ -55,6 +58,7 @@ flags:
     rule: Presence
     owner: unclassified
     doc: ""
+    verified: true
   - name: MC2_ABL_RUNTIME_SOFTFAIL
     kind: Bool
     default: false
@@ -62,6 +66,7 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_ABL_SKIP_ERRORED_MODULES
     kind: Bool
     default: false
@@ -69,12 +74,14 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_ABL_TRACE
     kind: Bool
     default: false
     rule: Presence
     owner: code
     doc: ""
+    verified: true
   - name: MC2_ABL_VM_FACTS
     kind: Bool
     default: false
@@ -89,6 +96,7 @@ flags:
     doc: ""
     reread: true
     smoke_passthrough: true
+    verified: true
   - name: MC2_AIMED_FIRE_FIXTURE
     kind: Bool
     default: false
@@ -109,6 +117,7 @@ flags:
     rule: Presence
     owner: code
     doc: ""
+    verified: true
   - name: MC2_ANIM_CADENCE_FIX
     kind: Bool
     default: true
@@ -139,6 +148,7 @@ flags:
     owner: code
     doc: "META-FIX design B PART 1 (mclib/tgl_load_guard.cpp): default-ON killswitch (MC2_TERRAIN_TESS shape - unset=ON, =0 exact legacy fail-soft)."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_ASSET_FAILLOUD, kind: Feature, order: -1, default_on: true}
   - name: MC2_ASSET_SCALE_SELFTEST
     kind: Bool
@@ -159,6 +169,7 @@ flags:
     owner: code
     doc: "META-FIX design B PART 0 companion (mclib/msl.cpp loader chokepoint): =1 additionally logs '[ASSET_LOAD v1] event=file_missing ...' for MISSING files at the..."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TRACE_ASSET_TRACE, kind: Trace, order: -1, default_on: false}
   - name: MC2_ASSIMP_IMPORT
     kind: Bool
@@ -166,6 +177,7 @@ flags:
     rule: Lead0Kill
     owner: code
     doc: ""
+    verified: true
   - name: MC2_ASSIMP_MECH_IMPORT
     kind: Bool
     default: false
@@ -185,6 +197,7 @@ flags:
     rule: Presence
     owner: code
     doc: "TRACKV-CI-GATE-RESTORE-1: verbose Assimp loader trace."
+    verified: true
     registry: {feature_id: MC2_TRACE_ASSIMP_TRACE, kind: Trace, order: -1, default_on: false}
   - name: MC2_BATCHER_FLUSH_TIMING
     kind: Bool
@@ -614,12 +627,14 @@ flags:
     rule: Presence
     owner: code
     doc: ""
+    verified: true
   - name: MC2_BURNIN_NO_JPG
     kind: Bool
     default: false
     rule: Presence
     owner: terrain
     doc: "BURNIN-DISK-JPEG kill-switch: when set, skip the <name>.burnin.jpg sidecar probe in TerrainColorMap::init and load the full <name>.burnin.tga (or .tga) instead."
+    verified: true
     registry: {feature_id: MC2_FEATURE_BURNIN_NO_JPG, kind: Feature, order: -1, default_on: false}
   - name: MC2_CALLED_SHOT_FIX
     kind: Bool
@@ -636,6 +651,7 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_CAMERA_MOVE_DIAG
     kind: Bool
     default: false
@@ -660,6 +676,7 @@ flags:
     doc: ""
     range: {lo: 0, hi: 2000, style: clamp}
     smoke_passthrough: true
+    verified: true
   - name: MC2_CAMERA_SMOOTH_TRACE
     kind: Bool
     default: false
@@ -667,6 +684,7 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_CAM_SMOOTH_TEST
     kind: Bool
     default: false
@@ -674,6 +692,7 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_CEMENT_ALPHA_ATLAS
     kind: Bool
     default: true
@@ -839,6 +858,7 @@ flags:
     rule: Presence
     owner: code
     doc: "COLORMAP-CPU-RETIRE-1 parity probe: logs displacement magnitude (maxDispMag in wu) from the CPU colormap displacement path."
+    verified: true
     registry: {feature_id: MC2_TRACE_COLORMAP_DISPLACE_PROBE, kind: Trace, order: -1, default_on: false}
   - name: MC2_COLORMAP_KTX2
     kind: Bool
@@ -846,6 +866,7 @@ flags:
     rule: Lead0Kill
     owner: terrain
     doc: "COLORMAP-BC7-KTX2-1: prefer .burnin.ktx2 BC7 sidecar in BuildColormapAtlas (gos_terrain_indirect.cpp)."
+    verified: true
     registry: {feature_id: MC2_FEATURE_COLORMAP_KTX2, kind: Feature, order: 35, default_on: true}
   - name: MC2_CONE_LEAF_DUMP
     kind: Bool
@@ -860,6 +881,7 @@ flags:
     owner: code
     doc: "CONE-SPILL-POLICY-1: pool-placement policy for building/beacon spotlight ground pools on the DEFAULT path (MC2_CONE_SPILL_COUPLING OFF)."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_CONE_POOL_POLICY, kind: Feature, order: -1, default_on: true}
   - name: MC2_CONE_POOL_REACH
     kind: Float
@@ -869,6 +891,7 @@ flags:
     doc: "CONE-SPILL-POLICY-1: reach multiplier k for the extended beam/terrain intersection search (reach = k * authored coneLen * MC2_LIGHT_CONE_SPILL)."
     range: {lo: 1, hi: 16, style: clamp}
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TUNE_CONE_POOL_REACH, kind: Trace, order: -1, default_on: false}
   - name: MC2_CONE_SPILL_COUPLING
     kind: Bool
@@ -877,6 +900,7 @@ flags:
     owner: code
     doc: "CONE-SPILL-GRADE-1: isolates CONE-SPILL-COUPLING-1 (c1f98b45), which shipped UNGATED as a default-behaviour change riding MC2_LIGHT_CONE_NODES and is now..."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_CONE_SPILL_COUPLING, kind: Trace, order: -1, default_on: false}
   - name: MC2_CONFIG_DUMP
     kind: Enum
@@ -904,6 +928,7 @@ flags:
     owner: code
     doc: "[DEFAULT-ON KILLSWITCH; '=0' is the only revert token -- MC2_TERRAIN_TESS / MC2_COLORMAP_CPU_RETIRE shape.]"
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_CPU_PHONG_RETIRE, kind: Feature, order: -1, default_on: true}
   - name: MC2_CPU_PROJ_COST_SPLIT
     kind: Bool
@@ -912,6 +937,7 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_CRASH_FAST_EXIT
     kind: Bool
     default: false
@@ -931,6 +957,7 @@ flags:
     owner: code
     doc: ""
     tokens: "|Legacy"
+    verified: true
   - name: MC2_DEBUG_RENDERER
     kind: Bool
     default: false
@@ -956,6 +983,7 @@ flags:
     rule: Presence
     owner: code
     doc: ""
+    verified: true
   - name: MC2_DEBUG_SHADOW_ZRANGE
     kind: Bool
     default: false
@@ -1031,6 +1059,7 @@ flags:
     rule: Presence
     owner: terrain
     doc: ""
+    verified: true
   - name: MC2_DEPTH_TRANSITION_PROBE
     kind: Bool
     default: false
@@ -1053,6 +1082,7 @@ flags:
     owner: mech
     doc: "Route all randomness (incl."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_DETERMINISTIC_RNG, kind: Feature, order: -1, default_on: false}
   - name: MC2_DEV_SHELL
     kind: Bool
@@ -1103,6 +1133,7 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_DPI_UNAWARE
     kind: Bool
     default: false
@@ -1163,6 +1194,7 @@ flags:
     rule: Lead0P
     owner: code
     doc: "Dynamic decal ring (mclib/dynamic_decal_ring.cpp): spawn()/gatherToDecalBatch() are no-ops when off."
+    verified: true
     registry: {feature_id: MC2_FEATURE_DYNAMIC_DECALS, kind: Feature, order: -1, default_on: false}
   - name: MC2_EDGE_FOG
     kind: Bool
@@ -1212,6 +1244,7 @@ flags:
     rule: Prefix
     owner: code
     doc: ""
+    verified: true
   - name: MC2_EDITOR_FPS_CAP
     kind: Int
     default: -2
@@ -1297,6 +1330,7 @@ flags:
     owner: code
     doc: ""
     tokens: "|legacy"
+    verified: true
   - name: MC2_ENGINE_XL
     kind: Bool
     default: false
@@ -1371,6 +1405,7 @@ flags:
     rule: Presence
     owner: unclassified
     doc: ""
+    verified: true
   - name: MC2_FIRE_DECISION_TRACE
     kind: Bool
     default: false
@@ -1429,6 +1464,7 @@ flags:
     owner: code
     doc: "FORCE-ALL-VISIBLE-1: mark every unit (mechs, ground vehicles, elementals, all teams) fully visible and sensed, bypassing sensor / contact gating so nothing..."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TRACE_FORCE_ALL_VISIBLE, kind: Trace, order: -1, default_on: false}
   - name: MC2_FORCE_DYNAMIC_BUILDINGS
     kind: Bool
@@ -1443,7 +1479,7 @@ flags:
     owner: props
     doc: ""
   - name: MC2_FORCE_LOD
-    kind: Float
+    kind: Int
     default: 0
     rule: Prefix
     owner: props
@@ -1455,6 +1491,7 @@ flags:
     rule: Presence
     owner: terrain
     doc: "MC2_FORCE_TXM_REGEN=1 -> ignore the pre-cooked .txm composite cache and regenerate terrain texture composites from the source .tga (cement_N, overlays..."
+    verified: true
   - name: MC2_FPS_CAP
     kind: Int
     default: 90
@@ -1480,12 +1517,14 @@ flags:
     rule: Presence
     owner: code
     doc: ""
+    verified: true
   - name: MC2_FRAMEGRAPH_AMBIENT_GUARD
     kind: Bool
     default: true
     rule: Lead0Kill
     owner: code
     doc: ""
+    verified: true
   - name: MC2_FRAMEGRAPH_DRYRUN
     kind: Bool
     default: false
@@ -1493,6 +1532,7 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_FRAMEGRAPH_EXECUTOR
     kind: Bool
     default: false
@@ -1500,6 +1540,7 @@ flags:
     owner: post
     doc: "RENDER-FRAME-GRAPH arc: top-level frame-graph executor ownership of pass begin/end (mclib/render_contract.cpp, GameOS/gameos/gos_postprocess.cpp)."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_FRAMEGRAPH_EXECUTOR, kind: Feature, order: -1, default_on: false}
   - name: MC2_FRAMEGRAPH_REORDER_SPMECH
     kind: Bool
@@ -1614,6 +1655,7 @@ flags:
     owner: code
     doc: "FX cost-split instrumentation (default-off)."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FX_COST_SPLIT, kind: Feature, order: -1, default_on: false}
   - name: MC2_FX_COUNT_LOG
     kind: Bool
@@ -1645,6 +1687,7 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_GAMEOS_UI_DEFS
     kind: Bool
     default: true
@@ -1688,12 +1731,14 @@ flags:
     owner: props
     doc: "Coordinate transforms (spec ?6)."
     reread: true
+    verified: true
   - name: MC2_GLTF_GROUND
     kind: Int
     default: 2
     rule: Prefix
     owner: code
     doc: ""
+    verified: true
   - name: MC2_GLTF_YAW_DEG
     kind: Float
     default: 0
@@ -1701,12 +1746,14 @@ flags:
     owner: props
     doc: ""
     reread: true
+    verified: true
   - name: MC2_GLTF_YOFF
     kind: Float
     default: 0
     rule: Prefix
     owner: code
     doc: ""
+    verified: true
   - name: MC2_GL_DEBUG
     kind: Bool
     default: false
@@ -1841,6 +1888,7 @@ flags:
     owner: mech
     doc: "C3: env-gated lifecycle routing killswitch (same env var as objmgr.cpp)."
     smoke_passthrough: true
+    verified: true
   - name: MC2_GPU_CULL_LIFECYCLE_TRACE
     kind: Bool
     default: false
@@ -1848,6 +1896,7 @@ flags:
     owner: mech
     doc: "MC2_GPU_CULL_LIFECYCLE_TRACE=1: verbose per-actor lifecycle boundary prints."
     smoke_passthrough: true
+    verified: true
   - name: MC2_GPU_CULL_OWNERSHIP_PARITY
     kind: Bool
     default: false
@@ -1990,6 +2039,7 @@ flags:
     rule: Lead0Kill
     owner: mech
     doc: ""
+    verified: true
   - name: MC2_GPU_MECHS
     kind: Bool
     default: true
@@ -2040,6 +2090,7 @@ flags:
     owner: code
     doc: "Master gate for GPU billboard particles (mclib/particles/batcher.cpp initialize_env)."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_GPU_PARTICLES, kind: Feature, order: -1, default_on: false}
   - name: MC2_GPU_PARTICLES_LOG
     kind: Bool
@@ -2048,6 +2099,7 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_GPU_PICK_HOVER
     kind: Bool
     default: false
@@ -2078,6 +2130,7 @@ flags:
     rule: Lead1
     owner: code
     doc: ""
+    verified: true
   - name: MC2_GROUND_CONTACT_BLOB
     kind: Bool
     default: false
@@ -2092,6 +2145,7 @@ flags:
     owner: mech
     doc: "VEHICLE-NIGHT-LIT-2: GVAppearance::update (mclib/gvactor.cpp) calls gvShape->SetLightsOut(true) when a ground vehicle is OBJECT_STATUS_DESTROYED or..."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_GV_LIGHTSOUT_CLEAR, kind: Feature, order: 42, default_on: false}
   - name: MC2_HAZE_PARITY
     kind: Bool
@@ -2223,6 +2277,7 @@ flags:
     rule: Presence
     owner: code
     doc: ""
+    verified: true
   - name: MC2_HZB_FORCE_HORIZON_ALT
     kind: Float
     default: 150
@@ -2468,6 +2523,7 @@ flags:
     owner: code
     doc: ""
     tokens: "|Legacy"
+    verified: true
   - name: MC2_LIGHTSLOT_TRACE
     kind: Bool
     default: false
@@ -2494,6 +2550,7 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_LIGHT_CLAMP_FIXTURE
     kind: Bool
     default: false
@@ -2513,6 +2570,7 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_LIGHT_CONE_DIAG
     kind: Bool
     default: false
@@ -2520,6 +2578,7 @@ flags:
     owner: props
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_LIGHT_CONE_GLOW
     kind: Bool
     default: true
@@ -2527,6 +2586,7 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_LIGHT_CONE_GLOW_ALPHA
     kind: Float
     default: 40
@@ -2535,6 +2595,7 @@ flags:
     doc: ""
     range: {lo: 0, hi: 255, style: clamp}
     smoke_passthrough: true
+    verified: true
   - name: MC2_LIGHT_CONE_NODES
     kind: Bool
     default: true
@@ -2542,6 +2603,7 @@ flags:
     owner: code
     doc: "LIGHT-CONE-MODELS-1: DEFAULT-ON."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_LIGHT_CONE_NODES, kind: Trace, order: -1, default_on: true}
   - name: MC2_LIGHT_CONE_SPILL
     kind: Float
@@ -2551,6 +2613,7 @@ flags:
     doc: ""
     range: {lo: 0, hi: 3, style: clamp}
     smoke_passthrough: true
+    verified: true
   - name: MC2_LIGHT_CONE_VIS_GATE
     kind: Bool
     default: false
@@ -2558,6 +2621,7 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_LIGHT_COST_SPLIT
     kind: Bool
     default: false
@@ -2573,6 +2637,7 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_LIGHT_GRID
     kind: Bool
     default: true
@@ -2599,6 +2664,7 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_LIGHT_POOL_COMPRESS
     kind: Bool
     default: true
@@ -2633,6 +2699,7 @@ flags:
     owner: code
     doc: "MOVER-LIGHT-HALOGEN-1: hex RRGGBB mover light colour; unset, empty or malformed keeps FFEED1."
     smoke_passthrough: true
+    verified: true
   - name: MC2_LIGHT_POOL_MOVER_DIM
     kind: Float
     default: 0.25
@@ -2650,6 +2717,7 @@ flags:
     doc: ""
     range: {lo: 0, hi: 120, style: clamp}
     smoke_passthrough: true
+    verified: true
   - name: MC2_LIGHT_POOL_MOVER_MAXBLEND
     kind: Bool
     default: true
@@ -2732,6 +2800,7 @@ flags:
     doc: ""
     range: {lo: 0, hi: 255, style: clamp}
     smoke_passthrough: true
+    verified: true
   - name: MC2_LIGHT_REALISM_BEACON_RADIUS
     kind: Float
     default: 40
@@ -2740,6 +2809,7 @@ flags:
     doc: ""
     range: {lo: 1, hi: 200, style: clamp}
     smoke_passthrough: true
+    verified: true
   - name: MC2_LIGHT_REALISM_CONE_FEATHER
     kind: Float
     default: 2.5
@@ -2748,6 +2818,7 @@ flags:
     doc: ""
     range: {lo: 0, hi: 8, style: clamp}
     smoke_passthrough: true
+    verified: true
   - name: MC2_LIGHT_REALISM_CONE_OPACITY
     kind: Float
     default: 0.400000006
@@ -2756,6 +2827,7 @@ flags:
     doc: ""
     range: {lo: 0, hi: 4, style: clamp}
     smoke_passthrough: true
+    verified: true
   - name: MC2_LIGHT_REALISM_POOL_CORE
     kind: Float
     default: 0
@@ -2831,6 +2903,7 @@ flags:
     rule: Presence
     owner: code
     doc: "MC2_LOAD_RACE_TRACE: gated, one-shot mission-load residency-race diagnostics."
+    verified: true
   - name: MC2_LOAD_RACE_VERDICT_FRAME
     kind: Int
     default: 0
@@ -2851,6 +2924,7 @@ flags:
     rule: Presence
     owner: code
     doc: "---- MC2_LOG_CURSOR diagnostics (instrumentation only) ---- Logistics::start does NOT call mouseOn() (it is commented out) -- it relies on drawMouse already..."
+    verified: true
   - name: MC2_LOG_DECORATE
     kind: String
     default: ""
@@ -2864,6 +2938,7 @@ flags:
     owner: code
     doc: "META-FIX design E tier 3 (mclib/file.cpp, parsed at InitModSearchPaths): file-resolution ladder diagnostics."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TRACE_LOG_FILE_RESOLVE, kind: Trace, order: -1, default_on: false}
   - name: MC2_LOG_LOGISTICS
     kind: Bool
@@ -2890,6 +2965,7 @@ flags:
     rule: Presence
     owner: mech
     doc: ""
+    verified: true
   - name: MC2_LOG_PILOTS
     kind: Bool
     default: false
@@ -2902,6 +2978,7 @@ flags:
     rule: Presence
     owner: mech
     doc: ""
+    verified: true
   - name: MC2_LOG_STRINGS
     kind: Bool
     default: false
@@ -2914,18 +2991,21 @@ flags:
     rule: Lead0Kill
     owner: code
     doc: "Default ON for this low-camera build; set MC2_LOWCAM_OBJ_NEARPAD=0 to disable."
+    verified: true
   - name: MC2_LOWCAM_OBJ_NEARPAD_SCALE
     kind: Float
     default: 4
     rule: Prefix
     owner: code
     doc: "[LOW-CAMERA-OBJECT-CULL-1 v2] getExtentRadius() is a tight extent; near objects still pop at low pitch."
+    verified: true
   - name: MC2_LOWCAM_PICK
     kind: Bool
     default: true
     rule: Lead0Kill
     owner: code
     doc: "[LOW-CAMERA-PICK-RAY-1 v2] Two root causes make the legacy picker mis-land at LOW/grazing pitch (greybeard + adversarial recon, both in the EXISTING..."
+    verified: true
   - name: MC2_LOWCAM_SOLID_NEAR
     kind: Float
     default: 6
@@ -2952,6 +3032,7 @@ flags:
     rule: Presence
     owner: terrain
     doc: "MC2_M2D_PZ_PARITY probe (VPL Step 8b precursor validator)."
+    verified: true
   - name: MC2_MATERIAL_GPU
     kind: Bool
     default: true
@@ -3001,6 +3082,7 @@ flags:
     rule: Lead0Kill
     owner: mech
     doc: ""
+    verified: true
   - name: MC2_MECH_BACK_FILL
     kind: Float
     default: 0
@@ -3052,66 +3134,77 @@ flags:
     rule: Lead1
     owner: code
     doc: "Opt-in, default OFF (static FORCE_CLIP bake stays the safe path)."
+    verified: true
   - name: MC2_MECH_IMPORT_CLIP_DIAG
     kind: Bool
     default: false
     rule: Presence
     owner: mech
     doc: ""
+    verified: true
   - name: MC2_MECH_IMPORT_DYNAMIC_LIFT
     kind: Bool
     default: false
     rule: Lead1
     owner: code
     doc: "Default: static rest lift (steady torso)."
+    verified: true
   - name: MC2_MECH_IMPORT_FORCE_BONE
     kind: String
     default: "j_LThigh"
     rule: Std
     owner: mech
     doc: ""
+    verified: true
   - name: MC2_MECH_IMPORT_FORCE_CLIP
     kind: String
     default: ""
     rule: Std
     owner: code
     doc: "BT2018-SKEL-ENGINE-1B: by default bake the REST (bind) pose."
+    verified: true
   - name: MC2_MECH_IMPORT_FORCE_FRAME
     kind: Int
     default: 0
     rule: Prefix
     owner: code
     doc: ""
+    verified: true
   - name: MC2_MECH_IMPORT_FORCE_POSE
     kind: Int
     default: 0
     rule: Prefix
     owner: mech
     doc: ""
+    verified: true
   - name: MC2_MECH_IMPORT_GPU
     kind: Bool
     default: false
     rule: Lead1
     owner: code
     doc: ""
+    verified: true
   - name: MC2_MECH_IMPORT_GPU_AXIS
     kind: Int
     default: 2
     rule: Prefix
     owner: code
     doc: ""
+    verified: true
   - name: MC2_MECH_IMPORT_GPU_LIFT
     kind: Float
     default: 0
     rule: Prefix
     owner: code
     doc: ""
+    verified: true
   - name: MC2_MECH_IMPORT_GPU_LIFT_AXIS
     kind: Int
     default: 1
     rule: Prefix
     owner: code
     doc: ""
+    verified: true
   - name: MC2_MECH_LIGHT_FRESHNESS
     kind: Bool
     default: true
@@ -3145,6 +3238,7 @@ flags:
     rule: Presence
     owner: mech
     doc: ""
+    verified: true
   - name: MC2_MECH_NODE_TRACE
     kind: Bool
     default: false
@@ -3213,18 +3307,21 @@ flags:
     rule: Std
     owner: code
     doc: "MECH-BONE-PARITY-GATE-1: dump the engine's REST joint-global bone matrices (the same mc2skel output the bake consumes) as JSON when..."
+    verified: true
   - name: MC2_MECH_SKEL_HEIGHT
     kind: Float
     default: 50
     rule: Prefix
     owner: code
     doc: ""
+    verified: true
   - name: MC2_MECH_SKEL_TRACE
     kind: Bool
     default: false
     rule: Presence
     owner: code
     doc: "BT2018-SKEL-ENGINE-1A - bind-pose bake trace (default OFF)."
+    verified: true
   - name: MC2_MECH_SPECULAR_STRENGTH
     kind: Float
     default: 0.0500000007
@@ -3314,6 +3411,7 @@ flags:
     owner: terrain
     doc: "Default ON post Slice-1 flip (2026-04-29)."
     smoke_passthrough: true
+    verified: true
   - name: MC2_MODERN_TERRAIN_SURFACE
     kind: Bool
     default: true
@@ -3328,18 +3426,21 @@ flags:
     rule: Std
     owner: code
     doc: ""
+    verified: true
   - name: MC2_MODERN_TEX_RESOLVE_TRACE
     kind: Bool
     default: false
     rule: Presence
     owner: code
     doc: ""
+    verified: true
   - name: MC2_MODERN_TEX_RESOLVE_VALIDATE
     kind: Bool
     default: false
     rule: Presence
     owner: code
     doc: "Default ON with explicit opt-out."
+    verified: true
   - name: MC2_MODOVERRIDE_TRACE
     kind: Bool
     default: false
@@ -3353,12 +3454,14 @@ flags:
     owner: code
     doc: "Stock campaign: no active mod."
     smoke_passthrough: true
+    verified: true
   - name: MC2_MOUSE_RECON
     kind: Bool
     default: false
     rule: Presence
     owner: unclassified
     doc: "MC2_MOUSE_RECON: env-gated one-shot-ish confirm log."
+    verified: true
   - name: MC2_MOVER_COHERENCE_AUDIT
     kind: Bool
     default: false
@@ -3383,6 +3486,7 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_MOVE_PATH_CACHE_SHADOW
     kind: Bool
     default: false
@@ -3390,6 +3494,7 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_MOVE_RECON
     kind: Bool
     default: false
@@ -3397,6 +3502,7 @@ flags:
     owner: code
     doc: "Pathfinding cost instrumentation (mclib/move_recon.cpp)."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_MOVE_RECON, kind: Feature, order: -1, default_on: false}
   - name: MC2_MVP_PUBLISH_EARLY
     kind: Bool
@@ -3411,6 +3517,7 @@ flags:
     owner: code
     doc: "NIGHT-LIGHT-POOLS-1 knob: minimum per-channel output (0..64, clamped) of Camera::getLightRed/Green/Blue -- the family feeding the colormap night burn-in..."
     range: {lo: 0, hi: 64, style: clamp}
+    verified: true
     registry: {feature_id: MC2_TUNE_NIGHT_AMBIENT_FLOOR, kind: Trace, order: -1, default_on: false}
   - name: MC2_NIGHT_FOG_DIM
     kind: Bool
@@ -3463,6 +3570,7 @@ flags:
     doc: ""
     tokens: "|legacy"
     smoke_passthrough: true
+    verified: true
   - name: MC2_OBJECT_ADMISSION_SELFTEST
     kind: Bool
     default: false
@@ -3495,6 +3603,7 @@ flags:
     rule: Exact1
     owner: code
     doc: ""
+    verified: true
   - name: MC2_OBJECT_POLY_OFFSET
     kind: Bool
     default: false
@@ -3559,6 +3668,7 @@ flags:
     rule: Presence
     owner: unclassified
     doc: "Hide the OS cursor."
+    verified: true
   - name: MC2_OVERLAY_ART_FLATLIGHT
     kind: Bool
     default: true
@@ -3610,6 +3720,7 @@ flags:
     owner: terrain
     doc: "OVERLAY-TILE-HIRES-1: honor the overlay tile TGA's actual dimensions instead of the legacy hard-assumed 64px (initOverlay header resync mirrors..."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_OVERLAY_TILE_HIRES, kind: Feature, order: -1, default_on: false}
   - name: MC2_PAD_AREA_GLOW
     kind: Float
@@ -3727,6 +3838,7 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_PAVED_OVERLAY_CLASS
     kind: Int
     default: 0
@@ -3798,6 +3910,7 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_PICK_FALLBACK_COARSE
     kind: Bool
     default: false
@@ -3805,6 +3918,7 @@ flags:
     owner: code
     doc: "MISSION-INTERFACE-PERF-1: coarse-to-fine closest-vertex fallback in Camera::inverseProject (mclib/camera.cpp)."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_PICK_FALLBACK_COARSE, kind: Feature, order: -1, default_on: false}
   - name: MC2_PICK_RECON
     kind: Bool
@@ -3925,6 +4039,7 @@ flags:
     owner: code
     doc: ""
     tokens: "|Compare|Off"
+    verified: true
   - name: MC2_PROJECTZ_GUARD_PX
     kind: Int
     default: 0
@@ -3932,6 +4047,7 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_PROJECTZ_HEATMAP
     kind: Bool
     default: false
@@ -3939,6 +4055,7 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_PROJECTZ_SUMMARY
     kind: Bool
     default: false
@@ -3946,6 +4063,7 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_PROJECTZ_TRACE
     kind: Bool
     default: false
@@ -3953,6 +4071,7 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_PROP_BASE_LIGHT_DIR
     kind: Float
     default: 0
@@ -4071,6 +4190,7 @@ flags:
     owner: code
     doc: ""
     reread: true
+    verified: true
   - name: MC2_REGFLUSH_DIAG_TRACE
     kind: Bool
     default: false
@@ -4147,6 +4267,7 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_RENDER_FRAME_DRIVER
     kind: Bool
     default: false
@@ -4166,18 +4287,21 @@ flags:
     rule: Lead1
     owner: code
     doc: ""
+    verified: true
   - name: MC2_RENDER_PASS_CONTRACT_TRACE
     kind: Bool
     default: false
     rule: Lead1
     owner: code
     doc: ""
+    verified: true
   - name: MC2_RENDER_PASS_ORDER
     kind: Bool
     default: false
     rule: Lead1
     owner: code
     doc: "CONTRACT-3: per-frame resource-ordering audit (mclib/render_contract.cpp) - checks each pass's reads[] are satisfied by a prior write before beginPass."
+    verified: true
     registry: {feature_id: MC2_FEATURE_RENDER_PASS_ORDER, kind: Feature, order: -1, default_on: false}
   - name: MC2_RENDER_PASS_TELEMETRY
     kind: Bool
@@ -4186,6 +4310,7 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_RENDER_PASS_TIME
     kind: Bool
     default: false
@@ -4255,6 +4380,7 @@ flags:
     owner: code
     doc: "META-FIX design E tier 3 (mclib/file.cpp): output path for the MC2_LOG_FILE_RESOLVE=2 JSONL resolve trace, opened for append at InitModSearchPaths (relative..."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TRACE_RESOLVE_TRACE_FILE, kind: Trace, order: -1, default_on: false}
   - name: MC2_RES_ASSERT
     kind: Bool
@@ -4278,6 +4404,7 @@ flags:
     owner: unclassified
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_RING_FORCE_FINISH
     kind: Bool
     default: false
@@ -4350,6 +4477,7 @@ flags:
     owner: code
     doc: ""
     tokens: "|Legacy"
+    verified: true
   - name: MC2_SELECTION_PICKING_PREDICATE_MODE
     kind: Enum
     default: ""
@@ -4357,6 +4485,7 @@ flags:
     owner: code
     doc: ""
     tokens: "|Legacy"
+    verified: true
   - name: MC2_SENSOR_SCAN_FACTS
     kind: Bool
     default: false
@@ -4369,6 +4498,7 @@ flags:
     rule: Presence
     owner: terrain
     doc: "TRACKV-CI-GATE-RESTORE-1: setupTextures legacy path kill-switch."
+    verified: true
     registry: {feature_id: MC2_FEATURE_SETUPTEXTURES_LEGACY_FORCE, kind: Feature, order: 37, default_on: false}
   - name: MC2_SHADER_HOT_RELOAD
     kind: Bool
@@ -4673,6 +4803,7 @@ flags:
     owner: terrain
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_SHORELINE_LEGACY_SUPPRESS
     kind: Bool
     default: true
@@ -4894,6 +5025,7 @@ flags:
     doc: "SPOTLIGHT-DIRECTION-1: fixes two coordinate-space defects at the building/guard-tower spotlight registration site (mclib/bdactor.cpp)."
     tokens: "0|1|2"
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_SPOTLIGHT_DIRECTION_FIX, kind: Trace, order: -1, default_on: false}
   - name: MC2_SPOTLIGHT_REAL_TRACE
     kind: Bool
@@ -4907,6 +5039,7 @@ flags:
     rule: Presence
     owner: mech
     doc: "T1.15 SpotLight_ illumination diagnostic - registration probe (bldg class)."
+    verified: true
   - name: MC2_SP_ALPHASCAN_GATE
     kind: Bool
     default: false
@@ -5471,6 +5604,7 @@ flags:
     owner: code
     doc: "[DEFAULT-OFF, OPT-IN: MC2_SUN_ELEVATION_FIX=1 enables; unset/0 is the legacy three lines bit-for-bit."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_SUN_ELEVATION_FIX, kind: Feature, order: 52, default_on: false}
   - name: MC2_TACMAP_FORMATION_LINE
     kind: Bool
@@ -5749,6 +5883,7 @@ flags:
     owner: code
     doc: "TERRAIN-DECAL-SLICE-0B: lateral nudge (float world units, default 0.0) along the wall 'tangent' (contour) axis - side-to-side placement."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TERRAIN_DECAL_LATERAL, kind: Trace, order: -1, default_on: false}
   - name: MC2_TERRAIN_DECAL_LIFT
     kind: Float
@@ -5757,6 +5892,7 @@ flags:
     owner: code
     doc: "TERRAIN-DECAL-SLICE-0B: vertical nudge (float world units, default 0.0) along world-up - lifts/lowers the CLIFF_WALL mesh-decal."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TERRAIN_DECAL_LIFT, kind: Trace, order: -1, default_on: false}
   - name: MC2_TERRAIN_DECAL_OFFSET
     kind: Float
@@ -5765,6 +5901,7 @@ flags:
     owner: code
     doc: "TERRAIN-DECAL-SLICE-0B: outward offset distance (float world units, default 8.0) along the wall 'facing' axis - replaces the hardcoded 8.0 Slice-0A z-fight..."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TERRAIN_DECAL_OFFSET, kind: Trace, order: -1, default_on: false}
   - name: MC2_TERRAIN_DECAL_PITCH
     kind: Float
@@ -5773,6 +5910,7 @@ flags:
     owner: code
     doc: "TERRAIN-DECAL-PITCH: pitch/lean (float degrees, default 0.0) of the wall about the horizontal tangent (contour) axis - positive leans the wall TOP backward..."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TERRAIN_DECAL_PITCH, kind: Trace, order: -1, default_on: false}
   - name: MC2_TERRAIN_DECAL_SCALE
     kind: Float
@@ -5781,6 +5919,7 @@ flags:
     owner: code
     doc: "TERRAIN-DECAL-SLICE-0B: uniform scale (float, default 1.0) of the CLIFF_WALL mesh-decal - multiplies the face-frame's 3 basis rows before translation."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TERRAIN_DECAL_SCALE, kind: Trace, order: -1, default_on: false}
   - name: MC2_TERRAIN_DECAL_TRACE
     kind: Bool
@@ -5796,6 +5935,7 @@ flags:
     owner: code
     doc: "TERRAIN-DECAL-SLICE-0B: yaw rotation (float degrees, default 0.0) of the wall facing/tangent about world-up - corrects the outward-facing direction."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TERRAIN_DECAL_YAW, kind: Trace, order: -1, default_on: false}
   - name: MC2_TERRAIN_DETAIL_ANTITILE
     kind: Bool
@@ -5908,6 +6048,7 @@ flags:
     rule: Presence
     owner: terrain
     doc: "Step 1b-1 (cpu-pack-retirement plan ?2 A1): the M2 thin-record emit scope is orphaned by Fix B (commit 005ebc7) - the GPU compute shader..."
+    verified: true
   - name: MC2_TERRAIN_INDIRECT_TRACE
     kind: Bool
     default: false
@@ -6171,6 +6312,7 @@ flags:
     rule: Presence
     owner: code
     doc: "PARITY DIAGNOSTIC: when MC2_TERRAIN_PICK_PARITY is set we compute BOTH the heightfield raycast hit AND the legacy quadList result for the same screen..."
+    verified: true
   - name: MC2_TERRAIN_POM
     kind: Bool
     default: false
@@ -6232,6 +6374,7 @@ flags:
     rule: Presence
     owner: code
     doc: "Phase 7B: heightfield raycast picker - replaces the quadList AABB/ screen-triangle scan when MC2_TERRAIN_LOD_CHUNK=1."
+    verified: true
   - name: MC2_TERRAIN_RUNTIME_DECALS
     kind: Bool
     default: false
@@ -6471,6 +6614,7 @@ flags:
     owner: mech
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_TEXMGR_LOAD_TRACE
     kind: Bool
     default: false
@@ -6484,18 +6628,21 @@ flags:
     rule: Presence
     owner: props
     doc: "MC2_TEX_LIFECYCLE_TRACE=1 - same env flag used by mclib/txmmgr.cpp, mclib/msl.cpp, GameOS/gameos/gos_static_prop_batcher.cpp so all [TEX_LIFECYCLE v1]..."
+    verified: true
   - name: MC2_TEX_LIFECYCLE_TRACE_VERBOSE
     kind: Bool
     default: false
     rule: Presence
     owner: code
     doc: ""
+    verified: true
   - name: MC2_TGL_POOL_TRACE
     kind: Bool
     default: false
     rule: Presence
     owner: gameos
     doc: ""
+    verified: true
   - name: MC2_THIN_CANARY
     kind: Bool
     default: false
@@ -6560,6 +6707,7 @@ flags:
     rule: Presence
     owner: code
     doc: ""
+    verified: true
   - name: MC2_TUNE_VFX_ADDITIVE_BRIGHTNESS
     kind: Float
     default: 1
@@ -6781,6 +6929,7 @@ flags:
     owner: mech
     doc: "VEHICLE-LIGHTING-PATH-1: put GROUND VEHICLES on the same lighting path as every other object class."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_VEHICLE_LIT_PATH, kind: Feature, order: 46, default_on: true}
   - name: MC2_VERIFY_MODE
     kind: Bool
@@ -6809,6 +6958,7 @@ flags:
     rule: Lead1
     owner: code
     doc: "VFX-AGE-SAMPLE-1: sample GPU-particle spec curves (color/alpha/size/UV) at the routed effect's real CPU-advanced normalized age (gosFX Effect::m_age..."
+    verified: true
     registry: {feature_id: MC2_FEATURE_VFX_AGE_SAMPLE, kind: Feature, order: 22, default_on: false}
   - name: MC2_VFX_BLACKBODY
     kind: Bool
@@ -6848,6 +6998,7 @@ flags:
     rule: Lead1
     owner: code
     doc: "VFX-GPU-SIM-CARDCLOUD-BUFFER-1 (Stage 2 of the originals-restoration arc; docs/vfx-gpu-sim-spec.md)."
+    verified: true
     registry: {feature_id: MC2_FEATURE_VFX_GPU_SIM_CARDCLOUD, kind: Feature, order: 24, default_on: false}
   - name: MC2_VFX_GPU_SIM_COMPARE
     kind: Bool
@@ -6855,6 +7006,7 @@ flags:
     rule: Lead1
     owner: code
     doc: "VFX-GPU-SIM-CARDCLOUD-BUFFER-1: emit the [VFX_GPU_SIM v1] integrity/compare logs (cpuActive vs submitted-live count, age/alpha ranges, world bounds, SSBO..."
+    verified: true
     registry: {feature_id: MC2_FEATURE_VFX_GPU_SIM_COMPARE, kind: Feature, order: 25, default_on: false}
   - name: MC2_VFX_LIT_PARTICLES
     kind: Bool
@@ -6871,6 +7023,7 @@ flags:
     owner: code
     doc: "VFX-ORIGINAL-RECORD-ABI-1 (Phase 1 of the originals-restoration arc; see docs/vfx-originals-restoration-design.md)."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_VFX_ORACLE_RENDER, kind: Feature, order: 23, default_on: false}
   - name: MC2_VFX_ORACLE_SHAPE
     kind: Bool
@@ -6878,18 +7031,21 @@ flags:
     rule: Lead1
     owner: code
     doc: ""
+    verified: true
   - name: MC2_VFX_ORACLE_SHAPE_LOG
     kind: Bool
     default: false
     rule: Lead1
     owner: unclassified
     doc: ""
+    verified: true
   - name: MC2_VFX_ORACLE_TUBE
     kind: Bool
     default: false
     rule: Lead1
     owner: code
     doc: "GOSFX-TUBE-RIBBON-1: route supported gosFX Tube trails (MissileSmoke alpha, PPC additive, polygon) through the swept-quad ribbon oracle submit path instead..."
+    verified: true
     registry: {feature_id: MC2_VFX_ORACLE_TUBE, kind: Feature, order: -1, default_on: false}
   - name: MC2_VFX_ORACLE_TUBE_COVERAGE
     kind: Bool
@@ -6904,6 +7060,7 @@ flags:
     rule: Lead1
     owner: code
     doc: "GOSFX-TUBE-RIBBON-1: per-Tube ribbon submit counters (FIRST_HARVEST / v2 vertex+index tallies, unsupported->MLR fallbacks)."
+    verified: true
     registry: {feature_id: MC2_VFX_ORACLE_TUBE_LOG, kind: Trace, order: -1, default_on: false}
   - name: MC2_VFX_SCENECOLOR_GRAB
     kind: Bool
@@ -7062,12 +7219,14 @@ flags:
     rule: Lead0Kill
     owner: code
     doc: "ONE gate."
+    verified: true
   - name: MC2_VIS_SEMANTICS_TRACE
     kind: Bool
     default: false
     rule: Lead0
     owner: code
     doc: ""
+    verified: true
   - name: MC2_VIS_SEMANTICS_TRACE_EVERY
     kind: Int
     default: 120
@@ -7075,6 +7234,7 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_VK_CSM_ARRAY_INTEROP
     kind: Bool
     default: false
@@ -7700,6 +7860,7 @@ flags:
     rule: Presence
     owner: code
     doc: "VPL-retirement Step 3 (3a): recursion-free tile selection."
+    verified: true
   - name: MC2_VPL_REDUCE
     kind: Bool
     default: false
@@ -7742,6 +7903,7 @@ flags:
     rule: Presence
     owner: code
     doc: "[WATER_ASPECT_DIAG v1] env-gated one-shot (MC2_WATER_ASPECT_DIAG=1), silent by default."
+    verified: true
   - name: MC2_WATER_BIAS_LEGACY
     kind: Bool
     default: false

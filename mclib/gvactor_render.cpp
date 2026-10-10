@@ -1,6 +1,7 @@
 // GVAppearance: shadow and body rendering (reads the vehicle-lit-path gate).
 // Declared in the class headers; shared names in gvactor_internal.h.
 #include "gvactor_internal.h"
+#include "Gates/gate.h"
 
 
 //-----------------------------------------------------------------------------
@@ -36,7 +37,7 @@ long GVAppearance::renderShadows (void)
 // an all-zero row -> calc_light numLights==0 early-return -> vec3(1,1,1) ->
 // raw albedo, i.e. byte-identical to the unlit vehicles users have been
 // reporting. See the long root-cause note at the call site.
-static const bool s_vehicleLitPath = gvEnvFlagDefaultOn("MC2_VEHICLE_LIT_PATH");
+static const bool s_vehicleLitPath = mc2::gate::get<"MC2_VEHICLE_LIT_PATH">();
 
 //-----------------------------------------------------------------------------
 long GVAppearance::render (long depthFixup)

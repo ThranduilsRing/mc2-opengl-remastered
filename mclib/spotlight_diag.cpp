@@ -9,6 +9,8 @@
 
 #include <cstdlib>
 #include <unordered_map>
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"
 
 namespace mc2_spotlight_diag {
 
@@ -22,7 +24,7 @@ std::unordered_map<long, SlotTag>& slot_map()
     return s_map;
 }
 
-bool s_enabled_cached = (std::getenv("MC2_SPOT_DIAG") != nullptr);
+bool s_enabled_cached = mc2::gate::get<"MC2_SPOT_DIAG">();
 
 } // namespace
 
@@ -70,8 +72,9 @@ unsigned long mover_light_argb()
 {
     static const unsigned long s_argb = []() -> unsigned long {
         unsigned long rgb = 0xFFEED1ul;   // warm halogen default
-        const char* v = std::getenv("MC2_LIGHT_POOL_MOVER_COLOR");
-        if (v && v[0]) {
+        const std::string colorStr = mc2::gate::str<"MC2_LIGHT_POOL_MOVER_COLOR">();
+        const char* v = colorStr.c_str();
+        if (v[0]) {
             char* end = nullptr;
             unsigned long parsed = std::strtoul(v, &end, 16);
             if (end && end != v && *end == '\0' && parsed <= 0xFFFFFFul)
@@ -84,14 +87,7 @@ unsigned long mover_light_argb()
 
 float mover_light_fwd_offset()
 {
-    static const float s_fwd = []() -> float {
-        float f = 24.0f;   // MOVER-LIGHT-FORWARD-1 default
-        const char* v = std::getenv("MC2_LIGHT_POOL_MOVER_FWD");
-        if (v && v[0]) f = (float)std::atof(v);
-        if (f < 0.0f) f = 0.0f;
-        if (f > 120.0f) f = 120.0f;
-        return f;
-    }();
+    static const float s_fwd = mc2::gate::get<"MC2_LIGHT_POOL_MOVER_FWD">();
     return s_fwd;
 }
 

@@ -15,6 +15,7 @@
 #include <cstring>
 #include <unordered_set>
 #include <vector>
+#include "Gates/gate.h"
 
 // Bridge entry point implemented in GameOS/gameos/gos_particle_bridge.cpp.
 // Forward-declared here so this TU never #includes GameOS/GL headers — the
@@ -77,26 +78,22 @@ void dump_summary() {
 
 void initialize_env() {
     if (g_enabled_initialized) return;
-    const char* v = std::getenv("MC2_GPU_PARTICLES");
-    const char* vl = std::getenv("MC2_GPU_PARTICLES_LOG");
-    g_log_value = (vl && vl[0] == '1');
+    g_log_value = mc2::gate::get<"MC2_GPU_PARTICLES_LOG">();
     // REVERTED TO CPU/MLR DEFAULT (user request: GPU FX looked broken). Absent
     // env var → DISABLED (legacy CPU billboards). Opt back into GPU with "1".
-    g_enabled_value = (v && v[0] == '1');   // default OFF -> legacy CPU/MLR FX
-    if (v && v[0] != '1') {
-        if (v[0] != '0') {
-            // Unknown value — warn once if logging enabled.
-            if (g_log_value) {
-                static bool warned = false;
-                if (!warned) {
-                    warned = true;
-                    std::fprintf(stderr,
-                        "[GPU_PARTICLES] unknown MC2_GPU_PARTICLES value '%s'; disabling\n", v);
-                    std::fflush(stderr);
-                }
+    g_enabled_value = mc2::gate::get<"MC2_GPU_PARTICLES">();   // default OFF -> legacy CPU/MLR FX
+    if (mc2::gate::isSet<"MC2_GPU_PARTICLES">() && !g_enabled_value
+        && mc2::gate::state<"MC2_GPU_PARTICLES">() != mc2::gate::Tri::Off) {
+        // Unknown value — warn once if logging enabled.
+        if (g_log_value) {
+            static bool warned = false;
+            if (!warned) {
+                warned = true;
+                std::fprintf(stderr,
+                    "[GPU_PARTICLES] unknown MC2_GPU_PARTICLES value; disabling\n");
+                std::fflush(stderr);
             }
         }
-        g_enabled_value = false;
     }
     g_enabled_initialized = true;
     if (g_enabled_value) {
@@ -131,10 +128,9 @@ bool Batcher::is_oracle_render_enabled() {
     static bool s_init = false;
     static bool s_val  = false;
     if (!s_init) {
-        const char* v = std::getenv("MC2_VFX_ORACLE_RENDER");
         // REVERTED TO CPU/MLR DEFAULT (user request). Absent = OFF (legacy MLR
         // cards); opt into GPU with "1".
-        s_val  = (v && v[0] == '1');
+        s_val = mc2::gate::get<"MC2_VFX_ORACLE_RENDER">();
         s_init = true;
         MC2_DIAGFE(stderr, "[VFX_ROUTE v1] oracle_render=%s reason=%s\n",
             s_val ? "on" : "off",
@@ -152,8 +148,7 @@ bool Batcher::is_gpu_sim_cardcloud_enabled() {
     static bool s_init = false;
     static bool s_val  = false;
     if (!s_init) {
-        const char* v = std::getenv("MC2_VFX_GPU_SIM_CARDCLOUD");
-        s_val  = (v && v[0] == '1');
+        s_val = mc2::gate::get<"MC2_VFX_GPU_SIM_CARDCLOUD">();
         s_init = true;
     }
     return s_val;
@@ -163,8 +158,7 @@ bool Batcher::is_gpu_sim_compare_enabled() {
     static bool s_init = false;
     static bool s_val  = false;
     if (!s_init) {
-        const char* v = std::getenv("MC2_VFX_GPU_SIM_COMPARE");
-        s_val  = (v && v[0] == '1');
+        s_val = mc2::gate::get<"MC2_VFX_GPU_SIM_COMPARE">();
         s_init = true;
     }
     return s_val;
@@ -188,8 +182,7 @@ bool Batcher::is_oracle_tube_enabled() {
     static bool s_init = false;
     static bool s_val  = false;
     if (!s_init) {
-        const char* v = std::getenv("MC2_VFX_ORACLE_TUBE");
-        s_val  = (v && v[0] == '1');    // REVERTED: DEFAULT-OFF (legacy MLR tubes); =1 opts into GPU
+        s_val = mc2::gate::get<"MC2_VFX_ORACLE_TUBE">();    // REVERTED: DEFAULT-OFF (legacy MLR tubes); =1 opts into GPU
         s_init = true;
         MC2_DIAGFE(stderr, "[VFX_ORACLE_TUBE v1] gate=%s (default-off; =1 enables GPU)\n",
                      s_val ? "on" : "off");
@@ -205,8 +198,7 @@ bool Batcher::is_oracle_shape_enabled() {
     static bool s_init = false;
     static bool s_val  = false;
     if (!s_init) {
-        const char* v = std::getenv("MC2_VFX_ORACLE_SHAPE");
-        s_val  = (v && v[0] == '1');
+        s_val = mc2::gate::get<"MC2_VFX_ORACLE_SHAPE">();
         s_init = true;
         // QUIET-DEFAULT-BUILD-1: announce behind MC2_DIAG_VERBOSE, matching the
         // sibling is_oracle_tube_enabled() gate above. A default-OFF gate
@@ -223,8 +215,7 @@ bool Batcher::is_oracle_tube_log_enabled() {
     static bool s_init = false;
     static bool s_val  = false;
     if (!s_init) {
-        const char* v = std::getenv("MC2_VFX_ORACLE_TUBE_LOG");
-        s_val  = (v && v[0] == '1');
+        s_val = mc2::gate::get<"MC2_VFX_ORACLE_TUBE_LOG">();
         s_init = true;
     }
     return s_val;
@@ -234,8 +225,7 @@ bool Batcher::is_oracle_shape_log_enabled() {
     static bool s_init = false;
     static bool s_val  = false;
     if (!s_init) {
-        const char* v = std::getenv("MC2_VFX_ORACLE_SHAPE_LOG");
-        s_val  = (v && v[0] == '1');
+        s_val = mc2::gate::get<"MC2_VFX_ORACLE_SHAPE_LOG">();
         s_init = true;
     }
     return s_val;

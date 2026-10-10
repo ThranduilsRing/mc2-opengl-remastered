@@ -12,6 +12,7 @@
 #include <map>
 #include <mutex>
 #include <string>
+#include "Gates/gate.h"
 
 namespace mc2 {
 namespace fx_trace {
@@ -90,8 +91,7 @@ void atexit_dump() {
 
 void initialize_locked() {
     if (g_enabled_initialized) return;
-    const char* v = std::getenv("MC2_FX_TRACE");
-    g_enabled_value = (v && v[0] == '1');
+    g_enabled_value = mc2::gate::get<"MC2_FX_TRACE">();
     g_tables = new CounterTables();  // intentionally leaked
     if (!g_atexit_registered) {
         std::atexit(&atexit_dump);
