@@ -802,6 +802,9 @@ typedef TG_TypeShape* TG_TypeShapePtr;
 //-------------------------------------------------------------------------------------
 // The OTHER meat and Potatoes part.  This is the actual instance the game draws with.
 // TG_Shape
+// Phase-helper state of MultiTransformShape (defined in tgl_transform_frame.h).
+struct TgXformFrame;
+
 class TG_Shape
 {
 	//-------------------------------------------------------
@@ -901,6 +904,16 @@ class TG_Shape
 	//-----------------
 	//Member Functions
 	protected:
+		// MultiTransformShape phases (tgl_transform.cpp, tgl_transform_light.cpp).
+		void xformGpuOnlyShape(Stuff::Matrix4D* shapeToClip, bool isHudElement, BYTE alphaValue, bool isClamped);
+		void xformVertexProject(Stuff::Matrix4D* shapeToClip, bool& oneOff, bool& oneOn, TG_TypeShapePtr theShape, long j);
+		void xformVertexBaseColor(bool isHudElement, bool isNight, float nightFactor, TG_TypeShapePtr theShape, long j, TgXformFrame& f);
+		void xformVertexLights(TG_TypeShapePtr theShape, long j, TgXformFrame& f);
+		void xformVertexFog(TG_ShapeRecPtr parentNode, TG_TypeShapePtr theShape, long j, TgXformFrame& f);
+		void xformFaceLight(TG_TypeShapePtr theShape, long j, TgXformFrame& f);
+		void xformFaceCorners(BYTE alphaValue, TG_TypeShapePtr theShape, long j, TgXformFrame& f);
+		void xformFaceQueue(bool isHudElement, BYTE alphaValue, bool isClamped, TG_TypeShapePtr theShape, long j);
+		void xformEmitShape(Stuff::Matrix4D* shapeToClip, bool isHudElement, BYTE alphaValue, bool isClamped, TG_TypeShapePtr theShape);
 
 	public:
 		void * operator new (size_t mySize);

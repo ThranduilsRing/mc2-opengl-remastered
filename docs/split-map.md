@@ -404,6 +404,7 @@ Split commit: `e880b7520`.
 | `tgl_render.cpp` | TG shapes: TG_Shape::Render, per-poly selection and the render-shape PBR override. |
 | `tgl_shadows.cpp` | TG shapes: shadow transform and shadow rendering. |
 | `tgl_transform.cpp` | TG shapes: TG_Shape::MultiTransformShape and its positions-only variant, light gathering and billboard handling. |
+| `tgl_transform_light.cpp` | TG_Shape: the per-vertex and per-face lighting phases of MultiTransformShape -- hot-colour and base colour, vertex lights, fog and highlight, face lights and the triangle queue. The orchestrator is in tgl_transform.cpp. |
 | `tgl_types.cpp` | TG shapes: ASE number/name helpers and the TG_TypeNode / TG_TypeShape / TG_Shape lifecycle, binary copy and creation. |
 | `tgl_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 

@@ -31,6 +31,7 @@ set(SOURCES ${SOURCES}
     tgl_render.cpp
     tgl_shadows.cpp
     tgl_transform.cpp
+    tgl_transform_light.cpp
     tgl_types.cpp
     timing.cpp
     txmmgr.cpp
