@@ -1,6 +1,7 @@
 // Editor: left-button/mouse-move handling, object picking and the WM_ mouse handlers.
 // Declared in the class headers; shared names in EditorInterface_internal.h.
 #include "EditorInterface_internal.h"
+#include "Gates/gate.h"
 #include "../RenderCore/axis_convert.h"
 
 
@@ -495,12 +496,7 @@ static bool EditorInterface_IsDoubleClickDistance(int x1, int y1, int x2, int y2
 // unset -> on, exactly "0" -> off, any other value -> on.
 static bool EditorInterface_GpuPickEnabled()
 {
-	static const bool s_enabled = []() {
-		const char* v = getenv("MC2_EDITOR_GPU_PICK");
-		if (v == nullptr) return true;                 // unset -> on (new default)
-		if (v[0] == '0' && v[1] == '\0') return false; // exactly "0" -> off
-		return true;                                   // any other value -> on
-	}();
+	static const bool s_enabled = mc2::gate::get<"MC2_EDITOR_GPU_PICK">();   // Lead0Kill row, default on
 	return s_enabled;
 }
 
