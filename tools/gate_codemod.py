@@ -1508,6 +1508,79 @@ def _kept_comments(raw, T, a, b):
     return "".join(c + nl + indent for c in out)
 
 
+_HELPER_NO_CHANGE = re.compile(r"vs row \w+: NO-CHANGE$")
+
+
+def _apply_helper_calls(raw, results):
+    """Rewrite `helper("MC2_X")` calls whose interpreter reading says the helper reads exactly what the row reads
+    (NO-CHANGE, no differing input): the call becomes `get<"MC2_X">()`, the surrounding expression stays. Only
+    single-literal-argument calls are touched, so a helper with a default argument stays a human's job. The helper
+    definition itself is left in place; the author deletes it once its last caller is gone."""
+    done = []
+    seen = set()
+    for r in results:
+        if r.verdict != "UNHANDLED" or not r.callee or not _HELPER_NO_CHANGE.search(r.helper_read or ""):
+            continue
+        key = (r.callee, r.gate)
+        if key in seen:
+            continue
+        seen.add(key)
+        rx = re.compile(r"(?<![\w:.>])%s\(\s*\"%s\"\s*\)" % (re.escape(r.callee), re.escape(r.gate)))
+        new, n = rx.subn(get_expr(r.gate), raw)
+        if n:
+            raw = new
+            done.extend([r] * n)
+    return raw, done
+
+
+# The two-read spellings of one gate that the plan lists as "paired reads": each is a complete expression whose value
+# is a known rule applied to the variable's text, so when the row carries that rule the whole expression becomes one
+# typed read. {G} is the gate literal, {C} the getenv spelling (std:: optional).
+_GE = r"(?:std::)?getenv\(\s*\"{G}\"\s*\)"
+_PAIRED_FORMS = (
+    ("AtoiNZ", r"\(?\s*" + _GE + r"\s*&&\s*(?:std::)?atoi\(\s*" + _GE + r"\s*\)\s*!=\s*0\s*\)?"),
+    ("Lead0P", r"\(?\s*" + _GE + r"\s*!=\s*(?:nullptr|NULL)\s*&&\s*" + _GE + r"\s*\[\s*0\s*\]\s*!=\s*'0'\s*\)?"),
+    ("Lead0", r"\(?\s*" + _GE + r"\s*&&\s*" + _GE + r"\s*\[\s*0\s*\]\s*&&\s*" + _GE + r"\s*\[\s*0\s*\]\s*!=\s*'0'\s*\)?"),
+    ("Lead1", r"\(?\s*" + _GE + r"\s*(?:!=\s*(?:nullptr|NULL)\s*)?&&\s*" + _GE + r"\s*\[\s*0\s*\]\s*==\s*'1'\s*\)?"),
+)
+
+
+def _apply_paired_reads(raw, results):
+    """Replace a gate's two-read expression by one typed read when the row has the rule that expression computes."""
+    done = []
+    T = gi.strip_comments(raw)
+    edits = []
+    # the row rule is not stored on a Result; look it up through the planner's table when it was loaded
+    table = _CURRENT_ROWS or {}
+    for gate in sorted({r.gate for r in results}):
+        row = table.get(gate)
+        if row is None or row.kind != "Bool":
+            continue
+        for rule, tmpl in _PAIRED_FORMS:
+            if row.rule != rule:
+                continue
+            rx = re.compile(tmpl.replace("{G}", re.escape(gate)))
+            for m in rx.finditer(T):
+                edits.append((m.start(), m.end(), get_expr(gate), gate))
+    edits.sort(key=lambda e: -e[0])
+    last = len(raw) + 1
+    for a, b, new, gate in edits:
+        if b > last:
+            continue
+        # keep one pair of parentheses the original spelled around the expression
+        old = raw[a:b]
+        lead = old[:len(old) - len(old.lstrip())]
+        wrap = old.lstrip().startswith("(") and old.rstrip().endswith(")")
+        raw = raw[:a] + lead + ("(" + new + ")" if wrap else new) + raw[b:]
+        last = a
+        r = next(x for x in results if x.gate == gate)
+        done.append(r)
+    return raw, done
+
+
+_CURRENT_ROWS = None
+
+
 def apply_edits(raw, results):
     """The file text with every NO-CHANGE / EDGE site rewritten (descending offsets, overlaps skipped) and the gate
     include added. Returns (new_text, applied, skipped)."""
@@ -1528,6 +1601,10 @@ def apply_edits(raw, results):
         raw = raw[:a] + new + raw[b:]
         limit = a
         applied.append(r)
+    raw, helper_calls = _apply_helper_calls(raw, results)
+    applied = applied + helper_calls
+    raw, paired = _apply_paired_reads(raw, results)
+    applied = applied + paired
     if applied and "Gates/gate.h" not in raw and "Gates/gate_cold.h" not in raw:
         nl = "\r\n" if "\r\n" in raw else "\n"
         lines = raw.split(nl)
@@ -2176,6 +2253,8 @@ def main(argv=None):
             return 2
         # Reads and rewrites the WORKING TREE files; rows come from the committed table at HEAD.
         rows = load_rows(ROOT, "HEAD")
+        global _CURRENT_ROWS
+        _CURRENT_ROWS = rows
         ledger = load_ledger(ROOT)
         total = 0
         for rel in a.files:

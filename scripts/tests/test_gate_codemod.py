@@ -701,3 +701,44 @@ def test_row_edit_needed_sites_are_planned_but_not_applied():
     res, new, applied = _apply(INT_LAMBDA, mk("Prefix", "Int", 64))
     assert res[0].row_edit
     assert not applied and new == INT_LAMBDA
+
+
+def test_helper_call_with_the_row_rule_is_rewritten_in_place():
+    code = ("static bool envFlag(const char* n) { const char* v = std::getenv(n); return v && v[0] && v[0] != '0'; }\n"
+            "void f() {\n  if (envFlag(\"MC2_X\")) { go(); }\n  const bool off = !envFlag(\"MC2_X\");\n}\n")
+    res = cm.analyze_text("snippet.cpp", code, mk("Lead0"), None)
+    new, applied, skipped = cm.apply_edits(code, res)
+    assert new.count('mc2::gate::get<"MC2_X">()') == 2, new
+    assert 'if (mc2::gate::get<"MC2_X">()) { go(); }' in new
+    assert "!mc2::gate::get<\"MC2_X\">()" in new
+
+
+def test_helper_call_on_a_row_with_another_rule_is_left_alone():
+    code = ("static bool envFlag(const char* n) { const char* v = std::getenv(n); return v && v[0] && v[0] != '0'; }\n"
+            "void f() {\n  if (envFlag(\"MC2_X\")) { go(); }\n}\n")
+    res = cm.analyze_text("snippet.cpp", code, mk("Presence"), None)
+    new, applied, skipped = cm.apply_edits(code, res)
+    assert 'envFlag("MC2_X")' in new
+
+
+@pytest.mark.parametrize("rule,expr", [
+    ("AtoiNZ", '(std::getenv("MC2_X") && std::atoi(std::getenv("MC2_X")) != 0)'),
+    ("Lead0P", '(getenv("MC2_X") != nullptr && getenv("MC2_X")[0] != \'0\')'),
+    ("Lead1", '(getenv("MC2_X") != nullptr && getenv("MC2_X")[0] == \'1\')'),
+])
+def test_paired_reads_of_one_gate_become_one_typed_read(rule, expr, monkeypatch):
+    code = "void f() {\n  const bool on = %s;\n  use(on);\n}\n" % expr
+    rows = mk(rule)
+    monkeypatch.setattr(cm, "_CURRENT_ROWS", rows)
+    res = cm.analyze_text("snippet.cpp", code, rows, None)
+    new, applied, skipped = cm.apply_edits(code, res)
+    assert 'const bool on = (mc2::gate::get<"MC2_X">());' in new, new
+
+
+def test_paired_reads_on_a_row_with_another_rule_are_left_alone(monkeypatch):
+    code = 'void f() {\n  const bool on = (getenv("MC2_X") && atoi(getenv("MC2_X")) != 0);\n}\n'
+    rows = mk("Lead0")
+    monkeypatch.setattr(cm, "_CURRENT_ROWS", rows)
+    res = cm.analyze_text("snippet.cpp", code, rows, None)
+    new, applied, skipped = cm.apply_edits(code, res)
+    assert "atoi" in new
