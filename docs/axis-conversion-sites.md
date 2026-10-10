@@ -71,69 +71,69 @@ Shaders that carry sites, with their counterpart in the other backend. Twins mus
 
 ### `mclib/mech3d.cpp` (41)
 
-- `mclib/mech3d.cpp:1120` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
-- `mclib/mech3d.cpp:1162` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
-- `mclib/mech3d.cpp:1204` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
-- `mclib/mech3d.cpp:1248` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
-- `mclib/mech3d.cpp:2728` assign-triple: `objPosition.x = -position.x; objPosition.y = position.z; objPosition.z = position.y;`
-- `mclib/mech3d.cpp:2759` assign-triple: `objPosition.x = -position.x; objPosition.y = position.z; objPosition.z = position.y;`
-- `mclib/mech3d.cpp:3578` assign-triple: `actualPosition.x = -jumpNodePos.x; actualPosition.y = jumpNodePos.z; actualPosition.z = jumpNodePos.y;`
-- `mclib/mech3d.cpp:3607` assign-triple: `leftShoulderPos.x = -leftNodePos.x; leftShoulderPos.y = leftNodePos.z; leftShoulderPos.z = leftNodePos.y;`
-- `mclib/mech3d.cpp:3634` assign-triple: `rightShoulderPos.x = -rightNodePos.x; rightShoulderPos.y = rightNodePos.z; rightShoulderPos.z = rightNodePos.y`
-- `mclib/mech3d.cpp:3660` assign-triple: `smokePos.x = -smokeNodePos.x; smokePos.y = smokeNodePos.z; smokePos.z = smokeNodePos.y;`
-- `mclib/mech3d.cpp:3717` assign-triple: `wakePos.x = -position.x; wakePos.y = position.z; wakePos.z = position.y;`
-- `mclib/mech3d.cpp:3883` assign-triple: `rightShoulderPos.x = -rightArmPos.x; rightShoulderPos.y = rightArmPos.z; rightShoulderPos.z = rightArmPos.y;`
-- `mclib/mech3d.cpp:3925` assign-triple: `leftShoulderPos.x = -leftArmPos.x; leftShoulderPos.y = leftArmPos.z; leftShoulderPos.z = leftArmPos.y;`
-- `mclib/mech3d.cpp:4183` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
-- `mclib/mech3d.cpp:4307` assign-triple: `ourPosition.x = -lightPos.x; ourPosition.y = lightPos.z; ourPosition.z = lightPos.y;`
-- `mclib/mech3d.cpp:4313` assign-triple: `pointLight->spotDir.x = -position.x; pointLight->spotDir.y = position.z; pointLight->spotDir.z = position.y;`
-- `mclib/mech3d.cpp:4665` assign-triple: `rFootPosition[currentRightPoof].x = -rFootPos.x; rFootPosition[currentRightPoof].y = rFootPos.z; rFootPosition`
-- `mclib/mech3d.cpp:4699` assign-triple: `rFootPosition[currentRightPoof].x = -rFootPos.x; rFootPosition[currentRightPoof].y = rFootPos.z; rFootPosition`
-- `mclib/mech3d.cpp:4747` assign-triple: `lFootPosition[currentLeftPoof].x = -lFootPos.x; lFootPosition[currentLeftPoof].y = lFootPos.z; lFootPosition[c`
-- `mclib/mech3d.cpp:4781` assign-triple: `lFootPosition[currentLeftPoof].x = -lFootPos.x; lFootPosition[currentLeftPoof].y = lFootPos.z; lFootPosition[c`
-- `mclib/mech3d.cpp:4880` assign-triple: `actualPosition.x = -jumpNodePos.x; actualPosition.y = jumpNodePos.z; actualPosition.z = jumpNodePos.y;`
-- `mclib/mech3d.cpp:4949` assign-triple: `actualPosition.x = -jumpNodePos.x; actualPosition.y = jumpNodePos.z; actualPosition.z = jumpNodePos.y;`
-- `mclib/mech3d.cpp:4984` assign-triple: `leftShoulderPos.x = -leftNodePos.x; leftShoulderPos.y = leftNodePos.z; leftShoulderPos.z = leftNodePos.y;`
-- `mclib/mech3d.cpp:5017` assign-triple: `rightShoulderPos.x = -rightNodePos.x; rightShoulderPos.y = rightNodePos.z; rightShoulderPos.z = rightNodePos.y`
-- `mclib/mech3d.cpp:5049` assign-triple: `smokePos.x = -smokeNodePos.x; smokePos.y = smokeNodePos.z; smokePos.z = smokeNodePos.y;`
-- `mclib/mech3d.cpp:5116` assign-triple: `wakePos.x = -position.x; wakePos.y = position.z; wakePos.z = position.y;`
-- `mclib/mech3d.cpp:5177` assign-triple: `objPosition.x = -leftArmPos.x; objPosition.y = leftArmPos.z; objPosition.z = leftArmPos.y;`
-- `mclib/mech3d.cpp:5237` assign-triple: `objPosition.x = -rightArmPos.x; objPosition.y = rightArmPos.z; objPosition.z = rightArmPos.y;`
-- `mclib/mech3d.cpp:5881` assign-triple: `xlatPosition.x = -leftArmPos.x; xlatPosition.y = leftArmPos.z; xlatPosition.z = leftArmPos.y;`
-- `mclib/mech3d.cpp:5902` assign-triple: `leftShoulderPos.x = -leftArmPos.x; leftShoulderPos.y = leftArmPos.z; leftShoulderPos.z = leftArmPos.y;`
-- `mclib/mech3d.cpp:5965` assign-triple: `xlatPosition.x = -rightArmPos.x; xlatPosition.y = rightArmPos.z; xlatPosition.z = rightArmPos.y;`
-- `mclib/mech3d.cpp:5986` assign-triple: `rightShoulderPos.x = -rightArmPos.x; rightShoulderPos.y = rightArmPos.z; rightShoulderPos.z = rightArmPos.y;`
-- `mclib/mech3d.cpp:6073` assign-triple: `leftShoulderPos.x = -leftNodePos.x; leftShoulderPos.y = leftNodePos.z; leftShoulderPos.z = leftNodePos.y;`
-- `mclib/mech3d.cpp:6095` assign-triple: `leftShoulderPos.x = -leftArmPos.x; leftShoulderPos.y = leftArmPos.z; leftShoulderPos.z = leftArmPos.y;`
-- `mclib/mech3d.cpp:6199` assign-triple: `rightShoulderPos.x = -rightNodePos.x; rightShoulderPos.y = rightNodePos.z; rightShoulderPos.z = rightNodePos.y`
-- `mclib/mech3d.cpp:6221` assign-triple: `rightShoulderPos.x = -rightArmPos.x; rightShoulderPos.y = rightArmPos.z; rightShoulderPos.z = rightArmPos.y;`
-- `mclib/mech3d.cpp:6330` assign-triple: `smokePos.x = -smokeNodePos.x; smokePos.y = smokeNodePos.z; smokePos.z = smokeNodePos.y;`
-- `mclib/mech3d.cpp:6468` assign-triple: `wakePos.x = -position.x; wakePos.y = position.z; wakePos.z = position.y;`
-- `mclib/mech3d.cpp:6724` assign-triple: `actualPosition.x = -jumpNodePos.x; actualPosition.y = jumpNodePos.z; actualPosition.z = jumpNodePos.y;`
-- `mclib/mech3d.cpp:6791` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
-- `mclib/mech3d.cpp:6845` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
+- `mclib/mech3d.cpp:1121` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
+- `mclib/mech3d.cpp:1163` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
+- `mclib/mech3d.cpp:1205` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
+- `mclib/mech3d.cpp:1249` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
+- `mclib/mech3d.cpp:2729` assign-triple: `objPosition.x = -position.x; objPosition.y = position.z; objPosition.z = position.y;`
+- `mclib/mech3d.cpp:2760` assign-triple: `objPosition.x = -position.x; objPosition.y = position.z; objPosition.z = position.y;`
+- `mclib/mech3d.cpp:3579` assign-triple: `actualPosition.x = -jumpNodePos.x; actualPosition.y = jumpNodePos.z; actualPosition.z = jumpNodePos.y;`
+- `mclib/mech3d.cpp:3608` assign-triple: `leftShoulderPos.x = -leftNodePos.x; leftShoulderPos.y = leftNodePos.z; leftShoulderPos.z = leftNodePos.y;`
+- `mclib/mech3d.cpp:3635` assign-triple: `rightShoulderPos.x = -rightNodePos.x; rightShoulderPos.y = rightNodePos.z; rightShoulderPos.z = rightNodePos.y`
+- `mclib/mech3d.cpp:3661` assign-triple: `smokePos.x = -smokeNodePos.x; smokePos.y = smokeNodePos.z; smokePos.z = smokeNodePos.y;`
+- `mclib/mech3d.cpp:3718` assign-triple: `wakePos.x = -position.x; wakePos.y = position.z; wakePos.z = position.y;`
+- `mclib/mech3d.cpp:3884` assign-triple: `rightShoulderPos.x = -rightArmPos.x; rightShoulderPos.y = rightArmPos.z; rightShoulderPos.z = rightArmPos.y;`
+- `mclib/mech3d.cpp:3926` assign-triple: `leftShoulderPos.x = -leftArmPos.x; leftShoulderPos.y = leftArmPos.z; leftShoulderPos.z = leftArmPos.y;`
+- `mclib/mech3d.cpp:4184` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
+- `mclib/mech3d.cpp:4308` assign-triple: `ourPosition.x = -lightPos.x; ourPosition.y = lightPos.z; ourPosition.z = lightPos.y;`
+- `mclib/mech3d.cpp:4314` assign-triple: `pointLight->spotDir.x = -position.x; pointLight->spotDir.y = position.z; pointLight->spotDir.z = position.y;`
+- `mclib/mech3d.cpp:4666` assign-triple: `rFootPosition[currentRightPoof].x = -rFootPos.x; rFootPosition[currentRightPoof].y = rFootPos.z; rFootPosition`
+- `mclib/mech3d.cpp:4700` assign-triple: `rFootPosition[currentRightPoof].x = -rFootPos.x; rFootPosition[currentRightPoof].y = rFootPos.z; rFootPosition`
+- `mclib/mech3d.cpp:4748` assign-triple: `lFootPosition[currentLeftPoof].x = -lFootPos.x; lFootPosition[currentLeftPoof].y = lFootPos.z; lFootPosition[c`
+- `mclib/mech3d.cpp:4782` assign-triple: `lFootPosition[currentLeftPoof].x = -lFootPos.x; lFootPosition[currentLeftPoof].y = lFootPos.z; lFootPosition[c`
+- `mclib/mech3d.cpp:4881` assign-triple: `actualPosition.x = -jumpNodePos.x; actualPosition.y = jumpNodePos.z; actualPosition.z = jumpNodePos.y;`
+- `mclib/mech3d.cpp:4950` assign-triple: `actualPosition.x = -jumpNodePos.x; actualPosition.y = jumpNodePos.z; actualPosition.z = jumpNodePos.y;`
+- `mclib/mech3d.cpp:4985` assign-triple: `leftShoulderPos.x = -leftNodePos.x; leftShoulderPos.y = leftNodePos.z; leftShoulderPos.z = leftNodePos.y;`
+- `mclib/mech3d.cpp:5018` assign-triple: `rightShoulderPos.x = -rightNodePos.x; rightShoulderPos.y = rightNodePos.z; rightShoulderPos.z = rightNodePos.y`
+- `mclib/mech3d.cpp:5050` assign-triple: `smokePos.x = -smokeNodePos.x; smokePos.y = smokeNodePos.z; smokePos.z = smokeNodePos.y;`
+- `mclib/mech3d.cpp:5117` assign-triple: `wakePos.x = -position.x; wakePos.y = position.z; wakePos.z = position.y;`
+- `mclib/mech3d.cpp:5178` assign-triple: `objPosition.x = -leftArmPos.x; objPosition.y = leftArmPos.z; objPosition.z = leftArmPos.y;`
+- `mclib/mech3d.cpp:5238` assign-triple: `objPosition.x = -rightArmPos.x; objPosition.y = rightArmPos.z; objPosition.z = rightArmPos.y;`
+- `mclib/mech3d.cpp:5882` assign-triple: `xlatPosition.x = -leftArmPos.x; xlatPosition.y = leftArmPos.z; xlatPosition.z = leftArmPos.y;`
+- `mclib/mech3d.cpp:5903` assign-triple: `leftShoulderPos.x = -leftArmPos.x; leftShoulderPos.y = leftArmPos.z; leftShoulderPos.z = leftArmPos.y;`
+- `mclib/mech3d.cpp:5966` assign-triple: `xlatPosition.x = -rightArmPos.x; xlatPosition.y = rightArmPos.z; xlatPosition.z = rightArmPos.y;`
+- `mclib/mech3d.cpp:5987` assign-triple: `rightShoulderPos.x = -rightArmPos.x; rightShoulderPos.y = rightArmPos.z; rightShoulderPos.z = rightArmPos.y;`
+- `mclib/mech3d.cpp:6074` assign-triple: `leftShoulderPos.x = -leftNodePos.x; leftShoulderPos.y = leftNodePos.z; leftShoulderPos.z = leftNodePos.y;`
+- `mclib/mech3d.cpp:6096` assign-triple: `leftShoulderPos.x = -leftArmPos.x; leftShoulderPos.y = leftArmPos.z; leftShoulderPos.z = leftArmPos.y;`
+- `mclib/mech3d.cpp:6200` assign-triple: `rightShoulderPos.x = -rightNodePos.x; rightShoulderPos.y = rightNodePos.z; rightShoulderPos.z = rightNodePos.y`
+- `mclib/mech3d.cpp:6222` assign-triple: `rightShoulderPos.x = -rightArmPos.x; rightShoulderPos.y = rightArmPos.z; rightShoulderPos.z = rightArmPos.y;`
+- `mclib/mech3d.cpp:6331` assign-triple: `smokePos.x = -smokeNodePos.x; smokePos.y = smokeNodePos.z; smokePos.z = smokeNodePos.y;`
+- `mclib/mech3d.cpp:6469` assign-triple: `wakePos.x = -position.x; wakePos.y = position.z; wakePos.z = position.y;`
+- `mclib/mech3d.cpp:6725` assign-triple: `actualPosition.x = -jumpNodePos.x; actualPosition.y = jumpNodePos.z; actualPosition.z = jumpNodePos.y;`
+- `mclib/mech3d.cpp:6792` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
+- `mclib/mech3d.cpp:6846` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
 
 ### `mclib/gvactor.cpp` (19)
 
-- `mclib/gvactor.cpp:592` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
-- `mclib/gvactor.cpp:645` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
-- `mclib/gvactor.cpp:684` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
-- `mclib/gvactor.cpp:1748` assign-triple: `objPosition.x = -position.x; objPosition.y = position.z; objPosition.z = position.y;`
-- `mclib/gvactor.cpp:1779` assign-triple: `objPosition.x = -position.x; objPosition.y = position.z; objPosition.z = position.y;`
-- `mclib/gvactor.cpp:1832` assign-triple: `minBox.x = -appearType->typeUpperLeft.x; minBox.y = appearType->typeUpperLeft.z; minBox.z = appearType->typeUp`
-- `mclib/gvactor.cpp:1837` assign-triple: `maxBox.x = -appearType->typeLowerRight.x; maxBox.y = appearType->typeLowerRight.z; maxBox.z = appearType->type`
-- `mclib/gvactor.cpp:2097` assign-triple: `tPosition.x = -position.x; tPosition.y = position.z; tPosition.z = position.y;`
-- `mclib/gvactor.cpp:2137` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
-- `mclib/gvactor.cpp:2179` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
-- `mclib/gvactor.cpp:2381` assign-triple: `tPosition.x = -position.x; tPosition.y = position.z; tPosition.z = position.y;`
-- `mclib/gvactor.cpp:2455` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
-- `mclib/gvactor.cpp:2495` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
-- `mclib/gvactor.cpp:2627` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
-- `mclib/gvactor.cpp:2888` assign-triple: `tPosition.x = -position.x; tPosition.y = position.z; tPosition.z = position.y;`
-- `mclib/gvactor.cpp:2953` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
-- `mclib/gvactor.cpp:2981` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
-- `mclib/gvactor.cpp:3011` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
-- `mclib/gvactor.cpp:3427` assign-triple: `wakePos.x = -nodePos.x; wakePos.y = nodePos.z; wakePos.z = nodePos.y;`
+- `mclib/gvactor.cpp:593` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
+- `mclib/gvactor.cpp:646` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
+- `mclib/gvactor.cpp:685` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
+- `mclib/gvactor.cpp:1749` assign-triple: `objPosition.x = -position.x; objPosition.y = position.z; objPosition.z = position.y;`
+- `mclib/gvactor.cpp:1780` assign-triple: `objPosition.x = -position.x; objPosition.y = position.z; objPosition.z = position.y;`
+- `mclib/gvactor.cpp:1833` assign-triple: `minBox.x = -appearType->typeUpperLeft.x; minBox.y = appearType->typeUpperLeft.z; minBox.z = appearType->typeUp`
+- `mclib/gvactor.cpp:1838` assign-triple: `maxBox.x = -appearType->typeLowerRight.x; maxBox.y = appearType->typeLowerRight.z; maxBox.z = appearType->type`
+- `mclib/gvactor.cpp:2098` assign-triple: `tPosition.x = -position.x; tPosition.y = position.z; tPosition.z = position.y;`
+- `mclib/gvactor.cpp:2138` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
+- `mclib/gvactor.cpp:2180` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
+- `mclib/gvactor.cpp:2382` assign-triple: `tPosition.x = -position.x; tPosition.y = position.z; tPosition.z = position.y;`
+- `mclib/gvactor.cpp:2456` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
+- `mclib/gvactor.cpp:2496` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
+- `mclib/gvactor.cpp:2628` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
+- `mclib/gvactor.cpp:2889` assign-triple: `tPosition.x = -position.x; tPosition.y = position.z; tPosition.z = position.y;`
+- `mclib/gvactor.cpp:2954` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
+- `mclib/gvactor.cpp:2982` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
+- `mclib/gvactor.cpp:3012` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
+- `mclib/gvactor.cpp:3428` assign-triple: `wakePos.x = -nodePos.x; wakePos.y = nodePos.z; wakePos.z = nodePos.y;`
 
 ### `code/weaponbolt.cpp` (17)
 
@@ -157,23 +157,23 @@ Shaders that carry sites, with their counterpart in the other backend. Twins mus
 
 ### `mclib/bdactor.cpp` (17)
 
-- `mclib/bdactor.cpp:1821` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
-- `mclib/bdactor.cpp:1847` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
-- `mclib/bdactor.cpp:2115` assign-triple: `tPosition.x = -actualPosition.x; tPosition.y = actualPosition.z; tPosition.z = actualPosition.y;`
-- `mclib/bdactor.cpp:2500` assign-triple: `tPosition.x = -actualPosition.x; tPosition.y = actualPosition.z; tPosition.z = actualPosition.y;`
-- `mclib/bdactor.cpp:2550` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
-- `mclib/bdactor.cpp:2586` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
-- `mclib/bdactor.cpp:3674` assign-triple: `ourPosition.x = -position.x; ourPosition.y = position.z; ourPosition.z = position.y;`
-- `mclib/bdactor.cpp:3973` assign-triple: `childPosP.x = -childPos.x; childPosP.y = childPos.z; childPosP.z = childPos.y;`
-- `mclib/bdactor.cpp:4084` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
-- `mclib/bdactor.cpp:4422` assign-triple: `tPosition.x = -actualPosition.x; tPosition.y = actualPosition.z; tPosition.z = actualPosition.y;`
-- `mclib/bdactor.cpp:4466` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
-- `mclib/bdactor.cpp:4514` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
-- `mclib/bdactor.cpp:4610` assign-triple: `wakePos.x = -nodePos.x; wakePos.y = nodePos.z; wakePos.z = nodePos.y;`
-- `mclib/bdactor.cpp:4646` assign-triple: `wakePos.x = -nodePos.x; wakePos.y = nodePos.z; wakePos.z = nodePos.y;`
-- `mclib/bdactor.cpp:5177` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
-- `mclib/bdactor.cpp:7347` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
-- `mclib/bdactor.cpp:8271` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
+- `mclib/bdactor.cpp:1811` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
+- `mclib/bdactor.cpp:1837` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
+- `mclib/bdactor.cpp:2105` assign-triple: `tPosition.x = -actualPosition.x; tPosition.y = actualPosition.z; tPosition.z = actualPosition.y;`
+- `mclib/bdactor.cpp:2490` assign-triple: `tPosition.x = -actualPosition.x; tPosition.y = actualPosition.z; tPosition.z = actualPosition.y;`
+- `mclib/bdactor.cpp:2540` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
+- `mclib/bdactor.cpp:2576` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
+- `mclib/bdactor.cpp:3664` assign-triple: `ourPosition.x = -position.x; ourPosition.y = position.z; ourPosition.z = position.y;`
+- `mclib/bdactor.cpp:3963` assign-triple: `childPosP.x = -childPos.x; childPosP.y = childPos.z; childPosP.z = childPos.y;`
+- `mclib/bdactor.cpp:4074` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
+- `mclib/bdactor.cpp:4412` assign-triple: `tPosition.x = -actualPosition.x; tPosition.y = actualPosition.z; tPosition.z = actualPosition.y;`
+- `mclib/bdactor.cpp:4456` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
+- `mclib/bdactor.cpp:4504` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
+- `mclib/bdactor.cpp:4600` assign-triple: `wakePos.x = -nodePos.x; wakePos.y = nodePos.z; wakePos.z = nodePos.y;`
+- `mclib/bdactor.cpp:4636` assign-triple: `wakePos.x = -nodePos.x; wakePos.y = nodePos.z; wakePos.z = nodePos.y;`
+- `mclib/bdactor.cpp:5167` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
+- `mclib/bdactor.cpp:7337` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
+- `mclib/bdactor.cpp:8236` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
 
 ### `code/artlry.cpp` (14)
 
@@ -194,14 +194,14 @@ Shaders that carry sites, with their counterpart in the other backend. Twins mus
 
 ### `code/missiongui.cpp` (8)
 
-- `code/missiongui.cpp:3938` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
-- `code/missiongui.cpp:4054` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
-- `code/missiongui.cpp:4075` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
-- `code/missiongui.cpp:6447` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
-- `code/missiongui.cpp:6470` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
-- `code/missiongui.cpp:6637` assign-triple: `objPosition.x = -wPos.x; objPosition.y = wPos.z; objPosition.z = wPos.y;`
-- `code/missiongui.cpp:8070` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
-- `code/missiongui.cpp:9578` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
+- `code/missiongui.cpp:1881` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
+- `code/missiongui.cpp:1997` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
+- `code/missiongui.cpp:2018` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
+- `code/missiongui.cpp:4390` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
+- `code/missiongui.cpp:4413` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
+- `code/missiongui.cpp:4580` assign-triple: `objPosition.x = -wPos.x; objPosition.y = wPos.z; objPosition.z = wPos.y;`
+- `code/missiongui.cpp:6013` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
+- `code/missiongui.cpp:7521` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
 
 ### `code/carnage.cpp` (4)
 
@@ -226,10 +226,10 @@ Shaders that carry sites, with their counterpart in the other backend. Twins mus
 
 ### `shaders/terrain_lod_chunk.frag` (4)
 
-- `shaders/terrain_lod_chunk.frag:695` triplet-ctor: `-cameraPos.x, cameraPos.z, cameraPos.y`
-- `shaders/terrain_lod_chunk.frag:1507` triplet-ctor: `-cameraPos.x, cameraPos.z, cameraPos.y`
-- `shaders/terrain_lod_chunk.frag:1666` triplet-ctor: `-cameraPos.x, cameraPos.z, cameraPos.y`
-- `shaders/terrain_lod_chunk.frag:2188` triplet-ctor: `-cameraPos.x, cameraPos.z, cameraPos.y`
+- `shaders/terrain_lod_chunk.frag:692` triplet-ctor: `-cameraPos.x, cameraPos.z, cameraPos.y`
+- `shaders/terrain_lod_chunk.frag:1504` triplet-ctor: `-cameraPos.x, cameraPos.z, cameraPos.y`
+- `shaders/terrain_lod_chunk.frag:1663` triplet-ctor: `-cameraPos.x, cameraPos.z, cameraPos.y`
+- `shaders/terrain_lod_chunk.frag:2112` triplet-ctor: `-cameraPos.x, cameraPos.z, cameraPos.y`
 
 ### `shaders/vulkan/mech_tier1.vert` (4)
 
@@ -246,9 +246,9 @@ Shaders that carry sites, with their counterpart in the other backend. Twins mus
 
 ### `editor/EditorInterface.cpp` (3)
 
-- `editor/EditorInterface.cpp:2080` assign-triple: `objPosition.x = -pAppearance->position.x; objPosition.y = pAppearance->position.z; objPosition.z = pAppearance`
-- `editor/EditorInterface.cpp:2332` assign-triple: `objPosition.x = -pAppearance->position.x; objPosition.y = pAppearance->position.z; objPosition.z = pAppearance`
-- `editor/EditorInterface.cpp:5082` assign-triple: `objPosition.x = -pAppearance->position.x; objPosition.y = pAppearance->position.z; objPosition.z = pAppearance`
+- `editor/EditorInterface.cpp:2046` assign-triple: `objPosition.x = -pAppearance->position.x; objPosition.y = pAppearance->position.z; objPosition.z = pAppearance`
+- `editor/EditorInterface.cpp:2298` assign-triple: `objPosition.x = -pAppearance->position.x; objPosition.y = pAppearance->position.z; objPosition.z = pAppearance`
+- `editor/EditorInterface.cpp:5048` assign-triple: `objPosition.x = -pAppearance->position.x; objPosition.y = pAppearance->position.z; objPosition.z = pAppearance`
 
 ### `shaders/static_prop.vert` (3)
 
@@ -313,7 +313,7 @@ Shaders that carry sites, with their counterpart in the other backend. Twins mus
 
 ### `GameOS/gameos/gameos_graphics.cpp` (1)
 
-- `GameOS/gameos/gameos_graphics.cpp:3570` triplet-brace: `-terrain_camera_pos_.x, terrain_camera_pos_.z, terrain_camera_pos_.y`
+- `GameOS/gameos/gameos_graphics.cpp:3513` triplet-brace: `-terrain_camera_pos_.x, terrain_camera_pos_.z, terrain_camera_pos_.y`
 
 ### `editor/BuildingLink.cpp` (1)
 
@@ -337,7 +337,7 @@ Shaders that carry sites, with their counterpart in the other backend. Twins mus
 
 ### `mclib/terrain.cpp` (1)
 
-- `mclib/terrain.cpp:3035` decl-chain: `-lookDir.x, ly = lookDir.z, lz = lookDir.y`
+- `mclib/terrain.cpp:3034` decl-chain: `-lookDir.x, ly = lookDir.z, lz = lookDir.y`
 
 ### `shaders/building_pbr.vert` (1)
 
@@ -373,7 +373,7 @@ Shaders that carry sites, with their counterpart in the other backend. Twins mus
 
 ### `shaders/vulkan/shadow_prop.vert` (1)
 
-- `shaders/vulkan/shadow_prop.vert:61` triplet-ctor: `-worldStuff.x, worldStuff.z, worldStuff.y`
+- `shaders/vulkan/shadow_prop.vert:60` triplet-ctor: `-worldStuff.x, worldStuff.z, worldStuff.y`
 
 ### `shaders/vulkan/vfx_particle.vert` (1)
 

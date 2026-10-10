@@ -1058,7 +1058,7 @@
    "doc": "PAUSE-IMGUI-SLICE-0: =N auto-toggles the in-mission pause menu ONCE at frame >= N (MissionInterfaceManager::update).",
    "readers": [
     {
-     "at": "code/missiongui.cpp:2788",
+     "at": "code/missiongui.cpp:731",
      "idiom": "Num(atol,raw)"
     }
    ],
@@ -1110,7 +1110,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "code/missiongui.cpp:2841",
+     "at": "code/missiongui.cpp:784",
      "idiom": "Num(atol,raw)"
     }
    ],
@@ -1136,7 +1136,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "code/missiongui.cpp:2837",
+     "at": "code/missiongui.cpp:780",
      "idiom": "Num(atol,raw)"
     }
    ],
@@ -3705,7 +3705,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "code/missiongui.cpp:4349",
+     "at": "code/missiongui.cpp:2292",
      "idiom": "Presence"
     },
     {
@@ -4023,7 +4023,7 @@
    "doc": "DEBUG-VIEW-SWEEP-1: =N (1..6) boot-seeds the global full-scene debug render view: 1=shadow-factor 2=normalized-depth 3=unlit-albedo 4=overdraw-proxy 5=world-normals 6=chunk/LOD-tint.",
    "readers": [
     {
-     "at": "code/missiongui.cpp:2812",
+     "at": "code/missiongui.cpp:755",
      "idiom": "Num(atol,raw)"
     }
    ],
@@ -4049,7 +4049,7 @@
    "doc": "DEBUG-VIEW-SWEEP-1: ='<startFrame>,<settleFrames>' frame-scheduled auto-sweep of the six MC2_DEBUG_VIEW views (missiongui.cpp update).",
    "readers": [
     {
-     "at": "code/missiongui.cpp:2874",
+     "at": "code/missiongui.cpp:817",
      "idiom": "Token/State"
     }
    ],
@@ -4301,7 +4301,7 @@
      "idiom": "Lead1"
     },
     {
-     "at": "code/missiongui.cpp:1211",
+     "at": "code/missiongui_uicmd.cpp:287",
      "idiom": "Lead1(inv)"
     }
    ],
@@ -6459,7 +6459,7 @@
    "doc": "FREEZE-MOVERS-1: =<frame> freezes every mover the first frame g_mc2FrameCounter >= <frame>, WITHOUT needing the command channel (the 'freeze_movers on [frame]' verb is the same latch).",
    "readers": [
     {
-     "at": "code/missiongui.cpp:928",
+     "at": "code/missiongui_uicmd_fixture.cpp:79",
      "idiom": "Num(atol,raw)"
     }
    ],
@@ -8101,7 +8101,7 @@
    "doc": "Center-probe knob: unattended smoke parks the cursor at (0,0), so the primary cursor-driven oracle never samples real terrain (compared=0).",
    "readers": [
     {
-     "at": "code/missiongui.cpp:659",
+     "at": "code/missiongui.cpp:522",
      "idiom": "Presence"
     }
    ],
@@ -8127,7 +8127,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "code/missiongui.cpp:643",
+     "at": "code/missiongui.cpp:506",
      "idiom": "Num(atoi,raw)"
     }
    ],
@@ -8157,7 +8157,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "code/missiongui.cpp:648",
+     "at": "code/missiongui.cpp:511",
      "idiom": "Str[dflt,dflt]"
     }
    ],
@@ -9492,7 +9492,7 @@
      "idiom": "Presence"
     },
     {
-     "at": "code/missiongui.cpp:572",
+     "at": "code/missiongui.cpp:435",
      "idiom": "Presence"
     }
    ],
@@ -12223,7 +12223,7 @@
    "doc": "Default OFF: anchored zoom still reads as a pan in practice; use the legacy fixed-pivot wheel zoom.",
    "readers": [
     {
-     "at": "code/missiongui.cpp:6098",
+     "at": "code/missiongui.cpp:4041",
      "idiom": "Lead0"
     }
    ],
@@ -13728,7 +13728,7 @@
      "idiom": "Presence"
     },
     {
-     "at": "code/missiongui.cpp:572",
+     "at": "code/missiongui.cpp:435",
      "idiom": "Presence"
     }
    ],
@@ -17123,7 +17123,7 @@
      "idiom": "NonEmpty(inv)"
     },
     {
-     "at": "code/missiongui.cpp:3418",
+     "at": "code/missiongui.cpp:1361",
      "idiom": "NonReader"
     }
    ],
@@ -22891,7 +22891,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "code/missiongui.cpp:5290",
+     "at": "code/missiongui.cpp:3233",
      "idiom": "Presence"
     },
     {
@@ -26197,11 +26197,11 @@
    "doc": "GAMEPLAY-DRIVER-1: =1 arms the test-only spawn/teleport verbs on the MC2_UI_COMMAND_FILE channel.",
    "readers": [
     {
-     "at": "code/missiongui.cpp:2400",
+     "at": "code/missiongui_uicmd_fixture.cpp:128",
      "idiom": "Lead1"
     },
     {
-     "at": "code/missiongui.cpp:2664",
+     "at": "code/missiongui_uicmd_fixture.cpp:392",
      "idiom": "Lead1"
     }
    ],
@@ -26954,7 +26954,7 @@
    "doc": "UI-COMMAND-CHANNEL-1 + GAMEPLAY-DRIVER-1/2: =<path> polls that file once per frame (MissionInterfaceManager::update) and executes its lines as commands.",
    "readers": [
     {
-     "at": "code/missiongui.cpp:1084",
+     "at": "code/missiongui_uicmd.cpp:125",
      "idiom": "NonEmpty"
     }
    ],
@@ -29385,7 +29385,7 @@
    "doc": "BUG-A pick regression fence: default-OFF.",
    "readers": [
     {
-     "at": "code/missiongui.cpp:3415",
+     "at": "code/missiongui.cpp:1358",
      "idiom": "Presence"
     }
    ],
@@ -30245,7 +30245,7 @@
    "doc": "",
    "readers": [
     {
-     "at": "code/missiongui.cpp:2931",
+     "at": "code/missiongui.cpp:874",
      "idiom": "Lead1"
     }
    ],

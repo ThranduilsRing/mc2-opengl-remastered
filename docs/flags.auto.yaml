@@ -1356,7 +1356,7 @@ flags:
     declared_in: null
     referenced_at:
       - GameOS/gameos/gos_dev_shell.cpp
-      - code/missiongui.cpp
+      - code/missiongui_uicmd.cpp
     registered: no
     in_smoke_passthrough: no
     documented_in_tier1_env_vars: yes
@@ -2005,7 +2005,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "FREEZE-MOVERS-1: =<frame> freezes every mover the first frame g_mc2FrameCounter >= <frame>, WITHOUT needing the command channel (the 'freeze_movers on [frame]' verb is the same latch). Frozen mover..."
     referenced_at:
-      - code/missiongui.cpp
+      - code/missiongui_uicmd_fixture.cpp
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -7872,7 +7872,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "GAMEPLAY-DRIVER-1: =1 arms the test-only spawn/teleport verbs on the MC2_UI_COMMAND_FILE channel. 'spawn <clone|vehicle|infantry|objNum> <x> <y> [team] [variant]' runs mission->addMover (the same r..."
     referenced_at:
-      - code/missiongui.cpp
+      - code/missiongui_uicmd_fixture.cpp
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes
@@ -8116,7 +8116,7 @@ flags:
     declared_in: RenderCore/RendererFeatureRegistry.h (kAuxEnvVars)
     doc: "UI-COMMAND-CHANNEL-1 + GAMEPLAY-DRIVER-1/2: =<path> polls that file once per frame (MissionInterfaceManager::update) and executes its lines as commands. UI verbs: toggle_pause, press pause.<BTN> (P..."
     referenced_at:
-      - code/missiongui.cpp
+      - code/missiongui_uicmd.cpp
     registered: yes
     in_smoke_passthrough: yes
     documented_in_tier1_env_vars: yes

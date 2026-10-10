@@ -2498,17 +2498,17 @@
    "LG13": 3
   },
   "code/missiongui.cpp": {
-   "LG01": 90,
+   "LG01": 73,
    "LG03": 16,
    "LG05": 4,
    "LG06": 4,
-   "LG09": 193,
-   "LG11": 3,
-   "LG12a": 10,
-   "LG12b": 72,
+   "LG09": 120,
+   "LG11": 1,
+   "LG12a": 7,
+   "LG12b": 16,
    "LG13": 20,
    "LG14": 1,
-   "LG19": 20
+   "LG19": 15
   },
   "code/missiongui.h": {
    "LG01": 1,
@@ -2517,6 +2517,25 @@
    "LG06": 2,
    "LG13": 1,
    "LG14": 1
+  },
+  "code/missiongui_uicmd.cpp": {
+   "LG01": 5,
+   "LG09": 37,
+   "LG11": 2,
+   "LG12a": 3,
+   "LG12b": 24,
+   "LG19": 2
+  },
+  "code/missiongui_uicmd_fixture.cpp": {
+   "LG01": 3,
+   "LG09": 19,
+   "LG12b": 8,
+   "LG19": 3
+  },
+  "code/missiongui_uicmd_probe.cpp": {
+   "LG01": 9,
+   "LG09": 17,
+   "LG12b": 24
   },
   "code/missionresults.cpp": {
    "LG01": 3,
@@ -5412,7 +5431,7 @@
    "LG13": 31
   }
  },
- "head": "9eac3b589",
+ "head": "0cb7e49b3",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
