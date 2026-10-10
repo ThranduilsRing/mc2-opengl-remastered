@@ -87,6 +87,7 @@ extern float loadProgress;
 extern bool aborted;
 
 #include "../resource.h"
+#include "Gates/gate.h"
 void DEBUGWINS_print (const char* s, long window = 0);
 
 
@@ -119,7 +120,7 @@ void Logistics::start (long startMode)
 	// on drawMouse already being true from mainmenu.begin / loadscreen. If DEE
 	// reaches here with drawMouse==false, the cursor stays invisible the whole
 	// logistics/deployment screen. This logs the inherited state on entry.
-	if ( getenv("MC2_LOG_CURSOR") )
+	if ( mc2::gate::get<"MC2_LOG_CURSOR">() )
 	{
 		FILE* f = fopen("cursor_debug.log", "a");
 		if (f) { fprintf(f, "[CURSOR] Logistics::start startMode=%ld drawMouse=%d\n",
@@ -174,7 +175,7 @@ void Logistics::start (long startMode)
 					// terminate cleanly instead of running final-video -> splash ->
 					// main-menu (which would idle until the harness timed out). The
 					// run ends and the parent sees the process exit.
-					if ( std::getenv("MC2_SOAK_AUTOWIN") != nullptr )
+					if ( mc2::gate::get<"MC2_SOAK_AUTOWIN">() )
 					{
 						printf("[SOAK] campaign-complete -- terminating\n");
 						fflush(stdout);
@@ -967,7 +968,7 @@ void Logistics::playFullScreenVideo( const char* fileName )
 	// (campaign intro PreVideo e.g. poarintro.bik, mission cutscenes) so the
 	// automated boot reaches the bay/purchase screens deterministically instead
 	// of sitting on the intro for the capture window.
-	if ( std::getenv("MC2_BOOT_TO_BAY") && std::getenv("MC2_BOOT_TO_BAY")[0] )
+	if ( mc2::gate::isNonEmpty<"MC2_BOOT_TO_BAY">() )
 		return;
 
 	FullPathFileName path;
