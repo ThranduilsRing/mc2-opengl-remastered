@@ -12,9 +12,11 @@ only if a bad edit cannot land. This tool is the gate: it passes a file only whe
                     reappear in the new text verbatim (whitespace-normalised, moves allowed):
                     license header, event-format notes, registered gate names (only names in
                     Gates/gate_table.json; macros such as MC2_VERIFY and slice tags such as
-                    FOO-BAR-1 are history, not protective), lint pragmas, rationale words, dates,
-                    shas, TODO tags, doxygen tags, pragma/static_assert neighbours. Everything
-                    under Gates/ is wholly protected. A protected comment may instead be KEPT
+                    FOO-BAR-1 are history, not protective, unless a checker reads them), lint pragmas,
+                    rationale words, dates, shas, TODO tags, doxygen tags, pragma/static_assert
+                    neighbours. Checker needles (see below), FOO-BEGIN/FOO-END and @@/===-fenced markers
+                    and the first-lines comments of split pieces are protected too. Everything under
+                    Gates/ is wholly protected. A protected comment may instead be KEPT
                     as a rewrite candidate: `// TODO(rewrite): <original text>`. A protected
                     comment may be deleted only if a reviewer-written --allow file lists it.
   c. Only shrinks   New comment bytes may not exceed base comment bytes (plus 16 B per new
@@ -26,7 +28,14 @@ only if a bad edit cannot land. This tool is the gate: it passes a file only whe
   py -3 tools/comment_guard.py --check --base-file orig.cpp copy.cpp   # vs a file outside git
   py -3 tools/comment_guard.py --check --allow reviewed.json code/a.cpp   # reviewer-approved deletions
   py -3 tools/comment_guard.py --rewrite-candidates [paths]       # list every TODO(rewrite) comment
+  py -3 tools/comment_guard.py --needles                          # list the checker needles (needle<TAB>first defining file)
   py -3 tools/comment_guard.py --selftest
+
+Checker needles: a comment a checker script reads is a sentinel, whatever Rule A says about tags. At startup the
+guard scans scripts/ (*.py *.sh and the *.json/*.txt/*.allowlist lists), tools/ (*.py, not tests), tests/, cmake/ and
+.claude/hooks/ and collects (a) tag-shaped tokens (FOO-BAR-1) from string literals and non-comment text and (b) plain
+words (>= 6 chars with a hyphen, underscore or all caps) from grep/rg/Select-String arguments, re.* patterns and
+`in text` tests. A comment containing a needle verbatim is protected; `--needles` prints them. Over-protecting is accepted.
 
 Optional object proof (a build, which the caller runs, sits between the two steps):
   py -3 tools/comment_guard.py --hash-objs build64-ninja code/a.cpp > before.json
@@ -46,6 +55,7 @@ Exit: 0 ok, 1 finding, 2 usage / environment error.  Stdlib only.
 from __future__ import annotations
 
 import argparse
+import ast
 import datetime
 import glob
 import hashlib
@@ -143,6 +153,281 @@ def _detag_line(line):
 
 def count_tags(lx):
     return sum(1 for c in lx.comments if _TAGGED.match(c.text))
+
+
+# ------------------------------------------------------------------ checker needles
+# A comment can be a SENTINEL a checker script reads (`grep 'FOO-AUDIT-END'`), which Rule A would otherwise treat as
+# a history tag. The needle set is built from the repo's own checker sources, once per run, and any comment that
+# contains a needle verbatim (case-sensitive) is protected. Over-protecting is fine; missing a needle is not.
+NEEDLE_MIN_TAG = 5
+NEEDLE_MIN_WORD = 6
+_NEEDLE_PREFIX = 5                  # NeedleSet indexes needles by their first five characters
+_NEEDLE_TAG = re.compile(r"(?<![A-Za-z0-9_])[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+")
+_NEEDLE_WORD = re.compile(r"[A-Za-z0-9_-]+")
+_NEEDLE_ESCAPE = re.compile(r"\\[A-Za-z]|\$\{?[A-Za-z_][A-Za-z_0-9]*\}?")
+_GREP_CMD = re.compile(r"(?<![\w-])(?:[ef]?grep|rg|Select-String)(?![\w-])(.*)$")
+_QUOTED = re.compile(r"'([^']*)'" r'|"((?:[^"\\]|\\.)*)"')
+_RE_FUNCS = frozenset(["search", "match", "fullmatch", "compile", "findall", "finditer", "sub", "subn", "split"])
+_STR_FUNCS = frozenset(["find", "rfind", "count", "index", "startswith", "endswith"])
+_NEEDLE_SOURCES = (                 # (dir, recursive, suffixes); scanned in this order, files sorted
+    ("scripts", True, (".py", ".sh")),
+    ("scripts", False, (".json", ".txt", ".allowlist")),
+    ("tools", True, (".py",)),
+    ("tests", True, (".py", ".sh")),
+    ("cmake", True, (".cmake",)),
+    (".claude/hooks", False, (".py",)),
+)
+_NEEDLE_SKIP_DIRS = frozenset(["__pycache__", ".git", "node_modules", ".venv", "venv"])
+NEEDLE_MAX_BYTES = 2 * 1024 * 1024
+PIECE_HEADER_LINES = 14             # a split piece's description is read from its first 12 lines, a shared banner's from 14
+_FENCED = re.compile(r"@@[^\n]*@@|={3,}[^\n=][^\n]*={3,}")
+_BEGIN_END = re.compile(r"(?<![A-Za-z0-9_-])[A-Z0-9]+(?:-[A-Z0-9]+)*-(?:BEGIN|END)(?![A-Za-z0-9_])")
+
+
+def _qtext(m):
+    return m.group(1) if m.group(1) is not None else m.group(2)
+
+
+def _needle_words(text):
+    """Plain words a grep/regex/membership test looks for: >= 6 chars with a hyphen, an underscore or all caps."""
+    out = []
+    for tok in _NEEDLE_WORD.findall(_NEEDLE_ESCAPE.sub(" ", text)):
+        tok = tok.strip("-_")
+        if len(tok) >= NEEDLE_MIN_WORD and any(c.isalpha() for c in tok) and ("-" in tok or "_" in tok or tok.isupper()):
+            out.append(tok)
+    return out
+
+
+def _needle_tags(text):
+    return [t for t in _NEEDLE_TAG.findall(text) if len(t) >= NEEDLE_MIN_TAG]
+
+
+def _grep_words(text):
+    """Words searched by grep/rg/Select-String on one line: quoted arguments, and bare words that are not paths or options."""
+    out = []
+    for line in text.split("\n"):
+        m = _GREP_CMD.search(line)
+        if not m:
+            continue
+        rest = m.group(1)
+        for q in _QUOTED.finditer(rest):
+            out += _needle_words(_qtext(q))
+        for tok in _QUOTED.sub(" ", rest).split():
+            if not tok.startswith("-") and not re.search(r"[/\\.$]", tok):
+                out += _needle_words(tok)
+    return out
+
+
+def _strip_hash_comments(text):
+    return "\n".join(l for l in text.split("\n") if not l.lstrip().startswith("#"))
+
+
+def _py_consts(node):
+    for n in ast.walk(node):
+        if isinstance(n, ast.Constant) and isinstance(n.value, (str, bytes)):
+            yield n.value.decode("latin-1") if isinstance(n.value, bytes) else n.value
+
+
+def _py_needles(text):
+    """-> (tags, words) from a Python checker; strings only, so its comments and docstrings add nothing."""
+    try:
+        tree = ast.parse(text)
+    except (SyntaxError, ValueError):
+        body = _strip_hash_comments(text)
+        return _needle_tags(body), _grep_words(body)
+    tags, words = [], []
+    docs = set()
+    for n in ast.walk(tree):
+        if isinstance(n, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)) and n.body:
+            f = n.body[0]
+            if isinstance(f, ast.Expr) and isinstance(f.value, ast.Constant) and isinstance(f.value.value, str):
+                docs.add(id(f.value))
+    for n in ast.walk(tree):
+        if isinstance(n, ast.Constant) and isinstance(n.value, (str, bytes)) and id(n) not in docs:
+            s = n.value.decode("latin-1") if isinstance(n.value, bytes) else n.value
+            tags += _needle_tags(s)
+            if _GREP_CMD.search(s):
+                words += _grep_words(s)
+    wanted, names = [], set()           # expressions whose constants are search words; names to resolve afterwards
+
+    def want(e):
+        if isinstance(e, ast.Name):
+            names.add(e.id)
+        else:
+            wanted.append(e)
+
+    for n in ast.walk(tree):
+        if isinstance(n, ast.Call) and n.args:
+            f = n.func
+            attr = f.attr if isinstance(f, ast.Attribute) else None
+            if attr in _RE_FUNCS and isinstance(f.value, ast.Name) and f.value.id == "re":
+                want(n.args[0])
+            elif attr in _STR_FUNCS:
+                want(n.args[0])
+        elif isinstance(n, ast.Compare) and any(isinstance(o, (ast.In, ast.NotIn)) for o in n.ops):
+            want(n.left)
+    for n in ast.walk(tree):
+        if isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id in names for t in n.targets):
+            wanted.append(n.value)
+        elif isinstance(n, ast.AnnAssign) and isinstance(n.target, ast.Name) and n.target.id in names and n.value:
+            wanted.append(n.value)
+        elif isinstance(n, (ast.For, ast.AsyncFor, ast.comprehension)) and isinstance(n.target, ast.Name) and n.target.id in names:
+            wanted.append(n.iter)
+    for e in wanted:
+        for s in _py_consts(e):
+            words += _needle_words(s)
+    return tags, words
+
+
+def needles_from_source(rel, text):
+    """-> {needle: kind} for one checker file (kind is 'tag' or 'word'). Pure; the directory walk lives in collect_needles."""
+    low = rel.lower()
+    if low.endswith(".py"):
+        tags, words = _py_needles(text)
+    elif low.endswith(".json"):
+        tags, words = _needle_tags(text), []
+    elif low.endswith(".sh"):
+        body = _strip_hash_comments(text)
+        tags, words = _needle_tags(body), _grep_words(body)
+    elif low.endswith(".cmake"):
+        body = _strip_hash_comments(text)
+        tags = _needle_tags(body)
+        words = [w for l in body.split("\n") if re.search(r"MATCHES|FIND|REGEX", l)
+                 for q in _QUOTED.finditer(l) for w in _needle_words(_qtext(q))]
+    else:
+        tags, words = _needle_tags(_strip_hash_comments(text)), []
+    out = {}
+    for w in words:
+        out[w] = "word"
+    for t in tags:
+        out[t] = "tag"
+    return out
+
+
+def _is_test_source(rel):
+    base = os.path.basename(rel)
+    return base.startswith("test_") or base.endswith("_test.py") or base == "conftest.py"
+
+
+def checker_sources(root):
+    """-> repo-relative checker files, each source group sorted."""
+    seen, out = set(), []
+    for sub, recursive, exts in _NEEDLE_SOURCES:
+        top = os.path.join(root, *sub.split("/"))
+        hits = []
+        for d, dirs, files in os.walk(top):
+            dirs[:] = sorted(x for x in dirs if x not in _NEEDLE_SKIP_DIRS and not x.startswith("build"))
+            for f in files:
+                if f.lower().endswith(exts):
+                    hits.append(os.path.relpath(os.path.join(d, f), root).replace("\\", "/"))
+            if not recursive:
+                break
+        for rel in sorted(hits):
+            if rel in seen or rel == "tools/comment_guard.py":
+                continue
+            if sub == "tools" and _is_test_source(rel):
+                continue
+            seen.add(rel)
+            out.append(rel)
+    return out
+
+
+def collect_needles(root):
+    """-> ({needle: first defining file}, files scanned)."""
+    found, files = {}, checker_sources(root)
+    for rel in files:
+        p = os.path.join(root, rel)
+        try:
+            if os.path.getsize(p) > NEEDLE_MAX_BYTES:
+                continue
+        except OSError:
+            continue
+        data = read_file(p)
+        if data is None:
+            continue
+        for needle in needles_from_source(rel, data.decode("utf-8", "replace")):
+            found.setdefault(needle, rel)
+    return found, len(files)
+
+
+class NeedleSet:
+    def __init__(self, mapping):
+        self.map = dict(mapping)
+        self.by_prefix = {}
+        for n in self.map:
+            if len(n) >= _NEEDLE_PREFIX:
+                self.by_prefix.setdefault(n[:_NEEDLE_PREFIX], []).append(n)
+
+    def __len__(self):
+        return len(self.map)
+
+    def find(self, text):
+        """Needles occurring verbatim in text, longest first."""
+        hits = set()
+        if self.by_prefix:
+            for i in range(len(text) - _NEEDLE_PREFIX + 1):
+                for n in self.by_prefix.get(text[i:i + _NEEDLE_PREFIX], ()):
+                    if text.startswith(n, i):
+                        hits.add(n)
+        return sorted(hits, key=lambda n: (-len(n), n))
+
+
+def split_pieces(root):
+    """-> [(dir, stem)] from tools/split/allow/*.json: files `<stem>.*` and `<stem>_*.*` beside `src` are split pieces."""
+    out = []
+    for p in sorted(glob.glob(os.path.join(glob.escape(root), "tools", "split", "allow", "*.json"))):
+        try:
+            with open(p, "r", encoding="utf-8") as fh:
+                d = json.load(fh)
+        except (OSError, ValueError):
+            continue
+        if isinstance(d, dict) and isinstance(d.get("src"), str) and isinstance(d.get("stem"), str):
+            out.append((os.path.dirname(_norm_rel(d["src"])), d["stem"]))
+    return out
+
+
+class Env:
+    """Repo-derived protection inputs: the needle set and the split-piece stems (both loaded once per run)."""
+
+    def __init__(self, needles, pieces):
+        self.needles = needles if isinstance(needles, NeedleSet) else NeedleSet(needles)
+        self.pieces = list(pieces)
+
+    def is_piece(self, rel):
+        rel = _norm_rel(rel)
+        d, f = os.path.dirname(rel), os.path.splitext(os.path.basename(rel))[0]
+        return any(d == pd and (f == st or f.startswith(st + "_")) for pd, st in self.pieces)
+
+
+_ENV = {"root": ROOT, "env": None}
+
+
+def use_repo(root):
+    """Point the lazily loaded needle set and piece stems at another repo root."""
+    root = os.path.abspath(root)
+    if _ENV["root"] != root:
+        _ENV.update(root=root, env=None)
+
+
+def set_env(env):
+    """Pin an Env (tests); None restores lazy loading from the current root."""
+    _ENV["env"] = env
+
+
+def current_env():
+    if _ENV["env"] is None:
+        mapping, _n = collect_needles(_ENV["root"])
+        _ENV["env"] = Env(mapping, split_pieces(_ENV["root"]))
+    return _ENV["env"]
+
+
+def run_needles(args):
+    repo = os.path.abspath(args.repo or ROOT)
+    mapping, nfiles = collect_needles(repo)
+    for n in sorted(mapping):
+        print("%s\t%s" % (n, mapping[n]))
+    print("comment_guard: %d checker needle(s) from %d file(s)" % (len(mapping), nfiles), file=sys.stderr)
+    return 0
 
 
 # ------------------------------------------------------------------ lexer
@@ -365,7 +650,7 @@ def _norm_lines(text):
     return tuple(l for l in (collapse(x) for x in text.split("\n")) if l)
 
 
-def build_units(lx):
+def build_units(lx, env=None, rel=""):
     """Group comments into the smallest pieces that must be kept or dropped whole.
 
     A block comment is one unit; consecutive full-line `//` comments form one unit, split at
@@ -401,14 +686,23 @@ def build_units(lx):
             units.append(new(c))
     close()
     for u in units:
-        mark_protected(u, lx)
+        mark_protected(u, lx, env, rel)
     return units
 
 
-def mark_protected(u, lx):
+def mark_protected(u, lx, env=None, rel=""):
     txt = u.text()
     if u.header:
         u.reasons.append("file header")
+    if env is not None:
+        for n in env.needles.find(txt)[:3]:
+            u.reasons.append("checker-needle `%s` read by %s" % (n, env.needles.map.get(n) or "a checker script"))
+        if env.is_piece(rel) and u.start <= PIECE_HEADER_LINES:
+            u.reasons.append("split-piece header (read by split_map)")
+    if _BEGIN_END.search(txt):
+        u.reasons.append("begin/end marker")
+    if _FENCED.search(txt):
+        u.reasons.append("fenced marker")
     gates = registered_gates()
     for tok in _MC2_TOKEN.findall(txt):
         if gates is None or tok in gates:
@@ -555,7 +849,7 @@ class Allowlist:
         return [e for e in self.entries if not e["used"] and e["file"] in checked]
 
 
-def check_texts(rel, base, new, allow=None):
+def check_texts(rel, base, new, allow=None, env=None):
     """Grade one file. base/new are bytes (None = absent). Returns a Report."""
     rep = Report(rel)
     if not in_scope(rel):
@@ -598,7 +892,8 @@ def check_texts(rel, base, new, allow=None):
                 ("line %d `%s`" % (y[0], show(y[1]))) if y else "<end of file>"))
             break
 
-    lost = missing_protected(build_units(bl), build_units(nl))
+    env = env or current_env()
+    lost = missing_protected(build_units(bl, env, rel), build_units(nl, env, rel))
     if allow is not None:
         kept = []
         for u in lost:
@@ -676,6 +971,7 @@ def _allowed_lines(rep):
 
 def run_check(args):
     repo = os.path.abspath(args.repo or ROOT)
+    use_repo(repo)
     base_rev = args.base
     reports = []
     allow = None
@@ -1008,9 +1304,12 @@ def case(fn):
     return fn
 
 
-def R(base, new, rel="code/x.cpp", allow=None):
+_NO_ENV = Env({}, [])      # fixtures are hermetic: no repo needles or split stems unless a case pins its own
+
+
+def R(base, new, rel="code/x.cpp", allow=None, env=_NO_ENV):
     enc = lambda s: None if s is None else s.encode("utf-8") if isinstance(s, str) else s  # noqa: E731
-    return check_texts(rel, enc(base), enc(new), allow)
+    return check_texts(rel, enc(base), enc(new), allow, env)
 
 
 def _kinds(rep):
@@ -1305,6 +1604,97 @@ def st_allowlist_wrong_line_or_stale_fails():
     assert len(al.stale(["code/x.cpp"])) == 1 and not al.stale(["code/other.cpp"])
 
 
+SENTINEL_SRC = "void f() {\n\tscan();\n\t// MOVER-COHERENCE-AUDIT-END\n}\n"
+
+
+@case
+def st_checker_needle_protects_slice_tag():
+    env = Env({"MOVER-COHERENCE-AUDIT-END": "scripts/check-mover-registry-coherence.sh"}, [])
+    rep = R(SENTINEL_SRC, "void f() {\n\tscan();\n}\n", env=env)
+    assert _kinds(rep) == ["protected"], _msgs(rep)
+    assert "MOVER-COHERENCE-AUDIT-END" in _msgs(rep) and "scripts/check-mover-registry-coherence.sh" in _msgs(rep), _msgs(rep)
+    assert R(SENTINEL_SRC, SENTINEL_SRC, env=env).ok
+    # a needle inside prose still counts, and a needle the checker does not hold does not
+    assert _kinds(R("int a;\n// note: see NOFOCUS-HARDEN-1 for why\nint b;\n", "int a;\nint b;\n",
+                    env=Env({"NOFOCUS-HARDEN-1": "tests/a.py"}, []))) == ["protected"]
+
+
+@case
+def st_tag_absent_from_checkers_is_not_protective():
+    tagged = "void f() {\n\tscan();\n\t// NOFOCUS-HARDEN-1\n}\n"
+    env = Env({"OTHER-SENTINEL-X": "scripts/check-x.sh"}, [])
+    assert R(tagged, "void f() {\n\tscan();\n}\n", env=env).ok
+    assert R(tagged, "void f() {\n\tscan();\n}\n").ok
+    assert _kinds(R(tagged, "void f() {\n\tscan();\n}\n", env=Env({"NOFOCUS-HARDEN-1": "tests/t.py"}, []))) == ["protected"]
+
+
+@case
+def st_needle_match_is_case_sensitive_and_verbatim():
+    env = Env({"MOVER-COHERENCE-AUDIT-END": "scripts/c.sh"}, [])
+    assert R("int a;\n// mover-coherence-audit-end\nint b;\n", "int a;\nint b;\n", env=env).ok
+    assert R("int a;\n// MOVER-COHERENCE-AUDIT\nint b;\n", "int a;\nint b;\n", env=env).ok
+
+
+@case
+def st_needle_comment_deletable_only_by_allowlist():
+    env = Env({"MOVER-COHERENCE-AUDIT-END": "scripts/c.sh"}, [])
+    al = Allowlist([{"file": "code/x.cpp", "base_line": 3, "reason": "checker retired"}])
+    rep = R(SENTINEL_SRC, "void f() {\n\tscan();\n}\n", env=env, allow=al)
+    assert rep.ok and rep.allowed, _msgs(rep)
+
+
+@case
+def st_begin_end_pair_markers_protected():
+    for tag in ("S6-REGION-BEGIN", "S6-REGION-END", "AUDIT-2-END"):
+        rep = R("int a;\n// %s\nint b;\n" % tag, "int a;\nint b;\n")
+        assert _kinds(rep) == ["protected"] and "begin/end" in _msgs(rep), tag
+    assert R("int a;\n// BEGIN of the loop\nint b;\n", "int a;\nint b;\n").ok     # prose is not a marker
+
+
+@case
+def st_fenced_markers_protected():
+    for line in ("@@ region one @@", "=== terrain section ===", "======== UPDATE ========"):
+        rep = R("int a;\n// %s\nint b;\n" % line, "int a;\nint b;\n")
+        assert _kinds(rep) == ["protected"] and "fenced" in _msgs(rep), line
+    assert R("int a;\n// ==========\nint b;\n", "int a;\nint b;\n").ok              # a bare ruler is not a fence
+
+
+@case
+def st_split_piece_header_protected():
+    env = Env({}, [("code", "foo")])
+    src = '#include "foo_internal.h"\n// plain description of this piece\nint a;\n'
+    piece = R(src, '#include "foo_internal.h"\nint a;\n', rel="code/foo_bar.cpp", env=env)
+    assert _kinds(piece) == ["protected"] and "split-piece" in _msgs(piece), _msgs(piece)
+    assert R(src, '#include "foo_internal.h"\nint a;\n', rel="code/other.cpp", env=env).ok          # no allow entry for the stem
+    assert R(src, '#include "foo_internal.h"\nint a;\n', rel="mclib/foo_bar.cpp", env=env).ok       # another directory
+    deep = "int a;\n" * 30 + "// plain narration deep in the file\nint b;\n"
+    assert R(deep, "int a;\n" * 30 + "int b;\n", rel="code/foo_bar.cpp", env=env).ok                 # only the first lines are read
+
+
+@case
+def st_needle_extraction_from_checker_sources():
+    sh = ("# MOVER-NOT-A-NEEDLE only in a comment\n"
+          "b=\"$(grep -n 'MOVER-COHERENCE-AUDIT-BEGIN' \"$f\" | head -1)\"\n"
+          "rg -q sentinel_marker_x \"$f\"\nawk '/FOO-REGION-END/' x\n")
+    got = needles_from_source("scripts/c.sh", sh)
+    assert {"MOVER-COHERENCE-AUDIT-BEGIN", "sentinel_marker_x", "FOO-REGION-END"} <= set(got), got
+    assert "MOVER-NOT-A-NEEDLE" not in got and "$f" not in got
+    py = ('"""doc mentions DOC-ONLY-TAG-1"""\n'
+          "# NOFOCUS-COMMENT-ONLY-1\n"
+          "TAG = 'NOFOCUS-HARDEN-1'\n"
+          "def f(text):\n"
+          "    if 'sentinel_in_text' in text: pass\n"
+          "    if TAG in text: pass\n"
+          "    return re.search(r'\bregion_word_here\b', text) or re.compile('AB-CD-EF')\n")
+    got = needles_from_source("scripts/c.py", py)
+    assert {"NOFOCUS-HARDEN-1", "sentinel_in_text", "region_word_here", "AB-CD-EF"} <= set(got), got
+    assert "DOC-ONLY-TAG-1" not in got and "NOFOCUS-COMMENT-ONLY-1" not in got, got
+    assert "FOO-REGION-END" in needles_from_source("cmake/a.cmake", "if(x MATCHES \"FOO-REGION-END\")\n# NOPE-IN-COMMENT-1\n")
+    assert "NOPE-IN-COMMENT-1" not in needles_from_source("cmake/a.cmake", "# NOPE-IN-COMMENT-1\n")
+    assert "SLICE-LIST-7" in needles_from_source("scripts/a.json", '{"a": ["SLICE-LIST-7"]}')
+    assert set(needles_from_source("scripts/c.py", "x = 'abc'\ny = 'WX-1'\n")) == set()     # shorter than the minimums
+
+
 def run_selftest():
     failed = 0
     for fn in SELFTEST_CASES:
@@ -1336,6 +1726,9 @@ def build_parser():
                     "deleted: [{\"file\", \"base_line\", \"reason\"}]")
     ap.add_argument("--rewrite-candidates", action="store_true",
                     help="list every TODO(rewrite) comment as file:line: text (paths, or all tracked files)")
+    ap.add_argument("--needles", action="store_true",
+                    help="list the checker needles (grep/regex/sentinel strings from scripts, tools, tests, cmake, hooks) "
+                    "and the first file defining each; a comment containing one is protected")
     ap.add_argument("--selftest", action="store_true", help="run the in-memory fixtures")
     ap.add_argument("--hash-objs", metavar="BUILD_DIR", help="print a JSON object-hash record for the paths")
     ap.add_argument("--compare-objs", metavar="BEFORE_JSON", help="compare current objects with a --hash-objs record")
@@ -1347,6 +1740,8 @@ def main(argv=None):
     args = ap.parse_intermixed_args(argv)
     if args.selftest:
         return run_selftest()
+    if args.needles:
+        return run_needles(args)
     if args.rewrite_candidates:
         return run_rewrite_candidates(args)
     if args.hash_objs:
