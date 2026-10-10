@@ -65,7 +65,7 @@ CITE_RE = re.compile(r"""
     (?P<path>(?:[A-Za-z]:[\\/])?(?:[\w.+~@-]+[\\/])*[\w.+~@-]+\.(?P<ext>[A-Za-z][A-Za-z0-9]{0,7}))(?![\w])
     (?:
         (?P<hash>\#L\d+(?:-L?\d+)?)
-      | (?P<colon>:\d+(?:-\d+)?(?:,\d+(?:-\d+)?)*)(?P<tail1>`?\s*\((?P<s1>[A-Za-z_~][\w:~]{2,}(?:\(\))?)\)|:(?P<s2>[A-Za-z_]\w*(?:::\w+)*))?
+      | (?P<colon>:\d+(?:-\d+)?(?:[,/]\d+(?:-\d+)?)*)(?P<tail1>`?\s*\((?P<s1>[A-Za-z_~][\w:~]{2,}(?:\(\))?)\)|:(?P<s2>[A-Za-z_]\w*(?:::\w+)*))?
       | (?P<dcolon>::(?P<s3>[A-Za-z_~][\w:~]*))
       | (?P<par>\s*\((?:lines?|ln|L)\s*\d+(?:\s*-\s*\d+)?\))
     )?
@@ -91,6 +91,28 @@ def prep(data):
     lf = text.count("\n") - crlf
     style = "none" if not (crlf or lf) else "crlf" if not lf else "lf" if not crlf else "mixed"
     return text.replace("\r\n", "\n"), bom, style
+
+
+def _norm(line):
+    return " ".join(line.split())
+
+
+def _neighbour_ok(old, n, new, i):
+    """True when the line above or below old[n] equals the one around new[i] and is not blank."""
+    for d in (-1, 1):
+        if 1 <= n + d <= len(old) and 1 <= i + d <= len(new):
+            x = _norm(old[n + d - 1])
+            if x and x == _norm(new[i + d - 1]):
+                return True
+    return False
+
+
+def line_match(old, n, new, i):
+    """old line n and new line i hold the same text (whitespace-normalised) and share a non-blank neighbour."""
+    if not (1 <= n <= len(old) and 1 <= i <= len(new)):
+        return False
+    x = _norm(old[n - 1])
+    return bool(x) and x == _norm(new[i - 1]) and _neighbour_ok(old, n, new, i)
 
 
 def split_lines(text):
@@ -189,6 +211,11 @@ def norm_path(raw):
 def is_weak(sym):
     """A plain lowercase word in parens may be prose ("(old)"); it only counts as a symbol when the cited file contains it."""
     return re.fullmatch(r"[a-z0-9]+", sym.replace("()", "")) is not None
+
+
+def spec_numbers(c):
+    """Every line number written in the cite, in order of appearance."""
+    return [int(x) for x in re.findall(r"\d+", c.spec)]
 
 
 def sym_name(sym):
@@ -348,6 +375,7 @@ class Repo:
             self.by_lower.setdefault(p.lower(), []).append(p)
         self._lines, self._hist, self._suffix = {}, None, {}
         self._sym_cache, self._win_index, self._grep_cache = {}, {}, {}
+        self.src_base = None
         self.units, self.unit_of = {}, {}
         self._load_units()
 
@@ -489,49 +517,61 @@ class Repo:
                 hits.append((parts[1], int(parts[2])))
         return hits
 
-    # -- content relocation for line cites into a split source file
-    def _window(self, lines, n):
-        g = lambda k: lines[k - 1].strip() if 1 <= k <= len(lines) else ""  # noqa: E731
-        return (g(n - 1), g(n), g(n + 1))
-
+    # -- content matching: a cited line is found again only by its own text plus a non-blank neighbour, and only if unique
     def content_state(self, path, n):
-        """'same' | 'moved' | None (no pre-split text to compare with) for line n of a split source file."""
+        """'same' | 'moved' | None (no pre-split text, or a blank line, to compare with) for line n of a split source file."""
         u = self.unit_of.get(path)
         if not u or path != u.src or not u.base:
             return None
         old = self.blob_lines(path, u.base)
         new = self.blob_lines(path)
-        if old is None or new is None or n > len(old):
+        if old is None or new is None or n > len(old) or not _norm(old[n - 1]):
             return None
-        return "same" if n <= len(new) and self._window(old, n) == self._window(new, n) else "moved"
+        return "same" if line_match(old, n, new, n) else "moved"
 
-    def _window_index(self, path):
-        u = self.unit_of[path]
-        if u.src not in self._win_index:
-            full, cur = {}, {}
-            for f in self.unit_files(path):
-                ls = self.blob_lines(f) or []
-                for i in range(1, len(ls) + 1):
-                    w = self._window(ls, i)
-                    full.setdefault(w, []).append((f, i))
-                    cur.setdefault(w[1], []).append((f, i))
-            self._win_index[u.src] = (full, cur)
-        return self._win_index[u.src]
+    def _cur_index(self, files):
+        key = tuple(files)
+        if key not in self._win_index:
+            idx = {}
+            for f in files:
+                for i, ln in enumerate(self.blob_lines(f) or [], 1):
+                    x = _norm(ln)
+                    if x:
+                        idx.setdefault(x, []).append((f, i))
+            self._win_index[key] = idx
+        return self._win_index[key]
+
+    def locate(self, ref, n, files):
+        """The one (file, line) in files that matches line n of ref; None when there is none or more than one."""
+        if not 1 <= n <= len(ref) or not _norm(ref[n - 1]):
+            return None
+        hits = [(f, i) for f, i in self._cur_index(files).get(_norm(ref[n - 1]), [])
+                if _neighbour_ok(ref, n, self.blob_lines(f) or [], i)]
+        return hits[0] if len(hits) == 1 else None
 
     def content_relocate(self, path, n):
         u = self.unit_of.get(path)
         old = self.blob_lines(path, u.base) if u and u.base else None
-        if not old or n > len(old):
+        return self.locate(old, n, self.unit_files(path)) if old else None
+
+    def line_shift(self, path, c, base):
+        """token -> line at HEAD for a symbol-less cite that was valid at base (None value: the line has no unique match now);
+        None when the cite was not valid at base, so there is nothing to carry forward."""
+        ref, head = self.blob_lines(path, base), self.blob_lines(path)
+        toks = spec_numbers(c)
+        if ref is None or head is None or not toks or any(t < 1 or t > len(ref) for t in toks):
             return None
-        want = self._window(old, n)
-        full, cur = self._window_index(path)
-        exact = full.get(want, [])
-        if len(exact) == 1:
-            return exact[0]
-        loose = cur.get(want[1], []) if len(want[1]) >= 20 else []
-        if not exact and len(loose) == 1:
-            return loose[0]
-        return None
+        mp = {}
+        for t in dict.fromkeys(toks):
+            if not _norm(ref[t - 1]) or line_match(ref, t, head, t):
+                mp[t] = t
+            else:
+                hit = self.locate(ref, t, [path])
+                mp[t] = hit[1] if hit else None
+        for lo, hi in c.ranges:
+            if mp.get(lo) and mp.get(hi) and mp[lo] > mp[hi]:
+                mp[lo] = mp[hi] = None
+        return mp
 
 
 # ------------------------------------------------------------------ checking
@@ -553,23 +593,64 @@ def _from_hits(hits, how):
     return _sugg(pool[0][0], pool[0][1], len(pool), how) if pool else None
 
 
-def relocate(repo, c, path):
-    """Best current (path, line) for a cite, trying its symbol, then content at the split base; None when unknown."""
+def _nums_sugg(path, nums, how):
+    sg = _sugg(path, nums[0], 1, how)
+    sg["nums"] = nums
+    return sg
+
+
+def content_sugg(repo, c, path):
+    """Where every line number of the cite went in the split pieces; None unless each resolves, uniquely, into one file."""
+    toks = spec_numbers(c)
+    if c.kind != "line" or not toks:
+        return None
+    hits = {}
+    for t in dict.fromkeys(toks):
+        hits[t] = repo.content_relocate(path, t)
+        if hits[t] is None:
+            return None
+    if len({h[0] for h in hits.values()}) != 1:
+        return None
+    for lo, hi in c.ranges:
+        if hits[lo][1] > hits[hi][1]:
+            return None
+    return _nums_sugg(hits[toks[0]][0], [hits[t][1] for t in toks], "content at split base")
+
+
+def shift_sugg(repo, c, path, base):
+    """('same'|'moved'|'lost'|None, suggestion) for a symbol-less cite valid at base: the line text now sits where?"""
+    mp = repo.line_shift(path, c, base) if base and c.kind == "line" else None
+    if mp is None:
+        return None, None
+    if None in mp.values():
+        return "lost", None
+    toks = spec_numbers(c)
+    nums = [mp[t] for t in toks]
+    if nums == toks:
+        return "same", None
+    return "moved", _nums_sugg(path, nums, "line-shift")
+
+
+def relocate(repo, c, path, base=None):
+    """Best current (path, line) for a cite, trying its symbol, then content at the split base, then the line text moved
+    since base; None when unknown."""
     names = [sym_name(c.sym)] if c.sym else ([c.implicit] if c.implicit else [])
     first = c.ranges[0][0] if c.ranges else 0
+    if len(c.ranges) > 1:
+        sg = content_sugg(repo, c, path)
+        if sg:
+            return sg
     for name in names:
         sg = _from_hits(repo.find_symbol(repo.unit_files(path), name, path, first), "symbol `%s`" % name)
         if sg:
             return sg
-    if c.kind == "line" and first and len(c.ranges) == 1:
-        hit = repo.content_relocate(path, first)
-        last = c.ranges[0][1]
-        if hit and last != first:
-            end = repo.content_relocate(path, last)
-            if end != (hit[0], hit[1] + last - first):
-                hit = None
-        if hit:
-            return _sugg(hit[0], hit[1], 1, "content at split base")
+    sg = content_sugg(repo, c, path)
+    if sg:
+        return sg
+    if not c.sym:
+        sg = shift_sugg(repo, c, path, base)[1]
+        if sg:
+            return sg
     if c.sym:
         hits = repo.repo_grep(sym_name(c.sym))
         if hits and len({f for f, _ in hits}) == 1:
@@ -577,7 +658,7 @@ def relocate(repo, c, path):
     return None
 
 
-def check_cite(repo, doc_rel, c, exempt=None):
+def check_cite(repo, doc_rel, c, exempt=None, base=None):
     if exempt:
         return Result("INFO", "quoted history (%s)" % exempt)
     kind, path = repo.resolve(c.pathtxt, doc_rel)
@@ -602,21 +683,30 @@ def check_cite(repo, doc_rel, c, exempt=None):
     bad = [n for n in c.numbers() if n < 1 or n > len(lines)]
     if bad:
         return Result("STALE-LINE", "line %d beyond end of %s (%d lines)" % (bad[0], path, len(lines)),
-                      relocate(repo, c, path), path)
+                      relocate(repo, c, path, base), path)
     if sym:
         name = sym_name(sym)
         if _near(lines, c, name):
             return Result("OK", path=path)
         return Result("STALE-LINE", "`%s` not within +-%d lines of %s:%d" % (name, WINDOW, path, c.ranges[0][0]),
-                      relocate(repo, c, path), path)
+                      relocate(repo, c, path, base), path)
     if c.implicit and _near(lines, c, c.implicit):
         return Result("OK", path=path)
-    state = repo.content_state(path, c.ranges[0][0])
-    if state == "same":
-        return Result("OK", "line unchanged since the split", path=path)
-    if state == "moved":
+    states = {repo.content_state(path, n) for n in dict.fromkeys(spec_numbers(c))}
+    if "moved" in states:
         return Result("STALE-LINE", "line %d of %s differs from the pre-split file" % (c.ranges[0][0], path),
                       relocate(repo, c, path), path)
+    if states == {"same"}:
+        return Result("OK", "line unchanged since the split", path=path)
+    state, sg = shift_sugg(repo, c, path, base)
+    if state == "moved":
+        return Result("STALE-LINE", "line text of %s:%d is at line %d now (it matched at %s)" % (
+            path, c.ranges[0][0], sg["line"], base), sg, path)
+    if state == "lost":
+        return Result("STALE-LINE", "line text of %s:%d (as at %s) has no unique match now" % (path, c.ranges[0][0], base),
+                      None, path)
+    if state == "same":
+        return Result("OK", "line unchanged since " + base, path=path)
     if c.implicit and has_symbol(lines, c.implicit):
         return Result("STALE-LINE", "`%s` not within +-%d lines of %s:%d" % (c.implicit, WINDOW, path, c.ranges[0][0]),
                       relocate(repo, c, path), path)
@@ -660,7 +750,7 @@ def relocate_missing(repo, c, pieces):
 
 
 def evaluate(repo, doc):
-    return [(c, check_cite(repo, doc.rel, c, doc.exempt.get(c.line_no))) for c in doc.cites]
+    return [(c, check_cite(repo, doc.rel, c, doc.exempt.get(c.line_no), repo.src_base)) for c in doc.cites]
 
 
 # ------------------------------------------------------------------ suggestions
@@ -679,7 +769,11 @@ def build_replacement(repo, c, sugg):
     delta = (sugg["line"] or first) - first
     shifted = re.sub(r"\d+", lambda m_: str(max(1, int(m_.group()) + delta)), c.spec)
     simple = {"#": "#L%d" % sugg["line"], ":": ":%d" % sugg["line"]}.get(c.spec[:1], " (line %d)" % sugg["line"])
-    for spec in (shifted, simple) if len(c.ranges) == 1 and c.ranges[0][0] == c.ranges[0][1] else (shifted,):
+    specs = (shifted, simple) if len(c.ranges) == 1 and c.ranges[0][0] == c.ranges[0][1] else (shifted,)
+    if "nums" in sugg:
+        it = iter(sugg["nums"])
+        specs = (re.sub(r"\d+", lambda m_: str(next(it)), c.spec),)
+    for spec in specs:
         text = newpath + spec + c.tail
         nc = parse_cite_text(text)
         if nc is not None:
@@ -698,6 +792,8 @@ def _suggestible(repo, c, r):
     u = repo.unit_of.get(r.path) if r.path else None
     if sg["how"].startswith("content") and u is not None and sg["path"] == u.src == r.path:
         return False
+    if "nums" in sg:
+        return True
     if len(c.ranges) != 1 or not sg["line"]:
         return False
     return c.ranges[0][0] == c.ranges[0][1] or sg["how"].startswith(("content", "rename"))
@@ -781,7 +877,7 @@ def guard_texts(repo, rel, base_bytes, new_bytes):
     for cb, cn in zip(bd.cites, nd.cites):
         if cb.text == cn.text:
             continue
-        why = replacement_problem(repo, rel, bd, cb, cn)
+        why = replacement_problem(repo, rel, bd, cb, cn, g.notes)
         if why:
             g.fail("cite", "L%d: `%s` -> `%s`: %s" % (cn.line_no, cb.text, cn.text, why))
     return g
@@ -802,7 +898,7 @@ def _unit_of_old(repo, rel, cb):
     return None, None, None
 
 
-def replacement_problem(repo, rel, bdoc, cb, cn):
+def replacement_problem(repo, rel, bdoc, cb, cn, notes=None):
     if bdoc.exempt.get(cb.line_no):
         return "quoted history is immutable"
     rn = check_cite(repo, rel, cn)
@@ -816,13 +912,18 @@ def replacement_problem(repo, rel, bdoc, cb, cn):
         if cb.tail != cn.tail:
             return "text after the line spec changed (%r -> %r)" % (cb.tail, cn.tail)
         return None
-    ro = check_cite(repo, rel, cb)
+    ro = check_cite(repo, rel, cb, base=repo.src_base)
     if cb.kind == "line" and not cn.sym and ro.status == "OK":
         return "old cite was valid and names no symbol; nothing to repair"
     kindn, newp = repo.resolve(cn.pathtxt, rel)
     sg = ro.sugg
-    if sg and sg["n"] == 1 and not cn.sym and cn.kind == "line" and (newp, cn.ranges[0][0]) != (sg["path"], sg["line"]):
-        return "the only candidate location is %s:%d (%s)" % (sg["path"], sg["line"], sg["how"])
+    if sg and sg["n"] == 1 and not cn.sym and cn.kind == "line":
+        want, got = (sg["nums"], spec_numbers(cn)) if "nums" in sg else ([sg["line"]], [cn.ranges[0][0]])
+        if newp != sg["path"] or want != got:
+            return "the only candidate location is %s:%s (%s)" % (
+                sg["path"], "/".join(str(x) for x in want), sg["how"])
+        if sg["how"] == "line-shift" and notes is not None:
+            notes.append("note: L%d line-shift accepted (%s -> %s)" % (cn.line_no, cb.text, cn.text))
     oldp, unit, renamed = _unit_of_old(repo, rel, cb)
     if cn.sym and cb.kind == "line":
         return None
@@ -1013,14 +1114,14 @@ def run_diff_guard(repo, args):
     bad = 0
     for p in args.paths:
         rel = os.path.relpath(os.path.abspath(p if os.path.exists(p) else os.path.join(repo.root, p)), repo.root).replace("\\", "/")
-        base = repo.git.blob("%s:%s" % (args.base, rel))
+        base = repo.git.blob("%s:%s" % (args.base or "HEAD", rel))
         new = read_doc(repo, rel)
         if new is None:
             out("FAIL  %s\n      - [file] cannot read the worktree file" % rel)
             bad += 1
             continue
         if base is None:
-            out("FAIL  %s\n      - [file] not in %s" % (rel, args.base))
+            out("FAIL  %s\n      - [file] not in %s" % (rel, args.base or "HEAD"))
             bad += 1
             continue
         g = guard_texts(repo, rel, base, new)
@@ -1063,6 +1164,20 @@ def _src(n, marks):
     return "\n".join(ls) + "\n"
 
 
+def _dup(first, last, head=None, marks=None):
+    """Lines '// d N' for N in first..last, with the base file's 'x = 1;' at N == 10; marks replaces lines by N."""
+    marks = marks or {}
+    ls = ([head] if head else []) + [marks.get(n, "  x = 1;" if n == 10 else "// d %d" % n) for n in range(first, last + 1)]
+    return "\n".join(ls) + "\n"
+
+
+def _shift_body(extra):
+    """12 lines whose marker line is 8 (13 after extra=5 comment lines are inserted above it)."""
+    ls = ["// s%d" % i for i in range(1, 13)]
+    ls[6], ls[7], ls[8] = "// before marker", "int unique_marker_value = 42;", "// after marker"
+    return "\n".join(["// inserted %d" % i for i in range(extra)] + ls) + "\n"
+
+
 def make_world(root):
     """A temp repo holding every situation the checks classify: valid, split (kept and removed), deleted, renamed."""
     _git_in(root, "init", "-q")
@@ -1072,9 +1187,16 @@ def make_world(root):
         "src/gone.cpp": _src(20, {10: "void moved_fn() {"}),
         "src/old_name.cpp": _src(10, {}),
         "src/ren_old.cpp": _src(15, {4: "void ren_fn() {"}),
+        "src/dup.cpp": _dup(1, 20),
+        "src/shift.cpp": _shift_body(0),
         "docs/target.md": "# target\n",
     }, "base")
+    _git_in(root, "tag", "shift-base")
     commit_files(root, {
+        "src/dup.cpp": _dup(1, 5),
+        "src/dup_a.cpp": _dup(6, 20, "// piece", {9: "// changed9", 11: "// changed11"}),
+        "src/dup_b.cpp": "// piece b\n// d 6\n// d 7\n// d 8\n",
+        "tools/split/allow/dup.json": json.dumps({"base": base, "src": "src/dup.cpp", "stem": "dup"}),
         "src/big.cpp": _src(10, {3: "int big_head() {"}),
         "src/big_part.cpp": "\n".join(["// piece"] + ["// line %d" % i for i in range(11, 41)]).replace(
             "// line 25", "int big_tail_unique_line_here() {") + "\n",
@@ -1087,6 +1209,7 @@ def make_world(root):
     commit_files(root, {}, "delete old_name", remove=("src/old_name.cpp",))
     _git_in(root, "mv", "src/ren_old.cpp", "src/ren_new.cpp")
     _git_in(root, "commit", "-q", "-m", "rename")
+    commit_files(root, {"src/shift.cpp": _shift_body(5)}, "comment lines inserted above the cited line")
     return root
 
 
@@ -1302,6 +1425,49 @@ def st_cli_fix_suggest_lines(repo):
     assert re.match(r"^docs/f\.md:2:7: DELETED \| KEEP `src/old_name\.cpp:3` \| deleted in ", lines[2]), lines[2]
 
 
+def _fixes(repo, text):
+    return [(c.text, new) for c, _r, new in suggest_for(repo, parse_doc("docs/d.md", text))]
+
+
+@case
+def st_content_match_is_tight(repo):
+    # the text moved with a matching neighbour and is unique: offered
+    assert _fixes(repo, "src/dup.cpp:12\n") == [("src/dup.cpp:12", "src/dup_a.cpp:8")]
+    # same text but both neighbours differ: never offered
+    r = _ev(repo, "src/dup.cpp:10\n")[0][1]
+    assert r.status == "STALE-LINE" and r.sugg is None, r.sugg
+    # same text and neighbours twice in the unit: not unique, never offered
+    assert _fixes(repo, "src/dup.cpp:7\n") == [("src/dup.cpp:7", None)]
+
+
+@case
+def st_multi_number_cites_are_all_or_nothing(repo):
+    assert _fixes(repo, "src/big.cpp:25/26\n") == [("src/big.cpp:25/26", "src/big_part.cpp:16/17")]
+    assert _fixes(repo, "src/big.cpp:25/99\n") == [("src/big.cpp:25/99", None)]
+    assert _fixes(repo, "src/big.cpp:25/3\n") == [("src/big.cpp:25/3", None)]
+    assert _guard(repo, "src/big.cpp:25/26\n", "src/big_part.cpp:16/17\n").ok
+    assert not _guard(repo, "src/big.cpp:25/26\n", "src/big_part.cpp:16/20\n").ok
+    assert not _guard(repo, "src/big.cpp:25/99\n", "src/big_part.cpp:16/99\n").ok
+
+
+@case
+def st_line_shift(repo):
+    repo.src_base = "shift-base"
+    try:
+        r = _ev(repo, "src/shift.cpp:8\n")[0][1]
+        assert r.status == "STALE-LINE" and r.sugg["how"] == "line-shift" and r.sugg["nums"] == [13], (r.status, r.sugg)
+        assert _fixes(repo, "see src/shift.cpp:8/9\n") == [("src/shift.cpp:8/9", "src/shift.cpp:13/14")]
+        g = _guard(repo, "see src/shift.cpp:8\n", "see src/shift.cpp:13\n")
+        assert g.ok and any("line-shift" in n for n in g.notes), (g.findings, g.notes)
+        assert not _guard(repo, "see src/shift.cpp:8\n", "see src/shift.cpp:12\n").ok
+        assert _statuses(repo, "src/shift.cpp:50\n") == ["STALE-LINE"]
+    finally:
+        repo.src_base = None
+    # without a base rev the cite is just valid and unverifiable, and nothing may repoint it
+    assert _statuses(repo, "src/shift.cpp:8\n") == ["OK"]
+    assert not _guard(repo, "see src/shift.cpp:8\n", "see src/shift.cpp:13\n").ok
+
+
 @case
 def st_scope_rules(repo):
     assert in_scope("docs/a.md") and in_scope("README.md") and in_scope(".claude/cleanup/x.md") and in_scope("tools/x/README.md")
@@ -1340,7 +1506,9 @@ def build_parser():
     mode.add_argument("--triage-report", action="store_true", help="one line per doc (read-only)")
     mode.add_argument("--fix-suggest", action="store_true", help="suggested replacement per broken cite of one doc (read-only)")
     mode.add_argument("--selftest", action="store_true", help="run the temp-repo fixtures")
-    ap.add_argument("--base", default="HEAD", help="base rev for --diff-guard (default HEAD)")
+    ap.add_argument("--base", help="rev the docs (and their symbol-less line cites) were last right at: the doc base of "
+                    "--diff-guard (default HEAD); with another rev, --check/--fix-suggest/--diff-guard carry a cited line's text "
+                    "to where it sits at HEAD (line-shift)")
     ap.add_argument("--repo", help="repo root (default: the repo this tool lives in)")
     ap.add_argument("--include-untracked", action="store_true", help="also scan untracked docs")
     ap.add_argument("-v", "--verbose", action="store_true", help="--check: also list INFO cites")
@@ -1354,6 +1522,11 @@ def main(argv=None):
         return run_selftest()
     try:
         repo = Repo(args.repo or ROOT)
+        if args.base and args.base != "HEAD":
+            rc, _o = repo.git.run(["rev-parse", "--verify", "-q", args.base + "^{commit}"])
+            if rc != 0:
+                raise RuntimeError("unknown --base %s" % args.base)
+            repo.src_base = args.base
     except (RuntimeError, OSError) as e:
         out("cite_guard: %s" % e)
         return 2
