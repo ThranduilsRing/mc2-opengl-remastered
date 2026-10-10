@@ -1,7 +1,7 @@
 {
  "counts": {
   "GameAdapters": 0,
-  "GameOS": 6234,
+  "GameOS": 6219,
   "GuiRuntime": 64,
   "HostServices": 0,
   "RenderCore": 580,
@@ -39,7 +39,7 @@
   "GameOS/gameos/gos_mech_batcher.cpp": 76,
   "GameOS/gameos/gos_particle_bridge.cpp": 49,
   "GameOS/gameos/gos_particle_bridge.h": 32,
-  "GameOS/gameos/gos_postprocess.cpp": 419,
+  "GameOS/gameos/gos_postprocess.cpp": 404,
   "GameOS/gameos/gos_postprocess_blur.cpp": 42,
   "GameOS/gameos/gos_render_pass_timer.cpp": 25,
   "GameOS/gameos/gos_static_prop_batcher.cpp": 374,
@@ -529,8 +529,10 @@
   "mclib/tgl_shadows.cpp": 101,
   "mclib/tgl_transform.cpp": 370,
   "mclib/tgl_types.cpp": 132,
-  "mclib/txmmgr.cpp": 415,
+  "mclib/txmmgr.cpp": 84,
   "mclib/txmmgr.h": 144,
+  "mclib/txmmgr_render.cpp": 303,
+  "mclib/txmmgr_texture.cpp": 28,
   "mclib/userinput.cpp": 150,
   "mclib/utilities.cpp": 16,
   "mclib/vfx_ellipse.cpp": 514,
@@ -616,8 +618,8 @@
   "shaders/vulkan/water_geom.frag": 85,
   "shaders/vulkan/water_geom.vert": 48
  },
- "head": "bff70976b",
+ "head": "c388d37bf",
  "n": 8,
- "total": 68839,
+ "total": 68824,
  "version": 1
 }
