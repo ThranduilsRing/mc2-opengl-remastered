@@ -7,7 +7,7 @@
 #include <string>
 #include "mclib.h"
 
-#ifndef OBJECTIVE_H
+#ifndef EDITOR_OBJECTIVE_H
 #include "Objective.h"
 #endif
 
