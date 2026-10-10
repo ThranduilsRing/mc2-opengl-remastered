@@ -19,6 +19,7 @@ SimpleCamera.cpp	: Implementation of the SimpleCamera component.
 
 // sebi: !NB remove when assert(0 && "test") is removed below
 #include <cassert>
+#include "Gates/gate.h"
 
 extern bool useShadows;
 extern bool drawOldWay;
@@ -146,7 +147,7 @@ void SimpleCamera::render(long xOffset, long yOffset)
 	if ( xOffset != 0 && yOffset != 0 ) // don't know how to do this
 		return;
 
-	if ( getenv("MC2_LOG_PREVIEW") )
+	if ( mc2::gate::get<"MC2_LOG_PREVIEW">() )
 	{
 		FILE* f = fopen("preview_debug.log","a");
 		if (f) { fprintf(f,"[PREVIEW] SimpleCamera::render pObject=%p bIsComponent=%d\n",(void*)pObject,(int)bIsComponent); fflush(f); fclose(f); }
@@ -166,7 +167,7 @@ void SimpleCamera::render(long xOffset, long yOffset)
 		if ( isPanelPreview )
 		{
 			gos_BeginCameraPreviewRender();
-			if ( getenv("MC2_LOG_PREVIEW") )
+			if ( mc2::gate::get<"MC2_LOG_PREVIEW">() )
 			{
 				GLint fboAfterBegin = 0; glGetIntegerv(GL_FRAMEBUFFER_BINDING, &fboAfterBegin);
 				FILE* f = fopen("preview_debug.log","a");
@@ -205,7 +206,7 @@ void SimpleCamera::render(long xOffset, long yOffset)
 		useFog = 0;
 
 		gos_GetViewport(&viewMulX, &viewMulY, &viewAddX, &viewAddY);
-		if ( getenv("MC2_LOG_PREVIEW") )
+		if ( mc2::gate::get<"MC2_LOG_PREVIEW">() )
 		{
 			FILE* f = fopen("preview_debug.log","a");
 			if (f) { fprintf(f,"[PREVIEW] gos_GetViewport viewMul=%.1f,%.1f viewAdd=%.1f,%.1f EnvScreen=%d,%d bounds=[%.1f,%.1f,%.1f,%.1f]\n",
@@ -261,7 +262,7 @@ void SimpleCamera::render(long xOffset, long yOffset)
 			// error, but a full-FBO pixel scan finds zero non-background pixels
 			// anywhere). Set it here, same as the base class does, before drawing.
 			TG_Shape::SetCameraMatrices(&cameraOrigin, &cameraToClip);
-			if ( getenv("MC2_LOG_PREVIEW") )
+			if ( mc2::gate::get<"MC2_LOG_PREVIEW">() )
 			{
 				FILE* f = fopen("preview_debug.log","a");
 				if (f) {
@@ -318,10 +319,10 @@ void SimpleCamera::render(long xOffset, long yOffset)
 			// backface culling is discarding every triangle (e.g. an unexpected
 			// winding-order flip specific to FBO targets). MC2_PREVIEW_NOCULL=1
 			// force-disables GL_CULL_FACE for just this offscreen draw.
-			if ( isPanelPreview && getenv("MC2_PREVIEW_NOCULL") )
+			if ( isPanelPreview && mc2::gate::get<"MC2_PREVIEW_NOCULL">() )
 				glDisable(GL_CULL_FACE);
 
-			if ( getenv("MC2_LOG_PREVIEW") )
+			if ( mc2::gate::get<"MC2_LOG_PREVIEW">() )
 			{
 				GLboolean depthTest = glIsEnabled(GL_DEPTH_TEST);
 				GLboolean depthMask = GL_FALSE; glGetBooleanv(GL_DEPTH_WRITEMASK, &depthMask);
@@ -354,7 +355,7 @@ void SimpleCamera::render(long xOffset, long yOffset)
 			pObject->render();
 			if ( isPanelPreview )
 				drawOldWay = savedDrawOldWay;
-			if ( getenv("MC2_LOG_PREVIEW") )
+			if ( mc2::gate::get<"MC2_LOG_PREVIEW">() )
 			{
 				GLenum err = glGetError();
 				// Sample a handful of pixels across the panel rect (bounds[]) plus
@@ -420,8 +421,7 @@ void SimpleCamera::render(long xOffset, long yOffset)
 			{
 				static int s_forceDrain = -1;
 				if (s_forceDrain < 0) {
-					const char* v = std::getenv("MC2_PREVIEW_SCENE_DRAIN");
-					s_forceDrain = (v && v[0] == '1') ? 1 : 0;
+					s_forceDrain = mc2::gate::get<"MC2_PREVIEW_SCENE_DRAIN">();
 				}
 				if (s_forceDrain == 1) worldScenePresent = true;
 			}
@@ -471,7 +471,7 @@ void SimpleCamera::drawPreviewToPanel( float panelX, float panelY, float panelW,
 	const float u2 = bounds[2] / 800.f;
 	const float v1 = 1.f - bounds[1] / 600.f;   // top    -> flipped
 	const float v2 = 1.f - bounds[3] / 600.f;   // bottom -> flipped
-	if ( getenv("MC2_LOG_PREVIEW") )
+	if ( mc2::gate::get<"MC2_LOG_PREVIEW">() )
 	{
 		FILE* f = fopen("preview_debug.log","a");
 		if (f) {
@@ -484,7 +484,7 @@ void SimpleCamera::drawPreviewToPanel( float panelX, float panelY, float panelW,
 		return;
 
 	bool ok = GuiRuntime::DrawUiImage( tex, panelX, panelY, panelW, panelH, u1, v1, u2, v2, 0xffffffff );
-	if ( getenv("MC2_LOG_PREVIEW") )
+	if ( mc2::gate::get<"MC2_LOG_PREVIEW">() )
 	{
 		FILE* f = fopen("preview_debug.log","a");
 		if (f) { fprintf(f,"[PREVIEW] DrawUiImage returned %d\n", (int)ok); fflush(f); fclose(f); }
@@ -575,7 +575,7 @@ long SimpleCamera::update()
 		pObject->update();
 		pObject->setVisibility(true,true);
 
-		if ( getenv("MC2_LOG_PREVIEW") )
+		if ( mc2::gate::get<"MC2_LOG_PREVIEW">() )
 		{
 			FILE* f = fopen("preview_debug.log","a");
 			if (f) { fprintf(f,"[PREVIEW] update bounds=[%.0f,%.0f,%.0f,%.0f] viewMul=%.0f,%.0f off=%.1f,%.1f scale=%.3f Alt=%.0f mechPos=%.1f,%.1f,%.1f\n",

@@ -5,7 +5,7 @@
 generator_version: "3.0.0"
 gate_count: 1139
 registry_entry_count: 354
-verified_count: 843
+verified_count: 932
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -29,6 +29,7 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_ABL_COMPILE_FATAL
     kind: Bool
     default: true
@@ -90,6 +91,7 @@ flags:
     rule: Lead0
     owner: code
     doc: ""
+    verified: true
   - name: MC2_ACTIVE_MOD
     kind: String
     default: ""
@@ -273,6 +275,7 @@ flags:
     rule: Prefix
     owner: code
     doc: "INFO-CAPTURE fixture: =N force-selects the first home mover into the in-mission Info window and switches the command bar to the INFO tab ONCE at frame >= N..."
+    verified: true
     registry: {feature_id: MC2_TRACE_BOOT_INFO, kind: Trace, order: -1, default_on: false}
   - name: MC2_BOOT_INFO_SCROLL
     kind: Bool
@@ -280,6 +283,7 @@ flags:
     rule: Lead0
     owner: code
     doc: "INFO-IMGUI-SLICE-4 capture assist: =1 (with MC2_BOOT_INFO=N driving) pins the info-panel loadout list scrolled to bottom from frame N+3000 on BOTH paths -..."
+    verified: true
     registry: {feature_id: MC2_TRACE_BOOT_INFO_SCROLL, kind: Trace, order: -1, default_on: false}
   - name: MC2_BOOT_OBJ
     kind: Int
@@ -287,6 +291,7 @@ flags:
     rule: Prefix
     owner: code
     doc: "OBJ-CAPTURE fixture: =N calls ControlGui::startObjectives(1) ONCE at frame >= N (ControlGui::update), showing the in-mission objectives overlay."
+    verified: true
     registry: {feature_id: MC2_TRACE_BOOT_OBJ, kind: Trace, order: -1, default_on: false}
   - name: MC2_BOOT_OBJ_COMPLETE
     kind: Int
@@ -294,6 +299,7 @@ flags:
     rule: Prefix
     owner: code
     doc: "OBJ-COMPLETE-CAPTURE fixture: =N force-resolves the first active non-hidden objective to OS_SUCCESSFUL ONCE at frame >= N (ControlGui::update) via the..."
+    verified: true
     registry: {feature_id: MC2_TRACE_BOOT_OBJ_COMPLETE, kind: Trace, order: -1, default_on: false}
   - name: MC2_BOOT_PAUSED
     kind: Int
@@ -304,11 +310,12 @@ flags:
     verified: true
     registry: {feature_id: MC2_TRACE_BOOT_PAUSED, kind: Trace, order: -1, default_on: false}
   - name: MC2_BOOT_PAUSED_CONFIRM
-    kind: Bool
-    default: false
-    rule: NonEmpty
+    kind: String
+    default: ""
+    rule: Std
     owner: code
     doc: "PAUSE-IMGUI-SLICE-3: =abort|exit invokes the ABORT MISSION / EXIT GAME confirm dialog ONCE after the MC2_BOOT_PAUSED pause menu has settled..."
+    verified: true
     registry: {feature_id: MC2_TRACE_BOOT_PAUSED_CONFIRM, kind: Trace, order: -1, default_on: false}
   - name: MC2_BOOT_QUICKLOAD_AT
     kind: Int
@@ -330,6 +337,7 @@ flags:
     rule: Prefix
     owner: code
     doc: "TIMER-CAPTURE fixture: =N force-arms the in-mission mission timer ONCE at frame >= N by setting mission->m_timeLimit = scenarioTime + 754 s..."
+    verified: true
     registry: {feature_id: MC2_TRACE_BOOT_TIMER, kind: Trace, order: -1, default_on: false}
   - name: MC2_BOOT_TIMER_SECS
     kind: Float
@@ -337,37 +345,47 @@ flags:
     rule: Prefix
     owner: code
     doc: "TIMER-CAPTURE fixture parameter: =S overrides the remaining seconds the MC2_BOOT_TIMER fixture arms (default 754)."
+    range: {lo: 0, hi: 3.4e+38, style: reject, lo_exclusive: true}
+    verified: true
     registry: {feature_id: MC2_TRACE_BOOT_TIMER_SECS, kind: Trace, order: -1, default_on: false}
   - name: MC2_BOOT_TO_BAY
-    kind: Bool
-    default: false
-    rule: NonEmpty
+    kind: String
+    default: ""
+    rule: Std
     owner: code
-    doc: "Headless harness: mission-objective briefing videos (CPlayBIK) reach here, bypassing the MC2_BOOT_TO_BAY gate in Logistics::playFullScreenVideo."
+    doc: "Headless harness: campaign name to boot straight into (mech bay); a non-empty value also skips front-end videos."
+    smoke_passthrough: true
+    verified: true
   - name: MC2_BOOT_TO_MECHLAB
     kind: Bool
     default: false
     rule: Presence
     owner: mech
     doc: ""
+    verified: true
   - name: MC2_BOOT_TO_MISSION
-    kind: Bool
-    default: false
-    rule: NonEmpty
+    kind: String
+    default: ""
+    rule: Std
     owner: code
     doc: "MC2_BOOT_TO_MISSION=<mission FileName>: jump to a specific mission's logistics instead of the campaign's first mission."
+    smoke_passthrough: true
+    verified: true
   - name: MC2_BOOT_TO_SCREEN
-    kind: Bool
-    default: false
-    rule: NonEmpty
+    kind: String
+    default: ""
+    rule: Std
     owner: mech
-    doc: ""
+    doc: "Headless harness: logistics screen to park on when MC2_BOOT_TO_BAY is set (purchase|bay|loadout|launch|briefing; unset = bay)."
+    smoke_passthrough: true
+    verified: true
   - name: MC2_BOOT_VIDEO
     kind: Bool
     default: false
     rule: Lead0
     owner: code
     doc: "VIDEO-CAPTURE fixture: =1 overrides the smoke-mode movie skip in MC2Movie::init so in-mission comm videos (mc2_01 V1A.bik ~frame 1600) play under..."
+    verified: true
     registry: {feature_id: MC2_TRACE_BOOT_VIDEO, kind: Trace, order: -1, default_on: false}
   - name: MC2_BOX_DECAL
     kind: Bool
@@ -705,6 +723,7 @@ flags:
     owner: mech
     doc: "ISSUE-9 called-shot effectiveness (gameplay gate, default OFF = stock): (S1) Mover::calcAttackChance floors the aimed-shot modifiers at Head 0.30 / Arm 0.45..."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_CALLED_SHOT_FIX, kind: Feature, order: -1, default_on: false}
   - name: MC2_CAMERA_ASPECT_NATIVE
     kind: Bool
@@ -865,6 +884,7 @@ flags:
     rule: Presence
     owner: mech
     doc: ""
+    verified: true
   - name: MC2_CLOUD_SHADOW
     kind: Bool
     default: false
@@ -912,6 +932,7 @@ flags:
     rule: Lead0
     owner: code
     doc: ""
+    verified: true
   - name: MC2_COLORMAP_CPU_RETIRE
     kind: Bool
     default: true
@@ -1093,6 +1114,7 @@ flags:
     rule: Presence
     owner: code
     doc: ""
+    verified: true
   - name: MC2_DEBUG_VIEW
     kind: Int
     default: 0
@@ -1167,6 +1189,7 @@ flags:
     rule: Lead1
     owner: unclassified
     doc: ""
+    verified: true
   - name: MC2_DEV_SHELL_PORT
     kind: Int
     default: 0
@@ -1180,6 +1203,7 @@ flags:
     owner: unclassified
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_DIAG_TAGS
     kind: String
     default: ""
@@ -1202,6 +1226,7 @@ flags:
     owner: code
     doc: "Direct-fire de-curve: PPC/autocannon/gauss bolts fly STRAIGHT instead of re-tracking the moving target every frame (the janky homing curve)."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_DIRECT_FIRE_STRAIGHT, kind: Feature, order: -1, default_on: false}
   - name: MC2_DISABLE_GOSFX
     kind: Bool
@@ -1426,12 +1451,14 @@ flags:
     rule: Presence
     owner: mech
     doc: ""
+    verified: true
   - name: MC2_EQUIPMENT_ADD
     kind: Bool
     default: false
     rule: Lead0
     owner: code
     doc: ""
+    verified: true
   - name: MC2_EQUIPMENT_DEFINITION_SOURCE
     kind: Enum
     default: "legacy"
@@ -1440,6 +1467,7 @@ flags:
     doc: ""
     tokens: "legacy|generated"
     smoke_passthrough: true
+    verified: true
   - name: MC2_FAR_BACKDROP_LIT
     kind: Bool
     default: false
@@ -1662,6 +1690,7 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_FRAME_JOBS_BATCH
     kind: Int
     default: 64
@@ -1669,6 +1698,7 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_FRAME_JOBS_TOUCH
     kind: Bool
     default: false
@@ -1676,6 +1706,7 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_FRAME_JOBS_TOUCH_DIAG
     kind: Bool
     default: false
@@ -1691,6 +1722,7 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_FRAME_JOBS_WORKERS
     kind: Int
     default: 0
@@ -1698,6 +1730,7 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_FRAME_PASS_STATS
     kind: Bool
     default: false
@@ -1719,6 +1752,7 @@ flags:
     owner: code
     doc: "FREEZE-MOVERS-1: =<frame> freezes every mover the first frame g_mc2FrameCounter >= <frame>, WITHOUT needing the command channel (the 'freeze_movers on..."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TRACE_FREEZE_MOVERS_AT, kind: Trace, order: -1, default_on: false}
   - name: MC2_FULLBAKE_DIAG
     kind: Bool
@@ -1785,6 +1819,7 @@ flags:
     owner: mech
     doc: "FX-DEFS-SIDECAR-1: per-effect JSON sidecar overlay for the gosFX spec catalog (mc2::particles::SpecLibrary)."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FX_DEFS, kind: Feature, order: -1, default_on: false}
   - name: MC2_FX_FORCE_SPAWN
     kind: Enum
@@ -1816,6 +1851,7 @@ flags:
     rule: Exact1
     owner: code
     doc: ""
+    verified: true
   - name: MC2_GEOM_PHASE_SPLIT
     kind: Bool
     default: false
@@ -2142,6 +2178,7 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_GPU_GROUND_PICK_PARITY_CENTER
     kind: Bool
     default: false
@@ -2240,12 +2277,14 @@ flags:
     rule: Lead0
     owner: code
     doc: ""
+    verified: true
   - name: MC2_GPU_PICK_HOVER_TRACE
     kind: Bool
     default: false
     rule: Lead0
     owner: code
     doc: ""
+    verified: true
   - name: MC2_GPU_PROPS_DEBUG_MODE
     kind: Int
     default: 0
@@ -2273,6 +2312,7 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_GV_LIGHTSOUT_CLEAR
     kind: Bool
     default: false
@@ -2365,25 +2405,29 @@ flags:
     rule: Presence
     owner: code
     doc: "Env-gated lifecycle trace for the rebind-to-occupied-key crash."
+    verified: true
   - name: MC2_HUD_IMGUI_TABS
     kind: Bool
     default: false
-    rule: Std
+    rule: Lead0
     owner: code
     doc: "IN-MISSION-HUD-IMGUI-SCOPE-1 slice C: data-driven command-bar tab registry (code/hudtabregistry.{h,cpp} + wiring in code/controlgui.cpp)."
+    verified: true
     registry: {feature_id: MC2_FEATURE_HUD_IMGUI_TABS, kind: Feature, order: -1, default_on: false}
   - name: MC2_HUD_IMGUI_TACMAP
     kind: Bool
     default: false
-    rule: Std
+    rule: Lead0
     owner: code
     doc: ""
+    verified: true
   - name: MC2_HUD_READABILITY_V1
     kind: Bool
     default: false
     rule: Lead0
     owner: unclassified
     doc: "IN-MISSION-HUD-IMGUI-SCOPE-1 slice A: data-first HUD readability."
+    verified: true
     registry: {feature_id: MC2_FEATURE_HUD_READABILITY_V1, kind: Feature, order: -1, default_on: false}
   - name: MC2_HUD_SCALE
     kind: Float
@@ -2395,15 +2439,17 @@ flags:
   - name: MC2_HUD_SIM_SPEED
     kind: Bool
     default: false
-    rule: Std
+    rule: Lead0
     owner: code
     doc: "SIM-SPEED-BUTTON-1: double-gated sim-speed tab (MC2_HUD_SIM_SPEED; needs MC2_HUD_IMGUI_TABS like every registry consumer)."
+    verified: true
   - name: MC2_HUD_TABS_TEST
     kind: Bool
     default: false
-    rule: Std
+    rule: Lead0
     owner: code
     doc: "IN-MISSION-HUD-IMGUI-SCOPE-1 slice C witness: register a 4th 'test' tab (no legacy button; ImGui chrome via HudImGui::hudShrinkPoint + hudToDisplay, trivial..."
+    verified: true
     registry: {feature_id: MC2_FEATURE_HUD_TABS_TEST, kind: Feature, order: -1, default_on: false}
   - name: MC2_HZB_BUILD
     kind: Bool
@@ -2492,6 +2538,7 @@ flags:
     owner: mech
     doc: "META-FIX design B PART 3 (code/mechicon.cpp iconTileChecked at the three CPU icon-tile blits): default OFF. =1 substitutes a solid MAGENTA tile when an icon..."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_ICON_FAILLOUD, kind: Feature, order: -1, default_on: false}
   - name: MC2_IFACE_COST_SPLIT
     kind: Bool
@@ -2551,6 +2598,7 @@ flags:
     rule: Presence
     owner: code
     doc: ""
+    verified: true
   - name: MC2_LAUNCHED
     kind: Bool
     default: false
@@ -2587,6 +2635,7 @@ flags:
     rule: Presence
     owner: code
     doc: ""
+    verified: true
   - name: MC2_LETTERBOX_OPAQUE
     kind: Bool
     default: true
@@ -3059,6 +3108,7 @@ flags:
     owner: mech
     doc: "ISSUE-50 diagnostics (code/mech.cpp BattleMech::update): for every off-GUI mech, periodically (~1/s) logs [LINKUP] part/name/status/los, plus [LINKUP]..."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TRACE_LINKUP, kind: Trace, order: -1, default_on: false}
   - name: MC2_LOAD_RACE_DELAY_ATLAS
     kind: Bool
@@ -3142,6 +3192,7 @@ flags:
     rule: Presence
     owner: mech
     doc: ""
+    verified: true
   - name: MC2_LOG_MECH_ICON
     kind: Bool
     default: false
@@ -3454,30 +3505,35 @@ flags:
     rule: Lead0
     owner: code
     doc: ""
+    verified: true
   - name: MC2_MECH_PICK
     kind: Bool
     default: false
     rule: Lead0
     owner: code
     doc: ""
+    verified: true
   - name: MC2_MECH_PICK_DEBUG
     kind: Bool
     default: false
     rule: Lead0
     owner: code
     doc: ""
+    verified: true
   - name: MC2_MECH_PICK_PIERCE_FOG
     kind: Bool
     default: false
     rule: Lead0
     owner: code
     doc: ""
+    verified: true
   - name: MC2_MECH_PICK_SELFTEST
     kind: Bool
     default: false
     rule: Lead0
     owner: mech
     doc: ""
+    verified: true
   - name: MC2_MECH_PREVIEW_TRACE
     kind: Bool
     default: false
@@ -3559,6 +3615,7 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_MIF_SPLIT
     kind: Bool
     default: false
@@ -3787,6 +3844,7 @@ flags:
     owner: code
     doc: "R32_UINT MRT attachment-2 with per-pixel object handles (RenderWorld M1.5)."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_OBJECT_ID_BUFFER, kind: Feature, order: 2, default_on: true}
   - name: MC2_OBJECT_ID_BUFFER_SELFTEST
     kind: Bool
@@ -3794,6 +3852,7 @@ flags:
     rule: Lead0
     owner: code
     doc: ""
+    verified: true
   - name: MC2_OBJECT_PARITY_CHECK
     kind: Bool
     default: false
@@ -3845,6 +3904,7 @@ flags:
     rule: Lead0
     owner: code
     doc: ""
+    verified: true
   - name: MC2_OBJ_MVP_STALE_FATAL
     kind: Bool
     default: false
@@ -4236,12 +4296,14 @@ flags:
     rule: Presence
     owner: code
     doc: "EXPERIMENT (PREVIEW-FBO-FIXED-800x600-1 debug): the mech draws zero pixels anywhere in the FBO despite shouldRender=1."
+    verified: true
   - name: MC2_PREVIEW_SCENE_DRAIN
     kind: Bool
     default: false
     rule: Lead1
     owner: code
     doc: ""
+    verified: true
   - name: MC2_PROJECTED_DECALS
     kind: Bool
     default: false
@@ -4255,7 +4317,9 @@ flags:
     rule: Prefix
     owner: code
     doc: "Direct-fire projectile speed multiplier (PPC/autocannon/gauss = non-arc bolts)."
+    range: {lo: 0, hi: 10, style: reject, lo_exclusive: true}
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_PROJECTILE_SPEED_MULT, kind: Feature, order: -1, default_on: false}
   - name: MC2_PROJECTZ_BYPASS_MODE
     kind: Enum
@@ -4387,6 +4451,7 @@ flags:
     rule: Lead0Kill
     owner: code
     doc: ""
+    verified: true
   - name: MC2_RDC_CAPTURE_FRAME
     kind: Int
     default: 0
@@ -4609,12 +4674,14 @@ flags:
     rule: Lead0
     owner: code
     doc: ""
+    verified: true
   - name: MC2_RENDER_WORLD_TRACE
     kind: Bool
     default: false
     rule: Lead0
     owner: unclassified
     doc: "Per-frame [RENDER_WORLD v1] banner + per-event logs (RenderWorld.cpp)."
+    verified: true
     registry: {feature_id: MC2_TRACE_RENDER_WORLD, kind: Trace, order: -1, default_on: false}
   - name: MC2_RESOLVE_TRACE_FILE
     kind: String
@@ -4626,12 +4693,13 @@ flags:
     verified: true
     registry: {feature_id: MC2_TRACE_RESOLVE_TRACE_FILE, kind: Trace, order: -1, default_on: false}
   - name: MC2_RES_ASSERT
-    kind: Bool
-    default: false
-    rule: Lead0
+    kind: String
+    default: ""
+    rule: Std
     owner: code
-    doc: "META-FIX design D runtime tier (RenderCore/ResolutionContract.h): resolution/aspect contract audit."
+    doc: "META-FIX design D runtime tier (RenderCore/ResolutionContract.h): audit mode, unset/0 = off, fatal = abort, anything else = log."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TRACE_RES_ASSERT, kind: Trace, order: -1, default_on: false}
   - name: MC2_RES_DIAG
     kind: Bool
@@ -4742,6 +4810,7 @@ flags:
     rule: Lead0
     owner: code
     doc: ""
+    verified: true
   - name: MC2_SETUPTEXTURES_LEGACY_FORCE
     kind: Bool
     default: false
@@ -5109,6 +5178,7 @@ flags:
     rule: Presence
     owner: code
     doc: ""
+    verified: true
   - name: MC2_SIM_CLOCK_TRACE
     kind: Bool
     default: false
@@ -5124,6 +5194,7 @@ flags:
     owner: code
     doc: "SIM-IDENTITY-HASH-1: emit a world-state hash (sorted-by-partId digest over mover position/rotation/gesture/anim-frame/damage/status/team plus..."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_SIM_IDENTITY, kind: Trace, order: -1, default_on: true}
   - name: MC2_SIM_IDENTITY_TRACE
     kind: Bool
@@ -5132,6 +5203,7 @@ flags:
     owner: code
     doc: "SIM-IDENTITY-HASH-1: emit one `[SIMID v1] simframe=N t=T n=C graded=.. visual=.. strict=..` line per SIM frame to stdout."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_SIM_IDENTITY_TRACE, kind: Trace, order: -1, default_on: false}
   - name: MC2_SIM_IDENTITY_TRACE_DETAIL
     kind: Bool
@@ -5140,6 +5212,7 @@ flags:
     owner: code
     doc: "SIM-IDENTITY-HASH-1: with MC2_SIM_IDENTITY_TRACE on, additionally emit one `[SIMID v1 mover]` line per mover per sim frame."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_SIM_IDENTITY_TRACE_DETAIL, kind: Trace, order: -1, default_on: false}
   - name: MC2_SIM_SPEED
     kind: Float
@@ -5269,12 +5342,14 @@ flags:
     rule: Presence
     owner: code
     doc: "SOAK-AUTO-PURCHASE-1 (MC2_SOAK_AUTO_PURCHASE)."
+    verified: true
   - name: MC2_SOAK_CHECK_SCREENS
     kind: Bool
     default: false
     rule: Presence
     owner: code
     doc: "SOAK-SCREEN-CHECK-1 (MC2_SOAK_CHECK_SCREENS)."
+    verified: true
   - name: MC2_SOAK_KILL_ENEMY
     kind: Bool
     default: false
@@ -5288,6 +5363,7 @@ flags:
     rule: Presence
     owner: code
     doc: "SOAK-LANCE-RANDOM-1 (MC2_SOAK_LANCE_RANDOM)."
+    verified: true
   - name: MC2_SOAK_PILOT_PROMOTE
     kind: Bool
     default: false
@@ -5310,6 +5386,7 @@ flags:
     rule: Presence
     owner: code
     doc: "SOAK-STOP-AT-BAY-1 (MC2_SOAK_STOP_AT_BAY)."
+    verified: true
   - name: MC2_SOAK_WIN_AFTER_SEC
     kind: Float
     default: 5
@@ -5837,12 +5914,14 @@ flags:
     rule: Lead0
     owner: code
     doc: ""
+    verified: true
   - name: MC2_STATIC_PROP_PICK_DEBUG
     kind: Bool
     default: false
     rule: Lead0
     owner: code
     doc: ""
+    verified: true
   - name: MC2_STATIC_PROP_REGISTRY
     kind: Bool
     default: true
@@ -5985,6 +6064,7 @@ flags:
     rule: Lead1
     owner: code
     doc: ""
+    verified: true
   - name: MC2_TACTICAL_ARC_OVERLAY
     kind: Bool
     default: false
@@ -5999,6 +6079,7 @@ flags:
     rule: Lead0Kill
     owner: code
     doc: ""
+    verified: true
   - name: MC2_TACTICAL_OVERVIEW_DEBUG
     kind: Bool
     default: false
@@ -6012,6 +6093,7 @@ flags:
     rule: Lead0Kill
     owner: code
     doc: ""
+    verified: true
   - name: MC2_TACTIC_WEIGHTS
     kind: Bool
     default: false
@@ -6992,6 +7074,7 @@ flags:
     owner: code
     doc: "GAMEPLAY-DRIVER-1: =1 arms the test-only spawn/teleport verbs on the MC2_UI_COMMAND_FILE channel."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TRACE_TEST_SPAWN, kind: Trace, order: -1, default_on: false}
   - name: MC2_TEXMGR_COMPRESSED_UPLOAD
     kind: Bool
@@ -7069,6 +7152,7 @@ flags:
     owner: terrain
     doc: "[TOBJPARITY v1] env-gated STANDALONE readback-vs-coarse superset-parity instrument."
     smoke_passthrough: true
+    verified: true
   - name: MC2_TONEMAP_V2
     kind: String
     default: ""
@@ -7184,12 +7268,13 @@ flags:
     owner: gameos
     doc: ""
   - name: MC2_UI_COMMAND_FILE
-    kind: Bool
-    default: false
-    rule: NonEmpty
+    kind: String
+    default: ""
+    rule: Std
     owner: code
     doc: "UI-COMMAND-CHANNEL-1 + GAMEPLAY-DRIVER-1/2: =<path> polls that file once per frame (MissionInterfaceManager::update) and executes its lines as commands."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TRACE_UI_COMMAND_FILE, kind: Trace, order: -1, default_on: false}
   - name: MC2_UI_DEFS_IGNORE_PACKAGE_VERSION
     kind: Bool
@@ -7221,6 +7306,7 @@ flags:
     rule: Lead0
     owner: code
     doc: "INFO-IMGUI-SLICE-1: =1 renders the in-mission unit-Info panel as an ImGui window (unit name + health bar + loadout list with scrollbar) laid out inside..."
+    verified: true
     registry: {feature_id: MC2_TRACE_UI_IMGUI_INFO, kind: Trace, order: -1, default_on: false}
   - name: MC2_UI_IMGUI_OBJ
     kind: Bool
@@ -7228,6 +7314,7 @@ flags:
     rule: Lead0
     owner: code
     doc: "OBJ-IMGUI-SLICE-1: =1 renders the in-mission OBJECTIVES overlay as ImGui (baked left-edge frame from tools/ui_art_reconstruct.py + procedural..."
+    verified: true
     registry: {feature_id: MC2_TRACE_UI_IMGUI_OBJ, kind: Trace, order: -1, default_on: false}
   - name: MC2_UI_IMGUI_PAUSE
     kind: Bool
@@ -7235,6 +7322,7 @@ flags:
     rule: Lead0
     owner: code
     doc: "PAUSE-IMGUI-SLICE-1: =1 renders the in-mission pause menu as an ImGui window (GAME PAUSED + objectives/save/load/options/abort/exit/return) laid out inside..."
+    verified: true
     registry: {feature_id: MC2_TRACE_UI_IMGUI_PAUSE, kind: Trace, order: -1, default_on: false}
   - name: MC2_UI_IMGUI_TIMER
     kind: Bool
@@ -7242,6 +7330,7 @@ flags:
     rule: Lead0
     owner: code
     doc: "SMALLPANELS-IMGUI-SLICE-1: =1 renders the in-mission mission-timer display as ImGui (right-aligned MM:SS via HudFont + the TimerStatic atlas tile) laid out..."
+    verified: true
     registry: {feature_id: MC2_TRACE_UI_IMGUI_TIMER, kind: Trace, order: -1, default_on: false}
   - name: MC2_UI_IMGUI_VIDEO
     kind: Bool
@@ -7249,6 +7338,7 @@ flags:
     rule: Lead0
     owner: code
     doc: "SMALLPANELS-IMGUI-SLICE-1: =1 renders the in-mission comm-video panel as ImGui - VideoStatic chrome tiles + the decoder's frame texture at the same..."
+    verified: true
     registry: {feature_id: MC2_TRACE_UI_IMGUI_VIDEO, kind: Trace, order: -1, default_on: false}
   - name: MC2_UI_PASS_MEASURE
     kind: Bool
@@ -7266,6 +7356,7 @@ flags:
     doc: ""
     tokens: "legacy|generated"
     smoke_passthrough: true
+    verified: true
   - name: MC2_UNIT_PROFILE_DATA
     kind: Bool
     default: false
@@ -7273,6 +7364,7 @@ flags:
     owner: unclassified
     doc: "UNIT-PROFILE-ARC: data-driven unit+equipment definition source (code/unitprofile.cpp)."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_UNIT_PROFILE_DATA, kind: Feature, order: -1, default_on: false}
   - name: MC2_VANISH_PROBE
     kind: Bool
@@ -7301,12 +7393,14 @@ flags:
     rule: Prefix
     owner: code
     doc: ""
+    verified: true
   - name: MC2_VEGETATION_MAX
     kind: Int
     default: 5000000
     rule: Prefix
     owner: code
     doc: ""
+    verified: true
   - name: MC2_VEG_DEBUG_FORCE_VISIBLE
     kind: Bool
     default: false
