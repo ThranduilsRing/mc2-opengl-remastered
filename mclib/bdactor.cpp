@@ -23,10 +23,10 @@
 #include <intrin.h>
 #include <stdlib.h>
 #include <atomic>  // std::atomic — FRAME-JOBS-2 precondition (s_animTypeIdleNowStatic)
-// File-scope gate: one getenv per TU, process-start-constant, shared across
+// File-scope gate: one gate read per TU, process-start-constant, shared across
 // BldgAppearance::recalcBounds and TreeAppearance::recalcBounds. Matches the
 // file-scope pattern in code/terrobj.cpp:176.
-static bool s_tobjSplitBdOn = (getenv("MC2_TOBJ_COST_SPLIT") != nullptr);
+static bool s_tobjSplitBdOn = mc2::gate::get<"MC2_TOBJ_COST_SPLIT">();
 
 // FOLIAGE-ALPHAFLAG-1: MC2_PROP_FOLIAGE_ALPHAFLAG (default OFF).
 //
@@ -58,20 +58,13 @@ static bool s_tobjSplitBdOn = (getenv("MC2_TOBJ_COST_SPLIT") != nullptr);
 // (gos_static_prop_batcher.cpp:2894), which is an independent channel from this
 // per-INSTANCE flags word. So this cannot double-classify and cannot move
 // shipped shoreline pixels.
-static const bool s_propFoliageAlphaFlag = []() {
-	const char* v = getenv("MC2_PROP_FOLIAGE_ALPHAFLAG");
-	return v && v[0] && v[0] != '0';
-}();
+static const bool s_propFoliageAlphaFlag = mc2::gate::get<"MC2_PROP_FOLIAGE_ALPHAFLAG">();
 static inline bool propFoliageAlphaFlag() { return s_propFoliageAlphaFlag; }
 
 // BLDG-TYPE-ANIM-GATE-FIX-1 kill-switch.
 // Unset/1 = new: idle animatable-type buildings eligible for static path.
 // 0       = legacy: bldgTypeHasAnimations disqualifies entire type.
-static bool s_bldgTypeAnimStaticEligible = []() -> bool {
-    const char* v = getenv("MC2_BLDG_TYPE_ANIM_STATIC_ELIGIBLE");
-    if (!v) return true;
-    return !(v[0] == '0');
-}();
+static bool s_bldgTypeAnimStaticEligible = mc2::gate::get<"MC2_BLDG_TYPE_ANIM_STATIC_ELIGIBLE">();
 
 // BLDG-TYPE-ANIM-GATE-FIX-1 diagnostic counters (cumulative).
 // s_animTypeIdleNowStatic is atomic: FRAME-JOBS-2 will run BldgAppearance::touch()
@@ -86,7 +79,7 @@ static uint32_t s_animStateToStateGesture = 0;
 // "proxy candidate" = object that is fully stable and could be baked at mission
 // load rather than evaluated every frame in Phase 2 (touchSerialCommit).
 // Rejection categories mirror the stableLightSkipEligible criteria exactly.
-static const bool s_proxyReconEnabled = (getenv("MC2_STATIC_PROXY_RECON") != nullptr);
+static const bool s_proxyReconEnabled = mc2::gate::get<"MC2_STATIC_PROXY_RECON">();
 static std::atomic<int64_t> g_spr_phase2Calls{0};    // total touchSerialCommit calls (bldg+tree)
 static std::atomic<int64_t> g_spr_bldgCalls{0};      // BldgAppearance::touchSerialCommit calls
 static std::atomic<int64_t> g_spr_treeCalls{0};      // TreeAppearance::touchSerialCommit calls
@@ -108,7 +101,7 @@ static std::atomic<int64_t> g_spr_callCounter{0};    // monotonic call count for
 //   bake_not_enabled  — mc2LightBakeEnabled()=false blocks EmitBakedGpuLightData
 //   not_in_bake_table — bake on but recipeIndex not yet in s_bakedStaticLight
 // Also tracks: isStaticEligible() for the unregistered set, top shape names.
-static const bool s_regCovEnabled = (getenv("MC2_STATIC_REG_COVERAGE") != nullptr);
+static const bool s_regCovEnabled = mc2::gate::get<"MC2_STATIC_REG_COVERAGE">();
 static std::atomic<int64_t> g_rc_neverRegistered{0};   // !staticReg.registered
 static std::atomic<int64_t> g_rc_noRecipe{0};          // registered && recipeIndex<0
 static std::atomic<int64_t> g_rc_bakeNotEnabled{0};    // bake gate off (within rej_no_static_reg)
@@ -123,7 +116,7 @@ static std::map<std::string, int> g_rc_shapeNames;
 // Env-gated per Debug Instrumentation Rule. First-hit is always-on (one stderr
 // line per BldgAppearance instance that walks the lazy-init block). Periodic
 // summary emits every 600 update() calls when env=1. Demote-not-delete.
-static const bool s_spotDiagBldgEnabled = (getenv("MC2_SPOT_DIAG") != nullptr);
+static const bool s_spotDiagBldgEnabled = mc2::gate::get<"MC2_SPOT_DIAG">();
 static unsigned long s_spotDiagBldgRegistered = 0;   // total lights added
 static unsigned long s_spotDiagBldgOverflows  = 0;   // pool-overflow count
 static unsigned long s_spotDiagBldgActors     = 0;   // actor first-hits
@@ -142,10 +135,7 @@ static unsigned long s_spotDiagBldgCalls      = 0;   // update() call counter
 // the A/B capture arms need it to prove the ON arm reached the consumer.
 bool mc2FullBakeDiagEnabled()
 {
-    static const bool s = []() {
-        const char* v = std::getenv("MC2_FULLBAKE_DIAG");
-        return (v && v[0] == '1');   // default OFF
-    }();
+    static const bool s = mc2::gate::get<"MC2_FULLBAKE_DIAG">();
     return s;
 }
 static unsigned long s_fbDiagBranchCalls   = 0;  // times the update() branch ran
@@ -176,9 +166,7 @@ static bool textureOrKtxSidecarExists(const char* tgaPath)
 {
 	if (fileExists(tgaPath))
 		return true;
-	const char* v = getenv("MC2_TEXMGR_KTX_PRIMARY");
-	const int ktxPrimaryMode = (v && v[0]) ? atoi(v) : 1;   // default mode 1
-	const bool ktxPrimary = (ktxPrimaryMode != 0);
+	const bool ktxPrimary = (mc2::gate::get<"MC2_TEXMGR_KTX_PRIMARY">() != 0);   // default mode 1
 	if (!ktxPrimary)
 		return false;
 	char ktx[1024];
@@ -211,7 +199,7 @@ static bool textureOrKtxSidecarExists(const char* tgaPath)
 #include "cone_glow.h"       // LIGHT-CONE-MODELS-1 — node aim + cone glow
 #include "gos_profiler.h"  // PERF DIAGNOSTIC 2026-05-06: ZoneScopedN for per-update breakdown
 #include <cmath>          // CONE-SPILL-COUPLING-1 — sqrt for the ray/terrain march
-#include <cstdlib>        // CONE-SPILL-COUPLING-1 — getenv for [CONE_SPILL v1] diag
+#include <cstdlib>
 
 static bool staticRegIsNaturalBuildingName(const char* name)
 {
@@ -230,8 +218,7 @@ static bool staticRegIsNaturalBuildingName(const char* name)
 
 static bool buildingPbrGateEnabled()
 {
-	const char* v = getenv("MC2_BUILDING_PBR");
-	return v && v[0] == '1' && v[1] == '\0';
+	return mc2::gate::get<"MC2_BUILDING_PBR">();
 }
 
 static bool readTextFile(const char* path, std::string& out)
@@ -395,10 +382,12 @@ static void loadBuildingImportSourceWithSidecarAxis(TG_TypeMultiShape* shape, co
 	const bool hasYaw = extractBuildingPbrYaw(sidecarName, yawDegrees);
 	char axisValue[8] = {0};
 	char yawValue[32] = {0};
-	const char* oldAxis = getenv("MC2_GLTF_AXIS");
-	const char* oldYaw = getenv("MC2_GLTF_YAW_DEG");
-	std::string oldAxisValue = oldAxis ? oldAxis : "";
-	std::string oldYawValue = oldYaw ? oldYaw : "";
+	// Remember the importer axis/yaw gates as typed values; the restore below
+	// republishes them (an unset gate is restored as unset).
+	const bool hadAxis = mc2::gate::isSet<"MC2_GLTF_AXIS">();
+	const int oldAxisNumber = mc2::gate::get<"MC2_GLTF_AXIS">();
+	const bool hadYaw = mc2::gate::isSet<"MC2_GLTF_YAW_DEG">();
+	const float oldYawNumber = mc2::gate::get<"MC2_GLTF_YAW_DEG">();
 	if (hasAxis) {
 		snprintf(axisValue, sizeof(axisValue), "%d", axis);
 		_putenv_s("MC2_GLTF_AXIS", axisValue);
@@ -416,11 +405,15 @@ static void loadBuildingImportSourceWithSidecarAxis(TG_TypeMultiShape* shape, co
 		importSourceBase, failFlag);
 
 	if (hasYaw) {
-		_putenv_s("MC2_GLTF_YAW_DEG", oldYawValue.c_str());   // "" removes the variable
+		char oldYawText[32] = {0};   // "" removes the variable
+		if (hadYaw) snprintf(oldYawText, sizeof(oldYawText), "%.9g", oldYawNumber);
+		_putenv_s("MC2_GLTF_YAW_DEG", oldYawText);
 		mc2::gate::invalidate("MC2_GLTF_YAW_DEG");
 	}
 	if (hasAxis) {
-		_putenv_s("MC2_GLTF_AXIS", oldAxisValue.c_str());
+		char oldAxisText[16] = {0};
+		if (hadAxis) snprintf(oldAxisText, sizeof(oldAxisText), "%d", oldAxisNumber);
+		_putenv_s("MC2_GLTF_AXIS", oldAxisText);
 		mc2::gate::invalidate("MC2_GLTF_AXIS");
 	}
 }
@@ -552,8 +545,7 @@ static bool loadBuildingPbrFromSidecar(BldgAppearanceType* type, const char* sid
 
 static bool buildingFootprintShadowRuntimeEnabled()
 {
-	const char* v = getenv("MC2_BUILDING_FOOTPRINT_SHADOW");
-	return !v || v[0] != '0';
+	return mc2::gate::get<"MC2_BUILDING_FOOTPRINT_SHADOW">();
 }
 
 static DWORD footprintShadowColor(float strength)
@@ -704,9 +696,9 @@ static void submitBuildingFootprintShadow(const BldgAppearance* appearance)
 bool gos_IsNvidiaGPU();
 // env unset -> default ON for NVIDIA, OFF elsewhere; env="0" -> force OFF
 // (override the NVIDIA default); env set to non-"0" -> force ON everywhere.
-static bool bdForceDynamicDefault(const char* envName) {
-	const char* v = getenv(envName);
-	if (v) return v[0] != '0';
+template <mc2::gate::Name n>
+static bool bdForceDynamicDefault() {
+	if (mc2::gate::isSet<n>()) return mc2::gate::get<n>();
 	return gos_IsNvidiaGPU();
 }
 
@@ -797,7 +789,7 @@ static void LoadOverrideRenderShapeTextures(TG_TypeMultiShape* rs)
 			gosASSERT(gosTextureHandle != 0xffffffff);
 			rs->SetTextureHandle(i, gosTextureHandle);
 			rs->SetTextureAlpha(i, alpha);
-			if (getenv("MC2_MODOVERRIDE_TRACE"))
+			if (mc2::gate::get<"MC2_MODOVERRIDE_TRACE">())
 			{
 				fprintf(stderr, "[MODOVERRIDE_TEX] slot=%ld name='%s' -> gosHandle=%lu alpha=%d\n",
 				        i, txmName, (unsigned long)gosTextureHandle, (int)alpha);
@@ -807,7 +799,7 @@ static void LoadOverrideRenderShapeTextures(TG_TypeMultiShape* rs)
 		else
 		{
 			rs->SetTextureHandle(i, 0xffffffff);
-			if (getenv("MC2_MODOVERRIDE_TRACE"))
+			if (mc2::gate::get<"MC2_MODOVERRIDE_TRACE">())
 			{
 				fprintf(stderr, "[MODOVERRIDE_TEX] slot=%ld name='%s' NOT FOUND (path=%s)\n",
 				        i, txmName, (const char*)textureName);
@@ -1006,7 +998,7 @@ void BldgAppearanceType::init (const char * fileName)
 		// Env-gated discovery trace (matches MC2_ASSIMP_TRACE convention): logs every
 		// static-prop appearance name seen, so a manifest can target props actually
 		// present in a mission. No behavior change. MODEL-OVERRIDE Slice 3.
-		if (getenv("MC2_MODOVERRIDE_TRACE"))
+		if (mc2::gate::get<"MC2_MODOVERRIDE_TRACE">())
 			fprintf(stderr, "[MODOVERRIDE_TRACE] staticProp '%s'\n", bldgBaseName);
 		const ModelOverrideRecord* ov =
 			ModelOverrideRegistry::instance().resolve("staticProp", bldgBaseName);
@@ -2198,7 +2190,7 @@ long BldgAppearance::render (long depthFixup)
 			// building (hangar). Logs IsStaticNow() components so we can see why
 			// markVisible() never fires for the prop while it fires for trees.
 			{
-				static const bool s_seamRender = (getenv("MC2_MODOVERRIDE_TRACE") != nullptr);
+				static const bool s_seamRender = mc2::gate::get<"MC2_MODOVERRIDE_TRACE">();
 				static int s_seamRenderLogged = 0;
 				if (s_seamRender && appearType && appearType->bldgRenderShape
 				        && s_seamRenderLogged < 12) {
@@ -2275,7 +2267,7 @@ long BldgAppearance::render (long depthFixup)
 					}
 				}
 				static const bool s_forceDynamicBldgs =
-				    bdForceDynamicDefault("MC2_FORCE_DYNAMIC_BUILDINGS");
+				    bdForceDynamicDefault<"MC2_FORCE_DYNAMIC_BUILDINGS">();
 				if (s_forceDynamicBldgs) {
 					invalidateStaticRegistration();
 					// Fall through to the dynamic path below.
@@ -2312,7 +2304,7 @@ long BldgAppearance::render (long depthFixup)
 					}
 				}
 			}
-			static const bool s_bldgDiagTrace = (getenv("MC2_BLDG_DIAG_TRACE") != nullptr);
+			static const bool s_bldgDiagTrace = mc2::gate::get<"MC2_BLDG_DIAG_TRACE">();
 			if (s_bldgDiagTrace && (s_diag_render_calls % 600) == 0) {
 				fprintf(stderr,
 					"[BLDG_DIAG v1] event=summary calls=%llu staticNow=%llu "
@@ -2785,24 +2777,13 @@ extern void mc2LightBakeParityCheck(int32_t recipeIndex, const TG_HWLightsData* 
 // free fns (defined mclib/txmmgr.cpp).
 // ============================================================================
 extern uint32_t g_mc2FrameCounter;  // mclib/tgl.cpp
-// Env bool parser: unset returns `def`; "0"/"false"/"off"/"no" disable;
-// everything else enables. Keep local to this TU so the diagnostics below
-// can stay self-contained.
-static bool ParseEnvBool(const char* name, bool def = false) {
-    const char* v = getenv(name);
-    if (!v || !*v) return def;
-    if (v[0]=='0' && !v[1]) return false;
-    if (!_stricmp(v, "false") || !_stricmp(v, "off") || !_stricmp(v, "no")) return false;
-    return true;
-}
-
 static bool mc2StableLightSkipEnabled() {
-    static const bool s_enabled = ParseEnvBool("MC2_STABLE_LIGHT_SKIP");
+    static const bool s_enabled = mc2::gate::get<"MC2_STABLE_LIGHT_SKIP">();
     return s_enabled;
 }
 
 static bool mc2StableLightSkipDiagEnabled() {
-    static const bool s_enabled = ParseEnvBool("MC2_STABLE_LIGHT_SKIP_DIAG");
+    static const bool s_enabled = mc2::gate::get<"MC2_STABLE_LIGHT_SKIP_DIAG">();
     return s_enabled;
 }
 
@@ -2864,9 +2845,10 @@ static void noteStableLightSkipFrame(uint32_t frame)
         s_stableLightSkipDiag.initialized = true;
         s_stableLightSkipDiag.frame = frame;
         if (!s_stableLightSkipDiag.envPrinted) {
-            const char* v = getenv("MC2_STABLE_LIGHT_SKIP");
+            const char* v = mc2::gate::isNonEmpty<"MC2_STABLE_LIGHT_SKIP">()
+                ? (mc2::gate::get<"MC2_STABLE_LIGHT_SKIP">() ? "1" : "0") : nullptr;
             std::fprintf(stderr, "[STABLE_LIGHT_SKIP] MC2_STABLE_LIGHT_SKIP=%s\n",
-                (v && *v) ? v : "(unset)");
+                v ? v : "(unset)");
             std::fflush(stderr);
             s_stableLightSkipDiag.envPrinted = true;
         }
@@ -2930,11 +2912,11 @@ static inline void recordStableLightSkipDiag(bool armed, bool eligible,
 extern uint32_t mc2StaticLightHighWater();  // txmmgr.cpp — s_staticLightHighWater accessor
 
 static bool mc2LightbridgeStableSkipEnabled() {
-    static const bool s_enabled = ParseEnvBool("MC2_LIGHTBRIDGE_STABLE_SKIP");
+    static const bool s_enabled = mc2::gate::get<"MC2_LIGHTBRIDGE_STABLE_SKIP">();
     return s_enabled;
 }
 static bool mc2LightbridgeStableSkipDiagEnabled() {
-    static const bool s_diagEnabled = ParseEnvBool("MC2_LIGHTBRIDGE_STABLE_SKIP_DIAG");
+    static const bool s_diagEnabled = mc2::gate::get<"MC2_LIGHTBRIDGE_STABLE_SKIP_DIAG">();
     return s_diagEnabled;
 }
 // STABLE-LIGHT-SKIP-BROADEN-1: extend the LBSS resubmit-skip to the legacy
@@ -2951,7 +2933,7 @@ static bool mc2LightbridgeStableSkipDiagEnabled() {
 // + MC2_STABLE_LIGHT_SKIP armed (same invariant proof: baked static prefix
 // [0..s_staticLightHighWater) persists frame-to-frame under MC2_LIGHTBAKE).
 static bool mc2StableLightSkipTouchEnabled() {
-    static const bool s_enabled = ParseEnvBool("MC2_STABLE_LIGHT_SKIP_TOUCH");
+    static const bool s_enabled = mc2::gate::get<"MC2_STABLE_LIGHT_SKIP_TOUCH">();
     return s_enabled;
 }
 
@@ -3039,7 +3021,7 @@ static inline void lbssRecordTree(bool taken, bool blk_idx)
 // Counters are cumulative per-frame accumulators, reset every 300 frames.
 // ============================================================================
 static bool mc2FrameJobsTouchDiagEnabled() {
-    static const bool s_enabled = ParseEnvBool("MC2_FRAME_JOBS_TOUCH_DIAG");
+    static const bool s_enabled = mc2::gate::get<"MC2_FRAME_JOBS_TOUCH_DIAG">();
     return s_enabled;
 }
 
@@ -3115,7 +3097,7 @@ namespace mc2_lightslot_trace {
     static inline void initFromEnv() {
         if (s_inited) return;
         s_inited   = true;
-        s_enabled  = (std::getenv("MC2_LIGHTSLOT_TRACE") != nullptr);
+        s_enabled  = mc2::gate::get<"MC2_LIGHTSLOT_TRACE">();
     }
 
     // Record one static-prop tree instance's resolved light slot + its type.
@@ -3390,10 +3372,7 @@ static void mc2CacheOrBakeStaticGpuLight(TG_MultiShape* shape,
 	// few frames after mission-ready, when mission lighting is final.
 	// Killswitch: MC2_LIGHTBAKE_REBAKE_ON_READY=0.
 	{
-		static const bool s_rebakeOnReady = []() {
-			const char* v = getenv("MC2_LIGHTBAKE_REBAKE_ON_READY");
-			return !(v && v[0] == '0');
-		}();
+		static const bool s_rebakeOnReady = mc2::gate::get<"MC2_LIGHTBAKE_REBAKE_ON_READY">();
 		bool&            s_rebakeDone = s_lightBakeRebakeDone;  // [BAKEORD v1] file-scope
 		static uint32_t s_readyFrame  = 0;
 		if (s_rebakeOnReady && !s_rebakeDone && SmokeMode::missionHasStarted()) {
@@ -3434,8 +3413,7 @@ static void mc2CacheOrBakeStaticGpuLight(TG_MultiShape* shape,
 			// above this function. One line per real bake (MISS path only --
 			// a HIT recomputes nothing, so it has no bake state to attribute).
 			{
-				static const bool s_bakeOrdProbe =
-					(getenv("MC2_GPU_CULL_STATIC_LIGHT_ZERO_PROBE") != nullptr);
+				static const bool s_bakeOrdProbe = mc2::gate::get<"MC2_GPU_CULL_STATIC_LIGHT_ZERO_PROBE">();
 				if (s_bakeOrdProbe) {
 					static unsigned long long s_bakeOrd = 0;
 					const unsigned long long ord = s_bakeOrd++;
@@ -3603,20 +3581,15 @@ static bool mc2ConeGroundHit (const Stuff::Vector3D& apex,
 // (one boot-cached bool test on the per-frame path).
 static bool mc2PropLightLatchDiag (void)
 {
-	static const bool s_on = [] {
-		const char* v = getenv("MC2_PROP_LIGHT_LATCH_DIAG");
-		return (v && v[0] && v[0] != '0');
-	}();
+	static const bool s_on = mc2::gate::get<"MC2_PROP_LIGHT_LATCH_DIAG">();
 	return s_on;
 }
 
 static uint32_t mc2PropLightLatchDiagInterval (void)
 {
 	static const uint32_t s_iv = [] {
-		const char* v = getenv("MC2_PROP_LIGHT_LATCH_DIAG_INTERVAL");
-		uint32_t iv = (v && v[0]) ? (uint32_t)atol(v) : 120u;
-		if (iv == 0) iv = 120u;
-		return iv;
+		const uint32_t iv = static_cast<uint32_t>(mc2::gate::get<"MC2_PROP_LIGHT_LATCH_DIAG_INTERVAL">());
+		return iv ? iv : 120u;
 	}();
 	return s_iv;
 }
@@ -3807,10 +3780,7 @@ long BldgAppearance::update (bool animate)
 				// for a lamp node with no cone mesh, in which case the pool
 				// keeps the node origin and no coupling is possible at all.)
 				{
-					static const bool s_reach = []() {
-						const char* v = std::getenv("MC2_LIGHT_CONE_DIAG");
-						return (v && v[0] == '1');
-					}();
+					static const bool s_reach = mc2::gate::get<"MC2_LIGHT_CONE_DIAG">();
 					static unsigned long s_r = 0;
 					if (s_reach && (s_r++ % 600) < 6)
 					{
@@ -3838,10 +3808,7 @@ long BldgAppearance::update (bool animate)
 					// frame, so the two are directly comparable without an A/B
 					// rebuild. horizErr is how far the old pool sat from where
 					// the beam actually lands — the user-visible decoupling.
-					static const bool s_coneDiag = []() {
-						const char* v = std::getenv("MC2_LIGHT_CONE_DIAG");
-						return (v && v[0] == '1');
-					}();
+					static const bool s_coneDiag = mc2::gate::get<"MC2_LIGHT_CONE_DIAG">();
 					if (s_coneDiag)
 					{
 						static unsigned long s_n = 0;
@@ -4769,7 +4736,7 @@ bool BldgAppearance::isStaticEligible() const
 void BldgAppearance::registerStatic() {
 	// [SEAMPROBE] stage 2: registerStatic entry + which early-return fires.
 	// Gate on the override target (hangar) to avoid log spam.
-	const bool seamProbe = (getenv("MC2_MODOVERRIDE_TRACE") != nullptr)
+	const bool seamProbe = (mc2::gate::get<"MC2_MODOVERRIDE_TRACE">())
 		&& appearType && appearType->bldgRenderShape;
 	if (seamProbe)
 		fprintf(stderr, "[SEAMPROBE] bldg registerStatic ENTER name=%s registered=%d hasShape=%d enabled=%d eligible=%d renderShape=%p\n",
@@ -4806,7 +4773,7 @@ void BldgAppearance::registerStatic() {
 	// path = override_multidraw (cooked/override geometry, layer-0 route) vs legacy_static.
 	// Full MeshCapability bits come once the engine reads the cooked manifest.json (later
 	// integration); for now we log what the seam knows. Schema-grep: \[RENDER_PATH v[0-9]+\].
-	if (getenv("MC2_RENDER_PATH")) {
+	if (mc2::gate::get<"MC2_RENDER_PATH">()) {
 		fprintf(stderr, "[RENDER_PATH v1] key=staticprop:%s isOverride=%d path=%s pools=%s\n",
 		        appearType->name, _regIsOverride ? 1 : 0,
 		        _regIsOverride ? "override_multidraw" : "legacy_static",
@@ -4814,7 +4781,7 @@ void BldgAppearance::registerStatic() {
 		fflush(stderr);
 	}
 
-	if (getenv("MC2_MODOVERRIDE_TRACE") && appearType->bldgRenderShape) {
+	if (mc2::gate::get<"MC2_MODOVERRIDE_TRACE">() && appearType->bldgRenderShape) {
 		TG_TypeMultiShape* rs = appearType->bldgRenderShape;
 		fprintf(stderr, "[MODOVERRIDE_TRACE] bldg registerStatic name=%s renderShape=%p numShapes=%ld leaf0=%p leaf1=%p finalized_guess(typeNodes_above)\n",
 		        appearType->name, (void*)rs, rs->GetNumShapes(),
@@ -4850,8 +4817,7 @@ void BldgAppearance::registerStatic() {
 	//   Shape-world axes (from xlatPosition remap): Xsw = -worldX, Ysw = up,
 	//   Zsw = worldY. Terrain normal (nx,ny,nz){world, nz up} maps to shape-world
 	//   (-nx, nz, ny); its horizontal projection (-nx,0,ny) is the outward facing.
-	static const bool s_terrainDecal =
-	    (getenv("MC2_TERRAIN_DECAL") != nullptr && getenv("MC2_TERRAIN_DECAL")[0] != '0');
+	static const bool s_terrainDecal = mc2::gate::get<"MC2_TERRAIN_DECAL">();
 	// TERRAIN-DECAL-SLICE-0B/0C — placement knobs live in CliffDecalTuning (mutable,
 	// seeded from the MC2_TERRAIN_DECAL_* env defaults so unset == byte-identical to
 	// Slice-0A). The face-frame math is factored into CliffDecalTuning::buildCliffWall
@@ -4881,7 +4847,7 @@ void BldgAppearance::registerStatic() {
 		CliffDecalTuning::buildCliffWallMatrix(
 		    xlatPosition, nAcc, CliffDecalTuning::knobs(), cliffWallXform);
 		useCliffWallFrame = true;
-		if (getenv("MC2_TERRAIN_DECAL_TRACE")) {
+		if (mc2::gate::get<"MC2_TERRAIN_DECAL_TRACE">()) {
 			const CliffDecalTuning::Knobs& k = CliffDecalTuning::knobs();
 			fprintf(stderr, "[TERRAIN_DECAL v1] CLIFF_WALL name=%s pos=(%.1f,%.1f) "
 			        "scale=%.3f offset=%.1f lateral=%.1f lift=%.1f yaw=%.1f\n",
@@ -4925,7 +4891,7 @@ void BldgAppearance::registerStatic() {
 		// ('Spotlight_Building01', 'SpotLight_Building', 'Spotlight_SensorCon',
 		// 'Spotlight_TurretCon') DO get isSpot=1 and ARE skipped below — the intended
 		// GHOST-CONE-RECIPE-SKIP-1 target. See .claude/DEFERRED-BATCH-8C-STATUS.md.
-		if (getenv("MC2_CONE_LEAF_DUMP")) {
+		if (mc2::gate::get<"MC2_CONE_LEAF_DUMP">()) {
 			fprintf(stderr, "[CONE_LEAF] type=%s leaf=%d node='%s' isSpot=%d isWin=%d lightsOut=%d\n",
 			        appearType ? appearType->name : "?", i,
 			        child->getNodeName() ? child->getNodeName() : "(null)",
@@ -4960,10 +4926,7 @@ void BldgAppearance::registerStatic() {
 		// art colour); fix it by LIGHTING that pass, not by skipping the prop. Evidence +
 		// the MC2_CONE_LEAF_DUMP census: .claude/DEFERRED-BATCH-8C-STATUS.md.
 		{
-			static const bool s_recipeSpotSkip = []() {
-				const char* v = getenv("MC2_STATICPROP_RECIPE_SPOTLIGHT_SKIP");
-				return !(v && v[0] == '0');   // default ON
-			}();
+			static const bool s_recipeSpotSkip = mc2::gate::get<"MC2_STATICPROP_RECIPE_SPOTLIGHT_SKIP">();
 			if (s_recipeSpotSkip && child->GetIsSpotlight()) { ++diag_skip_helper; continue; }
 		}
 		uint32_t flags = 0;
@@ -5047,7 +5010,7 @@ void BldgAppearance::registerStatic() {
 	}
 	// 2026-05-10 diag: env-gated per-building outcome. MC2_BLDG_REG_TRACE=1.
 	{
-		static const bool s_trace = (getenv("MC2_BLDG_REG_TRACE") != nullptr);
+		static const bool s_trace = mc2::gate::get<"MC2_BLDG_REG_TRACE">();
 		static int s_loggedCount = 0;
 		if (s_trace && s_loggedCount < 80) {
 			++s_loggedCount;
@@ -5111,7 +5074,7 @@ void BldgAppearance::registerStatic() {
 		{
 			extern void mc2SetBakedStaticLight(int32_t, const TG_HWLightsData&);
 			extern void mc2WriteStaticLightSlot(int32_t, const TG_HWLightsData&);
-			static const bool s_eagerLightBake = (getenv("MC2_GPU_CULL_STATIC_EAGER_LIGHT_BAKE") != nullptr);
+			static const bool s_eagerLightBake = mc2::gate::get<"MC2_GPU_CULL_STATIC_EAGER_LIGHT_BAKE">();
 			if (s_eagerLightBake) {
 				TG_HWLightsData fallback;
 				// Minimal ambient: one dim neutral-white light. Overwritten on first
@@ -5559,13 +5522,9 @@ void BldgAppearance::touchSerialCommit()
 // cannot live only inside this function's early-return.
 static bool bldgStaticShadowRebakeGatesActive()
 {
-	static const char* s_bldgShadowEnv = getenv("MC2_STATIC_PROP_BUILDING_SHADOW");
-	static const bool s_bldgStaticShadowActive =
-		(s_bldgShadowEnv != nullptr && s_bldgShadowEnv[0] != '0');
+	static const bool s_bldgStaticShadowActive = !mc2::gate::is<"MC2_STATIC_PROP_BUILDING_SHADOW", "0">();
 
-	static const char* s_rebakeEnv = getenv("MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE");
-	static const bool s_rebakeOnDestroy =
-		!(s_rebakeEnv != nullptr && s_rebakeEnv[0] == '0');
+	static const bool s_rebakeOnDestroy = !mc2::gate::is<"MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE", "0">();
 	return s_bldgStaticShadowActive && s_rebakeOnDestroy;
 }
 
@@ -5573,9 +5532,7 @@ static void bldgTriggerStaticShadowRebakeIfArmed(bool wasRegistered, int32_t rec
                                                   const char* reason)
 {
 	if (!wasRegistered || !bldgStaticShadowRebakeGatesActive()) return;
-	static const bool s_rebakeTrace =
-		(getenv("MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE") != nullptr &&
-		 getenv("MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE")[0] == '2');
+	static const bool s_rebakeTrace = mc2::gate::is<"MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE", "2">();
 	gos_ResetStaticLightMatrix();
 	if (s_rebakeTrace) {
 		fprintf(stderr,
@@ -6390,7 +6347,7 @@ void TreeAppearanceType::init (const char * fileName)
 	if (treeBaseName[0])
 	{
 		// Env-gated discovery trace (see staticProp site). MODEL-OVERRIDE Slice 3.
-		if (getenv("MC2_MODOVERRIDE_TRACE"))
+		if (mc2::gate::get<"MC2_MODOVERRIDE_TRACE">())
 			fprintf(stderr, "[MODOVERRIDE_TRACE] tree '%s'\n", treeBaseName);
 		const ModelOverrideRecord* ov =
 			ModelOverrideRegistry::instance().resolve("tree", treeBaseName);
@@ -7044,7 +7001,7 @@ long TreeAppearance::render (long depthFixup)
 					}
 				}
 				static const bool s_forceDynamicTrees =
-				    bdForceDynamicDefault("MC2_FORCE_DYNAMIC_TREES");
+				    bdForceDynamicDefault<"MC2_FORCE_DYNAMIC_TREES">();
 				if (s_forceDynamicTrees) {
 					invalidateStaticRegistration();
 					// Fall through to the dynamic path below.
@@ -7695,13 +7652,11 @@ void TreeAppearance::selectActiveLOD()
 	for (int _l = MAX_LODS - 1; _l > 0; --_l)
 		if (staticReg[_l].registered) { _maxAvailLOD = _l; break; }
 	int _wantLOD = activeLOD;   // default: STAY (deadband) — anti-thrash
-	static const char* s_forceLodStr = getenv("MC2_FORCE_LOD");
-	if (s_forceLodStr) {
-		_wantLOD = atoi(s_forceLodStr);            // debug override
+	static const bool s_forceLod = mc2::gate::isSet<"MC2_FORCE_LOD">();
+	if (s_forceLod) {
+		_wantLOD = mc2::gate::get<"MC2_FORCE_LOD">();            // debug override
 	} else if (_maxAvailLOD >= 1 && eye) {
-		static const float s_impostorDist = [](){
-			const char* e = getenv("MC2_IMPOSTOR_DIST"); return e ? (float)atof(e) : 800.0f;
-		}();
+		static const float s_impostorDist = mc2::gate::get<"MC2_IMPOSTOR_DIST">();
 		// HYSTERESIS: separate near/far thresholds so a tree sitting near the
 		// boundary does NOT oscillate activeLOD every frame. Oscillation forced a
 		// full update()+submitMultiShape+re-register churn each frame, backing up
@@ -7903,7 +7858,7 @@ void TreeAppearance::invalidateStaticRegistration()
 // Task 5 (Track B): mission-load bulk static-prop registration (mirror of
 // BldgAppearance::registerStatic). HC-1: writes directly to typed staticReg.
 void TreeAppearance::registerStatic() {
-	const bool seamProbe = (getenv("MC2_MODOVERRIDE_TRACE") != nullptr)
+	const bool seamProbe = (mc2::gate::get<"MC2_MODOVERRIDE_TRACE">())
 		&& appearType && appearType->treeRenderShape[0];
 	if (seamProbe)
 		fprintf(stderr, "[SEAMPROBE] tree registerStatic ENTER name=%s registered=%d hasShape=%d enabled=%d renderShape=%p\n",
@@ -7927,7 +7882,7 @@ void TreeAppearance::registerStatic() {
 	for (int i = 0; i < _treeRegLods; ++i)
 		GpuStaticPropBatcher::instance().registerMultiShape(appearType->getTreeRenderShape(i), _treeRegIsOverride);
 
-	if (getenv("MC2_MODOVERRIDE_TRACE") && appearType->treeRenderShape[0]) {
+	if (mc2::gate::get<"MC2_MODOVERRIDE_TRACE">() && appearType->treeRenderShape[0]) {
 		TG_TypeMultiShape* rs = appearType->treeRenderShape[0];
 		fprintf(stderr, "[MODOVERRIDE_TRACE] tree registerStatic name=%s renderShape=%p numShapes=%ld leaf0=%p leaf1=%p lodCount=%ld\n",
 		        appearType->name, (void*)rs, rs->GetNumShapes(),
@@ -7997,10 +7952,7 @@ void TreeAppearance::registerStatic() {
 			// GHOST-CONE-RECIPE-SKIP-1: see BldgAppearance::registerStatic —
 			// same skip for the tree/LOD recipe loop (lockstep).
 			{
-				static const bool s_recipeSpotSkip2 = []() {
-					const char* v = getenv("MC2_STATICPROP_RECIPE_SPOTLIGHT_SKIP");
-					return !(v && v[0] == '0');   // default ON
-				}();
+				static const bool s_recipeSpotSkip2 = mc2::gate::get<"MC2_STATICPROP_RECIPE_SPOTLIGHT_SKIP">();
 				if (s_recipeSpotSkip2 && child->GetIsSpotlight()) { ++t_diag_skip_h; continue; }
 			}
 			uint32_t flags = 0;
@@ -8052,7 +8004,7 @@ void TreeAppearance::registerStatic() {
 			++t_diag_added;
 		}
 		{
-			static const bool s_trace = (getenv("MC2_TREE_REG_TRACE") != nullptr);
+			static const bool s_trace = mc2::gate::get<"MC2_TREE_REG_TRACE">();
 			static int s_treeRegLogged = 0;
 			if (s_trace && s_treeRegLogged < 80) {
 				++s_treeRegLogged;
@@ -8182,7 +8134,7 @@ void TreeAppearance::registerStatic() {
 		{
 			extern void mc2SetBakedStaticLight(int32_t, const TG_HWLightsData&);
 			extern void mc2WriteStaticLightSlot(int32_t, const TG_HWLightsData&);
-			static const bool s_eagerLightBake = (getenv("MC2_GPU_CULL_STATIC_EAGER_LIGHT_BAKE") != nullptr);
+			static const bool s_eagerLightBake = mc2::gate::get<"MC2_GPU_CULL_STATIC_EAGER_LIGHT_BAKE">();
 			if (s_eagerLightBake) {
 				TG_HWLightsData fallback;
 				fallback.numLights_ = 1;

@@ -5,7 +5,7 @@
 generator_version: "3.0.0"
 gate_count: 1139
 registry_entry_count: 354
-verified_count: 351
+verified_count: 384
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -211,12 +211,14 @@ flags:
     rule: Presence
     owner: props
     doc: ""
+    verified: true
   - name: MC2_BLDG_REG_TRACE
     kind: Bool
     default: false
     rule: Presence
     owner: props
     doc: ""
+    verified: true
   - name: MC2_BLDG_TYPE_ANIM_STATIC_ELIGIBLE
     kind: Bool
     default: true
@@ -224,6 +226,7 @@ flags:
     owner: props
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_BLKIDX_TRACE
     kind: Bool
     default: false
@@ -615,12 +618,14 @@ flags:
     rule: Lead0Kill
     owner: props
     doc: ""
+    verified: true
   - name: MC2_BUILDING_PBR
     kind: Bool
     default: false
     rule: Exact1
     owner: props
     doc: ""
+    verified: true
   - name: MC2_BUILDING_PBR_TRACE
     kind: Bool
     default: false
@@ -874,6 +879,7 @@ flags:
     rule: Presence
     owner: props
     doc: "CONE-LEAF-NAME-DIAG (batch-8C, MC2_CONE_LEAF_DUMP, default OFF): dump every static-prop recipe leaf's real node name + flags."
+    verified: true
   - name: MC2_CONE_POOL_POLICY
     kind: Bool
     default: true
@@ -1484,6 +1490,7 @@ flags:
     rule: Prefix
     owner: props
     doc: "TREE-OVERRIDE-LOD-MVP-1 (Task 5): force the active render-LOD index for override trees (0..MAX_LODS-1), clamped to the highest registered+available LOD."
+    verified: true
     registry: {feature_id: MC2_TRACE_FORCE_LOD, kind: Trace, order: -1, default_on: false}
   - name: MC2_FORCE_TXM_REGEN
     kind: Bool
@@ -1576,6 +1583,7 @@ flags:
     rule: Std
     owner: props
     doc: ""
+    verified: true
   - name: MC2_FRAME_JOBS_TRACE
     kind: Bool
     default: false
@@ -1619,6 +1627,7 @@ flags:
     owner: props
     doc: "SPOTLIGHT-DIRECTION-1 measurement instrument."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FULLBAKE_DIAG, kind: Trace, order: -1, default_on: false}
   - name: MC2_FXAA
     kind: Bool
@@ -1924,6 +1933,7 @@ flags:
     rule: Presence
     owner: props
     doc: ""
+    verified: true
   - name: MC2_GPU_CULL_STATIC_FROZEN_ORDER_ORACLE
     kind: Bool
     default: false
@@ -1942,6 +1952,7 @@ flags:
     rule: Presence
     owner: props
     doc: "Static-prop light-bake observation gate, default OFF."
+    verified: true
     registry: {feature_id: MC2_TRACE_GPU_CULL_STATIC_LIGHT_ZERO_PROBE, kind: Trace, order: -1, default_on: false}
   - name: MC2_GPU_CULL_SUBSTRATE
     kind: Bool
@@ -2383,6 +2394,7 @@ flags:
     owner: props
     doc: "Static-prop / tree impostor LOD switch distance in world units (mclib/bdactor.cpp TreeAppearance::selectActiveLOD)."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TUNE_IMPOSTOR_DIST, kind: Trace, order: -1, default_on: false}
   - name: MC2_INVIEW_CONFLATION_TRACE
     kind: Bool
@@ -2457,6 +2469,7 @@ flags:
     owner: props
     doc: "LIGHTBAKE-REBAKE-ON-READY-1: soft-invalidate the per-recipe static-light bake cache once, 8 frames after mission-ready, so recipes baked during boot/load..."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_LIGHTBAKE_REBAKE_ON_READY, kind: Feature, order: -1, default_on: true}
   - name: MC2_LIGHTBAKE_STABILITY
     kind: Bool
@@ -2477,12 +2490,14 @@ flags:
     rule: Std
     owner: props
     doc: ""
+    verified: true
   - name: MC2_LIGHTBRIDGE_STABLE_SKIP_DIAG
     kind: Bool
     default: false
     rule: Std
     owner: props
     doc: ""
+    verified: true
   - name: MC2_LIGHTGRID_BUILD
     kind: Bool
     default: false
@@ -2530,6 +2545,7 @@ flags:
     rule: Presence
     owner: props
     doc: ""
+    verified: true
   - name: MC2_LIGHTSSBO_TRACE
     kind: Bool
     default: false
@@ -3447,6 +3463,7 @@ flags:
     rule: Presence
     owner: props
     doc: ""
+    verified: true
   - name: MC2_MOD_DEPS
     kind: String
     default: ""
@@ -4094,6 +4111,7 @@ flags:
     owner: props
     doc: "FOLIAGE-ALPHAFLAG-1: make the per-instance flags bit 2 emitted by the static-prop RECIPE paths (BldgAppearance/TreeAppearance::registerStatic..."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_PROP_FOLIAGE_ALPHAFLAG, kind: Feature, order: 44, default_on: false}
   - name: MC2_PROP_LIGHT_LATCH_DIAG
     kind: Bool
@@ -4102,6 +4120,7 @@ flags:
     owner: props
     doc: "FOGLIGHT-LATCH-1: dump per-static-prop-actor [PROPLATCH v1] lines -- latch frame + latched lightRGB (the fogLightSet one-shot sample fed to the SUN slot) vs..."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_PROP_LIGHT_LATCH_DIAG, kind: Trace, order: -1, default_on: false}
   - name: MC2_PROP_LIGHT_LATCH_DIAG_INTERVAL
     kind: Int
@@ -4110,6 +4129,7 @@ flags:
     owner: props
     doc: "FOGLIGHT-LATCH-1: frame throttle for the [PROPLATCH v1] compare line (default 120)."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_PROP_LIGHT_LATCH_DIAG_INTERVAL, kind: Trace, order: -1, default_on: false}
   - name: MC2_PROP_SHADOW_RECEIVE
     kind: Int
@@ -4331,6 +4351,7 @@ flags:
     rule: Presence
     owner: props
     doc: "G5 RENDER-PATH OBSERVABILITY (descriptive; env-gated; ZERO behavior change): one line per registered static-prop type recording which render path it takes."
+    verified: true
   - name: MC2_RENDER_SNAPSHOT_LOG
     kind: Bool
     default: false
@@ -5104,18 +5125,21 @@ flags:
     owner: props
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_STABLE_LIGHT_SKIP_DIAG
     kind: Bool
     default: false
     rule: Std
     owner: props
     doc: ""
+    verified: true
   - name: MC2_STABLE_LIGHT_SKIP_TOUCH
     kind: Bool
     default: false
     rule: Std
     owner: props
     doc: ""
+    verified: true
   - name: MC2_STANDARD_LIT_V1
     kind: Bool
     default: false
@@ -5151,6 +5175,7 @@ flags:
     owner: props
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_STATICPROP_TEX_TIER
     kind: Int
     default: 512
@@ -5229,6 +5254,7 @@ flags:
     doc: "SHADOW-STATIC-BUILDINGS-2: replay ALL registered rigid-building recipes (full registry, visibility-independent) into the world-fixed static shadow map, once..."
     tokens: "0|1|2"
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_SHADOW_STATIC_BUILDINGS, kind: Feature, order: -1, default_on: false}
   - name: MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE
     kind: Enum
@@ -5238,6 +5264,7 @@ flags:
     doc: "STATIC-BLDG-SHADOW-REBAKE-1: re-arm the one-shot world-fixed static-shadow latch (gos_ResetStaticLightMatrix) when a registered building is destroyed --..."
     tokens: "1|0|2"
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_SHADOW_STATIC_BUILDINGS_REBAKE, kind: Feature, order: -1, default_on: true}
   - name: MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE_TEST_DESTROY_AT_FRAME
     kind: Int
@@ -5516,6 +5543,7 @@ flags:
     owner: props
     doc: "StaticSceneProxy-arc recon instrumentation (mclib/bdactor.cpp) - counts touchSerialCommit calls for building/tree appearances ahead of the per-frame..."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_STATIC_PROXY_RECON, kind: Feature, order: -1, default_on: false}
   - name: MC2_STATIC_RECIPE_RECYCLE
     kind: Bool
@@ -5530,6 +5558,7 @@ flags:
     owner: props
     doc: "STATIC-REGISTRY-COVERAGE-RECON-1: sub-classify the rej_no_static_reg population."
     smoke_passthrough: true
+    verified: true
   - name: MC2_STATIC_REG_PREWARM
     kind: Bool
     default: false
@@ -5857,6 +5886,7 @@ flags:
     owner: props
     doc: "TERRAIN-DECAL-SLICE-0A: terrain mesh-decal system."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TERRAIN_DECAL, kind: Feature, order: 38, default_on: false}
   - name: MC2_TERRAIN_DECAL_COLORBLEND
     kind: Float
@@ -5928,6 +5958,7 @@ flags:
     owner: props
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_TERRAIN_DECAL_YAW
     kind: Float
     default: 0
@@ -6666,6 +6697,7 @@ flags:
     owner: unclassified
     doc: "[TOBJSPLIT v1] env-gated RDTSC cost split for the recalcBounds slice."
     smoke_passthrough: true
+    verified: true
   - name: MC2_TOBJ_PARITY
     kind: Bool
     default: false
@@ -6701,6 +6733,7 @@ flags:
     rule: Presence
     owner: props
     doc: ""
+    verified: true
   - name: MC2_TUBE_PROFILE_LOG
     kind: Bool
     default: false
