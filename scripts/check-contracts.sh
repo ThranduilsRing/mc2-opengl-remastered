@@ -879,6 +879,8 @@ run_check "axis_swizzle_ratchet"     "py -3 tools/axis_swizzle_ratchet.py --chec
 # may only fall, and no new file may enter the > 1500 set. Scans the COMMITTED tree. Selftest
 # lives in scripts/tests (scripts_tests row).
 run_check "file_size_ratchet"        "py -3 tools/file_size_ratchet.py --check"
+# docs/split-map.md (old file -> pieces -> what each holds) is generated from tools/split/allow/*.json and the pieces' header comments.
+run_check "split_map"                 "py -3 tools/split/split_map.py --check"
 # Comment de-bloat guard (giant-file-split-plan.md, "Comment de-bloat pass"): proves the lexer, protection rules and
 # exit codes still hold. Fixtures are in-memory; pytest twin is tools/test_comment_guard.py (tools_tests row).
 run_check "comment_guard_selftest"   "py -3 tools/comment_guard.py --selftest"
