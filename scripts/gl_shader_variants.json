@@ -2788,7 +2788,7 @@
    "key": "gpu_driven_cmd_patch",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_terrain_water_stream.cpp:1544",
+   "source": "GameOS/gameos/gos_terrain_water_stream.cpp:1523",
    "stages": {
     "comp": "shaders/gpu_driven_cmd_patch.comp"
    }
@@ -2812,7 +2812,7 @@
    "key": "gpu_driven_water",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_terrain_water_stream.cpp:1542",
+   "source": "GameOS/gameos/gos_terrain_water_stream.cpp:1521",
    "stages": {
     "comp": "shaders/gpu_driven_water.comp"
    }

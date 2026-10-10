@@ -611,7 +611,7 @@
    "in_conflict": false,
    "readers": [
     "mclib/bdactor.cpp:179 Num(atoi,raw)",
-    "mclib/gvactor.cpp:143 Num(atoi,raw)",
+    "mclib/gvactor.cpp:36 Num(atoi,raw)",
     "mclib/mech3d.cpp:186 Num(atoi,raw)",
     "mclib/txmmgr.cpp:5394 Num(atoi,raw)"
    ],
@@ -1832,7 +1832,7 @@
   "editor",
   "gui"
  ],
- "source": "commit 3ad51e033",
+ "source": "commit 6532c1ca9",
  "totals": {
   "conflict_gates": 6,
   "gates_with_literal": 1131,

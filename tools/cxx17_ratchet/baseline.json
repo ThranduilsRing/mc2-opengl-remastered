@@ -167,7 +167,7 @@
    "LG03": 970,
    "LG04": 21,
    "LG05": 202,
-   "LG06": 465,
+   "LG06": 468,
    "LG07": 0,
    "LG08": 15,
    "LG09": 2474,
@@ -2551,18 +2551,42 @@
    "LG14": 3
   },
   "code/mechcmd2.cpp": {
-   "LG01": 60,
+   "LG01": 29,
    "LG02": 1,
-   "LG03": 55,
+   "LG03": 25,
+   "LG09": 10,
+   "LG11": 8,
+   "LG12a": 6,
+   "LG12b": 3,
+   "LG13": 2,
+   "LG19": 3,
+   "LG20": 3
+  },
+  "code/mechcmd2_cmdline.cpp": {
+   "LG01": 3,
+   "LG06": 2
+  },
+  "code/mechcmd2_debugwins.cpp": {
+   "LG01": 6,
+   "LG03": 9,
+   "LG06": 1,
+   "LG09": 3,
+   "LG12b": 6
+  },
+  "code/mechcmd2_frame.cpp": {
+   "LG01": 22,
+   "LG03": 21,
+   "LG09": 3,
+   "LG11": 16,
+   "LG12a": 2,
+   "LG12b": 1,
+   "LG19": 1,
+   "LG20": 1
+  },
+  "code/mechcmd2_internal.h": {
    "LG06": 4,
-   "LG09": 16,
-   "LG11": 24,
-   "LG12a": 8,
-   "LG12b": 10,
-   "LG13": 5,
-   "LG14": 1,
-   "LG19": 4,
-   "LG20": 4
+   "LG13": 3,
+   "LG14": 1
   },
   "code/mechicon.cpp": {
    "LG01": 11,
@@ -4175,22 +4199,44 @@
    "LG14": 1
   },
   "mclib/gvactor.cpp": {
-   "LG01": 58,
-   "LG03": 25,
+   "LG01": 40,
+   "LG03": 14,
    "LG05": 2,
-   "LG06": 4,
-   "LG09": 30,
-   "LG10": 1,
+   "LG06": 2,
+   "LG09": 8,
    "LG12a": 1,
-   "LG12b": 14,
-   "LG13": 6,
-   "LG19": 6,
-   "LG20": 7
+   "LG12b": 11,
+   "LG13": 1,
+   "LG19": 3,
+   "LG20": 3
   },
   "mclib/gvactor.h": {
    "LG01": 5,
    "LG06": 2,
    "LG13": 5
+  },
+  "mclib/gvactor_geometry.cpp": {
+   "LG01": 4,
+   "LG03": 2,
+   "LG06": 1,
+   "LG09": 18,
+   "LG10": 1,
+   "LG12b": 3
+  },
+  "mclib/gvactor_internal.h": {
+   "LG06": 1,
+   "LG13": 5,
+   "LG19": 1
+  },
+  "mclib/gvactor_render.cpp": {
+   "LG20": 1
+  },
+  "mclib/gvactor_update.cpp": {
+   "LG01": 14,
+   "LG03": 9,
+   "LG09": 4,
+   "LG19": 2,
+   "LG20": 3
   },
   "mclib/heap.cpp": {
    "LG01": 33,
@@ -5772,7 +5818,7 @@
    "LG20": 1
   }
  },
- "head": "3ad51e033",
+ "head": "6532c1ca9",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
