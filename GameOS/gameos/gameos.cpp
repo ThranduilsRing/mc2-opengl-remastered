@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <stdlib.h> // rand
+#include <new>      // std::bad_alloc
 #include "utils/timing.h"
 #include "utils/timing_math.h"
 
@@ -224,7 +225,11 @@ void __stdcall gos_WalkMemoryHeap(HGOSHEAP pHeap, bool vociferous/* = false*/)
 
 ////////////////////////////////////////////////////////////////////////////////
 void* operator new(size_t sz) {
-    return gos_Malloc(sz, NULL);
+    // A replaced operator new must not return null: callers (and the compiler) assume the result is valid.
+    void* p = gos_Malloc(sz ? sz : 1, NULL);
+    if (!p)
+        throw std::bad_alloc();
+    return p;
 }
 void operator delete(void* ptr)
 #ifndef PLATFORM_WINDOWS
