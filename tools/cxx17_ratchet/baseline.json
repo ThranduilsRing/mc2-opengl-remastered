@@ -47,12 +47,12 @@
    "LG20": 0
   },
   "GameOS": {
-   "LG01": 187,
-   "LG02": 209,
+   "LG01": 106,
+   "LG02": 208,
    "LG03": 301,
    "LG04": 6,
    "LG05": 119,
-   "LG06": 498,
+   "LG06": 499,
    "LG07": 0,
    "LG08": 274,
    "LG09": 2129,
@@ -294,9 +294,8 @@
    "LG12b": 2
   },
   "GameOS/gameos/MC2Strings.cpp": {
-   "LG02": 1,
    "LG05": 2,
-   "LG06": 37,
+   "LG06": 38,
    "LG08": 11,
    "LG11": 14,
    "LG12a": 2,
@@ -348,7 +347,7 @@
    "LG12a": 2
   },
   "GameOS/gameos/gameos.cpp": {
-   "LG01": 16,
+   "LG01": 2,
    "LG03": 11,
    "LG06": 8,
    "LG09": 9,
@@ -363,7 +362,6 @@
    "LG12b": 2
   },
   "GameOS/gameos/gameos_fileio.cpp": {
-   "LG01": 5,
    "LG03": 2,
    "LG05": 4,
    "LG06": 11,
@@ -501,14 +499,13 @@
    "LG20": 1
   },
   "GameOS/gameos/gameos_res.cpp": {
-   "LG01": 9,
    "LG03": 4,
    "LG06": 6,
    "LG09": 3,
    "LG12a": 6
   },
   "GameOS/gameos/gameos_sound.cpp": {
-   "LG01": 14,
+   "LG01": 2,
    "LG03": 11,
    "LG06": 1,
    "LG09": 10,
@@ -565,7 +562,6 @@
    "LG06": 2
   },
   "GameOS/gameos/gos_font.cpp": {
-   "LG01": 4,
    "LG03": 16,
    "LG05": 2,
    "LG06": 2,
@@ -1055,7 +1051,6 @@
    "LG09": 6
   },
   "GameOS/gameos/mc2_verify.cpp": {
-   "LG01": 1,
    "LG06": 6,
    "LG11": 1,
    "LG12a": 2,
@@ -1103,7 +1098,6 @@
    "LG06": 1
   },
   "GameOS/gameos/utils/Image.cpp": {
-   "LG01": 25,
    "LG03": 29,
    "LG06": 6,
    "LG09": 6,
@@ -1122,7 +1116,6 @@
    "LG06": 2
   },
   "GameOS/gameos/utils/gl_utils.cpp": {
-   "LG01": 3,
    "LG03": 2,
    "LG06": 3,
    "LG09": 6,
@@ -1179,7 +1172,6 @@
    "LG14": 3
   },
   "GameOS/gameos/utils/stream.cpp": {
-   "LG01": 1,
    "LG03": 2,
    "LG05": 3,
    "LG06": 3
@@ -1189,7 +1181,6 @@
    "LG14": 1
   },
   "GameOS/gameos/utils/string_utils.cpp": {
-   "LG01": 7,
    "LG05": 1,
    "LG06": 5,
    "LG09": 5,
@@ -5652,7 +5643,7 @@
    "LG20": 2
   }
  },
- "head": "e84a37f84",
+ "head": "01261fa84",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
