@@ -84,7 +84,6 @@ static int resolveOptionalEquipmentIdColumn(CSVFile* mechFile, long row)
 
 long BattleMech::init (DWORD variantNum)
 {
-	// Open the mech's CSV file.
 	CSVFile *mechFile = new CSVFile;
 	
 	FullPathFileName csvName;
@@ -200,7 +199,6 @@ long BattleMech::init (DWORD variantNum)
 	numAntiMissileSystems = numOther = numWeapons = numAmmos = 0;
 	numArmorComponents = 0;
 
-	// Read in the mech's non-weapon/non-ammo components...
 	long realItemNum = 0;
     MemSet(ItemLocationToInvLocation, 0xff);
 
@@ -218,7 +216,6 @@ long BattleMech::init (DWORD variantNum)
 		inventory[curItem].hardpointId = 0;
 	}
 
-	//Read in everything but weapons and AMMO
 	for (long curItem = 0;curItem < MAX_MOVER_INVENTORY_ITEMS;curItem++)
 	{
 		mechFile->readUChar((26 + (97 * variantNum)) + curItem, 5, inventory[realItemNum].masterID);
@@ -245,7 +242,6 @@ long BattleMech::init (DWORD variantNum)
 
 		if (inventory[realItemNum].masterID && (inventory[realItemNum].masterID != 255))
 		{
-			// If the component is a JumpJet, increment our jump jet count...
 			switch (MasterComponent::masterList[inventory[realItemNum].masterID].getForm()) 
 			{
 				case COMPONENT_FORM_JUMPJET:
@@ -294,7 +290,6 @@ long BattleMech::init (DWORD variantNum)
 		}
 	}
 
-	//NOW read in the weapons.
 	for (int curItem = 0;curItem < MAX_MOVER_INVENTORY_ITEMS;curItem++)
 	{
 		mechFile->readUChar((26 + (97 * variantNum)) + curItem, 5, inventory[realItemNum].masterID);
@@ -320,7 +315,6 @@ long BattleMech::init (DWORD variantNum)
 
 		if (inventory[realItemNum].masterID && (inventory[realItemNum].masterID != 255))
 		{
-			// If the component is a JumpJet, increment our jump jet count...
 			long sourceWeaponType;
 			if (MasterComponent::masterList[inventory[realItemNum].masterID].getForm() == COMPONENT_FORM_WEAPON_MISSILE)
 				sourceWeaponType = MECH3D_WEAPONTYPE_MISSILE;
@@ -347,7 +341,6 @@ long BattleMech::init (DWORD variantNum)
 				case COMPONENT_FORM_ACTUATOR:
 				case COMPONENT_FORM_ENGINE:
 				case COMPONENT_FORM_HEATSINK:
-					//We did these Above here.
 					break;
 				
 				case COMPONENT_FORM_WEAPON:
@@ -373,18 +366,15 @@ long BattleMech::init (DWORD variantNum)
 					inventory[realItemNum].effectiveness *= WeaponRanges[MasterComponent::masterList[inventory[realItemNum].masterID].getWeaponRange()][1] / 24;
 					ItemLocationToInvLocation[curItem] = realItemNum;
 					realItemNum++;
-					// Cache in the weapon special effect.
 					
 					break;
 					
 				case COMPONENT_FORM_AMMO:
-					//Do these next.
 					break;
 			}
 		}
 	}
 
-	//NOW read in the AMMO
 	for (int curItem = 0;curItem < MAX_MOVER_INVENTORY_ITEMS;curItem++)
 	{
 		mechFile->readUChar((26 + (97 * variantNum)) + curItem, 5, inventory[realItemNum].masterID);
@@ -401,7 +391,6 @@ long BattleMech::init (DWORD variantNum)
 
 		if (inventory[realItemNum].masterID && (inventory[realItemNum].masterID != 255))
 		{
-			// If the component is a JumpJet, increment our jump jet count...
 			switch (MasterComponent::masterList[inventory[realItemNum].masterID].getForm()) 
 			{
 				case COMPONENT_FORM_JUMPJET:
@@ -418,14 +407,12 @@ long BattleMech::init (DWORD variantNum)
 				case COMPONENT_FORM_ACTUATOR:
 				case COMPONENT_FORM_ENGINE:
 				case COMPONENT_FORM_HEATSINK:
-					//Did these above.
 					break;
 				
 				case COMPONENT_FORM_WEAPON:
 				case COMPONENT_FORM_WEAPON_ENERGY:
 				case COMPONENT_FORM_WEAPON_BALLISTIC:
 				case COMPONENT_FORM_WEAPON_MISSILE:
-					//Did These Above, too...
 					break;
 					
 				case COMPONENT_FORM_AMMO:
@@ -457,7 +444,6 @@ long BattleMech::init (DWORD variantNum)
 		}
 	}
 
-	// Now, read in the component layout for each body location...
 	for (long curLocation = 0; curLocation < NUM_MECH_BODY_LOCATIONS; curLocation++) 
 	{
 		body[curLocation].CASE = true;	//ALL MC2 Mechs have CASE everywhere.
@@ -466,7 +452,6 @@ long BattleMech::init (DWORD variantNum)
 		mechFile->readUChar(114 + (97 * variantNum), stupidNewSageColumns[curLocation], internalStructure);
 		body[curLocation].curInternalStructure = internalStructure;
 
-		// Now, determine the damage state for the body location...
 		float damageLevel = (float)body[curLocation].curInternalStructure / body[curLocation].maxInternalStructure;
 
 		if (damageLevel <= 0.0)
@@ -714,7 +699,6 @@ long BattleMech::init (DWORD variantNum)
 	if (type->getExplosionObject() > 0)
 		ObjectManager->objTypeManager->load(type->getExplosionObject(), true);
 		
-	// Calc mech's chassis class...
 	chassisClass = getMechClass();
 
 	// logistics data needs to be initialized if you're going to get values
@@ -833,15 +817,9 @@ LogisticsMasterLocationTableEntry logisticsTable[MAX_MOVER_INVENTORY_ITEMS] =
 #define WEAPONAMMO_SLOT					17
 void BattleMech::resetComponents (long totalComponents, long *componentList)
 {
-	// Create a master component list for this mech.
-	// Remove all of the components logistics can replace.
-	// Add back in all of the components logistics replaced.
-	// Put in the right body locations using the above table.
 	int32_t localMasterComponentList[MAX_MOVER_INVENTORY_ITEMS];
     MemSet(localMasterComponentList, 0xff);
 
-	//Copy current itemList to localLists
-	//Remove all logistics replacable components
 	for (long item = 0;item<MAX_MOVER_INVENTORY_ITEMS;item++)
 	{
 		localMasterComponentList[item] = inventory[item].masterID;
@@ -867,7 +845,6 @@ void BattleMech::resetComponents (long totalComponents, long *componentList)
 		}
 	}
 
-	// Reset the weapon Node Data in the mech Appearance..�.
 	appearance->resetWeaponNodes();
 		
 	//If we added Armor to the mech, remove the armor so that player's new armor
@@ -926,7 +903,6 @@ void BattleMech::resetComponents (long totalComponents, long *componentList)
 	long numElectronics = 0;
 	long numWeaponsAmmo = 0;
 	
-	//Add Heidi's new Components to open locations.
 	for (long newItems = 0;newItems < totalComponents;newItems++)
 	{
 		switch (MasterComponent::masterList[componentList[newItems]].getForm())
@@ -1006,21 +982,17 @@ void BattleMech::resetComponents (long totalComponents, long *componentList)
 		}
 	}
 	
-	//Now use the above lists to re-component out the mech!
 	numAntiMissileSystems = numOther = numWeapons = numAmmos = 0;
 
-	// Read in the mech's non-weapon/non-ammo components...
 	long realItemNum = 0;
 	MemSet(ItemLocationToInvLocation, 0xff);
 
-	//Read in everything but weapons and AMMO
 	for (long curItem = 0;curItem < MAX_MOVER_INVENTORY_ITEMS;curItem++)
 	{
 		inventory[realItemNum].masterID = localMasterComponentList[curItem];
 		
 		if (inventory[realItemNum].masterID && (inventory[realItemNum].masterID != 255))
 		{
-			// If the component is a JumpJet, increment our jump jet count...
 			switch (MasterComponent::masterList[inventory[realItemNum].masterID].getForm()) 
 			{
 				case COMPONENT_FORM_JUMPJET:
@@ -1063,14 +1035,12 @@ void BattleMech::resetComponents (long totalComponents, long *componentList)
 		}
 	}
 
-	//NOW read in the weapons.
 	for (int curItem = 0;curItem < MAX_MOVER_INVENTORY_ITEMS;curItem++)
 	{
 		inventory[realItemNum].masterID = localMasterComponentList[curItem];
 		
 		if (inventory[realItemNum].masterID && (inventory[realItemNum].masterID != 255))
 		{
-			// If the component is a JumpJet, increment our jump jet count...
 			long sourceWeaponType;
 			if (MasterComponent::masterList[inventory[realItemNum].masterID].getForm() == COMPONENT_FORM_WEAPON_MISSILE)
 				sourceWeaponType = MECH3D_WEAPONTYPE_MISSILE;
@@ -1080,7 +1050,6 @@ void BattleMech::resetComponents (long totalComponents, long *componentList)
 				sourceWeaponType = MECH3D_WEAPONTYPE_ENERGY;
 			else
 				sourceWeaponType = MECH3D_WEAPONTYPE_ANY;
-			// If the component is a JumpJet, increment our jump jet count...
 			switch (MasterComponent::masterList[inventory[realItemNum].masterID].getForm()) 
 			{
 				case COMPONENT_FORM_JUMPJET:
@@ -1097,7 +1066,6 @@ void BattleMech::resetComponents (long totalComponents, long *componentList)
 				case COMPONENT_FORM_ACTUATOR:
 				case COMPONENT_FORM_ENGINE:
 				case COMPONENT_FORM_HEATSINK:
-					//We did these Above here.
 					break;
 				
 				case COMPONENT_FORM_WEAPON:
@@ -1123,25 +1091,21 @@ void BattleMech::resetComponents (long totalComponents, long *componentList)
 					inventory[realItemNum].effectiveness *= WeaponRanges[MasterComponent::masterList[inventory[realItemNum].masterID].getWeaponRange()][1] / 24;
 					ItemLocationToInvLocation[curItem] = realItemNum;
 					realItemNum++;
-					// Cache in the weapon special effect.
 					
 					break;
 					
 				case COMPONENT_FORM_AMMO:
-					//Do these next.
 					break;
 			}
 		}
 	}
 
-	//NOW read in the AMMO
 	for (int curItem = 0;curItem < MAX_MOVER_INVENTORY_ITEMS;curItem++)
 	{
 		inventory[realItemNum].masterID = localMasterComponentList[curItem];
 		
 		if (inventory[realItemNum].masterID && (inventory[realItemNum].masterID != 255))
 		{
-			// If the component is a JumpJet, increment our jump jet count...
 			switch (MasterComponent::masterList[inventory[realItemNum].masterID].getForm()) 
 			{
 				case COMPONENT_FORM_JUMPJET:
@@ -1158,14 +1122,12 @@ void BattleMech::resetComponents (long totalComponents, long *componentList)
 				case COMPONENT_FORM_ACTUATOR:
 				case COMPONENT_FORM_ENGINE:
 				case COMPONENT_FORM_HEATSINK:
-					//Did these above.
 					break;
 				
 				case COMPONENT_FORM_WEAPON:
 				case COMPONENT_FORM_WEAPON_ENERGY:
 				case COMPONENT_FORM_WEAPON_BALLISTIC:
 				case COMPONENT_FORM_WEAPON_MISSILE:
-					//Did These Above, too...
 					break;
 					
 				case COMPONENT_FORM_AMMO:
@@ -1251,7 +1213,6 @@ void BattleMech::resetComponents (long totalComponents, long *componentList)
 	// SHould only need to do jump jets!!
 	jumpJets = 255;
 
-	// Now, read in the component layout for each body location...
 	for (long curLocation = 0; curLocation < NUM_MECH_BODY_LOCATIONS; curLocation++) 
 	{
 		body[curLocation].CASE = true;	//ALL MC2 Mechs have CASE everywhere.
@@ -1265,7 +1226,6 @@ void BattleMech::resetComponents (long totalComponents, long *componentList)
 
 		for (long curSpace = 0; curSpace < numSpaces; curSpace++)
 		{
-			//Find out where in the space table this location lies.
 			unsigned char spaceData = 0xff;
 			for (long curTable = 0;curTable < MAX_MOVER_INVENTORY_ITEMS;curTable++)
 			{
@@ -1278,7 +1238,6 @@ void BattleMech::resetComponents (long totalComponents, long *componentList)
 			}
 
 			gosASSERT(spaceData < MAX_MOVER_INVENTORY_ITEMS || spaceData == 0xff);
-			//sebi:
 			if (spaceData >= MAX_MOVER_INVENTORY_ITEMS)
 			{
 				body[curLocation].criticalSpaces[curSpace].inventoryID = 0xff;
@@ -1452,8 +1411,4 @@ void BattleMech::resetComponents (long totalComponents, long *componentList)
 
 	maxWeaponDamage = calcMaxTargetDamage();
 
-	// local variable needs to be set for class
-    //sebi: no really...
-	// should set it to zero ?
-	//numJumpJets = numJumpJets;
 }

@@ -5,9 +5,6 @@
 
 namespace gos_terrain_indirect {
 
-// ---------------------------------------------------------------------------
-// Stage 3 public API
-// ---------------------------------------------------------------------------
 
 bool IsFrameSolidArmed() {
     return s_frameSolidArmed && !s_processArmingDisabled;
@@ -59,12 +56,6 @@ void BeginFrame() {
     s_solidGpuDispatchRanThisFrame = false;
 }
 
-// ---------------------------------------------------------------------------
-// BeginFrameSolidWindow / AppendSolidWindowCandidate — camera-windowed solid
-// dispatch collector.  Structural twin of WaterStream::BeginFrameNarrow /
-// AppendNarrowCandidate (gos_terrain_water_stream.cpp:149/161).  Called from
-// terrain.cpp's existing setupTextures loop; NO new walk is introduced.
-// ---------------------------------------------------------------------------
 void BeginFrameSolidWindow() {
     if (!SolidWindowEnabled()) return;
     // Reserve last-frame max + 10% slack + 64, mirroring water :149-158.
@@ -98,10 +89,6 @@ const uint32_t* SolidWindowStagingData(uint32_t* outCount) {
 bool ComputePreflight() {
     ZoneScopedN("Terrain::IndirectPreflight");
     {
-        // VPL parity-infra retirement lifecycle marker (Debug-instrumentation
-        // rule): one-shot, grep-visible in smoke artifacts. s_packParityMask /
-        // kParityMaskWords / gos_terrain_indirect_getPackParityMask /
-        // ComputeDispatchParity_Check fully removed; txmmgr call removed.
         static bool s_loggedParityRetired = false;
         if (!s_loggedParityRetired) {
             s_loggedParityRetired = true;
@@ -306,7 +293,6 @@ void ComputeDispatch() {
         // driver in some future shader revision; -1 is handled below (skip
         // upload, shader-side uniform defaults to 0 = main-pass behavior).
         g_locSolidReflPass = glGetUniformLocation(g_solidComputeProgram, "u_reflectionPass");
-        // Upload the genuinely-constant uniforms once.
         MC2_GL_UseProgram(g_solidComputeProgram);
         const GLint locMTR  = glGetUniformLocation(g_solidComputeProgram, "u_maxThinRecords");
         const GLint locWUPV = glGetUniformLocation(g_solidComputeProgram, "u_worldUnitsPerVertex");
@@ -314,8 +300,6 @@ void ComputeDispatch() {
         if (locWUPV >= 0) glUniform1f(locWUPV, Terrain::worldUnitsPerVertex);
         MC2_GL_UseProgram(0);
     }
-    // Step 2b (VPL retirement): cmd-patch program compile retired -- the
-    // primary compute writes cmds[0].count directly via atomicAdd.
 
     // Step 2b: bucket-header SSBO demoted behind MC2_BUCKET_HEADER_TRACE.
     // Cached env lookup, used at alloc / bind / clear / readback / teardown.
@@ -363,7 +347,6 @@ void ComputeDispatch() {
         // Still need to run both dispatches to keep cmd buffer in defined state.
     }
 
-    // Advance the thin-record ring slot (same ring as CPU path).
     g_thinRingSlot = (g_thinRingSlot + 1) % kThinRingFrames;
 
     // ── Probe sink — writes tripwires to a file next to mc2.exe regardless of
@@ -549,7 +532,6 @@ void ComputeDispatch() {
             const int priorSlot = (g_thinRingSlot + kThinRingFrames - 1) % kThinRingFrames;
             const GLintptr thinSlotByteOffset = (GLintptr)(priorSlot * kThinRecordBytes);
 
-            // Reuse heap buffers across frames to avoid alloc churn.
             static std::vector<uint32_t> s_canaryBuf;
             static std::vector<uint32_t> s_thinBlock;
             if (s_canaryBuf.size() < (size_t)vis * 2u) s_canaryBuf.resize((size_t)vis * 2u);
@@ -563,7 +545,6 @@ void ComputeDispatch() {
                                (GLsizeiptr)(vis * 2u * sizeof(uint32_t)),
                                s_canaryBuf.data());
 
-            // 2) Read full thin records as packed block (vis * 32 bytes).
             glBindBuffer(GL_SHADER_STORAGE_BUFFER, g_thinRecordSSBO);
             glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, thinSlotByteOffset,
                                (GLsizeiptr)(vis * 32u),
@@ -709,7 +690,6 @@ void ComputeDispatch() {
             (unsigned)waitResult, (unsigned long long)waitUs, (unsigned)mvpFp);
         fflush(stdout);
     }
-    // ── end probe ─────────────────────────────────────────────────────────
 
     // C-02: if the fence for this slot was not signaled (timeout=0 above), the
     // prior GPU consumer is still reading it.  Skip the dispatch to preserve ring
@@ -1122,7 +1102,6 @@ void ComputeDispatch() {
     if (s_ringForceFinish) {
         glFinish();
     }
-    // ── end probe 7 ────────────────────────────────────────────────────────
 
     // ── Probe 3 (MC2_RING_TRACE) — read back the indirect cmd's count after patch ──
     // If a cmd-patch race is occurring under fast rotation, cmd.count may not equal
@@ -1161,7 +1140,6 @@ void ComputeDispatch() {
                 (unsigned)s_cmdMismatchCount);
         }
     }
-    // ── end probe 3 ─────────────────────────────────────────────────────────
 
     // Step 2b: parity probe retired with cmd-patch (commit 2a's safety net no
     // longer needed once cmd-patch is gone -- there is nothing to compare
@@ -1172,7 +1150,6 @@ void ComputeDispatch() {
 
     MC2_GL_UseProgram(0);
 
-    // Restore compute-only slots to clean state.
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, 0);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, 0);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, 0);
@@ -1238,7 +1215,6 @@ bool DrawIndirect() {
         fflush(stderr);
     }
 
-    // Ring fence for the slot just drawn.
     if (g_thinRingFences[g_thinRingSlot]) {
         glDeleteSync(g_thinRingFences[g_thinRingSlot]);
     }
@@ -1359,7 +1335,6 @@ void RenderWaterReflectionPass() {
     glClearColor(prevCC[0], prevCC[1], prevCC[2], prevCC[3]);  // restore clear color
 
     gos_SetTerrainMVP(saved);   // RESTORE production MVP (load-bearing)
-    // RESTORE the dispatch snapshot the water fast path consumes (see above).
     memcpy(g_dispatchMvp16, savedDispatchMvp, sizeof(g_dispatchMvp16));
     g_dispatchMvpFp       = savedDispatchFp;
     g_dispatchMvpFrameIdx = savedDispatchFrameIdx;
@@ -1438,8 +1413,6 @@ const float* gos_terrain_indirect_getRingSlotMvp() {
     return g_thinSlotMVP[slot];
 }
 
-// Slice B4 Stage 1b — C-linkage accessors used by gos_terrain_mask_dispatch::DrawMaskSolid.
-// Probe 8: MVP fingerprint accessors also live here (C linkage for cross-TU call from bridge).
 extern "C" {
 
 unsigned int gos_terrain_indirect_getRecipeSSBO() {

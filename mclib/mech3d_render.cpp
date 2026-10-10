@@ -133,8 +133,6 @@ bool Mech3DAppearance::recalcBounds (void)
 		// [PROJECTZ:ScreenXYOracle id=mech3d_screen_pos]
 		eye->projectForScreenXY(position,screenPos);
 		
-		// First, if we are using perspective, figure out
-		// if object too far from camera.  Far Clip Plane.
 		if (eye->usePerspective)
 		{
 			Stuff::Point3D Distance;
@@ -160,9 +158,6 @@ bool Mech3DAppearance::recalcBounds (void)
 				setVisibilityGatesFromLegacy(true);
 			}
 			
-			// If inside farClip plane, check if behind camera.
-			// Find angle between lookVector of Camera and vector from camPos
-			// to Target.  If angle is less then halfFOV, object is visible.
 			if (inView)
 			{
 				Stuff::Vector3D Distance;
@@ -191,7 +186,6 @@ bool Mech3DAppearance::recalcBounds (void)
 			if (reloadBounds)
 				mechType->reinit();
 
-			//mechType->boundsLowerRightY = (OBBRadius * eye->getTiltFactor() * 2.0f);
 			
 			// do a rough check if on screen.  If no where near, do NOT do the below.
 			// Mighty mighty slow!!!!
@@ -213,7 +207,6 @@ bool Mech3DAppearance::recalcBounds (void)
 				(upperLeft.x <= eye->getScreenResX()) &&
 				(upperLeft.y <= eye->getScreenResY()))
 			{
-				//We are on screen.  Figure out selection box.
 				Stuff::Vector3D boxCoords[8];
 				Stuff::Vector4D bcsp[8];
 	
@@ -277,7 +270,6 @@ bool Mech3DAppearance::recalcBounds (void)
 
 				for (long i=0;i<8;i++)
 				{
-					// [PROJECTZ:ScreenXYOracle id=mech3d_box_rect]
 					eye->projectForScreenXY(boxCoords[i],bcsp[i]);
 					if (!i)
 					{
@@ -347,7 +339,6 @@ bool Mech3DAppearance::recalcBounds (void)
 							}
 						}
 
-						// we are at this LOD level.
 						if (selectLOD != currentLOD)
 						{
 							if (s_mechLodTrace) {
@@ -379,11 +370,9 @@ bool Mech3DAppearance::recalcBounds (void)
 
 						if (currentLOD && baseLOD)
 						{
-						// we are at the Base LOD level.
 							currentLOD = 0;
 
 							BYTE alphaValue = mechShape->GetAlphaValue();
-							//treeShape->ClearAnimation();
 							mc2mechanim::UnregisterImportedActor(mechShape);	// IMPORTED-ACTOR-STABLE-KEY-1
 							delete mechShape;
 							mechShape = NULL;
@@ -391,7 +380,6 @@ bool Mech3DAppearance::recalcBounds (void)
 							mechShape = mechType->mechShape[currentLOD]->CreateFrom();
 							mechShape->SetAlphaValue(alphaValue);
 
-							//Automatically reloads texture and stores it.
 							DWORD r, g, b;
 							getPaintScheme(r, g, b);
 							resetPaintScheme(r,g,b);
@@ -903,7 +891,6 @@ long Mech3DAppearance::render (long depthFixup)
 
 			}
 
-			// Render GOSFX
 			if (!InEditor)
 			{
 				gosFX::Effect::DrawInfo drawInfo;
@@ -977,7 +964,6 @@ long Mech3DAppearance::render (long depthFixup)
 						jumpJetEffect->Draw(&drawInfo); if (s_fxCountLog) fxCountTick(FX_JUMP);
 				}
 						
-				// Arm Blown FX
 				if (leftShoulderBoom)
 				{
 					Stuff::LinearMatrix4D 	shapeOrigin;
@@ -1028,7 +1014,6 @@ long Mech3DAppearance::render (long depthFixup)
 						rightShoulderBoom->Draw(&drawInfo); if (s_fxCountLog) fxCountTick(FX_RBOOM);
 				}
 				
-				// All other FXs
 				if (isSmoking != -1)
 				{
 					Stuff::LinearMatrix4D 	shapeOrigin;
@@ -1113,7 +1098,6 @@ long Mech3DAppearance::render (long depthFixup)
 		
 		if ((sensorLevel > 0) && (sensorLevel < 5))
 		{
-			// Draw Sensor Contact here.
 			if (sensorLevel > 1)
 			{
 				sensorSquareShape->Render();
@@ -1223,7 +1207,6 @@ long Mech3DAppearance::renderShadows (void)
 
 	mechShape->SetTextureHandle(0,localTextureHandle);
 
-	// C3: route renderShadows gate to GPU-lagged visibility when killswitch is enabled.
 	const bool mechShadowVisible = s_gpuCullLifecycle
 		? (gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(actorHandle_)) && visible)
 		: (inView && visible);

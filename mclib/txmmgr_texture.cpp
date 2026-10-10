@@ -69,8 +69,6 @@ DWORD MC_TextureManager::textureFromMemory (DWORD *data, gos_TextureFormat key, 
 	ZoneScopedN("MC_TextureManager::textureFromMemory");
 	long i=0;
 
-	// If we called this, we KNOW the texture is NOT loaded!
-	// Find first empty NODE
 	{
 		ZoneScopedN("MC_TextureManager::textureFromMemory findSlot");
 		for (i=0;i<MC_MAXTEXTURES;i++)
@@ -97,7 +95,6 @@ DWORD MC_TextureManager::textureFromMemory (DWORD *data, gos_TextureFormat key, 
 	masterTextureNodes[i].logicalWidth = width;
 	masterTextureNodes[i].logicalHeight = width;
 
-	// Find and store the width.
 	masterTextureNodes[i].width = width;
 	long txmSize = width * width * bitDepth;
 	
@@ -119,7 +116,6 @@ DWORD MC_TextureManager::textureFromMemory (DWORD *data, gos_TextureFormat key, 
 	}
 	compressedTextureSize += txmCompressSize;
 	
-	// Create a block of cache memory to hold this texture.
 	if (!masterTextureNodes[i].textureData )
 	{
 		ZoneScopedN("MC_TextureManager::textureFromMemory cacheAlloc");
@@ -143,7 +139,6 @@ DWORD MC_TextureManager::textureInstanceExists (const char *textureFullPathName,
 {
 	long i=0;
 
-	// Is this texture already Loaded?
 	for (i=0;i<MC_MAXTEXTURES;i++)
 	{
 		if (masterTextureNodes[i].nodeName)
@@ -189,7 +184,6 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 		}
 	}
 
-	// Is this texture already Loaded?
 	for (i=0;i<MC_MAXTEXTURES;i++)
 	{
 		if (masterTextureNodes[i].nodeName && (S_stricmp(masterTextureNodes[i].nodeName,textureFullPathName) == 0))
@@ -210,9 +204,6 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 		}
 	}
 
-	// If we get here, texture has not been loaded yet.
-	// Load it now!
-	// Find first empty NODE
 	for (i=0;i<MC_MAXTEXTURES;i++)
 	{
 		if (masterTextureNodes[i].gosTextureHandle == 0xffffffff)
@@ -642,7 +633,6 @@ DWORD MC_TextureManager::copyTexture( DWORD texNodeID )
 	return -1;
 
 }
-// MC_TextureNode
 DWORD MC_TextureNode::get_gosTextureHandle (void)	//If texture is not in VidRAM, cache a texture out and cache this one in.
 {
 	// PERF 2026-05-07: stripped MC_TextureNode::get_gosTextureHandle Tracy
@@ -766,7 +756,6 @@ DWORD MC_TextureNode::get_gosTextureHandle (void)	//If texture is not in VidRAM,
 					}
 					else
 					{
-						// Derive sidecar path: replace extension with .ktx2.
 						char sidecar[1024];
 						strncpy(sidecar, nodeName, sizeof(sidecar) - 1);
 						sidecar[sizeof(sidecar) - 1] = '\0';
@@ -777,7 +766,6 @@ DWORD MC_TextureNode::get_gosTextureHandle (void)	//If texture is not in VidRAM,
 						bool haveRoom = false;
 						if (dot && dot > lastSep)
 						{
-							// truncate at the extension dot, then append .ktx2
 							size_t base = (size_t)(dot - sidecar);
 							if (base + 6 < sizeof(sidecar)) { strcpy(sidecar + base, ".ktx2"); haveRoom = true; }
 						}
@@ -863,7 +851,6 @@ DWORD MC_TextureNode::get_gosTextureHandle (void)	//If texture is not in VidRAM,
 				gos_LockTexture(gosTextureHandle, 0, 0, &pTextureData);
 			}
 		 
-			// Create a block of cache memory to hold this texture.
 			DWORD txmSize = pTextureData.Height * pTextureData.Height * sizeof(DWORD);
 			gosASSERT(textureData);
 
@@ -874,7 +861,6 @@ DWORD MC_TextureNode::get_gosTextureHandle (void)	//If texture is not in VidRAM,
 				memcpy(pTextureData.pTexture,MC_TextureManager::lzBuffer2,txmSize);
 			}
 
-			// Unlock the texture
 			{
 				gos_UnLockTexture(gosTextureHandle);
 			}

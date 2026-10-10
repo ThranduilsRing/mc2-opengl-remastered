@@ -32,7 +32,6 @@ static bool devShellSimSpeed(const char* paramsJson,
 	return true;
 }
 
-//----------------------------------------------------------------------------
 void Mission::init (const char *missionName, long loadType, long dropZoneID, Stuff::Vector3D* dropZoneList, char commandersToLoad[8][3], long numMoversPerCommander)
 {
 	extern int g_lightProbeSetupPath; g_lightProbeSetupPath = 1; // [GPUPROPS v1]
@@ -88,9 +87,6 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 
 	terminationResult = mis_PLAYING; 
 
-	//Start finding the Leaks
-	//systemHeap->startHeapMallocLog();
-	//systemHeap->dumpRecordLog();
 
 	loadProgress = 0.0f;
 
@@ -131,8 +127,6 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 			}
 	}
 				
-	//-------------------------------------------
-	// Always reset turn at scenario start
 	turn = 0;
 	terminationCounterStarted = 0;
 	// GAMEPLAY-DRIVER-2: scope a forced outcome to the mission that forced it.
@@ -142,8 +136,6 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 	x=GetCycles();
 	#endif
 
-	//-----------------------
-	// Init the ABL system...
 	initABL();
 
 #ifdef LAB_ONLY
@@ -156,15 +148,11 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 	{ ZoneScopedN("Mission::init initTGLForMission"); initTGLForMission(); }
 	mission_phase_mark("setup_tgl_ready"); // LOAD-PHASE-FACTS-1
 	
-	//--------------------------------------------------------------
-	// Start the Mission Heap
 	missionHeap = new UserHeap;
 	gosASSERT(missionHeap != NULL);
 	
 	missionHeap->init(missionHeapSize,"MISSION");
 	
-	//--------------------------
-	// Load Game System stuff...
 	FullPathFileName fullGameSystemName;
 	fullGameSystemName.init(missionPath, "gamesys", ".fit");
 	
@@ -261,8 +249,6 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 	if (result != NO_ERR)
 		MaxExtractUnitDistance = 1280.0f;	//Ten Tiles away
 		
-	//----------------------------------------------------------------------
-	// Now that we have some base values, load the master component table...
 	if (!MasterComponent::masterList) {
 		FullPathFileName compFileName;
 		compFileName.init(objectPath,"compbas",".csv");
@@ -321,22 +307,17 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 		CheatHitDamage = 5.0f;
 #endif
 	
-	//---------------------------------------
-	// Read in difficulty here if it exits.
 	InitDifficultySettings(gameSystemFile);
 
 	result = Mover::loadGameSystem(gameSystemFile, maxVisualRange);
 	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
 	MC2_VERIFY(result == NO_ERR, "Mission::init: Mover::loadGameSystem failed (%ld)", result);
 
-	//result = loadMultiplayerGameSystem(gameSystemFile);
-	//gosASSERT(result == NO_ERR);
 
 	result = BattleMech::loadGameSystem(gameSystemFile);
 	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
 	MC2_VERIFY(result == NO_ERR, "Mission::init: BattleMech::loadGameSystem failed (%ld)", result);
 
-	//--------------------------------------------------------------------
 	result = GroundVehicle::loadGameSystem(gameSystemFile);
 	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
 	MC2_VERIFY(result == NO_ERR, "Mission::init: GroundVehicle::loadGameSystem failed (%ld)", result);
@@ -457,8 +438,6 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 			theSkyNumber = DEFAULT_SKY;
 	}
 		
-	//-----------------------------------------
-	// Begin Setting up Teams and Commanders...
 	loadProgress = 10.0f;
 
 	result = missionFile->seekBlock("Teams");
@@ -510,7 +489,6 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 				"MC2_MISSION_CYCLE_TEST: synthetic populate wrong "
 				"(teams=%ld commanders=%ld)", Team::numTeams, Commander::numCommanders);
 
-			// First reset = the "destroy frees" leg.
 			Mission::resetTeamsAndCommanders();
 			// Second reset back-to-back = the ex-double-free (init frees, then
 			// destroy frees again). MUST be a clean no-op with home NULL.
@@ -526,8 +504,6 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 		}
 	}
 
-	//------------------------------------------------------------
-	// First, let's see how many teams and commanders there are...
 	long maxTeamID = -1;
 	long maxCommanderID = -1;
 	if (loadType == MISSION_LOAD_MP_LOGISTICS) {
@@ -552,8 +528,6 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 				char partName[12];
 				sprintf(partName,"Part%d",i);
 
-				//------------------------------------------------------------------
-				// Find the object to load
 				result = missionFile->seekBlock(partName);
 				// MC2_VERIFY reclassified from gosASSERT (slice MC2-VERIFY-LIVE-1)
 				if (!MC2_VERIFY(result == NO_ERR, "Mission::init: missing [%s] block", partName))
@@ -678,8 +652,6 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 		Commander::commanders[0]->setTeam(Team::home);
 	}
 
-	//-----------------------------
-	// Init Trigger Area Manager...
 	if (Mover::triggerAreaMgr) {
 		delete Mover::triggerAreaMgr;
 		Mover::triggerAreaMgr = NULL;
@@ -687,8 +659,6 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 	Mover::triggerAreaMgr = new TriggerAreaManager;
 	Assert(Mover::triggerAreaMgr != NULL, 0, " Mossion.init: unable to init triggerAreaMgr ");
 
-	//-----------------------------------
-	// Setup the Sensor System Manager...
 	SensorManager = new SensorSystemManager;
 	Assert(SensorManager != NULL, 0, " Unable to init sensor system manager ");
 	result = SensorManager->init(true);
@@ -711,9 +681,6 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 	MCTimeTeamLoad=x1-x;
 #endif
 
-	//-----------------------------------------------------------------
-	// Load the names of the scenario tunes.
-	//result = missionFile->seekBlock("Music");
 	result = missionFile->seekBlock("MissionSettings");
 	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
 	MC2_VERIFY(result == NO_ERR, "Mission::init: mission .fit missing [MissionSettings] block");
@@ -746,8 +713,6 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 	result = craterManager->init(1000,20479,"feet");
 	gosASSERT(result == NO_ERR);
 	
-	//-----------------------------------------------------------------
-	// Start the object system next.	
 	ObjectManager = new GameObjectManager;
 	if (!ObjectManager)
 		Fatal(0, " Mission.init: unable to create ObjectManager ");
@@ -755,12 +720,8 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 	gosASSERT(result == NO_ERR);
 
 	
-	//-----------------------------------------------------------------
-	// Start the collision detection system. -- Doesn't need objects?
 	ObjectManager->initCollisionSystem(missionFile);
 
-	//------------------------------------------------------------
-	// Start the Terrain System
 
 	FullPathFileName terrainFileName;
 	terrainFileName.init( missionPath, missionName, ".pak" ); 
@@ -811,10 +772,7 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 	loadProgress = 40.0f;
 	mission_phase_mark("terrain_ready"); // LOAD-PHASE-FACTS-1: FST/pak parse + terrain prime done
 
-//	land->recalcWater();		//Should have already been done in the editor
 
-	//----------------------------------------------------
-	// Start GameMap for Movement System
 	Assert(SimpleMovePathRange > 20, SimpleMovePathRange, " Simple MovePath Range too small ");
 	MOVE_init(SimpleMovePathRange);
 	if (pakFile.seekPacket(4) == NO_ERR)
@@ -882,8 +840,6 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 	MCTimeMoveLoad=x-x1;
 #endif
 
-	//----------------------
-	// Load ABL Libraries...
 	long numErrors = 0, numLinesProcessed = 0;
 	// ABL-CORE-LIBRARY-MOUNT-1: declarative core-library table (replaces three hardcoded
 	// gosASSERT'd loads). orders/miscfunc are universal; corebrain (MCO / wolfman-MC2X) and
@@ -918,10 +874,6 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 			             lib.name, library ? "OK" : "NULL", numErrors);
 	}
 
-	//---------------------------
-	// Load the mission script...
-	//-----------------------------------------------------------------
-	// We now read in the mission Script File Name
 	result = missionFile->seekBlock("Script");
 	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
 	MC2_VERIFY(result == NO_ERR, "Mission::init: mission .fit missing [Script] block");
@@ -973,7 +925,6 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 	gosASSERT(brainErr == NO_ERR);
 
 	missionBrain->setName("Mission");
-	//MissionBrain->setStep(TRUE);
 
 	missionBrainParams = new ABLParam;
 	gosASSERT(missionBrainParams != NULL);
@@ -987,8 +938,6 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 
 	loadProgress = 41.0f;
 
-	//-------------------------------------------
-	// Load all MechWarriors for this mission...
 	MechWarrior::setup();
 
 	result = missionFile->seekBlock("Warriors");
@@ -1021,8 +970,6 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 			char warriorName[12];
 			sprintf(warriorName,"Warrior%d",i);
 			
-			//-------------------------
-			// Find the warrior to load
 			result = missionFile->seekBlock(warriorName);
 			Assert(result == NO_ERR, i, " Could not find Warrior Number Block ");
 
@@ -1041,8 +988,6 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 			if (!pilot)
 				STOP(("Too many pilots in this mission!"));
 			
-			//--------------------------------------
-			// Load the mechwarrior into the mech...
 			FullPathFileName pilotFullFileName;
 			pilotFullFileName.init(warriorPath, warriorFile, ".fit");
 			
@@ -1062,8 +1007,6 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 			delete pilotFile;
 			pilotFile = NULL;
 			
-			//----------------------------
-			// Read in the Brain module...
 			char moduleName[128];
 			result = missionFile->readIdString("Brain", moduleName, 127);
 			// MC2_VERIFY reclassified from gosASSERT (slice MC2-VERIFY-LIVE-1)
@@ -1143,7 +1086,6 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 					"Mission::init: warriorList[%lu] is NULL (loadBrainParameters)", i))
 				continue;	// log mode: skip the missing warrior
 			result = MechWarrior::warriorList[i]->loadBrainParameters(missionFile, i);
-			//Assert(result == NO_ERR, result, " Could not load Warrior Brain Parameters ");
 		}
 
 	}
@@ -1314,7 +1256,6 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 				long unitRefResult  = aiFit->readIdString("unitRef",  unitRefBuf, 31);
 				long modeResult     = aiFit->readIdLong("mode", modeValLong);
 				if (unitRefResult == NO_ERR && modeResult == NO_ERR) {
-					// Parse "Warrior%d" -> 1-based index.
 					int warriorIdx = -1;
 					std::sscanf(unitRefBuf, "Warrior%d", &warriorIdx);
 					if (warriorIdx >= 1 && warriorIdx <= (int)numWarriors) {
@@ -1326,7 +1267,6 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 								case 2: fitMode = BrainRuntimeMode::Enhanced; break;
 								default: break;
 							}
-							// setBrainRuntimeMode allocates brainRuntime if needed + sets mode.
 							w->setBrainRuntimeMode(fitMode);
 							std::fprintf(stderr, "[BRAIN_RT] FIT load warriorIdx=%d unitRef=%s mode=%s\n",
 								warriorIdx,
@@ -1390,14 +1330,12 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 					if (tacFit->readIdFloat(kv.name, val) == NO_ERR)
 						loadedWeights[kv.idx] = (val < 0.0f) ? 0.0f : val;
 				}
-				// Normalize
 				float sum = 0.0f;
 				for (int i = 0; i < NUM_TACTICS; i++) sum += loadedWeights[i];
 				if (sum > 0.0f) {
 					float inv = 1.0f / sum;
 					for (int i = 0; i < NUM_TACTICS; i++) loadedWeights[i] *= inv;
 				}
-				// Distribute to all warriors that have a brainRuntime
 				int loadCount = 0;
 				for (unsigned long i = 1; i <= numWarriors; i++) {
 					MechWarriorPtr w = MechWarrior::warriorList[i];
@@ -1455,7 +1393,6 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 			std::fprintf(stderr, "[BRAIN_DISPATCH_FSM_TODO] WARN: MC2_BRAIN_DISPATCH_FSM_TODO=1 requires MC2_BRAIN_DISPATCH=1 — inert\n");
 			std::fflush(stderr);
 		}
-		// TECHSCRIPT-DISPATCH-1D: gate-dependency check for DISPATCH_VAR.
 		if (dispatchVarOn && !dispatchOn) {
 			std::fprintf(stderr, "[BRAIN_DISPATCH_VAR] WARNING: MC2_BRAIN_DISPATCH_VAR=1 requires MC2_BRAIN_DISPATCH=1 -- var handling is INERT\n");
 			std::fflush(stderr);
@@ -1502,7 +1439,6 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 				BrainSpecialBody tmpBody;
 				scanFsmTodosFromFile(specialFitName, tmpBody);
 
-				// Count by kind for the summary line.
 				int nStateDef = 0, nStateEnd = 0, nTrans = 0, nTransBack = 0, nOther = 0;
 				for (const FsmTodoEntry& e : tmpBody.fsmTodos) {
 					switch (e.kind) {
@@ -1563,11 +1499,6 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 
 	loadProgress = 43.0f;
 
-	//-----------------------------------------------------------------
-  	// All systems are GO if we reach this point.  Now we need to
-	// parse the scenario file for the Objects we need for this scenario
-	// We then create each object and place it in the world at the 
-	// position we read in with the frame we read in.
 	result = missionFile->seekBlock("Parts");
 	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1):
 	// the SP object-instantiation pass; a missing [Parts] block leaves numParts
@@ -1604,9 +1535,6 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 		memset(parts,0,sizeof(Part) * (numParts + 1));
 
 #ifdef USE_ALTERNATES
-		//------------------------------------------------------------
-		// Before we actually read in the parts, do some prep work for
-		// determining squad alternatives...
 		long numSquads = 0;
 		long squadMap[MAX_SQUADS];
 		for (long i = 0; i < MAX_SQUADS; i++)
@@ -1688,8 +1616,6 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 			char partName[12];
 			sprintf(partName,"Part%d",i);
 			
-			//------------------------------------------------------------------
-			// Find the object to load
 			result = missionFile->seekBlock(partName);
 			// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1):
 			// NumParts promised this Part block; a missing block leaves parts[i]
@@ -1736,16 +1662,12 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 			}
 #endif
 
-			//------------------------------------------------------------------
-			// Find out what kind of object this is.
 			result = missionFile->readIdULong("ObjectNumber",parts[i].objNumber);
 			// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1):
 			// objNumber feeds loadObjectType() below; a failed read leaves it
 			// uninitialized-then-used to spawn the wrong/garbage object type.
 			MC2_VERIFY(result == NO_ERR, "Mission::init: [%s] missing ObjectNumber", partName);
 
-			//-------------------------------------------------
-			// Read in the data needed to control the object...
 			result = missionFile->readIdULong("ControlType", parts[i].controlType);
 			// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
 			MC2_VERIFY(result == NO_ERR, "Mission::init: [%s] missing ControlType", partName);
@@ -1766,8 +1688,6 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 			result = missionFile->readIdULong("VariantNumber", parts[i].variantNum);
 			if (result != NO_ERR)
 				parts[i].variantNum = 0;		//FOR NOW!!!!!!!!!!!!!!!!
-												//MAKE a REAL error when Heidi fixes editor.
-												//-fs 12/7/99
 
 			if (usingAlternate)
 			{
@@ -1780,8 +1700,6 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 				MC2_VERIFY(result == NO_ERR, "Mission::init: [%s] missing Pilot", partName);
 			}
 
-			//------------------------------------------------------------------
-			// Read the object's position, initial velocity and rotation.
 			result = missionFile->readIdFloat("PositionX",parts[i].position.x);
 			// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
 			MC2_VERIFY(result == NO_ERR, "Mission::init: [%s] missing PositionX", partName);
@@ -1884,9 +1802,6 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 	}
 
 	loadProgress = 48.5f;
-	//--------------------------------------------------------------------------
-	// Now that the parts data has been loaded, let's prep the ObjectManager for
-	// the real things. First, count the number of objects we need...
 	long numMechs = 0;
 	long numVehicles = 0;
 	for (int i = 1; i < (numParts + 1); i++) 
@@ -1969,8 +1884,6 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 		       g_mc2FrameCounter); fflush(stdout);
 	}
 
-	//-------------------------
-	// Load the mech objects...
 	long curMech = 0;
 	long curVehicle = 0;
 	for (long t = 0; t < 8; t++)
@@ -2036,8 +1949,6 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 	if (MPlayer)
 		MPlayer->initSpecialBuildings(commandersToLoad);
 
-	//----------------------------------------------
-	// Read in the Mission Time Limit.
 	{
 		m_timeLimit = -1.0f	/*seconds  IF -1.0 mission never times out!!! -fs*/;
 		long result = 0;
@@ -2061,8 +1972,6 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 			ObjectManager->getByWatchID(parts[DisableAtStart[i]].objectWID)->setDebugFlag(OBJECT_DFLAG_DISABLE, true);
 	}
 
-	//----------------------------------------------
-	// Read in the Objectives.  Safe to have none.
 	for (int i = 0; i <= maxTeamID; i++)
 		Team::teams[i]->loadObjectives(missionFile);
 
@@ -2092,8 +2001,6 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 	MCTimeObjectiveLoad=x-x1;
 #endif
 
-	//----------------------------
-	// Read in Commander Groups...
 	for (long curCommanderId = 0; curCommanderId < MAX_MC_PLAYERS; curCommanderId++) {
 		long numGroups = 0;
 		char headingStr[128];
@@ -2124,8 +2031,6 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 			!MC2_VERIFY_NOTNULL(Commander::commanders[ctlCommander], "Mission::init commander-groups Commander::commanders[]"))
 			continue;
 		while (result == NO_ERR) {
-			//---------------------------
-			// Read in the Group Mates...
 			bool pointSet = FALSE;
 			long groupMates[MAX_MOVERGROUP_COUNT_START];
 			result = missionFile->readIdLongArray("Mates", groupMates, MAX_MOVERGROUP_COUNT_START);
@@ -2147,8 +2052,6 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 		}
 	}
 
-	//-----------------------------------------------------------------------
-	// Now that the parts are loaded, let's build the roster for each team...
 	for (int i = 0; i < Team::numTeams; i++)
 		Team::teams[i]->buildRoster();
 
@@ -2164,8 +2067,6 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 	MCTimeCommanderLoad=x1-x;
 #endif
 
-	//-----------------------------------------------------
-	// This tracks time since scenario started in seconds.
 	LastTimeGetTime = 0xffffffff;
 	scenarioTime = 0.0;
 	MissionStartTime = 0;
@@ -2176,13 +2077,9 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 	delete gameSystemFile;
 	gameSystemFile = NULL;
 
-	//----------------------------
-	// Create and load the Weather
 	weather = new Weather;
 	weather->init(missionFile);
 	
- 	//---------------------------------------------------------------
-	// Start the Camera and Lists
 	eye = new GameCamera;
 	eye->init();
 	gosASSERT(eye != NULL);
@@ -2199,8 +2096,6 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 	MCTimeMiscLoad=x-x1;
 #endif
 
-	//----------------------------------------------------------------------------
-	// Start the Mission GUI
 	missionInterface = new MissionInterfaceManager;
 	gosASSERT(missionInterface != NULL);
 	
@@ -2224,13 +2119,11 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 	// until Mission::start() arms it (world fully live).
 	MissionInterfaceManager::invalidateHoverTarget();
 	
-	//----------------------------------------------------------------------------
 	userInput->setMouseCursor(mState_NORMAL);
 
 	loadProgress = 100.0;
 
 	
-	//MechWarrior::initGoalManager(200);
 
 	if (tempSpecialAreaFootPrints) {
 		systemHeap->Free(tempSpecialAreaFootPrints);
@@ -2240,19 +2133,6 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 
 	Mover::initOptimalCells(32);
 
-	//--------------------------------------------------
-	// Close all walls and open gates and landbridges...
-//	GameObjectPtr wallObjects[MAX_WALL_OBJECTS];
-//	long numWalls = ObjectManager->getSpecificObjects(BUILDING, BUILDING_SUBTYPE_WALL, wallObjects, MAX_WALL_OBJECTS);
-//	for (i = 0; i < numWalls; i++)
-//		((BuildingPtr)wallObjects[i])->closeSubAreas();
-//	long numLandBridges = ObjectManager->getSpecificObjects(BUILDING, BUILDING_SUBTYPE_LANDBRIDGE, wallObjects, MAX_WALL_OBJECTS);
-//	for (i = 0; i < numLandBridges; i++)
-//		((BuildingPtr)wallObjects[i])->openSubAreas();
-//	for (i = 0; i < ObjectManager->getNumGates(); i++) {
-//		GatePtr gate = ObjectManager->getGate(i);
-//		gate->openSubAreas();
-//	}
 
 	if (CombatLog)
 		MechWarrior::logPilots(CombatLog);
@@ -2263,7 +2143,6 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 #endif
 
 #ifdef LAB_ONLY	
-	//Add Mission Load statistics to GameOS Debugger screen!
 	MCTimeABLLoad       *= OneOverProcessorSpeed;
 	MCTimeMiscToTeamLoad*= OneOverProcessorSpeed;
 	MCTimeTeamLoad      *= OneOverProcessorSpeed;

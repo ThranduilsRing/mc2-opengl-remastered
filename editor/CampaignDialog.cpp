@@ -29,37 +29,30 @@ static char THIS_FILE[] = __FILE__;
 #endif
 #endif /*gos doesn't like this */
 
-/////////////////////////////////////////////////////////////////////////////
-// CCampaignDialog dialog
 
 
 CCampaignDialog::CCampaignDialog(CWnd* pParent /*=NULL*/)
 	: CDialog(CCampaignDialog::IDD, pParent)
 {
-	//{{AFX_DATA_INIT(CCampaignDialog)
 	m_CBillsEdit = 0;
 	m_FinalVideoEdit = _T("");
 	m_NameEdit = _T("");
 	m_NameResourceStringIDEdit = _T("");
-	//}}AFX_DATA_INIT
 }
 
 
 void CCampaignDialog::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
-	//{{AFX_DATA_MAP(CCampaignDialog)
 	DDX_Control(pDX, IDC_CA_GROUP_LIST, m_GroupListControl);
 	DDX_Text(pDX, IDC_CA_CBILLS_EDIT, m_CBillsEdit);
 	DDX_Text(pDX, IDC_CA_FINAL_VIDEO_EDIT, m_FinalVideoEdit);
 	DDX_Text(pDX, IDC_CA_NAME_EDIT, m_NameEdit);
 	DDX_Text(pDX, IDC_CA_NAME_RESOURCE_STRING_ID_EDIT, m_NameResourceStringIDEdit);
-	//}}AFX_DATA_MAP
 }
 
 
 BEGIN_MESSAGE_MAP(CCampaignDialog, CDialog)
-	//{{AFX_MSG_MAP(CCampaignDialog)
 	ON_BN_CLICKED(IDC_CA_FINAL_VIDEO_BROWSE_BUTTON, OnCaFinalVideoBrowseButton)
 	ON_BN_CLICKED(ID_CA_EXIT, OnCaExit)
 	ON_BN_CLICKED(IDC_CA_ADD_BUTTON, OnCaAddButton)
@@ -72,11 +65,8 @@ BEGIN_MESSAGE_MAP(CCampaignDialog, CDialog)
 	ON_BN_CLICKED(IDC_CA_NAME_EDIT_BUTTON, OnCaNameEditButton)
 	ON_BN_CLICKED(ID_CA_SAVE_BUTTON, OnCaSaveButton)
 	ON_WM_CLOSE()
-	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
-/////////////////////////////////////////////////////////////////////////////
-// CCampaignDialog message handlers
 
 void CCampaignDialog::OnCaFinalVideoBrowseButton() 
 {
@@ -457,7 +447,6 @@ BOOL CCampaignDialog::OnInitDialog()
 	// TODO: Add extra initialization here
 	
 	return TRUE;  // return TRUE unless you set the focus to a control
-	              // EXCEPTION: OCX Property Pages should return FALSE
 }
 
 void CCampaignDialog::OnClose() 

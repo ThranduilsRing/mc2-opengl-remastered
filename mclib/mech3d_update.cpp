@@ -26,7 +26,6 @@ long Mech3DAppearance::update (bool animate)
 	if (!mechShape)
 		return TRUE;
 
-	// Recycle the weapon Nodes
 	if (nodeRecycle)
 	{
 		for (long i=0;i<mechType->numWeaponNodes;i++)
@@ -95,11 +94,8 @@ long Mech3DAppearance::update (bool animate)
 		currentFrame = 0;
 	}
 	
-	// Check to see if we need to stop NOW!!!!!!!!!
 	if (checkStop() && !inDebugMoveMode && !jumpSetup && (getVelocityMagnitude() != 0.0f) && (currentGestureId != GestureJump))
 	{
-		// We are at the goal.  Store off
-		// our current gesture state.
 		currentGestureId = 2;		//Force us to the stand gesture
 		oldStateGoal = 1;			//We always came FROM STAND
 		currentStateGoal = -1;		//Not going anywhere
@@ -109,14 +105,8 @@ long Mech3DAppearance::update (bool animate)
 	
 	long newGestureId = -1;			//Assume we do not need to transition.
 	
-	// Check if currentStateGoal is -1.
-	// If it is not, we need to move to a new gesture to get to our goal.
-	// Check if we can change gestures.  If yes, go through change over.
-	// Combines three separate old chunks o code.
 	if (currentStateGoal != -1)
 	{
-		// Find out how we get to Goal.  If result is
-		// -1, we are already at goal.
 		long arrayIdx = (oldStateGoal * GESTURE_OFFSET_SIZE) + (currentStateGoal *  MAX_TRANSITION_GESTURES) + transitionState;
 		newGestureId = transitionArray[arrayIdx];
 
@@ -127,8 +117,6 @@ long Mech3DAppearance::update (bool animate)
 			long firstFrame = currentFrame;
 			if (newGestureId == -1)		//We have reached our goal.
 			{
-				// We are at the goal.  Store off
-				// our current gesture state.
 				oldStateGoal = currentStateGoal;
 				if (oldStateGoal == MECH_STATE_JUMPING)
 					oldStateGoal = 1;		//We are always standing AFTER a jump or a fall!
@@ -145,8 +133,6 @@ long Mech3DAppearance::update (bool animate)
 			// NOTE:  This may be a two way gesture.  Most will be
 			// set to zero, but some may need to be set to last.
 			{
-				// Now actually reset everything and setup flags
-				// to facilitate the playing of the new gesture
 				currentGestureId = newGestureId;
 				setFirstFrame = true;
 				firstFrame = mechType->gestures[currentGestureId].frameStart;
@@ -189,7 +175,6 @@ long Mech3DAppearance::update (bool animate)
 	if (mechFrameRate < 0.0)
 		mechFrameRate = -mechFrameRate;
 
-	// Do jump magic here.
 	if ((currentGestureId == GestureJump) && !inJump)
 	{
 		inJump = true;
@@ -201,7 +186,6 @@ long Mech3DAppearance::update (bool animate)
 		float takeoffFrame = mechType->getJumpTakeoffFrame();
 		float landingFrame = mechType->getJumpLandFrame();
 
-		// Get mech flying toward targetPosition.
 		Stuff::Vector3D ownerPosition = position;
 		Stuff::Vector3D targetPosition = jumpDestination;
 		jumpVelocity.Subtract(targetPosition,ownerPosition);
@@ -279,7 +263,6 @@ long Mech3DAppearance::update (bool animate)
 			// Saves myriad compares below.
 			atTransitionToNextGesture = FALSE;
 					
-			// Increment Frames -- Everything else!
 			if ((frameInc != 0.0f) || (singleStepMode))
 			{
 				if (!setFirstFrame)		//DO NOT ANIMATE ON FIRST FRAME!  Wait a bit!
@@ -364,7 +347,6 @@ long Mech3DAppearance::update (bool animate)
 					}
 				}
 
-				//Check Positive overflow of gesture
 				if (currentFrame >= mechType->getNumFrames(currentGestureId))
 				{
 					if ((currentStateGoal == -1) && (hitGestureId == -1) && (currentGestureId != GestureIdle))		//Are we just Looping or transitioning?
@@ -388,7 +370,6 @@ long Mech3DAppearance::update (bool animate)
 					}
 				}
 	
-				//Check negative overflow of gesture
 				if (currentFrame < 0)
 				{
 					if ((currentStateGoal == -1) && (hitGestureId == -1))
@@ -419,7 +400,6 @@ long Mech3DAppearance::update (bool animate)
 		
 	if ((currentFrame > 0.0f) && (currentFrame >= mechType->getNumFrames(currentGestureId)))
 		currentFrame = 0.0f;
-//		STOP(("CurrentFrame is greater then numFrames.  Frame %f,  NumFrames %f, GestureId %d",currentFrame,mechType->getNumFrames(currentGestureId),currentGestureId)); 
 		
 #ifdef _DEBUG
 	if (logFile && (inDebugMoveMode))
@@ -512,7 +492,6 @@ long Mech3DAppearance::update (bool animate)
 		}
 	}
 
-	// If currentGestureId is 2 and baseRootNodeHeight is not set, set it!!
 	if (baseRootNodeHeight == -99999.9f)
 	{
 		if (rootNodeIndex == -1)
@@ -536,7 +515,6 @@ long Mech3DAppearance::update (bool animate)
 	Stuff::UnitQuaternion qRotation;
  	if (leftArmOff && leftArm && leftArmRecalc())
 	{
-		// Update the dynamics and position here for leftArm
 		float speed = dVel[1].GetLength();
 		if (speed)
 		{
@@ -615,7 +593,6 @@ long Mech3DAppearance::update (bool animate)
 	
 	if (rightArmOff && rightArm && rightArmRecalc())
 	{
-		// Update the dynamics and position here for leftArm
 		float speed = dVel[0].GetLength();
 		if (speed)
 		{
@@ -707,7 +684,6 @@ void Mech3DAppearance::blowLeftArm (void)
 	// Can easily move to a node if a node becomes available.
 	if (strcmp(weaponEffects->GetEffectName(SHOULDER_POP_ID),"NONE") != 0)
 	{
-		// Yes, load it on up.
 		unsigned flags = gosFX::Effect::ExecuteFlag;
 
 		Check_Object(gosFX::EffectLibrary::Instance);
@@ -724,7 +700,6 @@ void Mech3DAppearance::blowLeftArm (void)
 		
 	if (strcmp(weaponEffects->GetEffectName(ARM_FLYING_ID),"NONE") != 0)
 	{
-		// Yes, load it on up.
 		unsigned flags = gosFX::Effect::ExecuteFlag;
 
 		Check_Object(gosFX::EffectLibrary::Instance);
@@ -825,7 +800,6 @@ void Mech3DAppearance::blowRightArm (void)
 	// Can easily move to a node if a node becomes available.
 	if (strcmp(weaponEffects->GetEffectName(SHOULDER_POP_ID),"NONE") != 0)
 	{
-		// Yes, load it on up.
 		unsigned flags = gosFX::Effect::ExecuteFlag;
 
 		Check_Object(gosFX::EffectLibrary::Instance);
@@ -842,7 +816,6 @@ void Mech3DAppearance::blowRightArm (void)
 		
 	if (strcmp(weaponEffects->GetEffectName(ARM_FLYING_ID),"NONE") != 0)
 	{
-		// Yes, load it on up.
 		unsigned flags = gosFX::Effect::ExecuteFlag;
 
 		Check_Object(gosFX::EffectLibrary::Instance);
@@ -936,7 +909,6 @@ void Mech3DAppearance::blowRightArm (void)
 		
 void Mech3DAppearance::startSmoking (long smokeLvl)
 {
-	//Check if we are already playing one.  If not, smoke away
 	
 	//First, check if its even loaded.
 	// can easily preload this.  Should we?  Memory?
@@ -948,7 +920,6 @@ void Mech3DAppearance::startSmoking (long smokeLvl)
 	{
    		if (strcmp(weaponEffects->GetEffectName(CRITICAL_SMOKE_ID),"NONE") != 0)
    		{
-			// Yes, load it on up.
 			unsigned flags = gosFX::Effect::ExecuteFlag|gosFX::Effect::LoopFlag;
 
 			Check_Object(gosFX::EffectLibrary::Instance);
@@ -968,7 +939,6 @@ void Mech3DAppearance::startSmoking (long smokeLvl)
 	{
    		if (strcmp(weaponEffects->GetEffectName(MECH_SMOKE_ID),"NONE") != 0)
    		{
-			// Yes, load it on up.
 			unsigned flags = gosFX::Effect::ExecuteFlag|gosFX::Effect::LoopFlag;
 
 			Check_Object(gosFX::EffectLibrary::Instance);
@@ -1020,7 +990,6 @@ void Mech3DAppearance::startSmoking (long smokeLvl)
 
 void Mech3DAppearance::startWaterWake (void)
 {
-	//Check if we are already playing one.  If not, wake city.
 	
 	//Check if we are a helicopter OR we are jumping.  No WAKE if either is true.
 	if (isHelicopter || currentGestureId == 20)
@@ -1035,7 +1004,6 @@ void Mech3DAppearance::startWaterWake (void)
 	{
    		if (strcmp(weaponEffects->GetEffectName(MECH_WATER_WAKE),"NONE") != 0)
    		{
-			// Yes, load it on up.
 			unsigned flags = gosFX::Effect::ExecuteFlag|gosFX::Effect::LoopFlag;
 
 			Check_Object(gosFX::EffectLibrary::Instance);
@@ -1093,7 +1061,6 @@ void Mech3DAppearance::playEjection (void)
 	if (InEditor)
 		return;
 
-	//Check if we are already playing one.  If not, dustCloud.  Use for falls, too?
 	
 	//First, check if its even loaded.
 	// can easily preload this.  Should we?  Memory?
@@ -1101,7 +1068,6 @@ void Mech3DAppearance::playEjection (void)
 	{
    		if (strcmp(weaponEffects->GetEffectName(HELICOPTER_DUST_CLOUD),"NONE") != 0)
    		{
-			// Yes, load it on up.
 			unsigned flags = gosFX::Effect::ExecuteFlag;
 
 			Check_Object(gosFX::EffectLibrary::Instance);

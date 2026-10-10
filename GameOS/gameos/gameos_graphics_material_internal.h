@@ -78,7 +78,6 @@ namespace gosFX { void DiagFrameTick(); }
 #include "build_fingerprint.h"  // MC2_BUILD_GIT_SHA/BRANCH/DIRTY/TIME_ISO
 #include <process.h>             // _getpid()
 
-// Build config label for BUILD diagnostic event
 #if defined(_DEBUG)
 #  define MC2_DIAG_BUILD_CONFIG "Debug"
 #elif defined(NDEBUG)
@@ -187,9 +186,7 @@ static_assert(kTerrainMatNormalUnits[4] < 16,
 uint32_t gos_GetGLTextureId(uint32_t gosHandle);
 
 
-// SPLIT-1 slice 2: gosTextureInfo moved to gameos_graphics_internal.h.
 
-////////////////////////////////////////////////////////////////////////////////
 class gosBuffer {
 	friend class gosRenderer;
 public:
@@ -201,7 +198,6 @@ public:
 };
 
 
-////////////////////////////////////////////////////////////////////////////////
 class gosVertexDeclaration {
 	friend class gosRenderer;
 
@@ -468,13 +464,6 @@ class gosRenderMaterial {
             
             const int stride = sizeof(gos_VERTEX);
             
-            // gos_VERTEX structure
-	        //float x,y;
-	        //float z;
-	        //float rhw;
-	        //DWORD argb;
-	        //DWORD frgb;
-	        //float u,v;	
 
             gosASSERT(pos_loc >= 0);
             glEnableVertexAttribArray(pos_loc);
@@ -512,7 +501,6 @@ class gosRenderMaterial {
         bool setUniformBlock(const std::string& uniform_block_name, uint32_t unit) {
             gosASSERT(!uniform_block_name.empty());
             if(program_->uniform_blocks_.count(uniform_block_name)) {
-				//glBindBufferBase(GL_UNIFORM_BUFFER, , unit);
 				glUniformBlockBinding(program_->shp_, program_->uniform_blocks_[uniform_block_name]->index_, unit);
                 return true;
             }
@@ -744,8 +732,6 @@ class gosMesh {
 
 
 
-// GAMEOS-GRAPHICS-SPLIT-1 slice 2: gosTexture class definition moved to
-// gameos_graphics_internal.h (included here; also provides gosFont from slice 1).
 #include "gameos_graphics_internal.h"
 
 
@@ -762,9 +748,6 @@ struct gosTextAttribs {
 };
 
 
-////////////////////////////////////////////////////////////////////////////////
-// GAMEOS-GRAPHICS-SPLIT-1 slice 1: gosFont class definition + implementation
-// moved to gameos_graphics_internal.h (included above) / gameos_graphics_font.cpp.
 
 
 enum HudDrawKind { kHudQuadBatch, kHudLineBatch, kHudTriBatch, kHudTextQuadBatch };
@@ -851,9 +834,7 @@ extern "C" void mc2_ui_pass_check_ambient();
 // top-level + sub-stage applies without a separate gauge.
 extern "C" void mc2_framegraph_executor_bump_apply_state(unsigned id);
 
-// Globals defined in gameos_graphics.cpp (or elsewhere in the engine) that the split pieces share.
 
-// State and helpers shared between the pieces. Each is defined once, in the piece that owns it.
 extern gosRenderer* g_gos_renderer;
 gosRenderer* getGosRenderer();
 extern GLuint gVAO;

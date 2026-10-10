@@ -130,7 +130,6 @@ UiElement makeElement(const Block& b)
         else
             e.kind = UiElement::Placeholder;
     }
-    // --- V2 block types ---
     else if (b.type == "UiV2Static" || b.type == "UiV2ButtonChild")
         e.kind = UiElement::Image;
     else if (b.type == "UiV2Rect")

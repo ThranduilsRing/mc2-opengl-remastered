@@ -26,9 +26,6 @@
 #include <cstdio>
 #include <cstring>
 
-// ---------------------------------------------------------------------------
-// Panel state
-// ---------------------------------------------------------------------------
 static bool s_open = false;
 
 void SceneOutliner::Open()   { s_open = true; }
@@ -36,9 +33,6 @@ void SceneOutliner::Close()  { s_open = false; }
 void SceneOutliner::Toggle() { s_open = !s_open; }
 bool SceneOutliner::IsOpen() { return s_open; }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 
 // True when an object is a nav marker (own class, but reports BLDG_TYPE; the
 // catalog special-type is the reliable discriminator). Guarded so a malformed
@@ -138,9 +132,6 @@ static void outlinerLabelForObject(const EditorObject* obj, char* buf, size_t bu
         std::snprintf(buf, bufLen, "%s", name);
 }
 
-// ---------------------------------------------------------------------------
-// Counts
-// ---------------------------------------------------------------------------
 OutlinerCounts SceneOutliner::ComputeCounts()
 {
     OutlinerCounts c;
@@ -174,9 +165,6 @@ OutlinerCounts SceneOutliner::ComputeCounts()
     return c;
 }
 
-// ---------------------------------------------------------------------------
-// Smoke helper: select first selectable object
-// ---------------------------------------------------------------------------
 bool SceneOutliner::SelectFirstObject()
 {
     EditorObjectMgr* mgr = EditorObjectMgr::instance();
@@ -218,11 +206,7 @@ bool SceneOutliner::SelectFirstObject()
     return false;
 }
 
-// ---------------------------------------------------------------------------
-// Panel
-// ---------------------------------------------------------------------------
 
-// Render one collapsing group of EditorObject* rows; returns nothing.
 static void outlinerDrawObjectGroup(const char* groupLabel, int count,
                                     EditorObjectMgr::BUILDING_LIST& list,
                                     bool navMarkersOnly, const char* filter)
@@ -282,7 +266,6 @@ void SceneOutliner::Draw()
     ImGui::Text("Objects: %d", counts.total());
     ImGui::Separator();
 
-    // Units
     {
         char header[96];
         std::snprintf(header, sizeof(header), "Units (%d)###Units", counts.units);
@@ -310,7 +293,6 @@ void SceneOutliner::Draw()
     outlinerDrawObjectGroup("Buildings", counts.buildings, buildings, /*navOnly*/ false, s_filter);
     outlinerDrawObjectGroup("NavMarkers", counts.navMarkers, buildings, /*navOnly*/ true, s_filter);
 
-    // DropZones
     {
         char header[96];
         std::snprintf(header, sizeof(header), "DropZones (%d)###DropZones", counts.dropZones);
@@ -338,7 +320,6 @@ void SceneOutliner::Draw()
         }
     }
 
-    // Forests (separate Forest objects; selection via selectForest()).
     {
         char header[96];
         std::snprintf(header, sizeof(header), "Forests (%d)###Forests", counts.forests);

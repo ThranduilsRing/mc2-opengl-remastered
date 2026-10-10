@@ -6,19 +6,12 @@
 #ifndef GOS_TERRAIN_INDIRECT_INTERNAL_H
 #define GOS_TERRAIN_INDIRECT_INTERNAL_H
 
-// GameOS/gameos/gos_terrain_indirect.cpp
 //
-// Indirect terrain SOLID-only PR1 — Stage 0 + Stage 2 implementation.
 //
 // See gos_terrain_indirect.h for the slice overview, the Tracy zone name
 // reservations, and the public API contract (counter units = per-quad,
 // parity-printer schema, env-gate semantics).
 //
-// Stage 0: env-gate readers, N1 counters, parity-printer skeleton.
-// Stage 2: dense TerrainQuadRecipe SSBO build/reset/invalidate/flush,
-//          parity body comparing recipe against live quadList values.
-// Stage 3 wires the per-frame thin-record packer, indirect-command builder,
-// preflight-arming, and bridge entry.
 
 #include "gos_terrain_indirect.h"
 #include "../../mclib/terrain_material.h"  // single-sourced terrain type -> material
@@ -97,7 +90,6 @@ extern long     g_loadRaceLastTerrainPath;
 extern uint32_t g_mc2FrameCounter;
 extern float    scenarioTime;
 
-// Definitions the split pieces share: constants, small inline helpers, types and the Stage 3 includes.
 
 // Terrain type -> PBR material index: single-sourced in mclib/terrain_material.h.
 inline uint8_t terrainTypeToMaterialLocal(uint32_t terrainType) {
@@ -174,19 +166,12 @@ static_assert(sizeof(DrawArraysIndirectCommand) == 16,
 
 static constexpr size_t kIndirectCmdBufferBytes = 16 * sizeof(DrawArraysIndirectCommand);
 
-// ---------------------------------------------------------------------------
-// InMissionTransition() — simple stub; returns false until needed.
-// Stage 4's quintuple soak gate validates this boundary.
-// ---------------------------------------------------------------------------
 static inline bool InMissionTransition() { return false; }
 
-// Globals defined in gos_terrain_indirect.cpp (or elsewhere in the engine) that the split pieces share.
 
-// Eager gate caches (read once at static init) with one definition each; several pieces consult them.
 extern const bool s_loadRaceDelayAtlas;
 namespace gos_terrain_indirect { extern const bool s_thinCanaryEnabled; }
 
-// State and helpers shared between the pieces. Each is defined in the piece that owns it.
 namespace gos_terrain_indirect_detail {
 extern const bool g_envRingTrace;
 extern std::vector<TerrainQuadRecipe> g_denseRecipes;

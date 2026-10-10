@@ -231,8 +231,6 @@ void Mover::setMoveType (long type) {
 		STOP(("Mover.setMoveType: bad moveType %d", type));
 }
 
-//void Mover::precalcAttackZones (void) {
-//}
 
 long Mover::calcGlobalPath (GlobalPathStep* globalPath, GameObjectPtr obj, Stuff::Vector3D* location, bool useClosedAreas) {
 
@@ -370,8 +368,6 @@ long Mover::calcMoveGoal (GameObjectPtr target,
 		return(NO_ERR);
 	}
 	
-	// The Goal Map is in CELLS...
-	//memset(goalMap, 0, sizeof(long) * GOALMAP_CELL_DIM * GOALMAP_CELL_DIM);
     MemSet(goalMap, 0);
 
 	int centerCell[2];
@@ -383,7 +379,6 @@ long Mover::calcMoveGoal (GameObjectPtr target,
 	mapCellUL[0] = centerCell[0] - GOALMAP_CELL_DIM / 2;
 	mapCellUL[1] = centerCell[1] - GOALMAP_CELL_DIM / 2;
 	
-	//DEBUG
 				Stuff::Vector3D start;
 				land->cellToWorld(mapCellUL[0], mapCellUL[1], start);
 
@@ -489,7 +484,6 @@ long Mover::calcMoveGoal (GameObjectPtr target,
 				goalMap[goalMapRowStart[r] + c] += 500;
 		}
 
-	// Calc the closest map cell to start...
 	int startCell[2];
 	land->worldToCell(position, startCell[0], startCell[1]);
 	startCell[0] -= mapCellUL[0];
@@ -503,9 +497,6 @@ long Mover::calcMoveGoal (GameObjectPtr target,
 	else if (startCell[1] >= GOALMAP_CELL_DIM)
 		startCell[1] = GOALMAP_CELL_DIM - 1;
 
-	//NOTE: Do we even want the following, now? I think this was more a hack than
-	//anything. Take it out and see what effect it has... -gd 7/24/00
-	// The closer we are to the goal, the better (within reason:)...
 	if (!playerMove)
 		for (int cellR = -1; cellR < 2; cellR++)
 			for (int cellC = -1; cellC < 2; cellC++) {
@@ -557,7 +548,6 @@ long Mover::calcMoveGoal (GameObjectPtr target,
 		}
 	}
 
-	// Init the area lists...
 	char validAreaTable[MAX_GLOBALMAP_AREAS];
 	for (long i = 0; i < GlobalMoveMap[moveLevel]->numAreas; i++)
 		validAreaTable[i] = -1;
@@ -577,20 +567,14 @@ long Mover::calcMoveGoal (GameObjectPtr target,
 	startTime = GetCycles();
 	long deepWaterWeight = ((moveLevel == 1) ? 0 : 999999);
 
-	// Finally, lay down the terrain weights...
 	for (int r = 0; r < GOALMAP_CELL_DIM; r++)
 		for (long c = 0; c < GOALMAP_CELL_DIM; c++) {
 			long curCellRow = mapCellUL[0] + r;
 			long curCellCol = mapCellUL[1] + c;
 			if (GameMap->inBounds(curCellRow, curCellCol)) 
 			{
-				// In the long run, we should simply have a look-up table that
-				// contains a weight for each terrain\tile type (including
-				// transitions)...
 				MapCellPtr mapCell = GameMap->getCell(curCellRow, curCellCol);
 
-				// Tile (terrain) type...
-				//long tileType = curTile.getTileType();
 				long goalMapIndex = goalMapRowStart[r] + c; 
 				if (!mapCell->getPassable())
 					goalMap[goalMapIndex] -= 10000;
@@ -609,7 +593,6 @@ long Mover::calcMoveGoal (GameObjectPtr target,
 				long area = GlobalMoveMap[moveLevel]->calcArea(curCellRow, curCellCol);
 				if ((area != curArea) && (area != -1) && (curArea != -1)) {
 					if (moveLevel < 2) {
-					//if (GlobalMoveMap[moveLevel]->areas[area].type == AREA_TYPE_NORMAL) {
 						if (GlobalMoveMap[moveLevel]->getPathExists(curArea, area) == GLOBALPATH_EXISTS_UNKNOWN) {
 							if (CalcValidAreaTable) {
 								GlobalPathStep globalPath[128];
@@ -629,7 +612,6 @@ long Mover::calcMoveGoal (GameObjectPtr target,
 						}
 						if (GlobalMoveMap[moveLevel]->getPathExists(curArea, area) == GLOBALPATH_EXISTS_FALSE)
 							goalMap[goalMapRowStart[r] + c] -= 50000;
-					//}
 					}
 				}
 				}
@@ -642,7 +624,6 @@ long Mover::calcMoveGoal (GameObjectPtr target,
 
 	startTime = GetCycles();
 	long goalList[MAX_MOVE_GOALS][2];
-	// Setup the list...
 	for (int i = 0; i < MAX_MOVE_GOALS; i++) {
 		goalList[i][0] = -1;
 		goalList[i][1] = -99999;
@@ -693,12 +674,10 @@ long Mover::calcMoveGoal (GameObjectPtr target,
 			}
 		}
 	}
-//#endif
 
 	// so they don't select wacky goals
 	selectionIndex = -1;
 
-	// Now, pick the goal we want...
 	long curGoalIndex = 0;
 	if ((selectionIndex > 0) && (selectionIndex < MAX_MOVE_GOALS))
 		curGoalIndex = selectionIndex;
@@ -707,9 +686,6 @@ long Mover::calcMoveGoal (GameObjectPtr target,
 	curGoalCell[0] = mapCellUL[0] + goalMapRowCol[goalList[0][0]][0];
 	curGoalCell[1] = mapCellUL[1] + goalMapRowCol[goalList[0][0]][1];
 		
-	//Stuff::Vector3D goalPos = moveGoal;
-	//goalPos.z += target->getAppearRadius();		//Lets not look along the ground, shall we.
-												//Target probably has some altitude
 	if (hasWeaponNode()) {
 		Stuff::Vector3D curMoverPosition;
 		curMoverPosition = position;
@@ -731,15 +707,11 @@ long Mover::calcMoveGoal (GameObjectPtr target,
 			if (weight > -900000) {
 				Stuff::Vector3D start;
 				land->cellToWorld(curGoalCell[0], curGoalCell[1], start);
-				//start.x = (float)(mapCellUL[1] + curGoalCell[1]) * Terrain::worldUnitsPerCell + Terrain::worldUnitsPerCell / 2 - Terrain::worldUnitsMapSide / 2;
-				//start.y = (Terrain::worldUnitsMapSide / 2) - ((float)(mapCellUL[0] + curGoalCell[0]) * Terrain::worldUnitsPerCell) - Terrain::worldUnitsPerCell / 2;
 				start.z = land->getTerrainElevation(start)/* + 25.0f*/;		//For that matter, so do we!
 				position = start;
 				cellPositionRow = curGoalCell[0];
 				cellPositionCol = curGoalCell[1];
 				__int64 lstartTime = GetCycles();
-                // sebi
-				//if (goalList[i][1] > -10000) {
 				if (weight > -10000) {
 					if (movingToCapture)
 						noLOF = false;
@@ -845,10 +817,8 @@ long Mover::calcMoveGoal (GameObjectPtr target,
 		}
 	}
 	GameMap->setCellDebug(curGoalCell[0], curGoalCell[1], 3, 2);	
-	// Let's calc the woorld coord of this cell...
 	land->cellToWorld(curGoalCell[0], curGoalCell[1], newGoal);
 	newGoal = calcOffsetMoveGoal(newGoal);
-	//float distToGoal = distance_from(newGoal, goal) * metersPerWorldUnit;
 	return(NO_ERR);
 }
 
@@ -927,7 +897,6 @@ int Mover::calcMovePath (MovePathPtr path,
 							   numOffsets,
 							   moveParams);
 
-			// Set up debug info...
 			DebugMovePathType = pathType;
 
 			int goalCell[2];
@@ -1008,7 +977,6 @@ int Mover::calcMovePath (MovePathPtr path,
 							   numOffsets,
 							   moveParams);
 
-			// Set up debug info...
 			DebugMovePathType = pathType;
 
 			if (numOffsets > 8) {
@@ -1103,7 +1071,6 @@ int Mover::calcEscapePath (MovePathPtr path,
 						   numOffsets,
 						   moveParams);
 
-		// Set up debug info...
 		DebugMovePathType = 0;
 
 		long goalCell[2];
@@ -1190,7 +1157,6 @@ void Mover::updatePathLock (bool set)
 	if (!pathLocks)
 		return;
 		
-	// First, set the cell we're in...
 	GameMap->setPathlock((moveLevel == 2), cellPositionRow, cellPositionCol, set);
 
 	// If we're yielding, we should NOT set our path range on. If we are yielding, we can always
@@ -1235,7 +1201,6 @@ long Mover::bounceToAdjCell (void) {
 		bool cellPassable = GameMap->getPassable(adjRow, adjCol);
 
 		if (!cellPathLocked && cellPassable) {
-			// This is open. Let's set our position...
 			bool pathLockMarked = GameMap->getPathlock((moveLevel == 2), cellPositionRow, cellPositionCol);
 			if (pathLockMarked)
 				updatePathLock(false);
@@ -1333,8 +1298,6 @@ int Mover::calcMovePath (MovePathPtr path,
 		}
 		else
 			result = PathFindMap[SECTOR_PATHMAP]->calcPath(path, goal, goalCell);
-		//if ((goalCell[0] == -1) || (goalCell[1] == -1))
-		//	STOP(("Mover.calcMovePath: bad goal cell--get GLENN!"));
 		PathFindMap[SECTOR_PATHMAP]->setMover(0);
 		JumpOnBlocked = false;
 	}

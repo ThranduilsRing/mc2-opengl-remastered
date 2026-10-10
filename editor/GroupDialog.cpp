@@ -6,7 +6,6 @@
 //
 
 #include "stdafx.h"
-//include "CampaignEditor.h"
 #include "resource.h"
 #include "GroupDialog.h"
 #include "CampaignData.h"
@@ -20,27 +19,22 @@
 static char THIS_FILE[] = __FILE__;
 #endif
 
-/////////////////////////////////////////////////////////////////////////////
-// CGroupDialog dialog
 
 
 CGroupDialog::CGroupDialog(CWnd* pParent /*=NULL*/)
 	: CDialog(CGroupDialog::IDD, pParent)
 {
-	//{{AFX_DATA_INIT(CGroupDialog)
 	m_OperationFileEdit = _T("");
 	m_PreVideoFileEdit = _T("");
 	m_VideoFileEdit = _T("");
 	m_LabelEdit = _T("");
 	m_NumMissionsToCompleteEdit = 0;
-	//}}AFX_DATA_INIT
 }
 
 
 void CGroupDialog::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
-	//{{AFX_DATA_MAP(CGroupDialog)
 	DDX_Control(pDX, IDC_GR_TUNE_COMBO, m_TuneComboControl);
 	DDX_Control(pDX, IDC_GR_MISSION_LIST, m_MissionListControl);
 	DDX_Text(pDX, IDC_GR_OPERATION_FILE_EDIT, m_OperationFileEdit);
@@ -48,23 +42,18 @@ void CGroupDialog::DoDataExchange(CDataExchange* pDX)
 	DDX_Text(pDX, IDC_GR_VIDEO_FILE_EDIT, m_VideoFileEdit);
 	DDX_Text(pDX, IDC_GR_LABEL_EDIT, m_LabelEdit);
 	DDX_Text(pDX, IDC_GR_NUM_MISSIONS_TO_COMPLETE_EDIT, m_NumMissionsToCompleteEdit);
-	//}}AFX_DATA_MAP
 }
 
 
 BEGIN_MESSAGE_MAP(CGroupDialog, CDialog)
-	//{{AFX_MSG_MAP(CGroupDialog)
 	ON_BN_CLICKED(IDC_GR_OPERATION_FILE_BROWSE_BUTTON, OnGrOperationFileBrowseButton)
 	ON_BN_CLICKED(IDC_GR_PREVIDEO_FILE_BROWSE_BUTTON, OnGrPrevideoFileBrowseButton)
 	ON_BN_CLICKED(IDC_GR_VIDEO_FILE_BROWSE_BUTTON, OnGrVideoFileBrowseButton)
 	ON_BN_CLICKED(IDC_GR_ADD_BUTTON, OnGrAddButton)
 	ON_BN_CLICKED(IDC_GR_REMOVE_BUTTON, OnGrRemoveButton)
 	ON_BN_CLICKED(IDC_GR_EDIT_BUTTON, OnGrEditButton)
-	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
-/////////////////////////////////////////////////////////////////////////////
-// CGroupDialog message handlers
 
 void CGroupDialog::OnGrOperationFileBrowseButton() {
 	UpdateData(TRUE);
@@ -152,7 +141,6 @@ BOOL CGroupDialog::OnInitDialog()
 	m_TuneComboControl.SetCurSel(m_TuneNumber);
 	
 	return TRUE;  // return TRUE unless you set the focus to a control
-	              // EXCEPTION: OCX Property Pages should return FALSE
 }
 
 static void setMissionDialogValues(CMissionDialog &missionDialog, const CMissionData &missionData) {

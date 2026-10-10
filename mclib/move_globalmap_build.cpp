@@ -55,7 +55,6 @@ static int readDoorLinksMCO(PacketFilePtr packetFile, int packetNum,
     return result;
 }
 
-// GLOBAL MAP class
 
 void* GlobalMap::operator new (size_t ourSize) {
 
@@ -135,7 +134,6 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 		Fatal(result, " GlobalMap.init: unable to read numDoorLinks packet ");
 
 	if (badVersion) {
-		// Bad version map, so return number of packets but bail...
 		badLoad = true;
 		return(13 + numDoorInfos + (numDoors + NUM_DOOR_OFFSETS) * 2);
 	}
@@ -188,8 +186,6 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 	// whichever is larger so the packet fits; downstream indexing uses
 	// baseline (width/height) so the "extra" bytes are safe scratch.
 	if (mcoWideSchema) {
-		// MCO: areaMap is RAW int-per-cell. Allocate the real narrow array at
-		// the MC2 size; read the wide cells into a temp buffer and narrow.
 		size_t cellCount = (size_t)height * (size_t)width;
 		areaMap = (short*)systemHeap->Malloc(sizeof(short) * cellCount);
 		gosASSERT(areaMap != NULL);
@@ -226,9 +222,6 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 	// Same mod-tolerance pattern for areas packet. Carver5O may also have
 	// a larger areas struct size per entry (extended mod schema).
 	if (mcoWideSchema) {
-		// MCO GlobalMapArea is 31 bytes (shorts widened to int). Read into a
-		// temp buffer at MCO stride and widen field-by-field into the real
-		// narrow MC2 areas[] array.
 		areas = (GlobalMapAreaPtr)systemHeap->Malloc(sizeof(GlobalMapArea) * (size_t)numAreas);
 		areas_cellsCovered = (short**)systemHeap->Malloc(sizeof(short*) * numAreas);
 		areas_doors = (DoorInfoPtr*)systemHeap->Malloc(sizeof(DoorInfoPtr) * numAreas);
@@ -321,9 +314,6 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 				break;
 			}
 			if (mcoWideSchema) {
-				// MCO DoorInfo is 5 bytes (doorIndex widened to int). Read the
-				// area's door infos into a temp buffer and widen into the real
-				// narrow doorInfos[] slice.
 				size_t n = (size_t)areas[i].numDoors;
 				size_t tempSize = MCO_DOORINFO_SIZE * n;
 				unsigned char* tempBuf = (unsigned char*)systemHeap->Malloc(tempSize);
@@ -364,10 +354,8 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 		return(13 + numDoorInfos + (numDoors + NUM_DOOR_OFFSETS) * 2);
 	}
 
-	// Set up the areas so they point to the correct door infos...
 	curDoorInfo = 0;
 	for (long curArea = 0; curArea < numAreas; curArea++) {
-		//areas[curArea].doors = &doorInfos[curDoorInfo];
 		areas_doors[curArea] = &doorInfos[curDoorInfo];
 		curDoorInfo += areas[curArea].numDoors;
 	}
@@ -470,7 +458,6 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 	if (result == 0)
 		Fatal(result, " GlobalMap.init: unable to read doors packet ");
 
-	// Door Links...
 	doorLinks = (DoorLinkPtr)systemHeap->Malloc(sizeof(DoorLink) * numDoorLinks);
 	gosASSERT(doorLinks != NULL);
 	long numLinksRead = 0;
@@ -540,7 +527,6 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 		}
 		else
 			openArea(i);
-	// Create pathExistsTable...
 	pathExistsTable = (unsigned char*)systemHeap->Malloc(numAreas * (numAreas / 4 + 1));
 	if (!pathExistsTable)
 		STOP(("GlobalMap.init: unable to malloc pathExistsTable"));
@@ -591,7 +577,6 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 
 long GlobalMap::write (PacketFilePtr packetFile, long whichPacket) {
 
-	// If mapFile NULL, return the number of packets we need...
 
 	long numDrInfos = 0;
 	for (long i = 0; i < numAreas; i++)
@@ -639,29 +624,22 @@ long GlobalMap::write (PacketFilePtr packetFile, long whichPacket) {
 	if (result <= 0)
 		Fatal(result, " GlobalMap.write: Unable to write areaMap packet ");
 
-	// Write out the areas themselves...
 	DoorInfoPtr doorInfoSave[MAX_GLOBALMAP_AREAS];
 	for (int i = 0; i < numAreas; i++) {
-		// clear it for the save...
-		//doorInfoSave[i] = areas[i].doors;
-		//areas[i].doors = NULL;
 		doorInfoSave[i] = areas_doors[i];
 		areas_doors[i] = NULL;
 
 		areas[i].ownerWID = 0;
 		areas[i].teamID = -1;
-		//areas[i].offMap = false;
 		areas[i].open = true;
 	}
 	result = packetFile->writePacket(whichPacket++, (unsigned char*)areas, sizeof(GlobalMapArea) * numAreas);
 	for (int i = 0; i < numAreas; i++) {
-		// restore the doors...
 		areas_doors[i] = doorInfoSave[i];
 	}
 	if (result <= 0)
 		Fatal(result, " GlobalMap.write: Unable to write areas packet ");
 
-	// Now, write out all the DoorInfos...
 	long maxDoors = 0;
 	for (long d = 0; d < numDoors; d++) {
 		for (long s = 0; s < 2; s++) {
@@ -693,10 +671,8 @@ long GlobalMap::write (PacketFilePtr packetFile, long whichPacket) {
 
 	DoorLinkPtr doorLinkSave[MAX_GLOBALMAP_DOORS][2];
 	for (int i = 0; i < numDoors + NUM_DOOR_OFFSETS; i++) {
-		// clear it for the save...
 		doorLinkSave[i][0] = doors_links[i][0];
 		doorLinkSave[i][1] = doors_links[i][1];
-		//doors[i].cost = 0;
 		doors_links[i][0] = NULL;
 		doors_links[i][1] = NULL;
 		doors[i].parent = 0;
@@ -708,14 +684,12 @@ long GlobalMap::write (PacketFilePtr packetFile, long whichPacket) {
 	}
 	result = packetFile->writePacket(whichPacket++, (unsigned char*)doors, sizeof(GlobalMapDoor) * (numDoors + NUM_DOOR_OFFSETS));
 	for (int i = 0; i < (numDoors + NUM_DOOR_OFFSETS); i++) {
-		// restore the links...
 		doors_links[i][0] = doorLinkSave[i][0];
 		doors_links[i][1] = doorLinkSave[i][1];
 	}
 	if (result <= 0)
 		Fatal(result, " GlobalMap.write: Unable to write doors packet ");
 
-	// Now, write out all the DoorLinks...
 	
 	long numberL = 0;
 	for (int i = 0; i < (numDoors + NUM_DOOR_OFFSETS); i++) {
@@ -797,16 +771,6 @@ void GlobalMap::calcSpecialAreas (MissionMapCellInfo* mapData) {
 						specialAreas[ID].cells[specialAreas[ID].numCells][1] = c;
 						specialAreas[ID].numCells++;
 						break;
-					//case SPECIAL_FOREST:
-					//	if (!areaLogged[ID]) {
-					//		specialAreas[ID].type = SPECIAL_FOREST;
-					//		specialAreas[ID].numSubAreas = 0;
-					//		specialAreas[ID].numCells = 0;
-					//		areaLogged[ID] = true;
-					//	}
-					//	areaMap[r * width + c] = ID;
-					//	GameMap->setBuildForest(r, c, true);
-					//	break;
 				}
 			}
 		}
@@ -814,8 +778,6 @@ void GlobalMap::calcSpecialAreas (MissionMapCellInfo* mapData) {
 		numSpecialAreas = (biggestID + 1);
 	for (long i = 0; i < numSpecialAreas; i++) {
 		specialAreas[i].numSubAreas = 0;
-		//if (!areaLogged[i])
-		//	STOP(("GlobalMap.calcSpecialAreas: unlogged special area %d", i));
 	}
 }
 
@@ -827,21 +789,12 @@ long GlobalMap::setTempArea (long tileR, long tileC, long cost) {
 		long adjC = tileC + adjTile[dir][1];
 		long adjArea = calcArea(adjR, adjC);
 		if (adjArea > -1) {
-// SET TEMP DOORS HERE...
-//			areas[numAreas].doors[numStartDoors].r = tileR;
-//			areas[numAreas].doors[numStartDoors].c = tileC;
-//			areas[numAreas].doors[numStartDoors].length = 1;
-//			areas[numAreas].doors[numStartDoors].direction = dir;
-//			areas[numAreas].doors[numStartDoors].area = adjArea;
-//			numStartDoors++;
 		}
 	}
 	areas[numAreas].numDoors = numStartDoors;
 
-	// Now, setup the temp area...
 	areas[numAreas].sectorR = tileR / SECTOR_DIM;
 	areas[numAreas].sectorC = tileC / SECTOR_DIM;
-	//areas[numAreas].cost = 1;
 	return(numAreas);
 }
 
@@ -888,7 +841,6 @@ bool GlobalMap::fillArea (long row, long col, long area, bool offMap) {
 
 	if (!blank) {
 		if (!hover && GameMap->getDeepWater(row, col)) {
-			//GameMap->setPassable(row, col, false);
 			areaMap[row * width + col] = -2;
 			return(false);
 		}
@@ -940,7 +892,6 @@ void GlobalMap::calcSectorAreas (long sectorR, long sectorC) {
 							Fatal(MAX_SPECIAL_SUB_AREAS, " GlobalMap.calcSectorAreas: too many special subareas ");
 						specialAreas[specialHere].subAreas[specialAreas[specialHere].numSubAreas] = numAreas;
 						specialAreas[specialHere].numSubAreas++;
-						// Now, fill it in...
 						fillSpecialArea(r, c, numAreas++, specialHere);
 						}
 					else if (fillArea(r, c, numAreas, GameMap->getOffMap(r, c)))
@@ -954,7 +905,6 @@ void GlobalMap::calcAreas (void) {
 	// Large area maps use -1 and -2 to indicate blocked area. CalcArea will
 	// always return -1 for blocked-area cells.
 
-	// First, process each sector's area map...
 
 	for (long r = 0; r < sectorHeight; r++)
 		for (long c = 0; c < sectorWidth; c++)
@@ -991,7 +941,6 @@ void GlobalMap::calcAreas (void) {
 		areas_cellsCovered[i] = NULL;
 	}
 
-	// Set each area's sector row and column...
 	for (long sectorR = 0; sectorR < sectorHeight; sectorR++)
 		for (long sectorC = 0; sectorC < sectorWidth; sectorC++) {
 			minRow = sectorR * SECTOR_DIM;
@@ -1021,7 +970,6 @@ void GlobalMap::calcCellsCovered (void) {
 
 void GlobalMap::calcSpecialTypes (void) {
 
-//systemHeap->walkHeap();
 	for (long i = 0; i < numSpecialAreas; i++) {
 		if (specialAreas[i].type == SPECIAL_WALL)
 			for (long j = 0; j < specialAreas[i].numSubAreas; j++)
@@ -1044,12 +992,10 @@ void GlobalMap::calcSpecialTypes (void) {
 				if (area > -1)
 					areas[area].offMap = true;
 			}
-//systemHeap->walkHeap();
 }
 
 void GlobalMap::beginDoorProcessing (void) {
 
-//systemHeap->walkHeap();
 	doorBuildList = (GlobalMapDoorPtr)systemHeap->Malloc(sizeof(GlobalMapDoor) * MAX_GLOBALMAP_DOORS);
 	for (long i = 0; i < MAX_GLOBALMAP_DOORS; i++) {
 		doorBuildList[i].row = -1;
@@ -1074,7 +1020,6 @@ void GlobalMap::addDoor (long area1, long area2, long row, long col, long length
 	}
 	*/
 
-	// First, make sure the door isn't already in the list...
 	bool newDoor = true;
 	for (long curDoorIndex = 0; curDoorIndex < numDoors; curDoorIndex++) {
 		GlobalMapDoorPtr curDoor = &doorBuildList[curDoorIndex];
@@ -1115,13 +1060,11 @@ void GlobalMap::addDoor (long area1, long area2, long row, long col, long length
 
 void GlobalMap::endDoorProcessing (void) {
 
-//	systemHeap->walkHeap();
 	if (doorBuildList) {
 		// First, save the door list. Note that we make 2 extra doors, to be used
 		// by the pathfinder...
 		doors = (GlobalMapDoorPtr)systemHeap->Malloc(sizeof(GlobalMapDoor) * (numDoors + NUM_DOOR_OFFSETS));
 		memcpy(doors, doorBuildList, sizeof(GlobalMapDoor) * (numDoors + NUM_DOOR_OFFSETS));
-		// Free the temp build list...
 		systemHeap->Free(doorBuildList);
 		doorBuildList = NULL;
 		// Build path: doors_links is only pre-allocated in the packet-load path
@@ -1133,7 +1076,6 @@ void GlobalMap::endDoorProcessing (void) {
 			memset(doors_links, 0, sizeof(DoorInfoLinksPtr) * (numDoors + NUM_DOOR_OFFSETS));
 		}
 	}
-//	systemHeap->walkHeap();
 }
 
 long GlobalMap::numAreaDoors (long area) {

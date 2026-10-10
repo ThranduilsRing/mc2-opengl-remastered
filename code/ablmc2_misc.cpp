@@ -10,7 +10,6 @@ void execIsGateOpen (void) {
 	//		PARAMS:	integer				object ID
 	//		RETURN: BOOL				Open
 
-	//long objectId = ABLi_peekInteger();
 
 	ABLi_pokeBoolean(false);
 #ifdef USE_GATES
@@ -105,7 +104,6 @@ void execGetUnitStatus (void) {
 
 	long objectNum = ABLi_popInteger();
 
-	// Code to make this work goes here
 	GameObjectPtr obj = getObject(objectNum);
 	ABLi_pushReal(0.0);
 	if (obj)
@@ -289,7 +287,6 @@ void execGetRepairState (void) {
 			cur += mover->armor[i].curArmor;
 		}
 	}
-	// make it a percentage...
 	cur *= 100;
 	ABLi_pokeInteger(cur / max);
 }
@@ -478,7 +475,6 @@ void execConvertCoords (void) {
 	if (s_ablArgGuard && !cellPos) { abl_arg_guard_log("execConvertCoords", "cellPos"); return; }
 
 	if (convertType == 0) {
-		// world to cell
 		Stuff::Vector3D worldP;
 		worldP.x = worldPos[0];
 		worldP.y = worldPos[1];
@@ -486,7 +482,6 @@ void execConvertCoords (void) {
 		land->worldToCell(worldP, cellPos[0], cellPos[1]);
 		}
 	else {
-		// cell to world
 		Stuff::Vector3D worldP;
 		land->cellToWorld(cellPos[0], cellPos[1], worldP);
 		worldPos[0] = worldP.x;

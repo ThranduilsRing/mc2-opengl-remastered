@@ -121,7 +121,6 @@ void GpuStaticPropBatcher::finalizeGeometry() {
                              " as emissive fixtures (scale=%.2f)\n",
                      s_fixtureTypeCount, s_types.size(), s_fixtureLightsScale);
 
-        // TIER2-EXCLUDED: dead-path
         glGenBuffers(1, &s_perTypeSsbo);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_perTypeSsbo);
         glBufferStorage(GL_SHADER_STORAGE_BUFFER,
@@ -137,7 +136,6 @@ void GpuStaticPropBatcher::finalizeGeometry() {
     s_sharedVboBytes = (uint64_t)s_stagingVbo.size();
     s_sharedIboBytes = (uint64_t)s_stagingIbo.size() * sizeof(uint32_t);
 
-    // Free CPU staging.
     s_stagingVbo.clear(); s_stagingVbo.shrink_to_fit();
     s_stagingIbo.clear(); s_stagingIbo.shrink_to_fit();
 
@@ -158,9 +156,6 @@ void GpuStaticPropBatcher::finalizeGeometry() {
 
     s_geometryFinalized = true;
 
-    // =======================================================================
-    // Substrate Multi-Draw Coalesce — finalizeGeometry extension.
-    // Plan v3.8 Step group 5 (CORE EDIT, §5.0 ordering).
     //
     // Step 5.1 — §CRITICAL-C invariant (pure documentation):
     //
@@ -275,7 +270,6 @@ void GpuStaticPropBatcher::finalizeGeometry() {
             alphaOn, noGeom);
     }
 
-    // Step 5.5 — coalesce-not-wanted early return.
     if (!coalesceWanted) {
         s_coalesceLayoutReady = false;
         s_coalesceEnabled     = false;
@@ -412,7 +406,6 @@ void GpuStaticPropBatcher::finalizeGeometry() {
         }
     }
 
-    // Step 5.9 — allocate s_coalesceInstanceSsbo ring + persistent map.
     {
         // SSBO-BIND-ALIGN: pad the per-frame ring stride to the SSBO offset
         // alignment IDENTICALLY to batcher_getCoalescePerFrameInstanceBytes() (which
@@ -423,7 +416,6 @@ void GpuStaticPropBatcher::finalizeGeometry() {
             (unsigned long long)gpuSsboOffsetAlignment());
         const size_t totalBytes =
             static_cast<size_t>(RING_FRAMES) * alignedPerFrame;
-        // TIER2-EXCLUDED: ring
         glGenBuffers(1, &s_coalesceInstanceSsbo);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_coalesceInstanceSsbo);
         const GLbitfield mapFlags =
@@ -507,7 +499,6 @@ void GpuStaticPropBatcher::finalizeGeometry() {
     // sites). Multi-packet types had their detail collapsed under per-type
     // layering — see memory/substrate_coalesce_armed_multi_packet_limitation.md.
     std::vector<int32_t> layerForPacket(s_packets.size(), -1);
-    // Per-packet uv scale (sub-region size / array size). Default 1.0.
     std::vector<float>   uvScaleXByPacket(s_packets.size(), 1.0f);
     std::vector<float>   uvScaleYByPacket(s_packets.size(), 1.0f);
 
@@ -541,7 +532,6 @@ void GpuStaticPropBatcher::finalizeGeometry() {
         outBytes = 0;
         GLuint arr = 0;
 
-        // ---- BC7 attempt (mirrors the group-level fast path) ----
         if (s_materialKtxEnabled && mcTextureManager &&
             GLEW_ARB_texture_compression_bptc) {
             std::vector<RenderCore::KtxImage> bc7Imgs(bUniques.size());
@@ -707,7 +697,6 @@ void GpuStaticPropBatcher::finalizeGeometry() {
         GLuint arr = 0;
         const size_t layerCount = bUniques.size();
 
-        // ---- BC7-linear attempt (all-or-nothing, mirrors albedo fast path) ----
         if (mcTextureManager && GLEW_ARB_texture_compression_bptc) {
             std::vector<RenderCore::KtxImage> imgs(layerCount);
             bool ok = true;
@@ -912,7 +901,6 @@ void GpuStaticPropBatcher::finalizeGeometry() {
 
                 const GLuint glTexId = static_cast<GLuint>(gos_GetGLTextureId(gosHandle));
 
-                // 5.10.b — dedupe per glTexId; assign group-relative layer.
                 auto it = glTexIdToLayer.find(glTexId);
                 if (it != glTexIdToLayer.end()) {
                     layerForPacket[globalPktIdx] = it->second;
@@ -996,7 +984,6 @@ void GpuStaticPropBatcher::finalizeGeometry() {
                 continue;
             }
 
-            // Plan v3.8 Step 12B.5 — size_mismatch forced-disarm hook.
             if (s_coalesceForceDisarm == CoalesceForceDisarm::SizeMismatch &&
                 group == 0u && uniques.size() == 1u) {
                 MC2_DIAGFE(stderr, "[COALESCE v1] event=disarmed reason=size_mismatch "
@@ -1037,7 +1024,6 @@ void GpuStaticPropBatcher::finalizeGeometry() {
         // The gate-OFF group-build below is left UNTOUCHED and never runs here.
         // ====================================================================
         if (s_staticPropBc7Enabled) {
-            // Group uniques (by group-relative layer index) into dim buckets.
             struct DimKey { GLint w, h; };
             std::vector<DimKey>               dimKeys;       // unique dims, stable order of first appearance
             std::vector<std::vector<int32_t>> bucketLayers;  // per dim: list of group-relative layer indices
@@ -1120,8 +1106,6 @@ void GpuStaticPropBatcher::finalizeGeometry() {
                 (unsigned)group, dimKeys.size(), groupTotalBytes);
             std::fflush(stderr);
 
-            // Promote temp pins (same as both group-level paths) and skip the
-            // original 2-group build for this group.
             s_coalescePinnedNodes.insert(s_coalescePinnedNodes.end(),
                                           newlyPinnedThisBuild.begin(),
                                           newlyPinnedThisBuild.end());
@@ -1159,8 +1143,6 @@ void GpuStaticPropBatcher::finalizeGeometry() {
         // fall through to the existing RGBA8 path below, byte-identical.
         // -------------------------------------------------------------------
         if (s_materialKtxEnabled && s_staticPropBc7Enabled && mcTextureManager) {
-            // Probe ALL uniques: load each sidecar, require all load && all BC7
-            // && all dims match && uniform-dim.
             std::vector<RenderCore::KtxImage> bc7Imgs(uniques.size());
             bool bc7Ok      = true;
             const char* failReason = nullptr;
@@ -1195,7 +1177,6 @@ void GpuStaticPropBatcher::finalizeGeometry() {
                 if (img.mipCount != bc7MipCount) { bc7Ok = false; failReason = "dim_mismatch"; break; }
             }
 
-            // Capability check: BPTC (GL 4.3 / ARB_texture_compression_bptc).
             if (bc7Ok && !GLEW_ARB_texture_compression_bptc) {
                 bc7Ok = false; failReason = "no_bptc_support";
             }
@@ -1239,7 +1220,6 @@ void GpuStaticPropBatcher::finalizeGeometry() {
                 glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
                 glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
 
-                // uvScale bookkeeping: uniform-dim → uvScale = 1.0 (full level).
                 for (const auto& kv : packetsInGroup) {
                     const uint32_t globalPktIdx = kv.first;
                     if (kv.second < 0) continue;
@@ -1262,8 +1242,6 @@ void GpuStaticPropBatcher::finalizeGeometry() {
                                group == 0u ? "off" : "on",
                                uniques.size(), maxW, maxH, levels);
 
-                // Promote temp pins (same as the RGBA8 path) and skip the
-                // remaining RGBA8 array-build for this group.
                 s_coalescePinnedNodes.insert(s_coalescePinnedNodes.end(),
                                               newlyPinnedThisBuild.begin(),
                                               newlyPinnedThisBuild.end());
@@ -1273,7 +1251,6 @@ void GpuStaticPropBatcher::finalizeGeometry() {
                     "[STATICPROP_BC7] fallback group=%u reason=%s\n",
                     (unsigned)group, failReason ? failReason : "unknown");
                 std::fflush(stderr);
-                // Fall through to the existing RGBA8 path unchanged.
             }
         }
 
@@ -1433,7 +1410,6 @@ void GpuStaticPropBatcher::finalizeGeometry() {
                        group == 0u ? "off" : "on",
                        uniques.size(), maxW, maxH);
 
-        // 5.10.g — promote temp pins.
         s_coalescePinnedNodes.insert(s_coalescePinnedNodes.end(),
                                       newlyPinnedThisBuild.begin(),
                                       newlyPinnedThisBuild.end());
@@ -1491,7 +1467,6 @@ void GpuStaticPropBatcher::finalizeGeometry() {
         s_bucketCmdCount.assign(s_bucketArrays.size(), 0u);
         for (uint8_t group = 0; group <= 1; ++group) {
             if (s_staticPropBc7Enabled) {
-                // Emit this group's packets bucket-by-bucket (global bucket order).
                 for (uint32_t b = 0; b < s_bucketInfo.size(); ++b) {
                     if (s_bucketInfo[b].group != group) continue;
                     for (uint32_t i = 0; i < s_sortedTypeOrder.size(); ++i) {
@@ -1714,7 +1689,6 @@ void GpuStaticPropBatcher::finalizeGeometry() {
             }
             // s_materialGpuSsbo remains 0 when byteSize == 0.
 
-            // --- Log upload ---
             {
                 char buf[160];
                 std::snprintf(buf, sizeof(buf),
@@ -1909,7 +1883,6 @@ void GpuStaticPropBatcher::finalizeGeometry() {
             MC2_DIAG_FPUTS(buf, stderr);
         }
 
-        // TIER2-EXCLUDED: dead-path
         glGenBuffers(1, &s_perDrawSsbo);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_perDrawSsbo);
         MC2_GL_BufferData(GL_SHADER_STORAGE_BUFFER,
@@ -1922,7 +1895,6 @@ void GpuStaticPropBatcher::finalizeGeometry() {
         // maps to its parent typeID so the patch shader can write the
         // type's instanceCount into all cmds (= all packets) of that type.
         if (s_cmdToBucketSsbo == 0) {
-            // TIER2-EXCLUDED: dead-path
             glGenBuffers(1, &s_cmdToBucketSsbo);
         }
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_cmdToBucketSsbo);
@@ -1933,7 +1905,6 @@ void GpuStaticPropBatcher::finalizeGeometry() {
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
     }
 
-    // v1.1 material cache summary (always logged at finalize time).
     {
         GpuStaticPropRegistry::MaterialCacheStats mcs{};
         GpuStaticPropRegistry::staticPropGetMaterialCacheStats(&mcs);
@@ -1962,7 +1933,6 @@ void GpuStaticPropBatcher::finalizeGeometry() {
         const size_t totalBytes =
             static_cast<size_t>(RING_FRAMES) * s_baseInstanceByCmdBytesPerFrame;
         if (totalBytes > 0) {
-            // TIER2-EXCLUDED: dead-path
             glGenBuffers(1, &s_baseInstanceByCmdSsbo);
             glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_baseInstanceByCmdSsbo);
             const GLbitfield mapFlags =
@@ -2018,7 +1988,6 @@ void GpuStaticPropBatcher::finalizeGeometry() {
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
     }
 
-    // Step 5.13 — set armed flags + log event=armed with elapsed_ms.
     s_coalesceEnabled = true;
     s_coalesceArmed   = true;
     {

@@ -5,7 +5,6 @@
 #include "../RenderCore/axis_convert.h"
 
 
-//--------------------------------------------------------------------------------------
 
 void EditorInterface::handleLeftButtonDown( int PosX, int PosY )
 {
@@ -330,8 +329,6 @@ void EditorInterface::handleMouseMove( int PosX, int PosY )
 			curBrush->paint( paintPos, PosX, PosY );
 	}
 
- 	//------------------------------------------------
-	// Right drag is camera rotation and tilt now.
 	if ( rightDrag )
 	{
 		
@@ -369,13 +366,11 @@ void EditorInterface::handleMouseMove( int PosX, int PosY )
 	char buffer2[256];
 	sprintf( buffer2, "%.3f, %.3f", vector.x, vector.y );
 
-	// need to put this value in the appropriate place.
 	((MainFrame*)AfxGetMainWnd())->m_wndDlgBar.GetDlgItem( IDC_COORDINATES_EDIT )->SetWindowText( buffer2 );
 
 	char buffer3[256];
 	sprintf( buffer3, "%.3f", vector.z );
 
-	// need to put this value in the appropriate place.
 	((MainFrame*)AfxGetMainWnd())->m_wndDlgBar.GetDlgItem( IDC_ALTITUDE_EDIT )->SetWindowText( buffer3 );
 
 	vector -= lastClickPos;
@@ -384,10 +379,8 @@ void EditorInterface::handleMouseMove( int PosX, int PosY )
 	char buffer[256];
 	sprintf( buffer, "%.3f", distance );
 
-	// need to put this value in the appropriate place.
 	((MainFrame*)AfxGetMainWnd())->m_wndDlgBar.GetDlgItem( IDC_DISTANCE_EDIT )->SetWindowText( buffer );
 
-	//IF there is a selected object, find distance to it from camera.
 	float eyeDistance = 0.0f;
 	long selectionCount = EditorObjectMgr::instance()->getSelectionCount();
 	if (selectionCount)
@@ -412,7 +405,6 @@ void EditorInterface::handleMouseMove( int PosX, int PosY )
 		}
 	}	
 
-	// need to put this value in the appropriate place.
 	sprintf( buffer, "%.3f", eyeDistance);
 	((MainFrame*)AfxGetMainWnd())->m_wndDlgBar.GetDlgItem( IDC_OBJDISTANCEEDIT )->SetWindowText( buffer );
 }
@@ -830,7 +822,6 @@ void EditorInterface::OnLButtonUp(UINT nFlags, CPoint point)
 					glBindFramebuffer(GL_READ_FRAMEBUFFER, scanFBO);
 					glReadBuffer(GL_COLOR_ATTACHMENT2);
 
-					// Sample a 32x32 grid
 					const int steps = 32;
 					uint32_t firstNonzeroVal = 0u;
 					int firstNonzeroX = -1, firstNonzeroY = -1;
@@ -873,7 +864,6 @@ void EditorInterface::OnLButtonUp(UINT nFlags, CPoint point)
 		if (result.outcome == GameplayPickResult::Outcome::hit ||
 			result.outcome == GameplayPickResult::Outcome::miss)
 		{
-			// Pick ran: populate inspector with full lookup data.
 			EditorInspector::setPickResult(point.x, point.y, result.lookup);
 		}
 		else
@@ -953,8 +943,6 @@ BOOL EditorInterface::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
 		}
 	}
 
-	//--------------------------------------------------
-	// Zoom Camera based on Mouse Wheel input.
 	long mouseWheelDelta = zDelta; // 240 is the weird increment that the mouse wheel is in
 	if (mouseWheelDelta)
 	{
@@ -971,15 +959,12 @@ BOOL EditorInterface::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
 
 	//int middleClicked = nFlags & MK_MBUTTON;  
 	int middleClicked = (nFlags & MK_MBUTTON) && (nFlags & MK_RBUTTON); // it's too easy to accidentally press the middle button while scrolling on some mice
-	//-----------------------------------------------------------------
-	// If middle mouse button is pressed, go to normal tilt, 50% zoom	
 	if (middleClicked)
 	{
 		eye->tiltNormal();
 		eye->ZoomNormal();
 	}	
 
-	//IF there is a selected object, find distance to it from camera.
 	float eyeDistance = 0.0f;
 	long selectionCount = EditorObjectMgr::instance()->getSelectionCount();
 	if (selectionCount)
@@ -1002,7 +987,6 @@ BOOL EditorInterface::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
 		}
 	}
 
-	// need to put this value in the appropriate place.
 	char buffer[1024];
 	sprintf( buffer, "%.3f", eyeDistance);
 	((MainFrame*)AfxGetMainWnd())->m_wndDlgBar.GetDlgItem( IDC_OBJDISTANCEEDIT )->SetWindowText( buffer );

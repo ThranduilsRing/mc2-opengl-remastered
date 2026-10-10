@@ -3,7 +3,6 @@
 #include "mechcmd2_internal.h"
 
 
-//---------------------------------------------------------------------------
 
 void DEBUGWINS_init (void) {
 
@@ -42,7 +41,6 @@ void DEBUGWINS_init (void) {
 		DebugWindow[3]->close();
 }
 
-//---------------------------------------------------------------------------
 
 void DEBUGWINS_destroy (void) {
 
@@ -141,7 +139,6 @@ void endDialogs()
 	}
 }
 
-//---------------------------------------------------------------------------
 
 void DEBUGWINS_toggle (bool* windowsOpen) {
 
@@ -153,7 +150,6 @@ void DEBUGWINS_toggle (bool* windowsOpen) {
 	DebugScoreBoardOpen = windowsOpen[NUM_DEBUG_WINDOWS + 2];
 }
 
-//---------------------------------------------------------------------------
 
 void DEBUGWINS_display (bool* windowsOpen) {
 
@@ -172,14 +168,12 @@ void DEBUGWINS_display (bool* windowsOpen) {
 	DebugScoreBoardOpen = windowsOpen[NUM_DEBUG_WINDOWS + 2];
 }
 
-//---------------------------------------------------------------------------
 
 void DEBUGWINS_print (const char* s, long window) {
 
 	DebugWindow[window]->print(s);
 }
 
-//---------------------------------------------------------------------------
 
 void DEBUGWINS_setGameObject (long debugObj, GameObjectPtr obj) {
 
@@ -191,7 +185,6 @@ void DEBUGWINS_setGameObject (long debugObj, GameObjectPtr obj) {
 	DebugGameObject[debugObj] = obj;
 }
 
-//---------------------------------------------------------------------------
 
 void DEBUGWINS_viewGameObject (long debugObj) {
 
@@ -201,7 +194,6 @@ void DEBUGWINS_viewGameObject (long debugObj) {
 	}
 }
 
-//---------------------------------------------------------------------------
 
 void DEBUGWINS_removeGameObject (GameObjectPtr obj) {
 
@@ -213,7 +205,6 @@ void DEBUGWINS_removeGameObject (GameObjectPtr obj) {
 
 }
 
-//---------------------------------------------------------------------------
 
 void DEBUGWINS_update (void) {
 
@@ -222,7 +213,6 @@ void DEBUGWINS_update (void) {
 			DebugGameObject[i]->updateDebugWindow(DebugWindow[1 + i]);
 }
 
-//---------------------------------------------------------------------------
 
 void DEBUGWINS_renderSpecialWindows (void) {
 
@@ -364,7 +354,6 @@ void DEBUGWINS_renderSpecialWindows (void) {
 	}
 }
 
-//---------------------------------------------------------------------------
 
 void DEBUGWINS_render (void) {
 

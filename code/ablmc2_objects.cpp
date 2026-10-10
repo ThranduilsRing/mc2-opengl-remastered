@@ -32,7 +32,6 @@ void execDamageObject (void) {
 	ABLi_pokeInteger(-1);
 	if (attacker) {
 		if ((targetId >= MIN_UNIT_PART_ID) && (targetId <= MAX_UNIT_PART_ID)) {
-			// We have a group.  Act accordingly.
 			long numObjects = getMovers(targetId, moverList, true);
 			WeaponShotInfo shotInfo;
 			shotInfo.init(attacker->getWatchID(), weaponMasterId, damage, hitLocation, entryAngle);
@@ -92,8 +91,6 @@ void execObjectChangeSides (void) {
 
 	GameObjectPtr object = NULL;
 	if ((objectId >= MIN_UNIT_PART_ID) && (objectId <= MAX_UNIT_PART_ID)) {
-		// We have a group.  Act accordingly.
-		// Run through all objects fitting the group.
 		Fatal(0, " Cannot ABL:ObjectChangeSides for Mover Units ");
 
 		}
@@ -119,8 +116,6 @@ void execDistanceToObject (void) {
 	if (object2) {
 		Stuff::Vector3D position2 = object2->getPosition();
 		if ((objectId1 >= MIN_UNIT_PART_ID) && (objectId1 <= MAX_UNIT_PART_ID)) {
-			// We have a group.  Act accordingly.
-			// Run through all objects fitting the group.
 			float minDistance = 3.4E38f;
 			float distance = 3.4E38f;
 			long numObjects = getMovers(objectId1, moverList);
@@ -178,8 +173,6 @@ void execDistanceToPosition (void) {
 		position2.y = coordList[1];
 	
 	if ((objectId >= MIN_UNIT_PART_ID) && (objectId <= MAX_UNIT_PART_ID)) {
-		// We have a group.  Act accordingly.
-		// Run through all objects fitting the group.
 		long numObjects = getMovers(objectId, moverList);
 		float minDistance = 3.4E38f;
 		float distance = 3.4E38f;
@@ -223,8 +216,6 @@ void execObjectSuicide (void) {
 	
 	GameObjectPtr object1 = NULL;
 	if ((objectId >= MIN_UNIT_PART_ID) && (objectId <= MAX_UNIT_PART_ID)) {
-		// We have a group.  Act accordingly.
-		// Run through all objects fitting the group.
 		long numObjects = getMovers(objectId, moverList);
 		for (long i = 0; i < numObjects; i++)
 			MC2_DESTROY(moverList[i], "abl_explicit_destroy");
@@ -266,8 +257,6 @@ void execObjectExists (void) {
 	ABLi_pokeInteger(0);
 
 	if ((objectId >= MIN_UNIT_PART_ID) && (objectId <= MAX_UNIT_PART_ID)) {
-		// We have a group.  Act accordingly.
-		// Run through all objects fitting the group.
 		long numObjs = getMovers(objectId, moverList);
 		long i = 0;
 		while ((i < numObjs) && !moverList[i]->getExists())
@@ -331,16 +320,11 @@ void execObjectStatusCount (void) {
 	int* tallyList = ABLi_popIntegerPtr();
 	
 	if ((objectId >= MIN_UNIT_PART_ID) && (objectId <= MAX_UNIT_PART_ID)) {
-		// We have a group.  Act accordingly.
-		// No Group Check of actual status, return -1.
 		if ((objectId >= PlayerLance0) && (objectId < PlayerLance0 + MAX_MOVERGROUPS))
-			//Fatal(0, " ABL.objectStatusCount: bad id ");
 			Commander::commanders[0]->getGroup(objectId - PlayerLance0)->statusCount(tallyList);
 		else if ((objectId >= AlliedLance0) && (objectId < AlliedLance0 + MAX_MOVERGROUPS))
-			//Fatal(0, " ABL.objectStatusCount: bad id ");
 			Commander::commanders[2]->getGroup(objectId - AlliedLance0)->statusCount(tallyList);
 		else if ((objectId >= ClanStar0) && (objectId < ClanStar0 + MAX_MOVERGROUPS))
-			//Fatal(0, " ABL.objectStatusCount: bad id ");
 			Commander::commanders[1]->getGroup(objectId - ClanStar0)->statusCount(tallyList);
 		else if ((objectId >= OBJ_ID_FIRST_TEAM) && (objectId <= OBJ_ID_LAST_TEAM)) {
 			TeamPtr team = Team::teams[objectId - OBJ_ID_FIRST_TEAM];
@@ -412,7 +396,6 @@ void execObjectCommander (void) {
 	ABLi_pokeInteger(-1);
 	
 	if ((objectId >= MIN_UNIT_PART_ID) && (objectId <= MAX_UNIT_PART_ID)) {
-		// We have a group.  Act accordingly.
 		}
 	else {
 		GameObjectPtr obj = getObject(objectId);
@@ -485,8 +468,6 @@ void execEndTimer (void) {
 	
 	long timerID = ABLi_popInteger();
 
-// NOT REALLY NECESSARY ANYMORE--since the timers have no callback, they just
-// keep counting down... no harm...
 }
 	
 void execSetObjectiveTimer (void) {
@@ -651,7 +632,6 @@ void execPlayBetty (void) {
 	//		PARAMS:	integer
 	//		Returns: integer (result)
 
-	// Get the ID of the pilot whose speech this is
 	long messageIndex = ABLi_popInteger();
 	long result = soundSystem->playBettySample(messageIndex);
 	

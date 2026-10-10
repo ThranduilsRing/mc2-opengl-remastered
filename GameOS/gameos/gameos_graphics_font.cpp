@@ -62,7 +62,6 @@ static bool mc2SplitFontRequest(const char* fontFile, std::string& path, int& po
 
 } // namespace
 
-////////////////////////////////////////////////////////////////////////////////
 gosFont* gosFont::load(const char* fontFile) {
 
     std::string requestedPath;
@@ -193,9 +192,6 @@ gosFont* gosFont::load(const char* fontFile) {
     formatted_len = S_snprintf(glyphName, glyphNameSize, "%s/%s%s", dir, fname, glyph_ext);
 	gosASSERT(formatted_len <= glyphNameSize - 1);
 
-    // SPLIT-1: gosTexture construction + createHardwareTexture + renderer
-    // registration moved behind the main-TU shim (STOPs on failure there,
-    // same as the old inline code).
     DWORD tex_id = gosRendererAddFontBmpTexture(textureName);
 
     gosFont* font = new gosFont();

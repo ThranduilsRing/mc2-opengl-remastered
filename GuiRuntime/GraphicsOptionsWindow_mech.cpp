@@ -6,10 +6,6 @@
 
 namespace GraphicsOptionsWindow {
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Env gate table — baked at startup, shown read-only.
-// defaultOn=true means the feature is enabled when the var is absent/non-zero.
-// ─────────────────────────────────────────────────────────────────────────────
 struct EnvGate {
     const char* var;
     const char* desc;
@@ -79,9 +75,7 @@ void drawEnvGatesSection() {
     ImGui::EndTable();
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 
-// MECH-LIGHTING-UI-1: mech ambient/specular/PBR roughness controls.
 void drawMechSection() {
     // BT2018 imported-skin albedo correction (imported BT mechs ONLY; stock untouched).
     // Imported skins are sRGB-authored PBR albedo; the legacy lighting path samples
@@ -132,7 +126,6 @@ void drawMechSection() {
     ImGui::Spacing();
     ImGui::SeparatorText("Mech Lighting");
 
-    // Ambient
     bool ambOn = batcher_getMechAmbientEnabled() != 0;
     if (ImGui::Checkbox("Ambient##mech", &ambOn))
         batcher_setMechAmbientEnabled(ambOn ? 1 : 0);
@@ -147,7 +140,6 @@ void drawMechSection() {
     ImGui::SameLine();
     if (ImGui::SmallButton("Reset##mechamb")) batcher_setMechAmbientStrength(0.15f);
 
-    // Specular
     bool specOn = batcher_getMechSpecularEnabled() != 0;
     if (ImGui::Checkbox("Specular##mech", &specOn))
         batcher_setMechSpecularEnabled(specOn ? 1 : 0);
@@ -246,7 +238,6 @@ void drawMechSection() {
                                   "Strength shared with Static Prop IBL SH slider.");
         }
 
-        // MECH-BACK-FILL-1: cool-sky fill for shadow hemisphere.
         float bf = batcher_getMechBackFillStrength();
         if (ImGui::SliderFloat("Back fill##pbr", &bf, 0.0f, 4.0f, "%.2f"))
             batcher_setMechBackFillStrength(bf);
@@ -289,7 +280,6 @@ void drawMechSection() {
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 
 // VFX-TUNING-UI-1: GPU particle look tuning. All scales default 1.0 (no-op,
 // byte-identical default frame). Look-only — no emission/lifetime/sorting
@@ -355,7 +345,6 @@ void drawVfxTuningSection() {
         ImGui::SameLine();
         if (ImGui::SmallButton("Reset##vfxa")) gos_vfx_setAlphaScale(1.0f);
 
-        // VFX-SOFT-PARTICLES-MVP-1: depth-fade enable + world-unit fade band.
         ImGui::Separator();
         bool softOn = gos_vfx_getSoftEnabled() != 0;
         if (ImGui::Checkbox("Soft particles##vfx", &softOn))
@@ -373,7 +362,6 @@ void drawVfxTuningSection() {
         ImGui::SameLine();
         if (ImGui::SmallButton("Reset##vfxsd")) gos_vfx_setSoftDistance(30.0f);
 
-        // VFX-LIT-PARTICLES-MVP-1: scene-lighting enable + strength.
         bool litOn = gos_vfx_getLitEnabled() != 0;
         if (ImGui::Checkbox("Lit particles##vfx", &litOn))
             gos_vfx_setLitEnabled(litOn ? 1 : 0);
@@ -401,7 +389,6 @@ void drawVfxTuningSection() {
     ImGui::EndDisabled();
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 
 
 } // namespace GraphicsOptionsWindow

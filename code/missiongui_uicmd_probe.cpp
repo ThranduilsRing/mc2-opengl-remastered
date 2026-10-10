@@ -2,7 +2,6 @@
 // Declared in missiongui.h; shared names in missiongui_internal.h.
 #include "missiongui_internal.h"
 
-// RENDERER-INPUT-READBACK-1 verbs (light_row, draw_path, shadow_feed, ground, pixel). Returns true when a verb of this group matched.
 bool MissionInterfaceManager::uiCmdProbe(UiCmdCtx& c)
 {
 	const std::string& line = c.line;

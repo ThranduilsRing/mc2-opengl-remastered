@@ -174,7 +174,6 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		if (mechType->rightArm)
 			rightArm = mechType->rightArm->CreateFrom();
 		
-		// Load the texture and store its handle.
 		for (long i=0;i<sensorTriangleShape->GetNumTextures();i++)
 		{
 			char txmName[1024];
@@ -211,7 +210,6 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		if (mechType->numJumpNodes)
 		{
 			sensorSquareShape = Mech3DAppearanceType::SensorSquareShape->CreateFrom();
-			// Load the texture and store its handle.
 			for (int i=0;i<sensorSquareShape->GetNumTextures();i++)
 			{
 				char txmName[1024];
@@ -248,7 +246,6 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		else
 		{
 			sensorSquareShape = GVAppearanceType::SensorCircleShape->CreateFrom();
-			// Load the texture and store its handle.
 			for (int i=0;i<sensorSquareShape->GetNumTextures();i++)
 			{
 				char txmName[1024];
@@ -465,7 +462,6 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 	{
 		mechShadowShape = mechType->mechShadowShape->CreateFrom();
 
-		// Load the texture and store its handle.
 		for (long i=0;i<mechShadowShape->GetNumTextures();i++)
 		{
 			char txmName[1024];
@@ -513,7 +509,6 @@ void Mech3DAppearance::initFX (void)
 	{
    		if (useNonWeaponEffects && strcmp(weaponEffects->GetEffectName(FX_POOF_ID),"NONE") != 0)
    		{
-			// Yes, load it on up.
 			unsigned flags = gosFX::Effect::ExecuteFlag;
 
 			Check_Object(gosFX::EffectLibrary::Instance);
@@ -533,7 +528,6 @@ void Mech3DAppearance::initFX (void)
 		
    		if (useNonWeaponEffects && strcmp(weaponEffects->GetEffectName(FX_POOF_ID),"NONE") != 0)
    		{
-			// Yes, load it on up.
 			unsigned flags = gosFX::Effect::ExecuteFlag;
 
 			Check_Object(gosFX::EffectLibrary::Instance);
@@ -553,7 +547,6 @@ void Mech3DAppearance::initFX (void)
 		
    		if (useNonWeaponEffects && strcmp(weaponEffects->GetEffectName(FX_SMOKE_ID),"NONE") != 0)
    		{
-			// Yes, load it on up.
 			unsigned flags = gosFX::Effect::ExecuteFlag|gosFX::Effect::LoopFlag;
 
 			Check_Object(gosFX::EffectLibrary::Instance);
@@ -570,7 +563,6 @@ void Mech3DAppearance::initFX (void)
 
    		if (strcmp(weaponEffects->GetEffectName(FX_JUMP_ID),"NONE") != 0)
    		{
-			// Yes, load it on up.
 			unsigned flags = gosFX::Effect::ExecuteFlag|gosFX::Effect::LoopFlag;
 
 			Check_Object(gosFX::EffectLibrary::Instance);
@@ -736,7 +728,6 @@ void Mech3DAppearance::setPaintScheme (void)
 
 	if (gosHandle && gosHandle != 0xffffffff)
 	{
-		// Lock the texture.
 		TEXTUREPTR textureData;
 		gos_LockTexture(gosHandle, 0, 0, &textureData);
 
@@ -811,7 +802,6 @@ void Mech3DAppearance::setPaintScheme (void)
 
 				if (slot != -1)
 				{
-					// Shade from dominant-channel magnitude (original curve).
 					float d = (float)domChan / 255.0f;
 					shade = 1.0f - (1.0f - d) * (1.0f - d);
 
@@ -849,7 +839,6 @@ void Mech3DAppearance::setPaintScheme (void)
 			}
 		}
 
-		// Unlock the texture
 		gos_UnLockTexture(gosHandle);
 	}
 }	
@@ -964,7 +953,6 @@ void Mech3DAppearance::resetPaintScheme (DWORD red, DWORD green, DWORD blue)
 	DWORD gosHandle = mcTextureManager->get_gosTextureHandle(localTextureHandle);
 	mcTextureManager->removeTexture(gosHandle);
 	
-	// Load the texture and store its handle.
 	char txmName[1024];
 	mechShape->GetTextureName(0,txmName,256);
 
@@ -974,7 +962,6 @@ void Mech3DAppearance::resetPaintScheme (DWORD red, DWORD green, DWORD blue)
    	FullPathFileName textureName;
    	textureName.init(texturePath,txmName,"");
 
-	//DWORD paintInstance = (red << 16) + (green << 8) + (blue);
 	/* The texture manager asks for a unique 32bit identifier for every texture instance.
 	However, it requires 72 bits to fully describe a mech texture (the base color (stored in
 	the variable "red"), highlight color1 (blue), and highlight color2 (green), each of which
@@ -1036,7 +1023,6 @@ void Mech3DAppearance::resetPaintScheme (DWORD red, DWORD green, DWORD blue)
 	}
 	else
 	{
-		//PAUSE(("Warning: %s texture name not found",textureName));
 		mechShape->SetTextureHandle(0,0xffffffff);
 		if (leftArm)
 			leftArm->SetTextureHandle(0,0xffffffff);

@@ -139,7 +139,6 @@ void MechWarrior::drawOverviewMovePath( unsigned long color )
 	if ( np < 2 )
 		return;
 
-	// Project all points to screen.
 	float sx[kMaxPts], sy[kMaxPts]; bool ok[kMaxPts];
 	float vmx, vmy, vax, vay;
 	gos_GetViewport( &vmx, &vmy, &vax, &vay );

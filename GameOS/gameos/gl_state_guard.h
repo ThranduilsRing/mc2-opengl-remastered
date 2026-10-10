@@ -2,7 +2,6 @@
 #ifndef GL_STATE_GUARD_H
 #define GL_STATE_GUARD_H
 //
-// gl_state_guard.h — GlStateGuard slice 1.
 //
 // A minimal RAII primitive for scoped OpenGL state ownership. The engine's
 // passes historically inherit GL state implicitly and hand-roll save/restore
@@ -69,7 +68,6 @@ private:
     GLuint prev_ = 0;
 };
 
-// --- Slice 2: composable render-state guards -------------------------------
 //
 // Slice 1 proved the RAII pattern on SSBO binding (a compute pass). Slice 2
 // introduces the first RENDER-state vocabulary so a draw pass can OWN the
@@ -175,7 +173,6 @@ private:
     GLenum prevDepth_  = GL_ZERO_TO_ONE;
 };
 
-// --- Slice 3: texture-unit save/restore ------------------------------------
 //
 // Slice 2 covered depth/blend/cull states. Slice 3 adds the texture-unit
 // leak class: legacy decal/overlay paths call glActiveTexture(GL_TEXTURE0)
@@ -233,7 +230,6 @@ private:
     GLuint prevBinding_   = 0;
 };
 
-// --- Slice 4: GLSTATE-GUARD-VOCAB-1 -----------------------------------------
 //
 // The epilogue recon (docs/testing/glstate-guard-epilogue-recon-1.md) found the
 // GPU-direct pass epilogues are DOMINATED by state no slice-1..3 guard covers:

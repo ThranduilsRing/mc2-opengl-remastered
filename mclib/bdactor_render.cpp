@@ -36,14 +36,6 @@ long BldgAppearance::render (long depthFixup)
 			bldgShape->SetARGBHighLight(flashColor);
 		}
 		
-		// Call Multi-shape render stuff here.
-		// Slice 1 path (g_useGpuObjects). No cull bypass; submitMultiShape
-		// is per-child Layer-B by construction. Returns false only when
-		// EVERY child is ineligible.
-		// Caller-side accounting: recordEligibleActor() fires unconditionally
-		// when slice 1 reaches this site (so a null shape or skipped submit
-		// still counts toward eligible_actors). recordCpuFallback() fires
-		// when no submit succeeded.
 		bool submittedToGpu = false;
 		// PREVIEW-FIX: in the SimpleCamera component/weapon preview, skip the GPU
 		// static-prop submit (the batcher flushes with the world snapshot/terrain
@@ -154,7 +146,6 @@ long BldgAppearance::render (long depthFixup)
 				    bdForceDynamicDefault<"MC2_FORCE_DYNAMIC_BUILDINGS">();
 				if (s_forceDynamicBldgs) {
 					invalidateStaticRegistration();
-					// Fall through to the dynamic path below.
 				} else if (bldgShape && bldgShape->getCachedGpuLightIndex() == UINT32_MAX) {
 					// Light gather failed this frame — invalidate so dynamic
 					// path re-runs and re-registers next frame.
@@ -249,9 +240,6 @@ long BldgAppearance::render (long depthFixup)
 				        && isStaticEligible()) {
 					const auto& batch =
 						GpuStaticPropBatcher::instance().getLastBuiltBatch();
-					// M1 RenderWorld route (Slice M1 Task 8). Adapter performs
-					// sentinel translation; staticReg.recipeIndex remains int32_t
-					// per plan Decision D4 (slot-side storage stays legacy in M1).
 					int32_t legacyIdx = -1;
 					(void)GameAdapters::StaticProp::syncStaticProp(
 						bldgShape, batch.data(), batch.size(), &legacyIdx);
@@ -259,7 +247,6 @@ long BldgAppearance::render (long depthFixup)
 					staticReg.registered  = (staticReg.recipeIndex >= 0);
 					staticReg.shape       = bldgShape;
 					if (staticReg.registered) {
-						// SHADOW-STATIC-BUILDINGS-2: tag re-registered building recipe.
 						GpuStaticPropRegistry::setRecipePopulation(
 							staticReg.recipeIndex, GpuStaticPropPopulation::Building);
 						// H4 follow-up (2026-05-07): per-frame re-registration
@@ -317,7 +304,6 @@ long BldgAppearance::render (long depthFixup)
 			{
 				drawBars();
 
-				//drawSelectBrackets(color);
 			}
 		}
 
@@ -332,7 +318,6 @@ long BldgAppearance::render (long depthFixup)
 			}
 		}
 		
-		// Render GOS FX if necessary
 		if (destructFX && destructFX->IsExecuted())
 		{
 			gosFX::Effect::DrawInfo drawInfo;
@@ -351,15 +336,9 @@ long BldgAppearance::render (long depthFixup)
 			Stuff::LinearMatrix4D	localToWorld;
 			Stuff::Point3D			tPosition;
 			
-			//Stuff::Vector3D offsetPosition;
-			//offsetPosition.x = Terrain::worldUnitsPerVertex / 3.0f;
-			//offsetPosition.y = -(Terrain::worldUnitsPerVertex / 3.0f);
-			//offsetPosition.z = 0.0f;
 
-			//OppRotate(offsetPosition,rotation);
 
 			Stuff::Vector3D actualPosition = position;
-			//actualPosition.Add(position,offsetPosition);
 
 			mc2ToRender(tPosition, actualPosition);
 
@@ -461,7 +440,6 @@ long BldgAppearance::render (long depthFixup)
 			}
 		}
 
-//		selected = FALSE;
 	}
 	return NO_ERR;
 }
@@ -479,15 +457,10 @@ long TreeAppearance::render (long depthFixup)
 	if (inView || g_useGpuStaticProps)
 	{
 		long color = SD_BLUE;
-		//unsigned long highLight = 0x007f7f7f;
 		if ((teamId > -1) && (teamId < 8)) {
-			//static unsigned long highLightTable[3] = {0x00007f00, 0x0000007f, 0x007f0000};
 			static uint32_t colorTable[3] = {SB_GREEN | 0xff000000, SB_BLUE | 0xff000000, SB_RED | 0xff000000};
 			color = colorTable[homeTeamRelationship];
-			//highLight = highLightTable[homeTeamRelationship];
 		}
-		// Call Multi-shape render stuff here.
-		// Slice 1 path (g_useGpuObjects). Same shape as BldgAppearance::render.
 		bool submittedToGpu = false;
 		if (g_useGpuObjects)
 		{
@@ -560,12 +533,10 @@ long TreeAppearance::render (long depthFixup)
 				    bdForceDynamicDefault<"MC2_FORCE_DYNAMIC_TREES">();
 				if (s_forceDynamicTrees) {
 					invalidateStaticRegistration();
-					// Fall through to the dynamic path below.
 				} else if (treeShape->getCachedGpuLightIndex() == UINT32_MAX) {
 					// Light-data gather failed this frame — invalidate so the dynamic
 					// path re-runs and re-registers next frame with correct lights.
 					invalidateStaticRegistration();
-					// Fall through to the if (!submittedToGpu && treeShape) dynamic path below.
 				} else {
 					// 2026-05-11: see BldgAppearance::render markVisible site.
 					// TREE-OVERRIDE-LOD-MVP Task 2: replay the active LOD's recipe +
@@ -640,7 +611,6 @@ long TreeAppearance::render (long depthFixup)
 				        && !needsFullBakeNextFrame) {
 					const auto& batch =
 						GpuStaticPropBatcher::instance().getLastBuiltBatch();
-					// M1 RenderWorld route (Slice M1 Task 10).
 					int32_t legacyIdx = -1;
 					(void)GameAdapters::StaticProp::syncStaticProp(
 						treeShape, batch.data(), batch.size(), &legacyIdx);
@@ -706,7 +676,6 @@ long TreeAppearance::render (long depthFixup)
 		// I don't want my selection reset each time I draw HKG
 //		selected = FALSE;
 
-		// Render the Bounding Box to see if it is OK.
 	}
 	return NO_ERR;
 }

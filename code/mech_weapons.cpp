@@ -25,8 +25,6 @@ static void fireGateTrace (unsigned long wid, long weaponIndex, const char* site
 
 long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weaponIndex, long attackType, long aimLocation, Stuff::Vector3D* targetPoint, float &dmgDone) {
 
-//	if (getTeam() != Team::home)
-//		return(1);
 
 	if ((status == OBJECT_STATUS_SHUTDOWN) ||
 		(status == OBJECT_STATUS_SHUTTING_DOWN) ||
@@ -66,8 +64,6 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 			return(4);
 		}
 			
-		//We did this in calcWeaponsStatus.  Do we really need to do it again??!
-		// I have decided NO as of now!
 		/*
 		if (getWeaponIndirectFire(weaponIndex))
 		{
@@ -85,8 +81,6 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 	}
 	else if (targetPoint) 
 	{
-		//We did this in calcWeaponsStatus.  Do we really need to do it again??!
-		// I have decided NO as of now!
 		/*
 		if (getWeaponIndirectFire(weaponIndex))
 		{
@@ -110,7 +104,6 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 
 	bool inRange = weaponInRange(weaponIndex, distanceToTarget, MapCellDiagonal);
 
-	// Let's make sure the target's in range...
 	if (MPlayer)
 	{
 		if (MPlayer->isServer() && !inRange)
@@ -132,10 +125,6 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 		return(4);
 	}
 
-	// As of 4/9/97, missiles cannot be aimed...
-	// As of 4/30/98, they can be again... -fs
-	//if ((aimLocation != -1) && (MasterComponent::masterList[inventory[weaponIndex].masterID].getForm() == COMPONENT_FORM_WEAPON_MISSILE))
-	//	return(4);
 
 	// Ripple Fire
 	// Figure out what weapon Node on the Mech we are going to use
@@ -168,7 +157,6 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 	// Shot delivery begins below; do not move this line without updating the
 	// checker (META-FIX design F static chokepoint).
 
-	//Set the hotspot for the target
 	long targetHotSpot = 0;
 	if (target && target->getAppearance())
 	{
@@ -179,7 +167,6 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 	if (target)
 		entryAngle = target->relFacingTo(position);
 
-	//long weaponType = MasterComponent::masterList[inventory[weaponIndex].masterID].getWeaponType();
 	bool isStreakMissile = MasterComponent::masterList[inventory[weaponIndex].masterID].getWeaponStreak(); 
 
 	long range;
@@ -228,14 +215,10 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 	if (hitRoll < attackChance) {
 
 		if (numShots != UNLIMITED_SHOTS) {
-			// We're taking the shot, so reduce our ammo inventory...
 			deductWeaponShot(weaponIndex);
 		}
 
-		// Attack hit.
 		if (MasterComponent::masterList[inventory[weaponIndex].masterID].getForm() == COMPONENT_FORM_WEAPON_MISSILE) {
-			// It's a missile weapon. We need to determine how many hit
-			// (and missed) the target, and in how many clusters...
 			long missileAmount = MasterComponent::masterList[inventory[weaponIndex].masterID].getWeaponAmmoAmount();
 			long numMissiles = 0;
 			if (isStreakMissile)
@@ -341,7 +324,6 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 				}
 				else {
 					weaponFX->connect(this, *targetPoint, &curShotInfo, sourceHotSpot);
-					//pilot->clearCurTacOrder();
 				}
 				printFireWeaponDebugInfo(target, targetPoint, attackChance, aimLocation, hitRoll, &curShotInfo);
 			}
@@ -426,34 +408,25 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 				}
 				else 
 				{
-					// Hit the target point/terrain...
 					weaponFX->connect(this, *targetPoint, &shotInfo, sourceHotSpot);
 				}
 				printFireWeaponDebugInfo(target, targetPoint, attackChance, aimLocation, hitRoll, &shotInfo);
 			}
 
 			if (!target) {
-				// Now, cancel the tac order...
-				//pilot->clearCurTacOrder();
 			}
 		}
 	}
 	else
 	{
-		//if ((aimLocation != -1) && (RandomNumber(100) < AimedFireAbort))
-		//	return(NO_ERR);
 		if (!isStreakMissile) { 
 
 			if (numShots != UNLIMITED_SHOTS) {
-				// We're taking the shot, so reduce our ammo inventory...
 				deductWeaponShot(weaponIndex);
 			}
 
-			// Miss, so check for possible miss resolution here...
 			if (MasterComponent::masterList[inventory[weaponIndex].masterID].getForm() == COMPONENT_FORM_WEAPON_MISSILE)
 			{
-				// It's a missile weapon. We need to determine how many hit
-				// (and missed) the target, and in how many clusters...
 				long missileAmount = MasterComponent::masterList[inventory[weaponIndex].masterID].getWeaponAmmoAmount();
 				long numMissiles = ((float)missileAmount / 2.0) + 0.5;
 				if (numMissiles < 1)
@@ -697,7 +670,6 @@ long BattleMech::handleWeaponFire (long weaponIndex,
 
 	// If it's already been fired, assume the ammo is there...
 	long numShots = getWeaponShots(weaponIndex);
-	//Assert(numShots > 0, numShots, " handleWeaponFire: numShots is negative! ");
 
 	// Weapon must recycle...
 	startWeaponRecycle(weaponIndex);
@@ -722,7 +694,6 @@ long BattleMech::handleWeaponFire (long weaponIndex,
 	
 	appearance->setWeaponNodeUsed(sourceHotSpot);
 	
- 	//Set the hotspot for the target
 	long targetHotSpot = 0;
 	if (target && target->getAppearance())
 	{
@@ -730,15 +701,11 @@ long BattleMech::handleWeaponFire (long weaponIndex,
 	}
 			
  	if (hit) {
-		// Attack hit.
 		if (numShots != UNLIMITED_SHOTS) {
-			// We're taking the shot, so reduce our ammo inventory...
 			deductWeaponShot(weaponIndex);
 		}
 
 		if (MasterComponent::masterList[inventory[weaponIndex].masterID].getForm() == COMPONENT_FORM_WEAPON_MISSILE) {
-			// It's a missile weapon. We need to determine how many hit
-			// (and missed) the target, and in how many clusters...
 
 			// Clusters no more!
 			unsigned char effectType = MasterComponent::masterList[inventory[weaponIndex].masterID].getWeaponSpecialEffect();
@@ -779,8 +746,6 @@ long BattleMech::handleWeaponFire (long weaponIndex,
 					else  {
 						weaponFX->connect(this, *targetPoint, &curShotInfo, sourceHotSpot);
 
-						// Now, cancel the tac order...
-						//pilot->clearCurTacOrder();
 					}
 
 				}
@@ -846,11 +811,9 @@ long BattleMech::handleWeaponFire (long weaponIndex,
 		}
 
 		if (numShots != UNLIMITED_SHOTS) {
-			// We're taking the shot, so reduce our ammo inventory...
 			deductWeaponShot(weaponIndex);
 		}
 
-		// Miss, so check for possible miss resolution here...
 		if (MasterComponent::masterList[inventory[weaponIndex].masterID].getForm() == COMPONENT_FORM_WEAPON_MISSILE) {
 
 			if (numMissiles) {

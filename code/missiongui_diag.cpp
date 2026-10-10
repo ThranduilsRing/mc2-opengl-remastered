@@ -101,7 +101,6 @@ namespace missiongui_detail {
 	// (incl. displaced terrain), which the parked-cursor path cannot. Same
 	// throttle as the cursor path. Diagnostic-only; result never consumed.
 	const bool s_gpCenter = mc2::gate::get<"MC2_GPU_GROUND_PICK_PARITY_CENTER">();
-	// Counters (process-lifetime; atexit summary).
 	static unsigned long long s_gpSites=0;          // eligible parity sites seen
 	static unsigned long long s_gpCompared=0;        // both CPU+GPU produced a point
 	static unsigned long long s_gpGpuInvalid=0;      // GPU had no world pos (fallback)
@@ -113,13 +112,11 @@ namespace missiongui_detail {
 	static unsigned long long s_gpOver2wu=0;         // delta > 2 wu
 	static double s_gpDeltaSum=0.0, s_gpDeltaMax=0.0; // horizontal (xy) delta wu
 	static double s_gpDeltaZSum=0.0, s_gpDeltaZMax=0.0; // vertical (z) delta wu
-	// Timing accumulators (ns).
 	static unsigned long long s_gpCpuNs=0, s_gpCpuMaxNs=0, s_gpCpuSamples=0;
 	static unsigned long long s_gpGpuNs=0, s_gpGpuMaxNs=0, s_gpGpuSamples=0;
 	// Histogram buckets for the horizontal delta distribution (wu).
 	// [0]<=0.5  [1]<=1  [2]<=2  [3]<=5  [4]<=20  [5]>20
 	static unsigned long long s_gpHist[6]={0};
-	// Center-probe counters (screen-center CPU-vs-GPU parity over real terrain).
 	static unsigned long long s_gpcCompared=0, s_gpcInvalid=0, s_gpcBg=0;
 	static double s_gpcDeltaSum=0.0, s_gpcDeltaMax=0.0;
 	static double s_gpcDeltaZSum=0.0, s_gpcDeltaZMax=0.0;
@@ -213,13 +210,10 @@ namespace missiongui_detail {
 		if (!s_gpParityOn) return;
 		if (!s_gpAtexit) { s_gpAtexit = true; std::atexit(gpEmit); }
 		++s_gpSites;
-		// CPU timing (always recorded when we have a measurement).
 		s_gpCpuNs += cpuNs; ++s_gpCpuSamples;
 		if (cpuNs > s_gpCpuMaxNs) s_gpCpuMaxNs = cpuNs;
-		// Sampling knob: skip the GPU readback on non-sampled sites.
 		if ((s_gpSites % (unsigned long long)s_gpSampleN) != 0) return;
 		if (!RenderWorld::IsObjectIdBufferEnabled()) { ++s_gpFbUnavail; return; }
-		// Viewport transform (same proven path as the GPU hover block).
 		float vMulX, vMulY, vAddX, vAddY;
 		gos_GetViewport(&vMulX, &vMulY, &vAddX, &vAddY);
 		if (!(vMulX > 0.0f && vMulY > 0.0f &&
@@ -260,8 +254,6 @@ namespace missiongui_detail {
 				++s_gpSlotDead;
 				++s_gpGpuInvalid;
 			} else {
-				// isValid record parsed but depth==0 -> object pixel without a
-				// resolvable world pos (rare); or an unclassified reason string.
 				++s_gpNoDepth;
 				++s_gpGpuInvalid;
 			}

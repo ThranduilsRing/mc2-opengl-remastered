@@ -8,7 +8,6 @@
 // MC2_GPU_CULL_LIFECYCLE=1 routes AI canBeSeen() combat gates to GPU-lagged visibility.
 static const bool s_gpuCullLifecycle = mc2::gate::get<"MC2_GPU_CULL_LIFECYCLE">();
 
-//---------------------------------------------------------------------------
 long GroundVehicle::update (void)
 {
 	if (withdrawing && (pilot->getStatus() == WARRIOR_STATUS_WITHDRAWN)) 
@@ -49,8 +48,6 @@ long GroundVehicle::update (void)
 		setTangible(false);
 		appearance->setSensorLevel(0);
 
-		//--------------------------------------------------------
-		// Update the dynamics and position here during destruct
 		if (!deadByCrushed)
 		{
 			float speed = dVel.GetLength();
@@ -214,8 +211,6 @@ long GroundVehicle::update (void)
 
 			exploding = true;
 
-			//------------------------------------------------------------
-			//Throw the vehicle up into the air and spin it for coolness.
 			/*
 			if ((dAcc.z == 0.0) && !deadByCrushed)
 			{
@@ -247,11 +242,8 @@ long GroundVehicle::update (void)
 			}
 			*/
 			
-			//-----------------------------------------------------------------
-			// Create a Marine with the Vehicle Brain to run away from vehicle
 			if (!MPlayer && getAwake())
 				createVehiclePilot();
-			//-----------------------------------------------------------------
 			
 			return(1);
 		}
@@ -259,8 +251,6 @@ long GroundVehicle::update (void)
 	else if (getAwake() && !isDisabled())
 	{
 
-		//-----------------------------------------------------
-		// Not destroyed nor disabled yet, so update our LOS...
 		GroundVehicleTypePtr vehicleType = (GroundVehicleTypePtr)ObjectManager->getObjectType(typeHandle);ObjectManager->getObjectType(typeHandle);
 		if (getTeam())	   //Vehicle Pilots are just out there.  They do not help anyone with LOS!!!
 			getTeam()->markSeen(position,vehicleType->LOSFactor);
@@ -312,7 +302,6 @@ long GroundVehicle::update (void)
 	if (isVehiclePilot && !inView)
 		MC2_DESTROY(this, "vehicle_pilot_offscreen");
 
-	//We are a Vehicle Pilot. Check If I have nothing to do.  If not, move 'em out!
 	if (isVehiclePilot && (pilot->getCurTacOrder()->code == TACTICAL_ORDER_NONE) )
 	{
 		Stuff::Vector3D location;
@@ -344,8 +333,6 @@ long GroundVehicle::update (void)
 
 		Rotate(worldK,rotation);
 
-		//------------------------------------------------
-		// Find Pitch.
 		Stuff::Vector3D pitchK;
 		pitchK = worldK;
 		pitchK.x = 0.0f;
@@ -415,7 +402,6 @@ long GroundVehicle::update (void)
 			float posDelta = curPos.GetLength();
 			if (posDelta > MPlayer->warpFactor)
 				newPosition = correctPos;
-				//vel.Subtract(correctPos, curPos);
 			if (!GameMap->inBounds(moveChunk.stepPos[0][0], moveChunk.stepPos[0][1]))
 				Fatal(0, " gvehicl.update: newMoveChunk stepPos not on map! ");
 		}
@@ -448,10 +434,6 @@ long GroundVehicle::update (void)
 						cellColToMine = cellPositionCol;
 						timeInCurrent = 0.0f;
 
-						//-----------------------------------------------
-						// Used to check for mines.  Now just lays them.
-						// Always 1 and it always replaces current mine data.
-						// Everyone can see mines now!
 						GameMap->setMine(cellRowToMine, cellColToMine, 1);
 						
 						if (MPlayer) {
@@ -471,7 +453,6 @@ long GroundVehicle::update (void)
 		
 		if (aerospaceSpotter)
 		{
-			//Drop airstrikes here.
 			GameObjectPtr curTarget = pilot->getCurrentTarget();
 			float dist = 0.0f;
 			if (curTarget) 
@@ -531,7 +512,6 @@ long GroundVehicle::update (void)
 			inView = appearance->recalcBounds();
 			appearance->setObjStatus(getStatus());
 	
-			//Start and stop the water wakes here.
 			int watercellR, watercellC;
 			land->worldToCell(position,watercellR, watercellC);
 			if (GameMap->getDeepWater(watercellR, watercellC) || 
@@ -544,7 +524,6 @@ long GroundVehicle::update (void)
 				appearance->stopWaterWake();
 			}
 			
-			//Check if we need to start or stop activity in appearance
 			if (pilot->getCurTacOrder()->moveParams.mode == MOVE_MODE_MINELAYING)
 			{
 				appearance->startActivity(MINELAYER_EFFECT_ID,true);
@@ -565,7 +544,6 @@ long GroundVehicle::update (void)
 				//Must save sensor data HERE now so fades happen OK.
 				if (getTeamId() != Team::home->getId())
 				{
-					//---------------------------------------------------------------
 					conStat = getContactStatus(Team::home->getId(), true);
 			
 					if ((conStat == CONTACT_VISUAL) || isDestroyed() || isDisabled() || ShowMovers || (MPlayer && MPlayer->allUnitsDestroyed[MPlayer->commanderID]))
@@ -592,7 +570,6 @@ long GroundVehicle::update (void)
 					{
 						if (alphaValue != 0x0)
 						{
-							//We are fading.  Move it down.
 							fadeTime -= frameLength;
 							if (fadeTime < 0.0f)
 							{
@@ -678,7 +655,6 @@ long GroundVehicle::update (void)
 	return(1);		//Vehicle is still around,  false means whack this vehicle from list.
 }
 
-//---------------------------------------------------------------------------------
 void GroundVehicle::renderShadows (void)
 {
 	if (Terrain::IsGameSelectTerrainPosition(position))
@@ -687,9 +663,6 @@ void GroundVehicle::renderShadows (void)
 		{
 			if (getTeamId() != Team::home->getId())
 			{
-				//---------------------------------------------------------------
-				// DO Sensor contact stuff here.  GLENN, Update with new whatevers when done and let me know!
-				// -fs
 				long cStat = conStat;
 		
 				if (cStat == CONTACT_VISUAL)
@@ -705,7 +678,6 @@ void GroundVehicle::renderShadows (void)
 	}
 }	
 
-//----------------------------------------------------------------------------------
 
 void GroundVehicle::render (void) 
 {
@@ -830,9 +802,7 @@ void GroundVehicle::render (void)
 					startPos.z = TerrainRuntime::groundElevation(startPos);
 					endPos.z = TerrainRuntime::groundElevation(endPos);
 					
-					// [PROJECTZ:ScreenXYOracle id=gvehicl_path_step_start]
 					eye->projectForScreenXY(startPos,lineStart);
-					// [PROJECTZ:ScreenXYOracle id=gvehicl_path_step_end]
 					eye->projectForScreenXY(endPos,lineEnd);
 
 					lineStart.z = lineEnd.z = HUD_DEPTH;
@@ -847,7 +817,6 @@ void GroundVehicle::render (void)
 	
 }
 
-//***************************************************************************
 void GroundVehicle::Save (PacketFilePtr file, long packetNum)
 {
 	GroundVehicleData data;
@@ -857,7 +826,6 @@ void GroundVehicle::Save (PacketFilePtr file, long packetNum)
 	file->writePacket(packetNum,(MemoryPtr)&data,sizeof(GroundVehicleData),STORAGE_TYPE_ZLIB);
 }
 
-//***************************************************************************
 void GroundVehicle::CopyTo (GroundVehicleData *data)
 {																	   
 	data->accel 				   	 = accel;               
@@ -909,7 +877,6 @@ void GroundVehicle::CopyTo (GroundVehicleData *data)
 	Mover::CopyTo(data);
 }
 
-//---------------------------------------------------------------------------
 void GroundVehicle::Load (GroundVehicleData *data)
 {
 	Mover::Load(data);

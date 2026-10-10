@@ -79,7 +79,6 @@ Action* SelectionBrush::endPaint()
 			pRetAction = pCurAction;
 			pCurAction = NULL;
 			land->recalcWater();
-//			land->reCalcLight();	
 		}
 
 		else
@@ -124,9 +123,7 @@ Action* SelectionBrush::endPaint()
 	if (EditorInterface::instance()->ObjectSelectOnlyMode())
 	{
 		ReleaseCapture();
-		//EditorData::instance->DoTeamDialog(EditorInterface::instance()->objectivesEditState.alignment);
 		EditorInterface::instance()->Team(EditorInterface::instance()->objectivesEditState.alignment);
-		//EditorInterface::instance()->Objectives();
 	}
 	
 	return pRetAction;
@@ -298,7 +295,6 @@ bool SelectionBrush::paint( Stuff::Vector3D& worldPos, int screenX, int screenY 
 
 			if ( lastPos.x  != 0.0 && lastPos.y != 0.0 )
 			{
-				//return paintSmooth( worldPos, screenX, screenY, 6 );
 				float delta = calcNewHeight( lastRow, lastCol, endPos.y - lastPos.y );
 				for ( int j = 0; j < land->realVerticesMapSide; ++j )
 				{
@@ -338,7 +334,6 @@ bool SelectionBrush::paint( Stuff::Vector3D& worldPos, int screenX, int screenY 
 		screenPos.x = screenX;
 		screenPos.y = screenY;
 
-		// select the objects
 		if ( lastPos.x != 0.0 && lastPos.y != 0.0 )
 		{
 			if ( !bShift && !bCtrl )
@@ -385,7 +380,6 @@ bool SelectionBrush::paint( Stuff::Vector3D& worldPos, int screenX, int screenY 
 				if ( tileR > -1 && tileR < land->realVerticesMapSide
 					&& tileC > -1 && tileC < land->realVerticesMapSide )
 				{
-					// figure out which vertex is closest
 					if ( fabs(worldPos.x - land->tileColToWorldCoord[tileC]) >= land->worldUnitsPerVertex/2 )
 						tileC++;
 
@@ -467,13 +461,11 @@ void SelectionBrush::render( int screenX, int screenY )
 
 		}
 		
-		// not movinve a building, figure out if we are moving a vertex
 		Stuff::Vector3D world;
 		Stuff::Vector4D screen;
 
 		if ( 	!GetAsyncKeyState( KEY_LSHIFT ) && !GetAsyncKeyState( KEY_LCONTROL ) )
 		{
-			// figure out if there is a selected vertex near here
 			for ( int i = 0; i < land->realVerticesMapSide; ++i )
 			{
 				for ( int j = 0; j < land->realVerticesMapSide; ++j )
@@ -579,7 +571,6 @@ bool   SelectionBrush::paintSmoothArea( Stuff::Vector3D& worldPos, int screenX, 
 			float a = radiusX * radiusX * land->worldUnitsPerVertex * land->worldUnitsPerVertex;
 			float b = radiusY * radiusY * land->worldUnitsPerVertex * land->worldUnitsPerVertex;
 	
-			// now set surrounding vertices within radius
 			for ( int k = j - (long)radiusY; k < j + (long)radiusY + 1; ++k )
 			{
 				if ( k > -1 && k < land->realVerticesMapSide )
@@ -591,7 +582,6 @@ bool   SelectionBrush::paintSmoothArea( Stuff::Vector3D& worldPos, int screenX, 
 							if ( radX == radY || ( land->isVertexSelected( k, l ) ) )
 							{
 
-								// make sure vertex is within radius
 								float deltaY = ( (k - j) ) * -land->worldUnitsPerVertex;
 								float deltaX = ( (l - i) ) * land->worldUnitsPerVertex;
 
@@ -614,10 +604,6 @@ bool   SelectionBrush::paintSmoothArea( Stuff::Vector3D& worldPos, int screenX, 
 									}
 									else
 									{
-	//									if ( fabs( deltaX ) > .1 )
-	//									{
-	//										theta = atan( fabs(deltaY)/fabs(deltaX) );
-	//									}
 
 										float tangent = deltaY/deltaX;
 										
@@ -683,6 +669,4 @@ bool   SelectionBrush::paintSmoothArea( Stuff::Vector3D& worldPos, int screenX, 
 }
 
 
-//*************************************************************************************************
-// end of file ( SelectionBrush.cpp )
  

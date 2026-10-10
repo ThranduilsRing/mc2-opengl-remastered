@@ -187,7 +187,6 @@ void gosPostProcess::runHzbReduce()
     bool ok = true;
     int dstW = hzbW_, dstH = hzbH_;     // tracks the current destination size
     for (int level = 0; level < hzbMipCount_; ++level) {
-        // Render into this level's dedicated texture (always level 0 of it).
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
                                GL_TEXTURE_2D, hzbLevelTex_[level], 0);
         GLenum st = glCheckFramebufferStatus(GL_FRAMEBUFFER);
@@ -224,7 +223,6 @@ void gosPostProcess::runHzbReduce()
         }
         glDrawArrays(GL_TRIANGLES, 0, 6);
 
-        // Advance destination size to the next (smaller) ceil level.
         dstW = (dstW + 1) / 2; if (dstW < 1) dstW = 1;
         dstH = (dstH + 1) / 2; if (dstH < 1) dstH = 1;
     }
@@ -261,7 +259,6 @@ void gosPostProcess::runSSAO()
     glDisable(GL_CULL_FACE);
     glDepthMask(GL_FALSE);
 
-    // --- Pass 1: compute AO at half resolution ---
     glBindFramebuffer(GL_FRAMEBUFFER, ssaoFBO_);
     glViewport(0, 0, ssaoW_, ssaoH_);
     glDisable(GL_BLEND);
@@ -315,7 +312,6 @@ void gosPostProcess::runSSAO()
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, sceneDepthTex_);
 
-        // Horizontal: ssaoColorTex_ -> ssaoBlurTex_
         glBindFramebuffer(GL_FRAMEBUFFER, ssaoBlurFBO_);
         glViewport(0, 0, ssaoW_, ssaoH_);
         ssaoBlurProg_->setFloat2("blurDir", hTexel);
@@ -324,7 +320,6 @@ void gosPostProcess::runSSAO()
         glBindTexture(GL_TEXTURE_2D, ssaoColorTex_);
         glDrawArrays(GL_TRIANGLES, 0, 6);
 
-        // Vertical: ssaoBlurTex_ -> ssaoColorTex_
         glBindFramebuffer(GL_FRAMEBUFFER, ssaoFBO_);
         glViewport(0, 0, ssaoW_, ssaoH_);
         ssaoBlurProg_->setFloat2("blurDir", vTexel);
@@ -338,7 +333,6 @@ void gosPostProcess::runSSAO()
         glActiveTexture(GL_TEXTURE0);
     }
 
-    // --- Pass 2: apply AO multiplicatively into the scene color ---
     glBindFramebuffer(GL_FRAMEBUFFER, sceneFBO_);
     setSceneDrawBuffers(SceneDrawBufferMode::SingleColor, false);
     glViewport(0, 0, width_, height_);
@@ -391,7 +385,6 @@ void gosPostProcess::runScreenShadow()
     // APPLY-STATE-SCREENSHADOW-1: skip the 4 setup calls when the executor already
     // applied them (MC2_FRAMEGRAPH_EXECUTOR ON). Reset one-shot before draw.
     if (!screenShadowStateAppliedByExecutor_) {
-        // Render to sceneFBO_ color-only (no normal write) with multiplicative blending
         glBindFramebuffer(GL_FRAMEBUFFER, sceneFBO_);
         // M1.5: single-color composite. Helper preserves env-OFF/ON parity
         // (the postprocess composite never writes attachment-2 regardless).
@@ -491,7 +484,6 @@ void gosPostProcess::runScreenShadow()
         if (loc >= 0) glUniformMatrix4fv(loc, 1, GL_FALSE, dynamicLightSpaceMatrix_);
     }
 
-    // Bind textures
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, sceneDepthTex_);
     glActiveTexture(GL_TEXTURE1);
@@ -509,8 +501,6 @@ void gosPostProcess::runScreenShadow()
         glBindTexture(GL_TEXTURE_2D, dynamicFullMapTex_);
     }
 
-    // Draw fullscreen quad — pass 1: normal (skip terrain)
-    // Draw fullscreen quad - single pass for terrain, objects, and overlays.
     GLuint screenShadowCanaryQuery = 0;
     const bool screenShadowCanary = screenShadowGlCanaryEnabled();
     if (screenShadowCanary) {
@@ -531,7 +521,6 @@ void gosPostProcess::runScreenShadow()
 
     glBindVertexArray(0);
 
-    // Restore state
     glDisable(GL_BLEND);
     glDepthMask(GL_TRUE);
     glEnable(GL_DEPTH_TEST);
@@ -599,7 +588,6 @@ void gosPostProcess::runCloudShadow()
     glDrawArrays(GL_TRIANGLES, 0, 6);
     glBindVertexArray(0);
 
-    // Restore state.
     glDisable(GL_BLEND);
     glDepthMask(GL_TRUE);
     glEnable(GL_DEPTH_TEST);

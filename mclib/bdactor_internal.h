@@ -43,7 +43,6 @@
 #include <cmath>          // CONE-SPILL-COUPLING-1 — sqrt for the ray/terrain march
 #include <cstdlib>
 
-// MODEL-OVERRIDE dual-shape (Slice 2): registry resolve + direct geometry import.
 #include "model_override_registry.h"
 #include "assimp_importer.h"
 

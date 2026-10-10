@@ -3,7 +3,6 @@
 #include "warrior_internal.h"
 
 
-// CORE TACTICAL ORDERS
 
 long MechWarrior::orderWait (bool unitOrder, long origin, long seconds, bool clearLastTarget) {
 
@@ -11,9 +10,7 @@ long MechWarrior::orderWait (bool unitOrder, long origin, long seconds, bool cle
 	tacOrder.init((OrderOriginType)origin, TACTICAL_ORDER_WAIT, unitOrder);
 	tacOrder.delayedTime = scenarioTime + seconds;
 
-	// Order has no move goal...
 	clearMoveOrders();
-	// Order has no attack target...
 	clearAttackOrders();
 
 	if (clearLastTarget)
@@ -32,16 +29,11 @@ long MechWarrior::orderStop (bool unitOrder, bool setTacOrder) {
 
 	clearTacOrderQueue();
 
-	// Order has no move goal...
 	clearMoveOrders();
-	// Order has no attack target...
 	clearAttackOrders();
 
-//	if (clearLastTarget)
 		setLastTarget(NULL);
 
-//	if (origin == ORDER_ORIGIN_COMMANDER)
-//		setGeneralTacOrder(tacOrder);
 
 	getVehicle()->suppressionFire = 0;
 
@@ -72,23 +64,14 @@ long MechWarrior::orderMoveToPoint (bool unitOrder, bool setTacOrder, long origi
 	if (result == TACORDER_SUCCESS)
 		return(TACORDER_SUCCESS);
 
-	//clearMoveOrders(which);
 	setMoveGoal(MOVEGOAL_NONE, NULL);
 	setMoveWayPath(NULL, 0);
-	//for (long i = 0; i < 2; i++)
-	//	clearMovePath(which, i);
-	//setMoveState(which, MOVESTATE_FORWARD);
-	//setMoveStateGoal(which, MOVESTATE_FORWARD);
-	//setMoveYieldTime(which, -1.0);
-	//setMoveYieldState(which, 0);
-	//setMoveGlobalPath(which, NULL, 0);
 	
 	setMoveGoal(MOVEGOAL_LOCATION, &location);
 	moveOrders.timeOfLastStep = scenarioTime;
 
 	setMoveRun(run);
 
-	// Move order has no attack target...
 	if (setTacOrder)
 		clearAttackOrders();
 
@@ -110,8 +93,6 @@ long MechWarrior::orderMoveToPoint (bool unitOrder, bool setTacOrder, long origi
 void MechWarrior::clearMovePath (long pathNum) {
 
 	if (moveOrders.path[pathNum]) {
-		//if (moveOrders.path[pathNum]->numStepsWhenNotPaused > 0)
-		//	long i = 0;
 		moveOrders.path[pathNum]->clear();
 	}
 }
@@ -126,7 +107,6 @@ long MechWarrior::orderMoveToObject (bool unitOrder, bool setTacOrder, long orig
 	if (!target)
 		return(TACORDER_SUCCESS);
 
-	// Pick the best move goal based upon the object...
 	Stuff::Vector3D goal;
 	if (target->isMover())
 		goal = target->getPosition();
@@ -169,17 +149,11 @@ long MechWarrior::orderMoveToObject (bool unitOrder, bool setTacOrder, long orig
 	if (result == TACORDER_SUCCESS)
 		return(TACORDER_SUCCESS);
 
-	// Is this already our current order?
-	//if ((curTacOrder.code == TACTICAL_ORDER_MOVETO_OBJECT) &&
-	//	(curTacOrder.params.move.targetId == target->getIdNumber()) &&
-	//	(curTacOrder.params.move.selectionIndex == selectionIndex))
-	//	return(TACORDER_FAILURE);
 	tacOrder.targetWID = target->getWatchID();
 	Stuff::Vector3D pos = target->getPosition();
 	setMoveGoal(target->getWatchID(), &pos, target);
 	setMoveRun(run);
 
-	// Move order has no attack target...
 	if (setTacOrder)
 		clearAttackOrders();
 
@@ -225,11 +199,9 @@ long MechWarrior::orderJumpToPoint (bool unitOrder, bool setTacOrder, long origi
 	if (result == TACORDER_SUCCESS)
 		return(TACORDER_SUCCESS);
 
-	// Move order has no attack target...
 	if (setTacOrder) {
 		clearMoveOrders();
 		clearAttackOrders();
-		//setLastTarget(NULL);
 	}
 
 	if (setTacOrder && (result == TACORDER_FAILURE) && (origin == ORDER_ORIGIN_COMMANDER))
@@ -270,7 +242,6 @@ long MechWarrior::orderJumpToObject (bool unitOrder, bool setTacOrder, long orig
 	if (result == TACORDER_SUCCESS)
 		return(TACORDER_SUCCESS);
 
-	// Move order has no attack target...
 	if (setTacOrder) {
 		clearMoveOrders();
 		clearAttackOrders();
@@ -289,7 +260,6 @@ long MechWarrior::orderTraversePath (bool unitOrder, bool setTacOrder, long orig
 	TacticalOrder tacOrder;
 	tacOrder.init((OrderOriginType)origin, TACTICAL_ORDER_TRAVERSE_PATH, unitOrder);
     tacOrder.moveParams.wayPath = *wayPath;
-	//memcpy(&tacOrder.moveParams.wayPath, wayPath, sizeof(WayPath));
 	tacOrder.moveParams.mode = (layMines ? MOVE_MODE_MINELAYING : MOVE_MODE_NORMAL);
 
 	long result = tacOrder.status(this);
@@ -303,7 +273,6 @@ long MechWarrior::orderTraversePath (bool unitOrder, bool setTacOrder, long orig
 	setMoveGoal(MOVEGOAL_LOCATION, &location);
 	setMoveWayPath(wayPath, false);
 
-	// Move order has no attack target...
 	if (setTacOrder)
 		clearAttackOrders();
 
@@ -319,7 +288,6 @@ long MechWarrior::orderPatrolPath (bool unitOrder, bool setTacOrder, long origin
 	TacticalOrder tacOrder;
 	tacOrder.init((OrderOriginType)origin, TACTICAL_ORDER_PATROL_PATH, unitOrder);
     tacOrder.moveParams.wayPath = *wayPath;
-	//memcpy(&tacOrder.moveParams.wayPath, wayPath, sizeof(WayPath));
 	
 	long result = tacOrder.status(this);
 	if (result == TACORDER_SUCCESS)
@@ -331,7 +299,6 @@ long MechWarrior::orderPatrolPath (bool unitOrder, bool setTacOrder, long origin
 	location.z = tacOrder.moveParams.wayPath.points[2];
 	setMoveGoal(MOVEGOAL_LOCATION, &location);
 	setMoveWayPath(wayPath, true);
-	// Move order has no attack target...
 	if (setTacOrder)
 		clearAttackOrders();
 
@@ -355,9 +322,7 @@ long MechWarrior::orderPowerUp (bool unitOrder, long origin) {
 	if (result == TACORDER_SUCCESS)
 		return(TACORDER_SUCCESS);
 
-	// Order has no move goal...
 	clearMoveOrders();
-	// Order has no attack target...
 	clearAttackOrders();
 
 	// Check if we've cooled enough to restart...
@@ -387,9 +352,7 @@ long MechWarrior::orderPowerDown (bool unitOrder, long origin) {
 	if (result == TACORDER_SUCCESS)
 		return(TACORDER_SUCCESS);
 
-	// Order has no move goal...
 	clearMoveOrders();
-	// Order has no attack target...
 	clearAttackOrders();
 
 	if (myVehicle)
@@ -472,7 +435,6 @@ long MechWarrior::orderAttackObject (bool unitOrder, long origin, GameObjectPtr 
 	}
 
 	if (!target) {
-		// Clear Attack orders...
 		clearAttackOrders();
 		return(TACORDER_SUCCESS);
 	}
@@ -507,7 +469,6 @@ long MechWarrior::orderAttackObject (bool unitOrder, long origin, GameObjectPtr 
 
 	// If we also want to pursue it, set up the move order here...
 	if (pursue) {
-		// Order moveToObject, making sure we face the object...
 		setMoveRun(run);
 		params |= TACORDER_PARAM_FACE_OBJECT;
 		// Restored from 2017 OpenGL conversion. The pursue flag is set by
@@ -521,14 +482,12 @@ long MechWarrior::orderAttackObject (bool unitOrder, long origin, GameObjectPtr 
 	else
 		clearMoveOrders();
 
-	// Now, set up the tactical order, and pass it to the pilot...
 	setAttackType(type);
 	setAttackTarget(target);
 	setAttackAimLocation(aimLocation);
 	setAttackPursuit(pursue);
 	setSituationOpenFire(true);
 
-	// Remember the most recent target...
 	setLastTarget(target, obliterate, conserve);
 
 	if (origin == ORDER_ORIGIN_COMMANDER)
@@ -566,7 +525,6 @@ long MechWarrior::orderAttackPoint (bool unitOrder, long origin, Stuff::Vector3D
 	tacOrder.attackParams.range = (FireRangeType)range;
 	tacOrder.attackParams.pursue = pursue;
 	tacOrder.attackParams.targetPoint = location;
-	//tacOrder.moveParams.fromArea = fromArea;
 	tacOrder.moveParams.jump = jump;
 
 	long result = tacOrder.status(this);
@@ -575,13 +533,11 @@ long MechWarrior::orderAttackPoint (bool unitOrder, long origin, Stuff::Vector3D
 
 	setSituationFireRange(getVehicle()->getOrderedFireRange(&range));
 
-	// If we also want to pursue it, set up the move order here...
 	if (pursue)
 		orderMoveToPoint(unitOrder, false, origin, location, -1/*unitMateId*/, params);
 	else
 		clearMoveOrders();
 
-	// Now, set up the tactical order, and pass it to the pilot...
 	setAttackType(type);
 	setAttackTarget(NULL);
 	setAttackTargetPoint(location);
@@ -589,7 +545,6 @@ long MechWarrior::orderAttackPoint (bool unitOrder, long origin, Stuff::Vector3D
 	setAttackPursuit(pursue);
 	setSituationOpenFire(true);
 
-	// Remember the most recent target...
 	setLastTarget(NULL);
 
 	if (origin == ORDER_ORIGIN_COMMANDER)
@@ -781,13 +736,10 @@ long MechWarrior::orderCapture (long origin, GameObjectPtr target, long fromArea
 	return(NO_ERR);
 }
 
-// ALARM EVENTS
 
 long MechWarrior::handleTargetOfWeaponFire (void) {
 
-	//unsigned long attackerId = alarm[PILOT_ALARM_TARGET_OF_WEAPONFIRE].trigger[0];
 
-	//GameObjectPtr myVehicle = getVehicle();
 #ifdef USE_IFACE
 	if (myVehicle)
 		theInterface->ObjectAttacked(myVehicle->getPartId());
@@ -802,7 +754,6 @@ long MechWarrior::handleHitByWeaponFire (void) {
 
 	if (attackerWID == 0) 
 	{
-		// Ammo Explosion?
 	}
 	else if (attackerWID == -3)
 		radioMessage(RADIO_UNDER_AIRSTRIKE, true);
@@ -825,15 +776,12 @@ long MechWarrior::handleCollision (void) {
 
 	// Colliding with trees should not get here...
 
-	//long colliderHandle = alarm[PILOT_ALARM_COLLISION].trigger[0];
-	//GameObjectPtr collider = ObjectManager->get(colliderHandle);
 
 	return(NO_ERR);
 }
 
 long MechWarrior::handleDamageTakenRate (void) {
 
-	//long damageRate = alarm[PILOT_ALARM_DAMAGE_TAKEN_RATE].trigger[0];
 
 	return(NO_ERR);
 }
@@ -842,7 +790,6 @@ long MechWarrior::handleUnitMateDeath (void) {
 
 	unsigned long mateWID = alarm[PILOT_ALARM_DEATH_OF_MATE].trigger[0];
 
-	// First, check if the death was seen...
 	MoverPtr myVehicle = getVehicle();
 	if ((unsigned long)myVehicle->getWatchID() == mateWID)
 		return(NO_ERR);
@@ -878,7 +825,6 @@ long MechWarrior::handleOwnVehicleIncapacitation (unsigned long cause) {
 			break;
 	}
 
-	// Clear orders...
 	clearCurTacOrder(false);
 	setOrderState(ORDERSTATE_GENERAL);
 	MovePathPtr tempPath[2];
@@ -906,10 +852,7 @@ long MechWarrior::handleOwnVehicleIncapacitation (unsigned long cause) {
 
 long MechWarrior::handleOwnVehicleDestruction (unsigned long cause) {
 
-	//unsigned long attackerId = cause;
 
-	//MoverPtr myVehicle = getVehicle();
-	//Assert(myVehicle != NULL, 0, "handleOwnVehicleDestruction:pilot has no vehicle ");
 
 	// Let's let the unit know we're dying if we're a point...
 	// No, Don't!!!
@@ -924,8 +867,6 @@ long MechWarrior::handleOwnVehicleDestruction (unsigned long cause) {
 
 long MechWarrior::handleOwnVehicleWithdrawn (void) {
 
-	//MoverPtr myVehicle = getVehicle();
-	//Assert(myVehicle != NULL, 0, "handleOwnVehicleWithdrawn:pilot has no vehicle ");
 
 	// Let's let the unit know we're dying if we're a point...
 	// No, Don't!!!
@@ -1036,7 +977,6 @@ long MechWarrior::handleKilledTarget (void) {
 
 long MechWarrior::handleUnitMateFiredWeapon (void) {
 
-	//unsigned long mateVehicleHandle = alarm[PILOT_ALARM_MATE_FIRED_WEAPON].trigger[0];
 
 	return(NO_ERR);
 }
@@ -1126,7 +1066,6 @@ void MechWarrior::updateMissionSkills()
 
 	float MaxPilotSkill = 80.f;
 	
-	// increment skills and see if pilot has been promoted
 	skillRank[MWS_GUNNERY] += (float)skillPoints[MWS_GUNNERY] * 0.01f;
 	if (skillRank[MWS_GUNNERY] > MaxPilotSkill)
 		skillRank[MWS_GUNNERY] = MaxPilotSkill;

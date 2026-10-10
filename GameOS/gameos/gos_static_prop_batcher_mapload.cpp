@@ -52,7 +52,6 @@ GpuStaticPropBatcher& GpuStaticPropBatcher::instance() {
 }
 
 void GpuStaticPropBatcher::onMapLoad() {
-    // Reset everything; called at every map boundary.
     s_packets.clear();
     s_types.clear();
     s_perTypePeak.clear();
@@ -147,7 +146,6 @@ void GpuStaticPropBatcher::onMapUnload() {
     if (s_dynamicPropShadowSsbo) {
         GLuint dynShadowLocal = static_cast<GLuint>(s_dynamicPropShadowOwner.backendHandle);
         glDeleteBuffers(1, &dynShadowLocal); s_dynamicPropShadowOwner.backendHandle = 0;
-        // SCENE-SSBO-OWNER-SWEEP-1: mark the registry slot unavailable on teardown.
         RenderCore::RenderResourceDesc invalid;
         invalid.id    = RenderCore::RenderResourceId::DynamicPropShadowSsbo;
         invalid.valid = false;
@@ -155,11 +153,7 @@ void GpuStaticPropBatcher::onMapUnload() {
     }
     // Ring buffers are kept across maps (sized to map's worst case -- grow on demand).
 
-    // Substrate-coalesce per-mission cleanup (plan v3.8 Step group 4).
     //
-    // 4.1 — refcount-aware unpin loop. Pattern matches
-    // gos_static_prop_registry.cpp:111-124 (releasePinsForRange).
-    // Idempotent via vector clear — rebuild populates fresh on next finalize.
     if (mcTextureManager) {
         for (DWORD nodeIdx : s_coalescePinnedNodes) {
             mcTextureManager->unpinNode(nodeIdx);
@@ -176,7 +170,6 @@ void GpuStaticPropBatcher::onMapUnload() {
         }
     }
 
-    // Slice 1 step group 3 — teardown base-instance table SSBO before legacy ring.
     if (s_baseInstanceByCmdSsbo) {
         if (s_baseInstanceByCmdMap) {
             glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_baseInstanceByCmdSsbo);
@@ -230,7 +223,6 @@ void GpuStaticPropBatcher::onMapUnload() {
     s_staticBaseBuiltGen    = 0xFFFFFFFFFFFFFFFFull;
     s_staticCmdBuiltGen     = 0xFFFFFFFFFFFFFFFFull;
 
-    // 4.4 — delete remaining coalesce GL resources (only if non-zero).
     if (s_texArrayOff)     { glDeleteTextures(1, &s_texArrayOff);     s_texArrayOff     = 0; }
     if (s_texArrayOn)      { glDeleteTextures(1, &s_texArrayOn);      s_texArrayOn      = 0; }
     staticPropReleaseBuckets();  // COMPRESSION-BC7-STATICPROP-2 (no-op when gate OFF)
@@ -251,7 +243,6 @@ void GpuStaticPropBatcher::onMapUnload() {
         glDeleteBuffers(1, &local);
         s_materialGpuSsbo.backendHandle = 0;
 
-        // STATICPROP-MATERIAL-SSBO-OWNER-1: mark the slot unavailable on teardown.
         RenderCore::RenderResourceDesc invalid;
         invalid.id    = RenderCore::RenderResourceId::StaticPropMaterialGpuBuffer;
         invalid.valid = false;
@@ -267,8 +258,6 @@ void GpuStaticPropBatcher::onMapUnload() {
     s_alphaOnCmdCount  = 0;
 }
 
-// ---------------------------------------------------------------------------
-// Task 6: Type registration.
 //
 // Packet enumeration: TG_TypeMultiShape::listOfTypeShapes[] nodes are leaves
 // (each is either a TG_TypeShape with geometry or a SHAPE_NODE-less bone).

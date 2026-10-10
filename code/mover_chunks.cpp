@@ -3,14 +3,12 @@
 #include "mover_internal.h"
 
 
-// MISC routines
 
 inline MoverPtr getMoverFromHandle (long handle) {
 
 	return(dynamic_cast<MoverPtr>(ObjectManager->get(handle)));
 }
 
-// MOVECHUNK class
 
 #define	MOVECHUNK_CELLPOS_BITS		9
 #define	MOVECHUNK_NUMSTEPS_BITS		2
@@ -104,14 +102,8 @@ void MoveChunk::build (MoverPtr mover, MovePathPtr path1, MovePathPtr path2) {
 											path1->stepList[curPath1Step].cell[0],
 											path1->stepList[curPath1Step].cell[1]);
 				startWithCurStep = (relDir == -2);
-	//			if (relDir == -2)
-	//				OutputDebugString("***jumped cell***\n");
 			}
 			if (startWithCurStep) {	
-				// step 0 = curStep
-				// step 1 = curStep + 1
-				// step 2 = curStep + 2
-				// step 3 = curStep + 3
 				stepPos[0][0] = path1->stepList[curPath1Step].cell[0];
 				stepPos[0][1] = path1->stepList[curPath1Step].cell[1];
 
@@ -275,7 +267,6 @@ void MoveChunk::pack (MoverPtr mover) {
 	data |= stepRelPos[2];
 
 #ifdef DEBUG_MOVECHUNK
-	// Lots'a error checking...
 	if ((numSteps < 1) || (numSteps > 4)) {
 		DebugMoveChunk(mover, this, NULL);
 		char errMsg[1024];
@@ -340,7 +331,6 @@ void MoveChunk::unpack (MoverPtr mover) {
 	}
 
 #ifdef DEBUG_MOVECHUNK
-	// Lots'a error checking...
 	if ((numSteps < 1) || (numSteps > 4)) {
 		DebugMoveChunk(mover, this, NULL);
 		char errMsg[1024];
@@ -421,7 +411,6 @@ void StatusChunk::build (MoverPtr mover) {
 }
 
 #define	DEBUG_STATUSCHUNK
-//#define	ASSERT_STATUSCHUNK
 
 void StatusChunk::pack (MoverPtr mover) {
 
@@ -437,12 +426,10 @@ void StatusChunk::pack (MoverPtr mover) {
 	else {
 		switch (targetType) {
 			case STATUSCHUNK_TARGET_MOVER:
-				// Mover Target...
 				data |= targetId;
 				data <<= STATUSCHUNK_TARGETTYPE_BITS;
 				break;
 			case STATUSCHUNK_TARGET_TERRAIN:
-				// Terrain Object Target...
 				data |= (targetId - MIN_TERRAIN_PART_ID);
 				data <<= STATUSCHUNK_TARGETTYPE_BITS;
 				break;
@@ -478,7 +465,6 @@ void StatusChunk::pack (MoverPtr mover) {
 	data |= bodyState;
 
 #ifdef DEBUG_STATUSCHUNK
-	// Lots'a error checking...
 	switch (targetType) {
 		case STATUSCHUNK_TARGET_NONE:
 			break;
@@ -494,17 +480,6 @@ void StatusChunk::pack (MoverPtr mover) {
 				#endif
 			}
 			GameObjectPtr target = (GameObjectPtr)MPlayer->moverRoster[targetId];
-			// Mover targets could be NULL now, since we free them when they're destroyed.
-			//if (!target) {
-			//	#ifdef ASSERT_STATUSCHUNK
-			//		DebugStatusChunk(mover, this, NULL);
-			//		char errMsg[1024];
-			//		sprintf(errMsg, " StatusChunk.pack: NULL Mover Target (save stchunk.dbg file) ");
-			//		Assert(false, targetId, errMsg);
-			//	#else
-			//		StatusChunkUnpackErr = 2;
-			//	#endif
-			//}
 			}
 			break;
 		case STATUSCHUNK_TARGET_TERRAIN: {
@@ -563,8 +538,6 @@ void StatusChunk::unpack (MoverPtr mover) {
 	jumpOrder = ((tempData & STATUSCHUNK_JUMPORDER_MASK) != 0);
 	tempData >>= STATUSCHUNK_JUMPORDER_BITS;
 
-//	if (jumpOrder)
-//		OutputDebugString("JUMP ORDER\n");
 
 	ejectOrderGiven = ((tempData & STATUSCHUNK_EJECTORDER_MASK) != 0);
 	tempData >>= STATUSCHUNK_EJECTORDER_BITS;
@@ -583,15 +556,12 @@ void StatusChunk::unpack (MoverPtr mover) {
 			case STATUSCHUNK_TARGET_NONE:
 				break;
 			case STATUSCHUNK_TARGET_MOVER:
-				// Mover Target...
 				targetId = (tempData & STATUSCHUNK_MOVERINDEX_MASK);
 				break;
 			case STATUSCHUNK_TARGET_TERRAIN:
-				// Terrain Object Target...
 				targetId = (tempData & STATUSCHUNK_TERRAINPARTID_MASK) + MIN_TERRAIN_PART_ID;
 				break;
 			case STATUSCHUNK_TARGET_SPECIAL:
-				// Train Object Target...
 				targetVertexOrCarNumber = (tempData & STATUSCHUNK_TRAIN_MASK);
 				tempData >>= STATUSCHUNK_TRAIN_BITS;
 
@@ -616,7 +586,6 @@ void StatusChunk::unpack (MoverPtr mover) {
 	}
 
 #ifdef DEBUG_STATUSCHUNK
-	// Lots'a error checking...
 	switch (targetType) {
 		case STATUSCHUNK_TARGET_NONE:
 			break;
@@ -632,17 +601,6 @@ void StatusChunk::unpack (MoverPtr mover) {
 				#endif
 			}
 			GameObjectPtr target = (GameObjectPtr)MPlayer->moverRoster[targetId];
-			// Mover targets could be NULL now, since we free them when they're destroyed.
-			//if (!target) {
-			//	#ifdef ASSERT_STATUSCHUNK
-			//		DebugStatusChunk(mover, this, NULL);
-			//		char errMsg[1024];
-			//		sprintf(errMsg, " StatusChunk.unpack: NULL Mover Target (save stchunk.dbg file) ");
-			//		Assert(false, targetId, errMsg);
-			//	#else
-			//		StatusChunkUnpackErr = 2;
-			//	#endif
-			//}
 			}
 			break;
 		case STATUSCHUNK_TARGET_TERRAIN: {
@@ -729,7 +687,6 @@ bool StatusChunk::equalTo (StatusChunkPtr chunk) {
 	return(true);
 }
 
-// MOVER DYNAMICS class
 
 void MoverDynamics::init (void) {
 
@@ -746,11 +703,9 @@ void MoverDynamics::init (DynamicsType newType) {
 			break;
 		case DYNAMICS_GROUNDVEHICLE:
 			max.groundVehicle.yawRate = 0;
-			//cur.groundVehicle.yaw = 0.0;
 			break;
 		case DYNAMICS_ELEMENTAL:
 			max.elemental.yawRate = 0;
-			//cur.elemental.yaw = 0.0;
 			break;
 		default:
 			Fatal(newType, " ugh ");
@@ -761,7 +716,6 @@ void MoverDynamics::init (CSVFilePtr dynamicsFile) {
 
 	if (type == DYNAMICS_MECH) 
 	{
-		//Its a new day!!!
 		long tmp, tmp2;
 		dynamicsFile->readLong(8, 5, tmp);
 		dynamicsFile->readLong(9, 5, tmp2);
@@ -850,7 +804,6 @@ void MoverDynamics::init (FitIniFilePtr dynamicsFile)
 		Fatal(type, " MoverDynamics.init: bad type ");
 }
 
-// MOVER CONTROL class
 
 void MoverControl::reset (void) {
 

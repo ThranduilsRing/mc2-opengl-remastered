@@ -30,16 +30,12 @@ void  gos_SetTerrainMatTiling(float rock, float grass, float dirt, float concret
 void  gos_GetTerrainMatTiling(float* rock, float* grass, float* dirt, float* concrete, float* snow);
 void  gos_SetTerrainTintStrengthScale(float s);
 float gos_GetTerrainTintStrengthScale();
-// TERRAIN-TINT-UI-1: material base tint colors.
 void  gos_SetTerrainTintRock(float r, float g, float b);
 void  gos_GetTerrainTintRock(float* r, float* g, float* b);
 void  gos_SetTerrainTintGrass(float r, float g, float b);
 void  gos_GetTerrainTintGrass(float* r, float* g, float* b);
 void  gos_SetTerrainTintDirt(float r, float g, float b);
 void  gos_GetTerrainTintDirt(float* r, float* g, float* b);
-// TERRAIN-TUNING-UI-1 / TERRAIN-LIGHTING-1 — consolidated tunables (the
-// Object Inspector "Terrain Pass" panel used to mirror these; they live
-// here now alongside the rest of the terrain tuning stack).
 void  gos_SetTerrainNormalsFromHeightStrength(float s);
 float gos_GetTerrainNormalsFromHeightStrength();
 void  gos_SetTerrainCliffShadowFloor(float f);
@@ -61,16 +57,13 @@ void  gos_GetWaterDeepColor(float* rgb);
 void  gos_SetWaterDeepColor(float r, float g, float b);
 void  gos_GetWaterShallowColor(float* rgb);
 void  gos_SetWaterShallowColor(float r, float g, float b);
-// WATER-VISUAL-FIRST-SLICE — gated camera-independent sky tint.
 float gos_GetWaterSkyTintStrength();
 void  gos_SetWaterSkyTintStrength(float v);
 void  gos_GetWaterSkyTintColor(float* rgb);
 void  gos_SetWaterSkyTintColor(float r, float g, float b);
-// WATER-SKY-REFLECTION-1 — gated camera-dependent SH-L2 sky reflection.
 float gos_GetWaterReflStrength();
 void  gos_SetWaterReflStrength(float v);
 int   gos_GetWaterReflectionGate();
-// WATER-REFLECTION-SAMPLE-1 — terrain reflection RT blend strength.
 float gos_GetWaterRtStrength();
 void  gos_SetWaterRtStrength(float v);
 int   gos_GetWaterReflectionRtGate();

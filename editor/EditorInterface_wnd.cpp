@@ -84,7 +84,6 @@ void EditorInterface::OnKeyUp(UINT nChar, UINT nRepCnt, UINT nFlags)
 		prevDragging = false;
 		ChangeCursor( oldCursor );
 		syncScrollBars();
-		//dragging = false;		
 	}
 
 	lastKey = -1;
@@ -131,8 +130,6 @@ void EditorInterface::OnRButtonUp(UINT nFlags, CPoint point)
 		syncScrollBars();
 	}
 
-	// (Removed: dead commented-out MFC TrackPopupMenu right-click menu —
-	// EDITOR-SIMPLIFY S0. The live right-click flow lives in OnRButtonUp/ImGui.)
 }
 
 
@@ -227,12 +224,10 @@ int EditorInterface::UnitSettings()
 {
 	EList<Unit*, Unit* > list;
 
-	// ok, find the rest of the selected units
 	EditorObjectMgr::instance()->getSelectedUnits( list );
 
 	if ( list.Count() )
 	{
-		// dialog for units (mechs and vehicles)
 		UnitSettingsDlg dlg( list, undoMgr );
 		if ( IDOK == dlg.DoModal() )
 		{
@@ -253,7 +248,6 @@ int EditorInterface::UnitSettings()
 
 		if ( list2.Count() )
 		{
-			// dialog for buildings (not units, not dropzones)
 			BuildingSettingsDlg dlg( list2, undoMgr );
 			if ( IDOK == dlg.DoModal() )
 			{
@@ -345,7 +339,6 @@ void EditorInterface::OnPaint()
 	static bool bFirstLoad = true;
 	if (bFirstLoad) {
 		if (!bThisIsInitialized) {
-			/*paint splash screen*/
 			if (!m_hSplashBitMap) {
 				m_hSplashBitMap = (HBITMAP)LoadImage(NULL, "esplash.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
 			}
@@ -583,7 +576,6 @@ void EditorInterface::OnViewShowpassabilitymap()
 	bool isChecked = (GetParent()->GetMenu()->GetMenuState(ID_VIEW_SHOWPASSABILITYMAP, MF_BYCOMMAND) & MF_CHECKED) != 0;
 
 	if (isChecked) {
-		// Toggle off — clear whichever overlay is active.
 		GetParent()->GetMenu()->CheckMenuItem(ID_VIEW_SHOWPASSABILITYMAP, MF_BYCOMMAND | MF_UNCHECKED);
 		drawTerrainGrid      = false;
 		drawEditorPassability = false;
@@ -599,7 +591,6 @@ void EditorInterface::OnViewShowpassabilitymap()
 	}
 
 	if (GameMap) {
-		// Legacy MOVE overlay available.
 		GetParent()->GetMenu()->CheckMenuItem(ID_VIEW_SHOWPASSABILITYMAP, MF_BYCOMMAND | MF_CHECKED);
 		drawTerrainGrid      = true;
 		drawEditorPassability = false;

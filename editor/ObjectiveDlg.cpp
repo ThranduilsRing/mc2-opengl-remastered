@@ -30,8 +30,6 @@ static char THIS_FILE[] = __FILE__;
 #endif
 #endif /*gos doesn't like this */
 
-/////////////////////////////////////////////////////////////////////////////
-// ObjectiveDlg dialog
 
 
 ObjectiveDlg::ObjectiveDlg(CWnd* pParent /*=NULL*/)
@@ -40,7 +38,6 @@ ObjectiveDlg::ObjectiveDlg(CWnd* pParent /*=NULL*/)
 	m_TitleResourceStringID = 0;
 	m_DescriptionResourceStringID = 0;
 
-	//{{AFX_DATA_INIT(ObjectiveDlg)
 	m_PriorityRadioButton = -1;
 	m_ResourcePointsEdit = 0;
 	m_PreviousPrimaryObjectiveMustBeCompleteCheckButton = FALSE;
@@ -57,7 +54,6 @@ ObjectiveDlg::ObjectiveDlg(CWnd* pParent /*=NULL*/)
 	m_ActivateFlagIDEdit = _T("");
 	m_ResetStatusOnFlagCheckButton = FALSE;
 	m_ResetStatusFlagIDEdit = _T("");
-	//}}AFX_DATA_INIT
 
 	nConditionSpeciesSelectionIndex = -1;
 	nActionSpeciesSelectionIndex = -1;
@@ -69,7 +65,6 @@ ObjectiveDlg::ObjectiveDlg(CWnd* pParent /*=NULL*/)
 void ObjectiveDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
-	//{{AFX_DATA_MAP(ObjectiveDlg)
 	DDX_Control(pDX, IDC_OBJECTIVE_ADD_FAILURE_CONDITION_BUTTON, m_AddFailureConditionButton);
 	DDX_Control(pDX, IDC_OBJECTIVE_FAILURE_ACTION_LIST, m_FailureActionList);
 	DDX_Control(pDX, IDC_OBJECTIVE_FAILURE_CONDITION_LIST, m_FailureConditionList);
@@ -98,12 +93,10 @@ void ObjectiveDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Text(pDX, IDC_OBJECTIVE_ACTIVATE_FLAG_EDITBOX, m_ActivateFlagIDEdit);
 	DDX_Check(pDX, IDC_OBJECTIVE_RESET_STATUS_ON_FLAG_CHECK, m_ResetStatusOnFlagCheckButton);
 	DDX_Text(pDX, IDC_OBJECTIVE_RESET_STATUS_FLAG_EDITBOX, m_ResetStatusFlagIDEdit);
-	//}}AFX_DATA_MAP
 }
 
 
 BEGIN_MESSAGE_MAP(ObjectiveDlg, CDialog)
-	//{{AFX_MSG_MAP(ObjectiveDlg)
 	ON_BN_CLICKED(IDC_OBJECTIVE_ADD_CONDITION_BUTTON, OnObjectiveAddConditionButton)
 	ON_BN_CLICKED(IDC_OBJECTIVE_REMOVE_CONDITION_BUTTON, OnObjectiveRemoveConditionButton)
 	ON_BN_CLICKED(IDC_OBJECTIVE_ADD_ACTION_BUTTON, OnObjectiveAddActionButton)
@@ -127,13 +120,10 @@ BEGIN_MESSAGE_MAP(ObjectiveDlg, CDialog)
 	ON_BN_CLICKED(IDC_OBJECTIVE_VIEW_FAILURE_CONDITION_BUTTON, OnObjectiveViewFailureConditionButton)
 	ON_BN_CLICKED(IDC_OBJECTIVE_VIEW_FAILURE_ACTION_BUTTON, OnObjectiveViewFailureActionButton)
 	ON_BN_CLICKED(IDC_OBJECTIVE_CLEAR_LOGISTICS_MODEL_BUTTON, OnObjectiveClearLogisticsModelButton)
-	//}}AFX_MSG_MAP
 	ON_BN_CLICKED(IDC_OBJECTIVE_PICK_MARKER_BUTTON, OnObjectivePickMarkerButton)
 	ON_BN_CLICKED(IDC_OBJECTIVE_LOCATE_CONDITION_BUTTON, OnObjectiveLocateConditionButton)
 END_MESSAGE_MAP()
 
-/////////////////////////////////////////////////////////////////////////////
-// ObjectiveDlg message handlers
 
 // --- Readable WHEN/THEN line formatting -------------------------------------
 // Build a plain-English sentence for one condition/action, keyed on Species().
@@ -799,7 +789,6 @@ BOOL ObjectiveDlg::OnInitDialog()
 	}
 
 	return TRUE;  // return TRUE unless you set the focus to a control
-	              // EXCEPTION: OCX Property Pages should return FALSE
 }
 
 // Slice 1 -- Marker XY map-picker (PICKER-SELECT-POINT-RECON-1, Option B).
@@ -986,7 +975,6 @@ void ObjectiveDlg::OnObjectiveAddConditionButton()
 	{
 		DWORD comboboxSelection = (&m_ComboBox)->GetCurSel();
 		if ((0 <= comboboxSelection) && (comboBoxItems.Count() > comboboxSelection)) {
-			//condition_species_type species = comboBoxItems[comboboxSelection];
 			condition_species_type species = *(comboBoxItems.Iterator(comboboxSelection));
 			pNewCondition = CObjective::new_CObjectiveCondition(species, m_ModifiedObjective.Alignment());
 		} else {
@@ -1045,7 +1033,6 @@ void ObjectiveDlg::OnObjectiveAddActionButton()
 	{
 		DWORD actionComboboxSelection = (&m_ActionComboBox)->GetCurSel();
 		if ((0 <= actionComboboxSelection) && (actionComboBoxItems.Count() > actionComboboxSelection)) {
-			//action_species_type species = actionComboBoxItems[actionComboboxSelection];
 			action_species_type species = *(actionComboBoxItems.Iterator(actionComboboxSelection));
 			pNewAction = CObjective::new_CObjectiveAction(species, m_ModifiedObjective.Alignment());
 		} else {
@@ -1338,7 +1325,6 @@ void ObjectiveDlg::OnObjectiveAddFailureConditionButton()
 	{
 		DWORD comboboxSelection = (&m_FailureConditionComboBox)->GetCurSel();
 		if ((0 <= comboboxSelection) && (failureConditionComboBoxItems.Count() > comboboxSelection)) {
-			//condition_species_type species = failureConditionComboBoxItems[comboboxSelection];
 			condition_species_type species = *(failureConditionComboBoxItems.Iterator(comboboxSelection));
 			pNewCondition = CObjective::new_CObjectiveCondition(species, m_ModifiedObjective.Alignment());
 		} else {
@@ -1397,7 +1383,6 @@ void ObjectiveDlg::OnObjectiveAddFailureActionButton()
 	{
 		DWORD actionComboboxSelection = (&m_FailureActionComboBox)->GetCurSel();
 		if ((0 <= actionComboboxSelection) && (failureActionComboBoxItems.Count() > actionComboboxSelection)) {
-			//action_species_type species = failureActionComboBoxItems[actionComboboxSelection];
 			action_species_type species = *(failureActionComboBoxItems.Iterator(actionComboboxSelection));
 			pNewAction = CObjective::new_CObjectiveAction(species, m_ModifiedObjective.Alignment());
 		} else {

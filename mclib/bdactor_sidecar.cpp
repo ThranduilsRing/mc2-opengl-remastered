@@ -185,7 +185,6 @@ void loadBuildingImportSourceWithSidecarAxis(TG_TypeMultiShape* shape, const cha
 		mc2::gate::invalidate("MC2_GLTF_YAW_DEG");
 	}
 
-	// META-FIX design B PART 1: REQUIRED slot — checked import load.
 	long rc = shape->LoadFromFile(importSourceBase);
 	tglVerifyShapeLoaded(shape, rc, "bdactor.bldg_import",
 		importSourceBase, failFlag);

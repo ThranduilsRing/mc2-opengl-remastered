@@ -158,7 +158,6 @@ void tglc_EnsureMatAlbedoArrayLoaded()
     glGetIntegerv(GL_ACTIVE_TEXTURE, &prevActive);
     glActiveTexture(GL_TEXTURE0);
     glGetIntegerv(GL_TEXTURE_BINDING_2D_ARRAY, &prevArrayBinding);
-    // TEX-CLASS: asset-pool -- terrain per-layer BC7 sRGB albedo 2D_ARRAY (content)
     glGenTextures(1, &s_matAlbedoArrayTex);
     glBindTexture(GL_TEXTURE_2D_ARRAY, s_matAlbedoArrayTex);
     glTexStorage3D(GL_TEXTURE_2D_ARRAY, levels, internalformat,

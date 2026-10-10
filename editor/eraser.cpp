@@ -19,7 +19,6 @@ eraser.cpp			: Implementation of the eraser component.
 // same picker the Select tool uses. Avoids pulling the heavy EditorInterface.h in here.
 extern EditorObject* EditorPickObjectAtScreen(int screenX, int screenY);
 
-//---------------------------------------------------------------------------
 inline bool isCementType (DWORD type)
 {
 	bool isCement = ((type == BASE_CEMENT_TYPE) ||
@@ -228,7 +227,6 @@ Action* Eraser::applyToSelection()
 		}
 		it++;
 	}
-	//EditorObjectMgr::instance()->deleteSelectedObjects();
 
 	for ( int i = 0; i < land->realVerticesMapSide; ++i )
 	{
@@ -286,5 +284,3 @@ bool Eraser::EraserAction::redo()
 	return bRetVal;
 
 }
-//*************************************************************************************************
-// end of file ( eraser.cpp )

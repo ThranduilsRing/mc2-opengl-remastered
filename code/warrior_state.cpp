@@ -11,7 +11,6 @@ BldgAppearance* MechWarrior::getWayPointMarker( const Stuff::Vector3D& pos, cons
 	BldgAppearance* appearance = new BldgAppearance;
 	gosASSERT(appearance != NULL);
 
-	// The only appearance type for buildings is MLR_APPEARANCE.
 	gosASSERT(buildingAppearanceType->getAppearanceClass() == BLDG_TYPE);
 	
 	appearance->init((BldgAppearanceType*)buildingAppearanceType, (GameObjectPtr)this);
@@ -53,9 +52,6 @@ long MechWarrior::calcTacOrder (long goalAction,
 	bool alreadyAssessedTurrets = false;
 	if (goalWID == 0) {
 		if (turretRange > 0.0) {
-			//if (getLastTarget())
-			//	if (getLastTarget()->getThreatRating() > turretThreat)
-			//		turretThreat = getLastTarget()->getThreatRating();
 			GameObjectPtr turretTarget = calcTurretThreats(turretRange, turretThreat);
 			if (turretTarget) {
 				if (turretTarget->getObjectClass() == TURRET)
@@ -97,7 +93,6 @@ long MechWarrior::calcTacOrder (long goalAction,
 		orderOrigin = ORDER_ORIGIN_PLAYER;
 
 	if (currentAction == GOAL_ACTION_UNDECIDED) {
-		// Pick one for me...
 		if (currentTarget)
 			if (currentTarget->isMover())
 				if (getTeam()->isEnemy(currentTarget->getTeam())) {
@@ -219,7 +214,6 @@ long MechWarrior::calcTacOrder (long goalAction,
 		// straight for the main goal location...
 		if (currentTarget) {
 			long fromArea = -1;	// change this?
-			// Pick the best move goal based upon the object...
 			Stuff::Vector3D goal;
 			if (currentTarget->isMover())
 				goal = currentTarget->getPosition();
@@ -344,8 +338,6 @@ long MechWarrior::calcTacOrder (long goalAction,
 	else if (currentAction == GOAL_ACTION_CAPTURE) {
 		bool mainGoalControlled = (currentTarget->getTeam() == getTeam());
 		if (!mainGoalControlled) {
-			// Are there any enemies blocking this capture?
-			//float distanceToGoal = getVehicle()->distanceFrom(currentTarget->getPosition());
 			GameObjectPtr blockerList[MAX_MOVERS];
 			long numBlockers = currentTarget->getCaptureBlocker(getVehicle(), blockerList);
 			if (numBlockers > 0) {
@@ -381,7 +373,6 @@ long MechWarrior::calcTacOrder (long goalAction,
 				currentWID = blockerList[blockerToAttack]->getWatchID();
 				currentLocation.Zero();
 				currentTarget = blockerList[blockerToAttack];
-				//}
 			}
 			GlobalPathStep globalPath[50];
 			long numSteps = getVehicle()->calcGlobalPath(globalPath, currentTarget, NULL, true);
@@ -517,7 +508,6 @@ long MechWarrior::calcTacOrder (long goalAction,
 	else if (currentAction == GOAL_ACTION_GUARD) {
 	}
 
-//	long numBlockers = controlObject->getCaptureBlocker (GameObjectPtr capturingMover, GameObjectPtr* blockerList) {
 	return(0);
 }
 
@@ -527,7 +517,6 @@ void MechWarrior::initGoalManager (long poolSize) {
 	gosASSERT(goalManager != NULL);
 	goalManager->setup(poolSize);
 	goalManager->build();
-	// For now, process this map manually...
 
 }
 
@@ -804,16 +793,12 @@ void MechWarrior::init (MechWarriorData data)
 {
 	init(false);
 
-	//First, copy all of the data to the class.
 	copyFromData(data);
 
-	//Set the brain Pointer from the Handle.
-	// NOT IMPLEMENTED BY GLENNDOR YET!!!!!!!!!
 	if (warriorBrainHandle > -1) 
 	{
 		brain = ABLi_getModule(warriorBrainHandle);
 
-		// Set up the pilot alarm callback table...
 		for (long i = 0; i < NUM_PILOT_ALARMS; i++)
 			brainAlarmCallback[i] = brain->findFunction(pilotAlarmFunctionName[i], true);
 	}
@@ -822,7 +807,6 @@ void MechWarrior::init (MechWarriorData data)
 		brain = NULL;
 	}
 
-	//Set anything else.
 	movePathRequest = NULL;
 
 	if (audioStr[0] != 0)
@@ -911,7 +895,6 @@ long MechWarrior::Load (PacketFilePtr file, long packetNum)
 		numWarriors--;
 	}
 
-	//initGoalManager(200);
 
 	if (!sortList) 
 	{

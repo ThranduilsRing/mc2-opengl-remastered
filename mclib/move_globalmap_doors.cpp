@@ -25,7 +25,6 @@ void GlobalMap::calcGlobalDoors (void) {
 				minCol = sectorC * SECTOR_DIM;
 				maxCol = minCol + SECTOR_DIM;
 
-				// First, find all doors in this direction...
 				for (long r = minRow; r < maxRow; r++)
 					for (long c = minCol; c < maxCol; c++) {
 						// First, check each cell in the sector to see if
@@ -64,13 +63,11 @@ void GlobalMap::calcGlobalDoors (void) {
 							long adjArea = doorMap[r - minRow][c - minCol];
 							if (adjArea > -1) {
 								long curArea = areaMap[r * width + c];
-								// We have a door. Calc its length...
 								long length = 0;
 								while ((r < maxRow) && (areaMap[r * width + c] == curArea) && (doorMap[r - minRow][c - minCol] == adjArea)) {
 									length++;
 									r++;
 								}
-								// Now, add it to the global door list...
 								addDoor(curArea, adjArea, r - length, c, length, dir);
 								}
 							else
@@ -85,13 +82,11 @@ void GlobalMap::calcGlobalDoors (void) {
 							long adjArea = doorMap[r - minRow][c - minCol];
 							if (adjArea > -1) {
 								long curArea = areaMap[r * width + c];
-								// We have a door. Calc its length...
 								long length = 0;
 								while ((c < maxCol) && (areaMap[r * width + c] == curArea) && (doorMap[r - minRow][c - minCol] == adjArea)) {
 									length++;
 									c++;
 								}
-								// Now, add it to the sector's door list...
 								addDoor(curArea, adjArea, r, c - length, length, dir);
 								}
 							else
@@ -157,16 +152,12 @@ long GlobalMap::calcLinkCost (long startDoor, long thruArea, long goalDoor) {
 		goalCol += goalSide;
 		}
 	else {
-		// Door goes from north to south
 		goalRow += goalSide;
 		goalCol += (doors[goalDoor].length / 2);
 	}
 
 	Stuff::Vector3D goalWorldPos;
 	land->cellToWorld(goalRow, goalCol, goalWorldPos);
-	//goalWorldPos.x = (float)goalCol * Terrain::worldUnitsPerCell + Terrain::worldUnitsPerCell / 2 - Terrain::worldUnitsMapSide / 2;
-	//goalWorldPos.y = (Terrain::worldUnitsMapSide / 2) - ((float)goalCellR * Terrain::worldUnitsPerCell) - Terrain::worldUnitsPerCell / 2;
-	//goalWorldPos.z = (float)0; // How do we get the elevation for this point? Do we care?
 
 	long cost = 9999;
 	
@@ -240,7 +231,6 @@ long GlobalMap::calcLinkCost (long startDoor, long thruArea, long goalDoor) {
 		}
 	else
 		cost = newPath.getCost();
-//#endif
 	gosASSERT(cost != 0);
 	return(cost);
 }
@@ -251,8 +241,6 @@ void GlobalMap::changeAreaLinkCost (long area, long cost) {
     DoorInfoPtr thruDoorInfo = areas_doors[area];
 	long numDoors = thruArea->numDoors;
 	for (long i = 0; i < numDoors; i++) {
-		//GlobalMapDoorPtr curDoor = &doors[thruArea->doors[i].doorIndex];
-		//long doorSide = thruArea->doors[i].doorSide;
 		GlobalMapDoorPtr curDoor = &doors[thruDoorInfo[i].doorIndex];
 		DoorInfoLinksPtr& curDoor_links = doors_links[thruDoorInfo[i].doorIndex];
 		long doorSide = thruDoorInfo[i].doorSide;
@@ -275,7 +263,6 @@ void GlobalMap::calcDoorLinks (void) {
 
 			long area = thisDoor->area[s];
 			long areaNumDoors = areas[area].numDoors;
-			//if (areaNumDoors >= 0) {
 				thisDoor->numLinks[s] = areaNumDoors - 1;
 				// Allocate enough links for all links to this door plus a scratch
 				// link used during path calc...
@@ -284,7 +271,6 @@ void GlobalMap::calcDoorLinks (void) {
 				gosASSERT(thisDoor_links[s] != NULL);
 				long linkIndex = 0;
 				for (long areaDoor = 0; areaDoor < areaNumDoors; areaDoor++) {
-					//long doorIndex = areas[area].doors[areaDoor].doorIndex;
 					long doorIndex = areas_doors[area][areaDoor].doorIndex;
 					GlobalMapDoorPtr curDoor = &doors[doorIndex];
 					if (curDoor != thisDoor) {
@@ -295,13 +281,11 @@ void GlobalMap::calcDoorLinks (void) {
 						linkIndex++;
 					}
 				}
-			//}
 			if (areaNumDoors > maxDoors)
 				maxDoors = areaNumDoors;
 		}
 	}
 
-	// Now, set up the start and goal doors...
 	doors[numDoors + DOOR_OFFSET_START].numLinks[0] = maxDoors;
 	numDoorLinks += (doors[numDoors + DOOR_OFFSET_START].numLinks[0] + NUM_EXTRA_DOOR_LINKS);
 	doors_links[numDoors + DOOR_OFFSET_START][0] = (DoorLinkPtr)systemHeap->Malloc(sizeof(DoorLink) * (doors[numDoors + DOOR_OFFSET_START].numLinks[0] + NUM_EXTRA_DOOR_LINKS));
@@ -320,16 +304,10 @@ void GlobalMap::calcDoorLinks (void) {
 	for (long i = 0; i < (numDoors + NUM_DOOR_OFFSETS); i++) {
 		long numLinks = doors[i].numLinks[0] + NUM_EXTRA_DOOR_LINKS;
 		gosASSERT(numLinks >= 2);
-		//result = packetFile->writePacket(whichPacket++, (unsigned char*)doors[i].links[0], sizeof(DoorLink) * numLinks);
-		//if (result <= 0)
-		//	Fatal(result, " GlobalMap.write: Unable to write doorLinks packet ");
 		numberL += numLinks;
 
 		numLinks = doors[i].numLinks[1] + NUM_EXTRA_DOOR_LINKS;
 		gosASSERT(numLinks >= 2);
-		//result = packetFile->writePacket(whichPacket++, (unsigned char*)doors[i].links[1], sizeof(DoorLink) * numLinks);
-		//if (result <= 0)
-		//	Fatal(result, " GlobalMap.write: Unable to write doorLinks packet ");
 		numberL += numLinks;
 	}
 	Assert(numberL == numDoorLinks, 0, " HUH ");
@@ -437,7 +415,6 @@ bool GlobalMap::getAdjacentAreaCell (long area, long adjacentArea, long& cellRow
 				cellCol += goalSide;
 				}
 			else {
-				// Door goes from north to south
 				cellRow += goalSide;
 				cellCol += (doors[doorIndex].length / 2);
 			}
@@ -463,7 +440,6 @@ Stuff::Vector3D GlobalMap::getDoorWorldPos (long area, long door, long* prevGoal
 long GlobalMap::build (MissionMapCellInfo* mapData) {
 
 	#ifdef _DEBUG
-	//systemHeap->walkHeap(false,false,"GlobalMap BAD HEAP1\n");
 	#endif
 
 	// Note that h and w are in tiles.
@@ -500,17 +476,13 @@ long GlobalMap::build (MissionMapCellInfo* mapData) {
 
 	calcDoorLinks();
 
-	// Now, build the path tables for each sector...
 /*	for (r = 0; r < tileHeight; r++)
 		for (long c = 0; c < tileWidth; c++)
 			calcSectorPaths(scenarioMap, r, c);
 */
 	#ifdef _DEBUG
-	//systemHeap->walkHeap(false,false,"GlobalMap BAD HEAP2\n");
 	#endif
 
-	//if (blank)
-	//	calcPathCostTable();
 
 	if (specialAreas) {
 		systemHeap->Free(specialAreas);

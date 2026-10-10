@@ -228,7 +228,6 @@ static inline void EditorRttClientToViewport(int&, int&) {}
 
 extern bool silentMode;
 
-// ARM
 #include "../ARM/Microsoft.Xna.Arm.h"
 using namespace Microsoft::Xna::Arm;
 
@@ -300,7 +299,6 @@ inline DWORD s_editorLastObjectClickTime = 0;
 inline int s_editorLastObjectClickX = 0;
 inline int s_editorLastObjectClickY = 0;
 
-// Free functions defined in the split pieces.
 EditorObject* EditorInterface_PickObjectAtScreenPoint(int screenX, int screenY);
 EditorObject* EditorPickObjectAtScreen(int screenX, int screenY);
 bool EditorInterface_SelectObjectAtScreenPoint(int screenX, int screenY, bool toggle);

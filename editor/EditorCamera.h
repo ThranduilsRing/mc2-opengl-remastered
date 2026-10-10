@@ -7,20 +7,6 @@ EditorCamera.h			: Interface for the EditorCamera component.
 // Copyright (C) Microsoft Corporation. All rights reserved.                 //
 //===========================================================================//
 \*************************************************************************************************/
-/***************************************************************
-* FILENAME: EditorCamera.h
-* DESCRIPTION: EditorCamera renders the editor's terrain, sky, and objects.
-* AUTHOR: Microsoft Corporation
-* COPYRIGHT: Copyright (C) Microsoft Corporation. All rights reserved.
-* DATE: 04/29/2026
-* MODIFICATION: by Methuselas
-* CHANGES: Hooked the Editor camera into the Remastered terrain shader
-*          uniforms (terrainMVP, terrainViewport, camera position, light
-*          direction). Mirrors the GameCamera::render() composition block
-*          from code/gamecam.cpp so the editor terrain path uses the same
-*          shader uniforms the engine expects. Editor-only change; no
-*          engine, shader, or mclib files were modified.
-****************************************************************/
 
 #ifndef CAMERA_H
 #include "Camera.h"
@@ -66,7 +52,6 @@ static void EditorCameraTrace(const char* fmt, ...)
 	fclose(f);
 }
 
-//*************************************************************************************************
 
 /**************************************************************************************************
 CLASS DESCRIPTION
@@ -89,8 +74,6 @@ extern bool g_cliClosePosted;
 
 class EditorCamera : public Camera
 {
-	//Data Members
-	//-------------
 public:
 
 		AppearancePtr			compass;
@@ -149,19 +132,7 @@ public:
 			EditorCameraTrace("EditorCamera::render frame=%ld enter active=%d turn=%ld drawOldWay=%d",
 				s_ecrFrame, active ? 1 : 0, (long)turn, drawOldWay ? 1 : 0);
 
-		//------------------------------------------------------
-		// At present, these actually draw.  Later they will
-		// add elements to the draw list and sort and draw.
-		// The later time has arrived.  We begin sorting immediately.
-		// NO LONGER NEED TO SORT!
-		// ZBuffer time has arrived.  Share and Enjoy!
-		// Everything SIMPLY draws at the execution point into the zBuffer
-		// at the correct depth.  Miracles occur at that point!
-		// Big code change but it removes a WHOLE bunch of code and memory!
 
-		//--------------------------------------------------------
-		// Get new viewport values to scale stuff.  No longer uses
-		// VFX stuff for this.  ALL GOS NOW!
 		gos_GetViewport(&viewMulX, &viewMulY, &viewAddX, &viewAddY);
 		//--------------------------------------------------------
 		// S2.13-surgical: screenResolution + calculateProjectionConstants
@@ -176,8 +147,6 @@ public:
 		globalScaleFactor = getScaleFactor();
 		globalScaleFactor *= viewMulX / Environment.screenWidth;		//Scale Mechs to ScreenRES
 		
-		//-----------------------------------------------
-		// Set Ambient for this pass of rendering	
 		DWORD lightRGB = (ambientRed<<16)+(ambientGreen<<8)+ambientBlue;
 			
 		eye->setLightColor(1,lightRGB);
@@ -338,7 +307,6 @@ public:
 			EditorGpuTimer_End();
 		}
 	
-	 	//-----------------------------------------------------
 		if (drawOldWay)
 		{
 			gos_SetRenderState( gos_State_ZCompare, 0);
@@ -366,12 +334,9 @@ public:
 
 	virtual long activate (void)
 	{
-		// If camera is already active, just return
 		if (ready && active)
 			return(NO_ERR);
 		
-		//Can set initial position and stuff here.
-		//updateDaylight(true);
 		
 		lastShadowLightPitch = lightPitch;
 
@@ -382,8 +347,6 @@ public:
 
 	virtual long update (void)
 	{
-		// calculate new near and far plane distance based on 
-		// Current altitude above terrain.
 		float anglePercent = (projectionAngle - MIN_PERSPECTIVE) / (MAX_PERSPECTIVE - MIN_PERSPECTIVE);
 		float testMax = Camera::AltitudeMaximumLo + ((Camera::AltitudeMaximumHi - Camera::AltitudeMaximumLo) * anglePercent);
 
@@ -410,7 +373,6 @@ public:
 		
 		if (!theSky && (turn > 3))
 		{
-			//Startup the SKYBox
 			long appearanceType = (GENERIC_APPR_TYPE << 24);
 		
 			AppearanceTypePtr genericAppearanceType = NULL;
@@ -425,7 +387,6 @@ public:
 			theSky = new GenericAppearance;
 			gosASSERT(theSky != NULL);
 		
-			//--------------------------------------------------------------
 			gosASSERT(genericAppearanceType->getAppearanceClass() == GENERIC_APPR_TYPE);
 			theSky->init((GenericAppearanceType*)genericAppearanceType, NULL);
 			
@@ -433,7 +394,6 @@ public:
 			oldSkyNumber = EditorData::instance->TheSkyNumber();
 		}
 
-		//Did they change the skyNumber on us?
 		if (theSky && (oldSkyNumber != EditorData::instance->TheSkyNumber()))
 		{
 			theSky->setSkyNumber(EditorData::instance->TheSkyNumber());
@@ -542,5 +502,4 @@ public:
 
 };
 
-//*************************************************************************************************
 #endif  // end of file ( EditorCamera.h )

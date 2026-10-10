@@ -87,7 +87,6 @@ LRESULT EditorInterface::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 
 	if ( WM_MOUSEWHEEL == message)
 	{
-		//int i = 17;
 	}
 	
 	int retVal  = 0;
@@ -141,7 +140,6 @@ LRESULT EditorInterface::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 				{
 					editor->update();
 				}
-				//EditorObjectMgr::instance()->update();
 			}
 			break;
 		}
@@ -152,7 +150,6 @@ LRESULT EditorInterface::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 }
 
 #ifdef MC2_IMGUI
-// Visibility for the Phase 1d wrapper panels (toggled from the Tools palette).
 static bool s_placePanelOpen   = false;
 static bool s_missionToolsOpen = false;
 
@@ -315,7 +312,6 @@ void EditorInterface::renderToolbarImGui()
 		MapGeneratorDialog::Open();
 	ImGui::PopStyleColor();
 
-	// Draw the Map Generator dialog (no-op when closed).
 	MapGeneratorDialog::Draw();
 
 	// Foliage Detail — add/tweak trees, rocks, bushes on the generated map.
@@ -337,7 +333,6 @@ void EditorInterface::renderToolbarImGui()
 		MissionValidator::Open();
 	MissionValidator::Draw();
 
-	// Async task monitor (terrain gen progress/cancel/log). Own window; no-op empty.
 	EditorTaskRunner::RenderImGui();
 
 	// Debug overlay control panel (chunk/superchunk grid toggles + stats).
@@ -345,37 +340,30 @@ void EditorInterface::renderToolbarImGui()
 	// (Status HUD is drawn at the top of this function so it stays visible when the
 	// panel column is collapsed.)
 
-	// Scene Outliner Lite — read-only list of placed objects, click-to-select.
 	if (ImGui::Button("Scene Outliner", ImVec2(-1.f, 0.f)))
 		SceneOutliner::Toggle();
 	SceneOutliner::Draw();
 
-	// Inspector Lite — read-only details of the current selection.
 	if (ImGui::Button("Inspector", ImVec2(-1.f, 0.f)))
 		InspectorPanel::Toggle();
 	InspectorPanel::Draw();
 
-	// Objectives Overview — read-only objectives explainer (per-team WHEN/THEN cards).
 	if (ImGui::Button("Objectives", ImVec2(-1.f, 0.f)))
 		ObjectivesSummaryPanel::Toggle();
 	ObjectivesSummaryPanel::Draw();
 
-	// Campaign Overview — read-only campaign explainer (load a .fit on demand).
 	if (ImGui::Button("Campaign", ImVec2(-1.f, 0.f)))
 		CampaignSummaryPanel::Toggle();
 	CampaignSummaryPanel::Draw();
 
-	// AI / Brain / Orders — selected unit's AI brain + scaffolded orders/stance.
 	if (ImGui::Button("AI / Brain / Orders", ImVec2(-1.f, 0.f)))
 		UnitBrainPanel::Toggle();
 	UnitBrainPanel::Draw();
 
-	// Telemetry — read-only live editor state (fps / counts / undo / dirty / map).
 	if (ImGui::Button("Telemetry", ImVec2(-1.f, 0.f)))
 		TelemetryPanel::Toggle();
 	TelemetryPanel::Draw();
 
-	// Asset Browser Lite — searchable object catalog; click to start placing.
 	if (ImGui::Button("Asset Browser", ImVec2(-1.f, 0.f)))
 		AssetBrowser::Toggle();
 	AssetBrowser::Draw();
@@ -394,12 +382,10 @@ void EditorInterface::renderToolbarImGui()
 		EditorPlaytestResults::Toggle();
 	EditorPlaytestResults::Draw();
 
-	// Undo History — display-only list of undo actions with the current cursor.
 	if (ImGui::Button("Undo History", ImVec2(-1.f, 0.f)))
 		UndoHistoryPanel::Toggle();
 	UndoHistoryPanel::Draw();
 
-	// Command Palette — searchable list of editor commands (also Ctrl+P).
 	if (ImGui::Button("Command Palette", ImVec2(-1.f, 0.f)))
 		CommandPalette::Toggle();
 	CommandPalette::Draw();
@@ -460,7 +446,6 @@ void EditorInterface::renderToolbarImGui()
 
 	if (s_toolMode == MODE_PLACE)
 	{
-		// Place Tool — scatter mode + params + active brush (wraps existing brushes).
 		if (ImGui::Button("Place Tool", ImVec2(-1.f, 0.f)))
 			s_placePanelOpen = !s_placePanelOpen;
 		ImGui::TextWrapped("Pick an object from the Objects menu to start placing. The "
@@ -470,7 +455,6 @@ void EditorInterface::renderToolbarImGui()
 
 	if (s_toolMode == MODE_MISSION)
 	{
-		// Mission Tools — Test Mission (launch game) + Build Mod Package.
 		if (ImGui::Button("Mission Tools", ImVec2(-1.f, 0.f)))
 			s_missionToolsOpen = !s_missionToolsOpen;
 
@@ -585,8 +569,6 @@ void EditorInterface::renderToolbarImGui()
 			if (pactive)
 				ImGui::PopStyleColor();
 		}
-		// Slice 0: TerrainBrush now fills all vertices within this world-space radius
-		// (mirrors the sculpt brush). Update the live brush as the slider moves.
 		if (ImGui::SliderFloat("PaintSize", &m_paintMaterialSize, 64.0f, 3000.0f, "%.0f") && tb)
 			tb->setRadius(m_paintMaterialSize);
 		// LOD-chunk colormap caveat: only concrete is type-gated in-shader today.
@@ -696,7 +678,6 @@ void EditorInterface::renderObjectCompanionPanel()
 	}
 	ImGui::Separator();
 
-	// Same-group siblings.
 	ImGui::Text("%s", pMgr->getGroupName(group));
 	const int count = pMgr->getNumberBuildingsInGroup(group);
 	if (count > 0)
@@ -751,12 +732,10 @@ void EditorInterface::renderObjectCompanionPanel()
 		};
 		static const int k_numEco = (int)(sizeof(k_ecosystems) / sizeof(k_ecosystems[0]));
 
-		// Determine current building's specialType.
 		const BT curType = (group >= 0 && activeIdx >= 0)
 		    ? pMgr->getBuildingSpecialType(group, activeIdx)
 		    : BT::UNSPECIAL;
 
-		// Find which ecosystem (if any) this type belongs to.
 		const Ecosystem* eco = nullptr;
 		for (int e = 0; e < k_numEco && !eco; ++e)
 			for (int r = 0; r < k_ecosystems[e].roleCount && !eco; ++r)
@@ -772,7 +751,6 @@ void EditorInterface::renderObjectCompanionPanel()
 				for (int r = 0; r < eco->roleCount; ++r)
 				{
 					const BT roleType = eco->roles[r].type;
-					// Collect all buildings of this role type across all groups.
 					bool headerPrinted = false;
 					int  ecoID = 2000 + r * 256; // unique widget ID base
 					for (int g = 0; g < totalGroups; ++g)
@@ -805,7 +783,6 @@ void EditorInterface::renderObjectCompanionPanel()
 			}
 		}
 	}
-	// End Ecosystem Components ------------------------------------------------
 
 	// Recent (MRU across groups). Validate each entry against the current palette.
 	const ObjectRecentRing& ring = objectRecentRing();
@@ -894,7 +871,6 @@ void EditorInterface::renderObjectInfoPanel()
 		return;
 	}
 
-	// First selected object via the same null-safe list walk InspectorPanel uses.
 	EditorObject* obj = nullptr;
 	{
 		EditorObjectMgr::EDITOR_OBJECT_LIST list = mgr->getSelectedObjectList();
@@ -971,7 +947,6 @@ void EditorInterface::renderPlacePanelImGui()
 
 	EditorObjectMgr* pMgr = EditorObjectMgr::instance();
 
-	// Active placement brush (if any) -> show what will be placed.
 	int group = -1, idx = -1;
 	if (BuildingBrush* bb = dynamic_cast<BuildingBrush*>(curBrush))
 	{
@@ -996,7 +971,6 @@ void EditorInterface::renderPlacePanelImGui()
 		ImGui::TextDisabled("Pick one in the Asset Browser.");
 	}
 
-	// Team indicator (display only in v1; alignment is driven by the menu).
 	const int align = currentAlignmentFromMenu();
 	if (align == EDITOR_TEAMNONE)
 		ImGui::Text("Team: Neutral");
@@ -1091,7 +1065,6 @@ void EditorInterface::renderMissionToolsImGui()
 		if (haveGameFT && GetModuleFileNameA(NULL, editorExe, MAX_PATH) > 0 &&
 		    fileWriteTime(editorExe, &editorFT))
 		{
-			// gameExe older than editor exe -> CompareFileTime < 0.
 			gameExeStale = (CompareFileTime(&gameExeFT, &editorFT) < 0);
 		}
 	}
@@ -1198,7 +1171,6 @@ void EditorInterface::renderMissionToolsImGui()
 
 	ImGui::Separator();
 
-	// --- Build Mod Package: copy the mission + sidecars into mods/<name>/ -----
 	ImGui::TextUnformatted("Build Mod Package");
 	static char s_modName[128]  = "my_mission";
 	static char s_modsRoot[512] = "mods";
@@ -1224,7 +1196,6 @@ void EditorInterface::renderMissionToolsImGui()
 		char destDir[900];
 		snprintf(destDir, sizeof(destDir), "%s/%s/missions", s_modsRoot, s_modName);
 
-		// Create mods/<name>/missions/ (each level; ignore "already exists").
 		char lvl[900];
 		snprintf(lvl, sizeof(lvl), "%s", s_modsRoot);                         CreateDirectoryA(lvl, NULL);
 		snprintf(lvl, sizeof(lvl), "%s/%s", s_modsRoot, s_modName);           CreateDirectoryA(lvl, NULL);
@@ -1269,7 +1240,6 @@ void EditorInterface::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
 	if (pScrollBar != GetScrollBarCtrl(SB_HORZ))
 		return;
 
-//	OnScroll(MAKEWORD(nSBCode, -1), nPos);
 
 	SCROLLINFO sInfo;
 	sInfo.cbSize = sizeof ( SCROLLINFO ); 

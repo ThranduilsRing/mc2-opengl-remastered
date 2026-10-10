@@ -255,9 +255,6 @@ int MissionInterfaceManager::globalMapLog () {
 	{
 		if ((lastTime + 0.5) < gos_GetElapsedTime()) 
 		{
-			//MPlayer->leaveSession();
-			//quitGame = true;
-			//GlobalMap::toggleLog();
 			lastTime = gos_GetElapsedTime();
 		}
 	}
@@ -765,9 +762,6 @@ void MissionInterfaceManager::doGuardTower()
 			
 	TacticalOrder tacOrder;
 	tacOrder.init(ORDER_ORIGIN_PLAYER, TACTICAL_ORDER_ATTACK_POINT);
-	//tacOrder.init(ORDER_ORIGIN_PLAYER,  target ? TACTICAL_ORDER_ATTACK_OBJECT : TACTICAL_ORDER_ATTACK_POINT);
-	//tacOrder.targetWID = target ? target->getWatchID() : 0;
-	//if ( !target )
 	tacOrder.attackParams.targetPoint = wPos;			
 	tacOrder.attackParams.type = bEnergyWeapons ? ATTACK_CONSERVING_AMMO : ATTACK_TO_DESTROY;
 	tacOrder.attackParams.method = ATTACKMETHOD_RANGED;

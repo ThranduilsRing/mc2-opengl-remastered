@@ -13,13 +13,10 @@ void execSetObjectActive(void) {
 	long objectId1 = ABLi_popInteger();
 	bool active = ABLi_peekBoolean();
 
-	// Code to make this work goes here
 	GameObjectPtr object1 = NULL;
 	long numActivated = 0;
 
 	if ((objectId1 >= MIN_UNIT_PART_ID) && (objectId1 <= MAX_UNIT_PART_ID)) {
-		// We have a group.  Act accordingly.
-		// Run through all objects fitting the group.
 		long numObjects = getMovers(objectId1, moverList);
 		for (long i = 0; i < numObjects; i++)
 			if (moverList[i]->getAwake() != active) {
@@ -53,7 +50,6 @@ void execObjectTypeID (void) {
 	long objectId1 = ABLi_popInteger();
 	
 	long partID = -1;
-	// Code to make this work goes here
 	GameObjectPtr object1 = getObject(objectId1);
 	if (object1)
 		partID = object1->getObjectType()->whatAmI();
@@ -82,7 +78,6 @@ void execGetWeaponAmmo (void) {
 	long objectNum = ABLi_popInteger();
 	long weaponNum = ABLi_popInteger();
 
-	// Code to make this work goes here
 	GameObjectPtr object1 = getObject(objectNum);
 	
 	if (object1 && object1->isMover())
@@ -116,7 +111,6 @@ void execInArea (void) {
 	center.z = areaCenter[2];
 
 	if ((objectId >= MIN_UNIT_PART_ID) && (objectId <= MAX_UNIT_PART_ID)) {
-		// We have a group.  Act accordingly.
 		long numObjects = getMovers(objectId, moverList);
 		if (minIn == -1) {
 			ABLi_pokeInteger(1);
@@ -254,7 +248,6 @@ void execGetCurrentBRValue (void) {
 	long objectNum = ABLi_popInteger();
 
 	long result = -1;
-	// Code to make this work goes here
 	GameObjectPtr object1 = getObject(objectNum);
 	if (object1)
 		result = object1->getCurCV();
@@ -271,7 +264,6 @@ void execSetCurrentBRValue (void) {
 	long objectNum = tos->integer;
 	long newBRValue = tos->integer;
 
-	// Code to make this work goes here
 	GameObjectPtr object1 = getObject(objectNum);
 	if (object1)
 		object1->setCurCV(newBRValue);
@@ -285,7 +277,6 @@ void execGetArmorPts (void) {
 
 	long objectNum = ABLi_peekInteger();
 
-	// Code to make this work goes here
 	GameObjectPtr obj = getObject(objectNum);
 	long armorPts = 0;
 	ABLi_pokeInteger(0);	
@@ -305,7 +296,6 @@ void execGetMaxArmor (void) {
 
 	long objectNum = ABLi_peekInteger();
 
-	// Code to make this work goes here
 	ABLi_pokeInteger(0);
 	GameObjectPtr obj = getObject(objectNum);
 	long armorPts = 0;
@@ -325,7 +315,6 @@ void execGetPilotID (void) {
 
 	long objectNum = ABLi_peekInteger();
 
-	// Code to make this work goes here
 	GameObjectPtr obj = getObject(objectNum);
 	ABLi_pokeInteger(-1);
 	if (obj) {
@@ -343,7 +332,6 @@ void execGetPilotWounds (void) {
 
 	long objectNum = ABLi_peekInteger();
 
-	// Code to make this work goes here
 	GameObjectPtr obj = getObject(objectNum);
 	ABLi_pokeReal(0.0);
 	if (obj) {
@@ -362,7 +350,6 @@ void execSetPilotWounds (void) {
 	long objectNum = ABLi_popInteger();
 	long wounds = ABLi_popInteger();
 
-	// Code to make this work goes here
 	if (wounds > 6)
 		wounds = 6;
 		
@@ -385,8 +372,6 @@ void execGetObjectActive (void) {
 	long result = 0;
 	GameObjectPtr object1 = NULL;
 	if ((objectId >= MIN_UNIT_PART_ID) && (objectId <= MAX_UNIT_PART_ID)) {
-		// We have a group.  Act accordingly.
-		// Run through all objects fitting the group.
 		long numObjects = getMovers(objectId, moverList);
 		long numAwake = 0;
 		for (long i = 0; i < numObjects; i++)
@@ -411,7 +396,6 @@ void execGetObjectDamage (void) {
 
 	long objectNum = ABLi_peekInteger();
 
-	// Code to make this work goes here
 	ABLi_pokeInteger(0);
 	GameObjectPtr obj = getObject(objectNum);
 	if (obj && obj->isTerrainObject()) {
@@ -432,7 +416,6 @@ void execGetObjectDmgPts (void) {
 
 	long objectNum = ABLi_peekInteger();
 
-	// Code to make this work goes here
 	ABLi_pokeInteger(0);
 	GameObjectPtr obj = getObject(objectNum);
 	if (obj && obj->isTerrainObject()) {
@@ -449,7 +432,6 @@ void execGetObjectMaxDmg (void) {
 
 	long objectNum = ABLi_peekInteger();
 
-	// Code to make this work goes here
 	ABLi_pokeInteger(0);
 	GameObjectPtr obj = getObject(objectNum);
 	if (obj) {
@@ -470,7 +452,6 @@ void execSetObjectDamage (void) {
 	if (dmgPercentage > 100)
 		dmgPercentage = 100;
 
-	// Code to make this work goes here
 	GameObjectPtr obj = getObject(objectNum);
 	if (obj && (dmgPercentage > 0)) {
 		float maxDmg = obj->getDamageLevel();
@@ -502,7 +483,6 @@ void execGetGlobalValue (void) {
 
 	long variableNum = ABLi_peekInteger();
 
-	// Code to make this work goes here
 	ABLi_pokeReal(0.0);
 	if ((variableNum >= 0) && (variableNum < MAX_GLOBAL_MISSION_VALUES))
 		ABLi_pokeReal(globalMissionValues[variableNum]);
@@ -517,7 +497,6 @@ void execSetGlobalValue (void) {
 	long variableNum = ABLi_popInteger();
 	float value = ABLi_popReal();
 
-	// Code to make this work goes here
 	if ((variableNum >= 0) && (variableNum < MAX_GLOBAL_MISSION_VALUES))
 		globalMissionValues[variableNum] = value;
 }	
@@ -609,11 +588,8 @@ void execSetSalvage (void) {
 	//				integer				Number of these components
 	//		RETURN: BOOLEAN				True if function succeeds
 
-	//long objectId = 
 	ABLi_popInteger();
-	//long component = 
 	ABLi_popInteger();
-	//long itemCount = ABLi_peekInteger();
 
 	ABLi_pokeInteger(0);
 #ifdef USE_SALVAGE
@@ -646,9 +622,7 @@ void execSetSalvageStatus (void){
 	//				BOOLEAN				TRUE = on list, FALSE = off
 	//		RETURN: BOOLEAN				True if function succeeds
 
-	//long objectId = 
 	ABLi_popInteger();
-	//bool on = ABLi_peekBoolean();
 
 	ABLi_pokeBoolean(false);
 #ifdef USE_SALVAGE
@@ -673,9 +647,7 @@ void execSetAnimation (void) {
 	//		RETURN: Nothing
 
 	long objectId = ABLi_popInteger();
-	//long newState = 
 	ABLi_popInteger();
-	//long newSubState = 
 	ABLi_popInteger();
 
 	GameObjectPtr obj = getObject(objectId);
@@ -810,7 +782,6 @@ void execSetCapturable (void) {
 	//				boolean				captureable
 
 	long objectId = ABLi_popInteger();
-	//bool captureable = 
 	ABLi_popBoolean();
 
 	GameObjectPtr obj = getObject(objectId);
@@ -834,7 +805,6 @@ void execIsCaptured (void) {
 
 	long numCaptured = 0;
 	if (isUnitId(objectId)) {
-		// We have a group.  Act accordingly.
 		long numObjects = getMovers(objectId, moverList);
 		for (long i = 0; i < numObjects; i++)
 			if (moverList[i]->isCaptured())
@@ -897,7 +867,6 @@ void execSetBuildingName (void) {
 	//				integer				name Resource ID
 
 	long objectId = ABLi_popInteger();
-	//long newName = 
 	ABLi_popInteger();
 
 	GameObjectPtr obj = getObject(objectId);
@@ -1001,7 +970,6 @@ void execOrderLoadElementals (void) {
 	//		PARAMS:	integer			carrier id
 	//		RETURN: nothing
 
-	//long carrierId = 
 	ABLi_popInteger();
 
 #ifdef USE_ELEMENTALS
@@ -1021,7 +989,6 @@ void execOrderDeployElementals (void) {
 	//				integer			misc. order params (set to 0, typically)
 	//		RETURN: nothing
 
-	//long params = 
 	ABLi_popInteger();
 
 #ifdef USE_ELEMENTALS
@@ -1037,11 +1004,8 @@ void execAddPrisoner (void) {
 	//				integer		prisoner id
 	//		RETURN: 0 if successful
 
-	//long prisonId = 
 	ABLi_popInteger();
-	//long prisonerId = ABLi_peekInteger();
 
-	//GameObjectPtr prison = getObject(prisonId);
 	ABLi_pokeInteger(-1);
 
 #ifdef USE_PRISONS
@@ -1089,7 +1053,6 @@ void execLockGateOpen (void) {
 	//		PARAMS:	integer		gate id
 	//		RETURN: none
 
-	//long gateID = 
 	ABLi_popInteger();
 
 #ifdef USE_GATES
@@ -1105,7 +1068,6 @@ void execLockGateClosed (void) {
 	//		PARAMS:	integer		gate id
 	//		RETURN: none
 
-	//long gateID = 
 	ABLi_popInteger();
 
 #ifdef USE_GATES
@@ -1121,7 +1083,6 @@ void execReleaseGateLock (void) {
 	//		PARAMS:	integer		gate id
 	//		RETURN: none
 
-	//long gateID = 
 	ABLi_popInteger();
 
 #ifdef USE_GATES

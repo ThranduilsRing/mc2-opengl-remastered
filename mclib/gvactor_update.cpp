@@ -29,11 +29,8 @@ static unsigned long s_spotDiagGvOverflows  = 0;
 static unsigned long s_spotDiagGvActors     = 0;
 static unsigned long s_spotDiagGvCalls      = 0;
 
-//-----------------------------------------------------------------------------
 void GVAppearance::updateGeometry (void)
 {
-	//if (visible)
-	//{
 		if (rotation > 180)
 			rotation -= 360;
 	
@@ -58,12 +55,8 @@ void GVAppearance::updateGeometry (void)
 				Stuff::Vector3D worldK;
 				land->getTerrainAngle(position,&worldK);
 
-				//--------------------------------------------------
-				// Rotate Angle obtained into Vehicle Rotation.
 				Rotate(worldK,rotation);
 
-				//------------------------------------------------
-				// Find Pitch first.
 				Stuff::Vector3D pitchK;
 				pitchK = worldK;
 				pitchK.x = 0.0f;
@@ -90,8 +83,6 @@ void GVAppearance::updateGeometry (void)
 			}
 		}
 		
-		//-------------------------------------------
-		// Does math necessary to draw Vehicle
 		Stuff::UnitQuaternion rot, pitchRoll;
 		float yaw = rotation * DEGREES_TO_RADS;
 		pitchAngle *= DEGREES_TO_RADS;
@@ -181,7 +172,6 @@ void GVAppearance::updateGeometry (void)
 				gvShadowShape->TransformMultiShape (&xlatPosition,&rot);
 		}
 		
-//		Camera::HazeFactor = hazeFactor;
 		gvShape->SetLightList(eye->getWorldLights(),eye->getNumLights());
 		gvShape->TransformMultiShape (&xlatPosition,&totalRotation);
 
@@ -368,10 +358,7 @@ void GVAppearance::updateGeometry (void)
 						/*ownerIsMover=*/true);
 			}
 		}
-	//}
 	
-	//------------------------------------------------
-	// Update GOSFX
 	if (destructFX && destructFX->IsExecuted())
 	{
 		Stuff::LinearMatrix4D 	shapeOrigin;
@@ -530,24 +517,17 @@ void GVAppearance::updateGeometry (void)
 		sensorSpin += 360;
 
 	totalRotation = Stuff::EulerAngles(0.0f,sensorSpin * DEGREES_TO_RADS,0.0f);
-	//----------------------------------------------
-	// Do geometry here to draw sensor contact
 	sensorTriangleShape->SetFogRGB(0xffffffff);
 	sensorTriangleShape->SetLightList(eye->getWorldLights(),eye->getNumLights());
 	sensorTriangleShape->TransformMultiShape (&xlatPosition,&totalRotation);
 		
-	//----------------------------------------------
-	// Do geometry here to draw sensor contact
 	sensorCircleShape->SetFogRGB(0xffffffff);
 	sensorCircleShape->SetLightList(eye->getWorldLights(),eye->getNumLights());
 	sensorCircleShape->TransformMultiShape (&xlatPosition,&totalRotation);
 }
 
-//-----------------------------------------------------------------------------
 long GVAppearance::update (bool animate) 
 {
-	//----------------------------------------
-	// Recycle the weapon Nodes
 	if (nodeRecycle)
 	{
 		for (long i=0;i<appearType->numWeaponNodes;i++)
@@ -616,8 +596,6 @@ long GVAppearance::update (bool animate)
 		// Make sure animation runs no faster than bdFrameRate fps.
 		float frameInc = gvFrameRate * frameLength;
 		
-		//---------------------------------------
-		// Increment Frames -- Everything else!
 		if (frameInc != 0.0f)
 		{
 			if (!setFirstFrame)		//DO NOT ANIMATE ON FIRST FRAME!  Wait a bit!
@@ -632,8 +610,6 @@ long GVAppearance::update (bool animate)
 				setFirstFrame = false;
 			}
 	
-			//--------------------------------------
-			//Check Positive overflow of Animation
 			if (currentFrame >= appearType->getNumFrames(gvAnimationState))
 			{
 				if (isLooping)
@@ -645,8 +621,6 @@ long GVAppearance::update (bool animate)
 			}
 			
 	
-			//--------------------------------------
-			//Check negative overflow of gesture
 			if (currentFrame < 0)
 			{
 				if (isLooping)
@@ -725,7 +699,6 @@ long GVAppearance::update (bool animate)
 	return TRUE;
 }
 
-//-----------------------------------------------------------------------------
 void GVAppearance::destroy (void)
 {
 	// (E) T1.12: paired cleanup for SpotLight_-child illumination from
@@ -803,19 +776,13 @@ void GVAppearance::destroy (void)
 	appearanceTypeList->removeAppearance(appearType);
 }
 
-//-----------------------------------------------------------------------------
 void GVAppearance::startWaterWake (void)
 {
-	//Check if we are already playing one.  If not, wake city.
 	
-	//First, check if its even loaded.
-	// can easily preload this.  Should we?  Memory?
 	if (!waterWake && useNonWeaponEffects)
 	{
    		if (strcmp(weaponEffects->GetEffectName(VEHICLE_WATER_WAKE),"NONE") != 0)
    		{
-			//--------------------------------------------
-			// Yes, load it on up.
 			unsigned flags = gosFX::Effect::ExecuteFlag|gosFX::Effect::LoopFlag;
 
 			Check_Object(gosFX::EffectLibrary::Instance);
@@ -858,7 +825,6 @@ void GVAppearance::startWaterWake (void)
 	}
 }
 
-//-----------------------------------------------------------------------------
 void GVAppearance::stopWaterWake (void)
 {
 	if (waterWake && isWaking)		//Stop the effect if we are running it!!
@@ -869,10 +835,8 @@ void GVAppearance::stopWaterWake (void)
 	isWaking = false;
 }
 
-//-----------------------------------------------------------------------------
 void GVAppearance::startActivity (long effectId, bool loop)
 {
-	//Check if we are already playing one.  If not, be active!
 	
 	//First, check if its even loaded.
 	// can easily preload this.  Should we?  NO.  We don't know what will be passed in.
@@ -880,8 +844,6 @@ void GVAppearance::startActivity (long effectId, bool loop)
 	{
    		if (strcmp(weaponEffects->GetEffectName(effectId),"NONE") != 0)
    		{
-			//--------------------------------------------
-			// Yes, load it on up.
 			unsigned flags = gosFX::Effect::ExecuteFlag|gosFX::Effect::LoopFlag;
 			if (!loop)
 				flags = gosFX::Effect::ExecuteFlag;
@@ -931,7 +893,6 @@ void GVAppearance::startActivity (long effectId, bool loop)
 	}
 }
 
-//-----------------------------------------------------------------------------
 void GVAppearance::stopActivity (void)
 {
 	if (activity && isActivitying)		//Stop the effect if we are running it!!
@@ -942,13 +903,11 @@ void GVAppearance::stopActivity (void)
 	isActivitying = false;
 }
 
-//-----------------------------------------------------------------------------
 bool GVAppearance::PerPolySelect (long mouseX, long mouseY)
 {
 	return gvShape->PerPolySelect(mouseX,mouseY);
 }
 
-//-----------------------------------------------------------------------------
 void GVAppearance::flashBuilding (float dur, float fDuration, DWORD color)
 {
 	duration = dur;

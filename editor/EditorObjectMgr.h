@@ -1,14 +1,5 @@
 #ifndef EDITOROBJECTMGR_H
 #define EDITOROBJECTMGR_H
-/***************************************************************
-* FILENAME: EditorObjectMgr.h
-* DESCRIPTION: Declares Editor object catalog, lookup, and selection management.
-* AUTHOR: Microsoft Corporation
-* COPYRIGHT: Copyright (C) Microsoft Corporation. All rights reserved.
-* DATE: 04/28/2026
-* MODIFICATION: by Methuselas
-* CHANGES: Added screen-space single-click object picking for the remastered Editor input path.
-****************************************************************/
 
 
 
@@ -215,7 +206,6 @@ public:
 											 unsigned long indexWithinGroup );
 	ObjectAppearance* getAppearance( Building* pBuilding );
 
-	// LINKS!
 	BuildingLink* getLinkWithParent( const EditorObject* pObj );
 	BuildingLink* getLinkWithChild( const EditorObject* pObj );
 	BuildingLink* getLinkWithBuilding( const EditorObject* pObj ); // parent or child
@@ -320,7 +310,6 @@ public:
 		bool selectedObjectsNeedsToBeSynched;
 		void syncSelectedObjectPointerList();	// makes sure that the "selectedObjects" list corresponds to the objects marked as selected
 
-		// HELPERS
 		int ExtractNextString( unsigned char*& pFileLine, char* pBuffer, int bufferLength );
 		int ExtractNextInt( unsigned char*& pFileLine );
 		float ExtractNextFloat( unsigned char*& pFileLine );
@@ -413,5 +402,4 @@ inline float EditorObjectMgr::getScale( int ID )
 }
 #undef EOM_DECODE_INBOUNDS
 
-//*************************************************************************************************
 #endif  // end of file ( EditorObjectMgr.h )

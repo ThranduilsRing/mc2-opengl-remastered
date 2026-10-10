@@ -2,15 +2,12 @@
 // Declared in the class headers; shared names in tgl_internal.h.
 #include "tgl_internal.h"
 
-//-------------------------------------------------------------------------------
-//This function creates the list of shadows and transforms them in preparation to drawing.
 //
 void TG_Shape::MultiTransformShadows (Stuff::Point3D *pos, Stuff::LinearMatrix4D *s2w, float rotation)
 {
 	if (!numVertices)		//WE are the root Shape which may have no shape or a helper shape which defintely has no shape!
 		return;
 		
-	//Can make this a flag to optimize!
 	if (noShadow)
 		return;
 		
@@ -26,14 +23,8 @@ void TG_Shape::MultiTransformShadows (Stuff::Point3D *pos, Stuff::LinearMatrix4D
 	identityMatrix.BuildIdentity();
 	
 	TG_TypeShapePtr theShape = (TG_TypeShapePtr)myType;
-	//-----------------------------------------------------------------
-	// Run Through listOfVertices and create the listOfShadowVertices
-	// for each light source.  Only need to calc infinite rarely if at all.
-	// May need some way to delineate this.  Above here, probably!
 	//
-	// As we calc shadow vertices, transform and store results.
 	// 
-	// listOfTriangles will simply use these vertices to draw shadows.
 	//
 	// Again, note that after first iteration of infinite light we only need to transform infinite shadows!
 	Stuff::Matrix4D shapeToLocal;
@@ -71,7 +62,6 @@ void TG_Shape::MultiTransformShadows (Stuff::Point3D *pos, Stuff::LinearMatrix4D
 							{
 								long index = j + (shadowNum * numVertices);
 
-								//if (!recalcShadows)
 								{
 									if (listOfShadowVertices[index].bDataIsNotValid)
 									{
@@ -86,7 +76,6 @@ void TG_Shape::MultiTransformShadows (Stuff::Point3D *pos, Stuff::LinearMatrix4D
 													//when the sun moves enough!
 								{
 									Stuff::Point3D post = theShape->listOfTypeVertices[j].position;
-									//--------------------------------------------------
 									Stuff::Vector4D up;
 									Stuff::Point3D s_position;
 									shapeToLocal.Multiply(*s2w,identityMatrix);
@@ -96,8 +85,6 @@ void TG_Shape::MultiTransformShadows (Stuff::Point3D *pos, Stuff::LinearMatrix4D
 									//But this assumes terrain is FLAT and at zero elevation.
 									// Thus, we must translate up to tangent plane at terrain position
 									up.y -= pos->y;
-									//--------------------------------------------------------
-									// Check simple case first.  Vertex is on or below ground.
 									if (up.y <= 0.0f)
 									{
 										s_position.x = up.x;
@@ -112,10 +99,6 @@ void TG_Shape::MultiTransformShadows (Stuff::Point3D *pos, Stuff::LinearMatrix4D
 									
 									s_position.y = 0.0f;
 			
-									//-------------------------------------------------------------------
-									// Do transform math for the vertex.
-									//RotateLight(s_position,rotation);
-									//post.Add(s_position,*pos);
 									
 									Stuff::Vector3D rPos;
 									rPos.x = -s_position.x;
@@ -123,7 +106,6 @@ void TG_Shape::MultiTransformShadows (Stuff::Point3D *pos, Stuff::LinearMatrix4D
 									rPos.z = land->getTerrainElevation(rPos);
 									
 									listOfShadowVertices[index].position = rPos;
-									//--------------------------------------------------------------------------------
 								}
 								
 								//The transformed position and fog data DO NOT NEED TO EXIST all of time.
@@ -135,7 +117,6 @@ void TG_Shape::MultiTransformShadows (Stuff::Point3D *pos, Stuff::LinearMatrix4D
 								eye->projectForScreenXY(listOfShadowVertices[index].position,listOfShadowTVertices[index].transformedPosition);
 								shadowsVisible[shadowNum] = true;
 
-								//eye->projectZ(listOfShadowVertices[index].position,listOfShadowTVertices[index].transformedPosition);
 		
 								DWORD fogRGB = 0xff000000;
 								if (useFog)
@@ -169,8 +150,6 @@ void TG_Shape::MultiTransformShadows (Stuff::Point3D *pos, Stuff::LinearMatrix4D
 									}
 								}
 								
-								//-------------------
-								// Distance FOG now.
 								if (useFog && Camera::HazeFactor != 0.0f)
 								{
 									float fogFactor = 1.0 - Camera::HazeFactor;
@@ -204,8 +183,6 @@ void TG_Shape::MultiTransformShadows (Stuff::Point3D *pos, Stuff::LinearMatrix4D
 							// Point light does cast a shadow.  LightDir Will change every frame relative to the point.
 							// I.e. we DO need to recalc every frame.
 							
-							//-----------------------------------------------------
-							// Check if light source is IN_RANGE!
 							Stuff::Point3D vertexToLight;
 							vertexToLight = s_lightDir[i];
 							float length = vertexToLight.GetApproximateLength();
@@ -225,7 +202,6 @@ void TG_Shape::MultiTransformShadows (Stuff::Point3D *pos, Stuff::LinearMatrix4D
 									long index = j + (shadowNum * numVertices);
 									
 									Stuff::Point3D post = theShape->listOfTypeVertices[j].position;
-									//--------------------------------------------------
 									Stuff::Vector4D up;
 									Stuff::Point3D s_position;
 									shapeToLocal.Multiply(*s2w,identityMatrix);
@@ -237,8 +213,6 @@ void TG_Shape::MultiTransformShadows (Stuff::Point3D *pos, Stuff::LinearMatrix4D
 									up.y -= pos->y;
 	
 									shadowsVisible[shadowNum] = true;
-									//--------------------------------------------------------
-									// Check simple case first.  Vertex is on or below ground.
 									if (up.y <= 0.0f)
 									{
 										s_position.x = up.x;
@@ -253,10 +227,6 @@ void TG_Shape::MultiTransformShadows (Stuff::Point3D *pos, Stuff::LinearMatrix4D
 									
 									s_position.y = 0.0f;
 		
-									//-------------------------------------------------------------------
-									// Do transform math for the vertex.
-									//RotateLight(s_position,rotation);
-									//post.Add(s_position,*pos);
 	
 									Stuff::Vector3D rPos;
 									rPos.x = -s_position.x;
@@ -264,7 +234,6 @@ void TG_Shape::MultiTransformShadows (Stuff::Point3D *pos, Stuff::LinearMatrix4D
 									rPos.z = land->getTerrainElevation(rPos);
 	
 									listOfShadowVertices[index].position = rPos;
-									//--------------------------------------------------------------------------------
 	
 									//The transformed position and fog data DO NOT NEED TO EXIST all of time.
 									// ONLY the calced position data is invariant.  The other two could come
@@ -307,8 +276,6 @@ void TG_Shape::MultiTransformShadows (Stuff::Point3D *pos, Stuff::LinearMatrix4D
 										}
 									}
 									
-									//-------------------
-									// Distance FOG now.
 									if (useFog && Camera::HazeFactor != 0.0f)
 									{
 										float fogFactor = 1.0 - Camera::HazeFactor;
@@ -383,7 +350,6 @@ long TG_Shape::RenderShadows (long startFace)
 	if (!numVisibleShadows)
 		return startFace;
 		
-	//Can make this a flag to optimize!
 	if (S_strnicmp(getNodeName(),"SpotLight_",10) == 0)
 		return startFace;
 		
@@ -398,7 +364,6 @@ long TG_Shape::RenderShadows (long startFace)
 
  	if (fogColor != 0xffffffff)
 	{
-		//gos_SetRenderState( gos_State_Fog, (int)&(fogColor));
 		gos_SetRenderState( gos_State_Fog, fogColor); //sebi
 	}
 	else
@@ -480,9 +445,6 @@ long TG_Shape::RenderShadows (long startFace)
 							(gVertex[2].z >= 0.0f) &&  
 							(gVertex[2].z < 1.0f))
 						{
-							//--------------------------------------------------
-							// Any sorting we need to do occurs in here as well!
-							// So, find out what texture this face is using and mark that texture as needing 3 more vertices.
 							if (theShape->listOfTextures[triType.localTextureHandle + (theShape->numTextures>>1)].gosTextureHandle != 0xffffffff)
 							{
 								mcTextureManager->addVertices(theShape->listOfTextures[triType.localTextureHandle + (theShape->numTextures>>1)].mcTextureNodeIndex,gVertex,MC2_ISSHADOWS | MC2_DRAWALPHA);

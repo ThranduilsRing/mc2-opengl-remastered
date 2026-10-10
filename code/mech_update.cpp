@@ -109,10 +109,6 @@ long BattleMech::update (void)
 					position.x, position.y);
 				fflush(stdout);
 			}
-			//Check if anyone on our side is within range.
-			// Until otherwise noted, if I have LOS to them, thats enough.
-			// Powerup, add ourselves to the GUI and select ourselves
-			// Maybe we should send a Radio Message saying "hi"?
 			if (linkupLos)
 			{
 				if (s_linkupTrace)
@@ -177,7 +173,6 @@ long BattleMech::update (void)
 		QueryPerformanceCounter(startCk);
 		#endif
 
-		//updateDynamics();
 
 		bool emergencyStop = false;
 		if (!isDisabled()) {
@@ -221,8 +216,6 @@ long BattleMech::update (void)
 			teleportPosition.z = -999990.0;
 		}
 
-		// Find magnitude of current velocity. Store this in dynamics
-		// Adjust position based on mech Velocity which is based on gesture
 		Stuff::Vector3D newPosition;
 		Stuff::Vector3D vel = getRotationVector();
 
@@ -235,11 +228,9 @@ long BattleMech::update (void)
 			velMag *= 0.01f * control.settings.mech.throttle;
 			
 			float velFactor = 1.0;
-			//if (moveLevel == 0) {
 				float velAngle = land->getTerrainAngle(position);
 				velAngle *= DEGREES_TO_RADS;
 				velFactor = cos(velAngle);
-			//}
 	
 			float velMult = velMag * velFactor * frameLength;
 			if (velMult > DistanceToWaypoint)
@@ -255,7 +246,6 @@ long BattleMech::update (void)
 		}
 		else
 		{
-			//Just move mech in direction of jump.
 			vel = appearance->getVelocity();
 			vel *= frameLength;
 			setVelocity(vel);
@@ -303,7 +293,6 @@ long BattleMech::update (void)
 			(zPos < MapData::waterDepth))
 			position.z = MapData::waterDepth;
 
-		//float inverseAngle = 180.0;
 
 		#ifdef MC_PROFILE
 		QueryPerformanceCounter(endCk);
@@ -363,10 +352,8 @@ long BattleMech::update (void)
 		control.settings.mech.gestureGoal = -1;
 		updateDynamics();
 
-		// Find magnitude of current velocity. Store this in dynamics
 		float velMag = appearance->getVelocityMagnitude();
 
-		// Create vector for velocity
 		Stuff::Vector3D vel = getRotationVector();
 		vel *= velMag * worldUnitsPerMeter;
 		vel *= frameLength;
@@ -424,10 +411,8 @@ long BattleMech::update (void)
 		control.settings.mech.gestureGoal = -1;
 		updateDynamics();
 
-		// Find magnitude of current velocity. Store this in dynamics
 		float velMag = appearance->getVelocityMagnitude();
 
-		// Create vector for velocity
 		Stuff::Vector3D vel = getRotationVector();
 		vel *= velMag * worldUnitsPerMeter;
 		vel *= frameLength;
@@ -469,7 +454,6 @@ long BattleMech::update (void)
 			timeLeft -= frameLength;
 			if ((timeLeft < 0.4) && !exploding)
 			{
-				// Blow the Mech and leave a crater.
 				Stuff::Vector3D cockpitPos = appearance->getNodeNamePosition("cockpit");
 				if (getMoveType() != MOVETYPE_AIR)
 					ObjectManager->createExplosion(MECH_EXPLOSION_ID,NULL,cockpitPos,((BattleMechTypePtr)getObjectType())->explDmg,((BattleMechTypePtr)getObjectType())->explRad);
@@ -489,7 +473,6 @@ long BattleMech::update (void)
 		}
 	}
 
-// TEMP BLOCK OUT FOR MC2 port...
 
 	// Setup the Render stuff here.  Must do in Update to avoid texture lock in render!
 	long relationship = 0;
@@ -556,7 +539,6 @@ long BattleMech::update (void)
 		static_cast<Mech3DAppearance*>(appearance)->setVisualState(vs);
 	}
 
-	//Start and stop the water wakes here.
 	int watercellR, watercellC;
 	land->worldToCell(position,watercellR, watercellC);
 	if (GameMap->getDeepWater(watercellR, watercellC) || 
@@ -598,7 +580,6 @@ long BattleMech::update (void)
 		{
 			if (alphaValue != 0x0)
 			{
-				//We are fading.  Move it down.
 				fadeTime -= frameLength;
 				if (fadeTime < 0.0f)
 				{
@@ -681,7 +662,6 @@ void BattleMech::render (void)
 	{
 		if (getTeamId() != Team::home->getId())
 		{
-			// Sensor contact is now same as during update.
 			long cStat = conStat;
 	
 			if ((cStat == CONTACT_VISUAL) || isDestroyed() || isDisabled() || ShowMovers || (MPlayer && MPlayer->allUnitsDestroyed[MPlayer->commanderID]))
@@ -710,7 +690,6 @@ void BattleMech::render (void)
 				appearance->setVisibility(true,true);
 				appearance->render();
 	
-				//No more text help for this level
 			}
 			else if (cStat == CONTACT_SENSOR_QUALITY_2)
 			{
@@ -718,7 +697,6 @@ void BattleMech::render (void)
 				appearance->setVisibility(true,true);
 				appearance->render();
 	
-				//No more text help for this level
 			}
 			else if (cStat == CONTACT_SENSOR_QUALITY_3)
 			{
@@ -809,9 +787,7 @@ void BattleMech::render (void)
 					startPos.z = TerrainRuntime::groundElevation(startPos);
 					endPos.z = TerrainRuntime::groundElevation(endPos);
 					
-					// [PROJECTZ:ScreenXYOracle id=mech_path_step_start]
 					eye->projectForScreenXY(startPos,lineStart);
-					// [PROJECTZ:ScreenXYOracle id=mech_path_step_end]
 					eye->projectForScreenXY(endPos,lineEnd);
 
 					lineStart.z = lineEnd.z = HUD_DEPTH;
@@ -839,8 +815,6 @@ void BattleMech::renderShadows (void)
 			
 		if (getTeamId() != Team::home->getId())
 		{
-			// DO Sensor contact stuff here.  GLENN, Update with new whatevers when done and let me know!
-			// -fs
 			long cStat = conStat;
 	
 			if ((cStat == CONTACT_VISUAL) && (alphaValue == 0xff))
@@ -889,15 +863,10 @@ float BattleMech::relFacingTo (Stuff::Vector3D goal, long bodyLocation) {
 			break;
 	}
 	
-	//if (relFacing < -180.0)
-	//	relFacing += 360.0;
-	//else if (relFacing > 180)
-	//	relFacing -= 360.0;
 	return(relFacing);
 
 }
 
-// COMBAT routines
 
 long BattleMech::getBodyState (void) {
 
@@ -907,12 +876,6 @@ long BattleMech::getBodyState (void) {
 
 bool BattleMech::isWeaponReady (long weaponIndex) {
 
-//	long bodyLocation = inventory[weaponIndex].bodyLocation;
-//	if ((bodyLocation == MECH_BODY_LOCATION_LARM) && inventory[actuator[ACTUATOR_LSHOULDER]].disabled)
-//		return(false);
-//	else if ((bodyLocation == MECH_BODY_LOCATION_RARM) && inventory[actuator[ACTUATOR_RSHOULDER]].disabled)
-//		return(false);
-//	else
 	if (inventory[weaponIndex].disabled || !(inventory[weaponIndex].health))
 		return(false);
 	else if (inventory[weaponIndex].readyTime > scenarioTime)
@@ -925,8 +888,6 @@ float BattleMech::calcAttackChance (GameObjectPtr target, long aimLocation, floa
 	if ((weaponIndex < numOther) || (weaponIndex >= numOther + numWeapons))
 		return(-1000.0);
 
-//	if (pilot)
-//		modifiers += RankVersusChassisCombatModifier[pilot->getRank()][chassisClass];
 
 	float attackChance = Mover::calcAttackChance(target, aimLocation, targetTime, weaponIndex, modifiers, range, targetPoint);
 
@@ -940,10 +901,8 @@ long BattleMech::calcHitLocation (GameObjectPtr attacker, long weaponIndex, long
 	// without using obstructions...
 	long armorLocation = -1;
 
-	// Section depends upon source of attack...
 	long section = MechHitSectionTable[attackSource];
 
-	// Find arc...
 	float entryAngle = 0.0;
 	if (attacker)
 		entryAngle = relFacingTo(attacker->getPosition());
@@ -974,7 +933,6 @@ long BattleMech::calcHitLocation (GameObjectPtr attacker, long weaponIndex, long
 		}
 	}
 
-	// Roll, and see where it hits...
 	long locationRoll = RandomNumber(100);
 	long startEntry = section * (NUM_MECH_ARMOR_LOCATIONS * NUM_MECH_HIT_ARCS) + (arc * NUM_MECH_ARMOR_LOCATIONS);
 	for (armorLocation = 0; armorLocation < NUM_MECH_ARMOR_LOCATIONS; armorLocation++) {
@@ -1000,7 +958,6 @@ bool BattleMech::isJumping (Stuff::Vector3D* goal) {
 
 float BattleMech::getJumpRange (long* numOffsets, long* jumpCost) {
 
-	//static long jetsToOffsets[7] = {8, 16, 40, 56, 72, 88, 104};
 	static long jetsToOffsets[6] = {8, 32, 56, 80, 104, 128};
 	long numJets = numJumpJets;
 	if (getPilot()->isLongJump())
@@ -1036,16 +993,12 @@ bool BattleMech::handleEjection (void) {
 //	}
 
 	if (pilot && ((pilot->getStatus() == WARRIOR_STATUS_NORMAL) || (pilot->getStatus() == WARRIOR_STATUS_WITHDRAWING))) {
-		// First, eject...
 		getPilot()->eject();
 
 		ejectOrderGiven = true;
 	
-		// The head blows...
 		destroyBodyLocation(MECH_BODY_LOCATION_HEAD);
 
-		// Create the Eject FX
-		// WHEN READY -fs
 
    		if (CombatLog) 
    		{
@@ -1063,7 +1016,6 @@ bool BattleMech::handleEjection (void) {
 #endif
 
 #ifdef USE_MOODMUSIC
-		// What heroic music should be played?
 		if (alignment == homeTeam->getAlignment())
 			friendlyDestroyed = true;
 		else

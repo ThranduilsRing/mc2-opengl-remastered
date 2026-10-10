@@ -13,17 +13,13 @@
 #include "EditorInterface.h" // just for the undo manager
 
 
-/////////////////////////////////////////////////////////////////////////////
-// UnitSettingsDlg dialog
 
 UnitSettingsDlg::UnitSettingsDlg( EList< Unit*, Unit* >& newList/*=NULL*/, ActionUndoMgr &undoMgr)
 	: CDialog(UnitSettingsDlg::IDD), units( newList )
 {
-	//{{AFX_DATA_INIT(UnitSettingsDlg)
 	m_Alignment = -1;
 	m_SquadEdit = _T("");
 	m_SelfRepairBehavior = -1;
-	//}}AFX_DATA_INIT
 
 	pUndoMgr = &undoMgr;
 	pAction = NULL;
@@ -33,7 +29,6 @@ UnitSettingsDlg::UnitSettingsDlg( EList< Unit*, Unit* >& newList/*=NULL*/, Actio
 void UnitSettingsDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
-	//{{AFX_DATA_MAP(UnitSettingsDlg)
 	DDX_Control(pDX, IDC_VARIANT, m_Variant);
 	DDX_Control(pDX, IDC_PILOT, m_Pilot);
 	DDX_Control(pDX, IDC_MECH, m_Mech);
@@ -41,12 +36,10 @@ void UnitSettingsDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Radio(pDX, IDC_ALIGN1, m_Alignment);
 	DDX_Text(pDX, IDC_SQUAD_EDIT, m_SquadEdit);
 	DDX_Radio(pDX, IDC_SELF_REPAIR1, m_SelfRepairBehavior);
-	//}}AFX_DATA_MAP
 }
 
 
 BEGIN_MESSAGE_MAP(UnitSettingsDlg, CDialog)
-	//{{AFX_MSG_MAP(UnitSettingsDlg)
 	ON_CBN_SELCHANGE(IDC_GROUP, OnSelchangeGroup)
 	ON_BN_CLICKED(IDC_HIGHILIGHT2EDIT, OnHighilight2edit)
 	ON_EN_CHANGE(IDC_HIGHLIGHT1, OnChangeHighlight1)
@@ -56,13 +49,10 @@ BEGIN_MESSAGE_MAP(UnitSettingsDlg, CDialog)
 	ON_BN_CLICKED(IDC_BASEEDIT, OnBaseedit)
 	ON_WM_CTLCOLOR()
 	ON_CBN_SELCHANGE(IDC_MECH, OnSelchangeMech)
-	//}}AFX_MSG_MAP
 	ON_CONTROL_RANGE( BN_CLICKED, IDC_ALIGN1, IDC_ALIGN1 + 8, OnAlign1)
 
 END_MESSAGE_MAP()
 
-/////////////////////////////////////////////////////////////////////////////
-// UnitSettingsDlg message handlers
 
 void UnitSettingsDlg::OnSelchangeGroup() 
 {
@@ -219,7 +209,6 @@ void UnitSettingsDlg::DoColorBox( CWnd* pWnd )
 
 void UnitSettingsDlg::applyChanges()
 {
-	// get the type info from the dlg box
 	int index = m_Group.GetCurSel( );
 	if ( index != -1 )
 	{
@@ -246,7 +235,6 @@ void UnitSettingsDlg::applyChanges()
 		}
 	}
 
-	//set pilots 
 	index = m_Pilot.GetCurSel();
 
 	if ( index != -1 )
@@ -259,7 +247,6 @@ void UnitSettingsDlg::applyChanges()
 		}
 	}
 
-	// now set the alignment
 	UpdateData( true );
 	index = m_Alignment;
 
@@ -303,7 +290,6 @@ void UnitSettingsDlg::applyChanges()
 	bool bColor1 = false; 
 	bool bColor2 = false;
 
-	// now figure out the colors
 	CWnd* pWnd = GetDlgItem( IDC_BASE );
 	if ( pWnd )
 	{
@@ -409,7 +395,6 @@ BOOL UnitSettingsDlg::OnInitDialog()
 	updatePossibiltyControls();
 
 	return TRUE;  // return TRUE unless you set the focus to a control
-	              // EXCEPTION: OCX Property Pages should return FALSE
 }
 
 void UnitSettingsDlg::updatePossibiltyControls()
@@ -551,7 +536,6 @@ int UnitSettingsDlg::getPossibilityIndex()
 
 void UnitSettingsDlg::updateMemberVariables()
 {
-	// now need to check all of the colors
 	unsigned long tmpBase, tmpHighlight1, tmpHighlight2;
 	unsigned long base, highlight1, highlight2;
 	bool	bBase = true;
@@ -658,7 +642,6 @@ void UnitSettingsDlg::updateMemberVariables()
 	delete [] pGroups;
 	delete [] groupIDs;
 
-	// make sure all the units we are editing are in the same group
 	int group = units.GetHead()->getGroup();	
 	for ( UNIT_LIST::EIterator iter = units.Begin(); !iter.IsDone(); iter++ )
 	{
@@ -676,7 +659,6 @@ void UnitSettingsDlg::updateMemberVariables()
 		int index = m_Group.FindString( -1, pGroupName );
 		m_Group.SetCurSel( index );
 
-		// OK, now fill in the index....
 		const char* MechNames[256];
 		int count = 256;
 
@@ -688,7 +670,6 @@ void UnitSettingsDlg::updateMemberVariables()
 			m_Mech.AddString( MechNames[i] );
 		}
 
-		// ok, now determine if all of the mechs are the same.
 		int indexInGroup = units.GetHead()->getIndexInGroup();
 
 		for ( UNIT_LIST::EIterator iter = units.Begin(); !iter.IsDone(); iter++ )
@@ -709,7 +690,6 @@ void UnitSettingsDlg::updateMemberVariables()
 			{
 				m_Mech.SetCurSel( index );
 
-				// now we need to find the variant
 
 				m_Variant.ResetContent();
 				
@@ -728,7 +708,6 @@ void UnitSettingsDlg::updateMemberVariables()
 					delete VariantNames;
 					VariantNames = 0;
 
-					// OK, now see if they all have the same variant name
 					int variant = units.GetHead()->getVariant();	
 					for ( UNIT_LIST::EIterator iter = units.Begin(); !iter.IsDone(); iter++ )
 					{

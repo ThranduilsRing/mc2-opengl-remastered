@@ -3,7 +3,6 @@
 #include "warrior_internal.h"
 
 
-// TARGET PRIORITY routines
 
 void* TargetPriorityList::operator new (size_t mySize) {
 
@@ -36,7 +35,6 @@ int32_t TargetPriorityList::insert (int32_t index, TargetPriorityPtr priority) {
 		return(2);
 
 	if (index < size) {
-		// shift 'em down...
 		memmove(&list[index + 1], &list[index], (size - index) * sizeof(TargetPriority));
 	}
 	memcpy(&list[index], priority, sizeof(TargetPriority));
@@ -48,7 +46,6 @@ void TargetPriorityList::remove (int32_t index) {
 
 	if ((index > -1) && (index < size)) {
 		if (index < (size - 1)) {
-			// shift 'em up...
 			memmove(&list[index], &list[index + 1], (size - index - 1) * sizeof(TargetPriority));
 		}
 		size--;
@@ -61,8 +58,6 @@ int32_t TargetPriorityList::calcAction (MechWarriorPtr pilot, GameObjectPtr targ
 		if (!pilot->getTeam() || pilot->getTeam()->isEnemy(target->getTeam())) {
 			if (!target->isDisabled())
 				return(TACTICAL_ORDER_ATTACK_OBJECT);
-			//else
-			//	return(TACTICAL_ORDER_CAPTURE)
 
 		}
 		}
@@ -151,9 +146,7 @@ int32_t TargetPriorityList::calcTarget (MechWarriorPtr pilot, Stuff::Vector3D lo
 				//HACK! For now, we will not target unarmed movers...
 				list[i].params[2] += CONTACT_CRITERIA_ARMED;
 				if (!obj) {
-					// select best gameobject that fits params
 					if (list[i].params[2]) {
-						// for now, just returns the closest contact...
 						int contactList[MAX_MOVERS];
 						long numContacts = CurObject->getContacts(contactList, list[i].params[2], CONTACT_SORT_DISTANCE);
 						float smallestDistance = 999999.0;
@@ -195,9 +188,7 @@ int32_t TargetPriorityList::calcTarget (MechWarriorPtr pilot, Stuff::Vector3D lo
 				if (list[i].params[0])
 					obj = (GameObjectPtr)ObjectManager->findByPartId(list[i].params[0]);
 				if (!obj) {
-					// select best gameobject that fits params
 					if (list[i].params[2] == -1) {
-						// for now, return the closest enemy building...
 						float smallestDistance = 999999.0;
 						for (long j = 0; j < ObjectManager->getNumBuildings(); j++) {
 							BuildingPtr building = ObjectManager->getBuilding(j);
@@ -268,7 +259,6 @@ int32_t TargetPriorityList::calcTarget (MechWarriorPtr pilot, Stuff::Vector3D lo
 				}
 				break;
 			case TARGET_PRIORITY_TURRET: {
-				// For now, we'll pick the closest Turret...
 				float shortestDistance = 999999.0;
 				GameObjectPtr closestTurret = NULL;
                 int i;
@@ -342,8 +332,6 @@ int32_t TargetPriorityList::calcTarget (MechWarriorPtr pilot, Stuff::Vector3D lo
 			case TARGET_PRIORITY_LOCATION:
 				break;
 			case TARGET_PRIORITY_EVENT_TARGETED:
-			//for (long i = 0; i < alarm[curEventID].numTriggers; i++)
-			//	paramList[i] = alarm[curEventID].trigger[i];
 				break;
 			case TARGET_PRIORITY_EVENT_HIT:
 				// param 0 = selection criteria
@@ -452,7 +440,6 @@ GameObjectPtr MechWarrior::calcTurretThreats (float threatRange, long minThreat)
 		if (turretControlThreat[i] < minThreat)
 			turretControlThreat[i] = 0;
 		else {
-			// It's a threat, and big enough to consider...
 			if (biggestThreat == -1)
 				biggestThreat = i;
 			else if (turretControlThreat[i] > turretControlThreat[biggestThreat])
@@ -613,7 +600,6 @@ unsigned long MechWarrior::getSituationGuardObjectPartId (void) {
 	return(object->getPartId());
 }
 
-// COMBAT DECISION TREE
 
 long MechWarrior::calcWeaponsStatus (GameObjectPtr target, int* weaponList, Stuff::Vector3D* targetPoint) {
 
@@ -629,7 +615,6 @@ long MechWarrior::calcWeaponsStatus (GameObjectPtr target, int* weaponList, Stuf
 	else
 		return(WEAPONS_STATUS_NO_TARGET);
 
-	// Am I even within range?
 	float distanceToTarget = myVehicle->distanceFrom(targetPosition);
 	if ((distanceToTarget <= myVehicle->getMinFireRange()) || (distanceToTarget >= myVehicle->getMaxFireRange()))
 		return(WEAPONS_STATUS_OUT_OF_RANGE);

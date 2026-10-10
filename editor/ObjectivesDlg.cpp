@@ -21,16 +21,12 @@ static char THIS_FILE[] = __FILE__;
 #endif /*gos doesn't like this */
 
 
-/////////////////////////////////////////////////////////////////////////////
-// ObjectivesDlg dialog
 
 
 ObjectivesDlg::ObjectivesDlg(CWnd* pParent /*=NULL*/)
 	: CDialog(ObjectivesDlg::IDD, pParent)
 {
-	//{{AFX_DATA_INIT(ObjectivesDlg)
 	m_TeamEdit = 0;
-	//}}AFX_DATA_INIT
 
 	nSelectionIndex = -1;
 }
@@ -39,17 +35,14 @@ ObjectivesDlg::ObjectivesDlg(CWnd* pParent /*=NULL*/)
 void ObjectivesDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
-	//{{AFX_DATA_MAP(ObjectivesDlg)
 	DDX_Control(pDX, IDC_OBJECTIVES_EDIT_BUTTON, m_EditButton);
 	DDX_Control(pDX, IDC_OBJECTIVES_ADD_BUTTON, m_AddButton);
 	DDX_Control(pDX, IDC_OBJECTIVES_LIST, m_List);
 	DDX_Text(pDX, IDC_OBJECTIVES_TEAM_EDIT, m_TeamEdit);
-	//}}AFX_DATA_MAP
 }
 
 
 BEGIN_MESSAGE_MAP(ObjectivesDlg, CDialog)
-	//{{AFX_MSG_MAP(ObjectivesDlg)
 	ON_BN_CLICKED(IDC_OBJECTIVES_ADD_BUTTON, OnObjectivesAddButton)
 	ON_BN_CLICKED(IDC_OBJECTIVES_ADD_FROM_TEMPLATE_BUTTON, OnObjectivesAddFromTemplateButton)
 	ON_BN_CLICKED(IDC_OBJECTIVES_REMOVE_BUTTON, OnObjectivesRemoveButton)
@@ -57,11 +50,8 @@ BEGIN_MESSAGE_MAP(ObjectivesDlg, CDialog)
 	ON_BN_CLICKED(IDC_OBJECTIVES_COPY_BUTTON, OnObjectivesCopyButton)
 	ON_BN_CLICKED(IDC_OBJECTIVES_MOVE_UP_BUTTON, OnObjectivesMoveUpButton)
 	ON_BN_CLICKED(IDC_OBJECTIVES_MOVE_DOWN_BUTTON, OnObjectivesMoveDownButton)
-	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
-/////////////////////////////////////////////////////////////////////////////
-// CObjectiveTemplateDlg -- tiny modal preset picker (Slice 1, pick-free)
 
 // Human-readable preset labels. Order MUST match CObjectiveTemplateDlg::EPreset
 // and the apply switch in OnObjectivesAddFromTemplateButton.
@@ -109,8 +99,6 @@ void CObjectiveTemplateDlg::OnOK()
 	CDialog::OnOK();
 }
 
-/////////////////////////////////////////////////////////////////////////////
-// ObjectivesDlg message handlers
 
 static void syncObjectivesListWithListBox(const CObjectives *pObjectives, CListBox *pList) {
 	pList->ResetContent();
@@ -122,27 +110,22 @@ static void syncObjectivesListWithListBox(const CObjectives *pObjectives, CListB
 		if (1 == (*it)->Priority()) {
 			tmpEStr += _TEXT("*");
 		} else {
-			//tmpEStr += _TEXT(" ");
 		}
 		if ((*it)->PreviousPrimaryObjectiveMustBeComplete()) {
 			tmpEStr += _TEXT("^");
 		} else {
-			//tmpEStr += _TEXT(" ");
 		}
 		if ((*it)->AllPreviousPrimaryObjectivesMustBeComplete()) {
 			tmpEStr += _TEXT("A");
 		} else {
-			//tmpEStr += _TEXT(" ");
 		}
 		if ((*it)->IsHiddenTrigger()) {
 			tmpEStr += _TEXT("H");
 		} else {
-			//tmpEStr += _TEXT(" ");
 		}
 		if ((*it)->ActivateOnFlag()) {
 			tmpEStr += _TEXT("F");
 		} else {
-			//tmpEStr += _TEXT(" ");
 		}
 		tmpEStr += _TEXT("] ");
 		tmpEStr += ((*it)->LocalizedTitle());
@@ -194,10 +177,8 @@ BOOL ObjectivesDlg::OnInitDialog()
 	
 	if (EditorInterface::instance()->ObjectSelectOnlyMode()) {
 		if (CObjectivesEditState::ADD == EditorInterface::instance()->objectivesEditState.objectiveFunction) {
-			// post a message that the ADD button was pressed
 			PostMessage(WM_COMMAND, MAKEWPARAM(IDC_OBJECTIVES_ADD_BUTTON, BN_CLICKED), (LPARAM)((&m_AddButton)->m_hWnd));
 		} else if (CObjectivesEditState::EDIT == EditorInterface::instance()->objectivesEditState.objectiveFunction) {
-			// post a message that the EDIT button was pressed
 			PostMessage(WM_COMMAND, MAKEWPARAM(IDC_OBJECTIVES_EDIT_BUTTON, BN_CLICKED), (LPARAM)((&m_EditButton)->m_hWnd));
 		} else { assert(false); }
 	} else {
@@ -260,7 +241,6 @@ void ObjectivesDlg::OnObjectivesAddFromTemplateButton()
 		return;
 	}
 
-	// 1) Pick a preset (Cancel -> bail).
 	CObjectiveTemplateDlg templateDlg(this);
 	if (IDOK != templateDlg.DoModal()) {
 		return;
@@ -270,7 +250,6 @@ void ObjectivesDlg::OnObjectivesAddFromTemplateButton()
 		return;
 	}
 
-	// 2) Build + pre-populate the new objective.
 	int alignment = m_ModifiedObjectives.Alignment();
 	CObjective *pNewObjective = new CObjective(alignment);
 	assert(pNewObjective);
@@ -345,8 +324,6 @@ void ObjectivesDlg::OnObjectivesAddFromTemplateButton()
 		return;
 	}
 
-	// 3) Hand off to the normal Objective edit dialog (author tweaks), then reuse
-	// the IDENTICAL tail of OnObjectivesAddButton.
 	bool result = pNewObjective->EditDialog();
 
 	if (EditorInterface::instance()->ObjectSelectOnlyMode()) {
@@ -376,7 +353,6 @@ void ObjectivesDlg::OnObjectivesRemoveButton()
 {
 	nSelectionIndex = m_List.GetCurSel();
 	if ((0 <= nSelectionIndex) && (m_ModifiedObjectives.Count() > nSelectionIndex)) {
-		// should put up confirmation box here
 		delete *(m_ModifiedObjectives.Iterator(nSelectionIndex));
 		m_ModifiedObjectives.Delete(nSelectionIndex);
 		syncObjectivesListWithListBox(&m_ModifiedObjectives, &m_List);

@@ -43,15 +43,11 @@ void EditorShutdownTrace(const char* fmt, ...)
 
 IProviderEngine * armProvider;
 
-//-----------------------------------
-// Frank at work!
 CameraPtr eye = NULL;
 long lightState = 0;
 bool s_bSensorMapEnabled = false;
 EditorInterface* EditorInterface::s_instance = NULL;
 
-//--------------------------------------------------------------------------------------
-// THE EDITOR CLASS, kind of like the mission in MCommander
 void EditorInterface::handleKeyDown( int Key )
 {
 	if ( !eye || !eye->active  )
@@ -60,8 +56,6 @@ void EditorInterface::handleKeyDown( int Key )
 	if ( DebuggerActive )
 		return;
 
-	//----------------------
-	// Adjust for frameRate
 	float frameFactor = frameLength / baseFrameLength;
 	float scrollFactor = scrollInc / eye->getScaleFactor() * frameFactor;
 
@@ -159,7 +153,6 @@ void EditorInterface::handleKeyDown( int Key )
 
 		if (GetAsyncKeyState(KEY_G) && ctrlDn && altDn && !shiftDn)
 		{
-			//drawTerrainGrid ^= TRUE;
 			OnViewShowpassabilitymap();
 			terrainLineChanged = turn;
 		}
@@ -189,7 +182,6 @@ void EditorInterface::handleKeyDown( int Key )
 
 		if (GetAsyncKeyState(KEY_P) && ctrlDn && altDn && !shiftDn)
 		{
-			//eye->usePerspective ^= true;
 			OnViewOrthographiccamera();
 			terrainLineChanged = turn;
 		}
@@ -223,8 +215,6 @@ void EditorInterface::handleKeyDown( int Key )
 	// Camera scroll/zoom/rotate is handled per-frame in updateCameraInput() (called from
 	// render()) so it runs at render rate (~100fps) rather than key-repeat rate (~30Hz).
 	
-	//------------------------------------------------
-	//IF there is a selected object, find distance to it from camera.
 	char buffer[256];
 	float eyeDistance = 0.0f;
 	long selectionCount = EditorObjectMgr::instance()->getSelectionCount();
@@ -248,7 +238,6 @@ void EditorInterface::handleKeyDown( int Key )
 		}
 	}
 
-	// need to put this value in the appropriate place.
 	sprintf( buffer, "%.3f", eyeDistance);
 	((MainFrame*)AfxGetMainWnd())->m_wndDlgBar.GetDlgItem( IDC_OBJDISTANCEEDIT )->SetWindowText( buffer );
 }
@@ -269,8 +258,6 @@ void EditorInterface::updateCameraInput()
 	bool ctrlDn  = GetAsyncKeyState( KEY_LCONTROL ) ? true : false;
 	long altDn   = GetAsyncKeyState( KEY_LMENU ) ? true : false;
 
-	//------------------------
-	// Keyboard + mouse-edge scroll flags
 	bool scrollUp = (GetAsyncKeyState(KEY_UP)    && !shiftDn && !ctrlDn && !altDn);
 	bool scrollDn = (GetAsyncKeyState(KEY_DOWN)  && !shiftDn && !ctrlDn && !altDn);
 	bool scrollLf = (GetAsyncKeyState(KEY_LEFT)  && !shiftDn && !ctrlDn && !altDn);
@@ -318,7 +305,6 @@ void EditorInterface::updateCameraInput()
 	bool tiltDn    = (GetAsyncKeyState(KEY_UP)   && shiftDn && !ctrlDn && !altDn);
 	bool tiltNormal= (GetAsyncKeyState(KEY_HOME) && !shiftDn && !ctrlDn && !altDn);
 
-	// Apply camera movement
 	if (scrollLf) { eye->moveLeft(scrollFactor);  syncScrollBars(); }
 	if (scrollRt) { eye->moveRight(scrollFactor); syncScrollBars(); }
 	if (scrollDn) { eye->moveDown(scrollFactor);  syncScrollBars(); }
@@ -576,7 +562,6 @@ int EditorInterface::SaveAs()
 			CopyFile(oldBaseFile,newBaseFile,false);
 		}
 
-		//Then do a regular save of everything else!!		
      	EditorData::instance->save( pFile );
 		UnsetBusyMode();
 	}
@@ -1006,7 +991,6 @@ void EditorInterface::render()
 	screenPos.x = Environment.screenWidth/2;
 	screenPos.y = Environment.screenHeight/2;
 
-	//eye->inverseProject( screenPos, worldPos );
 	/*if ( worldPos.x != 0.0 || worldPos.y != 0.0 )
 	{
 
@@ -1073,7 +1057,6 @@ void EditorInterface::render()
 		EditorRttClientToViewport( brushX, brushY );
 		curBrush->render( brushX, brushY );
 		renderTerrainSelection();
-		//curBrush->endPaint();
 
 		if ( painting && !dragging )
 		{
@@ -1082,7 +1065,6 @@ void EditorInterface::render()
 			int PosX = (int)pt.x;
 			int PosY = (int)pt.y;
 
-			// scroll if painting
 			int scrollLf = (PosX <= (screenScrollLeft));
 			int scrollRt = (PosX >= (Width() - screenScrollRight));
 			
@@ -1121,7 +1103,6 @@ void EditorInterface::render()
 
 	}
 }
-/* make the horizontal scroll bar reflect the current camera position */
 void EditorInterface::syncHScroll()
 {
 	/* this calculation was based in the code for Camera::moveRight(float amount) */

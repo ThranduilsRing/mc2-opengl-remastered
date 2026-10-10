@@ -15,7 +15,6 @@ class EditorObject;
 class Unit;
 class FitIniFile;
 
-//*************************************************************************************************
 
 /**************************************************************************************************
 CLASS DESCRIPTION
@@ -174,7 +173,6 @@ public:
 class CSpecificAlliedUnitObjectiveCondition: public CSpecificUnitObjectiveCondition { /*abstract class*/
 public:
 	CSpecificAlliedUnitObjectiveCondition(int alignment) : CSpecificUnitObjectiveCondition(alignment) {}
-	//virtual bool EditDialog();
 };
 
 class CDestroySpecificEnemyUnit: public CSpecificEnemyUnitObjectiveCondition {
@@ -210,13 +208,11 @@ public:
 class CSpecificEnemyStructureObjectiveCondition: public CSpecificStructureObjectiveCondition { /*abstract class*/
 public:
 	CSpecificEnemyStructureObjectiveCondition(int alignment) : CSpecificStructureObjectiveCondition(alignment) {}
-	//virtual bool EditDialog();
 };
 
 class CSpecificAlliedStructureObjectiveCondition: public CSpecificStructureObjectiveCondition { /*abstract class*/
 public:
 	CSpecificAlliedStructureObjectiveCondition(int alignment) : CSpecificStructureObjectiveCondition(alignment) {}
-	//virtual bool EditDialog();
 };
 
 class CDestroySpecificStructure: public CSpecificEnemyStructureObjectiveCondition {
@@ -797,5 +793,4 @@ public:
 		pendingLocateObj = 0;
 	}
 };
-//*************************************************************************************************
 #endif  // end of file ( Objective.h )

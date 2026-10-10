@@ -37,12 +37,10 @@ const char* MechAnimationNames[MaxGestures+2] =
 	"FallForwardDam"	//Destroyed States
 };																
 
-// class Mech3DAppearanceType
 void Mech3DAppearanceType::init (const char * fileName)
 {
 	AppearanceType::init(fileName);
 
-	// Load the Gesture Data.  Should be in filename.ini
 	FullPathFileName mechIniName;
 	mechIniName.init(tglPath,fileName,".ini");
 
@@ -59,24 +57,14 @@ void Mech3DAppearanceType::init (const char * fileName)
 		sprintf(blockId,"Gestures%d",i);
 
 		result = mechFile.seekBlock(blockId);
-		// sebi
-		//gosASSERT(result == NO_ERR);
 
 		result = mechFile.readIdFloat("StartVel",gestures[i].startVel);
-		//sebi
-		//gosASSERT(result == NO_ERR);
 
 		result = mechFile.readIdFloat("EndVel",gestures[i].endVel);
-		//sebi
-		//gosASSERT(result == NO_ERR);
 
 		result = mechFile.readIdLong("StartFrame",gestures[i].frameStart);
-		//sebi
-		//gosASSERT(result == NO_ERR);
 
 		result = mechFile.readIdBoolean("Reverse",gestures[i].reverse);
-		//sebi
-		//gosASSERT(result == NO_ERR);
 		
 		result = mechFile.readIdLong("RightFootDown0",gestures[i].rightFootDownFrame0);
 		if (result != NO_ERR)
@@ -128,7 +116,6 @@ void Mech3DAppearanceType::init (const char * fileName)
 	result = mechFile.readIdString("FileName",aseFileName,511);
 	if (result != NO_ERR)
 	{
-		//Check for LOD filenames
 		char aseFileName[512];
 		for (long i=0;i<MAX_LODS;i++)
 		{
@@ -147,7 +134,6 @@ void Mech3DAppearanceType::init (const char * fileName)
 				// at greater zoom-out. See visual_preference_knobs.md.
 				lodDistance[i] *= 5.0f;
 
-				// Base LOD shape.  In stand Pose by default.
 				mechShape[i] = new TG_TypeMultiShape;
 				gosASSERT(mechShape[i] != NULL);
 			
@@ -185,7 +171,6 @@ void Mech3DAppearanceType::init (const char * fileName)
 	}
 	else
 	{
-		// Base shape.  In stand Pose by default.
 		mechShape[0] = new TG_TypeMultiShape;
 		gosASSERT(mechShape[0] != NULL);
 
@@ -215,7 +200,6 @@ void Mech3DAppearanceType::init (const char * fileName)
 	result = mechFile.readIdString("ShadowName",aseFileName,511);
 	if (result == NO_ERR)
 	{
-		// Base Shadow shape.
 		mechShadowShape = new TG_TypeMultiShape;
 		gosASSERT(mechShadowShape != NULL);
 	
@@ -225,7 +209,6 @@ void Mech3DAppearanceType::init (const char * fileName)
 		mechShadowShape->LoadTGMultiShapeFromASE(gvName); // TGL-LOAD-EXEMPT(optional shadow; loader-side PART-0 logging; GetNumShapes-checked delete-on-fail below)
 	}
 
-	// Load Arms to blow off Next.
 	char leftArmName[1024];
 	sprintf(leftArmName,"%sLeftArm",fileName);
 	
@@ -296,7 +279,6 @@ void Mech3DAppearanceType::init (const char * fileName)
 		}
 	}
 
-	// Load Animations Next.
 	if (animationLoadingEnabled)
 	{
 		for (int i=0;i<MAX_ANIMATION_FILES;i++)
@@ -342,7 +324,6 @@ void Mech3DAppearanceType::init (const char * fileName)
 		}
 	}
 
-	// Load up the foot print type.
 	result = mechFile.seekBlock("FootPrint");
 	if (result != NO_ERR)
 	{
@@ -369,7 +350,6 @@ void Mech3DAppearanceType::init (const char * fileName)
 		leftFootprintType = rightFootprintType;
 	}
 	
-	// Load up the Node Data.
 	result = mechFile.seekBlock("Nodes");
 	if (result != NO_ERR)
 		numSmokeNodes = numWeaponNodes = numJumpNodes = 0;
@@ -679,7 +659,6 @@ void Mech3DAppearanceType::setAnimation (TG_MultiShapePtr shape, DWORD animation
 	else
 		shape->ClearAnimation();
 }
-// class Mech3DAppearance
 void Mech3DAppearance::resetWeaponNodes (void)
 {
 	//THis should never be called after the game inits!!
@@ -751,7 +730,6 @@ Stuff::Vector3D Mech3DAppearance::getWeaponNodePosition (long nodeId)
 		}
 	}
 
-   	// Create Matrix to conform to.
    	Stuff::UnitQuaternion qRotation;
    	float yaw = rotation * DEGREES_TO_RADS;
    	qRotation = Stuff::EulerAngles(0.0f, yaw, 0.0f);
@@ -789,7 +767,6 @@ Stuff::Vector3D Mech3DAppearance::getNodeNamePosition (const char *nodeName)
 			return result;
 	}
 
-   	// Create Matrix to conform to.
    	Stuff::UnitQuaternion qRotation;
    	float yaw = rotation * DEGREES_TO_RADS;
    	qRotation = Stuff::EulerAngles(0.0f, yaw, 0.0f);
@@ -827,7 +804,6 @@ Stuff::Vector3D Mech3DAppearance::getNodeIdPosition (long nodeId)
 			return result;
 	}
 
-   	// Create Matrix to conform to.
    	Stuff::UnitQuaternion qRotation;
    	float yaw = rotation * DEGREES_TO_RADS;
    	qRotation = Stuff::EulerAngles(0.0f, yaw, 0.0f);
@@ -867,7 +843,6 @@ Stuff::Vector3D Mech3DAppearance::getNodePosition (long nodeId)
 			return result;
 	}
 
-   	// Create Matrix to conform to.
    	Stuff::UnitQuaternion qRotation;
    	float yaw = rotation * DEGREES_TO_RADS;
    	qRotation = Stuff::EulerAngles(0.0f, yaw, 0.0f);
@@ -889,7 +864,6 @@ Stuff::Vector3D Mech3DAppearance::getNodePosition (long nodeId)
 
 long Mech3DAppearance::getLowestWeaponNode (void)
 {
-	// Scan all weapon nodes and find least used one.
 	long bestNode = -1;
 	float lowestPosZ;
 	long numSmokeNodes = mechType->numSmokeNodes;

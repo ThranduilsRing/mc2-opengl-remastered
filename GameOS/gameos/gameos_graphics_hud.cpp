@@ -30,7 +30,6 @@ int findTextBreak(const char* text, const int count, const gosFont* font, const 
             cur_width += font->getCharAdvance(text[pos + j]);
         }
 
-        // if next possible break will not fit, then return now
         if(width + cur_width >= region_width) {
 
             if(pos == 0) { // handle case when only one word in line and it does not fit it, just return whole line
@@ -58,7 +57,6 @@ int findTextBreak(const char* text, const int count, const gosFont* font, const 
         *out_str_width = width;
     return pos;
 }
-// returnes num lines in text which should be wrapped in region_width
 int calcTextHeight(const char* text, const int count, const gosFont* font, int region_width)
 {
     int pos = 0;
@@ -224,7 +222,6 @@ void gosRenderer::drawText(const char* text) {
         y += font_height;
         pos += num_chars;
     }
-    // T2: if HUD buffering is active, capture pre-expanded glyph geometry and defer
     if (renderStates_[gos_State_IsHUD]) {
         const int n = text_->getNumVertices();
         if (n > 0 && !hudFlushed_) {
@@ -264,7 +261,6 @@ void gosRenderer::drawText(const char* text) {
     applyRenderStates();
     gosRenderMaterial* mat = text_material_;
 
-    //ta.Foreground
     vec4 fg;
     fg.x = (float)((ta.Foreground & 0xFF0000) >> 16);
     fg.y = (float)((ta.Foreground & 0xFF00) >> 8);
@@ -272,13 +268,6 @@ void gosRenderer::drawText(const char* text) {
     fg.w = 255.0f;//(ta.Foreground & 0xFF000000) >> 24;
     fg = fg / 255.0f;
     mat->getShader()->setFloat4(s_Foreground, fg);
-    //ta.Size
-    //ta.WordWrap
-    //ta.Proportional
-    //ta.Bold
-    //ta.Italic
-    //ta.WrapType
-    //ta.DisableEmbeddedCodes
 
     mat->setTransform(projection_);
     mat->setFogColor(fog_color_);
@@ -724,7 +713,6 @@ void gosRenderer::flushHUDBatch()
             // round-3 proven beam look) instead of self-declining — a weapon
             // beam must never vanish outright over a missing texture mirror.
             {
-                // hudVfxGate hoisted per-flush: VK-HUD-GATE-HOIST-1.
                 if (hudVfxGate && draw.kind == (uint32_t)kHudTriBatch &&
                     (draw.alphaMode == 4 || draw.alphaMode == 2) &&
                     draw.textureHandle != 0 && draw.textureHandle != INVALID_TEXTURE_ID &&
@@ -819,7 +807,6 @@ void gosRenderer::flushHUDBatch()
     }
 #endif
 
-    // Save pre-flush render state and projection
     uint32_t priorState[gos_MaxState];
     memcpy(priorState, renderStates_, sizeof(priorState));
     mat4 priorProjection = projection_;
@@ -852,7 +839,6 @@ void gosRenderer::flushHUDBatch()
         }
     }
 
-    // Restore pre-flush render state and projection
     memcpy(renderStates_, priorState, sizeof(priorState));
     projection_ = priorProjection;
     hudFlushed_ = true;
@@ -906,7 +892,6 @@ void __stdcall gos_TextDrawBackground( int Left, int Top, int Right, int Bottom,
     // TODO: Is it correctly Implemented?
     gosASSERT(g_gos_renderer);
 
-    //PAUSE((""));
 
     gos_VERTEX v[4];
     v[0].x = (float)Left;

@@ -42,13 +42,11 @@ long Mover::handleTacticalOrder (TacticalOrder tacOrder, long priority, bool que
 		}
 	}
 
-//queuePlayerOrder = true;
 if (queuePlayerOrder)
 	tacOrder.pack(NULL, NULL);
 
 #if 1
 	if (MPlayer && !MPlayer->isServer()) {
-		// Simply for test purposes...
 		tacOrder.pack(NULL, NULL);
 		TacticalOrder tacOrder2;
 		tacOrder2.data[0] = tacOrder.data[0];
@@ -100,27 +98,20 @@ if (queuePlayerOrder)
 				message = RADIO_ILLEGAL_ORDER;
 				processOrder = false;
 			}
-			//else
-			//	message = RADIO_JUMPTO;
 
 			}
 			// No break here--should fall down below...
 		case TACTICAL_ORDER_MOVETO_OBJECT:
 		case TACTICAL_ORDER_TRAVERSE_PATH:
 		case TACTICAL_ORDER_PATROL_PATH:
-			// Tell everyone we have received the order.
 			if (isDisabled() || !canMove()) {
 				processOrder = false;
 			}
 			break;
 		case TACTICAL_ORDER_ATTACK_OBJECT:
-			//tacOrder.code = TACTICAL_ORDER_ATTACK_POINT;
-			//tacOrder.attackParams.targetPoint = (GameObjectPtr(BaseObjectPtr(tacOrder.target)))->getPosition();
-			//tacOrder.target = NULL;
 			if (tacOrder.attackParams.method == ATTACKMETHOD_DFA) {
 				// Let's just make it a move/jump order, for now...
 				tacOrder.code = TACTICAL_ORDER_JUMPTO_OBJECT;
-				//tacOrder.target = mouseObject;
 				tacOrder.moveParams.wait = false;
 				tacOrder.moveParams.wayPath.mode[0] = TRAVEL_MODE_SLOW;
 				GameObjectPtr target = tacOrder.getTarget();
@@ -134,8 +125,6 @@ if (queuePlayerOrder)
 			break;
 		case TACTICAL_ORDER_POWERUP:
 		case TACTICAL_ORDER_POWERDOWN:
-			//tacOrder.delayedTime = scenarioTime + 5.0;
-			//break;
 		case TACTICAL_ORDER_ESCORT:
 		case TACTICAL_ORDER_FOLLOW:
 		case TACTICAL_ORDER_GUARD:
@@ -171,12 +160,6 @@ if (queuePlayerOrder)
 				if (queuePlayerOrder)
 					pilot->addQueuedTacOrder(tacOrder);
 				else {
-//					if (pilot->getNumTacOrdersQueued())
-						//This is a hack to simply trigger the execution of
-						//the queued orders. The current order is ignored (and
-						//is simply used for this trigger)...
-//						pilot->executeTacOrderQueue();
-//					else
 						pilot->setPlayerTacOrder(tacOrder);
 				}
 				break;
@@ -232,9 +215,6 @@ void Mover::loadPilot (const char* pilotFileName, const char* brainFileName, Log
 		pilot = NULL;
 	}
 
-	// Loads a new pilot into the pilot manager and then puts it into
-	// this mover. If a pilot already exists in this mover, it is
-	// replaced...
 	MechWarriorPtr pilot = MechWarrior::newWarrior();
 	if (!pilot)
 		STOP(("Too many pilots in this mission!"));
@@ -412,7 +392,6 @@ long Mover::addWeaponFireChunks (long which, unsigned long* packedChunkBuffer, l
 
 	for (long i = 0; i < numChunks; i++) {
 		weaponFireChunks[which][numWeaponFireChunks[which]++] = packedChunkBuffer[i];
-		// FOR TESTING...
 		WeaponFireChunk chunk;
 		chunk.init();
 		chunk.data = packedChunkBuffer[i];
@@ -429,7 +408,6 @@ long Mover::grabWeaponFireChunks (long which, unsigned long* packedChunkBuffer, 
 	if (numChunks > 0) {
 		for (long i = 0; i < numChunks; i++)
 			packedChunkBuffer[i] = weaponFireChunks[which][i];
-		//memcpy(packedChunkBuffer, weaponFireChunks[which], 4 * numWeaponFireChunks[which]);
 	}
 	numWeaponFireChunks[which] -= numChunks;
 	return(numChunks);
@@ -443,7 +421,6 @@ long Mover::updateWeaponFireChunks (long which) {
 		chunk.data = weaponFireChunks[which][i];
 		chunk.unpack(this);
 
-		// For debugging...
 		CurMoverWeaponFireChunk = chunk;
 
 		static float entryQuadTable[4] = {0.0, 180.0, -90.0, 90.0};
@@ -562,7 +539,6 @@ long Mover::addRadioChunk (long which, unsigned char msg) {
 
 	if (numRadioChunks[which] == MAX_RADIO_CHUNKS)
 		return(numRadioChunks[which]);
-		//Fatal(0, " Mover::addRadioChunk--Too many radio chunks ");
 
 	// Since the "chunk" is so simple, we'll just make it here...
 	radioChunks[which][numRadioChunks[which]++] = msg;
@@ -575,8 +551,6 @@ long Mover::addRadioChunks (long which, unsigned char* packedChunkBuffer, long n
 //		Fatal(0, " Mover::addRadioChunks--Too many radio chunks ");
 	for (long i = 0; i < numChunks; i++)
 		addRadioChunk(which, packedChunkBuffer[i]);
-	//memcpy(&radioChunks[which][numRadioChunks[which]], packedChunkBuffer, numChunks);
-	//numRadioChunks[which] += numChunks;
 	return(numRadioChunks[which]);
 }
 
@@ -608,7 +582,6 @@ void Mover::setThreatRating (short rating) {
 
 	threatRating = rating;
 	if (threatRating == -1) {
-		// Calc it...
 		threatRating = calcCV();
 	}
 }
@@ -622,9 +595,7 @@ long Mover::getThreatRating (void) {
 
 bool Mover::enemyRevealed (void)
 {
-	// What is our block and vertex number?
 
-	//NOTE: This function not used Anymore!!
 
 	return(false);
 }
@@ -806,7 +777,6 @@ bool Mover::getWeaponIndirectFire (long weaponIndex)
 			return true;
 	}
 			
-	// If no ammotype, then it has unlimited ammo (energy weapons, for example).
 	return(false);
 }
 
@@ -821,7 +791,6 @@ bool Mover::getWeaponAreaEffect (long weaponIndex)
 			return true;
 	}
 			
-	// If no ammotype, then it has unlimited ammo (energy weapons, for example).
 	return(false);
 }
 
@@ -844,7 +813,6 @@ void Mover::calcWeaponEffectiveness (bool setMax) {
 	long effectiveness = 0;
 	float avgSkill;
 
-	// Record time of our latest calc...
 	lastWeaponEffectivenessCalc = scenarioTime;
 		
 	if (pilot)
@@ -877,8 +845,6 @@ void Mover::calcAmmoTotals (void)
 	numAmmoTypes = 0;
 	if (numWeapons > 0) 
 	{
-		// We have some ammo in our inventory, so let's count 'em up.
-		// First, make a list of all weapon types we have...
 		for (long i = numOther; i < (numOther + numWeapons); i++) 
 		{
 			long weaponMasterId = inventory[i].masterID;
@@ -909,7 +875,6 @@ void Mover::calcAmmoTotals (void)
 			}
 		}
 		
-		// Now, go through all ammo we have and tally 'em...
 		for (int i = numOther + numWeapons; i < (numOther + numWeapons + numAmmos); i++) 
 		{
 			long ammoMasterId = inventory[i].masterID;
@@ -938,7 +903,6 @@ void Mover::calcAmmoTotals (void)
 				STOP(("Mech %s has ammo for a weapon it is not carrying!  Ammo Index is %d",name,ammoMasterId));
 		}
 
-		// Since we now know the totals, create the actual total list for this mover...
 		memcpy(ammoTypeTotal, totalList, sizeof(AmmoTally) * numAmmoTypes);
 	}
 }
@@ -947,7 +911,6 @@ long Mover::calcFireRanges (void) {
 
 	lastOptimalRangeCalc = scenarioTime;
 
-	// Calc min and max ranges...
 	maxRange = 0;
 	minRange = 1000000.0;
 	numFunctionalWeapons = 0;
@@ -964,13 +927,11 @@ long Mover::calcFireRanges (void) {
 		}
 	}
 
-	// Now, calc optimal range...
 	float rangeTotals[NUM_WEAPON_RANGE_TYPES] = {0, 0, 0, 0, 0};
 	for (int curWeapon = numOther; curWeapon < (numOther + numWeapons); curWeapon++) {
 		MasterComponent* weapon = &MasterComponent::masterList[inventory[curWeapon].masterID];
 		if (!inventory[curWeapon].disabled && (getWeaponShots(curWeapon) > 0)) {
 			float damageTimeRating = weapon->getWeaponDamage() / weapon->getWeaponRecycleTime();
-			// Go thru the five range points...
 			for (long i = 0; i < 5; i++)
 				if (OptimalRangePointInRange[i][weapon->getWeaponRange()])
 					rangeTotals[i] += damageTimeRating;
@@ -1061,7 +1022,6 @@ float Mover::getOptimalFireRange (void) {
 	return(optimalRange);
 }
 
-// COMBAT routines
 
 bool Mover::isWeaponIndex (long itemIndex) {
 
@@ -1234,7 +1194,6 @@ long Mover::sortWeapons (int* weaponList, long* valueList, long listSize, long s
 					sortList->setValue(item - numOther, calcAttackChance(target, aimLocation, scenarioTime, item, 0.0, NULL));
 					break;
 				default:
-					// Bad Sort Type...
 					return(-3);
 			}
 		}
@@ -1256,7 +1215,6 @@ long Mover::sortWeapons (int* weaponList, long* valueList, long listSize, long s
 						sortValue = calcAttackChance(target, aimLocation, scenarioTime, weaponList[item], 0.0, NULL);
 						break;
 					default:
-						// Bad Sort Type...
 						return(-3);
 				}
 			sortList->setValue(item, sortValue);

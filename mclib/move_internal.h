@@ -6,7 +6,6 @@
 #ifndef MOVE_INTERNAL_H
 #define MOVE_INTERNAL_H
 
-// Include Files
 #ifndef MCLIB_H
 #include"mclib.h"
 #endif
@@ -41,7 +40,6 @@ typedef enum {
 #define	MAX_TEAMS						8
 #endif
 
-// EXTERN vars
 
 extern void memclear(void *Dest,int Length);
 
@@ -110,7 +108,6 @@ inline constexpr const char* typeString[] = {
     "forest area"
 };
 
-// MISC routines
 
 inline void calcAdjNode (long& r, long& c, long direction) {
 
@@ -209,13 +206,9 @@ inline void MoveMap::propogateCost (long mapCellIndex, long cost, long g) {
 					if (!adj1Open && !adj2Open)
 						continue;
 					
-					//if (!adjacentCellOpen(mapCellIndex, StepAdjDir[dir]) && !adjacentCellOpen(mapCellIndex, StepAdjDir[dir + 1]))
-					//	continue;
 				}
 
-				// Calc the cell we're checking, offset from current cell...
 				long succCellIndex = curMapNode->adjCells[dir];
-				// If it's on the map, check it...
 				if (succCellIndex > -1) {
 					MoveMapNodePtr succMapNode = &map[succCellIndex];
 					if (succMapNode->cost < COST_BLOCKED)
@@ -271,10 +264,8 @@ inline void MoveMap::propogateCostJUMP (long r, long c, long cost, long g) {
 					}
 				}
 
-				// Calc the cell we're checking, offset from current cell...
 				long succRow = r + cellShift[cellOffsetIndex++];
 				long succCol = c + cellShift[cellOffsetIndex++];
-				// If it's on the map, check it...
 				if (inMapBounds(succRow, succCol, height, width)) {
 					MoveMapNodePtr succMapNode = &map[succRow * maxWidth + succCol];
 					if (succMapNode->cost < COST_BLOCKED)

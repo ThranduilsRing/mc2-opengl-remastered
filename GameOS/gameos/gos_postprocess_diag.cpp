@@ -354,7 +354,6 @@ void gosPostProcess::runHzbProbe()
                 ++objOffscreen; continue;
             }
 
-            // Clamp rect to screen, pick LOD from its pixel size.
             const float cMinX = uvMinX < 0.0f ? 0.0f : uvMinX;
             const float cMaxX = uvMaxX > 1.0f ? 1.0f : uvMaxX;
             const float cMinY = uvMinY < 0.0f ? 0.0f : uvMinY;
@@ -386,7 +385,6 @@ void gosPostProcess::runHzbProbe()
             if (L >= 0 && L < kHzbMaxLevels) ++lodHist[L];
             const float gap = objClosest - hzbMin;   // reverse-Z: <0 == behind
 
-            // Margin sweep + gap stats over SAFE frames only (guarded semantics).
             if (!unsafeForCull) {
                 if (gap < minGap) minGap = gap;
                 if (gap > maxGap) maxGap = gap;

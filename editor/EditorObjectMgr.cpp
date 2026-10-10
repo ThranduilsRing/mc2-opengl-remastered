@@ -76,7 +76,6 @@ EditorObjectMgr::EditorObjectMgr()
 	s_instance = this;   // should only be one of these
 }
 
-//*************************************************************************************************
 EditorObjectMgr::~EditorObjectMgr()
 {
 	clear();
@@ -115,7 +114,6 @@ EditorObjectMgr::~EditorObjectMgr()
 	s_instance = 0;
 }
 
-//*************************************************************************************************
 void EditorObjectMgr::clear()
 {
 		for ( BUILDING_LIST::EIterator iter = buildings.Begin();
@@ -167,7 +165,6 @@ void EditorObjectMgr::clear()
 
 }
 
-//*************************************************************************************************
 void EditorObjectMgr::init( const char* bldgListFileName, const char* objectFileName )
 {
 	File lstFile;
@@ -209,11 +206,9 @@ void EditorObjectMgr::init( const char* bldgListFileName, const char* objectFile
 		char GroupName[64];
 		strcpy(GroupName, "Group_0");
 
-		// extract the file name
 		if (ExtractNextString( pCur,  tmpBuffer, bufferLength ) )
 			strcpy( bldg.fileName, tmpBuffer );
 
-		// extract the group
 		if ( ExtractNextString( pCur,  tmpBuffer, bufferLength ) )
 		{
 			int group = atoi( tmpBuffer );
@@ -226,7 +221,6 @@ void EditorObjectMgr::init( const char* bldgListFileName, const char* objectFile
 			EditorObjectMgr_CopySafeName(GroupName, 64, GroupName, "Group", group);
 		}
 	
-		// extract the building name
 		if ( ExtractNextString( pCur,  tmpBuffer, bufferLength ) )
 		{
 			int strId = atoi( tmpBuffer );
@@ -235,7 +229,6 @@ void EditorObjectMgr::init( const char* bldgListFileName, const char* objectFile
 			EditorObjectMgr_CopySafeName(bldg.name, 64, tmpBuffer, bldg.fileName[0] ? bldg.fileName : "Object", strId);
 		}
 
-		// extract the type
 		if ( ExtractNextString( pCur,  tmpBuffer, bufferLength ) )
 		{
 			if ( stricmp( tmpBuffer, "BUILDING" ) == 0 )
@@ -283,7 +276,6 @@ void EditorObjectMgr::init( const char* bldgListFileName, const char* objectFile
 		}
 
 			
-		// extract the special type type
 		if ( ExtractNextString( pCur,  tmpBuffer, bufferLength ) )
 		{
 			if ( strstr( tmpBuffer, "TREE" ) )
@@ -340,7 +332,6 @@ void EditorObjectMgr::init( const char* bldgListFileName, const char* objectFile
 		ExtractNextFloat( pCur );
 		bldg.scale = ExtractNextFloat( pCur );
 
-				// go out and find the variant file
 		CSVFile csvFile;
 		FullPathFileName csvFileName;
 		csvFileName.init(objectPath,bldg.fileName,".csv");
@@ -371,7 +362,6 @@ void EditorObjectMgr::init( const char* bldgListFileName, const char* objectFile
 		else
 		{
 			bool bNeedGroup = true;		
-			// now need to add this building
 			for ( GROUP_LIST::EIterator iter = groups.Begin(); !iter.IsDone(); iter++ )
 			{
 				if  ( strcmp( (*iter).name, GroupName ) == 0 )
@@ -419,13 +409,10 @@ int EditorObjectMgr::ExtractNextString( unsigned char*& pFileLine, char* pBuffer
 
 }
 
-//---------------------------------------------------------------------------
 long textToLong (const char *num)
 {
 	long result = 0;
 	
-	//------------------------------------
-	// Check if Hex Number
 	char *hexOffset = (char*)strstr(num,"0x");
 	if (hexOffset == NULL)
 	{
@@ -500,7 +487,6 @@ float EditorObjectMgr::ExtractNextFloat( unsigned char*& pFileLine )
 }
 
 
-//-------------------------------------------------------------------------------------------------
 bool EditorObjectMgr::canAddBuilding( const Stuff::Vector3D& position,
 								float rotation,
 								unsigned long group,
@@ -522,7 +508,6 @@ bool EditorObjectMgr::canAddBuilding( const Stuff::Vector3D& position,
 			return false;
 	}
 	
-	//Check if we are ON the map!!
 	return land->IsEditorSelectTerrainPosition(position);
 }
 
@@ -550,7 +535,6 @@ bool EditorObjectMgr::canAddDropZone( const Stuff::Vector3D& position, int align
 	return true;
 }
 
-//-------------------------------------------------------------------------------------------------
 bool EditorObjectMgr::addBuilding( EditorObject* pObj )
 {
 	return addBuilding( pObj->appearance()->position, getGroup( pObj->id ), 
@@ -594,7 +578,6 @@ EditorObject* EditorObjectMgr::addDropZone( const Stuff::Vector3D& position, int
 }
 
 
-//-------------------------------------------------------------------------------------------------
 EditorObject* EditorObjectMgr::addBuilding( const Stuff::Vector3D& position, unsigned long group,
 									 unsigned long indexWithinGroup, int alignment, float rotation,
 									 float scale, bool bSnapToCell )
@@ -705,7 +688,6 @@ EditorObject* EditorObjectMgr::addBuilding( const Stuff::Vector3D& position, uns
 	return info;
 }
 
-//*************************************************************************************************
 bool	EditorObjectMgr::deleteBuilding( const EditorObject* pInfo )
 {
 	BuildingLink* pLink = getLinkWithParent( pInfo );
@@ -790,13 +772,11 @@ bool	EditorObjectMgr::deleteBuilding( const EditorObject* pInfo )
 }
 
 
-//*************************************************************************************************
 int EditorObjectMgr::getBuildingGroupCount() const
 {
 	return groups.Count();
 }
 
-//*************************************************************************************************
 int EditorObjectMgr::getNumberBuildingsInGroup( int group ) const
 {
 	if ( group < 0 || group >= groups.Count() )
@@ -805,7 +785,6 @@ int EditorObjectMgr::getNumberBuildingsInGroup( int group ) const
 	return groups[group].buildings.Count();
 }
 
-//*************************************************************************************************
 void EditorObjectMgr::getBuildingGroupNames( const char** names, int& NumberOfNames ) const
 {
 	if ( NumberOfNames < groups.Count() )
@@ -822,7 +801,6 @@ void EditorObjectMgr::getBuildingGroupNames( const char** names, int& NumberOfNa
 		}
 }
 
-//*************************************************************************************************
 void EditorObjectMgr::getBuildingNamesInGroup( int group, const char** names, int& NumberOfNames ) const
 {
 	if ( group < 0 || group >= groups.Count() )
@@ -881,7 +859,6 @@ bool EditorObjectMgr::getBuildingFromID( int fitID, unsigned long& group, unsign
 	return false;
 }
 
-//*************************************************************************************************
 int	EditorObjectMgr::getFitID( int id ) const
 {
 	// EDITOR-CRASH-HARDENING-1: dropzone/unresolved id decodes OOB group/index.
@@ -893,7 +870,6 @@ int	EditorObjectMgr::getFitID( int id ) const
 }
 
 
-//*************************************************************************************************
 bool EditorObjectMgr::getBlocksLineOfFire( int id ) const
 {
 	// EDITOR-CRASH-HARDENING-1: dropzone/unresolved id decodes OOB group/index.
@@ -903,7 +879,6 @@ bool EditorObjectMgr::getBlocksLineOfFire( int id ) const
 	return groups[getGroup(id)].buildings[getIndexInGroup(id)].blocksLineOfFire;
 
 }
-//*************************************************************************************************
 bool EditorObjectMgr::getIsHoverCraft( int id ) const
 {
 	// EDITOR-CRASH-HARDENING-1: dropzone/unresolved id decodes OOB group/index.
@@ -913,7 +888,6 @@ bool EditorObjectMgr::getIsHoverCraft( int id ) const
 	return groups[getGroup(id)].buildings[getIndexInGroup(id)].isHoverCraft;
 
 }
-//*************************************************************************************************
 __int64	EditorObjectMgr::getImpassability( int id )
 {
 	// EDITOR-CRASH-HARDENING-1: dropzone/unresolved id decodes OOB group/index.
@@ -951,7 +925,6 @@ bool EditorObjectMgr::moveBuilding( EditorObject* pInfo, long cellJ, long cellI 
 	
 	if (getObjectAtCell( cellJ, cellI ) && (getObjectAtCell( cellJ, cellI ) != pInfo))
 	{
-		// a building is already there
 		return false;
 	}
 

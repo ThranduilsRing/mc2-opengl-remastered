@@ -48,7 +48,6 @@ void Mech3DAppearance::setObjStatus (long oStatus)
 
 			currentLOD = 0;
 
-			// Load the texture and store its handle.
 			for (long i=0;i<mechShape->GetNumTextures();i++)
 			{
 				char txmName[1024];
@@ -100,7 +99,6 @@ void Mech3DAppearance::setObjStatus (long oStatus)
 				}
 				else
 				{
-					//PAUSE(("Warning: %s texture name not found",textureName));
 					mechShape->SetTextureHandle(i,0xffffffff);
 				}
 			}
@@ -228,9 +226,7 @@ void Mech3DAppearance::updateGeometry (void)
 		drawFlash = false;
 	}
 
-	//if (visible)
 	{
-		// Does math necessary to draw mech.
 		Stuff::UnitQuaternion qRotation;
 		float yaw = rotation * DEGREES_TO_RADS;
 		qRotation = Stuff::EulerAngles(0.0f, yaw, 0.0f);
@@ -287,7 +283,6 @@ void Mech3DAppearance::updateGeometry (void)
 		else
 			mechShape->SetFogRGB(0xffffffff);
 
-		//Test of Mech as Point Light Source
 		if (!pointLight && eye->isNight)
 		{
 			if (lightCircleNodeIndex == -1)
@@ -387,7 +382,6 @@ void Mech3DAppearance::updateGeometry (void)
 
 					TG_LightPtr light = (TG_LightPtr)malloc(sizeof(TG_Light));
 					light->init(TG_LIGHT_POINT);              // v1 (OQ2/M6) — POINT
-					// MOVER-LIGHT-HALOGEN-1: warm halogen, not legacy yellow.
 					light->SetaRGB(mc2_spotlight_diag::mover_light_argb());
 					light->SetIntensity(0.15f);                // anubis default
 					light->SetFalloffDistances(50.0f, 250.0f); // anubis default
@@ -397,7 +391,6 @@ void Mech3DAppearance::updateGeometry (void)
 					spotlightNodeIds_.push_back(nodeId);
 					spotlightLights_.push_back(light);
 					spotlightSlotIds_.push_back(static_cast<DWORD>(slotId));
-					// T1.16 — tag this slot as (E)-owned, source=Mech.
 					mc2_spotlight_diag::tag_slot(slotId, mc2_spotlight_diag::Mech, this);
 					++diagRegistered;
 				}
@@ -537,15 +530,7 @@ void Mech3DAppearance::updateGeometry (void)
 			}
 		}
 
-		// D-gpu-pose-instrument: AnimPose stage — animation pose state setters
-		// (setAnimation, SetFrameNum, SetNodeRotation × N) on body + shadow
-		// shapes, plus the shadow-shape transform conditional. Per-stage
-		// attribution for the trimodal Mech3D.UpdateGeometry histogram.
 		{ ZoneScopedN("Mech3D.UpdateGeometry.AnimPose");
-		// Set Animation State Here.
-		// ONLY ONE case now:
-		//		-We are in an art generated state,  Just playback animation
-		// All cases covered now.
 		if (status != OBJECT_STATUS_DESTROYED)
 		{
 			mechType->setAnimation(mechShape,currentGestureId);
@@ -609,9 +594,6 @@ void Mech3DAppearance::updateGeometry (void)
 		}
 		} // end AnimPose zone
 
-		// D-gpu-pose-instrument: BodyXform stage — body's SetLightList +
-		// TransformMultiShape* dispatch. The dominant per-mech work; will be
-		// further broken down by zones inside TransformMultiShape itself.
 		{ ZoneScopedN("Mech3D.UpdateGeometry.BodyXform");
 		mechShape->SetLightList(eye->getWorldLights(),eye->getNumLights());
 		// Slice C3-revised: when GPU mech path is on AND fast-transform
@@ -651,9 +633,6 @@ void Mech3DAppearance::updateGeometry (void)
 		} // end BodyXform zone
 	}
 
-	// D-gpu-pose-instrument: Effects stage — foot poofs, jump fx, weapon
-	// node positions. getNodePosition callers live here; potential cost
-	// contributor.
 	if (visible && (sensorLevel > 4) && !InEditor && useNonWeaponEffects)
 	{
 		ZoneScopedN("Mech3D.UpdateGeometry.Effects");
@@ -669,7 +648,6 @@ void Mech3DAppearance::updateGeometry (void)
 			(currentFrame >= (mechType->gestures[currentGestureId].rightFootDownFrame0-FOOTPRINT_SLOP)) &&
 			(currentFrame <= (mechType->gestures[currentGestureId].rightFootDownFrame0+FOOTPRINT_SLOP)))
 		{
-			//Foot is on ground.  Poof and footprint.
 			rightFootDone0 = true;
 	
 			if (rightDustPoofEffect[currentRightPoof] && (currentGestureId != 13))
@@ -692,7 +670,6 @@ void Mech3DAppearance::updateGeometry (void)
 					currentRightPoof = 0;
 			}
 			
-			//Draw footprint here.
 			if (craterManager && !isWaking)
 				craterManager->addCrater(mechType->rightFootprintType,rFootPos,rotation);
 		}
@@ -701,7 +678,6 @@ void Mech3DAppearance::updateGeometry (void)
 			(currentFrame >= (mechType->gestures[currentGestureId].rightFootDownFrame1-FOOTPRINT_SLOP)) &&
 			(currentFrame <= (mechType->gestures[currentGestureId].rightFootDownFrame1+FOOTPRINT_SLOP)))
 		{
-			//Foot is on ground.  Poof and footprint.
 			rightFootDone1 = true;
 	
 			if (rightDustPoofEffect[currentRightPoof] && (currentGestureId != 13))
@@ -724,7 +700,6 @@ void Mech3DAppearance::updateGeometry (void)
 					currentRightPoof = 0;
 			}
 			
-			//Draw footprint here.
 			if (craterManager && !isWaking)
 				craterManager->addCrater(mechType->rightFootprintType,rFootPos,rotation);
 		}
@@ -747,7 +722,6 @@ void Mech3DAppearance::updateGeometry (void)
 			(currentFrame >= (mechType->gestures[currentGestureId].leftFootDownFrame0-FOOTPRINT_SLOP)) &&
 			(currentFrame <= (mechType->gestures[currentGestureId].leftFootDownFrame0+FOOTPRINT_SLOP)))
 		{
-			//Foot is on ground.  Poof and footprint.
 			leftFootDone0 = true;
 	
 			if (leftDustPoofEffect[currentLeftPoof] && (currentGestureId != 13))
@@ -770,7 +744,6 @@ void Mech3DAppearance::updateGeometry (void)
 					currentLeftPoof = 0;
 			}
 			
-			//Draw footprint here.
 			if (craterManager && !isWaking)
 				craterManager->addCrater(mechType->leftFootprintType,lFootPos,rotation);
 		}
@@ -779,7 +752,6 @@ void Mech3DAppearance::updateGeometry (void)
 			(currentFrame >= (mechType->gestures[currentGestureId].leftFootDownFrame1-FOOTPRINT_SLOP)) &&
 			(currentFrame <= (mechType->gestures[currentGestureId].leftFootDownFrame1+FOOTPRINT_SLOP)))
 		{
-			//Foot is on ground.  Poof and footprint.
 			leftFootDone1 = true;
 	
 			if (leftDustPoofEffect[currentLeftPoof] && (currentGestureId != 13))
@@ -802,7 +774,6 @@ void Mech3DAppearance::updateGeometry (void)
 					currentLeftPoof = 0;
 			}
 			
-			//Draw footprint here.
 			if (craterManager && !isWaking)
 				craterManager->addCrater(mechType->leftFootprintType,lFootPos,rotation);
 		}
@@ -858,19 +829,16 @@ void Mech3DAppearance::updateGeometry (void)
 		baseRootNodeDifference -= HELICOPTER_FACTOR;
 
 	xlatPosition.y += baseRootNodeDifference;
-	// Do geometry here to draw sensor contact
 	sensorTriangleShape->SetFogRGB(0xffffffff);
 	sensorTriangleShape->SetLightList(eye->getWorldLights(),eye->getNumLights());
 	sensorTriangleShape->TransformMultiShape(&xlatPosition,&totalRotation);
 
-	// Do geometry here to draw sensor contact
 	sensorSquareShape->SetFogRGB(0xffffffff);
 	sensorSquareShape->SetLightList(eye->getWorldLights(),eye->getNumLights());
 	sensorSquareShape->TransformMultiShape(&xlatPosition,&totalRotation);
 	} // end !skipSensors
 	} // end Sensors zone
 	
-	// Create Jump FX Here.
 	if (!jumpFXSetup && (currentGestureId == GestureJump) && inJump && jumpJetEffect)
 	{
 		long jumpNodeId = mechType->numSmokeNodes + mechType->numWeaponNodes;
@@ -897,7 +865,6 @@ void Mech3DAppearance::updateGeometry (void)
 		jumpFXSetup = true;
 	}
 	
-	// Update GOSFX
 	for (long i=0;i<MAX_DUST_POOFS;i++)
 	{
 		if (rightFootPoofDraw[i] && rightDustPoofEffect[i] && rightDustPoofEffect[i]->IsExecuted())
@@ -968,7 +935,6 @@ void Mech3DAppearance::updateGeometry (void)
 		jumpFXSetup = false;
 	}
 	
-	// Arm Blown FX
 	if (leftShoulderBoom)
 	{
 		Stuff::LinearMatrix4D 	shapeOrigin;
@@ -1031,7 +997,6 @@ void Mech3DAppearance::updateGeometry (void)
 		}
 	}
 	
-	// All other effects
 	if ((criticalSmoke && (isSmoking > 0)) || (smokeEffect && (isSmoking == 0)))
 	{
 		Stuff::LinearMatrix4D 	shapeOrigin;

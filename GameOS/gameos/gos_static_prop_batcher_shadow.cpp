@@ -145,7 +145,6 @@ static void bindPropShadowAtlasPacket(GLuint prog,
     if (locFlags >= 0) glUniform1i(locFlags, (int)effFlags);
 }
 
-// File-scope counters written by flushShadow() and read by Task 6 probe.
 static int s_shadowTypesDrawn = 0;
 static int s_shadowInstDrawn  = 0;
 
@@ -237,7 +236,6 @@ void GpuStaticPropBatcher::flushShadow(bool skipStaticBuildingTypes) {
     { const GLint ibLoc = glGetUniformLocation(shadowProg, "u_instBase");
       if (ibLoc >= 0) glUniform1i(ibLoc, 0); }
 
-    // Upload the dynamic (per-frame) light-space matrix.
     const GLint lsLoc = glGetUniformLocation(shadowProg, "lightSpaceMatrix");
     if (lsLoc >= 0)
         glUniformMatrix4fv(lsLoc, 1, GL_FALSE, pp->getDynamicLightSpaceMatrix());
@@ -291,7 +289,6 @@ void GpuStaticPropBatcher::flushShadow(bool skipStaticBuildingTypes) {
                          (long long)r.instanceByteOffset, (long long)r.instanceByteSize,
                          "sp.instance.shadow");
 
-        // Per-packet draw -- mirrors the legacy non-indirect branch of flush().
         for (uint32_t p = 0; p < type.packetCount; ++p) {
             const uint32_t pktIdx = type.firstPacket + p;
             if (pktIdx >= s_packets.size()) break;  // defense-in-depth: stale range
@@ -407,7 +404,6 @@ void GpuStaticPropBatcher::drawStaticBuildingShadows(
     mc2gl::GlScopedVertexArray   guardVao;
     mc2gl::GlScopedSsboBinding   guardSsbo0(0);
 
-    // TIER2-EXCLUDED: substrate-gated
     if (s_staticBldgShadowSsbo == 0) glGenBuffers(1, &s_staticBldgShadowSsbo);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_staticBldgShadowSsbo);
     // GPU-UPDATE-BUFFER-COUNTER-1: per-render transient shadow SSBO orphan-on-write.
@@ -608,7 +604,6 @@ void GpuStaticPropBatcher::drawDynamicPropShadows(
     if (lsLoc >= 0)
         glUniformMatrix4fv(lsLoc, 1, GL_FALSE, pp->getDynamicLightSpaceMatrix()); // DYNAMIC matrix
 
-    // SHADOW-PROP-ALPHA-1: one-time u_tex(=0)+u_debugAddrMode setup (alpha prog).
     if (usingAlphaProg) setupPropShadowAlphaUniforms(shadowProg, debugAddrMode_);
 
     glBindVertexArray(s_sharedVao);
@@ -765,11 +760,6 @@ extern "C" int mc2_shadow_island_get_geometry_feed(Mc2ShadowGeomFeed* out) {
 // + reverse-Z depth bias. Called by the color island ONLY when its gate is ON (the
 // GL flush() is skipped in that case).
 //
-// CURRENT BEHAVIOUR (supersedes the history below): per type the feed is the
-// persistent-store block FIRST, then this frame's dynamic submits from
-// s_bucketsByType (excluding the reinjPos/reinjCount range copied from the store);
-// mc2_color_prop_island_end_frame() performs flush()'s end-of-frame bookkeeping.
-// The 'persistent store only' text below describes the original fix, kept for context.
 //
 // VK-PROP-COVERAGE FIX (source correction): originally this read s_bucketsByType.
 // That map is a per-FRAME accumulator whose ONLY per-frame clear lives inside

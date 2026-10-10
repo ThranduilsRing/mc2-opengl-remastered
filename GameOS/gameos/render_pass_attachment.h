@@ -91,7 +91,6 @@ inline constexpr Contract kContracts[] = {
     { "ProjectedDecals", TargetFbo::SceneFBO,    DrawBufferSetId::SingleColor0, true,  false, false,
       { FrameResourceId::SceneDepthCopy, FrameResourceId::SceneNormal, FrameResourceId::None, FrameResourceId::None }, false, true },
 
-    // Post-process family (SingleColor {0}, colorMask-owned per COLORMASK-ROLLOUT-POSTFX-1).
     { "SsaoApply",       TargetFbo::SceneFBO,    DrawBufferSetId::SingleColor0, true,  false, false,
       { FrameResourceId::SsaoColor, FrameResourceId::SceneDepth, FrameResourceId::None, FrameResourceId::None }, true, true },
     { "ScreenShadow",    TargetFbo::SceneFBO,    DrawBufferSetId::SingleColor0, true,  false, false,
@@ -179,7 +178,6 @@ inline void format(const Contract& c, char* buf, std::size_t n) {
     if (!any) { reads[0] = 'N'; reads[1] = 'o'; reads[2] = 'n'; reads[3] = 'e'; ri = 4; }
     reads[ri] = '\0';
 
-    // writes mask as digits, e.g. "0", "01", "012", or "-" if nothing.
     char writes[4]; std::size_t wi = 0;
     if (c.w0) writes[wi++] = '0';
     if (c.w1) writes[wi++] = '1';

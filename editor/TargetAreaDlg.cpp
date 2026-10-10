@@ -20,7 +20,6 @@ TargetAreaDlg.cpp			: Implementation of the TargetAreaDlg component.
 #include "EditorInterface.h"
 
 
-//-------------------------------------------------------------------------------------------------
 TargetAreaDlg::TargetAreaDlg( float &targetCenterX, float &targetCenterY, float &targetRadius ):CDialog(IDD_TARGET_AREA)
 {
 	m_pTargetCenterX = &targetCenterX;
@@ -209,12 +208,9 @@ void TargetAreaDlg::OnPickCenter()
 }
 
 
-//-------------------------------------------------------------------------------------------------
 
 TargetAreaDlg::~TargetAreaDlg()
 {
 }
 
 
-//*************************************************************************************************
-// end of file ( TargetAreaDlg.cpp )

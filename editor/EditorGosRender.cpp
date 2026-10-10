@@ -60,7 +60,6 @@ static bool EditorGosRender_ForwardMouseToEditor(HWND childHwnd, UINT msg, WPARA
     if (!g_editor_parent_hwnd || !::IsWindow(g_editor_parent_hwnd))
         return false;
 
-    // ImGui mouse routing
     //
     // Mouse position is tracked every frame via GetCursorPos+ScreenToClient in
     // GuiRuntime::NewFrame, so ImGui always knows hover state before messages arrive.
@@ -161,7 +160,6 @@ static bool EditorGosRender_ForwardMouseToEditor(HWND childHwnd, UINT msg, WPARA
         SDL_PushEvent(&motionEv);
     }
 
-    // ── MFC forwarding ───────────────────────────────────────────────────────
 
     LPARAM editorLParam = lParam;
 
@@ -325,7 +323,6 @@ struct RenderContext {
 static void PrintRenderer(SDL_RendererInfo * info);
 
 
-//==============================================================================
 void set_verbose(bool is_verbose)
 {
     VERBOSE_VIDEO = is_verbose;
@@ -333,7 +330,6 @@ void set_verbose(bool is_verbose)
     VERBOSE_MODES = is_verbose;
 }
 
-//==============================================================================
 RenderWindow* create_window(const char* pwinname, int width, int height, bool windowed_hint)
 {
     // ISSUE-49: windowed_hint is a game-side SDL resizable-border hint; the
@@ -383,7 +379,6 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
         fprintf(stderr, "Video driver: %s\n", SDL_GetCurrentVideoDriver());
     }
 
-    //not really related to video, but let it be here
     if (VERBOSE_VIDEO) {
         printf("SDL revision: %s\n", SDL_GetRevision());
 
@@ -407,16 +402,9 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
 
     SDL_GL_SetAttribute(SDL_GL_ACCELERATED_VISUAL, 1);
 
-    // 4x multisampling :P
-    // disable, and add as setting later.
-    //SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
-    //SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 4);
 
 
-    // select core profile if needed
-    // COMPATIBILITY, ES,...
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-    //SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_COMPATIBILITY);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
     // 4.3 required for core SSBO (GL_SHADER_STORAGE_BUFFER) + std430 layout,
     // used by the GPU static-prop renderer. AMD RX 7900 XTX supports up to
@@ -461,7 +449,6 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
                     fprintf(stderr, "      Alpha Mask = 0x%.8x\n", Amask);
             }
 
-            /* Print available fullscreen video modes */
             m = SDL_GetNumDisplayModes(i);
             if (m == 0) {
                 fprintf(stderr, "No available fullscreen video modes\n");
@@ -525,11 +512,9 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
             fullscreen_mode.format = SDL_PIXELFORMAT_RGB888;
             break;
     }
-    //fullscreen_mode.refresh_rate = state->refresh_rate;
 
 #ifdef PLATFORM_WINDOWS
     {
-        // Editor/MFC host path — Windows only.
         //
         // SDL_CreateWindow with SDL_WINDOW_OPENGL registers its own WNDCLASS and calls
         // CreateWindowEx, which triggers WGL pixel-format negotiation synchronously on
@@ -577,7 +562,6 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
             s_classRegistered = true;
         }
 
-        // Size the GL child to fill the current client area of the parent.
         RECT parentRC = {};
         ::GetClientRect(g_editor_parent_hwnd, &parentRC);
         int childW = (parentRC.right  > 0) ? parentRC.right  : width;
@@ -645,7 +629,6 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
     }
 #else
     {
-        // Non-Windows fallback: plain SDL_CreateWindow.
         Uint32 windowFlags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE;
         window = SDL_CreateWindow(pwinname ? pwinname : "--",
                 SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, windowFlags);
@@ -830,7 +813,6 @@ RenderContextHandle init_render_context(RenderWindowHandle render_window)
         return NULL;
     }
 
-    // Step 4: set swap interval via wglSwapIntervalEXT.
     typedef BOOL (WINAPI* PFNWGLSWAPINTERVALEXTPROC)(int);
     PFNWGLSWAPINTERVALEXTPROC wglSwapIntervalEXT =
         (PFNWGLSWAPINTERVALEXTPROC)::wglGetProcAddress("wglSwapIntervalEXT");
@@ -985,7 +967,6 @@ bool set_window_fullscreen(RenderWindowHandle rw_handle, bool fullscreen)
 bool is_mode_supported(int width, int height, int bpp) {
 
     int displayIndex = 0;
-    //displayIndex = SDL_GetWindowDisplayIndex(win_h);
 
     SDL_DisplayMode desired;
 	desired.format = bpp==16 ? SDL_PIXELFORMAT_RGB565 : SDL_PIXELFORMAT_RGB888;
@@ -1001,8 +982,6 @@ bool is_mode_supported(int width, int height, int bpp) {
         return false;
     }
 
-    //const char* df = SDL_GetPixelFormatName(desired.format);
-    //const char* rf = SDL_GetPixelFormatName(returned.format);
 
     if(returned.w == desired.w && returned.h == desired.h && returned.format == desired.format)
         return true;
@@ -1076,7 +1055,6 @@ void get_drawable_size(RenderWindowHandle rw_handle, int* width, int* height)
 {
     RenderWindow* rw = (RenderWindow*)rw_handle;
     assert(rw && width && height);
-	// TOD: does it make sense to cahce this value? probably not
 	SDL_GL_GetDrawableSize(rw->window_, width, height);
 }
 

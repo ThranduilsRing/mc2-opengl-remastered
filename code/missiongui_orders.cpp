@@ -137,9 +137,6 @@ void MissionInterfaceManager::doAttack()
 				tacOrder.attackParams.pursue = true;
 			tacOrder.pack(NULL, NULL);
 
-			//---------------------------------------------------------------------
-			// Helper function--perhaps this should just be a part of the mover and
-			// group handleTacticalOrder() functions?
 			if (MPlayer && !MPlayer->isServer())
 				MPlayer->sendPlayerOrder(&tacOrder, false, 1, &pMover);
 			else
@@ -341,8 +338,6 @@ int MissionInterfaceManager::selectVisible()
 
 int MissionInterfaceManager::addVisibleToSelection()
 {
-	//----------------------------------------------------------------
-	// Grab each member of the homeTeam and see if they are onScreen
 	dragStart.Zero();		
 	dragEnd = eye->getScreenRes();
 	
@@ -579,7 +574,6 @@ int MissionInterfaceManager::bigAirStrike()
 	Stuff::Vector3D v = makeAirStrikeTarget( wPos );
 
 	IfaceCallStrike (ARTILLERY_LARGE,&v,NULL);
-//	if ( !isPaused() )
 		soundSystem->playSupportSample(SUPPORT_AIRSTRIKE);
 	return 1;
 }
@@ -588,7 +582,6 @@ int MissionInterfaceManager::smlAirStrike()
 	Stuff::Vector3D v = makeAirStrikeTarget( wPos );
 
 	IfaceCallStrike (ARTILLERY_SMALL,&v,NULL);
-//	if ( !isPaused() )
 		soundSystem->playSupportSample(SUPPORT_AIRSTRIKE);
 	return 1;
 }
@@ -597,7 +590,6 @@ int MissionInterfaceManager::snsAirStrike()
 	Stuff::Vector3D v = makeAirStrikeTarget( wPos );
 
 	IfaceCallStrike (ARTILLERY_SENSOR,&v,NULL);
-//	if ( !isPaused() )
 		soundSystem->playSupportSample(SUPPORT_PROBE);
 	return 1;
 }
@@ -752,17 +744,12 @@ int MissionInterfaceManager::handleOrders( TacticalOrder& order)
 		Mover* pMover = (Mover*)pTeam->getMover( i );
 		if ( pMover->isSelected() && pMover->getCommander()->getId() == Commander::home->getId() )
 		{
-			//---------------------------------------------------------------------
-			// Helper function--perhaps this should just be a part of the mover and
-			// group handleTacticalOrder() functions?
 			if (isMoveOrder ) {
 				order.setWayPoint(0, moveGoals[numMovers++]);
 				order.pack(NULL, NULL);
 			}
 			if (MPlayer && !MPlayer->isServer()) {
 				MPlayer->sendPlayerOrder(&order, false, 1, &pMover, 0, NULL, userInput->getKeyDown(WAYPOINT_KEY));
-				//pMover->getPilot()->setExecutingQueue(false);
-				//pMover->getPilot()->addQueuedTacOrder(order);					
 				}
 			else
 			{
@@ -838,7 +825,6 @@ namespace {
 
 void MissionInterfaceManager::anchoredZoom(long mx, long my, int (MissionInterfaceManager::*zoomFn)())
 {
-	// OFF path: byte-identical to legacy — just run the zoom.
 	if (!lowcamZoomAnchorEnabled() || !eye || !eye->getUsePerspective())
 	{
 		(this->*zoomFn)();
@@ -914,7 +900,6 @@ int MissionInterfaceManager::rotateLeft()
 int MissionInterfaceManager::rotateRight()
 {
 	float frameFactor = frameLength / baseFrameLength;
-	// [CAMERA-SMOOTHING-1] see rotateLeft.
 	if (Camera::inputSmoothingEnabled())
 	{
 		eye->rotateRight(degPerSecRot * frameFactor);
@@ -1082,7 +1067,6 @@ void MissionInterfaceManager::doMove(const Stuff::Vector3D& pos)
 	}*/
 	if ( controlGui.isAddingAirstrike() &&  controlGui.isButtonPressed( ControlGui::SENSOR_PROBE ))
 	{
-		// tmp hack
 		Stuff::Vector3D tmp = wPos;
 		wPos = pos;
 		addAirstrike( );

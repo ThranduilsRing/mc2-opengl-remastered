@@ -8,9 +8,6 @@
 #include <cstring>
 #include "Gates/gate.h"
 
-// -----------------------------------------------------------------------
-// Globals
-// -----------------------------------------------------------------------
 
 bool     g_moveReconEnabled        = false;
 
@@ -114,7 +111,6 @@ void moveReconPathCacheSample(int startR, int startC, int goalR, int goalC,
     g_pcache_calls++;
     g_pcache_nodes_total += nodes;
 
-    // Lookup exact (start,goal) key.
     int slot = -1, freeSlot = -1;
     for (int i = 0; i < PCACHE_SIZE; i++) {
         if (!s_pcache[i].valid) { if (freeSlot < 0) freeSlot = i; continue; }
@@ -126,7 +122,6 @@ void moveReconPathCacheSample(int startR, int startC, int goalR, int goalC,
                           goalR == s_pcLastGr && goalC == s_pcLastGc);
 
     if (slot >= 0) {
-        // Would-be cache hit.
         g_pcache_would_hits++;
         g_pcache_nodes_saved += nodes;  // a hit skips THIS search's work
         g_pcache_mover_here_touched++;  // path always crosses cells we read occupancy on
@@ -157,7 +152,6 @@ void moveReconPathCacheSample(int startR, int startC, int goalR, int goalC,
         slot = freeSlot;
     }
 
-    // Insert / refresh entry.
     s_pcache[slot].sr = startR; s_pcache[slot].sc = startC;
     s_pcache[slot].gr = goalR;  s_pcache[slot].gc = goalC;
     s_pcache[slot].pathHash = pathHash;
@@ -186,12 +180,10 @@ void moveReconChunkSample(int startR, int startC, int goalR, int goalC,
     uint64_t pathBox = 0;
     if (pathLen > 0) {
         pathBox = (uint64_t)(pathMaxR - pathMinR + 1) * (uint64_t)(pathMaxC - pathMinC + 1);
-        // Start<->goal chunk rectangle.
         int sgMinR = (startR < goalR ? startR : goalR) / cs;
         int sgMaxR = (startR > goalR ? startR : goalR) / cs;
         int sgMinC = (startC < goalC ? startC : goalC) / cs;
         int sgMaxC = (startC > goalC ? startC : goalC) / cs;
-        // Final-path chunk bbox.
         int pMinR = pathMinR / cs, pMaxR = pathMaxR / cs;
         int pMinC = pathMinC / cs, pMaxC = pathMaxC / cs;
         // Chunks the path strays beyond the start-goal rectangle (any side).
@@ -215,7 +207,6 @@ void moveReconChunkSample(int startR, int startC, int goalR, int goalC,
         if (overflow <= 2) g_chunkShadow_inside2++;
         if ((uint64_t)overflow > g_chunkShadow_maxOverflow) g_chunkShadow_maxOverflow = (uint64_t)overflow;
     }
-    // Track the worst (max-node) call and its overflow.
     if (nodes > g_chunkShadow_worstNodes) {
         g_chunkShadow_worstNodes = nodes;
         g_chunkShadow_worstOverflow = (overflow >= 0 ? (uint64_t)overflow : 0);
@@ -250,9 +241,6 @@ void moveReconChunkSample(int startR, int startC, int goalR, int goalC,
     }
 }
 
-// -----------------------------------------------------------------------
-// Internal state
-// -----------------------------------------------------------------------
 
 static bool s_initialized   = false;
 static bool s_atexitRegistered = false;
@@ -263,9 +251,6 @@ static bool s_atexitRegistered = false;
 int g_moveRecon_gameMapW = 0;
 int g_moveRecon_gameMapH = 0;
 
-// -----------------------------------------------------------------------
-// moveReconEmit — atexit handler
-// -----------------------------------------------------------------------
 
 void moveReconEmit()
 {
@@ -402,9 +387,6 @@ void moveReconEmit()
     std::fflush(stdout);
 }
 
-// -----------------------------------------------------------------------
-// moveReconFrameTick — call once per frame at end of GOM::update
-// -----------------------------------------------------------------------
 
 void moveReconFrameTick()
 {
@@ -430,7 +412,6 @@ void moveReconFrameTick()
 
     g_moveRecon_frames++;
 
-    // Update rolling maxima.
     if (g_moveRecon_frame_ctrl_ns         > g_moveRecon_max_ctrl_ns)
         g_moveRecon_max_ctrl_ns         = g_moveRecon_frame_ctrl_ns;
     if (g_moveRecon_frame_pathlock_ns     > g_moveRecon_max_pathlock_ns)
@@ -440,7 +421,6 @@ void moveReconFrameTick()
     if (g_moveRecon_frame_astar_global_ns > g_moveRecon_max_astar_global_ns)
         g_moveRecon_max_astar_global_ns = g_moveRecon_frame_astar_global_ns;
 
-    // Emit every 30 frames.
     if (g_moveRecon_frames % 30 == 0) {
         std::printf(
             "[MOVE_RECON v1] frame=%llu"
@@ -463,7 +443,6 @@ void moveReconFrameTick()
         std::fflush(stdout);
     }
 
-    // Reset per-frame accumulators.
     g_moveRecon_frame_ctrl_ns         = 0;
     g_moveRecon_frame_pathlock_ns     = 0;
     g_moveRecon_frame_astar_local_ns  = 0;

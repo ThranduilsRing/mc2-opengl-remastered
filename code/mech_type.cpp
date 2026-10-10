@@ -3,7 +3,6 @@
 #include "mech_internal.h"
 
 
-// BATTLEMECH TYPE class
 
 long BattleMech::loadGameSystem (FitIniFilePtr mechFile) {
 
@@ -195,7 +194,6 @@ long BattleMechType::init (FilePtr objFile, unsigned long fileSize)
 	if (result != NO_ERR)
 		explRad = 25.0f;
 		
-	// New from here on down.  Now gets data from Mech CSV file.
 	FullPathFileName mechCSVName;
 	mechCSVName.init(objectPath,fileType,".csv");
 	
@@ -218,10 +216,8 @@ long BattleMechType::init (FilePtr objFile, unsigned long fileSize)
 			return(result);
 	}
 
-	// No more debris.
 	rightArmDebrisId = leftArmDebrisId = destroyedDebrisId = -1;
 
-	//Assume Mech Dynamics
 	dynamics.setType(DYNAMICS_MECH);
 	dynamics.init(&mechCSVFile);
 	
@@ -258,7 +254,6 @@ long BattleMechType::init (FilePtr objFile, unsigned long fileSize)
 	// mech (walker + CAP_JUMP) is coherent -> logs nothing. Never rejects.
 	validateAndReportUnitProfile(profile(), mechFile.getFilename());
 
-	// Initialize the base object Type from the current file.
 	result = ObjectType::init(&mechFile);
 	return(result);
 }
@@ -331,8 +326,6 @@ bool BattleMechType::handleCollision (GameObjectPtr collidee, GameObjectPtr coll
 				collidee->setCollisionFreeFromWID(collider->getWatchID());
 				collidee->setCollisionFreeTime(scenarioTime + 2.0);
 
-				// Adjust my velocity and direction...
-				//collidee->setVelocity(collider->getVelocity());
 				/*
 				frame_of_ref workFrame = collidee->getFrame();
 				float turnAround = 90.0;
@@ -384,12 +377,10 @@ bool BattleMechType::handleCollision (GameObjectPtr collidee, GameObjectPtr coll
 			colliderJumping = ((BattleMechPtr)collider)->isJumping();
 			if (!colliderJumping && (((BattleMechPtr)collider)->lastJumpTime >= 0.0)) {
 				float timeSinceLanding = scenarioTime - ((BattleMechPtr)collider)->lastJumpTime;
-				//((BattleMechPtr)collider)->lastJumpTime = -1.0;
 				colliderJumping = (timeSinceLanding < 0.5);
 			}
 		case GROUNDVEHICLE:
 		{
-			// Was a jump involved here?
 			if (!collideeJumping && (((BattleMechPtr)collidee)->lastJumpTime >= 0.0)) {
 				float timeSinceLanding = scenarioTime - ((BattleMechPtr)collidee)->lastJumpTime;
 				((BattleMechPtr)collidee)->lastJumpTime = -1.0;
@@ -439,7 +430,6 @@ bool BattleMechType::handleCollision (GameObjectPtr collidee, GameObjectPtr coll
 					collidee->setPosition(cPosition);
 				}
 */
-				// Administer the damage from this collision...
 				if (jumpCollision) 
 				{
 					// Since we reset the jumping mech's lastJumpTime right here,
@@ -456,7 +446,6 @@ bool BattleMechType::handleCollision (GameObjectPtr collidee, GameObjectPtr coll
 						else
 							shotInfo.init(collider->getWatchID(), -1, collider->getTonnage() / 10.0 + 0.5, hitLocation, collidee->relFacingTo(collider->getPosition()));
 						collidee->handleWeaponHit(&shotInfo, (MPlayer != NULL));
-						// Next, the collider...
 						hitLocation = collider->calcHitLocation(collidee, -1, ATTACKSOURCE_DFA, 0);
 						if (sameTeam)
 							shotInfo.init(collidee->getWatchID(), -1, collider->getTonnage() / 100.0 + 0.5, hitLocation, collider->relFacingTo(collidee->getPosition()));
@@ -481,7 +470,6 @@ bool BattleMechType::handleCollision (GameObjectPtr collidee, GameObjectPtr coll
 
 				long bounceDir = ((MoverPtr)collidee)->bounceToAdjCell();
 				if (jumpCollision && (bounceDir == -1)) {
-					// Nowhere to bounce to!
 				}
 
 				if (!sameTeam && (collidee->getWindowsVisible() == turn))
@@ -508,8 +496,6 @@ bool BattleMechType::handleCollision (GameObjectPtr collidee, GameObjectPtr coll
 				collidee->setCollisionFreeFromWID(collider->getWatchID());
 				collidee->setCollisionFreeTime(scenarioTime + 2.0);
 
-				// Adjust my velocity and direction...
-				//collidee->setVelocity(collider->getVelocity());
 				float turnAround = 0.0;
 				float tonnageClass = collidee->getTonnage();
 				if (tonnageClass < tonnageCollisionThreshold)
@@ -561,13 +547,11 @@ bool BattleMechType::handleDestruction (GameObjectPtr collidee, GameObjectPtr co
 	
 	if (mech->withdrawing) {
 		mech->timeLeft = 0.8f;
-		// Let the pilot know we are about to withdraw...
 		mech->getPilot()->handleAlarm(PILOT_ALARM_VEHICLE_WITHDRAWN, 0);
 	}
 	else {
 		if (!mech->startDisabled)
 			mech->timeLeft = 0.8f;
-		// Let the pilot know we are about to die...
 		mech->getPilot()->handleAlarm(PILOT_ALARM_VEHICLE_DESTROYED, collider ? collider->getWatchID() : 0);
 
 		//ONLY the server may DESTROY a mech.  All other clients must await the statusChunk!!
@@ -581,7 +565,6 @@ bool BattleMechType::handleDestruction (GameObjectPtr collidee, GameObjectPtr co
 			mech->destroyBodyLocation(i);
 
 #ifdef USE_MOODMUSIC
-		// What heroic music should be played?
 		if (collidee->getAlignment() == Team::home->getAlignment())
 			friendlyDestroyed = true;
 		else
@@ -605,12 +588,10 @@ GameObjectPtr BattleMechType::createInstance (void) {
 		return(NULL);
 
 	newMech->init(true, this);
-	//newMech->setIdNumber(NextIdNumber++);
 
 	return newMech;
 }
 
-// BATTLEMECH class
 
 void BattleMech::operator = (BattleMech copy) {
 
@@ -621,7 +602,6 @@ void BattleMech::handleStaticCollision (void) {
 	bool endOfJump = false;
 	if (getTangible() || endOfJump) 
 	{
-		// What is our block and vertex number?
 		int blockNumber = 0;
 		int vertexNumber = 0;
 		

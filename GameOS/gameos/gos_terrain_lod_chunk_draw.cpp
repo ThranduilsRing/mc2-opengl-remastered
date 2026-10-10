@@ -94,7 +94,6 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
         }
     }
 
-    // Save state.
     GLint prevProg = 0;
     glGetIntegerv(GL_CURRENT_PROGRAM, &prevProg);
     GLint prevVAO = 0;
@@ -122,10 +121,8 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
     const GLenum s_wantDepthFunc = s_depthAlways ? GL_ALWAYS : GL_GEQUAL;
     const bool useGuards = glStateGuardTerrainEnabled();
 
-    // Guard-path objects (constructed only when useGuards; restore at scope end).
     std::optional<mc2gl::GlScopedCapability> gDepthTest, gBlend, gCull;
     std::optional<mc2gl::GlScopedDepthState> gDepthState;
-    // Legacy-path saved values (used only when !useGuards).
     GLboolean prevCullFace  = glIsEnabled(GL_CULL_FACE);
     GLboolean prevDepthTest = GL_FALSE;
     GLboolean prevDepthMask = GL_TRUE;
@@ -171,12 +168,10 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
     // disabled for the whole draw: terrainMVP bakes the GL-NDC X-flip so winding
     // is inverted and the opaque heightfield is rendered double-sided.)
 
-    // Bind height SSBO (stays bound for all patches this frame).
     s_heightSsbo.bindBase(TERRAIN_HEIGHT_SSBO_BINDING);
     // Step 5b: terrainType SSBO (concrete). 0 if never uploaded -> vert reads 0.
     if (s_typeSsbo.created())
         s_typeSsbo.bindBase(TERRAIN_TYPE_SSBO_BINDING);
-    // Step 5c: cement word SSBO.
     if (s_cementSsbo.created())
         s_cementSsbo.bindBase(TERRAIN_CEMENT_SSBO_BINDING);
 
@@ -240,7 +235,6 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
         }
     }
 
-    // Upload per-frame uniforms (same for every patch).
     if (s_locMapSide >= 0)
         glUniform1i(s_locMapSide, s_mapSide);
     if (s_locHalfMap >= 0)
@@ -287,7 +281,6 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
         if (s_locAtlasTLX >= 0) glUniform1f(s_locAtlasTLX, gos_terrain_indirect_getAtlasMapTopLeftX());
         if (s_locAtlasTLY >= 0) glUniform1f(s_locAtlasTLY, gos_terrain_indirect_getAtlasMapTopLeftY());
         if (s_locAtlasOOW >= 0) glUniform1f(s_locAtlasOOW, gos_terrain_indirect_getAtlasOneOverWorldUnits());
-        // Step 1b: sun direction for NdotL relief lighting (same as legacy terrain).
         if (s_locLightDir >= 0) {
             float lx = 0.f, ly = 0.f, lz = 1.f;
             gos_GetTerrainLightDir(&lx, &ly, &lz);
@@ -382,7 +375,6 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
                 glUniform1f(s_locLightPoolMoverScale, kTglcLightPoolMoverRadius);
             if (s_locLightPoolMoverMax >= 0)
                 glUniform1i(s_locLightPoolMoverMax, kTglcLightPoolMoverMax ? 1 : 0);
-            // MOVER-CONTACT-SHADOW-1: under-mech contact shadow strength (0 = off).
             if (s_locMoverContactShadow >= 0)
                 glUniform1f(s_locMoverContactShadow, kTglcMoverContactShadow);
         }
@@ -408,12 +400,10 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
             if (pp->getDynamicShadowFBO()) {
                 if (s_locEnableDynShadows >= 0) glUniform1i(s_locEnableDynShadows, 1);
                 if (mc2ShadowCsmEnabled() && pp->getDynamicShadowArrayTexture()) {
-                    // Item 1 CSM: array-sampler variant.
                     if (s_locDynCascadeMats >= 0)
                         glUniformMatrix4fv(s_locDynCascadeMats, pp->getDynamicShadowCascadeCount(),
                                            GL_FALSE, pp->getDynamicCascadeMatrices());
                     if (s_locDynCsmCount >= 0) glUniform1i(s_locDynCsmCount, pp->getDynamicShadowCascadeCount());
-                    // Stage 3: per-cascade texel-scaled depth bias inputs.
                     if (s_locDynCascadeTexel >= 0)
                         glUniform1fv(s_locDynCascadeTexel, pp->getDynamicShadowCascadeCount(),
                                      pp->getDynamicCascadeTexelWorld());
@@ -425,7 +415,6 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
                         glBindTexture(GL_TEXTURE_2D_ARRAY, pp->getDynamicShadowArrayTexture());
                         glActiveTexture(GL_TEXTURE0);
                     }
-                    // Per-cascade shadow resolution: separate full-map (last) cascade.
                     if (s_locDynFullMapTexel >= 0)
                         glUniform1f(s_locDynFullMapTexel, pp->getDynamicFullMapTexelWorld());
                     if (s_locDynFullMapShadow >= 0) {
@@ -495,7 +484,6 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
         }
     }
 
-    // Stage B: transition mask array at unit 11.
     {
         const bool tmReady = gos_terrain_indirect_isTransitionMaskReady();
         if (s_locUseTransitionMask >= 0)
@@ -670,8 +658,6 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
         }
     }
 
-    // Step 5a: upload the live material tunables (driven by the ImGui terrain
-    // panel via the same gosRenderer members the legacy terrain reads).
     {
         float mt[5] = {3,2,1,6,1};  gos_GetTerrainMatTiling(&mt[0], &mt[1], &mt[2], &mt[3], &mt[4]);
         float nb[4] = {0.9f,1.1f,1.1f,2.5f}; gos_GetTerrainMatNormalBoost(&nb[0], &nb[1], &nb[2], &nb[3]);
@@ -950,8 +936,6 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
         if (s_locMatProfile  >= 0) glUniform1i(s_locMatProfile,  g_terrainMaterialProfile);
     }
 
-    // Phase 7.5: log first successful submit so the user can confirm the path is live.
-    // Also reset the zero-submit streak counter on any non-zero submit.
     {
         static bool s_firstSubmit = true;
         s_submitZeroStreak = 0;  // reset on any non-zero submit
@@ -962,7 +946,6 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
         }
     }
 
-    // Cardinality probe: log every 600 submits.
     static int s_submitCount = 0;
     ++s_submitCount;
     if (s_submitCount % 600 == 0) {
@@ -970,8 +953,6 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
         fflush(stdout);
     }
 
-    // TERRAIN-VISUAL-HEIGHT-S2-ALLLOD: reset per-band displaced-chunk counters
-    // for this submit; populated per-command below, printed after the loop.
     for (int lvl = 0; lvl < 6; ++lvl) s_visualDisplacedCounts[lvl] = 0;
 
 #ifdef MC2_VULKAN_ISLAND
@@ -1152,7 +1133,6 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
             ++s_visualDisplacedCounts[lvl];
         }
 
-        // Per-block uniforms (shared by main patch and skirt).
         if (s_locBlockOriginX >= 0)
             glUniform1i(s_locBlockOriginX, cmd.blockOriginX);
         if (s_locBlockOriginY >= 0)
@@ -1215,7 +1195,6 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
                 mirrorTerrainUniforms(s_terrainProgram, tessProg);
                 s_tessMirroredThisFrame = true;
             }
-            // Targeted per-patch mirror: up-to-date per-block values every patch.
             mirrorTerrainPatchUniforms(s_terrainProgram, tessProg);
             ZoneScopedN("Terrain.CliffTess");
             // NOTE: global GL state, left set intentionally. Safe today because
@@ -1223,13 +1202,11 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
             // tessellated path with a different patch size MUST re-set this.
             glPatchParameteri(GL_PATCH_VERTICES, 3);
             glDrawElements(GL_PATCHES, patch.indexCount, GL_UNSIGNED_SHORT, 0);
-            // Restore the base program for the skirt draw / next patch.
             glUseProgram(s_terrainProgram);
         } else {
             glDrawElements(GL_TRIANGLES, patch.indexCount, GL_UNSIGNED_SHORT, 0);
         }
 
-        // --- Phase 6: Draw skirt strips ---
         if (patch.skirtIndexCount > 0 && skirtDepths != nullptr)
         {
             float skirtDepth = skirtDepths[i];
@@ -1345,7 +1322,6 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
     }
     RenderCore::framegraph::noteTerrainPath(RenderCore::framegraph::TerrainPath::LODChunk);  // TERRAIN-PATH-TELEMETRY-1
 
-    // Restore GL state.
     glDisableVertexAttribArray(0);
     glDisableVertexAttribArray(1);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -1356,15 +1332,12 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
     if (visualDampActive)
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TERRAIN_VISUAL_DAMP_SSBO_BINDING, 0);
     if (!useGuards) {
-        // Phase 10.3: restore inherited cull/depth/blend state (legacy path).
         if (prevCullFace)   glEnable(GL_CULL_FACE);
         glDepthMask(prevDepthMask);
         if (!prevDepthTest) glDisable(GL_DEPTH_TEST);
         if (prevBlend)      glEnable(GL_BLEND);
         glDepthFunc((GLenum)prevDepthFunc);
     }
-    // useGuards path: gCull/gBlend/gDepthState/gDepthTest restore depth/blend/
-    // cull/mask/func when their optionals destruct at the closing brace below.
     glBindVertexArray((GLuint)prevVAO);
     glUseProgram((GLuint)prevProg);
 

@@ -5,13 +5,11 @@
 
 void MissionInterfaceManager::updateVTol()
 {
-	//We're probably going to use this alot!
 	long commanderID = Commander::home->getId();
 	paintingMyVtol = paintingVtol[commanderID];
 	
 	for (long vtolNum = 0;vtolNum < MAX_TEAMS; vtolNum++)
 	{
-		// update the vtol, if it needs it
 		if ( paintingVtol[vtolNum] && (!bPaused || MPlayer))
 		{
 			if (vehicleID[vtolNum] != 147)		//We are the standard vtol.
@@ -21,12 +19,6 @@ void MissionInterfaceManager::updateVTol()
 					vehicleDropped[vtolNum] = true;
 					soundSystem->playDigitalSample(VTOL_DROP,vPos[vtolNum]);
 					
-					//OK, if this is another persons vtol, I probably shouldn't do this
-					// Glenn, what should it do?
-					// Just check my commanderID against the vtolNum and if they match do it?
-					// Otherwise do nothing?
-					// Help Me, Spock!
-					// -fs
 					if (MPlayer) 
 					{
 						if (commanderID == vtolNum)
@@ -102,7 +94,6 @@ void MissionInterfaceManager::updateVTol()
 
 					vTolTime[vtolNum] = scenarioTime;
 					
-					//Start GOsFX - We are now hovering.
 					if (recoveryBeam[vtolNum])
 					{
 						Stuff::LinearMatrix4D 	shapeOrigin;
@@ -203,7 +194,6 @@ void MissionInterfaceManager::updateVTol()
 					if (!mechRecovered[vtolNum]) {
 						if (MPlayer) {
 							if (MPlayer->isServer()) {
-								//MPlayer->playerInfo[vtolNum].resourcePoints += 10000;
 								Stuff::Vector3D pos;
 								MPlayer->sendReinforcement(10000, 0, "noname", vtolNum, pos, 6);
 							}
@@ -297,10 +287,8 @@ void MissionInterfaceManager::updateOldStyle( bool shiftDn, bool altDn, bool ctr
 
 	printDebugInfo();
 
-	//We're probably going to use this alot!
 	long commanderID = Commander::home->getId();
 	
- 	// Update the waypoint markers so that they are visible!
    	if ( userInput->getKeyDown( WAYPOINT_KEY ) || controlGui.getMines() )
    	{
 		drawWayPointPaths(); 	
@@ -321,14 +309,12 @@ void MissionInterfaceManager::updateOldStyle( bool shiftDn, bool altDn, bool ctr
 	// claimed this click. Local scope; no leakage.
 	bool moverSelectedThisFrame = false;
 
-	// deal with the hot keys
 	if ( update( leftClicked, rightClicked, mouseX, mouseY, target,  lineOfSight ) )
 		return;
 
 	// special case for bottom of screen
 	if ( bGui ) // don't target or anything if we are int the control panel
 	{
-		// now check the selection versus the commands
 		if ( !canJump() && controlGui.getJump() )
 			controlGui.toggleJump();
 
@@ -465,8 +451,6 @@ void MissionInterfaceManager::updateOldStyle( bool shiftDn, bool altDn, bool ctr
 				if (shiftDn && target->getCommanderId() == Commander::home->getId() )
 				{
 					bool alreadyThere = false;
-					//-------------------------------------------
-					// First, check if he's already there!
 					for (long i=0;i<pTeam->getRosterSize();i++)
 					{
 						Mover* pMover = (Mover*)pTeam->getMover( i );
@@ -672,10 +656,8 @@ void MissionInterfaceManager::updateAOEStyle(bool shiftDn, bool altDn, bool ctrl
 {
 	printDebugInfo();
 
-	//We're probably going to use this alot!
 	long commanderID = Commander::home->getId();
 
- 	// Update the waypoint markers so that they are visible!
    	if ( userInput->getKeyDown( WAYPOINT_KEY ) || controlGui.getMines() )
    	{
 		drawWayPointPaths(); 	
@@ -696,14 +678,12 @@ void MissionInterfaceManager::updateAOEStyle(bool shiftDn, bool altDn, bool ctrl
 	// claimed this click. Local scope; no leakage.
 	bool moverSelectedThisFrame = false;
 
-	// deal with the hot keys
 	if ( update( leftClicked, rightClicked, mouseX, mouseY, target,  lineOfSight ) )
 		return;
 
 	// special case for bottom of screen
 	if ( bGui ) // don't target or anything if we are int the control panel
 	{
-		// now check the selection versus the commands
 		if ( !canJump() && controlGui.getJump() )
 			controlGui.toggleJump();
 
@@ -867,8 +847,6 @@ void MissionInterfaceManager::updateAOEStyle(bool shiftDn, bool altDn, bool ctrl
 				if (shiftDn)
 				{
 					bool alreadyThere = false;
-					//-------------------------------------------
-					// First, check if he's already there!
 					for (long i=0;i<pTeam->getRosterSize();i++)
 					{
 						Mover* pMover = (Mover*)pTeam->getMover( i );
@@ -911,7 +889,6 @@ void MissionInterfaceManager::updateAOEStyle(bool shiftDn, bool altDn, bool ctrl
 		}
 		else
 		{	
-			// tried to select nothing
 			controlGui.cancelInfo();
 			soundSystem->playDigitalSample( INVALID_GUI );
 		}
@@ -1076,7 +1053,6 @@ int MissionInterfaceManager::update( bool leftClickedClick, bool rightClickedCli
 	int i = 0;
 	int last = MAX_COMMAND;
 
-	// if chatting, ignore keyboard input
 	if ( controlGui.updateChat() )
 	{
 		i = 100;
@@ -1148,7 +1124,6 @@ int MissionInterfaceManager::update( bool leftClickedClick, bool rightClickedCli
 			else if ( ((key & ALT) ? true : false) != altDn )
 				continue;
 			
-			// got this far, call the command
 			if ( commands[i].key != -1 )
 				userInput->setMouseCursor(bLOS ? commands[i].cursorLOS : commands[i].cursor);
 

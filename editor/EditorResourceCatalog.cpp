@@ -197,14 +197,12 @@ namespace
             return;
         }
 
-        /* trace removed: Catalog: preserve clean mapping */
 }
 
     static void storeEntry(const std::string& blockType, const NamedEntry& entry, bool allowOverwriteMappings)
     {
         if (entry.key.empty())
         {
-            /* trace removed: Catalog: skip block */
 return;
         }
 
@@ -264,11 +262,9 @@ return;
         }
         else
         {
-            /* trace removed: Catalog: skip unsupported block */
 return;
         }
 
-        /* trace removed: Catalog: stored block */
 }
 
     static bool parseCatalogFile(const char* path, bool allowOverwriteMappings = true)
@@ -279,7 +275,6 @@ return;
             return false;
         }
 
-        /* trace removed: Catalog: open ok */
 std::string line;
         std::string blockType;
         std::string pendingBlockType;
@@ -318,12 +313,10 @@ std::string line;
 
                     entry = NamedEntry();
                     inBlock = true;
-                    /* trace removed: Catalog: begin block */
 }
                 else if (s.find('=') == std::string::npos)
                 {
                     pendingBlockType = s;
-                    /* trace removed: Catalog: pending block */
 }
 
                 continue;
@@ -331,7 +324,6 @@ std::string line;
 
             if (s.find('}') != std::string::npos)
             {
-                /* trace removed: Catalog: end block */
 storeEntry(blockType, entry, allowOverwriteMappings);
                 blockType.clear();
                 entry = NamedEntry();
@@ -342,7 +334,6 @@ storeEntry(blockType, entry, allowOverwriteMappings);
             const std::string::size_type eq = s.find('=');
             if (eq == std::string::npos)
             {
-                /* trace removed: Catalog: ignored line */
 continue;
             }
 
@@ -373,7 +364,6 @@ continue;
             }
 }
 
-        /* trace removed: Catalog: finished path */
 return true;
     }
 
@@ -537,7 +527,6 @@ namespace EditorResourceCatalog
         loadAll();
 
         const bool ok = lookupNameByMappedId(g_baseTerrainByKey, g_baseTerrainKeyByIndex, index, buffer, bufferLength);
-        /* trace removed: Catalog: GetBaseTerrainNameByIndex */
 return ok;
     }
 

@@ -3,9 +3,6 @@
 #include "gvehicl_internal.h"
 
 
-//----------------------------------------------------------------------------------
-// END OF MOVEMENT UPDATE ROUTINES
-//----------------------------------------------------------------------------------
 
 Stuff::Vector3D GroundVehicle::getPositionFromHS (long nodeId) 
 {
@@ -14,7 +11,6 @@ Stuff::Vector3D GroundVehicle::getPositionFromHS (long nodeId)
 	// How about now?
 	// -fs
 
-	//-----------------------------------------
 	Stuff::Vector3D hsPos = position;
 	if (appearance)
 	{
@@ -29,10 +25,7 @@ Stuff::Vector3D GroundVehicle::getPositionFromHS (long nodeId)
 }
 
 
-//extern L_INTEGER startCk;
-//extern L_INTEGER endCk;
 
-//----------------------------------------------------------------------------------
 void GroundVehicle::disable (unsigned long cause)
 {
 	Mover::disable(cause);
@@ -40,26 +33,19 @@ void GroundVehicle::disable (unsigned long cause)
 	
 }	
 
-//----------------------------------------------------------------------------------
 
 float GroundVehicle::getStatusRating (void) {
 
-	//-------------------------------
-	// calculate Weapon effectiveness
 	float weaponEffect = 1.0;
 	if (maxWeaponEffectiveness)
 		weaponEffect = (float)weaponEffectiveness / (float)maxWeaponEffectiveness;
 
-	//----------------
-	// Calculate armor
 	float armorFront = armor[GROUNDVEHICLE_LOCATION_FRONT].curArmor / armor[GROUNDVEHICLE_LOCATION_FRONT].maxArmor * 0.6 + 0.4;
 	float armorLeft = armor[GROUNDVEHICLE_LOCATION_LEFT].curArmor / armor[GROUNDVEHICLE_LOCATION_LEFT].maxArmor * 0.6 + 0.4;
 	float armorRight = armor[GROUNDVEHICLE_LOCATION_RIGHT].curArmor / armor[GROUNDVEHICLE_LOCATION_RIGHT].maxArmor * 0.6 + 0.4;
 	float armorRear = armor[GROUNDVEHICLE_LOCATION_REAR].curArmor / armor[GROUNDVEHICLE_LOCATION_REAR].maxArmor * 0.6 + 0.4;
 	float armorEffect = armorFront * armorRear * armorLeft * armorRight;
 				
-	//-----------------------
-	// Calculate pilot Wounds
 	float pilotWoundTable[7] = {1.00f,0.95f,0.85f,0.75f,0.50f,0.30f,0.00f};
 	float pilotEffect = pilotWoundTable[(long)getPilot()->getWounds()];
 	if (isDestroyed() || isDisabled())
@@ -69,7 +55,6 @@ float GroundVehicle::getStatusRating (void) {
 	return(rating);
 }
 
-//Infantry Guy
 #define VEHICLEPILOT_ID		638
 //----------------------------------------------------------------------------------
 void GroundVehicle::createVehiclePilot (void)
@@ -98,16 +83,12 @@ void GroundVehicle::createVehiclePilot (void)
 
 	vehiclePilot->init(true, objType);
 
-	//----------------------------------------------
-	// Load the profile data into the game object...
 	if (ObjectTypeManager::objectFile->seekPacket(VEHICLEPILOT_ID) == NO_ERR) 
 	{
-		//--------------------------------------------------------
 		FitIniFile profileFile;
 		long result = profileFile.open(ObjectTypeManager::objectFile,ObjectTypeManager::objectFile->getPacketSize());
 		if (result == NO_ERR) 
 		{
-			//-------------------------------------------
 			result = vehiclePilot->init(&profileFile);
 			if (result != NO_ERR)
 				return;
@@ -129,9 +110,6 @@ void GroundVehicle::createVehiclePilot (void)
 	vehiclePilot->sensorSystem = NULL;
 	vehiclePilot->isVehiclePilot = true;
 
-	//-------------------------------------------
-	// <deleted really obnoxious Glenn Slam>
-	// Thanks!
 
 	vehiclePilot->pilot = pilot;		//Gets Current Vehicle Pilot.
 	vehiclePilot->pilotHandle = pilotHandle;
@@ -146,14 +124,9 @@ void GroundVehicle::createVehiclePilot (void)
 	//BUT they are enemies on the GUI!!
 	vehiclePilot->commanderId = 1;
 
-	//------------------------------------------------------------------
-	// Set the object's position, initial gesture and rotation.
 	vehiclePilot->setPosition(position);
 	vehiclePilot->setLastValidPosition(position);
 				
-	//--------------------------------------------------------------------
-	// Add the object to the object list, if it exists
-	// Otherwise, add it to the holder list which is a member of scenario
 	ObjectManager->buildMoverLists();					
 
 	//---------------------------------------------------------------
@@ -174,7 +147,6 @@ void GroundVehicle::createVehiclePilot (void)
 	ObjectManager->rebuildCollidableList = true;
 }	
 
-//----------------------------------------------------------------------------------
 
 void GroundVehicle::updateAIControl (void) {
 
@@ -196,7 +168,6 @@ void GroundVehicle::updateAIControl (void) {
 	}
 }
 
-//---------------------------------------------------------------------------
 
 void GroundVehicle::updateNetworkControl (void) {
 
@@ -206,8 +177,6 @@ void GroundVehicle::updateNetworkControl (void) {
 		if (turretBlownThisFrame)
 			turretBlownThisFrame = false;
 
-		//-----------------------------------------
-		// Update any weaponfire chunks received...
 		updateWeaponFireChunks(CHUNK_RECEIVE);
 
 		updateCriticalHitChunks(CHUNK_RECEIVE);
@@ -224,7 +193,6 @@ void GroundVehicle::updateNetworkControl (void) {
 	}
 }
 
-//---------------------------------------------------------------------------
 
 void GroundVehicle::updatePlayerControl (void) {
 
@@ -232,7 +200,6 @@ void GroundVehicle::updatePlayerControl (void) {
 
 }
 
-//---------------------------------------------------------------------------
 
 void GroundVehicle::updateDynamics (void) {
 
@@ -291,8 +258,6 @@ void GroundVehicle::updateDynamics (void) {
 	float maxThrottledVel = throttle * realMaxVelocity;
 	float velDiff = maxThrottledVel - velocityMag;
 	
-	//-----------------------------------------------------
-	// If we're slowing down, slow us down!
 	if (((velDiff < 0.0) && (accel > 0.0)) || ((velDiff > 0.0) && (accel < 0.0)))
 		accel = -accel;
 	
@@ -303,7 +268,6 @@ void GroundVehicle::updateDynamics (void) {
 	velocityMag += velChangeThisFrame;
 }
 
-//---------------------------------------------------------------------------
 long GroundVehicle::updateAnimations (void)
 {
 	//-------------------------------------------------
@@ -333,13 +297,10 @@ long GroundVehicle::updateAnimations (void)
 				case 2:			//We are running.  If we have stopped or are walking, change.
 					if (velocityMag == 0.0f)
 					{
-						//we've stopped.
-						//INSTANTLY change to stand!
 						appearance->setGesture(0);
 					}
 					else if ((velocityMag != 0.0f) && (velocityMag <= (dynamics.max.groundVehicle.speed * 0.5f)))
 					{
-						//We are now walking.
 						appearance->setGesture(1);
 					}
 					
@@ -357,12 +318,10 @@ long GroundVehicle::updateAnimations (void)
 				case 0:			//Standing, if moving now, change.
 					if (velocityMag > (dynamics.max.groundVehicle.speed * 0.5f))
 					{
-						//We are now running.
 						appearance->setGesture(2);
 					}
 					else if ((velocityMag != 0.0f) && (velocityMag <= (dynamics.max.groundVehicle.speed * 0.5f)))
 					{
-						//We are now Walking.
 						appearance->setGesture(1);
 					}
 					
@@ -380,13 +339,10 @@ long GroundVehicle::updateAnimations (void)
 				case 1:			//We are walking.  If we have stopped moving or are running, change.
 					if (velocityMag == 0.0f)
 					{
-						//we've stopped.
-						//INSTANTLY change to stand!
 						appearance->setGesture(0);
 					}
 					else if (velocityMag > (dynamics.max.groundVehicle.speed * 0.5f))
 					{
-						//We are now running.
 						appearance->setGesture(2);
 					}
 					
@@ -431,7 +387,6 @@ long GroundVehicle::updateAnimations (void)
 		}
 		else
 		{
-			//He's dead.
 			appearance->setGesture(0);
 		}
 	}

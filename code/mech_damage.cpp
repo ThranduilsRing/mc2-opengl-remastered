@@ -5,9 +5,6 @@
 
 bool BattleMech::hitInventoryItem (long itemIndex, bool setupOnly) {
 
-	//HOW ABOUT...
-	// BEFORE we go Trapsing thrugh memory, we assure ourselves
-	// that this itemIndex is in the mech?
 	if ((itemIndex < 0) || (itemIndex >= (numOther + numWeapons + numAmmos)))
 		return false;
 
@@ -54,13 +51,10 @@ bool BattleMech::hitInventoryItem (long itemIndex, bool setupOnly) {
 	}
 
 	if (getInventoryDamage(itemIndex) >= MasterComponent::masterList[masterID].getDisableLevel()) {
-		// Component is disabled with this hit...
 		inventory[itemIndex].disabled = true;
 		itemDisabled = true;
 		long damageHotSpot = 1;
 
-		// Now, we need to apply any special effects caused by this component's
-		// disabling blow...
 		switch (MasterComponent::masterList[masterID].getForm()) {
 			case COMPONENT_FORM_SIMPLE:
 			case COMPONENT_FORM_COCKPIT:
@@ -105,7 +99,6 @@ bool BattleMech::hitInventoryItem (long itemIndex, bool setupOnly) {
 			case COMPONENT_FORM_AMMO:
 				break;
 			case COMPONENT_FORM_JUMPJET:
-				//numJumpJets--;
 				break;
 			case COMPONENT_FORM_CASE:
 				body[inventory[itemIndex].bodyLocation].CASE = false;
@@ -127,7 +120,6 @@ bool BattleMech::hitInventoryItem (long itemIndex, bool setupOnly) {
 			case COMPONENT_FORM_SIMPLE:
 				break;
 			case COMPONENT_FORM_COCKPIT:
-				// Kill the pilot...
 				pilot->injure(6, false);
 				break;
 			case COMPONENT_FORM_SENSOR:
@@ -152,7 +144,6 @@ bool BattleMech::hitInventoryItem (long itemIndex, bool setupOnly) {
 			case COMPONENT_FORM_LIFESUPPORT:
 				break;
 			case COMPONENT_FORM_GYROSCOPE:
-				//shutDown();
 				break;
 			case COMPONENT_FORM_POWER_AMPLIFIER:
 			case COMPONENT_FORM_BULK:
@@ -161,7 +152,6 @@ bool BattleMech::hitInventoryItem (long itemIndex, bool setupOnly) {
 
 		if (!setupOnly && !playedCriticalHit)
 		{
-			// Play critical Hit effect here.
 			Stuff::Vector3D smokePos = appearance->getNodePosition(0);
 			ObjectManager->createExplosion(MECH_CRITICAL_HIT_ID,NULL,smokePos);
 
@@ -178,9 +168,6 @@ void BattleMech::destroyBodyLocation (long bodyLocation) {
 	if (body[bodyLocation].damageState == IS_DAMAGE_DESTROYED)
 		return;
 
-//	char report[50];
-//	sprintf(report, "body location %d destroyed.", bodyLocation);
-//	pilot->postReport(REPORTCODE_DEBUGGING, report);
 
 	// Effectively wipe out all critical spaces in the destroyed location...
 	body[bodyLocation].curInternalStructure = 0;
@@ -197,11 +184,8 @@ void BattleMech::destroyBodyLocation (long bodyLocation) {
 	for (long curSpace = 0; curSpace < NumLocationCriticalSpaces[bodyLocation]; curSpace++) {
 		if (!body[bodyLocation].criticalSpaces[curSpace].hit)
 			if (body[bodyLocation].criticalSpaces[curSpace].inventoryID != 255) {
-				//long form = MasterComponent::masterList[inventory[body[bodyLocation].criticalSpaces[curSpace].inventoryID].masterID].getForm();
-				//if ((form != COMPONENT_FORM_BULK) && (form != COMPONENT_FORM_CASE)) {
 					body[bodyLocation].criticalSpaces[curSpace].hit = true;
 					hitInventoryItem(body[bodyLocation].criticalSpaces[curSpace].inventoryID);
-				//}
 			}
 	}
 
@@ -210,12 +194,10 @@ void BattleMech::destroyBodyLocation (long bodyLocation) {
 		// Mech essentially destroyed. Does it explode or simply shutdown?
 		// For now, it's always exploding...
 		if ((scenarioTime <= centerTorsoBlowTime) || ((engineBlowTime > -1.0) && (scenarioTime <= engineBlowTime))) {
-			// Should explode...
 			pilot->handleAlarm(PILOT_ALARM_VEHICLE_INCAPACITATED, 0);
 			ObjectManager->getObjectType(typeHandle)->handleDestruction(this, NULL);
 			}
 		else {
-			// Should shutdown...
 			disable(ENGINE_DEATH);
 		}
 		}
@@ -281,11 +263,9 @@ void BattleMech::calcCriticalHit (long hitLocation) {
 			//If we are out of range, no critical hit!
 			if (bodyLocation < 0 || bodyLocation > 7)
 				return;
-//				STOP(("Bad bodyLocation in CriticalHit %d",bodyLocation));
 
 			if (hitSpace < 0 || hitSpace >= NumLocationCriticalSpaces[bodyLocation])
 				return;
-//				STOP(("Bad Critical Hit Space %d",hitSpace));
 
 			body[bodyLocation].criticalSpaces[hitSpace].hit = 1;
 			hitInventoryItem(body[bodyLocation].criticalSpaces[hitSpace].inventoryID);
@@ -332,9 +312,6 @@ long BattleMech::buildStatusChunk (void) {
 	// change this...
 	statusChunk.init();
 
-	// hack...
-//	if (appearance->getCurrentGestureId() == 1)
-//		bodyState = MECH_STATE_PARKED;
 	if (isDestroyed())
 		statusChunk.bodyState = MECH_STATUSCHUNK_BODYSTATE_DESTROYED;
 	else
@@ -435,9 +412,7 @@ long BattleMech::buildMoveChunk (void) {
 
 	moveChunk.init();
 	if (pilot) {
-		// First, make sure we have the latest path...
 		pilot->getMovePath();
-		// Now, use it (and any queued one, if available)...
 		moveChunk.build(this, pilot->getMovePath(0), pilot->getMovePath(1));
 	}
 	moveChunk.pack(this);
@@ -520,7 +495,6 @@ bool BattleMech::injureBodyLocation (long bodyLocation, float damage) {
 		destroyBodyLocation(bodyLocation);
 		return(true);
 	}
-	// Location was not destroyed, so return false...
 	return(false);
 }
 
@@ -646,20 +620,17 @@ long BattleMech::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayC
 	if (shotInfo->masterId > 0)
 		isAmmoExplosion = (MasterComponent::masterList[shotInfo->masterId].getForm() == COMPONENT_FORM_AMMO);
 
-	//pilotCheckModifier += (shotInfo->damage * PilotingCheckFactor);
 
 	// Tally the damage for rate check and pilot check...
 	damageRateTally += shotInfo->damage;
 	pilotCheckDamageTally += shotInfo->damage;
 
-	// Did the hit cause us to stumble?
 	float torsoEntryAngle = shotInfo->entryAngle + torsoRotation;
 	if ((torsoEntryAngle >= -90.0/*-45.0*/) && (torsoEntryAngle <= 90.0/*45.0*/))
 		hitFromFrontThisFrame = true;
 	else if ((torsoEntryAngle <= -91.0/*-135.0*/) || (torsoEntryAngle >= 91.0/*135.0*/))
 		hitFromBehindThisFrame = true;
 
-	// First, what type of hit is this...
 	damageThisFrame += shotInfo->damage;
 	long totalHitType = 0;
 	if (damageThisFrame < hitLevel[0])
@@ -677,7 +648,6 @@ long BattleMech::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayC
 	else
 		hitType = HIT_TYPE_HEAVY;
 
-	// If this was a heavy hit, play the hit gesture.
 	if (!MPlayer && (totalHitType == HIT_TYPE_MODERATE) && (getCommanderId() != Commander::home->getId()))
 	{
 		if ((torsoEntryAngle >= -45.0) && (torsoEntryAngle <= 45.0))
@@ -693,7 +663,6 @@ long BattleMech::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayC
 	// Note that the hitLocation is the ARMOR hit location...
 	long bodyLocation = MechArmorToBodyLocation[shotInfo->hitLocation];
 
-	// Check for any special pilot injuries...	
 	if ((bodyLocation == MECH_BODY_LOCATION_HEAD) && (shotInfo->damage >= 2))
 		pilot->injure(1);
 	
@@ -723,11 +692,6 @@ long BattleMech::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayC
 					{
 						if ((bodyLocation == MECH_BODY_LOCATION_CTORSO) || (bodyLocation == MECH_BODY_LOCATION_HEAD)) 
 						{
-							// If hit in the center torso, no where else to go...
-							// If hit in the head, it is disabled. What that means at this point...?
-							// We'll probably want to put a disabled check in there, somewhere :)
-							// Most likely, the mech will have been blown up and/or destroyed before
-							// it's "disabled"...
 						}
 						else 
 						{
@@ -804,8 +768,6 @@ long BattleMech::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayC
 					{
 						if ((bodyLocation == MECH_BODY_LOCATION_CTORSO) || (bodyLocation == MECH_BODY_LOCATION_HEAD)) 
 						{
-							// Hit center torso, already, or
-							// Head wiped out... what to do?
 						}
 						else 
 						{
@@ -868,8 +830,6 @@ long BattleMech::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayC
 			{
 				if ((bodyLocation == MECH_BODY_LOCATION_CTORSO) || (bodyLocation == MECH_BODY_LOCATION_HEAD)) 
 				{
-					// Already in center torso, or
-					// Head wiped out... what to do?
 				}
 				else 
 				{
@@ -895,8 +855,6 @@ long BattleMech::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayC
 		}
 	}
 
-	// Now, let's apply any remaining effects that should be
-	// applied as a result of this hit...
 	if (inventory[gyro].disabled)
 	{
 		switch (hitType)
@@ -910,9 +868,7 @@ long BattleMech::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayC
 		}
 	}
 
-	// Let anyone who should know that I was hit...
 
-	// Trigger the WEAPON HIT event...
 	if (attacker) 
 	{
 		if (shotInfo->masterId > -1)
@@ -935,14 +891,12 @@ long BattleMech::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayC
 			pilot->triggerAlarm(PILOT_ALARM_HIT_BY_WEAPONFIRE, 0);
 	}
 
-	// Calc current CV, after this damage taken...
 	curCV = calcCV(false);
 	if (isDisabled())
 		setThreatRating(1);
 	else
 		setThreatRating(-1);
 
-	// If this mech was destroyed, let the attacker know...
 	if (!alreadyDisabled && isDisabled()) {
 		if (attacker && attacker->isMover()) 
 		{
@@ -953,7 +907,6 @@ long BattleMech::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayC
 					if (MPlayer->missionSettings.resourceForMechs)
 						if (attacker->getCommanderId() != getCommanderId())
 							MPlayer->sendReinforcement(getResourcePointValue(), 0, "noname", attacker->getCommanderId(), attacker->getPosition(), 6);
-							//MPlayer->playerInfo[attacker->getCommanderId()].resourcePoints += getResourcePointValue();
 					if (MPlayer->missionSettings.missionType == MISSION_TYPE_ELIMINATION) 
 					{
 						if (attacker->getCommanderId() != getCommanderId())
@@ -978,7 +931,6 @@ long BattleMech::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayC
 					if (MPlayer->missionSettings.resourceForMechs)
 						if (attacker->getCommanderId() != getCommanderId())
 							MPlayer->sendReinforcement(getResourcePointValue(), 0, "noname", attacker->getCommanderId(), attacker->getPosition(), 6);
-							//MPlayer->playerInfo[attacker->getCommanderId()].resourcePoints += getResourcePointValue();
 					if (MPlayer->missionSettings.missionType == MISSION_TYPE_ELIMINATION) 
 					{
 						if (attacker->getCommanderId() != getCommanderId())

@@ -3,7 +3,6 @@
 #include "mech_internal.h"
 
 
-// NETWORK MOVEMENT UPDATE ROUTINES
 
 bool BattleMech::netUpdateMovePath (float& newRotate, char& newThrottleSetting, long& newGestureStateGoal, long& newMoveState, long& minThrottle, long& maxThrottle) {
 
@@ -20,7 +19,6 @@ bool BattleMech::netUpdateMovePath (float& newRotate, char& newThrottleSetting, 
 
 	if ((legStatus == LEG_STATUS_NORMAL) || (legStatus == LEG_STATUS_HURTING) || (legStatus == LEG_STATUS_IMPAIRED_LEFT) || (legStatus == LEG_STATUS_IMPAIRED_RIGHT)) {
 		if (path->numSteps > 0) {
-			// First, make sure we are not already at the end of this path...
 			if (path->curStep == path->numSteps)
 				goalReached = true;
 			else {
@@ -32,7 +30,6 @@ bool BattleMech::netUpdateMovePath (float& newRotate, char& newThrottleSetting, 
 				// on a new gesture/movement system... gd 6/2/97
 				lastValidPosition = wayPt;
 
-				// Have we reached the destination?
 				float distanceFromWayPt = distanceFrom(wayPt);
 				DistanceToWaypoint = distanceFromWayPt;
 
@@ -40,13 +37,11 @@ bool BattleMech::netUpdateMovePath (float& newRotate, char& newThrottleSetting, 
 				if (path->curStep == (path->numSteps - 1))
 					cushion = Mover::marginOfError[1];
 				if (distanceFromWayPt < cushion) {
-					// Reached it, so go to the next waypoint...
 					path->curStep++;
 					pilot->setMoveTimeOfLastStep(scenarioTime);
 					if (path->curStep < path->numSteps) {
 						long curDir = path->stepList[path->curStep].direction;
 						if (!MPlayer && (curDir > 7)) {
-							// Jump to next path step...
 							newGestureStateGoal = 6;
 							return(false);
 							}
@@ -57,18 +52,14 @@ bool BattleMech::netUpdateMovePath (float& newRotate, char& newThrottleSetting, 
 						goalReached = true;
 					}
 				else {
-					// Not there yet. Should we be jumping?
 					long curDir = path->stepList[path->curStep].direction;
 					if (!MPlayer && (curDir > 7)) {
-						// Jump to next path step...
 						newGestureStateGoal = 6;
 						return(false);
 					}
 				}
-				//MaxVelocityMag = distanceFromWayPt * worldUnitsPerMeter;
 
 				if (!goalReached) {
-					// First, rotate the mech's body (if moving)...
 					float relFacingToWayPt = relFacingTo(wayPt, MECH_BODY_LOCATION_LLEG);
 
 					long moveState = pilot->getMoveState();
@@ -76,7 +67,6 @@ bool BattleMech::netUpdateMovePath (float& newRotate, char& newThrottleSetting, 
 
 					if (moveState == MOVESTATE_FORWARD) {
 						if (moveStateGoal == MOVESTATE_FORWARD) {
-							// Keep going forward...
 							if (legStatus == LEG_STATUS_IMPAIRED_LEFT) {
 								newGestureStateGoal = MECH_STATE_LIMPING_LEFT;
 								newThrottleSetting = 100;
@@ -106,7 +96,6 @@ bool BattleMech::netUpdateMovePath (float& newRotate, char& newThrottleSetting, 
 									}
 								else {
 									if (newGestureStateGoal == MECH_STATE_WALKING) {
-										// Try to attain current goal speed...
 										newThrottleSetting = pilot->calcMoveSpeedThrottle(getBodyState(), control.settings.mech.throttle);
 									}
 								}
@@ -114,40 +103,29 @@ bool BattleMech::netUpdateMovePath (float& newRotate, char& newThrottleSetting, 
 
 							}
 						else if (moveStateGoal == MOVESTATE_REVERSE) {
-							// Stop, and pivot fully reverse to next path step...
-							//((MechActor*)appearance)->forceStop();
 							pilot->pausePath(); //pilot->getMovePath()->numSteps = 0;
 							newMoveState = MOVESTATE_PIVOT_REVERSE;
 							}
 						else if (moveStateGoal == MOVESTATE_PIVOT_FORWARD) {
-							// Stop, and pivot fully forward to next path step...
-							//((MechActor*)appearance)->forceStop();
 							pilot->pausePath(); //pilot->getMovePath()->numSteps = 0;
 							newMoveState = MOVESTATE_PIVOT_FORWARD;
 							}
 						else if (moveStateGoal == MOVESTATE_PIVOT_REVERSE) {
-							// Stop, and pivot fully reverse to next path step...
-							//((MechActor*)appearance)->forceStop();
 							pilot->pausePath(); //pilot->getMovePath()->numSteps = 0;
 							newMoveState = MOVESTATE_PIVOT_REVERSE;
 							}
 						else {
-							// Stop...
-							//((MechActor*)appearance)->forceStop();
 							pilot->pausePath(); //pilot->getMovePath()->numSteps = 0;
 							newMoveState = MOVESTATE_FORWARD /*MOVESTATE_STAND*/;
 						}
 						}
 					else if (moveState == MOVESTATE_REVERSE) {
 						if (moveStateGoal == MOVESTATE_FORWARD) {
-							// Stop, and pivot fully forward to next path step...
-							//((MechActor*)appearance)->forceStop();
 							pilot->pausePath(); //pilot->getMovePath()->numSteps = 0;
 							newMoveState = MOVESTATE_PIVOT_FORWARD;
 							}
 						else if (moveStateGoal == MOVESTATE_REVERSE) {
 							newGestureStateGoal = MECH_STATE_REVERSE;
-							// Keep moving in reverse...
 							/*
 							if ((relFacingToWayPt < -5.0) || (relFacingToWayPt > 5.0)) 
 							{
@@ -191,40 +169,29 @@ bool BattleMech::netUpdateMovePath (float& newRotate, char& newThrottleSetting, 
 								newThrottleSetting = control.settings.mech.throttle - 10;
 								}
 							else {
-								// Try to attain current goal speed...
 								newThrottleSetting = pilot->calcMoveSpeedThrottle(getBodyState(), control.settings.mech.throttle);
-								//newThrottleSetting = data->throttleSetting + 10;
 							}
 
 							}
 						else if (moveStateGoal == MOVESTATE_PIVOT_FORWARD) {
-							// Stop, and pivot fully forward to next path step...
-							//((MechActor*)appearance)->forceStop();
 							pilot->pausePath(); //pilot->getMovePath()->numSteps = 0;
 							newMoveState = MOVESTATE_PIVOT_FORWARD;
 							}
 						else if (moveStateGoal == MOVESTATE_PIVOT_REVERSE) {
-							// Stop, and pivot fully reverse to next path step...
-							//((MechActor*)appearance)->forceStop();
 							pilot->pausePath(); //pilot->getMovePath()->numSteps = 0;
 							newMoveState = MOVESTATE_PIVOT_REVERSE;
 							}
 						else {
-							// Stop...
-							//((MechActor*)appearance)->forceStop();
 							pilot->pausePath(); //pilot->getMovePath()->numSteps = 0;
 							newMoveState = MOVESTATE_FORWARD /*MOVESTATE_STAND*/;
 						}
 						}
 					else {
-						// Not moving--should we be?
 						if ((moveStateGoal == MOVESTATE_FORWARD) || (moveStateGoal == MOVESTATE_PIVOT_FORWARD)) {
-							//((MechActor*)appearance)->forceStop();
 							pilot->pausePath(); //pilot->getMovePath()->numSteps = 0;
 							newMoveState = MOVESTATE_PIVOT_FORWARD;
 							}
 						else if ((moveStateGoal == MOVESTATE_REVERSE) || (moveStateGoal == MOVESTATE_PIVOT_REVERSE)) {
-							//((MechActor*)appearance)->forceStop();
 							pilot->pausePath(); //pilot->getMovePath()->numSteps = 0;
 							newMoveState = MOVESTATE_PIVOT_REVERSE;
 						}
@@ -233,12 +200,10 @@ bool BattleMech::netUpdateMovePath (float& newRotate, char& newThrottleSetting, 
 			}
 			}
 		else {
-			// We better not be walking or running, then!
 			newGestureStateGoal = MECH_STATE_STANDING;
 		}
 		}
 	else {
-		// Cannot move, period!
 		newGestureStateGoal = MECH_STATE_STANDING;
 	}
 
@@ -263,13 +228,6 @@ void BattleMech::netUpdateMovement (void) {
 	}
 	if (moveChunk.moving && /*(path->numStepsWhenNotPaused > 0) &&*/ (bodyState == MECH_STATUSCHUNK_BODYSTATE_PARKED))
 		startUpThisFrame = true;
-//	MECH_STATUSCHUNK_BODYSTATE_NORMAL,
-//	MECH_STATUSCHUNK_BODYSTATE_STANDING,
-//	MECH_STATUSCHUNK_BODYSTATE_PARKED,
-//	MECH_STATUSCHUNK_BODYSTATE_POWERING_UP,
-//	MECH_STATUSCHUNK_BODYSTATE_POWERING_DOWN,
-//	MECH_STATUSCHUNK_BODYSTATE_FALLEN_BACKWARD,
-//	MECH_STATUSCHUNK_BODYSTATE_FALLEN_FORWARD
 
 	if (atEndOfPath && (distanceFromWayPt < Mover::marginOfError[1])) {
 		startUpThisFrame = false;
@@ -394,7 +352,6 @@ void BattleMech::netUpdateMovement (void) {
 
 	setControlSettings(newRotate, newThrottleSetting, newGestureStateGoal, minThrottle, maxThrottle,newRotate);
 		
-	//updateTorso(newRotate);
 	updateMoveStateGoal();
 
 	NewRotation = newRotate;
@@ -413,7 +370,6 @@ bool BattleMech::crashAvoidanceSystem (void) {
 	if (pilot->getMoveWaitForPointTime() > 999990.0)
 		return(false);
 
-	//float velMag = getSpeed(); //((MechActor*)appearance)->getVelocityMagnitude();
 	Stuff::Vector3D velocity = getVelocity();
 	velocity.z = 0.0;
 
@@ -438,7 +394,6 @@ bool BattleMech::crashAvoidanceSystem (void) {
 		clippingCorner = (firstCornerClipped && secondCornerClipped);
 	}
 
-	//bool stepOnMover = getPathLocked(tileR, tileC, cellR, cellC, crashAvoidSelf);
 	bool nearingMover = getPathRangeLock(crashAvoidPath, &reachedEnd);
 	bool pathBlocked = getPathRangeBlocked(crashAvoidPath, &blockReachedEnd);
 	bool pathLocked = /*stepOnMover ||*/ nearingMover;
@@ -450,7 +405,6 @@ bool BattleMech::crashAvoidanceSystem (void) {
 			return(true);
 			}
 		else {
-			// It's clear, now...
 			pilot->resumePath();
 			pilot->setMoveYieldTime(-1.0);
 		}
@@ -470,10 +424,7 @@ bool BattleMech::crashAvoidanceSystem (void) {
 					pilot->clearMovePath(ORDER_CURRENT, i);
 				pilot->setMoveGlobalPath(ORDER_CURRENT, NULL, 0);
 				*/
-				//pilot->clearMoveOrders(ORDER_CURRENT);
 				pilot->rethinkPath(0);
-				//pilot->pausePath();
-				//pilot->setMoveYieldTime(scenarioTime + crashYieldTime);
 				control.brake();
 				}
 			else {
@@ -512,7 +463,6 @@ void BattleMech::updateNetworkControl (void) {
 
 	if (getAwake())	{
 
-		// Update any weaponfire chunks received...
 		updateWeaponFireChunks(CHUNK_RECEIVE);
 
 		updateCriticalHitChunks(CHUNK_RECEIVE);
@@ -533,7 +483,6 @@ void BattleMech::updatePlayerControl (void) {
 
 	control.reset();
 		
-	// Poll the joystick and keyboards here so player can control mech.
 	if (userInput->getKeyDown(KEY_T))
 		control.settings.mech.rotate = tonnageTurnRate[long(tonnage)] / 4.0 * frameLength;
 

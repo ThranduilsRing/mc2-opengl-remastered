@@ -71,7 +71,6 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 		EditorSafeLoadString( IDS_COULDNT_OPEN, buffer, 256 , gameResourceHandle);
 		char buffer2[512];
 		sprintf( buffer2, buffer, lowerFileName );
-		//MessageBox( NULL, buffer2, NULL, MB_OK );
 		/*I think MessageBox() would not be modal wrt the application.*/
 		if (!g_cliSuppressModals) AfxMessageBox(buffer2);
 		EditorInterface::instance()->UnsetBusyMode();
@@ -98,7 +97,6 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 		EditorSafeLoadString( IDS_COULDNT_OPEN, buffer, 256, gameResourceHandle );
 		char buffer2[512];
 		sprintf( buffer2, buffer, camFileName );
-		//MessageBox( NULL, buffer2, NULL, MB_OK );
 		/*I think MessageBox() would not be modal wrt the application.*/
 		if (!g_cliSuppressModals) AfxMessageBox(buffer2);
 		EditorInterface::instance()->UnsetBusyMode();
@@ -143,7 +141,6 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 	// clear() ran at the top of this function, which already ran
 	// onMapUnload/endMission/destroy for any prior session.
 
-	// Steps 1-3 (game lines 1693-1695): batchers + registry init.
 	EditorBridge::beginMissionRenderResources();              // steps 1-3 — game lines 1693-1695
 	GameAdapters::StaticProp::beginMission();
 	GameAdapters::Mech::beginMission();
@@ -196,7 +193,6 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 	}
 
 	EditorDataTrace("EditorData::initTerrainFromPCV: before EditorObjectMgr::load");
-	// Step 10 — editor's only inserted step (actor spawn).
 	EditorObjectMgr::instance()->load( pFile, 1 );
 	EditorDataTrace("EditorData::initTerrainFromPCV: after EditorObjectMgr::load");
 
@@ -591,7 +587,6 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 	return bRetVal;
 }
 
-//-------------------------------------------------------------------------------------------------
 bool EditorData::reassignHeightsFromTGA( const char* fileName, int min, int max )
 {
 	float MinVal = min;
@@ -620,8 +615,6 @@ bool EditorData::reassignHeightsFromTGA( const char* fileName, int min, int max 
 
 	result = tgaFile.read(tgaData,tgaFile.fileSize());
 
-	//---------------------------------------
-	// Parse out TGAHeader.
 	TGAFileHeader *header = (TGAFileHeader *)tgaData;
 
 	//MOST paint programs write out grey scale as a palette and mark it as UNC_PAL!!
@@ -810,7 +803,6 @@ bool CreateScaledColorMap(long mapWidth, char *localColorMapName, MemoryPtr tmpR
 	}
 	else
 	{
-		// Flat neutral fallback (only if the JPEG genuinely won't decode).
 		for (long y = 0; y < newWidth; y++)
 		{
 			DWORD *dst = (DWORD *)(newImage + (size_t)y * physWidth);
@@ -906,7 +898,6 @@ bool EditorData::amplifyTerrain( float factor )
 	WaterStream::Build();
 	Terrain::mapData->calcLight();   // recompute normals for the new relief
 
-	// Re-bake every quad's GPU recipe with the new elevations/normals.
 	for ( long j = 0; j < side - 1; ++j )
 		for ( long i = 0; i < side - 1; ++i )
 			gos_terrain_indirect::InvalidateRecipeForVertexNum( (int)( j * side + i ) );
@@ -1004,7 +995,6 @@ bool EditorData::generateMission( int mapSize, int terrain, unsigned long seed )
 	if ( !CopyFile( srcBurnin, dstBurnin, FALSE ) )
 		EditorDataTrace( "generateMission: WARNING CopyFile burnin %s -> %s failed", srcBurnin, dstBurnin );
 
-	// Hand off to initTerrainFromTGA: use the burnin colormap + apply the heightmap.
 	strcpy( s_genColormapName, mapName );
 	sprintf( s_genElevPath, "terrain_gen_out\\%s.elev.r32", mapName );
 
@@ -1085,8 +1075,6 @@ bool EditorData::initTerrainFromTGA( int mapSize, int min, int max, int terrain 
 		EditorDataTrace("EditorData::initTerrainFromTGA: GEN colormap terrainName=%s", land->terrainName );
 	}
 
-	//-----------------------------------------------------------------
-	// Startup the Terrain Color Map
 	if ( !land->terrainTextures2 )
 	{
 		char name[1024];
@@ -1107,10 +1095,6 @@ bool EditorData::initTerrainFromTGA( int mapSize, int min, int max, int terrain 
 		{
 			char name2[1024];
 			strcpy(name2,"newMap");
-			//Copy the base map to the new mapname in the data textures directory.
-			// OVERWRITE IT if it exists.
-			// DELETE any burnin version of the map!!
-			// Maybe we should warn here?
 			FullPathFileName localColorMapName;
 			localColorMapName.init(texturePath,name2,".tga");
 			

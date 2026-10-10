@@ -5,7 +5,6 @@
 #ifndef MISSION_INTERNAL_H
 #define MISSION_INTERNAL_H
 
-// Include Files
 #ifndef MCLIB_H
 #include"mclib.h"
 #include "Gates/gate.h"
@@ -26,9 +25,7 @@
 #include"mission.h"
 #endif
 
-//#ifndef MOVE_H
 #include"move.h"
-//#endif
 
 #ifndef MOVEMGR_H
 #include"movemgr.h"
@@ -41,7 +38,6 @@
 #ifndef SOUNDS_H
 #include"sounds.h"
 #endif
-// Includes the rest of the file needs (formerly interleaved with the code below).
 #include "brain_special_dispatch.h"  // TECHSCRIPT-SPECIAL-DISPATCH-1A: parseBrainSpecialBody
 #include "brain_missionfit_oporbd.h"  // BRAIN-MISSIONFIT-OPORD-CONSUMER-1: declarative mission.fit OPORD parser
 #include "brain_archetype.h"  // BRAIN-ARCHETYPE-1
@@ -254,7 +250,6 @@ extern float CheatHitDamage;   // defined in mission.cpp
 #endif
 
 #ifdef LAB_ONLY
-// LAB_ONLY timing globals — defined in mission2.cpp / mover.cpp.
 extern __int64 x;
 extern __int64 x1;
 extern __int64 MCTimeABLLoad;
@@ -310,7 +305,6 @@ extern __int64 MCTimeAnimationCalc;
 extern float   OneOverProcessorSpeed;
 #endif
 
-// Free functions defined in the split pieces.
 bool IsGateDisabled (int objectWID);
 bool IsGateOpen (int objectWID);
 
