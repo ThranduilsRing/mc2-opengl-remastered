@@ -22,7 +22,7 @@
   "}  // namespace vk_terrain_detail",
   "} // namespace vk_terrain_detail"
  ],
- "split_commit": "PENDING",
+ "split_commit": "f15cb970d",
  "edits": [
   [
    "void setFallback(const char* reason) {",

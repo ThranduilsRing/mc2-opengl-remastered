@@ -24,7 +24,6 @@
   "GameOS/gameos/utils/shader_builder.cpp": 1546,
   "GameOS/gameos/vulkan_color_prop_island.cpp": 1785,
   "GameOS/gameos/vulkan_shadow_island_live.cpp": 1645,
-  "GameOS/gameos/vulkan_terrain_island.cpp": 3505,
   "GameOS/include/gameos.hpp": 3753,
   "GameOS/include/imagehlp.h": 1799,
   "GuiRuntime/EditorInspector.cpp": 1652,
@@ -84,7 +83,7 @@
   "mclib/vfxtile.cpp": 2944,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "d9f3d13b6",
+ "head": "f15cb970d",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -93,9 +92,9 @@
    "max_lines": 523
   },
   "GameOS": {
-   "files": 307,
-   "files_over_1500": 14,
-   "files_over_3000": 2,
+   "files": 312,
+   "files_over_1500": 13,
+   "files_over_3000": 1,
    "max_lines": 3753
   },
   "GuiRuntime": {
@@ -161,10 +160,6 @@
   {
    "file": "GameOS/include/gameos.hpp",
    "lines": 3753
-  },
-  {
-   "file": "GameOS/gameos/vulkan_terrain_island.cpp",
-   "lines": 3505
   },
   {
    "file": "code/brain_special_dispatch.cpp",
@@ -277,12 +272,16 @@
   {
    "file": "code/mechicon.cpp",
    "lines": 1967
+  },
+  {
+   "file": "code/mechlabscreen.cpp",
+   "lines": 1952
   }
  ],
  "total": {
-  "files": 1807,
-  "files_over_1500": 70,
-  "files_over_3000": 4,
+  "files": 1812,
+  "files_over_1500": 69,
+  "files_over_3000": 3,
   "max_lines": 3753
  },
  "version": 1

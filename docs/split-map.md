@@ -86,6 +86,19 @@ Split commit: `d9f3d13b6`.
 | `gos_terrain_lod_chunk_upload.cpp` | gos_terrain_lod_chunk: heightfield, visual-damp, control-map, overlay/shoreline sidecar and cement-word uploads, and the terrain light/ambient accessors. |
 | `gos_terrain_lod_chunk_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
+## `GameOS/gameos/vulkan_terrain_island.cpp`
+
+Split commit: `f15cb970d`.
+
+| Piece | What it holds |
+|---|---|
+| `vulkan_terrain_island.cpp` | keeps the health / interop counters, the env gates, setFallback / vlog / load_spv and the island state |
+| `vulkan_terrain_island_images.cpp` | VK terrain island: height snapshot and audit, the colormap / cement / material-normal imports and the shadow image copies. |
+| `vulkan_terrain_island_island.cpp` | VK terrain island: island buffers, patch / skirt mesh caches, descriptor writes, capacity growth and init / destroy. |
+| `vulkan_terrain_island_overlay.cpp` | VK terrain island: the terrain overlay and decal island: textures, pipeline init, submit, run, reset and the island destroy. |
+| `vulkan_terrain_island_run.cpp` | VK terrain island: the extern C entry points: enabled / ready / prepare, the frame UBO and light-pool staging, and the per-frame run. |
+| `vulkan_terrain_island_internal.h` | shared include bundle, extern globals and declarations of the pieces |
+
 ## `GuiRuntime/GraphicsOptionsWindow.cpp`
 
 | Piece | What it holds |
