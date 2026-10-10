@@ -225,3 +225,28 @@ TEST_CASE("FitIniFile block ids up to 47 characters index and seek; the block-id
 	CHECK(l == 9);
 	fit.close();
 }
+
+TEST_CASE("PacketFile rejects a negative packet index instead of reading seekTable[-n]")
+{
+	const std::string path = scratchPath("negindex.pak");
+	const char p0[] = "alpha";
+	{
+		PacketFile out;
+		REQUIRE(out.create(path.c_str()) == NO_ERR);
+		out.reserve(1);
+		CHECK(out.writePacket(0, (MemoryPtr)p0, sizeof(p0)) == (int)sizeof(p0));
+		out.close();
+	}
+	{
+		PacketFile in;
+		REQUIRE(in.open(path.c_str()) == NO_ERR);
+		CHECK(in.readPacketOffset(-1) == -1);
+		CHECK(in.readPacketOffset(-1000) == -1);
+		CHECK(in.seekPacket(-1) == PACKET_OUT_OF_RANGE);
+		CHECK(in.seekPacket(-7) == PACKET_OUT_OF_RANGE);
+		REQUIRE(in.seekPacket(0) == NO_ERR);        // a valid index still works afterwards
+		CHECK(in.getPacketSize() == (int)sizeof(p0));
+		in.close();
+	}
+	remove(path.c_str());
+}
