@@ -1,0 +1,49 @@
+{
+ "_reason": "The 30-branch processUiCommandChannel else-if chain became five uiCmd* group functions: the first branch of each group turns 'else if' into 'if', each group gets a signature, three alias lines (line/result/note/extra bound to UiCmdCtx) and a trailing 'else return false; return true;'; the dispatcher builds UiCmdCtx and calls the groups with ||. tools/split/verb_chain_equiv.py proves the branch bodies and order are unchanged.",
+ "base": "5541cf1b7",
+ "src": "code/missiongui.cpp",
+ "stem": "missiongui",
+ "drop": [
+  "std::string extra; // GAMEPLAY-DRIVER-1: multi-line ack payload (readback dumps)",
+  "else if (line.compare(0, 7, \"select \") == 0) {",
+  "else if (line == \"list buildings\") {",
+  "else if (line.compare(0, 10, \"light_row \") == 0) {",
+  "else if (line.compare(0, 6, \"spawn \") == 0 || line.compare(0, 9, \"teleport \") == 0) {"
+ ],
+ "add": [
+  "{",
+  "}",
+  "return false;",
+  "else",
+  "return true;",
+  "const std::string& line;",
+  "std::string extra; // multi-line ack payload (readback dumps)",
+  "UiCmdCtx c{line};",
+  "(void)(uiCmdBasic(c) || uiCmdWorld(c) || uiCmdReadback(c) || uiCmdProbe(c) || uiCmdFixture(c));",
+  "const char* result = c.result;",
+  "const std::string& note = c.note;",
+  "const std::string& extra = c.extra;",
+  "bool MissionInterfaceManager::uiCmdBasic(UiCmdCtx& c)",
+  "const std::string& line = c.line;",
+  "const char*& result = c.result;",
+  "std::string& note = c.note;",
+  "bool MissionInterfaceManager::uiCmdWorld(UiCmdCtx& c)",
+  "std::string& extra = c.extra;",
+  "if (line.compare(0, 7, \"select \") == 0) {",
+  "bool MissionInterfaceManager::uiCmdReadback(UiCmdCtx& c)",
+  "if (line == \"list buildings\") {",
+  "bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)",
+  "if (line.compare(0, 6, \"spawn \") == 0 || line.compare(0, 9, \"teleport \") == 0) {",
+  "bool MissionInterfaceManager::uiCmdProbe(UiCmdCtx& c)",
+  "if (line.compare(0, 10, \"light_row \") == 0) {"
+ ],
+ "scripts": [
+  "scripts/camera_sweep_smoke.py",
+  "scripts/check-mover-registry-coherence.sh",
+  "scripts/counter-honesty-allowlist.txt",
+  "scripts/gate-defaults-allowlist.txt",
+  "scripts/run_visual_capture.py",
+  "scripts/smoke_lib/cursor_guard.py"
+ ],
+ "_scripts_reason": "Reviewed: each names code/missiongui.cpp for code that stays in the core file (select-all isOnGUI count, #42b hover guard, s_stage limiter, edge-scroll comments, MC2_RENDER_BACKEND note); the moved UI-command chain is not pinned by any of them."
+}

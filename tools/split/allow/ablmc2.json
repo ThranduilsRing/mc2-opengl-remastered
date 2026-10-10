@@ -1,0 +1,10 @@
+{
+ "_reason": "runAblArgGuardRepro is called from initABL (ablmc2.cpp) but defined in ablmc2_repro.cpp, so it loses 'static' and is declared in ablmc2_internal.h (single definition, called once).",
+ "base": "1dd468eed",
+ "src": "code/ablmc2.cpp",
+ "stem": "ablmc2",
+ "drop": ["static void runAblArgGuardRepro(void);", "static void runAblArgGuardRepro(void) {"],
+ "add": ["void runAblArgGuardRepro(void) {"],
+ "scripts": ["scripts/run_smoke.py"],
+ "_scripts_reason": "Reviewed: run_smoke.py names code/ablmc2.cpp only in a comment about the arg-guard repro fixture."
+}
