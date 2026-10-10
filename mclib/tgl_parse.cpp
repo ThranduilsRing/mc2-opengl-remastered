@@ -771,6 +771,7 @@ void TG_TypeShape::InitFromImportedMesh(const char* nodeIdIn, const char* parent
 	nodeCenter = center;
 	relativeNodeCenter = center;
 
+	// Take ownership of caller-allocated geometry buffers.
 	numTypeVertices    = numVerts;
 	numTypeTriangles   = numTris;
 	listOfTypeVertices  = vertexBuf;

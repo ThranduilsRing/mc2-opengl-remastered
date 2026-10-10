@@ -526,6 +526,7 @@ bool GVAppearance::recalcBounds (void)
 
 				for (long i=0;i<8;i++)
 				{
+					// [PROJECTZ:ScreenXYOracle id=gvactor_box_rect]
 					eye->projectForScreenXY(boxCoords[i],bcsp[i]);
 					if (!i)
 					{

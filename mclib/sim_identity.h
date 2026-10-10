@@ -197,6 +197,7 @@ inline void sortRecords(MoverRecord* recs, size_t n) {
     }
 }
 
+// --- digests ---------------------------------------------------------------
 
 // Per-mover GRADED digest: quantized VISUAL + exact NON-VISUAL fields.
 inline uint64_t digestMoverGraded(const MoverRecord& r) {

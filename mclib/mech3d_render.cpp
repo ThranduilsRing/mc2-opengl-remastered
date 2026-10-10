@@ -270,6 +270,7 @@ bool Mech3DAppearance::recalcBounds (void)
 
 				for (long i=0;i<8;i++)
 				{
+					// [PROJECTZ:ScreenXYOracle id=mech3d_box_rect]
 					eye->projectForScreenXY(boxCoords[i],bcsp[i]);
 					if (!i)
 					{
@@ -1201,6 +1202,7 @@ long Mech3DAppearance::renderShadows (void)
 
 	mechShape->SetTextureHandle(0,localTextureHandle);
 
+	// C3: route renderShadows gate to GPU-lagged visibility when killswitch is enabled.
 	const bool mechShadowVisible = s_gpuCullLifecycle
 		? (gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(actorHandle_)) && visible)
 		: (inView && visible);

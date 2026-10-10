@@ -36,6 +36,14 @@ long BldgAppearance::render (long depthFixup)
 			bldgShape->SetARGBHighLight(flashColor);
 		}
 		
+		// Call Multi-shape render stuff here.
+		// Slice 1 path (g_useGpuObjects). No cull bypass; submitMultiShape
+		// is per-child Layer-B by construction. Returns false only when
+		// EVERY child is ineligible.
+		// Caller-side accounting: recordEligibleActor() fires unconditionally
+		// when slice 1 reaches this site (so a null shape or skipped submit
+		// still counts toward eligible_actors). recordCpuFallback() fires
+		// when no submit succeeded.
 		bool submittedToGpu = false;
 		// PREVIEW-FIX: in the SimpleCamera component/weapon preview, skip the GPU
 		// static-prop submit (the batcher flushes with the world snapshot/terrain

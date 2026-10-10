@@ -425,6 +425,7 @@ void TreeAppearance::registerStatic() {
 			staticReg[lod].registered  = false;
 		}
 
+		// Free the throwaway higher-LOD render-instance (LOD0 == treeShape, kept).
 		if (lod != 0 && lodShape) {
 			lodShape->ClearAnimation();
 			delete lodShape;

@@ -398,6 +398,7 @@ void mc2LightBakeStabilityObserve(int32_t recipeIndex, uint32_t lightDataIndex)
                 mc2_diag::writeEvent("LIGHTBAKE_PROOF", 1, 0, diag_buf);
             }
         }
+        // Aggregate coverage so recipes beyond the 32 log-cap are accounted for.
         if ((s_lbFirstSeenIndex.size() % 256u) == 0u) {
             std::fprintf(stderr,
                 "[LIGHTBAKE-PROOF v1] event=coverage recipes_tracked=%zu max_index=%u S=%u out_of_prefix=%llu\n",

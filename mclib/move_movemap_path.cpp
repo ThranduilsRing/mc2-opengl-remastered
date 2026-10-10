@@ -6,8 +6,10 @@
 
 long MoveMap::calcPath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int* goalCell) {
 
+	// PATHFINDING-SOLVER-ISOLATION-1: per-solve context (default-OFF).
 	mc2_move::SolveContext ctx;
 
+	// PATHFINDING-FACTS-1: gated per-solve telemetry (default-OFF, byte-identical).
 	mc2_path_trace::SolveScope _pt("plain");
 	const bool _pathTrace = _pt.active;
 	long _ptNodes = 0;
@@ -309,6 +311,7 @@ long MoveMap::calcPath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int* go
 		if (doorDirection != -1)
 			numCells++;
 
+		// PATHFINDING-FACTS-1: record path length + MAX_STEPS truncation (release-silent today).
 		if (_pathTrace) {
 			_pt.len = numCells;
 			_pt.fail = 0;
@@ -372,6 +375,7 @@ long MoveMap::calcPath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int* go
 					path->goal = goal;
 				}
 			else {
+				// It's a door, so it's the last on the path list...
 				curCell--;
 				path->setDirection(curCell, /*reverseShift[*/doorDirection * 2/*]*/);
 				int doorR = bestRow + adjTile[doorDirection][0];
@@ -388,10 +392,15 @@ long MoveMap::calcPath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int* go
 				path->setCell(curCell, goalCell[0], goalCell[1]);
 				path->goal = stepDest;
 				if (goalWorldPos) {
+					// We didn't know the exact goal world pos coming into this, since are
+					// goal was an area door....
 					*goalWorldPos = stepDest;
 				}
 			}
 			
+			// We need to set this table up our first time thru here...
+			// PATHFINDING-SOLVER-ISOLATION-1: ON skips the lazy static guard
+			// (table built at MOVE_init). OFF unchanged.
 			if (!ctx.isolated) {
 				static bool setTable = false;
 				if (!setTable) {
@@ -495,8 +504,10 @@ long MoveMap::calcPath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int* go
 
 long MoveMap::calcPathJUMP (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int* goalCell) {
 
+	// PATHFINDING-SOLVER-ISOLATION-1: per-solve context (default-OFF).
 	mc2_move::SolveContext ctx;
 
+	// PATHFINDING-FACTS-1: gated per-solve telemetry (default-OFF, byte-identical).
 	mc2_path_trace::SolveScope _pt("jump");
 	const bool _pathTrace = _pt.active;
 	long _ptNodes = 0;
@@ -725,6 +736,7 @@ long MoveMap::calcPathJUMP (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int
 		if (doorDirection != -1)
 			numCells++;
 
+		// PATHFINDING-FACTS-1: record path length + MAX_STEPS truncation (release-silent today).
 		if (_pathTrace) {
 			_pt.len = numCells;
 			_pt.fail = 0;
@@ -787,6 +799,7 @@ long MoveMap::calcPathJUMP (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int
 					path->goal = goal;
 				}
 			else {
+				// It's a door, so it's the last on the path list...
 				curCell--;
 				path->setDirection(curCell, /*reverseShift[*/doorDirection * 2/*]*/);
 				int doorR = bestRow + adjTile[doorDirection][0];
@@ -803,10 +816,15 @@ long MoveMap::calcPathJUMP (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int
 				path->setCell(curCell, goalCell[0], goalCell[1]);
 				path->goal = stepDest;
 				if (goalWorldPos) {
+					// We didn't know the exact goal world pos coming into this, since are
+					// goal was an area door....
 					*goalWorldPos = stepDest;
 				}
 			}
 			
+			// We need to set this table up our first time thru here...
+			// PATHFINDING-SOLVER-ISOLATION-1: ON skips the lazy static guard
+			// (table built at MOVE_init). OFF unchanged.
 			if (!ctx.isolated) {
 				static bool setTable = false;
 				if (!setTable) {

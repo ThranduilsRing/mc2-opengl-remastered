@@ -5,8 +5,10 @@
 
 long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, long* goalCell) {
 
+	// PATHFINDING-SOLVER-ISOLATION-1: per-solve context (default-OFF).
 	mc2_move::SolveContext ctx;
 
+	// PATHFINDING-FACTS-1: gated per-solve telemetry (default-OFF, byte-identical).
 	mc2_path_trace::SolveScope _pt("escape");
 	const bool _pathTrace = _pt.active;
 	long _ptNodes = 0;
@@ -38,6 +40,9 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 	if (MaxHPrime < 500)
 		MaxHPrime = 500;
 	
+	// If we haven't already, create the OPEN list...
+	// PATHFINDING-SOLVER-ISOLATION-1: OFF owns/uses the shared global as before;
+	// ON uses the ctx private queue + flag snapshot via solveOpen/solveJumpOnBlocked.
 	if (!ctx.isolated && !openList) {
 		openList = new PriorityQueue;
 		gosASSERT(openList != NULL);
@@ -232,6 +237,7 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 		if (doorDirection != -1)
 			numCells++;
 
+		// PATHFINDING-FACTS-1: record path length + MAX_STEPS truncation (release-silent today).
 		if (_pathTrace) {
 			_pt.len = (int)numCells;
 			_pt.fail = 0;
@@ -291,6 +297,7 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 					path->goal = goal;
 				}
 			else {
+				// It's a door, so it's the last on the path list...
 				curCell--;
 				path->setDirection(curCell, /*reverseShift[*/doorDirection * 2/*]*/);
 				long doorR = bestRow + adjTile[doorDirection][0];
@@ -307,6 +314,8 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 				path->setCell(curCell, goalCell[0], goalCell[1]);
 				path->goal = stepDest;
 				if (goalWorldPos) {
+					// We didn't know the exact goal world pos coming into this, since are
+					// goal was an area door....
 					*goalWorldPos = stepDest;
 				}
 			}

@@ -530,6 +530,10 @@ void Mech3DAppearance::updateGeometry (void)
 			}
 		}
 
+		// D-gpu-pose-instrument: AnimPose stage — animation pose state setters
+		// (setAnimation, SetFrameNum, SetNodeRotation × N) on body + shadow
+		// shapes, plus the shadow-shape transform conditional. Per-stage
+		// attribution for the trimodal Mech3D.UpdateGeometry histogram.
 		{ ZoneScopedN("Mech3D.UpdateGeometry.AnimPose");
 		if (status != OBJECT_STATUS_DESTROYED)
 		{
@@ -594,6 +598,9 @@ void Mech3DAppearance::updateGeometry (void)
 		}
 		} // end AnimPose zone
 
+		// D-gpu-pose-instrument: BodyXform stage — body's SetLightList +
+		// TransformMultiShape* dispatch. The dominant per-mech work; will be
+		// further broken down by zones inside TransformMultiShape itself.
 		{ ZoneScopedN("Mech3D.UpdateGeometry.BodyXform");
 		mechShape->SetLightList(eye->getWorldLights(),eye->getNumLights());
 		// Slice C3-revised: when GPU mech path is on AND fast-transform

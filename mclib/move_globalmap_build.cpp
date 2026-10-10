@@ -134,6 +134,7 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 		Fatal(result, " GlobalMap.init: unable to read numDoorLinks packet ");
 
 	if (badVersion) {
+		// Bad version map, so return number of packets but bail...
 		badLoad = true;
 		return(13 + numDoorInfos + (numDoors + NUM_DOOR_OFFSETS) * 2);
 	}
@@ -186,6 +187,8 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 	// whichever is larger so the packet fits; downstream indexing uses
 	// baseline (width/height) so the "extra" bytes are safe scratch.
 	if (mcoWideSchema) {
+		// MCO: areaMap is RAW int-per-cell. Allocate the real narrow array at
+		// the MC2 size; read the wide cells into a temp buffer and narrow.
 		size_t cellCount = (size_t)height * (size_t)width;
 		areaMap = (short*)systemHeap->Malloc(sizeof(short) * cellCount);
 		gosASSERT(areaMap != NULL);
@@ -222,6 +225,9 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 	// Same mod-tolerance pattern for areas packet. Carver5O may also have
 	// a larger areas struct size per entry (extended mod schema).
 	if (mcoWideSchema) {
+		// MCO GlobalMapArea is 31 bytes (shorts widened to int). Read into a
+		// temp buffer at MCO stride and widen field-by-field into the real
+		// narrow MC2 areas[] array.
 		areas = (GlobalMapAreaPtr)systemHeap->Malloc(sizeof(GlobalMapArea) * (size_t)numAreas);
 		areas_cellsCovered = (short**)systemHeap->Malloc(sizeof(short*) * numAreas);
 		areas_doors = (DoorInfoPtr*)systemHeap->Malloc(sizeof(DoorInfoPtr) * numAreas);
@@ -314,6 +320,9 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 				break;
 			}
 			if (mcoWideSchema) {
+				// MCO DoorInfo is 5 bytes (doorIndex widened to int). Read the
+				// area's door infos into a temp buffer and widen into the real
+				// narrow doorInfos[] slice.
 				size_t n = (size_t)areas[i].numDoors;
 				size_t tempSize = MCO_DOORINFO_SIZE * n;
 				unsigned char* tempBuf = (unsigned char*)systemHeap->Malloc(tempSize);

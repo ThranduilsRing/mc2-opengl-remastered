@@ -106,6 +106,9 @@ void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool is
 		return;
 	}
 
+	// MECHOPAQUE-ORDER-FIX-2: enqueue-time OpaqueObject note removed — OpaqueObject is
+	// observed at its DRAW site (txmmgr.cpp:3271 GpuMechBatcher_flush), not enqueue;
+	// an enqueue note records before StaticProp's flush and lies about draw order.
 
 	if (fogColor != 0xffffffff)
 	{
