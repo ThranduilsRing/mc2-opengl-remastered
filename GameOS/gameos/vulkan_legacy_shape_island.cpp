@@ -16,6 +16,8 @@
 #endif
 
 #include <volk.h>
+#include "Gates/gate.h"
+#include "Gates/gate_cold.h"   // str<>()
 #include <GL/glew.h>
 
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
@@ -77,8 +79,7 @@ bool gateRequested() {
 }
 
 std::string spv_dir() {
-    const char* env = std::getenv("MC2_VULKAN_SPV_DIR");
-    std::string d = (env && *env) ? env : "shaders/vulkan";
+    std::string d = mc2::gate::str<"MC2_VULKAN_SPV_DIR">();   // row default shaders/vulkan, empty reads the default
     if (!d.empty() && d.back() != '/' && d.back() != '\\') d += '/';
     return d;
 }
