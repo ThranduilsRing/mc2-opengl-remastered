@@ -49,8 +49,8 @@ GameOS/gameos/gameos_graphics_hud.cpp::s_nativeHudSkipFrames <= 10
 GameOS/gameos/gameos_graphics_internal.h::s_mirrorReadFails <= 3
 GameOS/gameos/gameos_graphics_internal.h::s_mirrorReadOk <= 8
 GameOS/gameos/gos_gpu_sync.cpp::s_align < 16
-GameOS/gameos/gos_mech_batcher.cpp::s_uniDiagPrinted < 2
-GameOS/gameos/gos_mech_batcher.cpp::s_vuDiagFrame <= 5
+GameOS/gameos/gos_mech_batcher_flush.cpp::s_uniDiagPrinted < 2
+GameOS/gameos/gos_mech_batcher_flush.cpp::s_vuDiagFrame <= 5
 GameOS/gameos/gos_postprocess_executor.cpp::g_executorValidationFailures < kMaxExecutorFailureLog
 GameOS/gameos/gos_postprocess_executor.cpp::g_executorValidationFailures < kMaxExecutorFailureLog
 GameOS/gameos/gos_postprocess_executor.cpp::g_executorValidationFailures < kMaxExecutorFailureLog

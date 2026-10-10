@@ -7,7 +7,7 @@ Config names: SRC, STEM, INCLUDE_RAW=(first,last) 1-based raw lines copied into 
 KEEP_FROM (first preamble line the core keeps), GROUPS=[(name,[(a,b)...])] with a 'core' group, DOC={name:text},
 PREAMBLE_MOVES={group:[(a,b)...]} (preamble line ranges moved to the top of a group file), HEADER_EXTRA=[lines], BANNER=[lines].
 Note: the header gets a prototype for EVERY free function defined in a piece; prune the ones no other piece calls (the cxx17 LG06 ratchet counts each const char* declaration).
-Optional: HEADER_NAME (default <stem>_internal.h) and HEADER2_NAME + HEADER2_RAW=(first,last) (a second header holding those raw lines, included at the end of the first; both names end in _internal.h), NO_PROTOS=True (no prototypes are generated: the config declares what the pieces share in HEADER_EXTRA, e.g. when the shared functions sit in namespaces), PROTO_SKIP=(names) (functions defined in a piece that need no header prototype, e.g. anonymous-namespace helpers), CORE_ONLY=[(a,b)...] (bundle lines kept out of the header and emitted into the core file: a header that DEFINES variables may be included by one TU only), BASE_REV / BASE_SRC (git rev and path holding the original, default HEAD and SRC) and ALLOW (see split_verify.py) drive the fail-closed checks that run
+Optional: HEADER_NAME (default <stem>_internal.h) and HEADER2_NAME + HEADER2_RAW=(first,last) (a second header holding those raw lines, included at the end of the first; both names end in _internal.h), NO_PROTOS=True (no prototypes are generated: the config declares what the pieces share in HEADER_EXTRA, e.g. when the shared functions sit in namespaces), EXTERN_SKIP=[names] (preamble variables whose generated extern would be wrong, e.g. brace-initialised objects: the config declares them in HEADER_EXTRA), PROTO_SKIP=(names) (functions defined in a piece that need no header prototype, e.g. anonymous-namespace helpers), CORE_ONLY=[(a,b)...] (bundle lines kept out of the header and emitted into the core file: a header that DEFINES variables may be included by one TU only), BASE_REV / BASE_SRC (git rev and path holding the original, default HEAD and SRC) and ALLOW (see split_verify.py) drive the fail-closed checks that run
 after the pieces are written; any finding exits 1 and the caller must not install the .new file. OUT (output dir, default the source's directory), HEADER_PRE_MOVES / HEADER_MOVES=[(a,b)...] (1-based line ranges whose units move verbatim into the
 header, before / after the externs: macros and inline definitions every piece needs), HEADER_PRE=[lines]."""
 import importlib.util, os, re, sys
@@ -95,7 +95,9 @@ for u in units:
         continue
     if joined.lstrip().startswith(("static", "class", "struct", "typedef", "enum", "union", "namespace", "/*")):
         continue
-    if "::" in joined.split("=")[0].split("(")[0] and not joined.lstrip().startswith("extern"):
+    _decl = re.split(r"[=;{]", joined.split("(")[0], 1)[0].rstrip()
+    _decl = re.sub(r"\[[^\]]*\]\s*$", "", _decl).split()
+    if _decl and "::" in _decl[-1] and not joined.lstrip().startswith("extern"):    # a class-member definition, not a namespace-scope variable
         continue
     if joined.lstrip().startswith("extern"):
         externs.append(re.sub(r"\s*//.*$", "", joined.strip(), flags=re.M))
@@ -116,6 +118,8 @@ for u in units:
     if head.startswith("const ") or not head:
         continue
     externs.append("extern " + head + ";")
+_skip = getattr(C, "EXTERN_SKIP", [])
+externs = [e for e in externs if not any(n in e for n in _skip)]
 seen = set()
 for e in externs:
     k = re.sub(r"\s+", " ", e)
