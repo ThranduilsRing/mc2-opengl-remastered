@@ -1,109 +1,25 @@
-#include "EditorInspector.h"
-#include "imgui.h"
-#include <cstdio>    // snprintf, fopen, fprintf, fclose
-#include <cstdlib>
+#include "EditorInspector_internal.h"
 
-// HZB camera-view dump: thin C helper defined in code/gamecam.cpp so we don't
-// have to pull the full camera.h -> terrain.h chain into GuiRuntime.
-extern "C" int mc2_hzb_dump_camera_view(void);
-// Bookmark-schema camera save (BOOKMARK-SAVE-BUTTON-1): same thin-C pattern.
-extern "C" void mc2_save_camera_bookmark(char* outPath, int outPathLen);
-#include "../GameOS/gameos/debug_renderer.h"  // IMG-INSPECT-3
-#include "../GameOS/gameos/gos_frame_pass_stats.h"  // FRAME-INSPECTOR-1
-#include "../GameOS/gameos/gos_render_pass_timer.h"  // FRAME-INSPECTOR-1 (ms col)
-#include "../GameOS/gameos/ibl_sh_runtime.h"   // V-IBL-STATIC-1: g_iblShStrength
-#include "draw_packet_emitter.h"              // g_dpSelectedRecipeIndex
-#include "../RenderCore/RendererFeatureRegistry.h"
-#include "../RenderCore/RenderPassContract.h"  // RENDERPASS-CONTRACT-2.5 (descriptive table)
-#include "RenderDebugView.h"                   // DEBUG-VIEW-REGISTRY-1
-#include "Gates/gate.h"
-#include "Gates/gate_cold.h"   // str<>()
+namespace EditorInspector {
+EditorInspector::InspectorSelection     s_selection;
+EditorInspector::StaticPropInspectorData s_staticPropData;
+EditorInspector::MechInspectorData       s_mechData;
+EditorInspector::TerrainInspectorData    s_terrainData;
+EditorInspector::TerrainPassSnapshot     s_terrainPass;   // TERRAIN-SPINE-0
+EditorInspector::ShadowPassSnapshot      s_shadowPass;    // SHADOW-SPINE-0
+EditorInspector::VfxPassSnapshot         s_vfxPass;       // VFX-SPINE-0
+bool s_open = false;
+bool s_featuresOpen = false;
 
-// Terrain tunable C-API used to be forward-declared here for an inline
-// Terrain Pass tunables panel; those controls were moved to
-// GuiRuntime/GraphicsOptionsWindow.cpp (the existing terrain tuning home),
-// so the forward decls and the inline panel are gone. EditorInspector's
-// Terrain Pass section is now read-only diagnostic only.
-
-// V-MATERIAL-STATIC-0: forward-declared inventory contract — duplicating the
-// struct keeps gui_runtime independent of gos_static_prop_batcher.h, which
-// transitively pulls Stuff/Stuff.hpp (not visible in this TU). The single
-// source of truth is GameOS/gameos/gos_static_prop_batcher.h; layout must
-// match exactly. Sized-fields verified against that header.
-struct StaticPropMaterialInventoryEntry {
-    uint32_t materialIdx;
-    uint32_t albedoTexLayer;
-    uint32_t alphaGroup;
-    uint32_t flags;
-    uint32_t nodeIdx;
-    uint32_t textureWidth;
-    uint32_t textureHeight;
-    uint32_t usageCount;
-    char     textureName[64];
-    bool     placeholder;
-    float    metallicFactor;   // V-MATERIAL-PBR-1
-    float    roughnessFactor;  // V-MATERIAL-PBR-1
-};
-uint32_t batcher_getStaticPropMaterialInventoryCount();
-bool     batcher_getStaticPropMaterialInventoryEntry(
-             uint32_t idx, StaticPropMaterialInventoryEntry* out);
-// WATER-DEBUG-VIEWS-1: MDI water FS debug mode accessor (defined at global
-// scope in GameOS/gameos/gameos_graphics.cpp). Declared here at file scope so
-// the call inside namespace EditorInspector resolves to the global symbol
-// (a block-scope extern would bind to EditorInspector::, causing LNK2019).
-int gos_GetWaterFsDebugMode();
-
-// DEBUG-VIEW-REGISTRY-1: runtime debug-mode getter/setter + view<->shaderMode helpers
-// (gos_static_prop_batcher.cpp).
-void batcher_setDebugMaterialMode(int shaderMode);
-int  batcher_getDebugMaterialMode();
-int             StaticPropViewToShaderMode(RenderDebugView view);
-RenderDebugView StaticPropShaderModeToView(int shaderMode);
-
-// MECH-SPINE-1: read-only accessors for mech pass-level state. Defined in
-// gos_mech_batcher.cpp; declared here so the inspector can reference them
-// without including engine-private mech batcher headers.
-extern "C" uint32_t gos_getMechProgramId();
-extern "C" uint32_t gos_getMechShadowProgramId();
-extern "C" const char* gos_getMechTextureNameByNodeIdx(uint32_t nodeIdx);
-
-// MECH-DEBUG-VIEWS-1: debug-mode getter/setter + view<->shaderMode helpers
-// (gos_mech_batcher.cpp). Same pattern as StaticProp decls above.
-// Not declared extern "C": pure C++ functions over RenderDebugView enum.
-int             MechViewToFragDebugMode(RenderDebugView view);
-RenderDebugView MechFragDebugModeToView(int shaderMode);
-extern "C" void batcher_setMechDebugMode(int shaderMode);
-extern "C" int  batcher_getMechDebugMode();
-
-// MECH-NORMALS-FIX-1: live normal recompute API (gos_mech_batcher.cpp).
-// Declared extern "C" to avoid including gos_mech_batcher.h which
-// transitively pulls Stuff/Stuff.hpp (not visible in GuiRuntime TU).
-extern "C" void  batcher_setMechNormalsMode(int mode);
-extern "C" int   batcher_getMechNormalsMode();
-extern "C" void  batcher_setMechNormalsSmoothDeg(float deg);
-extern "C" float batcher_getMechNormalsSmoothDeg();
-extern "C" void  batcher_rebuildMechNormals();
-// MECH-AMBIENT-1: gated hemisphere ambient fill (per-flush uniform, no rebuild).
-extern "C" void  batcher_setMechAmbientEnabled(int on);
-extern "C" int   batcher_getMechAmbientEnabled();
-extern "C" void  batcher_setMechAmbientStrength(float s);
-extern "C" float batcher_getMechAmbientStrength();
-// MECH-SPECULAR-V1: gated Blinn specular sheen (per-flush uniforms, no rebuild).
-// Effective only when MC2_MECH_VIEWUNIFORMS=1 (shader has camera position data).
-extern "C" void  batcher_setMechSpecularEnabled(int on);
-extern "C" int   batcher_getMechSpecularEnabled();
-extern "C" void  batcher_setMechSpecularStrength(float s);
-extern "C" float batcher_getMechSpecularStrength();
-extern "C" void  batcher_setMechMetalRoughness(float r);
-extern "C" float batcher_getMechMetalRoughness();
-extern "C" void  batcher_setMechGlassRoughness(float r);
-extern "C" float batcher_getMechGlassRoughness();
-extern "C" void  batcher_setMechGlassLumaThresh(float t);
-extern "C" float batcher_getMechGlassLumaThresh();
-extern "C" void  batcher_setMechGlassMaxChanThresh(float t);
-extern "C" float batcher_getMechGlassMaxChanThresh();
-extern "C" void  batcher_setMechSpecDebugMask(int on);
-extern "C" int   batcher_getMechSpecDebugMask();
+const char* pickKindName(InspectorPickKind k) {
+    switch (k) {
+        case InspectorPickKind::StaticProp: return "StaticProp";
+        case InspectorPickKind::Mech:       return "Mech";
+        case InspectorPickKind::Terrain:    return "Terrain";
+        default:                                              return "None";
+    }
+}
+}  // namespace EditorInspector
 
 namespace {
 
@@ -115,24 +31,7 @@ static bool isEnabled() {
     return cached == 1;
 }
 
-static const char* pickKindName(EditorInspector::InspectorPickKind k) {
-    switch (k) {
-        case EditorInspector::InspectorPickKind::StaticProp: return "StaticProp";
-        case EditorInspector::InspectorPickKind::Mech:       return "Mech";
-        case EditorInspector::InspectorPickKind::Terrain:    return "Terrain";
-        default:                                              return "None";
-    }
-}
 
-static EditorInspector::InspectorSelection     s_selection;
-static EditorInspector::StaticPropInspectorData s_staticPropData;
-static EditorInspector::MechInspectorData       s_mechData;
-static EditorInspector::TerrainInspectorData    s_terrainData;
-static EditorInspector::TerrainPassSnapshot     s_terrainPass;   // TERRAIN-SPINE-0
-static EditorInspector::ShadowPassSnapshot      s_shadowPass;    // SHADOW-SPINE-0
-static EditorInspector::VfxPassSnapshot         s_vfxPass;       // VFX-SPINE-0
-static bool s_open = false;
-static bool s_featuresOpen = false;
 static bool s_frameInspectorOpen = false;   // FRAME-INSPECTOR-1
 static bool s_framePrevCollect   = false;   // last SetCollect we issued
 
@@ -320,10 +219,19 @@ void EditorInspector::clear() {
     g_dpSelectedRecipeIndex = -1;
     s_open = false;
 }
-using namespace EditorInspector;  // the drawImGui phases below name the namespace's types unqualified
 
-// Draw the Renderer Features window.
-static void drawFeaturesWindow() {
+void EditorInspector::drawImGui() {
+    if (!isEnabled()) return;
+
+    // Ctrl+Shift+I toggles the panel regardless of current open state.
+    if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_I))
+        s_open = !s_open;
+
+    // Renderer Features — standalone window. Runs independent of Object Inspector.
+    // Ctrl+Shift+F to toggle. Placed BEFORE if (!s_open) return.
+    if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_F))
+        s_featuresOpen = !s_featuresOpen;
+
     if (s_featuresOpen) {
         ImGui::SetNextWindowSize(ImVec2(600, 440), ImGuiCond_FirstUseEver);
         if (ImGui::Begin("Renderer Features", &s_featuresOpen)) {
@@ -405,10 +313,67 @@ static void drawFeaturesWindow() {
         }
         ImGui::End();
     }
-}
 
-// Draw the save-camera-bookmark and save-camera-view buttons.
-static void drawCameraBookmarkSave() {
+    // FRAME-INSPECTOR-1: live per-pass render stats window (Ctrl+Shift+P).
+    // Independent of the Object Inspector; runs before the s_open early-return.
+    drawFrameInspectorWindow();
+
+    if (!s_open) return;
+
+    ImGui::SetNextWindowSize(ImVec2(440, 500), ImGuiCond_FirstUseEver);
+    if (!ImGui::Begin("Object Inspector", &s_open)) {
+        ImGui::End();
+        return;
+    }
+
+    ImGui::TextDisabled("Ctrl+Shift+F -- Renderer Features   Ctrl+Shift+P -- Frame Inspector");
+    ImGui::Separator();
+
+    const auto& lk = s_selection.lookup;
+
+    // Object-ID — shown even for invalid / failed picks.
+    if (ImGui::CollapsingHeader("Object-ID", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Text("Raw pixel:     0x%08X", lk.rawObjectId);
+        if (lk.rawObjectId != 0u) {
+            RenderCore::RenderObjectHandle hraw;
+            hraw.bits = lk.rawObjectId;
+            ImGui::Text("  idx [19:0]:  %u", hraw.index());
+            ImGui::Text("  gen [31:20]: %u", hraw.generation());
+        }
+        if (lk.isValid) {
+            ImGui::TextColored(ImVec4(0.4f,1.0f,0.4f,1.f), "Valid:         yes");
+        } else {
+            ImGui::TextColored(ImVec4(1.0f,0.55f,0.3f,1.f), "Valid:         no");
+            if (lk.lookupFailReason)
+                ImGui::Text("  Reason:      %s", lk.lookupFailReason);
+        }
+    }
+
+    if (!s_selection.hasSelection) {
+        ImGui::Spacing();
+        ImGui::TextUnformatted("No valid object selected.");
+        ImGui::TextUnformatted("Ctrl+Shift+LMB to pick.");
+        ImGui::Text("Screen: (%d, %d)", s_selection.screenX, s_selection.screenY);
+        ImGui::End();
+        return;
+    }
+
+    // Generic header
+    const char* kindName = pickKindName(s_selection.pickKind);
+    ImGui::Separator();
+    ImGui::Text("Kind:          %s", kindName);
+    ImGui::Text("Handle raw:    0x%08X", s_selection.handle.raw());
+    ImGui::Text("Handle idx:    %u / gen: %u",
+        s_selection.handle.index(), s_selection.handle.generation());
+    ImGui::Text("Screen:        (%d, %d)", s_selection.screenX, s_selection.screenY);
+    if (lk.worldPosValid)
+        ImGui::Text("World:         (%.1f, %.1f, %.1f)", lk.worldX, lk.worldY, lk.worldZ);
+    else
+        ImGui::TextDisabled("World:         (unavailable)");
+
+    // Save Camera View (HZB) — dumps current eye position/rotation to saved_view.txt
+    // so it can be replayed via MC2_HZB_VIEW_FILE. Uses a thin C helper in gamecam.cpp
+    // to avoid pulling the camera.h -> terrain.h header chain into GuiRuntime.
     {
         static bool s_hzbSaved = false;
         static char s_bookmarkPath[512] = {0};
@@ -442,10 +407,9 @@ static void drawCameraBookmarkSave() {
         }
         ImGui::Spacing();
     }
-}
 
-// Draw the Copy All button and copy the inspector text to the clipboard.
-static void drawCopyAll(const RenderWorld::LookupResult& lk) {
+    // Copy All — formats everything visible in the window to the clipboard.
+    ImGui::Spacing();
     if (ImGui::Button("Copy All")) {
         char buf[3072];
         int  n = 0;
@@ -454,7 +418,7 @@ static void drawCopyAll(const RenderWorld::LookupResult& lk) {
             lk.rawObjectId, lk.isValid ? "yes" : "no",
             (!lk.isValid && lk.lookupFailReason) ? "  reason: " : "",
             (!lk.isValid && lk.lookupFailReason) ? lk.lookupFailReason : "");
-        n += std::snprintf(buf+n, sizeof(buf)-n, "Kind: %s\n", pickKindName(s_selection.pickKind));
+        n += std::snprintf(buf+n, sizeof(buf)-n, "Kind: %s\n", kindName);
         n += std::snprintf(buf+n, sizeof(buf)-n,
             "Handle: 0x%08X  idx %u / gen %u\n",
             s_selection.handle.raw(),
@@ -514,10 +478,10 @@ static void drawCopyAll(const RenderWorld::LookupResult& lk) {
         }
         ImGui::SetClipboardText(buf);
     }
-}
+    ImGui::Separator();
 
-// Draw the render-explain section for a valid render-world pick.
-static void drawRenderExplain(const RenderWorld::LookupResult& lk) {
+    // Render Explain — consolidated one-line-per-fact render path summary.
+    // Shown only for valid RenderWorld picks (not terrain). Detailed panels below.
     if (s_selection.valid) {
         if (ImGui::CollapsingHeader("Render Explain##re", ImGuiTreeNodeFlags_DefaultOpen)) {
             // Object
@@ -728,10 +692,8 @@ static void drawRenderExplain(const RenderWorld::LookupResult& lk) {
             }
         }
     }
-}
 
-// Draw the lookup-result section.
-static void drawLookup(const RenderWorld::LookupResult& lk) {
+    // LookupResult
     if (ImGui::CollapsingHeader("Lookup", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::Text("Mesh bits:     0x%08X", lk.meshHandleBits);
         ImGui::Text("Material bits: 0x%08X", lk.materialHandleBits);
@@ -741,477 +703,475 @@ static void drawLookup(const RenderWorld::LookupResult& lk) {
         ImGui::Text("Path reason:   0x%08X", lk.pathReasonCode);
         ImGui::Text("Game obj ID:   %u",     lk.gameObjectId);
     }
-}
 
-// Draw the static-prop game data section.
-static void drawStaticPropData() {
-    if (ImGui::CollapsingHeader("StaticProp", ImGuiTreeNodeFlags_DefaultOpen)) {
-        if (!s_staticPropData.populated) {
-            ImGui::TextUnformatted("(no game data -- pick not resolved)");
-        } else {
-            ImGui::Text("Recipe idx: %d", s_staticPropData.recipeIndex);
-            ImGui::Text("Shape:      %s",
-                s_staticPropData.shapeName[0] ? s_staticPropData.shapeName : "(unknown)");
-        }
-    }
-}
-
-// Draw the static-prop render spine section.
-static void drawRenderSpine() {
-    if (ImGui::CollapsingHeader("Render Spine##rs", ImGuiTreeNodeFlags_DefaultOpen)) {
-        const DrawPacketSelectedPropSnapshot& rs = g_dpSelProp;
-        if (!rs.valid) {
-            ImGui::TextDisabled("(not populated -- pick not resolved or no packet data)");
-        } else {
-            char buf[64];
-
-            // Header summary
-            if (ImGui::BeginTable("##rssum", 2,
-                    ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg)) {
-                ImGui::TableSetupColumn("##rsk", ImGuiTableColumnFlags_WidthFixed, 100.f);
-                ImGui::TableSetupColumn("##rsv", ImGuiTableColumnFlags_WidthStretch);
-
-                auto row2 = [&](const char* k, const char* v) {
-                    ImGui::TableNextRow();
-                    ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted(k);
-                    ImGui::TableSetColumnIndex(1); ImGui::TextUnformatted(v);
-                };
-
-                std::snprintf(buf, sizeof(buf), "%u", rs.typeId);
-                row2("typeId", buf);
-                if (ImGui::IsItemHovered())
-                    ImGui::SetTooltip("Batcher type slot (0..typeCount-1). Groups all\n"
-                                      "instances that share geometry + pipeline.");
-
-                std::snprintf(buf, sizeof(buf), "%d", rs.recipeIndex);
-                row2("recipeIndex", buf);
-                if (ImGui::IsItemHovered())
-                    ImGui::SetTooltip("Static-prop recipe/type index — NOT the\n"
-                                      "RenderWorld instance slot (Handle idx).\n"
-                                      "Multiple Handle slots share one recipeIndex.");
-
-                std::snprintf(buf, sizeof(buf), "%u", rs.packetCount);
-                row2("packetCount", buf);
-                std::snprintf(buf, sizeof(buf), "%u", rs.instanceCount);
-                row2("instances", buf);
-                if (ImGui::IsItemHovered())
-                    ImGui::SetTooltip("Visible instances of this typeId this frame\n"
-                                      "(count of snapshot entries with matching typeId).");
-
-                ImGui::TableNextRow();
-                ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted("dispatch");
-                ImGui::TableSetColumnIndex(1);
-                ImGui::TextColored(ImVec4(0.4f,1.f,0.4f,1.f), "DrawPacket default ON");
-
-                ImGui::TableNextRow();
-                ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted("materialIdx");
-                ImGui::TableSetColumnIndex(1);
-                if (rs.materialIdx == 0xFFFFFFFFu)
-                    ImGui::TextDisabled("(sentinel)");
-                else {
-                    std::snprintf(buf, sizeof(buf), "%u", rs.materialIdx);
-                    ImGui::TextUnformatted(buf);
-                }
-
-                ImGui::EndTable();
+    // Kind-specific
+    if (s_selection.pickKind == InspectorPickKind::StaticProp) {
+        if (ImGui::CollapsingHeader("StaticProp", ImGuiTreeNodeFlags_DefaultOpen)) {
+            if (!s_staticPropData.populated) {
+                ImGui::TextUnformatted("(no game data -- pick not resolved)");
+            } else {
+                ImGui::Text("Recipe idx: %d", s_staticPropData.recipeIndex);
+                ImGui::Text("Shape:      %s",
+                    s_staticPropData.shapeName[0] ? s_staticPropData.shapeName : "(unknown)");
             }
+        }
 
-            // Per-packet rows
-            if (rs.rowCount > 0) {
-                ImGui::Spacing();
-                ImGui::TextUnformatted("Packets:");
-                if (ImGui::BeginTable("##rspkts", 8,
-                        ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg
-                        | ImGuiTableFlags_BordersInnerV)) {
-                    ImGui::TableSetupColumn("pkt",      ImGuiTableColumnFlags_WidthFixed, 36.f);
-                    ImGui::TableSetupColumn("pipeline", ImGuiTableColumnFlags_WidthFixed, 68.f);
-                    ImGui::TableSetupColumn("matIdx",   ImGuiTableColumnFlags_WidthFixed, 52.f);
-                    ImGui::TableSetupColumn("albedo",   ImGuiTableColumnFlags_WidthFixed, 52.f);
-                    ImGui::TableSetupColumn("layer",    ImGuiTableColumnFlags_WidthFixed, 40.f);
-                    ImGui::TableSetupColumn("match",    ImGuiTableColumnFlags_WidthFixed, 44.f);
-                    ImGui::TableSetupColumn("baseV",    ImGuiTableColumnFlags_WidthFixed, 52.f);
-                    ImGui::TableSetupColumn("baseInst", ImGuiTableColumnFlags_WidthStretch);
-                    ImGui::TableHeadersRow();
+        // Render Spine — reads from g_dpSelProp (filled by gameosmain each frame).
+        if (ImGui::CollapsingHeader("Render Spine##rs", ImGuiTreeNodeFlags_DefaultOpen)) {
+            const DrawPacketSelectedPropSnapshot& rs = g_dpSelProp;
+            if (!rs.valid) {
+                ImGui::TextDisabled("(not populated -- pick not resolved or no packet data)");
+            } else {
+                char buf[64];
 
-                    for (uint32_t r = 0; r < rs.rowCount; ++r) {
-                        const DrawPacketPropRow& pr = rs.rows[r];
+                // Header summary
+                if (ImGui::BeginTable("##rssum", 2,
+                        ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg)) {
+                    ImGui::TableSetupColumn("##rsk", ImGuiTableColumnFlags_WidthFixed, 100.f);
+                    ImGui::TableSetupColumn("##rsv", ImGuiTableColumnFlags_WidthStretch);
+
+                    auto row2 = [&](const char* k, const char* v) {
                         ImGui::TableNextRow();
+                        ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted(k);
+                        ImGui::TableSetColumnIndex(1); ImGui::TextUnformatted(v);
+                    };
 
-                        ImGui::TableSetColumnIndex(0);
-                        std::snprintf(buf, sizeof(buf), "%u", pr.globalPacketIdx);
+                    std::snprintf(buf, sizeof(buf), "%u", rs.typeId);
+                    row2("typeId", buf);
+                    if (ImGui::IsItemHovered())
+                        ImGui::SetTooltip("Batcher type slot (0..typeCount-1). Groups all\n"
+                                          "instances that share geometry + pipeline.");
+
+                    std::snprintf(buf, sizeof(buf), "%d", rs.recipeIndex);
+                    row2("recipeIndex", buf);
+                    if (ImGui::IsItemHovered())
+                        ImGui::SetTooltip("Static-prop recipe/type index — NOT the\n"
+                                          "RenderWorld instance slot (Handle idx).\n"
+                                          "Multiple Handle slots share one recipeIndex.");
+
+                    std::snprintf(buf, sizeof(buf), "%u", rs.packetCount);
+                    row2("packetCount", buf);
+                    std::snprintf(buf, sizeof(buf), "%u", rs.instanceCount);
+                    row2("instances", buf);
+                    if (ImGui::IsItemHovered())
+                        ImGui::SetTooltip("Visible instances of this typeId this frame\n"
+                                          "(count of snapshot entries with matching typeId).");
+
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted("dispatch");
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::TextColored(ImVec4(0.4f,1.f,0.4f,1.f), "DrawPacket default ON");
+
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted("materialIdx");
+                    ImGui::TableSetColumnIndex(1);
+                    if (rs.materialIdx == 0xFFFFFFFFu)
+                        ImGui::TextDisabled("(sentinel)");
+                    else {
+                        std::snprintf(buf, sizeof(buf), "%u", rs.materialIdx);
                         ImGui::TextUnformatted(buf);
-                        if (ImGui::IsItemHovered())
-                            ImGui::SetTooltip("Global packet index in batcher sorted array.\n"
-                                              "Not a RenderWorld drawPacketIndex.");
-
-                        ImGui::TableSetColumnIndex(1);
-                        switch (pr.pipelineId) {
-                            case 0:  ImGui::TextDisabled("invalid");      break;
-                            case 1:  ImGui::TextUnformatted("opaque");    break;
-                            case 2:  ImGui::TextColored(ImVec4(1.f,0.85f,0.3f,1.f), "alpha_test"); break;
-                            default:
-                                std::snprintf(buf, sizeof(buf), "?(%u)", pr.pipelineId);
-                                ImGui::TextColored(ImVec4(1.f,0.5f,0.3f,1.f), "%s", buf);
-                                break;
-                        }
-
-                        ImGui::TableSetColumnIndex(2);
-                        if (rs.materialIdx == 0xFFFFFFFFu)
-                            ImGui::TextDisabled("--");
-                        else {
-                            std::snprintf(buf, sizeof(buf), "%u", rs.materialIdx);
-                            ImGui::TextUnformatted(buf);
-                        }
-
-                        ImGui::TableSetColumnIndex(3);
-                        if (pr.albedoTex == 0xFFFFFFFFu)
-                            ImGui::TextDisabled("--");
-                        else {
-                            std::snprintf(buf, sizeof(buf), "%u", pr.albedoTex);
-                            ImGui::TextUnformatted(buf);
-                        }
-
-                        ImGui::TableSetColumnIndex(4);
-                        if (pr.texArrayLayer < 0)
-                            ImGui::TextDisabled("--");
-                        else {
-                            std::snprintf(buf, sizeof(buf), "%d", pr.texArrayLayer);
-                            ImGui::TextUnformatted(buf);
-                        }
-
-                        ImGui::TableSetColumnIndex(5);
-                        if (pr.albedoTex == 0xFFFFFFFFu || pr.texArrayLayer < 0)
-                            ImGui::TextDisabled("n/a");
-                        else if (pr.materialMatchesLegacy)
-                            ImGui::TextColored(ImVec4(0.4f,1.f,0.4f,1.f), "OK");
-                        else
-                            ImGui::TextColored(ImVec4(1.f,0.4f,0.3f,1.f), "DIFF");
-
-                        ImGui::TableSetColumnIndex(6);
-                        std::snprintf(buf, sizeof(buf), "%d", pr.baseVertex);
-                        ImGui::TextUnformatted(buf);
-
-                        ImGui::TableSetColumnIndex(7);
-                        ImGui::TextDisabled("--");
-                        if (ImGui::IsItemHovered())
-                            ImGui::SetTooltip("Deferred — only valid during dispatch (v1+).\n"
-                                              "Not available at emit time.");
                     }
+
                     ImGui::EndTable();
                 }
-            }
-        }
-    }
-}
 
-// Draw the mech game data section.
-static void drawMechData() {
-    if (ImGui::CollapsingHeader("Mech", ImGuiTreeNodeFlags_DefaultOpen)) {
-        if (!s_mechData.populated) {
-            ImGui::TextUnformatted("(no game data -- pick not resolved)");
-        } else {
-            static const char* s_classNames[] = { "None","Light","Medium","Heavy","Assault" };
-            static const char* s_conStatNames[] = {
-                "None","Sensor Q1","Sensor Q2","Sensor Q3","Sensor Q4","Visual"
-            };
-            const int ci  = (s_mechData.chassisClass >= 0 && s_mechData.chassisClass < 5)
-                            ? s_mechData.chassisClass : 0;
-            const int csi = (s_mechData.conStat >= 0 && s_mechData.conStat < 6)
-                            ? s_mechData.conStat : 0;
+                // Per-packet rows
+                if (rs.rowCount > 0) {
+                    ImGui::Spacing();
+                    ImGui::TextUnformatted("Packets:");
+                    if (ImGui::BeginTable("##rspkts", 8,
+                            ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg
+                            | ImGuiTableFlags_BordersInnerV)) {
+                        ImGui::TableSetupColumn("pkt",      ImGuiTableColumnFlags_WidthFixed, 36.f);
+                        ImGui::TableSetupColumn("pipeline", ImGuiTableColumnFlags_WidthFixed, 68.f);
+                        ImGui::TableSetupColumn("matIdx",   ImGuiTableColumnFlags_WidthFixed, 52.f);
+                        ImGui::TableSetupColumn("albedo",   ImGuiTableColumnFlags_WidthFixed, 52.f);
+                        ImGui::TableSetupColumn("layer",    ImGuiTableColumnFlags_WidthFixed, 40.f);
+                        ImGui::TableSetupColumn("match",    ImGuiTableColumnFlags_WidthFixed, 44.f);
+                        ImGui::TableSetupColumn("baseV",    ImGuiTableColumnFlags_WidthFixed, 52.f);
+                        ImGui::TableSetupColumn("baseInst", ImGuiTableColumnFlags_WidthStretch);
+                        ImGui::TableHeadersRow();
 
-            ImGui::Text("Variant:   %s", s_mechData.variantName[0] ? s_mechData.variantName : "(none)");
-            ImGui::Text("Name:      %s", s_mechData.longName[0]    ? s_mechData.longName    : "(none)");
-            ImGui::Text("Class:     %s", s_classNames[ci]);
-            ImGui::Text("Team ID:   %ld", s_mechData.teamId);
-            ImGui::Text("Pilot:     %s", s_mechData.pilotName[0]   ? s_mechData.pilotName   : "(none)");
-            ImGui::Separator();
-            if (!s_mechData.destroyed && !s_mechData.disabled && !s_mechData.crippled) {
-                ImGui::Text("Status:    OK");
-            } else {
-                ImGui::Text("Status:    %s%s%s",
-                    s_mechData.destroyed ? "DESTROYED " : "",
-                    s_mechData.disabled  ? "disabled "  : "",
-                    s_mechData.crippled  ? "crippled"   : "");
-            }
-            ImGui::Text("Sensor:    %s", s_conStatNames[csi]);
-            ImGui::Separator();
-            ImGui::Text("Armor:     %.0f / %.0f", s_mechData.totalCurArmor, s_mechData.totalMaxArmor);
-            ImGui::Text("Structure: %.0f / %.0f", s_mechData.totalCurStr,   s_mechData.totalMaxStr);
-        }
-    }
-}
+                        for (uint32_t r = 0; r < rs.rowCount; ++r) {
+                            const DrawPacketPropRow& pr = rs.rows[r];
+                            ImGui::TableNextRow();
 
-// Draw the mech debug-view selector.
-static void drawMechDebugView() {
-    if (ImGui::CollapsingHeader("Mech Debug View##mdv", ImGuiTreeNodeFlags_DefaultOpen)) {
-        RenderDebugView curView = MechFragDebugModeToView(batcher_getMechDebugMode());
-        const char* curName = RenderDebugViewName(curView);
-        if (ImGui::BeginCombo("Debug View##mech", curName)) {
-            for (int i = 0; i < int(RenderDebugView::_Count); ++i) {
-                RenderDebugView v = RenderDebugView(i);
-                if (!RenderDebugViewSupported(v, kDebugViewMask_Mech))
-                    continue;
-                bool selected = (v == curView);
-                if (ImGui::Selectable(RenderDebugViewName(v), selected)) {
-                    batcher_setMechDebugMode(MechViewToFragDebugMode(v));
+                            ImGui::TableSetColumnIndex(0);
+                            std::snprintf(buf, sizeof(buf), "%u", pr.globalPacketIdx);
+                            ImGui::TextUnformatted(buf);
+                            if (ImGui::IsItemHovered())
+                                ImGui::SetTooltip("Global packet index in batcher sorted array.\n"
+                                                  "Not a RenderWorld drawPacketIndex.");
+
+                            ImGui::TableSetColumnIndex(1);
+                            switch (pr.pipelineId) {
+                                case 0:  ImGui::TextDisabled("invalid");      break;
+                                case 1:  ImGui::TextUnformatted("opaque");    break;
+                                case 2:  ImGui::TextColored(ImVec4(1.f,0.85f,0.3f,1.f), "alpha_test"); break;
+                                default:
+                                    std::snprintf(buf, sizeof(buf), "?(%u)", pr.pipelineId);
+                                    ImGui::TextColored(ImVec4(1.f,0.5f,0.3f,1.f), "%s", buf);
+                                    break;
+                            }
+
+                            ImGui::TableSetColumnIndex(2);
+                            if (rs.materialIdx == 0xFFFFFFFFu)
+                                ImGui::TextDisabled("--");
+                            else {
+                                std::snprintf(buf, sizeof(buf), "%u", rs.materialIdx);
+                                ImGui::TextUnformatted(buf);
+                            }
+
+                            ImGui::TableSetColumnIndex(3);
+                            if (pr.albedoTex == 0xFFFFFFFFu)
+                                ImGui::TextDisabled("--");
+                            else {
+                                std::snprintf(buf, sizeof(buf), "%u", pr.albedoTex);
+                                ImGui::TextUnformatted(buf);
+                            }
+
+                            ImGui::TableSetColumnIndex(4);
+                            if (pr.texArrayLayer < 0)
+                                ImGui::TextDisabled("--");
+                            else {
+                                std::snprintf(buf, sizeof(buf), "%d", pr.texArrayLayer);
+                                ImGui::TextUnformatted(buf);
+                            }
+
+                            ImGui::TableSetColumnIndex(5);
+                            if (pr.albedoTex == 0xFFFFFFFFu || pr.texArrayLayer < 0)
+                                ImGui::TextDisabled("n/a");
+                            else if (pr.materialMatchesLegacy)
+                                ImGui::TextColored(ImVec4(0.4f,1.f,0.4f,1.f), "OK");
+                            else
+                                ImGui::TextColored(ImVec4(1.f,0.4f,0.3f,1.f), "DIFF");
+
+                            ImGui::TableSetColumnIndex(6);
+                            std::snprintf(buf, sizeof(buf), "%d", pr.baseVertex);
+                            ImGui::TextUnformatted(buf);
+
+                            ImGui::TableSetColumnIndex(7);
+                            ImGui::TextDisabled("--");
+                            if (ImGui::IsItemHovered())
+                                ImGui::SetTooltip("Deferred — only valid during dispatch (v1+).\n"
+                                                  "Not available at emit time.");
+                        }
+                        ImGui::EndTable();
+                    }
                 }
-                if (selected) ImGui::SetItemDefaultFocus();
-                if (ImGui::IsItemHovered())
-                    ImGui::SetTooltip("%s", RenderDebugViewDescription(v));
             }
-            ImGui::EndCombo();
         }
-        if (ImGui::IsItemHovered())
-            ImGui::SetTooltip("MECH-DEBUG-VIEWS-1 debug view for the mech lane.\n"
-                              "Legacy MC2_MECH_FRAG_DEBUG env var takes precedence\n"
-                              "when set. ImGui selection drives s_mechDebugMode\n"
-                              "only when env is unset. Default (mode 0) = Final\n"
-                              "(byte-identical to unmodified path).");
-    }
-}
+    } else if (s_selection.pickKind == InspectorPickKind::Mech) {
+        if (ImGui::CollapsingHeader("Mech", ImGuiTreeNodeFlags_DefaultOpen)) {
+            if (!s_mechData.populated) {
+                ImGui::TextUnformatted("(no game data -- pick not resolved)");
+            } else {
+                static const char* s_classNames[] = { "None","Light","Medium","Heavy","Assault" };
+                static const char* s_conStatNames[] = {
+                    "None","Sensor Q1","Sensor Q2","Sensor Q3","Sensor Q4","Visual"
+                };
+                const int ci  = (s_mechData.chassisClass >= 0 && s_mechData.chassisClass < 5)
+                                ? s_mechData.chassisClass : 0;
+                const int csi = (s_mechData.conStat >= 0 && s_mechData.conStat < 6)
+                                ? s_mechData.conStat : 0;
 
-// Draw the experimental mech normals controls.
-static void drawMechNormals() {
-    if (ImGui::CollapsingHeader("Mech Normals (experimental)##mn")) {
-        static const char* s_normModeNames[] = {
-            "0  Cooked (default)",
-            "1  Faceted",
-            "2  Smoothed (recompute)",
-        };
-        int curMode = batcher_getMechNormalsMode();
-        if (curMode < 0 || curMode > 2) curMode = 0;
-        if (ImGui::BeginCombo("Normal Mode##mn", s_normModeNames[curMode])) {
-            for (int i = 0; i < 3; ++i) {
-                bool sel = (i == curMode);
-                if (ImGui::Selectable(s_normModeNames[i], sel)) {
-                    batcher_setMechNormalsMode(i);
+                ImGui::Text("Variant:   %s", s_mechData.variantName[0] ? s_mechData.variantName : "(none)");
+                ImGui::Text("Name:      %s", s_mechData.longName[0]    ? s_mechData.longName    : "(none)");
+                ImGui::Text("Class:     %s", s_classNames[ci]);
+                ImGui::Text("Team ID:   %ld", s_mechData.teamId);
+                ImGui::Text("Pilot:     %s", s_mechData.pilotName[0]   ? s_mechData.pilotName   : "(none)");
+                ImGui::Separator();
+                if (!s_mechData.destroyed && !s_mechData.disabled && !s_mechData.crippled) {
+                    ImGui::Text("Status:    OK");
+                } else {
+                    ImGui::Text("Status:    %s%s%s",
+                        s_mechData.destroyed ? "DESTROYED " : "",
+                        s_mechData.disabled  ? "disabled "  : "",
+                        s_mechData.crippled  ? "crippled"   : "");
+                }
+                ImGui::Text("Sensor:    %s", s_conStatNames[csi]);
+                ImGui::Separator();
+                ImGui::Text("Armor:     %.0f / %.0f", s_mechData.totalCurArmor, s_mechData.totalMaxArmor);
+                ImGui::Text("Structure: %.0f / %.0f", s_mechData.totalCurStr,   s_mechData.totalMaxStr);
+            }
+        }
+
+        // MECH-DEBUG-VIEWS-1: interactive debug view combo for the mech lane.
+        // Shown in the Mech inspector context (a mech is picked), mirroring the
+        // StaticProp combo's pick-context placement. NOT gated on
+        // MC2_SNAPSHOT_MECH_EXTRACT — it is a render control, independent of
+        // snapshot extraction. The selection is global (drives s_mechDebugMode
+        // for all mechs), not per-picked-mech.
+        if (ImGui::CollapsingHeader("Mech Debug View##mdv", ImGuiTreeNodeFlags_DefaultOpen)) {
+            RenderDebugView curView = MechFragDebugModeToView(batcher_getMechDebugMode());
+            const char* curName = RenderDebugViewName(curView);
+            if (ImGui::BeginCombo("Debug View##mech", curName)) {
+                for (int i = 0; i < int(RenderDebugView::_Count); ++i) {
+                    RenderDebugView v = RenderDebugView(i);
+                    if (!RenderDebugViewSupported(v, kDebugViewMask_Mech))
+                        continue;
+                    bool selected = (v == curView);
+                    if (ImGui::Selectable(RenderDebugViewName(v), selected)) {
+                        batcher_setMechDebugMode(MechViewToFragDebugMode(v));
+                    }
+                    if (selected) ImGui::SetItemDefaultFocus();
+                    if (ImGui::IsItemHovered())
+                        ImGui::SetTooltip("%s", RenderDebugViewDescription(v));
+                }
+                ImGui::EndCombo();
+            }
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("MECH-DEBUG-VIEWS-1 debug view for the mech lane.\n"
+                                  "Legacy MC2_MECH_FRAG_DEBUG env var takes precedence\n"
+                                  "when set. ImGui selection drives s_mechDebugMode\n"
+                                  "only when env is unset. Default (mode 0) = Final\n"
+                                  "(byte-identical to unmodified path).");
+        }
+
+        // MECH-NORMALS-FIX-1: live normal recompute controls. Default mode 0
+        // (Cooked) is byte-identical to the unmodified path — no performance
+        // cost, no visual change. Mode 1 (Faceted) and 2 (Smoothed) trigger
+        // batcher_rebuildMechNormals() which re-uploads the geometry VBO from
+        // the pristine staging copy with the current recompute applied.
+        // The rebuild is infrequent (on user interaction only) so the stall is
+        // acceptable.
+        if (ImGui::CollapsingHeader("Mech Normals (experimental)##mn")) {
+            static const char* s_normModeNames[] = {
+                "0  Cooked (default)",
+                "1  Faceted",
+                "2  Smoothed (recompute)",
+            };
+            int curMode = batcher_getMechNormalsMode();
+            if (curMode < 0 || curMode > 2) curMode = 0;
+            if (ImGui::BeginCombo("Normal Mode##mn", s_normModeNames[curMode])) {
+                for (int i = 0; i < 3; ++i) {
+                    bool sel = (i == curMode);
+                    if (ImGui::Selectable(s_normModeNames[i], sel)) {
+                        batcher_setMechNormalsMode(i);
+                        batcher_rebuildMechNormals();
+                    }
+                    if (sel) ImGui::SetItemDefaultFocus();
+                }
+                ImGui::EndCombo();
+            }
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Normal source for GPU mech geometry.\n"
+                                  "Cooked: use ASE-loader normals (default, byte-identical).\n"
+                                  "Faceted: geometric face normal per triangle (flat shading).\n"
+                                  "Smoothed: angle-threshold smooth — lower angle = more hard edges.\n"
+                                  "Changing the mode rebuilds the mech VBO (occasional stall).");
+
+            // Smooth Angle slider — only relevant when mode == 2.
+            {
+                float curDeg = batcher_getMechNormalsSmoothDeg();
+                const bool modeIsSmooth = (batcher_getMechNormalsMode() == 2);
+                if (!modeIsSmooth) {
+                    ImGui::BeginDisabled();
+                }
+                if (ImGui::SliderFloat("Smooth Angle##mn", &curDeg, 1.0f, 179.0f, "%.1f deg")) {
+                    batcher_setMechNormalsSmoothDeg(curDeg);
                     batcher_rebuildMechNormals();
                 }
-                if (sel) ImGui::SetItemDefaultFocus();
-            }
-            ImGui::EndCombo();
-        }
-        if (ImGui::IsItemHovered())
-            ImGui::SetTooltip("Normal source for GPU mech geometry.\n"
-                              "Cooked: use ASE-loader normals (default, byte-identical).\n"
-                              "Faceted: geometric face normal per triangle (flat shading).\n"
-                              "Smoothed: angle-threshold smooth — lower angle = more hard edges.\n"
-                              "Changing the mode rebuilds the mech VBO (occasional stall).");
-
-        // Smooth Angle slider — only relevant when mode == 2.
-        {
-            float curDeg = batcher_getMechNormalsSmoothDeg();
-            const bool modeIsSmooth = (batcher_getMechNormalsMode() == 2);
-            if (!modeIsSmooth) {
-                ImGui::BeginDisabled();
-            }
-            if (ImGui::SliderFloat("Smooth Angle##mn", &curDeg, 1.0f, 179.0f, "%.1f deg")) {
-                batcher_setMechNormalsSmoothDeg(curDeg);
-                batcher_rebuildMechNormals();
-            }
-            if (!modeIsSmooth) {
-                ImGui::EndDisabled();
-            }
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Angle threshold for mode 2 Smoothed.\n"
-                                  "Faces meeting at a shared vertex blend normals only\n"
-                                  "when the angle between them is <= this value.\n"
-                                  "Lower value = more hard edges preserved.\n"
-                                  "Changing the angle rebuilds the mech VBO.");
-        }
-    }
-}
-
-// Draw the experimental mech lighting controls.
-static void drawMechLighting() {
-    if (ImGui::CollapsingHeader("Mech Lighting (experimental)##ml")) {
-        bool ambOn = batcher_getMechAmbientEnabled() != 0;
-        if (ImGui::Checkbox("Ambient Fill (hemisphere)##ml", &ambOn))
-            batcher_setMechAmbientEnabled(ambOn ? 1 : 0);
-        if (ImGui::IsItemHovered())
-            ImGui::SetTooltip("Conservative hemisphere ambient fill keyed on the\n"
-                              "world normal — lifts shadowed surfaces for readability.\n"
-                              "No PBR/material/team-mask. OFF = byte-identical default.\n"
-                              "Looks best with Mech Normals = Smoothed.");
-        {
-            float amt = batcher_getMechAmbientStrength();
-            if (!ambOn) ImGui::BeginDisabled();
-            if (ImGui::SliderFloat("Ambient Strength##ml", &amt, 0.0f, 2.0f, "%.2f"))
-                batcher_setMechAmbientStrength(amt);
-            if (!ambOn) ImGui::EndDisabled();
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Hemisphere fill strength (0..2). Default 0.5.\n"
-                                  "Multiplies the mech's own albedo, so it tints\n"
-                                  "with the paint. 0 = no fill.");
-        }
-
-        // MECH-SPECULAR-V1: Blinn specular sheen + glass/cockpit heuristic.
-        // Per-flush uniforms — no VBO rebuild. Requires MC2_MECH_VIEWUNIFORMS=1
-        // (camera position data); no effect on the default shader variant.
-        ImGui::Separator();
-        bool specOn = batcher_getMechSpecularEnabled() != 0;
-        if (ImGui::Checkbox("Specular (metal sheen)##ml", &specOn))
-            batcher_setMechSpecularEnabled(specOn ? 1 : 0);
-        if (ImGui::IsItemHovered())
-            ImGui::SetTooltip("Conservative Blinn specular sheen.\n"
-                              "Requires MC2_MECH_VIEWUNIFORMS=1 (camera data);\n"
-                              "no effect otherwise. Gate MC2_MECH_SPECULAR_V1=1\n"
-                              "sets default-ON. OFF = byte-identical default.");
-        {
-            if (!specOn) ImGui::BeginDisabled();
-            float specStr = batcher_getMechSpecularStrength();
-            if (ImGui::SliderFloat("Spec Strength##ml", &specStr, 0.0f, 4.0f, "%.2f"))
-                batcher_setMechSpecularStrength(specStr);
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Overall specular multiplier (0..4).\n"
-                                  "Glass pixels get an additional 1.6x multiplier.");
-            float metalR = batcher_getMechMetalRoughness();
-            if (ImGui::SliderFloat("Metal Roughness##ml", &metalR, 0.04f, 1.0f, "%.2f"))
-                batcher_setMechMetalRoughness(metalR);
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Roughness for non-glass surfaces (0.04..1.0).\n"
-                                  "Lower = tighter glint; default 0.85 (broad, conservative).");
-            float glassR = batcher_getMechGlassRoughness();
-            if (ImGui::SliderFloat("Glass Roughness##ml", &glassR, 0.04f, 1.0f, "%.2f"))
-                batcher_setMechGlassRoughness(glassR);
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Roughness for glass/cockpit pixels (0.04..1.0).\n"
-                                  "Default 0.25 — tighter highlight for cockpit glass.");
-            float lumaT = batcher_getMechGlassLumaThresh();
-            if (ImGui::SliderFloat("Glass Luma <##ml", &lumaT, 0.0f, 1.0f, "%.3f"))
-                batcher_setMechGlassLumaThresh(lumaT);
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Pixel classified as glass if luminance < this.\n"
-                                  "Dark pixels only — no hue/blue detection.\n"
-                                  "Default 0.12.");
-            float maxChanT = batcher_getMechGlassMaxChanThresh();
-            if (ImGui::SliderFloat("Glass MaxChan <##ml", &maxChanT, 0.0f, 1.0f, "%.3f"))
-                batcher_setMechGlassMaxChanThresh(maxChanT);
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Pixel classified as glass if max(R,G,B) < this\n"
-                                  "(AND luma < threshold above). Default 0.18.");
-            bool maskViz = batcher_getMechSpecDebugMask() != 0;
-            if (ImGui::Checkbox("Show Cockpit Mask##ml", &maskViz))
-                batcher_setMechSpecDebugMask(maskViz ? 1 : 0);
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Visualize glass classification:\n"
-                                  "green = glass-classified, grey = metal.\n"
-                                  "Debug modes 1-9 override this when active.");
-            if (!specOn) ImGui::EndDisabled();
-        }
-    }
-}
-
-// Draw the mech snapshot panel.
-static void drawMechSnapshot() {
-    {
-    const RenderSnapshot* snap = getLastRenderSnapshot();
-    const bool gateOn = snap && (snap->mechSnapshotCount > 0
-                                 || snap->mechMatValid > 0
-                                 || snap->mechMatSentinel > 0);
-    const ImGuiTreeNodeFlags snapFlags = gateOn
-        ? (ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_AllowOverlap)
-        : ImGuiTreeNodeFlags_AllowOverlap;
-    bool msOpen = ImGui::CollapsingHeader("Mech Snapshot##ms", snapFlags);
-    if (msOpen) {
-        if (!snap || !gateOn) {
-            ImGui::TextDisabled("(no data -- set MC2_SNAPSHOT_MECH_EXTRACT=1)");
-        } else {
-            // Frame summary
-            ImGui::Text("rows=%u  mat_valid=%u  mat_sentinel=%u",
-                snap->mechSnapshotCount, snap->mechMatValid, snap->mechMatSentinel);
-
-            const bool anyMismatch = (snap->mechCountMismatch      != 0u
-                                   || snap->mechHandleMismatch     != 0u
-                                   || snap->mechObjectIdMismatch   != 0u
-                                   || snap->mechTexHandleMismatch  != 0u
-                                   || snap->mechMaterialIdxMismatch != 0u);
-            if (anyMismatch) {
-                ImGui::TextColored(ImVec4(1.f, 0.4f, 0.3f, 1.f),
-                    "countMis=%u handleMis=%u objectIdMis=%u texMis=%u matMis=%u",
-                    snap->mechCountMismatch, snap->mechHandleMismatch,
-                    snap->mechObjectIdMismatch, snap->mechTexHandleMismatch,
-                    snap->mechMaterialIdxMismatch);
-            } else {
-                ImGui::TextColored(ImVec4(0.4f, 1.f, 0.4f, 1.f),
-                    "countMis=0 handleMis=0 objectIdMis=0 texMis=0 matMis=0");
-            }
-
-            // MECH-SPINE-1: pass-level program ids (legacy path — mech
-            // is NOT on the PipelineDesc registry yet; surfacing the gap
-            // here mirrors the TERRAIN-SPINE-0 "ViewUniforms not bound"
-            // red-flag label).
-            ImGui::Separator();
-            const uint32_t mechProg   = gos_getMechProgramId();
-            const uint32_t shadowProg = gos_getMechShadowProgramId();
-            ImGui::Text("mech program       %u", mechProg);
-            ImGui::Text("shadow_mech program %u", shadowProg);
-            ImGui::TextColored(ImVec4(1.f, 0.7f, 0.2f, 1.f),
-                "PipelineDesc: legacy (not on registry)");
-            ImGui::TextDisabled("pass: opaque + shadow (legacy mech path)");
-
-            // Per-selected-mech row (match by objectIdRaw == handle.raw())
-            ImGui::Separator();
-            const uint32_t selRaw = s_selection.handle.raw();
-            bool rowFound = false;
-            for (uint32_t i = 0u; i < snap->mechPackets.size(); ++i) {
-                const ExtractedMechPacket& row = snap->mechPackets[i];
-                if (row.objectIdRaw != selRaw) continue;
-                rowFound = true;
-                ImGui::Text("Row %u:  (extracted this frame)", i);
-                ImGui::Text("  handle      0x%08X", row.objectIdRaw);
-                {
-                    const char* texName =
-                        gos_getMechTextureNameByNodeIdx(row.texHandle);
-                    if (texName && *texName)
-                        ImGui::Text("  texHandle   %u  (%s)", row.texHandle, texName);
-                    else
-                        ImGui::Text("  texHandle   %u", row.texHandle);
+                if (!modeIsSmooth) {
+                    ImGui::EndDisabled();
                 }
-                if (row.materialIdx == 0xFFFFFFFFu)
-                    ImGui::TextColored(ImVec4(1.f, 0.7f, 0.2f, 1.f),
-                        "  materialIdx sentinel (0xFFFFFFFF)");
-                else
-                    ImGui::Text("  materialIdx %u", row.materialIdx);
-                ImGui::Text("  typeLodIdx  %u", row.typeLodIdx);
-                ImGui::Text("  renderFlags 0x%02X", row.renderFlags);
-                break;
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip("Angle threshold for mode 2 Smoothed.\n"
+                                      "Faces meeting at a shared vertex blend normals only\n"
+                                      "when the angle between them is <= this value.\n"
+                                      "Lower value = more hard edges preserved.\n"
+                                      "Changing the angle rebuilds the mech VBO.");
             }
-            if (!rowFound)
-                ImGui::TextDisabled("  (selected handle NOT in snapshot this frame)");
+        }
+
+        // MECH-AMBIENT-1: gated hemisphere ambient fill. Default OFF = byte-
+        // identical (strength 0 uploaded). Per-flush uniform — changes take
+        // effect next frame, no VBO rebuild. Best paired with Smoothed normals.
+        if (ImGui::CollapsingHeader("Mech Lighting (experimental)##ml")) {
+            bool ambOn = batcher_getMechAmbientEnabled() != 0;
+            if (ImGui::Checkbox("Ambient Fill (hemisphere)##ml", &ambOn))
+                batcher_setMechAmbientEnabled(ambOn ? 1 : 0);
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Conservative hemisphere ambient fill keyed on the\n"
+                                  "world normal — lifts shadowed surfaces for readability.\n"
+                                  "No PBR/material/team-mask. OFF = byte-identical default.\n"
+                                  "Looks best with Mech Normals = Smoothed.");
+            {
+                float amt = batcher_getMechAmbientStrength();
+                if (!ambOn) ImGui::BeginDisabled();
+                if (ImGui::SliderFloat("Ambient Strength##ml", &amt, 0.0f, 2.0f, "%.2f"))
+                    batcher_setMechAmbientStrength(amt);
+                if (!ambOn) ImGui::EndDisabled();
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip("Hemisphere fill strength (0..2). Default 0.5.\n"
+                                      "Multiplies the mech's own albedo, so it tints\n"
+                                      "with the paint. 0 = no fill.");
+            }
+
+            // MECH-SPECULAR-V1: Blinn specular sheen + glass/cockpit heuristic.
+            // Per-flush uniforms — no VBO rebuild. Requires MC2_MECH_VIEWUNIFORMS=1
+            // (camera position data); no effect on the default shader variant.
+            ImGui::Separator();
+            bool specOn = batcher_getMechSpecularEnabled() != 0;
+            if (ImGui::Checkbox("Specular (metal sheen)##ml", &specOn))
+                batcher_setMechSpecularEnabled(specOn ? 1 : 0);
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Conservative Blinn specular sheen.\n"
+                                  "Requires MC2_MECH_VIEWUNIFORMS=1 (camera data);\n"
+                                  "no effect otherwise. Gate MC2_MECH_SPECULAR_V1=1\n"
+                                  "sets default-ON. OFF = byte-identical default.");
+            {
+                if (!specOn) ImGui::BeginDisabled();
+                float specStr = batcher_getMechSpecularStrength();
+                if (ImGui::SliderFloat("Spec Strength##ml", &specStr, 0.0f, 4.0f, "%.2f"))
+                    batcher_setMechSpecularStrength(specStr);
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip("Overall specular multiplier (0..4).\n"
+                                      "Glass pixels get an additional 1.6x multiplier.");
+                float metalR = batcher_getMechMetalRoughness();
+                if (ImGui::SliderFloat("Metal Roughness##ml", &metalR, 0.04f, 1.0f, "%.2f"))
+                    batcher_setMechMetalRoughness(metalR);
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip("Roughness for non-glass surfaces (0.04..1.0).\n"
+                                      "Lower = tighter glint; default 0.85 (broad, conservative).");
+                float glassR = batcher_getMechGlassRoughness();
+                if (ImGui::SliderFloat("Glass Roughness##ml", &glassR, 0.04f, 1.0f, "%.2f"))
+                    batcher_setMechGlassRoughness(glassR);
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip("Roughness for glass/cockpit pixels (0.04..1.0).\n"
+                                      "Default 0.25 — tighter highlight for cockpit glass.");
+                float lumaT = batcher_getMechGlassLumaThresh();
+                if (ImGui::SliderFloat("Glass Luma <##ml", &lumaT, 0.0f, 1.0f, "%.3f"))
+                    batcher_setMechGlassLumaThresh(lumaT);
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip("Pixel classified as glass if luminance < this.\n"
+                                      "Dark pixels only — no hue/blue detection.\n"
+                                      "Default 0.12.");
+                float maxChanT = batcher_getMechGlassMaxChanThresh();
+                if (ImGui::SliderFloat("Glass MaxChan <##ml", &maxChanT, 0.0f, 1.0f, "%.3f"))
+                    batcher_setMechGlassMaxChanThresh(maxChanT);
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip("Pixel classified as glass if max(R,G,B) < this\n"
+                                      "(AND luma < threshold above). Default 0.18.");
+                bool maskViz = batcher_getMechSpecDebugMask() != 0;
+                if (ImGui::Checkbox("Show Cockpit Mask##ml", &maskViz))
+                    batcher_setMechSpecDebugMask(maskViz ? 1 : 0);
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip("Visualize glass classification:\n"
+                                      "green = glass-classified, grey = metal.\n"
+                                      "Debug modes 1-9 override this when active.");
+                if (!specOn) ImGui::EndDisabled();
+            }
+        }
+
+        // MECH-EXTRACTION-2: mech snapshot panel (gate: MC2_SNAPSHOT_MECH_EXTRACT=1).
+        // Read-only view of RenderSnapshot mech counters + per-selected-mech row detail.
+        {
+        const RenderSnapshot* snap = getLastRenderSnapshot();
+        const bool gateOn = snap && (snap->mechSnapshotCount > 0
+                                     || snap->mechMatValid > 0
+                                     || snap->mechMatSentinel > 0);
+        const ImGuiTreeNodeFlags snapFlags = gateOn
+            ? (ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_AllowOverlap)
+            : ImGuiTreeNodeFlags_AllowOverlap;
+        bool msOpen = ImGui::CollapsingHeader("Mech Snapshot##ms", snapFlags);
+        if (msOpen) {
+            if (!snap || !gateOn) {
+                ImGui::TextDisabled("(no data -- set MC2_SNAPSHOT_MECH_EXTRACT=1)");
+            } else {
+                // Frame summary
+                ImGui::Text("rows=%u  mat_valid=%u  mat_sentinel=%u",
+                    snap->mechSnapshotCount, snap->mechMatValid, snap->mechMatSentinel);
+
+                const bool anyMismatch = (snap->mechCountMismatch      != 0u
+                                       || snap->mechHandleMismatch     != 0u
+                                       || snap->mechObjectIdMismatch   != 0u
+                                       || snap->mechTexHandleMismatch  != 0u
+                                       || snap->mechMaterialIdxMismatch != 0u);
+                if (anyMismatch) {
+                    ImGui::TextColored(ImVec4(1.f, 0.4f, 0.3f, 1.f),
+                        "countMis=%u handleMis=%u objectIdMis=%u texMis=%u matMis=%u",
+                        snap->mechCountMismatch, snap->mechHandleMismatch,
+                        snap->mechObjectIdMismatch, snap->mechTexHandleMismatch,
+                        snap->mechMaterialIdxMismatch);
+                } else {
+                    ImGui::TextColored(ImVec4(0.4f, 1.f, 0.4f, 1.f),
+                        "countMis=0 handleMis=0 objectIdMis=0 texMis=0 matMis=0");
+                }
+
+                // MECH-SPINE-1: pass-level program ids (legacy path — mech
+                // is NOT on the PipelineDesc registry yet; surfacing the gap
+                // here mirrors the TERRAIN-SPINE-0 "ViewUniforms not bound"
+                // red-flag label).
+                ImGui::Separator();
+                const uint32_t mechProg   = gos_getMechProgramId();
+                const uint32_t shadowProg = gos_getMechShadowProgramId();
+                ImGui::Text("mech program       %u", mechProg);
+                ImGui::Text("shadow_mech program %u", shadowProg);
+                ImGui::TextColored(ImVec4(1.f, 0.7f, 0.2f, 1.f),
+                    "PipelineDesc: legacy (not on registry)");
+                ImGui::TextDisabled("pass: opaque + shadow (legacy mech path)");
+
+                // Per-selected-mech row (match by objectIdRaw == handle.raw())
+                ImGui::Separator();
+                const uint32_t selRaw = s_selection.handle.raw();
+                bool rowFound = false;
+                for (uint32_t i = 0u; i < snap->mechPackets.size(); ++i) {
+                    const ExtractedMechPacket& row = snap->mechPackets[i];
+                    if (row.objectIdRaw != selRaw) continue;
+                    rowFound = true;
+                    ImGui::Text("Row %u:  (extracted this frame)", i);
+                    ImGui::Text("  handle      0x%08X", row.objectIdRaw);
+                    {
+                        const char* texName =
+                            gos_getMechTextureNameByNodeIdx(row.texHandle);
+                        if (texName && *texName)
+                            ImGui::Text("  texHandle   %u  (%s)", row.texHandle, texName);
+                        else
+                            ImGui::Text("  texHandle   %u", row.texHandle);
+                    }
+                    if (row.materialIdx == 0xFFFFFFFFu)
+                        ImGui::TextColored(ImVec4(1.f, 0.7f, 0.2f, 1.f),
+                            "  materialIdx sentinel (0xFFFFFFFF)");
+                    else
+                        ImGui::Text("  materialIdx %u", row.materialIdx);
+                    ImGui::Text("  typeLodIdx  %u", row.typeLodIdx);
+                    ImGui::Text("  renderFlags 0x%02X", row.renderFlags);
+                    break;
+                }
+                if (!rowFound)
+                    ImGui::TextDisabled("  (selected handle NOT in snapshot this frame)");
+            }
+        }
+        } // Mech Snapshot block
+
+    } else if (s_selection.pickKind == InspectorPickKind::Terrain) {
+        if (ImGui::CollapsingHeader("Terrain", ImGuiTreeNodeFlags_DefaultOpen)) {
+            if (!s_terrainData.populated) {
+                ImGui::TextUnformatted("(terrain pick not resolved)");
+            } else {
+                ImGui::Text("World:  (%.1f, %.1f, %.1f)",
+                    s_terrainData.worldX, s_terrainData.worldY, s_terrainData.worldZ);
+                ImGui::Text("Tile:   row %-4d  col %d",
+                    s_terrainData.tileRow, s_terrainData.tileCol);
+                ImGui::Text("Cell:   row %-4d  col %d",
+                    s_terrainData.cellRow, s_terrainData.cellCol);
+                if (s_terrainData.terrainType >= 0)
+                    ImGui::Text("Type:   %d", s_terrainData.terrainType);
+                else
+                    ImGui::TextDisabled("Type:   (n/a v1)");
+            }
+            static int s_drEnabled = -1;
+            if (s_drEnabled < 0) {
+                s_drEnabled = mc2::gate::get<"MC2_DEBUG_RENDERER">();  // default-OFF (matches debug_renderer.cpp envFlagDefaultOff)
+            }
+            if (!s_drEnabled)
+                ImGui::TextDisabled("Highlight: off (MC2_DEBUG_RENDERER=0)");
         }
     }
-    } // Mech Snapshot block
-}
 
-// Draw the terrain pick data section.
-static void drawTerrainData() {
-    if (ImGui::CollapsingHeader("Terrain", ImGuiTreeNodeFlags_DefaultOpen)) {
-        if (!s_terrainData.populated) {
-            ImGui::TextUnformatted("(terrain pick not resolved)");
-        } else {
-            ImGui::Text("World:  (%.1f, %.1f, %.1f)",
-                s_terrainData.worldX, s_terrainData.worldY, s_terrainData.worldZ);
-            ImGui::Text("Tile:   row %-4d  col %d",
-                s_terrainData.tileRow, s_terrainData.tileCol);
-            ImGui::Text("Cell:   row %-4d  col %d",
-                s_terrainData.cellRow, s_terrainData.cellCol);
-            if (s_terrainData.terrainType >= 0)
-                ImGui::Text("Type:   %d", s_terrainData.terrainType);
-            else
-                ImGui::TextDisabled("Type:   (n/a v1)");
-        }
-        static int s_drEnabled = -1;
-        if (s_drEnabled < 0) {
-            s_drEnabled = mc2::gate::get<"MC2_DEBUG_RENDERER">();  // default-OFF (matches debug_renderer.cpp envFlagDefaultOff)
-        }
-        if (!s_drEnabled)
-            ImGui::TextDisabled("Highlight: off (MC2_DEBUG_RENDERER=0)");
-    }
-}
-
-// Draw the terrain pass section.
-static void drawTerrainPass() {
+    // TERRAIN-SPINE-0: pass-level (not selection-driven) view of the terrain
+    // render spine. Visible regardless of pick state.
     if (ImGui::CollapsingHeader("Terrain Pass##tp", ImGuiTreeNodeFlags_DefaultOpen)) {
         const TerrainPassSnapshot& ts = s_terrainPass;
         ImGui::Text("View: id=%u (%s)", ts.currentViewId,
@@ -1253,10 +1213,9 @@ static void drawTerrainPass() {
         // Graphics Options window aren't duplicated views of the same state.
         ImGui::TextDisabled("(tuning controls: Graphics Options > Terrain)");
     }
-}
 
-// Draw the shadow pass section.
-static void drawShadowPass() {
+    // SHADOW-SPINE-0: pass-level (not selection-driven) view of the shadow
+    // render spine. Mirrors the terrain header above.
     if (ImGui::CollapsingHeader("Shadow Pass##sp", ImGuiTreeNodeFlags_DefaultOpen)) {
         const ShadowPassSnapshot& sp = s_shadowPass;
         ImGui::Text("Shadows enabled: %s", sp.shadowsEnabled ? "yes" : "no");
@@ -1284,10 +1243,10 @@ static void drawShadowPass() {
         ImGui::Separator();
         ImGui::TextDisabled("PipelineDesc: legacy (shadow pass not on registry)");
     }
-}
 
-// Draw the VFX pass section.
-static void drawVfxPass() {
+    // VFX-SPINE-0: pass-level view of the GPU particle / VFX render spine.
+    // Mirrors the Shadow Pass header above. Read-only — no GL state, no VFX
+    // mutation. VFX object-IDs are prohibited and intentionally absent.
     if (ImGui::CollapsingHeader("VFX Pass##vfx", ImGuiTreeNodeFlags_DefaultOpen)) {
         const VfxPassSnapshot& vs = s_vfxPass;
         // GPU particles enabled status (driven by MC2_GPU_PARTICLES env var).
@@ -1363,10 +1322,10 @@ static void drawVfxPass() {
         ImGui::Separator();
         ImGui::TextDisabled("PipelineDesc: legacy (VFX not on registry; object-IDs prohibited)");
     }
-}
 
-// Draw the render-pass contracts section.
-static void drawRenderPassContracts() {
+    // RENDERPASS-CONTRACT-2.5: descriptive table of pass-lane closure state.
+    // Mirrors RendererFeatureRegistry: pure data, no scheduling, no callbacks.
+    // Source of truth: RenderCore/RenderPassContract.h (kRenderPassContracts).
     if (ImGui::CollapsingHeader("Render Pass Contracts##rpc")) {
         ImGui::TextDisabled("Descriptive only -- imperative dispatch unchanged.");
         if (ImGui::BeginTable("rpc_table", 7, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
@@ -1392,10 +1351,13 @@ static void drawRenderPassContracts() {
             ImGui::EndTable();
         }
     }
-}
 
-// Draw the static-prop material inventory section.
-static void drawMaterialInventory() {
+    // V-MATERIAL-STATIC-0: read-only enumeration of the StaticPropOpaque
+    // MaterialGpu table — one row per s_materialGpuTable entry. Sourced from
+    // batcher_getStaticPropMaterialInventory*; never mutates the live table.
+    // Designed for Track V planning: surfaces every distinct static-prop
+    // material (albedo layer, source nodeIdx, texture name, pixel dims,
+    // usage count, placeholder/missing-texture flag).
     if (ImGui::CollapsingHeader("Material Inventory##matinv")) {
         const uint32_t invCount = batcher_getStaticPropMaterialInventoryCount();
         ImGui::TextDisabled("Static-prop lane only -- read-only snapshot.");
@@ -1453,10 +1415,10 @@ static void drawMaterialInventory() {
             }
         }
     }
-}
 
-// Draw the material handle lookup section.
-static void drawMaterialRwLookup(const RenderWorld::LookupResult& lk) {
+    // Material — shown for any kind; GPU fields only when MC2_MATERIAL_GPU active.
+    // For static props: handle bits come from RenderWorld lookup (currently unpopulated →
+    // handle=0). Use Render Spine above for authoritative materialIdx + albedoTex.
     if (ImGui::CollapsingHeader("Material (RW handle lookup)")) {
         RenderCore::MaterialHandle mh;
         mh.bits = lk.materialHandleBits;
@@ -1517,10 +1479,8 @@ static void drawMaterialRwLookup(const RenderWorld::LookupResult& lk) {
             ImGui::TextDisabled("(MaterialGpu data: StaticProp only)");
         }
     }
-}
 
-// Draw the environment gates section.
-static void drawEnvGates() {
+    // Env Gates — live read of all MC2_* flags (default-ON: absent = enabled).
     if (ImGui::CollapsingHeader("Env Gates")) {
         struct GateInfo { const char* name; bool defaultOn; };
         static const GateInfo kGates[] = {
@@ -1551,171 +1511,6 @@ static void drawEnvGates() {
                 ImGui::TextColored(ImVec4(1.f,0.55f,0.3f,1.f), "OFF %s", src);
         }
     }
-}
-
-// Draws the Object Inspector, the Renderer Features window and the Frame Inspector. The toggles, the early returns,
-// the window begin / end, the object-id header and the pick-kind chain stay here; each section body is a helper
-// above, run in the original order.
-void EditorInspector::drawImGui() {
-    if (!isEnabled()) return;
-
-    // Ctrl+Shift+I toggles the panel regardless of current open state.
-    if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_I))
-        s_open = !s_open;
-
-    // Renderer Features — standalone window. Runs independent of Object Inspector.
-    // Ctrl+Shift+F to toggle. Placed BEFORE if (!s_open) return.
-    if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_F))
-        s_featuresOpen = !s_featuresOpen;
-
-    drawFeaturesWindow();
-
-    // FRAME-INSPECTOR-1: live per-pass render stats window (Ctrl+Shift+P).
-    // Independent of the Object Inspector; runs before the s_open early-return.
-    drawFrameInspectorWindow();
-
-    if (!s_open) return;
-
-    ImGui::SetNextWindowSize(ImVec2(440, 500), ImGuiCond_FirstUseEver);
-    if (!ImGui::Begin("Object Inspector", &s_open)) {
-        ImGui::End();
-        return;
-    }
-
-    ImGui::TextDisabled("Ctrl+Shift+F -- Renderer Features   Ctrl+Shift+P -- Frame Inspector");
-    ImGui::Separator();
-
-    const auto& lk = s_selection.lookup;
-
-    // Object-ID — shown even for invalid / failed picks.
-    if (ImGui::CollapsingHeader("Object-ID", ImGuiTreeNodeFlags_DefaultOpen)) {
-        ImGui::Text("Raw pixel:     0x%08X", lk.rawObjectId);
-        if (lk.rawObjectId != 0u) {
-            RenderCore::RenderObjectHandle hraw;
-            hraw.bits = lk.rawObjectId;
-            ImGui::Text("  idx [19:0]:  %u", hraw.index());
-            ImGui::Text("  gen [31:20]: %u", hraw.generation());
-        }
-        if (lk.isValid) {
-            ImGui::TextColored(ImVec4(0.4f,1.0f,0.4f,1.f), "Valid:         yes");
-        } else {
-            ImGui::TextColored(ImVec4(1.0f,0.55f,0.3f,1.f), "Valid:         no");
-            if (lk.lookupFailReason)
-                ImGui::Text("  Reason:      %s", lk.lookupFailReason);
-        }
-    }
-
-    if (!s_selection.hasSelection) {
-        ImGui::Spacing();
-        ImGui::TextUnformatted("No valid object selected.");
-        ImGui::TextUnformatted("Ctrl+Shift+LMB to pick.");
-        ImGui::Text("Screen: (%d, %d)", s_selection.screenX, s_selection.screenY);
-        ImGui::End();
-        return;
-    }
-
-    // Generic header
-    const char* kindName = pickKindName(s_selection.pickKind);
-    ImGui::Separator();
-    ImGui::Text("Kind:          %s", kindName);
-    ImGui::Text("Handle raw:    0x%08X", s_selection.handle.raw());
-    ImGui::Text("Handle idx:    %u / gen: %u",
-        s_selection.handle.index(), s_selection.handle.generation());
-    ImGui::Text("Screen:        (%d, %d)", s_selection.screenX, s_selection.screenY);
-    if (lk.worldPosValid)
-        ImGui::Text("World:         (%.1f, %.1f, %.1f)", lk.worldX, lk.worldY, lk.worldZ);
-    else
-        ImGui::TextDisabled("World:         (unavailable)");
-
-    // Save Camera View (HZB) — dumps current eye position/rotation to saved_view.txt
-    // so it can be replayed via MC2_HZB_VIEW_FILE. Uses a thin C helper in gamecam.cpp
-    // to avoid pulling the camera.h -> terrain.h header chain into GuiRuntime.
-    drawCameraBookmarkSave();
-
-    // Copy All — formats everything visible in the window to the clipboard.
-    ImGui::Spacing();
-    drawCopyAll(lk);
-    ImGui::Separator();
-
-    // Render Explain — consolidated one-line-per-fact render path summary.
-    // Shown only for valid RenderWorld picks (not terrain). Detailed panels below.
-    drawRenderExplain(lk);
-
-    // LookupResult
-    drawLookup(lk);
-
-    // Kind-specific
-    if (s_selection.pickKind == InspectorPickKind::StaticProp) {
-        drawStaticPropData();
-
-        // Render Spine — reads from g_dpSelProp (filled by gameosmain each frame).
-        drawRenderSpine();
-    } else if (s_selection.pickKind == InspectorPickKind::Mech) {
-        drawMechData();
-
-        // MECH-DEBUG-VIEWS-1: interactive debug view combo for the mech lane.
-        // Shown in the Mech inspector context (a mech is picked), mirroring the
-        // StaticProp combo's pick-context placement. NOT gated on
-        // MC2_SNAPSHOT_MECH_EXTRACT — it is a render control, independent of
-        // snapshot extraction. The selection is global (drives s_mechDebugMode
-        // for all mechs), not per-picked-mech.
-        drawMechDebugView();
-
-        // MECH-NORMALS-FIX-1: live normal recompute controls. Default mode 0
-        // (Cooked) is byte-identical to the unmodified path — no performance
-        // cost, no visual change. Mode 1 (Faceted) and 2 (Smoothed) trigger
-        // batcher_rebuildMechNormals() which re-uploads the geometry VBO from
-        // the pristine staging copy with the current recompute applied.
-        // The rebuild is infrequent (on user interaction only) so the stall is
-        // acceptable.
-        drawMechNormals();
-
-        // MECH-AMBIENT-1: gated hemisphere ambient fill. Default OFF = byte-
-        // identical (strength 0 uploaded). Per-flush uniform — changes take
-        // effect next frame, no VBO rebuild. Best paired with Smoothed normals.
-        drawMechLighting();
-
-        // MECH-EXTRACTION-2: mech snapshot panel (gate: MC2_SNAPSHOT_MECH_EXTRACT=1).
-        // Read-only view of RenderSnapshot mech counters + per-selected-mech row detail.
-        drawMechSnapshot();
-
-    } else if (s_selection.pickKind == InspectorPickKind::Terrain) {
-        drawTerrainData();
-    }
-
-    // TERRAIN-SPINE-0: pass-level (not selection-driven) view of the terrain
-    // render spine. Visible regardless of pick state.
-    drawTerrainPass();
-
-    // SHADOW-SPINE-0: pass-level (not selection-driven) view of the shadow
-    // render spine. Mirrors the terrain header above.
-    drawShadowPass();
-
-    // VFX-SPINE-0: pass-level view of the GPU particle / VFX render spine.
-    // Mirrors the Shadow Pass header above. Read-only — no GL state, no VFX
-    // mutation. VFX object-IDs are prohibited and intentionally absent.
-    drawVfxPass();
-
-    // RENDERPASS-CONTRACT-2.5: descriptive table of pass-lane closure state.
-    // Mirrors RendererFeatureRegistry: pure data, no scheduling, no callbacks.
-    // Source of truth: RenderCore/RenderPassContract.h (kRenderPassContracts).
-    drawRenderPassContracts();
-
-    // V-MATERIAL-STATIC-0: read-only enumeration of the StaticPropOpaque
-    // MaterialGpu table — one row per s_materialGpuTable entry. Sourced from
-    // batcher_getStaticPropMaterialInventory*; never mutates the live table.
-    // Designed for Track V planning: surfaces every distinct static-prop
-    // material (albedo layer, source nodeIdx, texture name, pixel dims,
-    // usage count, placeholder/missing-texture flag).
-    drawMaterialInventory();
-
-    // Material — shown for any kind; GPU fields only when MC2_MATERIAL_GPU active.
-    // For static props: handle bits come from RenderWorld lookup (currently unpopulated →
-    // handle=0). Use Render Spine above for authoritative materialIdx + albedoTex.
-    drawMaterialRwLookup(lk);
-
-    // Env Gates — live read of all MC2_* flags (default-ON: absent = enabled).
-    drawEnvGates();
 
     ImGui::End();
 }
