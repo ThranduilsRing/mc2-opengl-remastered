@@ -56,7 +56,7 @@
   "code/tacordr.cpp": 2072,
   "code/terrobj.cpp": 1748,
   "code/turret.cpp": 2346,
-  "code/warrior.cpp": 2741,
+  "code/warrior.cpp": 2727,
   "code/warrior.h": 2171,
   "editor/ObjectiveDlg.cpp": 1517,
   "gui/alistbox.cpp": 1513,
@@ -93,7 +93,7 @@
   "mclib/vfxtile.cpp": 2944,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "e2dd6bead",
+ "head": "dc8ec5c6e",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -253,7 +253,7 @@
   },
   {
    "file": "code/warrior.cpp",
-   "lines": 2741
+   "lines": 2727
   },
   {
    "file": "mclib/file.cpp",

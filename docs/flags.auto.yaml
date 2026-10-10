@@ -5,7 +5,7 @@
 generator_version: "3.0.0"
 gate_count: 1139
 registry_entry_count: 354
-verified_count: 767
+verified_count: 783
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -106,6 +106,7 @@ flags:
     owner: code
     doc: "ISSUE-9 headless probe (code/warrior.cpp MechWarrior::updateActions): every home-team mech without a combat order is issued an aimed-HEAD attack..."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TRACE_AIMED_FIRE_FIXTURE, kind: Trace, order: -1, default_on: false}
   - name: MC2_ALPHA_TEST_TRACE
     kind: Bool
@@ -251,17 +252,19 @@ flags:
     doc: "F6 T1/T2: cache frustum planes once per frame (O(1)) into Camera member."
     verified: true
   - name: MC2_BOOKMARK_SAVE_DIR
-    kind: Bool
-    default: false
-    rule: NonEmpty
+    kind: String
+    default: ""
+    rule: Std
     owner: code
-    doc: ""
+    doc: "Directory the Save Camera Bookmark button writes into; empty = ./saved_bookmarks."
+    smoke_passthrough: true
   - name: MC2_BOOKMARK_SAVE_TEST
     kind: Bool
     default: false
-    rule: Std
+    rule: Lead1
     owner: code
-    doc: ""
+    doc: "BOOKMARK-SAVE-BUTTON-1 test hook: =1 triggers one bookmark save shortly after mission load."
+    smoke_passthrough: true
   - name: MC2_BOOT_INFO
     kind: Int
     default: 0
@@ -401,6 +404,7 @@ flags:
     rule: AtoiNZ
     owner: code
     doc: ""
+    verified: true
   - name: MC2_BRAIN_DISPATCH
     kind: Bool
     default: false
@@ -413,16 +417,17 @@ flags:
   - name: MC2_BRAIN_DISPATCH_APPLY
     kind: Bool
     default: false
-    rule: Std
+    rule: AtoiNZ
     owner: code
-    doc: ""
+    doc: "Effect layer of the brain special dispatcher; inert without MC2_BRAIN_DISPATCH."
     smoke_passthrough: true
+    verified: true
   - name: MC2_BRAIN_DISPATCH_CALL
     kind: Bool
     default: false
-    rule: Std
+    rule: AtoiNZ
     owner: code
-    doc: ""
+    doc: "Call chaining of the brain special dispatcher; inert without MC2_BRAIN_DISPATCH."
     smoke_passthrough: true
   - name: MC2_BRAIN_DISPATCH_FSM_TODO
     kind: Bool
@@ -453,19 +458,22 @@ flags:
     rule: AtoiNZ
     owner: code
     doc: ""
+    verified: true
   - name: MC2_BRAIN_FIXED_TICK_HZ
     kind: Float
     default: 10
     rule: Prefix
     owner: code
-    doc: ""
-    range: {lo: 1, hi: 30, style: reject}
+    doc: "Brain fixed-tick rate in Hz; clamps to 1..30."
+    range: {lo: 1, hi: 30, style: clamp}
+    verified: true
   - name: MC2_BRAIN_FIXED_TICK_TRACE
     kind: Bool
     default: false
     rule: AtoiNZ
     owner: code
     doc: ""
+    verified: true
   - name: MC2_BRAIN_FLOW
     kind: Bool
     default: false
@@ -479,6 +487,7 @@ flags:
     owner: code
     doc: "SAVE/LOAD-AIFREEZE-TRACE-1 (+ ISSUE-10 extension): one-line stderr trace at end of MechWarrior::runBrain (brainState, curTacOrder.code, movePath.numSteps..."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_BRAIN_FREEZE_TRACE, kind: Trace, order: -1, default_on: false}
   - name: MC2_BRAIN_FSM
     kind: Bool
@@ -499,6 +508,7 @@ flags:
     rule: AtoiNZ
     owner: code
     doc: ""
+    verified: true
   - name: MC2_BRAIN_MISSIONFIT_OPORD
     kind: Bool
     default: false
@@ -507,11 +517,13 @@ flags:
     doc: "BRAIN-MISSIONFIT-OPORD-CONSUMER-1: drive declarative patrol from the inline Brain{} PrimaryOPORD blocks in mission.fit (carver_v_enhanced format)."
     verified: true
   - name: MC2_BRAIN_MISSION_SEED
-    kind: Int
-    default: 0
-    rule: Prefix
+    kind: String
+    default: ""
+    rule: Std
     owner: code
-    doc: ""
+    doc: "Tactic-weights mission seed text (decimal, 0x hex, leading-0 octal; strtoul base 0 at the reader); empty = the built-in seed."
+    smoke_passthrough: true
+    verified: true
   - name: MC2_BRAIN_PATROL
     kind: Bool
     default: false
@@ -535,6 +547,7 @@ flags:
     owner: code
     doc: "TechBrain runtime apply gate (warrior.cpp)."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_BRAIN_RUNTIME_APPLY, kind: Feature, order: -1, default_on: false}
   - name: MC2_BRAIN_RUNTIME_FORCE_MODE
     kind: Enum
@@ -552,6 +565,7 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_BRAIN_SCOPE_GLOBAL
     kind: Bool
     default: false
@@ -579,6 +593,7 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_BRAIN_TASKQ_TRACE
     kind: Bool
     default: false
@@ -586,6 +601,7 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_BRAIN_VARIANTOF
     kind: Bool
     default: false
@@ -1069,8 +1085,8 @@ flags:
     doc: "DEBUG-VIEW-SWEEP-1: =N (1..6) boot-seeds the global full-scene debug render view: 1=shadow-factor 2=normalized-depth 3=unlit-albedo 4=overdraw-proxy..."
     registry: {feature_id: MC2_DIAG_DEBUG_VIEW, kind: Trace, order: -1, default_on: false}
   - name: MC2_DEBUG_VIEW_SWEEP
-    kind: Bool
-    default: false
+    kind: String
+    default: ""
     rule: Std
     owner: code
     doc: "DEBUG-VIEW-SWEEP-1: ='<startFrame>,<settleFrames>' frame-scheduled auto-sweep of the six MC2_DEBUG_VIEW views (missiongui.cpp update)."
@@ -1473,6 +1489,7 @@ flags:
     owner: mech
     doc: "ISSUE-17 fire-refusal instrumentation (default OFF = byte-identical; needs MC2_DIAG_TAGS=...,COMBAT)."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TRACE_FIRE_DECISION, kind: Trace, order: -1, default_on: false}
   - name: MC2_FIXTURE_ORDER_LIVENESS
     kind: Bool
@@ -1759,6 +1776,7 @@ flags:
     doc: "FX-FORCE-SPAWN v1 fixture: default-OFF."
     tokens: "|0|1|2|3|4|5|6|7|8|9|loop"
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FX_FORCE_SPAWN, kind: Feature, order: -1, default_on: false}
   - name: MC2_FX_TRACE
     kind: Bool
@@ -2115,7 +2133,8 @@ flags:
     default: 30
     rule: Prefix
     owner: code
-    doc: ""
+    doc: "Sample every Nth frame for the ground-pick parity oracle; below 1 reads the default 30."
+    range: {lo: 1, hi: 2147483647, style: reject}
     smoke_passthrough: true
   - name: MC2_GPU_GROUND_PICK_PARITY_TAG
     kind: String
@@ -3990,6 +4009,7 @@ flags:
     owner: code
     doc: "PATHFINDING-JUMP-FAIL-1: backoff gate + constants."
     smoke_passthrough: true
+    verified: true
   - name: MC2_PATH_SOLVE_ISOLATED
     kind: Bool
     default: false

@@ -33,7 +33,7 @@ L(Presence, "MC2_ABL_TRACE", Bool, false, "code", "", "", verified),
 L(Lead0, "MC2_ABL_VM_FACTS", Bool, false, "code", "", ""),
 G("MC2_ACTIVE_MOD", String, "", "code", "", "", reread | passthrough | verified),
 // history: docs/gate-history.md#MC2_AIMED_FIRE_FIXTURE
-L(Lead0P, "MC2_AIMED_FIRE_FIXTURE", Bool, false, "code", "", "ISSUE-9 headless probe (code/warrior.cpp MechWarrior::updateActions): every home-team mech without a combat order is issued an aimed-HEAD attack...", passthrough | registry(Trace, "MC2_TRACE_AIMED_FIRE_FIXTURE", -1, false)),
+L(Lead0P, "MC2_AIMED_FIRE_FIXTURE", Bool, false, "code", "", "ISSUE-9 headless probe (code/warrior.cpp MechWarrior::updateActions): every home-team mech without a combat order is issued an aimed-HEAD attack...", passthrough | registry(Trace, "MC2_TRACE_AIMED_FIRE_FIXTURE", -1, false) | verified),
 L(Presence, "MC2_ALPHA_TEST_TRACE", Bool, false, "props", "", "", verified),
 L(Presence, "MC2_AMBIENT_ASSERT_FATAL", Bool, false, "code", "", "", verified),
 // -------------------------------------------------------------------
@@ -67,8 +67,8 @@ L(Presence, "MC2_BLDG_REG_TRACE", Bool, false, "props", "", "", verified),
 L(Lead0Kill, "MC2_BLDG_TYPE_ANIM_STATIC_ELIGIBLE", Bool, true, "props", "", "", passthrough | verified),
 L(Presence, "MC2_BLKIDX_TRACE", Bool, false, "props", "", "", verified),
 L(Presence, "MC2_BLOCK_FRUSTUM_FALLBACK", Bool, false, "terrain", "", "F6 T1/T2: cache frustum planes once per frame (O(1)) into Camera member.", verified),
-L(NonEmpty, "MC2_BOOKMARK_SAVE_DIR", Bool, false, "code", "", ""),
-G("MC2_BOOKMARK_SAVE_TEST", Bool, false, "code", "", ""),  // default not derivable from the tree
+G("MC2_BOOKMARK_SAVE_DIR", String, "", "code", "", "Directory the Save Camera Bookmark button writes into; empty = ./saved_bookmarks.", passthrough),
+L(Lead1, "MC2_BOOKMARK_SAVE_TEST", Bool, false, "code", "", "BOOKMARK-SAVE-BUTTON-1 test hook: =1 triggers one bookmark save shortly after mission load.", passthrough),
 // history: docs/gate-history.md#MC2_BOOT_INFO
 P("MC2_BOOT_INFO", Int, 0, "code", "", "INFO-CAPTURE fixture: =N force-selects the first home mover into the in-mission Info window and switches the command bar to the INFO tab ONCE at frame >= N...", registry(Trace, "MC2_TRACE_BOOT_INFO", -1, false)),
 // history: docs/gate-history.md#MC2_BOOT_INFO_SCROLL
@@ -98,38 +98,38 @@ P("MC2_BOX_DECAL_NORMAL_REJECT", Float, 0.0, "post", "", "", verified),  // defa
 P("MC2_BOX_DECAL_STRENGTH", Float, 0.0, "post", "", "", verified),  // default not derivable from the tree
 P("MC2_BOX_DECAL_YSPAN", Float, 0.0, "post", "", "", verified),  // default not derivable from the tree
 L(AtoiNZ, "MC2_BRAIN_ALIAS", Bool, false, "code", "", ""),
-L(AtoiNZ, "MC2_BRAIN_COMMIT_PHASE", Bool, false, "code", "", ""),
+L(AtoiNZ, "MC2_BRAIN_COMMIT_PHASE", Bool, false, "code", "", "", verified),
 // history: docs/gate-history.md#MC2_BRAIN_DISPATCH
 L(AtoiNZ, "MC2_BRAIN_DISPATCH", Bool, false, "code", "", "TechScript special-dispatch master gate (mission.cpp/brain_special_dispatch.cpp).", passthrough | registry(Feature, "MC2_FEATURE_BRAIN_DISPATCH", -1, false) | verified),
-G("MC2_BRAIN_DISPATCH_APPLY", Bool, false, "code", "", "", passthrough),
-G("MC2_BRAIN_DISPATCH_CALL", Bool, false, "code", "", "", passthrough),
+L(AtoiNZ, "MC2_BRAIN_DISPATCH_APPLY", Bool, false, "code", "", "Effect layer of the brain special dispatcher; inert without MC2_BRAIN_DISPATCH.", passthrough | verified),
+L(AtoiNZ, "MC2_BRAIN_DISPATCH_CALL", Bool, false, "code", "", "Call chaining of the brain special dispatcher; inert without MC2_BRAIN_DISPATCH.", passthrough),
 L(AtoiNZ, "MC2_BRAIN_DISPATCH_FSM_TODO", Bool, false, "code", "", "", passthrough | verified),
 L(AtoiNZ, "MC2_BRAIN_DISPATCH_VAR", Bool, false, "code", "", "", passthrough | verified),
 L(AtoiNZ, "MC2_BRAIN_ENGAGE", Bool, false, "code", "", "", reread),
-L(AtoiNZ, "MC2_BRAIN_FIXED_TICK", Bool, false, "code", "", ""),
-P("MC2_BRAIN_FIXED_TICK_HZ", Float, 10.0, "code", "", "", range(1.0, 30.0)),
-L(AtoiNZ, "MC2_BRAIN_FIXED_TICK_TRACE", Bool, false, "code", "", ""),
+L(AtoiNZ, "MC2_BRAIN_FIXED_TICK", Bool, false, "code", "", "", verified),
+P("MC2_BRAIN_FIXED_TICK_HZ", Float, 10.0, "code", "", "Brain fixed-tick rate in Hz; clamps to 1..30.", clampRange(1.0, 30.0) | verified),
+L(AtoiNZ, "MC2_BRAIN_FIXED_TICK_TRACE", Bool, false, "code", "", "", verified),
 L(AtoiNZ, "MC2_BRAIN_FLOW", Bool, false, "code", "", ""),
 // SAVE/LOAD-AIFREEZE-TRACE-1: runBrain post-exec diagnostic.
 // history: docs/gate-history.md#MC2_BRAIN_FREEZE_TRACE
-L(Lead0, "MC2_BRAIN_FREEZE_TRACE", Bool, false, "code", "", "SAVE/LOAD-AIFREEZE-TRACE-1 (+ ISSUE-10 extension): one-line stderr trace at end of MechWarrior::runBrain (brainState, curTacOrder.code, movePath.numSteps...", passthrough | registry(Trace, "MC2_BRAIN_FREEZE_TRACE", -1, false)),
+L(Lead0, "MC2_BRAIN_FREEZE_TRACE", Bool, false, "code", "", "SAVE/LOAD-AIFREEZE-TRACE-1 (+ ISSUE-10 extension): one-line stderr trace at end of MechWarrior::runBrain (brainState, curTacOrder.code, movePath.numSteps...", passthrough | registry(Trace, "MC2_BRAIN_FREEZE_TRACE", -1, false) | verified),
 L(AtoiNZ, "MC2_BRAIN_FSM", Bool, false, "code", "", ""),
 L(AtoiNZ, "MC2_BRAIN_INLINE_EMPTY_SKIP", Bool, false, "code", "", "FULL-CAMPAIGN-1: TechScript/Enhanced-converted missions (carver_v_enhanced) leave ScenarioScript empty - the per-warrior brains move to inline Brain{}...", verified),
-L(AtoiNZ, "MC2_BRAIN_INTENT_QUEUE", Bool, false, "code", "", ""),
+L(AtoiNZ, "MC2_BRAIN_INTENT_QUEUE", Bool, false, "code", "", "", verified),
 L(AtoiNZ, "MC2_BRAIN_MISSIONFIT_OPORD", Bool, false, "code", "", "BRAIN-MISSIONFIT-OPORD-CONSUMER-1: drive declarative patrol from the inline Brain{} PrimaryOPORD blocks in mission.fit (carver_v_enhanced format).", verified),
-P("MC2_BRAIN_MISSION_SEED", Int, 0, "code", "", ""),  // default not derivable from the tree
+G("MC2_BRAIN_MISSION_SEED", String, "", "code", "", "Tactic-weights mission seed text (decimal, 0x hex, leading-0 octal; strtoul base 0 at the reader); empty = the built-in seed.", passthrough | verified),
 L(AtoiNZ, "MC2_BRAIN_PATROL", Bool, false, "code", "", "", reread),
 // history: docs/gate-history.md#MC2_BRAIN_RUNTIME
 L(AtoiNZ, "MC2_BRAIN_RUNTIME", Bool, false, "code", "", "TechBrain declarative-brain runtime master gate (warrior.cpp).", passthrough | registry(Feature, "MC2_FEATURE_BRAIN_RUNTIME", -1, false) | verified),
 // history: docs/gate-history.md#MC2_BRAIN_RUNTIME_APPLY
-L(AtoiNZ, "MC2_BRAIN_RUNTIME_APPLY", Bool, false, "code", "", "TechBrain runtime apply gate (warrior.cpp).", passthrough | registry(Feature, "MC2_FEATURE_BRAIN_RUNTIME_APPLY", -1, false)),
+L(AtoiNZ, "MC2_BRAIN_RUNTIME_APPLY", Bool, false, "code", "", "TechBrain runtime apply gate (warrior.cpp).", passthrough | registry(Feature, "MC2_FEATURE_BRAIN_RUNTIME_APPLY", -1, false) | verified),
 G("MC2_BRAIN_RUNTIME_FORCE_MODE", Enum, "", "code", "", "MC2_BRAIN_RUNTIME_FORCE_MODE overrides all per-unit modes (post-load global override).", passthrough | tokens("|legacy|enhanced|hybrid") | verified),
-L(AtoiNZ, "MC2_BRAIN_RUNTIME_TRACE", Bool, false, "code", "", "", passthrough),
+L(AtoiNZ, "MC2_BRAIN_RUNTIME_TRACE", Bool, false, "code", "", "", passthrough | verified),
 L(AtoiNZ, "MC2_BRAIN_SCOPE_GLOBAL", Bool, false, "code", "", ""),
 L(AtoiNZ, "MC2_BRAIN_SNAPSHOT", Bool, false, "code", "", ""),
 G("MC2_BRAIN_SPECIAL_FIT", String, "", "code", "", "DISPATCH-EFFECT-UNITEJECT-1: name of the _specials.fit every warrior loads instead of the mission's own (fixture override); empty = mission name.", passthrough | verified),
-L(AtoiNZ, "MC2_BRAIN_TASKQ", Bool, false, "code", "", "", passthrough),
-L(AtoiNZ, "MC2_BRAIN_TASKQ_TRACE", Bool, false, "code", "", "", passthrough),
+L(AtoiNZ, "MC2_BRAIN_TASKQ", Bool, false, "code", "", "", passthrough | verified),
+L(AtoiNZ, "MC2_BRAIN_TASKQ_TRACE", Bool, false, "code", "", "", passthrough | verified),
 L(AtoiNZ, "MC2_BRAIN_VARIANTOF", Bool, false, "code", "", ""),
 L(AtoiNZ, "MC2_BRAIN_VAR_MISSION", Bool, false, "code", "", "", verified),
 P("MC2_BRIDGE_MOVER_PERIOD_SEC", Float, 2.0, "code", "", "Seconds between bridge-mover state bursts; below 0.25 clamps to 0.25.", passthrough | clampRange(0.25, 3.4e38) | verified),
@@ -232,7 +232,7 @@ L(Presence, "MC2_DEBUG_VIDEO", Bool, false, "code", "", ""),
 // history: docs/gate-history.md#MC2_DEBUG_VIEW
 P("MC2_DEBUG_VIEW", Int, 0, "code", "", "DEBUG-VIEW-SWEEP-1: =N (1..6) boot-seeds the global full-scene debug render view: 1=shadow-factor 2=normalized-depth 3=unlit-albedo 4=overdraw-proxy...", registry(Trace, "MC2_DIAG_DEBUG_VIEW", -1, false)),
 // history: docs/gate-history.md#MC2_DEBUG_VIEW_SWEEP
-G("MC2_DEBUG_VIEW_SWEEP", Bool, false, "code", "", "DEBUG-VIEW-SWEEP-1: ='<startFrame>,<settleFrames>' frame-scheduled auto-sweep of the six MC2_DEBUG_VIEW views (missiongui.cpp update).", registry(Trace, "MC2_DIAG_DEBUG_VIEW_SWEEP", -1, false)),
+G("MC2_DEBUG_VIEW_SWEEP", String, "", "code", "", "DEBUG-VIEW-SWEEP-1: ='<startFrame>,<settleFrames>' frame-scheduled auto-sweep of the six MC2_DEBUG_VIEW views (missiongui.cpp update).", registry(Trace, "MC2_DIAG_DEBUG_VIEW_SWEEP", -1, false)),
 L(Lead1, "MC2_DECAL_GLPROBE", Bool, false, "terrain", "", "[TEMP DECAL_GLPROBE] eager-drain probe - env MC2_DECAL_GLPROBE=1.", verified),
 L(Presence, "MC2_DECOR_SHADOW_TRACE", Bool, false, "code", "", "", verified),
 L(NonEmpty, "MC2_DEFS_ROOT", Bool, false, "unclassified", "", ""),
@@ -300,7 +300,7 @@ G("MC2_FAR_BACKDROP_LIT_TINT", String, "", "props", "", "FAR-BACKDROP-LIT-IMPL-1
 L(Lead0P, "MC2_FASTPATH_DROP_LOG", Bool, false, "terrain", "", "", passthrough | verified),
 L(Presence, "MC2_FF_TRACE", Bool, false, "unclassified", "", "", verified),
 // history: docs/gate-history.md#MC2_FIRE_DECISION_TRACE
-L(Lead0P, "MC2_FIRE_DECISION_TRACE", Bool, false, "mech", "", "ISSUE-17 fire-refusal instrumentation (default OFF = byte-identical; needs MC2_DIAG_TAGS=...,COMBAT).", passthrough | registry(Trace, "MC2_TRACE_FIRE_DECISION", -1, false)),
+L(Lead0P, "MC2_FIRE_DECISION_TRACE", Bool, false, "mech", "", "ISSUE-17 fire-refusal instrumentation (default OFF = byte-identical; needs MC2_DIAG_TAGS=...,COMBAT).", passthrough | registry(Trace, "MC2_TRACE_FIRE_DECISION", -1, false) | verified),
 // history: docs/gate-history.md#MC2_FIXTURE_ORDER_LIVENESS
 L(Lead0P, "MC2_FIXTURE_ORDER_LIVENESS", Bool, false, "code", "", "META-FIX design F behavioral fixture (code/mission.cpp soak namespace; requires MC2_SOAK_AUTOWIN): at 20% of the autowin timer every armed home mech gets a...", passthrough | registry(Trace, "MC2_TRACE_FIXTURE_ORDER_LIVENESS", -1, false) | verified),
 // history: docs/gate-history.md#MC2_FLUSH_PROBE
@@ -353,7 +353,7 @@ L(Presence, "MC2_FX_COUNT_LOG", Bool, false, "mech", "", "MC2_FX_COUNT_LOG=1: en
 L(Presence, "MC2_FX_DEFS", Bool, false, "mech", "", "FX-DEFS-SIDECAR-1: per-effect JSON sidecar overlay for the gosFX spec catalog (mc2::particles::SpecLibrary).", passthrough | registry(Feature, "MC2_FX_DEFS", -1, false)),
 // FX-FORCE-SPAWN fixture (mech-fire tube)
 // history: docs/gate-history.md#MC2_FX_FORCE_SPAWN
-G("MC2_FX_FORCE_SPAWN", Enum, "", "code", "", "FX-FORCE-SPAWN v1 fixture: default-OFF.", passthrough | registry(Feature, "MC2_FX_FORCE_SPAWN", -1, false) | tokens("|0|1|2|3|4|5|6|7|8|9|loop")),
+G("MC2_FX_FORCE_SPAWN", Enum, "", "code", "", "FX-FORCE-SPAWN v1 fixture: default-OFF.", passthrough | registry(Feature, "MC2_FX_FORCE_SPAWN", -1, false) | tokens("|0|1|2|3|4|5|6|7|8|9|loop") | verified),
 L(Lead1, "MC2_FX_TRACE", Bool, false, "code", "", "", passthrough | verified),
 
 G("MC2_GAMEOS_UI_DEFS", Bool, true, "editor", "", "The data/defs GameOS UI path is the replacement path, not an opt-in demo."),
@@ -416,7 +416,7 @@ L(Lead1, "MC2_GPU_DRIVEN_TRACE", Bool, false, "gameos", "", "", passthrough),
 L(Lead0Kill, "MC2_GPU_DRIVEN_WATER", Bool, true, "gameos", "", "", passthrough),
 L(Lead0, "MC2_GPU_GROUND_PICK_PARITY", Bool, false, "code", "", "", passthrough),
 L(Presence, "MC2_GPU_GROUND_PICK_PARITY_CENTER", Bool, false, "code", "", "Center-probe knob: unattended smoke parks the cursor at (0,0), so the primary cursor-driven oracle never samples real terrain (compared=0)."),
-P("MC2_GPU_GROUND_PICK_PARITY_SAMPLE", Int, 30, "code", "", "", passthrough),
+P("MC2_GPU_GROUND_PICK_PARITY_SAMPLE", Int, 30, "code", "", "Sample every Nth frame for the ground-pick parity oracle; below 1 reads the default 30.", passthrough | range(1.0, 2147483647.0)),
 G("MC2_GPU_GROUND_PICK_PARITY_TAG", String, "", "code", "", "", passthrough),  // default not derivable from the tree
 L(Lead0Kill, "MC2_GPU_GV_SHADOW_SKIP", Bool, true, "mech", "", "", verified),
 // history: docs/gate-history.md#MC2_GPU_MECHS
@@ -769,7 +769,7 @@ L(Presence, "MC2_PATCHSTREAM_THIN_RECORDS_DRAW", Bool, false, "terrain", "", "",
 L(Presence, "MC2_PATCHSTREAM_THIN_RECORD_FASTPATH", Bool, false, "terrain", "", "", passthrough | verified),
 L(Presence, "MC2_PATCH_STREAM_FORCE_INIT_FAIL", Bool, false, "terrain", "", "Step 4 bailout - env-gated forced init failure for testing the fallback path without driver stress.", passthrough | verified),
 L(Presence, "MC2_PATCH_STREAM_TRACE", Bool, false, "terrain", "", "", passthrough | verified),
-L(Presence, "MC2_PATH_JUMP_FAIL_BACKOFF", Bool, false, "code", "", "PATHFINDING-JUMP-FAIL-1: backoff gate + constants.", passthrough),
+L(Presence, "MC2_PATH_JUMP_FAIL_BACKOFF", Bool, false, "code", "", "PATHFINDING-JUMP-FAIL-1: backoff gate + constants.", passthrough | verified),
 L(Lead1, "MC2_PATH_SOLVE_ISOLATED", Bool, false, "code", "", "", passthrough | verified),
 // history: docs/gate-history.md#MC2_PAVED_OVERLAY_CLASS
 P("MC2_PAVED_OVERLAY_CLASS", Int, 0, "terrain", "", "DEFAULT 0 (OFF).", passthrough | registry(Feature, "MC2_FEATURE_PAVED_OVERLAY_CLASS", -1, false) | range(0, 2) | verified),

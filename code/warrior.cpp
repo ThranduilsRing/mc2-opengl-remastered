@@ -6,6 +6,7 @@
 
 #include "warrior_internal.h"
 #include "Gates/gate.h"
+#include "Gates/gate_cold.h"   // str<>()
 
 
 // ABL-VM-FACTS-1: TU-local definitions for the abl_trace externs.
@@ -25,8 +26,8 @@ static bool s_brainTaskQGateChecked  = false;
 static void initBrainTaskQGate() {
     if (s_brainTaskQGateChecked) return;
     s_brainTaskQGateChecked  = true;
-    s_brainTaskQEnabled      = (std::getenv("MC2_BRAIN_TASKQ")       && std::atoi(std::getenv("MC2_BRAIN_TASKQ"))       != 0);
-    s_brainTaskQTraceEnabled = (std::getenv("MC2_BRAIN_TASKQ_TRACE") && std::atoi(std::getenv("MC2_BRAIN_TASKQ_TRACE")) != 0);
+    s_brainTaskQEnabled      = mc2::gate::get<"MC2_BRAIN_TASKQ">();
+    s_brainTaskQTraceEnabled = mc2::gate::get<"MC2_BRAIN_TASKQ_TRACE">();
 }
 
 // MC2_BRAIN_RUNTIME gate — checked once at first runBrain call (requires MC2_BRAIN_TASKQ=1)
@@ -38,21 +39,20 @@ static BrainRuntimeMode s_brainRuntimeForcedMode    = BrainRuntimeMode::Legacy;
 static void initBrainRuntimeGate() {
     if (s_brainRuntimeGateChecked) return;
     s_brainRuntimeGateChecked  = true;
-    s_brainRuntimeEnabled      = (std::getenv("MC2_BRAIN_RUNTIME")       && std::atoi(std::getenv("MC2_BRAIN_RUNTIME"))       != 0);
-    s_brainRuntimeTraceEnabled = (std::getenv("MC2_BRAIN_RUNTIME_TRACE") && std::atoi(std::getenv("MC2_BRAIN_RUNTIME_TRACE")) != 0);
+    s_brainRuntimeEnabled      = mc2::gate::get<"MC2_BRAIN_RUNTIME">();
+    s_brainRuntimeTraceEnabled = mc2::gate::get<"MC2_BRAIN_RUNTIME_TRACE">();
     // MC2_BRAIN_RUNTIME_APPLY=1 enables actual slot writes + short-circuit (BRAIN-RUNTIME-1B).
     // Requires MC2_BRAIN_RUNTIME=1; warn+stay inert if APPLY=1 but RUNTIME=0.
-    s_brainRuntimeApplyEnabled = (std::getenv("MC2_BRAIN_RUNTIME_APPLY") && std::atoi(std::getenv("MC2_BRAIN_RUNTIME_APPLY")) != 0);
+    s_brainRuntimeApplyEnabled = mc2::gate::get<"MC2_BRAIN_RUNTIME_APPLY">();
     if (s_brainRuntimeApplyEnabled && !s_brainRuntimeEnabled) {
         std::fprintf(stderr, "[BRAIN_RT] WARNING: MC2_BRAIN_RUNTIME_APPLY=1 but MC2_BRAIN_RUNTIME=0 — apply staying inert\n");
         s_brainRuntimeApplyEnabled = false;
     }
     // Mode source: MC2_BRAIN_RUNTIME_FORCE_MODE env override only; per-unit FIT loader may override per-warrior.
-    const char* modeEnv = std::getenv("MC2_BRAIN_RUNTIME_FORCE_MODE");
-    if (modeEnv) {
-        if      (std::strcmp(modeEnv, "hybrid")   == 0) s_brainRuntimeForcedMode = BrainRuntimeMode::Hybrid;
-        else if (std::strcmp(modeEnv, "enhanced") == 0) s_brainRuntimeForcedMode = BrainRuntimeMode::Enhanced;
-        else                                             s_brainRuntimeForcedMode = BrainRuntimeMode::Legacy;
+    if (mc2::gate::isSet<"MC2_BRAIN_RUNTIME_FORCE_MODE">()) {
+        if      (mc2::gate::is<"MC2_BRAIN_RUNTIME_FORCE_MODE", "hybrid">())   s_brainRuntimeForcedMode = BrainRuntimeMode::Hybrid;
+        else if (mc2::gate::is<"MC2_BRAIN_RUNTIME_FORCE_MODE", "enhanced">()) s_brainRuntimeForcedMode = BrainRuntimeMode::Enhanced;
+        else                                                                  s_brainRuntimeForcedMode = BrainRuntimeMode::Legacy;
     }
     if (s_brainRuntimeEnabled && !s_brainTaskQEnabled) {
         std::fprintf(stderr, "[BRAIN_RT] WARNING: MC2_BRAIN_RUNTIME=1 but MC2_BRAIN_TASKQ=0 — runtime staying inert\n");
@@ -95,13 +95,10 @@ uint32_t getBrainTimeMs() {
 static void initBrainFixedTickGate() {
     if (s_brainFixedTickGateChecked) return;
     s_brainFixedTickGateChecked = true;
-    s_brainFixedTickEnabled = (std::getenv("MC2_BRAIN_FIXED_TICK") && std::atoi(std::getenv("MC2_BRAIN_FIXED_TICK")) != 0);
-    s_brainFixedTickTrace   = (std::getenv("MC2_BRAIN_FIXED_TICK_TRACE") && std::atoi(std::getenv("MC2_BRAIN_FIXED_TICK_TRACE")) != 0);
+    s_brainFixedTickEnabled = mc2::gate::get<"MC2_BRAIN_FIXED_TICK">();
+    s_brainFixedTickTrace   = mc2::gate::get<"MC2_BRAIN_FIXED_TICK_TRACE">();
     if (s_brainFixedTickEnabled) {
-        const char* hzEnv = std::getenv("MC2_BRAIN_FIXED_TICK_HZ");
-        float hz = hzEnv ? (float)std::atof(hzEnv) : 10.0f;
-        if (hz < 1.0f)  hz = 1.0f;
-        if (hz > 30.0f) hz = 30.0f;
+        const float hz = mc2::gate::get<"MC2_BRAIN_FIXED_TICK_HZ">();   // the row clamps to [1, 30]
         s_brainFixedTickHz     = hz;
         s_brainFixedTickPeriod = 1.0f / hz;
         std::fprintf(stderr, "[BRAIN_FIXED_TICK] init: hz=%.1f period=%.4fs trace=%d\n",
@@ -1374,11 +1371,10 @@ long MechWarrior::runBrain (void) {
 		static uint32_t s_missionSeed         = 0xDEADBEEFu;
 		if (!s_tacticWeightsChecked) {
 			s_tacticWeightsChecked = true;
-			const char* v = std::getenv("MC2_TACTIC_WEIGHTS");
-			s_tacticWeightsEnabled = (v && std::atoi(v) != 0);
-			const char* seedEnv = std::getenv("MC2_BRAIN_MISSION_SEED");
-			if (seedEnv && seedEnv[0] != '\0')
-				s_missionSeed = (uint32_t)std::strtoul(seedEnv, nullptr, 0);
+			s_tacticWeightsEnabled = mc2::gate::get<"MC2_TACTIC_WEIGHTS">();
+			const std::string seedText = mc2::gate::str<"MC2_BRAIN_MISSION_SEED">();   // "" when unset or empty
+			if (!seedText.empty())
+				s_missionSeed = (uint32_t)std::strtoul(seedText.c_str(), nullptr, 0);
 		}
 		if (s_tacticWeightsEnabled && brainRuntime) {
 			// Collect pilot stats for modulation
@@ -1455,10 +1451,8 @@ long MechWarrior::runBrain (void) {
 		// EXACTLY ONE GENERAL-slot write per tick.
 		// When DISPATCH_APPLY=0, synthetic HOLD fires as 1B-runtime default (unchanged).
 		static const bool s_dispatchApply = ([](){
-			const char* v = std::getenv("MC2_BRAIN_DISPATCH_APPLY");
-			if (v && std::atoi(v) != 0) {
-				const char* d = std::getenv("MC2_BRAIN_DISPATCH");
-				if (!d || std::atoi(d) == 0) {
+			if (mc2::gate::get<"MC2_BRAIN_DISPATCH_APPLY">()) {
+				if (!mc2::gate::get<"MC2_BRAIN_DISPATCH">()) {
 					std::fprintf(stderr, "[BRAIN_DISPATCH] WARNING: MC2_BRAIN_DISPATCH_APPLY=1 requires MC2_BRAIN_DISPATCH=1 — apply is INERT\n");
 					std::fflush(stderr);
 					return false;
@@ -1469,20 +1463,14 @@ long MechWarrior::runBrain (void) {
 		})();
 		// BRAIN-DECISION-INTENT-QUEUE-1: gate check (default OFF).
 		// When ON: executeSpecialBody_Apply emits intents; commitBrainIntents drains them.
-		static const bool s_intentQueue = ([](){
-			const char* v = std::getenv("MC2_BRAIN_INTENT_QUEUE");
-			return (v && std::atoi(v) != 0);
-		})();
+		static const bool s_intentQueue = mc2::gate::get<"MC2_BRAIN_INTENT_QUEUE">();
 		// BRAIN-COMMIT-PHASE-1: deferred commit gate (default OFF).
 		// Requires MC2_BRAIN_INTENT_QUEUE=1 to be meaningful.
 		// Gate ON → inline commitBrainIntents calls are SKIPPED here; intents persist in
 		//   runtime->pendingIntents[] until commitAllBrainIntents() drains them in WID order
 		//   after the full warrior update loop in objmgr.cpp (GameObjectManager::update).
 		// Gate OFF → commitBrainIntents runs inline per-warrior (rung-5 behavior, unchanged).
-		static const bool s_brainCommitPhase = ([](){
-			const char* v = std::getenv("MC2_BRAIN_COMMIT_PHASE");
-			return (v && std::atoi(v) != 0);
-		})();
+		static const bool s_brainCommitPhase = mc2::gate::get<"MC2_BRAIN_COMMIT_PHASE">();
 
 		// BRAIN-WORLD-SNAPSHOT-1: static populate helper (main-thread only).
 		// Accesses protected MechWarrior members — must remain in warrior.cpp.
@@ -1724,10 +1712,7 @@ long MechWarrior::runBrain (void) {
 	//   lastMoveErr       LastMoveCalcErr: no-path (LR path fail / MOVE-data
 	//                     area-graph misread) class.
 	{
-		static const bool s_aiFreezeTrace = []() {
-			const char* v = std::getenv("MC2_BRAIN_FREEZE_TRACE");
-			return (v && v[0] && v[0] != '0');
-		}();
+		static const bool s_aiFreezeTrace = mc2::gate::get<"MC2_BRAIN_FREEZE_TRACE">();
 		if (s_aiFreezeTrace) {
 			MovePathPtr mp = getMovePath();
 			MoverPtr traceVehicle = getVehicle();
@@ -1777,8 +1762,7 @@ long MechWarrior::getVehicleStatus (void) {
 // MC2_PATH_JUMP_FAIL_BACKOFF is unset, s_jumpFailBackoffOn is false and every new
 // branch below is inert -> byte-identical legacy behavior (no stamp, no short-circuit).
 // Cached once at first use (repo getenv idiom, mover.cpp style).
-static const bool s_jumpFailBackoffOn =
-	(std::getenv("MC2_PATH_JUMP_FAIL_BACKOFF") != nullptr);
+static const bool s_jumpFailBackoffOn = mc2::gate::get<"MC2_PATH_JUMP_FAIL_BACKOFF">();
 // Frames to suppress re-requesting a goal cell that just failed a jump solve.
 // ~45 path-manager update() frames ~= 0.5-1s of doomed re-solves eliminated.
 static const long kJumpFailBackoffFrames = 45;
@@ -2038,7 +2022,7 @@ long MechWarrior::combatDecisionTree (void) {
 	// the combat-update cadence (this function re-arms combatUpdate above).
 	{
 		static const bool s_fireDecisionTrace =
-			(getenv("MC2_FIRE_DECISION_TRACE") != NULL && getenv("MC2_FIRE_DECISION_TRACE")[0] != '0');
+			mc2::gate::get<"MC2_FIRE_DECISION_TRACE">();
 		if (s_fireDecisionTrace && !firedWeapon && curTacOrder.isCombatOrder() &&
 			mc2_diag::tagEnabled("COMBAT")) {
 			long tally[6] = {0, 0, 0, 0, 0, 0};	// [0]=rd [1]=am [2]=rn [3]=lk [4]=ch [5]=hot
@@ -2131,15 +2115,17 @@ void MechWarrior::updateActions (void) {
 	// the target-specific logic is if(target)-guarded (mech.cpp). Fires ONCE
 	// (global latch). Output is stdout, so it needs MC2_LOG=1 to be visible.
 	static const bool s_fxForceSpawn =
-		(getenv("MC2_FX_FORCE_SPAWN") != NULL && getenv("MC2_FX_FORCE_SPAWN")[0] != '0');
+		mc2::gate::isSet<"MC2_FX_FORCE_SPAWN">() && !mc2::gate::is<"MC2_FX_FORCE_SPAWN", "0">();
 	// VK-FIELD-VFX-2: continuous re-fire mode for a deterministic on-camera capture
 	// window. MC2_FX_FORCE_SPAWN=loop (or =2) re-fires one mech's whole weapon bank on a
 	// fixed cadence so there is ALWAYS a live bolt on screen during a desktop grab
 	// (the =1 fire-once fixture leaves only a ~0.5s transient that is easy to miss).
-	static const bool s_fxLoop = []{
-		const char* v = getenv("MC2_FX_FORCE_SPAWN");
-		return v && (v[0] == 'l' || v[0] == 'L' || (v[0] >= '2' && v[0] <= '9'));
-	}();
+	static const bool s_fxLoop =
+		mc2::gate::is<"MC2_FX_FORCE_SPAWN", "loop">() || mc2::gate::is<"MC2_FX_FORCE_SPAWN", "2">() ||
+		mc2::gate::is<"MC2_FX_FORCE_SPAWN", "3">()    || mc2::gate::is<"MC2_FX_FORCE_SPAWN", "4">() ||
+		mc2::gate::is<"MC2_FX_FORCE_SPAWN", "5">()    || mc2::gate::is<"MC2_FX_FORCE_SPAWN", "6">() ||
+		mc2::gate::is<"MC2_FX_FORCE_SPAWN", "7">()    || mc2::gate::is<"MC2_FX_FORCE_SPAWN", "8">() ||
+		mc2::gate::is<"MC2_FX_FORCE_SPAWN", "9">();
 	if (s_fxLoop) {
 		static float s_nextFire = 0.0f;
 		if (myVehicle && scenarioTime > 5.0f && scenarioTime >= s_nextFire && myVehicle->canFireWeapons()) {
@@ -2228,7 +2214,7 @@ void MechWarrior::updateActions (void) {
 	// run with MC2_DIAG_TAGS=COMBAT yields a hit-location distribution ("loc"
 	// field) to A/B MC2_CALLED_SHOT_FIX. Global 2 s throttle bounds order spam.
 	static const bool s_aimedFireFixture =
-		(getenv("MC2_AIMED_FIRE_FIXTURE") != NULL && getenv("MC2_AIMED_FIRE_FIXTURE")[0] != '0');
+		mc2::gate::get<"MC2_AIMED_FIRE_FIXTURE">();
 	if (s_aimedFireFixture && myVehicle && myVehicle->isMech() &&
 		Team::home && (myVehicle->getTeam() == Team::home) &&
 		(scenarioTime > 5.0f) && !curTacOrder.isCombatOrder() &&

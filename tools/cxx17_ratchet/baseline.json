@@ -162,7 +162,7 @@
    "LG20": 20
   },
   "code": {
-   "LG01": 1803,
+   "LG01": 1800,
    "LG02": 232,
    "LG03": 970,
    "LG04": 21,
@@ -170,8 +170,8 @@
    "LG06": 465,
    "LG07": 0,
    "LG08": 15,
-   "LG09": 2470,
-   "LG10": 21,
+   "LG09": 2469,
+   "LG10": 20,
    "LG11": 101,
    "LG12a": 220,
    "LG12b": 792,
@@ -181,8 +181,8 @@
    "LG16": 7,
    "LG17": 47,
    "LG18": 4,
-   "LG19": 231,
-   "LG20": 241
+   "LG19": 210,
+   "LG20": 220
   },
   "mclib": {
    "LG01": 2850,
@@ -643,12 +643,9 @@
    "LG20": 16
   },
   "GameOS/gameos/gos_postprocess.cpp": {
-   "LG06": 5,
-   "LG08": 1,
-   "LG09": 94,
-   "LG10": 6,
-   "LG12a": 54,
-   "LG12b": 4,
+   "LG09": 7,
+   "LG12a": 12,
+   "LG12b": 2,
    "LG20": 11
   },
   "GameOS/gameos/gos_postprocess.h": {
@@ -663,6 +660,39 @@
    "LG12a": 1,
    "LG19": 1,
    "LG20": 3
+  },
+  "GameOS/gameos/gos_postprocess_diag.cpp": {
+   "LG06": 1,
+   "LG08": 1,
+   "LG09": 24,
+   "LG10": 1,
+   "LG12a": 4,
+   "LG12b": 2
+  },
+  "GameOS/gameos/gos_postprocess_effects.cpp": {
+   "LG09": 19,
+   "LG12a": 2
+  },
+  "GameOS/gameos/gos_postprocess_executor.cpp": {
+   "LG09": 4,
+   "LG12a": 10
+  },
+  "GameOS/gameos/gos_postprocess_fbo.cpp": {
+   "LG06": 1,
+   "LG09": 22,
+   "LG12a": 13
+  },
+  "GameOS/gameos/gos_postprocess_region.cpp": {
+   "LG06": 3,
+   "LG09": 15
+  },
+  "GameOS/gameos/gos_postprocess_shadow.cpp": {
+   "LG09": 2,
+   "LG10": 5,
+   "LG12a": 13
+  },
+  "GameOS/gameos/gos_postprocess_skybox.cpp": {
+   "LG09": 1
   },
   "GameOS/gameos/gos_rdoc_capture.cpp": {
    "LG06": 4,
@@ -752,17 +782,47 @@
    "LG12a": 2
   },
   "GameOS/gameos/gos_terrain_indirect.cpp": {
-   "LG05": 3,
-   "LG06": 2,
-   "LG08": 6,
-   "LG09": 221,
-   "LG10": 4,
-   "LG12a": 43,
-   "LG12b": 2,
-   "LG16": 1
+   "LG09": 4,
+   "LG12a": 1
   },
   "GameOS/gameos/gos_terrain_indirect.h": {
    "LG06": 1
+  },
+  "GameOS/gameos/gos_terrain_indirect_atlas.cpp": {
+   "LG09": 52,
+   "LG10": 1,
+   "LG12a": 12,
+   "LG12b": 2
+  },
+  "GameOS/gameos/gos_terrain_indirect_cement.cpp": {
+   "LG05": 3,
+   "LG09": 56,
+   "LG10": 2,
+   "LG12a": 4,
+   "LG16": 1
+  },
+  "GameOS/gameos/gos_terrain_indirect_diag.cpp": {
+   "LG06": 1,
+   "LG09": 3
+  },
+  "GameOS/gameos/gos_terrain_indirect_dispatch.cpp": {
+   "LG06": 1,
+   "LG09": 50,
+   "LG12a": 10
+  },
+  "GameOS/gameos/gos_terrain_indirect_internal.h": {
+   "LG09": 1,
+   "LG10": 1
+  },
+  "GameOS/gameos/gos_terrain_indirect_mine_decal.cpp": {
+   "LG08": 4,
+   "LG09": 32,
+   "LG12a": 11
+  },
+  "GameOS/gameos/gos_terrain_indirect_pack.cpp": {
+   "LG08": 2,
+   "LG09": 23,
+   "LG12a": 5
   },
   "GameOS/gameos/gos_terrain_lighting.cpp": {
    "LG03": 8,
@@ -779,17 +839,37 @@
    "LG13": 8
   },
   "GameOS/gameos/gos_terrain_lod_chunk.cpp": {
-   "LG05": 2,
-   "LG06": 3,
-   "LG08": 1,
-   "LG09": 58,
-   "LG10": 2,
-   "LG11": 1,
-   "LG12a": 35,
-   "LG12b": 6,
-   "LG17": 2
+   "LG09": 4,
+   "LG12a": 4,
+   "LG12b": 2
   },
   "GameOS/gameos/gos_terrain_lod_chunk.h": {
+   "LG17": 2
+  },
+  "GameOS/gameos/gos_terrain_lod_chunk_draw.cpp": {
+   "LG09": 5,
+   "LG10": 1,
+   "LG12a": 10
+  },
+  "GameOS/gameos/gos_terrain_lod_chunk_feed.cpp": {
+   "LG09": 6,
+   "LG12a": 1
+  },
+  "GameOS/gameos/gos_terrain_lod_chunk_matalbedo.cpp": {
+   "LG05": 2,
+   "LG06": 3,
+   "LG11": 1,
+   "LG12a": 10,
+   "LG12b": 4
+  },
+  "GameOS/gameos/gos_terrain_lod_chunk_patch.cpp": {
+   "LG08": 1,
+   "LG09": 29
+  },
+  "GameOS/gameos/gos_terrain_lod_chunk_upload.cpp": {
+   "LG09": 14,
+   "LG10": 1,
+   "LG12a": 10,
    "LG17": 2
   },
   "GameOS/gameos/gos_terrain_mask_dispatch.cpp": {
@@ -3258,15 +3338,12 @@
    "LG12a": 4
   },
   "code/warrior.cpp": {
-   "LG01": 60,
+   "LG01": 57,
    "LG03": 17,
    "LG06": 1,
-   "LG09": 33,
-   "LG10": 1,
+   "LG09": 32,
    "LG12a": 4,
-   "LG12b": 14,
-   "LG19": 21,
-   "LG20": 21
+   "LG12b": 14
   },
   "code/warrior.h": {
    "LG01": 7,
@@ -5854,7 +5931,7 @@
    "LG20": 1
   }
  },
- "head": "d4d6decc0",
+ "head": "dc8ec5c6e",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
