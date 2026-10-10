@@ -50,7 +50,7 @@
   "code/multplyr.h": 1849,
   "code/objective.cpp": 2657,
   "code/objmgr.cpp": 5668,
-  "code/optionsarea.cpp": 1841,
+  "code/optionsarea.cpp": 1842,
   "code/pilotreviewarea.cpp": 1844,
   "code/saveload.cpp": 1723,
   "code/tacordr.cpp": 2072,
@@ -93,7 +93,7 @@
   "mclib/vfxtile.cpp": 2944,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "a6c2760ef",
+ "head": "c9936e989",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
