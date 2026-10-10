@@ -96,7 +96,7 @@ FROZEN_BACKLOG = {
     "GameOS/gameos/gos_vegetation.cpp",
     "GameOS/gameos/gos_render_context.cpp",
     "GameOS/gameos/gos_mech_batcher.cpp",
-    "GameOS/gameos/gos_static_prop_batcher.cpp",
+    "GameOS/gameos/gos_static_prop_batcher_flush.cpp",
 }
 
 ALLOWLIST_EXACT_ALL = ALLOWLIST_EXACT | FROZEN_BACKLOG

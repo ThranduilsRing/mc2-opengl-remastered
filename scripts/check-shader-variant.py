@@ -35,7 +35,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SPB = ROOT / "GameOS" / "gameos" / "gos_static_prop_batcher.cpp"
+SPB = ROOT / "GameOS" / "gameos" / "gos_static_prop_batcher_program.cpp"   # loadProgramsIfNeeded builds the color and depth programs
 
 
 def main() -> int:

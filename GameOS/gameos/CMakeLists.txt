@@ -36,6 +36,15 @@ set(SOURCES ${SOURCES}
     gos_postprocess_shadow.cpp
     gos_postprocess_executor.cpp
     gos_static_prop_batcher.cpp
+    # The gos_static_prop_batcher pieces below are contiguous slices of the old file: keep them in this order (namespace-scope initialisers run in link order).
+    gos_static_prop_batcher_state.cpp
+    gos_static_prop_batcher_program.cpp
+    gos_static_prop_batcher_mapload.cpp
+    gos_static_prop_batcher_finalize.cpp
+    gos_static_prop_batcher_submit.cpp
+    gos_static_prop_batcher_flush.cpp
+    gos_static_prop_batcher_shadow.cpp
+    gos_static_prop_batcher_seam.cpp
     gos_static_prop_registry.cpp
     gos_particle_bridge.cpp
     gos_vfx_mesh_bridge.cpp

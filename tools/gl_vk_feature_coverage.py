@@ -293,7 +293,7 @@ def build_rows(src, twins, files, ginfo, ndefs=None):
             continue
         base_def = {d.split("=")[0] for d in base["defines"]}
         stage_files = sorted(set(base["stages"].values()))
-        src_path = base["source"].split(":")[0]
+        src_path = tu_family(base["source"].split(":")[0], known)     # a program built in a split piece is read as its whole unit
         for v in vs:
             if len(v["optional_groups_on"]) != 1:
                 continue
