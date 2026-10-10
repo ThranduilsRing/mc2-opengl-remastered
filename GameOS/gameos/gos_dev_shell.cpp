@@ -56,10 +56,7 @@ constexpr size_t kMaxRequestBytes = 16 * 1024;  // oversized request -> drop con
 // --- gate -------------------------------------------------------------
 bool shellEnabled()
 {
-    static const bool s_on = [] {
-        const char* v = getenv("MC2_DEV_SHELL");
-        return v && v[0] == '1';
-    }();
+    static const bool s_on = mc2::gate::get<"MC2_DEV_SHELL">();
     return s_on;
 }
 
@@ -159,8 +156,8 @@ bool initSocket()
         return false;
     }
     int port = 9877;
-    if (const char* p = getenv("MC2_DEV_SHELL_PORT")) {
-        const int v = atoi(p);
+    {
+        const int v = mc2::gate::get<"MC2_DEV_SHELL_PORT">();   // row default 0 = keep 9877
         if (v > 0 && v < 65536) port = v;
     }
     s_listen = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -276,7 +273,8 @@ std::string cmdGetGate(const std::string& req)
 {
     const std::string name = jsonGetString(req, "name");
     if (name.empty()) return makeReply(false, "get_gate: missing name", "");
-    const char* v = getenv(name.c_str());
+    // The client names the variable: a runtime name, so this asks the environment directly.
+    const char* v = mc2::gate::envText(name.c_str());
     return makeReply(true, "",
         "{\"name\":\"" + jsonEscape(name) + "\",\"value\":"
         + (v ? "\"" + jsonEscape(v) + "\"" : "null") + "}");
