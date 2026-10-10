@@ -94,7 +94,6 @@
   "mclib/mlr/mlrpolymesh.cpp": 1620,
   "mclib/mlr/mlrprimitiveclipping.hpp": 1722,
   "mclib/mlr/mlrtriangleclipping.hpp": 2112,
-  "mclib/move.cpp": 7050,
   "mclib/move.h": 1822,
   "mclib/msl.cpp": 3069,
   "mclib/quad.cpp": 4261,
@@ -110,7 +109,7 @@
   "mclib/vfxtile.cpp": 2944,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "acf0450c4",
+ "head": "f0329f9f9",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -167,9 +166,9 @@
    "max_lines": 2901
   },
   "mclib": {
-   "files": 571,
-   "files_over_1500": 36,
-   "files_over_3000": 10,
+   "files": 578,
+   "files_over_1500": 35,
+   "files_over_3000": 9,
    "max_lines": 8282
   },
   "shaders": {
@@ -211,10 +210,6 @@
   {
    "file": "editor/EditorInterface.cpp",
    "lines": 7336
-  },
-  {
-   "file": "mclib/move.cpp",
-   "lines": 7050
   },
   {
    "file": "mclib/mech3d.cpp",
@@ -303,12 +298,16 @@
   {
    "file": "code/mechcmd2.cpp",
    "lines": 3089
+  },
+  {
+   "file": "mclib/msl.cpp",
+   "lines": 3069
   }
  ],
  "total": {
-  "files": 1609,
-  "files_over_1500": 96,
-  "files_over_3000": 32,
+  "files": 1616,
+  "files_over_1500": 95,
+  "files_over_3000": 31,
   "max_lines": 11658
  },
  "version": 1
