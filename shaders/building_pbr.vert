@@ -33,7 +33,7 @@ out vec3 MC2WorldPos;
 void main(void)
 {
     WorldPos = (world_ * vec4(pos.xyz, 1.0)).xyz;
-    MC2WorldPos = vec3(-WorldPos.x, WorldPos.z, WorldPos.y);
+    MC2WorldPos = mc2ToRender(WorldPos);
 
     if (gpuProjection != 0) {
         gl_Position = u_worldToClipGL * vec4(MC2WorldPos, 1.0);

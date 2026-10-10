@@ -1,6 +1,7 @@
 // GVAppearance: paint schemes, gestures, object/mover parameters, bounds, destruction and node positions.
 // Declared in the class headers; shared names in gvactor_internal.h.
 #include "gvactor_internal.h"
+#include "../RenderCore/axis_convert.h"
 
 
 //-----------------------------------------------------------------------------
@@ -449,9 +450,7 @@ bool GVAppearance::recalcBounds (void)
 			Stuff::Point3D Distance;
 			Stuff::Point3D objPosition;
 			Stuff::Point3D eyePosition(eye->getCameraOrigin());
-			objPosition.x = -position.x;
-			objPosition.y = position.z;
-			objPosition.z = position.y;
+			mc2ToRender(objPosition, position);
 	
 			Distance.Subtract(objPosition,eyePosition);
 			eyeDistance = Distance.GetApproximateLength();
@@ -480,9 +479,7 @@ bool GVAppearance::recalcBounds (void)
 				Stuff::Vector3D Distance;
 				Stuff::Point3D objPosition;
 				Stuff::Point3D eyePosition(eye->getCameraOrigin());
-				objPosition.x = -position.x;
-				objPosition.y = position.z;
-				objPosition.z = position.y;
+				mc2ToRender(objPosition, position);
 		
 				Distance.Subtract(objPosition,eyePosition);
 				Distance.Normalize(Distance);
@@ -533,14 +530,10 @@ bool GVAppearance::recalcBounds (void)
 				Stuff::Vector4D bcsp[8];
 
 				Stuff::Vector3D minBox;
-				minBox.x = -appearType->typeUpperLeft.x;
-				minBox.y = appearType->typeUpperLeft.z;
-				minBox.z = appearType->typeUpperLeft.y;
+				mc2ToRender(minBox, appearType->typeUpperLeft);
 				
 				Stuff::Vector3D maxBox;
-				maxBox.x = -appearType->typeLowerRight.x;
-				maxBox.y = appearType->typeLowerRight.z;
-				maxBox.z = appearType->typeLowerRight.y;
+				mc2ToRender(maxBox, appearType->typeLowerRight);
 				
 				if (rotation != 0.0f)
 					Rotate(minBox,-rotation);
@@ -798,9 +791,7 @@ bool GVAppearance::playDestruction (void)
 			Stuff::LinearMatrix4D 	shapeOrigin;
 			Stuff::LinearMatrix4D	localToWorld;
 			
-			tPosition.x = -position.x;
-			tPosition.y = position.z;
-			tPosition.z = position.y;
+			mc2ToRender(tPosition, position);
 			
 			shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 			shapeOrigin.BuildTranslation(tPosition);
@@ -838,9 +829,7 @@ Stuff::Vector3D GVAppearance::getNodeNamePosition (const char *nodeName)
    	qRotation = Stuff::EulerAngles(0.0f, yaw, 0.0f);
    
    	Stuff::Point3D xlatPosition;
-   	xlatPosition.x = -position.x;
-   	xlatPosition.y = position.z;
-   	xlatPosition.z = position.y;
+   	mc2ToRender(xlatPosition, position);
    
    	Stuff::UnitQuaternion torsoRot;
    	torsoRot = Stuff::EulerAngles(0.0f,(turretRotation * DEGREES_TO_RADS),0.0f);
@@ -880,9 +869,7 @@ Stuff::Vector3D GVAppearance::getNodeIdPosition (long nodeId)
    	qRotation = Stuff::EulerAngles(0.0f, yaw, 0.0f);
    
    	Stuff::Point3D xlatPosition;
-   	xlatPosition.x = -position.x;
-   	xlatPosition.y = position.z;
-   	xlatPosition.z = position.y;
+   	mc2ToRender(xlatPosition, position);
    
    	Stuff::UnitQuaternion torsoRot;
    	torsoRot = Stuff::EulerAngles(0.0f,(turretRotation * DEGREES_TO_RADS),0.0f);

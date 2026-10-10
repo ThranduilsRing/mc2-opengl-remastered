@@ -13,7 +13,7 @@
 #include <include/render_contract.hglsl> // RENDER-CONTRACT: rc_gbuffer1_* helpers (uses PREC)
 #include <include/noise.hglsl>   // fbm() for the colour break-up (matches legacy)
 #include <include/edge_haze.hglsl> // TERRAIN-EDGE-FEATHER-1: edgeHazeAmount + EDGE_HAZE_SKY (legacy parity)
-
+#include <include/axis.hglsl>
 in vec3  v_worldPos;
 in float v_terrainType;       // Step 5b: interpolated per-vertex terrainType (concrete)
 uniform int   u_lodStep;
@@ -689,7 +689,7 @@ vec3 chunkDetailNormal(vec4 w, float snowWeight, vec2 worldXY, float macroNz) {
             // cameraPos is the Stuff/MLR eye; MC2 world = (-x, z, y). Same
             // conversion as the live water reflection fix (gameos_graphics.cpp)
             // and the dead-frag oracle comment (gos_terrain.frag:319-325).
-            vec3  camW     = vec3(-cameraPos.x, cameraPos.z, cameraPos.y);
+            vec3  camW     = mc2ToRender(cameraPos.xyz);
             // World-distance fade (the real cost governor, recon §3): camera
             // ground distance + altitude boost, matching the dead frag's LOD
             // distance semantics. Beyond FAR the march is skipped entirely.
@@ -1501,7 +1501,7 @@ void main() {
     //        pixels must point back toward the camera azimuth (screen gradient
     //        tracks camera orbit) — numeric check on captures, not eyeballs.
     if ((u_diag & 8192) != 0) {
-        vec3 camW = vec3(-cameraPos.x, cameraPos.z, cameraPos.y);
+        vec3 camW = mc2ToRender(cameraPos.xyz);
         vec3 Vw = normalize(camW - v_worldPos);
         fragColor = vec4(Vw.x * 0.5 + 0.5, Vw.y * 0.5 + 0.5, clamp(Vw.z, 0.0, 1.0), 1.0);
         if ((u_diag & 1) == 0) GBuffer1 = rc_gbuffer1_shadowHandled_flatUp();
@@ -1660,7 +1660,7 @@ void main() {
             // water-reflection fix use (this file, ~L473/L991). Project Vw onto each
             // plane's 2D basis and march that plane's heightfield for a UV offset.
             if (u_cliffPom.x > 0.5) {
-                vec3  camW = vec3(-cameraPos.x, cameraPos.z, cameraPos.y);
+                vec3  camW = mc2ToRender(cameraPos.xyz);
                 vec3  Vw   = normalize(camW - wp);          // frag -> eye, world
                 // depth is a world-unit height expressed relative to the CLIFF
                 // tiling (ts); the plane view offset is divided by the out-of-plane
@@ -2109,7 +2109,7 @@ void main() {
         }
         // DEBUG-VIEW-SWEEP-1: shared 50-series full-scene views (see gos_terrain.frag).
         else if (u_lightingDebugView == 50) {                                           // depth: eye distance / 6000 wu
-            vec3 dvCamW = vec3(-cameraPos.x, cameraPos.z, cameraPos.y);
+            vec3 dvCamW = mc2ToRender(cameraPos.xyz);
             dbg = vec3(clamp(distance(v_worldPos, dvCamW) / 6000.0, 0.0, 1.0));
         }
         else if (u_lightingDebugView == 51) dbg = vec3(0.12);                           // overdraw proxy (one flat layer)

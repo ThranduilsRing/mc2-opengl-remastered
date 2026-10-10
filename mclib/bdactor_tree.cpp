@@ -1,6 +1,7 @@
 // BldgAppearance / TreeAppearance: TreeAppearance init, status, bounds, update, terrain marking, LOD select and destroy.
 // Declared in the class headers; shared names in bdactor_internal.h.
 #include "bdactor_internal.h"
+#include "../RenderCore/axis_convert.h"
 
 // class TreeAppearance
 void TreeAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
@@ -395,9 +396,7 @@ long TreeAppearance::update (bool animate)
 	rot = Stuff::EulerAngles(pitchAngle, yawAngle, 0.0f);
 
 	Stuff::Point3D xlatPosition;
-	xlatPosition.x = -position.x;
-	xlatPosition.y = position.z;
-	xlatPosition.z = position.y;
+	mc2ToRender(xlatPosition, position);
 
 	if (!fogLightSet)
 	{

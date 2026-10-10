@@ -1,6 +1,7 @@
 // Mech3DAppearance: setObjStatus, updateGeometry and the arm recalculations.
 // Declared in the class headers; shared names in mech3d_internal.h.
 #include "mech3d_internal.h"
+#include "../RenderCore/axis_convert.h"
 
 // T1.15 SpotLight_ illumination diagnostic — registration probe (mech class).
 // First-hit always-on; per-summary every 600 updateGeometry calls when env=1.
@@ -207,9 +208,7 @@ void Mech3DAppearance::updateGeometry (void)
 	}
 	
    	Stuff::Point3D xlatPosition;
-   	xlatPosition.x = -position.x;
-   	xlatPosition.y = position.z;
-   	xlatPosition.z = position.y;
+   	mc2ToRender(xlatPosition, position);
 
 	//Update flashing regardless of view!!!
 	// FREEZE-MOVERS-1: drawFlash toggles off a wall-clock timer, so a damaged
@@ -329,15 +328,11 @@ void Mech3DAppearance::updateGeometry (void)
 				Stuff::Vector3D lightPos = getNodeIdPosition(lightCircleNodeIndex);
 
 				Stuff::Point3D ourPosition;
-				ourPosition.x = -lightPos.x;
-				ourPosition.y = lightPos.z;
-				ourPosition.z = lightPos.y;
+				mc2ToRender(ourPosition, lightPos);
 		
 				pointLight->direction = ourPosition;
 		
-				pointLight->spotDir.x = -position.x;
-				pointLight->spotDir.y = position.z;
-				pointLight->spotDir.z = position.y;
+				mc2ToRender(pointLight->spotDir, position);
 
 				pointLight->maxSpotLength = 50.0f;
 
@@ -683,9 +678,7 @@ void Mech3DAppearance::updateGeometry (void)
 				Stuff::LinearMatrix4D 	shapeOrigin;
 				Stuff::LinearMatrix4D	localToWorld;
 				
-				rFootPosition[currentRightPoof].x = -rFootPos.x;
-				rFootPosition[currentRightPoof].y = rFootPos.z;
-				rFootPosition[currentRightPoof].z = rFootPos.y;
+				mc2ToRender(rFootPosition[currentRightPoof], rFootPos);
 				
 				shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 				shapeOrigin.BuildTranslation(rFootPosition[currentRightPoof]);
@@ -717,9 +710,7 @@ void Mech3DAppearance::updateGeometry (void)
 				Stuff::LinearMatrix4D 	shapeOrigin;
 				Stuff::LinearMatrix4D	localToWorld;
 				
-				rFootPosition[currentRightPoof].x = -rFootPos.x;
-				rFootPosition[currentRightPoof].y = rFootPos.z;
-				rFootPosition[currentRightPoof].z = rFootPos.y;
+				mc2ToRender(rFootPosition[currentRightPoof], rFootPos);
 				
 				shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 				shapeOrigin.BuildTranslation(rFootPosition[currentRightPoof]);
@@ -765,9 +756,7 @@ void Mech3DAppearance::updateGeometry (void)
 				Stuff::LinearMatrix4D 	shapeOrigin;
 				Stuff::LinearMatrix4D	localToWorld;
 				
-				lFootPosition[currentLeftPoof].x = -lFootPos.x;
-				lFootPosition[currentLeftPoof].y = lFootPos.z;
-				lFootPosition[currentLeftPoof].z = lFootPos.y;
+				mc2ToRender(lFootPosition[currentLeftPoof], lFootPos);
 				
 				shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 				shapeOrigin.BuildTranslation(lFootPosition[currentLeftPoof]);
@@ -799,9 +788,7 @@ void Mech3DAppearance::updateGeometry (void)
 				Stuff::LinearMatrix4D 	shapeOrigin;
 				Stuff::LinearMatrix4D	localToWorld;
 				
-				lFootPosition[currentLeftPoof].x = -lFootPos.x;
-				lFootPosition[currentLeftPoof].y = lFootPos.z;
-				lFootPosition[currentLeftPoof].z = lFootPos.y;
+				mc2ToRender(lFootPosition[currentLeftPoof], lFootPos);
 				
 				shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 				shapeOrigin.BuildTranslation(lFootPosition[currentLeftPoof]);
@@ -894,9 +881,7 @@ void Mech3DAppearance::updateGeometry (void)
 		Stuff::LinearMatrix4D	localToWorld;
 		Stuff::LinearMatrix4D	localResult;
 		
-		actualPosition.x = -jumpNodePos.x;
-		actualPosition.y = jumpNodePos.z;
-		actualPosition.z = jumpNodePos.y;
+		mc2ToRender(actualPosition, jumpNodePos);
 		
 		shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 		shapeOrigin.BuildTranslation(actualPosition);
@@ -962,9 +947,7 @@ void Mech3DAppearance::updateGeometry (void)
 		Stuff::LinearMatrix4D	localToWorld;
 		Stuff::LinearMatrix4D	localResult;
 		
-		actualPosition.x = -jumpNodePos.x;
-		actualPosition.y = jumpNodePos.z;
-		actualPosition.z = jumpNodePos.y;
+		mc2ToRender(actualPosition, jumpNodePos);
 		
 		shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 		shapeOrigin.BuildTranslation(actualPosition);
@@ -996,9 +979,7 @@ void Mech3DAppearance::updateGeometry (void)
 			leftArmNodeIndex = mechShape->GetNodeNameId("joint_luarm");
 
 		Stuff::Vector3D leftNodePos = getNodeIdPosition(leftArmNodeIndex);
-		leftShoulderPos.x = -leftNodePos.x;
-		leftShoulderPos.y = leftNodePos.z;
-		leftShoulderPos.z = leftNodePos.y;
+		mc2ToRender(leftShoulderPos, leftNodePos);
 		
 		shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 		shapeOrigin.BuildTranslation(leftShoulderPos);
@@ -1029,9 +1010,7 @@ void Mech3DAppearance::updateGeometry (void)
 			rightArmNodeIndex = mechShape->GetNodeNameId("joint_ruarm");
 
 		Stuff::Vector3D rightNodePos = getNodeIdPosition(rightArmNodeIndex);
-		rightShoulderPos.x = -rightNodePos.x;
-		rightShoulderPos.y = rightNodePos.z;
-		rightShoulderPos.z = rightNodePos.y;
+		mc2ToRender(rightShoulderPos, rightNodePos);
 		
  		shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 		shapeOrigin.BuildTranslation(rightShoulderPos);
@@ -1060,9 +1039,7 @@ void Mech3DAppearance::updateGeometry (void)
 				
 		Stuff::Vector3D smokeNodePos = getNodePosition(0);
 		Stuff::Point3D smokePos;
-		smokePos.x = -smokeNodePos.x;
-		smokePos.y = smokeNodePos.z;
-		smokePos.z = smokeNodePos.y;
+		mc2ToRender(smokePos, smokeNodePos);
 		
  		shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 		shapeOrigin.BuildTranslation(smokePos);
@@ -1127,9 +1104,7 @@ void Mech3DAppearance::updateGeometry (void)
 		Stuff::LinearMatrix4D	localResult;
 				
 		Stuff::Point3D wakePos;
-		wakePos.x = -position.x;
-		wakePos.y = position.z;
-		wakePos.z = position.y;
+		mc2ToRender(wakePos, position);
 		
  		shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 		shapeOrigin.BuildTranslation(wakePos);
@@ -1185,9 +1160,7 @@ bool Mech3DAppearance::leftArmRecalc (void)
 		Stuff::Point3D Distance;
 		Stuff::Point3D objPosition;
 		Stuff::Point3D eyePosition(eye->getCameraOrigin());
-		objPosition.x = -leftArmPos.x;
-		objPosition.y = leftArmPos.z;
-		objPosition.z = leftArmPos.y;
+		mc2ToRender(objPosition, leftArmPos);
 
 		Distance.Subtract(objPosition,eyePosition);
 		eyeDistance = Distance.GetApproximateLength();
@@ -1242,9 +1215,7 @@ bool Mech3DAppearance::rightArmRecalc (void)
 		Stuff::Point3D Distance;
 		Stuff::Point3D objPosition;
 		Stuff::Point3D eyePosition(eye->getCameraOrigin());
-		objPosition.x = -rightArmPos.x;
-		objPosition.y = rightArmPos.z;
-		objPosition.z = rightArmPos.y;
+		mc2ToRender(objPosition, rightArmPos);
 
 		Distance.Subtract(objPosition,eyePosition);
 		eyeDistance = Distance.GetApproximateLength();

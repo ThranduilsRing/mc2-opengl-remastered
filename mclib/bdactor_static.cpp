@@ -1,6 +1,7 @@
 // BldgAppearance / TreeAppearance: BldgAppearance static registry: eligibility, registerStatic, touch*, rebake gates, invalidate, destroy.
 // Declared in the class headers; shared names in bdactor_internal.h.
 #include "bdactor_internal.h"
+#include "../RenderCore/axis_convert.h"
 
 // BLDG-TYPE-ANIM-GATE-FIX-1 kill-switch.
 // Unset/1 = new: idle animatable-type buildings eligible for static path.
@@ -504,9 +505,7 @@ bool BldgAppearance::prewarmStaticLightBake(Camera* cam)
 	// Build xlatPosition/rot from the appearance world position/rotation.
 	// Same coordinate transform as BldgAppearance::update (line ~3281):
 	Stuff::Point3D xlatPosition;
-	xlatPosition.x = -position.x;
-	xlatPosition.y =  position.z;
-	xlatPosition.z =  position.y;
+	mc2ToRender(xlatPosition, position);
 
 	float yaw = rotation * DEGREES_TO_RADS;
 	Stuff::UnitQuaternion rot;

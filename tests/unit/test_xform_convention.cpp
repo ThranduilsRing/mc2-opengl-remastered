@@ -24,6 +24,7 @@
 #include "doctest.h"
 
 #include "xform_conventions.h"   // the lifted convention matrices under test
+#include "axis_convert.h"        // RenderCore: the typed (x,y,z)->(-x,z,y) helper under test
 #include <stuff/stuff.hpp>       // Stuff::Matrix4D (GL-free)
 
 #include <cmath>
@@ -253,6 +254,43 @@ TEST_CASE("PixelHomogToGLNDC carries the documented Y-flip and w-sign") {
     CHECK(o.y == doctest::Approx( 2.0 * in.y - in.w));   // Y-flip
     CHECK(o.z == doctest::Approx(-in.z));
     CHECK(o.w == doctest::Approx(-in.w));                // w-sign flip
+}
+
+// --- axis_convert.h: the typed helper agrees with the matrix ---------------
+
+namespace {
+bool sameVec(const Stuff::Vector3D& a, double x, double y, double z) {
+    return a.x == doctest::Approx(x) && a.y == doctest::Approx(y) && a.z == doctest::Approx(z);
+}
+}
+
+TEST_CASE("axis_convert: mc2ToRender equals makeAxisSwapMC2toGL applied to basis and mixed vectors") {
+    const Stuff::Matrix4D A = mc2xform::makeAxisSwapMC2toGL();
+    const double samples[][3] = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}, {3.5, -2.25, 7.0}, {-120.0, 64.5, 0.125}};
+    for (const auto& s : samples) {
+        const Vec4 viaMatrix = rowVecTimesMatrix(Vec4{s[0], s[1], s[2], 0}, A);
+        const Stuff::Vector3D in(static_cast<float>(s[0]), static_cast<float>(s[1]), static_cast<float>(s[2]));
+        CHECK(sameVec(mc2ToRender(in), viaMatrix.x, viaMatrix.y, viaMatrix.z));
+        Stuff::Vector3D out;
+        mc2ToRender(out, in);
+        CHECK(sameVec(out, viaMatrix.x, viaMatrix.y, viaMatrix.z));
+    }
+}
+
+TEST_CASE("axis_convert: the conversion is an involution, so renderToMc2 is the same permutation") {
+    const Stuff::Vector3D v(11.0f, -4.5f, 2.0f);
+    CHECK(sameVec(renderToMc2(mc2ToRender(v)), v.x, v.y, v.z));
+    CHECK(sameVec(mc2ToRender(v), renderToMc2(v).x, renderToMc2(v).y, renderToMc2(v).z));
+    Stuff::Vector3D inPlace = v;
+    mc2ToRender(inPlace, inPlace);                 // in == out is allowed
+    CHECK(sameVec(inPlace, -v.x, v.z, v.y));   // axis-swizzle: allow (the expected values are typed on purpose)
+}
+
+TEST_CASE("axis_convert: works across the vector types the engine mixes at these sites") {
+    const Stuff::Point3D p(2.0f, 3.0f, 5.0f);
+    Stuff::Vector3D v;
+    mc2ToRender(v, p);                             // Point3D -> Vector3D, as the hand-written sites do
+    CHECK(sameVec(v, -2.0, 5.0, 3.0));
 }
 
 } // TEST_SUITE("XformConvention")

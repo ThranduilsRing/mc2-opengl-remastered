@@ -49,6 +49,7 @@
 #endif
 
 #include<gameos.hpp>
+#include "../RenderCore/axis_convert.h"
 
 //---------------------------------------------------------------------------
 
@@ -657,9 +658,7 @@ long Carnage::update (void)
 			Stuff::LinearMatrix4D	localToWorld;
 				
 			Stuff::Point3D actualPosition;
-			actualPosition.x = -position.x;
-			actualPosition.y = position.z;
-			actualPosition.z = position.y;
+			mc2ToRender(actualPosition, position);
 	
 			shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 			shapeOrigin.BuildTranslation(actualPosition);
@@ -732,9 +731,7 @@ long Carnage::update (void)
 				duration -= frameLength;
 				
 				Stuff::Point3D ourPosition;
-				ourPosition.x = -position.x;
-				ourPosition.y = position.z;
-				ourPosition.z = position.y;
+				mc2ToRender(ourPosition, position);
 			
 				pointLight->direction = ourPosition;
 			
@@ -768,9 +765,7 @@ long Carnage::update (void)
 		if (gosEffect && gosEffect->IsExecuted())
 		{
 			Stuff::Point3D actualPosition;
-			actualPosition.x = -position.x;
-			actualPosition.y = position.z;
-			actualPosition.z = position.y;
+			mc2ToRender(actualPosition, position);
 			
 			Stuff::LinearMatrix4D 	shapeOrigin;
 			Stuff::LinearMatrix4D 	localToWorld;
@@ -839,9 +834,7 @@ void Carnage::render (void)
 			drawInfo.m_clippingFlags = 0x0;
 	
 			Stuff::Point3D actualPosition;
-			actualPosition.x = -position.x;
-			actualPosition.y = position.z;
-			actualPosition.z = position.y;
+			mc2ToRender(actualPosition, position);
 			
 			Stuff::LinearMatrix4D 	shapeOrigin;
 			Stuff::LinearMatrix4D	localToWorld;

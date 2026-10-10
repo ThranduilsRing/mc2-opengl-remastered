@@ -9,6 +9,7 @@
 #endif
 
 #include "bdactor_internal.h"
+#include "../RenderCore/axis_convert.h"
 
 // File-scope gate: one gate read per TU, process-start-constant, shared across
 // BldgAppearance::recalcBounds and TreeAppearance::recalcBounds. Matches the
@@ -586,9 +587,7 @@ Stuff::Vector3D BldgAppearance::getNodeNamePosition (const char *nodeName)
    	qRotation = Stuff::EulerAngles(0.0f, yaw, 0.0f);
    
    	Stuff::Point3D xlatPosition;
-   	xlatPosition.x = -position.x;
-   	xlatPosition.y = position.z;
-   	xlatPosition.z = position.y;
+   	mc2ToRender(xlatPosition, position);
    
 	result = bldgShape->GetTransformedNodePosition(&xlatPosition,&qRotation,nodeName);
 
@@ -610,9 +609,7 @@ Stuff::Vector3D BldgAppearance::getNodeIdPosition (long nodeId)
    	qRotation = Stuff::EulerAngles(0.0f, yaw, 0.0f);
    
    	Stuff::Point3D xlatPosition;
-   	xlatPosition.x = -position.x;
-   	xlatPosition.y = position.z;
-   	xlatPosition.z = position.y;
+   	mc2ToRender(xlatPosition, position);
    
 	result = bldgShape->GetTransformedNodePosition(&xlatPosition,&qRotation,nodeId);
 
@@ -864,9 +861,7 @@ bool BldgAppearance::playDestruction (void)
 			Stuff::Vector3D actualPosition = position;
 			//actualPosition.Add(position,offsetPosition);
 
-			tPosition.x = -actualPosition.x;
-			tPosition.y = actualPosition.z;
-			tPosition.z = actualPosition.y;
+			mc2ToRender(tPosition, actualPosition);
 
 			float yaw = (180.0f + rotation) * DEGREES_TO_RADS;
 			Stuff::UnitQuaternion rot;

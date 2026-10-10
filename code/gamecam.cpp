@@ -649,8 +649,11 @@ void GameCamera::render (void)
 					Stuff::UnitVector3D stuffRight, stuffUp;
 					cameraOrigin.GetLocalRightInWorld(&stuffRight);
 					cameraOrigin.GetLocalUpInWorld(&stuffUp);
-					float camRight[3] = { -stuffRight.x,  stuffRight.z,  stuffRight.y };
-					float camUp[3]    = { -stuffUp.x,     stuffUp.z,     stuffUp.y    };
+					Stuff::Vector3D camRightGL, camUpGL;
+					mc2ToRender(camRightGL, stuffRight);
+					mc2ToRender(camUpGL, stuffUp);
+					float camRight[3] = { camRightGL.x, camRightGL.y, camRightGL.z };
+					float camUp[3]    = { camUpGL.x,    camUpGL.y,    camUpGL.z };
 					gos_SetActiveCamera(camRight, camUp);
 				}
 

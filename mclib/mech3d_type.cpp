@@ -1,6 +1,7 @@
 // Mech3DAppearance: Mech3DAppearanceType init/destroy/setAnimation and the weapon-node lookups.
 // Declared in the class headers; shared names in mech3d_internal.h.
 #include "mech3d_internal.h"
+#include "../RenderCore/axis_convert.h"
 
 static uint32_t s_lcSkipCount3d = 0u;
 
@@ -756,9 +757,7 @@ Stuff::Vector3D Mech3DAppearance::getWeaponNodePosition (long nodeId)
    	qRotation = Stuff::EulerAngles(0.0f, yaw, 0.0f);
 
    	Stuff::Point3D xlatPosition;
-   	xlatPosition.x = -position.x;
-   	xlatPosition.y = position.z;
-   	xlatPosition.z = position.y;
+   	mc2ToRender(xlatPosition, position);
 
    	Stuff::UnitQuaternion torsoRot;
    	torsoRot = Stuff::EulerAngles(0.0f,(torsoRotation * DEGREES_TO_RADS),0.0f);
@@ -796,9 +795,7 @@ Stuff::Vector3D Mech3DAppearance::getNodeNamePosition (const char *nodeName)
    	qRotation = Stuff::EulerAngles(0.0f, yaw, 0.0f);
    
    	Stuff::Point3D xlatPosition;
-   	xlatPosition.x = -position.x;
-   	xlatPosition.y = position.z;
-   	xlatPosition.z = position.y;
+   	mc2ToRender(xlatPosition, position);
    
    	Stuff::UnitQuaternion torsoRot;
    	torsoRot = Stuff::EulerAngles(0.0f,(torsoRotation * DEGREES_TO_RADS),0.0f);
@@ -836,9 +833,7 @@ Stuff::Vector3D Mech3DAppearance::getNodeIdPosition (long nodeId)
    	qRotation = Stuff::EulerAngles(0.0f, yaw, 0.0f);
    
    	Stuff::Point3D xlatPosition;
-   	xlatPosition.x = -position.x;
-   	xlatPosition.y = position.z;
-   	xlatPosition.z = position.y;
+   	mc2ToRender(xlatPosition, position);
    
    	Stuff::UnitQuaternion torsoRot;
    	torsoRot = Stuff::EulerAngles(0.0f,(torsoRotation * DEGREES_TO_RADS),0.0f);
@@ -878,9 +873,7 @@ Stuff::Vector3D Mech3DAppearance::getNodePosition (long nodeId)
    	qRotation = Stuff::EulerAngles(0.0f, yaw, 0.0f);
    
    	Stuff::Point3D xlatPosition;
-   	xlatPosition.x = -position.x;
-   	xlatPosition.y = position.z;
-   	xlatPosition.z = position.y;
+   	mc2ToRender(xlatPosition, position);
    
    	Stuff::UnitQuaternion torsoRot;
    	torsoRot = Stuff::EulerAngles(0.0f,(torsoRotation * DEGREES_TO_RADS),0.0f);

@@ -10,6 +10,7 @@ layout(location=4) in vec4 a_boneWeights;
 // A shader-side copy with the wrong stride shifts every record at instanceBase > 0
 // (garbage bone offsets, mech parts missing from the shadow depth).
 #include <include/gpu_abi_mech_instance.gen.hglsl>
+#include <include/axis.hglsl>
 struct GpuMechBone { vec4 row0, row1, row2, row3; };
 layout(std430, binding=0) readonly buffer InstanceBuffer { GpuMechInstance instances[]; };
 layout(std430, binding=1) readonly buffer BoneBuffer { GpuMechBone bones[]; };
@@ -36,6 +37,6 @@ void main() {
         boneT = mat4(b.row0, b.row1, b.row2, b.row3);
     }
     vec4 worldStuff = boneT * vec4(a_position, 1.0);
-    vec3 worldMC2 = vec3(-worldStuff.x, worldStuff.z, worldStuff.y);
+    vec3 worldMC2 = mc2ToRender(worldStuff.xyz);
     gl_Position = lightSpaceMatrix * vec4(worldMC2, 1.0);
 }

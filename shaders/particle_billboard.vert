@@ -22,6 +22,7 @@
 // CPU-side particle visibility is gated upstream by the gosFX/MLR system.
 
 #include <include/particles.hglsl>
+#include <include/axis.hglsl>
 
 layout(std430, binding = 14) readonly buffer Particles {
     Particle particles[];
@@ -112,7 +113,7 @@ void main() {
     // (GL_x=-Stuff_x, GL_y=Stuff_z, GL_z=Stuff_y) used pre-B2 so the center
     // lands correctly, then add the view-aligned offsets in GL world space.
     vec3 stuffCenter  = p.position.xyz;
-    vec3 glCenter     = vec3(-stuffCenter.x, stuffCenter.z, stuffCenter.y);
+    vec3 glCenter     = mc2ToRender(stuffCenter);
     vec3 worldPos     = glCenter
                       + u_cameraRight * corner.x
                       + u_cameraUp    * corner.y;

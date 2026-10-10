@@ -8,35 +8,30 @@ The conversion is `(x, y, z) -> (-x, z, y)`; it is its own inverse, so the same 
 
 | Metric | Count |
 |---|---:|
-| Hand-written sites (ratcheted) | 184 |
-| Waived (`axis-swizzle: allow`) | 0 |
-| Helper-call sites (centralized) | 13 |
-| Helper definitions | 1 |
-| Matrix-form references (`kAxisSwapMC2toGL`, `makeAxisSwapMC2toGL`) | 8 |
+| Hand-written sites (ratcheted) | 6 |
+| Waived (`axis-swizzle: allow`) | 1 |
+| Helper-call sites (centralized) | 203 |
+| Helper definitions | 7 |
+| Matrix-form references (`kAxisSwapMC2toGL`, `makeAxisSwapMC2toGL`) | 9 |
 
 ## Shapes
 
 | Shape | Example | Sites |
 |---|---|---:|
-| triplet-ctor | `vec3(-a.x, a.z, a.y)` | 36 |
-| triplet-brace | `{ -a.x, a.z, a.y }` | 3 |
-| triplet-arglist | `f(.., -a.x, a.z, a.y)` | 1 |
+| triplet-ctor | `vec3(-a.x, a.z, a.y)` | 0 |
+| triplet-brace | `{ -a.x, a.z, a.y }` | 1 |
+| triplet-arglist | `f(.., -a.x, a.z, a.y)` | 0 |
 | decl-chain | `float lx = -d.x, ly = d.z, lz = d.y;` | 1 |
 | swizzle-zy | `vec3(-a.x, a.zy)` | 0 |
 | swizzle-xzy | `a.xzy * vec3(-1, 1, 1)` | 0 |
-| assign-triple | `o.x = -i.x; o.y = i.z; o.z = i.y;` | 139 |
+| assign-triple | `o.x = -i.x; o.y = i.z; o.z = i.y;` | 0 |
 | assign-scalars | `X = -v.x; Y = v.z; Z = v.y;` | 4 |
 
 ## By directory
 
 | Directory | Sites |
 |---|---:|
-| `mclib` | 90 |
-| `code` | 52 |
-| `shaders` | 24 |
-| `shaders/vulkan` | 9 |
-| `editor` | 4 |
-| `shaders/include` | 2 |
+| `mclib` | 3 |
 | `tools` | 2 |
 | `GameOS` | 1 |
 
@@ -46,276 +41,13 @@ Shaders that carry sites, with their counterpart in the other backend. Twins mus
 
 | Shader | Sites | Counterpart | Why paired | Counterpart sites |
 |---|---:|---|---|---:|
-| `shaders/building_pbr.vert` | 1 | _no counterpart found_ | | |
-| `shaders/gos_tex_vertex_lighted.vert` | 2 | _no counterpart found_ | | |
-| `shaders/include/lighting.hglsl` | 2 | `shaders/vulkan/mech_tier1.vert` | glsl_port_diff registry | 4 |
-| `shaders/mech.vert` | 4 | `shaders/vulkan/mech_tier1.vert` | _tier1 name | 4 |
-| `shaders/particle_billboard.vert` | 1 | _no counterpart found_ | | |
-| `shaders/shadow_mech.vert` | 1 | _no counterpart found_ | | |
-| `shaders/shadow_object.vert` | 1 | _no counterpart found_ | | |
-| `shaders/shadow_screen.frag` | 2 | _no counterpart found_ | | |
-| `shaders/shadow_static_prop.vert` | 1 | _no counterpart found_ | | |
-| `shaders/static_prop.frag` | 2 | _no counterpart found_ | | |
-| `shaders/static_prop.vert` | 3 | _no counterpart found_ | | |
-| `shaders/terrain_lod_chunk.frag` | 4 | _no counterpart found_ | | |
-| `shaders/tube_ribbon.vert` | 1 | _no counterpart found_ | | |
-| `shaders/vfx_mesh.vert` | 1 | _no counterpart found_ | | |
-| `shaders/vulkan/color_prop_tier1.vert` | 2 | _no counterpart found_ | | |
-| `shaders/vulkan/mech_tier1.vert` | 4 | `shaders/include/lighting.hglsl` | glsl_port_diff registry | 2 |
-| `shaders/vulkan/mech_tier1.vert` | 4 | `shaders/mech.vert` | _tier1 name | 4 |
-| `shaders/vulkan/screen_shadow_csm.frag` | 1 | _no counterpart found_ | | |
-| `shaders/vulkan/shadow_prop.vert` | 1 | _no counterpart found_ | | |
-| `shaders/vulkan/vfx_particle.vert` | 1 | _no counterpart found_ | | |
 
 ## Sites
 
-### `mclib/mech3d.cpp` (41)
-
-- `mclib/mech3d.cpp:1121` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
-- `mclib/mech3d.cpp:1163` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
-- `mclib/mech3d.cpp:1205` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
-- `mclib/mech3d.cpp:1249` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
-- `mclib/mech3d.cpp:2729` assign-triple: `objPosition.x = -position.x; objPosition.y = position.z; objPosition.z = position.y;`
-- `mclib/mech3d.cpp:2760` assign-triple: `objPosition.x = -position.x; objPosition.y = position.z; objPosition.z = position.y;`
-- `mclib/mech3d.cpp:3579` assign-triple: `actualPosition.x = -jumpNodePos.x; actualPosition.y = jumpNodePos.z; actualPosition.z = jumpNodePos.y;`
-- `mclib/mech3d.cpp:3608` assign-triple: `leftShoulderPos.x = -leftNodePos.x; leftShoulderPos.y = leftNodePos.z; leftShoulderPos.z = leftNodePos.y;`
-- `mclib/mech3d.cpp:3635` assign-triple: `rightShoulderPos.x = -rightNodePos.x; rightShoulderPos.y = rightNodePos.z; rightShoulderPos.z = rightNodePos.y`
-- `mclib/mech3d.cpp:3661` assign-triple: `smokePos.x = -smokeNodePos.x; smokePos.y = smokeNodePos.z; smokePos.z = smokeNodePos.y;`
-- `mclib/mech3d.cpp:3718` assign-triple: `wakePos.x = -position.x; wakePos.y = position.z; wakePos.z = position.y;`
-- `mclib/mech3d.cpp:3884` assign-triple: `rightShoulderPos.x = -rightArmPos.x; rightShoulderPos.y = rightArmPos.z; rightShoulderPos.z = rightArmPos.y;`
-- `mclib/mech3d.cpp:3926` assign-triple: `leftShoulderPos.x = -leftArmPos.x; leftShoulderPos.y = leftArmPos.z; leftShoulderPos.z = leftArmPos.y;`
-- `mclib/mech3d.cpp:4184` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
-- `mclib/mech3d.cpp:4308` assign-triple: `ourPosition.x = -lightPos.x; ourPosition.y = lightPos.z; ourPosition.z = lightPos.y;`
-- `mclib/mech3d.cpp:4314` assign-triple: `pointLight->spotDir.x = -position.x; pointLight->spotDir.y = position.z; pointLight->spotDir.z = position.y;`
-- `mclib/mech3d.cpp:4666` assign-triple: `rFootPosition[currentRightPoof].x = -rFootPos.x; rFootPosition[currentRightPoof].y = rFootPos.z; rFootPosition`
-- `mclib/mech3d.cpp:4700` assign-triple: `rFootPosition[currentRightPoof].x = -rFootPos.x; rFootPosition[currentRightPoof].y = rFootPos.z; rFootPosition`
-- `mclib/mech3d.cpp:4748` assign-triple: `lFootPosition[currentLeftPoof].x = -lFootPos.x; lFootPosition[currentLeftPoof].y = lFootPos.z; lFootPosition[c`
-- `mclib/mech3d.cpp:4782` assign-triple: `lFootPosition[currentLeftPoof].x = -lFootPos.x; lFootPosition[currentLeftPoof].y = lFootPos.z; lFootPosition[c`
-- `mclib/mech3d.cpp:4881` assign-triple: `actualPosition.x = -jumpNodePos.x; actualPosition.y = jumpNodePos.z; actualPosition.z = jumpNodePos.y;`
-- `mclib/mech3d.cpp:4950` assign-triple: `actualPosition.x = -jumpNodePos.x; actualPosition.y = jumpNodePos.z; actualPosition.z = jumpNodePos.y;`
-- `mclib/mech3d.cpp:4985` assign-triple: `leftShoulderPos.x = -leftNodePos.x; leftShoulderPos.y = leftNodePos.z; leftShoulderPos.z = leftNodePos.y;`
-- `mclib/mech3d.cpp:5018` assign-triple: `rightShoulderPos.x = -rightNodePos.x; rightShoulderPos.y = rightNodePos.z; rightShoulderPos.z = rightNodePos.y`
-- `mclib/mech3d.cpp:5050` assign-triple: `smokePos.x = -smokeNodePos.x; smokePos.y = smokeNodePos.z; smokePos.z = smokeNodePos.y;`
-- `mclib/mech3d.cpp:5117` assign-triple: `wakePos.x = -position.x; wakePos.y = position.z; wakePos.z = position.y;`
-- `mclib/mech3d.cpp:5178` assign-triple: `objPosition.x = -leftArmPos.x; objPosition.y = leftArmPos.z; objPosition.z = leftArmPos.y;`
-- `mclib/mech3d.cpp:5238` assign-triple: `objPosition.x = -rightArmPos.x; objPosition.y = rightArmPos.z; objPosition.z = rightArmPos.y;`
-- `mclib/mech3d.cpp:5882` assign-triple: `xlatPosition.x = -leftArmPos.x; xlatPosition.y = leftArmPos.z; xlatPosition.z = leftArmPos.y;`
-- `mclib/mech3d.cpp:5903` assign-triple: `leftShoulderPos.x = -leftArmPos.x; leftShoulderPos.y = leftArmPos.z; leftShoulderPos.z = leftArmPos.y;`
-- `mclib/mech3d.cpp:5966` assign-triple: `xlatPosition.x = -rightArmPos.x; xlatPosition.y = rightArmPos.z; xlatPosition.z = rightArmPos.y;`
-- `mclib/mech3d.cpp:5987` assign-triple: `rightShoulderPos.x = -rightArmPos.x; rightShoulderPos.y = rightArmPos.z; rightShoulderPos.z = rightArmPos.y;`
-- `mclib/mech3d.cpp:6074` assign-triple: `leftShoulderPos.x = -leftNodePos.x; leftShoulderPos.y = leftNodePos.z; leftShoulderPos.z = leftNodePos.y;`
-- `mclib/mech3d.cpp:6096` assign-triple: `leftShoulderPos.x = -leftArmPos.x; leftShoulderPos.y = leftArmPos.z; leftShoulderPos.z = leftArmPos.y;`
-- `mclib/mech3d.cpp:6200` assign-triple: `rightShoulderPos.x = -rightNodePos.x; rightShoulderPos.y = rightNodePos.z; rightShoulderPos.z = rightNodePos.y`
-- `mclib/mech3d.cpp:6222` assign-triple: `rightShoulderPos.x = -rightArmPos.x; rightShoulderPos.y = rightArmPos.z; rightShoulderPos.z = rightArmPos.y;`
-- `mclib/mech3d.cpp:6331` assign-triple: `smokePos.x = -smokeNodePos.x; smokePos.y = smokeNodePos.z; smokePos.z = smokeNodePos.y;`
-- `mclib/mech3d.cpp:6469` assign-triple: `wakePos.x = -position.x; wakePos.y = position.z; wakePos.z = position.y;`
-- `mclib/mech3d.cpp:6725` assign-triple: `actualPosition.x = -jumpNodePos.x; actualPosition.y = jumpNodePos.z; actualPosition.z = jumpNodePos.y;`
-- `mclib/mech3d.cpp:6792` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
-- `mclib/mech3d.cpp:6846` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
-
-### `mclib/bdactor.cpp` (17)
-
-- `mclib/bdactor.cpp:1810` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
-- `mclib/bdactor.cpp:1836` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
-- `mclib/bdactor.cpp:2104` assign-triple: `tPosition.x = -actualPosition.x; tPosition.y = actualPosition.z; tPosition.z = actualPosition.y;`
-- `mclib/bdactor.cpp:2489` assign-triple: `tPosition.x = -actualPosition.x; tPosition.y = actualPosition.z; tPosition.z = actualPosition.y;`
-- `mclib/bdactor.cpp:2539` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
-- `mclib/bdactor.cpp:2575` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
-- `mclib/bdactor.cpp:3663` assign-triple: `ourPosition.x = -position.x; ourPosition.y = position.z; ourPosition.z = position.y;`
-- `mclib/bdactor.cpp:3962` assign-triple: `childPosP.x = -childPos.x; childPosP.y = childPos.z; childPosP.z = childPos.y;`
-- `mclib/bdactor.cpp:4073` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
-- `mclib/bdactor.cpp:4411` assign-triple: `tPosition.x = -actualPosition.x; tPosition.y = actualPosition.z; tPosition.z = actualPosition.y;`
-- `mclib/bdactor.cpp:4455` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
-- `mclib/bdactor.cpp:4503` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
-- `mclib/bdactor.cpp:4599` assign-triple: `wakePos.x = -nodePos.x; wakePos.y = nodePos.z; wakePos.z = nodePos.y;`
-- `mclib/bdactor.cpp:4635` assign-triple: `wakePos.x = -nodePos.x; wakePos.y = nodePos.z; wakePos.z = nodePos.y;`
-- `mclib/bdactor.cpp:5166` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
-- `mclib/bdactor.cpp:7336` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
-- `mclib/bdactor.cpp:8235` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
-
-### `code/artlry.cpp` (14)
-
-- `code/artlry.cpp:838` assign-triple: `actualPosition.x = -position.x; actualPosition.y = position.z; actualPosition.z = position.y;`
-- `code/artlry.cpp:886` assign-triple: `actualPosition.x = -position.x; actualPosition.y = position.z; actualPosition.z = position.y;`
-- `code/artlry.cpp:958` assign-triple: `actualPosition.x = -lPosition.x; actualPosition.y = lPosition.z; actualPosition.z = lPosition.y;`
-- `code/artlry.cpp:976` assign-triple: `actualPosition.x = -lPosition.x; actualPosition.y = lPosition.z; actualPosition.z = lPosition.y;`
-- `code/artlry.cpp:1000` assign-triple: `actualPosition.x = -lPosition.x; actualPosition.y = lPosition.z; actualPosition.z = lPosition.y;`
-- `code/artlry.cpp:1020` assign-triple: `actualPosition.x = -lPosition.x; actualPosition.y = lPosition.z; actualPosition.z = lPosition.y;`
-- `code/artlry.cpp:1057` assign-triple: `actualPosition.x = -position.x; actualPosition.y = position.z; actualPosition.z = position.y;`
-- `code/artlry.cpp:1073` assign-triple: `actualPosition.x = -position.x; actualPosition.y = position.z; actualPosition.z = position.y;`
-- `code/artlry.cpp:1140` assign-triple: `actualPosition.x = -position.x; actualPosition.y = position.z; actualPosition.z = position.y;`
-- `code/artlry.cpp:1199` assign-triple: `objPosition.x = -position.x; objPosition.y = position.z; objPosition.z = position.y;`
-- `code/artlry.cpp:1355` assign-triple: `actualPosition.x = -position.x; actualPosition.y = position.z; actualPosition.z = position.y;`
-- `code/artlry.cpp:1443` assign-triple: `actualPosition.x = -lPosition.x; actualPosition.y = lPosition.z; actualPosition.z = lPosition.y;`
-- `code/artlry.cpp:1463` assign-triple: `actualPosition.x = -lPosition.x; actualPosition.y = lPosition.z; actualPosition.z = lPosition.y;`
-- `code/artlry.cpp:1801` assign-triple: `actualPosition.x = -position.x; actualPosition.y = position.z; actualPosition.z = position.y;`
-
-### `code/weaponbolt_update.cpp` (12)
-
-- `code/weaponbolt_update.cpp:63` assign-triple: `actualPosition.x = -laserPosition.x; actualPosition.y = laserPosition.z; actualPosition.z = laserPosition.y;`
-- `code/weaponbolt_update.cpp:156` assign-triple: `mPosition.x = -position.x; mPosition.y = position.z; mPosition.z = position.y;`
-- `code/weaponbolt_update.cpp:330` assign-triple: `tPosition.x = -hotSpot.x; tPosition.y = hotSpot.z; tPosition.z = hotSpot.y;`
-- `code/weaponbolt_update.cpp:397` assign-triple: `tPosition.x = -hotSpot.x; tPosition.y = hotSpot.z; tPosition.z = hotSpot.y;`
-- `code/weaponbolt_update.cpp:607` assign-triple: `tPosition.x = -hotSpot.x; tPosition.y = hotSpot.z; tPosition.z = hotSpot.y;`
-- `code/weaponbolt_update.cpp:671` assign-triple: `tPosition.x = -hotSpot.x; tPosition.y = hotSpot.z; tPosition.z = hotSpot.y;`
-- `code/weaponbolt_update.cpp:880` assign-triple: `actualPosition.x = -laserPosition.x; actualPosition.y = laserPosition.z; actualPosition.z = laserPosition.y;`
-- `code/weaponbolt_update.cpp:914` assign-triple: `mPosition.x = -position.x; mPosition.y = position.z; mPosition.z = position.y;`
-- `code/weaponbolt_update.cpp:1043` assign-triple: `ourPosition.x = -laserPosition.x; ourPosition.y = laserPosition.z; ourPosition.z = laserPosition.y;`
-- `code/weaponbolt_update.cpp:1094` assign-triple: `tPosition.x = -hotSpot.x; tPosition.y = hotSpot.z; tPosition.z = hotSpot.y;`
-- `code/weaponbolt_update.cpp:1171` assign-triple: `tPosition.x = -hotSpot.x; tPosition.y = hotSpot.z; tPosition.z = hotSpot.y;`
-- `code/weaponbolt_update.cpp:1327` assign-triple: `swapped.x = -laserPosition.x; swapped.y = laserPosition.z; swapped.z = laserPosition.y;`
-
-### `code/missiongui.cpp` (8)
-
-- `code/missiongui.cpp:1881` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
-- `code/missiongui.cpp:1997` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
-- `code/missiongui.cpp:2018` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
-- `code/missiongui.cpp:4390` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
-- `code/missiongui.cpp:4413` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
-- `code/missiongui.cpp:4580` assign-triple: `objPosition.x = -wPos.x; objPosition.y = wPos.z; objPosition.z = wPos.y;`
-- `code/missiongui.cpp:6013` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
-- `code/missiongui.cpp:7521` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
-
-### `mclib/gvactor_geometry.cpp` (7)
-
-- `mclib/gvactor_geometry.cpp:452` assign-triple: `objPosition.x = -position.x; objPosition.y = position.z; objPosition.z = position.y;`
-- `mclib/gvactor_geometry.cpp:483` assign-triple: `objPosition.x = -position.x; objPosition.y = position.z; objPosition.z = position.y;`
-- `mclib/gvactor_geometry.cpp:536` assign-triple: `minBox.x = -appearType->typeUpperLeft.x; minBox.y = appearType->typeUpperLeft.z; minBox.z = appearType->typeUp`
-- `mclib/gvactor_geometry.cpp:541` assign-triple: `maxBox.x = -appearType->typeLowerRight.x; maxBox.y = appearType->typeLowerRight.z; maxBox.z = appearType->type`
-- `mclib/gvactor_geometry.cpp:801` assign-triple: `tPosition.x = -position.x; tPosition.y = position.z; tPosition.z = position.y;`
-- `mclib/gvactor_geometry.cpp:841` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
-- `mclib/gvactor_geometry.cpp:883` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
-
-### `mclib/gvactor_update.cpp` (6)
-
-- `mclib/gvactor_update.cpp:123` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
-- `mclib/gvactor_update.cpp:384` assign-triple: `tPosition.x = -position.x; tPosition.y = position.z; tPosition.z = position.y;`
-- `mclib/gvactor_update.cpp:449` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
-- `mclib/gvactor_update.cpp:477` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
-- `mclib/gvactor_update.cpp:507` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
-- `mclib/gvactor_update.cpp:923` assign-triple: `wakePos.x = -nodePos.x; wakePos.y = nodePos.z; wakePos.z = nodePos.y;`
-
-### `code/weaponbolt_render.cpp` (5)
-
-- `code/weaponbolt_render.cpp:629` assign-triple: `actualPosition.x = -hotSpot.x; actualPosition.y = hotSpot.z; actualPosition.z = hotSpot.y;`
-- `code/weaponbolt_render.cpp:654` assign-triple: `actualPosition.x = -laserPosition.x; actualPosition.y = laserPosition.z; actualPosition.z = laserPosition.y;`
-- `code/weaponbolt_render.cpp:679` assign-triple: `mPosition.x = -position.x; mPosition.y = position.z; mPosition.z = position.y;`
-- `code/weaponbolt_render.cpp:730` assign-triple: `tPosition.x = -hotSpot.x; tPosition.y = hotSpot.z; tPosition.z = hotSpot.y;`
-- `code/weaponbolt_render.cpp:755` assign-triple: `tPosition.x = -hotSpot.x; tPosition.y = hotSpot.z; tPosition.z = hotSpot.y;`
-
-### `code/carnage.cpp` (4)
-
-- `code/carnage.cpp:660` assign-triple: `actualPosition.x = -position.x; actualPosition.y = position.z; actualPosition.z = position.y;`
-- `code/carnage.cpp:735` assign-triple: `ourPosition.x = -position.x; ourPosition.y = position.z; ourPosition.z = position.y;`
-- `code/carnage.cpp:771` assign-triple: `actualPosition.x = -position.x; actualPosition.y = position.z; actualPosition.z = position.y;`
-- `code/carnage.cpp:842` assign-triple: `actualPosition.x = -position.x; actualPosition.y = position.z; actualPosition.z = position.y;`
-
-### `mclib/camera.cpp` (4)
-
-- `mclib/camera.cpp:959` assign-triple: `r.x = -g.x; r.y = g.z; r.z = g.y;`
-- `mclib/camera.cpp:1005` assign-triple: `r.x = -g.x; r.y = g.z; r.z = g.y;`
-- `mclib/camera.cpp:1118` assign-triple: `r.x = -g.x; r.y = g.z; r.z = g.y;`
-- `mclib/camera.cpp:3417` triplet-ctor: `-physicalPos.x, physicalPos.z, physicalPos.y`
-
-### `shaders/mech.vert` (4)
-
-- `shaders/mech.vert:174` triplet-ctor: `-worldStuff.x, worldStuff.z, worldStuff.y`
-- `shaders/mech.vert:176` triplet-ctor: `-normalStuff.x, normalStuff.z, normalStuff.y`
-- `shaders/mech.vert:257` triplet-ctor: `-tStuff.x, tStuff.z, tStuff.y`
-- `shaders/mech.vert:285` triplet-ctor: `-sdStuff.x, sdStuff.z, sdStuff.y`
-
-### `shaders/terrain_lod_chunk.frag` (4)
-
-- `shaders/terrain_lod_chunk.frag:692` triplet-ctor: `-cameraPos.x, cameraPos.z, cameraPos.y`
-- `shaders/terrain_lod_chunk.frag:1504` triplet-ctor: `-cameraPos.x, cameraPos.z, cameraPos.y`
-- `shaders/terrain_lod_chunk.frag:1663` triplet-ctor: `-cameraPos.x, cameraPos.z, cameraPos.y`
-- `shaders/terrain_lod_chunk.frag:2112` triplet-ctor: `-cameraPos.x, cameraPos.z, cameraPos.y`
-
-### `shaders/vulkan/mech_tier1.vert` (4)
-
-- `shaders/vulkan/mech_tier1.vert:143` triplet-ctor: `-worldStuff.x, worldStuff.z, worldStuff.y`
-- `shaders/vulkan/mech_tier1.vert:145` triplet-ctor: `-normalStuff.x, normalStuff.z, normalStuff.y`
-- `shaders/vulkan/mech_tier1.vert:185` triplet-ctor: `-tStuff.x, tStuff.z, tStuff.y`
-- `shaders/vulkan/mech_tier1.vert:200` triplet-ctor: `-sdStuff.x, sdStuff.z, sdStuff.y`
-
-### `code/terrobj.cpp` (3)
-
-- `code/terrobj.cpp:948` assign-triple: `actualPosition.x = -position.x; actualPosition.y = position.z; actualPosition.z = position.y;`
-- `code/terrobj.cpp:1062` assign-triple: `actualPosition.x = -position.x; actualPosition.y = position.z; actualPosition.z = position.y;`
-- `code/terrobj.cpp:1328` assign-triple: `actualPosition.x = -position.x; actualPosition.y = position.z; actualPosition.z = position.y;`
-
-### `mclib/gvactor.cpp` (3)
-
-- `mclib/gvactor.cpp:457` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
-- `mclib/gvactor.cpp:510` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
-- `mclib/gvactor.cpp:549` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
-
-### `mclib/gvactor_render.cpp` (3)
-
-- `mclib/gvactor_render.cpp:195` assign-triple: `tPosition.x = -position.x; tPosition.y = position.z; tPosition.z = position.y;`
-- `mclib/gvactor_render.cpp:269` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
-- `mclib/gvactor_render.cpp:309` assign-triple: `wakePos.x = -dustPos.x; wakePos.y = dustPos.z; wakePos.z = dustPos.y;`
-
-### `shaders/static_prop.vert` (3)
-
-- `shaders/static_prop.vert:371` triplet-ctor: `-world_stuff.x, world_stuff.z, world_stuff.y`
-- `shaders/static_prop.vert:420` triplet-ctor: `-origin_stuff.x, origin_stuff.z, origin_stuff.y`
-- `shaders/static_prop.vert:653` triplet-ctor: `-worldNormal.x, worldNormal.z, worldNormal.y`
-
-### `code/gamecam.cpp` (2)
-
-- `code/gamecam.cpp:652` triplet-brace: `-stuffRight.x, stuffRight.z, stuffRight.y`
-- `code/gamecam.cpp:653` triplet-brace: `-stuffUp.x, stuffUp.z, stuffUp.y`
-
-### `code/objmgr.cpp` (2)
-
-- `code/objmgr.cpp:3774` assign-triple: `boxStart.x = -appearType->typeUpperLeft.x; boxStart.y = appearType->typeUpperLeft.z; boxStart.z = appearType->`
-- `code/objmgr.cpp:3779` assign-triple: `boxEnd.x = -appearType->typeLowerRight.x; boxEnd.y = appearType->typeLowerRight.z; boxEnd.z = appearType->type`
-
-### `code/turret.cpp` (2)
-
-- `code/turret.cpp:904` assign-triple: `xlatPos.x = -ourPosition.x; xlatPos.y = ourPosition.z; xlatPos.z = ourPosition.y;`
-- `code/turret.cpp:910` assign-triple: `pointLight->spotDir.x = -position.x; pointLight->spotDir.y = position.z; pointLight->spotDir.z = position.y;`
-
-### `editor/EditorInterface_mouse.cpp` (2)
-
-- `editor/EditorInterface_mouse.cpp:405` assign-triple: `objPosition.x = -pAppearance->position.x; objPosition.y = pAppearance->position.z; objPosition.z = pAppearance`
-- `editor/EditorInterface_mouse.cpp:1002` assign-triple: `objPosition.x = -pAppearance->position.x; objPosition.y = pAppearance->position.z; objPosition.z = pAppearance`
-
 ### `mclib/assimp_importer.cpp` (2)
 
-- `mclib/assimp_importer.cpp:91` assign-scalars: `X=-v.x; Y= v.z; Z= v.y;`
-- `mclib/assimp_importer.cpp:822` assign-scalars: `X=-v.x; Y= v.z; Z= v.y;`
-
-### `mclib/genactor.cpp` (2)
-
-- `mclib/genactor.cpp:661` assign-triple: `objPosition.x = -position.x; objPosition.y = position.z; objPosition.z = position.y;`
-- `mclib/genactor.cpp:1134` assign-triple: `xlatPosition.x = -position.x; xlatPosition.y = position.z; xlatPosition.z = position.y;`
-
-### `shaders/gos_tex_vertex_lighted.vert` (2)
-
-- `shaders/gos_tex_vertex_lighted.vert:152` triplet-ctor: `-WorldPos.x, WorldPos.z, WorldPos.y`
-- `shaders/gos_tex_vertex_lighted.vert:204` triplet-ctor: `-Normal.x, Normal.z, Normal.y`
-
-### `shaders/include/lighting.hglsl` (2)
-
-- `shaders/include/lighting.hglsl:284` triplet-ctor (port `calc_light`): `-ld.light_dir[i].x, ld.light_dir[i].z, ld.light_dir[i].y`
-- `shaders/include/lighting.hglsl:302` triplet-ctor (port `calc_light`): `-ld.light_dir[i].x, ld.light_dir[i].z, ld.light_dir[i].y`
-
-### `shaders/shadow_screen.frag` (2)
-
-- `shaders/shadow_screen.frag:270` triplet-ctor: `-N_stuff.x, N_stuff.z, N_stuff.y`
-- `shaders/shadow_screen.frag:317` triplet-ctor: `-objN_stuff.x, objN_stuff.z, objN_stuff.y`
-
-### `shaders/static_prop.frag` (2)
-
-- `shaders/static_prop.frag:544` triplet-ctor: `-N_stuff.x, N_stuff.z, N_stuff.y`
-- `shaders/static_prop.frag:547` triplet-ctor: `-L_stuff.x, L_stuff.z, L_stuff.y`
-
-### `shaders/vulkan/color_prop_tier1.vert` (2)
-
-- `shaders/vulkan/color_prop_tier1.vert:111` triplet-ctor: `-world_stuff.x, world_stuff.z, world_stuff.y`
-- `shaders/vulkan/color_prop_tier1.vert:193` triplet-ctor: `-worldNormalStuff.x, worldNormalStuff.z, worldNormalStuff.y`
+- `mclib/assimp_importer.cpp:93` assign-scalars: `X=-v.x; Y= v.z; Z= v.y;`
+- `mclib/assimp_importer.cpp:819` assign-scalars: `X=-v.x; Y= v.z; Z= v.y;`
 
 ### `tools/asset_viewer/TglMeshLoader.cpp` (2)
 
@@ -324,76 +56,66 @@ Shaders that carry sites, with their counterpart in the other backend. Twins mus
 
 ### `GameOS/gameos/gameos_graphics.cpp` (1)
 
-- `GameOS/gameos/gameos_graphics.cpp:3513` triplet-brace: `-terrain_camera_pos_.x, terrain_camera_pos_.z, terrain_camera_pos_.y`
-
-### `editor/BuildingLink.cpp` (1)
-
-- `editor/BuildingLink.cpp:293` assign-triple: `objPosition.x = -position.x; objPosition.y = position.z; objPosition.z = position.y;`
-
-### `editor/EditorInterface.cpp` (1)
-
-- `editor/EditorInterface.cpp:241` assign-triple: `objPosition.x = -pAppearance->position.x; objPosition.y = pAppearance->position.z; objPosition.z = pAppearance`
-
-### `mclib/camera.h` (1)
-
-- `mclib/camera.h:611` assign-triple: `coords.x = -point.x; coords.y = point.z; coords.z = point.y;`
-
-### `mclib/cone_glow.cpp` (1)
-
-- `mclib/cone_glow.cpp:504` triplet-arglist: `-oMax.x, oMax.z, oMax.y`
-
-### `mclib/crater.cpp` (1)
-
-- `mclib/crater.cpp:364` assign-triple: `objPosition.x = -currCrater->position[0].x; objPosition.y = currCrater->position[0].z; objPosition.z = currCra`
-
-### `mclib/msl.cpp` (1)
-
-- `mclib/msl.cpp:1378` assign-triple: `result.x = -vertexPos.x; result.y = vertexPos.z; result.z = vertexPos.y;`
+- `GameOS/gameos/gameos_graphics.cpp:3510` triplet-brace: `-terrain_camera_pos_.x, terrain_camera_pos_.z, terrain_camera_pos_.y`
 
 ### `mclib/terrain.cpp` (1)
 
 - `mclib/terrain.cpp:3004` decl-chain: `-lookDir.x, ly = lookDir.z, lz = lookDir.y`
 
-### `shaders/building_pbr.vert` (1)
-
-- `shaders/building_pbr.vert:36` triplet-ctor: `-WorldPos.x, WorldPos.z, WorldPos.y`
-
-### `shaders/particle_billboard.vert` (1)
-
-- `shaders/particle_billboard.vert:115` triplet-ctor: `-stuffCenter.x, stuffCenter.z, stuffCenter.y`
-
-### `shaders/shadow_mech.vert` (1)
-
-- `shaders/shadow_mech.vert:39` triplet-ctor: `-worldStuff.x, worldStuff.z, worldStuff.y`
-
-### `shaders/shadow_object.vert` (1)
-
-- `shaders/shadow_object.vert:14` triplet-ctor: `-stuffPos.x, stuffPos.z, stuffPos.y`
-
-### `shaders/shadow_static_prop.vert` (1)
-
-- `shaders/shadow_static_prop.vert:36` triplet-ctor: `-worldStuff.x, worldStuff.z, worldStuff.y`
-
-### `shaders/tube_ribbon.vert` (1)
-
-- `shaders/tube_ribbon.vert:37` triplet-ctor: `-stuffPos.x, stuffPos.z, stuffPos.y`
-
-### `shaders/vfx_mesh.vert` (1)
-
-- `shaders/vfx_mesh.vert:34` triplet-ctor: `-stuffWorld.x, stuffWorld.z, stuffWorld.y`
-
-### `shaders/vulkan/screen_shadow_csm.frag` (1)
-
-- `shaders/vulkan/screen_shadow_csm.frag:139` triplet-ctor: `-objN_stuff.x, objN_stuff.z, objN_stuff.y`
-
-### `shaders/vulkan/shadow_prop.vert` (1)
-
-- `shaders/vulkan/shadow_prop.vert:60` triplet-ctor: `-worldStuff.x, worldStuff.z, worldStuff.y`
-
-### `shaders/vulkan/vfx_particle.vert` (1)
-
-- `shaders/vulkan/vfx_particle.vert:66` triplet-ctor: `-stuffCenter.x, stuffCenter.z, stuffCenter.y`
-
 ## Helper-call sites
 
+- `RenderCore/axis_convert.h`: 2
+- `code/artlry.cpp`: 14
+- `code/carnage.cpp`: 4
+- `code/gamecam.cpp`: 2
+- `code/missiongui.cpp`: 8
+- `code/objmgr.cpp`: 2
+- `code/terrobj.cpp`: 3
+- `code/turret.cpp`: 2
+- `code/weaponbolt_render.cpp`: 5
+- `code/weaponbolt_update.cpp`: 12
+- `editor/BuildingLink.cpp`: 1
+- `editor/EditorInterface.cpp`: 1
+- `editor/EditorInterface_mouse.cpp`: 2
+- `mclib/bdactor.cpp`: 3
+- `mclib/bdactor_render.cpp`: 3
+- `mclib/bdactor_static.cpp`: 1
+- `mclib/bdactor_tree.cpp`: 1
+- `mclib/bdactor_tree_static.cpp`: 1
+- `mclib/bdactor_update.cpp`: 8
+- `mclib/camera.cpp`: 4
+- `mclib/camera.h`: 1
+- `mclib/cone_glow.cpp`: 1
+- `mclib/crater.cpp`: 1
+- `mclib/genactor.cpp`: 2
+- `mclib/gvactor.cpp`: 3
+- `mclib/gvactor_geometry.cpp`: 7
+- `mclib/gvactor_render.cpp`: 3
+- `mclib/gvactor_update.cpp`: 6
+- `mclib/mech3d.cpp`: 3
+- `mclib/mech3d_geometry.cpp`: 15
+- `mclib/mech3d_render.cpp`: 9
+- `mclib/mech3d_type.cpp`: 4
+- `mclib/mech3d_update.cpp`: 10
+- `mclib/msl.cpp`: 1
+- `shaders/building_pbr.vert`: 1
+- `shaders/gos_tex_vertex_lighted.vert`: 2
+- `shaders/include/lighting.hglsl`: 2
+- `shaders/mech.vert`: 4
+- `shaders/particle_billboard.vert`: 1
+- `shaders/shadow_mech.vert`: 1
+- `shaders/shadow_object.vert`: 1
+- `shaders/shadow_screen.frag`: 2
+- `shaders/shadow_static_prop.vert`: 1
+- `shaders/static_prop.frag`: 2
+- `shaders/static_prop.vert`: 3
+- `shaders/terrain_lod_chunk.frag`: 4
+- `shaders/tube_ribbon.vert`: 1
+- `shaders/vfx_mesh.vert`: 1
+- `shaders/vulkan/color_prop_tier1.vert`: 2
+- `shaders/vulkan/mech_tier1.vert`: 4
+- `shaders/vulkan/screen_shadow_csm.frag`: 1
+- `shaders/vulkan/shadow_prop.vert`: 1
+- `shaders/vulkan/vfx_particle.vert`: 1
+- `tests/unit/test_xform_convention.cpp`: 10
 - `tools/class_light_band_harness/class_light_band_harness.cpp`: 13

@@ -26,6 +26,7 @@
 // Include Files
 #include "missiongui_internal.h"
 #include "Gates/gate.h"
+#include "../RenderCore/axis_convert.h"
 
 	static const char* terrainStr[NUM_TERRAIN_TYPES] = {
 			"Blue Water",	//MC_BLUEWATER_TYPE
@@ -1876,9 +1877,7 @@ void MissionInterfaceManager::updateVTol()
 									
 						Stuff::Vector3D dustPos = vTol[vtolNum]->position;
 						Stuff::Point3D wakePos;
-						wakePos.x = -dustPos.x;
-						wakePos.y = dustPos.z;
-						wakePos.z = dustPos.y;
+						mc2ToRender(wakePos, dustPos);
 							
 						shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 						shapeOrigin.BuildTranslation(wakePos);
@@ -1992,9 +1991,7 @@ void MissionInterfaceManager::updateVTol()
 						
 				Stuff::Vector3D dustPos = vTol[vtolNum]->position;
 				Stuff::Point3D wakePos;
-				wakePos.x = -dustPos.x;
-				wakePos.y = dustPos.z;
-				wakePos.z = dustPos.y;
+				mc2ToRender(wakePos, dustPos);
 				
 				shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 				shapeOrigin.BuildTranslation(wakePos);
@@ -2013,9 +2010,7 @@ void MissionInterfaceManager::updateVTol()
 						
 				Stuff::Vector3D dustPos = vTol[vtolNum]->position;
 				Stuff::Point3D wakePos;
-				wakePos.x = -dustPos.x;
-				wakePos.y = dustPos.z;
-				wakePos.z = dustPos.y;
+				mc2ToRender(wakePos, dustPos);
 				
 				shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 				shapeOrigin.BuildTranslation(wakePos);
@@ -4385,9 +4380,7 @@ void MissionInterfaceManager::drawVTOL (void)
 						
 				Stuff::Vector3D dustPos = vTol[vtolNum]->position;
 				Stuff::Point3D wakePos;
-				wakePos.x = -dustPos.x;
-				wakePos.y = dustPos.z;
-				wakePos.z = dustPos.y;
+				mc2ToRender(wakePos, dustPos);
 				
 				shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 				shapeOrigin.BuildTranslation(wakePos);
@@ -4408,9 +4401,7 @@ void MissionInterfaceManager::drawVTOL (void)
 						
 				Stuff::Vector3D dustPos = vTol[vtolNum]->position;
 				Stuff::Point3D wakePos;
-				wakePos.x = -dustPos.x;
-				wakePos.y = dustPos.z;
-				wakePos.z = dustPos.y;
+				mc2ToRender(wakePos, dustPos);
 				
 				shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 				shapeOrigin.BuildTranslation(wakePos);
@@ -4575,9 +4566,7 @@ void MissionInterfaceManager::render (void)
 				Stuff::Vector3D Distance;
 				Stuff::Point3D objPosition;
 				Stuff::Point3D eyePosition(eye->getCameraOrigin());
-				objPosition.x = -wPos.x;
-				objPosition.y = wPos.z;
-				objPosition.z = wPos.y;
+				mc2ToRender(objPosition, wPos);
 		
 				Distance.Subtract(objPosition,eyePosition);
 				float eyeDistance = Distance.GetApproximateLength();
@@ -6008,9 +5997,7 @@ void MissionInterfaceManager::beginVtol (long supportID, long commanderID, Stuff
 					
 		Stuff::Vector3D dustPos = vTol[commanderID]->position;
 		Stuff::Point3D wakePos;
-		wakePos.x = -dustPos.x;
-		wakePos.y = dustPos.z;
-		wakePos.z = dustPos.y;
+		mc2ToRender(wakePos, dustPos);
 			
 		shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 		shapeOrigin.BuildTranslation(wakePos);
@@ -7516,9 +7503,7 @@ void MissionInterfaceManager::Load (FitIniFilePtr file)
 
 			Stuff::Vector3D dustPos = vTol[commanderID]->position;
 			Stuff::Point3D wakePos;
-			wakePos.x = -dustPos.x;
-			wakePos.y = dustPos.z;
-			wakePos.z = dustPos.y;
+			mc2ToRender(wakePos, dustPos);
 
 			shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 			shapeOrigin.BuildTranslation(wakePos);

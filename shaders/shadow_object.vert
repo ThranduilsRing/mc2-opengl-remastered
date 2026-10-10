@@ -1,4 +1,5 @@
 //#version 420 (provided by material prefix)
+#include <include/axis.hglsl>
 
 layout(location = 0) in vec3 position;
 
@@ -11,7 +12,7 @@ void main() {
     vec4 stuffPos = worldMatrix * vec4(position, 1.0);
 
     // Swizzle Stuff → MC2: MC2.x = -Stuff.x, MC2.y = Stuff.z, MC2.z = Stuff.y
-    vec3 mc2Pos = vec3(-stuffPos.x, stuffPos.z, stuffPos.y) + lightOffset;
+    vec3 mc2Pos = mc2ToRender(stuffPos.xyz) + lightOffset;
 
     gl_Position = lightSpaceMatrix * vec4(mc2Pos, 1.0);
 }

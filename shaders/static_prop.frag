@@ -16,6 +16,7 @@
 // guard broke the legacy program -> ALL props CPU-fallback/no meshes).
 #include <include/light_pools.hglsl>
 #include <include/prop_dither.hglsl>   // shared Bayer alpha dither (also VK color_prop_tier1.frag)
+#include <include/axis.hglsl>
 
 #if defined(MC2_USE_VIEW_UNIFORMS)
 // V-MATERIAL-PBR-3: per-fragment PBR specular consumes u_cameraWorldPos to
@@ -541,10 +542,10 @@ void main() {
                 // Without this fix H = normalize(L_stuff+V_eye_gl) crosses
                 // spaces; NdotH and Fresnel are geometrically wrong.
                 vec3 N_stuff = normalize(v_normal);
-                vec3 N      = vec3(-N_stuff.x, N_stuff.z, N_stuff.y);  // Stuff->GL
+                vec3 N      = mc2ToRender(N_stuff);  // Stuff->GL
                 vec3 V_eye  = normalize(u_cameraWorldPos.xyz - v_worldPos);  // GL
                 vec3 L_stuff = normalize(-v_pbrV1SunDir);  // surface->sun, Stuff space
-                vec3 L      = vec3(-L_stuff.x, L_stuff.z, L_stuff.y);  // Stuff->GL
+                vec3 L      = mc2ToRender(L_stuff);  // Stuff->GL
                 vec3 H      = normalize(L + V_eye);
 
                 // Albedo-tinted F0 for metallics — real per-fragment albedo

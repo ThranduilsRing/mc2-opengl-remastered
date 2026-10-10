@@ -1,6 +1,7 @@
 // Editor: left-button/mouse-move handling, object picking and the WM_ mouse handlers.
 // Declared in the class headers; shared names in EditorInterface_internal.h.
 #include "EditorInterface_internal.h"
+#include "../RenderCore/axis_convert.h"
 
 
 //--------------------------------------------------------------------------------------
@@ -402,9 +403,7 @@ void EditorInterface::handleMouseMove( int PosX, int PosY )
 			// bar when a catalog object is only partially initialized.
 			Stuff::Point3D eyePosition(eye->getCameraOrigin());
 			Stuff::Point3D objPosition;
-			objPosition.x = -pAppearance->position.x;
-			objPosition.y = pAppearance->position.z;
-			objPosition.z = pAppearance->position.y;
+			mc2ToRender(objPosition, pAppearance->position);
 	
 			Stuff::Vector3D Distance;
 			Distance.Subtract(objPosition,eyePosition);
@@ -999,9 +998,7 @@ BOOL EditorInterface::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
 		{
 			Stuff::Point3D eyePosition(eye->getCameraOrigin());
 			Stuff::Point3D objPosition;
-			objPosition.x = -pAppearance->position.x;
-			objPosition.y = pAppearance->position.z;
-			objPosition.z = pAppearance->position.y;
+			mc2ToRender(objPosition, pAppearance->position);
 
 			Stuff::Vector3D Distance;
 			Distance.Subtract(objPosition,eyePosition);

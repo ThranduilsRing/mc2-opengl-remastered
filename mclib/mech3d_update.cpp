@@ -1,6 +1,7 @@
 // Mech3DAppearance: Mech3DAppearance::update, arm destruction, smoke, water wake and ejection.
 // Declared in the class headers; shared names in mech3d_internal.h.
 #include "mech3d_internal.h"
+#include "../RenderCore/axis_convert.h"
 
 long Mech3DAppearance::update (bool animate) 
 {
@@ -571,9 +572,7 @@ long Mech3DAppearance::update (bool animate)
 			dRot[1].Add(dRot[1],rotDiff);
 		}
 
-		xlatPosition.x = -leftArmPos.x;
-		xlatPosition.y = leftArmPos.z;
-		xlatPosition.z = leftArmPos.y;
+		mc2ToRender(xlatPosition, leftArmPos);
 		
 		qRotation = Stuff::EulerAngles(dRot[1].x * DEGREES_TO_RADS, dRot[1].y * DEGREES_TO_RADS, dRot[1].z * DEGREES_TO_RADS);
 
@@ -592,9 +591,7 @@ long Mech3DAppearance::update (bool animate)
 			Stuff::LinearMatrix4D	localToWorld;
 			Stuff::LinearMatrix4D	localResult;
 					
-			leftShoulderPos.x = -leftArmPos.x;
-			leftShoulderPos.y = leftArmPos.z;
-			leftShoulderPos.z = leftArmPos.y;
+			mc2ToRender(leftShoulderPos, leftArmPos);
 			
 			shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 			shapeOrigin.BuildTranslation(leftShoulderPos);
@@ -654,9 +651,7 @@ long Mech3DAppearance::update (bool animate)
 			dRot[0].Add(dRot[0],rotDiff);
 		}
 
-		xlatPosition.x = -rightArmPos.x;
-		xlatPosition.y = rightArmPos.z;
-		xlatPosition.z = rightArmPos.y;
+		mc2ToRender(xlatPosition, rightArmPos);
 		
 		qRotation = Stuff::EulerAngles(dRot[0].x * DEGREES_TO_RADS, dRot[0].y * DEGREES_TO_RADS, dRot[0].z * DEGREES_TO_RADS);
 
@@ -675,9 +670,7 @@ long Mech3DAppearance::update (bool animate)
 			Stuff::LinearMatrix4D	localToWorld;
 			Stuff::LinearMatrix4D	localResult;
 					
-			rightShoulderPos.x = -rightArmPos.x;
-			rightShoulderPos.y = rightArmPos.z;
-			rightShoulderPos.z = rightArmPos.y;
+			mc2ToRender(rightShoulderPos, rightArmPos);
 			
 			shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 			shapeOrigin.BuildTranslation(rightShoulderPos);
@@ -758,9 +751,7 @@ void Mech3DAppearance::blowLeftArm (void)
 		Stuff::LinearMatrix4D	localToWorld;
 		Stuff::LinearMatrix4D	localResult;
 				
-		leftShoulderPos.x = -leftNodePos.x;
-		leftShoulderPos.y = leftNodePos.z;
-		leftShoulderPos.z = leftNodePos.y;
+		mc2ToRender(leftShoulderPos, leftNodePos);
 		
  		shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 		shapeOrigin.BuildTranslation(leftShoulderPos);
@@ -780,9 +771,7 @@ void Mech3DAppearance::blowLeftArm (void)
 		Stuff::LinearMatrix4D	localToWorld;
 		Stuff::LinearMatrix4D	localResult;
 				
-		leftShoulderPos.x = -leftArmPos.x;
-		leftShoulderPos.y = leftArmPos.z;
-		leftShoulderPos.z = leftArmPos.y;
+		mc2ToRender(leftShoulderPos, leftArmPos);
 		
  		shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 		shapeOrigin.BuildTranslation(leftShoulderPos);
@@ -880,9 +869,7 @@ void Mech3DAppearance::blowRightArm (void)
 		Stuff::LinearMatrix4D	localToWorld;
 		Stuff::LinearMatrix4D	localResult;
 				
-		rightShoulderPos.x = -rightNodePos.x;
-		rightShoulderPos.y = rightNodePos.z;
-		rightShoulderPos.z = rightNodePos.y;
+		mc2ToRender(rightShoulderPos, rightNodePos);
 		
  		shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 		shapeOrigin.BuildTranslation(rightShoulderPos);
@@ -902,9 +889,7 @@ void Mech3DAppearance::blowRightArm (void)
 		Stuff::LinearMatrix4D	localToWorld;
 		Stuff::LinearMatrix4D	localResult;
 				
-		rightShoulderPos.x = -rightArmPos.x;
-		rightShoulderPos.y = rightArmPos.z;
-		rightShoulderPos.z = rightArmPos.y;
+		mc2ToRender(rightShoulderPos, rightArmPos);
 		
  		shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 		shapeOrigin.BuildTranslation(rightShoulderPos);
@@ -1008,9 +993,7 @@ void Mech3DAppearance::startSmoking (long smokeLvl)
 
 			Stuff::Vector3D smokeNodePos = getNodePosition(0);	//Always SMOKE if it exists!!
 			Stuff::Point3D smokePos;
-			smokePos.x = -smokeNodePos.x;
-			smokePos.y = smokeNodePos.z;
-			smokePos.z = smokeNodePos.y;
+			mc2ToRender(smokePos, smokeNodePos);
 
 			shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 			shapeOrigin.BuildTranslation(smokePos);
@@ -1141,9 +1124,7 @@ void Mech3DAppearance::playEjection (void)
 		Stuff::LinearMatrix4D	localResult;
 				
 		Stuff::Point3D wakePos;
-		wakePos.x = -position.x;
-		wakePos.y = position.z;	//dustCloud is just centered on position.
-		wakePos.z = position.y;
+		mc2ToRender(wakePos, position);	//dustCloud is just centered on position.
 		
  		shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 		shapeOrigin.BuildTranslation(wakePos);

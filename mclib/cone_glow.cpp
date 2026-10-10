@@ -439,10 +439,12 @@ bool GetNodeAim(TG_MultiShape* shape, long nodeId,
         if (s_calls <= 48 || (s_calls % 600) == 0)
         {
             // Apex (node origin) in MC2 frame — same swizzle as the aim.
+            Stuff::Point3D apexMc2;
+            mc2ToRender(apexMc2, oMax);
             std::fprintf(stderr,
                 "[CONE_AIM_DIAG v1] shape=%p node=%ld apexMC2=(%.1f,%.1f,%.1f) "
                 "aimMC2=(%.3f,%.3f,%.3f) lenLocal=%.1f coneLen=%.1f axisLocal=(%.3f,%.3f,%.3f) flip=%d\n",
-                (void*)shape, nodeId, -oMax.x, oMax.z, oMax.y,
+                (void*)shape, nodeId, apexMc2.x, apexMc2.y, apexMc2.z,
                 aimWorldOut.x, aimWorldOut.y, aimWorldOut.z,
                 lenLocal, coneLenOut,
                 axisLocal.x, axisLocal.y, axisLocal.z,

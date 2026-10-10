@@ -21,6 +21,7 @@
 #include <include/lighting.hglsl>
 #include <include/terrain_depth_bias.hglsl>
 #include <include/gpu_abi_static_prop_instance.gen.hglsl>
+#include <include/axis.hglsl>
 
 layout(location = 0) in vec3  a_position;
 layout(location = 1) in vec3  a_normal;
@@ -368,7 +369,7 @@ void main() {
     // Without this swap, world.y (elev) gets read by terrainMVP as MC2
     // north and world.z (south distance) as MC2 elev → assets misplaced
     // along a wrong axis (visible 2026-05-04 as "trees in the sky" pattern).
-    vec3 world_mc2 = vec3(-world_stuff.x, world_stuff.z, world_stuff.y);
+    vec3 world_mc2 = mc2ToRender(world_stuff.xyz);
 
     // LIGHT-BILLBOARD-GPU-1 (master-FAIL #8): rigid camera-facing billboard +
     // minimum screen size for beacon/runway light fixtures (flags bit 4,
@@ -417,7 +418,7 @@ void main() {
     const uint kFlagLightBillboardBig = (1u << 5);
     if ((inst.flags & kFlagIsLightBillboard) != 0u) {
         vec4 origin_stuff = vec4(0.0, 0.0, 0.0, 1.0) * inst.modelMatrix;
-        vec3 origin_mc2   = vec3(-origin_stuff.x, origin_stuff.z, origin_stuff.y);
+        vec3 origin_mc2   = mc2ToRender(origin_stuff.xyz);
         const vec3 kUpMc2 = vec3(0.0, 0.0, 1.0);
         vec3 toCamRaw     = u_cameraWorldPos.xyz - origin_mc2;
         vec3 r1raw        = cross(kUpMc2, toCamRaw);
@@ -647,10 +648,10 @@ void main() {
     // MC2-frame (world.xyz = the Stuff->MC2 swap at line 251); the normal was
     // left in Stuff frame, so calc_light's NdotL mixed frames -> 90deg-rotated
     // sun on static props. Mirror mech.vert:162
-    // normalize(vec3(-normalStuff.x, normalStuff.z, normalStuff.y)) so the
+    // normalize(mc2ToRender(normalStuff)) so the
     // normal and position fed to calc_light share the MC2 frame, exactly as
     // mech passes (worldMC2 normal + worldMC2 position).
-    vec3 worldNormalMC2 = normalize(vec3(-worldNormal.x, worldNormal.z, worldNormal.y));
+    vec3 worldNormalMC2 = normalize(mc2ToRender(worldNormal));
 
     // 5. Per-vertex full 6-type lighting via lighting.hglsl calc_light.
     //    inst.lightDataIndex addresses one ObjectLights entry in the

@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in gvactor_internal.h.
 #include "gvactor_internal.h"
 #include "Gates/gate.h"
+#include "../RenderCore/axis_convert.h"
 
 
 //-----------------------------------------------------------------------------
@@ -193,9 +194,7 @@ long GVAppearance::render (long depthFixup)
 				Stuff::LinearMatrix4D	localToWorld;
 				Stuff::Point3D			tPosition;
 				
-				tPosition.x = -position.x;
-				tPosition.y = position.z;
-				tPosition.z = position.y;
+				mc2ToRender(tPosition, position);
 				
 				shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 				shapeOrigin.BuildTranslation(tPosition);
@@ -267,9 +266,7 @@ long GVAppearance::render (long depthFixup)
 					Stuff::Vector3D dustPos = getNodeIdPosition(dustNodeIndex);
 
 					Stuff::Point3D wakePos;
-					wakePos.x = -dustPos.x;
-					wakePos.y = dustPos.z;
-					wakePos.z = dustPos.y;
+					mc2ToRender(wakePos, dustPos);
 					
 					shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 					shapeOrigin.BuildTranslation(wakePos);
@@ -307,9 +304,7 @@ long GVAppearance::render (long depthFixup)
 
 					Stuff::Vector3D dustPos = getNodeIdPosition(activityNodeIndex);
 					Stuff::Point3D wakePos;
-					wakePos.x = -dustPos.x;
-					wakePos.y = dustPos.z;
-					wakePos.z = dustPos.y;
+					mc2ToRender(wakePos, dustPos);
 					
 					shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 					shapeOrigin.BuildTranslation(wakePos);

@@ -44,6 +44,7 @@ layout(location=6) in uint  a_aRGBLight;     // TG_TypeVertex::aRGBLight, BGRA p
 // Per-instance SSBO (binding 0). The 64 B record is generated from
 // RenderCore/gpu_abi/GpuMechInstance.h; do not re-declare it here.
 #include <include/gpu_abi_mech_instance.gen.hglsl>
+#include <include/axis.hglsl>
 layout(std430, binding=0) readonly buffer InstanceBuffer {
     GpuMechInstance instances[];
 };
@@ -171,9 +172,9 @@ void main() {
     // read as MC2 north and world.z (forward) as MC2 elev — mech ends up
     // in the sky / off-screen. Same swap as static_prop.vert (after
     // 2026-05-04 trees-in-the-sky fix).
-    vec3 worldMC2 = vec3(-worldStuff.x, worldStuff.z, worldStuff.y);
+    vec3 worldMC2 = mc2ToRender(worldStuff.xyz);
     vec3 normalStuff = mat3(boneT) * a_normal;
-    vec3 worldNormal = normalize(vec3(-normalStuff.x, normalStuff.z, normalStuff.y));
+    vec3 worldNormal = normalize(mc2ToRender(normalStuff));
 
     // F1 Stage A: direct GL clip emit.
     // TERRAIN-DEPTH-BIAS-OWNERSHIP-1: mechs take OBJECT_DEPTH_BIAS so they sit on
@@ -254,7 +255,7 @@ void main() {
                     vec2(tLocal.x >= 0.0 ? 1.0 : -1.0, tLocal.y >= 0.0 ? 1.0 : -1.0);
     tLocal = normalize(tLocal);
     vec3 tStuff = mat3(boneT) * tLocal;
-    vec3 tGL    = vec3(-tStuff.x, tStuff.z, tStuff.y);       // same swap as worldNormal
+    vec3 tGL    = mc2ToRender(tStuff);       // same swap as worldNormal
     // Gram-Schmidt orthonormalize against the (already normalized) world normal.
     tGL = tGL - worldNormal * dot(worldNormal, tGL);
     float tLen = length(tGL);
@@ -282,7 +283,7 @@ void main() {
             if (lt == TG_LIGHT_INFINITE || lt == TG_LIGHT_INFINITEWITHFALLOFF) {
                 vec3 sdStuff   = ld_spec.light_dir[i].xyz;
                 // Stuff->GL axis swap (mirrors worldNormal computation above).
-                v_mechSunDirGL = vec3(-sdStuff.x, sdStuff.z, sdStuff.y);
+                v_mechSunDirGL = mc2ToRender(sdStuff);
                 v_mechSunFound = 1;
                 break;
             }

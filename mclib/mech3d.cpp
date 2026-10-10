@@ -13,6 +13,7 @@
 
 #ifndef MSTATES_H
 #include"mstates.h"
+#include "../RenderCore/axis_convert.h"
 #endif
 
 // MC2_GPU_CULL_LIFECYCLE_TRACE=1: verbose per-actor lifecycle boundary prints.
@@ -376,9 +377,7 @@ void Mech3DAppearance::copyFrom (MechAppearanceData *data)
 		Stuff::LinearMatrix4D	localToWorld;
 		Stuff::LinearMatrix4D	localResult;
 		
-		actualPosition.x = -jumpNodePos.x;
-		actualPosition.y = jumpNodePos.z;
-		actualPosition.z = jumpNodePos.y;
+		mc2ToRender(actualPosition, jumpNodePos);
 		
 		shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 		shapeOrigin.BuildTranslation(actualPosition);
@@ -441,9 +440,7 @@ Stuff::Vector3D Mech3DAppearance::getHitNodeLeft (void)
    	qRotation = Stuff::EulerAngles(0.0f, yaw, 0.0f);
 
    	Stuff::Point3D xlatPosition;
-   	xlatPosition.x = -position.x;
-   	xlatPosition.y = position.z;
-   	xlatPosition.z = position.y;
+   	mc2ToRender(xlatPosition, position);
 
    	Stuff::UnitQuaternion torsoRot;
    	torsoRot = Stuff::EulerAngles(0.0f,(torsoRotation * DEGREES_TO_RADS),0.0f);
@@ -494,9 +491,7 @@ Stuff::Vector3D Mech3DAppearance::getHitNodeRight (void)
    	qRotation = Stuff::EulerAngles(0.0f, yaw, 0.0f);
    
    	Stuff::Point3D xlatPosition;
-   	xlatPosition.x = -position.x;
-   	xlatPosition.y = position.z;
-   	xlatPosition.z = position.y;
+   	mc2ToRender(xlatPosition, position);
    
    	Stuff::UnitQuaternion torsoRot;
    	torsoRot = Stuff::EulerAngles(0.0f,(torsoRotation * DEGREES_TO_RADS),0.0f);

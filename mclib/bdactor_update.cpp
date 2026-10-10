@@ -1,6 +1,7 @@
 // BldgAppearance / TreeAppearance: BldgAppearance::update and the activity/flash helpers.
 // Declared in the class headers; shared names in bdactor_internal.h.
 #include "bdactor_internal.h"
+#include "../RenderCore/axis_convert.h"
 
 // T1.15 SpotLight_ illumination diagnostic — registration probe (bldg class).
 // Env-gated per Debug Instrumentation Rule. First-hit is always-on (one stderr
@@ -72,9 +73,7 @@ long BldgAppearance::update (bool animate)
 		if (pointLight)
 		{
 			Stuff::Point3D ourPosition;
-			ourPosition.x = -position.x;
-			ourPosition.y = position.z;
-			ourPosition.z = position.y;
+			mc2ToRender(ourPosition, position);
 	
 			pointLight->direction = ourPosition;
 	
@@ -364,9 +363,7 @@ long BldgAppearance::update (bool animate)
 				// in this file; the historical code left `direction` at the
 				// init() default (0,0,0) -- the world origin -- and built
 				// lightToWorld from the RAW, unswizzled childPos.
-				childPosP.x = -childPos.x;
-				childPosP.y =  childPos.z;
-				childPosP.z =  childPos.y;
+				mc2ToRender(childPosP, childPos);
 				spotlightLights_[k]->direction = childPosP;
 				// MC2_SPOTLIGHT_DIRECTION_FIX=2 falsification arm — see
 				// cone_glow.cpp spot_direction_exaggerate(). Absurd spot centre;
@@ -473,9 +470,7 @@ long BldgAppearance::update (bool animate)
 				position.z = Terrain::waterElevation;
 		}
 
-		xlatPosition.x = -position.x;
-		xlatPosition.y = position.z;
-		xlatPosition.z = position.y;
+		mc2ToRender(xlatPosition, position);
 
 		if (!fogLightSet)
 		{
@@ -805,9 +800,7 @@ long BldgAppearance::update (bool animate)
 			Stuff::Vector3D actualPosition = position;
 			//actualPosition.Add(position,offsetPosition);
 
-			tPosition.x = -actualPosition.x;
-			tPosition.y = actualPosition.z;
-			tPosition.z = actualPosition.y;
+			mc2ToRender(tPosition, actualPosition);
 
 			float yaw = (180.0f + rotation) * DEGREES_TO_RADS;
 			Stuff::UnitQuaternion rot;
@@ -849,9 +842,7 @@ long BldgAppearance::update (bool animate)
 				dustPos = getNodeIdPosition(rotationalNodeId);
  			
 			Stuff::Point3D wakePos;
-			wakePos.x = -dustPos.x;
-			wakePos.y = dustPos.z;
-			wakePos.z = dustPos.y;
+			mc2ToRender(wakePos, dustPos);
 			
 			shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 			shapeOrigin.BuildTranslation(wakePos);
@@ -897,9 +888,7 @@ long BldgAppearance::update (bool animate)
 					dustPos = getNodeIdPosition(rotationalNodeId);
 				
 				Stuff::Point3D wakePos;
-				wakePos.x = -dustPos.x;
-				wakePos.y = dustPos.z;
-				wakePos.z = dustPos.y;
+				mc2ToRender(wakePos, dustPos);
 				
 				shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 				shapeOrigin.BuildTranslation(wakePos);
@@ -990,9 +979,7 @@ void BldgAppearance::startActivity (long effectId, bool loop)
    			nodePos = getNodeIdPosition(rotationalNodeId);
 
  		Stuff::Point3D wakePos;
-		wakePos.x = -nodePos.x;
-		wakePos.y = nodePos.z;	//Wake is at Water Level!
-		wakePos.z = nodePos.y;
+		mc2ToRender(wakePos, nodePos);	//Wake is at Water Level!
 		
  		shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 		shapeOrigin.BuildTranslation(wakePos);
@@ -1026,9 +1013,7 @@ void BldgAppearance::startActivity (long effectId, bool loop)
 				nodePos = getNodeIdPosition(rotationalNodeId);
 			
  			Stuff::Point3D wakePos;
-			wakePos.x = -nodePos.x;
-			wakePos.y = nodePos.z;	//Wake is at Water Level!
-			wakePos.z = nodePos.y;
+			mc2ToRender(wakePos, nodePos);	//Wake is at Water Level!
 			
 			shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 			shapeOrigin.BuildTranslation(wakePos);

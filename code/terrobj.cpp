@@ -67,6 +67,7 @@
 #include "static_update_counters.h"
 #include "bldg_anim_gate_counters.h"
 #include "frame_jobs.h"  // FRAME-JOBS-1: frameJobsEnabled() gate
+#include "../RenderCore/axis_convert.h"
 
 //---------------------------------------------------------------------------
 // Slice 3 Static-Update Bypass instrumentation (worktree CLAUDE.md
@@ -945,9 +946,7 @@ long TerrainObject::update (void) {
 				Stuff::LinearMatrix4D 	shapeOrigin;
 				Stuff::LinearMatrix4D 	localToWorld;
 					
-				actualPosition.x = -position.x;
-				actualPosition.y = position.z;
-				actualPosition.z = position.y;
+				mc2ToRender(actualPosition, position);
 			
  				shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 				shapeOrigin.BuildTranslation(actualPosition);
@@ -1059,9 +1058,7 @@ void TerrainObject::render (void) {
 			Stuff::LinearMatrix4D 	shapeOrigin;
 			Stuff::LinearMatrix4D	localToWorld;
 
-			actualPosition.x = -position.x;
-			actualPosition.y = position.z;
-			actualPosition.z = position.y;
+			mc2ToRender(actualPosition, position);
 							
  			shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 			shapeOrigin.BuildTranslation(actualPosition);
@@ -1325,9 +1322,7 @@ long TerrainObject::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultipl
 							Stuff::LinearMatrix4D 	shapeOrigin;
 							Stuff::LinearMatrix4D	localToWorld;
 							
-							actualPosition.x = -position.x;
-							actualPosition.y = position.z;
-							actualPosition.z = position.y;
+							mc2ToRender(actualPosition, position);
 							
 							shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 							shapeOrigin.BuildTranslation(actualPosition);

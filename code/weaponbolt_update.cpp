@@ -1,6 +1,7 @@
 // WeaponBolt: the per-frame bolt update (flight, impact, direct-fire modes) and its speed/straight-fire gates.
 // Declared in the class headers; shared names in weaponbolt_internal.h.
 #include "weaponbolt_internal.h"
+#include "../RenderCore/axis_convert.h"
 
 
 //---------------------------------------------------------------------------
@@ -60,9 +61,7 @@ long WeaponBolt::update (void)
 		
 		Stuff::Vector3D ownerPosition = laserPosition;
 		Stuff::Point3D actualPosition;
-		actualPosition.x = -laserPosition.x;
-		actualPosition.y = laserPosition.z;
-		actualPosition.z = laserPosition.y;
+		mc2ToRender(actualPosition, laserPosition);
 
 		GameObjectPtr target = ObjectManager->getByWatchID(targetWID);
 
@@ -153,9 +152,7 @@ long WeaponBolt::update (void)
 			Stuff::LinearMatrix4D	localToWorld;
 			Stuff::LinearMatrix4D	localResult;
 			
-			mPosition.x = -position.x;
-			mPosition.y = position.z;
-			mPosition.z = position.y;
+			mc2ToRender(mPosition, position);
 			
  			shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 			shapeOrigin.BuildTranslation(mPosition);
@@ -327,9 +324,7 @@ long WeaponBolt::update (void)
 						Stuff::LinearMatrix4D 	shapeOrigin;
 						Stuff::LinearMatrix4D	localToWorld;
 						
-						tPosition.x = -hotSpot.x;
-						tPosition.y = hotSpot.z;
-						tPosition.z = hotSpot.y;
+						mc2ToRender(tPosition, hotSpot);
 						
 						shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 						shapeOrigin.BuildTranslation(tPosition);
@@ -394,9 +389,7 @@ long WeaponBolt::update (void)
 							Stuff::LinearMatrix4D 	shapeOrigin;
 							Stuff::LinearMatrix4D	localToWorld;
 							
-							tPosition.x = -hotSpot.x;
-							tPosition.y = hotSpot.z;
-							tPosition.z = hotSpot.y;
+							mc2ToRender(tPosition, hotSpot);
 							
 							shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 							shapeOrigin.BuildTranslation(tPosition);
@@ -604,9 +597,7 @@ long WeaponBolt::update (void)
 						Stuff::LinearMatrix4D 	shapeOrigin;
 						Stuff::LinearMatrix4D	localToWorld;
 						
-						tPosition.x = -hotSpot.x;
-						tPosition.y = hotSpot.z;
-						tPosition.z = hotSpot.y;
+						mc2ToRender(tPosition, hotSpot);
 						
 						shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 						shapeOrigin.BuildTranslation(tPosition);
@@ -668,9 +659,7 @@ long WeaponBolt::update (void)
 							Stuff::LinearMatrix4D 	shapeOrigin;
 							Stuff::LinearMatrix4D	localToWorld;
 							
-							tPosition.x = -hotSpot.x;
-							tPosition.y = hotSpot.z;
-							tPosition.z = hotSpot.y;
+							mc2ToRender(tPosition, hotSpot);
 							
 							shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 							shapeOrigin.BuildTranslation(tPosition);
@@ -877,9 +866,7 @@ long WeaponBolt::update (void)
 		}
 		else
 		{
-			actualPosition.x = -laserPosition.x;
-			actualPosition.y = laserPosition.z;
-			actualPosition.z = laserPosition.y;
+			mc2ToRender(actualPosition, laserPosition);
 		}
 	
 		Stuff::LinearMatrix4D 	shapeOrigin;
@@ -911,9 +898,7 @@ long WeaponBolt::update (void)
    	if (muzzleEffect && muzzleEffect->IsExecuted())
    	{
 		Stuff::Point3D mPosition;
-		mPosition.x = -position.x;
-		mPosition.y = position.z;
-		mPosition.z = position.y;
+		mc2ToRender(mPosition, position);
 	
 		Stuff::LinearMatrix4D 	shapeOrigin;
 		Stuff::LinearMatrix4D 	localToWorld;
@@ -1040,9 +1025,7 @@ long WeaponBolt::update (void)
 	if (pointLight)
 	{
 		Stuff::Point3D ourPosition;
-		ourPosition.x = -laserPosition.x;
-		ourPosition.y = laserPosition.z;
-		ourPosition.z = laserPosition.y;
+		mc2ToRender(ourPosition, laserPosition);
 
 		pointLight->direction = ourPosition;
 
@@ -1091,9 +1074,7 @@ long WeaponBolt::update (void)
 			}
 				
 			Stuff::Point3D tPosition;
-			tPosition.x = -hotSpot.x;
-			tPosition.y = hotSpot.z;
-			tPosition.z = hotSpot.y;
+			mc2ToRender(tPosition, hotSpot);
 		
 			Stuff::LinearMatrix4D 	shapeOrigin;
 			Stuff::LinearMatrix4D 	localToWorld;
@@ -1168,9 +1149,7 @@ long WeaponBolt::update (void)
 			}
 				
 			Stuff::Point3D tPosition;
-			tPosition.x = -hotSpot.x;
-			tPosition.y = hotSpot.z;
-			tPosition.z = hotSpot.y;
+			mc2ToRender(tPosition, hotSpot);
 		
 			Stuff::LinearMatrix4D 	shapeOrigin;
 			Stuff::LinearMatrix4D 	localToWorld;
@@ -1324,9 +1303,7 @@ long WeaponBolt::update (void)
 		// so the trail particles land in the render-space coordinate system the
 		// shader expects (matches the swap baked into parentToWorld for spawn_card).
 		Stuff::Vector3D swapped;
-		swapped.x = -laserPosition.x;
-		swapped.y =  laserPosition.z;
-		swapped.z =  laserPosition.y;
+		mc2ToRender(swapped, laserPosition);
 		trail_history[trail_head] = swapped;
 		trail_head = static_cast<uint8_t>((trail_head + 1) % kTrailHistoryMax);
 		if (trail_count < kTrailHistoryMax) ++trail_count;

@@ -72,6 +72,7 @@ std::atomic<int> g_workerResubmitCalls{0};
 
 #include "../ARM/Microsoft.Xna.Arm.h"
 #include "Gates/gate.h"
+#include "../RenderCore/axis_convert.h"
 using namespace Microsoft::Xna::Arm;
 
 //-------------------------------------------------------------------------------
@@ -1373,9 +1374,7 @@ Stuff::Vector3D TG_MultiShape::GetShapeVertexInWorld(long shapeNum, long vertexN
 		
 		vertexPos.Multiply(typeShape->listOfTypeVertices[vertexNum].position,listOfShapes[shapeNum].shapeToWorld);
 		
-		result.x = -vertexPos.x;
-		result.y = vertexPos.z;
-		result.z = vertexPos.y;
+		mc2ToRender(result, vertexPos);
 		
 		//---------------------------------------
 		// Rotate vertex if rotation is NON-zero
