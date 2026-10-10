@@ -52,7 +52,7 @@
    "LG03": 301,
    "LG04": 6,
    "LG05": 119,
-   "LG06": 520,
+   "LG06": 519,
    "LG07": 0,
    "LG08": 274,
    "LG09": 2163,
@@ -66,8 +66,8 @@
    "LG16": 7,
    "LG17": 81,
    "LG18": 11,
-   "LG19": 100,
-   "LG20": 137
+   "LG19": 99,
+   "LG20": 134
   },
   "GuiRuntime": {
    "LG01": 1,
@@ -613,12 +613,10 @@
   "GameOS/gameos/gos_lightgrid_build.cpp": {
    "LG03": 3,
    "LG05": 3,
-   "LG06": 2,
+   "LG06": 1,
    "LG09": 24,
    "LG11": 2,
-   "LG12a": 1,
-   "LG19": 1,
-   "LG20": 3
+   "LG12a": 1
   },
   "GameOS/gameos/gos_materials.cpp": {
    "LG06": 3,
@@ -5860,7 +5858,7 @@
    "LG20": 1
   }
  },
- "head": "ff3ad4070",
+ "head": "4767267f1",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
