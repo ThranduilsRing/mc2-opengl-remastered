@@ -12,6 +12,9 @@ which is the defect the typed registry removes.
       print call nearby does not (`printf(...); if (raw<>())` decides).
   E2  envText( may be called only from the files in ENVTEXT_ALLOWED, each with a line budget. Each entry is a
       deliberate widening with its reason beside it.
+  E3  boolState( reads a Bool gate by a name known only at run time, so it too bypasses the compile-time row
+      lookup. It may be called only from the display tables in BOOLSTATE_ALLOWED (inspector and options window
+      status columns, the feature-registry dump), each with a line budget.
 
 USAGE
   py -3 scripts/check-gate-echo-reads.py [--quiet]
@@ -34,13 +37,20 @@ ENVTEXT_ALLOWED = {
     "GameOS/gameos/gos_dev_shell.cpp": 1,  # the dev shell's get_gate answers for a variable NAME the client sends
     "HostServices/DefaultHostServices.cpp": 2,  # EnvConfig::str / flag take a caller-supplied runtime key
 }
-# Gates/ defines the two readers; the ratchet cares about their callers.
+# file -> max lines calling boolState( ; every one is a status display driven by a table of gate names
+BOOLSTATE_ALLOWED = {
+    "GuiRuntime/EditorInspector.cpp": 3,           # the gate tables and the feature-bit display
+    "GuiRuntime/GraphicsOptionsWindow_mech.cpp": 1,  # the mech options status column
+    "RenderCore/RendererFeatureRegistry.h": 1,     # the generated registry dump, naming gates from its own table
+}
+# Gates/ defines the readers; the ratchet cares about their callers.
 DEFINING_DIR = "Gates/"
 PRINT_FAMILY_RX = re.compile(r"^(?:std::)?(?:printf|fprintf|snprintf|MC2_DIAGFE|MC2_EVENT)$")
 # the gate name inside the quotes is blanked by blank(), so match any (blank) literal
 RAW_RX = re.compile(r"\braw\s*<\s*\"[^\"]*\"\s*>\s*\(\s*\)")
 RAW_LOCAL_RX = re.compile(r"\bconst\s+char\s*\*\s*(\w+)\s*=\s*(?:mc2::)?(?:gate::)?raw\s*<")
 ENVTEXT_RX = re.compile(r"\benvText\s*\(")
+BOOLSTATE_RX = re.compile(r"\bboolState\s*\(")
 LOOKAHEAD_CHARS = 6000
 NL = chr(10)
 BS = chr(92)
@@ -128,6 +138,13 @@ def check_text(rel: str, text: str) -> list[str]:
             errs.append("%s:%d: envText( outside ENVTEXT_ALLOWED (use isSet<>/get<>/str<>)" % (rel, line_of(m.start())))
     if rel in ENVTEXT_ALLOWED and envtext_lines > ENVTEXT_ALLOWED[rel]:
         errs.append("%s: envText( on %d lines (max %d)" % (rel, envtext_lines, ENVTEXT_ALLOWED[rel]))
+    boolstate_lines = 0
+    for m in BOOLSTATE_RX.finditer(t):
+        boolstate_lines += 1
+        if rel not in BOOLSTATE_ALLOWED:
+            errs.append("%s:%d: boolState( outside BOOLSTATE_ALLOWED (use is<>/get<>/state<>)" % (rel, line_of(m.start())))
+    if rel in BOOLSTATE_ALLOWED and boolstate_lines > BOOLSTATE_ALLOWED[rel]:
+        errs.append("%s: boolState( on %d lines (max %d)" % (rel, boolstate_lines, BOOLSTATE_ALLOWED[rel]))
     for m in RAW_RX.finditer(t):
         if in_print_args(t, m.start()):
             continue
@@ -190,6 +207,11 @@ def selftest() -> int:
     expect("envText elsewhere", "code/a.cpp", 'if (mc2::gate::envText("MC2_A")) go();', True)
     expect("envText in an allowed file", launcher, 'if (mc2::gate::envText(key)) go();', False)
     expect("envText over budget", launcher, "envText(a);\nenvText(b);\nenvText(c);", True)
+    expect("boolState elsewhere", "code/a.cpp", 'if (mc2::gate::boolState(name) == on) go();', True)
+    expect("boolState in a display table", "GuiRuntime/EditorInspector.cpp",
+           'const auto st = mc2::gate::boolState(d.envVar);', False)
+    expect("boolState over budget", "GuiRuntime/GraphicsOptionsWindow_mech.cpp",
+           'boolState(a);' + chr(10) + 'boolState(b);', True)
     expect("defining dir", "Gates/gate.cpp", "const char* envText(const char* n) { return n; }", False)
     expect("comment ignored", "code/a.cpp", '// raw<"MC2_A">() is echo only', False)
     expect("string ignored", "code/a.cpp", 'puts("raw<\\"MC2_A\\">() )(");', False)
