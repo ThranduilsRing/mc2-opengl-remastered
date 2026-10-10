@@ -55,7 +55,7 @@ void Terrain::initTerrainTextures(PacketFile* pakFile, volatile float& percent, 
 		char baseName[256];
 		if (pakFile)
 		{
-			_splitpath(pakFile->getFilename(),NULL,NULL,baseName,NULL);
+			_splitpath(pakFile->getFilename(),nullptr,nullptr,baseName,nullptr);
 		}
 		else
 		{
@@ -78,7 +78,7 @@ void Terrain::initColorMapTexture(PacketFile* pakFile, volatile float& percent, 
 		ZoneScopedN("Terrain::init terrainColorMap");
 		char name[1024];
 
-		_splitpath(pakFile->getFilename(),NULL,NULL,name,NULL);
+		_splitpath(pakFile->getFilename(),nullptr,nullptr,name,nullptr);
 		terrainName = new char[strlen(name)+1];
 		strcpy(terrainName,name);
 

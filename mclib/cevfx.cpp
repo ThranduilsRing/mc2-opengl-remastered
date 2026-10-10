@@ -49,11 +49,11 @@ extern void AG_shape_translate_draw (PANE *pane, void *shape_table,LONG shape_nu
 void memclear(void *Dest,int Length);
 //---------------------------------------------------------------------------
 // Static Globals
-MemoryPtr shapeBuffer16 = NULL;
-MemoryPtr shapeBuffer32 = NULL;
-MemoryPtr shapeBuffer64 = NULL;
-MemoryPtr shapeBuffer128 = NULL;
-MemoryPtr shapeBuffer256 = NULL;
+MemoryPtr shapeBuffer16 = nullptr;
+MemoryPtr shapeBuffer32 = nullptr;
+MemoryPtr shapeBuffer64 = nullptr;
+MemoryPtr shapeBuffer128 = nullptr;
+MemoryPtr shapeBuffer256 = nullptr;
 
 //---------------------------------------------------------------------------
 VFXElement::VFXElement (MemoryPtr _shape, long _x, long _y, long frame, bool rev, MemoryPtr fTable, bool noScale, bool upScale) : Element(-_y)
@@ -309,7 +309,7 @@ void VFXShapeElement::init (MemoryPtr _shape, long _x, long _y, long frame, bool
 	gosASSERT(_shape != NULL);
 
 	long i=0;
-	while (shapeTable[i] != NULL)
+	while (shapeTable[i] != nullptr)
 		i++;
 
 	gosASSERT(i < MAX_ELEMENT_SHAPES);
@@ -396,7 +396,7 @@ void VFXShapeElement::drawShape (void)
 
 	gPane.window = &gWindow;
 	gPane.x0 = gPane.y0 = 0;
-	gWindow.stencil = gWindow.shadow = NULL;
+	gWindow.stencil = gWindow.shadow = nullptr;
 
 	long textureWidth = 0;
 
@@ -684,7 +684,7 @@ void VFXShapeElement::draw (void)
 	//-------------------------------------------
 	// Reset shapeTable Data after draw!
 	// Everything else is reset during INIT call!
-	shapeTable[0] = shapeTable[1] = shapeTable[2] = shapeTable[3] = NULL;
+	shapeTable[0] = shapeTable[1] = shapeTable[2] = shapeTable[3] = nullptr;
 }
 
 //---------------------------------------------------------------------------
@@ -710,7 +710,7 @@ void TextureElement::draw (void)
 	// Nothing else to do with this bUt
 	// -gosDraw!
 
-	float textureFactor = float(tWidth) * Camera::globalScaleFactor;
+	float textureFactor = tWidth * Camera::globalScaleFactor;
 	
 	xHS *= Camera::globalScaleFactor;
 	yHS *= Camera::globalScaleFactor;

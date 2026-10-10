@@ -82,11 +82,11 @@ void GlobalMap::init (long w, long h) {
 	sectorHeight = w / SECTOR_DIM;
 
 	numAreas = 0;
-	areas = NULL;
+	areas = nullptr;
 	numDoors = 0;
-	doors = NULL;
-	doorBuildList = NULL;
-	pathExistsTable = NULL;
+	doors = nullptr;
+	doorBuildList = nullptr;
+	pathExistsTable = nullptr;
 	blank = false;
 }
 
@@ -636,7 +636,7 @@ long GlobalMap::write (PacketFilePtr packetFile, long whichPacket) {
 	DoorInfoPtr doorInfoSave[MAX_GLOBALMAP_AREAS];
 	for (int i = 0; i < numAreas; i++) {
 		doorInfoSave[i] = areas_doors[i];
-		areas_doors[i] = NULL;
+		areas_doors[i] = nullptr;
 
 		areas[i].ownerWID = 0;
 		areas[i].teamID = -1;
@@ -682,8 +682,8 @@ long GlobalMap::write (PacketFilePtr packetFile, long whichPacket) {
 	for (int i = 0; i < numDoors + NUM_DOOR_OFFSETS; i++) {
 		doorLinkSave[i][0] = doors_links[i][0];
 		doorLinkSave[i][1] = doors_links[i][1];
-		doors_links[i][0] = NULL;
-		doors_links[i][1] = NULL;
+		doors_links[i][0] = nullptr;
+		doors_links[i][1] = nullptr;
 		doors[i].parent = 0;
 		doors[i].fromAreaIndex = 0;
 		doors[i].flags = 0;
@@ -934,13 +934,13 @@ void GlobalMap::calcAreas (void) {
 		areas[i].type = AREA_TYPE_NORMAL;
 		areas[i].numDoors = 0;
 		areas[i].doors_Legacy32bitPtr = 0;
-		areas_doors[i] = NULL;
+		areas_doors[i] = nullptr;
 		areas[i].ownerWID = 0;
 		areas[i].teamID = -1;
 		areas[i].offMap = false;
 		areas[i].open = true;
 		areas[i].cellsCovered_Legacy32bitPtr = 0;
-		areas_cellsCovered[i] = NULL;
+		areas_cellsCovered[i] = nullptr;
 	}
 
 	for (long sectorR = 0; sectorR < sectorHeight; sectorR++)
@@ -1045,7 +1045,7 @@ void GlobalMap::endDoorProcessing (void) {
 		doors = (GlobalMapDoorPtr)systemHeap->Malloc(sizeof(GlobalMapDoor) * (numDoors + NUM_DOOR_OFFSETS));
 		memcpy(doors, doorBuildList, sizeof(GlobalMapDoor) * (numDoors + NUM_DOOR_OFFSETS));
 		systemHeap->Free(doorBuildList);
-		doorBuildList = NULL;
+		doorBuildList = nullptr;
 		// Build path: doors_links is only pre-allocated in the packet-load path
 		// (init(PacketFile, packet) line ~1765).  Allocate it here so calcDoorLinks()
 		// doesn't crash on a NULL dereference when indexing doors_links[d].

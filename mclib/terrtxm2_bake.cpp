@@ -17,7 +17,7 @@ inline void fractalPass (float *heightMap, long edgeSize, long THRESHOLD, long N
 		{
 			if (RandomNumber(THRESHOLD) == 0)
 			{
-				float noise = float(NOISE * 0.5f) - RandomNumber(NOISE);
+				float noise = (NOISE * 0.5f) - RandomNumber(NOISE);
 				noiseMap[x + (y * edgeSize)] = noise;
 			}
 			else
@@ -373,7 +373,7 @@ void TerrainColorMap::burnInShadows (bool doBumpPass, const char *fileName)
 				}
 				
 				free(tgaFileImage);
-				tgaFileImage = NULL;
+				tgaFileImage = nullptr;
 				
 				//------------------------------------------------------------------------
 				// Must check image_descriptor to see if we need to un upside down image.
@@ -804,7 +804,7 @@ void TerrainColorMap::resetDetailTexture (const char *fileName)
 	{
 		char msg[2048];
 		sprintf(msg,"Texture %s is not 24bit or 32bit, 32x32, 64x64, 128x128 or 256x256 TGA File.  Not loaded!",fileName);
-		mc2MessageBox( msg, NULL, MBOK, IDOK );
+		mc2MessageBox( msg, nullptr, MBOK, IDOK );
 		return;
 	}
 
@@ -835,7 +835,7 @@ void TerrainColorMap::resetWaterTexture (const char *fileName)
 	{
 		char msg[2048];
 		sprintf(msg,"Texture %s is not 24bit or 32bit, 32x32, 64x64, 128x128 or 256x256 TGA File.  Not loaded!",fileName);
-		mc2MessageBox( msg, NULL, MBOK, IDOK );
+		mc2MessageBox( msg, nullptr, MBOK, IDOK );
 		return;
 	}
 
@@ -987,7 +987,7 @@ void TerrainColorMap::recalcLight(const char *fileName)
 		}
 		
 		free(tgaFileImage);
-		tgaFileImage = NULL;
+		tgaFileImage = nullptr;
 			
 		numTextures = colorMapInfo.width / COLOR_MAP_TEXTURE_SIZE;
 		numTexturesAcross = numTextures;
@@ -1043,20 +1043,20 @@ void TerrainColorMap::recalcLight(const char *fileName)
 	{ ZoneScopedN("TerrainColorMap::init colorMap cleanup"); if (txmRAM) { for (unsigned long i=0;i<numTextures;i++)
 	{
 		colorMapRAMHeap->Free(txmRAM[i].ourRAM);
-		txmRAM[i].ourRAM = NULL;
+		txmRAM[i].ourRAM = nullptr;
 	}
 
 	colorMapRAMHeap->Free(txmRAM);
-	txmRAM = NULL;
+	txmRAM = nullptr;
 	}
 
 	colorMapRAMHeap->Free(ColorMap);
-	ColorMap = NULL;
+	ColorMap = nullptr;
 
 	if (colorMapRAMHeap)
 	{
 		delete colorMapRAMHeap;
-		colorMapRAMHeap = NULL;
+		colorMapRAMHeap = nullptr;
 	}
 	}
 }
@@ -1084,7 +1084,7 @@ void TerrainColorMap::resetBaseTexture (const char *fileName)
 	burnInName.init(texturePath,newName,".tga");
 
 	bool burnedIn = false;
-	MemoryPtr tgaFileImage = NULL;
+	MemoryPtr tgaFileImage = nullptr;
 
 	TGAFileHeader colorMapInfo;
 
@@ -1095,7 +1095,7 @@ void TerrainColorMap::resetBaseTexture (const char *fileName)
 	{
 		long jpgW = 0;
 		MemoryPtr jpgColorMap = tryLoadBurninJpg(texturePath, fileName, colorMapRAMHeap, &jpgW);
-		if (jpgColorMap != NULL)
+		if (jpgColorMap != nullptr)
 		{
 			ColorMap = jpgColorMap;
 			memset(&colorMapInfo, 0, sizeof(colorMapInfo));
@@ -1176,7 +1176,7 @@ void TerrainColorMap::resetBaseTexture (const char *fileName)
 			}
 
 			free(tgaFileImage);
-			tgaFileImage = NULL;
+			tgaFileImage = nullptr;
 		}
 
 		numTextures = colorMapInfo.width / COLOR_MAP_TEXTURE_SIZE;
@@ -1234,7 +1234,7 @@ void TerrainColorMap::resetBaseTexture (const char *fileName)
 	// Retain CPU copy of colormap for terrain displacement HSV classification
 	// and as RGBA8 fallback for BuildColormapAtlas (required when BPTC absent).
 	{
-		if (cpuColorMap) { free(cpuColorMap); cpuColorMap = NULL; }
+		if (cpuColorMap) { free(cpuColorMap); cpuColorMap = nullptr; }
 		long pixels = (long)colorMapInfo.width * (long)colorMapInfo.width;
 		cpuColorMap = (unsigned char*)malloc(pixels * 4);
 		gosASSERT(cpuColorMap != NULL);
@@ -1266,19 +1266,19 @@ void TerrainColorMap::resetBaseTexture (const char *fileName)
 	for (int i=0;i<numTextures;i++)
 	{
 		colorMapRAMHeap->Free(txmRAM[i].ourRAM);
-		txmRAM[i].ourRAM = NULL;
+		txmRAM[i].ourRAM = nullptr;
 	}
 
 	colorMapRAMHeap->Free(txmRAM);
-	txmRAM = NULL;
+	txmRAM = nullptr;
 	}
 
 	colorMapRAMHeap->Free(ColorMap);
-	ColorMap = NULL;
+	ColorMap = nullptr;
 
 	if (colorMapRAMHeap)
 	{
 		delete colorMapRAMHeap;
-		colorMapRAMHeap = NULL;
+		colorMapRAMHeap = nullptr;
 	}
 }

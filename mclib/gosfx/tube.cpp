@@ -540,7 +540,7 @@ Retry:
 //############################################################################
 
 gosFX::Tube::ClassData*
-	gosFX::Tube::DefaultData = NULL;
+	gosFX::Tube::DefaultData = nullptr;
 
 //------------------------------------------------------------------------------
 //
@@ -567,7 +567,7 @@ void
 {
 	Unregister_Object(DefaultData);
 	delete DefaultData;
-	DefaultData = NULL;
+	DefaultData = nullptr;
 }
 
 //------------------------------------------------------------------------------
@@ -1231,7 +1231,7 @@ void gosFX::Tube::Draw(DrawInfo *info)
 					std::fprintf(stderr,
 						"[TUBE_PROFILE] spec=%s type=%d activeMax=%d maxProf=%d\n",
 						key.c_str(), (int)spec->m_profileType,
-						m_activeProfileCount, (int)spec->m_maxProfileCount);
+						m_activeProfileCount, spec->m_maxProfileCount);
 					std::fflush(stderr);
 				}
 			}

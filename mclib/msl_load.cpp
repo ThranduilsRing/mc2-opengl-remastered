@@ -72,7 +72,7 @@ long TG_TypeMultiShape::LoadBinaryCopy (const char *fileName)
 		}
 		else
 		{
-			listOfTextures = NULL;
+			listOfTextures = nullptr;
 		}
 	
 		//listOfShapes
@@ -130,7 +130,7 @@ long TG_TypeMultiShape::LoadBinaryCopy (const char *fileName)
 			for (long i = 0; i < loadedShapes; ++i) {
 				if (listOfTypeShapes[i]) {
 					delete listOfTypeShapes[i];
-					listOfTypeShapes[i] = NULL;
+					listOfTypeShapes[i] = nullptr;
 				}
 			}
 			numTG_TypeShapes = 0;
@@ -237,7 +237,7 @@ void TG_TypeMultiShape::SetImportedTextures(DWORD count,
 	numTextures = count;
 	if (numTextures == 0)
 	{
-		listOfTextures = NULL;
+		listOfTextures = nullptr;
 		return;
 	}
 
@@ -389,18 +389,18 @@ void TG_TypeMultiShape::destroy (void)
 		{
 			listOfTypeShapes[i]->destroy();
 			delete listOfTypeShapes[i];
-			listOfTypeShapes[i] = NULL;
+			listOfTypeShapes[i] = nullptr;
 		}
 	}
 
 	if (listOfTypeShapes)
 		TG_Shape::tglHeap->Free(listOfTypeShapes);
 		
-	listOfTypeShapes = NULL;
+	listOfTypeShapes = nullptr;
 
 	if (listOfTextures)
 		TG_Shape::tglHeap->Free(listOfTextures);
-	listOfTextures= NULL;
+	listOfTextures= nullptr;
 
 	numTextures = 0;
 	numTG_TypeShapes = 0;
@@ -428,7 +428,7 @@ void TG_MultiShape::destroy (void)
 
 	if (listOfShapes)
 		TG_Shape::tglHeap->Free(listOfShapes);
-	listOfShapes = NULL;	
+	listOfShapes = nullptr;	
 
 	numTG_Shapes = 0;
 }	
@@ -632,7 +632,7 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 			aseBuffer = (unsigned char *)textureData;
 		}
 
-		IProviderAssetPtr armAssetPtr = NULL;
+		IProviderAssetPtr armAssetPtr = nullptr;
 		if (armProvider)
 		{
 			armAssetPtr = armProvider->OpenAsset(fileName, 
@@ -661,7 +661,7 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 				char *txmTemp = txmData;
 				txmData = strstr(txmData,textId);
 				
-				if (txmData == NULL)
+				if (txmData == nullptr)
 				{
 #ifdef _DEBUG
 					if (!silentMode)
@@ -738,14 +738,14 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 			}
 		}
 		else
-			listOfTextures = NULL;
+			listOfTextures = nullptr;
 	
 		//------------------------------------------------------------
 		// FIRST PASS.  Count number of GEOMObjects & HelperObjects
 		numTG_TypeShapes = 0;
 		char *aseScan = (char *)aseContents;
 		aseScan = strstr(aseScan,ASE_OBJECT);
-		while (aseScan != NULL)
+		while (aseScan != nullptr)
 		{
 			numTG_TypeShapes++;
 			aseScan += strlen(ASE_OBJECT)+1;
@@ -754,7 +754,7 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 	
 		aseScan = (char *)aseContents;
 		aseScan = strstr(aseScan,ASE_HELP_OBJECT);
-		while (aseScan != NULL)
+		while (aseScan != nullptr)
 		{
 			//--------------------------------------------------------
 			// Check if NodeName is handle_ or WORLD.  These are bad!
@@ -766,7 +766,7 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 			char chkWord[512];
 			GetWordData(aseScan,chkWord);
 	
-			if (strstr(chkWord,"handle_") == NULL && strstr(chkWord,"World") == NULL)
+			if (strstr(chkWord,"handle_") == nullptr && strstr(chkWord,"World") == nullptr)
 			{
 				numTG_TypeShapes++;
 			}
@@ -786,7 +786,7 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 	
 		aseScan = (char *)aseContents;
 		aseScan = strstr(aseScan,ASE_HELP_OBJECT);
-		while (aseScan != NULL)
+		while (aseScan != nullptr)
 		{
 			listOfTypeShapes[startIndex] = new TG_TypeNode;
 			listOfTypeShapes[startIndex]->init();
@@ -817,7 +817,7 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 	
 				//-------------------------------------------------------------------
 				// Is this a forbidden helper object?
-				if ((strstr(chkWord,"handle") == NULL) && (strstr(chkWord,"World") == NULL))
+				if ((strstr(chkWord,"handle") == nullptr) && (strstr(chkWord,"World") == nullptr))
 				{
 					long parseResult = listOfTypeShapes[startIndex]->MakeFromHelper((unsigned char *)aseData,fileName);
 					if (parseResult != 0)
@@ -843,7 +843,7 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 	
 				//-------------------------------------------------------------------
 				// Is this a forbidden helper object?
-				if ((strstr(chkWord,"handle") == NULL) && (strstr(chkWord,"World") == NULL))
+				if ((strstr(chkWord,"handle") == nullptr) && (strstr(chkWord,"World") == nullptr))
 				{
 					//-------------------------------------------------------------------
 					long parseResult = listOfTypeShapes[startIndex]->MakeFromHelper((unsigned char *)aseScan,fileName);
@@ -862,7 +862,7 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 		// THIRD PASS.  Load GeomObjects.
 		aseScan = (char *)aseContents;
 		aseScan = strstr(aseScan,ASE_OBJECT);
-		while (aseScan != NULL)
+		while (aseScan != nullptr)
 		{
 			listOfTypeShapes[startIndex] = new TG_TypeShape;
 			listOfTypeShapes[startIndex]->init();
@@ -906,7 +906,7 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 			{
 				//----------------------------------------------------------------------------------
 				// For each shape, look for another node whose NodeId matches this shape's parentId
-				TG_TypeNodePtr parentNode = NULL;
+				TG_TypeNodePtr parentNode = nullptr;
 				for (long j=0;j<numTG_TypeShapes;j++)
 				{
 					if (strcmp(listOfTypeShapes[i]->getParentId(),listOfTypeShapes[j]->getNodeId()) == 0)
@@ -966,13 +966,13 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 				extentRadius = maxBoxLength;
 		}
 
-		if (armAssetPtr != NULL)
+		if (armAssetPtr != nullptr)
 		{
 			armAssetPtr->Close();
 		}
 	
 		free(aseContents);
-		aseContents = NULL;
+		aseContents = nullptr;
 	
 		SaveBinaryCopy(binaryFileName);
 	}

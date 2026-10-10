@@ -407,9 +407,9 @@ unsigned long Camera::inverseProject (Stuff::Vector2DOf<long> &screenPos, Stuff:
 	TerrainQuadPtr closestTiles[100];
 	memset(closestTiles,0,sizeof(TerrainQuadPtr)*100);
 
-	TerrainQuadPtr closestTile = NULL;
+	TerrainQuadPtr closestTile = nullptr;
 	long currentClosest = 0;
-	VertexPtr closestVertex = NULL;
+	VertexPtr closestVertex = nullptr;
 
 	float planes[6][4];
 	extractFrustumPlanes(planes);

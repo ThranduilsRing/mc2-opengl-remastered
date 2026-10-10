@@ -158,12 +158,12 @@ void GenericAppearanceType::init (const char * fileName)
 		if (!genDmgShape->GetNumShapes())
 		{
 			delete genDmgShape;
-			genDmgShape = NULL;
+			genDmgShape = nullptr;
 		}
 	}
 	else
 	{
-		genDmgShape = NULL;
+		genDmgShape = nullptr;
 	}
 
 	//--------------------------------------------------------------------
@@ -215,11 +215,11 @@ void GenericAppearanceType::init (const char * fileName)
 				genAnimData[i]->LoadTGMultiShapeAnimationFromASE(animPath,genShape);
 			}
 			else
-				genAnimData[i] = NULL;
+				genAnimData[i] = nullptr;
 		}
 		else
 		{
-			genAnimData[i] = NULL;
+			genAnimData[i] = nullptr;
 		}
 	}
 	
@@ -246,13 +246,13 @@ void GenericAppearanceType::destroy (void)
 	if (genShape)
 	{
 		delete genShape;
-		genShape = NULL;
+		genShape = nullptr;
 	}
 
 	if (genDmgShape)
 	{
 		delete genDmgShape;
-		genDmgShape = NULL;
+		genDmgShape = nullptr;
 	}
 }
 
@@ -423,7 +423,7 @@ void GenericAppearance::setObjStatus (long oStatus)
 			{
 				genShape->ClearAnimation();
 				delete genShape;
-				genShape = NULL;
+				genShape = nullptr;
 				
 				genShape = appearType->genDmgShape->CreateFrom();
 				
@@ -1233,7 +1233,7 @@ long GenericAppearance::update (bool animate)
 	if (inView || g_useGpuStaticProps)
 	{
 		genShape->SetIsClamped(true);
-		genShape->SetLightList(NULL,0);
+		genShape->SetLightList(nullptr,0);
 		// Slice 2 (object-offload) — Stage 2.B: eligibility hoist.
 		// See BldgAppearance::update for the full rationale; same shape.
 		// Branch lives INSIDE the existing inView||g_useGpuStaticProps cull
@@ -1276,7 +1276,7 @@ void GenericAppearance::destroy (void)
 	if ( genShape )
 	{
 		delete genShape;
-		genShape = NULL;
+		genShape = nullptr;
 	}
 
 	appearanceTypeList->removeAppearance(appearType);

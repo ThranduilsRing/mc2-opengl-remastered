@@ -10,7 +10,7 @@ int GlobalMap::minRow = 0;
 int GlobalMap::maxRow = 0;
 int GlobalMap::minCol = 0;
 int GlobalMap::maxCol = 0;
-GameLogPtr GlobalMap::log = NULL;
+GameLogPtr GlobalMap::log = nullptr;
 bool GlobalMap::logEnabled = false;
 // GLOBAL vars
 bool ZeroHPrime = false;
@@ -24,12 +24,12 @@ bool ClearBridgeTiles = false;
 
 long RamObjectWID = 0;
 
-PriorityQueuePtr openList = NULL;
+PriorityQueuePtr openList = nullptr;
 bool JumpOnBlocked = false;
 bool FindingEscapePath = false;
 bool BlockWallTiles = true;
-MissionMapPtr GameMap = NULL;
-GlobalMapPtr GlobalMoveMap[3] = {NULL, NULL, NULL};
+MissionMapPtr GameMap = nullptr;
+GlobalMapPtr GlobalMoveMap[3] = {nullptr, nullptr, nullptr};
 
 long DebugMovePathType = 0;
 
@@ -254,7 +254,7 @@ long topOpenNodes = 0;
 long MaxHPrime = 1000;
 bool PreserveMapTiles = false;
 
-MoveMapPtr PathFindMap[2] = {NULL, NULL};
+MoveMapPtr PathFindMap[2] = {nullptr, nullptr};
 
 float MoveMap::distanceFloat[DISTANCE_TABLE_DIM][DISTANCE_TABLE_DIM];
 int MoveMap::distanceInt[DISTANCE_TABLE_DIM][DISTANCE_TABLE_DIM];
@@ -428,7 +428,7 @@ void MOVE_init (long moveRange) {
 
 bool EditorSave = false;
 long tempNumSpecialAreas = 0;
-GameObjectFootPrint* tempSpecialAreaFootPrints = NULL;
+GameObjectFootPrint* tempSpecialAreaFootPrints = nullptr;
 
 void MOVE_buildData (long height, long width, MissionMapCellInfo* mapData, long numSpecialAreas, GameObjectFootPrint* specialAreaFootPrints) {
 
@@ -465,7 +465,7 @@ void MOVE_buildData (long height, long width, MissionMapCellInfo* mapData, long 
 
 	if (tempSpecialAreaFootPrints) {
 		systemHeap->Free(tempSpecialAreaFootPrints);
-		tempSpecialAreaFootPrints = NULL;
+		tempSpecialAreaFootPrints = nullptr;
 	}
 	tempNumSpecialAreas = numSpecialAreas;
 	if (tempNumSpecialAreas) {
@@ -478,19 +478,19 @@ void MOVE_buildData (long height, long width, MissionMapCellInfo* mapData, long 
 	if (GlobalMoveMap[0])
 	{
 		delete GlobalMoveMap[0];
-		GlobalMoveMap[0] = NULL;
+		GlobalMoveMap[0] = nullptr;
 	}
 
 	if (GlobalMoveMap[1])
 	{
 		delete GlobalMoveMap[1];
-		GlobalMoveMap[1] = NULL;
+		GlobalMoveMap[1] = nullptr;
 	}
 
 	if (GlobalMoveMap[2])
 	{
 		delete GlobalMoveMap[2];
-		GlobalMoveMap[2] = NULL;
+		GlobalMoveMap[2] = nullptr;
 	}
 
 	printf("[MOVE_BD] building GlobalMoveMap[0] (ground)\n"); fflush(stdout);
@@ -511,7 +511,7 @@ void MOVE_buildData (long height, long width, MissionMapCellInfo* mapData, long 
 	if (!GlobalMoveMap[2])
 		Fatal(0, " MOVE_Init: Cannot initialize HeliGlobalMoveMap ");
 	GlobalMoveMap[2]->blank = true;
-	GlobalMoveMap[2]->build(NULL);
+	GlobalMoveMap[2]->build(nullptr);
 
 	printf("[MOVE_BD] all GlobalMaps built OK\n"); fflush(stdout);
 
@@ -538,7 +538,7 @@ long MOVE_saveData (PacketFile* packetFile, long whichPacket) {
 	if (!GlobalMoveMap[0])
 		Fatal(0, " MOVE_SaveData: Cannot initialize GlobalMoveMap ");
 	if (!packetFile)
-		return(GameMap->write(NULL) + GlobalMoveMap[0]->write(NULL) + GlobalMoveMap[1]->write(NULL) + GlobalMoveMap[2]->write(NULL) + 2);
+		return(GameMap->write(nullptr) + GlobalMoveMap[0]->write(nullptr) + GlobalMoveMap[1]->write(nullptr) + GlobalMoveMap[2]->write(nullptr) + 2);
 
 	// Just some debugging...
 	//long numOffMap = 0;
@@ -589,7 +589,7 @@ long MOVE_readData (PacketFile* packetFile, long whichPacket) {
 		// Let's read the hover move map...
 		if (GlobalMoveMap[1]) {
 			delete GlobalMoveMap[1];
-			GlobalMoveMap[1] = NULL;
+			GlobalMoveMap[1] = nullptr;
 		}
 		GlobalMoveMap[1] = new GlobalMap;
 		if (!GlobalMoveMap[1])
@@ -600,7 +600,7 @@ long MOVE_readData (PacketFile* packetFile, long whichPacket) {
 		// Let's read the helicoptor move map...
 		if (GlobalMoveMap[2]) {
 			delete GlobalMoveMap[2];
-			GlobalMoveMap[2] = NULL;
+			GlobalMoveMap[2] = nullptr;
 		}
 		GlobalMoveMap[2] = new GlobalMap;
 		if (!GlobalMoveMap[2])
@@ -609,14 +609,14 @@ long MOVE_readData (PacketFile* packetFile, long whichPacket) {
 		numGlobalMap2Packets = GlobalMoveMap[2]->init(packetFile, whichPacket + numMissionMapPackets + numGlobalMap0Packets + numGlobalMap1Packets);
 		// Delete the pathExistsTable for this one, since we don't use it...
 		systemHeap->Free(GlobalMoveMap[2]->pathExistsTable);
-		GlobalMoveMap[2]->pathExistsTable = NULL;
+		GlobalMoveMap[2]->pathExistsTable = nullptr;
 
 		long numBytes = packetFile->readPacket(whichPacket + numMissionMapPackets + numGlobalMap0Packets + numGlobalMap1Packets + numGlobalMap2Packets, (unsigned char*)&tempNumSpecialAreas);
 		if (numBytes <= 0)
 			Fatal(numBytes, " MOVE_readData: Unable to read num special areas ");
 		if (tempSpecialAreaFootPrints) {
 			systemHeap->Free(tempSpecialAreaFootPrints);
-			tempSpecialAreaFootPrints = NULL;
+			tempSpecialAreaFootPrints = nullptr;
 		}
 		if (tempNumSpecialAreas > 0) {
 			// Mod-tolerance: mc2_10 and other large maps write GameObjectFootPrint
@@ -648,8 +648,8 @@ long MOVE_readData (PacketFile* packetFile, long whichPacket) {
 
 	// PATHFINDING-FACTS-1: emit map topology once at mission load (gated, default-OFF).
 	{
-		int areas = (GlobalMoveMap[0]) ? (int)GlobalMoveMap[0]->numAreas : 0;
-		int doors = (GlobalMoveMap[0]) ? (int)GlobalMoveMap[0]->numDoors : 0;
+		int areas = (GlobalMoveMap[0]) ? GlobalMoveMap[0]->numAreas : 0;
+		int doors = (GlobalMoveMap[0]) ? GlobalMoveMap[0]->numDoors : 0;
 		int cellW = (GameMap) ? (int)GameMap->width : 0;
 		int cellH = (GameMap) ? (int)GameMap->height : 0;
 		mc2_path_trace::emitMap(areas, doors, (int)tempNumSpecialAreas, cellW, cellH);
@@ -662,33 +662,33 @@ void MOVE_cleanup (void) {
 
 	if (GameMap) {
 		delete GameMap;
-		GameMap = NULL;
+		GameMap = nullptr;
 	}
 
 	if (GlobalMoveMap[0]) 
 	{
 		delete GlobalMoveMap[0];
-		GlobalMoveMap[0] = NULL;
+		GlobalMoveMap[0] = nullptr;
 	}
 	if (GlobalMoveMap[1]) 
 	{
 		delete GlobalMoveMap[1];
-		GlobalMoveMap[1] = NULL;
+		GlobalMoveMap[1] = nullptr;
 	}
 	if (GlobalMoveMap[2]) 
 	{
 		delete GlobalMoveMap[2];
-		GlobalMoveMap[2] = NULL;
+		GlobalMoveMap[2] = nullptr;
 	}
 
 	if (PathFindMap[SECTOR_PATHMAP]) {
 		delete PathFindMap[SECTOR_PATHMAP];
-		PathFindMap[SECTOR_PATHMAP] = NULL;
+		PathFindMap[SECTOR_PATHMAP] = nullptr;
 	}
 
 	if (PathFindMap[SIMPLE_PATHMAP]) {
 		delete PathFindMap[SIMPLE_PATHMAP];
-		PathFindMap[SIMPLE_PATHMAP] = NULL;
+		PathFindMap[SIMPLE_PATHMAP] = nullptr;
 	}
 }
 
@@ -732,7 +732,7 @@ void MissionMap::init (long h, long w) {
 
 	if (map) {
 		systemHeap->Free(map);
-		map = NULL;
+		map = nullptr;
 	}
 	long mapSize = sizeof(MapCell) * width * height;
 	if (mapSize > 0)
@@ -745,7 +745,7 @@ void MissionMap::init (long h, long w) {
 	// or by rebuildTileMineCounts() after a packet readPacket().
 	if (tileMineCount) {
 		systemHeap->Free(tileMineCount);
-		tileMineCount = NULL;
+		tileMineCount = nullptr;
 	}
 	tileMineCountWidth = w / MAPCELL_DIM;
 	const long tileMineHeight = h / MAPCELL_DIM;
@@ -1015,18 +1015,18 @@ void MissionMap::print (char* fileName) {
 
 	debugFile->close();
 	delete debugFile;
-	debugFile = NULL;
+	debugFile = nullptr;
 }
 
 void MissionMap::destroy (void) {
 
 	if (map) {
 		systemHeap->Free(map);
-		map = NULL;
+		map = nullptr;
 	}
 	if (tileMineCount) {
 		systemHeap->Free(tileMineCount);
-		tileMineCount = NULL;
+		tileMineCount = nullptr;
 	}
 }
 

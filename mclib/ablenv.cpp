@@ -41,15 +41,15 @@
 
 //***************************************************************************
 int32_t ABLi_preProcess (const char* sourceFileName,
-					  long* numErrors = NULL,
-					  long* numLinesProcessed = NULL,
-					  long* numFilesProcessed = NULL,
+					  long* numErrors = nullptr,
+					  long* numLinesProcessed = nullptr,
+					  long* numFilesProcessed = nullptr,
 					  bool printLines = false);
 
 ABLModulePtr ABLi_loadLibrary (const char* sourceFileName,
-					   long* numErrors = NULL,
-					   long* numLinesProcessed = NULL,
-					   long* numFilesProcessed = NULL,
+					   long* numErrors = nullptr,
+					   long* numLinesProcessed = nullptr,
+					   long* numFilesProcessed = nullptr,
 					   bool printLines = false,
 					   bool createInstance = true);
 
@@ -119,17 +119,17 @@ int32_t             NumModules = 0;
 
 //-----------------
 // GLOBAL variables
-ModuleEntryPtr		ModuleRegistry = NULL;
-ABLModulePtr*		ModuleInstanceRegistry = NULL;
+ModuleEntryPtr		ModuleRegistry = nullptr;
+ABLModulePtr*		ModuleInstanceRegistry = nullptr;
 int32_t				MaxModules = 0;
 int32_t				NumModulesRegistered = 0;
 int32_t				NumModuleInstances = 0;
 int32_t				MaxWatchesPerModule = 20;
 int32_t				MaxBreakPointsPerModule = 20;
-ABLModulePtr		CurModule = NULL;
-ABLModulePtr		CurFSM = NULL;
-ABLModulePtr		CurLibrary = NULL;
-ABLModulePtr*		LibraryInstanceRegistry = NULL;
+ABLModulePtr		CurModule = nullptr;
+ABLModulePtr		CurFSM = nullptr;
+ABLModulePtr		CurLibrary = nullptr;
+ABLModulePtr*		LibraryInstanceRegistry = nullptr;
 int32_t				NumStateTransitions = 0;
 int32_t				MaxLibraries = 0;
 bool				NewStateSet = false;
@@ -144,7 +144,7 @@ int32_t				CallStackLevel = 0;
 long NumProfileLogLines = 0;
 int TotalProfileLogLines = 0;
 char ProfileLogBuffer[MAX_PROFILE_LINES][MAX_PROFILE_LINELEN];
-ABLFile* ProfileLog = NULL;
+ABLFile* ProfileLog = nullptr;
 long ProfileLogFunctionTimeLimit = 5;
 
 UserFilePtr			UserFile::files[MAX_USER_FILES];
@@ -176,7 +176,7 @@ void ABL_CloseProfileLog (void) {
 		ProfileLog->writeString(s);
 		ProfileLog->close();
 		delete ProfileLog;
-		ProfileLog = NULL;
+		ProfileLog = nullptr;
 		NumProfileLogLines = 0;
 		TotalProfileLogLines = 0;
 	}
@@ -216,7 +216,7 @@ void ABL_AddToProfileLog (char* profileString) {
 
 void* UserFile::operator new (size_t mySize) {
 
-	void* result = NULL;
+	void* result = nullptr;
 	
 	result = ABLSystemMallocCallback(static_cast<unsigned long>(mySize));
 	
@@ -338,10 +338,10 @@ void UserFile::cleanup (void) {
 				files[i]->close();
 			//Should actually free the memory allocated above here!
 			delete files[i]->filePtr;
-			files[i]->filePtr = NULL;
+			files[i]->filePtr = nullptr;
 
 			ABLSystemFreeCallback(files[i]);
-			files[i] = NULL;
+			files[i] = nullptr;
 		}
 	}
 }
@@ -381,19 +381,19 @@ void destroyModuleRegistry (void) {
 	// associated data...
 	for (long i = 0; i < NumModulesRegistered; i++) {
 		ABLStackFreeCallback(ModuleRegistry[i].fileName);
-		ModuleRegistry[i].fileName = NULL;
-		ModuleRegistry[i].moduleIdPtr = NULL;
+		ModuleRegistry[i].fileName = nullptr;
+		ModuleRegistry[i].moduleIdPtr = nullptr;
 		for (long j = 0; j < ModuleRegistry[i].numSourceFiles; j++) {
 			ABLStackFreeCallback(ModuleRegistry[i].sourceFiles[j]);
-			ModuleRegistry[i].sourceFiles[j] = NULL;
+			ModuleRegistry[i].sourceFiles[j] = nullptr;
 		}
 	}
 
 	ABLStackFreeCallback(ModuleRegistry);	
-	ModuleRegistry = NULL;
+	ModuleRegistry = nullptr;
 
 	ABLStackFreeCallback(ModuleInstanceRegistry);	
-	ModuleInstanceRegistry = NULL;
+	ModuleInstanceRegistry = nullptr;
 }
 
 //***************************************************************************
@@ -430,11 +430,11 @@ void destroyLibraryRegistry (void) {
 	for (long i=0;i<numLibrariesLoaded;i++)
 	{
 		delete LibraryInstanceRegistry[i];
-		LibraryInstanceRegistry[i] = NULL;
+		LibraryInstanceRegistry[i] = nullptr;
 	}
 
 	ABLStackFreeCallback(LibraryInstanceRegistry);
-	LibraryInstanceRegistry = NULL;
+	LibraryInstanceRegistry = nullptr;
 }
 
 //***************************************************************************
@@ -443,7 +443,7 @@ void destroyLibraryRegistry (void) {
 
 void* ABLModule::operator new (size_t mySize) {
 
-	void* result = NULL;
+	void* result = nullptr;
 	
 	result = ABLSystemMallocCallback(static_cast<unsigned long>(mySize));
 	
@@ -496,7 +496,7 @@ long ABLModule::init (int moduleHandle) {
 
 	id = NumModules++;
 	handle = moduleHandle;
-	staticData = NULL;
+	staticData = nullptr;
 	long numStatics = ModuleRegistry[handle].numStaticVars;
 	if (numStatics) {
 		staticData = (StackItemPtr)ABLStackMallocCallback(sizeof(StackItem) * numStatics);
@@ -561,7 +561,7 @@ long ABLModule::init (int moduleHandle) {
 			sprintf(err, "ABL: FSM has no Start state [%s]", CurModule->getName());
 			ABL_Fatal(0, err);
 		}
-		prevState = NULL;
+		prevState = nullptr;
 		state = startState;
 	}
 
@@ -577,12 +577,12 @@ void ABLModule::write (ABLFile* moduleFile) {
 	moduleFile->writeString(name);
 	moduleFile->writeByte('\0');
 	moduleFile->writeInt(handle);
-	if (prevState == NULL)
+	if (prevState == nullptr)
 		moduleFile->writeString("NULLPrevState");
 	else
 		moduleFile->writeString(prevState->name);
 	moduleFile->writeByte('\0');
-	if (state == NULL)
+	if (state == nullptr)
 		moduleFile->writeString("NULLState");
 	else
 		moduleFile->writeString(state->name);
@@ -612,7 +612,7 @@ void ABLModule::read (ABLFile* moduleFile) {
 		id = NumModules++;
 		moduleFile->readString((unsigned char*)name);
 		handle = moduleFile->readInt();
-		staticData = NULL;
+		staticData = nullptr;
 		}
 	else {
 		char tempName[1024];
@@ -624,13 +624,13 @@ void ABLModule::read (ABLFile* moduleFile) {
 	char stateName[256];
 	memset(stateName,0,256);
 	moduleFile->readString((unsigned char*)stateName);
-	prevState = NULL;
+	prevState = nullptr;
 	if (strcmp(stateName, "NULLPrevState"))
 		prevState = findState(stateName);
 	
 	memset(stateName,0,256);
 	moduleFile->readString((unsigned char*)stateName);
-	state = NULL;
+	state = nullptr;
 	if (strcmp(stateName, "NULLState"))
 		state = findState(stateName);
 
@@ -731,7 +731,7 @@ void ABLModule::setName (const char* _name) {
 
 bool ABLModule::isLibrary (void) {
 
-	return(ModuleRegistry[handle].moduleIdPtr->library != NULL);
+	return(ModuleRegistry[handle].moduleIdPtr->library != nullptr);
 }
 
 //---------------------------------------------------------------------------
@@ -835,7 +835,7 @@ long ABLModule::execute (ABLParamPtr paramList) {
 	if (moduleIdPtr->defn.info.routine.flags & ROUTINE_FLAG_FSM)
 		CurFSM = this;
 	else
-		CurFSM = NULL;
+		CurFSM = nullptr;
 	NumStateTransitions = 0;
 
 	//--------------------------------------------
@@ -845,8 +845,8 @@ long ABLModule::execute (ABLParamPtr paramList) {
 
 	//---------------------------------
 	// Init some important variables...
-	CurModuleIdPtr = NULL;
-	CurRoutineIdPtr = NULL;
+	CurModuleIdPtr = nullptr;
+	CurRoutineIdPtr = nullptr;
 	FileNumber = -1;
 	errorCount = 0;
 	execStatementCount = 0;
@@ -867,13 +867,13 @@ long ABLModule::execute (ABLParamPtr paramList) {
 	pushInteger(0);
 	//---------------
 	// Static Link...
-	pushAddress(NULL);
+	pushAddress(nullptr);
 	//----------------
 	// Dynamic Link...
-	pushAddress(NULL);
+	pushAddress(nullptr);
 	//------------------
 	// Return Address...
-	pushAddress(NULL);
+	pushAddress(nullptr);
 
 	//initDebugger();
 
@@ -885,11 +885,11 @@ long ABLModule::execute (ABLParamPtr paramList) {
 		// NOTE: Currently, parameter passing of arrays is not functioning. This MUST be
 		// done...
 		long curParam = 0;
-		for (SymTableNodePtr formalIdPtr = (SymTableNodePtr)(moduleIdPtr->defn.info.routine.params);
-			 formalIdPtr != NULL;
+		for (SymTableNodePtr formalIdPtr = moduleIdPtr->defn.info.routine.params;
+			 formalIdPtr != nullptr;
 			 formalIdPtr = formalIdPtr->next) {
 
-			TypePtr formalTypePtr = (TypePtr)(formalIdPtr->typePtr);
+			TypePtr formalTypePtr = formalIdPtr->typePtr;
 
 			if (formalIdPtr->defn.key == DFN_VALPARAM) {
 
@@ -981,7 +981,7 @@ long ABLModule::execute (ABLParamPtr moduleParamList, SymTableNodePtr functionId
 	if (moduleIdPtr->defn.info.routine.flags & ROUTINE_FLAG_FSM)
 		CurFSM = this;
 	else
-		CurFSM = NULL;
+		CurFSM = nullptr;
 	NumStateTransitions = 0;
 
 
@@ -992,8 +992,8 @@ long ABLModule::execute (ABLParamPtr moduleParamList, SymTableNodePtr functionId
 
 	//---------------------------------
 	// Init some important variables...
-	CurModuleIdPtr = NULL;
-	CurRoutineIdPtr = NULL;
+	CurModuleIdPtr = nullptr;
+	CurRoutineIdPtr = nullptr;
 	FileNumber = -1;
 	errorCount = 0;
 	execStatementCount = 0;
@@ -1015,13 +1015,13 @@ long ABLModule::execute (ABLParamPtr moduleParamList, SymTableNodePtr functionId
 	pushInteger(0);
 	//---------------
 	// Static Link...
-	pushAddress(NULL);
+	pushAddress(nullptr);
 	//----------------
 	// Dynamic Link...
-	pushAddress(NULL);
+	pushAddress(nullptr);
 	//------------------
 	// Return Address...
-	pushAddress(NULL);
+	pushAddress(nullptr);
 
 	//initDebugger();
 
@@ -1033,11 +1033,11 @@ long ABLModule::execute (ABLParamPtr moduleParamList, SymTableNodePtr functionId
 		// NOTE: Currently, parameter passing of arrays is not functioning. This MUST be
 		// done...
 		long curParam = 0;
-		for (SymTableNodePtr formalIdPtr = (SymTableNodePtr)(moduleIdPtr->defn.info.routine.params);
-			 formalIdPtr != NULL;
+		for (SymTableNodePtr formalIdPtr = moduleIdPtr->defn.info.routine.params;
+			 formalIdPtr != nullptr;
 			 formalIdPtr = formalIdPtr->next) {
 
-			TypePtr formalTypePtr = (TypePtr)(formalIdPtr->typePtr);
+			TypePtr formalTypePtr = formalIdPtr->typePtr;
 
 			if (formalIdPtr->defn.key == DFN_VALPARAM) {
 
@@ -1363,7 +1363,7 @@ char* ABLModule::getSourceDirectory (int fileNumber, char* directory) {
 	while ((curChar > -1) && (fileName[curChar] != '\\') && (fileName[curChar] != '/'))
 		curChar--;
 	if (curChar == -1)
-		return(NULL);
+		return(nullptr);
 	strcpy(directory, fileName);
 	directory[curChar + 1] = '\0';
 	return(directory);
@@ -1422,7 +1422,7 @@ void ABLModule::destroy (void) {
 		for (long i = 0; i < NumModuleInstances; i++)
 			if (ModuleInstanceRegistry[i] == this) {
 				ModuleInstanceRegistry[i] = ModuleInstanceRegistry[NumModuleInstances - 1];
-				ModuleInstanceRegistry[NumModuleInstances - 1] = NULL;
+				ModuleInstanceRegistry[NumModuleInstances - 1] = nullptr;
 				NumModuleInstances--;
 				NumModules--;
 				break;
@@ -1431,17 +1431,17 @@ void ABLModule::destroy (void) {
 
 	if (watchManager) {
 		delete watchManager;
-		watchManager = NULL;
+		watchManager = nullptr;
 	}
 
 	if (breakPointManager) {
 		delete breakPointManager;
-		breakPointManager = NULL;
+		breakPointManager = nullptr;
 	}
 
 	if (staticData) {
 		ABLStackFreeCallback(staticData);
-		staticData = NULL;
+		staticData = nullptr;
 	}
 }
 
@@ -1491,7 +1491,7 @@ void ABLi_loadEnvironment (ABLFile* ablFile, bool malloc) {
 		}
 		if (malloc) {
 			long numErrors, numLinesProcessed;
-			ABLModulePtr library = ABLi_loadLibrary((const char*)fileName, &numErrors, &numLinesProcessed, NULL, false, false);
+			ABLModulePtr library = ABLi_loadLibrary((const char*)fileName, &numErrors, &numLinesProcessed, nullptr, false, false);
 			if (!library) {
 				char err[255];
 				sprintf(err, "ABLi_loadEnvironment: Unable to load library [Module %d]", i);
@@ -1539,7 +1539,7 @@ void ABLi_loadEnvironment (ABLFile* ablFile, bool malloc) {
 	}
 
 	for (int i = 0; i < (numMods - numLibs); i++) {
-		ABLModulePtr module = NULL;
+		ABLModulePtr module = nullptr;
 		if (malloc)
 			module = new ABLModule;
 		else

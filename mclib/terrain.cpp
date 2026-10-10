@@ -20,9 +20,9 @@ float worldUnitsPerMeter = 5.01f;
 float metersPerWorldUnit = 0.2f;
 long terrainLineChanged = 0;
 
-MapDataPtr					Terrain::mapData = NULL;
-TerrainTexturesPtr			Terrain::terrainTextures = NULL;
-TerrainColorMapPtr			Terrain::terrainTextures2 = NULL;
+MapDataPtr					Terrain::mapData = nullptr;
+TerrainTexturesPtr			Terrain::terrainTextures = nullptr;
+TerrainColorMapPtr			Terrain::terrainTextures2 = nullptr;
 
 const long					Terrain::verticesBlockSide = 20;			//Changes for new terrain?
 long						Terrain::blocksMapSide = 0;					//Calced during load.
@@ -46,9 +46,9 @@ long						Terrain::realVerticesMapSide = 0;
 
 Stuff::Vector3D				Terrain::mapTopLeft3d;					//Calced during load.
 
-UserHeapPtr					Terrain::terrainHeap = NULL;			//Setup at load time.
-char *						Terrain::terrainName = NULL;
-char * 						Terrain::colorMapName = NULL;
+UserHeapPtr					Terrain::terrainHeap = nullptr;			//Setup at load time.
+char *						Terrain::terrainName = nullptr;
+char * 						Terrain::colorMapName = nullptr;
 
 // C1 tactical material profile (see terrain.h). Default LEGACY = exact
 // pre-C1 byte-for-byte behavior; only mc2_24 currently flips to a
@@ -71,14 +71,14 @@ bool mc2TerrainLodChunkEnabled()
 }
 
 long		   				Terrain::numObjBlocks = 0;
-ObjBlockInfo				*Terrain::objBlockInfo = NULL;
-bool						*Terrain::objVertexActive = NULL;
+ObjBlockInfo				*Terrain::objBlockInfo = nullptr;
+bool						*Terrain::objVertexActive = nullptr;
 
-float 						*Terrain::tileRowToWorldCoord = NULL;
-float 						*Terrain::tileColToWorldCoord = NULL;
-float 						*Terrain::cellToWorldCoord = NULL;
-float 						*Terrain::cellColToWorldCoord = NULL;
-float 						*Terrain::cellRowToWorldCoord = NULL;
+float 						*Terrain::tileRowToWorldCoord = nullptr;
+float 						*Terrain::tileColToWorldCoord = nullptr;
+float 						*Terrain::cellToWorldCoord = nullptr;
+float 						*Terrain::cellColToWorldCoord = nullptr;
+float 						*Terrain::cellRowToWorldCoord = nullptr;
 
 float 						Terrain::waterElevation = 0.0f;
 float						Terrain::frameAngle = 0.0f;
@@ -143,7 +143,7 @@ bool						drawTerrainMines = true;
 bool						renderObjects = true;
 bool						renderTrees = true;
 
-TerrainPtr					land = NULL;
+TerrainPtr					land = nullptr;
 
 long 						*usedBlockList;					//Used to determine what objects to deal with.
 long 						*moverBlockList;
@@ -289,10 +289,10 @@ void recomputeSuperchunkAabb(int scX, int scY)
 // class Terrain
 void Terrain::init (void)
 {
-	vertexList = NULL;
+	vertexList = nullptr;
 	numberVertices = 0;
 	
-	quadList = NULL;
+	quadList = nullptr;
 	numberQuads = 0;
 }
 
@@ -401,7 +401,7 @@ void Terrain::getColorMapName (FitIniFile *file)
 		}
 	}
 
-	colorMapName = NULL;
+	colorMapName = nullptr;
 }
 
 //---------------------------------------------------------------------------
@@ -410,7 +410,7 @@ void Terrain::setColorMapName (char *mapName)
 	if (colorMapName)
 	{
 		delete [] colorMapName;
-		colorMapName = NULL;
+		colorMapName = nullptr;
 	}
 
 	if (mapName)
@@ -433,10 +433,10 @@ void Terrain::saveColorMapName (FitIniFile *file)
 void Terrain::resetVisibleVertices (long maxVisibleVertices)
 {
 	terrainHeap->Free(vertexList);
-	vertexList = NULL;
+	vertexList = nullptr;
 
 	terrainHeap->Free(quadList);
-	quadList = NULL;
+	quadList = nullptr;
 
 	visibleVerticesPerSide = maxVisibleVertices;
 	//----------------------------------------------------------------------
@@ -622,102 +622,102 @@ void Terrain::destroy (void)
 	{
 		terrainTextures->destroy();
 		delete terrainTextures;
-		terrainTextures = NULL;
+		terrainTextures = nullptr;
 	}
 
 	if (terrainTextures2)
 	{
 		terrainTextures2->destroy();
 		delete terrainTextures2;
-		terrainTextures2 = NULL;
+		terrainTextures2 = nullptr;
 	}
 
 	delete mapData;
-	mapData = NULL;
+	mapData = nullptr;
 
 	if (terrainName)
 	{
 		delete [] terrainName;
-		terrainName = NULL;
+		terrainName = nullptr;
 	}
 
 	if (colorMapName)
 	{
 		delete [] colorMapName;
-		colorMapName = NULL;
+		colorMapName = nullptr;
 	}
 
 	if (tileRowToWorldCoord)
 	{
 		terrainHeap->Free(tileRowToWorldCoord);
-		tileRowToWorldCoord = NULL;
+		tileRowToWorldCoord = nullptr;
 	}
 
 	if (tileColToWorldCoord)
 	{
 		terrainHeap->Free(tileColToWorldCoord); 
-		tileColToWorldCoord = NULL;
+		tileColToWorldCoord = nullptr;
 	}
 
 	if (cellToWorldCoord)
 	{
 		terrainHeap->Free(cellToWorldCoord); 
-		cellToWorldCoord = NULL;
+		cellToWorldCoord = nullptr;
 	}
 
 	if (cellColToWorldCoord)
 	{
 		terrainHeap->Free(cellColToWorldCoord); 
-		cellColToWorldCoord = NULL;
+		cellColToWorldCoord = nullptr;
 	}
 
 	if (cellRowToWorldCoord)
 	{
 		terrainHeap->Free(cellRowToWorldCoord); 
-		cellRowToWorldCoord = NULL;
+		cellRowToWorldCoord = nullptr;
 	}
 
 	if (moverBlockList)
 	{
 		terrainHeap->Free(moverBlockList);
-		moverBlockList = NULL;
+		moverBlockList = nullptr;
 	}
 
 	if (usedBlockList)
 	{
 		terrainHeap->Free(usedBlockList);
-		usedBlockList = NULL;
+		usedBlockList = nullptr;
 	}
 
 	if (vertexList)
 	{
 		terrainHeap->Free(vertexList);
-		vertexList = NULL;
+		vertexList = nullptr;
 	}
 
 	if (quadList)
 	{
 		terrainHeap->Free(quadList);
-		quadList = NULL;
+		quadList = nullptr;
 	}
 
 	if (objBlockInfo)
 	{
 		terrainHeap->Free(objBlockInfo);
-		objBlockInfo = NULL;
+		objBlockInfo = nullptr;
 	}
 	
 	if (objVertexActive)
 	{
 		terrainHeap->Free(objVertexActive);
-		objVertexActive = NULL;
+		objVertexActive = nullptr;
 	}
 	
  	if (terrainHeap)
 	{
 		terrainHeap->destroy();
 		delete terrainHeap;
-		terrainHeap = NULL;
+		terrainHeap = nullptr;
 	}
 	
 	numberVertices =

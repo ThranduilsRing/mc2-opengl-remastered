@@ -47,8 +47,8 @@ static bool textureOrKtxSidecarExists(const char* tgaPath)
 	if (strlen(ktx) + 6 < sizeof(ktx)) strcat(ktx, ".ktx2");
 	return fileExists(ktx);
 }
-TG_TypeMultiShapePtr GVAppearanceType::SensorTriangleShape = NULL;
-TG_TypeMultiShapePtr GVAppearanceType::SensorCircleShape = NULL;
+TG_TypeMultiShapePtr GVAppearanceType::SensorTriangleShape = nullptr;
+TG_TypeMultiShapePtr GVAppearanceType::SensorCircleShape = nullptr;
 //-----------------------------------------------------------------------------
 // class GVAppearanceType
 void GVAppearanceType::init (const char * fileName)
@@ -182,12 +182,12 @@ void GVAppearanceType::init (const char * fileName)
 		if (!gvDmgShape->GetNumShapes())
 		{
 			delete gvDmgShape;
-			gvDmgShape = NULL;
+			gvDmgShape = nullptr;
 		}
 	}
 	else
 	{
-		gvDmgShape = NULL;
+		gvDmgShape = nullptr;
 	}
 		
 	result = iniFile.seekBlock("TGLDestructEffect");
@@ -250,11 +250,11 @@ void GVAppearanceType::init (const char * fileName)
 				gvAnimData[i]->LoadTGMultiShapeAnimationFromASE(animPath,gvShape[0]);
 			}
 			else
-				gvAnimData[i] = NULL;
+				gvAnimData[i] = nullptr;
 		}
 		else
 		{
-			gvAnimData[i] = NULL;
+			gvAnimData[i] = nullptr;
 		}
 	}
 	
@@ -321,7 +321,7 @@ void GVAppearanceType::init (const char * fileName)
  	
  	//----------------------------------------------
 	// Load up sensor Shape if not yet defined.
-	if (SensorCircleShape == NULL)
+	if (SensorCircleShape == nullptr)
 	{
 		FullPathFileName sensorName;
 		sensorName.init(tglPath,"circularcontact",".ase");
@@ -331,10 +331,10 @@ void GVAppearanceType::init (const char * fileName)
 
 		// META-FIX design B PART 1: REQUIRED static (sensor contact art).
 		tglLoadShapeChecked(SensorCircleShape, sensorName,
-			"gvactor.sensor_circle", NULL);
+			"gvactor.sensor_circle", nullptr);
 	}
 
-	if (SensorTriangleShape == NULL)
+	if (SensorTriangleShape == nullptr)
 	{
 		FullPathFileName sensorName;
 		sensorName.init(tglPath,"trianglecontact",".ase");
@@ -343,7 +343,7 @@ void GVAppearanceType::init (const char * fileName)
 		gosASSERT(SensorCircleShape != NULL);
 
 		tglLoadShapeChecked(SensorTriangleShape, sensorName,
-			"gvactor.sensor_triangle", NULL);
+			"gvactor.sensor_triangle", nullptr);
 	}
 }
 
@@ -357,26 +357,26 @@ void GVAppearanceType::destroy (void)
 		if (gvShape[i])
 		{
 			delete gvShape[i];
-			gvShape[i] = NULL;
+			gvShape[i] = nullptr;
 		}
 	}
 
 	if (gvShadowShape)
 	{
 		delete gvShadowShape;
-		gvShadowShape = NULL;
+		gvShadowShape = nullptr;
 	}
 
 	if (gvDmgShape)
 	{
 		delete gvDmgShape;
-		gvDmgShape = NULL;
+		gvDmgShape = nullptr;
 	}
 
 	for (int i=0;i<MAX_GV_ANIMATIONS;i++)
 	{
 		delete gvAnimData[i];
-		gvAnimData[i] = NULL;
+		gvAnimData[i] = nullptr;
 	}
 
 	if (nodeData)
@@ -384,11 +384,11 @@ void GVAppearanceType::destroy (void)
 		for (int i=0;i<getTotalNodes();i++)
 		{
 			AppearanceTypeList::appearanceHeap->Free(nodeData[i].nodeId);
-			nodeData[i].nodeId = NULL;
+			nodeData[i].nodeId = nullptr;
 		}
 		
 		AppearanceTypeList::appearanceHeap->Free(nodeData);
-		nodeData = NULL;
+		nodeData = nullptr;
 	}
 }
 
@@ -719,7 +719,7 @@ void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 
 	sensorLevel = 0;
 	
-	destructFX = NULL;
+	destructFX = nullptr;
 	
 	status = 0;
 	roll = pitch = 0.0f;
@@ -740,12 +740,12 @@ void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
  
 	localTextureHandle = 0xffffffff;
 	
-	nodeUsed = NULL;
-	nodeRecycle = NULL;
+	nodeUsed = nullptr;
+	nodeRecycle = nullptr;
 	
-	waterWake = NULL;
-	dustCloud = NULL;
-	activity = NULL;
+	waterWake = nullptr;
+	dustCloud = nullptr;
+	activity = nullptr;
 	isWaking = false;
 	movedThisFrame = false;
 	dustCloudStart = false;
@@ -855,7 +855,7 @@ void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		}
 		else
 		{
-			gvShadowShape = NULL;
+			gvShadowShape = nullptr;
 		}
  		
 		sensorTriangleShape = GVAppearanceType::SensorTriangleShape->CreateFrom();
@@ -1071,7 +1071,7 @@ void GVAppearance::setObjStatus (long oStatus)
 			{
 				gvShape->ClearAnimation();
 				delete gvShape;
-				gvShape = NULL;
+				gvShape = nullptr;
 				
 				gvShape = appearType->gvDmgShape->CreateFrom();
 			}
@@ -1084,7 +1084,7 @@ void GVAppearance::setObjStatus (long oStatus)
 			if (appearType->gvShape[0])
 			{
 				delete gvShape;
-				gvShape = NULL;
+				gvShape = nullptr;
 				
 				gvShape = appearType->gvShape[0]->CreateFrom();
 			}

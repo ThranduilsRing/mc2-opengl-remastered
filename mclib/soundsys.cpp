@@ -95,15 +95,15 @@ void SoundSystem::destroy (void)
 		soundHeap->destroy();
 
 		delete soundHeap;
-		soundHeap = NULL;
+		soundHeap = nullptr;
 	}
 
     delete soundDataFile;
-    soundDataFile = NULL;
+    soundDataFile = nullptr;
     delete bettyDataFile;
-    bettyDataFile = NULL;
+    bettyDataFile = nullptr;
     delete supportDataFile;
-    supportDataFile = NULL;
+    supportDataFile = nullptr;
 
 }
 
@@ -293,10 +293,10 @@ bool wave_ParseWaveMemory(MemoryPtr lpChunkOfMemory, MC2_WAVEFORMATEX** lplpWave
 
     // Set defaults to NULL or zero
     if (*lplpWaveHeader)
-        *lplpWaveHeader = NULL;
+        *lplpWaveHeader = nullptr;
 
     if (*lplpWaveSamples)
-        *lplpWaveSamples = NULL;
+        *lplpWaveSamples = nullptr;
 
     if (lpcbWaveSize)
         *lpcbWaveSize = 0;
@@ -332,7 +332,7 @@ bool wave_ParseWaveMemory(MemoryPtr lpChunkOfMemory, MC2_WAVEFORMATEX** lplpWave
         // Found the format part
         case 0x20746d66:
 
-          if (*lplpWaveHeader == NULL)
+          if (*lplpWaveHeader == nullptr)
             {
             if (dwLength < sizeof(MC2_WAVEFORMATEX))
               return FALSE; // something's wrong! Not a WAV
@@ -361,7 +361,7 @@ bool wave_ParseWaveMemory(MemoryPtr lpChunkOfMemory, MC2_WAVEFORMATEX** lplpWave
             {
             // Point the samples pointer to this part of the
             // chunk of memory.
-            if (*lplpWaveSamples == NULL)
+            if (*lplpWaveSamples == nullptr)
 				*lplpWaveSamples = (MemoryPtr)pdw;
 
             // Set the size of the wave
@@ -399,10 +399,10 @@ void SoundSystem::preloadSoundBite (long soundId)
 	unsigned long packetSize = soundDataFile->getPacketSize();
 	if (packetSize > 0)
 	{
-		SoundBite *thisSoundBite = (SoundBite *)(&(sounds[soundId]));
-		thisSoundBite->resourceHandle = 0;
+		SoundBite *thisSoundBite = (&(sounds[soundId]));
+		thisSoundBite->resourceHandle = nullptr;
 			
-		if (thisSoundBite->biteSize == 0 || thisSoundBite->biteData == NULL)
+		if (thisSoundBite->biteSize == 0 || thisSoundBite->biteData == nullptr)
 		{
 			thisSoundBite->biteSize = packetSize;
 			thisSoundBite->biteData = (MemoryPtr)soundHeap->Malloc(packetSize);
@@ -417,8 +417,8 @@ void SoundSystem::preloadSoundBite (long soundId)
 		gosAudio_Format soundFormat;
 		soundFormat.wFormatTag = 1;				//PCM
 
-		MC2_WAVEFORMATEX *waveFormat = NULL;
-		MemoryPtr dataOffset = NULL;
+		MC2_WAVEFORMATEX *waveFormat = nullptr;
+		MemoryPtr dataOffset = nullptr;
 		DWORD length = 0;
 		DWORD bitsPerSec = 0;
 		wave_ParseWaveMemory(thisSoundBite->biteData,&waveFormat,&dataOffset,&length);
@@ -434,11 +434,11 @@ void SoundSystem::preloadSoundBite (long soundId)
 			soundFormat.wBitsPerSample = bitsPerSec;
 			soundFormat.cbSize = 0;
 
-			gosAudio_CreateResource(&thisSoundBite->resourceHandle,gosAudio_UserMemory, NULL, &soundFormat,dataOffset,length);
+			gosAudio_CreateResource(&thisSoundBite->resourceHandle,gosAudio_UserMemory, nullptr, &soundFormat,dataOffset,length);
 		}
 		else
 		{
-			thisSoundBite->resourceHandle = 0;
+			thisSoundBite->resourceHandle = nullptr;
 		}
 	}
 }
@@ -488,8 +488,8 @@ void SoundSystem::update (void)
 		{
 			gosAudio_DestroyResource(&bettyHandle);
 			soundHeap->Free(bettySoundBite);
-			bettySoundBite = NULL;
-			bettyHandle = NULL;
+			bettySoundBite = nullptr;
+			bettyHandle = nullptr;
 		}
 	}
 
@@ -502,7 +502,7 @@ void SoundSystem::update (void)
 		{
 			gosAudio_DestroyResource(&supportHandle);
 			soundHeap->Free(supportSoundBite);
-			supportSoundBite = NULL;
+			supportSoundBite = nullptr;
 		}
 	}
 	
@@ -519,7 +519,7 @@ void SoundSystem::update (void)
 		if (stream3Active && sampleStatus != gosAudio_PlayOnce)
 		{
 			gosAudio_DestroyResource(&stream3Handle);
-			stream3Handle = 0;
+			stream3Handle = nullptr;
 			stream3Active = false;
 		}
 	}
@@ -558,7 +558,7 @@ void SoundSystem::update (void)
 					stream1Time = 0.0;
 					if (stream1Handle) 
 						gosAudio_DestroyResource(&stream1Handle);
-					stream1Handle = NULL;
+					stream1Handle = nullptr;
 					stream1Active = FALSE;
 				}
 				else
@@ -610,7 +610,7 @@ void SoundSystem::update (void)
 					stream2Time = 0.0;
 					if (stream2Handle) 
 						gosAudio_DestroyResource(&stream2Handle);
-					stream2Handle = NULL;
+					stream2Handle = nullptr;
 					stream2Active = FALSE;
 				}
 				else
@@ -656,7 +656,7 @@ void SoundSystem::update (void)
 			if (stream1Handle) 
 				gosAudio_DestroyResource(&stream1Handle);
 				
-			stream1Handle = NULL;
+			stream1Handle = nullptr;
 			stream1Time = 0.0;
 			stream1Active = FALSE;
 		}
@@ -666,7 +666,7 @@ void SoundSystem::update (void)
 			if (stream2Handle) 
 				gosAudio_DestroyResource(&stream2Handle);
 				
-			stream2Handle = NULL;
+			stream2Handle = nullptr;
 		 	stream2Time = 0.0;
 		 	stream2Active = FALSE;
 		}
@@ -743,7 +743,7 @@ long SoundSystem::playDigitalMusic (long musicId)
 						if (stream1Handle)
 						{
 							gosAudio_DestroyResource(&stream1Handle);
-							stream1Handle = 0;
+							stream1Handle = nullptr;
 						}
 							
 						gosAudio_CreateResource(&stream1Handle, gosAudio_StreamedFile, (const char *) digitalStream);
@@ -762,7 +762,7 @@ long SoundSystem::playDigitalMusic (long musicId)
 						if (stream2Handle)
 						{
 							gosAudio_DestroyResource( &stream2Handle );
-							stream2Handle = 0;
+							stream2Handle = nullptr;
 						}
 							
 						gosAudio_CreateResource( &stream2Handle, gosAudio_StreamedFile, (const char *) digitalStream );
@@ -787,7 +787,7 @@ long SoundSystem::playDigitalMusic (long musicId)
 						if (stream1Handle)
 						{
 							gosAudio_DestroyResource(&stream1Handle);
-							stream1Handle = 0;
+							stream1Handle = nullptr;
 						}
 							
 						gosAudio_CreateResource(&stream1Handle, gosAudio_StreamedFile, (const char *) digitalStream);
@@ -827,7 +827,7 @@ long SoundSystem::playDigitalStream (const char *streamName)
 	if (useSound)
 	{
 		char actualName[1024];
-		_splitpath(streamName,NULL,NULL,actualName,NULL);
+		_splitpath(streamName,nullptr,nullptr,actualName,nullptr);
 
 		//---------------------------------------------------------------------------------------------
 		// Just start tune.  No fade necessary.  Set fadeTime to 0.0 to tell update to leave it alone.
@@ -845,7 +845,7 @@ long SoundSystem::playDigitalStream (const char *streamName)
 				if (stream3Handle)
 				{
 					gosAudio_DestroyResource(&stream3Handle);
-					stream3Handle = 0;
+					stream3Handle = nullptr;
 				}
 						
 				gosAudio_CreateResource(&stream3Handle, gosAudio_StreamedFile, (const char *) digitalStream);
@@ -869,7 +869,7 @@ long SoundSystem::playDigitalStream (const char *streamName)
 //---------------------------------------------------------------------------
 long SoundSystem::playBettySample (unsigned long bettySampleId)
 {
-	if (useSound && (bettySoundBite == NULL))	//Playing Betty takes precedence
+	if (useSound && (bettySoundBite == nullptr))	//Playing Betty takes precedence
 	{
 
 		if (bettySampleId >= numBettySamples)
@@ -900,8 +900,8 @@ long SoundSystem::playBettySample (unsigned long bettySampleId)
 		gosAudio_Format soundFormat;
 		soundFormat.wFormatTag = 1;				//PCM
 		
-		MC2_WAVEFORMATEX *waveFormat = NULL;
-		MemoryPtr dataOffset = NULL;
+		MC2_WAVEFORMATEX *waveFormat = nullptr;
+		MemoryPtr dataOffset = nullptr;
 		DWORD length = 0;
 		DWORD bitsPerSec = 0;
 		wave_ParseWaveMemory(bettySoundBite,&waveFormat,&dataOffset,&length);
@@ -915,7 +915,7 @@ long SoundSystem::playBettySample (unsigned long bettySampleId)
 		soundFormat.wBitsPerSample = bitsPerSec;
 		soundFormat.cbSize = 0;
 
-		gosAudio_CreateResource(&bettyHandle,gosAudio_UserMemory, NULL, &soundFormat,dataOffset,length);
+		gosAudio_CreateResource(&bettyHandle,gosAudio_UserMemory, nullptr, &soundFormat,dataOffset,length);
 		gosAudio_AssignResourceToChannel( ourChannel, bettyHandle );
 		gosAudio_SetChannelPlayMode(ourChannel, gosAudio_PlayOnce);
 			
@@ -928,7 +928,7 @@ long SoundSystem::playBettySample (unsigned long bettySampleId)
 //---------------------------------------------------------------------------
 long SoundSystem::playSupportSample (unsigned long supportSampleId, const char* fileName)
 {
-	if (useSound && (supportSoundBite == NULL))		//Playing Support takes precedence
+	if (useSound && (supportSoundBite == nullptr))		//Playing Support takes precedence
 	{
 		if (!fileName)
 		{
@@ -974,8 +974,8 @@ long SoundSystem::playSupportSample (unsigned long supportSampleId, const char* 
 		gosAudio_Format soundFormat;
 		soundFormat.wFormatTag = 1;				//PCM
 		
-		MC2_WAVEFORMATEX *waveFormat = NULL;
-		MemoryPtr dataOffset = NULL;
+		MC2_WAVEFORMATEX *waveFormat = nullptr;
+		MemoryPtr dataOffset = nullptr;
 		DWORD length = 0;
 		DWORD bitsPerSec = 0;
 		wave_ParseWaveMemory(supportSoundBite,&waveFormat,&dataOffset,&length);
@@ -989,7 +989,7 @@ long SoundSystem::playSupportSample (unsigned long supportSampleId, const char* 
 		soundFormat.wBitsPerSample = bitsPerSec;
 		soundFormat.cbSize = 0;
 
-		gosAudio_CreateResource(&supportHandle,gosAudio_UserMemory, NULL, &soundFormat,dataOffset,length);
+		gosAudio_CreateResource(&supportHandle,gosAudio_UserMemory, nullptr, &soundFormat,dataOffset,length);
 		gosAudio_AssignResourceToChannel( ourChannel, supportHandle );
 		gosAudio_SetChannelPlayMode(ourChannel, gosAudio_PlayOnce);
 			
@@ -1138,7 +1138,7 @@ void SoundSystem::stopDigitalMusic (void)
 			if (stream1Handle) 
 				gosAudio_DestroyResource(&stream1Handle);
 				
-			stream1Handle = NULL;
+			stream1Handle = nullptr;
 			stream1Time = 0.0;
 			stream1Active = FALSE;
 		}
@@ -1148,7 +1148,7 @@ void SoundSystem::stopDigitalMusic (void)
 			if (stream2Handle) 
 				gosAudio_DestroyResource(&stream2Handle);
 				
-			stream2Handle = NULL;
+			stream2Handle = nullptr;
 		 	stream2Time = 0.0;
 		 	stream2Active = FALSE;
 		}
@@ -1163,7 +1163,7 @@ void SoundSystem::stopSupportSample (void)
 	if (stream3Handle)
 	{
 		gosAudio_DestroyResource(&stream3Handle);
-		stream3Handle = 0;
+		stream3Handle = nullptr;
 		stream3Active = false;
 	}
 }
@@ -1176,8 +1176,8 @@ void SoundSystem::stopBettySample (void)
 			gosAudio_SetChannelPlayMode(BETTY_CHANNEL, gosAudio_Stop);
 			gosAudio_DestroyResource(&bettyHandle);
 			soundHeap->Free(bettySoundBite);
-			bettySoundBite = NULL;
-			bettyHandle = NULL;
+			bettySoundBite = nullptr;
+			bettyHandle = nullptr;
 
 
 	}
@@ -1373,5 +1373,5 @@ void SoundSystem::endVideoPCMStream()
 
 int SoundSystem::videoPCMSamplesConsumed() const
 {
-    return SDL_AtomicGet((SDL_atomic_t*)&g_va.consumedFrames);
+    return SDL_AtomicGet((&g_va.consumedFrames));
 }

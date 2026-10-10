@@ -250,7 +250,7 @@ const aiNode* FindNodeForMesh(const aiNode* node, unsigned meshIdx) {
 		const aiNode* found = FindNodeForMesh(node->mChildren[i], meshIdx);
 		if (found) return found;
 	}
-	return NULL;
+	return nullptr;
 }
 
 //-----------------------------------------------------------------------------
@@ -297,9 +297,9 @@ bool DeriveMC2TextureName(const aiScene* scene, const aiMaterial* mat,
 
 	// Resolve embedded "*N" to the source image filename when available.
 	std::string resolved;
-	if (raw[0] == '*' && scene != NULL) {
+	if (raw[0] == '*' && scene != nullptr) {
 		const unsigned idx = (unsigned)atoi(raw + 1);
-		if (idx < scene->mNumTextures && scene->mTextures[idx] != NULL
+		if (idx < scene->mNumTextures && scene->mTextures[idx] != nullptr
 		    && scene->mTextures[idx]->mFilename.length > 0) {
 			resolved = scene->mTextures[idx]->mFilename.C_Str();
 		}
@@ -357,7 +357,7 @@ bool DeriveMC2TextureName(const aiScene* scene, const aiMaterial* mat,
 void BuildTextureList(const aiScene* scene, TG_TypeMultiShape* out) {
 	const DWORD count = scene->mNumMaterials;
 	if (count == 0) {
-		out->SetImportedTextures(0, NULL, NULL);
+		out->SetImportedTextures(0, nullptr, nullptr);
 		return;
 	}
 
@@ -379,7 +379,7 @@ void BuildTextureList(const aiScene* scene, TG_TypeMultiShape* out) {
 
 	// alphas=NULL → all false; engine's MC_TextureManager toggles textureAlpha
 	// later via SetTextureAlpha when the actual TGA loads.
-	out->SetImportedTextures(count, nameCStrs.data(), NULL);
+	out->SetImportedTextures(count, nameCStrs.data(), nullptr);
 }
 
 //-----------------------------------------------------------------------------
@@ -421,7 +421,7 @@ long ImportShapeFromMesh(const aiScene* scene, unsigned meshIdx,
 			}
 		}
 	}
-	if (mesh->mNormals == NULL) {
+	if (mesh->mNormals == nullptr) {
 		// Should not happen because we pass aiProcess_GenSmoothNormals, but
 		// belt-and-braces — the engine's lighting kernel reads .normal.
 		PAUSE(("[importer] mesh %u has no normals after Generate pass", meshIdx));
@@ -1544,7 +1544,7 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
 			if (!gotVariant && baseTex == "NULLTXM") baseTex = nm;
 		}
 		const char* texNames[1] = { baseTex.c_str() };
-		out->SetImportedTextures(1, texNames, NULL);
+		out->SetImportedTextures(1, texNames, nullptr);
 		MECH_SKEL_TRACE("file='%s' mech skin slot0 tex='%s'", path, baseTex.c_str());
 		ResetBoundingBox(out);
 		// 1B-RUNTIME: when animating, capture each part's layout so the merge can be
