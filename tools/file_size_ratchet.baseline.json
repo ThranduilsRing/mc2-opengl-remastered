@@ -14,7 +14,7 @@
  ],
  "files_over_1500": {
   "GameOS/gameos/engine_present_vk.cpp": 2749,
-  "GameOS/gameos/gameosmain.cpp": 2810,
+  "GameOS/gameos/gameosmain.cpp": 2811,
   "GameOS/gameos/gos_mech_batcher.cpp": 3299,
   "GameOS/gameos/gos_static_prop_batcher_finalize.cpp": 2028,
   "GameOS/gameos/gos_static_prop_batcher_flush.cpp": 2324,
@@ -36,7 +36,6 @@
   "code/gamecam.cpp": 1564,
   "code/gameobj.cpp": 2366,
   "code/infowindow.cpp": 1732,
-  "code/logisticsdata.cpp": 3438,
   "code/logisticsdialog.cpp": 2149,
   "code/mechicon.cpp": 1967,
   "code/mechlabscreen.cpp": 1952,
@@ -86,7 +85,7 @@
   "mclib/vfxtile.cpp": 2944,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "08c557e04",
+ "head": "009e31493",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -125,10 +124,10 @@
    "max_lines": 1159
   },
   "code": {
-   "files": 356,
-   "files_over_1500": 25,
-   "files_over_3000": 2,
-   "max_lines": 3438
+   "files": 362,
+   "files_over_1500": 24,
+   "files_over_3000": 1,
+   "max_lines": 3273
   },
   "editor": {
    "files": 225,
@@ -169,10 +168,6 @@
    "lines": 3505
   },
   {
-   "file": "code/logisticsdata.cpp",
-   "lines": 3438
-  },
-  {
    "file": "GameOS/gameos/gos_mech_batcher.cpp",
    "lines": 3299
   },
@@ -198,7 +193,7 @@
   },
   {
    "file": "GameOS/gameos/gameosmain.cpp",
-   "lines": 2810
+   "lines": 2811
   },
   {
    "file": "mclib/terrtxm2.cpp",
@@ -279,12 +274,16 @@
   {
    "file": "code/tacordr.cpp",
    "lines": 2072
+  },
+  {
+   "file": "GameOS/gameos/gos_static_prop_batcher_finalize.cpp",
+   "lines": 2028
   }
  ],
  "total": {
-  "files": 1797,
-  "files_over_1500": 72,
-  "files_over_3000": 6,
+  "files": 1803,
+  "files_over_1500": 71,
+  "files_over_3000": 5,
   "max_lines": 3753
  },
  "version": 1
