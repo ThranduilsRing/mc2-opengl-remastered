@@ -181,8 +181,8 @@
    "LG16": 7,
    "LG17": 47,
    "LG18": 4,
-   "LG19": 97,
-   "LG20": 100
+   "LG19": 96,
+   "LG20": 99
   },
   "mclib": {
    "LG01": 2850,
@@ -2198,9 +2198,7 @@
   },
   "code/gvehicl_update.cpp": {
    "LG01": 8,
-   "LG09": 8,
-   "LG19": 1,
-   "LG20": 1
+   "LG09": 8
   },
   "code/gvehicl_weapons.cpp": {
    "LG01": 16,
@@ -5886,7 +5884,7 @@
    "LG20": 1
   }
  },
- "head": "762bc6f0a",
+ "head": "1b745b3c6",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
