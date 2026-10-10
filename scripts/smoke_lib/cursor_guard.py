@@ -121,11 +121,25 @@ def _note_guard_off() -> None:
         pass
 
 
+def pytest_tripwire(what: str) -> None:
+    """Raise when a test run reaches the real desktop without MC2_CURSOR_GUARD_OFF=1.
+
+    A suite that drove the real guard took the owner's mouse in 5-10 s bursts (2026-10-10). The
+    conftest.py files and the root pytest.ini set the switch; this makes a run from anywhere else
+    fail loudly instead of moving the pointer.
+    """
+    if "pytest" in sys.modules and not guard_off():
+        raise RuntimeError(
+            f"{what} reached the real desktop under pytest without {GUARD_OFF_ENV}=1. "
+            f"Set it (the conftest.py files do) or mock the call.")
+
+
 def _user32():
     """Return the user32 handle, or None when there is no usable desktop."""
     if guard_off():
         _note_guard_off()
         return None
+    pytest_tripwire("a user32 call")
     if sys.platform != "win32":
         return None
     try:
@@ -338,6 +352,7 @@ def find_foreign_game_pids(exclude_pids: Optional[Set[int]] = None) -> List[Tupl
     """
     if sys.platform != "win32" or guard_off():
         return []
+    pytest_tripwire("find_foreign_game_pids")
     exclude = exclude_pids or set()
     out: List[Tuple[int, str]] = []
     try:

@@ -367,3 +367,27 @@ def test_off_switch_makes_every_entry_point_a_noop_with_no_win32_call(monkeypatc
     assert cursor_guard.park_cursor_if_edge() in ("inert", "disabled")
     assert cursor_guard.restore_parked_cursor() is False
     assert capsys.readouterr().err.count("MC2_CURSOR_GUARD_OFF=1, all pointer and clip calls disabled") == 1
+
+
+def test_every_win32_entry_raises_under_pytest_without_the_off_switch(monkeypatch):
+    monkeypatch.delenv("MC2_CURSOR_GUARD_OFF", raising=False)
+    for call in (cursor_guard.get_cursor_pos, cursor_guard.unclip_cursor, cursor_guard.get_clip_rect,
+                 cursor_guard.find_foreign_game_pids, lambda: cursor_guard.set_cursor_pos((1, 1))):
+        try:
+            call()
+        except RuntimeError as e:
+            assert "MC2_CURSOR_GUARD_OFF" in str(e)
+        else:
+            raise AssertionError("expected the pytest tripwire")
+
+
+def test_nofocus_window_calls_are_inert_with_the_off_switch(monkeypatch):
+    monkeypatch.setenv("MC2_HARNESS_ALLOW_FOREGROUND", "1")
+    monkeypatch.setenv("MC2_CURSOR_GUARD_OFF", "1")
+    assert nofocus.raise_noactivate(12345) is False
+    assert nofocus.park_window_offscreen(1, force=True) is None
+
+
+def test_root_pytest_ini_and_conftest_exist_so_any_folder_gets_the_switch():
+    assert (ROOT / "pytest.ini").is_file()
+    assert "MC2_CURSOR_GUARD_OFF" in (ROOT / "conftest.py").read_text(encoding="utf-8")

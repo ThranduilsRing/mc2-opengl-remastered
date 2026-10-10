@@ -364,6 +364,8 @@ def park_window_offscreen(pid: int, timeout_s: float = 3600.0,
     """
     if sys.platform != "win32" or allow_foreground():
         return None
+    if _desktop_blocked("park_window_offscreen"):
+        return None
     # force=True: the caller KNOWS its capture path reads pixels via the
     # engine's glReadPixels FBO readback, not the desktop composite, so an
     # offscreen window is not merely safe but correct (run_visual_capture).
@@ -426,6 +428,18 @@ def park_window_offscreen(pid: int, timeout_s: float = 3600.0,
     t = threading.Thread(target=_worker, name="nofocus-park", daemon=True)
     t.start()
     return t
+
+
+def _desktop_blocked(what: str) -> bool:
+    """True when MC2_CURSOR_GUARD_OFF=1 (tests: no window call at all); raises under pytest without it."""
+    try:
+        from . import cursor_guard
+    except ImportError:
+        from smoke_lib import cursor_guard
+    if cursor_guard.guard_off():
+        return True
+    cursor_guard.pytest_tripwire(what)
+    return False
 
 
 class ExeRefused(RuntimeError):
@@ -536,6 +550,8 @@ def raise_noactivate(hwnd) -> bool:
     in an agent session the window is offscreen and there is nothing to raise.
     """
     if not allow_foreground() or sys.platform != "win32" or not hwnd:
+        return False
+    if _desktop_blocked("raise_noactivate"):
         return False
     import ctypes
     import ctypes.wintypes as wt

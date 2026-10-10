@@ -27,7 +27,7 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `scripts/run_editor_smoke.py` | 143 | `nofocus.spawn` | offscreen |
 | `scripts/run_smoke.py` | 375 | `nofocus.spawn` | offscreen |
 | `scripts/run_smoke_asan.py` | 195 | `nofocus.spawn` | offscreen |
-| `scripts/run_visual_capture.py` | 374 | `nofocus.spawn` | offscreen |
+| `scripts/run_visual_capture.py` | 369 | `nofocus.spawn` | offscreen |
 | `scripts/run_vk_field_check.py` | 230 | `nofocus.spawn` | offscreen |
 | `scripts/run_vk_field_check.py` | 272 | `nofocus.spawn` | offscreen |
 | `scripts/smoke_lib/runner.py` | 289 | `nofocus.spawn` | offscreen |
