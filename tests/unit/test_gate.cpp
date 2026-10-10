@@ -1341,4 +1341,31 @@ TEST_CASE("G5 graphics rows reproduce the lambdas and helpers they replaced") {
     CHECK(g1b::rowNamed("MC2_WATER_SHINE").kind == Kind::String);
 }
 
+// ---------------------------------------------------------------------------
+// G5: gameosmain.cpp rows
+// ---------------------------------------------------------------------------
+
+TEST_CASE("G5 gameosmain rows and the runtime-name reader") {
+    auto in = [&](const char* name, const char* text) {
+        return static_cast<std::int32_t>(static_cast<std::uint32_t>(gate::detail::parseRow(g1b::rowNamed(name), text)));
+    };
+    CHECK(in("MC2_SCREENSHOT_AT_FRAME", nullptr) == -1);      // the reader's "no screenshot" sentinel
+    CHECK(in("MC2_SCREENSHOT_AT_FRAME", "300") == 300);
+    CHECK(in("MC2_FPS_CAP", nullptr) == 90);
+    CHECK(in("MC2_FPS_CAP", "0") == 0);
+    CHECK(in("MC2_WIDTH", nullptr) == 0);
+    CHECK(g1b::rowNamed("MC2_STATIC_UPDATE_SKIP").defBool);
+    CHECK_FALSE(g1b::rowNamed("MC2_STATIC_UPDATE_TRACE").defBool);
+    CHECK(g1b::rowNamed("MC2_SCREENSHOT_PATH").kind == Kind::String);
+    CHECK(g1b::rowNamed("MC2_LOAD_RACE_PROBE_FRAMES").kind == Kind::String);
+    CHECK(gate::rows::tokenListHas(g1b::rowNamed("MC2_SCREENSHOT_SOURCE").tokens, "backbuffer"));
+
+    EnvVar env("MC2_BOX_DECAL");   // envText reads any name at run time, uncached
+    env.set(nullptr);
+    CHECK(gate::envText("MC2_BOX_DECAL") == nullptr);
+    env.set("1");
+    CHECK(std::string(gate::envText("MC2_BOX_DECAL")) == "1");
+    env.set(nullptr);
+}
+
 }  // TEST_SUITE

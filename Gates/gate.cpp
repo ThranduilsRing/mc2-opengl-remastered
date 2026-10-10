@@ -357,6 +357,8 @@ std::string strRead(std::size_t idx) {
 
 }  // namespace detail
 
+const char* envText(const char* name) noexcept { return std::getenv(name); }
+
 bool parseBool(const char* v, bool dflt, bool* bad) noexcept {
     if (bad != nullptr) *bad = false;
     if (v == nullptr || v[0] == '\0') return dflt;

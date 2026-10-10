@@ -55,6 +55,11 @@ template <Name n>
     return detail::rawEnv(idx);
 }
 
+// The current text of an environment variable by RUNTIME name, nullptr when unset: for the one caller that
+// walks names it does not know at compile time (the launcher_env.json apply asks "did the shell already set
+// this key?"). No table lookup and no cache; every other reader names its gate at compile time.
+[[nodiscard]] const char* envText(const char* name) noexcept;
+
 // Forget the cached value of one gate / of every gate, so the next read parses the
 // environment again. Call after an in-process _putenv. invalidateAll() first snapshots the
 // values that were resolved before main so the dump can warn about stale ones.

@@ -5,7 +5,7 @@
 generator_version: "3.0.0"
 gate_count: 1139
 registry_entry_count: 354
-verified_count: 700
+verified_count: 738
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -1023,6 +1023,7 @@ flags:
     owner: gameos
     doc: "DEBUG-STATE-DUMP-1: write a JSON render-state snapshot to debug_state/latest_render_state.json every 300 frames (and at frame 1)."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_DIAG_DEBUG_STATE_DUMP, kind: Trace, order: -1, default_on: false}
   - name: MC2_DEBUG_STATE_DUMP_DIR
     kind: Bool
@@ -1101,6 +1102,7 @@ flags:
     owner: gameos
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_DETERMINISTIC_RNG
     kind: Bool
     default: false
@@ -1166,6 +1168,7 @@ flags:
     rule: Lead1
     owner: gameos
     doc: ""
+    verified: true
   - name: MC2_DRAW_PACKET_COALESCE_V5
     kind: Bool
     default: false
@@ -1189,6 +1192,7 @@ flags:
     owner: gameos
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_DRAW_PACKET_COMPARE_VERBOSE
     kind: Bool
     default: false
@@ -1211,12 +1215,14 @@ flags:
     owner: gameos
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_DRAW_PACKET_WARN
     kind: Bool
     default: false
     rule: Lead1
     owner: gameos
     doc: ""
+    verified: true
   - name: MC2_DYNAMIC_DECALS
     kind: Bool
     default: false
@@ -1544,12 +1550,14 @@ flags:
     owner: gameos
     doc: "MC2_FPS_CAP: max FPS override."
     smoke_passthrough: true
+    verified: true
   - name: MC2_FRAMECAP_TRACE
     kind: Bool
     default: false
     rule: Presence
     owner: mech
     doc: ""
+    verified: true
   - name: MC2_FRAMECTX_MISMATCH_FATAL
     kind: Bool
     default: false
@@ -1817,6 +1825,7 @@ flags:
     owner: gameos
     doc: "Install GL debug callback only when MC2_GL_DEBUG is set."
     smoke_passthrough: true
+    verified: true
   - name: MC2_GL_DEBUG_FATAL
     kind: Bool
     default: false
@@ -1824,12 +1833,14 @@ flags:
     owner: gameos
     doc: "Tier 1.2 (docs/testing-strategy.md): opt-in fatal abort on GL_DEBUG_SEVERITY_HIGH."
     smoke_passthrough: true
+    verified: true
   - name: MC2_GL_ERROR_DRAIN_SILENT
     kind: Bool
     default: false
     rule: Presence
     owner: gameos
     doc: "GL_ERROR is default-on; the env var suppresses it."
+    verified: true
   - name: MC2_GOM_RECON
     kind: Bool
     default: false
@@ -1909,6 +1920,7 @@ flags:
     owner: gameos
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_GPU_CULL_COMPUTE_TRACE
     kind: Bool
     default: false
@@ -2012,6 +2024,7 @@ flags:
     owner: gameos
     doc: "Default ON; MC2_GPU_CULL_SUBSTRATE=0 opts out."
     smoke_passthrough: true
+    verified: true
   - name: MC2_GPU_CULL_SUBSTRATE_TRACE
     kind: Bool
     default: false
@@ -2144,6 +2157,7 @@ flags:
     owner: unclassified
     doc: "[RETIRED] Indirect-draw static-prop batcher (gos_static_prop_batcher)."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_STATIC_PROP_INDIRECT, kind: Retired, order: 1, default_on: false}
   - name: MC2_GPU_PARTICLES
     kind: Bool
@@ -2258,6 +2272,7 @@ flags:
     owner: gameos
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_HEIGHT
     kind: Int
     default: 0
@@ -2265,6 +2280,7 @@ flags:
     owner: gameos
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_HITCH_MS
     kind: Float
     default: 0
@@ -2474,12 +2490,14 @@ flags:
     rule: Presence
     owner: gameos
     doc: ""
+    verified: true
   - name: MC2_LAUNCHER_ENV_JSON
     kind: Bool
     default: true
     rule: Lead0Kill
     owner: gameos
     doc: ""
+    verified: true
   - name: MC2_LEGACY_INSTANCE_POOLS
     kind: Bool
     default: false
@@ -2983,11 +3001,12 @@ flags:
     verified: true
     registry: {feature_id: MC2_TRACE_LOAD_RACE_DELAY_ATLAS, kind: Trace, order: -1, default_on: false}
   - name: MC2_LOAD_RACE_PROBE_FRAMES
-    kind: Bool
-    default: false
-    rule: Presence
+    kind: String
+    default: ""
+    rule: Std
     owner: gameos
     doc: "gameosmain.cpp: overrides the comma-separated list of frame numbers at which the mission-load residency-race one-shot diagnostics probe fires (see..."
+    verified: true
     registry: {feature_id: MC2_TRACE_LOAD_RACE_PROBE_FRAMES, kind: Trace, order: -1, default_on: false}
   - name: MC2_LOAD_RACE_TRACE
     kind: Bool
@@ -3002,6 +3021,7 @@ flags:
     rule: Prefix
     owner: gameos
     doc: ""
+    verified: true
   - name: MC2_LOG
     kind: String
     default: ""
@@ -3009,6 +3029,7 @@ flags:
     owner: gameos
     doc: "Master stdout log gate (gameosmain.cpp, right after setvbuf)."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_LOG, kind: Trace, order: -1, default_on: false}
   - name: MC2_LOG_CURSOR
     kind: Bool
@@ -3658,6 +3679,7 @@ flags:
     owner: gameos
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_OBJBATCHER_TRACE
     kind: Bool
     default: false
@@ -3680,6 +3702,7 @@ flags:
     rule: Exact1
     owner: gameos
     doc: "Optional startup selftest - hard-fails on any boundary violation so the operator knows immediately if the predicate body has a regression."
+    verified: true
   - name: MC2_OBJECT_ID_BUFFER
     kind: Bool
     default: true
@@ -4119,6 +4142,7 @@ flags:
     owner: gameos
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_PREVIEW_FBO_SCALE
     kind: Int
     default: 0
@@ -4406,6 +4430,7 @@ flags:
     rule: Presence
     owner: gameos
     doc: "GAME-EDITOR-RENDER-FRAME-DRIVER-1 (Slice 6): gated A/B adoption of the shared RenderFrameDriver seam."
+    verified: true
   - name: MC2_RENDER_FRAME_PLAN_TRACE
     kind: Bool
     default: false
@@ -4471,6 +4496,7 @@ flags:
     owner: gameos
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_RENDER_WATER_FASTPATH
     kind: Bool
     default: false
@@ -4591,13 +4617,15 @@ flags:
     owner: gameos
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_SCREENSHOT_PATH
-    kind: Bool
-    default: false
-    rule: Presence
+    kind: String
+    default: ""
+    rule: Std
     owner: gameos
     doc: "Oracle: deterministic backbuffer screenshot at a target frame."
     smoke_passthrough: true
+    verified: true
   - name: MC2_SCREENSHOT_SOURCE
     kind: Enum
     default: ""
@@ -4605,6 +4633,7 @@ flags:
     owner: gameos
     doc: ""
     tokens: "|backbuffer"
+    verified: true
   - name: MC2_SCREENXY_PREDICATE_MODE
     kind: Enum
     default: ""
@@ -5092,6 +5121,7 @@ flags:
     owner: gameos
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_SMOKE_PERF_SAMPLES
     kind: Int
     default: 0
@@ -5105,6 +5135,7 @@ flags:
     owner: gameos
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_SNAPSHOT_MECH_EXTRACT
     kind: Bool
     default: false
@@ -5425,6 +5456,7 @@ flags:
     rule: Presence
     owner: gameos
     doc: ""
+    verified: true
   - name: MC2_STATIC_PROP_BUILDING_SHADOW
     kind: Enum
     default: "0"
@@ -5790,6 +5822,7 @@ flags:
     owner: terrain
     doc: "Skip the per-frame static building/tree update walk when nothing is dirty (GameOS/gameos/gameosmain.cpp, code/terrobj.cpp, code/bldng.cpp)."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_STATIC_UPDATE_SKIP, kind: Feature, order: -1, default_on: true}
   - name: MC2_STATIC_UPDATE_TRACE
     kind: Bool
@@ -5797,6 +5830,7 @@ flags:
     rule: Std
     owner: terrain
     doc: ""
+    verified: true
   - name: MC2_STRINGS_TRACE
     kind: Bool
     default: false
@@ -7207,6 +7241,7 @@ flags:
     owner: gameos
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_VERTEX_PROJECT_PARITY
     kind: Bool
     default: false
@@ -7214,6 +7249,7 @@ flags:
     owner: gameos
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_VFX_AGE_SAMPLE
     kind: Bool
     default: false
@@ -7437,6 +7473,7 @@ flags:
     rule: Lead0
     owner: gameos
     doc: "VK-PARITY-F2: MC2_VISUAL_CAPTURE_POST=1 (default OFF = byte-identical) reads the composited back buffer (post exposure/sunset grade, what the player sees)..."
+    verified: true
   - name: MC2_VISUAL_DIFF_CAPTURE
     kind: Bool
     default: false
@@ -8567,6 +8604,7 @@ flags:
     owner: gameos
     doc: "(c) #49 windowed-resolution oracle."
     smoke_passthrough: true
+    verified: true
   - name: MC2_WINDOWED
     kind: Bool
     default: false
