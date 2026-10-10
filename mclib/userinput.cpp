@@ -46,7 +46,7 @@
 #include "Gates/gate.h"
 
 //---------------------------------------------------------------------------
-UserInput *userInput = NULL;
+UserInput *userInput = nullptr;
 extern bool 			hasGuardBand;
 volatile bool			UserInput::drawMouse = false;
 extern volatile bool 	mc2IsInDisplayBackBuffer;
@@ -156,7 +156,7 @@ void MouseCursorData::destroy (void)
 		if ( cursorInfos )
 		{
 			delete [] cursorInfos;
-			cursorInfos = NULL;
+			cursorInfos = nullptr;
 		}
 
 		numCursors = 0;
@@ -228,7 +228,7 @@ void UserInput::update (void)
 	//-----------------
 	// Poll the mouse.
 	DWORD buttonStates;
-	gos_GetMouseInfo(&mouseXPosition,&mouseYPosition,(int *)&mouseXDelta,(int *)&mouseYDelta,(int *)&mouseWheelDelta,&buttonStates);
+	gos_GetMouseInfo(&mouseXPosition,&mouseYPosition,(&mouseXDelta),(&mouseYDelta),(&mouseWheelDelta),&buttonStates);
 
 	// MC2_MOUSE_RECON downstream probe: shows the FINAL cursor/pick pixel the
 	// mission code consumes (norm * viewMul) plus the viewMul itself. If a dead
@@ -513,7 +513,7 @@ void UserInput::initMouseCursors (const char *mouseFile)
 		ZoneScopedN("UserInput::initMouseCursors destroyOld");
 		cursors->destroy();
 		delete cursors;
-		cursors = NULL;
+		cursors = nullptr;
 	}
 
 	{
@@ -955,7 +955,7 @@ void UserInput::render (void)						//Last thing rendered.  Draws Mouse.
 			fprintf(s_curLog,
 			        "[CURSOR] f=%d drawMouse=%d mouseState=%ld numCursors=%ld "
 			        "texHandle=%ld screenW=%ld\n",
-			        s_frame, (int)drawMouse, (long)mouseState, nc, th,
+			        s_frame, (int)drawMouse, mouseState, nc, th,
 			        (long)Environment.screenWidth);
 			fflush(s_curLog);
 		}

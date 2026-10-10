@@ -78,7 +78,7 @@ static wchar_t * __cdecl wideStrStr (
                 cp++;
         }
 
-        return(NULL);
+        return(nullptr);
 }
 
 static int __cdecl wideToInt(
@@ -88,7 +88,7 @@ static int __cdecl wideToInt(
         char astring[20];
 
         WideCharToMultiByte (CP_ACP, 0, nptr, -1,
-                            astring, INT_SIZE_LENGTH, NULL, NULL);
+                            astring, INT_SIZE_LENGTH, nullptr, nullptr);
 
         return ((int)atol(astring));
 }
@@ -149,7 +149,7 @@ static char * __cdecl StrStr (
                 cp++;
         }
 
-        return(NULL);
+        return(nullptr);
 
 }
 
@@ -248,11 +248,11 @@ inline	wchar_t*	EString::ToUnicode( wchar_t* p_Buffer,
 /////////////////////////////////////////////////////////////////
 inline int EString::StrSize( const EChar* p_Str )
 {
-	return ( p_Str == NULL  ? 0 : 
+	return ( p_Str == nullptr  ? 0 : 
 #ifdef UNICODE 
 	wcslen( p_Str )
 #else 
-	lstrlen( (const char*)p_Str )
+	lstrlen( p_Str )
 #endif 
 		);
 }
@@ -289,7 +289,7 @@ void	EString::ChecEBufferDoRealloc()
 EString::EString( const EChar* p_String ) 
 : m_pBuffer(  EBuffer::s_p_Empty_Buffer )
 {
-	if ( p_String != NULL )
+	if ( p_String != nullptr )
 	{
 		Assign( p_String );
 	}
@@ -433,7 +433,7 @@ void EString::Replace( int Start_Index, const EChar* p_String )
 		}
 
 		// check to see if the p_String is null
-		if ( p_String == NULL )
+		if ( p_String == nullptr )
 		{
 			*(m_pBuffer->Data() + Start_Index) = 0;
 		}
@@ -457,7 +457,7 @@ void EString::Insert( int Start_Index, const EChar* p_String )
 	{
 		EBuffer* p_Tmp = m_pBuffer;
 
-		EBuffer* p_Old_Buffer = NULL;
+		EBuffer* p_Old_Buffer = nullptr;
 
 		ChecEBuffer();
 
@@ -584,7 +584,7 @@ void EString::Format( const EChar* p_Str, ... )
 	// Size the result with the C runtime's own format parser. The scan this replaced re-implemented %-spec
 	// parsing by hand, did not know ll / z / j / t and friends, and then vsprintf wrote into a buffer sized by
 	// that guess.
-	int Max_Len = FormatV(NULL, 0, p_Str, Arg_List);
+	int Max_Len = FormatV(nullptr, 0, p_Str, Arg_List);
 	va_end(Arg_List);
 	if (Max_Len < 0)
 		Max_Len = 0;
@@ -740,7 +740,7 @@ int EString::Length() const	// number of characters
 #ifdef UNICODE
 	return wcslen( m_pBuffer->Data() );
 #else
-	return lstrlen( (char*)m_pBuffer->Data() );
+	return lstrlen( m_pBuffer->Data() );
 #endif
 }
 
@@ -878,7 +878,7 @@ wchar_t* EString::CreateUNICODE() const
 	memcpy( p_Ret_String, m_pBuffer->Data(), 2*(m_pBuffer->m_Data_Length + 1) );
 	return p_Ret_String;
 #else
-	 wchar_t* p_Ret_String = new wchar_t[lstrlen((char*)m_pBuffer->Data()) + 1];
+	 wchar_t* p_Ret_String = new wchar_t[lstrlen(m_pBuffer->Data()) + 1];
 	 ToUnicode( p_Ret_String, (unsigned char*)m_pBuffer->Data(), m_pBuffer->m_Data_Length + 1 );
 	 return p_Ret_String;
 #endif

@@ -469,7 +469,7 @@ void Terrain::geometry (void)
 			gos_terrain_indirect::IsFrameOverlayArmed() &&
 			gos_terrain_indirect::IsFrameMineArmed() &&
 			gos_terrain_indirect::WaterFastPathOwnsArmedDraw() &&
-			(Terrain::terrainTextures2 != NULL) &&
+			(Terrain::terrainTextures2 != nullptr) &&
 			!drawTerrainGrid &&
 			WaterStream::NarrowEnabled();
 		const bool skipSetup = s_armedSkipOn && fullyArmed;
@@ -503,7 +503,7 @@ void Terrain::geometry (void)
 							reason = "T17_MINE_NOT_ARMED";
 						else if (!WaterFastPathOwnsArmedDraw())
 							reason = "T9_OR_T10_WATER_NOT_ARMED";
-						else if (Terrain::terrainTextures2 == NULL)
+						else if (Terrain::terrainTextures2 == nullptr)
 							reason = "T11_NO_TEXTURES2";
 						else if (drawTerrainGrid)
 							reason = "T13_DRAW_TERRAIN_GRID";

@@ -214,7 +214,7 @@ TypePtr makeStringType (long length) {
 		ABL_Fatal(0, " ABL: Unable to AblStackHeap->malloc stringType ");
 	stringTypePtr->form = FRM_ARRAY;
 	stringTypePtr->size = length;
-	stringTypePtr->typeIdPtr = NULL;
+	stringTypePtr->typeIdPtr = nullptr;
 	stringTypePtr->info.array.indexTypePtr = IntegerTypePtr;
 	stringTypePtr->info.array.elementTypePtr = CharTypePtr;
 	stringTypePtr->info.array.elementCount = length + 1;
@@ -253,7 +253,7 @@ void doConst (SymTableNodePtr constantIdPtr) {
 		}
 		}
 	else if (curToken == TKN_IDENTIFIER) {
-		SymTableNodePtr idPtr = NULL;
+		SymTableNodePtr idPtr = nullptr;
 		searchAllSymTables(idPtr);
 
 		if (!idPtr)
@@ -286,7 +286,7 @@ void doConst (SymTableNodePtr constantIdPtr) {
 			constantIdPtr->defn.info.constant.value.integer = idPtr->defn.info.constant.value.integer;
 			constantIdPtr->typePtr = setType(idPtr->typePtr);
 			}
-		else if (((TypePtr)(idPtr->typePtr))->form == FRM_ARRAY) {
+		else if ((idPtr->typePtr)->form == FRM_ARRAY) {
 			if (sawSign)
 				syntaxError(ABL_ERR_SYNTAX_INVALID_CONSTANT);
 			constantIdPtr->defn.info.constant.value.stringPtr = idPtr->defn.info.constant.value.stringPtr;
@@ -310,7 +310,7 @@ void doConst (SymTableNodePtr constantIdPtr) {
 		}
 		}
 	else {
-		constantIdPtr->typePtr = NULL;
+		constantIdPtr->typePtr = nullptr;
 		syntaxError(ABL_ERR_SYNTAX_INVALID_CONSTANT);
 	}
 
@@ -340,7 +340,7 @@ void typeDefinitions (void) {
 		//----------------------------------
 		// Process the type specification...
 		typeIdPtr->typePtr = doType();
-		if (typeIdPtr->typePtr->typeIdPtr == NULL)
+		if (typeIdPtr->typePtr->typeIdPtr == nullptr)
 			typeIdPtr->typePtr->typeIdPtr = typeIdPtr;
 
 		analyzeTypeDefn(typeIdPtr);
@@ -366,7 +366,7 @@ TypePtr doType (void) {
 
 			if (!idPtr) {
 				syntaxError(ABL_ERR_SYNTAX_UNDEFINED_IDENTIFIER);
-				return(NULL);
+				return(nullptr);
 				}
 			else if (idPtr->defn.key == DFN_TYPE) {
 				//----------------------------------------------------------
@@ -385,7 +385,7 @@ TypePtr doType (void) {
 						if (tokenIn(indexTypeStartList)) {
 							elementTypePtr->form = FRM_ARRAY;
 							elementTypePtr->size = 0;
-							elementTypePtr->typeIdPtr = NULL;
+							elementTypePtr->typeIdPtr = nullptr;
 							//----------------------------------------------
 							// All array indices must be integer, for now...
 							elementTypePtr->info.array.indexTypePtr = setType(IntegerTypePtr);
@@ -399,8 +399,8 @@ TypePtr doType (void) {
 									else {
 										elementTypePtr->form = FRM_NONE;
 										elementTypePtr->size = 0;
-										elementTypePtr->typeIdPtr = NULL;
-										elementTypePtr->info.array.indexTypePtr = NULL;
+										elementTypePtr->typeIdPtr = nullptr;
+										elementTypePtr->info.array.indexTypePtr = nullptr;
 										syntaxError(ABL_ERR_SYNTAX_INVALID_INDEX_TYPE);
 									}
 									getToken();
@@ -408,7 +408,7 @@ TypePtr doType (void) {
 								case TKN_IDENTIFIER: {
 									SymTableNodePtr idPtr;
 									searchAllSymTables(idPtr);
-									if (idPtr == NULL)
+									if (idPtr == nullptr)
 										syntaxError(ABL_ERR_SYNTAX_UNDEFINED_IDENTIFIER);
 									else if (idPtr->defn.key == DFN_CONST) {
 										if (idPtr->typePtr == IntegerTypePtr)
@@ -416,16 +416,16 @@ TypePtr doType (void) {
 										else {
 											elementTypePtr->form = FRM_NONE;
 											elementTypePtr->size = 0;
-											elementTypePtr->typeIdPtr = NULL;
-											elementTypePtr->info.array.indexTypePtr = NULL;
+											elementTypePtr->typeIdPtr = nullptr;
+											elementTypePtr->info.array.indexTypePtr = nullptr;
 											syntaxError(ABL_ERR_SYNTAX_INVALID_INDEX_TYPE);
 										}
 										}
 									else {
 										elementTypePtr->form = FRM_NONE;
 										elementTypePtr->size = 0;
-										elementTypePtr->typeIdPtr = NULL;
-										elementTypePtr->info.array.indexTypePtr = NULL;
+										elementTypePtr->typeIdPtr = nullptr;
+										elementTypePtr->info.array.indexTypePtr = nullptr;
 										syntaxError(ABL_ERR_SYNTAX_INVALID_INDEX_TYPE);
 									}
 									getToken();
@@ -434,8 +434,8 @@ TypePtr doType (void) {
 								default:
 									elementTypePtr->form = FRM_NONE;
 									elementTypePtr->size = 0;
-									elementTypePtr->typeIdPtr = NULL;
-									elementTypePtr->info.array.indexTypePtr = NULL;
+									elementTypePtr->typeIdPtr = nullptr;
+									elementTypePtr->info.array.indexTypePtr = nullptr;
 									syntaxError(ABL_ERR_SYNTAX_INVALID_INDEX_TYPE);
 									getToken();
 							}
@@ -443,13 +443,13 @@ TypePtr doType (void) {
 						else {
 							elementTypePtr->form = FRM_NONE;
 							elementTypePtr->size = 0;
-							elementTypePtr->typeIdPtr = NULL;
-							elementTypePtr->info.array.indexTypePtr = NULL;
+							elementTypePtr->typeIdPtr = nullptr;
+							elementTypePtr->info.array.indexTypePtr = nullptr;
 							syntaxError(ABL_ERR_SYNTAX_INVALID_INDEX_TYPE);
 							getToken();
 						}
 
-						synchronize(followDimensionList, NULL, NULL);
+						synchronize(followDimensionList, nullptr, nullptr);
 
 						//--------------------------------
 						// Create an array element type...
@@ -472,7 +472,7 @@ TypePtr doType (void) {
 				}
 			else {
 				syntaxError(ABL_ERR_SYNTAX_NOT_A_TYPE_IDENTIFIER);
-				return(NULL);
+				return(nullptr);
 			}
 
 			}
@@ -481,7 +481,7 @@ TypePtr doType (void) {
 			return(enumerationType());
 		default:
 			syntaxError(ABL_ERR_SYNTAX_INVALID_TYPE);
-			return(NULL);
+			return(nullptr);
 	}
 }
 
@@ -489,7 +489,7 @@ TypePtr doType (void) {
 
 TypePtr identifierType (SymTableNodePtr idPtr) {
 
-	TypePtr typePtr = (TypePtr)idPtr->typePtr;
+	TypePtr typePtr = idPtr->typePtr;
 	getToken();
 
 	return(typePtr);
@@ -499,8 +499,8 @@ TypePtr identifierType (SymTableNodePtr idPtr) {
 
 TypePtr enumerationType (void) {
 
-	SymTableNodePtr constantIdPtr = NULL;
-	SymTableNodePtr lastIdPtr = NULL;
+	SymTableNodePtr constantIdPtr = nullptr;
+	SymTableNodePtr lastIdPtr = nullptr;
 	TypePtr typePtr = createType();
 	if (!typePtr)
 		ABL_Fatal(0, " ABL: Unable to AblStackHeap->malloc enumeration type ");
@@ -508,7 +508,7 @@ TypePtr enumerationType (void) {
 
 	typePtr->form = FRM_ENUM;
 	typePtr->size = sizeof(int);
-	typePtr->typeIdPtr = NULL;
+	typePtr->typeIdPtr = nullptr;
 
 	getToken();
 
@@ -521,7 +521,7 @@ TypePtr enumerationType (void) {
 		constantIdPtr->typePtr = typePtr;
 		constantIdPtr->library = CurLibrary;
 
-		if (lastIdPtr == NULL)
+		if (lastIdPtr == nullptr)
 			typePtr->info.enumeration.constIdPtr = lastIdPtr = constantIdPtr;
 		else {
 			lastIdPtr->next = constantIdPtr;
@@ -569,11 +569,11 @@ void varDeclarations (SymTableNodePtr routineIdPtr) {
 
 void varOrFieldDeclarations (SymTableNodePtr routineIdPtr, long offset) {
 
-	bool varFlag = (routineIdPtr != NULL);
-	SymTableNodePtr idPtr = NULL;
-	SymTableNodePtr firstIdPtr = NULL;
-	SymTableNodePtr lastIdPtr = NULL;
-	SymTableNodePtr prevLastIdPtr = NULL;
+	bool varFlag = (routineIdPtr != nullptr);
+	SymTableNodePtr idPtr = nullptr;
+	SymTableNodePtr firstIdPtr = nullptr;
+	SymTableNodePtr lastIdPtr = nullptr;
+	SymTableNodePtr prevLastIdPtr = nullptr;
 	
 	long totalSize = 0;
 	while ((curToken == TKN_IDENTIFIER) || (curToken == TKN_ETERNAL) || (curToken == TKN_STATIC)) {
@@ -589,7 +589,7 @@ void varOrFieldDeclarations (SymTableNodePtr routineIdPtr, long offset) {
 				syntaxError(ABL_ERR_SYNTAX_MISSING_IDENTIFIER);
 		}
 
-		firstIdPtr = NULL;
+		firstIdPtr = nullptr;
 
 		//------------------------------
 		// Process the variable type...
@@ -629,7 +629,7 @@ void varOrFieldDeclarations (SymTableNodePtr routineIdPtr, long offset) {
 			// Now, link Id's together into a sublist...
 			if (!firstIdPtr) {
 				firstIdPtr = lastIdPtr = idPtr;
-				if (varFlag && (varType != VAR_TYPE_ETERNAL) && (routineIdPtr->defn.info.routine.locals == NULL))
+				if (varFlag && (varType != VAR_TYPE_ETERNAL) && (routineIdPtr->defn.info.routine.locals == nullptr))
 					routineIdPtr->defn.info.routine.locals = idPtr;
 				}
 			else {
@@ -643,7 +643,7 @@ void varOrFieldDeclarations (SymTableNodePtr routineIdPtr, long offset) {
 
 		//--------------------------------------------------------------------------
 		// Assign the offset and the type to all variable or field Ids in sublist...
-		for (idPtr = firstIdPtr; idPtr != NULL; idPtr = idPtr->next) {
+		for (idPtr = firstIdPtr; idPtr != nullptr; idPtr = idPtr->next) {
 			idPtr->typePtr = setType(typePtr);
 
 			if (varFlag) {
@@ -699,7 +699,7 @@ void varOrFieldDeclarations (SymTableNodePtr routineIdPtr, long offset) {
 		//--------------------------------------------------
 		// Now, link this sublist to the previous sublist...
 		if (varType != VAR_TYPE_ETERNAL) {
-			if (prevLastIdPtr != NULL)
+			if (prevLastIdPtr != nullptr)
 				prevLastIdPtr->next = firstIdPtr;
 			prevLastIdPtr = lastIdPtr;
 		}
@@ -714,7 +714,7 @@ void varOrFieldDeclarations (SymTableNodePtr routineIdPtr, long offset) {
 			syntaxError(ABL_ERR_SYNTAX_MISSING_SEMICOLON);
 	}
 
-	synchronize(followVarBlockList, NULL, NULL);
+	synchronize(followVarBlockList, nullptr, nullptr);
 
 	if (varFlag) {
 		//----------------------------------------------------------------

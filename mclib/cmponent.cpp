@@ -43,7 +43,7 @@ const char* ComponentFormString [] = {
 	"Probe",
 	"Jammer",
 	"Bulk",
-    NULL
+    nullptr
 };
 
 const char* WeaponRangeString[] = {
@@ -52,7 +52,7 @@ const char* WeaponRangeString[] = {
 	"long"
 };
 
-MasterComponentPtr		MasterComponent::masterList = NULL;
+MasterComponentPtr		MasterComponent::masterList = nullptr;
 long					MasterComponent::numComponents = 0;
 long					MasterComponent::armActuatorID = 4;
 long					MasterComponent::legActuatorID = 5;
@@ -100,12 +100,12 @@ long MasterComponent::initEXCEL (char* dataLine, float baseSensorRange) {
 	cLoadString(COMPONENT_NAME_START+masterID,name,MAXLEN_COMPONENT_NAME);
 	cLoadString(COMPONENT_ABBR_START+masterID,abbreviation,MAXLEN_COMPONENT_ABBREV);
 	
-	field = strtok(NULL, ",");
+	field = strtok(nullptr, ",");
 	long formIndex;
-	for (formIndex = 0; ComponentFormString[formIndex] != NULL; formIndex++)
+	for (formIndex = 0; ComponentFormString[formIndex] != nullptr; formIndex++)
 		if (strcmp(field, ComponentFormString[formIndex]) == 0)
 			break;
-	if (ComponentFormString[formIndex] == NULL)
+	if (ComponentFormString[formIndex] == nullptr)
 		return(-1);
 
 	if (strcmp(field, "undefined") == 0) {
@@ -115,30 +115,30 @@ long MasterComponent::initEXCEL (char* dataLine, float baseSensorRange) {
 
 	form = (ComponentFormType)formIndex;
 	
-	field = strtok(NULL, ","); // name, ignore
+	field = strtok(nullptr, ","); // name, ignore
 
-	field = strtok(NULL, ",");
+	field = strtok(nullptr, ",");
 	size = atof(field);
 
-	field = strtok(NULL, ",");
+	field = strtok(nullptr, ",");
 	float recycleTime = atof(field);
 	
-	field = strtok(NULL, ",");
+	field = strtok(nullptr, ",");
 	float heat = (unsigned long)atof(field);
 
-	field = strtok(NULL, ","); 
+	field = strtok(nullptr, ","); 
 	tonnage = atof( field );
 
-	field = strtok(NULL, ",");
+	field = strtok(nullptr, ",");
 	float damage = atof(field);
 
-	field = strtok(NULL, ",");
+	field = strtok(nullptr, ",");
 	CV = atof(field);
 	
-	field = strtok(NULL, ",");
+	field = strtok(nullptr, ",");
 	resourcePoints = atoi(field);
 	
-	field = strtok(NULL, ",");
+	field = strtok(nullptr, ",");
 	unsigned char rangeType = 255;
 	S_strlwr(field);
 	if (strcmp(field, "0") != 0) {
@@ -152,7 +152,7 @@ long MasterComponent::initEXCEL (char* dataLine, float baseSensorRange) {
 			Fatal(0, " MasterComponent.initEXCEL: bad weapon range type in compbase ");
 	}
 
-	field = strtok(NULL, ",");
+	field = strtok(nullptr, ",");
 	for (long location = 0; location < NUM_BODY_LOCATIONS; location++) 
 	{
 		if ( field )
@@ -164,7 +164,7 @@ long MasterComponent::initEXCEL (char* dataLine, float baseSensorRange) {
 			else
 				criticalSpacesReq[location] = atoi(field);
 		}
-			field = strtok(NULL, ",");
+			field = strtok(nullptr, ",");
 
 	}
 
@@ -181,17 +181,17 @@ long MasterComponent::initEXCEL (char* dataLine, float baseSensorRange) {
 			ammoType = WEAPON_AMMO_ST;
 	}
 
-	field = strtok( NULL, "," );
+	field = strtok( nullptr, "," );
 	int flags = 0;
 	if ( field )
 		flags = atoi(field);
 	
-	field = strtok(NULL, ",");
+	field = strtok(nullptr, ",");
 	int specialEffect = 0;
 	if ( field )
 		specialEffect = (char)atoi(field);
 	
-	field = strtok(NULL, ",");
+	field = strtok(nullptr, ",");
 	int ammoMasterId = 0;
 	if ( field )
 		ammoMasterId = (char)atoi(field);
@@ -208,7 +208,7 @@ long MasterComponent::initEXCEL (char* dataLine, float baseSensorRange) {
 			break;
 		case COMPONENT_FORM_ECM:
 			stats.ecm.effect = damage;
-			field = strtok(NULL, ",");
+			field = strtok(nullptr, ",");
 			stats.ecm.range = recycleTime;
 			break;
 		case COMPONENT_FORM_JAMMER:
@@ -400,7 +400,7 @@ long MasterComponent::saveEXCEL (FilePtr componentFile, unsigned char masterId, 
 			break;
 
 		case COMPONENT_FORM_SENSOR:
-			sprintf(piece,"%4.1f",float(stats.sensor.range / baseSensorRange));
+			sprintf(piece,"%4.1f",(stats.sensor.range / baseSensorRange));
 			strcat(dataLine,piece);
 			strcat(dataLine,comma);
 
@@ -632,7 +632,7 @@ long MasterComponent::loadMasterList (const char* fileName, long listSize, float
 	if (masterList) 
 	{
 		systemHeap->Free(masterList);
-		masterList = NULL;
+		masterList = nullptr;
 	}
 
 	numComponents = listSize;
@@ -747,7 +747,7 @@ long MasterComponent::freeMasterList (void) {
 	if (masterList) 
 	{
 		systemHeap->Free(masterList);
-		masterList = NULL;
+		masterList = nullptr;
 		numComponents = 0;
 	}
 

@@ -66,8 +66,8 @@ bool drawCameraCircle = FALSE;
 // compensation in sync with whichever frustum this frame actually used,
 // instead of assuming the frustum is always 4:3-locked.
 bool g_cameraProjAspectNative = true;
-MemoryPtr pauseShape = NULL;
-MemoryPtr askedShape = NULL;
+MemoryPtr pauseShape = nullptr;
+MemoryPtr askedShape = nullptr;
 bool MaxObjectsDrawn = FALSE;
 
 float elevationAdjustFactor = 50.0;
@@ -495,25 +495,25 @@ void Camera::destroy (void)
 	if (worldLights)
 	{
 		systemHeap->Free(worldLights[1]);
-		worldLights[1] = NULL;
+		worldLights[1] = nullptr;
 
 		systemHeap->Free(worldLights[0]);
-		worldLights[0] = NULL;
+		worldLights[0] = nullptr;
 
 		systemHeap->Free(worldLights);
-		worldLights = NULL;
+		worldLights = nullptr;
 	}
 	
 	if (activeLights)
 	{
 		systemHeap->Free(activeLights);
-		activeLights = NULL;
+		activeLights = nullptr;
 	}
 	
 	if (terrainLights)
 	{
 		systemHeap->Free(terrainLights);
-		terrainLights = NULL;
+		terrainLights = nullptr;
 	}
 }
 

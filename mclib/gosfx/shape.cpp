@@ -116,7 +116,7 @@ gosFX::Shape__Specification::Shape__Specification(
 {
 	Check_Pointer(this);
 	Verify(gos_GetCurrentHeap() == Heap);
-	m_shape = NULL;
+	m_shape = nullptr;
 	SetShape(shape);
 }
 
@@ -242,7 +242,7 @@ void
 //############################################################################
 
 gosFX::Shape::ClassData*
-	gosFX::Shape::DefaultData = NULL;
+	gosFX::Shape::DefaultData = nullptr;
 
 //------------------------------------------------------------------------------
 //
@@ -269,7 +269,7 @@ void
 {
 	Unregister_Object(DefaultData);
 	delete DefaultData;
-	DefaultData = NULL;
+	DefaultData = nullptr;
 }
 
 //------------------------------------------------------------------------------
@@ -317,11 +317,11 @@ void gosFX::Shape::Draw(DrawInfo *info)
 	MidLevelRenderer::DrawScalableShapeInformation dinfo;
 	MidLevelRenderer::MLRShape *shape = GetSpecification()->m_shape;
 	dinfo.clippingFlags.SetClippingState(0x3f);
-	dinfo.worldToShape = NULL;
+	dinfo.worldToShape = nullptr;
 	Specification *spec = GetSpecification();
 	Check_Object(spec);
 	dinfo.state.Combine(info->m_state, spec->m_state);
-	dinfo.activeLights = NULL;
+	dinfo.activeLights = nullptr;
 	dinfo.nrOfActiveLights = 0;
 	dinfo.shape = shape;
 	Stuff::Vector3D scale(m_scale, m_scale, m_scale);
@@ -467,9 +467,9 @@ void gosFX::Shape::Draw(DrawInfo *info)
 
 				if (needUpload)
 				{
-					Stuff::Point3D   *coords = NULL; int nCoords = 0;
-					MidLevelRenderer::Vector2DScalar *texc = NULL; int nTex = 0;
-					unsigned short   *indices = NULL; int nIdx   = 0;
+					Stuff::Point3D   *coords = nullptr; int nCoords = 0;
+					MidLevelRenderer::Vector2DScalar *texc = nullptr; int nTex = 0;
+					unsigned short   *indices = nullptr; int nIdx   = 0;
 					prim->GetCoordData(&coords, &nCoords);
 					prim->GetTexCoordData(&texc, &nTex);
 					prim->GetIndexData(&indices, &nIdx);
@@ -500,9 +500,9 @@ void gosFX::Shape::Draw(DrawInfo *info)
 			{
 				GosVfxMeshUpload up;
 				up.meshId      = meshId;
-				up.positions   = needUpload ? pos.data() : NULL;
-				up.uvs         = needUpload ? uv.data()  : NULL;
-				up.indices     = needUpload ? idx.data() : NULL;
+				up.positions   = needUpload ? pos.data() : nullptr;
+				up.uvs         = needUpload ? uv.data()  : nullptr;
+				up.indices     = needUpload ? idx.data() : nullptr;
 				up.vertexCount = needUpload ? (uint32_t)(pos.size()/3) : 0u;
 				up.indexCount  = needUpload ? (uint32_t)idx.size()     : 0u;
 
@@ -517,7 +517,7 @@ void gosFX::Shape::Draw(DrawInfo *info)
 				inst.gosTexHandle = firstTexHandle;
 				inst.blendMode    = blendMode;
 
-				gos_vfx_mesh_flush(needUpload ? &up : NULL, needUpload ? 1u : 0u,
+				gos_vfx_mesh_flush(needUpload ? &up : nullptr, needUpload ? 1u : 0u,
 								   &inst, 1u);
 				if (needUpload) g_uploadedShapeIds.insert(meshId);
 				++g_shp_submitted;

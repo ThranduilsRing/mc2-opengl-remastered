@@ -30,9 +30,9 @@ char fitIniFooter[7] = "FITend";
 FitIniFile::FitIniFile (void) : File()
 {
 	totalBlocks = 0;
-	fileBlocks = NULL;
+	fileBlocks = nullptr;
 	
-	currentBlockId = NULL;
+	currentBlockId = nullptr;
 	currentBlockOffset = 0;
 	currentBlockSize = 0;
 }
@@ -47,7 +47,7 @@ FitIniFile::~FitIniFile (void)
 long FitIniFile::findNextBlockStart (char *line, unsigned long lineLen)
 {
 	char thisLine[255];
-	char *common = NULL;
+	char *common = nullptr;
 	
 	do
 	{
@@ -147,7 +147,7 @@ long FitIniFile::afterOpen (void)
 	//-------------------------------------------------------
 	// Check if we opened this with CREATE and write the
 	// FITini Header and position to Write Start.
-	if (fileMode == CREATE && parent == NULL)
+	if (fileMode == CREATE && parent == nullptr)
 	{
 		sprintf(line,"%s \r\n",fitIniHeader);
 		write((MemoryPtr)line,strlen(line));
@@ -161,7 +161,7 @@ long FitIniFile::afterOpen (void)
 		char chkHeader[12];
 	
 		readLine((MemoryPtr)chkHeader,11);
-		if (strstr(chkHeader,fitIniHeader) == NULL)
+		if (strstr(chkHeader,fitIniHeader) == nullptr)
 			return(NOT_A_FITINIFILE);
 
 				//------------------------------------------------------
@@ -241,7 +241,7 @@ void FitIniFile::atClose (void)
 	//-----------------------------
 	// Free up the fileBlocks
 	systemHeap->Free(fileBlocks);
-	fileBlocks = NULL;
+	fileBlocks = nullptr;
 }
 
 //---------------------------------------------------------------------------
@@ -267,7 +267,7 @@ int FitIniFile::textToInt (const char *num)
 	//------------------------------------
 	// Check if Hex Number
 	char *hexOffset = (char *)strstr(num,"0x");
-	if (hexOffset == NULL)
+	if (hexOffset == nullptr)
 	{
 		result = atoi(num);
 	}
@@ -318,7 +318,7 @@ long FitIniFile::textToLong (const char *num)
 	//------------------------------------
 	// Check if Hex Number
 	char *hexOffset = (char *)strstr(num,"0x");
-	if (hexOffset == NULL)
+	if (hexOffset == nullptr)
 	{
 		result = atol(num);
 	}
@@ -371,7 +371,7 @@ short FitIniFile::textToShort (const char *num)
 	//------------------------------------
 	// Check if Hex Number
 	char *hexOffset = (char *)strstr(num,"0x");
-	if (hexOffset == NULL)
+	if (hexOffset == nullptr)
 	{
 		result = atol(num);
 	}
@@ -423,7 +423,7 @@ char FitIniFile::textToChar (const char *num)
 	//------------------------------------
 	// Check if Hex Number
 	char *hexOffset = (char *)strstr(num,"0x");
-	if (hexOffset == NULL)
+	if (hexOffset == nullptr)
 	{
 		result = atol(num);
 	}
@@ -474,7 +474,7 @@ unsigned long FitIniFile::textToULong (const char *num)
 	//------------------------------------
 	// Check if Hex Number
 	char *hexOffset = (char *)strstr(num,"0x");
-	if (hexOffset == NULL)
+	if (hexOffset == nullptr)
 	{
 		result = atol(num);
 	}
@@ -526,7 +526,7 @@ unsigned short FitIniFile::textToUShort (const char *num)
 	//------------------------------------
 	// Check if Hex Number
 	char *hexOffset = (char *)strstr(num,"0x");
-	if (hexOffset == NULL)
+	if (hexOffset == nullptr)
 	{
 		result = atol(num);
 	}
@@ -578,7 +578,7 @@ unsigned char FitIniFile::textToUChar (const char *num)
 	//------------------------------------
 	// Check if Hex Number
 	char *hexOffset = (char *)strstr(num,"0x");
-	if (hexOffset == NULL)
+	if (hexOffset == nullptr)
 	{
 		result = atol(num);
 	}

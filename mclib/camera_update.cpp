@@ -469,7 +469,7 @@ long Camera::update (void)
 				static int s_camTest = -1;
 				static int s_camTrace = -1;
 				static unsigned s_camTestFrame = 0;
-				static FILE* s_camTraceFile = NULL;
+				static FILE* s_camTraceFile = nullptr;
 				if (s_camTest < 0) {
 					s_camTest = mc2::gate::get<"MC2_CAM_SMOOTH_TEST">();
 					s_camTrace = mc2::gate::get<"MC2_CAMERA_SMOOTH_TRACE">();

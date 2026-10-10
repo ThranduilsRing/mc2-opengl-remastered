@@ -12,7 +12,7 @@
 //#############################################################################
 
 MemoryStream::ClassData*
-	MemoryStream::DefaultData = NULL;
+	MemoryStream::DefaultData = nullptr;
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
@@ -36,7 +36,7 @@ void
 {
 	Check_Object(DefaultData);
 	delete DefaultData;
-	DefaultData = NULL;
+	DefaultData = nullptr;
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -784,7 +784,7 @@ static inline DWORD
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
 DynamicMemoryStream::DynamicMemoryStream(DWORD stream_size):
-	MemoryStream(NULL, stream_size)
+	MemoryStream(nullptr, stream_size)
 {
 	Check_Pointer(this);
 
@@ -800,7 +800,7 @@ DynamicMemoryStream::DynamicMemoryStream(DWORD stream_size):
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
 DynamicMemoryStream::DynamicMemoryStream(const DynamicMemoryStream &otherStream):
-	MemoryStream(NULL, static_cast<DWORD>(otherStream.GetSize()))
+	MemoryStream(nullptr, static_cast<DWORD>(otherStream.GetSize()))
 {
 	Check_Pointer(this);
 	Check_Pointer(&otherStream);

@@ -41,7 +41,7 @@
 #include "mc2_dialog.h"
 #include "Gates/gate.h"
 
-MemoryPtr 		LZPacketBuffer = NULL;
+MemoryPtr 		LZPacketBuffer = nullptr;
 unsigned int	LZPacketBufferSize = 512000;
 
 extern char CDInstallPath[];
@@ -57,7 +57,7 @@ char MissingTitleString[256];
 //---------------------------------------------------------------------------
 void *FastFile::operator new (size_t mySize)
 {
-	void *result = NULL;
+	void *result = nullptr;
 	result = malloc(mySize);
 	
 	return(result);
@@ -72,11 +72,11 @@ void FastFile::operator delete (void *us)
 //---------------------------------------------------------------------------
 FastFile::FastFile (void)
 {
-	files = NULL;
+	files = nullptr;
 	numFiles = 0;
 
-	fileName = NULL;
-	handle = NULL;
+	fileName = nullptr;
+	handle = nullptr;
 	length = 0;
 	logicalPosition = 0;
 
@@ -93,7 +93,7 @@ FastFile::~FastFile (void)
 	if (LZPacketBuffer)
 	{
 		free(LZPacketBuffer);
-		LZPacketBuffer = NULL;
+		LZPacketBuffer = nullptr;
 	}
 }
 
@@ -151,7 +151,7 @@ long FastFile::open (const char* fName)
 	strncpy(fileName,fName,fNameLength+1);
 
 	handle = fopen(fileName,"rb");
-	if (handle != NULL)
+	if (handle != nullptr)
 	{
 		logicalPosition = 0;
 		fileSize();				//Sets Length
@@ -163,14 +163,14 @@ long FastFile::open (const char* fName)
 		strcpy(actualPath,CDInstallPath);
 		strcat(actualPath,fileName);
 		handle = fopen(actualPath,"r");
-		if (handle == NULL)
+		if (handle == nullptr)
 		{
 			if (!Environment.checkCDForFiles)
 				return (2);  // disk install; FastFile not present anywhere, fail quietly
 			//OPEN Error.  Maybe the CD is missing?
 			bool openFailed = false;
 			bool alreadyFullScreen = (Environment.fullScreen != 0);
-			while (handle == NULL)
+			while (handle == nullptr)
 			{
 				openFailed = true;
 				if (!gos_NoUserPresentRequested()) EnterWindowMode();
@@ -261,13 +261,13 @@ void FastFile::close (void)
 	if (fileName)
 		delete [] fileName;	//	this was free, which didn't match the new allocation.
 							//	neither new nor free were overridden. Should they have been?
-	fileName = NULL;
+	fileName = nullptr;
 	length = 0;
 
 	if (isOpen())
 	{
 		fclose(handle);
-		handle = NULL;
+		handle = nullptr;
 	}
 
 	//---------------------------------------------
@@ -279,7 +279,7 @@ void FastFile::close (void)
 
 	free(files);
 
-	files = NULL;
+	files = nullptr;
 	numFiles = 0;
 }
 long FastFile::create(const char* fName, bool compressed)
@@ -299,7 +299,7 @@ long FastFile::create(const char* fName, bool compressed)
 	strncpy(fileName,fName,fNameLength+1);
 
 	handle = fopen(fileName, "wb");
-	if (handle != NULL)
+	if (handle != nullptr)
 	{
 		logicalPosition = 0;
 		fileSize();				//Sets Length
@@ -549,8 +549,8 @@ long FastFile::readFast (DWORD fastFileHandle, void *bfr, DWORD size)
 					// inflate; fall back to verbatim copy when it is not a valid
 					// zlib stream of exactly realSize.
 					bool copiedVerbatim = true;
-					const unsigned char zb0 = (unsigned char)LZPacketBuffer[0];
-					const unsigned char zb1 = (files[fastFileHandle].pfe->size > 1) ? (unsigned char)LZPacketBuffer[1] : 0;
+					const unsigned char zb0 = LZPacketBuffer[0];
+					const unsigned char zb1 = (files[fastFileHandle].pfe->size > 1) ? LZPacketBuffer[1] : 0;
 					if (files[fastFileHandle].pfe->size > 2 && zb0 == 0x78 && ((zb0 * 256 + zb1) % 31) == 0)
 					{
 						unsigned long tryLength = files[fastFileHandle].pfe->realSize;
@@ -601,7 +601,7 @@ long FastFile::readFast (DWORD fastFileHandle, void *bfr, DWORD size)
 //---------------------------------------------------------------------------
 long FastFile::writeFast (const char* fastFileName, void* buffer, int nbytes)
 {
-	if(handle == NULL)
+	if(handle == nullptr)
 		return FILE_NOT_OPEN;
 	
 	if (static_cast<DWORD>(numWrittenFiles) >= numFiles)

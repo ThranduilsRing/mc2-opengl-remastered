@@ -28,7 +28,7 @@ DynamicArrayOf<unsigned char>
 
 
 MLRIndexedTriangleCloud::ClassData*
-	MLRIndexedTriangleCloud::DefaultData = NULL;
+	MLRIndexedTriangleCloud::DefaultData = nullptr;
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
@@ -68,7 +68,7 @@ void
 
 	Unregister_Object(DefaultData);
 	delete DefaultData;
-	DefaultData = NULL;
+	DefaultData = nullptr;
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -77,7 +77,7 @@ MLRIndexedTriangleCloud::MLRIndexedTriangleCloud(int nr) :
 	MLRTriangleCloud(nr)
 {
 	Verify(gos_GetCurrentHeap() == Heap);
-	usedNrOfPoints = NULL;
+	usedNrOfPoints = nullptr;
 
 	Check_Pointer(this);
 	

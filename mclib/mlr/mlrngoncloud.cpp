@@ -26,7 +26,7 @@ DynamicArrayOf<int>
 
 
 MLRNGonCloud::ClassData*
-	MLRNGonCloud::DefaultData = NULL;
+	MLRNGonCloud::DefaultData = nullptr;
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
@@ -71,7 +71,7 @@ void
 
 	Unregister_Object(DefaultData);
 	delete DefaultData;
-	DefaultData = NULL;
+	DefaultData = nullptr;
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -80,7 +80,7 @@ MLRNGonCloud::MLRNGonCloud(int vertices, int nr) :
 	MLREffect(nr, DefaultData)
 {
 	Verify(gos_GetCurrentHeap() == Heap);
-	usedNrOfNGons = NULL;
+	usedNrOfNGons = nullptr;
 
 	numOfVertices = vertices;
 

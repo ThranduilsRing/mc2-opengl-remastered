@@ -19,7 +19,7 @@ extern DWORD gEnableLightMaps;
 //#############################################################################
 
 MLR_I_TMesh::ClassData*
-	MLR_I_TMesh::DefaultData = NULL;
+	MLR_I_TMesh::DefaultData = nullptr;
 extern DynamicArrayOf<Vector2DScalar> *lightMapUVs;
 extern DynamicArrayOf<Scalar> *lightMapSqFalloffs;
 
@@ -52,7 +52,7 @@ void
 {
 	Unregister_Object(DefaultData);
 	delete DefaultData;
-	DefaultData = NULL;
+	DefaultData = nullptr;
 
 	#if defined(TRACE_ENABLED) && defined(MLR_TRACE)
 		Unregister_Object(MLR_I_TMesh_Clip);
@@ -155,7 +155,7 @@ bool
 	pMesh->GetIndexData(&_index, &len);
 	SetIndexData(_index, len);
 
-	SetSubprimitiveLengths(NULL, pMesh->GetNumPrimitives());
+	SetSubprimitiveLengths(nullptr, pMesh->GetNumPrimitives());
 
 	facePlanes.SetLength(GetNumPrimitives());
 	testList.SetLength(GetNumPrimitives());
@@ -420,7 +420,7 @@ void
 	{
 		lightMap = lights[i]->GetLightMap();
 
-		if(lightMap!=NULL)
+		if(lightMap!=nullptr)
 		{
 			Start_Timer(LightMap_Light_Time);
 			LightMapLighting(lights[i]);
@@ -1033,7 +1033,7 @@ MLR_I_TMesh*
 		MLRState *state
 	)
 {
-	return NULL;
+	return nullptr;
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1060,7 +1060,7 @@ MLRShape*
 	Point3D *coords = new Point3D [nrTri*3];
 	Register_Pointer(coords);
 	
-	Point3D *collapsedCoords = NULL;
+	Point3D *collapsedCoords = nullptr;
 	if(icoInfo.indexed==true)
 	{
 		collapsedCoords = new Point3D [nrTri*3];
@@ -1088,7 +1088,7 @@ MLRShape*
 		}
 		subdivide (coords, v[0], v[1], v[2], icoInfo.depth, nrTri, icoInfo.radius);
 
-		mesh->SetSubprimitiveLengths(NULL, nrTri);
+		mesh->SetSubprimitiveLengths(nullptr, nrTri);
 
 		if(icoInfo.indexed==true)
 		{
@@ -1127,7 +1127,7 @@ MLRShape*
 
 		mesh->FindFacePlanes();
 
-		if(state == NULL)
+		if(state == nullptr)
 		{
 			for(i=0;i<uniquePoints;i++)
 			{

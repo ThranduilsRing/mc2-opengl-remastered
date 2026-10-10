@@ -22,8 +22,8 @@ long FitIniFile::readIdFloatArray (const char *varName, float *result, unsigned 
 	
 	//--------------------------------
 	// Search line by line for varName
-	char *fSearch = NULL;
-	char *bSearch = NULL;
+	char *fSearch = nullptr;
+	char *bSearch = nullptr;
 	
 	do
 	{
@@ -32,7 +32,7 @@ long FitIniFile::readIdFloatArray (const char *varName, float *result, unsigned 
 		fSearch = strstr(line,frontSearch);
 		bSearch = strstr(line,searchString);
 	}
-	while(((fSearch == NULL) || (bSearch == NULL)) && (logicalPosition < endOfBlock));
+	while(((fSearch == nullptr) || (bSearch == nullptr)) && (logicalPosition < endOfBlock));
 	
 	if (logicalPosition >= endOfBlock)
 	{
@@ -118,8 +118,8 @@ long FitIniFile::readIdIntArray (const char *varName, int *result, unsigned int 
 	
 	//--------------------------------
 	// Search line by line for varName
-	char *fSearch = NULL;
-	char *bSearch = NULL;
+	char *fSearch = nullptr;
+	char *bSearch = nullptr;
 	
 	do
 	{
@@ -128,7 +128,7 @@ long FitIniFile::readIdIntArray (const char *varName, int *result, unsigned int 
 		fSearch = strstr(line,frontSearch);
 		bSearch = strstr(line,searchString);
 	}
-	while(((fSearch == NULL) || (bSearch == NULL)) && (logicalPosition < endOfBlock));
+	while(((fSearch == nullptr) || (bSearch == nullptr)) && (logicalPosition < endOfBlock));
 	
 	if (logicalPosition >= endOfBlock)
 	{
@@ -213,8 +213,8 @@ long FitIniFile::readIdLongArray (const char *varName, long *result, unsigned lo
 	
 	//--------------------------------
 	// Search line by line for varName
-	char *fSearch = NULL;
-	char *bSearch = NULL;
+	char *fSearch = nullptr;
+	char *bSearch = nullptr;
 	
 	do
 	{
@@ -223,7 +223,7 @@ long FitIniFile::readIdLongArray (const char *varName, long *result, unsigned lo
 		fSearch = strstr(line,frontSearch);
 		bSearch = strstr(line,searchString);
 	}
-	while(((fSearch == NULL) || (bSearch == NULL)) && (logicalPosition < endOfBlock));
+	while(((fSearch == nullptr) || (bSearch == nullptr)) && (logicalPosition < endOfBlock));
 	
 	if (logicalPosition >= endOfBlock)
 	{
@@ -308,8 +308,8 @@ long FitIniFile::readIdULongArray (const char *varName, unsigned long *result, u
 	
 	//--------------------------------
 	// Search line by line for varName
-	char *fSearch = NULL;
-	char *bSearch = NULL;
+	char *fSearch = nullptr;
+	char *bSearch = nullptr;
 	
 	do
 	{
@@ -318,7 +318,7 @@ long FitIniFile::readIdULongArray (const char *varName, unsigned long *result, u
 		fSearch = strstr(line,frontSearch);
 		bSearch = strstr(line,searchString);
 	}
-	while(((fSearch == NULL) || (bSearch == NULL)) && (logicalPosition < endOfBlock));
+	while(((fSearch == nullptr) || (bSearch == nullptr)) && (logicalPosition < endOfBlock));
 	
 	if (logicalPosition >= endOfBlock)
 	{
@@ -403,8 +403,8 @@ long FitIniFile::readIdShortArray (const char *varName, short *result, unsigned 
 	
 	//--------------------------------
 	// Search line by line for varName
-	char *fSearch = NULL;
-	char *bSearch = NULL;
+	char *fSearch = nullptr;
+	char *bSearch = nullptr;
 	
 	do
 	{
@@ -413,7 +413,7 @@ long FitIniFile::readIdShortArray (const char *varName, short *result, unsigned 
 		fSearch = strstr(line,frontSearch);
 		bSearch = strstr(line,searchString);
 	}
-	while(((fSearch == NULL) || (bSearch == NULL)) && (logicalPosition < endOfBlock));
+	while(((fSearch == nullptr) || (bSearch == nullptr)) && (logicalPosition < endOfBlock));
 	
 	if (logicalPosition >= endOfBlock)
 	{
@@ -498,8 +498,8 @@ long FitIniFile::readIdUShortArray (const char *varName, unsigned short *result,
 	
 	//--------------------------------
 	// Search line by line for varName
-	char *fSearch = NULL;
-	char *bSearch = NULL;
+	char *fSearch = nullptr;
+	char *bSearch = nullptr;
 	
 	do
 	{
@@ -508,7 +508,7 @@ long FitIniFile::readIdUShortArray (const char *varName, unsigned short *result,
 		fSearch = strstr(line,frontSearch);
 		bSearch = strstr(line,searchString);
 	}
-	while(((fSearch == NULL) || (bSearch == NULL)) && (logicalPosition < endOfBlock));
+	while(((fSearch == nullptr) || (bSearch == nullptr)) && (logicalPosition < endOfBlock));
 	
 	if (logicalPosition >= endOfBlock)
 	{
@@ -593,8 +593,8 @@ long FitIniFile::readIdCharArray (const char *varName, char *result, unsigned lo
 	
 	//--------------------------------
 	// Search line by line for varName
-	char *fSearch = NULL;
-	char *bSearch = NULL;
+	char *fSearch = nullptr;
+	char *bSearch = nullptr;
 	
 	do
 	{
@@ -603,7 +603,7 @@ long FitIniFile::readIdCharArray (const char *varName, char *result, unsigned lo
 		fSearch = strstr(line,frontSearch);
 		bSearch = strstr(line,searchString);
 	}
-	while(((fSearch == NULL) || (bSearch == NULL)) && (logicalPosition < endOfBlock));
+	while(((fSearch == nullptr) || (bSearch == nullptr)) && (logicalPosition < endOfBlock));
 	
 	if (logicalPosition >= endOfBlock)
 	{
@@ -688,8 +688,8 @@ long FitIniFile::readIdUCharArray (const char *varName, unsigned char *result, u
 	
 	//--------------------------------
 	// Search line by line for varName
-	char *fSearch = NULL;
-	char *bSearch = NULL;
+	char *fSearch = nullptr;
+	char *bSearch = nullptr;
 	
 	do
 	{
@@ -698,7 +698,7 @@ long FitIniFile::readIdUCharArray (const char *varName, unsigned char *result, u
 		fSearch = strstr(line,frontSearch);
 		bSearch = strstr(line,searchString);
 	}
-	while(((fSearch == NULL) || (bSearch == NULL)) && (logicalPosition < endOfBlock));
+	while(((fSearch == nullptr) || (bSearch == nullptr)) && (logicalPosition < endOfBlock));
 	
 	if (logicalPosition >= endOfBlock)
 	{
@@ -783,8 +783,8 @@ unsigned long FitIniFile::getIdFloatArrayElements (const char *varName)
 	
 	//--------------------------------
 	// Search line by line for varName
-	char *fSearch = NULL;
-	char *bSearch = NULL;
+	char *fSearch = nullptr;
+	char *bSearch = nullptr;
 	
 	do
 	{
@@ -793,7 +793,7 @@ unsigned long FitIniFile::getIdFloatArrayElements (const char *varName)
 		fSearch = strstr(line,frontSearch);
 		bSearch = strstr(line,searchString);
 	}
-	while(((fSearch == NULL) || (bSearch == NULL)) && (logicalPosition < endOfBlock));
+	while(((fSearch == nullptr) || (bSearch == nullptr)) && (logicalPosition < endOfBlock));
 	
 	if (logicalPosition >= endOfBlock)
 	{
@@ -838,8 +838,8 @@ unsigned long FitIniFile::getIdLongArrayElements (const char *varName)
 	
 	//--------------------------------
 	// Search line by line for varName
-	char *fSearch = NULL;
-	char *bSearch = NULL;
+	char *fSearch = nullptr;
+	char *bSearch = nullptr;
 	
 	do
 	{
@@ -848,7 +848,7 @@ unsigned long FitIniFile::getIdLongArrayElements (const char *varName)
 		fSearch = strstr(line,frontSearch);
 		bSearch = strstr(line,searchString);
 	}
-	while(((fSearch == NULL) || (bSearch == NULL)) && (logicalPosition < endOfBlock));
+	while(((fSearch == nullptr) || (bSearch == nullptr)) && (logicalPosition < endOfBlock));
 	
 	if (logicalPosition >= endOfBlock)
 	{
@@ -893,8 +893,8 @@ unsigned long FitIniFile::getIdULongArrayElements (const char *varName)
 	
 	//--------------------------------
 	// Search line by line for varName
-	char *fSearch = NULL;
-	char *bSearch = NULL;
+	char *fSearch = nullptr;
+	char *bSearch = nullptr;
 	
 	do
 	{
@@ -903,7 +903,7 @@ unsigned long FitIniFile::getIdULongArrayElements (const char *varName)
 		fSearch = strstr(line,frontSearch);
 		bSearch = strstr(line,searchString);
 	}
-	while(((fSearch == NULL) || (bSearch == NULL)) && (logicalPosition < endOfBlock));
+	while(((fSearch == nullptr) || (bSearch == nullptr)) && (logicalPosition < endOfBlock));
 	
 	if (logicalPosition >= endOfBlock)
 	{
@@ -948,8 +948,8 @@ unsigned long FitIniFile::getIdShortArrayElements (const char *varName)
 	
 	//--------------------------------
 	// Search line by line for varName
-	char *fSearch = NULL;
-	char *bSearch = NULL;
+	char *fSearch = nullptr;
+	char *bSearch = nullptr;
 	
 	do
 	{
@@ -958,7 +958,7 @@ unsigned long FitIniFile::getIdShortArrayElements (const char *varName)
 		fSearch = strstr(line,frontSearch);
 		bSearch = strstr(line,searchString);
 	}
-	while(((fSearch == NULL) || (bSearch == NULL)) && (logicalPosition < endOfBlock));
+	while(((fSearch == nullptr) || (bSearch == nullptr)) && (logicalPosition < endOfBlock));
 	
 	if (logicalPosition >= endOfBlock)
 	{
@@ -1003,8 +1003,8 @@ unsigned long FitIniFile::getIdUShortArrayElements (const char *varName)
 	
 	//--------------------------------
 	// Search line by line for varName
-	char *fSearch = NULL;
-	char *bSearch = NULL;
+	char *fSearch = nullptr;
+	char *bSearch = nullptr;
 	
 	do
 	{
@@ -1013,7 +1013,7 @@ unsigned long FitIniFile::getIdUShortArrayElements (const char *varName)
 		fSearch = strstr(line,frontSearch);
 		bSearch = strstr(line,searchString);
 	}
-	while(((fSearch == NULL) || (bSearch == NULL)) && (logicalPosition < endOfBlock));
+	while(((fSearch == nullptr) || (bSearch == nullptr)) && (logicalPosition < endOfBlock));
 	
 	if (logicalPosition >= endOfBlock)
 	{
@@ -1058,8 +1058,8 @@ unsigned long FitIniFile::getIdCharArrayElements (const char *varName)
 	
 	//--------------------------------
 	// Search line by line for varName
-	char *fSearch = NULL;
-	char *bSearch = NULL;
+	char *fSearch = nullptr;
+	char *bSearch = nullptr;
 	
 	do
 	{
@@ -1068,7 +1068,7 @@ unsigned long FitIniFile::getIdCharArrayElements (const char *varName)
 		fSearch = strstr(line,frontSearch);
 		bSearch = strstr(line,searchString);
 	}
-	while(((fSearch == NULL) || (bSearch == NULL)) && (logicalPosition < endOfBlock));
+	while(((fSearch == nullptr) || (bSearch == nullptr)) && (logicalPosition < endOfBlock));
 	
 	if (logicalPosition >= endOfBlock)
 	{
@@ -1113,8 +1113,8 @@ unsigned long FitIniFile::getIdUCharArrayElements (const char *varName)
 	
 	//--------------------------------
 	// Search line by line for varName
-	char *fSearch = NULL;
-	char *bSearch = NULL;
+	char *fSearch = nullptr;
+	char *bSearch = nullptr;
 	
 	do
 	{
@@ -1123,7 +1123,7 @@ unsigned long FitIniFile::getIdUCharArrayElements (const char *varName)
 		fSearch = strstr(line,frontSearch);
 		bSearch = strstr(line,searchString);
 	}
-	while(((fSearch == NULL) || (bSearch == NULL)) && (logicalPosition < endOfBlock));
+	while(((fSearch == nullptr) || (bSearch == nullptr)) && (logicalPosition < endOfBlock));
 	
 	if (logicalPosition >= endOfBlock)
 	{

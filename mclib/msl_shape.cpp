@@ -29,7 +29,7 @@ long TG_TypeMultiShape::GetTextureName (DWORD textureNum, char *tName, long name
 		
 	char baseName[512];
 	char extension[256];
-	_splitpath(listOfTextures[textureNum].textureName,NULL,NULL,baseName,extension);
+	_splitpath(listOfTextures[textureNum].textureName,nullptr,nullptr,baseName,extension);
 
 	char basePath[1024];
 	sprintf(basePath,"%s%s",baseName,extension);
@@ -447,7 +447,7 @@ TG_MultiShapePtr TG_MultiShape::Detach (const char *nodeName)
 	}
 	
 	if (!curShape)
-		return NULL;
+		return nullptr;
 
 		//OK to return no shape now.
 		//STOP(("Unable to detach %s from shape",nodeName));
@@ -469,15 +469,15 @@ TG_MultiShapePtr TG_MultiShape::Detach (const char *nodeName)
 		resultShape->listOfShapes[i] = *detachables[i];
 		
 		if (S_stricmp(resultShape->listOfShapes[i].node->getNodeName(),nodeName) == 0)
-			resultShape->listOfShapes[i].parentNode = NULL;		//Set new top O heirarchy.
+			resultShape->listOfShapes[i].parentNode = nullptr;		//Set new top O heirarchy.
 		
 		for (long j=0;j<numTG_Shapes;j++)
 		{
 			if (&listOfShapes[j] == detachables[i])
 			{
 				//Mark this shape as removable from the previous heirarchy
-				listOfShapes[j].node = NULL;
-				listOfShapes[j].parentNode = NULL;
+				listOfShapes[j].node = nullptr;
+				listOfShapes[j].parentNode = nullptr;
 			}
 		}
 	}
@@ -509,7 +509,7 @@ TG_MultiShapePtr TG_MultiShape::Detach (const char *nodeName)
 	long newShapeIndex = 0;
 	for (i=0;i<numTG_Shapes;i++)
 	{
-		if (listOfShapes[i].node != NULL)
+		if (listOfShapes[i].node != nullptr)
 		{
 			newListOfShapes[newShapeIndex] = listOfShapes[i];
 			newShapeIndex++;

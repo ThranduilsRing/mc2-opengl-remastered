@@ -166,7 +166,7 @@ long CSVFile::afterOpen (void)
 	//-------------------------------------------------------
 	// Check if we opened this with CREATE and write the
 	// FITini Header and position to Write Start.
-	if (fileMode == CREATE && parent == NULL)
+	if (fileMode == CREATE && parent == nullptr)
 	{
 		STOP(("Cannot write CSV files at present."));
 	}
@@ -209,7 +209,7 @@ long CSVFile::textToLong (char *num)
 	//------------------------------------
 	// Check if Hex Number
 	char *hexOffset = strstr(num,"0x");
-	if (hexOffset == NULL)
+	if (hexOffset == nullptr)
 	{
 		result = atol(num);
 	}
@@ -262,7 +262,7 @@ short CSVFile::textToShort (char *num)
 	//------------------------------------
 	// Check if Hex Number
 	char *hexOffset = strstr(num,"0x");
-	if (hexOffset == NULL)
+	if (hexOffset == nullptr)
 	{
 		result = atol(num);
 	}
@@ -314,7 +314,7 @@ char CSVFile::textToChar (char *num)
 	//------------------------------------
 	// Check if Hex Number
 	char *hexOffset = strstr(num,"0x");
-	if (hexOffset == NULL)
+	if (hexOffset == nullptr)
 	{
 		result = atol(num);
 	}
@@ -365,7 +365,7 @@ unsigned long CSVFile::textToULong (char *num)
 	//------------------------------------
 	// Check if Hex Number
 	char *hexOffset = strstr(num,"0x");
-	if (hexOffset == NULL)
+	if (hexOffset == nullptr)
 	{
 		result = atol(num);
 	}
@@ -417,7 +417,7 @@ unsigned short CSVFile::textToUShort (char *num)
 	//------------------------------------
 	// Check if Hex Number
 	char *hexOffset = strstr(num,"0x");
-	if (hexOffset == NULL)
+	if (hexOffset == nullptr)
 	{
 		result = atol(num);
 	}
@@ -469,7 +469,7 @@ unsigned char CSVFile::textToUChar (char *num)
 	//------------------------------------
 	// Check if Hex Number
 	char *hexOffset = strstr(num,"0x");
-	if (hexOffset == NULL)
+	if (hexOffset == nullptr)
 	{
 		result = atol(num);
 	}

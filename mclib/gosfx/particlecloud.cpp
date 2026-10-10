@@ -274,7 +274,7 @@ void
 //############################################################################
 
 gosFX::ParticleCloud::ClassData*
-	gosFX::ParticleCloud::DefaultData = NULL;
+	gosFX::ParticleCloud::DefaultData = nullptr;
 
 //------------------------------------------------------------------------------
 //
@@ -288,8 +288,8 @@ void
 			ParticleCloudClassID,
 			"gosFX::ParticleCloud",
 			Effect::DefaultData,
-			NULL,
-			NULL
+			nullptr,
+			nullptr
 		);
 	Register_Object(DefaultData);
 }
@@ -301,7 +301,7 @@ void
 {
 	Unregister_Object(DefaultData);
 	delete DefaultData;
-	DefaultData = NULL;
+	DefaultData = nullptr;
 }
 
 //------------------------------------------------------------------------------
@@ -388,7 +388,7 @@ bool gosFX::ParticleCloud::Execute(ExecuteInfo *info)
 	//--------------------------------------------------------------------
 	//
 	Stuff::LinearMatrix4D new_world_to_local;
-	Stuff::LinearMatrix4D *matrix = NULL;
+	Stuff::LinearMatrix4D *matrix = nullptr;
 	int sim_mode = GetSimulationMode();
 	if (sim_mode == DynamicWorldSpaceSimulationMode)
 	{
