@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # RECON — TERRAIN-SUBPASS-RECON-1
 
 Read-only recon mapping the **path-variable terrain solid pass** so the frame graph can model it
@@ -22,7 +23,7 @@ do not even draw from the same call site or the same source file.
 The prior recon located one branch point (the txmmgr 3-way at `:2999/:3016/:3089`). There are
 actually **TWO** terrain-solid draw sites in a frame, and which one fires depends on the gates:
 
-1. **`code/gamecam.cpp:508`** — `Terrain::flushDrawCommands()`, BEFORE `renderLists()`. This is the
+1. **`code/gamecam.cpp:582`** — `Terrain::flushDrawCommands()`, BEFORE `renderLists()`. This is the
    LOD-chunk submit path (no-op unless `MC2_TERRAIN_LOD_CHUNK` chunk meta built). Routes to
    `gos_terrain_lod_chunk.cpp` `SubmitDrawCommands` → latch at `:1160`.
 2. **`mclib/txmmgr.cpp:2999-3114`** — inside `renderLists()`, the 3-way branch (Indirect /
@@ -38,26 +39,26 @@ a **no-op for terrain**; the draw already happened in gamecam.
 | Branch name | Draw call | Draw site | Latch site |
 |---|---|---|---|
 | **TerrainLODChunk** (DEFAULT) | chunk VBO `glDrawElements` | `gamecam.cpp:508` → `gos_terrain_lod_chunk.cpp` SubmitDrawCommands | `gos_terrain_lod_chunk.cpp:1160` |
-| **TerrainIndirectBridge** | `glMultiDrawArraysIndirect` | `txmmgr.cpp:3014` → `gos_terrain_indirect.cpp:3686 DrawIndirect` → `gameos_graphics.cpp:4024 gos_terrain_bridge_drawIndirect` | **NONE — see §4 (HIGH)** |
-| **TerrainPatchStreamThin** | thin-record draw | `txmmgr.cpp:3019` → `gos_terrain_patch_stream.cpp flush()` | `gos_terrain_patch_stream.cpp:1500` |
-| **TerrainLegacyMLR** | `gos_RenderIndexedArray` per masterVertexNode | `txmmgr.cpp:3089/3105` masterVertexNodes loop | `gameos_graphics.cpp:7292` (tess-draw funnel) |
+| **TerrainIndirectBridge** | `glMultiDrawArraysIndirect` | `mclib/txmmgr_lightrow.cpp:645` → `GameOS/gameos/gos_terrain_indirect_pack.cpp:619 DrawIndirect` → `GameOS/gameos/gameos_graphics_bridge.cpp:175 gos_terrain_bridge_drawIndirect` | **NONE — see §4 (HIGH)** |
+| **TerrainPatchStreamThin** | thin-record draw | `mclib/txmmgr_lightrow.cpp:650` → `gos_terrain_patch_stream.cpp flush()` | `gos_terrain_patch_stream.cpp:1500` |
+| **TerrainLegacyMLR** | `gos_RenderIndexedArray` per masterVertexNode | `txmmgr.cpp:3089/3105` masterVertexNodes loop | `GameOS/gameos/gameos_graphics_tparams.cpp:187` (tess-draw funnel) |
 
 ### Activation conditions (gates + defaults + camera state)
 
-- `mc2TerrainLodChunkEnabled()` — **DEFAULT ON** (`terrain.cpp:139`, cutover 2026-06-09; opt out
+- `mc2TerrainLodChunkEnabled()` — **DEFAULT ON** (`mclib/terrain.cpp:60`, cutover 2026-06-09; opt out
   `MC2_TERRAIN_LOD_CHUNK=0`). When on, LOD-chunk owns terrain via gamecam:508; txmmgr suppresses
   Indirect (`:3011-3012`).
-- `IsFrameSolidArmed()` (`gos_terrain_indirect.cpp:2506` = `s_frameSolidArmed && !s_processArmingDisabled`)
+- `IsFrameSolidArmed()` (`GameOS/gameos/gos_terrain_indirect_dispatch.cpp:12` = `s_frameSolidArmed && !s_processArmingDisabled`)
   — **CAMERA-WINDOWED**: armed by `ComputePreflight` only when the camera frames a SOLID-terrain
   expanse (header `gos_terrain_indirect.h:409-417`). Reset by `gosRenderer::endFrame()` each frame.
   In-mission with a normal camera it is usually true; deterministic capture/smoke poses usually do
   NOT arm it (the bookmark `tests/visual/bookmarks/mc2_01_terrain_solid.json` exists *specifically*
   to force it true).
-- `MC2_TERRAIN_INDIRECT` (`terrtxm2.cpp:190`) — default ON (gates colormap-atlas skip / recipe
+- `MC2_TERRAIN_INDIRECT` (`mclib/terrtxm2_internal.h:157`) — default ON (gates colormap-atlas skip / recipe
   build). The Indirect bridge only actually DRAWS when armed AND chunk-path OFF.
-- PatchStream branch (`txmmgr.cpp:3016`): `TerrainPatchStream::isReady() && !isOverflowed()` AND
+- PatchStream branch (`mclib/txmmgr_render_passes.cpp:535`): `TerrainPatchStream::isReady() && !isOverflowed()` AND
   not armed AND not chunk — the un-armed-but-filled middle state.
-- Legacy MLR (`txmmgr.cpp:3089`): the `else` fall-through — `!modernHandled` (nothing else handled
+- Legacy MLR (`mclib/txmmgr_lightrow.cpp:720`): the `else` fall-through — `!modernHandled` (nothing else handled
   terrain). The masterVertexNodes loop with `MC2_DRAWSOLID|MC2_ISTERRAIN`.
 
 ### WHICH branch SMOKE/CAPTURE actually takes — confirm/correct prior recon
@@ -67,13 +68,13 @@ branch"** and **"in-game free-cam exercises INDIRECT"**. Both are now STALE/wron
 config:
 
 - **Default in-game = TerrainLODChunk**, NOT Indirect. `MC2_TERRAIN_LOD_CHUNK` is default ON since
-  2026-06-09; `txmmgr.cpp:3011-3012` explicitly suppresses DrawIndirect when chunk is on. Indirect
+  2026-06-09; `mclib/txmmgr_lightrow.cpp:642-643` explicitly suppresses DrawIndirect when chunk is on. Indirect
   only draws if a run sets `MC2_TERRAIN_LOD_CHUNK=0`.
 - **Capture/smoke** runs with chunk-path default ON too → capture *also* takes **TerrainLODChunk**,
   not Legacy MLR — UNLESS the run forces `MC2_TERRAIN_LOD_CHUNK=0`, in which case (with no armed
   camera) it falls to PatchStream or Legacy MLR. The "capture takes legacy" claim is only true on
   the chunk-OFF opt-out path, which `terrain.cpp:145` calls "increasingly vestigial."
-- The `RENDER-FRAME-PLAN-SCAFFOLD-1` tattle trace (`txmmgr.cpp:3026-3037`) only observes the txmmgr
+- The `RENDER-FRAME-PLAN-SCAFFOLD-1` tattle trace (`mclib/txmmgr_lightrow.cpp:657-668`) only observes the txmmgr
   branch — it CANNOT see the gamecam chunk draw at all, so its "TerrainLegacyMLR" verdict in a
   default (chunk-on) run is misleading: terrain was actually drawn by the chunk path upstream and
   txmmgr just fell through. **The scaffold trace under-reports the real default branch.**
@@ -89,12 +90,12 @@ opt-out branch. Legacy MLR is reachable only on the vestigial chunk-OFF path. Th
 | Axis | TerrainLODChunk (default) | TerrainIndirectBridge | TerrainPatchStreamThin | TerrainLegacyMLR |
 |---|---|---|---|---|
 | Draw call | chunk `glDrawElements` | `glMultiDrawArraysIndirect` (`ggfx.cpp:4338`) | thin-record draw | `gos_RenderIndexedArray` ×N |
-| Draw site | `gamecam.cpp:508` | `txmmgr.cpp:3014` (in renderLists) | `txmmgr.cpp:3019` | `txmmgr.cpp:3089` |
+| Draw site | `gamecam.cpp:508` | `mclib/txmmgr_lightrow.cpp:645` (in renderLists) | `mclib/txmmgr_lightrow.cpp:650` | `mclib/txmmgr_lightrow.cpp:720` |
 | **writes[]** | MainColor, MainDepth | MainColor, MainDepth | MainColor, MainDepth | MainColor, MainDepth |
 | **reads[] base** | ShadowDynamicMap | ShadowDynamicMap | ShadowDynamicMap | ShadowDynamicMap |
 | **reads[] extra** | height SSBO (`TERRAIN_HEIGHT_SSBO`), colormap atlas | **recipe SSBO (slot1, `ggfx.cpp:4227`), thin-record SSBO (slot2, `:4250`), colormap atlas (unit0), cement atlas (unit3, `:4172`), transition-mask 2D_ARRAY (unit4, `:4213`)** | thin-record SSBO, atlas | per-node bound texture (`tex_resolve`, `:3088`) |
-| **MVP source** | `IsFrameSolidArmed()?getDispatchMvp16():live` (`gos_terrain_lod_chunk.cpp:634`) | **dispatch-snapshot ring-slot MVP** override (`ggfx.cpp:4080 getRingSlotMvp` / `terrainOverrideThinMVP`) + `g_viewContentEpoch` | live MVP | live `terrainMVP` per-draw upload |
-| **barrier** | none | **`GL_SHADER_STORAGE_BARRIER_BIT \| GL_COMMAND_BARRIER_BIT`** (`gos_terrain_indirect.cpp:3606`, compute→draw) | none | none |
+| **MVP source** | `IsFrameSolidArmed()?getDispatchMvp16():live` (`GameOS/gameos/gos_terrain_lod_chunk_matalbedo.cpp:36`) | **dispatch-snapshot ring-slot MVP** override (`ggfx.cpp:4080 getRingSlotMvp` / `terrainOverrideThinMVP`) + `g_viewContentEpoch` | live MVP | live `terrainMVP` per-draw upload |
+| **barrier** | none | **`GL_SHADER_STORAGE_BARRIER_BIT \| GL_COMMAND_BARRIER_BIT`** (`GameOS/gameos/gos_terrain_indirect_pack.cpp:539`, compute→draw) | none | none |
 | **ambient: colorMask reassert** | yes (chunk repair) | yes (`ggfx.cpp:4100`, M5 LOAD-BEARING) | yes | yes (via applyRenderStates) |
 | **ambient: depthFunc/write** | GEQUAL reverse-Z, write ON | GEQUAL via `applyPipeline(TerrainSolid)` (`ggfx.cpp:4093`) | GEQUAL | GEQUAL |
 | **markTerrainDrawn latch** | **SET** (`:1160`) | **NOT SET — HIGH bug class, §4** | **SET** (`:1500`) | **SET** (`ggfx.cpp:7292`, conditional on tess-draw block) |
@@ -139,18 +140,18 @@ Notes:
 ## 4. THE markTerrainDrawn LATCH ACROSS BRANCHES  — **HIGH FINDING**
 
 The latch `sceneHasTerrain_` (`gos_postprocess.h:226/228`) is reset each frame
-(`gos_postprocess.cpp:1408`) and gates **5 post sub-passes** that bail on `!sceneHasTerrain_`:
+(`GameOS/gameos/gos_postprocess_fbo.cpp:150`) and gates **5 post sub-passes** that bail on `!sceneHasTerrain_`:
 screenShadow `:1939`, cloudShadow `:2033/:2176`, shoreline `:2237`, edgeFog/godrays `:2287`, clear-
 color decision `:2344`. A branch that draws terrain WITHOUT setting the latch silently kills all 5.
 
 Caller inventory (grep `markTerrainDrawn`):
 - `gos_terrain_lod_chunk.cpp:1160` — **TerrainLODChunk sets it.** ✔ (unconditional in SubmitDrawCommands)
 - `gos_terrain_patch_stream.cpp:1500` — **TerrainPatchStreamThin sets it.** ✔ (unconditional in flush)
-- `gameos_graphics.cpp:7292` — **TerrainLegacyMLR sets it** ✔ but **CONDITIONAL** on the tess-draw
+- `GameOS/gameos/gameos_graphics_tparams.cpp:187` — **TerrainLegacyMLR sets it** ✔ but **CONDITIONAL** on the tess-draw
   block guard (`:7280`: needs `terrain_batch_extras_count_>0` etc.). Latch-skip possible if a legacy
   terrain node has zero extras. LOW-MED confidence; legacy path is vestigial.
-- `gos_terrain_bridge_drawIndirect` (`gameos_graphics.cpp:4024-~4400`) — **NO markTerrainDrawn
-  call.** `DrawIndirect` (`gos_terrain_indirect.cpp:3686`) does not call it. `txmmgr.cpp:3014`
+- `gos_terrain_bridge_drawIndirect` (`GameOS/gameos/gameos_graphics_bridge.cpp:371-~4400`) — **NO markTerrainDrawn
+  call.** `DrawIndirect` (`GameOS/gameos/gos_terrain_indirect_dispatch.cpp:1173`) does not call it. `mclib/txmmgr_lightrow.cpp:645`
   (caller) does not call it. **The Indirect branch draws terrain and NEVER sets the latch.**
 
 **HIGH:** if a run takes the **TerrainIndirectBridge** branch as the terrain-solid draw
@@ -163,7 +164,7 @@ suppresses Indirect. The moment someone runs chunk-OFF + indirect (the documente
 perf A/B or the editor GPU path), the latch silently drops.
 
 Recommended follow-up fix slice (out of scope here): add `getGosPostProcess()->markTerrainDrawn()`
-at the end of the successful `DrawIndirect()` in `gos_terrain_indirect.cpp:3740` (or in the txmmgr
+at the end of the successful `DrawIndirect()` in `GameOS/gameos/gos_terrain_indirect_dispatch.cpp:1173` (or in the txmmgr
 caller after `modernHandled = DrawIndirect()` returns true), mirroring the chunk-path fix. Flag as a
 real bug class for the frame-graph executor: **the latch is a per-branch responsibility with one
 branch missing it.**
@@ -261,7 +262,7 @@ slot, while the real draw happened upstream in the chunk path).
   `gamecam.cpp:508`), TerrainIndirectBridge, TerrainPatchStreamThin, TerrainLegacyMLR** (latter
   three in `txmmgr.cpp:2999-3114`).
 - **Prior recon CORRECTED:** the default branch (in-game AND capture) is **LOD-chunk**, not Indirect.
-  `MC2_TERRAIN_LOD_CHUNK` default ON since 2026-06-09 (`terrain.cpp:139`) and `txmmgr.cpp:3011`
+  `MC2_TERRAIN_LOD_CHUNK` default ON since 2026-06-09 (`terrain.cpp:139`) and `mclib/txmmgr_lightrow.cpp:642`
   suppresses Indirect. Legacy MLR is reachable only on the vestigial chunk-OFF path. "Indirect
   default / Legacy capture" is stale.
 - Branches diverge on **reads[]** (Indirect +4: recipe SSBO, thin SSBO, cement atlas, transition

@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # GPU-BUFFER-OWNER-RECON-1
 
 Pre-wrapper census of every GPU buffer (SSBO / VBO / EBO / UBO / DRAW_INDIRECT) in the
@@ -28,7 +29,7 @@ Part of the **RENDER-BACKEND-SEAMS** arc (slice 2). Prior slice: RENDER-PASS-CON
    shipped the missing fence. The water thin-ring now fences and waits exactly
    like the solid path — `glFenceSync` at `gos_terrain_water_stream.cpp:2154`
    (`EndThinRingFrameFence()`), waited/cleared at
-   `gos_terrain_water_stream.cpp:105` (`WaitAndClearThinFenceForCurrentSlot()`).
+   `GameOS/gameos/gos_terrain_water_stream.cpp:205` (`WaitAndClearThinFenceForCurrentSlot()`).
    The original (now-historical) finding text follows.
 
    **Ring/fence discipline is inconsistent — a live correctness smell, not just a Vulkan-prep
@@ -154,7 +155,7 @@ per-draw-batch. ~11 live buffers. `txmmgr.cpp` owns **zero** GPU buffers (textur
 
 > **Update-path naming clarification (corrected 2026-06-22 RENDER-CONTRACT-INDEX-1).**
 > Two SIMILARLY-NAMED, DIFFERENT functions — do not conflate them:
-> - `gos_UpdateBuffer` (defined `GameOS/gameos/gameos_graphics.cpp:8515`, decl
+> - `gos_UpdateBuffer` (defined `GameOS/gameos/gameos_graphics_capi.cpp:613`, decl
 >   `GameOS/include/gameos.hpp:2864`) is **near-dead**: exactly ONE runtime
 >   callsite, `mclib/txmmgr.cpp:2368` (scene-data UBO update). Not the HUD churn
 >   source.

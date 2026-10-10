@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # SSBO Slot 14 / Slot 20 Split Plan — BINDING-SLOT-14-20-SPLIT-PLAN-1
 
 ---
@@ -35,7 +36,7 @@ THREE SSBOs in one draw:
 - `22 = SurfaceTileBuf` — `shaders/gos_terrain_surface.vert:78`; C++ bind
   `GameOS/gameos/gameos_graphics.cpp:3932` `glBindBufferBase(...,22,s_surfaceTB)`
 
-All three unbind-to-0 symmetrically at `gameos_graphics.cpp:3974-3976`. The header comment
+All three unbind-to-0 symmetrically at `GameOS/gameos/gameos_graphics_bridge.cpp:125-127`. The header comment
 `gos_terrain_surface.vert:56-59` explicitly documents the 20/21/22 private high-range choice.
 Moving `SurfaceVertexBuf` to 21 would collide with `SurfaceIndexBuf` in the SAME pipeline —
 a real regression, the exact opposite of a fix.

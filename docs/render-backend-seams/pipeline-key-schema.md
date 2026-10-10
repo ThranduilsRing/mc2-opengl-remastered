@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Pipeline-key schema — PIPELINE-KEY-SCHEMA-1
 
 > **Schema + checker only. No Vulkan, no SPIR-V consumer, no PSO/cache impl, no

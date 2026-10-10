@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # GPU-TEXTURE-RESOURCE-MANAGER-SEAM-RECON-1 — deep texture-seam recon → **GO, but QUALIFIED (default-on, behavior-preserving, low value)**
 
 **Arc:** VULKAN-CONTRACT-MANIFEST-ARC · recon only, no code (this doc only) · 2026-06-22
@@ -35,7 +36,7 @@
 
 ```
 CREATE (cold load, e.g. mech/terrain texture)
-  mclib caller → gos_NewTextureFromMemory(fmt, name, bytes, size, hints)   [gameos_graphics.cpp:8045]
+  mclib caller → gos_NewTextureFromMemory(fmt, name, bytes, size, hints)   [GameOS/gameos/gameos_graphics_hud.cpp:321]
     → new gosTexture(...)                                                  [ctor :1007]
     → gosTexture::createHardwareTexture()                                  [:1259]
         → create2DTexture()  → glGenTextures + glTexImage2D (+mip)         [gl_utils.cpp:166]
@@ -48,7 +49,7 @@ CACHE-OUT (mid-frame eviction, MC_TextureManager::flushCache / update)
   (GL object freed; the textureList_ slot is nulled)
 
 CACHE-IN (lazy, on next access)
-  get_gosTextureHandle() sees CACHED_OUT_HANDLE                            [txmmgr.cpp:4262]
+  get_gosTextureHandle() sees CACHED_OUT_HANDLE                            [mclib/txmmgr_render_passes.cpp:752]
     → (maybe flushCache to free a slot)                                    [:4269]
     → gos_NewTextureFromMemory(...) re-uploads → NEW handle               [:4447]
     → node.gosTextureHandle = new handle
@@ -62,7 +63,7 @@ BIND / USE (legacy MLR / fixed-function path)
     (caches cachedResolvedTexId_[i] for the rs-equality early-out :5419)
 
 BIND / USE (GPU-driven batcher path)
-  batcher → gos_GetGLTextureId(handle) → raw GLuint                        [gameos_graphics.cpp:9991]
+  batcher → gos_GetGLTextureId(handle) → raw GLuint                        [GameOS/gameos/gameos_graphics_capi.cpp:875]
     → packed into a material SSBO / bound directly (mech + static-prop)
 
 DESTROY (explicit)
@@ -86,13 +87,13 @@ RESET / TEARDOWN (renderer shutdown — see Reset section)
 
 **GL primitive create (the real glGenTextures sites):**
 - `create2DTexture` `gl_utils.cpp:166`, `createDynamicTexture` `:204`, `create3DTextureF` `:229`, `createPBO` `:254`
-- inline magenta fallback `gameos_graphics.cpp:1395` (`getOverlayFallbackTexture`, a permanent 1×1, NOT in `textureList_`)
+- inline magenta fallback `GameOS/gameos/gameos_graphics_overlay.cpp:74` (`getOverlayFallbackTexture`, a permanent 1×1, NOT in `textureList_`)
 - inline BC7 `:8076`; terrain normal array `:2023`; misc inline `:8076/:9385`
 
 **Destroy:**
 - `gos_DestroyTexture` `:8124` → `deleteTexture` `:1638` (nulls slot, runs `~gosTexture` → `destroyTexture` → `glDeleteTextures`)
 - `~gosTexture` `:1090` → `destroyTexture(&tex_)`
-- `destroyTexture` `gl_utils.cpp:157` (the only `glDeleteTextures` for `textureList_` textures)
+- `destroyTexture` `GameOS/gameos/utils/gl_utils.cpp:152` (the only `glDeleteTextures` for `textureList_` textures)
 - teardown loop `:5273-5276`
 - cache-out callers in `txmmgr.cpp`: `:872`, `:900`, `:927` (all via `gos_DestroyTexture`)
 
@@ -108,8 +109,8 @@ The sampler manifest (`sampler-unit-occupancy.md`) counts **~224 `glActiveTextur
 
 **Family 2 — GPU-driven batcher raw-id resolve (`gos_GetGLTextureId`):**
 - `gos_GetGLTextureId` def `:9991`; `gos_GetTextureGLId` `:8160`; `gos_GetGLTextureName` `:10006` (particle bridge).
-- Consumers (ALL inside `GameOS/gameos/`): `gos_mech_batcher.cpp:2231`; `gos_static_prop_batcher.cpp:3140,:7131,:7518,:7811`; particle bridge. These pack the raw `GLuint` into material SSBOs / bind for shadow-alpha packets.
-- Terrain bridge resolves via `getTexture(gosHandle)->getTextureId()` (`gos_terrain_bridge.h:44`).
+- Consumers (ALL inside `GameOS/gameos/`): `GameOS/gameos/gos_mech_batcher_flush.cpp:475`; `GameOS/gameos/gos_static_prop_batcher_mapload.cpp:313,:7131,:7518,:7811`; particle bridge. These pack the raw `GLuint` into material SSBOs / bind for shadow-alpha packets.
+- Terrain bridge resolves via `getTexture(gosHandle)->getTextureId()` (`GameOS/gameos/gos_terrain_bridge.h:35`).
 
 **Both families call `getTexture()` / `getTextureId()` — i.e. they go through the registry (Layer B).** A `GpuTextureManager` that *is* Layer B keeps both families working unchanged.
 

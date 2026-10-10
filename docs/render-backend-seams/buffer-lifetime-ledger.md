@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # Buffer Lifetime Ledger
 
 Maintained inventory of high-risk renderer GPU buffers by hazard class. Companion to

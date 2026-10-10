@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # RENDER-CONTRACT-INDEX-1 — master index of render-contract artifacts
 
 **Arc:** VULKAN-CONTRACT-MANIFEST-ARC · **Slice:** RENDER-CONTRACT-INDEX-1 (recon/docs only, no code, no relink)

@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # SPIRV-CONSUMER-PILOT-RECON-1
 
 **Status:** RECON COMPLETE · read-only · doc-only commit to nifty (base `05740404`).
@@ -33,7 +34,7 @@ The capability is present and the seam is clean. A SPIR-V consumer can be added 
 
 ### 5. How are specialization constants applied? — none today; `#define` literals
 - **Zero `layout(constant_id=N)` in the tree** (grep: 0 hits). The `SPECIALIZATION_CONSTANT`-class macros are injected `#define` literals.
-- `MC2_SHADOW_CSM_MAX` **sizes arrays**: `shadow.hglsl:101-107` `uniform mat4 dynamicCascadeMatrices[MC2_SHADOW_CSM_MAX]`; clamp at :198. Injected via snprintf `gameos_graphics.cpp:374-376`.
+- `MC2_SHADOW_CSM_MAX` **sizes arrays**: `shadow.hglsl:101-107` `uniform mat4 dynamicCascadeMatrices[MC2_SHADOW_CSM_MAX]`; clamp at :198. Injected via snprintf `GameOS/gameos/gameos_graphics_material_internal.h:379-381`.
 - **To make it a real `glSpecializeShader` constant:** (a) `layout(constant_id=N) const int MC2_SHADOW_CSM_MAX = 3;` (spec-const-sized array is legal), (b) compile to SPIR-V once with default decoration, (c) at load pass constant index `N` + runtime `mc2ShadowCsmCount()` to `glSpecializeShader` before link, (d) stop injecting the `#define`. Clamp at :198 unchanged.
 - `READBACK_SSBO_BINDING` is **not** a true spec-const — it's a descriptor binding index (→ fixed `layout(binding=)` in Vk), not a `glSpecializeShader` value.
 

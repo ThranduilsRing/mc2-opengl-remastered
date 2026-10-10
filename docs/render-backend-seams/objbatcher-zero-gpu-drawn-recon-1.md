@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # OBJBATCHER-ZERO-GPU-DRAWN-RECON-1
 
 Read-only. Classifies the suspicious `[OBJBATCHER v1] gpu_drawn_instances=0` observed
@@ -20,7 +21,7 @@ pass=StaticPropOpaque` fired, and the 2-mission smoke PASSes with props visible.
 ## Root cause: stale counter, NOT a draw failure
 
 `gpu_drawn_instances` is incremented at exactly ONE site —
-`gos_static_prop_batcher.cpp:7011`:
+`GameOS/gameos/gos_static_prop_batcher_flush.cpp:400`:
 
 ```cpp
 for (uint32_t typeID = 0; typeID < s_types.size(); ++typeID) {

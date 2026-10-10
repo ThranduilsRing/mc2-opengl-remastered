@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # PIPELINE-STATE-CONTRACT-RECON-1
 
 **Status:** RECON COMPLETE · read-only · doc-only commit to nifty.
@@ -34,7 +35,7 @@ Named blocker: **the runtime `#define` prefix-injection wall + the open-ended `g
 ### `PipelineId` registry (`RenderCore/PipelineRegistry.h:25-33`)
 `Invalid=0, StaticPropOpaque=1, StaticPropAlphaTest=2, MechOpaque=3, StaticPropDepth=4, Count_=5`. Rows in `PipelineRegistry.cpp:39-116`, `static_assert(row==Count_)` :118.
 
-### Who routes through `PipelineDesc` (`applyPipeline` = the ONLY translation site, `pipeline_binder.cpp:15`)
+### Who routes through `PipelineDesc` (`applyPipeline` = the ONLY translation site, `GameOS/gameos/pipeline_binder.cpp:73`)
 **Correction to the handoff premise** ("only StaticPropOpaque + MechOpaque"): **three** subsystems / four ids are live through `applyPipeline`:
 - **Static prop batcher** `gos_static_prop_batcher.cpp`: `:5128` (`StaticPropDepth` prepass), `:5365`/`:6421` (`StaticPropOpaque` color). `bindProgram` wires Opaque/AlphaTest `:1206-1207`, coalesce `:1342-1343`, Depth `:1397`.
 - **Mech batcher** `gos_mech_batcher.cpp:1992-1993` (`MechOpaque`), `bindProgram` :570.
@@ -60,39 +61,39 @@ All other passes (`pipelineDescRegistered=false`): **Terrain, Shadow, VFX, Water
 | `GL_BLEND`+`glBlendFunc` | applyPipeline :42-60; applyRenderStates :5493-5506 (5-way) | partial (func only) |
 | `glBlendEquation` | **set nowhere** in scene path (0 hits) — default GL_FUNC_ADD assumed | **no** |
 | `GL_CULL_FACE`+`glCullFace` | applyPipeline :63-75; applyRenderStates :5444-5453 (CW→BACK/CCW→FRONT) | partial |
-| `glFrontFace` | **only** `gameos_graphics.cpp:6038` (save/restore snapshot) | **no** |
+| `glFrontFace` | **only** `GameOS/gameos/gameos_graphics_draw.cpp:497` (save/restore snapshot) | **no** |
 | viewport/scissor | FBO/post code; no pipeline abstraction | **no** |
 | MRT/draw-buffers | FBO setup only | **no** |
 | texture+sampler binds | applyRenderStates :5544-5568 (units 0/1/2, `setSamplerParams` :5554) | **no** |
 
-Closest thing to a full FF capture = the save/restore snapshot struct `gameos_graphics.cpp:6032-6038` (`depthTest/depthFunc/depthMask/colorMask/cullEnabled/cullFace/frontFace`). No single object captures program+FF+VAO+SSBO+textures+viewport together.
+Closest thing to a full FF capture = the save/restore snapshot struct `GameOS/gameos/gameos_graphics_draw.cpp:491-497` (`depthTest/depthFunc/depthMask/colorMask/cullEnabled/cullFace/frontFace`). No single object captures program+FF+VAO+SSBO+textures+viewport together.
 
 ## 3. Vertex-input layouts (the VAO half of a PSO) — STABLE, finite, per-shape-type
 
 | Shape type | File:line | Layout (loc: size×type) |
 |---|---|---|
-| Static prop (shared VAO) | `gos_static_prop_batcher.cpp:2310-2323` | stride 40B: 0=pos3 1=norm3 2=uv2 3=uint(I) 4=uint(I) |
-| Mech (`GpuMechVertex` 48B) | `gos_mech_batcher.cpp:1376-1382` | 0=pos3 1=norm3 2=uv2 3=bone4ub(I) 4=wt4ub-norm 5=tan2short-norm 6=rgbLight uint(I) |
+| Static prop (shared VAO) | `GameOS/gameos/gos_static_prop_batcher_program.cpp:371-384` | stride 40B: 0=pos3 1=norm3 2=uv2 3=uint(I) 4=uint(I) |
+| Mech (`GpuMechVertex` 48B) | `GameOS/gameos/gos_mech_batcher_geometry.cpp:208-214` | 0=pos3 1=norm3 2=uv2 3=bone4ub(I) 4=wt4ub-norm 5=tan2short-norm 6=rgbLight uint(I) |
 | Terrain patch stream | `gos_terrain_patch_stream.cpp:1054/1060` | worldPos3, worldNorm3 (name-resolved) |
 | Terrain lod/legacy | `gameos_graphics.cpp:6254-6256`, `:7058-7063` | extra attrs + worldPos/Norm |
 | Vegetation cards (instanced) | `gos_vegetation.cpp:176-215` | per-vtx 0=pos3 1=uv2; per-inst 2..6 |
 | VFX mesh | `gos_vfx_mesh_bridge.cpp:174-177` | 0=pos3 1=uv2 |
 | HUD/2D sprite | `gameos_graphics.cpp:503-519` | pos4 + color4ub + spec/fog4ub + uv2 (optional, loc-resolved) |
-| Water/scene quad | `gameos_graphics.cpp:4732-4736`,`:5229-5232`,`:9823-9826` | 0=pos3 1=uv2 2=uint(I)/float 3=color4ub |
-| Shadow/depth quad | `gameos_graphics.cpp:6316` | 0=pos3, stride 36 |
+| Water/scene quad | `GameOS/gameos/gameos_graphics_bridge.cpp:862-866`,`:5229-5232`,`:9823-9826` | 0=pos3 1=uv2 2=uint(I)/float 3=color4ub |
+| Shadow/depth quad | `GameOS/gameos/gameos_graphics_draw.cpp:772` | 0=pos3, stride 36 |
 
 Particle/VFX-trail + GPU-driven indirect terrain solid = **no `glVertexAttribPointer`** (SSBO/`gl_VertexID`-driven). → vertex-input is a clean finite ID space; **not a blocker.**
 
 ## 4. The shader-variant axis = THE blocker (RED wall)
 
-**Injection point:** `glsl_shader::makeShader` (`shader_builder.cpp:401`, :446): `strings[] = { prefix?:"" , source }` → `glShaderSource`/`glCompileShader` at runtime. Files carry **no `#version`**; the prefix supplies `"#version 430\n"` + all `#define`s. `reload()` (:533/:971) re-injects the stored `prefix_` — hot-reload **depends on** runtime recompile. **No `glShaderBinary`/SPIR-V load path, no variant cache keyed by define-set exists.** (`makeProgram`/`makeProgram2` decls `shader_builder.h:134-135`.) Compute shaders have a parallel hand-rolled injector (`gpu_cull_compute.cpp:287-295`, etc.).
+**Injection point:** `glsl_shader::makeShader` (`GameOS/gameos/utils/shader_builder.cpp:638`, :446): `strings[] = { prefix?:"" , source }` → `glShaderSource`/`glCompileShader` at runtime. Files carry **no `#version`**; the prefix supplies `"#version 430\n"` + all `#define`s. `reload()` (:533/:971) re-injects the stored `prefix_` — hot-reload **depends on** runtime recompile. **No `glShaderBinary`/SPIR-V load path, no variant cache keyed by define-set exists.** (`makeProgram`/`makeProgram2` decls `shader_builder.h:134-135`.) Compute shaders have a parallel hand-rolled injector (`gpu_cull_compute.cpp:287-295`, etc.).
 
 ### Macro classification
 (a)=compile-time VARIANT→distinct SPIR-V · (b)=spec-constant candidate · (c)=runtime uniform · (d)=dead
 
 | Macro | Site | Class |
 |---|---|---|
-| `MRT_ENABLED` | `gameos_graphics.cpp:364` | (a) changes frag output decls |
+| `MRT_ENABLED` | `GameOS/gameos/gameos_graphics_material_internal.h:369` | (a) changes frag output decls |
 | `TERRAIN_NORMAL_ARRAY` | :368/5028/5054/5095 | (a) sampler type / sample code |
 | `MC2_SHADOW_CSM` | :375/5173; `gos_terrain_lod_chunk.cpp:356`; `gos_postprocess.cpp:516/528` | (a) shadow.hglsl body |
 | `MC2_SHADOW_CSM_MAX %d` | same | **(b)** array-size param — cleanest spec-constant |
@@ -124,7 +125,7 @@ No (c) runtime-uniform macros; no confirmed (d) dead (matrix harness anchors wou
 
 **Can feed a PSO?** Yes for **stage interfaces + descriptor-set layout** (the `VkPipelineLayout` core). **Gaps:** no **vertex input attributes** extracted (only frag outputs normalized, :459); no push-constants; no pipeline render-state (blend/depth/cull is C++-side, §2); and **samplers are auto-mapped** (`--auto-map-bindings`) not read from real units — the audit's one true missing descriptor contract.
 
-**The two hard blockers:** (1) engine has **no consumer for precompiled SPIR-V** (`makeShader` only `glShaderSource`+`glCompileShader`s strings; hot-reload depends on it). (2) the **open-ended material-define loop** (`gameos_graphics.cpp:341-358`) means the variant set is **not statically enumerable** — must be closed first. Single code seam to change = `glsl_shader::makeShader` (`shader_builder.cpp:401`), exactly as `vulkan-readiness-audit-1.md` Dimension F (:43) + blocker #6 (:61) name it.
+**The two hard blockers:** (1) engine has **no consumer for precompiled SPIR-V** (`makeShader` only `glShaderSource`+`glCompileShader`s strings; hot-reload depends on it). (2) the **open-ended material-define loop** (`gameos_graphics.cpp:341-358`) means the variant set is **not statically enumerable** — must be closed first. Single code seam to change = `glsl_shader::makeShader` (`GameOS/gameos/utils/shader_builder.cpp:638`), exactly as `vulkan-readiness-audit-1.md` Dimension F (:43) + blocker #6 (:61) name it.
 
 ## 6. Proposed PSO-key schema (descriptive) + smallest checkable artifact
 
@@ -153,7 +154,7 @@ This converts the *known* pipeline quadrant into a checked artifact now, and giv
 
 ## 7. Recommendation summary
 - **DEFER** the full pipeline-state / PSO-key contract. Blocker = shader-variant non-enumerability (`#define` wall + open-ended `gosMaterialVariation`).
-- **Prerequisite arc:** `SHADER-PERMUTATION-INVENTORY` → close material-define loop to a fixed enumeration → offline SPIR-V bake keyed by define-set (tooling 90% built: reflect.py + matrix harness). Single seam: `makeShader` `shader_builder.cpp:401`.
+- **Prerequisite arc:** `SHADER-PERMUTATION-INVENTORY` → close material-define loop to a fixed enumeration → offline SPIR-V bake keyed by define-set (tooling 90% built: reflect.py + matrix harness). Single seam: `makeShader` `GameOS/gameos/utils/shader_builder.cpp:638`.
 - **Partial GO now:** ship `check-pipeline-desc.py` + `pipeline-state-occupancy.{md,json}` (§6) — converts the 5-pipeline known quadrant into a checked contract without touching the wall.
 - **Stale-comment flags (doc-only, no edits made):** `ssboBindingsMask` is metadata-only (does not drive binding) — `PipelineDesc.h:70` could say so; `StaticPropAlphaTest` desc row is descriptive-only at runtime (`PipelineRegistry.cpp:14-16`).
 

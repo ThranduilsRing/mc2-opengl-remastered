@@ -1,3 +1,4 @@
+<!-- doc-status: stale | reviewed:2026-10-11 -->
 # RECON — FRAME-GRAPH-EXECUTOR-DRYRUN-RECON-1
 
 Per-frame observe-and-diff seam for the first safe executor step.
@@ -36,7 +37,7 @@ Signature: takes the fine-grained `PassIdentity` (not the coarse `RenderPassId`)
 2. If `MC2_RENDER_PASS_TELEMETRY=1` and on a sampled frame, emits `[RENDER_PASS v1]`
    with FBO GLuint, viewport, drawbuffers.
 
-There is also `beginPass(RenderCore::RenderPassId id)` at `render_contract.cpp:905`.
+There is also `beginPass(RenderCore::RenderPassId id)` at `mclib/render_contract.cpp:1241`.
 It calls `ambientProbeAtPassBegin` then runs the CONTRACT-3 resource-ordering audit
 (`MC2_RENDER_PASS_ORDER=1`). **`beginPass` is only called from tests and the harness
 — no live callsite in production render code.**
@@ -48,11 +49,11 @@ It calls `ambientProbeAtPassBegin` then runs the CONTRACT-3 resource-ordering au
 | Pass (kFramePassOrder slot) | Callsite | PassIdentity used |
 |---|---|---|
 | Shadow | NONE | — |
-| StaticPropOpaque | `gos_static_prop_batcher.cpp:5387` | `StaticProp` |
-| Terrain (LODChunk) | `gos_terrain_lod_chunk.cpp:628` | `TerrainBase` |
-| Terrain (gameos_graphics) | `gameos_graphics.cpp:7289` | `TerrainBase` |
-| MechOpaque | `tgl.cpp:3016` + `txmmgr.cpp:2361` | `OpaqueObject` |
-| TerrainDecal | `gameos_graphics.cpp:10247` | `TerrainDecal` |
+| StaticPropOpaque | `GameOS/gameos/gos_static_prop_batcher_submit.cpp:38` | `StaticProp` |
+| Terrain (LODChunk) | `GameOS/gameos/gos_terrain_lod_chunk_matalbedo.cpp:30` | `TerrainBase` |
+| Terrain (gameos_graphics) | `GameOS/gameos/gameos_graphics_tparams.cpp:184` | `TerrainBase` |
+| MechOpaque | `tgl.cpp:3016` + `mclib/txmmgr_render_phases.cpp:110` | `OpaqueObject` |
+| TerrainDecal | `GameOS/gameos/gameos_graphics_tparams.cpp:632` | `TerrainDecal` |
 | TerrainOverlay | `gameos_graphics.cpp:10053` | `TerrainOverlay` |
 | VFX | NONE | — |
 | Water | NONE | — |
@@ -211,7 +212,7 @@ Handoff states executor readiness ~35-45%. After a dry-run lands:
 
 **First safe executor-owned island candidate:** PostProcess.
 
-Evidence: (a) it has a `noteRenderPass` callsite (`gameosmain.cpp:606`), (b) its FBO
+Evidence: (a) it has a `noteRenderPass` callsite (`GameOS/gameos/gameosmain.cpp:793`), (b) its FBO
 target (`kPassFboTarget`) is intentionally not declared yet (timing-uncertain) but the
 probe data will resolve this, (c) it has no `producesTerrainLatch` or
 `reassertsColorMaskAllOn` side-effect that other passes depend on, (d) it is the last
@@ -295,7 +296,7 @@ reads the dump and exits 1 if `divergenceCount > 0` on a non-known-pending diver
   produce `ShadowDynamicMap` — if it silently skips, downstream passes read stale depth
   and no existing check catches it.
 
-- **`beginPass` / `endPass` are test-only today** (`render_contract.cpp:905/922`).
+- **`beginPass` / `endPass` are test-only today** (`mclib/render_contract.cpp:1258/922`).
   The CONTRACT-3 resource-ordering audit they implement is never exercised in live
   render code. This is the structural gap between "declared contracts pass offline" and
   "contracts checked at runtime per frame." The dry-run's `notePassFired` approach

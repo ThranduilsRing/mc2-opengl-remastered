@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # STATIC-PROP-LEGACY-PATH-CLASSIFY-1
 
 Read-only. Classifies the two non-`applyPipeline` static-prop paths left open by

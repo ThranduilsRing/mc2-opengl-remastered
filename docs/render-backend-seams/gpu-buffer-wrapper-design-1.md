@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # GPU-BUFFER-WRAPPER-DESIGN-1
 
 Design for a GpuBuffer / GpuRingBuffer RAII abstraction + a compile-time
@@ -80,7 +81,7 @@ global binding-point clobber.
 
 ### 1.3 Behavior-preservation requirements
 
-- Hitch accounting must survive. Tier-1 sites (gos_static_prop_batcher.cpp:986,
+- Hitch accounting must survive. Tier-1 sites (GameOS/gameos/gos_static_prop_batcher_state.cpp:210,
   :3874, :4049, :7615; all of gos_terrain_indirect.cpp) currently route through
   MC2_GL_BufferData. The wrapper upload()/uploadSub() MUST increment the same
   g_mc2HitchAccum.glBufferData* counters (mc2_hitch_trace.h:135-151) so the hitch
@@ -88,7 +89,7 @@ global binding-point clobber.
   wrapper, OR bump the accumulator directly. Recommend the latter for DSA (the macro
   hardcodes the bind-to-target form). See OD-4.
 - allowGrow orphan-realloc must match today MaterialGpu / light-SSBO grow behavior
-  (gameos_graphics.cpp:8531 LIGHT_DATA path): on grow, recreate storage and re-bind
+  (GameOS/gameos/gameos_graphics_hud.cpp:806 LIGHT_DATA path): on grow, recreate storage and re-bind
   base. Immutable buffers cannot grow -- assert.
 - KHR_debug label from debugTag (new; today buffers are unlabeled). Free win for
   RenderDoc / residency.
@@ -122,7 +123,7 @@ Mech batcher (gos_mech_batcher.cpp), canonical lifecycle:
    + glDeleteSync before delete.
 
 MECH_RING_FRAMES == STATIC_PROP_RING_FRAMES is static_assert-enforced
-(gos_mech_batcher.cpp:44) because a parity SSBO is shared -- the wrapper makes the
+(GameOS/gameos/gos_mech_batcher_internal.h:50) because a parity SSBO is shared -- the wrapper makes the
 depth a template parameter so this coupling is expressed once.
 
 Water thin-ring (gos_terrain_water_stream.cpp) is the NON-persistent-mapped variant:
@@ -156,7 +157,7 @@ strategies and both wait policies (OD-2).
         uint32_t currentSlot() const; GLsizeiptr perSlotBytesAligned() const;
     };
 
-ensureCapacity mirrors ensureRingCapacity (gos_mech_batcher.cpp:1692): must drain
+ensureCapacity mirrors ensureRingCapacity (GameOS/gameos/gos_mech_batcher_geometry.cpp:524): must drain
 fences before reallocating storage, then re-map. Growing a persistent-mapped
 immutable buffer == delete+recreate+remap (GL immutable storage cannot resize).
 

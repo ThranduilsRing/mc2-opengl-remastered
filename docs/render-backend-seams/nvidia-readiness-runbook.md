@@ -1,3 +1,4 @@
+<!-- doc-status: current | reviewed:2026-10-11 -->
 # NVIDIA-READINESS-AUDIT-1 — first-NVIDIA-run runbook
 
 Readiness-ONLY. This is not a fix and not seam governance — it is a pre-flight so the first
