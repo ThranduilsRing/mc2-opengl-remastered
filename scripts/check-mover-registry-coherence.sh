@@ -178,7 +178,7 @@ s2_pairing() {
 }
 
 # ---------------------------------------------------------------------------
-# S3: read-gate pins. $1 = objmgr.cpp, $2 = gametacmap.cpp, $3 = controlgui.cpp.
+# S3: read-gate pins. $1 = objmgr_pick.cpp (the pick paths and moverInRect), $2 = gametacmap.cpp, $3 = controlgui.cpp.
 # Hard pins print violations; advisory drift prints WARN lines to stdout with
 # an ADVISORY prefix (caller filters them out of the fail decision).
 # ---------------------------------------------------------------------------
@@ -188,7 +188,7 @@ s3_read_gates() {
     # HARD pin 1: moverInRect body keeps isOnGUI() (the #50 fix — selection).
     ln="$(grep -n 'GameObjectManager::moverInRect' "$objmgr" | head -1 | cut -d: -f1 || true)"
     if [ -z "${ln:-}" ]; then
-        echo "  S3: GameObjectManager::moverInRect not found in objmgr.cpp"
+        echo "  S3: GameObjectManager::moverInRect not found in objmgr_pick.cpp"
     else
         if ! sed -n "${ln},$((ln + 40))p" "$objmgr" | grep -q 'isOnGUI()'; then
             echo "  S3: moverInRect body lost its isOnGUI() gate (#50 selection class)"
@@ -212,7 +212,7 @@ s3_read_gates() {
 
     # ADVISORY: objmgr pick paths (4) + missiongui select-all trio (3).
     pick_n="$(grep -c 'obj->isOnGUI()' "$objmgr" || true)"
-    [ "$pick_n" -ge 4 ] || echo "  ADVISORY S3: objmgr.cpp pick-path obj->isOnGUI() count $pick_n < 4 (drift runtime-caught by I2/I5)"
+    [ "$pick_n" -ge 4 ] || echo "  ADVISORY S3: objmgr_pick.cpp pick-path obj->isOnGUI() count $pick_n < 4 (drift runtime-caught by I2/I5)"
 }
 
 s3_advisory_selectall() {
@@ -300,7 +300,7 @@ run_check() {
     v="$(s2_pairing "$ROOT/code/mech_update.cpp" "$mc_all")"
     [ -n "$v" ] && { echo "[mover-coherence] S2 FAIL:"; printf '%s\n' "$v"; fail=1; }
 
-    v="$(s3_read_gates "$ROOT/code/objmgr.cpp" "$ROOT/code/gametacmap.cpp" "$ROOT/code/controlgui.cpp"; s3_advisory_selectall "$ROOT"/code/missiongui*.cpp)"
+    v="$(s3_read_gates "$ROOT/code/objmgr_pick.cpp" "$ROOT/code/gametacmap.cpp" "$ROOT/code/controlgui.cpp"; s3_advisory_selectall "$ROOT"/code/missiongui*.cpp)"
     hard="$(printf '%s\n' "$v" | grep -v 'ADVISORY' | grep -v '^$' || true)"
     adv="$(printf '%s\n' "$v" | grep 'ADVISORY' || true)"
     [ -n "$hard" ] && { echo "[mover-coherence] S3 FAIL:"; printf '%s\n' "$hard"; fail=1; }

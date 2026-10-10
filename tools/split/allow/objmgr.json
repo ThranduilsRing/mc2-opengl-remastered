@@ -1,0 +1,22 @@
+{
+ "base": "3f0781643",
+ "src": "code/objmgr.cpp",
+ "stem": "objmgr",
+ "scripts": [
+  "scripts/check-gate-default-agreement.py",
+  "scripts/check-mover-registry-coherence.sh",
+  "scripts/check-vk-umbrella-readers.py",
+  "scripts/checklib.py",
+  "scripts/counter-honesty-allowlist.txt",
+  "scripts/gate_default_classifier.py",
+  "scripts/tests/test_fingerprint.py",
+  "tests/visual/bookmarks/mc2_10_building_faces.json",
+  "tools/gate_codemod.py",
+  "tools/objmgr_contract_harness/objmgr_contract_harness.cpp",
+  "tools/terrain_beautify/mission_terrain_analyzer.py",
+  "tools/terrain_beautify/scatter_tool.py"
+ ],
+ "_scripts_reason": "Reviewed: check-mover-registry-coherence reads the S3 moverInRect window and the pick-path isOnGUI count from objmgr_pick.cpp; counter-honesty keys the s_frames limiter to objmgr_update.cpp; check-vk-umbrella-readers pins the vfxArmed reader that stays in objmgr.cpp; test_fingerprint only classifies code/objmgr.cpp as a build input (the pieces classify the same way); the rest cite objmgr.cpp lines in comments or notes only; tools/gate_codemod.py and the gate classifiers (lane 1 gate tooling) list or cite the file and are not edited here.",
+ "exclude_files": [],
+ "split_commit": "PENDING"
+}
