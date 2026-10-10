@@ -8,6 +8,7 @@ point of the file; add a line each time. Host-load figures are what the runner a
 | 08:5x (G8) | tier1 attempts during G8 verification | mc2_03, mc2_10 | heartbeat_freeze_play | other agents' builds (noted in the G8 status) | yes (builds in mc2-lane2) | quiet rerun passed |
 | 15:56:51 | smoke-lite after the F4 data edit (`26f46e205`) | mc2_10 | heartbeat_freeze_play (p1% 2) | none (no build, no tidy running) | not checked | passed on the next run (15:58:09) |
 | 16:34:28 | tier1 at `9234a0393` after tidy batch 10 | mc2_24 | heartbeat_freeze_play (p1% 5) | none (the 4 preceding builds had finished) | not checked | mc2_24 alone passed twice (16:38:04, 16:38:54); full tier1 passed 5/5 (16:39:44) |
+| 18:3x | smoke-lite at `d8b7bae32` after header batch 2 (first launch of the redeployed exe) | mc2_10 | heartbeat_freeze_play (p1% 15) | host CPU at 100 % when checked right after; no build of mine running | not checked (lane 2 not queried) | see next run |
 
 Notes
 - Both 2026-10-10 15:5x/16:3x occurrences followed a deploy + first launch of a freshly written exe (cold shader/texture caches after a rebuild);
