@@ -285,17 +285,14 @@ void __stdcall gos_Free(void* ptr)
 // DETERMINISTIC-RNG-1: seedable per-process LCG behind gos_rand/gos_srand,
 // gated by MC2_DETERMINISTIC_RNG (default-OFF). When the gate is OFF every line
 // below is the original CRT srand/rand path => byte-identical to stock.
-static bool     s_detRngChecked = false;
-static bool     s_detRngEnabled = false;   // MC2_DETERMINISTIC_RNG=1
 static uint32_t s_lcg_state     = 0u;
 
+// MC2_DETERMINISTIC_RNG=1, read once on first use. A function-local static is initialised under the language's own lock,
+// so a gos_rand call on a worker thread cannot see the "checked" latch before the value (the old two-flag latch could).
 static inline bool gos_detRngEnabled()
 {
-    if (!s_detRngChecked) {
-        s_detRngChecked = true;
-        s_detRngEnabled = mc2::gate::get<"MC2_DETERMINISTIC_RNG">();
-    }
-    return s_detRngEnabled;
+    static const bool enabled = mc2::gate::get<"MC2_DETERMINISTIC_RNG">();
+    return enabled;
 }
 
 void __stdcall gos_srand(unsigned int seed)
