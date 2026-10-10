@@ -2,7 +2,7 @@
 # (e.g. restored comments): every line number in the spec is mapped through a line diff, and a block of inserted
 # lines directly above a phase's first line is taken into that phase. BASE is set to the new revision.
 # usage: py -3 tools/phase/ph_remap.py SPEC.py NEW_REV
-#   writes SPEC.py in place; refuses when the new file deletes or changes any old line.
+#   writes SPEC.py in place (deleted / replaced lines are fine as long as nothing in the spec points at them); refuses when the new file changes a line the spec points at.
 import difflib
 import importlib.util
 import re
@@ -37,12 +37,16 @@ for tag, i1, i2, j1, j2 in m.get_opcodes():
             mapping[i1 + k + 1] = j1 + k + 1
     elif tag == 'insert':
         inserted_above[i1 + 1] = j2 - j1
+    elif tag in ('delete', 'replace'):
+        pass                    # fine while nothing in the spec points at a deleted line (checked below)
     else:
-        sys.exit('the new revision changes or deletes old lines (%s %d-%d); remap by hand' % (tag, i1 + 1, i2))
+        sys.exit('unexpected diff opcode %s' % tag)
 
 
 def mp(n):
-    return mapping.get(n, n) if n else n
+    if n and n not in mapping:
+        sys.exit('spec line %d was deleted or changed in the new revision' % n)
+    return mapping[n] if n else n
 
 
 def start(n):

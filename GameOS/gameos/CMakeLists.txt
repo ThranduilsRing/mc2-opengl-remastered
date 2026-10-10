@@ -280,7 +280,7 @@ set_source_files_properties(
     PROPERTIES LANGUAGE C
 )
 
-set(MAIN_SRC gameosmain.cpp)
+set(MAIN_SRC gameosmain.cpp gameosmain_init.cpp gameosmain_frame.cpp)
 
 #find_package(SDL2 REQUIRED PATHS "/opt" NO_DEFAULT_PATH)
 #include_directories("${SDL2_PREFIX}/include")
