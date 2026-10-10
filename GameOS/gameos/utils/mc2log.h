@@ -222,6 +222,10 @@ void event(Stream s, std::format_string<A...> f, A&&... a) noexcept {
             MC2_LOG(cat, lvl, __VA_ARGS__);                                                   \
     } while (0)
 
+// Cost and placement: each distinct event signature adds about 0.6 KB of code and 7 KB of CodeView to its
+// translation unit (all vformat machinery is out of line in mc2log.cpp). Inside a per-element loop, call
+// the macro from a [[msvc::noinline]] helper; inlined there it cost the terrain-lighting parity pass a
+// third of its frame rate (.claude/cleanup/logging-facade-plan.md A10, A11).
 // Structured lines.  tag is a string literal, ver an int literal (use _NOVER for
 // legacy unversioned tags).  Events bypass the level filter; they obey only the
 // category toggle.  Stream matches the replaced call (Err = fprintf(stderr), Out = printf).
