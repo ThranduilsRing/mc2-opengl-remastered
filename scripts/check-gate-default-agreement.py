@@ -862,8 +862,10 @@ def comment_claims(lines, path, prose=False):
 def _tracked_md(root):
     """Tracked *.md paths (forward slashes, relative to root), or None when git cannot say."""
     import subprocess
+    import console_child   # scripts/: console children without a window or a conhost each
     try:
-        r = subprocess.run(["git", "-C", root, "ls-files", "--", "*.md"], capture_output=True, text=True, timeout=60)
+        r = subprocess.run(["git", "-C", root, "ls-files", "--", "*.md"], capture_output=True, text=True, timeout=60,
+                           **console_child.child_kwargs(redirected=True))
     except (OSError, subprocess.SubprocessError):
         return None
     if r.returncode != 0:

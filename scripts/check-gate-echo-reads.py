@@ -31,6 +31,7 @@ EXTS = (".cpp", ".h", ".hpp", ".cc", ".inl")
 # file -> max lines calling envText( ; why the name is truly dynamic there
 ENVTEXT_ALLOWED = {
     "GameOS/gameos/gameosmain.cpp": 2,   # the launcher_env.json apply asks "did the shell already set this key?"
+    "GameOS/gameos/gos_dev_shell.cpp": 1,  # the dev shell's get_gate answers for a variable NAME the client sends
 }
 # Gates/ defines the two readers; the ratchet cares about their callers.
 DEFINING_DIR = "Gates/"
