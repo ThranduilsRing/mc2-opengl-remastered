@@ -122,6 +122,7 @@ extern int g_terrainMaterialProfile;
 #include "../../RenderCore/terrain_path_telemetry.h"  // TERRAIN-PATH-TELEMETRY-1
 #include "../../RenderCore/RenderResourceRegistry.h"  // LIGHTDATA-SSBO-OWNER-1: registry + ids
 #include "../../RenderCore/GpuBufferOwner.h"           // LIGHTDATA-SSBO-OWNER-1: owner record
+#include "../../RenderCore/axis_convert.h"             // mc2ToRender: the one spelling of (x,y,z)->(-x,z,y)
 extern const float*     gos_GetTerrainMVPMat4();
 
 static const DWORD INVALID_TEXTURE_ID = 0;
@@ -3458,9 +3459,10 @@ void gosRenderer::renderWaterFastPath(
         // documented Stuff->MC2 swap MC2=(-Stuff.x, Stuff.z, Stuff.y) here so the
         // reflect vdir + Fresnel + waveLOD respond to camera PITCH/zoom, not just
         // pan. (Other terrain/lighting consumers swap shader-side; water did not.)
-        const float camMC2[4] = { -terrain_camera_pos_.x, terrain_camera_pos_.z,
-                                   terrain_camera_pos_.y,  1.0f };
-        setMVec4      ("cameraPos", camMC2);  // water-v1 reflection/Fresnel (raw MC2)
+        vec4 camMC2;
+        mc2ToRender(camMC2, terrain_camera_pos_);
+        camMC2.w = 1.0f;
+        setMVec4      ("cameraPos", &camMC2.x);  // water-v1 reflection/Fresnel (raw MC2)
         // WATER-SUN-SPEC-2: these two uploads were DEAD from c50e99a6 until
         // WATER-SUN-SPEC-2 declared the matching uniforms in
         // shaders/gos_terrain_water_mdi.frag (neither name had ever existed in
