@@ -70,7 +70,7 @@
    "LG20": 15
   },
   "GuiRuntime": {
-   "LG01": 1,
+   "LG01": 0,
    "LG02": 0,
    "LG03": 0,
    "LG04": 0,
@@ -1517,7 +1517,6 @@
    "LG12b": 2
   },
   "GuiRuntime/GuiRuntime.cpp": {
-   "LG01": 1,
    "LG05": 2,
    "LG06": 8,
    "LG07": 2,
@@ -5643,7 +5642,7 @@
    "LG20": 2
   }
  },
- "head": "1c8f720af",
+ "head": "8334acdf2",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
