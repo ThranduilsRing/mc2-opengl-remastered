@@ -5,7 +5,7 @@
 generator_version: "3.0.0"
 gate_count: 1139
 registry_entry_count: 354
-verified_count: 415
+verified_count: 424
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -125,6 +125,7 @@ flags:
     owner: mech
     doc: "ANIM-CADENCE-FIX: advance mech gait at most once per render frame; prevents a visible double-step when Mover::getLOSPosition() re-invokes..."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_ANIM_CADENCE_FIX, kind: Feature, order: -1, default_on: true}
   - name: MC2_ANIM_CADENCE_GUARD
     kind: Bool
@@ -133,6 +134,7 @@ flags:
     owner: mech
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_APPEAR_AUDIT
     kind: Bool
     default: false
@@ -184,6 +186,7 @@ flags:
     rule: Presence
     owner: mech
     doc: "BT2018 mech import 1A: route mech geometry through the Assimp GLTF/FBX importer instead of the legacy MSL loader."
+    verified: true
     registry: {feature_id: MC2_FEATURE_ASSIMP_MECH_IMPORT, kind: Feature, order: -1, default_on: false}
   - name: MC2_ASSIMP_PAUSE_GATE
     kind: Bool
@@ -191,6 +194,7 @@ flags:
     rule: Lead0Kill
     owner: mech
     doc: ""
+    verified: true
   - name: MC2_ASSIMP_TRACE
     kind: Bool
     default: false
@@ -1676,6 +1680,7 @@ flags:
     owner: mech
     doc: "MC2_FX_COUNT_LOG=1: env-gated per-effect-site GOSFX draw counter for the Mech3DAppearance::render() effect sites."
     smoke_passthrough: true
+    verified: true
   - name: MC2_FX_DEFS
     kind: Bool
     default: false
@@ -3242,6 +3247,7 @@ flags:
     owner: mech
     doc: "MECH-LIGHTROW-FRESHNESS-1, amended by MECH-DECLINE-FIX-1: DEFAULT-ON."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_MECH_LIGHT_FRESHNESS, kind: Feature, order: 54, default_on: true}
   - name: MC2_MECH_LIGHT_TRACE
     kind: Bool
@@ -3255,6 +3261,7 @@ flags:
     rule: Presence
     owner: mech
     doc: "MC2_MECH_LOD_TRACE=1: per-actor LOD-swap boundary print."
+    verified: true
   - name: MC2_MECH_METAL_ROUGHNESS
     kind: Float
     default: 0.850000024
@@ -3324,6 +3331,7 @@ flags:
     rule: Presence
     owner: mech
     doc: ""
+    verified: true
   - name: MC2_MECH_RESTORE_TRACE
     kind: Bool
     default: false
@@ -3331,6 +3339,7 @@ flags:
     owner: mech
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_MECH_SKEL_BONE_DUMP
     kind: String
     default: ""

@@ -44,8 +44,8 @@ L(Presence, "MC2_AMBIENT_ASSERT_FATAL", Bool, false, "code", "", "", verified),
 // ~355 vars that stayed allowlisted (trace/override/infra/parity/legacy).
 // -------------------------------------------------------------------
 // history: docs/gate-history.md#MC2_ANIM_CADENCE_FIX
-L(Lead0Kill, "MC2_ANIM_CADENCE_FIX", Bool, true, "mech", "", "ANIM-CADENCE-FIX: advance mech gait at most once per render frame; prevents a visible double-step when Mover::getLOSPosition() re-invokes...", passthrough | registry(Feature, "MC2_FEATURE_ANIM_CADENCE_FIX", -1, true)),
-L(Presence, "MC2_ANIM_CADENCE_GUARD", Bool, false, "mech", "", "", passthrough),
+L(Lead0Kill, "MC2_ANIM_CADENCE_FIX", Bool, true, "mech", "", "ANIM-CADENCE-FIX: advance mech gait at most once per render frame; prevents a visible double-step when Mover::getLOSPosition() re-invokes...", passthrough | registry(Feature, "MC2_FEATURE_ANIM_CADENCE_FIX", -1, true) | verified),
+L(Presence, "MC2_ANIM_CADENCE_GUARD", Bool, false, "mech", "", "", passthrough | verified),
 // history: docs/gate-history.md#MC2_APPEAR_AUDIT
 L(Lead0, "MC2_APPEAR_AUDIT", Bool, false, "code", "", "META-FIX design B PART 4 (code/mission.cpp Mission::start beside mission_phase_mark('mission_ready')): default OFF, OBSERVATIONAL-FIRST.", passthrough | registry(Trace, "MC2_TRACE_APPEAR_AUDIT", -1, false)),
 // history: docs/gate-history.md#MC2_ASSET_FAILLOUD
@@ -56,8 +56,8 @@ L(Lead1, "MC2_ASSET_SCALE_TRACE", Bool, false, "gameos", "", ""),
 L(Lead0, "MC2_ASSET_TRACE", Bool, false, "code", "", "META-FIX design B PART 0 companion (mclib/msl.cpp loader chokepoint): =1 additionally logs '[ASSET_LOAD v1] event=file_missing ...' for MISSING files at the...", passthrough | registry(Trace, "MC2_TRACE_ASSET_TRACE", -1, false) | verified),
 L(Lead0Kill, "MC2_ASSIMP_IMPORT", Bool, true, "code", "", "", verified),
 // history: docs/gate-history.md#MC2_ASSIMP_MECH_IMPORT
-L(Presence, "MC2_ASSIMP_MECH_IMPORT", Bool, false, "mech", "", "BT2018 mech import 1A: route mech geometry through the Assimp GLTF/FBX importer instead of the legacy MSL loader.", registry(Feature, "MC2_FEATURE_ASSIMP_MECH_IMPORT", -1, false)),
-L(Lead0Kill, "MC2_ASSIMP_PAUSE_GATE", Bool, true, "mech", "", ""),
+L(Presence, "MC2_ASSIMP_MECH_IMPORT", Bool, false, "mech", "", "BT2018 mech import 1A: route mech geometry through the Assimp GLTF/FBX importer instead of the legacy MSL loader.", registry(Feature, "MC2_FEATURE_ASSIMP_MECH_IMPORT", -1, false) | verified),
+L(Lead0Kill, "MC2_ASSIMP_PAUSE_GATE", Bool, true, "mech", "", "", verified),
 // TRACKV-CI-GATE-RESTORE-1 diagnostic trace vars
 // history: docs/gate-history.md#MC2_ASSIMP_TRACE
 L(Presence, "MC2_ASSIMP_TRACE", Bool, false, "code", "", "TRACKV-CI-GATE-RESTORE-1: verbose Assimp loader trace.", registry(Trace, "MC2_TRACE_ASSIMP_TRACE", -1, false) | verified),
@@ -347,7 +347,7 @@ P("MC2_FXAA_EDGE_THRESHOLD_MIN", Float, 0.0, "post", "", "", passthrough),  // d
 P("MC2_FXAA_SUBPIX", Float, 0.0, "post", "", "", passthrough),  // default not derivable from the tree
 // history: docs/gate-history.md#MC2_FX_COST_SPLIT
 L(Exact1, "MC2_FX_COST_SPLIT", Bool, false, "code", "", "FX cost-split instrumentation (default-off).", passthrough | registry(Feature, "MC2_FX_COST_SPLIT", -1, false) | verified),
-L(Presence, "MC2_FX_COUNT_LOG", Bool, false, "mech", "", "MC2_FX_COUNT_LOG=1: env-gated per-effect-site GOSFX draw counter for the Mech3DAppearance::render() effect sites.", passthrough),
+L(Presence, "MC2_FX_COUNT_LOG", Bool, false, "mech", "", "MC2_FX_COUNT_LOG=1: env-gated per-effect-site GOSFX draw counter for the Mech3DAppearance::render() effect sites.", passthrough | verified),
 // FX-DEFS-SIDECAR-1: EffectDef JSON overlay (VFX-MODERNIZATION-PROPOSAL-1 slice 1)
 // history: docs/gate-history.md#MC2_FX_DEFS
 L(Presence, "MC2_FX_DEFS", Bool, false, "mech", "", "FX-DEFS-SIDECAR-1: per-effect JSON sidecar overlay for the gosFX spec catalog (mc2::particles::SpecLibrary).", passthrough | registry(Feature, "MC2_FX_DEFS", -1, false)),
@@ -659,9 +659,9 @@ P("MC2_MECH_IMPORT_GPU_LIFT_AXIS", Int, 1, "code", "", "", verified),
 // MUST STAY LAST -- kFeatureTable is indexed by RendererFeature, so this
 // entry's position is its enum value (62).
 // history: docs/gate-history.md#MC2_MECH_LIGHT_FRESHNESS
-L(Lead0Kill, "MC2_MECH_LIGHT_FRESHNESS", Bool, true, "mech", "", "MECH-LIGHTROW-FRESHNESS-1, amended by MECH-DECLINE-FIX-1: DEFAULT-ON.", passthrough | registry(Feature, "MC2_MECH_LIGHT_FRESHNESS", 54, true)),
+L(Lead0Kill, "MC2_MECH_LIGHT_FRESHNESS", Bool, true, "mech", "", "MECH-LIGHTROW-FRESHNESS-1, amended by MECH-DECLINE-FIX-1: DEFAULT-ON.", passthrough | registry(Feature, "MC2_MECH_LIGHT_FRESHNESS", 54, true) | verified),
 L(Presence, "MC2_MECH_LIGHT_TRACE", Bool, false, "mech", "", ""),
-L(Presence, "MC2_MECH_LOD_TRACE", Bool, false, "mech", "", "MC2_MECH_LOD_TRACE=1: per-actor LOD-swap boundary print."),
+L(Presence, "MC2_MECH_LOD_TRACE", Bool, false, "mech", "", "MC2_MECH_LOD_TRACE=1: per-actor LOD-swap boundary print.", verified),
 P("MC2_MECH_METAL_ROUGHNESS", Float, 0.85, "mech", "", "", range(0.04, 1.0)),
 L(Presence, "MC2_MECH_NODE_DIAG", Bool, false, "mech", "", "", verified),
 L(Presence, "MC2_MECH_NODE_TRACE", Bool, false, "mech", "", ""),
@@ -672,8 +672,8 @@ L(Lead0, "MC2_MECH_PICK", Bool, false, "code", "", ""),
 L(Lead0, "MC2_MECH_PICK_DEBUG", Bool, false, "code", "", ""),
 L(Lead0, "MC2_MECH_PICK_PIERCE_FOG", Bool, false, "code", "", ""),
 L(Lead0, "MC2_MECH_PICK_SELFTEST", Bool, false, "mech", "", ""),
-L(Presence, "MC2_MECH_PREVIEW_TRACE", Bool, false, "mech", "", ""),
-L(Presence, "MC2_MECH_RESTORE_TRACE", Bool, false, "mech", "", "", passthrough),
+L(Presence, "MC2_MECH_PREVIEW_TRACE", Bool, false, "mech", "", "", verified),
+L(Presence, "MC2_MECH_RESTORE_TRACE", Bool, false, "mech", "", "", passthrough | verified),
 G("MC2_MECH_SKEL_BONE_DUMP", String, "", "code", "", "MECH-BONE-PARITY-GATE-1: dump the engine's REST joint-global bone matrices (the same mc2skel output the bake consumes) as JSON when...", verified),
 P("MC2_MECH_SKEL_HEIGHT", Float, 50.0, "code", "", "", verified),
 L(Presence, "MC2_MECH_SKEL_TRACE", Bool, false, "code", "", "BT2018-SKEL-ENGINE-1A - bind-pose bake trace (default OFF).", verified),
