@@ -8,7 +8,7 @@ Rotated lane-2 agent #2 (started 2026-10-10 17:58). Phase-helper round 3 is merg
 - Split 1 dd946d83d mclib/abldbug.cpp 1319 -> 753 + abldbug_print.cpp 488 + abldbug_internal.h.
 - Split 2 0196b20c5 mclib/genactor.cpp 1297 -> 730 + genactor_frame.cpp 498 + genactor_internal.h.
 - Pair 1 verified: build, doctest 704, harnesses 20/20, board 164/165 (doc_links only), smoke-lite 2/2, captures GL x2 + VK mc2_01/mc2_10
-  (before-vs-after DIFF the same size and place as before-vs-before noise). All-targets build owed once after the nifty merge (see below).
+  (before-vs-after DIFF the same size and place as before-vs-before noise). build_all_targets: every stage built (887d9d1f9).
 
 ## Next (queue, largest first; each needs a census read before cutting)
 - code/logisticsmissioninfo.cpp 1316 (3 pieces: core 500 / progress 377 / query 411) - cfg .claude/l2cfg/lm_cfg.py, generated pieces parked in /tmp/l2/hold
