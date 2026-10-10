@@ -248,10 +248,10 @@ extern uint32_t g_mc2FrameCounter;
 // GL. The frame loop retries EnginePresentVk::init once the drawable is
 // non-zero; until then VK present is simply skipped (GL swap runs, the
 // umbrella family stays armed for when present comes up).
-static bool g_vkPresentInitDeferred = false;
+bool g_vkPresentInitDeferred = false;
 // Failed deferred-retry attempts while the drawable was visible (non-zero).
 // Minimized frames never count — a minimized boot defers indefinitely by design.
-static unsigned g_vkPresentRetryFails = 0;
+unsigned g_vkPresentRetryFails = 0;
 
 // Force discrete GPU selection on hybrid-graphics laptops (NVIDIA Optimus,
 // AMD PowerXpress). Without these exports, an unknown OpenGL executable is
@@ -887,23 +887,23 @@ const char* getStringForSeverity(GLenum type)
 	default: return "(undefined)";
 	}
 }
-namespace {
+// External linkage: the gameosmain_*.cpp pieces call startup_phase().
     // Startup phase timing. Anchor at the top of main(). Cheap printfs --
     // total cost is microseconds, but the signal for triage is high.
-    static Uint64 g_startup_t0 = 0;
-    static double startup_elapsed() {
+    Uint64 g_startup_t0 = 0;
+    double startup_elapsed() {
         const Uint64 now = SDL_GetPerformanceCounter();
         const double freq = (double)SDL_GetPerformanceFrequency();
         return (double)(now - g_startup_t0) / freq;
     }
-    static void startup_phase(const char* name) {
+    void startup_phase(const char* name) {
         printf("[TIME] t=%6.2fs  phase=%s\n", startup_elapsed(), name);
         if (SmokeMode::state().enabled) {
             // Emit canonical smoke-line for the same milestone.
             SmokeMode::emitTiming(name);
         }
     }
-}
+// (end of the startup phase helpers)
 
 // Mission-load phase timing. Exposed (file-scope linkage, not namespaced)
 // so code/mission.cpp can declare these by forward-decl and call into them
