@@ -1,0 +1,3 @@
+# Needles comment_guard cannot find by scanning the repo: comments read by tools that live outside it.
+# One per line: `needle  # reason`. A `re:` prefix makes the needle a regex; a comment containing a match is protected.
+re:\[PROJECTZ:[A-Za-z]+ id=[^\]]+\]  # external oracle tool reads these cross-reference ids

@@ -589,3 +589,60 @@ def test_mixed_line_endings_fail(tmp_path):
 def test_bom_change_fails_even_with_uniform_endings(tmp_path):
     rc, out = _eol_pair(tmp_path, b"\xef\xbb\xbfint z;\r\nint a;\r\n", b"int z;\nint a;\n")
     assert rc == 1 and "BOM removed" in out, out
+
+
+# ---------------------------------------------------------------- external needles file, MFC ClassWizard markers
+PROJECTZ = "re:\\[PROJECTZ:[A-Za-z]+ id=[^\\]]+\\]  # external oracle tool reads these ids\n"
+
+
+def _oracle_repo(repo, needles_text):
+    _write(repo / "tools" / "comment_guard_needles.txt", needles_text)
+    _write(repo / "code" / "a.cpp", "void f() {\n\t// [PROJECTZ:ScreenXYOracle id=a_screen]\n\tg();\n}\n")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-q", "-m", "base")
+    _write(repo / "code" / "a.cpp", "void f() {\n\tg();\n}\n")
+
+
+def test_cli_external_regex_needle_protects_oracle_id(repo):
+    _oracle_repo(repo, PROJECTZ)
+    rc, out = _run("--repo", str(repo), "--check", str(repo / "code" / "a.cpp"))
+    assert rc == 1 and "PROJECTZ:ScreenXYOracle id=a_screen" in out and "comment_guard_needles.txt (external)" in out, out
+
+
+def test_cli_without_a_needles_file_the_id_comment_is_plain(repo):
+    _oracle_repo(repo, "# no needles\n")
+    rc, out = _run("--repo", str(repo), "--check", str(repo / "code" / "a.cpp"))
+    assert rc == 0, out
+
+
+def test_cli_needles_marks_external_entries(repo):
+    _write(repo / "tools" / "comment_guard_needles.txt", PROJECTZ + "OUTSIDE-READER-9  # literal one\n")
+    rc, out = _run("--repo", str(repo), "--needles")
+    lines = out.strip().splitlines()
+    assert rc == 0
+    assert "OUTSIDE-READER-9\ttools/comment_guard_needles.txt (external)" in lines, out
+    assert any(l.startswith("re:") and l.endswith("(external)") for l in lines), out
+
+
+def test_cli_malformed_needles_line_is_a_usage_error(repo):
+    _oracle_repo(repo, PROJECTZ)
+    for bad in ("OUTSIDE-READER-9\n", "re:(unclosed  # reason\n", "re:a*  # matches the empty string\n"):
+        _write(repo / "tools" / "comment_guard_needles.txt", PROJECTZ + bad)
+        rc, out = _run("--repo", str(repo), "--check", str(repo / "code" / "a.cpp"))
+        assert rc == 2, (bad, out)
+        assert _run("--repo", str(repo), "--needles")[0] == 2
+
+
+def test_real_needles_file_is_well_formed_and_seeded():
+    with open(os.path.join(HERE, "comment_guard_needles.txt"), encoding="utf-8") as fh:
+        lits, res = cg.parse_needle_file(fh.read())
+    assert any("PROJECTZ" in src for _rx, src, _l in res)
+    assert any(rx.search("[PROJECTZ:SelectionPicking id=x_1]") for rx, _s, _l in res)
+
+
+def test_mfc_classwizard_markers_survive_the_cli(tmp_path):
+    base, new = tmp_path / "b.cpp", tmp_path / "n.cpp"
+    _write(base, "class C {\n\t//{{AFX_MSG(C)\n\tvoid f();\n\t//}}AFX_MSG\n};\n")
+    _write(new, "class C {\n\tvoid f();\n};\n")
+    rc, out = _run("--repo", str(tmp_path), "--base-file", str(base), str(new))
+    assert rc == 1 and "ClassWizard" in out, out
