@@ -24,4 +24,12 @@
 #include "inifile.h"   // FitIniFile — same header used by _ai.fit loader
 #include "Gates/gate.h"
 
+// Dispatch helpers the effect handlers call (brain_special_dispatch.cpp).
+bool s_tacticWeightsBEnabled();
+bool emitBrainIntent(MechBrainRuntime* runtime, int warriorId, TacticalOrderCode orderType, int targetWID,
+                     float wx, float wy, float wz, uint32_t sourceBodyId);
+bool emitBrainClearMoveIntent(MechBrainRuntime* runtime, int warriorId);
+bool emitBrainTargetPolicyIntent(MechBrainRuntime* runtime, int warriorId,
+                                 long slot, long type, long p1, long p2, long p3);
+
 #endif  // CODE_BRAIN_SPECIAL_INTERNAL_H

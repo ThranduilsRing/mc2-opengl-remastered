@@ -218,7 +218,7 @@ static bool s_brainCommitPhaseEnabled() {
 // under MC2_TACTIC_WEIGHTS) is written into the attack order's attackParams.tactic.
 // Needs BOTH gates: WEIGHTS to populate selectedTactic, WEIGHTS_B to wire it. With B
 // OFF the field is left at its init default (TACTIC_NONE) → byte-identical to pre-B.
-static bool s_tacticWeightsBEnabled() {
+bool s_tacticWeightsBEnabled() {
     static const bool kGate = mc2::gate::get<"MC2_TACTIC_WEIGHTS_B">();
     return kGate;
 }
@@ -888,10 +888,10 @@ bool s_brainSnapshotEnabled() {
 // Pushes one BrainOrderIntent onto runtime->pendingIntents[].
 // Returns true if pushed, false if buffer full (soft-fail; rare — cap is 4).
 // Caller must check gate before calling.
-static bool emitBrainIntent(MechBrainRuntime* runtime, int warriorId,
-                             TacticalOrderCode orderType, int targetWID,
-                             float wx, float wy, float wz,
-                             uint32_t sourceBodyId) {
+bool emitBrainIntent(MechBrainRuntime* runtime, int warriorId,
+                     TacticalOrderCode orderType, int targetWID,
+                     float wx, float wy, float wz,
+                     uint32_t sourceBodyId) {
     if (!runtime) return false;
     if (runtime->pendingIntentCount >= kBrainIntentCap) {
         std::fprintf(stderr, "[BRAIN_INTENT_EMIT_OVERFLOW] wid=%d order=%d cap=%d\n",
@@ -916,7 +916,7 @@ static bool emitBrainIntent(MechBrainRuntime* runtime, int warriorId,
 // DISPATCH-INTENT-CLEARMOVEORDERS-1: emit a CLEAR_MOVE intent (movement-queue scrub).
 // Intent-only — the actual warrior->clearMoveOrders() runs in commitBrainIntents (the sole
 // contract-permitted mutator). Mirrors emitBrainIntent's overflow + tick-stamp handling.
-static bool emitBrainClearMoveIntent(MechBrainRuntime* runtime, int warriorId) {
+bool emitBrainClearMoveIntent(MechBrainRuntime* runtime, int warriorId) {
     if (!runtime) return false;
     if (runtime->pendingIntentCount >= kBrainIntentCap) {
         std::fprintf(stderr, "[BRAIN_INTENT_EMIT_OVERFLOW] wid=%d order=CLEAR_MOVE cap=%d\n",
@@ -941,8 +941,8 @@ static bool emitBrainClearMoveIntent(MechBrainRuntime* runtime, int warriorId) {
 // UNITQUERY-SETTARGETPRIORITY-1: emit a TARGET_POLICY intent (per-warrior target-priority
 // list write). Applied via MechWarrior::setTargetPriority() in commitBrainIntents (the sole
 // permitted mutator). policyArgs = {slot,type,param1,param2,param3} (already symbol-resolved).
-static bool emitBrainTargetPolicyIntent(MechBrainRuntime* runtime, int warriorId,
-                                        long slot, long type, long p1, long p2, long p3) {
+bool emitBrainTargetPolicyIntent(MechBrainRuntime* runtime, int warriorId,
+                                 long slot, long type, long p1, long p2, long p3) {
     if (!runtime) return false;
     if (runtime->pendingIntentCount >= kBrainIntentCap) {
         std::fprintf(stderr, "[BRAIN_INTENT_EMIT_OVERFLOW] wid=%d order=TARGET_POLICY cap=%d\n",
