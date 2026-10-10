@@ -44,6 +44,9 @@ import os
 import re
 import subprocess
 import sys
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 # --- constants -------------------------------------------------------------
 
@@ -70,7 +73,7 @@ def git(args, cwd=REPO_ROOT, check=True):
     proc = subprocess.run(
         ["git", "-C", cwd] + args,
         capture_output=True, text=True,
-        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        **console_child.child_kwargs(redirected=True),
     )
     if check and proc.returncode != 0:
         sys.stderr.write(

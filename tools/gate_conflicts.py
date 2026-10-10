@@ -51,6 +51,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
 import gate_idioms as gi  # noqa: E402
+import console_child  # noqa: E402  (windowless console children without a conhost each)
 
 SCAN_DIRS = ["code", "mclib", "GameOS", "RenderCore", "GuiRuntime", "RenderWorld",
              "GameAdapters", "HostServices", "editor", "gui"]
@@ -142,7 +143,8 @@ class Tree:
 
     def _git(self, args, inp=None):
         return subprocess.run(["git"] + args, cwd=self.root, input=inp, stdout=subprocess.PIPE,
-                              stderr=subprocess.PIPE, check=True).stdout
+                              stderr=subprocess.PIPE, check=True,
+                              **console_child.child_kwargs(redirected=True)).stdout
 
     def list(self, dirs, exts, root_level=False):
         """Relative paths under `dirs` (or the top level only) with one of `exts`."""

@@ -18,6 +18,9 @@ from unit_converter import equipment_emit as emit          # noqa: E402
 from unit_converter import equipment_extract as extract     # noqa: E402
 from unit_converter import equipment_model as EM            # noqa: E402
 from unit_converter import equipment_converter as cli       # noqa: E402
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 FIXTURE = os.path.join(_HERE, "tests", "fixtures", "stock")
@@ -177,7 +180,7 @@ def _run_json(seed):
     env = dict(os.environ, PYTHONHASHSEED=str(seed))
     out = subprocess.check_output(
         [sys.executable, os.path.join(_HERE, "equipment_converter.py"), "--json"],
-        env=env, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        env=env, **console_child.child_kwargs(redirected=True))
     return out
 
 

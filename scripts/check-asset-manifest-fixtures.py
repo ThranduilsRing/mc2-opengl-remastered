@@ -24,6 +24,9 @@ Exit 0 = every fixture matched its expected verdict. Exit 1 = a mismatch.
 import subprocess
 import sys
 from pathlib import Path
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 ROOT = SCRIPT_DIR.parent
@@ -37,7 +40,7 @@ def run_validator(path: Path) -> int:
     proc = subprocess.run(
         [sys.executable, str(VALIDATOR), str(path), "--quiet"],
         capture_output=True, text=True,
-        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        **console_child.child_kwargs(redirected=True),
     )
     return proc.returncode, proc.stdout + proc.stderr
 

@@ -28,6 +28,9 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 HERE = Path(__file__).resolve().parent
 CHECKER = HERE / "check-sampler-bindings.py"
@@ -71,7 +74,7 @@ def run(root: Path, tmp: Path, tag: str) -> dict:
     out = tmp / f"report_{tag}.json"
     subprocess.run([sys.executable, str(CHECKER), "--root", str(root),
                     "--json", str(out), "--quiet"],
-                   capture_output=True, text=True, timeout=180, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                   capture_output=True, text=True, timeout=180, **console_child.child_kwargs(redirected=True))
     return json.loads(out.read_text(encoding="utf-8"))
 
 

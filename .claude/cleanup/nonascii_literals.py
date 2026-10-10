@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """Report non-ASCII characters that sit inside string/char literals (not comments) in first-party C++ sources."""
 import subprocess, os, sys, collections, re
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 roots = ["code","mclib","GameOS","RenderCore","RenderWorld","GameAdapters","gui","EditorBridge","GuiRuntime","editor","tools/mc2_launcher","tools/asset_viewer","HostServices"]
 ext = {".cpp",".h",".hpp",".c",".inl"}
-files = subprocess.run(["git","ls-files"],capture_output=True,text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)).stdout.split("\n")
+files = subprocess.run(["git","ls-files"],capture_output=True,text=True, **console_child.child_kwargs(redirected=True)).stdout.split("\n")
 out = collections.defaultdict(list); scanned = 0
 for f in files:
     if "3rdparty" in f or not any(f.startswith(r+"/") for r in roots): continue

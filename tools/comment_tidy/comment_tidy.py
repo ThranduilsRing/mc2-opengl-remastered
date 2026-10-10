@@ -28,6 +28,9 @@ import re
 import subprocess
 import sys
 import time
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 SCOPE_DIRS = ["GameOS", "mclib", "code", "RenderCore", "GuiRuntime", "shaders", "scripts", "tools"]
 EXCLUDE_TOP = {"3rdparty", "data", "graphify-out"}
@@ -206,7 +209,7 @@ ENV_TOK = re.compile(r"\bMC2_[A-Z0-9][A-Z0-9_]*")
 def git(root, *args, check=False, input=None):
     try:
         r = subprocess.run(["git", "-C", root, *args], capture_output=True, input=input,
-                           timeout=300, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                           timeout=300, **console_child.child_kwargs(redirected=True))
     except Exception:
         return None
     if r.returncode != 0:

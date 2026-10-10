@@ -122,7 +122,7 @@ def run_mc2mod(args: List[str]) -> Tuple[int, str]:
     """Run mc2mod.py with args; return (rc, combined-output). Output is echoed."""
     cmd = [sys.executable, str(MC2MOD)] + args
     log("$ mc2mod " + " ".join(args))
-    proc = subprocess.run(cmd, capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    proc = subprocess.run(cmd, capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
     out = (proc.stdout or "") + (proc.stderr or "")
     for line in out.splitlines():
         log("  | " + line)

@@ -11,6 +11,9 @@ import subprocess
 import sys
 
 import pytest
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 _spec = importlib.util.spec_from_file_location("axis_swizzle_ratchet", os.path.join(ROOT, "tools", "axis_swizzle_ratchet.py"))
@@ -203,7 +206,7 @@ def test_check_dir_move_only_warns():
 # ---------------------------------------------------------------- end to end on a git repo
 def _git(repo, *args):
     return subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false"] + list(args),
-                          cwd=repo, check=True, capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)).stdout
+                          cwd=repo, check=True, capture_output=True, text=True, **console_child.child_kwargs(redirected=True)).stdout
 
 
 @pytest.fixture()

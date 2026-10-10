@@ -20,6 +20,9 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 REPO_ROOT = Path(__file__).parent.parent.parent
 COOK_SCRIPT = REPO_ROOT / "tools" / "asset_cook" / "trackg_cook.py"
@@ -167,7 +170,7 @@ def build_models_json(families, cooked_glb_paths):
 
 def _run(cmd, label):
     print(f"  [{label}] {' '.join(str(c) for c in cmd)}")
-    result = subprocess.run([str(c) for c in cmd], capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    result = subprocess.run([str(c) for c in cmd], capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
     if result.returncode != 0:
         print(f"  FAILED:\n{result.stderr}", file=sys.stderr)
         raise RuntimeError(f"{label} failed (exit {result.returncode})")
@@ -218,7 +221,7 @@ for geom_name, geom in scene.geometry.items():
     result = subprocess.run(
         [sys.executable, "-c", extract_script],
         capture_output=True, text=True,
-        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        **console_child.child_kwargs(redirected=True),
     )
     if result.returncode != 0:
         print(f"  WARNING: texture extraction issues:\n{result.stderr}", file=sys.stderr)

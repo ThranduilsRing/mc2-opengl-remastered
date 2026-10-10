@@ -17,6 +17,9 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "..", "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 HERE = Path(__file__).resolve().parent
 COOK = HERE.parent / "trackg_cook.py"
@@ -63,7 +66,7 @@ def main() -> int:
             [sys.executable, str(COOK), "textures", "--staged", str(sp),
              "--texture-dir", str(texdir), "--out-root", str(deploy),
              "--out-json", str(outj), "--tiers", ",".join(map(str, TIERS))],
-            capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+            capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
         if proc.returncode != 0:
             print("FAIL textures exited nonzero:\n" + proc.stdout + proc.stderr)
             return 1

@@ -45,6 +45,9 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SDK_DEFAULT = r"C:\VulkanSDK\1.4.350.0"
@@ -313,7 +316,7 @@ def type_size(types, tname, base_scalar):
 def reflect_shader(glslc, cross, src, outdir, incdir):
     base = os.path.basename(src)
     spv = os.path.join(outdir, base + ".spv")
-    r = subprocess.run([glslc, "-I", incdir, src, "-o", spv], capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    r = subprocess.run([glslc, "-I", incdir, src, "-o", spv], capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
     if r.returncode != 0:
         return base, None, "glslc failed: " + r.stderr.strip().splitlines()[0] if r.stderr.strip() else "glslc failed"
     r = subprocess.run([cross, spv, "--reflect"], capture_output=True, text=True)

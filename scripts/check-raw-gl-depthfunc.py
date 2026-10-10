@@ -38,6 +38,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import checklib  # noqa: E402
+import console_child  # noqa: E402  (windowless console children without a conhost each)
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -121,7 +122,8 @@ def strip_comments(line):
 
 def git(args):
     return subprocess.run(["git"] + args, cwd=REPO_ROOT,
-                          capture_output=True, text=True, errors="replace")
+                          capture_output=True, text=True, errors="replace",
+                          **console_child.child_kwargs(redirected=True))
 
 
 def default_base():

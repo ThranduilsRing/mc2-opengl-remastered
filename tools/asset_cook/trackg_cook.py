@@ -35,6 +35,9 @@ import tempfile
 from pathlib import Path
 
 import numpy as np
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 KTX_CLI = r"A:/Games/mc2-tools/ktx/ktx.exe"
 DEFAULT_TIERS = (128, 256, 512, 1024)
@@ -419,7 +422,7 @@ def assemble(args) -> int:
     # validate the full manifest against the schema before writing
     mpath.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     rc = subprocess.run([sys.executable, str(Path(__file__).with_name("validate_asset_manifest.py")),
-                         str(mpath)], capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                         str(mpath)], capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
     if rc.returncode != 0:
         print("FAIL assemble: assembled manifest failed schema/coherence:\n" + rc.stdout + rc.stderr)
         return 1

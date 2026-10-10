@@ -50,6 +50,9 @@ import subprocess
 import sys
 from collections import defaultdict
 from pathlib import Path
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 ROOT = Path(__file__).resolve().parents[1]
 BOOKMARK_DIR = ROOT / "tests" / "visual" / "bookmarks"
@@ -85,7 +88,7 @@ def tracked_golden_pose_files() -> list[Path]:
     try:
         out = subprocess.run(
             ["git", "ls-files", "--", f"tests/visual/goldens/{GOLDEN_POSE_GLOB}"],
-            cwd=str(ROOT), capture_output=True, text=True, timeout=30, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+            cwd=str(ROOT), capture_output=True, text=True, timeout=30, **console_child.child_kwargs(redirected=True))
         if out.returncode == 0 and out.stdout.strip():
             return sorted(ROOT / line for line in out.stdout.split() if line)
     except Exception:
@@ -104,7 +107,7 @@ def tracked_bookmark_files() -> list[Path]:
     try:
         out = subprocess.run(
             ["git", "ls-files", "--", "tests/visual/bookmarks/*.json"],
-            cwd=str(ROOT), capture_output=True, text=True, timeout=30, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+            cwd=str(ROOT), capture_output=True, text=True, timeout=30, **console_child.child_kwargs(redirected=True))
         if out.returncode == 0 and out.stdout.strip():
             return sorted(ROOT / line for line in out.stdout.split() if line)
     except Exception:

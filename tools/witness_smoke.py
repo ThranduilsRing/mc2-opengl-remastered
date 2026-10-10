@@ -92,7 +92,7 @@ def main():
         cmd += ["--mission", m]
     print("[witness] smoke:", " ".join(cmd), flush=True)
     proc = subprocess.run(cmd, cwd=str(ROOT), env=env,
-                          capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                          capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
     smoke_rc = proc.returncode
     smoke_out = (proc.stdout or "") + (proc.stderr or "")
 

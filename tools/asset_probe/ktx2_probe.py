@@ -24,6 +24,9 @@ import struct
 import subprocess
 import sys
 from pathlib import Path
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 # --- Repo / output layout -------------------------------------------------
 THIS_DIR = Path(__file__).resolve().parent
@@ -65,7 +68,7 @@ def _cook(src: Path, preset: str, out_ktx2: Path) -> None:
         "--preset", preset,
         "--output", str(out_ktx2),
     ]
-    res = subprocess.run(cmd, capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    res = subprocess.run(cmd, capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
     if res.returncode != 0:
         raise RuntimeError(
             f"mc2texcook failed (preset={preset}, rc={res.returncode}):\n"

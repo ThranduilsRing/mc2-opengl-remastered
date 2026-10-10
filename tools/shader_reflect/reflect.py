@@ -29,6 +29,9 @@ _REFLECT_DIR = Path(__file__).resolve().parent
 ROOT = _REFLECT_DIR.parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 import shader_common
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 EXPECTED_DIR = _REFLECT_DIR / "expected"
 
@@ -338,7 +341,7 @@ def compile_to_spv(
             cmd += ["-G"]
         cmd += [str(tmp), "-o", str(spv_path)]
 
-        proc = subprocess.run(cmd, capture_output=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        proc = subprocess.run(cmd, capture_output=True, **console_child.child_kwargs(redirected=True))
         if proc.returncode != 0:
             diag = (_decode(proc.stdout) + _decode(proc.stderr)).strip()
             diag = diag.replace(tmp.name, shader.name).replace(str(tmp), str(shader))

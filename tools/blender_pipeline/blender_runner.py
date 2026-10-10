@@ -21,6 +21,9 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 _FALLBACK_PROBES = [
     r"C:\Program Files\Blender Foundation\Blender 5.1\blender.exe",
@@ -94,7 +97,7 @@ def run_blender_script(blender_exe, script_path, args, cwd=None, log_path=None):
     proc = subprocess.run(
         cmd, capture_output=True, text=True, cwd=cwd,
         encoding="utf-8", errors="replace",
-        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        **console_child.child_kwargs(redirected=True),
     )
     if log_path:
         try:
@@ -120,6 +123,6 @@ if __name__ == "__main__":
         out = subprocess.run(
             [str(exe), "--background", "--version"],
             capture_output=True, text=True, encoding="utf-8", errors="replace",
-            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            **console_child.child_kwargs(redirected=True),
         )
         print(out.stdout.strip().splitlines()[0] if out.stdout else "(no version output)")

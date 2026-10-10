@@ -18,12 +18,15 @@ import argparse
 import os
 import subprocess
 import sys
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def git(args):
-    r = subprocess.run(["git"] + args, capture_output=True, text=True, cwd=REPO_ROOT, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    r = subprocess.run(["git"] + args, capture_output=True, text=True, cwd=REPO_ROOT, **console_child.child_kwargs(redirected=True))
     return r.stdout.rstrip(), r.returncode
 
 

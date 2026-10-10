@@ -136,6 +136,9 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPTS = ROOT / "scripts"
@@ -387,11 +390,11 @@ def tracked_files():
     ls-tree is also immune to GIT_INDEX_FILE, so a lane committing through a
     private index (the house convention) grades against the same truth."""
     r = subprocess.run(["git", "ls-tree", "-r", "--name-only", "HEAD", "scripts/"],
-                       cwd=ROOT, capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                       cwd=ROOT, capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
     names = {Path(p).name for p in r.stdout.splitlines()}
     # tools/ top level only: that is where the TOOLS_CHECK_RE checkers live.
     t = subprocess.run(["git", "ls-tree", "--name-only", "HEAD", "tools/"],
-                       cwd=ROOT, capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                       cwd=ROOT, capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
     names |= {Path(p).name for p in t.stdout.splitlines()}
     return names
 
@@ -402,7 +405,7 @@ def head_aggregator_text():
     both are briefly untracked while the lane is mid-flight. What hurts every
     clone is a COMMIT in which the row is tracked and the script is not."""
     r = subprocess.run(["git", "show", "HEAD:scripts/check-contracts.sh"],
-                       cwd=ROOT, capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                       cwd=ROOT, capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
     return r.stdout if r.returncode == 0 else ""
 
 
@@ -446,13 +449,13 @@ SCRIPT_IN_CMD_RE = re.compile(r"((?:scripts|tools)/[\w./+-]+\.(?:py|sh|ps1))")
 def tracked_paths():
     """Every path in HEAD. Same ledger as tracked_files(): HEAD, not the index."""
     r = subprocess.run(["git", "ls-tree", "-r", "--name-only", "HEAD"],
-                       cwd=ROOT, capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                       cwd=ROOT, capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
     return set(r.stdout.splitlines())
 
 
 def head_commit_message():
     r = subprocess.run(["git", "log", "-1", "--format=%B", "HEAD"],
-                       cwd=ROOT, capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                       cwd=ROOT, capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
     return r.stdout if r.returncode == 0 else ""
 
 
@@ -574,7 +577,7 @@ def externally_called(checks):
     # this working tree only; every clone still gets a dark check. Staging a
     # caller must not be able to clear arm (a) either.
     r = subprocess.run(["git", "ls-tree", "-r", "--name-only", "HEAD"], cwd=ROOT,
-                       capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                       capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
     surfaces = [p for p in r.stdout.splitlines()
                 if (p.endswith(CALLER_EXTS) or Path(p).name in ("CMakeLists.txt", "Makefile"))
                 and not p.startswith("graphify-out/")
@@ -859,7 +862,7 @@ def selftest():
     # fails here even if it never types the words "ls-files".
     _victim_path = next((p for p in subprocess.run(
         ["git", "ls-tree", "-r", "--name-only", "HEAD", "scripts/"],
-        cwd=ROOT, capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)).stdout.splitlines()
+        cwd=ROOT, capture_output=True, text=True, **console_child.child_kwargs(redirected=True)).stdout.splitlines()
         if Path(p).name in tracked), None)
     if not _victim_path:
         print("[selftest] FAIL  ledger probe -> HEAD lists no scripts/ file to "
@@ -870,10 +873,10 @@ def selftest():
             _idx = str(Path(_td) / "probe.index")
             _env = dict(os.environ, GIT_INDEX_FILE=_idx)
             subprocess.run(["git", "read-tree", "HEAD"], cwd=ROOT, env=_env,
-                           capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                           capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
             # the staged-revert state: committed file, absent from the index
             subprocess.run(["git", "rm", "--cached", "-q", "--", _victim_path],
-                           cwd=ROOT, env=_env, capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                           cwd=ROOT, env=_env, capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
             _saved = os.environ.get("GIT_INDEX_FILE")
             os.environ["GIT_INDEX_FILE"] = _idx
             try:

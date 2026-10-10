@@ -37,6 +37,9 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 KTX_DEFAULT = "A:/Games/mc2-tools/ktx/ktx.exe"
 
@@ -92,7 +95,7 @@ def cook_upscale(src: Path, dst: Path, scale: int, target_res: int,
                          str(uastc_path), str(dst)]
 
         for step_name, cmd in [("uastc encode", create_cmd), ("bc7 transcode", transcode_cmd)]:
-            r = subprocess.run(cmd, capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+            r = subprocess.run(cmd, capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
             if r.returncode != 0:
                 print(f"ERROR: {step_name} failed (rc={r.returncode}):",
                       file=sys.stderr)

@@ -105,3 +105,22 @@ def test_kwargs_forward_std_handles_when_headless(monkeypatch):
     assert kw["creationflags"] == 0x200 | console_child.CREATE_NO_WINDOW
     assert kw["stderr"] == subprocess.STDOUT, "caller's explicit stream wins"
     assert "stdout" in kw and "stdin" in kw
+
+
+@win32
+def test_redirected_headless_adds_only_the_flag(monkeypatch):
+    """A call that captures/redirects supplies its own std handles; forwarding ours
+    would raise 'stdout and stderr arguments may not be used with capture_output'."""
+    monkeypatch.setattr(console_child, "has_console", lambda: False)
+    kw = console_child.child_kwargs(redirected=True)
+    assert kw == {"creationflags": console_child.CREATE_NO_WINDOW}
+    # background-launch: allow kw is console_child.child_kwargs(redirected=True) output under a patched has_console
+    r = subprocess.run([sys.executable, "-c", "print('x')"], capture_output=True,
+                       text=True, **kw)
+    assert r.stdout.strip() == "x"
+
+
+def test_redirected_with_console_adds_nothing(monkeypatch):
+    """The conhost-per-child incident: a consoled parent must add no flag at all."""
+    monkeypatch.setattr(console_child, "has_console", lambda: True)
+    assert console_child.child_kwargs(redirected=True) == {}

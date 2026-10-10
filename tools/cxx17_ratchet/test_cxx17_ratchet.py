@@ -8,6 +8,9 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import cxx17_ratchet as r  # noqa: E402
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 
 def hits(src, path="x.cpp"):
@@ -221,7 +224,7 @@ class RawEnvReads(unittest.TestCase):
 
 def _git(cwd, *a):
     return subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t"] + list(a), cwd=cwd,
-                          stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                          stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True, **console_child.child_kwargs(redirected=True))
 
 
 class CommittedTree(unittest.TestCase):

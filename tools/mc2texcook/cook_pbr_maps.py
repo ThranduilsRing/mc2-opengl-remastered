@@ -30,6 +30,9 @@ import os
 import sys
 import subprocess
 import tempfile
+import os as _os, sys as _sys  # noqa: E401
+_sys.path.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "..", "scripts"))
+import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)
 
 DEFAULT_KTX_EXE = r'A:\Games\mc2-tools\ktx\ktx.exe'
 
@@ -107,7 +110,7 @@ def _ktx_create_uastc(ktx_exe, src_png, uastc_ktx2, vk_format, oetf, mips=False)
         src_png,
         uastc_ktx2,
     ]
-    result = subprocess.run(cmd, capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    result = subprocess.run(cmd, capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
     if result.returncode != 0:
         print(f'  ktx create failed (rc={result.returncode})', file=sys.stderr)
         if result.stderr:
@@ -124,7 +127,7 @@ def _ktx_transcode_bc7(ktx_exe, uastc_ktx2, out_ktx2):
         uastc_ktx2,
         out_ktx2,
     ]
-    result = subprocess.run(cmd, capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    result = subprocess.run(cmd, capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
     if result.returncode != 0:
         print(f'  ktx transcode failed (rc={result.returncode})', file=sys.stderr)
         if result.stderr:

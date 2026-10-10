@@ -56,11 +56,11 @@ def build_one(name, config):
         return False, f"no source dir tools/{name}/ (not a standalone C++ harness?)"
     cm = cmake_exe()
     cfg = subprocess.run([cm, "-S", src, "-B", bdir, "-A", "x64"],
-                         capture_output=True, text=True, cwd=REPO_ROOT, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                         capture_output=True, text=True, cwd=REPO_ROOT, **console_child.child_kwargs(redirected=True))
     if cfg.returncode != 0:
         return False, "configure failed:\n" + cfg.stderr.strip()[-600:]
     bld = subprocess.run([cm, "--build", bdir, "--config", config],
-                         capture_output=True, text=True, cwd=REPO_ROOT, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                         capture_output=True, text=True, cwd=REPO_ROOT, **console_child.child_kwargs(redirected=True))
     if bld.returncode != 0:
         tail = (bld.stdout + bld.stderr).strip().splitlines()[-8:]
         return False, "build failed:\n" + "\n".join(tail)
@@ -80,12 +80,12 @@ def build_and_run_unit_tests(config, run):
     bdir = os.path.join(REPO_ROOT, "build64-tests")
     cm = cmake_exe()
     cfg = subprocess.run([cm, "-S", src, "-B", bdir, "-A", "x64"],
-                         capture_output=True, text=True, cwd=REPO_ROOT, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                         capture_output=True, text=True, cwd=REPO_ROOT, **console_child.child_kwargs(redirected=True))
     if cfg.returncode != 0:
         return False, "configure failed:\n" + cfg.stderr.strip()[-600:]
     bld = subprocess.run([cm, "--build", bdir, "--config", config,
                           "--target", "mc2_tests"],
-                         capture_output=True, text=True, cwd=REPO_ROOT, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                         capture_output=True, text=True, cwd=REPO_ROOT, **console_child.child_kwargs(redirected=True))
     if bld.returncode != 0:
         tail = (bld.stdout + bld.stderr).strip().splitlines()[-8:]
         return False, "build failed:\n" + "\n".join(tail)
