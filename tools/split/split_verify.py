@@ -7,6 +7,8 @@ in a log string, and hoisted a mid-file include above the macro it needs; review
 Usage (library): split_cpp.py calls verify() after writing the pieces; a finding exits non-zero, nothing is installed.
 Usage (retro):   py -3 tools/split/split_verify.py --base REV --src code/mech.cpp --stem mech [--out-dir code] [--allow ALLOW.json]
                  [--run-selftests]   (REV = the commit before the split; the pieces are read from the worktree)
+                 [--at SPLIT_COMMIT]  read the pieces from the split commit instead of the worktree: a retro run pinned to the split
+                 cannot be failed by later edits to the pieces (the script-name scan is skipped, it asks about the current tree)
 ALLOW (config dict / JSON): {"edits": [[old_line, new_line], ...]   intentional line rewrites (both sides allowed),
                              "drop": [old_line, ...]                 old lines intentionally removed,
                              "add": [new_line, ...]                  new lines intentionally added,
@@ -326,20 +328,29 @@ def main():
     ap.add_argument("--out-dir")
     ap.add_argument("--allow")
     ap.add_argument("--run-selftests", action="store_true")
+    ap.add_argument("--at", help="read the pieces from this commit instead of the worktree (pin a retro run to the split commit; "
+                                 "later edits to the pieces then cannot fail it; the script-name scan is skipped)")
     a = ap.parse_args()
     out = a.out_dir or os.path.dirname(a.src)
     old = _git(["show", "%s:%s" % (a.base, a.src.replace("\\", "/"))])
     if not old:
         raise SystemExit("cannot read %s:%s" % (a.base, a.src))
-    files = {a.src: open(os.path.join(REPO, a.src), "rb").read()}
-    for n in sorted(os.listdir(os.path.join(REPO, out))):
-        if n.startswith(a.stem + "_") and (n.endswith(".cpp") or n.endswith("_internal.h")):
-            files[os.path.join(out, n)] = open(os.path.join(REPO, out, n), "rb").read()
+    if a.at:
+        listing = _git(["ls-tree", "--name-only", a.at, out.replace("\\", "/") + "/"]).decode("utf-8", "replace").split()
+        names = [x for x in listing if os.path.basename(x).startswith(a.stem + "_") and (x.endswith(".cpp") or x.endswith("_internal.h"))]
+        files = {a.src: _git(["show", "%s:%s" % (a.at, a.src.replace("\\", "/"))])}
+        for x in sorted(names):
+            files[os.path.join(out, os.path.basename(x))] = _git(["show", "%s:%s" % (a.at, x)])
+    else:
+        files = {a.src: open(os.path.join(REPO, a.src), "rb").read()}
+        for n in sorted(os.listdir(os.path.join(REPO, out))):
+            if n.startswith(a.stem + "_") and (n.endswith(".cpp") or n.endswith("_internal.h")):
+                files[os.path.join(out, n)] = open(os.path.join(REPO, out, n), "rb").read()
     allow = json.load(open(a.allow)) if a.allow else {}
     for n in list(files):
         if os.path.basename(n) in allow.get("exclude_files", []):
             del files[n]
-    sys.exit(report(verify(old, files, a.stem, a.src.replace("\\", "/"), allow, a.run_selftests)))
+    sys.exit(report(verify(old, files, a.stem, a.src.replace("\\", "/"), allow, a.run_selftests, check_script_names=not a.at)))
 
 
 if __name__ == "__main__":

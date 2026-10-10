@@ -23,5 +23,6 @@
   "tools/unit_converter/emit.py",
   "tools/unit_converter/test_unit_converter.py"
  ],
- "_scripts_reason": "Reviewed: the counter-honesty allowlist keys follow the four limiters to mech3d_{init,type,render,geometry}.cpp; check-light-row-freshness only mentions mech3d.cpp in a comment about a deleted exemption (the GPU-mech submit path still reads getCachedFrame in mech3d_render.cpp); the rest cite mech3d.cpp in comments or as the format a loader reads."
+ "_scripts_reason": "Reviewed: the counter-honesty allowlist keys follow the four limiters to mech3d_{init,type,render,geometry}.cpp; check-light-row-freshness only mentions mech3d.cpp in a comment about a deleted exemption (the GPU-mech submit path still reads getCachedFrame in mech3d_render.cpp); the rest cite mech3d.cpp in comments or as the format a loader reads.",
+ "split_commit": "de0dbab39"
 }
