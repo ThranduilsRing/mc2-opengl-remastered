@@ -30,7 +30,7 @@ void ControlGui::startObjectives( bool bStart )
 		}
 		qsort( sorted, playerCount, sizeof( MC2Player* ), sortStats );
 
-		mpStats[0].setData( NULL, 1 ); // this is the header...
+		mpStats[0].setData( nullptr, 1 ); // this is the header...
 		for ( int i = 1; i < MAX_MC_PLAYERS+1; i++ )
 		{
 			if ( i-1 < playerCount )
@@ -50,7 +50,7 @@ void ControlGui::renderResults()
 	if ( renderStatusInfo )
 	{
 		if ( infoWnd ) // kill info wnd stuff
-			infoWnd->setUnit( NULL );
+			infoWnd->setUnit( nullptr );
 
 		resultsTime += frameLength;
 		float t0, t1, p0, p1;
@@ -330,9 +330,9 @@ void ControlGui::renderObjectivesImGui()
 	ObjectiveUiRow rows[100];
 	const int nRows = gatherObjectiveRows( rows, 100 );
 
-	StaticInfo* boxTile   = objectiveInfos ? &objectiveInfos[objectiveInfoCount - 3] : NULL;
-	StaticInfo* checkTile = objectiveInfos ? &objectiveInfos[objectiveInfoCount - 2] : NULL;
-	StaticInfo* xTile     = objectiveInfos ? &objectiveInfos[objectiveInfoCount - 1] : NULL;
+	StaticInfo* boxTile   = objectiveInfos ? &objectiveInfos[objectiveInfoCount - 3] : nullptr;
+	StaticInfo* checkTile = objectiveInfos ? &objectiveInfos[objectiveInfoCount - 2] : nullptr;
+	StaticInfo* xTile     = objectiveInfos ? &objectiveInfos[objectiveInfoCount - 1] : nullptr;
 
 	long pos = OBJECTIVESTOP;
 	pos += OBJECTIVESSKIP;
@@ -804,7 +804,7 @@ void ControlGui::renderPlayerStatus(float xDelta)
 	}
 	qsort( sorted, playerCount, sizeof( MC2Player* ), sortStats );
 
-	mpStats[0].setData( NULL, 1 ); // this is the header...
+	mpStats[0].setData( nullptr, 1 ); // this is the header...
 	for ( int i = 1; i < MAX_MC_PLAYERS+1; i++ )
 	{
 		if ( i-1 < playerCount )
@@ -897,7 +897,7 @@ void ControlGui::renderObjective( const ObjectiveUiRow& row, long xPos, long yPo
 		float dotRealWidth = (((float)dotWidth)/20.f);
 
 		float totalLength = (OBJECTIVESTOTALRIGHT - width - xPos - descWidth);
-		long numberOfDots = ((float)totalLength)/dotRealWidth;
+		long numberOfDots = (totalLength)/dotRealWidth;
 
 		if (3 > numberOfDots)
 		{

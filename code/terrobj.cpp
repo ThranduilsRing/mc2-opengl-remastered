@@ -310,7 +310,7 @@ GameObjectPtr TerrainObjectType::createInstance (void) {
 
 	TerrainObjectPtr result = new TerrainObject;
 	if (!result)
-		return NULL;
+		return nullptr;
 
 	result->init(true, this);
 	//result->setIdNumber(NextIdNumber++);
@@ -482,7 +482,7 @@ bool TerrainObjectType::handleCollision (GameObjectPtr collidee, GameObjectPtr c
 				{
 					WeaponShotInfo shot;
 					shot.init(0, -1, collidee->getDamageLevel(), 0, 0);
-					collidee->handleWeaponHit(&shot, (MPlayer != NULL));
+					collidee->handleWeaponHit(&shot, (MPlayer != nullptr));
 				}
 				break;
 			}
@@ -649,7 +649,7 @@ char* TerrainObject::getName (void) {
 		cLoadString(((ObjectAppearance*)appearance)->objectNameId, lastName, 254);
 		return(lastName);
 	}
-	return(NULL);
+	return(nullptr);
 }
 
 //---------------------------------------------------------------------------
@@ -951,7 +951,7 @@ long TerrainObject::update (void) {
 				{
 					bldgDustPoofEffect->Kill();
 					delete bldgDustPoofEffect;
-					bldgDustPoofEffect = NULL;
+					bldgDustPoofEffect = nullptr;
 				}
 			}
 		}
@@ -1092,19 +1092,19 @@ void TerrainObject::destroy (void)
 	{
 		numCellsCovered = 0;
 		systemHeap->Free(cellsCovered);
-		cellsCovered = NULL;
+		cellsCovered = nullptr;
 	}
 
 	if (subAreas0)
 	{
 		ObjectTypeManager::objectCache->Free(subAreas0);
-		subAreas0 = NULL;
+		subAreas0 = nullptr;
 	}
 
 	if (subAreas1)
 	{
 		ObjectTypeManager::objectCache->Free(subAreas1);
-		subAreas1 = NULL;
+		subAreas1 = nullptr;
 	}
 
 	//-----------------------------------------------------
@@ -1112,7 +1112,7 @@ void TerrainObject::destroy (void)
 	if (appearance) 
 	{
 		delete appearance;
-		appearance = NULL;
+		appearance = nullptr;
 	}
 }
 
@@ -1319,7 +1319,7 @@ long TerrainObject::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultipl
 							shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 							shapeOrigin.BuildTranslation(actualPosition);
 							
-							gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,NULL);
+							gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
 							bldgDustPoofEffect->Start(&info);
 						}
 					}

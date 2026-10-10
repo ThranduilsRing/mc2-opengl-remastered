@@ -113,7 +113,7 @@ bool MechWarrior::isJumping (Stuff::Vector3D* jumpGoal) {
 
 MovePathPtr MechWarrior::getMovePath (void) {
 
-	Assert((moveOrders.path[0] != NULL) && (moveOrders.path[1] != NULL), 0, " NULL move paths ");
+	Assert((moveOrders.path[0] != nullptr) && (moveOrders.path[1] != nullptr), 0, " NULL move paths ");
 
 	if (moveOrders.path[0]->numStepsWhenNotPaused == 0) {
 		clearMovePath(0);
@@ -129,7 +129,7 @@ MovePathPtr MechWarrior::getMovePath (void) {
 				return(moveOrders.path[0]);
 			}
 
-			GameObjectPtr target = NULL;
+			GameObjectPtr target = nullptr;
 			if (goalType > 0) {
 				if (goalObject)
 					target = goalObject;
@@ -270,7 +270,7 @@ long MechWarrior::calcMovePath (long selectionIndex, unsigned long moveParams) {
 		return(LastMoveCalcErr);
 	}
 
-	GameObjectPtr target = NULL;
+	GameObjectPtr target = nullptr;
 	if (goalType > 0) {
 		if (goalObject)
 			target = goalObject;
@@ -361,7 +361,7 @@ long MechWarrior::calcMovePath (long selectionIndex, unsigned long moveParams) {
 			if (myVehicle->getObjectClass() != ELEMENTAL)
 				moveParams |= MOVEPARAM_AVOID_PATHLOCKS;
 			Stuff::Vector3D escapeGoal;
-			long numSteps = myVehicle->calcEscapePath(moveOrders.path[pathNum], start, goal, NULL, moveParams | MOVEPARAM_STATIONARY_MOVERS, escapeGoal);
+			long numSteps = myVehicle->calcEscapePath(moveOrders.path[pathNum], start, goal, nullptr, moveParams | MOVEPARAM_STATIONARY_MOVERS, escapeGoal);
 			if (ramObject && ramObject->isMover())
 				((MoverPtr)ramObject)->updatePathLock(true);
 			myVehicle->updatePathLock(true);
@@ -442,7 +442,7 @@ long MechWarrior::calcMovePath (long selectionIndex, unsigned long moveParams) {
 				((MoverPtr)ramObject)->updatePathLock(false);
 			if (myVehicle->getObjectClass() != ELEMENTAL)
 				moveParams |= MOVEPARAM_AVOID_PATHLOCKS;
-			long numSteps = myVehicle->calcMovePath(moveOrders.path[pathNum], MOVEPATH_SIMPLE, start, goal, NULL, moveParams | MOVEPARAM_STATIONARY_MOVERS);
+			long numSteps = myVehicle->calcMovePath(moveOrders.path[pathNum], MOVEPATH_SIMPLE, start, goal, nullptr, moveParams | MOVEPARAM_STATIONARY_MOVERS);
 			if (ramObject && ramObject->isMover())
 				((MoverPtr)ramObject)->updatePathLock(true);
 			myVehicle->updatePathLock(true);
@@ -592,9 +592,9 @@ long MechWarrior::calcMovePath (long selectionIndex, unsigned long moveParams) {
 		if (curGlobalStep < (numGlobalSteps - 1))
 			if (!globalDoor->open) {
 				LastMoveCalcErr = MOVEPATH_ERR_LR_DOOR_CLOSED;
-				setMoveWayPath(NULL, 0);
+				setMoveWayPath(nullptr, 0);
 				setMoveTimeOfLastStep(scenarioTime);
-				setMoveGlobalPath(NULL, 0);
+				setMoveGlobalPath(nullptr, 0);
 				PathManager->request(this, selectionIndex, MOVEPARAM_RECALC + MOVEPARAM_FACE_TARGET, 19);
 				triggerAlarm(PILOT_ALARM_NO_MOVEPATH, LastMoveCalcErr);
 				return(LastMoveCalcErr);
@@ -905,8 +905,8 @@ bool MechWarrior::movementDecisionTree (void) {
 			return(true);
 		}
 
-	GameObjectPtr goalObject = NULL;
-	unsigned long goalType = getMoveGoal(NULL, &goalObject);
+	GameObjectPtr goalObject = nullptr;
+	unsigned long goalType = getMoveGoal(nullptr, &goalObject);
 
 	if (goalType == MOVEGOAL_NONE) {
 		if (curTacOrder.code == TACTICAL_ORDER_WITHDRAW) {

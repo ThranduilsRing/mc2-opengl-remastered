@@ -150,7 +150,7 @@ GameObjectPtr BuildingType::createInstance (void) {
 
 	BuildingPtr result = new Building;
 	if (!result)
-		return(NULL);
+		return(nullptr);
 
 	result->init(true, this);
 	//result->setIdNumber(NextIdNumber++);
@@ -350,7 +350,7 @@ bool BuildingType::handleCollision (GameObjectPtr collidee, GameObjectPtr collid
 			shot.init(0, -1, 10, 0, 0);
 			if (collider->getCollisionFreeTime() < scenarioTime)
 				return(true);
-			collidee->handleWeaponHit(&shot, (MPlayer != NULL));
+			collidee->handleWeaponHit(&shot, (MPlayer != nullptr));
 			}
 			break;
 	}
@@ -797,7 +797,7 @@ long Building::update (void)
 			if (getObjectType()->getObjTypeNum() == GENERIC_DESTRUCTIBLE_RESOURCE_BUILDING_OBJNUM) 
 			{
 				//We are a random resource building.  Mark the terrain under us impassable.
-				appearance->markMoveMap(false,NULL);
+				appearance->markMoveMap(false,nullptr);
 			}
 
 			// MUST update appearance every frame or animation goes HINKY!
@@ -1027,7 +1027,7 @@ long Building::setTeamId (long _teamId, bool setup)
 TeamPtr Building::getTeam (void) {
 
 	if (teamId == -1)
-		return(NULL);
+		return(nullptr);
 	return(Team::teams[teamId]);
 }
 
@@ -1159,7 +1159,7 @@ char* Building::getName (void)
 		return(lastName);
 	}
 
-	return(NULL);
+	return(nullptr);
 }
 
 //---------------------------------------------------------------------------
@@ -1170,7 +1170,7 @@ void Building::destroy (void)
 	if (appearance) 
 	{
 		delete appearance;
-		appearance = NULL;
+		appearance = nullptr;
 	}
 }
 
@@ -1251,7 +1251,7 @@ void Building::init (bool create, ObjectTypePtr objType) {
 	// MechCmdr2 features much simpler objects which only use 1 type of sprite!
 	long appearanceType = (BLDG_TYPE << 24);
 
-	AppearanceTypePtr buildingAppearanceType = NULL;
+	AppearanceTypePtr buildingAppearanceType = nullptr;
 	if (!appearName)
 	{
 		//------------------------------------------------------
@@ -1522,9 +1522,9 @@ long Building::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayChu
 				// ONLY if the building has no special MAGIC gos FX version!
 				Stuff::Vector3D hitNodePos = appearance->getHitNode();
 				if (!appearance->playDestruction())
-					ObjectManager->createExplosion(BUILDING_EXPLOSION_ID,NULL,hitNodePos,explDamage,explRadius);
+					ObjectManager->createExplosion(BUILDING_EXPLOSION_ID,nullptr,hitNodePos,explDamage,explRadius);
 				else	//Play the sound effect and do splash damage but don't draw any effect.  We are playing a magical GosFX one!!
-					ObjectManager->createExplosion(EMPTY_EXPLOSION_ID,NULL,hitNodePos,explDamage,explRadius);
+					ObjectManager->createExplosion(EMPTY_EXPLOSION_ID,nullptr,hitNodePos,explDamage,explRadius);
 
 #if 0
 				if (type->marksImpassableWhenDestroyed) 
@@ -1590,7 +1590,7 @@ long Building::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayChu
 									for (long k=0;k<50;k++)
 									{
 										WeaponShotInfo shotInfo;
-										shotInfo.init(0, 160, 50.0f, pMover->calcHitLocation(NULL,-1,ATTACKSOURCE_WEAPONFIRE,0), 0);
+										shotInfo.init(0, 160, 50.0f, pMover->calcHitLocation(nullptr,-1,ATTACKSOURCE_WEAPONFIRE,0), 0);
 										pMover->handleWeaponHit(&shotInfo);
 										if (MPlayer && MPlayer->isServer())
 											MPlayer->addWeaponHitChunk((GameObjectPtr)this, &shotInfo);

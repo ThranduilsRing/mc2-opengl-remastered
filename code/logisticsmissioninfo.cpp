@@ -22,7 +22,7 @@ LogisticsMissionInfo::LogisticsMissionInfo()
 {
 	currentMission = -1;
 	currentStage = 0;
-	groups = 0;
+	groups = nullptr;
 	currentMissionName = missionName;
 	groupCount = 0;
 	CBills = 0;
@@ -66,7 +66,7 @@ void LogisticsMissionInfo::clear()
 
 	currentMission = -1;
 	currentStage = 0;
-	groups = 0;
+	groups = nullptr;
 	currentMissionName = missionName;
 	groupCount = 0;
 	CBills = 0;
@@ -949,7 +949,7 @@ const char* LogisticsMissionInfo::getCurrentOperationFile() const
 	// groups yet. &groups[currentStage] is address-of an element, so the old
 	// `if (pGroup)` was dead-code-eliminated and the deref was unconditional UB.
 	if ( !groups || currentStage < 0 || currentStage >= groupCount )
-		return NULL;
+		return nullptr;
 
 	MissionGroup* pGroup = &groups[currentStage];
 	return pGroup->operationFileName;
@@ -958,7 +958,7 @@ const char* LogisticsMissionInfo::getCurrentOperationFile() const
 const char* LogisticsMissionInfo::getCurrentVideo() const
 {
 	if ( !groups || currentStage < 0 || currentStage >= groupCount )
-		return NULL;
+		return nullptr;
 
 	MissionGroup* pGroup = &groups[currentStage];
 
@@ -973,7 +973,7 @@ const char* LogisticsMissionInfo::getCurrentVideo() const
 		return pGroup->videoFileName;	
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 long LogisticsMissionInfo::getCurrentLogisticsTuneId()
@@ -994,14 +994,14 @@ const char*	LogisticsMissionInfo::getCurrentMissionDescription() const
 {
 	//sebi
 	if ( !groups || currentStage < 0 || currentStage >= groupCount )
-		return NULL;
+		return nullptr;
 
 	MissionGroup* pGroup = &groups[currentStage];
 
 	if ( pGroup )
 		return pGroup->infos[currentMission]->description;
 
-	return NULL;
+	return nullptr;
 }
 
 bool LogisticsMissionInfo::getMissionAvailable( const char* missionName )
@@ -1021,33 +1021,33 @@ bool LogisticsMissionInfo::getMissionAvailable( const char* missionName )
 const char* LogisticsMissionInfo::getCurrentMissionFriendlyName() const
 {
 	if ( currentStage >= groupCount )
-		return NULL;
+		return nullptr;
 	MissionGroup* pGroup = &groups[currentStage];
 
 	if ( pGroup )
 		return pGroup->infos[currentMission]->missionDescriptiveName;	
 
-	return NULL;
+	return nullptr;
 
 }
 
 const char* LogisticsMissionInfo::getCurrentABLScriptName() const
 {
 	if ( currentStage >= groupCount )
-		return NULL;
+		return nullptr;
 
 	MissionGroup* pGroup = &groups[currentStage];
 
 	if ( pGroup )
 		return pGroup->ablBrainName;
 
-	return NULL;
+	return nullptr;
 }
 
 const char* LogisticsMissionInfo::getMissionFriendlyName( const char* missionName ) const
 {
 	if ( currentStage >= groupCount )
-		return NULL;
+		return nullptr;
 	MissionGroup* pGroup = &groups[currentStage];
 
 	for ( int i = 0; i < pGroup->infos.Count(); i++ )
@@ -1057,7 +1057,7 @@ const char* LogisticsMissionInfo::getMissionFriendlyName( const char* missionNam
 			return pGroup->infos[i]->missionDescriptiveName;
 		}
 	}
-	return NULL;
+	return nullptr;
 }
 
 int		LogisticsMissionInfo::getCurrentRP() const
@@ -1074,12 +1074,12 @@ int		LogisticsMissionInfo::getCurrentRP() const
 const char*			LogisticsMissionInfo::getCurrentBigVideo() const
 {
 	if ( currentStage == -1 )
-		return NULL;
+		return nullptr;
 	
 	MissionGroup* pGroup = &groups[currentStage];
 
 	if ( pGroup->bigVideoShown )
-		return NULL;
+		return nullptr;
 
 	pGroup->bigVideoShown = true;
 	return pGroup->bigVideoName;
@@ -1218,7 +1218,7 @@ LogisticsMissionInfo::MissionInfo* LogisticsMissionInfo::getPreviousMission()
 		if ( Count )
 			return pGroup->infos[Count-1];
 		else
-			return NULL;
+			return nullptr;
 	}
 	else if ( currentStage == 0 )	//There may be only one stage.  I.e. Tutorials!
 	{
@@ -1227,10 +1227,10 @@ LogisticsMissionInfo::MissionInfo* LogisticsMissionInfo::getPreviousMission()
 		if ( Count )
 			return pGroup->infos[Count-1];
 		else
-			return NULL;
+			return nullptr;
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 bool LogisticsMissionInfo::isSingleMission() const

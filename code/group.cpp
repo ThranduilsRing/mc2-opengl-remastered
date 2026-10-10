@@ -72,7 +72,7 @@ float GroupMoveOffsets[10][2] = {
 */
 extern char OverlayIsBridge[NUM_OVERLAY_TYPES];
 extern PriorityQueuePtr	openList;
-GoalMapNode* MoverGroup::goalMap = NULL;
+GoalMapNode* MoverGroup::goalMap = nullptr;
 
 //***************************************************************************
 // MOVERGROUP class
@@ -220,8 +220,8 @@ MoverPtr MoverGroup::selectPoint (bool excludePoint) {
 
 	//-----------------------
 	// No legitimate point...
-	setPoint(NULL);
-	return(NULL);
+	setPoint(nullptr);
+	return(nullptr);
 }
 
 //---------------------------------------------------------------------------
@@ -240,7 +240,7 @@ MechWarriorPtr MoverGroup::getPointPilot (void) {
 
 	if (pointWID)
 		return(ObjectManager->getByWatchID(pointWID)->getPilot());
-	return(NULL);
+	return(nullptr);
 }
 
 //---------------------------------------------------------------------------
@@ -695,7 +695,7 @@ long MoverGroup::handleTacticalOrder (TacticalOrder tacOrder, long priority, Stu
 		return(NO_ERR);
 
 	if (queueGroupOrder)
-		tacOrder.pack(NULL, NULL);
+		tacOrder.pack(nullptr, nullptr);
 
 	//bool processOrder = true;
 	bool isJump = false;
@@ -746,7 +746,7 @@ Fatal(0, "Need to support jumpGoalList (and goalList) for MOVETO as well in mc2 
 				long moverCount = 0;
 				for (long i = 0; i < numMovers; i++) {
 					MoverPtr mover = getMover(i);
-					Assert(mover != NULL, moverWIDs[i], " MoverGroup.handleTacticalOrder: NULL mover ");
+					Assert(mover != nullptr, moverWIDs[i], " MoverGroup.handleTacticalOrder: NULL mover ");
 					if (!mover->isDisabled()) {
 						list->setId(moverCount, i);
 						list->setValue(moverCount, mover->distanceFrom(location));
@@ -889,7 +889,7 @@ long MoverGroup::orderMoveToPoint (bool setTacOrder, long origin, Stuff::Vector3
 	long result = TACORDER_FAILURE;
 
 	for (long i = 0; i < numMovers; i++) {
-		Assert(getMover(i) != NULL, 0, " MoverGroup.orderMoveToPoint: NULL mover ");
+		Assert(getMover(i) != nullptr, 0, " MoverGroup.orderMoveToPoint: NULL mover ");
 		MechWarriorPtr pilot = getMover(i)->getPilot();
 		if (pilot)
 			result = pilot->orderMoveToPoint(true, setTacOrder, origin, location, -1, params);
@@ -905,7 +905,7 @@ long MoverGroup::orderMoveToObject (bool setTacOrder, long origin, GameObjectPtr
 	long result = TACORDER_FAILURE;
 
 	for (long i = 0; i < numMovers; i++) {
-		Assert(getMover(i) != NULL, 0, " MoverGroup.orderMoveToObject: NULL mover ");
+		Assert(getMover(i) != nullptr, 0, " MoverGroup.orderMoveToObject: NULL mover ");
 		MechWarriorPtr pilot = getMover(i)->getPilot();
 		if (pilot)
 			result = pilot->orderMoveToObject(true, setTacOrder, origin, target, fromArea, -1, params);
@@ -921,7 +921,7 @@ long MoverGroup::orderTraversePath (long origin, WayPathPtr wayPath, unsigned lo
 	long result = TACORDER_FAILURE;
 
 	for (long i = 0; i < numMovers; i++) {
-		Assert(getMover(i) != NULL, 0, " MoverGroup.orderTraversePath: NULL mover ");
+		Assert(getMover(i) != nullptr, 0, " MoverGroup.orderTraversePath: NULL mover ");
 		MechWarriorPtr pilot = getMover(i)->getPilot();
 		if (pilot)
 			result = pilot->orderTraversePath(true, true, origin, wayPath, params);
@@ -937,7 +937,7 @@ long MoverGroup::orderPatrolPath (long origin, WayPathPtr wayPath) {
 	long result = TACORDER_FAILURE;
 
 	for (long i = 0; i < numMovers; i++) {
-		Assert(getMover(i) != NULL, 0, " MoverGroup.orderPatrolPath: NULL mover ");
+		Assert(getMover(i) != nullptr, 0, " MoverGroup.orderPatrolPath: NULL mover ");
 		MechWarriorPtr pilot = getMover(i)->getPilot();
 		if (pilot)
 			result = pilot->orderPatrolPath(true, true, origin, wayPath);
@@ -953,7 +953,7 @@ long MoverGroup::orderPowerDown (long origin) {
 	long result = TACORDER_FAILURE;
 
 	for (long i = 0; i < numMovers; i++) {
-		Assert(getMover(i) != NULL, 0, " MoverGroup.orderPowerDown: NULL mover ");
+		Assert(getMover(i) != nullptr, 0, " MoverGroup.orderPowerDown: NULL mover ");
 		MechWarriorPtr pilot = getMover(i)->getPilot();
 		if (pilot)
 			result = pilot->orderPowerDown(true, origin);
@@ -969,7 +969,7 @@ long MoverGroup::orderPowerUp (long origin) {
 	long result = TACORDER_FAILURE;
 
 	for (long i = 0; i < numMovers; i++) {
-		Assert(getMover(i) != NULL, 0, " MoverGroup.orderPowerUp: NULL mover ");
+		Assert(getMover(i) != nullptr, 0, " MoverGroup.orderPowerUp: NULL mover ");
 		MechWarriorPtr pilot = getMover(i)->getPilot();
 		if (pilot)
 			result = pilot->orderPowerUp(true, origin);
@@ -985,7 +985,7 @@ long MoverGroup::orderAttackObject (long origin, GameObjectPtr target, long atta
 	long result = TACORDER_FAILURE;
 
 	for (long i = 0; i < numMovers; i++) {
-		Assert(getMover(i) != NULL, 0, " MoverGroup.orderAttackObject: NULL mover ");
+		Assert(getMover(i) != nullptr, 0, " MoverGroup.orderAttackObject: NULL mover ");
 		MechWarriorPtr pilot = getMover(i)->getPilot();
 		if (pilot)
 			result = pilot->orderAttackObject(true, origin, target, attackType, attackMethod, attackRange, aimLocation, fromArea, params);
@@ -1001,7 +1001,7 @@ long MoverGroup::orderWithdraw (long origin, Stuff::Vector3D location) {
 	long result = TACORDER_FAILURE;
 
 	for (long i = 0; i < numMovers; i++) {
-		Assert(getMover(i) != NULL, 0, " MoverGroup.orderWithdraw: NULL mover ");
+		Assert(getMover(i) != nullptr, 0, " MoverGroup.orderWithdraw: NULL mover ");
 		MechWarriorPtr pilot = getMover(i)->getPilot();
 		if (pilot)
 			result = pilot->orderWithdraw(true, origin, location);
@@ -1017,7 +1017,7 @@ long MoverGroup::orderEject (long origin) {
 	long result = TACORDER_FAILURE;
 
 	for (long i = 0; i < numMovers; i++) {
-		Assert(getMover(i) != NULL, 0, " MoverGroup.orderEject: NULL mover ");
+		Assert(getMover(i) != nullptr, 0, " MoverGroup.orderEject: NULL mover ");
 		MechWarriorPtr pilot = getMover(i)->getPilot();
 		if (pilot)
 			result = pilot->orderEject(true, true, origin);

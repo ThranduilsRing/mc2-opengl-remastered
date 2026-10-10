@@ -93,16 +93,16 @@ extern SoundSystem *sndSystem;
 #define ALT		0x00100000
 #define WAYPT	0x20000000
 
-HotKeyListItem*		HotKeyListItem::s_item = NULL;
+HotKeyListItem*		HotKeyListItem::s_item = nullptr;
 
 
 OptionsXScreen::OptionsXScreen()
 {
-	statics = 0;
-	rects = 0;
+	statics = nullptr;
+	rects = nullptr;
 	staticCount = rectCount = buttonCount = textCount = 0;
-	buttons = 0;
-	textObjects = 0;
+	buttons = nullptr;
+	textObjects = nullptr;
 	bDone = 0;
 	curTab = 0;
 	helpTextArrayID = 1;
@@ -392,8 +392,8 @@ bool availableMode[10] = {
 
 OptionsGraphics::OptionsGraphics()
 {
-    resolutionModes = NULL;
-    resolutionModesStr = NULL;
+    resolutionModes = nullptr;
+    resolutionModesStr = nullptr;
     numResolutionModes = 0;
 }
 
@@ -761,12 +761,12 @@ void OptionsGraphics::end()
     delete[] resolutionModes;
     for(int i=0;i<numResolutionModes;++i) {
         delete[] resolutionModesStr[i];
-        resolutionModesStr[i] = NULL;
+        resolutionModesStr[i] = nullptr;
     }
     delete[] resolutionModesStr;
 
-    resolutionModes = NULL;
-    resolutionModesStr = NULL;
+    resolutionModes = nullptr;
+    resolutionModesStr = nullptr;
     numResolutionModes = 0;
 
 	int index = cardList.GetSelectedItem( );
@@ -823,7 +823,7 @@ void OptionsAudio::init(long xOffset, long yOffset)
 	{
 		if ( buttons[i].getID() != MSG_RESET )
 		{
-			buttons[i].setParent( NULL );
+			buttons[i].setParent( nullptr );
 		}
 	}
 	move( xOffset, yOffset );
@@ -953,7 +953,7 @@ void OptionsGamePlay::resetCamera()
 	}
 	else
 	{
-		camera.setMech( NULL );
+		camera.setMech( nullptr );
 	}
 }
 
@@ -1161,7 +1161,7 @@ void OptionsGamePlay::end()
 	}
 	else
 	{
-		camera.setMech( NULL );
+		camera.setMech( nullptr );
 	}
 
 }

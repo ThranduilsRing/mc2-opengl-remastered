@@ -45,8 +45,8 @@ char ICON_LIST_ID[] = "ICONS";
 char WEAPON_LIST_ID[] = "WEAPON";
 #endif
 
-GameObjectManagerPtr ObjectManager = NULL;
-GameObjectPtr* collisionList = NULL;
+GameObjectManagerPtr ObjectManager = nullptr;
+GameObjectPtr* collisionList = nullptr;
 long numCollidables = 0;
 //***************************************************************************
 //* MISC routines
@@ -108,7 +108,7 @@ void GameObjectManager::operator delete (void* us) {
 
 void GameObjectManager::init (void) {
 
-	objTypeManager = NULL;
+	objTypeManager = nullptr;
 
 	numMechs = 0;
 	numVehicles = 0;
@@ -130,20 +130,20 @@ void GameObjectManager::init (void) {
 	//carnageCount = 0;
 	Terrain::numObjBlocks = 0;
 
-	mechs = NULL;
-	vehicles = NULL;
-	elementals = NULL;
-	terrainObjects = NULL;
-	buildings = NULL;
-	turrets = 0;
-	weapons = NULL;
-	carnage = NULL;
-	lights = NULL;
-	artillery = NULL;
-	gates = NULL;
+	mechs = nullptr;
+	vehicles = nullptr;
+	elementals = nullptr;
+	terrainObjects = nullptr;
+	buildings = nullptr;
+	turrets = nullptr;
+	weapons = nullptr;
+	carnage = nullptr;
+	lights = nullptr;
+	artillery = nullptr;
+	gates = nullptr;
 
-	objList = NULL;
-	collidableList = NULL;
+	objList = nullptr;
+	collidableList = nullptr;
 	numCollidables = 0;
 	numGoodMovers = 0;
 	numBadMovers = 0;
@@ -401,7 +401,7 @@ void GameObjectManager::setNumObjects (long nMechs,
 BattleMechPtr GameObjectManager::getMech (long mechIndex) {
 
 	if (!mechs || (mechIndex < 0) || (mechIndex >= numMechs))
-		return(NULL);
+		return(nullptr);
 
 	return(mechs[mechIndex]);
 }
@@ -411,7 +411,7 @@ BattleMechPtr GameObjectManager::getMech (long mechIndex) {
 GroundVehiclePtr GameObjectManager::getVehicle (long vehicleIndex) {
 
 	if (!vehicles || (vehicleIndex < 0) || (vehicleIndex >= numVehicles))
-		return(NULL);
+		return(nullptr);
 
 	return(vehicles[vehicleIndex]);
 }
@@ -431,7 +431,7 @@ GroundVehiclePtr GameObjectManager::getOpenVehicle (void)
 		}
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 //---------------------------------------------------------------------------
@@ -439,7 +439,7 @@ GroundVehiclePtr GameObjectManager::getOpenVehicle (void)
 ElementalPtr GameObjectManager::getElemental (long elementalIndex) {
 
 	if (!elementals || (elementalIndex < 0) || (elementalIndex >= numElementals))
-		return(NULL);
+		return(nullptr);
 
 	return(elementals[elementalIndex]);
 }
@@ -461,7 +461,7 @@ BattleMechPtr GameObjectManager::newMech (void) {
 		return(mechs[numMechs++]);
 	}
 
-	return(NULL);
+	return(nullptr);
 }
 
 //---------------------------------------------------------------------------
@@ -481,7 +481,7 @@ GroundVehiclePtr GameObjectManager::newVehicle (void) {
  		return(vehicles[numVehicles++]);
 	}
 
-	return(NULL);
+	return(nullptr);
 }
 
 //---------------------------------------------------------------------------
@@ -535,7 +535,7 @@ void GameObjectManager::setWatchID (GameObjectPtr obj) {
 GameObjectPtr GameObjectManager::getByWatchIDGenerational (unsigned long watchID, uint16_t expectedGen) {
 
 	if (!mc2watch::isResolvableWatchId(watchID, nextWatchID))
-		return NULL;
+		return nullptr;
 	if (s_watchGen && !mc2watch::generationMatches(watchGeneration[watchID], expectedGen)) {
 		static unsigned long s_watchStaleDrops = 0;
 		++s_watchStaleDrops;
@@ -548,7 +548,7 @@ GameObjectPtr GameObjectManager::getByWatchIDGenerational (unsigned long watchID
 				(unsigned)watchGeneration[watchID], s_watchStaleDrops);
 			mc2_diag::writeEvent("WATCHID_STALE", 1, 0, _ws_buf);
 		}
-		return NULL;
+		return nullptr;
 	}
 	return watchList[watchID];
 }
@@ -567,7 +567,7 @@ void GameObjectManager::freeMover (MoverPtr mover) {
 		// any cross-frame handle captured at the old generation reads as stale.
 		if (s_watchGen)
 			watchGeneration[mover->watchID] = mc2watch::bumpGenerationOnFree(watchGeneration[mover->watchID]);
-		watchList[mover->watchID] = NULL;
+		watchList[mover->watchID] = nullptr;
 		mover->watchID = 0;
 	}
 }
@@ -616,7 +616,7 @@ ElementalPtr GameObjectManager::addElemental (void) {
 TerrainObjectPtr GameObjectManager::getTerrainObject (long terrainObjectIndex) {
 
 	if (!terrainObjects || (terrainObjectIndex < 0) || (terrainObjectIndex >= numTerrainObjects))
-		return(NULL);
+		return(nullptr);
 
 	return(terrainObjects[terrainObjectIndex]);
 }
@@ -626,7 +626,7 @@ TerrainObjectPtr GameObjectManager::getTerrainObject (long terrainObjectIndex) {
 BuildingPtr GameObjectManager::getBuilding (long buildingIndex) {
 
 	if (!buildings || (buildingIndex < 0) || (buildingIndex >= numBuildings))
-		return(NULL);
+		return(nullptr);
 
 	return(buildings[buildingIndex]);
 }
@@ -636,7 +636,7 @@ BuildingPtr GameObjectManager::getBuilding (long buildingIndex) {
 TurretPtr GameObjectManager::getTurret (long turretIndex) 
 {
 	if (!turrets || (turretIndex < 0) || (turretIndex >= numTurrets))
-		return(NULL);
+		return(nullptr);
 
 	return(turrets[turretIndex]);
 }
@@ -646,7 +646,7 @@ TurretPtr GameObjectManager::getTurret (long turretIndex)
 GatePtr GameObjectManager::getGate (long gateIndex) 
 {
 	if (!gates || (gateIndex < 0) || (gateIndex >= numGates))
-		return(NULL);
+		return(nullptr);
 
 	return(gates[gateIndex]);
 }
@@ -656,7 +656,7 @@ GatePtr GameObjectManager::getGate (long gateIndex)
 WeaponBoltPtr GameObjectManager::getWeapon (void) 
 {
 	if (!weapons || (currentWeaponsIndex < 0) || (currentWeaponsIndex >= numWeapons))
-		return(NULL);
+		return(nullptr);
 
 	currentWeaponsIndex++;
 	if (currentWeaponsIndex >= numWeapons)
@@ -673,7 +673,7 @@ WeaponBoltPtr GameObjectManager::getWeapon (void)
 CarnagePtr GameObjectManager::getCarnage (CarnageEnumType carnageType) {
 
 	if (!carnage || (currentCarnageIndex < 0) || (currentCarnageIndex >= numCarnage))
-		return(NULL);
+		return(nullptr);
 
 	currentCarnageIndex++;
 	if (currentCarnageIndex >= numCarnage)
@@ -689,7 +689,7 @@ CarnagePtr GameObjectManager::getCarnage (CarnageEnumType carnageType) {
 
 void GameObjectManager::releaseCarnage (CarnagePtr obj) {
 
-	obj->setOwner(NULL);
+	obj->setOwner(nullptr);
 	MC2_DESTROY(obj, "pool_released");
 }
 
@@ -698,7 +698,7 @@ void GameObjectManager::releaseCarnage (CarnagePtr obj) {
 LightPtr GameObjectManager::getLight (void) {
 
 	if (!lights || (currentLightIndex < 0) || (currentLightIndex >= numLights))
-		return(NULL);
+		return(nullptr);
 
 	if (currentLightIndex >= numLights)
 		currentLightIndex = 0;
@@ -730,7 +730,7 @@ ArtilleryPtr GameObjectManager::getArtillery (void)
 
 	//OK to return NULL now.  Lets Multiplayer know that there are no more strikes available.
 	if (artillery[currentArtilleryIndex]->getExists())
-		return NULL;
+		return nullptr;
 		
 	artillery[currentArtilleryIndex]->init(false);
 	artillery[currentArtilleryIndex]->setExists(true);
@@ -756,7 +756,7 @@ void GameObjectManager::addObject (ObjDataLoader *objData, long& curTerrainObjec
 	long objTypeNum = objData->objTypeNum;
 	if (!isLandMine(objTypeNum)) {
 		ObjectTypePtr objType = getObjectType(objTypeNum);
-		GameObjectPtr obj = NULL;
+		GameObjectPtr obj = nullptr;
 		if (!objType)
 			return;
 			//Fatal();
@@ -940,10 +940,10 @@ void GameObjectManager::destroy (void)
 		for (i = 0; i < maxMechs; i++) 
 		{
 			delete mechs[i];
-			mechs[i] = NULL;
+			mechs[i] = nullptr;
 		}
 	}
-	mechs = NULL;
+	mechs = nullptr;
 
 	//--------------------------------------------------------------
 	if (vehicles && maxVehicles > 0) 
@@ -951,10 +951,10 @@ void GameObjectManager::destroy (void)
 		for (i = 0; i < maxVehicles; i++) 
 		{
 			delete vehicles[i];
-			vehicles[i] = NULL;
+			vehicles[i] = nullptr;
 		}
 	}
-	vehicles = NULL;
+	vehicles = nullptr;
 
 	//--------------------------------------------------------------
 	if (terrainObjects && numTerrainObjects > 0) 
@@ -962,10 +962,10 @@ void GameObjectManager::destroy (void)
 		for (i = 0; i < numTerrainObjects; i++) 
 		{
 			delete terrainObjects[i];
-			terrainObjects[i] = NULL;
+			terrainObjects[i] = nullptr;
 		}
 	}
-	terrainObjects = NULL;
+	terrainObjects = nullptr;
 
 	//--------------------------------------------------------------
 	if (buildings && numBuildings > 0) 
@@ -973,10 +973,10 @@ void GameObjectManager::destroy (void)
 		for (i = 0; i < numBuildings; i++) 
 		{
 			delete buildings[i];
-			buildings[i] = NULL;
+			buildings[i] = nullptr;
 		}
 	}
-	buildings = NULL;
+	buildings = nullptr;
 
 	//--------------------------------------------------------------
 	if (turrets && numTurrets > 0)
@@ -984,10 +984,10 @@ void GameObjectManager::destroy (void)
 		for (i = 0; i < numTurrets; i++) 
 		{
 			delete turrets[i];
-			turrets[i] = NULL;
+			turrets[i] = nullptr;
 		}
 	}
-	turrets = NULL;
+	turrets = nullptr;
 
 	//--------------------------------------------------------------
 	if (gates && numGates > 0)
@@ -995,10 +995,10 @@ void GameObjectManager::destroy (void)
 		for (i = 0; i < numGates; i++) 
 		{
 			delete gates[i];
-			gates[i] = NULL;
+			gates[i] = nullptr;
 		}
 	}
-	gates = NULL;
+	gates = nullptr;
 
 	//--------------------------------------------------------------
 	if (weapons && numWeapons > 0) 
@@ -1006,10 +1006,10 @@ void GameObjectManager::destroy (void)
 		for (i = 0; i < numWeapons; i++) 
 		{
 			delete weapons[i];
-			weapons[i] = NULL;
+			weapons[i] = nullptr;
 		}
 	}
-	weapons = NULL;
+	weapons = nullptr;
 
 	//--------------------------------------------------------------
 	if (carnage && numCarnage > 0) 
@@ -1017,10 +1017,10 @@ void GameObjectManager::destroy (void)
 		for (i = 0; i < numCarnage; i++) 
 		{
 			delete carnage[i];
-			carnage[i] = NULL;
+			carnage[i] = nullptr;
 		}
 	}
-	carnage = NULL;
+	carnage = nullptr;
 
 	//--------------------------------------------------------------
 	if (lights && numLights > 0) 
@@ -1028,10 +1028,10 @@ void GameObjectManager::destroy (void)
 		for (i = 0; i < numLights; i++) 
 		{
 			delete lights[i];
-			lights[i] = NULL;
+			lights[i] = nullptr;
 		}
 	}
-	lights = NULL;
+	lights = nullptr;
 
 	//--------------------------------------------------------------
 	if (artillery && numArtillery > 0) 
@@ -1039,23 +1039,23 @@ void GameObjectManager::destroy (void)
 		for (i = 0; i < numArtillery; i++) 
 		{
 			delete artillery[i];
-			artillery[i] = NULL;
+			artillery[i] = nullptr;
 		}
 	}
-	artillery = NULL;
+	artillery = nullptr;
 
 	//--------------------------------------------------------------
 	if (objTypeManager) 
 	{
 		delete objTypeManager;
-		objTypeManager = NULL;
+		objTypeManager = nullptr;
 	}
 
 	delete collisionSystem;
-	collisionSystem = NULL;
+	collisionSystem = nullptr;
 
 	systemHeap->Free(moverLineOfSightTable);
-	moverLineOfSightTable = NULL;
+	moverLineOfSightTable = nullptr;
 }
 
 //---------------------------------------------------------------------------
@@ -1192,7 +1192,7 @@ void GameObjectManager::render (bool terrain, bool movers, bool other) {
 			if (weapons) for (long i = 0; i < numWeapons; i++) if (weapons[i] && weapons[i]->getExists()) liveW++;
 			if (liveW > 0) {
 				printf("[VK_VFX_TRACE] objmgr other-block route=%d IsHUD-wrap=%d numWeapons=%ld liveWeapons=%ld numCarnage=%ld numArtillery=%ld\n",
-					(int)vkVfxRoute, (int)vkVfxRoute, numWeapons, liveW, (long)numCarnage, (long)numArtillery);
+					(int)vkVfxRoute, (int)vkVfxRoute, numWeapons, liveW, numCarnage, numArtillery);
 				fflush(stdout);
 			}
 		}

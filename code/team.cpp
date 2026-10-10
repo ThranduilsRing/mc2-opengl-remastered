@@ -83,9 +83,9 @@ char Team::relations[MAX_TEAMS][MAX_TEAMS] = {
 bool Team::noPain[MAX_TEAMS] = {false, false, false, false, false, false, false, false};
 
 long			Team::numTeams = 0;
-TeamPtr			Team::home = NULL;
-TeamPtr			Team::teams[MAX_TEAMS] = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
-SortListPtr		Team::sortList = NULL;
+TeamPtr			Team::home = nullptr;
+TeamPtr			Team::teams[MAX_TEAMS] = {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr};
+SortListPtr		Team::sortList = nullptr;
 
 bool			useRealLOS = true;
 #ifdef LAB_ONLY
@@ -203,7 +203,7 @@ MoverPtr Team::getMover (long index) {
 
 	if (roster[index] > 0)
 		return((MoverPtr)ObjectManager->getByWatchID(roster[index]));
-	return(NULL);
+	return(nullptr);
 }
 
 //----------------------------------------------------------------------------
@@ -277,7 +277,7 @@ void Team::disableTargets (void) {
 	for (long i = 0; i < rosterSize; i++) {
 		GameObjectPtr object = ObjectManager->getByWatchID(roster[i]);
 		if (object) {
-			GameObjectPtr target = NULL;
+			GameObjectPtr target = nullptr;
 			if (object->isMover())
 				target = ((MoverPtr)object)->getPilot()->getCurrentTarget();
 			if (target && target->isMover())
@@ -298,7 +298,7 @@ void Team::eject (void) {
 			else {
 				WeaponShotInfo shot;
 				shot.init(0, -3, 254.0, 0, 0);
-				mover->handleWeaponHit(&shot, (MPlayer != NULL));
+				mover->handleWeaponHit(&shot, (MPlayer != nullptr));
 			}
 		}
 	}
@@ -311,7 +311,7 @@ void Team::destroyTargets (void) {
 	for (long i = 0; i < rosterSize; i++) {
 		GameObjectPtr object = ObjectManager->getByWatchID(roster[i]);
 		if (object) {
-			GameObjectPtr target = NULL;
+			GameObjectPtr target = nullptr;
 			if (object->isMover())
 				target = ((MoverPtr)object)->getPilot()->getCurrentTarget();
 			if (target && target->isMover()) 
@@ -324,9 +324,9 @@ void Team::destroyTargets (void) {
 				for (long i=0;i<100;i++)
 				{
 					if (RollDice(30))
-						shot.hitLocation = target->calcHitLocation(NULL,-1,ATTACKSOURCE_DFA,0);
+						shot.hitLocation = target->calcHitLocation(nullptr,-1,ATTACKSOURCE_DFA,0);
 					else
-						shot.hitLocation = target->calcHitLocation(NULL,-1,ATTACKSOURCE_ARTILLERY,0);
+						shot.hitLocation = target->calcHitLocation(nullptr,-1,ATTACKSOURCE_ARTILLERY,0);
 					if (MPlayer) {
 						target->handleWeaponHit(&shot, true);
 						}
@@ -347,7 +347,7 @@ bool Team::isTargeting (GameObjectWatchID targetWID, GameObjectWatchID exceptWID
 			if (roster[i] == exceptWID)
 				continue;
 			MoverPtr mover = dynamic_cast<MoverPtr>(ObjectManager->getByWatchID(roster[i]));
-			Assert(mover != NULL, roster[i], " Team.isTargeting: NULL mover ");
+			Assert(mover != nullptr, roster[i], " Team.isTargeting: NULL mover ");
 			MechWarriorPtr pilot = mover->getPilot();
 			if (pilot) {
 				GameObjectPtr target = pilot->getCurrentTarget();
@@ -358,7 +358,7 @@ bool Team::isTargeting (GameObjectWatchID targetWID, GameObjectWatchID exceptWID
 	else
 		for (long i = 0; i < rosterSize; i++) {
 			MoverPtr mover = dynamic_cast<MoverPtr>(ObjectManager->getByWatchID(roster[i]));
-			Assert(mover != NULL, roster[i], " Team.isTargeting: NULL mover ");
+			Assert(mover != nullptr, roster[i], " Team.isTargeting: NULL mover ");
 			MechWarriorPtr pilot = mover->getPilot();
 			if (pilot) {
 				GameObjectPtr target = pilot->getCurrentTarget();
@@ -378,7 +378,7 @@ bool Team::isCapturing (GameObjectWatchID targetWID, GameObjectWatchID exceptWID
 			if (roster[i] == exceptWID)
 				continue;
 			MoverPtr mover = dynamic_cast<MoverPtr>(ObjectManager->getByWatchID(roster[i]));
-			Assert(mover != NULL, roster[i], " Team.isTargeting: NULL mover ");
+			Assert(mover != nullptr, roster[i], " Team.isTargeting: NULL mover ");
 			MechWarriorPtr pilot = mover->getPilot();
 			if (pilot && (pilot->getCurTacOrder()->code == TACTICAL_ORDER_CAPTURE)) {
 				GameObjectPtr target = pilot->getCurTacOrder()->getTarget();
@@ -389,7 +389,7 @@ bool Team::isCapturing (GameObjectWatchID targetWID, GameObjectWatchID exceptWID
 	else
 		for (long i = 0; i < rosterSize; i++) {
 			MoverPtr mover = dynamic_cast<MoverPtr>(ObjectManager->getByWatchID(roster[i]));
-			Assert(mover != NULL, roster[i], " Team.isTargeting: NULL mover ");
+			Assert(mover != nullptr, roster[i], " Team.isTargeting: NULL mover ");
 			MechWarriorPtr pilot = mover->getPilot();
 			if (pilot && (pilot->getCurTacOrder()->code == TACTICAL_ORDER_CAPTURE)) {
 				GameObjectPtr target = pilot->getCurTacOrder()->getTarget();
@@ -510,7 +510,7 @@ void Team::statusCount (int* statusTally) {
 	for (long i = 0; i < rosterSize; i++) 
 	{
 		MoverPtr obj = (MoverPtr)ObjectManager->getByWatchID(roster[i]);
-		Assert(obj != NULL, i, " Team.statusCount: NULL roster object ");
+		Assert(obj != nullptr, i, " Team.statusCount: NULL roster object ");
 		MechWarriorPtr pilot = obj->getPilot();
 		if (!obj->getExists())
 			statusTally[8]++;
@@ -571,7 +571,7 @@ bool Team::teamLineOfSight (Stuff::Vector3D tPos, float extRad)
 			//Scouting specialty skill.
 			if (obj->isMover())
 			{
-				MoverPtr mover = (MoverPtr)obj;
+				MoverPtr mover = obj;
 				if (mover->pilot && mover->pilot->isScout())
 					radius += (radius * 0.2f);
 					

@@ -262,7 +262,7 @@ void MoveChunk::pack (MoverPtr mover) {
 
 #ifdef DEBUG_MOVECHUNK
 	if ((numSteps < 1) || (numSteps > 4)) {
-		DebugMoveChunk(mover, this, NULL);
+		DebugMoveChunk(mover, this, nullptr);
 		char errMsg[1024];
 		sprintf(errMsg, " MoveChunk.pack: bad numSteps %d (save mvchunk.dbg file) ", numSteps);
 		Assert(false, numSteps, errMsg);
@@ -324,7 +324,7 @@ void MoveChunk::unpack (MoverPtr mover) {
 
 #ifdef DEBUG_MOVECHUNK
 	if ((numSteps < 1) || (numSteps > 4)) {
-		DebugMoveChunk(mover, this, NULL);
+		DebugMoveChunk(mover, this, nullptr);
 		char errMsg[1024];
 		sprintf(errMsg, " MoveChunk.unpack: bad numSteps %d (save mvchunk.dbg file) ", numSteps);
 		Assert(false, numSteps, errMsg);
@@ -642,37 +642,37 @@ void StatusChunk::unpack (MoverPtr mover) {
 bool StatusChunk::equalTo (StatusChunkPtr chunk) {
 
 	if (bodyState != chunk->bodyState) {
-		DebugStatusChunk(NULL, this, chunk);
+		DebugStatusChunk(nullptr, this, chunk);
 		return(false);
 	}
 
 	if (ejectOrderGiven != chunk->ejectOrderGiven) {
-		DebugStatusChunk(NULL, this, chunk);
+		DebugStatusChunk(nullptr, this, chunk);
 		return(false);
 	}
 
 	if (jumpOrder != chunk->jumpOrder) {
-		DebugStatusChunk(NULL, this, chunk);
+		DebugStatusChunk(nullptr, this, chunk);
 		return(false);
 	}
 
 	if (targetType != chunk->targetType) {
-		DebugStatusChunk(NULL, this, chunk);
+		DebugStatusChunk(nullptr, this, chunk);
 		return(false);
 	}
 
 	if (targetId != chunk->targetId) {
-		DebugStatusChunk(NULL, this, chunk);
+		DebugStatusChunk(nullptr, this, chunk);
 		return(false);
 	}
 
 	if (targetCellRC[0] != chunk->targetCellRC[0]) {
-		DebugStatusChunk(NULL, this, chunk);
+		DebugStatusChunk(nullptr, this, chunk);
 		return(false);
 	}
 
 	if (targetCellRC[1] != chunk->targetCellRC[1]) {
-		DebugStatusChunk(NULL, this, chunk);
+		DebugStatusChunk(nullptr, this, chunk);
 		return(false);
 	}
 

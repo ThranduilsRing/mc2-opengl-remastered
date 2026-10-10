@@ -19,7 +19,7 @@ long						goalMapRowStart[GOALMAP_CELL_DIM] = {
 							};
 char						goalMapRowCol[GOALMAP_CELL_DIM * GOALMAP_CELL_DIM][2];
 long						Mover::numMovers = 0;
-SortListPtr					Mover::sortList = NULL;
+SortListPtr					Mover::sortList = nullptr;
 
 #ifdef LAB_ONLY
 extern __int64 MCTimeCalcGoal1Update;
@@ -241,7 +241,7 @@ char Mover::optimalCells[MAX_ATTACK_CELLRANGE][MAX_ATTACK_INCREMENTS][2];
 long Mover::numOptimalIncrements = 0;
 short Mover::rangedCellsIndices[MAX_ATTACK_CELLRANGE][2];
 char Mover::rangedCells[RANGED_CELLS_DIM][2];
-TriggerAreaManager* Mover::triggerAreaMgr = NULL;
+TriggerAreaManager* Mover::triggerAreaMgr = nullptr;
 
 unsigned long Mover::holdFireIconHandle = 0;
 
@@ -270,7 +270,7 @@ long Mover::setTeamId (long _teamId, bool setup) {
 		//if (ecm != 255)
 		//	SensorManager->removeEcm(this,);
 		if (pilot)
-			pilot->setTeam(NULL);
+			pilot->setTeam(nullptr);
 		team->removeFromRoster(this);
 	}
 
@@ -280,7 +280,7 @@ long Mover::setTeamId (long _teamId, bool setup) {
 	if (setup) {
 		if (teamId > -1) {
 			TeamPtr team = Team::teams[teamId];
-			Assert(team != NULL, 0, " Mover.setTeamId: NULL team ");
+			Assert(team != nullptr, 0, " Mover.setTeamId: NULL team ");
 			if (sensorSystem)
 				SensorManager->addTeamSensor(teamId, sensorSystem);
 			if (pilot)
@@ -293,14 +293,14 @@ long Mover::setTeamId (long _teamId, bool setup) {
 TeamPtr Mover::getTeam (void) {
 
 	if (teamId == -1)
-		return(NULL);
+		return(nullptr);
 	return(Team::teams[teamId]);
 }
 
 CommanderPtr Mover::getCommander (void) {
 
 	if (commanderId == -1)
-		return(NULL);
+		return(nullptr);
 	return(Commander::commanders[commanderId]);
 }
 
@@ -339,7 +339,7 @@ long Mover::setGroupId (long _groupId, bool setup) {
 MoverGroupPtr Mover::getGroup (void) {
 
 	if (groupId == -1)
-		return(NULL);
+		return(nullptr);
 	return(Commander::commanders[commanderId]->getGroup(groupId));
 }
 
@@ -395,7 +395,7 @@ void Mover::setPosition (Stuff::Vector3D& newPosition) {
 	//-- I.e. Withdrawing or a camera Drone.  hehehe.
 	if (offMap && withdrawing)
 	{
-		ObjectManager->getObjectType(typeHandle)->handleDestruction(this,NULL);
+		ObjectManager->getObjectType(typeHandle)->handleDestruction(this,nullptr);
 	}
 
 	GameObject::setPosition(newPosition);
@@ -578,13 +578,13 @@ void Mover::destroy (void)
 	if (appearance)
 	{
 		delete appearance;
-		appearance = NULL;
+		appearance = nullptr;
 	}
 
 	if (contactInfo)
 	{
 		delete contactInfo;
-		contactInfo = NULL;
+		contactInfo = nullptr;
 	}
 }
 

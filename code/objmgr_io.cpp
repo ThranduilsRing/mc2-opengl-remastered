@@ -32,7 +32,7 @@ void GameObjectManager::countTerrainObjects (PacketFile* terrainFile, long first
 	}
 	else
 	{
-		objData = NULL;
+		objData = nullptr;
 	}
 	
 	ObjDataLoader *data = objData;
@@ -191,11 +191,11 @@ void GameObjectManager::loadTerrainObjects (PacketFile* terrainFile,
 	}
 
 	delete[] handles;
-	handles = NULL;
+	handles = nullptr;
 	
 	//Done loading the objects, free the memory holding them!!
 	systemHeap->Free(objData);
-	objData = NULL;
+	objData = nullptr;
 
 	//---------------------------------------------------
 	// Finally, let's build the control building lists...
@@ -609,7 +609,7 @@ long GameObjectManager::Save (PacketFilePtr file, long packetNum)
 	packetNum++;
 
 	free(watchSave);
-	watchSave = NULL;
+	watchSave = nullptr;
 
 	return packetNum;
 }
@@ -1229,7 +1229,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 		const int32_t _idx = watchSave[j];
 		if (!mc2watch::isValidWatchSaveIndex(_idx, _maxObj))
 		{
-			watchList[j] = NULL;
+			watchList[j] = nullptr;
 			mc2_watchidLoadDiag("watchSave", (long)_idx, _maxObj);
 			continue;
 		}
@@ -1237,7 +1237,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 	}
 
 	free(watchSave);
-	watchSave = NULL;
+	watchSave = nullptr;
 
 	return packetNum;
 }

@@ -70,7 +70,7 @@ long MechWarrior::calcTacOrder (long goalAction,
 	}
 
 	// At this point, if we don't have any goal, we're done.
-	GameObjectPtr mainTarget = NULL;
+	GameObjectPtr mainTarget = nullptr;
 	if (goalWID) {
 		mainTarget = ObjectManager->getByWatchID(goalWID);
 		if (!mainTarget) {
@@ -153,9 +153,9 @@ long MechWarrior::calcTacOrder (long goalAction,
 		GlobalPathStep globalPath[50];
 		long numSteps = 0;
 		if (currentTarget)
-			numSteps = getVehicle()->calcGlobalPath(globalPath, currentTarget, NULL, true);
+			numSteps = getVehicle()->calcGlobalPath(globalPath, currentTarget, nullptr, true);
 		else
-			numSteps = getVehicle()->calcGlobalPath(globalPath, NULL, &currentLocation, true);
+			numSteps = getVehicle()->calcGlobalPath(globalPath, nullptr, &currentLocation, true);
 		if (numSteps > 0) {
 			lastGoalPathSize = numSteps;
 			for (long i = 0; i < numSteps; i++)
@@ -261,7 +261,7 @@ long MechWarrior::calcTacOrder (long goalAction,
 		}
 	else if (currentAction == GOAL_ACTION_ATTACK) {
 		GlobalPathStep globalPath[50];
-		long numSteps = getVehicle()->calcGlobalPath(globalPath, currentTarget, NULL, true);
+		long numSteps = getVehicle()->calcGlobalPath(globalPath, currentTarget, nullptr, true);
 		if (numSteps > 0) {
 			lastGoalPathSize = numSteps;
 			for (long i = 0; i < numSteps; i++)
@@ -368,7 +368,7 @@ long MechWarrior::calcTacOrder (long goalAction,
 				currentTarget = blockerList[blockerToAttack];
 			}
 			GlobalPathStep globalPath[50];
-			long numSteps = getVehicle()->calcGlobalPath(globalPath, currentTarget, NULL, true);
+			long numSteps = getVehicle()->calcGlobalPath(globalPath, currentTarget, nullptr, true);
 			if (numSteps > 0) {
 				lastGoalPathSize = numSteps;
 				for (long i = 0; i < numSteps; i++)
@@ -460,7 +460,7 @@ long MechWarrior::calcTacOrder (long goalAction,
 			}
 			if (noTargetSelected) {
 				long numMovers = ObjectManager->getNumMovers();
-				MoverPtr biggestMoverThreat = NULL;
+				MoverPtr biggestMoverThreat = nullptr;
 				long biggestThreatRating = 0;
 				for (long i = 0; i < numMovers; i++) {
 					MoverPtr mover = ObjectManager->getMover(i);
@@ -734,7 +734,7 @@ void MechWarrior::copyFromData (MechWarriorData &data)
 	for (long i=0;i<MAX_QUEUED_TACORDERS_PER_WARRIOR;i++)
 	{
 		//Set the Marker pointers to NULL and then recreate them from the movemode data.
-		tacOrderQueue[i].marker = NULL;
+		tacOrderQueue[i].marker = nullptr;
 
 		if ( tacOrderQueue[i].moveMode == TRAVEL_MODE_SLOW )
 			tacOrderQueue[i].marker = getWayPointMarker( tacOrderQueue[i].point, "WalkWayPoint" );
@@ -791,10 +791,10 @@ void MechWarrior::init (MechWarriorData data)
 	}
 	else
 	{
-		brain = NULL;
+		brain = nullptr;
 	}
 
-	movePathRequest = NULL;
+	movePathRequest = nullptr;
 
 	if (audioStr[0] != 0)
 	{
@@ -803,7 +803,7 @@ void MechWarrior::init (MechWarriorData data)
 		if (result != NO_ERR)
 		{
 			delete radio;	//Radio couldn't start, so no radio.
-			radio = NULL;
+			radio = nullptr;
 		}
 	}
 

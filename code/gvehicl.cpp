@@ -297,7 +297,7 @@ bool GroundVehicleType::handleCollision (GameObjectPtr collidee, GameObjectPtr c
 //
 				else
 					shotInfo.init(collider->getWatchID(), -1, (long)(collider->getTonnage() / 10.0 + 0.5), hitLocation, collidee->relFacingTo(collider->getPosition()));
-				collidee->handleWeaponHit(&shotInfo, (MPlayer != NULL));
+				collidee->handleWeaponHit(&shotInfo, (MPlayer != nullptr));
 				((GroundVehiclePtr)collidee)->deadByCrushed = true;
 
 				//---------------------------------------------
@@ -362,7 +362,7 @@ bool GroundVehicleType::handleDestruction (GameObjectPtr collidee, GameObjectPtr
 	// Let's let the unit know we're dying if we're a point...
 	// No, Don't!!!
 	if (vehicle->getPoint() == vehicle) {
-		vehicle->getGroup()->setPoint(NULL);
+		vehicle->getGroup()->setPoint(nullptr);
 		//--------------------------------------------------------
 		// If there is no new point, all units must be blown away.
 		// How do we want to handle this?
@@ -424,7 +424,7 @@ GameObjectPtr GroundVehicleType::createInstance (void) {
 
 	GroundVehiclePtr newVehicle = new GroundVehicle;
 	if (!newVehicle)
-		return(NULL);
+		return(nullptr);
 
 	newVehicle->init(true, this);
 	//newVehicle->setIdNumber(NextIdNumber++);
@@ -600,7 +600,7 @@ void GroundVehicle::init (bool create) {
 	cellColToMine = cellRowToMine = -1;
 	timeInCurrent = 0.0;
 	
-	sensorSystem = NULL;			//Make sure they start WITHOUT one or badness will insue
+	sensorSystem = nullptr;			//Make sure they start WITHOUT one or badness will insue
 	
 	isVehiclePilot = false;
 
@@ -775,7 +775,7 @@ long GroundVehicle::init (FitIniFile* vehicleFile)
 	if (result != NO_ERR)
 		battleRating = -1;
 
-	maxMoveSpeed = (float)dynamics.max.groundVehicle.speed;
+	maxMoveSpeed = dynamics.max.groundVehicle.speed;
 
 	//------------------------------------------------------------------------------
 	// Build the vehicle's inventory (all components, and where they are located)...
@@ -924,7 +924,7 @@ long GroundVehicle::init (FitIniFile* vehicleFile)
 
 		//---------------------------------------------------------
 		// Now, determine the damage state for the body location...
-		float damageLevel = (float)body[curLocation].curInternalStructure / body[curLocation].maxInternalStructure;
+		float damageLevel = body[curLocation].curInternalStructure / body[curLocation].maxInternalStructure;
 		if (damageLevel == 0.0)
 			body[curLocation].damageState = IS_DAMAGE_DESTROYED;
 		else if (damageLevel <= 0.5)
@@ -979,19 +979,19 @@ long GroundVehicle::init (FitIniFile* vehicleFile)
 	{
 		GroundVehicleTypePtr objType = (GroundVehicleTypePtr)ObjectManager->getObjectType(typeHandle);
 		armor[GROUNDVEHICLE_LOCATION_TURRET].curArmor = armor[GROUNDVEHICLE_LOCATION_TURRET].maxArmor =
-		((GroundVehicleTypePtr)objType)->refitPoints;
+		(objType)->refitPoints;
 	}
 	if (canRecover) 
 	{
 		GroundVehicleTypePtr objType = (GroundVehicleTypePtr)ObjectManager->getObjectType(typeHandle);
 		armor[GROUNDVEHICLE_LOCATION_TURRET].curArmor = armor[GROUNDVEHICLE_LOCATION_TURRET].maxArmor =
-		((GroundVehicleTypePtr)objType)->recoverPoints;
+		(objType)->recoverPoints;
 	}
 	if ( mineLayer )
 	{
 		GroundVehicleTypePtr objType = (GroundVehicleTypePtr)ObjectManager->getObjectType(typeHandle);
 		armor[GROUNDVEHICLE_LOCATION_TURRET].curArmor = armor[GROUNDVEHICLE_LOCATION_TURRET].maxArmor =
-		((GroundVehicleTypePtr)objType)->mineLayer;
+		(objType)->mineLayer;
 	}
 
 	return(NO_ERR);
@@ -1077,7 +1077,7 @@ void GroundVehicle::destroy (void)
 	if (appearance)
 	{
 		delete appearance;
-		appearance = NULL;
+		appearance = nullptr;
 	}
 }
 
@@ -1101,7 +1101,7 @@ void GroundVehicle::mineCheck (void) {
 		{
 			sweepTime = 0;
 			Stuff::Vector3D curPos = getPosition();
-			ObjectManager->createExplosion(MINE_EXPLOSION_ID, NULL, curPos);
+			ObjectManager->createExplosion(MINE_EXPLOSION_ID, nullptr, curPos);
 			armor[GROUNDVEHICLE_LOCATION_FRONT].curArmor--;
 			if (MPlayer) 
 			{
@@ -1141,10 +1141,10 @@ void GroundVehicle::mineCheck (void) {
 			{
 				Stuff::Vector3D curPos;
 				curPos = getPosition();
-				ObjectManager->createExplosion(MINE_EXPLOSION_ID, NULL, curPos, MineSplashDamage, MineSplashRange * worldUnitsPerMeter);
+				ObjectManager->createExplosion(MINE_EXPLOSION_ID, nullptr, curPos, MineSplashDamage, MineSplashRange * worldUnitsPerMeter);
 				WeaponShotInfo shot;
-				shot.init(0, -2, MineDamage, calcHitLocation(NULL,-1,ATTACKSOURCE_MINE,0), 0);
-				handleWeaponHit(&shot, (MPlayer != NULL));
+				shot.init(0, -2, MineDamage, calcHitLocation(nullptr,-1,ATTACKSOURCE_MINE,0), 0);
+				handleWeaponHit(&shot, (MPlayer != nullptr));
 					
 				pilot->pausePath();		//Force the pilot to recalc based on new data.
 	

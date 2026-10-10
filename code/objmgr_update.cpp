@@ -924,7 +924,7 @@ void GameObjectManager::updateTerrainObjects(int& frameJobsPrePassCount) {
 							// (black-tree-bug class). Stamp liveness without the expensive
 							// update. Gated for A/B by MC2_R2B_TOUCH_PRESERVE.
 							if (r2bTouchPreserve &&
-							    mc2R2bTouchStaticLiveness(appearance, (uint32_t)g_mc2FrameCounter))
+							    mc2R2bTouchStaticLiveness(appearance, g_mc2FrameCounter))
 								touchedLiveness++;
 							skippedStaticNatural++;
 							continue;
@@ -959,7 +959,7 @@ void GameObjectManager::updateTerrainObjects(int& frameJobsPrePassCount) {
 							// the tree branch — keep the skipped static building in the
 							// registry flush instead of letting cachedFrame_ go stale.
 							if (r2bTouchPreserve &&
-							    mc2R2bTouchStaticLiveness(appearance, (uint32_t)g_mc2FrameCounter))
+							    mc2R2bTouchStaticLiveness(appearance, g_mc2FrameCounter))
 								touchedLiveness++;
 							skippedStaticNatural++;
 							continue;
@@ -1166,7 +1166,7 @@ void GameObjectManager::updateTerrainObjects(int& frameJobsPrePassCount) {
 	if (r2bTouchTrace && ((g_mc2FrameCounter <= 3u) || (g_mc2FrameCounter % 300u) == 0u)) {
 		std::fprintf(stderr,
 		    "R2B_STATIC_NATURAL: frame=%u skipped_full_update=%ld touched_liveness=%ld preserve=%d\n",
-		    (uint32_t)g_mc2FrameCounter, skippedStaticNatural, touchedLiveness,
+		    g_mc2FrameCounter, skippedStaticNatural, touchedLiveness,
 		    r2bTouchPreserve ? 1 : 0);
 		std::fflush(stderr);
 	}
@@ -1492,7 +1492,7 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 GameObjectPtr GameObjectManager::get (GameObjectHandle handle) {
 
 	if ((handle < 1) || (handle > getMaxObjects()))
-		return(NULL);
+		return(nullptr);
 
 	return(objList[handle]);
 }

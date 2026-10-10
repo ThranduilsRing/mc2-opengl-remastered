@@ -129,7 +129,7 @@ long WeaponBolt::update (void)
 			localToWorld.Multiply(gosFX::Effect_Against_Motion,effectRot);
 			localResult.Multiply(localToWorld,shapeOrigin);
 			
-			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&localResult,NULL);
+			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&localResult,nullptr);
 			gosEffect->Start(&info);
 		}
 		
@@ -154,7 +154,7 @@ long WeaponBolt::update (void)
 			localToWorld.Multiply(gosFX::Effect_Into_Motion,effectRot);
 			localResult.Multiply(localToWorld,shapeOrigin);
 			
- 			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&localResult,NULL);
+ 			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&localResult,nullptr);
 			muzzleEffect->Start(&info);
 		}
 		
@@ -282,7 +282,7 @@ long WeaponBolt::update (void)
 				if (gosEffect) {
 					gosEffect->Kill();
 					delete gosEffect;
-					gosEffect = NULL;
+					gosEffect = nullptr;
 				}
 
 				if (target)
@@ -309,7 +309,7 @@ long WeaponBolt::update (void)
 						shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 						shapeOrigin.BuildTranslation(tPosition);
 						
-						gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,NULL);
+						gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
 						hitEffect->Start(&info);
 					}
 					
@@ -317,14 +317,14 @@ long WeaponBolt::update (void)
 					{
 						missEffect->Kill();
 						delete missEffect;
-						missEffect = NULL;
+						missEffect = nullptr;
 					}
 					
 					if (waterMissEffect)
 					{
 						waterMissEffect->Kill();
 						delete waterMissEffect;
-						waterMissEffect = NULL;
+						waterMissEffect = nullptr;
 					}
 					
 					laserPosition = hotSpot;
@@ -349,7 +349,7 @@ long WeaponBolt::update (void)
 							shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 							shapeOrigin.BuildTranslation(tPosition);
 							
-							gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,NULL);
+							gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
 							waterMissEffect->Start(&info);
 						}
 							
@@ -357,7 +357,7 @@ long WeaponBolt::update (void)
 						{
 							missEffect->Kill();
 							delete missEffect;
-							missEffect = NULL;
+							missEffect = nullptr;
 						}
 					}
 					else
@@ -373,7 +373,7 @@ long WeaponBolt::update (void)
 							shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 							shapeOrigin.BuildTranslation(tPosition);
 							
-							gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,NULL);
+							gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
 							missEffect->Start(&info);
 						}
 						
@@ -381,7 +381,7 @@ long WeaponBolt::update (void)
 						{
 							waterMissEffect->Kill();
 							delete waterMissEffect;
-							waterMissEffect = NULL;
+							waterMissEffect = nullptr;
 						}
 					}
 					
@@ -389,7 +389,7 @@ long WeaponBolt::update (void)
 					{
 						hitEffect->Kill();
 						delete hitEffect;
-						hitEffect = NULL;
+						hitEffect = nullptr;
 					}
 					
 					laserPosition = hotSpot;
@@ -431,27 +431,27 @@ long WeaponBolt::update (void)
 						{
 							hitEffect->Kill();
 							delete hitEffect;
-							hitEffect = NULL;
+							hitEffect = nullptr;
 						}
 						
 						if (missEffect)
 						{
 							missEffect->Kill();
 							delete missEffect;
-							missEffect = NULL;
+							missEffect = nullptr;
 						}
 						
 						if (waterMissEffect)
 						{
 							waterMissEffect->Kill();
 							delete waterMissEffect;
-							waterMissEffect = NULL;
+							waterMissEffect = nullptr;
 						}
 						
 						//Create the explosion here.  HIT or MISS, its the same one!!
 						// Damage is done by explosion NOT by hit!
 						ObjectManager->createExplosion(((WeaponBoltTypePtr)getObjectType())->hitEffectObjNum,
-														NULL,*targetPosition,
+														nullptr,*targetPosition,
 														((WeaponBoltTypePtr)getObjectType())->areaEffectDmg,
 														((WeaponBoltTypePtr)getObjectType())->areaEffectRad);
 					}
@@ -488,7 +488,7 @@ long WeaponBolt::update (void)
 						land->worldToCell(*targetPosition, cellRow, cellCol);
 						if (GameMap->getMine(cellRow, cellCol) == 1)
 						{
-							ObjectManager->createExplosion(MINE_EXPLOSION_ID, NULL, *targetPosition, MineSplashDamage, MineSplashRange * worldUnitsPerMeter);
+							ObjectManager->createExplosion(MINE_EXPLOSION_ID, nullptr, *targetPosition, MineSplashDamage, MineSplashRange * worldUnitsPerMeter);
 							GameMap->setMine(cellRow, cellCol, 2);
 						}
 					}
@@ -501,21 +501,21 @@ long WeaponBolt::update (void)
 						{
 							hitEffect->Kill();
 							delete hitEffect;
-							hitEffect = NULL;
+							hitEffect = nullptr;
 						}
 
 						if (missEffect)
 						{
 							missEffect->Kill();
 							delete missEffect;
-							missEffect = NULL;
+							missEffect = nullptr;
 						}
 
 						if (waterMissEffect)
 						{
 							waterMissEffect->Kill();
 							delete waterMissEffect;
-							waterMissEffect = NULL;
+							waterMissEffect = nullptr;
 						}
 
 						// ISSUE-9 S2 (MC2_CALLED_SHOT_FIX): successful aimed shot —
@@ -528,7 +528,7 @@ long WeaponBolt::update (void)
 						//Create the explosion here.  HIT or MISS, its the same one!!
 						// Damage is done by explosion NOT by hit!
 						ObjectManager->createExplosion(((WeaponBoltTypePtr)getObjectType())->hitEffectObjNum,
-														NULL,*targetPosition,
+														nullptr,*targetPosition,
 														areaDmg,
 														((WeaponBoltTypePtr)getObjectType())->areaEffectRad);
 					}
@@ -549,7 +549,7 @@ long WeaponBolt::update (void)
 					if (gosEffect) {
 						gosEffect->Kill();
 						delete gosEffect;
-						gosEffect = NULL;
+						gosEffect = nullptr;
 					}
 
 				if (target)
@@ -574,7 +574,7 @@ long WeaponBolt::update (void)
 						shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 						shapeOrigin.BuildTranslation(tPosition);
 						
-						gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,NULL);
+						gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
 						hitEffect->Start(&info);
 					}
 					
@@ -582,14 +582,14 @@ long WeaponBolt::update (void)
 					{
 						missEffect->Kill();
 						delete missEffect;
-						missEffect = NULL;
+						missEffect = nullptr;
 					}
 					
 					if (waterMissEffect)
 					{
 						waterMissEffect->Kill();
 						delete waterMissEffect;
-						waterMissEffect = NULL;
+						waterMissEffect = nullptr;
 					}
 				}
 				else
@@ -612,7 +612,7 @@ long WeaponBolt::update (void)
 							shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 							shapeOrigin.BuildTranslation(tPosition);
 							
-							gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,NULL);
+							gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
 							waterMissEffect->Start(&info);
 						}
 						
@@ -620,7 +620,7 @@ long WeaponBolt::update (void)
 						{
 							missEffect->Kill();
 							delete missEffect;
-							missEffect = NULL;
+							missEffect = nullptr;
 						}
 					}
 					else
@@ -636,7 +636,7 @@ long WeaponBolt::update (void)
 							shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 							shapeOrigin.BuildTranslation(tPosition);
 							
-							gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,NULL);
+							gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
 							missEffect->Start(&info);
 						}
 						
@@ -644,7 +644,7 @@ long WeaponBolt::update (void)
 						{
 							waterMissEffect->Kill();
 							delete waterMissEffect;
-							waterMissEffect = NULL;
+							waterMissEffect = nullptr;
 						}
 					}
 					
@@ -652,7 +652,7 @@ long WeaponBolt::update (void)
 					{
 						hitEffect->Kill();
 						delete hitEffect;
-						hitEffect = NULL;
+						hitEffect = nullptr;
 					}
 				}
 				
@@ -691,27 +691,27 @@ long WeaponBolt::update (void)
 						{
 							hitEffect->Kill();
 							delete hitEffect;
-							hitEffect = NULL;
+							hitEffect = nullptr;
 						}
 						
 						if (missEffect)
 						{
 							missEffect->Kill();
 							delete missEffect;
-							missEffect = NULL;
+							missEffect = nullptr;
 						}
 						
 						if (waterMissEffect)
 						{
 							waterMissEffect->Kill();
 							delete waterMissEffect;
-							waterMissEffect = NULL;
+							waterMissEffect = nullptr;
 						}
 						
  						//Create the explosion here.  HIT or MISS, its the same one!!
 						// Damage is done by explosion NOT by hit!
 						ObjectManager->createExplosion(((WeaponBoltTypePtr)getObjectType())->hitEffectObjNum,
-														NULL,*targetPosition,
+														nullptr,*targetPosition,
 														((WeaponBoltTypePtr)getObjectType())->areaEffectDmg,
 														((WeaponBoltTypePtr)getObjectType())->areaEffectRad);
 					}
@@ -748,7 +748,7 @@ long WeaponBolt::update (void)
 						land->worldToCell(*targetPosition, cellRow, cellCol);
 						if (GameMap->getMine(cellRow, cellCol) == 1)
 						{
-							ObjectManager->createExplosion(MINE_EXPLOSION_ID, NULL, *targetPosition, MineSplashDamage, MineSplashRange * worldUnitsPerMeter);
+							ObjectManager->createExplosion(MINE_EXPLOSION_ID, nullptr, *targetPosition, MineSplashDamage, MineSplashRange * worldUnitsPerMeter);
 							GameMap->setMine(cellRow, cellCol, 2);
 						}
 					}
@@ -761,27 +761,27 @@ long WeaponBolt::update (void)
 						{
 							hitEffect->Kill();
 							delete hitEffect;
-							hitEffect = NULL;
+							hitEffect = nullptr;
 						}
 						
 						if (missEffect)
 						{
 							missEffect->Kill();
 							delete missEffect;
-							missEffect = NULL;
+							missEffect = nullptr;
 						}
 						
 						if (waterMissEffect)
 						{
 							waterMissEffect->Kill();
 							delete waterMissEffect;
-							waterMissEffect = NULL;
+							waterMissEffect = nullptr;
 						}
 						
  						//Create the explosion here.  HIT or MISS, its the same one!!
 						// Damage is done by explosion NOT by hit!
 						ObjectManager->createExplosion(((WeaponBoltTypePtr)getObjectType())->hitEffectObjNum,
-														NULL,*targetPosition,
+														nullptr,*targetPosition,
 														((WeaponBoltTypePtr)getObjectType())->areaEffectDmg,
 														((WeaponBoltTypePtr)getObjectType())->areaEffectRad);
 					}
@@ -855,7 +855,7 @@ long WeaponBolt::update (void)
 		{
 			gosEffect->Kill();		//Effect is over.  Otherwise, wait until hit!
 			delete gosEffect;
-			gosEffect = NULL;
+			gosEffect = nullptr;
 		}
    	}
 	
@@ -888,7 +888,7 @@ long WeaponBolt::update (void)
 		{
 			muzzleEffect->Kill();		//Effect is over.  Otherwise, wait until hit!
 			delete muzzleEffect;
-			muzzleEffect = NULL;
+			muzzleEffect = nullptr;
 		}
 
    	}
@@ -923,7 +923,7 @@ long WeaponBolt::update (void)
 				//NO LIGHT ALLOWED!  TOO Many in World!
 				// LightId is now -1 which will cause this to NEVER make a light!
 				systemHeap->Free(pointLight);
-				pointLight = NULL;
+				pointLight = nullptr;
 			}
 		}
 	}
@@ -1004,13 +1004,13 @@ long WeaponBolt::update (void)
 		{
 			gosEffect->Kill();
 			delete gosEffect;
-			gosEffect = NULL;
+			gosEffect = nullptr;
 			
 			if (pointLight)
 			{
 				eye->removeWorldLight(lightId,pointLight);
 				systemHeap->Free(pointLight);
-				pointLight = NULL;
+				pointLight = nullptr;
 			}
  		}
 		
@@ -1051,7 +1051,7 @@ long WeaponBolt::update (void)
 				{
 					hitEffect->Kill();		//Effect is over.  Otherwise, wait until hit!
 					delete hitEffect;
-					hitEffect = NULL;
+					hitEffect = nullptr;
 				}
 					
 				inView = FALSE;
@@ -1060,14 +1060,14 @@ long WeaponBolt::update (void)
 				{
 					eye->removeWorldLight(lightId,pointLight);
 					systemHeap->Free(pointLight);
-					pointLight = NULL;
+					pointLight = nullptr;
 				}
 				
 				if (muzzleEffect)
 				{
 					muzzleEffect->Kill();
 					delete muzzleEffect;
-					muzzleEffect = NULL;
+					muzzleEffect = nullptr;
 				}
 			}
 		}
@@ -1077,14 +1077,14 @@ long WeaponBolt::update (void)
 			{
 				hitEffect->Kill();		//Effect is over.  Otherwise, wait until hit!
 				delete hitEffect;
-				hitEffect = NULL;
+				hitEffect = nullptr;
 			}
 				
 			if (pointLight)
 			{
 				eye->removeWorldLight(lightId,pointLight);
 				systemHeap->Free(pointLight);
-				pointLight = NULL;
+				pointLight = nullptr;
 			}
 		}
 		
@@ -1125,14 +1125,14 @@ long WeaponBolt::update (void)
 				{
 					missEffect->Kill();		//Effect is over.  Otherwise, wait until hit!
 					delete missEffect;
-					missEffect = NULL;
+					missEffect = nullptr;
 				}
 					
 				if (muzzleEffect)
 				{
 					muzzleEffect->Kill();
 					delete muzzleEffect;
-					muzzleEffect = NULL;
+					muzzleEffect = nullptr;
 				}
 				
 				inView = FALSE;
@@ -1141,7 +1141,7 @@ long WeaponBolt::update (void)
 				{
 					eye->removeWorldLight(lightId,pointLight);
 					systemHeap->Free(pointLight);
-					pointLight = NULL;
+					pointLight = nullptr;
 				}
 			}
 		}
@@ -1151,14 +1151,14 @@ long WeaponBolt::update (void)
 			{
 				missEffect->Kill();		//Effect is over.  Otherwise, wait until hit!
 				delete missEffect;
-				missEffect = NULL;
+				missEffect = nullptr;
 			}
 				
 			if (pointLight)
 			{
 				eye->removeWorldLight(lightId,pointLight);
 				systemHeap->Free(pointLight);
-				pointLight = NULL;
+				pointLight = nullptr;
 			}
 		}
 		
@@ -1201,14 +1201,14 @@ long WeaponBolt::update (void)
 				{
 					waterMissEffect->Kill();		//Effect is over.  Otherwise, wait until hit!
 					delete waterMissEffect;
-					waterMissEffect = NULL;
+					waterMissEffect = nullptr;
 				}
 					
 				if (muzzleEffect)
 				{
 					muzzleEffect->Kill();
 					delete muzzleEffect;
-					muzzleEffect = NULL;
+					muzzleEffect = nullptr;
 				}
 				
 				inView = FALSE;
@@ -1217,7 +1217,7 @@ long WeaponBolt::update (void)
 				{
 					eye->removeWorldLight(lightId,pointLight);
 					systemHeap->Free(pointLight);
-					pointLight = NULL;
+					pointLight = nullptr;
 				}
 			}
 		}
@@ -1227,14 +1227,14 @@ long WeaponBolt::update (void)
 			{
 				waterMissEffect->Kill();		//Effect is over.  Otherwise, wait until hit!
 				delete waterMissEffect;
-				waterMissEffect = NULL;
+				waterMissEffect = nullptr;
 			}
 				
 			if (pointLight)
 			{
 				eye->removeWorldLight(lightId,pointLight);
 				systemHeap->Free(pointLight);
-				pointLight = NULL;
+				pointLight = nullptr;
 			}
 		}
 

@@ -8,11 +8,11 @@
 GameObjectPtr GameObjectManager::findObject (Stuff::Vector3D position) {
 
 	float closestDistance = 10000.0;
-	GameObjectPtr closestObj = NULL;
+	GameObjectPtr closestObj = nullptr;
 	long numObjects = getMaxObjects();
 	for (long objIndex = 1; objIndex <= numObjects; objIndex++) {
 		GameObjectPtr obj = objList[objIndex];
-		Assert(obj != NULL, objIndex, " GameObjectManager.findObject: NULL obj ");
+		Assert(obj != nullptr, objIndex, " GameObjectManager.findObject: NULL obj ");
 		if (obj->getExists() && !obj->inTransport()) {
 			float distanceFromObject = obj->distanceFrom(position);
 			if (distanceFromObject < closestDistance)
@@ -39,7 +39,7 @@ GameObjectPtr GameObjectManager::findObjectByTypeHandle (long typeHandle) {
 		if (obj->getExists() && (obj->getTypeHandle() == typeHandle))
 			return(obj);
 	}
-	return(NULL);
+	return(nullptr);
 }
 
 //---------------------------------------------------------------------------
@@ -47,7 +47,7 @@ GameObjectPtr GameObjectManager::findObjectByTypeHandle (long typeHandle) {
 GameObjectPtr GameObjectManager::findByPartId (long partId) {
 
 	if (partId == 0)
-		return(NULL);
+		return(nullptr);
 
 	long numObjects = getMaxObjects();
 	for (long objIndex = 1; objIndex <= numObjects; objIndex++) 
@@ -56,7 +56,7 @@ GameObjectPtr GameObjectManager::findByPartId (long partId) {
 		if (obj && obj->getExists() && (obj->getPartId() == partId))
 			return(obj);
 	}
-	return(NULL);
+	return(nullptr);
 }
 
 //---------------------------------------------------------------------------
@@ -91,7 +91,7 @@ GameObjectPtr GameObjectManager::findByCellPosition (long row, long col)
 		}
 	}
 
-	return(NULL);
+	return(nullptr);
 }
 
 //---------------------------------------------------------------------------
@@ -323,7 +323,7 @@ GameObjectPtr GameObjectManager::findObjectByMouse (long mouseX,
 		if (searchList[objIndex] && searchList[objIndex]->getExists()) 
 		{
 			GameObjectPtr obj = searchList[objIndex];
-			Assert(obj != NULL, objIndex, " GameObjectManager.findObjectByMouse: NULL obj ");
+			Assert(obj != nullptr, objIndex, " GameObjectManager.findObjectByMouse: NULL obj ");
 			AppearancePtr objAppearance = obj->getAppearance();
 			if (objAppearance && objAppearance->canBeSeen()) 
 			{
@@ -368,7 +368,7 @@ GameObjectPtr GameObjectManager::findObjectByMouse (long mouseX,
 		}
 	}
 	
-	return(NULL);
+	return(nullptr);
 }
 
 //---------------------------------------------------------------------------
@@ -378,13 +378,13 @@ GameObjectPtr GameObjectManager::findMoverByMouse (long mouseX,
 												   long commanderId,
 												   bool skipDisabled) {
 
-	GameObjectPtr* searchList = NULL;
+	GameObjectPtr* searchList = nullptr;
 	long numMovers = getMaxMovers();
 	if (objList)
 		searchList = &objList[1];
 
 	if (!searchList)
-		return(NULL);
+		return(nullptr);
 
 	if (commanderId == -1)
 		for (long objIndex = 0; objIndex < numMovers; objIndex++) 
@@ -392,7 +392,7 @@ GameObjectPtr GameObjectManager::findMoverByMouse (long mouseX,
 			if (searchList[objIndex] && searchList[objIndex]->getExists()) 
 			{
 				GameObjectPtr obj = searchList[objIndex];
-				Assert(obj != NULL, objIndex, " GameObjectManager.findObjectByMouse: NULL obj ");
+				Assert(obj != nullptr, objIndex, " GameObjectManager.findObjectByMouse: NULL obj ");
 				AppearancePtr objAppearance = obj->getAppearance();
 				if (objAppearance && objAppearance->canBeSeen()) 
 				{
@@ -433,7 +433,7 @@ GameObjectPtr GameObjectManager::findMoverByMouse (long mouseX,
 			if (searchList[objIndex] && searchList[objIndex]->getExists()) 
 			{
 				GameObjectPtr obj = searchList[objIndex];
-				Assert(obj != NULL, objIndex, " GameObjectManager.findObjectByMouse: NULL obj ");
+				Assert(obj != nullptr, objIndex, " GameObjectManager.findObjectByMouse: NULL obj ");
 				if (obj->getCommanderId() == commanderId)
 					continue;
 				AppearancePtr objAppearance = obj->getAppearance();
@@ -470,7 +470,7 @@ GameObjectPtr GameObjectManager::findMoverByMouse (long mouseX,
 			}
 		}
 
-	return(NULL);
+	return(nullptr);
 }
 
 //---------------------------------------------------------------------------
@@ -523,20 +523,20 @@ GameObjectPtr GameObjectManager::findTerrainObjectByMouse (long mouseX,
 	if (mouseX == s_pmX && mouseY == s_pmY &&
 		camRev != 0 && camRev == s_pmCamRev)
 	{
-		return s_pmWatchID ? getByWatchID(s_pmWatchID) : NULL;
+		return s_pmWatchID ? getByWatchID(s_pmWatchID) : nullptr;
 	}
 	// Camera moved this frame — return stale (watch-ID-validated) result without scanning.
 	// Hover highlight is cosmetic; player is panning, not selecting.
 	// camRev is updated so that once camera settles the next frame triggers a fresh scan.
 	if (camRev != 0 && camRev != s_pmCamRev) {
 		s_pmCamRev = camRev;
-		return s_pmWatchID ? getByWatchID(s_pmWatchID) : NULL;
+		return s_pmWatchID ? getByWatchID(s_pmWatchID) : nullptr;
 	}
 
 	PkTimer _pk;  // MC2_PICK_RECON per-call wall-time
 	int32_t pickCandidates = 0;
 	int32_t activeBlocksVisited = 0;
-	GameObjectPtr pickBest = NULL;        // BUILDING-PICK FIX: world-space nearest-to-camera
+	GameObjectPtr pickBest = nullptr;        // BUILDING-PICK FIX: world-space nearest-to-camera
 	float         pickBestDistSq = 3.4e38f;
 	for (long terrainBlock = 0; terrainBlock < Terrain::numObjBlocks; terrainBlock++)
 	{
@@ -576,7 +576,7 @@ GameObjectPtr GameObjectManager::findTerrainObjectByMouse (long mouseX,
 				if (searchList[li] && searchList[li]->getExists())
 				{
 					GameObjectPtr obj = searchList[li];
-					Assert(obj != NULL, li, " GameObjectManager.findTerrainObjectByMouse: NULL obj ");
+					Assert(obj != nullptr, li, " GameObjectManager.findTerrainObjectByMouse: NULL obj ");
 					AppearancePtr objAppearance = obj->getAppearance();
 					// CRIT-1: canBeSeen() guard repointed to the GPU cull
 					// readback-visible set (fail-open when readback is
@@ -637,7 +637,7 @@ GameObjectPtr GameObjectManager::findTerrainObjectByMouse (long mouseX,
 							BldgAppearance* ba =
 								((oc == BUILDING) || (oc == TREEBUILDING) || (oc == TERRAINOBJECT) || (oc == BRIDGE) || (oc == TURRET) || (oc == GATE))
 									? (BldgAppearance*)obj->getAppearance()
-									: NULL;
+									: nullptr;
 							if (ba) {
 								// v2: per-instance screen-rect cache keyed on cameraRevision.
 								// Safe for static terrain objects (never move post-spawn).
@@ -714,7 +714,7 @@ GameObjectPtr GameObjectManager::findTerrainObjectByMouse (long mouseX,
 
 GameObjectPtr GameObjectManager::findObjectByMouse (long mouseX, long mouseY) {
 
-	GameObjectPtr obj = NULL;
+	GameObjectPtr obj = nullptr;
 
 	long homeCommanderId = Commander::home->getId();
 	{

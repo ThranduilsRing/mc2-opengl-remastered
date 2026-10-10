@@ -70,16 +70,16 @@ void SplashIntro::init()
 		Assert(0,0,errorStr );
 	}
 
-	LogisticsScreen::init( file, "Static", "Text", "Rect", "Button", NULL, "AnimObject" );
+	LogisticsScreen::init( file, "Static", "Text", "Rect", "Button", nullptr, "AnimObject" );
 }
 
 MainMenu::MainMenu(  )
 {
-	optionsScreenWrapper = NULL;
+	optionsScreenWrapper = nullptr;
 	bOptions = 0;
 	bSave = bLoad = 0;
 	helpTextArrayID = 0;
-	mechlopedia = 0;
+	mechlopedia = nullptr;
 	bDrawMechlopedia = 0;
 	tuneId = -1;
 	bLoadSingle = 0; 
@@ -87,7 +87,7 @@ MainMenu::MainMenu(  )
 	introOver = 0;
 	bHostLeftDlg = 0;
 
-	introMovie = 0;
+	introMovie = nullptr;
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -103,7 +103,7 @@ int MainMenu::init( FitIniFile& file )
 	file.seekBlock("Tunes");
 	file.readIdLong("TuneId",tuneId);
 
-	LogisticsScreen::init( file, "Static", "Text", "Rect", "Button", NULL, "AnimObject" );
+	LogisticsScreen::init( file, "Static", "Text", "Rect", "Button", nullptr, "AnimObject" );
 
 	FullPathFileName name;
 	name.init( artPath, "mcl_sp", ".fit" );
@@ -145,7 +145,7 @@ int MainMenu::init( FitIniFile& file )
 
 	singleLoadDlg.init( &mpFile );
 
-	introMovie = 0;
+	introMovie = nullptr;
 
 	path.init( moviePath, "msft", ".bik" );
 
@@ -192,7 +192,7 @@ void MainMenu::begin()
 
 			mc2IsInDisplayBackBuffer = false;
 
-			AsynFunc = NULL;
+			AsynFunc = nullptr;
 
 			//Force mouse Cursors to smaller or larger depending on new video mode.
 			userInput->initMouseCursors("cursors");
@@ -425,7 +425,7 @@ void MainMenu::skipIntro()
 	{
 		introMovie->stop();
 		delete introMovie;
-		introMovie = NULL;
+		introMovie = nullptr;
 
 	}
 }
@@ -517,7 +517,7 @@ void MainMenu::update()
 			//Movie's Over.
 			//Whack it.
 			delete introMovie;
-			introMovie = NULL;
+			introMovie = nullptr;
 		}
 
 		return;
@@ -580,7 +580,7 @@ void MainMenu::update()
 			if ( bSave )
 			{
 				// make sure the save game directory exists, if not create it
-				CreateDirectory( savePath, NULL );
+				CreateDirectory( savePath, nullptr );
 
 				if ( NO_ERR != file.createWithCase( name ) )
 				{
@@ -704,7 +704,7 @@ void MainMenu::update()
 		{
 			MPlayer->closeSession();
 			delete MPlayer;
-			MPlayer = NULL;
+			MPlayer = nullptr;
 		}
 	}
 	else if ( promptToDisconnect )
@@ -718,7 +718,7 @@ void MainMenu::update()
 				{
 					MPlayer->closeSession();
 					delete MPlayer;
-					MPlayer = NULL;
+					MPlayer = nullptr;
 				}
 				long oldRes = endResult;
 				endResult = 0;

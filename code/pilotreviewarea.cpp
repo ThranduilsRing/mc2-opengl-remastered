@@ -20,58 +20,58 @@ SalvageMechArea.cpp			: Implementation of the SalvageMechArea component.
 #include"gamesound.h"
 #include "Gates/gate.h"
 
-aText*		DeadPilotListItem::s_nameText = NULL;
-aText*		DeadPilotListItem::s_rankText = NULL;
-aText*		DeadPilotListItem::s_missionText = NULL;
-aText*		DeadPilotListItem::s_killsText = NULL;
-aRect*		DeadPilotListItem::s_area = NULL;
-aRect*		DeadPilotListItem::s_liveIconRect = NULL;
-aRect*		DeadPilotListItem::s_deadIconRect = NULL;
+aText*		DeadPilotListItem::s_nameText = nullptr;
+aText*		DeadPilotListItem::s_rankText = nullptr;
+aText*		DeadPilotListItem::s_missionText = nullptr;
+aText*		DeadPilotListItem::s_killsText = nullptr;
+aRect*		DeadPilotListItem::s_area = nullptr;
+aRect*		DeadPilotListItem::s_liveIconRect = nullptr;
+aRect*		DeadPilotListItem::s_deadIconRect = nullptr;
 long		DeadPilotListItem::s_itemCount = 0;
 
-aText*		ActivePilotListItem::s_nameText = NULL;
-aText*		ActivePilotListItem::s_missionText = NULL;
-aText*		ActivePilotListItem::s_killsText = NULL;
+aText*		ActivePilotListItem::s_nameText = nullptr;
+aText*		ActivePilotListItem::s_missionText = nullptr;
+aText*		ActivePilotListItem::s_killsText = nullptr;
 
-aText*		ActivePilotListItem::s_rankText = NULL;
-aText*		ActivePilotListItem::s_gunneryText = NULL;
-aText*		ActivePilotListItem::s_pilotingText = NULL;
+aText*		ActivePilotListItem::s_rankText = nullptr;
+aText*		ActivePilotListItem::s_gunneryText = nullptr;
+aText*		ActivePilotListItem::s_pilotingText = nullptr;
 
 long		ActivePilotListItem::s_itemCount = 0;
 aRect*		ActivePilotListItem::s_outline[5];
 aObject*	ActivePilotListItem::s_icons[8];
-aRect*		ActivePilotListItem::s_area = NULL;
-aRect*		ActivePilotListItem::s_iconRect = NULL;		
-AttributeMeter*		ActivePilotListItem::s_attributeMeters[2] = { 0,0};
-aRect*		ActivePilotListItem::s_killIconRect = NULL;
-PilotPromotionArea* ActivePilotListItem::s_pilotPromotionArea = NULL;
-aText*		ActivePilotListItem::s_medalAwardedText = 0;
-aText*		ActivePilotListItem::s_medalText= 0;
-aText*		ActivePilotListItem::s_promotionText = 0;
-aObject*	ActivePilotListItem::s_medals[MAX_MEDAL] = {0};
+aRect*		ActivePilotListItem::s_area = nullptr;
+aRect*		ActivePilotListItem::s_iconRect = nullptr;		
+AttributeMeter*		ActivePilotListItem::s_attributeMeters[2] = { nullptr,nullptr};
+aRect*		ActivePilotListItem::s_killIconRect = nullptr;
+PilotPromotionArea* ActivePilotListItem::s_pilotPromotionArea = nullptr;
+aText*		ActivePilotListItem::s_medalAwardedText = nullptr;
+aText*		ActivePilotListItem::s_medalText= nullptr;
+aText*		ActivePilotListItem::s_promotionText = nullptr;
+aObject*	ActivePilotListItem::s_medals[MAX_MEDAL] = {nullptr};
 
-aAnimation*		ActivePilotListItem::s_skillAnim = NULL;
-aAnimation*		ActivePilotListItem::s_medalAwardedAnim = NULL;
-aAnimation*		ActivePilotListItem::s_pilotPromotedAnim = NULL;
+aAnimation*		ActivePilotListItem::s_skillAnim = nullptr;
+aAnimation*		ActivePilotListItem::s_medalAwardedAnim = nullptr;
+aAnimation*		ActivePilotListItem::s_pilotPromotedAnim = nullptr;
 long		ActivePilotListItem::s_totalWidth = 0;	
 
 
 
-PilotPromotionArea*	PilotReviewScreen::s_curPromotion = NULL;;
+PilotPromotionArea*	PilotReviewScreen::s_curPromotion = nullptr;;
 
-aButton*	SpecialtyListItem::s_radioButton = 0;
-aObject*		SpecialtyListItem::s_skillIcons[4] = {0,0,0,0};
-aAnimation*	SpecialtyListItem::s_highlightAnim = 0;
-aAnimation*	SpecialtyListItem::s_normalAnim = 0;
-aAnimation*	SpecialtyListItem::s_pressedAnim = 0;
-aText*		SpecialtyListItem::s_description = 0;
-aRect*		SpecialtyListItem::s_area = 0;
-aRect*		SpecialtyListItem::s_outline = 0;
+aButton*	SpecialtyListItem::s_radioButton = nullptr;
+aObject*		SpecialtyListItem::s_skillIcons[4] = {nullptr,nullptr,nullptr,nullptr};
+aAnimation*	SpecialtyListItem::s_highlightAnim = nullptr;
+aAnimation*	SpecialtyListItem::s_normalAnim = nullptr;
+aAnimation*	SpecialtyListItem::s_pressedAnim = nullptr;
+aText*		SpecialtyListItem::s_description = nullptr;
+aRect*		SpecialtyListItem::s_area = nullptr;
+aRect*		SpecialtyListItem::s_outline = nullptr;
 long		SpecialtyListItem::s_itemCount = 0; // hack, we really don't want to delete these each time
 
 
 
-PilotReviewScreen* PilotReviewScreen::instance = NULL;
+PilotReviewScreen* PilotReviewScreen::instance = nullptr;
 
 extern float frameLength;
 
@@ -89,11 +89,11 @@ extern float frameLength;
 
 PilotReviewScreen::PilotReviewScreen()
 {
-	statics = 0;
-	rects = 0;
+	statics = nullptr;
+	rects = nullptr;
 	staticCount = rectCount = buttonCount = textCount = 0;
-	buttons = 0;
-	textObjects = 0;
+	buttons = nullptr;
+	textObjects = nullptr;
 	bDone = 0;
 	instance = this;
 
@@ -288,7 +288,7 @@ void PilotReviewScreen::update()
 	static const int s_soakAutoWin = mc2::gate::get<"MC2_SOAK_AUTOWIN">() ? 1 : 0;
 	if ( s_soakAutoWin )
 	{
-		s_curPromotion = 0;
+		s_curPromotion = nullptr;
 		if ( !bDone )
 		{
 			bDone = true;
@@ -304,7 +304,7 @@ void PilotReviewScreen::update()
 	{
 		s_curPromotion->update();
 		if ( s_curPromotion->isDone() )
-			s_curPromotion = 0;
+			s_curPromotion = nullptr;
 		return;
 	}
 
@@ -384,38 +384,38 @@ DeadPilotListItem::~DeadPilotListItem()
 	if ( deadIcon )
 		delete deadIcon;
 
-	deadIcon = liveIcon = NULL;
+	deadIcon = liveIcon = nullptr;
 
 	s_itemCount--;
 	if ( s_itemCount < 1 )
 	{
 		if ( s_area )
 			delete s_area;
-		s_area = NULL;
+		s_area = nullptr;
 
 		if ( s_missionText )
 			delete s_missionText;
-		s_missionText = NULL;
+		s_missionText = nullptr;
 
 		if ( s_killsText )
 			delete s_killsText;
-		s_killsText = NULL;
+		s_killsText = nullptr;
 
 		if ( s_rankText )
 			delete s_rankText;
-		s_rankText = NULL;
+		s_rankText = nullptr;
 
 		if ( s_nameText )
 			delete s_nameText;
-		s_nameText = NULL;
+		s_nameText = nullptr;
 
 		if ( s_liveIconRect )
 			delete s_liveIconRect;
-		s_liveIconRect = NULL;
+		s_liveIconRect = nullptr;
 
 		if ( s_deadIconRect )
 			delete s_deadIconRect;
-		s_deadIconRect = NULL;	
+		s_deadIconRect = nullptr;	
 	}
 }
 
@@ -654,7 +654,7 @@ void PilotListBox::update()
 					
 					if ( pilotItem->isDone()  )
 					{
-						pilotItem = NULL;
+						pilotItem = nullptr;
 						while ( !pilotItem )
 						{
 							curItem++;
@@ -897,7 +897,7 @@ void		ActivePilotListItem::update()
 		if ( s_pilotPromotionArea->isDone() )
 		{
 			promotionShown = true;
-			PilotReviewScreen::s_curPromotion = NULL;
+			PilotReviewScreen::s_curPromotion = nullptr;
 			showingPromotion = false;
 		}
 	} 
@@ -932,19 +932,19 @@ float ActivePilotListItem::flashTime()
 ActivePilotListItem::~ActivePilotListItem()
 {
 	delete pilotIcon;
-	pilotIcon = NULL;
+	pilotIcon = nullptr;
 
 	for ( int i = 0; i < MAX_MEDAL; i++ )
 	{
 		if ( medalIcons[i] )
 		{
 			delete medalIcons[i];
-			medalIcons[i] = 0;
+			medalIcons[i] = nullptr;
 		}
 		if ( medalTexts[i] )
 		{
 			delete medalTexts[i];
-			medalTexts[i] = NULL;
+			medalTexts[i] = nullptr;
 		}
 	}
 
@@ -954,53 +954,53 @@ ActivePilotListItem::~ActivePilotListItem()
 		if ( s_area )
 			delete s_area;
 
-		s_area =0;
+		s_area =nullptr;
 
 		if ( s_missionText )
 			delete s_missionText;
-		s_missionText = 0;
+		s_missionText = nullptr;
 
 		if ( s_killsText )
 			delete s_killsText;
 
-		s_killsText = 0;
+		s_killsText = nullptr;
 
 		if ( s_rankText )
 			delete s_rankText;
 
-		s_rankText = 0;
+		s_rankText = nullptr;
 
 		if ( s_nameText )
 			delete s_nameText;
 
-		s_nameText = 0;
+		s_nameText = nullptr;
 		
 		if ( s_iconRect )
 			delete s_iconRect;
 
-		s_iconRect = 0;
+		s_iconRect = nullptr;
 		
 		if ( s_gunneryText )
 			delete s_gunneryText;
 
-		s_gunneryText = 0;
+		s_gunneryText = nullptr;
 
 		if ( s_pilotingText )
 			delete s_pilotingText;
 
-		s_pilotingText = 0;
+		s_pilotingText = nullptr;
 
 		if ( s_killIconRect )
 			delete s_killIconRect;
 
-		s_killIconRect = 0;
+		s_killIconRect = nullptr;
 
 			for (int i = 0; i < 5; i++ )
 			{
 				if ( s_outline[i] )
 					delete s_outline[i];
 
-				s_outline[i] = 0;
+				s_outline[i] = nullptr;
 			}
 
 			for (int i = 0; i < 7; i++ )
@@ -1008,7 +1008,7 @@ ActivePilotListItem::~ActivePilotListItem()
 				if ( s_icons[i] )
 					delete s_icons[i];
 
-				s_icons[i]= 0;
+				s_icons[i]= nullptr;
 
 				
 			}
@@ -1018,42 +1018,42 @@ ActivePilotListItem::~ActivePilotListItem()
 			if ( s_medals[i] )
 				delete s_medals[i];
 
-			s_medals[i] = 0;
+			s_medals[i] = nullptr;
 		}
 		
 		if ( s_promotionText )
 			delete s_promotionText;
 
-		s_promotionText = 0;
+		s_promotionText = nullptr;
 
 		if ( s_medalText )
 			delete s_medalText;
 
-		s_medalText = 0;
+		s_medalText = nullptr;
 
 		if ( s_medalAwardedText )
 			delete s_medalAwardedText;
 
-		s_medalAwardedText = 0;
+		s_medalAwardedText = nullptr;
 
 		if ( s_pilotPromotedAnim )
 			delete s_pilotPromotedAnim;
 
-		s_pilotPromotedAnim = 0;
+		s_pilotPromotedAnim = nullptr;
 
 		if ( s_medalAwardedAnim )
 			delete s_medalAwardedAnim;
-		s_medalAwardedAnim = 0;
+		s_medalAwardedAnim = nullptr;
 
 		if ( s_skillAnim )
 			delete s_skillAnim;
 
-		s_skillAnim = 0;
+		s_skillAnim = nullptr;
 
 		if ( s_pilotPromotionArea )
 			delete s_pilotPromotionArea;
 
-		s_pilotPromotionArea = NULL;
+		s_pilotPromotionArea = nullptr;
 	}
 }
 
@@ -1337,7 +1337,7 @@ void PilotPromotionArea::init( FitIniFile& file )
 
 
 	areaLeft.init( file, "PromoteGadgetLeftStatic", "PromoteGadgetLeftText",
-		"PromoteGadgetLeftRect", NULL );
+		"PromoteGadgetLeftRect", nullptr );
 
 	areaRight.init( file, "PromoteGadgetRightStatic", "PromoteGadgetRightText",
 		"PromoteGadgetRightRect", "PromoteGadgetRightButton" );
@@ -1366,7 +1366,7 @@ void PilotPromotionArea::init( FitIniFile& file )
 	file.seekBlock( "SkillSelectionAnimation" );
 	selSkillAnim.init(&file, "" );
 
-	pilot = NULL;
+	pilot = nullptr;
 }
 
 void PilotPromotionArea::render()
@@ -1584,7 +1584,7 @@ void PilotPromotionArea::setPilot( LogisticsPilot* pPilot, PilotIcon* pIcon )
 	for (int i = 0; i < maxSkill; i++ )
 	{
 		SpecialtyListItem* pItem = new SpecialtyListItem( i );
-		aTextListItem* tmpItem = NULL;
+		aTextListItem* tmpItem = nullptr;
 		if ( i == FIRST_REGULAR_SPECIALTY )
 		{
 			tmpItem = new aTextListItem( IDS_PROMOTION_LISTBOX_FONT );
@@ -1718,38 +1718,38 @@ void SpecialtyListItem::deleteStatics()
 	{
 		if ( s_radioButton )
 			delete s_radioButton;
-		s_radioButton = 0;
+		s_radioButton = nullptr;
 
 		if ( s_highlightAnim )
 			delete s_highlightAnim;
 
-		s_highlightAnim = 0;
+		s_highlightAnim = nullptr;
 
 		if ( s_normalAnim )
 			delete s_normalAnim;
-		s_normalAnim = 0;
+		s_normalAnim = nullptr;
 
 		if ( s_pressedAnim )
 			delete s_pressedAnim;
-		s_pressedAnim = 0;
+		s_pressedAnim = nullptr;
 
 		if ( s_description )
 			delete s_description;
-		s_description = 0;
+		s_description = nullptr;
 
 		if ( s_area )
 			delete s_area;
-		s_area = 0;
+		s_area = nullptr;
 
 		if ( s_outline )
 			delete s_outline;
-		s_outline = 0;
+		s_outline = nullptr;
 		
 		for ( int i = 0; i < 4; i++ )
 		{
 			if ( s_skillIcons[i] )
 				delete s_skillIcons[i];
-			s_skillIcons[i] = 0;
+			s_skillIcons[i] = nullptr;
 
 		}
 	}

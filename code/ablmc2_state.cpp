@@ -13,7 +13,7 @@ void execSetObjectActive(void) {
 	long objectId1 = ABLi_popInteger();
 	bool active = ABLi_peekBoolean();
 
-	GameObjectPtr object1 = NULL;
+	GameObjectPtr object1 = nullptr;
 	long numActivated = 0;
 
 	if ((objectId1 >= MIN_UNIT_PART_ID) && (objectId1 <= MAX_UNIT_PART_ID)) {
@@ -370,7 +370,7 @@ void execGetObjectActive (void) {
 	long objectId = ABLi_popInteger();
 
 	long result = 0;
-	GameObjectPtr object1 = NULL;
+	GameObjectPtr object1 = nullptr;
 	if ((objectId >= MIN_UNIT_PART_ID) && (objectId <= MAX_UNIT_PART_ID)) {
 		long numObjects = getMovers(objectId, moverList);
 		long numAwake = 0;
@@ -766,7 +766,7 @@ void execOrderCapture (void) {
 	long targetId = ABLi_popInteger();
 	long params = ABLi_popInteger();
 
-	GameObjectPtr target = NULL;
+	GameObjectPtr target = nullptr;
 	if (CurObject && CurObject->isMover())
 		target = getObject(targetId);
 
@@ -912,10 +912,10 @@ void execCallStrike (void) {
 	GameObjectPtr target = getObject(targetId);
 
 	if (target)
-		IfaceCallStrike(strikeType, NULL, target, false);
+		IfaceCallStrike(strikeType, nullptr, target, false);
 	else {
 		strikeLoc.z = land->getTerrainElevation(strikeLoc);
-		IfaceCallStrike(strikeType, &strikeLoc, NULL, false, clanStrike);
+		IfaceCallStrike(strikeType, &strikeLoc, nullptr, false, clanStrike);
 	}
 }
 
@@ -957,10 +957,10 @@ void execCallStrikeEx (void) {
 	GameObjectPtr target = getObject(targetId);
 
 	if (target)
-		IfaceCallStrike(strikeType, NULL, target, false, clanStrike, timeToImpact);
+		IfaceCallStrike(strikeType, nullptr, target, false, clanStrike, timeToImpact);
 	else {
 		strikeLoc.z = land->getTerrainElevation(strikeLoc);
-		IfaceCallStrike(strikeType, &strikeLoc, NULL, false, clanStrike, timeToImpact);
+		IfaceCallStrike(strikeType, &strikeLoc, nullptr, false, clanStrike, timeToImpact);
 	}
 }
 

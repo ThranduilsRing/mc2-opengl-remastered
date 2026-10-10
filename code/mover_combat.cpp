@@ -25,7 +25,7 @@ long Mover::handleTacticalOrder (TacticalOrder tacOrder, long priority, bool que
 			++s_tg_orders;
 			GameObjectPtr _tg_tgt = ObjectManager->getByWatchID(tacOrder.targetWID);
 			const bool _tg_stale = (_tg_tgt == nullptr);
-			const float _tg_range = _tg_tgt ? (float)distanceFrom(_tg_tgt->getPosition()) : -1.0f;
+			const float _tg_range = _tg_tgt ? distanceFrom(_tg_tgt->getPosition()) : -1.0f;
 			const bool _tg_far = (_tg_range > 3000.0f);   // far-field hint (whole-map symptom)
 			if (_tg_stale) ++s_tg_stale;
 			if (_tg_far)   ++s_tg_far;
@@ -43,11 +43,11 @@ long Mover::handleTacticalOrder (TacticalOrder tacOrder, long priority, bool que
 	}
 
 if (queuePlayerOrder)
-	tacOrder.pack(NULL, NULL);
+	tacOrder.pack(nullptr, nullptr);
 
 #if 1
 	if (MPlayer && !MPlayer->isServer()) {
-		tacOrder.pack(NULL, NULL);
+		tacOrder.pack(nullptr, nullptr);
 		TacticalOrder tacOrder2;
 		tacOrder2.data[0] = tacOrder.data[0];
 		tacOrder2.data[1] = tacOrder.data[1];
@@ -200,8 +200,8 @@ void Mover::updateDamageTakenRate (void) {
 void Mover::setPilotHandle (long _pilotHandle) {
 
 	if (pilot) {
-		pilot->setVehicle(NULL);
-		pilot = NULL;
+		pilot->setVehicle(nullptr);
+		pilot = nullptr;
 	}
 	pilotHandle = _pilotHandle;
 	if (pilotHandle > 0) {
@@ -214,7 +214,7 @@ void Mover::loadPilot (const char* pilotFileName, const char* brainFileName, Log
 
 	if (pilot) {
 		MechWarrior::freeWarrior(pilot);
-		pilot = NULL;
+		pilot = nullptr;
 	}
 
 	// Loads a new pilot into the pilot manager and then puts it into
@@ -237,7 +237,7 @@ void Mover::loadPilot (const char* pilotFileName, const char* brainFileName, Log
 			
 	pilotFile->close();
 	delete pilotFile;
-	pilotFile = NULL;
+	pilotFile = nullptr;
 
 	//Copy logistics data to pilot AFTER loading old data.
 	// ONLY if we overrode the data in logistics!!
@@ -282,7 +282,7 @@ MoverPtr Mover::getPoint (void) {
 	if (group)
 		return(group->getPoint());
 #endif
-	return(NULL);
+	return(nullptr);
 }
 
 bool Mover::hasWeaponNode (void)
@@ -441,7 +441,7 @@ long Mover::updateWeaponFireChunks (long which) {
 			if (target)
 				handleWeaponFire(weaponIndex,
 							 target,
-							 NULL,
+							 nullptr,
 							 chunk.hit,
 							 entryQuadTable[chunk.entryAngle],
 							 chunk.numMissiles,
@@ -449,13 +449,13 @@ long Mover::updateWeaponFireChunks (long which) {
 			}
 		else if (chunk.targetType == 1 /*WEAPONFIRECHUNK_TARGET_TERRAIN*/) {
 			GameObjectPtr target = ObjectManager->findByPartId(chunk.targetId);
-			if (target == NULL) {
-				DebugWeaponFireChunk (&chunk, NULL, this);
+			if (target == nullptr) {
+				DebugWeaponFireChunk (&chunk, nullptr, this);
 				Assert(false, 0, " Mover.updateWeaponFireChunks: NULL Terrain Target (save wfchunk.dbg file) ");
 			}
 			handleWeaponFire(weaponIndex,
 							 target,
-							 NULL,
+							 nullptr,
 							 chunk.hit,
 							 entryQuadTable[chunk.entryAngle],
 							 chunk.numMissiles,
@@ -463,13 +463,13 @@ long Mover::updateWeaponFireChunks (long which) {
 			}
 		else if (chunk.targetType == 2 /*WEAPONFIRECHUNK_TARGET_TRAIN*/) {
 			GameObjectPtr target = ObjectManager->findByPartId(chunk.targetId);
-			if (target == NULL) {
-				DebugWeaponFireChunk (&chunk, NULL, this);
+			if (target == nullptr) {
+				DebugWeaponFireChunk (&chunk, nullptr, this);
 				Assert(false, 0, " Mover.updateWeaponFireChunks: NULL Special Target (save wfchunk.dbg file) ");
 			}
 			handleWeaponFire(weaponIndex,
 							 target,
-							 NULL,
+							 nullptr,
 							 chunk.hit,
 							 entryQuadTable[chunk.entryAngle],
 							 chunk.numMissiles,
@@ -479,8 +479,8 @@ long Mover::updateWeaponFireChunks (long which) {
 			Stuff::Vector3D targetPoint;
 			targetPoint.x = (float)chunk.targetCell[1] * Terrain::worldUnitsPerCell + Terrain::worldUnitsPerCell / 2 - Terrain::worldUnitsMapSide / 2;
 			targetPoint.y = (Terrain::worldUnitsMapSide / 2) - ((float)chunk.targetCell[0] * Terrain::worldUnitsPerCell) - Terrain::worldUnitsPerCell / 2;
-			targetPoint.z = (float)land->getTerrainElevation(targetPoint);
-			handleWeaponFire(weaponIndex, NULL, &targetPoint, chunk.hit, 0.0, chunk.numMissiles, 0);
+			targetPoint.z = land->getTerrainElevation(targetPoint);
+			handleWeaponFire(weaponIndex, nullptr, &targetPoint, chunk.hit, 0.0, chunk.numMissiles, 0);
 			}
 		else
 			Fatal(0, " Mover.updateWeaponFireChunks: bad targetType ");
@@ -630,7 +630,7 @@ GameObjectPtr Mover::getChallenger (void) {
 	GameObjectPtr obj = ObjectManager->get(challengerWID);
 	if (obj && obj->isDisabled()) {
 		challengerWID = 0;
-		return(NULL);
+		return(nullptr);
 	}
 	return(obj);
 }
@@ -914,7 +914,7 @@ long Mover::calcFireRanges (void) {
 	numFunctionalWeapons = 0;
 	for (long curWeapon = numOther; curWeapon < (numOther + numWeapons); curWeapon++) {
 		if (!inventory[curWeapon].disabled && (getWeaponShots(curWeapon) > 0)) {
-			long range = (long)MasterComponent::masterList[inventory[curWeapon].masterID].getWeaponRange();
+			long range = MasterComponent::masterList[inventory[curWeapon].masterID].getWeaponRange();
 			float minWeaponRange = WeaponRanges[range][0];
 			float maxWeaponRange = WeaponRanges[range][1];
 			if (maxWeaponRange > maxRange)
@@ -1184,7 +1184,7 @@ long Mover::sortWeapons (int* weaponList, long* valueList, long listSize, long s
 			sortList->setId(item - numOther, item);
 			switch (sortType) {
 				case WEAPONSORT_ATTACKCHANCE:
-					sortList->setValue(item - numOther, calcAttackChance(target, aimLocation, scenarioTime, item, 0.0, NULL));
+					sortList->setValue(item - numOther, calcAttackChance(target, aimLocation, scenarioTime, item, 0.0, nullptr));
 					break;
 				default:
 					return(-3);
@@ -1205,7 +1205,7 @@ long Mover::sortWeapons (int* weaponList, long* valueList, long listSize, long s
 			else
 				switch (sortType) {
 					case WEAPONSORT_ATTACKCHANCE:
-						sortValue = calcAttackChance(target, aimLocation, scenarioTime, weaponList[item], 0.0, NULL);
+						sortValue = calcAttackChance(target, aimLocation, scenarioTime, weaponList[item], 0.0, nullptr);
 						break;
 					default:
 						return(-3);

@@ -66,7 +66,7 @@ static const int FIRST_BUTTON_ID = 1000010;
 static const int OK_BUTTON_ID = 1000001;
 static const int CANCEL_BUTTON_ID = 1000002;
 
-MPParameterScreen* MPParameterScreen::s_instance = NULL;
+MPParameterScreen* MPParameterScreen::s_instance = nullptr;
 
 
 GUID NO_VERSION_GUID = {
@@ -241,7 +241,7 @@ void MPParameterScreen::end()
 	{
 		MPlayer->closeSession();
 		delete MPlayer;
-		MPlayer = NULL;
+		MPlayer = nullptr;
 	}
 
 	bLoading = 0;
@@ -287,7 +287,7 @@ void MPParameterScreen::render(int xOffset, int yOffset )
 	}
 	else if ( !xOffset && !yOffset )
 	{
-		aPlayerParams* pFocus = 0;
+		aPlayerParams* pFocus = nullptr;
 
 		for ( int i = 0; i < playerCount; i++ )
 		{
@@ -333,7 +333,7 @@ int	MPParameterScreen::handleMessage( unsigned long message, unsigned long who)
 						pInfo->ready = 0;
 					if (!MPlayer->isHost())
 					{
-						MPlayer->sendPlayerUpdate( 0, 5, MPlayer->commanderID );
+						MPlayer->sendPlayerUpdate( nullptr, 5, MPlayer->commanderID );
 					}
 				}
 				status = MAINMENU;
@@ -355,7 +355,7 @@ int	MPParameterScreen::handleMessage( unsigned long message, unsigned long who)
 				delayTime += frameLength;
 				char text[256];
 				cLoadString( IDS_MPLAYER_GAME_ABOUT_TO_START, text, 255 );
-				MPlayer->sendChat( 0, -1, text );
+				MPlayer->sendChat( nullptr, -1, text );
 			}
 			break;
 		case 101/*load map button*/:
@@ -390,7 +390,7 @@ int	MPParameterScreen::handleMessage( unsigned long message, unsigned long who)
 					pInfo->ready = 0;
 				if (!MPlayer->isHost())
 				{
-					MPlayer->sendPlayerUpdate( 0, 5, MPlayer->commanderID );
+					MPlayer->sendPlayerUpdate( nullptr, 5, MPlayer->commanderID );
 				}
 	
 				status = UP;
@@ -815,7 +815,7 @@ void MPParameterScreen::update()
 			else
 				LogisticsData::instance->setPurchaseFile( pPurchaseFiles[faction] );
 			LogisticsData::instance->setCurrentMission( MPlayer->missionSettings.map );
-			MPlayer->sendMissionSetup(0, 6, NULL);
+			MPlayer->sendMissionSetup(nullptr, 6, nullptr);
 
 			status = NEXT;
 			
@@ -931,7 +931,7 @@ void MPParameterScreen::update()
 
 				cLoadString( chatToSend, chatStr, 255 );
 				sprintf( final, chatStr, prefs.playerName[0] );
-				MPlayer->sendChat( NULL, -1, final );
+				MPlayer->sendChat( nullptr, -1, final );
 			}
 				bShowNoMapDlg = false;
 				bBootDlg = false;
@@ -1341,7 +1341,7 @@ void MPParameterScreen::update()
 				{
 					char text[256];
 					cLoadString( IDS_MP_LAUNCH_ABORTED, text, 255 );
-					MPlayer->sendChat( 0, -1, text );
+					MPlayer->sendChat( nullptr, -1, text );
 					delayTime = 0.f;
 					bWaitingToStart = 0;
 					MPlayer->setInProgress( 0 );
@@ -1518,9 +1518,9 @@ void MPParameterScreen::setHostLeftDlg( const char* playerName )
 
 aPlayerParams::aPlayerParams()
 {
-	statics = 0;
-	rects = 0;
-	textObjects = 0;
+	statics = nullptr;
+	rects = nullptr;
+	textObjects = nullptr;
 	staticCount = rectCount = textCount = 0;
 	bHasFocus = 0;
 }
@@ -1845,9 +1845,9 @@ void aPlayerParams::destroy()
 	if ( textObjects )
 		delete [] textObjects;
 
-	statics = 0;
-	rects = 0;
-	textObjects = 0;
+	statics = nullptr;
+	rects = nullptr;
+	textObjects = nullptr;
 
 	aObject::destroy();
 }
@@ -2029,7 +2029,7 @@ void aPlayerParams::update()
 		{
 		 	MC2Player* pInfo = MPlayer->getPlayerInfo( commanderID );
 			pInfo->cBills = newCBills;
-			MPlayer->sendPlayerUpdate( 0, 5, commanderID );
+			MPlayer->sendPlayerUpdate( nullptr, 5, commanderID );
 				
 			char text[256];
 			sprintf(text, "%ld", pInfo->cBills/5000 * (5) ); // need to round to nearest 5000
@@ -2058,7 +2058,7 @@ void aPlayerParams::update()
 				}
 				else {
 					pInfo->team = newSel;
-					MPlayer->sendPlayerUpdate( 0, 5, commanderID );
+					MPlayer->sendPlayerUpdate( nullptr, 5, commanderID );
 				}
 
 				
@@ -2308,7 +2308,7 @@ void CFocusManager::clear()
 {
 	speciesOfTheControlWhichHasTheFocus = CS_NONE;
 
-	pDropListThatHasTheFocus = NULL;
+	pDropListThatHasTheFocus = nullptr;
 	listOfDropListPointers.Clear();
 }
 
@@ -2328,7 +2328,7 @@ void CFocusManager::update()
 	if (userInput->isLeftClick())
 	{
 		/*focus may have changed*/
-		if (NULL != pControlThatHasTheFocus())
+		if (nullptr != pControlThatHasTheFocus())
 		{
 			if (pControlThatHasTheFocus()->pointInside(userInput->getMouseX(), userInput->getMouseY()))
 			{
@@ -2342,7 +2342,7 @@ void CFocusManager::update()
 		switch (speciesOfTheControlWhichHasTheFocus)
 		{
 		case CS_DROPLIST:
-			pDropListThatHasTheFocus = NULL;
+			pDropListThatHasTheFocus = nullptr;
 			break;
 		}
 		speciesOfTheControlWhichHasTheFocus = CS_NONE;
@@ -2403,7 +2403,7 @@ aObject *CFocusManager::pControlThatHasTheFocus()
 		}
 		assert(false);
 	}
-	return NULL;
+	return nullptr;
 }
 
 

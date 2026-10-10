@@ -30,7 +30,7 @@ extern MidLevelRenderer::MLRClipper * theClipper;	// NS3: def in mclib/bdactor.c
 ////////////////////////////////////////////////
 SimpleCamera::SimpleCamera()
 { 
-	pObject = NULL;
+	pObject = nullptr;
 	Camera::init();
 
 	char path[256];
@@ -71,7 +71,7 @@ SimpleCamera::~SimpleCamera()
 	if (appearanceTypeList)
     	delete pObject;
 
-	pObject = NULL;
+	pObject = nullptr;
 
 	//We have to do this here because we always load the damned sensor shape.
 	// ONLY if we are running it in logistics.  DO NOT DELETE THESE IN THE MIDDLE OF A MISSION!!!
@@ -80,19 +80,19 @@ SimpleCamera::~SimpleCamera()
 		if (GVAppearanceType::SensorTriangleShape)
 		{
 			delete GVAppearanceType::SensorTriangleShape;
-			GVAppearanceType::SensorTriangleShape = NULL;
+			GVAppearanceType::SensorTriangleShape = nullptr;
 		}
 		
 		if (GVAppearanceType::SensorCircleShape)
 		{
 			delete GVAppearanceType::SensorCircleShape;
-			GVAppearanceType::SensorCircleShape = NULL;
+			GVAppearanceType::SensorCircleShape = nullptr;
 		}
 
 		if (Mech3DAppearanceType::SensorSquareShape)
 		{
 			delete Mech3DAppearanceType::SensorSquareShape;
-			Mech3DAppearanceType::SensorSquareShape = NULL;
+			Mech3DAppearanceType::SensorSquareShape = nullptr;
 		}
 	}
 }
@@ -417,7 +417,7 @@ void SimpleCamera::render(long xOffset, long yOffset)
 			// by MechPreviewRenderScope). Gate the world drain on a live mission so the
 			// cinematic (mission!=NULL) is unchanged. Escape hatch: MC2_PREVIEW_SCENE_DRAIN=1
 			// forces the old always-drain behavior.
-			bool worldScenePresent = (mission != NULL);
+			bool worldScenePresent = (mission != nullptr);
 			{
 				static int s_forceDrain = -1;
 				if (s_forceDrain < 0) {
@@ -579,7 +579,7 @@ long SimpleCamera::update()
 		{
 			FILE* f = fopen("preview_debug.log","a");
 			if (f) { fprintf(f,"[PREVIEW] update bounds=[%.0f,%.0f,%.0f,%.0f] viewMul=%.0f,%.0f off=%.1f,%.1f scale=%.3f Alt=%.0f mechPos=%.1f,%.1f,%.1f\n",
-				bounds[0],bounds[1],bounds[2],bounds[3],viewMulX,viewMulY,offsetX,offsetY,shapeScale,(float)AltitudeTight,mechPos.x,mechPos.y,mechPos.z); fflush(f); fclose(f); }
+				bounds[0],bounds[1],bounds[2],bounds[3],viewMulX,viewMulY,offsetX,offsetY,shapeScale,AltitudeTight,mechPos.x,mechPos.y,mechPos.z); fflush(f); fclose(f); }
 		}
 
 		eye = oldCam;
@@ -620,7 +620,7 @@ void SimpleCamera::setMech(const char* fileName, long baseColor, long highlight1
 	rotationIncrement = 0;
 	
 
-	pObject = NULL;
+	pObject = nullptr;
 
 	if ( !fileName )
 	{
@@ -630,7 +630,7 @@ void SimpleCamera::setMech(const char* fileName, long baseColor, long highlight1
 	}
 
 	char NoPathFileName[256];
-	_splitpath( fileName, NULL, NULL, NoPathFileName, NULL );
+	_splitpath( fileName, nullptr, nullptr, NoPathFileName, nullptr );
 
 	char testName[256];
 	strcpy( testName, NoPathFileName );
@@ -641,7 +641,7 @@ void SimpleCamera::setMech(const char* fileName, long baseColor, long highlight1
 
 
 	//MUST ALWAYS CALL GET, EVEN IF WE HAVE AN APPEARANCE TYPE OR REFERENCE COUNT DOES NOT INCREASE!
-	Mech3DAppearanceType* appearanceType = NULL;
+	Mech3DAppearanceType* appearanceType = nullptr;
 	
 	if ( fileExists( path ) )
 		appearanceType = (Mech3DAppearanceType*)appearanceTypeList->getAppearance( MECH_TYPE << 24, (char*)testName );
@@ -691,7 +691,7 @@ void SimpleCamera::setVehicle(const char* fileName,long base, long highlight, lo
 	if (appearanceTypeList)
     	delete pObject;
 
-	pObject = NULL;
+	pObject = nullptr;
 
 	if ( !fileName )
 	{
@@ -700,7 +700,7 @@ void SimpleCamera::setVehicle(const char* fileName,long base, long highlight, lo
 	}
 
 	char NoPathFileName[256];
-	_splitpath( fileName, NULL, NULL, NoPathFileName, NULL );
+	_splitpath( fileName, nullptr, nullptr, NoPathFileName, nullptr );
 
 
 	char testName[256];
@@ -711,7 +711,7 @@ void SimpleCamera::setVehicle(const char* fileName,long base, long highlight, lo
 	path.init( tglPath, testName, ".ini" );
 
 	//MUST ALWAYS CALL GET, EVEN IF WE HAVE AN APPEARANCE TYPE OR REFERENCE COUNT DOES NOT INCREASE!
-	GVAppearanceType* appearanceType = NULL;
+	GVAppearanceType* appearanceType = nullptr;
 	
 	if ( fileExists( path ) )
 		appearanceType = (GVAppearanceType*)appearanceTypeList->getAppearance( GV_TYPE << 24, (char*)testName );
@@ -763,7 +763,7 @@ void SimpleCamera::setComponent(const char* fileName )
 	if (appearanceTypeList)
     	delete pObject;
 
-	pObject = NULL;
+	pObject = nullptr;
 
 
 	if ( !fileName )
@@ -778,7 +778,7 @@ void SimpleCamera::setComponent(const char* fileName )
 
 	FullPathFileName path;
 	path.init( tglPath, testName, ".ini" );
-	BldgAppearanceType* appearanceType = NULL;
+	BldgAppearanceType* appearanceType = nullptr;
 	if ( fileExists( path ) )
 	{
 		appearanceType = (BldgAppearanceType*)appearanceTypeList->getAppearance( BLDG_TYPE << 24, (char*)testName );
@@ -826,7 +826,7 @@ void SimpleCamera::setObject( const char* pFileName, long type, long base, long 
 		// Empty/NULL filename = no model. Free existing object and return cleanly.
 		if ( appearanceTypeList )
 			delete pObject;
-		pObject = NULL;
+		pObject = nullptr;
 		return;
 	}
 	switch( type )
