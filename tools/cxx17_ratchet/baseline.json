@@ -167,7 +167,7 @@
    "LG03": 970,
    "LG04": 21,
    "LG05": 202,
-   "LG06": 462,
+   "LG06": 461,
    "LG07": 0,
    "LG08": 15,
    "LG09": 2467,
@@ -2226,7 +2226,7 @@
    "LG12a": 2
   },
   "code/hudimguipanel.h": {
-   "LG06": 2
+   "LG06": 1
   },
   "code/hudtabregistry.cpp": {
    "LG05": 2,
@@ -5880,7 +5880,7 @@
    "LG20": 1
   }
  },
- "head": "a05e4b696",
+ "head": "453539ec3",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
