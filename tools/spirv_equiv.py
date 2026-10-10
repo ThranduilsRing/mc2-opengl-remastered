@@ -17,6 +17,9 @@ import subprocess
 import sys
 import tempfile
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scripts"))
+import console_child  # noqa: E402
+
 SDK_GLOBS = ("C:/VulkanSDK",)
 
 
@@ -39,7 +42,7 @@ def find_tool(name):
 
 
 def run(cmd, cwd=None):
-    return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, errors="replace")
+    return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, errors="replace", **console_child.child_kwargs(redirected=True))
 
 
 def compile_one(glslang, opt, dis, root, rel, tmp, tag):
@@ -126,11 +129,11 @@ def main():
         old_root = os.path.join(tmp, "old")
         os.makedirs(old_root)
         tar = os.path.join(tmp, "old.tar")
-        r = subprocess.run(["git", "archive", "--format=tar", "-o", tar, a.rev, "shaders"], cwd=repo, capture_output=True)
+        r = subprocess.run(["git", "archive", "--format=tar", "-o", tar, a.rev, "shaders"], cwd=repo, capture_output=True, **console_child.child_kwargs(redirected=True))
         if r.returncode != 0:
             print("spirv_equiv: git archive failed: %s" % r.stderr.decode("utf-8", "replace"), file=sys.stderr)
             return 2
-        subprocess.run(["tar", "-xf", tar, "-C", old_root], check=True)
+        subprocess.run(["tar", "-xf", tar, "-C", old_root], check=True, **console_child.child_kwargs())
         for rel in a.files:
             old, e1 = compile_one(glslang, opt, dis, old_root, rel, tmp, "old")
             new, e2 = compile_one(glslang, opt, dis, repo, rel, tmp, "new")

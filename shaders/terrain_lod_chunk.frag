@@ -14,7 +14,6 @@
 #include <include/noise.hglsl>   // fbm() for the colour break-up (matches legacy)
 #include <include/edge_haze.hglsl> // TERRAIN-EDGE-FEATHER-1: edgeHazeAmount + EDGE_HAZE_SKY (legacy parity)
 #include <include/axis.hglsl>
-
 in vec3  v_worldPos;
 in float v_terrainType;       // Step 5b: interpolated per-vertex terrainType (concrete)
 uniform int   u_lodStep;

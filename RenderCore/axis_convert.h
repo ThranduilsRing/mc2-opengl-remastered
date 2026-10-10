@@ -30,15 +30,11 @@ inline void mc2ToRender(Out& out, const In& in)
     out.z = z;
 }
 
+// The inverse direction: the same permutation, see the involution note above.
 template <class Out, class In>
 inline void renderToMc2(Out& out, const In& in)
 {
-    const auto x = -in.x;
-    const auto y = in.z;
-    const auto z = in.y;
-    out.x = x;
-    out.y = y;
-    out.z = z;
+    mc2ToRender(out, in);
 }
 
 // Value form: the converted copy of `v` (same type).
