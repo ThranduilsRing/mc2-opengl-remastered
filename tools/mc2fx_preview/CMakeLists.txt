@@ -19,10 +19,6 @@ file(GLOB MC2FXP_MLR_SRC       "${CMAKE_SOURCE_DIR}/mclib/mlr/*.cpp")
 file(GLOB MC2FXP_PARTICLES_SRC "${CMAKE_SOURCE_DIR}/mclib/particles/*.cpp")
 file(GLOB MC2FXP_STUFF_SRC     "${CMAKE_SOURCE_DIR}/mclib/stuff/*.cpp")
 
-file(GLOB MC2FXP_STUFF_TEST_SRC "${CMAKE_SOURCE_DIR}/mclib/stuff/*_test.cpp")
-if(MC2FXP_STUFF_TEST_SRC)
-    list(REMOVE_ITEM MC2FXP_STUFF_SRC ${MC2FXP_STUFF_TEST_SRC})
-endif()
 list(REMOVE_ITEM MC2FXP_STUFF_SRC
     "${CMAKE_SOURCE_DIR}/mclib/stuff/extentpoly.cpp"
 )
