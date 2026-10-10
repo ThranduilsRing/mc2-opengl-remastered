@@ -36,9 +36,9 @@ flags:
     smoke_passthrough: true
     registry: {feature_id: MC2_ABL_COMPILE_FATAL, kind: Feature, order: -1, default_on: true}
   - name: MC2_ABL_COMPILE_FATAL_REPRO
-    kind: Bool
-    default: false
-    rule: Presence
+    kind: String
+    default: ""
+    rule: Std
     owner: code
     doc: "ASAN-3-ABL-COMPILE-FATAL-1: preprocess the supplied malformed-fixture path during ABL init to prove fail-loud behavior."
     smoke_passthrough: true
@@ -658,7 +658,7 @@ flags:
     rule: Prefix
     owner: code
     doc: ""
-    range: {lo: 0, hi: 2000, style: reject}
+    range: {lo: 0, hi: 2000, style: clamp}
     smoke_passthrough: true
   - name: MC2_CAMERA_SMOOTH_TRACE
     kind: Bool
@@ -863,7 +863,7 @@ flags:
     registry: {feature_id: MC2_FEATURE_CONE_POOL_POLICY, kind: Feature, order: -1, default_on: true}
   - name: MC2_CONE_POOL_REACH
     kind: Float
-    default: 0
+    default: 4
     rule: Prefix
     owner: code
     doc: "CONE-SPILL-POLICY-1: reach multiplier k for the extended beam/terrain intersection search (reach = k * authored coneLen * MC2_LIGHT_CONE_SPILL)."
@@ -2529,7 +2529,7 @@ flags:
     smoke_passthrough: true
   - name: MC2_LIGHT_CONE_GLOW_ALPHA
     kind: Float
-    default: 0
+    default: 40
     rule: Prefix
     owner: code
     doc: ""
@@ -2545,7 +2545,7 @@ flags:
     registry: {feature_id: MC2_LIGHT_CONE_NODES, kind: Trace, order: -1, default_on: true}
   - name: MC2_LIGHT_CONE_SPILL
     kind: Float
-    default: 40
+    default: 1
     rule: Prefix
     owner: code
     doc: ""
@@ -2726,7 +2726,7 @@ flags:
     registry: {feature_id: MC2_FEATURE_LIGHT_REALISM, kind: Feature, order: -1, default_on: true}
   - name: MC2_LIGHT_REALISM_BEACON
     kind: Float
-    default: 0
+    default: 70
     rule: Prefix
     owner: code
     doc: ""
@@ -2734,7 +2734,7 @@ flags:
     smoke_passthrough: true
   - name: MC2_LIGHT_REALISM_BEACON_RADIUS
     kind: Float
-    default: 70
+    default: 40
     rule: Prefix
     owner: code
     doc: ""
@@ -2742,7 +2742,7 @@ flags:
     smoke_passthrough: true
   - name: MC2_LIGHT_REALISM_CONE_FEATHER
     kind: Float
-    default: 0.400000006
+    default: 2.5
     rule: Prefix
     owner: code
     doc: ""
@@ -2750,7 +2750,7 @@ flags:
     smoke_passthrough: true
   - name: MC2_LIGHT_REALISM_CONE_OPACITY
     kind: Float
-    default: 0
+    default: 0.400000006
     rule: Prefix
     owner: code
     doc: ""
@@ -2858,9 +2858,9 @@ flags:
     owner: gameos
     doc: ""
   - name: MC2_LOG_FILE_RESOLVE
-    kind: Int
-    default: 0
-    rule: Prefix
+    kind: String
+    default: ""
+    rule: Std
     owner: code
     doc: "META-FIX design E tier 3 (mclib/file.cpp, parsed at InitModSearchPaths): file-resolution ladder diagnostics."
     smoke_passthrough: true
@@ -3066,13 +3066,13 @@ flags:
     doc: "Default: static rest lift (steady torso)."
   - name: MC2_MECH_IMPORT_FORCE_BONE
     kind: String
-    default: ""
+    default: "j_LThigh"
     rule: Std
     owner: mech
     doc: ""
   - name: MC2_MECH_IMPORT_FORCE_CLIP
-    kind: Bool
-    default: false
+    kind: String
+    default: ""
     rule: Std
     owner: code
     doc: "BT2018-SKEL-ENGINE-1B: by default bake the REST (bind) pose."
@@ -3208,9 +3208,9 @@ flags:
     doc: ""
     smoke_passthrough: true
   - name: MC2_MECH_SKEL_BONE_DUMP
-    kind: Bool
-    default: false
-    rule: Presence
+    kind: String
+    default: ""
+    rule: Std
     owner: code
     doc: "MECH-BONE-PARITY-GATE-1: dump the engine's REST joint-global bone matrices (the same mc2skel output the bake consumes) as JSON when..."
   - name: MC2_MECH_SKEL_HEIGHT
@@ -3604,9 +3604,9 @@ flags:
     doc: ""
     smoke_passthrough: true
   - name: MC2_OVERLAY_TILE_HIRES
-    kind: Int
-    default: 0
-    rule: Prefix
+    kind: String
+    default: ""
+    rule: Std
     owner: terrain
     doc: "OVERLAY-TILE-HIRES-1: honor the overlay tile TGA's actual dimensions instead of the legacy hard-assumed 64px (initOverlay header resync mirrors..."
     smoke_passthrough: true
@@ -4070,6 +4070,7 @@ flags:
     rule: Presence
     owner: code
     doc: ""
+    reread: true
   - name: MC2_REGFLUSH_DIAG_TRACE
     kind: Bool
     default: false
@@ -4248,9 +4249,9 @@ flags:
     doc: "Per-frame [RENDER_WORLD v1] banner + per-event logs (RenderWorld.cpp)."
     registry: {feature_id: MC2_TRACE_RENDER_WORLD, kind: Trace, order: -1, default_on: false}
   - name: MC2_RESOLVE_TRACE_FILE
-    kind: Bool
-    default: false
-    rule: NonEmpty
+    kind: String
+    default: ""
+    rule: Std
     owner: code
     doc: "META-FIX design E tier 3 (mclib/file.cpp): output path for the MC2_LOG_FILE_RESOLVE=2 JSONL resolve trace, opened for append at InitModSearchPaths (relative..."
     smoke_passthrough: true

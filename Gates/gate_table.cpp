@@ -24,7 +24,7 @@ L(Presence, "MC2_3DVIEW_DIAG", Bool, false, "gameos", "", ""),
 L(Lead1, "MC2_ABL_ARG_GUARD", Bool, false, "code", "", "ABL crash-safety gates (ABL-OPCODE-BOUNDS-HARDEN) MC2_ABL_ARG_GUARD=1 - enables dispatch-bounds soft path + out-ptr null guards MC2_ABL_RUNTIME_SOFTFAIL=1 -...", passthrough),
 L(Lead1, "MC2_ABL_ARG_GUARD_REPRO", Bool, false, "code", "", "", passthrough),
 L(Lead0Kill, "MC2_ABL_COMPILE_FATAL", Bool, true, "code", "", "ASAN-3-ABL-COMPILE-FATAL-1: fail at preprocess when ABL syntax errors leave partial bytecode; set =0 only for legacy execute-anyway diagnostics.", passthrough | registry(Feature, "MC2_ABL_COMPILE_FATAL", -1, true)),
-L(Presence, "MC2_ABL_COMPILE_FATAL_REPRO", Bool, false, "code", "", "ASAN-3-ABL-COMPILE-FATAL-1: preprocess the supplied malformed-fixture path during ABL init to prove fail-loud behavior.", passthrough | registry(Trace, "MC2_ABL_COMPILE_FATAL_REPRO", -1, false)),
+G("MC2_ABL_COMPILE_FATAL_REPRO", String, "", "code", "", "ASAN-3-ABL-COMPILE-FATAL-1: preprocess the supplied malformed-fixture path during ABL init to prove fail-loud behavior.", passthrough | registry(Trace, "MC2_ABL_COMPILE_FATAL_REPRO", -1, false)),
 L(AtoiNZ, "MC2_ABL_CORE_TRACE", Bool, false, "code", "", ""),
 L(Presence, "MC2_ABL_REG_TRACE", Bool, false, "unclassified", "", ""),
 L(Lead1, "MC2_ABL_RUNTIME_SOFTFAIL", Bool, false, "code", "", "", passthrough),
@@ -150,7 +150,7 @@ L(Lead0Kill, "MC2_CAMERA_ASPECT_NATIVE", Bool, true, "code", "", "", passthrough
 L(Presence, "MC2_CAMERA_MOVE_DIAG", Bool, false, "unclassified", "", "TRACKV-CI-GATE-RESTORE-1: camera movement diagnostic readback probe.", passthrough | registry(Trace, "MC2_TRACE_CAMERA_MOVE_DIAG", -1, false)),
 // history: docs/gate-history.md#MC2_CAMERA_PARK
 L(Presence, "MC2_CAMERA_PARK", Bool, false, "gameos", "", "CAMERA-PARK-1 (ported from vk branch 4b69ef78): ='x,y,rot,proj,alt[@frame]' hard-sets the live camera pose once at frame >= @frame (default 300) and pins it...", passthrough | registry(Trace, "MC2_DIAG_CAMERA_PARK", -1, false)),
-P("MC2_CAMERA_SMOOTH", Float, 100.0, "code", "", "", passthrough | range(0.0, 2000.0)),
+P("MC2_CAMERA_SMOOTH", Float, 100.0, "code", "", "", passthrough | clampRange(0.0, 2000.0)),
 L(Lead1, "MC2_CAMERA_SMOOTH_TRACE", Bool, false, "code", "", "", passthrough),
 L(Lead1, "MC2_CAM_SMOOTH_TEST", Bool, false, "code", "", "", passthrough),
 // history: docs/gate-history.md#MC2_CEMENT_ALPHA_ATLAS
@@ -198,7 +198,7 @@ L(Presence, "MC2_CONE_LEAF_DUMP", Bool, false, "props", "", "CONE-LEAF-NAME-DIAG
 // history: docs/gate-history.md#MC2_CONE_POOL_POLICY
 L(Lead0Kill, "MC2_CONE_POOL_POLICY", Bool, true, "code", "", "CONE-SPILL-POLICY-1: pool-placement policy for building/beacon spotlight ground pools on the DEFAULT path (MC2_CONE_SPILL_COUPLING OFF).", passthrough | registry(Feature, "MC2_FEATURE_CONE_POOL_POLICY", -1, true)),
 // history: docs/gate-history.md#MC2_CONE_POOL_REACH
-P("MC2_CONE_POOL_REACH", Float, 0.0, "code", "", "CONE-SPILL-POLICY-1: reach multiplier k for the extended beam/terrain intersection search (reach = k * authored coneLen * MC2_LIGHT_CONE_SPILL).", passthrough | clampRange(1.0, 16.0) | registry(Trace, "MC2_TUNE_CONE_POOL_REACH", -1, false)),  // default not derivable from the tree
+P("MC2_CONE_POOL_REACH", Float, 4.0, "code", "", "CONE-SPILL-POLICY-1: reach multiplier k for the extended beam/terrain intersection search (reach = k * authored coneLen * MC2_LIGHT_CONE_SPILL).", passthrough | clampRange(1.0, 16.0) | registry(Trace, "MC2_TUNE_CONE_POOL_REACH", -1, false)),
 // history: docs/gate-history.md#MC2_CONE_SPILL_COUPLING
 L(Lead1, "MC2_CONE_SPILL_COUPLING", Bool, false, "code", "", "CONE-SPILL-GRADE-1: isolates CONE-SPILL-COUPLING-1 (c1f98b45), which shipped UNGATED as a default-behaviour change riding MC2_LIGHT_CONE_NODES and is now...", passthrough | registry(Trace, "MC2_CONE_SPILL_COUPLING", -1, false)),
 G("MC2_CONFIG_DUMP", Enum, "default", "gameos", "", "[CONFIG v1] dump scope: default (env-set gates), all (every row), none (summary only)", tokens("default|all|none")),
@@ -535,10 +535,10 @@ L(Exact1, "MC2_LIGHT_CLAMP_PROBE", Bool, false, "code", "", "MC2_LIGHT_CLAMP_PRO
 L(Lead1, "MC2_LIGHT_CONE_AIM_FLIP", Bool, false, "code", "", "", passthrough),
 L(Lead1, "MC2_LIGHT_CONE_DIAG", Bool, false, "props", "", "", passthrough),
 L(Lead0Kill, "MC2_LIGHT_CONE_GLOW", Bool, true, "code", "", "", passthrough),
-P("MC2_LIGHT_CONE_GLOW_ALPHA", Float, 0.0, "code", "", "", passthrough | clampRange(0.0, 255.0)),  // default not derivable from the tree
+P("MC2_LIGHT_CONE_GLOW_ALPHA", Float, 40.0, "code", "", "", passthrough | clampRange(0.0, 255.0)),
 // history: docs/gate-history.md#MC2_LIGHT_CONE_NODES
 L(Lead0Kill, "MC2_LIGHT_CONE_NODES", Bool, true, "code", "", "LIGHT-CONE-MODELS-1: DEFAULT-ON.", passthrough | registry(Trace, "MC2_LIGHT_CONE_NODES", -1, true)),
-P("MC2_LIGHT_CONE_SPILL", Float, 40.0, "code", "", "", passthrough | clampRange(0.0, 3.0)),
+P("MC2_LIGHT_CONE_SPILL", Float, 1.0, "code", "", "", passthrough | clampRange(0.0, 3.0)),
 L(Lead1, "MC2_LIGHT_CONE_VIS_GATE", Bool, false, "code", "", "", passthrough),
 L(Presence, "MC2_LIGHT_COST_SPLIT", Bool, false, "terrain", "", "", passthrough | verified),
 L(Lead0Kill, "MC2_LIGHT_CULL_RADIUS", Bool, true, "code", "", "", passthrough),
@@ -579,10 +579,10 @@ L(Lead0P, "MC2_LIGHT_PREFIX_GPU_COPY", Bool, false, "gameos", "", "LIGHT-PREFIX-
 // holding ~6 reported visual items had no discoverable contract.
 // history: docs/gate-history.md#MC2_LIGHT_REALISM
 L(Lead0Kill, "MC2_LIGHT_REALISM", Bool, true, "terrain", "", "LIGHT-REALISM-1: night light-pool + cone-glow realism reshape.", passthrough | verified | registry(Feature, "MC2_FEATURE_LIGHT_REALISM", -1, true)),
-P("MC2_LIGHT_REALISM_BEACON", Float, 0.0, "code", "", "", passthrough | clampRange(0.0, 255.0)),
-P("MC2_LIGHT_REALISM_BEACON_RADIUS", Float, 70.0, "code", "", "", passthrough | clampRange(1.0, 200.0)),
-P("MC2_LIGHT_REALISM_CONE_FEATHER", Float, 0.4, "code", "", "", passthrough | clampRange(0.0, 8.0)),
-P("MC2_LIGHT_REALISM_CONE_OPACITY", Float, 0.0, "code", "", "", passthrough | clampRange(0.0, 4.0)),  // default not derivable from the tree
+P("MC2_LIGHT_REALISM_BEACON", Float, 70.0, "code", "", "", passthrough | clampRange(0.0, 255.0)),
+P("MC2_LIGHT_REALISM_BEACON_RADIUS", Float, 40.0, "code", "", "", passthrough | clampRange(1.0, 200.0)),
+P("MC2_LIGHT_REALISM_CONE_FEATHER", Float, 2.5, "code", "", "", passthrough | clampRange(0.0, 8.0)),
+P("MC2_LIGHT_REALISM_CONE_OPACITY", Float, 0.4, "code", "", "", passthrough | clampRange(0.0, 4.0)),
 P("MC2_LIGHT_REALISM_POOL_CORE", Float, 0.0, "terrain", "", "", passthrough | clampRange(0.0, 1.0) | verified),
 P("MC2_LIGHT_REALISM_POOL_SPILL", Float, 2.2, "terrain", "", "", passthrough | clampRange(0.25, 4.0) | verified),
 L(Exact1, "MC2_LIGHT_ROW_CENSUS", Bool, false, "code", "", "MC2_LIGHT_ROW_CENSUS (default OFF) - LIGHT-POS-COMBAT-1."),
@@ -612,7 +612,7 @@ G("MC2_LOG", String, "", "gameos", "", "Master stdout log gate (gameosmain.cpp, 
 L(Presence, "MC2_LOG_CURSOR", Bool, false, "code", "", "---- MC2_LOG_CURSOR diagnostics (instrumentation only) ---- Logistics::start does NOT call mouseOn() (it is commented out) -- it relies on drawMouse already..."),
 G("MC2_LOG_DECORATE", String, "", "gameos", "", ""),  // default not derivable from the tree
 // history: docs/gate-history.md#MC2_LOG_FILE_RESOLVE
-P("MC2_LOG_FILE_RESOLVE", Int, 0, "code", "", "META-FIX design E tier 3 (mclib/file.cpp, parsed at InitModSearchPaths): file-resolution ladder diagnostics.", passthrough | registry(Trace, "MC2_TRACE_LOG_FILE_RESOLVE", -1, false)),
+G("MC2_LOG_FILE_RESOLVE", String, "", "code", "", "META-FIX design E tier 3 (mclib/file.cpp, parsed at InitModSearchPaths): file-resolution ladder diagnostics.", passthrough | registry(Trace, "MC2_TRACE_LOG_FILE_RESOLVE", -1, false)),
 L(Presence, "MC2_LOG_LOGISTICS", Bool, false, "mech", "", "", passthrough),
 L(Presence, "MC2_LOG_LOGISTICS_FLOW", Bool, false, "code", "", ""),
 L(Presence, "MC2_LOG_MECHICON", Bool, false, "mech", "", ""),
@@ -647,8 +647,8 @@ L(Lead0Kill, "MC2_MECH_IBL_SH", Bool, true, "mech", "", ""),
 L(Lead1, "MC2_MECH_IMPORT_ANIMATE", Bool, false, "code", "", "Opt-in, default OFF (static FORCE_CLIP bake stays the safe path)."),
 L(Presence, "MC2_MECH_IMPORT_CLIP_DIAG", Bool, false, "mech", "", ""),
 L(Lead1, "MC2_MECH_IMPORT_DYNAMIC_LIFT", Bool, false, "code", "", "Default: static rest lift (steady torso)."),
-G("MC2_MECH_IMPORT_FORCE_BONE", String, "", "mech", "", ""),  // default not derivable from the tree
-G("MC2_MECH_IMPORT_FORCE_CLIP", Bool, false, "code", "", "BT2018-SKEL-ENGINE-1B: by default bake the REST (bind) pose."),  // default not derivable from the tree
+G("MC2_MECH_IMPORT_FORCE_BONE", String, "j_LThigh", "mech", "", ""),
+G("MC2_MECH_IMPORT_FORCE_CLIP", String, "", "code", "", "BT2018-SKEL-ENGINE-1B: by default bake the REST (bind) pose."),
 P("MC2_MECH_IMPORT_FORCE_FRAME", Int, 0, "code", "", ""),
 P("MC2_MECH_IMPORT_FORCE_POSE", Int, 0, "mech", "", ""),
 L(Lead1, "MC2_MECH_IMPORT_GPU", Bool, false, "code", "", ""),
@@ -674,7 +674,7 @@ L(Lead0, "MC2_MECH_PICK_PIERCE_FOG", Bool, false, "code", "", ""),
 L(Lead0, "MC2_MECH_PICK_SELFTEST", Bool, false, "mech", "", ""),
 L(Presence, "MC2_MECH_PREVIEW_TRACE", Bool, false, "mech", "", ""),
 L(Presence, "MC2_MECH_RESTORE_TRACE", Bool, false, "mech", "", "", passthrough),
-L(Presence, "MC2_MECH_SKEL_BONE_DUMP", Bool, false, "code", "", "MECH-BONE-PARITY-GATE-1: dump the engine's REST joint-global bone matrices (the same mc2skel output the bake consumes) as JSON when..."),
+G("MC2_MECH_SKEL_BONE_DUMP", String, "", "code", "", "MECH-BONE-PARITY-GATE-1: dump the engine's REST joint-global bone matrices (the same mc2skel output the bake consumes) as JSON when..."),
 P("MC2_MECH_SKEL_HEIGHT", Float, 50.0, "code", "", ""),
 L(Presence, "MC2_MECH_SKEL_TRACE", Bool, false, "code", "", "BT2018-SKEL-ENGINE-1A - bind-pose bake trace (default OFF)."),
 P("MC2_MECH_SPECULAR_STRENGTH", Float, 0.05, "mech", "", "", range(0.0, 4.0)),
@@ -754,7 +754,7 @@ L(Presence, "MC2_OVERLAY_MAGENTA_TRACE", Bool, false, "gameos", "", ""),
 L(Presence, "MC2_OVERLAY_TEXTURE_TRACE", Bool, false, "gameos", "", "", passthrough),
 // OVERLAY-TILE-HIRES-1: high-resolution terrain overlay tiles.
 // history: docs/gate-history.md#MC2_OVERLAY_TILE_HIRES
-P("MC2_OVERLAY_TILE_HIRES", Int, 0, "terrain", "", "OVERLAY-TILE-HIRES-1: honor the overlay tile TGA's actual dimensions instead of the legacy hard-assumed 64px (initOverlay header resync mirrors...", passthrough | registry(Feature, "MC2_OVERLAY_TILE_HIRES", -1, false)),  // default not derivable from the tree
+G("MC2_OVERLAY_TILE_HIRES", String, "", "terrain", "", "OVERLAY-TILE-HIRES-1: honor the overlay tile TGA's actual dimensions instead of the legacy hard-assumed 64px (initOverlay header resync mirrors...", passthrough | registry(Feature, "MC2_OVERLAY_TILE_HIRES", -1, false)),
 P("MC2_PAD_AREA_GLOW", Float, 0.12, "terrain", "", "", passthrough | clampRange(0.0, 4.0) | verified),
 P("MC2_PAD_AREA_GLOW_SPILL", Float, 48.0, "terrain", "", "", passthrough | clampRange(4.0, 127.0) | verified),
 P("MC2_PAD_EDGE_ROAD_FIX", Int, 1, "terrain", "", "", range(0, 2) | verified),
@@ -835,7 +835,7 @@ L(NonEmpty, "MC2_RDC_CAPTURE_PATH", Bool, false, "gameos", "", "Expand and VALID
 L(Presence, "MC2_RDC_EXIT_AFTER", Bool, false, "gameos", "", ""),
 G("MC2_RDC_MAX_WAIT", Bool, false, "gameos", "", ""),  // default not derivable from the tree
 L(NonEmpty, "MC2_RDC_MISSION", Bool, false, "gameos", "", ""),
-L(Presence, "MC2_REBUILD_MOD_CACHE", Bool, false, "code", "", ""),
+L(Presence, "MC2_REBUILD_MOD_CACHE", Bool, false, "code", "", "", reread),
 L(Presence, "MC2_REGFLUSH_DIAG_TRACE", Bool, false, "props", "", "", passthrough),
 L(Presence, "MC2_REGFLUSH_GUARD2", Bool, false, "props", "", "STATIC-REGISTRY-CURRENTNESS-GUARD-2: generalize the R2b stale_after_drawn counter beyond the single tree case.", passthrough),
 L(Presence, "MC2_REGFLUSH_MULTI", Bool, false, "props", "", ""),
@@ -869,7 +869,7 @@ L(Lead0, "MC2_RENDER_WORLD_SELFTEST", Bool, false, "code", "", ""),
 // history: docs/gate-history.md#MC2_RENDER_WORLD_TRACE
 L(Lead0, "MC2_RENDER_WORLD_TRACE", Bool, false, "unclassified", "", "Per-frame [RENDER_WORLD v1] banner + per-event logs (RenderWorld.cpp).", registry(Trace, "MC2_TRACE_RENDER_WORLD", -1, false)),
 // history: docs/gate-history.md#MC2_RESOLVE_TRACE_FILE
-L(NonEmpty, "MC2_RESOLVE_TRACE_FILE", Bool, false, "code", "", "META-FIX design E tier 3 (mclib/file.cpp): output path for the MC2_LOG_FILE_RESOLVE=2 JSONL resolve trace, opened for append at InitModSearchPaths (relative...", passthrough | registry(Trace, "MC2_TRACE_RESOLVE_TRACE_FILE", -1, false)),
+G("MC2_RESOLVE_TRACE_FILE", String, "", "code", "", "META-FIX design E tier 3 (mclib/file.cpp): output path for the MC2_LOG_FILE_RESOLVE=2 JSONL resolve trace, opened for append at InitModSearchPaths (relative...", passthrough | registry(Trace, "MC2_TRACE_RESOLVE_TRACE_FILE", -1, false)),
 // META-FIX-BATCH-2 (recurrence-proofing, designs D + F — 2026-07-16)
 // history: docs/gate-history.md#MC2_RES_ASSERT
 L(Lead0, "MC2_RES_ASSERT", Bool, false, "code", "", "META-FIX design D runtime tier (RenderCore/ResolutionContract.h): resolution/aspect contract audit.", passthrough | registry(Trace, "MC2_TRACE_RES_ASSERT", -1, false)),

@@ -883,6 +883,13 @@ long oldNightFloor(const char* v) {
     if (f > 64) f = 64;
     return f;
 }
+float oldClampKnob(const char* v, float dflt, float lo, float hi) {
+    float f = dflt;
+    if (v && v[0]) f = static_cast<float>(std::atof(v));
+    if (f < lo) return lo;
+    if (f > hi) return hi;
+    return f;
+}
 }  // namespace g6
 
 TEST_CASE("G6 numeric rows reproduce the old mclib readers on every probe") {
@@ -897,6 +904,46 @@ TEST_CASE("G6 numeric rows reproduce the old mclib readers on every probe") {
         CHECK(asFloat(gate::detail::parseRow(margin, t)) == g6::oldCullMargin(t));
         CHECK(static_cast<long>(g1b::intOf(floor, t)) == g6::oldNightFloor(t));
     }
+}
+
+TEST_CASE("G6 clamped float knobs reproduce the old lambda readers (defaults and bounds included)") {
+    struct Knob { const char* name; float dflt; float lo; float hi; };
+    const Knob knobs[] = {
+        {"MC2_CAMERA_SMOOTH", 100.0f, 0.0f, 2000.0f},
+        {"MC2_CONE_POOL_REACH", 4.0f, 1.0f, 16.0f},
+        {"MC2_LIGHT_CONE_GLOW_ALPHA", 40.0f, 0.0f, 255.0f},
+        {"MC2_LIGHT_CONE_SPILL", 1.0f, 0.0f, 3.0f},
+        {"MC2_LIGHT_REALISM_CONE_OPACITY", 0.40f, 0.0f, 4.0f},
+        {"MC2_LIGHT_REALISM_CONE_FEATHER", 2.5f, 0.0f, 8.0f},
+        {"MC2_LIGHT_REALISM_BEACON", 70.0f, 0.0f, 255.0f},
+        {"MC2_LIGHT_REALISM_BEACON_RADIUS", 40.0f, 1.0f, 200.0f},
+    };
+    for (const Knob& k : knobs) {
+        const gate::Row& row = g1b::rowNamed(k.name);
+        CHECK(row.kind == Kind::Float);
+        CHECK(row.range.clamp);
+        for (const char* t : g1b::kProbes) {
+            INFO(k.name << " <- " << (t ? t : "(unset)"));
+            CHECK(asFloat(gate::detail::parseRow(row, t)) == g6::oldClampKnob(t, k.dflt, k.lo, k.hi));
+        }
+    }
+}
+
+TEST_CASE("G6 String rows keep path and text values verbatim") {
+    for (const char* name : {"MC2_ABL_COMPILE_FATAL_REPRO", "MC2_OVERLAY_TILE_HIRES", "MC2_MECH_IMPORT_FORCE_CLIP",
+                             "MC2_MECH_SKEL_BONE_DUMP", "MC2_LOG_FILE_RESOLVE", "MC2_RESOLVE_TRACE_FILE"}) {
+        INFO(name);
+        const gate::Row& row = g1b::rowNamed(name);
+        CHECK(row.kind == Kind::String);
+        CHECK(std::string(row.defStr).empty());
+    }
+    CHECK(std::string(g1b::rowNamed("MC2_MECH_IMPORT_FORCE_BONE").defStr) == "j_LThigh");
+}
+
+TEST_CASE("G6 the mod-cache refresh flag is re-read after an in-process putenv") {
+    const gate::Row& row = g1b::rowNamed("MC2_REBUILD_MOD_CACHE");
+    CHECK(row.reread);
+    CHECK(row.rule == Rule::Presence);
 }
 
 TEST_CASE("G6 level-valued gates are Enum rows with the level tokens first") {
