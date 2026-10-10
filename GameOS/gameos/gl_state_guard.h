@@ -1,3 +1,4 @@
+#include "Gates/gate.h"
 #ifndef GL_STATE_GUARD_H
 #define GL_STATE_GUARD_H
 //
@@ -60,7 +61,7 @@ public:
 
 private:
     static bool logEnabled() {
-        static const bool on = (std::getenv("MC2_GLSTATEGUARD_LOG") != nullptr);
+        static const bool on = mc2::gate::get<"MC2_GLSTATEGUARD_LOG">();
         return on;
     }
 
