@@ -88,9 +88,9 @@ extern bool PreserveMapTiles;
 extern MoveMapPtr PathFindMap[2];
 extern bool EditorSave;
 
-inline int StepAdjDir[9] = {-1, 0, 2, 2, 4, 4, 6, 6, 0};
+inline constexpr int StepAdjDir[9] = {-1, 0, 2, 2, 4, 4, 6, 6, 0};
 
-inline int adjTile[4][2] = {
+inline constexpr int adjTile[4][2] = {
 	{-1, 0},
 	{0, 1},
 	{1, 0},
@@ -102,7 +102,7 @@ inline float agsqrt( float _a, float _b )
 	return sqrt(_a*_a + _b*_b);
 }
 
-inline const char* typeString[] = {
+inline constexpr const char* typeString[] = {
     "normal area",
     "wall area",
     "gate area",

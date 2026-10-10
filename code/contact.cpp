@@ -786,13 +786,6 @@ void TeamSensorSystem::removeSensor (SensorSystemPtr sensor) {
 void TeamSensorSystem::update (void) {
 
 	if (numSensors > 0) {
-#if 0
-		//DEBUGGING
-		for (long k = 0; k < numContacts; k++) {
-			MoverPtr mover = (MoverPtr)ObjectManager->get(contacts[k]);
-			Assert(mover->getContactInfo()->teams[teamId] == k, 0, " Bad teams/contact link ");
-		}
-#endif
 		
 		if (Team::teams[teamId] == Team::home)
 			SoundSystem::largestSensorContact = -1;
@@ -1146,27 +1139,6 @@ void TeamSensorSystem::removeContact (SensorSystemPtr sensor, MoverPtr contact) 
 }
 
 //---------------------------------------------------------------------------
-#if 0
-void TeamSensorSystem::updateContactList (void) {
-
-	numAllContacts = 0;
-	for (long i = 0; i < ObjectManager->getNumMovers(); i++) {
-		MoverPtr mover = ObjectManager->getMover(i);
-		if (mover) {
-			long bestStatus = CONTACT_NONE;
-			for (long i = 0; i < Team::numTeams; i++) {
-				if (Team::teams[teamId]->isFriendly(Team::teams[i]))
-					if (mover->contactInfo->contactStatus[i] > bestStatus)
-						bestStatus = mover->contactInfo->contactStatus[i];
-			}
-			mover->contactInfo->allContactStatus[teamId] = bestStatus;
-			if (bestStatus != CONTACT_NONE) {
-				allContacts[numAllContacts++] = mover->getHandle();
-			}
-		}
-	}
-}
-#endif
 //---------------------------------------------------------------------------
 
 void TeamSensorSystem::updateEcmEffects (void) {
@@ -1394,14 +1366,6 @@ void SensorSystemManager::updateSensors (void)
 }
 
 //---------------------------------------------------------------------------
-#if 0
-void SensorSystemManager::updateTeamContactLists (void) {
-
-	for (long i = 0; i < Team::numTeams; i++) {
-		teamSensors[i]->updateContactList();
-	}
-}
-#endif
 //---------------------------------------------------------------------------
 
 void SensorSystemManager::addEcm (GameObjectPtr owner, float range) {

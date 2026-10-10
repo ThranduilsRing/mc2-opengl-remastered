@@ -1328,17 +1328,6 @@ long TacticalOrder::status (MechWarriorPtr warrior) {
 #endif
 			}
 			break;
-#if 0
-		case TACTICAL_ORDER_TRAVERSE_PATH:
-			if (stage == 2)
-				result = TACORDER_SUCCESS;
-			else
-				result = TACORDER_FAILURE;
-			break;
-		case TACTICAL_ORDER_PATROL_PATH:
-			result = TACORDER_FAILURE;
-			break;
-#endif
 		case TACTICAL_ORDER_ESCORT:
 		case TACTICAL_ORDER_FOLLOW:
 			break;
@@ -1822,85 +1811,6 @@ long TacticalOrder::status (MechWarriorPtr warrior) {
 		case TACTICAL_ORDER_RECOVER:
 			// has recoverer gotten distracted?
 			STOP(("RECOVER TACORDER NO LONGER VALID"));
-#if 0
-			if (!target || (warrior->getVehicle()->recoverBuddyWID == 0) || (((MoverPtr)target)->recoverBuddyWID == 0))
-				result = TACORDER_SUCCESS;
-			else {
-				// refitter and refitee *should* be pointing at each other...
-				//Assert(warrior->getVehicle()->recoverBuddyWID == target->getWatchID() &&
-				//		((MoverPtr) target)->recoverBuddyWID == warrior->getVehicle()->getWatchID(), 0, "Recoveree and recoverer aren't pointing at each other.");
-				result = TACORDER_FAILURE;
-				switch(stage) {
-					case 1:	// move
-						if (warrior->getVehicle()->distanceFrom(target->getPosition()) < Mover::recoverRange)
-							stage++;
-						break;
-					case 2: // power-down (or other cool animation...)
-						if (target->getObjectClass() == BATTLEMECH) {
-							((BattleMechPtr)target)->leftArmBlownThisFrame = false;
-							((BattleMechPtr)target)->rightArmBlownThisFrame = false;
-							((MoverPtr)target)->getPilot()->clearAlarms();
-						}
-						if (target->isDisabled())
-							target->setStatus(OBJECT_STATUS_SHUTDOWN);
-						mission->tradeMover((Mover*)target, Team::home->getId(), Commander::home->getId(), 
-							(char*)LogisticsData::instance->getBestPilot( (target)->tonnage ), "pbrain");
-						((MoverPtr)target)->recoverBuddyWID = warrior->getVehicle()->getWatchID();
-						warrior->getVehicle()->recoverBuddyWID = target->getWatchID();
-						stage++;
-						break;
-					case 3:
-						if (time <= 0.0) {
-							target->getPilot()->orderPowerDown(unitOrder, ORDER_ORIGIN_SELF);
-							time = scenarioTime;
-						}
-						else if (scenarioTime > time + 3.0) {
-							stage++;
-							time = scenarioTime;
-						}
-						break;
-					case 4:	// do the deed
-						((GroundVehiclePtr)warrior->getVehicle())->refitting = true;
-						if (scenarioTime > time + Mover::refitTime) {
-							float pointsUsed = 0;
-							long result = ((MoverPtr)target)->recover(warrior->getVehicle()->getRecoverPoints(), pointsUsed);
-							warrior->getVehicle()->burnRecoverPoints(pointsUsed);
-							if (MPlayer) {
-								STOP((" Need to implement recover for multiplayer "));
-								WeaponShotInfo recoverInfo;
-								recoverInfo.init(NULL,
-											   -5,
-											   pointsUsed,
-											   GROUNDVEHICLE_LOCATION_TURRET,
-											   0.0);
-								MPlayer->addWeaponHitChunk((GameObjectPtr)warrior->getVehicle(), &recoverInfo);
-								recoverInfo.init(NULL,
-											   -5,
-											   pointsUsed,
-											   0,
-											   0.0);
-								MPlayer->addWeaponHitChunk(target, &recoverInfo, TRUE);
-							}
-							stage += result;
-							if (result == 0)
-								time = scenarioTime;
-						}
-						break;
-					case 5: // done. power-up (or whatever) and report
-						((GroundVehiclePtr)warrior->getVehicle())->recovering = false;
-						target->getPilot()->orderPowerUp(unitOrder, ORDER_ORIGIN_SELF);
-						result = TACORDER_SUCCESS;
-						((MoverPtr)target)->recoverBuddyWID = 0;
-						warrior->getVehicle()->recoverBuddyWID = 0;
-						warrior->getVehicle()->setSelected( 0 );
-						warrior->getVehicle()->disable(POWER_USED_UP) ;
-						break;
-					case -1:	// execute failed
-						result = TACORDER_SUCCESS;
-						break;
-				}
-			}
-#endif
 			break;
 	}
 

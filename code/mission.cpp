@@ -1133,15 +1133,6 @@ long Mission::update (void)
 		//Try ALWAYS using SCENARIO Time.  This has been specially coded to be nummies!!
 			actualTime = scenarioTime;
 
-#if 0
-		static bool tested = false;
-		if ((scenarioTime > 15.0) && !tested) {
-			tested = true;
-			ABLFile* ablSaveFile;
-			ABLi_saveEnvironment (ABLFile* ablFile) {
-
-		}
-#endif
 
 		ZoneScopedN("GameLogic.Mission.Update");
 		{ ZoneScopedN("Mission.clearArrays"); MisScope _ms(MS_CLEARARRAYS); mcTextureManager->clearArrays(); }
@@ -3299,42 +3290,6 @@ void Mission::init (const char *missionName, long loadType, long dropZoneID, Stu
 	if (!dropZoneList) {
 		result = missionFile->seekBlock("Multiplayer");
 		if (result == NO_ERR) {
-			#if 0
-			result = missionFile->readIdULong("TeamId", MultiPlayTeamId);
-			gosASSERT(result == NO_ERR);
-			result = missionFile->readIdULong("CommanderId", MultiPlayCommanderId);
-			gosASSERT(result == NO_ERR);
-			char sessionName[128];
-			result = missionFile->readIdString("SessionName", sessionName, 127);
-			gosASSERT(result == NO_ERR);
-			char playerName[128];
-			result = missionFile->readIdString("PlayerName", playerName, 127);
-			gosASSERT(result == NO_ERR);
-			bool isServer = false;
-			result = missionFile->readIdBoolean("Server", isServer);
-			gosASSERT(result == NO_ERR);
-			unsigned long numPlayers;
-			result = missionFile->readIdULong("NumPlayers", numPlayers);
-			gosASSERT(result == NO_ERR);
-			gosASSERT(MPlayer == NULL);
-			MPlayer = new MultiPlayer;
-			Assert(MPlayer != NULL, 0, " Unable to create MultiPlayer object ");
-			MPlayer->setup();
-			MPlayer->commanderID = MultiPlayCommanderId;
-			//-------------------------------------------
-			// If I'm the server, then create the game...
-			if (isServer) {
-				if (MPlayer->hostGame(sessionName, playerName, numPlayers)) {
-					//---------------------------------------------
-					//game hosted, so now wait for all check-ins...
-					MPlayer->serverCID = MultiPlayCommanderId;//(MultiPlayCommanderId == ServerPlayerNum); //(gos_NetInformation(gos_AmITheServer) == 0);
-				}
-				}
-			else {
-				MPlayer->joinGame(NULL, sessionName, playerName);
-				//MPlayer->numFitPlayers = numPlayers;
-			}
-			#endif
 		}
 	}
 

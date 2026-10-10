@@ -6,7 +6,8 @@ Usage: py -3 tools/split/split_cpp.py CONFIG.py   (writes <stem>_*.cpp, <stem>_i
 Config names: SRC, STEM, INCLUDE_RAW=(first,last) 1-based raw lines copied into the header, PREAMBLE_END (first post-preamble line),
 KEEP_FROM (first preamble line the core keeps), GROUPS=[(name,[(a,b)...])] with a 'core' group, DOC={name:text},
 PREAMBLE_MOVES={group:[(a,b)...]} (preamble line ranges moved to the top of a group file), HEADER_EXTRA=[lines], BANNER=[lines].
-Optional: OUT (output dir, default the source's directory), HEADER_PRE_MOVES / HEADER_MOVES=[(a,b)...] (1-based line ranges whose units move verbatim into the
+Optional: BASE_REV / BASE_SRC (git rev and path holding the original, default HEAD and SRC) and ALLOW (see split_verify.py) drive the fail-closed checks that run
+after the pieces are written; any finding exits 1 and the caller must not install the .new file. OUT (output dir, default the source's directory), HEADER_PRE_MOVES / HEADER_MOVES=[(a,b)...] (1-based line ranges whose units move verbatim into the
 header, before / after the externs: macros and inline definitions every piece needs), HEADER_PRE=[lines]."""
 import importlib.util, os, re, sys
 
@@ -145,6 +146,8 @@ for u in units:
     s = proto(u)
     if "::" in s.split("(")[0] or s.startswith(("static", "inline", "#")):
         continue
+    if re.match(r"^(if|for|while|switch|return|[A-Z][A-Z_]+_MAP\w*)", s):
+        continue
     if re.match(r"^[\w\s\*&:<>]+\(", s):
         protos.append(s.rstrip() + ";")
 if protos:
@@ -199,3 +202,16 @@ for g, _ in C.GROUPS:
 print("externs", len(seen), "protos", len(protos))
 for g, _ in C.GROUPS:
     print(g, sum(c.count(b"\n") + 1 for c in bodies[g]))
+
+# ---- fail-closed verification against the original (tools/split/split_verify.py) ------------------------------
+import split_verify
+_old = split_verify._git(["show", "%s:%s" % (getattr(C, "BASE_REV", "HEAD"), getattr(C, "BASE_SRC", C.SRC).replace(chr(92), "/"))])
+if not _old:
+    raise SystemExit("split_verify: cannot read %s from %s" % (C.SRC, getattr(C, "BASE_REV", "HEAD")))
+_files = {C.SRC: open(C.SRC + ".new", "rb").read(),
+          os.path.join(OUT, "%s_internal.h" % C.STEM): open(os.path.join(OUT, "%s_internal.h" % C.STEM), "rb").read()}
+for g, _ in C.GROUPS:
+    if g != "core":
+        _p = os.path.join(OUT, "%s_%s.cpp" % (C.STEM, g))
+        _files[_p] = open(_p, "rb").read()
+sys.exit(split_verify.report(split_verify.verify(_old, _files, C.STEM, getattr(C, "BASE_SRC", C.SRC).replace(chr(92), "/"), getattr(C, "ALLOW", {}))))

@@ -90,6 +90,7 @@ ALLOWLIST_EXACT = {
     # editor TUs, out of the frame loop.
     "editor/EditorGameOS.cpp",
     "editor/EditorInterface.cpp",
+    "editor/EditorInterface_mouse.cpp",
 }
 
 # Prefix-matched sanctioned trees (out-of-engine tools, offline harnesses).

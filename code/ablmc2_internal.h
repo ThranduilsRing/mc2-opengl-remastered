@@ -72,7 +72,7 @@ void DEBUGWINS_print (const char* s, long window);
 static inline void abl_arg_guard_log(const char* funcName, const char* paramName) {
 	const char* srcFile = (CurModule && FileNumber > -1) ? CurModule->getSourceFile(FileNumber) : "unavailable";
 	const char* modName = CurModule ? CurModule->getName() : "(unknown)";
-	printf("[ABL_ARG_GUARD] func=%s param=%s module=%s file=%s line=%d - null ptr, skipping\n",
+	printf("[ABL_ARG_GUARD] func=%s param=%s module=%s file=%s line=%d — null ptr, skipping\n",
 		funcName, paramName, modName, srcFile, execLineNumber);
 	fflush(stdout);
 }

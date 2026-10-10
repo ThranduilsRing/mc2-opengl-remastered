@@ -78,7 +78,7 @@ code/ground_contact_blob.cpp::s_blobLogCount < 8
 code/missiongui.cpp::s_stage < 12
 code/objmgr.cpp::s_frames < 60
 code/warrior.cpp::s_firedMechs < 8
-editor/EditorInterface.cpp::s_clickTrace <= 5
+editor/EditorInterface_mouse.cpp::s_clickTrace <= 5
 editor/EditorMFC.cpp::g_cliPlaytestWarmFrames < 30
 mclib/apprtype.cpp::g_loadRaceApprNull < 50
 mclib/apprtype.cpp::g_loadRaceApprNull < 50

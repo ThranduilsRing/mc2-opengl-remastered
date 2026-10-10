@@ -21,7 +21,7 @@
   "GameOS/gameos/gos_static_prop_batcher.cpp": 11198,
   "GameOS/gameos/gos_static_prop_registry.cpp": 2226,
   "GameOS/gameos/gos_terrain_indirect.cpp": 6301,
-  "GameOS/gameos/gos_terrain_lighting.cpp": 1760,
+  "GameOS/gameos/gos_terrain_lighting.cpp": 1697,
   "GameOS/gameos/gos_terrain_lod_chunk.cpp": 4208,
   "GameOS/gameos/gos_terrain_water_stream.cpp": 2479,
   "GameOS/gameos/gpu_cull_compute.cpp": 1558,
@@ -40,7 +40,7 @@
   "code/controlgui.cpp": 5016,
   "code/gamecam.cpp": 1569,
   "code/gameobj.cpp": 2365,
-  "code/gvehicl.cpp": 5636,
+  "code/gvehicl.cpp": 5419,
   "code/infowindow.cpp": 1746,
   "code/logisticsdata.cpp": 3442,
   "code/logisticsdialog.cpp": 2149,
@@ -48,7 +48,7 @@
   "code/mechicon.cpp": 1969,
   "code/mechlabscreen.cpp": 1949,
   "code/mechlopedia.cpp": 1660,
-  "code/mission.cpp": 5938,
+  "code/mission.cpp": 5893,
   "code/missionbegin.cpp": 2136,
   "code/missiongui.cpp": 7922,
   "code/mover.h": 1911,
@@ -59,14 +59,13 @@
   "code/optionsarea.cpp": 1841,
   "code/pilotreviewarea.cpp": 1844,
   "code/saveload.cpp": 1723,
-  "code/tacordr.cpp": 2162,
+  "code/tacordr.cpp": 2072,
   "code/terrobj.cpp": 1753,
   "code/turret.cpp": 2349,
-  "code/warrior.cpp": 9578,
+  "code/warrior.cpp": 2740,
   "code/warrior.h": 2171,
   "code/weaponbolt.cpp": 3024,
   "editor/EditorData.cpp": 3537,
-  "editor/EditorInterface.cpp": 7336,
   "editor/EditorObjectMgr.cpp": 3582,
   "editor/Objective.cpp": 2045,
   "editor/ObjectiveDlg.cpp": 1517,
@@ -75,7 +74,7 @@
   "mclib/ablenv.cpp": 1552,
   "mclib/ablrtn.cpp": 1780,
   "mclib/assimp_importer.cpp": 1630,
-  "mclib/bdactor.cpp": 8282,
+  "mclib/bdactor.cpp": 8281,
   "mclib/camera.cpp": 4642,
   "mclib/camera.h": 1802,
   "mclib/echarstring.cpp": 1622,
@@ -109,7 +108,7 @@
   "mclib/vfxtile.cpp": 2944,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "00cc51a55",
+ "head": "71cf0e206",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -148,16 +147,16 @@
    "max_lines": 1168
   },
   "code": {
-   "files": 308,
+   "files": 317,
    "files_over_1500": 31,
-   "files_over_3000": 10,
-   "max_lines": 9578
+   "files_over_3000": 9,
+   "max_lines": 7922
   },
   "editor": {
-   "files": 206,
-   "files_over_1500": 5,
-   "files_over_3000": 3,
-   "max_lines": 7336
+   "files": 213,
+   "files_over_1500": 4,
+   "files_over_3000": 2,
+   "max_lines": 3582
   },
   "gui": {
    "files": 21,
@@ -169,7 +168,7 @@
    "files": 578,
    "files_over_1500": 35,
    "files_over_3000": 9,
-   "max_lines": 8282
+   "max_lines": 8281
   },
   "shaders": {
    "files": 171,
@@ -192,12 +191,8 @@
    "lines": 11198
   },
   {
-   "file": "code/warrior.cpp",
-   "lines": 9578
-  },
-  {
    "file": "mclib/bdactor.cpp",
-   "lines": 8282
+   "lines": 8281
   },
   {
    "file": "code/missiongui.cpp",
@@ -206,10 +201,6 @@
   {
    "file": "GameOS/gameos/gos_postprocess.cpp",
    "lines": 7349
-  },
-  {
-   "file": "editor/EditorInterface.cpp",
-   "lines": 7336
   },
   {
    "file": "mclib/mech3d.cpp",
@@ -225,7 +216,7 @@
   },
   {
    "file": "code/mission.cpp",
-   "lines": 5938
+   "lines": 5893
   },
   {
    "file": "code/objmgr.cpp",
@@ -233,7 +224,7 @@
   },
   {
    "file": "code/gvehicl.cpp",
-   "lines": 5636
+   "lines": 5419
   },
   {
    "file": "code/controlgui.cpp",
@@ -302,12 +293,20 @@
   {
    "file": "mclib/msl.cpp",
    "lines": 3069
+  },
+  {
+   "file": "code/weaponbolt.cpp",
+   "lines": 3024
+  },
+  {
+   "file": "mclib/vfxtile.cpp",
+   "lines": 2944
   }
  ],
  "total": {
-  "files": 1620,
-  "files_over_1500": 95,
-  "files_over_3000": 31,
+  "files": 1636,
+  "files_over_1500": 94,
+  "files_over_3000": 29,
   "max_lines": 11658
  },
  "version": 1

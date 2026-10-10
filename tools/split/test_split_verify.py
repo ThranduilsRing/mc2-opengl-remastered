@@ -1,0 +1,107 @@
+"""What: unit tests for tools/split/split_verify.py (the fail-closed split checks).
+Why: the checks guard every file split; each one needs a synthetic violation that must fail and an allowlist that must silence it."""
+import os, sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import split_verify as sv  # noqa: E402
+
+OLD = b"""#include "a.h"
+#define FEAT 1
+static const bool s_gate = (getenv("MC2_X") != nullptr);
+static int counter = 0;
+char table[2] = {1, 2};
+#ifdef FEAT
+void f() { counter++; }
+#endif
+void g() { f(); }
+"""
+
+
+def run(old, files, allow=None, stem="m"):
+    return sv.verify(old, {k: v.encode() if isinstance(v, str) else v for k, v in files.items()}, stem, "code/m.cpp", allow or {}, False, False)
+
+
+def kinds(findings):
+    return sorted(set(c for c, _ in findings))
+
+
+GOOD = {
+    "code/m.cpp": '#include "m_internal.h"\nstatic int counter = 0;\nvoid f() { counter++; }\n',
+    "code/m_g.cpp": '#include "m_internal.h"\nvoid g() { f(); }\n',
+    "code/m_internal.h": '#ifndef M_INTERNAL_H\n#define M_INTERNAL_H\n#include "a.h"\n#define FEAT 1\nextern char table[2];\nvoid f();\n#endif // M_INTERNAL_H\n',
+}
+
+
+def old_with(extra=b""):
+    return OLD + extra
+
+
+def test_move_only_split_is_clean_apart_from_the_dropped_gate():
+    old = OLD.replace(b'static const bool s_gate = (getenv("MC2_X") != nullptr);\n', b"").replace(b"char table[2] = {1, 2};\n", b"")
+    good = dict(GOOD)
+    good["code/m.cpp"] = good["code/m.cpp"]
+    f = run(old, good)
+    assert [m for c, m in f if c != "lines"] == [], f
+
+
+def test_eager_file_scope_gate_turned_lazy_is_flagged():
+    new = dict(GOOD)
+    new["code/m.cpp"] = '#include "m_internal.h"\nstatic int counter = 0;\nbool gate() { static const bool v = (getenv("MC2_X") != nullptr); return v; }\nvoid f() { counter++; }\n'
+    f = run(OLD, new)
+    assert any("getenv" in m for c, m in f if c == "lines"), f
+
+
+def test_static_to_inline_change_needs_an_explicit_allowance():
+    old = b"static int counter = 0;\n"
+    new = {"code/m.cpp": '#include "m_internal.h"\n', "code/m_internal.h": '#ifndef M_INTERNAL_H\n#define M_INTERNAL_H\ninline int counter = 0;\n#endif // M_INTERNAL_H\n'}
+    assert "lines" in kinds(run(old, new))
+    ok = run(old, new, {"edits": [["static int counter = 0;", "inline int counter = 0;"]], "header_vars": ["counter"]})
+    assert ok == [], ok
+
+
+def test_non_ascii_character_lost_is_flagged():
+    old = "printf(\"a — b\n\");\n".encode("utf-8")
+    new = {"code/m.cpp": 'printf("a - b\n");\n'}
+    assert "lines" in kinds(run(old, new))
+
+
+def test_macro_defined_after_its_use_in_the_piece_is_flagged():
+    new = dict(GOOD)
+    new["code/m_internal.h"] = '#ifndef M_INTERNAL_H\n#define M_INTERNAL_H\n#include "a.h"\nextern char table[2];\nvoid f();\n#endif // M_INTERNAL_H\n'
+    new["code/m.cpp"] = '#include "m_internal.h"\nstatic int counter = 0;\n#ifdef FEAT\nvoid f() { counter++; }\n#endif\n'
+    f = run(OLD, new)
+    assert "macros" in kinds(f), f
+
+
+def test_header_static_and_mutable_inline_variables_are_flagged():
+    h = "#ifndef M_INTERNAL_H\n#define M_INTERNAL_H\nstatic int a = 0;\ninline int b = 0;\ninline constexpr int c = 1;\nstatic inline int fn() { return 1; }\n#endif // M_INTERNAL_H\n"
+    f = sv.check_header(sv.lines_of(h.encode()), {})
+    msgs = " | ".join(m for _, m in f)
+    assert "static int a" in msgs and "inline int b" in msgs and "inline constexpr" not in msgs.replace("(use inline constexpr", "") and "fn" not in msgs, msgs
+    assert sv.check_header(sv.lines_of(h.encode()), {"header_vars": ["a", "b"]}) == []
+
+
+def test_inline_function_called_from_another_piece_is_flagged():
+    files = {"x.cpp": "inline int helper(int v) { return v; }\nint a() { return helper(1); }\n", "y.cpp": "int b() { return helper(2); }\n", "x_internal.h": "int b();\n"}
+    f = sv.check_inline_calls({k: sv.lines_of(v.encode()) for k, v in files.items()}, "x_internal.h", {})
+    assert f and f[0][0] == "inline", f
+    assert sv.check_inline_calls({k: sv.lines_of(v.encode()) for k, v in files.items()}, "x_internal.h", {"inline_calls": ["helper"]}) == []
+
+
+def test_registrar_order_must_survive_in_one_piece():
+    old = sv.lines_of(b"static int a = REGISTER_ONE();\nstatic int b = REGISTER_TWO();\n")
+    same = {"x.cpp": sv.lines_of(b"static int a = REGISTER_ONE();\nstatic int b = REGISTER_TWO();\n")}
+    split = {"x.cpp": sv.lines_of(b"static int a = REGISTER_ONE();\n"), "y.cpp": sv.lines_of(b"static int b = REGISTER_TWO();\n")}
+    swapped = {"x.cpp": sv.lines_of(b"static int b = REGISTER_TWO();\nstatic int a = REGISTER_ONE();\n")}
+    assert sv.check_registrars(old, same) == []
+    assert sv.check_registrars(old, split) and sv.check_registrars(old, swapped)
+
+
+def test_hoisted_include_after_a_define_is_checked_against_that_define(tmp_path, monkeypatch):
+    hdr = tmp_path / "dep.h"
+    hdr.write_bytes(b"#if FEAT\nint x;\n#endif\n")
+    monkeypatch.setattr(sv, "_find_header_text", lambda inc, d: hdr.read_bytes())
+    old = sv.lines_of(b"#define FEAT 1\n#include \"dep.h\"\nint y;\n")
+    header = sv.lines_of(b"#include \"dep.h\"\n")
+    assert sv.check_includes(old, header, {}, "code")
+    assert sv.check_includes(old, header, {"includes": ["dep.h"]}, "code") == []
