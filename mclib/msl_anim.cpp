@@ -1,0 +1,609 @@
+// Multi shape layer: TG_AnimateShape and _TG_Animation: binary load / save, ASE animation import and animation state.
+// Declared in the class headers; shared names in msl_internal.h.
+#include "msl_internal.h"
+
+
+//-------------------------------------------------------------------------------
+// class TG_AnimateShape
+//-------------------------------------------------------------------------------
+void *TG_AnimateShape::operator new (size_t mySize)
+{
+	void *result = TG_Shape::tglHeap->Malloc(mySize);
+	return result;
+}
+ 
+//-------------------------------------------------------------------------------
+ void TG_AnimateShape::operator delete (void *us)
+{
+	TG_Shape::tglHeap->Free(us);
+}
+//-------------------------------------------------------------------------------
+void _TG_Animation::SaveBinaryCopy (File *binFile)
+{
+	if (S_stricmp(nodeId,"NONE") != 0)
+	{
+        // sebi: nodeId is not generally TG_NODE_ID bytes long
+        char buf[TG_NODE_ID] = {0};
+        strncpy(buf, nodeId, TG_NODE_ID);
+		binFile->write((MemoryPtr)buf,TG_NODE_ID);	
+		binFile->writeInt(-1);			//ShapeIds ALWAYS start with -1.  We will scan on frame 1 please!
+		binFile->writeInt(numFrames);
+		binFile->writeFloat(frameRate);
+		binFile->writeFloat(tickRate);
+		
+		if (quat)
+			binFile->writeInt(sizeof(Stuff::UnitQuaternion) * numFrames);
+		else
+			binFile->writeInt(0);
+			
+		if (pos)
+			binFile->writeInt(sizeof(Stuff::Point3D) * numFrames);
+		else
+			binFile->writeInt(0);
+		
+		if (quat)
+			binFile->write((MemoryPtr)quat,sizeof(Stuff::UnitQuaternion) * numFrames);
+			
+		if (pos)
+			binFile->write((MemoryPtr)pos,sizeof(Stuff::Point3D) * numFrames);
+	}
+}
+
+//-------------------------------------------------------------------------------
+void _TG_Animation::LoadBinaryCopy (File *binFile)
+{
+	binFile->read((MemoryPtr)nodeId,TG_NODE_ID);	
+	shapeId = binFile->readInt();
+	numFrames = binFile->readInt();
+	frameRate = binFile->readFloat();
+	tickRate = binFile->readFloat();
+	
+	int quatRAM = binFile->readInt();
+	int posRAM = binFile->readInt();		
+	
+	if (quatRAM)
+	{
+		quat = (Stuff::UnitQuaternion *)TG_Shape::tglHeap->Malloc(sizeof(Stuff::UnitQuaternion) * numFrames); 
+		binFile->read((MemoryPtr)quat,quatRAM);	
+	}
+	else
+		quat = NULL;
+		
+	if (posRAM)
+	{
+		pos = (Stuff::Point3D *)TG_Shape::tglHeap->Malloc(sizeof(Stuff::Point3D) * numFrames); 
+		binFile->read((MemoryPtr)pos,posRAM);	
+	}
+	else
+		pos = NULL;
+}
+
+//-------------------------------------------------------------------------------
+long TG_AnimateShape::LoadBinaryCopy (const char *fileName)
+{
+	File binFile;
+	long result = binFile.open(fileName);
+	if (result != NO_ERR)
+		return -1;
+		
+	int animFileVersion = binFile.readInt();
+	if (animFileVersion == CURRENT_ANIM_VERSION)
+	{
+		count = binFile.readInt();
+		
+		if (count)
+		{
+			listOfAnimation = (TG_AnimationPtr)TG_Shape::tglHeap->Malloc(sizeof(TG_Animation) * count);
+			gosASSERT(listOfAnimation != NULL);
+ 			
+			for (long i=0;i<count;i++)
+				listOfAnimation[i].LoadBinaryCopy(&binFile);
+		}
+		else
+			listOfAnimation = NULL;
+	}
+	else
+	{
+		return -1;
+	}
+	
+	return 0;
+}
+
+//-------------------------------------------------------------------------------
+void TG_AnimateShape::SaveBinaryCopy (const char *fileName)
+{
+	File binFile;
+	binFile.create(fileName);
+	
+	binFile.writeInt(CURRENT_ANIM_VERSION);
+	
+	//ListOfAnimations
+	actualCount = 0;
+	if (count)
+	{
+ 		for (long i=0;i<count;i++)
+		{
+			if (S_stricmp(listOfAnimation[i].nodeId,"NONE") != 0)
+				actualCount++;
+		}
+	}
+
+	binFile.writeInt(actualCount);
+
+	//ListOfAnimations
+	if (count)
+	{
+ 		for (long i=0;i<count;i++)
+			listOfAnimation[i].SaveBinaryCopy(&binFile);
+	}
+}
+
+//-------------------------------------------------------------------------------
+//This function frees all of the RAM allocated by this class and resets vars to initial state.
+void TG_AnimateShape::destroy (void)
+{
+	if (listOfAnimation)
+	{
+		for ( int i = 0; i < count; ++i )
+		{
+			TG_Shape::tglHeap->Free( listOfAnimation[i].pos );
+			listOfAnimation[i].pos = NULL;
+
+			TG_Shape::tglHeap->Free( listOfAnimation[i].quat );
+			listOfAnimation[i].quat = NULL;
+		}
+
+		if (listOfAnimation)
+			TG_Shape::tglHeap->Free(listOfAnimation);
+			
+		listOfAnimation = NULL;
+	}
+}	
+
+FilePtr tglLogFile = (FilePtr)NULL;
+
+//-------------------------------------------------------------------------------
+//This function loads the animation data contained in the file passed in.
+//It sets up a pointer to the multi-shape so that animation data for each
+//Node in the Multi-Shape can be loaded.
+//It mallocs memory.
+long TG_AnimateShape::LoadTGMultiShapeAnimationFromASE (const char *fileName, TG_TypeMultiShapePtr shape, bool skipIfBinary, bool forceMakeBinary)
+{
+	//------------------------------------------------------
+	// New!  Checks for Binary file to load instead.
+	//
+	// If Binary is older or equal to ASE, re-parses ASE and
+	// saves binary.
+	//
+	// If Binary does not exist, does the above, too!
+	// 
+	// If Binary exists and is newer, just loads that.
+	// MUCH FASTER!
+	//
+	bool makeBinary = false;
+
+	char drive[MAX_PATH];
+	char dir[MAX_PATH];
+	char name[MAX_PATH];
+	char ext[MAX_PATH];
+	_splitpath(fileName,drive,dir,name,ext);
+
+	FullPathFileName binaryFileName;
+	binaryFileName.init(tglPath,name,".agl");
+
+	if( !forceMakeBinary )
+	{
+		if (fileExists(binaryFileName) && !fileExists(fileName))
+		{
+			File binFile;
+			
+			long result = binFile.open(binaryFileName);
+			if (result != NO_ERR)
+			{
+				makeBinary = true;
+			}
+			else
+			{
+				int versionId = binFile.readInt();
+				if (versionId != CURRENT_ANIM_VERSION)
+					makeBinary = true;
+			}
+		}
+		else
+		{
+			makeBinary = true;
+		}
+	}
+	else
+	{
+		makeBinary = true;
+	}
+
+	if (!makeBinary)
+	{
+		if (!skipIfBinary)
+			return (LoadBinaryCopy(binaryFileName));
+		else
+			return 0;
+	}
+	else
+	{
+		//-----------------------------------------------------
+		// Fully loads and parses an ASE File.  These files are
+		// output by 3D Studio MAX's ASCII Scene Exporter.
+		//
+		shapeIdsSet = false;
+	
+		//------------------------------------------
+		// Check if exists 
+		if (!gos_FileExists(fileName))
+			return(-1);
+		
+		long aseFileSize = gos_FileSize(fileName);
+	
+		//---------------------------------------
+		// Create Buffer to read entire file into
+		BYTE *aseContents = (BYTE *)malloc(aseFileSize+1);
+		gosASSERT(aseContents != NULL);
+	
+		//---------------------------------------
+		// Open File and read it and close it
+		HGOSFILE aseFile;
+		gos_OpenFile(&aseFile,fileName,READONLY);
+	
+	#ifdef _DEBUG
+		long dataRead = 
+	#endif
+		gos_ReadFile(aseFile,aseContents,aseFileSize);
+		gosASSERT(dataRead == aseFileSize);
+	
+		gos_CloseFile(aseFile);
+	
+		aseContents[aseFileSize] = 0;
+	
+		//----------------------------------------
+		// Check for valid ASE Header data.
+		if (S_strnicmp(ASE_HEADER,(char *)aseContents,strlen(ASE_HEADER)) != 0)
+			return(-1);
+	
+		//------------------------------------------
+		// Get first frame of animation from header
+		long firstFrame, lastFrame;
+		char *frameId = strstr((char *)aseContents,ASE_ANIM_FIRST_FRAME);
+		gosASSERT(frameId != NULL);
+		frameId += strlen(ASE_ANIM_FIRST_FRAME)+1;
+	
+		char numData[512];
+		GetNumberData(frameId,numData);
+		firstFrame = atol(numData);
+	
+		frameId = strstr((char *)aseContents,ASE_ANIM_LAST_FRAME);
+		gosASSERT(frameId != NULL);
+	
+		frameId += strlen(ASE_ANIM_LAST_FRAME)+1;
+	
+		GetNumberData(frameId,numData);
+		lastFrame = atol(numData);
+	
+		//gosASSERT(firstFrame == 0);
+		gosASSERT(firstFrame <= lastFrame);
+	
+		//if (firstFrame == lastFrame)
+			//No Animation data at all. Possible?
+	
+		long numFrames = (lastFrame - firstFrame) + 1;
+	
+		frameId = strstr((char *)aseContents,ASE_ANIM_FRAME_SPEED);
+		gosASSERT(frameId != NULL);
+	
+		frameId += strlen(ASE_ANIM_FRAME_SPEED)+1;
+	
+		GetNumberData(frameId,numData);
+		float frameRate = (float)atof(numData);
+	
+		frameId = strstr((char *)aseContents,ASE_ANIM_TICKS_FRAME);
+		gosASSERT(frameId != NULL);
+	
+		frameId += strlen(ASE_ANIM_TICKS_FRAME)+1;
+	
+		GetNumberData(frameId,numData);
+		float tickRate = (float)atof(numData);
+	
+		//----------------------------------------------------------------------------
+		// For each TG_Shape in MultiShape passed in, find any and all animation Data
+		count = shape->GetNumShapes();
+		listOfAnimation = (TG_AnimationPtr)TG_Shape::tglHeap->Malloc(sizeof(TG_Animation) * shape->GetNumShapes());
+		gosASSERT(listOfAnimation != NULL);
+	
+		//----------------------------------------------------------------------------
+		// Scan the Nodes.
+		actualCount = 0;
+		bool countUp = false;
+		for (long i=0;i<count;i++)
+		{
+			char *nodeId = shape->GetNodeId(i);
+			gosASSERT(nodeId != NULL);
+		
+			char *animScan = (char *)aseContents;
+			animScan = strstr(animScan,ASE_ANIMATION);
+	
+			char nodeName[512];
+			sprintf(nodeName,"*NODE_NAME \"%s\"",nodeId);
+			while (animScan != NULL)
+			{
+				animScan += strlen(ASE_ANIMATION)+1;
+	
+				//------------------------------------------------------
+				// We found a TM_ANIMATION Section.
+				// Check if the VERY NEXT LINE is the correct NodeName
+				char nextLine[1024];
+				GetNextLine(animScan,nextLine);
+	
+				if (strstr(nextLine,nodeName) == NULL)
+				{
+					animScan = strstr(animScan,ASE_ANIMATION);
+				}
+				else
+				{
+					animScan += strlen(nodeName)+1;
+					break;
+				}
+			}
+	
+			if (animScan == NULL)
+			{
+				//No Animation Data for this Node.
+				strcpy(listOfAnimation[i].nodeId,"NONE");
+				listOfAnimation[i].numFrames = numFrames;
+				listOfAnimation[i].frameRate = frameRate;
+				listOfAnimation[i].tickRate = tickRate;
+				listOfAnimation[i].quat = NULL;
+				listOfAnimation[i].pos = NULL;
+				listOfAnimation[i].shapeId = 0xffffffff;
+			}
+			else
+			{
+				//Start with No Animation Data for this Node.
+				strcpy(listOfAnimation[i].nodeId,"NONE");
+				listOfAnimation[i].numFrames = numFrames;
+				listOfAnimation[i].frameRate = frameRate;
+				listOfAnimation[i].tickRate = tickRate;
+				listOfAnimation[i].quat = NULL;
+				listOfAnimation[i].pos = NULL;
+				listOfAnimation[i].shapeId = 0xffffffff;
+
+				//---------------------------------
+				// Check for positional data first!
+				char* scanStart = animScan;
+	
+				char numData[512];
+				char nextLine[1024];
+				float timeStamp = firstFrame * tickRate;
+	
+				//----------------------------------------------------
+				// Then the very NEXT LINE most be POS_TRACK data OR
+				// there is ONLY rotational Data for this node.
+				GetNextLine(animScan,nextLine);
+				if (strstr(nextLine,ASE_ANIM_POS_HEADER) != NULL)
+				{
+					animScan = strstr(animScan,ASE_ANIM_POS_HEADER);
+					if (animScan)
+					{
+						countUp = true;
+						actualCount++;
+						animScan += strlen(ASE_ANIM_POS_HEADER);
+		
+						//-----------------------------------------------------------
+						// We have positional data at least.  Store everything off.
+						listOfAnimation[i].pos = (Stuff::Point3D *)TG_Shape::tglHeap->Malloc(sizeof(Stuff::Point3D) * numFrames);
+		
+						strcpy(listOfAnimation[i].nodeId,nodeId);
+						listOfAnimation[i].numFrames = numFrames;
+						listOfAnimation[i].frameRate = frameRate;
+						listOfAnimation[i].tickRate = tickRate;
+						listOfAnimation[i].shapeId = 0xffffffff;
+		
+						Stuff::Point3D thisOffset = shape->GetNodeCenter(i);
+		
+						char LineData[1024];
+						GetNextLine(animScan,LineData);
+						animScan += strlen(LineData)+1;
+		
+						for (long j=0;j<listOfAnimation[i].numFrames;j++)
+						{
+							char *scanData;
+							sprintf(nodeName,"%s %d",ASE_ANIM_POS_SAMPLE,(int)timeStamp);
+							scanData = strstr(LineData,nodeName);
+		
+							if (scanData)
+							{
+								scanData += strlen(nodeName)+1;
+		
+								GetNumberData(scanData,numData);
+								thisOffset.x = -(float)atof(numData);
+								scanData += strlen(numData)+1;
+		
+								GetNumberData(scanData,numData);
+								thisOffset.z = (float)atof(numData);
+								scanData += strlen(numData)+1;
+		
+								GetNumberData(scanData,numData);
+								thisOffset.y = (float)atof(numData);
+								scanData += strlen(numData)+1;
+		
+								GetNextLine(animScan,LineData);
+								animScan += strlen(LineData)+1;
+							}
+							else
+							{
+								//Otherwise Node Center did not move.  Use last Node Center
+							}
+		
+							listOfAnimation[i].pos[j] = thisOffset;
+							timeStamp += tickRate;
+						}
+					}
+				}
+											   
+				//-------------------------------------------------------------
+				// Check for rotational data. Again, use nextLine.
+				
+				//----------------------------------------------------
+				// Then the very NEXT LINE most be POS_TRACK data OR
+				// there is ONLY rotational Data for this node.
+				GetNextLine(animScan,nextLine);
+				if (strstr(nextLine,ASE_ANIM_ROT_HEADER) != NULL)
+				{
+					animScan = scanStart;
+					timeStamp = firstFrame * tickRate;
+		
+					animScan = strstr(animScan,ASE_ANIM_ROT_HEADER);
+		
+					if (animScan)
+					{
+						countUp = true;
+						actualCount++;
+						animScan += strlen(ASE_ANIM_ROT_HEADER);
+		
+						//-----------------------------------------------------------
+						// We have rotational data at least.  Store everything off.
+						listOfAnimation[i].quat = (Stuff::UnitQuaternion *)TG_Shape::tglHeap->Malloc(sizeof(Stuff::UnitQuaternion) * numFrames);
+						gosASSERT(listOfAnimation[i].quat != NULL);
+		
+						//-------------------------------------------
+						// Setup basic variables.  May do this twice.
+						strcpy(listOfAnimation[i].nodeId,nodeId);
+						listOfAnimation[i].numFrames = numFrames;
+						listOfAnimation[i].frameRate = frameRate;
+						listOfAnimation[i].tickRate = tickRate;
+		
+						char LineData[1024];
+						GetNextLine(animScan,LineData);
+						animScan += strlen(LineData)+1;
+			
+						for (long j=0;j<listOfAnimation[i].numFrames;j++)
+						{
+							char *scanData;
+							sprintf(nodeName,"%s %d",ASE_ANIM_ROT_SAMPLE,(int)timeStamp);
+							scanData = strstr(LineData,nodeName);
+		
+							Stuff::UnitQuaternion thisFrame;
+	
+							float b=0.0f,c=0.0f,d=0.0f,phi=0.0f;
+		
+							if (scanData)
+							{
+								scanData += strlen(nodeName)+1;
+		
+								GetNumberData(scanData,numData);
+								b = (float)atof(numData);
+								scanData += strlen(numData)+1;
+		
+								GetNumberData(scanData,numData);
+								c = (float)atof(numData);
+								scanData += strlen(numData)+1;
+		
+								GetNumberData(scanData,numData);
+								d = (float)atof(numData);
+								scanData += strlen(numData)+1;
+		
+								GetNumberData(scanData,numData);
+								phi = (float)atof(numData);
+		
+								GetNextLine(animScan,LineData);
+								animScan += strlen(LineData)+1;
+			
+								//--------------------------------------------
+								// MAX Writes out Quaternions as Angle, Axis.
+								// Must Convert to real quaternion here.
+								thisFrame.w = (float)cos(phi / 2.0f);
+								thisFrame.x = b * (float)sin(phi / 2.0f);
+								thisFrame.y = d * (float)sin(-phi / 2.0f);
+								thisFrame.z = c * (float)sin(-phi / 2.0f);
+							}
+							else
+							{
+								//Otherwise rotation is 0.
+								thisFrame.w = 1.0f;
+								thisFrame.x = 0.0f;
+								thisFrame.y = 0.0f;
+								thisFrame.z = 0.0f;
+							}
+		
+							if (!j)
+							{
+								thisFrame.Normalize();
+								listOfAnimation[i].quat[j] = thisFrame;
+							}
+							else
+							{
+								thisFrame.Normalize();
+								listOfAnimation[i].quat[j].Multiply(listOfAnimation[i].quat[j-1],thisFrame);
+								listOfAnimation[i].quat[j].Normalize();
+							}
+		
+							timeStamp += tickRate;
+						}
+					}
+				}
+				
+				countUp = false;
+			}
+		}
+	
+		free(aseContents);
+		aseContents = NULL;
+		
+		SaveBinaryCopy(binaryFileName);
+	}
+
+	return(0);
+}	
+
+//-------------------------------------------------------------------------------
+//This function copies the pointers to the animation data in this class to the
+//TG_MultiShape being drawn.  Nothing else happens.
+void TG_AnimateShape::SetAnimationState (TG_MultiShapePtr shape)
+{
+	long i=0;
+	shape->ClearAnimation();
+
+	if (!shapeIdsSet)
+	{
+		for (long j=0;j<count;j++)
+		{
+			bool foundNode = false;
+			for (i=0;i<shape->GetNumShapes();i++)
+			{
+				if (S_stricmp(listOfAnimation[j].nodeId,shape->GetNodeId(i)) == 0)
+				{
+					shape->SetCurrentAnimation(i,&listOfAnimation[j]);
+					listOfAnimation[j].shapeId = i;
+					foundNode = true;
+					break;
+				}
+			}
+
+			if (!foundNode)
+				listOfAnimation[j].shapeId = -1;	//This node is missing.  Probably an arm off!
+		}
+		
+		shapeIdsSet = true;
+	}
+	else
+	{
+		for (long j=0;j<count;j++)
+		{
+			if (listOfAnimation[j].shapeId != 0xffffffff)
+				shape->SetCurrentAnimation(listOfAnimation[j].shapeId,&listOfAnimation[j]);
+		}
+	}
+}	
+
+
+void TG_MultiShape::Touch() {
+	for (long i = 0; i < numTG_Shapes; i++)
+		if (listOfShapes[i].node)
+			listOfShapes[i].node->Touch();
+}

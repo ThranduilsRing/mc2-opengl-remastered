@@ -73,17 +73,16 @@
   "mclib/mlr/mlrprimitiveclipping.hpp": 1722,
   "mclib/mlr/mlrtriangleclipping.hpp": 2112,
   "mclib/move.h": 1822,
-  "mclib/msl.cpp": 3066,
   "mclib/render_contract.cpp": 1592,
   "mclib/stuff/rotation.cpp": 1672,
   "mclib/terrtxm.cpp": 1778,
   "mclib/terrtxm2.cpp": 2785,
   "mclib/tgl.h": 1689,
   "mclib/vfx_translatedraw.cpp": 1742,
-  "mclib/vfxtile.cpp": 2944,
+  "mclib/vfxtile_line.cpp": 1938,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "f15cb970d",
+ "head": "517458d7a",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -140,10 +139,10 @@
    "max_lines": 1513
   },
   "mclib": {
-   "files": 634,
-   "files_over_1500": 27,
-   "files_over_3000": 1,
-   "max_lines": 3066
+   "files": 642,
+   "files_over_1500": 26,
+   "files_over_3000": 0,
+   "max_lines": 2876
   },
   "shaders": {
    "files": 172,
@@ -164,14 +163,6 @@
   {
    "file": "code/brain_special_dispatch.cpp",
    "lines": 3273
-  },
-  {
-   "file": "mclib/msl.cpp",
-   "lines": 3066
-  },
-  {
-   "file": "mclib/vfxtile.cpp",
-   "lines": 2944
   },
   {
    "file": "RenderCore/RendererFeatureRegistry.h",
@@ -276,12 +267,20 @@
   {
    "file": "code/mechlabscreen.cpp",
    "lines": 1952
+  },
+  {
+   "file": "mclib/vfxtile_line.cpp",
+   "lines": 1938
+  },
+  {
+   "file": "mclib/gosfx/fcurve.cpp",
+   "lines": 1923
   }
  ],
  "total": {
-  "files": 1812,
-  "files_over_1500": 69,
-  "files_over_3000": 3,
+  "files": 1820,
+  "files_over_1500": 68,
+  "files_over_3000": 2,
   "max_lines": 3753
  },
  "version": 1

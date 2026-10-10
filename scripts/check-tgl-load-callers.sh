@@ -59,7 +59,7 @@ p1_loader_confinement() {
     hits="$(grep -rn -- '->LoadTGMultiShapeFromASE[[:space:]]*(\|->LoadFromFile[[:space:]]*(\|->LoadBinaryCopy[[:space:]]*(' $dirs \
         --include='*.cpp' --include='*.h' 2>/dev/null \
         | strip_comments \
-        | grep -v 'mclib/msl\.cpp:\|mclib/msl\.h:\|mclib/tgl_load_guard\.cpp:' \
+        | grep -v 'mclib/msl\(_[a-z]*\)\?\.cpp:\|mclib/msl\.h:\|mclib/tgl_load_guard\.cpp:' \
         | grep -v 'TGL-LOAD-EXEMPT\|TGL-LOAD-VERIFIED' || true)"
     # A raw call is fine when the checked verify wraps it: accept sites whose
     # own line or the 3 lines below carry tglVerifyShapeLoaded (the import
@@ -77,7 +77,7 @@ p1_loader_confinement() {
 }
 
 # ---------------------------------------------------------------------------
-# P2: presence pins. Args: msl tgl_guard apprtype icon_hdr logi mechlist mechicon mission
+# P2: presence pins. Args: msl (msl_load.cpp, where the PART-0 chokepoint lives) tgl_guard apprtype icon_hdr logi mechlist mechicon mission
 # ---------------------------------------------------------------------------
 p2_presence() {
     msl="$1"; guard="$2"; apprtype="$3"; icon_hdr="$4"; logi="$5"; mechlist="$6"; mechicon="$7"; mission="$8"
@@ -136,7 +136,7 @@ run_check() {
     v="$(p1_loader_confinement "$ROOT")"
     [ -n "$v" ] && { echo "[tgl-load-callers] P1 FAIL:"; printf '%s\n' "$v"; fail=1; }
 
-    v="$(p2_presence "$ROOT/mclib/msl.cpp" "$ROOT/mclib/tgl_load_guard.cpp" \
+    v="$(p2_presence "$ROOT/mclib/msl_load.cpp" "$ROOT/mclib/tgl_load_guard.cpp" \
         "$ROOT/mclib/apprtype.cpp" "$ROOT/code/icon_atlas_cell.h" \
         "$ROOT/code/logisticsmechicon.cpp" "$ROOT/code/mechlistbox.cpp" \
         "$ROOT/code/mechicon.cpp" "$ROOT/code/mission.cpp")"
@@ -199,7 +199,7 @@ EOF
 
     # P2 revert-simulation: appr_type_fail backstop deleted.
     grep -v 'appr_type_fail' "$ROOT/mclib/apprtype.cpp" > "$tmp/apprtype_nobackstop.cpp"
-    v="$(p2_presence "$ROOT/mclib/msl.cpp" "$ROOT/mclib/tgl_load_guard.cpp" \
+    v="$(p2_presence "$ROOT/mclib/msl_load.cpp" "$ROOT/mclib/tgl_load_guard.cpp" \
         "$tmp/apprtype_nobackstop.cpp" "$ROOT/code/icon_atlas_cell.h" \
         "$ROOT/code/logisticsmechicon.cpp" "$ROOT/code/mechlistbox.cpp" \
         "$ROOT/code/mechicon.cpp" "$ROOT/code/mission.cpp")"

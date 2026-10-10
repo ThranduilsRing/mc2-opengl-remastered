@@ -75,3 +75,33 @@ def test_resolver_accessor_and_sizeof(env):
     assert sym.eval("mc2_static_prop_vertex_stride()", "x") == 40
     assert sym.eval("mc2_mech_vertex_stride()", "x") == 48
     assert sym.eval("sizeof(float) * 3", "x") == 12
+
+
+def lint_unit(env, dirname):
+    shaders, sym = env
+    d = os.path.join(FIX, dirname)
+    pieces = [os.path.join(d, n) for n in ("unitfix_layout.cpp", "unitfix_pipeline.cpp")]
+    assert vkpl.split_unit_key(pieces[0]) == vkpl.split_unit_key(pieces[1]) is not None
+    out = []
+    vkpl.check_unit(pieces, sym, shaders, out)
+    return out
+
+
+def test_split_unit_resolves_layout_across_pieces(env):
+    # The layout is built in one piece and used by the pipeline in the next: no VK-UNRESOLVED, no errors.
+    assert lint_unit(env, "split_unit_good") == []
+
+
+def test_split_unit_errors_are_reported_against_the_piece(env):
+    fs = lint_unit(env, "split_unit_bad")
+    assert {"VK-DESC-TYPE", "VK-DESC-STAGE", "VK-PUSH-SIZE"} <= rules(fs, "ERROR")
+    assert all(os.path.basename(f.path) == "unitfix_layout.cpp" for f in fs if f.rule.startswith(("VK-DESC", "VK-PUSH")))
+    assert all(f.line > 0 for f in fs)
+
+
+def test_pieces_checked_alone_cannot_see_the_layout(env):
+    shaders, sym = env
+    path = os.path.join(FIX, "split_unit_good", "unitfix_pipeline.cpp")
+    out = []
+    vkpl.check_file(path, vkpl.read(path), sym, shaders, out)
+    assert "VK-PUSH-MISSING" in rules(out, "ERROR")   # the push range and layout sit in the other piece

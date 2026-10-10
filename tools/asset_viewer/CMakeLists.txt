@@ -37,6 +37,10 @@ add_library(mc2_tglloader STATIC
     TglMeshLoader.cpp
     # --- mclib TUs (geometry loader closure) ---
     "${CMAKE_SOURCE_DIR}/mclib/msl.cpp"
+    "${CMAKE_SOURCE_DIR}/mclib/msl_load.cpp"
+    "${CMAKE_SOURCE_DIR}/mclib/msl_shape.cpp"
+    "${CMAKE_SOURCE_DIR}/mclib/msl_transform.cpp"
+    "${CMAKE_SOURCE_DIR}/mclib/msl_anim.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/tgl.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/tgl_parse.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/tgl_render.cpp"

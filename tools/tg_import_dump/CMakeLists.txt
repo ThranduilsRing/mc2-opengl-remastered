@@ -48,6 +48,10 @@ add_executable(tg_import_dump
     ${MC2_ROOT}/mclib/mech_skel_import.cpp
     # --- TG types + geometry loader closure (same as tgl spike) ---
     ${MC2_ROOT}/mclib/msl.cpp
+    ${MC2_ROOT}/mclib/msl_load.cpp
+    ${MC2_ROOT}/mclib/msl_shape.cpp
+    ${MC2_ROOT}/mclib/msl_transform.cpp
+    ${MC2_ROOT}/mclib/msl_anim.cpp
     ${MC2_ROOT}/mclib/tgl.cpp
     ${MC2_ROOT}/mclib/tgl_parse.cpp
     ${MC2_ROOT}/mclib/tgl_render.cpp

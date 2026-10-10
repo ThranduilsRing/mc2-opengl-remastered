@@ -8,7 +8,7 @@
   "scripts/tests/test_gate_codemod.py",
   "tools/gate_codemod.py"
  ],
- "_scripts_reason": "Reviewed: check-render-contract-gbuffer1.allowlist and check_vk_nointerop_log.py cite vulkan_terrain_island.cpp in comments (the log tags the island prints are unchanged); check-vk-pipeline-layout stays OK but reports 24 VK-UNRESOLVED warnings for the overlay pipeline, whose descriptor-set layout is built in another piece (the checker resolves layouts within one source file); tools/gate_codemod.py and its test (lane 1 gate tooling) are not edited here.",
+ "_scripts_reason": "Reviewed: check-render-contract-gbuffer1.allowlist and check_vk_nointerop_log.py cite vulkan_terrain_island.cpp in comments (the log tags the island prints are unchanged); check-vk-pipeline-layout lints the pieces of a split unit as one unit (4d3dc62b9), so the overlay pipeline resolves its layout across pieces; tools/gate_codemod.py and its test (lane 1 gate tooling) are not edited here.",
  "includes": [
   "volk.h",
   "vk_mem_alloc.h",
