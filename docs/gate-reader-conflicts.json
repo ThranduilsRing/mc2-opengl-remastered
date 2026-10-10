@@ -427,7 +427,7 @@
    "in_conflict": false,
    "readers": [
     "GameOS/gameos/gos_static_prop_batcher.cpp:9777 Custom[00000001]",
-    "mclib/txmmgr.cpp:3622 Typed(is)"
+    "mclib/txmmgr_render.cpp:843 Typed(is)"
    ],
    "rule": "=0 kill-switch (default ON); =2 adds a trace line",
    "status": "enum"
@@ -493,9 +493,9 @@
    "readers": [
     "GameOS/gameos/gos_static_prop_batcher.cpp:9569 Custom[00000001]",
     "mclib/bdactor_static.cpp:902 Typed(is)",
-    "mclib/txmmgr.cpp:3469 Typed(is)",
-    "mclib/txmmgr.cpp:3471 Typed(is)",
-    "mclib/txmmgr.cpp:3608 Typed(is)"
+    "mclib/txmmgr_render.cpp:691 Typed(is)",
+    "mclib/txmmgr_render.cpp:693 Typed(is)",
+    "mclib/txmmgr_render.cpp:829 Typed(is)"
    ],
    "rule": "levels: 0 off, 1 on, 2 on plus trace",
    "status": "enum"
@@ -597,7 +597,7 @@
     "mclib/bdactor.cpp:91 Typed(get)",
     "mclib/gvactor.cpp:37 Typed(get)",
     "mclib/mech3d_init.cpp:12 Typed(get)",
-    "mclib/txmmgr.cpp:5324 Typed(get)"
+    "mclib/txmmgr_texture.cpp:269 Typed(get)"
    ],
    "rule": "numeric mode via atoi, default 1 (0 tga only, 1 ktx fallback, 2 ktx first)",
    "status": "resolved"
@@ -975,7 +975,7 @@
   "editor",
   "gui"
  ],
- "source": "commit bff70976b",
+ "source": "commit 56242f472",
  "totals": {
   "conflict_gates": 1,
   "gates_with_literal": 1131,
