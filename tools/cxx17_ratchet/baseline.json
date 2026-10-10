@@ -67,7 +67,7 @@
    "LG17": 81,
    "LG18": 11,
    "LG19": 586,
-   "LG20": 666
+   "LG20": 654
   },
   "GuiRuntime": {
    "LG01": 1,
@@ -793,8 +793,7 @@
    "LG11": 1,
    "LG12a": 35,
    "LG12b": 6,
-   "LG17": 2,
-   "LG20": 7
+   "LG17": 2
   },
   "GameOS/gameos/gos_terrain_lod_chunk.h": {
    "LG17": 2
@@ -1288,7 +1287,7 @@
    "LG12a": 1,
    "LG13": 4,
    "LG17": 1,
-   "LG20": 6
+   "LG20": 1
   },
   "GameOS/gameos/vulkan_vfx_island.cpp": {
    "LG03": 4,
@@ -5810,7 +5809,7 @@
    "LG20": 1
   }
  },
- "head": "225c12fba",
+ "head": "89935dfd9",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

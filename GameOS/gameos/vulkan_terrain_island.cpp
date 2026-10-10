@@ -182,9 +182,7 @@ bool terrainTier1Requested() {
     if (state == -1) {
         // Umbrella members: MC2_VK_SHARED_GBUFFER=1 arms both; explicit
         // MC2_VK_TERRAIN_TIER1 / MC2_VK_SHARED_SCENE_DEPTH =0/1 override.
-        const bool t1    = mc2vkgate::subGate("MC2_VK_TERRAIN_TIER1");
-        const bool depth = mc2vkgate::subGate("MC2_VK_SHARED_SCENE_DEPTH");
-        state = (t1 && depth) ? 1 : 0;
+        state = mc2vkgate::terrainNativeFirstOwnerOn() ? 1 : 0;   // tier-1 island AND shared scene depth
     }
     return state == 1;
 }
@@ -212,7 +210,7 @@ float g_prefixClearColor[4] = {0.0f, 0.0f, 0.0f, 1.0f};
 bool terrainAllLodsRequested() {
     static int state = -1;
     if (state == -1) {
-        state = (terrainTier1Requested() && mc2vkgate::subGate("MC2_VK_TERRAIN_ALL_LODS")) ? 1 : 0;
+        state = (terrainTier1Requested() && mc2vkgate::armed<"MC2_VK_TERRAIN_ALL_LODS">()) ? 1 : 0;
     }
     return state == 1;
 }
@@ -231,7 +229,7 @@ bool terrainAllLodsRequested() {
 bool terrainSkirtsRequested() {
     static int state = -1;
     if (state == -1) {
-        state = (terrainAllLodsRequested() && mc2vkgate::subGate("MC2_VK_TERRAIN_SKIRTS")) ? 1 : 0;
+        state = (terrainAllLodsRequested() && mc2vkgate::armed<"MC2_VK_TERRAIN_SKIRTS">()) ? 1 : 0;
     }
     return state == 1;
 }
@@ -250,7 +248,7 @@ bool terrainSkirtsRequested() {
 bool terrainVisualDisplaceFarRequested() {
     static int state = -1;
     if (state == -1) {
-        state = (terrainAllLodsRequested() && mc2vkgate::envTriState("MC2_VK_TERRAIN_VISUALDISPLACE_FAR") == 1) ? 1 : 0;
+        state = (terrainAllLodsRequested() && mc2::gate::get<"MC2_VK_TERRAIN_VISUALDISPLACE_FAR">()) ? 1 : 0;
     }
     return state == 1;
 }

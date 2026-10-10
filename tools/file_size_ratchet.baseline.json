@@ -28,7 +28,7 @@
   "GameOS/gameos/utils/shader_builder.cpp": 1548,
   "GameOS/gameos/vulkan_color_prop_island.cpp": 1808,
   "GameOS/gameos/vulkan_shadow_island_live.cpp": 1670,
-  "GameOS/gameos/vulkan_terrain_island.cpp": 3527,
+  "GameOS/gameos/vulkan_terrain_island.cpp": 3525,
   "GameOS/include/gameos.hpp": 3753,
   "GameOS/include/imagehlp.h": 1799,
   "GuiRuntime/EditorInspector.cpp": 1659,
@@ -104,7 +104,7 @@
   "mclib/vfxtile.cpp": 2944,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "225c12fba",
+ "head": "89935dfd9",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -256,7 +256,7 @@
   },
   {
    "file": "GameOS/gameos/vulkan_terrain_island.cpp",
-   "lines": 3527
+   "lines": 3525
   },
   {
    "file": "code/logisticsdata.cpp",

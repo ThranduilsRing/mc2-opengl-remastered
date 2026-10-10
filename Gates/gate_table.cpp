@@ -1612,38 +1612,38 @@ G("MC2_VK_SHARED_SCENE_DEPTH", Tri, false, "vk", "", "VK-TIER1 SHARED SCENE DEPT
 L(Exact1, "MC2_VK_SHARED_SCENE_STRICT", Bool, false, "post", "", "VK shared-scene deletion-readiness canary.", passthrough | registry(Trace, "MC2_TRACE_VK_SHARED_SCENE_STRICT", -1, false)),
 // history: docs/gate-history.md#MC2_VK_STATIC_SHADOW_MAP
 L(Is01, "MC2_VK_STATIC_SHADOW_MAP", Bool, false, "post", "", "DEPRECATED no-op (VK-RUNG8-ITEM6).", passthrough | registry(Feature, "MC2_FEATURE_VK_STATIC_SHADOW_MAP", -1, false)),
-G("MC2_VK_TERRAIN_ALL_LODS", Tri, false, "vk", "", "", inherits("MC2_VK_SHARED_GBUFFER")),
+G("MC2_VK_TERRAIN_ALL_LODS", Tri, false, "vk", "", "", inherits("MC2_VK_SHARED_GBUFFER") | verified),
 L(Presence, "MC2_VK_TERRAIN_COPY_STATS", Bool, false, "vk", "", "", passthrough | verified),
 // history: docs/gate-history.md#MC2_VK_TERRAIN_CSM
-G("MC2_VK_TERRAIN_CSM", Tri, false, "terrain", "", "VK-TERRAIN-CSM (biggest-safe-subset): presence-gated =1, default OFF (requires MC2_VK_TERRAIN_DYNSHADOW chain + CSM active).", passthrough | registry(Feature, "MC2_FEATURE_VK_TERRAIN_CSM", -1, false) | inherits("MC2_VK_SHARED_GBUFFER")),
+G("MC2_VK_TERRAIN_CSM", Tri, false, "terrain", "", "VK-TERRAIN-CSM (biggest-safe-subset): presence-gated =1, default OFF (requires MC2_VK_TERRAIN_DYNSHADOW chain + CSM active).", passthrough | registry(Feature, "MC2_FEATURE_VK_TERRAIN_CSM", -1, false) | inherits("MC2_VK_SHARED_GBUFFER") | verified),
 P("MC2_VK_TERRAIN_CSM_DEBUG", Int, 0, "vk", "", "", verified),
 L(Lead1, "MC2_VK_TERRAIN_CSM_FULLMAP_EXPERIMENTAL", Bool, false, "terrain", "", "", verified),
 // history: docs/gate-history.md#MC2_VK_TERRAIN_DECAL_GL_CANARY
 G("MC2_VK_TERRAIN_DECAL_GL_CANARY", Bool, false, "gameos", "", "VK final-gate diagnostic: wraps gosRenderer::drawDecals GL draw loop in GL_ANY_SAMPLES_PASSED and logs [VK_SCENE_GL_DRAW_CANARY v1] tag=terrain_decal_batch.", registry(Trace, "MC2_TRACE_VK_TERRAIN_DECAL_GL_CANARY", -1, false)),
 // history: docs/gate-history.md#MC2_VK_TERRAIN_DETAIL
-G("MC2_VK_TERRAIN_DETAIL", Tri, false, "terrain", "", "VK-TERRAIN-DETAIL: presence-gated =1, default OFF (requires MC2_VK_TERRAIN_LIGHTING).", passthrough | registry(Feature, "MC2_FEATURE_VK_TERRAIN_DETAIL", -1, false) | inherits("MC2_VK_SHARED_GBUFFER")),
+G("MC2_VK_TERRAIN_DETAIL", Tri, false, "terrain", "", "VK-TERRAIN-DETAIL: presence-gated =1, default OFF (requires MC2_VK_TERRAIN_LIGHTING).", passthrough | registry(Feature, "MC2_FEATURE_VK_TERRAIN_DETAIL", -1, false) | inherits("MC2_VK_SHARED_GBUFFER") | verified),
 // history: docs/gate-history.md#MC2_VK_TERRAIN_DYNSHADOW
-G("MC2_VK_TERRAIN_DYNSHADOW", Tri, false, "terrain", "", "VK-TERRAIN-DYNSHADOW: presence-gated =1, default OFF (requires MC2_VK_TERRAIN_LIGHTING).", passthrough | registry(Feature, "MC2_FEATURE_VK_TERRAIN_DYNSHADOW", -1, false) | inherits("MC2_VK_SHARED_GBUFFER")),
+G("MC2_VK_TERRAIN_DYNSHADOW", Tri, false, "terrain", "", "VK-TERRAIN-DYNSHADOW: presence-gated =1, default OFF (requires MC2_VK_TERRAIN_LIGHTING).", passthrough | registry(Feature, "MC2_FEATURE_VK_TERRAIN_DYNSHADOW", -1, false) | inherits("MC2_VK_SHARED_GBUFFER") | verified),
 L(Lead0Kill, "MC2_VK_TERRAIN_FENCE_DEFER", Bool, true, "vk", "", ""),
 // history: docs/gate-history.md#MC2_VK_TERRAIN_GL_FALLBACK_AUDIT
-L(Exact1, "MC2_VK_TERRAIN_GL_FALLBACK_AUDIT", Bool, false, "terrain", "", "VK terrain ownership diagnostic: under the max-native terrain gates, counts terrain chunks captured by the Vulkan feed vs chunks that still fall through to...", registry(Trace, "MC2_TRACE_VK_TERRAIN_GL_FALLBACK_AUDIT", -1, false)),
+L(Exact1, "MC2_VK_TERRAIN_GL_FALLBACK_AUDIT", Bool, false, "terrain", "", "VK terrain ownership diagnostic: under the max-native terrain gates, counts terrain chunks captured by the Vulkan feed vs chunks that still fall through to...", registry(Trace, "MC2_TRACE_VK_TERRAIN_GL_FALLBACK_AUDIT", -1, false) | verified),
 // history: docs/gate-history.md#MC2_VK_TERRAIN_HEIGHT_AUDIT
 L(Exact1, "MC2_VK_TERRAIN_HEIGHT_AUDIT", Bool, false, "vk", "", "VK-TERRAIN HEIGHT-AUDIT (verification-only, default OFF; requires MC2_VK_TERRAIN_TIER1).", passthrough | registry(Feature, "MC2_FEATURE_VK_TERRAIN_HEIGHT_AUDIT", -1, false) | verified),
 // history: docs/gate-history.md#MC2_VK_TERRAIN_HEIGHT_AUDIT_CORRUPT
 L(Exact1, "MC2_VK_TERRAIN_HEIGHT_AUDIT_CORRUPT", Bool, false, "vk", "", "VK-TERRAIN HEIGHT-AUDIT NEGATIVE CONTROL (test-only, default OFF; requires MC2_VK_TERRAIN_HEIGHT_AUDIT).", passthrough | registry(Feature, "MC2_FEATURE_VK_TERRAIN_HEIGHT_AUDIT_CORRUPT", -1, false) | verified),
 // VK-TERRAIN-LIGHTING: make the VK Tier-1 terrain LIT (directional relief + baked static shadow).
 // history: docs/gate-history.md#MC2_VK_TERRAIN_LIGHTING
-G("MC2_VK_TERRAIN_LIGHTING", Tri, false, "terrain", "", "VK-TERRAIN-LIGHTING: presence-gated =1, default OFF (requires MC2_VK_TERRAIN_TIER1).", passthrough | registry(Feature, "MC2_FEATURE_VK_TERRAIN_LIGHTING", -1, false) | inherits("MC2_VK_SHARED_GBUFFER")),
+G("MC2_VK_TERRAIN_LIGHTING", Tri, false, "terrain", "", "VK-TERRAIN-LIGHTING: presence-gated =1, default OFF (requires MC2_VK_TERRAIN_TIER1).", passthrough | registry(Feature, "MC2_FEATURE_VK_TERRAIN_LIGHTING", -1, false) | inherits("MC2_VK_SHARED_GBUFFER") | verified),
 // history: docs/gate-history.md#MC2_VK_TERRAIN_LODFADE
-L(Exact1, "MC2_VK_TERRAIN_LODFADE", Bool, false, "terrain", "", "VK-TERRAIN-LODFADE: presence-gated =1, default OFF (requires MC2_VK_TERRAIN_DETAIL).", passthrough | registry(Feature, "MC2_FEATURE_VK_TERRAIN_LODFADE", -1, false)),
+L(Exact1, "MC2_VK_TERRAIN_LODFADE", Bool, false, "terrain", "", "VK-TERRAIN-LODFADE: presence-gated =1, default OFF (requires MC2_VK_TERRAIN_DETAIL).", passthrough | registry(Feature, "MC2_FEATURE_VK_TERRAIN_LODFADE", -1, false) | verified),
 // history: docs/gate-history.md#MC2_VK_TERRAIN_OVERLAY_GL_CANARY
 G("MC2_VK_TERRAIN_OVERLAY_GL_CANARY", Bool, false, "gameos", "", "VK final-gate diagnostic: wraps gosRenderer::drawTerrainOverlays GL draw loop in GL_ANY_SAMPLES_PASSED and logs [VK_SCENE_GL_DRAW_CANARY v1]...", registry(Trace, "MC2_TRACE_VK_TERRAIN_OVERLAY_GL_CANARY", -1, false)),
 L(Lead1, "MC2_VK_TERRAIN_PERF", Bool, false, "vk", "", "", passthrough | verified),
-G("MC2_VK_TERRAIN_SKIRTS", Tri, false, "vk", "", "", inherits("MC2_VK_SHARED_GBUFFER")),
+G("MC2_VK_TERRAIN_SKIRTS", Tri, false, "vk", "", "", inherits("MC2_VK_SHARED_GBUFFER") | verified),
 // VK-P10 TERRAIN TIER-1: the terrain in-place shared-GBuffer co-write region.
 // history: docs/gate-history.md#MC2_VK_TERRAIN_TIER1
 G("MC2_VK_TERRAIN_TIER1", Tri, false, "vk", "", "VK-P10 TERRAIN TIER-1: presence-gated =1, default OFF (requires MC2_VK_SHARED_SCENE_DEPTH).", passthrough | registry(Feature, "MC2_FEATURE_VK_TERRAIN_TIER1", -1, false) | inherits("MC2_VK_SHARED_GBUFFER") | verified),
-L(Exact1, "MC2_VK_TERRAIN_VISUALDISPLACE_FAR", Bool, false, "vk", "", ""),
+L(Exact1, "MC2_VK_TERRAIN_VISUALDISPLACE_FAR", Bool, false, "vk", "", "", verified),
 // history: docs/gate-history.md#MC2_VK_VFX
 G("MC2_VK_VFX", Tri, false, "vk", "", "VK-FIELD-VFX-1: umbrella sub-gate, default-ON under MC2_VK_SHARED_GBUFFER (explicit =0 forces off, =1 forces on).", passthrough | registry(Feature, "MC2_FEATURE_VK_VFX", -1, false) | inherits("MC2_VK_SHARED_GBUFFER") | verified),
 // history: docs/gate-history.md#MC2_VK_VFX_COALESCE

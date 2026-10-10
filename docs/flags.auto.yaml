@@ -5,7 +5,7 @@
 generator_version: "3.0.0"
 gate_count: 1139
 registry_entry_count: 354
-verified_count: 210
+verified_count: 219
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -7529,6 +7529,7 @@ flags:
     owner: vk
     doc: ""
     inherits: MC2_VK_SHARED_GBUFFER
+    verified: true
   - name: MC2_VK_TERRAIN_COPY_STATS
     kind: Bool
     default: false
@@ -7545,6 +7546,7 @@ flags:
     doc: "VK-TERRAIN-CSM (biggest-safe-subset): presence-gated =1, default OFF (requires MC2_VK_TERRAIN_DYNSHADOW chain + CSM active)."
     inherits: MC2_VK_SHARED_GBUFFER
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_VK_TERRAIN_CSM, kind: Feature, order: -1, default_on: false}
   - name: MC2_VK_TERRAIN_CSM_DEBUG
     kind: Int
@@ -7575,6 +7577,7 @@ flags:
     doc: "VK-TERRAIN-DETAIL: presence-gated =1, default OFF (requires MC2_VK_TERRAIN_LIGHTING)."
     inherits: MC2_VK_SHARED_GBUFFER
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_VK_TERRAIN_DETAIL, kind: Feature, order: -1, default_on: false}
   - name: MC2_VK_TERRAIN_DYNSHADOW
     kind: Tri
@@ -7584,6 +7587,7 @@ flags:
     doc: "VK-TERRAIN-DYNSHADOW: presence-gated =1, default OFF (requires MC2_VK_TERRAIN_LIGHTING)."
     inherits: MC2_VK_SHARED_GBUFFER
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_VK_TERRAIN_DYNSHADOW, kind: Feature, order: -1, default_on: false}
   - name: MC2_VK_TERRAIN_FENCE_DEFER
     kind: Bool
@@ -7597,6 +7601,7 @@ flags:
     rule: Exact1
     owner: terrain
     doc: "VK terrain ownership diagnostic: under the max-native terrain gates, counts terrain chunks captured by the Vulkan feed vs chunks that still fall through to..."
+    verified: true
     registry: {feature_id: MC2_TRACE_VK_TERRAIN_GL_FALLBACK_AUDIT, kind: Trace, order: -1, default_on: false}
   - name: MC2_VK_TERRAIN_HEIGHT_AUDIT
     kind: Bool
@@ -7624,6 +7629,7 @@ flags:
     doc: "VK-TERRAIN-LIGHTING: presence-gated =1, default OFF (requires MC2_VK_TERRAIN_TIER1)."
     inherits: MC2_VK_SHARED_GBUFFER
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_VK_TERRAIN_LIGHTING, kind: Feature, order: -1, default_on: false}
   - name: MC2_VK_TERRAIN_LODFADE
     kind: Bool
@@ -7632,6 +7638,7 @@ flags:
     owner: terrain
     doc: "VK-TERRAIN-LODFADE: presence-gated =1, default OFF (requires MC2_VK_TERRAIN_DETAIL)."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_VK_TERRAIN_LODFADE, kind: Feature, order: -1, default_on: false}
   - name: MC2_VK_TERRAIN_OVERLAY_GL_CANARY
     kind: Bool
@@ -7655,6 +7662,7 @@ flags:
     owner: vk
     doc: ""
     inherits: MC2_VK_SHARED_GBUFFER
+    verified: true
   - name: MC2_VK_TERRAIN_TIER1
     kind: Tri
     default: null
@@ -7671,6 +7679,7 @@ flags:
     rule: Exact1
     owner: vk
     doc: ""
+    verified: true
   - name: MC2_VK_VFX
     kind: Tri
     default: null

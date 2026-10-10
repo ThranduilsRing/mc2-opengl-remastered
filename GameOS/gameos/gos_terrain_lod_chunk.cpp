@@ -385,7 +385,7 @@ static int s_visualDisplacedCounts[6] = {0, 0, 0, 0, 0, 0};
 #ifdef MC2_VULKAN_ISLAND
 static bool terrainGlFallbackAuditEnabled()
 {
-    static const bool on = (mc2vkgate::envTriState("MC2_VK_TERRAIN_GL_FALLBACK_AUDIT") == 1);
+    static const bool on = mc2::gate::get<"MC2_VK_TERRAIN_GL_FALLBACK_AUDIT">();
     return on;
 }
 
@@ -1573,7 +1573,7 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
     {
         // Umbrella family member: MC2_VK_SHARED_GBUFFER=1 arms it; explicit
         // MC2_VK_TERRAIN_LIGHTING=0/1 overrides.
-        int lightingOn = mc2vkgate::subGate("MC2_VK_TERRAIN_LIGHTING") ? 1 : 0;
+        int lightingOn = mc2vkgate::armed<"MC2_VK_TERRAIN_LIGHTING">() ? 1 : 0;
         out->lightingEnabled = lightingOn;
         float lx = 0.f, ly = 0.f, lz = 1.f;
         gos_GetTerrainLightDir(&lx, &ly, &lz);
@@ -1610,7 +1610,7 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
         // Umbrella member; requires lighting (its own precondition) + subGate.
         int dynShadowGate = 0;
         if (out->lightingEnabled)
-            dynShadowGate = mc2vkgate::subGate("MC2_VK_TERRAIN_DYNSHADOW") ? 1 : 0;
+            dynShadowGate = mc2vkgate::armed<"MC2_VK_TERRAIN_DYNSHADOW">() ? 1 : 0;
         if (dynShadowGate && pp && pp->shadowsEnabled_ && pp->getDynamicShadowFBO()
             && !mc2ShadowCsmEnabled()) {
             const GLuint dTex = pp->getDynamicShadowTextureRaw();
@@ -1652,7 +1652,7 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
         // NO dynamic object shadow under CSM (matches the clean CSM-OFF capture), which is
         // strictly better than the wash until the near-cascade port lands.
         auto csmSubsetOn = []() {
-            const bool csmSub = mc2vkgate::subGate("MC2_VK_TERRAIN_CSM");
+            const bool csmSub = mc2vkgate::armed<"MC2_VK_TERRAIN_CSM">();
             return csmSub && mc2::gate::get<"MC2_VK_TERRAIN_CSM_FULLMAP_EXPERIMENTAL">();
         };
         if (dynShadowGate && !out->dynShadowsEnabled && pp && pp->shadowsEnabled_
@@ -1680,7 +1680,7 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
         // THIS implementation. GL must actually have CSM active+built this frame.
         //
         // FAR-BAND-BLACK-1 FIX: this block was gated on dynShadowGate alone, NOT on
-        // mc2vkgate::subGate("MC2_VK_TERRAIN_CSM") as the comment above claims -- so
+        // mc2vkgate::armed<"MC2_VK_TERRAIN_CSM">() as the comment above claims -- so
         // setting MC2_VK_TERRAIN_DYNSHADOW=1 with GL CSM active (MC2_SHADOW_CSM=1,
         // default ON) fed CSM cascade data to the VK terrain frag even with
         // MC2_VK_TERRAIN_CSM=0 (or unset with the umbrella off). The field launcher bat
@@ -1693,7 +1693,7 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
         // DYNSHADOW alone reproduces, and disabling GL CSM instead of the VK gate also
         // clears it, confirming the CSM feed itself is the trigger, not depth/format).
         // Now requires the CSM sub-gate explicitly, matching the documented contract.
-        const bool csmNearGate = mc2vkgate::subGate("MC2_VK_TERRAIN_CSM");
+        const bool csmNearGate = mc2vkgate::armed<"MC2_VK_TERRAIN_CSM">();
         out->csmEnabled = 0;
         out->glCsmArrayTex = 0;
         out->csmArraySize = 0;
@@ -1735,7 +1735,7 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
         // Umbrella member; requires lighting (its own precondition) + subGate.
         int detailOn = 0;
         if (out->lightingEnabled)
-            detailOn = mc2vkgate::subGate("MC2_VK_TERRAIN_DETAIL") ? 1 : 0;
+            detailOn = mc2vkgate::armed<"MC2_VK_TERRAIN_DETAIL">() ? 1 : 0;
         out->detailEnabled       = detailOn;
         out->glMatNormalArrayTex = detailOn ? (uint32_t)gos_GetTerrainNormalArrayTex() : 0u;
         // GL uniform values (gameos_graphics.cpp member defaults; all 1.0). The VK frag
@@ -1832,7 +1832,7 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
             // high/RTS camera), leaving VK terrain flat-lit: measured N.x mean +0.07 vs GL
             // +0.53 (parF3 mc2_10 night), ~15% darker bare ground. All LOD bands are VK-drawn
             // by the same shader, so there is no LOD0-vs-band seam to close.
-            lodFadeOn = (mc2vkgate::envTriState("MC2_VK_TERRAIN_LODFADE") == 1) ? 1 : 0;
+            lodFadeOn = mc2::gate::get<"MC2_VK_TERRAIN_LODFADE">() ? 1 : 0;
         out->lodFadeEnabled = lodFadeOn;
         // VK-FLIP oracle-visible gate-state proof: one-shot diagnostic line so a smoke
         // capture can confirm lodFadeEnabled's resolved value without a debugger attach.
