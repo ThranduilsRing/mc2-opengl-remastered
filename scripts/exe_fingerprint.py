@@ -80,6 +80,11 @@ POSITIVE_CONTROL = b"[BUILD_FINGERPRINT v1]"
 # Negative control: cannot occur in a real binary.
 NEGATIVE_CONTROL = b"MC2_FINGERPRINT_NEEDLE_THAT_CANNOT_EXIST_41b7de92"
 
+# The self-describing record (cmake/GenerateBuildFingerprint.cmake -> MC2_BUILD_FP_LITERAL, printed by
+# gos_crashbundle.cpp so the linker keeps it): MC2FP1|sha|dirty|branch|iso-timestamp|srcdir|FP1END. It is found by
+# its markers anywhere in the image, so no neighbouring string-pool literal can break the read.
+FP_LITERAL_RE = re.compile(rb"MC2FP1\|([\x20-\x7e]{1,600}?)\|FP1END")
+
 _ISO_RE = re.compile(r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d$")
 _SHA_RE = re.compile(r"^[0-9a-f]{7,40}$")
 _PATH_RE = re.compile(r"^(?:[A-Za-z]:[\\/]|[\\/]).+")
@@ -190,6 +195,27 @@ def _strings_before(blob: bytes, off: int, window: int = _WINDOW) -> list[str]:
     return [s for _, s in _printable_runs(blob, off, window)]
 
 
+def parse_literal(blob: bytes) -> dict[str, Any] | None:
+    """Fields of the MC2FP1 literal, or None when the exe predates it or the record is malformed.
+
+    sha, dirty, then (from the right) srcdir and timestamp are fixed; the branch is everything between, so a
+    '|' inside a branch name cannot shift the other fields.
+    """
+    m = FP_LITERAL_RE.search(blob)
+    if not m:
+        return None
+    parts = m.group(1).decode("ascii").split("|")
+    if len(parts) < 5:
+        return None
+    sha, dirty, src, built = parts[0], parts[1], parts[-1], parts[-2]
+    branch = "|".join(parts[2:-2])
+    if not (_SHA_RE.match(sha) or sha == UNKNOWN) or dirty not in ("0", "1") or not branch:
+        return None
+    if not (_ISO_RE.match(built) or built == UNKNOWN):
+        return None
+    return {"src": src, "built": built, "branch": branch, "sha": sha, "dirty": dirty == "1"}
+
+
 def _classify(tail: list[str]) -> dict[str, Any] | None:
     """Map the four pooled operands onto {src, built, branch, sha}.
 
@@ -204,6 +230,13 @@ def _classify(tail: list[str]) -> dict[str, Any] | None:
     if len(tail) < 4:
         return None
     src, built, branch, sha = tail[-4], tail[-3], tail[-2], tail[-1]
+    if not (_ISO_RE.match(built) or built == UNKNOWN):
+        # Another literal can land between the operands (observed: "vp" between the timestamp and the branch).
+        # sha and branch are always the last two; the timestamp is the last ISO token, with the path before it.
+        iso = [i for i, t in enumerate(tail[:-2]) if _ISO_RE.match(t)]
+        if not iso or iso[-1] < 1:
+            return None
+        src, built = tail[iso[-1] - 1], tail[iso[-1]]
     if not (_PATH_RE.match(src) or src == UNKNOWN):
         return None
     if not (_ISO_RE.match(built) or built == UNKNOWN):
@@ -237,6 +270,12 @@ def extract_from_bytes(blob: bytes) -> dict[str, Any]:
     ok, note = selftest(blob)
     if not ok:
         return _err("selftest-failed", note)
+    lit = parse_literal(blob)
+    if lit is not None:
+        sha = lit["sha"].lower()
+        return {"present": True, "sha": sha, "sha12": (sha[:12] if sha != UNKNOWN else UNKNOWN),
+                "dirty": lit["dirty"], "branch": lit["branch"], "built": lit["built"], "src": lit["src"],
+                "method": "mc2fp1-literal/v1"}
     if blob.find(POSITIVE_CONTROL) < 0:
         return _err("banner-absent", note)
     off = blob.find(BANNER_FMT)

@@ -159,6 +159,12 @@ def embedded_commit(exe) -> "tuple[Optional[str], str]":
         except ImportError:
             import exe_fingerprint
         _FP_CACHE[key] = exe_fingerprint.extract(p)
+        fp = _FP_CACHE[key]
+        if fp.get("present"):
+            import sys as _sys
+            how = ("MC2FP1 literal" if fp.get("method") == "mc2fp1-literal/v1"
+                   else "operand-walk fallback (build predates the MC2FP1 literal)")
+            print(f"[exe-guard] {p.parent.name}: fingerprint read via {how}", file=_sys.stderr)
     fp = _FP_CACHE[key]
     if not fp.get("present"):
         return None, f"{fp.get('reason', 'unreadable')}: {fp.get('detail', '')}".strip()

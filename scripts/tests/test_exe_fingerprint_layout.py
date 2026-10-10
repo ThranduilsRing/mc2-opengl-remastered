@@ -279,3 +279,43 @@ def test_single_char_shards_do_not_become_operands():
     fp = extract_from_bytes(bytes(buf) + body)
     assert fp["present"], fp
     assert fp["branch"] == "claude/nifty-mendeleev"
+
+
+# --- MC2FP1 self-describing literal, and the interloper case that broke the operand walk ------------------
+def _banner_image(operands, interloper=None):
+    """A synthetic image: pooled operands (reverse arg order) then the v1 format literal."""
+    src, built, branch, sha = operands
+    pool = [src, built] + ([interloper] if interloper else []) + [branch, sha]
+    return b"\x00".join(s.encode() for s in pool) + b"\x00" + BANNER_FMT
+
+
+OPS = ("A:/Games/mc2-lane2", "2026-10-10T10:04:58", "claude/lane2-s3", "32e53c043459")
+
+
+def test_operand_walk_tolerates_an_interloper_between_timestamp_and_branch():
+    # Captured from lane 2's 32e53c043 build: a literal "vp" landed between the operands.
+    r = extract_from_bytes(_banner_image(OPS, interloper="vp"))
+    assert r["present"] and r["sha"] == "32e53c043459" and r["branch"] == "claude/lane2-s3"
+    assert r["built"] == "2026-10-10T10:04:58" and r["src"] == "A:/Games/mc2-lane2"
+    assert r["method"] == "pe-string-scan/v1"
+
+
+def test_literal_is_found_by_its_markers_whatever_surrounds_it():
+    lit = b"MC2FP1|32e53c043459|1|claude/lane2-s3|2026-10-10T10:04:58|A:/Games/mc2-lane2|FP1END"
+    blob = b"junk\x00vp\x00" + lit + b"\x00other literal\x00" + _banner_image(("X:/other", OPS[1], "other", "deadbeef0"))
+    r = extract_from_bytes(blob)
+    assert r["present"] and r["method"] == "mc2fp1-literal/v1"
+    assert r["sha"] == "32e53c043459" and r["dirty"] is True and r["branch"] == "claude/lane2-s3"
+    assert r["src"] == "A:/Games/mc2-lane2" and r["built"] == "2026-10-10T10:04:58"
+
+
+def test_literal_works_with_no_banner_at_all_and_with_a_pipe_in_the_branch():
+    lit = b"MC2FP1|abcdef1|0|feat|x|y|2026-10-10T10:04:58|C:/src|FP1END"
+    r = extract_from_bytes(b"\x00" + lit + b"\x00")
+    assert r["present"] and r["branch"] == "feat|x|y" and r["dirty"] is False and r["sha"] == "abcdef1"
+
+
+def test_malformed_literal_falls_back_to_the_operand_walk():
+    bad = b"MC2FP1|not-a-sha|0|b|2026-10-10T10:04:58|C:/s|FP1END"
+    r = extract_from_bytes(bad + b"\x00" + _banner_image(OPS))
+    assert r["present"] and r["method"] == "pe-string-scan/v1" and r["sha"] == "32e53c043459"
