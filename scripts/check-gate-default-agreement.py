@@ -55,6 +55,9 @@ ON, OFF = "ON", "OFF"
 
 #: A swept claim count below this means the sweep lost files (a renamed directory, a changed extension).
 MIN_CLAIMS = 400
+#: Claims that matched a Bool row and were actually compared. A sweep can keep its claim count while the table side
+#: loses its Bool rows (a changed JSON shape), which would grade nothing and pass; this floor catches that.
+MIN_GRADED = 400
 
 if SCRIPT_DIR not in sys.path:
     sys.path.insert(0, SCRIPT_DIR)
@@ -338,6 +341,13 @@ def run(quiet=False):
         findings.append({
             "kind": "COVERAGE_LOSS", "var": "(all)",
             "msg": f"only {stats['claims']} default claims were swept; the floor is {MIN_CLAIMS}. The sweep lost files.",
+            "sites": [],
+        })
+    if stats["graded"] < MIN_GRADED:
+        findings.append({
+            "kind": "COVERAGE_LOSS", "var": "(all)",
+            "msg": f"only {stats['graded']} claims were graded against a Bool row; the floor is {MIN_GRADED}. "
+                   f"The table side lost rows, or the claims stopped matching them.",
             "sites": [],
         })
     if not quiet:
