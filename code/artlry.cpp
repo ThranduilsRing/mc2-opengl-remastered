@@ -65,6 +65,7 @@
 #ifndef MULTPLYR_H
 #include"multplyr.h"
 #endif
+#include "../RenderCore/axis_convert.h"
 
 //---------------------------------------------------------------------------
 
@@ -835,9 +836,7 @@ void Artillery::setJustCreated (void)
 					Stuff::LinearMatrix4D 	shapeOrigin;
 					
 					Stuff::Point3D actualPosition;
-					actualPosition.x = -position.x;
-					actualPosition.y = position.z;
-					actualPosition.z = position.y;
+					mc2ToRender(actualPosition, position);
 					
 					shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 					shapeOrigin.BuildTranslation(actualPosition);
@@ -883,9 +882,7 @@ long Artillery::update (void)
 		if (hitEffect && hitEffect->IsExecuted())
 		{
 			Stuff::Point3D actualPosition;
-			actualPosition.x = -position.x;
-			actualPosition.y = position.z;
-			actualPosition.z = position.y;
+			mc2ToRender(actualPosition, position);
 		
 			Stuff::LinearMatrix4D 	shapeOrigin;
 				
@@ -955,9 +952,7 @@ long Artillery::update (void)
 			Stuff::Vector3D lPosition = bomber->getNodeNamePosition("activity_node");
 			
 			Stuff::Point3D actualPosition;
-			actualPosition.x = -lPosition.x;
-			actualPosition.y = lPosition.z;
-			actualPosition.z = lPosition.y;
+			mc2ToRender(actualPosition, lPosition);
 			
  			shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 			shapeOrigin.BuildTranslation(actualPosition);
@@ -973,9 +968,7 @@ long Artillery::update (void)
 			Stuff::Vector3D lPosition = bomber->getDustNodePosition(GV_LEFT_DUST_ID);
 			
 			Stuff::Point3D actualPosition;
-			actualPosition.x = -lPosition.x;
-			actualPosition.y = lPosition.z;
-			actualPosition.z = lPosition.y;
+			mc2ToRender(actualPosition, lPosition);
  
 			shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 			shapeOrigin.BuildTranslation(actualPosition);
@@ -997,9 +990,7 @@ long Artillery::update (void)
 			Stuff::Vector3D lPosition = bomber->getDustNodePosition(GV_LEFT_DUST_ID);
 			
 			Stuff::Point3D actualPosition;
-			actualPosition.x = -lPosition.x;
-			actualPosition.y = lPosition.z;
-			actualPosition.z = lPosition.y;
+			mc2ToRender(actualPosition, lPosition);
 		
 			Stuff::LinearMatrix4D 	shapeOrigin;
 				
@@ -1017,9 +1008,7 @@ long Artillery::update (void)
 			Stuff::Vector3D lPosition = bomber->getNodeNamePosition("activity_node");
 			
 			Stuff::Point3D actualPosition;
-			actualPosition.x = -lPosition.x;
-			actualPosition.y = lPosition.z;
-			actualPosition.z = lPosition.y;
+			mc2ToRender(actualPosition, lPosition);
  		
 			Stuff::LinearMatrix4D 	shapeOrigin;
 				
@@ -1054,9 +1043,7 @@ long Artillery::update (void)
 			Stuff::LinearMatrix4D 	shapeOrigin;
 			
 			Stuff::Point3D actualPosition;
-			actualPosition.x = -position.x;
-			actualPosition.y = position.z;
-			actualPosition.z = position.y;
+			mc2ToRender(actualPosition, position);
 
 			shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 			shapeOrigin.BuildTranslation(actualPosition);
@@ -1070,9 +1057,7 @@ long Artillery::update (void)
 		if (hitEffect && hitEffect->IsExecuted())
 		{
 			Stuff::Point3D actualPosition;
-			actualPosition.x = -position.x;
-			actualPosition.y = position.z;
-			actualPosition.z = position.y;
+			mc2ToRender(actualPosition, position);
 		
 			Stuff::LinearMatrix4D 	shapeOrigin;
 				
@@ -1137,9 +1122,7 @@ long Artillery::update (void)
 		if (hitEffect)
 		{
 			Stuff::Point3D actualPosition;
-			actualPosition.x = -position.x;
-			actualPosition.y = position.z;
-			actualPosition.z = position.y;
+			mc2ToRender(actualPosition, position);
 		
 			Stuff::LinearMatrix4D 	shapeOrigin;
 				
@@ -1196,9 +1179,7 @@ bool Artillery::recalcBounds (CameraPtr myEye)
 				Stuff::Vector3D Distance;
 				Stuff::Point3D objPosition;
 				Stuff::Point3D eyePosition(eye->getCameraOrigin());
-				objPosition.x = -position.x;
-				objPosition.y = position.z;
-				objPosition.z = position.y;
+				mc2ToRender(objPosition, position);
 		
 				Distance.Subtract(objPosition,eyePosition);
 				Distance.Normalize(Distance);
@@ -1352,9 +1333,7 @@ void Artillery::render (void)
 			drawInfo.m_clippingFlags = 0x0;
 			
 			Stuff::Point3D actualPosition;
-			actualPosition.x = -position.x;
-			actualPosition.y = position.z;
-			actualPosition.z = position.y;
+			mc2ToRender(actualPosition, position);
 			
 			Stuff::LinearMatrix4D 	shapeOrigin;
 			
@@ -1440,9 +1419,7 @@ void Artillery::render (void)
 			Stuff::Vector3D lPosition = bomber->getDustNodePosition(GV_LEFT_DUST_ID);
 			
 			Stuff::Point3D actualPosition;
-			actualPosition.x = -lPosition.x;
-			actualPosition.y = lPosition.z;
-			actualPosition.z = lPosition.y;
+			mc2ToRender(actualPosition, lPosition);
  			
 			Stuff::LinearMatrix4D 	shapeOrigin;
 			
@@ -1460,9 +1437,7 @@ void Artillery::render (void)
 			Stuff::Vector3D lPosition = bomber->getNodeNamePosition("activity_node");
 			
 			Stuff::Point3D actualPosition;
-			actualPosition.x = -lPosition.x;
-			actualPosition.y = lPosition.z;
-			actualPosition.z = lPosition.y;
+			mc2ToRender(actualPosition, lPosition);
  			
 			Stuff::LinearMatrix4D 	shapeOrigin;
 			
@@ -1798,9 +1773,7 @@ void Artillery::Load (ArtilleryData *data)
 			Stuff::LinearMatrix4D 	shapeOrigin;
 
 			Stuff::Point3D actualPosition;
-			actualPosition.x = -position.x;
-			actualPosition.y = position.z;
-			actualPosition.z = position.y;
+			mc2ToRender(actualPosition, position);
 
 			shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 			shapeOrigin.BuildTranslation(actualPosition);
