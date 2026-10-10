@@ -12,6 +12,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace vk_island_util {
@@ -40,9 +41,10 @@ inline void vlogv512(const char* tag, const char* fmt, va_list ap) {
 // reason through `log`, when given) if the file is missing, not a multiple of 4 bytes,
 // short-read, or rejected by the driver. `openFailureOnly` keeps the sky island's
 // historical quiet path: only a missing file is reported.
-inline VkShaderModule loadSpv(VkDevice device, const std::string& path, LogFn log,
+inline VkShaderModule loadSpv(VkDevice device, std::string_view pathView, LogFn log,
                               bool openFailureOnly = false) {
     const LogFn later = openFailureOnly ? nullptr : log;
+    const std::string path(pathView);
     std::FILE* f = std::fopen(path.c_str(), "rb");
     if (!f) { if (log) log("cannot open spv '%s'.", path.c_str()); return VK_NULL_HANDLE; }
     std::fseek(f, 0, SEEK_END);
