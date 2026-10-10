@@ -233,11 +233,18 @@ def native_key_up(name: str) -> bool:
     return True
 
 
+def keys_allowed(what: str) -> bool:
+    """Synthetic keystrokes are global input to the FOREGROUND window, which in an agent session is whatever the
+    owner is typing into. They run only in a user-present session (MC2_HARNESS_ALLOW_FOREGROUND=1)."""
+    if nofocus.allow_foreground():
+        return True
+    print(f"{what} skipped (background mode; MC2_HARNESS_ALLOW_FOREGROUND=1 to enable)")
+    return False
+
+
 def do_key(name: str, hold_ms: int = 50):
-    # NOTE (BACKGROUND-SMOKE-1): keystrokes are left UNGUARDED, but they go to
-    # whatever window has FOCUS. Under the no-focus contract the game window is
-    # never activated, so it will not receive them -- a known limitation of the
-    # menu-canary path, not something to "fix" by stealing focus.
+    if not keys_allowed(f"key {name}"):
+        return
     if native_key_down(name):
         time.sleep(hold_ms / 1000.0)
         native_key_up(name)
@@ -250,6 +257,8 @@ def do_key(name: str, hold_ms: int = 50):
 
 
 def do_chord(spec: str):
+    if not keys_allowed(f"chord {spec}"):
+        return
     parts = spec.lower().split("+")
     mods = [MODS.get(p, p) for p in parts[:-1]]
     key = parts[-1]

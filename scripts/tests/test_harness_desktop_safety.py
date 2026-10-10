@@ -445,3 +445,42 @@ def test_nofocus_records_only_engine_children(tmp_path, monkeypatch):
     monkeypatch.setattr(nofocus, "_vet_engine_exe", lambda argv: None)
     nofocus.spawn([str(exe)])
     assert seen == [(7, str(exe))]
+
+
+# ------------------------------------------------- synthetic input needs a user-present session
+
+def test_game_auto_key_and_chord_do_nothing_in_a_background_session(monkeypatch, capsys):
+    import game_auto
+
+    class _Boom:
+        def __getattr__(self, name):
+            raise AssertionError(f"input injected: {name}")
+
+    monkeypatch.delenv("MC2_HARNESS_ALLOW_FOREGROUND", raising=False)
+    monkeypatch.setattr(game_auto, "user32", _Boom())
+    monkeypatch.setattr(game_auto, "get_pyautogui", lambda: _Boom())
+    game_auto.do_key("escape")
+    game_auto.do_chord("ctrl+s")
+    assert capsys.readouterr().out.count("skipped (background mode") == 2
+
+
+def test_game_auto_keys_are_sent_when_the_session_opts_in(monkeypatch):
+    import game_auto
+
+    sent = []
+    fake = types.SimpleNamespace(keybd_event=lambda *a: sent.append(a))
+    monkeypatch.setenv("MC2_HARNESS_ALLOW_FOREGROUND", "1")
+    monkeypatch.setattr(game_auto, "user32", fake)
+    monkeypatch.setattr(game_auto.time, "sleep", lambda s: None)
+    game_auto.do_key("escape")
+    assert len(sent) == 2
+
+
+def test_menu_canary_is_refused_without_the_foreground_opt_in(monkeypatch):
+    from scripts import run_smoke
+
+    monkeypatch.delenv("MC2_HARNESS_ALLOW_FOREGROUND", raising=False)
+    assert "MC2_HARNESS_ALLOW_FOREGROUND" in run_smoke._menu_canary_refusal()
+    assert run_smoke._run_menu_canary(Path("x"), Path("y"), Path("z"), False, 0) == 5
+    monkeypatch.setenv("MC2_HARNESS_ALLOW_FOREGROUND", "1")
+    assert run_smoke._menu_canary_refusal() is None

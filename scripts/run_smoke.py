@@ -351,8 +351,21 @@ def _lane_lock_token(lease_folder: str | None, exe_path: str,
     return "".join(c if c.isalnum() or c in "-_" else "_" for c in lane_key)
 
 
+def _menu_canary_refusal() -> str | None:
+    """The canary replays Escape/Enter keystrokes as global input to the foreground window."""
+    if nofocus.allow_foreground():
+        return None
+    return ("the menu canary sends synthetic keystrokes to whatever window has focus, which in an agent "
+            "session is the owner's. It runs only in a user-present session: set "
+            "MC2_HARNESS_ALLOW_FOREGROUND=1.")
+
+
 def _run_menu_canary(exe: Path, script_path: Path, artifact_dir: Path,
                      keep_logs: bool, settle_s: int) -> int:
+    why = _menu_canary_refusal()
+    if why:
+        print(f"[runner] ERROR: {why}", file=sys.stderr)
+        return 5
     env = os.environ.copy()
     for var in ["MC2_SMOKE_MODE", "MC2_HEARTBEAT", "MC2_SMOKE_SEED"]:
         env.pop(var, None)
@@ -1119,6 +1132,11 @@ def main():
                   f"--kill-existing ends only orphans of a dead smoke run.", file=sys.stderr)
             sys.exit(4)
 
+    if args.menu_canary or args.with_menu_canary:
+        _why = _menu_canary_refusal()
+        if _why:
+            print(f"[runner] ERROR: {_why}", file=sys.stderr)
+            sys.exit(5)
     if args.menu_canary:
         if args.tier or args.mission:
             ap.error("--menu-canary cannot be combined with --tier/--mission")

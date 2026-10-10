@@ -13,7 +13,7 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `.claude/vk-post-fog/fog_oracle.py` | 75 | `nofocus.spawn` | offscreen |
 | `.claude/vk-present-skip-gl-handoff/proof.py` | 48 | `nofocus.spawn` | offscreen |
 | `.claude/vk-water-tier1/water_oracle.py` | 69 | `nofocus.spawn` | offscreen |
-| `scripts/camera_sweep_smoke.py` | 117 | `nofocus.spawn` | desktop-composite |
+| `scripts/camera_sweep_smoke.py` | 121 | `nofocus.spawn` | desktop-composite |
 | `scripts/capture_baseline.py` | 325 | `nofocus.spawn` | desktop-composite |
 | `scripts/check-order-liveness.py` | 117 | `nofocus.spawn` | offscreen |
 | `scripts/game_auto.py` | 140 | `nofocus.spawn` | desktop-composite |
@@ -25,7 +25,7 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `scripts/renderdoc_capture.py` | 266 | `subprocess.run` **raw, allowed:** renderdoccmd convert is a console file converter, not the game; windowless via hidden_kwargs | offscreen |
 | `scripts/run_editor_playtest_smoke.py` | 235 | `nofocus.spawn` | offscreen |
 | `scripts/run_editor_smoke.py` | 143 | `nofocus.spawn` | offscreen |
-| `scripts/run_smoke.py` | 366 | `nofocus.spawn` | offscreen |
+| `scripts/run_smoke.py` | 379 | `nofocus.spawn` | offscreen |
 | `scripts/run_smoke_asan.py` | 203 | `nofocus.spawn` | offscreen |
 | `scripts/run_visual_capture.py` | 369 | `nofocus.spawn` | offscreen |
 | `scripts/run_vk_field_check.py` | 230 | `nofocus.spawn` | offscreen |
