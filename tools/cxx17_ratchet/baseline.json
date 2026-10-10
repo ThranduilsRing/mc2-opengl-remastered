@@ -181,8 +181,8 @@
    "LG16": 7,
    "LG17": 47,
    "LG18": 4,
-   "LG19": 25,
-   "LG20": 29
+   "LG19": 24,
+   "LG20": 28
   },
   "mclib": {
    "LG01": 2850,
@@ -2935,9 +2935,7 @@
    "LG17": 2
   },
   "code/object_walk_trace.h": {
-   "LG12b": 1,
-   "LG19": 1,
-   "LG20": 1
+   "LG12b": 1
   },
   "code/objective.cpp": {
    "LG01": 4,
@@ -5825,7 +5823,7 @@
    "LG20": 1
   }
  },
- "head": "d8a33f9bd",
+ "head": "a6c2760ef",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
