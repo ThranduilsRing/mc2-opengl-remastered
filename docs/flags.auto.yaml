@@ -5,7 +5,7 @@
 generator_version: "3.0.0"
 gate_count: 1139
 registry_entry_count: 354
-verified_count: 1010
+verified_count: 1101
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -165,12 +165,14 @@ flags:
     rule: Lead1
     owner: gameos
     doc: ""
+    verified: true
   - name: MC2_ASSET_SCALE_TRACE
     kind: Bool
     default: false
     rule: Lead1
     owner: gameos
     doc: ""
+    verified: true
   - name: MC2_ASSET_TRACE
     kind: Bool
     default: false
@@ -900,18 +902,21 @@ flags:
     rule: Lead0P
     owner: gameos
     doc: ""
+    verified: true
   - name: MC2_CLUSTER_DEPTH_PYRAMID_PLANT
     kind: Bool
     default: false
     rule: Lead0P
     owner: gameos
     doc: ""
+    verified: true
   - name: MC2_CLUSTER_DEPTH_PYRAMID_VERIFY
     kind: Bool
     default: false
     rule: Lead0P
     owner: gameos
     doc: ""
+    verified: true
   - name: MC2_COALESCE_FORCE_DISARM
     kind: Enum
     default: ""
@@ -1056,6 +1061,7 @@ flags:
     rule: Lead0
     owner: code
     doc: "Debug overlay renderer (GuiRuntime/EditorInspector.cpp)."
+    verified: true
     registry: {feature_id: MC2_FEATURE_DEBUG_RENDERER, kind: Feature, order: 8, default_on: false}
   - name: MC2_DEBUG_RENDERER_TEST
     kind: Bool
@@ -1063,6 +1069,7 @@ flags:
     rule: Lead0
     owner: gameos
     doc: ""
+    verified: true
   - name: MC2_DEBUG_SHADOW_FRUSTUM
     kind: Bool
     default: false
@@ -1094,12 +1101,13 @@ flags:
     verified: true
     registry: {feature_id: MC2_DIAG_DEBUG_STATE_DUMP, kind: Trace, order: -1, default_on: false}
   - name: MC2_DEBUG_STATE_DUMP_DIR
-    kind: Bool
-    default: false
-    rule: NonEmpty
+    kind: String
+    default: ""
+    rule: Std
     owner: gameos
     doc: "DEBUG-STATE-DUMP-1: override output directory for MC2_DEBUG_STATE_DUMP."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_DIAG_DEBUG_STATE_DUMP_DIR, kind: Trace, order: -1, default_on: false}
   - name: MC2_DEBUG_STATE_DUMP_HISTORY
     kind: Bool
@@ -1108,6 +1116,7 @@ flags:
     owner: gameos
     doc: "DEBUG-STATE-DUMP-2: enable rolling 8-slot history ring alongside latest_render_state.json."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_DIAG_DEBUG_STATE_DUMP_HISTORY, kind: Trace, order: -1, default_on: false}
   - name: MC2_DEBUG_VIDEO
     kind: Bool
@@ -1147,11 +1156,12 @@ flags:
     doc: ""
     verified: true
   - name: MC2_DEFS_ROOT
-    kind: Bool
-    default: false
-    rule: NonEmpty
+    kind: String
+    default: ""
+    rule: Std
     owner: unclassified
     doc: ""
+    verified: true
   - name: MC2_DEPTHBIAS_CALIB
     kind: Bool
     default: false
@@ -1197,6 +1207,7 @@ flags:
     rule: Prefix
     owner: gameos
     doc: ""
+    verified: true
   - name: MC2_DIAGNOSTIC_TRACE_FILE
     kind: String
     default: ""
@@ -1212,6 +1223,7 @@ flags:
     owner: gameos
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_DIAG_VERBOSE
     kind: Bool
     default: false
@@ -1219,6 +1231,7 @@ flags:
     owner: gameos
     doc: "QUIET-DEFAULT-BUILD-1: ONE umbrella gate for the engine's undifferentiated developer chatter."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TRACE_DIAG_VERBOSE, kind: Trace, order: -1, default_on: false}
   - name: MC2_DIRECT_FIRE_STRAIGHT
     kind: Bool
@@ -1275,6 +1288,7 @@ flags:
     owner: gameos
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_DRAW_PACKET_STATIC_PROP_V6_TRACE
     kind: Bool
     default: false
@@ -1739,6 +1753,7 @@ flags:
     owner: gameos
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_FRAME_PASS_STATS_EVERY
     kind: Int
     default: 0
@@ -1746,6 +1761,7 @@ flags:
     owner: gameos
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_FREEZE_MOVERS_AT
     kind: Int
     default: -1
@@ -1868,6 +1884,7 @@ flags:
     owner: gameos
     doc: "GLSTATEGUARD-SLICE-1: leak-visibility for mc2gl::GlScopedSsboBinding (gl_state_guard.h)."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_GLSTATEGUARD_LOG, kind: Trace, order: -1, default_on: false}
   - name: MC2_GLSTATEGUARD_TERRAIN
     kind: Bool
@@ -1959,12 +1976,14 @@ flags:
     rule: Presence
     owner: gameos
     doc: "GPU-UPDATE-BUFFER-COUNTER-1: independent default-OFF gate."
+    verified: true
   - name: MC2_GPUBUF_LIGHT_GROWONCE
     kind: Bool
     default: false
     rule: Presence
     owner: gameos
     doc: "LIGHT-GROW-ONCE-SUBDATA-1 (AMD-safe intermediate for the light SSBO orphan churn; NOT the full GpuStorageRing ring)."
+    verified: true
     registry: {feature_id: MC2_GPUBUF_LIGHT_GROWONCE, kind: Feature, order: -1, default_on: false}
   - name: MC2_GPUBUF_RESIDENCY
     kind: Bool
@@ -2005,6 +2024,7 @@ flags:
     owner: unclassified
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_GPU_CULL_AABB_PARITY
     kind: Bool
     default: false
@@ -2020,18 +2040,21 @@ flags:
     owner: gameos
     doc: "Trace macro (env-gated, default off)"
     smoke_passthrough: true
+    verified: true
   - name: MC2_GPU_CULL_CONSERVATIVE_OR
     kind: Bool
     default: true
     rule: Lead0Kill
     owner: gameos
     doc: ""
+    verified: true
   - name: MC2_GPU_CULL_DUMP_SHADER
     kind: Bool
     default: false
     rule: Presence
     owner: gameos
     doc: "Debug: dump concatenated source to file for inspection."
+    verified: true
   - name: MC2_GPU_CULL_FORCE_FENCE_NOT_READY
     kind: Bool
     default: false
@@ -2039,12 +2062,15 @@ flags:
     owner: gameos
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_GPU_CULL_FRUSTUM_DILATION
     kind: Float
-    default: 0
+    default: 0.0799999982
     rule: Prefix
     owner: gameos
-    doc: ""
+    doc: "Frustum dilation of the actor compute cull; outside [0, 1] reads the default."
+    range: {lo: 0, hi: 1, style: reject}
+    verified: true
   - name: MC2_GPU_CULL_LIFECYCLE
     kind: Bool
     default: false
@@ -2068,6 +2094,7 @@ flags:
     owner: gameos
     doc: "Ownership-parity oracle (Slice A, measurement-only, default off)."
     smoke_passthrough: true
+    verified: true
   - name: MC2_GPU_CULL_READBACK
     kind: Bool
     default: true
@@ -2075,6 +2102,7 @@ flags:
     owner: gameos
     doc: "PERF-OBJECT-ITER-GPU-PORT-1: default-ON now that substrate+coalesce are stable."
     smoke_passthrough: true
+    verified: true
   - name: MC2_GPU_CULL_READBACK_TRACE
     kind: Bool
     default: false
@@ -2082,6 +2110,7 @@ flags:
     owner: gameos
     doc: "Env-gated trace macro."
     smoke_passthrough: true
+    verified: true
   - name: MC2_GPU_CULL_STATIC_EAGER_LIGHT_BAKE
     kind: Bool
     default: false
@@ -2126,6 +2155,7 @@ flags:
     owner: gameos
     doc: "MC2_GPU_CULL_SUBSTRATE_TRACE=1 - verbose per-frame lifecycle prints."
     smoke_passthrough: true
+    verified: true
   - name: MC2_GPU_DEBUG_NAMES
     kind: Bool
     default: false
@@ -2133,6 +2163,7 @@ flags:
     owner: gameos
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_GPU_DRIVEN
     kind: Bool
     default: true
@@ -2140,6 +2171,7 @@ flags:
     owner: unclassified
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_GPU_DRIVEN_OVERLAY
     kind: Bool
     default: true
@@ -2147,6 +2179,7 @@ flags:
     owner: gameos
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_GPU_DRIVEN_PARITY
     kind: Bool
     default: false
@@ -2154,6 +2187,7 @@ flags:
     owner: gameos
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_GPU_DRIVEN_TERRAIN_SOLID
     kind: Bool
     default: true
@@ -2161,6 +2195,7 @@ flags:
     owner: gameos
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_GPU_DRIVEN_TRACE
     kind: Bool
     default: false
@@ -2168,6 +2203,7 @@ flags:
     owner: gameos
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_GPU_DRIVEN_WATER
     kind: Bool
     default: true
@@ -2175,6 +2211,7 @@ flags:
     owner: gameos
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_GPU_GROUND_PICK_PARITY
     kind: Bool
     default: false
@@ -2307,6 +2344,7 @@ flags:
     rule: Lead1
     owner: gameos
     doc: ""
+    verified: true
   - name: MC2_GPU_TRAIL_DISABLE
     kind: Bool
     default: false
@@ -2344,6 +2382,7 @@ flags:
     rule: Lead0Kill
     owner: gameos
     doc: ""
+    verified: true
   - name: MC2_HDRI_SKY
     kind: Bool
     default: true
@@ -2395,6 +2434,7 @@ flags:
     owner: gameos
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_HITCH_TRACE
     kind: Bool
     default: false
@@ -2402,6 +2442,7 @@ flags:
     owner: gameos
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_HOSTSVC_DEFINITELY_UNSET_KEY_XYZ
     kind: Bool
     default: false
@@ -2714,18 +2755,21 @@ flags:
     rule: Lead0P
     owner: gameos
     doc: ""
+    verified: true
   - name: MC2_LIGHTGRID_PLANT
     kind: Bool
     default: false
     rule: Lead0P
     owner: gameos
     doc: ""
+    verified: true
   - name: MC2_LIGHTGRID_VERIFY
     kind: Bool
     default: false
     rule: Lead0P
     owner: gameos
     doc: ""
+    verified: true
   - name: MC2_LIGHTING_DEBUG_VIEW
     kind: Enum
     default: ""
@@ -3015,6 +3059,7 @@ flags:
     owner: gameos
     doc: "LIGHT-PREFIX-GPU-COPY-1 (TXMMGR-PERF-EASYWINS-1): keep a VRAM stash of the immutable static light prefix [0..S) and glCopyBufferSubData it into the..."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_LIGHT_PREFIX_GPU_COPY, kind: Feature, order: -1, default_on: false}
   - name: MC2_LIGHT_REALISM
     kind: Bool
@@ -3111,6 +3156,7 @@ flags:
     rule: Lead0
     owner: gameos
     doc: ""
+    verified: true
   - name: MC2_LINKUP_TRACE
     kind: Bool
     default: false
@@ -3172,6 +3218,7 @@ flags:
     rule: Std
     owner: gameos
     doc: ""
+    verified: true
   - name: MC2_LOG_FILE_RESOLVE
     kind: String
     default: ""
@@ -3230,6 +3277,7 @@ flags:
     rule: Presence
     owner: gameos
     doc: ""
+    verified: true
   - name: MC2_LOWCAM_OBJ_NEARPAD
     kind: Bool
     default: true
@@ -3312,6 +3360,7 @@ flags:
     owner: gameos
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_MECH_AMBIENT_V1
     kind: Bool
     default: true
@@ -3835,6 +3884,7 @@ flags:
     rule: Lead0Def
     owner: gameos
     doc: "SMOKE-NO-CURSOR-STEAL-1: suppress ALL OS-cursor manipulation -- window mouse-grab, Win32 ClipCursor clamp, and gos_SetMousePosition warps -- plus window..."
+    verified: true
     registry: {feature_id: MC2_TRACE_NO_CURSOR_GRAB, kind: Trace, order: -1, default_on: false}
   - name: MC2_NO_LAUNCHER
     kind: Bool
@@ -3889,6 +3939,7 @@ flags:
     rule: Exact1
     owner: gameos
     doc: ""
+    verified: true
   - name: MC2_OBJECT_PARITY_TRACE
     kind: Bool
     default: false
@@ -4060,6 +4111,7 @@ flags:
     rule: Presence
     owner: gameos
     doc: ""
+    verified: true
   - name: MC2_PATCHSTREAM_DIRECT_TEXTURE_BIND
     kind: Bool
     default: false
@@ -4251,12 +4303,14 @@ flags:
     owner: gameos
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_PIPELINE_COLORMASK
     kind: Bool
     default: false
     rule: Lead0
     owner: gameos
     doc: ""
+    verified: true
   - name: MC2_PLAYTEST_EXE
     kind: Int
     default: 0
@@ -4269,6 +4323,7 @@ flags:
     rule: Lead0Kill
     owner: gameos
     doc: ""
+    verified: true
   - name: MC2_POSTPROCESS_BACKEND
     kind: Enum
     default: "gl"
@@ -4284,18 +4339,21 @@ flags:
     rule: Lead0P
     owner: post
     doc: ""
+    verified: true
   - name: MC2_POSTPROCESS_COMPUTE_BLUR_PLANT
     kind: Bool
     default: false
     rule: Lead0P
     owner: post
     doc: ""
+    verified: true
   - name: MC2_POSTPROCESS_COMPUTE_BLUR_VERIFY
     kind: Bool
     default: false
     rule: Lead0P
     owner: post
     doc: ""
+    verified: true
   - name: MC2_POST_CAS
     kind: Bool
     default: false
@@ -4496,30 +4554,36 @@ flags:
     rule: Prefix
     owner: gameos
     doc: ""
+    verified: true
   - name: MC2_RDC_CAPTURE_PATH
-    kind: Bool
-    default: false
-    rule: NonEmpty
+    kind: String
+    default: ""
+    rule: Std
     owner: gameos
     doc: "Expand and VALIDATE the path template here, at arm time -- deliberately NOT down in resolveApiOnce()."
+    verified: true
   - name: MC2_RDC_EXIT_AFTER
     kind: Bool
     default: false
     rule: Presence
     owner: gameos
     doc: ""
+    verified: true
   - name: MC2_RDC_MAX_WAIT
-    kind: Bool
-    default: false
+    kind: Int
+    default: 600
+    rule: Prefix
+    owner: gameos
+    doc: "RenderDoc capture: frames to wait past the armed frame before giving up."
+    smoke_passthrough: true
+    verified: true
+  - name: MC2_RDC_MISSION
+    kind: String
+    default: ""
     rule: Std
     owner: gameos
     doc: ""
-  - name: MC2_RDC_MISSION
-    kind: Bool
-    default: false
-    rule: NonEmpty
-    owner: gameos
-    doc: ""
+    verified: true
   - name: MC2_REBUILD_MOD_CACHE
     kind: Bool
     default: false
@@ -4582,12 +4646,13 @@ flags:
     doc: "Optional diagnostic: print the first 8 mismatch reasons."
     verified: true
   - name: MC2_RENDER_BACKEND
-    kind: Bool
-    default: false
-    rule: NonEmpty
+    kind: String
+    default: ""
+    rule: Std
     owner: unclassified
     doc: "VK-P13-SELECTOR-1: top-level render-backend selector, values gl|vulkan (default gl; unset/unrecognized -> gl, coercion logged)."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_FEATURE_RENDER_BACKEND, kind: Feature, order: -1, default_on: false}
   - name: MC2_RENDER_BACKEND_IFACE
     kind: Bool
@@ -4628,6 +4693,7 @@ flags:
     owner: gameos
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_RENDER_PASS_CONTRACT_ASSERT
     kind: Bool
     default: false
@@ -4665,6 +4731,7 @@ flags:
     owner: gameos
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_RENDER_PASS_TIME_EVERY
     kind: Int
     default: 0
@@ -4672,6 +4739,7 @@ flags:
     owner: gameos
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_RENDER_PATH
     kind: Bool
     default: false
@@ -4881,6 +4949,7 @@ flags:
     rule: Lead1
     owner: gameos
     doc: "SPIRV-CONSUMER-PILOT-BUILD-1: DEFAULT-OFF. =1 loads the offline-baked OpenGL SPIR-V (OFFLINE-SHADER-VARIANT-BUILD-1, shaders/spv/) for the postprocess..."
+    verified: true
     registry: {feature_id: MC2_SHADER_SPIRV, kind: Feature, order: -1, default_on: false}
   - name: MC2_SHADER_SPIRV_FATAL
     kind: Bool
@@ -4888,6 +4957,7 @@ flags:
     rule: Lead1
     owner: gameos
     doc: "SPIRV-CONSUMER-PILOT-BUILD-1: DEFAULT-OFF debug gate."
+    verified: true
     registry: {feature_id: MC2_SHADER_SPIRV_FATAL, kind: Trace, order: -1, default_on: false}
   - name: MC2_SHADOW_ALT_SCALE
     kind: Bool
@@ -5323,6 +5393,7 @@ flags:
     owner: gameos
     doc: "S9D deterministic clock."
     smoke_passthrough: true
+    verified: true
   - name: MC2_SMOKE_MODE
     kind: Bool
     default: false
@@ -5337,10 +5408,11 @@ flags:
     rule: Prefix
     owner: gameos
     doc: ""
+    verified: true
   - name: MC2_SMOKE_SEED
-    kind: Int
-    default: 0
-    rule: Prefix
+    kind: String
+    default: ""
+    rule: Std
     owner: gameos
     doc: ""
     smoke_passthrough: true
@@ -5989,6 +6061,7 @@ flags:
     owner: gameos
     doc: "STATICPROP-SNAPSHOT-BRIDGE-COMPARE-1 gate: default OFF. =1 builds s_spRowCache from registry each frame and compares field-by-field with legacy propBuf."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TRACE_STATIC_PROP_SNAPSHOT_BRIDGE_COMPARE, kind: Trace, order: -1, default_on: false}
   - name: MC2_STATIC_PROP_SNAPSHOT_FILL_DIRTYONLY
     kind: Bool
@@ -5997,6 +6070,7 @@ flags:
     owner: gameos
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_STATIC_PROP_TRACE
     kind: Bool
     default: false
@@ -6071,9 +6145,11 @@ flags:
   - name: MC2_STRINGS_TRACE
     kind: Bool
     default: false
-    rule: Std
+    rule: Presence
     owner: gameos
-    doc: ""
+    doc: "Trace the string-table loader; any set value enables (even 0)."
+    smoke_passthrough: true
+    verified: true
   - name: MC2_SUBMIT_TYPEHIST
     kind: Bool
     default: false
@@ -6322,6 +6398,7 @@ flags:
     owner: terrain
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_TERRAIN_CONTROLMAP_ALBEDO_STRENGTH
     kind: Float
     default: 0
@@ -6329,6 +6406,7 @@ flags:
     owner: terrain
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_TERRAIN_CONTROLMAP_FILE
     kind: String
     default: ""
@@ -6774,6 +6852,7 @@ flags:
     owner: terrain
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_TERRAIN_MATERIAL_TEXTURES
     kind: Bool
     default: false
@@ -7223,6 +7302,7 @@ flags:
     rule: Presence
     owner: gameos
     doc: ""
+    verified: true
   - name: MC2_TREE_DIAG_TRACE
     kind: Bool
     default: false
@@ -7332,6 +7412,7 @@ flags:
     rule: Lead0Kill
     owner: gameos
     doc: ""
+    verified: true
   - name: MC2_UI_COMMAND_FILE
     kind: String
     default: ""
@@ -7439,12 +7520,13 @@ flags:
     doc: ""
     verified: true
   - name: MC2_VEGETATION_ATLAS
-    kind: Bool
-    default: false
-    rule: NonEmpty
+    kind: String
+    default: ""
+    rule: Std
     owner: gameos
     doc: "Allow env-var override at runtime too."
     smoke_passthrough: true
+    verified: true
   - name: MC2_VEGETATION_CARDS
     kind: Bool
     default: false
@@ -7452,6 +7534,7 @@ flags:
     owner: gameos
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_VEGETATION_DENSITY
     kind: Int
     default: 25
@@ -7472,12 +7555,14 @@ flags:
     rule: Lead0
     owner: gameos
     doc: ""
+    verified: true
   - name: MC2_VEG_MAX_DIST
     kind: Float
     default: 4096
     rule: Prefix
     owner: gameos
     doc: ""
+    verified: true
   - name: MC2_VEHICLE_AMBIENT_FLOOR
     kind: Bool
     default: true
@@ -7497,12 +7582,13 @@ flags:
     verified: true
     registry: {feature_id: MC2_VEHICLE_LIT_PATH, kind: Feature, order: 46, default_on: true}
   - name: MC2_VERIFY_MODE
-    kind: Bool
-    default: false
-    rule: NonEmpty
+    kind: String
+    default: ""
+    rule: Std
     owner: gameos
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_VERTEX_PROJECT_FAST
     kind: Bool
     default: false
@@ -7766,30 +7852,35 @@ flags:
     rule: Lead0
     owner: gameos
     doc: ""
+    verified: true
   - name: MC2_VISUAL_DIFF_FRAME_N
     kind: Int
     default: 90
     rule: Prefix
     owner: gameos
     doc: ""
+    verified: true
   - name: MC2_VISUAL_DIFF_MAX_FRAMES
     kind: Int
     default: 0
     rule: Prefix
     owner: gameos
     doc: ""
+    verified: true
   - name: MC2_VISUAL_DIFF_MISSION
     kind: String
     default: ""
     rule: Std
     owner: gameos
     doc: ""
+    verified: true
   - name: MC2_VISUAL_DIFF_OUT
     kind: String
     default: ""
     rule: Std
     owner: gameos
     doc: ""
+    verified: true
   - name: MC2_VISUAL_SETTLE
     kind: Int
     default: 0
@@ -7805,6 +7896,7 @@ flags:
     owner: gameos
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_VIS_SEMANTICS
     kind: Bool
     default: true
@@ -8604,12 +8696,13 @@ flags:
     smoke_passthrough: true
     verified: true
   - name: MC2_VULKAN_VALIDATION
-    kind: Bool
-    default: false
+    kind: String
+    default: ""
     rule: Std
     owner: vk
     doc: ""
     smoke_passthrough: true
+    verified: true
   - name: MC2_WATCHID_GENERATION
     kind: Bool
     default: false
@@ -8909,6 +9002,7 @@ flags:
     owner: unclassified
     doc: "NOFOCUS-HARDEN-1: create the SDL window HIDDEN at (-32000,-32000) and keep it there, so an agent-launched engine window never occupies visible desktop area..."
     smoke_passthrough: true
+    verified: true
     registry: {feature_id: MC2_TRACE_WINDOW_OFFSCREEN, kind: Trace, order: -1, default_on: false}
   - name: MC2_WINDOW_RESIZABLE
     kind: Bool
