@@ -742,17 +742,10 @@ if [ "${CONTRACTS_SELFTEST:-0}" = "1" ]; then
     echo "    a selftest child must pass --selftest-render (see _fail_reason_selftest)." >&2
     exit 2
 fi
-run_check "env_registry"           "sh scripts/check-env-registry.sh"
-# TREE-CONSOLIDATE-1 (2026-07-30): env_registry's answer is only as good as its
-# comment stripper, and the stripper is the part that silently broke. A registry
-# description that quoted a shell glob put a block-comment opener inside a string
-# literal; the regex stripper read it as a real comment open, found no close, and
-# discarded the header from that line to EOF -- so every gate registered below it
-# reported UNREGISTERED and env_registry went red for two gates that were in fact
-# registered correctly. Injection-proven both ways before and after the fix.
-# The selftest pins the stripper against a fixture, so a future "simplification"
-# of it fails here instead of silently unregistering half the header.
-run_check "env_registry_selftest"  "sh scripts/check-env-registry.sh --selftest"
+# env_registry / env_registry_selftest (scripts/check-env-registry.sh, with its ALLOWLIST) are retired: "every MC2_* read
+# is registered" is now a compile error (gate::get<"MC2_X">() static_asserts the name is a row of Gates/gate_table.cpp)
+# and a runtime verdict ([CONFIG v1] warn=unregistered, fatal under MC2_CONFIG_STRICT), and the raw-read ratchet (LG19)
+# keeps a getenv from bypassing both. Last revision of the script: a0cf5620d.
 
 # ---------------------------------------------------------------------------
 # GATE-TABLE-G2 (2026-10-10): the registry is generated, not parsed
@@ -762,14 +755,13 @@ run_check "env_registry_selftest"  "sh scripts/check-env-registry.sh --selftest"
 # sweep generator (flag-registry-auto-gen.py) and the registry truth check that graded one against the other are
 # deleted with it; the tools that need the registry read the JSON through scripts/gate_table_reader.py, which
 # refuses a torn or inconsistent table (build_review_pack --selftest keeps that proven below).
-# env_registry above still proves which gate NAMES appear in the header.
 # gate_gen_check (below) covers the derived header rows, yaml and index, `verified`, and the compiler check; the
 # fast hermetic half that used to be its own row (flag_registry_drift) was a strict subset and is retired.
 
 # ---------------------------------------------------------------------------
 # GATE-DEFAULT-TRUTH-1 (2026-07-30)
 # ---------------------------------------------------------------------------
-# check-env-registry.sh above proves a gate is REGISTERED. It has never proved
+# Gate registration is a compile-time fact of the gate table. It has never proved
 # the registry's stated `defaultOn` AGREES with what the reader does when the
 # var is unset -- and that gap shipped live lies: MC2_SHADOW_BOUNDED_NEAR_FIT
 # (registry, tier1 doc, and the reader's own adjacent comment all said OFF while
@@ -782,6 +774,7 @@ run_check "env_registry_selftest"  "sh scripts/check-env-registry.sh --selftest"
 # scripts/gate-defaults-allowlist.txt and each one MUST carry a real reason.
 run_check "gate_default_agreement"          "py -3 scripts/check-gate-default-agreement.py --quiet"
 run_check "gate_default_agreement_selftest" "py -3 scripts/check-gate-default-agreement.py --selftest"
+run_check "gate_classifier_selftest"        "py -3 scripts/gate_default_classifier.py --selftest"
 # GATE-READER-CONFLICTS-1 (typed-gate-registry G0, 2026-10-09): the row above proves a gate's
 # stated default against its readers; this one proves the READERS AGREE WITH EACH OTHER. A typed
 # gate table has one truthiness rule per gate, so every gate whose readers already disagree
@@ -1485,14 +1478,8 @@ run_check "smoke_matrices"             "py -3 scripts/check-smoke-matrices.py --
 # the basename alone, so an asset manifest and a brain-fixture corpus manifest
 # were both graded as run/release manifests and told to grow an identity block.
 run_check "manifest_schema"            "py -3 scripts/check-manifest-schema.py --strict"
-# --base HEAD~1 is the whole point. The default base is `merge-base HEAD
-# origin/main`, which on this long-lived branch is 25 days back, so a bare run
-# grades the ENTIRE branch and reports 99 gates -- true, useless, and unfixable
-# in one commit. Mode A diffs the WORKING TREE against the base, so HEAD~1 asks
-# the question this aggregator can act on: does the change in front of me add an
-# MC2_* gate that is in neither RendererFeatureRegistry.h nor tier1_env_vars.md?
-# The 99-gate backlog is real and stays visible: `py -3 scripts/check-new-gates.py --all`.
-run_check "new_gates"                  "py -3 scripts/check-new-gates.py --base HEAD~1"
+# new_gates (scripts/check-new-gates.py --base HEAD~1) is retired: a new MC2_* gate in a diff must be a row of the gate
+# table or it does not compile, and a raw getenv is a ratchet failure. Last revision of the script: a0cf5620d.
 
 # ---------------------------------------------------------------------------
 # SCRIPTS-TESTS-WIRE-1 (2026-07-31) -- a whole TEST TIER nothing executed

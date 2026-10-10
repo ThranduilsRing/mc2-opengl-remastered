@@ -182,10 +182,6 @@ def _mini_repo(tmp_path: Path) -> Path:
     root = tmp_path / "repo"
     (root / "scripts").mkdir(parents=True)
     (root / "docs").mkdir()
-    (root / "scripts" / "check-env-registry.sh").write_text(
-        "ALLOWLIST=(\n"
-        "    MC2_LEGACY_TRACE           # trace\n"
-        ")\n")
     (root / "docs" / "tier1_env_vars.md").write_text(
         "- `MC2_ALLOWED_GATE=1` — does a thing. Default **OFF**.\n")
     # A structurally real mini gate table (Gates/gate_table.json): one feature-table row and one aux row,
@@ -211,13 +207,6 @@ def test_smoke_allowlist_parse(tmp_path):
     names, found = gs.parse_smoke_allowlist(root)
     assert found
     assert names == {"MC2_ALLOWED_GATE"}
-
-
-def test_registry_check_allowlist_parse(tmp_path):
-    root = _mini_repo(tmp_path)
-    names, found = gs.parse_registry_check_allowlist(root)
-    assert found
-    assert names == {"MC2_LEGACY_TRACE"}
 
 
 def test_gate_status_verdicts(tmp_path):

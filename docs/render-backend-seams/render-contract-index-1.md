@@ -42,7 +42,7 @@ lifetime/sync**.
 #### RAW-GL-DEPTHFUNC-DIFF-GATE-1 (`scripts/check-raw-gl-depthfunc.py`)
 
 A diff-based static check that bans **new** raw `glDepthFunc()` call sites on ADDED lines,
-outside a sanctioned-file allowlist. It mirrors `scripts/check-new-gates.py` Mode A: diff vs
+outside a sanctioned-file allowlist. It mirrors check-new-gates.py (retired in G8) Mode A: diff vs
 a base ref (default `merge-base HEAD origin/main`, or `--base`), inspect only ADDED lines,
 exit 1 naming each offender when a non-allowlisted file gains a raw `glDepthFunc(`. This is a
 **different, non-overlapping** mechanism from `check-colormask-ownership.py` /

@@ -30,7 +30,7 @@ export TRACY_TOOLS_DIR="C:/Users/<you>/Downloads/TracyProfiler"
 If unset, the harness looks in `C:/Users/Joe/Downloads/TracyProfiler` (the
 original author's location). `TRACY_TOOLS_DIR` is a **tooling** env var — it is
 not an `MC2_*` runtime gate and is intentionally outside
-`scripts/check-env-registry.sh` scope; its only home is this doc.
+check-env-registry.sh (retired in G8; the gate table is the registry) scope; its only home is this doc.
 
 ## Why this works headless
 

@@ -10,7 +10,6 @@
  "scripts": [
   "scripts/check-cpu-gpu-cogating.py",
   "scripts/check-delivery.py",
-  "scripts/check-env-registry.sh",
   "scripts/check-gpu-buffer-owners.py",
   "scripts/check-lighting-divergence.py",
   "scripts/check-object-mvp-currency.py",

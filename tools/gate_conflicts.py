@@ -223,7 +223,7 @@ def load_registry(tree):
     text = tree.read(REGISTRY.replace("\\", "/"))
     if not text:
         return {}
-    path = os.path.join(ROOT, "scripts", "check-gate-default-agreement.py")
+    path = os.path.join(ROOT, "scripts", "gate_default_classifier.py")
     spec = importlib.util.spec_from_file_location("gate_default_agreement", path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
@@ -731,7 +731,7 @@ def render_md(rep):
       "They are listed in the JSON; the ratchet forbids the number rising so a new idiom cannot hide.\n")
     w("## Method and limits\n")
     w("- The reader's C++ is executed, not pattern-matched; the interpreter is `scripts/gate_idioms.py` "
-      "and shares its source plumbing with `scripts/check-gate-default-agreement.py`.")
+      "and shares its source plumbing with `scripts/gate_default_classifier.py`.")
     w("- A condition on some other piece of program state is treated as the identity of `&&`/`||`: "
       "`getenv(X) && frame % 64 == 0` is a presence test as far as X goes.")
     w("- Table-driven reads (`kEnvGates[i].name` passed to getenv later) and names built at run time "

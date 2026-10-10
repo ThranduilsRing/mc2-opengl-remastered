@@ -14,7 +14,6 @@
  ],
  "_reason": "s_gpuCullLifecycle is read by five pieces, so it keeps its eager getenv initialisation but is defined (external linkage) in gvactor.cpp and declared extern in gvactor_internal.h; gvEnvFlagDefaultOn is shared by two caches in different pieces and becomes inline in the header. Every other gate cache moved textually, unchanged, beside its single user (render/update).",
  "scripts": [
-  "scripts/check-env-registry.sh",
   "scripts/counter-honesty-allowlist.txt",
   "scripts/run_smoke.py",
   "scripts/check-light-row-freshness.py",

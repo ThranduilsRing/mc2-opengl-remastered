@@ -47,7 +47,7 @@ The yellow/red cells are tracked-and-known, not unknowns. See §9.
 
 | Validator | What it gates | Invocation | Status |
 |---|---|---|---|
-| `scripts/check-env-registry.sh` | Every `MC2_*` env literal in source either appears in `kFeatureTable`/`kAuxEnvVars` or is allow-listed (`RenderCore/RendererFeatureRegistry.h:10-13`). | `sh scripts/check-env-registry.sh` | Active. |
+| check-env-registry.sh (retired in G8; the gate table is the registry) | Every `MC2_*` env literal in source either appears in `kFeatureTable`/`kAuxEnvVars` or is allow-listed (`RenderCore/RendererFeatureRegistry.h:10-13`). | `sh scripts/check-env-registry.sh` | Active. |
 | `tools/shader_reflect/reflect.py` | 71 SPIR-V reflection JSON goldens diff against on-disk shaders. Goldens last refreshed in `80f7c92d` (SHADER-REFLECT-HYGIENE-1) and earlier in `30886561` (post F1-3B ViewUniformsBlock). | `py -3 tools/shader_reflect/reflect.py` | Active. |
 | `scripts/run_smoke.py` tier1 | Primary regression gate. 5 missions (mc2_01/03/10/17/24). CLAUDE.md mandates `--keep-logs`, no `--with-menu-canary`, `--duration ≤ 30s`. | `py -3 scripts/run_smoke.py --tier tier1 --duration 30 --kill-existing --keep-logs` | Active; last green at HEAD `22321bf4` per `docs/static-prop-v3-soak-state.md:131-141`. |
 | `RenderSnapshot::ok` aggregator | Per-frame ok flag combining ~13 mismatch / fail counters; explicitly enumerated at `GameOS/gameos/render_snapshot.h:195-204`. v4 adds 5 mech mismatch counters under `MC2_SNAPSHOT_MECH_EXTRACT`. | Read out per frame in log gate `[RENDER_SNAPSHOT ...]`. | Active. |

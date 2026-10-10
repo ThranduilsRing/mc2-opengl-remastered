@@ -18,7 +18,6 @@
   "scripts/check-apply-pass-bumped.py",
   "scripts/check-contracts.sh",
   "scripts/check-cpu-gpu-cogating.py",
-  "scripts/check-env-registry.sh",
   "scripts/check-frame-resource-feedback.py",
   "scripts/check-gpu-buffer-owners.py",
   "scripts/check-object-mvp-currency.py",
