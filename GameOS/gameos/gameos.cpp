@@ -50,7 +50,7 @@ void __stdcall StatisticFormat(char const* s)
 
 void* DecodeJPG( const char* FileName, BYTE* Data, DWORD DataSize, DWORD* TextureWidth, DWORD* TextureHeight, bool TextureLoad, void *pDestSurf )
 {
-    return NULL;
+    return nullptr;
 }
 
 gosEnvironment Environment;
@@ -86,10 +86,10 @@ static void mc2_log_exit_caller(const char* fn)
     HANDLE proc = GetCurrentProcess();
     SymSetOptions(SYMOPT_LOAD_LINES | SYMOPT_DEFERRED_LOADS | SYMOPT_UNDNAME);
     static bool s_sym_initialized = false;
-    if (!s_sym_initialized) { SymInitialize(proc, NULL, TRUE); s_sym_initialized = true; }
+    if (!s_sym_initialized) { SymInitialize(proc, nullptr, TRUE); s_sym_initialized = true; }
 
     void* frames[32];
-    USHORT n = CaptureStackBackTrace(1, 32, frames, NULL);
+    USHORT n = CaptureStackBackTrace(1, 32, frames, nullptr);
     for (USHORT i = 0; i < n; ++i) {
         char symBuf[sizeof(SYMBOL_INFO) + 512];
         SYMBOL_INFO* sym = (SYMBOL_INFO*)symBuf;
@@ -214,7 +214,7 @@ void __stdcall gos_PopCurrentHeap()
 HGOSHEAP __stdcall gos_GetCurrentHeap()
 {
     if(g_heapStackPointer == -1)
-        return NULL;
+        return nullptr;
     return g_heapsStack[g_heapStackPointer];
 }
 
@@ -226,7 +226,7 @@ void __stdcall gos_WalkMemoryHeap(HGOSHEAP pHeap, bool vociferous/* = false*/)
 ////////////////////////////////////////////////////////////////////////////////
 void* operator new(size_t sz) {
     // A replaced operator new must not return null: callers (and the compiler) assume the result is valid.
-    void* p = gos_Malloc(sz ? sz : 1, NULL);
+    void* p = gos_Malloc(sz ? sz : 1, nullptr);
     if (!p)
         throw std::bad_alloc();
     return p;
@@ -368,7 +368,7 @@ void __stdcall gosJoystick_SetPolling( DWORD index, bool yesNo, float howOften/*
 void __stdcall gosJoystick_GetInfo( DWORD index, gosJoystick_Info* gji )
 {
     gosASSERT(gji);
-	gji->lpstrName = NULL;
+	gji->lpstrName = nullptr;
 	gji->bAxisValid = 0;
 	gji->nAxes = 0;			
 	gji->nButtons = 0;	
@@ -381,7 +381,7 @@ void __stdcall gosJoystick_GetInfo( DWORD index, gosJoystick_Info* gji )
 ////////////////////////////////////////////////////////////////////////////////
 char* __stdcall gos_GetFormattedDate( bool Verbose, WORD Year/*=-1*/, WORD Month/*=-1*/, WORD Day/*=-1*/ )
 {
-    time_t tim = time(NULL);
+    time_t tim = time(nullptr);
     struct tm* gm_time_data = gmtime(&tim);
     if(Year < 0) {
         Year = 1900 + gm_time_data -> tm_year;
@@ -428,7 +428,7 @@ char* __stdcall gos_GetFormattedDate( bool Verbose, WORD Year/*=-1*/, WORD Month
 ////////////////////////////////////////////////////////////////////////////////
 char* __stdcall gos_GetFormattedTime( WORD Hour/*=-1*/, WORD Minute/*=-1*/, WORD Second/*=-1*/ )
 {
-    time_t tim = time(NULL);
+    time_t tim = time(nullptr);
     struct tm* gm_time_data = gmtime(&tim);
     if(Hour < 0) {
         Hour = gm_time_data -> tm_hour;
@@ -495,7 +495,7 @@ __int64 __stdcall gos_GetDriveFreeSpace( char* Path )
 	// failure so callers take the conservative branch.
 	ULARGE_INTEGER freeBytesAvailable;
 	freeBytesAvailable.QuadPart = 0;
-	if (!GetDiskFreeSpaceEx(Path, &freeBytesAvailable, NULL, NULL))
+	if (!GetDiskFreeSpaceEx(Path, &freeBytesAvailable, nullptr, nullptr))
 	{
 		// Path may be a file, a relative path, or a UNC root we cannot query.
 		// Fall back to the previous behaviour (current drive) rather than
@@ -513,7 +513,7 @@ __int64 __stdcall gos_GetDriveFreeSpace( char* Path )
 		        Path ? Path : "(null)", (unsigned long)err);
 		fflush(stderr);
 		freeBytesAvailable.QuadPart = 0;
-		if (!GetDiskFreeSpaceEx(NULL, &freeBytesAvailable, NULL, NULL))
+		if (!GetDiskFreeSpaceEx(nullptr, &freeBytesAvailable, nullptr, nullptr))
 		{
 			fprintf(stderr,
 			        "[DISK_GUARD] gos_GetDriveFreeSpace: current-drive fallback "
@@ -545,7 +545,7 @@ void __stdcall gos_LoadDataFromRegistry( const char* keyName, void* pData, DWORD
     // this code can be useful to get registry file location
     
     const char* home_dir = getenv("HOME");
-    if(home_dir == NULL)
+    if(home_dir == nullptr)
     {
         SPEW(("gos_LoadDataFromRegistry", "home directory is not set\n"));
         *szData = 0;
@@ -556,7 +556,7 @@ void __stdcall gos_LoadDataFromRegistry( const char* keyName, void* pData, DWORD
     char cfg_dir[cfg_dir_size] = {0};
 
     const char* config_dir = getenv("XDG_CONFIG_HOME");
-    if(config_dir == NULL) {
+    if(config_dir == nullptr) {
         sprintf(cfg_dir, "%s/%s", home_dir, g_user_base_config_dir);
     } else {
         strncpy(cfg_dir, config_dir, 1023);
@@ -626,8 +626,8 @@ bool __stdcall gos_GetUserDataDirectory(char* user_dir, const int len)
     struct stat st;
 
 #ifdef PLATFORM_WINDOWS
-	PWSTR homeDir = 0;
-	SHGetKnownFolderPath(FOLDERID_Profile, 0, NULL, &homeDir);
+	PWSTR homeDir = nullptr;
+	SHGetKnownFolderPath(FOLDERID_Profile, 0, nullptr, &homeDir);
 	wcstombs(cfg_dir, homeDir, cfg_dir_size-1);
 	cfg_dir[cfg_dir_size-1] = '\0';
 	CoTaskMemFree(homeDir);
@@ -697,6 +697,6 @@ bool volatile mc2IsInMouseTimer = false;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-HGOSHEAP ParentClientHeap = NULL;
+HGOSHEAP ParentClientHeap = nullptr;
 float ProcessorSpeed = 10595.42f; // sebi: put something cool
 float OneOverProcessorSpeed = 1.0f / ProcessorSpeed; // sebi: put something cool

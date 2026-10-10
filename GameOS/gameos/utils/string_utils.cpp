@@ -22,7 +22,7 @@ void StringFree(wchar_t* s)
 char* StringDup(const char* s)
 {
 	if( ! s )
-		return NULL;
+		return nullptr;
 
 	int size = (int)strlen(s) + 1;
 	char* ss = (char*)malloc(size);
@@ -33,7 +33,7 @@ char* StringDup(const char* s)
 wchar_t* StringDup(const wchar_t* s)
 {
 	if( ! s )
-		return NULL;
+		return nullptr;
 
 	int size = (int)wcslen(s) + 1;
 	wchar_t* ss = (wchar_t*)malloc(size * sizeof(wchar_t));
@@ -43,16 +43,16 @@ wchar_t* StringDup(const wchar_t* s)
 
 inline char* StringDupSafe(const char* s)
 {
-	if( s == NULL)
-		return NULL;
+	if( s == nullptr)
+		return nullptr;
 	else
 		return StringDup(s);
 }
 
 inline wchar_t* StringDupSafe(const wchar_t* s)
 {
-	if( s == NULL )
-		return NULL;
+	if( s == nullptr )
+		return nullptr;
 	else
 		return StringDup(s);
 }
@@ -72,7 +72,7 @@ inline int StringToLower(const char* const szPath, char* szLowerPath, int nLen)
 
 inline int StringToLowerSafe(const char* const szPath, char* szLowerPath, int nLen)
 {
-	if(szPath == NULL || szLowerPath == NULL)
+	if(szPath == nullptr || szLowerPath == nullptr)
 		return -1;
 	else
 		return StringToLower(szPath, szLowerPath, nLen);
@@ -151,7 +151,7 @@ inline const char* StringGetExtention(const char* pstr)
     size_t len = strlen(ext);
     if(len > 1)
         return ++ext;
-    return 0;
+    return nullptr;
 }
 
 static int VSNPrintf(char* buf, size_t buf_size, const char* format, va_list ap) {

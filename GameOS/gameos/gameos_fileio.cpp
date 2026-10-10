@@ -27,9 +27,9 @@ gosFileStream::gosFileStream( const char *FileName, gosEnum_FileWriteStatus fwst
     strcpy(m_Filename, FileName);
 
     // ???
-    pNext = 0;
+    pNext = nullptr;
 
-    const char* mode = 0;
+    const char* mode = nullptr;
     switch(fwstatus) {
         case READONLY:
             mode = "rb";
@@ -163,7 +163,7 @@ bool __stdcall gos_CreateDirectory(char const* FileName)
 char* __stdcall gos_FindDirectories(char const* DirectoryName)
 {
     STOP(("gos function not implemented"));
-    return NULL;
+    return nullptr;
 }
 void __stdcall gos_FindDirectoriesClose()
 {
@@ -172,12 +172,12 @@ void __stdcall gos_FindDirectoriesClose()
 char* __stdcall gos_FindDirectoriesNext()
 {
     STOP(("gos function not implemented"));
-    return NULL;
+    return nullptr;
 }
 char* __stdcall gos_FindFiles(char const* PathFileName)
 {
     STOP(("gos function not implemented"));
-    return NULL;
+    return nullptr;
 }
 void __stdcall gos_FindFilesClose()
 {
@@ -186,13 +186,13 @@ void __stdcall gos_FindFilesClose()
 char* __stdcall gos_FindFilesNext()
 {
     STOP(("gos function not implemented"));
-    return NULL;
+    return nullptr;
 }
 
 void __stdcall gos_GetCurrentPath(char* Buffer, int buf_len)
 {
     gosASSERT(Buffer);
-    if(getcwd(Buffer, buf_len) == NULL) {
+    if(getcwd(Buffer, buf_len) == nullptr) {
         int last_error = errno;
         STOP(("Current path is longer than buffer provided for it, getwd: %s\n", strerror(last_error)));
     }

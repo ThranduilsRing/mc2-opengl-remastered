@@ -28,7 +28,7 @@
 
 void Image::clear(){
 	delete[] pixels;
-	pixels = NULL;
+	pixels = nullptr;
 	width = height = 0;
 	format = FORMAT_NONE;
 }
@@ -116,7 +116,7 @@ static FORMAT getFormatFromBpp(const unsigned int bpp) {
 
 Image::Image(void)
 {
-	pixels = 0;
+	pixels = nullptr;
 	width = height = 0;
 	format = FORMAT_NONE;
 }
@@ -140,7 +140,7 @@ unsigned char *Image::create(const FORMAT fmt, const int w, const int h){
 
 bool Image::loadFromFile(const char *fileName){
 	const char *ext = strrchr(fileName, '.');
-	if (ext == NULL) return false;
+	if (ext == nullptr) return false;
 
 	ext++;
 	if (stricmp(ext, "tga") == 0)
@@ -189,7 +189,7 @@ bool Image::loadWICFromMemory(const unsigned char* mem, size_t len)
 	if (!mem || len == 0)
 		return false;
 
-	HRESULT comInit = CoInitializeEx(NULL, COINIT_MULTITHREADED);
+	HRESULT comInit = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
 	const bool shouldUninitializeCom = SUCCEEDED(comInit);
 	if (comInit == RPC_E_CHANGED_MODE)
 		comInit = S_OK;
@@ -197,17 +197,17 @@ bool Image::loadWICFromMemory(const unsigned char* mem, size_t len)
 	if (FAILED(comInit))
 		return false;
 
-	IWICImagingFactory* factory = NULL;
-	IWICStream* stream = NULL;
-	IWICBitmapDecoder* decoder = NULL;
-	IWICBitmapFrameDecode* frame = NULL;
-	IWICFormatConverter* converter = NULL;
+	IWICImagingFactory* factory = nullptr;
+	IWICStream* stream = nullptr;
+	IWICBitmapDecoder* decoder = nullptr;
+	IWICBitmapFrameDecode* frame = nullptr;
+	IWICFormatConverter* converter = nullptr;
 
 	bool ok = false;
 
 	HRESULT hr = CoCreateInstance(
 		CLSID_WICImagingFactory,
-		NULL,
+		nullptr,
 		CLSCTX_INPROC_SERVER,
 		IID_PPV_ARGS(&factory));
 
@@ -222,7 +222,7 @@ bool Image::loadWICFromMemory(const unsigned char* mem, size_t len)
 	if (SUCCEEDED(hr))
 		hr = factory->CreateDecoderFromStream(
 			stream,
-			NULL,
+			nullptr,
 			WICDecodeMetadataCacheOnLoad,
 			&decoder);
 
@@ -242,7 +242,7 @@ bool Image::loadWICFromMemory(const unsigned char* mem, size_t len)
 		frame,
 		GUID_WICPixelFormat32bppRGBA,
 		WICBitmapDitherTypeNone,
-		NULL,
+		nullptr,
 		0.0,
 		WICBitmapPaletteTypeCustom);
 
@@ -252,7 +252,7 @@ bool Image::loadWICFromMemory(const unsigned char* mem, size_t len)
 		const UINT imageBytes = stride * decodedHeight;
 		unsigned char* decodedPixels = new unsigned char[imageBytes];
 
-		hr = converter->CopyPixels(NULL, stride, imageBytes, decodedPixels);
+		hr = converter->CopyPixels(nullptr, stride, imageBytes, decodedPixels);
 		if (SUCCEEDED(hr))
 		{
 			pixels = decodedPixels;
@@ -292,12 +292,12 @@ bool Image::loadWIC(const char *fileName)
 	if (!fileName || !fileName[0])
 		return false;
 
-	int wideLength = MultiByteToWideChar(CP_UTF8, 0, fileName, -1, NULL, 0);
+	int wideLength = MultiByteToWideChar(CP_UTF8, 0, fileName, -1, nullptr, 0);
 	UINT codePage = CP_UTF8;
 	if (wideLength <= 0)
 	{
 		codePage = CP_ACP;
-		wideLength = MultiByteToWideChar(codePage, 0, fileName, -1, NULL, 0);
+		wideLength = MultiByteToWideChar(codePage, 0, fileName, -1, nullptr, 0);
 	}
 
 	if (wideLength <= 0)
@@ -310,7 +310,7 @@ bool Image::loadWIC(const char *fileName)
 		return false;
 	}
 
-	HRESULT comInit = CoInitializeEx(NULL, COINIT_MULTITHREADED);
+	HRESULT comInit = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
 	const bool shouldUninitializeCom = SUCCEEDED(comInit);
 	if (comInit == RPC_E_CHANGED_MODE)
 		comInit = S_OK;
@@ -321,23 +321,23 @@ bool Image::loadWIC(const char *fileName)
 		return false;
 	}
 
-	IWICImagingFactory* factory = NULL;
-	IWICBitmapDecoder* decoder = NULL;
-	IWICBitmapFrameDecode* frame = NULL;
-	IWICFormatConverter* converter = NULL;
+	IWICImagingFactory* factory = nullptr;
+	IWICBitmapDecoder* decoder = nullptr;
+	IWICBitmapFrameDecode* frame = nullptr;
+	IWICFormatConverter* converter = nullptr;
 
 	bool ok = false;
 
 	HRESULT hr = CoCreateInstance(
 		CLSID_WICImagingFactory,
-		NULL,
+		nullptr,
 		CLSCTX_INPROC_SERVER,
 		IID_PPV_ARGS(&factory));
 
 	if (SUCCEEDED(hr))
 		hr = factory->CreateDecoderFromFilename(
 		wideFileName,
-		NULL,
+		nullptr,
 		GENERIC_READ,
 		WICDecodeMetadataCacheOnLoad,
 		&decoder);
@@ -358,7 +358,7 @@ bool Image::loadWIC(const char *fileName)
 		frame,
 		GUID_WICPixelFormat32bppRGBA,
 		WICBitmapDitherTypeNone,
-		NULL,
+		nullptr,
 		0.0,
 		WICBitmapPaletteTypeCustom);
 
@@ -368,7 +368,7 @@ bool Image::loadWIC(const char *fileName)
 		const UINT imageBytes = stride * decodedHeight;
 		unsigned char* decodedPixels = new unsigned char[imageBytes];
 
-		hr = converter->CopyPixels(NULL, stride, imageBytes, decodedPixels);
+		hr = converter->CopyPixels(nullptr, stride, imageBytes, decodedPixels);
 		if (SUCCEEDED(hr))
 		{
 			pixels = decodedPixels;
@@ -404,7 +404,7 @@ bool Image::loadTGA(const char *fileName){
 
 	FILE *file;
 
-	if ((file = fopen(fileName, "rb")) == NULL) return false;
+	if ((file = fopen(fileName, "rb")) == nullptr) return false;
 	return loadTGA(file);
 }
 
@@ -419,7 +419,7 @@ bool Image::loadTGA(FILE* file)
 	int pixelSize = header.bpp / 8;
 
 	bool rv = false;
-	unsigned char *readPixels = 0;
+	unsigned char *readPixels = nullptr;
 
 	if (header.imageType == (unsigned char)TGADataType::kUncompressedRGB) {
 
@@ -468,7 +468,7 @@ bool Image::loadTGA(const unsigned char* mem, size_t len)
 	unsigned int pixelSize = header.bpp / 8;
 	int size = header.width * header.height * pixelSize;
 
-	unsigned char *readPixels = 0;
+	unsigned char *readPixels = nullptr;
 	bool rv = false;
 
 
@@ -646,7 +646,7 @@ bool Image::loadBMP(const char *fileName){
 	clear();
 
 	FILE *file = fopen(fileName, "rb");
-	if (file == NULL) return false;
+	if (file == nullptr) return false;
 
 	return loadBMP(file);
 }

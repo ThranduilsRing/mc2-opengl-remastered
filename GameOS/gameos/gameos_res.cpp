@@ -22,7 +22,7 @@ static void* DL_LoadFunction(void* handle, const char* name) {
 static const char* DL_GetError() {
 	const char* err = SDL_GetError();
 	SDL_ClearError();
-	return strlen(err)==0 ? NULL : err;
+	return strlen(err)==0 ? nullptr : err;
 }
 #else
 #include <dlfcn.h>
@@ -89,9 +89,9 @@ HSTRRES __stdcall gos_OpenResourceDLL(char const* FileName, const char** strings
         if (MC2Strings::Load())
         {
             gos_StringRes* pstrres = new gos_StringRes();
-            pstrres->getStringByIdFptr = NULL;
-            pstrres->module = NULL;
-            pstrres->strings = NULL;
+            pstrres->getStringByIdFptr = nullptr;
+            pstrres->module = nullptr;
+            pstrres->strings = nullptr;
             pstrres->num_strings = 0;
             return pstrres;
         }
@@ -106,7 +106,7 @@ HSTRRES __stdcall gos_OpenResourceDLL(char const* FileName, const char** strings
     gosASSERT(module);
     if (!module) {
         fprintf(stderr, "Couldn't open resourse dll: %s\n", DL_GetError());
-        return NULL;
+        return nullptr;
     }
 
 	DL_GetError();    /* Clear any existing error */
@@ -115,14 +115,14 @@ HSTRRES __stdcall gos_OpenResourceDLL(char const* FileName, const char** strings
     fptr = (get_string_by_id_fptr)DL_LoadFunction(module, "getStringById");
     if ((error = DL_GetError())) {
         fprintf(stderr, "Couldn't load function getStringById in %s (not exported?): %s\n", FileName, error);
-        return NULL;
+        return nullptr;
     }
 
     init_string_resources_fptr init_fptr;
     init_fptr = (init_string_resources_fptr)DL_LoadFunction(module, "initStringResources");
     if ((error = DL_GetError())) {
         fprintf(stderr, "Couldn't load function initStringResources in %s (not exported?): %s\n", FileName, error);
-        return NULL;
+        return nullptr;
     }
     init_fptr();
 
@@ -131,7 +131,7 @@ HSTRRES __stdcall gos_OpenResourceDLL(char const* FileName, const char** strings
     pstrres->module = module;
 
     /* deprecated */
-    pstrres->strings = NULL;
+    pstrres->strings = nullptr;
     pstrres->num_strings = 0;
 
     return pstrres;
@@ -191,7 +191,7 @@ const char* __stdcall gos_GetResourceString(HSTRRES handle, DWORD id)
 
     const char* str = pstrres->getStringByIdFptr(id);
 
-    if(NULL == str) {
+    if(nullptr == str) {
         fprintf(stderr, "Requested string id: %d not found, return missing marker\n", id);
         return MC2Strings::MissingResourceId(id);
     }

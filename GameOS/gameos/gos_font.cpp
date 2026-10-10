@@ -41,7 +41,7 @@ bool gos_load_glyphs(const char* glyphFile, gosGlyphInfo& gi)
                   glyphFile, gi.num_glyphs_, (uint32_t)num_structs_read));
             fclose(glyph_info);
             delete[] gi.glyphs_;
-            gi.glyphs_ = NULL;
+            gi.glyphs_ = nullptr;
             gi.num_glyphs_ = 0;
             return false;
         }
@@ -402,7 +402,7 @@ bool parse_v1(FILE* f, gosGlyphInfo& gi, gosD3FAtlas& atlas)
 
 bool gos_load_d3f(const char* d3fFile, gosGlyphInfo& gi, gosD3FAtlas& atlas)
 {
-    atlas.pixels = NULL;
+    atlas.pixels = nullptr;
     atlas.width = atlas.height = 0;
 
     FILE* f = fopen(d3fFile, "rb");
@@ -427,10 +427,10 @@ bool gos_load_d3f(const char* d3fFile, gosGlyphInfo& gi, gosD3FAtlas& atlas)
 
     if(!ok) {
         delete[] gi.glyphs_;
-        gi.glyphs_ = NULL;
+        gi.glyphs_ = nullptr;
         gi.num_glyphs_ = 0;
         delete[] atlas.pixels;
-        atlas.pixels = NULL;
+        atlas.pixels = nullptr;
         atlas.width = atlas.height = 0;
     }
     return ok;
