@@ -1,6 +1,7 @@
 // Mover: attack chance, shutdown/startup, refit and recover.
 // Declared in mover.h; shared names in mover_internal.h.
 #include "mover_internal.h"
+#include "Gates/gate.h"
 
 
 #define MAX_SHORT_RANGE		(60.0f * worldUnitsPerMeter)
@@ -196,7 +197,7 @@ float Mover::calcAttackChance (GameObjectPtr target, long aimLocation, float tar
 		// aimed modifiers are FLOORED at 0.30/0.45/0.50 (data value wins if a
 		// mod raised it higher); Sharpshooter +20 and the 5-95 clamp unchanged.
 		static const bool s_calledShotFix =
-			(std::getenv("MC2_CALLED_SHOT_FIX") != nullptr && std::getenv("MC2_CALLED_SHOT_FIX")[0] != '0');
+			mc2::gate::get<"MC2_CALLED_SHOT_FIX">();
 		float headMod = HeadShotModifier;
 		float armMod  = ArmShotModifier;
 		float legMod  = LegShotModifier;
