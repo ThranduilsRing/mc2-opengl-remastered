@@ -352,7 +352,7 @@ Shaders that carry sites, with their counterpart in the other backend. Twins mus
 
 ### `mclib/terrain.cpp` (1)
 
-- `mclib/terrain.cpp:3034` decl-chain: `-lookDir.x, ly = lookDir.z, lz = lookDir.y`
+- `mclib/terrain.cpp:3004` decl-chain: `-lookDir.x, ly = lookDir.z, lz = lookDir.y`
 
 ### `shaders/building_pbr.vert` (1)
 

@@ -6,19 +6,19 @@ Probes: **U** unset, **E** `""`, **Z** `"0"`, **F** `"false"`, **O** `"1"`, **X*
 
 ## Totals
 
-Scanned: commit 6532c1ca9.
+Scanned: commit 1f7c63c34.
 
 | Measure | Count |
 |---|---|
 | gates named by a literal in scanned code | 1131 |
 | gates with at least one classified reader | 1117 |
-| `"MC2_*"` literal occurrences | 1697 |
+| `"MC2_*"` literal occurrences | 1701 |
 | literals not passed to an env read (tables, writers, indirect names) | 45 |
-| read sites analysed | 1652 |
-| reader sites with an outcome vector | 1551 |
-| reader sites comparing a token no probe hits (not comparable) | 61 |
+| read sites analysed | 1656 |
+| reader sites with an outcome vector | 1543 |
+| reader sites comparing a token no probe hits (not comparable) | 74 |
 | sites where the probe decides nothing (prints, paths) | 17 |
-| sites the tool could not classify | 23 |
+| sites the tool could not classify | 22 |
 | **gates with conflicting readers** | 6 |
 | **of which unresolved** (not ledgered as `enum` or `divergent`) | 0 |
 
@@ -103,17 +103,17 @@ Source: `tools/gate_g0_ledger.json`. `resolved` = the readers now agree; `enum` 
 
 | Class | Reader sites |
 |---|---|
-| Presence | 475 |
+| Presence | 477 |
 | Lead0Kill | 201 |
 | Lead0 | 192 |
-| Num(atof,raw) | 148 |
-| Lead1 | 130 |
+| Num(atof,raw) | 144 |
+| Lead1 | 129 |
 | AtoiNZ | 60 |
 | Lead0P | 59 |
 | Tri(inherit) | 50 |
-| Num(atoi,raw) | 47 |
+| Num(atoi,raw) | 45 |
 | Exact1 | 44 |
-| NonEmpty | 42 |
+| NonEmpty | 41 |
 | Num(atol,raw) | 21 |
 | Std(def=off) | 14 |
 | Num(atof,guarded) | 11 |
@@ -123,10 +123,10 @@ Source: `tools/gate_g0_ledger.json`. `resolved` = the readers now agree; `enum` 
 | Num(strtoul,guarded) | 5 |
 | Custom[10001011] | 5 |
 | Partial[D,on,off,on,on,on,on,on] | 4 |
-| Num(num,raw) | 4 |
 | Num(strtoul,raw) | 3 |
 | Str[dflt,dflt] | 3 |
 | Is01 | 2 |
+| Num(num,raw) | 2 |
 | Partial[D,D,off,on,on,on,on,on] | 1 |
 | Str[null,null] | 1 |
 | Partial[D,D,off,D,on,D,D,D] | 1 |
@@ -136,7 +136,7 @@ Source: `tools/gate_g0_ledger.json`. `resolved` = the readers now agree; `enum` 
 | Num(atol,guarded) | 1 |
 | Partial[D,off,off,off,off,off,off,on] | 1 |
 
-## Sites the tool could not classify (23)
+## Sites the tool could not classify (22)
 
 Mostly string- and path-valued reads whose only use is a library call (`fopen`, `snprintf`). They are listed in the JSON; the ratchet forbids the number rising so a new idiom cannot hide.
 
