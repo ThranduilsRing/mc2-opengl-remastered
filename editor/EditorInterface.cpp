@@ -10,6 +10,7 @@
 
 #include "EditorInterface_internal.h"
 #include "../RenderCore/axis_convert.h"
+#include "Gates/gate.h"
 
 
 // ---------------------------------------------------------------------------
@@ -29,7 +30,7 @@ void EditorShutdownTrace(const char* fmt, ...)
 
 	crashbundle_append(buf);
 
-	if (getenv("MC2_EDITOR_TRACE") == NULL)
+	if (!mc2::gate::get<"MC2_EDITOR_TRACE">())
 		return;
 
 	FILE* f = fopen("editor-startup.log", "a");
@@ -831,7 +832,7 @@ void EditorInterface::update()
 	// land-pointer-change guard). Lets a -gen-map / -mission smoke capture same-session
 	// before/after-fix evidence without the ImGui panel. Read-only.
 	{
-		static bool   s_probeEnabled = ( getenv("MC2_TERRAIN_PROBE") != NULL );
+		static bool   s_probeEnabled = mc2::gate::get<"MC2_TERRAIN_PROBE">();
 		static void*  s_lastProbedLand = (void*)1;   // != NULL and != any real land yet
 		if ( s_probeEnabled && land && (void*)land != s_lastProbedLand )
 		{
