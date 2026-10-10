@@ -1,6 +1,7 @@
 // WeaponBolt: bolt rendering and the VK VFX immediate-draw gates it reads.
 // Declared in the class headers; shared names in weaponbolt_internal.h.
 #include "weaponbolt_internal.h"
+#include "../RenderCore/axis_convert.h"
 
 
 // VK-FIELD-VFX-2 (2026-07-11): under the field VK umbrella the DEFAULT bolt path
@@ -623,9 +624,7 @@ void WeaponBolt::render (void)
 					}
 				}
 	
-				actualPosition.x = -hotSpot.x;	//Play the beam hitting effect at the hit location
-				actualPosition.y = hotSpot.z;
-				actualPosition.z = hotSpot.y;
+				mc2ToRender(actualPosition, hotSpot);	//Play the beam hitting effect at the hit location
 				
 				Stuff::LinearMatrix4D 	shapeOrigin;
 				Stuff::LinearMatrix4D	localToWorld;
@@ -648,9 +647,7 @@ void WeaponBolt::render (void)
 		else if (gosEffect)
 		{
 			Stuff::Point3D actualPosition;
-			actualPosition.x = -laserPosition.x;
-			actualPosition.y = laserPosition.z;
-			actualPosition.z = laserPosition.y;
+			mc2ToRender(actualPosition, laserPosition);
 			
 			Stuff::LinearMatrix4D 	shapeOrigin;
 			Stuff::LinearMatrix4D	localToWorld;
@@ -673,9 +670,7 @@ void WeaponBolt::render (void)
 		if (muzzleEffect)
 		{
 			Stuff::Point3D mPosition;
-			mPosition.x = -position.x;
-			mPosition.y = position.z;
-			mPosition.z = position.y;
+			mc2ToRender(mPosition, position);
 			
 			Stuff::LinearMatrix4D 	shapeOrigin;
 			Stuff::LinearMatrix4D	localToWorld;
@@ -724,9 +719,7 @@ void WeaponBolt::render (void)
 			}
 
 			Stuff::Point3D tPosition;
-			tPosition.x = -hotSpot.x;
-			tPosition.y = hotSpot.z;
-			tPosition.z = hotSpot.y;
+			mc2ToRender(tPosition, hotSpot);
 			
 			Stuff::LinearMatrix4D 	shapeOrigin;
 			Stuff::LinearMatrix4D	localToWorld;
@@ -749,9 +742,7 @@ void WeaponBolt::render (void)
 			Stuff::Vector3D hotSpot = *targetPosition;
 			
 			Stuff::Point3D tPosition;
-			tPosition.x = -hotSpot.x;
-			tPosition.y = hotSpot.z;
-			tPosition.z = hotSpot.y;
+			mc2ToRender(tPosition, hotSpot);
 			
 			Stuff::LinearMatrix4D 	shapeOrigin;
 			Stuff::LinearMatrix4D	localToWorld;
