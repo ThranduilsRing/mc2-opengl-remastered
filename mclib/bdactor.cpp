@@ -24,10 +24,95 @@
 #include <intrin.h>
 #include <stdlib.h>
 #include <atomic>  // std::atomic — FRAME-JOBS-2 precondition (s_animTypeIdleNowStatic)
+
+#include "gos_static_prop_killswitch.h"
+#include "gos_static_prop_batcher.h"
+#include "tgl_load_guard.h"  // META-FIX design B PART 1: required base-shape load guard
+#include "gos_static_prop_registry.h"  // Stage 3.C: static-registry fast path
+#include "cliff_decal_tuning.h"  // TERRAIN-DECAL-SLICE-0C: shared face-frame + live tuning
+#include "gos_mech_killswitch.h"       // g_mechPreviewRenderDepth (component preview-fix)
+#include "../GameAdapters/StaticPropRenderAdapter.h"  // M1 RenderWorld Tasks 8-11
+#include <cstring>
+#include <string>
+#include <fstream>
+#include <sstream>
+#include <algorithm>
+#include <GL/glew.h>
+#include "../RenderCore/KtxLoader.h"
+#include "../RenderCore/MaterialGpu.h"
+#include "gos_object_parity_query.h"  // IsDualEmitArmed — Stage 2.D.2 dual-emit hook
+#include <set>            // [LIGHTSLOT v1] Task 0 cardinality gate
+#include "gos_smoke.h"    // [LIGHTSLOT v1] SmokeMode::missionHasStarted()
+#include "gos_object_recon_tracy.h"  // [OBJECT_RECON v1] slice-2 recon-zero
+#include "cpu_proj_cost_split.h"      // F3 CPU projection cost-baseline (RAII scope)
+#include "spotlight_diag.h"  // T1.16 — (E)-owned slot tagging for per-slot probe
+#include "cone_glow.h"       // LIGHT-CONE-MODELS-1 — node aim + cone glow
+#include "gos_profiler.h"  // PERF DIAGNOSTIC 2026-05-06: ZoneScopedN for per-update breakdown
+#include <cmath>          // CONE-SPILL-COUPLING-1 — sqrt for the ray/terrain march
+#include <cstdlib>
+
+// MODEL-OVERRIDE dual-shape (Slice 2): registry resolve + direct geometry import.
+#include "model_override_registry.h"
+#include "assimp_importer.h"
+
+#ifndef CAMERA_H
+#include"camera.h"
+#endif
+
+#ifndef DBASEGUI_H
+#include"dbasegui.h"
+#endif
+
+#ifndef CIDENT_H
+#include"cident.h"
+#endif
+
+#ifndef PATHS_H
+#include"paths.h"
+#endif
+
+#ifndef OBJSTATUS_H
+#include"objstatus.h"
+#endif
+
+#ifndef UTILITIES_H
+#include"utilities.h"
+#endif
+
+#ifndef INIFILE_H
+#include"inifile.h"
+#endif
+
+#ifndef ERR_H
+#include"err.h"
+#endif
+
+#ifndef TXMMGR_H
+#include"txmmgr.h"
+#endif
+
+#include"terrain_runtime.h"
+#include"static_light_row_guard.h"  // ZERO-LIGHT-ROW-1: guard/forward divergence census
+
+#ifndef TIMING_H
+#include"timing.h"
+#endif
+
+#ifndef CELINE_H
+#include"celine.h"
+#endif
+
+#ifndef MOVE_H
+#include"move.h"
+#endif
+
+#include "../code/unitdesg.h" /* just for definition of MIN_TERRAIN_PART_ID and MAX_MAP_CELL_WIDTH */
+#include "../code/static_update_counters.h" /* [TOBJSPLIT v1] g_tobjAngularCyc / g_tobjProjCyc extern decls */
+#include "gos_static_prop_batcher.h"
 // File-scope gate: one gate read per TU, process-start-constant, shared across
 // BldgAppearance::recalcBounds and TreeAppearance::recalcBounds. Matches the
 // file-scope pattern in code/terrobj.cpp:176.
-static bool s_tobjSplitBdOn = mc2::gate::get<"MC2_TOBJ_COST_SPLIT">();
+bool s_tobjSplitBdOn = mc2::gate::get<"MC2_TOBJ_COST_SPLIT">();
 
 // FOLIAGE-ALPHAFLAG-1: MC2_PROP_FOLIAGE_ALPHAFLAG (default OFF).
 //
@@ -59,8 +144,8 @@ static bool s_tobjSplitBdOn = mc2::gate::get<"MC2_TOBJ_COST_SPLIT">();
 // (gos_static_prop_batcher.cpp:2894), which is an independent channel from this
 // per-INSTANCE flags word. So this cannot double-classify and cannot move
 // shipped shoreline pixels.
-static const bool s_propFoliageAlphaFlag = mc2::gate::get<"MC2_PROP_FOLIAGE_ALPHAFLAG">();
-static inline bool propFoliageAlphaFlag() { return s_propFoliageAlphaFlag; }
+const bool s_propFoliageAlphaFlag = mc2::gate::get<"MC2_PROP_FOLIAGE_ALPHAFLAG">();
+inline bool propFoliageAlphaFlag() { return s_propFoliageAlphaFlag; }
 
 // BLDG-TYPE-ANIM-GATE-FIX-1 kill-switch.
 // Unset/1 = new: idle animatable-type buildings eligible for static path.
@@ -71,27 +156,27 @@ static bool s_bldgTypeAnimStaticEligible = mc2::gate::get<"MC2_BLDG_TYPE_ANIM_ST
 // s_animTypeIdleNowStatic is atomic: FRAME-JOBS-2 will run BldgAppearance::touch()
 // on worker threads; this counter is incremented there. relaxed ordering is
 // sufficient — it is a diagnostic accumulator, not a synchronisation point.
-static std::atomic<uint32_t> s_animTypeIdleNowStatic{0};
-static uint32_t s_animStartInvalidated    = 0;
-static uint32_t s_animStateToStateGesture = 0;
+std::atomic<uint32_t> s_animTypeIdleNowStatic{0};
+uint32_t s_animStartInvalidated    = 0;
+uint32_t s_animStateToStateGesture = 0;
 
 // STATIC-SCENE-PROXY-RECON-1: per-window classification counters.
 // Gated by MC2_STATIC_PROXY_RECON env var. No behavior change — read-only.
 // "proxy candidate" = object that is fully stable and could be baked at mission
 // load rather than evaluated every frame in Phase 2 (touchSerialCommit).
 // Rejection categories mirror the stableLightSkipEligible criteria exactly.
-static const bool s_proxyReconEnabled = mc2::gate::get<"MC2_STATIC_PROXY_RECON">();
-static std::atomic<int64_t> g_spr_phase2Calls{0};    // total touchSerialCommit calls (bldg+tree)
-static std::atomic<int64_t> g_spr_bldgCalls{0};      // BldgAppearance::touchSerialCommit calls
-static std::atomic<int64_t> g_spr_treeCalls{0};      // TreeAppearance::touchSerialCommit calls
-static std::atomic<int64_t> g_spr_proxyCandidate{0}; // fully stable — all criteria met
-static std::atomic<int64_t> g_spr_rejNoShape{0};     // bldgShape/treeShape is null (returned early)
-static std::atomic<int64_t> g_spr_rejNoStaticReg{0}; // !staticReg.registered || recipeIndex < 0
-static std::atomic<int64_t> g_spr_rejBadLightIdx{0}; // lightDataIndex == 0xFFFFFFFFu
-static std::atomic<int64_t> g_spr_rejNoValidLight{0};// !hasValidStaticLight (bldg only)
-static std::atomic<int64_t> g_spr_rejLightGenMismatch{0}; // lastLightEnvGen != currentLightEnvGen (bldg only)
-static std::atomic<int64_t> g_spr_rejNeedsFullBake{0};    // needsFullBakeNextFrame
-static std::atomic<int64_t> g_spr_callCounter{0};    // monotonic call count for print trigger
+const bool s_proxyReconEnabled = mc2::gate::get<"MC2_STATIC_PROXY_RECON">();
+std::atomic<int64_t> g_spr_phase2Calls{0};    // total touchSerialCommit calls (bldg+tree)
+std::atomic<int64_t> g_spr_bldgCalls{0};      // BldgAppearance::touchSerialCommit calls
+std::atomic<int64_t> g_spr_treeCalls{0};      // TreeAppearance::touchSerialCommit calls
+std::atomic<int64_t> g_spr_proxyCandidate{0}; // fully stable — all criteria met
+std::atomic<int64_t> g_spr_rejNoShape{0};     // bldgShape/treeShape is null (returned early)
+std::atomic<int64_t> g_spr_rejNoStaticReg{0}; // !staticReg.registered || recipeIndex < 0
+std::atomic<int64_t> g_spr_rejBadLightIdx{0}; // lightDataIndex == 0xFFFFFFFFu
+std::atomic<int64_t> g_spr_rejNoValidLight{0};// !hasValidStaticLight (bldg only)
+std::atomic<int64_t> g_spr_rejLightGenMismatch{0}; // lastLightEnvGen != currentLightEnvGen (bldg only)
+std::atomic<int64_t> g_spr_rejNeedsFullBake{0};    // needsFullBakeNextFrame
+std::atomic<int64_t> g_spr_callCounter{0};    // monotonic call count for print trigger
 
 // STATIC-REGISTRY-COVERAGE-RECON-1: sub-classify the rej_no_static_reg population.
 // Gated by MC2_STATIC_REG_COVERAGE env var. No behavior change — read-only.
@@ -148,10 +233,6 @@ static unsigned long s_fbDiagDualEmitFull  = 0;  // gpuEligible parity dual-emit
 unsigned long g_fbDiagPtSpotConsumed = 0;  // active POINT/SPOT lights baked
 unsigned long g_fbDiagPtSpotZeroDir  = 0;  // ...of those, direction still (0,0,0)
 
-#include "gos_static_prop_killswitch.h"
-#include "gos_static_prop_batcher.h"
-#include "tgl_load_guard.h"  // META-FIX design B PART 1: required base-shape load guard
-
 // Slim-deploy texture gate (LOAD_TGA_THEN_GPU_KTX). The static-prop / building /
 // tree appearance loaders below gate loadTexture() behind fileExists(<name>.tga).
 // fileExists is .ktx2-blind, so when a slim deploy drops the redundant .tga the
@@ -163,7 +244,7 @@ unsigned long g_fbDiagPtSpotZeroDir  = 0;  // ...of those, direction still (0,0,
 // MC2_TEXMGR_KTX_PRIMARY is enabled). bdactor-only by design: mech/vehicle paint
 // (CPU_RGBA_REQUIRED, gos_LockTexture rewrite) must stay .tga and is NOT routed
 // here. See docs/texture-residency-registry-recon.md.
-static bool textureOrKtxSidecarExists(const char* tgaPath)
+bool textureOrKtxSidecarExists(const char* tgaPath)
 {
 	if (fileExists(tgaPath))
 		return true;
@@ -179,30 +260,8 @@ static bool textureOrKtxSidecarExists(const char* tgaPath)
 	if (strlen(ktx) + 6 < sizeof(ktx)) strcat(ktx, ".ktx2");
 	return fileExists(ktx);
 }
-#include "gos_static_prop_registry.h"  // Stage 3.C: static-registry fast path
-#include "cliff_decal_tuning.h"  // TERRAIN-DECAL-SLICE-0C: shared face-frame + live tuning
-#include "gos_mech_killswitch.h"       // g_mechPreviewRenderDepth (component preview-fix)
-#include "../GameAdapters/StaticPropRenderAdapter.h"  // M1 RenderWorld Tasks 8-11
-#include <cstring>
-#include <string>
-#include <fstream>
-#include <sstream>
-#include <algorithm>
-#include <GL/glew.h>
-#include "../RenderCore/KtxLoader.h"
-#include "../RenderCore/MaterialGpu.h"
-#include "gos_object_parity_query.h"  // IsDualEmitArmed — Stage 2.D.2 dual-emit hook
-#include <set>            // [LIGHTSLOT v1] Task 0 cardinality gate
-#include "gos_smoke.h"    // [LIGHTSLOT v1] SmokeMode::missionHasStarted()
-#include "gos_object_recon_tracy.h"  // [OBJECT_RECON v1] slice-2 recon-zero
-#include "cpu_proj_cost_split.h"      // F3 CPU projection cost-baseline (RAII scope)
-#include "spotlight_diag.h"  // T1.16 — (E)-owned slot tagging for per-slot probe
-#include "cone_glow.h"       // LIGHT-CONE-MODELS-1 — node aim + cone glow
-#include "gos_profiler.h"  // PERF DIAGNOSTIC 2026-05-06: ZoneScopedN for per-update breakdown
-#include <cmath>          // CONE-SPILL-COUPLING-1 — sqrt for the ray/terrain march
-#include <cstdlib>
 
-static bool staticRegIsNaturalBuildingName(const char* name)
+bool staticRegIsNaturalBuildingName(const char* name)
 {
     if (!name)
         return false;
@@ -213,11 +272,7 @@ static bool staticRegIsNaturalBuildingName(const char* name)
            (std::strncmp(name, "rock_", 5) == 0);
 }
 
-// MODEL-OVERRIDE dual-shape (Slice 2): registry resolve + direct geometry import.
-#include "model_override_registry.h"
-#include "assimp_importer.h"
-
-static bool buildingPbrGateEnabled()
+bool buildingPbrGateEnabled()
 {
 	return mc2::gate::get<"MC2_BUILDING_PBR">();
 }
@@ -367,7 +422,7 @@ static bool extractBuildingPbrYaw(const char* sidecarPath, float& yawDegrees)
 // baseShapeLoadFailed through to the required-slot verify at the tail
 // (the reviewed design's grep-verified import site the draft enumeration
 // missed). NULL failFlag = verify-and-placeholder only.
-static void loadBuildingImportSourceWithSidecarAxis(TG_TypeMultiShape* shape, const char* importSourceBase,
+void loadBuildingImportSourceWithSidecarAxis(TG_TypeMultiShape* shape, const char* importSourceBase,
                                                     bool* failFlag)
 {
 	if (!shape || !importSourceBase || !importSourceBase[0]) {
@@ -453,7 +508,7 @@ static DWORD uploadBuildingPbrKtx2(const char* path, bool srgb)
 	return gos_NewCompressedTexture2D(fmt, img.width, img.height, img.pixels.data(), mip0Bytes, path);
 }
 
-static bool loadBuildingPbrFromSidecar(BldgAppearanceType* type, const char* sidecarPath)
+bool loadBuildingPbrFromSidecar(BldgAppearanceType* type, const char* sidecarPath)
 {
 	if (!type || !buildingPbrGateEnabled())
 		return false;
@@ -584,7 +639,7 @@ static void pushFootprintTri(const Stuff::Vector3D& a, const Stuff::Vector3D& b,
 	gos_PushDecal(tri, 0xffffffffu);
 }
 
-static void submitBuildingFootprintShadow(const BldgAppearance* appearance)
+void submitBuildingFootprintShadow(const BldgAppearance* appearance)
 {
 	if (!appearance || !appearance->appearType || !appearance->bldgShape)
 		return;
@@ -632,61 +687,6 @@ static void submitBuildingFootprintShadow(const BldgAppearance* appearance)
 	pushFootprintTri(o01, o00, i00, outer, outer, inner);
 	pushFootprintTri(o01, i00, i01, outer, inner, inner);
 }
-
-#ifndef CAMERA_H
-#include"camera.h"
-#endif
-
-#ifndef DBASEGUI_H
-#include"dbasegui.h"
-#endif
-
-#ifndef CIDENT_H
-#include"cident.h"
-#endif
-
-#ifndef PATHS_H
-#include"paths.h"
-#endif
-
-#ifndef OBJSTATUS_H
-#include"objstatus.h"
-#endif
-
-#ifndef UTILITIES_H
-#include"utilities.h"
-#endif
-
-#ifndef INIFILE_H
-#include"inifile.h"
-#endif
-
-#ifndef ERR_H
-#include"err.h"
-#endif
-
-#ifndef TXMMGR_H
-#include"txmmgr.h"
-#endif
-
-#include"terrain_runtime.h"
-#include"static_light_row_guard.h"  // ZERO-LIGHT-ROW-1: guard/forward divergence census
-
-#ifndef TIMING_H
-#include"timing.h"
-#endif
-
-#ifndef CELINE_H
-#include"celine.h"
-#endif
-
-#ifndef MOVE_H
-#include"move.h"
-#endif
-
-#include "../code/unitdesg.h" /* just for definition of MIN_TERRAIN_PART_ID and MAX_MAP_CELL_WIDTH */
-#include "../code/static_update_counters.h" /* [TOBJSPLIT v1] g_tobjAngularCyc / g_tobjProjCyc extern decls */
-#include "gos_static_prop_batcher.h"
 //******************************************************************************************
 // GPU-VENDOR-DETECT-1: defined in GameOS/gameos/gos_render.cpp. True only on
 // NVIDIA GPUs. The GPU-driven static-prop stack (compute cull -> indirect
@@ -698,7 +698,7 @@ bool gos_IsNvidiaGPU();
 // env unset -> default ON for NVIDIA, OFF elsewhere; env="0" -> force OFF
 // (override the NVIDIA default); env set to non-"0" -> force ON everywhere.
 template <mc2::gate::Name n>
-static bool bdForceDynamicDefault() {
+inline bool bdForceDynamicDefault() {
 	if (mc2::gate::isSet<n>()) return mc2::gate::get<n>();
 	return gos_IsNvidiaGPU();
 }
@@ -709,7 +709,7 @@ static bool bdForceDynamicDefault() {
 // the legacy full-bake fallback instead. Capped at 32 lines so it confirms the failure
 // mode without spamming a long session (AMD never hits it — its registry isn't stale).
 // reason values match GpuStaticPropRegistry::StaticSubmitResult.
-static void bdLogStaticRegInvalid(const char* kind, int reason, int regIdx, const char* name) {
+void bdLogStaticRegInvalid(const char* kind, int reason, int regIdx, const char* name) {
 	static int s_logged = 0;
 	if (s_logged >= 32) return;
 	++s_logged;
@@ -759,7 +759,7 @@ extern bool MLRVertexLimitReached;
 // gosTextureHandle=0xFFFFFFFF. The batcher then sees W<=0 and falls back to a
 // borrowed (wrong) layer. Resolve them here, on the type render multishape,
 // immediately after a successful override import — mirrors the stock loaders.
-static void LoadOverrideRenderShapeTextures(TG_TypeMultiShape* rs)
+void LoadOverrideRenderShapeTextures(TG_TypeMultiShape* rs)
 {
 	if (!rs || !mcTextureManager)
 		return;
@@ -1649,9 +1649,9 @@ void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 // comment there has the full rationale); needed here because the REAL
 // in-game combat-destroy event is this function's OBJECT_STATUS_DESTROYED
 // transition, which runs long before that definition in file order.
-static void bldgTriggerStaticShadowRebakeIfArmed(bool wasRegistered, int32_t recipeIndex,
+void bldgTriggerStaticShadowRebakeIfArmed(bool wasRegistered, int32_t recipeIndex,
                                                   const char* reason);
-static bool bldgStaticShadowRebakeGatesActive();
+bool bldgStaticShadowRebakeGatesActive();
 
 //-----------------------------------------------------------------------------
 void BldgAppearance::setObjStatus (long oStatus)
@@ -2628,7 +2628,7 @@ extern void mc2LightBakeParityCheck(int32_t recipeIndex, const TG_HWLightsData* 
 // free fns (defined mclib/txmmgr.cpp).
 // ============================================================================
 extern uint32_t g_mc2FrameCounter;  // mclib/tgl.cpp
-static bool mc2StableLightSkipEnabled() {
+bool mc2StableLightSkipEnabled() {
     static const bool s_enabled = mc2::gate::get<"MC2_STABLE_LIGHT_SKIP">();
     return s_enabled;
 }
@@ -2638,7 +2638,7 @@ static bool mc2StableLightSkipDiagEnabled() {
     return s_enabled;
 }
 
-static uint64_t mc2StaticLightEnvironmentGeneration(const Camera* eye) {
+uint64_t mc2StaticLightEnvironmentGeneration(const Camera* eye) {
     (void)eye;
     // L1b: intentionally coarse. Global mission lighting is effectively stable.
     // This stays default-off and is only used for bounded diagnostics here.
@@ -2722,7 +2722,9 @@ static void noteStableLightSkipFrame(uint32_t frame)
     s_stableLightSkipDiag.miss_invalidLightIdx = 0;
 }
 
-static inline void recordStableLightSkipDiag(bool armed, bool eligible,
+} // namespace
+
+void recordStableLightSkipDiag(bool armed, bool eligible,
     bool notRegistered, bool noValidLight, bool envGenMiss, bool needsFullBake,
     bool invalidLightIdx)
 {
@@ -2753,7 +2755,6 @@ static inline void recordStableLightSkipDiag(bool armed, bool eligible,
             ++s_stableLightSkipDiag.miss_invalidLightIdx;
     }
 }
-} // namespace
 
 // ============================================================================
 // [LIGHTBRIDGE-STABLE-SKIP-WIRE-1] Gate + diagnostics
@@ -2762,7 +2763,7 @@ static inline void recordStableLightSkipDiag(bool armed, bool eligible,
 // ============================================================================
 extern uint32_t mc2StaticLightHighWater();  // txmmgr.cpp — s_staticLightHighWater accessor
 
-static bool mc2LightbridgeStableSkipEnabled() {
+bool mc2LightbridgeStableSkipEnabled() {
     static const bool s_enabled = mc2::gate::get<"MC2_LIGHTBRIDGE_STABLE_SKIP">();
     return s_enabled;
 }
@@ -2783,7 +2784,7 @@ static bool mc2LightbridgeStableSkipDiagEnabled() {
 // => byte-identical (the resubmit still runs). Requires MC2_LIGHTBRIDGE_STABLE_SKIP
 // + MC2_STABLE_LIGHT_SKIP armed (same invariant proof: baked static prefix
 // [0..s_staticLightHighWater) persists frame-to-frame under MC2_LIGHTBAKE).
-static bool mc2StableLightSkipTouchEnabled() {
+bool mc2StableLightSkipTouchEnabled() {
     static const bool s_enabled = mc2::gate::get<"MC2_STABLE_LIGHT_SKIP_TOUCH">();
     return s_enabled;
 }
@@ -2842,7 +2843,9 @@ static void lbssDiagRollFrame(uint32_t frame)
     s_lbssDiag.frame = frame;
 }
 
-static inline void lbssRecordBldg(bool eligible, bool taken,
+} // namespace (lbss diag)
+
+void lbssRecordBldg(bool eligible, bool taken,
     bool blk_idx, bool blk_gen, bool blk_noelig)
 {
     if (!mc2LightbridgeStableSkipDiagEnabled()) return;
@@ -2855,7 +2858,7 @@ static inline void lbssRecordBldg(bool eligible, bool taken,
     if (blk_noelig) ++s_lbssDiag.b_blk_noelig;
 }
 
-static inline void lbssRecordTree(bool taken, bool blk_idx)
+void lbssRecordTree(bool taken, bool blk_idx)
 {
     if (!mc2LightbridgeStableSkipDiagEnabled()) return;
     lbssDiagRollFrame(g_mc2FrameCounter);
@@ -2864,19 +2867,15 @@ static inline void lbssRecordTree(bool taken, bool blk_idx)
     if (blk_idx) ++s_lbssDiag.t_blk_idx;
 }
 
-} // namespace (lbss diag)
-
 // ============================================================================
 // FRAME-JOBS-2F: TOUCH-ENTRY-UNIFICATION diagnostics
 // MC2_FRAME_JOBS_TOUCH_DIAG=1 — enable per-300-frame print (independent of lbss diag)
 // Counters are cumulative per-frame accumulators, reset every 300 frames.
 // ============================================================================
-static bool mc2FrameJobsTouchDiagEnabled() {
+bool mc2FrameJobsTouchDiagEnabled() {
     static const bool s_enabled = mc2::gate::get<"MC2_FRAME_JOBS_TOUCH_DIAG">();
     return s_enabled;
 }
-
-namespace {
 
 struct TouchEntryDiag {
     uint32_t frame                    = 0xFFFFFFFFu;
@@ -2885,9 +2884,9 @@ struct TouchEntryDiag {
     uint64_t legacy_ran_nosplit       = 0;  // touch() ran with no prior split commit
 };
 
-static TouchEntryDiag s_touchEntryDiag;
+TouchEntryDiag s_touchEntryDiag;
 
-static void touchEntryDiagRollFrame(uint32_t frame)
+void touchEntryDiagRollFrame(uint32_t frame)
 {
     if (!mc2FrameJobsTouchDiagEnabled()) return;
     if (frame == s_touchEntryDiag.frame) return;
@@ -2905,7 +2904,6 @@ static void touchEntryDiagRollFrame(uint32_t frame)
     s_touchEntryDiag.frame = frame;
 }
 
-} // namespace (touch-entry diag)
 
 // [LIGHTSLOT v1] accessor free fns (defined mclib/txmmgr.cpp, global scope).
 extern uint32_t mc2LightSlotBakedHighWater();
@@ -2937,7 +2935,7 @@ namespace mc2_lightslot_trace {
     // total). These are cross-frame (registration is one-shot at mission load).
     static uint64_t      s_lodBakeCount = 0;
     static std::set<uint32_t> s_lodDistinctSlots;
-    static inline void recordLodBakeSlot(uint32_t lightDataIndex) {
+    void recordLodBakeSlot(uint32_t lightDataIndex) {
         initFromEnv();
         if (!s_enabled) return;
         ++s_lodBakeCount;
@@ -2955,7 +2953,7 @@ namespace mc2_lightslot_trace {
     // Accumulators are per-FRAME (reset on frame change) so s_instances is a
     // true K (instance count), not frame x instance, and the distinct-slot set
     // is a single-frame snapshot of the whole forest.
-    static inline void recordInstance(const void* appearType, bool isOverride,
+    void recordInstance(const void* appearType, bool isOverride,
                                       uint32_t lightDataIndex) {
         initFromEnv();
         if (!s_enabled || s_emitted) return;
@@ -3200,7 +3198,7 @@ namespace mc2_lightslot_trace {
 // report. That is a user call, not an agent call.
 static bool s_lightBakeRebakeDone = false;
 
-static void mc2CacheOrBakeStaticGpuLight(TG_MultiShape* shape,
+void mc2CacheOrBakeStaticGpuLight(TG_MultiShape* shape,
                                          bool registered, int32_t recipeIndex)
 {
 	extern bool mc2LightBakeEnabled();
@@ -3347,7 +3345,7 @@ static void mc2CacheOrBakeStaticGpuLight(TG_MultiShape* shape,
 // Returns false when the beam never meets ground within its own length —
 // aimed at a wall, over a cliff edge, or off the map. Callers must then emit
 // NO pool at all; planting one anyway is the phantom-pool artefact.
-static bool mc2ConeGroundHit (const Stuff::Vector3D& apex,
+bool mc2ConeGroundHit (const Stuff::Vector3D& apex,
                               const Stuff::Vector3D& aim,
                               float beamLen,
                               Stuff::Vector3D& hitOut)
@@ -3430,13 +3428,13 @@ static bool mc2ConeGroundHit (const Stuff::Vector3D& apex,
 // MC2_PROP_LIGHT_LATCH_DIAG=1 enables. MC2_PROP_LIGHT_LATCH_DIAG_INTERVAL sets
 // the per-frame re-sample throttle (default 120 frames). Default OFF: zero cost
 // (one boot-cached bool test on the per-frame path).
-static bool mc2PropLightLatchDiag (void)
+bool mc2PropLightLatchDiag (void)
 {
 	static const bool s_on = mc2::gate::get<"MC2_PROP_LIGHT_LATCH_DIAG">();
 	return s_on;
 }
 
-static uint32_t mc2PropLightLatchDiagInterval (void)
+uint32_t mc2PropLightLatchDiagInterval (void)
 {
 	static const uint32_t s_iv = [] {
 		const uint32_t iv = static_cast<uint32_t>(mc2::gate::get<"MC2_PROP_LIGHT_LATCH_DIAG_INTERVAL">());
@@ -5371,7 +5369,7 @@ void BldgAppearance::touchSerialCommit()
 // synchronous invalidateStaticRegistration() dance (see setObjStatus) --
 // that call must byte-identically NOT happen when the gates are off, so it
 // cannot live only inside this function's early-return.
-static bool bldgStaticShadowRebakeGatesActive()
+bool bldgStaticShadowRebakeGatesActive()
 {
 	static const bool s_bldgStaticShadowActive = !mc2::gate::is<"MC2_STATIC_PROP_BUILDING_SHADOW", "0">();
 
@@ -5379,7 +5377,7 @@ static bool bldgStaticShadowRebakeGatesActive()
 	return s_bldgStaticShadowActive && s_rebakeOnDestroy;
 }
 
-static void bldgTriggerStaticShadowRebakeIfArmed(bool wasRegistered, int32_t recipeIndex,
+void bldgTriggerStaticShadowRebakeIfArmed(bool wasRegistered, int32_t recipeIndex,
                                                   const char* reason)
 {
 	if (!wasRegistered || !bldgStaticShadowRebakeGatesActive()) return;
