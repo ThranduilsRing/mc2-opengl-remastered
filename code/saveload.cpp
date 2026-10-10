@@ -469,7 +469,7 @@ void Mission::loadPrologue(MissionLoadFrame& f) {
 }
 
 // Open the save packet file and reject a missing file or a wrong version stamp.
-bool Mission::loadOpenSave(MissionLoadFrame& f) {
+bool Mission::openSaveFile(MissionLoadFrame& f) {
 	auto& loadFileName = f.loadFileName; auto& loadFile = f.loadFile; auto& result = f.result;
 	auto& currentPacket = f.currentPacket;
 	//Open the In-Mission Save packet file.
@@ -909,7 +909,7 @@ void Mission::load (const char *loadFileName)
 	f.loadFileName = loadFileName;
 	loadPrologue(f);
 
-	if (loadOpenSave(f)) return;
+	if (openSaveFile(f)) return;
 
 	loadDestroyAndRestore();
 	loadResetSimState(f);

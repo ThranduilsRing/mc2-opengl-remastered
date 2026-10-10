@@ -337,7 +337,7 @@ class Mission
 
 	// Mission::load phases (saveload.cpp, saveload_load.cpp); callers use load().
 		void loadPrologue(MissionLoadFrame& f);
-		bool loadOpenSave(MissionLoadFrame& f);
+		bool openSaveFile(MissionLoadFrame& f);
 		void loadDestroyAndRestore();
 		void loadResetSimState(MissionLoadFrame& f);
 		void loadGameSystemRanges(MissionLoadFrame& f);

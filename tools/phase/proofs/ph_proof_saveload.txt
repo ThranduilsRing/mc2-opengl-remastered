@@ -35,11 +35,11 @@ scaffolding only in new (60 distinct):
    + auto& result = f.result; auto& gameSystemFile = f.gameSystemFile; auto& forestMoveCost = f.forestMoveCost; 
    + auto& tmpString = f.tmpString; 
    + auto& turnOffAsyncMouse = f.turnOffAsyncMouse; 
-   + bool Mission::loadOpenSave(MissionLoadFrame& f) { 
+   + bool Mission::openSaveFile(MissionLoadFrame& f) { 
    + currentPacket = 0; 
    + f.loadFileName = loadFileName; 
    + gameSystemFile = new FitIniFile; 
-   + if (loadOpenSave(f)) return; 
+   + if (openSaveFile(f)) return; 
    + loadAblAndManagers(f); 
    + loadActivateAndFinalize(); 
    + loadDestroyAndRestore(); 

@@ -50,7 +50,7 @@ ORCH_DOC = ('// In-mission save restore. Each phase is a member helper declared 
 
 PHASES = [
     ('loadPrologue', 446, 464, 'Trace the load, silence the mouse and start the loading-screen timer.'),
-    ('loadOpenSave', 466, 506, 'Open the save packet file and reject a missing file or a wrong version stamp.', {'exits': True}),
+    ('openSaveFile', 466, 506, 'Open the save packet file and reject a missing file or a wrong version stamp.', {'exits': True}),
     ('loadDestroyAndRestore', 508, 542, 'Tear down the running mission and reset the mech and static-prop batchers.'),
     ('loadResetSimState', 544, 561, 'Reset the turn counters and bring up ABL, the TGL and the mission heap.'),
     ('loadGameSystemRanges', 563, 640, 'Open gamesys.fit and read the weapon ranges and the general visual / sensor settings.'),
