@@ -18,6 +18,10 @@ enum class Kind : std::uint8_t { Bool, Tri, Int, Float, String, Enum };
 // silently mean "is set", which is the presence semantics this type exists to prevent.
 enum class Tri : std::uint8_t { Unset, Off, On };
 
+// Index of an Enum row's current token in the row's token list. An enum class on purpose: a bare int
+// would let `if (get<"MC2_X">())` compile and silently mean "not the first token".
+enum class Token : std::int32_t {};
+
 // How a Bool gate's string is turned into a value. Each name is the truthiness table of
 // one reader idiom already in the tree (probe order: unset, "", "0", "false", "1", "yes",
 // "10", "2.5"); the vector in brackets is on(1)/off(0) for those probes.

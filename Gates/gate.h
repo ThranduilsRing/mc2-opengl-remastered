@@ -3,6 +3,7 @@
 //   if (gate::get<"MC2_TERRAIN_LOD_CHUNK">()) ...        // Bool row -> bool
 //   int dim = gate::get<"MC2_LIGHT_GRID_DIM">();          // Int row  -> std::int32_t
 //   gate::Tri t = gate::get<"MC2_VK_SHARED_GBUFFER">();   // Tri row  -> Tri (never a bool)
+//   gate::Token k = gate::get<"MC2_TONEMAP_V2">();        // Enum row -> Token (never a bool or int)
 //   bool legacy = gate::get<"MC2_X", gate::Rule::Presence>();  // per-site rule override
 //
 // A misspelt name is a compile error. The first read of a name parses the environment
@@ -151,7 +152,9 @@ template <Name n>
         return static_cast<Tri>(s & 0xFFu);
     } else if constexpr (k == Kind::Float) {
         return __builtin_bit_cast(float, static_cast<std::uint32_t>(s));
-    } else {  // Int, Enum
+    } else if constexpr (k == Kind::Enum) {
+        return static_cast<Token>(static_cast<std::int32_t>(static_cast<std::uint32_t>(s)));
+    } else {  // Int
         return static_cast<std::int32_t>(static_cast<std::uint32_t>(s));
     }
 }

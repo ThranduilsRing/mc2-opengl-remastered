@@ -289,6 +289,9 @@ TEST_CASE("Tri is an enum class with no bool conversion") {
     static_assert(std::is_same_v<decltype(gate::get<"MC2_VK_HUD">()), Tri>);
     static_assert(std::is_same_v<decltype(gate::get<"MC2_ABL_VM_FACTS">()), bool>);
     static_assert(std::is_same_v<decltype(gate::get<"MC2_BOOT_INFO">()), std::int32_t>);
+    static_assert(std::is_same_v<decltype(gate::get<"MC2_CONFIG_DUMP">()), gate::Token>);
+    static_assert(std::is_enum_v<gate::Token> && !std::is_convertible_v<gate::Token, bool> &&
+                  !std::is_convertible_v<gate::Token, int>);
     static_assert(std::is_same_v<decltype(gate::get<"MC2_BOOT_TIMER_SECS">()), float>);
     static_assert(std::is_same_v<decltype(gate::get<"MC2_ABL_VM_FACTS", Rule::Presence>()), bool>);
     CHECK(true);
@@ -376,6 +379,13 @@ TEST_CASE("Tri and Enum rows through the live table") {
     en.set(nullptr);
     gate::invalidate("MC2_CONFIG_DUMP");
     CHECK(gate::is<"MC2_CONFIG_DUMP", "default">());
+    // get<> on an Enum row is the token's index in the row's list, as a Token.
+    CHECK(gate::get<"MC2_CONFIG_DUMP">() == gate::Token{0});   // "default"
+    en.set("none");
+    gate::invalidate("MC2_CONFIG_DUMP");
+    CHECK(gate::get<"MC2_CONFIG_DUMP">() == gate::Token{2});
+    en.set(nullptr);
+    gate::invalidate("MC2_CONFIG_DUMP");
 }
 
 TEST_CASE("String rows are re-read on every call") {
