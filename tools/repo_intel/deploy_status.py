@@ -37,6 +37,8 @@ from typing import Optional
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 # OWNER RULE: no window for any child process (hidden_kwargs: CREATE_NO_WINDOW + SW_HIDE).
 from smoke_lib import nofocus  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import lane_model  # noqa: E402
 
 _CDT_CACHE = None
 
@@ -75,6 +77,9 @@ def _lane_names(repo_root: Path) -> dict:
             names.setdefault(name, path)
     except Exception:
         pass
+    # Builder lanes the smoke-lease/GOOD_DIRS lists do not carry (e.g. lane2).
+    for name, path in lane_model.install_paths():
+        names.setdefault(name, path)
     return names
 
 
@@ -127,15 +132,21 @@ def deploy_status(repo_root: Path, lane: str, expected_sha: str = "",
     target = names.get(lane) or lane
     target_p = Path(target)
 
-    branch = _git_branch(repo_root)
-    exp_sha = (expected_sha or _git_head(repo_root) or "").lower()
+    # "Expected" follows the lane's OWNING worktree: lane2's exe is built from
+    # its own worktree/branch, so comparing it with the caller's (nifty) HEAD
+    # would always read FINGERPRINT-MISMATCH. Dev/golden lanes (and unknown
+    # paths) keep the caller's worktree.
+    owner = lane_model.owner_worktree(lane) or lane_model.owner_worktree(target)
+    wt_root = owner or repo_root
+    branch = _git_branch(wt_root)
+    exp_sha = (expected_sha or _git_head(wt_root) or "").lower()
 
     result: dict = {
         "lane": lane,
         "path": str(target_p),
         "known_lanes": sorted(names),
         "expected": {"sha": exp_sha[:12] or None, "branch": branch,
-                     "worktree": str(repo_root)},
+                     "worktree": str(wt_root)},
     }
 
     if not target_p.is_dir():

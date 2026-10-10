@@ -38,7 +38,7 @@ from smoke_lib import nofocus  # noqa: E402
 _DEPLOY_DIR = Path(os.environ.get("MC2_DEPLOY_DIR", "A:/Games/mc2-opengl/mc2-win64-v0.4"))
 _EDITOR_DEPLOY_DIR = Path(os.environ.get(
     "MC2_EDITOR_DEPLOY_DIR",
-    "A:/Games/mc2-opengl/releases/0.5 testing/mc2-win64-v0.5.0"))
+    "A:/Games/mc2-opengl/mc2-win64-v0.4"))
 _STATE_DIR = _DEPLOY_DIR / "debug_state"
 _LATEST = _STATE_DIR / "latest_render_state.json"
 _HISTORY_SLOTS = 8
