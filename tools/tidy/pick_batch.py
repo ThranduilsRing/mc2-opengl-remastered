@@ -20,13 +20,16 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import run_tidy_safe as rts  # noqa: E402
+sys.path.insert(0, os.path.join(rts.ROOT, "scripts"))
+import console_child  # noqa: E402
 
 SITE = re.compile(r"\bNULL\b|^\s*typedef\b", re.M)
 
 
 def tracked_cpp(dirs):
     out = subprocess.run(["git", "-C", rts.ROOT, "ls-files"] + [d.rstrip("/") + "/**/*.cpp" for d in dirs] +
-                         [d.rstrip("/") + "/*.cpp" for d in dirs], capture_output=True, text=True).stdout
+                         [d.rstrip("/") + "/*.cpp" for d in dirs], capture_output=True, text=True,
+                         **console_child.child_kwargs(redirected=True)).stdout
     return sorted(set(out.split()))
 
 
