@@ -1,6 +1,7 @@
 // Mech3DAppearance: bounds recalculation, render and renderShadows, with the MLR draw / light-row / FX-count counters they feed.
 // Declared in the class headers; shared names in mech3d_internal.h.
 #include "mech3d_internal.h"
+#include "../RenderCore/axis_convert.h"
 
 // M2.5 (Q6 amendment 2): always-on MLR mech draw counter. Incremented
 // at the legacy mechShape->Render(true) fallback site (~line 2623) so
@@ -139,9 +140,7 @@ bool Mech3DAppearance::recalcBounds (void)
 			Stuff::Point3D Distance;
 			Stuff::Point3D objPosition;
 			Stuff::Point3D eyePosition(eye->getCameraOrigin());
-			objPosition.x = -position.x;
-			objPosition.y = position.z;
-			objPosition.z = position.y;
+			mc2ToRender(objPosition, position);
 	
 			Distance.Subtract(objPosition,eyePosition);
 			eyeDistance = Distance.GetApproximateLength();
@@ -169,9 +168,7 @@ bool Mech3DAppearance::recalcBounds (void)
 				Stuff::Vector3D Distance;
 				Stuff::Point3D objPosition;
 				Stuff::Point3D eyePosition(eye->getCameraOrigin());
-				objPosition.x = -position.x;
-				objPosition.y = position.z;
-				objPosition.z = position.y;
+				mc2ToRender(objPosition, position);
 		
 				Distance.Subtract(objPosition,eyePosition);
 				Distance.Normalize(Distance);
@@ -965,9 +962,7 @@ long Mech3DAppearance::render (long depthFixup)
 					Stuff::LinearMatrix4D	localToWorld;
 					Stuff::LinearMatrix4D	localResult;
 					
-					actualPosition.x = -jumpNodePos.x;
-					actualPosition.y = jumpNodePos.z;
-					actualPosition.z = jumpNodePos.y;
+					mc2ToRender(actualPosition, jumpNodePos);
 					
  					shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 					shapeOrigin.BuildTranslation(actualPosition);
@@ -993,9 +988,7 @@ long Mech3DAppearance::render (long depthFixup)
 						leftArmNodeIndex = mechShape->GetNodeNameId("joint_luarm");
 
 					Stuff::Vector3D leftNodePos = getNodeIdPosition(leftArmNodeIndex);
-					leftShoulderPos.x = -leftNodePos.x;
-					leftShoulderPos.y = leftNodePos.z;
-					leftShoulderPos.z = leftNodePos.y;
+					mc2ToRender(leftShoulderPos, leftNodePos);
 		
  					shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 					shapeOrigin.BuildTranslation(leftShoulderPos);
@@ -1020,9 +1013,7 @@ long Mech3DAppearance::render (long depthFixup)
 						rightArmNodeIndex = mechShape->GetNodeNameId("joint_ruarm");
 
 					Stuff::Vector3D rightNodePos = getNodeIdPosition(rightArmNodeIndex);
-					rightShoulderPos.x = -rightNodePos.x;
-					rightShoulderPos.y = rightNodePos.z;
-					rightShoulderPos.z = rightNodePos.y;
+					mc2ToRender(rightShoulderPos, rightNodePos);
 					
  					shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 					shapeOrigin.BuildTranslation(rightShoulderPos);
@@ -1045,9 +1036,7 @@ long Mech3DAppearance::render (long depthFixup)
 							
 					Stuff::Vector3D smokeNodePos = getNodePosition(0);
 					Stuff::Point3D smokePos;
-					smokePos.x = -smokeNodePos.x;
-					smokePos.y = smokeNodePos.z;
-					smokePos.z = smokeNodePos.y;
+					mc2ToRender(smokePos, smokeNodePos);
 					
 					shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 					shapeOrigin.BuildTranslation(smokePos);
@@ -1102,9 +1091,7 @@ long Mech3DAppearance::render (long depthFixup)
 					Stuff::LinearMatrix4D	localResult;
 							
 					Stuff::Point3D wakePos;
-					wakePos.x = -position.x;
-					wakePos.y = position.z;
-					wakePos.z = position.y;
+					mc2ToRender(wakePos, position);
 					
 					shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 					shapeOrigin.BuildTranslation(wakePos);
@@ -1162,9 +1149,7 @@ long Mech3DAppearance::render (long depthFixup)
 			Stuff::LinearMatrix4D	localToWorld;
 			Stuff::LinearMatrix4D	localResult;
 					
-			rightShoulderPos.x = -rightArmPos.x;
-			rightShoulderPos.y = rightArmPos.z;
-			rightShoulderPos.z = rightArmPos.y;
+			mc2ToRender(rightShoulderPos, rightArmPos);
 			
 			shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 			shapeOrigin.BuildTranslation(rightShoulderPos);
@@ -1204,9 +1189,7 @@ long Mech3DAppearance::render (long depthFixup)
 			Stuff::LinearMatrix4D	localToWorld;
 			Stuff::LinearMatrix4D	localResult;
 					
-			leftShoulderPos.x = -leftArmPos.x;
-			leftShoulderPos.y = leftArmPos.z;
-			leftShoulderPos.z = leftArmPos.y;
+			mc2ToRender(leftShoulderPos, leftArmPos);
 			
 			shapeOrigin.BuildRotation(Stuff::EulerAngles(0.0f,0.0f,0.0f));
 			shapeOrigin.BuildTranslation(leftShoulderPos);
