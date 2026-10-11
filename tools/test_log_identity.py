@@ -31,13 +31,26 @@ def test_a_changed_spelling_or_key_order_or_padding_is_reported(tmp_path):
     assert len(only_b) == 2 and len(only_a) == 2 and order_ok
 
 
-def test_a_lost_tag_changes_the_order(tmp_path):
+def test_a_lost_tag_changes_the_tag_set(tmp_path):
     a = _dir(tmp_path, "a", "[A v1] x=1\n[B v1] y=1\n[A v1] x=2\n")
     b = _dir(tmp_path, "b", "[A v1] x=1\n[A v1] x=2\n")
     assert li.compare(a, b)[2] is False
 
 
 def test_known_run_to_run_noise_is_ignored(tmp_path):
-    a = _dir(tmp_path, "a", "[BUILD_FINGERPRINT v1] sha=abc123456789 built=1\n[TerrainLOD v1] DIAG plane[0]=left (nan) PASS\nsame 1\n")
-    b = _dir(tmp_path, "b", "[BUILD_FINGERPRINT v1] sha=def123456789 built=2\n[TerrainLOD v1] DIAG plane[0]=left (0.0) FAIL\nsame 2\n")
+    a = _dir(tmp_path, "a", "[BUILD_FINGERPRINT v1] sha=abc123456789 built=1\nsame 1\n")
+    b = _dir(tmp_path, "b", "[BUILD_FINGERPRINT v1] sha=def123456789 built=2\nsame 2\n")
     assert li.compare(a, b) == ([], [], True)
+
+
+def test_the_frame_2_frustum_plane_dump_is_no_longer_noise(tmp_path):
+    a = _dir(tmp_path, "a", "[TerrainLOD v1] DIAG plane[0]=left (nan) PASS\n")
+    b = _dir(tmp_path, "b", "[TerrainLOD v1] DIAG plane[0]=left (0.0) FAIL\n")
+    only_b, only_a, _ = li.compare(a, b)
+    assert only_b and only_a
+
+
+def test_interleaved_tag_order_is_not_a_difference_but_a_missing_tag_is(tmp_path):
+    a = _dir(tmp_path, "a", "[A v1] x=1\n[B v1] y=1\n[A v1] x=2\n")
+    b = _dir(tmp_path, "b", "[B v1] y=1\n[A v1] x=1\n[A v1] x=2\n")
+    assert li.compare(a, b)[2] is True

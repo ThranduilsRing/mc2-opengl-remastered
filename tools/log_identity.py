@@ -2,7 +2,7 @@
 """log_identity - compare the game logs of two smoke runs by line shape.
 
 WHAT: reads the *.log files of two smoke artifact directories, replaces every number and address with a placeholder and reports the line shapes
-that exist in only one of them (and, for the structured `[TAG vN]` lines, the tag sequence).
+that exist in only one of them (and, for the structured `[TAG vN]` lines, the set of tags).
 WHY: the printf -> std::format conversions (C++23 step 3) must not change what the engine prints. Frame counts and timings differ from run to run,
 so a byte diff is useless, but a changed spelling, key order, padding of a string or a lost line shows up as a shape that appears on one side only.
 
@@ -19,9 +19,9 @@ import sys
 
 _NUM = re.compile(r"(?<![A-Za-z_\d])(?:0x[0-9a-fA-F]+|[0-9A-F]{16}\b|-?\d+(?:\.\d+)?(?:e[+-]?\d+)?)", re.I)
 _TAG = re.compile(r"^\s*\[([A-Z][A-Z0-9_]*)(?: v\d+)?\]")
-#: Lines that differ between two runs of the SAME executable, so they say nothing about a conversion: the build stamp, the one-shot frustum-plane
-#: dump at frame 2 (printed from planes that are not yet initialised: NaN in one run, zeros in the next), and the per-frame block-set trace.
-NOISE = re.compile(r"\[BUILD_FINGERPRINT v1\]|\[INSTR v1\] enabled:|\[TerrainLOD v1\] DIAG plane\[|^\s*\[BlockSet\]")
+#: Lines that differ between two runs of the SAME executable, so they say nothing about a conversion: the build stamp and the per-frame block-set
+#: trace. (The frame-2 [TerrainLOD v1] DIAG plane dump used to be here; it printed uninitialised camera matrices and was repaired in 47a9623ed.)
+NOISE = re.compile(r"\[BUILD_FINGERPRINT v1\]|\[INSTR v1\] enabled:|^\s*\[BlockSet\]")
 
 
 def shape(line: str) -> str:
@@ -59,7 +59,7 @@ def compare(before: str, after: str, mission: str | None = None):
         sa, ta = shapes_of(a)
         only_b += [f"{name}: {s}" for s in sb if s not in sa]
         only_a += [f"{name}: {s}" for s in sa if s not in sb]
-        order_ok = order_ok and (tb == ta)
+        order_ok = order_ok and (set(tb) == set(ta))        # worker threads interleave HEARTBEAT/TEXMGR lines differently per run: compare the tag SET
     return only_b, only_a, order_ok
 
 
@@ -74,7 +74,7 @@ def main(argv=None) -> int:
         print("only before: " + s[:200])
     for s in only_a[:40]:
         print("only after:  " + s[:200])
-    print(f"log_identity: {len(only_b)} shape(s) only before, {len(only_a)} only after, tag order {'equal' if order_ok else 'DIFFERENT'}")
+    print(f"log_identity: {len(only_b)} shape(s) only before, {len(only_a)} only after, tag set {'equal' if order_ok else 'DIFFERENT'}")
     return 0 if not only_b and not only_a and order_ok else 1
 
 
