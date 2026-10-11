@@ -1,5 +1,6 @@
 """printf_buffers: the printf -> std::format mapping and the call-level decisions (text only, no build)."""
 import os
+import pytest
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -141,3 +142,11 @@ def test_char_with_width_aligns_like_printf():
     """std::format left-aligns a char by default; printf right-aligns unless the minus flag is given."""
     new, _wrapped, _specs = pb.translate_format("%5c|%-5c|%c", ["a", "b", "c"])
     assert new == "{:>5c}|{:<5c}|{:c}"
+
+
+def test_precision_on_unsigned_is_a_zero_padded_width_and_never_on_signed():
+    new, _w, _s = pb.translate_format("0x%.8x|%8.8X|%.3u", ["a", "b", "c"])
+    assert new == "0x{:08x}|{:08X}|{:03d}"
+    for bad in ("%.4d", "%10.4x", "%.0x", "%-.4x", "%#.4x"):
+        with pytest.raises(pb.Bail):
+            pb.translate_format(bad, ["a"])

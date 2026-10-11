@@ -661,9 +661,9 @@ RenderContextHandle init_render_context(RenderWindowHandle render_window)
     // impossible to miss when a user pastes their console log for triage.
     // On hybrid-graphics laptops this line is the single most valuable
     // diagnostic: it says which GPU OpenGL actually selected.
-    printf("[GPU] Vendor   : %s\n", glGetString(GL_VENDOR));
-    printf("[GPU] Renderer : %s\n", glGetString(GL_RENDERER));
-    printf("[GPU] Version  : %s\n", glGetString(GL_VERSION));
+    printf("[GPU] Vendor   : %s\n", reinterpret_cast<const char*>(glGetString(GL_VENDOR)));
+    printf("[GPU] Renderer : %s\n", reinterpret_cast<const char*>(glGetString(GL_RENDERER)));
+    printf("[GPU] Version  : %s\n", reinterpret_cast<const char*>(glGetString(GL_VERSION)));
 
     // GPU-VENDOR-DETECT-1: cache whether this is an NVIDIA GPU. The whole
     // GPU-driven static-prop stack (compute cull -> indirect multidraw ->
@@ -723,10 +723,10 @@ RenderContextHandle init_render_context(RenderWindowHandle render_window)
         printf("Current Display Mode:\n");
         printf("Screen BPP: %d\n", SDL_BITSPERPIXEL(mode.format));
         printf("\n");
-        printf("Vendor     : %s\n", glGetString(GL_VENDOR));
-        printf("Renderer   : %s\n", glGetString(GL_RENDERER));
-        printf("Version    : %s\n", glGetString(GL_VERSION));
-        const GLubyte* exts = glGetString(GL_EXTENSIONS);
+        printf("Vendor     : %s\n", reinterpret_cast<const char*>(glGetString(GL_VENDOR)));
+        printf("Renderer   : %s\n", reinterpret_cast<const char*>(glGetString(GL_RENDERER)));
+        printf("Version    : %s\n", reinterpret_cast<const char*>(glGetString(GL_VERSION)));
+        const char* exts = reinterpret_cast<const char*>(glGetString(GL_EXTENSIONS));
         printf("Extensions : %s\n", exts);
         printf("\n");
 

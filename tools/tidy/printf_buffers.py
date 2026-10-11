@@ -97,7 +97,11 @@ def translate_format(lit: str, args: list):
             spec_type = "d"
         elif conv in "uxXo":
             if prec is not None:
-                raise Bail("precision on an integer")
+                # An unsigned conversion has no sign, so "at least P digits" is a zero-padded width of P. (A signed %d is NOT: the sign
+                # takes a place of the width but not of the precision.) Anything wider than the precision, or with flags, stays on printf.
+                if not prec or int(prec) == 0 or flags or (width and int(width) > int(prec)):
+                    raise Bail("precision on an integer")
+                w, zero = prec, True
             wrap = {"": "as_u32", "l": "as_u32", "ll": "as_u64", "z": "as_size"}.get(length)
             if wrap is None:
                 raise Bail("length " + length + " on %" + conv)
