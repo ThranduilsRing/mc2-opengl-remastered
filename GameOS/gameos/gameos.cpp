@@ -665,8 +665,9 @@ bool __stdcall gos_GetUserDataDirectory(char* user_dir, const int len)
 #endif
 
     // 1 + 1 =  for \0 and /
-    char* mc2_conf_dir = new char[strlen(cfg_dir) + strlen(g_user_config_dir) + 1 + 1];
-    sprintf(mc2_conf_dir, "%s/%s", cfg_dir, g_user_config_dir);
+    const size_t confDirBytes = strlen(cfg_dir) + strlen(g_user_config_dir) + 1 + 1;
+    char* mc2_conf_dir = new char[confDirBytes];
+    mc2::fmt::to_buf_n(mc2_conf_dir, confDirBytes, "{}/{}", cfg_dir, g_user_config_dir);
 
     // if directory does not exist create it
 #ifndef PLATFORM_WINDOWS
