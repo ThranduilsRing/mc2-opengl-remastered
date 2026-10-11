@@ -35,7 +35,7 @@
    "LG09": 11,
    "LG10": 0,
    "LG11": 0,
-   "LG12a": 1,
+   "LG12a": 0,
    "LG12b": 0,
    "LG13": 0,
    "LG14": 0,
@@ -58,7 +58,7 @@
    "LG09": 2033,
    "LG10": 40,
    "LG11": 102,
-   "LG12a": 192,
+   "LG12a": 181,
    "LG12b": 30,
    "LG13": 331,
    "LG14": 62,
@@ -150,7 +150,7 @@
    "LG09": 2353,
    "LG10": 20,
    "LG11": 101,
-   "LG12a": 106,
+   "LG12a": 101,
    "LG12b": 349,
    "LG13": 1184,
    "LG14": 135,
@@ -196,7 +196,7 @@
    "LG09": 2195,
    "LG10": 32,
    "LG11": 67,
-   "LG12a": 229,
+   "LG12a": 212,
    "LG12b": 245,
    "LG13": 1293,
    "LG14": 122,
@@ -288,9 +288,6 @@
    "LG05": 5,
    "LG06": 1,
    "LG17": 1
-  },
-  "GameAdapters/VegetationAdapter.cpp": {
-   "LG12a": 1
   },
   "GameOS/gameos/MC2Strings.cpp": {
    "LG05": 2,
@@ -494,7 +491,7 @@
    "LG06": 1,
    "LG09": 7,
    "LG11": 4,
-   "LG12a": 3
+   "LG12a": 2
   },
   "GameOS/gameos/gos_cardcloud_sim.cpp": {
    "LG03": 6,
@@ -507,8 +504,7 @@
    "LG05": 3,
    "LG06": 1,
    "LG09": 9,
-   "LG11": 1,
-   "LG12a": 1
+   "LG11": 1
   },
   "GameOS/gameos/gos_crashbundle.cpp": {
    "LG06": 5,
@@ -643,8 +639,7 @@
    "LG05": 3,
    "LG06": 2,
    "LG09": 20,
-   "LG11": 2,
-   "LG12a": 1
+   "LG11": 2
   },
   "GameOS/gameos/gos_postprocess_diag.cpp": {
    "LG06": 1,
@@ -788,8 +783,7 @@
   },
   "GameOS/gameos/gos_static_prop_registry_flush_range.cpp": {
    "LG08": 15,
-   "LG09": 13,
-   "LG12a": 1
+   "LG09": 13
   },
   "GameOS/gameos/gos_static_prop_registry_flush_tail.cpp": {
    "LG08": 5,
@@ -809,8 +803,7 @@
   },
   "GameOS/gameos/gos_terrain_indirect_atlas.cpp": {
    "LG09": 50,
-   "LG10": 1,
-   "LG12a": 1
+   "LG10": 1
   },
   "GameOS/gameos/gos_terrain_indirect_cement.cpp": {
    "LG05": 3,
@@ -874,8 +867,7 @@
   "GameOS/gameos/gos_terrain_lod_chunk_matalbedo.cpp": {
    "LG05": 2,
    "LG06": 3,
-   "LG11": 1,
-   "LG12a": 1
+   "LG11": 1
   },
   "GameOS/gameos/gos_terrain_lod_chunk_patch.cpp": {
    "LG08": 1,
@@ -884,7 +876,6 @@
   "GameOS/gameos/gos_terrain_lod_chunk_upload.cpp": {
    "LG09": 14,
    "LG10": 1,
-   "LG12a": 1,
    "LG17": 2
   },
   "GameOS/gameos/gos_terrain_mask_dispatch.cpp": {
@@ -902,8 +893,7 @@
   },
   "GameOS/gameos/gos_terrain_water_stream.cpp": {
    "LG08": 10,
-   "LG09": 102,
-   "LG12a": 1
+   "LG09": 102
   },
   "GameOS/gameos/gos_validate.cpp": {
    "LG05": 1,
@@ -934,7 +924,6 @@
    "LG06": 7,
    "LG09": 40,
    "LG11": 5,
-   "LG12a": 1,
    "LG17": 1,
    "LG19": 1
   },
@@ -980,8 +969,7 @@
    "LG09": 1
   },
   "GameOS/gameos/mc2_hitch_trace.cpp": {
-   "LG09": 9,
-   "LG12a": 2
+   "LG09": 9
   },
   "GameOS/gameos/mc2_hitch_trace.h": {
    "LG09": 6
@@ -1599,8 +1587,7 @@
    "LG09": 21
   },
   "code/ablmc2_repro.cpp": {
-   "LG09": 4,
-   "LG12a": 3
+   "LG09": 4
   },
   "code/ablmc2_roster.cpp": {
    "LG04": 2,
@@ -2238,8 +2225,7 @@
    "LG05": 13,
    "LG06": 4,
    "LG09": 11,
-   "LG11": 3,
-   "LG12a": 1
+   "LG11": 3
   },
   "code/logisticsdialog.cpp": {
    "LG01": 7,
@@ -2343,8 +2329,7 @@
    "LG03": 4,
    "LG06": 1,
    "LG09": 1,
-   "LG11": 1,
-   "LG12a": 1
+   "LG11": 1
   },
   "code/mc2movie.h": {
    "LG01": 2,
@@ -3443,7 +3428,6 @@
   },
   "mclib/bdactor_render.cpp": {
    "LG09": 18,
-   "LG12a": 2,
    "LG20": 2
   },
   "mclib/bdactor_sidecar.cpp": {
@@ -3457,8 +3441,7 @@
   "mclib/bdactor_static.cpp": {
    "LG03": 4,
    "LG08": 3,
-   "LG09": 11,
-   "LG12a": 6
+   "LG09": 11
   },
   "mclib/bdactor_terrain.cpp": {
    "LG03": 11,
@@ -3472,14 +3455,12 @@
   },
   "mclib/bdactor_tree_static.cpp": {
    "LG03": 1,
-   "LG09": 9,
-   "LG12a": 4
+   "LG09": 9
   },
   "mclib/bdactor_type.cpp": {
    "LG03": 25,
    "LG06": 2,
-   "LG09": 3,
-   "LG12a": 2
+   "LG09": 3
   },
   "mclib/bdactor_update.cpp": {
    "LG03": 3,
@@ -4554,7 +4535,7 @@
    "LG06": 8,
    "LG09": 33,
    "LG11": 1,
-   "LG12a": 2,
+   "LG12a": 1,
    "LG12b": 2
   },
   "mclib/msl_shape.cpp": {
@@ -4704,8 +4685,7 @@
   "mclib/render_contract.cpp": {
    "LG05": 1,
    "LG06": 8,
-   "LG09": 13,
-   "LG12a": 1
+   "LG09": 13
   },
   "mclib/render_contract.h": {
    "LG06": 6
@@ -5048,8 +5028,7 @@
   "mclib/terrain_init.cpp": {
    "LG03": 6,
    "LG09": 69,
-   "LG11": 9,
-   "LG12a": 1
+   "LG11": 9
   },
   "mclib/terrain_internal.h": {
    "LG13": 1,
@@ -5350,7 +5329,7 @@
    "LG20": 2
   }
  },
- "head": "abb8fcb5d",
+ "head": "2a80c05a4",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
