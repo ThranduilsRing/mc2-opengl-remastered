@@ -62,3 +62,23 @@ def test_symbol_offsets_inside_a_section_are_layout_but_names_are_not():
     renamed = [(".text", 1, 3), ("alphb", 1, 2), ("beta", 0, 2)]
     assert digest(build(CODE, moved, 2))[0] == base
     assert digest(build(CODE, renamed, 2))[0] != base
+
+
+def build_data(sections_symbols, data, order_swap=False):
+    """One .data section of `data` with two external symbols (a at 0, b at 8) - or swapped - and nothing else."""
+    hdr, sec_hdr = 20, 40
+    data_off = hdr + sec_hdr
+    sym_off = data_off + len(data)
+    a_off, b_off = (8, 0) if order_swap else (0, 8)
+    symbols = [sym("alpha", 1, 2, a_off), sym("beta", 1, 2, b_off)]
+    section = struct.pack("<8sIIIIIIHHI", b".data", 0, 0, len(data), data_off, 0, 0, 0, 0, 0xC0100040)
+    return struct.pack("<HHIIIHH", 0x8664, 1, 0, sym_off, 2, 0, 0) + section + data + b"".join(symbols) + struct.pack("<I", 4)
+
+
+def test_data_symbols_may_be_laid_out_in_another_order_but_not_hold_other_bytes():
+    ab = build_data(None, b"AAAAAAAA" + b"BBBBBBBB")
+    ba = build_data(None, b"BBBBBBBB" + b"AAAAAAAA", order_swap=True)      # alpha is now the second chunk
+    assert digest(ab)[0] == digest(ba)[0]
+    assert digest(ab)[1] != digest(ba)[1]
+    changed = build_data(None, b"AAAAAAAA" + b"BBBBBBBC")
+    assert digest(ab)[0] != digest(changed)[0]
