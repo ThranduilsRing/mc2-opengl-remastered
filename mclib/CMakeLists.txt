@@ -88,6 +88,8 @@ set(SOURCES ${SOURCES}
     ablsymt.cpp
     ablxexpr.cpp
     ablxstd.cpp
+    ablxstd_stack.cpp
+    ablxstd_std.cpp
     ablxstmt.cpp
     camera.cpp
     camera_project.cpp

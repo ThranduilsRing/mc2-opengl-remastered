@@ -339,6 +339,15 @@ Split commit: `dd946d83d`.
 | `abldbug_print.cpp` | ABL debugger: the statement / value printers, the execution trace hooks, showValue, assignVariable and the module-instance listing. |
 | `abldbug_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
+## `mclib/ablxstd.cpp`
+
+| Piece | What it holds |
+|---|---|
+| `ablxstd.cpp` | keeps the state / flag / function-call routines, the routine registration and the standard-routine dispatch |
+| `ablxstd_stack.cpp` | ABL standard routines: the ABLi_pop / push / peek / poke accessors for the interpreter stack. |
+| `ablxstd_std.cpp` | ABL standard routines: the return, print, concat, math, file, module, random and state-handle standard routines. |
+| `ablxstd_internal.h` | shared include bundle, extern globals and declarations of the pieces |
+
 ## `mclib/bdactor.cpp`
 
 Split commit: `6456f46eb`.
