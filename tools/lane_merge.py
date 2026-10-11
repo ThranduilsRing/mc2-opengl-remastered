@@ -18,11 +18,15 @@ Steps: (a) dirty-overlap and staged-index refusal, (b) git merge --no-ff with re
 baseline conflicts resolved to the lane's side, (c) ratchet checks with --tighten at the merged
 HEAD, (d) a follow-up commit of exactly the tightened baseline files.
 
+Step (e), on by default: build the merged tree (scripts/ninja_build.py) and run the doctest tier (scripts/run-unit-tests.sh); `--verify full`
+adds the whole contracts board, `--no-verify` skips it. A root without those scripts (the throwaway repos of the tests) reports SKIPPED.
+
 Exit codes: 0 merged (or lane already contained); 2 bad ref; 3 merge already in progress or
 unmerged paths; 4 dirty overlap / staged changes; 5 merge failed or conflicts outside the
 regenerable set (merge aborted, the lane's untracked files removed; a "file in use" failure waits up to 10 min for
 build-alltargets/.tidy.lock to clear and retries once); 6 a ratchet failed (merge commit stays).
-Final line: MERGED <sha> (+<follow-up sha>) files=<n> ratchets=OK/FAIL overlap=0
+7 the merged tree does not build or its doctest fails (the merge commit stays; fix forward).
+Final line: MERGED <sha> (+<follow-up sha>) files=<n> ratchets=OK/FAIL verify=OK/FAIL/SKIPPED overlap=0
 """
 from __future__ import annotations
 
@@ -226,6 +230,30 @@ def run_ratchets(root: str, tools_dir: str) -> list[tuple[str, int, str]]:
     return results
 
 
+VERIFY_STEPS = {
+    "build": [("build", ["scripts/ninja_build.py"]), ("doctest", ["scripts/run-unit-tests.sh"])],
+    "full": [("build", ["scripts/ninja_build.py"]), ("doctest", ["scripts/run-unit-tests.sh"]), ("board", ["scripts/check-contracts.sh"])],
+}
+
+
+def verify_merged(root: str, mode: str, runner=run) -> tuple[str, list[tuple[str, int, str]]]:
+    """Build and test the merged tree. -> ("OK"|"FAIL"|"SKIPPED", [(step, rc, tail)]). Stops at the first failing step."""
+    if mode == "none":
+        return "SKIPPED", []
+    results = []
+    for label, (script, *rest) in VERIFY_STEPS[mode]:
+        path = os.path.join(root, script)
+        if not os.path.exists(path):
+            return ("SKIPPED" if not results else "OK"), results
+        cmd = ["bash", path] + rest if script.endswith(".sh") else [sys.executable, path] + rest
+        r = runner(root, cmd)
+        tail = "\n".join(r.stdout.splitlines()[-8:])
+        results.append((label, r.returncode, tail))
+        if r.returncode != 0:
+            return "FAIL", results
+    return "OK", results
+
+
 def commit_tightened(root: str, pre_dirty: set[str]) -> str | None:
     """Commit exactly the baselines the ratchets tightened; skip any that was already dirty."""
     now_dirty = {p for _, p in status_entries(root)}
@@ -249,6 +277,9 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--root", default=os.path.abspath(os.path.join(HERE, "..")))
     ap.add_argument("--tools-dir")
+    ap.add_argument("--verify", choices=["build", "full", "none"], default="build",
+                    help="what to run on the merged tree: build + doctest (default), full = also the contracts board, none")
+    ap.add_argument("--no-verify", action="store_true", help="same as --verify none")
     return ap
 
 
@@ -295,13 +326,19 @@ def main(argv: list[str] | None = None) -> int:
         results = run_ratchets(root, tools_dir)
         follow = commit_tightened(root, pre_dirty)
         failed = [(label, rc, tail) for label, rc, tail in results if rc != 0]
+        verdict, vresults = ("SKIPPED", []) if failed else verify_merged(root, "none" if args.no_verify else args.verify)
         line = (f"MERGED {merge_sha}" + (f" (+{follow})" if follow else "")
-                + f" files={len(p['lane_files'])} ratchets={'FAIL' if failed else 'OK'} overlap=0")
+                + f" files={len(p['lane_files'])} ratchets={'FAIL' if failed else 'OK'} verify={verdict} overlap=0")
         print(line)
         if failed:
             for label, rc, tail in failed:
                 print(f"lane_merge: ratchet {label} exited {rc}; last lines:\n{tail}", file=sys.stderr)
             return 6
+        if verdict == "FAIL":
+            for label, rc, tail in vresults:
+                if rc:
+                    print(f"lane_merge: verify step {label} exited {rc}; last lines:\n{tail}", file=sys.stderr)
+            return 7
         return 0
     except Stop as e:
         print(f"lane_merge: {e}", file=sys.stderr)

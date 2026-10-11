@@ -24,7 +24,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 sys.path.insert(0, str(ROOT))
 
 import console_child  # noqa: E402
-from smoke_lib import cursor_guard, exe_guard, nofocus  # noqa: E402
+from smoke_lib import exe_guard, nofocus, win_input  # noqa: E402
 from scripts.smoke_lib import deploy_lease  # noqa: E402
 
 STALE_SHA = "d662802367d8a5b6cfc1ef03a38053f61a1bd598"
@@ -276,102 +276,65 @@ class _FakeUser32:
 
 def _mock_desktop(monkeypatch, idle_s):
     fake = _FakeUser32(idle_s)
-    monkeypatch.setattr(cursor_guard, "_user32", lambda: fake)
+    monkeypatch.setattr(win_input, "_user32", lambda: fake)
     monkeypatch.setattr(ctypes.windll.kernel32, "GetTickCount", lambda: _NOW_MS, raising=False)
-    monkeypatch.setattr(cursor_guard, "_user_active_logged", False)
     return fake
 
 
-def test_pointer_write_is_skipped_while_user_is_active(monkeypatch, capsys):
+def test_pointer_write_is_skipped_while_user_is_active(monkeypatch):
     fake = _mock_desktop(monkeypatch, idle_s=1.0)
-    assert cursor_guard.user_is_active()
-    assert cursor_guard.set_cursor_pos((10, 20)) is False
+    assert win_input.user_is_active()
+    assert win_input.set_cursor_pos((10, 20)) is False
     assert fake.writes == []
-    assert capsys.readouterr().err.count("[CURSOR_GUARD] user active, restore skipped") == 1
 
 
-def test_skip_line_is_emitted_once_per_run_not_per_sample(monkeypatch, capsys):
+def test_many_attempts_while_the_user_is_active_write_nothing(monkeypatch):
     fake = _mock_desktop(monkeypatch, idle_s=0.2)
     for _ in range(50):
-        cursor_guard.set_cursor_pos((1, 1))
+        win_input.set_cursor_pos((1, 1))
     assert fake.writes == []
-    assert capsys.readouterr().err.count("[CURSOR_GUARD] user active, restore skipped") == 1
 
 
-def test_pointer_write_proceeds_when_user_is_idle(monkeypatch, capsys):
+def test_pointer_write_proceeds_when_user_is_idle(monkeypatch):
     fake = _mock_desktop(monkeypatch, idle_s=60.0)
-    assert not cursor_guard.user_is_active()
-    assert cursor_guard.set_cursor_pos((10, 20)) is True
+    assert not win_input.user_is_active()
+    assert win_input.set_cursor_pos((10, 20)) is True
     assert fake.writes == [(10, 20)]
-    assert "user active" not in capsys.readouterr().err
 
 
 def test_unknown_idle_time_does_not_block_a_headless_restore(monkeypatch):
-    monkeypatch.setattr(cursor_guard, "_user32", lambda: None)
-    assert cursor_guard.user_idle_seconds() is None
-    assert not cursor_guard.user_is_active()
+    monkeypatch.setattr(win_input, "_user32", lambda: None)
+    assert win_input.user_idle_seconds() is None
+    assert not win_input.user_is_active()
 
 
-def test_nofocus_and_park_paths_go_through_the_guarded_write(monkeypatch):
+def test_nofocus_pointer_write_goes_through_the_guarded_write(monkeypatch):
     fake = _mock_desktop(monkeypatch, idle_s=1.0)
     assert nofocus.set_cursor_pos(5, 5, restoring=True) is False
-    monkeypatch.setattr(cursor_guard, "_PARK_ORIGIN", (7, 7))
-    monkeypatch.setattr(cursor_guard, "_PARK_ORIGIN_SAVED", True)
-    assert cursor_guard.restore_parked_cursor() is False
-    assert fake.writes == []
-
-
-def test_watchdog_restore_is_inert_while_user_is_active(monkeypatch):
-    fake = _mock_desktop(monkeypatch, idle_s=0.5)
-    g = cursor_guard.CursorGuard()
-    g.anchor = (0, 0)
-    assert g._restore_to_anchor() is None
-    g._restore()
     assert fake.writes == []
 
 
 # ------------------------------------------------- MC2_CURSOR_GUARD_OFF (test isolation)
 
-def test_cursor_guard_construction_under_pytest_requires_the_off_switch(monkeypatch):
-    monkeypatch.delenv("MC2_CURSOR_GUARD_OFF", raising=False)
-    try:
-        cursor_guard.CursorGuard()
-    except RuntimeError as e:
-        assert "MC2_CURSOR_GUARD_OFF" in str(e)
-    else:
-        raise AssertionError("CursorGuard() under pytest must refuse without MC2_CURSOR_GUARD_OFF=1")
-
-
 def test_conftest_sets_the_off_switch_for_the_whole_session():
     assert os.environ.get("MC2_CURSOR_GUARD_OFF") == "1"
 
 
-def test_off_switch_makes_every_entry_point_a_noop_with_no_win32_call(monkeypatch, capsys):
+def test_off_switch_makes_every_entry_point_a_noop_with_no_win32_call(monkeypatch):
     class _Poison:
         def __getattr__(self, name):
             raise AssertionError(f"win32 call {name} reached with MC2_CURSOR_GUARD_OFF=1")
 
     monkeypatch.setenv("MC2_CURSOR_GUARD_OFF", "1")
     monkeypatch.setattr(ctypes, "windll", types.SimpleNamespace(user32=_Poison(), kernel32=_Poison()), raising=False)
-    monkeypatch.setattr(cursor_guard, "_guard_off_logged", False)
-    g = cursor_guard.CursorGuard().start()
-    assert g.active is False
-    g.set_owner_pid(1)
-    g.stop()
-    assert cursor_guard.get_cursor_pos() is None
-    assert cursor_guard.set_cursor_pos((1, 1)) is False
-    assert cursor_guard.unclip_cursor() is False
-    assert cursor_guard.get_clip_rect() is None
-    assert cursor_guard.find_foreign_game_pids() == []
-    assert cursor_guard.park_cursor_if_edge() in ("inert", "disabled")
-    assert cursor_guard.restore_parked_cursor() is False
-    assert capsys.readouterr().err.count("MC2_CURSOR_GUARD_OFF=1, all pointer and clip calls disabled") == 1
+    assert win_input.get_cursor_pos() is None
+    assert win_input.set_cursor_pos((1, 1)) is False
+    assert win_input.find_foreign_game_pids() == []
 
 
 def test_every_win32_entry_raises_under_pytest_without_the_off_switch(monkeypatch):
     monkeypatch.delenv("MC2_CURSOR_GUARD_OFF", raising=False)
-    for call in (cursor_guard.get_cursor_pos, cursor_guard.unclip_cursor, cursor_guard.get_clip_rect,
-                 cursor_guard.find_foreign_game_pids, lambda: cursor_guard.set_cursor_pos((1, 1))):
+    for call in (win_input.get_cursor_pos, win_input.find_foreign_game_pids, lambda: win_input.set_cursor_pos((1, 1))):
         try:
             call()
         except RuntimeError as e:

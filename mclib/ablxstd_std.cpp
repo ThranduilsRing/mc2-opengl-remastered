@@ -1,5 +1,6 @@
 // ABL standard routines: the return, print, concat, math, file, module, random and state-handle standard routines.
 // Declared in the class headers; shared names in ablxstd_internal.h.
+#include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "ablxstd_internal.h"
 #include "mc2fmt.h"
 

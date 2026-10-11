@@ -1,5 +1,6 @@
 // Multi shape layer: TG_TypeMultiShape loading: binary copy, ASE import, texture setup, save and destroy, with the asset-load audit events.
 // Declared in the class headers; shared names in msl_internal.h.
+#include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "msl_internal.h"
 #include "mc2fmt.h"
 

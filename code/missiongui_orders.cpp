@@ -1,5 +1,6 @@
 // MissionInterfaceManager: attack, jump, guard, aim, air-strike, camera, zoom, rotate and draw-toggle commands, plus move, patrol and force-group orders.
 // Declared in the class headers; shared names in missiongui_shared_internal.h.
+#include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "missiongui_shared_internal.h"
 #include "mc2fmt.h"
 

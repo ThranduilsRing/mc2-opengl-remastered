@@ -117,7 +117,7 @@ def test_clean_merge(env):
     commit_all(repo, "main work")
     rc, out, err = merge(env)
     assert rc == 0, err
-    assert out.startswith("MERGED ") and "files=1 ratchets=OK overlap=0" in out and "(+" not in out
+    assert out.startswith("MERGED ") and "files=1 ratchets=OK verify=SKIPPED overlap=0" in out and "(+" not in out
     assert len(parents(repo)) == 2
     assert git(repo, "log", "-1", "--format=%s") == "merge lane: lane: add thing"
     assert "Co-Authored-By: Claude Fable 5.1" in git(repo, "log", "-1", "--format=%B")
@@ -361,3 +361,42 @@ def test_lock_that_never_clears_gives_up_and_cleans(env, monkeypatch):
         _call_do_merge(repo, monkeypatch, _FlakyMerge(repo, lm.git), sleep=lambda s: None, clock=lambda: next(ticks),
                        lock_wait_s=300)
     assert e.value.code == 5 and not (repo / "lane_new.txt").exists() and (repo / "build-alltargets" / ".tidy.lock").exists()
+
+
+def _load_module():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("lane_merge_mod", TOOL)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+class _R:
+    def __init__(self, rc, out=""):
+        self.returncode, self.stdout = rc, out
+
+
+def test_verify_runs_build_then_doctest_and_stops_at_the_first_failure(tmp_path):
+    lm = _load_module()
+    (tmp_path / "scripts").mkdir()
+    for n in ("ninja_build.py", "run-unit-tests.sh"):
+        (tmp_path / "scripts" / n).write_text("")
+    calls = []
+
+    def runner(root, cmd):
+        calls.append(os.path.basename(cmd[1]))
+        return _R(1 if cmd[1].endswith("ninja_build.py") else 0, "boom")
+
+    verdict, res = lm.verify_merged(str(tmp_path), "build", runner)
+    assert verdict == "FAIL" and calls == ["ninja_build.py"] and res[0][0] == "build" and "boom" in res[0][2]
+    calls.clear()
+    verdict, res = lm.verify_merged(str(tmp_path), "build", lambda root, cmd: (calls.append(os.path.basename(cmd[1])), _R(0))[1])
+    assert verdict == "OK" and calls == ["ninja_build.py", "run-unit-tests.sh"]
+
+
+def test_verify_is_skipped_without_the_scripts_or_when_switched_off(tmp_path):
+    lm = _load_module()
+    assert lm.verify_merged(str(tmp_path), "build")[0] == "SKIPPED"
+    (tmp_path / "scripts").mkdir()
+    (tmp_path / "scripts" / "ninja_build.py").write_text("")
+    assert lm.verify_merged(str(tmp_path), "none")[0] == "SKIPPED"

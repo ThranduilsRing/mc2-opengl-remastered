@@ -24,6 +24,7 @@
 
 //--------------------------------------------------------------------------------------
 
+#include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "missiongui_shared_internal.h"
 
 

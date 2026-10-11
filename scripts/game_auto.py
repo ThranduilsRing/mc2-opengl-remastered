@@ -45,11 +45,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 #
 # Fix shape (deliberately NOT "stop moving the cursor"): remember where the
 # pointer was on entry, and put it back when the command/script finishes.
-from smoke_lib.cursor_guard import (  # noqa: E402
-    get_cursor_pos,
-    set_cursor_pos,
-    unclip_cursor,
-)
+from smoke_lib.win_input import get_cursor_pos, set_cursor_pos  # noqa: E402
 from smoke_lib import nofocus  # noqa: E402
 
 # Session cursor bookkeeping. `_CURSOR_MOVED` stays False for commands that
@@ -66,9 +62,8 @@ def _cursor_session_begin() -> None:
 
 
 def _cursor_session_end() -> None:
-    """Release any game clamp and put the pointer back. Idempotent."""
+    """Put the pointer back where it was. Idempotent."""
     global _CURSOR_MOVED
-    unclip_cursor()
     if _CURSOR_MOVED and _CURSOR_ORIGIN is not None:
         set_cursor_pos(_CURSOR_ORIGIN)
     _CURSOR_MOVED = False
@@ -79,7 +74,7 @@ def _warp(x: int, y: int) -> None:
 
     BACKGROUND-SMOKE-1: routed through nofocus.set_cursor_pos, which is a
     NO-OP unless MC2_HARNESS_ALLOW_FOREGROUND=1. Agent runs must never move
-    the user's pointer; the restore path (cursor_guard) is exempt.
+    the user's pointer; the restore path (win_input) is exempt.
     """
     global _CURSOR_MOVED
     _cursor_session_begin()

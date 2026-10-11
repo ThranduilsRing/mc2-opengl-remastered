@@ -1,5 +1,6 @@
 // GroundVehicle: vehicle pilot, AI/network/player control, dynamics, animations, status rating and rendering.
 // Declared in the class headers; shared names in gvehicl_internal.h.
+#include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "gvehicl_internal.h"
 
 

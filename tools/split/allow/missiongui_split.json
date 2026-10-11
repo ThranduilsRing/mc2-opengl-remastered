@@ -12,7 +12,6 @@
   "scripts/counter-honesty-allowlist.txt",
   "scripts/gate-defaults-allowlist.txt",
   "scripts/run_visual_capture.py",
-  "scripts/smoke_lib/cursor_guard.py",
   "tools/gate_codemod.py"
  ],
  "_scripts_reason": "Reviewed: check-mover-registry-coherence reads the select-all trio and the #42b hover guard from every missiongui*.cpp piece (guard now in missiongui_update.cpp; its self-test revert-simulation concatenates the pieces); counter-honesty keys the s_stage limiter to missiongui_update.cpp; camera_sweep_smoke, run_visual_capture, cursor_guard and gate-defaults-allowlist cite missiongui.cpp lines in comments only; tools/gate_codemod.py (lane 1 gate tooling) lists the file for its codemod and is not edited here.",

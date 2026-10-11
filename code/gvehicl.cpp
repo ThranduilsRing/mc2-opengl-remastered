@@ -5,6 +5,7 @@
 // Copyright (C) Microsoft Corporation. All rights reserved.                 //
 //===========================================================================//
 
+#include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "gvehicl_internal.h"
 
 

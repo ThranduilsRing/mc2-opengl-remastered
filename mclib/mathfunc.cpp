@@ -3,6 +3,7 @@
 //===========================================================================//
 
 #ifndef STUFF_STUFF_HPP
+#include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include"stuff/stuff.hpp"
 #endif
 

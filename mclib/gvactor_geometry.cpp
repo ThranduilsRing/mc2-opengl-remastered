@@ -1,5 +1,6 @@
 // GVAppearance: paint schemes, gestures, object/mover parameters, bounds, destruction and node positions.
 // Declared in the class headers; shared names in gvactor_internal.h.
+#include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "gvactor_internal.h"
 #include "../RenderCore/axis_convert.h"
 #include "mc2fmt.h"

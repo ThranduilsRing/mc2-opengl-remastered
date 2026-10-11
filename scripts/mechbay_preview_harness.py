@@ -26,12 +26,7 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-# VERIFY-INTEGRITY-3: this harness launches mc2.exe for up to --timeout seconds
-# and previously set NEITHER MC2_SMOKE_MODE nor MC2_NO_CURSOR_GRAB, so the game
-# clamped and re-centred the user's pointer for the whole run. Same belt-and-
-# braces pairing as scripts/smoke_lib/runner.py: the env gate stops NEW binaries
-# grabbing, CursorGuard defends from outside so OLDER deploys are covered too.
-from smoke_lib.cursor_guard import CursorGuard  # noqa: E402
+# MC2_SMOKE_MODE + MC2_NO_CURSOR_GRAB (set below) stop the game grabbing the pointer; nofocus.spawn refuses an exe too old to honour them.
 from smoke_lib import nofocus  # noqa: E402
 
 DEFAULT_DEPLOY = "A:/Games/mc2-opengl/mc2-win64-v0.4"
@@ -101,16 +96,13 @@ def main():
 
     print(f"[harness] launching {exe} (screen={args.screen} campaign='{args.campaign}' frame={args.frame})")
     with open(out_stdout, "w") as fo, open(out_stderr, "w") as fe:
-        # Guard STARTS BEFORE Popen so its anchor is the user's real position
-        # and any foreign clamp is reported rather than silently adopted.
-        with CursorGuard():
-            p = nofocus.spawn([str(exe)], cwd=str(deploy), stdout=fo, stderr=fe, env=env)
-            try:
-                p.wait(timeout=args.timeout)
-                print(f"[harness] process exited on its own (code {p.returncode})")
-            except subprocess.TimeoutExpired:
-                p.kill()
-                print(f"[harness] killed after {args.timeout}s (expected — screenshot hook doesn't self-exit)")
+        p = nofocus.spawn([str(exe)], cwd=str(deploy), stdout=fo, stderr=fe, env=env)
+        try:
+            p.wait(timeout=args.timeout)
+            print(f"[harness] process exited on its own (code {p.returncode})")
+        except subprocess.TimeoutExpired:
+            p.kill()
+            print(f"[harness] killed after {args.timeout}s (expected — screenshot hook doesn't self-exit)")
 
     if out_tga.exists():
         print(f"[harness] screenshot captured: {out_tga} ({out_tga.stat().st_size} bytes)")

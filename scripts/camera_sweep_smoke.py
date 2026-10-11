@@ -24,8 +24,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
-# CURSOR-STEAL-HARNESS-GUARD-1: shared cursor policy (conditional park + restore).
-from smoke_lib.cursor_guard import park_cursor_if_edge, restore_parked_cursor  # noqa: E402
 # BACKGROUND-SMOKE-1: single chokepoint for non-activating launch + guarded focus.
 from smoke_lib import nofocus  # noqa: E402
 DEFAULT_EXE = Path(r"A:/Games/mc2-opengl/mc2-win64-v0.4/mc2.exe")
@@ -38,25 +36,7 @@ _user32 = ctypes.windll.user32
 
 
 def _park_cursor_center():
-    """Keep the cursor out of MC2's edge-scroll bands.
-
-    CURSOR-STEAL-HARNESS-GUARD-1: this previously slammed the pointer to screen
-    centre unconditionally, three times per run, and NEVER restored it -- the
-    user's mouse was simply left at centre when the sweep finished. It now moves
-    the pointer only when it actually sits in a scroll band (see cursor_guard.py
-    for the missiongui.cpp:5206 trigger), and the pre-park position is restored
-    at exit via the atexit hook registered below.
-    """
-    try:
-        outcome = park_cursor_if_edge()
-        if outcome == "parked":
-            print("[camsweep] cursor parked (was in edge-scroll band)", file=sys.stderr)
-    except Exception as e:
-        print(f"[camsweep] WARN park cursor: {e}", file=sys.stderr)
-
-
-# Restore the user's pointer even if the sweep crashes or is killed.
-atexit.register(restore_parked_cursor)
+    """No-op. The smoke-mode engine ignores the real pointer (no edge scroll, no grab), and a harness must never move a person's pointer."""
 
 
 def _foreground_mc2():

@@ -1,5 +1,6 @@
 // TG shapes: shadow transform and shadow rendering.
 // Declared in the class headers; shared names in tgl_internal.h.
+#include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "tgl_internal.h"
 
 //

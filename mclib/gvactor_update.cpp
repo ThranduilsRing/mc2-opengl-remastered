@@ -1,5 +1,6 @@
 // GVAppearance: updateGeometry (reads the shadow-skip gate and the spot-light diagnostic counters), update, destroy, water wake and activity effects.
 // Declared in the class headers; shared names in gvactor_internal.h.
+#include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "gvactor_internal.h"
 #include "Gates/gate.h"
 #include "../RenderCore/axis_convert.h"

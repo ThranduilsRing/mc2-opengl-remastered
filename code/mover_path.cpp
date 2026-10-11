@@ -1,5 +1,6 @@
 // Mover: move goals, line of sight, global/local path calculation and path locking.
 // Declared in mover.h; shared names in mover_internal.h.
+#include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "mover_internal.h"
 
 

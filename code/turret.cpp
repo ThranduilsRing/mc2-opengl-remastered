@@ -9,6 +9,7 @@
 //===========================================================================//
 
 #ifndef MCLIB_H
+#include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include"mclib.h"
 #endif
 

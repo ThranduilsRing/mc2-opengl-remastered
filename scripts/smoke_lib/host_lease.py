@@ -24,10 +24,10 @@ from pathlib import Path
 from typing import Callable, List, Optional, Tuple
 
 try:
-    from . import child_registry, cursor_guard
+    from . import child_registry, win_input
 except ImportError:                       # imported as a top-level module from scripts/
     import child_registry                 # type: ignore
-    import cursor_guard                   # type: ignore
+    import win_input                   # type: ignore
 
 OFF_ENV = "MC2_HOST_LEASE"                # "off" -> never lease (tests, owner debugging)
 TIMEOUT_ENV = "MC2_HOST_LEASE_TIMEOUT"    # seconds, default 3600
@@ -118,7 +118,7 @@ def acquire(label: str, *, wait: bool = True, timeout_s: Optional[float] = None,
             scan: Optional[Callable[..., List[Tuple[int, str]]]] = None) -> None:
     """Hold the host lease, or raise HostLeaseBusy. See the module docstring for the rules."""
     global _registered
-    scan = scan or cursor_guard.find_foreign_game_pids
+    scan = scan or win_input.find_foreign_game_pids
     if timeout_s is None:
         timeout_s = float(os.environ.get(TIMEOUT_ENV) or DEFAULT_TIMEOUT_S)
     path = lease_path()
@@ -159,7 +159,7 @@ def acquire(label: str, *, wait: bool = True, timeout_s: Optional[float] = None,
 
 def disabled() -> bool:
     """True when leasing is switched off (MC2_HOST_LEASE=off) or the test cursor guard is off (no real engine is ever started)."""
-    return os.environ.get(OFF_ENV, "").lower() == "off" or cursor_guard.guard_off()
+    return os.environ.get(OFF_ENV, "").lower() == "off" or win_input.guard_off()
 
 
 def ensure_held(label: str) -> None:

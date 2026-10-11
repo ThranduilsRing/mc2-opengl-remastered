@@ -1,5 +1,6 @@
 // ABL native bindings: object damage/distance/status, timers, objectives, music/speech/video and mission-status bindings.
 // Declared in ablmc2_internal.h; registered, in order, by initABL in ablmc2.cpp.
+#include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "ablmc2_internal.h"
 
 

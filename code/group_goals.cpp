@@ -1,5 +1,6 @@
 // MoverGroup: the move / jump goal-cell searches (calcMoveGoals, calcJumpGoals, sortMovers) and their spiral tables.
 // Declared in the class headers; shared names in group_internal.h.
+#include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "group_internal.h"
 
 

@@ -23,6 +23,7 @@ import glob
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -34,6 +35,7 @@ sys.path.insert(0, os.path.join(ROOT, "scripts"))
 import console_child  # noqa: E402
 
 PREFIX = "[SIMID v1] simframe="
+_STRICT = re.compile(r" strict=\w+")
 GATES = {"MC2_SMOKE_FIXED_TIMESTEP": "1", "MC2_DETERMINISTIC_RNG": "1", "MC2_SIM_IDENTITY_TRACE": "1"}
 #: A comparison over fewer frames proves nothing (the mission may not have left the loading screen).
 MIN_FRAMES = 300
@@ -51,6 +53,15 @@ def chain(lines, frames: int | None = None) -> str:
     h = hashlib.sha256()
     for ln in (lines if frames is None else lines[:frames]):
         h.update(ln.rstrip().encode("utf-8", "replace"))
+    return h.hexdigest()[:16]
+
+
+def visible_chain(lines, frames: int | None = None) -> str:
+    """Like chain(), over the graded and visual digests only: the strict digest hashes raw float bits, so a change in how a float expression is
+    compiled moves it without moving anything the player can see (measured: the <cmath> includes of step 3.5 (c))."""
+    h = hashlib.sha256()
+    for ln in (lines if frames is None else lines[:frames]):
+        h.update(_STRICT.sub("", ln.rstrip()).encode("utf-8", "replace"))
     return h.hexdigest()[:16]
 
 
@@ -73,10 +84,15 @@ def check_baseline(lines, baseline_path: str):
     n = int(base["frames"])
     if len(lines) < n:
         return False, f"the run has {len(lines)} sim frames, the baseline needs {n}"
+    vis = visible_chain(lines, n)
+    if vis != base.get("visible_chain"):
+        return False, (f"the graded/visual chain over the first {n} frames is {vis}, baseline {base.get('visible_chain')} "
+                       f"({base.get('mission')} at {base.get('sha')}): the simulation a player sees changed")
     got = chain(lines, n)
     if got != base["chain"]:
-        return False, f"chain over the first {n} frames is {got}, baseline {base['chain']} ({base.get('mission')} at {base.get('sha')})"
-    return True, f"first {n} frames match the baseline chain {got}"
+        return True, (f"first {n} frames match the baseline in graded and visual digests; the strict (raw float bits) chain differs "
+                      f"({got}, baseline {base['chain']}): a float expression compiles differently, nothing visible moved")
+    return True, f"first {n} frames match the baseline chain {got} in every digest"
 
 
 def _build_sha(log: str) -> str:
@@ -156,10 +172,13 @@ def selftest() -> int:
         expect(len(load_simid(p)) == 5, "load_simid keeps only the SIMID lines")
         b = os.path.join(td, "b.json")
         with open(b, "w") as fh:
-            json.dump({"frames": 5, "chain": chain(mk(5)), "mission": "m", "sha": "s"}, fh)
+            json.dump({"frames": 5, "chain": chain(mk(5)), "visible_chain": visible_chain(mk(5)), "mission": "m", "sha": "s"}, fh)
         expect(check_baseline(mk(9), b)[0], "a run that starts with the baseline frames matches it")
         expect(not check_baseline(mk(9, bad=2), b)[0], "a run that differs inside the baseline frames does not")
         expect(not check_baseline(mk(4), b)[0], "a run shorter than the baseline does not")
+        strict_moved = [_STRICT.sub(" strict=ffff", ln) if i == 2 else ln for i, ln in enumerate(mk(9))]
+        ok, msg = check_baseline(strict_moved, b)
+        expect(ok and "strict" in msg, "a change in the strict digest alone passes with a note")
     for f in fails:
         print("sim_determinism selftest FAIL: " + f)
     print("sim_determinism selftest: " + ("FAIL" if fails else "ok"))
@@ -194,7 +213,7 @@ def main(argv=None) -> int:
         if len(lines) < args.frames:
             sys.exit(f"the log has {len(lines)} sim frames, fewer than --frames {args.frames}")
         with open(args.out, "w", encoding="utf-8", newline="\n") as fh:
-            json.dump({"mission": args.mission, "frames": args.frames, "chain": chain(lines, args.frames), "sha": _build_sha(args.log) or _git_sha(),
+            json.dump({"mission": args.mission, "frames": args.frames, "chain": chain(lines, args.frames), "visible_chain": visible_chain(lines, args.frames), "sha": _build_sha(args.log) or _git_sha(),
                        "gates": GATES, "about": "chain digest of the first N [SIMID v1] lines; tools/sim_determinism.py run --baseline"}, fh, indent=1)
             fh.write("\n")
         print(f"sim_determinism: wrote {args.out}")

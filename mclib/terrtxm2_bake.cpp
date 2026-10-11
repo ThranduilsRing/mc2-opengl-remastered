@@ -1,5 +1,6 @@
 // TerrainColorMap: fractal base mesh, shadow burn-in, detail / water texture reset and light recalc, and the base texture reset.
 // Declared in the class headers; shared names in terrtxm2_internal.h.
+#include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "terrtxm2_internal.h"
 #include "mc2fmt.h"
 

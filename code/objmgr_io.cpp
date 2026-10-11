@@ -1,5 +1,6 @@
 // GameObjectManager: terrain-object counting, loading and geometry finalise, and the object CopyTo / CopyFrom / Save / Load.
 // Declared in the class headers; shared names in objmgr_internal.h.
+#include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "objmgr_internal.h"
 
 

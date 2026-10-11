@@ -334,12 +334,12 @@ def hidden_kwargs(**extra) -> dict:
 def _desktop_blocked(what: str) -> bool:
     """True when MC2_CURSOR_GUARD_OFF=1 (tests: no window call at all); raises under pytest without it."""
     try:
-        from . import cursor_guard
+        from . import win_input
     except ImportError:
-        from smoke_lib import cursor_guard
-    if cursor_guard.guard_off():
+        from smoke_lib import win_input
+    if win_input.guard_off():
         return True
-    cursor_guard.pytest_tripwire(what)
+    win_input.pytest_tripwire(what)
     return False
 
 
@@ -507,7 +507,7 @@ def set_foreground_window(hwnd) -> bool:
 def set_cursor_pos(x: int, y: int, *, restoring: bool = False) -> bool:
     """No-op unless allowed, or unless RESTORING the user's own anchor.
 
-    `restoring=True` is reserved for smoke_lib.cursor_guard, whose entire job
+    `restoring=True` is reserved for smoke_lib.win_input, whose entire job
     is putting the pointer BACK where the user left it. Moving the pointer
     anywhere else during an agent run is forbidden.
     """
@@ -515,10 +515,10 @@ def set_cursor_pos(x: int, y: int, *, restoring: bool = False) -> bool:
         return False
     if not restoring and not allow_foreground():
         return False
-    # The pointer write itself lives in cursor_guard so that one function owns
+    # The pointer write itself lives in win_input so that one function owns
     # (and idle-guards) every harness cursor move.
     try:
-        from . import cursor_guard
+        from . import win_input
     except ImportError:
-        from smoke_lib import cursor_guard
-    return cursor_guard.set_cursor_pos((int(x), int(y)))
+        from smoke_lib import win_input
+    return win_input.set_cursor_pos((int(x), int(y)))
