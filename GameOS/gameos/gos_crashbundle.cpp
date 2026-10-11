@@ -658,6 +658,17 @@ static LONG WINAPI crashbundle_filter(EXCEPTION_POINTERS* ep)
     return EXCEPTION_CONTINUE_SEARCH;
 }
 
+// The Windows heap ends the process on a corrupted block without running the unhandled-exception
+// filter, so a heap-corruption crash would leave no bundle. The vectored handler is the one
+// in-process hook that still sees STATUS_HEAP_CORRUPTION, and the process dies right after it.
+static LONG WINAPI crashbundle_heap_corruption_handler(EXCEPTION_POINTERS* ep)
+{
+    constexpr DWORD kStatusHeapCorruption = 0xC0000374;
+    if (ep->ExceptionRecord->ExceptionCode != kStatusHeapCorruption)
+        return EXCEPTION_CONTINUE_SEARCH;
+    return crashbundle_filter(ep);
+}
+
 // ---------------------------------------------------------------------------
 // Public init + test trigger
 // ---------------------------------------------------------------------------
@@ -711,6 +722,7 @@ extern "C" void crashbundle_init(void)
     }
 
     SetUnhandledExceptionFilter(crashbundle_filter);
+    AddVectoredExceptionHandler(1, crashbundle_heap_corruption_handler);
 }
 
 extern "C" void crashbundle_trigger_test_crash(void)
