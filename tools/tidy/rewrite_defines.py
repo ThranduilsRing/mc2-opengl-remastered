@@ -30,6 +30,7 @@ sys.path.insert(0, HERE)
 import run_tidy_safe as rts  # noqa: E402
 import run_tidy_headers as rth  # noqa: E402
 import canonical_obj  # noqa: E402
+import proof_ext  # noqa: E402
 
 ROOT = rts.ROOT
 sys.path.insert(0, os.path.join(ROOT, "tools", "cxx17_ratchet"))
@@ -458,7 +459,7 @@ def plan_batches(files, sites, uses, includers, args, dirty):
     return out
 
 
-class FastProof(rth.Proof):
+class FastProof(proof_ext.LayoutMixin, rth.Proof):
     """Proof whose bisect probes rebuild only the objects the first full probe found bad (a wide header makes every probe a rebuild of the whole tree);
     solve_fast() then verifies the kept set with a full build and re-bisects it if that finds more."""
 
@@ -497,7 +498,7 @@ def solve_fast(proof, rounds=6):
     for _ in range(rounds):
         proof.focus = None
         proof.apply(set(kept))
-        if not rth.Proof.bad_objects(proof):
+        if not proof_ext.LayoutMixin.bad_objects(proof):
             return kept, rejected
         sub = FastProof(proof.tree_abs, {h: proof.includers[h] for h in kept}, proof.orig, {h: proof.edited[h] for h in kept}, proof.jobs)
         sub.before = {o: proof.before[o] for o in sub.objs}
@@ -507,7 +508,7 @@ def solve_fast(proof, rounds=6):
         proof = sub
     proof.focus = None
     proof.apply(set(kept))
-    if rth.Proof.bad_objects(proof):                     # still not clean: keep nothing rather than something unproven
+    if proof_ext.LayoutMixin.bad_objects(proof):         # still not clean: keep nothing rather than something unproven
         rejected += [(h, "kept set failed its full verification") for h in kept]
         kept = []
         proof.apply(set())
@@ -519,6 +520,10 @@ def cmd_run(a):
     tree_abs = os.path.join(ROOT, a.tree)
     rts.apply_lane_args(a)
     a.proof_mode = "plain objhash (strict)"
+    if a.layout_only_ok and a.relaxed_proof:
+        sys.exit("rewrite_defines: --layout-only-ok and --relaxed-proof are different proof modes; pass one")
+    if a.layout_only_ok:
+        a.proof_mode = "plain objhash; objects whose only difference is static data layout (per-symbol identical) accepted: --layout-only-ok, ruling 2026-10-11"
     if a.relaxed_proof:
         canonical_obj.install()
         a.proof_mode = "canonical_obj (symbol / section order and .data / .bss layout blind): " + a.relaxed_proof
@@ -564,7 +569,11 @@ def cmd_run(a):
         mtimes = {rel: os.stat(os.path.join(ROOT, rel)).st_mtime_ns for rel in orig}
         inc = {rel: o for rel, _, o in picked}
         FastProof.ignore = frozenset(load_taint(a.ignore_digest_file))
-        proof = (rth.Proof if a.slow_bisect else FastProof)(tree_abs, inc, orig, edited, a.build_jobs)
+        proof = (SlowProof if a.slow_bisect else FastProof)(tree_abs, inc, orig, edited, a.build_jobs)
+        proof.layout_only_ok = a.layout_only_ok
+        gate = proof_ext.Gate(sorted(orig), a.layout_only_ok) if a.vs_gate else None
+        if gate:
+            gate.snapshot()
         if proof.baseline():
             print("rewrite_defines: the base build of the proof set failed; refusing to edit", file=sys.stderr)
             return 2
@@ -572,6 +581,17 @@ def cmd_run(a):
         for rel, why in rejected:
             rts.restore_file(rel, mtimes[rel])
             print("REVERT %s  %s" % (rel, why))
+        if gate and kept:
+            kept, more = gate.settle(kept, orig, mtimes)
+            for rel, why in more:
+                print("REVERT %s  %s" % (rel, why))
+            rejected += more
+            if more:
+                proof.apply(set(kept))
+                proof_ext.LayoutMixin.bad_objects(proof)
+        note = layout_note(proof.layout_objects({o for r in kept for o in inc[r]}) if a.layout_only_ok else {})
+        if gate and gate.layout:
+            note += "\n" + "\n".join("  " + k for k in gate.layout) if note else layout_note(gate.layout)
         new_taint = taint_from_reasons(rejected) - a.taint
         if new_taint and a.taint_file:
             a.taint |= new_taint
@@ -581,7 +601,7 @@ def cmd_run(a):
         print("BATCH %d result: kept %d file(s) / %d site(s), reverted %d file(s), %d object(s) proven identical" % (
             batches, len(kept), kept_sites, len(rejected), len({o for r in kept for o in inc[r]})))
         if kept and a.commit:
-            commit(kept, batches, kept_sites, a.proof_mode)
+            commit(kept, batches, kept_sites, a.proof_mode, note)
         if not a.loop or (a.max_batches and batches >= a.max_batches) or not kept and not rejected:
             return 1 if rejected else 0
         paths, files, sites, uses = load_world()
@@ -601,9 +621,21 @@ def commit_paths(kept, subject, baseline_subject):
         subprocess.run(["git", "-C", ROOT, "commit", "-q", "-m", baseline_subject + trailer, "--", base], check=True, **console_child.child_kwargs(redirected=True))
 
 
-def commit(kept, n, nsites, proof_mode="plain objhash (strict)"):
-    commit_paths(kept, "tidy(LG13): %d #define literal constant(s) -> inline constexpr in %d file(s) (every including object identical)\n\nProof: %s" % (nsites, len(kept), proof_mode),
-                 "cxx17 ratchet baseline tightened after LG13 batch")
+class SlowProof(proof_ext.LayoutMixin, rth.Proof):
+    """--slow-bisect: every probe rebuilds the whole proof set."""
+
+
+def layout_note(objs):
+    """The commit-message block that names every object accepted as LAYOUT-ONLY (empty when there is none)."""
+    if not objs:
+        return ""
+    return ("\n\nLAYOUT-ONLY objects accepted (--layout-only-ok; static data reordered, symbol set and every symbol's bytes identical), %d:\n" % len(objs)
+            + "\n".join("  " + o for o in sorted(objs)))
+
+
+def commit(kept, n, nsites, proof_mode="plain objhash (strict)", note=""):
+    commit_paths(kept, "tidy(LG13): %d #define literal constant(s) -> inline constexpr in %d file(s) (every including object identical%s)\n\nProof: %s%s" % (
+        nsites, len(kept), " or LAYOUT-ONLY" if note else "", proof_mode, note), "cxx17 ratchet baseline tightened after LG13 batch")
 
 
 def main(argv=None) -> int:
@@ -621,6 +653,9 @@ def main(argv=None) -> int:
     r.add_argument("--done", help="ledger of files already tried (skipped; picked ones are appended)")
     r.add_argument("--relaxed-proof", metavar="REASON", default=None, help="compare with tools/tidy/canonical_obj.py (blind to symbol / section order and .data / .bss layout) instead of the default "
                    "plain tools/objhash.py digests; the reason goes into the commit message")
+    r.add_argument("--layout-only-ok", action="store_true", help="also accept an object that objhash classifies LAYOUT-ONLY (static data reordered, symbol set and every symbol's bytes identical); "
+                   "each such object is named in the commit message. ORDER-ONLY and DIFF still revert. Not combinable with --relaxed-proof")
+    r.add_argument("--vs-gate", action="store_true", help="also prove the Visual Studio trees (tests/unit, contract harnesses, standalone tools) that include the edited headers (tools/tidy/vs_trees.py)")
     r.add_argument("--slow-bisect", action="store_true", help="every bisect probe rebuilds the whole proof set (default: only the objects the first probe found bad, then a full verification)")
     r.add_argument("--ignore-digest-file", default=None, help="objects (names as in the tree) that must compile but whose digest is not compared: a TU where any new inline variable "
                    "makes MSVC drop unreferenced static const data (editor/MapGeneratorDialog.cpp, the stb_image tables), a semantic no-op the digest cannot tell from a change")

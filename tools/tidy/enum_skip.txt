@@ -23,3 +23,17 @@ LegacyGestureId          int initializer lists (AnimFallbackChain)
 GpuActorCategory         mirrored by shaders/gpu_cull.comp
 GpuActorFlags            mirrored by shaders/gpu_cull.comp, OR-ed into a uint32_t record
 TerrainMaterialProfile   stored in an int, constants mirrored in terrain_common.hglsl
+# Coordinator ruling 2026-10-11: platform-API enums with int interfaces; churn exceeds the value for this step.
+gosVideo_Command         platform API (gameos.hpp)
+gosVideo_PlayMode        platform API (gameos.hpp)
+gosAudio_SpeakerConfig   platform API (gameos.hpp)
+gosEnum_KeyDeviceType    platform API (gameos.hpp)
+GOSJoystickAxis          platform API (gameos.hpp)
+gosForce                 platform API (gameos.hpp)
+gosType                  platform API (gameos.hpp)
+gosSetting               platform API (gameos.hpp)
+MachineInfo              platform API (gameos.hpp)
+gosThreadPriority        platform API (toolos.hpp)
+gosEnum_FileWriteStatus  platform API (toolos.hpp)
+gosEnum_FileSeekType     platform API (toolos.hpp)
+MC_TextureKey            wide header (txmmgr.h, 574 includers), int-typed texture keys

@@ -26,6 +26,7 @@ import rewrite_defines as rd  # noqa: E402
 import run_tidy_safe as rts  # noqa: E402
 import run_tidy_headers as rth  # noqa: E402
 import canonical_obj  # noqa: E402
+import proof_ext  # noqa: E402
 
 cr = rd.cr
 ENUM_HEAD = re.compile(r"\benum\b(?!\s+(?:class|struct)\b)\s+([A-Za-z_]\w*)\s*(:\s*[\w ]+?)?\s*\{")
@@ -172,6 +173,10 @@ def cmd_census(a):
     return 0
 
 
+class EnumProof(proof_ext.LayoutMixin, rth.Proof):
+    """The shared header proof with the opt-in LAYOUT-ONLY acceptance."""
+
+
 def load_skip(path):
     """Enum names a compile probe or a design decision keeps unscoped (first token of each non-comment line of tools/tidy/enum_skip.txt)."""
     if not path or not os.path.exists(path):
@@ -185,6 +190,10 @@ def cmd_run(a):
     tree_abs = os.path.join(rts.ROOT, a.tree)
     rts.apply_lane_args(a)
     a.proof_mode = "plain objhash (strict)"
+    if a.layout_only_ok and a.relaxed_proof:
+        sys.exit("rewrite_enums: --layout-only-ok and --relaxed-proof are different proof modes; pass one")
+    if a.layout_only_ok:
+        a.proof_mode = "plain objhash; objects whose only difference is static data layout (per-symbol identical) accepted: --layout-only-ok, ruling 2026-10-11"
     if a.relaxed_proof:
         canonical_obj.install()
         a.proof_mode = "canonical_obj (symbol / section order and .data / .bss layout blind): " + a.relaxed_proof
@@ -203,6 +212,7 @@ def cmd_run(a):
             if not e.reasons and e.name not in skip and not rts.is_excluded(e.path) and e.path not in dirty and e.path not in done and not rd.never_touch(e.path, tus):
                 by_file[e.path].append(e)
         plan = []
+        vsmap = proof_ext.vs_trees.includer_map() if a.vs_gate else {}
         for rel, es in by_file.items():
             is_src = rel.lower().endswith(rd.SRC_EXT)
             if (a.scope == "cpp") != is_src and a.scope != "all":
@@ -211,13 +221,16 @@ def cmd_run(a):
             if is_src:
                 es = [e for e in es if all(u[0] == rel for n, _ in e.enumerators for u in uses[n])]
             else:
-                es = [e for e in es if all(u[0] == rel or not u[0].lower().endswith(rd.SRC_EXT) or a.s2t.get(u[0]) in objs for n, _ in e.enumerators for u in uses[n])]
-            if es and objs and not (objs & a.taint) and (is_src or len(objs) <= a.max_header_includers):
+                es = [e for e in es if all(u[0] == rel or not u[0].lower().endswith(rd.SRC_EXT) or a.s2t.get(u[0]) in objs
+                                           or (a.vs_gate and u[0].startswith(("tests/", "tools/"))) for n, _ in e.enumerators for u in uses[n])]
+            if es and (objs or (a.vs_gate and not is_src and vsmap.get(rel))) and not (objs & a.taint) and (is_src or len(objs) <= a.max_header_includers):
                 plan.append((len(objs), rel, es, objs))
         plan.sort(key=lambda x: (x[0], x[1]))
         picked, objs = [], set()
         for n, rel, es, o in plan:
             if picked and len(objs | o) > a.max_objs:
+                continue
+            if picked and a.max_enums and sum(len(x[1]) for x in picked) + len(es) > a.max_enums:
                 continue
             picked.append((rel, es, o))
             objs |= o
@@ -241,7 +254,11 @@ def cmd_run(a):
         edited = {rel: rewrite_text(orig[rel].decode("utf-8", errors="replace"), es).encode("utf-8") for rel, es, _ in picked}
         mtimes = {rel: os.stat(os.path.join(rts.ROOT, rel)).st_mtime_ns for rel in orig}
         inc = {rel: o for rel, _, o in picked}
-        proof = rth.Proof(tree_abs, inc, orig, edited, a.build_jobs)
+        proof = EnumProof(tree_abs, inc, orig, edited, a.build_jobs)
+        proof.layout_only_ok = a.layout_only_ok
+        gate = proof_ext.Gate(sorted(orig), a.layout_only_ok) if a.vs_gate else None
+        if gate:
+            gate.snapshot()
         if proof.baseline():
             print("rewrite_enums: the base build of the proof set failed; refusing to edit", file=sys.stderr)
             return 2
@@ -249,6 +266,17 @@ def cmd_run(a):
         for rel, why in rejected:
             rts.restore_file(rel, mtimes[rel])
             print("REVERT %s  %s" % (rel, why))
+        if gate and kept:
+            kept, more = gate.settle(kept, orig, mtimes)
+            for rel, why in more:
+                print("REVERT %s  %s" % (rel, why))
+            rejected += more
+            if more:
+                proof.apply(set(kept))
+                proof_ext.LayoutMixin.bad_objects(proof)
+        note = rd.layout_note(proof.layout_objects({o for r in kept for o in inc[r]}) if a.layout_only_ok else {})
+        if gate and gate.layout:
+            note = (note + "\n" + "\n".join("  " + k for k in gate.layout)) if note else rd.layout_note(gate.layout)
         new_taint = rd.taint_from_reasons(rejected) - a.taint
         if new_taint and a.taint_file:
             a.taint |= new_taint
@@ -258,7 +286,8 @@ def cmd_run(a):
         print("BATCH %d result: kept %d file(s) / %d enum(s), reverted %d file(s), %d object(s) proven identical" % (
             batches, len(kept), kept_enums, len(rejected), len({o for r in kept for o in inc[r]})))
         if kept and a.commit:
-            rd.commit_paths(kept, "tidy(LG14): %d unscoped enum(s) -> enum class + using enum in %d file(s) (every including object identical)\n\nProof: %s" % (kept_enums, len(kept), a.proof_mode),
+            rd.commit_paths(kept, "tidy(LG14): %d unscoped enum(s) -> enum class + using enum in %d file(s) (every including object identical%s)\n\nProof: %s%s" % (
+                                kept_enums, len(kept), " or LAYOUT-ONLY" if note else "", a.proof_mode + ("; harness/test trees gated (tools/tidy/vs_trees.py)" if gate else ""), note),
                             "cxx17 ratchet baseline tightened after LG14 batch")
         if not a.loop or (a.max_batches and batches >= a.max_batches) or (not kept and not rejected):
             return 1 if rejected else 0
@@ -277,6 +306,9 @@ def main(argv=None) -> int:
     r.add_argument("--build-jobs", type=int, default=6)
     r.add_argument("--done")
     r.add_argument("--relaxed-proof", metavar="REASON", default=None, help="canonical_obj digests instead of plain objhash; the reason goes into the commit message")
+    r.add_argument("--max-enums", type=int, default=0, help="stop adding files once the batch holds this many enums (0 = no limit; the coordinator's cap is 10 per commit)")
+    r.add_argument("--layout-only-ok", action="store_true", help="also accept an object that objhash classifies LAYOUT-ONLY; each is named in the commit message. Not combinable with --relaxed-proof")
+    r.add_argument("--vs-gate", action="store_true", help="also prove the Visual Studio trees (tests/unit, contract harnesses, standalone tools) that include the edited headers")
     r.add_argument("--taint-file")
     r.add_argument("--skip-enums", default=SKIP_FILE, help="ledger of enum names that stay unscoped (default tools/tidy/enum_skip.txt)")
     r.add_argument("--skip-dirty-in", default="A:/Games/mc2-main")
