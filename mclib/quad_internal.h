@@ -223,7 +223,7 @@ static inline void EndLegacySolidCluster() {
 }
 }  // namespace
 
-#define SELECTION_COLOR 0xffff7fff
+inline constexpr unsigned int SELECTION_COLOR = 0xffff7fff;
 
 // Globals defined in quad.cpp (or elsewhere in the engine) that the split pieces share.
 extern float g_cpuWaterProbeZ;
@@ -265,9 +265,9 @@ inline BYTE terrainTypeToMaterial(DWORD terrainType)
 // WATER_DEPTH_FUDGE (== RASTER) unqualified.
 using mc2depth::TERRAIN_DEPTH_FUDGE;
 using mc2depth::WATER_DEPTH_FUDGE;
-#define OVERLAY_ELEV_OFFSET		0.15f
+inline constexpr float OVERLAY_ELEV_OFFSET = 0.15f;
 #define SKY_FUDGE			(1.0f / 60000.0f)
-#define WATER_ALPHA			0x1fffffff
+inline constexpr int WATER_ALPHA = 0x1fffffff;
 extern float cloudScrollX;
 extern float cloudScrollY;
 

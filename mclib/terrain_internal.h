@@ -95,7 +95,7 @@ extern bool  useWaterInterestTexture;
 #include"tgainfo.h"
 #endif
 
-#define						MAX_TERRAIN_HEAP_SIZE		1024000
+inline constexpr int MAX_TERRAIN_HEAP_SIZE = 1024000;
 
 // Globals defined in terrain.cpp (or elsewhere in the engine) that the split pieces share.
 extern float worldUnitsPerMeter;

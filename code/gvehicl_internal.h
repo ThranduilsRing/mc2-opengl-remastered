@@ -114,7 +114,7 @@
 #include "../GameOS/gameos/diagnostic_trace.h"  // COMBAT-TRACE-1: weapon-hit JSONL events
 #include "../mclib/vis_semantics.h"  // FORCE-ALL-VISIBLE-1: mc2_vis::forceVisibleOverride
 
-#define MAX_GVACTOR_STATES		3
+inline constexpr int MAX_GVACTOR_STATES = 3;
 
 // Globals defined in gvehicl.cpp (or elsewhere in the engine) that the split pieces share.
 extern unsigned long		NextIdNumber;
