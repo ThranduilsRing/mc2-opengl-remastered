@@ -21,7 +21,7 @@ index 0167d8274..1edc5037d 100644
          // Trace is gated twice: compile-time MC2_RNG_TRACE define AND the
          // runtime "RNG" tag whitelist. Default builds pay nothing.
 diff --git a/code/mech_damage.cpp b/code/mech_damage.cpp
-index f17cf3654..7eeb67481 100644
+index f17cf3654..17e334109 100644
 --- a/code/mech_damage.cpp
 +++ b/code/mech_damage.cpp
 @@ -1,5 +1,6 @@
@@ -39,7 +39,15 @@ index f17cf3654..7eeb67481 100644
  
  	if (body[bodyLocation].damageState == IS_DAMAGE_DESTROYED)
  		return;
-@@ -463,6 +465,7 @@ long BattleMech::handleMoveChunk (unsigned long chunk) {
+@@ -189,6 +191,7 @@ void BattleMech::destroyBodyLocation (long bodyLocation) {
+ 	if (bodyLocation == MECH_BODY_LOCATION_CTORSO) {
+ 		// Mech essentially destroyed. Does it explode or simply shutdown?
+ 		// For now, it's always exploding...
++		DT("CTBRANCH mech=%ld st=%.6f ctbt=%.6f ebt=%.6f c1=%d c2=%d status=%d", (long)getPartId(), (double)scenarioTime, (double)centerTorsoBlowTime, (double)engineBlowTime, (int)(scenarioTime <= centerTorsoBlowTime), (int)((engineBlowTime > -1.0) && (scenarioTime <= engineBlowTime)), (int)getStatus());
+ 		if ((scenarioTime <= centerTorsoBlowTime) || ((engineBlowTime > -1.0) && (scenarioTime <= engineBlowTime))) {
+ 			pilot->handleAlarm(PILOT_ALARM_VEHICLE_INCAPACITATED, 0);
+ 			ObjectManager->getObjectType(typeHandle)->handleDestruction(this, nullptr);
+@@ -463,6 +466,7 @@ long BattleMech::handleMoveChunk (unsigned long chunk) {
  #pragma optimize("",on)
  
  bool BattleMech::injureBodyLocation (long bodyLocation, float damage) {
@@ -47,7 +55,7 @@ index f17cf3654..7eeb67481 100644
  
  	BodyLocationPtr location = &body[bodyLocation];
  
-@@ -506,6 +509,7 @@ long BattleMech::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayC
+@@ -506,6 +510,7 @@ long BattleMech::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayC
  	if (!shotInfo)
  		return(NO_ERR);
  
