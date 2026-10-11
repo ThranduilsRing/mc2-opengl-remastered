@@ -1,27 +1,30 @@
 #!/usr/bin/env python3
-"""Edit `.claude/cleanup/ORCHESTRATOR-HANDOFF.md` after a milestone and commit just that file.
+"""Edit the orchestrator handoff after a milestone and commit just the file(s) edited.
 
-WHY: the orchestrator records every milestone in the handoff doc (lane status, new
-state bullets, queue-item annotations). Doing that by hand or through a model agent is
-slow and error-prone; this applies the same edits deterministically and commits only
-the doc, so a concurrent lane's staged work is never swept in.
+WHY: the handoff is split into a LIVE STATE doc (`ORCHESTRATOR-HANDOFF.md`: rules, lanes,
+queue, open rulings; kept short) and an append-only LOG (`HANDOFF-LOG.md`: one dated bullet per
+milestone, newest first). Recording a milestone by hand or through a model agent is slow and
+error-prone; this applies the same edits deterministically and commits only the touched docs,
+so a concurrent lane's staged work is never swept in.
 
 Usage (all ops optional, at least one required):
-  py -3 tools/handoff_append.py --lanes "<text>"               replace the `- Lanes (` bullet in "## State at handoff"
+  py -3 tools/handoff_append.py --bullet "<text>" [--bullet ..]   LOG: insert `- [YYYY-MM-DD HH:MM] <text>` at the top of "## Entries"
+                                                                 (newest first; with several bullets the last one given ends up on top)
+  py -3 tools/handoff_append.py --lanes "<text>"               LIVE: replace the `- Lanes (` bullet in "## Lanes now"
                                                                (fresh `YYYY-MM-DD HH:MM` local timestamp)
-  py -3 tools/handoff_append.py --bullet "<text>" [--bullet ..] append `- <text>` at the end of "## State at handoff"
-  py -3 tools/handoff_append.py --queue-prefix N "<text>"      prepend text right after item N's number
-  py -3 tools/handoff_append.py --queue-replace N "<old>" "<new>"  exact substring replace inside item N
-  py -3 tools/handoff_append.py --queue-append "<text>"        new numbered item at the end of "## Ordered queue"
+  py -3 tools/handoff_append.py --queue-prefix N "<text>"      LIVE: prepend text right after item N's number
+  py -3 tools/handoff_append.py --queue-replace N "<old>" "<new>"  LIVE: exact substring replace inside item N
+  py -3 tools/handoff_append.py --queue-append "<text>"        LIVE: new numbered item at the end of "## Ordered queue"
   --message "<subject>"   commit subject (default: "handoff: update ORCHESTRATOR-HANDOFF")
-  --dry-run               print the diff, change nothing
-  --root DIR / --file REL repo root and doc path (defaults: this checkout / the real handoff)
+  --dry-run               print the diff of every file that would change, change nothing
+  --root DIR / --file REL / --log REL   repo root, live doc and log paths (defaults: this checkout / the real ones)
 
-Applied in the order lanes, bullets, queue-prefix, queue-replace, queue-append.
-Only the named sections change; line-1 header and LF endings are preserved.
+Live ops apply in the order lanes, queue-prefix, queue-replace, queue-append; bullets go to the log.
+Only the named sections change; line-1 header and LF endings are preserved. A run that edits both
+files makes one commit of both paths.
 
 Exit codes: 0 ok; 2 bad request (section/item missing, text absent or ambiguous, prefix
-already present, nothing to do); 3 merge in progress / unmerged paths / doc has
+already present, nothing to do); 3 merge in progress / unmerged paths / a doc to edit has
 uncommitted edits (refused); 4 git failure.
 """
 from __future__ import annotations
@@ -41,8 +44,10 @@ sys.path.insert(0, HERE)
 import _git_util  # noqa: E402  (shared git helpers)
 
 DEFAULT_FILE = ".claude/cleanup/ORCHESTRATOR-HANDOFF.md"
+DEFAULT_LOG = ".claude/cleanup/HANDOFF-LOG.md"
 TRAILER = "Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
-STATE_HEADING = "## State at handoff"
+LANES_HEADING = "## Lanes now"
+LOG_HEADING = "## Entries"
 QUEUE_HEADING = "## Ordered queue"
 UNMERGED = _git_util.UNMERGED
 ITEM_RE = re.compile(r"^(\d+)\. ")
@@ -58,8 +63,8 @@ def git(root: str, *args: str) -> subprocess.CompletedProcess:
     return _git_util.git(root, *args)
 
 
-def check_repo_state(root: str, rel: str) -> None:
-    """Refuse while a merge is open, paths are unmerged, or the doc carries someone else's edits."""
+def check_repo_state(root: str, rels: list[str]) -> None:
+    """Refuse while a merge is open, paths are unmerged, or a doc to edit carries someone else's edits."""
     r = git(root, "rev-parse", "--git-path", "MERGE_HEAD")
     if r.returncode != 0:
         raise Refusal(4, "not a git repo: " + r.stderr.strip())
@@ -74,9 +79,10 @@ def check_repo_state(root: str, rel: str) -> None:
     unmerged = [ln for ln in st.stdout.splitlines() if ln[:2] in UNMERGED]
     if unmerged:
         raise Refusal(3, "unmerged paths present:\n  " + "\n  ".join(unmerged))
-    dirty = git(root, "status", "--porcelain", "--", rel).stdout.strip()
-    if dirty:
-        raise Refusal(3, f"{rel} has uncommitted edits; committing it would sweep them in: {dirty}")
+    for rel in rels:
+        dirty = git(root, "status", "--porcelain", "--", rel).stdout.strip()
+        if dirty:
+            raise Refusal(3, f"{rel} has uncommitted edits; committing it would sweep them in: {dirty}")
 
 
 def section_bounds(lines: list[str], heading: str) -> tuple[int, int]:
@@ -120,17 +126,18 @@ def item_span(lines: list[str], n: int) -> tuple[int, int]:
 
 
 def op_lanes(lines: list[str], text: str, now: datetime.datetime) -> None:
-    lo, hi = section_bounds(lines, STATE_HEADING)
+    lo, hi = section_bounds(lines, LANES_HEADING)
     idx = next((i for i in range(lo, hi) if lines[i].startswith("- Lanes (")), None)
     if idx is None:
-        raise Refusal(2, 'no "- Lanes (" bullet in "## State at handoff"')
+        raise Refusal(2, f'no "- Lanes (" bullet in "{LANES_HEADING}"')
     lines[idx] = f"- Lanes ({now.strftime('%Y-%m-%d %H:%M')}): {one_line(text, '--lanes')}"
 
 
-def op_bullet(lines: list[str], text: str) -> None:
-    lo, hi = section_bounds(lines, STATE_HEADING)
-    last = last_content_line(lines, lo, hi)
-    lines.insert(last + 1, f"- {one_line(text, '--bullet')}")
+def op_bullet(lines: list[str], text: str, now: datetime.datetime) -> None:
+    """Newest-first: the entry goes right under the "## Entries" heading (after its blank line)."""
+    lo, hi = section_bounds(lines, LOG_HEADING)
+    at = lo + 1 if lo < hi and not lines[lo].strip() else lo
+    lines.insert(at, f"- [{now.strftime('%Y-%m-%d %H:%M')}] {one_line(text, '--bullet')}")
 
 
 def op_queue_prefix(lines: list[str], n: int, text: str) -> None:
@@ -163,12 +170,10 @@ def op_queue_append(lines: list[str], text: str) -> None:
     lines.insert(last_end, f"{nums[-1] + 1}. {one_line(text, '--queue-append')}")
 
 
-def apply_ops(text: str, args: argparse.Namespace, now: datetime.datetime) -> str:
+def apply_live_ops(text: str, args: argparse.Namespace, now: datetime.datetime) -> str:
     lines = text.split("\n")
     if args.lanes is not None:
         op_lanes(lines, args.lanes, now)
-    for b in args.bullet:
-        op_bullet(lines, b)
     for n, t in args.queue_prefix:
         op_queue_prefix(lines, int(n), t)
     for n, old, new in args.queue_replace:
@@ -178,10 +183,17 @@ def apply_ops(text: str, args: argparse.Namespace, now: datetime.datetime) -> st
     return "\n".join(lines)
 
 
-def short_diff(old: str, new: str, width: int = 220) -> str:
+def apply_log_ops(text: str, args: argparse.Namespace, now: datetime.datetime) -> str:
+    lines = text.split("\n")
+    for b in args.bullet:
+        op_bullet(lines, b, now)
+    return "\n".join(lines)
+
+
+def short_diff(old: str, new: str, name: str = "handoff", width: int = 220) -> str:
     def clip(ln: str) -> str:
         return ln if len(ln) <= width else ln[:width] + f"...[+{len(ln) - width} chars]"
-    d = difflib.unified_diff(old.split("\n"), new.split("\n"), "a/handoff", "b/handoff", lineterm="", n=0)
+    d = difflib.unified_diff(old.split("\n"), new.split("\n"), f"a/{name}", f"b/{name}", lineterm="", n=0)
     return "\n".join(clip(ln) for ln in d)
 
 
@@ -196,6 +208,7 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--root", default=os.path.abspath(os.path.join(HERE, "..")))
     ap.add_argument("--file", default=DEFAULT_FILE)
+    ap.add_argument("--log", default=DEFAULT_LOG)
     return ap
 
 
@@ -204,27 +217,41 @@ def main(argv: list[str] | None = None) -> int:
         stream.reconfigure(errors="replace")  # the doc holds non-cp1252 characters
     args = build_parser().parse_args(argv)
     try:
-        if args.lanes is None and not (args.bullet or args.queue_prefix or args.queue_replace or args.queue_append):
+        live_ops = args.lanes is not None or args.queue_prefix or args.queue_replace or args.queue_append
+        if not (live_ops or args.bullet):
             raise Refusal(2, "no operation given")
         for n, *_ in list(args.queue_prefix) + list(args.queue_replace):
             if not n.isdigit():
                 raise Refusal(2, f"item number must be an integer, got {n!r}")
-        check_repo_state(args.root, args.file)
-        path = os.path.join(args.root, args.file)
-        with open(path, "rb") as f:
-            old = f.read().decode("utf-8")
-        new = apply_ops(old, args, datetime.datetime.now())
+        targets = ([args.file] if live_ops else []) + ([args.log] if args.bullet else [])
+        check_repo_state(args.root, targets)
+        now = datetime.datetime.now()
+        edits: list[tuple[str, str, str]] = []  # (rel path, old text, new text)
+        for rel, applies, ops in ((args.file, live_ops, apply_live_ops), (args.log, args.bullet, apply_log_ops)):
+            if not applies:
+                continue
+            path = os.path.join(args.root, rel)
+            if not os.path.exists(path):
+                raise Refusal(2, f"{rel} not found")
+            with open(path, "rb") as f:
+                old = f.read().decode("utf-8")
+            edits.append((rel, old, ops(old, args, now)))
         if args.dry_run:
-            print(short_diff(old, new))
+            for rel, old, new in edits:
+                print(f"--- {rel}")
+                print(short_diff(old, new, rel))
             print("[dry-run] nothing written, nothing committed")
             return 0
-        if new == old:
+        if all(new == old for _, old, new in edits):
             raise Refusal(2, "edit produced no change")
-        with open(path, "wb") as f:
-            f.write(new.encode("utf-8"))
-        r = git(args.root, "add", "--", args.file)
+        changed = [rel for rel, old, new in edits if new != old]
+        for rel, old, new in edits:
+            if new != old:
+                with open(os.path.join(args.root, rel), "wb") as f:
+                    f.write(new.encode("utf-8"))
+        r = git(args.root, "add", "--", *changed)
         if r.returncode == 0:
-            r = git(args.root, "commit", "-m", args.message, "-m", TRAILER, "--", args.file)
+            r = git(args.root, "commit", "-m", args.message, "-m", TRAILER, "--", *changed)
         if r.returncode != 0:
             raise Refusal(4, "git commit failed: " + (r.stderr or r.stdout).strip())
         print(git(args.root, "rev-parse", "HEAD").stdout.strip())
