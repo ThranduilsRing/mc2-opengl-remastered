@@ -14,6 +14,7 @@ ALLOW (config dict / JSON): {"edits": [[old_line, new_line], ...]   intentional 
                              "add": [new_line, ...]                  new lines intentionally added,
                              "header_vars": [name, ...]              mutable/non-inline variables allowed in the header,
                              "inline_calls": [name, ...]             inline functions allowed to be called across pieces,
+                             "static_calls": [name, ...]             internal-linkage functions reviewed as safe to be called from another piece,
                              "scripts": [path, ...]                  scripts that name the old path and were reviewed,
                              "includes": [header, ...]               hoisted includes reviewed against earlier macros,
                              "exclude_files": [basename, ...]        stem_*.cpp files that are not pieces of this split (retro mode)}"""
@@ -249,6 +250,53 @@ def check_inline_calls(new_by_file, header_name, allow):
     return f
 
 
+def static_functions(lines):
+    """Names of the functions a piece defines with internal linkage: `static` at namespace scope (any nesting of namespaces), or any function inside an anonymous namespace."""
+    rx = re.compile(rb"\s*(?:[\w:<>\*&,]+\s+)+\**&?(\w+)\s*\([^;]*$")
+    names, depth, spaces = set(), 0, []     # spaces: (depth the namespace was opened at, anonymous?)
+    for l in lines:
+        code = strip_code(l)
+        st = code.strip()
+        scope = spaces[-1][0] + 1 if spaces else 0
+        anon = any(a for _, a in spaces)
+        if depth == scope and not st.startswith((b"#", b"return", b"//", b"namespace")):
+            m = rx.match(code)
+            if m and (re.match(rb"\s*static\b", code) or anon):
+                if b";" not in code.split(b"(")[0] and not code.rstrip().endswith(b";"):
+                    names.add(m.group(1).decode())
+        mn = re.match(rb"\s*namespace\b\s*(\w*(?:::\w+)*)\s*\{", code)
+        if mn:
+            spaces.append((depth, not mn.group(1)))
+        depth += code.count(b"{") - code.count(b"}")
+        while spaces and depth <= spaces[-1][0]:
+            spaces.pop()
+        if depth < 0:
+            depth = 0
+    return names
+
+
+def check_static_calls(new_by_file, header_name, allow):
+    """A function with internal linkage (file-static or in an anonymous namespace) exists once per piece: a call from another piece does not link to it."""
+    f = []
+    okc = set(allow.get("static_calls", []))
+    pieces = {n: ls for n, ls in new_by_file.items() if n != header_name and not n.endswith((".h", ".hpp"))}
+    rx_def = re.compile(rb"\s*(?:[\w:<>\*&,]+\s+)+\**&?(?:\w+::)?(\w+)\s*\(")
+    for owner, ls in pieces.items():
+        for nm in sorted(static_functions(ls)):
+            if nm in okc:
+                continue
+            pat = re.compile(rb"(?<![\w.>:])%s\s*\(" % nm.encode())
+            for other, ols in pieces.items():
+                if other == owner:
+                    continue
+                if any(rx_def.match(l) and rx_def.match(l).group(1).decode() == nm for _, l in top_level(ols)):
+                    continue     # the other piece has its own function of that name
+                if any(pat.search(strip_code(l)) and not l.lstrip().startswith((b"//", b"*", b"/*")) for l in ols):
+                    f.append(("static", "function %s has internal linkage in %s but is called from %s (move it with its caller or make it external)" % (nm, owner, other)))
+                    break
+    return f
+
+
 def check_registrars(old, new_by_file, patterns=REGISTRARS):
     f = []
     rx = re.compile("|".join(patterns).encode())
@@ -308,6 +356,7 @@ def verify(old_bytes, new_files, stem, src, allow=None, run_selftests=False, che
     f += check_macros(old, new_by_file, header_name)
     f += check_header(new_by_file.get(header_name, []), allow)
     f += check_inline_calls(new_by_file, header_name, allow)
+    f += check_static_calls(new_by_file, header_name, allow)
     f += check_registrars(old, new_by_file)
     if check_script_names:
         f += check_scripts(src, allow, run_selftests)

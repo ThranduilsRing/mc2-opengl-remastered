@@ -66,6 +66,7 @@ set(SOURCES ${SOURCES}
     cellip.cpp
     cepane.cpp
     cevfx.cpp
+    cevfx_polys.cpp
     vfx_ellipse.cpp
     vfx_map_polygon.cpp
     vfx_transform.cpp
@@ -87,6 +88,8 @@ set(SOURCES ${SOURCES}
     ablsymt.cpp
     ablxexpr.cpp
     ablxstd.cpp
+    ablxstd_stack.cpp
+    ablxstd_std.cpp
     ablxstmt.cpp
     camera.cpp
     camera_project.cpp

@@ -1,0 +1,10 @@
+{
+ "base": "6093092ac",
+ "src": "mclib/ablxstd.cpp",
+ "stem": "ablxstd",
+ "scripts": [
+  "tools/gate_codemod.py"
+ ],
+ "_scripts_reason": "Reviewed: gate_codemod.py lists the file in its one-shot codemod target set (the codemod already ran; lane 1 owns the tool).",
+ "split_commit": "6292520c3"
+}

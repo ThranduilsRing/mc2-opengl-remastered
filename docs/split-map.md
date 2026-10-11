@@ -144,6 +144,17 @@ Split commit: `217255c68`.
 | `controlgui_vehicle.cpp` | ControlGui: the vehicle tab: update, render, click handling and the vehicle command state. |
 | `controlgui_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
+## `code/group.cpp`
+
+Split commit: `f0d37de6c`.
+
+| Piece | What it holds |
+|---|---|
+| `group.cpp` | keeps the group membership and selection methods and the copy / init |
+| `group_goals.cpp` | MoverGroup: the move / jump goal-cell searches (calcMoveGoals, calcJumpGoals, sortMovers) and their spiral tables. |
+| `group_orders.cpp` | MoverGroup: handleTacticalOrder, the order* wrappers and the mate-event handlers. |
+| `group_internal.h` | shared include bundle, extern globals and declarations of the pieces |
+
 ## `code/gvehicl.cpp`
 
 | Piece | What it holds |
@@ -154,6 +165,16 @@ Split commit: `217255c68`.
 | `gvehicl_update.cpp` | GroundVehicle: the per-frame update, the GPU-lagged visibility gate, and Save/CopyTo/Load. |
 | `gvehicl_weapons.cpp` | GroundVehicle: hit and attack helpers, status/move chunks, handleWeaponHit, fireWeapon and handleWeaponFire. |
 | `gvehicl_internal.h` | shared include bundle, extern globals and declarations of the pieces |
+
+## `code/logistics.cpp`
+
+Split commit: `9af8c3f04`.
+
+| Piece | What it holds |
+|---|---|
+| `logistics.cpp` | keeps the Logistics start / stop / update / render |
+| `logistics_begin.cpp` | Logistics: beginMission, DoBeginMission, initializeLogData, the full-screen video player and the results host-left dialog. |
+| `logistics_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
 ## `code/logisticsdata.cpp`
 
@@ -168,6 +189,38 @@ Split commit: `009e31493`.
 | `logisticsdata_modify.cpp` | LogisticsData: current-mission accessors, mech modification accept / cancel, and the encrypt / decrypt helpers. |
 | `logisticsdata_save.cpp` | LogisticsData: removeMechsInForceGroup, pilot ranking, save / load, setMissionCompleted and the mech / pilot / variant lookups. |
 | `logisticsdata_internal.h` | shared include bundle, extern globals and declarations of the pieces |
+
+## `code/logisticsmissioninfo.cpp`
+
+Split commit: `dc3a26c8a`.
+
+| Piece | What it holds |
+|---|---|
+| `logisticsmissioninfo.cpp` | keeps construction, the campaign file parse, load and save |
+| `logisticsmissioninfo_progress.cpp` | LogisticsMissionInfo: available / current mission lists, mission selection and completion. |
+| `logisticsmissioninfo_query.cpp` | LogisticsMissionInfo: the per-mission accessors (purchase / operation files, videos, tune, flags) and the skip / multiplayer switches. |
+| `logisticsmissioninfo_internal.h` | shared include bundle, extern globals and declarations of the pieces |
+
+## `code/logisticsvariant.cpp`
+
+Split commit: `aa9130de3`.
+
+| Piece | What it holds |
+|---|---|
+| `logisticsvariant.cpp` | keeps LogisticsChassis and the LogisticsVariant construction, init and addComponent |
+| `logisticsvariant_stats.cpp` | LogisticsVariant: the variant stat getters, component placement checks and lookups, save, and the LogisticsVehicle setup. |
+| `logisticsvariant_internal.h` | shared include bundle, extern globals and declarations of the pieces |
+
+## `code/mechbayscreen.cpp`
+
+Split commit: `b43d4b40c`.
+
+| Piece | What it holds |
+|---|---|
+| `mechbayscreen.cpp` | keeps construction, init, begin and render |
+| `mechbayscreen_mechs.cpp` | MechBayScreen: mech selection, removal, setMech, drag handling and the deployment-team helpers. |
+| `mechbayscreen_update.cpp` | MechBayScreen: the weight meter, the per-frame update and the message handler. |
+| `mechbayscreen_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
 ## `code/mechcmd2.cpp`
 
@@ -214,6 +267,17 @@ Split commit: `1af09dd12`.
 | `missiongui_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 | `missiongui_shared_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
+## `code/multplyr.cpp`
+
+Split commit: `78da1679d`.
+
+| Piece | What it holds |
+|---|---|
+| `multplyr.cpp` | keeps the networking entry points, the message packet types and the session / colour setup |
+| `multplyr_handle.cpp` | MultiPlayer: the handle* message handlers, message processing and the mission status / rank calculation. |
+| `multplyr_send.cpp` | MultiPlayer: the player list, mover / turret rosters, world and weapon-hit chunk adders and the send* methods. |
+| `multplyr_internal.h` | shared include bundle, extern globals and declarations of the pieces |
+
 ## `code/objmgr.cpp`
 
 Split commit: `708c5e445`.
@@ -226,6 +290,16 @@ Split commit: `708c5e445`.
 | `objmgr_pick.cpp` | GameObjectManager: object / mover lookup by id, cell and mouse, and the terrain-object pick. |
 | `objmgr_update.cpp` | GameObjectManager: GameObjectManager::update with its GOM_UPDATE_COST spans, in-view conflation probe, GPU-cull record and static-skip gates. |
 | `objmgr_internal.h` | shared include bundle, extern globals and declarations of the pieces |
+
+## `code/team.cpp`
+
+Split commit: `be79c6ead`.
+
+| Piece | What it holds |
+|---|---|
+| `team.cpp` | keeps team setup, the roster and contact queries, target orders, the seen-radius marking and save / load |
+| `team_los.cpp` | Team: teamLineOfSight and the Team::lineOfSight overloads (the cell-walk and the world-position entry). |
+| `team_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
 ## `code/weaponbolt.cpp`
 
@@ -286,6 +360,17 @@ Split commit: `dd946d83d`.
 | `abldbug_print.cpp` | ABL debugger: the statement / value printers, the execution trace hooks, showValue, assignVariable and the module-instance listing. |
 | `abldbug_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
+## `mclib/ablxstd.cpp`
+
+Split commit: `6292520c3`.
+
+| Piece | What it holds |
+|---|---|
+| `ablxstd.cpp` | keeps the state / flag / function-call routines, the routine registration and the standard-routine dispatch |
+| `ablxstd_stack.cpp` | ABL standard routines: the ABLi_pop / push / peek / poke accessors for the interpreter stack. |
+| `ablxstd_std.cpp` | ABL standard routines: the return, print, concat, math, file, module, random and state-handle standard routines. |
+| `ablxstd_internal.h` | shared include bundle, extern globals and declarations of the pieces |
+
 ## `mclib/bdactor.cpp`
 
 Split commit: `6456f46eb`.
@@ -318,6 +403,16 @@ Split commit: `f4c986566`.
 | `camera_project.cpp` | Camera: screen-to-world projection: the ground-plane and terrain approximations and inverseProject. |
 | `camera_update.cpp` | Camera: the camera goal updates, Camera::update and render. |
 | `camera_internal.h` | shared include bundle, extern globals and declarations of the pieces |
+
+## `mclib/cevfx.cpp`
+
+Split commit: `2d6c73efc`.
+
+| Piece | What it holds |
+|---|---|
+| `cevfx.cpp` | keeps the VFX shape element (VFXElement, VFXShapeElement) and the palette lookup tables |
+| `cevfx_polys.cpp` | VFX elements: TextureElement and the PolygonQuad / PolygonTri / TexturedPolygonQuad / TexturedPolygonTri elements. |
+| `cevfx_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
 ## `mclib/genactor.cpp`
 
@@ -364,6 +459,17 @@ Split commit: `de0dbab39`.
 | `mech3d_type.cpp` | Mech3DAppearance: Mech3DAppearanceType init/destroy/setAnimation and the weapon-node lookups. |
 | `mech3d_update.cpp` | Mech3DAppearance: Mech3DAppearance::update, arm destruction, smoke, water wake and ejection. |
 | `mech3d_internal.h` | shared include bundle, extern globals and declarations of the pieces |
+
+## `mclib/mlr/mlr_i_tmesh.cpp`
+
+Split commit: `27cd40e3b`.
+
+| Piece | What it holds |
+|---|---|
+| `mlr_i_tmesh.cpp` | keeps the class data, construction, copy, visibility tests, the clip include and per-vertex lighting |
+| `mlr_i_tmesh_cast.cpp` | MLR_I_TMesh: CastRay and the CreateIndexedTri* test shapes. |
+| `mlr_i_tmesh_light.cpp` | MLR_I_TMesh: LightMapLighting (the light-map vertex lighting pass). |
+| `mlr_i_tmesh_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
 ## `mclib/msl.cpp`
 

@@ -2,10 +2,13 @@
 """What: splits one oversized C++ file into <stem>_<responsibility>.cpp pieces plus a generated <stem>_internal.h, driven by a config module.
 Why: the file-size program moves whole top-level units verbatim (CRLF/LF bytes kept); the header carries the verbatim include bundle,
 the externs of the preamble globals and prototypes of shared free functions, so the split compiles with no logic change.
-Usage: py -3 tools/split/split_cpp.py CONFIG.py   (writes <stem>_*.cpp, <stem>_internal.h next to the source and <src>.new; the caller moves .new over the source)
+Usage: py -3 tools/split/split_cpp.py CONFIG.py [--stage-dir DIR]   (writes <stem>_*.cpp, <stem>_internal.h next to the source and <src>.new; the caller moves .new over the source)
+       With --stage-dir the pieces, the header and the core (as <src basename>.new) are written under DIR instead and are verified as if installed; the tree is untouched
+       until `split_cpp.py CONFIG.py --stage-dir DIR --install` moves them into place (so staged pieces never reach split_map or the ratchets); --install refuses a staging dir whose last run failed split_verify.
+       A config reads its allow json as os.path.join(os.environ.get("SPLIT_ALLOW_DIR", "tools/split/allow"), "<stem>.json"); a <stem>.json in DIR is installed to tools/split/allow/.
 Config names: SRC, STEM, INCLUDE_RAW=(first,last) 1-based raw lines copied into the header, PREAMBLE_END (first post-preamble line),
 KEEP_FROM (first preamble line the core keeps), GROUPS=[(name,[(a,b)...])] with a 'core' group, DOC={name:text},
-PREAMBLE_MOVES={group:[(a,b)...]} (preamble line ranges moved to the top of a group file), HEADER_EXTRA=[lines], BANNER=[lines].
+PREAMBLE_MOVES={group:[(a,b)...]} (preamble line ranges moved to the top of a group file), GROUP_WRAP={group:(open_line, close_line)} (the group file wraps its code in a namespace the core opens), HEADER_EXTRA=[lines], BANNER=[lines].
 Note: the header gets a prototype for EVERY free function defined in a piece; prune the ones no other piece calls (the cxx17 LG06 ratchet counts each const char* declaration).
 Optional: HEADER_NAME (default <stem>_internal.h) and HEADER2_NAME + HEADER2_RAW=(first,last) (a second header holding those raw lines, included at the end of the first; both names end in _internal.h), NO_PROTOS=True (no prototypes are generated: the config declares what the pieces share in HEADER_EXTRA, e.g. when the shared functions sit in namespaces), EXTERN_SKIP=[names] (preamble variables whose generated extern would be wrong, e.g. brace-initialised objects: the config declares them in HEADER_EXTRA), PROTO_SKIP=(names) (functions defined in a piece that need no header prototype, e.g. anonymous-namespace helpers), CORE_ONLY=[(a,b)...] (bundle lines kept out of the header and emitted into the core file: a header that DEFINES variables may be included by one TU only), BASE_REV / BASE_SRC (git rev and path holding the original, default HEAD and SRC) and ALLOW (see split_verify.py) drive the fail-closed checks that run
 after the pieces are written; any finding exits 1 and the caller must not install the .new file. OUT (output dir, default the source's directory), HEADER_PRE_MOVES / HEADER_MOVES=[(a,b)...] (1-based line ranges whose units move verbatim into the
@@ -15,6 +18,13 @@ import importlib.util, os, re, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import cpp_units
 
+def _opt(name):
+    return sys.argv[sys.argv.index(name) + 1] if name in sys.argv else None
+
+
+STAGE = _opt("--stage-dir")
+if STAGE:
+    os.environ["SPLIT_ALLOW_DIR"] = STAGE      # configs read their allow json from here when staging: <STEM>.json next to the staged pieces
 spec = importlib.util.spec_from_file_location("cfg", sys.argv[1])
 C = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(C)
@@ -32,6 +42,23 @@ def text(u):
 
 
 OUT = getattr(C, "OUT", os.path.dirname(C.SRC) or ".")
+WOUT = STAGE if STAGE else OUT                                   # where files are written; OUT stays the installed location
+NEW_PATH = os.path.join(STAGE, os.path.basename(C.SRC) + ".new") if STAGE else C.SRC + ".new"
+if STAGE:
+    os.makedirs(STAGE, exist_ok=True)
+    if "--install" not in sys.argv and os.path.exists(os.path.join(STAGE, ".verified")):
+        os.remove(os.path.join(STAGE, ".verified"))
+MARKER = os.path.join(STAGE, ".verified") if STAGE else None       # written only by a run whose split_verify had no findings
+if STAGE and "--install" in sys.argv:
+    import shutil
+    if not os.path.exists(MARKER):
+        sys.exit("split_cpp: %s holds no verified split (the last staging run failed split_verify or never ran); not installing" % STAGE)
+    os.remove(MARKER)
+    for name in sorted(os.listdir(STAGE)):
+        dest = C.SRC if name == os.path.basename(C.SRC) + ".new" else os.path.join("tools/split/allow", name) if name.endswith(".json") else os.path.join(OUT, name)
+        shutil.move(os.path.join(STAGE, name), dest)
+        print("installed", dest)
+    sys.exit(0)
 PRE_MOVES = getattr(C, "HEADER_PRE_MOVES", [])
 POST_MOVES = getattr(C, "HEADER_MOVES", [])
 
@@ -168,7 +195,7 @@ if hasattr(C, "HEADER2_NAME"):
     hdr += ["// Second shared header: the class definitions that no other piece may redefine.", '#include "%s"' % C.HEADER2_NAME, ""]
 hdr.append("#endif // " + G)
 hdr.append("")
-open(os.path.join(OUT, H1), "wb").write("\r\n".join(hdr).encode("utf-8"))
+open(os.path.join(WOUT, H1), "wb").write("\r\n".join(hdr).encode("utf-8"))
 if hasattr(C, "HEADER2_NAME"):
     G2 = os.path.splitext(C.HEADER2_NAME)[0].upper() + "_H"
     a2, b2 = C.HEADER2_RAW
@@ -176,7 +203,7 @@ if hasattr(C, "HEADER2_NAME"):
         "// Include %s, not this file: it relies on the declarations that header makes before including it." % H1, ""]
     h2 += [l.decode("utf-8", "replace").rstrip(chr(13)) for l in raw[a2 - 1:b2]]
     h2 += ["", "#endif // " + G2, ""]
-    open(os.path.join(OUT, C.HEADER2_NAME), "wb").write("\r\n".join(h2).encode("utf-8"))
+    open(os.path.join(WOUT, C.HEADER2_NAME), "wb").write("\r\n".join(h2).encode("utf-8"))
 
 # ---- groups ---------------------------------------------------------------------------------------------
 bodies = {g: [] for g, _ in C.GROUPS}
@@ -213,14 +240,18 @@ for u, c in core_pre:
 core_head = b"\n".join(raw[0:C.INCLUDE_RAW[0] - 1]).rstrip() + b"\r\n\r\n#include \"%s\"\r\n\r\n" % H1.encode()
 if CORE_ONLY:
     core_head += b"\n".join(b"\n".join(raw[x - 1:y]) for x, y in CORE_ONLY) + b"\n\n"
-open(C.SRC + ".new", "wb").write(core_head + b"\n".join(core_keep) + b"\n" + b"\n".join(bodies["core"]) + b"\n")
+open(NEW_PATH, "wb").write(core_head + b"\n".join(core_keep) + b"\n" + b"\n".join(bodies["core"]) + b"\n")
 for g, _ in C.GROUPS:
     if g == "core":
         continue
     head = ("// %s: %s.\r\n// Declared in the class headers; shared names in %s.\r\n#include \"%s\"\r\n\r\n"
             % (C.TITLE, C.DOC[g], H1, H1)).encode("utf-8")
     pm = (b"\n".join(pre_moves.get(g, [])) + b"\n") if pre_moves.get(g) else b""
-    open(os.path.join(OUT, "%s_%s.cpp" % (C.STEM, g)), "wb").write(head + pm + b"\n".join(bodies[g]) + b"\n")
+    wrap = getattr(C, "GROUP_WRAP", {}).get(g)       # (opening line, closing line): the group's code lives inside a namespace the core opens
+    body = b"\n".join(bodies[g]) + b"\n"
+    if wrap:
+        body = wrap[0].encode() + b"\r\n\r\n" + body + b"\r\n" + wrap[1].encode() + b"\r\n"
+    open(os.path.join(WOUT, "%s_%s.cpp" % (C.STEM, g)), "wb").write(head + pm + body)
 print("externs", len(seen), "protos", len(protos))
 for g, _ in C.GROUPS:
     print(g, sum(c.count(b"\n") + 1 for c in bodies[g]))
@@ -230,12 +261,15 @@ import split_verify
 _old = split_verify._git(["show", "%s:%s" % (getattr(C, "BASE_REV", "HEAD"), getattr(C, "BASE_SRC", C.SRC).replace(chr(92), "/"))])
 if not _old:
     raise SystemExit("split_verify: cannot read %s from %s" % (C.SRC, getattr(C, "BASE_REV", "HEAD")))
-_files = {C.SRC: open(C.SRC + ".new", "rb").read(),
-          os.path.join(OUT, H1): open(os.path.join(OUT, H1), "rb").read()}
+_files = {C.SRC: open(NEW_PATH, "rb").read(),
+          os.path.join(OUT, H1): open(os.path.join(WOUT, H1), "rb").read()}
 if hasattr(C, "HEADER2_NAME"):
-    _files[os.path.join(OUT, C.HEADER2_NAME)] = open(os.path.join(OUT, C.HEADER2_NAME), "rb").read()
+    _files[os.path.join(OUT, C.HEADER2_NAME)] = open(os.path.join(WOUT, C.HEADER2_NAME), "rb").read()
 for g, _ in C.GROUPS:
     if g != "core":
-        _p = os.path.join(OUT, "%s_%s.cpp" % (C.STEM, g))
-        _files[_p] = open(_p, "rb").read()
-sys.exit(split_verify.report(split_verify.verify(_old, _files, C.STEM, getattr(C, "BASE_SRC", C.SRC).replace(chr(92), "/"), getattr(C, "ALLOW", {}))))
+        _name = "%s_%s.cpp" % (C.STEM, g)
+        _files[os.path.join(OUT, _name)] = open(os.path.join(WOUT, _name), "rb").read()
+_rc = split_verify.report(split_verify.verify(_old, _files, C.STEM, getattr(C, "BASE_SRC", C.SRC).replace(chr(92), "/"), getattr(C, "ALLOW", {})))
+if STAGE and _rc == 0:
+    open(MARKER, "w").write("verified\n")
+sys.exit(_rc)

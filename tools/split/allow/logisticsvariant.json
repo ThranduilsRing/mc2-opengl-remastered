@@ -1,0 +1,11 @@
+{
+ "base": "dc3a26c8a",
+ "src": "code/logisticsvariant.cpp",
+ "stem": "logisticsvariant",
+ "scripts": [
+  "tools/gate_codemod.py",
+  "tools/mc2_modlint/modlint_variant_csv.h"
+ ],
+ "_scripts_reason": "Reviewed: gate_codemod.py lists the file in its one-shot codemod target set (the codemod already ran; lane 1 owns the tool); modlint_variant_csv.h cites the loadout read in a comment only.",
+ "split_commit": "aa9130de3"
+}

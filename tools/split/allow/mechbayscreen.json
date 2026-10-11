@@ -1,0 +1,10 @@
+{
+ "base": "2d6c73efc",
+ "src": "code/mechbayscreen.cpp",
+ "stem": "mechbayscreen",
+ "scripts": [
+  "tools/gate_codemod.py"
+ ],
+ "_scripts_reason": "Reviewed: gate_codemod.py lists the file in its one-shot codemod target set (the codemod already ran; lane 1 owns the tool).",
+ "split_commit": "b43d4b40c"
+}

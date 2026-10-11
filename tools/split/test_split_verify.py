@@ -105,3 +105,47 @@ def test_hoisted_include_after_a_define_is_checked_against_that_define(tmp_path,
     header = sv.lines_of(b"#include \"dep.h\"\n")
     assert sv.check_includes(old, header, {}, "code")
     assert sv.check_includes(old, header, {"includes": ["dep.h"]}, "code") == []
+
+
+def _pieces(**files):
+    return {k: sv.lines_of(v.encode()) for k, v in files.items()}
+
+
+def test_file_static_function_called_from_another_piece_is_flagged():
+    p = _pieces(**{"x.cpp": "static long bump(long s)\n{\n\treturn s + 1;\n}\nint a() { return 1; }\n",
+                   "x_stats.cpp": "int b(long s) { return bump(s); }\n"})
+    f = sv.check_static_calls(p, "x_internal.h", {})
+    assert f and f[0][0] == "static" and "bump" in f[0][1], f
+    assert sv.check_static_calls(p, "x_internal.h", {"static_calls": ["bump"]}) == []
+
+
+def test_anonymous_namespace_function_called_from_another_piece_is_flagged():
+    p = _pieces(**{"x.cpp": "namespace {\nvoid helper(int v)\n{\n\tv++;\n}\n} // namespace\nint a() { return 1; }\n",
+                   "x_b.cpp": "void b() { helper(1); }\n"})
+    f = sv.check_static_calls(p, "x_internal.h", {})
+    assert f and "helper" in f[0][1], f
+
+
+def test_static_function_used_only_in_its_own_piece_or_redefined_elsewhere_is_clean():
+    own = _pieces(**{"x.cpp": "static int h(int v)\n{\n\treturn v;\n}\nint a() { return h(1); }\n", "x_b.cpp": "int b() { return 2; }\n"})
+    assert sv.check_static_calls(own, "x_internal.h", {}) == []
+    twin = _pieces(**{"x.cpp": "static int h(int v)\n{\n\treturn v;\n}\nint a() { return h(1); }\n",
+                      "x_b.cpp": "static int h(int v)\n{\n\treturn v + 1;\n}\nint b() { return h(2); }\n"})
+    assert sv.check_static_calls(twin, "x_internal.h", {}) == []
+    member = _pieces(**{"x.cpp": "static int h(int v)\n{\n\treturn v;\n}\n", "x_b.cpp": "int b(Obj o) { return o.h(2) + Obj::h(3); }\n"})
+    assert sv.check_static_calls(member, "x_internal.h", {}) == []
+
+
+def test_static_function_check_runs_inside_verify():
+    old = b"static int h(int v)\n{\n\treturn v;\n}\nint a() { return h(1); }\nint b() { return h(2); }\n"
+    new = {"code/m.cpp": '#include "m_internal.h"\nstatic int h(int v)\n{\n\treturn v;\n}\nint a() { return h(1); }\n',
+           "code/m_b.cpp": '#include "m_internal.h"\nint b() { return h(2); }\n',
+           "code/m_internal.h": "#ifndef M_INTERNAL_H\n#define M_INTERNAL_H\n#endif // M_INTERNAL_H\n"}
+    assert "static" in kinds(run(old, new))
+
+
+def test_static_function_inside_a_named_namespace_called_from_another_piece_is_flagged():
+    p = _pieces(**{"x.cpp": "namespace ns {\nstatic bool gate()\n{\n\treturn true;\n}\nbool open()\n{\n\treturn true;\n}\n}\n",
+                   "x_b.cpp": "namespace ns {\nbool use() { return gate() && open(); }\n}\n"})
+    f = sv.check_static_calls(p, "x_internal.h", {})
+    assert [m.split()[1] for _, m in f] == ["gate"], f
