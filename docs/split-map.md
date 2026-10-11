@@ -131,6 +131,14 @@ Split commit: `f15cb970d`.
 | `GraphicsOptionsWindow_terrain.cpp` | Graphics options window: terrain, static-prop and water tuning sections. |
 | `GraphicsOptionsWindow_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
+## `GuiRuntime/GuiRuntime.cpp`
+
+| Piece | What it holds |
+|---|---|
+| `GuiRuntime.cpp` | keeps the ImGui lifecycle (init, new frame, render, shutdown), the viewport / dock handling and the font loading |
+| `GuiRuntime_draw.cpp` | GuiRuntime: IsReadyForUiText and the DrawUi* / CalcUiTextWrapLines / DrawUiEditBox immediate-mode draw API. |
+| `GuiRuntime_internal.h` | shared include bundle, extern globals and declarations of the pieces |
+
 ## `code/ablmc2.cpp`
 
 | Piece | What it holds |
