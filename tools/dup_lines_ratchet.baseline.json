@@ -6,7 +6,7 @@
   "HostServices": 0,
   "RenderCore": 580,
   "RenderWorld": 0,
-  "code": 15067,
+  "code": 15049,
   "mclib": 32486,
   "shaders": 3012
  },
@@ -248,7 +248,7 @@
   "code/objective.cpp": 515,
   "code/objmgr.cpp": 96,
   "code/objmgr.h": 29,
-  "code/objmgr_io.cpp": 294,
+  "code/objmgr_io.cpp": 276,
   "code/objmgr_misc.cpp": 47,
   "code/objmgr_pick.cpp": 138,
   "code/objmgr_update.cpp": 65,
@@ -654,8 +654,8 @@
   "shaders/vulkan/water_geom.frag": 85,
   "shaders/vulkan/water_geom.vert": 48
  },
- "head": "8656c128d",
+ "head": "1802f517e",
  "n": 8,
- "total": 56888,
+ "total": 56870,
  "version": 1
 }
