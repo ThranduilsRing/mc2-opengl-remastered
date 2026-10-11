@@ -168,6 +168,8 @@ Split commit: `f0d37de6c`.
 
 ## `code/logistics.cpp`
 
+Split commit: `9af8c3f04`.
+
 | Piece | What it holds |
 |---|---|
 | `logistics.cpp` | keeps the Logistics start / stop / update / render |
@@ -267,6 +269,8 @@ Split commit: `1af09dd12`.
 
 ## `code/multplyr.cpp`
 
+Split commit: `78da1679d`.
+
 | Piece | What it holds |
 |---|---|
 | `multplyr.cpp` | keeps the networking entry points, the message packet types and the session / colour setup |
@@ -357,6 +361,8 @@ Split commit: `dd946d83d`.
 | `abldbug_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
 ## `mclib/ablxstd.cpp`
+
+Split commit: `6292520c3`.
 
 | Piece | What it holds |
 |---|---|
@@ -455,6 +461,8 @@ Split commit: `de0dbab39`.
 | `mech3d_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
 ## `mclib/mlr/mlr_i_tmesh.cpp`
+
+Split commit: `27cd40e3b`.
 
 | Piece | What it holds |
 |---|---|
