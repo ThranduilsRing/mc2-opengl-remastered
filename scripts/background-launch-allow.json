@@ -118,6 +118,7 @@
   "tools/test_cite_guard.py": "program is a variable (git, ninja, glslang, ktx, blender, cook tools, python); launch-site audit 2026-10-10: console tool, not the game",
   "tools/test_comment_guard.py": "program is a variable (git, ninja, glslang, ktx, blender, cook tools, python); launch-site audit 2026-10-10: console tool, not the game",
   "tools/lane_merge.py": "runs the ratchet scripts with a variable argv; console merge tool, not the game",
+  "tools/tidy/tidy_batch.py": "runs sys.executable on the tidy, build and ratchet tools and mc2fx; console driver, not the game",
   "tools/tidy/pick_batch.py": "git ls-files only; console tool, not the game",
   "tools/tidy/run_tidy_headers.py": "program is a variable (git, ninja, clang-tidy); console build/refactor tool, not the game",
   "tools/tidy/run_tidy_safe.py": "program is a variable (git, ninja, glslang, ktx, blender, cook tools, python); launch-site audit 2026-10-10: console tool, not the game",
