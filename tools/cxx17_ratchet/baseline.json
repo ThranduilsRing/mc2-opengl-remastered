@@ -59,7 +59,7 @@
    "LG10": 40,
    "LG11": 102,
    "LG12a": 613,
-   "LG12b": 36,
+   "LG12b": 31,
    "LG13": 331,
    "LG14": 63,
    "LG15": 0,
@@ -151,7 +151,7 @@
    "LG10": 20,
    "LG11": 101,
    "LG12a": 220,
-   "LG12b": 357,
+   "LG12b": 349,
    "LG13": 1184,
    "LG14": 135,
    "LG15": 0,
@@ -197,7 +197,7 @@
    "LG10": 32,
    "LG11": 67,
    "LG12a": 449,
-   "LG12b": 274,
+   "LG12b": 245,
    "LG13": 1293,
    "LG14": 122,
    "LG15": 0,
@@ -350,7 +350,6 @@
    "LG09": 9,
    "LG11": 2,
    "LG12a": 13,
-   "LG12b": 5,
    "LG17": 1
   },
   "GameOS/gameos/gameos_debugging.cpp": {
@@ -1828,8 +1827,7 @@
   "code/componentlistbox.cpp": {
    "LG03": 3,
    "LG05": 2,
-   "LG09": 5,
-   "LG12b": 1
+   "LG09": 5
   },
   "code/componentlistbox.h": {
    "LG13": 1
@@ -2287,8 +2285,7 @@
    "LG03": 6,
    "LG05": 3,
    "LG06": 6,
-   "LG11": 3,
-   "LG12b": 1
+   "LG11": 3
   },
   "code/logisticsdata.h": {
    "LG02": 6,
@@ -2542,8 +2539,7 @@
   "code/mechcmd2_debugwins.cpp": {
    "LG03": 9,
    "LG06": 1,
-   "LG09": 3,
-   "LG12b": 1
+   "LG09": 3
   },
   "code/mechcmd2_frame.cpp": {
    "LG03": 21,
@@ -2754,7 +2750,6 @@
    "LG09": 32,
    "LG11": 1,
    "LG12a": 5,
-   "LG12b": 1,
    "LG13": 11,
    "LG20": 1
   },
@@ -2824,8 +2819,7 @@
    "LG11": 5
   },
   "code/mover_init.cpp": {
-   "LG03": 2,
-   "LG12b": 1
+   "LG03": 2
   },
   "code/mover_internal.h": {
    "LG13": 1
@@ -2954,8 +2948,7 @@
    "LG03": 54,
    "LG05": 2,
    "LG06": 9,
-   "LG09": 34,
-   "LG12b": 2
+   "LG09": 34
   },
   "code/objective.h": {
    "LG02": 4,
@@ -3302,8 +3295,7 @@
   },
   "code/weaponbolt.cpp": {
    "LG03": 14,
-   "LG09": 12,
-   "LG12b": 1
+   "LG09": 12
   },
   "code/weaponbolt.h": {
    "LG01": 10,
@@ -3351,7 +3343,7 @@
   "mclib/abldbug.cpp": {
    "LG06": 2,
    "LG09": 13,
-   "LG12b": 8,
+   "LG12b": 7,
    "LG17": 1
   },
   "mclib/abldbug.h": {
@@ -3365,7 +3357,7 @@
   "mclib/abldbug_print.cpp": {
    "LG09": 22,
    "LG11": 1,
-   "LG12b": 25
+   "LG12b": 20
   },
   "mclib/abldecl.cpp": {
    "LG09": 5
@@ -3399,8 +3391,7 @@
    "LG14": 2
   },
   "mclib/ablexec.cpp": {
-   "LG09": 29,
-   "LG12b": 1
+   "LG09": 29
   },
   "mclib/ablexec.h": {
    "LG02": 9,
@@ -3537,8 +3528,7 @@
    "LG05": 1,
    "LG06": 4,
    "LG09": 3,
-   "LG12a": 1,
-   "LG12b": 2
+   "LG12a": 1
   },
   "mclib/bdactor.h": {
    "LG01": 14,
@@ -3569,7 +3559,6 @@
    "LG10": 2,
    "LG11": 2,
    "LG12a": 3,
-   "LG12b": 1,
    "LG20": 8
   },
   "mclib/bdactor_static.cpp": {
@@ -3586,8 +3575,7 @@
   "mclib/bdactor_tree.cpp": {
    "LG03": 5,
    "LG09": 3,
-   "LG10": 1,
-   "LG12b": 2
+   "LG10": 1
   },
   "mclib/bdactor_tree_static.cpp": {
    "LG03": 1,
@@ -3598,8 +3586,7 @@
    "LG03": 25,
    "LG06": 2,
    "LG09": 3,
-   "LG12a": 17,
-   "LG12b": 1
+   "LG12a": 17
   },
   "mclib/bdactor_update.cpp": {
    "LG03": 3,
@@ -3974,8 +3961,7 @@
   "mclib/genactor.cpp": {
    "LG03": 7,
    "LG06": 1,
-   "LG09": 1,
-   "LG12b": 4
+   "LG09": 1
   },
   "mclib/genactor.h": {
    "LG01": 4,
@@ -4120,7 +4106,6 @@
    "LG06": 2,
    "LG09": 8,
    "LG12a": 1,
-   "LG12b": 5,
    "LG13": 1
   },
   "mclib/gvactor.h": {
@@ -4132,8 +4117,7 @@
    "LG03": 2,
    "LG06": 1,
    "LG09": 18,
-   "LG10": 1,
-   "LG12b": 3
+   "LG10": 1
   },
   "mclib/gvactor_internal.h": {
    "LG13": 5
@@ -4687,7 +4671,7 @@
    "LG09": 33,
    "LG11": 1,
    "LG12a": 2,
-   "LG12b": 3
+   "LG12b": 2
   },
   "mclib/msl_shape.cpp": {
    "LG03": 1,
@@ -5269,8 +5253,7 @@
    "LG03": 5,
    "LG06": 1,
    "LG09": 65,
-   "LG12a": 12,
-   "LG12b": 3
+   "LG12a": 12
   },
   "mclib/tex_resolve_table.cpp": {
    "LG09": 13
@@ -5501,7 +5484,7 @@
    "LG20": 2
   }
  },
- "head": "37ad605d9",
+ "head": "dbf53a8e1",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
