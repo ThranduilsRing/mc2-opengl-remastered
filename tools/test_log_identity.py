@@ -61,3 +61,7 @@ def test_number_padding_is_not_a_difference_but_text_padding_is(tmp_path):
     b = _dir(tmp_path, "b", "[TIME] t= 12s phase=x\nname=abc n=1\n")
     only_b, only_a, _ = li.compare(a, b)
     assert len(only_b) == 1 and "name=abc" in only_b[0] and len(only_a) == 1
+
+
+def test_the_build_sha_of_the_exe_is_masked():
+    assert li.shape("[INSTR v1] enabled: smoke=1 build=f471bcb04505 x=2") == li.shape("[INSTR v1] enabled: smoke=1 build=4029e4ae75f5 x=3")

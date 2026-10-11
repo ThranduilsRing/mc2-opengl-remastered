@@ -25,12 +25,14 @@ _NUM = re.compile(r"(?<![A-Za-z_\d])(?:0x[0-9a-fA-F]+|[0-9A-F]{16}\b|-?\d+(?:\.\
 _TAG = re.compile(r"^\s*\[([A-Z][A-Z0-9_]*)(?: v\d+)?\]")
 #: Lines that differ between two runs of the SAME executable, so they say nothing about a conversion: the build stamp and the per-frame block-set
 #: trace. (The frame-2 [TerrainLOD v1] DIAG plane dump used to be here; it printed uninitialised camera matrices and was repaired in 47a9623ed.)
+#: The git sha of the exe that wrote the log (the [INSTR v1] enabled: line): it differs between any two builds and says nothing about the log's shape.
+_BUILD = re.compile(r"(?<![A-Za-z_])build=[0-9a-f]+")
 NOISE = re.compile(r"\[BUILD_FINGERPRINT v1\]|^\s*\[BlockSet\]")
 
 
 def shape(line: str) -> str:
     """The line with numbers and addresses masked. Blanks touching a number are collapsed: `%3d` pads a 5 and a 12 differently."""
-    s = _NUM.sub("#", line.rstrip("\r\n"))
+    s = _NUM.sub("#", _BUILD.sub("build=", line.rstrip("\r\n")))
     return re.sub(r" +#", " #", re.sub(r"# +", "# ", s))
 
 
