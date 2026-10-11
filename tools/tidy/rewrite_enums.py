@@ -25,6 +25,7 @@ sys.path.insert(0, HERE)
 import rewrite_defines as rd  # noqa: E402
 import run_tidy_safe as rts  # noqa: E402
 import run_tidy_headers as rth  # noqa: E402
+import canonical_obj  # noqa: E402
 
 cr = rd.cr
 ENUM_HEAD = re.compile(r"\benum\b(?!\s+(?:class|struct)\b)\s+([A-Za-z_]\w*)\s*(:\s*[\w ]+?)?\s*\{")
@@ -171,6 +172,8 @@ def cmd_run(a):
     sys.stdout.reconfigure(line_buffering=True)
     tree_abs = os.path.join(rts.ROOT, a.tree)
     rts.apply_lane_args(a)
+    if not a.strict_proof:
+        canonical_obj.install()
     includers = rth.includer_map(tree_abs)
     a.s2t = {v: k for k, v in rth.target_to_source(tree_abs).items()}
     a.taint = rd.load_taint(a.taint_file)
@@ -257,6 +260,7 @@ def main(argv=None) -> int:
     r.add_argument("--max-header-includers", type=int, default=150)
     r.add_argument("--build-jobs", type=int, default=6)
     r.add_argument("--done")
+    r.add_argument("--strict-proof", action="store_true", help="plain objhash digests instead of tools/tidy/canonical_obj.py")
     r.add_argument("--taint-file")
     r.add_argument("--skip-dirty-in", default="A:/Games/mc2-main")
     r.add_argument("--commit", action="store_true")

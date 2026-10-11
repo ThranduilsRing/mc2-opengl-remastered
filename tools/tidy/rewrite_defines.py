@@ -4,7 +4,7 @@
 WHAT: finds object-like defines of one integer / float / string literal (suffixes honoured), keeps only those whose macro is used purely as a value (no #if / #ifdef /
 #undef / #include, no use inside another #define, no token pasting or stringizing, no sizeof of a string, no __asm file, defined exactly once in the repo, not named in a
 script, cmake, resource or shader file, not in a header a C / .rc / .asm file includes, at namespace scope, not an include guard), rewrites each in place (a .cpp-local
-define becomes `constexpr`, a header define `inline constexpr`), rebuilds every object that includes the file and compares it with tools/objhash.py. A file whose
+define becomes `constexpr`, a header define `inline constexpr`), rebuilds every object that includes the file and compares it with tools/tidy/canonical_obj.py (objhash digests that ignore symbol and section order; --strict-proof uses plain objhash). A file whose
 includers are not all identical is bisected out and reverted (the same Proof as tools/tidy/run_tidy_headers.py).
 WHY: a macro has no type, no scope and no debugger value; a typed constant does, and the rewrite is a no-op for the compiled code when the proof says so.
 
@@ -29,6 +29,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import run_tidy_safe as rts  # noqa: E402
 import run_tidy_headers as rth  # noqa: E402
+import canonical_obj  # noqa: E402
 
 ROOT = rts.ROOT
 sys.path.insert(0, os.path.join(ROOT, "tools", "cxx17_ratchet"))
@@ -377,6 +378,8 @@ def cmd_run(a):
     sys.stdout.reconfigure(line_buffering=True)
     tree_abs = os.path.join(ROOT, a.tree)
     rts.apply_lane_args(a)
+    if not a.strict_proof:
+        canonical_obj.install()
     includers = rth.includer_map(tree_abs)
     t2s = rth.target_to_source(tree_abs)
     a.s2t = {v: k for k, v in t2s.items()}
@@ -473,6 +476,7 @@ def main(argv=None) -> int:
     r.add_argument("--max-header-includers", type=int, default=200)
     r.add_argument("--build-jobs", type=int, default=6)
     r.add_argument("--done", help="ledger of files already tried (skipped; picked ones are appended)")
+    r.add_argument("--strict-proof", action="store_true", help="compare with plain tools/objhash.py digests (symbol / section order sensitive) instead of tools/tidy/canonical_obj.py")
     r.add_argument("--taint-file", default=None, help="ledger of objects that differed for a harmless edit; headers they include are skipped (appended to after a revert)")
     r.add_argument("--skip-dirty-in", default="A:/Games/mc2-main", help="the other builder lane's worktree: its dirty files are never touched")
     r.add_argument("--commit", action="store_true")
