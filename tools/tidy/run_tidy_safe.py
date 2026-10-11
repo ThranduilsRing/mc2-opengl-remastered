@@ -307,19 +307,25 @@ def run(args, tidy=None, build=None) -> int:
     return 1 if reverted else 0
 
 
-REWRITERS = ("typedef-aggregates",)
+REWRITERS = ("typedef-aggregates", "null-tokens")
+
+
+def rewriter(name: str):
+    """The text transform module for a --rewrite name."""
+    import importlib
+    return importlib.import_module(name.replace("-", "_"))
 
 
 def rewrite_hook(name: str):
     """A stand-in for the clang-tidy call: apply the named text transform to the file the command line ends with."""
-    import typedef_aggregates
+    transform = rewriter(name)
 
     def hook(cmd):
         rel = cmd[-1]
         path = os.path.join(ROOT, rel)
         with open(path, encoding="utf-8", errors="surrogateescape", newline="") as fh:
             src = fh.read()
-        new = typedef_aggregates.rewrite(src)
+        new = transform.rewrite(src)
         if new != src:
             with open(path, "w", encoding="utf-8", errors="surrogateescape", newline="") as fh:
                 fh.write(new)

@@ -81,7 +81,7 @@ def candidate_headers(dirs, includers, dirty, rewrite=None):
             continue
         with open(os.path.join(ROOT, rel), encoding="utf-8", errors="replace") as fh:
             text = fh.read()
-            if pick_batch._rewrite_site(text) if rewrite else pick_batch.has_site(text):
+            if pick_batch._rewrite_site(text, rewrite) if rewrite else pick_batch.has_site(text):
                 cands.append((len(includers[rel]), os.path.getsize(os.path.join(ROOT, rel)), rel))
     cands.sort()
     return cands
