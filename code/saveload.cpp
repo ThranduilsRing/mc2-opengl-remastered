@@ -9,6 +9,7 @@
 //===========================================================================//
 
 #include "saveload_internal.h"
+#include "mc2fmt.h"
 #include "mission_load_frame.h"
 //----------------------------------------------------------------------------------------------------
 // Save.
@@ -512,6 +513,16 @@ bool Mission::openSaveFile(MissionLoadFrame& f) {
 
 	delete [] campName;
 	campName = NULL;
+
+	// A save written by another build can hold object records this build cannot read. Refuse it here, while
+	// the running mission is still intact.
+	if (const char* why = GameObjectManager::checkSavedObjects(&loadFile)) {
+		mc2::fmt::print_err("[SAVE v1] event=reject reason={} file={}\n", mc2::fmt::safe(why), mc2::fmt::safe(loadFileName));
+		char msg[2048];
+		cLoadString(IDS_QUICKSAVE_VERSION_WRONG,msg,2047);
+		PAUSE((msg));
+		return true;
+	}
 	return false;
 }
 
@@ -909,7 +920,10 @@ void Mission::load (const char *loadFileName)
 	f.loadFileName = loadFileName;
 	loadPrologue(f);
 
-	if (openSaveFile(f)) return;
+	if (openSaveFile(f)) {
+		loadRestoreInput(f);
+		return;
+	}
 
 	loadDestroyAndRestore();
 	loadResetSimState(f);

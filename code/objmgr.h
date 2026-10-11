@@ -617,6 +617,11 @@ class GameObjectManager {
 
 		long Save (PacketFilePtr file, long packetNum);
 		long Load (PacketFilePtr file, long packetNum);
+
+		// Structural check of the object packets of a save; nullptr when sound, else a reason tag. Run before the
+		// running mission is torn down so a bad save is refused instead of crashing the loader.
+		static const char* checkSavedObjects (PacketFilePtr file, long* headerPacket = nullptr);
+		ObjectTypePtr savedObjectType (long typeNum, long slot);
 };
 
 extern GameObjectManagerPtr ObjectManager;

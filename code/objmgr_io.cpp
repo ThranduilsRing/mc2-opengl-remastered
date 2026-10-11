@@ -2,6 +2,23 @@
 // Declared in the class headers; shared names in objmgr_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "objmgr_internal.h"
+#include "saved_objects_check.h"
+#include "mc2fmt.h"
+
+// Load tells an object's class from the byte size of its packet, so no two record types may share a size.
+namespace {
+constexpr bool recordSizesDistinct() {
+	constexpr size_t sizes[] = { sizeof(TerrainObjectData), sizeof(BuildingData), sizeof(TurretData), sizeof(GateData),
+	                             sizeof(ArtilleryData), sizeof(CarnageData), sizeof(MechData), sizeof(GroundVehicleData),
+	                             sizeof(WeaponBoltData), sizeof(GameObjectData), sizeof(MoverData) };
+	for (size_t i = 0; i < std::size(sizes); ++i)
+		for (size_t j = i + 1; j < std::size(sizes); ++j)
+			if (sizes[i] == sizes[j])
+				return false;
+	return true;
+}
+static_assert(recordSizesDistinct(), "two saved object record types share a size: Load could not tell them apart");
+} // namespace
 
 
 //---------------------------------------------------------------------------
@@ -616,6 +633,78 @@ long GameObjectManager::Save (PacketFilePtr file, long packetNum)
 }
 
 //-------------------------------------------------------------------
+// The object type a saved record names, or null (logged) when this build does not know it. A null type
+// makes the slot an empty one, the same as a record that never had a type.
+ObjectTypePtr GameObjectManager::savedObjectType (long typeNum, long slot)
+{
+	if (typeNum <= 0)
+		return nullptr;
+	ObjectTypePtr objType = getObjectType(typeNum);
+	if (!objType)
+		mc2::fmt::print_err("[SAVE v1] event=object_skipped reason=unknown_object_type slot={:d} type={:d}\n", mc2::fmt::as_i32(slot), mc2::fmt::as_i32(typeNum));
+	return objType;
+}
+
+//-------------------------------------------------------------------
+const char* GameObjectManager::checkSavedObjects (PacketFilePtr file, long* headerPacket)
+{
+	using namespace mc2_saved_objects;
+	RecordSizes sizes = {};
+	sizes.byClass[kTerrain] = sizeof(TerrainObjectData);
+	sizes.byClass[kBuilding] = sizeof(BuildingData);
+	sizes.byClass[kTurret] = sizeof(TurretData);
+	sizes.byClass[kGate] = sizeof(GateData);
+	sizes.byClass[kArtillery] = sizeof(ArtilleryData);
+	sizes.byClass[kCarnage] = sizeof(CarnageData);
+	sizes.byClass[kMech] = sizeof(MechData);
+	sizes.byClass[kVehicle] = sizeof(GroundVehicleData);
+	sizes.byClass[kBolt] = sizeof(WeaponBoltData);
+	sizes.pureObject = sizeof(GameObjectData);
+	sizes.pureMover = sizeof(MoverData);
+
+	const long resume = file->getCurrentPacket();
+	const long numPackets = file->getNumPackets();
+	auto sizeAt = [file](uint32_t packet) -> uint32_t {
+		file->seekPacket((int)packet);
+		return (uint32_t)file->getPacketSize();
+	};
+
+	// The header's position depends on how many packets the earlier sections wrote, so look for it by size
+	// and by the run it describes.
+	const char* verdict = "no_object_manager_header";
+	for (long p = 0; p < numPackets; ++p) {
+		if (sizeAt((uint32_t)p) != sizeof(ObjectManagerData))
+			continue;
+		ObjectManagerData data;
+		file->readPacket((int)p, (MemoryPtr)&data);
+		HeaderCounts h = {};
+		h.byClass[kTerrain] = data.numTerrainObjects;
+		h.byClass[kBuilding] = data.numBuildings;
+		h.byClass[kTurret] = data.numTurrets;
+		h.byClass[kGate] = data.numGates;
+		h.byClass[kArtillery] = data.numArtillery;
+		h.byClass[kCarnage] = data.numCarnage;
+		h.byClass[kMech] = data.maxMechs;
+		h.byClass[kVehicle] = data.maxVehicles;
+		h.byClass[kBolt] = data.numWeapons;
+		h.elementals = data.numElementals;
+		h.lights = data.numLights;
+		if (!plausibleHeader(h))
+			continue;
+		const char* why = checkRun(h, sizes, (uint32_t)p, (uint32_t)numPackets, sizeAt);
+		if (!why) {
+			if (headerPacket)
+				*headerPacket = p;
+			verdict = nullptr;
+			break;
+		}
+		verdict = why;
+	}
+	file->seekPacket((int)resume);
+	return verdict;
+}
+
+//-------------------------------------------------------------------
 long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 {
 	ObjectManagerData data;
@@ -775,11 +864,9 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 			objList[i] = terrainObjects[curTerrObjNum] = obj;
 			objList[i]->setHandle(i);
 
-			if (data.objectTypeNum > 0)	//We have an object type to copy from!!
+			ObjectTypePtr objType = savedObjectType(data.objectTypeNum, i);
+			if (objType)	//We have an object type to copy from!!
 			{
-				ObjectTypePtr objType = getObjectType(data.objectTypeNum);
-				if (!objType)
-					STOP(("We saved an Object we don't know how to re-create %d",data.objectTypeNum));
 
 				obj->init(true, objType);
 				obj->setExists(true);
@@ -814,11 +901,9 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 			objList[i] = buildings[curBuildingNum] = obj;
 			objList[i]->setHandle(i);
 
-			if (data.objectTypeNum > 0)	//We have an object type to copy from!!
+			ObjectTypePtr objType = savedObjectType(data.objectTypeNum, i);
+			if (objType)	//We have an object type to copy from!!
 			{
-				ObjectTypePtr objType = getObjectType(data.objectTypeNum);
-				if (!objType)
-					STOP(("We saved an Object we don't know how to re-create %d",data.objectTypeNum));
 
 				obj->init(true, objType);
 				obj->setExists(true);
@@ -859,11 +944,9 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 			objList[i] = turrets[curTurretNum] = obj;
 			objList[i]->setHandle(i);
 
-			if (data.objectTypeNum > 0)	//We have an object type to copy from!!
+			ObjectTypePtr objType = savedObjectType(data.objectTypeNum, i);
+			if (objType)	//We have an object type to copy from!!
 			{
-				ObjectTypePtr objType = getObjectType(data.objectTypeNum);
-				if (!objType)
-					STOP(("We saved an Object we don't know how to re-create %d",data.objectTypeNum));
 
 				obj->init(true, objType);
 				obj->setExists(true);
@@ -897,11 +980,9 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 			objList[i] = gates[curGateNum] = obj;
 			objList[i]->setHandle(i);
 
-			if (data.objectTypeNum > 0)	//We have an object type to copy from!!
+			ObjectTypePtr objType = savedObjectType(data.objectTypeNum, i);
+			if (objType)	//We have an object type to copy from!!
 			{
-				ObjectTypePtr objType = getObjectType(data.objectTypeNum);
-				if (!objType)
-					STOP(("We saved an Object we don't know how to re-create %d",data.objectTypeNum));
 
 				obj->init(true, objType);
 				obj->setExists(true);
@@ -935,11 +1016,9 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 			objList[i] = artillery[curArtilleryNum] = obj;
 			objList[i]->setHandle(i);
 
-			if (data.objectTypeNum > 0)	//We have an object type to copy from!!
+			ObjectTypePtr objType = savedObjectType(data.objectTypeNum, i);
+			if (objType)	//We have an object type to copy from!!
 			{
-				ObjectTypePtr objType = getObjectType(data.objectTypeNum);
-				if (!objType)
-					STOP(("We saved an Object we don't know how to re-create %d",data.objectTypeNum));
 
 				obj->init(true, objType);
 				obj->setExists(true);
@@ -962,11 +1041,9 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 			objList[i] = carnage[curCarnageNum] = obj;
 			objList[i]->setHandle(i);
 
-			if (data.objectTypeNum > 0)	//We have an object type to copy from!!
+			ObjectTypePtr objType = savedObjectType(data.objectTypeNum, i);
+			if (objType)	//We have an object type to copy from!!
 			{
-				ObjectTypePtr objType = getObjectType(data.objectTypeNum);
-				if (!objType)
-					STOP(("We saved an Object we don't know how to re-create %d",data.objectTypeNum));
 
 				obj->init(true, objType);
 				obj->setExists(true);
@@ -989,11 +1066,9 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 			objList[i] = mechs[curMechNum] = obj;
 			objList[i]->setHandle(i);
 
-			if (data.objectTypeNum > 0)	//We have an object type to copy from!!
+			ObjectTypePtr objType = savedObjectType(data.objectTypeNum, i);
+			if (objType)	//We have an object type to copy from!!
 			{
-				ObjectTypePtr objType = getObjectType(data.objectTypeNum);
-				if (!objType)
-					STOP(("We saved an Object we don't know how to re-create %d",data.objectTypeNum));
 
 				obj->init(true, objType);
 				obj->setExists(true);
@@ -1016,11 +1091,9 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 			objList[i] = vehicles[curVehicleNum] = obj;
 			objList[i]->setHandle(i);
 
-			if (data.objectTypeNum > 0)	//We have an object type to copy from!!
+			ObjectTypePtr objType = savedObjectType(data.objectTypeNum, i);
+			if (objType)	//We have an object type to copy from!!
 			{
-				ObjectTypePtr objType = getObjectType(data.objectTypeNum);
-				if (!objType)
-					STOP(("We saved an Object we don't know how to re-create %d",data.objectTypeNum));
 
 				obj->init(true, objType);
 				obj->setExists(true);
@@ -1043,11 +1116,9 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 			objList[i] = weapons[curBoltNum] = obj;
 			objList[i]->setHandle(i);
 
-			if (data.objectTypeNum > 0)	//We have an object type to copy from!!
+			ObjectTypePtr objType = savedObjectType(data.objectTypeNum, i);
+			if (objType)	//We have an object type to copy from!!
 			{
-				ObjectTypePtr objType = getObjectType(data.objectTypeNum);
-				if (!objType)
-					STOP(("We saved an Object we don't know how to re-create %d",data.objectTypeNum));
 
 				obj->init(true, objType);
 				obj->setExists(true);
@@ -1058,6 +1129,13 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 				MC2_DESTROY(obj, "load_empty_slot");
 			}
 			curBoltNum++;
+		}
+		else
+		{
+			// checkSavedObjects refuses such a file before the mission is torn down; this keeps the loader from
+			// re-reading the same packet if one gets here anyway.
+			mc2::fmt::print_err("[SAVE v1] event=object_skipped reason=unknown_record_size slot={:d} packet={:d} size={:d}\n", mc2::fmt::as_i32(i), mc2::fmt::as_i32(packetNum), mc2::fmt::as_i32((int)packetSize));
+			packetNum++;
 		}
 	}
 
