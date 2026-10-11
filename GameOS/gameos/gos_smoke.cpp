@@ -70,9 +70,7 @@ void parseArgs(int argc, char** argv) {
     // [[noreturn]] on lambdas requires C++23; use a local static function instead.
     struct ParseArgsFail {
         [[noreturn]] static void missingValue(const char* flag) {
-            std::fprintf(stdout,
-                "[SMOKE v1] event=summary result=fail reason=argv_error "
-                "stage=parseArgs detail=\"%s requires value\"\n", flag);
+            mc2::fmt::print_out("[SMOKE v1] event=summary result=fail reason=argv_error stage=parseArgs detail=\"{} requires value\"\n", mc2::fmt::safe(flag));
             std::fflush(stdout);
             std::exit(2);
         }
@@ -103,9 +101,7 @@ void parseArgs(int argc, char** argv) {
     }
 
     if (g_state.enabled && g_state.mission.empty()) {
-        std::fprintf(stdout,
-            "[SMOKE v1] event=summary result=fail reason=argv_error "
-            "stage=parseArgs detail=\"--mission required when MC2_SMOKE_MODE is set\"\n");
+        mc2::fmt::print_out("[SMOKE v1] event=summary result=fail reason=argv_error stage=parseArgs detail=\"--mission required when MC2_SMOKE_MODE is set\"\n");
         std::fflush(stdout);
         std::exit(2);
     }
@@ -118,11 +114,10 @@ void parseArgs(int argc, char** argv) {
         std::exit(2);
     }
     if (g_state.enabled) {
-        std::fprintf(stdout,
-            "[SMOKE v1] event=banner mode=%s mission=%s profile=%s duration=%d seed=0x%x\n",
-            g_state.active ? "active" : "passive",
+        mc2::fmt::print_out("[SMOKE v1] event=banner mode={} mission={} profile={} duration={:d} seed=0x{:x}\n",
+            mc2::fmt::safe(g_state.active ? "active" : "passive"),
             g_state.mission.c_str(), g_state.profile.c_str(),
-            g_state.durationSec, g_state.seed);
+            mc2::fmt::as_i32(g_state.durationSec), mc2::fmt::as_u32(g_state.seed));
         std::fflush(stdout);
     }
 }
@@ -218,10 +213,9 @@ void emitCleanSummary() {
 void emitFailSummary(const char* reason, const char* stage) {
     if (!g_state.enabled) return;
     if (g_summaryEmitted.exchange(true)) return;
-    std::fprintf(stdout,
-        "[SMOKE v1] event=summary result=fail reason=%s stage=%s\n",
-        reason ? reason : "unknown",
-        stage  ? stage  : "unknown");
+    mc2::fmt::print_out("[SMOKE v1] event=summary result=fail reason={} stage={}\n",
+        mc2::fmt::safe(reason ? reason : "unknown"),
+        mc2::fmt::safe(stage  ? stage  : "unknown"));
     std::fflush(stdout);
 }
 
@@ -242,9 +236,8 @@ bool resolveMissionPaths() {
         source = "loose";
     }
 
-    std::fprintf(stdout,
-        "[SMOKE v1] event=mission_resolve stem=%s source=%s\n",
-        g_state.mission.c_str(), source);
+    mc2::fmt::print_out("[SMOKE v1] event=mission_resolve stem={} source={}\n",
+        g_state.mission.c_str(), mc2::fmt::safe(source));
     std::fflush(stdout);
     return true;
 }

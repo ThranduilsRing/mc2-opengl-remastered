@@ -334,9 +334,7 @@ void __stdcall InitializeGameEngine()
 		if (SmokeMode::state().enabled) {
 			SmokeMode::emitFailSummary("sniffer_would_run",
 				"init_pre_sniffer");
-			fprintf(stderr,
-				"[SMOKE v1] sniffer branch reached; options.cfg not found at CWD. "
-				"Is the runner spawning from the install directory?\n");
+			mc2::fmt::print_err("[SMOKE v1] sniffer branch reached; options.cfg not found at CWD. Is the runner spawning from the install directory?\n");
 			fflush(stderr);
 			std::exit(5);
 		}
