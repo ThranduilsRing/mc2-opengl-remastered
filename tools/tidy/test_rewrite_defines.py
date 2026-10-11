@@ -92,3 +92,16 @@ def test_never_touch_list_covers_the_step4_files_and_the_overload_sensitive_tus(
 
 def test_the_audit_doc_yields_fifty_overload_sensitive_tus():
     assert len(rd.overload_sensitive_tus()) == 50
+
+
+def test_a_constant_in_the_arguments_of_a_wrapper_of_a_stringizing_macro_is_refused():
+    """MC2_VERIFY_BOUNDS-style: the inner `#cond` sees the EXPANDED text, so the string literal would change from the value to the name."""
+    files = {"v.h": "#define VERIFY(cond, ...) ((!!(cond)) || Fail(#cond, __VA_ARGS__))\n"
+                    "#define VERIFY_BOUNDS(idx, count) \\n    VERIFY((idx) < (count), \"x\")\n"
+                    "#define DIRECT_ONLY(x) Log(#x)\n",
+             "a.cpp": "#include \"v.h\"\n#define MAXC 4\n#define MAXD 5\n#define MAXE 6\n"
+                      "void f(int i) {\n  VERIFY_BOUNDS(i,\n      MAXC);\n  DIRECT_ONLY(MAXD);\n  int z = MAXE;\n}\n"}
+    s, _ = run(files)
+    assert s["MAXC"].reasons == ["stringized-by-wrapper-macro"]      # through the wrapper, over two lines
+    assert s["MAXD"].reasons == [] and s["MAXE"].reasons == []        # a direct stringizer keeps the raw name; a plain use is a value
+    assert rd.stringizing_wrappers({"v.h": rd.cr.strip(files["v.h"]) + (None,)}) == {"VERIFY_BOUNDS"}

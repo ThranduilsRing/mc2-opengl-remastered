@@ -74,6 +74,7 @@ TOKEN = re.compile(r"[A-Za-z_]\w*")
 INT_LIT = re.compile(r"^(?P<n>0[xX][0-9a-fA-F]+|0[bB][01]+|[0-9]+)(?P<s>[uUlL]*)$")
 FLOAT_LIT = re.compile(r"^(?P<n>(?:\d+\.\d*|\.\d+|\d+)(?:[eE][+-]?\d+)?)(?P<s>[fF]?)$")
 STRING_LIT = re.compile(r'^"(?:[^"\\\n]|\\.)*"$')
+FUNC_DEFINE = re.compile(r"^\s*#\s*define\s+([A-Za-z_]\w*)\(([^)]*)\)\s*(.*)$")
 SIZEOF_LIKE = re.compile(r"\b(?:sizeof|_countof|ARRAYSIZE|ARRAY_SIZE|NUMELEMENTS)\b")
 EXTERN_C = re.compile(r'\bextern\s*"\s*(?:C\s*)?"')
 
@@ -172,6 +173,61 @@ def _scopes(bl_lines):
     return out
 
 
+def stringizing_wrappers(parsed):
+    """-> the names of function-like macros that stringize an argument whose text has already been macro-expanded.
+    WHAT: DIRECT macros contain `#param` (that argument text is taken raw, so a constant name stays a name); WRAPPER macros are not direct but call a DIRECT or
+    WRAPPER macro (transitively), so their arguments are expanded before the inner `#` sees them.
+    WHY: a constant named in a wrapper's arguments is stringized as its VALUE today and as its NAME after the rewrite, which changes a string literal in the object
+    (MC2_VERIFY_BOUNDS(i, <constant>) puts the text of the condition into the failure message)."""
+    macros = {}
+    for _path, (nc, _bl, _raw) in parsed.items():
+        i = 0
+        while i < len(nc):
+            m = FUNC_DEFINE.match(nc[i])
+            if m:
+                body, j = m.group(3), i
+                while nc[j].rstrip().endswith("\\") and j + 1 < len(nc):
+                    j += 1
+                    body = body.rstrip()[:-1] + " " + nc[j]
+                macros[m.group(1)] = ([x.strip() for x in m.group(2).split(",") if x.strip()], body)
+                i = j
+            i += 1
+    direct = set()
+    for name, (params, body) in macros.items():
+        names = [x for x in params if not x.endswith("...")]
+        if any(x.endswith("...") for x in params):
+            names.append("__VA_ARGS__")
+        if any(re.search(r"(?<!#)#\s*" + re.escape(x) + r"\b", body) for x in names):
+            direct.add(name)
+    wrap, changed = set(), True
+    while changed:
+        changed = False
+        callees = direct | wrap
+        rx = re.compile(r"\b(?:" + "|".join(map(re.escape, sorted(callees))) + r")\s*\(") if callees else None
+        for name, (_params, body) in macros.items():
+            if name not in direct and name not in wrap and rx and rx.search(body):
+                wrap.add(name)
+                changed = True
+    return wrap
+
+
+def names_in_wrapper_calls(parsed, wrappers, cand):
+    """The candidate constant names that sit inside the argument list of a call to one of `wrappers`."""
+    out = set()
+    if not wrappers:
+        return out
+    rx = re.compile(r"\b(?:" + "|".join(map(re.escape, sorted(wrappers))) + r")\s*\(")
+    for _path, (_nc, bl, _raw) in parsed.items():
+        text = "\n".join(bl)
+        for m in rx.finditer(text):
+            depth, k = 1, m.end()
+            while k < len(text) and depth:
+                depth += (text[k] == "(") - (text[k] == ")")
+                k += 1
+            out.update(t for t in TOKEN.findall(text[m.end():k]) if t in cand)
+    return out
+
+
 def analyse(files: dict, c_side_headers=frozenset(), other_idents=frozenset(), tracked_cxx=(), allow_strings=False):
     """files: {path: text} of the C++ files in scope. -> (sites, {name: [(path, line, ctx)]}). A site's `reasons` list is empty when it is eligible."""
     sites, uses, defs, undefs = [], collections.defaultdict(list), collections.defaultdict(int), set()
@@ -199,6 +255,7 @@ def analyse(files: dict, c_side_headers=frozenset(), other_idents=frozenset(), t
                     sites.append(s)
             cont = l.rstrip().endswith("\\") and bool(re.match(r"\s*#", l) or cont)
     cand = {s.name for s in sites}
+    stringized = names_in_wrapper_calls(parsed, stringizing_wrappers(parsed), cand)
     for path, (nc, bl, raw) in parsed.items():
         has_asm = any("__asm" in l for l in bl)
         in_macro = False
@@ -237,6 +294,8 @@ def analyse(files: dict, c_side_headers=frozenset(), other_idents=frozenset(), t
             r.append("undef")
         if s.name in other_idents:
             r.append("named-outside-c++")
+        if s.name in stringized:
+            r.append("stringized-by-wrapper-macro")
         if s.name.startswith("_"):
             r.append("reserved-name")
         if os.path.basename(s.path) in c_side_headers:
