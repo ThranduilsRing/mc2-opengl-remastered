@@ -198,7 +198,7 @@
    "LG11": 67,
    "LG12a": 212,
    "LG12b": 245,
-   "LG13": 597,
+   "LG13": 589,
    "LG14": 120,
    "LG15": 0,
    "LG16": 156,
@@ -3369,7 +3369,7 @@
   "mclib/camera.h": {
    "LG01": 7,
    "LG05": 2,
-   "LG13": 6,
+   "LG13": 1,
    "LG14": 1
   },
   "mclib/camera_daylight.cpp": {
@@ -3542,8 +3542,7 @@
    "LG02": 3
   },
   "mclib/dident.h": {
-   "LG02": 2,
-   "LG13": 1
+   "LG02": 2
   },
   "mclib/dinifile.h": {
    "LG02": 1
@@ -3660,8 +3659,7 @@
   },
   "mclib/floathelp.h": {
    "LG02": 1,
-   "LG09": 1,
-   "LG13": 1
+   "LG09": 1
   },
   "mclib/fst_hash.cpp": {
    "LG06": 3,
@@ -5033,8 +5031,7 @@
   },
   "mclib/timing.h": {
    "LG01": 1,
-   "LG02": 3,
-   "LG13": 1
+   "LG02": 3
   },
   "mclib/txmmgr.cpp": {
    "LG01": 4,
@@ -5174,7 +5171,7 @@
    "LG20": 2
   }
  },
- "head": "17ecb3df2",
+ "head": "51e4ae3aa",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
