@@ -380,11 +380,19 @@ class FastProof(rth.Proof):
     """Proof whose bisect probes rebuild only the objects the first full probe found bad (a wide header makes every probe a rebuild of the whole tree);
     solve_fast() then verifies the kept set with a full build and re-bisects it if that finds more."""
 
+    ignore = frozenset()      # objects that must compile but whose digest is not compared (see --ignore-digest-file)
+
     def __init__(self, *args, **kw):
         super().__init__(*args, **kw)
         self.focus = None
 
     def bad_objects(self):
+        bad = self._bad_objects()
+        if self.ignore:
+            bad = {o for o in bad if o not in self.ignore or not os.path.exists(os.path.join(self.tree_abs, o))}
+        return bad
+
+    def _bad_objects(self):
         if self.focus is None:
             bad = super().bad_objects()
             if bad:
@@ -471,6 +479,7 @@ def cmd_run(a):
             edited[rel] = rewrite_text(orig[rel].decode("utf-8", errors="replace"), ss, kind).encode("utf-8")
         mtimes = {rel: os.stat(os.path.join(ROOT, rel)).st_mtime_ns for rel in orig}
         inc = {rel: o for rel, _, o in picked}
+        FastProof.ignore = frozenset(load_taint(a.ignore_digest_file))
         proof = (rth.Proof if a.slow_bisect else FastProof)(tree_abs, inc, orig, edited, a.build_jobs)
         if proof.baseline():
             print("rewrite_defines: the base build of the proof set failed; refusing to edit", file=sys.stderr)
@@ -528,6 +537,8 @@ def main(argv=None) -> int:
     r.add_argument("--done", help="ledger of files already tried (skipped; picked ones are appended)")
     r.add_argument("--strict-proof", action="store_true", help="compare with plain tools/objhash.py digests (symbol / section order sensitive) instead of tools/tidy/canonical_obj.py")
     r.add_argument("--slow-bisect", action="store_true", help="every bisect probe rebuilds the whole proof set (default: only the objects the first probe found bad, then a full verification)")
+    r.add_argument("--ignore-digest-file", default=None, help="objects (names as in the tree) that must compile but whose digest is not compared: a TU where any new inline variable "
+                   "makes MSVC drop unreferenced static const data (editor/MapGeneratorDialog.cpp, the stb_image tables), a semantic no-op the digest cannot tell from a change")
     r.add_argument("--taint-file", default=None, help="ledger of objects that differed for a harmless edit; headers they include are skipped (appended to after a revert)")
     r.add_argument("--skip-dirty-in", default="A:/Games/mc2-main", help="the other builder lane's worktree: its dirty files are never touched")
     r.add_argument("--commit", action="store_true")
