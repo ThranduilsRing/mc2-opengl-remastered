@@ -36,7 +36,7 @@
    "LG10": 0,
    "LG11": 0,
    "LG12a": 4,
-   "LG12b": 2,
+   "LG12b": 0,
    "LG13": 0,
    "LG14": 0,
    "LG15": 0,
@@ -55,11 +55,11 @@
    "LG06": 498,
    "LG07": 0,
    "LG08": 274,
-   "LG09": 2126,
+   "LG09": 2115,
    "LG10": 40,
-   "LG11": 107,
+   "LG11": 102,
    "LG12a": 613,
-   "LG12b": 115,
+   "LG12b": 36,
    "LG13": 331,
    "LG14": 63,
    "LG15": 0,
@@ -82,7 +82,7 @@
    "LG10": 4,
    "LG11": 1,
    "LG12a": 7,
-   "LG12b": 27,
+   "LG12b": 0,
    "LG13": 0,
    "LG14": 0,
    "LG15": 0,
@@ -290,8 +290,7 @@
    "LG17": 1
   },
   "GameAdapters/VegetationAdapter.cpp": {
-   "LG12a": 4,
-   "LG12b": 2
+   "LG12a": 4
   },
   "GameOS/gameos/MC2Strings.cpp": {
    "LG05": 2,
@@ -299,7 +298,7 @@
    "LG08": 11,
    "LG11": 14,
    "LG12a": 2,
-   "LG12b": 10
+   "LG12b": 5
   },
   "GameOS/gameos/MC2Strings.h": {
    "LG06": 9
@@ -326,8 +325,7 @@
   "GameOS/gameos/debug_state_dump.cpp": {
    "LG06": 2,
    "LG09": 1,
-   "LG11": 2,
-   "LG12b": 1
+   "LG11": 2
   },
   "GameOS/gameos/diagnostic_trace.cpp": {
    "LG05": 1,
@@ -352,13 +350,13 @@
    "LG09": 9,
    "LG11": 2,
    "LG12a": 13,
-   "LG12b": 7,
+   "LG12b": 5,
    "LG17": 1
   },
   "GameOS/gameos/gameos_debugging.cpp": {
    "LG06": 7,
    "LG12a": 4,
-   "LG12b": 2
+   "LG12b": 1
   },
   "GameOS/gameos/gameos_fileio.cpp": {
    "LG03": 2,
@@ -374,7 +372,7 @@
    "LG09": 20,
    "LG11": 1,
    "LG12a": 25,
-   "LG12b": 10,
+   "LG12b": 1,
    "LG17": 1
   },
   "GameOS/gameos/gameos_graphics_bridge.cpp": {
@@ -405,9 +403,9 @@
   "GameOS/gameos/gameos_graphics_hud.cpp": {
    "LG04": 2,
    "LG06": 8,
-   "LG09": 65,
+   "LG09": 63,
    "LG12a": 5,
-   "LG12b": 5,
+   "LG12b": 3,
    "LG17": 2
   },
   "GameOS/gameos/gameos_graphics_internal.h": {
@@ -458,15 +456,13 @@
    "LG09": 10,
    "LG10": 1,
    "LG12a": 1,
-   "LG12b": 1,
    "LG17": 2
   },
   "GameOS/gameos/gameos_graphics_texture.cpp": {
    "LG03": 2,
    "LG09": 6,
    "LG11": 2,
-   "LG12a": 2,
-   "LG12b": 1
+   "LG12a": 2
   },
   "GameOS/gameos/gameos_graphics_tparams.cpp": {
    "LG05": 2,
@@ -474,7 +470,6 @@
    "LG09": 17,
    "LG10": 2,
    "LG12a": 5,
-   "LG12b": 1,
    "LG17": 2
   },
   "GameOS/gameos/gameos_graphics_water.cpp": {
@@ -511,17 +506,15 @@
    "LG20": 1
   },
   "GameOS/gameos/gameosmain_frame.cpp": {
-   "LG09": 21,
-   "LG12a": 10,
-   "LG12b": 1
+   "LG09": 20,
+   "LG12a": 10
   },
   "GameOS/gameos/gameosmain_init.cpp": {
    "LG02": 1,
    "LG06": 1,
    "LG09": 7,
    "LG11": 4,
-   "LG12a": 8,
-   "LG12b": 3
+   "LG12a": 8
   },
   "GameOS/gameos/gos_cardcloud_sim.cpp": {
    "LG03": 6,
@@ -540,9 +533,9 @@
   "GameOS/gameos/gos_crashbundle.cpp": {
    "LG06": 5,
    "LG09": 24,
-   "LG11": 11,
+   "LG11": 6,
    "LG12a": 1,
-   "LG12b": 9,
+   "LG12b": 4,
    "LG14": 1
   },
   "GameOS/gameos/gos_crashbundle.h": {
@@ -552,8 +545,7 @@
    "LG06": 13,
    "LG08": 4,
    "LG11": 17,
-   "LG12a": 6,
-   "LG12b": 2
+   "LG12a": 6
   },
   "GameOS/gameos/gos_dev_shell.h": {
    "LG02": 1,
@@ -654,7 +646,7 @@
   },
   "GameOS/gameos/gos_object_recon_tracy.cpp": {
    "LG06": 2,
-   "LG09": 8
+   "LG09": 1
   },
   "GameOS/gameos/gos_particle_bridge.cpp": {
    "LG08": 1,
@@ -667,7 +659,6 @@
   "GameOS/gameos/gos_postprocess.cpp": {
    "LG09": 7,
    "LG12a": 12,
-   "LG12b": 2,
    "LG20": 11
   },
   "GameOS/gameos/gos_postprocess.h": {
@@ -686,8 +677,7 @@
    "LG08": 1,
    "LG09": 24,
    "LG10": 1,
-   "LG12a": 4,
-   "LG12b": 2
+   "LG12a": 4
   },
   "GameOS/gameos/gos_postprocess_effects.cpp": {
    "LG09": 19,
@@ -827,8 +817,7 @@
   "GameOS/gameos/gos_static_prop_batcher_submit.cpp": {
    "LG08": 7,
    "LG09": 12,
-   "LG12a": 2,
-   "LG12b": 1
+   "LG12a": 2
   },
   "GameOS/gameos/gos_static_prop_registry.cpp": {
    "LG05": 14,
@@ -847,8 +836,7 @@
   "GameOS/gameos/gos_static_prop_registry_flush_tail.cpp": {
    "LG08": 5,
    "LG09": 13,
-   "LG12a": 7,
-   "LG12b": 1
+   "LG12a": 7
   },
   "GameOS/gameos/gos_static_prop_registry_internal.h": {
    "LG12a": 1
@@ -867,8 +855,7 @@
   "GameOS/gameos/gos_terrain_indirect_atlas.cpp": {
    "LG09": 52,
    "LG10": 1,
-   "LG12a": 12,
-   "LG12b": 2
+   "LG12a": 12
   },
   "GameOS/gameos/gos_terrain_indirect_cement.cpp": {
    "LG05": 3,
@@ -921,8 +908,7 @@
   },
   "GameOS/gameos/gos_terrain_lod_chunk.cpp": {
    "LG09": 4,
-   "LG12a": 4,
-   "LG12b": 2
+   "LG12a": 4
   },
   "GameOS/gameos/gos_terrain_lod_chunk.h": {
    "LG17": 2
@@ -940,8 +926,7 @@
    "LG05": 2,
    "LG06": 3,
    "LG11": 1,
-   "LG12a": 10,
-   "LG12b": 4
+   "LG12a": 10
   },
   "GameOS/gameos/gos_terrain_lod_chunk_patch.cpp": {
    "LG08": 1,
@@ -978,7 +963,6 @@
    "LG09": 1,
    "LG11": 1,
    "LG12a": 23,
-   "LG12b": 3,
    "LG14": 1
   },
   "GameOS/gameos/gos_validate.h": {
@@ -1004,7 +988,6 @@
    "LG09": 40,
    "LG11": 5,
    "LG12a": 18,
-   "LG12b": 12,
    "LG17": 1,
    "LG19": 1
   },
@@ -1022,7 +1005,6 @@
    "LG09": 23,
    "LG11": 1,
    "LG12a": 5,
-   "LG12b": 4,
    "LG17": 1
   },
   "GameOS/gameos/gpu_cull_parity.cpp": {
@@ -1034,8 +1016,7 @@
   },
   "GameOS/gameos/gpu_cull_readback.cpp": {
    "LG03": 2,
-   "LG09": 14,
-   "LG12b": 2
+   "LG09": 13
   },
   "GameOS/gameos/gpu_cull_record.cpp": {
    "LG09": 1
@@ -1046,7 +1027,6 @@
   "GameOS/gameos/gpu_cull_substrate.cpp": {
    "LG03": 4,
    "LG09": 2,
-   "LG12b": 1,
    "LG17": 1
   },
   "GameOS/gameos/gpu_cull_substrate.h": {
@@ -1068,7 +1048,7 @@
    "LG06": 6,
    "LG11": 1,
    "LG12a": 2,
-   "LG12b": 4,
+   "LG12b": 1,
    "LG14": 1
   },
   "GameOS/gameos/mdi_submit.h": {
@@ -1153,7 +1133,7 @@
   "GameOS/gameos/utils/logging.cpp": {
    "LG06": 1,
    "LG12a": 3,
-   "LG12b": 3
+   "LG12b": 1
   },
   "GameOS/gameos/utils/logging.h": {
    "LG06": 1,
@@ -1175,7 +1155,6 @@
    "LG09": 20,
    "LG11": 2,
    "LG12a": 8,
-   "LG12b": 4,
    "LG13": 1,
    "LG17": 1
   },
@@ -1527,13 +1506,11 @@
   },
   "GuiRuntime/GraphicsOptionsWindow_passes.cpp": {
    "LG09": 13,
-   "LG10": 1,
-   "LG12b": 25
+   "LG10": 1
   },
   "GuiRuntime/GraphicsOptionsWindow_terrain.cpp": {
    "LG09": 4,
-   "LG10": 1,
-   "LG12b": 2
+   "LG10": 1
   },
   "GuiRuntime/GuiRuntime.cpp": {
    "LG05": 1,
@@ -5608,7 +5585,7 @@
    "LG20": 2
   }
  },
- "head": "cec7abf3d",
+ "head": "55a3dbeb6",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
