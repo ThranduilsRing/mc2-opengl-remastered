@@ -24,17 +24,17 @@
 
 //***************************************************************************
 
-inline constexpr int STATEMENT_MARKER = 0x70;
-inline constexpr int ADDRESS_MARKER = 0x71;
+#define	STATEMENT_MARKER	0x70
+#define	ADDRESS_MARKER		0x71
 
 //***************************************************************************
 
 //--------------
 // ABL Parameter
 
-inline constexpr int ABL_PARAM_VOID = 0;
-inline constexpr int ABL_PARAM_INTEGER = 1;
-inline constexpr int ABL_PARAM_REAL = 2;
+#define	ABL_PARAM_VOID			0
+#define	ABL_PARAM_INTEGER		1
+#define	ABL_PARAM_REAL			2
 
 typedef enum {
 	ABL_STACKITEM_CHAR,

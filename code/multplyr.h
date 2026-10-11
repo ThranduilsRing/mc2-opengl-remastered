@@ -98,32 +98,32 @@ public:
 
 #define	SERVER_HANDLES_ALL_WEAPONHITS	TRUE
 
-inline constexpr int MAX_MC_PLAYERS = 8;
+#define	MAX_MC_PLAYERS					8
 #define	MAX_TEAMS						8
 #define	MAX_LOCAL_MOVERS				MAX_MOVERGROUP_COUNT	// 16
-inline constexpr int MAX_MULTIPLAYER_MOVERS = 96;
-inline constexpr int MAX_MULTIPLAYER_MECHS_IN_LOGISTICS = 36;
+#define	MAX_MULTIPLAYER_MOVERS			96
+#define	MAX_MULTIPLAYER_MECHS_IN_LOGISTICS		36
 
-inline constexpr int MAX_MULTIPLAYER_TURRETS = 128;
-inline constexpr int MAX_WEAPONHIT_CHUNKS = 1024;
-inline constexpr int MAX_WORLD_CHUNKS = 1024;
-inline constexpr int MAX_STORED_CHATS = 16;
-inline constexpr int MAX_CHAT_LENGTH = 128;
+#define	MAX_MULTIPLAYER_TURRETS			128
+#define	MAX_WEAPONHIT_CHUNKS			1024
+#define	MAX_WORLD_CHUNKS				1024
+#define MAX_STORED_CHATS				16
+#define MAX_CHAT_LENGTH					128
 
-inline constexpr unsigned int MCGROUP_SERVER = 0xFFFFFFFF;
-inline constexpr unsigned int MCGROUP_ALLPLAYERS = 0xFFFFFFFE;
-inline constexpr unsigned int MCGROUP_INNERSPHERE = 0xFFFFFFFD;
-inline constexpr unsigned int MCGROUP_CLAN = 0xFFFFFFFC;
+#define	MCGROUP_SERVER					0xFFFFFFFF
+#define	MCGROUP_ALLPLAYERS				0xFFFFFFFE
+#define	MCGROUP_INNERSPHERE				0xFFFFFFFD
+#define	MCGROUP_CLAN					0xFFFFFFFC
 
-inline constexpr int MPLAYER_NO_ERR = 0;
-inline constexpr int MPLAYER_ERR_HOST_NOT_FOUND = -1;
-inline constexpr int MPLAYER_ERR_NO_CONNECTION = -2;
-inline constexpr int MPLAYER_ERR_SESSION_IN_PROGRESS = -3;
-inline constexpr int MPLAYER_ERR_SESSION_LOCKED = -4;
-inline constexpr int MPLAYER_ERR_SESSION_NOT_FOUND = -5;
-inline constexpr int MPLAYER_ERR_NOT_SCANNING = -6;
-inline constexpr int MPLAYER_ERR_BAD_VERSION = -7;
-inline constexpr int MPLAYER_ERR_SESSION_FULL = -8;
+#define	MPLAYER_NO_ERR					0
+#define	MPLAYER_ERR_HOST_NOT_FOUND		-1
+#define	MPLAYER_ERR_NO_CONNECTION		-2
+#define	MPLAYER_ERR_SESSION_IN_PROGRESS	-3
+#define	MPLAYER_ERR_SESSION_LOCKED		-4
+#define	MPLAYER_ERR_SESSION_NOT_FOUND	-5
+#define	MPLAYER_ERR_NOT_SCANNING		-6
+#define	MPLAYER_ERR_BAD_VERSION			-7
+#define	MPLAYER_ERR_SESSION_FULL		-8
 
 typedef enum {
 	BASECOLOR_PREFERENCE,
@@ -201,14 +201,14 @@ enum {
 	MCMSG_REINFORCEMENT
 };
 
-inline constexpr int MAXLEN_SESSION_NAME = 25;
-inline constexpr int MAXLEN_MAP_NAME = 25;
-inline constexpr int MAXLEN_MAP_DESC = 32;
-inline constexpr int MAX_SESSIONS = 512;
-inline constexpr int MAXLEN_PLAYER_NAME = 25;
-inline constexpr int MAXLEN_UNIT_NAME = 25;
-inline constexpr int MAXLEN_INSIGNIA_FILE = 35;
-inline constexpr int MAX_COLORS = 32;
+#define	MAXLEN_SESSION_NAME			25
+#define	MAXLEN_MAP_NAME				25
+#define	MAXLEN_MAP_DESC				32
+#define	MAX_SESSIONS				512
+#define	MAXLEN_PLAYER_NAME			25
+#define	MAXLEN_UNIT_NAME			25
+#define	MAXLEN_INSIGNIA_FILE		35
+#define MAX_COLORS					32
 
 typedef struct _MC2Session {
 	char			name[MAXLEN_SESSION_NAME];
@@ -945,9 +945,9 @@ class MCMSG_HoldPosition {
 
 //---------------------------------------------------------------------------
 
-inline constexpr int MOVERGROUP_ACTION_DEFAULT = 0;
-inline constexpr int MOVERGROUP_ACTION_HOLDPOSITION_OFF = 1;
-inline constexpr int MOVERGROUP_ACTION_HOLDPOSITION_ON = 2;
+#define MOVERGROUP_ACTION_DEFAULT			0
+#define	MOVERGROUP_ACTION_HOLDPOSITION_OFF	1
+#define	MOVERGROUP_ACTION_HOLDPOSITION_ON	2
 
 class MCMSG_PlayerMoverGroup {
 

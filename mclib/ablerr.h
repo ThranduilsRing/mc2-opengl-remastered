@@ -12,8 +12,8 @@
 
 //***************************************************************************
 
-inline constexpr int MAX_SYNTAX_ERRORS = 1; //20
-inline constexpr int MAXLEN_ERROR_MESSAGE = 256;
+#define	MAX_SYNTAX_ERRORS		1 //20
+#define	MAXLEN_ERROR_MESSAGE	256
 
 #pragma warning( disable : 4514 )  
 

@@ -23,12 +23,12 @@
 
 //***************************************************************************
 
-inline constexpr int TAB_SIZE = 4;
+#define	TAB_SIZE				4
 
 //#define	MIN_INTEGER				-2147483648
-inline constexpr int MAX_INTEGER = 2147483647;
-inline constexpr int MAX_DIGIT_COUNT = 20;
-inline constexpr int MAX_EXPONENT = 20;
+#define	MAX_INTEGER				2147483647
+#define	MAX_DIGIT_COUNT			20
+#define	MAX_EXPONENT			20
 
 //***************************************************************************
 
