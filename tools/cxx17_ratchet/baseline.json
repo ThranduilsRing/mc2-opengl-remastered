@@ -153,7 +153,7 @@
    "LG12a": 98,
    "LG12b": 349,
    "LG13": 295,
-   "LG14": 132,
+   "LG14": 129,
    "LG15": 0,
    "LG16": 7,
    "LG17": 47,
@@ -199,7 +199,7 @@
    "LG12a": 212,
    "LG12b": 245,
    "LG13": 1126,
-   "LG14": 122,
+   "LG14": 121,
    "LG15": 0,
    "LG16": 156,
    "LG17": 91,
@@ -2006,8 +2006,7 @@
   },
   "code/goal.h": {
    "LG02": 1,
-   "LG04": 1,
-   "LG14": 2
+   "LG04": 1
   },
   "code/ground_contact_blob.cpp": {
    "LG09": 4,
@@ -2930,7 +2929,6 @@
    "LG17": 2
   },
   "code/tacticaloverview.h": {
-   "LG14": 1,
    "LG17": 2
   },
   "code/tacticaloverview_state.cpp": {
@@ -4913,9 +4911,6 @@
    "LG09": 1,
    "LG10": 2
   },
-  "mclib/terrain_runtime.h": {
-   "LG14": 1
-  },
   "mclib/terrain_surface_bands.h": {
    "LG10": 1
   },
@@ -5190,7 +5185,7 @@
    "LG20": 2
   }
  },
- "head": "929ecc662",
+ "head": "cab34b9e2",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
