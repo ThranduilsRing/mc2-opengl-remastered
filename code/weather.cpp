@@ -167,7 +167,7 @@ long Weather::randomNumber (long range)
 // The same shaping as RollDice, on the weather's own stream.
 bool Weather::rollDice (long percent)
 {
-	return (((long)mc2_det_rng::next15(rngState) * 100) >> 15) < percent;
+	return ((static_cast<long>(mc2_det_rng::next15(rngState)) * 100) >> 15) < percent;
 }
 
 //----------------------------------------------------------------------------------
