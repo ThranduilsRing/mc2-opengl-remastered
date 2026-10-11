@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in mech_internal.h.
 #include "mech_internal.h"
 #include "mc2fmt.h"
+#include <algorithm>
 
 
 void BattleMech::init (bool create) {
@@ -217,9 +218,7 @@ float BattleMech::getStatusRating (void) {
 				
 	float pilotWoundTable[7] = {1.00f, 0.95f, 0.85f, 0.75f, 0.50f, 0.30f, 0.00f};
 	// Wounds accumulate past 6 (a dead pilot) and the table has 7 entries: clamp so a dead pilot reads the last one.
-	long woundIndex = (long)getPilot()->getWounds();
-	if (woundIndex < 0) woundIndex = 0;
-	if (woundIndex > 6) woundIndex = 6;
+	const long woundIndex = std::clamp((long)getPilot()->getWounds(), 0L, 6L);
 	float pilotEffect = pilotWoundTable[woundIndex];
 	if (isDestroyed() || isDisabled())
 		pilotEffect = 0.0;
