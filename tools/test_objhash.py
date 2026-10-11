@@ -1,5 +1,6 @@
 """objhash: the shared COFF digest used by comment_guard and the clang-tidy safe-set runner."""
 import os
+import struct
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -101,3 +102,109 @@ def test_date_and_time_string_symbols_mask_hash_and_text():
     assert objhash._mask_symbol(t1) == objhash._mask_symbol(t2)
     other = "??_C@_05ABCDEFGH@hello@"
     assert objhash._mask_symbol(other) == other             # an ordinary literal keeps its hash
+
+
+def _coff(code, data, symbols, reloc_sym, bss=0):
+    """Synthetic COFF: .text (one relocation to symbols[reloc_sym]) + .data (+ .bss of `bss` bytes). symbols = (name, value, section number, class)."""
+    secs = [(".text$mn", code, 0x60000020), (".data", data, 0xC0000040)]
+    if bss:
+        secs.append((".bss", b"", 0xC0000080))
+    hdr = 20
+    off = hdr + 40 * len(secs)
+    reloc = struct.pack("<IIH", 1, reloc_sym, 4)
+    entries, blob = [], b""
+    for nm, d, ch in secs:
+        ptr = off + len(blob) if d else 0
+        entries.append((nm, d, ch, ptr))
+        blob += d
+    rel_ptr = off + len(blob)
+    symptr = rel_ptr + len(reloc)
+    out = struct.pack("<HHIIIHH", 0x8664, len(secs), 0, symptr, len(symbols), 0, 0)
+    for k, (nm, d, ch, ptr) in enumerate(entries):
+        size = bss if nm == ".bss" else len(d)
+        out += struct.pack("<8sIIIIIIHHI", nm.encode(), 0, 0, size, ptr, rel_ptr if k == 0 else 0, 0, 1 if k == 0 else 0, 0, ch)
+    out += blob + reloc
+    for nm, val, secno, cls in symbols:
+        out += struct.pack("<8sIhHBB", nm.encode(), val, secno, 0, cls, 0)
+    return out + struct.pack("<I", 4)
+
+
+A, B = b"AAAA", b"BBBB"
+CODE = b"\x48\x8b\x05\0\0\0\0\xc3"
+
+
+def _layout_pair(tmp_path, second_data=B, second_name="beta"):
+    """alpha then beta in .data, versus beta then alpha: same statics, other layout and other symbol indices; the code reads beta."""
+    p1 = tmp_path / "ab.obj"
+    p2 = tmp_path / "ba.obj"
+    p1.write_bytes(_coff(CODE, A + second_data, [("alpha", 0, 2, 2), (second_name, 4, 2, 2)], 1))
+    p2.write_bytes(_coff(CODE, second_data + A, [(second_name, 0, 2, 2), ("alpha", 4, 2, 2)], 0))
+    return str(p1), str(p2)
+
+
+def test_a_data_layout_reorder_is_layout_only_with_per_symbol(tmp_path):
+    a, b = _layout_pair(tmp_path)
+    assert objhash.obj_digest(a)["code_sha256"] != objhash.obj_digest(b)["code_sha256"]          # the plain proof still says changed
+    da, db = objhash.obj_digest(a, per_symbol=True), objhash.obj_digest(b, per_symbol=True)
+    verdict, why = objhash.classify(da, db, da["persym"], db["persym"])
+    assert verdict == "LAYOUT-ONLY" and why == ["1:.data"]
+
+
+def _pair_in(tmp_path, sub, **kw):
+    (tmp_path / sub).mkdir()
+    return _layout_pair(tmp_path / sub, **kw)
+
+
+def _ps(path):
+    return objhash.persym_digest(open(path, "rb").read())
+
+
+def test_a_changed_static_byte_a_renamed_symbol_or_a_moved_relocation_is_not_layout_only(tmp_path):
+    base_a, base_b = _pair_in(tmp_path, "base")
+    assert objhash.persym_diff(_ps(base_a), _ps(base_b)) == []
+    _, changed = _pair_in(tmp_path, "bytes", second_data=b"BBBC")
+    assert objhash.persym_diff(_ps(base_a), _ps(changed)) == [".data symbol beta (bytes)"]
+    _, renamed = _pair_in(tmp_path, "name", second_name="gamma")
+    assert "symbol set" in objhash.persym_diff(_ps(base_a), _ps(renamed))
+    moved = tmp_path / "moved.obj"                     # same statics and layout as ba.obj, but the code now reads alpha
+    moved.write_bytes(_coff(CODE, B + A, [("beta", 0, 2, 2), ("alpha", 4, 2, 2)], 1))
+    assert "section .text$mn" in objhash.persym_diff(_ps(base_b), _ps(str(moved)))
+
+
+def test_bss_is_compared_by_symbol_set_and_code_changes_are_never_layout_only(tmp_path):
+    p1, p2, p3 = (tmp_path / n for n in ("1.obj", "2.obj", "3.obj"))
+    p1.write_bytes(_coff(CODE, A, [("x", 0, 2, 2), ("y", 8, 3, 2), ("z", 0, 3, 2)], 0, bss=16))
+    p2.write_bytes(_coff(CODE, A, [("x", 0, 2, 2), ("z", 0, 3, 2), ("y", 8, 3, 2)], 0, bss=16))
+    p3.write_bytes(_coff(CODE[:-1] + b"\x90", A, [("x", 0, 2, 2), ("y", 8, 3, 2), ("z", 0, 3, 2)], 0, bss=16))
+    d1, d2, d3 = (objhash.obj_digest(str(p), per_symbol=True) for p in (p1, p2, p3))
+    assert objhash.classify(d1, d3, d1["persym"], d3["persym"])[0] == "DIFF"
+    assert objhash.classify(d1, d1, d1["persym"], d1["persym"])[0] == "IDENTICAL"
+    assert objhash.classify(d1, d2, d1["persym"], d2["persym"])[0] in ("ORDER-ONLY", "IDENTICAL")
+
+
+def test_compare_per_symbol_reports_layout_only_and_default_compare_still_fails(tmp_path):
+    repo, build, src, obj = _fixture(tmp_path)
+    a, b = _layout_pair(tmp_path)
+    obj.write_bytes(open(a, "rb").read())
+    t = src.stat().st_mtime_ns + 10_000_000
+    os.utime(obj, ns=(t, t))
+    doc, problems = objhash.hash_files(str(repo), str(build), ["code/a.cpp"], per_symbol=True)
+    assert not problems and doc["files"]["code/a.cpp"]["objs"][0]["persym"]
+    obj.write_bytes(open(b, "rb").read())
+    os.utime(obj, ns=(t + 5_000_000, t + 5_000_000))
+    lines, bad = objhash.compare_files(doc)
+    assert lines[0].startswith("FAIL") and bad == 1
+    lines, bad = objhash.compare_files(doc, per_symbol=True)
+    assert lines[0].startswith("LAYOUT-ONLY") and bad == 0
+    plain_doc, _ = objhash.hash_files(str(repo), str(build), ["code/a.cpp"])
+    plain_doc["files"]["code/a.cpp"]["objs"][0].update(code_sha256="0" * 64, mtime_ns=0)
+    lines, bad = objhash.compare_files(plain_doc, per_symbol=True)
+    assert lines[0].startswith("FAIL") and "no per-symbol record" in lines[0] and bad == 1
+
+
+def test_diff_subcommand_exit_codes(tmp_path, capsys):
+    a, b = _pair_in(tmp_path, "base")
+    assert objhash.main(["diff", a, b]) == 0 and capsys.readouterr().out.startswith("LAYOUT-ONLY")
+    assert objhash.main(["diff", a, a]) == 0
+    _, changed = _pair_in(tmp_path, "bytes", second_data=b"BBBC")
+    assert objhash.main(["diff", a, changed]) == 1
