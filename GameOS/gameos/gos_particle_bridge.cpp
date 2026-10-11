@@ -74,6 +74,8 @@ const ::glsl_program* s_prog = nullptr;
 
 bool s_initFailed = false;
 
+}  // namespace
+
 // Lazy-init env gate for verbose group/texture diagnostics.
 // MC2_GOSFX_GROUP_LOG=1 enables: UV rect dump (first flush) + missing-texture errors.
 // Normal runs see only the first-flush banner; set this flag for texture debug sessions.
@@ -87,24 +89,7 @@ bool groupLogEnabled() {
     return s_groupLog_value;
 }
 
-// MC2_VFX_ORACLE_TUBE_COVERAGE=1: wrap the deferred ribbon draw in a
-// GL_SAMPLES_PASSED occlusion query and log per-frame coverage + the bound
-// draw-FBO. This is the DETERMINISTIC, nondeterminism-immune proof that the
-// oracle tube fragments actually rasterize + pass depth into the composited
-// scene FBO (cross-launch pixel-diff cannot validate combat FX -- mech-pose
-// noise ~2.3% swamps it; an in-frame sample count does not depend on pose).
-// samples>0 with fbo=scene target => tube pixels reach the frame. Diagnostic,
-// default-OFF; the GL_QUERY_RESULT read stalls, acceptable when gated on.
-bool s_tubeCoverage_initialized = false;
-bool s_tubeCoverage_value       = false;
-bool tubeCoverageEnabled() {
-    if (!s_tubeCoverage_initialized) {
-        s_tubeCoverage_value = mc2::gate::get<"MC2_VFX_ORACLE_TUBE_COVERAGE">();
-        s_tubeCoverage_initialized = true;
-    }
-    return s_tubeCoverage_value;
-}
-GLuint s_tubeCoverageQuery = 0;  // lazily created occlusion query object
+namespace {
 
 // VFX-DEBUG-VIEWS-1: particle billboard debug-mode selector.
 // 0=Final (byte-identical default), 1=Albedo, 2=Alpha, 3=ParticleKind,
@@ -385,6 +370,25 @@ void ensureSsboCapacity(GLsizei needRecords) {
 // with the billboard path above; the ribbon is an indexed swept-quad mesh, not
 // gl_VertexID-expanded cards.
 namespace {
+
+// MC2_VFX_ORACLE_TUBE_COVERAGE=1: wrap the deferred ribbon draw in a
+// GL_SAMPLES_PASSED occlusion query and log per-frame coverage + the bound
+// draw-FBO. This is the DETERMINISTIC, nondeterminism-immune proof that the
+// oracle tube fragments actually rasterize + pass depth into the composited
+// scene FBO (cross-launch pixel-diff cannot validate combat FX -- mech-pose
+// noise ~2.3% swamps it; an in-frame sample count does not depend on pose).
+// samples>0 with fbo=scene target => tube pixels reach the frame. Diagnostic,
+// default-OFF; the GL_QUERY_RESULT read stalls, acceptable when gated on.
+bool s_tubeCoverage_initialized = false;
+bool s_tubeCoverage_value       = false;
+bool tubeCoverageEnabled() {
+    if (!s_tubeCoverage_initialized) {
+        s_tubeCoverage_value = mc2::gate::get<"MC2_VFX_ORACLE_TUBE_COVERAGE">();
+        s_tubeCoverage_initialized = true;
+    }
+    return s_tubeCoverage_value;
+}
+GLuint s_tubeCoverageQuery = 0;  // lazily created occlusion query object
 
 GLuint s_tubePosSsbo   = 0;   // binding=14: vec4 worldpos
 GLuint s_tubeColSsbo   = 0;   // binding=15: vec4 rgba
