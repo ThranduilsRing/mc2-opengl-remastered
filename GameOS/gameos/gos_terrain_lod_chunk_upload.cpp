@@ -69,7 +69,7 @@ void gos_TerrainLodChunk_UploadVisualHeightFull(const float* visualHeights, int 
     {
         if (!s_visualHeightSsbo.create())
         {
-            fprintf(stderr, "[VISUAL_HEIGHT v1] glGenBuffers failed\n");
+            mc2::fmt::print_err("[VISUAL_HEIGHT v1] glGenBuffers failed\n");
             fflush(stderr);
             return;
         }
@@ -125,7 +125,7 @@ void gos_TerrainLodChunk_UploadVisualDampStatic(const float* damp01, int side)
     {
         if (!s_visualDampSsbo.create())
         {
-            fprintf(stderr, "[VISUAL_DAMP v1] glGenBuffers failed\n");
+            mc2::fmt::print_err("[VISUAL_DAMP v1] glGenBuffers failed\n");
             fflush(stderr);
             return;
         }
@@ -136,8 +136,7 @@ void gos_TerrainLodChunk_UploadVisualDampStatic(const float* damp01, int side)
                                 RenderCore::GpuBufferUsage::DynamicDraw);
     s_visualDampSsbo.unbind();
     s_visualDampSsbo.registerNow(static_cast<uint64_t>(bytes));
-    fprintf(stderr, "[VISUAL_DAMP v1] SSBO uploaded binding=%u side=%d bytes=%lld\n",
-            TERRAIN_VISUAL_DAMP_SSBO_BINDING, side, (long long)bytes);
+    mc2::fmt::print_err("[VISUAL_DAMP v1] SSBO uploaded binding={:d} side={:d} bytes={:d}\n", mc2::fmt::as_u32(TERRAIN_VISUAL_DAMP_SSBO_BINDING), mc2::fmt::as_i32(side), mc2::fmt::as_i64((long long)bytes));
     fflush(stderr);
 }
 
@@ -227,7 +226,7 @@ void gos_TerrainLodChunk_UploadControlMap(const unsigned char* rgba, int side)
         glGenTextures(1, &s_controlMapTex);
     if (s_controlMapTex == 0)
     {
-        fprintf(stderr, "[TERRAIN_CONTROLMAP v1] glGenTextures failed\n");
+        mc2::fmt::print_err("[TERRAIN_CONTROLMAP v1] glGenTextures failed\n");
         fflush(stderr);
         return;
     }
@@ -250,8 +249,7 @@ void gos_TerrainLodChunk_UploadControlMap(const unsigned char* rgba, int side)
 
     s_controlMapSide = side;
 
-    fprintf(stderr, "[TERRAIN_CONTROLMAP v1] uploaded handle=%u side=%d bytes=%zu\n",
-            (unsigned)s_controlMapTex, side, (size_t)side * (size_t)side * 4u);
+    mc2::fmt::print_err("[TERRAIN_CONTROLMAP v1] uploaded handle={:d} side={:d} bytes={:d}\n", mc2::fmt::as_u32((unsigned)s_controlMapTex), mc2::fmt::as_i32(side), mc2::fmt::as_size((size_t)side * (size_t)side * 4u));
     fflush(stderr);
 }
 
@@ -273,7 +271,7 @@ void gos_TerrainLodChunk_UploadOverlaySidecar(const unsigned char* rgba, int w, 
         glGenTextures(1, &s_overlaySidecarTex);
     if (s_overlaySidecarTex == 0)
     {
-        fprintf(stderr, "[TERRAIN_OVERLAY_V2 v1] glGenTextures failed\n");
+        mc2::fmt::print_err("[TERRAIN_OVERLAY_V2 v1] glGenTextures failed\n");
         fflush(stderr);
         return;
     }
@@ -299,10 +297,7 @@ void gos_TerrainLodChunk_UploadOverlaySidecar(const unsigned char* rgba, int w, 
     s_overlayBounds[2] = boundsSizeX;
     s_overlayBounds[3] = boundsSizeY;
 
-    fprintf(stderr, "[TERRAIN_OVERLAY_V2 v1] uploaded handle=%u w=%d h=%d bytes=%zu "
-            "bounds=(%.1f,%.1f,%.1f,%.1f)\n",
-            (unsigned)s_overlaySidecarTex, w, h, (size_t)w * (size_t)h * 4u,
-            boundsTopLeftX, boundsTopLeftY, boundsSizeX, boundsSizeY);
+    mc2::fmt::print_err("[TERRAIN_OVERLAY_V2 v1] uploaded handle={:d} w={:d} h={:d} bytes={:d} bounds=({:.1f},{:.1f},{:.1f},{:.1f})\n", mc2::fmt::as_u32((unsigned)s_overlaySidecarTex), mc2::fmt::as_i32(w), mc2::fmt::as_i32(h), mc2::fmt::as_size((size_t)w * (size_t)h * 4u), boundsTopLeftX, boundsTopLeftY, boundsSizeX, boundsSizeY);
     fflush(stderr);
 }
 

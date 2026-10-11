@@ -1,6 +1,7 @@
 // TG shapes: ASE number/name helpers and the TG_TypeNode / TG_TypeShape / TG_Shape lifecycle, binary copy and creation.
 // Declared in the class headers; shared names in tgl_internal.h.
 #include "tgl_internal.h"
+#include "mc2fmt.h"
 
 
 //-------------------------------------------------------------------------------
@@ -458,8 +459,7 @@ void TG_TypeShape::LoadBinaryCopy (File &binFile)
 				int vidx = triType.Vertices[j];
 				if (vidx < 0 || vidx >= numTypeVertices) {
 					if (s_mslBoundsWarnings++ < 8) {
-						printf("[MSL] triangle %u vertex %u index %d out of range [0,%d)\n",
-							i, j, vidx, (int)numTypeVertices); fflush(stdout);
+						mc2::fmt::print_out("[MSL] triangle {:d} vertex {:d} index {:d} out of range [0,{:d})\n", mc2::fmt::as_u32(i), mc2::fmt::as_u32(j), mc2::fmt::as_i32(vidx), mc2::fmt::as_i32((int)numTypeVertices)); fflush(stdout);
 					}
 					vidx = 0;
 				}

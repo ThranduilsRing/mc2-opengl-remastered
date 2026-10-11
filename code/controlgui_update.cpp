@@ -1,6 +1,7 @@
 // ControlGui: ControlGui::update with its MIF cost scopes, and the button click / stop handlers.
 // Declared in the class headers; shared names in controlgui_internal.h.
 #include "controlgui_internal.h"
+#include "mc2fmt.h"
 
 namespace {
 	enum CgPhase { CG_PAUSE=0, CG_BTNHOVER, CG_ROSTER, CG_MOVERSTATE, CG_TACMAP, CG_INFOWND, CG_VEHTAB, CG_FGBAR };
@@ -49,8 +50,7 @@ void ControlGui::update( bool bPaused, bool bLOS )
 						getButton( TACMAP_TAB )->press( false );
 						getButton( VEHICLE_TAB )->press( false );
 						getButton( INFO_TAB )->press( true );
-						printf("[BOOT_INFO] selected mover teamId=%ld -> INFO tab (frame %u)\n",
-							m->getTeamId(), (unsigned)g_mc2FrameCounter);
+						mc2::fmt::print_out("[BOOT_INFO] selected mover teamId={:d} -> INFO tab (frame {:d})\n", mc2::fmt::as_i32(m->getTeamId()), mc2::fmt::as_u32((unsigned)g_mc2FrameCounter));
 						fflush(stdout);
 						break;
 					}
@@ -74,8 +74,7 @@ void ControlGui::update( bool bPaused, bool bLOS )
 			{
 				s_objDone = true;
 				startObjectives( 1 );
-				printf("[BOOT_OBJ] startObjectives(1) (frame %u)\n",
-					(unsigned)g_mc2FrameCounter);
+				mc2::fmt::print_out("[BOOT_OBJ] startObjectives(1) (frame {:d})\n", mc2::fmt::as_u32((unsigned)g_mc2FrameCounter));
 				fflush(stdout);
 			}
 		}
@@ -109,9 +108,7 @@ void ControlGui::update( bool bPaused, bool bLOS )
 					if ( !pObjective->IsActive() || pObjective->IsHiddenTrigger() )
 						continue;
 					pObjective->Status( OS_SUCCESSFUL );
-					printf("[BOOT_OBJ_COMPLETE] objective '%s' -> OS_SUCCESSFUL (frame %u)\n",
-						pObjective->LocalizedDescription().Data(),
-						(unsigned)g_mc2FrameCounter);
+					mc2::fmt::print_out("[BOOT_OBJ_COMPLETE] objective '{}' -> OS_SUCCESSFUL (frame {:d})\n", pObjective->LocalizedDescription().Data(), mc2::fmt::as_u32((unsigned)g_mc2FrameCounter));
 					fflush(stdout);
 					break;
 				}
@@ -146,9 +143,7 @@ void ControlGui::update( bool bPaused, bool bLOS )
 			{
 				s_timerDone = true;
 				mission->m_timeLimit = scenarioTime + s_bootTimerSecs;
-				printf("[BOOT_TIMER] m_timeLimit=%f secs=%f (frame %u)\n",
-					mission->m_timeLimit, s_bootTimerSecs,
-					(unsigned)g_mc2FrameCounter);
+				mc2::fmt::print_out("[BOOT_TIMER] m_timeLimit={:f} secs={:f} (frame {:d})\n", mission->m_timeLimit, s_bootTimerSecs, mc2::fmt::as_u32((unsigned)g_mc2FrameCounter));
 				fflush(stdout);
 			}
 		}

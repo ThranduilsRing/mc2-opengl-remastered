@@ -216,15 +216,11 @@ void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
         // MC2_VK_SHADOW_MATRIX_DIAG: exactly what terrain_tier1.frag samples with (std140 default
         // column-major mat4, no row_major qualifier; raw memcpy of the GL arrays).
         auto pm = [](const char* tag, const float* m, int n) {
-            std::fprintf(stderr, "[VK_SHADOW_MATRIX v1] %s = [", tag);
+            mc2::fmt::print_err("[VK_SHADOW_MATRIX v1] {} = [", mc2::fmt::safe(tag));
             for (int i = 0; i < n; ++i) mc2::fmt::print_err("{}{:.6g}", mc2::fmt::safe(i ? "," : ""), m[i]);
             mc2::fmt::print_err("]\n");
         };
-        std::fprintf(stderr, "[VK_SHADOW_MATRIX v1] TERRAIN UBO csmEnabled=%d csmCount=%d enableDynShadows=%d csmDepthSpan=%.6g csmFullMapTexelWorld=%.6g csmCascadeTexelWorld=%.6g,%.6g,%.6g feed.csmArraySize=%d feed.csmFullMapSize=%d feed.dynShadowSize=%d\n",
-                     (int)u.csmEnabled, (int)u.csmCount, (int)u.enableDynShadows, u.csmDepthSpan,
-                     u.csmFullMapTexelWorld, u.csmCascadeTexelWorld[0], u.csmCascadeTexelWorld[1],
-                     u.csmCascadeTexelWorld[2], (int)feed.csmArraySize, (int)feed.csmFullMapSize,
-                     (int)feed.dynamicShadowSize);
+        mc2::fmt::print_err("[VK_SHADOW_MATRIX v1] TERRAIN UBO csmEnabled={:d} csmCount={:d} enableDynShadows={:d} csmDepthSpan={:.6g} csmFullMapTexelWorld={:.6g} csmCascadeTexelWorld={:.6g},{:.6g},{:.6g} feed.csmArraySize={:d} feed.csmFullMapSize={:d} feed.dynShadowSize={:d}\n", mc2::fmt::as_i32((int)u.csmEnabled), mc2::fmt::as_i32((int)u.csmCount), mc2::fmt::as_i32((int)u.enableDynShadows), u.csmDepthSpan, u.csmFullMapTexelWorld, u.csmCascadeTexelWorld[0], u.csmCascadeTexelWorld[1], u.csmCascadeTexelWorld[2], mc2::fmt::as_i32((int)feed.csmArraySize), mc2::fmt::as_i32((int)feed.csmFullMapSize), mc2::fmt::as_i32((int)feed.dynamicShadowSize));
         pm("TERRAIN UBO dynamicLightSpaceMatrix", u.dynamicLightSpaceMatrix, 16);
         for (int i = 0; i < 3; ++i) {
             char tg[64]; mc2::fmt::to_buf(tg, "TERRAIN UBO csmCascadeMatrices[{:d}]", mc2::fmt::as_i32(i));
@@ -412,14 +408,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     {
         if (s_copyStatsOn) {
             const double ms = usSince(tCopies0) / 1000.0;
-            fprintf(stderr,
-                    "[VK_TERRAIN_COPY_STATS] copies_ms=%.4f static_us=%.1f dyn_us=%.1f csm_us=%.1f staticGen=%llu shadowReady=%d dynReady=%d dynDirect=%d csmArrayReady=%d csmArrayDirect=%d csmFullMapReady=%d csmFullMapDirect=%d\n",
-                    ms, subStaticUs, subDynUs, subCsmUs,
-                    (unsigned long long)feed.staticShadowGeneration, s->shadowReady ? 1 : 0,
-                    s->dynShadowReady ? 1 : 0, s->dynShadowDirect ? 1 : 0,
-                    s->csmArrayReady ? 1 : 0, s->csmArrayDirect ? 1 : 0,
-                    s->csmFullMapReady ? 1 : 0,
-                    s->csmFullMapDirect ? 1 : 0);
+            mc2::fmt::print_err("[VK_TERRAIN_COPY_STATS] copies_ms={:.4f} static_us={:.1f} dyn_us={:.1f} csm_us={:.1f} staticGen={:d} shadowReady={:d} dynReady={:d} dynDirect={:d} csmArrayReady={:d} csmArrayDirect={:d} csmFullMapReady={:d} csmFullMapDirect={:d}\n", ms, subStaticUs, subDynUs, subCsmUs, mc2::fmt::as_u64((unsigned long long)feed.staticShadowGeneration), mc2::fmt::as_i32(s->shadowReady ? 1 : 0), mc2::fmt::as_i32(s->dynShadowReady ? 1 : 0), mc2::fmt::as_i32(s->dynShadowDirect ? 1 : 0), mc2::fmt::as_i32(s->csmArrayReady ? 1 : 0), mc2::fmt::as_i32(s->csmArrayDirect ? 1 : 0), mc2::fmt::as_i32(s->csmFullMapReady ? 1 : 0), mc2::fmt::as_i32(s->csmFullMapDirect ? 1 : 0));
         }
     }
 

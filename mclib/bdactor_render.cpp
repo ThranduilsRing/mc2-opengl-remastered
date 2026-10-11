@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in bdactor_internal.h.
 #include "bdactor_internal.h"
 #include "../RenderCore/axis_convert.h"
+#include "mc2fmt.h"
 
 long BldgAppearance::render (long depthFixup)
 {
@@ -79,17 +80,7 @@ long BldgAppearance::render (long depthFixup)
 				if (s_seamRender && appearType && appearType->bldgRenderShape
 				        && s_seamRenderLogged < 12) {
 					++s_seamRenderLogged;
-					fprintf(stderr,
-						"[SEAMPROBE] sample=first12 bldg render name=%s isnow=%d reg=%d shapeMatch=%d "
-						"needBake=%d elig=%d recipeIdx=%d | spin=%d "
-						"drawFlash=%d destructFX=%d activity=%d activity1=%d animState=%d\n",
-						appearType->name, (int)isnow, (int)staticReg.registered,
-						(int)(staticReg.shape == bldgShape), (int)needsFullBakeNextFrame,
-						(int)isStaticEligible(), staticReg.recipeIndex,
-						(appearType?appearType->spinMe:-1),
-						(int)(drawFlash!=0), (int)(destructFX!=nullptr),
-						(int)(activity!=nullptr), (int)(activity1!=nullptr),
-						(int)bdAnimationState);
+					mc2::fmt::print_err("[SEAMPROBE] sample=first12 bldg render name={} isnow={:d} reg={:d} shapeMatch={:d} needBake={:d} elig={:d} recipeIdx={:d} | spin={:d} drawFlash={:d} destructFX={:d} activity={:d} activity1={:d} animState={:d}\n", mc2::fmt::safe(appearType->name), mc2::fmt::as_i32((int)isnow), mc2::fmt::as_i32((int)staticReg.registered), mc2::fmt::as_i32((int)(staticReg.shape == bldgShape)), mc2::fmt::as_i32((int)needsFullBakeNextFrame), mc2::fmt::as_i32((int)isStaticEligible()), mc2::fmt::as_i32(staticReg.recipeIndex), mc2::fmt::as_i32((appearType?appearType->spinMe:-1)), mc2::fmt::as_i32((int)(drawFlash!=0)), mc2::fmt::as_i32((int)(destructFX!=nullptr)), mc2::fmt::as_i32((int)(activity!=nullptr)), mc2::fmt::as_i32((int)(activity1!=nullptr)), mc2::fmt::as_i32((int)bdAnimationState));
 					fflush(stderr);
 				}
 			}
@@ -189,17 +180,7 @@ long BldgAppearance::render (long depthFixup)
 			}
 			static const bool s_bldgDiagTrace = mc2::gate::get<"MC2_BLDG_DIAG_TRACE">();
 			if (s_bldgDiagTrace && (s_diag_render_calls % 600) == 0) {
-				fprintf(stderr,
-					"[BLDG_DIAG v1] event=summary calls=%llu staticNow=%llu "
-					"notreg=%llu notelig=%llu other=%llu lightidxUM=%llu markVis=%llu dynSubmit=%llu\n",
-					(unsigned long long)s_diag_render_calls,
-					(unsigned long long)s_diag_static_now_true,
-					(unsigned long long)s_diag_static_now_false_reg,
-					(unsigned long long)s_diag_static_now_false_eligible,
-					(unsigned long long)s_diag_static_now_false_other,
-					(unsigned long long)s_diag_lightidx_uintmax,
-					(unsigned long long)s_diag_markVisible,
-					(unsigned long long)s_diag_dyn_submit);
+				mc2::fmt::print_err("[BLDG_DIAG v1] event=summary calls={:d} staticNow={:d} notreg={:d} notelig={:d} other={:d} lightidxUM={:d} markVis={:d} dynSubmit={:d}\n", mc2::fmt::as_u64((unsigned long long)s_diag_render_calls), mc2::fmt::as_u64((unsigned long long)s_diag_static_now_true), mc2::fmt::as_u64((unsigned long long)s_diag_static_now_false_reg), mc2::fmt::as_u64((unsigned long long)s_diag_static_now_false_eligible), mc2::fmt::as_u64((unsigned long long)s_diag_static_now_false_other), mc2::fmt::as_u64((unsigned long long)s_diag_lightidx_uintmax), mc2::fmt::as_u64((unsigned long long)s_diag_markVisible), mc2::fmt::as_u64((unsigned long long)s_diag_dyn_submit));
 				fflush(stderr);
 			}
 			(void)s_diag_dyn_submit;  // updated below if we go to the dyn path

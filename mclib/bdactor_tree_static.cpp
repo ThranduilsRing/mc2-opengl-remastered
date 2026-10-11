@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in bdactor_internal.h.
 #include "bdactor_internal.h"
 #include "../RenderCore/axis_convert.h"
+#include "mc2fmt.h"
 
 void TreeAppearance::touch()
 {
@@ -201,11 +202,7 @@ void TreeAppearance::registerStatic() {
 
 	if (mc2::gate::get<"MC2_MODOVERRIDE_TRACE">() && appearType->treeRenderShape[0]) {
 		TG_TypeMultiShape* rs = appearType->treeRenderShape[0];
-		fprintf(stderr, "[MODOVERRIDE_TRACE] tree registerStatic name=%s renderShape=%p numShapes=%ld leaf0=%p leaf1=%p lodCount=%ld\n",
-		        appearType->name, (void*)rs, rs->GetNumShapes(),
-		        rs->GetNumShapes() > 0 ? (void*)rs->GetTypeNode(0) : nullptr,
-		        rs->GetNumShapes() > 1 ? (void*)rs->GetTypeNode(1) : nullptr,
-		        appearType->treeRenderShapeLodCount);
+		mc2::fmt::print_err("[MODOVERRIDE_TRACE] tree registerStatic name={} renderShape={:016X} numShapes={:d} leaf0={:016X} leaf1={:016X} lodCount={:d}\n", mc2::fmt::safe(appearType->name), mc2::fmt::as_ptr((void*)rs), mc2::fmt::as_i32(rs->GetNumShapes()), mc2::fmt::as_ptr(rs->GetNumShapes() > 0 ? (void*)rs->GetTypeNode(0) : nullptr), mc2::fmt::as_ptr(rs->GetNumShapes() > 1 ? (void*)rs->GetTypeNode(1) : nullptr), mc2::fmt::as_i32(appearType->treeRenderShapeLodCount));
 		fflush(stderr);
 	}
 
@@ -323,12 +320,7 @@ void TreeAppearance::registerStatic() {
 			static int s_treeRegLogged = 0;
 			if (s_trace && s_treeRegLogged < 80) {
 				++s_treeRegLogged;
-				fprintf(stderr,
-					"[TREE_REG_DIAG v1] sample=first80 appearType=%s lod=%d numShapes=%d total=%d pm_skip=%d "
-					"h_skip=%d unreg_skip=%d added=%d\n",
-					(appearType ? appearType->name : "<null>"), lod,
-					numShapes, t_diag_total, t_diag_skip_pm, t_diag_skip_h,
-					t_diag_skip_unreg, t_diag_added);
+				mc2::fmt::print_err("[TREE_REG_DIAG v1] sample=first80 appearType={} lod={:d} numShapes={:d} total={:d} pm_skip={:d} h_skip={:d} unreg_skip={:d} added={:d}\n", mc2::fmt::safe((appearType ? appearType->name : "<null>")), mc2::fmt::as_i32(lod), mc2::fmt::as_i32(numShapes), mc2::fmt::as_i32(t_diag_total), mc2::fmt::as_i32(t_diag_skip_pm), mc2::fmt::as_i32(t_diag_skip_h), mc2::fmt::as_i32(t_diag_skip_unreg), mc2::fmt::as_i32(t_diag_added));
 				fflush(stderr);
 			}
 			(void)t_diag_total; (void)t_diag_skip_pm; (void)t_diag_skip_h;

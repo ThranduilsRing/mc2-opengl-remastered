@@ -526,11 +526,7 @@ extern "C" void gos_tube_ribbon_flush_deferred(void) {
             s_tubeStats.uploadBytes + (unsigned long long)s_tubeStats.posVerts * 4ull;
         const unsigned long long saved =
             s_tubeStats.baselineBytes - s_tubeStats.uploadBytes;
-        std::fprintf(stderr,
-            "[VFX_TUBE_UPLOAD_STATS] records=%u posVerts=%u uploadBytes=%llu "
-            "baselineBytes=%llu savedBytes=%llu heapAllocs=%llu\n",
-            s_tubeStats.records, s_tubeStats.posVerts, s_tubeStats.uploadBytes,
-            s_tubeStats.baselineBytes, saved, s_tubeStats.heapAllocs);
+        mc2::fmt::print_err("[VFX_TUBE_UPLOAD_STATS] records={:d} posVerts={:d} uploadBytes={:d} baselineBytes={:d} savedBytes={:d} heapAllocs={:d}\n", mc2::fmt::as_u32(s_tubeStats.records), mc2::fmt::as_u32(s_tubeStats.posVerts), mc2::fmt::as_u64(s_tubeStats.uploadBytes), mc2::fmt::as_u64(s_tubeStats.baselineBytes), mc2::fmt::as_u64(saved), mc2::fmt::as_u64(s_tubeStats.heapAllocs));
         std::fflush(stderr);
     }
 

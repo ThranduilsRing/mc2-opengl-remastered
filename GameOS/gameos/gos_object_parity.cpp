@@ -47,6 +47,7 @@
 #include <unordered_map>
 #include <vector>
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 namespace gos_object_parity {
 
@@ -199,10 +200,7 @@ void Counters_AddSlotOverflowThisFrame(uint32_t typeId,
     // Once-per-type printf so a busy scene doesn't spam the log.
     if (s_overflowedTypes.find(typeId) == s_overflowedTypes.end()) {
         s_overflowedTypes.insert(typeId);
-        std::fprintf(stderr,
-            "[OBJECT_PARITY v1] event=slot_overflow type=%u "
-            "need=%zu budget=%zu\n",
-            typeId, needBytes, budgetBytes);
+        mc2::fmt::print_err("[OBJECT_PARITY v1] event=slot_overflow type={:d} need={:d} budget={:d}\n", mc2::fmt::as_u32(typeId), mc2::fmt::as_size(needBytes), mc2::fmt::as_size(budgetBytes));
         std::fflush(stderr);
     }
 }
@@ -283,12 +281,7 @@ GLuint EnsureParityOutputSSBO(size_t bytesPerSlot) {
         s_slotBytes = bytesPerSlot;
 
         if (IsParityTraceEnabled()) {
-            std::fprintf(stderr,
-                "[OBJECT_PARITY v1] event=ssbo_alloc bytes_per_slot=%zu "
-                "ring_frames=%u total_bytes=%lld handle=%u\n",
-                bytesPerSlot, kRingFrames,
-                static_cast<long long>(totalBytes),
-                static_cast<unsigned>(s_paritySSBO));
+            mc2::fmt::print_err("[OBJECT_PARITY v1] event=ssbo_alloc bytes_per_slot={:d} ring_frames={:d} total_bytes={:d} handle={:d}\n", mc2::fmt::as_size(bytesPerSlot), mc2::fmt::as_u32(kRingFrames), mc2::fmt::as_i64(static_cast<long long>(totalBytes)), mc2::fmt::as_u32(static_cast<unsigned>(s_paritySSBO)));
             std::fflush(stderr);
         }
     }
@@ -329,8 +322,7 @@ void OnMissionLoad() {
     s_dualEmitSnapshots.clear();
     s_dualEmitRanges.clear();
     if (IsParityTraceEnabled()) {
-        std::fprintf(stderr,
-            "[OBJECT_PARITY v1] event=dual_emit_armed mode=bootstrap\n");
+        mc2::fmt::print_err("[OBJECT_PARITY v1] event=dual_emit_armed mode=bootstrap\n");
         std::fflush(stderr);
     }
 }
@@ -363,11 +355,7 @@ void AdvanceDualEmitToWaiting(uint32_t slotUsed) {
     s_dualEmitSlot  = slotUsed;
     s_dualEmitState = DualEmitState::WaitingForReadback;
     if (IsParityTraceEnabled()) {
-        std::fprintf(stderr,
-            "[OBJECT_PARITY v1] event=dual_emit_waiting slot=%u "
-            "types_snapshotted=%zu types_ranged=%zu\n",
-            slotUsed,
-            s_dualEmitSnapshots.size(), s_dualEmitRanges.size());
+        mc2::fmt::print_err("[OBJECT_PARITY v1] event=dual_emit_waiting slot={:d} types_snapshotted={:d} types_ranged={:d}\n", mc2::fmt::as_u32(slotUsed), mc2::fmt::as_size(s_dualEmitSnapshots.size()), mc2::fmt::as_size(s_dualEmitRanges.size()));
         std::fflush(stderr);
     }
 }
@@ -437,10 +425,7 @@ void PickNextSampleIfReady() {
     s_dualEmitState       = DualEmitState::Armed;
 
     if (IsParityTraceEnabled()) {
-        std::fprintf(stderr,
-            "[OBJECT_PARITY v1] event=dual_emit_armed mode=sampled "
-            "shape=%p pool_size=%zu cursor=%zu\n",
-            (const void*)picked, poolSize, idx);
+        mc2::fmt::print_err("[OBJECT_PARITY v1] event=dual_emit_armed mode=sampled shape={:016X} pool_size={:d} cursor={:d}\n", mc2::fmt::as_ptr((const void*)picked), mc2::fmt::as_size(poolSize), mc2::fmt::as_size(idx));
         std::fflush(stderr);
     }
 }
@@ -564,11 +549,7 @@ void CompareAndReport(const uint8_t* readbackBytes,
             // Readback buffer is smaller than expected. Skip this type —
             // don't read out-of-bounds.
             if (IsParityTraceEnabled()) {
-                std::fprintf(stderr,
-                    "[OBJECT_PARITY v1] event=readback_bounds_miss type=%u "
-                    "cursor=%zu need=%zu avail=%zu\n",
-                    typeId, rng.cursorOffset, rng.cursorOffset + typeByteCount,
-                    readbackSize);
+                mc2::fmt::print_err("[OBJECT_PARITY v1] event=readback_bounds_miss type={:d} cursor={:d} need={:d} avail={:d}\n", mc2::fmt::as_u32(typeId), mc2::fmt::as_size(rng.cursorOffset), mc2::fmt::as_size(rng.cursorOffset + typeByteCount), mc2::fmt::as_size(readbackSize));
                 std::fflush(stderr);
             }
             continue;
@@ -615,13 +596,7 @@ void CompareAndReport(const uint8_t* readbackBytes,
     Counters_AddMismatched(totalMismatched);
 
     if (IsParityTraceEnabled() || totalMismatched > 0) {
-        std::fprintf(stderr,
-            "[OBJECT_PARITY v1] event=dual_emit_compare frame=%u "
-            "compared=%llu passed=%llu mismatched=%llu\n",
-            frameNum,
-            static_cast<unsigned long long>(totalCompared),
-            static_cast<unsigned long long>(totalPassed),
-            static_cast<unsigned long long>(totalMismatched));
+        mc2::fmt::print_err("[OBJECT_PARITY v1] event=dual_emit_compare frame={:d} compared={:d} passed={:d} mismatched={:d}\n", mc2::fmt::as_u32(frameNum), mc2::fmt::as_u64(static_cast<unsigned long long>(totalCompared)), mc2::fmt::as_u64(static_cast<unsigned long long>(totalPassed)), mc2::fmt::as_u64(static_cast<unsigned long long>(totalMismatched)));
         std::fflush(stderr);
     }
 }
@@ -634,10 +609,7 @@ void ParityPrintMismatchByIndex(unsigned frame,
                                 uint32_t gpuARGB) {
     if (s_parityMismatchesThisFrame >= 16) return;  // throttle 16/frame
     ++s_parityMismatchesThisFrame;
-    std::fprintf(stderr,
-        "[OBJECT_PARITY v1] event=lighting_mismatch frame=%u "
-        "typeId=%u inst=%u vert=%u cpu=0x%08X gpu=0x%08X\n",
-        frame, typeId, instIdx, vertIdx, cpuARGB, gpuARGB);
+    mc2::fmt::print_err("[OBJECT_PARITY v1] event=lighting_mismatch frame={:d} typeId={:d} inst={:d} vert={:d} cpu=0x{:08X} gpu=0x{:08X}\n", mc2::fmt::as_u32(frame), mc2::fmt::as_u32(typeId), mc2::fmt::as_u32(instIdx), mc2::fmt::as_u32(vertIdx), mc2::fmt::as_u32(cpuARGB), mc2::fmt::as_u32(gpuARGB));
     std::fflush(stderr);
 }
 
@@ -660,10 +632,7 @@ void ParityPrintMismatch(int frame, const char* actor, int tri, int corner,
                          uint32_t cpuARGB, uint32_t gpuARGB) {
     if (s_parityMismatchesThisFrame >= 16) return;  // throttle 16/frame
     ++s_parityMismatchesThisFrame;
-    std::fprintf(stderr,
-        "[OBJECT_PARITY v1] event=lighting_mismatch frame=%d actor=%s "
-        "tri=%d corner=%d cpu=0x%08X gpu=0x%08X\n",
-        frame, actor ? actor : "?", tri, corner, cpuARGB, gpuARGB);
+    mc2::fmt::print_err("[OBJECT_PARITY v1] event=lighting_mismatch frame={:d} actor={} tri={:d} corner={:d} cpu=0x{:08X} gpu=0x{:08X}\n", mc2::fmt::as_i32(frame), mc2::fmt::safe(actor ? actor : "?"), mc2::fmt::as_i32(tri), mc2::fmt::as_i32(corner), mc2::fmt::as_u32(cpuARGB), mc2::fmt::as_u32(gpuARGB));
     std::fflush(stderr);
 }
 
@@ -701,30 +670,12 @@ void ParityFrameTick() {
             GpuStaticPropBatcher::getAllowedLateRegEventCount();
         const uint64_t unexpectedLateReg =
             GpuStaticPropBatcher::getDisallowedLateRegEventCount();
-        std::fprintf(stderr,
-            "[OBJECT_PARITY v1] event=summary frames=%lld "
-            "vertices_written=%llu readback_bytes=%llu mismatches=%lld "
-            "slot_overflows=%llu compared=%llu passed=%llu mismatched=%llu "
-            "parity_skipped_allowed_late_reg=%llu parity_unexpected_late_reg=%llu "
-            "parity_compared_actors=%llu\n",
-            s_paritySummaryFrames,
-            static_cast<unsigned long long>(s_vertices_written_total),
-            static_cast<unsigned long long>(s_readback_bytes_total),
-            s_paritySummaryMismatches,
-            static_cast<unsigned long long>(s_slot_overflows_total),
-            static_cast<unsigned long long>(s_compared_total),
-            static_cast<unsigned long long>(s_passed_total),
-            static_cast<unsigned long long>(s_mismatched_total),
-            static_cast<unsigned long long>(allowedLateReg),
-            static_cast<unsigned long long>(unexpectedLateReg),
-            static_cast<unsigned long long>(s_sampledComparesTotal));
+        mc2::fmt::print_err("[OBJECT_PARITY v1] event=summary frames={:d} vertices_written={:d} readback_bytes={:d} mismatches={:d} slot_overflows={:d} compared={:d} passed={:d} mismatched={:d} parity_skipped_allowed_late_reg={:d} parity_unexpected_late_reg={:d} parity_compared_actors={:d}\n", mc2::fmt::as_i64(s_paritySummaryFrames), mc2::fmt::as_u64(static_cast<unsigned long long>(s_vertices_written_total)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_readback_bytes_total)), mc2::fmt::as_i64(s_paritySummaryMismatches), mc2::fmt::as_u64(static_cast<unsigned long long>(s_slot_overflows_total)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_compared_total)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_passed_total)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_mismatched_total)), mc2::fmt::as_u64(static_cast<unsigned long long>(allowedLateReg)), mc2::fmt::as_u64(static_cast<unsigned long long>(unexpectedLateReg)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_sampledComparesTotal)));
 
         // GPU mech batcher late-registration counter (Slice A).
         const uint64_t mechDisallowed = GpuMechBatcher::getDisallowedLateRegEventCount();
         if (mechDisallowed > 0) {
-            std::fprintf(stderr,
-                "[OBJECT_PARITY v1] event=mech_late_reg_disallowed count=%llu\n",
-                static_cast<unsigned long long>(mechDisallowed));
+            mc2::fmt::print_err("[OBJECT_PARITY v1] event=mech_late_reg_disallowed count={:d}\n", mc2::fmt::as_u64(static_cast<unsigned long long>(mechDisallowed)));
         }
         std::fflush(stderr);
     }

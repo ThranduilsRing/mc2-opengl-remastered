@@ -35,6 +35,7 @@
 #include <vector>
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
+#include "mc2fmt.h"
 
 // ---------------------------------------------------------------------------
 // Internal state
@@ -116,9 +117,7 @@ static void uploadSsbo() {
     d.valid     = true;
     RenderCore::registerOrUpdateRenderResource(d);
 
-    std::fprintf(stderr,
-        "[GOS_MATERIALS] uploaded profile table: %u entries, ssbo=%u\n",
-        static_cast<uint32_t>(table.size()), static_cast<uint32_t>(s_ssbo.backendHandle));
+    mc2::fmt::print_err("[GOS_MATERIALS] uploaded profile table: {:d} entries, ssbo={:d}\n", mc2::fmt::as_u32(static_cast<uint32_t>(table.size())), mc2::fmt::as_u32(static_cast<uint32_t>(s_ssbo.backendHandle)));
 }
 
 // ---------------------------------------------------------------------------
@@ -129,7 +128,7 @@ static void uploadSsbo() {
 static GLuint loadLinearPng(const char* path, int& w_out, int& h_out) {
     Image img;
     if (!img.loadPNG(path)) {
-        std::fprintf(stderr, "[GOS_MATERIALS] WARN: could not load PNG: %s\n", path);
+        mc2::fmt::print_err("[GOS_MATERIALS] WARN: could not load PNG: {}\n", mc2::fmt::safe(path));
         return 0;
     }
     w_out = img.getWidth();
@@ -160,8 +159,7 @@ static GLuint loadLinearPng(const char* path, int& w_out, int& h_out) {
         glType     = GL_UNSIGNED_BYTE;
         break;
     default:
-        std::fprintf(stderr,
-            "[GOS_MATERIALS] WARN: unsupported PNG format %d for: %s\n", (int)fmt, path);
+        mc2::fmt::print_err("[GOS_MATERIALS] WARN: unsupported PNG format {:d} for: {}\n", mc2::fmt::as_i32((int)fmt), mc2::fmt::safe(path));
         return 0;
     }
 
@@ -179,8 +177,7 @@ static GLuint loadLinearPng(const char* path, int& w_out, int& h_out) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glBindTexture(GL_TEXTURE_2D, 0);
 
-    std::fprintf(stderr, "[GOS_MATERIALS] loaded linear PNG %s -> tex=%u (%dx%d fmt=%d)\n",
-        path, tex, w_out, h_out, (int)fmt);
+    mc2::fmt::print_err("[GOS_MATERIALS] loaded linear PNG {} -> tex={:d} ({:d}x{:d} fmt={:d})\n", mc2::fmt::safe(path), mc2::fmt::as_u32(tex), mc2::fmt::as_i32(w_out), mc2::fmt::as_i32(h_out), mc2::fmt::as_i32((int)fmt));
     return tex;
 }
 
@@ -197,13 +194,13 @@ static GLuint buildPackedOrm(const char* roughPath, const char* metalPath,
     // Load roughness channel.
     Image roughImg;
     if (!roughImg.loadPNG(roughPath)) {
-        std::fprintf(stderr, "[GOS_MATERIALS] WARN: could not load roughness PNG: %s\n", roughPath);
+        mc2::fmt::print_err("[GOS_MATERIALS] WARN: could not load roughness PNG: {}\n", mc2::fmt::safe(roughPath));
         return 0;
     }
     // Load metalness channel.
     Image metalImg;
     if (!metalImg.loadPNG(metalPath)) {
-        std::fprintf(stderr, "[GOS_MATERIALS] WARN: could not load metalness PNG: %s\n", metalPath);
+        mc2::fmt::print_err("[GOS_MATERIALS] WARN: could not load metalness PNG: {}\n", mc2::fmt::safe(metalPath));
         return 0;
     }
 
@@ -213,9 +210,7 @@ static GLuint buildPackedOrm(const char* roughPath, const char* metalPath,
     const int mh = metalImg.getHeight();
 
     if (rw != mw || rh != mh) {
-        std::fprintf(stderr,
-            "[GOS_MATERIALS] WARN: roughness (%dx%d) and metalness (%dx%d) size mismatch\n",
-            rw, rh, mw, mh);
+        mc2::fmt::print_err("[GOS_MATERIALS] WARN: roughness ({:d}x{:d}) and metalness ({:d}x{:d}) size mismatch\n", mc2::fmt::as_i32(rw), mc2::fmt::as_i32(rh), mc2::fmt::as_i32(mw), mc2::fmt::as_i32(mh));
         return 0;
     }
 
@@ -232,7 +227,7 @@ static GLuint buildPackedOrm(const char* roughPath, const char* metalPath,
     const int rBpp = getBytesPerPixel(roughImg.getFormat());
     const int mBpp = getBytesPerPixel(metalImg.getFormat());
     if (rBpp == 0 || mBpp == 0) {
-        std::fprintf(stderr, "[GOS_MATERIALS] WARN: zero-bpp format in ORM sources\n");
+        mc2::fmt::print_err("[GOS_MATERIALS] WARN: zero-bpp format in ORM sources\n");
         return 0;
     }
 
@@ -260,9 +255,7 @@ static GLuint buildPackedOrm(const char* roughPath, const char* metalPath,
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glBindTexture(GL_TEXTURE_2D, 0);
 
-    std::fprintf(stderr,
-        "[GOS_MATERIALS] packed ORM tex=%u (%dx%d) rough=%s metal=%s\n",
-        tex, w, h, roughPath, metalPath);
+    mc2::fmt::print_err("[GOS_MATERIALS] packed ORM tex={:d} ({:d}x{:d}) rough={} metal={}\n", mc2::fmt::as_u32(tex), mc2::fmt::as_i32(w), mc2::fmt::as_i32(h), mc2::fmt::safe(roughPath), mc2::fmt::safe(metalPath));
     return tex;
 }
 
@@ -283,7 +276,7 @@ static GLuint buildFlatNormalTex() {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glBindTexture(GL_TEXTURE_2D, 0);
-    std::fprintf(stderr, "[GOS_MATERIALS] built flat normal tex=%u\n", tex);
+    mc2::fmt::print_err("[GOS_MATERIALS] built flat normal tex={:d}\n", mc2::fmt::as_u32(tex));
     return tex;
 }
 
@@ -359,9 +352,7 @@ static void registerMetal061b() {
     s_nameToIndex["metal061b"] = static_cast<uint32_t>(s_profiles.size());
     s_profiles.push_back(std::move(e));
 
-    std::fprintf(stderr,
-        "[GOS_MATERIALS] registered metal061b: normalTex=%u ormTex=%u flags=0x%x\n",
-        g.normalTex, g.metallicRoughnessTex, g.flags);
+    mc2::fmt::print_err("[GOS_MATERIALS] registered metal061b: normalTex={:d} ormTex={:d} flags=0x{:x}\n", mc2::fmt::as_u32(g.normalTex), mc2::fmt::as_u32(g.metallicRoughnessTex), mc2::fmt::as_u32(g.flags));
 }
 
 // ---------------------------------------------------------------------------
@@ -402,9 +393,7 @@ static void registerPaintedMetal003() {
     s_nameToIndex["paintedmetal003"] = static_cast<uint32_t>(s_profiles.size());
     s_profiles.push_back(std::move(e));
 
-    std::fprintf(stderr,
-        "[GOS_MATERIALS] registered paintedmetal003: normalTex=%u ormTex=%u flags=0x%x\n",
-        g.normalTex, g.metallicRoughnessTex, g.flags);
+    mc2::fmt::print_err("[GOS_MATERIALS] registered paintedmetal003: normalTex={:d} ormTex={:d} flags=0x{:x}\n", mc2::fmt::as_u32(g.normalTex), mc2::fmt::as_u32(g.metallicRoughnessTex), mc2::fmt::as_u32(g.flags));
 }
 
 // ---------------------------------------------------------------------------
@@ -441,9 +430,7 @@ static void registerPaintedSubtle() {
     s_nameToIndex["painted_subtle"] = static_cast<uint32_t>(s_profiles.size());
     s_profiles.push_back(std::move(e));
 
-    std::fprintf(stderr,
-        "[GOS_MATERIALS] registered painted_subtle: normalTex=%u ormTex=%u flags=0x%x\n",
-        g.normalTex, g.metallicRoughnessTex, g.flags);
+    mc2::fmt::print_err("[GOS_MATERIALS] registered painted_subtle: normalTex={:d} ormTex={:d} flags=0x{:x}\n", mc2::fmt::as_u32(g.normalTex), mc2::fmt::as_u32(g.metallicRoughnessTex), mc2::fmt::as_u32(g.flags));
 }
 
 } // anonymous namespace
@@ -459,8 +446,7 @@ void init() {
     s_initialized = true;
 
     if (!s_gpuEnabled) {
-        std::fprintf(stderr,
-            "[GOS_MATERIALS] MC2_MATERIAL_GPU=0: profile table disabled (no-op)\n");
+        mc2::fmt::print_err("[GOS_MATERIALS] MC2_MATERIAL_GPU=0: profile table disabled (no-op)\n");
         return;
     }
 
@@ -480,20 +466,14 @@ void init() {
     } else if (loadPaintedSubtle) {
         registerPaintedSubtle();
     } else if (mc2::gate::isNonEmpty<"MC2_MECH_SURFACE_MATERIAL">()) {
-        std::fprintf(stderr,
-            "[GOS_MATERIALS] WARN: unrecognized MC2_MECH_SURFACE_MATERIAL='%s': "
-            "falling back to passthrough\n", mc2::gate::raw<"MC2_MECH_SURFACE_MATERIAL">());   // echoed as typed
+        mc2::fmt::print_err("[GOS_MATERIALS] WARN: unrecognized MC2_MECH_SURFACE_MATERIAL='{}': falling back to passthrough\n", mc2::fmt::safe(mc2::gate::raw<"MC2_MECH_SURFACE_MATERIAL">()));   // echoed as typed
     } else {
-        std::fprintf(stderr,
-            "[GOS_MATERIALS] MC2_MECH_SURFACE_MATERIAL=%s: passthrough only\n",
-            mc2::gate::isSet<"MC2_MECH_SURFACE_MATERIAL">() ? "(empty)" : "(null)");
+        mc2::fmt::print_err("[GOS_MATERIALS] MC2_MECH_SURFACE_MATERIAL={}: passthrough only\n", mc2::fmt::safe(mc2::gate::isSet<"MC2_MECH_SURFACE_MATERIAL">() ? "(empty)" : "(null)"));
     }
 
     uploadSsbo();
 
-    std::fprintf(stderr,
-        "[GOS_MATERIALS] init complete: %u profiles, ssbo=%u\n",
-        static_cast<uint32_t>(s_profiles.size()), static_cast<uint32_t>(s_ssbo.backendHandle));
+    mc2::fmt::print_err("[GOS_MATERIALS] init complete: {:d} profiles, ssbo={:d}\n", mc2::fmt::as_u32(static_cast<uint32_t>(s_profiles.size())), mc2::fmt::as_u32(static_cast<uint32_t>(s_ssbo.backendHandle)));
 }
 
 void shutdown() {
@@ -524,7 +504,7 @@ void shutdown() {
     }
 
     s_initialized = false;
-    std::fprintf(stderr, "[GOS_MATERIALS] shutdown complete\n");
+    mc2::fmt::print_err("[GOS_MATERIALS] shutdown complete\n");
 }
 
 uint32_t getProfileIndex(const char* name) {

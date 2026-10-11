@@ -1,6 +1,7 @@
 // gosPostProcess: frame-graph executor ownership accessors, apply-state wrappers and counters.
 // Declared in the class headers; shared names in gos_postprocess_internal.h.
 #include "gos_postprocess_internal.h"
+#include "mc2fmt.h"
 
 
 // ============================================================================
@@ -122,10 +123,7 @@ static void executorOwnBegin(gosPostProcess* pp)
     // 1. Program must be compiled and valid.
     if (c->requiresProgramValid && !pp->executorCompositeProgramValid()) {
         if (g_executorValidationFailures < kMaxExecutorFailureLog)
-            fprintf(stderr,
-                "[EXECUTOR v1] FAIL island=PostProcess check=compositeProg_valid "
-                "owned=%lu failures=%lu\n",
-                g_executorOwnedPasses, g_executorValidationFailures + 1);
+            mc2::fmt::print_err("[EXECUTOR v1] FAIL island=PostProcess check=compositeProg_valid owned={:d} failures={:d}\n", mc2::fmt::as_u32(g_executorOwnedPasses), mc2::fmt::as_u32(g_executorValidationFailures + 1));
         ++g_executorValidationFailures;
         ok = false;
     }
@@ -133,10 +131,7 @@ static void executorOwnBegin(gosPostProcess* pp)
     // 2. Scene color texture must be populated.
     if (c->requiresSceneColorTex && !pp->executorSceneColorTexValid()) {
         if (g_executorValidationFailures < kMaxExecutorFailureLog)
-            fprintf(stderr,
-                "[EXECUTOR v1] FAIL island=PostProcess check=sceneColorTex_valid "
-                "owned=%lu failures=%lu\n",
-                g_executorOwnedPasses, g_executorValidationFailures + 1);
+            mc2::fmt::print_err("[EXECUTOR v1] FAIL island=PostProcess check=sceneColorTex_valid owned={:d} failures={:d}\n", mc2::fmt::as_u32(g_executorOwnedPasses), mc2::fmt::as_u32(g_executorValidationFailures + 1));
         ++g_executorValidationFailures;
         ok = false;
     }
@@ -147,9 +142,7 @@ static void executorOwnBegin(gosPostProcess* pp)
         // One-shot warn to avoid per-frame log spam on menu screens.
         static unsigned s_warnCount = 0;
         if (s_warnCount < 4) {
-            fprintf(stderr,
-                "[EXECUTOR v1] WARN island=PostProcess sceneHasTerrain_=false "
-                "(menu/frontend — sub-stages bail gracefully)\n");
+            mc2::fmt::print_err("[EXECUTOR v1] WARN island=PostProcess sceneHasTerrain_=false (menu/frontend — sub-stages bail gracefully)\n");
             ++s_warnCount;
         }
         // NOT a failure — sub-stages handle absent terrain.
@@ -184,10 +177,7 @@ static void executorOwnEnd(gosPostProcess* /*pp*/)
         glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &bound);
         if (bound != 0) {
             if (g_executorValidationFailures < kMaxExecutorFailureLog)
-                fprintf(stderr,
-                    "[EXECUTOR v1] FAIL island=PostProcess postcond=defaultFbo "
-                    "bound=%d (expected 0) owned=%lu failures=%lu\n",
-                    (int)bound, g_executorOwnedPasses, g_executorValidationFailures + 1);
+                mc2::fmt::print_err("[EXECUTOR v1] FAIL island=PostProcess postcond=defaultFbo bound={:d} (expected 0) owned={:d} failures={:d}\n", mc2::fmt::as_i32((int)bound), mc2::fmt::as_u32(g_executorOwnedPasses), mc2::fmt::as_u32(g_executorValidationFailures + 1));
             ++g_executorValidationFailures;
             postOk = false;
         }
@@ -197,10 +187,7 @@ static void executorOwnEnd(gosPostProcess* /*pp*/)
         const GLenum err = glGetError();
         if (err != GL_NO_ERROR) {
             if (g_executorValidationFailures < kMaxExecutorFailureLog)
-                fprintf(stderr,
-                    "[EXECUTOR v1] FAIL island=PostProcess postcond=glNoError "
-                    "err=0x%X owned=%lu failures=%lu\n",
-                    (unsigned)err, g_executorOwnedPasses, g_executorValidationFailures + 1);
+                mc2::fmt::print_err("[EXECUTOR v1] FAIL island=PostProcess postcond=glNoError err=0x{:X} owned={:d} failures={:d}\n", mc2::fmt::as_u32((unsigned)err), mc2::fmt::as_u32(g_executorOwnedPasses), mc2::fmt::as_u32(g_executorValidationFailures + 1));
             ++g_executorValidationFailures;
             postOk = false;
         }
@@ -334,17 +321,13 @@ void executorOwnBeginSub(gosPostProcess* pp, RenderCore::framegraph::ExecutorIsl
     }
     if (c->requiresSceneDepthTex && !pp->executorSceneDepthTexValid()) {
         if (g_executorValidationFailures < kMaxExecutorFailureLog) {
-            fprintf(stderr,
-                "[EXECUTOR v1] FAIL island=%s check=sceneDepthTex_valid "
-                "owned=%lu failures=%lu\n",
-                name, g_executorOwnedPasses, g_executorValidationFailures + 1);
+            mc2::fmt::print_err("[EXECUTOR v1] FAIL island={} check=sceneDepthTex_valid owned={:d} failures={:d}\n", mc2::fmt::safe(name), mc2::fmt::as_u32(g_executorOwnedPasses), mc2::fmt::as_u32(g_executorValidationFailures + 1));
         }
         ++g_executorValidationFailures;
     }
     // warnIfNoTerrainLatch: can't happen (WillRun checks sceneHasTerrain_) but assert for symmetry.
     if (c->warnIfNoTerrainLatch && !pp->executorSceneHasTerrain()) {
-        fprintf(stderr,
-            "[EXECUTOR v1] ASSERT island=%s warnIfNoTerrainLatch but WillRun passed — logic error\n", name);
+        mc2::fmt::print_err("[EXECUTOR v1] ASSERT island={} warnIfNoTerrainLatch but WillRun passed — logic error\n", mc2::fmt::safe(name));
     }
 
     // FRAMEGRAPH-APPLY-STATE-ISLAND-1/2: pre-apply declared GL state before the body.
@@ -414,10 +397,7 @@ void executorOwnEndSub(gosPostProcess* pp, RenderCore::framegraph::ExecutorIslan
     if (c->postRequiresBlendDisabled) {
         if (glIsEnabled(GL_BLEND) != GL_FALSE) {
             if (g_executorValidationFailures < kMaxExecutorFailureLog)
-                fprintf(stderr,
-                    "[EXECUTOR v1] FAIL island=%s postcond=blendDisabled "
-                    "owned=%lu failures=%lu\n",
-                    name, g_executorOwnedPasses, g_executorValidationFailures + 1);
+                mc2::fmt::print_err("[EXECUTOR v1] FAIL island={} postcond=blendDisabled owned={:d} failures={:d}\n", mc2::fmt::safe(name), mc2::fmt::as_u32(g_executorOwnedPasses), mc2::fmt::as_u32(g_executorValidationFailures + 1));
             ++g_executorValidationFailures;
             postOk = false;
         }
@@ -429,10 +409,7 @@ void executorOwnEndSub(gosPostProcess* pp, RenderCore::framegraph::ExecutorIslan
         glGetIntegerv(GL_ACTIVE_TEXTURE, &activeUnit);
         if (activeUnit != GL_TEXTURE0) {
             if (g_executorValidationFailures < kMaxExecutorFailureLog)
-                fprintf(stderr,
-                    "[EXECUTOR v1] FAIL island=%s postcond=activeTexture0 "
-                    "activeUnit=0x%X owned=%lu failures=%lu\n",
-                    name, (unsigned)activeUnit, g_executorOwnedPasses, g_executorValidationFailures + 1);
+                mc2::fmt::print_err("[EXECUTOR v1] FAIL island={} postcond=activeTexture0 activeUnit=0x{:X} owned={:d} failures={:d}\n", mc2::fmt::safe(name), mc2::fmt::as_u32((unsigned)activeUnit), mc2::fmt::as_u32(g_executorOwnedPasses), mc2::fmt::as_u32(g_executorValidationFailures + 1));
             ++g_executorValidationFailures;
             postOk = false;
         }
@@ -442,10 +419,7 @@ void executorOwnEndSub(gosPostProcess* pp, RenderCore::framegraph::ExecutorIslan
         const GLenum err = glGetError();
         if (err != GL_NO_ERROR) {
             if (g_executorValidationFailures < kMaxExecutorFailureLog)
-                fprintf(stderr,
-                    "[EXECUTOR v1] FAIL island=%s postcond=glNoError "
-                    "err=0x%X owned=%lu failures=%lu\n",
-                    name, (unsigned)err, g_executorOwnedPasses, g_executorValidationFailures + 1);
+                mc2::fmt::print_err("[EXECUTOR v1] FAIL island={} postcond=glNoError err=0x{:X} owned={:d} failures={:d}\n", mc2::fmt::safe(name), mc2::fmt::as_u32((unsigned)err), mc2::fmt::as_u32(g_executorOwnedPasses), mc2::fmt::as_u32(g_executorValidationFailures + 1));
             ++g_executorValidationFailures;
             postOk = false;
         }

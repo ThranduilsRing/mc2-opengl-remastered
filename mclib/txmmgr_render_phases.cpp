@@ -2,6 +2,7 @@
 // static-shadow build, static-prop registry flush); see txmmgr_render.cpp for the order they run in.
 
 #include "txmmgr_render_internal.h"
+#include "mc2fmt.h"
 
 mat4 gos2my(Stuff::Matrix4D& m)
 {
@@ -182,13 +183,7 @@ public:
 			static int s_pbrRenderTrace = 0;
 			if (mc2::gate::get<"MC2_BUILDING_PBR_TRACE">() && s_pbrRenderTrace < 64) {
 				++s_pbrRenderTrace;
-				fprintf(stderr,
-					"[BUILDING_PBR_TRACE] ShapeRenderer::render vb=%p ib=%p tex=%lu normal=%lu orm=%lu ssbo=%lu light=%d\n",
-					(void*)vb, (void*)ib, (unsigned long)texture_id,
-					(unsigned long)renderShape->pbrNormalTexture_,
-					(unsigned long)renderShape->pbrOrmTexture_,
-					(unsigned long)renderShape->pbrMaterialSsbo_,
-					light_index);
+				mc2::fmt::print_err("[BUILDING_PBR_TRACE] ShapeRenderer::render vb={:016X} ib={:016X} tex={:d} normal={:d} orm={:d} ssbo={:d} light={:d}\n", mc2::fmt::as_ptr((void*)vb), mc2::fmt::as_ptr((void*)ib), mc2::fmt::as_u32((unsigned long)texture_id), mc2::fmt::as_u32((unsigned long)renderShape->pbrNormalTexture_), mc2::fmt::as_u32((unsigned long)renderShape->pbrOrmTexture_), mc2::fmt::as_u32((unsigned long)renderShape->pbrMaterialSsbo_), mc2::fmt::as_i32(light_index));
 				fflush(stderr);
 			}
 			float controls[4] = {
@@ -531,14 +526,13 @@ void MC_TextureManager::renderListsStaticShadowBuild (void)
 					std::vector<GpuStaticPropInstance> bldgShadowInstances;
 					GpuStaticPropRegistry::getBuildingShadowInstances(bldgShadowInstances);
 					if (s_sbTxmTrace) {
-						fprintf(stderr, "[SHADOW_STATIC_BLDG_TXM] prepass=1 instances=%zu\n",
-							bldgShadowInstances.size());
+						mc2::fmt::print_err("[SHADOW_STATIC_BLDG_TXM] prepass=1 instances={:d}\n", mc2::fmt::as_size(bldgShadowInstances.size()));
 						fflush(stderr);
 					}
 					GpuStaticPropBatcher::instance().drawStaticBuildingShadows(bldgShadowInstances);
 					gos_EndShadowPrePass();
 				} else if (s_sbTxmTrace) {
-					fprintf(stderr, "[SHADOW_STATIC_BLDG_TXM] prepass=0 (shadows off, skipped)\n");
+					mc2::fmt::print_err("[SHADOW_STATIC_BLDG_TXM] prepass=0 (shadows off, skipped)\n");
 					fflush(stderr);
 				}
 			}

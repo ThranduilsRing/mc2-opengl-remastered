@@ -1,6 +1,7 @@
 // MC_TextureManager: pure object light row, GatherLightsParameters and the light-clamp / light-row diagnostics.
 // Declared in the class headers; shared names in txmmgr_internal.h.
 #include "txmmgr_internal.h"
+#include "mc2fmt.h"
 
 // T1.15 [SPOT_DIAG v1] pack-probe state (GatherLightsParameters).
 // First-shape always-on (one stderr line on the first call after process start).
@@ -126,15 +127,7 @@ static const char* lightRowCensusTypeName(unsigned t) {
 }
 static void lightRowCensusEmit(const char* tag, unsigned t) {
     const LightRowCensusRec& r = s_lightRowCensusTab[t & 7];
-    std::fprintf(stderr,
-        "[LIGHT_ROW_CENSUS v1] %s type=%u(%s) seen=%lu "
-        "src=(%.3f,%.3f,%.3f) up=(%.3f,%.3f,%.3f) maxSrcAbs=%.3f "
-        "falloff=(%.1f,%.1f) fix=%d\n",
-        tag, t, lightRowCensusTypeName(t), r.seen,
-        r.src[0], r.src[1], r.src[2],
-        r.up[0], r.up[1], r.up[2],
-        r.maxSrcAbs, r.falloff[0], r.falloff[1],
-        s_lightPosColumnFix ? 1 : 0);
+    mc2::fmt::print_err("[LIGHT_ROW_CENSUS v1] {} type={:d}({}) seen={:d} src=({:.3f},{:.3f},{:.3f}) up=({:.3f},{:.3f},{:.3f}) maxSrcAbs={:.3f} falloff=({:.1f},{:.1f}) fix={:d}\n", mc2::fmt::safe(tag), mc2::fmt::as_u32(t), mc2::fmt::safe(lightRowCensusTypeName(t)), mc2::fmt::as_u32(r.seen), r.src[0], r.src[1], r.src[2], r.up[0], r.up[1], r.up[2], r.maxSrcAbs, r.falloff[0], r.falloff[1], mc2::fmt::as_i32(s_lightPosColumnFix ? 1 : 0));
     std::fflush(stderr);
 }
 }
@@ -352,20 +345,12 @@ void applyPureObjectLightRow(TG_HWLightsData* lights)
 			// lines are a sample and say so, so a truncated stream can never be
 			// mistaken for "only 8 rows ever diverged".
 			if (s_lightRowPureMismatch <= 8) {
-				std::fprintf(stderr,
-					"[LIGHT_ROW_PURE] MISMATCH #%lu (sample=first-8 of an uncapped "
-					"count; see the periodic summary for the total) class=%u "
-					"legacyLights=%d pureLights=%d "
-					"(declared policy does not reproduce the mutation)\n",
-					s_lightRowPureMismatch, (unsigned)q.policy,
-					lights->numLights_, pure.numLights_);
+				mc2::fmt::print_err("[LIGHT_ROW_PURE] MISMATCH #{:d} (sample=first-8 of an uncapped count; see the periodic summary for the total) class={:d} legacyLights={:d} pureLights={:d} (declared policy does not reproduce the mutation)\n", mc2::fmt::as_u32(s_lightRowPureMismatch), mc2::fmt::as_u32((unsigned)q.policy), mc2::fmt::as_i32(lights->numLights_), mc2::fmt::as_i32(pure.numLights_));
 				std::fflush(stderr);
 			}
 		}
 		if ((s_lightRowPureChecked % 5000) == 0) {
-			std::fprintf(stderr,
-				"[LIGHT_ROW_PURE] verify: checked=%lu mismatched=%lu\n",
-				s_lightRowPureChecked, s_lightRowPureMismatch);
+			mc2::fmt::print_err("[LIGHT_ROW_PURE] verify: checked={:d} mismatched={:d}\n", mc2::fmt::as_u32(s_lightRowPureChecked), mc2::fmt::as_u32(s_lightRowPureMismatch));
 			std::fflush(stderr);
 		}
 	}
@@ -554,18 +539,7 @@ void GatherLightsParameters(TG_HWLightsData* lights)
 			}
 
 			if (doLightTrace) {
-				std::fprintf(stderr,
-					"[PARITY_DIAG v2] GatherLightsParameters iLight=%u type=%u "
-					"aRGB=0x%08X dir=(%.4f,%.4f,%.4f) color=(%.4f,%.4f,%.4f)\n",
-					num_lights,
-					(unsigned)type,
-					(unsigned)listOfLights[iLight]->GetaRGB(),
-					lights->lightDir[num_lights][0],
-					lights->lightDir[num_lights][1],
-					lights->lightDir[num_lights][2],
-					lights->lightColor[num_lights][0],
-					lights->lightColor[num_lights][1],
-					lights->lightColor[num_lights][2]);
+				mc2::fmt::print_err("[PARITY_DIAG v2] GatherLightsParameters iLight={:d} type={:d} aRGB=0x{:08X} dir=({:.4f},{:.4f},{:.4f}) color=({:.4f},{:.4f},{:.4f})\n", mc2::fmt::as_u32(num_lights), mc2::fmt::as_u32((unsigned)type), mc2::fmt::as_u32((unsigned)listOfLights[iLight]->GetaRGB()), lights->lightDir[num_lights][0], lights->lightDir[num_lights][1], lights->lightDir[num_lights][2], lights->lightColor[num_lights][0], lights->lightColor[num_lights][1], lights->lightColor[num_lights][2]);
 				std::fflush(stderr);
 			}
 
@@ -614,9 +588,7 @@ void GatherLightsParameters(TG_HWLightsData* lights)
 	}
 
 	if (doLightTrace) {
-		std::fprintf(stderr,
-			"[PARITY_DIAG v2] GatherLightsParameters numLights=%u\n",
-			num_lights);
+		mc2::fmt::print_err("[PARITY_DIAG v2] GatherLightsParameters numLights={:d}\n", mc2::fmt::as_u32(num_lights));
 		std::fflush(stderr);
 		s_lightDumpDone = true;
 	}
@@ -661,12 +633,7 @@ void GatherLightsParameters(TG_HWLightsData* lights)
 
 		if (!s_lightClampFixtureYelled) {
 			s_lightClampFixtureYelled = true;
-			std::fprintf(stderr,
-				"[LIGHT_CLAMP_FIXTURE] ON: injected %u synthetic point lights into "
-				"object %p slots %u..%u (ABI cap %d). This DELIBERATELY changes "
-				"rendered lighting — gate MC2_LIGHT_CLAMP_FIXTURE.\n",
-				num_lights - injectStart, (void*)lights,
-				injectStart, num_lights - 1, MAX_HW_LIGHTS_IN_WORLD);
+			mc2::fmt::print_err("[LIGHT_CLAMP_FIXTURE] ON: injected {:d} synthetic point lights into object {:016X} slots {:d}..{:d} (ABI cap {:d}). This DELIBERATELY changes rendered lighting — gate MC2_LIGHT_CLAMP_FIXTURE.\n", mc2::fmt::as_u32(num_lights - injectStart), mc2::fmt::as_ptr((void*)lights), mc2::fmt::as_u32(injectStart), mc2::fmt::as_u32(num_lights - 1), mc2::fmt::as_i32(MAX_HW_LIGHTS_IN_WORLD));
 			std::fflush(stderr);
 		}
 	}
@@ -680,19 +647,11 @@ void GatherLightsParameters(TG_HWLightsData* lights)
 		++s_lightClampProbeCalls;
 		if (num_lights > s_lightClampProbeHighWater) {
 			s_lightClampProbeHighWater = num_lights;
-			std::fprintf(stderr,
-				"[LIGHT_CLAMP_PROBE] new high-water populated lights/object = %u "
-				"(ABI cap %d, runtime clamp %u) after %lu calls\n",
-				s_lightClampProbeHighWater, MAX_HW_LIGHTS_IN_WORLD,
-				(unsigned)max_num_lights, s_lightClampProbeCalls);
+			mc2::fmt::print_err("[LIGHT_CLAMP_PROBE] new high-water populated lights/object = {:d} (ABI cap {:d}, runtime clamp {:d}) after {:d} calls\n", mc2::fmt::as_u32(s_lightClampProbeHighWater), mc2::fmt::as_i32(MAX_HW_LIGHTS_IN_WORLD), mc2::fmt::as_u32((unsigned)max_num_lights), mc2::fmt::as_u32(s_lightClampProbeCalls));
 			std::fflush(stderr);
 		}
 		if ((s_lightClampProbeCalls % 2000) == 0) {
-			std::fprintf(stderr,
-				"[LIGHT_CLAMP_PROBE] summary: high-water=%u over %lu calls "
-				"(exceeds_16=%s)\n",
-				s_lightClampProbeHighWater, s_lightClampProbeCalls,
-				(s_lightClampProbeHighWater > 16) ? "YES" : "no");
+			mc2::fmt::print_err("[LIGHT_CLAMP_PROBE] summary: high-water={:d} over {:d} calls (exceeds_16={})\n", mc2::fmt::as_u32(s_lightClampProbeHighWater), mc2::fmt::as_u32(s_lightClampProbeCalls), mc2::fmt::safe((s_lightClampProbeHighWater > 16) ? "YES" : "no"));
 			std::fflush(stderr);
 		}
 	}
@@ -715,11 +674,7 @@ void GatherLightsParameters(TG_HWLightsData* lights)
 		double avgA = (double)s_spotDiagPackActiveSum / 600.0;
 		double avgI = (double)s_spotDiagPackInactSum  / 600.0;
 		double avgP = (double)s_spotDiagPackPointSum  / 600.0;
-		std::fprintf(stderr,
-			"[SPOT_DIAG v1] event=pack_summary calls=%lu "
-			"avg_active_per_shape=%.3f avg_inactive_per_shape=%.3f "
-			"avg_point_active_per_shape=%.3f\n",
-			s_spotDiagPackCalls, avgA, avgI, avgP);
+		mc2::fmt::print_err("[SPOT_DIAG v1] event=pack_summary calls={:d} avg_active_per_shape={:.3f} avg_inactive_per_shape={:.3f} avg_point_active_per_shape={:.3f}\n", mc2::fmt::as_u32(s_spotDiagPackCalls), avgA, avgI, avgP);
 		std::fflush(stderr);
 		s_spotDiagPackActiveSum = 0;
 		s_spotDiagPackInactSum  = 0;

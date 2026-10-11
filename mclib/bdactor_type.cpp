@@ -157,8 +157,7 @@ void BldgAppearanceType::init (const char * fileName)
 		FullPathFileName sidecarName;
 		sidecarName.init(tglPath, importSourceBase, ".mcasset.json");
 		if (!loadBuildingPbrFromSidecar(this, sidecarName)) {
-			fprintf(stderr, "[BUILDING_PBR] disabled for import '%s' sidecar=%s\n",
-			        importSourceBase, (const char*)sidecarName);
+			mc2::fmt::print_err("[BUILDING_PBR] disabled for import '{}' sidecar={}\n", mc2::fmt::safe(importSourceBase), mc2::fmt::safe((const char*)sidecarName));
 			fflush(stderr);
 		}
 	}
@@ -175,7 +174,7 @@ void BldgAppearanceType::init (const char * fileName)
 		// static-prop appearance name seen, so a manifest can target props actually
 		// present in a mission. No behavior change. MODEL-OVERRIDE Slice 3.
 		if (mc2::gate::get<"MC2_MODOVERRIDE_TRACE">())
-			fprintf(stderr, "[MODOVERRIDE_TRACE] staticProp '%s'\n", bldgBaseName);
+			mc2::fmt::print_err("[MODOVERRIDE_TRACE] staticProp '{}'\n", mc2::fmt::safe(bldgBaseName));
 		const ModelOverrideRecord* ov =
 			ModelOverrideRegistry::instance().resolve("staticProp", bldgBaseName);
 		if (ov)
@@ -204,8 +203,7 @@ void BldgAppearanceType::init (const char * fileName)
 					// MODEL-OVERRIDE texture binding: resolve importer-assigned
 					// texture names to GOS handles on the TYPE render shape.
 					LoadOverrideRenderShapeTextures(bldgRenderShape);
-					fprintf(stderr, "[MODOVERRIDE] staticProp '%s': render override applied (%s)\n",
-					        bldgBaseName, overridePath);
+					mc2::fmt::print_err("[MODOVERRIDE] staticProp '{}': render override applied ({})\n", mc2::fmt::safe(bldgBaseName), mc2::fmt::safe(overridePath));
 					fflush(stderr);
 					if (buildingPbrGateEnabled())
 					{
@@ -217,8 +215,7 @@ void BldgAppearanceType::init (const char * fileName)
 						else
 							strncat(sidecarPath, ".mcasset.json", sizeof(sidecarPath) - strlen(sidecarPath) - 1);
 						if (!loadBuildingPbrFromSidecar(this, sidecarPath)) {
-							fprintf(stderr, "[BUILDING_PBR] disabled for '%s' sidecar=%s\n",
-							        bldgBaseName, sidecarPath);
+							mc2::fmt::print_err("[BUILDING_PBR] disabled for '{}' sidecar={}\n", mc2::fmt::safe(bldgBaseName), mc2::fmt::safe(sidecarPath));
 							fflush(stderr);
 						}
 					}
@@ -232,8 +229,7 @@ void BldgAppearanceType::init (const char * fileName)
 				fflush(stderr);
 			}
 #else
-			fprintf(stderr, "[MODOVERRIDE] staticProp '%s': override resolved but importer disabled, using stock render\n",
-			        bldgBaseName);
+			mc2::fmt::print_err("[MODOVERRIDE] staticProp '{}': override resolved but importer disabled, using stock render\n", mc2::fmt::safe(bldgBaseName));
 			fflush(stderr);
 #endif
 		}
@@ -619,7 +615,7 @@ void TreeAppearanceType::init (const char * fileName)
 	{
 		// Env-gated discovery trace (see staticProp site). MODEL-OVERRIDE Slice 3.
 		if (mc2::gate::get<"MC2_MODOVERRIDE_TRACE">())
-			fprintf(stderr, "[MODOVERRIDE_TRACE] tree '%s'\n", treeBaseName);
+			mc2::fmt::print_err("[MODOVERRIDE_TRACE] tree '{}'\n", mc2::fmt::safe(treeBaseName));
 		const ModelOverrideRecord* ov =
 			ModelOverrideRegistry::instance().resolve("tree", treeBaseName);
 		if (ov)
@@ -641,8 +637,7 @@ void TreeAppearanceType::init (const char * fileName)
 				{
 					delete treeRenderShape[0]; treeRenderShape[0] = nullptr;   // stock fallback
 					treeRenderShapeLodCount = 0;
-					fprintf(stderr, "[MODOVERRIDE] tree '%s': import failed (%s), using stock render\n",
-					        treeBaseName, overridePath);
+					mc2::fmt::print_err("[MODOVERRIDE] tree '{}': import failed ({}), using stock render\n", mc2::fmt::safe(treeBaseName), mc2::fmt::safe(overridePath));
 					fflush(stderr);
 				}
 				else
@@ -658,8 +653,7 @@ void TreeAppearanceType::init (const char * fileName)
 					// GPU batcher draws with the override's OWN textures.
 					LoadOverrideRenderShapeTextures(treeRenderShape[0]);
 					treeRenderShapeLodCount = 1;
-					fprintf(stderr, "[MODOVERRIDE] tree '%s': render override applied (%s)\n",
-					        treeBaseName, overridePath);
+					mc2::fmt::print_err("[MODOVERRIDE] tree '{}': render override applied ({})\n", mc2::fmt::safe(treeBaseName), mc2::fmt::safe(overridePath));
 					fflush(stderr);
 
 					// TREE-OVERRIDE-LOD-MVP Task 3: load each manifest lods[] entry
@@ -675,14 +669,12 @@ void TreeAppearanceType::init (const char * fileName)
 					{
 						const int li = lentry.lod;
 						if (li <= 0 || li >= MAX_LODS) {
-							fprintf(stderr, "[MODOVERRIDE] tree '%s': lod %d out of range, skipped\n",
-							        treeBaseName, li);
+							mc2::fmt::print_err("[MODOVERRIDE] tree '{}': lod {:d} out of range, skipped\n", mc2::fmt::safe(treeBaseName), mc2::fmt::as_i32(li));
 							fflush(stderr);
 							continue;
 						}
 						if (treeRenderShape[li]) {
-							fprintf(stderr, "[MODOVERRIDE] tree '%s': duplicate lod %d, skipped\n",
-							        treeBaseName, li);
+							mc2::fmt::print_err("[MODOVERRIDE] tree '{}': duplicate lod {:d}, skipped\n", mc2::fmt::safe(treeBaseName), mc2::fmt::as_i32(li));
 							fflush(stderr);
 							continue;
 						}
@@ -693,8 +685,7 @@ void TreeAppearanceType::init (const char * fileName)
 							long lr = ImportGeometryFromFile(lodPath, treeRenderShape[li]);
 							if (lr != 0 || treeRenderShape[li]->GetNumShapes() == 0) {
 								delete treeRenderShape[li]; treeRenderShape[li] = nullptr;
-								fprintf(stderr, "[MODOVERRIDE] tree '%s': lod %d import failed (%s), dropped\n",
-								        treeBaseName, li, lodPath);
+								mc2::fmt::print_err("[MODOVERRIDE] tree '{}': lod {:d} import failed ({}), dropped\n", mc2::fmt::safe(treeBaseName), mc2::fmt::as_i32(li), mc2::fmt::safe(lodPath));
 								fflush(stderr);
 								continue;
 							}
@@ -703,14 +694,12 @@ void TreeAppearanceType::init (const char * fileName)
 							LoadOverrideRenderShapeTextures(treeRenderShape[li]);
 							if (li + 1 > treeRenderShapeLodCount)
 								treeRenderShapeLodCount = li + 1;
-							fprintf(stderr, "[MODOVERRIDE] tree '%s': lod %d applied (%s) lodCount=%ld\n",
-							        treeBaseName, li, lodPath, treeRenderShapeLodCount);
+							mc2::fmt::print_err("[MODOVERRIDE] tree '{}': lod {:d} applied ({}) lodCount={:d}\n", mc2::fmt::safe(treeBaseName), mc2::fmt::as_i32(li), mc2::fmt::safe(lodPath), mc2::fmt::as_i32(treeRenderShapeLodCount));
 							fflush(stderr);
 						}
 						catch (...) {
 							delete treeRenderShape[li]; treeRenderShape[li] = nullptr;
-							fprintf(stderr, "[MODOVERRIDE] tree '%s': lod %d import threw (%s), dropped\n",
-							        treeBaseName, li, lodPath);
+							mc2::fmt::print_err("[MODOVERRIDE] tree '{}': lod {:d} import threw ({}), dropped\n", mc2::fmt::safe(treeBaseName), mc2::fmt::as_i32(li), mc2::fmt::safe(lodPath));
 							fflush(stderr);
 						}
 					}
@@ -720,13 +709,11 @@ void TreeAppearanceType::init (const char * fileName)
 			{
 				delete treeRenderShape[0]; treeRenderShape[0] = nullptr;   // stock fallback
 				treeRenderShapeLodCount = 0;
-				fprintf(stderr, "[MODOVERRIDE] tree '%s': import threw (%s), using stock render\n",
-				        treeBaseName, overridePath);
+				mc2::fmt::print_err("[MODOVERRIDE] tree '{}': import threw ({}), using stock render\n", mc2::fmt::safe(treeBaseName), mc2::fmt::safe(overridePath));
 				fflush(stderr);
 			}
 #else
-			fprintf(stderr, "[MODOVERRIDE] tree '%s': override resolved but importer disabled, using stock render\n",
-			        treeBaseName);
+			mc2::fmt::print_err("[MODOVERRIDE] tree '{}': override resolved but importer disabled, using stock render\n", mc2::fmt::safe(treeBaseName));
 			fflush(stderr);
 #endif
 		}

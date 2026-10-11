@@ -6,6 +6,7 @@
 #include"particles/spawn.h"
 #include<cstdio>   // VFX-ORACLE diagnostics
 #include<cmath>    // std::atan2 for spin extraction (VFX-SHARDCLOUD-SPIN-ASPECT-1)
+#include "mc2fmt.h"
 
 //==========================================================================//
 // File:	 gosFX_ShardCloud.cpp											//
@@ -434,13 +435,7 @@ void gosFX::ShardCloud::Draw(DrawInfo *info)
 						// VFX-AGE-LIFETIME-UPLOAD-1: age range
 						const double ageLo = static_cast<double>(minAge);
 						const double ageHi = static_cast<double>(maxAge);
-						std::fprintf(stderr,
-							"[VFX_ORACLE v1] class=ShardCloud FIRST_HARVEST spec=\"%s\" active=%d harvested=%d alpha=[%.3f,%.3f] uvRect=[0.000,0.000,1.000,1.000] atlasColumns=0 sizeRange=[%.3f,%.3f] spinRange=[%.3f,%.3f] ageRange=[%.3f,%.3f]\n",
-							static_cast<const char*>(spec->m_name),
-							m_activeParticleCount, harvested,
-							static_cast<double>(minA), static_cast<double>(maxA),
-							szLo, szHi, spLo, spHi,
-							ageLo, ageHi);
+						mc2::fmt::print_err("[VFX_ORACLE v1] class=ShardCloud FIRST_HARVEST spec=\"{}\" active={:d} harvested={:d} alpha=[{:.3f},{:.3f}] uvRect=[0.000,0.000,1.000,1.000] atlasColumns=0 sizeRange=[{:.3f},{:.3f}] spinRange=[{:.3f},{:.3f}] ageRange=[{:.3f},{:.3f}]\n", mc2::fmt::safe(static_cast<const char*>(spec->m_name)), mc2::fmt::as_i32(m_activeParticleCount), mc2::fmt::as_i32(harvested), static_cast<double>(minA), static_cast<double>(maxA), szLo, szHi, spLo, spHi, ageLo, ageHi);
 						std::fflush(stderr);
 					}
 					static unsigned long long s_calls = 0, s_harvTotal = 0;
@@ -450,10 +445,7 @@ void gosFX::ShardCloud::Draw(DrawInfo *info)
 						const double aHi   = (harvested > 0) ? static_cast<double>(maxA)   : 0.0;
 						const double ageLo = (harvested > 0) ? static_cast<double>(minAge) : 0.0;
 						const double ageHi = (harvested > 0) ? static_cast<double>(maxAge) : 0.0;
-						std::fprintf(stderr,
-							"[VFX_ORACLE v1] class=ShardCloud calls=%llu active_this_call=%d harvested_this_call=%d emitted_this_call=%d harvestedTotal=%llu fallback=0 alpha_this_call=[%.3f,%.3f] age_this_call=[%.3f,%.3f]\n",
-							s_calls, m_activeParticleCount, harvested, harvested,
-							s_harvTotal, aLo, aHi, ageLo, ageHi);
+						mc2::fmt::print_err("[VFX_ORACLE v1] class=ShardCloud calls={:d} active_this_call={:d} harvested_this_call={:d} emitted_this_call={:d} harvestedTotal={:d} fallback=0 alpha_this_call=[{:.3f},{:.3f}] age_this_call=[{:.3f},{:.3f}]\n", mc2::fmt::as_u64(s_calls), mc2::fmt::as_i32(m_activeParticleCount), mc2::fmt::as_i32(harvested), mc2::fmt::as_i32(harvested), mc2::fmt::as_u64(s_harvTotal), aLo, aHi, ageLo, ageHi);
 						std::fflush(stderr);
 					}
 				}

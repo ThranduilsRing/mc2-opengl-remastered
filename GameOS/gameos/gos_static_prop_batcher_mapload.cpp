@@ -440,8 +440,7 @@ void GpuStaticPropBatcher::registerType(TG_TypeShape* typeShape, TG_TypeMultiSha
         static int s_seamRegLogged = 0;
         if (mc2::gate::get<"MC2_MODOVERRIDE_TRACE">() && s_seamRegLogged < 400) {
             ++s_seamRegLogged;
-            fprintf(stderr, "[SEAMPROBE] sample=first400 registerType src=%p typeID=%u numTris=%u numVerts=%u finalized=%d\n",
-                (void*)typeShape, newTypeID, numTris, numVerts, (int)s_geometryFinalized);
+            mc2::fmt::print_err("[SEAMPROBE] sample=first400 registerType src={:016X} typeID={:d} numTris={:d} numVerts={:d} finalized={:d}\n", mc2::fmt::as_ptr((void*)typeShape), mc2::fmt::as_u32(newTypeID), mc2::fmt::as_u32(numTris), mc2::fmt::as_u32(numVerts), mc2::fmt::as_i32((int)s_geometryFinalized));
             fflush(stderr);
         }
     }

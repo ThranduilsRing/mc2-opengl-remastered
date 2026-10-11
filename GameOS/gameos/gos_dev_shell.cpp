@@ -153,7 +153,7 @@ bool initSocket()
 {
     WSADATA wsa;
     if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
-        fprintf(stderr, "[DEV_SHELL] WSAStartup failed (%d); shell disabled, game continues\n", WSAGetLastError());
+        mc2::fmt::print_err("[DEV_SHELL] WSAStartup failed ({:d}); shell disabled, game continues\n", mc2::fmt::as_i32(WSAGetLastError()));
         return false;
     }
     int port = 9877;
@@ -163,7 +163,7 @@ bool initSocket()
     }
     s_listen = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (s_listen == INVALID_SOCKET) {
-        fprintf(stderr, "[DEV_SHELL] socket() failed (%d); shell disabled, game continues\n", WSAGetLastError());
+        mc2::fmt::print_err("[DEV_SHELL] socket() failed ({:d}); shell disabled, game continues\n", mc2::fmt::as_i32(WSAGetLastError()));
         return false;
     }
     sockaddr_in addr = {};
@@ -173,15 +173,14 @@ bool initSocket()
     addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
     if (bind(s_listen, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) == SOCKET_ERROR
         || listen(s_listen, 1) == SOCKET_ERROR) {
-        fprintf(stderr, "[DEV_SHELL] bind/listen 127.0.0.1:%d failed (%d); shell disabled, game continues\n",
-                port, WSAGetLastError());
+        mc2::fmt::print_err("[DEV_SHELL] bind/listen 127.0.0.1:{:d} failed ({:d}); shell disabled, game continues\n", mc2::fmt::as_i32(port), mc2::fmt::as_i32(WSAGetLastError()));
         closesocket(s_listen);
         s_listen = INVALID_SOCKET;
         return false;
     }
     u_long nonblock = 1;
     ioctlsocket(s_listen, FIONBIO, &nonblock);
-    fprintf(stderr, "[DEV_SHELL v1] listening on 127.0.0.1:%d\n", port);
+    mc2::fmt::print_err("[DEV_SHELL v1] listening on 127.0.0.1:{:d}\n", mc2::fmt::as_i32(port));
     fflush(stderr);
     return true;
 }
@@ -478,7 +477,7 @@ bool pollCommands(uint32_t frame)
         if (n > 0) {
             s_recvBuf.append(buf, static_cast<size_t>(n));
             if (s_recvBuf.size() > kMaxRequestBytes) {
-                fprintf(stderr, "[DEV_SHELL] oversized request (>%zu bytes); dropping connection\n", kMaxRequestBytes);
+                mc2::fmt::print_err("[DEV_SHELL] oversized request (>{:d} bytes); dropping connection\n", mc2::fmt::as_size(kMaxRequestBytes));
                 closeClient();
                 return false;
             }
@@ -545,7 +544,7 @@ void capturePendingScreenshot(uint32_t frame)
     s_lastShotResult = ok
         ? "wrote " + path + " (" + std::to_string(w) + "x" + std::to_string(h) + ", frame " + std::to_string(frame) + ")"
         : "failed: writeTGA " + path;
-    fprintf(stderr, "[DEV_SHELL] screenshot: %s\n", s_lastShotResult.c_str());
+    mc2::fmt::print_err("[DEV_SHELL] screenshot: {}\n", s_lastShotResult.c_str());
 }
 
 #endif  // _WIN32

@@ -127,9 +127,7 @@ void bdLogStaticRegInvalid(const char* kind, int reason, int regIdx, const char*
 	static const char* const kReason[] = {
 		"Submitted", "NotRegistered", "MissingRange", "Tombstoned", "InvalidRecipe" };
 	const char* rn = (reason >= 0 && reason < 5) ? kReason[reason] : "?";
-	fprintf(stderr, "[STATIC_REG_INVALID] kind=%s reason=%s regIdx=%d actor=%s "
-	                "(falling back to legacy re-bake)\n",
-	        kind, rn, regIdx, name ? name : "(null)");
+	mc2::fmt::print_err("[STATIC_REG_INVALID] kind={} reason={} regIdx={:d} actor={} (falling back to legacy re-bake)\n", mc2::fmt::safe(kind), mc2::fmt::safe(rn), mc2::fmt::as_i32(regIdx), mc2::fmt::safe(name ? name : "(null)"));
 	fflush(stderr);
 }
 

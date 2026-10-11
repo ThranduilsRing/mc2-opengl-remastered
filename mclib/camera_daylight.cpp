@@ -1,6 +1,7 @@
 // Camera: daylight fraction and sun pitch, HSI colour helpers and the per-frame light update.
 // Declared in the class headers; shared names in camera_internal.h.
 #include "camera_internal.h"
+#include "mc2fmt.h"
 
 
 //---------------------------------------------------------------------------
@@ -663,10 +664,7 @@ void Camera::updateLights()
 		unsigned long total = s_spotDiagCamActiveTrue + s_spotDiagCamActiveFalse;
 		double truePct  = (total > 0) ? (100.0 * (double)s_spotDiagCamActiveTrue  / (double)total) : 0.0;
 		double falsePct = (total > 0) ? (100.0 * (double)s_spotDiagCamActiveFalse / (double)total) : 0.0;
-		std::fprintf(stderr,
-			"[SPOT_DIAG v1] event=overwrite_summary frames=%lu point_slots_seen=%lu "
-			"active_true_pct=%.2f active_false_pct=%.2f samples=%lu\n",
-			s_spotDiagCamFrames, s_spotDiagCamPointSeen, truePct, falsePct, total);
+		mc2::fmt::print_err("[SPOT_DIAG v1] event=overwrite_summary frames={:d} point_slots_seen={:d} active_true_pct={:.2f} active_false_pct={:.2f} samples={:d}\n", mc2::fmt::as_u32(s_spotDiagCamFrames), mc2::fmt::as_u32(s_spotDiagCamPointSeen), truePct, falsePct, mc2::fmt::as_u32(total));
 		std::fflush(stderr);
 		// Reset window counters (per-summary cadence per task spec)
 		s_spotDiagCamActiveTrue  = 0;
@@ -682,14 +680,7 @@ void Camera::updateLights()
 				const char* srcName =
 					(src == mc2_spotlight_diag::Bldg ? "bldg" :
 					 src == mc2_spotlight_diag::Mech ? "mech" : "gv");
-				std::fprintf(stderr,
-					"[SPOT_DIAG v1] event=our_slot_summary frame=%lu slot=%ld src=%s "
-					"active=%u pos=(%.1f, %.1f, %.1f)\n",
-					s_spotDiagCamFrames, si, srcName,
-					l ? (unsigned)(l->active ? 1u : 0u) : 0xFFu,
-					l ? (float)l->position.x : 0.0f,
-					l ? (float)l->position.y : 0.0f,
-					l ? (float)l->position.z : 0.0f);
+				mc2::fmt::print_err("[SPOT_DIAG v1] event=our_slot_summary frame={:d} slot={:d} src={} active={:d} pos=({:.1f}, {:.1f}, {:.1f})\n", mc2::fmt::as_u32(s_spotDiagCamFrames), mc2::fmt::as_i32(si), mc2::fmt::safe(srcName), mc2::fmt::as_u32(l ? (unsigned)(l->active ? 1u : 0u) : 0xFFu), l ? (float)l->position.x : 0.0f, l ? (float)l->position.y : 0.0f, l ? (float)l->position.z : 0.0f);
 				std::fflush(stderr);
 			}
 		}

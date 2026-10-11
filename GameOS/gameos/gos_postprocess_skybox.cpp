@@ -545,12 +545,7 @@ void gosPostProcess::renderHdriSkyboxInvVP(const float* invVP16)
             s_loggedSync = true;
             float lx = 0.0f, ly = 0.0f, lz = 0.0f;
             gos_GetTerrainLightDir(&lx, &ly, &lz);
-            std::fprintf(stderr,
-                "[HDRI_SUN_SYNC] valid=%d antiSolarAz=%.1fdeg sunAzGL=%.1fdeg skyYaw=%.1fdeg\n",
-                hdriBakedSunValid_ ? 1 : 0,
-                hdriBakedSunAz_ * 57.29577951f,
-                atan2f(ly, lx) * 57.29577951f,
-                skyYaw * 57.29577951f);
+            mc2::fmt::print_err("[HDRI_SUN_SYNC] valid={:d} antiSolarAz={:.1f}deg sunAzGL={:.1f}deg skyYaw={:.1f}deg\n", mc2::fmt::as_i32(hdriBakedSunValid_ ? 1 : 0), hdriBakedSunAz_ * 57.29577951f, atan2f(ly, lx) * 57.29577951f, skyYaw * 57.29577951f);
             std::fflush(stderr);
         }
     }

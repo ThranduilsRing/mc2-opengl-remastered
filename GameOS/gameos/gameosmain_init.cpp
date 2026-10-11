@@ -142,9 +142,7 @@ void initLauncherEnv() {
                 // console stays quiet.
                 mc2::gate::invalidateAll();   // the loop above putenv'd: re-read before asking about MC2_LOG
                 if (mc2::gate::isSet<"MC2_LOG">()) {
-                    fprintf(stderr,
-                        "[LAUNCHER_ENV v1] applied=%d shell_override=%d src=%s\n",
-                        applied, shellWins, jsonPath);
+                    mc2::fmt::print_err("[LAUNCHER_ENV v1] applied={:d} shell_override={:d} src={}\n", mc2::fmt::as_i32(applied), mc2::fmt::as_i32(shellWins), mc2::fmt::safe(jsonPath));
                 }
             }
         }
@@ -369,20 +367,16 @@ void initResolutionFromConfig() {
                 if (foundH > 0) Environment.screenHeight = foundH;
                 if (foundFS)    Environment.fullScreen   = fullscreenVal ? 1 : 0;
 
-                printf("[RESOLUTION] Pre-window: %dx%d fullscreen=%d (from options.cfg)\n",
-                       Environment.screenWidth, Environment.screenHeight,
-                       Environment.fullScreen);
+                mc2::fmt::print_out("[RESOLUTION] Pre-window: {:d}x{:d} fullscreen={:d} (from options.cfg)\n", mc2::fmt::as_i32(Environment.screenWidth), mc2::fmt::as_i32(Environment.screenHeight), mc2::fmt::as_i32(Environment.fullScreen));
             }
             else
             {
-                printf("[RESOLUTION] Pre-window: %dx%d (options.cfg not found, using defaults)\n",
-                       Environment.screenWidth, Environment.screenHeight);
+                mc2::fmt::print_out("[RESOLUTION] Pre-window: {:d}x{:d} (options.cfg not found, using defaults)\n", mc2::fmt::as_i32(Environment.screenWidth), mc2::fmt::as_i32(Environment.screenHeight));
             }
         }
         else
         {
-            printf("[RESOLUTION] Pre-window: %dx%d (from MC2_WIDTH/MC2_HEIGHT env)\n",
-                   Environment.screenWidth, Environment.screenHeight);
+            mc2::fmt::print_out("[RESOLUTION] Pre-window: {:d}x{:d} (from MC2_WIDTH/MC2_HEIGHT env)\n", mc2::fmt::as_i32(Environment.screenWidth), mc2::fmt::as_i32(Environment.screenHeight));
         }
     }
 }

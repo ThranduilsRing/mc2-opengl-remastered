@@ -292,8 +292,7 @@ long TerrainColorMap::init (char *fileName)
 				STOP(("Color Map is %d pixels wide which is not even divisible by %d",jpgColorMapWidth,COLOR_MAP_TEXTURE_SIZE));
 
 			if (skipColormapTiles()) {
-				printf("[COLORMAP] skip %ld^2 tile GL upload (%ldx%ld) [COLORMAP-TILES-RETIRE-1]\n",
-				       (long)numTexturesAcross, jpgColorMapWidth, jpgColorMapWidth);
+				mc2::fmt::print_out("[COLORMAP] skip {:d}^2 tile GL upload ({:d}x{:d}) [COLORMAP-TILES-RETIRE-1]\n", mc2::fmt::as_i32((long)numTexturesAcross), mc2::fmt::as_i32(jpgColorMapWidth), mc2::fmt::as_i32(jpgColorMapWidth));
 				numTextures = 0;
 			} else {
 				numTextures *= numTextures;
@@ -339,7 +338,7 @@ long TerrainColorMap::init (char *fileName)
 				gosASSERT(cpuColorMap != nullptr);
 				cpuColorMapSize = jpgColorMapWidth;
 				memcpy(cpuColorMap, ColorMap, pixels * 4);
-				printf("[COLORMAP] retained colormap on CPU (%ldx%ld) [jpg]\n", jpgColorMapWidth, jpgColorMapWidth);
+				mc2::fmt::print_out("[COLORMAP] retained colormap on CPU ({:d}x{:d}) [jpg]\n", mc2::fmt::as_i32(jpgColorMapWidth), mc2::fmt::as_i32(jpgColorMapWidth));
 			}
 			// ColorMap is colorMapRAMHeap-allocated -> normal cleanup path (usedJPG stays false).
 		}
@@ -444,8 +443,7 @@ long TerrainColorMap::init (char *fileName)
 				}
 
 				if (skipColormapTiles()) {
-					printf("[COLORMAP] skip %ld^2 tile GL upload (%dx%d) [COLORMAP-TILES-RETIRE-1]\n",
-					       (long)numTexturesAcross, colorMapInfo.width, colorMapInfo.width);
+					mc2::fmt::print_out("[COLORMAP] skip {:d}^2 tile GL upload ({:d}x{:d}) [COLORMAP-TILES-RETIRE-1]\n", mc2::fmt::as_i32((long)numTexturesAcross), mc2::fmt::as_i32(colorMapInfo.width), mc2::fmt::as_i32(colorMapInfo.width));
 					numTextures = 0;
 				} else {
 					numTextures *= numTextures;
@@ -498,7 +496,7 @@ long TerrainColorMap::init (char *fileName)
 				gosASSERT(cpuColorMap != nullptr);
 				cpuColorMapSize = colorMapInfo.width;
 				memcpy(cpuColorMap, ColorMap, pixels * 4);
-				printf("[COLORMAP] retained colormap on CPU (%dx%d)\n", colorMapInfo.width, colorMapInfo.width);
+				mc2::fmt::print_out("[COLORMAP] retained colormap on CPU ({:d}x{:d})\n", mc2::fmt::as_i32(colorMapInfo.width), mc2::fmt::as_i32(colorMapInfo.width));
 			}
 		}
 	}
@@ -514,7 +512,7 @@ long TerrainColorMap::init (char *fileName)
 		if (probe) {
 			fclose(probe);
 			mc2::fmt::to_buf_n(ktx2ColormapPath, sizeof(ktx2ColormapPath), "{}", mc2::fmt::safe((const char*)ktx2Path));
-			printf("[COLORMAP] COLORMAP-BC7-KTX2-1: found sidecar %s\n", ktx2ColormapPath);
+			mc2::fmt::print_out("[COLORMAP] COLORMAP-BC7-KTX2-1: found sidecar {}\n", mc2::fmt::safe(ktx2ColormapPath));
 		}
 	}
 
@@ -749,7 +747,7 @@ long TerrainColorMap::init (char *fileName)
 	}
 
 	// Load terrain material texture arrays (4 PBR material sets)
-	printf("[SPLATTING] starting material array load\n");
+	mc2::fmt::print_out("[SPLATTING] starting material array load\n");
 	{
 		ZoneScopedN("TerrainColorMap::init materialArrays");
 		const char* normalNames[9] = {
@@ -769,9 +767,9 @@ long TerrainColorMap::init (char *fileName)
 		{
 			FullPathFileName nmPath;
 			nmPath.init(texturePath, normalNames[mat], ".tga");
-			printf("[SPLATTING] checking: %s\n", (const char*)nmPath);
+			mc2::fmt::print_out("[SPLATTING] checking: {}\n", mc2::fmt::safe((const char*)nmPath));
 			if (!fileExists(nmPath)) {
-				printf("[SPLATTING] NOT FOUND: %s%s\n", (const char*)nmPath, mat >= 4 ? " (optional slot skipped)" : "");
+				mc2::fmt::print_out("[SPLATTING] NOT FOUND: {}{}\n", mc2::fmt::safe((const char*)nmPath), mc2::fmt::safe(mat >= 4 ? " (optional slot skipped)" : ""));
 				// mat4+ are optional — missing file leaves the slot empty but doesn't fail the load.
 				if (mat >= 4) continue;
 				allLoaded = false; break;
@@ -845,15 +843,15 @@ long TerrainColorMap::init (char *fileName)
 		}
 
 		if (allLoaded) {
-			printf("[SPLATTING] all loaded OK, width=%d, creating individual textures\n", arrayWidth);
+			mc2::fmt::print_out("[SPLATTING] all loaded OK, width={:d}, creating individual textures\n", mc2::fmt::as_i32(arrayWidth));
 			for (int i = 0; i < 9; i++) {
 				if (!normalLayers[i]) continue;  // optional slot absent
 				unsigned int nmId = gos_CreateTerrainNormalTexture(normalLayers[i], arrayWidth);
-				printf("[SPLATTING] matNormal%d GL id=%u\n", i, nmId);
+				mc2::fmt::print_out("[SPLATTING] matNormal{:d} GL id={:d}\n", mc2::fmt::as_i32(i), mc2::fmt::as_u32(nmId));
 				gos_SetTerrainMaterialNormal(i, nmId);
 			}
 		} else {
-			printf("[SPLATTING] FAILED to load all material textures\n");
+			mc2::fmt::print_out("[SPLATTING] FAILED to load all material textures\n");
 		}
 
 		// Retain CPU copy of matNormal2 alpha for terrain elevation displacement
@@ -867,7 +865,7 @@ long TerrainColorMap::init (char *fileName)
 			for (long i = 0; i < pixels; i++) {
 				cpuDispAlpha[i] = src[i * 4 + 3]; // alpha channel (RGBA layout)
 			}
-			printf("[SPLATTING] retained matNormal2 alpha on CPU (%dx%d)\n", arrayWidth, arrayWidth);
+			mc2::fmt::print_out("[SPLATTING] retained matNormal2 alpha on CPU ({:d}x{:d})\n", mc2::fmt::as_i32(arrayWidth), mc2::fmt::as_i32(arrayWidth));
 		}
 
 		for (int i = 0; i < 9; i++) {

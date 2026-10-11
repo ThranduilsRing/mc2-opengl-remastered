@@ -530,7 +530,7 @@ void __stdcall DoGameLogic()
 						SmokeMode::markMissionReady();
 						s_missionReadyMarked = true;
 						if (mc2::gate::get<"MC2_FRAMECAP_TRACE">()) {
-							fprintf(stderr, "[FRAMECAP] markMissionReady fired (mission active)\n");
+							mc2::fmt::print_err("[FRAMECAP] markMissionReady fired (mission active)\n");
 							fflush(stderr);
 						}
 					}

@@ -11,6 +11,7 @@
 #include"particles/batcher.h"
 #include"particles/spawn.h"
 #include<cstdio>   // VFX-ORACLE diagnostics (VFX-CARD-ORACLE-HARVEST-1)
+#include "mc2fmt.h"
 
 //############################################################################
 //########################  gosFX::Card__Specification  #############################
@@ -588,17 +589,7 @@ void gosFX::Card::Draw(DrawInfo *info)
 				static bool s_first = false;
 				if (!s_first) {
 					s_first = true;
-					std::fprintf(stderr,
-						"[VFX_ORACLE v1] class=Card FIRST_HARVEST spec=\"%s\" animated=%d atlasColumns=%u sizeRange=[%.2f,%.2f] uvRect=[%.3f,%.3f,%.3f,%.3f] alpha=%.3f ageRange=[%.3f,%.3f]\n",
-						static_cast<const char*>(spec->m_name),
-						static_cast<int>(spec->m_animated),
-						atlasColumns,
-						static_cast<double>(gp.velocity[0]),
-						static_cast<double>(gp.velocity[1]),
-						static_cast<double>(tileU0), static_cast<double>(tileV0),
-						static_cast<double>(tileUs), static_cast<double>(tileVs),
-						static_cast<double>(m_color.alpha),
-						static_cast<double>(gp.age), static_cast<double>(gp.age));
+					mc2::fmt::print_err("[VFX_ORACLE v1] class=Card FIRST_HARVEST spec=\"{}\" animated={:d} atlasColumns={:d} sizeRange=[{:.2f},{:.2f}] uvRect=[{:.3f},{:.3f},{:.3f},{:.3f}] alpha={:.3f} ageRange=[{:.3f},{:.3f}]\n", mc2::fmt::safe(static_cast<const char*>(spec->m_name)), mc2::fmt::as_i32(static_cast<int>(spec->m_animated)), mc2::fmt::as_u32(atlasColumns), static_cast<double>(gp.velocity[0]), static_cast<double>(gp.velocity[1]), static_cast<double>(tileU0), static_cast<double>(tileV0), static_cast<double>(tileUs), static_cast<double>(tileVs), static_cast<double>(m_color.alpha), static_cast<double>(gp.age), static_cast<double>(gp.age));
 					std::fflush(stderr);
 				}
 			}

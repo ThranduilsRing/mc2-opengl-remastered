@@ -398,11 +398,7 @@ void Mission::loadTeamsAndObjects(MissionLoadFrame& f) {
 	{
 		static const bool s_mechRestoreTrace = mc2::gate::get<"MC2_MECH_RESTORE_TRACE">();
 		if (s_mechRestoreTrace)
-			fprintf(stderr,
-				"[MECHRESTORE v1] event=saveload_phase phase=post_objmgr_load "
-				"mechFinalized=%d appearanceListNull=%d\n",
-				GpuMechBatcher::instance().isFinalized() ? 1 : 0,
-				(appearanceTypeList == nullptr) ? 1 : 0);
+			mc2::fmt::print_err("[MECHRESTORE v1] event=saveload_phase phase=post_objmgr_load mechFinalized={:d} appearanceListNull={:d}\n", mc2::fmt::as_i32(GpuMechBatcher::instance().isFinalized() ? 1 : 0), mc2::fmt::as_i32((appearanceTypeList == nullptr) ? 1 : 0));
 	}
 
 	// Stage 0.5 §0 prereq (continued, Block B): gpu_cull substrate/compute/readback
@@ -427,10 +423,7 @@ void Mission::loadTeamsAndObjects(MissionLoadFrame& f) {
 	{
 		static const bool s_mechRestoreTrace = mc2::gate::get<"MC2_MECH_RESTORE_TRACE">();
 		if (s_mechRestoreTrace)
-			fprintf(stderr,
-				"[MECHRESTORE v1] event=saveload_phase phase=post_init_mirror "
-				"maxActors=%u\n",
-				(uint32_t)ObjectManager->getMaxObjects());
+			mc2::fmt::print_err("[MECHRESTORE v1] event=saveload_phase phase=post_init_mirror maxActors={:d}\n", mc2::fmt::as_u32((uint32_t)ObjectManager->getMaxObjects()));
 	}
 
 	ObjectManager->buildMoverLists();
@@ -647,11 +640,7 @@ void Mission::loadActivateAndFinalize() {
 	{
 		static const bool s_mechRestoreTrace = mc2::gate::get<"MC2_MECH_RESTORE_TRACE">();
 		if (s_mechRestoreTrace)
-			fprintf(stderr,
-				"[MECHRESTORE v1] event=saveload_phase phase=post_finalize "
-				"mechFinalized=%d appearanceListNull=%d\n",
-				GpuMechBatcher::instance().isFinalized() ? 1 : 0,
-				(appearanceTypeList == nullptr) ? 1 : 0);
+			mc2::fmt::print_err("[MECHRESTORE v1] event=saveload_phase phase=post_finalize mechFinalized={:d} appearanceListNull={:d}\n", mc2::fmt::as_i32(GpuMechBatcher::instance().isFinalized() ? 1 : 0), mc2::fmt::as_i32((appearanceTypeList == nullptr) ? 1 : 0));
 	}
 }
 

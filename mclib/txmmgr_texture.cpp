@@ -192,7 +192,7 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 			if (uniqueInstance == masterTextureNodes[i].uniqueInstance)
 			{
 				if (mc2::gate::get<"MC2_LOG_MECH_ICON">() && strstr(textureFullPathName, "mechicon"))
-					printf("[MECHICON] loadTexture CACHE-HIT id=%ld: %s\n", i, textureFullPathName);
+					mc2::fmt::print_out("[MECHICON] loadTexture CACHE-HIT id={:d}: {}\n", mc2::fmt::as_i32(i), mc2::fmt::safe(textureFullPathName));
 				masterTextureNodes[i].numUsers++;
 				return(i);							//Return the texture Node Id Now.
 			}
@@ -222,7 +222,7 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 	}
 
  	if (mc2::gate::get<"MC2_LOG_MECH_ICON">() && strstr(textureFullPathName, "mechicon"))
-		printf("[MECHICON] loadTexture FRESH id=%ld: %s\n", i, textureFullPathName);
+		mc2::fmt::print_out("[MECHICON] loadTexture FRESH id={:d}: {}\n", mc2::fmt::as_i32(i), mc2::fmt::safe(textureFullPathName));
 	// New Method.  Just store memory footprint of texture.
 	// DO NOT create GOS handle until we need it.
  	masterTextureNodes[i].gosTextureHandle = CACHED_OUT_HANDLE;
@@ -303,7 +303,7 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 				}
 				else
 					masterTextureNodes[i].gosTextureHandle = 0;
-				printf("[TEXMGR_KTX_PRIMARY] %s -> RGBA8 %dx%d (ktx2 CPU decode)\n", sidecar, kw, kh); fflush(stdout);
+				mc2::fmt::print_out("[TEXMGR_KTX_PRIMARY] {} -> RGBA8 {:d}x{:d} (ktx2 CPU decode)\n", mc2::fmt::safe(sidecar), mc2::fmt::as_i32(kw), mc2::fmt::as_i32(kh)); fflush(stdout);
 				return(i);
 			}
 		}
@@ -745,7 +745,7 @@ DWORD MC_TextureNode::get_gosTextureHandle (void)	//If texture is not in VidRAM,
 						if (!s_warnedNoBptc)
 						{
 							s_warnedNoBptc = true;
-							printf("[TEXMGR_BC7] skip: GLEW_ARB_texture_compression_bptc unsupported; compressed upload disabled\n");
+							mc2::fmt::print_out("[TEXMGR_BC7] skip: GLEW_ARB_texture_compression_bptc unsupported; compressed upload disabled\n");
 						}
 					}
 					else
@@ -797,17 +797,16 @@ DWORD MC_TextureNode::get_gosTextureHandle (void)	//If texture is not in VidRAM,
 									{
 										gosTextureHandle = h;
 										uploadedCompressed = true;
-										printf("[TEXMGR_BC7] loaded name=%s %dx%d fmt=0x%x bytes=%zu\n",
-											nodeName, img.width, img.height, (unsigned)glIF, mip0Bytes);
+										mc2::fmt::print_out("[TEXMGR_BC7] loaded name={} {:d}x{:d} fmt=0x{:x} bytes={:d}\n", mc2::fmt::safe(nodeName), mc2::fmt::as_i32(img.width), mc2::fmt::as_i32(img.height), mc2::fmt::as_u32((unsigned)glIF), mc2::fmt::as_size(mip0Bytes));
 									}
 									else
 									{
-										printf("[TEXMGR_BC7] upload failed name=%s; fallthrough RGBA8\n", nodeName);
+										mc2::fmt::print_out("[TEXMGR_BC7] upload failed name={}; fallthrough RGBA8\n", mc2::fmt::safe(nodeName));
 									}
 								}
 								else
 								{
-									printf("[TEXMGR_BC7] sidecar not BC7/loadable name=%s; fallthrough RGBA8\n", sidecar);
+									mc2::fmt::print_out("[TEXMGR_BC7] sidecar not BC7/loadable name={}; fallthrough RGBA8\n", mc2::fmt::safe(sidecar));
 								}
 							}
 						}

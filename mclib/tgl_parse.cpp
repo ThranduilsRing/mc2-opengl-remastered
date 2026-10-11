@@ -759,7 +759,7 @@ void TG_TypeShape::InitFromImportedMesh(const char* nodeIdIn, const char* parent
 		char trunc[TG_NODE_ID];
 		strncpy(trunc, nodeIdIn, TG_NODE_ID - 1);
 		trunc[TG_NODE_ID - 1] = '\0';
-		printf("[MECH_SKEL] nodeId truncated: '%s' -> '%s'\n", nodeIdIn, trunc);
+		mc2::fmt::print_out("[MECH_SKEL] nodeId truncated: '{}' -> '{}'\n", mc2::fmt::safe(nodeIdIn), mc2::fmt::safe(trunc));
 		fflush(stdout);
 	}
 	strncpy(nodeId, nodeIdIn ? nodeIdIn : "", TG_NODE_ID - 1);

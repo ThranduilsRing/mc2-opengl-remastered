@@ -487,10 +487,7 @@ namespace {
 	static bool s_pkAtexit=false;
 	static void pkEmit() {
 		if (!s_pickRecon) return;
-		std::printf("[PICK_RECON v1] event=shutdown calls=%llu candidates=%llu inRect=%llu "
-			"rectProj=%llu total_ms=%.1f avg_us=%.1f max_us=%.1f max_candidates_call=%llu\n",
-			s_pkCalls, s_pkCandidates, s_pkInRect, s_pkRectProj, (double)s_pkNs/1e6,
-			s_pkCalls?(double)s_pkNs/s_pkCalls/1000.0:0.0, (double)s_pkMaxNs/1000.0, s_pkMaxCand);
+		mc2::fmt::print_out("[PICK_RECON v1] event=shutdown calls={:d} candidates={:d} inRect={:d} rectProj={:d} total_ms={:.1f} avg_us={:.1f} max_us={:.1f} max_candidates_call={:d}\n", mc2::fmt::as_u64(s_pkCalls), mc2::fmt::as_u64(s_pkCandidates), mc2::fmt::as_u64(s_pkInRect), mc2::fmt::as_u64(s_pkRectProj), (double)s_pkNs/1e6, s_pkCalls?(double)s_pkNs/s_pkCalls/1000.0:0.0, (double)s_pkMaxNs/1000.0, mc2::fmt::as_u64(s_pkMaxCand));
 		std::fflush(stdout);
 	}
 	struct PkTimer {

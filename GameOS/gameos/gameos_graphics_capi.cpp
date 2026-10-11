@@ -217,8 +217,7 @@ DWORD __stdcall gos_NewCompressedTexture2D( uint32_t glInternalFormat, int w, in
     GLenum err = glGetError();
     glBindTexture(GL_TEXTURE_2D, 0);
     if(err != GL_NO_ERROR) {
-        printf("[TEXMGR_BC7] glCompressedTexImage2D failed name=%s %dx%d fmt=0x%x err=%s\n",
-               name ? name : "<null>", w, h, glInternalFormat, ogl_get_error_code_str(err));
+        mc2::fmt::print_out("[TEXMGR_BC7] glCompressedTexImage2D failed name={} {:d}x{:d} fmt=0x{:x} err={}\n", mc2::fmt::safe(name ? name : "<null>"), mc2::fmt::as_i32(w), mc2::fmt::as_i32(h), mc2::fmt::as_u32(glInternalFormat), mc2::fmt::safe(ogl_get_error_code_str(err)));
         glDeleteTextures(1, &texID);
         return INVALID_TEXTURE_ID;
     }

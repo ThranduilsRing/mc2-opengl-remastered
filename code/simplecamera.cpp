@@ -20,6 +20,7 @@ SimpleCamera.cpp	: Implementation of the SimpleCamera component.
 // sebi: !NB remove when assert(0 && "test") is removed below
 #include <cassert>
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 extern bool useShadows;
 extern bool drawOldWay;
@@ -150,7 +151,7 @@ void SimpleCamera::render(long xOffset, long yOffset)
 	if ( mc2::gate::get<"MC2_LOG_PREVIEW">() )
 	{
 		FILE* f = fopen("preview_debug.log","a");
-		if (f) { fprintf(f,"[PREVIEW] SimpleCamera::render pObject=%p bIsComponent=%d\n",(void*)pObject,(int)bIsComponent); fflush(f); fclose(f); }
+		if (f) { mc2::fmt::print(f, "[PREVIEW] SimpleCamera::render pObject={:016X} bIsComponent={:d}\n", mc2::fmt::as_ptr((void*)pObject), mc2::fmt::as_i32((int)bIsComponent)); fflush(f); fclose(f); }
 	}
 
 	if ( pObject )
@@ -171,7 +172,7 @@ void SimpleCamera::render(long xOffset, long yOffset)
 			{
 				GLint fboAfterBegin = 0; glGetIntegerv(GL_FRAMEBUFFER_BINDING, &fboAfterBegin);
 				FILE* f = fopen("preview_debug.log","a");
-				if (f) { fprintf(f,"[PREVIEW] fboAfterBegin=%d\n", fboAfterBegin); fflush(f); fclose(f); }
+				if (f) { mc2::fmt::print(f, "[PREVIEW] fboAfterBegin={:d}\n", mc2::fmt::as_i32(fboAfterBegin)); fflush(f); fclose(f); }
 			}
 		}
 
@@ -209,9 +210,7 @@ void SimpleCamera::render(long xOffset, long yOffset)
 		if ( mc2::gate::get<"MC2_LOG_PREVIEW">() )
 		{
 			FILE* f = fopen("preview_debug.log","a");
-			if (f) { fprintf(f,"[PREVIEW] gos_GetViewport viewMul=%.1f,%.1f viewAdd=%.1f,%.1f EnvScreen=%d,%d bounds=[%.1f,%.1f,%.1f,%.1f]\n",
-				viewMulX, viewMulY, viewAddX, viewAddY, Environment.screenWidth, Environment.screenHeight,
-				bounds[0], bounds[1], bounds[2], bounds[3]); fflush(f); fclose(f); }
+			if (f) { mc2::fmt::print(f, "[PREVIEW] gos_GetViewport viewMul={:.1f},{:.1f} viewAdd={:.1f},{:.1f} EnvScreen={:d},{:d} bounds=[{:.1f},{:.1f},{:.1f},{:.1f}]\n", viewMulX, viewMulY, viewAddX, viewAddY, mc2::fmt::as_i32(Environment.screenWidth), mc2::fmt::as_i32(Environment.screenHeight), bounds[0], bounds[1], bounds[2], bounds[3]); fflush(f); fclose(f); }
 		}
 
 		//--------------------------------------------------------
@@ -266,11 +265,7 @@ void SimpleCamera::render(long xOffset, long yOffset)
 			{
 				FILE* f = fopen("preview_debug.log","a");
 				if (f) {
-					fprintf(f,"[PREVIEW] cameraToClip=[%.3f %.3f %.3f %.3f / %.3f %.3f %.3f %.3f / %.3f %.3f %.3f %.3f / %.3f %.3f %.3f %.3f]\n",
-						cameraToClip(0,0), cameraToClip(0,1), cameraToClip(0,2), cameraToClip(0,3),
-						cameraToClip(1,0), cameraToClip(1,1), cameraToClip(1,2), cameraToClip(1,3),
-						cameraToClip(2,0), cameraToClip(2,1), cameraToClip(2,2), cameraToClip(2,3),
-						cameraToClip(3,0), cameraToClip(3,1), cameraToClip(3,2), cameraToClip(3,3));
+					mc2::fmt::print(f, "[PREVIEW] cameraToClip=[{:.3f} {:.3f} {:.3f} {:.3f} / {:.3f} {:.3f} {:.3f} {:.3f} / {:.3f} {:.3f} {:.3f} {:.3f} / {:.3f} {:.3f} {:.3f} {:.3f}]\n", cameraToClip(0,0), cameraToClip(0,1), cameraToClip(0,2), cameraToClip(0,3), cameraToClip(1,0), cameraToClip(1,1), cameraToClip(1,2), cameraToClip(1,3), cameraToClip(2,0), cameraToClip(2,1), cameraToClip(2,2), cameraToClip(2,3), cameraToClip(3,0), cameraToClip(3,1), cameraToClip(3,2), cameraToClip(3,3));
 					fflush(f); fclose(f);
 				}
 			}
@@ -333,9 +328,7 @@ void SimpleCamera::render(long xOffset, long yOffset)
 				GLint fbo = 0; glGetIntegerv(GL_FRAMEBUFFER_BINDING, &fbo);
 				FILE* f = fopen("preview_debug.log","a");
 				if (f) {
-					fprintf(f,"[PREVIEW] pre-draw fbo=%d depthTest=%d depthMask=%d cullFace=%d frontFace=0x%X cullMode=0x%X vp=[%d,%d,%d,%d] globalScaleFactor=%.4f bounds=[%.0f,%.0f,%.0f,%.0f]\n",
-						fbo, (int)depthTest, (int)depthMask, (int)cullFace, (unsigned)frontFace, (unsigned)cullMode, vp[0],vp[1],vp[2],vp[3], globalScaleFactor,
-						bounds[0],bounds[1],bounds[2],bounds[3]);
+					mc2::fmt::print(f, "[PREVIEW] pre-draw fbo={:d} depthTest={:d} depthMask={:d} cullFace={:d} frontFace=0x{:X} cullMode=0x{:X} vp=[{:d},{:d},{:d},{:d}] globalScaleFactor={:.4f} bounds=[{:.0f},{:.0f},{:.0f},{:.0f}]\n", mc2::fmt::as_i32(fbo), mc2::fmt::as_i32((int)depthTest), mc2::fmt::as_i32((int)depthMask), mc2::fmt::as_i32((int)cullFace), mc2::fmt::as_u32((unsigned)frontFace), mc2::fmt::as_u32((unsigned)cullMode), mc2::fmt::as_i32(vp[0]), mc2::fmt::as_i32(vp[1]), mc2::fmt::as_i32(vp[2]), mc2::fmt::as_i32(vp[3]), globalScaleFactor, bounds[0], bounds[1], bounds[2], bounds[3]);
 					fflush(f); fclose(f);
 				}
 			}
@@ -393,9 +386,7 @@ void SimpleCamera::render(long xOffset, long yOffset)
 				}
 				FILE* f = fopen("preview_debug.log","a");
 				if (f) {
-					fprintf(f,"[PREVIEW] post-draw glErr=0x%X centerPx(%d,%d)=RGBA(%d,%d,%d,%d) cornerPx(10,10)=RGBA(%d,%d,%d,%d) nonBgCount=%d bbox=[%d,%d,%d,%d]\n",
-						(unsigned)err, cx, cy, centerPx[0],centerPx[1],centerPx[2],centerPx[3],
-						cornerPx[0],cornerPx[1],cornerPx[2],cornerPx[3], nonBgCount, minX,minY,maxX,maxY);
+					mc2::fmt::print(f, "[PREVIEW] post-draw glErr=0x{:X} centerPx({:d},{:d})=RGBA({:d},{:d},{:d},{:d}) cornerPx(10,10)=RGBA({:d},{:d},{:d},{:d}) nonBgCount={:d} bbox=[{:d},{:d},{:d},{:d}]\n", mc2::fmt::as_u32((unsigned)err), mc2::fmt::as_i32(cx), mc2::fmt::as_i32(cy), mc2::fmt::as_i32(centerPx[0]), mc2::fmt::as_i32(centerPx[1]), mc2::fmt::as_i32(centerPx[2]), mc2::fmt::as_i32(centerPx[3]), mc2::fmt::as_i32(cornerPx[0]), mc2::fmt::as_i32(cornerPx[1]), mc2::fmt::as_i32(cornerPx[2]), mc2::fmt::as_i32(cornerPx[3]), mc2::fmt::as_i32(nonBgCount), mc2::fmt::as_i32(minX), mc2::fmt::as_i32(minY), mc2::fmt::as_i32(maxX), mc2::fmt::as_i32(maxY));
 					fflush(f); fclose(f);
 				}
 			}
@@ -475,8 +466,7 @@ void SimpleCamera::drawPreviewToPanel( float panelX, float panelY, float panelW,
 	{
 		FILE* f = fopen("preview_debug.log","a");
 		if (f) {
-			fprintf(f,"[PREVIEW] drawPreviewToPanel tex=%u panel=[%.1f,%.1f,%.1f,%.1f] uv=[%.3f,%.3f,%.3f,%.3f] readyForUi=%d\n",
-				tex, panelX, panelY, panelW, panelH, u1, v1, u2, v2, (int)GuiRuntime::IsReadyForUiText());
+			mc2::fmt::print(f, "[PREVIEW] drawPreviewToPanel tex={:d} panel=[{:.1f},{:.1f},{:.1f},{:.1f}] uv=[{:.3f},{:.3f},{:.3f},{:.3f}] readyForUi={:d}\n", mc2::fmt::as_u32(tex), panelX, panelY, panelW, panelH, u1, v1, u2, v2, mc2::fmt::as_i32((int)GuiRuntime::IsReadyForUiText()));
 			fflush(f); fclose(f);
 		}
 	}
@@ -487,7 +477,7 @@ void SimpleCamera::drawPreviewToPanel( float panelX, float panelY, float panelW,
 	if ( mc2::gate::get<"MC2_LOG_PREVIEW">() )
 	{
 		FILE* f = fopen("preview_debug.log","a");
-		if (f) { fprintf(f,"[PREVIEW] DrawUiImage returned %d\n", (int)ok); fflush(f); fclose(f); }
+		if (f) { mc2::fmt::print(f, "[PREVIEW] DrawUiImage returned {:d}\n", mc2::fmt::as_i32((int)ok)); fflush(f); fclose(f); }
 	}
 #else
 	(void)panelX; (void)panelY; (void)panelW; (void)panelH;
@@ -578,8 +568,7 @@ long SimpleCamera::update()
 		if ( mc2::gate::get<"MC2_LOG_PREVIEW">() )
 		{
 			FILE* f = fopen("preview_debug.log","a");
-			if (f) { fprintf(f,"[PREVIEW] update bounds=[%.0f,%.0f,%.0f,%.0f] viewMul=%.0f,%.0f off=%.1f,%.1f scale=%.3f Alt=%.0f mechPos=%.1f,%.1f,%.1f\n",
-				bounds[0],bounds[1],bounds[2],bounds[3],viewMulX,viewMulY,offsetX,offsetY,shapeScale,AltitudeTight,mechPos.x,mechPos.y,mechPos.z); fflush(f); fclose(f); }
+			if (f) { mc2::fmt::print(f, "[PREVIEW] update bounds=[{:.0f},{:.0f},{:.0f},{:.0f}] viewMul={:.0f},{:.0f} off={:.1f},{:.1f} scale={:.3f} Alt={:.0f} mechPos={:.1f},{:.1f},{:.1f}\n", bounds[0], bounds[1], bounds[2], bounds[3], viewMulX, viewMulY, offsetX, offsetY, shapeScale, AltitudeTight, mechPos.x, mechPos.y, mechPos.z); fflush(f); fclose(f); }
 		}
 
 		eye = oldCam;

@@ -1,6 +1,7 @@
 // TerrainQuad: the editor-only legacy per-quad texture setup (setupTextures) with the terrain recipe cache and the projectZ overlay emit.
 // Declared in the class headers; shared names in quad_internal.h.
 #include "quad_internal.h"
+#include "mc2fmt.h"
 
 
 // Per-quad scratch for the four BoolAdmission per-vertex projectZ calls in
@@ -141,18 +142,13 @@ static void shapeC_checkParity(
 		fabsf(inlineR.uvData.maxV - e.uvData.maxV) > 1e-5f)
 	{
 		if (s_mismatches < 10)
-			printf("[SHAPE_C] MISMATCH uvData site=%s tileR=%ld tileC=%ld"
-				   " inline=(%.5f,%.5f,%.5f,%.5f) cached=(%.5f,%.5f,%.5f,%.5f)\n",
-				   siteTag, tileR, tileC,
-				   inlineR.uvData.minU, inlineR.uvData.minV,
-				   inlineR.uvData.maxU, inlineR.uvData.maxV,
-				   e.uvData.minU, e.uvData.minV, e.uvData.maxU, e.uvData.maxV);
+			mc2::fmt::print_out("[SHAPE_C] MISMATCH uvData site={} tileR={:d} tileC={:d} inline=({:.5f},{:.5f},{:.5f},{:.5f}) cached=({:.5f},{:.5f},{:.5f},{:.5f})\n", mc2::fmt::safe(siteTag), mc2::fmt::as_i32(tileR), mc2::fmt::as_i32(tileC), inlineR.uvData.minU, inlineR.uvData.minV, inlineR.uvData.maxU, inlineR.uvData.maxV, e.uvData.minU, e.uvData.minV, e.uvData.maxU, e.uvData.maxV);
 		ok = false; ++s_mismatches;
 	}
 
 	// Summary every 10000 checks and on first check of session.
 	if (s_checks == 1 || s_checks % 10000 == 0)
-		printf("[SHAPE_C] parity checks=%d mismatches=%d\n", s_checks, s_mismatches);
+		mc2::fmt::print_out("[SHAPE_C] parity checks={:d} mismatches={:d}\n", mc2::fmt::as_i32(s_checks), mc2::fmt::as_i32(s_mismatches));
 	(void)ok;
 }
 

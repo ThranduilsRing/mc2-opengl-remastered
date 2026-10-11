@@ -2,6 +2,7 @@
 // retreat, clear-move, target priority, patrol and the FSM verbs. The dispatch loop is in brain_special_dispatch.cpp.
 #include "brain_special_internal.h"
 #include "brain_special_frame.h"
+#include "mc2fmt.h"
 
 
 // Switch the warrior power state (Brain.CorePower false).
@@ -10,14 +11,13 @@ void applyCorePower(MechWarrior* warrior, int wid, MechBrainRuntime* runtime, bo
     // NOTE: This fires only for the ROOT body. Chained-body POWERDOWN = 1B.
     if (runtime) {
         emitBrainIntent(runtime, wid, TACTICAL_ORDER_POWERDOWN, -1, 0,0,0, 0);
-        std::fprintf(stderr, "[BRAIN_INTENT_EMIT] verb=Brain.CorePower order=POWERDOWN tick=%u wid=%d\n",
-                     getBrainTickIndex(), wid);
+        mc2::fmt::print_err("[BRAIN_INTENT_EMIT] verb=Brain.CorePower order=POWERDOWN tick={:d} wid={:d}\n", mc2::fmt::as_u32(getBrainTickIndex()), mc2::fmt::as_i32(wid));
         std::fflush(stderr);
     } else {
         TacticalOrder pdOrder;
         pdOrder.init(ORDER_ORIGIN_SELF, TACTICAL_ORDER_POWERDOWN);
         warrior->setGeneralTacOrder(pdOrder);
-        std::fprintf(stderr, "[BRAIN_DISPATCH_APPLY] verb=Brain.CorePower effect=POWERDOWN wid=%d\n", wid);
+        mc2::fmt::print_err("[BRAIN_DISPATCH_APPLY] verb=Brain.CorePower effect=POWERDOWN wid={:d}\n", mc2::fmt::as_i32(wid));
         std::fflush(stderr);
     }
     appliedEffect = true;
@@ -29,14 +29,13 @@ void applyUnitEject(MechWarrior* warrior, int wid, MechBrainRuntime* runtime, bo
     // ROOT BODY ONLY. Fires exactly once (ejectEffectApplied once-guard in warrior.cpp).
     if (runtime) {
         emitBrainIntent(runtime, wid, TACTICAL_ORDER_EJECT, -1, 0,0,0, 0);
-        std::fprintf(stderr, "[BRAIN_INTENT_EMIT] verb=Unit.Eject order=EJECT tick=%u wid=%d\n",
-                     getBrainTickIndex(), wid);
+        mc2::fmt::print_err("[BRAIN_INTENT_EMIT] verb=Unit.Eject order=EJECT tick={:d} wid={:d}\n", mc2::fmt::as_u32(getBrainTickIndex()), mc2::fmt::as_i32(wid));
         std::fflush(stderr);
     } else {
         TacticalOrder ejectOrder;
         ejectOrder.init(ORDER_ORIGIN_SELF, TACTICAL_ORDER_EJECT);
         warrior->setGeneralTacOrder(ejectOrder);
-        std::fprintf(stderr, "[BRAIN_DISPATCH_APPLY] verb=Unit.Eject effect=EJECT wid=%d\n", wid);
+        mc2::fmt::print_err("[BRAIN_DISPATCH_APPLY] verb=Unit.Eject effect=EJECT wid={:d}\n", mc2::fmt::as_i32(wid));
         std::fflush(stderr);
     }
     appliedEffect = true;
@@ -48,14 +47,13 @@ void applyCoreGuard(MechWarrior* warrior, int wid, MechBrainRuntime* runtime, bo
     // ROOT BODY ONLY. Fires exactly once (guardEffectApplied once-guard in warrior.cpp).
     if (runtime) {
         emitBrainIntent(runtime, wid, TACTICAL_ORDER_GUARD, -1, 0,0,0, 0);
-        std::fprintf(stderr, "[BRAIN_INTENT_EMIT] verb=OPORD.CoreGuard order=GUARD tick=%u wid=%d\n",
-                     getBrainTickIndex(), wid);
+        mc2::fmt::print_err("[BRAIN_INTENT_EMIT] verb=OPORD.CoreGuard order=GUARD tick={:d} wid={:d}\n", mc2::fmt::as_u32(getBrainTickIndex()), mc2::fmt::as_i32(wid));
         std::fflush(stderr);
     } else {
         TacticalOrder guardOrder;
         guardOrder.init(ORDER_ORIGIN_SELF, TACTICAL_ORDER_GUARD);
         warrior->setGeneralTacOrder(guardOrder);
-        std::fprintf(stderr, "[BRAIN_DISPATCH_APPLY] verb=OPORD.CoreGuard effect=GUARD wid=%d\n", wid);
+        mc2::fmt::print_err("[BRAIN_DISPATCH_APPLY] verb=OPORD.CoreGuard effect=GUARD wid={:d}\n", mc2::fmt::as_i32(wid));
         std::fflush(stderr);
     }
     appliedEffect = true;
@@ -78,30 +76,29 @@ void applyCoreMoveTo(MechWarrior* warrior, int wid, MechBrainRuntime* runtime, b
     char* endp = nullptr;
     float mx = std::strtof(args, &endp);
     if (endp == args) {
-        std::fprintf(stderr, "[BRAIN_DISPATCH_MOVETO_PARSE_FAIL] verb=%s wid=%d\n", vp, wid);
+        mc2::fmt::print_err("[BRAIN_DISPATCH_MOVETO_PARSE_FAIL] verb={} wid={:d}\n", mc2::fmt::safe(vp), mc2::fmt::as_i32(wid));
         std::fflush(stderr);
     } else {
         args = endp;
         while (*args == ' ') ++args;
         float my = std::strtof(args, &endp);
         if (endp == args) {
-            std::fprintf(stderr, "[BRAIN_DISPATCH_MOVETO_PARSE_FAIL] verb=%s wid=%d\n", vp, wid);
+            mc2::fmt::print_err("[BRAIN_DISPATCH_MOVETO_PARSE_FAIL] verb={} wid={:d}\n", mc2::fmt::safe(vp), mc2::fmt::as_i32(wid));
             std::fflush(stderr);
         } else {
             args = endp;
             while (*args == ' ') ++args;
             float mz = std::strtof(args, &endp);
             if (endp == args) {
-                std::fprintf(stderr, "[BRAIN_DISPATCH_MOVETO_PARSE_FAIL] verb=%s wid=%d\n", vp, wid);
+                mc2::fmt::print_err("[BRAIN_DISPATCH_MOVETO_PARSE_FAIL] verb={} wid={:d}\n", mc2::fmt::safe(vp), mc2::fmt::as_i32(wid));
                 std::fflush(stderr);
             } else if (std::isnan(mx) || std::isnan(my) || std::isnan(mz)) {
-                std::fprintf(stderr, "[BRAIN_DISPATCH_MOVETO_NAN] x=%g y=%g z=%g wid=%d\n", mx, my, mz, wid);
+                mc2::fmt::print_err("[BRAIN_DISPATCH_MOVETO_NAN] x={:g} y={:g} z={:g} wid={:d}\n", mx, my, mz, mc2::fmt::as_i32(wid));
                 std::fflush(stderr);
             } else if (runtime) {
                 // Gate ON: emit intent; commitBrainIntents rebuilds the TacticalOrder.
                 emitBrainIntent(runtime, wid, TACTICAL_ORDER_MOVETO_POINT, -1, mx, my, mz, 0);
-                std::fprintf(stderr, "[BRAIN_INTENT_EMIT] verb=OPORD.CoreMoveTo order=MOVETO_POINT pos=(%g %g %g) tick=%u wid=%d\n",
-                             mx, my, mz, getBrainTickIndex(), wid);
+                mc2::fmt::print_err("[BRAIN_INTENT_EMIT] verb=OPORD.CoreMoveTo order=MOVETO_POINT pos=({:g} {:g} {:g}) tick={:d} wid={:d}\n", mx, my, mz, mc2::fmt::as_u32(getBrainTickIndex()), mc2::fmt::as_i32(wid));
                 std::fflush(stderr);
                 appliedEffect = true;
             } else {
@@ -119,8 +116,7 @@ void applyCoreMoveTo(MechWarrior* warrior, int wid, MechBrainRuntime* runtime, b
                 moveOrder.moveParams.wayPath.mode[0] = TRAVEL_MODE_FAST;
                 moveOrder.pack(nullptr, nullptr);
                 warrior->setGeneralTacOrder(moveOrder);
-                std::fprintf(stderr, "[BRAIN_DISPATCH_APPLY] verb=OPORD.CoreMoveTo effect=MOVETO_POINT pos=(%g %g %g) wid=%d\n",
-                             mx, my, mz, wid);
+                mc2::fmt::print_err("[BRAIN_DISPATCH_APPLY] verb=OPORD.CoreMoveTo effect=MOVETO_POINT pos=({:g} {:g} {:g}) wid={:d}\n", mx, my, mz, mc2::fmt::as_i32(wid));
                 std::fflush(stderr);
                 appliedEffect = true;
             }
@@ -151,27 +147,26 @@ void applyCoreAttack(MechWarrior* warrior, int wid, MechBrainRuntime* runtime, b
     char* aendp = nullptr;
     long parsedWID = std::strtol(aargs, &aendp, 10);
     if (aendp == aargs) {
-        std::fprintf(stderr, "[BRAIN_DISPATCH_ATTACK_PARSE_FAIL] verb=%s wid=%d\n", vp, wid);
+        mc2::fmt::print_err("[BRAIN_DISPATCH_ATTACK_PARSE_FAIL] verb={} wid={:d}\n", mc2::fmt::safe(vp), mc2::fmt::as_i32(wid));
         std::fflush(stderr);
     } else if (parsedWID <= 0) {
-        std::fprintf(stderr, "[BRAIN_DISPATCH_ATTACK_BAD_WID] wid=%ld wid=%d\n", parsedWID, wid);
+        mc2::fmt::print_err("[BRAIN_DISPATCH_ATTACK_BAD_WID] wid={:d} wid={:d}\n", mc2::fmt::as_i32(parsedWID), mc2::fmt::as_i32(wid));
         std::fflush(stderr);
     } else {
         GameObjectPtr target = ObjectManager->getByWatchID((long)parsedWID);
         if (!target) {
-            std::fprintf(stderr, "[BRAIN_DISPATCH_ATTACK_BAD_WID] wid=%ld reason=not_found wid=%d\n", parsedWID, wid);
+            mc2::fmt::print_err("[BRAIN_DISPATCH_ATTACK_BAD_WID] wid={:d} reason=not_found wid={:d}\n", mc2::fmt::as_i32(parsedWID), mc2::fmt::as_i32(wid));
             std::fflush(stderr);
         } else if (target->getWatchID() == (long)wid) {
-            std::fprintf(stderr, "[BRAIN_DISPATCH_ATTACK_SELF] wid=%ld wid=%d\n", parsedWID, wid);
+            mc2::fmt::print_err("[BRAIN_DISPATCH_ATTACK_SELF] wid={:d} wid={:d}\n", mc2::fmt::as_i32(parsedWID), mc2::fmt::as_i32(wid));
             std::fflush(stderr);
         } else if (target->getTeam() == warrior->getTeam()) {
-            std::fprintf(stderr, "[BRAIN_DISPATCH_ATTACK_FRIENDLY] wid=%ld wid=%d\n", parsedWID, wid);
+            mc2::fmt::print_err("[BRAIN_DISPATCH_ATTACK_FRIENDLY] wid={:d} wid={:d}\n", mc2::fmt::as_i32(parsedWID), mc2::fmt::as_i32(wid));
             std::fflush(stderr);
         } else if (runtime) {
             // Gate ON: emit intent; commitBrainIntents rebuilds the TacticalOrder.
             emitBrainIntent(runtime, wid, TACTICAL_ORDER_ATTACK_OBJECT, (int)parsedWID, 0,0,0, 0);
-            std::fprintf(stderr, "[BRAIN_INTENT_EMIT] verb=OPORD.CoreAttack order=ATTACK_OBJECT targetWID=%ld tick=%u wid=%d\n",
-                         parsedWID, getBrainTickIndex(), wid);
+            mc2::fmt::print_err("[BRAIN_INTENT_EMIT] verb=OPORD.CoreAttack order=ATTACK_OBJECT targetWID={:d} tick={:d} wid={:d}\n", mc2::fmt::as_i32(parsedWID), mc2::fmt::as_u32(getBrainTickIndex()), mc2::fmt::as_i32(wid));
             std::fflush(stderr);
             appliedEffect = true;
         } else {
@@ -190,14 +185,13 @@ void applyCoreAttack(MechWarrior* warrior, int wid, MechBrainRuntime* runtime, b
                 MechBrainRuntime* rtB = warrior->getBrainRuntime();
                 if (rtB) {
                     attackOrder.attackParams.tactic = (TacticType)rtB->selectedTactic;
-                    std::fprintf(stderr, "[BRAIN_TACTIC_B] applied tactic=%d wid=%d\n", rtB->selectedTactic, wid);
+                    mc2::fmt::print_err("[BRAIN_TACTIC_B] applied tactic={:d} wid={:d}\n", mc2::fmt::as_i32(rtB->selectedTactic), mc2::fmt::as_i32(wid));
                     std::fflush(stderr);
                 }
             }
             attackOrder.moveParams.wayPath.mode[0] = TRAVEL_MODE_FAST;
             warrior->setGeneralTacOrder(attackOrder);
-            std::fprintf(stderr, "[BRAIN_DISPATCH_APPLY] verb=OPORD.CoreAttack effect=ATTACK_OBJECT targetWID=%ld wid=%d\n",
-                         parsedWID, wid);
+            mc2::fmt::print_err("[BRAIN_DISPATCH_APPLY] verb=OPORD.CoreAttack effect=ATTACK_OBJECT targetWID={:d} wid={:d}\n", mc2::fmt::as_i32(parsedWID), mc2::fmt::as_i32(wid));
             std::fflush(stderr);
             appliedEffect = true;
         }
@@ -210,14 +204,13 @@ void applyUnitRetreat(MechWarrior* warrior, int wid, MechBrainRuntime* runtime, 
     // ROOT BODY ONLY. Fires exactly once (retreatEffectApplied once-guard in warrior.cpp).
     if (runtime) {
         emitBrainIntent(runtime, wid, TACTICAL_ORDER_WITHDRAW, -1, 0,0,0, 0);
-        std::fprintf(stderr, "[BRAIN_INTENT_EMIT] verb=Unit.Retreat order=WITHDRAW tick=%u wid=%d\n",
-                     getBrainTickIndex(), wid);
+        mc2::fmt::print_err("[BRAIN_INTENT_EMIT] verb=Unit.Retreat order=WITHDRAW tick={:d} wid={:d}\n", mc2::fmt::as_u32(getBrainTickIndex()), mc2::fmt::as_i32(wid));
         std::fflush(stderr);
     } else {
         TacticalOrder retreatOrder;
         retreatOrder.init(ORDER_ORIGIN_SELF, TACTICAL_ORDER_WITHDRAW, false);
         warrior->setGeneralTacOrder(retreatOrder);
-        std::fprintf(stderr, "[BRAIN_DISPATCH_APPLY] verb=Unit.Retreat effect=WITHDRAW wid=%d\n", wid);
+        mc2::fmt::print_err("[BRAIN_DISPATCH_APPLY] verb=Unit.Retreat effect=WITHDRAW wid={:d}\n", mc2::fmt::as_i32(wid));
         std::fflush(stderr);
     }
     appliedEffect = true;
@@ -236,8 +229,7 @@ void applyClearMoveOrders(int wid, MechBrainRuntime* runtime) {
     // Vars / target are intentionally left UNTOUCHED (frozen scope: movement-only).
     if (runtime) {
         emitBrainClearMoveIntent(runtime, wid);
-        std::fprintf(stderr, "[BRAIN_INTENT_EMIT] verb=Unit.ClearMoveOrders order=CLEAR_MOVE tick=%u wid=%d\n",
-                     getBrainTickIndex(), wid);
+        mc2::fmt::print_err("[BRAIN_INTENT_EMIT] verb=Unit.ClearMoveOrders order=CLEAR_MOVE tick={:d} wid={:d}\n", mc2::fmt::as_u32(getBrainTickIndex()), mc2::fmt::as_i32(wid));
         std::fflush(stderr);
     } else {
         // Intent queue OFF: cannot scrub here (direct call forbidden). Trace + no-op,
@@ -280,15 +272,14 @@ void applySetTargetPriority(int wid, MechBrainRuntime* runtime, BrainVerbFrame& 
         else args5[4] = crit;
     }
     if (!parsed) {
-        std::fprintf(stderr, "[BRAIN_DISPATCH_TARGETPRIORITY_PARSE_FAIL] verb=%s wid=%d\n", vp, wid);
+        mc2::fmt::print_err("[BRAIN_DISPATCH_TARGETPRIORITY_PARSE_FAIL] verb={} wid={:d}\n", mc2::fmt::safe(vp), mc2::fmt::as_i32(wid));
         std::fflush(stderr);
     } else if (runtime) {
         emitBrainTargetPolicyIntent(runtime, wid, args5[0], args5[1], args5[2], args5[3], args5[4]);
-        std::fprintf(stderr, "[BRAIN_INTENT_EMIT] verb=UnitQuery.SetTargetpriority order=TARGET_POLICY slot=%ld type=%ld p1=%ld p2=%ld crit=%ld tick=%u wid=%d\n",
-                     args5[0], args5[1], args5[2], args5[3], args5[4], getBrainTickIndex(), wid);
+        mc2::fmt::print_err("[BRAIN_INTENT_EMIT] verb=UnitQuery.SetTargetpriority order=TARGET_POLICY slot={:d} type={:d} p1={:d} p2={:d} crit={:d} tick={:d} wid={:d}\n", mc2::fmt::as_i32(args5[0]), mc2::fmt::as_i32(args5[1]), mc2::fmt::as_i32(args5[2]), mc2::fmt::as_i32(args5[3]), mc2::fmt::as_i32(args5[4]), mc2::fmt::as_u32(getBrainTickIndex()), mc2::fmt::as_i32(wid));
         std::fflush(stderr);
     } else {
-        std::fprintf(stderr, "[BRAIN_TARGETPRIORITY_NO_QUEUE] wid=%d: requires MC2_BRAIN_INTENT_QUEUE=1\n", wid);
+        mc2::fmt::print_err("[BRAIN_TARGETPRIORITY_NO_QUEUE] wid={:d}: requires MC2_BRAIN_INTENT_QUEUE=1\n", mc2::fmt::as_i32(wid));
         std::fflush(stderr);
     }
 }
@@ -313,12 +304,12 @@ void applyCorePatrol(MechWarrior* warrior, int wid, MechBrainRuntime* runtime, b
     //   Without MC2_BRAIN_INTENT_QUEUE=1, patrol emits a trace-only warning on first
     //   dispatch.  Per-tick tickPatrolAdvance also uses emitBrainIntent exclusively.
     if (!warrior) {
-        std::fprintf(stderr, "[BRAIN_PATROL_PARSE_FAIL] no warrior wid=%d\n", wid);
+        mc2::fmt::print_err("[BRAIN_PATROL_PARSE_FAIL] no warrior wid={:d}\n", mc2::fmt::as_i32(wid));
         std::fflush(stderr);
     } else {
         MechBrainRuntime* prt = warrior->getBrainRuntime();
         if (!prt) {
-            std::fprintf(stderr, "[BRAIN_PATROL_PARSE_FAIL] no runtime wid=%d\n", wid);
+            mc2::fmt::print_err("[BRAIN_PATROL_PARSE_FAIL] no runtime wid={:d}\n", mc2::fmt::as_i32(wid));
             std::fflush(stderr);
         } else if (prt->patrolActive) {
             // Already active — this is a re-tick of a body that has CorePatrol.
@@ -350,8 +341,7 @@ void applyCorePatrol(MechWarrior* warrior, int wid, MechBrainRuntime* runtime, b
                 if (ep2 == pargs) { parseOk = false; break; }
                 pargs = ep2; while (*pargs == ' ') ++pargs;
                 if (std::isnan(x) || std::isnan(y) || std::isnan(z)) {
-                    std::fprintf(stderr, "[BRAIN_PATROL_NAN] wp=%u x=%g y=%g z=%g wid=%d (skipped)\n",
-                                 (unsigned)wpCount, x, y, z, wid);
+                    mc2::fmt::print_err("[BRAIN_PATROL_NAN] wp={:d} x={:g} y={:g} z={:g} wid={:d} (skipped)\n", mc2::fmt::as_u32((unsigned)wpCount), x, y, z, mc2::fmt::as_i32(wid));
                     std::fflush(stderr);
                     continue;
                 }
@@ -368,8 +358,7 @@ void applyCorePatrol(MechWarrior* warrior, int wid, MechBrainRuntime* runtime, b
                 // "loop" or any other trailing token → default loop=true.
             }
             if (!parseOk || wpCount < 2) {
-                std::fprintf(stderr, "[BRAIN_PATROL_PARSE_FAIL] count=%u parseOk=%d wid=%d (need >=2 waypoints)\n",
-                             (unsigned)wpCount, (int)parseOk, wid);
+                mc2::fmt::print_err("[BRAIN_PATROL_PARSE_FAIL] count={:d} parseOk={:d} wid={:d} (need >=2 waypoints)\n", mc2::fmt::as_u32((unsigned)wpCount), mc2::fmt::as_i32((int)parseOk), mc2::fmt::as_i32(wid));
                 std::fflush(stderr);
             } else {
                 // Commit parsed state to runtime.
@@ -393,8 +382,7 @@ void applyCorePatrol(MechWarrior* warrior, int wid, MechBrainRuntime* runtime, b
                 if (runtime) {
                     // Gate ON: emit intent; commitBrainIntents builds the TacticalOrder.
                     emitBrainIntent(runtime, wid, TACTICAL_ORDER_MOVETO_POINT, -1, wx, wy, wz, 0);
-                    std::fprintf(stderr, "[BRAIN_PATROL_EMIT] index=0 pos=(%g %g %g) tick=%u wid=%d\n",
-                                 wx, wy, wz, getBrainTickIndex(), wid);
+                    mc2::fmt::print_err("[BRAIN_PATROL_EMIT] index=0 pos=({:g} {:g} {:g}) tick={:d} wid={:d}\n", wx, wy, wz, mc2::fmt::as_u32(getBrainTickIndex()), mc2::fmt::as_i32(wid));
                     std::fflush(stderr);
                 } else {
                     // Gate OFF (no intent queue): patrol cannot issue MOVETO_POINT here
@@ -430,8 +418,7 @@ bool applySetState(MechWarrior* warrior, int wid, BrainVerbFrame& f) {
         fsm_rt->prevState[31] = '\0';
         std::strncpy(fsm_rt->currentState, newState, 31);
         fsm_rt->currentState[31] = '\0';
-        std::fprintf(stderr, "[BRAIN_FSM_SETSTATE] from=%s to=%s wid=%d\n",
-                     fsm_rt->prevState, fsm_rt->currentState, wid);
+        mc2::fmt::print_err("[BRAIN_FSM_SETSTATE] from={} to={} wid={:d}\n", mc2::fmt::safe(fsm_rt->prevState), mc2::fmt::safe(fsm_rt->currentState), mc2::fmt::as_i32(wid));
         std::fflush(stderr);
     }
     return true;  // early exit — no subsequent verbs after SetState
@@ -449,8 +436,7 @@ bool applySetStatePrev(MechWarrior* warrior, int wid) {
         std::strncpy(fsm_rt->prevState, fsm_rt->currentState, 31);
         fsm_rt->prevState[31] = '\0';
         std::memcpy(fsm_rt->currentState, tmp, 32);
-        std::fprintf(stderr, "[BRAIN_FSM_SETSTATEPREV] now=%s wid=%d\n",
-                     fsm_rt->currentState, wid);
+        mc2::fmt::print_err("[BRAIN_FSM_SETSTATEPREV] now={} wid={:d}\n", mc2::fmt::safe(fsm_rt->currentState), mc2::fmt::as_i32(wid));
         std::fflush(stderr);
     }
     return true;  // early exit — no subsequent verbs after SetStatePrev
@@ -473,7 +459,7 @@ void applyInState(MechWarrior* warrior, int wid, bool& stateGateOpen, BrainVerbF
     const char* cur = fsm_rt ? fsm_rt->currentState : "";
     int match = (std::strcmp(cur, testState) == 0) ? 1 : 0;
     if (!match) stateGateOpen = false;
-    std::fprintf(stderr, "[BRAIN_FSM_INSTATE] state=%s match=%d wid=%d\n", testState, match, wid);
+    mc2::fmt::print_err("[BRAIN_FSM_INSTATE] state={} match={:d} wid={:d}\n", mc2::fmt::safe(testState), mc2::fmt::as_i32(match), mc2::fmt::as_i32(wid));
     std::fflush(stderr);
 }
 
@@ -493,7 +479,7 @@ void applyNotInState(MechWarrior* warrior, int wid, bool& stateGateOpen, BrainVe
     const char* cur = fsm_rt ? fsm_rt->currentState : "";
     int match = (std::strcmp(cur, testState) == 0) ? 1 : 0;
     if (match) stateGateOpen = false;
-    std::fprintf(stderr, "[BRAIN_FSM_NOTINSTATE] state=%s match=%d wid=%d\n", testState, match, wid);
+    mc2::fmt::print_err("[BRAIN_FSM_NOTINSTATE] state={} match={:d} wid={:d}\n", mc2::fmt::safe(testState), mc2::fmt::as_i32(match), mc2::fmt::as_i32(wid));
     std::fflush(stderr);
 }
 
@@ -512,7 +498,7 @@ bool applySetStateIf(MechWarrior* warrior, int wid, VarStore* varStore, bool var
         static bool s_setstateif_var_warn = false;
         if (!s_setstateif_var_warn) {
             s_setstateif_var_warn = true;
-            std::fprintf(stderr, "[BRAIN_FSM_SETSTATEIF] WARNING: Unit.SetStateIf requires MC2_BRAIN_DISPATCH_VAR=1 — verb is INERT\n");
+            mc2::fmt::print_err("[BRAIN_FSM_SETSTATEIF] WARNING: Unit.SetStateIf requires MC2_BRAIN_DISPATCH_VAR=1 — verb is INERT\n");
             std::fflush(stderr);
         }
         // INERT: no transition, body continues.
@@ -560,17 +546,14 @@ bool applySetStateIf(MechWarrior* warrior, int wid, VarStore* varStore, bool var
                 fsm_rt->prevState[31] = '\0';
                 std::strncpy(fsm_rt->currentState, stateName, 31);
                 fsm_rt->currentState[31] = '\0';
-                std::fprintf(stderr, "[BRAIN_FSM_SETSTATEIF] var=%s cur=%s want=%s match=1 from=%s to=%s wid=%d\n",
-                             varKey, curVal, varValue, fsm_rt->prevState, fsm_rt->currentState, wid);
+                mc2::fmt::print_err("[BRAIN_FSM_SETSTATEIF] var={} cur={} want={} match=1 from={} to={} wid={:d}\n", mc2::fmt::safe(varKey), mc2::fmt::safe(curVal), mc2::fmt::safe(varValue), mc2::fmt::safe(fsm_rt->prevState), mc2::fmt::safe(fsm_rt->currentState), mc2::fmt::as_i32(wid));
             } else {
-                std::fprintf(stderr, "[BRAIN_FSM_SETSTATEIF] var=%s cur=%s want=%s match=1 from=(no-rt) to=%s wid=%d\n",
-                             varKey, curVal, varValue, stateName, wid);
+                mc2::fmt::print_err("[BRAIN_FSM_SETSTATEIF] var={} cur={} want={} match=1 from=(no-rt) to={} wid={:d}\n", mc2::fmt::safe(varKey), mc2::fmt::safe(curVal), mc2::fmt::safe(varValue), mc2::fmt::safe(stateName), mc2::fmt::as_i32(wid));
             }
             std::fflush(stderr);
             return true;  // early exit on match — same semantics as SetState
         } else {
-            std::fprintf(stderr, "[BRAIN_FSM_SETSTATEIF] var=%s cur=%s want=%s match=0 wid=%d\n",
-                         varKey, curVal, varValue, wid);
+            mc2::fmt::print_err("[BRAIN_FSM_SETSTATEIF] var={} cur={} want={} match=0 wid={:d}\n", mc2::fmt::safe(varKey), mc2::fmt::safe(curVal), mc2::fmt::safe(varValue), mc2::fmt::as_i32(wid));
             std::fflush(stderr);
             // No transition; body continues.
         }

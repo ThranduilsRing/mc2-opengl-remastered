@@ -98,10 +98,7 @@ void Terrain::render (void)
 				    && gos_terrain_indirect::IsTraceEnabled())
 				{
 					s_drawPassRetiredLogged = true;
-					printf("[TERRAIN_DRAWPASS v1] event=retired "
-					       "reason=solid+overlay_armed "
-					       "(SOLID->gpu_indirect, decals->static_bake, "
-					       "detail->dead)\n");
+					mc2::fmt::print_out("[TERRAIN_DRAWPASS v1] event=retired reason=solid+overlay_armed (SOLID->gpu_indirect, decals->static_bake, detail->dead)\n");
 					fflush(stdout);
 				}
 			}
@@ -190,9 +187,7 @@ void Terrain::render (void)
 
 			if (setLegacy.size() != setGrid.size() || (s_mineABFrame % 300 == 0))
 			{
-				printf("[MINE_AB] frame=%lu legacy=%d grid=%d onlyLegacy=%d onlyGrid=%d\n",
-				       s_mineABFrame, (int)setLegacy.size(), (int)setGrid.size(),
-				       (int)onlyLegacy.size(), (int)onlyGrid.size());
+				mc2::fmt::print_out("[MINE_AB] frame={:d} legacy={:d} grid={:d} onlyLegacy={:d} onlyGrid={:d}\n", mc2::fmt::as_u32(s_mineABFrame), mc2::fmt::as_i32((int)setLegacy.size()), mc2::fmt::as_i32((int)setGrid.size()), mc2::fmt::as_i32((int)onlyLegacy.size()), mc2::fmt::as_i32((int)onlyGrid.size()));
 				fflush(stdout);
 			}
 		}
@@ -333,10 +328,7 @@ bool gos_terrain_indirect::WaterFastPathOwnsArmedDraw()
 		static uint32_t s_lastSig = 0xffffffff;
 		if (sig != s_lastSig)
 		{
-			printf("[WATER_GATE] fastPath=%d armed=%d streamReady=%d recipes=%u tex2=%d introLegacy=%d (sig=0x%x)\n",
-			    g1?1:0, solidArmed?1:0, g3?1:0,
-			    (unsigned)WaterStream::GetRecipeCount(),
-			    g5?1:0, s_introLegacy?1:0, sig);
+			mc2::fmt::print_out("[WATER_GATE] fastPath={:d} armed={:d} streamReady={:d} recipes={:d} tex2={:d} introLegacy={:d} (sig=0x{:x})\n", mc2::fmt::as_i32(g1?1:0), mc2::fmt::as_i32(solidArmed?1:0), mc2::fmt::as_i32(g3?1:0), mc2::fmt::as_u32((unsigned)WaterStream::GetRecipeCount()), mc2::fmt::as_i32(g5?1:0), mc2::fmt::as_i32(s_introLegacy?1:0), mc2::fmt::as_u32(sig));
 			fflush(stdout);
 			s_lastSig = sig;
 		}
@@ -382,7 +374,7 @@ void Terrain::renderWater (void)
 			int s6 = s6FastPathOwns ? 1 : 0;
 			if (s6 != s_lastS6)
 			{
-				printf("[WATER_S6 v1] event=state armedSkip=%d (1=GPU fast path owns armed draw; legacy (ii) draw-side skipped this frame)\n", s6);
+				mc2::fmt::print_out("[WATER_S6 v1] event=state armedSkip={:d} (1=GPU fast path owns armed draw; legacy (ii) draw-side skipped this frame)\n", mc2::fmt::as_i32(s6));
 				fflush(stdout);
 				s_lastS6 = s6;
 			}
@@ -458,12 +450,7 @@ void Terrain::renderWater (void)
 		const bool disappeared = (s_haveLast && s_lastHandleValid > 0 && traceHandleValid == 0);
 		const bool recovered = (s_haveLast && s_lastHandleValid == 0 && traceHandleValid > 0);
 		if (disappeared || recovered || !s_haveLast) {
-			fprintf(stderr,
-			        "[WATER_LEGACY v1] event=population total=%u handle_valid=%u "
-			        "detail_eligible=%u state=%s prev_handle_valid=%u\n",
-			        traceTotal, traceHandleValid, traceDetailEligible,
-			        disappeared ? "disappeared" : (recovered ? "recovered" : "initial"),
-			        s_lastHandleValid);
+			mc2::fmt::print_err("[WATER_LEGACY v1] event=population total={:d} handle_valid={:d} detail_eligible={:d} state={} prev_handle_valid={:d}\n", mc2::fmt::as_u32(traceTotal), mc2::fmt::as_u32(traceHandleValid), mc2::fmt::as_u32(traceDetailEligible), mc2::fmt::safe(disappeared ? "disappeared" : (recovered ? "recovered" : "initial")), mc2::fmt::as_u32(s_lastHandleValid));
 			fflush(stderr);
 		}
 		s_haveLast = true;
@@ -483,12 +470,7 @@ void Terrain::renderWater (void)
 			++s_frameCounter;
 			if (s_frameCounter >= kWaterWarmupHoldoffFrames)
 			{
-				fprintf(stderr,
-				        "[WATER_DEBUG v1] event=population frame=%u (post-warmup) "
-				        "total=%u handle_valid=%u detail_eligible=%u "
-				        "elapsed_us=%.1f\n",
-				        s_framesPrinted, s_total, s_handleValid,
-				        s_detailEligibleByHandle, elapsedUs);
+				mc2::fmt::print_err("[WATER_DEBUG v1] event=population frame={:d} (post-warmup) total={:d} handle_valid={:d} detail_eligible={:d} elapsed_us={:.1f}\n", mc2::fmt::as_u32(s_framesPrinted), mc2::fmt::as_u32(s_total), mc2::fmt::as_u32(s_handleValid), mc2::fmt::as_u32(s_detailEligibleByHandle), elapsedUs);
 				fflush(stderr);
 				s_total = s_handleValid = s_detailEligibleByHandle = 0;
 				++s_framesPrinted;
@@ -561,13 +543,7 @@ void Terrain::renderWaterFastPath (void)
 		static bool s_dumped = false;
 		if (!s_dumped && mc2::gate::get<"MC2_WATER_STREAM_DEBUG">()) {
 			s_dumped = true;
-			fprintf(stderr,
-			        "[WATER_FAST v1] event=alpha_uniforms waterElevation=%.3f "
-			        "alphaDepth=%.3f alphaEdgeByte=%u alphaMiddleByte=%u alphaDeepByte=%u\n",
-			        (double)Terrain::waterElevation, (double)MapData::alphaDepth,
-			        (unsigned)((Terrain::alphaEdge   >> 24) & 0xFFu),
-			        (unsigned)((Terrain::alphaMiddle >> 24) & 0xFFu),
-			        (unsigned)((Terrain::alphaDeep   >> 24) & 0xFFu));
+			mc2::fmt::print_err("[WATER_FAST v1] event=alpha_uniforms waterElevation={:.3f} alphaDepth={:.3f} alphaEdgeByte={:d} alphaMiddleByte={:d} alphaDeepByte={:d}\n", (double)Terrain::waterElevation, (double)MapData::alphaDepth, mc2::fmt::as_u32((unsigned)((Terrain::alphaEdge   >> 24) & 0xFFu)), mc2::fmt::as_u32((unsigned)((Terrain::alphaMiddle >> 24) & 0xFFu)), mc2::fmt::as_u32((unsigned)((Terrain::alphaDeep   >> 24) & 0xFFu)));
 			fflush(stderr);
 		}
 	}
@@ -632,12 +608,7 @@ void Terrain::renderWaterFastPath (void)
 		++s_frameCounter2;
 		if (s_frameCounter2 >= kFastWarmupHoldoffFrames && s_framesPrinted2 < 5)
 		{
-			fprintf(stderr,
-			        "[WATER_FAST v1] event=elapsed frame=%u (post-warmup) "
-			        "recipeCount=%u elapsed_us=%.1f\n",
-			        s_framesPrinted2,
-			        (unsigned)WaterStream::GetRecipeCount(),
-			        elapsedUs);
+			mc2::fmt::print_err("[WATER_FAST v1] event=elapsed frame={:d} (post-warmup) recipeCount={:d} elapsed_us={:.1f}\n", mc2::fmt::as_u32(s_framesPrinted2), mc2::fmt::as_u32((unsigned)WaterStream::GetRecipeCount()), elapsedUs);
 			fflush(stderr);
 			++s_framesPrinted2;
 		}

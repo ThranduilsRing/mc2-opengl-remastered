@@ -368,8 +368,7 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
             static bool s_logged = false;
             if (s_diagOn && !s_logged) {
                 s_logged = true;
-                fprintf(stderr, "[VK_TERRAIN_LODFADE_DIAG] lodFadeEnabled=%d detailEnabled=%d "
-                        "lightingEnabled=%d\n", lodFadeOn, out->detailEnabled, out->lightingEnabled);
+                mc2::fmt::print_err("[VK_TERRAIN_LODFADE_DIAG] lodFadeEnabled={:d} detailEnabled={:d} lightingEnabled={:d}\n", mc2::fmt::as_i32(lodFadeOn), mc2::fmt::as_i32(out->detailEnabled), mc2::fmt::as_i32(out->lightingEnabled));
                 fflush(stderr);
             }
         }

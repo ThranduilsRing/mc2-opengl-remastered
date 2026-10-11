@@ -83,7 +83,7 @@ static void mc2_log_exit_caller(const char* fn)
     if (!s_trace && s_once) return;   // always log first; repeats only if env set
     s_once = true;
 
-    fprintf(stderr, "[EXIT] %s called. Stack:\n", fn);
+    mc2::fmt::print_err("[EXIT] {} called. Stack:\n", mc2::fmt::safe(fn));
     HANDLE proc = GetCurrentProcess();
     SymSetOptions(SYMOPT_LOAD_LINES | SYMOPT_DEFERRED_LOADS | SYMOPT_UNDNAME);
     static bool s_sym_initialized = false;
@@ -509,20 +509,12 @@ __int64 __stdcall gos_GetDriveFreeSpace( char* Path )
 		// to remove. The fallback answers for the WRONG VOLUME, so the line
 		// has to survive to stderr.
 		const DWORD err = GetLastError();
-		fprintf(stderr,
-		        "[DISK_GUARD] gos_GetDriveFreeSpace: GetDiskFreeSpaceEx failed "
-		        "for '%s' (err %lu); falling back to CURRENT DRIVE -- the "
-		        "figure below may describe a different volume\n",
-		        Path ? Path : "(null)", (unsigned long)err);
+		mc2::fmt::print_err("[DISK_GUARD] gos_GetDriveFreeSpace: GetDiskFreeSpaceEx failed for '{}' (err {:d}); falling back to CURRENT DRIVE -- the figure below may describe a different volume\n", mc2::fmt::safe(Path ? Path : "(null)"), mc2::fmt::as_u32((unsigned long)err));
 		fflush(stderr);
 		freeBytesAvailable.QuadPart = 0;
 		if (!GetDiskFreeSpaceEx(nullptr, &freeBytesAvailable, nullptr, nullptr))
 		{
-			fprintf(stderr,
-			        "[DISK_GUARD] gos_GetDriveFreeSpace: current-drive fallback "
-			        "also failed (err %lu); returning 0 so callers take the "
-			        "out-of-space branch\n",
-			        (unsigned long)GetLastError());
+			mc2::fmt::print_err("[DISK_GUARD] gos_GetDriveFreeSpace: current-drive fallback also failed (err {:d}); returning 0 so callers take the out-of-space branch\n", mc2::fmt::as_u32((unsigned long)GetLastError()));
 			fflush(stderr);
 			return 0;
 		}
