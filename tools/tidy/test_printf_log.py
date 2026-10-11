@@ -47,3 +47,15 @@ def test_crash_and_allocator_files_are_excluded_by_path():
 def test_idempotent():
     once = conv('#include <a.h>\nvoid f(){ printf("x %d' + NL + '", v); }\n')[0]
     assert conv(once) == (once, [], [])
+
+
+def test_tag_classes_follow_the_consumed_list_and_one_tag_can_be_selected(monkeypatch):
+    src = ('#include <a.h>\nvoid f(){ fprintf(stderr, "[PERF v1] a=%d' + NL + '", x); fprintf(stderr, "[ZZZ_NOBODY v1] b=%d' + NL
+           + '", y); fprintf(stderr, "plain' + NL + '"); }\n')
+    assert pl.tag_class("[PERF v1] a=%d") == "consumed" and pl.tag_class("[ZZZ_NOBODY v1]") == "unconsumed" and pl.tag_class("plain") == "untagged"
+    _, recs, _ = pl.convert(src, "", classes=("unconsumed",))
+    assert [r["old"] for r in recs] == ["[ZZZ_NOBODY v1] b=%d" + NL]
+    _, recs, _ = pl.convert(src, "", classes=("consumed",))
+    assert [r["old"] for r in recs] == ["[PERF v1] a=%d" + NL]
+    monkeypatch.setenv("MC2_PRINTF_LOG_TAG", "OTHER")
+    assert pl.convert(src, "", classes=("consumed",))[1] == []

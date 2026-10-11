@@ -50,3 +50,12 @@ def test_diff_reports_a_changed_key_order_and_a_missing_emitter():
 
 def test_the_frozen_baseline_matches_the_tree():
     assert lc.main(["--check"]) == 0
+
+
+def test_a_converted_log_call_yields_the_same_record_as_the_printf_it_replaced():
+    import printf_log as pl
+    src = '#include <cstdio>\nvoid f(){ fprintf(stderr, "[PERF v1] avg_fps=%.1f samples=%d\\n", a, n); printf("[HEARTBEAT] frames=%d\\n", n); fprintf(fp, "[X v1] k=%d\\n", n); }\n'
+    new, recs, left = pl.convert(src, "x.cpp", classes=("untagged", "unconsumed", "consumed"))
+    assert len(recs) == 3 and "mc2::fmt::print_err(" in new and "mc2::fmt::print_out(" in new and "mc2::fmt::print(fp," in new
+    assert census(src) == census(new) == {("PERF", 1, "stderr", ("avg_fps", "samples")): 1, ("HEARTBEAT", -1, "stdout", ("frames",)): 1,
+                                          ("X", 1, "file", ("k",)): 1}

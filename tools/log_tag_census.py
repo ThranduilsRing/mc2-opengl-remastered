@@ -41,6 +41,7 @@ PRINTF_LIKE = {
     "OutputDebugStringA": (None, 0, "debugger"), "OutputDebugString": (None, 0, "debugger"),
     "snprintf": (None, 2, "buffer"), "_snprintf": (None, 2, "buffer"), "sprintf": (None, 1, "buffer"),
     "_snprintf_s": (None, 3, "buffer"), "to_buf": (None, 1, "buffer"), "to_buf_n": (None, 2, "buffer"),
+    "print_err": (None, 0, "stderr"), "print_out": (None, 0, "stdout"), "print": (0, 1, None),
 }
 EVENT_MACROS = {"MC2_EVENT": "stderr", "MC2_EVENT_OUT": "stdout", "MC2_EVENT_NOVER": "stderr", "MC2_EVENT_NOVER_OUT": "stdout"}
 LOG_MACROS = {"log_debug", "log_info", "log_warning", "log_error"}

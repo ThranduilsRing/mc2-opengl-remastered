@@ -74,7 +74,7 @@ def add(files, base: str):
     added = 0
     for f in files:
         text = base_text(f, base)
-        records = pb.convert(text, assume_array=True)[1] + pl.convert(text, f)[1]
+        records = pb.convert(text, assume_array=True)[1] + pl.convert(text, f, classes=("untagged", "unconsumed", "consumed"))[1]
         for r in records:
             key = (r["old"], r["new"])
             specs = [{k: s[k] for k in ("conv", "length", "wrap", "cls")} for s in r["specs"]]

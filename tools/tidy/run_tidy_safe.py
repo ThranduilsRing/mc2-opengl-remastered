@@ -311,10 +311,10 @@ def run(args, tidy=None, build=None) -> int:
     return 1 if reverted else 0
 
 
-REWRITERS = ("typedef-aggregates", "null-tokens", "printf-buffers", "printf-log")
+REWRITERS = ("typedef-aggregates", "null-tokens", "printf-buffers", "printf-log", "printf-log-tagged", "printf-log-parsed")
 #: Rewriters that change what the program prints or stores by design; their proof is "it compiles" here and the byte-level proof is the
 #: format corpus plus the log comparison (tools/tidy/printf_corpus.py, .claude/cleanup/cxx23-step3-logging-plan.md), not object identity.
-COMPILE_ONLY = ("printf-buffers", "printf-log")
+COMPILE_ONLY = ("printf-buffers", "printf-log", "printf-log-tagged", "printf-log-parsed")
 
 
 def rewriter(name: str):
