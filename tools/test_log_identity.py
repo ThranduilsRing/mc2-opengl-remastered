@@ -54,3 +54,10 @@ def test_interleaved_tag_order_is_not_a_difference_but_a_missing_tag_is(tmp_path
     a = _dir(tmp_path, "a", "[A v1] x=1\n[B v1] y=1\n[A v1] x=2\n")
     b = _dir(tmp_path, "b", "[B v1] y=1\n[A v1] x=1\n[A v1] x=2\n")
     assert li.compare(a, b)[2] is True
+
+
+def test_number_padding_is_not_a_difference_but_text_padding_is(tmp_path):
+    a = _dir(tmp_path, "a", "[TIME] t=  5s phase=x\nname=abc   n=1\n")
+    b = _dir(tmp_path, "b", "[TIME] t= 12s phase=x\nname=abc n=1\n")
+    only_b, only_a, _ = li.compare(a, b)
+    assert len(only_b) == 1 and "name=abc" in only_b[0] and len(only_a) == 1

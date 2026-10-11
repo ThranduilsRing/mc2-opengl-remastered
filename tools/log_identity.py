@@ -25,7 +25,9 @@ NOISE = re.compile(r"\[BUILD_FINGERPRINT v1\]|\[INSTR v1\] enabled:|^\s*\[BlockS
 
 
 def shape(line: str) -> str:
-    return _NUM.sub("#", line.rstrip("\r\n"))
+    """The line with numbers and addresses masked. Blanks touching a number are collapsed: `%3d` pads a 5 and a 12 differently."""
+    s = _NUM.sub("#", line.rstrip("\r\n"))
+    return re.sub(r" +#", " #", re.sub(r"# +", "# ", s))
 
 
 def shapes_of(path: str):
