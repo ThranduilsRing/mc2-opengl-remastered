@@ -64,3 +64,17 @@ was compared with its HEAD build using plain objhash.
   is caused by 12 headers individually (gameos.hpp, daprtype, dbasegui, inifile, mech3d, move, sounds, terrain, txmmgr, userinput, vfx, weaponfx); `mechcmd2.cpp.obj` differs only with the full set together (no single culprit);
   `gos_crashbundle`, `gos_visual_capture`, `gameos_graphics` (x2 each: game and editor) have no culprit header (zero or one edited header reaches them: build noise). So the wide headers need TWO more rulings: ORDER-ONLY acceptance
   (a pure index shift) and the MapGeneratorDialog class (`--ignore-digest-file`, a compile-must-pass object whose unreferenced stb tables vanish). The lane applied neither.
+
+## 6. Wide-header LG13 batches under `--layout-only-ok --order-only-ok --vs-gate` (rulings 2026-10-11, second message)
+- ORDER-ONLY accepted as an opt-in (`--order-only-ok`); DIFF still reverts. Every accepted object is named with its class in the commit message ("Objects accepted without being IDENTICAL (N ...)", one line each).
+- `MapGeneratorDialog.cpp.obj` is NOT ignored: `tools/tidy/proof_allow.json` holds one bounded entry (class `unreferenced-data-dropped`, the 12 headers that trigger it, the reason). The proof honours it only when the batch edits one of
+  those headers AND `objhash.classify_allowed` confirms per symbol: every other section, the rest of the symbol set and every `.data` / `.bss` symbol identical, every static `.rdata` symbol present in both objects byte-identical, any
+  static present in only one never a relocation target. Observed class: the unreferenced stbi_* tables and `k_biomeFoliage` sit in the one non-COMDAT `.rdata` and MSVC lays them out in another order after any new inline variable.
+  Used once (04f05bb87). `--no-proof-allow` disables the ledger.
+- Kept (5 commits, 19 headers, 587 sites; LG13 1,707 -> 1,120): 04f05bb87 debugging genactor gvactor move weaponfx (175); cc8a4ab2d cevfx crater objectappearance sounds soundsys (225); 17ecb3df2 appear daprtype ffile mech3d userinput (129);
+  51e4ae3aa camera dident floathelp timing (8); 06e2957c9 bitflag dbasegui terrain terrtxm terrtxm2 (50). Accepted-not-identical objects per commit: 70, 46, 70, 35, 60 (LAYOUT-ONLY and ORDER-ONLY; see each message).
+- NOT converted (6 headers, ~56 sites): `mclib/dstd.h`, `inifile.h` (the harness gate: `build64-tests::mc2_tests.dir/.../test_file_inifile.obj` differs or does not build), `tgl.h`, `txmmgr.h`, `vfx.h` (the gate failed those
+  objects with no attributable error text, so they were blamed together: a bisect per header is the first thing to do), and `GameOS/include/gameos.hpp` (one object, `CMakeFiles/mc2.dir/code/controlgui_hudtabs.cpp.obj`, differs; it appeared once
+  for dbasegui.h in a bigger batch and not when dbasegui.h went through alone, so it is flaky or combination-dependent: its diff must be classified before anyone decides). The 7 `GameOS/include/platform_win*.h` and `code/actor.h`
+  have no including object in any tree (platform headers are the non-Windows arm): out of reach of an object proof.
+- Checkpoint at ef8d2d2a5-level and again after the last batch (HEAD at 06e2957c9 plus docs): ninja build, `build_all_targets.py` every stage, doctest 2,719 cases, tier1 5/5 (13:13 and 14:40), board 165/168 (the three inherited reds).
