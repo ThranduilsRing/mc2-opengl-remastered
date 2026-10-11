@@ -730,8 +730,11 @@ void MechWarrior::copyFromData (MechWarriorData &data)
 	MemCpy(tacOrderQueue,data.tacOrderQueue);
 	for (long i=0;i<MAX_QUEUED_TACORDERS_PER_WARRIOR;i++)
 	{
-		//Set the Marker pointers to NULL and then recreate them from the movemode data.
+		//Set the Marker pointers to NULL and then recreate them from the movemode data, for the queued orders only: an empty slot has move mode 0
+		// (slow), which used to give every pilot 16 waypoint markers at the origin after a load.
 		tacOrderQueue[i].marker = nullptr;
+		if (i >= numTacOrdersQueued)
+			continue;
 
 		if ( tacOrderQueue[i].moveMode == TRAVEL_MODE_SLOW )
 			tacOrderQueue[i].marker = getWayPointMarker( tacOrderQueue[i].point, "WalkWayPoint" );
