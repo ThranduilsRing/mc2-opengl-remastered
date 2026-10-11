@@ -104,9 +104,9 @@ def test_date_and_time_string_symbols_mask_hash_and_text():
     assert objhash._mask_symbol(other) == other             # an ordinary literal keeps its hash
 
 
-def _coff(code, data, symbols, reloc_sym, bss=0):
+def _coff(code, data, symbols, reloc_sym, bss=0, data_name=".data", data_ch=0xC0000040):
     """Synthetic COFF: .text (one relocation to symbols[reloc_sym]) + .data (+ .bss of `bss` bytes). symbols = (name, value, section number, class)."""
-    secs = [(".text$mn", code, 0x60000020), (".data", data, 0xC0000040)]
+    secs = [(".text$mn", code, 0x60000020), (data_name, data, data_ch)]
     if bss:
         secs.append((".bss", b"", 0xC0000080))
     hdr = 20
@@ -208,3 +208,23 @@ def test_diff_subcommand_exit_codes(tmp_path, capsys):
     assert objhash.main(["diff", a, a]) == 0
     _, changed = _pair_in(tmp_path, "bytes", second_data=b"BBBC")
     assert objhash.main(["diff", a, changed]) == 1
+
+
+def _rd(tmp_path, name, data, symbols, reloc_sym):
+    p = tmp_path / name
+    p.write_bytes(_coff(CODE, data, symbols, reloc_sym, data_name=".rdata", data_ch=0x40000040))
+    return objhash.obj_digest(str(p), per_symbol=True)
+
+
+def test_allowed_class_accepts_reordered_or_dropped_unreferenced_statics_only(tmp_path):
+    ab = _rd(tmp_path, "ab.obj", A + B, [("alpha", 0, 2, 2), ("beta", 4, 2, 2)], 1)
+    ba = _rd(tmp_path, "ba.obj", B + A, [("beta", 0, 2, 2), ("alpha", 4, 2, 2)], 0)
+    assert objhash.classify(ab, ba, ab["persym"], ba["persym"])[0] == "DIFF"                 # the plain and the layout classes do not cover .rdata
+    assert objhash.classify_allowed(ab["persym"], ba["persym"]) == (True, [])
+    changed = _rd(tmp_path, "c.obj", B + b"AAAC", [("beta", 0, 2, 2), ("alpha", 4, 2, 2)], 0)
+    assert objhash.classify_allowed(ab["persym"], changed["persym"])[0] is False             # a static's bytes changed
+    extra = _rd(tmp_path, "e.obj", A + B + b"GGGG", [("alpha", 0, 2, 2), ("beta", 4, 2, 2), ("gamma", 8, 2, 2)], 1)
+    assert objhash.classify_allowed(ab["persym"], extra["persym"]) == (True, [])             # gamma exists in one object only and nothing relocates to it
+    used = _rd(tmp_path, "u.obj", A + B + b"GGGG", [("alpha", 0, 2, 2), ("beta", 4, 2, 2), ("gamma", 8, 2, 2)], 2)
+    ok, why = objhash.classify_allowed(ab["persym"], used["persym"])
+    assert not ok and any("added but referenced" in w for w in why)

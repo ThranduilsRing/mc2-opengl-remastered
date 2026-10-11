@@ -190,10 +190,10 @@ def cmd_run(a):
     tree_abs = os.path.join(rts.ROOT, a.tree)
     rts.apply_lane_args(a)
     a.proof_mode = "plain objhash (strict)"
-    if a.layout_only_ok and a.relaxed_proof:
-        sys.exit("rewrite_enums: --layout-only-ok and --relaxed-proof are different proof modes; pass one")
-    if a.layout_only_ok:
-        a.proof_mode = "plain objhash; objects whose only difference is static data layout (per-symbol identical) accepted: --layout-only-ok, ruling 2026-10-11"
+    if (a.layout_only_ok or a.order_only_ok) and a.relaxed_proof:
+        sys.exit("rewrite_enums: --layout-only-ok / --order-only-ok and --relaxed-proof are different proof modes; pass one")
+    if not a.relaxed_proof:
+        a.proof_mode = proof_ext.mode_text(a)
     if a.relaxed_proof:
         canonical_obj.install()
         a.proof_mode = "canonical_obj (symbol / section order and .data / .bss layout blind): " + a.relaxed_proof
@@ -255,8 +255,8 @@ def cmd_run(a):
         mtimes = {rel: os.stat(os.path.join(rts.ROOT, rel)).st_mtime_ns for rel in orig}
         inc = {rel: o for rel, _, o in picked}
         proof = EnumProof(tree_abs, inc, orig, edited, a.build_jobs)
-        proof.layout_only_ok = a.layout_only_ok
-        gate = proof_ext.Gate(sorted(orig), a.layout_only_ok) if a.vs_gate else None
+        proof_ext.configure(proof, a)
+        gate = proof_ext.Gate(sorted(orig), a.layout_only_ok, a.order_only_ok) if a.vs_gate else None
         if gate:
             gate.snapshot()
         if proof.baseline():
@@ -274,9 +274,8 @@ def cmd_run(a):
             if more:
                 proof.apply(set(kept))
                 proof_ext.LayoutMixin.bad_objects(proof)
-        note = rd.layout_note(proof.layout_objects({o for r in kept for o in inc[r]}) if a.layout_only_ok else {})
-        if gate and gate.layout:
-            note = (note + "\n" + "\n".join("  " + k for k in gate.layout)) if note else rd.layout_note(gate.layout)
+        accepted = proof.accepted_objects({o for r in kept for o in inc[r]})
+        note = proof_ext.acceptance_note(accepted, gate.accepted if gate else ())
         new_taint = rd.taint_from_reasons(rejected) - a.taint
         if new_taint and a.taint_file:
             a.taint |= new_taint
@@ -287,7 +286,7 @@ def cmd_run(a):
             batches, len(kept), kept_enums, len(rejected), len({o for r in kept for o in inc[r]})))
         if kept and a.commit:
             rd.commit_paths(kept, "tidy(LG14): %d unscoped enum(s) -> enum class + using enum in %d file(s) (every including object identical%s)\n\nProof: %s%s" % (
-                                kept_enums, len(kept), " or LAYOUT-ONLY" if note else "", a.proof_mode + ("; harness/test trees gated (tools/tidy/vs_trees.py)" if gate else ""), note),
+                                kept_enums, len(kept), " or accepted as listed below" if note else "", a.proof_mode + ("; harness/test trees gated (tools/tidy/vs_trees.py)" if gate else ""), note),
                             "cxx17 ratchet baseline tightened after LG14 batch")
         if not a.loop or (a.max_batches and batches >= a.max_batches) or (not kept and not rejected):
             return 1 if rejected else 0
@@ -307,6 +306,8 @@ def main(argv=None) -> int:
     r.add_argument("--done")
     r.add_argument("--relaxed-proof", metavar="REASON", default=None, help="canonical_obj digests instead of plain objhash; the reason goes into the commit message")
     r.add_argument("--max-enums", type=int, default=0, help="stop adding files once the batch holds this many enums (0 = no limit; the coordinator's cap is 10 per commit)")
+    r.add_argument("--order-only-ok", action="store_true", help="also accept an object that objhash classifies ORDER-ONLY (only symbol-table / relocation index order differs); each is named in the commit message. DIFF still reverts")
+    r.add_argument("--no-proof-allow", action="store_true", help="ignore the bounded exceptions of tools/tidy/proof_allow.json")
     r.add_argument("--layout-only-ok", action="store_true", help="also accept an object that objhash classifies LAYOUT-ONLY; each is named in the commit message. Not combinable with --relaxed-proof")
     r.add_argument("--vs-gate", action="store_true", help="also prove the Visual Studio trees (tests/unit, contract harnesses, standalone tools) that include the edited headers")
     r.add_argument("--taint-file")
