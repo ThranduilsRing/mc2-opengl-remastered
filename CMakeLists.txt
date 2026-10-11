@@ -516,6 +516,7 @@ set(SOURCES
     "code/componentlistbox.cpp"
     "code/loadscreen.cpp"
     "code/logistics.cpp"
+    "code/logistics_begin.cpp"
     "code/logisticscomponent.cpp"
     "code/logisticsdata.cpp"
     "code/logisticsdata_init.cpp"

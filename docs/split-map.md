@@ -166,6 +166,14 @@ Split commit: `f0d37de6c`.
 | `gvehicl_weapons.cpp` | GroundVehicle: hit and attack helpers, status/move chunks, handleWeaponHit, fireWeapon and handleWeaponFire. |
 | `gvehicl_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
+## `code/logistics.cpp`
+
+| Piece | What it holds |
+|---|---|
+| `logistics.cpp` | keeps the Logistics start / stop / update / render |
+| `logistics_begin.cpp` | Logistics: beginMission, DoBeginMission, initializeLogData, the full-screen video player and the results host-left dialog. |
+| `logistics_internal.h` | shared include bundle, extern globals and declarations of the pieces |
+
 ## `code/logisticsdata.cpp`
 
 Split commit: `009e31493`.
