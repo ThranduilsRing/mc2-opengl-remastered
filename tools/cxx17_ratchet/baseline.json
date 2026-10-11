@@ -48,7 +48,7 @@
   },
   "GameOS": {
    "LG01": 46,
-   "LG02": 204,
+   "LG02": 192,
    "LG03": 301,
    "LG04": 6,
    "LG05": 119,
@@ -94,7 +94,7 @@
   },
   "RenderCore": {
    "LG01": 0,
-   "LG02": 2,
+   "LG02": 0,
    "LG03": 0,
    "LG04": 0,
    "LG05": 28,
@@ -140,7 +140,7 @@
   },
   "code": {
    "LG01": 299,
-   "LG02": 224,
+   "LG02": 212,
    "LG03": 957,
    "LG04": 21,
    "LG05": 204,
@@ -186,7 +186,7 @@
   },
   "mclib": {
    "LG01": 732,
-   "LG02": 290,
+   "LG02": 287,
    "LG03": 1139,
    "LG04": 16,
    "LG05": 136,
@@ -571,7 +571,6 @@
    "LG12a": 8
   },
   "GameOS/gameos/gos_font.h": {
-   "LG02": 1,
    "LG06": 2
   },
   "GameOS/gameos/gos_frame_context.h": {
@@ -1407,11 +1406,7 @@
    "LG09": 7
   },
   "GameOS/include/fileio.hpp": {
-   "LG02": 1,
    "LG06": 1
-  },
-  "GameOS/include/font3d.hpp": {
-   "LG02": 4
   },
   "GameOS/include/gameos.hpp": {
    "LG02": 48,
@@ -1430,9 +1425,6 @@
   "GameOS/include/mc2_verify.h": {
    "LG06": 2,
    "LG09": 2
-  },
-  "GameOS/include/memorymanager.hpp": {
-   "LG02": 5
   },
   "GameOS/include/platform.hpp": {
    "LG02": 1,
@@ -1482,7 +1474,7 @@
    "LG13": 158
   },
   "GameOS/include/psapi.h": {
-   "LG02": 4,
+   "LG02": 3,
    "LG11": 2
   },
   "GameOS/include/strres.h": {
@@ -1624,7 +1616,6 @@
    "LG05": 1
   },
   "RenderCore/bcdec.h": {
-   "LG02": 2,
    "LG09": 31,
    "LG13": 9,
    "LG17": 2,
@@ -1745,7 +1736,7 @@
    "LG13": 12
   },
   "code/artlry.h": {
-   "LG02": 2,
+   "LG02": 1,
    "LG04": 1,
    "LG13": 9
   },
@@ -1837,7 +1828,7 @@
   },
   "code/carnage.h": {
    "LG01": 6,
-   "LG02": 2,
+   "LG02": 1,
    "LG04": 1,
    "LG18": 1
   },
@@ -1959,7 +1950,7 @@
    "LG13": 4
   },
   "code/dcarnage.h": {
-   "LG02": 7,
+   "LG02": 6,
    "LG14": 1
   },
   "code/dcollsn.h": {
@@ -2172,7 +2163,7 @@
    "LG09": 3
   },
   "code/goal.h": {
-   "LG02": 6,
+   "LG02": 1,
    "LG04": 1,
    "LG13": 5,
    "LG14": 2
@@ -2877,7 +2868,7 @@
    "LG13": 1
   },
   "code/movemgr.h": {
-   "LG02": 3
+   "LG02": 2
   },
   "code/mover.cpp": {
    "LG03": 2,
@@ -3131,7 +3122,6 @@
    "LG16": 1
   },
   "code/optionsarea.h": {
-   "LG02": 1,
    "LG06": 2
   },
   "code/optionsscreenwrapper.cpp": {
@@ -3376,7 +3366,6 @@
    "LG09": 1
   },
   "code/warrior_internal.h": {
-   "LG02": 1,
    "LG13": 3,
    "LG14": 2
   },
@@ -3443,7 +3432,6 @@
    "LG09": 2
   },
   "code/weather.h": {
-   "LG02": 1,
    "LG13": 15
   },
   "editor/EditorGosRender.cpp": {
@@ -4872,7 +4860,6 @@
    "LG17": 2
   },
   "mclib/msodw.h": {
-   "LG02": 1,
    "LG13": 28,
    "LG14": 5
   },
@@ -5064,7 +5051,6 @@
   },
   "mclib/soundsys.h": {
    "LG01": 10,
-   "LG02": 2,
    "LG06": 3,
    "LG13": 11,
    "LG17": 1
@@ -5708,7 +5694,7 @@
    "LG20": 2
   }
  },
- "head": "1e2fa987d",
+ "head": "02537d7ad",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
