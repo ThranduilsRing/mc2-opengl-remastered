@@ -60,7 +60,7 @@
    "LG11": 107,
    "LG12a": 613,
    "LG12b": 115,
-   "LG13": 331,
+   "LG13": 330,
    "LG14": 63,
    "LG15": 0,
    "LG16": 7,
@@ -1170,7 +1170,7 @@
   },
   "GameOS/gameos/utils/render_constants.h": {
    "LG02": 5,
-   "LG13": 2,
+   "LG13": 1,
    "LG14": 5
   },
   "GameOS/gameos/utils/shader_builder.cpp": {
@@ -5590,7 +5590,7 @@
    "LG20": 2
   }
  },
- "head": "645576c12",
+ "head": "3a80e116f",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
