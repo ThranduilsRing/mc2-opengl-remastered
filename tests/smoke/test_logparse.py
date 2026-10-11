@@ -63,3 +63,14 @@ def test_shader_failure_lines_count_once_per_line():
 
 def test_ordinary_shader_builder_info_is_not_a_failure():
     assert parse_log("Loading shader: gos_terrain.frag\nname: u_mvp type: mat4\n").shader_errors == 0
+
+
+def test_crash_bundle_banner_counts_as_crash_handler_hit():
+    log = (
+        "[INSTR v1] enabled: smoke=1\n"
+        "[TIMING v1] event=mission_ready elapsed_ms=5000\n"
+        "MC2 Remastered Crash Report\n"
+        "Code: 0xC0000374  Flags: 0x00000001  Addr: 00007FF9ABB2F499\n"
+        "[CRASH] FAST-EXIT code=0xC0000374 bundle=X:\\crashes\\crash_x\n"
+    )
+    assert parse_log(log).crash_handler_hit is True

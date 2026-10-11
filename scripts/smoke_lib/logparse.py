@@ -23,6 +23,10 @@ HEARTBEAT_RE = re.compile(r"\[HEARTBEAT\] frames=(?P<f>\d+) elapsed_ms=(?P<ms>\d
 CRASH_PATTERNS = (
     re.compile(r"^CRASH:", re.M),
     re.compile(r"^\[CRASHBUNDLE\]", re.M),
+    # The engine crash bundle (gos_crashbundle.cpp) announces itself with these two lines on every fatal fault, including the heap-corruption
+    # exit; without them such a run was classified as an external, evidence-free crash_silent.
+    re.compile(r"^MC2 Remastered Crash Report", re.M),
+    re.compile(r"^\[CRASH\] FAST-EXIT ", re.M),
     re.compile(r"unhandled exception", re.I),
 )
 SHADER_ERROR_PATTERNS = (

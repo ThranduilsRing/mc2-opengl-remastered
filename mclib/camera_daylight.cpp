@@ -518,6 +518,11 @@ void Camera::updateLights()
 {
 	//---------------------------------------------------------------------------------
 	// Check which lights are on screen and deactivate those which are NOT on screen!
+	// Remember the previous counts: consumers hold the pointer array and a count that was
+	// current at their last SetLightList, so entries past the new count must not keep pointing
+	// at lights the owner has since freed.
+	const long prevActiveLights = numActiveLights;
+	const long prevTerrainLights = numTerrainLights;
 	numActiveLights = numTerrainLights = 0;
 	++s_spotDiagCamFrames;  // T1.15 frame tick (updateLights is once-per-frame)
 	if (s_spotDiagCamSeenSlot.empty()) s_spotDiagCamSeenSlot.assign(MAX_LIGHTS_IN_WORLD, false);
@@ -659,6 +664,10 @@ void Camera::updateLights()
 			}
 		}
 	}
+	for (long i = numActiveLights; i < prevActiveLights && i < MAX_LIGHTS_IN_WORLD; ++i)
+		activeLights[i] = nullptr;
+	for (long i = numTerrainLights; i < prevTerrainLights && i < MAX_LIGHTS_IN_WORLD; ++i)
+		terrainLights[i] = nullptr;
 	// T1.15 [SPOT_DIAG v1] per-summary overwrite aggregate (env-gated).
 	if (s_spotDiagCamEnabled && (s_spotDiagCamFrames % 600) == 0) {
 		unsigned long total = s_spotDiagCamActiveTrue + s_spotDiagCamActiveFalse;
