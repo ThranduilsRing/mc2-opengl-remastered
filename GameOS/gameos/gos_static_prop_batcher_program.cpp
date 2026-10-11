@@ -88,10 +88,7 @@ void loadProgramsIfNeeded() {
         "shaders/static_prop.frag",
         legacyPrefix.c_str());
     if (!s_staticPropProgramObj || !s_staticPropProgramObj->is_valid()) {
-        std::fprintf(stderr,
-            "[GPUPROPS] failed to compile/link static_prop shader pair — "
-            "GPU path disabled for this session; all static props will "
-            "CPU-fallback via submit()==false\n");
+        mc2::fmt::print_err("[GPUPROPS] failed to compile/link static_prop shader pair — GPU path disabled for this session; all static props will CPU-fallback via submit()==false\n");
         s_staticPropProgramObj = nullptr;
         s_staticPropProgram    = 0;
         s_programLoadFailed    = true;
@@ -375,9 +372,7 @@ void loadProgramsIfNeeded() {
             }
             mc2::fmt::print_err("[GPUPROPS-DIAG] static_prop_depth program={:d} variant={} loc_drawIDBase={:d} loc_materialGpuSample={:d} loc_debugAddrMode={:d}\n", mc2::fmt::as_u32(s_staticPropDepthProgram), mc2::fmt::safe(depthUsesCoalesce ? "coalesce" : "legacy"), mc2::fmt::as_i32(s_locsDepthCoalesce.drawIDBase), mc2::fmt::as_i32(s_locsDepthCoalesce.materialGpuSample), mc2::fmt::as_i32(s_locsDepthCoalesce.debugAddrMode));
         } else {
-            std::fprintf(stderr,
-                "[GPUPROPS] static_prop_depth program failed to compile/link — "
-                "depth-prepass disabled this session (color path unaffected)\n");
+            mc2::fmt::print_err("[GPUPROPS] static_prop_depth program failed to compile/link — depth-prepass disabled this session (color path unaffected)\n");
             s_staticPropDepthProgram = 0;   // flushDepthPrepass() must no-op when 0
         }
     }
@@ -511,7 +506,7 @@ void ensureRingCapacity(size_t neededInstances, size_t neededColorEntries) {
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
     if (!s_instanceMap || !s_colorMap) {
-        std::fprintf(stderr, "[GPUPROPS] persistent map failed; disabling GPU path\n");
+        mc2::fmt::print_err("[GPUPROPS] persistent map failed; disabling GPU path\n");
         s_fatalRegistrationFailure = true;
     }
 }

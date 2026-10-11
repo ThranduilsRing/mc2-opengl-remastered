@@ -120,14 +120,12 @@ void GpuStaticPropBatcher::uploadPerTypeAndPublish() {
                         break;
                     }
                 }
-                std::fprintf(stderr,
-                    "[GPUPROPS] fixture-light type: id=%zu name=%s rgb=0x%06lX\n",
-                    i, fname, (unsigned long)(pink & 0x00FFFFFFu));
+                mc2::fmt::print_err("[GPUPROPS] fixture-light type: id={:d} name={} rgb=0x{:06X}\n",
+                    mc2::fmt::as_size(i), mc2::fmt::safe(fname), mc2::fmt::as_u32((unsigned long)(pink & 0x00FFFFFFu)));
             }
         }
-        std::fprintf(stderr, "[GPUPROPS] fixture-lights: %u of %zu types classified"
-                             " as emissive fixtures (scale=%.2f)\n",
-                     s_fixtureTypeCount, s_types.size(), s_fixtureLightsScale);
+        mc2::fmt::print_err("[GPUPROPS] fixture-lights: {:d} of {:d} types classified as emissive fixtures (scale={:.2f})\n",
+                     mc2::fmt::as_u32(s_fixtureTypeCount), mc2::fmt::as_size(s_types.size()), s_fixtureLightsScale);
 
         // TIER2-EXCLUDED: dead-path
         glGenBuffers(1, &s_perTypeSsbo);
@@ -148,19 +146,15 @@ void GpuStaticPropBatcher::uploadPerTypeAndPublish() {
     s_stagingVbo.clear(); s_stagingVbo.shrink_to_fit();
     s_stagingIbo.clear(); s_stagingIbo.shrink_to_fit();
 
-    std::fprintf(stderr, "[GPUPROPS] finalize: %zu types, %zu packets\n",
-                 s_types.size(), s_packets.size());
+    mc2::fmt::print_err("[GPUPROPS] finalize: {:d} types, {:d} packets\n",
+                 mc2::fmt::as_size(s_types.size()), mc2::fmt::as_size(s_packets.size()));
 
     if (s_gpuPropsTrace) {
-        std::fprintf(stderr,
-            "[GPUPROPS v1] event=register_summary path=%d "
-            "regCalls[init=%u ims=%u splog=%u unk=%u] "
-            "lateDrops[init=%u ims=%u splog=%u unk=%u] "
-            "typeIndexSize=%zu\n",
-            g_lightProbeSetupPath,
-            g_regCall[1], g_regCall[2], g_regCall[3], g_regCall[0],
-            g_regLateDrop[1], g_regLateDrop[2], g_regLateDrop[3], g_regLateDrop[0],
-            s_typeIndex.size());
+        mc2::fmt::print_err("[GPUPROPS v1] event=register_summary path={:d} regCalls[init={:d} ims={:d} splog={:d} unk={:d}] lateDrops[init={:d} ims={:d} splog={:d} unk={:d}] typeIndexSize={:d}\n",
+            mc2::fmt::as_i32(g_lightProbeSetupPath),
+            mc2::fmt::as_u32(g_regCall[1]), mc2::fmt::as_u32(g_regCall[2]), mc2::fmt::as_u32(g_regCall[3]), mc2::fmt::as_u32(g_regCall[0]),
+            mc2::fmt::as_u32(g_regLateDrop[1]), mc2::fmt::as_u32(g_regLateDrop[2]), mc2::fmt::as_u32(g_regLateDrop[3]), mc2::fmt::as_u32(g_regLateDrop[0]),
+            mc2::fmt::as_size(s_typeIndex.size()));
     }
 
     s_geometryFinalized = true;
@@ -921,11 +915,9 @@ bool GpuStaticPropBatcher::reportMaterialCacheAndBaseInstances(StaticPropFinaliz
     {
         GpuStaticPropRegistry::MaterialCacheStats mcs{};
         GpuStaticPropRegistry::staticPropGetMaterialCacheStats(&mcs);
-        std::fprintf(stderr,
-            "[GPUPROPS] material_cache cache_slots=%u tex_wired=%u mat_wired=%u "
-            "multi_packet=%u alpha_on_fallback=%u no_primary=%u\n",
-            mcs.cacheVectorSize, mcs.texWired, mcs.matWired,
-            mcs.multiPacket, mcs.alphaOnFallback, mcs.noPrimary);
+        mc2::fmt::print_err("[GPUPROPS] material_cache cache_slots={:d} tex_wired={:d} mat_wired={:d} multi_packet={:d} alpha_on_fallback={:d} no_primary={:d}\n",
+            mc2::fmt::as_u32(mcs.cacheVectorSize), mc2::fmt::as_u32(mcs.texWired), mc2::fmt::as_u32(mcs.matWired),
+            mc2::fmt::as_u32(mcs.multiPacket), mc2::fmt::as_u32(mcs.alphaOnFallback), mc2::fmt::as_u32(mcs.noPrimary));
     }
 
     // Slice 1 step group 3 — allocate base-instance table under !s_globalPoolLegacy.

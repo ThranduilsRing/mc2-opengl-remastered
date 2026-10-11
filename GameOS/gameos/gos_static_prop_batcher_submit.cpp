@@ -20,8 +20,7 @@ bool GpuStaticPropBatcher::submit(TG_Shape* shape,
     auto it = s_typeIndex.find(typeShape);
     if (it == s_typeIndex.end()) {
         if (!s_failedTypes[typeShape]) {
-            std::fprintf(stderr, "[GPUPROPS] unregistered type %p for shape %p -- "
-                         "caller must CPU-fallback\n", (void*)typeShape, (void*)shape);
+            mc2::fmt::print_err("[GPUPROPS] unregistered type {:016X} for shape {:016X} -- caller must CPU-fallback\n", mc2::fmt::as_ptr((void*)typeShape), mc2::fmt::as_ptr((void*)shape));
             s_failedTypes[typeShape] = true;
         }
         return false;  // Layer B: caller calls shape->Render() on false.
@@ -1073,9 +1072,7 @@ bool flushDepthPrepassV6(
         static bool warnedBc7 = false;
         if (!warnedBc7) {
             warnedBc7 = true;
-            std::fprintf(stderr, "[GPUPROPS] depth-prepass skipped: bc7-bucket "
-                                 "texture path active (per-bucket array bind "
-                                 "unsupported in this slice)\n");
+            mc2::fmt::print_err("[GPUPROPS] depth-prepass skipped: bc7-bucket texture path active (per-bucket array bind unsupported in this slice)\n");
         }
         return false;
     }
@@ -1093,9 +1090,7 @@ bool flushDepthPrepassV6(
         static bool warnedNoUbo = false;
         if (!warnedNoUbo) {
             warnedNoUbo = true;
-            std::fprintf(stderr, "[GPUPROPS] depth-prepass skipped: "
-                                 "MC2_VIEW_UNIFORMS=0 (non-UBO MVP path "
-                                 "unsupported)\n");
+            mc2::fmt::print_err("[GPUPROPS] depth-prepass skipped: MC2_VIEW_UNIFORMS=0 (non-UBO MVP path unsupported)\n");
         }
         return false;
     }

@@ -294,8 +294,7 @@ void GpuStaticPropBatcher::registerType(TG_TypeShape* typeShape, TG_TypeMultiSha
     if (s_geometryFinalized) {
         // Layer B: register-after-finalize is a bug in the map-load walk.
         if (!s_failedTypes[typeShape]) {
-            std::fprintf(stderr, "[GPUPROPS] late registerType for %p -- "
-                         "CPU-fallback for this type\n", (void*)typeShape);
+            mc2::fmt::print_err("[GPUPROPS] late registerType for {:016X} -- CPU-fallback for this type\n", mc2::fmt::as_ptr((void*)typeShape));
             s_failedTypes[typeShape] = true;
         }
         if (s_gpuPropsTrace) ++g_regLateDrop[g_lightProbeSetupPath & 3];
