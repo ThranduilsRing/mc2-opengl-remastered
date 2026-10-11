@@ -138,6 +138,14 @@ def emit(records) -> str:
     return "\n".join(lines)
 
 
+def write_generated() -> int:
+    """Regenerate tests/unit/printf_corpus_gen.inc from the jsonl. -> number of test cases."""
+    recs = load()
+    with open(GEN, "w", encoding="utf-8", newline="\n") as fh:
+        fh.write(emit(recs))
+    return len(recs)
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--add", nargs="+", metavar="FILE", help="record the conversions of these files (relative to the repo root)")
@@ -147,10 +155,7 @@ def main(argv=None) -> int:
     if args.add:
         print(f"printf_corpus: {add(args.add, args.base)} new format pair(s) recorded")
     if args.emit or args.add:
-        recs = load()
-        with open(GEN, "w", encoding="utf-8", newline="\n") as fh:
-            fh.write(emit(recs))
-        print(f"printf_corpus: wrote {os.path.relpath(GEN, ROOT)} ({len(recs)} test case(s))")
+        print(f"printf_corpus: wrote {os.path.relpath(GEN, ROOT)} ({write_generated()} test case(s))")
     return 0
 
 
