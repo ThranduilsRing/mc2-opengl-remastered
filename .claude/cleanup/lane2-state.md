@@ -9,9 +9,10 @@ Proof ledger (per commit, per object, rulings applied): .claude/cleanup/step2-ne
   c409592cc registered tools/tidy/vs_trees.py (the nifty row for tools/sim_determinism.py was fixed on nifty).
 - LG14 DONE for this step: 18 enums converted in 4 strict commits (929ecc662 cab34b9e2 edb92d936 b31a71d36), every object of the Ninja trees AND mc2_tests / harness trees IDENTICAL. Skips with reasons: tools/tidy/enum_skip.txt (41 names);
   the gate refused EquipmentReasonCode, UnitProfileReasonCode, Capability (tests index / loop / size arrays with `X__COUNT`) and ClassPolicy (C++17 harness tree rejects `using enum`). ActorState: dead header, skipped.
-- LG13 (ratchet LG13 1,120 from 1,707): unitdesg.h (69b935d96) and 19 wide headers in 5 commits (04f05bb87 cc8a4ab2d 17ecb3df2 51e4ae3aa 06e2957c9) under the rulings: `--layout-only-ok --order-only-ok --vs-gate`, every accepted
+- LG13 (ratchet LG13 1114 from 1,707): unitdesg.h (69b935d96) and 19 wide headers in 5 commits (04f05bb87 cc8a4ab2d 17ecb3df2 51e4ae3aa 06e2957c9) under the rulings: `--layout-only-ok --order-only-ok --vs-gate`, every accepted
   object named in the commit message, `tools/tidy/proof_allow.json` (MapGeneratorDialog, bounded, used once). Checkpoints (build_all_targets, doctest 2,719, tier1 5/5, board 165/168) at 13:13 and 14:40.
-  OPEN (6 headers, ~56 sites): dstd.h inifile.h tgl.h txmmgr.h vfx.h (harness-gate failures, unattributed for three: bisect per header) and gameos.hpp (`controlgui_hudtabs.cpp.obj`, flaky/combination-dependent: classify first).
+  tgl.h went through ALONE afterwards (see the git log): its failure inside the 5-header batch was an interaction, so the other open headers are worth one-by-one runs too.
+  OPEN (5 headers, ~50 sites): dstd.h inifile.h (test_file_inifile.obj in build64-tests), txmmgr.h vfx.h (gate failures with no error text: run each alone) and gameos.hpp (`controlgui_hudtabs.cpp.obj`, flaky/combination-dependent: classify first).
   The 8 headers with no including object (platform_win*.h, actor.h) cannot be proven by objects.
 
 ## Tools (tested, committed)
@@ -29,7 +30,7 @@ mclib/estring*, elist*, heap*, stuff/*, mlr/*, gosfx/*, memorystream*, file*, pa
 Ratchet policy: never contort code for a ratchet; a legitimate rise gets a baseline rewrite with the reason in the commit.
 
 ## Exact next steps for the next lane 2
-1. Merge nifty (lane 1 keeps moving). Then the 6 open wide headers, one at a time with a fresh `--taint-file` (a differing object taints every header it includes): `py -3 tools/tidy/rewrite_defines.py run --scope all
+1. Merge nifty (lane 1 keeps moving). Then the 5 open wide headers, one at a time with a fresh `--taint-file` (a differing object taints every header it includes): `py -3 tools/tidy/rewrite_defines.py run --scope all
    --tree build-alltargets --max-files 1 --max-objs 100000 --max-header-includers 100000 --layout-only-ok --order-only-ok --vs-gate --done D --taint-file T --commit` after putting the header name in D's complement.
    For the three unattributed gate failures run `py -3 .claude/l2cfg/vs_why.py mclib/tgl.h` (applies the enum rewrite today; adapt to the define rewrite or run the batch with `--vs-gate` and read the `FAIL` lines of `vs_trees.verify`).
    For gameos.hpp: `python .claude/l2cfg/wide_diag.py GameOS/include/gameos.hpp CMakeFiles/mc2.dir/code/controlgui_hudtabs.cpp.obj`, then `objhash.py diff`: if it is a __TIME__ / noise class, the Proof's noise check should have caught it; if not, classify.
