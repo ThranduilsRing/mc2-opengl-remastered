@@ -22,6 +22,7 @@ MissionResults.cpp			: Implementation of the MissionResults component.
 #include <cstdlib>
 #include <cstdlib>
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 bool MissionResults::FirstTimeResults = true;
 MissionResults::MissionResults()
@@ -64,7 +65,7 @@ void MissionResults::begin()
 			if ( NO_ERR != file.open( path ) )
 			{
 				char error[256];
-				sprintf( error, "couldn't open file %s", path );
+				mc2::fmt::to_buf(error, "couldn't open file {}", mc2::fmt::safe(path));
 				Assert( 0, 0, error );
 				return;
 			}
@@ -83,7 +84,7 @@ void MissionResults::begin()
 			if ( NO_ERR != file.open( path ) )
 			{
 				char error[256];
-				sprintf( error, "couldn't open file %s", path );
+				mc2::fmt::to_buf(error, "couldn't open file {}", mc2::fmt::safe(path));
 				Assert( 0, 0, error );
 				return;
 			}

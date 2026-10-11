@@ -11,6 +11,7 @@
 
 #include"soundsys.h"
 #include"../resource.h"
+#include "mc2fmt.h"
 
 extern SoundSystem *sndSystem;
 
@@ -207,7 +208,7 @@ int CPrefs::load( const char* pFileName ) {
 			char blockName[64];
 			for ( int i = 0; i < 10; i++ )
 			{	
-				sprintf( blockName, "PlayerName%ld", i );
+				mc2::fmt::to_buf(blockName, "PlayerName{:d}", mc2::fmt::as_i32(i));
 				result = prefsFile->readIdString( blockName, &playerName[i][0], 255 );
 
 				if ( result != NO_ERR && i == 0 )
@@ -217,11 +218,11 @@ int CPrefs::load( const char* pFileName ) {
 					break;
 				}
 
-				sprintf( blockName, "IPAddress%ld", i );
+				mc2::fmt::to_buf(blockName, "IPAddress{:d}", mc2::fmt::as_i32(i));
 				result = prefsFile->readIdString( blockName, &ipAddresses[i][0], 255 );
 
 
-				sprintf( blockName, "UnitName%ld", i );
+				mc2::fmt::to_buf(blockName, "UnitName{:d}", mc2::fmt::as_i32(i));
 				result = prefsFile->readIdString( blockName, &unitName[i][0], 255 );
 
 			}
@@ -350,13 +351,13 @@ int CPrefs::save() {
 			for ( int i = 0; i < 10; i++ )
 			{	
 				
-				sprintf( blockName, "PlayerName%ld", i );
+				mc2::fmt::to_buf(blockName, "PlayerName{:d}", mc2::fmt::as_i32(i));
 				result = prefsFile->writeIdString( blockName, &playerName[i][0] );
 
-				sprintf( blockName, "UnitName%ld", i );
+				mc2::fmt::to_buf(blockName, "UnitName{:d}", mc2::fmt::as_i32(i));
 				result = prefsFile->writeIdString( blockName, &unitName[i][0] );
 
-				sprintf( blockName, "IPAddress%ld", i );
+				mc2::fmt::to_buf(blockName, "IPAddress{:d}", mc2::fmt::as_i32(i));
 				result = prefsFile->writeIdString( blockName, &ipAddresses[i][0] );
 
 			}

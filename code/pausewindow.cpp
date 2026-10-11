@@ -28,6 +28,7 @@ PauseWindow.cpp			: Implementation of the PauseWindow component.
 #include "imgui.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
+#include "mc2fmt.h"
 
 extern float frameLength;
 
@@ -838,7 +839,7 @@ void PauseWindow::init( FitIniFile& file )
 		char buffer[256];
 		for ( int i = 0; i < staticCount; i++ )
 		{
-			sprintf( buffer, "PauseStatic%ld", i );
+			mc2::fmt::to_buf(buffer, "PauseStatic{:d}", mc2::fmt::as_i32(i));
 			statics[i].init( file, buffer, ControlGui::hiResOffsetX, 0);
 		}
 	}

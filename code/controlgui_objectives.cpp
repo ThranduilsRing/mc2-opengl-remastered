@@ -1,6 +1,7 @@
 // ControlGui: objective start, results, the ImGui objectives / timer / video panels and the legacy objective rows.
 // Declared in the class headers; shared names in controlgui_internal.h.
 #include "controlgui_internal.h"
+#include "mc2fmt.h"
 
 
 
@@ -354,7 +355,7 @@ void ControlGui::renderObjectivesImGui()
 		{
 			char total[64];
 			int amount = row.succeeded ? row.points : 0;
-			sprintf( total, "%d", amount );
+			mc2::fmt::to_buf(total, "{:d}", mc2::fmt::as_i32(amount));
 			const float totalW = TextWidth( total );
 			ShadowText( AX( (float)OBJECTIVESTOTALRIGHT ) - totalW, AY( (float)yPos ), 0xffffffff, total );
 
@@ -878,7 +879,7 @@ void ControlGui::renderObjective( const ObjectiveUiRow& row, long xPos, long yPo
 
 		char total[64];
 		int amount = row.succeeded ? row.points : 0;
-		sprintf( total, "%d", amount );
+		mc2::fmt::to_buf(total, "{:d}", mc2::fmt::as_i32(amount));
 		width = guiFont.width( total );
 		
 		// draw total

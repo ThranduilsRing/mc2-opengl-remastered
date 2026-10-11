@@ -1,6 +1,7 @@
 // MissionInterfaceManager: air strikes, reinforcements, VTOL calls, salvage, repair, pause API, nav markers and sensor strikes.
 // Declared in the class headers; shared names in missiongui_shared_internal.h.
 #include "missiongui_shared_internal.h"
+#include "mc2fmt.h"
 
 
 void MissionInterfaceManager::addAirstrike()
@@ -25,7 +26,7 @@ MoverPtr BringInReinforcement (long vehicleID, long rosterIndex, long commanderI
 	char* vehicleFile = (char*)MissionInterfaceManager::instance()->getSupportVehicleNameFromID(vehicleID);
 	if (!vehicleFile) {
 		char s[1024];
-		sprintf(s, "BringInReinforcement: null behicleFile (%d)", vehicleID);
+		mc2::fmt::to_buf(s, "BringInReinforcement: null behicleFile ({:d})", mc2::fmt::as_i32(vehicleID));
 		STOP((s));
 	}
 	strcpy( data.pilotFileName, vehicleFile );
@@ -121,7 +122,7 @@ void MissionInterfaceManager::beginVtol (long supportID, long commanderID, Stuff
 
 	if (vehicleID[commanderID] == 0) {
 		char s[1024];
-		sprintf(s, "beginvtol: supportID = %d, commanderID = %d, vehicleID = %d, vehicleFile = %s", supportID, commanderID, vehicleID[commanderID], vehicleFile);
+		mc2::fmt::to_buf(s, "beginvtol: supportID = {:d}, commanderID = {:d}, vehicleID = {:d}, vehicleFile = {}", mc2::fmt::as_i32(supportID), mc2::fmt::as_i32(commanderID), mc2::fmt::as_i32(vehicleID[commanderID]), mc2::fmt::safe(vehicleFile));
 		PAUSE((s));
 	}
 

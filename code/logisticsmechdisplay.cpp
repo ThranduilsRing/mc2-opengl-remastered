@@ -11,6 +11,7 @@ LogisticsMechDisplay.cpp			: Implementation of the LogisticsMechDisplay componen
 #include"mclib.h"
 #include "../resource.h"
 #include"prefs.h"
+#include "mc2fmt.h"
 
 // Mirror a populated component list into the defs GuiList, preserving the per-item
 // range colours -- so the Mech Loadout matches the Mech Bay screen 100% (defs-page
@@ -130,7 +131,7 @@ int	LogisticsMechDisplay::init( )
 	char blockName[64];
 	for ( int i = 0; i < 3; i++ )
 	{
-		sprintf( blockName, "AttributeMeter%ld", i );
+		mc2::fmt::to_buf(blockName, "AttributeMeter{:d}", mc2::fmt::as_i32(i));
 		attributeMeters[i].init( &file, blockName );
 	}
 
@@ -176,15 +177,15 @@ void LogisticsMechDisplay::setMech( LogisticsMech* pMech, bool bFromLB )
 				cLoadString( rangeID, rangeBuf, sizeof( rangeBuf ) - 1 );
 				setDefsElementText( "game.mcl_mechinfo.text.for_mech_range", rangeBuf );
 
-				sprintf( text, "%ld", pCurMech->getArmor() );
+				mc2::fmt::to_buf(text, "{:d}", mc2::fmt::as_i32(pCurMech->getArmor()));
 				textObjects[4].setText( text );
 				setDefsElementText( "game.mcl_mechinfo.text.for_mech_armor", text );
 
-				sprintf( text, "%ld", pCurMech->getDisplaySpeed() );
+				mc2::fmt::to_buf(text, "{:d}", mc2::fmt::as_i32(pCurMech->getDisplaySpeed()));
 				textObjects[5].setText( text );
 				setDefsElementText( "game.mcl_mechinfo.text.for_mech_speed", text );
 
-				sprintf( text, "%ld", pCurMech->getJumpRange() * 25);
+				mc2::fmt::to_buf(text, "{:d}", mc2::fmt::as_i32(pCurMech->getJumpRange() * 25));
 				textObjects[6].setText( text );
 				setDefsElementText( "game.mcl_mechinfo.text.for_mech_jump_range", text );
 

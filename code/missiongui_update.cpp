@@ -1,6 +1,7 @@
 // MissionInterfaceManager: the per-frame update() and the hover/target pick (updateTarget).
 // Declared in the class headers; shared names in missiongui_shared_internal.h.
 #include "missiongui_shared_internal.h"
+#include "mc2fmt.h"
 
 
 void MissionInterfaceManager::update (void)
@@ -127,7 +128,7 @@ void MissionInterfaceManager::update (void)
 							s_stage = idx * 2 + 1;
 							_mkdir("dev_shell_out");
 							char nm[32];
-							sprintf(nm, "view_%d", idx + 1);
+							mc2::fmt::to_buf(nm, "view_{:d}", mc2::fmt::as_i32(idx + 1));
 							gos_dev_shell::scheduleScreenshot(nm, false);
 						}
 					} else if (s_stage < idx * 2) {
@@ -880,9 +881,9 @@ void MissionInterfaceManager::update (void)
 	if (MPlayer) {
 		char mpStr[256];
 		if (MPlayer->isServer())
-			sprintf(mpStr, ", MULTIPLAY: %s-(%d)SERVER {%d,%d}", MPlayer->getPlayerName(), MPlayer->commanderID, MPlayer->maxReceiveLoad, MPlayer->maxReceiveSize);
+			mc2::fmt::to_buf(mpStr, ", MULTIPLAY: {}-({:d})SERVER {{{:d},{:d}}}", mc2::fmt::safe(MPlayer->getPlayerName()), mc2::fmt::as_i32(MPlayer->commanderID), mc2::fmt::as_i32(MPlayer->maxReceiveLoad), mc2::fmt::as_i32(MPlayer->maxReceiveSize));
 		else
-			sprintf(mpStr, ", MULTIPLAY: %s-(%d)CLIENT {%d,%d}", MPlayer->getPlayerName(), MPlayer->commanderID, MPlayer->maxReceiveLoad, MPlayer->maxReceiveSize);
+			mc2::fmt::to_buf(mpStr, ", MULTIPLAY: {}-({:d})CLIENT {{{:d},{:d}}}", mc2::fmt::safe(MPlayer->getPlayerName()), mc2::fmt::as_i32(MPlayer->commanderID), mc2::fmt::as_i32(MPlayer->maxReceiveLoad), mc2::fmt::as_i32(MPlayer->maxReceiveSize));
 		strcat(DebugStatusBarString, mpStr);
 	}
 	if (EnemiesGoalPlan)
@@ -1264,11 +1265,7 @@ void MissionInterfaceManager::updateTarget( bool bGui)
 			if ( _ct_behind || _ct_distSq > 90000.0f )   // behind camera, or >300px from cursor
 			{
 				char _ct_buf[320];
-				snprintf(_ct_buf, sizeof(_ct_buf),
-				         "{\"site\":\"update_target\",\"mouse\":[%ld,%ld],\"target_screen\":[%.1f,%.1f],\"w\":%.4f,\"behind\":%d,\"dist_sq\":%.0f,\"is_mover\":%d,\"watch_id\":%d}",
-				         (long)mouseX, (long)mouseY, _ct_sp.x, _ct_sp.y, _ct_sp.w,
-				         _ct_behind?1:0, _ct_distSq,
-				         target->isMover()?1:0, (int)s_targetWatchID);
+				mc2::fmt::to_buf(_ct_buf, "{{\"site\":\"update_target\",\"mouse\":[{:d},{:d}],\"target_screen\":[{:.1f},{:.1f}],\"w\":{:.4f},\"behind\":{:d},\"dist_sq\":{:.0f},\"is_mover\":{:d},\"watch_id\":{:d}}}", mc2::fmt::as_i32((long)mouseX), mc2::fmt::as_i32((long)mouseY), _ct_sp.x, _ct_sp.y, _ct_sp.w, mc2::fmt::as_i32(_ct_behind?1:0), _ct_distSq, mc2::fmt::as_i32(target->isMover()?1:0), mc2::fmt::as_i32((int)s_targetWatchID));
 				mc2_diag::writeEvent("CURSOR_TARGET", 1, 0, _ct_buf);
 			}
 		}

@@ -1,6 +1,7 @@
 // ControlGui: the MC2_HUD_IMGUI_TABS data-driven tab registry and its ImGui chrome.
 // Declared in the class headers; shared names in controlgui_internal.h.
 #include "controlgui_internal.h"
+#include "mc2fmt.h"
 
 
 
@@ -232,7 +233,7 @@ void ControlGui::renderHudTabChromeImGui()
 		HudImGui::hudShrinkPoint( r, b, cy );
 
 		char wid[32];
-		sprintf( wid, "##hud_tab_chrome_%d", i );
+		mc2::fmt::to_buf(wid, "##hud_tab_chrome_{:d}", mc2::fmt::as_i32(i));
 		if ( !HudImGui::beginPanel( wid, l, tY, r, b ) )
 			return;
 		const bool active = ( hudTabRegistry.activeIndex() == i );

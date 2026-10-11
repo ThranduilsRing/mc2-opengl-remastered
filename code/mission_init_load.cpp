@@ -2,6 +2,7 @@
 // terrain objects, commanders, the HUD and the geometry finalize. The first half and the orchestrator are in mission_init.cpp.
 #include "mission_internal.h"
 #include "mission_init_frame.h"
+#include "mc2fmt.h"
 
 
 // Read the warrior count and set up the brain-load counters.
@@ -46,7 +47,7 @@ void Mission::loadWarriors(MissionInitFrame& f) {
 		for (long i = 1; i <= numWarriors; i++)
 		{
 			char warriorName[12];
-			sprintf(warriorName,"Warrior%d",i);
+			mc2::fmt::to_buf(warriorName, "Warrior{:d}", mc2::fmt::as_i32(i));
 			
 			result = missionFile->seekBlock(warriorName);
 			Assert(result == NO_ERR, i, " Could not find Warrior Number Block ");
@@ -338,7 +339,7 @@ void Mission::loadBrainRuntime(MissionInitFrame& f) {
 	if (mc2::gate::get<"MC2_BRAIN_RUNTIME">()) {
 		char aiFitName[256];
 		// missionName is the raw name like "mc2_01"; missionPath is "data/missions/".
-		std::snprintf(aiFitName, sizeof(aiFitName), "%s%s_ai.fit", missionPath, missionName);
+		mc2::fmt::to_buf(aiFitName, "{}{}_ai.fit", mc2::fmt::safe(missionPath), mc2::fmt::safe(missionName));
 		std::fprintf(stderr, "[BRAIN_RT] mission load: MC2_BRAIN_RUNTIME=1 mission=%s seeking %s\n", missionName, aiFitName);
 		std::fflush(stderr);
 		FitIniFile* aiFit = new FitIniFile;
@@ -405,7 +406,7 @@ void Mission::loadTacticWeights(MissionInitFrame& f) {
 	// uses uniform weights via the all-zero branch in applyPilotModulation).
 	if (mc2::gate::get<"MC2_TACTIC_WEIGHTS">()) {
 		char tacFitName[256];
-		std::snprintf(tacFitName, sizeof(tacFitName), "%s%s_ai.fit", missionPath, missionName);
+		mc2::fmt::to_buf(tacFitName, "{}{}_ai.fit", mc2::fmt::safe(missionPath), mc2::fmt::safe(missionName));
 		FitIniFile* tacFit = new FitIniFile;
 		if (tacFit && tacFit->open(tacFitName) == NO_ERR) {
 			if (tacFit->seekBlock("Tactics") == NO_ERR) {
@@ -660,7 +661,7 @@ void Mission::initPartsLoad(long loadType, long dropZoneID, Stuff::Vector3D* dro
 
 		for (int i = 1; i < long(numParts + 1); i++) {
 			char partName[12];
-			sprintf(partName,"Part%d",i);
+			mc2::fmt::to_buf(partName, "Part{:d}", mc2::fmt::as_i32(i));
 
 			result = missionFile->seekBlock(partName);
 			// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1):
@@ -711,7 +712,7 @@ void Mission::initPartsLoad(long loadType, long dropZoneID, Stuff::Vector3D* dro
 		if (result == NO_ERR)
 			for (long i = 0; i < numSquads; i++) {
 				char s[128];
-				sprintf(s, "Squad%d", i);
+				mc2::fmt::to_buf(s, "Squad{:d}", mc2::fmt::as_i32(i));
 				unsigned long alternate = -1;
 				result = missionFile->readIdULong(s, alternate);
 				if (result == NO_ERR)
@@ -724,7 +725,7 @@ void Mission::initPartsLoad(long loadType, long dropZoneID, Stuff::Vector3D* dro
 		for (int i = 1; i < long(numParts + 1); i++)
 		{
 			char partName[12];
-			sprintf(partName,"Part%d",i);
+			mc2::fmt::to_buf(partName, "Part{:d}", mc2::fmt::as_i32(i));
 			
 			result = missionFile->seekBlock(partName);
 			// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1):
@@ -765,7 +766,7 @@ void Mission::initPartsLoad(long loadType, long dropZoneID, Stuff::Vector3D* dro
 				// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
 				MC2_VERIFY(result == NO_ERR, "Mission::init: [%s] missing Pilot (alternate)", partName);
 
-				sprintf(partName, "Part%d", partId);
+				mc2::fmt::to_buf(partName, "Part{:d}", mc2::fmt::as_i32(partId));
 				result = missionFile->seekBlock(partName);
 				// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
 				MC2_VERIFY(result == NO_ERR, "Mission::init: alternate part block [%s] missing", partName);
@@ -1153,7 +1154,7 @@ void Mission::initCommanders(char (*commandersToLoad)[3], MissionInitFrame& f) {
 		if (!MC2_VERIFY_BOUNDS(ctlCommander, MAX_COMMANDERS, "Mission::init commander-groups commandersToLoad"))
 			continue;
 
-		sprintf(headingStr, "Commander%dGroup:%d", curCommanderId, numGroups);
+		mc2::fmt::to_buf(headingStr, "Commander{:d}Group:{:d}", mc2::fmt::as_i32(curCommanderId), mc2::fmt::as_i32(numGroups));
 		result = missionFile->seekBlock(headingStr);
 		// A group block exists for this commander -> the loop below WILL deref the
 		// slot. Verify it was created before entering (matches the original's
@@ -1179,7 +1180,7 @@ void Mission::initCommanders(char (*commandersToLoad)[3], MissionInitFrame& f) {
 			}
 			
 			numGroups++;
-			sprintf(headingStr, "Commander%dGroup:%d", curCommanderId, numGroups);
+			mc2::fmt::to_buf(headingStr, "Commander{:d}Group:{:d}", mc2::fmt::as_i32(curCommanderId), mc2::fmt::as_i32(numGroups));
 			result = missionFile->seekBlock(headingStr);
 		}
 	}

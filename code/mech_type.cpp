@@ -1,6 +1,7 @@
 // BattleMech: BattleMechType: loadGameSystem, init, collision and destruction handling, createInstance.
 // Declared in the class headers; shared names in mech_internal.h.
 #include "mech_internal.h"
+#include "mc2fmt.h"
 
 
 
@@ -563,7 +564,7 @@ bool BattleMechType::handleDestruction (GameObjectPtr collidee, GameObjectPtr co
 #endif
 		if (CombatLog) {
 			char s[1024];
-			sprintf(s, "[%.2f] mech.destroyed HD: [%05d]%s", scenarioTime, mech->getPartId(), mech->getName());
+			mc2::fmt::to_buf(s, "[{:.2f}] mech.destroyed HD: [{:05d}]{}", scenarioTime, mc2::fmt::as_i32(mech->getPartId()), mc2::fmt::safe(mech->getName()));
 			CombatLog->write(s);
 			CombatLog->write(" ");
 		}

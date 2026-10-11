@@ -101,6 +101,7 @@ extern float scenarioTime;
 //#ifndef SOUNDS_H
 #include"sounds.h"
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 //#endif
 
 extern long DefaultPilotId;
@@ -1266,7 +1267,7 @@ void Building::init (bool create, ObjectTypePtr objType) {
 		if (!buildingAppearanceType)
 		{
 			char msg[1024];
-			sprintf(msg,"No Building Appearance Named %s",appearName);
+			mc2::fmt::to_buf(msg, "No Building Appearance Named {}", mc2::fmt::safe(appearName));
 			Fatal(0,msg);
 		}
 	}
@@ -1558,7 +1559,7 @@ long Building::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayChu
 #endif							
 				if (CombatLog) {
 					char s[1024];
-					sprintf(s, "[%.2f] building.destroyed: [%05d]%s", scenarioTime, this->getPartId(), this->getName());
+					mc2::fmt::to_buf(s, "[{:.2f}] building.destroyed: [{:05d}]{}", scenarioTime, mc2::fmt::as_i32(this->getPartId()), mc2::fmt::safe(this->getName()));
 					CombatLog->write(s);
 					CombatLog->write(" ");
 				}

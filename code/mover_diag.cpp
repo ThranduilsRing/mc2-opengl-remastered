@@ -1,6 +1,7 @@
 // Mover: diagnostic dumps: chunk dump helpers, updateDebugWindow and the combat-log weapon fire/hit printers.
 // Declared in mover.h; shared names in mover_internal.h.
 #include "mover_internal.h"
+#include "mc2fmt.h"
 
 
 void DebugMoveChunk (MoverPtr mover, MoveChunkPtr chunk1, MoveChunkPtr chunk2) {
@@ -9,27 +10,22 @@ void DebugMoveChunk (MoverPtr mover, MoveChunkPtr chunk1, MoveChunkPtr chunk2) {
 	char outString[512];
 
 	if (mover) {
-		sprintf(outString, "Mover = %s (%d)\n",
-			mover->getName(),
-			mover->getPartId());
+		mc2::fmt::to_buf(outString, "Mover = {} ({:d})\n", mc2::fmt::safe(mover->getName()), mc2::fmt::as_i32(mover->getPartId()));
 		strcat(ChunkDebugMsg, outString);
 
-		sprintf(outString, "Mover World Pos = (%.4f, %.4f, %.4f)\n",
-			mover->getPosition().x,
-			mover->getPosition().y,
-			mover->getPosition().z);
+		mc2::fmt::to_buf(outString, "Mover World Pos = ({:.4f}, {:.4f}, {:.4f})\n", mover->getPosition().x, mover->getPosition().y, mover->getPosition().z);
 		strcat(ChunkDebugMsg, outString);
 
 		int cellPos[2];
 		mover->getCellPosition(cellPos[0], cellPos[1]);
-		sprintf(outString, "Mover Obj Cell Pos = [%d, %d]\n", cellPos[0], cellPos[1]);
+		mc2::fmt::to_buf(outString, "Mover Obj Cell Pos = [{:d}, {:d}]\n", mc2::fmt::as_i32(cellPos[0]), mc2::fmt::as_i32(cellPos[1]));
 		strcat(ChunkDebugMsg, outString);
 		if (mover->getPilot() == nullptr)
 			strcat(ChunkDebugMsg, "NULL pilot!\n");
 		if ((mover->getObjectClass() == BATTLEMECH) && ((BattleMechPtr)mover)->inJump) {
 			int jumpDest[2];
 			land->worldToCell(((BattleMechPtr)mover)->jumpGoal, jumpDest[0], jumpDest[1]);
-			sprintf(outString, "Jumping to [%d, %d]\n", jumpDest[0], jumpDest[1]);
+			mc2::fmt::to_buf(outString, "Jumping to [{:d}, {:d}]\n", mc2::fmt::as_i32(jumpDest[0]), mc2::fmt::as_i32(jumpDest[1]));
 			strcat(ChunkDebugMsg, outString);
 		}
 		strcat(ChunkDebugMsg, "\n");
@@ -39,26 +35,20 @@ void DebugMoveChunk (MoverPtr mover, MoveChunkPtr chunk1, MoveChunkPtr chunk2) {
 		strcat(ChunkDebugMsg, "CHUNK1\n");
 
 		for (int i = 0; i < 4; i++) {
-			sprintf(outString, "stepPos[%d] = (%d, %d)\n",
-				i,
-				chunk1->stepPos[i][0],
-				chunk1->stepPos[i][1]);
+			mc2::fmt::to_buf(outString, "stepPos[{:d}] = ({:d}, {:d})\n", mc2::fmt::as_i32(i), mc2::fmt::as_i32(chunk1->stepPos[i][0]), mc2::fmt::as_i32(chunk1->stepPos[i][1]));
 			strcat(ChunkDebugMsg, outString);
 		}
 
-		sprintf(outString, "stepRelPos = %d, %d, %d\n",
-			chunk1->stepRelPos[0],
-			chunk1->stepRelPos[1],
-			chunk1->stepRelPos[2]);
+		mc2::fmt::to_buf(outString, "stepRelPos = {:d}, {:d}, {:d}\n", mc2::fmt::as_i32(chunk1->stepRelPos[0]), mc2::fmt::as_i32(chunk1->stepRelPos[1]), mc2::fmt::as_i32(chunk1->stepRelPos[2]));
 		strcat(ChunkDebugMsg, outString);
 
-		sprintf(outString, "numSteps = %d\n", chunk1->numSteps);
+		mc2::fmt::to_buf(outString, "numSteps = {:d}\n", mc2::fmt::as_i32(chunk1->numSteps));
 		strcat(ChunkDebugMsg, outString);
 
-		sprintf(outString, "run = %c\n", chunk1->run ? 'T' : 'F');
+		mc2::fmt::to_buf(outString, "run = {:c}\n", mc2::fmt::as_char(chunk1->run ? 'T' : 'F'));
 		strcat(ChunkDebugMsg, outString);
 
-		sprintf(outString, "moving = %c\n", chunk1->moving ? 'T' : 'F');
+		mc2::fmt::to_buf(outString, "moving = {:c}\n", mc2::fmt::as_char(chunk1->moving ? 'T' : 'F'));
 		strcat(ChunkDebugMsg, outString);
 	}
 
@@ -66,26 +56,20 @@ void DebugMoveChunk (MoverPtr mover, MoveChunkPtr chunk1, MoveChunkPtr chunk2) {
 		strcat(ChunkDebugMsg, "\nCHUNK2\n");
 
 		for (int i = 0; i < 4; i++) {
-			sprintf(outString, "stepPos[%d] = (%d, %d)\n",
-				i,
-				chunk2->stepPos[i][0],
-				chunk2->stepPos[i][1]);
+			mc2::fmt::to_buf(outString, "stepPos[{:d}] = ({:d}, {:d})\n", mc2::fmt::as_i32(i), mc2::fmt::as_i32(chunk2->stepPos[i][0]), mc2::fmt::as_i32(chunk2->stepPos[i][1]));
 			strcat(ChunkDebugMsg, outString);
 		}
 
-		sprintf(outString, "stepRelPos = %d, %d, %d\n",
-			chunk2->stepRelPos[0],
-			chunk2->stepRelPos[1],
-			chunk2->stepRelPos[2]);
+		mc2::fmt::to_buf(outString, "stepRelPos = {:d}, {:d}, {:d}\n", mc2::fmt::as_i32(chunk2->stepRelPos[0]), mc2::fmt::as_i32(chunk2->stepRelPos[1]), mc2::fmt::as_i32(chunk2->stepRelPos[2]));
 		strcat(ChunkDebugMsg, outString);
 
-		sprintf(outString, "numSteps = %d\n", chunk2->numSteps);
+		mc2::fmt::to_buf(outString, "numSteps = {:d}\n", mc2::fmt::as_i32(chunk2->numSteps));
 		strcat(ChunkDebugMsg, outString);
 
-		sprintf(outString, "moving = %c\n", chunk2->moving ? 'T' : 'F');
+		mc2::fmt::to_buf(outString, "moving = {:c}\n", mc2::fmt::as_char(chunk2->moving ? 'T' : 'F'));
 		strcat(ChunkDebugMsg, outString);
 
-		sprintf(outString, "run = %c\n", chunk2->run ? 'T' : 'F');
+		mc2::fmt::to_buf(outString, "run = {:c}\n", mc2::fmt::as_char(chunk2->run ? 'T' : 'F'));
 		strcat(ChunkDebugMsg, outString);
 	}
 
@@ -107,7 +91,7 @@ void DebugStatusChunk (MoverPtr mover, StatusChunkPtr chunk1, StatusChunkPtr chu
 	char outString[512];
 
 	if (mover) {
-		sprintf(outString, "\nmover = %s (%d)\n", mover->name, mover->getPartId());
+		mc2::fmt::to_buf(outString, "\nmover = {} ({:d})\n", mc2::fmt::safe(mover->name), mc2::fmt::as_i32(mover->getPartId()));
 		strcat(ChunkDebugMsg, outString);
 		}
 	else
@@ -135,20 +119,20 @@ void DebugStatusChunk (MoverPtr mover, StatusChunkPtr chunk1, StatusChunkPtr chu
 
 		if (target) {
 			if (target->isMover()) {
-				sprintf(outString, "target = %s (%d)\n", ((MoverPtr)target)->name, target->getPartId());
+				mc2::fmt::to_buf(outString, "target = {} ({:d})\n", mc2::fmt::safe(((MoverPtr)target)->name), mc2::fmt::as_i32(target->getPartId()));
 				strcat(ChunkDebugMsg, outString);
 				}
 			else {
-				sprintf(outString, "target = objClass %d (%d)\n", target->getObjectClass(), target->getPartId());
+				mc2::fmt::to_buf(outString, "target = objClass {:d} ({:d})\n", mc2::fmt::as_i32(target->getObjectClass()), mc2::fmt::as_i32(target->getPartId()));
 				strcat(ChunkDebugMsg, outString);
 			}
 			}
 		else if (isTargetPoint) {
-			sprintf(outString, "target point = (%f, %f, %f)\n", targetPoint.x, targetPoint.y, targetPoint.z);
+			mc2::fmt::to_buf(outString, "target point = ({:f}, {:f}, {:f})\n", targetPoint.x, targetPoint.y, targetPoint.z);
 			strcat(ChunkDebugMsg, outString);
 			}
 		else if (chunk1->targetType == STATUSCHUNK_TARGET_NONE) {
-			sprintf(outString, "target = NONE\n");
+			mc2::fmt::to_buf(outString, "target = NONE\n");
 			strcat(ChunkDebugMsg, outString);
 			}
 		else {
@@ -160,45 +144,45 @@ void DebugStatusChunk (MoverPtr mover, StatusChunkPtr chunk1, StatusChunkPtr chu
 					GameObjectPtr curTarget = ObjectManager->findByPartId(partId + i);
 					if (curTarget) {
 						numObjsInTile++;
-						sprintf(outString, "    %d: objClass %d (%d)\n", i, curTarget->getObjectClass(), curTarget->getPartId());
+						mc2::fmt::to_buf(outString, "    {:d}: objClass {:d} ({:d})\n", mc2::fmt::as_i32(i), mc2::fmt::as_i32(curTarget->getObjectClass()), mc2::fmt::as_i32(curTarget->getPartId()));
 						strcat(ChunkDebugMsg, outString);
 					}
 				}
 				if (numObjsInTile > 0) {
-					sprintf(outString, "    There are %d terrain objects in this tile.\n", numObjsInTile);
+					mc2::fmt::to_buf(outString, "    There are {:d} terrain objects in this tile.\n", mc2::fmt::as_i32(numObjsInTile));
 					strcat(ChunkDebugMsg, outString);
 				}
 			}
 		}
 
-		sprintf(outString, "bodyState = %d\n", chunk1->bodyState);
+		mc2::fmt::to_buf(outString, "bodyState = {:d}\n", mc2::fmt::as_i32(chunk1->bodyState));
 		strcat(ChunkDebugMsg, outString);
 			
-		sprintf(outString, "targetType = %d\n", chunk1->targetType);
+		mc2::fmt::to_buf(outString, "targetType = {:d}\n", mc2::fmt::as_i32(chunk1->targetType));
 		strcat(ChunkDebugMsg, outString);
 
-		sprintf(outString, "targetId = %d\n", chunk1->targetId);
+		mc2::fmt::to_buf(outString, "targetId = {:d}\n", mc2::fmt::as_i32(chunk1->targetId));
 		strcat(ChunkDebugMsg, outString);
 			
-		sprintf(outString, "targetBlockOrTrainNumber = %d\n", chunk1->targetBlockOrTrainNumber);
+		mc2::fmt::to_buf(outString, "targetBlockOrTrainNumber = {:d}\n", mc2::fmt::as_i32(chunk1->targetBlockOrTrainNumber));
 		strcat(ChunkDebugMsg, outString);
 			
-		sprintf(outString, "targetVertexOrCarNumber = %d\n", chunk1->targetVertexOrCarNumber);
+		mc2::fmt::to_buf(outString, "targetVertexOrCarNumber = {:d}\n", mc2::fmt::as_i32(chunk1->targetVertexOrCarNumber));
 		strcat(ChunkDebugMsg, outString);
 			
-		sprintf(outString, "targetItemNumber = %d\n", chunk1->targetItemNumber);
+		mc2::fmt::to_buf(outString, "targetItemNumber = {:d}\n", mc2::fmt::as_i32(chunk1->targetItemNumber));
 		strcat(ChunkDebugMsg, outString);
 			
-		sprintf(outString, "targetCellRC = (%d, %d)\n", chunk1->targetCellRC[0], chunk1->targetCellRC[1]);
+		mc2::fmt::to_buf(outString, "targetCellRC = ({:d}, {:d})\n", mc2::fmt::as_i32(chunk1->targetCellRC[0]), mc2::fmt::as_i32(chunk1->targetCellRC[1]));
 		strcat(ChunkDebugMsg, outString);
 			
-		sprintf(outString, "ejectOrderGiven = %c\n", chunk1->ejectOrderGiven ? 'T' : 'F');
+		mc2::fmt::to_buf(outString, "ejectOrderGiven = {:c}\n", mc2::fmt::as_char(chunk1->ejectOrderGiven ? 'T' : 'F'));
 		strcat(ChunkDebugMsg, outString);
 			
-		sprintf(outString, "jumpOrder = %c\n", chunk1->jumpOrder ? 'T' : 'F');
+		mc2::fmt::to_buf(outString, "jumpOrder = {:c}\n", mc2::fmt::as_char(chunk1->jumpOrder ? 'T' : 'F'));
 		strcat(ChunkDebugMsg, outString);
 
-		sprintf(outString, "data = %x\n", chunk1->data);
+		mc2::fmt::to_buf(outString, "data = {:x}\n", mc2::fmt::as_u32(chunk1->data));
 		strcat(ChunkDebugMsg, outString);
 	}
 
@@ -224,20 +208,20 @@ void DebugStatusChunk (MoverPtr mover, StatusChunkPtr chunk1, StatusChunkPtr chu
 
 		if (target) {
 			if (target->isMover()) {
-				sprintf(outString, "target = %s (%d)\n", ((MoverPtr)target)->name, target->getPartId());
+				mc2::fmt::to_buf(outString, "target = {} ({:d})\n", mc2::fmt::safe(((MoverPtr)target)->name), mc2::fmt::as_i32(target->getPartId()));
 				strcat(ChunkDebugMsg, outString);
 				}
 			else {
-				sprintf(outString, "target = objClass %d (%d)\n", target->getObjectClass(), target->getPartId());
+				mc2::fmt::to_buf(outString, "target = objClass {:d} ({:d})\n", mc2::fmt::as_i32(target->getObjectClass()), mc2::fmt::as_i32(target->getPartId()));
 				strcat(ChunkDebugMsg, outString);
 			}
 			}
 		else if (isTargetPoint) {
-			sprintf(outString, "target point = (%f, %f, %f)\n", targetPoint.x, targetPoint.y, targetPoint.z);
+			mc2::fmt::to_buf(outString, "target point = ({:f}, {:f}, {:f})\n", targetPoint.x, targetPoint.y, targetPoint.z);
 			strcat(ChunkDebugMsg, outString);
 			}
 		else if (chunk1->targetType == STATUSCHUNK_TARGET_NONE) {
-			sprintf(outString, "target = NONE\n");
+			mc2::fmt::to_buf(outString, "target = NONE\n");
 			strcat(ChunkDebugMsg, outString);
 			}
 		else {
@@ -249,45 +233,45 @@ void DebugStatusChunk (MoverPtr mover, StatusChunkPtr chunk1, StatusChunkPtr chu
 					GameObjectPtr curTarget = ObjectManager->findByPartId(partId + i);
 					if (curTarget) {
 						numObjsInTile++;
-						sprintf(outString, "    %d: objClass %d (%d)\n", i, curTarget->getObjectClass(), curTarget->getPartId());
+						mc2::fmt::to_buf(outString, "    {:d}: objClass {:d} ({:d})\n", mc2::fmt::as_i32(i), mc2::fmt::as_i32(curTarget->getObjectClass()), mc2::fmt::as_i32(curTarget->getPartId()));
 						strcat(ChunkDebugMsg, outString);
 					}
 				}
 				if (numObjsInTile > 0) {
-					sprintf(outString, "    There are %d terrain objects in this tile.\n", numObjsInTile);
+					mc2::fmt::to_buf(outString, "    There are {:d} terrain objects in this tile.\n", mc2::fmt::as_i32(numObjsInTile));
 					strcat(ChunkDebugMsg, outString);
 				}
 			}
 		}
 
-		sprintf(outString, "bodyState = %d\n", chunk2->bodyState);
+		mc2::fmt::to_buf(outString, "bodyState = {:d}\n", mc2::fmt::as_i32(chunk2->bodyState));
 		strcat(ChunkDebugMsg, outString);
 			
-		sprintf(outString, "targetType = %d\n", chunk2->targetType);
+		mc2::fmt::to_buf(outString, "targetType = {:d}\n", mc2::fmt::as_i32(chunk2->targetType));
 		strcat(ChunkDebugMsg, outString);
 
-		sprintf(outString, "targetId = %d\n", chunk2->targetId);
+		mc2::fmt::to_buf(outString, "targetId = {:d}\n", mc2::fmt::as_i32(chunk2->targetId));
 		strcat(ChunkDebugMsg, outString);
 			
-		sprintf(outString, "targetBlockOrTrainNumber = %d\n", chunk2->targetBlockOrTrainNumber);
+		mc2::fmt::to_buf(outString, "targetBlockOrTrainNumber = {:d}\n", mc2::fmt::as_i32(chunk2->targetBlockOrTrainNumber));
 		strcat(ChunkDebugMsg, outString);
 			
-		sprintf(outString, "targetVertexOrCarNumber = %d\n", chunk2->targetVertexOrCarNumber);
+		mc2::fmt::to_buf(outString, "targetVertexOrCarNumber = {:d}\n", mc2::fmt::as_i32(chunk2->targetVertexOrCarNumber));
 		strcat(ChunkDebugMsg, outString);
 			
-		sprintf(outString, "targetItemNumber = %d\n", chunk2->targetItemNumber);
+		mc2::fmt::to_buf(outString, "targetItemNumber = {:d}\n", mc2::fmt::as_i32(chunk2->targetItemNumber));
 		strcat(ChunkDebugMsg, outString);
 			
-		sprintf(outString, "targetCellRC = (%d, %d)\n", chunk2->targetCellRC[0], chunk2->targetCellRC[1]);
+		mc2::fmt::to_buf(outString, "targetCellRC = ({:d}, {:d})\n", mc2::fmt::as_i32(chunk2->targetCellRC[0]), mc2::fmt::as_i32(chunk2->targetCellRC[1]));
 		strcat(ChunkDebugMsg, outString);
 			
-		sprintf(outString, "ejectOrderGiven = %c\n", chunk2->ejectOrderGiven ? 'T' : 'F');
+		mc2::fmt::to_buf(outString, "ejectOrderGiven = {:c}\n", mc2::fmt::as_char(chunk2->ejectOrderGiven ? 'T' : 'F'));
 		strcat(ChunkDebugMsg, outString);
 			
-		sprintf(outString, "jumpOrder = %c\n", chunk2->jumpOrder ? 'T' : 'F');
+		mc2::fmt::to_buf(outString, "jumpOrder = {:c}\n", mc2::fmt::as_char(chunk2->jumpOrder ? 'T' : 'F'));
 		strcat(ChunkDebugMsg, outString);
 
-		sprintf(outString, "data = %x\n", chunk2->data);
+		mc2::fmt::to_buf(outString, "data = {:x}\n", mc2::fmt::as_u32(chunk2->data));
 		strcat(ChunkDebugMsg, outString);
 	}
 
@@ -327,39 +311,35 @@ void Mover::updateDebugWindow (GameDebugWindow* debugWindow) {
 	};
 
 	if (debugPage == 0) {
-		sprintf(s, "%s (%s %02d)", getName(), getPilot()->getName(), getPilot()->getIndex());
+		mc2::fmt::to_buf(s, "{} ({} {:02d})", mc2::fmt::safe(getName()), mc2::fmt::safe(getPilot()->getName()), mc2::fmt::as_i32(getPilot()->getIndex()));
 		debugWindow->print(s);
 		long gestID = -1;
 		if (getObjectClass() == BATTLEMECH)
 			gestID = ((Mech3DAppearance*)appearance)->getCurrentGestureId();
-		sprintf(s, "cmdr: %d, team: %d, gestID: %d, partID: %d", getCommanderId(), getTeamId(), gestID, getPartId());
+		mc2::fmt::to_buf(s, "cmdr: {:d}, team: {:d}, gestID: {:d}, partID: {:d}", mc2::fmt::as_i32(getCommanderId()), mc2::fmt::as_i32(getTeamId()), mc2::fmt::as_i32(gestID), mc2::fmt::as_i32(getPartId()));
 		debugWindow->print(s);
 		if (path->curStep < path->numStepsWhenNotPaused) {
 			long curDir = path->stepList[path->curStep].direction;
 			if (curDir > 7)
-				sprintf(s, "pos: [%d, %d](%d) snsr: %d[%s] JMP", cellPositionRow, cellPositionCol, distToObj1, sensorRange, contactStr[contStat]);
+				mc2::fmt::to_buf(s, "pos: [{:d}, {:d}]({:d}) snsr: {:d}[{}] JMP", mc2::fmt::as_i32(cellPositionRow), mc2::fmt::as_i32(cellPositionCol), mc2::fmt::as_i32(distToObj1), mc2::fmt::as_i32(sensorRange), mc2::fmt::safe(contactStr[contStat]));
 			else
-				sprintf(s, "pos: [%d, %d](%d) snsr: %d[%s] MOV", cellPositionRow, cellPositionCol, distToObj1, sensorRange, contactStr[contStat]);
+				mc2::fmt::to_buf(s, "pos: [{:d}, {:d}]({:d}) snsr: {:d}[{}] MOV", mc2::fmt::as_i32(cellPositionRow), mc2::fmt::as_i32(cellPositionCol), mc2::fmt::as_i32(distToObj1), mc2::fmt::as_i32(sensorRange), mc2::fmt::safe(contactStr[contStat]));
 			}
 		else
-			sprintf(s, "pos: [%d, %d](%d) snsr: %d[%s]", cellPositionRow, cellPositionCol, distToObj1, sensorRange, contactStr[contStat]);
+			mc2::fmt::to_buf(s, "pos: [{:d}, {:d}]({:d}) snsr: {:d}[{}]", mc2::fmt::as_i32(cellPositionRow), mc2::fmt::as_i32(cellPositionCol), mc2::fmt::as_i32(distToObj1), mc2::fmt::as_i32(sensorRange), mc2::fmt::safe(contactStr[contStat]));
 		debugWindow->print(s);
-		sprintf(s, "range: [%.f/%.f/%.f] %.f",
-			getMinFireRange(),
-			getOptimalFireRange(),
-			getMaxFireRange(),
-			getPilot()->getCurrentTarget() ? distanceFrom(getPilot()->getCurrentTarget()->getPosition()) : 0.0);
+		mc2::fmt::to_buf(s, "range: [{:.0f}/{:.0f}/{:.0f}] {:.0f}", getMinFireRange(), getOptimalFireRange(), getMaxFireRange(), getPilot()->getCurrentTarget() ? distanceFrom(getPilot()->getCurrentTarget()->getPosition()) : 0.0);
 		debugWindow->print(s);
 		strcpy(s, "order: ");
 		if (getPilot()->getNumTacOrdersQueued()) {
 			if (getPilot()->getExecutingTacOrderQueue()) {
 				char ts[40];
-				sprintf(ts, "[%d%c] ", getPilot()->getNumTacOrdersQueued(), getPilot()->getTacOrderQueueLooping() ? '@' : '.');
+				mc2::fmt::to_buf(ts, "[{:d}{:c}] ", mc2::fmt::as_i32(getPilot()->getNumTacOrdersQueued()), mc2::fmt::as_char(getPilot()->getTacOrderQueueLooping() ? '@' : '.'));
 				strcat(s, ts);
 			}
 			else {
 				char ts[40];
-				sprintf(ts, "[%d] ", getPilot()->getNumTacOrdersQueued());
+				mc2::fmt::to_buf(ts, "[{:d}] ", mc2::fmt::as_i32(getPilot()->getNumTacOrdersQueued()));
 				strcat(s, ts);
 			}
 		}
@@ -371,14 +351,14 @@ void Mover::updateDebugWindow (GameDebugWindow* debugWindow) {
 			ModuleInfo brainInfo;
 			getPilot()->getBrain()->getInfo(&brainInfo);
 			debugWindow->print(" ");
-			sprintf(s, "brain: %s", brainInfo.name);
+			mc2::fmt::to_buf(s, "brain: {}", mc2::fmt::safe(brainInfo.name));
 			debugWindow->print(s);
 			// Skip the "data\missions\warriors" text when printing filename...
-			sprintf(s, "file: %s", &brainInfo.fileName[23]);
+			mc2::fmt::to_buf(s, "file: {}", mc2::fmt::safe(&brainInfo.fileName[23]));
 			debugWindow->print(s);
 		}
 		
-		sprintf(s, "cont:");
+		mc2::fmt::to_buf(s, "cont:");
 		if (sensorSystem) {
 			long numConts = 4;
 			if (sensorSystem->numContacts < 4)
@@ -387,7 +367,7 @@ void Mover::updateDebugWindow (GameDebugWindow* debugWindow) {
 				MoverPtr contact = (MoverPtr)ObjectManager->get(sensorSystem->contacts[i] & 0x7FFF);
 				Assert(contact != nullptr, sensorSystem->contacts[i] & 0x7FFF, " null contact ");
 				char s2[10];
-				sprintf(s2, " %d.%d", sensorSystem->contacts[i] & 0x7FFF, contact->getContactStatus(teamId, true));
+				mc2::fmt::to_buf(s2, " {:d}.{:d}", mc2::fmt::as_i32(sensorSystem->contacts[i] & 0x7FFF), mc2::fmt::as_i32(contact->getContactStatus(teamId, true)));
 				strcat(s, s2);
 			}
 			if (sensorSystem->numContacts > 4)
@@ -398,45 +378,45 @@ void Mover::updateDebugWindow (GameDebugWindow* debugWindow) {
 		if (getPilot()->getCurrentTarget()) {
 			char ts[50];
 			getPilot()->printWeaponsStatus(ts);
-			sprintf(s, "%s", ts);
+			mc2::fmt::to_buf(s, "{}", mc2::fmt::safe(ts));
 			}
 		else
-			sprintf(s, "no current target");
+			mc2::fmt::to_buf(s, "no current target");
 		debugWindow->print(s);
 		for (long i = 0; i < 5; i++) {
-			sprintf(s, "%s", getPilot()->getDebugString(i));
+			mc2::fmt::to_buf(s, "{}", mc2::fmt::safe(getPilot()->getDebugString(i)));
 			debugWindow->print(s);
 		}
 		}
 	else if (debugPage == 1) {
-		sprintf(s, "%s (%s %02d)", getName(), getPilot()->getName(), getPilot()->getIndex());
+		mc2::fmt::to_buf(s, "{} ({} {:02d})", mc2::fmt::safe(getName()), mc2::fmt::safe(getPilot()->getName()), mc2::fmt::as_i32(getPilot()->getIndex()));
 		debugWindow->print(s);
-		sprintf(s, "team: %d, handle: %d, partID: %d, rank: %d", getTeamId(), getHandle(), getPartId(), getPilot()->getRank());
+		mc2::fmt::to_buf(s, "team: {:d}, handle: {:d}, partID: {:d}, rank: {:d}", mc2::fmt::as_i32(getTeamId()), mc2::fmt::as_i32(getHandle()), mc2::fmt::as_i32(getPartId()), mc2::fmt::as_i32(getPilot()->getRank()));
 		debugWindow->print(s);
 		if (path->curStep < path->numStepsWhenNotPaused) {
 			long curDir = path->stepList[path->curStep].direction;
 			if (curDir > 7)
-				sprintf(s, "pos: [%d, %d](%d) snsr: %d[%s] JMP", cellPositionRow, cellPositionCol, distToObj1, sensorRange, contactStr[contStat]);
+				mc2::fmt::to_buf(s, "pos: [{:d}, {:d}]({:d}) snsr: {:d}[{}] JMP", mc2::fmt::as_i32(cellPositionRow), mc2::fmt::as_i32(cellPositionCol), mc2::fmt::as_i32(distToObj1), mc2::fmt::as_i32(sensorRange), mc2::fmt::safe(contactStr[contStat]));
 			else
-				sprintf(s, "pos: [%d, %d](%d) snsr: %d[%s] MOV", cellPositionRow, cellPositionCol, distToObj1, sensorRange, contactStr[contStat]);
+				mc2::fmt::to_buf(s, "pos: [{:d}, {:d}]({:d}) snsr: {:d}[{}] MOV", mc2::fmt::as_i32(cellPositionRow), mc2::fmt::as_i32(cellPositionCol), mc2::fmt::as_i32(distToObj1), mc2::fmt::as_i32(sensorRange), mc2::fmt::safe(contactStr[contStat]));
 			}
 		else
-			sprintf(s, "pos: [%d, %d](%d) snsr: %d[%s]", cellPositionRow, cellPositionCol, distToObj1, sensorRange, contactStr[contStat]);
+			mc2::fmt::to_buf(s, "pos: [{:d}, {:d}]({:d}) snsr: {:d}[{}]", mc2::fmt::as_i32(cellPositionRow), mc2::fmt::as_i32(cellPositionCol), mc2::fmt::as_i32(distToObj1), mc2::fmt::as_i32(sensorRange), mc2::fmt::safe(contactStr[contStat]));
 		debugWindow->print(s);
-		sprintf(s, "cur step = [%d, %d], area = %d", 0, 0, GlobalMoveMap[0]->calcArea(cellPositionRow, cellPositionCol));
+		mc2::fmt::to_buf(s, "cur step = [{:d}, {:d}], area = {:d}", mc2::fmt::as_i32(0), mc2::fmt::as_i32(0), mc2::fmt::as_i32(GlobalMoveMap[0]->calcArea(cellPositionRow, cellPositionCol)));
 		debugWindow->print(s);
 		MoveOrders* moveOrders = getPilot()->getMoveOrders();
 		if (moveOrders->numGlobalSteps > 0) {
-			sprintf(s, "LR:");
+			mc2::fmt::to_buf(s, "LR:");
 			long lastIndex = moveOrders->curGlobalStep + 8;
 			if (lastIndex > moveOrders->numGlobalSteps)
 				lastIndex = moveOrders->numGlobalSteps;
 			for (long i = 0; i < lastIndex; i++) {
 				char ss[15];
 				if (i == moveOrders->curGlobalStep)
-					sprintf(ss, " [%d]", moveOrders->globalPath[i].thruArea);
+					mc2::fmt::to_buf(ss, " [{:d}]", mc2::fmt::as_i32(moveOrders->globalPath[i].thruArea));
 				else
-					sprintf(ss, " %d", moveOrders->globalPath[i].thruArea);
+					mc2::fmt::to_buf(ss, " {:d}", mc2::fmt::as_i32(moveOrders->globalPath[i].thruArea));
 				strcat(s, ss);
 			}
 			if (lastIndex < moveOrders->numGlobalSteps)
@@ -451,14 +431,12 @@ void Mover::updateDebugWindow (GameDebugWindow* debugWindow) {
 			"*R",
 			"*T"
 		};
-		sprintf(s, "MoveState Cur/Goal = %s[%s]",
-			moveStateStr[pilot->getMoveState()],
-			moveStateStr[pilot->getMoveStateGoal()]);
+		mc2::fmt::to_buf(s, "MoveState Cur/Goal = {}[{}]", mc2::fmt::safe(moveStateStr[pilot->getMoveState()]), mc2::fmt::safe(moveStateStr[pilot->getMoveStateGoal()]));
 		debugWindow->print(s);
 		GameObjectPtr target = pilot->getCurrentTarget();
 		float torsoRelFacing = -1.0;
 		if (objectClass == BATTLEMECH) {
-			sprintf(s, "torsoRotation = %.2f", ((BattleMechPtr)this)->torsoRotation);
+			mc2::fmt::to_buf(s, "torsoRotation = {:.2f}", ((BattleMechPtr)this)->torsoRotation);
 			debugWindow->print(s);
 			if (target)
 				torsoRelFacing = relFacingTo(target->getPosition()) + ((BattleMechPtr)this)->torsoRotation;
@@ -466,11 +444,11 @@ void Mover::updateDebugWindow (GameDebugWindow* debugWindow) {
 				torsoRelFacing = relFacingTo(pilot->getAttackTargetPoint()) + ((BattleMechPtr)this)->torsoRotation;
 			else
 				torsoRelFacing = ((BattleMechPtr)this)->torsoRotation;
-			sprintf(s, "C-Bills = %d", ((BattleMechPtr)this)->cBills);
+			mc2::fmt::to_buf(s, "C-Bills = {:d}", mc2::fmt::as_i32(((BattleMechPtr)this)->cBills));
 			debugWindow->print(s);
 			}
 		else if (objectClass == GROUNDVEHICLE) {
-			sprintf(s, "turretRotation = %.2f", ((GroundVehiclePtr)this)->turretRotation);
+			mc2::fmt::to_buf(s, "turretRotation = {:.2f}", ((GroundVehiclePtr)this)->turretRotation);
 			debugWindow->print(s);
 			if (target)
 				torsoRelFacing = relFacingTo(target->getPosition()) + ((GroundVehiclePtr)this)->turretRotation;
@@ -479,7 +457,7 @@ void Mover::updateDebugWindow (GameDebugWindow* debugWindow) {
 			else
 				torsoRelFacing = ((GroundVehiclePtr)this)->turretRotation;
 		}
-		sprintf(s, "torsoRelFacing = %.2f", torsoRelFacing);
+		mc2::fmt::to_buf(s, "torsoRelFacing = {:.2f}", torsoRelFacing);
 		debugWindow->print(s);
 		}
 	else if (debugPage == 2) {
@@ -506,39 +484,24 @@ void Mover::updateDebugWindow (GameDebugWindow* debugWindow) {
 			"DAM",
 			"DEST"
 		};
-		sprintf(s, "%s (%s %02d)", getName(), getPilot()->getName(), getPilot()->getIndex());
+		mc2::fmt::to_buf(s, "{} ({} {:02d})", mc2::fmt::safe(getName()), mc2::fmt::safe(getPilot()->getName()), mc2::fmt::as_i32(getPilot()->getIndex()));
 		debugWindow->print(s);
-		sprintf(s, "team: %d, partID: %d, threat: %d", getTeamId(), getPartId(), getThreatRating());
+		mc2::fmt::to_buf(s, "team: {:d}, partID: {:d}, threat: {:d}", mc2::fmt::as_i32(getTeamId()), mc2::fmt::as_i32(getPartId()), mc2::fmt::as_i32(getThreatRating()));
 		debugWindow->print(s);
 		debugWindow->print(" ");
 		if (getObjectClass() == BATTLEMECH) {
 			for (long i = 0; i < numBodyLocations; i++) {
-				sprintf(s, "%s IS:%3.1f(%02d) AR:%3.1f(%02d) %s",
-					locationStrings[i],
-					body[i].curInternalStructure,
-					body[i].maxInternalStructure,
-					armor[i].curArmor,
-					armor[i].maxArmor,
-					bodyState[body[i].damageState]);
+				mc2::fmt::to_buf(s, "{} IS:{:3.1f}({:02d}) AR:{:3.1f}({:02d}) {}", mc2::fmt::safe(locationStrings[i]), body[i].curInternalStructure, mc2::fmt::as_i32(body[i].maxInternalStructure), armor[i].curArmor, mc2::fmt::as_i32(armor[i].maxArmor), mc2::fmt::safe(bodyState[body[i].damageState]));
 				debugWindow->print(s);
 			}
 			for (int i = numArmorLocations; i < numArmorLocations; i++) {
-				sprintf(s, "%s AR:%.3f(%02d)",
-					locationStrings[i],
-					armor[i].curArmor,
-					armor[i].maxArmor);
+				mc2::fmt::to_buf(s, "{} AR:{:.3f}({:02d})", mc2::fmt::safe(locationStrings[i]), armor[i].curArmor, mc2::fmt::as_i32(armor[i].maxArmor));
 				debugWindow->print(s);
 			}
 		}
 		else if (getObjectClass() == GROUNDVEHICLE) {
 			for (long i = 0; i < numBodyLocations; i++) {
-				sprintf(s, "%s IS:%3.1f(%02d) AR:%3.1f(%02d) %s",
-					locationStrings[i + 11],
-					body[i].curInternalStructure,
-					body[i].maxInternalStructure,
-					armor[i].curArmor,
-					armor[i].maxArmor,
-					bodyState[body[i].damageState]);
+				mc2::fmt::to_buf(s, "{} IS:{:3.1f}({:02d}) AR:{:3.1f}({:02d}) {}", mc2::fmt::safe(locationStrings[i + 11]), body[i].curInternalStructure, mc2::fmt::as_i32(body[i].maxInternalStructure), armor[i].curArmor, mc2::fmt::as_i32(armor[i].maxArmor), mc2::fmt::safe(bodyState[body[i].damageState]));
 				debugWindow->print(s);
 			}
 		}
@@ -569,23 +532,19 @@ void Mover::printFireWeaponDebugInfo (GameObjectPtr target, Stuff::Vector3D* tar
 			char* targetName = target->getName();
 			char s[1024];
 			if (getObjectClass() == BATTLEMECH)
-				sprintf(s, "[%.2f] mech.fireWeapon HIT: (%05d)%s @ (%05d)%s", scenarioTime, getPartId(), name, target->getPartId(), targetName ? targetName : "unknown");
+				mc2::fmt::to_buf(s, "[{:.2f}] mech.fireWeapon HIT: ({:05d}){} @ ({:05d}){}", scenarioTime, mc2::fmt::as_i32(getPartId()), mc2::fmt::safe(name), mc2::fmt::as_i32(target->getPartId()), mc2::fmt::safe(targetName ? targetName : "unknown"));
 			else
-				sprintf(s, "[%.2f] vehicle.fireWeapon HIT: (%05d)%s @ (%05d)%s", scenarioTime, getPartId(), name, target->getPartId(), targetName ? targetName : "unknown");
+				mc2::fmt::to_buf(s, "[{:.2f}] vehicle.fireWeapon HIT: ({:05d}){} @ ({:05d}){}", scenarioTime, mc2::fmt::as_i32(getPartId()), mc2::fmt::safe(name), mc2::fmt::as_i32(target->getPartId()), mc2::fmt::safe(targetName ? targetName : "unknown"));
 			CombatLog->write(s);
-			sprintf(s, "     chance = %03d, roll = %03d", chance, roll);
+			mc2::fmt::to_buf(s, "     chance = {:03d}, roll = {:03d}", mc2::fmt::as_i32(chance), mc2::fmt::as_i32(roll));
 			CombatLog->write(s);
-			sprintf(s, "     weapon = (%03d)%s, hitLocation = (%d)%s, damage = %.2f, angle = %.2f",
-				shotInfo->masterId, MasterComponent::masterList[shotInfo->masterId].getName(),
-				shotInfo->hitLocation, (shotInfo->hitLocation > -1) ? locationStrings[shotInfo->hitLocation] : "none",
-				shotInfo->damage,
-				shotInfo->entryAngle);
+			mc2::fmt::to_buf(s, "     weapon = ({:03d}){}, hitLocation = ({:d}){}, damage = {:.2f}, angle = {:.2f}", mc2::fmt::as_i32(shotInfo->masterId), mc2::fmt::safe(MasterComponent::masterList[shotInfo->masterId].getName()), mc2::fmt::as_i32(shotInfo->hitLocation), mc2::fmt::safe((shotInfo->hitLocation > -1) ? locationStrings[shotInfo->hitLocation] : "none"), shotInfo->damage, shotInfo->entryAngle);
 			CombatLog->write(s);
 			if (aimLocation != -1) {
-				sprintf(s, "     aimed shot = (%d)%s", aimLocation, locationStrings[aimLocation]);
+				mc2::fmt::to_buf(s, "     aimed shot = ({:d}){}", mc2::fmt::as_i32(aimLocation), mc2::fmt::safe(locationStrings[aimLocation]));
 				CombatLog->write(s);
 			}
-			sprintf(s, "     attacker pilot = %s (team id = %d)", getPilot()->getName(), getTeamId());
+			mc2::fmt::to_buf(s, "     attacker pilot = {} (team id = {:d})", mc2::fmt::safe(getPilot()->getName()), mc2::fmt::as_i32(getTeamId()));
 			CombatLog->write(s);
 			CombatLog->write(" ");
 			}
@@ -597,23 +556,19 @@ void Mover::printFireWeaponDebugInfo (GameObjectPtr target, Stuff::Vector3D* tar
 			char* targetName = target->getName();
 			char s[1024];
 			if (getObjectClass() == BATTLEMECH)
-				sprintf(s, "[%.2f] mech.fireWeapon MISS: (%05d)%s @ (%05d)%s", scenarioTime, getPartId(), name, target->getPartId(), targetName ? targetName : "unknown");
+				mc2::fmt::to_buf(s, "[{:.2f}] mech.fireWeapon MISS: ({:05d}){} @ ({:05d}){}", scenarioTime, mc2::fmt::as_i32(getPartId()), mc2::fmt::safe(name), mc2::fmt::as_i32(target->getPartId()), mc2::fmt::safe(targetName ? targetName : "unknown"));
 			else
-				sprintf(s, "[%.2f] vehicle.fireWeapon HIT: (%05d)%s @ (%05d)%s", scenarioTime, getPartId(), name, target->getPartId(), targetName ? targetName : "unknown");
+				mc2::fmt::to_buf(s, "[{:.2f}] vehicle.fireWeapon HIT: ({:05d}){} @ ({:05d}){}", scenarioTime, mc2::fmt::as_i32(getPartId()), mc2::fmt::safe(name), mc2::fmt::as_i32(target->getPartId()), mc2::fmt::safe(targetName ? targetName : "unknown"));
 			CombatLog->write(s);
-			sprintf(s, "     chance = %03d, roll = %03d", chance, roll);
+			mc2::fmt::to_buf(s, "     chance = {:03d}, roll = {:03d}", mc2::fmt::as_i32(chance), mc2::fmt::as_i32(roll));
 			CombatLog->write(s);
-			sprintf(s, "     weapon = (%03d)%s, hitLocation = (%d)%s, damage = %.2f, angle = %.2f",
-				shotInfo->masterId, MasterComponent::masterList[shotInfo->masterId].getName(),
-				shotInfo->hitLocation, (shotInfo->hitLocation > -1) ? locationStrings[shotInfo->hitLocation] : "none",
-				shotInfo->damage,
-				shotInfo->entryAngle);
+			mc2::fmt::to_buf(s, "     weapon = ({:03d}){}, hitLocation = ({:d}){}, damage = {:.2f}, angle = {:.2f}", mc2::fmt::as_i32(shotInfo->masterId), mc2::fmt::safe(MasterComponent::masterList[shotInfo->masterId].getName()), mc2::fmt::as_i32(shotInfo->hitLocation), mc2::fmt::safe((shotInfo->hitLocation > -1) ? locationStrings[shotInfo->hitLocation] : "none"), shotInfo->damage, shotInfo->entryAngle);
 			CombatLog->write(s);
 			if (aimLocation != -1) {
-				sprintf(s, "     aimed shot = (%d)%s", aimLocation, locationStrings[aimLocation]);
+				mc2::fmt::to_buf(s, "     aimed shot = ({:d}){}", mc2::fmt::as_i32(aimLocation), mc2::fmt::safe(locationStrings[aimLocation]));
 				CombatLog->write(s);
 			}
-			sprintf(s, "     attacker pilot = %s (team id = %d)", getPilot()->getName(), getTeamId());
+			mc2::fmt::to_buf(s, "     attacker pilot = {} (team id = {:d})", mc2::fmt::safe(getPilot()->getName()), mc2::fmt::as_i32(getTeamId()));
 			CombatLog->write(s);
 			CombatLog->write(" ");
 			}
@@ -647,46 +602,34 @@ void Mover::printHandleWeaponHitDebugInfo (WeaponShotInfo* shotInfo) {
 	char statusStr[15];
 	if (FromMP) {
 		if (isDestroyed())
-			sprintf(statusStr, " DESTROYED:");
+			mc2::fmt::to_buf(statusStr, " DESTROYED:");
 		else if (getTeam() && Team::noPain[getTeamId()])
-			sprintf(statusStr, " NO PAIN:");
+			mc2::fmt::to_buf(statusStr, " NO PAIN:");
 		else
-			sprintf(statusStr, ":");
+			mc2::fmt::to_buf(statusStr, ":");
 	}
 	else {
 		if (isDestroyed())
-			sprintf(statusStr, " *** DESTROYED:");
+			mc2::fmt::to_buf(statusStr, " *** DESTROYED:");
 		else if (getTeam() && Team::noPain[getTeamId()])
-			sprintf(statusStr, " *** NO PAIN:");
+			mc2::fmt::to_buf(statusStr, " *** NO PAIN:");
 		else
-			sprintf(statusStr, " ***:");
+			mc2::fmt::to_buf(statusStr, " ***:");
 	}
 	if (getObjectClass() == BATTLEMECH)
-		sprintf(s, "[%.2f] mech.handleWeaponHit%s (%05d)%s ",
-			scenarioTime,
-			statusStr,
-			getPartId(),
-			name);
+		mc2::fmt::to_buf(s, "[{:.2f}] mech.handleWeaponHit{} ({:05d}){} ", scenarioTime, mc2::fmt::safe(statusStr), mc2::fmt::as_i32(getPartId()), mc2::fmt::safe(name));
 	else
-		sprintf(s, "[%.2f] vehicle.handleWeaponHit%s (%05d)%s ",
-			scenarioTime,
-			statusStr,
-			getPartId(),
-			name);
+		mc2::fmt::to_buf(s, "[{:.2f}] vehicle.handleWeaponHit{} ({:05d}){} ", scenarioTime, mc2::fmt::safe(statusStr), mc2::fmt::as_i32(getPartId()), mc2::fmt::safe(name));
 	CombatLog->write(s);
 	GameObjectPtr attacker = ObjectManager->getByWatchID(shotInfo->attackerWID);
 	if (attacker)
-		sprintf(s, "     attacker = (%05d)%s", attacker->getPartId(), attacker->getName());
+		mc2::fmt::to_buf(s, "     attacker = ({:05d}){}", mc2::fmt::as_i32(attacker->getPartId()), mc2::fmt::safe(attacker->getName()));
 	else
-		sprintf(s, "     attacker = (%05d)<unknown WID>", shotInfo->attackerWID);
+		mc2::fmt::to_buf(s, "     attacker = ({:05d})<unknown WID>", mc2::fmt::as_i32(shotInfo->attackerWID));
 	CombatLog->write(s);
-	sprintf(s, "     weapon = (%03d)%s, hitLocation = (%d)%s, damage = %.2f, angle = %.2f",
-		shotInfo->masterId, MasterComponent::masterList[shotInfo->masterId].getName(),
-		shotInfo->hitLocation, (shotInfo->hitLocation > -1) ? locationStrings[shotInfo->hitLocation] : "none",
-		shotInfo->damage,
-		shotInfo->entryAngle);
+	mc2::fmt::to_buf(s, "     weapon = ({:03d}){}, hitLocation = ({:d}){}, damage = {:.2f}, angle = {:.2f}", mc2::fmt::as_i32(shotInfo->masterId), mc2::fmt::safe(MasterComponent::masterList[shotInfo->masterId].getName()), mc2::fmt::as_i32(shotInfo->hitLocation), mc2::fmt::safe((shotInfo->hitLocation > -1) ? locationStrings[shotInfo->hitLocation] : "none"), shotInfo->damage, shotInfo->entryAngle);
 	CombatLog->write(s);
-	sprintf(s, "     num weaponhits = %d", numWeaponHitsHandled);
+	mc2::fmt::to_buf(s, "     num weaponhits = {:d}", mc2::fmt::as_i32(numWeaponHitsHandled));
 	CombatLog->write(s);
 	CombatLog->write(" ");
 }

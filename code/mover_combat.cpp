@@ -2,6 +2,7 @@
 // Declared in mover.h; shared names in mover_internal.h.
 #include "mover_internal.h"
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 
 long Mover::handleTacticalOrder (TacticalOrder tacOrder, long priority, bool queuePlayerOrder) {
@@ -30,14 +31,7 @@ long Mover::handleTacticalOrder (TacticalOrder tacOrder, long priority, bool que
 			if (_tg_stale) ++s_tg_stale;
 			if (_tg_far)   ++s_tg_far;
 			char _tg_buf[320];
-			snprintf(_tg_buf, sizeof(_tg_buf),
-			         "{\"site\":\"handleTacticalOrder\",\"order\":%llu,\"targetWID\":%d,"
-			         "\"stale_wid\":%d,\"range\":%.1f,\"far\":%d,"
-			         "\"totals\":{\"orders\":%llu,\"stale\":%llu,\"far\":%llu}}",
-			         (unsigned long long)s_tg_orders, (int)tacOrder.targetWID,
-			         _tg_stale?1:0, _tg_range, _tg_far?1:0,
-			         (unsigned long long)s_tg_orders, (unsigned long long)s_tg_stale,
-			         (unsigned long long)s_tg_far);
+			mc2::fmt::to_buf(_tg_buf, "{{\"site\":\"handleTacticalOrder\",\"order\":{:d},\"targetWID\":{:d},\"stale_wid\":{:d},\"range\":{:.1f},\"far\":{:d},\"totals\":{{\"orders\":{:d},\"stale\":{:d},\"far\":{:d}}}}}", mc2::fmt::as_u64((unsigned long long)s_tg_orders), mc2::fmt::as_i32((int)tacOrder.targetWID), mc2::fmt::as_i32(_tg_stale?1:0), _tg_range, mc2::fmt::as_i32(_tg_far?1:0), mc2::fmt::as_u64((unsigned long long)s_tg_orders), mc2::fmt::as_u64((unsigned long long)s_tg_stale), mc2::fmt::as_u64((unsigned long long)s_tg_far));
 			mc2_diag::writeEvent("TARGETING", 1, 0, _tg_buf);
 		}
 	}
@@ -139,7 +133,7 @@ if (queuePlayerOrder)
 			break;
 		default: {
 			char s[256];
-			sprintf(s, "Mover::handleTacticalOrder->Bad TacOrder Code (%d)", tacOrder.code);
+			mc2::fmt::to_buf(s, "Mover::handleTacticalOrder->Bad TacOrder Code ({:d})", mc2::fmt::as_i32(tacOrder.code));
 			Assert(false, tacOrder.code, s);
 			return(1);
 			}

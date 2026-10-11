@@ -26,6 +26,7 @@ InfoWindow.cpp			: Implementation of the InfoWindow component.
 #include "imgui.h"
 #include"unitprofile.h"	// EQUIP-ADD-UI-NAME-1 (S3): equipmentAddUiTextForStringId
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 long InfoWindow::SCROLLLEFT = 0;
 long InfoWindow::SCROLLRIGHT = 0;
@@ -295,7 +296,7 @@ void InfoWindow::init( FitIniFile& file )
 	char SkillText[32];
 	for (int i = 0; i < 7; i++ )
 	{
-		sprintf( SkillText, "Skill%ld", i );
+		mc2::fmt::to_buf(SkillText, "Skill{:d}", mc2::fmt::as_i32(i));
 		skillInfos[i].init( file, SkillText ,ControlGui::hiResOffsetX, ControlGui::hiResOffsetY);
 	
 	}
@@ -772,7 +773,7 @@ void InfoWindow::renderImGui()
 							uLeft += (float)( SKILLUNITWIDTH + 1 );
 						}
 						char numBuf[16];
-						snprintf( numBuf, sizeof( numBuf ), "%d", skill );
+						mc2::fmt::to_buf(numBuf, "{:d}", mc2::fmt::as_i32(skill));
 						HudFont::Draw( cdl, rowFont, AX( (float)SKILLRIGHT + 2.0f ), rowTop,
 							pilotBlue, numBuf, sx, sy );
 					}
@@ -1711,7 +1712,7 @@ void InfoWindow::drawSkillBar( int skill, float yVal, float height )
 	}
 
 	char buffer[32];
-	sprintf( buffer, "%ld", skill );
+	mc2::fmt::to_buf(buffer, "{:d}", mc2::fmt::as_i32(skill));
 	componentFont.render( buffer, SKILLRIGHT+2, yVal, SCROLLLEFT - SKILLRIGHT - 2, SKILLHEIGHT, 0xff005392, 0, 0 );
 }
 

@@ -1,6 +1,7 @@
 // Game main: debug windows, dialog setup/teardown and their rendering.
 // Declared in the class headers; shared names in mechcmd2_internal.h.
 #include "mechcmd2_internal.h"
+#include "mc2fmt.h"
 
 
 
@@ -64,7 +65,7 @@ void initDialogs()
 		if ( NO_ERR != file.open( path ) )
 		{
 			char error[256];
-			sprintf( error, "couldn't open file %s", (const char*)path );
+			mc2::fmt::to_buf(error, "couldn't open file {}", mc2::fmt::safe((const char*)path));
 			Assert( 0, 0, error );
 			return;
 		}
@@ -82,7 +83,7 @@ void initDialogs()
 		if ( NO_ERR != file.open( path ) )
 		{
 			char error[256];
-			sprintf( error, "couldn't open file %s", (const char*)path );
+			mc2::fmt::to_buf(error, "couldn't open file {}", mc2::fmt::safe((const char*)path));
 			Assert( 0, 0, error );
 			return;
 		}
@@ -100,7 +101,7 @@ void initDialogs()
 		if ( NO_ERR != file.open( path ) )
 		{
 			char error[256];
-			sprintf( error, "couldn't open file %s", (const char*)path );
+			mc2::fmt::to_buf(error, "couldn't open file {}", mc2::fmt::safe((const char*)path));
 			Assert( 0, 0, error );
 			return;
 		}
@@ -226,7 +227,7 @@ void DEBUGWINS_renderSpecialWindows (void) {
 			long curY = Environment.screenHeight - 390;
 			for (int i = 0; i < MPlayer->numTeams; i++) {
 				char s[256];
-				sprintf(s, "Team %d score = %d", i, MPlayer->teamScore[i]);
+				mc2::fmt::to_buf(s, "Team {:d} score = {:d}", mc2::fmt::as_i32(i), mc2::fmt::as_i32(MPlayer->teamScore[i]));
 				gos_TextSetPosition(Environment.screenWidth - 380, curY);
 				gos_TextDraw(s);
 				curY += 10;
@@ -235,12 +236,7 @@ void DEBUGWINS_renderSpecialWindows (void) {
 			for (int i = 0; i < MAX_MC_PLAYERS; i++)
 				if (MPlayer->playerInfo[i].commanderID > -1) {
 					char s[256];
-					sprintf(s, "Player %d (%s) score = %d, %d kills, %d losses",
-						i,
-						MPlayer->playerInfo[i].name,
-						MPlayer->playerInfo[i].score,
-						MPlayer->playerInfo[i].kills,
-						MPlayer->playerInfo[i].losses);
+					mc2::fmt::to_buf(s, "Player {:d} ({}) score = {:d}, {:d} kills, {:d} losses", mc2::fmt::as_i32(i), mc2::fmt::safe(MPlayer->playerInfo[i].name), mc2::fmt::as_i32(MPlayer->playerInfo[i].score), mc2::fmt::as_i32(MPlayer->playerInfo[i].kills), mc2::fmt::as_i32(MPlayer->playerInfo[i].losses));
 					gos_TextSetPosition(Environment.screenWidth - 380, curY);
 					gos_TextDraw(s);
 					curY += 10;

@@ -16,6 +16,7 @@ MPConnectionType.cpp			: Implementation of the MPConnectionType component.
 #include "../resource.h"
 #include"multplyr.h"
 #include"mechbayscreen.h"
+#include "mc2fmt.h"
 
 #ifndef GAMESOUND_H
 #include"gamesound.h"
@@ -99,7 +100,7 @@ void MPConnectionType::init(FitIniFile* file)
 		if ( NO_ERR != PNfile.open( path ) )
 		{
 			char error[256];
-			sprintf( error, "couldn't open file %s", path );
+			mc2::fmt::to_buf(error, "couldn't open file {}", mc2::fmt::safe(path));
 			Assert( 0, 0, error );
 			return;
 		}
@@ -115,7 +116,7 @@ void MPConnectionType::init(FitIniFile* file)
 		if ( NO_ERR != PNfile.open( path ) )
 		{
 			char error[256];
-			sprintf( error, "couldn't open file %s", path );
+			mc2::fmt::to_buf(error, "couldn't open file {}", mc2::fmt::safe(path));
 			Assert( 0, 0, error );
 			return;
 		}
@@ -131,7 +132,7 @@ void MPConnectionType::init(FitIniFile* file)
 		if ( NO_ERR != PNfile.open( path ) )
 		{
 			char error[256];
-			sprintf( error, "couldn't open file %s", path );
+			mc2::fmt::to_buf(error, "couldn't open file {}", mc2::fmt::safe(path));
 			Assert( 0, 0, error );
 			return;
 		}
@@ -583,7 +584,7 @@ void aTcpipPanel::init(FitIniFile* pFile)
 	if ( NO_ERR != tmpFile.open( path ) )
 	{
 		char errorStr[256];
-		sprintf( errorStr, "couldn't open file %s", (const char*)path );
+		mc2::fmt::to_buf(errorStr, "couldn't open file {}", mc2::fmt::safe((const char*)path));
 		Assert( 0, 0, errorStr );
 	}
 	

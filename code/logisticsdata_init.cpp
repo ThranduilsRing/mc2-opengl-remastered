@@ -1,6 +1,7 @@
 // LogisticsData: the front-end data load (components, pilots, variants, vehicles), the smart-load gate and the mission availability queries.
 // Declared in the class headers; shared names in logisticsdata_internal.h.
 #include "logisticsdata_internal.h"
+#include "mc2fmt.h"
 
 
 // SMART-LOAD-1: defer mech-bay data (components/pilots/variants) until first mech-bay accessor.
@@ -337,7 +338,7 @@ void LogisticsData::initVariants()
 	if ( NO_ERR !=pakFile.open( pakPath ) )
 	{
 		char errorStr[256];
-		sprintf( errorStr, "couldn't open file %s", (const char*)pakPath );
+		mc2::fmt::to_buf(errorStr, "couldn't open file {}", mc2::fmt::safe((const char*)pakPath));
 		Assert( 0, 0, errorStr );
 	}
 

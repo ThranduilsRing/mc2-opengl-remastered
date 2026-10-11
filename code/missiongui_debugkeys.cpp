@@ -1,6 +1,7 @@
 // MissionInterfaceManager: debug windows and cheats, damage keys, hotkey save/load and the chat keys.
 // Declared in the class headers; shared names in missiongui_shared_internal.h.
 #include "missiongui_shared_internal.h"
+#include "mc2fmt.h"
 
 
 int MissionInterfaceManager::quickDebugInfo() {
@@ -16,30 +17,14 @@ int MissionInterfaceManager::quickDebugInfo() {
 		int infoArea = (GlobalMoveMap[infoML]) ? GlobalMoveMap[infoML]->calcArea(row, col) : -1;
 		int infoArea0 = (GlobalMoveMap[0]) ? GlobalMoveMap[0]->calcArea(row, col) : -1;
 		if (target)
-			sprintf(debugString, "INFO = %s(%c%c) %d(W%d) [%d, %d] (%.4f, %.4f, %.4f) #Pth=%d(%d) OBJ = %s\n",
-				terrainStr[GameMap->getTerrain(row, col)],
-				GameMap->getPassable(row, col) ? 'T' : 'F',
-				GameMap->getForest(row, col) ? 'T' : 'F',
-				infoArea,
-				GameMap->getShallowWater(row, col) ? 1 : (GameMap->getDeepWater(row, col) ? 2 : 0),
-				row, col,
-				wPos.x, wPos.y, wPos.z,
-				PathManager->numPaths, PathManager->peakPaths, target->getName());
+			mc2::fmt::to_buf(debugString, "INFO = {}({:c}{:c}) {:d}(W{:d}) [{:d}, {:d}] ({:.4f}, {:.4f}, {:.4f}) #Pth={:d}({:d}) OBJ = {}\n", mc2::fmt::safe(terrainStr[GameMap->getTerrain(row, col)]), mc2::fmt::as_char(GameMap->getPassable(row, col) ? 'T' : 'F'), mc2::fmt::as_char(GameMap->getForest(row, col) ? 'T' : 'F'), mc2::fmt::as_i32(infoArea), mc2::fmt::as_i32(GameMap->getShallowWater(row, col) ? 1 : (GameMap->getDeepWater(row, col) ? 2 : 0)), mc2::fmt::as_i32(row), mc2::fmt::as_i32(col), wPos.x, wPos.y, wPos.z, mc2::fmt::as_i32(PathManager->numPaths), mc2::fmt::as_i32(PathManager->peakPaths), mc2::fmt::safe(target->getName()));
 		else
-			sprintf(debugString, "INFO = %s(%c%c) %d(W%d) [%d, %d] (%.4f, %.4f, %.4f) #Pth=%d(%d)\n",
-				terrainStr[GameMap->getTerrain(row, col)],
-				GameMap->getPassable(row, col) ? 'T' : 'F',
-				GameMap->getForest(row, col) ? 'T' : 'F',
-				infoArea0,
-				GameMap->getShallowWater(row, col) ? 1 : (GameMap->getDeepWater(row, col) ? 2 : 0),
-				row, col,
-				wPos.x, wPos.y, wPos.z,
-				PathManager->numPaths, PathManager->peakPaths);
+			mc2::fmt::to_buf(debugString, "INFO = {}({:c}{:c}) {:d}(W{:d}) [{:d}, {:d}] ({:.4f}, {:.4f}, {:.4f}) #Pth={:d}({:d})\n", mc2::fmt::safe(terrainStr[GameMap->getTerrain(row, col)]), mc2::fmt::as_char(GameMap->getPassable(row, col) ? 'T' : 'F'), mc2::fmt::as_char(GameMap->getForest(row, col) ? 'T' : 'F'), mc2::fmt::as_i32(infoArea0), mc2::fmt::as_i32(GameMap->getShallowWater(row, col) ? 1 : (GameMap->getDeepWater(row, col) ? 2 : 0)), mc2::fmt::as_i32(row), mc2::fmt::as_i32(col), wPos.x, wPos.y, wPos.z, mc2::fmt::as_i32(PathManager->numPaths), mc2::fmt::as_i32(PathManager->peakPaths));
 		DEBUGWINS_print(debugString);
-		sprintf(debugString, "REQ =");
+		mc2::fmt::to_buf(debugString, "REQ =");
 		char s[10];
 		for (long i = 0; i < 25; i++) {
-			sprintf(s, " %02d", PathManager->sourceTally[i]);
+			mc2::fmt::to_buf(s, " {:02d}", mc2::fmt::as_i32(PathManager->sourceTally[i]));
 			strcat(debugString, s);
 		}
 		DEBUGWINS_print(debugString);
@@ -524,7 +509,7 @@ int MissionInterfaceManager::saveHotKeys( FitIniFile& file )
 	for ( int i = 0; i < MAX_COMMAND; i++ )
 	{
 		char header[256];
-		sprintf( header, "Key%ld", i );
+		mc2::fmt::to_buf(header, "Key{:d}", mc2::fmt::as_i32(i));
 		file.writeIdLong( header, commands[i].key );
 	}
 
@@ -558,7 +543,7 @@ int MissionInterfaceManager::loadHotKeys( FitIniFile& file )
 		for ( int i = 0; i < MAX_COMMAND; i++ )
 		{
 			char header[256];
-			sprintf( header, "Key%ld", i );
+			mc2::fmt::to_buf(header, "Key{:d}", mc2::fmt::as_i32(i));
 			file.readIdLong( header, commands[i].key );
 		}
 

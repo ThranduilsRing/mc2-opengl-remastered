@@ -1,6 +1,7 @@
 // Mission: the runtime-bridge mover.state emitter and the mover-registry coherence audit that Mission::update calls
 // once per frame. Declared in mission_internal.h.
 #include "mission_internal.h"
+#include "mc2fmt.h"
 
 //----------------------------------------------------------------------------------
 // MC2_BRIDGE_MOVER_STATE -- runtime-bridge v0 (mover.state over stdout).
@@ -264,8 +265,7 @@ namespace {
 					TacticalOrderPtr order = pilot->getCurTacOrder();
 					if (order && order->code != TACTICAL_ORDER_NONE) {
 						char det[96];
-						sprintf(det, "detail=tac_order code=%d origin=%d",
-							(int)order->code, (int)order->origin);
+						mc2::fmt::to_buf(det, "detail=tac_order code={:d} origin={:d}", mc2::fmt::as_i32((int)order->code), mc2::fmt::as_i32((int)order->origin));
 						if (order->origin == ORDER_ORIGIN_PLAYER)
 							cohEmit(true, "I2", partId, name,
 								COH_I2_ORDER, det);

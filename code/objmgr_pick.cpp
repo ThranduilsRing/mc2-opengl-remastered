@@ -1,6 +1,7 @@
 // GameObjectManager: object / mover lookup by id, cell and mouse, and the terrain-object pick.
 // Declared in the class headers; shared names in objmgr_internal.h.
 #include "objmgr_internal.h"
+#include "mc2fmt.h"
 
 
 //---------------------------------------------------------------------------
@@ -284,10 +285,7 @@ static bool projectPickCandidateRect(BldgAppearance* ba,
 		if (s_cursorTargetTrace && mc2_diag::tagEnabled("CURSOR_TARGET"))
 		{
 			char _ct_buf[256];
-			snprintf(_ct_buf, sizeof(_ct_buf),
-			         "{\"site\":\"pick_rect\",\"behind_corners\":%d,\"pos\":[%.1f,%.1f,%.1f],\"rect\":[%ld,%ld,%ld,%ld]}",
-			         behindCount, position.x, position.y, position.z,
-			         outMinX, outMinY, outMaxX, outMaxY);
+			mc2::fmt::to_buf(_ct_buf, "{{\"site\":\"pick_rect\",\"behind_corners\":{:d},\"pos\":[{:.1f},{:.1f},{:.1f}],\"rect\":[{:d},{:d},{:d},{:d}]}}", mc2::fmt::as_i32(behindCount), position.x, position.y, position.z, mc2::fmt::as_i32(outMinX), mc2::fmt::as_i32(outMinY), mc2::fmt::as_i32(outMaxX), mc2::fmt::as_i32(outMaxY));
 			mc2_diag::writeEvent("CURSOR_TARGET", 1, 0, _ct_buf);
 		}
 	}

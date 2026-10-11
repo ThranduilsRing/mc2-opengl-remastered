@@ -12,6 +12,7 @@ MPHostGame.cpp			: Implementation of the MPHostGame component.
 #include"userinput.h"
 #include "../resource.h"
 #include"multplyr.h"
+#include "mc2fmt.h"
 
 #ifndef GAMESOUND_H
 #include"gamesound.h"
@@ -61,7 +62,7 @@ void MPHostGame::init()
 	if ( NO_ERR != file.open( path ) )
 	{
 		char error[256];
-		sprintf( error, "couldn't open file %s", (const char*)path );
+		mc2::fmt::to_buf(error, "couldn't open file {}", mc2::fmt::safe((const char*)path));
 		Assert( 0, 0, error );
 		return;		
 	}

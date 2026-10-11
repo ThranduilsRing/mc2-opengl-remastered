@@ -3,6 +3,7 @@
 #include "missiongui_internal.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
+#include "mc2fmt.h"
 
 
 //--------------------------------------------------------------------------
@@ -333,7 +334,7 @@ bool MissionInterfaceManager::uiCmdWorld(UiCmdCtx& c)
 				if (mine) n++;
 			}
 			result = "ok";
-			char b[48]; sprintf(b, "%ld selected", n); note = b;
+			char b[48]; mc2::fmt::to_buf(b, "{:d} selected", mc2::fmt::as_i32(n)); note = b;
 		}
 		// GAMEPLAY-DRIVER-2: predicate selection. `select <partId>` alone
 		// forces an agent to hardcode ids that change per mission AND per
@@ -364,7 +365,7 @@ bool MissionInterfaceManager::uiCmdWorld(UiCmdCtx& c)
 			}
 			result = n ? "ok" : "blocked";
 			char b[96];
-			sprintf(b, "%ld matched %s '%s'", n, byClass ? "class" : "name", needle.c_str());
+			mc2::fmt::to_buf(b, "{:d} matched {} '{}'", mc2::fmt::as_i32(n), mc2::fmt::safe(byClass ? "class" : "name"), needle.c_str());
 			note = b;
 		}
 		else {
@@ -419,7 +420,7 @@ bool MissionInterfaceManager::uiCmdWorld(UiCmdCtx& c)
 				handleOrders(tacOrder);   // same dispatcher doMove() calls
 				result = "ok";
 				char b[96];
-				sprintf(b, "%ld unit(s) -> (%.1f,%.1f) %s", sel, x, y, walk ? "walk" : "run");
+				mc2::fmt::to_buf(b, "{:d} unit(s) -> ({:.1f},{:.1f}) {}", mc2::fmt::as_i32(sel), x, y, mc2::fmt::safe(walk ? "walk" : "run"));
 				note = b;
 			}
 		}
@@ -456,7 +457,7 @@ bool MissionInterfaceManager::uiCmdWorld(UiCmdCtx& c)
 				if (!sel) { result = "blocked"; note = "no player unit selected"; }
 				else {
 					result = "ok";
-					char b[64]; sprintf(b, "%ld unit(s) attacking %ld", sel, tid); note = b;
+					char b[64]; mc2::fmt::to_buf(b, "{:d} unit(s) attacking {:d}", mc2::fmt::as_i32(sel), mc2::fmt::as_i32(tid)); note = b;
 				}
 			}
 		}
@@ -491,7 +492,7 @@ bool MissionInterfaceManager::uiCmdWorld(UiCmdCtx& c)
 		if (!sel) { result = "blocked"; note = "no player unit selected"; }
 		else {
 			result = "ok";
-			char b[64]; sprintf(b, "%ld unit(s) %s", sel, sub.c_str()); note = b;
+			char b[64]; mc2::fmt::to_buf(b, "{:d} unit(s) {}", mc2::fmt::as_i32(sel), sub.c_str()); note = b;
 		}
 	}
 	else if (line.compare(0, 7, "camera ") == 0) {
@@ -508,7 +509,7 @@ bool MissionInterfaceManager::uiCmdWorld(UiCmdCtx& c)
 			if (nf >= 4) eye->setCameraAltitudeDesired(zoom);
 			result = "ok";
 			char b[96];
-			sprintf(b, "cam (%.1f,%.1f)%s%s", x, y, nf >= 3 ? " +rot" : "", nf >= 4 ? " +zoom" : "");
+			mc2::fmt::to_buf(b, "cam ({:.1f},{:.1f}){}{}", x, y, mc2::fmt::safe(nf >= 3 ? " +rot" : ""), mc2::fmt::safe(nf >= 4 ? " +zoom" : ""));
 			note = b;
 		}
 	}
@@ -536,7 +537,7 @@ bool MissionInterfaceManager::uiCmdWorld(UiCmdCtx& c)
 					Stuff::Vector3D p = obj->getPosition();
 					result = "ok";
 					char b[96];
-					sprintf(b, "following %ld at (%.1f,%.1f)", pid, p.x, p.y);
+					mc2::fmt::to_buf(b, "following {:d} at ({:.1f},{:.1f})", mc2::fmt::as_i32(pid), p.x, p.y);
 					note = b;
 				}
 			}
@@ -560,10 +561,9 @@ bool MissionInterfaceManager::uiCmdWorld(UiCmdCtx& c)
 			simSpeedSetMultiplier(f);
 			result = "ok";
 			char b[128];
-			sprintf(b, "sim_speed=%.2f%s", (double)simSpeedGetMultiplier(),
-				SmokeMode::fixedTimestepEnabled()
+			mc2::fmt::to_buf(b, "sim_speed={:.2f}{}", (double)simSpeedGetMultiplier(), mc2::fmt::safe(SmokeMode::fixedTimestepEnabled()
 					? " (NOTE: MC2_SMOKE_FIXED_TIMESTEP pins both clocks to 1x)"
-					: "");
+					: ""));
 			note = b;
 		}
 	}
@@ -578,16 +578,12 @@ bool MissionInterfaceManager::uiCmdWorld(UiCmdCtx& c)
 				continue;
 			Stuff::Vector3D p = m->getPosition();
 			char b[224];
-			snprintf(b, sizeof(b),
-				"  [id=%ld name=%s pos=(%.1f,%.1f,%.1f) hp=%.3f%s]\n",
-				m->getPartId(), (m->getName() ? m->getName() : "?"),
-				p.x, p.y, p.z, m->getStatusRating(),
-				m->isDestroyed() ? " DESTROYED" : "");
+			mc2::fmt::to_buf(b, "  [id={:d} name={} pos=({:.1f},{:.1f},{:.1f}) hp={:.3f}{}]\n", mc2::fmt::as_i32(m->getPartId()), mc2::fmt::safe((m->getName() ? m->getName() : "?")), p.x, p.y, p.z, m->getStatusRating(), mc2::fmt::safe(m->isDestroyed() ? " DESTROYED" : ""));
 			extra += b;
 			n++;
 		}
 		result = "ok";
-		char h[48]; sprintf(h, "%ld selected", n); note = h;
+		char h[48]; mc2::fmt::to_buf(h, "{:d} selected", mc2::fmt::as_i32(n)); note = h;
 	}
 	else
 		return false;
@@ -666,33 +662,16 @@ bool MissionInterfaceManager::uiCmdReadback(UiCmdCtx& c)
 					Stuff::Vector3D p = o->getPosition();
 					const char* cls = getObjectClassName(o->getObjectClass());
 					char b[352];
-					snprintf(b, sizeof(b),
-						"  [id=%ld type=%s class=%s pos=(%.1f,%.1f,%.1f) gesture=%ld "
-						"animGestures=%s staticReg=%d recipe=%d staticNow=%d eligible=%d]\n",
-						pid,
-						(ba->appearType->name ? ba->appearType->name : "?"),
-						cls ? cls : "?",
-						p.x, p.y, p.z,
-						ba->getCurrentGestureId(),
-						mi > 0 ? mask : "-",
-						ba->isStaticRegistered() ? 1 : 0,
-						(int)ba->getStaticRecipeIndex(),
-						ba->IsStaticNow() ? 1 : 0,
-						ba->isStaticEligible() ? 1 : 0);
+					mc2::fmt::to_buf(b, "  [id={:d} type={} class={} pos=({:.1f},{:.1f},{:.1f}) gesture={:d} animGestures={} staticReg={:d} recipe={:d} staticNow={:d} eligible={:d}]\n", mc2::fmt::as_i32(pid), mc2::fmt::safe((ba->appearType->name ? ba->appearType->name : "?")), mc2::fmt::safe(cls ? cls : "?"), p.x, p.y, p.z, mc2::fmt::as_i32(ba->getCurrentGestureId()), mc2::fmt::safe(mi > 0 ? mask : "-"), mc2::fmt::as_i32(ba->isStaticRegistered() ? 1 : 0), mc2::fmt::as_i32((int)ba->getStaticRecipeIndex()), mc2::fmt::as_i32(ba->IsStaticNow() ? 1 : 0), mc2::fmt::as_i32(ba->isStaticEligible() ? 1 : 0));
 					extra += b;
 					++n;
 					if (pass == 2) ++nTurret;
 				}
 			}
 			char b[192];
-			snprintf(b, sizeof(b),
-				"  buildings=%ld turrets=%ld animatable=%ld animStartInvalidated=%lu\n",
-				n - nTurret, nTurret, animatable,
-				(unsigned long)g_bldgAnimGate_animStartInvalidated());
+			mc2::fmt::to_buf(b, "  buildings={:d} turrets={:d} animatable={:d} animStartInvalidated={:d}\n", mc2::fmt::as_i32(n - nTurret), mc2::fmt::as_i32(nTurret), mc2::fmt::as_i32(animatable), mc2::fmt::as_u32((unsigned long)g_bldgAnimGate_animStartInvalidated()));
 			extra += b;
-			snprintf(b, sizeof(b),
-				"%ld object(s) (%ld turret(s)), %ld with animation data",
-				n, nTurret, animatable);
+			mc2::fmt::to_buf(b, "{:d} object(s) ({:d} turret(s)), {:d} with animation data", mc2::fmt::as_i32(n), mc2::fmt::as_i32(nTurret), mc2::fmt::as_i32(animatable));
 			note = b;
 			result = "ok";
 		}
@@ -741,22 +720,13 @@ bool MissionInterfaceManager::uiCmdReadback(UiCmdCtx& c)
 				Stuff::Vector3D p = m->getPosition();
 				AppearancePtr ap = m->getAppearance();
 				char b[288];
-				snprintf(b, sizeof(b),
-					"  [id=%ld name=%s class=%s team=%ld cmdr=%ld pos=(%.1f,%.1f,%.1f) "
-					"hp=%.3f sel=%d gui=%d inView=%d%s%s]\n",
-					m->getPartId(), (m->getName() ? m->getName() : "?"),
-					cls ? cls : "?", m->getTeamId(), m->getCommanderId(),
-					p.x, p.y, p.z, m->getStatusRating(),
-					m->isSelected() ? 1 : 0, m->isOnGUI() ? 1 : 0,
-					(ap && ap->canBeSeen()) ? 1 : 0,
-					m->isDisabled()  ? " DISABLED"  : "",
-					m->isDestroyed() ? " DESTROYED" : "");
+				mc2::fmt::to_buf(b, "  [id={:d} name={} class={} team={:d} cmdr={:d} pos=({:.1f},{:.1f},{:.1f}) hp={:.3f} sel={:d} gui={:d} inView={:d}{}{}]\n", mc2::fmt::as_i32(m->getPartId()), mc2::fmt::safe((m->getName() ? m->getName() : "?")), mc2::fmt::safe(cls ? cls : "?"), mc2::fmt::as_i32(m->getTeamId()), mc2::fmt::as_i32(m->getCommanderId()), p.x, p.y, p.z, m->getStatusRating(), mc2::fmt::as_i32(m->isSelected() ? 1 : 0), mc2::fmt::as_i32(m->isOnGUI() ? 1 : 0), mc2::fmt::as_i32((ap && ap->canBeSeen()) ? 1 : 0), mc2::fmt::safe(m->isDisabled()  ? " DISABLED"  : ""), mc2::fmt::safe(m->isDestroyed() ? " DESTROYED" : ""));
 				extra += b;
 				n++;
 			}
 			result = "ok";
 			char h[80];
-			sprintf(h, "%ld mover(s) of %ld", n, ObjectManager->getNumMovers());
+			mc2::fmt::to_buf(h, "{:d} mover(s) of {:d}", mc2::fmt::as_i32(n), mc2::fmt::as_i32(ObjectManager->getNumMovers()));
 			note = h;
 		}
 	}
@@ -777,26 +747,13 @@ bool MissionInterfaceManager::uiCmdReadback(UiCmdCtx& c)
 			else {
 				Stuff::Vector3D p = obj->getPosition();
 				char b[512];
-				snprintf(b, sizeof(b),
-					"  id=%ld name=%s class=%s pos=(%.2f,%.2f,%.2f) hp=%.3f "
-					"exists=%d disabled=%d destroyed=%d\n",
-					pid, (obj->getName() ? obj->getName() : "?"),
-					getObjectClassName(obj->getObjectClass()),
-					p.x, p.y, p.z, obj->getStatusRating(),
-					obj->getExists() ? 1 : 0,
-					obj->isDisabled() ? 1 : 0, obj->isDestroyed() ? 1 : 0);
+				mc2::fmt::to_buf(b, "  id={:d} name={} class={} pos=({:.2f},{:.2f},{:.2f}) hp={:.3f} exists={:d} disabled={:d} destroyed={:d}\n", mc2::fmt::as_i32(pid), mc2::fmt::safe((obj->getName() ? obj->getName() : "?")), mc2::fmt::safe(getObjectClassName(obj->getObjectClass())), p.x, p.y, p.z, obj->getStatusRating(), mc2::fmt::as_i32(obj->getExists() ? 1 : 0), mc2::fmt::as_i32(obj->isDisabled() ? 1 : 0), mc2::fmt::as_i32(obj->isDestroyed() ? 1 : 0));
 				extra += b;
 
 				if (obj->isMover()) {
 					MoverPtr m = (MoverPtr)obj;
 					MechWarriorPtr pilot = m->getPilot();
-					snprintf(b, sizeof(b),
-						"  mover: team=%ld cmdr=%ld gui=%d selected=%d "
-						"typeHandle=%ld pilot=%s\n",
-						m->getTeamId(), m->getCommanderId(),
-						m->isOnGUI() ? 1 : 0, m->isSelected() ? 1 : 0,
-						m->getTypeHandle(),
-						(pilot && pilot->getName()) ? pilot->getName() : "<none>");
+					mc2::fmt::to_buf(b, "  mover: team={:d} cmdr={:d} gui={:d} selected={:d} typeHandle={:d} pilot={}\n", mc2::fmt::as_i32(m->getTeamId()), mc2::fmt::as_i32(m->getCommanderId()), mc2::fmt::as_i32(m->isOnGUI() ? 1 : 0), mc2::fmt::as_i32(m->isSelected() ? 1 : 0), mc2::fmt::as_i32(m->getTypeHandle()), mc2::fmt::safe((pilot && pilot->getName()) ? pilot->getName() : "<none>"));
 					extra += b;
 				}
 
@@ -814,14 +771,7 @@ bool MissionInterfaceManager::uiCmdReadback(UiCmdCtx& c)
 				} else {
 					AppearanceTypePtr at = ap->getAppearanceType();
 					Stuff::Vector4D sp = ap->getScreenPos();
-					snprintf(b, sizeof(b),
-						"  draw: appearType=%s appearNum=%lu inView=%d "
-						"staticRecipe=%d screenPos=(%.1f,%.1f,%.3f,%.3f)\n",
-						(at && at->name) ? at->name : "?",
-						at ? at->appearanceNum : 0UL,
-						ap->canBeSeen() ? 1 : 0,
-						(int)ap->getStaticRecipeIndex(),
-						sp.x, sp.y, sp.z, sp.w);
+					mc2::fmt::to_buf(b, "  draw: appearType={} appearNum={:d} inView={:d} staticRecipe={:d} screenPos=({:.1f},{:.1f},{:.3f},{:.3f})\n", mc2::fmt::safe((at && at->name) ? at->name : "?"), mc2::fmt::as_u32(at ? at->appearanceNum : 0UL), mc2::fmt::as_i32(ap->canBeSeen() ? 1 : 0), mc2::fmt::as_i32((int)ap->getStaticRecipeIndex()), sp.x, sp.y, sp.z, sp.w);
 					extra += b;
 				}
 				result = "ok";
@@ -836,21 +786,10 @@ bool MissionInterfaceManager::uiCmdReadback(UiCmdCtx& c)
 		// FREEZE-MOVERS-1: frozen/frozenAt ride the EXISTING readback rather
 		// than adding a verb, so assert_mission can gate an A/B arm on "the
 		// movers really were pinned, at the frame I asked for".
-		snprintf(b, sizeof(b),
-			"  frame=%lu scenarioTime=%.2f simSpeed=%.2f fixedTimestep=%d "
-			"status=%ld paused=%d movers=%ld frozen=%d frozenAt=%ld missionFrame=%ld\n",
-			(unsigned long)g_mc2FrameCounter, (double)scenarioTime,
-			(double)simSpeedGetMultiplier(),
-			SmokeMode::fixedTimestepEnabled() ? 1 : 0,
-			mission ? mission->getStatus() : -1L,
-			isPaused() ? 1 : 0,
-			ObjectManager ? ObjectManager->getNumMovers() : -1L,
-			mc2FreezeMoversActive(), mc2FreezeMoversEngagedAt(),
-			mc2FreezeMoversMissionFrame());
+		mc2::fmt::to_buf(b, "  frame={:d} scenarioTime={:.2f} simSpeed={:.2f} fixedTimestep={:d} status={:d} paused={:d} movers={:d} frozen={:d} frozenAt={:d} missionFrame={:d}\n", mc2::fmt::as_u32((unsigned long)g_mc2FrameCounter), (double)scenarioTime, (double)simSpeedGetMultiplier(), mc2::fmt::as_i32(SmokeMode::fixedTimestepEnabled() ? 1 : 0), mc2::fmt::as_i32(mission ? mission->getStatus() : -1L), mc2::fmt::as_i32(isPaused() ? 1 : 0), mc2::fmt::as_i32(ObjectManager ? ObjectManager->getNumMovers() : -1L), mc2::fmt::as_i32(mc2FreezeMoversActive()), mc2::fmt::as_i32(mc2FreezeMoversEngagedAt()), mc2::fmt::as_i32(mc2FreezeMoversMissionFrame()));
 		extra += b;
 		if (Team::home) {
-			snprintf(b, sizeof(b), "  objectives: status=%d\n",
-				(int)Team::home->objectives.Status());
+			mc2::fmt::to_buf(b, "  objectives: status={:d}\n", mc2::fmt::as_i32((int)Team::home->objectives.Status()));
 			extra += b;
 		}
 		result = "ok";
@@ -872,8 +811,7 @@ bool MissionInterfaceManager::uiCmdReadback(UiCmdCtx& c)
 			mission->forceTerminate(res);
 			result = "ok";
 			char b[96];
-			sprintf(b, "%s (result=%lu); channel goes dead once logistics takes over",
-				arg.c_str(), res);
+			mc2::fmt::to_buf(b, "{} (result={:d}); channel goes dead once logistics takes over", arg.c_str(), mc2::fmt::as_u32(res));
 			note = b;
 		}
 	}
@@ -894,8 +832,7 @@ bool MissionInterfaceManager::uiCmdReadback(UiCmdCtx& c)
 			const float pitch = eye->setDaylightFraction(f);
 			result = "ok";
 			char b[128];
-			sprintf(b, "lightPitch=%.1f isNight=%d nightFactor=%.2f (full recompute)",
-				(double)pitch, eye->getIsNight() ? 1 : 0, (double)eye->getNightFactor());
+			mc2::fmt::to_buf(b, "lightPitch={:.1f} isNight={:d} nightFactor={:.2f} (full recompute)", (double)pitch, mc2::fmt::as_i32(eye->getIsNight() ? 1 : 0), (double)eye->getNightFactor());
 			note = b;
 		}
 	}
@@ -909,8 +846,7 @@ bool MissionInterfaceManager::uiCmdReadback(UiCmdCtx& c)
 			const float p = eye->setSunPitch(pitch, nf >= 2, yaw);
 			result = "ok";
 			char b[128];
-			sprintf(b, "lightPitch=%.1f%s (direction only; ambient/fog unchanged)",
-				(double)p, nf >= 2 ? " +yaw" : "");
+			mc2::fmt::to_buf(b, "lightPitch={:.1f}{} (direction only; ambient/fog unchanged)", (double)p, mc2::fmt::safe(nf >= 2 ? " +yaw" : ""));
 			note = b;
 		}
 	}
@@ -920,18 +856,7 @@ bool MissionInterfaceManager::uiCmdReadback(UiCmdCtx& c)
 		if (!eye) { result = "blocked"; note = "no camera"; }
 		else {
 			char b[384];
-			snprintf(b, sizeof(b),
-				"  lightPitch=%.2f lightYaw=%.2f isNight=%d nightFactor=%.3f\n"
-				"  ambient=(%u,%u,%u) light=(%u,%u,%u) fog=0x%06lx "
-				"day2NightTransitionTime=%.1f dayLightTime=%.1f\n",
-				(double)eye->lightPitch, (double)eye->lightYaw,
-				eye->getIsNight() ? 1 : 0, (double)eye->getNightFactor(),
-				(unsigned)eye->ambientRed, (unsigned)eye->ambientGreen,
-				(unsigned)eye->ambientBlue,
-				(unsigned)eye->lightRed, (unsigned)eye->lightGreen,
-				(unsigned)eye->lightBlue,
-				(eye->fogColor & 0xffffffUL),
-				(double)eye->day2NightTransitionTime, (double)eye->dayLightTime);
+			mc2::fmt::to_buf(b, "  lightPitch={:.2f} lightYaw={:.2f} isNight={:d} nightFactor={:.3f}\n  ambient=({:d},{:d},{:d}) light=({:d},{:d},{:d}) fog=0x{:06x} day2NightTransitionTime={:.1f} dayLightTime={:.1f}\n", (double)eye->lightPitch, (double)eye->lightYaw, mc2::fmt::as_i32(eye->getIsNight() ? 1 : 0), (double)eye->getNightFactor(), mc2::fmt::as_u32((unsigned)eye->ambientRed), mc2::fmt::as_u32((unsigned)eye->ambientGreen), mc2::fmt::as_u32((unsigned)eye->ambientBlue), mc2::fmt::as_u32((unsigned)eye->lightRed), mc2::fmt::as_u32((unsigned)eye->lightGreen), mc2::fmt::as_u32((unsigned)eye->lightBlue), mc2::fmt::as_u32((eye->fogColor & 0xffffffUL)), (double)eye->day2NightTransitionTime, (double)eye->dayLightTime);
 			extra += b;
 			result = "ok";
 		}

@@ -3,6 +3,7 @@
 // orchestrator are in saveload.cpp.
 #include "saveload_internal.h"
 #include "mission_load_frame.h"
+#include "mc2fmt.h"
 
 
 // Create the trigger-area, crater and object managers.
@@ -264,7 +265,7 @@ void Mission::loadParts(MissionLoadFrame& f) {
 		for (i = 1; i < numParts + 1; i++)
 		{
 			char partName[12];
-			sprintf(partName,"Part%d", i);
+			mc2::fmt::to_buf(partName, "Part{:d}", mc2::fmt::as_i32(i));
 			
 			//------------------------------------------------------------------
 			// Find the object to load

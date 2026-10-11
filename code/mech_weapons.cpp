@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in mech_internal.h.
 #include "mech_internal.h"
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 
 // ISSUE-17 (MC2_FIRE_DECISION_TRACE, default OFF = byte-identical): fireWeapon
@@ -17,9 +18,7 @@ static void fireGateTrace (unsigned long wid, long weaponIndex, const char* site
 	if (!s_fireDecisionTrace || !mc2_diag::tagEnabled("COMBAT"))
 		return;
 	char _fg[128];
-	snprintf(_fg, sizeof(_fg),
-		"{\"ev\":\"firegate\",\"wid\":%lu,\"widx\":%ld,\"site\":\"%s\"}",
-		wid, weaponIndex, site);
+	mc2::fmt::to_buf(_fg, "{{\"ev\":\"firegate\",\"wid\":{:d},\"widx\":{:d},\"site\":\"{}\"}}", mc2::fmt::as_u32(wid), mc2::fmt::as_i32(weaponIndex), mc2::fmt::safe(site));
 	mc2_diag::writeEvent("COMBAT", 1, 0, _fg);
 }
 

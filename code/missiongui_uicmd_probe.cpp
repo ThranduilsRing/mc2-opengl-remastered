@@ -1,6 +1,7 @@
 // MissionInterfaceManager: RENDERER-INPUT-READBACK-1 verbs (light_row, draw_path, shadow_feed, ground, pixel).
 // Declared in missiongui.h; shared names in missiongui_internal.h.
 #include "missiongui_internal.h"
+#include "mc2fmt.h"
 
 // RENDERER-INPUT-READBACK-1 verbs (light_row, draw_path, shadow_feed, ground, pixel). Returns true when a verb of this group matched.
 bool MissionInterfaceManager::uiCmdProbe(UiCmdCtx& c)
@@ -70,10 +71,7 @@ bool MissionInterfaceManager::uiCmdProbe(UiCmdCtx& c)
 				ProbeGatherLightsForList(srcList, srcCount, &rows);
 
 				char b[512];
-				snprintf(b, sizeof(b),
-					"  src: class=%s(0x%02lx) feed=%s srcListCount=%lu gathered=%d\n",
-					clsName, cls, nullFeed ? "NULL" : "worldLights",
-					srcCount, rows.numLights_);
+				mc2::fmt::to_buf(b, "  src: class={}(0x{:02x}) feed={} srcListCount={:d} gathered={:d}\n", mc2::fmt::safe(clsName), mc2::fmt::as_u32(cls), mc2::fmt::safe(nullFeed ? "NULL" : "worldLights"), mc2::fmt::as_u32(srcCount), mc2::fmt::as_i32(rows.numLights_));
 				extra += b;
 
 				// Per slot: BOTH the translation the gather READ (floats
@@ -97,17 +95,7 @@ bool MissionInterfaceManager::uiCmdProbe(UiCmdCtx& c)
 						(m[12] == 0.0f && m[13] == 0.0f && m[14] == 0.0f);
 					const int origin = (srcNonZero && upZero) ? 1 : 0;
 					atOrigin += origin;
-					snprintf(b, sizeof(b),
-						"  [%d] type=%d(%s) up=(%.2f,%.2f,%.2f) src=(%.2f,%.2f,%.2f) "
-						"atOrigin=%d dir=(%.4f,%.4f,%.4f) color=(%.4f,%.4f,%.4f) "
-						"falloff=(%.2f,%.2f,%.6f)\n",
-						li, ty,
-						(ty >= 0 && ty <= 5) ? kType[ty] : "?",
-						m[12], m[13], m[14], m[3], m[7], m[11], origin,
-						rows.lightDir[li][0], rows.lightDir[li][1], rows.lightDir[li][2],
-						rows.lightColor[li][0], rows.lightColor[li][1], rows.lightColor[li][2],
-						rows.lightFalloff[li][0], rows.lightFalloff[li][1],
-						rows.lightFalloff[li][2]);
+					mc2::fmt::to_buf(b, "  [{:d}] type={:d}({}) up=({:.2f},{:.2f},{:.2f}) src=({:.2f},{:.2f},{:.2f}) atOrigin={:d} dir=({:.4f},{:.4f},{:.4f}) color=({:.4f},{:.4f},{:.4f}) falloff=({:.2f},{:.2f},{:.6f})\n", mc2::fmt::as_i32(li), mc2::fmt::as_i32(ty), mc2::fmt::safe((ty >= 0 && ty <= 5) ? kType[ty] : "?"), m[12], m[13], m[14], m[3], m[7], m[11], mc2::fmt::as_i32(origin), rows.lightDir[li][0], rows.lightDir[li][1], rows.lightDir[li][2], rows.lightColor[li][0], rows.lightColor[li][1], rows.lightColor[li][2], rows.lightFalloff[li][0], rows.lightFalloff[li][1], rows.lightFalloff[li][2]);
 					extra += b;
 				}
 
@@ -123,38 +111,20 @@ bool MissionInterfaceManager::uiCmdProbe(UiCmdCtx& c)
 					mcTextureManager) {
 					TG_HWLightsData baked;
 					if (mcTextureManager->copyLightSlot(ldi, baked)) {
-						snprintf(b, sizeof(b),
-							"  baked: recipe=%d lightDataIndex=%u slots=%u "
-							"numLights=%d firstType=%d firstColor=(%.4f,%.4f,%.4f)\n",
-							(int)recipe, ldi,
-							mcTextureManager->getLightStructCount(),
-							baked.numLights_,
-							baked.numLights_ > 0 ? (int)baked.lightDir[0][3] : -1,
-							baked.numLights_ > 0 ? baked.lightColor[0][0] : 0.0f,
-							baked.numLights_ > 0 ? baked.lightColor[0][1] : 0.0f,
-							baked.numLights_ > 0 ? baked.lightColor[0][2] : 0.0f);
+						mc2::fmt::to_buf(b, "  baked: recipe={:d} lightDataIndex={:d} slots={:d} numLights={:d} firstType={:d} firstColor=({:.4f},{:.4f},{:.4f})\n", mc2::fmt::as_i32((int)recipe), mc2::fmt::as_u32(ldi), mc2::fmt::as_u32(mcTextureManager->getLightStructCount()), mc2::fmt::as_i32(baked.numLights_), mc2::fmt::as_i32(baked.numLights_ > 0 ? (int)baked.lightDir[0][3] : -1), baked.numLights_ > 0 ? baked.lightColor[0][0] : 0.0f, baked.numLights_ > 0 ? baked.lightColor[0][1] : 0.0f, baked.numLights_ > 0 ? baked.lightColor[0][2] : 0.0f);
 					} else {
-						snprintf(b, sizeof(b),
-							"  baked: recipe=%d lightDataIndex=%u UNREADABLE "
-							"(index beyond allocated slot count %u)\n",
-							(int)recipe, ldi,
-							mcTextureManager->getLightStructCount());
+						mc2::fmt::to_buf(b, "  baked: recipe={:d} lightDataIndex={:d} UNREADABLE (index beyond allocated slot count {:d})\n", mc2::fmt::as_i32((int)recipe), mc2::fmt::as_u32(ldi), mc2::fmt::as_u32(mcTextureManager->getLightStructCount()));
 					}
 					extra += b;
 				} else if (recipe >= 0) {
-					snprintf(b, sizeof(b),
-						"  baked: recipe=%d lightDataIndex=<none> "
-						"(registry off, or recipe tombstoned)\n", (int)recipe);
+					mc2::fmt::to_buf(b, "  baked: recipe={:d} lightDataIndex=<none> (registry off, or recipe tombstoned)\n", mc2::fmt::as_i32((int)recipe));
 					extra += b;
 				} else {
 					extra += "  baked: <none> (object is not on the static recipe path)\n";
 				}
 
 				result = "ok";
-				snprintf(b, sizeof(b),
-					"%s feed=%s gathered=%d atOrigin=%ld",
-					clsName, nullFeed ? "NULL" : "worldLights",
-					rows.numLights_, atOrigin);
+				mc2::fmt::to_buf(b, "{} feed={} gathered={:d} atOrigin={:d}", mc2::fmt::safe(clsName), mc2::fmt::safe(nullFeed ? "NULL" : "worldLights"), mc2::fmt::as_i32(rows.numLights_), mc2::fmt::as_i32(atOrigin));
 				note = b;
 			}
 		}
@@ -206,17 +176,9 @@ bool MissionInterfaceManager::uiCmdProbe(UiCmdCtx& c)
 									: (recipe >= 0)                  ? "dynamic_submit"
 									:                                  "legacy_cpu";
 
-				snprintf(b, sizeof(b),
-					"  path: verdict=%s class=0x%02lx type=%s appearNum=%lu "
-					"inView=%d staticReg=%d staticNow=%d recipe=%d\n",
-					verdict, cls, (at && at->name) ? at->name : "?",
-					at ? at->appearanceNum : 0UL,
-					ap->canBeSeen() ? 1 : 0, reg ? 1 : 0, statNow ? 1 : 0,
-					(int)recipe);
+				mc2::fmt::to_buf(b, "  path: verdict={} class=0x{:02x} type={} appearNum={:d} inView={:d} staticReg={:d} staticNow={:d} recipe={:d}\n", mc2::fmt::safe(verdict), mc2::fmt::as_u32(cls), mc2::fmt::safe((at && at->name) ? at->name : "?"), mc2::fmt::as_u32(at ? at->appearanceNum : 0UL), mc2::fmt::as_i32(ap->canBeSeen() ? 1 : 0), mc2::fmt::as_i32(reg ? 1 : 0), mc2::fmt::as_i32(statNow ? 1 : 0), mc2::fmt::as_i32((int)recipe));
 				extra += b;
-				snprintf(b, sizeof(b),
-					"  pose: obj=(%.3f,%.3f,%.3f) screen=(%.1f,%.1f,%.3f,%.3f)\n",
-					p.x, p.y, p.z, sp.x, sp.y, sp.z, sp.w);
+				mc2::fmt::to_buf(b, "  pose: obj=({:.3f},{:.3f},{:.3f}) screen=({:.1f},{:.1f},{:.3f},{:.3f})\n", p.x, p.y, p.z, sp.x, sp.y, sp.z, sp.w);
 				extra += b;
 
 				if (recipe >= 0) {
@@ -232,16 +194,9 @@ bool MissionInterfaceManager::uiCmdProbe(UiCmdCtx& c)
 						const float dy = mm[7]  - p.y;
 						const float dz = mm[11] - p.z;
 						const float drift = sqrtf(dx*dx + dy*dy + dz*dz);
-						snprintf(b, sizeof(b),
-							"  recipe: shape=%s baked=(%.3f,%.3f,%.3f) "
-							"recipeDrift=%.4f\n",
-							shapeName[0] ? shapeName : "?", mm[3], mm[7], mm[11],
-							drift);
+						mc2::fmt::to_buf(b, "  recipe: shape={} baked=({:.3f},{:.3f},{:.3f}) recipeDrift={:.4f}\n", mc2::fmt::safe(shapeName[0] ? shapeName : "?"), mm[3], mm[7], mm[11], drift);
 					} else {
-						snprintf(b, sizeof(b),
-							"  recipe: shape=%s baked=<unreadable> "
-							"recipeDrift=n/a (tombstoned or registry off)\n",
-							shapeName[0] ? shapeName : "?");
+						mc2::fmt::to_buf(b, "  recipe: shape={} baked=<unreadable> recipeDrift=n/a (tombstoned or registry off)\n", mc2::fmt::safe(shapeName[0] ? shapeName : "?"));
 					}
 					extra += b;
 
@@ -258,23 +213,15 @@ bool MissionInterfaceManager::uiCmdProbe(UiCmdCtx& c)
 					// is exactly the kind of cleverness that turns an
 					// instrument into a liar after one careless edit.
 					char tidBuf[24] = "?";
-					if (okT) snprintf(tidBuf, sizeof(tidBuf), "%u", tid);
+					if (okT) mc2::fmt::to_buf(tidBuf, "{:d}", mc2::fmt::as_u32(tid));
 					// hadCullRecord is the PREVIOUS frame's submit receipt
 					// (ExtractRenderSnapshot runs before flush), so a fresh
 					// 0 on frame N does not by itself mean "never drawn".
-					snprintf(b, sizeof(b),
-						"  submit: typeID=%s flags=0x%02x(lightsOut=%d window=%d spotlight=%d) "
-						"cullRecordPrevFrame=%s\n",
-						tidBuf,
-						okF ? flags : 0u,
-						okF ? (int)(flags & 1u) : -1,
-						okF ? (int)((flags >> 1) & 1u) : -1,
-						okF ? (int)((flags >> 2) & 1u) : -1,
-						okC ? (hadCull ? "1" : "0") : "?");
+					mc2::fmt::to_buf(b, "  submit: typeID={} flags=0x{:02x}(lightsOut={:d} window={:d} spotlight={:d}) cullRecordPrevFrame={}\n", mc2::fmt::safe(tidBuf), mc2::fmt::as_u32(okF ? flags : 0u), mc2::fmt::as_i32(okF ? (int)(flags & 1u) : -1), mc2::fmt::as_i32(okF ? (int)((flags >> 1) & 1u) : -1), mc2::fmt::as_i32(okF ? (int)((flags >> 2) & 1u) : -1), mc2::fmt::safe(okC ? (hadCull ? "1" : "0") : "?"));
 					extra += b;
 				}
 				result = "ok";
-				snprintf(b, sizeof(b), "%s recipe=%d", verdict, (int)recipe);
+				mc2::fmt::to_buf(b, "{} recipe={:d}", mc2::fmt::safe(verdict), mc2::fmt::as_i32((int)recipe));
 				note = b;
 			}
 		}
@@ -309,13 +256,7 @@ bool MissionInterfaceManager::uiCmdProbe(UiCmdCtx& c)
 				Stuff::Vector3D p = obj->getPosition();
 				char b[448];
 
-				snprintf(b, sizeof(b),
-					"  feed: registryQueried=%d recipe=%d recipeResolved=%d "
-					"buildingFeed=%d dynamicFeed=%d modernShadowPath=%d\n",
-					rep.registryQueried ? 1 : 0, (int)recipe,
-					rep.recipeResolved ? 1 : 0,
-					rep.buildingFeedTotal, rep.dynamicFeedTotal,
-					rep.modernShadowPathActive ? 1 : 0);
+				mc2::fmt::to_buf(b, "  feed: registryQueried={:d} recipe={:d} recipeResolved={:d} buildingFeed={:d} dynamicFeed={:d} modernShadowPath={:d}\n", mc2::fmt::as_i32(rep.registryQueried ? 1 : 0), mc2::fmt::as_i32((int)recipe), mc2::fmt::as_i32(rep.recipeResolved ? 1 : 0), mc2::fmt::as_i32(rep.buildingFeedTotal), mc2::fmt::as_i32(rep.dynamicFeedTotal), mc2::fmt::as_i32(rep.modernShadowPathActive ? 1 : 0));
 				extra += b;
 
 				// gos_GetStaticBuildingShadowCounts is documented zero
@@ -323,10 +264,7 @@ bool MissionInterfaceManager::uiCmdProbe(UiCmdCtx& c)
 				// mission. Membership in a feed that never drew is not a
 				// shadow, so printing membership without this would be a
 				// lying instrument.
-				snprintf(b, sizeof(b),
-					"  staticBldgPass: drew=%d types=%d instances=%d draws=%d\n",
-					(rep.bldgDrawInst > 0 || rep.bldgDrawCalls > 0) ? 1 : 0,
-					rep.bldgDrawTypes, rep.bldgDrawInst, rep.bldgDrawCalls);
+				mc2::fmt::to_buf(b, "  staticBldgPass: drew={:d} types={:d} instances={:d} draws={:d}\n", mc2::fmt::as_i32((rep.bldgDrawInst > 0 || rep.bldgDrawCalls > 0) ? 1 : 0), mc2::fmt::as_i32(rep.bldgDrawTypes), mc2::fmt::as_i32(rep.bldgDrawInst), mc2::fmt::as_i32(rep.bldgDrawCalls));
 				extra += b;
 
 				const gos_render_probe::ShadowFeedHit* hits[2] =
@@ -348,22 +286,11 @@ bool MissionInterfaceManager::uiCmdProbe(UiCmdCtx& c)
 						const float dz = h.submittedPos[2] - p.z;
 						drift = sqrtf(dx*dx + dy*dy + dz*dz);
 					}
-					snprintf(b, sizeof(b),
-						"  %s: present=%d sameTypeLeaves=%d exactLeaves=%d "
-						"submitted=(%.3f,%.3f,%.3f) live=(%.3f,%.3f,%.3f) "
-						"shadowDrift=%.4f\n",
-						kFeedName[fi], h.found ? 1 : 0,
-						h.leavesTotal, h.leavesExact,
-						h.submittedPos[0], h.submittedPos[1], h.submittedPos[2],
-						p.x, p.y, p.z, drift);
+					mc2::fmt::to_buf(b, "  {}: present={:d} sameTypeLeaves={:d} exactLeaves={:d} submitted=({:.3f},{:.3f},{:.3f}) live=({:.3f},{:.3f},{:.3f}) shadowDrift={:.4f}\n", mc2::fmt::safe(kFeedName[fi]), mc2::fmt::as_i32(h.found ? 1 : 0), mc2::fmt::as_i32(h.leavesTotal), mc2::fmt::as_i32(h.leavesExact), h.submittedPos[0], h.submittedPos[1], h.submittedPos[2], p.x, p.y, p.z, drift);
 					extra += b;
 				}
 				result = "ok";
-				snprintf(b, sizeof(b),
-					"bldg=%d dyn=%d staticPassDrew=%d",
-					rep.inBuildingFeed.found ? 1 : 0,
-					rep.inDynamicFeed.found ? 1 : 0,
-					(rep.bldgDrawInst > 0 || rep.bldgDrawCalls > 0) ? 1 : 0);
+				mc2::fmt::to_buf(b, "bldg={:d} dyn={:d} staticPassDrew={:d}", mc2::fmt::as_i32(rep.inBuildingFeed.found ? 1 : 0), mc2::fmt::as_i32(rep.inDynamicFeed.found ? 1 : 0), mc2::fmt::as_i32((rep.bldgDrawInst > 0 || rep.bldgDrawCalls > 0) ? 1 : 0));
 				note = b;
 			}
 		}
@@ -405,16 +332,10 @@ bool MissionInterfaceManager::uiCmdProbe(UiCmdCtx& c)
 				const float water = land->getWaterElevation();
 				const short ttype = land->getTerrainType(q);
 				Stuff::Vector3D n = land->getTerrainNormal(q);
-				snprintf(b, sizeof(b),
-					"  at=(%.3f,%.3f) terrainZ=%.4f waterZ=%.4f terrainType=%d "
-					"normal=(%.4f,%.4f,%.4f) terrainLight=%.4f\n",
-					q.x, q.y, terr, water, (int)ttype, n.x, n.y, n.z,
-					land->getTerrainLight(q));
+				mc2::fmt::to_buf(b, "  at=({:.3f},{:.3f}) terrainZ={:.4f} waterZ={:.4f} terrainType={:d} normal=({:.4f},{:.4f},{:.4f}) terrainLight={:.4f}\n", q.x, q.y, terr, water, mc2::fmt::as_i32((int)ttype), n.x, n.y, n.z, land->getTerrainLight(q));
 				extra += b;
 				if (obj) {
-					snprintf(b, sizeof(b),
-						"  obj: id=%ld z=%.4f objAboveGround=%.4f\n",
-						obj->getPartId(), q.z, q.z - terr);
+					mc2::fmt::to_buf(b, "  obj: id={:d} z={:.4f} objAboveGround={:.4f}\n", mc2::fmt::as_i32(obj->getPartId()), q.z, q.z - terr);
 					extra += b;
 					AppearancePtr ap = obj->getAppearance();
 					const int32_t recipe = ap ? ap->getStaticRecipeIndex() : -1;
@@ -423,18 +344,12 @@ bool MissionInterfaceManager::uiCmdProbe(UiCmdCtx& c)
 						GameAdapters::StaticProp::recipeModelMatrix(recipe, mm)) {
 						Stuff::Vector3D rq; rq.x = mm[3]; rq.y = mm[7]; rq.z = mm[11];
 						const float rterr = land->getTerrainElevation(rq);
-						snprintf(b, sizeof(b),
-							"  recipe: idx=%d baked=(%.3f,%.3f,%.3f) "
-							"recipeTerrainZ=%.4f recipeAboveGround=%.4f "
-							"recipeVsObj=%.4f\n",
-							(int)recipe, mm[3], mm[7], mm[11], rterr,
-							mm[11] - rterr, mm[11] - q.z);
+						mc2::fmt::to_buf(b, "  recipe: idx={:d} baked=({:.3f},{:.3f},{:.3f}) recipeTerrainZ={:.4f} recipeAboveGround={:.4f} recipeVsObj={:.4f}\n", mc2::fmt::as_i32((int)recipe), mm[3], mm[7], mm[11], rterr, mm[11] - rterr, mm[11] - q.z);
 						extra += b;
 					}
 				}
 				result = "ok";
-				snprintf(b, sizeof(b), "terrainZ=%.4f%s", terr,
-					obj ? "" : " (point query; no object)");
+				mc2::fmt::to_buf(b, "terrainZ={:.4f}{}", terr, mc2::fmt::safe(obj ? "" : " (point query; no object)"));
 				note = b;
 			}
 		}
@@ -529,33 +444,17 @@ bool MissionInterfaceManager::uiCmdProbe(UiCmdCtx& c)
 		// driver that its probe failed but not whether the camera or the
 		// coordinate was wrong.
 		if (worldForm) {
-			snprintf(b, sizeof(b),
-				"  world=(%.3f,%.3f,%.3f) screenYDown=(%.1f,%.1f) w=%.4f "
-				"behindCamera=%d offScreen=%d screenRes=(%.0f,%.0f)\n",
-				wx, wy, wz, sxOut, syOut, swOut,
-				behind ? 1 : 0, offScreen ? 1 : 0,
-				eye ? eye->getScreenRes().x : 0.0f,
-				eye ? eye->getScreenRes().y : 0.0f);
+			mc2::fmt::to_buf(b, "  world=({:.3f},{:.3f},{:.3f}) screenYDown=({:.1f},{:.1f}) w={:.4f} behindCamera={:d} offScreen={:d} screenRes=({:.0f},{:.0f})\n", wx, wy, wz, sxOut, syOut, swOut, mc2::fmt::as_i32(behind ? 1 : 0), mc2::fmt::as_i32(offScreen ? 1 : 0), eye ? eye->getScreenRes().x : 0.0f, eye ? eye->getScreenRes().y : 0.0f);
 			extra += b;
 		}
 		if (haveTarget) {
 			gos_render_probe::PixelProbe pp;
 			gos_render_probe::readScenePixel(wantPx, wantPy, pp);
-			snprintf(b, sizeof(b),
-				"  fbo=%dx%d texelYUp=(%d,%d) inBounds=%d rgba=(%u,%u,%u,%u) "
-				"luma=%.3f srcFrame=%lu\n",
-				pp.fboWidth, pp.fboHeight, pp.px, pp.py,
-				pp.inBounds ? 1 : 0,
-				(unsigned)pp.rgba[0], (unsigned)pp.rgba[1],
-				(unsigned)pp.rgba[2], (unsigned)pp.rgba[3],
-				(pp.rgba[0] + pp.rgba[1] + pp.rgba[2]) / 3.0,
-				pp.srcFrameHint);
+			mc2::fmt::to_buf(b, "  fbo={:d}x{:d} texelYUp=({:d},{:d}) inBounds={:d} rgba=({:d},{:d},{:d},{:d}) luma={:.3f} srcFrame={:d}\n", mc2::fmt::as_i32(pp.fboWidth), mc2::fmt::as_i32(pp.fboHeight), mc2::fmt::as_i32(pp.px), mc2::fmt::as_i32(pp.py), mc2::fmt::as_i32(pp.inBounds ? 1 : 0), mc2::fmt::as_u32((unsigned)pp.rgba[0]), mc2::fmt::as_u32((unsigned)pp.rgba[1]), mc2::fmt::as_u32((unsigned)pp.rgba[2]), mc2::fmt::as_u32((unsigned)pp.rgba[3]), (pp.rgba[0] + pp.rgba[1] + pp.rgba[2]) / 3.0, mc2::fmt::as_u32(pp.srcFrameHint));
 			extra += b;
 			if (pp.inBounds) {
 				result = "ok";
-				snprintf(b, sizeof(b), "rgb=%u,%u,%u srcFrame=%lu",
-					(unsigned)pp.rgba[0], (unsigned)pp.rgba[1],
-					(unsigned)pp.rgba[2], pp.srcFrameHint);
+				mc2::fmt::to_buf(b, "rgb={:d},{:d},{:d} srcFrame={:d}", mc2::fmt::as_u32((unsigned)pp.rgba[0]), mc2::fmt::as_u32((unsigned)pp.rgba[1]), mc2::fmt::as_u32((unsigned)pp.rgba[2]), mc2::fmt::as_u32(pp.srcFrameHint));
 				note = b;
 			} else {
 				result = "blocked";

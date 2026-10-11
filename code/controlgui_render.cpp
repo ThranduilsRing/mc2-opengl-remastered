@@ -1,6 +1,7 @@
 // ControlGui: the sensor / overview / weapon-view overlays and ControlGui::render.
 // Declared in the class headers; shared names in controlgui_internal.h.
 #include "controlgui_internal.h"
+#include "mc2fmt.h"
 
 
 // Sensor view: standalone toggle (F7), works at all zooms. Draws sensor coverage
@@ -61,7 +62,7 @@ static void drawSensorRing( Camera* eye, const Stuff::Vector3D& center, float ra
 	if ( ok[li] && gosFontHandle )
 	{
 		char buf[16];
-		sprintf( buf, "%.0fm", radius / worldUnitsPerMeter );	// world units -> meters
+		mc2::fmt::to_buf(buf, "{:.0f}m", radius / worldUnitsPerMeter);	// world units -> meters
 		gos_TextSetAttributes( gosFontHandle, aBits | 0x00000000, 1.0f, false, true, false, false );
 		gos_TextSetPosition( (int)px[li] + 1, (int)py[li] + 1 );
 		gos_TextDraw( buf );
@@ -379,7 +380,7 @@ static void drawWeaponBandUnion( Camera* eye, const Stuff::Vector3D* centers,
 		if ( gosFontHandle )
 		{
 			char buf[16];
-			sprintf( buf, "%.0fm", R / worldUnitsPerMeter );
+			mc2::fmt::to_buf(buf, "{:.0f}m", R / worldUnitsPerMeter);
 			gos_TextSetAttributes( gosFontHandle, aBits | 0x00000000, 1.0f, false, true, false, false );
 			gos_TextSetPosition( (int)sx + 1, (int)sy + 1 ); gos_TextDraw( buf );
 			gos_TextSetAttributes( gosFontHandle, aBits | rgb, 1.0f, false, true, false, false );
@@ -520,8 +521,7 @@ static void updateAndRenderFormationLine( Camera* eye )
 		if ( gosFontHandle )
 		{
 			char buf[32];
-			sprintf( buf, "%d  %.0f%%", g_tacticalOverview.flMoverCount(),
-			         g_tacticalOverview.flSpacing() * 100.0f );
+			mc2::fmt::to_buf(buf, "{:d}  {:.0f}%", mc2::fmt::as_i32(g_tacticalOverview.flMoverCount()), g_tacticalOverview.flSpacing() * 100.0f);
 			gos_TextSetAttributes( gosFontHandle, aBits | kGreen, 1.0f, false, true, false, false );
 			gos_TextSetPosition( (int)mx + 14, (int)my + 14 );
 			gos_TextDraw( buf );
@@ -744,7 +744,7 @@ void ControlGui::render( bool bPaused )
 			char buffer[32];
 			unsigned long minutes = time/60;
 			unsigned long seconds = time%60;
-			sprintf( buffer, "%03ld : %02ld", minutes, seconds );
+			mc2::fmt::to_buf(buffer, "{:03d} : {:02d}", mc2::fmt::as_i32(minutes), mc2::fmt::as_i32(seconds));
 	
 			unsigned long color = timerRect.color;
 			if ( minutes < 5 )

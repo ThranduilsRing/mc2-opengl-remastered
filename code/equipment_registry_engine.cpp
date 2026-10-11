@@ -22,6 +22,7 @@
 #include "modder_finding.h"   // MODDER-FIRST-ERROR-SURFACE-1: shared context format
 #include "platform_str.h"     // S_stricmp (EQUIP-ADD-FILL-1 def-leaf filter)
 #include "logisticsscreen.h"  // EQUIP-ADD-UI-NAME-1 (S3): gEquipmentUiTextHook
+#include "mc2fmt.h"
 
 namespace {
 // One consistent emit for generated-equipment problems. Only reachable when
@@ -203,8 +204,7 @@ size_t overlayGeneratedEquipmentStatsIfEnabled() {
         std::string slug = qid.substr(qid.find(':') + 1);
 
         char path[256];
-        std::snprintf(path, sizeof(path), "%s%s/equipmentdef.fit",
-                      kGeneratedEquipmentRoot, slug.c_str());
+        mc2::fmt::to_buf(path, "{}{}/equipmentdef.fit", mc2::fmt::safe(kGeneratedEquipmentRoot), slug.c_str());
         if (!fileExists(path))               // no generated def -> keep legacy
             continue;
 
@@ -237,8 +237,8 @@ size_t overlayGeneratedEquipmentStatsIfEnabled() {
         if (genLegacyId != ord) {
             // The overlay key mismatched: the def claims a DIFFERENT legacy row.
             char expectedBuf[16], actualBuf[16];
-            std::snprintf(expectedBuf, sizeof(expectedBuf), "%ld", ord);
-            std::snprintf(actualBuf, sizeof(actualBuf), "%ld", genLegacyId);
+            mc2::fmt::to_buf_n(expectedBuf, sizeof(expectedBuf), "{:d}", mc2::fmt::as_i32(ord));
+            mc2::fmt::to_buf_n(actualBuf, sizeof(actualBuf), "{:d}", mc2::fmt::as_i32(genLegacyId));
             ModderFinding f;
             f.message  = "generated equipment def LegacyMasterId does not match this compbas row";
             f.source   = "generated"; f.file = path; f.id = qid;
@@ -373,8 +373,8 @@ size_t applyEquipmentEnableWireIfEnabled(bool* available, long availableCount) {
         if (gen.readIdLong("LegacyMasterId", genLegacyId) != NO_ERR ||
             genLegacyId != e.legacyMasterId) {
             char expectedBuf[16], actualBuf[16];
-            std::snprintf(expectedBuf, sizeof(expectedBuf), "%ld", e.legacyMasterId);
-            std::snprintf(actualBuf, sizeof(actualBuf), "%ld", genLegacyId);
+            mc2::fmt::to_buf_n(expectedBuf, sizeof(expectedBuf), "{:d}", mc2::fmt::as_i32(e.legacyMasterId));
+            mc2::fmt::to_buf_n(actualBuf, sizeof(actualBuf), "{:d}", mc2::fmt::as_i32(genLegacyId));
             ModderFinding f;
             f.message  = "equipment def declares Enabled but its LegacyMasterId does not match this compbas row";
             f.source   = "enable-wire"; f.file = path; f.id = e.qualifiedId;
@@ -512,7 +512,7 @@ size_t applyEquipmentAddFillIfEnabled(float baseSensorRange) {
             f.source = "add-fill"; f.file = defPath; f.id = qid;
             f.field  = "LegacyMasterId";
             char ordBuf[16];
-            std::snprintf(ordBuf, sizeof(ordBuf), "%ld", ord);
+            mc2::fmt::to_buf(ordBuf, "{:d}", mc2::fmt::as_i32(ord));
             switch (d) {
                 case EQADD_SKIP_NO_ORDINAL:
                     f.message  = "ADD def carries no explicit LegacyMasterId (no auto-assign; ids must be explicit)";

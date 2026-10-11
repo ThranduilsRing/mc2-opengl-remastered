@@ -27,6 +27,7 @@ MechListBox.cpp			: Implementation of the MechListBox component.
 // are read at first use rather than in a namespace-scope initializer.
 static bool cheatInfiniteMoney() { static const bool on = mc2::gate::get<"MC2_CHEAT_INFINITE_MONEY">(); return on; }
 #include"txmmgr.h"
+#include "mc2fmt.h"
 
 MechListBoxItem* MechListBoxItem::s_templateItem = nullptr;
 
@@ -133,7 +134,7 @@ int MechListBox::init()
 	if ( NO_ERR != file.open( path ) )
 	{
 		char errorStr[256];
-		sprintf( errorStr, "couldn't open file %s", path );
+		mc2::fmt::to_buf(errorStr, "couldn't open file {}", mc2::fmt::safe(path));
 		Assert( 0, 0, errorStr );
 		return -1;
 	}
@@ -182,11 +183,11 @@ MechListBoxItem::MechListBoxItem( LogisticsMech* pRefMech, long count )
 	chassisName.setText( pMech->getChassisName() );
 	
 	char text[32];
-	sprintf( text, "%ld", pMech->getCost() );
+	mc2::fmt::to_buf(text, "{:d}", mc2::fmt::as_i32(pMech->getCost()));
 	costText.setText( text );
 
 	mechCount = LogisticsData::instance->getVariantsInInventory( pRefMech->getVariant(), bIncludeForceGroup );
-	sprintf( text, "%ld", mechCount );
+	mc2::fmt::to_buf(text, "{:d}", mc2::fmt::as_i32(mechCount));
 	countText.setText( text );
 
 
@@ -194,7 +195,7 @@ MechListBoxItem::MechListBoxItem( LogisticsMech* pRefMech, long count )
 
 	variantName.setText( pMech->getName() );
 	
-	sprintf( text, "%.0lf", pMech->getMaxWeight() );
+	mc2::fmt::to_buf(text, "{:.0f}", pMech->getMaxWeight());
 	weightText.setText( text );
 
 	// ---- MC2_LOG_LOGISTICS mech-list item diagnostic (env-gated, no behavior change) ----
@@ -282,9 +283,9 @@ void MechListBoxItem::init( FitIniFile& file )
 		char blockName[64];
 		for ( int i = 0; i < 4; i++ )
 		{
-			sprintf( blockName, "OrangeAnimation%ld", i );
+			mc2::fmt::to_buf(blockName, "OrangeAnimation{:d}", mc2::fmt::as_i32(i));
 			s_templateItem->animations[1][i].init( &file, blockName );
-			sprintf( blockName, "Animation%ld", i );
+			mc2::fmt::to_buf(blockName, "Animation{:d}", mc2::fmt::as_i32(i));
 			s_templateItem->animations[0][i].init( &file, blockName );
 		}
 		
@@ -353,7 +354,7 @@ void MechListBoxItem::update()
 	{
 		animTime = .0001f;
 	}
-	sprintf( text, "%ld", mechCount );
+	mc2::fmt::to_buf(text, "{:d}", mc2::fmt::as_i32(mechCount));
 	countText.setText( text );
 	if ( animTime )
 	{

@@ -1,6 +1,7 @@
 // ABL native bindings: text messages, teleport, roster/pilot operations, campaign globals, strike toggles, radius counts, omni stubs, trigger areas and off-map queries.
 // Declared in ablmc2_internal.h; registered, in order, by initABL in ablmc2.cpp.
 #include "ablmc2_internal.h"
+#include "mc2fmt.h"
 
 
 // --- Omnitech ABL extensions ---
@@ -21,7 +22,7 @@ static bool  gAblSalvageCraftEnabled    = true;
 
 static inline void omniTrace (const char* tag) {
 	char s[128];
-	sprintf(s, "[OMNI] %s", tag);
+	mc2::fmt::to_buf(s, "[OMNI] {}", mc2::fmt::safe(tag));
 	DEBUGWINS_print(s, 0);
 }
 
@@ -39,11 +40,11 @@ void execSetTextMsg (void) {
 
 	char s[512];
 	if (value.type == ABL_STACKITEM_CHAR_PTR && value.data.characterPtr)
-		sprintf(s, "[OMNI.TEXT] %s", value.data.characterPtr);
+		mc2::fmt::to_buf(s, "[OMNI.TEXT] {}", mc2::fmt::safe(value.data.characterPtr));
 	else if (value.type == ABL_STACKITEM_INTEGER)
-		sprintf(s, "[OMNI.TEXT] #%d", value.data.integer);
+		mc2::fmt::to_buf(s, "[OMNI.TEXT] #{:d}", mc2::fmt::as_i32(value.data.integer));
 	else
-		sprintf(s, "[OMNI.TEXT] (type=%d)", (int)value.type);
+		mc2::fmt::to_buf(s, "[OMNI.TEXT] (type={:d})", mc2::fmt::as_i32((int)value.type));
 	DEBUGWINS_print(s, 0);
 }
 
@@ -61,11 +62,11 @@ void execSetLargeMsg (void) {
 
 	char s[512];
 	if (value.type == ABL_STACKITEM_CHAR_PTR && value.data.characterPtr)
-		sprintf(s, "[OMNI.LARGE] %s", value.data.characterPtr);
+		mc2::fmt::to_buf(s, "[OMNI.LARGE] {}", mc2::fmt::safe(value.data.characterPtr));
 	else if (value.type == ABL_STACKITEM_INTEGER)
-		sprintf(s, "[OMNI.LARGE] #%d", value.data.integer);
+		mc2::fmt::to_buf(s, "[OMNI.LARGE] #{:d}", mc2::fmt::as_i32(value.data.integer));
 	else
-		sprintf(s, "[OMNI.LARGE] (type=%d)", (int)value.type);
+		mc2::fmt::to_buf(s, "[OMNI.LARGE] (type={:d})", mc2::fmt::as_i32((int)value.type));
 	DEBUGWINS_print(s, 0);
 }
 
@@ -130,17 +131,17 @@ void execAblPrint (void) {
 	const char* fn = fileName ? fileName : "abl";
 	switch (value.type) {
 		case ABL_STACKITEM_CHAR:
-			sprintf(s, "[ABL:%s] char=%c", fn, value.data.character); break;
+			mc2::fmt::to_buf(s, "[ABL:{}] char={:c}", mc2::fmt::safe(fn), mc2::fmt::as_char(value.data.character)); break;
 		case ABL_STACKITEM_INTEGER:
-			sprintf(s, "[ABL:%s] int=%d", fn, value.data.integer); break;
+			mc2::fmt::to_buf(s, "[ABL:{}] int={:d}", mc2::fmt::safe(fn), mc2::fmt::as_i32(value.data.integer)); break;
 		case ABL_STACKITEM_REAL:
-			sprintf(s, "[ABL:%s] real=%.2f", fn, value.data.real); break;
+			mc2::fmt::to_buf(s, "[ABL:{}] real={:.2f}", mc2::fmt::safe(fn), value.data.real); break;
 		case ABL_STACKITEM_BOOLEAN:
-			sprintf(s, "[ABL:%s] bool=%s", fn, value.data.boolean ? "true" : "false"); break;
+			mc2::fmt::to_buf(s, "[ABL:{}] bool={}", mc2::fmt::safe(fn), mc2::fmt::safe(value.data.boolean ? "true" : "false")); break;
 		case ABL_STACKITEM_CHAR_PTR:
-			sprintf(s, "[ABL:%s] str=%s", fn, value.data.characterPtr ? value.data.characterPtr : ""); break;
+			mc2::fmt::to_buf(s, "[ABL:{}] str={}", mc2::fmt::safe(fn), mc2::fmt::safe(value.data.characterPtr ? value.data.characterPtr : "")); break;
 		default:
-			sprintf(s, "[ABL:%s] (type=%d)", fn, (int)value.type); break;
+			mc2::fmt::to_buf(s, "[ABL:{}] (type={:d})", mc2::fmt::safe(fn), mc2::fmt::as_i32((int)value.type)); break;
 	}
 	DEBUGWINS_print(s, 0);
 }
@@ -813,35 +814,35 @@ void execMCPrint (void) {
 	char s[256];
 	switch (value.type) {
 		case ABL_STACKITEM_CHAR:
-			sprintf(s, "char=%c", value.data.character);
+			mc2::fmt::to_buf(s, "char={:c}", mc2::fmt::as_char(value.data.character));
 			DEBUGWINS_print(s, 0);
 			break;
 		case ABL_STACKITEM_INTEGER:
-			sprintf(s, "int=%d", value.data.integer);
+			mc2::fmt::to_buf(s, "int={:d}", mc2::fmt::as_i32(value.data.integer));
 			DEBUGWINS_print(s, 0);
 			break;
 		case ABL_STACKITEM_REAL:
-			sprintf(s, "real=%.2f", value.data.real);
+			mc2::fmt::to_buf(s, "real={:.2f}", value.data.real);
 			DEBUGWINS_print(s, 0);
 			break;
 		case ABL_STACKITEM_BOOLEAN:
-			sprintf(s, "bool=%s", value.data.boolean ? "true" : "false");
+			mc2::fmt::to_buf(s, "bool={}", mc2::fmt::safe(value.data.boolean ? "true" : "false"));
 			DEBUGWINS_print(s, 0);
 			break;
 		case ABL_STACKITEM_CHAR_PTR:
-			sprintf(s, "char*=%s", value.data.characterPtr);
+			mc2::fmt::to_buf(s, "char*={}", mc2::fmt::safe(value.data.characterPtr));
 			DEBUGWINS_print(s, 0);
 			break;
 		case ABL_STACKITEM_INTEGER_PTR:
-			sprintf(s, "int*=%d,%d,%d", value.data.integerPtr[0], value.data.integerPtr[1], value.data.integerPtr[2]);
+			mc2::fmt::to_buf(s, "int*={:d},{:d},{:d}", mc2::fmt::as_i32(value.data.integerPtr[0]), mc2::fmt::as_i32(value.data.integerPtr[1]), mc2::fmt::as_i32(value.data.integerPtr[2]));
 			DEBUGWINS_print(s, 0);
 			break;
 		case ABL_STACKITEM_REAL_PTR:
-			sprintf(s, "real*=%.2f,%.2f,%.2f", value.data.realPtr[0], value.data.realPtr[1], value.data.realPtr[2]);
+			mc2::fmt::to_buf(s, "real*={:.2f},{:.2f},{:.2f}", value.data.realPtr[0], value.data.realPtr[1], value.data.realPtr[2]);
 			DEBUGWINS_print(s, 0);
 			break;
 		case ABL_STACKITEM_BOOLEAN_PTR:
-			sprintf(s, "bool*=%d,%d,%d", value.data.booleanPtr[0], value.data.booleanPtr[1], value.data.booleanPtr[2]);
+			mc2::fmt::to_buf(s, "bool*={:d},{:d},{:d}", mc2::fmt::as_i32(value.data.booleanPtr[0]), mc2::fmt::as_i32(value.data.booleanPtr[1]), mc2::fmt::as_i32(value.data.booleanPtr[2]));
 			DEBUGWINS_print(s, 0);
 			break;	
 	}
@@ -913,7 +914,7 @@ void execGetWeapons (void) {
 				#ifdef BUGLOG
 				if ((numWpns != mover->numFunctionalWeapons) && BugLog) {
 					char s[50];
-					sprintf(s, "[%.2f] ablmc2.execGetWeapons: numWpns != numFunctionalWeapons (%05d)%s", scenarioTime, mover->getPartId(), mover->getName());
+					mc2::fmt::to_buf(s, "[{:.2f}] ablmc2.execGetWeapons: numWpns != numFunctionalWeapons ({:05d}){}", scenarioTime, mc2::fmt::as_i32(mover->getPartId()), mc2::fmt::safe(mover->getName()));
 					BugLog->write(s);
 					BugLog->write(" ");
 				}

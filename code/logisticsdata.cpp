@@ -7,6 +7,7 @@ LogisticsData.cpp			: Implementation of the LogisticsData component.
 \*************************************************************************************************/
 
 #include "logisticsdata_internal.h"
+#include "mc2fmt.h"
 
 
 #ifdef VIEWER
@@ -338,7 +339,7 @@ int LogisticsData::addBuilding( long fitID, PacketFile& objectFile, float scale 
 					if ( NO_ERR != file.seekBlock( "General" ) ) // hack for artillery piece
 					{
 						char errorStr[256];
-						sprintf( errorStr, "coudn't find appropriate block in file %s", bldg.fileName );
+						mc2::fmt::to_buf(errorStr, "coudn't find appropriate block in file {}", mc2::fmt::safe(bldg.fileName));
 						Assert( 0, 0, errorStr  );
 					}
 				}
@@ -358,7 +359,7 @@ int LogisticsData::addBuilding( long fitID, PacketFile& objectFile, float scale 
 			{
 				
 				file.readIdLong( weaponNameStr, bldg.componentIDs[i] );
-				sprintf( weaponNameStr, "WeaponType%ld", i+1 );
+				mc2::fmt::to_buf(weaponNameStr, "WeaponType{:d}", mc2::fmt::as_i32(i+1));
 			}
 			
 		}

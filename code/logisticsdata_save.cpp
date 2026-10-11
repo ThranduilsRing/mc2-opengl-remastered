@@ -1,6 +1,7 @@
 // LogisticsData: removeMechsInForceGroup, pilot ranking, save / load, setMissionCompleted and the mech / pilot / variant lookups.
 // Declared in the class headers; shared names in logisticsdata_internal.h.
 #include "logisticsdata_internal.h"
+#include "mc2fmt.h"
 
 
 // Snapshot of deployed (force-group) mechs captured before removeMechsInForceGroup()
@@ -294,7 +295,7 @@ long	LogisticsData::load( FitIniFile& file )
 	// load variants
 	for ( int i = 0; i < variantCount; i++ )
 	{
-		sprintf( tmp, "Variant%ld", i );
+		mc2::fmt::to_buf(tmp, "Variant{:d}", mc2::fmt::as_i32(i));
 		file.seekBlock( tmp );
 		result = loadVariant( file );
 		if ( result != NO_ERR )
@@ -307,7 +308,7 @@ long	LogisticsData::load( FitIniFile& file )
 	// load pilots
 	for (int i = 0; i < pilotCount; i++ )
 	{
-		sprintf( tmp, "Pilot%ld", i );
+		mc2::fmt::to_buf(tmp, "Pilot{:d}", mc2::fmt::as_i32(i));
 		if ( NO_ERR != file.seekBlock( tmp ) )
 		{
 			gosASSERT( 0 );
@@ -331,7 +332,7 @@ long	LogisticsData::load( FitIniFile& file )
 	int count = 0;
 	for (int i = 0; i < inventoryCount; i++ )
 	{
-		sprintf( tmp, "Inventory%ld", i ) ;
+		mc2::fmt::to_buf(tmp, "Inventory{:d}", mc2::fmt::as_i32(i)) ;
 		if ( NO_ERR != file.seekBlock( tmp ) )
 		{
 			gosASSERT( 0 );
@@ -393,7 +394,7 @@ long LogisticsData::loadVariant( FitIniFile& file )
 	// add those components
 	for ( int i = 0; i < componentCount; i++ )
 	{
-		sprintf( tmp, "Component%ld", i );
+		mc2::fmt::to_buf(tmp, "Component{:d}", mc2::fmt::as_i32(i));
 		file.readIdLong(tmp, id );
 		
 		strcpy( tmp2, tmp );
@@ -504,10 +505,7 @@ void	LogisticsData::setMissionCompleted( )
 						_lg_nm[_lg_k] = (_lg_src[_lg_k]=='\\' || _lg_src[_lg_k]=='"') ? '_' : _lg_src[_lg_k];
 					_lg_nm[_lg_k] = '\0';
 					char _lg_buf[320];
-					snprintf(_lg_buf, sizeof(_lg_buf),
-					         "{\"site\":\"cull\",\"name\":\"%s\",\"on_gui\":%d,\"type_class\":%d,\"move_type\":%d,\"cmd_match\":%d,\"is_air\":%d,\"dead\":%d,\"carry_over\":%d}",
-					         _lg_nm, _lg_gui?1:0, _lg_otc, _lg_mt, _lg_cmd?1:0, (_lg_mt==MOVETYPE_AIR)?1:0,
-					         (pMover->isDestroyed()||pMover->isDisabled())?1:0, _lg_pass?1:0);
+					mc2::fmt::to_buf(_lg_buf, "{{\"site\":\"cull\",\"name\":\"{}\",\"on_gui\":{:d},\"type_class\":{:d},\"move_type\":{:d},\"cmd_match\":{:d},\"is_air\":{:d},\"dead\":{:d},\"carry_over\":{:d}}}", mc2::fmt::safe(_lg_nm), mc2::fmt::as_i32(_lg_gui?1:0), mc2::fmt::as_i32(_lg_otc), mc2::fmt::as_i32(_lg_mt), mc2::fmt::as_i32(_lg_cmd?1:0), mc2::fmt::as_i32((_lg_mt==MOVETYPE_AIR)?1:0), mc2::fmt::as_i32((pMover->isDestroyed()||pMover->isDisabled())?1:0), mc2::fmt::as_i32(_lg_pass?1:0));
 					mc2_diag::writeEvent("LOGISTICS", 1, 0, _lg_buf);
 				}
 			}
@@ -539,9 +537,7 @@ void	LogisticsData::setMissionCompleted( )
 						char* _r_dsts[3] = { _r_nm, _r_pnm, _r_vnm };
 						for (int _r_s=0; _r_s<3; ++_r_s) { size_t _r_k; for(_r_k=0;_r_k<63 && _r_srcs[_r_s][_r_k];++_r_k) _r_dsts[_r_s][_r_k]=(_r_srcs[_r_s][_r_k]=='\\'||_r_srcs[_r_s][_r_k]=='"')?'_':_r_srcs[_r_s][_r_k]; _r_dsts[_r_s][_r_k]='\0'; }
 						char _r_buf[400];
-						snprintf(_r_buf, sizeof(_r_buf),
-						         "{\"site\":\"resolve\",\"name\":\"%s\",\"pilot\":\"%s\",\"variant\":\"%s\",\"mech_found\":%d,\"pilot_found\":%d,\"dead\":%d}",
-						         _r_nm, _r_pnm, _r_vnm, pMech?1:0, pPilot?1:0, (pMover->isDestroyed()||pMover->isDisabled())?1:0);
+						mc2::fmt::to_buf(_r_buf, "{{\"site\":\"resolve\",\"name\":\"{}\",\"pilot\":\"{}\",\"variant\":\"{}\",\"mech_found\":{:d},\"pilot_found\":{:d},\"dead\":{:d}}}", mc2::fmt::safe(_r_nm), mc2::fmt::safe(_r_pnm), mc2::fmt::safe(_r_vnm), mc2::fmt::as_i32(pMech?1:0), mc2::fmt::as_i32(pPilot?1:0), mc2::fmt::as_i32((pMover->isDestroyed()||pMover->isDisabled())?1:0));
 						mc2_diag::writeEvent("LOGISTICS", 1, 0, _r_buf);
 					}
 				}
@@ -599,7 +595,7 @@ void	LogisticsData::setMissionCompleted( )
 									char _ml_vn[80]; const char* _ml_s = vname ? vname : "";
 									size_t _ml_k; for(_ml_k=0;_ml_k<79 && _ml_s[_ml_k];++_ml_k) _ml_vn[_ml_k]=(_ml_s[_ml_k]=='\\'||_ml_s[_ml_k]=='"')?'_':_ml_s[_ml_k]; _ml_vn[_ml_k]='\0';
 									char _ml_buf[160];
-									snprintf(_ml_buf, sizeof(_ml_buf), "{\"site\":\"mech_lost\",\"variant\":\"%s\"}", _ml_vn);
+									mc2::fmt::to_buf(_ml_buf, "{{\"site\":\"mech_lost\",\"variant\":\"{}\"}}", mc2::fmt::safe(_ml_vn));
 									mc2_diag::writeEvent("LOGISTICS", 1, 0, _ml_buf);
 								}
 							}

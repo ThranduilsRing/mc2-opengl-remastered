@@ -51,6 +51,7 @@ Objective.cpp			: Implementation of the Objective component.
 
 #include "platform_tchar.h"
 #include<assert.h>
+#include "mc2fmt.h"
 
 float CObjective::s_blinkLength = .5;
 float CObjective::s_lastBlinkTime = 0.f;
@@ -310,7 +311,7 @@ static bool areCloseEnough(float f1, float f2)
 void CBooleanArray::save (long alignment, FitIniFile *file)
 {
 	char blockID[256];
-	sprintf(blockID, "Team%dBooleanFlags",alignment);
+	mc2::fmt::to_buf(blockID, "Team{:d}BooleanFlags", mc2::fmt::as_i32(alignment));
 	long result = file->writeBlock(blockID); (void)result;
 
 	CEStringList::EIterator flagIDListIter;
@@ -318,11 +319,11 @@ void CBooleanArray::save (long alignment, FitIniFile *file)
 	for (flagIDListIter = m_FlagIDList.Begin(); !flagIDListIter.IsDone(); flagIDListIter++) 
 	{
 		char stringName[1024];
-		sprintf(stringName,"BooleanString%d",count);
+		mc2::fmt::to_buf(stringName, "BooleanString{:d}", mc2::fmt::as_i32(count));
 		sWriteIdString(file,stringName,(*flagIDListIter).Data());
 
 		char booleanName[1024];
-		sprintf(booleanName,"BooleanValue%d",count);
+		mc2::fmt::to_buf(booleanName, "BooleanValue{:d}", mc2::fmt::as_i32(count));
 		file->writeIdBoolean(booleanName,m_valueList[count]);
 
 		count++;
@@ -332,7 +333,7 @@ void CBooleanArray::save (long alignment, FitIniFile *file)
 void CBooleanArray::load (long alignment, FitIniFile *file)
 {
 	char blockID[256];
-	sprintf(blockID, "Team%dBooleanFlags",alignment);
+	mc2::fmt::to_buf(blockID, "Team{:d}BooleanFlags", mc2::fmt::as_i32(alignment));
 	long result = file->seekBlock(blockID);
 	if (result == NO_ERR)
 	{
@@ -342,12 +343,12 @@ void CBooleanArray::load (long alignment, FitIniFile *file)
 	
 		long count = 0;
 		char stringName[1024];
-		sprintf(stringName,"BooleanString%d",count);
+		mc2::fmt::to_buf(stringName, "BooleanString{:d}", mc2::fmt::as_i32(count));
 		result = sReadIdString(file,stringName,tmpECStr);
 		while (result == NO_ERR)
 		{
 			char booleanName[1024];
-			sprintf(booleanName,"BooleanValue%d",count);
+			mc2::fmt::to_buf(booleanName, "BooleanValue{:d}", mc2::fmt::as_i32(count));
 			result = file->readIdBoolean(booleanName,value);
 	
 			element = tmpECStr.Data();
@@ -355,7 +356,7 @@ void CBooleanArray::load (long alignment, FitIniFile *file)
 			m_valueList.Append(value);
 	
 			count++;
-			sprintf(stringName,"BooleanString%d",count);
+			mc2::fmt::to_buf(stringName, "BooleanString{:d}", mc2::fmt::as_i32(count));
 			result = sReadIdString(file,stringName,tmpECStr);
 		}
 	}

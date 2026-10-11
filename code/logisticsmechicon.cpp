@@ -16,6 +16,7 @@
 #include"logisticspilotlistbox.h"
 #include"gamesound.h"
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 LogisticsMechIcon*	LogisticsMechIcon::s_pTemplateIcon = nullptr;
 
@@ -96,7 +97,7 @@ int LogisticsMechIcon::init( FitIniFile& file )
 		char blockName[64];
 		for ( int i = 0; i < ICON_ANIM_COUNT; i++ )
 		{
-			sprintf( blockName, "Animation%ld", i );
+			mc2::fmt::to_buf(blockName, "Animation{:d}", mc2::fmt::as_i32(i));
 			s_pTemplateIcon->animations[i].init( &file, blockName );
 		}
 	}

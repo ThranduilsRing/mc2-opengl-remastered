@@ -1,6 +1,7 @@
 // Mission: createPartObject, addMover, removeMover, tradeMover, drop zones and gate queries.
 // Declared in the class headers; shared names in mission_internal.h.
 #include "mission_internal.h"
+#include "mc2fmt.h"
 
 
 
@@ -555,7 +556,7 @@ bool Mission::calcComplexDropZones (char* missionName, char dropZoneCID[MAX_MC_P
 	if (numParts)
 		for (long i = 1; i < long(numParts + 1); i++) {
 			char partName[12];
-			sprintf(partName,"Part%d",i);
+			mc2::fmt::to_buf(partName, "Part{:d}", mc2::fmt::as_i32(i));
 			
 			result = missionFile->seekBlock(partName);
 			gosASSERT(result == NO_ERR);

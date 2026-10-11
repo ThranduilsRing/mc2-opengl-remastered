@@ -16,7 +16,258 @@ TEST_CASE("printf corpus 0000:  ")
 	}
 }
 
-TEST_CASE("printf corpus 0001:    FILE %s [maybe-null]")
+TEST_CASE("printf corpus 0001:      CURRENT TARGET: Object %d")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "     CURRENT TARGET: Object %d", v0);
+		const int nb = mc2::fmt::to_buf(b, "     CURRENT TARGET: Object {:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "     CURRENT TARGET: Object %d", v0);
+		const int nd = mc2::fmt::to_buf(d, "     CURRENT TARGET: Object {:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0002:      NumFunctionalWeapons = %d")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "     NumFunctionalWeapons = %d", v0);
+		const int nb = mc2::fmt::to_buf(b, "     NumFunctionalWeapons = {:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "     NumFunctionalWeapons = %d", v0);
+		const int nd = mc2::fmt::to_buf(d, "     NumFunctionalWeapons = {:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0003:      NumWeapons = %d")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "     NumWeapons = %d", v0);
+		const int nb = mc2::fmt::to_buf(b, "     NumWeapons = {:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "     NumWeapons = %d", v0);
+		const int nd = mc2::fmt::to_buf(d, "     NumWeapons = {:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0004:      Status = %d")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "     Status = %d", v0);
+		const int nb = mc2::fmt::to_buf(b, "     Status = {:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "     Status = %d", v0);
+		const int nd = mc2::fmt::to_buf(d, "     Status = {:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0005:      TacOrder = ")
+{
+	for (int row = 0; row < 12; ++row) {
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "     TacOrder = ");
+		const int nb = mc2::fmt::to_buf(b, "     TacOrder = ");
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "     TacOrder = ");
+		const int nd = mc2::fmt::to_buf(d, "     TacOrder = ");
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0006:      aimed shot = (%d)%s [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		const char* v1 = kStrNull[(row + 1) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "     aimed shot = (%d)%s", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "     aimed shot = ({:d}){}", mc2::fmt::as_i32(v0), mc2::fmt::safe(v1));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "     aimed shot = (%d)%s", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "     aimed shot = ({:d}){}", mc2::fmt::as_i32(v0), mc2::fmt::safe(v1));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0007:      attacker = (%05d)%s [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		const char* v1 = kStrNull[(row + 1) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "     attacker = (%05d)%s", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "     attacker = ({:05d}){}", mc2::fmt::as_i32(v0), mc2::fmt::safe(v1));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "     attacker = (%05d)%s", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "     attacker = ({:05d}){}", mc2::fmt::as_i32(v0), mc2::fmt::safe(v1));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0008:      attacker = (%05d)<unknown WID>")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "     attacker = (%05d)<unknown WID>", v0);
+		const int nb = mc2::fmt::to_buf(b, "     attacker = ({:05d})<unknown WID>", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "     attacker = (%05d)<unknown WID>", v0);
+		const int nd = mc2::fmt::to_buf(d, "     attacker = ({:05d})<unknown WID>", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0009:      attacker pilot = %s (team id = %d) [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "     attacker pilot = %s (team id = %d)", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "     attacker pilot = {} (team id = {:d})", mc2::fmt::safe(v0), mc2::fmt::as_i32(v1));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "     attacker pilot = %s (team id = %d)", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "     attacker pilot = {} (team id = {:d})", mc2::fmt::safe(v0), mc2::fmt::as_i32(v1));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0010:      chance = %03d, roll = %03d")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "     chance = %03d, roll = %03d", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "     chance = {:03d}, roll = {:03d}", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "     chance = %03d, roll = %03d", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "     chance = {:03d}, roll = {:03d}", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0011:      num weaponhits = %d")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "     num weaponhits = %d", v0);
+		const int nb = mc2::fmt::to_buf(b, "     num weaponhits = {:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "     num weaponhits = %d", v0);
+		const int nd = mc2::fmt::to_buf(d, "     num weaponhits = {:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0012:      vehicle = (%d)%s [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		const char* v1 = kStrNull[(row + 1) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "     vehicle = (%d)%s", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "     vehicle = ({:d}){}", mc2::fmt::as_i32(v0), mc2::fmt::safe(v1));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "     vehicle = (%d)%s", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "     vehicle = ({:d}){}", mc2::fmt::as_i32(v0), mc2::fmt::safe(v1));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0013:      weapon = (%03d)%s, hitLocation = (%d)%s, damage = %.2f, angle = % [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		const char* v1 = kStrNull[(row + 1) % std::size(kStrNull)];
+		int v2 = static_cast<int>(kEdgeI32[(row + 2) % std::size(kEdgeI32)]);
+		const char* v3 = kStrNull[(row + 3) % std::size(kStrNull)];
+		double v4 = static_cast<double>(kEdgeDBL[(row + 4) % std::size(kEdgeDBL)]);
+		double v5 = static_cast<double>(kEdgeDBL[(row + 5) % std::size(kEdgeDBL)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "     weapon = (%03d)%s, hitLocation = (%d)%s, damage = %.2f, angle = %.2f", v0, v1, v2, v3, v4, v5);
+		const int nb = mc2::fmt::to_buf(b, "     weapon = ({:03d}){}, hitLocation = ({:d}){}, damage = {:.2f}, angle = {:.2f}", mc2::fmt::as_i32(v0), mc2::fmt::safe(v1), mc2::fmt::as_i32(v2), mc2::fmt::safe(v3), v4, v5);
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "     weapon = (%03d)%s, hitLocation = (%d)%s, damage = %.2f, angle = %.2f", v0, v1, v2, v3, v4, v5);
+		const int nd = mc2::fmt::to_buf(d, "     weapon = ({:03d}){}, hitLocation = ({:d}){}, damage = {:.2f}, angle = {:.2f}", mc2::fmt::as_i32(v0), mc2::fmt::safe(v1), mc2::fmt::as_i32(v2), mc2::fmt::safe(v3), v4, v5);
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0014:     %d: objClass %d (%d)\\n")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		int v2 = static_cast<int>(kEdgeI32[(row + 2) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "    %d: objClass %d (%d)\n", v0, v1, v2);
+		const int nb = mc2::fmt::to_buf(b, "    {:d}: objClass {:d} ({:d})\n", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "    %d: objClass %d (%d)\n", v0, v1, v2);
+		const int nd = mc2::fmt::to_buf(d, "    {:d}: objClass {:d} ({:d})\n", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0015:     There are %d terrain objects in this tile.\\n")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "    There are %d terrain objects in this tile.\n", v0);
+		const int nb = mc2::fmt::to_buf(b, "    There are {:d} terrain objects in this tile.\n", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "    There are %d terrain objects in this tile.\n", v0);
+		const int nd = mc2::fmt::to_buf(d, "    There are {:d} terrain objects in this tile.\n", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0016:    FILE %s [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -32,7 +283,7 @@ TEST_CASE("printf corpus 0001:    FILE %s [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0002:    LINE %d")
+TEST_CASE("printf corpus 0017:    LINE %d")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -48,7 +299,7 @@ TEST_CASE("printf corpus 0002:    LINE %d")
 	}
 }
 
-TEST_CASE("printf corpus 0003:    MODULE %s [maybe-null]")
+TEST_CASE("printf corpus 0018:    MODULE %s [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -64,7 +315,7 @@ TEST_CASE("printf corpus 0003:    MODULE %s [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0004:    MODULE (%d) %s [maybe-null]")
+TEST_CASE("printf corpus 0019:    MODULE (%d) %s [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -81,7 +332,145 @@ TEST_CASE("printf corpus 0004:    MODULE (%d) %s [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0005:   \\'cap_alt\\': %.3f,\\n")
+TEST_CASE("printf corpus 0020:   %s: present=%d sameTypeLeaves=%d exactLeaves=%d submitted=(%.3f,%.3f [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		int v2 = static_cast<int>(kEdgeI32[(row + 2) % std::size(kEdgeI32)]);
+		int v3 = static_cast<int>(kEdgeI32[(row + 3) % std::size(kEdgeI32)]);
+		double v4 = static_cast<double>(kEdgeDBL[(row + 4) % std::size(kEdgeDBL)]);
+		double v5 = static_cast<double>(kEdgeDBL[(row + 5) % std::size(kEdgeDBL)]);
+		double v6 = static_cast<double>(kEdgeDBL[(row + 6) % std::size(kEdgeDBL)]);
+		double v7 = static_cast<double>(kEdgeDBL[(row + 7) % std::size(kEdgeDBL)]);
+		double v8 = static_cast<double>(kEdgeDBL[(row + 8) % std::size(kEdgeDBL)]);
+		double v9 = static_cast<double>(kEdgeDBL[(row + 9) % std::size(kEdgeDBL)]);
+		double v10 = static_cast<double>(kEdgeDBL[(row + 10) % std::size(kEdgeDBL)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "  %s: present=%d sameTypeLeaves=%d exactLeaves=%d submitted=(%.3f,%.3f,%.3f) live=(%.3f,%.3f,%.3f) shadowDrift=%.4f\n", v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10);
+		const int nb = mc2::fmt::to_buf(b, "  {}: present={:d} sameTypeLeaves={:d} exactLeaves={:d} submitted=({:.3f},{:.3f},{:.3f}) live=({:.3f},{:.3f},{:.3f}) shadowDrift={:.4f}\n", mc2::fmt::safe(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2), mc2::fmt::as_i32(v3), v4, v5, v6, v7, v8, v9, v10);
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "  %s: present=%d sameTypeLeaves=%d exactLeaves=%d submitted=(%.3f,%.3f,%.3f) live=(%.3f,%.3f,%.3f) shadowDrift=%.4f\n", v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10);
+		const int nd = mc2::fmt::to_buf(d, "  {}: present={:d} sameTypeLeaves={:d} exactLeaves={:d} submitted=({:.3f},{:.3f},{:.3f}) live=({:.3f},{:.3f},{:.3f}) shadowDrift={:.4f}\n", mc2::fmt::safe(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2), mc2::fmt::as_i32(v3), v4, v5, v6, v7, v8, v9, v10);
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0021:   [%d] type=%d(%s) up=(%.2f,%.2f,%.2f) src=(%.2f,%.2f,%.2f) atOrigin=% [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		const char* v2 = kStrNull[(row + 2) % std::size(kStrNull)];
+		double v3 = static_cast<double>(kEdgeDBL[(row + 3) % std::size(kEdgeDBL)]);
+		double v4 = static_cast<double>(kEdgeDBL[(row + 4) % std::size(kEdgeDBL)]);
+		double v5 = static_cast<double>(kEdgeDBL[(row + 5) % std::size(kEdgeDBL)]);
+		double v6 = static_cast<double>(kEdgeDBL[(row + 6) % std::size(kEdgeDBL)]);
+		double v7 = static_cast<double>(kEdgeDBL[(row + 7) % std::size(kEdgeDBL)]);
+		double v8 = static_cast<double>(kEdgeDBL[(row + 8) % std::size(kEdgeDBL)]);
+		int v9 = static_cast<int>(kEdgeI32[(row + 9) % std::size(kEdgeI32)]);
+		double v10 = static_cast<double>(kEdgeDBL[(row + 10) % std::size(kEdgeDBL)]);
+		double v11 = static_cast<double>(kEdgeDBL[(row + 11) % std::size(kEdgeDBL)]);
+		double v12 = static_cast<double>(kEdgeDBL[(row + 12) % std::size(kEdgeDBL)]);
+		double v13 = static_cast<double>(kEdgeDBL[(row + 13) % std::size(kEdgeDBL)]);
+		double v14 = static_cast<double>(kEdgeDBL[(row + 14) % std::size(kEdgeDBL)]);
+		double v15 = static_cast<double>(kEdgeDBL[(row + 15) % std::size(kEdgeDBL)]);
+		double v16 = static_cast<double>(kEdgeDBL[(row + 16) % std::size(kEdgeDBL)]);
+		double v17 = static_cast<double>(kEdgeDBL[(row + 17) % std::size(kEdgeDBL)]);
+		double v18 = static_cast<double>(kEdgeDBL[(row + 18) % std::size(kEdgeDBL)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "  [%d] type=%d(%s) up=(%.2f,%.2f,%.2f) src=(%.2f,%.2f,%.2f) atOrigin=%d dir=(%.4f,%.4f,%.4f) color=(%.4f,%.4f,%.4f) falloff=(%.2f,%.2f,%.6f)\n", v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15, v16, v17, v18);
+		const int nb = mc2::fmt::to_buf(b, "  [{:d}] type={:d}({}) up=({:.2f},{:.2f},{:.2f}) src=({:.2f},{:.2f},{:.2f}) atOrigin={:d} dir=({:.4f},{:.4f},{:.4f}) color=({:.4f},{:.4f},{:.4f}) falloff=({:.2f},{:.2f},{:.6f})\n", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::safe(v2), v3, v4, v5, v6, v7, v8, mc2::fmt::as_i32(v9), v10, v11, v12, v13, v14, v15, v16, v17, v18);
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "  [%d] type=%d(%s) up=(%.2f,%.2f,%.2f) src=(%.2f,%.2f,%.2f) atOrigin=%d dir=(%.4f,%.4f,%.4f) color=(%.4f,%.4f,%.4f) falloff=(%.2f,%.2f,%.6f)\n", v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15, v16, v17, v18);
+		const int nd = mc2::fmt::to_buf(d, "  [{:d}] type={:d}({}) up=({:.2f},{:.2f},{:.2f}) src=({:.2f},{:.2f},{:.2f}) atOrigin={:d} dir=({:.4f},{:.4f},{:.4f}) color=({:.4f},{:.4f},{:.4f}) falloff=({:.2f},{:.2f},{:.6f})\n", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::safe(v2), v3, v4, v5, v6, v7, v8, mc2::fmt::as_i32(v9), v10, v11, v12, v13, v14, v15, v16, v17, v18);
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0022:   [id=%ld name=%s class=%s team=%ld cmdr=%ld pos=(%.1f,%.1f,%.1f) hp=% [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		const char* v1 = kStrNull[(row + 1) % std::size(kStrNull)];
+		const char* v2 = kStrNull[(row + 2) % std::size(kStrNull)];
+		long v3 = static_cast<long>(kEdgeI32[(row + 3) % std::size(kEdgeI32)]);
+		long v4 = static_cast<long>(kEdgeI32[(row + 4) % std::size(kEdgeI32)]);
+		double v5 = static_cast<double>(kEdgeDBL[(row + 5) % std::size(kEdgeDBL)]);
+		double v6 = static_cast<double>(kEdgeDBL[(row + 6) % std::size(kEdgeDBL)]);
+		double v7 = static_cast<double>(kEdgeDBL[(row + 7) % std::size(kEdgeDBL)]);
+		double v8 = static_cast<double>(kEdgeDBL[(row + 8) % std::size(kEdgeDBL)]);
+		int v9 = static_cast<int>(kEdgeI32[(row + 9) % std::size(kEdgeI32)]);
+		int v10 = static_cast<int>(kEdgeI32[(row + 10) % std::size(kEdgeI32)]);
+		int v11 = static_cast<int>(kEdgeI32[(row + 11) % std::size(kEdgeI32)]);
+		const char* v12 = kStrNull[(row + 12) % std::size(kStrNull)];
+		const char* v13 = kStrNull[(row + 13) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "  [id=%ld name=%s class=%s team=%ld cmdr=%ld pos=(%.1f,%.1f,%.1f) hp=%.3f sel=%d gui=%d inView=%d%s%s]\n", v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13);
+		const int nb = mc2::fmt::to_buf(b, "  [id={:d} name={} class={} team={:d} cmdr={:d} pos=({:.1f},{:.1f},{:.1f}) hp={:.3f} sel={:d} gui={:d} inView={:d}{}{}]\n", mc2::fmt::as_i32(v0), mc2::fmt::safe(v1), mc2::fmt::safe(v2), mc2::fmt::as_i32(v3), mc2::fmt::as_i32(v4), v5, v6, v7, v8, mc2::fmt::as_i32(v9), mc2::fmt::as_i32(v10), mc2::fmt::as_i32(v11), mc2::fmt::safe(v12), mc2::fmt::safe(v13));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "  [id=%ld name=%s class=%s team=%ld cmdr=%ld pos=(%.1f,%.1f,%.1f) hp=%.3f sel=%d gui=%d inView=%d%s%s]\n", v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13);
+		const int nd = mc2::fmt::to_buf(d, "  [id={:d} name={} class={} team={:d} cmdr={:d} pos=({:.1f},{:.1f},{:.1f}) hp={:.3f} sel={:d} gui={:d} inView={:d}{}{}]\n", mc2::fmt::as_i32(v0), mc2::fmt::safe(v1), mc2::fmt::safe(v2), mc2::fmt::as_i32(v3), mc2::fmt::as_i32(v4), v5, v6, v7, v8, mc2::fmt::as_i32(v9), mc2::fmt::as_i32(v10), mc2::fmt::as_i32(v11), mc2::fmt::safe(v12), mc2::fmt::safe(v13));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0023:   [id=%ld name=%s pos=(%.1f,%.1f,%.1f) hp=%.3f%s]\\n [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		const char* v1 = kStrNull[(row + 1) % std::size(kStrNull)];
+		double v2 = static_cast<double>(kEdgeDBL[(row + 2) % std::size(kEdgeDBL)]);
+		double v3 = static_cast<double>(kEdgeDBL[(row + 3) % std::size(kEdgeDBL)]);
+		double v4 = static_cast<double>(kEdgeDBL[(row + 4) % std::size(kEdgeDBL)]);
+		double v5 = static_cast<double>(kEdgeDBL[(row + 5) % std::size(kEdgeDBL)]);
+		const char* v6 = kStrNull[(row + 6) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "  [id=%ld name=%s pos=(%.1f,%.1f,%.1f) hp=%.3f%s]\n", v0, v1, v2, v3, v4, v5, v6);
+		const int nb = mc2::fmt::to_buf(b, "  [id={:d} name={} pos=({:.1f},{:.1f},{:.1f}) hp={:.3f}{}]\n", mc2::fmt::as_i32(v0), mc2::fmt::safe(v1), v2, v3, v4, v5, mc2::fmt::safe(v6));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "  [id=%ld name=%s pos=(%.1f,%.1f,%.1f) hp=%.3f%s]\n", v0, v1, v2, v3, v4, v5, v6);
+		const int nd = mc2::fmt::to_buf(d, "  [id={:d} name={} pos=({:.1f},{:.1f},{:.1f}) hp={:.3f}{}]\n", mc2::fmt::as_i32(v0), mc2::fmt::safe(v1), v2, v3, v4, v5, mc2::fmt::safe(v6));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0024:   [id=%ld type=%s class=%s pos=(%.1f,%.1f,%.1f) gesture=%ld animGestur [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		const char* v1 = kStrNull[(row + 1) % std::size(kStrNull)];
+		const char* v2 = kStrNull[(row + 2) % std::size(kStrNull)];
+		double v3 = static_cast<double>(kEdgeDBL[(row + 3) % std::size(kEdgeDBL)]);
+		double v4 = static_cast<double>(kEdgeDBL[(row + 4) % std::size(kEdgeDBL)]);
+		double v5 = static_cast<double>(kEdgeDBL[(row + 5) % std::size(kEdgeDBL)]);
+		long v6 = static_cast<long>(kEdgeI32[(row + 6) % std::size(kEdgeI32)]);
+		const char* v7 = kStrNull[(row + 7) % std::size(kStrNull)];
+		int v8 = static_cast<int>(kEdgeI32[(row + 8) % std::size(kEdgeI32)]);
+		int v9 = static_cast<int>(kEdgeI32[(row + 9) % std::size(kEdgeI32)]);
+		int v10 = static_cast<int>(kEdgeI32[(row + 10) % std::size(kEdgeI32)]);
+		int v11 = static_cast<int>(kEdgeI32[(row + 11) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "  [id=%ld type=%s class=%s pos=(%.1f,%.1f,%.1f) gesture=%ld animGestures=%s staticReg=%d recipe=%d staticNow=%d eligible=%d]\n", v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11);
+		const int nb = mc2::fmt::to_buf(b, "  [id={:d} type={} class={} pos=({:.1f},{:.1f},{:.1f}) gesture={:d} animGestures={} staticReg={:d} recipe={:d} staticNow={:d} eligible={:d}]\n", mc2::fmt::as_i32(v0), mc2::fmt::safe(v1), mc2::fmt::safe(v2), v3, v4, v5, mc2::fmt::as_i32(v6), mc2::fmt::safe(v7), mc2::fmt::as_i32(v8), mc2::fmt::as_i32(v9), mc2::fmt::as_i32(v10), mc2::fmt::as_i32(v11));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "  [id=%ld type=%s class=%s pos=(%.1f,%.1f,%.1f) gesture=%ld animGestures=%s staticReg=%d recipe=%d staticNow=%d eligible=%d]\n", v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11);
+		const int nd = mc2::fmt::to_buf(d, "  [id={:d} type={} class={} pos=({:.1f},{:.1f},{:.1f}) gesture={:d} animGestures={} staticReg={:d} recipe={:d} staticNow={:d} eligible={:d}]\n", mc2::fmt::as_i32(v0), mc2::fmt::safe(v1), mc2::fmt::safe(v2), v3, v4, v5, mc2::fmt::as_i32(v6), mc2::fmt::safe(v7), mc2::fmt::as_i32(v8), mc2::fmt::as_i32(v9), mc2::fmt::as_i32(v10), mc2::fmt::as_i32(v11));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0025:   \\'cap_alt\\': %.3f,\\n")
 {
 	for (int row = 0; row < 12; ++row) {
 		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
@@ -97,7 +486,7 @@ TEST_CASE("printf corpus 0005:   \\'cap_alt\\': %.3f,\\n")
 	}
 }
 
-TEST_CASE("printf corpus 0006:   \\'cap_pos\\': [%.3f, %.3f, %.3f],\\n")
+TEST_CASE("printf corpus 0026:   \\'cap_pos\\': [%.3f, %.3f, %.3f],\\n")
 {
 	for (int row = 0; row < 12; ++row) {
 		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
@@ -115,7 +504,7 @@ TEST_CASE("printf corpus 0006:   \\'cap_pos\\': [%.3f, %.3f, %.3f],\\n")
 	}
 }
 
-TEST_CASE("printf corpus 0007:   \\'cap_proj\\': %.3f,\\n")
+TEST_CASE("printf corpus 0027:   \\'cap_proj\\': %.3f,\\n")
 {
 	for (int row = 0; row < 12; ++row) {
 		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
@@ -131,7 +520,7 @@ TEST_CASE("printf corpus 0007:   \\'cap_proj\\': %.3f,\\n")
 	}
 }
 
-TEST_CASE("printf corpus 0008:   \\'cap_rot\\': %.3f,\\n")
+TEST_CASE("printf corpus 0028:   \\'cap_rot\\': %.3f,\\n")
 {
 	for (int row = 0; row < 12; ++row) {
 		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
@@ -147,7 +536,7 @@ TEST_CASE("printf corpus 0008:   \\'cap_rot\\': %.3f,\\n")
 	}
 }
 
-TEST_CASE("printf corpus 0009:   \\'frame\\': %u,\\n")
+TEST_CASE("printf corpus 0029:   \\'frame\\': %u,\\n")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -163,7 +552,7 @@ TEST_CASE("printf corpus 0009:   \\'frame\\': %u,\\n")
 	}
 }
 
-TEST_CASE("printf corpus 0010:   \\'height\\': %d,\\n")
+TEST_CASE("printf corpus 0030:   \\'height\\': %d,\\n")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -179,7 +568,7 @@ TEST_CASE("printf corpus 0010:   \\'height\\': %d,\\n")
 	}
 }
 
-TEST_CASE("printf corpus 0011:   \\'seed\\': %u,\\n")
+TEST_CASE("printf corpus 0031:   \\'seed\\': %u,\\n")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -195,7 +584,7 @@ TEST_CASE("printf corpus 0011:   \\'seed\\': %u,\\n")
 	}
 }
 
-TEST_CASE("printf corpus 0012:   \\'sim_frame\\': %ld,\\n")
+TEST_CASE("printf corpus 0032:   \\'sim_frame\\': %ld,\\n")
 {
 	for (int row = 0; row < 12; ++row) {
 		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -211,7 +600,32 @@ TEST_CASE("printf corpus 0012:   \\'sim_frame\\': %ld,\\n")
 	}
 }
 
-TEST_CASE("printf corpus 0013:   \\'trigger_frame\\': %ld,\\n")
+TEST_CASE("printf corpus 0033:   \\'sim_identity\\': {\\n    \\'schema\\': \\'SIM_IDENTITY_V%u\\',\\n [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
+		const char* v1 = kStrNull[(row + 1) % std::size(kStrNull)];
+		const char* v2 = kStrNull[(row + 2) % std::size(kStrNull)];
+		const char* v3 = kStrNull[(row + 3) % std::size(kStrNull)];
+		int v4 = static_cast<int>(kEdgeI32[(row + 4) % std::size(kEdgeI32)]);
+		double v5 = static_cast<double>(kEdgeDBL[(row + 5) % std::size(kEdgeDBL)]);
+		long v6 = static_cast<long>(kEdgeI32[(row + 6) % std::size(kEdgeI32)]);
+		double v7 = static_cast<double>(kEdgeDBL[(row + 7) % std::size(kEdgeDBL)]);
+		double v8 = static_cast<double>(kEdgeDBL[(row + 8) % std::size(kEdgeDBL)]);
+		double v9 = static_cast<double>(kEdgeDBL[(row + 9) % std::size(kEdgeDBL)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "  \"sim_identity\": {\n    \"schema\": \"SIM_IDENTITY_V%u\",\n    \"digest\": \"%s\",\n    \"digest_visual\": \"%s\",\n    \"digest_strict\": \"%s\",\n    \"mover_count\": %d,\n    \"truncated\": false,\n    \"scenario_time\": %.3f,\n    \"sim_frame\": %ld,\n    \"quantum\": { \"pos\": %.9g, \"ang\": %.9g, \"frac\": %.9g },\n    \"movers\": [", v0, v1, v2, v3, v4, v5, v6, v7, v8, v9);
+		const int nb = mc2::fmt::to_buf(b, "  \"sim_identity\": {{\n    \"schema\": \"SIM_IDENTITY_V{:d}\",\n    \"digest\": \"{}\",\n    \"digest_visual\": \"{}\",\n    \"digest_strict\": \"{}\",\n    \"mover_count\": {:d},\n    \"truncated\": false,\n    \"scenario_time\": {:.3f},\n    \"sim_frame\": {:d},\n    \"quantum\": {{ \"pos\": {:.9g}, \"ang\": {:.9g}, \"frac\": {:.9g} }},\n    \"movers\": [", mc2::fmt::as_u32(v0), mc2::fmt::safe(v1), mc2::fmt::safe(v2), mc2::fmt::safe(v3), mc2::fmt::as_i32(v4), v5, mc2::fmt::as_i32(v6), v7, v8, v9);
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "  \"sim_identity\": {\n    \"schema\": \"SIM_IDENTITY_V%u\",\n    \"digest\": \"%s\",\n    \"digest_visual\": \"%s\",\n    \"digest_strict\": \"%s\",\n    \"mover_count\": %d,\n    \"truncated\": false,\n    \"scenario_time\": %.3f,\n    \"sim_frame\": %ld,\n    \"quantum\": { \"pos\": %.9g, \"ang\": %.9g, \"frac\": %.9g },\n    \"movers\": [", v0, v1, v2, v3, v4, v5, v6, v7, v8, v9);
+		const int nd = mc2::fmt::to_buf(d, "  \"sim_identity\": {{\n    \"schema\": \"SIM_IDENTITY_V{:d}\",\n    \"digest\": \"{}\",\n    \"digest_visual\": \"{}\",\n    \"digest_strict\": \"{}\",\n    \"mover_count\": {:d},\n    \"truncated\": false,\n    \"scenario_time\": {:.3f},\n    \"sim_frame\": {:d},\n    \"quantum\": {{ \"pos\": {:.9g}, \"ang\": {:.9g}, \"frac\": {:.9g} }},\n    \"movers\": [", mc2::fmt::as_u32(v0), mc2::fmt::safe(v1), mc2::fmt::safe(v2), mc2::fmt::safe(v3), mc2::fmt::as_i32(v4), v5, mc2::fmt::as_i32(v6), v7, v8, v9);
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0034:   \\'trigger_frame\\': %ld,\\n")
 {
 	for (int row = 0; row < 12; ++row) {
 		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -227,7 +641,7 @@ TEST_CASE("printf corpus 0013:   \\'trigger_frame\\': %ld,\\n")
 	}
 }
 
-TEST_CASE("printf corpus 0014:   \\'width\\': %d,\\n")
+TEST_CASE("printf corpus 0035:   \\'width\\': %d,\\n")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -243,7 +657,498 @@ TEST_CASE("printf corpus 0014:   \\'width\\': %d,\\n")
 	}
 }
 
-TEST_CASE("printf corpus 0015:  %.2f,")
+TEST_CASE("printf corpus 0036:   at=(%.3f,%.3f) terrainZ=%.4f waterZ=%.4f terrainType=%d normal=(%.4f")
+{
+	for (int row = 0; row < 12; ++row) {
+		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
+		double v1 = static_cast<double>(kEdgeDBL[(row + 1) % std::size(kEdgeDBL)]);
+		double v2 = static_cast<double>(kEdgeDBL[(row + 2) % std::size(kEdgeDBL)]);
+		double v3 = static_cast<double>(kEdgeDBL[(row + 3) % std::size(kEdgeDBL)]);
+		int v4 = static_cast<int>(kEdgeI32[(row + 4) % std::size(kEdgeI32)]);
+		double v5 = static_cast<double>(kEdgeDBL[(row + 5) % std::size(kEdgeDBL)]);
+		double v6 = static_cast<double>(kEdgeDBL[(row + 6) % std::size(kEdgeDBL)]);
+		double v7 = static_cast<double>(kEdgeDBL[(row + 7) % std::size(kEdgeDBL)]);
+		double v8 = static_cast<double>(kEdgeDBL[(row + 8) % std::size(kEdgeDBL)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "  at=(%.3f,%.3f) terrainZ=%.4f waterZ=%.4f terrainType=%d normal=(%.4f,%.4f,%.4f) terrainLight=%.4f\n", v0, v1, v2, v3, v4, v5, v6, v7, v8);
+		const int nb = mc2::fmt::to_buf(b, "  at=({:.3f},{:.3f}) terrainZ={:.4f} waterZ={:.4f} terrainType={:d} normal=({:.4f},{:.4f},{:.4f}) terrainLight={:.4f}\n", v0, v1, v2, v3, mc2::fmt::as_i32(v4), v5, v6, v7, v8);
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "  at=(%.3f,%.3f) terrainZ=%.4f waterZ=%.4f terrainType=%d normal=(%.4f,%.4f,%.4f) terrainLight=%.4f\n", v0, v1, v2, v3, v4, v5, v6, v7, v8);
+		const int nd = mc2::fmt::to_buf(d, "  at=({:.3f},{:.3f}) terrainZ={:.4f} waterZ={:.4f} terrainType={:d} normal=({:.4f},{:.4f},{:.4f}) terrainLight={:.4f}\n", v0, v1, v2, v3, mc2::fmt::as_i32(v4), v5, v6, v7, v8);
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0037:   baked: recipe=%d lightDataIndex=%u UNREADABLE (index beyond allocate")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		unsigned v1 = static_cast<unsigned>(kEdgeU32[(row + 1) % std::size(kEdgeU32)]);
+		unsigned v2 = static_cast<unsigned>(kEdgeU32[(row + 2) % std::size(kEdgeU32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "  baked: recipe=%d lightDataIndex=%u UNREADABLE (index beyond allocated slot count %u)\n", v0, v1, v2);
+		const int nb = mc2::fmt::to_buf(b, "  baked: recipe={:d} lightDataIndex={:d} UNREADABLE (index beyond allocated slot count {:d})\n", mc2::fmt::as_i32(v0), mc2::fmt::as_u32(v1), mc2::fmt::as_u32(v2));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "  baked: recipe=%d lightDataIndex=%u UNREADABLE (index beyond allocated slot count %u)\n", v0, v1, v2);
+		const int nd = mc2::fmt::to_buf(d, "  baked: recipe={:d} lightDataIndex={:d} UNREADABLE (index beyond allocated slot count {:d})\n", mc2::fmt::as_i32(v0), mc2::fmt::as_u32(v1), mc2::fmt::as_u32(v2));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0038:   baked: recipe=%d lightDataIndex=%u slots=%u numLights=%d firstType=%")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		unsigned v1 = static_cast<unsigned>(kEdgeU32[(row + 1) % std::size(kEdgeU32)]);
+		unsigned v2 = static_cast<unsigned>(kEdgeU32[(row + 2) % std::size(kEdgeU32)]);
+		int v3 = static_cast<int>(kEdgeI32[(row + 3) % std::size(kEdgeI32)]);
+		int v4 = static_cast<int>(kEdgeI32[(row + 4) % std::size(kEdgeI32)]);
+		double v5 = static_cast<double>(kEdgeDBL[(row + 5) % std::size(kEdgeDBL)]);
+		double v6 = static_cast<double>(kEdgeDBL[(row + 6) % std::size(kEdgeDBL)]);
+		double v7 = static_cast<double>(kEdgeDBL[(row + 7) % std::size(kEdgeDBL)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "  baked: recipe=%d lightDataIndex=%u slots=%u numLights=%d firstType=%d firstColor=(%.4f,%.4f,%.4f)\n", v0, v1, v2, v3, v4, v5, v6, v7);
+		const int nb = mc2::fmt::to_buf(b, "  baked: recipe={:d} lightDataIndex={:d} slots={:d} numLights={:d} firstType={:d} firstColor=({:.4f},{:.4f},{:.4f})\n", mc2::fmt::as_i32(v0), mc2::fmt::as_u32(v1), mc2::fmt::as_u32(v2), mc2::fmt::as_i32(v3), mc2::fmt::as_i32(v4), v5, v6, v7);
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "  baked: recipe=%d lightDataIndex=%u slots=%u numLights=%d firstType=%d firstColor=(%.4f,%.4f,%.4f)\n", v0, v1, v2, v3, v4, v5, v6, v7);
+		const int nd = mc2::fmt::to_buf(d, "  baked: recipe={:d} lightDataIndex={:d} slots={:d} numLights={:d} firstType={:d} firstColor=({:.4f},{:.4f},{:.4f})\n", mc2::fmt::as_i32(v0), mc2::fmt::as_u32(v1), mc2::fmt::as_u32(v2), mc2::fmt::as_i32(v3), mc2::fmt::as_i32(v4), v5, v6, v7);
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0039:   baked: recipe=%d lightDataIndex=<none> (registry off, or recipe tomb")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "  baked: recipe=%d lightDataIndex=<none> (registry off, or recipe tombstoned)\n", v0);
+		const int nb = mc2::fmt::to_buf(b, "  baked: recipe={:d} lightDataIndex=<none> (registry off, or recipe tombstoned)\n", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "  baked: recipe=%d lightDataIndex=<none> (registry off, or recipe tombstoned)\n", v0);
+		const int nd = mc2::fmt::to_buf(d, "  baked: recipe={:d} lightDataIndex=<none> (registry off, or recipe tombstoned)\n", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0040:   buildings=%ld turrets=%ld animatable=%ld animStartInvalidated=%lu\\n")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		long v1 = static_cast<long>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		long v2 = static_cast<long>(kEdgeI32[(row + 2) % std::size(kEdgeI32)]);
+		unsigned long v3 = static_cast<unsigned long>(kEdgeU32[(row + 3) % std::size(kEdgeU32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "  buildings=%ld turrets=%ld animatable=%ld animStartInvalidated=%lu\n", v0, v1, v2, v3);
+		const int nb = mc2::fmt::to_buf(b, "  buildings={:d} turrets={:d} animatable={:d} animStartInvalidated={:d}\n", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2), mc2::fmt::as_u32(v3));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "  buildings=%ld turrets=%ld animatable=%ld animStartInvalidated=%lu\n", v0, v1, v2, v3);
+		const int nd = mc2::fmt::to_buf(d, "  buildings={:d} turrets={:d} animatable={:d} animStartInvalidated={:d}\n", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2), mc2::fmt::as_u32(v3));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0041:   draw: appearType=%s appearNum=%lu inView=%d staticRecipe=%d screenPo [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		unsigned long v1 = static_cast<unsigned long>(kEdgeU32[(row + 1) % std::size(kEdgeU32)]);
+		int v2 = static_cast<int>(kEdgeI32[(row + 2) % std::size(kEdgeI32)]);
+		int v3 = static_cast<int>(kEdgeI32[(row + 3) % std::size(kEdgeI32)]);
+		double v4 = static_cast<double>(kEdgeDBL[(row + 4) % std::size(kEdgeDBL)]);
+		double v5 = static_cast<double>(kEdgeDBL[(row + 5) % std::size(kEdgeDBL)]);
+		double v6 = static_cast<double>(kEdgeDBL[(row + 6) % std::size(kEdgeDBL)]);
+		double v7 = static_cast<double>(kEdgeDBL[(row + 7) % std::size(kEdgeDBL)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "  draw: appearType=%s appearNum=%lu inView=%d staticRecipe=%d screenPos=(%.1f,%.1f,%.3f,%.3f)\n", v0, v1, v2, v3, v4, v5, v6, v7);
+		const int nb = mc2::fmt::to_buf(b, "  draw: appearType={} appearNum={:d} inView={:d} staticRecipe={:d} screenPos=({:.1f},{:.1f},{:.3f},{:.3f})\n", mc2::fmt::safe(v0), mc2::fmt::as_u32(v1), mc2::fmt::as_i32(v2), mc2::fmt::as_i32(v3), v4, v5, v6, v7);
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "  draw: appearType=%s appearNum=%lu inView=%d staticRecipe=%d screenPos=(%.1f,%.1f,%.3f,%.3f)\n", v0, v1, v2, v3, v4, v5, v6, v7);
+		const int nd = mc2::fmt::to_buf(d, "  draw: appearType={} appearNum={:d} inView={:d} staticRecipe={:d} screenPos=({:.1f},{:.1f},{:.3f},{:.3f})\n", mc2::fmt::safe(v0), mc2::fmt::as_u32(v1), mc2::fmt::as_i32(v2), mc2::fmt::as_i32(v3), v4, v5, v6, v7);
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0042:   fbo=%dx%d texelYUp=(%d,%d) inBounds=%d rgba=(%u,%u,%u,%u) luma=%.3f ")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		int v2 = static_cast<int>(kEdgeI32[(row + 2) % std::size(kEdgeI32)]);
+		int v3 = static_cast<int>(kEdgeI32[(row + 3) % std::size(kEdgeI32)]);
+		int v4 = static_cast<int>(kEdgeI32[(row + 4) % std::size(kEdgeI32)]);
+		unsigned v5 = static_cast<unsigned>(kEdgeU32[(row + 5) % std::size(kEdgeU32)]);
+		unsigned v6 = static_cast<unsigned>(kEdgeU32[(row + 6) % std::size(kEdgeU32)]);
+		unsigned v7 = static_cast<unsigned>(kEdgeU32[(row + 7) % std::size(kEdgeU32)]);
+		unsigned v8 = static_cast<unsigned>(kEdgeU32[(row + 8) % std::size(kEdgeU32)]);
+		double v9 = static_cast<double>(kEdgeDBL[(row + 9) % std::size(kEdgeDBL)]);
+		unsigned long v10 = static_cast<unsigned long>(kEdgeU32[(row + 10) % std::size(kEdgeU32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "  fbo=%dx%d texelYUp=(%d,%d) inBounds=%d rgba=(%u,%u,%u,%u) luma=%.3f srcFrame=%lu\n", v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10);
+		const int nb = mc2::fmt::to_buf(b, "  fbo={:d}x{:d} texelYUp=({:d},{:d}) inBounds={:d} rgba=({:d},{:d},{:d},{:d}) luma={:.3f} srcFrame={:d}\n", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2), mc2::fmt::as_i32(v3), mc2::fmt::as_i32(v4), mc2::fmt::as_u32(v5), mc2::fmt::as_u32(v6), mc2::fmt::as_u32(v7), mc2::fmt::as_u32(v8), v9, mc2::fmt::as_u32(v10));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "  fbo=%dx%d texelYUp=(%d,%d) inBounds=%d rgba=(%u,%u,%u,%u) luma=%.3f srcFrame=%lu\n", v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10);
+		const int nd = mc2::fmt::to_buf(d, "  fbo={:d}x{:d} texelYUp=({:d},{:d}) inBounds={:d} rgba=({:d},{:d},{:d},{:d}) luma={:.3f} srcFrame={:d}\n", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2), mc2::fmt::as_i32(v3), mc2::fmt::as_i32(v4), mc2::fmt::as_u32(v5), mc2::fmt::as_u32(v6), mc2::fmt::as_u32(v7), mc2::fmt::as_u32(v8), v9, mc2::fmt::as_u32(v10));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0043:   feed: registryQueried=%d recipe=%d recipeResolved=%d buildingFeed=%d")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		int v2 = static_cast<int>(kEdgeI32[(row + 2) % std::size(kEdgeI32)]);
+		int v3 = static_cast<int>(kEdgeI32[(row + 3) % std::size(kEdgeI32)]);
+		int v4 = static_cast<int>(kEdgeI32[(row + 4) % std::size(kEdgeI32)]);
+		int v5 = static_cast<int>(kEdgeI32[(row + 5) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "  feed: registryQueried=%d recipe=%d recipeResolved=%d buildingFeed=%d dynamicFeed=%d modernShadowPath=%d\n", v0, v1, v2, v3, v4, v5);
+		const int nb = mc2::fmt::to_buf(b, "  feed: registryQueried={:d} recipe={:d} recipeResolved={:d} buildingFeed={:d} dynamicFeed={:d} modernShadowPath={:d}\n", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2), mc2::fmt::as_i32(v3), mc2::fmt::as_i32(v4), mc2::fmt::as_i32(v5));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "  feed: registryQueried=%d recipe=%d recipeResolved=%d buildingFeed=%d dynamicFeed=%d modernShadowPath=%d\n", v0, v1, v2, v3, v4, v5);
+		const int nd = mc2::fmt::to_buf(d, "  feed: registryQueried={:d} recipe={:d} recipeResolved={:d} buildingFeed={:d} dynamicFeed={:d} modernShadowPath={:d}\n", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2), mc2::fmt::as_i32(v3), mc2::fmt::as_i32(v4), mc2::fmt::as_i32(v5));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0044:   frame=%lu scenarioTime=%.2f simSpeed=%.2f fixedTimestep=%d status=%l")
+{
+	for (int row = 0; row < 12; ++row) {
+		unsigned long v0 = static_cast<unsigned long>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
+		double v1 = static_cast<double>(kEdgeDBL[(row + 1) % std::size(kEdgeDBL)]);
+		double v2 = static_cast<double>(kEdgeDBL[(row + 2) % std::size(kEdgeDBL)]);
+		int v3 = static_cast<int>(kEdgeI32[(row + 3) % std::size(kEdgeI32)]);
+		long v4 = static_cast<long>(kEdgeI32[(row + 4) % std::size(kEdgeI32)]);
+		int v5 = static_cast<int>(kEdgeI32[(row + 5) % std::size(kEdgeI32)]);
+		long v6 = static_cast<long>(kEdgeI32[(row + 6) % std::size(kEdgeI32)]);
+		int v7 = static_cast<int>(kEdgeI32[(row + 7) % std::size(kEdgeI32)]);
+		long v8 = static_cast<long>(kEdgeI32[(row + 8) % std::size(kEdgeI32)]);
+		long v9 = static_cast<long>(kEdgeI32[(row + 9) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "  frame=%lu scenarioTime=%.2f simSpeed=%.2f fixedTimestep=%d status=%ld paused=%d movers=%ld frozen=%d frozenAt=%ld missionFrame=%ld\n", v0, v1, v2, v3, v4, v5, v6, v7, v8, v9);
+		const int nb = mc2::fmt::to_buf(b, "  frame={:d} scenarioTime={:.2f} simSpeed={:.2f} fixedTimestep={:d} status={:d} paused={:d} movers={:d} frozen={:d} frozenAt={:d} missionFrame={:d}\n", mc2::fmt::as_u32(v0), v1, v2, mc2::fmt::as_i32(v3), mc2::fmt::as_i32(v4), mc2::fmt::as_i32(v5), mc2::fmt::as_i32(v6), mc2::fmt::as_i32(v7), mc2::fmt::as_i32(v8), mc2::fmt::as_i32(v9));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "  frame=%lu scenarioTime=%.2f simSpeed=%.2f fixedTimestep=%d status=%ld paused=%d movers=%ld frozen=%d frozenAt=%ld missionFrame=%ld\n", v0, v1, v2, v3, v4, v5, v6, v7, v8, v9);
+		const int nd = mc2::fmt::to_buf(d, "  frame={:d} scenarioTime={:.2f} simSpeed={:.2f} fixedTimestep={:d} status={:d} paused={:d} movers={:d} frozen={:d} frozenAt={:d} missionFrame={:d}\n", mc2::fmt::as_u32(v0), v1, v2, mc2::fmt::as_i32(v3), mc2::fmt::as_i32(v4), mc2::fmt::as_i32(v5), mc2::fmt::as_i32(v6), mc2::fmt::as_i32(v7), mc2::fmt::as_i32(v8), mc2::fmt::as_i32(v9));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0045:   id=%ld name=%s class=%s pos=(%.2f,%.2f,%.2f) hp=%.3f exists=%d disab [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		const char* v1 = kStrNull[(row + 1) % std::size(kStrNull)];
+		const char* v2 = kStrNull[(row + 2) % std::size(kStrNull)];
+		double v3 = static_cast<double>(kEdgeDBL[(row + 3) % std::size(kEdgeDBL)]);
+		double v4 = static_cast<double>(kEdgeDBL[(row + 4) % std::size(kEdgeDBL)]);
+		double v5 = static_cast<double>(kEdgeDBL[(row + 5) % std::size(kEdgeDBL)]);
+		double v6 = static_cast<double>(kEdgeDBL[(row + 6) % std::size(kEdgeDBL)]);
+		int v7 = static_cast<int>(kEdgeI32[(row + 7) % std::size(kEdgeI32)]);
+		int v8 = static_cast<int>(kEdgeI32[(row + 8) % std::size(kEdgeI32)]);
+		int v9 = static_cast<int>(kEdgeI32[(row + 9) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "  id=%ld name=%s class=%s pos=(%.2f,%.2f,%.2f) hp=%.3f exists=%d disabled=%d destroyed=%d\n", v0, v1, v2, v3, v4, v5, v6, v7, v8, v9);
+		const int nb = mc2::fmt::to_buf(b, "  id={:d} name={} class={} pos=({:.2f},{:.2f},{:.2f}) hp={:.3f} exists={:d} disabled={:d} destroyed={:d}\n", mc2::fmt::as_i32(v0), mc2::fmt::safe(v1), mc2::fmt::safe(v2), v3, v4, v5, v6, mc2::fmt::as_i32(v7), mc2::fmt::as_i32(v8), mc2::fmt::as_i32(v9));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "  id=%ld name=%s class=%s pos=(%.2f,%.2f,%.2f) hp=%.3f exists=%d disabled=%d destroyed=%d\n", v0, v1, v2, v3, v4, v5, v6, v7, v8, v9);
+		const int nd = mc2::fmt::to_buf(d, "  id={:d} name={} class={} pos=({:.2f},{:.2f},{:.2f}) hp={:.3f} exists={:d} disabled={:d} destroyed={:d}\n", mc2::fmt::as_i32(v0), mc2::fmt::safe(v1), mc2::fmt::safe(v2), v3, v4, v5, v6, mc2::fmt::as_i32(v7), mc2::fmt::as_i32(v8), mc2::fmt::as_i32(v9));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0046:   lightPitch=%.2f lightYaw=%.2f isNight=%d nightFactor=%.3f\\n  ambien")
+{
+	for (int row = 0; row < 12; ++row) {
+		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
+		double v1 = static_cast<double>(kEdgeDBL[(row + 1) % std::size(kEdgeDBL)]);
+		int v2 = static_cast<int>(kEdgeI32[(row + 2) % std::size(kEdgeI32)]);
+		double v3 = static_cast<double>(kEdgeDBL[(row + 3) % std::size(kEdgeDBL)]);
+		unsigned v4 = static_cast<unsigned>(kEdgeU32[(row + 4) % std::size(kEdgeU32)]);
+		unsigned v5 = static_cast<unsigned>(kEdgeU32[(row + 5) % std::size(kEdgeU32)]);
+		unsigned v6 = static_cast<unsigned>(kEdgeU32[(row + 6) % std::size(kEdgeU32)]);
+		unsigned v7 = static_cast<unsigned>(kEdgeU32[(row + 7) % std::size(kEdgeU32)]);
+		unsigned v8 = static_cast<unsigned>(kEdgeU32[(row + 8) % std::size(kEdgeU32)]);
+		unsigned v9 = static_cast<unsigned>(kEdgeU32[(row + 9) % std::size(kEdgeU32)]);
+		unsigned long v10 = static_cast<unsigned long>(kEdgeU32[(row + 10) % std::size(kEdgeU32)]);
+		double v11 = static_cast<double>(kEdgeDBL[(row + 11) % std::size(kEdgeDBL)]);
+		double v12 = static_cast<double>(kEdgeDBL[(row + 12) % std::size(kEdgeDBL)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "  lightPitch=%.2f lightYaw=%.2f isNight=%d nightFactor=%.3f\n  ambient=(%u,%u,%u) light=(%u,%u,%u) fog=0x%06lx day2NightTransitionTime=%.1f dayLightTime=%.1f\n", v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12);
+		const int nb = mc2::fmt::to_buf(b, "  lightPitch={:.2f} lightYaw={:.2f} isNight={:d} nightFactor={:.3f}\n  ambient=({:d},{:d},{:d}) light=({:d},{:d},{:d}) fog=0x{:06x} day2NightTransitionTime={:.1f} dayLightTime={:.1f}\n", v0, v1, mc2::fmt::as_i32(v2), v3, mc2::fmt::as_u32(v4), mc2::fmt::as_u32(v5), mc2::fmt::as_u32(v6), mc2::fmt::as_u32(v7), mc2::fmt::as_u32(v8), mc2::fmt::as_u32(v9), mc2::fmt::as_u32(v10), v11, v12);
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "  lightPitch=%.2f lightYaw=%.2f isNight=%d nightFactor=%.3f\n  ambient=(%u,%u,%u) light=(%u,%u,%u) fog=0x%06lx day2NightTransitionTime=%.1f dayLightTime=%.1f\n", v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12);
+		const int nd = mc2::fmt::to_buf(d, "  lightPitch={:.2f} lightYaw={:.2f} isNight={:d} nightFactor={:.3f}\n  ambient=({:d},{:d},{:d}) light=({:d},{:d},{:d}) fog=0x{:06x} day2NightTransitionTime={:.1f} dayLightTime={:.1f}\n", v0, v1, mc2::fmt::as_i32(v2), v3, mc2::fmt::as_u32(v4), mc2::fmt::as_u32(v5), mc2::fmt::as_u32(v6), mc2::fmt::as_u32(v7), mc2::fmt::as_u32(v8), mc2::fmt::as_u32(v9), mc2::fmt::as_u32(v10), v11, v12);
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0047:   mover: team=%ld cmdr=%ld gui=%d selected=%d typeHandle=%ld pilot=%s\ [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		long v1 = static_cast<long>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		int v2 = static_cast<int>(kEdgeI32[(row + 2) % std::size(kEdgeI32)]);
+		int v3 = static_cast<int>(kEdgeI32[(row + 3) % std::size(kEdgeI32)]);
+		long v4 = static_cast<long>(kEdgeI32[(row + 4) % std::size(kEdgeI32)]);
+		const char* v5 = kStrNull[(row + 5) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "  mover: team=%ld cmdr=%ld gui=%d selected=%d typeHandle=%ld pilot=%s\n", v0, v1, v2, v3, v4, v5);
+		const int nb = mc2::fmt::to_buf(b, "  mover: team={:d} cmdr={:d} gui={:d} selected={:d} typeHandle={:d} pilot={}\n", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2), mc2::fmt::as_i32(v3), mc2::fmt::as_i32(v4), mc2::fmt::safe(v5));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "  mover: team=%ld cmdr=%ld gui=%d selected=%d typeHandle=%ld pilot=%s\n", v0, v1, v2, v3, v4, v5);
+		const int nd = mc2::fmt::to_buf(d, "  mover: team={:d} cmdr={:d} gui={:d} selected={:d} typeHandle={:d} pilot={}\n", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2), mc2::fmt::as_i32(v3), mc2::fmt::as_i32(v4), mc2::fmt::safe(v5));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0048:   obj: id=%ld z=%.4f objAboveGround=%.4f\\n")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		double v1 = static_cast<double>(kEdgeDBL[(row + 1) % std::size(kEdgeDBL)]);
+		double v2 = static_cast<double>(kEdgeDBL[(row + 2) % std::size(kEdgeDBL)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "  obj: id=%ld z=%.4f objAboveGround=%.4f\n", v0, v1, v2);
+		const int nb = mc2::fmt::to_buf(b, "  obj: id={:d} z={:.4f} objAboveGround={:.4f}\n", mc2::fmt::as_i32(v0), v1, v2);
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "  obj: id=%ld z=%.4f objAboveGround=%.4f\n", v0, v1, v2);
+		const int nd = mc2::fmt::to_buf(d, "  obj: id={:d} z={:.4f} objAboveGround={:.4f}\n", mc2::fmt::as_i32(v0), v1, v2);
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0049:   objectives: status=%d\\n")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "  objectives: status=%d\n", v0);
+		const int nb = mc2::fmt::to_buf(b, "  objectives: status={:d}\n", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "  objectives: status=%d\n", v0);
+		const int nd = mc2::fmt::to_buf(d, "  objectives: status={:d}\n", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0050:   path: verdict=%s class=0x%02lx type=%s appearNum=%lu inView=%d stati [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		unsigned long v1 = static_cast<unsigned long>(kEdgeU32[(row + 1) % std::size(kEdgeU32)]);
+		const char* v2 = kStrNull[(row + 2) % std::size(kStrNull)];
+		unsigned long v3 = static_cast<unsigned long>(kEdgeU32[(row + 3) % std::size(kEdgeU32)]);
+		int v4 = static_cast<int>(kEdgeI32[(row + 4) % std::size(kEdgeI32)]);
+		int v5 = static_cast<int>(kEdgeI32[(row + 5) % std::size(kEdgeI32)]);
+		int v6 = static_cast<int>(kEdgeI32[(row + 6) % std::size(kEdgeI32)]);
+		int v7 = static_cast<int>(kEdgeI32[(row + 7) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "  path: verdict=%s class=0x%02lx type=%s appearNum=%lu inView=%d staticReg=%d staticNow=%d recipe=%d\n", v0, v1, v2, v3, v4, v5, v6, v7);
+		const int nb = mc2::fmt::to_buf(b, "  path: verdict={} class=0x{:02x} type={} appearNum={:d} inView={:d} staticReg={:d} staticNow={:d} recipe={:d}\n", mc2::fmt::safe(v0), mc2::fmt::as_u32(v1), mc2::fmt::safe(v2), mc2::fmt::as_u32(v3), mc2::fmt::as_i32(v4), mc2::fmt::as_i32(v5), mc2::fmt::as_i32(v6), mc2::fmt::as_i32(v7));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "  path: verdict=%s class=0x%02lx type=%s appearNum=%lu inView=%d staticReg=%d staticNow=%d recipe=%d\n", v0, v1, v2, v3, v4, v5, v6, v7);
+		const int nd = mc2::fmt::to_buf(d, "  path: verdict={} class=0x{:02x} type={} appearNum={:d} inView={:d} staticReg={:d} staticNow={:d} recipe={:d}\n", mc2::fmt::safe(v0), mc2::fmt::as_u32(v1), mc2::fmt::safe(v2), mc2::fmt::as_u32(v3), mc2::fmt::as_i32(v4), mc2::fmt::as_i32(v5), mc2::fmt::as_i32(v6), mc2::fmt::as_i32(v7));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0051:   pose: obj=(%.3f,%.3f,%.3f) screen=(%.1f,%.1f,%.3f,%.3f)\\n")
+{
+	for (int row = 0; row < 12; ++row) {
+		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
+		double v1 = static_cast<double>(kEdgeDBL[(row + 1) % std::size(kEdgeDBL)]);
+		double v2 = static_cast<double>(kEdgeDBL[(row + 2) % std::size(kEdgeDBL)]);
+		double v3 = static_cast<double>(kEdgeDBL[(row + 3) % std::size(kEdgeDBL)]);
+		double v4 = static_cast<double>(kEdgeDBL[(row + 4) % std::size(kEdgeDBL)]);
+		double v5 = static_cast<double>(kEdgeDBL[(row + 5) % std::size(kEdgeDBL)]);
+		double v6 = static_cast<double>(kEdgeDBL[(row + 6) % std::size(kEdgeDBL)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "  pose: obj=(%.3f,%.3f,%.3f) screen=(%.1f,%.1f,%.3f,%.3f)\n", v0, v1, v2, v3, v4, v5, v6);
+		const int nb = mc2::fmt::to_buf(b, "  pose: obj=({:.3f},{:.3f},{:.3f}) screen=({:.1f},{:.1f},{:.3f},{:.3f})\n", v0, v1, v2, v3, v4, v5, v6);
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "  pose: obj=(%.3f,%.3f,%.3f) screen=(%.1f,%.1f,%.3f,%.3f)\n", v0, v1, v2, v3, v4, v5, v6);
+		const int nd = mc2::fmt::to_buf(d, "  pose: obj=({:.3f},{:.3f},{:.3f}) screen=({:.1f},{:.1f},{:.3f},{:.3f})\n", v0, v1, v2, v3, v4, v5, v6);
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0052:   recipe: idx=%d baked=(%.3f,%.3f,%.3f) recipeTerrainZ=%.4f recipeAbov")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		double v1 = static_cast<double>(kEdgeDBL[(row + 1) % std::size(kEdgeDBL)]);
+		double v2 = static_cast<double>(kEdgeDBL[(row + 2) % std::size(kEdgeDBL)]);
+		double v3 = static_cast<double>(kEdgeDBL[(row + 3) % std::size(kEdgeDBL)]);
+		double v4 = static_cast<double>(kEdgeDBL[(row + 4) % std::size(kEdgeDBL)]);
+		double v5 = static_cast<double>(kEdgeDBL[(row + 5) % std::size(kEdgeDBL)]);
+		double v6 = static_cast<double>(kEdgeDBL[(row + 6) % std::size(kEdgeDBL)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "  recipe: idx=%d baked=(%.3f,%.3f,%.3f) recipeTerrainZ=%.4f recipeAboveGround=%.4f recipeVsObj=%.4f\n", v0, v1, v2, v3, v4, v5, v6);
+		const int nb = mc2::fmt::to_buf(b, "  recipe: idx={:d} baked=({:.3f},{:.3f},{:.3f}) recipeTerrainZ={:.4f} recipeAboveGround={:.4f} recipeVsObj={:.4f}\n", mc2::fmt::as_i32(v0), v1, v2, v3, v4, v5, v6);
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "  recipe: idx=%d baked=(%.3f,%.3f,%.3f) recipeTerrainZ=%.4f recipeAboveGround=%.4f recipeVsObj=%.4f\n", v0, v1, v2, v3, v4, v5, v6);
+		const int nd = mc2::fmt::to_buf(d, "  recipe: idx={:d} baked=({:.3f},{:.3f},{:.3f}) recipeTerrainZ={:.4f} recipeAboveGround={:.4f} recipeVsObj={:.4f}\n", mc2::fmt::as_i32(v0), v1, v2, v3, v4, v5, v6);
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0053:   recipe: shape=%s baked=(%.3f,%.3f,%.3f) recipeDrift=%.4f\\n [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		double v1 = static_cast<double>(kEdgeDBL[(row + 1) % std::size(kEdgeDBL)]);
+		double v2 = static_cast<double>(kEdgeDBL[(row + 2) % std::size(kEdgeDBL)]);
+		double v3 = static_cast<double>(kEdgeDBL[(row + 3) % std::size(kEdgeDBL)]);
+		double v4 = static_cast<double>(kEdgeDBL[(row + 4) % std::size(kEdgeDBL)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "  recipe: shape=%s baked=(%.3f,%.3f,%.3f) recipeDrift=%.4f\n", v0, v1, v2, v3, v4);
+		const int nb = mc2::fmt::to_buf(b, "  recipe: shape={} baked=({:.3f},{:.3f},{:.3f}) recipeDrift={:.4f}\n", mc2::fmt::safe(v0), v1, v2, v3, v4);
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "  recipe: shape=%s baked=(%.3f,%.3f,%.3f) recipeDrift=%.4f\n", v0, v1, v2, v3, v4);
+		const int nd = mc2::fmt::to_buf(d, "  recipe: shape={} baked=({:.3f},{:.3f},{:.3f}) recipeDrift={:.4f}\n", mc2::fmt::safe(v0), v1, v2, v3, v4);
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0054:   recipe: shape=%s baked=<unreadable> recipeDrift=n/a (tombstoned or r [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "  recipe: shape=%s baked=<unreadable> recipeDrift=n/a (tombstoned or registry off)\n", v0);
+		const int nb = mc2::fmt::to_buf(b, "  recipe: shape={} baked=<unreadable> recipeDrift=n/a (tombstoned or registry off)\n", mc2::fmt::safe(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "  recipe: shape=%s baked=<unreadable> recipeDrift=n/a (tombstoned or registry off)\n", v0);
+		const int nd = mc2::fmt::to_buf(d, "  recipe: shape={} baked=<unreadable> recipeDrift=n/a (tombstoned or registry off)\n", mc2::fmt::safe(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0055:   src: class=%s(0x%02lx) feed=%s srcListCount=%lu gathered=%d\\n [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		unsigned long v1 = static_cast<unsigned long>(kEdgeU32[(row + 1) % std::size(kEdgeU32)]);
+		const char* v2 = kStrNull[(row + 2) % std::size(kStrNull)];
+		unsigned long v3 = static_cast<unsigned long>(kEdgeU32[(row + 3) % std::size(kEdgeU32)]);
+		int v4 = static_cast<int>(kEdgeI32[(row + 4) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "  src: class=%s(0x%02lx) feed=%s srcListCount=%lu gathered=%d\n", v0, v1, v2, v3, v4);
+		const int nb = mc2::fmt::to_buf(b, "  src: class={}(0x{:02x}) feed={} srcListCount={:d} gathered={:d}\n", mc2::fmt::safe(v0), mc2::fmt::as_u32(v1), mc2::fmt::safe(v2), mc2::fmt::as_u32(v3), mc2::fmt::as_i32(v4));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "  src: class=%s(0x%02lx) feed=%s srcListCount=%lu gathered=%d\n", v0, v1, v2, v3, v4);
+		const int nd = mc2::fmt::to_buf(d, "  src: class={}(0x{:02x}) feed={} srcListCount={:d} gathered={:d}\n", mc2::fmt::safe(v0), mc2::fmt::as_u32(v1), mc2::fmt::safe(v2), mc2::fmt::as_u32(v3), mc2::fmt::as_i32(v4));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0056:   staticBldgPass: drew=%d types=%d instances=%d draws=%d\\n")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		int v2 = static_cast<int>(kEdgeI32[(row + 2) % std::size(kEdgeI32)]);
+		int v3 = static_cast<int>(kEdgeI32[(row + 3) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "  staticBldgPass: drew=%d types=%d instances=%d draws=%d\n", v0, v1, v2, v3);
+		const int nb = mc2::fmt::to_buf(b, "  staticBldgPass: drew={:d} types={:d} instances={:d} draws={:d}\n", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2), mc2::fmt::as_i32(v3));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "  staticBldgPass: drew=%d types=%d instances=%d draws=%d\n", v0, v1, v2, v3);
+		const int nd = mc2::fmt::to_buf(d, "  staticBldgPass: drew={:d} types={:d} instances={:d} draws={:d}\n", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2), mc2::fmt::as_i32(v3));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0057:   submit: typeID=%s flags=0x%02x(lightsOut=%d window=%d spotlight=%d)  [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		unsigned v1 = static_cast<unsigned>(kEdgeU32[(row + 1) % std::size(kEdgeU32)]);
+		int v2 = static_cast<int>(kEdgeI32[(row + 2) % std::size(kEdgeI32)]);
+		int v3 = static_cast<int>(kEdgeI32[(row + 3) % std::size(kEdgeI32)]);
+		int v4 = static_cast<int>(kEdgeI32[(row + 4) % std::size(kEdgeI32)]);
+		const char* v5 = kStrNull[(row + 5) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "  submit: typeID=%s flags=0x%02x(lightsOut=%d window=%d spotlight=%d) cullRecordPrevFrame=%s\n", v0, v1, v2, v3, v4, v5);
+		const int nb = mc2::fmt::to_buf(b, "  submit: typeID={} flags=0x{:02x}(lightsOut={:d} window={:d} spotlight={:d}) cullRecordPrevFrame={}\n", mc2::fmt::safe(v0), mc2::fmt::as_u32(v1), mc2::fmt::as_i32(v2), mc2::fmt::as_i32(v3), mc2::fmt::as_i32(v4), mc2::fmt::safe(v5));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "  submit: typeID=%s flags=0x%02x(lightsOut=%d window=%d spotlight=%d) cullRecordPrevFrame=%s\n", v0, v1, v2, v3, v4, v5);
+		const int nd = mc2::fmt::to_buf(d, "  submit: typeID={} flags=0x{:02x}(lightsOut={:d} window={:d} spotlight={:d}) cullRecordPrevFrame={}\n", mc2::fmt::safe(v0), mc2::fmt::as_u32(v1), mc2::fmt::as_i32(v2), mc2::fmt::as_i32(v3), mc2::fmt::as_i32(v4), mc2::fmt::safe(v5));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0058:   world=(%.3f,%.3f,%.3f) screenYDown=(%.1f,%.1f) w=%.4f behindCamera=%")
+{
+	for (int row = 0; row < 12; ++row) {
+		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
+		double v1 = static_cast<double>(kEdgeDBL[(row + 1) % std::size(kEdgeDBL)]);
+		double v2 = static_cast<double>(kEdgeDBL[(row + 2) % std::size(kEdgeDBL)]);
+		double v3 = static_cast<double>(kEdgeDBL[(row + 3) % std::size(kEdgeDBL)]);
+		double v4 = static_cast<double>(kEdgeDBL[(row + 4) % std::size(kEdgeDBL)]);
+		double v5 = static_cast<double>(kEdgeDBL[(row + 5) % std::size(kEdgeDBL)]);
+		int v6 = static_cast<int>(kEdgeI32[(row + 6) % std::size(kEdgeI32)]);
+		int v7 = static_cast<int>(kEdgeI32[(row + 7) % std::size(kEdgeI32)]);
+		double v8 = static_cast<double>(kEdgeDBL[(row + 8) % std::size(kEdgeDBL)]);
+		double v9 = static_cast<double>(kEdgeDBL[(row + 9) % std::size(kEdgeDBL)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "  world=(%.3f,%.3f,%.3f) screenYDown=(%.1f,%.1f) w=%.4f behindCamera=%d offScreen=%d screenRes=(%.0f,%.0f)\n", v0, v1, v2, v3, v4, v5, v6, v7, v8, v9);
+		const int nb = mc2::fmt::to_buf(b, "  world=({:.3f},{:.3f},{:.3f}) screenYDown=({:.1f},{:.1f}) w={:.4f} behindCamera={:d} offScreen={:d} screenRes=({:.0f},{:.0f})\n", v0, v1, v2, v3, v4, v5, mc2::fmt::as_i32(v6), mc2::fmt::as_i32(v7), v8, v9);
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "  world=(%.3f,%.3f,%.3f) screenYDown=(%.1f,%.1f) w=%.4f behindCamera=%d offScreen=%d screenRes=(%.0f,%.0f)\n", v0, v1, v2, v3, v4, v5, v6, v7, v8, v9);
+		const int nd = mc2::fmt::to_buf(d, "  world=({:.3f},{:.3f},{:.3f}) screenYDown=({:.1f},{:.1f}) w={:.4f} behindCamera={:d} offScreen={:d} screenRes=({:.0f},{:.0f})\n", v0, v1, v2, v3, v4, v5, mc2::fmt::as_i32(v6), mc2::fmt::as_i32(v7), v8, v9);
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0059:  %.2f,")
 {
 	for (int row = 0; row < 12; ++row) {
 		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
@@ -259,7 +1164,39 @@ TEST_CASE("printf corpus 0015:  %.2f,")
 	}
 }
 
-TEST_CASE("printf corpus 0016:  %d,")
+TEST_CASE("printf corpus 0060:  %02d")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, " %02d", v0);
+		const int nb = mc2::fmt::to_buf(b, " {:02d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, " %02d", v0);
+		const int nd = mc2::fmt::to_buf(d, " {:02d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0061:  %d")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, " %d", v0);
+		const int nb = mc2::fmt::to_buf(b, " {:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, " %d", v0);
+		const int nd = mc2::fmt::to_buf(d, " {:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0062:  %d,")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -275,7 +1212,24 @@ TEST_CASE("printf corpus 0016:  %d,")
 	}
 }
 
-TEST_CASE("printf corpus 0017:  %s=%.2f [maybe-null]")
+TEST_CASE("printf corpus 0063:  %d.%d")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, " %d.%d", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, " {:d}.{:d}", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, " %d.%d", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, " {:d}.{:d}", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0064:  %s=%.2f [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -292,7 +1246,7 @@ TEST_CASE("printf corpus 0017:  %s=%.2f [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0018:  %s_us=%.1f [maybe-null]")
+TEST_CASE("printf corpus 0065:  %s_us=%.1f [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -309,7 +1263,7 @@ TEST_CASE("printf corpus 0018:  %s_us=%.1f [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0019:  %s{fbo=%u vp=%dx%d dt=%d dm=%d bl=%d cull=%d draws=%u inst=%u} [maybe-null]")
+TEST_CASE("printf corpus 0066:  %s{fbo=%u vp=%dx%d dt=%d dm=%d bl=%d cull=%d draws=%u inst=%u} [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -334,7 +1288,52 @@ TEST_CASE("printf corpus 0019:  %s{fbo=%u vp=%dx%d dt=%d dm=%d bl=%d cull=%d dra
 	}
 }
 
-TEST_CASE("printf corpus 0020:  ABL endless state loop in %s [%s:%s]  [maybe-null]")
+TEST_CASE("printf corpus 0067:  *** DESTROYED:")
+{
+	for (int row = 0; row < 12; ++row) {
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, " *** DESTROYED:");
+		const int nb = mc2::fmt::to_buf(b, " *** DESTROYED:");
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, " *** DESTROYED:");
+		const int nd = mc2::fmt::to_buf(d, " *** DESTROYED:");
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0068:  *** NO PAIN:")
+{
+	for (int row = 0; row < 12; ++row) {
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, " *** NO PAIN:");
+		const int nb = mc2::fmt::to_buf(b, " *** NO PAIN:");
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, " *** NO PAIN:");
+		const int nd = mc2::fmt::to_buf(d, " *** NO PAIN:");
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0069:  ***:")
+{
+	for (int row = 0; row < 12; ++row) {
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, " ***:");
+		const int nb = mc2::fmt::to_buf(b, " ***:");
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, " ***:");
+		const int nd = mc2::fmt::to_buf(d, " ***:");
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0070:  ABL endless state loop in %s [%s:%s]  [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -352,7 +1351,23 @@ TEST_CASE("printf corpus 0020:  ABL endless state loop in %s [%s:%s]  [maybe-nul
 	}
 }
 
-TEST_CASE("printf corpus 0021:  ABL.enterStandardRoutine: bad param type (%c) for (%s) [maybe-null]")
+TEST_CASE("printf corpus 0071:  ABL.ablFileOpenCB: unable to create file [%s]  [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, " ABL.ablFileOpenCB: unable to create file [%s] ", v0);
+		const int nb = mc2::fmt::to_buf(b, " ABL.ablFileOpenCB: unable to create file [{}] ", mc2::fmt::safe(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, " ABL.ablFileOpenCB: unable to create file [%s] ", v0);
+		const int nd = mc2::fmt::to_buf(d, " ABL.ablFileOpenCB: unable to create file [{}] ", mc2::fmt::safe(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0072:  ABL.enterStandardRoutine: bad param type (%c) for (%s) [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeCHR[(row + 0) % std::size(kEdgeCHR)]);
@@ -369,7 +1384,7 @@ TEST_CASE("printf corpus 0021:  ABL.enterStandardRoutine: bad param type (%c) fo
 	}
 }
 
-TEST_CASE("printf corpus 0022:  ABL.enterStandardRoutine: bad return type for (%s) [maybe-null]")
+TEST_CASE("printf corpus 0073:  ABL.enterStandardRoutine: bad return type for (%s) [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -385,7 +1400,7 @@ TEST_CASE("printf corpus 0022:  ABL.enterStandardRoutine: bad return type for (%
 	}
 }
 
-TEST_CASE("printf corpus 0023:  ABL: Unable to AblStackHeap->malloc actual array param in module %s) [maybe-null]")
+TEST_CASE("printf corpus 0074:  ABL: Unable to AblStackHeap->malloc actual array param in module %s) [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -401,7 +1416,7 @@ TEST_CASE("printf corpus 0023:  ABL: Unable to AblStackHeap->malloc actual array
 	}
 }
 
-TEST_CASE("printf corpus 0024:  ABL: Undefined ABL RoutineKey %d in %s:%d [maybe-null]")
+TEST_CASE("printf corpus 0075:  ABL: Undefined ABL RoutineKey %d in %s:%d [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -419,7 +1434,7 @@ TEST_CASE("printf corpus 0024:  ABL: Undefined ABL RoutineKey %d in %s:%d [maybe
 	}
 }
 
-TEST_CASE("printf corpus 0025:  ABL: Undefined ABL RoutineKey %d in %s:%d (>= %d) — bailing [maybe-null]")
+TEST_CASE("printf corpus 0076:  ABL: Undefined ABL RoutineKey %d in %s:%d (>= %d) — bailing [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -438,7 +1453,23 @@ TEST_CASE("printf corpus 0025:  ABL: Undefined ABL RoutineKey %d in %s:%d (>= %d
 	}
 }
 
-TEST_CASE("printf corpus 0026:  Bad Move Goal: %d [%d(%d), %d(%d)], (%.2f, %.2f, %.2f)")
+TEST_CASE("printf corpus 0077:  Bad Mech Profile : %s  [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, " Bad Mech Profile : %s ", v0);
+		const int nb = mc2::fmt::to_buf(b, " Bad Mech Profile : {} ", mc2::fmt::safe(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, " Bad Mech Profile : %s ", v0);
+		const int nd = mc2::fmt::to_buf(d, " Bad Mech Profile : {} ", mc2::fmt::safe(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0078:  Bad Move Goal: %d [%d(%d), %d(%d)], (%.2f, %.2f, %.2f)")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -461,7 +1492,22 @@ TEST_CASE("printf corpus 0026:  Bad Move Goal: %d [%d(%d), %d(%d)], (%.2f, %.2f,
 	}
 }
 
-TEST_CASE("printf corpus 0027:  L%d=%u")
+TEST_CASE("printf corpus 0079:  DESTROYED:")
+{
+	for (int row = 0; row < 12; ++row) {
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, " DESTROYED:");
+		const int nb = mc2::fmt::to_buf(b, " DESTROYED:");
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, " DESTROYED:");
+		const int nd = mc2::fmt::to_buf(d, " DESTROYED:");
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0080:  L%d=%u")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -478,7 +1524,38 @@ TEST_CASE("printf corpus 0027:  L%d=%u")
 	}
 }
 
-TEST_CASE("printf corpus 0028:  [ASSERT %d] %s  [maybe-null]")
+TEST_CASE("printf corpus 0081:  NO PAIN:")
+{
+	for (int row = 0; row < 12; ++row) {
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, " NO PAIN:");
+		const int nb = mc2::fmt::to_buf(b, " NO PAIN:");
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, " NO PAIN:");
+		const int nd = mc2::fmt::to_buf(d, " NO PAIN:");
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0082:  [%d]")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, " [%d]", v0);
+		const int nb = mc2::fmt::to_buf(b, " [{:d}]", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, " [%d]", v0);
+		const int nd = mc2::fmt::to_buf(d, " [{:d}]", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0083:  [ASSERT %d] %s  [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -495,7 +1572,7 @@ TEST_CASE("printf corpus 0028:  [ASSERT %d] %s  [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0029:  [FATAL %d] %s  [maybe-null]")
+TEST_CASE("printf corpus 0084:  [FATAL %d] %s  [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -512,7 +1589,7 @@ TEST_CASE("printf corpus 0029:  [FATAL %d] %s  [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0030:  bldg=%d/%d/%d(types/inst/draws)")
+TEST_CASE("printf corpus 0085:  bldg=%d/%d/%d(types/inst/draws)")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -530,7 +1607,7 @@ TEST_CASE("printf corpus 0030:  bldg=%d/%d/%d(types/inst/draws)")
 	}
 }
 
-TEST_CASE("printf corpus 0031:  dropped=%u")
+TEST_CASE("printf corpus 0086:  dropped=%u")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -546,7 +1623,7 @@ TEST_CASE("printf corpus 0031:  dropped=%u")
 	}
 }
 
-TEST_CASE("printf corpus 0032:  self_us=%.1f")
+TEST_CASE("printf corpus 0087:  self_us=%.1f")
 {
 	for (int row = 0; row < 12; ++row) {
 		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
@@ -562,7 +1639,23 @@ TEST_CASE("printf corpus 0032:  self_us=%.1f")
 	}
 }
 
-TEST_CASE("printf corpus 0033: #define MC2_SHADOW_CSM 1\\n#define MC2_SHADOW_CSM_MAX %d\\n")
+TEST_CASE("printf corpus 0088: ##hud_tab_chrome_%d")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "##hud_tab_chrome_%d", v0);
+		const int nb = mc2::fmt::to_buf(b, "##hud_tab_chrome_{:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "##hud_tab_chrome_%d", v0);
+		const int nd = mc2::fmt::to_buf(d, "##hud_tab_chrome_{:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0089: #define MC2_SHADOW_CSM 1\\n#define MC2_SHADOW_CSM_MAX %d\\n")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -578,7 +1671,7 @@ TEST_CASE("printf corpus 0033: #define MC2_SHADOW_CSM 1\\n#define MC2_SHADOW_CSM
 	}
 }
 
-TEST_CASE("printf corpus 0034: #define MC2_SHADOW_DIST_FADE_WU %.1f\\n#define MC2_SHADOW_DIST_FADE_MA")
+TEST_CASE("printf corpus 0090: #define MC2_SHADOW_DIST_FADE_WU %.1f\\n#define MC2_SHADOW_DIST_FADE_MA")
 {
 	for (int row = 0; row < 12; ++row) {
 		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
@@ -598,7 +1691,7 @@ TEST_CASE("printf corpus 0034: #define MC2_SHADOW_DIST_FADE_WU %.1f\\n#define MC
 	}
 }
 
-TEST_CASE("printf corpus 0035: #define MC2_SHADOW_MIN_SUN_SIN %.8f\\n")
+TEST_CASE("printf corpus 0091: #define MC2_SHADOW_MIN_SUN_SIN %.8f\\n")
 {
 	for (int row = 0; row < 12; ++row) {
 		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
@@ -614,7 +1707,7 @@ TEST_CASE("printf corpus 0035: #define MC2_SHADOW_MIN_SUN_SIN %.8f\\n")
 	}
 }
 
-TEST_CASE("printf corpus 0036: #line %zu // %s\\n [maybe-null]")
+TEST_CASE("printf corpus 0092: #line %zu // %s\\n [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		size_t v0 = static_cast<size_t>(kEdgeU64[(row + 0) % std::size(kEdgeU64)]);
@@ -631,7 +1724,55 @@ TEST_CASE("printf corpus 0036: #line %zu // %s\\n [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0037: %.1f")
+TEST_CASE("printf corpus 0093: %.0fm")
+{
+	for (int row = 0; row < 12; ++row) {
+		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "%.0fm", v0);
+		const int nb = mc2::fmt::to_buf(b, "{:.0f}m", v0);
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "%.0fm", v0);
+		const int nd = mc2::fmt::to_buf(d, "{:.0f}m", v0);
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0094: %.0lf")
+{
+	for (int row = 0; row < 12; ++row) {
+		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "%.0lf", v0);
+		const int nb = mc2::fmt::to_buf(b, "{:.0f}", v0);
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "%.0lf", v0);
+		const int nd = mc2::fmt::to_buf(d, "{:.0f}", v0);
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0095: %.0lf ")
+{
+	for (int row = 0; row < 12; ++row) {
+		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "%.0lf ", v0);
+		const int nb = mc2::fmt::to_buf(b, "{:.0f} ", v0);
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "%.0lf ", v0);
+		const int nd = mc2::fmt::to_buf(d, "{:.0f} ", v0);
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0096: %.1f")
 {
 	for (int row = 0; row < 12; ++row) {
 		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
@@ -647,7 +1788,23 @@ TEST_CASE("printf corpus 0037: %.1f")
 	}
 }
 
-TEST_CASE("printf corpus 0038: %.2f")
+TEST_CASE("printf corpus 0097: %.1lf")
+{
+	for (int row = 0; row < 12; ++row) {
+		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "%.1lf", v0);
+		const int nb = mc2::fmt::to_buf(b, "{:.1f}", v0);
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "%.1lf", v0);
+		const int nd = mc2::fmt::to_buf(d, "{:.1f}", v0);
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0098: %.2f")
 {
 	for (int row = 0; row < 12; ++row) {
 		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
@@ -663,7 +1820,7 @@ TEST_CASE("printf corpus 0038: %.2f")
 	}
 }
 
-TEST_CASE("printf corpus 0039: %.3f")
+TEST_CASE("printf corpus 0099: %.3f")
 {
 	for (int row = 0; row < 12; ++row) {
 		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
@@ -679,7 +1836,7 @@ TEST_CASE("printf corpus 0039: %.3f")
 	}
 }
 
-TEST_CASE("printf corpus 0040: %.4f")
+TEST_CASE("printf corpus 0100: %.4f")
 {
 	for (int row = 0; row < 12; ++row) {
 		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
@@ -695,7 +1852,7 @@ TEST_CASE("printf corpus 0040: %.4f")
 	}
 }
 
-TEST_CASE("printf corpus 0041: %.8f")
+TEST_CASE("printf corpus 0101: %.8f")
 {
 	for (int row = 0; row < 12; ++row) {
 		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
@@ -711,7 +1868,24 @@ TEST_CASE("printf corpus 0041: %.8f")
 	}
 }
 
-TEST_CASE("printf corpus 0042: %04d.tga")
+TEST_CASE("printf corpus 0102: %03ld : %02ld")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		long v1 = static_cast<long>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "%03ld : %02ld", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "{:03d} : {:02d}", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "%03ld : %02ld", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "{:03d} : {:02d}", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0103: %04d.tga")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -727,7 +1901,7 @@ TEST_CASE("printf corpus 0042: %04d.tga")
 	}
 }
 
-TEST_CASE("printf corpus 0043: %08X")
+TEST_CASE("printf corpus 0104: %08X")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -743,7 +1917,7 @@ TEST_CASE("printf corpus 0043: %08X")
 	}
 }
 
-TEST_CASE("printf corpus 0044: %c")
+TEST_CASE("printf corpus 0105: %c")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeCHR[(row + 0) % std::size(kEdgeCHR)]);
@@ -759,7 +1933,7 @@ TEST_CASE("printf corpus 0044: %c")
 	}
 }
 
-TEST_CASE("printf corpus 0045: %d")
+TEST_CASE("printf corpus 0106: %d")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -775,7 +1949,24 @@ TEST_CASE("printf corpus 0045: %d")
 	}
 }
 
-TEST_CASE("printf corpus 0046: %d %d")
+TEST_CASE("printf corpus 0107: %d  %.0f%%")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		double v1 = static_cast<double>(kEdgeDBL[(row + 1) % std::size(kEdgeDBL)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "%d  %.0f%%", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "{:d}  {:.0f}%", mc2::fmt::as_i32(v0), v1);
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "%d  %.0f%%", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "{:d}  {:.0f}%", mc2::fmt::as_i32(v0), v1);
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0108: %d %d")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -792,7 +1983,7 @@ TEST_CASE("printf corpus 0046: %d %d")
 	}
 }
 
-TEST_CASE("printf corpus 0047: %d,")
+TEST_CASE("printf corpus 0109: %d,")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -808,7 +1999,7 @@ TEST_CASE("printf corpus 0047: %d,")
 	}
 }
 
-TEST_CASE("printf corpus 0048: %f")
+TEST_CASE("printf corpus 0110: %f")
 {
 	for (int row = 0; row < 12; ++row) {
 		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
@@ -824,7 +2015,7 @@ TEST_CASE("printf corpus 0048: %f")
 	}
 }
 
-TEST_CASE("printf corpus 0049: %f %f")
+TEST_CASE("printf corpus 0111: %f %f")
 {
 	for (int row = 0; row < 12; ++row) {
 		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
@@ -841,7 +2032,7 @@ TEST_CASE("printf corpus 0049: %f %f")
 	}
 }
 
-TEST_CASE("printf corpus 0050: %f %f %f")
+TEST_CASE("printf corpus 0112: %f %f %f")
 {
 	for (int row = 0; row < 12; ++row) {
 		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
@@ -859,7 +2050,7 @@ TEST_CASE("printf corpus 0050: %f %f %f")
 	}
 }
 
-TEST_CASE("printf corpus 0051: %f %f %f %f")
+TEST_CASE("printf corpus 0113: %f %f %f %f")
 {
 	for (int row = 0; row < 12; ++row) {
 		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
@@ -878,7 +2069,7 @@ TEST_CASE("printf corpus 0051: %f %f %f %f")
 	}
 }
 
-TEST_CASE("printf corpus 0052: %f %f %f %f %f %f")
+TEST_CASE("printf corpus 0114: %f %f %f %f %f %f")
 {
 	for (int row = 0; row < 12; ++row) {
 		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
@@ -899,7 +2090,28 @@ TEST_CASE("printf corpus 0052: %f %f %f %f %f %f")
 	}
 }
 
-TEST_CASE("printf corpus 0053: %ld")
+TEST_CASE("printf corpus 0115: %f,%f,%f,%f,%f,%f\\n")
+{
+	for (int row = 0; row < 12; ++row) {
+		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
+		double v1 = static_cast<double>(kEdgeDBL[(row + 1) % std::size(kEdgeDBL)]);
+		double v2 = static_cast<double>(kEdgeDBL[(row + 2) % std::size(kEdgeDBL)]);
+		double v3 = static_cast<double>(kEdgeDBL[(row + 3) % std::size(kEdgeDBL)]);
+		double v4 = static_cast<double>(kEdgeDBL[(row + 4) % std::size(kEdgeDBL)]);
+		double v5 = static_cast<double>(kEdgeDBL[(row + 5) % std::size(kEdgeDBL)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "%f,%f,%f,%f,%f,%f\n", v0, v1, v2, v3, v4, v5);
+		const int nb = mc2::fmt::to_buf(b, "{:f},{:f},{:f},{:f},{:f},{:f}\n", v0, v1, v2, v3, v4, v5);
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "%f,%f,%f,%f,%f,%f\n", v0, v1, v2, v3, v4, v5);
+		const int nd = mc2::fmt::to_buf(d, "{:f},{:f},{:f},{:f},{:f},{:f}\n", v0, v1, v2, v3, v4, v5);
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0116: %ld")
 {
 	for (int row = 0; row < 12; ++row) {
 		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -915,7 +2127,178 @@ TEST_CASE("printf corpus 0053: %ld")
 	}
 }
 
-TEST_CASE("printf corpus 0054: %llu")
+TEST_CASE("printf corpus 0117: %ld ")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "%ld ", v0);
+		const int nb = mc2::fmt::to_buf(b, "{:d} ", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "%ld ", v0);
+		const int nd = mc2::fmt::to_buf(d, "{:d} ", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0118: %ld matched %s '%s' [maybe-null,nonnull-accessor]")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		const char* v1 = kStrNull[(row + 1) % std::size(kStrNull)];
+		const char* v2 = kStrNonNull[(row + 2) % std::size(kStrNonNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "%ld matched %s '%s'", v0, v1, v2);
+		const int nb = mc2::fmt::to_buf(b, "{:d} matched {} '{}'", mc2::fmt::as_i32(v0), mc2::fmt::safe(v1), v2);
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "%ld matched %s '%s'", v0, v1, v2);
+		const int nd = mc2::fmt::to_buf(d, "{:d} matched {} '{}'", mc2::fmt::as_i32(v0), mc2::fmt::safe(v1), v2);
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0119: %ld mover(s) of %ld")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		long v1 = static_cast<long>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "%ld mover(s) of %ld", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "{:d} mover(s) of {:d}", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "%ld mover(s) of %ld", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "{:d} mover(s) of {:d}", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0120: %ld object(s) (%ld turret(s)), %ld with animation data")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		long v1 = static_cast<long>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		long v2 = static_cast<long>(kEdgeI32[(row + 2) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "%ld object(s) (%ld turret(s)), %ld with animation data", v0, v1, v2);
+		const int nb = mc2::fmt::to_buf(b, "{:d} object(s) ({:d} turret(s)), {:d} with animation data", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "%ld object(s) (%ld turret(s)), %ld with animation data", v0, v1, v2);
+		const int nd = mc2::fmt::to_buf(d, "{:d} object(s) ({:d} turret(s)), {:d} with animation data", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0121: %ld selected")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "%ld selected", v0);
+		const int nb = mc2::fmt::to_buf(b, "{:d} selected", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "%ld selected", v0);
+		const int nd = mc2::fmt::to_buf(d, "{:d} selected", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0122: %ld unit(s) %s [nonnull-accessor]")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		const char* v1 = kStrNonNull[(row + 1) % std::size(kStrNonNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "%ld unit(s) %s", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "{:d} unit(s) {}", mc2::fmt::as_i32(v0), v1);
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "%ld unit(s) %s", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "{:d} unit(s) {}", mc2::fmt::as_i32(v0), v1);
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0123: %ld unit(s) -> (%.1f,%.1f) %s [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		double v1 = static_cast<double>(kEdgeDBL[(row + 1) % std::size(kEdgeDBL)]);
+		double v2 = static_cast<double>(kEdgeDBL[(row + 2) % std::size(kEdgeDBL)]);
+		const char* v3 = kStrNull[(row + 3) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "%ld unit(s) -> (%.1f,%.1f) %s", v0, v1, v2, v3);
+		const int nb = mc2::fmt::to_buf(b, "{:d} unit(s) -> ({:.1f},{:.1f}) {}", mc2::fmt::as_i32(v0), v1, v2, mc2::fmt::safe(v3));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "%ld unit(s) -> (%.1f,%.1f) %s", v0, v1, v2, v3);
+		const int nd = mc2::fmt::to_buf(d, "{:d} unit(s) -> ({:.1f},{:.1f}) {}", mc2::fmt::as_i32(v0), v1, v2, mc2::fmt::safe(v3));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0124: %ld unit(s) attacking %ld")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		long v1 = static_cast<long>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "%ld unit(s) attacking %ld", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "{:d} unit(s) attacking {:d}", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "%ld unit(s) attacking %ld", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "{:d} unit(s) attacking {:d}", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0125: %ld/")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "%ld/", v0);
+		const int nb = mc2::fmt::to_buf(b, "{:d}/", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "%ld/", v0);
+		const int nd = mc2::fmt::to_buf(d, "{:d}/", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0126: %ld/%ld")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		long v1 = static_cast<long>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "%ld/%ld", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "{:d}/{:d}", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "%ld/%ld", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "{:d}/{:d}", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0127: %llu")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned long long v0 = static_cast<unsigned long long>(kEdgeU64[(row + 0) % std::size(kEdgeU64)]);
@@ -931,7 +2314,7 @@ TEST_CASE("printf corpus 0054: %llu")
 	}
 }
 
-TEST_CASE("printf corpus 0055: %p")
+TEST_CASE("printf corpus 0128: %p")
 {
 	for (int row = 0; row < 12; ++row) {
 		void* v0 = kEdgePTR[(row + 0) % std::size(kEdgePTR)];
@@ -947,7 +2330,7 @@ TEST_CASE("printf corpus 0055: %p")
 	}
 }
 
-TEST_CASE("printf corpus 0056: %s [maybe-null]")
+TEST_CASE("printf corpus 0129: %s [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -963,7 +2346,7 @@ TEST_CASE("printf corpus 0056: %s [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0057: %s %d [maybe-null]")
+TEST_CASE("printf corpus 0130: %s %d [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -980,7 +2363,132 @@ TEST_CASE("printf corpus 0057: %s %d [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0058: %s (%ld)\\n [maybe-null]")
+TEST_CASE("printf corpus 0131: %s (%.2f)  cannot fire for unknown reason.\\n [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		double v1 = static_cast<double>(kEdgeDBL[(row + 1) % std::size(kEdgeDBL)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "%s (%.2f)  cannot fire for unknown reason.\n", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "{} ({:.2f})  cannot fire for unknown reason.\n", mc2::fmt::safe(v0), v1);
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "%s (%.2f)  cannot fire for unknown reason.\n", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "{} ({:.2f})  cannot fire for unknown reason.\n", mc2::fmt::safe(v0), v1);
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0132: %s (%.2f) has a destroyed target.\\n [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		double v1 = static_cast<double>(kEdgeDBL[(row + 1) % std::size(kEdgeDBL)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "%s (%.2f) has a destroyed target.\n", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "{} ({:.2f}) has a destroyed target.\n", mc2::fmt::safe(v0), v1);
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "%s (%.2f) has a destroyed target.\n", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "{} ({:.2f}) has a destroyed target.\n", mc2::fmt::safe(v0), v1);
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0133: %s (%.2f) has a disabled target.\\n [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		double v1 = static_cast<double>(kEdgeDBL[(row + 1) % std::size(kEdgeDBL)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "%s (%.2f) has a disabled target.\n", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "{} ({:.2f}) has a disabled target.\n", mc2::fmt::safe(v0), v1);
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "%s (%.2f) has a disabled target.\n", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "{} ({:.2f}) has a disabled target.\n", mc2::fmt::safe(v0), v1);
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0134: %s (%.2f) has no attack target.\\n [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		double v1 = static_cast<double>(kEdgeDBL[(row + 1) % std::size(kEdgeDBL)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "%s (%.2f) has no attack target.\n", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "{} ({:.2f}) has no attack target.\n", mc2::fmt::safe(v0), v1);
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "%s (%.2f) has no attack target.\n", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "{} ({:.2f}) has no attack target.\n", mc2::fmt::safe(v0), v1);
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0135: %s (%.2f) has no shot: %d !ready, %d !ammo, %d !inrange, %d !locked, % [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		double v1 = static_cast<double>(kEdgeDBL[(row + 1) % std::size(kEdgeDBL)]);
+		int v2 = static_cast<int>(kEdgeI32[(row + 2) % std::size(kEdgeI32)]);
+		int v3 = static_cast<int>(kEdgeI32[(row + 3) % std::size(kEdgeI32)]);
+		int v4 = static_cast<int>(kEdgeI32[(row + 4) % std::size(kEdgeI32)]);
+		int v5 = static_cast<int>(kEdgeI32[(row + 5) % std::size(kEdgeI32)]);
+		int v6 = static_cast<int>(kEdgeI32[(row + 6) % std::size(kEdgeI32)]);
+		int v7 = static_cast<int>(kEdgeI32[(row + 7) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "%s (%.2f) has no shot: %d !ready, %d !ammo, %d !inrange, %d !locked, %d !chance, %d hot\n", v0, v1, v2, v3, v4, v5, v6, v7);
+		const int nb = mc2::fmt::to_buf(b, "{} ({:.2f}) has no shot: {:d} !ready, {:d} !ammo, {:d} !inrange, {:d} !locked, {:d} !chance, {:d} hot\n", mc2::fmt::safe(v0), v1, mc2::fmt::as_i32(v2), mc2::fmt::as_i32(v3), mc2::fmt::as_i32(v4), mc2::fmt::as_i32(v5), mc2::fmt::as_i32(v6), mc2::fmt::as_i32(v7));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "%s (%.2f) has no shot: %d !ready, %d !ammo, %d !inrange, %d !locked, %d !chance, %d hot\n", v0, v1, v2, v3, v4, v5, v6, v7);
+		const int nd = mc2::fmt::to_buf(d, "{} ({:.2f}) has no shot: {:d} !ready, {:d} !ammo, {:d} !inrange, {:d} !locked, {:d} !chance, {:d} hot\n", mc2::fmt::safe(v0), v1, mc2::fmt::as_i32(v2), mc2::fmt::as_i32(v3), mc2::fmt::as_i32(v4), mc2::fmt::as_i32(v5), mc2::fmt::as_i32(v6), mc2::fmt::as_i32(v7));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0136: %s (%.2f) has no target.\\n [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		double v1 = static_cast<double>(kEdgeDBL[(row + 1) % std::size(kEdgeDBL)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "%s (%.2f) has no target.\n", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "{} ({:.2f}) has no target.\n", mc2::fmt::safe(v0), v1);
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "%s (%.2f) has no target.\n", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "{} ({:.2f}) has no target.\n", mc2::fmt::safe(v0), v1);
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0137: %s (%.2f) out of range.\\n [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		double v1 = static_cast<double>(kEdgeDBL[(row + 1) % std::size(kEdgeDBL)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "%s (%.2f) out of range.\n", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "{} ({:.2f}) out of range.\n", mc2::fmt::safe(v0), v1);
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "%s (%.2f) out of range.\n", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "{} ({:.2f}) out of range.\n", mc2::fmt::safe(v0), v1);
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0138: %s (%ld)\\n [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -997,7 +2505,101 @@ TEST_CASE("printf corpus 0058: %s (%ld)\\n [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0059: %s \\r\\n [maybe-null]")
+TEST_CASE("printf corpus 0139: %s (%s %02d) [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		const char* v1 = kStrNull[(row + 1) % std::size(kStrNull)];
+		int v2 = static_cast<int>(kEdgeI32[(row + 2) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "%s (%s %02d)", v0, v1, v2);
+		const int nb = mc2::fmt::to_buf(b, "{} ({} {:02d})", mc2::fmt::safe(v0), mc2::fmt::safe(v1), mc2::fmt::as_i32(v2));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "%s (%s %02d)", v0, v1, v2);
+		const int nd = mc2::fmt::to_buf(d, "{} ({} {:02d})", mc2::fmt::safe(v0), mc2::fmt::safe(v1), mc2::fmt::as_i32(v2));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0140: %s (result=%lu); channel goes dead once logistics takes over [nonnull-accessor]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNonNull[(row + 0) % std::size(kStrNonNull)];
+		unsigned long v1 = static_cast<unsigned long>(kEdgeU32[(row + 1) % std::size(kEdgeU32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "%s (result=%lu); channel goes dead once logistics takes over", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "{} (result={:d}); channel goes dead once logistics takes over", v0, mc2::fmt::as_u32(v1));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "%s (result=%lu); channel goes dead once logistics takes over", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "{} (result={:d}); channel goes dead once logistics takes over", v0, mc2::fmt::as_u32(v1));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0141: %s -> fraction=%.3f sunPitch=%.1f isNight=%d nightFactor=%.2f (full su [nonnull-accessor]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNonNull[(row + 0) % std::size(kStrNonNull)];
+		double v1 = static_cast<double>(kEdgeDBL[(row + 1) % std::size(kEdgeDBL)]);
+		double v2 = static_cast<double>(kEdgeDBL[(row + 2) % std::size(kEdgeDBL)]);
+		int v3 = static_cast<int>(kEdgeI32[(row + 3) % std::size(kEdgeI32)]);
+		double v4 = static_cast<double>(kEdgeDBL[(row + 4) % std::size(kEdgeDBL)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "%s -> fraction=%.3f sunPitch=%.1f isNight=%d nightFactor=%.2f (full sun+ambient+sky+fog recompute)", v0, v1, v2, v3, v4);
+		const int nb = mc2::fmt::to_buf(b, "{} -> fraction={:.3f} sunPitch={:.1f} isNight={:d} nightFactor={:.2f} (full sun+ambient+sky+fog recompute)", v0, v1, v2, mc2::fmt::as_i32(v3), v4);
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "%s -> fraction=%.3f sunPitch=%.1f isNight=%d nightFactor=%.2f (full sun+ambient+sky+fog recompute)", v0, v1, v2, v3, v4);
+		const int nd = mc2::fmt::to_buf(d, "{} -> fraction={:.3f} sunPitch={:.1f} isNight={:d} nightFactor={:.2f} (full sun+ambient+sky+fog recompute)", v0, v1, v2, mc2::fmt::as_i32(v3), v4);
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0142: %s AR:%.3f(%02d) [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		double v1 = static_cast<double>(kEdgeDBL[(row + 1) % std::size(kEdgeDBL)]);
+		int v2 = static_cast<int>(kEdgeI32[(row + 2) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "%s AR:%.3f(%02d)", v0, v1, v2);
+		const int nb = mc2::fmt::to_buf(b, "{} AR:{:.3f}({:02d})", mc2::fmt::safe(v0), v1, mc2::fmt::as_i32(v2));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "%s AR:%.3f(%02d)", v0, v1, v2);
+		const int nd = mc2::fmt::to_buf(d, "{} AR:{:.3f}({:02d})", mc2::fmt::safe(v0), v1, mc2::fmt::as_i32(v2));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0143: %s IS:%3.1f(%02d) AR:%3.1f(%02d) %s [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		double v1 = static_cast<double>(kEdgeDBL[(row + 1) % std::size(kEdgeDBL)]);
+		int v2 = static_cast<int>(kEdgeI32[(row + 2) % std::size(kEdgeI32)]);
+		double v3 = static_cast<double>(kEdgeDBL[(row + 3) % std::size(kEdgeDBL)]);
+		int v4 = static_cast<int>(kEdgeI32[(row + 4) % std::size(kEdgeI32)]);
+		const char* v5 = kStrNull[(row + 5) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "%s IS:%3.1f(%02d) AR:%3.1f(%02d) %s", v0, v1, v2, v3, v4, v5);
+		const int nb = mc2::fmt::to_buf(b, "{} IS:{:3.1f}({:02d}) AR:{:3.1f}({:02d}) {}", mc2::fmt::safe(v0), v1, mc2::fmt::as_i32(v2), v3, mc2::fmt::as_i32(v4), mc2::fmt::safe(v5));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "%s IS:%3.1f(%02d) AR:%3.1f(%02d) %s", v0, v1, v2, v3, v4, v5);
+		const int nd = mc2::fmt::to_buf(d, "{} IS:{:3.1f}({:02d}) AR:{:3.1f}({:02d}) {}", mc2::fmt::safe(v0), v1, mc2::fmt::as_i32(v2), v3, mc2::fmt::as_i32(v4), mc2::fmt::safe(v5));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0144: %s \\r\\n [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -1013,7 +2615,43 @@ TEST_CASE("printf corpus 0059: %s \\r\\n [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0060: %s required but draw buffer is GL_NONE [maybe-null]")
+TEST_CASE("printf corpus 0145: %s feed=%s gathered=%d atOrigin=%ld [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		const char* v1 = kStrNull[(row + 1) % std::size(kStrNull)];
+		int v2 = static_cast<int>(kEdgeI32[(row + 2) % std::size(kEdgeI32)]);
+		long v3 = static_cast<long>(kEdgeI32[(row + 3) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "%s feed=%s gathered=%d atOrigin=%ld", v0, v1, v2, v3);
+		const int nb = mc2::fmt::to_buf(b, "{} feed={} gathered={:d} atOrigin={:d}", mc2::fmt::safe(v0), mc2::fmt::safe(v1), mc2::fmt::as_i32(v2), mc2::fmt::as_i32(v3));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "%s feed=%s gathered=%d atOrigin=%ld", v0, v1, v2, v3);
+		const int nd = mc2::fmt::to_buf(d, "{} feed={} gathered={:d} atOrigin={:d}", mc2::fmt::safe(v0), mc2::fmt::safe(v1), mc2::fmt::as_i32(v2), mc2::fmt::as_i32(v3));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0146: %s recipe=%d [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "%s recipe=%d", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "{} recipe={:d}", mc2::fmt::safe(v0), mc2::fmt::as_i32(v1));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "%s recipe=%d", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "{} recipe={:d}", mc2::fmt::safe(v0), mc2::fmt::as_i32(v1));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0147: %s required but draw buffer is GL_NONE [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -1029,7 +2667,7 @@ TEST_CASE("printf corpus 0060: %s required but draw buffer is GL_NONE [maybe-nul
 	}
 }
 
-TEST_CASE("printf corpus 0061: %s% 5d [maybe-null]")
+TEST_CASE("printf corpus 0148: %s% 5d [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -1046,7 +2684,7 @@ TEST_CASE("printf corpus 0061: %s% 5d [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0062: %s% 5d: [maybe-null]")
+TEST_CASE("printf corpus 0149: %s% 5d: [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -1063,7 +2701,7 @@ TEST_CASE("printf corpus 0062: %s% 5d: [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0063: %s%04d [maybe-null]")
+TEST_CASE("printf corpus 0150: %s%04d [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -1080,7 +2718,24 @@ TEST_CASE("printf corpus 0063: %s%04d [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0064: %s%s [maybe-null]")
+TEST_CASE("printf corpus 0151: %s%ld [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		long v1 = static_cast<long>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "%s%ld", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "{}{:d}", mc2::fmt::safe(v0), mc2::fmt::as_i32(v1));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "%s%ld", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "{}{:d}", mc2::fmt::safe(v0), mc2::fmt::as_i32(v1));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0152: %s%s [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -1097,7 +2752,25 @@ TEST_CASE("printf corpus 0064: %s%s [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0065: %s%s%s%s [maybe-null]")
+TEST_CASE("printf corpus 0153: %s%s%s [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		const char* v1 = kStrNull[(row + 1) % std::size(kStrNull)];
+		const char* v2 = kStrNull[(row + 2) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "%s%s%s", v0, v1, v2);
+		const int nb = mc2::fmt::to_buf(b, "{}{}{}", mc2::fmt::safe(v0), mc2::fmt::safe(v1), mc2::fmt::safe(v2));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "%s%s%s", v0, v1, v2);
+		const int nd = mc2::fmt::to_buf(d, "{}{}{}", mc2::fmt::safe(v0), mc2::fmt::safe(v1), mc2::fmt::safe(v2));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0154: %s%s%s%s [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -1116,7 +2789,7 @@ TEST_CASE("printf corpus 0065: %s%s%s%s [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0066: %s%s%s_albedo.ktx2 [maybe-null]")
+TEST_CASE("printf corpus 0155: %s%s%s_albedo.ktx2 [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -1134,7 +2807,127 @@ TEST_CASE("printf corpus 0066: %s%s%s_albedo.ktx2 [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0067: %s(%d): %s:  [maybe-null]")
+TEST_CASE("printf corpus 0156: %s%s.wav [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		const char* v1 = kStrNull[(row + 1) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "%s%s.wav", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "{}{}.wav", mc2::fmt::safe(v0), mc2::fmt::safe(v1));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "%s%s.wav", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "{}{}.wav", mc2::fmt::safe(v0), mc2::fmt::safe(v1));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0157: %s%s/%s/unit.fit [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		const char* v1 = kStrNull[(row + 1) % std::size(kStrNull)];
+		const char* v2 = kStrNull[(row + 2) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "%s%s/%s/unit.fit", v0, v1, v2);
+		const int nb = mc2::fmt::to_buf(b, "{}{}/{}/unit.fit", mc2::fmt::safe(v0), mc2::fmt::safe(v1), mc2::fmt::safe(v2));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "%s%s/%s/unit.fit", v0, v1, v2);
+		const int nd = mc2::fmt::to_buf(d, "{}{}/{}/unit.fit", mc2::fmt::safe(v0), mc2::fmt::safe(v1), mc2::fmt::safe(v2));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0158: %s%s/chassisdef.fit [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		const char* v1 = kStrNull[(row + 1) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "%s%s/chassisdef.fit", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "{}{}/chassisdef.fit", mc2::fmt::safe(v0), mc2::fmt::safe(v1));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "%s%s/chassisdef.fit", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "{}{}/chassisdef.fit", mc2::fmt::safe(v0), mc2::fmt::safe(v1));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0159: %s%s/equipmentdef.fit [maybe-null,nonnull-accessor]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		const char* v1 = kStrNonNull[(row + 1) % std::size(kStrNonNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "%s%s/equipmentdef.fit", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "{}{}/equipmentdef.fit", mc2::fmt::safe(v0), v1);
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "%s%s/equipmentdef.fit", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "{}{}/equipmentdef.fit", mc2::fmt::safe(v0), v1);
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0160: %s%s_ai.fit [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		const char* v1 = kStrNull[(row + 1) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "%s%s_ai.fit", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "{}{}_ai.fit", mc2::fmt::safe(v0), mc2::fmt::safe(v1));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "%s%s_ai.fit", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "{}{}_ai.fit", mc2::fmt::safe(v0), mc2::fmt::safe(v1));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0161: %s's (%.2f) vehicle cannot fire now. [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		double v1 = static_cast<double>(kEdgeDBL[(row + 1) % std::size(kEdgeDBL)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "%s's (%.2f) vehicle cannot fire now.", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "{}'s ({:.2f}) vehicle cannot fire now.", mc2::fmt::safe(v0), v1);
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "%s's (%.2f) vehicle cannot fire now.", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "{}'s ({:.2f}) vehicle cannot fire now.", mc2::fmt::safe(v0), v1);
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0162: %s's (%.2f) vehicle cannot fire now.\\n [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		double v1 = static_cast<double>(kEdgeDBL[(row + 1) % std::size(kEdgeDBL)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "%s's (%.2f) vehicle cannot fire now.\n", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "{}'s ({:.2f}) vehicle cannot fire now.\n", mc2::fmt::safe(v0), v1);
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "%s's (%.2f) vehicle cannot fire now.\n", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "{}'s ({:.2f}) vehicle cannot fire now.\n", mc2::fmt::safe(v0), v1);
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0163: %s(%d): %s:  [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -1152,7 +2945,23 @@ TEST_CASE("printf corpus 0067: %s(%d): %s:  [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0068: %s.burnin [maybe-null]")
+TEST_CASE("printf corpus 0164: %s*.fit [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "%s*.fit", v0);
+		const int nb = mc2::fmt::to_buf(b, "{}*.fit", mc2::fmt::safe(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "%s*.fit", v0);
+		const int nd = mc2::fmt::to_buf(d, "{}*.fit", mc2::fmt::safe(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0165: %s.burnin [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -1168,7 +2977,7 @@ TEST_CASE("printf corpus 0068: %s.burnin [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0069: %s.csv [maybe-null]")
+TEST_CASE("printf corpus 0166: %s.csv [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -1184,7 +2993,7 @@ TEST_CASE("printf corpus 0069: %s.csv [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0070: %s.detail [maybe-null]")
+TEST_CASE("printf corpus 0167: %s.detail [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -1200,7 +3009,7 @@ TEST_CASE("printf corpus 0070: %s.detail [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0071: %s.height [maybe-null]")
+TEST_CASE("printf corpus 0168: %s.height [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -1216,7 +3025,7 @@ TEST_CASE("printf corpus 0071: %s.height [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0072: %s.normalmap [maybe-null]")
+TEST_CASE("printf corpus 0169: %s.normalmap [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -1232,7 +3041,7 @@ TEST_CASE("printf corpus 0072: %s.normalmap [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0073: %s.rgba [maybe-null]")
+TEST_CASE("printf corpus 0170: %s.rgba [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -1248,7 +3057,7 @@ TEST_CASE("printf corpus 0073: %s.rgba [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0074: %s.water [maybe-null]")
+TEST_CASE("printf corpus 0171: %s.water [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -1264,7 +3073,7 @@ TEST_CASE("printf corpus 0074: %s.water [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0075: %s.water%04d [maybe-null]")
+TEST_CASE("printf corpus 0172: %s.water%04d [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -1281,7 +3090,7 @@ TEST_CASE("printf corpus 0075: %s.water%04d [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0076: %s/%s [maybe-null]")
+TEST_CASE("printf corpus 0173: %s/%s [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -1298,7 +3107,7 @@ TEST_CASE("printf corpus 0076: %s/%s [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0077: %s:  [maybe-null]")
+TEST_CASE("printf corpus 0174: %s:  [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -1314,7 +3123,7 @@ TEST_CASE("printf corpus 0077: %s:  [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0078: %s:%d: %s:  [maybe-null]")
+TEST_CASE("printf corpus 0175: %s:%d: %s:  [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -1332,7 +3141,7 @@ TEST_CASE("printf corpus 0078: %s:%d: %s:  [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0079: %s:%s, line %d [maybe-null]")
+TEST_CASE("printf corpus 0176: %s:%s, line %d [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -1350,7 +3159,41 @@ TEST_CASE("printf corpus 0079: %s:%s, line %d [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0080: %s[%d] [maybe-null]")
+TEST_CASE("printf corpus 0177: %sCell%d [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "%sCell%d", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "{}Cell{:d}", mc2::fmt::safe(v0), mc2::fmt::as_i32(v1));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "%sCell%d", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "{}Cell{:d}", mc2::fmt::safe(v0), mc2::fmt::as_i32(v1));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0178: %sStatic%d [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "%sStatic%d", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "{}Static{:d}", mc2::fmt::safe(v0), mc2::fmt::as_i32(v1));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "%sStatic%d", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "{}Static{:d}", mc2::fmt::safe(v0), mc2::fmt::as_i32(v1));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0179: %s[%d] [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -1367,7 +3210,7 @@ TEST_CASE("printf corpus 0080: %s[%d] [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0081: %s\\\\crash.txt [maybe-null]")
+TEST_CASE("printf corpus 0180: %s\\\\crash.txt [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -1383,7 +3226,7 @@ TEST_CASE("printf corpus 0081: %s\\\\crash.txt [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0082: %s\\\\crashes [maybe-null]")
+TEST_CASE("printf corpus 0181: %s\\\\crashes [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -1399,7 +3242,7 @@ TEST_CASE("printf corpus 0082: %s\\\\crashes [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0083: %s\\\\last_trace.txt [maybe-null]")
+TEST_CASE("printf corpus 0182: %s\\\\last_trace.txt [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -1415,7 +3258,7 @@ TEST_CASE("printf corpus 0083: %s\\\\last_trace.txt [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0084: %s\\\\minidump.dmp [maybe-null]")
+TEST_CASE("printf corpus 0183: %s\\\\minidump.dmp [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -1431,7 +3274,7 @@ TEST_CASE("printf corpus 0084: %s\\\\minidump.dmp [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0085: %s\\\\profile.json [maybe-null]")
+TEST_CASE("printf corpus 0184: %s\\\\profile.json [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -1447,7 +3290,55 @@ TEST_CASE("printf corpus 0085: %s\\\\profile.json [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0086: %s_%p [maybe-null]")
+TEST_CASE("printf corpus 0185: %s\\n [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "%s\n", v0);
+		const int nb = mc2::fmt::to_buf(b, "{}\n", mc2::fmt::safe(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "%s\n", v0);
+		const int nd = mc2::fmt::to_buf(d, "{}\n", mc2::fmt::safe(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0186: %s\\n      {\\'id\\':%d,\\'team\\':%d,\\'vd\\':\\'%s\\',\\'pos\\':[%.4 [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		int v2 = static_cast<int>(kEdgeI32[(row + 2) % std::size(kEdgeI32)]);
+		const char* v3 = kStrNull[(row + 3) % std::size(kStrNull)];
+		double v4 = static_cast<double>(kEdgeDBL[(row + 4) % std::size(kEdgeDBL)]);
+		double v5 = static_cast<double>(kEdgeDBL[(row + 5) % std::size(kEdgeDBL)]);
+		double v6 = static_cast<double>(kEdgeDBL[(row + 6) % std::size(kEdgeDBL)]);
+		double v7 = static_cast<double>(kEdgeDBL[(row + 7) % std::size(kEdgeDBL)]);
+		double v8 = static_cast<double>(kEdgeDBL[(row + 8) % std::size(kEdgeDBL)]);
+		int v9 = static_cast<int>(kEdgeI32[(row + 9) % std::size(kEdgeI32)]);
+		int v10 = static_cast<int>(kEdgeI32[(row + 10) % std::size(kEdgeI32)]);
+		int v11 = static_cast<int>(kEdgeI32[(row + 11) % std::size(kEdgeI32)]);
+		int v12 = static_cast<int>(kEdgeI32[(row + 12) % std::size(kEdgeI32)]);
+		int v13 = static_cast<int>(kEdgeI32[(row + 13) % std::size(kEdgeI32)]);
+		int v14 = static_cast<int>(kEdgeI32[(row + 14) % std::size(kEdgeI32)]);
+		int v15 = static_cast<int>(kEdgeI32[(row + 15) % std::size(kEdgeI32)]);
+		int v16 = static_cast<int>(kEdgeI32[(row + 16) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "%s\n      {\"id\":%d,\"team\":%d,\"vd\":\"%s\",\"pos\":[%.4f,%.4f,%.4f],\"rot\":%.4f,\"hp\":%.5f,\"gesture\":%d,\"anim\":%d,\"status\":%d,\"target\":%d,\"brain\":%d,\"mstate\":%d,\"pstep\":%d,\"psteps\":%d}", v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15, v16);
+		const int nb = mc2::fmt::to_buf(b, "{}\n      {{\"id\":{:d},\"team\":{:d},\"vd\":\"{}\",\"pos\":[{:.4f},{:.4f},{:.4f}],\"rot\":{:.4f},\"hp\":{:.5f},\"gesture\":{:d},\"anim\":{:d},\"status\":{:d},\"target\":{:d},\"brain\":{:d},\"mstate\":{:d},\"pstep\":{:d},\"psteps\":{:d}}}", mc2::fmt::safe(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2), mc2::fmt::safe(v3), v4, v5, v6, v7, v8, mc2::fmt::as_i32(v9), mc2::fmt::as_i32(v10), mc2::fmt::as_i32(v11), mc2::fmt::as_i32(v12), mc2::fmt::as_i32(v13), mc2::fmt::as_i32(v14), mc2::fmt::as_i32(v15), mc2::fmt::as_i32(v16));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "%s\n      {\"id\":%d,\"team\":%d,\"vd\":\"%s\",\"pos\":[%.4f,%.4f,%.4f],\"rot\":%.4f,\"hp\":%.5f,\"gesture\":%d,\"anim\":%d,\"status\":%d,\"target\":%d,\"brain\":%d,\"mstate\":%d,\"pstep\":%d,\"psteps\":%d}", v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15, v16);
+		const int nd = mc2::fmt::to_buf(d, "{}\n      {{\"id\":{:d},\"team\":{:d},\"vd\":\"{}\",\"pos\":[{:.4f},{:.4f},{:.4f}],\"rot\":{:.4f},\"hp\":{:.5f},\"gesture\":{:d},\"anim\":{:d},\"status\":{:d},\"target\":{:d},\"brain\":{:d},\"mstate\":{:d},\"pstep\":{:d},\"psteps\":{:d}}}", mc2::fmt::safe(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2), mc2::fmt::safe(v3), v4, v5, v6, v7, v8, mc2::fmt::as_i32(v9), mc2::fmt::as_i32(v10), mc2::fmt::as_i32(v11), mc2::fmt::as_i32(v12), mc2::fmt::as_i32(v13), mc2::fmt::as_i32(v14), mc2::fmt::as_i32(v15), mc2::fmt::as_i32(v16));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0187: %s_%p [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -1464,7 +3355,7 @@ TEST_CASE("printf corpus 0086: %s_%p [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0087: %s_%s [nonnull-accessor]")
+TEST_CASE("printf corpus 0188: %s_%s [nonnull-accessor]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNonNull[(row + 0) % std::size(kStrNonNull)];
@@ -1481,7 +3372,7 @@ TEST_CASE("printf corpus 0087: %s_%s [nonnull-accessor]")
 	}
 }
 
-TEST_CASE("printf corpus 0088: %s_frame%u [nonnull-accessor]")
+TEST_CASE("printf corpus 0189: %s_frame%u [nonnull-accessor]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNonNull[(row + 0) % std::size(kStrNonNull)];
@@ -1498,7 +3389,7 @@ TEST_CASE("printf corpus 0088: %s_frame%u [nonnull-accessor]")
 	}
 }
 
-TEST_CASE("printf corpus 0089: %sa [maybe-null]")
+TEST_CASE("printf corpus 0190: %sa [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -1514,7 +3405,7 @@ TEST_CASE("printf corpus 0089: %sa [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0090: %smc2-launcher.exe [maybe-null]")
+TEST_CASE("printf corpus 0191: %smc2-launcher.exe [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -1530,7 +3421,7 @@ TEST_CASE("printf corpus 0090: %smc2-launcher.exe [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0091: %u")
+TEST_CASE("printf corpus 0192: %u")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -1546,7 +3437,7 @@ TEST_CASE("printf corpus 0091: %u")
 	}
 }
 
-TEST_CASE("printf corpus 0092: %u,%u,%u,%d,%s,0x%02X\\n [maybe-null]")
+TEST_CASE("printf corpus 0193: %u,%u,%u,%d,%s,0x%02X\\n [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -1567,7 +3458,7 @@ TEST_CASE("printf corpus 0092: %u,%u,%u,%d,%s,0x%02X\\n [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0093: %x")
+TEST_CASE("printf corpus 0194: %x")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -1583,7 +3474,7 @@ TEST_CASE("printf corpus 0093: %x")
 	}
 }
 
-TEST_CASE("printf corpus 0094: (%d,%d)")
+TEST_CASE("printf corpus 0195: (%d,%d)")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -1600,7 +3491,7 @@ TEST_CASE("printf corpus 0094: (%d,%d)")
 	}
 }
 
-TEST_CASE("printf corpus 0095: (absent)")
+TEST_CASE("printf corpus 0196: (absent)")
 {
 	for (int row = 0; row < 12; ++row) {
 		char a[160], b[160], c[8], d[8];
@@ -1615,7 +3506,7 @@ TEST_CASE("printf corpus 0095: (absent)")
 	}
 }
 
-TEST_CASE("printf corpus 0096: (unknown)")
+TEST_CASE("printf corpus 0197: (unknown)")
 {
 	for (int row = 0; row < 12; ++row) {
 		char a[160], b[160], c[8], d[8];
@@ -1630,7 +3521,7 @@ TEST_CASE("printf corpus 0096: (unknown)")
 	}
 }
 
-TEST_CASE("printf corpus 0097: (unnamed)")
+TEST_CASE("printf corpus 0198: (unnamed)")
 {
 	for (int row = 0; row < 12; ++row) {
 		char a[160], b[160], c[8], d[8];
@@ -1645,7 +3536,7 @@ TEST_CASE("printf corpus 0097: (unnamed)")
 	}
 }
 
-TEST_CASE("printf corpus 0098: *")
+TEST_CASE("printf corpus 0199: *")
 {
 	for (int row = 0; row < 12; ++row) {
 		char a[160], b[160], c[8], d[8];
@@ -1660,7 +3551,7 @@ TEST_CASE("printf corpus 0098: *")
 	}
 }
 
-TEST_CASE("printf corpus 0099: *NODE_NAME \\'%s\\' [maybe-null]")
+TEST_CASE("printf corpus 0200: *NODE_NAME \\'%s\\' [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -1676,7 +3567,61 @@ TEST_CASE("printf corpus 0099: *NODE_NAME \\'%s\\' [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0100: ---------------------------")
+TEST_CASE("printf corpus 0201: +%.1lf")
+{
+	for (int row = 0; row < 12; ++row) {
+		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "+%.1lf", v0);
+		const int nb = mc2::fmt::to_buf(b, "+{:.1f}", v0);
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "+%.1lf", v0);
+		const int nd = mc2::fmt::to_buf(d, "+{:.1f}", v0);
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0202: , MULTIPLAY: %s-(%d)CLIENT {%d,%d} [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		int v2 = static_cast<int>(kEdgeI32[(row + 2) % std::size(kEdgeI32)]);
+		int v3 = static_cast<int>(kEdgeI32[(row + 3) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, ", MULTIPLAY: %s-(%d)CLIENT {%d,%d}", v0, v1, v2, v3);
+		const int nb = mc2::fmt::to_buf(b, ", MULTIPLAY: {}-({:d})CLIENT {{{:d},{:d}}}", mc2::fmt::safe(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2), mc2::fmt::as_i32(v3));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, ", MULTIPLAY: %s-(%d)CLIENT {%d,%d}", v0, v1, v2, v3);
+		const int nd = mc2::fmt::to_buf(d, ", MULTIPLAY: {}-({:d})CLIENT {{{:d},{:d}}}", mc2::fmt::safe(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2), mc2::fmt::as_i32(v3));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0203: , MULTIPLAY: %s-(%d)SERVER {%d,%d} [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		int v2 = static_cast<int>(kEdgeI32[(row + 2) % std::size(kEdgeI32)]);
+		int v3 = static_cast<int>(kEdgeI32[(row + 3) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, ", MULTIPLAY: %s-(%d)SERVER {%d,%d}", v0, v1, v2, v3);
+		const int nb = mc2::fmt::to_buf(b, ", MULTIPLAY: {}-({:d})SERVER {{{:d},{:d}}}", mc2::fmt::safe(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2), mc2::fmt::as_i32(v3));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, ", MULTIPLAY: %s-(%d)SERVER {%d,%d}", v0, v1, v2, v3);
+		const int nd = mc2::fmt::to_buf(d, ", MULTIPLAY: {}-({:d})SERVER {{{:d},{:d}}}", mc2::fmt::safe(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2), mc2::fmt::as_i32(v3));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0204: ---------------------------")
 {
 	for (int row = 0; row < 12; ++row) {
 		char a[160], b[160], c[8], d[8];
@@ -1691,7 +3636,7 @@ TEST_CASE("printf corpus 0100: ---------------------------")
 	}
 }
 
-TEST_CASE("printf corpus 0101: .")
+TEST_CASE("printf corpus 0205: .")
 {
 	for (int row = 0; row < 12; ++row) {
 		char a[160], b[160], c[8], d[8];
@@ -1706,7 +3651,7 @@ TEST_CASE("printf corpus 0101: .")
 	}
 }
 
-TEST_CASE("printf corpus 0102: ./dump/%s.glsl [nonnull-accessor]")
+TEST_CASE("printf corpus 0206: ./dump/%s.glsl [nonnull-accessor]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNonNull[(row + 0) % std::size(kStrNonNull)];
@@ -1722,7 +3667,7 @@ TEST_CASE("printf corpus 0102: ./dump/%s.glsl [nonnull-accessor]")
 	}
 }
 
-TEST_CASE("printf corpus 0103: 0x%02X")
+TEST_CASE("printf corpus 0207: 0x%02X")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -1738,7 +3683,7 @@ TEST_CASE("printf corpus 0103: 0x%02X")
 	}
 }
 
-TEST_CASE("printf corpus 0104: 0x%x")
+TEST_CASE("printf corpus 0208: 0x%x")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -1754,7 +3699,22 @@ TEST_CASE("printf corpus 0104: 0x%x")
 	}
 }
 
-TEST_CASE("printf corpus 0105: <missing-string:%s:%s> [maybe-null]")
+TEST_CASE("printf corpus 0209: :")
+{
+	for (int row = 0; row < 12; ++row) {
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, ":");
+		const int nb = mc2::fmt::to_buf(b, ":");
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, ":");
+		const int nd = mc2::fmt::to_buf(d, ":");
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0210: <missing-string:%s:%s> [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -1771,7 +3731,7 @@ TEST_CASE("printf corpus 0105: <missing-string:%s:%s> [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0106: ?(%u)")
+TEST_CASE("printf corpus 0211: ?(%u)")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -1787,7 +3747,7 @@ TEST_CASE("printf corpus 0106: ?(%u)")
 	}
 }
 
-TEST_CASE("printf corpus 0107: ABL ASSERT: [%d] %s [maybe-null]")
+TEST_CASE("printf corpus 0212: ABL ASSERT: [%d] %s [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -1804,7 +3764,7 @@ TEST_CASE("printf corpus 0107: ABL ASSERT: [%d] %s [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0108: ABL FATAL: [%d] %s [maybe-null]")
+TEST_CASE("printf corpus 0213: ABL FATAL: [%d] %s [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -1821,7 +3781,7 @@ TEST_CASE("printf corpus 0108: ABL FATAL: [%d] %s [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0109: ABL RUNTIME ERROR %s [line %d] - (type %d) %s\\n [maybe-null]")
+TEST_CASE("printf corpus 0214: ABL RUNTIME ERROR %s [line %d] - (type %d) %s\\n [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -1840,7 +3800,7 @@ TEST_CASE("printf corpus 0109: ABL RUNTIME ERROR %s [line %d] - (type %d) %s\\n 
 	}
 }
 
-TEST_CASE("printf corpus 0110: ASSERT:  [%d] \\'%s\\' [maybe-null]")
+TEST_CASE("printf corpus 0215: ASSERT:  [%d] \\'%s\\' [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -1857,7 +3817,39 @@ TEST_CASE("printf corpus 0110: ASSERT:  [%d] \\'%s\\' [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0111: Animation:%d")
+TEST_CASE("printf corpus 0216: AnimObject%d")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "AnimObject%d", v0);
+		const int nb = mc2::fmt::to_buf(b, "AnimObject{:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "AnimObject%d", v0);
+		const int nd = mc2::fmt::to_buf(d, "AnimObject{:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0217: Animation%ld")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "Animation%ld", v0);
+		const int nb = mc2::fmt::to_buf(b, "Animation{:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "Animation%ld", v0);
+		const int nd = mc2::fmt::to_buf(d, "Animation{:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0218: Animation:%d")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -1873,7 +3865,477 @@ TEST_CASE("printf corpus 0111: Animation:%d")
 	}
 }
 
-TEST_CASE("printf corpus 0112: Cursor%ld")
+TEST_CASE("printf corpus 0219: AttributeMeter%ld")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "AttributeMeter%ld", v0);
+		const int nb = mc2::fmt::to_buf(b, "AttributeMeter{:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "AttributeMeter%ld", v0);
+		const int nd = mc2::fmt::to_buf(d, "AttributeMeter{:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0220: BooleanString%d")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "BooleanString%d", v0);
+		const int nb = mc2::fmt::to_buf(b, "BooleanString{:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "BooleanString%d", v0);
+		const int nd = mc2::fmt::to_buf(d, "BooleanString{:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0221: BooleanValue%d")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "BooleanValue%d", v0);
+		const int nb = mc2::fmt::to_buf(b, "BooleanValue{:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "BooleanValue%d", v0);
+		const int nd = mc2::fmt::to_buf(d, "BooleanValue{:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0222: BringInReinforcement: null behicleFile (%d)")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "BringInReinforcement: null behicleFile (%d)", v0);
+		const int nb = mc2::fmt::to_buf(b, "BringInReinforcement: null behicleFile ({:d})", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "BringInReinforcement: null behicleFile (%d)", v0);
+		const int nd = mc2::fmt::to_buf(d, "BringInReinforcement: null behicleFile ({:d})", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0223: C-Bills = %d")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "C-Bills = %d", v0);
+		const int nb = mc2::fmt::to_buf(b, "C-Bills = {:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "C-Bills = %d", v0);
+		const int nd = mc2::fmt::to_buf(d, "C-Bills = {:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0224: CURRENT ORDERS: Attack Object %d")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "CURRENT ORDERS: Attack Object %d", v0);
+		const int nb = mc2::fmt::to_buf(b, "CURRENT ORDERS: Attack Object {:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "CURRENT ORDERS: Attack Object %d", v0);
+		const int nd = mc2::fmt::to_buf(d, "CURRENT ORDERS: Attack Object {:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0225: CURRENT ORDERS: Eject")
+{
+	for (int row = 0; row < 12; ++row) {
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "CURRENT ORDERS: Eject");
+		const int nb = mc2::fmt::to_buf(b, "CURRENT ORDERS: Eject");
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "CURRENT ORDERS: Eject");
+		const int nd = mc2::fmt::to_buf(d, "CURRENT ORDERS: Eject");
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0226: CURRENT ORDERS: Escort")
+{
+	for (int row = 0; row < 12; ++row) {
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "CURRENT ORDERS: Escort");
+		const int nb = mc2::fmt::to_buf(b, "CURRENT ORDERS: Escort");
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "CURRENT ORDERS: Escort");
+		const int nd = mc2::fmt::to_buf(d, "CURRENT ORDERS: Escort");
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0227: CURRENT ORDERS: Follow")
+{
+	for (int row = 0; row < 12; ++row) {
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "CURRENT ORDERS: Follow");
+		const int nb = mc2::fmt::to_buf(b, "CURRENT ORDERS: Follow");
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "CURRENT ORDERS: Follow");
+		const int nd = mc2::fmt::to_buf(d, "CURRENT ORDERS: Follow");
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0228: CURRENT ORDERS: Guard")
+{
+	for (int row = 0; row < 12; ++row) {
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "CURRENT ORDERS: Guard");
+		const int nb = mc2::fmt::to_buf(b, "CURRENT ORDERS: Guard");
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "CURRENT ORDERS: Guard");
+		const int nd = mc2::fmt::to_buf(d, "CURRENT ORDERS: Guard");
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0229: CURRENT ORDERS: Hold Fire")
+{
+	for (int row = 0; row < 12; ++row) {
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "CURRENT ORDERS: Hold Fire");
+		const int nb = mc2::fmt::to_buf(b, "CURRENT ORDERS: Hold Fire");
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "CURRENT ORDERS: Hold Fire");
+		const int nd = mc2::fmt::to_buf(d, "CURRENT ORDERS: Hold Fire");
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0230: CURRENT ORDERS: Jump To Object %d")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "CURRENT ORDERS: Jump To Object %d", v0);
+		const int nb = mc2::fmt::to_buf(b, "CURRENT ORDERS: Jump To Object {:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "CURRENT ORDERS: Jump To Object %d", v0);
+		const int nd = mc2::fmt::to_buf(d, "CURRENT ORDERS: Jump To Object {:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0231: CURRENT ORDERS: Jump to (%.2f, %.2f, %.2f)")
+{
+	for (int row = 0; row < 12; ++row) {
+		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
+		double v1 = static_cast<double>(kEdgeDBL[(row + 1) % std::size(kEdgeDBL)]);
+		double v2 = static_cast<double>(kEdgeDBL[(row + 2) % std::size(kEdgeDBL)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "CURRENT ORDERS: Jump to (%.2f, %.2f, %.2f)", v0, v1, v2);
+		const int nb = mc2::fmt::to_buf(b, "CURRENT ORDERS: Jump to ({:.2f}, {:.2f}, {:.2f})", v0, v1, v2);
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "CURRENT ORDERS: Jump to (%.2f, %.2f, %.2f)", v0, v1, v2);
+		const int nd = mc2::fmt::to_buf(d, "CURRENT ORDERS: Jump to ({:.2f}, {:.2f}, {:.2f})", v0, v1, v2);
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0232: CURRENT ORDERS: Move To Object %d")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "CURRENT ORDERS: Move To Object %d", v0);
+		const int nb = mc2::fmt::to_buf(b, "CURRENT ORDERS: Move To Object {:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "CURRENT ORDERS: Move To Object %d", v0);
+		const int nd = mc2::fmt::to_buf(d, "CURRENT ORDERS: Move To Object {:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0233: CURRENT ORDERS: Move to (%.2f, %.2f, %.2f)")
+{
+	for (int row = 0; row < 12; ++row) {
+		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
+		double v1 = static_cast<double>(kEdgeDBL[(row + 1) % std::size(kEdgeDBL)]);
+		double v2 = static_cast<double>(kEdgeDBL[(row + 2) % std::size(kEdgeDBL)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "CURRENT ORDERS: Move to (%.2f, %.2f, %.2f)", v0, v1, v2);
+		const int nb = mc2::fmt::to_buf(b, "CURRENT ORDERS: Move to ({:.2f}, {:.2f}, {:.2f})", v0, v1, v2);
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "CURRENT ORDERS: Move to (%.2f, %.2f, %.2f)", v0, v1, v2);
+		const int nd = mc2::fmt::to_buf(d, "CURRENT ORDERS: Move to ({:.2f}, {:.2f}, {:.2f})", v0, v1, v2);
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0234: CURRENT ORDERS: None")
+{
+	for (int row = 0; row < 12; ++row) {
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "CURRENT ORDERS: None");
+		const int nb = mc2::fmt::to_buf(b, "CURRENT ORDERS: None");
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "CURRENT ORDERS: None");
+		const int nd = mc2::fmt::to_buf(d, "CURRENT ORDERS: None");
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0235: CURRENT ORDERS: Patrol Path")
+{
+	for (int row = 0; row < 12; ++row) {
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "CURRENT ORDERS: Patrol Path");
+		const int nb = mc2::fmt::to_buf(b, "CURRENT ORDERS: Patrol Path");
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "CURRENT ORDERS: Patrol Path");
+		const int nd = mc2::fmt::to_buf(d, "CURRENT ORDERS: Patrol Path");
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0236: CURRENT ORDERS: Power Down")
+{
+	for (int row = 0; row < 12; ++row) {
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "CURRENT ORDERS: Power Down");
+		const int nb = mc2::fmt::to_buf(b, "CURRENT ORDERS: Power Down");
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "CURRENT ORDERS: Power Down");
+		const int nd = mc2::fmt::to_buf(d, "CURRENT ORDERS: Power Down");
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0237: CURRENT ORDERS: Power Up")
+{
+	for (int row = 0; row < 12; ++row) {
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "CURRENT ORDERS: Power Up");
+		const int nb = mc2::fmt::to_buf(b, "CURRENT ORDERS: Power Up");
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "CURRENT ORDERS: Power Up");
+		const int nd = mc2::fmt::to_buf(d, "CURRENT ORDERS: Power Up");
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0238: CURRENT ORDERS: Stop")
+{
+	for (int row = 0; row < 12; ++row) {
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "CURRENT ORDERS: Stop");
+		const int nb = mc2::fmt::to_buf(b, "CURRENT ORDERS: Stop");
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "CURRENT ORDERS: Stop");
+		const int nd = mc2::fmt::to_buf(d, "CURRENT ORDERS: Stop");
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0239: CURRENT ORDERS: Traverse Path")
+{
+	for (int row = 0; row < 12; ++row) {
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "CURRENT ORDERS: Traverse Path");
+		const int nb = mc2::fmt::to_buf(b, "CURRENT ORDERS: Traverse Path");
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "CURRENT ORDERS: Traverse Path");
+		const int nd = mc2::fmt::to_buf(d, "CURRENT ORDERS: Traverse Path");
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0240: CURRENT ORDERS: Unknown Tac Order Type")
+{
+	for (int row = 0; row < 12; ++row) {
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "CURRENT ORDERS: Unknown Tac Order Type");
+		const int nb = mc2::fmt::to_buf(b, "CURRENT ORDERS: Unknown Tac Order Type");
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "CURRENT ORDERS: Unknown Tac Order Type");
+		const int nd = mc2::fmt::to_buf(d, "CURRENT ORDERS: Unknown Tac Order Type");
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0241: CURRENT ORDERS: Wait")
+{
+	for (int row = 0; row < 12; ++row) {
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "CURRENT ORDERS: Wait");
+		const int nb = mc2::fmt::to_buf(b, "CURRENT ORDERS: Wait");
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "CURRENT ORDERS: Wait");
+		const int nd = mc2::fmt::to_buf(d, "CURRENT ORDERS: Wait");
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0242: CURRENT ORDERS: Waypoints Done")
+{
+	for (int row = 0; row < 12; ++row) {
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "CURRENT ORDERS: Waypoints Done");
+		const int nb = mc2::fmt::to_buf(b, "CURRENT ORDERS: Waypoints Done");
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "CURRENT ORDERS: Waypoints Done");
+		const int nd = mc2::fmt::to_buf(d, "CURRENT ORDERS: Waypoints Done");
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0243: CURRENT ORDERS: Withdraw")
+{
+	for (int row = 0; row < 12; ++row) {
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "CURRENT ORDERS: Withdraw");
+		const int nb = mc2::fmt::to_buf(b, "CURRENT ORDERS: Withdraw");
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "CURRENT ORDERS: Withdraw");
+		const int nd = mc2::fmt::to_buf(d, "CURRENT ORDERS: Withdraw");
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0244: Commander%dGroup:%d")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "Commander%dGroup:%d", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "Commander{:d}Group:{:d}", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "Commander%dGroup:%d", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "Commander{:d}Group:{:d}", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0245: Component%ld")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "Component%ld", v0);
+		const int nb = mc2::fmt::to_buf(b, "Component{:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "Component%ld", v0);
+		const int nd = mc2::fmt::to_buf(d, "Component{:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0246: Component:%d")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "Component:%d", v0);
+		const int nb = mc2::fmt::to_buf(b, "Component:{:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "Component:%d", v0);
+		const int nd = mc2::fmt::to_buf(d, "Component:{:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0247: Couldn't add component with id %ld")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "Couldn't add component with id %ld", v0);
+		const int nb = mc2::fmt::to_buf(b, "Couldn't add component with id {:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "Couldn't add component with id %ld", v0);
+		const int nd = mc2::fmt::to_buf(d, "Couldn't add component with id {:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0248: Couldn't open file %s [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "Couldn't open file %s", v0);
+		const int nb = mc2::fmt::to_buf(b, "Couldn't open file {}", mc2::fmt::safe(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "Couldn't open file %s", v0);
+		const int nd = mc2::fmt::to_buf(d, "Couldn't open file {}", mc2::fmt::safe(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0249: Cursor%ld")
 {
 	for (int row = 0; row < 12; ++row) {
 		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -1889,7 +4351,7 @@ TEST_CASE("printf corpus 0112: Cursor%ld")
 	}
 }
 
-TEST_CASE("printf corpus 0113: Distance%d")
+TEST_CASE("printf corpus 0250: Distance%d")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -1905,7 +4367,7 @@ TEST_CASE("printf corpus 0113: Distance%d")
 	}
 }
 
-TEST_CASE("printf corpus 0114: FATAL:  [%d] \\'%s\\' [maybe-null]")
+TEST_CASE("printf corpus 0251: FATAL:  [%d] \\'%s\\' [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -1922,7 +4384,7 @@ TEST_CASE("printf corpus 0114: FATAL:  [%d] \\'%s\\' [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0115: FETCH: (%d) %s [%d] - %s = %s\\n [maybe-null]")
+TEST_CASE("printf corpus 0252: FETCH: (%d) %s [%d] - %s = %s\\n [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -1942,7 +4404,7 @@ TEST_CASE("printf corpus 0115: FETCH: (%d) %s [%d] - %s = %s\\n [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0116: FETCH: (%d) %s [%d] - %s[#] = %s\\n [maybe-null]")
+TEST_CASE("printf corpus 0253: FETCH: (%d) %s [%d] - %s[#] = %s\\n [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -1962,7 +4424,7 @@ TEST_CASE("printf corpus 0116: FETCH: (%d) %s [%d] - %s[#] = %s\\n [maybe-null]"
 	}
 }
 
-TEST_CASE("printf corpus 0117: FILE %s [maybe-null]")
+TEST_CASE("printf corpus 0254: FILE %s [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -1978,7 +4440,7 @@ TEST_CASE("printf corpus 0117: FILE %s [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0118: FILE : unavailable")
+TEST_CASE("printf corpus 0255: FILE : unavailable")
 {
 	for (int row = 0; row < 12; ++row) {
 		char a[160], b[160], c[8], d[8];
@@ -1993,7 +4455,39 @@ TEST_CASE("printf corpus 0118: FILE : unavailable")
 	}
 }
 
-TEST_CASE("printf corpus 0119: FileName%d")
+TEST_CASE("printf corpus 0256: File%d")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "File%d", v0);
+		const int nb = mc2::fmt::to_buf(b, "File{:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "File%d", v0);
+		const int nd = mc2::fmt::to_buf(d, "File{:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0257: File%ld")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "File%ld", v0);
+		const int nb = mc2::fmt::to_buf(b, "File{:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "File%ld", v0);
+		const int nd = mc2::fmt::to_buf(d, "File{:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0258: FileName%d")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -2009,7 +4503,7 @@ TEST_CASE("printf corpus 0119: FileName%d")
 	}
 }
 
-TEST_CASE("printf corpus 0120: FootNode_%02d")
+TEST_CASE("printf corpus 0259: FootNode_%02d")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -2025,7 +4519,7 @@ TEST_CASE("printf corpus 0120: FootNode_%02d")
 	}
 }
 
-TEST_CASE("printf corpus 0121: Frag Level: %f       PercentFree: %f")
+TEST_CASE("printf corpus 0260: Frag Level: %f       PercentFree: %f")
 {
 	for (int row = 0; row < 12; ++row) {
 		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
@@ -2042,7 +4536,7 @@ TEST_CASE("printf corpus 0121: Frag Level: %f       PercentFree: %f")
 	}
 }
 
-TEST_CASE("printf corpus 0122: G")
+TEST_CASE("printf corpus 0261: G")
 {
 	for (int row = 0; row < 12; ++row) {
 		char a[160], b[160], c[8], d[8];
@@ -2057,7 +4551,7 @@ TEST_CASE("printf corpus 0122: G")
 	}
 }
 
-TEST_CASE("printf corpus 0123: GL_ERROR: 0x%04X")
+TEST_CASE("printf corpus 0262: GL_ERROR: 0x%04X")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -2073,7 +4567,26 @@ TEST_CASE("printf corpus 0123: GL_ERROR: 0x%04X")
 	}
 }
 
-TEST_CASE("printf corpus 0124: Gesture: %d, Frame: %f, SGoal: %d, OGoal: %d, Rot: %f")
+TEST_CASE("printf corpus 0263: GVehicle.handleWeaponHit: [%s]%d for %.2f at %d [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		double v2 = static_cast<double>(kEdgeDBL[(row + 2) % std::size(kEdgeDBL)]);
+		int v3 = static_cast<int>(kEdgeI32[(row + 3) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "GVehicle.handleWeaponHit: [%s]%d for %.2f at %d", v0, v1, v2, v3);
+		const int nb = mc2::fmt::to_buf(b, "GVehicle.handleWeaponHit: [{}]{:d} for {:.2f} at {:d}", mc2::fmt::safe(v0), mc2::fmt::as_i32(v1), v2, mc2::fmt::as_i32(v3));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "GVehicle.handleWeaponHit: [%s]%d for %.2f at %d", v0, v1, v2, v3);
+		const int nd = mc2::fmt::to_buf(d, "GVehicle.handleWeaponHit: [{}]{:d} for {:.2f} at {:d}", mc2::fmt::safe(v0), mc2::fmt::as_i32(v1), v2, mc2::fmt::as_i32(v3));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0264: Gesture: %d, Frame: %f, SGoal: %d, OGoal: %d, Rot: %f")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -2093,7 +4606,7 @@ TEST_CASE("printf corpus 0124: Gesture: %d, Frame: %f, SGoal: %d, OGoal: %d, Rot
 	}
 }
 
-TEST_CASE("printf corpus 0125: Goal = (%d, %d)\\n")
+TEST_CASE("printf corpus 0265: Goal = (%d, %d)\\n")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -2110,7 +4623,40 @@ TEST_CASE("printf corpus 0125: Goal = (%d, %d)\\n")
 	}
 }
 
-TEST_CASE("printf corpus 0126: Handle: 0x%08X  idx %u / gen %u\\n")
+TEST_CASE("printf corpus 0266: Group%ld")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "Group%ld", v0);
+		const int nb = mc2::fmt::to_buf(b, "Group{:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "Group%ld", v0);
+		const int nd = mc2::fmt::to_buf(d, "Group{:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0267: Group%ldMission%ld")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		long v1 = static_cast<long>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "Group%ldMission%ld", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "Group{:d}Mission{:d}", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "Group%ldMission%ld", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "Group{:d}Mission{:d}", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0268: Handle: 0x%08X  idx %u / gen %u\\n")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -2128,7 +4674,7 @@ TEST_CASE("printf corpus 0126: Handle: 0x%08X  idx %u / gen %u\\n")
 	}
 }
 
-TEST_CASE("printf corpus 0127: Heap %d - CoreLeft")
+TEST_CASE("printf corpus 0269: Heap %d - CoreLeft")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -2144,7 +4690,7 @@ TEST_CASE("printf corpus 0127: Heap %d - CoreLeft")
 	}
 }
 
-TEST_CASE("printf corpus 0128: Heap %d - HeapSize")
+TEST_CASE("printf corpus 0270: Heap %d - HeapSize")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -2160,7 +4706,7 @@ TEST_CASE("printf corpus 0128: Heap %d - HeapSize")
 	}
 }
 
-TEST_CASE("printf corpus 0129: Heap %d - TotalLeft")
+TEST_CASE("printf corpus 0271: Heap %d - TotalLeft")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -2176,7 +4722,175 @@ TEST_CASE("printf corpus 0129: Heap %d - TotalLeft")
 	}
 }
 
-TEST_CASE("printf corpus 0130: Kind: %s\\n [maybe-null]")
+TEST_CASE("printf corpus 0272: ID:%d")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "ID:%d", v0);
+		const int nb = mc2::fmt::to_buf(b, "ID:{:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "ID:%d", v0);
+		const int nd = mc2::fmt::to_buf(d, "ID:{:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0273: INFO = %s(%c%c) %d(W%d) [%d, %d] (%.4f, %.4f, %.4f) #Pth=%d(%d) OBJ =  [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		int v1 = static_cast<int>(kEdgeCHR[(row + 1) % std::size(kEdgeCHR)]);
+		int v2 = static_cast<int>(kEdgeCHR[(row + 2) % std::size(kEdgeCHR)]);
+		int v3 = static_cast<int>(kEdgeI32[(row + 3) % std::size(kEdgeI32)]);
+		int v4 = static_cast<int>(kEdgeI32[(row + 4) % std::size(kEdgeI32)]);
+		int v5 = static_cast<int>(kEdgeI32[(row + 5) % std::size(kEdgeI32)]);
+		int v6 = static_cast<int>(kEdgeI32[(row + 6) % std::size(kEdgeI32)]);
+		double v7 = static_cast<double>(kEdgeDBL[(row + 7) % std::size(kEdgeDBL)]);
+		double v8 = static_cast<double>(kEdgeDBL[(row + 8) % std::size(kEdgeDBL)]);
+		double v9 = static_cast<double>(kEdgeDBL[(row + 9) % std::size(kEdgeDBL)]);
+		int v10 = static_cast<int>(kEdgeI32[(row + 10) % std::size(kEdgeI32)]);
+		int v11 = static_cast<int>(kEdgeI32[(row + 11) % std::size(kEdgeI32)]);
+		const char* v12 = kStrNull[(row + 12) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "INFO = %s(%c%c) %d(W%d) [%d, %d] (%.4f, %.4f, %.4f) #Pth=%d(%d) OBJ = %s\n", v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12);
+		const int nb = mc2::fmt::to_buf(b, "INFO = {}({:c}{:c}) {:d}(W{:d}) [{:d}, {:d}] ({:.4f}, {:.4f}, {:.4f}) #Pth={:d}({:d}) OBJ = {}\n", mc2::fmt::safe(v0), mc2::fmt::as_char(v1), mc2::fmt::as_char(v2), mc2::fmt::as_i32(v3), mc2::fmt::as_i32(v4), mc2::fmt::as_i32(v5), mc2::fmt::as_i32(v6), v7, v8, v9, mc2::fmt::as_i32(v10), mc2::fmt::as_i32(v11), mc2::fmt::safe(v12));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "INFO = %s(%c%c) %d(W%d) [%d, %d] (%.4f, %.4f, %.4f) #Pth=%d(%d) OBJ = %s\n", v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12);
+		const int nd = mc2::fmt::to_buf(d, "INFO = {}({:c}{:c}) {:d}(W{:d}) [{:d}, {:d}] ({:.4f}, {:.4f}, {:.4f}) #Pth={:d}({:d}) OBJ = {}\n", mc2::fmt::safe(v0), mc2::fmt::as_char(v1), mc2::fmt::as_char(v2), mc2::fmt::as_i32(v3), mc2::fmt::as_i32(v4), mc2::fmt::as_i32(v5), mc2::fmt::as_i32(v6), v7, v8, v9, mc2::fmt::as_i32(v10), mc2::fmt::as_i32(v11), mc2::fmt::safe(v12));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0274: INFO = %s(%c%c) %d(W%d) [%d, %d] (%.4f, %.4f, %.4f) #Pth=%d(%d)\\n [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		int v1 = static_cast<int>(kEdgeCHR[(row + 1) % std::size(kEdgeCHR)]);
+		int v2 = static_cast<int>(kEdgeCHR[(row + 2) % std::size(kEdgeCHR)]);
+		int v3 = static_cast<int>(kEdgeI32[(row + 3) % std::size(kEdgeI32)]);
+		int v4 = static_cast<int>(kEdgeI32[(row + 4) % std::size(kEdgeI32)]);
+		int v5 = static_cast<int>(kEdgeI32[(row + 5) % std::size(kEdgeI32)]);
+		int v6 = static_cast<int>(kEdgeI32[(row + 6) % std::size(kEdgeI32)]);
+		double v7 = static_cast<double>(kEdgeDBL[(row + 7) % std::size(kEdgeDBL)]);
+		double v8 = static_cast<double>(kEdgeDBL[(row + 8) % std::size(kEdgeDBL)]);
+		double v9 = static_cast<double>(kEdgeDBL[(row + 9) % std::size(kEdgeDBL)]);
+		int v10 = static_cast<int>(kEdgeI32[(row + 10) % std::size(kEdgeI32)]);
+		int v11 = static_cast<int>(kEdgeI32[(row + 11) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "INFO = %s(%c%c) %d(W%d) [%d, %d] (%.4f, %.4f, %.4f) #Pth=%d(%d)\n", v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11);
+		const int nb = mc2::fmt::to_buf(b, "INFO = {}({:c}{:c}) {:d}(W{:d}) [{:d}, {:d}] ({:.4f}, {:.4f}, {:.4f}) #Pth={:d}({:d})\n", mc2::fmt::safe(v0), mc2::fmt::as_char(v1), mc2::fmt::as_char(v2), mc2::fmt::as_i32(v3), mc2::fmt::as_i32(v4), mc2::fmt::as_i32(v5), mc2::fmt::as_i32(v6), v7, v8, v9, mc2::fmt::as_i32(v10), mc2::fmt::as_i32(v11));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "INFO = %s(%c%c) %d(W%d) [%d, %d] (%.4f, %.4f, %.4f) #Pth=%d(%d)\n", v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11);
+		const int nd = mc2::fmt::to_buf(d, "INFO = {}({:c}{:c}) {:d}(W{:d}) [{:d}, {:d}] ({:.4f}, {:.4f}, {:.4f}) #Pth={:d}({:d})\n", mc2::fmt::safe(v0), mc2::fmt::as_char(v1), mc2::fmt::as_char(v2), mc2::fmt::as_i32(v3), mc2::fmt::as_i32(v4), mc2::fmt::as_i32(v5), mc2::fmt::as_i32(v6), v7, v8, v9, mc2::fmt::as_i32(v10), mc2::fmt::as_i32(v11));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0275: IPAddress%ld")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "IPAddress%ld", v0);
+		const int nb = mc2::fmt::to_buf(b, "IPAddress{:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "IPAddress%ld", v0);
+		const int nd = mc2::fmt::to_buf(d, "IPAddress{:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0276: Inventory%ld")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "Inventory%ld", v0);
+		const int nb = mc2::fmt::to_buf(b, "Inventory{:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "Inventory%ld", v0);
+		const int nd = mc2::fmt::to_buf(d, "Inventory{:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0277: Item:%d")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "Item:%d", v0);
+		const int nb = mc2::fmt::to_buf(b, "Item:{:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "Item:%d", v0);
+		const int nd = mc2::fmt::to_buf(d, "Item:{:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0278: Item:%ld")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "Item:%ld", v0);
+		const int nb = mc2::fmt::to_buf(b, "Item:{:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "Item:%ld", v0);
+		const int nd = mc2::fmt::to_buf(d, "Item:{:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0279: Jumping to [%d, %d]\\n")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "Jumping to [%d, %d]\n", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "Jumping to [{:d}, {:d}]\n", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "Jumping to [%d, %d]\n", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "Jumping to [{:d}, {:d}]\n", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0280: Key%ld")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "Key%ld", v0);
+		const int nb = mc2::fmt::to_buf(b, "Key{:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "Key%ld", v0);
+		const int nd = mc2::fmt::to_buf(d, "Key{:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0281: Kind: %s\\n [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -2192,7 +4906,7 @@ TEST_CASE("printf corpus 0130: Kind: %s\\n [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0131: LINE %d")
+TEST_CASE("printf corpus 0282: LINE %d")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -2208,7 +4922,22 @@ TEST_CASE("printf corpus 0131: LINE %d")
 	}
 }
 
-TEST_CASE("printf corpus 0132: ListNo: %d     Heap: %d     Type: %d     Made by: %08ld")
+TEST_CASE("printf corpus 0283: LR:")
+{
+	for (int row = 0; row < 12; ++row) {
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "LR:");
+		const int nb = mc2::fmt::to_buf(b, "LR:");
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "LR:");
+		const int nd = mc2::fmt::to_buf(d, "LR:");
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0284: ListNo: %d     Heap: %d     Type: %d     Made by: %08ld")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -2227,7 +4956,7 @@ TEST_CASE("printf corpus 0132: ListNo: %d     Heap: %d     Type: %d     Made by:
 	}
 }
 
-TEST_CASE("printf corpus 0133: ListNo: %d  is Freed")
+TEST_CASE("printf corpus 0285: ListNo: %d  is Freed")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -2243,7 +4972,7 @@ TEST_CASE("printf corpus 0133: ListNo: %d  is Freed")
 	}
 }
 
-TEST_CASE("printf corpus 0134: MODULE %s [maybe-null]")
+TEST_CASE("printf corpus 0286: MODULE %s [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -2259,7 +4988,7 @@ TEST_CASE("printf corpus 0134: MODULE %s [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0135: Made in Function : %s [maybe-null]")
+TEST_CASE("printf corpus 0287: Made in Function : %s [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -2275,7 +5004,7 @@ TEST_CASE("printf corpus 0135: Made in Function : %s [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0136: MatIdx: %u  albedo: %u  normal: %u  mrTex: %u  emit: %u\\nflags: 0x%08")
+TEST_CASE("printf corpus 0288: MatIdx: %u  albedo: %u  normal: %u  mrTex: %u  emit: %u\\nflags: 0x%08")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -2299,7 +5028,7 @@ TEST_CASE("printf corpus 0136: MatIdx: %u  albedo: %u  normal: %u  mrTex: %u  em
 	}
 }
 
-TEST_CASE("printf corpus 0137: MaterialGpu  idx %u  albedo %u  layer %d  %s [maybe-null]")
+TEST_CASE("printf corpus 0289: MaterialGpu  idx %u  albedo %u  layer %d  %s [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -2318,7 +5047,39 @@ TEST_CASE("printf corpus 0137: MaterialGpu  idx %u  albedo %u  layer %d  %s [may
 	}
 }
 
-TEST_CASE("printf corpus 0138: Mesh: 0x%08X  Mat: 0x%08X  LOD: %u  Pipeline: %u\\nDrawPacket: %u  Pat")
+TEST_CASE("printf corpus 0290: Mech%ld")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "Mech%ld", v0);
+		const int nb = mc2::fmt::to_buf(b, "Mech{:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "Mech%ld", v0);
+		const int nd = mc2::fmt::to_buf(d, "Mech{:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0291: Medal%ld")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "Medal%ld", v0);
+		const int nb = mc2::fmt::to_buf(b, "Medal{:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "Medal%ld", v0);
+		const int nd = mc2::fmt::to_buf(d, "Medal{:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0292: Mesh: 0x%08X  Mat: 0x%08X  LOD: %u  Pipeline: %u\\nDrawPacket: %u  Pat")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -2340,7 +5101,23 @@ TEST_CASE("printf corpus 0138: Mesh: 0x%08X  Mat: 0x%08X  LOD: %u  Pipeline: %u\
 	}
 }
 
-TEST_CASE("printf corpus 0139: MoveMap.calcEscapePath: Cannot find movemap node [%d, %d, %d, %d] for ")
+TEST_CASE("printf corpus 0293: Mission%ld")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "Mission%ld", v0);
+		const int nb = mc2::fmt::to_buf(b, "Mission{:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "Mission%ld", v0);
+		const int nd = mc2::fmt::to_buf(d, "Mission{:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0294: MoveMap.calcEscapePath: Cannot find movemap node [%d, %d, %d, %d] for ")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -2359,7 +5136,7 @@ TEST_CASE("printf corpus 0139: MoveMap.calcEscapePath: Cannot find movemap node 
 	}
 }
 
-TEST_CASE("printf corpus 0140: MoveMap.calcPath: Cannot find movemap node [%d, %d, %d, %d] for change")
+TEST_CASE("printf corpus 0295: MoveMap.calcPath: Cannot find movemap node [%d, %d, %d, %d] for change")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -2378,7 +5155,7 @@ TEST_CASE("printf corpus 0140: MoveMap.calcPath: Cannot find movemap node [%d, %
 	}
 }
 
-TEST_CASE("printf corpus 0141: MoveMap.calcPath: Cannot find movemap node [%d, %d] for change\\n")
+TEST_CASE("printf corpus 0296: MoveMap.calcPath: Cannot find movemap node [%d, %d] for change\\n")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -2395,7 +5172,109 @@ TEST_CASE("printf corpus 0141: MoveMap.calcPath: Cannot find movemap node [%d, %
 	}
 }
 
-TEST_CASE("printf corpus 0142: NONE")
+TEST_CASE("printf corpus 0297: MoveState Cur/Goal = %s[%s] [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		const char* v1 = kStrNull[(row + 1) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "MoveState Cur/Goal = %s[%s]", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "MoveState Cur/Goal = {}[{}]", mc2::fmt::safe(v0), mc2::fmt::safe(v1));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "MoveState Cur/Goal = %s[%s]", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "MoveState Cur/Goal = {}[{}]", mc2::fmt::safe(v0), mc2::fmt::safe(v1));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0298: Mover = %s (%d) [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "Mover = %s (%d)", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "Mover = {} ({:d})", mc2::fmt::safe(v0), mc2::fmt::as_i32(v1));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "Mover = %s (%d)", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "Mover = {} ({:d})", mc2::fmt::safe(v0), mc2::fmt::as_i32(v1));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0299: Mover = %s (%d)\\n [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "Mover = %s (%d)\n", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "Mover = {} ({:d})\n", mc2::fmt::safe(v0), mc2::fmt::as_i32(v1));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "Mover = %s (%d)\n", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "Mover = {} ({:d})\n", mc2::fmt::safe(v0), mc2::fmt::as_i32(v1));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0300: Mover Obj Cell Pos = [%d, %d]\\n")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "Mover Obj Cell Pos = [%d, %d]\n", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "Mover Obj Cell Pos = [{:d}, {:d}]\n", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "Mover Obj Cell Pos = [%d, %d]\n", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "Mover Obj Cell Pos = [{:d}, {:d}]\n", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0301: Mover World Pos = (%.4f, %.4f, %.4f)\\n")
+{
+	for (int row = 0; row < 12; ++row) {
+		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
+		double v1 = static_cast<double>(kEdgeDBL[(row + 1) % std::size(kEdgeDBL)]);
+		double v2 = static_cast<double>(kEdgeDBL[(row + 2) % std::size(kEdgeDBL)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "Mover World Pos = (%.4f, %.4f, %.4f)\n", v0, v1, v2);
+		const int nb = mc2::fmt::to_buf(b, "Mover World Pos = ({:.4f}, {:.4f}, {:.4f})\n", v0, v1, v2);
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "Mover World Pos = (%.4f, %.4f, %.4f)\n", v0, v1, v2);
+		const int nd = mc2::fmt::to_buf(d, "Mover World Pos = ({:.4f}, {:.4f}, {:.4f})\n", v0, v1, v2);
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0302: Mover::handleTacticalOrder->Bad TacOrder Code (%d)")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "Mover::handleTacticalOrder->Bad TacOrder Code (%d)", v0);
+		const int nb = mc2::fmt::to_buf(b, "Mover::handleTacticalOrder->Bad TacOrder Code ({:d})", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "Mover::handleTacticalOrder->Bad TacOrder Code (%d)", v0);
+		const int nd = mc2::fmt::to_buf(d, "Mover::handleTacticalOrder->Bad TacOrder Code ({:d})", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0303: NONE")
 {
 	for (int row = 0; row < 12; ++row) {
 		char a[160], b[160], c[8], d[8];
@@ -2410,7 +5289,7 @@ TEST_CASE("printf corpus 0142: NONE")
 	}
 }
 
-TEST_CASE("printf corpus 0143: New Longest Path: %d steps (Max = %d)\\n\\n")
+TEST_CASE("printf corpus 0304: New Longest Path: %d steps (Max = %d)\\n\\n")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -2427,7 +5306,23 @@ TEST_CASE("printf corpus 0143: New Longest Path: %d steps (Max = %d)\\n\\n")
 	}
 }
 
-TEST_CASE("printf corpus 0144: OOB at cell (%d,%d): rect=(%d,%d,%d,%d) actual=%u")
+TEST_CASE("printf corpus 0305: No Building Appearance Named %s [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "No Building Appearance Named %s", v0);
+		const int nb = mc2::fmt::to_buf(b, "No Building Appearance Named {}", mc2::fmt::safe(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "No Building Appearance Named %s", v0);
+		const int nd = mc2::fmt::to_buf(d, "No Building Appearance Named {}", mc2::fmt::safe(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0306: OOB at cell (%d,%d): rect=(%d,%d,%d,%d) actual=%u")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -2449,7 +5344,7 @@ TEST_CASE("printf corpus 0144: OOB at cell (%d,%d): rect=(%d,%d,%d,%d) actual=%u
 	}
 }
 
-TEST_CASE("printf corpus 0145: ObjID raw: 0x%08X  valid: %s%s%s\\n [maybe-null]")
+TEST_CASE("printf corpus 0307: ObjID raw: 0x%08X  valid: %s%s%s\\n [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -2468,7 +5363,39 @@ TEST_CASE("printf corpus 0145: ObjID raw: 0x%08X  valid: %s%s%s\\n [maybe-null]"
 	}
 }
 
-TEST_CASE("printf corpus 0146: PRINT:  \\'%s\\' [maybe-null]")
+TEST_CASE("printf corpus 0308: ObjStatic%ld")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "ObjStatic%ld", v0);
+		const int nb = mc2::fmt::to_buf(b, "ObjStatic{:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "ObjStatic%ld", v0);
+		const int nd = mc2::fmt::to_buf(d, "ObjStatic{:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0309: OrangeAnimation%ld")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "OrangeAnimation%ld", v0);
+		const int nb = mc2::fmt::to_buf(b, "OrangeAnimation{:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "OrangeAnimation%ld", v0);
+		const int nd = mc2::fmt::to_buf(d, "OrangeAnimation{:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0310: PRINT:  \\'%s\\' [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -2484,7 +5411,23 @@ TEST_CASE("printf corpus 0146: PRINT:  \\'%s\\' [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0147: Path Too Long: %d steps (Max = %d) (please save longpath.dbg file:)")
+TEST_CASE("printf corpus 0311: Part%d")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "Part%d", v0);
+		const int nb = mc2::fmt::to_buf(b, "Part{:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "Part%d", v0);
+		const int nd = mc2::fmt::to_buf(d, "Part{:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0312: Path Too Long: %d steps (Max = %d) (please save longpath.dbg file:)")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -2501,7 +5444,106 @@ TEST_CASE("printf corpus 0147: Path Too Long: %d steps (Max = %d) (please save l
 	}
 }
 
-TEST_CASE("printf corpus 0148: RUNTIME ERROR:  [%d] %s [maybe-null]")
+TEST_CASE("printf corpus 0313: PauseStatic%ld")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "PauseStatic%ld", v0);
+		const int nb = mc2::fmt::to_buf(b, "PauseStatic{:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "PauseStatic%ld", v0);
+		const int nd = mc2::fmt::to_buf(d, "PauseStatic{:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0314: Pilot %s [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "Pilot %s", v0);
+		const int nb = mc2::fmt::to_buf(b, "Pilot {}", mc2::fmt::safe(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "Pilot %s", v0);
+		const int nd = mc2::fmt::to_buf(d, "Pilot {}", mc2::fmt::safe(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0315: Pilot%ld")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "Pilot%ld", v0);
+		const int nb = mc2::fmt::to_buf(b, "Pilot{:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "Pilot%ld", v0);
+		const int nd = mc2::fmt::to_buf(d, "Pilot{:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0316: Player %d (%s) score = %d, %d kills, %d losses [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		const char* v1 = kStrNull[(row + 1) % std::size(kStrNull)];
+		int v2 = static_cast<int>(kEdgeI32[(row + 2) % std::size(kEdgeI32)]);
+		int v3 = static_cast<int>(kEdgeI32[(row + 3) % std::size(kEdgeI32)]);
+		int v4 = static_cast<int>(kEdgeI32[(row + 4) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "Player %d (%s) score = %d, %d kills, %d losses", v0, v1, v2, v3, v4);
+		const int nb = mc2::fmt::to_buf(b, "Player {:d} ({}) score = {:d}, {:d} kills, {:d} losses", mc2::fmt::as_i32(v0), mc2::fmt::safe(v1), mc2::fmt::as_i32(v2), mc2::fmt::as_i32(v3), mc2::fmt::as_i32(v4));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "Player %d (%s) score = %d, %d kills, %d losses", v0, v1, v2, v3, v4);
+		const int nd = mc2::fmt::to_buf(d, "Player {:d} ({}) score = {:d}, {:d} kills, {:d} losses", mc2::fmt::as_i32(v0), mc2::fmt::safe(v1), mc2::fmt::as_i32(v2), mc2::fmt::as_i32(v3), mc2::fmt::as_i32(v4));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0317: PlayerName%ld")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "PlayerName%ld", v0);
+		const int nb = mc2::fmt::to_buf(b, "PlayerName{:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "PlayerName%ld", v0);
+		const int nd = mc2::fmt::to_buf(d, "PlayerName{:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0318: REQ =")
+{
+	for (int row = 0; row < 12; ++row) {
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "REQ =");
+		const int nb = mc2::fmt::to_buf(b, "REQ =");
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "REQ =");
+		const int nd = mc2::fmt::to_buf(d, "REQ =");
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0319: RUNTIME ERROR:  [%d] %s [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -2518,7 +5560,7 @@ TEST_CASE("printf corpus 0148: RUNTIME ERROR:  [%d] %s [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0149: RecipeIdx: %d  Shape: %s\\n [maybe-null]")
+TEST_CASE("printf corpus 0320: RecipeIdx: %d  Shape: %s\\n [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -2535,7 +5577,39 @@ TEST_CASE("printf corpus 0149: RecipeIdx: %d  Shape: %s\\n [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0150: S")
+TEST_CASE("printf corpus 0321: Rect%ld")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "Rect%ld", v0);
+		const int nb = mc2::fmt::to_buf(b, "Rect{:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "Rect%ld", v0);
+		const int nd = mc2::fmt::to_buf(d, "Rect{:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0322: ResultsStatic%ld")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "ResultsStatic%ld", v0);
+		const int nb = mc2::fmt::to_buf(b, "ResultsStatic{:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "ResultsStatic%ld", v0);
+		const int nd = mc2::fmt::to_buf(d, "ResultsStatic{:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0323: S")
 {
 	for (int row = 0; row < 12; ++row) {
 		char a[160], b[160], c[8], d[8];
@@ -2550,7 +5624,23 @@ TEST_CASE("printf corpus 0150: S")
 	}
 }
 
-TEST_CASE("printf corpus 0151: STORE: (%d) %s [%d] -> %s = %s\\n [maybe-null]")
+TEST_CASE("printf corpus 0324: SQUAD %d")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "SQUAD %d", v0);
+		const int nb = mc2::fmt::to_buf(b, "SQUAD {:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "SQUAD %d", v0);
+		const int nd = mc2::fmt::to_buf(d, "SQUAD {:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0325: STORE: (%d) %s [%d] -> %s = %s\\n [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -2570,7 +5660,7 @@ TEST_CASE("printf corpus 0151: STORE: (%d) %s [%d] -> %s = %s\\n [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0152: STORE: (%d) %s [%d] -> %s[#] = %s\\n [maybe-null]")
+TEST_CASE("printf corpus 0326: STORE: (%d) %s [%d] -> %s[#] = %s\\n [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -2590,7 +5680,7 @@ TEST_CASE("printf corpus 0152: STORE: (%d) %s [%d] -> %s[#] = %s\\n [maybe-null]
 	}
 }
 
-TEST_CASE("printf corpus 0153: SYNTAX ERROR %s [line %d] - (type %d) %s \\'%s\\'\\n [maybe-null]")
+TEST_CASE("printf corpus 0327: SYNTAX ERROR %s [line %d] - (type %d) %s \\'%s\\'\\n [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -2610,7 +5700,23 @@ TEST_CASE("printf corpus 0153: SYNTAX ERROR %s [line %d] - (type %d) %s \\'%s\\'
 	}
 }
 
-TEST_CASE("printf corpus 0154: Smoke_%02d")
+TEST_CASE("printf corpus 0328: Skill%ld")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "Skill%ld", v0);
+		const int nb = mc2::fmt::to_buf(b, "Skill{:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "Skill%ld", v0);
+		const int nd = mc2::fmt::to_buf(d, "Skill{:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0329: Smoke_%02d")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -2626,7 +5732,39 @@ TEST_CASE("printf corpus 0154: Smoke_%02d")
 	}
 }
 
-TEST_CASE("printf corpus 0155: Start = (%d, %d)\\n")
+TEST_CASE("printf corpus 0330: SpecialtySkill%ld")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "SpecialtySkill%ld", v0);
+		const int nb = mc2::fmt::to_buf(b, "SpecialtySkill{:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "SpecialtySkill%ld", v0);
+		const int nd = mc2::fmt::to_buf(d, "SpecialtySkill{:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0331: Squad%d")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "Squad%d", v0);
+		const int nb = mc2::fmt::to_buf(b, "Squad{:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "Squad%d", v0);
+		const int nd = mc2::fmt::to_buf(d, "Squad{:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0332: Start = (%d, %d)\\n")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -2643,7 +5781,23 @@ TEST_CASE("printf corpus 0155: Start = (%d, %d)\\n")
 	}
 }
 
-TEST_CASE("printf corpus 0156: StaticPropAlphaTest (2)")
+TEST_CASE("printf corpus 0333: Static%ld")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "Static%ld", v0);
+		const int nb = mc2::fmt::to_buf(b, "Static{:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "Static%ld", v0);
+		const int nd = mc2::fmt::to_buf(d, "Static{:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0334: StaticPropAlphaTest (2)")
 {
 	for (int row = 0; row < 12; ++row) {
 		char a[160], b[160], c[8], d[8];
@@ -2658,7 +5812,7 @@ TEST_CASE("printf corpus 0156: StaticPropAlphaTest (2)")
 	}
 }
 
-TEST_CASE("printf corpus 0157: StaticPropOpaque (1)")
+TEST_CASE("printf corpus 0335: StaticPropOpaque (1)")
 {
 	for (int row = 0; row < 12; ++row) {
 		char a[160], b[160], c[8], d[8];
@@ -2673,7 +5827,7 @@ TEST_CASE("printf corpus 0157: StaticPropOpaque (1)")
 	}
 }
 
-TEST_CASE("printf corpus 0158: TERRAIN UBO csmCascadeMatrices[%d]")
+TEST_CASE("printf corpus 0336: TERRAIN UBO csmCascadeMatrices[%d]")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -2689,7 +5843,92 @@ TEST_CASE("printf corpus 0158: TERRAIN UBO csmCascadeMatrices[%d]")
 	}
 }
 
-TEST_CASE("printf corpus 0159: Texture %s is not 24bit or 32bit, 32x32, 64x64, 128x128 or 256x256 TGA [maybe-null]")
+TEST_CASE("printf corpus 0337: Target = %s (%d) [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "Target = %s (%d)", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "Target = {} ({:d})", mc2::fmt::safe(v0), mc2::fmt::as_i32(v1));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "Target = %s (%d)", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "Target = {} ({:d})", mc2::fmt::safe(v0), mc2::fmt::as_i32(v1));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0338: Target = NULL")
+{
+	for (int row = 0; row < 12; ++row) {
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "Target = NULL");
+		const int nb = mc2::fmt::to_buf(b, "Target = NULL");
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "Target = NULL");
+		const int nd = mc2::fmt::to_buf(d, "Target = NULL");
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0339: Target Position = (%.3f, %.3f, %.3f) [%d, %d]")
+{
+	for (int row = 0; row < 12; ++row) {
+		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
+		double v1 = static_cast<double>(kEdgeDBL[(row + 1) % std::size(kEdgeDBL)]);
+		double v2 = static_cast<double>(kEdgeDBL[(row + 2) % std::size(kEdgeDBL)]);
+		int v3 = static_cast<int>(kEdgeI32[(row + 3) % std::size(kEdgeI32)]);
+		int v4 = static_cast<int>(kEdgeI32[(row + 4) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "Target Position = (%.3f, %.3f, %.3f) [%d, %d]", v0, v1, v2, v3, v4);
+		const int nb = mc2::fmt::to_buf(b, "Target Position = ({:.3f}, {:.3f}, {:.3f}) [{:d}, {:d}]", v0, v1, v2, mc2::fmt::as_i32(v3), mc2::fmt::as_i32(v4));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "Target Position = (%.3f, %.3f, %.3f) [%d, %d]", v0, v1, v2, v3, v4);
+		const int nd = mc2::fmt::to_buf(d, "Target Position = ({:.3f}, {:.3f}, {:.3f}) [{:d}, {:d}]", v0, v1, v2, mc2::fmt::as_i32(v3), mc2::fmt::as_i32(v4));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0340: Team %d score = %d")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "Team %d score = %d", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "Team {:d} score = {:d}", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "Team %d score = %d", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "Team {:d} score = {:d}", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0341: Team%dBooleanFlags")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "Team%dBooleanFlags", v0);
+		const int nb = mc2::fmt::to_buf(b, "Team{:d}BooleanFlags", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "Team%dBooleanFlags", v0);
+		const int nd = mc2::fmt::to_buf(d, "Team{:d}BooleanFlags", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0342: Texture %s is not 24bit or 32bit, 32x32, 64x64, 128x128 or 256x256 TGA [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -2705,7 +5944,7 @@ TEST_CASE("printf corpus 0159: Texture %s is not 24bit or 32bit, 32x32, 64x64, 1
 	}
 }
 
-TEST_CASE("printf corpus 0160: Time = %.6f\\n\\n")
+TEST_CASE("printf corpus 0343: Time = %.6f\\n\\n")
 {
 	for (int row = 0; row < 12; ++row) {
 		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
@@ -2721,7 +5960,23 @@ TEST_CASE("printf corpus 0160: Time = %.6f\\n\\n")
 	}
 }
 
-TEST_CASE("printf corpus 0161: Total Committed Memory: %d      Total Free in Commit: %d")
+TEST_CASE("printf corpus 0344: TimerStatic%ld")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "TimerStatic%ld", v0);
+		const int nb = mc2::fmt::to_buf(b, "TimerStatic{:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "TimerStatic%ld", v0);
+		const int nd = mc2::fmt::to_buf(d, "TimerStatic{:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0345: Total Committed Memory: %d      Total Free in Commit: %d")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -2738,7 +5993,7 @@ TEST_CASE("printf corpus 0161: Total Committed Memory: %d      Total Free in Com
 	}
 }
 
-TEST_CASE("printf corpus 0162: TotalCoreLeft: %d     CoreLeft: %d")
+TEST_CASE("printf corpus 0346: TotalCoreLeft: %d     CoreLeft: %d")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -2755,7 +6010,55 @@ TEST_CASE("printf corpus 0162: TotalCoreLeft: %d     CoreLeft: %d")
 	}
 }
 
-TEST_CASE("printf corpus 0163: Variant: %s  Name: %s\\nClass: %s  TeamID: %ld  Pilot: %s\\nStatus: %s [maybe-null]")
+TEST_CASE("printf corpus 0347: Unit::handleTacticalOrder->Bad TacOrder Code (%d)")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "Unit::handleTacticalOrder->Bad TacOrder Code (%d)", v0);
+		const int nb = mc2::fmt::to_buf(b, "Unit::handleTacticalOrder->Bad TacOrder Code ({:d})", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "Unit::handleTacticalOrder->Bad TacOrder Code (%d)", v0);
+		const int nd = mc2::fmt::to_buf(d, "Unit::handleTacticalOrder->Bad TacOrder Code ({:d})", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0348: UnitName%ld")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "UnitName%ld", v0);
+		const int nb = mc2::fmt::to_buf(b, "UnitName{:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "UnitName%ld", v0);
+		const int nd = mc2::fmt::to_buf(d, "UnitName{:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0349: Variant%ld")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "Variant%ld", v0);
+		const int nb = mc2::fmt::to_buf(b, "Variant{:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "Variant%ld", v0);
+		const int nd = mc2::fmt::to_buf(d, "Variant{:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0350: Variant: %s  Name: %s\\nClass: %s  TeamID: %ld  Pilot: %s\\nStatus: %s [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -2783,7 +6086,39 @@ TEST_CASE("printf corpus 0163: Variant: %s  Name: %s\\nClass: %s  TeamID: %ld  P
 	}
 }
 
-TEST_CASE("printf corpus 0164: Way too many syntax errors. ABL aborted.\\n")
+TEST_CASE("printf corpus 0351: VideoStatic%ld")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "VideoStatic%ld", v0);
+		const int nb = mc2::fmt::to_buf(b, "VideoStatic{:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "VideoStatic%ld", v0);
+		const int nd = mc2::fmt::to_buf(d, "VideoStatic{:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0352: Warrior%d")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "Warrior%d", v0);
+		const int nb = mc2::fmt::to_buf(b, "Warrior{:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "Warrior%d", v0);
+		const int nd = mc2::fmt::to_buf(d, "Warrior{:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0353: Way too many syntax errors. ABL aborted.\\n")
 {
 	for (int row = 0; row < 12; ++row) {
 		char a[160], b[160], c[8], d[8];
@@ -2798,7 +6133,7 @@ TEST_CASE("printf corpus 0164: Way too many syntax errors. ABL aborted.\\n")
 	}
 }
 
-TEST_CASE("printf corpus 0165: WeaponNodeId%d")
+TEST_CASE("printf corpus 0354: WeaponNodeId%d")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -2814,7 +6149,23 @@ TEST_CASE("printf corpus 0165: WeaponNodeId%d")
 	}
 }
 
-TEST_CASE("printf corpus 0166: Weapon_%02d")
+TEST_CASE("printf corpus 0355: WeaponType%ld")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "WeaponType%ld", v0);
+		const int nb = mc2::fmt::to_buf(b, "WeaponType{:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "WeaponType%ld", v0);
+		const int nd = mc2::fmt::to_buf(d, "WeaponType{:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0356: Weapon_%02d")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -2830,7 +6181,7 @@ TEST_CASE("printf corpus 0166: Weapon_%02d")
 	}
 }
 
-TEST_CASE("printf corpus 0167: World: (%.1f, %.1f, %.1f)\\n")
+TEST_CASE("printf corpus 0357: World: (%.1f, %.1f, %.1f)\\n")
 {
 	for (int row = 0; row < 12; ++row) {
 		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
@@ -2848,7 +6199,7 @@ TEST_CASE("printf corpus 0167: World: (%.1f, %.1f, %.1f)\\n")
 	}
 }
 
-TEST_CASE("printf corpus 0168: X")
+TEST_CASE("printf corpus 0358: X")
 {
 	for (int row = 0; row < 12; ++row) {
 		char a[160], b[160], c[8], d[8];
@@ -2863,7 +6214,7 @@ TEST_CASE("printf corpus 0168: X")
 	}
 }
 
-TEST_CASE("printf corpus 0169: X overlap %d at cell (%d,%d): rect=(%d,%d,%d,%d) next=(%d,%d,%d,%d)")
+TEST_CASE("printf corpus 0359: X overlap %d at cell (%d,%d): rect=(%d,%d,%d,%d) next=(%d,%d,%d,%d)")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -2889,7 +6240,213 @@ TEST_CASE("printf corpus 0169: X overlap %d at cell (%d,%d): rect=(%d,%d,%d,%d) 
 	}
 }
 
-TEST_CASE("printf corpus 0170: [%08d] ")
+TEST_CASE("printf corpus 0360: [%.2f] ablmc2.execGetWeapons: numWpns != numFunctionalWeapons (%05d)%s [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		const char* v2 = kStrNull[(row + 2) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "[%.2f] ablmc2.execGetWeapons: numWpns != numFunctionalWeapons (%05d)%s", v0, v1, v2);
+		const int nb = mc2::fmt::to_buf(b, "[{:.2f}] ablmc2.execGetWeapons: numWpns != numFunctionalWeapons ({:05d}){}", v0, mc2::fmt::as_i32(v1), mc2::fmt::safe(v2));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "[%.2f] ablmc2.execGetWeapons: numWpns != numFunctionalWeapons (%05d)%s", v0, v1, v2);
+		const int nd = mc2::fmt::to_buf(d, "[{:.2f}] ablmc2.execGetWeapons: numWpns != numFunctionalWeapons ({:05d}){}", v0, mc2::fmt::as_i32(v1), mc2::fmt::safe(v2));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0361: [%.2f] building.destroyed: [%05d]%s [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		const char* v2 = kStrNull[(row + 2) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "[%.2f] building.destroyed: [%05d]%s", v0, v1, v2);
+		const int nb = mc2::fmt::to_buf(b, "[{:.2f}] building.destroyed: [{:05d}]{}", v0, mc2::fmt::as_i32(v1), mc2::fmt::safe(v2));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "[%.2f] building.destroyed: [%05d]%s", v0, v1, v2);
+		const int nd = mc2::fmt::to_buf(d, "[{:.2f}] building.destroyed: [{:05d}]{}", v0, mc2::fmt::as_i32(v1), mc2::fmt::safe(v2));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0362: [%.2f] calcPath: [%05d]%s [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		const char* v2 = kStrNull[(row + 2) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "[%.2f] calcPath: [%05d]%s", v0, v1, v2);
+		const int nb = mc2::fmt::to_buf(b, "[{:.2f}] calcPath: [{:05d}]{}", v0, mc2::fmt::as_i32(v1), mc2::fmt::safe(v2));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "[%.2f] calcPath: [%05d]%s", v0, v1, v2);
+		const int nd = mc2::fmt::to_buf(d, "[{:.2f}] calcPath: [{:05d}]{}", v0, mc2::fmt::as_i32(v1), mc2::fmt::safe(v2));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0363: [%.2f] helicopter.destroyed: [%05d]%s [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		const char* v2 = kStrNull[(row + 2) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "[%.2f] helicopter.destroyed: [%05d]%s", v0, v1, v2);
+		const int nb = mc2::fmt::to_buf(b, "[{:.2f}] helicopter.destroyed: [{:05d}]{}", v0, mc2::fmt::as_i32(v1), mc2::fmt::safe(v2));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "[%.2f] helicopter.destroyed: [%05d]%s", v0, v1, v2);
+		const int nd = mc2::fmt::to_buf(d, "[{:.2f}] helicopter.destroyed: [{:05d}]{}", v0, mc2::fmt::as_i32(v1), mc2::fmt::safe(v2));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0364: [%.2f] mech.destroyed HD: [%05d]%s [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		const char* v2 = kStrNull[(row + 2) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "[%.2f] mech.destroyed HD: [%05d]%s", v0, v1, v2);
+		const int nb = mc2::fmt::to_buf(b, "[{:.2f}] mech.destroyed HD: [{:05d}]{}", v0, mc2::fmt::as_i32(v1), mc2::fmt::safe(v2));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "[%.2f] mech.destroyed HD: [%05d]%s", v0, v1, v2);
+		const int nd = mc2::fmt::to_buf(d, "[{:.2f}] mech.destroyed HD: [{:05d}]{}", v0, mc2::fmt::as_i32(v1), mc2::fmt::safe(v2));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0365: [%.2f] mech.destroyed HWH: [%05d]%s [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		const char* v2 = kStrNull[(row + 2) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "[%.2f] mech.destroyed HWH: [%05d]%s", v0, v1, v2);
+		const int nb = mc2::fmt::to_buf(b, "[{:.2f}] mech.destroyed HWH: [{:05d}]{}", v0, mc2::fmt::as_i32(v1), mc2::fmt::safe(v2));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "[%.2f] mech.destroyed HWH: [%05d]%s", v0, v1, v2);
+		const int nd = mc2::fmt::to_buf(d, "[{:.2f}] mech.destroyed HWH: [{:05d}]{}", v0, mc2::fmt::as_i32(v1), mc2::fmt::safe(v2));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0366: [%.2f] mech.fireWeapon HIT: (%05d)%s @ (%05d)%s [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		const char* v2 = kStrNull[(row + 2) % std::size(kStrNull)];
+		int v3 = static_cast<int>(kEdgeI32[(row + 3) % std::size(kEdgeI32)]);
+		const char* v4 = kStrNull[(row + 4) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "[%.2f] mech.fireWeapon HIT: (%05d)%s @ (%05d)%s", v0, v1, v2, v3, v4);
+		const int nb = mc2::fmt::to_buf(b, "[{:.2f}] mech.fireWeapon HIT: ({:05d}){} @ ({:05d}){}", v0, mc2::fmt::as_i32(v1), mc2::fmt::safe(v2), mc2::fmt::as_i32(v3), mc2::fmt::safe(v4));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "[%.2f] mech.fireWeapon HIT: (%05d)%s @ (%05d)%s", v0, v1, v2, v3, v4);
+		const int nd = mc2::fmt::to_buf(d, "[{:.2f}] mech.fireWeapon HIT: ({:05d}){} @ ({:05d}){}", v0, mc2::fmt::as_i32(v1), mc2::fmt::safe(v2), mc2::fmt::as_i32(v3), mc2::fmt::safe(v4));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0367: [%.2f] mech.fireWeapon MISS: (%05d)%s @ (%05d)%s [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		const char* v2 = kStrNull[(row + 2) % std::size(kStrNull)];
+		int v3 = static_cast<int>(kEdgeI32[(row + 3) % std::size(kEdgeI32)]);
+		const char* v4 = kStrNull[(row + 4) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "[%.2f] mech.fireWeapon MISS: (%05d)%s @ (%05d)%s", v0, v1, v2, v3, v4);
+		const int nb = mc2::fmt::to_buf(b, "[{:.2f}] mech.fireWeapon MISS: ({:05d}){} @ ({:05d}){}", v0, mc2::fmt::as_i32(v1), mc2::fmt::safe(v2), mc2::fmt::as_i32(v3), mc2::fmt::safe(v4));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "[%.2f] mech.fireWeapon MISS: (%05d)%s @ (%05d)%s", v0, v1, v2, v3, v4);
+		const int nd = mc2::fmt::to_buf(d, "[{:.2f}] mech.fireWeapon MISS: ({:05d}){} @ ({:05d}){}", v0, mc2::fmt::as_i32(v1), mc2::fmt::safe(v2), mc2::fmt::as_i32(v3), mc2::fmt::safe(v4));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0368: [%.2f] mech.handleWeaponHit%s (%05d)%s  [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
+		const char* v1 = kStrNull[(row + 1) % std::size(kStrNull)];
+		int v2 = static_cast<int>(kEdgeI32[(row + 2) % std::size(kEdgeI32)]);
+		const char* v3 = kStrNull[(row + 3) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "[%.2f] mech.handleWeaponHit%s (%05d)%s ", v0, v1, v2, v3);
+		const int nb = mc2::fmt::to_buf(b, "[{:.2f}] mech.handleWeaponHit{} ({:05d}){} ", v0, mc2::fmt::safe(v1), mc2::fmt::as_i32(v2), mc2::fmt::safe(v3));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "[%.2f] mech.handleWeaponHit%s (%05d)%s ", v0, v1, v2, v3);
+		const int nd = mc2::fmt::to_buf(d, "[{:.2f}] mech.handleWeaponHit{} ({:05d}){} ", v0, mc2::fmt::safe(v1), mc2::fmt::as_i32(v2), mc2::fmt::safe(v3));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0369: [%.2f] vehicle.fireWeapon HIT: (%05d)%s @ (%05d)%s [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		const char* v2 = kStrNull[(row + 2) % std::size(kStrNull)];
+		int v3 = static_cast<int>(kEdgeI32[(row + 3) % std::size(kEdgeI32)]);
+		const char* v4 = kStrNull[(row + 4) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "[%.2f] vehicle.fireWeapon HIT: (%05d)%s @ (%05d)%s", v0, v1, v2, v3, v4);
+		const int nb = mc2::fmt::to_buf(b, "[{:.2f}] vehicle.fireWeapon HIT: ({:05d}){} @ ({:05d}){}", v0, mc2::fmt::as_i32(v1), mc2::fmt::safe(v2), mc2::fmt::as_i32(v3), mc2::fmt::safe(v4));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "[%.2f] vehicle.fireWeapon HIT: (%05d)%s @ (%05d)%s", v0, v1, v2, v3, v4);
+		const int nd = mc2::fmt::to_buf(d, "[{:.2f}] vehicle.fireWeapon HIT: ({:05d}){} @ ({:05d}){}", v0, mc2::fmt::as_i32(v1), mc2::fmt::safe(v2), mc2::fmt::as_i32(v3), mc2::fmt::safe(v4));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0370: [%.2f] vehicle.handleWeaponHit%s (%05d)%s  [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
+		const char* v1 = kStrNull[(row + 1) % std::size(kStrNull)];
+		int v2 = static_cast<int>(kEdgeI32[(row + 2) % std::size(kEdgeI32)]);
+		const char* v3 = kStrNull[(row + 3) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "[%.2f] vehicle.handleWeaponHit%s (%05d)%s ", v0, v1, v2, v3);
+		const int nb = mc2::fmt::to_buf(b, "[{:.2f}] vehicle.handleWeaponHit{} ({:05d}){} ", v0, mc2::fmt::safe(v1), mc2::fmt::as_i32(v2), mc2::fmt::safe(v3));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "[%.2f] vehicle.handleWeaponHit%s (%05d)%s ", v0, v1, v2, v3);
+		const int nd = mc2::fmt::to_buf(d, "[{:.2f}] vehicle.handleWeaponHit{} ({:05d}){} ", v0, mc2::fmt::safe(v1), mc2::fmt::as_i32(v2), mc2::fmt::safe(v3));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0371: [%08d] ")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -2905,7 +6462,40 @@ TEST_CASE("printf corpus 0170: [%08d] ")
 	}
 }
 
-TEST_CASE("printf corpus 0171: [%d]  %s [maybe-null]")
+TEST_CASE("printf corpus 0372: [%d%c] ")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		int v1 = static_cast<int>(kEdgeCHR[(row + 1) % std::size(kEdgeCHR)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "[%d%c] ", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "[{:d}{:c}] ", mc2::fmt::as_i32(v0), mc2::fmt::as_char(v1));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "[%d%c] ", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "[{:d}{:c}] ", mc2::fmt::as_i32(v0), mc2::fmt::as_char(v1));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0373: [%d] ")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "[%d] ", v0);
+		const int nb = mc2::fmt::to_buf(b, "[{:d}] ", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "[%d] ", v0);
+		const int nd = mc2::fmt::to_buf(d, "[{:d}] ", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0374: [%d]  %s [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -2922,7 +6512,7 @@ TEST_CASE("printf corpus 0171: [%d]  %s [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0172: [-1]  %s [maybe-null]")
+TEST_CASE("printf corpus 0375: [-1]  %s [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -2938,7 +6528,126 @@ TEST_CASE("printf corpus 0172: [-1]  %s [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0173: [ABL_BAD_CB] key=%d val=%p module=%s line=%d [maybe-null]")
+TEST_CASE("printf corpus 0376: [ABL v1] event=functions_registered count=%ld/%d")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "[ABL v1] event=functions_registered count=%ld/%d", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "[ABL v1] event=functions_registered count={:d}/{:d}", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "[ABL v1] event=functions_registered count=%ld/%d", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "[ABL v1] event=functions_registered count={:d}/{:d}", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0377: [ABL:%s] (type=%d) [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "[ABL:%s] (type=%d)", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "[ABL:{}] (type={:d})", mc2::fmt::safe(v0), mc2::fmt::as_i32(v1));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "[ABL:%s] (type=%d)", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "[ABL:{}] (type={:d})", mc2::fmt::safe(v0), mc2::fmt::as_i32(v1));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0378: [ABL:%s] bool=%s [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		const char* v1 = kStrNull[(row + 1) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "[ABL:%s] bool=%s", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "[ABL:{}] bool={}", mc2::fmt::safe(v0), mc2::fmt::safe(v1));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "[ABL:%s] bool=%s", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "[ABL:{}] bool={}", mc2::fmt::safe(v0), mc2::fmt::safe(v1));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0379: [ABL:%s] char=%c [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		int v1 = static_cast<int>(kEdgeCHR[(row + 1) % std::size(kEdgeCHR)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "[ABL:%s] char=%c", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "[ABL:{}] char={:c}", mc2::fmt::safe(v0), mc2::fmt::as_char(v1));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "[ABL:%s] char=%c", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "[ABL:{}] char={:c}", mc2::fmt::safe(v0), mc2::fmt::as_char(v1));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0380: [ABL:%s] int=%d [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "[ABL:%s] int=%d", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "[ABL:{}] int={:d}", mc2::fmt::safe(v0), mc2::fmt::as_i32(v1));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "[ABL:%s] int=%d", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "[ABL:{}] int={:d}", mc2::fmt::safe(v0), mc2::fmt::as_i32(v1));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0381: [ABL:%s] real=%.2f [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		double v1 = static_cast<double>(kEdgeDBL[(row + 1) % std::size(kEdgeDBL)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "[ABL:%s] real=%.2f", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "[ABL:{}] real={:.2f}", mc2::fmt::safe(v0), v1);
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "[ABL:%s] real=%.2f", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "[ABL:{}] real={:.2f}", mc2::fmt::safe(v0), v1);
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0382: [ABL:%s] str=%s [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		const char* v1 = kStrNull[(row + 1) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "[ABL:%s] str=%s", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "[ABL:{}] str={}", mc2::fmt::safe(v0), mc2::fmt::safe(v1));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "[ABL:%s] str=%s", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "[ABL:{}] str={}", mc2::fmt::safe(v0), mc2::fmt::safe(v1));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0383: [ABL_BAD_CB] key=%d val=%p module=%s line=%d [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -2957,7 +6666,7 @@ TEST_CASE("printf corpus 0173: [ABL_BAD_CB] key=%d val=%p module=%s line=%d [may
 	}
 }
 
-TEST_CASE("printf corpus 0174: [ABL_COMPILE_FATAL] file=%s syntaxErrors=%ld -- refusing to load a mod [maybe-null]")
+TEST_CASE("printf corpus 0384: [ABL_COMPILE_FATAL] file=%s syntaxErrors=%ld -- refusing to load a mod [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -2974,7 +6683,7 @@ TEST_CASE("printf corpus 0174: [ABL_COMPILE_FATAL] file=%s syntaxErrors=%ld -- r
 	}
 }
 
-TEST_CASE("printf corpus 0175: [ABL_SOFTFAIL] func=(runtime) module=%s file=%s line=%d errCode=%d — % [maybe-null]")
+TEST_CASE("printf corpus 0385: [ABL_SOFTFAIL] func=(runtime) module=%s file=%s line=%d errCode=%d — % [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -2994,7 +6703,7 @@ TEST_CASE("printf corpus 0175: [ABL_SOFTFAIL] func=(runtime) module=%s file=%s l
 	}
 }
 
-TEST_CASE("printf corpus 0176: [ABL_SOFTFAIL] key=%d func=(out-of-range) module=%s file=%s line=%d er [maybe-null]")
+TEST_CASE("printf corpus 0386: [ABL_SOFTFAIL] key=%d func=(out-of-range) module=%s file=%s line=%d er [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -3014,7 +6723,7 @@ TEST_CASE("printf corpus 0176: [ABL_SOFTFAIL] key=%d func=(out-of-range) module=
 	}
 }
 
-TEST_CASE("printf corpus 0177: [FRAME_PASS_STATS v1] frame=%lu chunks=%u spBatches=%u mechInst=%u vfx")
+TEST_CASE("printf corpus 0387: [FRAME_PASS_STATS v1] frame=%lu chunks=%u spBatches=%u mechInst=%u vfx")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned long v0 = static_cast<unsigned long>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -3034,7 +6743,7 @@ TEST_CASE("printf corpus 0177: [FRAME_PASS_STATS v1] frame=%lu chunks=%u spBatch
 	}
 }
 
-TEST_CASE("printf corpus 0178: [GL_ERROR v1] frame=%u pass=%s code=%s(0x%04X) mono_count=%llu [maybe-null]")
+TEST_CASE("printf corpus 0388: [GL_ERROR v1] frame=%u pass=%s code=%s(0x%04X) mono_count=%llu [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -3054,7 +6763,7 @@ TEST_CASE("printf corpus 0178: [GL_ERROR v1] frame=%u pass=%s code=%s(0x%04X) mo
 	}
 }
 
-TEST_CASE("printf corpus 0179: [GL_ERROR v1] pass=%s suppressed elapsed_frames=%u count_in_window=%u [maybe-null]")
+TEST_CASE("printf corpus 0389: [GL_ERROR v1] pass=%s suppressed elapsed_frames=%u count_in_window=%u [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -3072,7 +6781,23 @@ TEST_CASE("printf corpus 0179: [GL_ERROR v1] pass=%s suppressed elapsed_frames=%
 	}
 }
 
-TEST_CASE("printf corpus 0180: [HEARTBEAT] frames=%d elapsed_ms=%llu fps=%.1f")
+TEST_CASE("printf corpus 0390: [GOM_UPDATE_COST v1] event=summary frames=%d")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "[GOM_UPDATE_COST v1] event=summary frames=%d", v0);
+		const int nb = mc2::fmt::to_buf(b, "[GOM_UPDATE_COST v1] event=summary frames={:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "[GOM_UPDATE_COST v1] event=summary frames=%d", v0);
+		const int nd = mc2::fmt::to_buf(d, "[GOM_UPDATE_COST v1] event=summary frames={:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0391: [HEARTBEAT] frames=%d elapsed_ms=%llu fps=%.1f")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -3090,7 +6815,7 @@ TEST_CASE("printf corpus 0180: [HEARTBEAT] frames=%d elapsed_ms=%llu fps=%.1f")
 	}
 }
 
-TEST_CASE("printf corpus 0181: [HZB_PROBE_LOD v1] selectedLod")
+TEST_CASE("printf corpus 0392: [HZB_PROBE_LOD v1] selectedLod")
 {
 	for (int row = 0; row < 12; ++row) {
 		char a[160], b[160], c[8], d[8];
@@ -3105,7 +6830,7 @@ TEST_CASE("printf corpus 0181: [HZB_PROBE_LOD v1] selectedLod")
 	}
 }
 
-TEST_CASE("printf corpus 0182: [INSTR v1] enabled: tgl_pool=%d destroy=%d gl_error_print=%d smoke=%d  [maybe-null]")
+TEST_CASE("printf corpus 0393: [INSTR v1] enabled: tgl_pool=%d destroy=%d gl_error_print=%d smoke=%d  [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -3144,7 +6869,7 @@ TEST_CASE("printf corpus 0182: [INSTR v1] enabled: tgl_pool=%d destroy=%d gl_err
 	}
 }
 
-TEST_CASE("printf corpus 0183: [LIGHTBRIDGE v1] frame=%u populate={ns:%llu,calls:%llu,tmpl_hit:%llu,t")
+TEST_CASE("printf corpus 0394: [LIGHTBRIDGE v1] frame=%u populate={ns:%llu,calls:%llu,tmpl_hit:%llu,t")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -3165,7 +6890,7 @@ TEST_CASE("printf corpus 0183: [LIGHTBRIDGE v1] frame=%u populate={ns:%llu,calls
 	}
 }
 
-TEST_CASE("printf corpus 0184: [LIGHTBRIDGE v1] summary=%u populate={ns:%llu,calls:%llu,tmpl_hit:%llu")
+TEST_CASE("printf corpus 0395: [LIGHTBRIDGE v1] summary=%u populate={ns:%llu,calls:%llu,tmpl_hit:%llu")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -3188,7 +6913,7 @@ TEST_CASE("printf corpus 0184: [LIGHTBRIDGE v1] summary=%u populate={ns:%llu,cal
 	}
 }
 
-TEST_CASE("printf corpus 0185: [MATERIAL_GPU v4] ERROR materialIdx sidecar size mismatch emitted=%zu ")
+TEST_CASE("printf corpus 0396: [MATERIAL_GPU v4] ERROR materialIdx sidecar size mismatch emitted=%zu ")
 {
 	for (int row = 0; row < 12; ++row) {
 		size_t v0 = static_cast<size_t>(kEdgeU64[(row + 0) % std::size(kEdgeU64)]);
@@ -3205,7 +6930,7 @@ TEST_CASE("printf corpus 0185: [MATERIAL_GPU v4] ERROR materialIdx sidecar size 
 	}
 }
 
-TEST_CASE("printf corpus 0186: [MATERIAL_GPU v4] GL ERROR after bind (real): 0x%x\\n")
+TEST_CASE("printf corpus 0397: [MATERIAL_GPU v4] GL ERROR after bind (real): 0x%x\\n")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -3221,7 +6946,7 @@ TEST_CASE("printf corpus 0186: [MATERIAL_GPU v4] GL ERROR after bind (real): 0x%
 	}
 }
 
-TEST_CASE("printf corpus 0187: [MATERIAL_GPU v4] GL ERROR after sample uniform: 0x%x\\n")
+TEST_CASE("printf corpus 0398: [MATERIAL_GPU v4] GL ERROR after sample uniform: 0x%x\\n")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -3237,7 +6962,7 @@ TEST_CASE("printf corpus 0187: [MATERIAL_GPU v4] GL ERROR after sample uniform: 
 	}
 }
 
-TEST_CASE("printf corpus 0188: [MATERIAL_GPU v4] GL ERROR after upload: 0x%x — buffer deleted, sampli")
+TEST_CASE("printf corpus 0399: [MATERIAL_GPU v4] GL ERROR after upload: 0x%x — buffer deleted, sampli")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -3253,7 +6978,7 @@ TEST_CASE("printf corpus 0188: [MATERIAL_GPU v4] GL ERROR after upload: 0x%x —
 	}
 }
 
-TEST_CASE("printf corpus 0189: [MATERIAL_GPU v4] MISMATCH slot=%u pkt=%u materialIdx=%u albedoTex=%u ")
+TEST_CASE("printf corpus 0400: [MATERIAL_GPU v4] MISMATCH slot=%u pkt=%u materialIdx=%u albedoTex=%u ")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -3273,7 +6998,7 @@ TEST_CASE("printf corpus 0189: [MATERIAL_GPU v4] MISMATCH slot=%u pkt=%u materia
 	}
 }
 
-TEST_CASE("printf corpus 0190: [MATERIAL_GPU v4] enabled=%d sample=%d binding=5 (default-ON; MC2_MATE")
+TEST_CASE("printf corpus 0401: [MATERIAL_GPU v4] enabled=%d sample=%d binding=5 (default-ON; MC2_MATE")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -3290,7 +7015,7 @@ TEST_CASE("printf corpus 0190: [MATERIAL_GPU v4] enabled=%d sample=%d binding=5 
 	}
 }
 
-TEST_CASE("printf corpus 0191: [MATERIAL_GPU v4] event=compare emitted=%u mismatches=%d\\n")
+TEST_CASE("printf corpus 0402: [MATERIAL_GPU v4] event=compare emitted=%u mismatches=%d\\n")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -3307,7 +7032,7 @@ TEST_CASE("printf corpus 0191: [MATERIAL_GPU v4] event=compare emitted=%u mismat
 	}
 }
 
-TEST_CASE("printf corpus 0192: [MATERIAL_GPU v4] event=entry_material_idx emitted=%u mismatches=%d\\n")
+TEST_CASE("printf corpus 0403: [MATERIAL_GPU v4] event=entry_material_idx emitted=%u mismatches=%d\\n")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -3324,7 +7049,7 @@ TEST_CASE("printf corpus 0192: [MATERIAL_GPU v4] event=entry_material_idx emitte
 	}
 }
 
-TEST_CASE("printf corpus 0193: [MATERIAL_GPU v4] event=sample_mode enabled=0 reason=%s\\n [maybe-null]")
+TEST_CASE("printf corpus 0404: [MATERIAL_GPU v4] event=sample_mode enabled=0 reason=%s\\n [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -3340,7 +7065,7 @@ TEST_CASE("printf corpus 0193: [MATERIAL_GPU v4] event=sample_mode enabled=0 rea
 	}
 }
 
-TEST_CASE("printf corpus 0194: [MATERIAL_GPU v4] event=sample_mode enabled=1 loc=%d\\n")
+TEST_CASE("printf corpus 0405: [MATERIAL_GPU v4] event=sample_mode enabled=1 loc=%d\\n")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -3356,7 +7081,7 @@ TEST_CASE("printf corpus 0194: [MATERIAL_GPU v4] event=sample_mode enabled=1 loc
 	}
 }
 
-TEST_CASE("printf corpus 0195: [MATERIAL_GPU v4] event=table_upload materials=%zu bytes=%zu emitted=%")
+TEST_CASE("printf corpus 0406: [MATERIAL_GPU v4] event=table_upload materials=%zu bytes=%zu emitted=%")
 {
 	for (int row = 0; row < 12; ++row) {
 		size_t v0 = static_cast<size_t>(kEdgeU64[(row + 0) % std::size(kEdgeU64)]);
@@ -3374,7 +7099,7 @@ TEST_CASE("printf corpus 0195: [MATERIAL_GPU v4] event=table_upload materials=%z
 	}
 }
 
-TEST_CASE("printf corpus 0196: [MATERIAL_GPU v4] event=unload materials=%zu bytes=%zu\\n")
+TEST_CASE("printf corpus 0407: [MATERIAL_GPU v4] event=unload materials=%zu bytes=%zu\\n")
 {
 	for (int row = 0; row < 12; ++row) {
 		size_t v0 = static_cast<size_t>(kEdgeU64[(row + 0) % std::size(kEdgeU64)]);
@@ -3391,7 +7116,7 @@ TEST_CASE("printf corpus 0196: [MATERIAL_GPU v4] event=unload materials=%zu byte
 	}
 }
 
-TEST_CASE("printf corpus 0197: [MECH_MATERIAL_GPU v1] MISMATCH dc=%u materialIdx=%u albedo=%u expecte")
+TEST_CASE("printf corpus 0408: [MECH_MATERIAL_GPU v1] MISMATCH dc=%u materialIdx=%u albedo=%u expecte")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -3410,7 +7135,7 @@ TEST_CASE("printf corpus 0197: [MECH_MATERIAL_GPU v1] MISMATCH dc=%u materialIdx
 	}
 }
 
-TEST_CASE("printf corpus 0198: [MECH_MATERIAL_GPU v1] event=compare frame=%u mechs=%u mismatches=%d\\")
+TEST_CASE("printf corpus 0409: [MECH_MATERIAL_GPU v1] event=compare frame=%u mechs=%u mismatches=%d\\")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -3428,7 +7153,7 @@ TEST_CASE("printf corpus 0198: [MECH_MATERIAL_GPU v1] event=compare frame=%u mec
 	}
 }
 
-TEST_CASE("printf corpus 0199: [MECH_MATERIAL_GPU v1] event=table_link materials=%u\\n")
+TEST_CASE("printf corpus 0410: [MECH_MATERIAL_GPU v1] event=table_link materials=%u\\n")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -3444,7 +7169,7 @@ TEST_CASE("printf corpus 0199: [MECH_MATERIAL_GPU v1] event=table_link materials
 	}
 }
 
-TEST_CASE("printf corpus 0200: [OBJECT_RECON v1] %s=%u bldg_update={ns:%llu,calls:%llu} tree_update={ [maybe-null]")
+TEST_CASE("printf corpus 0411: [OBJECT_RECON v1] %s=%u bldg_update={ns:%llu,calls:%llu} tree_update={ [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -3476,7 +7201,119 @@ TEST_CASE("printf corpus 0200: [OBJECT_RECON v1] %s=%u bldg_update={ns:%llu,call
 	}
 }
 
-TEST_CASE("printf corpus 0201: [PROJECTZ v1] enabled: trace=%d heatmap=%d summary=%d guard_px=%d")
+TEST_CASE("printf corpus 0412: [OMNI.LARGE] #%d")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "[OMNI.LARGE] #%d", v0);
+		const int nb = mc2::fmt::to_buf(b, "[OMNI.LARGE] #{:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "[OMNI.LARGE] #%d", v0);
+		const int nd = mc2::fmt::to_buf(d, "[OMNI.LARGE] #{:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0413: [OMNI.LARGE] %s [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "[OMNI.LARGE] %s", v0);
+		const int nb = mc2::fmt::to_buf(b, "[OMNI.LARGE] {}", mc2::fmt::safe(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "[OMNI.LARGE] %s", v0);
+		const int nd = mc2::fmt::to_buf(d, "[OMNI.LARGE] {}", mc2::fmt::safe(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0414: [OMNI.LARGE] (type=%d)")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "[OMNI.LARGE] (type=%d)", v0);
+		const int nb = mc2::fmt::to_buf(b, "[OMNI.LARGE] (type={:d})", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "[OMNI.LARGE] (type=%d)", v0);
+		const int nd = mc2::fmt::to_buf(d, "[OMNI.LARGE] (type={:d})", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0415: [OMNI.TEXT] #%d")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "[OMNI.TEXT] #%d", v0);
+		const int nb = mc2::fmt::to_buf(b, "[OMNI.TEXT] #{:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "[OMNI.TEXT] #%d", v0);
+		const int nd = mc2::fmt::to_buf(d, "[OMNI.TEXT] #{:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0416: [OMNI.TEXT] %s [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "[OMNI.TEXT] %s", v0);
+		const int nb = mc2::fmt::to_buf(b, "[OMNI.TEXT] {}", mc2::fmt::safe(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "[OMNI.TEXT] %s", v0);
+		const int nd = mc2::fmt::to_buf(d, "[OMNI.TEXT] {}", mc2::fmt::safe(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0417: [OMNI.TEXT] (type=%d)")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "[OMNI.TEXT] (type=%d)", v0);
+		const int nb = mc2::fmt::to_buf(b, "[OMNI.TEXT] (type={:d})", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "[OMNI.TEXT] (type=%d)", v0);
+		const int nd = mc2::fmt::to_buf(d, "[OMNI.TEXT] (type={:d})", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0418: [OMNI] %s [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "[OMNI] %s", v0);
+		const int nb = mc2::fmt::to_buf(b, "[OMNI] {}", mc2::fmt::safe(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "[OMNI] %s", v0);
+		const int nd = mc2::fmt::to_buf(d, "[OMNI] {}", mc2::fmt::safe(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0419: [PROJECTZ v1] enabled: trace=%d heatmap=%d summary=%d guard_px=%d")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -3495,7 +7332,7 @@ TEST_CASE("printf corpus 0201: [PROJECTZ v1] enabled: trace=%d heatmap=%d summar
 	}
 }
 
-TEST_CASE("printf corpus 0202: [RENDERLISTS_COST v1] event=summary frames=%d nodes=%ld hw_nodes=%ld")
+TEST_CASE("printf corpus 0420: [RENDERLISTS_COST v1] event=summary frames=%d nodes=%ld hw_nodes=%ld")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -3513,7 +7350,7 @@ TEST_CASE("printf corpus 0202: [RENDERLISTS_COST v1] event=summary frames=%d nod
 	}
 }
 
-TEST_CASE("printf corpus 0203: [RENDER_PASS_TIME v1] frame=%lu n=%u gpu_total=%.2f")
+TEST_CASE("printf corpus 0421: [RENDER_PASS_TIME v1] frame=%lu n=%u gpu_total=%.2f")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned long v0 = static_cast<unsigned long>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -3531,7 +7368,7 @@ TEST_CASE("printf corpus 0203: [RENDER_PASS_TIME v1] frame=%lu n=%u gpu_total=%.
 	}
 }
 
-TEST_CASE("printf corpus 0204: [TGL_POOL v1] event=%s pool=%-8s peak=%u/%u pct=%u%% [maybe-null]")
+TEST_CASE("printf corpus 0422: [TGL_POOL v1] event=%s pool=%-8s peak=%u/%u pct=%u%% [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -3551,7 +7388,7 @@ TEST_CASE("printf corpus 0204: [TGL_POOL v1] event=%s pool=%-8s peak=%u/%u pct=%
 	}
 }
 
-TEST_CASE("printf corpus 0205: [TGL_POOL v1] event=%s pool=%-8s peak=%u/? pct=?%% [maybe-null]")
+TEST_CASE("printf corpus 0423: [TGL_POOL v1] event=%s pool=%-8s peak=%u/? pct=?%% [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -3569,7 +7406,7 @@ TEST_CASE("printf corpus 0205: [TGL_POOL v1] event=%s pool=%-8s peak=%u/? pct=?%
 	}
 }
 
-TEST_CASE("printf corpus 0206: [TGL_POOL v1] frame=%u pool=%s nulls=%u first_caller=%s shape=%p req=% [maybe-null]")
+TEST_CASE("printf corpus 0424: [TGL_POOL v1] frame=%u pool=%s nulls=%u first_caller=%s shape=%p req=% [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -3593,7 +7430,7 @@ TEST_CASE("printf corpus 0206: [TGL_POOL v1] frame=%u pool=%s nulls=%u first_cal
 	}
 }
 
-TEST_CASE("printf corpus 0207: [TGL_POOL v1] summary mono_total={vertex:%llu, color:%llu, face:%llu, ")
+TEST_CASE("printf corpus 0425: [TGL_POOL v1] summary mono_total={vertex:%llu, color:%llu, face:%llu, ")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned long long v0 = static_cast<unsigned long long>(kEdgeU64[(row + 0) % std::size(kEdgeU64)]);
@@ -3613,7 +7450,7 @@ TEST_CASE("printf corpus 0207: [TGL_POOL v1] summary mono_total={vertex:%llu, co
 	}
 }
 
-TEST_CASE("printf corpus 0208: [TGL_POOL v1] summary mono_total={vertex:%llu, color:%llu, face:%llu, ")
+TEST_CASE("printf corpus 0426: [TGL_POOL v1] summary mono_total={vertex:%llu, color:%llu, face:%llu, ")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned long long v0 = static_cast<unsigned long long>(kEdgeU64[(row + 0) % std::size(kEdgeU64)]);
@@ -3633,7 +7470,7 @@ TEST_CASE("printf corpus 0208: [TGL_POOL v1] summary mono_total={vertex:%llu, co
 	}
 }
 
-TEST_CASE("printf corpus 0209: [TXM v1] event=process_exit peak_textures=%ld/%d")
+TEST_CASE("printf corpus 0427: [TXM v1] event=process_exit peak_textures=%ld/%d")
 {
 	for (int row = 0; row < 12; ++row) {
 		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -3650,7 +7487,7 @@ TEST_CASE("printf corpus 0209: [TXM v1] event=process_exit peak_textures=%ld/%d"
 	}
 }
 
-TEST_CASE("printf corpus 0210: [TXM] zero-width texture node: nodeName=%s handle=%u lzCompSize=%u [maybe-null]")
+TEST_CASE("printf corpus 0428: [TXM] zero-width texture node: nodeName=%s handle=%u lzCompSize=%u [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -3668,7 +7505,7 @@ TEST_CASE("printf corpus 0210: [TXM] zero-width texture node: nodeName=%s handle
 	}
 }
 
-TEST_CASE("printf corpus 0211: [VERIFY] line cap (%ld) reached -- further fires counted but not print")
+TEST_CASE("printf corpus 0429: [VERIFY] line cap (%ld) reached -- further fires counted but not print")
 {
 	for (int row = 0; row < 12; ++row) {
 		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -3684,7 +7521,7 @@ TEST_CASE("printf corpus 0211: [VERIFY] line cap (%ld) reached -- further fires 
 	}
 }
 
-TEST_CASE("printf corpus 0212: [VERIFY] mission-end fires=%ld total=%ld mode=%s label=%s [maybe-null]")
+TEST_CASE("printf corpus 0430: [VERIFY] mission-end fires=%ld total=%ld mode=%s label=%s [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -3703,7 +7540,7 @@ TEST_CASE("printf corpus 0212: [VERIFY] mission-end fires=%ld total=%ld mode=%s 
 	}
 }
 
-TEST_CASE("printf corpus 0213: [VERIFY]%s %s:%d (%s) %s [maybe-null]")
+TEST_CASE("printf corpus 0431: [VERIFY]%s %s:%d (%s) %s [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -3723,7 +7560,7 @@ TEST_CASE("printf corpus 0213: [VERIFY]%s %s:%d (%s) %s [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0214: \\\\u%04x")
+TEST_CASE("printf corpus 0432: \\\\u%04x")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -3739,7 +7576,22 @@ TEST_CASE("printf corpus 0214: \\\\u%04x")
 	}
 }
 
-TEST_CASE("printf corpus 0215: \\nNum Total Lines = %d\\n")
+TEST_CASE("printf corpus 0433: \\n    ]\\n  }")
+{
+	for (int row = 0; row < 12; ++row) {
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "\n    ]\n  }");
+		const int nb = mc2::fmt::to_buf(b, "\n    ]\n  }}");
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "\n    ]\n  }");
+		const int nd = mc2::fmt::to_buf(d, "\n    ]\n  }}");
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0434: \\nNum Total Lines = %d\\n")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -3755,7 +7607,24 @@ TEST_CASE("printf corpus 0215: \\nNum Total Lines = %d\\n")
 	}
 }
 
-TEST_CASE("printf corpus 0216: \\r\\n")
+TEST_CASE("printf corpus 0435: \\nmover = %s (%d)\\n [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "\nmover = %s (%d)\n", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "\nmover = {} ({:d})\n", mc2::fmt::safe(v0), mc2::fmt::as_i32(v1));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "\nmover = %s (%d)\n", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "\nmover = {} ({:d})\n", mc2::fmt::safe(v0), mc2::fmt::as_i32(v1));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0436: \\r\\n")
 {
 	for (int row = 0; row < 12; ++row) {
 		char a[160], b[160], c[8], d[8];
@@ -3770,7 +7639,7 @@ TEST_CASE("printf corpus 0216: \\r\\n")
 	}
 }
 
-TEST_CASE("printf corpus 0217: \\r\\n[%s]\\r\\n [maybe-null]")
+TEST_CASE("printf corpus 0437: \\r\\n[%s]\\r\\n [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -3786,7 +7655,7 @@ TEST_CASE("printf corpus 0217: \\r\\n[%s]\\r\\n [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0218: ] %s [maybe-null]")
+TEST_CASE("printf corpus 0438: ] %s [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -3802,7 +7671,45 @@ TEST_CASE("printf corpus 0218: ] %s [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0219: b %s [maybe-null]")
+TEST_CASE("printf corpus 0439: active=%d armedAt=%ld engagedAt=%ld missionFrame=%ld absFrame=%lu")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		long v1 = static_cast<long>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		long v2 = static_cast<long>(kEdgeI32[(row + 2) % std::size(kEdgeI32)]);
+		long v3 = static_cast<long>(kEdgeI32[(row + 3) % std::size(kEdgeI32)]);
+		unsigned long v4 = static_cast<unsigned long>(kEdgeU32[(row + 4) % std::size(kEdgeU32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "active=%d armedAt=%ld engagedAt=%ld missionFrame=%ld absFrame=%lu", v0, v1, v2, v3, v4);
+		const int nb = mc2::fmt::to_buf(b, "active={:d} armedAt={:d} engagedAt={:d} missionFrame={:d} absFrame={:d}", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2), mc2::fmt::as_i32(v3), mc2::fmt::as_u32(v4));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "active=%d armedAt=%ld engagedAt=%ld missionFrame=%ld absFrame=%lu", v0, v1, v2, v3, v4);
+		const int nd = mc2::fmt::to_buf(d, "active={:d} armedAt={:d} engagedAt={:d} missionFrame={:d} absFrame={:d}", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2), mc2::fmt::as_i32(v3), mc2::fmt::as_u32(v4));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0440: armed for MISSION frame %ld (engagedAt=%ld, now missionFrame=%ld); REP")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		long v1 = static_cast<long>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		long v2 = static_cast<long>(kEdgeI32[(row + 2) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "armed for MISSION frame %ld (engagedAt=%ld, now missionFrame=%ld); REPRODUCIBLE ACROSS BUILDS only with MC2_SMOKE_FIXED_TIMESTEP=1", v0, v1, v2);
+		const int nb = mc2::fmt::to_buf(b, "armed for MISSION frame {:d} (engagedAt={:d}, now missionFrame={:d}); REPRODUCIBLE ACROSS BUILDS only with MC2_SMOKE_FIXED_TIMESTEP=1", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "armed for MISSION frame %ld (engagedAt=%ld, now missionFrame=%ld); REPRODUCIBLE ACROSS BUILDS only with MC2_SMOKE_FIXED_TIMESTEP=1", v0, v1, v2);
+		const int nd = mc2::fmt::to_buf(d, "armed for MISSION frame {:d} (engagedAt={:d}, now missionFrame={:d}); REPRODUCIBLE ACROSS BUILDS only with MC2_SMOKE_FIXED_TIMESTEP=1", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0441: b %s [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -3818,7 +7725,7 @@ TEST_CASE("printf corpus 0219: b %s [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0220: b %s = %s\\r\\n [literal,maybe-null]")
+TEST_CASE("printf corpus 0442: b %s = %s\\r\\n [literal,maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -3834,7 +7741,94 @@ TEST_CASE("printf corpus 0220: b %s = %s\\r\\n [literal,maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0221: box=%d,%d %dx%d drawable=%dx%d")
+TEST_CASE("printf corpus 0443: beginvtol: supportID = %d, commanderID = %d, vehicleID = %d, vehicleFi [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		int v2 = static_cast<int>(kEdgeI32[(row + 2) % std::size(kEdgeI32)]);
+		const char* v3 = kStrNull[(row + 3) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "beginvtol: supportID = %d, commanderID = %d, vehicleID = %d, vehicleFile = %s", v0, v1, v2, v3);
+		const int nb = mc2::fmt::to_buf(b, "beginvtol: supportID = {:d}, commanderID = {:d}, vehicleID = {:d}, vehicleFile = {}", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2), mc2::fmt::safe(v3));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "beginvtol: supportID = %d, commanderID = %d, vehicleID = %d, vehicleFile = %s", v0, v1, v2, v3);
+		const int nd = mc2::fmt::to_buf(d, "beginvtol: supportID = {:d}, commanderID = {:d}, vehicleID = {:d}, vehicleFile = {}", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2), mc2::fmt::safe(v3));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0444: bldg=%d dyn=%d staticPassDrew=%d")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		int v2 = static_cast<int>(kEdgeI32[(row + 2) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "bldg=%d dyn=%d staticPassDrew=%d", v0, v1, v2);
+		const int nb = mc2::fmt::to_buf(b, "bldg={:d} dyn={:d} staticPassDrew={:d}", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "bldg=%d dyn=%d staticPassDrew=%d", v0, v1, v2);
+		const int nd = mc2::fmt::to_buf(d, "bldg={:d} dyn={:d} staticPassDrew={:d}", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0445: bodyState = %d\\n")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "bodyState = %d\n", v0);
+		const int nb = mc2::fmt::to_buf(b, "bodyState = {:d}\n", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "bodyState = %d\n", v0);
+		const int nd = mc2::fmt::to_buf(d, "bodyState = {:d}\n", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0446: bool*=%d,%d,%d")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		int v2 = static_cast<int>(kEdgeI32[(row + 2) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "bool*=%d,%d,%d", v0, v1, v2);
+		const int nb = mc2::fmt::to_buf(b, "bool*={:d},{:d},{:d}", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "bool*=%d,%d,%d", v0, v1, v2);
+		const int nd = mc2::fmt::to_buf(d, "bool*={:d},{:d},{:d}", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0447: bool=%s [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "bool=%s", v0);
+		const int nb = mc2::fmt::to_buf(b, "bool={}", mc2::fmt::safe(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "bool=%s", v0);
+		const int nd = mc2::fmt::to_buf(d, "bool={}", mc2::fmt::safe(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0448: box=%d,%d %dx%d drawable=%dx%d")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -3855,7 +7849,39 @@ TEST_CASE("printf corpus 0221: box=%d,%d %dx%d drawable=%dx%d")
 	}
 }
 
-TEST_CASE("printf corpus 0222: c %s [maybe-null]")
+TEST_CASE("printf corpus 0449: brain: %s [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "brain: %s", v0);
+		const int nb = mc2::fmt::to_buf(b, "brain: {}", mc2::fmt::safe(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "brain: %s", v0);
+		const int nd = mc2::fmt::to_buf(d, "brain: {}", mc2::fmt::safe(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0450: buttonlayout%d.fit")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "buttonlayout%d.fit", v0);
+		const int nb = mc2::fmt::to_buf(b, "buttonlayout{:d}.fit", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "buttonlayout%d.fit", v0);
+		const int nd = mc2::fmt::to_buf(d, "buttonlayout{:d}.fit", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0451: c %s [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -3871,7 +7897,7 @@ TEST_CASE("printf corpus 0222: c %s [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0223: c %s = %d\\r\\n [maybe-null]")
+TEST_CASE("printf corpus 0452: c %s = %d\\r\\n [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -3888,7 +7914,7 @@ TEST_CASE("printf corpus 0223: c %s = %d\\r\\n [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0224: c[")
+TEST_CASE("printf corpus 0453: c[")
 {
 	for (int row = 0; row < 12; ++row) {
 		char a[160], b[160], c[8], d[8];
@@ -3903,7 +7929,174 @@ TEST_CASE("printf corpus 0224: c[")
 	}
 }
 
-TEST_CASE("printf corpus 0225: couldn't find static block %s [maybe-null]")
+TEST_CASE("printf corpus 0454: cam (%.1f,%.1f)%s%s [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
+		double v1 = static_cast<double>(kEdgeDBL[(row + 1) % std::size(kEdgeDBL)]);
+		const char* v2 = kStrNull[(row + 2) % std::size(kStrNull)];
+		const char* v3 = kStrNull[(row + 3) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "cam (%.1f,%.1f)%s%s", v0, v1, v2, v3);
+		const int nb = mc2::fmt::to_buf(b, "cam ({:.1f},{:.1f}){}{}", v0, v1, mc2::fmt::safe(v2), mc2::fmt::safe(v3));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "cam (%.1f,%.1f)%s%s", v0, v1, v2, v3);
+		const int nd = mc2::fmt::to_buf(d, "cam ({:.1f},{:.1f}){}{}", v0, v1, mc2::fmt::safe(v2), mc2::fmt::safe(v3));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0455: char*=%s [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "char*=%s", v0);
+		const int nb = mc2::fmt::to_buf(b, "char*={}", mc2::fmt::safe(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "char*=%s", v0);
+		const int nd = mc2::fmt::to_buf(d, "char*={}", mc2::fmt::safe(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0456: char=%c")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeCHR[(row + 0) % std::size(kEdgeCHR)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "char=%c", v0);
+		const int nb = mc2::fmt::to_buf(b, "char={:c}", mc2::fmt::as_char(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "char=%c", v0);
+		const int nd = mc2::fmt::to_buf(d, "char={:c}", mc2::fmt::as_char(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0457: cmdr: %d, team: %d, gestID: %d, partID: %d")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		int v2 = static_cast<int>(kEdgeI32[(row + 2) % std::size(kEdgeI32)]);
+		int v3 = static_cast<int>(kEdgeI32[(row + 3) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "cmdr: %d, team: %d, gestID: %d, partID: %d", v0, v1, v2, v3);
+		const int nb = mc2::fmt::to_buf(b, "cmdr: {:d}, team: {:d}, gestID: {:d}, partID: {:d}", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2), mc2::fmt::as_i32(v3));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "cmdr: %d, team: %d, gestID: %d, partID: %d", v0, v1, v2, v3);
+		const int nd = mc2::fmt::to_buf(d, "cmdr: {:d}, team: {:d}, gestID: {:d}, partID: {:d}", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2), mc2::fmt::as_i32(v3));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0458: cont:")
+{
+	for (int row = 0; row < 12; ++row) {
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "cont:");
+		const int nb = mc2::fmt::to_buf(b, "cont:");
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "cont:");
+		const int nd = mc2::fmt::to_buf(d, "cont:");
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0459: coudn't find appropriate block in file %s [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "coudn't find appropriate block in file %s", v0);
+		const int nb = mc2::fmt::to_buf(b, "coudn't find appropriate block in file {}", mc2::fmt::safe(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "coudn't find appropriate block in file %s", v0);
+		const int nd = mc2::fmt::to_buf(d, "coudn't find appropriate block in file {}", mc2::fmt::safe(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0460: couldn't add component %s to variant %s because another object was in  [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		const char* v1 = kStrNull[(row + 1) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "couldn't add component %s to variant %s because another object was in the specified location", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "couldn't add component {} to variant {} because another object was in the specified location", mc2::fmt::safe(v0), mc2::fmt::safe(v1));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "couldn't add component %s to variant %s because another object was in the specified location", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "couldn't add component {} to variant {} because another object was in the specified location", mc2::fmt::safe(v0), mc2::fmt::safe(v1));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0461: couldn't find block %s in file %s [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		const char* v1 = kStrNull[(row + 1) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "couldn't find block %s in file %s", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "couldn't find block {} in file {}", mc2::fmt::safe(v0), mc2::fmt::safe(v1));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "couldn't find block %s in file %s", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "couldn't find block {} in file {}", mc2::fmt::safe(v0), mc2::fmt::safe(v1));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0462: couldn't find button %s [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "couldn't find button %s", v0);
+		const int nb = mc2::fmt::to_buf(b, "couldn't find button {}", mc2::fmt::safe(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "couldn't find button %s", v0);
+		const int nd = mc2::fmt::to_buf(d, "couldn't find button {}", mc2::fmt::safe(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0463: couldn't find file %s [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "couldn't find file %s", v0);
+		const int nb = mc2::fmt::to_buf(b, "couldn't find file {}", mc2::fmt::safe(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "couldn't find file %s", v0);
+		const int nd = mc2::fmt::to_buf(d, "couldn't find file {}", mc2::fmt::safe(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0464: couldn't find static block %s [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -3919,7 +8112,71 @@ TEST_CASE("printf corpus 0225: couldn't find static block %s [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0226: couldn't resolve block %s in file %s [maybe-null]")
+TEST_CASE("printf corpus 0465: couldn't find the file %s (no fallback found) [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "couldn't find the file %s (no fallback found)", v0);
+		const int nb = mc2::fmt::to_buf(b, "couldn't find the file {} (no fallback found)", mc2::fmt::safe(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "couldn't find the file %s (no fallback found)", v0);
+		const int nd = mc2::fmt::to_buf(d, "couldn't find the file {} (no fallback found)", mc2::fmt::safe(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0466: couldn't find the video for operation %ld")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "couldn't find the video for operation %ld", v0);
+		const int nb = mc2::fmt::to_buf(b, "couldn't find the video for operation {:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "couldn't find the video for operation %ld", v0);
+		const int nd = mc2::fmt::to_buf(d, "couldn't find the video for operation {:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0467: couldn't open file %s [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "couldn't open file %s", v0);
+		const int nb = mc2::fmt::to_buf(b, "couldn't open file {}", mc2::fmt::safe(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "couldn't open file %s", v0);
+		const int nd = mc2::fmt::to_buf(d, "couldn't open file {}", mc2::fmt::safe(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0468: couldn't open file %s (no fallback found) [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "couldn't open file %s (no fallback found)", v0);
+		const int nb = mc2::fmt::to_buf(b, "couldn't open file {} (no fallback found)", mc2::fmt::safe(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "couldn't open file %s (no fallback found)", v0);
+		const int nd = mc2::fmt::to_buf(d, "couldn't open file {} (no fallback found)", mc2::fmt::safe(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0469: couldn't resolve block %s in file %s [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -3936,7 +8193,41 @@ TEST_CASE("printf corpus 0226: couldn't resolve block %s in file %s [maybe-null]
 	}
 }
 
-TEST_CASE("printf corpus 0227: data/missions/%s.beauty/control_map.png [maybe-null]")
+TEST_CASE("printf corpus 0470: cur step = [%d, %d], area = %d")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		int v2 = static_cast<int>(kEdgeI32[(row + 2) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "cur step = [%d, %d], area = %d", v0, v1, v2);
+		const int nb = mc2::fmt::to_buf(b, "cur step = [{:d}, {:d}], area = {:d}", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "cur step = [%d, %d], area = %d", v0, v1, v2);
+		const int nd = mc2::fmt::to_buf(d, "cur step = [{:d}, {:d}], area = {:d}", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0471: data = %x\\n")
+{
+	for (int row = 0; row < 12; ++row) {
+		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "data = %x\n", v0);
+		const int nb = mc2::fmt::to_buf(b, "data = {:x}\n", mc2::fmt::as_u32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "data = %x\n", v0);
+		const int nd = mc2::fmt::to_buf(d, "data = {:x}\n", mc2::fmt::as_u32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0472: data/missions/%s.beauty/control_map.png [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -3952,7 +8243,7 @@ TEST_CASE("printf corpus 0227: data/missions/%s.beauty/control_map.png [maybe-nu
 	}
 }
 
-TEST_CASE("printf corpus 0228: data/missions/%s.beauty/overlay_v2.png [maybe-null]")
+TEST_CASE("printf corpus 0473: data/missions/%s.beauty/overlay_v2.png [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -3968,7 +8259,7 @@ TEST_CASE("printf corpus 0228: data/missions/%s.beauty/overlay_v2.png [maybe-nul
 	}
 }
 
-TEST_CASE("printf corpus 0229: data/missions/%s.beauty/shoreline_mask.png [maybe-null]")
+TEST_CASE("printf corpus 0474: data/missions/%s.beauty/shoreline_mask.png [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -3984,7 +8275,7 @@ TEST_CASE("printf corpus 0229: data/missions/%s.beauty/shoreline_mask.png [maybe
 	}
 }
 
-TEST_CASE("printf corpus 0230: data/missions/%s.beauty/visual_height_4x.r32 [maybe-null]")
+TEST_CASE("printf corpus 0475: data/missions/%s.beauty/visual_height_4x.r32 [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -4000,7 +8291,40 @@ TEST_CASE("printf corpus 0230: data/missions/%s.beauty/visual_height_4x.r32 [may
 	}
 }
 
-TEST_CASE("printf corpus 0231: f %s [maybe-null]")
+TEST_CASE("printf corpus 0476: detail=tac_order code=%d origin=%d")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "detail=tac_order code=%d origin=%d", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "detail=tac_order code={:d} origin={:d}", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "detail=tac_order code=%d origin=%d", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "detail=tac_order code={:d} origin={:d}", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0477: ejectOrderGiven = %c\\n")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeCHR[(row + 0) % std::size(kEdgeCHR)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "ejectOrderGiven = %c\n", v0);
+		const int nb = mc2::fmt::to_buf(b, "ejectOrderGiven = {:c}\n", mc2::fmt::as_char(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "ejectOrderGiven = %c\n", v0);
+		const int nd = mc2::fmt::to_buf(d, "ejectOrderGiven = {:c}\n", mc2::fmt::as_char(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0478: f %s [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -4016,7 +8340,7 @@ TEST_CASE("printf corpus 0231: f %s [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0232: f %s = %f\\r\\n [maybe-null]")
+TEST_CASE("printf corpus 0479: f %s = %f\\r\\n [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -4033,7 +8357,7 @@ TEST_CASE("printf corpus 0232: f %s = %f\\r\\n [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0233: f[")
+TEST_CASE("printf corpus 0480: f[")
 {
 	for (int row = 0; row < 12; ++row) {
 		char a[160], b[160], c[8], d[8];
@@ -4048,7 +8372,7 @@ TEST_CASE("printf corpus 0233: f[")
 	}
 }
 
-TEST_CASE("printf corpus 0234: f[%d] %s = %.2f, [maybe-null]")
+TEST_CASE("printf corpus 0481: f[%d] %s = %.2f, [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -4066,7 +8390,81 @@ TEST_CASE("printf corpus 0234: f[%d] %s = %.2f, [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0235: history_%u.json")
+TEST_CASE("printf corpus 0482: file: %s [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "file: %s", v0);
+		const int nb = mc2::fmt::to_buf(b, "file: {}", mc2::fmt::safe(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "file: %s", v0);
+		const int nd = mc2::fmt::to_buf(d, "file: {}", mc2::fmt::safe(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0483: following %ld at (%.1f,%.1f)")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		double v1 = static_cast<double>(kEdgeDBL[(row + 1) % std::size(kEdgeDBL)]);
+		double v2 = static_cast<double>(kEdgeDBL[(row + 2) % std::size(kEdgeDBL)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "following %ld at (%.1f,%.1f)", v0, v1, v2);
+		const int nb = mc2::fmt::to_buf(b, "following {:d} at ({:.1f},{:.1f})", mc2::fmt::as_i32(v0), v1, v2);
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "following %ld at (%.1f,%.1f)", v0, v1, v2);
+		const int nd = mc2::fmt::to_buf(d, "following {:d} at ({:.1f},{:.1f})", mc2::fmt::as_i32(v0), v1, v2);
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0484: frozen NOW at mission frame %ld -- not cross-build reproducible; use `")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "frozen NOW at mission frame %ld -- not cross-build reproducible; use `freeze_movers on <frame>` for that", v0);
+		const int nb = mc2::fmt::to_buf(b, "frozen NOW at mission frame {:d} -- not cross-build reproducible; use `freeze_movers on <frame>` for that", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "frozen NOW at mission frame %ld -- not cross-build reproducible; use `freeze_movers on <frame>` for that", v0);
+		const int nd = mc2::fmt::to_buf(d, "frozen NOW at mission frame {:d} -- not cross-build reproducible; use `freeze_movers on <frame>` for that", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0485: gesture %ld->%ld staticReg %d->%d staticNow=%d eligible=%d animStartIn [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		long v1 = static_cast<long>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		int v2 = static_cast<int>(kEdgeI32[(row + 2) % std::size(kEdgeI32)]);
+		int v3 = static_cast<int>(kEdgeI32[(row + 3) % std::size(kEdgeI32)]);
+		int v4 = static_cast<int>(kEdgeI32[(row + 4) % std::size(kEdgeI32)]);
+		int v5 = static_cast<int>(kEdgeI32[(row + 5) % std::size(kEdgeI32)]);
+		unsigned long v6 = static_cast<unsigned long>(kEdgeU32[(row + 6) % std::size(kEdgeU32)]);
+		unsigned long v7 = static_cast<unsigned long>(kEdgeU32[(row + 7) % std::size(kEdgeU32)]);
+		const char* v8 = kStrNull[(row + 8) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "gesture %ld->%ld staticReg %d->%d staticNow=%d eligible=%d animStartInvalidated %lu->%lu%s", v0, v1, v2, v3, v4, v5, v6, v7, v8);
+		const int nb = mc2::fmt::to_buf(b, "gesture {:d}->{:d} staticReg {:d}->{:d} staticNow={:d} eligible={:d} animStartInvalidated {:d}->{:d}{}", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2), mc2::fmt::as_i32(v3), mc2::fmt::as_i32(v4), mc2::fmt::as_i32(v5), mc2::fmt::as_u32(v6), mc2::fmt::as_u32(v7), mc2::fmt::safe(v8));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "gesture %ld->%ld staticReg %d->%d staticNow=%d eligible=%d animStartInvalidated %lu->%lu%s", v0, v1, v2, v3, v4, v5, v6, v7, v8);
+		const int nd = mc2::fmt::to_buf(d, "gesture {:d}->{:d} staticReg {:d}->{:d} staticNow={:d} eligible={:d} animStartInvalidated {:d}->{:d}{}", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2), mc2::fmt::as_i32(v3), mc2::fmt::as_i32(v4), mc2::fmt::as_i32(v5), mc2::fmt::as_u32(v6), mc2::fmt::as_u32(v7), mc2::fmt::safe(v8));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0486: history_%u.json")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -4082,7 +8480,7 @@ TEST_CASE("printf corpus 0235: history_%u.json")
 	}
 }
 
-TEST_CASE("printf corpus 0236: image%03d")
+TEST_CASE("printf corpus 0487: image%03d")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -4098,7 +8496,57 @@ TEST_CASE("printf corpus 0236: image%03d")
 	}
 }
 
-TEST_CASE("printf corpus 0237: l %s [maybe-null]")
+TEST_CASE("printf corpus 0488: int*=%d,%d,%d")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		int v2 = static_cast<int>(kEdgeI32[(row + 2) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "int*=%d,%d,%d", v0, v1, v2);
+		const int nb = mc2::fmt::to_buf(b, "int*={:d},{:d},{:d}", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "int*=%d,%d,%d", v0, v1, v2);
+		const int nd = mc2::fmt::to_buf(d, "int*={:d},{:d},{:d}", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0489: int=%d")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "int=%d", v0);
+		const int nb = mc2::fmt::to_buf(b, "int={:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "int=%d", v0);
+		const int nd = mc2::fmt::to_buf(d, "int={:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0490: jumpOrder = %c\\n")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeCHR[(row + 0) % std::size(kEdgeCHR)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "jumpOrder = %c\n", v0);
+		const int nb = mc2::fmt::to_buf(b, "jumpOrder = {:c}\n", mc2::fmt::as_char(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "jumpOrder = %c\n", v0);
+		const int nd = mc2::fmt::to_buf(d, "jumpOrder = {:c}\n", mc2::fmt::as_char(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0491: l %s [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -4114,7 +8562,7 @@ TEST_CASE("printf corpus 0237: l %s [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0238: l %s = %d\\r\\n [maybe-null]")
+TEST_CASE("printf corpus 0492: l %s = %d\\r\\n [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -4131,7 +8579,7 @@ TEST_CASE("printf corpus 0238: l %s = %d\\r\\n [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0239: l[")
+TEST_CASE("printf corpus 0493: l[")
 {
 	for (int row = 0; row < 12; ++row) {
 		char a[160], b[160], c[8], d[8];
@@ -4146,7 +8594,7 @@ TEST_CASE("printf corpus 0239: l[")
 	}
 }
 
-TEST_CASE("printf corpus 0240: l[%d] %s = %d, [maybe-null]")
+TEST_CASE("printf corpus 0494: l[%d] %s = %d, [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -4164,7 +8612,137 @@ TEST_CASE("printf corpus 0240: l[%d] %s = %d, [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0241: path calc: %.4f")
+TEST_CASE("printf corpus 0495: lightPitch=%.1f isNight=%d nightFactor=%.2f (full recompute)")
+{
+	for (int row = 0; row < 12; ++row) {
+		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		double v2 = static_cast<double>(kEdgeDBL[(row + 2) % std::size(kEdgeDBL)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "lightPitch=%.1f isNight=%d nightFactor=%.2f (full recompute)", v0, v1, v2);
+		const int nb = mc2::fmt::to_buf(b, "lightPitch={:.1f} isNight={:d} nightFactor={:.2f} (full recompute)", v0, mc2::fmt::as_i32(v1), v2);
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "lightPitch=%.1f isNight=%d nightFactor=%.2f (full recompute)", v0, v1, v2);
+		const int nd = mc2::fmt::to_buf(d, "lightPitch={:.1f} isNight={:d} nightFactor={:.2f} (full recompute)", v0, mc2::fmt::as_i32(v1), v2);
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0496: lightPitch=%.1f%s (direction only; ambient/fog unchanged) [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
+		const char* v1 = kStrNull[(row + 1) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "lightPitch=%.1f%s (direction only; ambient/fog unchanged)", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "lightPitch={:.1f}{} (direction only; ambient/fog unchanged)", v0, mc2::fmt::safe(v1));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "lightPitch=%.1f%s (direction only; ambient/fog unchanged)", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "lightPitch={:.1f}{} (direction only; ambient/fog unchanged)", v0, mc2::fmt::safe(v1));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0497: mcl_loadingscreen")
+{
+	for (int row = 0; row < 12; ++row) {
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "mcl_loadingscreen");
+		const int nb = mc2::fmt::to_buf(b, "mcl_loadingscreen");
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "mcl_loadingscreen");
+		const int nd = mc2::fmt::to_buf(d, "mcl_loadingscreen");
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0498: mcl_loadingscreen%s [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "mcl_loadingscreen%s", v0);
+		const int nb = mc2::fmt::to_buf(b, "mcl_loadingscreen{}", mc2::fmt::safe(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "mcl_loadingscreen%s", v0);
+		const int nd = mc2::fmt::to_buf(d, "mcl_loadingscreen{}", mc2::fmt::safe(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0499: mcl_mc_%ldby%ld_selection.tga")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		long v1 = static_cast<long>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "mcl_mc_%ldby%ld_selection.tga", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "mcl_mc_{:d}by{:d}_selection.tga", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "mcl_mc_%ldby%ld_selection.tga", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "mcl_mc_{:d}by{:d}_selection.tga", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0500: moving = %c\\n")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeCHR[(row + 0) % std::size(kEdgeCHR)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "moving = %c\n", v0);
+		const int nb = mc2::fmt::to_buf(b, "moving = {:c}\n", mc2::fmt::as_char(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "moving = %c\n", v0);
+		const int nd = mc2::fmt::to_buf(d, "moving = {:c}\n", mc2::fmt::as_char(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0501: no current target")
+{
+	for (int row = 0; row < 12; ++row) {
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "no current target");
+		const int nb = mc2::fmt::to_buf(b, "no current target");
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "no current target");
+		const int nd = mc2::fmt::to_buf(d, "no current target");
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0502: numSteps = %d\\n")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "numSteps = %d\n", v0);
+		const int nb = mc2::fmt::to_buf(b, "numSteps = {:d}\n", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "numSteps = %d\n", v0);
+		const int nd = mc2::fmt::to_buf(d, "numSteps = {:d}\n", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0503: path calc: %.4f")
 {
 	for (int row = 0; row < 12; ++row) {
 		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
@@ -4180,7 +8758,7 @@ TEST_CASE("printf corpus 0241: path calc: %.4f")
 	}
 }
 
-TEST_CASE("printf corpus 0242: path calc: %.4f\\n")
+TEST_CASE("printf corpus 0504: path calc: %.4f\\n")
 {
 	for (int row = 0; row < 12; ++row) {
 		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
@@ -4196,7 +8774,24 @@ TEST_CASE("printf corpus 0242: path calc: %.4f\\n")
 	}
 }
 
-TEST_CASE("printf corpus 0243: pktIdx,firstIndex,idxCount,baseVertex,pipeline,matFlags\\n")
+TEST_CASE("printf corpus 0505: pilot = (%d)%s [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		const char* v1 = kStrNull[(row + 1) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "pilot = (%d)%s", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "pilot = ({:d}){}", mc2::fmt::as_i32(v0), mc2::fmt::safe(v1));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "pilot = (%d)%s", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "pilot = ({:d}){}", mc2::fmt::as_i32(v0), mc2::fmt::safe(v1));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0506: pktIdx,firstIndex,idxCount,baseVertex,pipeline,matFlags\\n")
 {
 	for (int row = 0; row < 12; ++row) {
 		char a[160], b[160], c[8], d[8];
@@ -4211,7 +8806,67 @@ TEST_CASE("printf corpus 0243: pktIdx,firstIndex,idxCount,baseVertex,pipeline,ma
 	}
 }
 
-TEST_CASE("printf corpus 0244: probe=(%.1f,%.1f) roundtrip=(%.2f,%.2f) box=%d,%d %dx%d scale=%.3f")
+TEST_CASE("printf corpus 0507: pos: [%d, %d](%d) snsr: %d[%s] [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		int v2 = static_cast<int>(kEdgeI32[(row + 2) % std::size(kEdgeI32)]);
+		int v3 = static_cast<int>(kEdgeI32[(row + 3) % std::size(kEdgeI32)]);
+		const char* v4 = kStrNull[(row + 4) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "pos: [%d, %d](%d) snsr: %d[%s]", v0, v1, v2, v3, v4);
+		const int nb = mc2::fmt::to_buf(b, "pos: [{:d}, {:d}]({:d}) snsr: {:d}[{}]", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2), mc2::fmt::as_i32(v3), mc2::fmt::safe(v4));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "pos: [%d, %d](%d) snsr: %d[%s]", v0, v1, v2, v3, v4);
+		const int nd = mc2::fmt::to_buf(d, "pos: [{:d}, {:d}]({:d}) snsr: {:d}[{}]", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2), mc2::fmt::as_i32(v3), mc2::fmt::safe(v4));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0508: pos: [%d, %d](%d) snsr: %d[%s] JMP [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		int v2 = static_cast<int>(kEdgeI32[(row + 2) % std::size(kEdgeI32)]);
+		int v3 = static_cast<int>(kEdgeI32[(row + 3) % std::size(kEdgeI32)]);
+		const char* v4 = kStrNull[(row + 4) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "pos: [%d, %d](%d) snsr: %d[%s] JMP", v0, v1, v2, v3, v4);
+		const int nb = mc2::fmt::to_buf(b, "pos: [{:d}, {:d}]({:d}) snsr: {:d}[{}] JMP", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2), mc2::fmt::as_i32(v3), mc2::fmt::safe(v4));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "pos: [%d, %d](%d) snsr: %d[%s] JMP", v0, v1, v2, v3, v4);
+		const int nd = mc2::fmt::to_buf(d, "pos: [{:d}, {:d}]({:d}) snsr: {:d}[{}] JMP", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2), mc2::fmt::as_i32(v3), mc2::fmt::safe(v4));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0509: pos: [%d, %d](%d) snsr: %d[%s] MOV [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		int v2 = static_cast<int>(kEdgeI32[(row + 2) % std::size(kEdgeI32)]);
+		int v3 = static_cast<int>(kEdgeI32[(row + 3) % std::size(kEdgeI32)]);
+		const char* v4 = kStrNull[(row + 4) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "pos: [%d, %d](%d) snsr: %d[%s] MOV", v0, v1, v2, v3, v4);
+		const int nb = mc2::fmt::to_buf(b, "pos: [{:d}, {:d}]({:d}) snsr: {:d}[{}] MOV", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2), mc2::fmt::as_i32(v3), mc2::fmt::safe(v4));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "pos: [%d, %d](%d) snsr: %d[%s] MOV", v0, v1, v2, v3, v4);
+		const int nd = mc2::fmt::to_buf(d, "pos: [{:d}, {:d}]({:d}) snsr: {:d}[{}] MOV", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2), mc2::fmt::as_i32(v3), mc2::fmt::safe(v4));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0510: probe=(%.1f,%.1f) roundtrip=(%.2f,%.2f) box=%d,%d %dx%d scale=%.3f")
 {
 	for (int row = 0; row < 12; ++row) {
 		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
@@ -4235,7 +8890,95 @@ TEST_CASE("printf corpus 0244: probe=(%.1f,%.1f) roundtrip=(%.2f,%.2f) box=%d,%d
 	}
 }
 
-TEST_CASE("printf corpus 0245: s %s [maybe-null]")
+TEST_CASE("printf corpus 0511: range: [%.f/%.f/%.f] %.f")
+{
+	for (int row = 0; row < 12; ++row) {
+		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
+		double v1 = static_cast<double>(kEdgeDBL[(row + 1) % std::size(kEdgeDBL)]);
+		double v2 = static_cast<double>(kEdgeDBL[(row + 2) % std::size(kEdgeDBL)]);
+		double v3 = static_cast<double>(kEdgeDBL[(row + 3) % std::size(kEdgeDBL)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "range: [%.f/%.f/%.f] %.f", v0, v1, v2, v3);
+		const int nb = mc2::fmt::to_buf(b, "range: [{:.0f}/{:.0f}/{:.0f}] {:.0f}", v0, v1, v2, v3);
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "range: [%.f/%.f/%.f] %.f", v0, v1, v2, v3);
+		const int nd = mc2::fmt::to_buf(d, "range: [{:.0f}/{:.0f}/{:.0f}] {:.0f}", v0, v1, v2, v3);
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0512: real*=%.2f,%.2f,%.2f")
+{
+	for (int row = 0; row < 12; ++row) {
+		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
+		double v1 = static_cast<double>(kEdgeDBL[(row + 1) % std::size(kEdgeDBL)]);
+		double v2 = static_cast<double>(kEdgeDBL[(row + 2) % std::size(kEdgeDBL)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "real*=%.2f,%.2f,%.2f", v0, v1, v2);
+		const int nb = mc2::fmt::to_buf(b, "real*={:.2f},{:.2f},{:.2f}", v0, v1, v2);
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "real*=%.2f,%.2f,%.2f", v0, v1, v2);
+		const int nd = mc2::fmt::to_buf(d, "real*={:.2f},{:.2f},{:.2f}", v0, v1, v2);
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0513: real=%.2f")
+{
+	for (int row = 0; row < 12; ++row) {
+		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "real=%.2f", v0);
+		const int nb = mc2::fmt::to_buf(b, "real={:.2f}", v0);
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "real=%.2f", v0);
+		const int nd = mc2::fmt::to_buf(d, "real={:.2f}", v0);
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0514: rgb=%u,%u,%u srcFrame=%lu")
+{
+	for (int row = 0; row < 12; ++row) {
+		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
+		unsigned v1 = static_cast<unsigned>(kEdgeU32[(row + 1) % std::size(kEdgeU32)]);
+		unsigned v2 = static_cast<unsigned>(kEdgeU32[(row + 2) % std::size(kEdgeU32)]);
+		unsigned long v3 = static_cast<unsigned long>(kEdgeU32[(row + 3) % std::size(kEdgeU32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "rgb=%u,%u,%u srcFrame=%lu", v0, v1, v2, v3);
+		const int nb = mc2::fmt::to_buf(b, "rgb={:d},{:d},{:d} srcFrame={:d}", mc2::fmt::as_u32(v0), mc2::fmt::as_u32(v1), mc2::fmt::as_u32(v2), mc2::fmt::as_u32(v3));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "rgb=%u,%u,%u srcFrame=%lu", v0, v1, v2, v3);
+		const int nd = mc2::fmt::to_buf(d, "rgb={:d},{:d},{:d} srcFrame={:d}", mc2::fmt::as_u32(v0), mc2::fmt::as_u32(v1), mc2::fmt::as_u32(v2), mc2::fmt::as_u32(v3));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0515: run = %c\\n")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeCHR[(row + 0) % std::size(kEdgeCHR)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "run = %c\n", v0);
+		const int nb = mc2::fmt::to_buf(b, "run = {:c}\n", mc2::fmt::as_char(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "run = %c\n", v0);
+		const int nd = mc2::fmt::to_buf(d, "run = {:c}\n", mc2::fmt::as_char(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0516: s %s [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -4251,7 +8994,7 @@ TEST_CASE("printf corpus 0245: s %s [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0246: s %s = %d\\r\\n [maybe-null]")
+TEST_CASE("printf corpus 0517: s %s = %d\\r\\n [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -4268,7 +9011,7 @@ TEST_CASE("printf corpus 0246: s %s = %d\\r\\n [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0247: s[")
+TEST_CASE("printf corpus 0518: s[")
 {
 	for (int row = 0; row < 12; ++row) {
 		char a[160], b[160], c[8], d[8];
@@ -4283,7 +9026,7 @@ TEST_CASE("printf corpus 0247: s[")
 	}
 }
 
-TEST_CASE("printf corpus 0248: shader_dump_%s.glsl [maybe-null]")
+TEST_CASE("printf corpus 0519: shader_dump_%s.glsl [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -4299,7 +9042,44 @@ TEST_CASE("printf corpus 0248: shader_dump_%s.glsl [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0249: st %s [maybe-null]")
+TEST_CASE("printf corpus 0520: sim_speed=%.2f%s [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
+		const char* v1 = kStrNull[(row + 1) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "sim_speed=%.2f%s", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "sim_speed={:.2f}{}", v0, mc2::fmt::safe(v1));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "sim_speed=%.2f%s", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "sim_speed={:.2f}{}", v0, mc2::fmt::safe(v1));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0521: spawned id=%ld obj=%d team=%d hp=%.3f%s [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		int v2 = static_cast<int>(kEdgeI32[(row + 2) % std::size(kEdgeI32)]);
+		double v3 = static_cast<double>(kEdgeDBL[(row + 3) % std::size(kEdgeDBL)]);
+		const char* v4 = kStrNull[(row + 4) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "spawned id=%ld obj=%d team=%d hp=%.3f%s", v0, v1, v2, v3, v4);
+		const int nb = mc2::fmt::to_buf(b, "spawned id={:d} obj={:d} team={:d} hp={:.3f}{}", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2), v3, mc2::fmt::safe(v4));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "spawned id=%ld obj=%d team=%d hp=%.3f%s", v0, v1, v2, v3, v4);
+		const int nd = mc2::fmt::to_buf(d, "spawned id={:d} obj={:d} team={:d} hp={:.3f}{}", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2), v3, mc2::fmt::safe(v4));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0522: st %s [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -4315,7 +9095,7 @@ TEST_CASE("printf corpus 0249: st %s [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0250: st %s = \\'%s\\'\\r\\n [maybe-null]")
+TEST_CASE("printf corpus 0523: st %s = \\'%s\\'\\r\\n [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -4332,7 +9112,345 @@ TEST_CASE("printf corpus 0250: st %s = \\'%s\\'\\r\\n [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0251: type %d: [%u, %u) of %u total")
+TEST_CASE("printf corpus 0524: stepPos[%d] = (%d, %d)\\n")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		int v2 = static_cast<int>(kEdgeI32[(row + 2) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "stepPos[%d] = (%d, %d)\n", v0, v1, v2);
+		const int nb = mc2::fmt::to_buf(b, "stepPos[{:d}] = ({:d}, {:d})\n", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "stepPos[%d] = (%d, %d)\n", v0, v1, v2);
+		const int nd = mc2::fmt::to_buf(d, "stepPos[{:d}] = ({:d}, {:d})\n", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0525: stepRelPos = %d, %d, %d\\n")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		int v2 = static_cast<int>(kEdgeI32[(row + 2) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "stepRelPos = %d, %d, %d\n", v0, v1, v2);
+		const int nb = mc2::fmt::to_buf(b, "stepRelPos = {:d}, {:d}, {:d}\n", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "stepRelPos = %d, %d, %d\n", v0, v1, v2);
+		const int nd = mc2::fmt::to_buf(d, "stepRelPos = {:d}, {:d}, {:d}\n", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0526: sun altitude=%.1f%s isNight=%d (DIRECTION only -- ambient/sky/fog unch [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
+		const char* v1 = kStrNull[(row + 1) % std::size(kStrNull)];
+		int v2 = static_cast<int>(kEdgeI32[(row + 2) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "sun altitude=%.1f%s isNight=%d (DIRECTION only -- ambient/sky/fog unchanged)", v0, v1, v2);
+		const int nb = mc2::fmt::to_buf(b, "sun altitude={:.1f}{} isNight={:d} (DIRECTION only -- ambient/sky/fog unchanged)", v0, mc2::fmt::safe(v1), mc2::fmt::as_i32(v2));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "sun altitude=%.1f%s isNight=%d (DIRECTION only -- ambient/sky/fog unchanged)", v0, v1, v2);
+		const int nd = mc2::fmt::to_buf(d, "sun altitude={:.1f}{} isNight={:d} (DIRECTION only -- ambient/sky/fog unchanged)", v0, mc2::fmt::safe(v1), mc2::fmt::as_i32(v2));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0527: target = %s (%d)\\n [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "target = %s (%d)\n", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "target = {} ({:d})\n", mc2::fmt::safe(v0), mc2::fmt::as_i32(v1));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "target = %s (%d)\n", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "target = {} ({:d})\n", mc2::fmt::safe(v0), mc2::fmt::as_i32(v1));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0528: target = NONE\\n")
+{
+	for (int row = 0; row < 12; ++row) {
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "target = NONE\n");
+		const int nb = mc2::fmt::to_buf(b, "target = NONE\n");
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "target = NONE\n");
+		const int nd = mc2::fmt::to_buf(d, "target = NONE\n");
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0529: target = objClass %d (%d)\\n")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "target = objClass %d (%d)\n", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "target = objClass {:d} ({:d})\n", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "target = objClass %d (%d)\n", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "target = objClass {:d} ({:d})\n", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0530: target point = (%f, %f, %f)\\n")
+{
+	for (int row = 0; row < 12; ++row) {
+		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
+		double v1 = static_cast<double>(kEdgeDBL[(row + 1) % std::size(kEdgeDBL)]);
+		double v2 = static_cast<double>(kEdgeDBL[(row + 2) % std::size(kEdgeDBL)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "target point = (%f, %f, %f)\n", v0, v1, v2);
+		const int nb = mc2::fmt::to_buf(b, "target point = ({:f}, {:f}, {:f})\n", v0, v1, v2);
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "target point = (%f, %f, %f)\n", v0, v1, v2);
+		const int nd = mc2::fmt::to_buf(d, "target point = ({:f}, {:f}, {:f})\n", v0, v1, v2);
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0531: targetBlockOrTrainNumber = %d\\n")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "targetBlockOrTrainNumber = %d\n", v0);
+		const int nb = mc2::fmt::to_buf(b, "targetBlockOrTrainNumber = {:d}\n", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "targetBlockOrTrainNumber = %d\n", v0);
+		const int nd = mc2::fmt::to_buf(d, "targetBlockOrTrainNumber = {:d}\n", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0532: targetCellRC = (%d, %d)\\n")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "targetCellRC = (%d, %d)\n", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "targetCellRC = ({:d}, {:d})\n", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "targetCellRC = (%d, %d)\n", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "targetCellRC = ({:d}, {:d})\n", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0533: targetId = %d\\n")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "targetId = %d\n", v0);
+		const int nb = mc2::fmt::to_buf(b, "targetId = {:d}\n", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "targetId = %d\n", v0);
+		const int nd = mc2::fmt::to_buf(d, "targetId = {:d}\n", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0534: targetItemNumber = %d\\n")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "targetItemNumber = %d\n", v0);
+		const int nb = mc2::fmt::to_buf(b, "targetItemNumber = {:d}\n", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "targetItemNumber = %d\n", v0);
+		const int nd = mc2::fmt::to_buf(d, "targetItemNumber = {:d}\n", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0535: targetType = %d\\n")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "targetType = %d\n", v0);
+		const int nb = mc2::fmt::to_buf(b, "targetType = {:d}\n", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "targetType = %d\n", v0);
+		const int nd = mc2::fmt::to_buf(d, "targetType = {:d}\n", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0536: targetVertexOrCarNumber = %d\\n")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "targetVertexOrCarNumber = %d\n", v0);
+		const int nb = mc2::fmt::to_buf(b, "targetVertexOrCarNumber = {:d}\n", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "targetVertexOrCarNumber = %d\n", v0);
+		const int nd = mc2::fmt::to_buf(d, "targetVertexOrCarNumber = {:d}\n", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0537: team: %d, handle: %d, partID: %d, rank: %d")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		int v2 = static_cast<int>(kEdgeI32[(row + 2) % std::size(kEdgeI32)]);
+		int v3 = static_cast<int>(kEdgeI32[(row + 3) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "team: %d, handle: %d, partID: %d, rank: %d", v0, v1, v2, v3);
+		const int nb = mc2::fmt::to_buf(b, "team: {:d}, handle: {:d}, partID: {:d}, rank: {:d}", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2), mc2::fmt::as_i32(v3));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "team: %d, handle: %d, partID: %d, rank: %d", v0, v1, v2, v3);
+		const int nd = mc2::fmt::to_buf(d, "team: {:d}, handle: {:d}, partID: {:d}, rank: {:d}", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2), mc2::fmt::as_i32(v3));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0538: team: %d, partID: %d, threat: %d")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		int v2 = static_cast<int>(kEdgeI32[(row + 2) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "team: %d, partID: %d, threat: %d", v0, v1, v2);
+		const int nb = mc2::fmt::to_buf(b, "team: {:d}, partID: {:d}, threat: {:d}", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "team: %d, partID: %d, threat: %d", v0, v1, v2);
+		const int nd = mc2::fmt::to_buf(d, "team: {:d}, partID: {:d}, threat: {:d}", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0539: teleport %ld -> (%.1f,%.1f)")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		double v1 = static_cast<double>(kEdgeDBL[(row + 1) % std::size(kEdgeDBL)]);
+		double v2 = static_cast<double>(kEdgeDBL[(row + 2) % std::size(kEdgeDBL)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "teleport %ld -> (%.1f,%.1f)", v0, v1, v2);
+		const int nb = mc2::fmt::to_buf(b, "teleport {:d} -> ({:.1f},{:.1f})", mc2::fmt::as_i32(v0), v1, v2);
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "teleport %ld -> (%.1f,%.1f)", v0, v1, v2);
+		const int nd = mc2::fmt::to_buf(d, "teleport {:d} -> ({:.1f},{:.1f})", mc2::fmt::as_i32(v0), v1, v2);
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0540: terrainZ=%.4f%s [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
+		const char* v1 = kStrNull[(row + 1) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "terrainZ=%.4f%s", v0, v1);
+		const int nb = mc2::fmt::to_buf(b, "terrainZ={:.4f}{}", v0, mc2::fmt::safe(v1));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "terrainZ=%.4f%s", v0, v1);
+		const int nd = mc2::fmt::to_buf(d, "terrainZ={:.4f}{}", v0, mc2::fmt::safe(v1));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0541: torsoRelFacing = %.2f")
+{
+	for (int row = 0; row < 12; ++row) {
+		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "torsoRelFacing = %.2f", v0);
+		const int nb = mc2::fmt::to_buf(b, "torsoRelFacing = {:.2f}", v0);
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "torsoRelFacing = %.2f", v0);
+		const int nd = mc2::fmt::to_buf(d, "torsoRelFacing = {:.2f}", v0);
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0542: torsoRotation = %.2f")
+{
+	for (int row = 0; row < 12; ++row) {
+		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "torsoRotation = %.2f", v0);
+		const int nb = mc2::fmt::to_buf(b, "torsoRotation = {:.2f}", v0);
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "torsoRotation = %.2f", v0);
+		const int nd = mc2::fmt::to_buf(d, "torsoRotation = {:.2f}", v0);
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0543: turretRotation = %.2f")
+{
+	for (int row = 0; row < 12; ++row) {
+		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "turretRotation = %.2f", v0);
+		const int nb = mc2::fmt::to_buf(b, "turretRotation = {:.2f}", v0);
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "turretRotation = %.2f", v0);
+		const int nd = mc2::fmt::to_buf(d, "turretRotation = {:.2f}", v0);
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0544: type %d: [%u, %u) of %u total")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -4351,7 +9469,7 @@ TEST_CASE("printf corpus 0251: type %d: [%u, %u) of %u total")
 	}
 }
 
-TEST_CASE("printf corpus 0252: typeId,firstPacket,packetCount,alphaClass\\n%u,%u,%u,%s [maybe-null]")
+TEST_CASE("printf corpus 0545: typeId,firstPacket,packetCount,alphaClass\\n%u,%u,%u,%s [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -4370,7 +9488,7 @@ TEST_CASE("printf corpus 0252: typeId,firstPacket,packetCount,alphaClass\\n%u,%u
 	}
 }
 
-TEST_CASE("printf corpus 0253: uc %s [maybe-null]")
+TEST_CASE("printf corpus 0546: uc %s [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -4386,7 +9504,7 @@ TEST_CASE("printf corpus 0253: uc %s [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0254: uc %s = %d\\r\\n [maybe-null]")
+TEST_CASE("printf corpus 0547: uc %s = %d\\r\\n [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -4403,7 +9521,7 @@ TEST_CASE("printf corpus 0254: uc %s = %d\\r\\n [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0255: uc[")
+TEST_CASE("printf corpus 0548: uc[")
 {
 	for (int row = 0; row < 12; ++row) {
 		char a[160], b[160], c[8], d[8];
@@ -4418,7 +9536,7 @@ TEST_CASE("printf corpus 0255: uc[")
 	}
 }
 
-TEST_CASE("printf corpus 0256: uc[%d] %s = %d, [maybe-null]")
+TEST_CASE("printf corpus 0549: uc[%d] %s = %d, [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -4436,7 +9554,7 @@ TEST_CASE("printf corpus 0256: uc[%d] %s = %d, [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0257: ul %s [maybe-null]")
+TEST_CASE("printf corpus 0550: ul %s [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -4452,7 +9570,7 @@ TEST_CASE("printf corpus 0257: ul %s [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0258: ul %s = %d\\r\\n [maybe-null]")
+TEST_CASE("printf corpus 0551: ul %s = %d\\r\\n [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -4469,7 +9587,7 @@ TEST_CASE("printf corpus 0258: ul %s = %d\\r\\n [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0259: ul[")
+TEST_CASE("printf corpus 0552: ul[")
 {
 	for (int row = 0; row < 12; ++row) {
 		char a[160], b[160], c[8], d[8];
@@ -4484,7 +9602,7 @@ TEST_CASE("printf corpus 0259: ul[")
 	}
 }
 
-TEST_CASE("printf corpus 0260: us %s [maybe-null]")
+TEST_CASE("printf corpus 0553: us %s [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -4500,7 +9618,7 @@ TEST_CASE("printf corpus 0260: us %s [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0261: us %s = %d\\r\\n [maybe-null]")
+TEST_CASE("printf corpus 0554: us %s = %d\\r\\n [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -4517,7 +9635,7 @@ TEST_CASE("printf corpus 0261: us %s = %d\\r\\n [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0262: us[")
+TEST_CASE("printf corpus 0555: us[")
 {
 	for (int row = 0; row < 12; ++row) {
 		char a[160], b[160], c[8], d[8];
@@ -4532,7 +9650,7 @@ TEST_CASE("printf corpus 0262: us[")
 	}
 }
 
-TEST_CASE("printf corpus 0263: us[%d] %s = %d, [maybe-null]")
+TEST_CASE("printf corpus 0556: us[%d] %s = %d, [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -4550,7 +9668,39 @@ TEST_CASE("printf corpus 0263: us[%d] %s = %d, [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0264: visual_damp.r32")
+TEST_CASE("printf corpus 0557: v%d")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "v%d", v0);
+		const int nb = mc2::fmt::to_buf(b, "v{:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "v%d", v0);
+		const int nd = mc2::fmt::to_buf(d, "v{:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0558: view_%d")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "view_%d", v0);
+		const int nb = mc2::fmt::to_buf(b, "view_{:d}", mc2::fmt::as_i32(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "view_%d", v0);
+		const int nd = mc2::fmt::to_buf(d, "view_{:d}", mc2::fmt::as_i32(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0559: visual_damp.r32")
 {
 	for (int row = 0; row < 12; ++row) {
 		char a[160], b[160], c[8], d[8];
@@ -4565,7 +9715,7 @@ TEST_CASE("printf corpus 0264: visual_damp.r32")
 	}
 }
 
-TEST_CASE("printf corpus 0265: visual_height_mips.r32")
+TEST_CASE("printf corpus 0560: visual_height_mips.r32")
 {
 	for (int row = 0; row < 12; ++row) {
 		char a[160], b[160], c[8], d[8];
@@ -4580,7 +9730,93 @@ TEST_CASE("printf corpus 0265: visual_height_mips.r32")
 	}
 }
 
-TEST_CASE("printf corpus 0266: {\\'event\\':\\'UNSTABLE\\',\\'recipe\\':%d,\\'was\\':%u,\\'now\\':%u,")
+TEST_CASE("printf corpus 0561: {\\'batch\\':%d,\\'workers\\':%d,\\'handles\\':%d,\\'chunks\\':%d,\\'p")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		int v2 = static_cast<int>(kEdgeI32[(row + 2) % std::size(kEdgeI32)]);
+		int v3 = static_cast<int>(kEdgeI32[(row + 3) % std::size(kEdgeI32)]);
+		double v4 = static_cast<double>(kEdgeDBL[(row + 4) % std::size(kEdgeDBL)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "{\"batch\":%d,\"workers\":%d,\"handles\":%d,\"chunks\":%d,\"prepass_us\":%.1f}", v0, v1, v2, v3, v4);
+		const int nb = mc2::fmt::to_buf(b, "{{\"batch\":{:d},\"workers\":{:d},\"handles\":{:d},\"chunks\":{:d},\"prepass_us\":{:.1f}}}", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2), mc2::fmt::as_i32(v3), v4);
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "{\"batch\":%d,\"workers\":%d,\"handles\":%d,\"chunks\":%d,\"prepass_us\":%.1f}", v0, v1, v2, v3, v4);
+		const int nd = mc2::fmt::to_buf(d, "{{\"batch\":{:d},\"workers\":{:d},\"handles\":{:d},\"chunks\":{:d},\"prepass_us\":{:.1f}}}", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2), mc2::fmt::as_i32(v3), v4);
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0562: {\\'ev\\':\\'firegate\\',\\'wid\\':%lu,\\'widx\\':%ld,\\'site\\':\\'%s [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		unsigned long v0 = static_cast<unsigned long>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
+		long v1 = static_cast<long>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		const char* v2 = kStrNull[(row + 2) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "{\"ev\":\"firegate\",\"wid\":%lu,\"widx\":%ld,\"site\":\"%s\"}", v0, v1, v2);
+		const int nb = mc2::fmt::to_buf(b, "{{\"ev\":\"firegate\",\"wid\":{:d},\"widx\":{:d},\"site\":\"{}\"}}", mc2::fmt::as_u32(v0), mc2::fmt::as_i32(v1), mc2::fmt::safe(v2));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "{\"ev\":\"firegate\",\"wid\":%lu,\"widx\":%ld,\"site\":\"%s\"}", v0, v1, v2);
+		const int nd = mc2::fmt::to_buf(d, "{{\"ev\":\"firegate\",\"wid\":{:d},\"widx\":{:d},\"site\":\"{}\"}}", mc2::fmt::as_u32(v0), mc2::fmt::as_i32(v1), mc2::fmt::safe(v2));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0563: {\\'ev\\':\\'hit\\',\\'a_wid\\':%u,\\'a_team\\':%ld,\\'t_wid\\':%lu,\\")
+{
+	for (int row = 0; row < 12; ++row) {
+		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
+		long v1 = static_cast<long>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		unsigned long v2 = static_cast<unsigned long>(kEdgeU32[(row + 2) % std::size(kEdgeU32)]);
+		long v3 = static_cast<long>(kEdgeI32[(row + 3) % std::size(kEdgeI32)]);
+		double v4 = static_cast<double>(kEdgeDBL[(row + 4) % std::size(kEdgeDBL)]);
+		int v5 = static_cast<int>(kEdgeI32[(row + 5) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "{\"ev\":\"hit\",\"a_wid\":%u,\"a_team\":%ld,\"t_wid\":%lu,\"t_team\":%ld,\"dmg\":%.1f,\"loc\":%d}", v0, v1, v2, v3, v4, v5);
+		const int nb = mc2::fmt::to_buf(b, "{{\"ev\":\"hit\",\"a_wid\":{:d},\"a_team\":{:d},\"t_wid\":{:d},\"t_team\":{:d},\"dmg\":{:.1f},\"loc\":{:d}}}", mc2::fmt::as_u32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_u32(v2), mc2::fmt::as_i32(v3), v4, mc2::fmt::as_i32(v5));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "{\"ev\":\"hit\",\"a_wid\":%u,\"a_team\":%ld,\"t_wid\":%lu,\"t_team\":%ld,\"dmg\":%.1f,\"loc\":%d}", v0, v1, v2, v3, v4, v5);
+		const int nd = mc2::fmt::to_buf(d, "{{\"ev\":\"hit\",\"a_wid\":{:d},\"a_team\":{:d},\"t_wid\":{:d},\"t_team\":{:d},\"dmg\":{:.1f},\"loc\":{:d}}}", mc2::fmt::as_u32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_u32(v2), mc2::fmt::as_i32(v3), v4, mc2::fmt::as_i32(v5));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0564: {\\'ev\\':\\'nofire\\',\\'wid\\':%ld,\\'tgt_wid\\':%ld,\\'ord\\':%d,\\")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		long v1 = static_cast<long>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		int v2 = static_cast<int>(kEdgeI32[(row + 2) % std::size(kEdgeI32)]);
+		long v3 = static_cast<long>(kEdgeI32[(row + 3) % std::size(kEdgeI32)]);
+		long v4 = static_cast<long>(kEdgeI32[(row + 4) % std::size(kEdgeI32)]);
+		long v5 = static_cast<long>(kEdgeI32[(row + 5) % std::size(kEdgeI32)]);
+		long v6 = static_cast<long>(kEdgeI32[(row + 6) % std::size(kEdgeI32)]);
+		long v7 = static_cast<long>(kEdgeI32[(row + 7) % std::size(kEdgeI32)]);
+		long v8 = static_cast<long>(kEdgeI32[(row + 8) % std::size(kEdgeI32)]);
+		long v9 = static_cast<long>(kEdgeI32[(row + 9) % std::size(kEdgeI32)]);
+		long v10 = static_cast<long>(kEdgeI32[(row + 10) % std::size(kEdgeI32)]);
+		double v11 = static_cast<double>(kEdgeDBL[(row + 11) % std::size(kEdgeDBL)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "{\"ev\":\"nofire\",\"wid\":%ld,\"tgt_wid\":%ld,\"ord\":%d,\"result\":%ld,\"rd\":%ld,\"am\":%ld,\"rn\":%ld,\"lk\":%ld,\"ch\":%ld,\"hot\":%ld,\"los\":%ld,\"dist\":%.0f}", v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11);
+		const int nb = mc2::fmt::to_buf(b, "{{\"ev\":\"nofire\",\"wid\":{:d},\"tgt_wid\":{:d},\"ord\":{:d},\"result\":{:d},\"rd\":{:d},\"am\":{:d},\"rn\":{:d},\"lk\":{:d},\"ch\":{:d},\"hot\":{:d},\"los\":{:d},\"dist\":{:.0f}}}", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2), mc2::fmt::as_i32(v3), mc2::fmt::as_i32(v4), mc2::fmt::as_i32(v5), mc2::fmt::as_i32(v6), mc2::fmt::as_i32(v7), mc2::fmt::as_i32(v8), mc2::fmt::as_i32(v9), mc2::fmt::as_i32(v10), v11);
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "{\"ev\":\"nofire\",\"wid\":%ld,\"tgt_wid\":%ld,\"ord\":%d,\"result\":%ld,\"rd\":%ld,\"am\":%ld,\"rn\":%ld,\"lk\":%ld,\"ch\":%ld,\"hot\":%ld,\"los\":%ld,\"dist\":%.0f}", v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11);
+		const int nd = mc2::fmt::to_buf(d, "{{\"ev\":\"nofire\",\"wid\":{:d},\"tgt_wid\":{:d},\"ord\":{:d},\"result\":{:d},\"rd\":{:d},\"am\":{:d},\"rn\":{:d},\"lk\":{:d},\"ch\":{:d},\"hot\":{:d},\"los\":{:d},\"dist\":{:.0f}}}", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2), mc2::fmt::as_i32(v3), mc2::fmt::as_i32(v4), mc2::fmt::as_i32(v5), mc2::fmt::as_i32(v6), mc2::fmt::as_i32(v7), mc2::fmt::as_i32(v8), mc2::fmt::as_i32(v9), mc2::fmt::as_i32(v10), v11);
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0565: {\\'event\\':\\'UNSTABLE\\',\\'recipe\\':%d,\\'was\\':%u,\\'now\\':%u,")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -4599,7 +9835,7 @@ TEST_CASE("printf corpus 0266: {\\'event\\':\\'UNSTABLE\\',\\'recipe\\':%d,\\'wa
 	}
 }
 
-TEST_CASE("printf corpus 0267: {\\'event\\':\\'advanced_twice_same_frame\\',\\'ptr\\':\\'%p\\',\\'ges")
+TEST_CASE("printf corpus 0566: {\\'event\\':\\'advanced_twice_same_frame\\',\\'ptr\\':\\'%p\\',\\'ges")
 {
 	for (int row = 0; row < 12; ++row) {
 		void* v0 = kEdgePTR[(row + 0) % std::size(kEdgePTR)];
@@ -4620,7 +9856,7 @@ TEST_CASE("printf corpus 0267: {\\'event\\':\\'advanced_twice_same_frame\\',\\'p
 	}
 }
 
-TEST_CASE("printf corpus 0268: {\\'event\\':\\'bom_stripped\\',\\'path\\':\\'%s\\'} [maybe-null]")
+TEST_CASE("printf corpus 0567: {\\'event\\':\\'bom_stripped\\',\\'path\\':\\'%s\\'} [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -4636,7 +9872,7 @@ TEST_CASE("printf corpus 0268: {\\'event\\':\\'bom_stripped\\',\\'path\\':\\'%s\
 	}
 }
 
-TEST_CASE("printf corpus 0269: {\\'event\\':\\'c1b_cull_ok\\',\\'c2_readback\\':%d}")
+TEST_CASE("printf corpus 0568: {\\'event\\':\\'c1b_cull_ok\\',\\'c2_readback\\':%d}")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -4652,7 +9888,7 @@ TEST_CASE("printf corpus 0269: {\\'event\\':\\'c1b_cull_ok\\',\\'c2_readback\\':
 	}
 }
 
-TEST_CASE("printf corpus 0270: {\\'event\\':\\'compute_selftest\\',\\'result\\':\\'ok\\',\\'maxActors")
+TEST_CASE("printf corpus 0569: {\\'event\\':\\'compute_selftest\\',\\'result\\':\\'ok\\',\\'maxActors")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -4669,7 +9905,7 @@ TEST_CASE("printf corpus 0270: {\\'event\\':\\'compute_selftest\\',\\'result\\':
 	}
 }
 
-TEST_CASE("printf corpus 0271: {\\'event\\':\\'coverage\\',\\'recipes_tracked\\':%zu,\\'max_index\\':")
+TEST_CASE("printf corpus 0570: {\\'event\\':\\'coverage\\',\\'recipes_tracked\\':%zu,\\'max_index\\':")
 {
 	for (int row = 0; row < 12; ++row) {
 		size_t v0 = static_cast<size_t>(kEdgeU64[(row + 0) % std::size(kEdgeU64)]);
@@ -4688,7 +9924,7 @@ TEST_CASE("printf corpus 0271: {\\'event\\':\\'coverage\\',\\'recipes_tracked\\'
 	}
 }
 
-TEST_CASE("printf corpus 0272: {\\'event\\':\\'draw_health\\',\\'flush_called\\':true,\\'instances\\'")
+TEST_CASE("printf corpus 0571: {\\'event\\':\\'draw_health\\',\\'flush_called\\':true,\\'instances\\'")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -4708,7 +9944,7 @@ TEST_CASE("printf corpus 0272: {\\'event\\':\\'draw_health\\',\\'flush_called\\'
 	}
 }
 
-TEST_CASE("printf corpus 0273: {\\'event\\':\\'enabled\\',\\'mode\\':\\'%s\\'} [maybe-null]")
+TEST_CASE("printf corpus 0572: {\\'event\\':\\'enabled\\',\\'mode\\':\\'%s\\'} [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -4724,7 +9960,7 @@ TEST_CASE("printf corpus 0273: {\\'event\\':\\'enabled\\',\\'mode\\':\\'%s\\'} [
 	}
 }
 
-TEST_CASE("printf corpus 0274: {\\'event\\':\\'first\\',\\'recipe\\':%d,\\'index\\':%u,\\'S\\':%u,\\'")
+TEST_CASE("printf corpus 0573: {\\'event\\':\\'first\\',\\'recipe\\':%d,\\'index\\':%u,\\'S\\':%u,\\'")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -4743,7 +9979,7 @@ TEST_CASE("printf corpus 0274: {\\'event\\':\\'first\\',\\'recipe\\':%d,\\'index
 	}
 }
 
-TEST_CASE("printf corpus 0275: {\\'event\\':\\'gl_probe\\',\\'version_major\\':%d,\\'version_minor\\' [maybe-null]")
+TEST_CASE("printf corpus 0574: {\\'event\\':\\'gl_probe\\',\\'version_major\\':%d,\\'version_minor\\' [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -4761,7 +9997,7 @@ TEST_CASE("printf corpus 0275: {\\'event\\':\\'gl_probe\\',\\'version_major\\':%
 	}
 }
 
-TEST_CASE("printf corpus 0276: {\\'event\\':\\'placement_health\\',\\'cells_total\\':%d,\\'reject_oob")
+TEST_CASE("printf corpus 0575: {\\'event\\':\\'placement_health\\',\\'cells_total\\':%d,\\'reject_oob")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -4784,7 +10020,7 @@ TEST_CASE("printf corpus 0276: {\\'event\\':\\'placement_health\\',\\'cells_tota
 	}
 }
 
-TEST_CASE("printf corpus 0277: {\\'event\\':\\'readback_init\\',\\'maxActors\\':%u,\\'slotBytes\\':%z")
+TEST_CASE("printf corpus 0576: {\\'event\\':\\'readback_init\\',\\'maxActors\\':%u,\\'slotBytes\\':%z")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -4805,7 +10041,7 @@ TEST_CASE("printf corpus 0277: {\\'event\\':\\'readback_init\\',\\'maxActors\\':
 	}
 }
 
-TEST_CASE("printf corpus 0278: {\\'event\\':\\'readback_selftest\\',\\'pass\\':%d,\\'fail\\':%d}")
+TEST_CASE("printf corpus 0577: {\\'event\\':\\'readback_selftest\\',\\'pass\\':%d,\\'fail\\':%d}")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -4822,7 +10058,7 @@ TEST_CASE("printf corpus 0278: {\\'event\\':\\'readback_selftest\\',\\'pass\\':%
 	}
 }
 
-TEST_CASE("printf corpus 0279: {\\'event\\':\\'substrate_init\\',\\'maxActors\\':%u,\\'slotBytes\\':%")
+TEST_CASE("printf corpus 0578: {\\'event\\':\\'substrate_init\\',\\'maxActors\\':%u,\\'slotBytes\\':%")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -4841,7 +10077,7 @@ TEST_CASE("printf corpus 0279: {\\'event\\':\\'substrate_init\\',\\'maxActors\\'
 	}
 }
 
-TEST_CASE("printf corpus 0280: {\\'event\\':\\'summary\\',\\'frame\\':%u,\\'window_frames\\':%d,\\'le")
+TEST_CASE("printf corpus 0579: {\\'event\\':\\'summary\\',\\'frame\\':%u,\\'window_frames\\':%d,\\'le")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -4879,7 +10115,7 @@ TEST_CASE("printf corpus 0280: {\\'event\\':\\'summary\\',\\'frame\\':%u,\\'wind
 	}
 }
 
-TEST_CASE("printf corpus 0281: {\\'gl_vendor\\':\\'%s\\',\\'gl_renderer\\':\\'%s\\',\\'gl_version\\': [maybe-null]")
+TEST_CASE("printf corpus 0580: {\\'gl_vendor\\':\\'%s\\',\\'gl_renderer\\':\\'%s\\',\\'gl_version\\': [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -4898,7 +10134,7 @@ TEST_CASE("printf corpus 0281: {\\'gl_vendor\\':\\'%s\\',\\'gl_renderer\\':\\'%s
 	}
 }
 
-TEST_CASE("printf corpus 0282: {\\'line\\':\\'%s\\'} [maybe-null]")
+TEST_CASE("printf corpus 0581: {\\'line\\':\\'%s\\'} [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -4914,7 +10150,23 @@ TEST_CASE("printf corpus 0282: {\\'line\\':\\'%s\\'} [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0283: {\\'pass\\':\\'%s\\',\\'ran\\':%s,\\'fbo\\':%u,\\'viewport\\':[%d,%d,% [maybe-null]")
+TEST_CASE("printf corpus 0582: {\\'multiplier\\':%.2f}")
+{
+	for (int row = 0; row < 12; ++row) {
+		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "{\"multiplier\":%.2f}", v0);
+		const int nb = mc2::fmt::to_buf(b, "{{\"multiplier\":{:.2f}}}", v0);
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "{\"multiplier\":%.2f}", v0);
+		const int nd = mc2::fmt::to_buf(d, "{{\"multiplier\":{:.2f}}}", v0);
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0583: {\\'pass\\':\\'%s\\',\\'ran\\':%s,\\'fbo\\':%u,\\'viewport\\':[%d,%d,% [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -4944,7 +10196,60 @@ TEST_CASE("printf corpus 0283: {\\'pass\\':\\'%s\\',\\'ran\\':%s,\\'fbo\\':%u,\\
 	}
 }
 
-TEST_CASE("printf corpus 0284: {\\'site\\':\\'fallback_fill\\',\\'filename\\':\\'%s\\',\\'texname\\': [maybe-null]")
+TEST_CASE("printf corpus 0584: {\\'site\\':\\'cull\\',\\'name\\':\\'%s\\',\\'on_gui\\':%d,\\'type_cla [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		int v2 = static_cast<int>(kEdgeI32[(row + 2) % std::size(kEdgeI32)]);
+		int v3 = static_cast<int>(kEdgeI32[(row + 3) % std::size(kEdgeI32)]);
+		int v4 = static_cast<int>(kEdgeI32[(row + 4) % std::size(kEdgeI32)]);
+		int v5 = static_cast<int>(kEdgeI32[(row + 5) % std::size(kEdgeI32)]);
+		int v6 = static_cast<int>(kEdgeI32[(row + 6) % std::size(kEdgeI32)]);
+		int v7 = static_cast<int>(kEdgeI32[(row + 7) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "{\"site\":\"cull\",\"name\":\"%s\",\"on_gui\":%d,\"type_class\":%d,\"move_type\":%d,\"cmd_match\":%d,\"is_air\":%d,\"dead\":%d,\"carry_over\":%d}", v0, v1, v2, v3, v4, v5, v6, v7);
+		const int nb = mc2::fmt::to_buf(b, "{{\"site\":\"cull\",\"name\":\"{}\",\"on_gui\":{:d},\"type_class\":{:d},\"move_type\":{:d},\"cmd_match\":{:d},\"is_air\":{:d},\"dead\":{:d},\"carry_over\":{:d}}}", mc2::fmt::safe(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2), mc2::fmt::as_i32(v3), mc2::fmt::as_i32(v4), mc2::fmt::as_i32(v5), mc2::fmt::as_i32(v6), mc2::fmt::as_i32(v7));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "{\"site\":\"cull\",\"name\":\"%s\",\"on_gui\":%d,\"type_class\":%d,\"move_type\":%d,\"cmd_match\":%d,\"is_air\":%d,\"dead\":%d,\"carry_over\":%d}", v0, v1, v2, v3, v4, v5, v6, v7);
+		const int nd = mc2::fmt::to_buf(d, "{{\"site\":\"cull\",\"name\":\"{}\",\"on_gui\":{:d},\"type_class\":{:d},\"move_type\":{:d},\"cmd_match\":{:d},\"is_air\":{:d},\"dead\":{:d},\"carry_over\":{:d}}}", mc2::fmt::safe(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2), mc2::fmt::as_i32(v3), mc2::fmt::as_i32(v4), mc2::fmt::as_i32(v5), mc2::fmt::as_i32(v6), mc2::fmt::as_i32(v7));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0585: {\\'site\\':\\'doAttack\\',\\'stale_wid\\':%d,\\'behind\\':%d,\\'far_c")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		int v2 = static_cast<int>(kEdgeI32[(row + 2) % std::size(kEdgeI32)]);
+		double v3 = static_cast<double>(kEdgeDBL[(row + 3) % std::size(kEdgeDBL)]);
+		double v4 = static_cast<double>(kEdgeDBL[(row + 4) % std::size(kEdgeDBL)]);
+		double v5 = static_cast<double>(kEdgeDBL[(row + 5) % std::size(kEdgeDBL)]);
+		long v6 = static_cast<long>(kEdgeI32[(row + 6) % std::size(kEdgeI32)]);
+		long v7 = static_cast<long>(kEdgeI32[(row + 7) % std::size(kEdgeI32)]);
+		double v8 = static_cast<double>(kEdgeDBL[(row + 8) % std::size(kEdgeDBL)]);
+		int v9 = static_cast<int>(kEdgeI32[(row + 9) % std::size(kEdgeI32)]);
+		int v10 = static_cast<int>(kEdgeI32[(row + 10) % std::size(kEdgeI32)]);
+		unsigned long long v11 = static_cast<unsigned long long>(kEdgeU64[(row + 11) % std::size(kEdgeU64)]);
+		unsigned long long v12 = static_cast<unsigned long long>(kEdgeU64[(row + 12) % std::size(kEdgeU64)]);
+		unsigned long long v13 = static_cast<unsigned long long>(kEdgeU64[(row + 13) % std::size(kEdgeU64)]);
+		unsigned long long v14 = static_cast<unsigned long long>(kEdgeU64[(row + 14) % std::size(kEdgeU64)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "{\"site\":\"doAttack\",\"stale_wid\":%d,\"behind\":%d,\"far_cursor\":%d,\"target_screen\":[%.1f,%.1f],\"w\":%.4f,\"mouse\":[%ld,%ld],\"dist_sq\":%.0f,\"is_mover\":%d,\"watch_id\":%d,\"totals\":{\"orders\":%llu,\"stale_wid\":%llu,\"behind\":%llu,\"far\":%llu}}", v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14);
+		const int nb = mc2::fmt::to_buf(b, "{{\"site\":\"doAttack\",\"stale_wid\":{:d},\"behind\":{:d},\"far_cursor\":{:d},\"target_screen\":[{:.1f},{:.1f}],\"w\":{:.4f},\"mouse\":[{:d},{:d}],\"dist_sq\":{:.0f},\"is_mover\":{:d},\"watch_id\":{:d},\"totals\":{{\"orders\":{:d},\"stale_wid\":{:d},\"behind\":{:d},\"far\":{:d}}}}}", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2), v3, v4, v5, mc2::fmt::as_i32(v6), mc2::fmt::as_i32(v7), v8, mc2::fmt::as_i32(v9), mc2::fmt::as_i32(v10), mc2::fmt::as_u64(v11), mc2::fmt::as_u64(v12), mc2::fmt::as_u64(v13), mc2::fmt::as_u64(v14));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "{\"site\":\"doAttack\",\"stale_wid\":%d,\"behind\":%d,\"far_cursor\":%d,\"target_screen\":[%.1f,%.1f],\"w\":%.4f,\"mouse\":[%ld,%ld],\"dist_sq\":%.0f,\"is_mover\":%d,\"watch_id\":%d,\"totals\":{\"orders\":%llu,\"stale_wid\":%llu,\"behind\":%llu,\"far\":%llu}}", v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14);
+		const int nd = mc2::fmt::to_buf(d, "{{\"site\":\"doAttack\",\"stale_wid\":{:d},\"behind\":{:d},\"far_cursor\":{:d},\"target_screen\":[{:.1f},{:.1f}],\"w\":{:.4f},\"mouse\":[{:d},{:d}],\"dist_sq\":{:.0f},\"is_mover\":{:d},\"watch_id\":{:d},\"totals\":{{\"orders\":{:d},\"stale_wid\":{:d},\"behind\":{:d},\"far\":{:d}}}}}", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2), v3, v4, v5, mc2::fmt::as_i32(v6), mc2::fmt::as_i32(v7), v8, mc2::fmt::as_i32(v9), mc2::fmt::as_i32(v10), mc2::fmt::as_u64(v11), mc2::fmt::as_u64(v12), mc2::fmt::as_u64(v13), mc2::fmt::as_u64(v14));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0586: {\\'site\\':\\'fallback_fill\\',\\'filename\\':\\'%s\\',\\'texname\\': [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -4963,7 +10268,30 @@ TEST_CASE("printf corpus 0284: {\\'site\\':\\'fallback_fill\\',\\'filename\\':\\
 	}
 }
 
-TEST_CASE("printf corpus 0285: {\\'site\\':\\'map_half_extent\\',\\'value\\':%.1f,\\'guard_fail\\':%d")
+TEST_CASE("printf corpus 0587: {\\'site\\':\\'handleTacticalOrder\\',\\'order\\':%llu,\\'targetWID\\'")
+{
+	for (int row = 0; row < 12; ++row) {
+		unsigned long long v0 = static_cast<unsigned long long>(kEdgeU64[(row + 0) % std::size(kEdgeU64)]);
+		int v1 = static_cast<int>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		int v2 = static_cast<int>(kEdgeI32[(row + 2) % std::size(kEdgeI32)]);
+		double v3 = static_cast<double>(kEdgeDBL[(row + 3) % std::size(kEdgeDBL)]);
+		int v4 = static_cast<int>(kEdgeI32[(row + 4) % std::size(kEdgeI32)]);
+		unsigned long long v5 = static_cast<unsigned long long>(kEdgeU64[(row + 5) % std::size(kEdgeU64)]);
+		unsigned long long v6 = static_cast<unsigned long long>(kEdgeU64[(row + 6) % std::size(kEdgeU64)]);
+		unsigned long long v7 = static_cast<unsigned long long>(kEdgeU64[(row + 7) % std::size(kEdgeU64)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "{\"site\":\"handleTacticalOrder\",\"order\":%llu,\"targetWID\":%d,\"stale_wid\":%d,\"range\":%.1f,\"far\":%d,\"totals\":{\"orders\":%llu,\"stale\":%llu,\"far\":%llu}}", v0, v1, v2, v3, v4, v5, v6, v7);
+		const int nb = mc2::fmt::to_buf(b, "{{\"site\":\"handleTacticalOrder\",\"order\":{:d},\"targetWID\":{:d},\"stale_wid\":{:d},\"range\":{:.1f},\"far\":{:d},\"totals\":{{\"orders\":{:d},\"stale\":{:d},\"far\":{:d}}}}}", mc2::fmt::as_u64(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2), v3, mc2::fmt::as_i32(v4), mc2::fmt::as_u64(v5), mc2::fmt::as_u64(v6), mc2::fmt::as_u64(v7));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "{\"site\":\"handleTacticalOrder\",\"order\":%llu,\"targetWID\":%d,\"stale_wid\":%d,\"range\":%.1f,\"far\":%d,\"totals\":{\"orders\":%llu,\"stale\":%llu,\"far\":%llu}}", v0, v1, v2, v3, v4, v5, v6, v7);
+		const int nd = mc2::fmt::to_buf(d, "{{\"site\":\"handleTacticalOrder\",\"order\":{:d},\"targetWID\":{:d},\"stale_wid\":{:d},\"range\":{:.1f},\"far\":{:d},\"totals\":{{\"orders\":{:d},\"stale\":{:d},\"far\":{:d}}}}}", mc2::fmt::as_u64(v0), mc2::fmt::as_i32(v1), mc2::fmt::as_i32(v2), v3, mc2::fmt::as_i32(v4), mc2::fmt::as_u64(v5), mc2::fmt::as_u64(v6), mc2::fmt::as_u64(v7));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0588: {\\'site\\':\\'map_half_extent\\',\\'value\\':%.1f,\\'guard_fail\\':%d")
 {
 	for (int row = 0; row < 12; ++row) {
 		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
@@ -4980,7 +10308,91 @@ TEST_CASE("printf corpus 0285: {\\'site\\':\\'map_half_extent\\',\\'value\\':%.1
 	}
 }
 
-TEST_CASE("printf corpus 0286: {\\'v\\':%d}")
+TEST_CASE("printf corpus 0589: {\\'site\\':\\'mech_lost\\',\\'variant\\':\\'%s\\'} [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "{\"site\":\"mech_lost\",\"variant\":\"%s\"}", v0);
+		const int nb = mc2::fmt::to_buf(b, "{{\"site\":\"mech_lost\",\"variant\":\"{}\"}}", mc2::fmt::safe(v0));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "{\"site\":\"mech_lost\",\"variant\":\"%s\"}", v0);
+		const int nd = mc2::fmt::to_buf(d, "{{\"site\":\"mech_lost\",\"variant\":\"{}\"}}", mc2::fmt::safe(v0));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0590: {\\'site\\':\\'pick_rect\\',\\'behind_corners\\':%d,\\'pos\\':[%.1f,%.")
+{
+	for (int row = 0; row < 12; ++row) {
+		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		double v1 = static_cast<double>(kEdgeDBL[(row + 1) % std::size(kEdgeDBL)]);
+		double v2 = static_cast<double>(kEdgeDBL[(row + 2) % std::size(kEdgeDBL)]);
+		double v3 = static_cast<double>(kEdgeDBL[(row + 3) % std::size(kEdgeDBL)]);
+		long v4 = static_cast<long>(kEdgeI32[(row + 4) % std::size(kEdgeI32)]);
+		long v5 = static_cast<long>(kEdgeI32[(row + 5) % std::size(kEdgeI32)]);
+		long v6 = static_cast<long>(kEdgeI32[(row + 6) % std::size(kEdgeI32)]);
+		long v7 = static_cast<long>(kEdgeI32[(row + 7) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "{\"site\":\"pick_rect\",\"behind_corners\":%d,\"pos\":[%.1f,%.1f,%.1f],\"rect\":[%ld,%ld,%ld,%ld]}", v0, v1, v2, v3, v4, v5, v6, v7);
+		const int nb = mc2::fmt::to_buf(b, "{{\"site\":\"pick_rect\",\"behind_corners\":{:d},\"pos\":[{:.1f},{:.1f},{:.1f}],\"rect\":[{:d},{:d},{:d},{:d}]}}", mc2::fmt::as_i32(v0), v1, v2, v3, mc2::fmt::as_i32(v4), mc2::fmt::as_i32(v5), mc2::fmt::as_i32(v6), mc2::fmt::as_i32(v7));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "{\"site\":\"pick_rect\",\"behind_corners\":%d,\"pos\":[%.1f,%.1f,%.1f],\"rect\":[%ld,%ld,%ld,%ld]}", v0, v1, v2, v3, v4, v5, v6, v7);
+		const int nd = mc2::fmt::to_buf(d, "{{\"site\":\"pick_rect\",\"behind_corners\":{:d},\"pos\":[{:.1f},{:.1f},{:.1f}],\"rect\":[{:d},{:d},{:d},{:d}]}}", mc2::fmt::as_i32(v0), v1, v2, v3, mc2::fmt::as_i32(v4), mc2::fmt::as_i32(v5), mc2::fmt::as_i32(v6), mc2::fmt::as_i32(v7));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0591: {\\'site\\':\\'resolve\\',\\'name\\':\\'%s\\',\\'pilot\\':\\'%s\\',\\' [maybe-null]")
+{
+	for (int row = 0; row < 12; ++row) {
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
+		const char* v1 = kStrNull[(row + 1) % std::size(kStrNull)];
+		const char* v2 = kStrNull[(row + 2) % std::size(kStrNull)];
+		int v3 = static_cast<int>(kEdgeI32[(row + 3) % std::size(kEdgeI32)]);
+		int v4 = static_cast<int>(kEdgeI32[(row + 4) % std::size(kEdgeI32)]);
+		int v5 = static_cast<int>(kEdgeI32[(row + 5) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "{\"site\":\"resolve\",\"name\":\"%s\",\"pilot\":\"%s\",\"variant\":\"%s\",\"mech_found\":%d,\"pilot_found\":%d,\"dead\":%d}", v0, v1, v2, v3, v4, v5);
+		const int nb = mc2::fmt::to_buf(b, "{{\"site\":\"resolve\",\"name\":\"{}\",\"pilot\":\"{}\",\"variant\":\"{}\",\"mech_found\":{:d},\"pilot_found\":{:d},\"dead\":{:d}}}", mc2::fmt::safe(v0), mc2::fmt::safe(v1), mc2::fmt::safe(v2), mc2::fmt::as_i32(v3), mc2::fmt::as_i32(v4), mc2::fmt::as_i32(v5));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "{\"site\":\"resolve\",\"name\":\"%s\",\"pilot\":\"%s\",\"variant\":\"%s\",\"mech_found\":%d,\"pilot_found\":%d,\"dead\":%d}", v0, v1, v2, v3, v4, v5);
+		const int nd = mc2::fmt::to_buf(d, "{{\"site\":\"resolve\",\"name\":\"{}\",\"pilot\":\"{}\",\"variant\":\"{}\",\"mech_found\":{:d},\"pilot_found\":{:d},\"dead\":{:d}}}", mc2::fmt::safe(v0), mc2::fmt::safe(v1), mc2::fmt::safe(v2), mc2::fmt::as_i32(v3), mc2::fmt::as_i32(v4), mc2::fmt::as_i32(v5));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0592: {\\'site\\':\\'update_target\\',\\'mouse\\':[%ld,%ld],\\'target_screen")
+{
+	for (int row = 0; row < 12; ++row) {
+		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
+		long v1 = static_cast<long>(kEdgeI32[(row + 1) % std::size(kEdgeI32)]);
+		double v2 = static_cast<double>(kEdgeDBL[(row + 2) % std::size(kEdgeDBL)]);
+		double v3 = static_cast<double>(kEdgeDBL[(row + 3) % std::size(kEdgeDBL)]);
+		double v4 = static_cast<double>(kEdgeDBL[(row + 4) % std::size(kEdgeDBL)]);
+		int v5 = static_cast<int>(kEdgeI32[(row + 5) % std::size(kEdgeI32)]);
+		double v6 = static_cast<double>(kEdgeDBL[(row + 6) % std::size(kEdgeDBL)]);
+		int v7 = static_cast<int>(kEdgeI32[(row + 7) % std::size(kEdgeI32)]);
+		int v8 = static_cast<int>(kEdgeI32[(row + 8) % std::size(kEdgeI32)]);
+		char a[160], b[160], c[8], d[8];
+		const int na = std::snprintf(a, sizeof a, "{\"site\":\"update_target\",\"mouse\":[%ld,%ld],\"target_screen\":[%.1f,%.1f],\"w\":%.4f,\"behind\":%d,\"dist_sq\":%.0f,\"is_mover\":%d,\"watch_id\":%d}", v0, v1, v2, v3, v4, v5, v6, v7, v8);
+		const int nb = mc2::fmt::to_buf(b, "{{\"site\":\"update_target\",\"mouse\":[{:d},{:d}],\"target_screen\":[{:.1f},{:.1f}],\"w\":{:.4f},\"behind\":{:d},\"dist_sq\":{:.0f},\"is_mover\":{:d},\"watch_id\":{:d}}}", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), v2, v3, v4, mc2::fmt::as_i32(v5), v6, mc2::fmt::as_i32(v7), mc2::fmt::as_i32(v8));
+		CHECK(na == nb);
+		CHECK(std::strcmp(a, b) == 0);
+		const int nc = std::snprintf(c, sizeof c, "{\"site\":\"update_target\",\"mouse\":[%ld,%ld],\"target_screen\":[%.1f,%.1f],\"w\":%.4f,\"behind\":%d,\"dist_sq\":%.0f,\"is_mover\":%d,\"watch_id\":%d}", v0, v1, v2, v3, v4, v5, v6, v7, v8);
+		const int nd = mc2::fmt::to_buf(d, "{{\"site\":\"update_target\",\"mouse\":[{:d},{:d}],\"target_screen\":[{:.1f},{:.1f}],\"w\":{:.4f},\"behind\":{:d},\"dist_sq\":{:.0f},\"is_mover\":{:d},\"watch_id\":{:d}}}", mc2::fmt::as_i32(v0), mc2::fmt::as_i32(v1), v2, v3, v4, mc2::fmt::as_i32(v5), v6, mc2::fmt::as_i32(v7), mc2::fmt::as_i32(v8));
+		CHECK(nc == nd);
+		CHECK(std::strcmp(c, d) == 0);
+	}
+}
+
+TEST_CASE("printf corpus 0593: {\\'v\\':%d}")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -4996,7 +10408,7 @@ TEST_CASE("printf corpus 0286: {\\'v\\':%d}")
 	}
 }
 
-TEST_CASE("printf corpus 0287: {\\'visibleTerrainChunks\\':%u,\\'staticPropBatches\\':%u,\\'mechBatch")
+TEST_CASE("printf corpus 0594: {\\'visibleTerrainChunks\\':%u,\\'staticPropBatches\\':%u,\\'mechBatch")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);

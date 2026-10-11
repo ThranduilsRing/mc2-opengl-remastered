@@ -1,6 +1,7 @@
 // GameObjectManager: GameObjectManager::update with its GOM_UPDATE_COST spans, in-view conflation probe, GPU-cull record and static-skip gates.
 // Declared in the class headers; shared names in objmgr_internal.h.
 #include "objmgr_internal.h"
+#include "mc2fmt.h"
 
 
 // ---------------------------------------------------------------------------
@@ -393,19 +394,17 @@ struct TotalSpan {
         const double wf = static_cast<double>(s_frames);
         double phaseSumUs = 0.0;
         char line[512]; int off = 0;
-        off += snprintf(line + off, sizeof(line) - off,
-            "[GOM_UPDATE_COST v1] event=summary frames=%d", s_frames);
+        off += mc2::fmt::to_buf_n(line + off, sizeof(line) - off, "[GOM_UPDATE_COST v1] event=summary frames={:d}", mc2::fmt::as_i32(s_frames));
         for (int p = 0; p < kPhaseCount; ++p) {
             const double us = static_cast<double>(s_ns[p]) / 1000.0 / wf;
             if (p != kTotal) phaseSumUs += us;
             if (off < static_cast<int>(sizeof(line)))
-                off += snprintf(line + off, sizeof(line) - off,
-                                " %s_us=%.1f", kName[p], us);
+                off += mc2::fmt::to_buf_n(line + off, sizeof(line) - off, " {}_us={:.1f}", mc2::fmt::safe(kName[p]), us);
         }
         const double selfUs =
             static_cast<double>(s_ns[kTotal]) / 1000.0 / wf - phaseSumUs;
         if (off < static_cast<int>(sizeof(line)))
-            snprintf(line + off, sizeof(line) - off, " self_us=%.1f", selfUs);
+            mc2::fmt::to_buf_n(line + off, sizeof(line) - off, " self_us={:.1f}", selfUs);
         fprintf(stderr, "%s\n", line);
         fflush(stderr);
         memset(s_ns, 0, sizeof(s_ns));
@@ -618,13 +617,7 @@ void GameObjectManager::updateFrameJobsPrepass(int& frameJobsPrePassCount) {
 			if (mc2_diag::tagEnabled("FRAME_JOBS")) {
 				FrameJobsFrameStats _fj_stats = frameJobsGetFrameStats();
 				char _fj_buf[192];
-				snprintf(_fj_buf, sizeof(_fj_buf),
-				         "{\"batch\":%d,\"workers\":%d,\"handles\":%d,\"chunks\":%d,\"prepass_us\":%.1f}",
-				         frameJobsBatch(),
-				         _fj_stats.workerCount,
-				         count,
-				         _fj_stats.chunksExecuted,
-				         _fj_prepass_us);
+				mc2::fmt::to_buf(_fj_buf, "{{\"batch\":{:d},\"workers\":{:d},\"handles\":{:d},\"chunks\":{:d},\"prepass_us\":{:.1f}}}", mc2::fmt::as_i32(frameJobsBatch()), mc2::fmt::as_i32(_fj_stats.workerCount), mc2::fmt::as_i32(count), mc2::fmt::as_i32(_fj_stats.chunksExecuted), _fj_prepass_us);
 				mc2_diag::writeEvent("FRAME_JOBS", 1, 0, _fj_buf);
 			}
 		}

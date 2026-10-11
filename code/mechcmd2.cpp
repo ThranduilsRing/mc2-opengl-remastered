@@ -9,6 +9,7 @@
 #include "mechcmd2_internal.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
+#include "mc2fmt.h"
 
 #ifndef VERSION_H
 #include"version.h"
@@ -568,7 +569,7 @@ void __stdcall InitializeGameEngine()
 					int fileNum = 0;
 					char fastFileId[10];
 					char fileName[100];
-					sprintf(fastFileId,"File%d",fileNum);
+					mc2::fmt::to_buf(fastFileId, "File{:d}", mc2::fmt::as_i32(fileNum));
 		
 					while (systemFile->readIdString(fastFileId,fileName,99) == NO_ERR)
 					{
@@ -577,7 +578,7 @@ void __stdcall InitializeGameEngine()
 							STOP(("Unable to startup fastfiles.  Probably an old one in the directory!!"));
 	
 						fileNum++;
-						sprintf(fastFileId,"File%d",fileNum);
+						mc2::fmt::to_buf(fastFileId, "File{:d}", mc2::fmt::as_i32(fileNum));
 					}
 				}
 			}

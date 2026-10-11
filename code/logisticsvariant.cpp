@@ -7,6 +7,7 @@ LogisticsVariant.cpp			: Implementation of the LogisticsVariant component.
 \*************************************************************************************************/
 
 #include "logisticsvariant_internal.h"
+#include "mc2fmt.h"
 
 
 
@@ -438,8 +439,7 @@ int LogisticsVariant::init( CSVFile* file, LogisticsChassis* pChassis, int Varia
 					if ( !addComponent( pComps[i]->getID(), xLocs[i], yLocs[i] ) )
 					{
 						char errorString[256];
-						sprintf( errorString, "Couldn't add component with id %ld", 
-							pComponent->getID() );
+						mc2::fmt::to_buf(errorString, "Couldn't add component with id {:d}", mc2::fmt::as_i32(pComponent->getID()));
 					}
 				}
 			}
@@ -531,8 +531,7 @@ bool LogisticsVariant::addComponent( int idFromFitFile, long& x, long& y )
  					if ( getComponentAtLocation( x +i, y + j ) )
 					{
 						char errorString[1024];
-						sprintf( errorString, "couldn't add component %s to variant %s because another object was in the specified location", 
-							pComponent->getName(), (const char*)this->getName() );
+						mc2::fmt::to_buf(errorString, "couldn't add component {} to variant {} because another object was in the specified location", mc2::fmt::safe(pComponent->getName()), mc2::fmt::safe((const char*)this->getName()));
 		//				Assert( 0, 0, errorString );
 						return false; 
 					}

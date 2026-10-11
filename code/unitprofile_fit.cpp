@@ -20,6 +20,7 @@
 #include <cstring>                        // strncpy (chassis stem copy)
 #include <cctype>                         // tolower (UNIT-SOURCE-FLIP-SWITCH-1)
 #include "modder_finding.h"              // MODDER-FIRST-ERROR-SURFACE-1: shared context format
+#include "mc2fmt.h"
 
 void populateProfileFromFit(FitIniFile& fit, UnitProfile& p) {
     // Optional, additive (grant-only, never clears). Stock .fits have no
@@ -129,7 +130,7 @@ bool sourceGeneratedChassisFacets(const char* chassisStem, UnitProfile& p,
     lowerCopy(stem, sizeof(stem), chassisStem);
 
     char path[256];
-    std::snprintf(path, sizeof(path), "%s%s/chassisdef.fit", kGeneratedUnitsRoot, stem);
+    mc2::fmt::to_buf(path, "{}{}/chassisdef.fit", mc2::fmt::safe(kGeneratedUnitsRoot), mc2::fmt::safe(stem));
 
     // Absent generated def -> legacy default stands (partial coverage is safe).
     if (!fileExists(path))
@@ -217,7 +218,7 @@ bool sourceGeneratedVariantJump(const char* chassisStem, const char* variantName
     mc2GeneratedVariantSlug(variantName, 0, slug, sizeof(slug));
 
     char path[256];
-    std::snprintf(path, sizeof(path), "%s%s/%s/unit.fit", kGeneratedUnitsRoot, stem, slug);
+    mc2::fmt::to_buf(path, "{}{}/{}/unit.fit", mc2::fmt::safe(kGeneratedUnitsRoot), mc2::fmt::safe(stem), mc2::fmt::safe(slug));
     if (!fileExists(path))
         return false;
 

@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in gvehicl_internal.h.
 #include "gvehicl_internal.h"
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 
 
@@ -260,11 +261,7 @@ long GroundVehicle::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultipl
 		char _cbf[192];
 		// ISSUE-9 S3: "loc" = resolved hit location (vehicle location index) —
 		// keeps the hit-event schema uniform with BattleMech::handleWeaponHit.
-		snprintf(_cbf, sizeof(_cbf),
-			"{\"ev\":\"hit\",\"a_wid\":%u,\"a_team\":%ld,\"t_wid\":%lu,\"t_team\":%ld,\"dmg\":%.1f,\"loc\":%d}",
-			(unsigned)shotInfo->attackerWID, _cbAtk ? _cbAtk->getTeamId() : -1L,
-			getWatchID(false), getTeamId(), (double)shotInfo->damage,
-			(int)shotInfo->hitLocation);
+		mc2::fmt::to_buf(_cbf, "{{\"ev\":\"hit\",\"a_wid\":{:d},\"a_team\":{:d},\"t_wid\":{:d},\"t_team\":{:d},\"dmg\":{:.1f},\"loc\":{:d}}}", mc2::fmt::as_u32((unsigned)shotInfo->attackerWID), mc2::fmt::as_i32(_cbAtk ? _cbAtk->getTeamId() : -1L), mc2::fmt::as_u32(getWatchID(false)), mc2::fmt::as_i32(getTeamId()), (double)shotInfo->damage, mc2::fmt::as_i32((int)shotInfo->hitLocation));
 		mc2_diag::writeEvent("COMBAT", 1, 0, _cbf);
 	}
 
@@ -297,16 +294,12 @@ long GroundVehicle::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultipl
 			if (attacker->isMover())
 				strcpy(attackerStr, attacker->getName());
 			else
-				sprintf(attackerStr, "ID:%d", attacker->getPartId());
+				mc2::fmt::to_buf(attackerStr, "ID:{:d}", mc2::fmt::as_i32(attacker->getPartId()));
 			}
 		else
 			strcpy(attackerStr, "attacker?");
 		char err[128];
-		sprintf(err, "GVehicle.handleWeaponHit: [%s]%d for %.2f at %d",
-			attackerStr,
-			shotInfo->masterId,
-			shotInfo->damage,
-			shotInfo->hitLocation);
+		mc2::fmt::to_buf(err, "GVehicle.handleWeaponHit: [{}]{:d} for {:.2f} at {:d}", mc2::fmt::safe(attackerStr), mc2::fmt::as_i32(shotInfo->masterId), shotInfo->damage, mc2::fmt::as_i32(shotInfo->hitLocation));
 		Fatal(0, err);
 	}
 

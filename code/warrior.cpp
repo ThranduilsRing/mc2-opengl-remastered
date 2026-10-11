@@ -7,6 +7,7 @@
 #include "warrior_internal.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
+#include "mc2fmt.h"
 
 
 // ABL-VM-FACTS-1: TU-local definitions for the abl_trace externs.
@@ -1297,7 +1298,7 @@ long MechWarrior::setBrain (long brainHandle) {
 		brainErr = brain->init(brainHandle);
 		if (brainErr == NO_ERR) {
 			char brainName[500];
-			sprintf(brainName, "Pilot %s", name);
+			mc2::fmt::to_buf(brainName, "Pilot {}", mc2::fmt::safe(name));
 			brain->setName(brainName);
 			// Set up the pilot alarm callback table...
 			for (long i = 0; i < NUM_PILOT_ALARMS; i++)
@@ -1884,7 +1885,7 @@ long MechWarrior::combatDecisionTree (void) {
 		#if WARRIOR_DEBUGGING_ENABLED
 			if (debugFlags & WARRIOR_DEBUG_FLAG_COMBAT) {
 				char s[128];
-				sprintf(s, "%s (%.2f) has no attack target.\n", callsign, getSituationFireRange());
+				mc2::fmt::to_buf(s, "{} ({:.2f}) has no attack target.\n", mc2::fmt::safe(callsign), getSituationFireRange());
 				debugPrint(s, true);
 			}
 		#endif
@@ -1896,7 +1897,7 @@ long MechWarrior::combatDecisionTree (void) {
 			#if WARRIOR_DEBUGGING_ENABLED
 				if (debugFlags & WARRIOR_DEBUG_FLAG_COMBAT) {
 					char s[128];
-					sprintf(s, "%s (%.2f) has a destroyed target.\n", callsign, getSituationFireRange());
+					mc2::fmt::to_buf(s, "{} ({:.2f}) has a destroyed target.\n", mc2::fmt::safe(callsign), getSituationFireRange());
 					debugPrint(s, true);
 				}
 			#endif
@@ -1907,7 +1908,7 @@ long MechWarrior::combatDecisionTree (void) {
 			#if WARRIOR_DEBUGGING_ENABLED
 				if (debugFlags & WARRIOR_DEBUG_FLAG_COMBAT) {
 					char s[128];
-					sprintf(s, "%s (%.2f) has a disabled target.\n", callsign, getSituationFireRange());
+					mc2::fmt::to_buf(s, "{} ({:.2f}) has a disabled target.\n", mc2::fmt::safe(callsign), getSituationFireRange());
 					debugPrint(s, true);
 				}
 			#endif
@@ -1919,19 +1920,19 @@ long MechWarrior::combatDecisionTree (void) {
 		if (debugFlags & WARRIOR_DEBUG_FLAG_COMBAT) {
 			char s[512];
 			if (!myVehicle->canFireWeapons()) {
-				sprintf(s, "%s's (%.2f) vehicle cannot fire now.\n", callsign, getSituationFireRange());
+				mc2::fmt::to_buf(s, "{}'s ({:.2f}) vehicle cannot fire now.\n", mc2::fmt::safe(callsign), getSituationFireRange());
 				debugPrint(s, true);
 				}
 			else if (weaponsStatusResult < 1) {
 				switch (weaponsStatusResult) {
 					case WEAPONS_STATUS_CANNOT_FIRE:
-						sprintf(s, "%s's (%.2f) vehicle cannot fire now.", callsign, getSituationFireRange());
+						mc2::fmt::to_buf(s, "{}'s ({:.2f}) vehicle cannot fire now.", mc2::fmt::safe(callsign), getSituationFireRange());
 						break;
 					case WEAPONS_STATUS_NO_TARGET:
-						sprintf(s, "%s (%.2f) has no target.\n", callsign, getSituationFireRange());
+						mc2::fmt::to_buf(s, "{} ({:.2f}) has no target.\n", mc2::fmt::safe(callsign), getSituationFireRange());
 						break;
 					case WEAPONS_STATUS_OUT_OF_RANGE:
-						sprintf(s, "%s (%.2f) out of range.\n", callsign, getSituationFireRange());
+						mc2::fmt::to_buf(s, "{} ({:.2f}) out of range.\n", mc2::fmt::safe(callsign), getSituationFireRange());
 						break;
 					case 0: {
 						long numWeaponsNotReady = 0;
@@ -1954,11 +1955,11 @@ long MechWarrior::combatDecisionTree (void) {
 							if (weaponsStatus[i] == WEAPON_STATUS_TOO_HOT)
 								numWeaponsTooHot++;
 						}
-						sprintf(s, "%s (%.2f) has no shot: %d !ready, %d !ammo, %d !inrange, %d !locked, %d !chance, %d hot\n", callsign, getSituationFireRange(), numWeaponsNotReady, numWeaponsOutOfAmmo, numWeaponsOutOfRange, numWeaponsNotLocked, numWeaponsNoChance, numWeaponsTooHot);
+						mc2::fmt::to_buf(s, "{} ({:.2f}) has no shot: {:d} !ready, {:d} !ammo, {:d} !inrange, {:d} !locked, {:d} !chance, {:d} hot\n", mc2::fmt::safe(callsign), getSituationFireRange(), mc2::fmt::as_i32(numWeaponsNotReady), mc2::fmt::as_i32(numWeaponsOutOfAmmo), mc2::fmt::as_i32(numWeaponsOutOfRange), mc2::fmt::as_i32(numWeaponsNotLocked), mc2::fmt::as_i32(numWeaponsNoChance), mc2::fmt::as_i32(numWeaponsTooHot));
 						}
 						break;
 					default:
-						sprintf(s, "%s (%.2f)  cannot fire for unknown reason.\n", callsign,  getSituationFireRange());
+						mc2::fmt::to_buf(s, "{} ({:.2f})  cannot fire for unknown reason.\n", mc2::fmt::safe(callsign), getSituationFireRange());
 				}
 				debugPrint(s, true);
 			}
@@ -2047,14 +2048,7 @@ long MechWarrior::combatDecisionTree (void) {
 				dist = myVehicle->distanceFrom(*targetPoint);
 			}
 			char _nf[256];
-			snprintf(_nf, sizeof(_nf),
-				"{\"ev\":\"nofire\",\"wid\":%ld,\"tgt_wid\":%ld,\"ord\":%d,\"result\":%ld,"
-				"\"rd\":%ld,\"am\":%ld,\"rn\":%ld,\"lk\":%ld,\"ch\":%ld,\"hot\":%ld,"
-				"\"los\":%ld,\"dist\":%.0f}",
-				(long)vehicleWID, target ? (long)target->getWatchID() : 0L,
-				(int)curTacOrder.code, (long)weaponsStatusResult,
-				tally[0], tally[1], tally[2], tally[3], tally[4], tally[5],
-				losFlag, (double)dist);
+			mc2::fmt::to_buf(_nf, "{{\"ev\":\"nofire\",\"wid\":{:d},\"tgt_wid\":{:d},\"ord\":{:d},\"result\":{:d},\"rd\":{:d},\"am\":{:d},\"rn\":{:d},\"lk\":{:d},\"ch\":{:d},\"hot\":{:d},\"los\":{:d},\"dist\":{:.0f}}}", mc2::fmt::as_i32((long)vehicleWID), mc2::fmt::as_i32(target ? (long)target->getWatchID() : 0L), mc2::fmt::as_i32((int)curTacOrder.code), mc2::fmt::as_i32((long)weaponsStatusResult), mc2::fmt::as_i32(tally[0]), mc2::fmt::as_i32(tally[1]), mc2::fmt::as_i32(tally[2]), mc2::fmt::as_i32(tally[3]), mc2::fmt::as_i32(tally[4]), mc2::fmt::as_i32(tally[5]), mc2::fmt::as_i32(losFlag), (double)dist);
 			mc2_diag::writeEvent("COMBAT", 1, 0, _nf);
 		}
 	}
@@ -2547,7 +2541,7 @@ long MechWarrior::loadBrainParameters (FitIniFile* brainFile, long warriorId) {
 
 	// Main Info section
 	char warriorName[32];
-	sprintf(warriorName, "Warrior%d", warriorId);
+	mc2::fmt::to_buf(warriorName, "Warrior{:d}", mc2::fmt::as_i32(warriorId));
 	long result = brainFile->seekBlock(warriorName);
 	if (result != NO_ERR)
 		return(result);
@@ -2564,7 +2558,7 @@ long MechWarrior::loadBrainParameters (FitIniFile* brainFile, long warriorId) {
 
 	for (long i = 0; i < numCells; i++) {
 		char blockName[64];
-		sprintf(blockName, "%sCell%d", warriorName, i);
+		mc2::fmt::to_buf(blockName, "{}Cell{:d}", mc2::fmt::safe(warriorName), mc2::fmt::as_i32(i));
 		long result = brainFile->seekBlock(blockName);
 		if (result != NO_ERR)
 			return(result);
@@ -2603,7 +2597,7 @@ long MechWarrior::loadBrainParameters (FitIniFile* brainFile, long warriorId) {
 
 	for (int i = 0; i < numStaticVars; i++) {
 		char blockName[64];
-		sprintf(blockName, "%sStatic%d", warriorName, i);
+		mc2::fmt::to_buf(blockName, "{}Static{:d}", mc2::fmt::safe(warriorName), mc2::fmt::as_i32(i));
 		long result = brainFile->seekBlock(blockName);
 		if (result != NO_ERR)
 			return(result);

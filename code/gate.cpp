@@ -63,6 +63,7 @@
 
 #include "../resource.h"
 #include<stdio.h>
+#include "mc2fmt.h"
 
 extern unsigned long NextIdNumber;
 extern float worldUnitsPerMeter;
@@ -692,7 +693,7 @@ void Gate::init (bool create, ObjectTypePtr _type)
 		if (!buildingAppearanceType)
 		{
 			char msg[1024];
-			sprintf(msg,"No Building Appearance Named %s",appearName);
+			mc2::fmt::to_buf(msg, "No Building Appearance Named {}", mc2::fmt::safe(appearName));
 			Fatal(0,msg);
 		}
 	}

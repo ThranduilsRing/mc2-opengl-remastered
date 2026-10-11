@@ -1,6 +1,7 @@
 // MechWarrior: tac-order calculation, goal manager, save/load and the data copy.
 // Declared in the class headers; shared names in warrior_internal.h.
 #include "warrior_internal.h"
+#include "mc2fmt.h"
 
 
 BldgAppearance* MechWarrior::getWayPointMarker( const Stuff::Vector3D& pos, const char* name )
@@ -513,13 +514,9 @@ void MechWarrior::logPilots (GameLogPtr log) {
 		MoverPtr mover = ObjectManager->getMover(i);
 		if (mover) {
 			char s[256];
-			sprintf(s, "pilot = (%d)%s",
-				i,
-				mover->getPilot()->getName());
+			mc2::fmt::to_buf(s, "pilot = ({:d}){}", mc2::fmt::as_i32(i), mc2::fmt::safe(mover->getPilot()->getName()));
 			log->write(s);
-			sprintf(s, "     vehicle = (%d)%s",
-				mover->getPartId(),
-				mover->getName());
+			mc2::fmt::to_buf(s, "     vehicle = ({:d}){}", mc2::fmt::as_i32(mover->getPartId()), mc2::fmt::safe(mover->getName()));
 			log->write(s);
 		}
 	}

@@ -2,6 +2,7 @@
 // Declared in missiongui.h; shared names in missiongui_internal.h.
 #include "missiongui_internal.h"
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 //--------------------------------------------------------------------------
 // FREEZE-MOVERS-1 (GAMEPLAY-DRIVER-3): deterministic mover freeze.
@@ -233,11 +234,8 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 						// the warning exists to catch slip through acking a
 						// clean "ok".
 						const float spawnHp = nm->getStatusRating();
-						sprintf(b, "spawned id=%ld obj=%d team=%d hp=%.3f%s",
-							nm->getPartId(), (int)data.objNumber, (int)data.teamID,
-							spawnHp,
-							!(spawnHp > 0.0f)
-								? " WARNING:bad hp, spawned unit may be inert" : "");
+						mc2::fmt::to_buf(b, "spawned id={:d} obj={:d} team={:d} hp={:.3f}{}", mc2::fmt::as_i32(nm->getPartId()), mc2::fmt::as_i32((int)data.objNumber), mc2::fmt::as_i32((int)data.teamID), spawnHp, mc2::fmt::safe(!(spawnHp > 0.0f)
+								? " WARNING:bad hp, spawned unit may be inert" : ""));
 						note = b;
 					}
 				}
@@ -255,7 +253,7 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 					if (land) pos.z = land->getTerrainElevation(pos);
 					((Mover*)obj)->setTeleportPosition(pos);   // engine teleport hook
 					result = "ok";
-					char b[80]; sprintf(b, "teleport %ld -> (%.1f,%.1f)", pid, x, y); note = b;
+					char b[80]; mc2::fmt::to_buf(b, "teleport {:d} -> ({:.1f},{:.1f})", mc2::fmt::as_i32(pid), x, y); note = b;
 				}
 			}
 		}
@@ -287,23 +285,12 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 			mc2FreezeMoversSet(1, (nf >= 2) ? atFrame : -1L);
 			result = "ok";
 			if (nf >= 2)
-				snprintf(b, sizeof(b),
-					"armed for MISSION frame %ld (engagedAt=%ld, now missionFrame=%ld); "
-					"REPRODUCIBLE ACROSS BUILDS only with MC2_SMOKE_FIXED_TIMESTEP=1",
-					mc2FreezeMoversArmedAt(), mc2FreezeMoversEngagedAt(),
-					mc2FreezeMoversMissionFrame());
+				mc2::fmt::to_buf(b, "armed for MISSION frame {:d} (engagedAt={:d}, now missionFrame={:d}); REPRODUCIBLE ACROSS BUILDS only with MC2_SMOKE_FIXED_TIMESTEP=1", mc2::fmt::as_i32(mc2FreezeMoversArmedAt()), mc2::fmt::as_i32(mc2FreezeMoversEngagedAt()), mc2::fmt::as_i32(mc2FreezeMoversMissionFrame()));
 			else
-				snprintf(b, sizeof(b),
-					"frozen NOW at mission frame %ld -- not cross-build reproducible; "
-					"use `freeze_movers on <frame>` for that",
-					mc2FreezeMoversEngagedAt());
+				mc2::fmt::to_buf(b, "frozen NOW at mission frame {:d} -- not cross-build reproducible; use `freeze_movers on <frame>` for that", mc2::fmt::as_i32(mc2FreezeMoversEngagedAt()));
 			note = b;
 		} else if (s == "status") {
-			snprintf(b, sizeof(b),
-				"active=%d armedAt=%ld engagedAt=%ld missionFrame=%ld absFrame=%lu",
-				mc2FreezeMoversActive(), mc2FreezeMoversArmedAt(),
-				mc2FreezeMoversEngagedAt(), mc2FreezeMoversMissionFrame(),
-				(unsigned long)g_mc2FrameCounter);
+			mc2::fmt::to_buf(b, "active={:d} armedAt={:d} engagedAt={:d} missionFrame={:d} absFrame={:d}", mc2::fmt::as_i32(mc2FreezeMoversActive()), mc2::fmt::as_i32(mc2FreezeMoversArmedAt()), mc2::fmt::as_i32(mc2FreezeMoversEngagedAt()), mc2::fmt::as_i32(mc2FreezeMoversMissionFrame()), mc2::fmt::as_u32((unsigned long)g_mc2FrameCounter));
 			note = b;
 			result = "ok";
 		} else {
@@ -329,10 +316,7 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 			} else {
 				const float p = eye->setSunPitch(pitch, nf >= 2, yaw);
 				result = "ok";
-				snprintf(b, sizeof(b),
-					"sun altitude=%.1f%s isNight=%d "
-					"(DIRECTION only -- ambient/sky/fog unchanged)",
-					(double)p, nf >= 2 ? " +yaw" : "", eye->getIsNight() ? 1 : 0);
+				mc2::fmt::to_buf(b, "sun altitude={:.1f}{} isNight={:d} (DIRECTION only -- ambient/sky/fog unchanged)", (double)p, mc2::fmt::safe(nf >= 2 ? " +yaw" : ""), mc2::fmt::as_i32(eye->getIsNight() ? 1 : 0));
 				note = b;
 			}
 		} else {
@@ -361,11 +345,7 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 			} else {
 				const float pitch = eye->setDaylightFraction(f);
 				result = "ok";
-				snprintf(b, sizeof(b),
-					"%s -> fraction=%.3f sunPitch=%.1f isNight=%d nightFactor=%.2f "
-					"(full sun+ambient+sky+fog recompute)",
-					arg.c_str(), (double)f, (double)pitch,
-					eye->getIsNight() ? 1 : 0, (double)eye->getNightFactor());
+				mc2::fmt::to_buf(b, "{} -> fraction={:.3f} sunPitch={:.1f} isNight={:d} nightFactor={:.2f} (full sun+ambient+sky+fog recompute)", arg.c_str(), (double)f, (double)pitch, mc2::fmt::as_i32(eye->getIsNight() ? 1 : 0), (double)eye->getNightFactor());
 				note = b;
 			}
 		}
@@ -453,17 +433,8 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 			}
 			if (!strcmp(result, "ok")) {
 				char b[352];
-				snprintf(b, sizeof(b),
-					"gesture %ld->%ld staticReg %d->%d staticNow=%d eligible=%d "
-					"animStartInvalidated %lu->%lu%s",
-					before, ba->getCurrentGestureId(), regBefore,
-					ba->isStaticRegistered() ? 1 : 0,
-					ba->IsStaticNow() ? 1 : 0,
-					ba->isStaticEligible() ? 1 : 0,
-					(unsigned long)invBefore,
-					(unsigned long)g_bldgAnimGate_animStartInvalidated(),
-					(ba->IsStaticNow() ? "  WARNING: still on the static path"
-									   : "  (now on the animated path)"));
+				mc2::fmt::to_buf(b, "gesture {:d}->{:d} staticReg {:d}->{:d} staticNow={:d} eligible={:d} animStartInvalidated {:d}->{:d}{}", mc2::fmt::as_i32(before), mc2::fmt::as_i32(ba->getCurrentGestureId()), mc2::fmt::as_i32(regBefore), mc2::fmt::as_i32(ba->isStaticRegistered() ? 1 : 0), mc2::fmt::as_i32(ba->IsStaticNow() ? 1 : 0), mc2::fmt::as_i32(ba->isStaticEligible() ? 1 : 0), mc2::fmt::as_u32((unsigned long)invBefore), mc2::fmt::as_u32((unsigned long)g_bldgAnimGate_animStartInvalidated()), mc2::fmt::safe((ba->IsStaticNow() ? "  WARNING: still on the static path"
+									   : "  (now on the animated path)")));
 				note = b;
 			}
 		}

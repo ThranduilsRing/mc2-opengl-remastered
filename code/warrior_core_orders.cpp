@@ -1,6 +1,7 @@
 // MechWarrior: debug orders, brain-state accessors and the core* orders.
 // Declared in the class headers; shared names in warrior_internal.h.
 #include "warrior_internal.h"
+#include "mc2fmt.h"
 
 
 void MechWarrior::setDebugFlag (unsigned long flag, bool on) {
@@ -31,75 +32,75 @@ void MechWarrior::debugOrders (void) {
 
 	switch (curTacOrder.code) {
 		case TACTICAL_ORDER_NONE:
-			sprintf(s, "CURRENT ORDERS: None");
+			mc2::fmt::to_buf(s, "CURRENT ORDERS: None");
 			break;
 		case TACTICAL_ORDER_WAIT:
-			sprintf(s, "CURRENT ORDERS: Wait");
+			mc2::fmt::to_buf(s, "CURRENT ORDERS: Wait");
 			break;
 		case TACTICAL_ORDER_MOVETO_POINT:
-			sprintf(s, "CURRENT ORDERS: Move to (%.2f, %.2f, %.2f)", curTacOrder.getWayPoint(0).x, curTacOrder.getWayPoint(0).y, curTacOrder.getWayPoint(0).z);
+			mc2::fmt::to_buf(s, "CURRENT ORDERS: Move to ({:.2f}, {:.2f}, {:.2f})", curTacOrder.getWayPoint(0).x, curTacOrder.getWayPoint(0).y, curTacOrder.getWayPoint(0).z);
 			break;
 		case TACTICAL_ORDER_MOVETO_OBJECT: {
 			GameObjectPtr obj = ObjectManager->getByWatchID(curTacOrder.targetWID);
-			sprintf(s, "CURRENT ORDERS: Move To Object %d", obj ? obj->getPartId() : 0);
+			mc2::fmt::to_buf(s, "CURRENT ORDERS: Move To Object {:d}", mc2::fmt::as_i32(obj ? obj->getPartId() : 0));
 			}
 			break;
 		case TACTICAL_ORDER_JUMPTO_POINT:
-			sprintf(s, "CURRENT ORDERS: Jump to (%.2f, %.2f, %.2f)", curTacOrder.getWayPoint(0).x, curTacOrder.getWayPoint(0).y, curTacOrder.getWayPoint(0).z);
+			mc2::fmt::to_buf(s, "CURRENT ORDERS: Jump to ({:.2f}, {:.2f}, {:.2f})", curTacOrder.getWayPoint(0).x, curTacOrder.getWayPoint(0).y, curTacOrder.getWayPoint(0).z);
 			break;
 		case TACTICAL_ORDER_JUMPTO_OBJECT: {
 			GameObjectPtr obj = ObjectManager->getByWatchID(curTacOrder.targetWID);
-			sprintf(s, "CURRENT ORDERS: Jump To Object %d", obj ? obj->getPartId() : 0);
+			mc2::fmt::to_buf(s, "CURRENT ORDERS: Jump To Object {:d}", mc2::fmt::as_i32(obj ? obj->getPartId() : 0));
 			}
 			break;
 		case TACTICAL_ORDER_TRAVERSE_PATH:
-			sprintf(s, "CURRENT ORDERS: Traverse Path");
+			mc2::fmt::to_buf(s, "CURRENT ORDERS: Traverse Path");
 			break;
 		case TACTICAL_ORDER_PATROL_PATH:
-			sprintf(s, "CURRENT ORDERS: Patrol Path");
+			mc2::fmt::to_buf(s, "CURRENT ORDERS: Patrol Path");
 			break;
 		case TACTICAL_ORDER_ESCORT:
-			sprintf(s, "CURRENT ORDERS: Escort");
+			mc2::fmt::to_buf(s, "CURRENT ORDERS: Escort");
 			break;
 		case TACTICAL_ORDER_FOLLOW:
-			sprintf(s, "CURRENT ORDERS: Follow");
+			mc2::fmt::to_buf(s, "CURRENT ORDERS: Follow");
 			break;
 		case TACTICAL_ORDER_GUARD:
-			sprintf(s, "CURRENT ORDERS: Guard");
+			mc2::fmt::to_buf(s, "CURRENT ORDERS: Guard");
 			break;
 		case TACTICAL_ORDER_STOP:
-			sprintf(s, "CURRENT ORDERS: Stop");
+			mc2::fmt::to_buf(s, "CURRENT ORDERS: Stop");
 			break;
 		case TACTICAL_ORDER_POWERUP:
-			sprintf(s, "CURRENT ORDERS: Power Up");
+			mc2::fmt::to_buf(s, "CURRENT ORDERS: Power Up");
 			break;
 		case TACTICAL_ORDER_POWERDOWN:
-			sprintf(s, "CURRENT ORDERS: Power Down");
+			mc2::fmt::to_buf(s, "CURRENT ORDERS: Power Down");
 			break;
 		case TACTICAL_ORDER_WAYPOINTS_DONE:
-			sprintf(s, "CURRENT ORDERS: Waypoints Done");
+			mc2::fmt::to_buf(s, "CURRENT ORDERS: Waypoints Done");
 			break;
 		case TACTICAL_ORDER_EJECT:
-			sprintf(s, "CURRENT ORDERS: Eject");
+			mc2::fmt::to_buf(s, "CURRENT ORDERS: Eject");
 			break;
 		case TACTICAL_ORDER_ATTACK_OBJECT: {
 			GameObjectPtr obj = ObjectManager->getByWatchID(curTacOrder.targetWID);
-			sprintf(s, "CURRENT ORDERS: Attack Object %d", obj ? obj->getPartId() : 0);
+			mc2::fmt::to_buf(s, "CURRENT ORDERS: Attack Object {:d}", mc2::fmt::as_i32(obj ? obj->getPartId() : 0));
 			}
 			break;
 		case TACTICAL_ORDER_HOLD_FIRE:
-			sprintf(s, "CURRENT ORDERS: Hold Fire");
+			mc2::fmt::to_buf(s, "CURRENT ORDERS: Hold Fire");
 			break;
 		case TACTICAL_ORDER_WITHDRAW:
-			sprintf(s, "CURRENT ORDERS: Withdraw");
+			mc2::fmt::to_buf(s, "CURRENT ORDERS: Withdraw");
 			break;
 		default:
-			sprintf(s, "CURRENT ORDERS: Unknown Tac Order Type");
+			mc2::fmt::to_buf(s, "CURRENT ORDERS: Unknown Tac Order Type");
 	}
 	debugPrint(s);
 
 	GameObjectPtr target = getCurrentTarget();
-	sprintf(s, "     CURRENT TARGET: Object %d", target ? target->getPartId() : 0);
+	mc2::fmt::to_buf(s, "     CURRENT TARGET: Object {:d}", mc2::fmt::as_i32(target ? target->getPartId() : 0));
 	debugPrint(s);
 }
 

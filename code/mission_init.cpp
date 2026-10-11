@@ -8,6 +8,7 @@
 // value) or set the runtime multiplier through the SAME setter the HUD speed
 // tab uses. Registered from Mission::init; inert unless MC2_DEV_SHELL=1.
 #include "../GameOS/gameos/gos_dev_shell.h"
+#include "mc2fmt.h"
 static bool devShellSimSpeed(const char* paramsJson,
                              std::string& dataJsonOut, std::string& errorOut)
 {
@@ -27,7 +28,7 @@ static bool devShellSimSpeed(const char* paramsJson,
 		}
 	}
 	char buf[64];
-	sprintf(buf, "{\"multiplier\":%.2f}", (double)simSpeedGetMultiplier());
+	mc2::fmt::to_buf(buf, "{{\"multiplier\":{:.2f}}}", (double)simSpeedGetMultiplier());
 	dataJsonOut = buf;
 	(void)errorOut;
 	return true;
@@ -549,7 +550,7 @@ void Mission::initTeamsAndCommanders(long loadType, Stuff::Vector3D* dropZoneLis
 		if (numParts)
 			for (int i = 1; i < long(numParts + 1); i++) {
 				char partName[12];
-				sprintf(partName,"Part%d",i);
+				mc2::fmt::to_buf(partName, "Part{:d}", mc2::fmt::as_i32(i));
 
 				result = missionFile->seekBlock(partName);
 				// MC2_VERIFY reclassified from gosASSERT (slice MC2-VERIFY-LIVE-1)
