@@ -28,6 +28,7 @@
 #include <cstdlib>
 #include <vector>   // MC2_RAIN_BATCH staging buffer
 #include "Gates/gate.h"
+#include "det_rng.h"
 
 //----------------------------------------------------------------------------------
 // Macro Definitions
@@ -156,8 +157,23 @@ void Weather::init (FitIniFilePtr missionFile)
 }
 
 //----------------------------------------------------------------------------------
+// Weather is drawn around the camera, so how many numbers it takes depends on where the camera is. It draws from its own
+// stream so that the camera, or the effects option that turns weather off, cannot move the shared stream the simulation uses.
+long Weather::randomNumber (long range)
+{
+	return mc2_det_rng::next15(rngState) % range;
+}
+
+// The same shaping as RollDice, on the weather's own stream.
+bool Weather::rollDice (long percent)
+{
+	return (((long)mc2_det_rng::next15(rngState) * 100) >> 15) < percent;
+}
+
+//----------------------------------------------------------------------------------
 void Weather::init (DWORD maxDrops, float startingRain, float brChance, float ltChance)
 {
+	rngState = kWeatherSeed;
 	totalRainDrops = maxDrops;
 	currentRainDrops = 0;
 	
@@ -177,7 +193,7 @@ void Weather::init (DWORD maxDrops, float startingRain, float brChance, float lt
 	rainLevel = rainLightLevel = startingRain;
 	if (rainLevel != 0.0f)
 	{
-		rainFactor = 0.05f + float(RandomNumber(100)) / 1000.0f;
+		rainFactor = 0.05f + float(randomNumber(100)) / 1000.0f;
 		rainTrend = 1.0f;
 	}
 
@@ -221,9 +237,9 @@ void Weather::update (void)
 		// Check if its raining.  If not, check if it should.  If not, exit.
 		if ((rainLevel <= 1.5f) && (rainTrend < 0.0f))
 		{
-			if ((baseRainChance != 0.0f) && RollDice(baseRainChance))
+			if ((baseRainChance != 0.0f) && rollDice(baseRainChance))
 			{
-				rainFactor = 0.05f + float(RandomNumber(100)) / 1000.0f;
+				rainFactor = 0.05f + float(randomNumber(100)) / 1000.0f;
 				rainTrend = 1.0f;
 			}
 			else
@@ -237,9 +253,9 @@ void Weather::update (void)
 			if (rainLevel > 3.0f)
 			{
 				float invRainChance = 100.0f - baseRainChance;
-				if ((invRainChance != 0.0f) && RollDice(invRainChance))
+				if ((invRainChance != 0.0f) && rollDice(invRainChance))
 				{
-					rainFactor = 0.05f + float(RandomNumber(100)) / 1000.0f;
+					rainFactor = 0.05f + float(randomNumber(100)) / 1000.0f;
 					rainTrend = -1.0f;
 				}
 				
@@ -288,12 +304,12 @@ void Weather::update (void)
 				// Did lightening flash?
 				float baseLighteningFlashChance = BASE_LIGHTENING_CHANCE * rainLevel * 100;
 				
-				if (RollDice(baseLighteningFlashChance))
+				if (rollDice(baseLighteningFlashChance))
 				{
-					lighteningLevel = 64.0f + float(RandomNumber(192));
+					lighteningLevel = 64.0f + float(randomNumber(192));
 					if (thunderTime == 0.0f)	//Fire off a crack of thunder unless one is on its way!
 					{
-						thunderTime = RandomNumber(BASE_THUNDER_RANDOM_START);
+						thunderTime = randomNumber(BASE_THUNDER_RANDOM_START);
 						
 						if (lighteningLevel > 210)
 						{
@@ -324,18 +340,18 @@ void Weather::update (void)
 				//Function here to make lightening flicker.
 				if (lighteningLevel > 192.0f)
 				{
-					if (RollDice(50))
+					if (rollDice(50))
 					{
-						lighteningDropoff = -RandomNumber(BASE_LIGHTENING_FALLOFF);
+						lighteningDropoff = -randomNumber(BASE_LIGHTENING_FALLOFF);
 					}
 					else
 					{
-						lighteningDropoff = RandomNumber(BASE_LIGHTENING_FALLOFF*0.33f);
+						lighteningDropoff = randomNumber(BASE_LIGHTENING_FALLOFF*0.33f);
 					}
 				}
 				else
 				{
-					lighteningDropoff = -RandomNumber(BASE_LIGHTENING_FALLOFF);
+					lighteningDropoff = -randomNumber(BASE_LIGHTENING_FALLOFF);
 				}
 
 				lighteningLevel += lighteningDropoff * frameLength;
@@ -405,13 +421,13 @@ void Weather::update (void)
 				for (long i=currentRainDrops;i<newRainDrops;i++)
 				{
 					Stuff::Vector3D positionOffset;
-					positionOffset.x = RandomNumber(BASE_RAIN_RANDOM_POS_FACTOR * 2) - BASE_RAIN_RANDOM_POS_FACTOR;
-					positionOffset.y = RandomNumber(BASE_RAIN_RANDOM_POS_FACTOR * 2) - BASE_RAIN_RANDOM_POS_FACTOR;
-					positionOffset.z = RandomNumber(BASE_RAIN_RANDOM_HGT_FACTOR * 2) - BASE_RAIN_RANDOM_HGT_FACTOR;
+					positionOffset.x = randomNumber(BASE_RAIN_RANDOM_POS_FACTOR * 2) - BASE_RAIN_RANDOM_POS_FACTOR;
+					positionOffset.y = randomNumber(BASE_RAIN_RANDOM_POS_FACTOR * 2) - BASE_RAIN_RANDOM_POS_FACTOR;
+					positionOffset.z = randomNumber(BASE_RAIN_RANDOM_HGT_FACTOR * 2) - BASE_RAIN_RANDOM_HGT_FACTOR;
 				
 					rainDrops[i].position.Add(startPos,positionOffset);
 					
-					rainDrops[i].length = BASE_RAIN_LENGTH + RandomNumber(BASE_RAIN_RANDOM_LEN_FACTOR * 2) - BASE_RAIN_RANDOM_LEN_FACTOR; 
+					rainDrops[i].length = BASE_RAIN_LENGTH + randomNumber(BASE_RAIN_RANDOM_LEN_FACTOR * 2) - BASE_RAIN_RANDOM_LEN_FACTOR; 
 				}
 			}
 			
@@ -428,13 +444,13 @@ void Weather::update (void)
 			{
 				Stuff::Vector3D positionOffset;
 				//This raindrop has hit the ground.  Recycle him.
-				positionOffset.x = RandomNumber(BASE_RAIN_RANDOM_POS_FACTOR * 2) - BASE_RAIN_RANDOM_POS_FACTOR;
-				positionOffset.y = RandomNumber(BASE_RAIN_RANDOM_POS_FACTOR * 2) - BASE_RAIN_RANDOM_POS_FACTOR;
-				positionOffset.z = RandomNumber(BASE_RAIN_RANDOM_HGT_FACTOR * 2) - BASE_RAIN_RANDOM_HGT_FACTOR;
+				positionOffset.x = randomNumber(BASE_RAIN_RANDOM_POS_FACTOR * 2) - BASE_RAIN_RANDOM_POS_FACTOR;
+				positionOffset.y = randomNumber(BASE_RAIN_RANDOM_POS_FACTOR * 2) - BASE_RAIN_RANDOM_POS_FACTOR;
+				positionOffset.z = randomNumber(BASE_RAIN_RANDOM_HGT_FACTOR * 2) - BASE_RAIN_RANDOM_HGT_FACTOR;
 			
 				rainDrops[i].position.Add(startPos,positionOffset);
 				
-				rainDrops[i].length = BASE_RAIN_LENGTH + RandomNumber(BASE_RAIN_RANDOM_LEN_FACTOR * 2) - BASE_RAIN_RANDOM_LEN_FACTOR; 
+				rainDrops[i].length = BASE_RAIN_LENGTH + randomNumber(BASE_RAIN_RANDOM_LEN_FACTOR * 2) - BASE_RAIN_RANDOM_LEN_FACTOR; 
 			}
 		}
 	}

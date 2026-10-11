@@ -12,6 +12,7 @@ difference between two exes means anything. The runs end at different frames (th
 prefix is compared.
 
   py -3 tools/sim_determinism.py run mc2_03 --duration 20 [--baseline tests/smoke/sim_determinism_baseline.json]
+  py -3 tools/sim_determinism.py run mc2_10 --env-a MC2_CAMERA_PARK=-1500,2500,0,60,800@300 --env-b MC2_CAMERA_PARK=-2000,2900,90,50,600@300
   py -3 tools/sim_determinism.py compare run_a/mc2_03.log run_b/mc2_03.log
   py -3 tools/sim_determinism.py write-baseline run_a/mc2_03.log --frames 1500 --out tests/smoke/sim_determinism_baseline.json
   py -3 tools/sim_determinism.py selftest          # offline; the `sim_determinism` board row
@@ -119,11 +120,13 @@ def build_and_deploy() -> None:
             sys.exit("sim_determinism: " + os.path.basename(cmd[1]) + " failed:\n" + "\n".join(r.stdout.splitlines()[-6:]))
 
 
-def run_mission(mission: str, duration: str, out: str) -> list:
-    """Launch the mission twice under the determinism gates. -> [log path a, log path b]. The smoke lease is host wide and waited for."""
-    env = dict(os.environ, **GATES)
+def run_mission(mission: str, duration: str, out: str, extra_env: dict | None = None) -> list:
+    """Launch the mission twice under the determinism gates. -> [log path a, log path b]. The smoke lease is host wide and waited for.
+    `extra_env` maps "a" / "b" to variables set for that run only: the way to ask whether something that must not matter to the simulation
+    (the camera pose, an effects option) really does not."""
     logs = []
     for tag in ("a", "b"):
+        env = dict(os.environ, **GATES, **(extra_env or {}).get(tag, {}))
         r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "run_smoke.py"), "--mission", mission, "--duration", duration,
                             "--deploy", "0.4", "--keep-logs"], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
                            errors="replace", **console_child.child_kwargs(redirected=True))
@@ -199,6 +202,8 @@ def main(argv=None) -> int:
     r.add_argument("--baseline", nargs="?", const=DEFAULT_BASELINE, help="also compare with a committed chain (default file: %s)" % os.path.relpath(DEFAULT_BASELINE, ROOT))
     r.add_argument("--deploy", action="store_true", help="build and deploy HEAD to the 0.4 install first")
     r.add_argument("--out", help="keep both runs' artifacts here (default: a temporary directory)")
+    r.add_argument("--env-a", action="append", default=[], metavar="NAME=VALUE", help="set only for run a (repeatable)")
+    r.add_argument("--env-b", action="append", default=[], metavar="NAME=VALUE", help="set only for run b (repeatable)")
     w = sub.add_parser("write-baseline")
     w.add_argument("log")
     w.add_argument("--frames", type=int, required=True)
@@ -225,7 +230,8 @@ def main(argv=None) -> int:
     out = args.out or tempfile.mkdtemp(prefix="simdet_")
     if args.deploy:
         build_and_deploy()
-    la, lb = run_mission(args.mission, args.duration, out)
+    extra = {tag: dict(kv.split("=", 1) for kv in kvs) for tag, kvs in (("a", args.env_a), ("b", args.env_b))}
+    la, lb = run_mission(args.mission, args.duration, out, extra)
     a, b = load_simid(la), load_simid(lb)
     ok, msg = compare(a, b, args.min_frames)
     print(("sim_determinism: PASS " if ok else "sim_determinism: FAIL ") + msg)

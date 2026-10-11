@@ -84,6 +84,11 @@ class Weather
 		long			baseRainChance;				// Chance of it raining on any given rainUpdateTime.
 		
 		float			oldFog;						// Original FOGFull Height value.
+
+		static constexpr uint32_t kWeatherSeed = 0x57454154u;
+		uint32_t		rngState = kWeatherSeed;	// The weather's own random stream (see randomNumber).
+		long			randomNumber (long range);
+		bool			rollDice (long percent);
 		
 	public:
 	
