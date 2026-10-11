@@ -21,6 +21,7 @@
 #include <exception>
 #include <format>
 #include <iterator>
+#include <memory>
 #include <source_location>
 #include <string>
 #include <string_view>
@@ -123,7 +124,11 @@ uint64_t frameNumber() noexcept;
 
 namespace detail {
 // Never destroyed, so a log line written from an atexit handler does not touch a destroyed thread_local.
-inline std::string& tlBuf() { thread_local std::string* const b = new std::string; return *b; }
+inline std::string& tlBuf() {
+    alignas(std::string) thread_local unsigned char storage[sizeof(std::string)];
+    thread_local std::string* const b = std::construct_at(reinterpret_cast<std::string*>(storage));
+    return *b;
+}
 
 inline void reportFormatError(Cat c, Level l, Stream s, std::string_view tmpl, std::string_view what,
                               const std::source_location& loc) noexcept {

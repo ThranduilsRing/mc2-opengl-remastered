@@ -16,6 +16,7 @@
 #include <cstdio>
 #include <format>
 #include <iterator>
+#include <memory>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -70,9 +71,10 @@ int to_buf(char (&buf)[N], std::format_string<A...> f, A&&... a) noexcept {
 // Not for crash or allocator paths: the text is built in a per-thread std::string.
 namespace detail {
 // Never destroyed: handlers registered with atexit run after the main thread's thread_local objects are gone, and several of them print
-// summary lines the smoke gates read. A leaked pointer per thread is the price of printing safely at exit.
+// summary lines the smoke gates read. The string lives in raw per-thread storage that no destructor ever runs on.
 inline std::string& scratch() {
-    thread_local std::string* const buf = new std::string;
+    alignas(std::string) thread_local unsigned char storage[sizeof(std::string)];
+    thread_local std::string* const buf = std::construct_at(reinterpret_cast<std::string*>(storage));
     return *buf;
 }
 }  // namespace detail
