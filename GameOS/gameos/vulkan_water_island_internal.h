@@ -221,7 +221,7 @@ extern InteropForbidden g_forbidden;
 extern unsigned long g_depthInGetTexImage;
 extern unsigned long g_depthInCopyBufferToImage;
 extern WaterIsland* g_island;
-void setFallback(const char* reason);
+void setFallback(std::string_view reason);
 void vlog(const char* fmt, ...);
 bool waterTier1Requested();
 bool waterPerfGateRequested();

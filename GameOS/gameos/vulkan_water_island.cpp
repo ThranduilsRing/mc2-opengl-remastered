@@ -36,10 +36,10 @@ namespace vk_water_detail {
 
 WaterIslandHealth g_health;
 
-void setFallback(const char* reason) {
-    std::strncpy(g_health.fallbackReason, reason ? reason : "",
-                 sizeof(g_health.fallbackReason) - 1);
-    g_health.fallbackReason[sizeof(g_health.fallbackReason) - 1] = '\0';
+void setFallback(std::string_view reason) {
+    const size_t n = (std::min)(reason.size(), sizeof(g_health.fallbackReason) - 1);
+    std::memcpy(g_health.fallbackReason, reason.data(), n);
+    g_health.fallbackReason[n] = '\0';
 }
 
 InteropForbidden g_forbidden;
