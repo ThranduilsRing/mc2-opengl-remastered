@@ -7,7 +7,7 @@
 #include "txmmgr_internal.h"
 
 // Maximum vertices sent down per draw call by the legacy masterVertexNodes loops.
-#define MAX_SENDDOWN		10002
+inline constexpr int MAX_SENDDOWN = 10002;
 
 // Number of shadow-shape slots reserved this frame (see addShadowShape).
 extern std::atomic<int> g_numShadowShapes;

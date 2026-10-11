@@ -11,7 +11,7 @@
 #ifndef TXMCONV_H
 #define TXMCONV_H
 //---------------------------------------------------------------------------
-#define DEFINED_TXMS		3576
+inline constexpr int DEFINED_TXMS = 3576;
 
 //---------------------------------------------------------------------------
 extern long txmToTileLookup[];

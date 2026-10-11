@@ -85,9 +85,9 @@ extern "C" int mc2FreezeMoversActive();
 
 #define EXPAND_FACTOR 		(1.25f)
 
-#define MAX_SMOKE_NODES		2
+inline constexpr int MAX_SMOKE_NODES = 2;
 #define MAX_WEAPON_NODES	4
-#define MAX_FOOT_NODES		2
+inline constexpr int MAX_FOOT_NODES = 2;
 
 // Globals defined in gvactor.cpp (or elsewhere in the engine) that the split pieces share.
 extern float	worldUnitsPerMeter;

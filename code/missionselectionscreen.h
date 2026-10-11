@@ -22,7 +22,7 @@ MissionSelectionScreen.h : Header file for mission selection
 
 class FitIniFile;
 
-#define MAX_MISSIONS_IN_GROUP 6
+inline constexpr int MAX_MISSIONS_IN_GROUP = 6;
 
 class MissionSelectionScreen : public LogisticsScreen
 {

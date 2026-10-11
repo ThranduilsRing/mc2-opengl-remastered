@@ -21,9 +21,9 @@
 #include<memory.h>
 #include<math.h>
 
-#define BLACK_PIXEL 0.0f
-#define WHITE_PIXEL	255.0f
-#define RESIZE_PI	3.1415926
+inline constexpr float BLACK_PIXEL = 0.0f;
+inline constexpr float WHITE_PIXEL = 255.0f;
+inline constexpr double RESIZE_PI = 3.1415926;
 
 inline float CLAMP (float x, float min, float max)
 {
@@ -82,13 +82,13 @@ inline float putPixel (Image *image, long x, long y, float data)
 
 //Filters
 
-#define filterSupport 	(1.0)
-#define boxSupport 		(0.5)
-#define triangleSupport (1.0)
-#define bellSupport		(1.5)
-#define bSplineSupport	(2.0)
-#define Lanczos3Support (3.0)
-#define MitchellSupport	(2.0)
+inline constexpr double filterSupport = 1.0;
+inline constexpr double boxSupport = 0.5;
+inline constexpr double triangleSupport = 1.0;
+inline constexpr double bellSupport = 1.5;
+inline constexpr double bSplineSupport = 2.0;
+inline constexpr double Lanczos3Support = 3.0;
+inline constexpr double MitchellSupport = 2.0;
 
 inline double filter (double t)
 {
