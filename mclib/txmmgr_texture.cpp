@@ -179,8 +179,8 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 		static const bool s_loadTrace = mc2::gate::get<"MC2_TEXMGR_LOAD_TRACE">();
 		if (s_loadTrace)
 		{
-			fprintf(stderr, "[TEXLOAD] uniq=%lu name=%s\n",
-				(unsigned long)uniqueInstance, textureFullPathName ? textureFullPathName : "<null>");
+			mc2::fmt::print_err("[TEXLOAD] uniq={:d} name={}\n",
+				mc2::fmt::as_u32((unsigned long)uniqueInstance), mc2::fmt::safe(textureFullPathName ? textureFullPathName : "<null>"));
 			fflush(stderr);
 		}
 	}
