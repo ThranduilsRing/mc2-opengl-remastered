@@ -19,7 +19,7 @@ class MechWarrior;
 class StaticInfo;
 class Camera;
 
-#define MAX_ICONS 16
+inline constexpr int MAX_ICONS = 16;
 
 #include"mechicon.h"
 

@@ -46,11 +46,11 @@
 #include "../mclib/particles/batcher.h"
 #include "vk_umbrella_light.h"  // VK-FIELD-VFX-2: umbrella-route immediate-draw for bolts
 
-#define BASE_EFFECT_SCALAR		1.0f
-#define EFFECT_LEFT_TIME		1.0f
-#define WEAPON_ARC_FACTOR		-20.0f
-#define WEAPON_ARC_HEIGHT		150.0f
-#define ARC_THRESHOLD			0.0f
+inline constexpr float BASE_EFFECT_SCALAR = 1.0f;
+inline constexpr float EFFECT_LEFT_TIME = 1.0f;
+inline constexpr float WEAPON_ARC_FACTOR = -20.0f;
+inline constexpr float WEAPON_ARC_HEIGHT = 150.0f;
+inline constexpr float ARC_THRESHOLD = 0.0f;
 
 // Globals defined in weaponbolt.cpp (or elsewhere in the engine) that the split pieces share.
 extern bool hasGuardBand;

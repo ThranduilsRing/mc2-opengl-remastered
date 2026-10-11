@@ -55,7 +55,7 @@ Action* Eraser::endPaint()
 	return pRetAction;
 }
 
-#define DEFAULT_TERRAIN		2
+constexpr int DEFAULT_TERRAIN = 2;
 bool Eraser::paint( Stuff::Vector3D& worldPos, int screenX, int screenY )
 {
 	if ( !land )

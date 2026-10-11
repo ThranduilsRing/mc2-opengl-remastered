@@ -133,9 +133,9 @@ extern char transitionArray[1000];
 
 #define LC3D_TRACE(fmt, ...) do { if (s_lcTrace) { printf("[GPU_CULL_LIFECYCLE v1] mech3d " fmt "\n", ##__VA_ARGS__); fflush(stdout); } } while(0)
 
-#define HELICOPTER_FACTOR	(25.0f)
-#define idleMAX						(20.0f)
-#define JUMP_PITCH		(90.0f)
+inline constexpr float HELICOPTER_FACTOR = 25.0f;
+inline constexpr float idleMAX = 20.0f;
+inline constexpr float JUMP_PITCH = 90.0f;
 
 // Free functions defined in the split pieces.
 DWORD bgrTorgb (DWORD frontRGB);

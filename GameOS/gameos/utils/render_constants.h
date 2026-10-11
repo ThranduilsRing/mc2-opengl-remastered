@@ -8,7 +8,7 @@
 
 #include "utils/graphics.h"
 
-#define DEPTH_NONE 0        /**< Disable depthstencil. */
+inline constexpr int DEPTH_NONE = 0;        /**< Disable depthstencil. */
 #define BLEND_NONE (-1)     /**< Disable blending. */
 
 enum TexType {

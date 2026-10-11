@@ -455,7 +455,7 @@ long CollisionSystem::init (FitIniFile *scenarioFile)
 	return(NO_ERR);
 }
 
-#define MAX_LISTS_TO_CHECK		3
+constexpr int MAX_LISTS_TO_CHECK = 3;
 //------------------------------------------------------------------------------
 void CollisionSystem::checkObjects (void)
 {

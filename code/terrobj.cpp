@@ -295,7 +295,7 @@ inline float agsqrt( float _a, float _b )
 	return sqrt(_a*_a + _b*_b);
 }
 
-#define TREE_FALL_RATE		15.0f
+constexpr float TREE_FALL_RATE = 15.0f;
 #define TREE_FALL_ACCEL		5.0f;
 
 char lastName[256];
@@ -666,7 +666,7 @@ float TerrainObject::getStatusRating (void) {
 
 //---------------------------------------------------------------------------
 
-#define BRIDGE_OFFSET		60
+constexpr int BRIDGE_OFFSET = 60;
 
 static long terrainObjectHomeRelation (long teamId)
 {
@@ -1252,7 +1252,7 @@ void TerrainObject::lightOnFire (float timeToBurn)
 {
 }
 
-#define DUST_POOF_ID		32
+constexpr int DUST_POOF_ID = 32;
 //---------------------------------------------------------------------------
 long TerrainObject::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayChunk) {
 

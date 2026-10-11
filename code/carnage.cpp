@@ -54,8 +54,8 @@
 //---------------------------------------------------------------------------
 
 #define BLIP_FRAME_RATE			0.067
-#define	EXPLOSION_TIME			0.5
-#define	EXPLOSION_DEPTH_FIXUP	-150
+constexpr double EXPLOSION_TIME = 0.5;
+constexpr int EXPLOSION_DEPTH_FIXUP = -150;
 
 extern unsigned long	NextIdNumber;
 extern TeamPtr homeTeam;

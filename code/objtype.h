@@ -31,7 +31,7 @@
 
 #include "unitprofile.h"            // UNIT-PROFILE-SEAM-1
 
-#define MAX_NAME		25
+inline constexpr int MAX_NAME = 25;
 
 //---------------------------------------------------------------------------
 // Classes

@@ -24,11 +24,11 @@
 
 //----------------------------------------------------------------------------------
 // Macro Definitions
-#define log_DONE						0
-#define log_STARTMISSIONFROMCMDLINE		1
-#define log_SPLASH						2
-#define log_RESULTS						3
-#define log_ZONE						4
+inline constexpr int log_DONE = 0;
+inline constexpr int log_STARTMISSIONFROMCMDLINE = 1;
+inline constexpr int log_SPLASH = 2;
+inline constexpr int log_RESULTS = 3;
+inline constexpr int log_ZONE = 4;
 
 class MissionResults;
 class MissionBegin;

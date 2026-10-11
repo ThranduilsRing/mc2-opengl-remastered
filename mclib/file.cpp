@@ -919,7 +919,7 @@ extern char MissingTitleString[];
 
 #undef INVALID_HANDLE_VALUE
 #define INVALID_HANDLE_VALUE	-1
-#define CLOSED_HANDLE_VALUE	-2
+constexpr int CLOSED_HANDLE_VALUE = -2;
 //---------------------------------------------------------------------------
 void createTrafficLog (void)
 {

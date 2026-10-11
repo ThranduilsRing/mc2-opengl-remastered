@@ -27,7 +27,7 @@ class FitIniFile;
 #endif
 
 #include "DAprType.h"
-#define MAX_PILOT	64
+inline constexpr int MAX_PILOT = 64;
 
 class EditorObject
 {

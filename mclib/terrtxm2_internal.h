@@ -49,8 +49,8 @@
 #include "mc2_dialog.h"
 #include "Gates/gate.h"
 
-#define COLOR_MAP_HEAP_SIZE				419430400
-#define COLOR_TXM_HEAP_SIZE				16384
+inline constexpr int COLOR_MAP_HEAP_SIZE = 419430400;
+inline constexpr int COLOR_TXM_HEAP_SIZE = 16384;
 #define COLOR_MAP_TEXTURE_SIZE			256
 #define COLOR_MAP_RES					float(COLOR_MAP_TEXTURE_SIZE)
 

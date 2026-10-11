@@ -1,40 +1,35 @@
 # Lane 2 state (worktree A:/Games/mc2-lane2, branch claude/lane2-s3, build64-ninja, install mc2-win64-lane2)
 
-Rotated lane-2 agent #2 (started 2026-10-10 17:58). This lane does the 1000-1500 tier verbatim splits (code/ and mclib/ first, largest first).
-Read ORCHESTRATOR-HANDOFF.md Ground rules first. Whole-tier census: appendix of size-tier-1000-survey.md (`py -3 tools/split/tier_census.py`).
+2026-10-11, session closed by the 6-hour rule. The 1000-1500 line splits are done and merged (giant-file-split-plan.md, tools/split/*). This lane did C++23 STEP 2 (LG13) up to the
+state below; lane 1 keeps step 1. Plan: .claude/cleanup/cxx23-step2-define-enum-plan.md. PROOF LEDGER (per commit, per object): .claude/cleanup/step2-never-touch-audit.md.
 
-## Done (all on claude/lane2-s3; sizes before -> core after; sha = split commit)
-- 1 abldbug 1319->753 dd946d83d | 2 genactor 1297->730 0196b20c5 | 3 logisticsmissioninfo 1316->511 dc3a26c8a | 4 logisticsvariant 1221->551 aa9130de3
-- 5 cevfx 1217->669 2d6c73efc | 6 mechbayscreen 1176->325 b43d4b40c | 7 group 1102->253 f0d37de6c | 8 team 1077->543 be79c6ead
-- 9 ablxstd 1071->239 6292520c3 | 10 mlr_i_tmesh 1206->427 27cd40e3b | 11 multplyr 1204->403 78da1679d | 12 logistics 1002->437 9af8c3f04
-- 13 gos_particle_bridge 1443->871 f0521b300 (prep e143d1f58) | 14 vulkan_water_island 1428->336 bc6deb13f (prep b9c6e015d) | 15 GuiRuntime 1365->894 101de6cec (prep fe54fffb0) | 16 EditorObjects 1368->273 e7312b22b (prep 8ad0b2a1b)
-- userinput.cpp 1036->649: deleted the twelve unreferenced cursor UV tables (821775678; recovery 76a3e3d91).
-- Tooling: capture_ab.py, split_cpp.py (--stage-dir/--install with a verified marker, GROUP_WRAP, HEADER_POST, GUARD), post_split.py, tier_census.py, split_verify
-  checks ('static' cross-piece calls incl. named namespaces; a global DEFINED in the header, also under #else), check-gated-layout-macros follows <stem>_internal.h.
-- Tier1 5/5 at 055dacab9, aa9130de3, be79c6ead, 69a0d5450; and e7312b22b (after splits 13-16): 5/5 (147 / 83 / 106 / 131 / 123 fps). Editor smoke 15/15 on e7312b22b.
+## State of step 2
+- 14 LG13 commits (about 1,246 sites; LG13 2,892 -> about 1,790 after the revert). Seven strict-proven (b2e18ac9e 15f309252 c2674b26b f90d911f2 3a181227a 8aa5e975d 3a899cf80) keep their
+  never-touch edits by ruling. Seven relaxed-proof commits (a1cd5fc80 311b8c9d8 645576c12 3a80e116f 11a3cf696 8aac2756f d9230570c).
+- Reverted (cdd861f05, baseline 5246ce144): the never-touch files of the relaxed commits (artlry.cpp, EditorObjectMgr_internal.h, multplyr.h, dmultplyr.h, five abl headers).
+- Strict re-proof of what the relaxed commits still hold (36 files, 479 objects): 440 identical, 36 order-only (kept, listed in the ledger), 3 UNRESOLVED (code/missiongui.cpp.obj,
+  multplyr.cpp.obj, warrior.cpp.obj: .data / .bss layout reordered under any edit; blind-canonical equal). All 28 relaxed files these TUs include cause it. NEEDS A RULING: keep or revert them.
+- NOT done (stopped by the rule): tier1 after the last batches (last tier1 at f7236141c: 3/5 with two heartbeat_freeze_play under host load, both missions then passed alone); the LG14 design note.
 
-## Next
-- The survey's CHEAP list in GameOS / GuiRuntime / editor is done (particle_bridge, water_island, GuiRuntime, EditorObjects). cone_glow.cpp (1021) was SKIPPED
-  (gate readers interleaved with static helpers the queue code shares; a clean cut leaves a ~135-line piece).
-- Left (census CHEAP, survey LEFT; do not touch): contact, ablscan, soundsys, estring, quad_draw, mlr_i_pmesh. PHASE files need a phase pass, not a split.
-- Remaining census candidates (GameOS / editor / gui, not surveyed yet): see the appendix of size-tier-1000-survey.md; EditorInspector*, gameosmain*, mlrlightmap* are off limits.
-- Nice-to-have tooling (not built): (1) cfg generator from first/last function names, (2) split_cpp.py writing the CMake list edit and the allow-json skeleton.
-- Prep-commit pattern for namespace-heavy files (water island, GuiRuntime, particle bridge): rename/re-open the anonymous namespace at piece boundaries, move
-  cross-piece helpers to `inline` in the header or give them external linkage, then split with GUARD / GROUP_WRAP / HEADER_MOVES; split_verify finds what is left.
+## Tools (tested, committed)
+- tools/tidy/rewrite_defines.py (LG13). Default proof = PLAIN objhash; `--relaxed-proof REASON` (canonical_obj) writes the reason into the commit message. Built in: NEVER_TOUCH list + the 50
+  overload-sensitive TUs (read from legacy-subsystem-audit.md), string constants refused, fast bisect, --done / --taint-file / --ignore-digest-file. Only code/unitdesg.h (52 sites) is still
+  eligible; wide headers (>200 includers, e.g. gameos.hpp) need a relaxed batch because editor/MapGeneratorDialog.cpp.obj drops unreferenced stb_image tables under any edit.
+- tools/tidy/rewrite_enums.py (LG14: `enum class` + `using enum`): census 174 named enums, 64 candidates, 55 after cast / sizeof / serialization flags; no batch run.
+- tools/tidy/canonical_obj.py: order / layout-blind digest for explicit relaxed batches only.
 
-## Recipe per split
-1. `git grep -n '<orig>.cpp' -- '*CMakeLists.txt' '*.cmake'`; write a cfg (.claude/l2cfg/*_cfg.py as models; allow json via $SPLIT_ALLOW_DIR) and stage:
-   `py -3 tools/split/split_cpp.py CFG --stage-dir /tmp/l2/stage_x` (split_verify runs inside), then the same plus `--install` (only after a passing run).
-2. Add the pieces to every CMake list; `scripts/ninja_build.py`; `py -3 tools/build_contract_harnesses.py --run --unit`;
-   `py -3 tools/split/post_split.py --src F --stem S --note "..."` (plan row, split_map, size ratchet, full board, failing-row digest; doc_links is the only known red);
-   commit by pathspec; split_commit sha goes in the allow json at the next report.
-3. Per pair: `py -3 tools/build_all_targets.py`, deploy lane2, `run_smoke.py --lite --exe`, `capture_ab.py capture --tag X` then `compare --before PREV --after X`
-   (mc2_01 GL has a bimodal ~1700 / ~6000-9000 px noise mode, mechs and the bottom-right corner; compare against the NOISE line). Tier1 after every four splits.
-4. Run the board BEFORE committing a new tool: background_launch needs console_child.child_kwargs and an allowlist entry for wrapper scripts.
-- Files are CRLF in the worktree; git warns and stores new files LF (autocrlf=input). Bash heredocs collapse backslashes: write python with regexes via the Write tool.
-- `py` and Git Bash see /tmp differently for relative file reads; use repo-relative paths. A bare `bash` from python can start WSL's: use shutil.which.
+## Never-touch (coordinator, steps 2 and 3)
+mclib/estring*, elist*, heap*, stuff/*, mlr/*, gosfx/*, memorystream*, file*, packet*, fastfile*, abl*; code/multplyr*, dmultplyr.h; every *_internal.h; the 50 TUs of the audit's section D.
+Ratchet policy: never contort code for a ratchet; a legitimate rise gets a baseline rewrite with the reason in the commit.
 
-## Caveats
-- Lane 1 holds a host-wide game lease (12c1d7272); launches wait automatically.
-- Do not touch: gameosmain*, gos_static_prop_registry*, tgl_transform*, mission_update*, missionbegin*, gos_terrain_indirect_dispatch*, gamecam*, EditorInspector*,
-  brain_special_dispatch*, mlrlightmap*; skip files dirty in A:/Games/mc2-main.
+## Exact next steps for the fresh lane 2
+1. Get the ruling on the 3 unresolved objects; if revert: `git checkout <commit>~1 -- <file>` per file listed in the ledger (section 2), one revert commit, baseline rewrite with the reason.
+2. Merge nifty (handoff is now a 75-line live file + HANDOFF-LOG.md), rebuild build64-ninja, run build_all_targets.py, doctest, board, then ONE quiet tier1 (note the flake log if heartbeat_freeze_play hits).
+3. LG14 design note first (which enums are used arithmetically / as array indices / in save formats: skip; the rest enum class), for the coordinator's review; then batches with plain proof.
+   Anonymous enums (101) and typedef enums (101) are constants / aliases: candidates for `inline constexpr int` and `using`, not enum class. Counts: anonymous 101, typedef 101, named 174.
+4. Do not start a rewrite batch without an explicit proof-mode decision; never edit tracked files while a batch runs (kill it and `git checkout` its edits first).
+
+## Rules learned
+- Commit by pathspec; the board scans COMMITTED files (a new script needs its background-launch allowlist entry once tracked). Bash heredocs collapse backslashes: write Python with escapes via
+  the Write tool; `py` and Git Bash see /tmp differently, use repo-relative paths. Host load makes tier1 flake: run missions alone and quiet before concluding anything.
+- Scratch tools of this session (untracked): .claude/l2cfg/reprove.py, ddmin.py, culprits.py, blindcheck.py, enum_flags.py, why_left.py (re-proof and census helpers; results in the ledger).

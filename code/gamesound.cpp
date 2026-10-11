@@ -32,7 +32,7 @@ bool friendlyDestroyed = false;
 bool enemyDestroyed = false;
 extern bool GeneralAlarm;
 
-#define ALARM_TIME		5.0f
+constexpr float ALARM_TIME = 5.0f;
 
 //---------------------------------------------------------------------------
 void GameSoundSystem::purgeSoundSystem (void)

@@ -49,9 +49,9 @@ aAnimation*	SalvageListItem::s_normalAnim = nullptr;
 #define ARMOR_TEXTID	3
 #define SPEED_TEXTID	4
 #define JUMP_TEXTID		5
-#define RANGE_TEXTID	6
+constexpr int RANGE_TEXTID = 6;
 
-#define MECH_RECT	6
+constexpr int MECH_RECT = 6;
 
 #define CHECK_BUTTON 200
 

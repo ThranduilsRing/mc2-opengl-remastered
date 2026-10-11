@@ -124,7 +124,7 @@ typedef struct _TerrainObjectData : public GameObjectData
 	short						cellsCovered[81];
 } TerrainObjectData;
 
-#define	MAXLEN_TERRAINOBJECT_NAME		35
+inline constexpr int MAXLEN_TERRAINOBJECT_NAME = 35;
 
 class TerrainObject : public GameObject {
 

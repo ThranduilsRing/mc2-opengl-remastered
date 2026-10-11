@@ -303,7 +303,7 @@ bool Team::lineOfSight (float startLocal, long mCellRow, long mCellCol, long tCe
 
 #else
 
-#define ACCURACY_ADJUST		1.5f
+constexpr float ACCURACY_ADJUST = 1.5f;
 const float HALF_CELL_DIST	= (128.0f / 6.0f);
 //---------------------------------------------------------------------------
 bool Team::lineOfSight (float startLocal, long mCellRow, long mCellCol, float endLocal, long tCellRow, long tCellCol, long teamId, float extRad, float startExtRad, bool checkVisibleBits)

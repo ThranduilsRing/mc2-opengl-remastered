@@ -32,18 +32,18 @@
 #include<gosfx/gosfxheaders.hpp>
 //***************************************************************************
 
-#define NO_RAM_FOR_ARTY					0xDEFD0000
-#define NO_RAM_FOR_ARTY_SHAPES			0xDEFD0001
+inline constexpr unsigned int NO_RAM_FOR_ARTY = 0xDEFD0000;
+inline constexpr unsigned int NO_RAM_FOR_ARTY_SHAPES = 0xDEFD0001;
 
-#define NO_RAM_FOR_ARTILLERY			0xDEFD0002
-#define NO_APPEARANCE_TYPE_FOR_ARTY		0xDEFD0003
-#define NO_APPEARANCE_FOR_ARTY			0xDEFD0004
+inline constexpr unsigned int NO_RAM_FOR_ARTILLERY = 0xDEFD0002;
+inline constexpr unsigned int NO_APPEARANCE_TYPE_FOR_ARTY = 0xDEFD0003;
+inline constexpr unsigned int NO_APPEARANCE_FOR_ARTY = 0xDEFD0004;
 #define APPEARANCE_NOT_VFX_APPEAR		0xDCDC0009
 
 #define CLAN_SEEN_FLAG				2
 #define IS_SEEN_FLAG				1
 
-#define	MAX_ARTILLERY_EXPLOSIONS		32
+inline constexpr int MAX_ARTILLERY_EXPLOSIONS = 32;
 
 //***************************************************************************
 

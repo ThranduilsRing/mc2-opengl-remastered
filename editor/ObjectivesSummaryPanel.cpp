@@ -109,7 +109,7 @@ static bool objIsObjectRefCondition(condition_species_type sp)
 // Per-objective warnings (computed from data only -- never deref object refs).
 // Drives both the center-pane "Warnings" block and the [!] list-row badge.
 // ---------------------------------------------------------------------------
-#define OBJ_MAX_WARNINGS 4
+constexpr int OBJ_MAX_WARNINGS = 4;
 
 // Fill 'warn[]' with up to OBJ_MAX_WARNINGS plain-English warning strings and
 // return the count. Returns 0 (no warnings) for a null objective.

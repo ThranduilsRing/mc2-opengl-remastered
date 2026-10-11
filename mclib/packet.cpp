@@ -685,7 +685,7 @@ int PacketFile::writePacket (int packet, MemoryPtr buffer, unsigned int nbytes, 
 	return result;
 }
 
-#define DEFAULT_MAX_PACKET		65535
+constexpr int DEFAULT_MAX_PACKET = 65535;
 //---------------------------------------------------------------------------
 int PacketFile::insertPacket (int packet, MemoryPtr buffer, unsigned int nbytes, unsigned char pType)
 {

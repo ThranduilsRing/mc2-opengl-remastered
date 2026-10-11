@@ -19,7 +19,7 @@ class LogisticsPilot;
 CLASS DESCRIPTION
 LogisticsPilotListBox:
 **************************************************************************************************/
-#define PILOT_LIST_BOX_CHILD_COUNT 7
+inline constexpr int PILOT_LIST_BOX_CHILD_COUNT = 7;
 
 
 class LogisticsPilotListBoxItem : public aListItem

@@ -98,7 +98,7 @@
 #include"bldng.h"
 #endif
 
-#define	TESTING_WITH_PLAYER	1
+inline constexpr int TESTING_WITH_PLAYER = 1;
 
 #include"platform_windows.h"
 #include "../GameOS/gameos/gos_static_prop_registry.h"  // Task 6: late-spawn registerStaticProp
@@ -117,8 +117,8 @@ enum {
 	V,
 };
 
-#define	MAXLEN_INPUTSTR			512
-#define CELL_DISTANCE			42.6667f
+inline constexpr int MAXLEN_INPUTSTR = 512;
+inline constexpr float CELL_DISTANCE = 42.6667f;
 
 enum MechBodyLocationType {
 	MECH_BODY_LOCATION_ANY = -1,

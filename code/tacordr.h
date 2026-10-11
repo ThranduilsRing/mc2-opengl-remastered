@@ -36,10 +36,10 @@
 
 //***************************************************************************
 
-#define	NUM_MOVE_SPEEDS		4
+inline constexpr int NUM_MOVE_SPEEDS = 4;
 
-#define	TACORDER_FAILURE	0
-#define	TACORDER_SUCCESS	1
+inline constexpr int TACORDER_FAILURE = 0;
+inline constexpr int TACORDER_SUCCESS = 1;
 
 typedef enum {
 	MOVE_SPEED_BEST,
@@ -48,7 +48,7 @@ typedef enum {
 	MOVE_SPEED_MODERATE
 } MoveSpeedType;
 
-#define	NUM_MOVE_PATTERNS	7
+inline constexpr int NUM_MOVE_PATTERNS = 7;
 
 typedef enum {
 	MOVE_PATTERN_DIRECT,
@@ -60,7 +60,7 @@ typedef enum {
 	MOVE_PATTERN_RANDOM_WIDE
 } MovePatternType;
 
-#define	NUM_ATTITUDES		6
+inline constexpr int NUM_ATTITUDES = 6;
 
 typedef enum {
 	ATTITUDE_CAUTIOUS,

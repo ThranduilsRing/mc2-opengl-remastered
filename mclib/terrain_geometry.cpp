@@ -4,11 +4,11 @@
 
 
 float cosineEyeHalfFOV = 0.0f;
-#define MAX_CAMERA_RADIUS		(250.0f)
-#define CLIP_THRESHOLD_DISTANCE	(768.0f)
+constexpr float MAX_CAMERA_RADIUS = 250.0f;
+constexpr float CLIP_THRESHOLD_DISTANCE = 768.0f;
 
 //a full triangle.
-#define VERTEX_EXTENT_RADIUS	(384.0f)
+constexpr float VERTEX_EXTENT_RADIUS = 384.0f;
 
 extern bool InEditor;
 

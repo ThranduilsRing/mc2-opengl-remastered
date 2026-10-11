@@ -8,7 +8,7 @@
 #include "gvehicl_internal.h"
 
 
-#define TURN_THRESHOLD		20.0
+constexpr double TURN_THRESHOLD = 20.0;
 #define BLIP_FRAME_RATE		0.067
 
 long DefaultPilotId	= 653;

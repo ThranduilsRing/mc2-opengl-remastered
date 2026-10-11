@@ -8,7 +8,7 @@
 static const bool s_gpuCullLifecycle = mc2::gate::get<"MC2_GPU_CULL_LIFECYCLE">();
 
 
-#define GestureGoalFallenBackward		8
+constexpr int GestureGoalFallenBackward = 8;
 
 long BattleMech::update (void)
 {

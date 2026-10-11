@@ -18,19 +18,19 @@ class LogisticsMech;
 class LogisticsMechIcon;
 class SimpleCamera;
 
-#define ICON_COUNT		12
-#define ICON_COUNT_X	4
-#define ICON_COUNT_Y	3
+inline constexpr int ICON_COUNT = 12;
+inline constexpr int ICON_COUNT_X = 4;
+inline constexpr int ICON_COUNT_Y = 3;
 
 
-#define MB_MSG_NEXT 50
-#define MB_MSG_PREV 51
-#define MB_MSG_ADD 52
-#define MB_MSG_REMOVE 53
-#define MB_MSG_BUY 54
-#define MB_MSG_CHANGE_LOADOUT 55
-#define MB_MSG_BUY_SELL 56
-#define MB_MSG_MAINMENU	57
+inline constexpr int MB_MSG_NEXT = 50;
+inline constexpr int MB_MSG_PREV = 51;
+inline constexpr int MB_MSG_ADD = 52;
+inline constexpr int MB_MSG_REMOVE = 53;
+inline constexpr int MB_MSG_BUY = 54;
+inline constexpr int MB_MSG_CHANGE_LOADOUT = 55;
+inline constexpr int MB_MSG_BUY_SELL = 56;
+inline constexpr int MB_MSG_MAINMENU = 57;
 
 
 class MechBayScreen : public LogisticsScreen

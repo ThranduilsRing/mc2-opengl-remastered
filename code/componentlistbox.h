@@ -24,7 +24,7 @@ class LogisticsComponent;
 class LogisticsVehicle;
 
 
-#define COMP_ANIMATION_COUNT 5
+inline constexpr int COMP_ANIMATION_COUNT = 5;
 
 
 //*************************************************************************************************

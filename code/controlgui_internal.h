@@ -59,7 +59,7 @@ extern float worldUnitsPerMeter;   // sensor range is in world units; /this = me
 #include "imgui.h"
 
 #define TEXT_SKIP 5.f * Environment.screenHeight/600.f
-#define CHAT_DISPLAY_TIME 30
+inline constexpr int CHAT_DISPLAY_TIME = 30;
 
 // Globals defined in controlgui.cpp (or elsewhere in the engine) that the split pieces share.
 extern unsigned long long g_ifaceCgFrameNs[8];

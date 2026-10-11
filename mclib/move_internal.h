@@ -43,7 +43,7 @@ using Relation = enum {
 
 extern void memclear(void *Dest,int Length);
 
-#define	NUM_CELL_OFFSETS 128
+inline constexpr int NUM_CELL_OFFSETS = 128;
 
 // Globals defined in move.cpp (or elsewhere in the engine) that the split pieces share.
 extern UserHeapPtr systemHeap;
@@ -162,7 +162,7 @@ inline int MoveMap::calcHPrime (int r, int c) {
 	return(sum);
 }
 
-#define MAX_MAPWIDTH		1000
+inline constexpr int MAX_MAPWIDTH = 1000;
 
 inline void MoveMap::propogateCost (long mapCellIndex, long cost, long g) {
 

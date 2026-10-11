@@ -17,10 +17,10 @@
 #include"gamesound.h"
 
 
-#define MAP_INDEX 32
-#define BUTTON_TEXT 34
-#define VIDEO_SCREEN 33
-#define RP_INDEX 1
+constexpr int MAP_INDEX = 32;
+constexpr int BUTTON_TEXT = 34;
+constexpr int VIDEO_SCREEN = 33;
+constexpr int RP_INDEX = 1;
 
 #define MN_MSG_PLAY 80
 #define MN_MSG_STOP 82

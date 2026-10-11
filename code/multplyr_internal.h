@@ -130,7 +130,7 @@ long cLoadString (HINSTANCE hInstance,  UINT uID, LPTSTR lpBuffer, int nBufferMa
 
 #include"gamesound.h"
 
-#define	MAX_MSG_SIZE		10240
+inline constexpr int MAX_MSG_SIZE = 10240;
 
 // Globals defined in multplyr.cpp (or elsewhere in the engine) that the split pieces share.
 extern CPrefs prefs;

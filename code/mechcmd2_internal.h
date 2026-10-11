@@ -93,14 +93,14 @@ extern CPrefs prefs;
 enum ProcType { CPU_UNKNOWN, CPU_PENTIUM, CPU_MMX, CPU_KATMAI };
 
 
-#define	MAX_KILL_AT_START	100
-#define MAX_HARDWARE_CARDS		5
+inline constexpr int MAX_KILL_AT_START = 100;
+inline constexpr int MAX_HARDWARE_CARDS = 5;
 
 //***************************************************************************
 // DEBUGGING WINDOWS
 //***************************************************************************
 
-#define	NUM_DEBUG_WINDOWS	4
+inline constexpr int NUM_DEBUG_WINDOWS = 4;
 
 // Globals defined in mechcmd2.cpp (or elsewhere in the engine) that the split pieces share.
 extern UserHeapPtr guiHeap;

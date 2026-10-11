@@ -11,9 +11,9 @@
 #ifndef DCONTACT_H
 #define DCONTACT_H
 
-#define	MAX_SENSORS						512	// # sensor systems allowed per mission (raised from 150: stub-substituted chassis in mod campaigns e.g. keid-v flood the pool; pool is per-mission missionHeap, sensors are small)
-#define	MAX_ECMS						50
-#define	MAX_CONTACTS_PER_SENSOR			200
+inline constexpr int MAX_SENSORS = 512;	// # sensor systems allowed per mission (raised from 150: stub-substituted chassis in mod campaigns e.g. keid-v flood the pool; pool is per-mission missionHeap, sensors are small)
+inline constexpr int MAX_ECMS = 50;
+inline constexpr int MAX_CONTACTS_PER_SENSOR = 200;
 
 typedef enum _ContactStatus {
 	CONTACT_NONE,

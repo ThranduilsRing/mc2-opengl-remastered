@@ -23,7 +23,7 @@ MechLabScreen.h			: Interface for the MechLabScreen component.
 #include"simplecamera.h"
 #endif
 
-#define MECH_LAB_ATTRIBUTE_METER_COUNT	9
+inline constexpr int MECH_LAB_ATTRIBUTE_METER_COUNT = 9;
 class FitIniFile;
 class LogisticsVariant;
 class LogisticsComponent;

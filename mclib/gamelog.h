@@ -29,10 +29,10 @@
 
 //---------------------------------------------------------------------------
 
-#define	MAX_GAMELOGS			6
-#define MAX_GAMELOG_LINES		50
-#define	MAX_GAMELOG_LINELEN		200
-#define	MAXLEN_GAMELOG_NAME		128
+inline constexpr int MAX_GAMELOGS = 6;
+inline constexpr int MAX_GAMELOG_LINES = 50;
+inline constexpr int MAX_GAMELOG_LINELEN = 200;
+inline constexpr int MAXLEN_GAMELOG_NAME = 128;
 
 class GameLog {
 

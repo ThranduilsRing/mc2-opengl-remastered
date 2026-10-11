@@ -22,7 +22,7 @@
 
 #include<stdio.h>
 
-#define LIGHT_DEPTH_FIXUP		-500
+constexpr int LIGHT_DEPTH_FIXUP = -500;
 
 //***************************************************************************
 //	LIGHT TYPE class

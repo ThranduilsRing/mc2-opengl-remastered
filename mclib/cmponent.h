@@ -34,18 +34,18 @@
 
 //***************************************************************************
 
-#define	MAXLEN_COMPONENT_NAME		256
-#define	MAXLEN_COMPONENT_ABBREV		256
+inline constexpr int MAXLEN_COMPONENT_NAME = 256;
+inline constexpr int MAXLEN_COMPONENT_ABBREV = 256;
 
-#define	NUM_BODY_LOCATIONS			8
+inline constexpr int NUM_BODY_LOCATIONS = 8;
 
-#define	TECH_BASE_CLAN				1
-#define	TECH_BASE_INNERSPHERE		2
+inline constexpr int TECH_BASE_CLAN = 1;
+inline constexpr int TECH_BASE_INNERSPHERE = 2;
 
-#define	COMPONENT_USE_MECH			1
-#define	COMPONENT_USE_VEHICLE		2
-#define	COMPONENT_USE_CLAN			16
-#define	COMPONENT_USE_INNERSPHERE	32
+inline constexpr int COMPONENT_USE_MECH = 1;
+inline constexpr int COMPONENT_USE_VEHICLE = 2;
+inline constexpr int COMPONENT_USE_CLAN = 16;
+inline constexpr int COMPONENT_USE_INNERSPHERE = 32;
 
 typedef enum {
 	COMPONENT_FORM_SIMPLE = 0,
@@ -98,10 +98,10 @@ typedef enum {
 
 //******************************************************************************************
 
-#define	WEAPON_FLAG_STREAK		1
-#define	WEAPON_FLAG_INFERNO		2
-#define WEAPON_FLAG_LBX			4
-#define WEAPON_FLAG_ARTILLERY	8
+inline constexpr int WEAPON_FLAG_STREAK = 1;
+inline constexpr int WEAPON_FLAG_INFERNO = 2;
+inline constexpr int WEAPON_FLAG_LBX = 4;
+inline constexpr int WEAPON_FLAG_ARTILLERY = 8;
 
 typedef union {
 	struct {

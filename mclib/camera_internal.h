@@ -70,17 +70,17 @@ extern void AG_shape_lookaside(MemoryPtr palette);
 #pragma warning(disable:4305/*double to float truncation*/)
 
 
-#define TABLE_ENTRY_SIZE		256
-#define SCALE_LEVELS			7
-#define	RAMPED_RED				239
-#define RAMPED_GREEN			248
-#define NO_RAM_FOR_SCALE_TABLE	0x12120001
+inline constexpr int TABLE_ENTRY_SIZE = 256;
+inline constexpr int SCALE_LEVELS = 7;
+inline constexpr int RAMPED_RED = 239;
+inline constexpr int RAMPED_GREEN = 248;
+inline constexpr int NO_RAM_FOR_SCALE_TABLE = 0x12120001;
 
 #define NIGHT_START_PITCH		(25.0f)
 #define NIGHT_LIGHT_PITCH		(10.0f)
-#define TERRAIN_LIGHTS_ON		(40.0f)
+inline constexpr float TERRAIN_LIGHTS_ON = 40.0f;
 
-#define NORM_PERSPECTIVE		35.0f
+inline constexpr float NORM_PERSPECTIVE = 35.0f;
 
 // Globals defined in camera.cpp (or elsewhere in the engine) that the split pieces share.
 extern char WindowTitle[1024];;

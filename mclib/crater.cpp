@@ -48,8 +48,8 @@ extern bool useFog;
 extern bool drawOldWay;
 extern bool useNonWeaponEffects;
 
-#define MAX_CRATER_TEXTURES 			2
-#define MAX_FOOTPRINTS					64
+constexpr int MAX_CRATER_TEXTURES = 2;
+constexpr int MAX_FOOTPRINTS = 64;
 //---------------------------------------------------------------------
 float craterUVTable [136] = 
 {

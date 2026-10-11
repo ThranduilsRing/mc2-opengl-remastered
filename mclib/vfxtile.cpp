@@ -37,8 +37,8 @@ struct newShapeStruct
 	short numScanColumns;
 };
 
-#define FULLY_CLIPPED		0xCDCF0001
-#define FORMAT_SPEC			0xFEEDABBA
+constexpr unsigned int FULLY_CLIPPED = 0xCDCF0001;
+constexpr unsigned int FORMAT_SPEC = 0xFEEDABBA;
 
 #define BLACK				0x10101010
 

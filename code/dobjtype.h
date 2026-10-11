@@ -17,16 +17,16 @@
 #define NO_ERR	0
 #endif
 
-#define CANT_LOAD_INVALID_OBJECT				0xBEEF0001
-#define OBJECT_TYPE_NUMBER_OUT_OF_RANGE			0xBEEF0002
-#define OBJECT_TYPE_NUMBER_UNDEFINED			0xBEEF0003
-#define CANT_OPEN_OBJECT_FILE					0xBEEF0004
-#define CANT_DELETE_OBJECT_TYPE					0xBEEF0005
-#define CANT_CREATE_OBJECT						0xBEEF0006
-#define NO_RAM_FOR_OBJECT_TYPE_LIST				0xBEEF0007
-#define NO_RAM_FOR_OBJECT_TYPE_FILE				0xBEEF0008
-#define NO_RAM_FOR_OBJECT_TYPE_CACHE			0xBEEF0009
-#define NO_RAM_FOR_OBJECT_CACHE					0xBEEF000A
+inline constexpr unsigned int CANT_LOAD_INVALID_OBJECT = 0xBEEF0001;
+inline constexpr unsigned int OBJECT_TYPE_NUMBER_OUT_OF_RANGE = 0xBEEF0002;
+inline constexpr unsigned int OBJECT_TYPE_NUMBER_UNDEFINED = 0xBEEF0003;
+inline constexpr unsigned int CANT_OPEN_OBJECT_FILE = 0xBEEF0004;
+inline constexpr unsigned int CANT_DELETE_OBJECT_TYPE = 0xBEEF0005;
+inline constexpr unsigned int CANT_CREATE_OBJECT = 0xBEEF0006;
+inline constexpr unsigned int NO_RAM_FOR_OBJECT_TYPE_LIST = 0xBEEF0007;
+inline constexpr unsigned int NO_RAM_FOR_OBJECT_TYPE_FILE = 0xBEEF0008;
+inline constexpr unsigned int NO_RAM_FOR_OBJECT_TYPE_CACHE = 0xBEEF0009;
+inline constexpr unsigned int NO_RAM_FOR_OBJECT_CACHE = 0xBEEF000A;
 
 enum ObjectTypeClass
 {

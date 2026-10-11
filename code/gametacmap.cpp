@@ -48,9 +48,9 @@ gameTacMap.cpp			: Implementation of the gameTacMap component.
 extern unsigned char godMode;
 extern bool useLeftRightMouseProfile;
 
-#define SQUARE_BLIP 0
-#define DOT_BLIP 1
-#define TRIANGLE_BLIP 2
+constexpr int SQUARE_BLIP = 0;
+constexpr int DOT_BLIP = 1;
+constexpr int TRIANGLE_BLIP = 2;
 
 const float GameTacMap::s_blinkLength = .5f;
 float		GameTacMap::s_lastBlinkTime = 0.f;

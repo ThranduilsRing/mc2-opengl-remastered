@@ -776,7 +776,7 @@ void MissionMap::rebuildTileMineCounts (void) {
 	gos_terrain_indirect::MarkMineDirty();
 }
 
-#define	NUM_MISSIONMAP_PACKETS	4
+constexpr int NUM_MISSIONMAP_PACKETS = 4;
 
 long MissionMap::init (PacketFile* packetFile, long whichPacket) {
 

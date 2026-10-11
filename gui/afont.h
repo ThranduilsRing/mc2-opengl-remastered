@@ -46,6 +46,6 @@ private:
 };
 
 // Error codes, local to this file...
-#define	FONT_NOT_LOADED			-3
+inline constexpr int FONT_NOT_LOADED = -3;
 
 #endif

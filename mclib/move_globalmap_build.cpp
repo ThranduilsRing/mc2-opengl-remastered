@@ -90,7 +90,7 @@ void GlobalMap::init (long w, long h) {
 	blank = false;
 }
 
-#define	GLOBALMAP_VERSION_NUMBER	0x022523	// My 51st birthday:)
+constexpr int GLOBALMAP_VERSION_NUMBER = 0x022523;	// My 51st birthday:)
 
 long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 

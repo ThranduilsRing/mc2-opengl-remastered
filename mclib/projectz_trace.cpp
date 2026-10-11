@@ -71,7 +71,7 @@ struct PredStat {
 static PredStat s_predStat[PRED_COUNT] = {};
 
 // ── per-callsite heatmap ─────────────────────────────────────────────────────
-#define MAX_HM_ENTRIES 128
+constexpr int MAX_HM_ENTRIES = 128;
 struct HeatmapEntry {
     const char* id;
     uint32_t    pred_agree[PRED_COUNT];

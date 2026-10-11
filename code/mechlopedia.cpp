@@ -22,15 +22,15 @@ Mechlopedia.cpp			: Implementation of the Mechlopedia component.
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
 
-#define ENCYCLO_MECHS	130
-#define ENCYCLO_BUILD	131
-#define ENCYCLO_VEHIC	132
-#define ENCYCLO_WEAPONS 133
-#define ENCYCLO_PILOTS	134
-#define ENCYCLO_HISTORY 135
-#define ENCYCLO_MM	136
+constexpr int ENCYCLO_MECHS = 130;
+constexpr int ENCYCLO_BUILD = 131;
+constexpr int ENCYCLO_VEHIC = 132;
+constexpr int ENCYCLO_WEAPONS = 133;
+constexpr int ENCYCLO_PILOTS = 134;
+constexpr int ENCYCLO_HISTORY = 135;
+constexpr int ENCYCLO_MM = 136;
 
-#define PERSONALITY_COUNT 11
+constexpr int PERSONALITY_COUNT = 11;
 
 MechlopediaListItem* MechlopediaListItem::s_templateItem = nullptr;				
 

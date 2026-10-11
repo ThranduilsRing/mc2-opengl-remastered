@@ -11,7 +11,7 @@
 class LogisticsMech;
 class LogisticsPilot;
 
-#define ICON_ANIM_COUNT 4
+inline constexpr int ICON_ANIM_COUNT = 4;
 /**************************************************************************************************
 CLASS DESCRIPTION
 LogisticsMechIcon:

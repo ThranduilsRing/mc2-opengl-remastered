@@ -14,7 +14,7 @@
 class Radio;
 typedef Radio *RadioPtr;
 
-#define	MSG_TOTAL_MSGS 0
+inline constexpr int MSG_TOTAL_MSGS = 0;
 
 enum RadioMessageType {
 	RADIO_ACK = MSG_TOTAL_MSGS,			//3 Types

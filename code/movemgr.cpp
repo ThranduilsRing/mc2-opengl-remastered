@@ -138,7 +138,7 @@ PathQueueRecPtr MovePathManager::remove (MechWarriorPtr pilot) {
 
 //---------------------------------------------------------------------------
 
-#define	DEBUG_MOVEPATH_QUEUE	0
+constexpr int DEBUG_MOVEPATH_QUEUE = 0;
 
 void MovePathManager::request (MechWarriorPtr pilot, long selectionIndex, unsigned long moveParams, long source) {
 

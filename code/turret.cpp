@@ -97,7 +97,7 @@ extern void LogWeaponFireChunk (WeaponFireChunkPtr chunk, GameObjectPtr attacker
 
 bool Turret::turretsEnabled[MAX_TEAMS] = {true, true, true, true, true, true, true, true};
 
-#define MAX_TURRET_PITCH		(-45.0f)
+constexpr float MAX_TURRET_PITCH = -45.0f;
 
 inline float agsqrt( float _a, float _b )
 {

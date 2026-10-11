@@ -48,8 +48,8 @@ struct InfoPilotRows
 #include"afont.h"
 #endif
 
-#define SCROLLUP	1
-#define SCROLLDOWN	2
+inline constexpr int SCROLLUP = 1;
+inline constexpr int SCROLLDOWN = 2;
 
 
 //*************************************************************************************************

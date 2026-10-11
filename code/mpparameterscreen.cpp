@@ -26,40 +26,40 @@ extern bool quitGame;
 #include"gamesound.h"
 #endif
 
-#define	MP_PLAYER_PREFS 120
-#define MAP_INFO		121
+constexpr int MP_PLAYER_PREFS = 120;
+constexpr int MAP_INFO = 121;
 
 
 #define CHECK_BUTTON 200
-#define MP_INCREMENT_DROPWEIGHT 198
-#define MP_DECREMENT_DROPWEIGHT 199
-#define MP_INCREMENT_CBILLS 200
-#define MP_DECREMENT_CBILLS 201
-#define MP_INCREMENT_TIME 202
-#define MP_DECREMENT_TIME 203
-#define MP_INCREMENT_RP 204
-#define MP_DECREMENT_RP 205
+constexpr int MP_INCREMENT_DROPWEIGHT = 198;
+constexpr int MP_DECREMENT_DROPWEIGHT = 199;
+constexpr int MP_INCREMENT_CBILLS = 200;
+constexpr int MP_DECREMENT_CBILLS = 201;
+constexpr int MP_INCREMENT_TIME = 202;
+constexpr int MP_DECREMENT_TIME = 203;
+constexpr int MP_INCREMENT_RP = 204;
+constexpr int MP_DECREMENT_RP = 205;
 
 
 
-#define MP_AIRSTRIKES 206
-#define MP_SENSOR_PROBE 207
-#define MP_MINELAYER	208
-#define MP_REPAIR		209
-#define MP_LOCKGAME		210
-#define MP_BOOTPLAYER	211
-#define MP_SCOUTS		212
-#define MP_RECOVERY		213
-#define MP_GUARDTOWER	214
-#define MP_RESOURCE_BLDG	215
-#define MP_UNLIMITED_AMMO	216
-#define MP_VARIANTS			217
-#define MP_ALLTECH			218
-#define MP_QUICKSTART		219
-#define MP_RP_FORMMECHS		220
+constexpr int MP_AIRSTRIKES = 206;
+constexpr int MP_SENSOR_PROBE = 207;
+constexpr int MP_MINELAYER = 208;
+constexpr int MP_REPAIR = 209;
+constexpr int MP_LOCKGAME = 210;
+constexpr int MP_BOOTPLAYER = 211;
+constexpr int MP_SCOUTS = 212;
+constexpr int MP_RECOVERY = 213;
+constexpr int MP_GUARDTOWER = 214;
+constexpr int MP_RESOURCE_BLDG = 215;
+constexpr int MP_UNLIMITED_AMMO = 216;
+constexpr int MP_VARIANTS = 217;
+constexpr int MP_ALLTECH = 218;
+constexpr int MP_QUICKSTART = 219;
+constexpr int MP_RP_FORMMECHS = 220;
 
-#define MP_INCREMENT_PLAYER_CBILLS 250
-#define MP_DECREMENT_PLAYER_CBILLS 251
+constexpr int MP_INCREMENT_PLAYER_CBILLS = 250;
+constexpr int MP_DECREMENT_PLAYER_CBILLS = 251;
 
 
 static const int FIRST_BUTTON_ID = 1000010;

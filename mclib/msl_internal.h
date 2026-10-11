@@ -62,8 +62,8 @@ extern uint32_t g_mc2FrameCounter;
 #include "../RenderCore/axis_convert.h"
 using namespace Microsoft::Xna::Arm;
 
-#define CURRENT_SHAPE_VERSION		0xBAFDECAF
-#define CURRENT_ANIM_VERSION		0xBADDECAF
+inline constexpr unsigned int CURRENT_SHAPE_VERSION = 0xBAFDECAF;
+inline constexpr unsigned int CURRENT_ANIM_VERSION = 0xBADDECAF;
 
 // sebi: defined in windows.h
 #ifndef LINUX_BUILD

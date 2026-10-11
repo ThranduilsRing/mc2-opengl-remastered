@@ -30,8 +30,8 @@
 #endif
 
 //------------------------------------------------------------------------------------------
-#define MAX_FRAGMENTS	16
-#define MAX_RADIOS		256
+inline constexpr int MAX_FRAGMENTS = 16;
+inline constexpr int MAX_RADIOS = 256;
 /*
 struct RadioData
 {

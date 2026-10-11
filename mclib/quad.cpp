@@ -25,7 +25,7 @@ float    g_cpuWaterProbeZ        = 0.0f;
 double   g_cpuWaterProbeBestD2   = 0.0;
 bool     g_cpuWaterProbeAny      = false;
 unsigned long long g_cpuWaterProbeStamp = 0;
-#define HIGHLIGHT_COLOR	0xff00ff00
+constexpr unsigned int HIGHLIGHT_COLOR = 0xff00ff00;
 
 //---------------------------------------------------------------------------
 float TerrainQuad::rainLightLevel = 1.0f;

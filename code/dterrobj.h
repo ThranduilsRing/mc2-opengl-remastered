@@ -10,11 +10,11 @@
 #ifndef DTERROBJ_H
 #define DTERROBJ_H
 
-#define	BRIDGEY		0x05
-#define	FORESTY		0x06
-#define	WALLY		0x07
-#define	MEDIUM_WALL	0x08
-#define	LIGHT_WALL	0x09
+inline constexpr int BRIDGEY = 0x05;
+inline constexpr int FORESTY = 0x06;
+inline constexpr int WALLY = 0x07;
+inline constexpr int MEDIUM_WALL = 0x08;
+inline constexpr int LIGHT_WALL = 0x09;
 
 class TerrainObjectType;
 typedef TerrainObjectType* TerrainObjectTypePtr;

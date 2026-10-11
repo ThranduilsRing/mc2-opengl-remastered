@@ -54,9 +54,9 @@ struct TGARecs
 };
 
 #define CONTRAST		128.0f
-#define BRIGHTNESS		0.5f
-#define LIGHT_YAW		-250.0f
-#define LIGHT_PITCH		32.0f
+constexpr float BRIGHTNESS = 0.5f;
+constexpr float LIGHT_YAW = -250.0f;
+constexpr float LIGHT_PITCH = 32.0f;
 
 inline bool isCementType (DWORD type)
 {

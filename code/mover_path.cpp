@@ -57,7 +57,7 @@ Stuff::Vector3D Mover::calcOffsetMoveGoal (Stuff::Vector3D target) {
 	return(curPoint3d);
 }
 
-#define	MAX_MOVE_GOALS		60
+constexpr int MAX_MOVE_GOALS = 60;
 
 inline void insertMoveGoal (long goalList[MAX_MOVE_GOALS][3], long r, long c, long wt) {
 

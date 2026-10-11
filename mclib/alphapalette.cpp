@@ -21,7 +21,7 @@ unsigned char FindClosest( VFX_RGB* Palette, int r, int g, int b );
 // Number of colors listed in the AlphaPal.ini file (>255 are special colors)
 //
 //
-#define NUM_ALPHACOLORS 280			// (One+last color listed)
+constexpr int NUM_ALPHACOLORS = 280;			// (One+last color listed)
 
 //
 // Table used for alpha effects

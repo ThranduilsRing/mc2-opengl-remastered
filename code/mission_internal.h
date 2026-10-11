@@ -153,7 +153,7 @@
 #include "abl_trace.h"           // ABL-VM-FACTS-1: mission-brain fire + per-frame flush
 #include "brain_order_intent.h"  // ABL-VM-FACTS-1: getBrainTickIndex()
 
-#define	MAX_DISABLE_AT_START	100
+inline constexpr int MAX_DISABLE_AT_START = 100;
 
 #define DEFAULT_SKY			1
 

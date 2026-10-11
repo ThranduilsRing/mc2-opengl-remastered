@@ -551,7 +551,7 @@ void MC_TextureManager::removeTexture (DWORD gosHandle)
 	}
 }
 
-#define cache_Threshold		150
+constexpr int cache_Threshold = 150;
 bool MC_TextureManager::flushCache (void)
 {
 	bool cacheNotFull = false;

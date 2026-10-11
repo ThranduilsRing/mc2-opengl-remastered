@@ -3,9 +3,9 @@
 #include "missiongui_shared_internal.h"
 
 
-#define ATTILA_FACTOR			1.0f
-#define ATTILA_ROTATION_FACTOR	4.1f
-#define ATTILA_THRESHOLD		0.01f
+constexpr float ATTILA_FACTOR = 1.0f;
+constexpr float ATTILA_ROTATION_FACTOR = 4.1f;
+constexpr float ATTILA_THRESHOLD = 0.01f;
 
 bool MissionInterfaceManager::moveCameraAround( bool lineOfSight, bool passable, bool ctrl, bool bGui, 
 											   long moverCount, long nonMoverCount )

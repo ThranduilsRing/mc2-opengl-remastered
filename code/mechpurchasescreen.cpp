@@ -26,8 +26,8 @@ MechPurchaseScreen* MechPurchaseScreen::s_instance = nullptr;
 // are read at first use rather than in a namespace-scope initializer.
 static bool cheatInfiniteMoney() { static const bool on = mc2::gate::get<"MC2_CHEAT_INFINITE_MONEY">(); return on; }
 
-#define INVENTORY_ID 88
-#define VARIANT_ID	89
+constexpr int INVENTORY_ID = 88;
+constexpr int VARIANT_ID = 89;
 
 
 //-------------------------------------------------------------------------------------------------

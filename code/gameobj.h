@@ -64,11 +64,11 @@ extern ObjectTypeManagerPtr objectTypeManager;
 
 //---------------------------------------------------------------------------
 
-#define	CELLS_PER_TILE					3
+inline constexpr int CELLS_PER_TILE = 3;
 
-#define	GAMEOBJECT_FLOATS				4
-#define	GAMEOBJECT_LONG					2
-#define	GAMEOBJECT_BYTES				1
+inline constexpr int GAMEOBJECT_FLOATS = 4;
+inline constexpr int GAMEOBJECT_LONG = 2;
+inline constexpr int GAMEOBJECT_BYTES = 1;
 
 #define	RELPOS_FLAG_ABS					1
 #define	RELPOS_FLAG_PASSABLE_START		2

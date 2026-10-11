@@ -26,17 +26,17 @@ EditorMessages.h			: Interface for the EditorMessages component.
 #define PAINT_TERRAIN_CLIFF		IDS_CLIFF
 
 // CURSORS!
-#define NORMAL_CURSOR		0
-#define PAINT_CURSOR		1
-#define SELECT_AREA_CURSOR		2
-#define ERASER_CURSOR		3
-#define TERRAIN_CURSORS		4 // don't use next 12, those are for the terrains
-#define OVERLAY_CURSORS		17 // don't use next 10, reserving those for overlays
-#define FLATTEN_CURSOR		28
-#define DRAG_SMOOTH			29
-#define DRAG_NORMAL			30
-#define DRAG_HAND			31
-#define MOVE_BUILDING		32
+inline constexpr int NORMAL_CURSOR = 0;
+inline constexpr int PAINT_CURSOR = 1;
+inline constexpr int SELECT_AREA_CURSOR = 2;
+inline constexpr int ERASER_CURSOR = 3;
+inline constexpr int TERRAIN_CURSORS = 4; // don't use next 12, those are for the terrains
+inline constexpr int OVERLAY_CURSORS = 17; // don't use next 10, reserving those for overlays
+inline constexpr int FLATTEN_CURSOR = 28;
+inline constexpr int DRAG_SMOOTH = 29;
+inline constexpr int DRAG_NORMAL = 30;
+inline constexpr int DRAG_HAND = 31;
+inline constexpr int MOVE_BUILDING = 32;
 #define DAMAGE				33
 #define REPAIR				34
 

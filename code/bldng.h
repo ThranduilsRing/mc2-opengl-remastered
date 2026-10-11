@@ -38,7 +38,7 @@
 #define NO_APPEARANCE_FOR_BLD			0xDCDC0008
 #define APPEARANCE_NOT_VFX_APPEAR		0xDCDC0009
 
-#define	MAX_PRISONERS					4
+inline constexpr int MAX_PRISONERS = 4;
 
 typedef enum {
 	BUILDING_SUBTYPE_NONE,

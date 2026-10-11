@@ -64,10 +64,10 @@ int EditorInterface::NewHeightMap()
 	return true;
 }
 
-#define MAX_THRESHOLD	5
-#define MAX_NOISE		5
-#define MIN_THRESHOLD	1
-#define MIN_NOISE		0
+constexpr int MAX_THRESHOLD = 5;
+constexpr int MAX_NOISE = 5;
+constexpr int MIN_THRESHOLD = 1;
+constexpr int MIN_NOISE = 0;
 
 int EditorInterface::RefractalizeTerrain(long Threshold)
 {

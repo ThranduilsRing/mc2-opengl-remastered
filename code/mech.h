@@ -57,69 +57,69 @@ extern float metersPerWorldUnit;
 
 //***************************************************************************
 
-#define	PILOTCHECK_SITUATION_NONE		0
-#define PILOTCHECK_SITUATION_JUMPING	1
-#define	PILOTCHECK_SITUATION_COLLISION	2
+inline constexpr int PILOTCHECK_SITUATION_NONE = 0;
+inline constexpr int PILOTCHECK_SITUATION_JUMPING = 1;
+inline constexpr int PILOTCHECK_SITUATION_COLLISION = 2;
 
-#define	MECH_SPRITESPEED_FLAG_NONE		0
-#define	MECH_SPRITESPEED_FLAG_GO_SLOW	1
+inline constexpr int MECH_SPRITESPEED_FLAG_NONE = 0;
+inline constexpr int MECH_SPRITESPEED_FLAG_GO_SLOW = 1;
 
-#define	NUM_MECH_HIT_ARCS				4
-#define MECH_HIT_ARC_FRONT				0
-#define	MECH_HIT_ARC_REAR				1
-#define	MECH_HIT_ARC_LEFT				2
-#define	MECH_HIT_ARC_RIGHT				3
+inline constexpr int NUM_MECH_HIT_ARCS = 4;
+inline constexpr int MECH_HIT_ARC_FRONT = 0;
+inline constexpr int MECH_HIT_ARC_REAR = 1;
+inline constexpr int MECH_HIT_ARC_LEFT = 2;
+inline constexpr int MECH_HIT_ARC_RIGHT = 3;
 
-#define	NUM_MECH_HIT_SECTIONS			3
-#define	MECH_HIT_SECTION_TOP			0
-#define	MECH_HIT_SECTION_MIDDLE			1
-#define	MECH_HIT_SECTION_BOTTOM			2
+inline constexpr int NUM_MECH_HIT_SECTIONS = 3;
+inline constexpr int MECH_HIT_SECTION_TOP = 0;
+inline constexpr int MECH_HIT_SECTION_MIDDLE = 1;
+inline constexpr int MECH_HIT_SECTION_BOTTOM = 2;
 
-#define	HIT_TYPE_WEAK					0
-#define	HIT_TYPE_MODERATE				1
-#define	HIT_TYPE_HEAVY					2
+inline constexpr int HIT_TYPE_WEAK = 0;
+inline constexpr int HIT_TYPE_MODERATE = 1;
+inline constexpr int HIT_TYPE_HEAVY = 2;
 
-#define	NUM_CRITICAL_SPACES_HEAD		6
-#define	NUM_CRITICAL_SPACES_CTORSO		12
-#define	NUM_CRITICAL_SPACES_LTORSO		12
-#define	NUM_CRITICAL_SPACES_RTORSO		12
-#define	NUM_CRITICAL_SPACES_LARM		12
-#define	NUM_CRITICAL_SPACES_RARM		12
-#define	NUM_CRITICAL_SPACES_LLEG		6
-#define	NUM_CRITICAL_SPACES_RLEG		6
+inline constexpr int NUM_CRITICAL_SPACES_HEAD = 6;
+inline constexpr int NUM_CRITICAL_SPACES_CTORSO = 12;
+inline constexpr int NUM_CRITICAL_SPACES_LTORSO = 12;
+inline constexpr int NUM_CRITICAL_SPACES_RTORSO = 12;
+inline constexpr int NUM_CRITICAL_SPACES_LARM = 12;
+inline constexpr int NUM_CRITICAL_SPACES_RARM = 12;
+inline constexpr int NUM_CRITICAL_SPACES_LLEG = 6;
+inline constexpr int NUM_CRITICAL_SPACES_RLEG = 6;
 
-#define	NUM_ACTUATORS					4
-#define	ACTUATOR_LSHOULDER				0
-#define	ACTUATOR_RSHOULDER				1
-#define	ACTUATOR_LHIP					2
-#define	ACTUATOR_RHIP					3
+inline constexpr int NUM_ACTUATORS = 4;
+inline constexpr int ACTUATOR_LSHOULDER = 0;
+inline constexpr int ACTUATOR_RSHOULDER = 1;
+inline constexpr int ACTUATOR_LHIP = 2;
+inline constexpr int ACTUATOR_RHIP = 3;
 
-#define	NUM_MECH_GESTURES				25
-#define	MECH_GESTURE_PARK				0
-#define	MECH_GESTURE_STAND_TO_PARK		1
-#define	MECH_GESTURE_STAND				2
-#define	MECH_GESTURE_STAND_TO_WALK		3
-#define	MECH_GESTURE_WALK				4
-#define	MECH_GESTURE_WALK_TO_STAND		5
-#define	MECH_GESTURE_WALK_TO_RUN		6
-#define	MECH_GESTURE_RUN				7
-#define	MECH_GESTURE_RUN_TO_WALK		8
-#define MECH_GESTURE_REVERSE			9
-#define MECH_GESTURE_STAND_TO_REVERSE	10
-#define MECH_GESTURE_LIMPING			11	//Limp
-#define MECH_GESTURE_WALK_HIT_B			12	//WalkToHitBehindToWalk
-#define MECH_GESTURE_WALK_HIT_F			13	//WalkToHitFrontToWalk
-#define MECH_GESTURE_WALK_FALL_B		14	//WalkToFallBackward 
-#define MECH_GESTURE_WALK_FALL_F		15	//WalkToFallForward 
-#define MECH_GESTURE_RUN_FALL_B			16	//RunToFallBackward 
-#define MECH_GESTURE_RUN_FALL_F			17	//RunToFallForward 
-#define MECH_GESTURE_STAND_FALL_B		18	//StandToFallBackward 
-#define MECH_GESTURE_STAND_FALL_F		19	//StandToFallForward 
-#define MECH_GESTURE_JUMP				20	//Jump
-#define MECH_GESTURE_ROLLOVER			21	//Rollover from FallBack to FallForward 
-#define MECH_GESTURE_GETUP				22	//Get up from FallForward 
-#define MECH_GESTURE_FALLEN_F			23	//Fallen Forward (Single Frame, mech on ground)
-#define MECH_GESTURE_FALLEN_B			24	//Fallen Backward (Single Frame, mech on ground)
+inline constexpr int NUM_MECH_GESTURES = 25;
+inline constexpr int MECH_GESTURE_PARK = 0;
+inline constexpr int MECH_GESTURE_STAND_TO_PARK = 1;
+inline constexpr int MECH_GESTURE_STAND = 2;
+inline constexpr int MECH_GESTURE_STAND_TO_WALK = 3;
+inline constexpr int MECH_GESTURE_WALK = 4;
+inline constexpr int MECH_GESTURE_WALK_TO_STAND = 5;
+inline constexpr int MECH_GESTURE_WALK_TO_RUN = 6;
+inline constexpr int MECH_GESTURE_RUN = 7;
+inline constexpr int MECH_GESTURE_RUN_TO_WALK = 8;
+inline constexpr int MECH_GESTURE_REVERSE = 9;
+inline constexpr int MECH_GESTURE_STAND_TO_REVERSE = 10;
+inline constexpr int MECH_GESTURE_LIMPING = 11;	//Limp
+inline constexpr int MECH_GESTURE_WALK_HIT_B = 12;	//WalkToHitBehindToWalk
+inline constexpr int MECH_GESTURE_WALK_HIT_F = 13;	//WalkToHitFrontToWalk
+inline constexpr int MECH_GESTURE_WALK_FALL_B = 14;	//WalkToFallBackward 
+inline constexpr int MECH_GESTURE_WALK_FALL_F = 15;	//WalkToFallForward 
+inline constexpr int MECH_GESTURE_RUN_FALL_B = 16;	//RunToFallBackward 
+inline constexpr int MECH_GESTURE_RUN_FALL_F = 17;	//RunToFallForward 
+inline constexpr int MECH_GESTURE_STAND_FALL_B = 18;	//StandToFallBackward 
+inline constexpr int MECH_GESTURE_STAND_FALL_F = 19;	//StandToFallForward 
+inline constexpr int MECH_GESTURE_JUMP = 20;	//Jump
+inline constexpr int MECH_GESTURE_ROLLOVER = 21;	//Rollover from FallBack to FallForward 
+inline constexpr int MECH_GESTURE_GETUP = 22;	//Get up from FallForward 
+inline constexpr int MECH_GESTURE_FALLEN_F = 23;	//Fallen Forward (Single Frame, mech on ground)
+inline constexpr int MECH_GESTURE_FALLEN_B = 24;	//Fallen Backward (Single Frame, mech on ground)
 
 #define NO_APPEARANCE_FOR_MECH			0xFFFA0001
 #define	NO_RAM_FOR_DYNAMICS_TYPE		0xFFFA0002
@@ -138,7 +138,7 @@ extern float metersPerWorldUnit;
 #define NO_RAM_FOR_XLAT_HS				0xFFFA000F
 
 #define	MAGIC_ROTATE_FORCE_NUMBER		(360.0 / (17.0))
-#define MAX_MECH_SMOKES 4
+inline constexpr int MAX_MECH_SMOKES = 4;
 
 //------------------------------------------------------------------------------------------
 // Enums 

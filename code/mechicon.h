@@ -25,7 +25,7 @@ MechIcon.h			: Interface for the MechIcon component.
 class Mover;
 class MechWarrior;
 
-#define NUM_DEATH_INFOS 6
+inline constexpr int NUM_DEATH_INFOS = 6;
 /**************************************************************************************************
 CLASS DESCRIPTION
 MechIcon:

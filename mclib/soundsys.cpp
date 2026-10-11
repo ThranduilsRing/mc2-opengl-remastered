@@ -36,7 +36,7 @@ long sfxVolume = 0;
 long RadioVolume = 0;
 long BettyVolume = 0;
 
-#define MAX_SENSOR_UPDATE_TIME		(5.0f)	//Seconds
+constexpr float MAX_SENSOR_UPDATE_TIME = 5.0f;	//Seconds
 
 float		SoundSystem::digitalMasterVolume = 0.99f;
 float		SoundSystem::SFXVolume = 0.6f;
@@ -45,7 +45,7 @@ float		SoundSystem::radioVolume = 0.6f;
 float		SoundSystem::bettyVolume = 0.7f;
 long		SoundSystem::largestSensorContact = -1;
 
-#define FALLOFF_DISTANCE			(1500.0f)
+constexpr float FALLOFF_DISTANCE = 1500.0f;
 
 //---------------------------------------------------------------------------
 // Video PCM push adapter — file-scope state + Mix_HookMusic callback

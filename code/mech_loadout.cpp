@@ -4,18 +4,18 @@
 #include "Gates/gate.h"
 
 
-#define ARMOR_POINTS_PER_NEWARMOR				32.0f
-#define ARMOR_HEAD_PERCENT						0.0f
-#define ARMOR_CTORSO_PERCENT					0.17f
-#define ARMOR_RTORSO_PERCENT					0.125f
-#define ARMOR_LTORSO_PERCENT					0.125f
-#define ARMOR_LARM_PERCENT						0.12f
-#define ARMOR_RARM_PERCENT						0.12f
-#define ARMOR_LLEG_PERCENT						0.13f
-#define ARMOR_RLEG_PERCENT						0.13f
-#define ARMOR_RCTORSO_PERCENT					0.03f
-#define ARMOR_RLTORSO_PERCENT					0.02f
-#define ARMOR_RRTORSO_PERCENT					0.02f
+constexpr float ARMOR_POINTS_PER_NEWARMOR = 32.0f;
+constexpr float ARMOR_HEAD_PERCENT = 0.0f;
+constexpr float ARMOR_CTORSO_PERCENT = 0.17f;
+constexpr float ARMOR_RTORSO_PERCENT = 0.125f;
+constexpr float ARMOR_LTORSO_PERCENT = 0.125f;
+constexpr float ARMOR_LARM_PERCENT = 0.12f;
+constexpr float ARMOR_RARM_PERCENT = 0.12f;
+constexpr float ARMOR_LLEG_PERCENT = 0.13f;
+constexpr float ARMOR_RLEG_PERCENT = 0.13f;
+constexpr float ARMOR_RCTORSO_PERCENT = 0.03f;
+constexpr float ARMOR_RLTORSO_PERCENT = 0.02f;
+constexpr float ARMOR_RRTORSO_PERCENT = 0.02f;
 
 // LOADOUT-EQUIPMENT-ID-ALIAS-1 (equipment arc, engine slice E5).
 // ADDITIVE string-id branch beside the legacy numeric MasterID column. The stock
@@ -797,10 +797,10 @@ LogisticsMasterLocationTableEntry logisticsTable[MAX_MOVER_INVENTORY_ITEMS] =
 	true ,MECH_BODY_LOCATION_RTORSO,	11     //61-Weapon or Ammo - 71
 };
 
-#define JUMPJET_SLOT					16
-#define SENSOR_SLOT						12
-#define ELECTRONIC_SLOT					13
-#define WEAPONAMMO_SLOT					17
+constexpr int JUMPJET_SLOT = 16;
+constexpr int SENSOR_SLOT = 12;
+constexpr int ELECTRONIC_SLOT = 13;
+constexpr int WEAPONAMMO_SLOT = 17;
 void BattleMech::resetComponents (long totalComponents, long *componentList)
 {
 	// Create a master component list for this mech.

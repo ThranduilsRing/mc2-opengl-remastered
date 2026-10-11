@@ -20,9 +20,9 @@ PilotReadyScreen.cpp			: Implementation of the PilotReadyScreen component.
 PilotReadyScreen* PilotReadyScreen::s_instance = nullptr;
 
 
-#define PR_MSG_ADD 62
-#define PR_MSG_REMOVE 63
-#define PR_MSG_MAIN 64
+constexpr int PR_MSG_ADD = 62;
+constexpr int PR_MSG_REMOVE = 63;
+constexpr int PR_MSG_MAIN = 64;
 
 PilotReadyScreen::PilotReadyScreen()
 {

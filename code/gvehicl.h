@@ -57,24 +57,24 @@ extern float metersPerWorldUnit;
 
 //***************************************************************************
 
-#define	NUM_GROUNDVEHICLE_HIT_ARCS			4
-#define GROUNDVEHICLE_HIT_ARC_FRONT			0
-#define	GROUNDVEHICLE_HIT_ARC_REAR			1
-#define	GROUNDVEHICLE_HIT_ARC_LEFT			2
-#define	GROUNDVEHICLE_HIT_ARC_RIGHT			3
+inline constexpr int NUM_GROUNDVEHICLE_HIT_ARCS = 4;
+inline constexpr int GROUNDVEHICLE_HIT_ARC_FRONT = 0;
+inline constexpr int GROUNDVEHICLE_HIT_ARC_REAR = 1;
+inline constexpr int GROUNDVEHICLE_HIT_ARC_LEFT = 2;
+inline constexpr int GROUNDVEHICLE_HIT_ARC_RIGHT = 3;
 
-#define NO_APPEARANCE_FOR_VEHICLE			0xFFFD0001
-#define	NO_APPEARANCE_TYPE_FOR_VEHICLE		0xFFFD0009
-#define	APPEARANCE_NOT_GV_TYPE				0xFFFD000A
+inline constexpr unsigned int NO_APPEARANCE_FOR_VEHICLE = 0xFFFD0001;
+inline constexpr unsigned int NO_APPEARANCE_TYPE_FOR_VEHICLE = 0xFFFD0009;
+inline constexpr unsigned int APPEARANCE_NOT_GV_TYPE = 0xFFFD000A;
 
-#define	NUM_CRITICAL_SPACES_FRONT		1
-#define	NUM_CRITICAL_SPACES_LEFT		1
-#define	NUM_CRITICAL_SPACES_RIGHT		1
-#define	NUM_CRITICAL_SPACES_REAR		1
-#define	NUM_CRITICAL_SPACES_TURRET		1
+inline constexpr int NUM_CRITICAL_SPACES_FRONT = 1;
+inline constexpr int NUM_CRITICAL_SPACES_LEFT = 1;
+inline constexpr int NUM_CRITICAL_SPACES_RIGHT = 1;
+inline constexpr int NUM_CRITICAL_SPACES_REAR = 1;
+inline constexpr int NUM_CRITICAL_SPACES_TURRET = 1;
 
-#define MAX_TOADS			10
-#define MAX_SEATS			4
+inline constexpr int MAX_TOADS = 10;
+inline constexpr int MAX_SEATS = 4;
 
 typedef enum {
 	GROUNDVEHICLE_LOCATION_ANY = -1,

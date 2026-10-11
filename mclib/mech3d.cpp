@@ -23,11 +23,11 @@ bool useNonWeaponEffects = true;
 bool useHighObjectDetail = true;
 bool InEditor = false;
 
-#define	BODYSTATE_NORMAL			0
-#define	BODYSTATE_STANDING			1
-#define	BODYSTATE_PARKED			2
-#define	BODYSTATE_FALLEN_BACKWARD	3
-#define	BODYSTATE_FALLEN_FORWARD	4
+constexpr int BODYSTATE_NORMAL = 0;
+constexpr int BODYSTATE_STANDING = 1;
+constexpr int BODYSTATE_PARKED = 2;
+constexpr int BODYSTATE_FALLEN_BACKWARD = 3;
+constexpr int BODYSTATE_FALLEN_FORWARD = 4;
 
 char MechStateByGesture[MAX_MECH_ANIMATIONS] = {
 	BODYSTATE_PARKED,			// GesturePark					 0 -- Park 

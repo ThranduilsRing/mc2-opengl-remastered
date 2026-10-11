@@ -145,7 +145,7 @@ ObjectQueueNodePtr iconList = NULL;
 ObjectQueueNodePtr weaponList = NULL;
 */
 
-#define	VISIBLE_THRESHOLD	1
+inline constexpr int VISIBLE_THRESHOLD = 1;
 
 // Globals defined in objmgr.cpp (or elsewhere in the engine) that the split pieces share.
 extern long* usedBlockList;

@@ -20,14 +20,14 @@
 // ---------------------------------------------------------------------------
 static const bool s_watchGen = mc2::gate::get<"MC2_WATCHID_GENERATION">();
 
-#define BRIDGE_OBJTYPE				448
-#define MINE1						60
-#define MINE2						251
-#define MINE3						521
-#define MINE4						522
-#define MINE5						610
-#define MINE6						611
-#define MINE7						612
+constexpr int BRIDGE_OBJTYPE = 448;
+constexpr int MINE1 = 60;
+constexpr int MINE2 = 251;
+constexpr int MINE3 = 521;
+constexpr int MINE4 = 522;
+constexpr int MINE5 = 610;
+constexpr int MINE6 = 611;
+constexpr int MINE7 = 612;
 
 //---------------------------------------------------------------------------
 // Static Globals

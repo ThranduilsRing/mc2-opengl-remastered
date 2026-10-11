@@ -57,7 +57,7 @@ extern UserHeapPtr guiHeap;
 void *gMalloc (long size);
 void gFree (void *me);
 
-#define MAX_COMMAND 107
+inline constexpr int MAX_COMMAND = 107;
 //--------------------------------------------------------------------------------------
 struct UiCmdCtx;
 

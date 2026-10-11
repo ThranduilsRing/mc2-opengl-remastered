@@ -17,12 +17,12 @@ aEdit.h			: Interface for the aEdit component of the GUI library.
 
 //*************************************************************************************************
 //Entry field styles
-#define ES_EDITALPHA			0x00020000  //Entry field alpha only
-#define ES_EDITNUM				0x00040000  //Entry field numeric only
-#define ES_EDITALPHANUM   0x00080000  //Entry field alpha or numeric
-#define ES_EDITUPPER			0x00100000  //Entry field convert to uppercase
-#define ES_EDITREADONLY   0x00200000  //Read only
-#define ES_EDITNOBLANK		0x00400000	//Ignore ' '
+inline constexpr int ES_EDITALPHA = 0x00020000;  //Entry field alpha only
+inline constexpr int ES_EDITNUM = 0x00040000;  //Entry field numeric only
+inline constexpr int ES_EDITALPHANUM = 0x00080000;  //Entry field alpha or numeric
+inline constexpr int ES_EDITUPPER = 0x00100000;  //Entry field convert to uppercase
+inline constexpr int ES_EDITREADONLY = 0x00200000;  //Read only
+inline constexpr int ES_EDITNOBLANK = 0x00400000;	//Ignore ' '
 
 /**************************************************************************************************
 CLASS DESCRIPTION

@@ -80,25 +80,25 @@ class PacketFile;
 
 //---------------------------------------------------------------------------
 
-#define	MOVERLIST_DELETE	0
-#define	MOVERLIST_ADD		1
-#define	MOVERLIST_TRADE		2
+inline constexpr int MOVERLIST_DELETE = 0;
+inline constexpr int MOVERLIST_ADD = 1;
+inline constexpr int MOVERLIST_TRADE = 2;
 
-#define NO_RAM_FOR_TERRAIN_OBJECT_FILE		0xBAAA0014
-#define NO_RAM_FOR_TERRAIN_OBJECT_HEAP		0xBAAA0015
-#define NO_RAM_FOR_OBJECT_BLOCK_NUM			0xBAAA0016
-#define NO_RAM_FOR_OBJECT_LISTS				0xBAAA0017
-#define NO_RAM_FOR_OBJECT_DATA_BLOCK		0xBAAA0018
-#define NO_RAM_FOR_OBJECT_BLOCK_USER		0xBAAA0019
-#define NO_RAM_FOR_LAST_BLOCK				0xBAAA001A
-#define NO_RAM_FOR_CENTER_BLOCK				0xBAAA001B
-#define OBJECTBLOCK_OUTOFRANGE				0xBAAA001C
-#define NO_AVAILABLE_OBJQUEUE				0xBAAA001D
-#define COULDNT_MAKE_TERRAIN_OBJECT			0xBAAA001E
-#define OBJECTBLOCK_NULL					0xBAAA001F
-#define BLOCK_NOT_CACHED					0xBAAA0020
-#define COULDNT_CREATE_OBJECT				0xBAAA0021
-#define OBJECT_NOT_FOUND					0xBAAA0022
+inline constexpr unsigned int NO_RAM_FOR_TERRAIN_OBJECT_FILE = 0xBAAA0014;
+inline constexpr unsigned int NO_RAM_FOR_TERRAIN_OBJECT_HEAP = 0xBAAA0015;
+inline constexpr unsigned int NO_RAM_FOR_OBJECT_BLOCK_NUM = 0xBAAA0016;
+inline constexpr unsigned int NO_RAM_FOR_OBJECT_LISTS = 0xBAAA0017;
+inline constexpr unsigned int NO_RAM_FOR_OBJECT_DATA_BLOCK = 0xBAAA0018;
+inline constexpr unsigned int NO_RAM_FOR_OBJECT_BLOCK_USER = 0xBAAA0019;
+inline constexpr unsigned int NO_RAM_FOR_LAST_BLOCK = 0xBAAA001A;
+inline constexpr unsigned int NO_RAM_FOR_CENTER_BLOCK = 0xBAAA001B;
+inline constexpr unsigned int OBJECTBLOCK_OUTOFRANGE = 0xBAAA001C;
+inline constexpr unsigned int NO_AVAILABLE_OBJQUEUE = 0xBAAA001D;
+inline constexpr unsigned int COULDNT_MAKE_TERRAIN_OBJECT = 0xBAAA001E;
+inline constexpr unsigned int OBJECTBLOCK_NULL = 0xBAAA001F;
+inline constexpr unsigned int BLOCK_NOT_CACHED = 0xBAAA0020;
+inline constexpr unsigned int COULDNT_CREATE_OBJECT = 0xBAAA0021;
+inline constexpr unsigned int OBJECT_NOT_FOUND = 0xBAAA0022;
 
 #pragma pack(1)
 
@@ -142,11 +142,11 @@ typedef ObjData *ObjDataPtr;
 
 //---------------------------------------------------------------------------
 
-#define	MAX_REINFORCEMENTS_PER_TEAM		16
-#define	MAX_GATE_CONTROLS				50
-#define	MAX_TURRET_CONTROLS				50
-#define MAX_POWER_GENERATORS			50
-#define MAX_SPECIAL_BUILDINGS			200
+inline constexpr int MAX_REINFORCEMENTS_PER_TEAM = 16;
+inline constexpr int MAX_GATE_CONTROLS = 50;
+inline constexpr int MAX_TURRET_CONTROLS = 50;
+inline constexpr int MAX_POWER_GENERATORS = 50;
+inline constexpr int MAX_SPECIAL_BUILDINGS = 200;
 
 #pragma pack(1)
 
@@ -161,10 +161,10 @@ typedef struct _TeamObjectInfo {
 
 #pragma pack()
 
-#define	MAX_REMOVED	20
-#define	MAX_WATCHES 4000
+inline constexpr int MAX_REMOVED = 20;
+inline constexpr int MAX_WATCHES = 4000;
 
-#define	MAX_CAPTURES_PER_TEAM	30
+inline constexpr int MAX_CAPTURES_PER_TEAM = 30;
 
 typedef struct _RemovedMoverRec {
 	unsigned int	turn;
