@@ -17,8 +17,8 @@
 
 //---------------------------------------------------------------------------
 
-#define	MAX_DEBUG_WINDOW_LINES		15
-#define	MAX_DEBUG_WINDOW_LINELEN	256
+inline constexpr int MAX_DEBUG_WINDOW_LINES = 15;
+inline constexpr int MAX_DEBUG_WINDOW_LINELEN = 256;
 
 class GameDebugWindow {
 

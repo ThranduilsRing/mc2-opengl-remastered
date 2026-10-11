@@ -9,38 +9,38 @@
 #define WEAPONFX_H
 //---------------------------------------------------------------------------------
 // weapon FX Equivalancy.  Now reads in data from CSV for GOS Effects
-#define BUILDING_EXPLOSION_ID			45
-#define VEHICLE_EXPLOSION_ID			40
-#define SPLASH_VEHICLE_EXPLOSION_ID		46
-#define DFA_BOOM_EFFECT					47
-#define MECH_EXPLOSION_ID				39
-#define MECH_CRITICAL_HIT_ID			35
-#define MECH_SMOKE_ID					48
-#define TURRET_EXPLOSION_ID				44
-#define MECH_DISABLE_EXPLOSION_ID		49
-#define LARGE_AIRSTRIKE_ID				50
-#define SMALL_AIRSTRIKE_ID				51
-#define SENSOR_AIRSTRIKE_ID				72
-#define MINE_EXPLOSION_ID				53
-#define EMPTY_EXPLOSION_ID				54
-#define JET_CONTRAIL_ID					58
+inline constexpr int BUILDING_EXPLOSION_ID = 45;
+inline constexpr int VEHICLE_EXPLOSION_ID = 40;
+inline constexpr int SPLASH_VEHICLE_EXPLOSION_ID = 46;
+inline constexpr int DFA_BOOM_EFFECT = 47;
+inline constexpr int MECH_EXPLOSION_ID = 39;
+inline constexpr int MECH_CRITICAL_HIT_ID = 35;
+inline constexpr int MECH_SMOKE_ID = 48;
+inline constexpr int TURRET_EXPLOSION_ID = 44;
+inline constexpr int MECH_DISABLE_EXPLOSION_ID = 49;
+inline constexpr int LARGE_AIRSTRIKE_ID = 50;
+inline constexpr int SMALL_AIRSTRIKE_ID = 51;
+inline constexpr int SENSOR_AIRSTRIKE_ID = 72;
+inline constexpr int MINE_EXPLOSION_ID = 53;
+inline constexpr int EMPTY_EXPLOSION_ID = 54;
+inline constexpr int JET_CONTRAIL_ID = 58;
 
-#define ARM_FLYING_ID					61
-#define SHOULDER_POP_ID					62
-#define CRITICAL_SMOKE_ID				65
-#define MECH_WATER_WAKE					34
-#define VEHICLE_WATER_WAKE				66
-#define VEHICLE_DUST_CLOUD				70
-#define VTOL_DUST_CLOUD					56
-#define KARNOV_DUST_CLOUD				73
-#define KARNOV_RECOVERY_BEAM			69
-#define MINELAYER_EFFECT_ID				68
-#define REPAIR_VEHICLE_EFFECT_ID		57
-#define HELICOPTER_DUST_CLOUD			67
-#define TURRET_POWER_DOWN_EFFECT		75
-#define WATER_MISS_FX					76
-#define INFANTRY_BOOM_EFFECT			55
-#define INFANTRY_BLOOD_EFFECT			82
+inline constexpr int ARM_FLYING_ID = 61;
+inline constexpr int SHOULDER_POP_ID = 62;
+inline constexpr int CRITICAL_SMOKE_ID = 65;
+inline constexpr int MECH_WATER_WAKE = 34;
+inline constexpr int VEHICLE_WATER_WAKE = 66;
+inline constexpr int VEHICLE_DUST_CLOUD = 70;
+inline constexpr int VTOL_DUST_CLOUD = 56;
+inline constexpr int KARNOV_DUST_CLOUD = 73;
+inline constexpr int KARNOV_RECOVERY_BEAM = 69;
+inline constexpr int MINELAYER_EFFECT_ID = 68;
+inline constexpr int REPAIR_VEHICLE_EFFECT_ID = 57;
+inline constexpr int HELICOPTER_DUST_CLOUD = 67;
+inline constexpr int TURRET_POWER_DOWN_EFFECT = 75;
+inline constexpr int WATER_MISS_FX = 76;
+inline constexpr int INFANTRY_BOOM_EFFECT = 55;
+inline constexpr int INFANTRY_BLOOD_EFFECT = 82;
 
 extern char mc2_word_none[];
 
