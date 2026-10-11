@@ -152,7 +152,7 @@
    "LG11": 101,
    "LG12a": 220,
    "LG12b": 790,
-   "LG13": 307,
+   "LG13": 215,
    "LG14": 135,
    "LG15": 0,
    "LG16": 7,
@@ -1961,7 +1961,6 @@
   },
   "code/dcontact.h": {
    "LG02": 7,
-   "LG13": 3,
    "LG14": 3
   },
   "code/delemntl.h": {
@@ -1969,7 +1968,7 @@
   },
   "code/dgameobj.h": {
    "LG02": 8,
-   "LG13": 64
+   "LG13": 1
   },
   "code/dgate.h": {
    "LG02": 2
@@ -1999,7 +1998,7 @@
   },
   "code/dobjtype.h": {
    "LG02": 3,
-   "LG13": 11,
+   "LG13": 1,
    "LG14": 1
   },
   "code/dradio.h": {
@@ -2008,7 +2007,7 @@
   },
   "code/dteam.h": {
    "LG02": 3,
-   "LG13": 3,
+   "LG13": 1,
    "LG14": 1
   },
   "code/dterrobj.h": {
@@ -2024,8 +2023,7 @@
    "LG12b": 1
   },
   "code/dwarrior.h": {
-   "LG02": 2,
-   "LG13": 10
+   "LG02": 2
   },
   "code/dweaponbolt.h": {
    "LG02": 2
@@ -2111,7 +2109,7 @@
    "LG02": 4,
    "LG05": 1,
    "LG06": 1,
-   "LG13": 7,
+   "LG13": 3,
    "LG14": 1
   },
   "code/gameplay_pick.cpp": {
@@ -5580,7 +5578,7 @@
    "LG20": 2
   }
  },
- "head": "11a3cf696",
+ "head": "8aac2756f",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
