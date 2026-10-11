@@ -198,7 +198,7 @@
    "LG11": 67,
    "LG12a": 449,
    "LG12b": 563,
-   "LG13": 1291,
+   "LG13": 1242,
    "LG14": 122,
    "LG15": 0,
    "LG16": 156,
@@ -3526,7 +3526,6 @@
    "LG11": 1,
    "LG12a": 2,
    "LG12b": 1,
-   "LG13": 2,
    "LG17": 6
   },
   "mclib/ablscan.h": {
@@ -3581,7 +3580,6 @@
   "mclib/alphapalette.cpp": {
    "LG03": 2,
    "LG09": 7,
-   "LG13": 1,
    "LG14": 1
   },
   "mclib/anim_override_registry.cpp": {
@@ -3743,8 +3741,7 @@
   "mclib/camera_matrix.cpp": {
    "LG09": 17,
    "LG12a": 3,
-   "LG12b": 1,
-   "LG13": 3
+   "LG12b": 1
   },
   "mclib/camera_project.cpp": {
    "LG05": 2,
@@ -3765,7 +3762,7 @@
   },
   "mclib/cepane.cpp": {
    "LG09": 1,
-   "LG13": 6
+   "LG13": 2
   },
   "mclib/cepane.h": {
    "LG01": 4
@@ -3795,8 +3792,7 @@
   "mclib/cmponent.cpp": {
    "LG06": 2,
    "LG09": 7,
-   "LG12b": 72,
-   "LG13": 2
+   "LG12b": 72
   },
   "mclib/cmponent.h": {
    "LG02": 6,
@@ -3811,8 +3807,7 @@
   "mclib/color.cpp": {
    "LG01": 2,
    "LG09": 3,
-   "LG12b": 2,
-   "LG13": 1
+   "LG12b": 2
   },
   "mclib/cone_glow.cpp": {
    "LG05": 4,
@@ -3836,8 +3831,7 @@
    "LG03": 4,
    "LG06": 1,
    "LG09": 11,
-   "LG12b": 1,
-   "LG13": 2
+   "LG12b": 1
   },
   "mclib/crater.h": {
    "LG01": 6,
@@ -3968,7 +3962,7 @@
    "LG06": 18,
    "LG09": 20,
    "LG12b": 3,
-   "LG13": 2
+   "LG13": 1
   },
   "mclib/estring.h": {
    "LG02": 1,
@@ -4011,7 +4005,7 @@
    "LG11": 17,
    "LG12a": 31,
    "LG12b": 21,
-   "LG13": 2,
+   "LG13": 1,
    "LG17": 1
   },
   "mclib/file.h": {
@@ -4305,7 +4299,7 @@
    "LG01": 1,
    "LG05": 1,
    "LG09": 11,
-   "LG13": 7,
+   "LG13": 6,
    "LG14": 2
   },
   "mclib/mapdata.cpp": {
@@ -4340,7 +4334,7 @@
    "LG01": 1,
    "LG03": 13,
    "LG09": 7,
-   "LG13": 6
+   "LG13": 1
   },
   "mclib/mech3d.h": {
    "LG01": 7,
@@ -4356,7 +4350,7 @@
    "LG09": 7,
    "LG12a": 1,
    "LG12b": 1,
-   "LG13": 2
+   "LG13": 1
   },
   "mclib/mech3d_init.cpp": {
    "LG01": 7,
@@ -4365,7 +4359,7 @@
    "LG10": 1,
    "LG12a": 3,
    "LG12b": 8,
-   "LG13": 4
+   "LG13": 1
   },
   "mclib/mech3d_internal.h": {
    "LG12a": 1,
@@ -4385,8 +4379,7 @@
    "LG06": 3,
    "LG09": 8,
    "LG12a": 2,
-   "LG12b": 13,
-   "LG13": 1
+   "LG12b": 13
   },
   "mclib/mech3d_update.cpp": {
    "LG01": 9,
@@ -4724,7 +4717,6 @@
    "LG09": 23,
    "LG11": 1,
    "LG12a": 10,
-   "LG13": 1,
    "LG16": 15,
    "LG17": 1
   },
@@ -4743,7 +4735,6 @@
    "LG05": 1,
    "LG09": 95,
    "LG12b": 7,
-   "LG13": 1,
    "LG16": 14
   },
   "mclib/move_globalmap_doors.cpp": {
@@ -4751,7 +4742,6 @@
    "LG03": 2,
    "LG05": 1,
    "LG09": 9,
-   "LG13": 1,
    "LG16": 6
   },
   "mclib/move_globalmap_path.cpp": {
@@ -4760,7 +4750,7 @@
    "LG09": 4,
    "LG11": 1,
    "LG12b": 16,
-   "LG13": 2,
+   "LG13": 1,
    "LG16": 3
   },
   "mclib/move_internal.h": {
@@ -4869,8 +4859,7 @@
    "LG01": 2,
    "LG06": 3,
    "LG09": 20,
-   "LG12a": 1,
-   "LG13": 1
+   "LG12a": 1
   },
   "mclib/packet.h": {
    "LG06": 3,
@@ -4951,11 +4940,10 @@
   "mclib/projectz_trace.cpp": {
    "LG06": 3,
    "LG09": 3,
-   "LG12a": 10,
-   "LG13": 1
+   "LG12a": 10
   },
   "mclib/quad.cpp": {
-   "LG13": 2
+   "LG13": 1
   },
   "mclib/quad.h": {
    "LG01": 1,
@@ -5026,7 +5014,6 @@
    "LG09": 21,
    "LG11": 1,
    "LG12b": 4,
-   "LG13": 2,
    "LG17": 2
   },
   "mclib/soundsys.h": {
@@ -5333,7 +5320,6 @@
   "mclib/terrain_geometry.cpp": {
    "LG09": 15,
    "LG12a": 7,
-   "LG13": 3,
    "LG14": 1
   },
   "mclib/terrain_init.cpp": {
@@ -5381,8 +5367,7 @@
    "LG09": 46,
    "LG11": 1,
    "LG12a": 3,
-   "LG12b": 29,
-   "LG13": 3
+   "LG12b": 29
   },
   "mclib/terrtxm.h": {
    "LG01": 9,
@@ -5483,8 +5468,7 @@
   },
   "mclib/tgl_render.cpp": {
    "LG09": 12,
-   "LG12a": 8,
-   "LG13": 3
+   "LG12a": 8
   },
   "mclib/tgl_shadows.cpp": {
    "LG04": 1,
@@ -5526,8 +5510,7 @@
    "LG09": 13,
    "LG11": 1,
    "LG12a": 7,
-   "LG12b": 3,
-   "LG13": 1
+   "LG12b": 3
   },
   "mclib/txmmgr.h": {
    "LG01": 49,
@@ -5632,7 +5615,7 @@
    "LG13": 4
   },
   "mclib/vfxtile.cpp": {
-   "LG13": 3
+   "LG13": 1
   },
   "mclib/vis_semantics.cpp": {
    "LG06": 1,
@@ -5675,7 +5658,7 @@
    "LG20": 2
   }
  },
- "head": "15f309252",
+ "head": "c2674b26b",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
