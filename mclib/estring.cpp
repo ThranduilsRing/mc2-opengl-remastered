@@ -29,7 +29,7 @@
 #pragma warning( disable:4100 )
 
 
-#define INT_SIZE_LENGTH 20
+constexpr int INT_SIZE_LENGTH = 20;
 extern int __ismbcodepage;
 #define _ISNOTMBCP  (__ismbcodepage == 0)
 

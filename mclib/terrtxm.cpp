@@ -44,7 +44,7 @@
 
 //---------------------------------------------------------------------------
 // Static Globals
-#define TILE_THRESHOLD 0
+constexpr int TILE_THRESHOLD = 0;
 
 long tileCacheReqs = 0;
 long tileCacheHits = 0;
@@ -89,10 +89,10 @@ int MC2_OverlayTileHiresSize (void)
 	return s_size;
 }
 
-#define MAX_MASK_NUM		14
+constexpr int MAX_MASK_NUM = 14;
 
 #define USE_TRANSITIONS
-#define MAX_MC2_TRANSITIONS	8192
+constexpr int MAX_MC2_TRANSITIONS = 8192;
 
 bool TerrainTextures::terrainTexturesInstrumented = false;
 long TerrainTextures::nextAvailable = 0;

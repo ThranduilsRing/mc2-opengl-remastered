@@ -5,7 +5,7 @@
 
 static uint32_t s_lcSkipCount3d = 0u;
 
-#define MAX_ANIMATION_FILES			25
+constexpr int MAX_ANIMATION_FILES = 25;
 const char* MechAnimationNames[MaxGestures+2] = 
 {
 	"StandToPark",		//GesturePark							 0 -- Park 

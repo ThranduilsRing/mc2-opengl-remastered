@@ -13,7 +13,7 @@ static unsigned long s_spotDiagMechCalls      = 0;
 
 #define SPIN_RATE		90.0f
 
-#define FOOTPRINT_SLOP			2
+constexpr int FOOTPRINT_SLOP = 2;
 
 void Mech3DAppearance::setObjStatus (long oStatus)
 {

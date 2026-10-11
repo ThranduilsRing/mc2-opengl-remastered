@@ -160,7 +160,7 @@ void GlobalMap::resetGoalDoor (long goalArea) {
 	}
 }
 
-#define	AREA_ID_BASE		1000000
+constexpr int AREA_ID_BASE = 1000000;
 
 long GlobalMap::calcHPrime (long door) {
 

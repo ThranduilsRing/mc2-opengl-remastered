@@ -560,6 +560,6 @@ bool TG_Shape::PerPolySelect (float mouseX, float mouseY)
 	return false;
 }
 
-#define SHADOW_HARDWARE_BLACK 			0xff000000
-#define SHADOW_SOFTWARE_BLACK			0xff000000
-#define FLOAT_SHADOW_HARDWARE_BLACK		128.0f
+constexpr unsigned int SHADOW_HARDWARE_BLACK = 0xff000000;
+constexpr unsigned int SHADOW_SOFTWARE_BLACK = 0xff000000;
+constexpr float FLOAT_SHADOW_HARDWARE_BLACK = 128.0f;

@@ -286,9 +286,9 @@ extern bool useLOSAngle;
 extern float	worldUnitsPerMeter;
 Stuff::Vector3D actualPosition;
 
-#define MOVE_IN_INC			50.0f
-#define ELEVATION_BUFFER	125.0f
-#define ANGLE_UP_INC		0.25f
+constexpr float MOVE_IN_INC = 50.0f;
+constexpr float ELEVATION_BUFFER = 125.0f;
+constexpr float ANGLE_UP_INC = 0.25f;
 
 //-----------------------------------------------------------------------------------------------
 bool CameraLineOfSight (Stuff::Vector3D position, Stuff::Vector3D targetPosition) 

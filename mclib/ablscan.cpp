@@ -40,8 +40,8 @@
 //---------------------
 // RESERVED WORD tables
 
-#define	MINLEN_RESERVED_WORD	2
-#define	MAXLEN_RESERVED_WORD	11
+constexpr int MINLEN_RESERVED_WORD = 2;
+constexpr int MAXLEN_RESERVED_WORD = 11;
 
 ReservedWord reservedWord2[] = {
 	{"if", TKN_IF},

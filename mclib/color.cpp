@@ -32,7 +32,7 @@
 DWORD **colorRGBLookup = nullptr;
 long numColorRGBTables = 0;
 
-#define MAX_COLOR_ENTRIES		56
+constexpr int MAX_COLOR_ENTRIES = 56;
 //----------------------------------------------------------------------------------
 void initColorTables (void)
 {

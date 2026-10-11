@@ -59,8 +59,8 @@ long					MasterComponent::legActuatorID = 5;
 long					MasterComponent::clanAntiMissileSystemID = 115;
 long					MasterComponent::innerSphereAntiMissileSystemID = 106;
 
-#define COMPONENT_NAME_START		32000
-#define COMPONENT_ABBR_START		33000
+constexpr int COMPONENT_NAME_START = 32000;
+constexpr int COMPONENT_ABBR_START = 33000;
 //******************************************************************************************
 // MASTER COMPONENT routines
 //******************************************************************************************

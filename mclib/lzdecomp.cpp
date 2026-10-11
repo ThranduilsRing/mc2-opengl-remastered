@@ -14,7 +14,7 @@
 
 #define BASE_BITS       9
 #define MAX_BIT_INDEX   (1 << BASE_BITS)
-#define NO_RAM_FOR_LZ_DECOMP	0xCBCB0002
+constexpr unsigned int NO_RAM_FOR_LZ_DECOMP = 0xCBCB0002;
 
 #ifndef NULL
 #define NULL			0

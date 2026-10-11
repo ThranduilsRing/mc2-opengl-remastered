@@ -24,9 +24,9 @@ static bool textureOrKtxSidecarExists(const char* tgaPath)
 
 #define EXPAND_FACTOR 		(1.25f)
 
-#define FX_POOF_ID					32
-#define FX_JUMP_ID					43
-#define FX_SMOKE_ID					48
+constexpr int FX_POOF_ID = 32;
+constexpr int FX_JUMP_ID = 43;
+constexpr int FX_SMOKE_ID = 48;
 
 void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 {

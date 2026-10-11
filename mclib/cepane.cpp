@@ -23,11 +23,11 @@
 
 //---------------------------------------------------------------------------
 // Static Globals
-#define SPRITE_MAX_X		320		
-#define SPRITE_MAX_Y		240
+constexpr int SPRITE_MAX_X = 320;		
+constexpr int SPRITE_MAX_Y = 240;
 
-#define SPRITE_MIDDLE_X		160		
-#define SPRITE_MIDDLE_Y		120
+constexpr int SPRITE_MIDDLE_X = 160;		
+constexpr int SPRITE_MIDDLE_Y = 120;
 
 //---------------------------------------------------------------------------
 PaneElement::PaneElement (PANE *_shapePane, long _x, long _y, long _midx, long _midy, long _SizeX, long _SizeY) : Element(-_y)

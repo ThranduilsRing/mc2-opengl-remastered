@@ -3,7 +3,7 @@
 #include "move_internal.h"
 
 
-#define	MAX_DOORS_PER_SECTOR	500		// This should be WAY more than we'll ever need...
+constexpr int MAX_DOORS_PER_SECTOR = 500;		// This should be WAY more than we'll ever need...
 
 long maxNumDoors = 0;
 
