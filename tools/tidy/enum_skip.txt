@@ -37,3 +37,8 @@ gosThreadPriority        platform API (toolos.hpp)
 gosEnum_FileWriteStatus  platform API (toolos.hpp)
 gosEnum_FileSeekType     platform API (toolos.hpp)
 MC_TextureKey            wide header (txmmgr.h, 574 includers), int-typed texture keys
+# Found by the harness / unit-test gate (tools/tidy/vs_trees.py) on 2026-10-11: the tests use these as ints.
+EquipmentReasonCode      tests/unit: `bool seen[EQV__COUNT]` array bound and `i < EQV__COUNT` loops
+UnitProfileReasonCode    tests/unit: `bool seen[UPV__COUNT]` array bound, int compares
+Capability               tests/unit/test_capability.cpp: `c < CAP__COUNT` loops
+ClassPolicy              standalone object_light_row_harness is not built as C++20 (`using enum` rejected, C7572)
