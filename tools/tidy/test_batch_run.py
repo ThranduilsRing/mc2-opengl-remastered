@@ -66,3 +66,41 @@ def test_outcome_counts_items_and_objects_of_the_kept_files_only():
     p = [("a.h", [1, 2, 3], {"o1", "o2"}), ("b.h", [4], {"o2", "o3"})]
     o = br.Outcome(p, kept=["a.h"], rejected=[("b.h", "w")], inc={"a.h": {"o1", "o2"}, "b.h": {"o2", "o3"}})
     assert o.kept_items() == 3 and o.proven_objects() == 2
+
+
+class FakeProof:
+    made = []
+
+    def __init__(self, tree_abs, inc, orig, edited, jobs, sources=None):
+        FakeProof.made.append(sources)
+        self.noisy = set()
+
+    def baseline(self):
+        return 1
+
+
+def test_prove_batch_hands_the_object_to_source_map_to_the_proof_for_its_noise_check():
+    import types
+    a = types.SimpleNamespace(build_jobs=1, vs_gate=False, layout_only_ok=False, order_only_ok=False, no_proof_allow=True, relaxed_proof=None)
+    item = ("tools/tidy/batch_run.py", ["x"], {"o.obj"})
+    FakeProof.made.clear()
+    out = br.prove_batch(a, ".", [item], lambda rel, items, orig: orig, FakeProof, lambda p: ([], []), "t", sources={"o.obj": "src.cpp"})
+    assert out.rc == 2 and FakeProof.made == [{"o.obj": "src.cpp"}]
+
+
+def test_noise_note_names_each_ignored_object_and_is_empty_without_any():
+    import proof_ext
+    assert proof_ext.noise_note(set()) == ""
+    text = proof_ext.noise_note({"b.obj", "a.obj"})
+    assert "build noise" in text and "2:" in text and text.index("  a.obj") < text.index("  b.obj")
+
+
+def test_a_fast_proof_with_sources_finds_a_timestamp_object_and_without_them_cannot(monkeypatch):
+    import rewrite_defines as rd, run_tidy_headers as rth, run_tidy_safe as rts
+    stamps = iter(range(100))
+    monkeypatch.setattr(rts, "ninja_objects_targets", lambda tree, objs, jobs: (0, []))
+    monkeypatch.setattr(rth.objhash, "obj_digest", lambda path, per_symbol=False: {"code_sha256": "t%d" % next(stamps)})
+    monkeypatch.setattr(rth.os, "utime", lambda *a, **k: None)
+    mk = lambda **kw: rd.FastProof("tree", {"h.h": {"o.obj"}}, {"h.h": b"a"}, {"h.h": b"b"}, 1, **kw)
+    assert mk(sources={"o.obj": "o.cpp"}).find_noisy({"o.obj"}) == {"o.obj"}
+    assert mk().find_noisy({"o.obj"}) == set()

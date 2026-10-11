@@ -38,13 +38,13 @@ class Outcome:
         return len({o for r in self.kept for o in self.inc.get(r, ())})
 
 
-def prove_batch(a, tree_abs, picked, rewrite, make_proof, solve, tool):
+def prove_batch(a, tree_abs, picked, rewrite, make_proof, solve, tool, sources=None):
     """Edit, build and verify the picked [(rel, items, objs)]. rewrite(rel, items, original_bytes) -> bytes; make_proof(tree_abs, inc, orig, edited, jobs) -> Proof; solve(proof) -> (kept, rejected)."""
     orig = {rel: rth.read_bytes(rel) for rel, _, _ in picked}
     edited = {rel: rewrite(rel, items, orig[rel]) for rel, items, _ in picked}
     mtimes = {rel: os.stat(os.path.join(rts.ROOT, rel)).st_mtime_ns for rel in orig}
     inc = {rel: o for rel, _, o in picked}
-    proof = make_proof(tree_abs, inc, orig, edited, a.build_jobs)
+    proof = make_proof(tree_abs, inc, orig, edited, a.build_jobs, sources=sources)
     proof_ext.configure(proof, a)
     gate = proof_ext.Gate(sorted(orig), a.layout_only_ok, a.order_only_ok) if a.vs_gate else None
     if gate:
@@ -65,7 +65,7 @@ def prove_batch(a, tree_abs, picked, rewrite, make_proof, solve, tool):
             proof.apply(set(kept))
             proof_ext.LayoutMixin.bad_objects(proof)
     accepted = proof.accepted_objects({o for r in kept for o in inc[r]})
-    note = proof_ext.acceptance_note(accepted, gate.accepted if gate else ())
+    note = proof_ext.acceptance_note(accepted, gate.accepted if gate else ()) + proof_ext.noise_note(proof.noisy & {o for r in kept for o in inc[r]})
     return Outcome(picked, kept, rejected, note, inc, bool(gate))
 
 
@@ -95,6 +95,8 @@ def run_alone_fallback(outcome, attempt, report=print):
     `still_rejected` the (rel, why) pairs that failed alone as well. Stops at the first attempt that cannot build its baseline."""
     alone, still = [], []
     todo = alone_candidates(outcome.picked, outcome.rejected)
+    if not todo:
+        return alone, still
     why_batch = dict(outcome.rejected)
     for item in todo:
         report("ALONE: %s (rejected in the batch: %s)" % (item[0], why_batch.get(item[0], "")[:160]))

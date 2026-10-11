@@ -127,6 +127,14 @@ def acceptance_note(accepted, gate_accepted=()):
     return "\n\nObjects accepted without being IDENTICAL (%d; every other including object is identical):\n%s" % (len(lines), "\n".join(lines))
 
 
+def noise_note(noisy):
+    """The commit-message block that names every object left out of the comparison because it compiles to different bytes from identical input (empty when none)."""
+    if not noisy:
+        return ""
+    return ("\n\nObjects ignored as build noise (recompiled twice from identical input, the bytes differ: an embedded timestamp), %d:\n" % len(noisy)
+            + "\n".join("  " + o for o in sorted(noisy)))
+
+
 def failure_reason(objects, fail_text):
     """The ledger reason for a header the harness / test gate rejected: the failing objects AND what the build or the comparison said about them (the first two, 500 characters)."""
     names = ", ".join(objects[:3])

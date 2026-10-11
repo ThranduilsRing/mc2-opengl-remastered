@@ -524,7 +524,8 @@ def solve_fast(proof, rounds=6):
         proof.apply(set(kept))
         if not proof_ext.LayoutMixin.bad_objects(proof):
             return kept, rejected
-        sub = FastProof(proof.tree_abs, {h: proof.includers[h] for h in kept}, proof.orig, {h: proof.edited[h] for h in kept}, proof.jobs)
+        sub = FastProof(proof.tree_abs, {h: proof.includers[h] for h in kept}, proof.orig, {h: proof.edited[h] for h in kept}, proof.jobs, sources=proof.sources)
+        sub.noisy, sub.deterministic = set(proof.noisy), set(proof.deterministic)
         sub.before = {o: proof.before[o] for o in sub.objs}
         sub.layout_only_ok, sub.order_only_ok, sub.allow = proof.layout_only_ok, proof.order_only_ok, proof.allow
         sub.on_disk = dict(proof.on_disk)
@@ -592,7 +593,7 @@ def cmd_run(a):
             return batch_run.prove_batch(
                 a, tree_abs, items,
                 lambda rel, ss, orig: rewrite_text(orig.decode("utf-8", errors="replace"), ss, "constexpr" if rel.lower().endswith(SRC_EXT) else "inline constexpr").encode("utf-8"),
-                SlowProof if a.slow_bisect else FastProof, (lambda p: p.solve()) if a.slow_bisect else solve_fast, "rewrite_defines")
+                SlowProof if a.slow_bisect else FastProof, (lambda p: p.solve()) if a.slow_bisect else solve_fast, "rewrite_defines", sources=t2s)
 
         out = attempt(picked)
         if out.rc:

@@ -199,7 +199,8 @@ def cmd_run(a):
         canonical_obj.install()
         a.proof_mode = "canonical_obj (symbol / section order and .data / .bss layout blind): " + a.relaxed_proof
     includers = rth.includer_map(tree_abs)
-    a.s2t = {v: k for k, v in rth.target_to_source(tree_abs).items()}
+    t2s = rth.target_to_source(tree_abs)
+    a.s2t = {v: k for k, v in t2s.items()}
     a.taint = rd.load_taint(a.taint_file)
     done = {l.strip() for l in open(a.done, encoding="utf-8")} if a.done and os.path.exists(a.done) else set()
     skip = load_skip(a.skip_enums)
@@ -253,7 +254,7 @@ def cmd_run(a):
             done |= {rel for rel, _, _ in picked}
         def attempt(items):
             return batch_run.prove_batch(a, tree_abs, items, lambda rel, es, orig: rewrite_text(orig.decode("utf-8", errors="replace"), es).encode("utf-8"),
-                                         EnumProof, lambda p: p.solve(), "rewrite_enums")
+                                         EnumProof, lambda p: p.solve(), "rewrite_enums", sources=t2s)
 
         def commit_enums(files, n, note, gated):
             rd.commit_paths(files, "tidy(LG14): %d unscoped enum(s) -> enum class + using enum in %d file(s) (every including object identical%s)\n\nProof: %s%s" % (
