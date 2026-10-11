@@ -13,6 +13,7 @@ prefix is compared.
 
   py -3 tools/sim_determinism.py run mc2_03 --duration 20 [--baseline tests/smoke/sim_determinism_baseline.json]
   py -3 tools/sim_determinism.py run mc2_10 --env-a MC2_CAMERA_PARK=-1500,2500,0,60,800@300 --env-b MC2_CAMERA_PARK=-2000,2900,90,50,600@300
+  py -3 tools/sim_determinism.py pairs-until-fail --mission mc2_24 --max 8 --duration 30 --out <dir>   # stops at the first diverging pair
   py -3 tools/sim_determinism.py compare run_a/mc2_03.log run_b/mc2_03.log
   py -3 tools/sim_determinism.py write-baseline run_a/mc2_03.log --frames 1500 --out tests/smoke/sim_determinism_baseline.json
   py -3 tools/sim_determinism.py selftest          # offline; the `sim_determinism` board row
@@ -142,6 +143,55 @@ def run_mission(mission: str, duration: str, out: str, extra_env: dict | None = 
     return logs
 
 
+#: Processes whose presence beside a pair explains a timing-dependent result (builds and other game runs).
+_LOAD_WATCH = ("cl.exe", "link.exe", "ninja.exe", "clang-cl.exe", "mc2.exe", "msbuild.exe")
+
+
+def host_load() -> dict:
+    """A one-line picture of how busy the host is right now: cpu percent and the count of build or game processes. Used to ask whether a
+    timing-dependent failure follows host load."""
+    import psutil
+    counts = {}
+    for p in psutil.process_iter(["name"]):
+        n = (p.info.get("name") or "").lower()
+        if n in _LOAD_WATCH:
+            counts[n] = counts.get(n, 0) + 1
+    return {"cpu": psutil.cpu_percent(interval=0.5), "procs": counts}
+
+
+def format_pair_line(index: int, ok: bool, msg: str, before: dict, after: dict, seconds: float) -> str:
+    """One ledger line per pair: verdict, load at start and end, wall time. A failure's message is reduced to its first line."""
+    def load(d):
+        procs = ",".join(f"{k.removesuffix('.exe')}={v}" for k, v in sorted(d["procs"].items())) or "none"
+        return f"cpu={d['cpu']:.0f}% procs={procs}"
+    return f"pair {index}: {'PASS' if ok else 'FAIL'} {seconds:.0f}s | start {load(before)} | end {load(after)} | {msg.splitlines()[0]}"
+
+
+def pairs_until_fail(mission: str, duration: str, out: str, max_pairs: int, min_frames: int, extra_env: dict | None = None) -> int:
+    """Run pairs until one diverges or `max_pairs` have passed. A failing pair's artifacts stay in `<out>/fail_<n>`; every pair appends a line to
+    `<out>/pairs.log`. -> 0 when all passed, 1 at the first failure."""
+    import time
+    os.makedirs(out, exist_ok=True)
+    ledger = os.path.join(out, "pairs.log")
+    for i in range(1, max_pairs + 1):
+        before, t0 = host_load(), time.time()
+        pair_dir = os.path.join(out, f"pair_{i}")
+        la, lb = run_mission(mission, duration, pair_dir, extra_env)
+        ok, msg = compare(load_simid(la), load_simid(lb), min_frames)
+        line = format_pair_line(i, ok, msg, before, host_load(), time.time() - t0)
+        print("sim_determinism: " + line, flush=True)
+        with open(ledger, "a", encoding="utf-8") as fh:
+            fh.write(line + "\n")
+            if not ok:
+                fh.write(msg + "\n")
+        if not ok:
+            print("sim_determinism: " + msg + f"\nartifacts: {pair_dir}", flush=True)
+            return 1
+        shutil.rmtree(pair_dir, ignore_errors=True)
+    print(f"sim_determinism: {max_pairs} pair(s) of {mission} identical (ledger {ledger})")
+    return 0
+
+
 def selftest() -> int:
     def mk(n, bad=None):
         out = []
@@ -182,6 +232,12 @@ def selftest() -> int:
         strict_moved = [_STRICT.sub(" strict=ffff", ln) if i == 2 else ln for i, ln in enumerate(mk(9))]
         ok, msg = check_baseline(strict_moved, b)
         expect(ok and "strict" in msg, "a change in the strict digest alone passes with a note")
+    quiet = {"cpu": 3.0, "procs": {}}
+    busy = {"cpu": 71.4, "procs": {"cl.exe": 4, "mc2.exe": 1}}
+    line = format_pair_line(2, False, "DIVERGED at sim frame index 9\n  run a: x", quiet, busy, 61.2)
+    expect(line.startswith("pair 2: FAIL 61s") and "procs=none" in line and "procs=cl=4,mc2=1" in line and "cpu=71%" in line and "\n" not in line,
+           "a pair line carries verdict, load at start and end, and only the first message line")
+    expect(format_pair_line(1, True, "identical over 5 sim frames", quiet, quiet, 1).startswith("pair 1: PASS"), "a passing pair line says PASS")
     for f in fails:
         print("sim_determinism selftest FAIL: " + f)
     print("sim_determinism selftest: " + ("FAIL" if fails else "ok"))
@@ -204,6 +260,14 @@ def main(argv=None) -> int:
     r.add_argument("--out", help="keep both runs' artifacts here (default: a temporary directory)")
     r.add_argument("--env-a", action="append", default=[], metavar="NAME=VALUE", help="set only for run a (repeatable)")
     r.add_argument("--env-b", action="append", default=[], metavar="NAME=VALUE", help="set only for run b (repeatable)")
+    u = sub.add_parser("pairs-until-fail", help="run pairs until one diverges (or --max pass); records host load per pair")
+    u.add_argument("--mission", required=True)
+    u.add_argument("--max", type=int, required=True, help="stop after this many passing pairs")
+    u.add_argument("--duration", default="30")
+    u.add_argument("--min-frames", type=int, default=MIN_FRAMES)
+    u.add_argument("--out", help="ledger and failing-pair artifacts go here (default: a temporary directory)")
+    u.add_argument("--env-a", action="append", default=[], metavar="NAME=VALUE", help="set only for run a (repeatable)")
+    u.add_argument("--env-b", action="append", default=[], metavar="NAME=VALUE", help="set only for run b (repeatable)")
     w = sub.add_parser("write-baseline")
     w.add_argument("log")
     w.add_argument("--frames", type=int, required=True)
@@ -228,6 +292,9 @@ def main(argv=None) -> int:
         print(("sim_determinism: PASS " if ok else "sim_determinism: FAIL ") + msg)
         return 0 if ok else 1
     out = args.out or tempfile.mkdtemp(prefix="simdet_")
+    if args.cmd == "pairs-until-fail":
+        extra = {tag: dict(kv.split("=", 1) for kv in kvs) for tag, kvs in (("a", args.env_a), ("b", args.env_b))}
+        return pairs_until_fail(args.mission, args.duration, out, args.max, args.min_frames, extra)
     if args.deploy:
         build_and_deploy()
     extra = {tag: dict(kv.split("=", 1) for kv in kvs) for tag, kvs in (("a", args.env_a), ("b", args.env_b))}
