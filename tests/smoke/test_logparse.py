@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 from scripts.smoke_lib.logparse import parse_log, LogSummary
 
@@ -41,3 +42,24 @@ def test_crash_no_summary_detected():
     s = parse_log(log)
     assert s.crash_handler_hit is True
     assert s.smoke_summary_result is None
+
+
+SHADER_BUILDER = Path(__file__).resolve().parents[2] / "GameOS" / "gameos" / "utils" / "shader_builder.cpp"
+
+
+def test_shader_builder_error_token_is_counted_as_a_shader_failure():
+    """The producer's own prefix (read from shader_builder.cpp) is what the shader-failure bucket matches: a drifted prefix fails here."""
+    src = SHADER_BUILDER.read_text(encoding="utf-8", errors="replace")
+    m = re.search(r'#define SHADER_LOG_ERROR\(\.\.\.\) MC2_LOG\(Shader, Error, "([^"]*)" __VA_ARGS__\)', src)
+    assert m, "shader_builder.cpp no longer defines SHADER_LOG_ERROR as MC2_LOG(Shader, Error, \"<prefix>\" __VA_ARGS__)"
+    for body in ("Type mismatch: u_foo", "Duplicate shader name: gos_x.frag", "[SPIRV] failed to read a.spv; GLSL fallback"):
+        assert parse_log(m.group(1) + body + "\n").shader_errors == 1
+
+
+def test_shader_failure_lines_count_once_per_line():
+    log = "[SHADER ERROR] CompileShader: ERROR: 0:12: 'foo' : undeclared identifier\n[SHADER ERROR] Shader filename: a.frag, failed to load shader\n"
+    assert parse_log(log).shader_errors == 2
+
+
+def test_ordinary_shader_builder_info_is_not_a_failure():
+    assert parse_log("Loading shader: gos_terrain.frag\nname: u_mvp type: mat4\n").shader_errors == 0

@@ -30,9 +30,10 @@ extern bool g_imguiInitialized;
 #include <SDL2/SDL_syswm.h>
 #include <GL/glew.h>
 #include <GL/gl.h>
-#include "utils/logging.h"
+#include "utils/mc2log.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
+#include "mc2fmt.h"
 
 // FIXME: think how to make it better when different parts need window
 SDL_Window* g_sdl_window = nullptr;
@@ -956,7 +957,7 @@ bool set_window_fullscreen(RenderWindowHandle rw_handle, bool fullscreen)
     Uint32 flags = fullscreen ? /*SDL_WINDOW_FULLSCREEN*/ SDL_WINDOW_FULLSCREEN_DESKTOP : 0;
     
     if(0 != SDL_SetWindowFullscreen(rw->window_, flags)) {
-        log_error("SDL_SetWindowFullscreen: %s\n", SDL_GetError());
+        MC2_LOG(Editor, Error, "SDL_SetWindowFullscreen: {}", mc2::fmt::safe(SDL_GetError()));
         return false;
     }
 
@@ -978,7 +979,7 @@ bool is_mode_supported(int width, int height, int bpp) {
     SDL_DisplayMode returned;
     
     if(nullptr == SDL_GetClosestDisplayMode(displayIndex, &desired, &returned)) {
-        log_error("resize_window: %s\n", SDL_GetError());
+        MC2_LOG(Editor, Error, "resize_window: {}", mc2::fmt::safe(SDL_GetError()));
         return false;
     }
 
@@ -1014,7 +1015,7 @@ bool get_desktop_display_mode(int display_index, int* width, int* height, int* b
 
     SDL_DisplayMode dm;
     if (SDL_GetDesktopDisplayMode(display_index, &dm) != 0) {
-        log_error("SDL_GetDesktopDisplayMode failed: %s", SDL_GetError());
+        MC2_LOG(Editor, Error, "SDL_GetDesktopDisplayMode failed: {}", mc2::fmt::safe(SDL_GetError()));
         return false;
     }
 
@@ -1031,7 +1032,7 @@ bool get_display_mode_by_index(int display_index, int mode_index, int* width, in
 
     SDL_DisplayMode dm;
     if (SDL_GetDisplayMode(display_index, mode_index, &dm) != 0) {
-        log_error("SDL_GetDisplayMode failed: %s", SDL_GetError());
+        MC2_LOG(Editor, Error, "SDL_GetDisplayMode failed: {}", mc2::fmt::safe(SDL_GetError()));
         return false;
     }
 

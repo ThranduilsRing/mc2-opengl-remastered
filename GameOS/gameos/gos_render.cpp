@@ -11,9 +11,10 @@
 #include <SDL2/SDL.h>
 #include <GL/glew.h>
 #include <GL/gl.h>
-#include "utils/logging.h"
+#include "utils/mc2log.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // raw<>()
+#include "mc2fmt.h"
 
 // FIXME: think how to make it better when different parts need window
 SDL_Window* g_sdl_window = nullptr;
@@ -110,7 +111,7 @@ static void apply_mouse_grab(SDL_Window* window, bool grabbed)
     // a clip another application (a game the user is playing) legitimately holds.
     if (!grabbed && ourWindowHoldsClip(window)) {
         if (!ClipCursor(nullptr)) {
-            log_error("ClipCursor release failed: %lu\n", (unsigned long)GetLastError());
+            MC2_LOG(Core, Error, "ClipCursor release failed: {:d}", mc2::fmt::as_u32(GetLastError()));
         }
     }
 #endif
@@ -125,7 +126,7 @@ static void apply_mouse_grab(SDL_Window* window, bool grabbed)
     SDL_SysWMinfo wm_info;
     SDL_VERSION(&wm_info.version);
     if (SDL_GetWindowWMInfo(window, &wm_info) != SDL_TRUE) {
-        log_error("SDL_GetWindowWMInfo: %s\n", SDL_GetError());
+        MC2_LOG(Core, Error, "SDL_GetWindowWMInfo: {}", mc2::fmt::safe(SDL_GetError()));
         return;
     }
 
@@ -139,7 +140,7 @@ static void apply_mouse_grab(SDL_Window* window, bool grabbed)
 
     RECT client_rect;
     if (!GetClientRect(wm_info.info.win.window, &client_rect)) {
-        log_error("GetClientRect failed: %lu\n", (unsigned long)GetLastError());
+        MC2_LOG(Core, Error, "GetClientRect failed: {:d}", mc2::fmt::as_u32(GetLastError()));
         return;
     }
 
@@ -147,7 +148,7 @@ static void apply_mouse_grab(SDL_Window* window, bool grabbed)
     POINT bottom_right = { client_rect.right, client_rect.bottom };
     if (!ClientToScreen(wm_info.info.win.window, &top_left) ||
         !ClientToScreen(wm_info.info.win.window, &bottom_right)) {
-        log_error("ClientToScreen failed: %lu\n", (unsigned long)GetLastError());
+        MC2_LOG(Core, Error, "ClientToScreen failed: {:d}", mc2::fmt::as_u32(GetLastError()));
         return;
     }
 
@@ -166,16 +167,15 @@ static void apply_mouse_grab(SDL_Window* window, bool grabbed)
     // refuses on geometry alone. It is the backstop for a future path that
     // reaches here without consulting gos_CursorCaptureForbidden().
     if (MonitorFromRect(&clip_rect, MONITOR_DEFAULTTONULL) == nullptr) {
-        log_error("[CURSOR_GUARD] refusing ClipCursor to a rect on no monitor "
-                  "(%ld,%ld)-(%ld,%ld) -- releasing instead.\n",
-                  (long)clip_rect.left, (long)clip_rect.top,
-                  (long)clip_rect.right, (long)clip_rect.bottom);
+        MC2_LOG(Core, Error, "[CURSOR_GUARD] refusing ClipCursor to a rect on no monitor ({:d},{:d})-({:d},{:d}) -- releasing instead.",
+                  mc2::fmt::as_i32(clip_rect.left), mc2::fmt::as_i32(clip_rect.top),
+                  mc2::fmt::as_i32(clip_rect.right), mc2::fmt::as_i32(clip_rect.bottom));
         ClipCursor(nullptr);
         return;
     }
 
     if (!ClipCursor(&clip_rect)) {
-        log_error("ClipCursor apply failed: %lu\n", (unsigned long)GetLastError());
+        MC2_LOG(Core, Error, "ClipCursor apply failed: {:d}", mc2::fmt::as_u32(GetLastError()));
     }
 #endif
 }
@@ -870,7 +870,7 @@ bool set_window_fullscreen(RenderWindowHandle rw_handle, bool fullscreen)
     Uint32 flags = fullscreen ? /*SDL_WINDOW_FULLSCREEN*/ SDL_WINDOW_FULLSCREEN_DESKTOP : 0;
 
     if(0 != SDL_SetWindowFullscreen(rw->window_, flags)) {
-        log_error("SDL_SetWindowFullscreen: %s\n", SDL_GetError());
+        MC2_LOG(Render, Error, "SDL_SetWindowFullscreen: {}", mc2::fmt::safe(SDL_GetError()));
         return false;
     }
 
@@ -900,7 +900,7 @@ bool is_mode_supported(int width, int height, int bpp) {
     SDL_DisplayMode returned;
     
     if(nullptr == SDL_GetClosestDisplayMode(displayIndex, &desired, &returned)) {
-        log_error("resize_window: %s\n", SDL_GetError());
+        MC2_LOG(Render, Error, "resize_window: {}", mc2::fmt::safe(SDL_GetError()));
         return false;
     }
 
@@ -938,7 +938,7 @@ bool get_desktop_display_mode(int display_index, int* width, int* height, int* b
 
     SDL_DisplayMode dm;
     if (SDL_GetDesktopDisplayMode(display_index, &dm) != 0) {
-        log_error("SDL_GetDesktopDisplayMode failed: %s", SDL_GetError());
+        MC2_LOG(Render, Error, "SDL_GetDesktopDisplayMode failed: {}", mc2::fmt::safe(SDL_GetError()));
         return false;
     }
 
@@ -955,7 +955,7 @@ bool get_display_mode_by_index(int display_index, int mode_index, int* width, in
 
     SDL_DisplayMode dm;
     if (SDL_GetDisplayMode(display_index, mode_index, &dm) != 0) {
-        log_error("SDL_GetDisplayMode failed: %s", SDL_GetError());
+        MC2_LOG(Render, Error, "SDL_GetDisplayMode failed: {}", mc2::fmt::safe(SDL_GetError()));
         return false;
     }
 

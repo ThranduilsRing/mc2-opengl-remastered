@@ -45,7 +45,7 @@ PRINTF_LIKE = {
     "print_err": (None, 0, "stderr"), "print_out": (None, 0, "stdout"), "print": (0, 1, None),
 }
 EVENT_MACROS = {"MC2_EVENT": "stderr", "MC2_EVENT_OUT": "stdout", "MC2_EVENT_NOVER": "stderr", "MC2_EVENT_NOVER_OUT": "stdout"}
-LOG_MACROS = {"log_debug", "log_info", "log_warning", "log_error"}
+LOG_MACROS = {"MC2_LOG", "MC2_LOG_OUT", "MC2_LOG_DBG", "SHADER_LOG_ERROR"}
 
 #: Lines a harness reads that are not `[UPPER_CASE vN]` shaped: a bare leading word, or a bracket with a space or lower case in it.
 PLAIN_TAGS = ("VEG_SUMMARY", "ORDER_LIVENESS_SUMMARY", "TerrainLOD parity", "SHADER ERROR")
@@ -58,7 +58,7 @@ _PRINTF_FIELD = re.compile(r"%%|%[-+ #0-9.*]*(?:hh|h|ll|l|z|j|t|L|I64|I32)?[A-Za
 _STD_FIELD = re.compile(r"\{\{|\}\}|\{[^{}]*\}")
 _LITERAL = {"%%": "%", "{{": "{", "}}": "}"}
 #: callees whose format is a std::format string; every other format in the census is a printf one (a `{` in it is just a brace)
-STD_FORMAT_CALLEES = {"to_buf", "to_buf_n", "print_err", "print_out", "print"}
+STD_FORMAT_CALLEES = {"to_buf", "to_buf_n", "print_err", "print_out", "print"} | LOG_MACROS
 _NAME_RE = "|".join(sorted(list(PRINTF_LIKE) + list(EVENT_MACROS) + sorted(LOG_MACROS) + ["SPEW"], key=len, reverse=True))
 _EVENT_TMPL = re.compile(r'event\s*<\s*"([A-Z][A-Z0-9_]*)"\s*,\s*(-?\d+)\s*>\s*\(\s*(?:::)?(?:mc2::log::)?Stream::(Err|Out|Dbg)\s*,\s*((?:"(?:\\.|[^"\\\n])*"\s*)+)')
 
@@ -115,7 +115,7 @@ def census_of_text(text: str):
                 continue
             lit = cxx_calls.string_literal_parts(call.arg_text(text, idx))
             stream = stream_of(name, call, text)
-        else:               # SPEW((group, "fmt", ...)) and log_*("fmt", ...): the first literal argument
+        else:               # SPEW((group, "fmt", ...)) and the facade's free-form MC2_LOG(cat, level, "fmt", ...): the first literal argument
             lit, stream = None, "spew" if name == "SPEW" else "log"
             for i in range(len(call.args)):
                 lit = cxx_calls.string_literal_parts(call.arg_text(text, i).strip("() "))

@@ -43,7 +43,6 @@
 #include"../GameOS/gameos/gos_terrain_lod_chunk.h"   // Terrain LOD chunk Phase 1
 #include"../GameOS/gameos/gos_render_pass_timer.h"   // [RENDER_PASS_TIME v1] chunk-terrain scope
 #include"../GameOS/gameos/gos_frame_pass_stats.h"     // [FRAME_PASS_STATS v1] chunk draw count
-#include"../GameOS/gameos/utils/logging.h"            // Terrain LOD chunk Phase 2: throttled false-negative log
 #include"terrain_admission_mode.h"  // F6 T2: shared isModern() flag for terrain.cpp + quad.cpp
 #include "Gates/gate_cold.h"   // gate::get<>() and str<>()
 #include"terrain_runtime.h"  // TERRAIN-RUNTIME-API-1: compat seam + gated parity walk

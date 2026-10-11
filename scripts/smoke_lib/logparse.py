@@ -29,11 +29,10 @@ SHADER_ERROR_PATTERNS = (
     re.compile(r"Shader filename:.*failed to load shader", re.I),
     re.compile(r"shader.*compile.*fail", re.I),
     re.compile(r"GLSL link.*failed", re.I),
-    # GL: shader_builder.cpp CompileShader/LinkProgram log "[SHADER ERROR] ..."
-    # (the pattern above missed "CompileShader: ERROR: ...": a static_prop.frag
-    # compile failure once passed tier1 5/5 with every static prop missing).
+    # GL: shader_builder.cpp reports EVERY error as "[SHADER ERROR] ..." (its SHADER_LOG_ERROR macro; CompileShader/LinkProgram also print
+    # the token to stdout). The pattern above missed "CompileShader: ERROR: ...": a static_prop.frag compile failure once passed tier1 5/5
+    # with every static prop missing. test_logparse.py reads the macro, so the producer and this pattern cannot drift apart.
     re.compile(r"\[SHADER ERROR\]"),
-    re.compile(r"shader_builder\.cpp\(\d+\)\s*:\s*ERROR", re.I),
     re.compile(r"\[GPUPROPS\] failed to compile"),
     # VK islands: pipeline / shader-module creation failure (fail-soft in the
     # engine, so the run would otherwise pass with the island silently off).
