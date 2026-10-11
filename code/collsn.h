@@ -46,7 +46,7 @@ struct CollisionAlertRecord
 	float					timeToImpact;
 };
 
-typedef CollisionAlertRecord *CollisionAlertRecordPtr;
+using CollisionAlertRecordPtr = CollisionAlertRecord *;
 //------------------------------------------------------------------------------
 class GlobalCollisionAlert
 {
@@ -60,7 +60,7 @@ class GlobalCollisionAlert
 	public:
 		GlobalCollisionAlert (void)
 		{
-			collisionAlerts = NULL;
+			collisionAlerts = nullptr;
 			maxAlerts = 0;
 		}
 
@@ -75,7 +75,7 @@ class GlobalCollisionAlert
 		
 		long addRecord (GameObjectPtr obj1, GameObjectPtr obj2, float distance, float time);
 		
-		CollisionAlertRecordPtr findAlert (GameObjectPtr object, CollisionAlertRecordPtr startRecord = NULL);
+		CollisionAlertRecordPtr findAlert (GameObjectPtr object, CollisionAlertRecordPtr startRecord = nullptr);
 		
 		void purgeRecords (void);
 };
@@ -123,9 +123,9 @@ class CollisionGrid
 		
 		void init (void)
 		{
-			giantObjects = NULL;
-			grid = NULL;
-			nodes = NULL;
+			giantObjects = nullptr;
+			grid = nullptr;
+			nodes = nullptr;
 			
 			xGridWidth = yGridWidth = 0;
 			
@@ -204,7 +204,7 @@ class CollisionSystem
 		
 		void init (void)
 		{
-			collisionGrid = NULL;
+			collisionGrid = nullptr;
 		}
 		
 		CollisionSystem (void)

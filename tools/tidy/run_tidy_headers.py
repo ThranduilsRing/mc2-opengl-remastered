@@ -21,6 +21,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -150,8 +151,11 @@ class Proof:
         keep, rejected = [], []
 
         def probe(trial):
+            t0 = time.monotonic()
             self.apply(set(keep) | set(trial))
-            return self.bad_objects()
+            bad = self.bad_objects()
+            print(f"  probe {len(trial)} header(s): {len(bad)} differing/failing object(s), {time.monotonic() - t0:.0f} s", flush=True)
+            return bad
 
         def go(trial):
             if not trial:
@@ -196,6 +200,7 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--dry-run", action="store_true", help="list the batch and its proof set, change nothing")
     ap.add_argument("--loop", action="store_true",
                     help="keep running batches until no candidate header is left, a batch cannot be built, or a stop is requested")
+    ap.add_argument("--max-batches", type=int, default=0, help="with --loop: stop after this many batches (0 = no limit)")
     ap.add_argument("--stop-after-batch", action="store_true",
                     help="do not run a batch: ask the tool that holds this tree's lock to exit after its current batch (the stop "
                          "request is the file <tree>/.tidy.stop)")
@@ -298,6 +303,7 @@ def run_batch(args):
 
 
 def main(argv=None) -> int:
+    sys.stdout.reconfigure(line_buffering=True)
     args = build_parser().parse_args(argv)
     rts.apply_lane_args(args)
     tree_abs = os.path.join(ROOT, args.tree)
@@ -309,9 +315,12 @@ def main(argv=None) -> int:
     try:
         with tidy_lock.TidyLock(tree_abs):
             tidy_lock.clear_stop(tree_abs)
+            batches = 0
             while True:
                 rc, exhausted = run_batch(args)
-                if not args.loop or exhausted or rc == 2 or tidy_lock.stop_requested(tree_abs):
+                batches += 1
+                if (not args.loop or exhausted or rc == 2 or tidy_lock.stop_requested(tree_abs)
+                        or (args.max_batches and batches >= args.max_batches)):
                     break
             tidy_lock.clear_stop(tree_abs)
     except tidy_lock.TidyBusy as e:
