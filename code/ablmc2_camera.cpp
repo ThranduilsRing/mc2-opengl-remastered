@@ -744,10 +744,10 @@ void execStopVoiceOver(void)
 
 void execGetLogisticsTime(void)
 {
-	//Takes NOTHING
-	// Returns a bool,  true if voiceover channel is active, false if not.
-
-	ABLi_pushReal(timeGetTime());
+	// The script clock, in milliseconds of mission time.
+	// Intro scripts time their camera cuts against it, next to camera goal times that run on mission time. A wall
+	// clock here made the cut land on a different frame every run.
+	ABLi_pushReal(mission ? mission->actualTime * 1000.0 : 0.0);
 }
 
 void execRequestHelp (void) {
