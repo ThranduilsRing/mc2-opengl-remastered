@@ -31,6 +31,7 @@ import run_tidy_safe as rts  # noqa: E402
 import run_tidy_headers as rth  # noqa: E402
 import canonical_obj  # noqa: E402
 import proof_ext  # noqa: E402
+import batch_run  # noqa: E402
 
 ROOT = rts.ROOT
 sys.path.insert(0, os.path.join(ROOT, "tools", "cxx17_ratchet"))
@@ -562,46 +563,39 @@ def cmd_run(a):
             with open(a.done, "a", encoding="utf-8", newline="\n") as fh:
                 fh.writelines(rel + "\n" for rel, _, _ in picked)
             done |= {rel for rel, _, _ in picked}
-        orig = {rel: rth.read_bytes(rel) for rel, _, _ in picked}
-        edited = {}
-        for rel, ss, _ in picked:
-            kind = "constexpr" if rel.lower().endswith(SRC_EXT) else "inline constexpr"
-            edited[rel] = rewrite_text(orig[rel].decode("utf-8", errors="replace"), ss, kind).encode("utf-8")
-        mtimes = {rel: os.stat(os.path.join(ROOT, rel)).st_mtime_ns for rel in orig}
-        inc = {rel: o for rel, _, o in picked}
         FastProof.ignore = frozenset(load_taint(a.ignore_digest_file))
-        proof = (SlowProof if a.slow_bisect else FastProof)(tree_abs, inc, orig, edited, a.build_jobs)
-        proof_ext.configure(proof, a)
-        gate = proof_ext.Gate(sorted(orig), a.layout_only_ok, a.order_only_ok) if a.vs_gate else None
-        if gate:
-            gate.snapshot()
-        if proof.baseline():
-            print("rewrite_defines: the base build of the proof set failed; refusing to edit", file=sys.stderr)
-            return 2
-        kept, rejected = proof.solve() if a.slow_bisect else solve_fast(proof)
-        for rel, why in rejected:
-            rts.restore_file(rel, mtimes[rel])
-            print("REVERT %s  %s" % (rel, why))
-        if gate and kept:
-            kept, more = gate.settle(kept, orig, mtimes)
-            for rel, why in more:
-                print("REVERT %s  %s" % (rel, why))
-            rejected += more
-            if more:
-                proof.apply(set(kept))
-                proof_ext.LayoutMixin.bad_objects(proof)
-        accepted = proof.accepted_objects({o for r in kept for o in inc[r]})
-        note = proof_ext.acceptance_note(accepted, gate.accepted if gate else ())
+
+        def attempt(items):
+            return batch_run.prove_batch(
+                a, tree_abs, items,
+                lambda rel, ss, orig: rewrite_text(orig.decode("utf-8", errors="replace"), ss, "constexpr" if rel.lower().endswith(SRC_EXT) else "inline constexpr").encode("utf-8"),
+                SlowProof if a.slow_bisect else FastProof, (lambda p: p.solve()) if a.slow_bisect else solve_fast, "rewrite_defines")
+
+        out = attempt(picked)
+        if out.rc:
+            return out.rc
+        kept, rejected = out.kept, list(out.rejected)
+        kept_sites = out.kept_items()
+        print("BATCH %d result: kept %d file(s) / %d site(s), reverted %d file(s), %d object(s) proven identical" % (
+            batches, len(kept), kept_sites, len(rejected), out.proven_objects()))
+        if kept and a.commit:
+            commit(kept, batches, kept_sites, a.proof_mode, out.note)
+        if rejected and not a.no_alone_fallback:
+            alone, still = batch_run.run_alone_fallback(out, attempt)
+            tried = {rel for rel, _ in rejected} if len(picked) > 1 else set()
+            for one in alone:
+                n = one.kept_items()
+                print("ALONE result: kept %s / %d site(s), %d object(s) proven identical" % (one.kept[0], n, one.proven_objects()))
+                if a.commit:
+                    commit(one.kept, batches, n, a.proof_mode, one.note)
+                kept += one.kept
+                kept_sites += n
+            rejected = [r for r in rejected if r[0] not in tried] + still
         new_taint = taint_from_reasons(rejected) - a.taint
         if new_taint and a.taint_file:
             a.taint |= new_taint
             with open(a.taint_file, "a", encoding="utf-8", newline="\n") as fh:
                 fh.writelines(o + "\n" for o in sorted(new_taint))
-        kept_sites = sum(len(ss) for rel, ss, _ in picked if rel in kept)
-        print("BATCH %d result: kept %d file(s) / %d site(s), reverted %d file(s), %d object(s) proven identical" % (
-            batches, len(kept), kept_sites, len(rejected), len({o for r in kept for o in inc[r]})))
-        if kept and a.commit:
-            commit(kept, batches, kept_sites, a.proof_mode, note)
         if not a.loop or (a.max_batches and batches >= a.max_batches) or not kept and not rejected:
             return 1 if rejected else 0
         paths, files, sites, uses = load_world()
@@ -662,6 +656,7 @@ def main(argv=None) -> int:
     r.add_argument("--ignore-digest-file", default=None, help="objects (names as in the tree) that must compile but whose digest is not compared: a TU where any new inline variable "
                    "makes MSVC drop unreferenced static const data (editor/MapGeneratorDialog.cpp, the stb_image tables), a semantic no-op the digest cannot tell from a change")
     r.add_argument("--taint-file", default=None, help="ledger of objects that differed for a harmless edit; headers they include are skipped (appended to after a revert)")
+    r.add_argument("--no-alone-fallback", action="store_true", help="do not re-prove the headers a multi-header batch rejected one by one (default: each is re-run alone and kept if it passes alone)")
     r.add_argument("--skip-dirty-in", default="A:/Games/mc2-main", help="the other builder lane's worktree: its dirty files are never touched")
     r.add_argument("--commit", action="store_true")
     r.add_argument("--loop", action="store_true")
