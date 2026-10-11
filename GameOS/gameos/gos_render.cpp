@@ -332,41 +332,41 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
     if (VERBOSE_VIDEO) {
         n = SDL_GetNumVideoDrivers();
         if (n == 0) {
-            fprintf(stderr, "No built-in video drivers\n");
+            mc2::fmt::print_err("No built-in video drivers\n");
         } else {
-            fprintf(stderr, "Built-in video drivers:");
+            mc2::fmt::print_err("Built-in video drivers:");
             for (i = 0; i < n; ++i) {
                 if (i > 0) {
-                    fprintf(stderr, ",");
+                    mc2::fmt::print_err(",");
                 }
-                fprintf(stderr, " %s", SDL_GetVideoDriver(i));
+                mc2::fmt::print_err(" {}", mc2::fmt::safe(SDL_GetVideoDriver(i)));
             }
-            fprintf(stderr, "\n");
+            mc2::fmt::print_err("\n");
         }
     }
 
     // initialize using 0 videodriver
     if (SDL_VideoInit(nullptr) < 0) {
-        fprintf(stderr, "Couldn't initialize video driver: %s\n", SDL_GetError());
+        mc2::fmt::print_err("Couldn't initialize video driver: {}\n", mc2::fmt::safe(SDL_GetError()));
         return nullptr;
     }
     if (VERBOSE_VIDEO) {
-        fprintf(stderr, "Video driver: %s\n", SDL_GetCurrentVideoDriver());
+        mc2::fmt::print_err("Video driver: {}\n", mc2::fmt::safe(SDL_GetCurrentVideoDriver()));
     }
 
     //not really related to video, but let it be here
     if (VERBOSE_VIDEO) {
-        printf("SDL revision: %s\n", SDL_GetRevision());
+        mc2::fmt::print_out("SDL revision: {}\n", mc2::fmt::safe(SDL_GetRevision()));
 
         SDL_version compiled;
         SDL_version linked;
 
         SDL_VERSION(&compiled);
         SDL_GetVersion(&linked);
-        fprintf(stderr, "We compiled against SDL version %d.%d.%d \n",
-            compiled.major, compiled.minor, compiled.patch);
-        fprintf(stderr, "But we are linking against SDL version %d.%d.%d.\n",
-           linked.major, linked.minor, linked.patch);
+        mc2::fmt::print_err("We compiled against SDL version {:d}.{:d}.{:d} \n",
+            mc2::fmt::as_i32(compiled.major), mc2::fmt::as_i32(compiled.minor), mc2::fmt::as_i32(compiled.patch));
+        mc2::fmt::print_err("But we are linking against SDL version {:d}.{:d}.{:d}.\n",
+           mc2::fmt::as_i32(linked.major), mc2::fmt::as_i32(linked.minor), mc2::fmt::as_i32(linked.patch));
     }
 
     SDL_GL_SetAttribute( SDL_GL_RED_SIZE, 8 );
@@ -413,50 +413,47 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
         Uint32 Rmask, Gmask, Bmask, Amask;
 
         n = SDL_GetNumVideoDisplays();
-        fprintf(stderr, "Number of displays: %d\n", n);
+        mc2::fmt::print_err("Number of displays: {:d}\n", mc2::fmt::as_i32(n));
         for (i = 0; i < n; ++i) {
-            fprintf(stderr, "Display %d:\n", i);
+            mc2::fmt::print_err("Display {:d}:\n", mc2::fmt::as_i32(i));
 
             SDL_GetDesktopDisplayMode(i, &mode);
             SDL_PixelFormatEnumToMasks(mode.format, &bpp, &Rmask, &Gmask,
                     &Bmask, &Amask);
-            fprintf(stderr,
-                    "  Current mode: %dx%d@%dHz, %d bits-per-pixel (%s)\n",
-                    mode.w, mode.h, mode.refresh_rate, bpp,
-                    SDL_GetPixelFormatName(mode.format));
+            mc2::fmt::print_err("  Current mode: {:d}x{:d}@{:d}Hz, {:d} bits-per-pixel ({})\n",
+                    mc2::fmt::as_i32(mode.w), mc2::fmt::as_i32(mode.h), mc2::fmt::as_i32(mode.refresh_rate), mc2::fmt::as_i32(bpp),
+                    mc2::fmt::safe(SDL_GetPixelFormatName(mode.format)));
             if (Rmask || Gmask || Bmask) {
-                fprintf(stderr, "      Red Mask   = 0x%.8x\n", Rmask);
-                fprintf(stderr, "      Green Mask = 0x%.8x\n", Gmask);
-                fprintf(stderr, "      Blue Mask  = 0x%.8x\n", Bmask);
+                mc2::fmt::print_err("      Red Mask   = 0x{:08x}\n", mc2::fmt::as_u32(Rmask));
+                mc2::fmt::print_err("      Green Mask = 0x{:08x}\n", mc2::fmt::as_u32(Gmask));
+                mc2::fmt::print_err("      Blue Mask  = 0x{:08x}\n", mc2::fmt::as_u32(Bmask));
                 if (Amask)
-                    fprintf(stderr, "      Alpha Mask = 0x%.8x\n", Amask);
+                    mc2::fmt::print_err("      Alpha Mask = 0x{:08x}\n", mc2::fmt::as_u32(Amask));
             }
 
             /* Print available fullscreen video modes */
             m = SDL_GetNumDisplayModes(i);
             if (m == 0) {
-                fprintf(stderr, "No available fullscreen video modes\n");
+                mc2::fmt::print_err("No available fullscreen video modes\n");
             } else {
-                fprintf(stderr, "  Fullscreen video modes:\n");
+                mc2::fmt::print_err("  Fullscreen video modes:\n");
                 for (j = 0; j < m; ++j) {
                     SDL_GetDisplayMode(i, j, &mode);
                     SDL_PixelFormatEnumToMasks(mode.format, &bpp, &Rmask,
                             &Gmask, &Bmask, &Amask);
-                    fprintf(stderr,
-                            "    Mode %d: %dx%d@%dHz, %d bits-per-pixel (%s)\n",
-                            j, mode.w, mode.h, mode.refresh_rate, bpp,
-                            SDL_GetPixelFormatName(mode.format));
+                    mc2::fmt::print_err("    Mode {:d}: {:d}x{:d}@{:d}Hz, {:d} bits-per-pixel ({})\n",
+                            mc2::fmt::as_i32(j), mc2::fmt::as_i32(mode.w), mc2::fmt::as_i32(mode.h), mc2::fmt::as_i32(mode.refresh_rate), mc2::fmt::as_i32(bpp),
+                            mc2::fmt::safe(SDL_GetPixelFormatName(mode.format)));
                     if (Rmask || Gmask || Bmask) {
-                        fprintf(stderr, "        Red Mask   = 0x%.8x\n",
-                                Rmask);
-                        fprintf(stderr, "        Green Mask = 0x%.8x\n",
-                                Gmask);
-                        fprintf(stderr, "        Blue Mask  = 0x%.8x\n",
-                                Bmask);
+                        mc2::fmt::print_err("        Red Mask   = 0x{:08x}\n",
+                                mc2::fmt::as_u32(Rmask));
+                        mc2::fmt::print_err("        Green Mask = 0x{:08x}\n",
+                                mc2::fmt::as_u32(Gmask));
+                        mc2::fmt::print_err("        Blue Mask  = 0x{:08x}\n",
+                                mc2::fmt::as_u32(Bmask));
                         if (Amask)
-                            fprintf(stderr,
-                                    "        Alpha Mask = 0x%.8x\n",
-                                    Amask);
+                            mc2::fmt::print_err("        Alpha Mask = 0x{:08x}\n",
+                                    mc2::fmt::as_u32(Amask));
                     }
                 }
             }
@@ -468,9 +465,9 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
 
         n = SDL_GetNumRenderDrivers();
         if (n == 0) {
-            fprintf(stderr, "No built-in render drivers\n");
+            mc2::fmt::print_err("No built-in render drivers\n");
         } else {
-            fprintf(stderr, "Built-in render drivers:\n");
+            mc2::fmt::print_err("Built-in render drivers:\n");
             for (i = 0; i < n; ++i) {
                 SDL_GetRenderDriverInfo(i, &info);
                 PrintRenderer(&info);
@@ -561,7 +558,7 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
         }
 
         if (!window) {
-            fprintf(stderr, "Couldn't create window: %s\n", SDL_GetError());
+            mc2::fmt::print_err("Couldn't create window: {}\n", mc2::fmt::safe(SDL_GetError()));
             return nullptr;
         }
         SDL_GetWindowSize(window, &width, &height);
@@ -569,7 +566,7 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
         // NULL to use window width and height and display refresh rate
         // only need to set mode if wanted fullscreen
         if (SDL_SetWindowDisplayMode(window, nullptr) < 0) {
-            fprintf(stderr, "Can't set up display mode: %s\n", SDL_GetError());
+            mc2::fmt::print_err("Can't set up display mode: {}\n", mc2::fmt::safe(SDL_GetError()));
             SDL_DestroyWindow(window);
             return nullptr;
         }
@@ -639,7 +636,7 @@ RenderContextHandle init_render_context(RenderWindowHandle render_window)
 
     SDL_GLContext glcontext = SDL_GL_CreateContext(rw->window_);
     if (!glcontext ) {
-        fprintf(stderr, "SDL_GL_CreateContext(): %s\n", SDL_GetError());
+        mc2::fmt::print_err("SDL_GL_CreateContext(): {}\n", mc2::fmt::safe(SDL_GetError()));
         return nullptr;
     }
 
@@ -720,15 +717,15 @@ RenderContextHandle init_render_context(RenderWindowHandle render_window)
     if(VERBOSE_RENDER) {
         SDL_DisplayMode mode;
         SDL_GetCurrentDisplayMode(0, &mode);
-        printf("Current Display Mode:\n");
-        printf("Screen BPP: %d\n", SDL_BITSPERPIXEL(mode.format));
-        printf("\n");
-        printf("Vendor     : %s\n", reinterpret_cast<const char*>(glGetString(GL_VENDOR)));
-        printf("Renderer   : %s\n", reinterpret_cast<const char*>(glGetString(GL_RENDERER)));
-        printf("Version    : %s\n", reinterpret_cast<const char*>(glGetString(GL_VERSION)));
+        mc2::fmt::print_out("Current Display Mode:\n");
+        mc2::fmt::print_out("Screen BPP: {:d}\n", mc2::fmt::as_i32(SDL_BITSPERPIXEL(mode.format)));
+        mc2::fmt::print_out("\n");
+        mc2::fmt::print_out("Vendor     : {}\n", mc2::fmt::safe(reinterpret_cast<const char*>(glGetString(GL_VENDOR))));
+        mc2::fmt::print_out("Renderer   : {}\n", mc2::fmt::safe(reinterpret_cast<const char*>(glGetString(GL_RENDERER))));
+        mc2::fmt::print_out("Version    : {}\n", mc2::fmt::safe(reinterpret_cast<const char*>(glGetString(GL_VERSION))));
         const char* exts = reinterpret_cast<const char*>(glGetString(GL_EXTENSIONS));
-        printf("Extensions : %s\n", exts);
-        printf("\n");
+        mc2::fmt::print_out("Extensions : {}\n", mc2::fmt::safe(exts));
+        mc2::fmt::print_out("\n");
 
         int value;
         int status = 0;
@@ -779,24 +776,24 @@ RenderContextHandle init_render_context(RenderWindowHandle render_window)
 		*/
         status = SDL_GL_GetAttribute(SDL_GL_ACCELERATED_VISUAL, &value);
         if (!status) {
-            printf("SDL_GL_ACCELERATED_VISUAL: %d\n", value);
+            mc2::fmt::print_out("SDL_GL_ACCELERATED_VISUAL: {:d}\n", mc2::fmt::as_i32(value));
         } else {
-            printf("Failed to get SDL_GL_ACCELERATED_VISUAL: %s\n",
-                    SDL_GetError());
+            mc2::fmt::print_out("Failed to get SDL_GL_ACCELERATED_VISUAL: {}\n",
+                    mc2::fmt::safe(SDL_GetError()));
         }
 		
         status = SDL_GL_GetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, &value);
         if (!status) {
-            printf("SDL_GL_CONTEXT_MAJOR_VERSION: %d\n", value);
+            mc2::fmt::print_out("SDL_GL_CONTEXT_MAJOR_VERSION: {:d}\n", mc2::fmt::as_i32(value));
         } else {
-            printf("Failed to get SDL_GL_CONTEXT_MAJOR_VERSION: %s\n", SDL_GetError());
+            mc2::fmt::print_out("Failed to get SDL_GL_CONTEXT_MAJOR_VERSION: {}\n", mc2::fmt::safe(SDL_GetError()));
         }
 
         status = SDL_GL_GetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, &value);
         if (!status) {
-            printf("SDL_GL_CONTEXT_MINOR_VERSION: %d\n", value);
+            mc2::fmt::print_out("SDL_GL_CONTEXT_MINOR_VERSION: {:d}\n", mc2::fmt::as_i32(value));
         } else {
-            printf("Failed to get SDL_GL_CONTEXT_MINOR_VERSION: %s\n", SDL_GetError());
+            mc2::fmt::print_out("Failed to get SDL_GL_CONTEXT_MINOR_VERSION: {}\n", mc2::fmt::safe(SDL_GetError()));
         }
     }
 
@@ -1002,13 +999,13 @@ static void PrintRendererFlag(Uint32 flag)
 {
 	switch (flag) {
 	case SDL_RENDERER_PRESENTVSYNC:
-		fprintf(stderr, "PresentVSync");
+		mc2::fmt::print_err("PresentVSync");
 		break;
 	case SDL_RENDERER_ACCELERATED:
-		fprintf(stderr, "Accelerated");
+		mc2::fmt::print_err("Accelerated");
 		break;
 	default:
-		fprintf(stderr, "0x%8.8x", flag);
+		mc2::fmt::print_err("0x{:08x}", mc2::fmt::as_u32(flag));
 		break;
 	}
 }
@@ -1018,97 +1015,97 @@ static void PrintPixelFormat(Uint32 format)
 {
 	switch (format) {
 	case SDL_PIXELFORMAT_UNKNOWN:
-		fprintf(stderr, "Unknwon");
+		mc2::fmt::print_err("Unknwon");
 		break;
 	case SDL_PIXELFORMAT_INDEX1LSB:
-		fprintf(stderr, "Index1LSB");
+		mc2::fmt::print_err("Index1LSB");
 		break;
 	case SDL_PIXELFORMAT_INDEX1MSB:
-		fprintf(stderr, "Index1MSB");
+		mc2::fmt::print_err("Index1MSB");
 		break;
 	case SDL_PIXELFORMAT_INDEX4LSB:
-		fprintf(stderr, "Index4LSB");
+		mc2::fmt::print_err("Index4LSB");
 		break;
 	case SDL_PIXELFORMAT_INDEX4MSB:
-		fprintf(stderr, "Index4MSB");
+		mc2::fmt::print_err("Index4MSB");
 		break;
 	case SDL_PIXELFORMAT_INDEX8:
-		fprintf(stderr, "Index8");
+		mc2::fmt::print_err("Index8");
 		break;
 	case SDL_PIXELFORMAT_RGB332:
-		fprintf(stderr, "RGB332");
+		mc2::fmt::print_err("RGB332");
 		break;
 	case SDL_PIXELFORMAT_RGB444:
-		fprintf(stderr, "RGB444");
+		mc2::fmt::print_err("RGB444");
 		break;
 	case SDL_PIXELFORMAT_RGB555:
-		fprintf(stderr, "RGB555");
+		mc2::fmt::print_err("RGB555");
 		break;
 	case SDL_PIXELFORMAT_BGR555:
-		fprintf(stderr, "BGR555");
+		mc2::fmt::print_err("BGR555");
 		break;
 	case SDL_PIXELFORMAT_ARGB4444:
-		fprintf(stderr, "ARGB4444");
+		mc2::fmt::print_err("ARGB4444");
 		break;
 	case SDL_PIXELFORMAT_ABGR4444:
-		fprintf(stderr, "ABGR4444");
+		mc2::fmt::print_err("ABGR4444");
 		break;
 	case SDL_PIXELFORMAT_ARGB1555:
-		fprintf(stderr, "ARGB1555");
+		mc2::fmt::print_err("ARGB1555");
 		break;
 	case SDL_PIXELFORMAT_ABGR1555:
-		fprintf(stderr, "ABGR1555");
+		mc2::fmt::print_err("ABGR1555");
 		break;
 	case SDL_PIXELFORMAT_RGB565:
-		fprintf(stderr, "RGB565");
+		mc2::fmt::print_err("RGB565");
 		break;
 	case SDL_PIXELFORMAT_BGR565:
-		fprintf(stderr, "BGR565");
+		mc2::fmt::print_err("BGR565");
 		break;
 	case SDL_PIXELFORMAT_RGB24:
-		fprintf(stderr, "RGB24");
+		mc2::fmt::print_err("RGB24");
 		break;
 	case SDL_PIXELFORMAT_BGR24:
-		fprintf(stderr, "BGR24");
+		mc2::fmt::print_err("BGR24");
 		break;
 	case SDL_PIXELFORMAT_RGB888:
-		fprintf(stderr, "RGB888");
+		mc2::fmt::print_err("RGB888");
 		break;
 	case SDL_PIXELFORMAT_BGR888:
-		fprintf(stderr, "BGR888");
+		mc2::fmt::print_err("BGR888");
 		break;
 	case SDL_PIXELFORMAT_ARGB8888:
-		fprintf(stderr, "ARGB8888");
+		mc2::fmt::print_err("ARGB8888");
 		break;
 	case SDL_PIXELFORMAT_RGBA8888:
-		fprintf(stderr, "RGBA8888");
+		mc2::fmt::print_err("RGBA8888");
 		break;
 	case SDL_PIXELFORMAT_ABGR8888:
-		fprintf(stderr, "ABGR8888");
+		mc2::fmt::print_err("ABGR8888");
 		break;
 	case SDL_PIXELFORMAT_BGRA8888:
-		fprintf(stderr, "BGRA8888");
+		mc2::fmt::print_err("BGRA8888");
 		break;
 	case SDL_PIXELFORMAT_ARGB2101010:
-		fprintf(stderr, "ARGB2101010");
+		mc2::fmt::print_err("ARGB2101010");
 		break;
 	case SDL_PIXELFORMAT_YV12:
-		fprintf(stderr, "YV12");
+		mc2::fmt::print_err("YV12");
 		break;
 	case SDL_PIXELFORMAT_IYUV:
-		fprintf(stderr, "IYUV");
+		mc2::fmt::print_err("IYUV");
 		break;
 	case SDL_PIXELFORMAT_YUY2:
-		fprintf(stderr, "YUY2");
+		mc2::fmt::print_err("YUY2");
 		break;
 	case SDL_PIXELFORMAT_UYVY:
-		fprintf(stderr, "UYVY");
+		mc2::fmt::print_err("UYVY");
 		break;
 	case SDL_PIXELFORMAT_YVYU:
-		fprintf(stderr, "YVYU");
+		mc2::fmt::print_err("YVYU");
 		break;
 	default:
-		fprintf(stderr, "0x%8.8x", format);
+		mc2::fmt::print_err("0x{:08x}", mc2::fmt::as_u32(format));
 		break;
 	}
 }
@@ -1118,35 +1115,35 @@ static void PrintRenderer(SDL_RendererInfo * info)
 {
     size_t i, count;
 
-    fprintf(stderr, "  Renderer %s:\n", info->name);
+    mc2::fmt::print_err("  Renderer {}:\n", mc2::fmt::safe(info->name));
 
-    fprintf(stderr, "    Flags: 0x%8.8X", info->flags);
-    fprintf(stderr, " (");
+    mc2::fmt::print_err("    Flags: 0x{:08X}", mc2::fmt::as_u32(info->flags));
+    mc2::fmt::print_err(" (");
     count = 0;
     for (i = 0; i < sizeof(info->flags) * 8; ++i) {
         Uint32 flag = (1 << i);
         if (info->flags & flag) {
             if (count > 0) {
-                fprintf(stderr, " | ");
+                mc2::fmt::print_err(" | ");
             }
             PrintRendererFlag(flag);
             ++count;
         }
     }
-    fprintf(stderr, ")\n");
+    mc2::fmt::print_err(")\n");
 
-    fprintf(stderr, "    Texture formats (%d): ", info->num_texture_formats);
+    mc2::fmt::print_err("    Texture formats ({:d}): ", mc2::fmt::as_i32(info->num_texture_formats));
     for (i = 0; i < info->num_texture_formats; ++i) {
         if (i > 0) {
-			fprintf(stderr, ", ");
+			mc2::fmt::print_err(", ");
 		}
 		PrintPixelFormat(info->texture_formats[i]);
 	}
-	fprintf(stderr, "\n");
+	mc2::fmt::print_err("\n");
 
 	if (info->max_texture_width || info->max_texture_height) {
-		fprintf(stderr, "    Max Texture Size: %dx%d\n",
-				info->max_texture_width, info->max_texture_height);
+		mc2::fmt::print_err("    Max Texture Size: {:d}x{:d}\n",
+				mc2::fmt::as_i32(info->max_texture_width), mc2::fmt::as_i32(info->max_texture_height));
 	}
 }
 
