@@ -104,11 +104,12 @@ class CListOfDropListPointers : public EList<aDropList *, aDropList *> {};
 class CFocusManager
 {
 public:
-	enum control_species_data_type
+	enum class control_species_data_type
 	{
 		CS_NONE,
 		CS_DROPLIST
 	};
+	using enum control_species_data_type;
 
 	CFocusManager();
 	void clear();

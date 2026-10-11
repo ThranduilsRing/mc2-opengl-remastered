@@ -70,7 +70,8 @@ bool ObjectivesSummaryPanel::IsOpen() { return s_open; }
 // Objective category for LIST grouping. PRIMARY = priority 1 (and not a hidden
 // trigger). HIDDEN = IsHiddenTrigger(). SECONDARY = everything else (visible,
 // non-primary). A hidden trigger always sorts into HIDDEN regardless of priority.
-enum obj_category_type { OBJCAT_PRIMARY, OBJCAT_SECONDARY, OBJCAT_HIDDEN };
+enum class obj_category_type { OBJCAT_PRIMARY, OBJCAT_SECONDARY, OBJCAT_HIDDEN };
+using enum obj_category_type;
 
 static obj_category_type objCategory(CObjective* obj)
 {
