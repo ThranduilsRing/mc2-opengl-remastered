@@ -446,9 +446,7 @@ void initVulkanBackend(graphics::RenderWindowHandle win, int w, int h) {
                 // for context/device-level failures only (handled above).
                 const std::string& fr = vkpres.health().fallback_reason;
                 g_vkPresentInitDeferred = true;
-                printf("[VK_PRESENT] init deferred: %s -- will retry from the "
-                       "frame loop (session stays VK; present-level failures "
-                       "never force GL).\n", fr.c_str());
+                mc2::fmt::print_out("[VK_PRESENT] init deferred: {} -- will retry from the frame loop (session stays VK; present-level failures never force GL).\n", fr.c_str());
                 fflush(stdout);
             }
         }

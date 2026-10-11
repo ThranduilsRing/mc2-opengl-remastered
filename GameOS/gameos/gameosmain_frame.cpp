@@ -700,8 +700,7 @@ void frameSwapWindow(graphics::RenderWindowHandle win) {
                                 vkpres.valid()) {
                                 g_vkPresentInitDeferred = false;
                                 g_vkPresentRetryFails = 0;
-                                printf("[VK_PRESENT] deferred init recovered: %dx%d — "
-                                       "VK present active.\n", rdw, rdh);
+                                mc2::fmt::print_out("[VK_PRESENT] deferred init recovered: {:d}x{:d} — VK present active.\n", mc2::fmt::as_i32(rdw), mc2::fmt::as_i32(rdh));
                                 fflush(stdout);
                                 vkpres.logHealth();
                             } else if (vkpres.health().fallback_reason.find(
@@ -775,9 +774,7 @@ void frameSwapWindow(graphics::RenderWindowHandle win) {
                             if (fr.find("not VK-owned") != std::string::npos) {
                                 mc2::forceGLFallback(fr.c_str());
                             } else {
-                                printf("[VK_PRESENT] present failure treated as "
-                                       "transient: %s -- tearing down and retrying "
-                                       "init (session stays VK).\n",
+                                mc2::fmt::print_out("[VK_PRESENT] present failure treated as transient: {} -- tearing down and retrying init (session stays VK).\n",
                                        fr.empty() ? "(unspecified)" : fr.c_str());
                                 fflush(stdout);
                                 vkpres.destroy();
