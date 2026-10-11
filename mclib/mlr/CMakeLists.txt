@@ -24,6 +24,8 @@ set(SOURCES ${SOURCES}
     mlr_i_l_dt_tmesh.cpp
     mlr_i_l_tmesh.cpp
     mlr_i_tmesh.cpp
+    mlr_i_tmesh_light.cpp
+    mlr_i_tmesh_cast.cpp
     mlrambientlight.cpp
     mlrinfinitelight.cpp
     mlrinfinitelightwithfalloff.cpp

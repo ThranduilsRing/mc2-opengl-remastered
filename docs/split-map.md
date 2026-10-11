@@ -437,6 +437,15 @@ Split commit: `de0dbab39`.
 | `mech3d_update.cpp` | Mech3DAppearance: Mech3DAppearance::update, arm destruction, smoke, water wake and ejection. |
 | `mech3d_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
+## `mclib/mlr/mlr_i_tmesh.cpp`
+
+| Piece | What it holds |
+|---|---|
+| `mlr_i_tmesh.cpp` | keeps the class data, construction, copy, visibility tests, the clip include and per-vertex lighting |
+| `mlr_i_tmesh_cast.cpp` | MLR_I_TMesh: CastRay and the CreateIndexedTri* test shapes. |
+| `mlr_i_tmesh_light.cpp` | MLR_I_TMesh: LightMapLighting (the light-map vertex lighting pass). |
+| `mlr_i_tmesh_internal.h` | shared include bundle, extern globals and declarations of the pieces |
+
 ## `mclib/msl.cpp`
 
 Split commit: `d8ba94970`.
