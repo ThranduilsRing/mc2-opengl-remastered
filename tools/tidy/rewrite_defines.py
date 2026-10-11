@@ -393,12 +393,16 @@ class FastProof(rth.Proof):
         full = self.objs
         self.objs = sorted(self.focus)
         try:
-            return super().bad_objects()
+            bad = super().bad_objects()
         finally:
             self.objs = full
+        if bad:
+            self.focus = set(bad)                      # narrow: the objects still differing are the ones the next probe must rebuild
+        return bad
 
 
-def solve_fast(proof, rounds=3):
+
+def solve_fast(proof, rounds=6):
     kept, rejected = proof.solve()
     for _ in range(rounds):
         proof.focus = None
