@@ -645,11 +645,7 @@ void emitSubmitTypeHistDump(std::string_view trigger) {
                     indices += s_packets[ty.firstPacket + p].indexCount;
                 }
             }
-            std::fprintf(stderr,
-                "[SUBMIT_TYPEHIST v1] typeID=%zu name=%s count=%llu alphaClass=%u packets=%u verts=%u indices=%u\n",
-                t, (name && *name) ? name : "<empty>",
-                (unsigned long long)s_submitTypeHist[t],
-                aClass, packets, vertCount, indices);
+            mc2::fmt::print_err("[SUBMIT_TYPEHIST v1] typeID={:d} name={} count={:d} alphaClass={:d} packets={:d} verts={:d} indices={:d}\n", mc2::fmt::as_size(t), mc2::fmt::safe((name && *name) ? name : "<empty>"), mc2::fmt::as_u64((unsigned long long)s_submitTypeHist[t]), mc2::fmt::as_u32(aClass), mc2::fmt::as_u32(packets), mc2::fmt::as_u32(vertCount), mc2::fmt::as_u32(indices));
         }
     }
     std::fflush(stderr);
@@ -786,12 +782,7 @@ void accumulateMonotonicAndMaybeEmit(bool forceEmit) {
     // zero static-prop draws contain spotlight-tagged packets). Demoted, not
     // deleted, per the Debug Instrumentation Rule.
     if (s_spotlightRealTrace && periodic) {
-        std::fprintf(stderr,
-               "[SPOTLIGHT_REAL_TRACE v1] event=summary site=static_prop_batcher "
-               "frames=%llu window_spotlight_submits=%llu mono_spotlight_submits=%llu\n",
-               (unsigned long long)s_counters.frame_count,
-               (unsigned long long)s_spotlightReal_window,
-               (unsigned long long)s_spotlightReal_mono);
+        mc2::fmt::print_err("[SPOTLIGHT_REAL_TRACE v1] event=summary site=static_prop_batcher frames={:d} window_spotlight_submits={:d} mono_spotlight_submits={:d}\n", mc2::fmt::as_u64((unsigned long long)s_counters.frame_count), mc2::fmt::as_u64((unsigned long long)s_spotlightReal_window), mc2::fmt::as_u64((unsigned long long)s_spotlightReal_mono));
         std::fflush(stderr);
     }
     if (periodic) {

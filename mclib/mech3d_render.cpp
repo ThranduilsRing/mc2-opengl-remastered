@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in mech3d_internal.h.
 #include "mech3d_internal.h"
 #include "../RenderCore/axis_convert.h"
+#include "mc2fmt.h"
 
 // M2.5 (Q6 amendment 2): always-on MLR mech draw counter. Incremented
 // at the legacy mechShape->Render(true) fallback site (~line 2623) so
@@ -343,9 +344,7 @@ bool Mech3DAppearance::recalcBounds (void)
 						if (selectLOD != currentLOD)
 						{
 							if (s_mechLodTrace) {
-								std::fprintf(stderr,
-									"[MECHLOD v1] event=lod_swap actor=%p old_lod=%lu new_lod=%lu\n",
-									(void*)this, (unsigned long)currentLOD, (unsigned long)selectLOD);
+								mc2::fmt::print_err("[MECHLOD v1] event=lod_swap actor={:016X} old_lod={:d} new_lod={:d}\n", mc2::fmt::as_ptr((void*)this), mc2::fmt::as_u32((unsigned long)currentLOD), mc2::fmt::as_u32((unsigned long)selectLOD));
 							}
 							currentLOD = selectLOD;
 
@@ -432,7 +431,7 @@ long Mech3DAppearance::render (long depthFixup)
 		if (g_mechPreviewRenderDepth > 0 && mc2::gate::get<"MC2_LOG_PREVIEW">())
 		{
 			FILE* f = fopen("preview_debug.log","a");
-			if (f) { fprintf(f,"[PREVIEW] Mech3D::render EARLY-OUT mechShape=NULL (partial-import guard)\n"); fflush(f); fclose(f); }
+			if (f) { mc2::fmt::print(f, "[PREVIEW] Mech3D::render EARLY-OUT mechShape=NULL (partial-import guard)\n"); fflush(f); fclose(f); }
 		}
 		// DIAG (GPU-MECH-EQUIV recon): capture the null-shape invisible cohort
 		// (Cohort B — broken appearance type with mechShape==NULL early-outs here,
@@ -442,10 +441,7 @@ long Mech3DAppearance::render (long depthFixup)
 			static int s_nullEmits = 0;
 			if (s_mrtNull && g_mechPreviewRenderDepth == 0 && s_nullEmits < 20000) {
 				++s_nullEmits;
-				std::fprintf(stderr,
-					"[MECHRESTORE v1] event=nullshape frame=%u actor=%lu type=%p status=%d\n",
-					(unsigned)g_mc2FrameCounter, (unsigned long)actorHandle_,
-					(void*)mechType, (int)status);
+				mc2::fmt::print_err("[MECHRESTORE v1] event=nullshape frame={:d} actor={:d} type={:016X} status={:d}\n", mc2::fmt::as_u32((unsigned)g_mc2FrameCounter), mc2::fmt::as_u32((unsigned long)actorHandle_), mc2::fmt::as_ptr((void*)mechType), mc2::fmt::as_i32((int)status));
 			}
 		}
 		return NO_ERR;
@@ -475,7 +471,7 @@ long Mech3DAppearance::render (long depthFixup)
 		if (g_mechPreviewRenderDepth > 0 && mc2::gate::get<"MC2_LOG_PREVIEW">())
 		{
 			FILE* f = fopen("preview_debug.log","a");
-			if (f) { fprintf(f,"[PREVIEW] Mech3D::render preview shouldRender=1 visible=%d mechShape=%p currentLOD=%d\n",(int)visible,(void*)mechShape,(int)currentLOD); fflush(f); fclose(f); }
+			if (f) { mc2::fmt::print(f, "[PREVIEW] Mech3D::render preview shouldRender=1 visible={:d} mechShape={:016X} currentLOD={:d}\n", mc2::fmt::as_i32((int)visible), mc2::fmt::as_ptr((void*)mechShape), mc2::fmt::as_i32((int)currentLOD)); fflush(f); fclose(f); }
 		}
 		if (visible)
 		{
@@ -675,15 +671,7 @@ long Mech3DAppearance::render (long depthFixup)
 						// counter inline. Silence is what let this ship.
 						static std::set<const void*> s_loggedStaleMechTypes;
 						if (s_loggedStaleMechTypes.insert((const void*)mechType).second) {
-							fprintf(stderr,
-								"[LIGHTROW_FRESHNESS v1] event=mech_stale_row_detected "
-								"mechType=%p lod=%d staleIndex=%u cachedFrame=%u "
-								"currentFrame=%u stale_so_far=%llu "
-								"(prior-frame light slot; submit PROCEEDS with it -- "
-								"declining would not draw, see MECH-DECLINE-FIX-1)\n",
-								(void*)mechType, (int)currentLOD, cachedLI, cachedFR,
-								(unsigned)g_mc2FrameCounter,
-								(unsigned long long)s_mechStaleLightRowStale);
+							mc2::fmt::print_err("[LIGHTROW_FRESHNESS v1] event=mech_stale_row_detected mechType={:016X} lod={:d} staleIndex={:d} cachedFrame={:d} currentFrame={:d} stale_so_far={:d} (prior-frame light slot; submit PROCEEDS with it -- declining would not draw, see MECH-DECLINE-FIX-1)\n", mc2::fmt::as_ptr((void*)mechType), mc2::fmt::as_i32((int)currentLOD), mc2::fmt::as_u32(cachedLI), mc2::fmt::as_u32(cachedFR), mc2::fmt::as_u32((unsigned)g_mc2FrameCounter), mc2::fmt::as_u64((unsigned long long)s_mechStaleLightRowStale));
 							fflush(stderr);
 						}
 					}
@@ -697,14 +685,7 @@ long Mech3DAppearance::render (long depthFixup)
 						static bool s_loggedMechOob = false;
 						if (!s_loggedMechOob) {
 							s_loggedMechOob = true;
-							fprintf(stderr,
-								"[LIGHTROW_FRESHNESS v1] event=mech_row_out_of_range "
-								"mechType=%p index=%u liveRowCount=%u currentFrame=%u "
-								"(INVARIANT BREAK -- shader would read light[] out of "
-								"bounds; CLAMPED to slot 0)\n",
-								(void*)mechType, resolvedLI,
-								mcTextureManager->getLightStructCount(),
-								(unsigned)g_mc2FrameCounter);
+							mc2::fmt::print_err("[LIGHTROW_FRESHNESS v1] event=mech_row_out_of_range mechType={:016X} index={:d} liveRowCount={:d} currentFrame={:d} (INVARIANT BREAK -- shader would read light[] out of bounds; CLAMPED to slot 0)\n", mc2::fmt::as_ptr((void*)mechType), mc2::fmt::as_u32(resolvedLI), mc2::fmt::as_u32(mcTextureManager->getLightStructCount()), mc2::fmt::as_u32((unsigned)g_mc2FrameCounter));
 							fflush(stderr);
 						}
 						resolvedLI = 0u;
@@ -819,8 +800,7 @@ long Mech3DAppearance::render (long depthFixup)
 					static bool s_prevTraceEmitted = false;
 					if (s_prevTrace && !s_prevTraceEmitted) {
 						s_prevTraceEmitted = true;
-						std::printf("[MECH_PREVIEW v1] event=preview_render gpu_submit=0 cpu_draw=1 depth=%d\n",
-							g_mechPreviewRenderDepth);
+						mc2::fmt::print_out("[MECH_PREVIEW v1] event=preview_render gpu_submit=0 cpu_draw=1 depth={:d}\n", mc2::fmt::as_i32(g_mechPreviewRenderDepth));
 						std::fflush(stdout);
 					}
 				}
@@ -844,15 +824,7 @@ long Mech3DAppearance::render (long depthFixup)
 				const bool emitFail = (!gpuMechSubmitted && s_mechRestoreFailEmits < 20000);
 				if (s_mechRestoreTrace && (emitFail || s_mechRestoreEmits < 2000)) {
 					if (emitFail) ++s_mechRestoreFailEmits; else ++s_mechRestoreEmits;
-					std::fprintf(stderr,
-						"[MECHRESTORE v1] event=submit frame=%u actor=%lu type=%p lod=%d "
-						"submitted=%d cullSkip=%d lateReg=%d finalized=%d status=%d inView=%d\n",
-						(unsigned)g_mc2FrameCounter,
-						(unsigned long)actorHandle_, (void*)mechType, (int)currentLOD,
-						gpuMechSubmitted ? 1 : 0, mechGpuCullSkip ? 1 : 0,
-						GpuMechBatcher::instance().wasLastFailureLateRegistration() ? 1 : 0,
-						GpuMechBatcher::instance().isFinalized() ? 1 : 0, (int)status,
-						(int)inView);
+					mc2::fmt::print_err("[MECHRESTORE v1] event=submit frame={:d} actor={:d} type={:016X} lod={:d} submitted={:d} cullSkip={:d} lateReg={:d} finalized={:d} status={:d} inView={:d}\n", mc2::fmt::as_u32((unsigned)g_mc2FrameCounter), mc2::fmt::as_u32((unsigned long)actorHandle_), mc2::fmt::as_ptr((void*)mechType), mc2::fmt::as_i32((int)currentLOD), mc2::fmt::as_i32(gpuMechSubmitted ? 1 : 0), mc2::fmt::as_i32(mechGpuCullSkip ? 1 : 0), mc2::fmt::as_i32(GpuMechBatcher::instance().wasLastFailureLateRegistration() ? 1 : 0), mc2::fmt::as_i32(GpuMechBatcher::instance().isFinalized() ? 1 : 0), mc2::fmt::as_i32((int)status), mc2::fmt::as_i32((int)inView));
 				}
 			}
 

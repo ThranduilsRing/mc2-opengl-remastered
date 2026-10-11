@@ -12,6 +12,7 @@
 #include<cmath>    // VFX-ORIGINAL-RENDER-ANIM-FIELDS-1: std::atan2
 #include<cstdio>   // VFX-ORACLE diagnostics
 #include<vector>
+#include "mc2fmt.h"
 
 //------------------------------------------------------------------------------
 //
@@ -725,18 +726,7 @@ void gosFX::CardCloud::Draw(DrawInfo *info)
 						// VFX-AGE-LIFETIME-UPLOAD-1: age range (min/max after dead-slot skip)
 						const double ageLo = static_cast<double>(minAge);
 						const double ageHi = static_cast<double>(maxAge);
-						std::fprintf(stderr,
-							"[VFX_ORACLE v1] class=CardCloud FIRST_HARVEST spec=\"%s\" animated=%d active=%d harvested=%d alpha=[%.3f,%.3f] atlasColumns=%u frameRange=[%u,%u] sizeRange=[%.2f,%.2f] spinRange=[%.3f,%.3f] ageRange=[%.3f,%.3f]\n",
-							static_cast<const char*>(spec->m_name),
-							static_cast<int>(spec->m_animated),
-							m_activeParticleCount, harvested,
-							static_cast<double>(minA), static_cast<double>(maxA),
-							atlasColumns,
-							(atlasColumns > 1u && minFrame <= maxFrame) ? minFrame : 0u,
-							frameHi,
-							sizeXLo, sizeXHi,
-							spinLo, spinHi,
-							ageLo, ageHi);
+						mc2::fmt::print_err("[VFX_ORACLE v1] class=CardCloud FIRST_HARVEST spec=\"{}\" animated={:d} active={:d} harvested={:d} alpha=[{:.3f},{:.3f}] atlasColumns={:d} frameRange=[{:d},{:d}] sizeRange=[{:.2f},{:.2f}] spinRange=[{:.3f},{:.3f}] ageRange=[{:.3f},{:.3f}]\n", mc2::fmt::safe(static_cast<const char*>(spec->m_name)), mc2::fmt::as_i32(static_cast<int>(spec->m_animated)), mc2::fmt::as_i32(m_activeParticleCount), mc2::fmt::as_i32(harvested), static_cast<double>(minA), static_cast<double>(maxA), mc2::fmt::as_u32(atlasColumns), mc2::fmt::as_u32((atlasColumns > 1u && minFrame <= maxFrame) ? minFrame : 0u), mc2::fmt::as_u32(frameHi), sizeXLo, sizeXHi, spinLo, spinHi, ageLo, ageHi);
 						std::fflush(stderr);
 					}
 					static unsigned long long s_calls = 0, s_harvTotal = 0;
@@ -748,10 +738,7 @@ void gosFX::CardCloud::Draw(DrawInfo *info)
 						const double aHi   = (harvested > 0) ? static_cast<double>(maxA)   : 0.0;
 						const double ageLo = (harvested > 0) ? static_cast<double>(minAge) : 0.0;
 						const double ageHi = (harvested > 0) ? static_cast<double>(maxAge) : 0.0;
-						std::fprintf(stderr,
-							"[VFX_ORACLE v1] class=CardCloud calls=%llu active_this_call=%d harvested_this_call=%d emitted_this_call=%d harvestedTotal=%llu fallback=0 alpha_this_call=[%.3f,%.3f] age_this_call=[%.3f,%.3f]\n",
-							s_calls, m_activeParticleCount, harvested, harvested,
-							s_harvTotal, aLo, aHi, ageLo, ageHi);
+						mc2::fmt::print_err("[VFX_ORACLE v1] class=CardCloud calls={:d} active_this_call={:d} harvested_this_call={:d} emitted_this_call={:d} harvestedTotal={:d} fallback=0 alpha_this_call=[{:.3f},{:.3f}] age_this_call=[{:.3f},{:.3f}]\n", mc2::fmt::as_u64(s_calls), mc2::fmt::as_i32(m_activeParticleCount), mc2::fmt::as_i32(harvested), mc2::fmt::as_i32(harvested), mc2::fmt::as_u64(s_harvTotal), aLo, aHi, ageLo, ageHi);
 						std::fflush(stderr);
 					}
 				}

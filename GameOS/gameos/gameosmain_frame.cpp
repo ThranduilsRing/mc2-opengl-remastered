@@ -94,9 +94,7 @@ void frameEmitDrawPackets(RenderSnapshot& snap) {
                 // Warn once if finalizeGeometry hasn't run yet. Once-only to avoid per-frame log spam.
                 if (totalPackets == 0 && !s_finalizeWarnedOnce) {
                     s_finalizeWarnedOnce = true;
-                    std::fprintf(stderr,
-                        "[DRAW_PACKET v3] WARNING (once): totalPackets=0"
-                        " (finalizeGeometry not yet run, fallback kMaxPackets=4096)\n");
+                    mc2::fmt::print_err("[DRAW_PACKET v3] WARNING (once): totalPackets=0 (finalizeGeometry not yet run, fallback kMaxPackets=4096)\n");
                 }
 
                 // candidateCount = stats.emitted, not kMaxPackets: only the v2-emitted slots are
@@ -132,36 +130,13 @@ void frameEmitDrawPackets(RenderSnapshot& snap) {
                     && (stats.overflow
                         || stats.invalidRanges > 0
                         || stats.materialMismatches > 0)) {
-                std::fprintf(stderr,
-                    "[DRAW_PACKET v1] WARNING: overflow=%d invalidRanges=%u"
-                    " skippedRanges=%u old_expected=%u new_expected=%u"
-                    " materialMismatches=%u\n",
-                    stats.overflow ? 1 : 0,
-                    stats.invalidRanges,
-                    stats.skippedRanges,
-                    stats.oldExpected,
-                    stats.expectedPackets,
-                    stats.materialMismatches);
+                mc2::fmt::print_err("[DRAW_PACKET v1] WARNING: overflow={:d} invalidRanges={:d} skippedRanges={:d} old_expected={:d} new_expected={:d} materialMismatches={:d}\n", mc2::fmt::as_i32(stats.overflow ? 1 : 0), mc2::fmt::as_u32(stats.invalidRanges), mc2::fmt::as_u32(stats.skippedRanges), mc2::fmt::as_u32(stats.oldExpected), mc2::fmt::as_u32(stats.expectedPackets), mc2::fmt::as_u32(stats.materialMismatches));
             }
 
             // Full log line under MC2_RENDER_SNAPSHOT_LOG=1.
             static const bool s_logEnabled = mc2::gate::get<"MC2_RENDER_SNAPSHOT_LOG">();
             if (s_logEnabled) {
-                std::fprintf(stderr,
-                    "[DRAW_PACKET v1] frame=%llu emitted=%u expected=%u"
-                    " old_expected=%u distinct_types=%u static_props=%u"
-                    " invalid=%u skipped=%u mat_mismatch=%u overflow=%d retired=%u\n",
-                    static_cast<unsigned long long>(snap.frameIndex),
-                    stats.emitted,
-                    stats.expectedPackets,
-                    stats.oldExpected,
-                    stats.distinctTypes,
-                    static_cast<uint32_t>(snap.staticProps.size()),
-                    stats.invalidRanges,
-                    stats.skippedRanges,
-                    stats.materialMismatches,
-                    stats.overflow ? 1 : 0,
-                    snap.spBuildRetired);
+                mc2::fmt::print_err("[DRAW_PACKET v1] frame={:d} emitted={:d} expected={:d} old_expected={:d} distinct_types={:d} static_props={:d} invalid={:d} skipped={:d} mat_mismatch={:d} overflow={:d} retired={:d}\n", mc2::fmt::as_u64(static_cast<unsigned long long>(snap.frameIndex)), mc2::fmt::as_u32(stats.emitted), mc2::fmt::as_u32(stats.expectedPackets), mc2::fmt::as_u32(stats.oldExpected), mc2::fmt::as_u32(stats.distinctTypes), mc2::fmt::as_u32(static_cast<uint32_t>(snap.staticProps.size())), mc2::fmt::as_u32(stats.invalidRanges), mc2::fmt::as_u32(stats.skippedRanges), mc2::fmt::as_u32(stats.materialMismatches), mc2::fmt::as_i32(stats.overflow ? 1 : 0), mc2::fmt::as_u32(snap.spBuildRetired));
             }
 
             // Feed ImGui DrawPackets panel (read in GraphicsOptionsWindow::draw).
@@ -421,8 +396,7 @@ void frameScreenshotOracle() {
                         glReadBuffer(GL_BACK);
                         gos::screenshot::writeTGA(s_ssPath, ssW, ssH);
                         s_ssDone = true;
-                        fprintf(stderr, "[SCREENSHOT v1] frame=%u wrote %s (%dx%d, backbuffer)\n",
-                                g_mc2FrameCounter, s_ssPath, ssW, ssH);
+                        mc2::fmt::print_err("[SCREENSHOT v1] frame={:d} wrote {} ({:d}x{:d}, backbuffer)\n", mc2::fmt::as_u32(g_mc2FrameCounter), mc2::fmt::safe(s_ssPath), mc2::fmt::as_i32(ssW), mc2::fmt::as_i32(ssH));
                         fflush(stderr);
                     }
                 } else {
@@ -444,8 +418,7 @@ void frameScreenshotOracle() {
                     gos::screenshot::writeTGA(s_ssPath, ssW, ssH);
                     glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
                     s_ssDone = true;
-                    fprintf(stderr, "[SCREENSHOT v1] frame=%u wrote %s (%dx%d, sceneFBO)\n",
-                            g_mc2FrameCounter, s_ssPath, ssW, ssH);
+                    mc2::fmt::print_err("[SCREENSHOT v1] frame={:d} wrote {} ({:d}x{:d}, sceneFBO)\n", mc2::fmt::as_u32(g_mc2FrameCounter), mc2::fmt::safe(s_ssPath), mc2::fmt::as_i32(ssW), mc2::fmt::as_i32(ssH));
                     fflush(stderr);
                 }
                 }
@@ -888,8 +861,7 @@ void frameFrameCap(bool s_vsync_active, int s_fps_cap_mission, int s_fps_cap_men
             static bool s_capTraceLast = !inMission;
             static const bool s_capTrace = mc2::gate::get<"MC2_FRAMECAP_TRACE">();
             if (s_capTrace && s_capTraceLast != inMission) {
-                fprintf(stderr, "[FRAMECAP] cap switched: inMission=%d cap=%d\n",
-                        (int)inMission, cap);
+                mc2::fmt::print_err("[FRAMECAP] cap switched: inMission={:d} cap={:d}\n", mc2::fmt::as_i32((int)inMission), mc2::fmt::as_i32(cap));
                 fflush(stderr);
                 s_capTraceLast = inMission;
             }

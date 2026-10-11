@@ -1,6 +1,7 @@
 // gos_terrain_indirect: mine static VBO and texture array, decal static VBO and their dirty tracking.
 // Declared in the class headers; shared names in gos_terrain_indirect_internal.h.
 #include "gos_terrain_indirect_internal.h"
+#include "mc2fmt.h"
 
 
 // ---------------------------------------------------------------------------
@@ -82,9 +83,7 @@ void BuildMineTextureArray() {
     const DWORD blownSlot = TerrainQuad::blownTextureHandle;
     if (mineSlot == 0xffffffffu || blownSlot == 0xffffffffu) {
         if (IsTraceEnabled()) {
-            printf("[TERRAIN_INDIRECT v1] event=mine_atlas_skip "
-                   "reason=handles_not_loaded mine=%u blown=%u\n",
-                   (unsigned)mineSlot, (unsigned)blownSlot);
+            mc2::fmt::print_out("[TERRAIN_INDIRECT v1] event=mine_atlas_skip reason=handles_not_loaded mine={:d} blown={:d}\n", mc2::fmt::as_u32((unsigned)mineSlot), mc2::fmt::as_u32((unsigned)blownSlot));
             fflush(stdout);
         }
         return;
@@ -151,10 +150,7 @@ void BuildMineTextureArray() {
     MINE_GLPROBE("atlas_exit");
 
     if (IsTraceEnabled()) {
-        printf("[TERRAIN_INDIRECT v1] event=mine_atlas_built "
-               "mineSlot=%u blownSlot=%u gltex=%u dim=%dx%d\n",
-               (unsigned)mineSlot, (unsigned)blownSlot,
-               (unsigned)g_mineTextureArrayGL, kW, kH);
+        mc2::fmt::print_out("[TERRAIN_INDIRECT v1] event=mine_atlas_built mineSlot={:d} blownSlot={:d} gltex={:d} dim={:d}x{:d}\n", mc2::fmt::as_u32((unsigned)mineSlot), mc2::fmt::as_u32((unsigned)blownSlot), mc2::fmt::as_u32((unsigned)g_mineTextureArrayGL), mc2::fmt::as_i32(kW), mc2::fmt::as_i32(kH));
         fflush(stdout);
     }
 }
@@ -239,10 +235,7 @@ void BuildMineStaticVBO() {
     MINE_GLPROBE("vbo_after_bufferdata");
 
     if (IsTraceEnabled()) {
-        printf("[TERRAIN_INDIRECT v1] event=mine_vbo_built cells=%d verts=%d "
-               "vbo_gl=%u\n",
-               g_mineVertCount / 6, g_mineVertCount,
-               (unsigned)g_mineStaticVBO_GL);
+        mc2::fmt::print_out("[TERRAIN_INDIRECT v1] event=mine_vbo_built cells={:d} verts={:d} vbo_gl={:d}\n", mc2::fmt::as_i32(g_mineVertCount / 6), mc2::fmt::as_i32(g_mineVertCount), mc2::fmt::as_u32((unsigned)g_mineStaticVBO_GL));
         fflush(stdout);
     }
 }
@@ -438,8 +431,7 @@ void ResetDecalStaticVBO() {
     g_decalVertsCpu.clear();
 #endif
     if (IsTraceEnabled()) {
-        printf("[TERRAIN_OVERLAY v1] event=decal_vbo_reset "
-               "vbo_gl=%u kept=1\n", (unsigned)g_decalStaticVBO_GL);
+        mc2::fmt::print_out("[TERRAIN_OVERLAY v1] event=decal_vbo_reset vbo_gl={:d} kept=1\n", mc2::fmt::as_u32((unsigned)g_decalStaticVBO_GL));
         fflush(stdout);
     }
 }
@@ -503,13 +495,7 @@ void BuildDecalStaticVBO() {
             }
             for (auto& kv : agg) {
                 const unsigned long long k = kv.first;
-                printf("[TILE_CENSUS v1] terr=%ld tex=%lu ov=%d cement=%llu alpha=%llu "
-                       "n=%ld bbox=(%.0f,%.0f)-(%.0f,%.0f)\n",
-                       (long)(k >> 40), (unsigned long)((k >> 8) & 0xffffu),
-                       (int)((k >> 2) & 0x3f) - 1,
-                       (k >> 1) & 1ull, k & 1ull,
-                       kv.second.n, kv.second.minX, kv.second.minY,
-                       kv.second.maxX, kv.second.maxY);
+                mc2::fmt::print_out("[TILE_CENSUS v1] terr={:d} tex={:d} ov={:d} cement={:d} alpha={:d} n={:d} bbox=({:.0f},{:.0f})-({:.0f},{:.0f})\n", mc2::fmt::as_i32((long)(k >> 40)), mc2::fmt::as_u32((unsigned long)((k >> 8) & 0xffffu)), mc2::fmt::as_i32((int)((k >> 2) & 0x3f) - 1), mc2::fmt::as_u64((k >> 1) & 1ull), mc2::fmt::as_u64(k & 1ull), mc2::fmt::as_i32(kv.second.n), kv.second.minX, kv.second.minY, kv.second.maxX, kv.second.maxY);
             }
             fflush(stdout);
         }
@@ -543,14 +529,7 @@ void BuildDecalStaticVBO() {
                 Overlays ovT = INVALID_OVERLAY; DWORD ovO = 0;
                 Terrain::mapData->getOverlay(tileR, tileC, ovT, ovO);
                 if (ovT != INVALID_OVERLAY) {
-                    printf("[TERRAIN_OVERLAY v1] event=overlay_census tile=(%ld,%ld) "
-                           "world=(%.0f,%.0f) type=%d off=%lu cement=%d alpha=%d "
-                           "ovHandle=0x%08lx terrHandle=0x%08lx\n",
-                           tileR, tileC,
-                           (double)((tileC - half) * wupv), (double)((half - tileR) * wupv),
-                           (int)ovT, (unsigned long)ovO,
-                           e->isCement() ? 1 : 0, e->isAlpha() ? 1 : 0,
-                           (unsigned long)overlayHandle, (unsigned long)e->terrainHandle);
+                    mc2::fmt::print_out("[TERRAIN_OVERLAY v1] event=overlay_census tile=({:d},{:d}) world=({:.0f},{:.0f}) type={:d} off={:d} cement={:d} alpha={:d} ovHandle=0x{:08x} terrHandle=0x{:08x}\n", mc2::fmt::as_i32(tileR), mc2::fmt::as_i32(tileC), (double)((tileC - half) * wupv), (double)((half - tileR) * wupv), mc2::fmt::as_i32((int)ovT), mc2::fmt::as_u32((unsigned long)ovO), mc2::fmt::as_i32(e->isCement() ? 1 : 0), mc2::fmt::as_i32(e->isAlpha() ? 1 : 0), mc2::fmt::as_u32((unsigned long)overlayHandle), mc2::fmt::as_u32((unsigned long)e->terrainHandle));
                     fflush(stdout);
                 }
             }
@@ -718,20 +697,7 @@ void BuildDecalStaticVBO() {
                         (p0->elevation == p1->elevation) &&
                         (p1->elevation == p2->elevation) &&
                         (p2->elevation == p3->elevation);
-                    printf("[TERRAIN_OVERLAY v1] event=decal_corner_probe "
-                           "tileR=%ld tileC=%ld mapSide=%ld half=%ld "
-                           "wupv=%.6f elev_identical=%d "
-                           "c0=(%.3f,%.3f,%.5f) c1=(%.3f,%.3f,%.5f) "
-                           "c2=(%.3f,%.3f,%.5f) c3=(%.3f,%.3f,%.5f) "
-                           "elev_raw=(%.5f,%.5f,%.5f,%.5f)\n",
-                           tileR, tileC, (long)mapSide, (long)half,
-                           (double)wupv, elevIdentical ? 1 : 0,
-                           c[0].wx, c[0].wy, c[0].wz,
-                           c[1].wx, c[1].wy, c[1].wz,
-                           c[2].wx, c[2].wy, c[2].wz,
-                           c[3].wx, c[3].wy, c[3].wz,
-                           (double)p0->elevation, (double)p1->elevation,
-                           (double)p2->elevation, (double)p3->elevation);
+                    mc2::fmt::print_out("[TERRAIN_OVERLAY v1] event=decal_corner_probe tileR={:d} tileC={:d} mapSide={:d} half={:d} wupv={:.6f} elev_identical={:d} c0=({:.3f},{:.3f},{:.5f}) c1=({:.3f},{:.3f},{:.5f}) c2=({:.3f},{:.3f},{:.5f}) c3=({:.3f},{:.3f},{:.5f}) elev_raw=({:.5f},{:.5f},{:.5f},{:.5f})\n", mc2::fmt::as_i32(tileR), mc2::fmt::as_i32(tileC), mc2::fmt::as_i32((long)mapSide), mc2::fmt::as_i32((long)half), (double)wupv, mc2::fmt::as_i32(elevIdentical ? 1 : 0), c[0].wx, c[0].wy, c[0].wz, c[1].wx, c[1].wy, c[1].wz, c[2].wx, c[2].wy, c[2].wz, c[3].wx, c[3].wy, c[3].wz, (double)p0->elevation, (double)p1->elevation, (double)p2->elevation, (double)p3->elevation);
                     fflush(stdout);
                 }
             }
@@ -818,11 +784,7 @@ void BuildDecalStaticVBO() {
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     if (IsTraceEnabled()) {
-        printf("[TERRAIN_OVERLAY v1] event=decal_vbo_built tris=%d verts=%d "
-               "ranges=%d vbo_gl=%u\n",
-               g_decalVertCount / 3, g_decalVertCount,
-               (int)g_decalDrawRanges.size(),
-               (unsigned)g_decalStaticVBO_GL);
+        mc2::fmt::print_out("[TERRAIN_OVERLAY v1] event=decal_vbo_built tris={:d} verts={:d} ranges={:d} vbo_gl={:d}\n", mc2::fmt::as_i32(g_decalVertCount / 3), mc2::fmt::as_i32(g_decalVertCount), mc2::fmt::as_i32((int)g_decalDrawRanges.size()), mc2::fmt::as_u32((unsigned)g_decalStaticVBO_GL));
         fflush(stdout);
     }
 }
@@ -875,15 +837,13 @@ bool DrawDecalStatic() {
         if (IsTraceEnabled()) {
             static bool s_firstDraw = true;
             if (s_firstDraw) {
-                printf("[TERRAIN_OVERLAY v1] event=decal_first_draw tris=%d\n",
-                       g_decalVertCount / 3);
+                mc2::fmt::print_out("[TERRAIN_OVERLAY v1] event=decal_first_draw tris={:d}\n", mc2::fmt::as_i32(g_decalVertCount / 3));
                 fflush(stdout);
                 s_firstDraw = false;
             }
         }
     } else if (IsTraceEnabled()) {
-        printf("[TERRAIN_OVERLAY v1] event=decal_draw_fallback "
-               "reason=bridge_returned_false verts=%d\n", g_decalVertCount);
+        mc2::fmt::print_out("[TERRAIN_OVERLAY v1] event=decal_draw_fallback reason=bridge_returned_false verts={:d}\n", mc2::fmt::as_i32(g_decalVertCount));
         fflush(stdout);
     }
     return ok;

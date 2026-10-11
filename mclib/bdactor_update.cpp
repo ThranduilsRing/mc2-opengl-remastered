@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in bdactor_internal.h.
 #include "bdactor_internal.h"
 #include "../RenderCore/axis_convert.h"
+#include "mc2fmt.h"
 
 // T1.15 SpotLight_ illumination diagnostic — registration probe (bldg class).
 // Env-gated per Debug Instrumentation Rule. First-hit is always-on (one stderr
@@ -181,11 +182,7 @@ long BldgAppearance::update (bool animate)
 		if (s_spotDiagBldgEnabled) {
 			++s_spotDiagBldgCalls;
 			if ((s_spotDiagBldgCalls % 600) == 0) {
-				std::fprintf(stderr,
-					"[SPOT_DIAG v1] event=registration_summary class=bldg "
-					"calls=%lu actors_first_hit=%lu lights_registered=%lu overflows=%lu\n",
-					s_spotDiagBldgCalls, s_spotDiagBldgActors,
-					s_spotDiagBldgRegistered, s_spotDiagBldgOverflows);
+				mc2::fmt::print_err("[SPOT_DIAG v1] event=registration_summary class=bldg calls={:d} actors_first_hit={:d} lights_registered={:d} overflows={:d}\n", mc2::fmt::as_u32(s_spotDiagBldgCalls), mc2::fmt::as_u32(s_spotDiagBldgActors), mc2::fmt::as_u32(s_spotDiagBldgRegistered), mc2::fmt::as_u32(s_spotDiagBldgOverflows));
 				std::fflush(stderr);
 			}
 		}
@@ -222,10 +219,7 @@ long BldgAppearance::update (bool animate)
 					static unsigned long s_r = 0;
 					if (s_reach && (s_r++ % 600) < 6)
 					{
-						std::fprintf(stderr,
-							"[CONE_SPILL_REACH v1] bldg lights=%u k=%u nodeId=%ld haveAim=%d coneLen=%.1f\n",
-							(unsigned)spotlightLights_.size(), (unsigned)k,
-							(long)spotlightNodeIds_[k], haveAim ? 1 : 0, coneLen);
+						mc2::fmt::print_err("[CONE_SPILL_REACH v1] bldg lights={:d} k={:d} nodeId={:d} haveAim={:d} coneLen={:.1f}\n", mc2::fmt::as_u32((unsigned)spotlightLights_.size()), mc2::fmt::as_u32((unsigned)k), mc2::fmt::as_i32((long)spotlightNodeIds_[k]), mc2::fmt::as_i32(haveAim ? 1 : 0), coneLen);
 						std::fflush(stderr);
 					}
 				}
@@ -261,19 +255,7 @@ long BldgAppearance::update (bool animate)
 							if (land) oldP.z = land->getTerrainElevation(oldP);
 							const float dx = got ? (hit.x - oldP.x) : 0.0f;
 							const float dy = got ? (hit.y - oldP.y) : 0.0f;
-							std::fprintf(stderr,
-								"[CONE_SPILL v1] apex=(%.1f,%.1f,%.1f) aim=(%.3f,%.3f,%.3f) "
-								"coneLen=%.1f spill=%.1f clamped=%d hit=%d "
-								"old=(%.1f,%.1f,%.1f) new=(%.1f,%.1f,%.1f) horizErr=%.1f "
-								"coupling=%d poolKept=%d\n",
-								childPos.x, childPos.y, childPos.z,
-								aimW.x, aimW.y, aimW.z, coneLen, spill,
-								(spill > 200.0f) ? 1 : 0, got ? 1 : 0,
-								oldP.x, oldP.y, oldP.z,
-								got ? hit.x : 0.0f, got ? hit.y : 0.0f, got ? hit.z : 0.0f,
-								std::sqrt(dx * dx + dy * dy),
-								mc2_cone_glow::spill_coupling_enabled() ? 1 : 0,
-								(!mc2_cone_glow::spill_coupling_enabled() || got) ? 1 : 0);
+							mc2::fmt::print_err("[CONE_SPILL v1] apex=({:.1f},{:.1f},{:.1f}) aim=({:.3f},{:.3f},{:.3f}) coneLen={:.1f} spill={:.1f} clamped={:d} hit={:d} old=({:.1f},{:.1f},{:.1f}) new=({:.1f},{:.1f},{:.1f}) horizErr={:.1f} coupling={:d} poolKept={:d}\n", childPos.x, childPos.y, childPos.z, aimW.x, aimW.y, aimW.z, coneLen, spill, mc2::fmt::as_i32((spill > 200.0f) ? 1 : 0), mc2::fmt::as_i32(got ? 1 : 0), oldP.x, oldP.y, oldP.z, got ? hit.x : 0.0f, got ? hit.y : 0.0f, got ? hit.z : 0.0f, std::sqrt(dx * dx + dy * dy), mc2::fmt::as_i32(mc2_cone_glow::spill_coupling_enabled() ? 1 : 0), mc2::fmt::as_i32((!mc2_cone_glow::spill_coupling_enabled() || got) ? 1 : 0));
 							std::fflush(stderr);
 						}
 					}
@@ -681,12 +663,7 @@ long BldgAppearance::update (bool animate)
 		++s_fbDiagBranchCalls;
 		if (gpuEligible) ++s_fbDiagGpuEligible;
 		if ((s_fbDiagBranchCalls % 600) == 0) {
-			std::fprintf(stderr,
-				"[FULLBAKE_DIAG v1] calls=%lu gpuEligible=%lu else_hier=%lu "
-				"else_FULLBAKE=%lu dualemit_full=%lu ptspot_consumed=%lu ptspot_zerodir=%lu\n",
-				s_fbDiagBranchCalls, s_fbDiagGpuEligible, s_fbDiagElseHierOnly,
-				s_fbDiagElseFullBake, s_fbDiagDualEmitFull,
-				g_fbDiagPtSpotConsumed, g_fbDiagPtSpotZeroDir);
+			mc2::fmt::print_err("[FULLBAKE_DIAG v1] calls={:d} gpuEligible={:d} else_hier={:d} else_FULLBAKE={:d} dualemit_full={:d} ptspot_consumed={:d} ptspot_zerodir={:d}\n", mc2::fmt::as_u32(s_fbDiagBranchCalls), mc2::fmt::as_u32(s_fbDiagGpuEligible), mc2::fmt::as_u32(s_fbDiagElseHierOnly), mc2::fmt::as_u32(s_fbDiagElseFullBake), mc2::fmt::as_u32(s_fbDiagDualEmitFull), mc2::fmt::as_u32(g_fbDiagPtSpotConsumed), mc2::fmt::as_u32(g_fbDiagPtSpotZeroDir));
 			std::fflush(stderr);
 		}
 		}

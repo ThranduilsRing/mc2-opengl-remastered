@@ -681,11 +681,7 @@ void MissionInterfaceManager::update (void)
 				const bool idOK = (dxErr <= 2) && (dyErr <= 2);
 				// NEGATIVE CONTROL: what the OLD divide-by-drawable formula would give.
 				const long oldPx = (long)((cx / (logW * cfgs[ci].ratio)) * logW);
-				printf("[VK_PICK_PROBE] backend=%s res=%s canvas=%.0fx%.0f drawable=%dx%d "
-					   "identity raw=(%.0f,%.0f) pick=(%ld,%ld) err=(%ld,%ld) oldBugWouldGive=%ld -> %s\n",
-					   be ? be : "gl", cfgs[ci].label, logW, logH,
-					   Environment.drawableWidth, Environment.drawableHeight,
-					   cx, cy, px, py, dxErr, dyErr, oldPx, idOK ? "PASS" : "FAIL");
+				mc2::fmt::print_out("[VK_PICK_PROBE] backend={} res={} canvas={:.0f}x{:.0f} drawable={:d}x{:d} identity raw=({:.0f},{:.0f}) pick=({:d},{:d}) err=({:d},{:d}) oldBugWouldGive={:d} -> {}\n", mc2::fmt::safe(be ? be : "gl"), mc2::fmt::safe(cfgs[ci].label), logW, logH, mc2::fmt::as_i32(Environment.drawableWidth), mc2::fmt::as_i32(Environment.drawableHeight), cx, cy, mc2::fmt::as_i32(px), mc2::fmt::as_i32(py), mc2::fmt::as_i32(dxErr), mc2::fmt::as_i32(dyErr), mc2::fmt::as_i32(oldPx), mc2::fmt::safe(idOK ? "PASS" : "FAIL"));
 
 				// (B) object: aim at the mover's screen-bbox centre; the full pick
 				// (findObjectByMouse) must resolve back to that same mover.
@@ -695,15 +691,11 @@ void MissionInterfaceManager::update (void)
 					long ox = 0, oy = 0; readPick(tcx, tcy, ox, oy);
 					GameObjectPtr picked = ObjectManager->findObjectByMouse(ox, oy);
 					objOK = (picked == targetMover);
-					printf("[VK_PICK_PROBE] backend=%s res=%s object aimCenter=(%.0f,%.0f) "
-						   "pick=(%ld,%ld) target=%p picked=%p -> %s\n",
-						   be ? be : "gl", cfgs[ci].label, tcx, tcy, ox, oy,
-						   (void*)targetMover, (void*)picked, objOK ? "PASS" : "FAIL");
+					mc2::fmt::print_out("[VK_PICK_PROBE] backend={} res={} object aimCenter=({:.0f},{:.0f}) pick=({:d},{:d}) target={:016X} picked={:016X} -> {}\n", mc2::fmt::safe(be ? be : "gl"), mc2::fmt::safe(cfgs[ci].label), tcx, tcy, mc2::fmt::as_i32(ox), mc2::fmt::as_i32(oy), mc2::fmt::as_ptr((void*)targetMover), mc2::fmt::as_ptr((void*)picked), mc2::fmt::safe(objOK ? "PASS" : "FAIL"));
 				}
 				else
 				{
-					printf("[VK_PICK_PROBE] backend=%s res=%s object SKIP (no visible home mover w/ bbox)\n",
-						   be ? be : "gl", cfgs[ci].label);
+					mc2::fmt::print_out("[VK_PICK_PROBE] backend={} res={} object SKIP (no visible home mover w/ bbox)\n", mc2::fmt::safe(be ? be : "gl"), mc2::fmt::safe(cfgs[ci].label));
 				}
 				allOK = allOK && idOK && objOK;
 			}
@@ -711,7 +703,7 @@ void MissionInterfaceManager::update (void)
 			Environment.drawableWidth  = savedDW;
 			Environment.drawableHeight = savedDH;
 			gos_TestSetRawMouse(rawSaveX, rawSaveY);
-			printf("[VK_PICK_PROBE] VERDICT=%s\n", allOK ? "PASS" : "FAIL");
+			mc2::fmt::print_out("[VK_PICK_PROBE] VERDICT={}\n", mc2::fmt::safe(allOK ? "PASS" : "FAIL"));
 			fflush(stdout);
 		}
 	}
@@ -1093,10 +1085,7 @@ void MissionInterfaceManager::updateTarget( bool bGui)
 				s_atexitRegistered = true;
 				std::atexit([]() {
 					if (s_attempts && RenderWorld::IsGpuPickHoverTraceEnabled()) {
-						std::fprintf(stderr,
-							"[GPU_PICK_HOVER v1] session: attempts=%d mech_hits=%d "
-							"non_mech_fallback=%d cpu_fallback=%d\n",
-							s_attempts, s_mechHits, s_nonMech, s_cpuFallback);
+						mc2::fmt::print_err("[GPU_PICK_HOVER v1] session: attempts={:d} mech_hits={:d} non_mech_fallback={:d} cpu_fallback={:d}\n", mc2::fmt::as_i32(s_attempts), mc2::fmt::as_i32(s_mechHits), mc2::fmt::as_i32(s_nonMech), mc2::fmt::as_i32(s_cpuFallback));
 					}
 				});
 			}
@@ -1134,12 +1123,7 @@ void MissionInterfaceManager::updateTarget( bool bGui)
 					if (bm != nullptr) {
 						++s_mechHits;
 						if (s_hoverTrace) {
-							std::fprintf(stderr,
-								"[GPU_PICK_HOVER v1] hit kind=Mech handle=%u idx=%u "
-								"mech=%p screen=(%d,%d) gl=(%d,%d)\n",
-								res.handle.bits,
-								(unsigned)res.handle.index(),
-								(void*)bm, mouseX, mouseY, ctx.glX, ctx.glY);
+							mc2::fmt::print_err("[GPU_PICK_HOVER v1] hit kind=Mech handle={:d} idx={:d} mech={:016X} screen=({:d},{:d}) gl=({:d},{:d})\n", mc2::fmt::as_u32(res.handle.bits), mc2::fmt::as_u32((unsigned)res.handle.index()), mc2::fmt::as_ptr((void*)bm), mc2::fmt::as_i32(mouseX), mc2::fmt::as_i32(mouseY), mc2::fmt::as_i32(ctx.glX), mc2::fmt::as_i32(ctx.glY));
 						}
 						s_hoverLastMouseX   = mouseX;
 						s_hoverLastMouseY   = mouseY;
@@ -1152,10 +1136,7 @@ void MissionInterfaceManager::updateTarget( bool bGui)
 				} else if (res.isValid) {
 					++s_nonMech;
 					if (s_hoverTrace) {
-						std::fprintf(stderr,
-							"[GPU_PICK_HOVER v1] non_mech kind=%d screen=(%d,%d) "
-							"falling through to CPU\n",
-							(int)res.kind, mouseX, mouseY);
+						mc2::fmt::print_err("[GPU_PICK_HOVER v1] non_mech kind={:d} screen=({:d},{:d}) falling through to CPU\n", mc2::fmt::as_i32((int)res.kind), mc2::fmt::as_i32(mouseX), mc2::fmt::as_i32(mouseY));
 					}
 				}
 			}

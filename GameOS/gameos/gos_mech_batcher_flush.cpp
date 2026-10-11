@@ -282,9 +282,7 @@ static void traceLatch() {
         for (const auto& ps : s_pendingSubmits) {
             if (ps.desc.lightDataIndex > maxIdx) maxIdx = ps.desc.lightDataIndex;
         }
-        std::fprintf(stderr,
-            "[LIGHTSSBO v1] event=mech_lightidx_max submitted=%zu maxIdx=%u (unbounded SSBO)\n",
-            s_pendingSubmits.size(), maxIdx);
+        mc2::fmt::print_err("[LIGHTSSBO v1] event=mech_lightidx_max submitted={:d} maxIdx={:d} (unbounded SSBO)\n", mc2::fmt::as_size(s_pendingSubmits.size()), mc2::fmt::as_u32(maxIdx));
     }
 }
 
@@ -868,17 +866,7 @@ static void uploadProjectionUniforms() {
                         }
                     }
                 }
-                std::fprintf(stderr,
-                    "[MECH_VU_DIAG v1] frame=%d submits=%llu binding3_ubo=%d "
-                    "max_diff_vs_terrainMVP=%.6f ubo_row0=[%.3f %.3f %.3f %.3f] "
-                    "mvp_row0=[%.3f %.3f %.3f %.3f]\n",
-                    s_vuDiagFrame,
-                    (unsigned long long)s_lastFlushSubmitCount, b3, maxDiff,
-                    ubo[0], ubo[1], ubo[2], ubo[3],
-                    terrainMVP ? terrainMVP[0] : 0.0f,
-                    terrainMVP ? terrainMVP[1] : 0.0f,
-                    terrainMVP ? terrainMVP[2] : 0.0f,
-                    terrainMVP ? terrainMVP[3] : 0.0f);
+                mc2::fmt::print_err("[MECH_VU_DIAG v1] frame={:d} submits={:d} binding3_ubo={:d} max_diff_vs_terrainMVP={:.6f} ubo_row0=[{:.3f} {:.3f} {:.3f} {:.3f}] mvp_row0=[{:.3f} {:.3f} {:.3f} {:.3f}]\n", mc2::fmt::as_i32(s_vuDiagFrame), mc2::fmt::as_u64((unsigned long long)s_lastFlushSubmitCount), mc2::fmt::as_i32(b3), maxDiff, ubo[0], ubo[1], ubo[2], ubo[3], terrainMVP ? terrainMVP[0] : 0.0f, terrainMVP ? terrainMVP[1] : 0.0f, terrainMVP ? terrainMVP[2] : 0.0f, terrainMVP ? terrainMVP[3] : 0.0f);
             }
         }
     }

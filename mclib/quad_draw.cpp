@@ -1,6 +1,7 @@
 // TerrainQuad: TerrainQuad::draw: the SOLID / DRAWALPHA terrain and overlay submission, the M2d decal producer and its parity probe.
 // Declared in the class headers; shared names in quad_internal.h.
 #include "quad_internal.h"
+#include "mc2fmt.h"
 
 
 // Step 1b-1 (cpu-pack-retirement plan §2 A1): the M2 thin-record emit scope is
@@ -212,13 +213,7 @@ void TerrainQuad::drawPathSelect(QuadDrawFrame& f) {
 	        if (++s_quadsThisFrame >= 14000) {
 	            ++s_frameCounter;
 	            if (warmedUp) {
-	                fprintf(stderr,
-	                    "[THIN_DEBUG v1] event=path_mix frame=%u (post-warmup) fast=%u legacy=%u "
-	                    "fail_active=%u fail_thin=%u fail_ready=%u fail_over=%u "
-	                    "fail_handle0=%u fail_overlay=%u fail_water=%u\n",
-	                    s_framesPrinted, s_fast, s_legacy,
-	                    s_failActive, s_failThin, s_failReady, s_failOver,
-	                    s_failHandle, s_failOverlay, s_failWater);
+	                mc2::fmt::print_err("[THIN_DEBUG v1] event=path_mix frame={:d} (post-warmup) fast={:d} legacy={:d} fail_active={:d} fail_thin={:d} fail_ready={:d} fail_over={:d} fail_handle0={:d} fail_overlay={:d} fail_water={:d}\n", mc2::fmt::as_u32(s_framesPrinted), mc2::fmt::as_u32(s_fast), mc2::fmt::as_u32(s_legacy), mc2::fmt::as_u32(s_failActive), mc2::fmt::as_u32(s_failThin), mc2::fmt::as_u32(s_failReady), mc2::fmt::as_u32(s_failOver), mc2::fmt::as_u32(s_failHandle), mc2::fmt::as_u32(s_failOverlay), mc2::fmt::as_u32(s_failWater));
 	                fflush(stderr);
 	                s_fast = s_legacy = 0;
 	                s_failActive = s_failThin = s_failReady = s_failOver = 0;
@@ -292,11 +287,7 @@ void TerrainQuad::fastPzGate(QuadFastFrame& fp) {
 	    {
 	        if (!s_m2dPzParityArmLogged) {
 	            s_m2dPzParityArmLogged = true;
-	            fprintf(stderr,
-	                "[M2D_PZ_PARITY v1] event=armed mechanism=reproject+clipInfo_guard "
-	                "scope_assert=Renderer!=3 Environment.Renderer=%d emit_cap=%d "
-	                "note=probe_only_cv_pz_read_pre_step8b\n",
-	                (int)Environment.Renderer, s_m2dPzParityEmitCap);
+	            mc2::fmt::print_err("[M2D_PZ_PARITY v1] event=armed mechanism=reproject+clipInfo_guard scope_assert=Renderer!=3 Environment.Renderer={:d} emit_cap={:d} note=probe_only_cv_pz_read_pre_step8b\n", mc2::fmt::as_i32((int)Environment.Renderer), mc2::fmt::as_i32(s_m2dPzParityEmitCap));
 	            fflush(stderr);
 	        }
 	        bool pzc_old[4];
@@ -321,22 +312,12 @@ void TerrainQuad::fastPzGate(QuadFastFrame& fp) {
 	            ++s_m2dPzParityMismatch;
 	            if (s_m2dPzParityEmitted < s_m2dPzParityEmitCap) {
 	                ++s_m2dPzParityEmitted;
-	                fprintf(stderr,
-	                    "[M2D_PZ_PARITY v1] event=mismatch n=%d "
-	                    "pzc_new=%d%d%d%d pzc_old=%d%d%d%d "
-	                    "pzTri_new=%d%d pzTri_old=%d%d pzNeeded=%d uvMode=%d\n",
-	                    s_m2dPzParityEmitted,
-	                    pzc[0], pzc[1], pzc[2], pzc[3],
-	                    pzc_old[0], pzc_old[1], pzc_old[2], pzc_old[3],
-	                    pzTri1, pzTri2, pzTri1_old, pzTri2_old,
-	                    pzNeeded ? 1 : 0, (int)uvMode);
+	                mc2::fmt::print_err("[M2D_PZ_PARITY v1] event=mismatch n={:d} pzc_new={:d}{:d}{:d}{:d} pzc_old={:d}{:d}{:d}{:d} pzTri_new={:d}{:d} pzTri_old={:d}{:d} pzNeeded={:d} uvMode={:d}\n", mc2::fmt::as_i32(s_m2dPzParityEmitted), mc2::fmt::as_i32(pzc[0]), mc2::fmt::as_i32(pzc[1]), mc2::fmt::as_i32(pzc[2]), mc2::fmt::as_i32(pzc[3]), mc2::fmt::as_i32(pzc_old[0]), mc2::fmt::as_i32(pzc_old[1]), mc2::fmt::as_i32(pzc_old[2]), mc2::fmt::as_i32(pzc_old[3]), mc2::fmt::as_i32(pzTri1), mc2::fmt::as_i32(pzTri2), mc2::fmt::as_i32(pzTri1_old), mc2::fmt::as_i32(pzTri2_old), mc2::fmt::as_i32(pzNeeded ? 1 : 0), mc2::fmt::as_i32((int)uvMode));
 	                fflush(stderr);
 	            }
 	        }
 	        if ((s_m2dPzParityChecked % 14000) == 0) {
-	            fprintf(stderr,
-	                "[M2D_PZ_PARITY v1] event=summary checked=%d mismatches=%d\n",
-	                s_m2dPzParityChecked, s_m2dPzParityMismatch);
+	            mc2::fmt::print_err("[M2D_PZ_PARITY v1] event=summary checked={:d} mismatches={:d}\n", mc2::fmt::as_i32(s_m2dPzParityChecked), mc2::fmt::as_i32(s_m2dPzParityMismatch));
 	            fflush(stderr);
 	        }
 	    }
@@ -369,10 +350,7 @@ void TerrainQuad::fastThinEmit(QuadDrawFrame& f, QuadFastFrame& fp) {
 	        static bool s_loggedThinEmit = false;
 	        if (!s_loggedThinEmit) {
 	            s_loggedThinEmit = true;
-	            printf("[TERRAIN_INDIRECT v1] event=cpu_thinemit_demoted "
-	                   "path=quad_m2 armed=%d gate=IsFrameSolidArmed "
-	                   "note=overlay_producer_unconditional\n",
-	                   thinEmitArmed ? 1 : 0);
+	            mc2::fmt::print_out("[TERRAIN_INDIRECT v1] event=cpu_thinemit_demoted path=quad_m2 armed={:d} gate=IsFrameSolidArmed note=overlay_producer_unconditional\n", mc2::fmt::as_i32(thinEmitArmed ? 1 : 0));
 	            fflush(stdout);
 	        }
 	    }
@@ -615,15 +593,10 @@ void TerrainQuad::drawLegacyBottomRight(QuadDrawFrame& f) {
 					s_cwSum += cw;
 					if (s_first < 12) {
 						++s_first;
-						fprintf(stderr,
-							"[DEPTHBIAS_CALIB v2] event=sample pz=%.6f clipw=%.3f\n",
-							pz, cw);
+						mc2::fmt::print_err("[DEPTHBIAS_CALIB v2] event=sample pz={:.6f} clipw={:.3f}\n", pz, cw);
 					}
 					if ((++s_w % 4000) == 0) {
-						fprintf(stderr,
-							"[DEPTHBIAS_CALIB v2] event=window validN=%d "
-							"clipwMin=%.2f clipwAvg=%.2f clipwMax=%.2f\n",
-							s_w, s_cwMin, s_cwSum / (float)s_w, s_cwMax);
+						mc2::fmt::print_err("[DEPTHBIAS_CALIB v2] event=window validN={:d} clipwMin={:.2f} clipwAvg={:.2f} clipwMax={:.2f}\n", mc2::fmt::as_i32(s_w), s_cwMin, s_cwSum / (float)s_w, s_cwMax);
 						s_cwMin = 1e30f; s_cwMax = -1e30f; s_cwSum = 0.0f; s_w = 0;
 					}
 				}

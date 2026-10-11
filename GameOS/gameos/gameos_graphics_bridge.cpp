@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in gameos_graphics_material_internal.h.
 #include "gameos_graphics_material_internal.h"
 #include "mdi_submit.h"                            // MDI-SUBMISSION-SCAFFOLD-1: this piece issues indirect draws
+#include "mc2fmt.h"
 
 
 // TERRAIN-SPINE-0: free-function program-id accessors for the read-only
@@ -633,24 +634,10 @@ bool gos_terrain_bridge_drawIndirect(int cmdCount, unsigned int recipeSSBO,
                     // Probe 8b: read back compute-time matrix bytes for byte-level verification.
                     float dispatchFloats[4] = { 0, 0, 0, 0 };
                     gos_terrain_indirect_getDispatchMvpFloats4(dispatchFloats);
-                    fprintf(stderr,
-                        "[RING_MVP_DELTA v1] bridge_frame=%llu dispatch_frame=%llu dispatch_fp=0x%08x draw_fp=0x%08x count=%u "
-                        "disp_mvp[0..3]=[%.6f,%.6f,%.6f,%.6f] "
-                        "draw_mvp[0..3]=[%.6f,%.6f,%.6f,%.6f]\n",
-                        (unsigned long long)s_bridgeFrame,
-                        (unsigned long long)dispatchFrame, dispatchFp, drawFp, s_mvpMismatchCount,
-                        dispatchFloats[0], dispatchFloats[1], dispatchFloats[2], dispatchFloats[3],
-                        drawMvp[0], drawMvp[1], drawMvp[2], drawMvp[3]);
+                    mc2::fmt::print_err("[RING_MVP_DELTA v1] bridge_frame={:d} dispatch_frame={:d} dispatch_fp=0x{:08x} draw_fp=0x{:08x} count={:d} disp_mvp[0..3]=[{:.6f},{:.6f},{:.6f},{:.6f}] draw_mvp[0..3]=[{:.6f},{:.6f},{:.6f},{:.6f}]\n", mc2::fmt::as_u64((unsigned long long)s_bridgeFrame), mc2::fmt::as_u64((unsigned long long)dispatchFrame), mc2::fmt::as_u32(dispatchFp), mc2::fmt::as_u32(drawFp), mc2::fmt::as_u32(s_mvpMismatchCount), dispatchFloats[0], dispatchFloats[1], dispatchFloats[2], dispatchFloats[3], drawMvp[0], drawMvp[1], drawMvp[2], drawMvp[3]);
                     fflush(stderr);
                     if (s_probeSink2) {
-                        fprintf(s_probeSink2,
-                            "[RING_MVP_DELTA v1] bridge_frame=%llu dispatch_frame=%llu dispatch_fp=0x%08x draw_fp=0x%08x count=%u "
-                            "disp_mvp[0..3]=[%.6f,%.6f,%.6f,%.6f] "
-                            "draw_mvp[0..3]=[%.6f,%.6f,%.6f,%.6f]\n",
-                            (unsigned long long)s_bridgeFrame,
-                            (unsigned long long)dispatchFrame, dispatchFp, drawFp, s_mvpMismatchCount,
-                            dispatchFloats[0], dispatchFloats[1], dispatchFloats[2], dispatchFloats[3],
-                            drawMvp[0], drawMvp[1], drawMvp[2], drawMvp[3]);
+                        mc2::fmt::print(s_probeSink2, "[RING_MVP_DELTA v1] bridge_frame={:d} dispatch_frame={:d} dispatch_fp=0x{:08x} draw_fp=0x{:08x} count={:d} disp_mvp[0..3]=[{:.6f},{:.6f},{:.6f},{:.6f}] draw_mvp[0..3]=[{:.6f},{:.6f},{:.6f},{:.6f}]\n", mc2::fmt::as_u64((unsigned long long)s_bridgeFrame), mc2::fmt::as_u64((unsigned long long)dispatchFrame), mc2::fmt::as_u32(dispatchFp), mc2::fmt::as_u32(drawFp), mc2::fmt::as_u32(s_mvpMismatchCount), dispatchFloats[0], dispatchFloats[1], dispatchFloats[2], dispatchFloats[3], drawMvp[0], drawMvp[1], drawMvp[2], drawMvp[3]);
                         fflush(s_probeSink2);
                     }
                 }
@@ -669,12 +656,10 @@ bool gos_terrain_bridge_drawIndirect(int cmdCount, unsigned int recipeSSBO,
             static uint32_t s_cmdFieldsBad = 0;
             ++s_cmdFieldsBad;
             if (s_cmdFieldsBad == 1 || s_cmdFieldsBad % 50 == 0) {
-                fprintf(stderr, "[RING_CMDFIELDS v1] count=%u inst=%u first=%u base=%u bad_count=%u\n",
-                    cmdBlock[0], cmdBlock[1], cmdBlock[2], cmdBlock[3], s_cmdFieldsBad);
+                mc2::fmt::print_err("[RING_CMDFIELDS v1] count={:d} inst={:d} first={:d} base={:d} bad_count={:d}\n", mc2::fmt::as_u32(cmdBlock[0]), mc2::fmt::as_u32(cmdBlock[1]), mc2::fmt::as_u32(cmdBlock[2]), mc2::fmt::as_u32(cmdBlock[3]), mc2::fmt::as_u32(s_cmdFieldsBad));
                 fflush(stderr);
                 if (s_probeSink3) {
-                    fprintf(s_probeSink3, "[RING_CMDFIELDS v1] count=%u inst=%u first=%u base=%u bad_count=%u\n",
-                        cmdBlock[0], cmdBlock[1], cmdBlock[2], cmdBlock[3], s_cmdFieldsBad);
+                    mc2::fmt::print(s_probeSink3, "[RING_CMDFIELDS v1] count={:d} inst={:d} first={:d} base={:d} bad_count={:d}\n", mc2::fmt::as_u32(cmdBlock[0]), mc2::fmt::as_u32(cmdBlock[1]), mc2::fmt::as_u32(cmdBlock[2]), mc2::fmt::as_u32(cmdBlock[3]), mc2::fmt::as_u32(s_cmdFieldsBad));
                     fflush(s_probeSink3);
                 }
             }
@@ -783,9 +768,7 @@ void maskOrphanUploadCmd(GLenum target, GLsizeiptr bytes, const void* data) {
     if (maskUploadStatsEnabled()) {
         s_maskUploadStats.uploadBytes += (unsigned long long)bytes;
         ++s_maskUploadStats.orphans;
-        std::fprintf(stderr,
-            "[TERRAIN_MASK_UPLOAD_STATS] orphan+upload bytes=%lld orphans=%llu totalBytes=%llu\n",
-            (long long)bytes, s_maskUploadStats.orphans, s_maskUploadStats.uploadBytes);
+        mc2::fmt::print_err("[TERRAIN_MASK_UPLOAD_STATS] orphan+upload bytes={:d} orphans={:d} totalBytes={:d}\n", mc2::fmt::as_i64((long long)bytes), mc2::fmt::as_u64(s_maskUploadStats.orphans), mc2::fmt::as_u64(s_maskUploadStats.uploadBytes));
         std::fflush(stderr);
     }
 }

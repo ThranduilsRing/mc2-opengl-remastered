@@ -1,6 +1,7 @@
 // gosPostProcess: box decals, HZB reduce, SSAO, screen-space shadow, cloud shadow, shoreline, edge fog and fog-OOB passes.
 // Declared in the class headers; shared names in gos_postprocess_internal.h.
 #include "gos_postprocess_internal.h"
+#include "mc2fmt.h"
 
 
 // BT2018-BOX-DECAL-1: unit cube [-0.5,0.5]^3, 8 corners / 36 indices (12 tris).
@@ -192,7 +193,7 @@ void gosPostProcess::runHzbReduce()
         GLenum st = glCheckFramebufferStatus(GL_FRAMEBUFFER);
         if (st != GL_FRAMEBUFFER_COMPLETE) {
             if (hzbBuildCount_ == 0)
-                fprintf(stderr, "[HZB_BUILD v1] FBO incomplete at level %d (0x%x)\n", level, st);
+                mc2::fmt::print_err("[HZB_BUILD v1] FBO incomplete at level {:d} (0x{:x})\n", mc2::fmt::as_i32(level), mc2::fmt::as_u32(st));
             ok = false;
             break;
         }
@@ -237,8 +238,7 @@ void gosPostProcess::runHzbReduce()
     if (ok) {
         ++hzbBuildCount_;
         if (hzbBuildCount_ <= 3 || (hzbBuildCount_ % 600) == 0)
-            fprintf(stderr, "[HZB_BUILD v1] built pyramid %dx%d mips=%d (count=%llu)\n",
-                    hzbW_, hzbH_, hzbMipCount_, (unsigned long long)hzbBuildCount_);
+            mc2::fmt::print_err("[HZB_BUILD v1] built pyramid {:d}x{:d} mips={:d} (count={:d})\n", mc2::fmt::as_i32(hzbW_), mc2::fmt::as_i32(hzbH_), mc2::fmt::as_i32(hzbMipCount_), mc2::fmt::as_u64((unsigned long long)hzbBuildCount_));
     }
 }
 
@@ -513,9 +513,7 @@ void gosPostProcess::runScreenShadow()
         glEndQuery(GL_ANY_SAMPLES_PASSED);
         GLuint anySamples = 0;
         glGetQueryObjectuiv(screenShadowCanaryQuery, GL_QUERY_RESULT, &anySamples);
-        std::fprintf(stderr,
-            "[VK_SCREENSHADOW_GL_CANARY v1] any_samples=%u sceneFBO=%u csm=%d debug=%d\n",
-            (unsigned)anySamples, (unsigned)sceneFBO_, csmActive ? 1 : 0, screenShadowDebug_);
+        mc2::fmt::print_err("[VK_SCREENSHADOW_GL_CANARY v1] any_samples={:d} sceneFBO={:d} csm={:d} debug={:d}\n", mc2::fmt::as_u32((unsigned)anySamples), mc2::fmt::as_u32((unsigned)sceneFBO_), mc2::fmt::as_i32(csmActive ? 1 : 0), mc2::fmt::as_i32(screenShadowDebug_));
         glDeleteQueries(1, &screenShadowCanaryQuery);
     }
 

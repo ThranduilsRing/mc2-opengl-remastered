@@ -140,9 +140,7 @@ long Terrain::update (void)
 			if (TerrainRuntime::sampleMaterialId(pos)     != legMat)   ++mismMat;
 			if (TerrainRuntime::sampleWaterLevel(pos)     != legacyWater) ++mismWater;
 		}
-		printf("[TERRAIN_RUNTIME v1] parity self-test: side=%ld samples=%d "
-		       "mismatch{gameplay=%d visual=%d material=%d water=%d}\n",
-		       realVerticesMapSide, samples, mismGame, mismVis, mismMat, mismWater);
+		mc2::fmt::print_out("[TERRAIN_RUNTIME v1] parity self-test: side={:d} samples={:d} mismatch{{gameplay={:d} visual={:d} material={:d} water={:d}}}\n", mc2::fmt::as_i32(realVerticesMapSide), mc2::fmt::as_i32(samples), mc2::fmt::as_i32(mismGame), mc2::fmt::as_i32(mismVis), mc2::fmt::as_i32(mismMat), mc2::fmt::as_i32(mismWater));
 		fflush(stdout);
 		} // gate-enabled
 	} // one-shot

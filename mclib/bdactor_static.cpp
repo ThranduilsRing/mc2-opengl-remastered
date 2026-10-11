@@ -155,19 +155,13 @@ void BldgAppearance::registerStatic() {
 	// Full MeshCapability bits come once the engine reads the cooked manifest.json (later
 	// integration); for now we log what the seam knows. Schema-grep: \[RENDER_PATH v[0-9]+\].
 	if (mc2::gate::get<"MC2_RENDER_PATH">()) {
-		fprintf(stderr, "[RENDER_PATH v1] key=staticprop:%s isOverride=%d path=%s pools=%s\n",
-		        appearType->name, _regIsOverride ? 1 : 0,
-		        _regIsOverride ? "override_multidraw" : "legacy_static",
-		        gos_StaticPropLegacyInstancePools() ? "legacy" : "skipped");
+		mc2::fmt::print_err("[RENDER_PATH v1] key=staticprop:{} isOverride={:d} path={} pools={}\n", mc2::fmt::safe(appearType->name), mc2::fmt::as_i32(_regIsOverride ? 1 : 0), mc2::fmt::safe(_regIsOverride ? "override_multidraw" : "legacy_static"), mc2::fmt::safe(gos_StaticPropLegacyInstancePools() ? "legacy" : "skipped"));
 		fflush(stderr);
 	}
 
 	if (mc2::gate::get<"MC2_MODOVERRIDE_TRACE">() && appearType->bldgRenderShape) {
 		TG_TypeMultiShape* rs = appearType->bldgRenderShape;
-		fprintf(stderr, "[MODOVERRIDE_TRACE] bldg registerStatic name=%s renderShape=%p numShapes=%ld leaf0=%p leaf1=%p finalized_guess(typeNodes_above)\n",
-		        appearType->name, (void*)rs, rs->GetNumShapes(),
-		        rs->GetNumShapes() > 0 ? (void*)rs->GetTypeNode(0) : nullptr,
-		        rs->GetNumShapes() > 1 ? (void*)rs->GetTypeNode(1) : nullptr);
+		mc2::fmt::print_err("[MODOVERRIDE_TRACE] bldg registerStatic name={} renderShape={:016X} numShapes={:d} leaf0={:016X} leaf1={:016X} finalized_guess(typeNodes_above)\n", mc2::fmt::safe(appearType->name), mc2::fmt::as_ptr((void*)rs), mc2::fmt::as_i32(rs->GetNumShapes()), mc2::fmt::as_ptr(rs->GetNumShapes() > 0 ? (void*)rs->GetTypeNode(0) : nullptr), mc2::fmt::as_ptr(rs->GetNumShapes() > 1 ? (void*)rs->GetTypeNode(1) : nullptr));
 		fflush(stderr);
 	}
 
@@ -273,11 +267,7 @@ void BldgAppearance::registerStatic() {
 		// 'Spotlight_TurretCon') DO get isSpot=1 and ARE skipped below — the intended
 		// GHOST-CONE-RECIPE-SKIP-1 target. See .claude/DEFERRED-BATCH-8C-STATUS.md.
 		if (mc2::gate::get<"MC2_CONE_LEAF_DUMP">()) {
-			fprintf(stderr, "[CONE_LEAF] type=%s leaf=%d node='%s' isSpot=%d isWin=%d lightsOut=%d\n",
-			        appearType ? appearType->name : "?", i,
-			        child->getNodeName() ? child->getNodeName() : "(null)",
-			        (int)child->GetIsSpotlight(), (int)child->GetIsWindow(),
-			        (int)child->GetLightsOut());
+			mc2::fmt::print_err("[CONE_LEAF] type={} leaf={:d} node='{}' isSpot={:d} isWin={:d} lightsOut={:d}\n", mc2::fmt::safe(appearType ? appearType->name : "?"), mc2::fmt::as_i32(i), mc2::fmt::safe(child->getNodeName() ? child->getNodeName() : "(null)"), mc2::fmt::as_i32((int)child->GetIsSpotlight()), mc2::fmt::as_i32((int)child->GetIsWindow()), mc2::fmt::as_i32((int)child->GetLightsOut()));
 			fflush(stderr);
 		}
 		// GHOST-CONE-RECIPE-SKIP-1 (batch-7 items 4+5): SpotLight_ cone leaves
@@ -394,12 +384,7 @@ void BldgAppearance::registerStatic() {
 		static int s_loggedCount = 0;
 		if (s_trace && s_loggedCount < 80) {
 			++s_loggedCount;
-			fprintf(stderr,
-				"[BLDG_REG_DIAG v1] sample=first80 appearType=%s numShapes=%d total=%d processMe_skip=%d "
-				"helper_skip=%d unreg_skip=%d added=%d\n",
-				(appearType ? appearType->name : "<null>"),
-				numShapes, diag_total, diag_skip_processMe, diag_skip_helper,
-				diag_skip_unreg, diag_added);
+			mc2::fmt::print_err("[BLDG_REG_DIAG v1] sample=first80 appearType={} numShapes={:d} total={:d} processMe_skip={:d} helper_skip={:d} unreg_skip={:d} added={:d}\n", mc2::fmt::safe((appearType ? appearType->name : "<null>")), mc2::fmt::as_i32(numShapes), mc2::fmt::as_i32(diag_total), mc2::fmt::as_i32(diag_skip_processMe), mc2::fmt::as_i32(diag_skip_helper), mc2::fmt::as_i32(diag_skip_unreg), mc2::fmt::as_i32(diag_added));
 			fflush(stderr);
 		}
 		(void)diag_total; (void)diag_skip_processMe; (void)diag_skip_helper;
@@ -895,9 +880,7 @@ void bldgTriggerStaticShadowRebakeIfArmed(bool wasRegistered, int32_t recipeInde
 	static const bool s_rebakeTrace = mc2::gate::is<"MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE", "2">();
 	gos_ResetStaticLightMatrix();
 	if (s_rebakeTrace) {
-		fprintf(stderr,
-			"[SHADOW_STATIC_BLDG_REBAKE v1] event=%s recipeIndex=%d\n",
-			reason, recipeIndex);
+		mc2::fmt::print_err("[SHADOW_STATIC_BLDG_REBAKE v1] event={} recipeIndex={:d}\n", mc2::fmt::safe(reason), mc2::fmt::as_i32(recipeIndex));
 		fflush(stderr);
 	}
 }

@@ -3,6 +3,7 @@
 #include "gos_static_prop_batcher_internal.h"
 #include "mdi_submit.h"                          // MDI-SUBMISSION-SCAFFOLD-1: flush issues the indirect draws
 #include "gos_static_prop_flush_frame.h"
+#include "mc2fmt.h"
 
 
 // Run the one-time DrawPacket v5 gate-arm checks.
@@ -18,18 +19,14 @@ void GpuStaticPropBatcher::armV5() {
             // never allocated and s_baseInstanceByCmdMap stays nullptr.
             // Check here (not per-slot) to avoid 753x base_instance_missing masking root cause.
             if (s_baseInstanceByCmdMap == nullptr) {
-                std::fprintf(stderr,
-                    "[DRAW_PACKET_V5] event=disarmed reason=legacy_pool_no_baseinst_map\n");
+                mc2::fmt::print_err("[DRAW_PACKET_V5] event=disarmed reason=legacy_pool_no_baseinst_map\n");
                 disarm = true;
             }
 
             // Precondition 2: u_drawIDBase uniform location must be valid.
             // If -1, glUniform1i is a GL no-op and the shader reads the wrong PerDrawEntry.
             if (!disarm && s_locsCoalesce.drawIDBase < 0) {
-                std::fprintf(stderr,
-                    "[DRAW_PACKET_V5] WARNING event=disarmed reason=drawid_loc_missing"
-                    " loc=%d\n",
-                    static_cast<int>(s_locsCoalesce.drawIDBase));
+                mc2::fmt::print_err("[DRAW_PACKET_V5] WARNING event=disarmed reason=drawid_loc_missing loc={:d}\n", mc2::fmt::as_i32(static_cast<int>(s_locsCoalesce.drawIDBase)));
                 disarm = true;
             }
 
@@ -37,12 +34,7 @@ void GpuStaticPropBatcher::armV5() {
                 s_v5Disarmed = true;
             } else {
                 const uint32_t totalSlots = s_alphaOffCmdCount + s_alphaOnCmdCount;
-                std::fprintf(stderr,
-                    "[DRAW_PACKET_V5] event=armed slots=%u ext_supported=%d"
-                    " drawid_loc=%d\n",
-                    totalSlots,
-                    static_cast<int>(s_baseInstanceSupported),
-                    static_cast<int>(s_locsCoalesce.drawIDBase));
+                mc2::fmt::print_err("[DRAW_PACKET_V5] event=armed slots={:d} ext_supported={:d} drawid_loc={:d}\n", mc2::fmt::as_u32(totalSlots), mc2::fmt::as_i32(static_cast<int>(s_baseInstanceSupported)), mc2::fmt::as_i32(static_cast<int>(s_locsCoalesce.drawIDBase)));
             }
         }
 }
@@ -88,16 +80,10 @@ void GpuStaticPropBatcher::armV6() {
 
             if (disarm) {
                 s_v6Disarmed = true;
-                std::fprintf(stderr,
-                    "[DRAW_PACKET_V6] event=disarmed reason=%s\n",
-                    disarmReason);
+                mc2::fmt::print_err("[DRAW_PACKET_V6] event=disarmed reason={}\n", mc2::fmt::safe(disarmReason));
             } else {
                 const uint32_t totalSlots = s_alphaOffCmdCount + s_alphaOnCmdCount;
-                std::fprintf(stderr,
-                    "[DRAW_PACKET_V6] event=armed slots=%u alpha_off=%u alpha_on=%u"
-                    " ext_supported=1 drawid_loc=%d default=1\n",
-                    totalSlots, s_alphaOffCmdCount, s_alphaOnCmdCount,
-                    static_cast<int>(s_locsCoalesce.drawIDBase));
+                mc2::fmt::print_err("[DRAW_PACKET_V6] event=armed slots={:d} alpha_off={:d} alpha_on={:d} ext_supported=1 drawid_loc={:d} default=1\n", mc2::fmt::as_u32(totalSlots), mc2::fmt::as_u32(s_alphaOffCmdCount), mc2::fmt::as_u32(s_alphaOnCmdCount), mc2::fmt::as_i32(static_cast<int>(s_locsCoalesce.drawIDBase)));
             }
         }
 }
@@ -546,12 +532,7 @@ void GpuStaticPropBatcher::dispatchV6(const RenderSnapshot* snap, std::vector<Re
                     m.baseInstance);
 
                 if (s_v6TraceEnabled)
-                    std::fprintf(stderr,
-                        "[DRAW_PACKET_V6] slot=%u pkt=%u type=%u group=%u"
-                        " inst=%u base=%u drawID=%u first=%u count=%u baseV=%d\n",
-                        m.sortedSlot, m.globalPacketIdx, m.typeId, m.group,
-                        m.instanceCount, m.baseInstance, m.drawIDBase,
-                        dp.firstIndex, dp.indexCount, m.baseVertex);
+                    mc2::fmt::print_err("[DRAW_PACKET_V6] slot={:d} pkt={:d} type={:d} group={:d} inst={:d} base={:d} drawID={:d} first={:d} count={:d} baseV={:d}\n", mc2::fmt::as_u32(m.sortedSlot), mc2::fmt::as_u32(m.globalPacketIdx), mc2::fmt::as_u32(m.typeId), mc2::fmt::as_u32(m.group), mc2::fmt::as_u32(m.instanceCount), mc2::fmt::as_u32(m.baseInstance), mc2::fmt::as_u32(m.drawIDBase), mc2::fmt::as_u32(dp.firstIndex), mc2::fmt::as_u32(dp.indexCount), mc2::fmt::as_i32(m.baseVertex));
 
                 ++s_v6FrameDrawsIssued;
             }
@@ -565,9 +546,7 @@ void GpuStaticPropBatcher::dispatchV6(const RenderSnapshot* snap, std::vector<Re
                 const GLenum err = glGetError();
                 if (err != GL_NO_ERROR) {
                     ++s_v6FrameGlErrors;
-                    std::fprintf(stderr,
-                        "[DRAW_PACKET_V6] event=gl_error frame=%u err=0x%x\n",
-                        s_v6TotalFrameCount, static_cast<unsigned>(err));
+                    mc2::fmt::print_err("[DRAW_PACKET_V6] event=gl_error frame={:d} err=0x{:x}\n", mc2::fmt::as_u32(s_v6TotalFrameCount), mc2::fmt::as_u32(static_cast<unsigned>(err)));
                 }
             }
 
@@ -580,15 +559,7 @@ void GpuStaticPropBatcher::dispatchV6(const RenderSnapshot* snap, std::vector<Re
                                 s_v6FrameGlErrors            == 0u &&
                                 (s_v6FrameDrawsIssued + s_v6FrameZeroInstSkips) == slotsConsidered)
                                ? 1 : 0;
-                std::fprintf(stderr,
-                    "[DRAW_PACKET_V6] frame=%u event=dispatch_summary"
-                    " slots_considered=%u draws_issued=%u zero_instance_skips=%u"
-                    " sorted_oob=%u packet_oob=%u type_oob=%u lockstep_violations=%u"
-                    " gl_errors=%u ok=%d\n",
-                    s_v6TotalFrameCount, slotsConsidered,
-                    s_v6FrameDrawsIssued, s_v6FrameZeroInstSkips,
-                    s_v6FrameSortedOob, s_v6FramePacketOob, s_v6FrameTypeOob,
-                    s_v6FrameLockstepViolations, s_v6FrameGlErrors, ok);
+                mc2::fmt::print_err("[DRAW_PACKET_V6] frame={:d} event=dispatch_summary slots_considered={:d} draws_issued={:d} zero_instance_skips={:d} sorted_oob={:d} packet_oob={:d} type_oob={:d} lockstep_violations={:d} gl_errors={:d} ok={:d}\n", mc2::fmt::as_u32(s_v6TotalFrameCount), mc2::fmt::as_u32(slotsConsidered), mc2::fmt::as_u32(s_v6FrameDrawsIssued), mc2::fmt::as_u32(s_v6FrameZeroInstSkips), mc2::fmt::as_u32(s_v6FrameSortedOob), mc2::fmt::as_u32(s_v6FramePacketOob), mc2::fmt::as_u32(s_v6FrameTypeOob), mc2::fmt::as_u32(s_v6FrameLockstepViolations), mc2::fmt::as_u32(s_v6FrameGlErrors), mc2::fmt::as_i32(ok));
                 if (s_snapshotBuildEnabled) {
                     std::fprintf(stderr,
                         "[RENDER_SNAPSHOT v3] frame=%u"
@@ -652,7 +623,7 @@ void GpuStaticPropBatcher::dispatchV5(StaticPropFlushFrame& f) {
             for (uint32_t i = 0u; i < totalCmds; ++i) {
                 if (i >= static_cast<uint32_t>(s_sortedPacketOrder.size())) {
                     if (s_v5TraceEnabled)
-                        std::fprintf(stderr, "[DRAW_PACKET_V5] event=skip slot=%u reason=sorted_oob\n", i);
+                        mc2::fmt::print_err("[DRAW_PACKET_V5] event=skip slot={:d} reason=sorted_oob\n", mc2::fmt::as_u32(i));
                     ++s_v5FrameSortedOob;
                     continue;
                 }
@@ -660,7 +631,7 @@ void GpuStaticPropBatcher::dispatchV5(StaticPropFlushFrame& f) {
 
                 if (globalPktIdx >= static_cast<uint32_t>(s_packets.size())) {
                     if (s_v5TraceEnabled)
-                        std::fprintf(stderr, "[DRAW_PACKET_V5] event=skip slot=%u reason=packet_oob\n", i);
+                        mc2::fmt::print_err("[DRAW_PACKET_V5] event=skip slot={:d} reason=packet_oob\n", mc2::fmt::as_u32(i));
                     ++s_v5FramePacketOob;
                     continue;
                 }
@@ -669,7 +640,7 @@ void GpuStaticPropBatcher::dispatchV5(StaticPropFlushFrame& f) {
                 // Genuine OOB: owningTypeID outside the static type table.
                 if (pkt.owningTypeID >= static_cast<uint32_t>(s_types.size())) {
                     if (s_v5TraceEnabled)
-                        std::fprintf(stderr, "[DRAW_PACKET_V5] event=skip slot=%u reason=type_oob\n", i);
+                        mc2::fmt::print_err("[DRAW_PACKET_V5] event=skip slot={:d} reason=type_oob\n", mc2::fmt::as_u32(i));
                     ++s_v5FrameTypeOob;
                     continue;
                 }
@@ -681,7 +652,7 @@ void GpuStaticPropBatcher::dispatchV5(StaticPropFlushFrame& f) {
 
                 if (instanceCount == 0u) {
                     if (s_v5TraceEnabled)
-                        std::fprintf(stderr, "[DRAW_PACKET_V5] event=skip slot=%u reason=zero_inst\n", i);
+                        mc2::fmt::print_err("[DRAW_PACKET_V5] event=skip slot={:d} reason=zero_inst\n", mc2::fmt::as_u32(i));
                     ++s_v5FrameZeroInstSkips;
                     continue;
                 }
@@ -727,9 +698,7 @@ void GpuStaticPropBatcher::dispatchV5(StaticPropFlushFrame& f) {
                     baseInstance);
 
                 if (s_v5TraceEnabled)
-                    std::fprintf(stderr,
-                        "[DRAW_PACKET_V5] slot=%u type=%u inst=%u base_inst=%u draw_id_base=%u\n",
-                        i, pkt.owningTypeID, instanceCount, static_cast<unsigned>(baseInstance), i);
+                    mc2::fmt::print_err("[DRAW_PACKET_V5] slot={:d} type={:d} inst={:d} base_inst={:d} draw_id_base={:d}\n", mc2::fmt::as_u32(i), mc2::fmt::as_u32(pkt.owningTypeID), mc2::fmt::as_u32(instanceCount), mc2::fmt::as_u32(static_cast<unsigned>(baseInstance)), mc2::fmt::as_u32(i));
 
                 ++s_v5FrameDrawsIssued;
             }
@@ -742,9 +711,7 @@ void GpuStaticPropBatcher::dispatchV5(StaticPropFlushFrame& f) {
                 const GLenum err = glGetError();
                 if (err != GL_NO_ERROR) {
                     ++s_v5FrameGlErrors;
-                    std::fprintf(stderr,
-                        "[DRAW_PACKET_V5] event=gl_error frame=%u err=0x%x\n",
-                        s_v5TotalFrameCount, static_cast<unsigned>(err));
+                    mc2::fmt::print_err("[DRAW_PACKET_V5] event=gl_error frame={:d} err=0x{:x}\n", mc2::fmt::as_u32(s_v5TotalFrameCount), mc2::fmt::as_u32(static_cast<unsigned>(err)));
                 }
             }
 
@@ -754,21 +721,7 @@ void GpuStaticPropBatcher::dispatchV5(StaticPropFlushFrame& f) {
                                 s_v5FrameTypeOob          == 0u &&
                                 s_v5FrameBaseInstMissing  == 0u &&
                                 s_v5FrameGlErrors         == 0u) ? 1 : 0;
-                std::fprintf(stderr,
-                    "[DRAW_PACKET_V5] frame=%u event=dispatch_summary"
-                    " slots_considered=%u draws_issued=%u zero_instance_skips=%u"
-                    " sorted_oob=%u packet_oob=%u type_oob=%u base_instance_missing=%u"
-                    " gl_errors=%u ok=%d\n",
-                    s_v5TotalFrameCount,
-                    s_alphaOffCmdCount + s_alphaOnCmdCount,
-                    s_v5FrameDrawsIssued,
-                    s_v5FrameZeroInstSkips,
-                    s_v5FrameSortedOob,
-                    s_v5FramePacketOob,
-                    s_v5FrameTypeOob,
-                    s_v5FrameBaseInstMissing,
-                    s_v5FrameGlErrors,
-                    ok);
+                mc2::fmt::print_err("[DRAW_PACKET_V5] frame={:d} event=dispatch_summary slots_considered={:d} draws_issued={:d} zero_instance_skips={:d} sorted_oob={:d} packet_oob={:d} type_oob={:d} base_instance_missing={:d} gl_errors={:d} ok={:d}\n", mc2::fmt::as_u32(s_v5TotalFrameCount), mc2::fmt::as_u32(s_alphaOffCmdCount + s_alphaOnCmdCount), mc2::fmt::as_u32(s_v5FrameDrawsIssued), mc2::fmt::as_u32(s_v5FrameZeroInstSkips), mc2::fmt::as_u32(s_v5FrameSortedOob), mc2::fmt::as_u32(s_v5FramePacketOob), mc2::fmt::as_u32(s_v5FrameTypeOob), mc2::fmt::as_u32(s_v5FrameBaseInstMissing), mc2::fmt::as_u32(s_v5FrameGlErrors), mc2::fmt::as_i32(ok));
             }
 
 }
@@ -998,8 +951,7 @@ void GpuStaticPropBatcher::legacyCensus() {
                 uint32_t ic = hasRange ? rit2->second.instanceCount : 0;
                 const GpuStaticPropType& ty = s_types[tid];
                 if (ty.packetCount > 0 && (!hasRange || ic == 0)) {
-                    fprintf(stderr, "[SEAMPROBE] draw-census typeID=%u src=%p packetCount=%u vertexCount=%u hasRange=%d instanceCount=%u (NOT DRAWN)\n",
-                        tid, (void*)ty.source, ty.packetCount, ty.vertexCount, (int)hasRange, ic);
+                    mc2::fmt::print_err("[SEAMPROBE] draw-census typeID={:d} src={:016X} packetCount={:d} vertexCount={:d} hasRange={:d} instanceCount={:d} (NOT DRAWN)\n", mc2::fmt::as_u32(tid), mc2::fmt::as_ptr((void*)ty.source), mc2::fmt::as_u32(ty.packetCount), mc2::fmt::as_u32(ty.vertexCount), mc2::fmt::as_i32((int)hasRange), mc2::fmt::as_u32(ic));
                 }
             }
             fflush(stderr);

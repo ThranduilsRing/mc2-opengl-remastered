@@ -794,11 +794,7 @@ void GpuStaticPropBatcher::buildPerPacketDrawTables(StaticPropFinalizeFrame& f) 
                 if (hasDrawCmd) ++typesWithDrawCmd;
                 else            ++typesDroppedNoLayer;
             }
-            std::fprintf(stderr,
-                "[EDITOR_STATIC_PRIME] typesWithGeom=%u typesWithDrawCmd=%u "
-                "typesDroppedNoLayer=%u alphaOffCmd=%u alphaOnCmd=%u\n",
-                typesWithGeom, typesWithDrawCmd, typesDroppedNoLayer,
-                s_alphaOffCmdCount, s_alphaOnCmdCount);
+            mc2::fmt::print_err("[EDITOR_STATIC_PRIME] typesWithGeom={:d} typesWithDrawCmd={:d} typesDroppedNoLayer={:d} alphaOffCmd={:d} alphaOnCmd={:d}\n", mc2::fmt::as_u32(typesWithGeom), mc2::fmt::as_u32(typesWithDrawCmd), mc2::fmt::as_u32(typesDroppedNoLayer), mc2::fmt::as_u32(s_alphaOffCmdCount), mc2::fmt::as_u32(s_alphaOnCmdCount));
             std::fflush(stderr);
         }
 

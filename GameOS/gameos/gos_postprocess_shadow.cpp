@@ -428,12 +428,7 @@ void gosPostProcess::buildStaticLightMatrix(float sunDirX, float sunDirY, float 
     if (mc2::gate::get<"MC2_DEBUG_SHADOW_FRUSTUM">()) {
         static int s_buildCount = 0;
         ++s_buildCount;
-        fprintf(stderr,
-            "[SHADOWFRUSTUM v1] event=build n=%d sunDirIn=(%.4f,%.4f,%.4f) "
-            "sunDirNorm=(%.4f,%.4f,%.4f) mapHalfExtent=%.1f orthoHalf(r)=%.1f "
-            "near=%.2f far=%.2f coversWorldXY=[-%.1f,%.1f]\n",
-            s_buildCount, sunDirX, sunDirY, sunDirZ, fx, fy, fz,
-            mapHalfExtent, r, nearP, farP, r, r);
+        mc2::fmt::print_err("[SHADOWFRUSTUM v1] event=build n={:d} sunDirIn=({:.4f},{:.4f},{:.4f}) sunDirNorm=({:.4f},{:.4f},{:.4f}) mapHalfExtent={:.1f} orthoHalf(r)={:.1f} near={:.2f} far={:.2f} coversWorldXY=[-{:.1f},{:.1f}]\n", mc2::fmt::as_i32(s_buildCount), sunDirX, sunDirY, sunDirZ, fx, fy, fz, mapHalfExtent, r, nearP, farP, r, r);
     }
 
     // [SHADOWZRANGE v1] VPL-#10: prove the [0,1] ZERO_TO_ONE conversion is
@@ -455,10 +450,7 @@ void gosPostProcess::buildStaticLightMatrix(float sunDirX, float sunDirY, float 
             float cz = M[0*4+2]*px + M[1*4+2]*py + M[2*4+2]*pz + M[3*4+2];
             float cw = M[0*4+3]*px + M[1*4+3]*py + M[2*4+3]*pz + M[3*4+3];
             float ndc = (cw != 0.0f) ? cz / cw : 0.0f;
-            fprintf(stderr,
-                "[SHADOWZRANGE v1] event=static pt=%d world=(%.0f,%.0f,%.0f) "
-                "clipZ=%.5f clipW=%.5f ndcZ=%.5f inRange=%d\n",
-                i, px, py, pz, cz, cw, ndc, (ndc >= 0.0f && ndc <= 1.0f) ? 1 : 0);
+            mc2::fmt::print_err("[SHADOWZRANGE v1] event=static pt={:d} world=({:.0f},{:.0f},{:.0f}) clipZ={:.5f} clipW={:.5f} ndcZ={:.5f} inRange={:d}\n", mc2::fmt::as_i32(i), px, py, pz, cz, cw, ndc, mc2::fmt::as_i32((ndc >= 0.0f && ndc <= 1.0f) ? 1 : 0));
         }
     }
 }
@@ -696,9 +688,7 @@ void gosPostProcess::initDynamicShadows()
             dynamicCascadeMatrices_[i*16 + 15] = 1.0f;
         }
 
-        fprintf(stderr, "[CSM] init nearLayers=%d arraySize=%d fullMapSize=%d separate=%d\n",
-                nearCascades, dynShadowMapSize_, dynamicFullMapSize_,
-                mc2ShadowFullMapSeparate() ? 1 : 0);
+        mc2::fmt::print_err("[CSM] init nearLayers={:d} arraySize={:d} fullMapSize={:d} separate={:d}\n", mc2::fmt::as_i32(nearCascades), mc2::fmt::as_i32(dynShadowMapSize_), mc2::fmt::as_i32(dynamicFullMapSize_), mc2::fmt::as_i32(mc2ShadowFullMapSeparate() ? 1 : 0));
     }
 }
 
@@ -1087,22 +1077,9 @@ void gosPostProcess::buildDynamicLightMatrix(float sunDirX, float sunDirY, float
         if (s_frustDiag) {
             ++s_frustN;
             if (s_frustN <= 3 || (s_frustN % 300) == 0) {
-                fprintf(stderr,
-                    "[SHADOW_FRUSTUM_DIAG] frame=%d sunDir=(%.3f,%.3f,%.3f) "
-                    "lightAABB=[%.0f..%.0f,%.0f..%.0f] worldCenter=(%.0f,%.0f,%.0f) "
-                    "fitRadius=%.0f(orig=%.0f) xyRadius=%.0f mapClampR=%.0f "
-                    "texelWU=%.3f orthoWH=%.0fx%.0f validCorners=%d mapSize=%d\n",
-                    s_frustN, fx, fy, fz,
-                    minLX, maxLX, minLY, maxLY, camX, camY, camZ,
-                    fitRadius, origFitRadius, xyRadius, r,
-                    worldUnitsPerTexel, 2.0f * xyRadius, 2.0f * xyRadius,
-                    validCorners, dynShadowMapSize_);
+                mc2::fmt::print_err("[SHADOW_FRUSTUM_DIAG] frame={:d} sunDir=({:.3f},{:.3f},{:.3f}) lightAABB=[{:.0f}..{:.0f},{:.0f}..{:.0f}] worldCenter=({:.0f},{:.0f},{:.0f}) fitRadius={:.0f}(orig={:.0f}) xyRadius={:.0f} mapClampR={:.0f} texelWU={:.3f} orthoWH={:.0f}x{:.0f} validCorners={:d} mapSize={:d}\n", mc2::fmt::as_i32(s_frustN), fx, fy, fz, minLX, maxLX, minLY, maxLY, camX, camY, camZ, fitRadius, origFitRadius, xyRadius, r, worldUnitsPerTexel, 2.0f * xyRadius, 2.0f * xyRadius, mc2::fmt::as_i32(validCorners), mc2::fmt::as_i32(dynShadowMapSize_));
                 if (focusApplied) {
-                    fprintf(stderr,
-                        "[SHADOW_FRUSTUM_DIAG]   focusCenter=1 focusWorld=(%.0f,%.0f,%.0f) "
-                        "focusXYDist=%.0f nearSpread=%.0f farSpread=%.0f\n",
-                        focusWorld[0], focusWorld[1], focusWorld[2],
-                        focusDistUsed, nearSpread, farSpread);
+                    mc2::fmt::print_err("[SHADOW_FRUSTUM_DIAG]   focusCenter=1 focusWorld=({:.0f},{:.0f},{:.0f}) focusXYDist={:.0f} nearSpread={:.0f} farSpread={:.0f}\n", focusWorld[0], focusWorld[1], focusWorld[2], focusDistUsed, nearSpread, farSpread);
                 }
                 fflush(stderr);
             }
@@ -1268,8 +1245,7 @@ void gosPostProcess::buildDynamicLightMatrix(float sunDirX, float sunDirY, float
                     float cz = M[0*4+2]*px+M[1*4+2]*py+M[2*4+2]*pz+M[3*4+2];
                     float cw = M[0*4+3]*px+M[1*4+3]*py+M[2*4+3]*pz+M[3*4+3];
                     float ndc = (cw!=0.0f)?cz/cw:0.0f;
-                    fprintf(stderr, "[SHADOWZRANGE v1] event=csm cascade=%d ndcZ=%.5f inRange=%d\n",
-                            ci, ndc, (ndc>=0.0f&&ndc<=1.0f)?1:0);
+                    mc2::fmt::print_err("[SHADOWZRANGE v1] event=csm cascade={:d} ndcZ={:.5f} inRange={:d}\n", mc2::fmt::as_i32(ci), ndc, mc2::fmt::as_i32((ndc>=0.0f&&ndc<=1.0f)?1:0));
                 }
             }
         }
@@ -1293,10 +1269,7 @@ void gosPostProcess::buildDynamicLightMatrix(float sunDirX, float sunDirY, float
                 float cz = M[0*4+2]*px + M[1*4+2]*py + M[2*4+2]*pz + M[3*4+2];
                 float cw = M[0*4+3]*px + M[1*4+3]*py + M[2*4+3]*pz + M[3*4+3];
                 float ndc = (cw != 0.0f) ? cz / cw : 0.0f;
-                fprintf(stderr,
-                    "[SHADOWZRANGE v1] event=dynamic pt=%d world=(%.0f,%.0f,%.0f) "
-                    "clipZ=%.5f clipW=%.5f ndcZ=%.5f inRange=%d\n",
-                    i, px, py, pz, cz, cw, ndc, (ndc >= 0.0f && ndc <= 1.0f) ? 1 : 0);
+                mc2::fmt::print_err("[SHADOWZRANGE v1] event=dynamic pt={:d} world=({:.0f},{:.0f},{:.0f}) clipZ={:.5f} clipW={:.5f} ndcZ={:.5f} inRange={:d}\n", mc2::fmt::as_i32(i), px, py, pz, cz, cw, ndc, mc2::fmt::as_i32((ndc >= 0.0f && ndc <= 1.0f) ? 1 : 0));
             }
         }
     }

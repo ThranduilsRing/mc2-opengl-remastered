@@ -2,6 +2,7 @@
 // seam diagnostics and the legacy per-leaf and cached submission paths. The orchestrator is in
 // gos_static_prop_registry.cpp.
 #include "gos_static_prop_registry_internal.h"
+#include "mc2fmt.h"
 
 namespace GpuStaticPropRegistry {
 
@@ -26,10 +27,7 @@ bool flushRangeTombstoneGuard(uint64_t& s_diag_ranges_total, uint64_t& s_diag_ra
                 ++s_tdN;
                 const int tid = (rng.count > 0 && rng.first < s_recipes.size())
                                   ? static_cast<int>(s_recipes[rng.first].typeID) : -1;
-                fprintf(stderr,
-                    "[TOMBDIAG] sample=first90_per_frame frame=%u regIdx=%u count=%u multi=%d typeID=%d%s\n",
-                    fr, regIdx, rng.count, (int)(rng.multi != nullptr), tid,
-                    (rng.count == 0) ? "  <<TOMBSTONED-BUT-VISIBLE" : "");
+                mc2::fmt::print_err("[TOMBDIAG] sample=first90_per_frame frame={:d} regIdx={:d} count={:d} multi={:d} typeID={:d}{}\n", mc2::fmt::as_u32(fr), mc2::fmt::as_u32(regIdx), mc2::fmt::as_u32(rng.count), mc2::fmt::as_i32((int)(rng.multi != nullptr)), mc2::fmt::as_i32(tid), mc2::fmt::safe((rng.count == 0) ? "  <<TOMBSTONED-BUT-VISIBLE" : ""));
                 fflush(stderr);
             }
         }
@@ -84,11 +82,7 @@ bool flushRangeCurrentness(uint32_t currentFrame, uint64_t& s_diag_ranges_stale_
                               ? static_cast<int>(s_recipes[rng.first].typeID) : -1;
             static std::set<int> s_loggedStaleTypes;
             if (s_loggedStaleTypes.insert(tid).second) {
-                fprintf(stderr,
-                    "[STATIC_PROP_REGISTRY] event=stale_frame_drop_after_drawn typeID=%d "
-                    "regIdx=%u currentFrame=%u cachedFrame=%u "
-                    "(update/touch skip suspected — see R2B-STATIC-NATURAL-TOUCH-PRESERVE-1)\n",
-                    tid, regIdx, currentFrame, rng.multi->getCachedFrame());
+                mc2::fmt::print_err("[STATIC_PROP_REGISTRY] event=stale_frame_drop_after_drawn typeID={:d} regIdx={:d} currentFrame={:d} cachedFrame={:d} (update/touch skip suspected — see R2B-STATIC-NATURAL-TOUCH-PRESERVE-1)\n", mc2::fmt::as_i32(tid), mc2::fmt::as_u32(regIdx), mc2::fmt::as_u32(currentFrame), mc2::fmt::as_u32(rng.multi->getCachedFrame()));
                 fflush(stderr);
             }
             // STATIC-REGISTRY-CURRENTNESS-GUARD-2: discriminate transient off-screen
@@ -101,12 +95,7 @@ bool flushRangeCurrentness(uint32_t currentFrame, uint64_t& s_diag_ranges_stale_
                 if (++streak == kVanishFrames) {
                     ++s_diag_persistent_vanish;
                     persistentVanish = true;
-                    fprintf(stderr,
-                        "[REGFLUSH_GUARD2] event=persistent_vanish typeID=%d regIdx=%u "
-                        "streak=%u currentFrame=%u cachedFrame=%u staleTotalForType=%llu "
-                        "(registered+drawn prop dropped every frame — producer stamp frozen)\n",
-                        tid, regIdx, streak, currentFrame, rng.multi->getCachedFrame(),
-                        (unsigned long long)s_staleByType[tid]);
+                    mc2::fmt::print_err("[REGFLUSH_GUARD2] event=persistent_vanish typeID={:d} regIdx={:d} streak={:d} currentFrame={:d} cachedFrame={:d} staleTotalForType={:d} (registered+drawn prop dropped every frame — producer stamp frozen)\n", mc2::fmt::as_i32(tid), mc2::fmt::as_u32(regIdx), mc2::fmt::as_u32(streak), mc2::fmt::as_u32(currentFrame), mc2::fmt::as_u32(rng.multi->getCachedFrame()), mc2::fmt::as_u64((unsigned long long)s_staleByType[tid]));
                     fflush(stderr);
                 }
             }
@@ -116,10 +105,7 @@ bool flushRangeCurrentness(uint32_t currentFrame, uint64_t& s_diag_ranges_stale_
             // guard2) still aborts on first stale_after_drawn for strict bisection.
             static const bool s_staleFatal = mc2::gate::get<"MC2_STATIC_STALE_DROP_FATAL">();
             if (s_staleFatal && (!s_guard2 || persistentVanish)) {
-                fprintf(stderr,
-                    "[STATIC_PROP_REGISTRY] FATAL stale_frame_drop_after_drawn typeID=%d "
-                    "(MC2_STATIC_STALE_DROP_FATAL%s)\n",
-                    tid, s_guard2 ? ", persistent_vanish" : "");
+                mc2::fmt::print_err("[STATIC_PROP_REGISTRY] FATAL stale_frame_drop_after_drawn typeID={:d} (MC2_STATIC_STALE_DROP_FATAL{})\n", mc2::fmt::as_i32(tid), mc2::fmt::safe(s_guard2 ? ", persistent_vanish" : ""));
                 fflush(stderr);
                 std::abort();
             }
@@ -141,9 +127,7 @@ bool flushRangeCurrentness(uint32_t currentFrame, uint64_t& s_diag_ranges_stale_
             s_seenMulti.find(regIdx) == s_seenMulti.end()) {
             s_seenMulti.insert(regIdx);
             uint32_t firstTid = s_recipes[rng.first].typeID;
-            fprintf(stderr, "[REGFLUSH_MULTI v1] sample=first100_distinct_regidx "
-                "regIdx=%u count=%u firstTypeID=%u multi=%p\n",
-                regIdx, rng.count, firstTid, (void*)rng.multi);
+            mc2::fmt::print_err("[REGFLUSH_MULTI v1] sample=first100_distinct_regidx regIdx={:d} count={:d} firstTypeID={:d} multi={:016X}\n", mc2::fmt::as_u32(regIdx), mc2::fmt::as_u32(rng.count), mc2::fmt::as_u32(firstTid), mc2::fmt::as_ptr((void*)rng.multi));
             fflush(stderr);
         }
     }
@@ -213,15 +197,7 @@ void flushLightRowDiag(uint64_t s_diag_flush_calls, uint32_t regIdx, RecipeRange
             s_zlr_instances += rng.count;
             if (!s_zlr_firstShown) {
                 s_zlr_firstShown = true;
-                fprintf(stderr,
-                    "[STATIC_LIGHT_ROW v1] event=zero_row_reached_gpu "
-                    "class=%s regIdx=%u typeID=%u leaves=%u lightIdx=%u "
-                    "numLights=%d tableCount=%u rngLightIdx=%u multiCache=%u\n",
-                    static_light_row::className(zlrClass),
-                    regIdx, s_recipes[rng.first].typeID, rng.count, freshLightIdx,
-                    zlrNumLights,
-                    mcTextureManager ? mcTextureManager->getLightStructCount() : 0u,
-                    rng.lightDataIndex, rng.multi->getCachedGpuLightIndex());
+                mc2::fmt::print_err("[STATIC_LIGHT_ROW v1] event=zero_row_reached_gpu class={} regIdx={:d} typeID={:d} leaves={:d} lightIdx={:d} numLights={:d} tableCount={:d} rngLightIdx={:d} multiCache={:d}\n", mc2::fmt::safe(static_light_row::className(zlrClass)), mc2::fmt::as_u32(regIdx), mc2::fmt::as_u32(s_recipes[rng.first].typeID), mc2::fmt::as_u32(rng.count), mc2::fmt::as_u32(freshLightIdx), mc2::fmt::as_i32(zlrNumLights), mc2::fmt::as_u32(mcTextureManager ? mcTextureManager->getLightStructCount() : 0u), mc2::fmt::as_u32(rng.lightDataIndex), mc2::fmt::as_u32(rng.multi->getCachedGpuLightIndex()));
                 fflush(stderr);
             }
         }
@@ -230,14 +206,7 @@ void flushLightRowDiag(uint64_t s_diag_flush_calls, uint32_t regIdx, RecipeRange
         // 2026-10-05: census only once something has been counted (default build stays quiet).
         if ((s_diag_flush_calls % 300) == 0 &&
             (s_zlr_sentinel | s_zlr_outOfRange | s_zlr_emptyRow | s_zlr_instances) != 0) {
-            fprintf(stderr,
-                "[STATIC_LIGHT_ROW v1] event=census frame=%llu sentinel=%llu "
-                "out_of_range=%llu empty_row=%llu bad_leaves=%llu\n",
-                (unsigned long long)s_diag_flush_calls,
-                (unsigned long long)s_zlr_sentinel,
-                (unsigned long long)s_zlr_outOfRange,
-                (unsigned long long)s_zlr_emptyRow,
-                (unsigned long long)s_zlr_instances);
+            mc2::fmt::print_err("[STATIC_LIGHT_ROW v1] event=census frame={:d} sentinel={:d} out_of_range={:d} empty_row={:d} bad_leaves={:d}\n", mc2::fmt::as_u64((unsigned long long)s_diag_flush_calls), mc2::fmt::as_u64((unsigned long long)s_zlr_sentinel), mc2::fmt::as_u64((unsigned long long)s_zlr_outOfRange), mc2::fmt::as_u64((unsigned long long)s_zlr_emptyRow), mc2::fmt::as_u64((unsigned long long)s_zlr_instances));
             fflush(stderr);
         }
     }
@@ -281,11 +250,7 @@ void flushSeamProbe(uint32_t regIdx, RecipeRange& rng, const float (&actorWorldC
             const uint32_t t0 = s_recipes[rng.first].typeID;
             if (t0 == 33u || t0 == 41u || t0 == 42u || t0 == 43u) {
                 ++s_seamFlushLogged;
-                fprintf(stderr,
-                    "[SEAMPROBE] sample=first200 flush-emit regIdx=%u firstTypeID=%u count=%u "
-                    "extentRadius=%.2f rootCtr=(%.1f,%.1f,%.1f)\n",
-                    regIdx, t0, rng.count, rng.extentRadius,
-                    actorWorldCenter[0], actorWorldCenter[1], actorWorldCenter[2]);
+                mc2::fmt::print_err("[SEAMPROBE] sample=first200 flush-emit regIdx={:d} firstTypeID={:d} count={:d} extentRadius={:.2f} rootCtr=({:.1f},{:.1f},{:.1f})\n", mc2::fmt::as_u32(regIdx), mc2::fmt::as_u32(t0), mc2::fmt::as_u32(rng.count), rng.extentRadius, actorWorldCenter[0], actorWorldCenter[1], actorWorldCenter[2]);
                 fflush(stderr);
             }
         }
@@ -310,12 +275,7 @@ void flushLeafDiag(uint32_t regIdx, RecipeRange& rng, uint32_t freshLightIdx, bo
             const float* mm = s_recipes[rng.first + midI].modelMatrix;
             const bool leaf0Zero = (m0[0]==0.0f && m0[3]==0.0f && m0[7]==0.0f && m0[11]==0.0f);
             const bool midZero   = (mm[0]==0.0f && mm[3]==0.0f && mm[7]==0.0f && mm[11]==0.0f);
-            fprintf(stderr,
-                "[LEAFDIAG] sample=first48 regIdx=%u typeID=%u count=%u cachedBlob=%d freshLight=%u "
-                "storedLight=%u leaf0_rawXYZ=(%.1f,%.1f,%.1f) leaf0Zero=%d midZero=%d\n",
-                regIdx, s_recipes[rng.first].typeID, rng.count, (int)useCachedBlob,
-                freshLightIdx, s_recipes[rng.first].lightDataIndex,
-                -m0[3], m0[11], m0[7], (int)leaf0Zero, (int)midZero);
+            mc2::fmt::print_err("[LEAFDIAG] sample=first48 regIdx={:d} typeID={:d} count={:d} cachedBlob={:d} freshLight={:d} storedLight={:d} leaf0_rawXYZ=({:.1f},{:.1f},{:.1f}) leaf0Zero={:d} midZero={:d}\n", mc2::fmt::as_u32(regIdx), mc2::fmt::as_u32(s_recipes[rng.first].typeID), mc2::fmt::as_u32(rng.count), mc2::fmt::as_i32((int)useCachedBlob), mc2::fmt::as_u32(freshLightIdx), mc2::fmt::as_u32(s_recipes[rng.first].lightDataIndex), -m0[3], m0[11], m0[7], mc2::fmt::as_i32((int)leaf0Zero), mc2::fmt::as_i32((int)midZero));
             fflush(stderr);
         }
     }
@@ -451,12 +411,7 @@ void flushLegacyRange(GpuStaticPropBatcher& batcher, uint64_t s_diag_flush_calls
                     long by = (long)(my * Terrain::oneOverVerticesBlockSide);
                     long cpuBlk = bx + (by * Terrain::blocksMapSide);
                     long helperBlk = Terrain::worldToBlockIdx(pwx, pwy);
-                    fprintf(stderr,
-                        "[BLKIDX v1] event=geom_check src=registry"
-                        " wx=%.1f wy=%.1f wz=%.1f helper=%ld cpu=%ld"
-                        " match=%d\n",
-                        pwx, pwy, gpuRec.worldCenter[2],
-                        helperBlk, cpuBlk, (helperBlk == cpuBlk) ? 1 : 0);
+                    mc2::fmt::print_err("[BLKIDX v1] event=geom_check src=registry wx={:.1f} wy={:.1f} wz={:.1f} helper={:d} cpu={:d} match={:d}\n", pwx, pwy, gpuRec.worldCenter[2], mc2::fmt::as_i32(helperBlk), mc2::fmt::as_i32(cpuBlk), mc2::fmt::as_i32((helperBlk == cpuBlk) ? 1 : 0));
                     // zero_verify: elevation [2] must NEVER influence the
                     // index — recompute ignoring [2] (trivially true here
                     // since helper takes only [0],[1]) and assert equality.
@@ -490,11 +445,10 @@ void flushLegacyRange(GpuStaticPropBatcher& batcher, uint64_t s_diag_flush_calls
                 if (s_th) {
                     if (inst.typeID < s_typeHist.size()) ++s_typeHist[inst.typeID];
                     if (s_diag_flush_calls == 600 && i == 0) {
-                        fprintf(stderr, "[REGFLUSH_TYPEHIST v1] non-zero buckets:\n");
+                        mc2::fmt::print_err("[REGFLUSH_TYPEHIST v1] non-zero buckets:\n");
                         for (size_t t = 0; t < s_typeHist.size(); ++t) {
                             if (s_typeHist[t] > 0) {
-                                fprintf(stderr, "[REGFLUSH_TYPEHIST v1] typeID=%zu count=%llu\n",
-                                    t, (unsigned long long)s_typeHist[t]);
+                                mc2::fmt::print_err("[REGFLUSH_TYPEHIST v1] typeID={:d} count={:d}\n", mc2::fmt::as_size(t), mc2::fmt::as_u64((unsigned long long)s_typeHist[t]));
                             }
                         }
                         fflush(stderr);
@@ -583,12 +537,7 @@ void flushCachedRange(uint32_t currentFrame, GpuStaticPropBatcher& batcher, bool
                 if (cachedLightIdx != freshLightIdx) {
                     if (s_cmp_mismatch_cap < 32) {
                         ++s_cmp_mismatch_cap;
-                        fprintf(stderr,
-                            "[SPFLUSH_CACHED_COMPARE v1] event=mismatch"
-                            " sample=first32 (event=summary carries the true total)"
-                            " recipe=%u field=inst_light"
-                            " cached_light=%u legacy_light=%u\n",
-                            ri, cachedLightIdx, freshLightIdx);
+                        mc2::fmt::print_err("[SPFLUSH_CACHED_COMPARE v1] event=mismatch sample=first32 (event=summary carries the true total) recipe={:d} field=inst_light cached_light={:d} legacy_light={:d}\n", mc2::fmt::as_u32(ri), mc2::fmt::as_u32(cachedLightIdx), mc2::fmt::as_u32(freshLightIdx));
                         fflush(stderr);
                     }
                     ++s_cmp_mismatches;
@@ -603,25 +552,14 @@ void flushCachedRange(uint32_t currentFrame, GpuStaticPropBatcher& batcher, bool
                 if (hashCached != hashLegacy) {
                     if (s_cmp_mismatch_cap < 32) {
                         ++s_cmp_mismatch_cap;
-                        fprintf(stderr,
-                            "[SPFLUSH_CACHED_COMPARE v1] event=mismatch"
-                            " sample=first32 (event=summary carries the true total)"
-                            " recipe=%u field=record"
-                            " hash_cached=%llu hash_legacy=%llu\n",
-                            ri,
-                            (unsigned long long)hashCached,
-                            (unsigned long long)hashLegacy);
+                        mc2::fmt::print_err("[SPFLUSH_CACHED_COMPARE v1] event=mismatch sample=first32 (event=summary carries the true total) recipe={:d} field=record hash_cached={:d} hash_legacy={:d}\n", mc2::fmt::as_u32(ri), mc2::fmt::as_u64((unsigned long long)hashCached), mc2::fmt::as_u64((unsigned long long)hashLegacy));
                         fflush(stderr);
                     }
                     ++s_cmp_mismatches;
                 }
                 // Emit periodic summary every 600 frames.
                 if (s_flushCachedBlobCompare && (currentFrame % 600u) == 0u && i == 0u) {
-                    fprintf(stderr,
-                        "[SPFLUSH_CACHED_COMPARE v1] event=summary"
-                        " checked=%llu mismatches=%llu\n",
-                        (unsigned long long)s_cmp_checked,
-                        (unsigned long long)s_cmp_mismatches);
+                    mc2::fmt::print_err("[SPFLUSH_CACHED_COMPARE v1] event=summary checked={:d} mismatches={:d}\n", mc2::fmt::as_u64((unsigned long long)s_cmp_checked), mc2::fmt::as_u64((unsigned long long)s_cmp_mismatches));
                     fflush(stderr);
                 }
             }

@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in gameos_graphics_material_internal.h.
 #include "gameos_graphics_material_internal.h"
 #include "mdi_submit.h"                            // MDI-SUBMISSION-SCAFFOLD-1: this piece issues indirect draws
+#include "mc2fmt.h"
 
 
 // gos_terrain_bridge_bindThinUniforms deleted by DEAD-BRIDGE-DELETE-1: zero external
@@ -873,8 +874,7 @@ void gosRenderer::renderWaterFastPath(
             if (s_vkWaterPerf) {
                 const double us = std::chrono::duration<double, std::micro>(
                     std::chrono::steady_clock::now() - tThinRb0).count();
-                std::fprintf(stderr, "[VK_WATER_PERF] thin_readback_us=%.1f thin=%u\n",
-                             us, vkThinCount);
+                mc2::fmt::print_err("[VK_WATER_PERF] thin_readback_us={:.1f} thin={:d}\n", us, mc2::fmt::as_u32(vkThinCount));
                 std::fflush(stderr);
             }
             const void*    vkRecipes   = (const void*)WaterStream::GetRecipes();
@@ -1030,16 +1030,7 @@ void gosRenderer::renderWaterFastPath(
             GLboolean depthTest = glIsEnabled(GL_DEPTH_TEST);
             GLboolean cullFace  = glIsEnabled(GL_CULL_FACE);
             GLint curDepthFunc = 0; glGetIntegerv(GL_DEPTH_FUNC, &curDepthFunc);
-            fprintf(stderr,
-                    "[WATER_FAST v1] event=first_draw prog=%u recipeBuf=%u "
-                    "thin=%u baseGosH=%u baseGLTex=%u detailGosH=%u detailGLTex=%u "
-                    "VAO=%d FBO=%d viewport=[%d,%d,%d,%d] depthTest=%d cullFace=%d depthFunc=0x%x\n",
-                    (unsigned)prog, (unsigned)recipeBuf,
-                    (unsigned)thinCount,
-                    (unsigned)waterGosHandle, (unsigned)baseTex,
-                    (unsigned)waterDetailGosHandle, (unsigned)detailTex,
-                    curVAO, curFBO, curVP[0], curVP[1], curVP[2], curVP[3],
-                    depthTest, cullFace, (unsigned)curDepthFunc);
+            mc2::fmt::print_err("[WATER_FAST v1] event=first_draw prog={:d} recipeBuf={:d} thin={:d} baseGosH={:d} baseGLTex={:d} detailGosH={:d} detailGLTex={:d} VAO={:d} FBO={:d} viewport=[{:d},{:d},{:d},{:d}] depthTest={:d} cullFace={:d} depthFunc=0x{:x}\n", mc2::fmt::as_u32((unsigned)prog), mc2::fmt::as_u32((unsigned)recipeBuf), mc2::fmt::as_u32((unsigned)thinCount), mc2::fmt::as_u32((unsigned)waterGosHandle), mc2::fmt::as_u32((unsigned)baseTex), mc2::fmt::as_u32((unsigned)waterDetailGosHandle), mc2::fmt::as_u32((unsigned)detailTex), mc2::fmt::as_i32(curVAO), mc2::fmt::as_i32(curFBO), mc2::fmt::as_i32(curVP[0]), mc2::fmt::as_i32(curVP[1]), mc2::fmt::as_i32(curVP[2]), mc2::fmt::as_i32(curVP[3]), mc2::fmt::as_i32(depthTest), mc2::fmt::as_i32(cullFace), mc2::fmt::as_u32((unsigned)curDepthFunc));
             fflush(stderr);
         }
 
@@ -1061,8 +1052,7 @@ void gosRenderer::renderWaterFastPath(
                     static bool s_errPrinted = false;
                     if (!s_errPrinted) {
                         s_errPrinted = true;
-                        fprintf(stderr, "[WATER_FAST v1] event=base_draw_gl_err err=0x%x verts=%d\n",
-                                (unsigned)err, (int)drawVerts);
+                        mc2::fmt::print_err("[WATER_FAST v1] event=base_draw_gl_err err=0x{:x} verts={:d}\n", mc2::fmt::as_u32((unsigned)err), mc2::fmt::as_i32((int)drawVerts));
                         fflush(stderr);
                     }
                 }

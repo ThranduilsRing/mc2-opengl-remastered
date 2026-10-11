@@ -188,15 +188,7 @@ static void CompareOracleAndLog(const ExtractedStaticProp* out, uint32_t outCoun
         }
         if (L.hasCullRecord != C.hasCullRecord) ++hasCullMismatch;
     }
-    std::fprintf(stderr,
-        "[SNAPSHOT_BRIDGE_COMPARE v1] path=%s frame=%llu regGen=%llu cullVer=%llu"
-        " rowCount=%u oracleCount=%u rowCountMismatch=%u immutableMismatch=%u hasCullMismatch=%u\n",
-        tag,
-        static_cast<unsigned long long>(frameIndex),
-        static_cast<unsigned long long>(regGen),
-        static_cast<unsigned long long>(cullGen),
-        outCount, oracleCount,
-        rowCountMismatch, immutableMismatch, hasCullMismatch);
+    mc2::fmt::print_err("[SNAPSHOT_BRIDGE_COMPARE v1] path={} frame={:d} regGen={:d} cullVer={:d} rowCount={:d} oracleCount={:d} rowCountMismatch={:d} immutableMismatch={:d} hasCullMismatch={:d}\n", mc2::fmt::safe(tag), mc2::fmt::as_u64(static_cast<unsigned long long>(frameIndex)), mc2::fmt::as_u64(static_cast<unsigned long long>(regGen)), mc2::fmt::as_u64(static_cast<unsigned long long>(cullGen)), mc2::fmt::as_u32(outCount), mc2::fmt::as_u32(oracleCount), mc2::fmt::as_u32(rowCountMismatch), mc2::fmt::as_u32(immutableMismatch), mc2::fmt::as_u32(hasCullMismatch));
     std::fflush(stderr);
 }
 

@@ -13,6 +13,7 @@
 #include<map>      // MC2_TUBE_PROFILE_LOG per-spec peak tracking
 #include<string>
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 // MC2_VFX_ORACLE_TUBE slice 1: ribbon mesh submit bridge (GameOS-side GL).
 // Declared extern "C" here to avoid pulling GameOS headers into mclib.
@@ -1228,10 +1229,7 @@ void gosFX::Tube::Draw(DrawInfo *info)
 				int& mx = s_maxBySpec[key];
 				if (m_activeProfileCount > mx) {
 					mx = m_activeProfileCount;
-					std::fprintf(stderr,
-						"[TUBE_PROFILE] spec=%s type=%d activeMax=%d maxProf=%d\n",
-						key.c_str(), (int)spec->m_profileType,
-						m_activeProfileCount, spec->m_maxProfileCount);
+					mc2::fmt::print_err("[TUBE_PROFILE] spec={} type={:d} activeMax={:d} maxProf={:d}\n", key.c_str(), mc2::fmt::as_i32((int)spec->m_profileType), mc2::fmt::as_i32(m_activeProfileCount), mc2::fmt::as_i32(spec->m_maxProfileCount));
 					std::fflush(stderr);
 				}
 			}

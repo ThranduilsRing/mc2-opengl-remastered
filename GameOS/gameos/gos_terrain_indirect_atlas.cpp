@@ -189,18 +189,14 @@ void BuildColormapAtlas() {
                 static bool s_deferLogged = false;
                 if (g_loadRaceTrace && !s_deferLogged) {
                     s_deferLogged = true;
-                    fprintf(stderr, "[LOADRACE] NEG-CONTROL atlas upload DEFERRED "
-                            "(scenarioTime=%.2f < 30) frame=%u\n",
-                            scenarioTime, g_mc2FrameCounter);
+                    mc2::fmt::print_err("[LOADRACE] NEG-CONTROL atlas upload DEFERRED (scenarioTime={:.2f} < 30) frame={:d}\n", scenarioTime, mc2::fmt::as_u32(g_mc2FrameCounter));
                     fflush(stderr);
                 }
                 return;   // leave g_atlasGLTex == 0
             }
             s_delayReleased = true;
             if (g_loadRaceTrace) {
-                fprintf(stderr, "[LOADRACE] NEG-CONTROL atlas delay RELEASED "
-                        "(scenarioTime=%.2f) frame=%u -- uploading now\n",
-                        scenarioTime, g_mc2FrameCounter);
+                mc2::fmt::print_err("[LOADRACE] NEG-CONTROL atlas delay RELEASED (scenarioTime={:.2f}) frame={:d} -- uploading now\n", scenarioTime, mc2::fmt::as_u32(g_mc2FrameCounter));
                 fflush(stderr);
             }
         }
@@ -245,10 +241,7 @@ void BuildColormapAtlas() {
             atlasSizeCapture = img.width;
             atlasBuilt = true;
 
-            printf("[COLORMAP] COLORMAP-BC7-KTX2-1: uploaded %dx%d BC7 fmt=0x%x "
-                   "bytes=%zu gltex=%u\n",
-                   img.width, img.height, (unsigned)glIF, mip0Bytes,
-                   (unsigned)g_atlasGLTex);
+            mc2::fmt::print_out("[COLORMAP] COLORMAP-BC7-KTX2-1: uploaded {:d}x{:d} BC7 fmt=0x{:x} bytes={:d} gltex={:d}\n", mc2::fmt::as_i32(img.width), mc2::fmt::as_i32(img.height), mc2::fmt::as_u32((unsigned)glIF), mc2::fmt::as_size(mip0Bytes), mc2::fmt::as_u32((unsigned)g_atlasGLTex));
 
             // KTX2 path succeeded — retire CPU copies (same as RETIRE-1, but
             // also clear the path so we don't attempt a second upload).
@@ -260,8 +253,7 @@ void BuildColormapAtlas() {
                 tcm->cpuDispAlphaSize = 0;
             }
         } else {
-            printf("[COLORMAP] COLORMAP-BC7-KTX2-1: KTX2 load failed or wrong format "
-                   "(%s), falling back to RGBA8\n", tcm->ktx2ColormapPath);
+            mc2::fmt::print_out("[COLORMAP] COLORMAP-BC7-KTX2-1: KTX2 load failed or wrong format ({}), falling back to RGBA8\n", mc2::fmt::safe(tcm->ktx2ColormapPath));
             tcm->ktx2ColormapPath[0] = '\0';
         }
     } else if (tcm->ktx2ColormapPath[0] != '\0' && !GLEW_ARB_texture_compression_bptc) {
@@ -301,18 +293,14 @@ void BuildColormapAtlas() {
             free(tcm->cpuDispAlpha);  tcm->cpuDispAlpha   = nullptr;
             tcm->cpuDispAlphaSize = 0;
             if (traceOn())
-                printf("[COLORMAP] COLORMAP-CPU-RETIRE-1: released cpuColorMap+cpuDispAlpha "
-                       "(%dx%d BGRA) after RGBA8 atlas upload\n",
-                       atlasSizeCapture, atlasSizeCapture);
+                mc2::fmt::print_out("[COLORMAP] COLORMAP-CPU-RETIRE-1: released cpuColorMap+cpuDispAlpha ({:d}x{:d} BGRA) after RGBA8 atlas upload\n", mc2::fmt::as_i32(atlasSizeCapture), mc2::fmt::as_i32(atlasSizeCapture));
         }
     }
 
     // MC2_LOAD_RACE_TRACE: latch the frame the colormap atlas first exists.
     if (g_loadRaceTrace && g_atlasGLTex != 0 && g_loadRaceAtlasFirstFrame < 0) {
         g_loadRaceAtlasFirstFrame = (long)g_mc2FrameCounter;
-        fprintf(stderr, "[LOADRACE] atlas first-resident frame=%ld gltex=%u "
-                "scenarioTime=%.2f\n",
-                g_loadRaceAtlasFirstFrame, (unsigned)g_atlasGLTex, scenarioTime);
+        mc2::fmt::print_err("[LOADRACE] atlas first-resident frame={:d} gltex={:d} scenarioTime={:.2f}\n", mc2::fmt::as_i32(g_loadRaceAtlasFirstFrame), mc2::fmt::as_u32((unsigned)g_atlasGLTex), scenarioTime);
         fflush(stderr);
     }
 
@@ -397,9 +385,7 @@ void BuildCementCatalogAtlas() {
         ++diagTotal;
         if (isBase) ++diagBase; else ++diagTransition;
         if (traceOn()) {
-            printf("[CEMENT_DIAG] slot=%ld nodeIdx=%u isBase=%d (firstTransition=%ld nextAvailable=%ld)\n",
-                   slot, (unsigned)nodeIdx, isBase,
-                   firstTransition, lastSlot);
+            mc2::fmt::print_out("[CEMENT_DIAG] slot={:d} nodeIdx={:d} isBase={:d} (firstTransition={:d} nextAvailable={:d})\n", mc2::fmt::as_i32(slot), mc2::fmt::as_u32((unsigned)nodeIdx), mc2::fmt::as_i32(isBase), mc2::fmt::as_i32(firstTransition), mc2::fmt::as_i32(lastSlot));
         }
 
         if (nodeIdx == 0xffffffffu) continue;
@@ -471,10 +457,7 @@ void BuildCementCatalogAtlas() {
     fflush(stdout);
 
     if (traceOn()) {
-        printf("[CEMENT_DIAG] summary mission=%s total_cement=%ld base=%ld transitions=%ld nextAvailable=%ld firstTransition=%ld\n",
-               (::missionName[0] ? ::missionName : "unknown"),
-               diagTotal, diagBase, diagTransition,
-               lastSlot, firstTransition);
+        mc2::fmt::print_out("[CEMENT_DIAG] summary mission={} total_cement={:d} base={:d} transitions={:d} nextAvailable={:d} firstTransition={:d}\n", mc2::fmt::safe((::missionName[0] ? ::missionName : "unknown")), mc2::fmt::as_i32(diagTotal), mc2::fmt::as_i32(diagBase), mc2::fmt::as_i32(diagTransition), mc2::fmt::as_i32(lastSlot), mc2::fmt::as_i32(firstTransition));
         fflush(stdout);
     }
 
@@ -878,11 +861,7 @@ void BuildDenseRecipe() {
                 }
             }
         }
-        printf("[CEMENT_DIAG] event=pre_upload_wp3_audit "
-               "nonzero=%ld firstVn=%lld firstWp3=0x%08x sizeof_recipe=%zu wp3_offset=%zu\n",
-               preUploadNonzero, (long long)firstNonzeroVn, firstNonzeroWp3,
-               sizeof(TerrainQuadRecipe),
-               (size_t)((const char*)&g_denseRecipes[0]._wp3 - (const char*)&g_denseRecipes[0]));
+        mc2::fmt::print_out("[CEMENT_DIAG] event=pre_upload_wp3_audit nonzero={:d} firstVn={:d} firstWp3=0x{:08x} sizeof_recipe={:d} wp3_offset={:d}\n", mc2::fmt::as_i32(preUploadNonzero), mc2::fmt::as_i64((long long)firstNonzeroVn), mc2::fmt::as_u32(firstNonzeroWp3), mc2::fmt::as_size(sizeof(TerrainQuadRecipe)), mc2::fmt::as_size((size_t)((const char*)&g_denseRecipes[0]._wp3 - (const char*)&g_denseRecipes[0])));
         fflush(stdout);
     }
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, g_recipeSSBO);

@@ -306,7 +306,7 @@ void gosRenderer::init() {
         terrain_extra_vb_ = makeBuffer(GL_ARRAY_BUFFER, nullptr,
             sizeof(gos_TERRAIN_EXTRA) * terrain_extra_capacity_, GL_DYNAMIC_DRAW);
     }
-    printf("[TESS] Extra VBO created: capacity=%d vb=%u\n", terrain_extra_capacity_, terrain_extra_vb_);
+    mc2::fmt::print_out("[TESS] Extra VBO created: capacity={:d} vb={:d}\n", mc2::fmt::as_i32(terrain_extra_capacity_), mc2::fmt::as_u32(terrain_extra_vb_));
 
     // Load terrain tessellation material (TCS/TES shaders)
     // ISSUE-34: MC2_TERRAIN_TESS=0 (default ON) skips the load — same engine
@@ -317,18 +317,18 @@ void gosRenderer::init() {
         ZoneScopedN("gosRenderer::init terrainMaterial");
         if (!mc2::gate::get<"MC2_TERRAIN_TESS">()) {
             terrain_material_ = nullptr;
-            printf("[TESS] MC2_TERRAIN_TESS=0 — terrain tessellation material load skipped (kill-switch)\n");
+            mc2::fmt::print_out("[TESS] MC2_TERRAIN_TESS=0 — terrain tessellation material load skipped (kill-switch)\n");
         } else {
-            printf("[TESS] About to load terrain shader...\n"); fflush(stdout);
+            mc2::fmt::print_out("[TESS] About to load terrain shader...\n"); fflush(stdout);
             gosMaterialVariationHelper terrainHelper;
             gosMaterialVariation mvar;
             terrainHelper.getMaterialVariation(mvar);
             terrain_material_ = gosRenderMaterial::load("gos_terrain", mvar);
             if (terrain_material_) {
                 materialList_.push_back(terrain_material_);
-                printf("[TESS] Terrain material loaded successfully\n");
+                mc2::fmt::print_out("[TESS] Terrain material loaded successfully\n");
             } else {
-                printf("[TESS] WARNING: Terrain material failed to load — tessellation disabled\n");
+                mc2::fmt::print_out("[TESS] WARNING: Terrain material failed to load — tessellation disabled\n");
             }
         }
         fflush(stdout);
@@ -394,11 +394,9 @@ void gosRenderer::init() {
             "shaders/shadow_instanced.frag",
             kShadowInstPrefix);
         if (!shadow_mech_prog_ || !shadow_mech_prog_->shp_)
-            fprintf(stderr, "[SHADOW_MECH] WARNING: failed to compile shadow_mech shader"
-                            " -- GPU-driven mech shadow draw disabled\n");
+            mc2::fmt::print_err("[SHADOW_MECH] WARNING: failed to compile shadow_mech shader -- GPU-driven mech shadow draw disabled\n");
         else
-            printf("[SHADOW_MECH] Shadow mech shader loaded: prog=%u\n",
-                   (unsigned)shadow_mech_prog_->shp_);
+            mc2::fmt::print_out("[SHADOW_MECH] Shadow mech shader loaded: prog={:d}\n", mc2::fmt::as_u32((unsigned)shadow_mech_prog_->shp_));
         fflush(stdout);
     }
     {
@@ -410,11 +408,9 @@ void gosRenderer::init() {
             "shaders/shadow_instanced.frag",
             kShadowStaticPropPrefix);
         if (!shadow_static_prop_prog_ || !shadow_static_prop_prog_->shp_)
-            fprintf(stderr, "[SHADOW_STATIC_PROP] WARNING: failed to compile shadow_static_prop shader"
-                            " -- GPU-driven static-prop shadow draw disabled\n");
+            mc2::fmt::print_err("[SHADOW_STATIC_PROP] WARNING: failed to compile shadow_static_prop shader -- GPU-driven static-prop shadow draw disabled\n");
         else
-            printf("[SHADOW_STATIC_PROP] Shadow static-prop shader loaded: prog=%u\n",
-                   (unsigned)shadow_static_prop_prog_->shp_);
+            mc2::fmt::print_out("[SHADOW_STATIC_PROP] Shadow static-prop shader loaded: prog={:d}\n", mc2::fmt::as_u32((unsigned)shadow_static_prop_prog_->shp_));
         fflush(stdout);
     }
     {
@@ -432,12 +428,9 @@ void gosRenderer::init() {
             "shaders/shadow_static_prop.frag",
             kShadowPropAlphaPrefix);
         if (!p || !p->shp_)
-            fprintf(stderr, "[SHADOW_STATIC_PROP] WARNING: failed to compile "
-                            "shadow_static_prop_alpha shader -- foliage shadow "
-                            "casters fall back to square (empty-frag) silhouette\n");
+            mc2::fmt::print_err("[SHADOW_STATIC_PROP] WARNING: failed to compile shadow_static_prop_alpha shader -- foliage shadow casters fall back to square (empty-frag) silhouette\n");
         else
-            printf("[SHADOW_STATIC_PROP] Shadow static-prop ALPHA shader loaded: prog=%u\n",
-                   (unsigned)p->shp_);
+            mc2::fmt::print_out("[SHADOW_STATIC_PROP] Shadow static-prop ALPHA shader loaded: prog={:d}\n", mc2::fmt::as_u32((unsigned)p->shp_));
         fflush(stdout);
     }
     {
@@ -459,13 +452,9 @@ void gosRenderer::init() {
             "shaders/shadow_static_prop.frag",
             kShadowPropAlphaAtlasPrefix);
         if (!p || !p->shp_)
-            fprintf(stderr, "[SHADOW_STATIC_PROP] WARNING: failed to compile "
-                            "shadow_static_prop_alpha_atlas shader -- coalesce/atlas "
-                            "foliage shadow casters fall back to the legacy-texture "
-                            "alpha program\n");
+            mc2::fmt::print_err("[SHADOW_STATIC_PROP] WARNING: failed to compile shadow_static_prop_alpha_atlas shader -- coalesce/atlas foliage shadow casters fall back to the legacy-texture alpha program\n");
         else
-            printf("[SHADOW_STATIC_PROP] Shadow static-prop ALPHA-ATLAS shader loaded: prog=%u\n",
-                   (unsigned)p->shp_);
+            mc2::fmt::print_out("[SHADOW_STATIC_PROP] Shadow static-prop ALPHA-ATLAS shader loaded: prog={:d}\n", mc2::fmt::as_u32((unsigned)p->shp_));
         fflush(stdout);
     }
 
@@ -487,11 +476,9 @@ void gosRenderer::init() {
             "shaders/gos_terrain.frag",
             kThinPrefix.c_str());
         if (!thin_terrain_prog_ || !thin_terrain_prog_->shp_)
-            fprintf(stderr, "[THIN_TERRAIN] WARNING: failed to compile thin terrain shader"
-                            " — thin draw path disabled\n");
+            mc2::fmt::print_err("[THIN_TERRAIN] WARNING: failed to compile thin terrain shader — thin draw path disabled\n");
         else
-            printf("[THIN_TERRAIN] Thin terrain shader loaded: prog=%u\n",
-                   (unsigned)thin_terrain_prog_->shp_);
+            mc2::fmt::print_out("[THIN_TERRAIN] Thin terrain shader loaded: prog={:d}\n", mc2::fmt::as_u32((unsigned)thin_terrain_prog_->shp_));
         fflush(stdout);
     }
 
@@ -537,11 +524,9 @@ void gosRenderer::init() {
             "shaders/gos_terrain_mine_static.frag",
             kMinePrefix);
         if (!mine_static_prog_ || !mine_static_prog_->shp_)
-            fprintf(stderr, "[MINE_STATIC] WARNING: failed to compile mine static-bake shader"
-                            " — MC2_TERRAIN_INDIRECT_MINE=1 will be a no-op\n");
+            mc2::fmt::print_err("[MINE_STATIC] WARNING: failed to compile mine static-bake shader — MC2_TERRAIN_INDIRECT_MINE=1 will be a no-op\n");
         else
-            printf("[MINE_STATIC] Mine static-bake shader loaded: prog=%u\n",
-                   (unsigned)mine_static_prog_->shp_);
+            mc2::fmt::print_out("[MINE_STATIC] Mine static-bake shader loaded: prog={:d}\n", mc2::fmt::as_u32((unsigned)mine_static_prog_->shp_));
         fflush(stdout);
     }
 
@@ -564,11 +549,9 @@ void gosRenderer::init() {
             "shaders/gos_terrain.frag",
             kMaskSolidPrefix.c_str());
         if (!mask_solid_prog_ || !mask_solid_prog_->shp_)
-            fprintf(stderr, "[MASK_SOLID] WARNING: failed to compile mask-SOLID shader"
-                            " — MC2_TERRAIN_MASK_DISPATCH=1 SOLID draw disabled\n");
+            mc2::fmt::print_err("[MASK_SOLID] WARNING: failed to compile mask-SOLID shader — MC2_TERRAIN_MASK_DISPATCH=1 SOLID draw disabled\n");
         else
-            printf("[MASK_SOLID] Mask-SOLID shader loaded: prog=%u\n",
-                   (unsigned)mask_solid_prog_->shp_);
+            mc2::fmt::print_out("[MASK_SOLID] Mask-SOLID shader loaded: prog={:d}\n", mc2::fmt::as_u32((unsigned)mask_solid_prog_->shp_));
         fflush(stdout);
     }
 
@@ -584,11 +567,9 @@ void gosRenderer::init() {
             "shaders/gos_tex_vertex.frag",
             kMaskWaterPrefix);
         if (!mask_water_prog_ || !mask_water_prog_->shp_)
-            fprintf(stderr, "[MASK_WATER] WARNING: failed to compile mask-water shader"
-                            " — MC2_TERRAIN_MASK_DISPATCH=1 water draw disabled\n");
+            mc2::fmt::print_err("[MASK_WATER] WARNING: failed to compile mask-water shader — MC2_TERRAIN_MASK_DISPATCH=1 water draw disabled\n");
         else
-            printf("[MASK_WATER] Mask-water shader loaded: prog=%u\n",
-                   (unsigned)mask_water_prog_->shp_);
+            mc2::fmt::print_out("[MASK_WATER] Mask-water shader loaded: prog={:d}\n", mc2::fmt::as_u32((unsigned)mask_water_prog_->shp_));
         fflush(stdout);
     }
 
@@ -604,11 +585,9 @@ void gosRenderer::init() {
             "shaders/gos_tex_vertex.frag",
             kWaterFastPrefix);
         if (!water_fast_prog_ || !water_fast_prog_->shp_)
-            fprintf(stderr, "[WATER_FAST] WARNING: failed to compile water-fast shader"
-                            " — MC2_RENDER_WATER_FASTPATH=1 will fall back to legacy\n");
+            mc2::fmt::print_err("[WATER_FAST] WARNING: failed to compile water-fast shader — MC2_RENDER_WATER_FASTPATH=1 will fall back to legacy\n");
         else
-            printf("[WATER_FAST] Water-fast shader loaded: prog=%u\n",
-                   (unsigned)water_fast_prog_->shp_);
+            mc2::fmt::print_out("[WATER_FAST] Water-fast shader loaded: prog={:d}\n", mc2::fmt::as_u32((unsigned)water_fast_prog_->shp_));
         fflush(stdout);
     }
 

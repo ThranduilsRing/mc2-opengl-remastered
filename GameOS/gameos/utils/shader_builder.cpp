@@ -1254,7 +1254,7 @@ bool glsl_program::reload()
             mc2_diag::writeEvent("SHADER_COMPILE", 1, 0, data.str().c_str());
         }
         for (int i = 0; i < 5; ++i) if (newShaders[i]) glDeleteShader(newShaders[i]);
-        printf("[SHADER] reload failed (compile); keeping previous program\n");
+        mc2::fmt::print_out("[SHADER] reload failed (compile); keeping previous program\n");
         return false;
     }
 
@@ -1279,7 +1279,7 @@ bool glsl_program::reload()
         }
         glDeleteProgram(newProg);
         reload_log_ = "link: " + (reloadLinkLog.empty() ? std::string("failed (empty info log)") : reloadLinkLog);
-        printf("[SHADER] reload failed (link); keeping previous program\n");
+        mc2::fmt::print_out("[SHADER] reload failed (link); keeping previous program\n");
         return false;
     }
 

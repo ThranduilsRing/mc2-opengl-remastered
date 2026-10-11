@@ -559,7 +559,7 @@ profile = true;
 		const char* reproPath = reproStr.c_str();
 		long reproErrors = 0;
 		long reproLines = 0;
-		fprintf(stderr, "[ABL_COMPILE_FATAL_REPRO] file=%s\n", reproPath);
+		mc2::fmt::print_err("[ABL_COMPILE_FATAL_REPRO] file={}\n", mc2::fmt::safe(reproPath));
 		fflush(stderr);
 		ABLi_preProcess(reproPath, &reproErrors, &reproLines);
 	}
@@ -669,9 +669,7 @@ int32_t ABLi_preProcess (const char* sourceFileName, long* numErrors, long* numL
 	// line and exit cleanly so the failure is diagnosable instead of an opaque AV.
 	if (moduleIdPtr == nullptr)
 	{
-		fprintf(stderr,
-			"[PLAYTEST] FATAL: missing or invalid ABL file '%s' -- cannot preprocess module.\n",
-			source_fn ? source_fn : "(null)");
+		mc2::fmt::print_err("[PLAYTEST] FATAL: missing or invalid ABL file '{}' -- cannot preprocess module.\n", mc2::fmt::safe(source_fn ? source_fn : "(null)"));
 		fflush(stderr);
 		closeSourceFile();
 		if (source_fn)

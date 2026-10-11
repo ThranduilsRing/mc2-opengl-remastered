@@ -206,7 +206,7 @@ bool write_png_rgb(const char* path, int w, int h,
 
     FILE* f = fopen(path, "wb");
     if (!f) {
-        fprintf(stderr, "[VISUAL_CAPTURE v1] ERROR fopen %s\n", path);
+        mc2::fmt::print_err("[VISUAL_CAPTURE v1] ERROR fopen {}\n", mc2::fmt::safe(path));
         return false;
     }
     fwrite(out.data(), 1, out.size(), f);
@@ -225,8 +225,7 @@ bool read_scene_rgb(int w, int h, std::vector<unsigned char>& rgbTopDown) {
     glReadPixels(0, 0, w, h, GL_RGB, GL_UNSIGNED_BYTE, bottomUp.data());
     GLenum err = glGetError();
     if (err != GL_NO_ERROR) {
-        fprintf(stderr, "[VISUAL_CAPTURE v1] ERROR glReadPixels 0x%04X "
-                "(%dx%d) -- skipping PNG\n", (unsigned)err, w, h);
+        mc2::fmt::print_err("[VISUAL_CAPTURE v1] ERROR glReadPixels 0x{:04X} ({:d}x{:d}) -- skipping PNG\n", mc2::fmt::as_u32((unsigned)err), mc2::fmt::as_i32(w), mc2::fmt::as_i32(h));
         return false;   // do NOT write a garbage PNG
     }
     rgbTopDown.resize((size_t)w * h * 3);
@@ -285,7 +284,7 @@ void write_sidecar(const std::string& jsonPath, const std::string& mission,
                    int w, int h, long triggerFrame, bool deterministic) {
     FILE* f = fopen(jsonPath.c_str(), "wb");
     if (!f) {
-        fprintf(stderr, "[VISUAL_CAPTURE v1] ERROR fopen %s\n", jsonPath.c_str());
+        mc2::fmt::print_err("[VISUAL_CAPTURE v1] ERROR fopen {}\n", jsonPath.c_str());
         return;
     }
     std::vector<std::string> gateEnv;
@@ -387,8 +386,7 @@ void capture_to(const std::string& dir, const std::string& base,
         g_vkReq.pending = true;
         g_vkReq.png = png;
         g_vkReq.w = w; g_vkReq.h = h;
-        fprintf(stderr, "[VISUAL_CAPTURE v1] VK readback requested %s (%dx%d)\n",
-                png.c_str(), w, h);
+        mc2::fmt::print_err("[VISUAL_CAPTURE v1] VK readback requested {} ({:d}x{:d})\n", png.c_str(), mc2::fmt::as_i32(w), mc2::fmt::as_i32(h));
         return;
     }
     g_readbackSource = "gl_fbo";
@@ -397,7 +395,7 @@ void capture_to(const std::string& dir, const std::string& base,
     if (write_png_rgb(png.c_str(), w, h, rgb)) {
         write_sidecar(js, mission, label, frame, w, h,
                       triggerFrame, deterministic);
-        fprintf(stderr, "[VISUAL_CAPTURE v1] wrote %s (%dx%d)\n", png.c_str(), w, h);
+        mc2::fmt::print_err("[VISUAL_CAPTURE v1] wrote {} ({:d}x{:d})\n", png.c_str(), mc2::fmt::as_i32(w), mc2::fmt::as_i32(h));
         fflush(stderr);
     }
 }
@@ -557,8 +555,7 @@ void parse_capture_cfg() {
     static bool initLineDone = false;
     if (!initLineDone && g_cap.frame >= 0 && g_cap.dir) {
         initLineDone = true;
-        fprintf(stderr, "[VISUAL_CAPTURE v1] init frame=%ld dir=%s\n",
-                g_cap.frame, g_cap.dir);
+        mc2::fmt::print_err("[VISUAL_CAPTURE v1] init frame={:d} dir={}\n", mc2::fmt::as_i32(g_cap.frame), mc2::fmt::safe(g_cap.dir));
     }
 }
 
@@ -904,8 +901,7 @@ void cameraParkTick(unsigned int frame)
         Stuff::Vector3D rot; rot.x = pv[3]; rot.y = pv[2]; rot.z = pv[4];
         eye->setRotation(rot);
         eye->freezeScriptedCameraForCapture();
-        fprintf(stderr, "[CAMERA_PARK v1] frame=%u pos=%.0f,%.0f rot=%.0f proj=%.0f alt=%.0f\n",
-                frame, pv[0], pv[1], pv[2], pv[3], pv[4]);
+        mc2::fmt::print_err("[CAMERA_PARK v1] frame={:d} pos={:.0f},{:.0f} rot={:.0f} proj={:.0f} alt={:.0f}\n", mc2::fmt::as_u32(frame), pv[0], pv[1], pv[2], pv[3], pv[4]);
     }
 }
 
@@ -925,8 +921,7 @@ void vkCaptureDeliver(unsigned int w, unsigned int h, const unsigned char* rgba)
     g_vkReq.pending = false;
     if (!rgba || w == 0 || h == 0) return;
     if ((int)w != g_vkReq.w || (int)h != g_vkReq.h)
-        fprintf(stderr, "[VISUAL_CAPTURE v1] WARN VK present %ux%u != requested %dx%d "
-                "(PNG uses present size)\n", w, h, g_vkReq.w, g_vkReq.h);
+        mc2::fmt::print_err("[VISUAL_CAPTURE v1] WARN VK present {:d}x{:d} != requested {:d}x{:d} (PNG uses present size)\n", mc2::fmt::as_u32(w), mc2::fmt::as_u32(h), mc2::fmt::as_i32(g_vkReq.w), mc2::fmt::as_i32(g_vkReq.h));
     // sharedImg rows are bottom-up (GL orientation); PNG wants top-down.
     std::vector<unsigned char> rgb((size_t)w * h * 3);
     for (unsigned y = 0; y < h; ++y) {
@@ -939,8 +934,7 @@ void vkCaptureDeliver(unsigned int w, unsigned int h, const unsigned char* rgba)
         }
     }
     if (write_png_rgb(g_vkReq.png.c_str(), (int)w, (int)h, rgb)) {
-        fprintf(stderr, "[VISUAL_CAPTURE v1] wrote %s (%ux%u) src=vk_present\n",
-                g_vkReq.png.c_str(), w, h);
+        mc2::fmt::print_err("[VISUAL_CAPTURE v1] wrote {} ({:d}x{:d}) src=vk_present\n", g_vkReq.png.c_str(), mc2::fmt::as_u32(w), mc2::fmt::as_u32(h));
         fflush(stderr);
     }
 }

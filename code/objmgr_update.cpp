@@ -191,26 +191,7 @@ void g_invViewConflationRollAndMaybeEmit() {
     if (++g_invConfFrameCount % 120ULL == 0ULL) {
         // Avoid divide-by-zero in summary line.
         const unsigned long long denom = g_invConfActorFrames ? g_invConfActorFrames : 1ULL;
-        fprintf(stderr,
-            "[INVIEW_CONFLATION v1] event=summary actor_frames=%llu"
-            " render_vs_sim=%llu (%.2f%%)"
-            " render_vs_ai=%llu (%.2f%%)"
-            " sim_vs_ai=%llu (%.2f%%)"
-            " render_vs_life=%llu (%.2f%%)"
-            " sim_vs_life=%llu (%.2f%%)"
-            " life_vs_ai=%llu (%.2f%%)"
-            " movers=%llu statics=%llu"
-            " mover_render_vs_ai=%llu hysteresis_N=%u\n",
-            g_invConfActorFrames,
-            g_invConfRenderVsSim, 100.0 * (double)g_invConfRenderVsSim / (double)denom,
-            g_invConfRenderVsAi,  100.0 * (double)g_invConfRenderVsAi  / (double)denom,
-            g_invConfSimVsAi,     100.0 * (double)g_invConfSimVsAi     / (double)denom,
-            g_invConfRenderVsLife,100.0 * (double)g_invConfRenderVsLife/ (double)denom,
-            g_invConfSimVsLife,   100.0 * (double)g_invConfSimVsLife   / (double)denom,
-            g_invConfLifeVsAi,    100.0 * (double)g_invConfLifeVsAi    / (double)denom,
-            g_invConfMovers, g_invConfStatics,
-            g_invConfMoverRenderVsAi,
-            (unsigned)s_inViewConflationHysteresisN);
+        mc2::fmt::print_err("[INVIEW_CONFLATION v1] event=summary actor_frames={:d} render_vs_sim={:d} ({:.2f}%) render_vs_ai={:d} ({:.2f}%) sim_vs_ai={:d} ({:.2f}%) render_vs_life={:d} ({:.2f}%) sim_vs_life={:d} ({:.2f}%) life_vs_ai={:d} ({:.2f}%) movers={:d} statics={:d} mover_render_vs_ai={:d} hysteresis_N={:d}\n", mc2::fmt::as_u64(g_invConfActorFrames), mc2::fmt::as_u64(g_invConfRenderVsSim), 100.0 * (double)g_invConfRenderVsSim / (double)denom, mc2::fmt::as_u64(g_invConfRenderVsAi), 100.0 * (double)g_invConfRenderVsAi  / (double)denom, mc2::fmt::as_u64(g_invConfSimVsAi), 100.0 * (double)g_invConfSimVsAi     / (double)denom, mc2::fmt::as_u64(g_invConfRenderVsLife), 100.0 * (double)g_invConfRenderVsLife/ (double)denom, mc2::fmt::as_u64(g_invConfSimVsLife), 100.0 * (double)g_invConfSimVsLife   / (double)denom, mc2::fmt::as_u64(g_invConfLifeVsAi), 100.0 * (double)g_invConfLifeVsAi    / (double)denom, mc2::fmt::as_u64(g_invConfMovers), mc2::fmt::as_u64(g_invConfStatics), mc2::fmt::as_u64(g_invConfMoverRenderVsAi), mc2::fmt::as_u32((unsigned)s_inViewConflationHysteresisN));
         fflush(stderr);
         g_invConfActorFrames     = 0ULL;
         g_invConfRenderVsSim     = 0ULL;
@@ -430,9 +411,7 @@ void GameObjectManager::updateDestroyTestHook() {
 			for (long bi = 0; bi < numBuildings; ++bi) {
 				BuildingPtr b = buildings[bi];
 				if (!b || b->isDestroyed() || !b->getExists()) continue;
-				fprintf(stderr,
-					"[SHADOW_STATIC_BLDG_REBAKE_TEST v1] event=test_destroy frame=%u buildingIndex=%ld\n",
-					g_mc2FrameCounter, bi);
+				mc2::fmt::print_err("[SHADOW_STATIC_BLDG_REBAKE_TEST v1] event=test_destroy frame={:d} buildingIndex={:d}\n", mc2::fmt::as_u32(g_mc2FrameCounter), mc2::fmt::as_i32(bi));
 				fflush(stderr);
 				b->setDamage(b->getDamageLevel());
 				break;
@@ -1152,18 +1131,7 @@ void GameObjectManager::updateTerrainObjects(int& frameJobsPrePassCount) {
 		if ((staticDiagFrame <= 5) || ((staticDiagFrame % 300) == 0)) {
 			if (staticDiagFrame != lastStaticSkipFrame) {
 				lastStaticSkipFrame = staticDiagFrame;
-				std::fprintf(stderr,
-				             "[STATIC_NATURAL_SKIP] frame=%u eligible=%ld natural=%ld skipped=%ld falling=%ld justCreated=%ld miss_notStaticNow=%ld miss_static_unregistered=%ld miss_static_shape=%ld miss_static_fullBake=%ld miss_static_other=%ld miss_unreg_treeAppr=%ld miss_unreg_bldgAppr=%ld miss_unreg_otherAppr=%ld miss_unreg_objTree=%ld miss_unreg_objTerrain=%ld miss_unreg_objBuilding=%ld miss_unreg_objOther=%ld miss_special=%ld miss_alarm=%ld miss_lookout=%ld miss_sensor=%ld miss_power=%ld miss_control=%ld miss_mechBay=%ld miss_falling=%ld miss_justCreated=%ld nonNatural=%ld unknown=%ld updated=%ld bldg_candidates=%ld bldg_skipped=%ld bldg_miss_notStaticNow=%ld\n",
-				             staticDiagFrame, eligibleStaticNatural, staticNaturalCandidates, skippedStaticNatural,
-				             fallingNaturalUpdated, justCreatedNaturalUpdated,
-				             missNotStaticNow, missStaticNotRegistered, missStaticShapeMismatch,
-				             missStaticNeedsFullBake, missStaticOther,
-				             missStaticUnregTreeAppearance, missStaticUnregBldgAppearance, missStaticUnregOtherAppearance,
-				             missStaticUnregObjTree, missStaticUnregObjTerrain, missStaticUnregObjBuilding, missStaticUnregObjOther,
-				             missSpecial, missAlarm, missLookout, missSensor,
-				             missPower, missControl, missMechBay, missFalling, missJustCreated,
-				             nonNaturalUpdated, unknownUpdated, terrainObjectsUpdated,
-				             staticBuildingCandidates, skippedStaticBuildings, missBuildingNotStaticNow);
+				mc2::fmt::print_err("[STATIC_NATURAL_SKIP] frame={:d} eligible={:d} natural={:d} skipped={:d} falling={:d} justCreated={:d} miss_notStaticNow={:d} miss_static_unregistered={:d} miss_static_shape={:d} miss_static_fullBake={:d} miss_static_other={:d} miss_unreg_treeAppr={:d} miss_unreg_bldgAppr={:d} miss_unreg_otherAppr={:d} miss_unreg_objTree={:d} miss_unreg_objTerrain={:d} miss_unreg_objBuilding={:d} miss_unreg_objOther={:d} miss_special={:d} miss_alarm={:d} miss_lookout={:d} miss_sensor={:d} miss_power={:d} miss_control={:d} miss_mechBay={:d} miss_falling={:d} miss_justCreated={:d} nonNatural={:d} unknown={:d} updated={:d} bldg_candidates={:d} bldg_skipped={:d} bldg_miss_notStaticNow={:d}\n", mc2::fmt::as_u32(staticDiagFrame), mc2::fmt::as_i32(eligibleStaticNatural), mc2::fmt::as_i32(staticNaturalCandidates), mc2::fmt::as_i32(skippedStaticNatural), mc2::fmt::as_i32(fallingNaturalUpdated), mc2::fmt::as_i32(justCreatedNaturalUpdated), mc2::fmt::as_i32(missNotStaticNow), mc2::fmt::as_i32(missStaticNotRegistered), mc2::fmt::as_i32(missStaticShapeMismatch), mc2::fmt::as_i32(missStaticNeedsFullBake), mc2::fmt::as_i32(missStaticOther), mc2::fmt::as_i32(missStaticUnregTreeAppearance), mc2::fmt::as_i32(missStaticUnregBldgAppearance), mc2::fmt::as_i32(missStaticUnregOtherAppearance), mc2::fmt::as_i32(missStaticUnregObjTree), mc2::fmt::as_i32(missStaticUnregObjTerrain), mc2::fmt::as_i32(missStaticUnregObjBuilding), mc2::fmt::as_i32(missStaticUnregObjOther), mc2::fmt::as_i32(missSpecial), mc2::fmt::as_i32(missAlarm), mc2::fmt::as_i32(missLookout), mc2::fmt::as_i32(missSensor), mc2::fmt::as_i32(missPower), mc2::fmt::as_i32(missControl), mc2::fmt::as_i32(missMechBay), mc2::fmt::as_i32(missFalling), mc2::fmt::as_i32(missJustCreated), mc2::fmt::as_i32(nonNaturalUpdated), mc2::fmt::as_i32(unknownUpdated), mc2::fmt::as_i32(terrainObjectsUpdated), mc2::fmt::as_i32(staticBuildingCandidates), mc2::fmt::as_i32(skippedStaticBuildings), mc2::fmt::as_i32(missBuildingNotStaticNow));
 				if (!missStaticUnregTypeCounts.empty())
 				{
 					std::vector<std::pair<std::string, long>> topUnregTypes(
@@ -1177,11 +1145,7 @@ void GameObjectManager::updateTerrainObjects(int& frameJobsPrePassCount) {
 					const size_t topCount = std::min<size_t>(8, topUnregTypes.size());
 					for (size_t i = 0; i < topCount; ++i)
 					{
-						std::fprintf(stderr,
-						             "[STATIC_REG_HEALTH] unreg_rank=%u type=%s count=%ld\n",
-						             static_cast<unsigned>(i),
-						             topUnregTypes[i].first.c_str(),
-						             topUnregTypes[i].second);
+						mc2::fmt::print_err("[STATIC_REG_HEALTH] unreg_rank={:d} type={} count={:d}\n", mc2::fmt::as_u32(static_cast<unsigned>(i)), topUnregTypes[i].first.c_str(), mc2::fmt::as_i32(topUnregTypes[i].second));
 					}
 				}
 				std::fflush(stderr);
@@ -1311,7 +1275,7 @@ void GameObjectManager::updateBrainCommit() {
 				++committed;
 			}
 			if (committed > 0) {
-				std::fprintf(stderr, "[BRAIN_COMMIT_PHASE] committed=%d warriors in WID order\n", committed);
+				mc2::fmt::print_err("[BRAIN_COMMIT_PHASE] committed={:d} warriors in WID order\n", mc2::fmt::as_i32(committed));
 				std::fflush(stderr);
 			}
 		}

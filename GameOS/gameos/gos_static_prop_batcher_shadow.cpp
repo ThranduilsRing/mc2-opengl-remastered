@@ -260,12 +260,7 @@ void GpuStaticPropBatcher::flushShadow(bool skipStaticBuildingTypes) {
         glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDING, &elemBuf);
         glGetProgramiv(shadowProg, GL_LINK_STATUS, &linkOk);
         GLenum ePre = glGetError();
-        fprintf(stderr,
-            "[SHADOW_DIAG] sp finalized=%d vao=%u isVao=%d ssbo=%u isBuf=%d "
-            "elemBind=%d prog=%u link=%d errPre=0x%x typeRanges=%zu types=%zu packets=%zu\n",
-            (int)s_geometryFinalized, s_sharedVao, (int)glIsVertexArray(s_sharedVao),
-            s_instanceSsbo, (int)glIsBuffer(s_instanceSsbo), elemBuf, shadowProg,
-            linkOk, (unsigned)ePre, s_typeRanges.size(), s_types.size(), s_packets.size());
+        mc2::fmt::print_err("[SHADOW_DIAG] sp finalized={:d} vao={:d} isVao={:d} ssbo={:d} isBuf={:d} elemBind={:d} prog={:d} link={:d} errPre=0x{:x} typeRanges={:d} types={:d} packets={:d}\n", mc2::fmt::as_i32((int)s_geometryFinalized), mc2::fmt::as_u32(s_sharedVao), mc2::fmt::as_i32((int)glIsVertexArray(s_sharedVao)), mc2::fmt::as_u32(s_instanceSsbo), mc2::fmt::as_i32((int)glIsBuffer(s_instanceSsbo)), mc2::fmt::as_i32(elemBuf), mc2::fmt::as_u32(shadowProg), mc2::fmt::as_i32(linkOk), mc2::fmt::as_u32((unsigned)ePre), mc2::fmt::as_size(s_typeRanges.size()), mc2::fmt::as_size(s_types.size()), mc2::fmt::as_size(s_packets.size()));
         fflush(stderr);
     }
 
@@ -317,14 +312,7 @@ void GpuStaticPropBatcher::flushShadow(bool skipStaticBuildingTypes) {
                 }
             }
             if (s_shDiag) {
-                fprintf(stderr,
-                    "[SHADOW_DIAG] sp draw type=%u byteOff=%llu byteSize=%llu instCnt=%u "
-                    "firstPkt=%u pktCnt=%u pktIdx=%u idxCnt=%u firstIdx=%u baseV=%d errPre=0x%x\n",
-                    typeID, (unsigned long long)r.instanceByteOffset,
-                    (unsigned long long)r.instanceByteSize, r.instanceCount,
-                    type.firstPacket, type.packetCount, pktIdx,
-                    pkt.indexCount, pkt.firstIndex, pkt.baseVertex,
-                    (unsigned)glGetError());
+                mc2::fmt::print_err("[SHADOW_DIAG] sp draw type={:d} byteOff={:d} byteSize={:d} instCnt={:d} firstPkt={:d} pktCnt={:d} pktIdx={:d} idxCnt={:d} firstIdx={:d} baseV={:d} errPre=0x{:x}\n", mc2::fmt::as_u32(typeID), mc2::fmt::as_u64((unsigned long long)r.instanceByteOffset), mc2::fmt::as_u64((unsigned long long)r.instanceByteSize), mc2::fmt::as_u32(r.instanceCount), mc2::fmt::as_u32(type.firstPacket), mc2::fmt::as_u32(type.packetCount), mc2::fmt::as_u32(pktIdx), mc2::fmt::as_u32(pkt.indexCount), mc2::fmt::as_u32(pkt.firstIndex), mc2::fmt::as_i32(pkt.baseVertex), mc2::fmt::as_u32((unsigned)glGetError()));
                 fflush(stderr);
             }
             glDrawElementsInstancedBaseVertex(
@@ -478,10 +466,7 @@ void GpuStaticPropBatcher::drawStaticBuildingShadows(
     s_staticBldgShadowInst  = instDrawn;
     s_staticBldgShadowDraws = drawCalls;
     if (mc2::gate::is<"MC2_STATIC_PROP_BUILDING_SHADOW", "2">()) {
-        fprintf(stderr,
-            "[SHADOW_STATIC_BLDG v1] recipes_in=%zu types=%d inst=%d draws=%d "
-            "(buildings only; full registry, NOT per-frame buckets)\n",
-            instances.size(), typesDrawn, instDrawn, drawCalls);
+        mc2::fmt::print_err("[SHADOW_STATIC_BLDG v1] recipes_in={:d} types={:d} inst={:d} draws={:d} (buildings only; full registry, NOT per-frame buckets)\n", mc2::fmt::as_size(instances.size()), mc2::fmt::as_i32(typesDrawn), mc2::fmt::as_i32(instDrawn), mc2::fmt::as_i32(drawCalls));
         fflush(stderr);
     }
 }
@@ -685,10 +670,7 @@ void GpuStaticPropBatcher::drawDynamicPropShadows(
     s_dynPropShadowInst  = instDrawn;
     s_dynPropShadowDraws = drawCalls;
     if (mc2::gate::is<"MC2_SHADOW_DYNAMIC_PROP_CASTERS", "2">()) {
-        fprintf(stderr,
-            "[SHADOW_DYN_PROP v1] recipes_in=%zu types=%d inst=%d draws=%d "
-            "(registry props; full registry, NOT per-frame buckets)\n",
-            instances.size(), typesDrawn, instDrawn, drawCalls);
+        mc2::fmt::print_err("[SHADOW_DYN_PROP v1] recipes_in={:d} types={:d} inst={:d} draws={:d} (registry props; full registry, NOT per-frame buckets)\n", mc2::fmt::as_size(instances.size()), mc2::fmt::as_i32(typesDrawn), mc2::fmt::as_i32(instDrawn), mc2::fmt::as_i32(drawCalls));
         fflush(stderr);
     }
 }
@@ -944,12 +926,7 @@ extern "C" int mc2_color_prop_island_get_material_feed(Mc2ColorPropMaterialFeed*
                 else if (s_typeAlbedoLayer[t] < 0) { ++tyNoPrimary; instNoPrimary += ic; }
                 else { ++tyTextured; instTextured += ic; }
             }
-            std::fprintf(stderr,
-                "[GPUPROPS_HIST v2] types: textured=%u alpha_on=%u no_primary=%u | "
-                "instances: textured=%llu alpha_on=%llu no_primary=%llu total=%llu\n",
-                tyTextured, tyAlphaOn, tyNoPrimary,
-                (unsigned long long)instTextured, (unsigned long long)instAlphaOn,
-                (unsigned long long)instNoPrimary, (unsigned long long)instTotal);
+            mc2::fmt::print_err("[GPUPROPS_HIST v2] types: textured={:d} alpha_on={:d} no_primary={:d} | instances: textured={:d} alpha_on={:d} no_primary={:d} total={:d}\n", mc2::fmt::as_u32(tyTextured), mc2::fmt::as_u32(tyAlphaOn), mc2::fmt::as_u32(tyNoPrimary), mc2::fmt::as_u64((unsigned long long)instTextured), mc2::fmt::as_u64((unsigned long long)instAlphaOn), mc2::fmt::as_u64((unsigned long long)instNoPrimary), mc2::fmt::as_u64((unsigned long long)instTotal));
             std::fflush(stderr);
         }
     }

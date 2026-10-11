@@ -127,7 +127,7 @@ static void loadFontFamily(ImGuiIO& io, const char* familyName, const char* file
     const std::filesystem::path fontPath = resolveFontFile(filename);
     if (fontPath.empty()) {
         if (traceEnabled())
-            std::fprintf(stderr, "[IMGUI_FONT] missing %s for family=%s; using ImGui default\n", filename, familyName);
+            mc2::fmt::print_err("[IMGUI_FONT] missing {} for family={}; using ImGui default\n", mc2::fmt::safe(filename), mc2::fmt::safe(familyName));
         return;
     }
 
@@ -139,7 +139,7 @@ static void loadFontFamily(ImGuiIO& io, const char* familyName, const char* file
     }
 
     if (traceEnabled())
-        std::fprintf(stderr, "[IMGUI_FONT] loaded family=%s file=%s\n", familyName, fontPath.string().c_str());
+        mc2::fmt::print_err("[IMGUI_FONT] loaded family={} file={}\n", mc2::fmt::safe(familyName), fontPath.string().c_str());
 }
 
 static void loadUiFonts(ImGuiIO& io)
@@ -724,10 +724,7 @@ static void maybeTraceVkImguiDecline() {
         if (s_tracedInitial) return;
         s_tracedInitial = true;
     }
-    std::fprintf(stderr,
-        "[VK_IMGUI] requested=1 used_vulkan=0 direct_present_armed=%d "
-        "fallback_reason=\"vulkan_renderer_not_ready\"\n",
-        directPresentArmed);
+    mc2::fmt::print_err("[VK_IMGUI] requested=1 used_vulkan=0 direct_present_armed={:d} fallback_reason=\"vulkan_renderer_not_ready\"\n", mc2::fmt::as_i32(directPresentArmed));
     std::fflush(stderr);
 }
 
@@ -810,8 +807,7 @@ void GuiRuntime::Render() {
             static bool s_tracedVkUsed = false;
             if (!s_tracedVkUsed) {
                 s_tracedVkUsed = true;
-                std::fprintf(stderr,
-                    "[VK_IMGUI] requested=1 used_vulkan=1 fallback_reason=\"\"\n");
+                mc2::fmt::print_err("[VK_IMGUI] requested=1 used_vulkan=1 fallback_reason=\"\"\n");
                 std::fflush(stderr);
             }
             return;

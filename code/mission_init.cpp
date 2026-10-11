@@ -77,8 +77,7 @@ void Mission::initPrologue(MissionInitFrame& f) {
 			if (!seedText.empty())
 				seed = (uint32_t)strtoul(seedText.c_str(), nullptr, 0);
 			gos_srand(seed);
-			std::fprintf(stderr, "[DET_RNG] mission=%s reseed=0x%08X (MC2_DETERMINISTIC_RNG=1)\n",
-			             missionName ? missionName : "(null)", seed);
+			mc2::fmt::print_err("[DET_RNG] mission={} reseed=0x{:08X} (MC2_DETERMINISTIC_RNG=1)\n", mc2::fmt::safe(missionName ? missionName : "(null)"), mc2::fmt::as_u32(seed));
 		}
 	}
 
@@ -855,8 +854,7 @@ void Mission::initPathfinding(MissionInitFrame& f) {
 		if (moveSide > MAX_MAP_CELL_WIDTH)
 			moveSide = MAX_MAP_CELL_WIDTH;
 		if (moveSide > 0) {
-			printf("[MISSION] synthesizing blank MOVE: moveSide=%d (terrainVtx=%d)\n",
-			       moveSide, (int)Terrain::realVerticesMapSide);
+			mc2::fmt::print_out("[MISSION] synthesizing blank MOVE: moveSide={:d} (terrainVtx={:d})\n", mc2::fmt::as_i32(moveSide), mc2::fmt::as_i32((int)Terrain::realVerticesMapSide));
 			fflush(stdout);
 			MOVE_buildData(moveSide, moveSide, NULL /*all-passable blank*/, 0, NULL);
 			if (GameMap)
@@ -902,16 +900,15 @@ void Mission::initAblCoreLibs(MissionInitFrame& f) {
 		libPath.init(missionPath, lib.name, ".abx");
 		if (!fileExists(libPath, FILE_ON_DISK | FILE_ON_FST)) {
 			if (lib.required)
-				std::fprintf(stderr, "[ABL_CORE] WARN: required library %s.abx not found at %s\n", lib.name, missionPath);
+				mc2::fmt::print_err("[ABL_CORE] WARN: required library {}.abx not found at {}\n", mc2::fmt::safe(lib.name), mc2::fmt::safe(missionPath));
 			else if (ablCoreTrace)
-				std::fprintf(stderr, "[ABL_CORE] optional library %s.abx absent — skipped\n", lib.name);
+				mc2::fmt::print_err("[ABL_CORE] optional library {}.abx absent — skipped\n", mc2::fmt::safe(lib.name));
 			continue;
 		}
 		numErrors = 0;
 		ABLModulePtr library = ABLi_loadLibrary(libPath, &numErrors, &numLinesProcessed);
 		if (ablCoreTrace || !library || numErrors > 0)
-			std::fprintf(stderr, "[ABL_CORE] load %s.abx -> %s (errors=%ld)\n",
-			             lib.name, library ? "OK" : "NULL", numErrors);
+			mc2::fmt::print_err("[ABL_CORE] load {}.abx -> {} (errors={:d})\n", mc2::fmt::safe(lib.name), mc2::fmt::safe(library ? "OK" : "NULL"), mc2::fmt::as_i32(numErrors));
 	}
 }
 
@@ -943,8 +940,7 @@ void Mission::initMissionScript(MissionInitFrame& f) {
 		    legacyScriptName[0] != '\0') {
 			strncpy(missionScriptName, legacyScriptName, 79);
 			missionScriptName[79] = '\0';
-			std::fprintf(stderr, "[MISSIONFIT_OPORD] empty ScenarioScript -> LegacyScenarioScript '%s'\n",
-			             missionScriptName);
+			mc2::fmt::print_err("[MISSIONFIT_OPORD] empty ScenarioScript -> LegacyScenarioScript '{}'\n", mc2::fmt::safe(missionScriptName));
 		}
 	}
 

@@ -20,8 +20,7 @@ static void vkScopedGlCanaryEnd(GLuint query, const char* tag, int draws) {
     glEndQuery(GL_ANY_SAMPLES_PASSED);
     GLuint anySamples = 0;
     glGetQueryObjectuiv(query, GL_QUERY_RESULT, &anySamples);
-    std::fprintf(stderr, "[VK_SCENE_GL_DRAW_CANARY v1] tag=%s any_samples=%u draws=%d\n",
-                 tag, (unsigned)anySamples, draws);
+    mc2::fmt::print_err("[VK_SCENE_GL_DRAW_CANARY v1] tag={} any_samples={:d} draws={:d}\n", mc2::fmt::safe(tag), mc2::fmt::as_u32((unsigned)anySamples), mc2::fmt::as_i32(draws));
     glDeleteQueries(1, &query);
 }
 
@@ -116,11 +115,7 @@ void bindBatchTextureOrFallback(gosTexture* t, DWORD texHandle, const char* batc
     ++g_overlayTexStats.bound_zero_prevented;   // the bug this guard prevents
     ++g_overlayTexStats.fallback_bound;
     if (!overlayHandleAlreadyLogged(texHandle)) {
-        fprintf(stderr,
-            "[OVERLAY_TEXTURE v1] event=resolve_fail batch=%s texHandle=%u "
-            "fallback_bound=1 texture=<1x1 magenta debug> reason=%s\n",
-            batchName, (unsigned)texHandle,
-            (t && id == 0u) ? "resolved_but_gl_id_0" : "null_or_invalid_handle");
+        mc2::fmt::print_err("[OVERLAY_TEXTURE v1] event=resolve_fail batch={} texHandle={:d} fallback_bound=1 texture=<1x1 magenta debug> reason={}\n", mc2::fmt::safe(batchName), mc2::fmt::as_u32((unsigned)texHandle), mc2::fmt::safe((t && id == 0u) ? "resolved_but_gl_id_0" : "null_or_invalid_handle"));
         fflush(stderr);
     }
     glBindTexture(GL_TEXTURE_2D, getOverlayFallbackTexture());
@@ -134,15 +129,7 @@ void overlayTexTraceSummary() {
     static uint64_t s_tick = 0;
     ++s_tick;
     if ((s_tick % 300u) != 1u) return;
-    fprintf(stderr,
-        "[OVERLAY_TEXTURE v1] event=summary tick=%llu pushes=%llu resolved=%llu "
-        "resolve_failed=%llu bound_zero_prevented=%llu fallback_bound=%llu\n",
-        (unsigned long long)s_tick,
-        (unsigned long long)g_overlayTexStats.pushes,
-        (unsigned long long)g_overlayTexStats.resolved,
-        (unsigned long long)g_overlayTexStats.resolve_failed,
-        (unsigned long long)g_overlayTexStats.bound_zero_prevented,
-        (unsigned long long)g_overlayTexStats.fallback_bound);
+    mc2::fmt::print_err("[OVERLAY_TEXTURE v1] event=summary tick={:d} pushes={:d} resolved={:d} resolve_failed={:d} bound_zero_prevented={:d} fallback_bound={:d}\n", mc2::fmt::as_u64((unsigned long long)s_tick), mc2::fmt::as_u64((unsigned long long)g_overlayTexStats.pushes), mc2::fmt::as_u64((unsigned long long)g_overlayTexStats.resolved), mc2::fmt::as_u64((unsigned long long)g_overlayTexStats.resolve_failed), mc2::fmt::as_u64((unsigned long long)g_overlayTexStats.bound_zero_prevented), mc2::fmt::as_u64((unsigned long long)g_overlayTexStats.fallback_bound));
     fflush(stderr);
 }
 } // anonymous namespace (OMT-1)

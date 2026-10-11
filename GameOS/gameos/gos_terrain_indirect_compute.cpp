@@ -2,6 +2,7 @@
 // compute bindings and uniforms, the depth-transition probe and the post-dispatch probes. The orchestrator is in
 // gos_terrain_indirect_dispatch.cpp.
 #include "gos_terrain_indirect_internal.h"
+#include "mc2fmt.h"
 
 namespace gos_terrain_indirect {
 
@@ -360,12 +361,7 @@ void computeBucketHeaderReadback(FILE* s_probeSink, bool s_ringTrace, uint64_t r
             }
         }
         if (s_ringTrace) {
-            printf("[RING v1] frame=%llu slot=%d fence=%d wait=0x%x wait_us=%llu "
-                   "prev_visible=%u near_w=%u peak=%u peakNearW=%u mvpFp=0x%08x\n",
-                (unsigned long long)ringFrameIdx, probedSlot, (int)fencePresent,
-                (unsigned)waitResult, (unsigned long long)waitUs,
-                (unsigned)prevVisible, (unsigned)prevNearW,
-                (unsigned)s_peakVisible, (unsigned)s_peakNearW, (unsigned)mvpFp);
+            mc2::fmt::print_out("[RING v1] frame={:d} slot={:d} fence={:d} wait=0x{:x} wait_us={:d} prev_visible={:d} near_w={:d} peak={:d} peakNearW={:d} mvpFp=0x{:08x}\n", mc2::fmt::as_u64((unsigned long long)ringFrameIdx), mc2::fmt::as_i32(probedSlot), mc2::fmt::as_i32((int)fencePresent), mc2::fmt::as_u32((unsigned)waitResult), mc2::fmt::as_u64((unsigned long long)waitUs), mc2::fmt::as_u32((unsigned)prevVisible), mc2::fmt::as_u32((unsigned)prevNearW), mc2::fmt::as_u32((unsigned)s_peakVisible), mc2::fmt::as_u32((unsigned)s_peakNearW), mc2::fmt::as_u32((unsigned)mvpFp));
             fflush(stdout);
         }
         // Periodic peak summary even when MC2_RING_TRACE is off so manual
@@ -380,9 +376,7 @@ void computeBucketHeaderReadback(FILE* s_probeSink, bool s_ringTrace, uint64_t r
                 (unsigned)s_peakNearW, (unsigned)s_nearWFrames);
         }
     } else if (s_ringTrace) {
-        printf("[RING v1] frame=%llu slot=%d fence=%d wait=0x%x wait_us=%llu mvpFp=0x%08x\n",
-            (unsigned long long)ringFrameIdx, probedSlot, (int)fencePresent,
-            (unsigned)waitResult, (unsigned long long)waitUs, (unsigned)mvpFp);
+        mc2::fmt::print_out("[RING v1] frame={:d} slot={:d} fence={:d} wait=0x{:x} wait_us={:d} mvpFp=0x{:08x}\n", mc2::fmt::as_u64((unsigned long long)ringFrameIdx), mc2::fmt::as_i32(probedSlot), mc2::fmt::as_i32((int)fencePresent), mc2::fmt::as_u32((unsigned)waitResult), mc2::fmt::as_u64((unsigned long long)waitUs), mc2::fmt::as_u32((unsigned)mvpFp));
         fflush(stdout);
     }
 }
@@ -690,23 +684,7 @@ void computeDepthTransitionProbe() {
                 // since the previous emitted line AND it found a vertex.
                 const int cpuwFresh =
                     (L.cAny && cpuStampDelta != 0) ? 1 : 0;
-                printf("[DEPTH_TRANSITION v1] kind=%s f=%llu "
-                       "maxMvpDelta=%.7f "
-                       "z_terr=%.7f z_cpuw=%.7f z_gpuw=%.7f z_decal=%.7f "
-                       "dz_cpuw=%.7f dz_gpuw=%.7f dz_decal=%.7f "
-                       "cpuw_fresh=%d cpuw_any=%d cpuw_stamp=%llu "
-                       "cpuw_stamp_delta=%lld decal_ok=%d decal_z_approx=0\n",
-                       kind,
-                       (unsigned long long)L.f,
-                       (double)L.md,
-                       (double)L.zt, (double)L.zc,
-                       (double)L.zg, (double)L.zd,
-                       (double)(L.zc - L.zt),
-                       (double)(L.zg - L.zt),
-                       (double)(L.zd - L.zt),
-                       cpuwFresh, L.cAny,
-                       (unsigned long long)L.cStamp,
-                       cpuStampDelta, decalOk);
+                mc2::fmt::print_out("[DEPTH_TRANSITION v1] kind={} f={:d} maxMvpDelta={:.7f} z_terr={:.7f} z_cpuw={:.7f} z_gpuw={:.7f} z_decal={:.7f} dz_cpuw={:.7f} dz_gpuw={:.7f} dz_decal={:.7f} cpuw_fresh={:d} cpuw_any={:d} cpuw_stamp={:d} cpuw_stamp_delta={:d} decal_ok={:d} decal_z_approx=0\n", mc2::fmt::safe(kind), mc2::fmt::as_u64((unsigned long long)L.f), (double)L.md, (double)L.zt, (double)L.zc, (double)L.zg, (double)L.zd, (double)(L.zc - L.zt), (double)(L.zg - L.zt), (double)(L.zd - L.zt), mc2::fmt::as_i32(cpuwFresh), mc2::fmt::as_i32(L.cAny), mc2::fmt::as_u64((unsigned long long)L.cStamp), mc2::fmt::as_i64(cpuStampDelta), mc2::fmt::as_i32(decalOk));
                 fflush(stdout);
                 s_prevCpuStamp = L.cStamp;
             };

@@ -1,6 +1,7 @@
 // gameos_graphics: gosMesh draw calls, render-state push/pop and apply, frame begin/end, material selection and the quad/line/point/triangle draw paths.
 // Declared in the class headers; shared names in gameos_graphics_material_internal.h.
 #include "gameos_graphics_material_internal.h"
+#include "mc2fmt.h"
 
 
 // ---------------------------------------------------------------------------
@@ -349,8 +350,7 @@ void gosRenderer::applyRenderStates() {
         static int s_mismatchPrints = 0;
         if (s_rsTrace && !equal && s_mismatchPrints < 8) {
             s_mismatchPrints++;
-            printf("[RENDER_STATES v1] event=mismatch_first idx=%d cur=%u ren=%u\n",
-                   mismatchK, mismatchCur, mismatchRen);
+            mc2::fmt::print_out("[RENDER_STATES v1] event=mismatch_first idx={:d} cur={:d} ren={:d}\n", mc2::fmt::as_i32(mismatchK), mc2::fmt::as_u32(mismatchCur), mc2::fmt::as_u32(mismatchRen));
             fflush(stdout);
         }
         if (equal) {
@@ -904,7 +904,7 @@ void gosRenderer::drawTris(gos_VERTEX* vertices, int count) {
     if ( mc2::gate::get<"MC2_LOG_PREVIEW">() ) {
         GLint curFbo = 0; glGetIntegerv(GL_FRAMEBUFFER_BINDING, &curFbo);
         FILE* f = fopen("preview_debug.log","a");
-        if (f) { fprintf(f,"[PREVIEW] drawTris count=%d isHUD=%d curFbo=%d\n", count, (int)renderStates_[gos_State_IsHUD], curFbo); fflush(f); fclose(f); }
+        if (f) { mc2::fmt::print(f, "[PREVIEW] drawTris count={:d} isHUD={:d} curFbo={:d}\n", mc2::fmt::as_i32(count), mc2::fmt::as_i32((int)renderStates_[gos_State_IsHUD]), mc2::fmt::as_i32(curFbo)); fflush(f); fclose(f); }
     }
     if (renderStates_[gos_State_IsHUD]) {
         if (hudFlushed_) {

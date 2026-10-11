@@ -20,7 +20,7 @@ void setSceneDrawBuffers(SceneDrawBufferMode mode,
         // chokepoint so the frame trace shows which set is live per pass (catches a
         // pass running under the wrong inherited set). Gated by the frame-plan gate.
         if (render_frame_plan::traceEnabled()) {
-            std::fprintf(stderr, "[DRAWBUF] set=SingleColor0 attachments={0}\n");
+            mc2::fmt::print_err("[DRAWBUF] set=SingleColor0 attachments={{0}}\n");
             std::fflush(stderr);
         }
         return;
@@ -41,8 +41,7 @@ void setSceneDrawBuffers(SceneDrawBufferMode mode,
         glDrawBuffers(2, bufs);
     }
     if (render_frame_plan::traceEnabled()) {
-        std::fprintf(stderr, "[DRAWBUF] set=MainSceneMRT attachments={0,1%s}\n",
-                     oid ? ",2" : "");
+        mc2::fmt::print_err("[DRAWBUF] set=MainSceneMRT attachments={{0,1{}}}\n", mc2::fmt::safe(oid ? ",2" : ""));
         std::fflush(stderr);
     }
 }
@@ -405,8 +404,7 @@ void gosPostProcess::init(int w, int h)
         // pass is fed by the dynamic_decal_ring impact slots instead of the v1 test box.
         const char* pd = mc2::gate::raw<"MC2_PROJECTED_DECALS">();   // echoed as typed
         projectedDecalsEnabled_ = mc2::gate::get<"MC2_PROJECTED_DECALS">();
-        std::fprintf(stderr, "[PROJECTED_DECALS] enabled=%d (MC2_PROJECTED_DECALS=%s)\n",
-                     projectedDecalsEnabled_ ? 1 : 0, pd ? pd : "(unset)");
+        mc2::fmt::print_err("[PROJECTED_DECALS] enabled={:d} (MC2_PROJECTED_DECALS={})\n", mc2::fmt::as_i32(projectedDecalsEnabled_ ? 1 : 0), mc2::fmt::safe(pd ? pd : "(unset)"));
     }
 
     // SSAO gate + debug, resolved once from env. Default OFF -> runSSAO()
@@ -467,16 +465,7 @@ void gosPostProcess::init(int w, int h)
                      ssaoBlurEnabled_ ? 1 : 0, aoBlurDepthSigma_);
         // The one combination that is known-bad rather than merely untuned.
         if (ssaoEnabled_ && !ssaoBlurEnabled_ && !radiusOverridden && aoRadius_ > 3.0f) {
-            std::fprintf(stderr,
-                "[SSAO v1] WARNING: MC2_SSAO_BLUR=0 with the SSAO-BLUR-1 retuned "
-                "aoRadius=%.2f. This pairing NEVER shipped: the 16-sample "
-                "stochastic estimator's noise scales with radius and nothing is "
-                "denoising it, so expect speckle on flat unoccluded faces. This is "
-                "NOT the pre-SSAO-BLUR-1 chain -- that also had aoRadius=3.0. For "
-                "the historical chain set MC2_SSAO_RADIUS=3 as well (note it "
-                "measures 0.0000%% occlusion, i.e. AO effectively off); to A/B the "
-                "blur alone, keep this radius and ignore this warning.\n",
-                aoRadius_);
+            mc2::fmt::print_err("[SSAO v1] WARNING: MC2_SSAO_BLUR=0 with the SSAO-BLUR-1 retuned aoRadius={:.2f}. This pairing NEVER shipped: the 16-sample stochastic estimator's noise scales with radius and nothing is denoising it, so expect speckle on flat unoccluded faces. This is NOT the pre-SSAO-BLUR-1 chain -- that also had aoRadius=3.0. For the historical chain set MC2_SSAO_RADIUS=3 as well (note it measures 0.0000% occlusion, i.e. AO effectively off); to A/B the blur alone, keep this radius and ignore this warning.\n", aoRadius_);
         }
     }
 
@@ -575,8 +564,7 @@ void gosPostProcess::init(int w, int h)
             if (s < 0.0f) s = 0.0f;
             nightFogDimScale_ = s;
         }
-        std::fprintf(stderr, "[NIGHT_FOG_DIM] enabled=%d scale=%.3f\n",
-            nightFogDimEnabled_ ? 1 : 0, nightFogDimScale_);
+        mc2::fmt::print_err("[NIGHT_FOG_DIM] enabled={:d} scale={:.3f}\n", mc2::fmt::as_i32(nightFogDimEnabled_ ? 1 : 0), nightFogDimScale_);
     }
 
     // FOG-HORIZON-CLAMP-1: elevation profile shared by OOB + edge fog. Rides the
@@ -633,13 +621,13 @@ void gosPostProcess::init(int w, int h)
             if (sdEnv[0] == '1' || (sdEnv[0] == 's' && sdEnv[1] == 't')) {
                 showShadowDebug_ = true;
                 shadowDebugMode_ = 0;
-                std::fprintf(stderr, "[SHADOW_DEBUG] MC2_SHADOW_DEBUG_MODE=static (mode 0)\n");
+                mc2::fmt::print_err("[SHADOW_DEBUG] MC2_SHADOW_DEBUG_MODE=static (mode 0)\n");
             } else if (sdEnv[0] == '2' || sdEnv[0] == 'd') {
                 showShadowDebug_ = true;
                 shadowDebugMode_ = 1;
-                std::fprintf(stderr, "[SHADOW_DEBUG] MC2_SHADOW_DEBUG_MODE=dynamic (mode 1)\n");
+                mc2::fmt::print_err("[SHADOW_DEBUG] MC2_SHADOW_DEBUG_MODE=dynamic (mode 1)\n");
             } else {
-                std::fprintf(stderr, "[SHADOW_DEBUG] MC2_SHADOW_DEBUG_MODE=%s (unrecognized, using OFF)\n", sdEnv);
+                mc2::fmt::print_err("[SHADOW_DEBUG] MC2_SHADOW_DEBUG_MODE={} (unrecognized, using OFF)\n", mc2::fmt::safe(sdEnv));
             }
         }
     }
@@ -789,12 +777,7 @@ void gosPostProcess::beginScene()
     static bool s_resDiagDone = false;
     if (s_resDiag && !s_resDiagDone) {
         s_resDiagDone = true;
-        fprintf(stderr,
-            "[RES_DIAG v1] sceneFBO=%dx%d  screenWidth=%dx%d (HUD canvas)  "
-            "drawable=%dx%d (native)\n",
-            width_, height_,
-            Environment.screenWidth, Environment.screenHeight,
-            Environment.drawableWidth, Environment.drawableHeight);
+        mc2::fmt::print_err("[RES_DIAG v1] sceneFBO={:d}x{:d}  screenWidth={:d}x{:d} (HUD canvas)  drawable={:d}x{:d} (native)\n", mc2::fmt::as_i32(width_), mc2::fmt::as_i32(height_), mc2::fmt::as_i32(Environment.screenWidth), mc2::fmt::as_i32(Environment.screenHeight), mc2::fmt::as_i32(Environment.drawableWidth), mc2::fmt::as_i32(Environment.drawableHeight));
         fflush(stderr);
     }
 }
@@ -816,9 +799,7 @@ void gosPostProcess::endScene()
         glEndQuery(GL_ANY_SAMPLES_PASSED);
         GLuint anySamples = 0;
         glGetQueryObjectuiv(sceneGlProducerQuery_, GL_QUERY_RESULT, &anySamples);
-        std::fprintf(stderr,
-            "[VK_SCENE_GL_PRODUCER_QUERY v1] any_samples=%u frame_sceneFBO=%u\n",
-            (unsigned)anySamples, (unsigned)sceneFBO_);
+        mc2::fmt::print_err("[VK_SCENE_GL_PRODUCER_QUERY v1] any_samples={:d} frame_sceneFBO={:d}\n", mc2::fmt::as_u32((unsigned)anySamples), mc2::fmt::as_u32((unsigned)sceneFBO_));
         sceneGlProducerQueryActive_ = false;
     }
 

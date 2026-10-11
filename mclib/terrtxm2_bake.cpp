@@ -1013,8 +1013,7 @@ void TerrainColorMap::recalcLight(const char *fileName)
 		saveTGAFile(ColorMap,fileName,colorMapInfo.width);
 
 		if (skipColormapTiles()) {
-			printf("[COLORMAP] skip %ld^2 tile GL upload (%dx%d) [COLORMAP-TILES-RETIRE-1]\n",
-			       (long)numTexturesAcross, colorMapInfo.width, colorMapInfo.width);
+			mc2::fmt::print_out("[COLORMAP] skip {:d}^2 tile GL upload ({:d}x{:d}) [COLORMAP-TILES-RETIRE-1]\n", mc2::fmt::as_i32((long)numTexturesAcross), mc2::fmt::as_i32(colorMapInfo.width), mc2::fmt::as_i32(colorMapInfo.width));
 			numTextures = 0;
 		} else {
 			numTextures *= numTextures;
@@ -1206,8 +1205,7 @@ void TerrainColorMap::resetBaseTexture (const char *fileName)
 		}
 
 		if (skipColormapTiles()) {
-			printf("[COLORMAP] skip %ld^2 tile GL upload (reset, %dx%d) [COLORMAP-TILES-RETIRE-1]\n",
-			       (long)numTexturesAcross, colorMapInfo.width, colorMapInfo.width);
+			mc2::fmt::print_out("[COLORMAP] skip {:d}^2 tile GL upload (reset, {:d}x{:d}) [COLORMAP-TILES-RETIRE-1]\n", mc2::fmt::as_i32((long)numTexturesAcross), mc2::fmt::as_i32(colorMapInfo.width), mc2::fmt::as_i32(colorMapInfo.width));
 			numTextures = 0;
 		} else {
 			numTextures *= numTextures;
@@ -1241,7 +1239,7 @@ void TerrainColorMap::resetBaseTexture (const char *fileName)
 		gosASSERT(cpuColorMap != nullptr);
 		cpuColorMapSize = colorMapInfo.width;
 		memcpy(cpuColorMap, ColorMap, pixels * 4);
-		printf("[COLORMAP] retained colormap on CPU (%dx%d)\n", colorMapInfo.width, colorMapInfo.width);
+		mc2::fmt::print_out("[COLORMAP] retained colormap on CPU ({:d}x{:d})\n", mc2::fmt::as_i32(colorMapInfo.width), mc2::fmt::as_i32(colorMapInfo.width));
 	}
 
 	// COLORMAP-BC7-KTX2-1: probe for .burnin.ktx2 sidecar. When present and gate ON,
@@ -1257,7 +1255,7 @@ void TerrainColorMap::resetBaseTexture (const char *fileName)
 		if (probe) {
 			fclose(probe);
 			mc2::fmt::to_buf_n(ktx2ColormapPath, sizeof(ktx2ColormapPath), "{}", mc2::fmt::safe((const char*)ktx2Path));
-			printf("[COLORMAP] COLORMAP-BC7-KTX2-1: found sidecar %s\n", ktx2ColormapPath);
+			mc2::fmt::print_out("[COLORMAP] COLORMAP-BC7-KTX2-1: found sidecar {}\n", mc2::fmt::safe(ktx2ColormapPath));
 		}
 	}
 

@@ -122,8 +122,7 @@ extern "C" void gos_SetGlobalDebugView(int view)
     batcher_setMechDebugMode(kMap[view].mech);
     gos_vfx_setDebugMode(kMap[view].vfx);
     batcher_setDebugMaterialMode(kMap[view].propMat);
-    fprintf(stderr, "[DEBUG_VIEW v1] view=%d lighting=%d mech=%d vfx=%d propMat=%d\n",
-            view, kMap[view].lighting, kMap[view].mech, kMap[view].vfx, kMap[view].propMat);
+    mc2::fmt::print_err("[DEBUG_VIEW v1] view={:d} lighting={:d} mech={:d} vfx={:d} propMat={:d}\n", mc2::fmt::as_i32(view), mc2::fmt::as_i32(kMap[view].lighting), mc2::fmt::as_i32(kMap[view].mech), mc2::fmt::as_i32(kMap[view].vfx), mc2::fmt::as_i32(kMap[view].propMat));
 }
 extern "C" int gos_GetGlobalDebugView() { return g_mc2GlobalDebugView; }
 
@@ -325,12 +324,7 @@ int gosRenderer::terrainBindThinUniformsForPatchStream(glsl_program* overridePro
         s_thinDbgDone = true;
         const float* p = (const float*)&projection_;
         const float* m = (const float*)&terrain_mvp_;
-        fprintf(stderr,
-            "[THIN_DEBUG v1] event=thin_uniforms_bound "
-            "proj_row0=[%.5f,%.5f,%.5f,%.5f] proj_row1=[%.5f,%.5f,%.5f,%.5f] "
-            "tmvp_diag=[%.5f,%.5f,%.5f,%.5f]\n",
-            p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7],
-            m[0], m[5], m[10], m[15]);
+        mc2::fmt::print_err("[THIN_DEBUG v1] event=thin_uniforms_bound proj_row0=[{:.5f},{:.5f},{:.5f},{:.5f}] proj_row1=[{:.5f},{:.5f},{:.5f},{:.5f}] tmvp_diag=[{:.5f},{:.5f},{:.5f},{:.5f}]\n", p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], m[0], m[5], m[10], m[15]);
         fflush(stderr);
     }
 
@@ -552,9 +546,7 @@ void gos_framectx_note_mismatch(const char* what) {
     ++g_framectxMismatchCount;
     static const bool s_fatal = mc2::gate::get<"MC2_FRAMECTX_MISMATCH_FATAL">();
     if (s_fatal) {
-        fprintf(stderr, "[FRAMECTX] FATAL: frame-context mirror diverged from "
-                        "authoritative global (%s); count=%lu\n",
-                        what ? what : "?", g_framectxMismatchCount);
+        mc2::fmt::print_err("[FRAMECTX] FATAL: frame-context mirror diverged from authoritative global ({}); count={:d}\n", mc2::fmt::safe(what ? what : "?"), mc2::fmt::as_u32(g_framectxMismatchCount));
         fflush(stderr);
         abort();
     }
@@ -563,9 +555,7 @@ void gos_object_mvp_note_stale() {
     ++g_objMvpStaleCount;
     static const bool s_fatal = mc2::gate::get<"MC2_OBJ_MVP_STALE_FATAL">();
     if (s_fatal) {
-        fprintf(stderr, "[OBJ_MVP] FATAL: object draw read a stale-view dispatch "
-                        "MVP snapshot (view-epoch mismatch); count=%lu\n",
-                        g_objMvpStaleCount);
+        mc2::fmt::print_err("[OBJ_MVP] FATAL: object draw read a stale-view dispatch MVP snapshot (view-epoch mismatch); count={:d}\n", mc2::fmt::as_u32(g_objMvpStaleCount));
         fflush(stderr);
         abort();
     }
@@ -801,7 +791,7 @@ unsigned int gos_CreateTerrainNormalTexture(const unsigned char* rgbaData, int w
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glBindTexture(GL_TEXTURE_2D, 0);
-    printf("[TESS] Created terrain normal texture: id=%u size=%d\n", texId, width);
+    mc2::fmt::print_out("[TESS] Created terrain normal texture: id={:d} size={:d}\n", mc2::fmt::as_u32(texId), mc2::fmt::as_i32(width));
     return texId;
 }
 

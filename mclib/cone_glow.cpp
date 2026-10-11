@@ -23,6 +23,7 @@
 #include <cstdlib>
 #include <vector>
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 namespace mc2_cone_glow {
 
@@ -441,14 +442,7 @@ bool GetNodeAim(TG_MultiShape* shape, long nodeId,
             // Apex (node origin) in MC2 frame — same swizzle as the aim.
             Stuff::Point3D apexMc2;
             mc2ToRender(apexMc2, oMax);
-            std::fprintf(stderr,
-                "[CONE_AIM_DIAG v1] shape=%p node=%ld apexMC2=(%.1f,%.1f,%.1f) "
-                "aimMC2=(%.3f,%.3f,%.3f) lenLocal=%.1f coneLen=%.1f axisLocal=(%.3f,%.3f,%.3f) flip=%d\n",
-                (void*)shape, nodeId, apexMc2.x, apexMc2.y, apexMc2.z,
-                aimWorldOut.x, aimWorldOut.y, aimWorldOut.z,
-                lenLocal, coneLenOut,
-                axisLocal.x, axisLocal.y, axisLocal.z,
-                aim_flip_enabled() ? 1 : 0);
+            mc2::fmt::print_err("[CONE_AIM_DIAG v1] shape={:016X} node={:d} apexMC2=({:.1f},{:.1f},{:.1f}) aimMC2=({:.3f},{:.3f},{:.3f}) lenLocal={:.1f} coneLen={:.1f} axisLocal=({:.3f},{:.3f},{:.3f}) flip={:d}\n", mc2::fmt::as_ptr((void*)shape), mc2::fmt::as_i32(nodeId), apexMc2.x, apexMc2.y, apexMc2.z, aimWorldOut.x, aimWorldOut.y, aimWorldOut.z, lenLocal, coneLenOut, axisLocal.x, axisLocal.y, axisLocal.z, mc2::fmt::as_i32(aim_flip_enabled() ? 1 : 0));
             std::fflush(stderr);
         }
     }
@@ -499,12 +493,7 @@ void QueueConeGlow(TG_MultiShape* shape, long nodeId,
             static unsigned long s_rejects = 0;
             if ((++s_rejects % 240) == 1)
             {
-                std::fprintf(stderr,
-                    "[CONE_VIS_GATE v1] event=reject_stale shape=%p node=%ld "
-                    "lastTurnTransformed=%lu turn=%ld rejects=%lu\n",
-                    (void*)shape, nodeId,
-                    (unsigned long)rec->node->GetLastTurnTransformed(),
-                    turn, s_rejects);
+                mc2::fmt::print_err("[CONE_VIS_GATE v1] event=reject_stale shape={:016X} node={:d} lastTurnTransformed={:d} turn={:d} rejects={:d}\n", mc2::fmt::as_ptr((void*)shape), mc2::fmt::as_i32(nodeId), mc2::fmt::as_u32((unsigned long)rec->node->GetLastTurnTransformed()), mc2::fmt::as_i32(turn), mc2::fmt::as_u32(s_rejects));
                 std::fflush(stderr);
             }
         }
@@ -569,14 +558,7 @@ void QueueConeGlow(TG_MultiShape* shape, long nodeId,
         ++s_qcalls;
         if (s_qcalls <= 48 || (s_qcalls % 600) == 0)
         {
-            std::fprintf(stderr,
-                "[CONE_QUEUE_DIAG v1] shape=%p node=%ld apexMC2=(%.1f,%.1f,%.1f) "
-                "rgb=%06lx alphaPeak=%.1f nightFactor=%.2f\n",
-                (void*)shape, nodeId,
-                -rec->shapeToWorld.entries[3],
-                rec->shapeToWorld.entries[11],
-                rec->shapeToWorld.entries[7],
-                (unsigned long)rgb, alphaPeak, nightFactor);
+            mc2::fmt::print_err("[CONE_QUEUE_DIAG v1] shape={:016X} node={:d} apexMC2=({:.1f},{:.1f},{:.1f}) rgb={:06x} alphaPeak={:.1f} nightFactor={:.2f}\n", mc2::fmt::as_ptr((void*)shape), mc2::fmt::as_i32(nodeId), -rec->shapeToWorld.entries[3], rec->shapeToWorld.entries[11], rec->shapeToWorld.entries[7], mc2::fmt::as_u32((unsigned long)rgb), alphaPeak, nightFactor);
             std::fflush(stderr);
         }
     }
@@ -995,11 +977,7 @@ void QueueBeaconGlow(TG_MultiShape* shape, float nightFactor)
         ++s_bcalls;
         if (s_bcalls <= 64 || (s_bcalls % 600) == 0)
         {
-            std::fprintf(stderr,
-                "[BEACON_DIAG v1] shape=%p shapes=%d walked=%d billboards=%d "
-                "untransformed=%d clipped=%d emitted=%d peak=%.1f radius=%.1f\n",
-                (void*)shape, shape->GetNumShapes(), dWalked, dFound,
-                dUntransformed, dClipped, dEmitted, peak, radius);
+            mc2::fmt::print_err("[BEACON_DIAG v1] shape={:016X} shapes={:d} walked={:d} billboards={:d} untransformed={:d} clipped={:d} emitted={:d} peak={:.1f} radius={:.1f}\n", mc2::fmt::as_ptr((void*)shape), mc2::fmt::as_i32(shape->GetNumShapes()), mc2::fmt::as_i32(dWalked), mc2::fmt::as_i32(dFound), mc2::fmt::as_i32(dUntransformed), mc2::fmt::as_i32(dClipped), mc2::fmt::as_i32(dEmitted), peak, radius);
             std::fflush(stderr);
         }
     }

@@ -303,12 +303,7 @@ void GpuStaticPropBatcher::logInstDiagPath() {
         static bool s_pathLogged = false;
         if (s_instDiag && !s_pathLogged) {
             s_pathLogged = true;
-            fprintf(stderr,
-                "[INSTDIAG] PATH coalesceEnabled=%d globalPoolLegacy=%d instanceCapacity=%u "
-                "frameSlot=%u typeRanges=%zu\n",
-                (int)IsCoalesceEnabled(), (int)s_globalPoolLegacy,
-                (unsigned)s_instanceCapacity, (unsigned)s_frameSlot,
-                s_typeRanges.size());
+            mc2::fmt::print_err("[INSTDIAG] PATH coalesceEnabled={:d} globalPoolLegacy={:d} instanceCapacity={:d} frameSlot={:d} typeRanges={:d}\n", mc2::fmt::as_i32((int)IsCoalesceEnabled()), mc2::fmt::as_i32((int)s_globalPoolLegacy), mc2::fmt::as_u32((unsigned)s_instanceCapacity), mc2::fmt::as_u32((unsigned)s_frameSlot), mc2::fmt::as_size(s_typeRanges.size()));
             fflush(stderr);
         }
     }
