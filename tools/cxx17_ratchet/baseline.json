@@ -47,7 +47,7 @@
    "LG20": 0
   },
   "GameOS": {
-   "LG01": 32,
+   "LG01": 25,
    "LG02": 192,
    "LG03": 301,
    "LG04": 6,
@@ -139,7 +139,7 @@
    "LG20": 0
   },
   "code": {
-   "LG01": 273,
+   "LG01": 241,
    "LG02": 212,
    "LG03": 957,
    "LG04": 21,
@@ -185,7 +185,7 @@
    "LG20": 9
   },
   "mclib": {
-   "LG01": 632,
+   "LG01": 541,
    "LG02": 287,
    "LG03": 1139,
    "LG04": 16,
@@ -516,7 +516,6 @@
    "LG12b": 1
   },
   "GameOS/gameos/gameosmain_init.cpp": {
-   "LG01": 7,
    "LG02": 1,
    "LG06": 1,
    "LG09": 7,
@@ -1706,7 +1705,6 @@
    "LG12b": 22
   },
   "code/ablmc2_state.cpp": {
-   "LG01": 4,
    "LG03": 1,
    "LG09": 19
   },
@@ -2142,7 +2140,6 @@
    "LG17": 1
   },
   "code/gate.cpp": {
-   "LG01": 1,
    "LG03": 3,
    "LG09": 18,
    "LG12b": 1
@@ -2205,7 +2202,6 @@
    "LG09": 2
   },
   "code/gvehicl_update.cpp": {
-   "LG01": 1,
    "LG09": 8
   },
   "code/gvehicl_weapons.cpp": {
@@ -2522,7 +2518,6 @@
    "LG12b": 3
   },
   "code/mech_init.cpp": {
-   "LG01": 3,
    "LG03": 2,
    "LG09": 9,
    "LG12b": 5
@@ -2710,7 +2705,6 @@
    "LG13": 2
   },
   "code/mission_movers.cpp": {
-   "LG01": 2,
    "LG03": 4,
    "LG05": 1,
    "LG06": 1,
@@ -3185,7 +3179,6 @@
    "LG13": 1
   },
   "code/saveload_load.cpp": {
-   "LG01": 16,
    "LG03": 12,
    "LG09": 6,
    "LG11": 3,
@@ -3393,7 +3386,6 @@
    "LG09": 1
   },
   "code/weaponbolt.cpp": {
-   "LG01": 5,
    "LG03": 14,
    "LG09": 12,
    "LG12b": 1
@@ -3696,7 +3688,6 @@
    "LG12a": 6
   },
   "mclib/bdactor_type.cpp": {
-   "LG01": 10,
    "LG03": 25,
    "LG06": 2,
    "LG09": 3,
@@ -4078,7 +4069,6 @@
    "LG13": 4
   },
   "mclib/genactor.cpp": {
-   "LG01": 4,
    "LG03": 7,
    "LG06": 1,
    "LG09": 1,
@@ -4115,7 +4105,6 @@
    "LG02": 2
   },
   "mclib/gosfx/effect.cpp": {
-   "LG01": 1,
    "LG03": 7,
    "LG06": 1,
    "LG09": 1
@@ -4238,7 +4227,6 @@
    "LG13": 5
   },
   "mclib/gvactor_geometry.cpp": {
-   "LG01": 1,
    "LG03": 2,
    "LG06": 1,
    "LG09": 18,
@@ -4249,7 +4237,6 @@
    "LG13": 5
   },
   "mclib/gvactor_update.cpp": {
-   "LG01": 2,
    "LG03": 9,
    "LG09": 4
   },
@@ -4268,7 +4255,6 @@
    "LG13": 16
   },
   "mclib/inifile.cpp": {
-   "LG01": 1,
    "LG06": 28,
    "LG09": 39,
    "LG12b": 33,
@@ -4543,7 +4529,6 @@
    "LG03": 2
   },
   "mclib/mlr/mlrcardcloud.cpp": {
-   "LG01": 1,
    "LG03": 12
   },
   "mclib/mlr/mlrclipper.cpp": {
@@ -4681,7 +4666,6 @@
    "LG16": 10
   },
   "mclib/mlr/mlrtrianglecloud.cpp": {
-   "LG01": 1,
    "LG03": 10
   },
   "mclib/mlr/owntrace.hpp": {
@@ -4709,7 +4693,6 @@
    "LG09": 1
   },
   "mclib/mouse.cpp": {
-   "LG01": 4,
    "LG09": 14
   },
   "mclib/move.cpp": {
@@ -4776,7 +4759,6 @@
    "LG16": 6
   },
   "mclib/move_movemap_path.cpp": {
-   "LG01": 10,
    "LG03": 18,
    "LG09": 20,
    "LG12a": 2,
@@ -5404,7 +5386,6 @@
    "LG17": 1
   },
   "mclib/terrtxm2_load.cpp": {
-   "LG01": 13,
    "LG03": 5,
    "LG06": 1,
    "LG09": 65,
@@ -5452,7 +5433,6 @@
    "LG06": 2
   },
   "mclib/tgl_parse.cpp": {
-   "LG01": 33,
    "LG06": 3,
    "LG09": 70,
    "LG12a": 1,
@@ -5473,7 +5453,6 @@
    "LG17": 1
   },
   "mclib/tgl_transform_light.cpp": {
-   "LG01": 2,
    "LG04": 2,
    "LG09": 22
   },
@@ -5555,7 +5534,6 @@
    "LG12a": 3
   },
   "mclib/txmmgr_texture.cpp": {
-   "LG01": 7,
    "LG05": 2,
    "LG06": 6,
    "LG09": 33,
@@ -5564,7 +5542,6 @@
    "LG12b": 1
   },
   "mclib/userinput.cpp": {
-   "LG01": 1,
    "LG03": 4,
    "LG06": 2,
    "LG09": 13,
@@ -5650,7 +5627,7 @@
    "LG20": 2
   }
  },
- "head": "77c564aa1",
+ "head": "883801695",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
