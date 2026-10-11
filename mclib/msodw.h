@@ -120,8 +120,7 @@ enum  // EDwBehaviorFlags
 };
 
 #ifndef LINUX_BUILD
-typedef struct _DWSharedMem
-{
+struct _DWSharedMem {
 	DWORD dwSize;               // should be set to size of DWSharedMem
 	DWORD pid;                  // Process Id of caller
 	DWORD tid;                  // Id of excepting thread
@@ -198,7 +197,8 @@ typedef struct _DWSharedMem
 	char szAssert[DW_MAX_ASSERT_CCH];  // [in] Sz from the assert
 	int AssertActionCode;              // [out] action code to take
 #endif
-} DWSharedMem;
+};
+using DWSharedMem = _DWSharedMem;
 #endif // LINUX_BUILD
 
 #pragma pack(pop, msodw_h)

@@ -120,7 +120,7 @@ enum {
 #define	MAXLEN_INPUTSTR			512
 #define CELL_DISTANCE			42.6667f
 
-typedef enum {
+enum MechBodyLocationType {
 	MECH_BODY_LOCATION_ANY = -1,
 	MECH_BODY_LOCATION_HEAD,
 	MECH_BODY_LOCATION_CTORSO,
@@ -131,7 +131,7 @@ typedef enum {
 	MECH_BODY_LOCATION_LLEG,
 	MECH_BODY_LOCATION_RLEG,
 	NUM_MECH_BODY_LOCATIONS
-} MechBodyLocationType;
+};
 
 // Globals defined in warrior.cpp (or elsewhere in the engine) that the split pieces share.
 extern int32_t NumStateTransitions;

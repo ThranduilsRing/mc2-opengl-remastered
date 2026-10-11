@@ -35,8 +35,7 @@
 #define			BASE_THUNDER_RANDOM_START		5.0f
 //----------------------------------------------------------------------------------
 // Struct Definitions
-typedef struct _RainDrops
-{
+struct _RainDrops {
 	Stuff::Point3D		position;
 	float				length;
 	
@@ -46,7 +45,8 @@ typedef struct _RainDrops
 		length = 0.0f;
 	}
 	
-} RainDrops;
+};
+using RainDrops = _RainDrops;
 
 //----------------------------------------------------------------------------------
 // Class Definitions

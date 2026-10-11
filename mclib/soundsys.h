@@ -69,18 +69,17 @@
 //---------------------------------------------------------------------------
 // Classes
 #pragma pack(1)
-typedef struct {     
+struct MC2_WAVEFORMATEX {     
 	WORD  wFormatTag;     
 	WORD  nChannels; 
     DWORD nSamplesPerSec;     
 	DWORD nAvgBytesPerSec;     
 	WORD  nBlockAlign; 
-} MC2_WAVEFORMATEX;
+};
 #pragma pack()
 
 //---------------------------------------------------------------------------
-typedef struct _SoundBite
-{
+struct _SoundBite {
 	unsigned long		priority;
 	unsigned long		cacheStatus;
 	unsigned long		soundId;
@@ -88,7 +87,8 @@ typedef struct _SoundBite
 	MemoryPtr			biteData;
 	float				volume;
 	HGOSAUDIO			resourceHandle;
-} SoundBite;
+};
+using SoundBite = _SoundBite;
 
 //---------------------------------------------------------------------------
 class SoundSystem

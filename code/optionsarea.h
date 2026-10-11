@@ -97,12 +97,11 @@ class OptionsGraphics : public LogisticsScreen
 
 public:
 
-    typedef struct 
-    {
+    struct ResModes {
     	int xRes;
     	int yRes;
     	int bitDepth;
-    } ResModes;
+    };
 
     OptionsGraphics();
 

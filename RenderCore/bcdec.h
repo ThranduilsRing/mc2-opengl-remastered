@@ -358,10 +358,11 @@ static void bcdec__bc4_block_float(const void* compressedBlock, void* decompress
 }
 #endif /* BCDEC_BC4BC5_PRECISE */
 
-typedef struct bcdec__bitstream {
+struct bcdec__bitstream {
     unsigned long long low;
     unsigned long long high;
-} bcdec__bitstream_t;
+};
+using bcdec__bitstream_t = bcdec__bitstream;
 
 static int bcdec__bitstream_read_bits(bcdec__bitstream_t* bstream, int numBits) {
     unsigned int mask = (1 << numBits) - 1;
@@ -517,10 +518,10 @@ static unsigned short bcdec__finish_unquantize(int val, int isSigned) {
 
 /* modified half_to_float_fast4 from https://gist.github.com/rygorous/2144712 */
 static float bcdec__half_to_float_quick(unsigned short half) {
-    typedef union {
+    union FP32 {
         unsigned int u;
         float f;
-    } FP32;
+    };
 
     static const FP32 magic = { 113 << 23 };
     static const unsigned int shifted_exp = 0x7c00 << 13;   /* exponent mask after shift */

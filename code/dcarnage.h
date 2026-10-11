@@ -13,12 +13,12 @@
 
 //---------------------------------------------------------------------------
 
-typedef enum {
+enum CarnageEnumType {
 	CARNAGE_NONE,
 	CARNAGE_FIRE,
 	CARNAGE_EXPLOSION,
 	NUM_CARNAGE_TYPES
-} CarnageEnumType;
+};
 
 class CarnageType;
 typedef CarnageType* CarnageTypePtr;

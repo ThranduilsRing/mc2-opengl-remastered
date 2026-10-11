@@ -226,7 +226,7 @@ GetDeviceDriverFileNameW(
 
 // Structure for GetProcessMemoryInfo()
 
-typedef struct _PROCESS_MEMORY_COUNTERS {
+struct _PROCESS_MEMORY_COUNTERS {
     DWORD cb;
     DWORD PageFaultCount;
     SIZE_T PeakWorkingSetSize;
@@ -237,7 +237,8 @@ typedef struct _PROCESS_MEMORY_COUNTERS {
     SIZE_T QuotaNonPagedPoolUsage;
     SIZE_T PagefileUsage;
     SIZE_T PeakPagefileUsage;
-} PROCESS_MEMORY_COUNTERS;
+};
+using PROCESS_MEMORY_COUNTERS = _PROCESS_MEMORY_COUNTERS;
 typedef PROCESS_MEMORY_COUNTERS *PPROCESS_MEMORY_COUNTERS;
 
 BOOL

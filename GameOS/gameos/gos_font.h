@@ -1,7 +1,7 @@
 #ifndef GOS_FONT_H
 #define GOS_FONT_H
 
-typedef struct {
+struct gosGlyphMetrics {
     int32_t minx;
     int32_t maxx;
     int32_t miny;
@@ -10,7 +10,7 @@ typedef struct {
     uint32_t valid;
     uint32_t u;
     uint32_t v;
-} gosGlyphMetrics;
+};
 
 struct gosGlyphInfo {
     gosGlyphInfo()

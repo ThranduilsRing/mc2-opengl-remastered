@@ -14,7 +14,7 @@
 //
 // Original FontEdit program
 //
-typedef struct {
+struct D3DFontData {
 	DWORD dwSig;				// 0x46443344
 	DWORD dwWidth;
 	DWORD dwFontHeight;
@@ -25,15 +25,14 @@ typedef struct {
 	int nA[256];
 	int nC[256];
 	BYTE bPixels[0];
-} D3DFontData;
+};
 
 #pragma pack(push,1)
 
 //
 // FontEdit 4.0+
 //
-typedef struct 
-{
+struct D3DFontData1 {
 	DWORD dwSig;				// 0x46443344
 	char szFaceName[64];
 	int iSize;					// point size of font used to create this font
@@ -47,13 +46,12 @@ typedef struct
 	BYTE bW[256];				// indicates width of each character in the texture
 	signed char cA[256];		// indicates amount of space to add before each character (may be -)
 	signed char cC[256];		// indicates amount of space to add after each character (may be -)
-} D3DFontData1;
+};
 
-typedef struct
-{
+struct D3DFontTexture {
 	DWORD dwSize;
 	BYTE bPixels[0];
-} D3DFontTexture;
+};
 
 #pragma pack( pop )
 #pragma warning( pop )
@@ -61,8 +59,7 @@ typedef struct
 
 
 
-typedef struct _FontInfo
-{
+struct _FontInfo {
 	DWORD		MagicNumber;			// Valid font check
 	_FontInfo*	pNext;					// Pointer to next font
 	DWORD		ReferenceCount;			// Reference count
@@ -87,7 +84,8 @@ typedef struct _FontInfo
 	DWORD		NumberOfTextures;		// Number of texture handles used (normally 1)
 	HFONT		hFontTTF;				// handle to a GDI font
 	DWORD		Texture[8];				// Texture handle array
-} FontInfo;
+};
+using FontInfo = _FontInfo;
 
 void Init3DFont();
 void Destroy3DFont();

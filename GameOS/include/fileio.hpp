@@ -29,8 +29,7 @@ extern DWORD CurrentFileInfo;
 //
 // Memory mapped file structure
 //
-typedef struct _MemoryMappedFiles
-{
+struct _MemoryMappedFiles {
 
 	DWORD Magic;						// Identify this structure
 	_MemoryMappedFiles*	pNext;			// Pointer to next structure
@@ -41,7 +40,8 @@ typedef struct _MemoryMappedFiles
 	DWORD  RefCount;					// Reference count (number of times a file is opened)
 	char   Name[MAX_PATH];				// Copy of the file name
 
-} MemoryMappedFiles;
+};
+using MemoryMappedFiles = _MemoryMappedFiles;
 
 
 

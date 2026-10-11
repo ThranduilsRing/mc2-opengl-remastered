@@ -25,7 +25,7 @@
 
 typedef struct _PathQueueRec* PathQueueRecPtr;
 
-typedef struct _PathQueueRec {
+struct _PathQueueRec {
 	long				num;
 	MechWarriorPtr		pilot;
 	long				selectionIndex;
@@ -35,7 +35,8 @@ typedef struct _PathQueueRec {
 	long				enqueueFrame;	// PATHFINDING-FACTS-2: frame stamped at request() (telemetry only; written/read only under PATH gate)
 	PathQueueRecPtr		prev;
 	PathQueueRecPtr		next;
-} PathQueueRec;
+};
+using PathQueueRec = _PathQueueRec;
 
 //---------------------------------------------------------------------------
 

@@ -29,8 +29,7 @@
 
 #include<gosfx/gosfxheaders.hpp>
 //***************************************************************************
-typedef union _CarnageInfo 
-{
+union _CarnageInfo {
 	struct {
 		float			timeToBurn;
 		float			radius;
@@ -42,7 +41,8 @@ typedef union _CarnageInfo
 		float			radius;
 		float			chunkSize;
 	} explosion;
-} CarnageInfo;
+};
+using CarnageInfo = _CarnageInfo;
 
 //---------------------------------------------------------------------------
 typedef struct _CarnageData : public GameObjectData
