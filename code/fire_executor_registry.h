@@ -38,7 +38,7 @@
 // only; it selects nothing and fires nothing. Mirrors the converter's mapping
 // of weapon FORM/tag -> executor name.
 // -------------------------------------------------------------------------
-enum FireExecutorKind {
+enum class FireExecutorKind {
     FEK_BEAM      = 0,  // continuous energy beam (beam_direct)
     FEK_PROJECTILE,     // direct-fire ballistic round (projectile_ballistic, lbx_spread)
     FEK_MISSILE,        // guided/salvo missiles (missile_salvo, missile_streak)
@@ -47,6 +47,7 @@ enum FireExecutorKind {
     FEK_TAG,            // designator, deals no damage (tag_designator)
     FEK__COUNT
 };
+using enum FireExecutorKind;
 
 // -------------------------------------------------------------------------
 // FireExecutorEntry -- the registered descriptor for one executor id. Pure
@@ -128,11 +129,12 @@ class FireExecutorRegistry {
 //   FE_RES_UNBOUND  -- weapon NAMES an executor that is not registered
 //                                                              [EQV_FIRE_EXECUTOR_UNBOUND]
 // -------------------------------------------------------------------------
-enum FireExecutorResolution {
+enum class FireExecutorResolution {
     FE_RES_OK = 0,
     FE_RES_UNSET,
     FE_RES_UNBOUND
 };
+using enum FireExecutorResolution;
 
 inline FireExecutorResolution classifyFireExecutor(const FireExecutorRegistry& reg,
                                                    const WeaponFacet& w) {

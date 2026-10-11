@@ -272,7 +272,8 @@ inline uint64_t foldHeader(uint64_t h, size_t n) {
     return h;
 }
 
-enum DigestKind { DIGEST_GRADED = 0, DIGEST_VISUAL = 1, DIGEST_STRICT = 2 };
+enum class DigestKind { DIGEST_GRADED = 0, DIGEST_VISUAL = 1, DIGEST_STRICT = 2 };
+using enum DigestKind;
 
 // World digest. SORTS `recs` in place (caller's buffer is scratch) so the
 // result is invariant to the order movers were walked in.
