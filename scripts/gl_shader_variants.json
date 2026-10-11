@@ -374,7 +374,7 @@
    "optional_groups_on": [],
    "prefix": "#version 430\n#define TILE_SIZE 32\n",
    "raw_note": "loaded as plain text (no engine include flattening)",
-   "source": "GameOS/gameos/gos_cluster_depth_pyramid.cpp:71",
+   "source": "GameOS/gameos/gos_cluster_depth_pyramid.cpp:72",
    "stages": {
     "comp": "shaders/cluster_depth_pyramid.comp"
    }
@@ -2997,7 +2997,7 @@
    "optional_groups_on": [],
    "prefix": "#version 430\n#define TILE_X 8\n#define TILE_Y 8\n#define MODE_BLUR_H 1\n",
    "raw_note": "loaded as plain text (no engine include flattening)",
-   "source": "GameOS/gameos/gos_postprocess_blur.cpp:87",
+   "source": "GameOS/gameos/gos_postprocess_blur.cpp:88",
    "stages": {
     "comp": "shaders/postprocess_blur.comp"
    }
@@ -3014,7 +3014,7 @@
    "optional_groups_on": [],
    "prefix": "#version 430\n#define TILE_X 8\n#define TILE_Y 8\n#define MODE_BLUR_V 1\n",
    "raw_note": "loaded as plain text (no engine include flattening)",
-   "source": "GameOS/gameos/gos_postprocess_blur.cpp:87",
+   "source": "GameOS/gameos/gos_postprocess_blur.cpp:88",
    "stages": {
     "comp": "shaders/postprocess_blur.comp"
    }
@@ -3031,7 +3031,7 @@
    "optional_groups_on": [],
    "prefix": "#version 430\n#define TILE_X 8\n#define TILE_Y 8\n#define MODE_DOWNSAMPLE 1\n",
    "raw_note": "loaded as plain text (no engine include flattening)",
-   "source": "GameOS/gameos/gos_postprocess_blur.cpp:87",
+   "source": "GameOS/gameos/gos_postprocess_blur.cpp:88",
    "stages": {
     "comp": "shaders/postprocess_blur.comp"
    }
@@ -3745,7 +3745,7 @@
    "key": "static_prop_depth",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:334",
+   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:332",
    "stages": {
     "frag": "shaders/static_prop_depth.frag",
     "vert": "shaders/static_prop.vert"
@@ -3767,7 +3767,7 @@
     "if (s_ormSlotsEnabled)"
    ],
    "prefix": "#version 430\n#extension GL_ARB_shader_draw_parameters : require\n#define MC2_COALESCE 1\n#define MC2_OBJECT_ID_BUFFER 1\n#define MC2_USE_VIEW_UNIFORMS 1\n#define MC2_STATICPROP_PBR_SLOTS 1\n",
-   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:334",
+   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:332",
    "stages": {
     "frag": "shaders/static_prop_depth.frag",
     "vert": "shaders/static_prop.vert"
@@ -3785,7 +3785,7 @@
     "if (RenderWorld::IsObjectIdBufferEnabled())"
    ],
    "prefix": "#version 430\n#extension GL_ARB_shader_draw_parameters : require\n#define MC2_COALESCE 1\n#define MC2_OBJECT_ID_BUFFER 1\n",
-   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:334",
+   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:332",
    "stages": {
     "frag": "shaders/static_prop_depth.frag",
     "vert": "shaders/static_prop.vert"
@@ -3803,7 +3803,7 @@
     "if (s_ormSlotsEnabled)"
    ],
    "prefix": "#version 430\n#extension GL_ARB_shader_draw_parameters : require\n#define MC2_COALESCE 1\n#define MC2_STATICPROP_PBR_SLOTS 1\n",
-   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:334",
+   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:332",
    "stages": {
     "frag": "shaders/static_prop_depth.frag",
     "vert": "shaders/static_prop.vert"
@@ -3821,7 +3821,7 @@
     "if (s_viewUniformsShaderEnabled)"
    ],
    "prefix": "#version 430\n#extension GL_ARB_shader_draw_parameters : require\n#define MC2_COALESCE 1\n#define MC2_USE_VIEW_UNIFORMS 1\n",
-   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:334",
+   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:332",
    "stages": {
     "frag": "shaders/static_prop_depth.frag",
     "vert": "shaders/static_prop.vert"
@@ -3836,7 +3836,7 @@
    "key": "static_prop_depth{COALESCE}",
    "optional_groups_on": [],
    "prefix": "#version 430\n#extension GL_ARB_shader_draw_parameters : require\n#define MC2_COALESCE 1\n",
-   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:334",
+   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:332",
    "stages": {
     "frag": "shaders/static_prop_depth.frag",
     "vert": "shaders/static_prop.vert"
@@ -3857,7 +3857,7 @@
     "if (s_ormSlotsEnabled)"
    ],
    "prefix": "#version 430\n#define MC2_OBJECT_ID_BUFFER 1\n#define MC2_USE_VIEW_UNIFORMS 1\n#define MC2_STATICPROP_PBR_SLOTS 1\n",
-   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:334",
+   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:332",
    "stages": {
     "frag": "shaders/static_prop_depth.frag",
     "vert": "shaders/static_prop.vert"
@@ -3874,7 +3874,7 @@
     "if (RenderWorld::IsObjectIdBufferEnabled())"
    ],
    "prefix": "#version 430\n#define MC2_OBJECT_ID_BUFFER 1\n",
-   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:334",
+   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:332",
    "stages": {
     "frag": "shaders/static_prop_depth.frag",
     "vert": "shaders/static_prop.vert"
@@ -3891,7 +3891,7 @@
     "if (s_ormSlotsEnabled)"
    ],
    "prefix": "#version 430\n#define MC2_STATICPROP_PBR_SLOTS 1\n",
-   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:334",
+   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:332",
    "stages": {
     "frag": "shaders/static_prop_depth.frag",
     "vert": "shaders/static_prop.vert"
@@ -3908,7 +3908,7 @@
     "if (s_viewUniformsShaderEnabled)"
    ],
    "prefix": "#version 430\n#define MC2_USE_VIEW_UNIFORMS 1\n",
-   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:334",
+   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:332",
    "stages": {
     "frag": "shaders/static_prop_depth.frag",
     "vert": "shaders/static_prop.vert"
