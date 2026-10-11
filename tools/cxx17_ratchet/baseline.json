@@ -152,7 +152,7 @@
    "LG11": 101,
    "LG12a": 220,
    "LG12b": 790,
-   "LG13": 736,
+   "LG13": 712,
    "LG14": 135,
    "LG15": 0,
    "LG16": 7,
@@ -198,7 +198,7 @@
    "LG11": 67,
    "LG12a": 449,
    "LG12b": 563,
-   "LG13": 1193,
+   "LG13": 1141,
    "LG14": 122,
    "LG15": 0,
    "LG16": 156,
@@ -1741,12 +1741,12 @@
    "LG03": 16,
    "LG09": 20,
    "LG12b": 8,
-   "LG13": 12
+   "LG13": 2
   },
   "code/artlry.h": {
    "LG02": 2,
    "LG04": 1,
-   "LG13": 9
+   "LG13": 3
   },
   "code/attributemeter.cpp": {
    "LG06": 1,
@@ -1891,7 +1891,7 @@
   "code/controlgui.h": {
    "LG01": 1,
    "LG06": 4,
-   "LG13": 5,
+   "LG13": 1,
    "LG14": 3,
    "LG17": 2
   },
@@ -2091,8 +2091,7 @@
   },
   "code/forcegroupbar.h": {
    "LG05": 3,
-   "LG06": 1,
-   "LG13": 1
+   "LG06": 1
   },
   "code/gamecam.cpp": {
    "LG01": 12,
@@ -2256,8 +2255,7 @@
   },
   "code/infowindow.h": {
    "LG05": 1,
-   "LG06": 1,
-   "LG13": 2
+   "LG06": 1
   },
   "code/infowindowmodel.h": {
    "LG17": 1
@@ -2604,8 +2602,7 @@
    "LG13": 4
   },
   "code/mechicon.h": {
-   "LG05": 7,
-   "LG13": 1
+   "LG05": 7
   },
   "code/mechlabscreen.cpp": {
    "LG03": 4,
@@ -4276,7 +4273,7 @@
    "LG06": 3
   },
   "mclib/mclibresource.h": {
-   "LG13": 127
+   "LG13": 75
   },
   "mclib/mech3d.cpp": {
    "LG01": 1,
@@ -5599,7 +5596,7 @@
    "LG20": 2
   }
  },
- "head": "a1cd5fc80",
+ "head": "311b8c9d8",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
