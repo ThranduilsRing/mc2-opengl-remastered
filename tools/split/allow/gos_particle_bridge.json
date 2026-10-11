@@ -1,0 +1,21 @@
+{
+ "base": "e143d1f58",
+ "src": "GameOS/gameos/gos_particle_bridge.cpp",
+ "stem": "gos_particle_bridge",
+ "add": [
+  "",
+  "// Group-log gate: defined in gos_particle_bridge.cpp, read by both pieces.",
+  "bool groupLogEnabled();"
+ ],
+ "scripts": [
+  "scripts/check-frame-resource-feedback.py",
+  "scripts/check-raw-gl-blendfunc.py",
+  "scripts/check-raw-gl-depthfunc.py",
+  "scripts/check-raw-gl-depthmask.py",
+  "scripts/gl_shader_variants.json",
+  "tests/unit/test_frame_graph.cpp",
+  "tools/gate_codemod.py",
+  "tools/mc2fx/mc2fx_stubs.cpp"
+ ],
+ "_scripts_reason": "Widened to the stem pieces: the three raw-GL allowlists gain gos_particle_bridge_tube.cpp (the ribbon flush sets blend, depth func and depth mask), check-frame-resource-feedback scans gos_particle_bridge*.cpp, gl_shader_variants.json is regenerated (py -3 scripts/extract_gl_shader_variants.py). Comments only: test_frame_graph.cpp, mc2fx_stubs.cpp; gate_codemod.py is a one-shot target list (lane 1 owns it)."
+}

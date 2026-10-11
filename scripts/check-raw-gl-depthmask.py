@@ -98,6 +98,7 @@ FROZEN_BACKLOG = {
     "GameOS/gameos/gos_postprocess_shadow.cpp",
     "GameOS/gameos/gos_postprocess_skybox.cpp",
     "GameOS/gameos/gos_particle_bridge.cpp",
+    "GameOS/gameos/gos_particle_bridge_tube.cpp",
     "GameOS/gameos/gos_vfx_mesh_bridge.cpp",
     "GameOS/gameos/gos_terrain_lod_chunk_draw.cpp",
     "GameOS/gameos/gos_vegetation.cpp",

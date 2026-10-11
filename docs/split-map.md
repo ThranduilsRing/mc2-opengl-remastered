@@ -30,6 +30,14 @@ Split commit: `d9f3d13b6`.
 | `gos_mech_batcher_geometry.cpp` | GpuMechBatcher: mech type / LOD registration, the shared vertex buffer upload, normal recomputation and geometry finalise. |
 | `gos_mech_batcher_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
+## `GameOS/gameos/gos_particle_bridge.cpp`
+
+| Piece | What it holds |
+|---|---|
+| `gos_particle_bridge.cpp` | keeps the billboard state, init, the particle flush and the VFX tuning accessors |
+| `gos_particle_bridge_tube.cpp` | GPU particle bridge: the MC2_VFX_ORACLE_TUBE ribbon bridge: ribbon program / buffers, gos_tube_ribbon_flush, enqueue and the deferred flush. |
+| `gos_particle_bridge_internal.h` | shared include bundle, extern globals and declarations of the pieces |
+
 ## `GameOS/gameos/gos_postprocess.cpp`
 
 | Piece | What it holds |

@@ -2966,7 +2966,7 @@
    "key": "particle_billboard",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_particle_bridge.cpp:293",
+   "source": "GameOS/gameos/gos_particle_bridge.cpp:244",
    "stages": {
     "frag": "shaders/particle_billboard.frag",
     "vert": "shaders/particle_billboard.vert"
@@ -4352,7 +4352,7 @@
    "key": "tube_ribbon",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_particle_bridge.cpp:419",
+   "source": "GameOS/gameos/gos_particle_bridge_tube.cpp:61",
    "stages": {
     "frag": "shaders/tube_ribbon.frag",
     "vert": "shaders/tube_ribbon.vert"

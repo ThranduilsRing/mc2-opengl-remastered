@@ -52,6 +52,7 @@ set(SOURCES ${SOURCES}
     gos_static_prop_registry_flush_range.cpp
     gos_static_prop_registry_flush_tail.cpp
     gos_particle_bridge.cpp
+    gos_particle_bridge_tube.cpp
     gos_vfx_mesh_bridge.cpp
     gos_cardcloud_sim.cpp
     gos_materials.cpp
