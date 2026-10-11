@@ -195,8 +195,9 @@ namespace {
 	}
 
 	// rule ids for the dedup key (per mover partId).
-	enum CohRule { COH_I1 = 1, COH_I1B, COH_I2_ICON, COH_I2_ORDER,
+	enum class CohRule { COH_I1 = 1, COH_I1B, COH_I2_ICON, COH_I2_ORDER,
 	               COH_I2B_ORDER, COH_I3, COH_I4, COH_I5 };
+	using enum CohRule;
 
 	static void cohEmit(bool violation, const char* rule, long partId,
 	                    const char* name, CohRule ruleId, const char* detail) {

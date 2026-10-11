@@ -55,7 +55,8 @@ public:
     // Draw a line in F6 overview; selected squad gets one move order per
     // evenly spaced slot. State machine: IDLE -> ARMED (L) -> DRAGGING (LMB)
     // -> issue on release. Esc / RMB / exiting F6 cancels.
-    enum FormationLineState { FL_IDLE = 0, FL_ARMED, FL_DRAGGING };
+    enum class FormationLineState { FL_IDLE = 0, FL_ARMED, FL_DRAGGING };
+    using enum FormationLineState;
     static bool formationLineEnabled();        // env gate, cached
     void flOnHotkeyL();                        // L pressed while F6 active
     void flOnCancel();                         // Esc / right-click / F6 exit

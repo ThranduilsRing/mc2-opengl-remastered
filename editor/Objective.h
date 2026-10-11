@@ -698,10 +698,11 @@ public:
 	int nSelectionIndex;
 
 	CObjective ModifiedObjective;
-	enum list_id_type {
+	enum class list_id_type {
 		SUCCESS_CONDITION,
 		FAILURE_CONDITION
 	};
+	using enum list_id_type;
 	list_id_type listID;
 	int nConditionSpeciesSelectionIndex;
 	int nActionSpeciesSelectionIndex;
@@ -739,11 +740,12 @@ public:
 	marker and never re-reach TargetAreaDlg), and TargetAreaDlg::OnInitDialog must
 	consume ONLY an area pick. Set when arming; cleared back to PICK_NONE when the
 	matching consumer reads the result or on cancelled-pick disarm. */
-	enum pick_target_type {
+	enum class pick_target_type {
 		PICK_NONE,
 		PICK_MARKER,
 		PICK_AREA
 	};
+	using enum pick_target_type;
 	pick_target_type pendingPickTarget;
 
 	/* Slice 3 -- Locate (PICKER-SELECT-POINT-RECON-1 section 6). Distinct from the

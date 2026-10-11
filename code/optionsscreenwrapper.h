@@ -23,12 +23,13 @@ class OptionsXScreen;
 class OptionsScreenWrapper
 {
 	public:
-		enum status_type
+		enum class status_type
 		{
 			opt_INACTIVE, 
 			opt_ACTIVE, 
 			opt_DONE
 		};
+		using enum status_type;
 
 		OptionsScreenWrapper();
 		~OptionsScreenWrapper();

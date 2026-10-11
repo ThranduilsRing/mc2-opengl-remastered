@@ -60,7 +60,7 @@ enum EquipmentKind {
 // (independent of EquipmentKind). Bit positions so an EquipmentTagMask fits a
 // uint32. Deliberately coarse now; a later slice widens it as needs appear.
 // -------------------------------------------------------------------------
-enum EquipmentTag {
+enum class EquipmentTag {
     ETAG_OMNI          = 0,   // omni-pod / hot-swappable
     ETAG_CLAN          = 1,   // clan-tech
     ETAG_EXPERIMENTAL  = 2,   // experimental / advanced
@@ -68,6 +68,7 @@ enum EquipmentTag {
     ETAG_EXPLOSIVE     = 4,   // explosive on crit (ammo, gauss)
     NUM_EQUIPMENT_TAGS        // keep last; must stay <= 32
 };
+using enum EquipmentTag;
 
 using EquipmentTagMask = unsigned int;
 

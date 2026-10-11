@@ -15,20 +15,22 @@ inline constexpr int MAX_MOVEGATES_PER_ROOM = 4;
 inline constexpr int MAX_OBJECTS_PER_ROOM = 10;
 inline constexpr int MAX_CONTROLLED_OBJECTS = 200;
 
-enum GoalType {
+enum class GoalType {
 	GOAL_NONE,
 	GOAL_OBJECT,
 	GOAL_REGION,
 	NUM_GOAL_TYPES
 };
+using enum GoalType;
 
-enum GoalLinkType {
+enum class GoalLinkType {
 	GOAL_LINK_NONE,
 	GOAL_LINK_MOVE,
 	GOAL_LINK_CONTROLS,
 	GOAL_LINK_CONTROLLED,
 	NUM_GOAL_LINK_TYPES
 };
+using enum GoalLinkType;
 
 union GoalInfo {
 	struct {

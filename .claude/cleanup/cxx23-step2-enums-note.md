@@ -38,3 +38,12 @@ RULE: SKIP when the value is used as arithmetic, an array index, a case label of
 ## Proposal for review
 Batch A (strict, one commit per header-size tier): 19 narrow enums; Batch B: Capability + CarnageEnumType with `--max-header-includers 200`; then the ratchet LG14 drops by the number kept. Wide/GameOS: your ruling (relaxed proof with a reason, or SKIP).
 Expected floor after A+B: about 21 fewer unscoped named enums of 178; the 23 skipped and 9 never-touch enums are listed above as the documented floor.
+
+## Results after the coordinator's rulings (2026-10-11, strict plain objhash, `--vs-gate`: Ninja trees + mc2_tests + harness trees, <= 10 enums per commit)
+- CONVERTED 18 enums in 4 commits (929ecc662 5, cab34b9e2 6, edb92d936 1, b31a71d36 6): SEEK_TYPE, CohRule, control_species_data_type, status_type, obj_category_type; GoalType, GoalLinkType, FormationLineState, list_id_type,
+  pick_target_type, FeatureMask; CarnageEnumType; EquipmentTag, EquipmentAddFillDecision, EquipmentUiStringKind, FireExecutorKind, FireExecutorResolution, DigestKind. Every including object IDENTICAL (Ninja trees and VS trees).
+- The new harness / unit-test gate (`tools/tidy/vs_trees.py`, `proof_ext.Gate`) refused 4 more: EquipmentReasonCode, UnitProfileReasonCode, Capability (tests use `X__COUNT` as array bound, loop limit and index) and ClassPolicy (the
+  standalone object_light_row_harness is not a C++20 build: `using enum` is C7572). Converting them means casts in 16+ test lines and `seen[code]` index sites: contortion, so they join the skip ledger. ActorState: `code/actor.h` is
+  included by no translation unit in any tree, so there is nothing to prove and nothing to gain (dead header, deletion candidate); skip ledger too.
+- The 13 deferred (`gos*`, `MC_TextureKey`) are on the skip ledger by ruling. Final floor: 41 enums on `tools/tidy/enum_skip.txt`, 9 never-touch, the rest census-refused.
+- First gate run blamed every object of a failed target (it reverted 4 good headers); fixed in de31eebb1 (a failed target blames only the objects its errors name) and the 6 innocent enums went through in b31a71d36.

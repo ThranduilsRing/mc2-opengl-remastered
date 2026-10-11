@@ -448,7 +448,7 @@ inline std::string equipmentDefPathForQualifiedId(const std::string& qid) {
 // def targeting a POPULATED stock row is a conflict (overrides are the overlay/
 // enable-wire's job, keyed by the row's OWN core:<slug> id -- that self-override
 // case is a silent skip, not a finding).
-enum EquipmentAddFillDecision {
+enum class EquipmentAddFillDecision {
     EQADD_FILL = 0,            // ordinal free -> populate the row
     EQADD_SKIP_NO_ORDINAL,     // def carries no explicit LegacyMasterId (finding)
     EQADD_SKIP_ORDINAL_RANGE,  // ordinal <0, >=numComponents, or ==255 sentinel (finding)
@@ -456,6 +456,7 @@ enum EquipmentAddFillDecision {
     EQADD_SKIP_SELF_OVERRIDE,  // def IS that populated row's own core def (silent -- S1/overlay land)
     EQADD_SKIP_DUPLICATE       // another ADD-def already claimed this ordinal (first-wins finding)
 };
+using enum EquipmentAddFillDecision;
 
 inline EquipmentAddFillDecision
 equipmentAddFillDecide(bool hasOrdinal, long ord, long numComponents,
@@ -661,12 +662,13 @@ struct EquipmentAddFillRow {
 // to the legacy cLoadString path -- so with the gates OFF (rows empty) every
 // surface is byte-identical to stock. Pure -> doctest target.
 // -------------------------------------------------------------------------
-enum EquipmentUiStringKind {
+enum class EquipmentUiStringKind {
     EQUISTR_NONE = 0,   // id not in any component string block
     EQUISTR_NAME,       // 32000..32254
     EQUISTR_ABBREV,     // 33000..33254
     EQUISTR_DESC        // 34000..34254 or 46000..46254 (both are descriptions)
 };
+using enum EquipmentUiStringKind;
 
 inline EquipmentUiStringKind equipmentUiStringDecode(long stringId, long* ordOut) {
     // masterID space is 0..254 (255 = 0xff sentinel, never a component).

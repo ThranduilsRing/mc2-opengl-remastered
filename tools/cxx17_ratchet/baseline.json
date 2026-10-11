@@ -61,7 +61,7 @@
    "LG12a": 95,
    "LG12b": 30,
    "LG13": 330,
-   "LG14": 62,
+   "LG14": 61,
    "LG15": 0,
    "LG16": 7,
    "LG17": 81,
@@ -150,10 +150,10 @@
    "LG09": 2353,
    "LG10": 20,
    "LG11": 101,
-   "LG12a": 100,
+   "LG12a": 98,
    "LG12b": 349,
-   "LG13": 295,
-   "LG14": 135,
+   "LG13": 244,
+   "LG14": 123,
    "LG15": 0,
    "LG16": 7,
    "LG17": 47,
@@ -199,7 +199,7 @@
    "LG12a": 212,
    "LG12b": 245,
    "LG13": 1126,
-   "LG14": 122,
+   "LG14": 120,
    "LG15": 0,
    "LG16": 156,
    "LG17": 91,
@@ -1087,8 +1087,7 @@
    "LG06": 3
   },
   "GameOS/gameos/utils/stream.h": {
-   "LG06": 1,
-   "LG14": 1
+   "LG06": 1
   },
   "GameOS/gameos/utils/string_utils.cpp": {
    "LG05": 1,
@@ -1813,8 +1812,7 @@
    "LG02": 2
   },
   "code/dcarnage.h": {
-   "LG02": 6,
-   "LG14": 1
+   "LG02": 6
   },
   "code/dcollsn.h": {
    "LG02": 4
@@ -1894,7 +1892,7 @@
   "code/equipment_definition.h": {
    "LG06": 1,
    "LG09": 1,
-   "LG14": 2
+   "LG14": 1
   },
   "code/equipment_registry.h": {
    "LG05": 1,
@@ -1902,7 +1900,7 @@
    "LG08": 3,
    "LG09": 8,
    "LG11": 1,
-   "LG14": 5
+   "LG14": 3
   },
   "code/equipment_registry_engine.cpp": {
    "LG05": 1,
@@ -1918,7 +1916,7 @@
   "code/fire_executor_registry.h": {
    "LG06": 1,
    "LG08": 1,
-   "LG14": 3
+   "LG14": 1
   },
   "code/fitblockwriter.cpp": {
    "LG06": 11,
@@ -2007,8 +2005,7 @@
   },
   "code/goal.h": {
    "LG02": 1,
-   "LG04": 1,
-   "LG14": 2
+   "LG04": 1
   },
   "code/ground_contact_blob.cpp": {
    "LG09": 4,
@@ -2380,7 +2377,6 @@
    "LG03": 25,
    "LG09": 10,
    "LG11": 8,
-   "LG12a": 2,
    "LG12b": 1,
    "LG13": 2
   },
@@ -2496,8 +2492,7 @@
   "code/mission_update_audit.cpp": {
    "LG06": 2,
    "LG09": 3,
-   "LG10": 1,
-   "LG14": 1
+   "LG10": 1
   },
   "code/missionbegin.cpp": {
    "LG01": 27,
@@ -2702,8 +2697,7 @@
    "LG13": 1
   },
   "code/mpparameterscreen.h": {
-   "LG06": 8,
-   "LG14": 1
+   "LG06": 8
   },
   "code/mpprefs.cpp": {
    "LG03": 4,
@@ -2836,9 +2830,6 @@
   "code/optionsscreenwrapper.cpp": {
    "LG03": 2
   },
-  "code/optionsscreenwrapper.h": {
-   "LG14": 1
-  },
   "code/pausewindow.cpp": {
    "LG03": 9,
    "LG09": 20,
@@ -2937,7 +2928,6 @@
    "LG17": 2
   },
   "code/tacticaloverview.h": {
-   "LG14": 1,
    "LG17": 2
   },
   "code/tacticaloverview_state.cpp": {
@@ -3009,7 +2999,7 @@
    "LG14": 1
   },
   "code/unitdesg.h": {
-   "LG13": 54
+   "LG13": 3
   },
   "code/unitprofile.cpp": {
    "LG06": 4,
@@ -4589,7 +4579,6 @@
   },
   "mclib/sim_identity.h": {
    "LG09": 13,
-   "LG14": 1,
    "LG17": 2
   },
   "mclib/sortlist.cpp": {
@@ -4920,9 +4909,6 @@
    "LG09": 1,
    "LG10": 2
   },
-  "mclib/terrain_runtime.h": {
-   "LG14": 1
-  },
   "mclib/terrain_surface_bands.h": {
    "LG10": 1
   },
@@ -5197,7 +5183,7 @@
    "LG20": 2
   }
  },
- "head": "2afe901cb",
+ "head": "69b935d96",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

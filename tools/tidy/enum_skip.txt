@@ -23,3 +23,23 @@ LegacyGestureId          int initializer lists (AnimFallbackChain)
 GpuActorCategory         mirrored by shaders/gpu_cull.comp
 GpuActorFlags            mirrored by shaders/gpu_cull.comp, OR-ed into a uint32_t record
 TerrainMaterialProfile   stored in an int, constants mirrored in terrain_common.hglsl
+# Coordinator ruling 2026-10-11: platform-API enums with int interfaces; churn exceeds the value for this step.
+gosVideo_Command         platform API (gameos.hpp)
+gosVideo_PlayMode        platform API (gameos.hpp)
+gosAudio_SpeakerConfig   platform API (gameos.hpp)
+gosEnum_KeyDeviceType    platform API (gameos.hpp)
+GOSJoystickAxis          platform API (gameos.hpp)
+gosForce                 platform API (gameos.hpp)
+gosType                  platform API (gameos.hpp)
+gosSetting               platform API (gameos.hpp)
+MachineInfo              platform API (gameos.hpp)
+gosThreadPriority        platform API (toolos.hpp)
+gosEnum_FileWriteStatus  platform API (toolos.hpp)
+gosEnum_FileSeekType     platform API (toolos.hpp)
+MC_TextureKey            wide header (txmmgr.h, 574 includers), int-typed texture keys
+# Found by the harness / unit-test gate (tools/tidy/vs_trees.py) on 2026-10-11: the tests use these as ints.
+EquipmentReasonCode      tests/unit: `bool seen[EQV__COUNT]` array bound and `i < EQV__COUNT` loops
+UnitProfileReasonCode    tests/unit: `bool seen[UPV__COUNT]` array bound, int compares
+Capability               tests/unit/test_capability.cpp: `c < CAP__COUNT` loops
+ClassPolicy              standalone object_light_row_harness is not built as C++20 (`using enum` rejected, C7572)
+ActorState               code/actor.h is included by no translation unit in any tree (dead header): nothing to prove, a deletion candidate rather than a conversion

@@ -19,7 +19,8 @@
 class stream
 {
 public:
-	enum SEEK_TYPE { S_SET, S_CUR, S_END };
+	enum class SEEK_TYPE { S_SET, S_CUR, S_END };
+	using enum SEEK_TYPE;
 	stream(void) {};
 	virtual ~stream(void) {};
 	virtual int open(const char *, const char *) = 0;

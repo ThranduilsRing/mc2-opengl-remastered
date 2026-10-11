@@ -126,6 +126,7 @@
   "tools/tracy_capture_compare.py": "program is a variable (git, ninja, glslang, ktx, blender, cook tools, python); launch-site audit 2026-10-10: console tool, not the game",
   "tools/unit_converter/test_example_mods_roundtrip.py": "program is a variable (git, ninja, glslang, ktx, blender, cook tools, python); launch-site audit 2026-10-10: console tool, not the game",
   "tools/tidy/rewrite_defines.py": "runs git, the cxx17 ratchet and ninja via the tidy proof helpers; never the engine",
+  "tools/tidy/vs_trees.py": "cmake --build of the harness / test trees and git ls-files; console tool, never the engine",
  "tools/split/post_split.py": "runs git, python helper tools and Git bash for the contract board; never the engine",
  "tools/visual_verify/capture_ab.py": "python wrapper that starts tools/visual_verify/capture.py (lease, background-only); the engine launch downstream goes through nofocus.spawn",
  "tools/visual_verify/ab.py": "python wrapper that starts the harness (run_smoke / run_visual_capture); the engine launch downstream goes through nofocus.spawn",

@@ -13,80 +13,80 @@
 
 //***************************************************************************
 
-#define	OBJ_ID_FIRST_COMMANDER	492
-#define	OBJ_ID_LAST_COMMANDER	499
+inline constexpr int OBJ_ID_FIRST_COMMANDER = 492;
+inline constexpr int OBJ_ID_LAST_COMMANDER = 499;
 
-#define	OBJ_ID_FIRST_TEAM		500
-#define	OBJ_ID_LAST_TEAM		508
+inline constexpr int OBJ_ID_FIRST_TEAM = 500;
+inline constexpr int OBJ_ID_LAST_TEAM = 508;
 
 //#define	OBJ_ID_FIRST_GROUP
-#define PlayerId				500
-#define ClanId					501
-#define AlliedId				502
+inline constexpr int PlayerId = 500;
+inline constexpr int ClanId = 501;
+inline constexpr int AlliedId = 502;
 
-#define PlayerLance0			16
-#define PlayerLance1			17
-#define PlayerLance2			18
-#define	PlayerLance3			19
-#define	PlayerLance4			20
-#define	PlayerLance5			21
-#define	PlayerLance6			22
-#define	PlayerLance7			23
+inline constexpr int PlayerLance0 = 16;
+inline constexpr int PlayerLance1 = 17;
+inline constexpr int PlayerLance2 = 18;
+inline constexpr int PlayerLance3 = 19;
+inline constexpr int PlayerLance4 = 20;
+inline constexpr int PlayerLance5 = 21;
+inline constexpr int PlayerLance6 = 22;
+inline constexpr int PlayerLance7 = 23;
 
-#define ClanStar0				165
-#define ClanStar1				166
-#define ClanStar2				167
-#define	ClanStar3				168
-#define	ClanStar4				169
-#define	ClanStar5				170
-#define	ClanStar6				171
-#define	ClanStar7				172
+inline constexpr int ClanStar0 = 165;
+inline constexpr int ClanStar1 = 166;
+inline constexpr int ClanStar2 = 167;
+inline constexpr int ClanStar3 = 168;
+inline constexpr int ClanStar4 = 169;
+inline constexpr int ClanStar5 = 170;
+inline constexpr int ClanStar6 = 171;
+inline constexpr int ClanStar7 = 172;
 
-#define AlliedLance0			329
-#define AlliedLance1			330
-#define AlliedLance2			331
-#define	AlliedLance3			332
-#define	AlliedLance4			333
-#define	AlliedLance5			334
-#define	AlliedLance6			335
-#define	AlliedLance7			336
+inline constexpr int AlliedLance0 = 329;
+inline constexpr int AlliedLance1 = 330;
+inline constexpr int AlliedLance2 = 331;
+inline constexpr int AlliedLance3 = 332;
+inline constexpr int AlliedLance4 = 333;
+inline constexpr int AlliedLance5 = 334;
+inline constexpr int AlliedLance6 = 335;
+inline constexpr int AlliedLance7 = 336;
 
 
-#define	MIN_UNIT_PART_ID		1
-#define	MAX_UNIT_PART_ID		511
+inline constexpr int MIN_UNIT_PART_ID = 1;
+inline constexpr int MAX_UNIT_PART_ID = 511;
 
-#define	MIN_TEAM_PART_ID		500			//Teams are specialized units...
-#define	MAX_TEAM_PART_ID		511
+inline constexpr int MIN_TEAM_PART_ID = 500;			//Teams are specialized units...
+inline constexpr int MAX_TEAM_PART_ID = 511;
 
-#define MIN_MOVER_PART_ID			512		//Movers now start here
-#define	MIN_REINFORCEMENT_PART_ID	2050	//Reinforcements start here...
-#define	MAX_REINFORCEMENT_PART_ID	3550	//Only 1500 reinforcements allowed...
-#define MAX_MOVER_PART_ID			4095	//MIN_MOVER_PART_ID +
+inline constexpr int MIN_MOVER_PART_ID = 512;		//Movers now start here
+inline constexpr int MIN_REINFORCEMENT_PART_ID = 2050;	//Reinforcements start here...
+inline constexpr int MAX_REINFORCEMENT_PART_ID = 3550;	//Only 1500 reinforcements allowed...
+inline constexpr int MAX_MOVER_PART_ID = 4095;	//MIN_MOVER_PART_ID +
 											//MAX_COMMANDERS * MAX_MOVERGROUPS * MAX_MOVERGROUP_COUNT_START
 
 #define	MIN_TERRAIN_PART_ID		4096
-#define	MAX_TERRAIN_PART_ID		464895		//MIN_TERRAIN_PART_ID +
+inline constexpr int MAX_TERRAIN_PART_ID = 464895;		//MIN_TERRAIN_PART_ID +
 											//block * (MAX_TERRAIN_BLOCK_VERTICES * MAX_TERRAIN_TILE_ITEMS) +
 											//vertex * MAX_TERRAIN_TILE_ITEMS +
 											//item
 
-#define	MIN_TRAIN_PART_ID		512000
-#define	MAX_TRAIN_PART_ID		521999		//MIN_TRAIN_PART_ID +
+inline constexpr int MIN_TRAIN_PART_ID = 512000;
+inline constexpr int MAX_TRAIN_PART_ID = 521999;		//MIN_TRAIN_PART_ID +
 											//train * MAX_TRAIN_CARS +
 											//car
 
-#define	MIN_CAMERA_DRONE_ID		525000
-#define	MAX_CAMERA_DRONE_ID		525999		//MIN_CAMERA_DRONE_ID + cameraDrone
+inline constexpr int MIN_CAMERA_DRONE_ID = 525000;
+inline constexpr int MAX_CAMERA_DRONE_ID = 525999;		//MIN_CAMERA_DRONE_ID + cameraDrone
 
 #define	MAX_COMMANDERS				8
-#define	MAX_MOVERGROUPS				16
-#define MAX_MOVERGROUP_COUNT_START	12
+inline constexpr int MAX_MOVERGROUPS = 16;
+inline constexpr int MAX_MOVERGROUP_COUNT_START = 12;
 #define MAX_MOVERGROUP_COUNT		16
-#define	MAX_TRAIN_CARS				100
-#define	MAX_TERRAIN_BLOCKS			144
-#define	MAX_TERRAIN_BLOCK_VERTICES	400
-#define	MAX_TERRAIN_TILE_ITEMS		8
-#define	MAX_CAMERA_DRONES			1000
+inline constexpr int MAX_TRAIN_CARS = 100;
+inline constexpr int MAX_TERRAIN_BLOCKS = 144;
+inline constexpr int MAX_TERRAIN_BLOCK_VERTICES = 400;
+inline constexpr int MAX_TERRAIN_TILE_ITEMS = 8;
+inline constexpr int MAX_CAMERA_DRONES = 1000;
 										
 //***************************************************************************
 
