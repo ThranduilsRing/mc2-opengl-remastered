@@ -20,6 +20,41 @@ index 0167d8274..1edc5037d 100644
          const int result = (int)mc2_det_rng::next15(s_lcg_state);
          // Trace is gated twice: compile-time MC2_RNG_TRACE define AND the
          // runtime "RNG" tag whitelist. Default builds pay nothing.
+diff --git a/code/mech_damage.cpp b/code/mech_damage.cpp
+index f17cf3654..7eeb67481 100644
+--- a/code/mech_damage.cpp
++++ b/code/mech_damage.cpp
+@@ -1,5 +1,6 @@
+ // BattleMech: inventory hits, critical hits, status/move chunks and handleWeaponHit.
+ // Declared in the class headers; shared names in mech_internal.h.
++#include "dtrace_tmp.h"
+ #include "mech_internal.h"
+ #include "mc2fmt.h"
+ 
+@@ -163,6 +164,7 @@ bool BattleMech::hitInventoryItem (long itemIndex, bool setupOnly) {
+ }
+ 
+ void BattleMech::destroyBodyLocation (long bodyLocation) {
++	DT("DESTROYLOC mech=%ld loc=%ld", (long)getPartId(), (long)bodyLocation);
+ 
+ 	if (body[bodyLocation].damageState == IS_DAMAGE_DESTROYED)
+ 		return;
+@@ -463,6 +465,7 @@ long BattleMech::handleMoveChunk (unsigned long chunk) {
+ #pragma optimize("",on)
+ 
+ bool BattleMech::injureBodyLocation (long bodyLocation, float damage) {
++	DT("INJURE mech=%ld loc=%ld dmg=%.3f cur=%.3f failedPC=%d", (long)getPartId(), (long)bodyLocation, (double)damage, (double)body[bodyLocation].curInternalStructure, (int)failedPilotingCheck);
+ 
+ 	BodyLocationPtr location = &body[bodyLocation];
+ 
+@@ -506,6 +509,7 @@ long BattleMech::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayC
+ 	if (!shotInfo)
+ 		return(NO_ERR);
+ 
++	DT("HIT mech=%ld dmg=%.3f loc=%ld master=%ld atk=%ld", (long)getPartId(), (double)shotInfo->damage, (long)shotInfo->hitLocation, (long)shotInfo->masterId, (long)shotInfo->attackerWID);
+ 	printHandleWeaponHitDebugInfo(shotInfo);
+ 
+ 	// COMBAT-TRACE-1: weapon HIT resolution is the universal combat chokepoint — scripted ABL
 diff --git a/code/sim_identity.cpp b/code/sim_identity.cpp
 index 115538eb7..abe16a592 100644
 --- a/code/sim_identity.cpp
@@ -41,7 +76,7 @@ index 115538eb7..abe16a592 100644
  			const MoverRecord& r = recs[i];
  			char hm[17];
 diff --git a/code/weaponbolt_update.cpp b/code/weaponbolt_update.cpp
-index d4c4b427c..57fd068ab 100644
+index d4c4b427c..91be7dcec 100644
 --- a/code/weaponbolt_update.cpp
 +++ b/code/weaponbolt_update.cpp
 @@ -1,5 +1,6 @@
@@ -55,7 +90,7 @@ index d4c4b427c..57fd068ab 100644
  		if (!((WeaponBoltTypePtr)getObjectType())->isBeam)
  		{
  			float lastDistanceMoved = distanceToTarget - distance;
-+			if (target && target->isMech()) { Stuff::Vector3D tp = target->getPosition(); DT("BOLT id=%ld tgt=%ld dist=%.4f last=%.4f tpos=%.4f,%.4f,%.4f mpos=%.4f,%.4f,%.4f", (long)getPartId(), (long)target->getPartId(), (double)distance, (double)(distanceToTarget - distance), (double)targetPos.x,(double)targetPos.y,(double)targetPos.z,(double)tp.x,(double)tp.y,(double)tp.z); }
++			if (target && target->isMech()) { Stuff::Vector3D tp = target->getPosition(); DT("BOLT inview=%d id=%ld tgt=%ld dist=%.4f last=%.4f tpos=%.4f,%.4f,%.4f mpos=%.4f,%.4f,%.4f", (int)(target->appearance ? target->appearance->inView : -1), (long)getPartId(), (long)target->getPartId(), (double)distance, (double)(distanceToTarget - distance), (double)targetPos.x,(double)targetPos.y,(double)targetPos.z,(double)tp.x,(double)tp.y,(double)tp.z); }
  			distanceToTarget = distance;
  			
  			if (lastDistanceMoved >= distance)
