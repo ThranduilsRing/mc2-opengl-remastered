@@ -113,6 +113,10 @@ bool DisplayCameraAngle = false;
 bool loadInMissionSave = false;
 bool saveInMissionSave = false;
 
+// Set by the quicksave/quickload boot fixture when both are armed: the game then saves again right after the load, to testgame_resave.ims, so a tool can
+// compare that file with the first save (tools/saveload_roundtrip.py resave).
+bool g_resaveAfterQuickload = false;
+
 float forcedFrameRate = -1.0f;
 
 // ---- MC2_MISSION_SPLIT: wall-ms split of the Mission::update sub-calls -----

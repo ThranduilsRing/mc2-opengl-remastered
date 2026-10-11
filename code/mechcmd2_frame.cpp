@@ -649,6 +649,12 @@ void __stdcall DoGameLogic()
             S_snprintf(savegame_path, sizeof(savegame_path)/sizeof(savegame_path[0]), "%s" PATH_SEPARATOR "testgame.ims", savePath);
             mission->load(savegame_path);
 			loadInMissionSave = false;
+			if (g_resaveAfterQuickload)
+			{
+				g_resaveAfterQuickload = false;
+				S_snprintf(savegame_path, sizeof(savegame_path)/sizeof(savegame_path[0]), "%s" PATH_SEPARATOR "testgame_resave.ims", savePath);
+				mission->save(savegame_path);
+			}
 		}
 	}
 	else

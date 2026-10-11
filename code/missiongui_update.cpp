@@ -64,6 +64,7 @@ void MissionInterfaceManager::update (void)
 	{
 		extern bool saveInMissionSave;
 		extern bool loadInMissionSave;
+		extern bool g_resaveAfterQuickload;
 		extern uint32_t g_mc2FrameCounter;
 		static const long s_qsAt = static_cast<long>(mc2::gate::get<"MC2_BOOT_QUICKSAVE_AT">());
 		static const long s_qlAt = static_cast<long>(mc2::gate::get<"MC2_BOOT_QUICKLOAD_AT">());
@@ -81,6 +82,7 @@ void MissionInterfaceManager::update (void)
 				eye && !eye->inMovieMode) {
 				s_qlDone = true;
 				loadInMissionSave = true;
+				g_resaveAfterQuickload = (s_qsAt > 0);
 			}
 		}
 	}

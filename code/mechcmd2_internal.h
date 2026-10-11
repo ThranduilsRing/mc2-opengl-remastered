@@ -199,6 +199,7 @@ extern DWORD curDevice;
 extern bool isUsingSoftware;
 extern float trisPerSecond[MAX_HARDWARE_CARDS];
 extern bool loadInMissionSave;
+extern bool g_resaveAfterQuickload;
 extern char CDInstallPath[];
 extern float averageFrameRate;
 extern long currentFrameNum;

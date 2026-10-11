@@ -19,3 +19,12 @@ def test_mover_detail_is_reported_for_the_first_divergent_frame():
     ok, rep = rt.analyze(pre + post, frames_needed=10)
     text = "\n".join(rep)
     assert not ok and "DIVERGE 0 frame" in text and "id 7" in text and "gesture=0" in text
+
+
+def test_a_save_that_differs_names_its_packet_and_offset(tmp_path):
+    pk = [(0, b"ver\0"), (4, b"a" * 64), (4, b"b" * 64)]
+    other = [(0, b"ver\0"), (4, b"a" * 64), (4, b"b" * 10 + b"X" + b"b" * 53)]
+    for name, p in (("a.ims", pk), ("b.ims", other)):
+        rt.si.scs.write(str(tmp_path / name), p, False)
+    ok, rep = rt.resave_verdict(str(tmp_path / "a.ims"), str(tmp_path / "b.ims"))
+    assert not ok and "packet 2" in " ".join(rep) and "offset 10" in " ".join(rep)

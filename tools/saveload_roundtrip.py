@@ -11,6 +11,9 @@ must load, and the round trip is the proof.
 With MC2_SIM_IDENTITY_TRACE_DETAIL=1 the first divergent frame is explained mover by mover (gesture, path step, position, target).
 
   py -3 tools/saveload_roundtrip.py run [--mission mc2_16] [--frames 300] [--deploy]
+  py -3 tools/saveload_roundtrip.py resave [--mission mc2_01] [--save-at 1500] [--load-at 1700]   # save, quickload, save again: byte identity
+  py -3 tools/saveload_roundtrip.py --baseline [--mission mc2_01]   # record the digest of the round-trip save (tests/saveload/baselines/)
+  py -3 tools/saveload_roundtrip.py --check [--mission mc2_01]      # run again and compare with the recorded digest
   py -3 tools/saveload_roundtrip.py analyze path/to/mission.log [--frames 300]
   py -3 tools/saveload_roundtrip.py selftest
 """
@@ -18,6 +21,7 @@ from __future__ import annotations
 
 import argparse
 import glob
+import json
 import os
 import re
 import shutil
@@ -30,6 +34,8 @@ ROOT = os.path.abspath(os.path.join(HERE, ".."))
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
 import console_child  # noqa: E402
+import save_inspect as si  # noqa: E402
+import savegame_backup  # noqa: E402
 import sim_determinism as sd  # noqa: E402
 
 SAVE_AT, LOAD_AT = "1000", "1250"
@@ -113,6 +119,36 @@ def selftest() -> int:
     ok, rep = analyze(good[:110], frames_needed=30)
     if ok:
         fails.append("too few post-load frames must fail")
+    with tempfile.TemporaryDirectory() as td:
+        def mkfile(name, pk):
+            p = os.path.join(td, name)
+            si.scs.write(p, pk, False)
+            return p
+
+        base_pk = [(0, b"00.06.01.0614\0"), (4, b"mission" * 40), (4, b"M" * 300), (7, b""), (4, b"W" * 128)]
+        bad_pk = [(t, (r[:77] + b"\x55" + r[78:]) if t == 4 and len(r) == 300 else r) for t, r in base_pk]
+        f1, f2, f3 = mkfile("a.ims", base_pk), mkfile("b.ims", base_pk), mkfile("c.ims", bad_pk)
+        ok, rep = resave_verdict(f1, f2)
+        if not ok:
+            fails.append("two identical saves must pass: " + "; ".join(rep))
+        ok, rep = resave_verdict(f1, f3)
+        if ok or "packet 2" not in " ".join(rep) or "offset 77" not in " ".join(rep):
+            fails.append("a save that differs at packet 2 offset 77 must fail and say where: " + "; ".join(rep))
+        if resave_verdict(f1, None)[0] or resave_verdict(None, f2)[0]:
+            fails.append("a missing save or re-save must fail")
+        fp = {"sha": "abc", "dirty": 0}
+        rec = baseline_record("m", 10, 20, f1, f2, fp)
+        ok, rep = check_baseline_record(rec, baseline_record("m", 10, 20, f2, f1, fp))
+        if not ok:
+            fails.append("a baseline must accept an identical save: " + "; ".join(rep))
+        ok, rep = check_baseline_record(rec, baseline_record("m", 10, 20, f3, f1, fp))
+        if ok or "differs" not in " ".join(rep):
+            fails.append("a baseline must refuse a changed save and name the run: " + "; ".join(rep))
+        ok, rep = check_baseline_record(rec, baseline_record("m", 10, 20, f1, f3, fp))
+        if ok or "re-save" not in " ".join(rep):
+            fails.append("a baseline that was re-save identical must refuse a run that is not")
+        if json.loads(json.dumps(rec))["runs"] != rec["runs"]:
+            fails.append("the baseline record must survive a JSON round trip")
     for f in fails:
         print("saveload_roundtrip selftest FAIL: " + f)
     print("saveload_roundtrip selftest: " + ("FAIL" if fails else "ok"))
@@ -123,9 +159,10 @@ def run(mission: str, frames: int, deploy: bool, out: str | None):
     if deploy:
         sd.build_and_deploy()
     env = dict(os.environ, **ENV)
-    r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "run_smoke.py"), "--mission", mission, "--duration", "28", "--deploy", "0.4",
-                        "--keep-logs"], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace",
-                       **console_child.child_kwargs(redirected=True))
+    with savegame_backup.guarded():
+        r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "run_smoke.py"), "--mission", mission, "--duration", "28", "--deploy", "0.4",
+                            "--keep-logs"], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace",
+                           **console_child.child_kwargs(redirected=True))
     arts = sorted(glob.glob(os.path.join(ROOT, "tests", "smoke", "artifacts", "20*")), key=os.path.getmtime)
     if not arts or not os.path.exists(os.path.join(arts[-1], mission + ".log")):
         sys.exit("saveload_roundtrip: the smoke run produced no log:\n" + "\n".join(r.stdout.splitlines()[-8:]))
@@ -136,9 +173,141 @@ def run(mission: str, frames: int, deploy: bool, out: str | None):
         return analyze(fh.read().splitlines(), frames)
 
 
+#: Where recorded round-trip digests live, one JSON file per mission.
+BASELINE_DIR = os.path.join(ROOT, "tests", "saveload", "baselines")
+_FINGERPRINT = re.compile(r"\[BUILD_FINGERPRINT v1\] sha=(\w+) dirty=([01])")
+DEFAULT_SAVE_AT, DEFAULT_LOAD_AT = 1000, 1100
+
+
+def resave_env(save_at: int, load_at: int) -> dict:
+    """Environment of a resave run: the determinism gates, frozen animation, and the quicksave and quickload fixtures. With both fixtures armed the
+    game saves a second time right after the load (testgame_resave.ims)."""
+    return dict(sd.GATES, MC2_SMOKE_FREEZE_ANIM="1", MC2_BOOT_QUICKSAVE_AT=str(save_at), MC2_BOOT_QUICKLOAD_AT=str(load_at))
+
+
+def run_fixture(mission: str, save_at: int, load_at: int, deploy: bool, out: str | None, duration: int = 28):
+    """Run `mission` with the save, load, re-save fixtures. -> (out dir, first save path, second save path or None, fingerprint dict or None).
+    The owner's quicksave is backed up first and put back afterwards."""
+    if deploy:
+        sd.build_and_deploy()
+    dest = out or tempfile.mkdtemp(prefix="resave_")
+    os.makedirs(dest, exist_ok=True)
+    sdir = savegame_backup.default_dir()
+    second_src = os.path.join(sdir, "testgame_resave.ims")
+    env = dict(os.environ, **resave_env(save_at, load_at))
+    with savegame_backup.guarded(sdir):
+        if os.path.exists(second_src):
+            os.remove(second_src)
+        r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "run_smoke.py"), "--mission", mission, "--duration", str(duration),
+                            "--deploy", "0.4", "--keep-logs"], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace",
+                           **console_child.child_kwargs(redirected=True))
+        arts = sorted(glob.glob(os.path.join(ROOT, "tests", "smoke", "artifacts", "20*")), key=os.path.getmtime)
+        if not arts or not os.path.exists(os.path.join(arts[-1], mission + ".log")):
+            sys.exit("saveload_roundtrip: the smoke run produced no log:\n" + "\n".join(r.stdout.splitlines()[-8:]))
+        shutil.copytree(arts[-1], os.path.join(dest, "run"), dirs_exist_ok=True)
+        first = second = None
+        if os.path.exists(os.path.join(sdir, "testgame.ims")):
+            first = os.path.join(dest, "save1.ims")
+            shutil.copy2(os.path.join(sdir, "testgame.ims"), first)
+        if os.path.exists(second_src):
+            second = os.path.join(dest, "save2.ims")
+            shutil.move(second_src, second)
+    with open(os.path.join(dest, "run", mission + ".log"), encoding="utf-8", errors="replace") as fh:
+        m = _FINGERPRINT.search(fh.read())
+    return dest, first, second, ({"sha": m.group(1), "dirty": int(m.group(2))} if m else None)
+
+
+def resave_verdict(first: str | None, second: str | None):
+    """-> (ok, report lines): are the save and the save made right after loading it the same bytes? Names the first differing packet and offset."""
+    if not first or not os.path.exists(first):
+        return False, ["no quicksave was written: the quicksave fixture did not fire (SAVE_AT is a render frame; the run may have ended first)"]
+    if not second or not os.path.exists(second):
+        return False, ["no re-save was written: the quickload did not run or failed (see the run log and saveload_trace.log)"]
+    res = si.compare(si.load(first)[1], si.load(second)[1])
+    with open(first, "rb") as fa, open(second, "rb") as fb:
+        same_file = fa.read() == fb.read()
+    lines = si.describe(res)
+    if res["equal"] and not same_file:
+        lines.append("(every packet is equal, the container bytes differ: compressor or seek table)")
+    return res["equal"], lines
+
+
+def baseline_record(mission: str, save_at: int, load_at: int, first: str, second: str | None, fingerprint: dict | None) -> dict:
+    pk = si.load(first)[1]
+    ok, _ = resave_verdict(first, second)
+    return {"mission": mission, "save_at": save_at, "load_at": load_at, "gates": resave_env(save_at, load_at), "exe": fingerprint,
+            "packets": len(pk), "overall": si.overall(pk), "resave_identical": ok, "runs": [list(r) for r in si.runs(pk)],
+            "about": "digest of the quicksave a round-trip fixture writes; tools/saveload_roundtrip.py --baseline / --check"}
+
+
+def check_baseline_record(base: dict, cur: dict):
+    """-> (ok, report lines): does a fresh round-trip save equal the recorded one, run for run?"""
+    lines = []
+    be, ce = base.get("exe") or {}, cur.get("exe") or {}
+    lines.append(f"baseline exe {be.get('sha', '?')} dirty={be.get('dirty', '?')}; this run's exe {ce.get('sha', '?')} dirty={ce.get('dirty', '?')}")
+    ok, msg = si.compare_runs(base["runs"], cur["runs"])
+    if not ok:
+        lines.append(msg)
+        return False, lines
+    if base["overall"] != cur["overall"]:
+        lines.append(f"runs match but the overall digest differs ({base['overall']} vs {cur['overall']})")
+        return False, lines
+    lines.append(f"save equals the baseline: {cur['packets']} packets, digest {cur['overall']}")
+    if base.get("resave_identical") and not cur.get("resave_identical"):
+        lines.append("the re-save is no longer identical to the save")
+        return False, lines
+    return True, lines
+
+
+def baseline_path(mission: str) -> str:
+    return os.path.join(BASELINE_DIR, mission + ".json")
+
+
+def cmd_fixture(args) -> int:
+    dest, first, second, fp = run_fixture(args.mission, args.save_at, args.load_at, args.deploy, args.out, args.duration)
+    ok, lines = resave_verdict(first, second)
+    print(f"files kept in {dest}")
+    if args.cmd == "resave":
+        print(("saveload_roundtrip resave: PASS" if ok else "saveload_roundtrip resave: FAIL") + "\n" + "\n".join(lines))
+        return 0 if ok else 1
+    if not first:
+        print("saveload_roundtrip: " + lines[0])
+        return 1
+    rec = baseline_record(args.mission, args.save_at, args.load_at, first, second, fp)
+    path = baseline_path(args.mission)
+    if args.cmd == "baseline":
+        os.makedirs(BASELINE_DIR, exist_ok=True)
+        with open(path, "w", encoding="utf-8", newline="\n") as fh:
+            json.dump(rec, fh, indent=1)
+            fh.write("\n")
+        print(f"saveload_roundtrip: wrote {os.path.relpath(path, ROOT)} ({rec['packets']} packets, digest {rec['overall']}, re-save identical: {rec['resave_identical']})")
+        return 0
+    if not os.path.exists(path):
+        print(f"saveload_roundtrip check: no baseline for {args.mission} ({os.path.relpath(path, ROOT)}); record one with --baseline")
+        return 1
+    with open(path, encoding="utf-8") as fh:
+        base = json.load(fh)
+    ok, lines = check_baseline_record(base, rec)
+    print(("saveload_roundtrip check: PASS" if ok else "saveload_roundtrip check: FAIL") + "\n" + "\n".join(lines))
+    return 0 if ok else 1
+
+
 def main(argv=None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if argv and argv[0] in ("--baseline", "--check"):
+        argv[0] = argv[0][2:]
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
+    for name, helptext in (("resave", "save, quickload, save again; the two files must be identical"),
+                           ("baseline", "record the digest of the round-trip save for a mission"),
+                           ("check", "compare a fresh round-trip save with the recorded digest")):
+        p = sub.add_parser(name, help=helptext)
+        p.add_argument("--mission", default="mc2_01")
+        p.add_argument("--save-at", type=int, default=DEFAULT_SAVE_AT, help="render frame of the quicksave")
+        p.add_argument("--load-at", type=int, default=DEFAULT_LOAD_AT, help="render frame of the quickload")
+        p.add_argument("--duration", type=int, default=28)
+        p.add_argument("--deploy", action="store_true")
+        p.add_argument("--out", help="keep save1.ims, save2.ims and the run here (default: a temporary directory)")
     r = sub.add_parser("run")
     r.add_argument("--mission", default="mc2_16")
     r.add_argument("--frames", type=int, default=300, help="post-load frames that must match")
@@ -151,6 +320,8 @@ def main(argv=None) -> int:
     args = ap.parse_args(argv)
     if args.cmd == "selftest":
         return selftest()
+    if args.cmd in ("resave", "baseline", "check"):
+        return cmd_fixture(args)
     if args.cmd == "analyze":
         with open(args.log, encoding="utf-8", errors="replace") as fh:
             ok, rep = analyze(fh.read().splitlines(), args.frames)
