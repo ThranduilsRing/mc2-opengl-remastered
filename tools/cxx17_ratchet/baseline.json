@@ -47,8 +47,8 @@
    "LG20": 0
   },
   "GameOS": {
-   "LG01": 66,
-   "LG02": 208,
+   "LG01": 46,
+   "LG02": 204,
    "LG03": 301,
    "LG04": 6,
    "LG05": 119,
@@ -412,7 +412,6 @@
    "LG17": 2
   },
   "GameOS/gameos/gameos_graphics_internal.h": {
-   "LG01": 10,
    "LG03": 9,
    "LG06": 5,
    "LG09": 7,
@@ -424,8 +423,6 @@
    "LG13": 1
   },
   "GameOS/gameos/gameos_graphics_material_internal.h": {
-   "LG01": 7,
-   "LG02": 1,
    "LG03": 22,
    "LG06": 4,
    "LG09": 5,
@@ -448,8 +445,7 @@
    "LG10": 1
   },
   "GameOS/gameos/gameos_graphics_renderer_internal.h": {
-   "LG01": 2,
-   "LG02": 3,
+   "LG02": 1,
    "LG03": 1,
    "LG06": 3,
    "LG09": 8,
@@ -963,9 +959,6 @@
    "LG09": 9,
    "LG12a": 1
   },
-  "GameOS/gameos/gos_terrain_mask_dispatch.h": {
-   "LG02": 1
-  },
   "GameOS/gameos/gos_terrain_patch_stream.cpp": {
    "LG08": 4,
    "LG09": 22
@@ -1416,7 +1409,6 @@
    "LG18": 1
   },
   "GameOS/include/mc2_dialog.h": {
-   "LG01": 1,
    "LG06": 1
   },
   "GameOS/include/mc2_verify.h": {
@@ -5642,7 +5634,7 @@
    "LG20": 2
   }
  },
- "head": "1ad828c6c",
+ "head": "74e469810",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
