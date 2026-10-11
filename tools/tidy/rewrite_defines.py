@@ -376,6 +376,50 @@ def plan_batches(files, sites, uses, includers, args, dirty):
     return out
 
 
+class FastProof(rth.Proof):
+    """Proof whose bisect probes rebuild only the objects the first full probe found bad (a wide header makes every probe a rebuild of the whole tree);
+    solve_fast() then verifies the kept set with a full build and re-bisects it if that finds more."""
+
+    def __init__(self, *args, **kw):
+        super().__init__(*args, **kw)
+        self.focus = None
+
+    def bad_objects(self):
+        if self.focus is None:
+            bad = super().bad_objects()
+            if bad:
+                self.focus = set(bad)
+            return bad
+        full = self.objs
+        self.objs = sorted(self.focus)
+        try:
+            return super().bad_objects()
+        finally:
+            self.objs = full
+
+
+def solve_fast(proof, rounds=3):
+    kept, rejected = proof.solve()
+    for _ in range(rounds):
+        proof.focus = None
+        proof.apply(set(kept))
+        if not rth.Proof.bad_objects(proof):
+            return kept, rejected
+        sub = FastProof(proof.tree_abs, {h: proof.includers[h] for h in kept}, proof.orig, {h: proof.edited[h] for h in kept}, proof.jobs)
+        sub.before = {o: proof.before[o] for o in sub.objs}
+        sub.on_disk = dict(proof.on_disk)
+        kept, more = sub.solve()
+        rejected += more
+        proof = sub
+    proof.focus = None
+    proof.apply(set(kept))
+    if rth.Proof.bad_objects(proof):                     # still not clean: keep nothing rather than something unproven
+        rejected += [(h, "kept set failed its full verification") for h in kept]
+        kept = []
+        proof.apply(set())
+    return kept, rejected
+
+
 def cmd_run(a):
     sys.stdout.reconfigure(line_buffering=True)
     tree_abs = os.path.join(ROOT, a.tree)
@@ -423,11 +467,11 @@ def cmd_run(a):
             edited[rel] = rewrite_text(orig[rel].decode("utf-8", errors="replace"), ss, kind).encode("utf-8")
         mtimes = {rel: os.stat(os.path.join(ROOT, rel)).st_mtime_ns for rel in orig}
         inc = {rel: o for rel, _, o in picked}
-        proof = rth.Proof(tree_abs, inc, orig, edited, a.build_jobs)
+        proof = (rth.Proof if a.slow_bisect else FastProof)(tree_abs, inc, orig, edited, a.build_jobs)
         if proof.baseline():
             print("rewrite_defines: the base build of the proof set failed; refusing to edit", file=sys.stderr)
             return 2
-        kept, rejected = proof.solve()
+        kept, rejected = proof.solve() if a.slow_bisect else solve_fast(proof)
         for rel, why in rejected:
             rts.restore_file(rel, mtimes[rel])
             print("REVERT %s  %s" % (rel, why))
@@ -479,6 +523,7 @@ def main(argv=None) -> int:
     r.add_argument("--build-jobs", type=int, default=6)
     r.add_argument("--done", help="ledger of files already tried (skipped; picked ones are appended)")
     r.add_argument("--strict-proof", action="store_true", help="compare with plain tools/objhash.py digests (symbol / section order sensitive) instead of tools/tidy/canonical_obj.py")
+    r.add_argument("--slow-bisect", action="store_true", help="every bisect probe rebuilds the whole proof set (default: only the objects the first probe found bad, then a full verification)")
     r.add_argument("--taint-file", default=None, help="ledger of objects that differed for a harmless edit; headers they include are skipped (appended to after a revert)")
     r.add_argument("--skip-dirty-in", default="A:/Games/mc2-main", help="the other builder lane's worktree: its dirty files are never touched")
     r.add_argument("--commit", action="store_true")
