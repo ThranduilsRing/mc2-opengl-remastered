@@ -448,7 +448,7 @@ void Debugger::assignVariable (void) {
 	else if (curToken == TKN_IDENTIFIER) {
 		//----------------------------------
 		// Parse the assignment statement...
-		SymTableNodePtr idPtr = NULL;
+		SymTableNodePtr idPtr = nullptr;
 		searchAndFindAllSymTables(idPtr);
 		assigmentStatement(idPtr);
 		if (errorCount > 0)

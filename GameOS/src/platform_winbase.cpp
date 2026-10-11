@@ -42,7 +42,7 @@ DWORD GetTimeZoneInformation(LPTIME_ZONE_INFORMATION tzi)
 
 VOID WINAPI GetSystemTime(LPSYSTEMTIME t)
 {
-    time_t tim = time(NULL);
+    time_t tim = time(nullptr);
     struct tm* gm_time_data = gmtime(&tim);
 
     t -> wYear = 1900 + gm_time_data -> tm_year;
@@ -199,7 +199,7 @@ WINBASEAPI PVOID WINAPI VirtualAlloc(PVOID lpAddress, DWORD dwSize, DWORD flAllo
         if(result == -1)
         {
             gGetLastError = errno;
-            return NULL;
+            return nullptr;
         }
         return lpAddress;
     }
@@ -253,7 +253,7 @@ WINBASEAPI DWORD WINAPI GetLastError()
     return gGetLastError;
 }
 
-static const char* g_current_wildcard = NULL;
+static const char* g_current_wildcard = nullptr;
 static int path_filter(const struct dirent* e) {
     return 0 == fnmatch(g_current_wildcard, e->d_name, FNM_PATHNAME);
 }
@@ -323,10 +323,10 @@ HANDLE WINAPI FindFirstFileA( LPCTSTR lpFileName, LPWIN32_FIND_DATAA lpFindFileD
 
     g_current_wildcard = base_name;
     n = scandir(dir_name, &entries, path_filter, alphasort);
-    g_current_wildcard = NULL;
+    g_current_wildcard = nullptr;
 
 
-    FindFileData* ffd = NULL;
+    FindFileData* ffd = nullptr;
 
     if(n > 0) {
 
@@ -341,7 +341,7 @@ HANDLE WINAPI FindFirstFileA( LPCTSTR lpFileName, LPWIN32_FIND_DATAA lpFindFileD
             free(entries[i]);
         }
         free(entries);
-        entries = NULL;
+        entries = nullptr;
         ffd->last_retrieved_entry = 0;
         ffd->num_entries = n;
         ffd->initialized = true;
@@ -354,7 +354,7 @@ HANDLE WINAPI FindFirstFileA( LPCTSTR lpFileName, LPWIN32_FIND_DATAA lpFindFileD
     free(dn);
     free(bn);
 
-    return ffd == NULL ? INVALID_HANDLE_VALUE : ffd;
+    return ffd == nullptr ? INVALID_HANDLE_VALUE : ffd;
 }
 
 BOOL WINAPI FindNextFileA(HANDLE hFindFile, LPWIN32_FIND_DATAA lpFindFileData)

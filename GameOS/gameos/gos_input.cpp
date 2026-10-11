@@ -148,7 +148,7 @@ void updateMouseState() {
         if (::GetAsyncKeyState(VK_XBUTTON2) & 0x8000) button_state |= SDL_BUTTON(SDL_BUTTON_X2);
     }
 #else
-    Uint32 button_state = SDL_GetMouseState(NULL, NULL);
+    Uint32 button_state = SDL_GetMouseState(nullptr, nullptr);
 #endif
 
     // Gate ImGui-captured clicks out of game input — EXCEPT when a game modal (pause

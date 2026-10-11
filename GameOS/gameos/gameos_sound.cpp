@@ -245,9 +245,9 @@ void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_Reso
         SDL_AudioSpec spec;
         SDL_AudioSpec* pspec;
         pspec = SDL_LoadWAV(file_name, &spec, &databuf, &src_datasize);
-        if(pspec == NULL) {
+        if(pspec == nullptr) {
             PAUSE(("gosAudio_CreateResource: Failed to load %s, %s\n", file_name, SDL_GetError()));
-            *hgosaudio = NULL;
+            *hgosaudio = nullptr;
             return;
         }
 

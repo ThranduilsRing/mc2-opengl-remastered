@@ -633,14 +633,14 @@ bool __stdcall gos_GetUserDataDirectory(char* user_dir, const int len)
 	CoTaskMemFree(homeDir);
 #else
     const char* home_dir = getenv("HOME");
-    if(home_dir == NULL)
+    if(home_dir == nullptr)
     {
         SPEW(("gos_GetUserDataDirectory", "home directory is not set\n"));
         return false;
     }
 
     const char* config_dir = getenv("XDG_CONFIG_HOME");
-    if(config_dir != NULL) {
+    if(config_dir != nullptr) {
         strncpy(cfg_dir, config_dir, cfg_dir_size-1);
         cfg_dir[cfg_dir_size-1] = '\0';
 

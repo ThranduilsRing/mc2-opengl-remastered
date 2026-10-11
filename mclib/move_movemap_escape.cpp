@@ -45,7 +45,7 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 	// ON uses the ctx private queue + flag snapshot via solveOpen/solveJumpOnBlocked.
 	if (!ctx.isolated && !openList) {
 		openList = new PriorityQueue;
-		gosASSERT(openList != NULL);
+		gosASSERT(openList != nullptr);
 		openList->init(5000);
 	}
 	solveOpen = ctx.isolated ? ctx.pq() : openList;
@@ -90,7 +90,7 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 				writeDebug(pathDebugFile);
 				pathDebugFile->close();
 				delete pathDebugFile;
-				pathDebugFile = NULL;
+				pathDebugFile = nullptr;
 			}
 		#endif
 
@@ -218,7 +218,7 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 			writeDebug(pathDebugFile);
 			pathDebugFile->close();
 			delete pathDebugFile;
-			pathDebugFile = NULL;
+			pathDebugFile = nullptr;
 		}
 	#endif
 
@@ -258,7 +258,7 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 			writeDebug(pathDebugFile);
 			pathDebugFile->close();
 			delete pathDebugFile;
-			pathDebugFile = NULL;
+			pathDebugFile = nullptr;
 			gosASSERT(numCells <= MAX_STEPS_PER_MOVEPATH);
 		}
 #endif
@@ -278,7 +278,7 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 				writeDebug(pathDebugFile);
 				pathDebugFile->close();
 				delete pathDebugFile;
-				pathDebugFile = NULL;
+				pathDebugFile = nullptr;
 			}
 #endif
 			path->target = target;

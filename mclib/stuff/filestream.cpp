@@ -488,7 +488,7 @@ bool
 
 		}
 
-		Verify(new_string != NULL);
+		Verify(new_string != nullptr);
 
 		
 		if (!gos_DoesFileExist(new_string))

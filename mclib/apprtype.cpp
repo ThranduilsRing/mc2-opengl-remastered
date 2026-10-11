@@ -241,7 +241,7 @@ void AppearanceType::destroy (void)
 void AppearanceTypeList::init (unsigned long heapSize)
 {
 	appearanceHeap = new UserHeap;
-	gosASSERT(appearanceHeap != NULL);
+	gosASSERT(appearanceHeap != nullptr);
 
 	appearanceHeap->init(heapSize,"APPEAR");
 
@@ -311,7 +311,7 @@ AppearanceTypePtr AppearanceTypeList::getAppearance (unsigned long apprNum, cons
 			case MECH_TYPE:
 			{
 				appearanceType = new Mech3DAppearanceType;
-				gosASSERT(appearanceType != NULL);
+				gosASSERT(appearanceType != nullptr);
 
 				appearanceType->appearanceNum = apprNum;
 				appearanceType->init(appearFile);
@@ -338,7 +338,7 @@ AppearanceTypePtr AppearanceTypeList::getAppearance (unsigned long apprNum, cons
 			case GV_TYPE:
 			{
 				appearanceType = new GVAppearanceType;
-				gosASSERT(appearanceType != NULL);
+				gosASSERT(appearanceType != nullptr);
 
 				appearanceType->appearanceNum = apprNum;
 				appearanceType->init(appearFile);
@@ -365,7 +365,7 @@ AppearanceTypePtr AppearanceTypeList::getAppearance (unsigned long apprNum, cons
 			case TREED_TYPE:
 			{
 				appearanceType = new TreeAppearanceType;
-				gosASSERT(appearanceType != NULL);
+				gosASSERT(appearanceType != nullptr);
 
 				appearanceType->appearanceNum = apprNum;
 				appearanceType->init(appearFile);
@@ -392,7 +392,7 @@ AppearanceTypePtr AppearanceTypeList::getAppearance (unsigned long apprNum, cons
 			case GENERIC_APPR_TYPE:
 			{
 				appearanceType = new GenericAppearanceType;
-				gosASSERT(appearanceType != NULL);
+				gosASSERT(appearanceType != nullptr);
 
 				appearanceType->appearanceNum = apprNum;
 				appearanceType->init(appearFile);
@@ -419,7 +419,7 @@ AppearanceTypePtr AppearanceTypeList::getAppearance (unsigned long apprNum, cons
 			case BLDG_TYPE:
 			{
 				appearanceType = new BldgAppearanceType;
-				gosASSERT(appearanceType != NULL);
+				gosASSERT(appearanceType != nullptr);
 
 				appearanceType->appearanceNum = apprNum;
 				appearanceType->init(appearFile);

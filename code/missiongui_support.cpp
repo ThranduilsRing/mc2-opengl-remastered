@@ -156,7 +156,7 @@ void MissionInterfaceManager::beginVtol (long supportID, long commanderID, Stuff
 					if (gosEffectSpec)
 					{
 						dustCloud[commanderID] = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-						gosASSERT(dustCloud[commanderID] != NULL);
+						gosASSERT(dustCloud[commanderID] != nullptr);
 						
 						MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
 					}
@@ -202,7 +202,7 @@ void MissionInterfaceManager::beginVtol (long supportID, long commanderID, Stuff
 					if (gosEffectSpec)
 					{
 						dustCloud[commanderID] = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-						gosASSERT(dustCloud[commanderID] != NULL);
+						gosASSERT(dustCloud[commanderID] != nullptr);
 						
 						MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
 					}
@@ -221,7 +221,7 @@ void MissionInterfaceManager::beginVtol (long supportID, long commanderID, Stuff
 					if (gosEffectSpec)
 					{
 						recoveryBeam[commanderID] = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-						gosASSERT(recoveryBeam[commanderID] != NULL);
+						gosASSERT(recoveryBeam[commanderID] != nullptr);
 						
 						MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
 					}

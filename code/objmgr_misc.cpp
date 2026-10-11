@@ -224,7 +224,7 @@ void GameObjectManager::setPartId (GameObjectPtr obj, long param1, long param2, 
 long GameObjectManager::initCollisionSystem (FitIniFile* missionFile) {
 
 	collisionSystem = new CollisionSystem;
-	gosASSERT(collisionSystem != NULL);
+	gosASSERT(collisionSystem != nullptr);
 		
 	collisionSystem->init(missionFile);
 

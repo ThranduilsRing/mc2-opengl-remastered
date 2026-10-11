@@ -277,7 +277,7 @@ long UserHeap::init (unsigned long memSize, const char *heapId, bool useGOS)
 		heapState = NO_ERR;
 
 		#ifdef _DEBUG
-		recordArray = NULL;
+		recordArray = nullptr;
 		#endif
 	}
 	

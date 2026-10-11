@@ -117,7 +117,7 @@ TG_ShapePtr TG_TypeNode::CreateFrom (void)
 {
 	TG_ShapePtr newShape = nullptr;
 	newShape = (TG_ShapePtr)TG_Shape::tglHeap->Malloc(sizeof(TG_Shape));
-	gosASSERT(newShape != NULL);
+	gosASSERT(newShape != nullptr);
 	
 	//listOfVertices
 	newShape->numVertices = 0;
@@ -173,7 +173,7 @@ TG_ShapePtr TG_TypeNode::CreateFrom (void)
 long TG_TypeNode::MakeFromHelper (BYTE *aseBuffer, const char *fileName)
 {
 	char *nodeName = strstr((char *)aseBuffer,ASE_NODE_NAME);
-	gosASSERT(nodeName != NULL);
+	gosASSERT(nodeName != nullptr);
 
 	char nodeString[1024];
 	nodeName += strlen(ASE_NODE_NAME)+1;
@@ -211,7 +211,7 @@ long TG_TypeNode::MakeFromHelper (BYTE *aseBuffer, const char *fileName)
 	//----------------------------------------------------
 	// Store off NODE ABS position for heirarchy
 	nodeName = strstr((char *)aseBuffer,ASE_NODE_POS);
-	gosASSERT(nodeName != NULL);
+	gosASSERT(nodeName != nullptr);
 
 	nodeName += strlen(ASE_NODE_POS)+1;
 
@@ -274,7 +274,7 @@ TG_ShapePtr TG_TypeShape::CreateFrom (void)
 	TG_ShapePtr newShape = nullptr;
 	void* memarea = TG_Shape::tglHeap->Malloc(sizeof(TG_Shape));
 	newShape = ::new(memarea) TG_Shape();
-	gosASSERT(newShape != NULL);
+	gosASSERT(newShape != nullptr);
 	
 	//listOfVertices
 	newShape->numVertices = numTypeVertices;
@@ -297,7 +297,7 @@ TG_ShapePtr TG_TypeShape::CreateFrom (void)
 		//These are UNIQUE to each instance and do not change much per frame.
 		// Thus, store them between frames to save processing time!
 		newShape->listOfShadowVertices = (TG_ShadowVertexPtr)TG_Shape::tglHeap->Malloc(sizeof(TG_ShadowVertex) * numTypeVertices * MAX_SHADOWS);
-		gosASSERT(newShape->listOfShadowVertices != NULL);
+		gosASSERT(newShape->listOfShadowVertices != nullptr);
 
 		memset(newShape->listOfShadowVertices,0xff,sizeof(TG_ShadowVertex) * numTypeVertices * MAX_SHADOWS);
 		
@@ -394,7 +394,7 @@ void TG_TypeShape::LoadBinaryCopy (File &binFile)
 	if (numTypeVertices)
 	{
 		listOfTypeVertices = (TG_TypeVertexPtr)TG_Shape::tglHeap->Malloc(sizeof(TG_TypeVertex) * numTypeVertices);
-		gosASSERT(listOfTypeVertices != NULL);
+		gosASSERT(listOfTypeVertices != nullptr);
 
 		binFile.read((MemoryPtr)listOfTypeVertices,sizeof(TG_TypeVertex) * numTypeVertices);
 
@@ -409,7 +409,7 @@ void TG_TypeShape::LoadBinaryCopy (File &binFile)
 	if (numTypeTriangles)
 	{
 		listOfTypeTriangles = (TG_TypeTrianglePtr)TG_Shape::tglHeap->Malloc(sizeof(TG_TypeTriangle) * numTypeTriangles);
-		gosASSERT(listOfTypeTriangles != NULL);
+		gosASSERT(listOfTypeTriangles != nullptr);
 
 		binFile.read((MemoryPtr)listOfTypeTriangles,sizeof(TG_TypeTriangle) * numTypeTriangles);
 	}
@@ -423,7 +423,7 @@ void TG_TypeShape::LoadBinaryCopy (File &binFile)
 	if (numTextures)
 	{
 		listOfTextures = (TG_TinyTexturePtr)TG_Shape::tglHeap->Malloc(sizeof(TG_TinyTexture) * numTextures);
-		gosASSERT(listOfTextures != NULL);
+		gosASSERT(listOfTextures != nullptr);
 
 		binFile.read((MemoryPtr)listOfTextures,sizeof(TG_TinyTexture) * numTextures);
 	}
@@ -621,7 +621,7 @@ void TG_Shape::destroy (void)
 long TG_TypeShape::MakeFromHelper (BYTE *aseBuffer, const char *fileName)
 {
 	char *nodeName = strstr((char *)aseBuffer,ASE_NODE_NAME);
-	gosASSERT(nodeName != NULL);
+	gosASSERT(nodeName != nullptr);
 
 	char nodeString[1024];
 	nodeName += strlen(ASE_NODE_NAME)+1;
@@ -657,7 +657,7 @@ long TG_TypeShape::MakeFromHelper (BYTE *aseBuffer, const char *fileName)
 	}
 
 	nodeName = strstr((char *)aseBuffer,ASE_NODE_POS);
-	gosASSERT(nodeName != NULL);
+	gosASSERT(nodeName != nullptr);
 
 	nodeName += strlen(ASE_NODE_POS)+1;
 

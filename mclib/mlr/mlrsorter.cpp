@@ -492,7 +492,7 @@ SortData *
 	SortData *sd = rawDrawData.GetData();
 
 	Verify (lastUsedRaw < Limits::Max_Number_Primitives_Per_Frame);
-	Verify (vertices != NULL);
+	Verify (vertices != nullptr);
 	Verify (numVertices > 0);
 
 	(sd + lastUsedRaw)->vertices = vertices;
@@ -530,7 +530,7 @@ SortData *
 	SortData *sd = rawDrawData.GetData();
 
 	Verify (lastUsedRaw < Limits::Max_Number_Primitives_Per_Frame);
-	Verify (vertices != NULL);
+	Verify (vertices != nullptr);
 	Verify (numVertices > 0);
 
 	(sd + lastUsedRaw)->vertices = vertices;

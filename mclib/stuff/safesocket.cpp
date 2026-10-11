@@ -26,7 +26,7 @@ SafeSocket::SafeSocket(Node *node):
 SafeSocket::~SafeSocket()
 {
 	Check_Object(this);
-	Verify(iteratorHead == NULL);
+	Verify(iteratorHead == nullptr);
 }
 
 //

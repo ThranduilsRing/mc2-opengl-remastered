@@ -71,7 +71,7 @@ TG_MultiShapePtr TG_TypeMultiShape::CreateFrom (void)
 {
 	TG_MultiShapePtr newShape = nullptr;
 	newShape = new TG_MultiShape;
-	gosASSERT(newShape != NULL);
+	gosASSERT(newShape != nullptr);
 	
 #ifdef _DEBUG
 	if (numTG_TypeShapes == 0)
@@ -81,7 +81,7 @@ TG_MultiShapePtr TG_TypeMultiShape::CreateFrom (void)
 	//listOfShapes
 	newShape->numTG_Shapes = numTG_TypeShapes;
 	newShape->listOfShapes = (TG_ShapeRecPtr)TG_Shape::tglHeap->Malloc(sizeof(TG_ShapeRec) * numTG_TypeShapes);
-	gosASSERT(newShape->listOfShapes != NULL);
+	gosASSERT(newShape->listOfShapes != nullptr);
 
 	memset(newShape->listOfShapes,0,sizeof(TG_ShapeRec) * numTG_TypeShapes);
 

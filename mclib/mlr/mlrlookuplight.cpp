@@ -239,7 +239,7 @@ bool
 	Check_Pointer(map);
 	element_stream.ReadBytes(map, mapZoneCountX*mapZoneCountZ*256*256);
 
-	Verify(maps==NULL);
+	Verify(maps==nullptr);
 	maps = new unsigned char * [mapZoneCountX * mapZoneCountZ];
 	Check_Pointer(maps);
 

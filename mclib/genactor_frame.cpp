@@ -212,62 +212,62 @@ long GenericAppearance::render (long depthFixup)
 		}
 
 		{
-			LineElement newElement(screenPos[0],screenPos[1],XP_WHITE,NULL,-1);
+			LineElement newElement(screenPos[0],screenPos[1],XP_WHITE,nullptr,-1);
 			newElement.draw();
 		}
 		
 		{
-			LineElement newElement(screenPos[0],screenPos[4],XP_WHITE,NULL,-1);
+			LineElement newElement(screenPos[0],screenPos[4],XP_WHITE,nullptr,-1);
 			newElement.draw();
 		}
 		
 		{
-			LineElement newElement(screenPos[0],screenPos[3],XP_WHITE,NULL,-1);
+			LineElement newElement(screenPos[0],screenPos[3],XP_WHITE,nullptr,-1);
 			newElement.draw();
 		}
 		
 		{
-			LineElement newElement(screenPos[5],screenPos[4],XP_WHITE,NULL,-1);
+			LineElement newElement(screenPos[5],screenPos[4],XP_WHITE,nullptr,-1);
 			newElement.draw();
 		}
 		
 		{
-			LineElement newElement(screenPos[5],screenPos[6],XP_WHITE,NULL,-1);
+			LineElement newElement(screenPos[5],screenPos[6],XP_WHITE,nullptr,-1);
 			newElement.draw();
 		}
 		
 		{
-			LineElement newElement(screenPos[5],screenPos[3],XP_WHITE,NULL,-1);
+			LineElement newElement(screenPos[5],screenPos[3],XP_WHITE,nullptr,-1);
 			newElement.draw();
 		}
 		
 		{
-			LineElement newElement(screenPos[2],screenPos[3],XP_WHITE,NULL,-1);
+			LineElement newElement(screenPos[2],screenPos[3],XP_WHITE,nullptr,-1);
 			newElement.draw();
 		}
 		
 		{
-			LineElement newElement(screenPos[2],screenPos[6],XP_WHITE,NULL,-1);
+			LineElement newElement(screenPos[2],screenPos[6],XP_WHITE,nullptr,-1);
 			newElement.draw();
 		}
 		
 		{
-			LineElement newElement(screenPos[2],screenPos[1],XP_WHITE,NULL,-1);
+			LineElement newElement(screenPos[2],screenPos[1],XP_WHITE,nullptr,-1);
 			newElement.draw();
 		}
 		
 		{
-			LineElement newElement(screenPos[7],screenPos[1],XP_WHITE,NULL,-1);
+			LineElement newElement(screenPos[7],screenPos[1],XP_WHITE,nullptr,-1);
 			newElement.draw();
 		}
 		
 		{
-			LineElement newElement(screenPos[7],screenPos[6],XP_WHITE,NULL,-1);
+			LineElement newElement(screenPos[7],screenPos[6],XP_WHITE,nullptr,-1);
 			newElement.draw();
 		}
 		
 		{
-			LineElement newElement(screenPos[7],screenPos[4],XP_WHITE,NULL,-1);
+			LineElement newElement(screenPos[7],screenPos[4],XP_WHITE,nullptr,-1);
 			newElement.draw();
 		}
 #endif

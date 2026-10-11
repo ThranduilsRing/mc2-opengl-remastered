@@ -196,7 +196,7 @@ void
 	/*
 	 * Verify that value has not been added
 	 */
-	Verify(HasUniqueEntries() ? SearchForValue(value) == NULL : true);
+	Verify(HasUniqueEntries() ? SearchForValue(value) == nullptr : true);
 
 	/*
 	 * Make new tree node
@@ -734,7 +734,7 @@ void
 	Check_Object(this);
 	void *plug;
 
-	if ((plug = GetCurrentImplementation()) != NULL)
+	if ((plug = GetCurrentImplementation()) != nullptr)
 	{
 		Next();
 	}
@@ -757,7 +757,7 @@ void
 			Verify(False);
 		#pragma warn +ccc
 	#endif
-	return(NULL);
+	return(nullptr);
 }
 #endif
 
@@ -813,14 +813,14 @@ void
 	void 				*plug;
 
 	First();
-	while ((plug = GetCurrentImplementation()) != NULL)
+	while ((plug = GetCurrentImplementation()) != nullptr)
 	{
 		if (i == index)
 			return plug;
 		Next();
 		i++;
 	}
-	return NULL;
+	return nullptr;
 }
 #endif
 

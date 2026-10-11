@@ -152,7 +152,7 @@ void GameLog::setup (void) {
 		files[i]->handle = i;
 		files[i]->inUse = false;
 		files[i]->filePtr = new File;
-		gosASSERT(files[i]->filePtr != NULL);
+		gosASSERT(files[i]->filePtr != nullptr);
 	}
 }
 

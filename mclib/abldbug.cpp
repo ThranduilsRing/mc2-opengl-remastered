@@ -694,7 +694,7 @@ void Debugger::debugMode (void) {
 		bool result;
 		do {
 			MSG	msg;
-			result = PeekMessage(&msg,NULL,0,0,PM_REMOVE);
+			result = PeekMessage(&msg,nullptr,0,0,PM_REMOVE);
 			if (result)	{
 				if (msg.message == WM_QUIT)	{
 					debugCommand = false;

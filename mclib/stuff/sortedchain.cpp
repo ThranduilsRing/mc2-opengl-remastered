@@ -264,7 +264,7 @@ void
 	// Verify that value has not been added
 	//-------------------------------------------------------------
 	//
-	Verify(HasUniqueEntries() ? (SearchForValue(value) == NULL) : (bool)true);
+	Verify(HasUniqueEntries() ? (SearchForValue(value) == nullptr) : (bool)true);
 
 	//
 	//-------------------------------------------------------------
