@@ -10,9 +10,9 @@
 //*************************************************************************************************
 class FifIniFile;
 
-#define MAX_ARMOR_RANGE 432.f
-#define MAX_SPEED_RANGE 35.f
-#define MAX_JUMP_RANGE 125.f
+inline constexpr float MAX_ARMOR_RANGE = 432.f;
+inline constexpr float MAX_SPEED_RANGE = 35.f;
+inline constexpr float MAX_JUMP_RANGE = 125.f;
 /**************************************************************************************************
 CLASS DESCRIPTION
 AttributeMeter:

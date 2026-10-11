@@ -5,9 +5,9 @@
 #ifndef ALISTBOX_H
 #define ALISTBOX_H
 
-#define MAX_LIST_ITEMS			128
-#define	TOO_MANY_ITEMS			0xEEEE0001
-#define ITEM_OUT_OF_RANGE		0xEEEE0002
+inline constexpr int MAX_LIST_ITEMS = 128;
+inline constexpr unsigned int TOO_MANY_ITEMS = 0xEEEE0001;
+inline constexpr unsigned int ITEM_OUT_OF_RANGE = 0xEEEE0002;
 
 #ifndef ASCROLL_H
 #include"ascroll.h"

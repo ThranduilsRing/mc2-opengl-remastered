@@ -18,7 +18,7 @@ LogisticsPilot:
 #include"elist.h"
 #include"warrior.h"
 
-#define MAX_MISSIONS		50
+inline constexpr int MAX_MISSIONS = 50;
 
 enum Medals
 {

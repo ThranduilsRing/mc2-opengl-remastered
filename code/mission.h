@@ -39,10 +39,10 @@
 //----------------------------------------------------------------------------------
 // Macro Definitions
 #define mis_PLAYING						0
-#define mis_PLAYER_LOST_BIG				1
-#define mis_PLAYER_LOST_SMALL			2
-#define mis_PLAYER_DRAW					3
-#define mis_PLAYER_WIN_SMALL 			4
+inline constexpr int mis_PLAYER_LOST_BIG = 1;
+inline constexpr int mis_PLAYER_LOST_SMALL = 2;
+inline constexpr int mis_PLAYER_DRAW = 3;
+inline constexpr int mis_PLAYER_WIN_SMALL = 4;
 #define mis_PLAYER_WIN_BIG	 			5
 
 extern unsigned long scenarioResult;
@@ -92,18 +92,18 @@ typedef Part *PartPtr;
 // These can be displayed in a window.  For now they are drawn with just text.
 // There are a whole series of ABL commands to address these objectives.
 typedef unsigned long	ObjectiveType;
-#define					InvisibleGoal	-1
-#define					PrimaryGoal		0
-#define					SecondaryGoal	1
-#define					OtherGoal		2
-#define					BonusGoal		3
-#define 				InvalidGoal		9999
+inline constexpr int InvisibleGoal = -1;
+inline constexpr int PrimaryGoal = 0;
+inline constexpr int SecondaryGoal = 1;
+inline constexpr int OtherGoal = 2;
+inline constexpr int BonusGoal = 3;
+inline constexpr int InvalidGoal = 9999;
 
 typedef unsigned long	ObjectiveStatus;
 #define					Incomplete		0
 #define					Success			1
 #define					Failed			2
-#define					InvalidStatus	9999
+inline constexpr int InvalidStatus = 9999;
 
 #define					SCENARIO_TIMER_1		7
 #define					SCENARIO_TIMER_2		(SCENARIO_TIMER_1 + 1)
@@ -123,7 +123,7 @@ typedef unsigned long	ObjectiveStatus;
 #define					OBJECTIVE_7_TIMER		(OBJECTIVE_1_TIMER + 6)
 #define					OBJECTIVE_8_TIMER		(OBJECTIVE_1_TIMER + 7)
 
-#define					MAX_OBJECTIVES			50
+inline constexpr int MAX_OBJECTIVES = 50;
 
 typedef enum {
 	MISSION_LOAD_SP_QUICKSTART,
@@ -506,7 +506,7 @@ class Mission
 
 //----------------------------------------------------------------------------------
 
-#define MAX_GLOBAL_MISSION_VALUES		50
+inline constexpr int MAX_GLOBAL_MISSION_VALUES = 50;
 
 extern float worldUnitsPerMeter;
 extern float metersPerWorldUnit;

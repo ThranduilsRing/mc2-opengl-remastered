@@ -129,7 +129,7 @@
 #include "hardpoint.h"               // LOADOUT-HARDPOINT-JOIN-1: HardpointProfile / WeaponTag
 #include <cmponent.h>                // LOADOUT-HARDPOINT-JOIN-1: ComponentFormType (weapon form)
 
-#define	GOALMAP_CELL_DIM	61
+inline constexpr int GOALMAP_CELL_DIM = 61;
 
 // Globals defined in mover.cpp (or elsewhere in the engine) that the split pieces share.
 extern long					SimpleMovePathRange;

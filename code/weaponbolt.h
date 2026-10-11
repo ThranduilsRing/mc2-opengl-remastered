@@ -35,7 +35,7 @@
 #include "particles/gpu_trail.h"
 //---------------------------------------------------------------------------
 // Macro Definitions
-#define ALL_COLORS			4
+inline constexpr int ALL_COLORS = 4;
 
 //---------------------------------------------------------------------------
 class WeaponBoltType : public ObjectType

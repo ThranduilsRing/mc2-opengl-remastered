@@ -26,7 +26,7 @@ CLASS DESCRIPTION
 MechListBox:
 **************************************************************************************************/
 
-#define ANIMATION_COUNT 4
+inline constexpr int ANIMATION_COUNT = 4;
 class MechListBoxItem : public aListItem
 {
 public:

@@ -181,7 +181,7 @@ inline bool bdForceDynamicDefault() {
 	return gos_IsNvidiaGPU();
 }
 
-#define SPINRATE					90.0f
+inline constexpr float SPINRATE = 90.0f;
 #define BASE_NODE_RECYCLE_TIME		0.25f
 #define MAX_WEAPON_NODES			4
 

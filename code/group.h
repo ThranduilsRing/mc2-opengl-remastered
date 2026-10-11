@@ -40,11 +40,11 @@
 
 //---------------------------------------------------------------------------
 
-#define	GOALFLAG_OPEN			1
-#define	GOALFLAG_CLOSED			2
-#define	GOALFLAG_AVAILABLE		4
-#define	GOALFLAG_NO_NEIGHBORS	8
-#define	GOALFLAG_MOVER_HERE		16
+inline constexpr int GOALFLAG_OPEN = 1;
+inline constexpr int GOALFLAG_CLOSED = 2;
+inline constexpr int GOALFLAG_AVAILABLE = 4;
+inline constexpr int GOALFLAG_NO_NEIGHBORS = 8;
+inline constexpr int GOALFLAG_MOVER_HERE = 16;
 
 typedef struct _GoalMapNode {
 	short				cost;								// normal cost to travel here, based upon terrain

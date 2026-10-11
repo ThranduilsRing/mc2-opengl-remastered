@@ -32,9 +32,9 @@
 #define NO_APPEARANCE_FOR_BLD			0xDCDC0008
 #define APPEARANCE_NOT_VFX_APPEAR		0xDCDC0009
 
-#define	MAX_TURRET_WEAPONFIRE_CHUNKS	32
+inline constexpr int MAX_TURRET_WEAPONFIRE_CHUNKS = 32;
 
-#define MAX_TURRET_WEAPONS				4
+inline constexpr int MAX_TURRET_WEAPONS = 4;
 //---------------------------------------------------------------------------
 
 class TurretType : public ObjectType {

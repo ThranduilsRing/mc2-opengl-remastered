@@ -13,7 +13,7 @@ LogisticsMissionInfo.h			: Interface for the LogisticsMissionInfo component.
 
 #include"estring.h"
 
-#define MAX_PLAYER_NAME_LENGTH 64
+inline constexpr int MAX_PLAYER_NAME_LENGTH = 64;
 
 //*************************************************************************************************
 class FitIniFile;
