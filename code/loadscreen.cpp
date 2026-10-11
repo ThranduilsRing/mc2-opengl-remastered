@@ -24,6 +24,7 @@ struct DDSURFACEDESC2 {
 #include"gamesound.h"
 #include "Gates/gate.h"
 #include "mc2fmt.h"
+#include "../GameOS/gameos/utils/mc2log.h"
 float loadProgress = 0.0f;
 
 long LoadScreen::xProgressLoc = 0;
@@ -139,7 +140,7 @@ void LoadScreenWrapper::changeRes()
 
     if(b_search_for_best_resolution) {
         int min_pos_dist = 10000;
-        SPEW(("GRAPHICS", "Not native resolution, selecting closest matching resolution for loading screens"));
+        MC2_LOG(Render, Debug, "Not native resolution, selecting closest matching resolution for loading screens");
         for(int i=0;i<sizeof(resolutions)/sizeof(resolutions[0]);++i) {
             int dst = resolutions[i] - prefs.resolutionX;
             if(dst >=0 && dst < min_pos_dist) {
@@ -179,8 +180,8 @@ void LoadScreenWrapper::changeRes()
 			fbPath.init( artPath, fbName, ".fit" );
 			if ( NO_ERR == outFile.open( (const char*)fbPath ) )
 			{
-				SPEW(( "GRAPHICS", "loadscreen: %s missing, fell back to %s.fit\n",
-				       fileName, fbName ));
+				MC2_LOG(Render, Debug, "loadscreen: {} missing, fell back to {}.fit",
+				       mc2::fmt::safe(fileName), mc2::fmt::safe(fbName));
 				// fbName is stack-local; copy into fileName so resolvedLoadScreen stays valid.
 				strncpy( fileName, fbName, sizeof(fileName) - 1 );
 				fileName[sizeof(fileName) - 1] = '\0';

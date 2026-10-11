@@ -177,6 +177,7 @@ static LONG WINAPI mc2_unhandled_exception_filter(EXCEPTION_POINTERS* ep)
 #include "gos_frame_pass_stats.h"   // [FRAME_PASS_STATS v1] collector
 #include "utils/mc2log.h"   // LOGGING-FACADE-P0: mc2::log::init() before the NUL redirect
 #include "Gates/gate_cold.h"   // typed gate registry: main-entered marker, invalidateAll, [CONFIG v1]
+#include "mc2fmt.h"
 
 // Tier-1 instrumentation (stability spec §5.1): single source of truth for
 // the frame=... field used by TGL_POOL, DESTROY, and GL_ERROR log lines.
@@ -464,7 +465,7 @@ void process_events( void ) {
                     }
                 }
                 graphics::refresh_mouse_grab();
-                SPEW(("INPUT", "resize event: w: %f h:%f\n", w, h));
+                MC2_LOG(Core, Debug, "resize event: w: {:f} h:{:f}", w, h);
                 break;
             }
             case SDL_WINDOWEVENT_MOVED:
@@ -1118,7 +1119,7 @@ int main(int argc, char** argv)
     GLenum err = glewInit();
     if (GLEW_OK != err)
     {
-        SPEW(("GLEW", "Error: %s\n", glewGetErrorString(err)));
+        MC2_LOG(Gl, Debug, "Error: {}", mc2::fmt::safe(reinterpret_cast<const char*>(glewGetErrorString(err))));
         return 1;
     }
     // glewExperimental can leave a spurious GL_INVALID_ENUM queued from its own
@@ -1156,7 +1157,7 @@ int main(int argc, char** argv)
     // lives inside InitializeRenderContextConventions. The full clip-control
     // rationale was moved there. See gos_render_context.{h,cpp}.
     InitializeRenderContextConventions(RenderHostKind::Game);
-    SPEW(("GRAPHICS", "Status: Using GLEW %s\n", glewGetString(GLEW_VERSION)));
+    MC2_LOG(Render, Debug, "Status: Using GLEW {}", mc2::fmt::safe(reinterpret_cast<const char*>(glewGetString(GLEW_VERSION))));
     //if ((!GLEW_ARB_vertex_program || !GLEW_ARB_fragment_program))
     //{
      //   SPEW(("GRAPHICS", "No shader program support\n"));
@@ -1164,24 +1165,24 @@ int main(int argc, char** argv)
     //}
 
     if(!glewIsSupported("GL_VERSION_3_0")) {
-        SPEW(("GRAPHICS", "Minimum required OpenGL version is 3.0\n"));
+        MC2_LOG(Render, Debug, "Minimum required OpenGL version is 3.0");
         return 1;
     }
 
     const char* glsl_version = (const char*)glGetString(GL_SHADING_LANGUAGE_VERSION);
-    SPEW(("GRAPHICS", "GLSL version supported: %s\n", glsl_version));
+    MC2_LOG(Render, Debug, "GLSL version supported: {}", mc2::fmt::safe(glsl_version));
 
     int glsl_maj = 0, glsl_min = 0;
     sscanf(glsl_version, "%d.%d", &glsl_maj, &glsl_min);
 
     if(glsl_maj < 3 || (glsl_maj==3 && glsl_min < 30) ) {
-        SPEW(("GRAPHICS", "Minimum required OpenGL version is 330 ES, current: %d.%d\n", glsl_maj, glsl_min));
+        MC2_LOG(Render, Debug, "Minimum required OpenGL version is 330 ES, current: {:d}.{:d}", mc2::fmt::as_i32(glsl_maj), mc2::fmt::as_i32(glsl_min));
         return 1;
     }
 
     char version[16] = {0};
     snprintf(version, sizeof(version), "%d%d", glsl_maj, glsl_min);
-    SPEW(("GRAPHICS", "Using %s shader version\n", version));
+    MC2_LOG(Render, Debug, "Using {} shader version", mc2::fmt::safe(version));
     startup_phase("gl_context_ready");
     gos_CreateRenderer(ctx, win, w, h);
     startup_phase("renderer_created");
@@ -1198,7 +1199,7 @@ int main(int argc, char** argv)
 #endif
     if(!gos_CreateAudio())
     {   // not an error
-        SPEW(("AUDIO", "Failed to create audio\n"));
+        MC2_LOG(Audio, Debug, "Failed to create audio");
     }
 
     // AssetScale must load BEFORE InitializeGameEngine — that call creates

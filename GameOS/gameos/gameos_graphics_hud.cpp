@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in gameos_graphics_material_internal.h.
 #include "gameos_graphics_material_internal.h"
 #include "mc2fmt.h"
+#include "utils/mc2log.h"
 
 
 static int get_next_break(const char* text) {
@@ -238,7 +239,7 @@ void gosRenderer::drawText(const char* text) {
             ? s_hud_scale_exempt : (s_hud_canvas_exempt_mode != 0);
             hudBatch_.push_back(std::move(call));
         } else if (hudFlushed_) {
-            SPEW(("GRAPHICS", "[HUD] Late drawText discarded (after flushHUDBatch)\n"));
+            MC2_LOG(Render, Debug, "[HUD] Late drawText discarded (after flushHUDBatch)");
         }
         text_->rewind();
         return;
@@ -838,7 +839,7 @@ void __stdcall gos_TextDraw( const char *Message, ... )
 {
 
 	if (!Message || !strlen(Message)) {
-        SPEW(("GRAPHICS", "Trying to draw zero legth string\n"));
+        MC2_LOG(Render, Debug, "Trying to draw zero legth string");
         return;
     }
 
@@ -924,7 +925,7 @@ void __stdcall gos_TextStringLength( DWORD* Width, DWORD* Height, const char *fm
     gosASSERT(Width && Height);
 
     if(!fmt) {
-        SPEW(("GRAPHICS", "No text to calculate length!"));
+        MC2_LOG(Render, Debug, "No text to calculate length!");
         *Width = 1;
         *Height = 1;
         return;

@@ -5,6 +5,7 @@
 #include <algorithm>
 #include "utils/vec.h"
 #include "mc2fmt.h"
+#include "utils/mc2log.h"
 
 static const DWORD INVALID_AUDIO_ID = -1;
 static const DWORD MAX_VOLUME = 254;
@@ -263,7 +264,7 @@ void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_Reso
 #else
         chunk = Mix_LoadWAV(file_name);
         if(nullptr == chunk) {
-            SPEW(("AUDIO", "gosAudio_CreateResource: Failed to load %s, %s\n", file_name, Mix_GetError()));
+            MC2_LOG(Audio, Debug, "gosAudio_CreateResource: Failed to load {}, {}", mc2::fmt::safe(file_name), mc2::fmt::safe(Mix_GetError()));
             *hgosaudio = nullptr;
             return;
         }
@@ -338,7 +339,7 @@ void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_Reso
 		// for some reason len_cvt may be less than required :-/
         gosASSERT(cvt.len_cvt <= (int)audio_data_size);
 		if(cvt.len_cvt < (int)audio_data_size)
-            SPEW(("AUDIO", "cvt.len_cvt != audio_data_len %d != %d\n", cvt.len_cvt, audio_data_size));
+            MC2_LOG(Audio, Debug, "cvt.len_cvt != audio_data_len {:d} != {:d}", mc2::fmt::as_i32(cvt.len_cvt), mc2::fmt::as_i32(audio_data_size));
 		if (cvt.len_cvt < (int)audio_data_size)
 			audio_data_size = cvt.len_cvt;
 

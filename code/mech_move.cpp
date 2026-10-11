@@ -1,6 +1,7 @@
 // BattleMech: jump and ground movement: updateJump, pivotTo, move goals/paths, updateMovement, torso, jump FX positions.
 // Declared in the class headers; shared names in mech_internal.h.
 #include "mech_internal.h"
+#include "mc2fmt.h"
 
 
 
@@ -361,7 +362,7 @@ bool BattleMech::updateMovePath (float& newRotate, char& newThrottleSetting, lon
 			long area = GlobalMoveMap->calcArea(objPosition->tileRow, objPosition->tileCol);
 			char debugStr[256];
 			sprintf(debugStr, "Area = %d\n", area);
-			OutputDebugString(debugStr);
+			mc2::fmt::debug_out(debugStr);
 		}
 	#endif
 

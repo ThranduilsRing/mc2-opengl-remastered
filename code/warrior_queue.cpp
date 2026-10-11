@@ -1,6 +1,7 @@
 // MechWarrior: tactical-order queue API.
 // Declared in the class headers; shared names in warrior_internal.h.
 #include "warrior_internal.h"
+#include "mc2fmt.h"
 
 
 // QUEUED PLAYER ORDERS routines
@@ -235,7 +236,7 @@ void MechWarrior::updateClientOrderQueue (long curTacOrderId) {
 			/*
 			char s[256];
 			sprintf(s, "%s - removed tacorder, %d remaining\n", getName(), numTacOrdersQueued);
-			OutputDebugString(s);
+			mc2::fmt::debug_out(s);
 			*/
 			}
 		else

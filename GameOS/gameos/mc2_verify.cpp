@@ -86,8 +86,8 @@ void emit_line(const char* line)
     mc2::fmt::print_err("{}\n", mc2::fmt::safe(line));
     std::fflush(stderr);
 #ifdef _WIN32
-    OutputDebugStringA(line);
-    OutputDebugStringA("\n");
+    mc2::fmt::debug_out(line);
+    mc2::fmt::debug_out("\n");
 #endif
     crashbundle_append(line);
 }

@@ -1,10 +1,10 @@
 """printf_log - rewrite untagged printf/fprintf logging calls to mc2::fmt::print_out / print_err / print (LG12a, step 3 B4), as a text transform.
 
-WHAT: `printf("fmt", args)`, `fprintf(stderr|stdout|FILE*, "fmt", args)` used as a statement become `mc2::fmt::print_out/print_err/print(...)` with the
+WHAT: `printf("fmt", args)`, `fprintf(stderr|stdout|FILE*, "fmt", args)` become `mc2::fmt::print_out/print_err/print(...)` with the
 std::format string and wrapped arguments of printf_buffers.translate_format. The text goes out as one fwrite to the same FILE*, nothing added.
 Which calls are converted depends on `classes`: "untagged" (B4: no bracketed tag in the format), "unconsumed" (B5: a `[TAG vN]` line whose tag no
-Python parser or checker mentions) and "consumed" (B6: a tag the harness parses; set MC2_PRINTF_LOG_TAG=NAME to take one tag at a time). The text
-is byte-identical in every class (the corpus proves it per format); the classes only order the risk. Left alone: a call whose value is used; a format that is not a literal; vfprintf/puts/fputs/SPEW/OutputDebugString;
+Python parser or checker mentions) and "consumed" (B6: a tag the harness parses; set MC2_PRINTF_LOG_TAG=NAME[,NAME...] to take only those tags). The text
+is byte-identical in every class (the corpus proves it per format); the classes only order the risk. The value is kept: mc2::fmt::print returns what printf returns. Left alone: a format that is not a literal; vfprintf/puts/fputs/SPEW/OutputDebugString;
 and files on the crash / allocator / assert paths (EXCLUDED_FILES), where building a std::string is not allowed.
 WHY: same as printf_buffers: compile-time-checked formats, no vararg mismatches. Byte equality of the text is proved by the format corpus (shared with
 printf_buffers) and by the game-log comparison.
@@ -80,9 +80,6 @@ def _sink_of(arg: str):
 
 def _convert_call(text: str, call, classes=("untagged",)):
     args = [call.arg_text(text, i) for i in range(len(call.args))]
-    statement = pb._prev_token_allows_statement(text, call.start) and text[call.end:call.end + 40].lstrip().startswith(";")
-    if not statement:
-        raise pb.Bail("value used")
     if call.name == "printf":
         if not args:
             raise pb.Bail("printf arity")
@@ -99,7 +96,7 @@ def _convert_call(text: str, call, classes=("untagged",)):
     if cls not in classes:
         raise pb.Bail("tagged line: " + cls)
     only = os.environ.get("MC2_PRINTF_LOG_TAG")
-    if only and cls != "untagged" and only not in tags_of(lit):
+    if only and cls != "untagged" and not (set(only.split(",")) & tags_of(lit)):
         raise pb.Bail("tagged line: another tag")
     new_fmt, wrapped, specs = pb.translate_format(lit, rest)
     shown_old, shown_new = lit, new_fmt

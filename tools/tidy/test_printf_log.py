@@ -30,11 +30,11 @@ def test_tagged_lines_are_left_for_b5_and_b6():
         assert out == src and not recs and "tagged" in left[0][1], lit
 
 
-def test_value_used_non_literal_and_other_functions_are_left_alone():
+def test_value_is_kept_and_non_literal_and_other_functions_are_left_alone():
     src = ('#include <a.h>\nvoid f(){ int n = printf("x' + NL + '"); fprintf(stderr, fmt, a); vfprintf(stderr, "x", ap); puts("x");'
            ' fprintf(*p, "x"); }\n')
     out, recs, left = conv(src)
-    assert out == src and not recs and len(left) == 3
+    assert "int n = mc2::fmt::print_out(" in out and len(recs) == 1 and len(left) == 2
 
 
 def test_crash_and_allocator_files_are_excluded_by_path():

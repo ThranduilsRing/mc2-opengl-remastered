@@ -6,6 +6,8 @@ controlGui.cpp			: Implementation of the controlGui component.
 \*************************************************************************************************/
 
 #include "controlgui_internal.h"
+#include "../GameOS/gameos/utils/mc2log.h"
+#include "mc2fmt.h"
 
 
 // ---- MISSION-INTERFACE-PERF-1 (MC2_IFACE_COST_SPLIT / MC2_MIF_SPLIT) ----
@@ -582,7 +584,7 @@ void ControlButton::makeUVs( gos_VERTEX* vertices, int State, ButtonData& data )
 
 		if ( left == -1 || top == -1 )
 		{
-			SPEW(( 0, "makeUVs given an Invalid state\n" ));
+			MC2_LOG(Core, Debug, "makeUVs given an Invalid state");
 		}
 		
 		float width = data.textureWidth;

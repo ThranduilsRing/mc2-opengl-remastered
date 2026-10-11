@@ -11,6 +11,7 @@
 #include <vector>
 #include "Gates/gate.h"
 #include "mc2fmt.h"
+#include "utils/mc2log.h"
 
 // PNG-MAGENTA-KEY-1: MC2 art uses BOTH real alpha and magenta (0xFF00FF)
 // colour-keying for transparency. The modder's PNG conversions carry the
@@ -94,7 +95,7 @@ bool gosTexture::createHardwareTexture() {
 
         Image img;
         if(!img.loadFromFile(filename_)) {
-            SPEW(("DBG", "failed to load texture from file: %s\n", filename_));
+            MC2_LOG(Core, Debug, "failed to load texture from file: {}", mc2::fmt::safe(filename_));
             return false;
         }
 
@@ -136,7 +137,7 @@ bool gosTexture::createHardwareTexture() {
             ? img.loadPNG(pcompdata_, size_)
             : img.loadTGA(pcompdata_, size_);
         if(!decoded) {
-            SPEW(("DBG", "failed to load texture from data, filename: %s, texname: %s\n", filename_? filename_ : "NO FILENAME", texname_?texname_:"NO TEXNAME"));
+            MC2_LOG(Core, Debug, "failed to load texture from data, filename: {}, texname: {}", mc2::fmt::safe(filename_? filename_ : "NO FILENAME"), mc2::fmt::safe(texname_?texname_:"NO TEXNAME"));
             return false;
         }
 

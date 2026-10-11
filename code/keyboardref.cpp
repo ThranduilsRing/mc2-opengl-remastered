@@ -11,6 +11,8 @@ KeyboardRef.cpp			: Implementation of the KeyboardRef component.
 #include "../resource.h"
 #include"missiongui.h"
 #include"utilities.h"
+#include "../GameOS/gameos/utils/mc2log.h"
+#include "mc2fmt.h"
 
 #define CTRL	0x10000000
 #define SHIFT	0x01000000
@@ -53,7 +55,7 @@ int KeyboardRef::init()
 
     if(b_search_for_best_resolution) {
         int min_pos_dist = 10000;
-        SPEW(("GRAPHICS", "Not native resolution, selecting closest matching resolution for loading screens"));
+        MC2_LOG(Render, Debug, "Not native resolution, selecting closest matching resolution for loading screens");
         for(int i=0;i<sizeof(resolutions)/sizeof(resolutions[0]);++i) {
             int dst = resolutions[i] - Environment.screenWidth;
             if(dst >=0 && dst < min_pos_dist) {

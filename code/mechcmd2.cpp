@@ -10,6 +10,7 @@
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
 #include "mc2fmt.h"
+#include "../GameOS/gameos/utils/mc2log.h"
 
 #ifndef VERSION_H
 #include"version.h"
@@ -497,13 +498,13 @@ void __stdcall InitializeGameEngine()
                 // sebi: get user dependent savegame directory
                 char userDataDir[1024] = {0};
                 if(!gos_GetUserDataDirectory(userDataDir, sizeof(userDataDir))) {
-				    SPEW(("PATHS", "Failed to get user data directory"));
+				    MC2_LOG(Io, Debug, "Failed to get user data directory");
                     gos_TerminateApplication();
                 }
     
                 S_snprintf(savePath, sizeof(savePath), "%s" PATH_SEPARATOR "%s" PATH_SEPARATOR, userDataDir, "savegame" );
 
-                SPEW(("SAVELOAD", savePath));
+                MC2_LOG(Io, Debug, "{}", mc2::fmt::safe(savePath));
 
 	
 				result = systemFile->readIdString("spritePath",spritePath,79);

@@ -178,7 +178,7 @@ void execStdPrint (void) {
 			chatWin->processChatString(0, s, -1);
 		else {
 #ifdef _DEBUG
-			OutputDebugString(s);
+			mc2::fmt::debug_out(s);
 #endif
 		}
 		}

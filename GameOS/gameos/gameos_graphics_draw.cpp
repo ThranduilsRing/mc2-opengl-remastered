@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in gameos_graphics_material_internal.h.
 #include "gameos_graphics_material_internal.h"
 #include "mc2fmt.h"
+#include "utils/mc2log.h"
 
 
 // ---------------------------------------------------------------------------
@@ -532,7 +533,7 @@ void gosRenderer::beginFrame()
     // Frame-boundary hygiene: IsHUD must be cleared by every callsite before the frame ends.
     // If it is still set here, a callsite leaked the bit across the frame boundary.
     if (renderStates_[gos_State_IsHUD] != 0) {
-        SPEW(("GRAPHICS", "[HUD] gos_State_IsHUD still set at frame start -- callsite leak\n"));
+        MC2_LOG(Render, Debug, "[HUD] gos_State_IsHUD still set at frame start -- callsite leak");
         renderStates_[gos_State_IsHUD] = 0;
     }
     // HUD-SCALE-EXEMPT-LEAK-1: same hygiene for the scale-exempt bracket. The
@@ -733,7 +734,7 @@ void gosRenderer::drawQuads(gos_VERTEX* vertices, int count) {
 
     if (renderStates_[gos_State_IsHUD]) {
         if (hudFlushed_) {
-            SPEW(("GRAPHICS", "[HUD] Late drawQuads discarded (after flushHUDBatch)\n"));
+            MC2_LOG(Render, Debug, "[HUD] Late drawQuads discarded (after flushHUDBatch)");
             return;
         }
         HudDrawCall call;
@@ -798,7 +799,7 @@ void gosRenderer::drawLines(gos_VERTEX* vertices, int count) {
 
     if (renderStates_[gos_State_IsHUD]) {
         if (hudFlushed_) {
-            SPEW(("GRAPHICS", "[HUD] Late drawLines discarded (after flushHUDBatch)\n"));
+            MC2_LOG(Render, Debug, "[HUD] Late drawLines discarded (after flushHUDBatch)");
             return;
         }
         HudDrawCall call;
@@ -908,7 +909,7 @@ void gosRenderer::drawTris(gos_VERTEX* vertices, int count) {
     }
     if (renderStates_[gos_State_IsHUD]) {
         if (hudFlushed_) {
-            SPEW(("GRAPHICS", "[HUD] Late drawTris discarded (after flushHUDBatch)\n"));
+            MC2_LOG(Render, Debug, "[HUD] Late drawTris discarded (after flushHUDBatch)");
             return;
         }
 

@@ -79,17 +79,33 @@ inline std::string& scratch() {
 }
 }  // namespace detail
 
+// Returns what printf returns: the number of characters written, or a negative value when formatting or the write failed.
 template <class... A>
-void print(std::FILE* f, std::format_string<A...> fmt, A&&... a) noexcept {
+int print(std::FILE* f, std::format_string<A...> fmt, A&&... a) noexcept {
     try {
         std::string& buf = detail::scratch();
         buf.clear();
         std::vformat_to(std::back_inserter(buf), fmt.get(), std::make_format_args(a...));
-        std::fwrite(buf.data(), 1, buf.size(), f);
+        const size_t written = std::fwrite(buf.data(), 1, buf.size(), f);
+        return written == buf.size() ? static_cast<int>(written) : kFormatError;
     } catch (...) {
+        return kFormatError;
     }
 }
-template <class... A> void print_err(std::format_string<A...> fmt, A&&... a) noexcept { print(stderr, fmt, std::forward<A>(a)...); }
-template <class... A> void print_out(std::format_string<A...> fmt, A&&... a) noexcept { print(stdout, fmt, std::forward<A>(a)...); }
+template <class... A> int print_err(std::format_string<A...> fmt, A&&... a) noexcept { return print(stderr, fmt, std::forward<A>(a)...); }
+template <class... A> int print_out(std::format_string<A...> fmt, A&&... a) noexcept { return print(stdout, fmt, std::forward<A>(a)...); }
+
+// OutputDebugString without <windows.h> (this header is included by tools that do not link GameOS): the Windows debugger channel; stderr elsewhere.
+// One entry point for every site that wrote to the debugger, so the sink can change in one place.
+#ifdef _WIN32
+extern "C" __declspec(dllimport) void __stdcall OutputDebugStringA(const char*);
+#endif
+inline void debug_out(const char* text) noexcept {
+#ifdef _WIN32
+    OutputDebugStringA(text ? text : "");
+#else
+    std::fputs(text ? text : "", stderr);
+#endif
+}
 
 }  // namespace mc2::fmt

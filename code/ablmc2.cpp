@@ -4,6 +4,7 @@
 // its position in a fixed table), so the list stays in this one file; the exec* bodies live in ablmc2_<domain>.cpp.
 #include "ablmc2_internal.h"
 #include "mc2fmt.h"
+#include "../GameOS/gameos/utils/mc2log.h"
 
 
 MoverGroupPtr			CurGroup = nullptr;
@@ -170,9 +171,7 @@ long ablFileWriteStringCB (void* file, const char* buffer) {
 void ablDebuggerPrintCallback (const char* s) {
 
 	//ABLDebuggerOut->print(s);
-	char msg[1024];
-	mc2::fmt::to_buf(msg, "{}\n", mc2::fmt::safe(s));
-	SPEW((0,msg));
+	MC2_LOG(Core, Debug, "{}", mc2::fmt::safe(s));
 }
 
 void ablDebugPrintCallback (const char* s) {

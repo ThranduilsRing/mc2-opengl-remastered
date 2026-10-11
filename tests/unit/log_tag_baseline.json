@@ -4612,6 +4612,13 @@
    "count": 1
   },
   {
+   "tag": "HUD",
+   "ver": -1,
+   "stream": "log",
+   "keys": [],
+   "count": 5
+  },
+  {
    "tag": "HUDSCALE",
    "ver": -1,
    "stream": "file",

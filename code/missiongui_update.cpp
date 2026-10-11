@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in missiongui_shared_internal.h.
 #include "missiongui_shared_internal.h"
 #include "mc2fmt.h"
+#include "../GameOS/gameos/utils/mc2log.h"
 
 
 void MissionInterfaceManager::update (void)
@@ -170,7 +171,7 @@ void MissionInterfaceManager::update (void)
 
 	if (eye && eye->inMovieMode)
 	{
-        SPEW(("DBG", "eye->inMovieMode: %d\n", eye->inMovieMode));
+        MC2_LOG(Core, Debug, "eye->inMovieMode: {:d}", mc2::fmt::as_i32(eye->inMovieMode));
 		drawGUIOn = false;
 		userInput->mouseOff();
 		

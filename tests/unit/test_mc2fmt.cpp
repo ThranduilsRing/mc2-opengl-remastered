@@ -187,4 +187,25 @@ TEST_CASE("print works from an atexit handler: its buffer outlives the thread_lo
 	CHECK(std::atexit(printAtExit) == 0);
 }
 
+TEST_CASE("print returns the length printf would, and a negative value when the write fails")
+{
+	std::FILE* f = std::tmpfile();
+	REQUIRE(f != nullptr);
+	CHECK(mc2::fmt::print(f, "{:d}|{}", mc2::fmt::as_i32(42), "ab") == 5);
+	CHECK(mc2::fmt::print(f, "") == 0);
+	std::fclose(f);
+	std::FILE* ro = std::fopen("tests/unit/CMakeLists.txt", "rb");
+	if (ro) {
+		CHECK(mc2::fmt::print(ro, "x") < 0);
+		std::fclose(ro);
+	}
+}
+
+TEST_CASE("debug_out accepts null and empty text")
+{
+	mc2::fmt::debug_out(nullptr);
+	mc2::fmt::debug_out("");
+	CHECK(true);
+}
+
 }  // TEST_SUITE

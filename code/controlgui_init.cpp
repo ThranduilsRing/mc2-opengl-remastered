@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in controlgui_internal.h.
 #include "controlgui_internal.h"
 #include "mc2fmt.h"
+#include "../GameOS/gameos/utils/mc2log.h"
 
 
 void ControlButton::initButtons( FitIniFile& buttonFile, long buttonCount, ControlButton* Buttons, ButtonData* Data, const char* str, aFont* font )
@@ -508,8 +509,8 @@ void ControlGui::swapResolutions( int resolutionX, int resolutionY )
 			strcat( fallbackPath, fallbackName );
 			if ( NO_ERR == buttonFile.open( fallbackPath ) )
 			{
-				SPEW(( 0, "controlgui: buttonlayout%d.fit missing, fell back to %s\n",
-				       resolutionX, fallbackName ));
+				MC2_LOG(Core, Debug, "controlgui: buttonlayout{:d}.fit missing, fell back to {}",
+				       mc2::fmt::as_i32(resolutionX), mc2::fmt::safe(fallbackName));
 				strcpy( path, fallbackPath );
 				strcpy( fileName, fallbackName );
 				opened = true;

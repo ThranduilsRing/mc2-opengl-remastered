@@ -382,7 +382,7 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 			if (debugger && (scenarioTime > 0.0)) {
 				char s[50];
 				mc2::fmt::to_buf(s, "path calc: {:.4f}\n", calcTime);
-				OutputDebugString(s);
+				mc2::fmt::debug_out(s);
 				debugger->print(s);
 			}
 		#endif

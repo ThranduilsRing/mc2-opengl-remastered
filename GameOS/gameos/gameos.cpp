@@ -34,6 +34,7 @@
 #include "diagnostic_trace.h" // DETERMINISTIC-RNG-1: optional "RNG" JSONL trace
 #include "Gates/gate.h"
 #include "mc2fmt.h"
+#include "utils/mc2log.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 void __stdcall AddDebuggerMenuItem(char const*, bool (__stdcall *)(), void (__stdcall *)(), bool (__stdcall *)(), DWORD (__stdcall *)(char const*, DWORD))
@@ -478,7 +479,7 @@ __int64 __stdcall gos_GetDriveFreeSpace( char* Path )
 #ifndef PLATFORM_WINDOWS
     struct statvfs s;
     if(-1 == statvfs(Path, &s)) {
-        SPEW(("statvfs: %s\n", strerror(errno)));
+        MC2_LOG(Core, Debug, "statvfs: {}", mc2::fmt::safe(strerror(errno)));
         return 0;
     }
 
@@ -542,7 +543,7 @@ void __stdcall gos_LoadDataFromRegistry( const char* keyName, void* pData, DWORD
     const char* home_dir = getenv("HOME");
     if(home_dir == nullptr)
     {
-        SPEW(("gos_LoadDataFromRegistry", "home directory is not set\n"));
+        MC2_LOG(Io, Debug, "gos_Registry: home directory is not set");
         *szData = 0;
         return;
     }
@@ -560,12 +561,12 @@ void __stdcall gos_LoadDataFromRegistry( const char* keyName, void* pData, DWORD
 
     struct stat st;
     if(-1 == stat(cfg_dir, &st)) {
-        SPEW(("stat: %s\n", strerror(errno)));
+        MC2_LOG(Core, Debug, "stat: {}", mc2::fmt::safe(strerror(errno)));
         *szData = 0;
         return;
     }
     if(!S_ISDIR(st.st_mode)) {
-        SPEW(("REG", "gos_LoadDataFromRegistry: %s is not directory\n", cfg_dir));
+        MC2_LOG(Core, Debug, "gos_LoadDataFromRegistry: {} is not directory", mc2::fmt::safe(cfg_dir));
         *szData = 0;
         return;
     }
@@ -585,7 +586,7 @@ void __stdcall gos_LoadDataFromRegistry( const char* keyName, void* pData, DWORD
 #else
         if(-1 == mkdir(mc2_conf_dir, permissions)) {
 #endif
-            SPEW(("stat: %s\n", strerror(errno)));
+            MC2_LOG(Core, Debug, "stat: {}", mc2::fmt::safe(strerror(errno)));
             *szData = 0;
             delete[] mc2_conf_dir;
             return;
@@ -632,7 +633,7 @@ bool __stdcall gos_GetUserDataDirectory(char* user_dir, const int len)
     const char* home_dir = getenv("HOME");
     if(home_dir == nullptr)
     {
-        SPEW(("gos_GetUserDataDirectory", "home directory is not set\n"));
+        MC2_LOG(Io, Debug, "gos_Registry: home directory is not set");
         return false;
     }
 
@@ -642,12 +643,12 @@ bool __stdcall gos_GetUserDataDirectory(char* user_dir, const int len)
         cfg_dir[cfg_dir_size-1] = '\0';
 
         if(-1 == stat(cfg_dir, &st)) {
-            SPEW(("stat: %s\n", strerror(errno)));
+            MC2_LOG(Core, Debug, "stat: {}", mc2::fmt::safe(strerror(errno)));
             return false;
         }
 
         if(!S_ISDIR(st.st_mode)) {
-            SPEW(("SAVELOAD", "gos_GetUserDataDirectory: %s is not directory\n", cfg_dir));
+            MC2_LOG(Io, Debug, "gos_GetUserDataDirectory: {} is not directory", mc2::fmt::safe(cfg_dir));
             return false;
         }
     } else {
@@ -672,7 +673,7 @@ bool __stdcall gos_GetUserDataDirectory(char* user_dir, const int len)
 #else
         if(-1 == mkdir(mc2_conf_dir, permissions)) {
 #endif
-            SPEW(("stat: %s\n", strerror(errno)));
+            MC2_LOG(Core, Debug, "stat: {}", mc2::fmt::safe(strerror(errno)));
             delete[] mc2_conf_dir;
             return false;
         }
