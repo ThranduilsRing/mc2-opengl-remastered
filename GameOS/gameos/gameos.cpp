@@ -408,8 +408,9 @@ char* __stdcall gos_GetFormattedDate( bool Verbose, WORD Year/*=-1*/, WORD Month
 
     if(!Verbose)
     {
-        char* date = new char[16];
-        sprintf(date, "%02d/%02d/%04d", Day, Month, Year);
+        constexpr size_t kDateBytes = 16;
+        char* date = new char[kDateBytes];
+        mc2::fmt::to_buf_n(date, kDateBytes, "{:02d}/{:02d}/{:04d}", mc2::fmt::as_i32(Day), mc2::fmt::as_i32(Month), mc2::fmt::as_i32(Year));
         return date;
     }
 
