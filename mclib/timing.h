@@ -26,7 +26,7 @@ extern bool		dynamicFrameTiming;	//This flag determines if we are using frameLen
 
 //----------------------------------------------------------------------------------
 // Macro Definitions
-#define MAX_TIMERS			32
+inline constexpr int MAX_TIMERS = 32;
 
 //----------------------------------------------------------------------------------
 class Timer

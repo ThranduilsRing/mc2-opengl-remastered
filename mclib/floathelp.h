@@ -21,7 +21,7 @@
 extern HGOSFONT3D gosFontHandle;
 extern float	gosFontScale;
 
-#define MAX_FLOAT_HELPS	100				//Used for sensor information, too!
+inline constexpr int MAX_FLOAT_HELPS = 100;				//Used for sensor information, too!
 //-----------------------------------------------------------------------------------------
 // Classes
 class FloatHelp
