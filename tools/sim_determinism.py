@@ -94,6 +94,15 @@ def _git_sha() -> str:
     return r.stdout.strip()
 
 
+def build_and_deploy() -> None:
+    """Build the committed HEAD with Ninja and deploy it to the 0.4 install (the smoke fingerprint gate wants an exe of this HEAD)."""
+    for cmd in ([sys.executable, os.path.join(ROOT, "scripts", "ninja_build.py")],
+                [sys.executable, os.path.join(ROOT, "scripts", "deploy_payload.py"), "--target", "game", "--ninja"]):
+        r = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace", **console_child.child_kwargs(redirected=True))
+        if r.returncode:
+            sys.exit("sim_determinism: " + os.path.basename(cmd[1]) + " failed:\n" + "\n".join(r.stdout.splitlines()[-6:]))
+
+
 def run_mission(mission: str, duration: str, out: str) -> list:
     """Launch the mission twice under the determinism gates. -> [log path a, log path b]. The smoke lease is host wide and waited for."""
     env = dict(os.environ, **GATES)
@@ -167,6 +176,7 @@ def main(argv=None) -> int:
     r.add_argument("--duration", default="20")
     r.add_argument("--min-frames", type=int, default=MIN_FRAMES)
     r.add_argument("--baseline", nargs="?", const=DEFAULT_BASELINE, help="also compare with a committed chain (default file: %s)" % os.path.relpath(DEFAULT_BASELINE, ROOT))
+    r.add_argument("--deploy", action="store_true", help="build and deploy HEAD to the 0.4 install first")
     r.add_argument("--out", help="keep both runs' artifacts here (default: a temporary directory)")
     w = sub.add_parser("write-baseline")
     w.add_argument("log")
@@ -192,6 +202,8 @@ def main(argv=None) -> int:
         print(("sim_determinism: PASS " if ok else "sim_determinism: FAIL ") + msg)
         return 0 if ok else 1
     out = args.out or tempfile.mkdtemp(prefix="simdet_")
+    if args.deploy:
+        build_and_deploy()
     la, lb = run_mission(args.mission, args.duration, out)
     a, b = load_simid(la), load_simid(lb)
     ok, msg = compare(a, b, args.min_frames)
