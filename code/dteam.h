@@ -14,9 +14,9 @@
 //---------------------------------------------------------------------------
 
 #define	MAX_TEAMS						8
-#define	MAX_MOVERS_PER_TEAM				120
+inline constexpr int MAX_MOVERS_PER_TEAM = 120;
 #define	MAX_CONTACTS_PER_TEAM			MAX_MOVERS
-#define	NUM_CONTACT_UPDATES_PER_PASS	3
+inline constexpr int NUM_CONTACT_UPDATES_PER_PASS = 3;
 
 typedef enum {
 	RELATION_FRIENDLY,
