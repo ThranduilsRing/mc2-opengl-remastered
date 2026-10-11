@@ -19,3 +19,16 @@ Ratchet LG12b (code, mclib, GameOS, GuiRuntime, GameAdapters, RenderCore, Render
 
 Done by hand in B3b (bound taken from the allocation or the enclosing array, one commit per site): gameos.cpp date (`new char[16]`), time, `mc2_conf_dir` x2,
 `reg_file`; editor/EditorObjectMgr_io.cpp `fitExt+1` (what is left of `armName[512]`); mclib/genactor.cpp `changeSkyToSkyNum` (now takes the size of `newName[1024]`).
+
+## LG12a (printf-family logging) after B4/B5/B6: what stays (593 of 1295 at 2026-10-11)
+Converted: B4 untagged (GameOS 42 files + mclib/code 40), B5 tags nobody parses (~160 files), B6 parsed tags one at a time, each with its own run of
+`tools/tidy/tidy_batch.py --rewrite printf-log-parsed` (MC2_PRINTF_LOG_TAG=NAME): ASSET_SCALE, TEXLOAD, PIPELINE_BIND, MOVER, RENDER_SNAPSHOT, VK_PRESENT, INSTR,
+GPUPROPS, SOAK, SMOKE, TIMING, PERF. Every one passed compile + corpus + census + game-log shape comparison (mc2_03, mc2_24) before its commit.
+What the ratchet still counts, with the reason:
+- 88 calls whose value is used (`if (fprintf(...) < 0)`, `int n = printf(...)`): brain_special_dispatch 7, bdactor_static 6, brain_special_apply 4, gos_smoke 3, ... -> review each use of the result.
+- SPEW macro (~180 sites), OutputDebugString (~19), puts/fputs: different entry points (facade P3: SPEW shim, debugger sink); not touched by printf-log.
+- 16 headers with no #include to anchor mc2fmt.h on; 11 `%.Nd` (gos_render.cpp); 4 `%t` length (gameos_graphics_light_ssbo.cpp); 3 `%*d`; 1 `%S`; 4 runtime formats (gameosmain_frame.cpp).
+- 3 crash/assert/allocator files (gos_crashbundle, gameos_debugging, memorymanager/heap): excluded on purpose, std::string must not be built there.
+- lane-2 files (terrain_geometry.cpp: FASTPATH_DROP and QUADSETUP_SKIP are parsed tags waiting there; projectz_trace.cpp; terrtxm2_internal.h): after lane 2 merges, rerun
+  `MC2_PRINTF_LOG_TAG=FASTPATH_DROP py -3 tools/tidy/tidy_batch.py --dir mclib --rewrite printf-log-parsed --corpus --log-identity`, same for QUADSETUP_SKIP.
+- Parsed tags emitted through snprintf/SPEW/log_* rather than printf (CRASHBUNDLE, HEARTBEAT, CONFIG, ...) are not touched by this rewriter; their census records are unchanged.
