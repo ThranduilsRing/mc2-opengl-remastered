@@ -42,3 +42,4 @@ EquipmentReasonCode      tests/unit: `bool seen[EQV__COUNT]` array bound and `i 
 UnitProfileReasonCode    tests/unit: `bool seen[UPV__COUNT]` array bound, int compares
 Capability               tests/unit/test_capability.cpp: `c < CAP__COUNT` loops
 ClassPolicy              standalone object_light_row_harness is not built as C++20 (`using enum` rejected, C7572)
+ActorState               code/actor.h is included by no translation unit in any tree (dead header): nothing to prove, a deletion candidate rather than a conversion
