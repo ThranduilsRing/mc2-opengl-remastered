@@ -811,6 +811,7 @@ fi
 # is precisely where a lie hides. Exemptions live in
 # scripts/gate-defaults-allowlist.txt and each one MUST carry a real reason.
 run_check "gate_default_agreement"          "py -3 scripts/check-gate-default-agreement.py --quiet"
+run_check "log_tag_census"                 "py -3 tools/log_tag_census.py --check"
 run_check "gate_default_agreement_selftest" "py -3 scripts/check-gate-default-agreement.py --selftest"
 run_check "gate_classifier_selftest"        "py -3 scripts/gate_default_classifier.py --selftest"
 # GATE-READER-CONFLICTS-1 (typed-gate-registry G0, 2026-10-09): the row above proves a gate's

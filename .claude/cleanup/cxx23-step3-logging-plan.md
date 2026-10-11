@@ -21,14 +21,15 @@ LG12b: destinations are stack `char[N]` buffers handed to gos text draw, file-na
 Specifier mix over LG12 lines: `%s` with width 1081, `%l[du]` 272, `%ll[dux]` 38, `%z[ud]` 50, `%p` 30, `%c` 29, `%e/%g` 15, `%I64` 0, `%n` 0, `%*` 0.
 
 ## 2. The facade as it stands
-`mc2::log` (`mc2log.h`) is **designed, not built** (facade plan P1). Today only `GameOS/gameos/utils/logging.h` exists: `log_debug/info/warning/error` over
+`mc2::log` (`GameOS/gameos/utils/mc2log.{h,cpp}`) **is built** (facade P0/P1: `logFmt`, `event<Tag,Ver>`, `MC2_EVENT*`, `MC2_LOG*`, `writeRaw`, `init()`; used by gameosmain, gos_terrain_lighting, gos_terrain_patch_stream; tests/unit/test_mc2log.cpp) -- the first version of this plan said otherwise and was wrong. Today only `GameOS/gameos/utils/logging.h` exists: `log_debug/info/warning/error` over
 `logging::logmsg(level, __FILE__, __LINE__, fmt, ...)`, 56 calls in 6 files. Coupling: `logmsg` prefixes `file(line): ERROR`, and
 `scripts/smoke_lib/logparse.py:36` matches `shader_builder\.cpp\(\d+\)\s*:\s*ERROR` as a shader-failure bucket. That prefix is a CONTRACT; `logging.h`
 stays (held item in `legacy-subsystem-audit.md`) until the pattern and the producer change in one commit.
-Step 3 does not wait for the whole facade: batch 0 adds the two primitives every conversion needs, in `GameOS/gameos/utils/mc2fmt.h` (out of line, per A10):
-`mc2::fmt::to_buf(char (&buf)[N], std::format_string<A...>, A&&...)` (truncating, always NUL-terminated, returns the would-be length like `snprintf`)
-and `mc2::log::print(Stream, std::format_string<A...>, A&&...)` (format into a thread_local buffer, ONE `fwrite` to the same FILE*). Categories, levels and
-MC2_LOG specs stay with facade P1-P2; they change no bytes.
+Batch 0 adds the primitives the conversions need that the facade lacks, in `GameOS/include/mc2fmt.h` (HEADER-ONLY: mclib is linked by standalone tools that do not link GameOS; done, `57f51d61d`):
+`mc2::fmt::to_buf` / `to_buf_n` (truncating, always NUL-terminated, the would-be length returned like `snprintf`; the array form takes the bound from the type),
+`safe()` and the `as_*` argument helpers. The untagged-printf sink for LG12a (B4) is a raw `print(Stream, fmt, args)` over the existing `mc2::log::writeRaw`
+(no level filter, no added newline, ONE `fwrite`): `MC2_LOG` cannot be used for it because `write()` appends a newline and applies the level gate. It lives in `mc2log`
+(GameOS only), so mclib's LG12a sites wait for a decision on how mclib reaches the facade (section 9, item 4).
 
 ## 3. Contract lines that must stay byte-identical
 Enumerated from the consumers, not the C++:
@@ -89,4 +90,5 @@ None are planned: parsers are not touched while sites migrate (facade rule A5/8)
 ## 9. Decisions for the reviewer
 1. Build `mc2fmt.h` (to_buf, print) now, ahead of facade P1, or fold step 3 into P1-P2 and wait for categories/levels?
 2. LG12b destinations that are not arrays (pointer buffers, `char*` members): hand-fix list or out of scope for step 3?
-3. Accept that parsed tags (B6) wait on a golden harness per tag, and that tags failing it stay on printf with an allow-list entry.
+3. Accepted: parsed tags (B6) wait on a golden harness per tag; a tag that fails it stays on printf with an allow-list entry.
+4. How does mclib (linked by standalone tools without GameOS) emit through `mc2::log` in B4? Header-only `print` over `fwrite` for mclib, or a link dependency?
