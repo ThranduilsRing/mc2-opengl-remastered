@@ -454,7 +454,7 @@ void GenericAppearance::setObjectParameters (const Stuff::Vector3D &pos, float R
 }
 
 //-----------------------------------------------------------------------------
-void GenericAppearance::changeSkyToSkyNum (char *txmName, char *newName)
+void GenericAppearance::changeSkyToSkyNum (char *txmName, char *newName, size_t newNameBytes)
 {
 	if (S_strnicmp(txmName,"sky",3) != 0)
 	{
@@ -463,7 +463,7 @@ void GenericAppearance::changeSkyToSkyNum (char *txmName, char *newName)
 	else
 	{
 		strcpy(newName,"Sky");
-		sprintf(newName,"Sky%02d%s",skyNumber,&txmName[3]);
+		mc2::fmt::to_buf_n(newName, newNameBytes, "Sky{:02d}{}", mc2::fmt::as_i32(skyNumber), &txmName[3]);
 	}
 	
 	return;
@@ -489,7 +489,7 @@ void GenericAppearance::setSkyNumber (long skyNum)
 		//Make txmName into a SKY%02d texture and load it!!
 		skyNumber = skyNum;
 		
-		changeSkyToSkyNum(txmName,newName);
+		changeSkyToSkyNum(txmName,newName,sizeof(newName));
 		
 		FullPathFileName textureName;
 		textureName.init(texturePath,newName,"");
