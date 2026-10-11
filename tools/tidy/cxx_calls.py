@@ -115,16 +115,27 @@ def find_calls(text: str, names, qualifiers=("std::",)):
 _LIT = re.compile(r'"((?:\\.|[^"\\\n])*)"')
 
 
-def string_literal_parts(arg: str):
-    """The concatenated contents of `"a" "b"` (escapes untouched), or None when the argument is anything but narrow string literals."""
+_MACRO = re.compile(r"[A-Za-z_]\w*")
+
+
+def string_literal_parts(arg: str, macros=None):
+    """The concatenated contents of `"a" "b"` (escapes untouched), or None when the argument is anything but narrow string literals.
+
+    macros: {NAME: placeholder} for object-like macros that expand to one string literal containing no printf conversion and no brace
+    (PATH_SEPARATOR); each is returned as its placeholder character so the caller can put the macro back."""
     pos, parts = 0, []
     arg = arg.strip()
     while pos < len(arg):
         m = _LIT.match(arg, pos)
-        if not m:
-            return None
-        parts.append(m.group(1))
-        pos = m.end()
+        if m:
+            parts.append(m.group(1))
+            pos = m.end()
+        else:
+            mm = _MACRO.match(arg, pos)
+            if not (macros and mm and mm.group(0) in macros):
+                return None
+            parts.append(macros[mm.group(0)])
+            pos = mm.end()
         while pos < len(arg) and arg[pos].isspace():
             pos += 1
     return "".join(parts) if parts else None

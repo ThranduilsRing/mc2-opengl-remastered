@@ -175,7 +175,7 @@ long TerrainColorMap::init (char *fileName)
 		{
 			/* If a detail texture doesn't exist for this mission, use the default detail texture.*/
 			detailFile.destroy();
-			sprintf(dName,"defaults" PATH_SEPARATOR "default_detail");
+			mc2::fmt::to_buf(dName, "defaults" PATH_SEPARATOR "default_detail");
 			detailFile.init(texturePath,dName,".tga");
 		}
 		if (fileExists(detailFile))		//Otherwise, its already 0xffffffff!!
@@ -198,7 +198,7 @@ long TerrainColorMap::init (char *fileName)
 		{
 			/* If a water texture doesn't exist for this mission, use the default water texture.*/
 			waterFile.destroy();
-			sprintf(dName,"defaults" PATH_SEPARATOR "default_water");
+			mc2::fmt::to_buf(dName, "defaults" PATH_SEPARATOR "default_water");
 			waterFile.init(texturePath,dName,".tga");
 		}
 		if (fileExists(waterFile))
@@ -223,7 +223,7 @@ long TerrainColorMap::init (char *fileName)
 			
 			if (!fileExists(waterFile))
 			{
-				sprintf(waterDetailBaseName,"defaults" PATH_SEPARATOR "default_water");
+				mc2::fmt::to_buf(waterDetailBaseName, "defaults" PATH_SEPARATOR "default_water");
 			}
 		}
 		for (long i=0;i<MAX_WATER_DETAIL_TEXTURES;i++)

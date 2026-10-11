@@ -764,7 +764,7 @@ void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 			gvShape->GetTextureName(i,txmName,256);
 
 			char texturePath[1024];
-			sprintf(texturePath,"%s%d" PATH_SEPARATOR, tglPath, ObjectTextureSize);
+			mc2::fmt::to_buf(texturePath, "{}{:d}" PATH_SEPARATOR "", mc2::fmt::safe(tglPath), mc2::fmt::as_i32(ObjectTextureSize));
 	
 			FullPathFileName textureName;
 			textureName.init(texturePath,txmName,"");
@@ -826,7 +826,7 @@ void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 				gvShadowShape->GetTextureName(i,txmName,256);
 		
 				char texturePath[1024];
-				sprintf(texturePath,"%s%d" PATH_SEPARATOR, tglPath, ObjectTextureSize);
+				mc2::fmt::to_buf(texturePath, "{}{:d}" PATH_SEPARATOR "", mc2::fmt::safe(tglPath), mc2::fmt::as_i32(ObjectTextureSize));
 		
 				FullPathFileName textureName;
 				textureName.init(texturePath,txmName,"");
@@ -868,7 +868,7 @@ void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 			sensorTriangleShape->GetTextureName(i,txmName,256);
 
 			char texturePath[1024];
-			sprintf(texturePath,"%s%d" PATH_SEPARATOR, tglPath, ObjectTextureSize);
+			mc2::fmt::to_buf(texturePath, "{}{:d}" PATH_SEPARATOR "", mc2::fmt::safe(tglPath), mc2::fmt::as_i32(ObjectTextureSize));
 	
 			FullPathFileName textureName;
 			textureName.init(texturePath,txmName,"");
@@ -904,7 +904,7 @@ void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 			sensorCircleShape->GetTextureName(i,txmName,256);
 
 			char texturePath[1024];
-			sprintf(texturePath,"%s%d" PATH_SEPARATOR, tglPath, ObjectTextureSize);
+			mc2::fmt::to_buf(texturePath, "{}{:d}" PATH_SEPARATOR "", mc2::fmt::safe(tglPath), mc2::fmt::as_i32(ObjectTextureSize));
 	
 			FullPathFileName textureName;
 			textureName.init(texturePath,txmName,"");
@@ -1101,7 +1101,7 @@ void GVAppearance::setObjStatus (long oStatus)
 			gvShape->GetTextureName(i,txmName,256);
 
 			char texturePath[1024];
-			sprintf(texturePath,"%s%d" PATH_SEPARATOR, tglPath, ObjectTextureSize);
+			mc2::fmt::to_buf(texturePath, "{}{:d}" PATH_SEPARATOR "", mc2::fmt::safe(tglPath), mc2::fmt::as_i32(ObjectTextureSize));
 	
 			FullPathFileName textureName;
 			textureName.init(texturePath,txmName,"");

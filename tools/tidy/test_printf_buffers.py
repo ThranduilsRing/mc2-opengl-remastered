@@ -108,3 +108,14 @@ def test_assume_array_and_only_lines_for_the_per_site_trial():
     assert conv(src)[0] == src                                                    # no visible array: both refused by default
     out, recs, _ = pb.convert(src, assume_array=True, only_lines={3})
     assert 'mc2::fmt::to_buf(a->name, "{:d}", mc2::fmt::as_i32(x));' in out and "sprintf(p," in out and len(recs) == 1
+
+
+def test_path_separator_macro_is_carried_through_and_put_back():
+    out, recs, left = conv('#include <a.h>\nvoid f(){ char p[64]; sprintf(p, "data" PATH_SEPARATOR "%s" PATH_SEPARATOR "%d.var", d, n); }\n')
+    assert 'mc2::fmt::to_buf(p, "data" PATH_SEPARATOR "{}" PATH_SEPARATOR "{:d}.var", mc2::fmt::safe(d), mc2::fmt::as_i32(n));' in out
+    assert recs[0]["old"] == "data/%s/%d.var" and recs[0]["new"] == "data/{}/{:d}.var" and not left
+
+
+def test_other_macros_in_a_format_still_bail():
+    src = '#include <a.h>\nvoid f(){ sprintf(p, "a" OTHER "%d", n); }\n'
+    assert conv(src)[0] == src

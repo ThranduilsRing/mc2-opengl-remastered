@@ -18,6 +18,9 @@ import typedef_aggregates as _ta
 
 FUNCS = {"snprintf", "_snprintf", "sprintf", "_snprintf_s"}
 INCLUDE = '#include "mc2fmt.h"'
+#: String-literal macros that may appear in a format ("data" PATH_SEPARATOR "x.var"): each is carried through the translation as one
+#: private-use character and written back as the macro. mclib/paths.h defines it as "/" or "\\"; neither has a conversion or a brace.
+MACROS = {"PATH_SEPARATOR": "\ue000"}
 
 _SPEC = re.compile(r"%([-+ #0]*)(\*|\d+)?(?:\.(\*|\d*))?(hh|h|ll|l|z|j|t|L|I64|I32|I)?([diouxXeEfFgGaAcspnS%])")
 
@@ -185,10 +188,14 @@ def _convert_call(text: str, call, assume_array: bool = False):
         dest, size, fmt, rest = args[0], args[1], args[3], args[4:]
     else:
         raise Bail("function " + name)
-    lit = cxx_calls.string_literal_parts(fmt)
+    lit = cxx_calls.string_literal_parts(fmt, MACROS)
     if lit is None:
         raise Bail("format is not a string literal")
     new_fmt, wrapped, specs = translate_format(lit, rest)
+    shown_old, shown_new = lit, new_fmt
+    for macro, ch in MACROS.items():
+        new_fmt = new_fmt.replace(ch, '" ' + macro + ' "')
+        shown_old, shown_new = shown_old.replace(ch, "/"), shown_new.replace(ch, "/")
     is_array = assume_array or array_declared(text, dest.strip(), call.start)
     if size is not None and re.fullmatch(r"sizeof\s*\(?\s*%s\s*\)?" % re.escape(dest.strip()), size.strip()) and is_array:
         size = None             # the bound is the array's own extent
@@ -200,7 +207,7 @@ def _convert_call(text: str, call, assume_array: bool = False):
         call_text = f"mc2::fmt::to_buf({dest}, \"{new_fmt}\"" + "".join(", " + w for w in wrapped) + ")"
     else:
         call_text = f"mc2::fmt::to_buf_n({dest}, {size}, \"{new_fmt}\"" + "".join(", " + w for w in wrapped) + ")"
-    return call_text, {"func": name, "old": lit, "new": new_fmt, "specs": specs}
+    return call_text, {"func": name, "old": shown_old, "new": shown_new, "specs": specs}
 
 
 def _include_insertion_point(text: str, before: int):

@@ -122,7 +122,7 @@ void LogisticsData::startMultiPlayer()
 
 	// need to initialize multiplayer variants here...
 	char findString[512];
-	sprintf(findString,"data" PATH_SEPARATOR "multiplayer" PATH_SEPARATOR "*.var");
+	mc2::fmt::to_buf(findString, "data" PATH_SEPARATOR "multiplayer" PATH_SEPARATOR "*.var");
 
 
 #ifdef LINUX_BUILD

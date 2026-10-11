@@ -254,7 +254,7 @@ void GenericAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 				genShape->GetTextureName(i,txmName,256);
 
 			char texturePath[1024];
-			sprintf(texturePath,"%s%d" PATH_SEPARATOR, tglPath, ObjectTextureSize);
+			mc2::fmt::to_buf(texturePath, "{}{:d}" PATH_SEPARATOR "", mc2::fmt::safe(tglPath), mc2::fmt::as_i32(ObjectTextureSize));
 	
 			FullPathFileName textureName;
 			textureName.init(texturePath,txmName,"");
@@ -366,7 +366,7 @@ void GenericAppearance::setObjStatus (long oStatus)
 					genShape->GetTextureName(i,txmName,256);
 					
 					char texturePath[1024];
-					sprintf(texturePath,"%s%d" PATH_SEPARATOR, tglPath, ObjectTextureSize);
+					mc2::fmt::to_buf(texturePath, "{}{:d}" PATH_SEPARATOR "", mc2::fmt::safe(tglPath), mc2::fmt::as_i32(ObjectTextureSize));
 			
 					FullPathFileName textureName;
 					textureName.init(texturePath,txmName,"");
@@ -484,7 +484,7 @@ void GenericAppearance::setSkyNumber (long skyNum)
 			genShape->GetTextureName(i,txmName,256);
 
 		char texturePath[1024];
-		sprintf(texturePath,"%s%d" PATH_SEPARATOR, tglPath, ObjectTextureSize);
+		mc2::fmt::to_buf(texturePath, "{}{:d}" PATH_SEPARATOR "", mc2::fmt::safe(tglPath), mc2::fmt::as_i32(ObjectTextureSize));
 
 		//Make txmName into a SKY%02d texture and load it!!
 		skyNumber = skyNum;

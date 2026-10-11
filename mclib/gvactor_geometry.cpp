@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in gvactor_internal.h.
 #include "gvactor_internal.h"
 #include "../RenderCore/axis_convert.h"
+#include "mc2fmt.h"
 
 
 void GVAppearance::setPaintScheme (void)
@@ -139,7 +140,7 @@ void GVAppearance::resetPaintScheme (DWORD red, DWORD green, DWORD blue)
 	gvShape->GetTextureName(0,txmName,256);
 
    	char texturePath[1024];
-   	sprintf(texturePath,"%s%d" PATH_SEPARATOR, tglPath, ObjectTextureSize);
+   	mc2::fmt::to_buf(texturePath, "{}{:d}" PATH_SEPARATOR "", mc2::fmt::safe(tglPath), mc2::fmt::as_i32(ObjectTextureSize));
 
    	FullPathFileName textureName;
    	textureName.init(texturePath,txmName,"");
@@ -607,7 +608,7 @@ bool GVAppearance::recalcBounds (void)
 								gvShape->GetTextureName(j,txmName,256);
 
 								char texturePath[1024];
-								sprintf(texturePath,"%s%d" PATH_SEPARATOR, tglPath, ObjectTextureSize);
+								mc2::fmt::to_buf(texturePath, "{}{:d}" PATH_SEPARATOR "", mc2::fmt::safe(tglPath), mc2::fmt::as_i32(ObjectTextureSize));
 
 								FullPathFileName textureName;
 								textureName.init(texturePath,txmName,"");
@@ -657,7 +658,7 @@ bool GVAppearance::recalcBounds (void)
 								gvShape->GetTextureName(i,txmName,256);
 										
 								char texturePath[1024];
-								sprintf(texturePath,"%s%d" PATH_SEPARATOR, tglPath, ObjectTextureSize);
+								mc2::fmt::to_buf(texturePath, "{}{:d}" PATH_SEPARATOR "", mc2::fmt::safe(tglPath), mc2::fmt::as_i32(ObjectTextureSize));
 						
 								FullPathFileName textureName;
 								textureName.init(texturePath,txmName,"");

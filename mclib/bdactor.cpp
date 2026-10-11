@@ -10,6 +10,7 @@
 
 #include "bdactor_internal.h"
 #include "../RenderCore/axis_convert.h"
+#include "mc2fmt.h"
 
 // File-scope gate: one gate read per TU, process-start-constant, shared across
 // BldgAppearance::recalcBounds and TreeAppearance::recalcBounds. Matches the
@@ -315,7 +316,7 @@ void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 			bldgShape->GetTextureName(i,txmName,256);
 
 			char texturePath[1024];
-			sprintf(texturePath,"%s%d" PATH_SEPARATOR,tglPath,ObjectTextureSize);
+			mc2::fmt::to_buf(texturePath, "{}{:d}" PATH_SEPARATOR "", mc2::fmt::safe(tglPath), mc2::fmt::as_i32(ObjectTextureSize));
 	
 			FullPathFileName textureName;
 			textureName.init(texturePath,txmName,"");
@@ -542,7 +543,7 @@ void BldgAppearance::setObjStatus (long oStatus)
 				bldgShape->GetTextureName(i,txmName,256);
 	
 				char texturePath[1024];
-				sprintf(texturePath,"%s%d" PATH_SEPARATOR,tglPath,ObjectTextureSize);
+				mc2::fmt::to_buf(texturePath, "{}{:d}" PATH_SEPARATOR "", mc2::fmt::safe(tglPath), mc2::fmt::as_i32(ObjectTextureSize));
 		
 				FullPathFileName textureName;
 				textureName.init(texturePath,txmName,"");
