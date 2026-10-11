@@ -62,7 +62,7 @@ Enumerated from the consumers, not the C++:
 2. **Corpus**: the tool emits `tests/unit/printf_corpus.tsv` (old printf format, new format string, argument types) for every converted site; a doctest instantiates old and new with an
    edge-value table per specifier (0, negative, INT_MIN/MAX, UINT_MAX, 1e-7, 1e22, NaN, inf, empty and over-long strings, nullptr `%s`) and compares bytes (`snprintf` vs `format_to_n`).
 3. **Runtime log identity**: smoke-lite, mc2_03 and mc2_24 with `MC2_LOG=1`, stdout and stderr captured before and after each batch; normalise addresses, pids and timing values;
-   the multiset of lines and the tag sequence must be equal. Fed through `logparse.py`/`oracleparse.py` (tests/smoke) the summaries must be equal.
+   the SET of line shapes (every number masked) and the SET of tags must be equal. This proves spellings, key order and lost lines, NOT numbers (sign, width, precision, hex case: the corpus proves those), and a tag that never fires on these missions is not exercised at all. Known printf/format difference, pinned in test_printf_corpus.cpp: the indefinite NaN prints `-nan(ind)` under the CRT and `-nan` under std::format; no parser accepts either. Fed through `logparse.py`/`oracleparse.py` (tests/smoke) the summaries must be equal.
 4. Census diff empty (`log_tag_census.py --check`, new board row), ratchet LG12a/LG12b only down, board 165+1, doctest, tier1 every sixth batch.
 
 ## 6. Batching (about 50 files each; LG12b first because it is the memory-safety win)

@@ -16,6 +16,7 @@ calls. A converted site must produce the same record as the printf it replaced.
 from __future__ import annotations
 
 import argparse
+import ast
 import collections
 import json
 import os
@@ -46,7 +47,10 @@ PRINTF_LIKE = {
 EVENT_MACROS = {"MC2_EVENT": "stderr", "MC2_EVENT_OUT": "stdout", "MC2_EVENT_NOVER": "stderr", "MC2_EVENT_NOVER_OUT": "stdout"}
 LOG_MACROS = {"log_debug", "log_info", "log_warning", "log_error"}
 
-TAG = re.compile(r"^\s*\[([A-Z][A-Z0-9_]*)(?: v(\d+))?\]")
+#: Lines a harness reads that are not `[UPPER_CASE vN]` shaped: a bare leading word, or a bracket with a space or lower case in it.
+PLAIN_TAGS = ("VEG_SUMMARY", "ORDER_LIVENESS_SUMMARY", "TerrainLOD parity", "SHADER ERROR")
+_PLAIN = "|".join(re.escape(p) for p in PLAIN_TAGS)
+TAG = re.compile(r"^\s*(?:\[([A-Z][A-Z0-9_]*)(?: v(\d+))?\]|\[(%s)\]|(%s)\b)" % (_PLAIN, _PLAIN))
 KEY = re.compile(r"(?<![\w\x01])([A-Za-z_][\w.]*)=")
 # A printf conversion and a std::format replacement field are the same thing for the census: a placeholder. Without this a key whose NAME is a
 # placeholder (`%s=%u` becoming `{}={:d}`) would look like a different key list after a conversion.
@@ -88,7 +92,7 @@ def stream_of(callee: str, call, text: str):
 def census_of_text(text: str):
     """Counter of (tag, version, stream, keys) for the tagged lines the text emits."""
     out = collections.Counter()
-    if not re.search(r'\[[A-Z][A-Z0-9_]*(?: v\d+)?\]|MC2_EVENT|event<', text):
+    if not re.search(r'\[[A-Z][A-Z0-9_]*(?: v\d+)?\]|MC2_EVENT|event<|' + _PLAIN, text):
         return out
     for m in _EVENT_TMPL.finditer(text):
         lit = cxx_calls.string_literal_parts(m.group(4)) or ""
@@ -121,7 +125,7 @@ def census_of_text(text: str):
             continue
         t = TAG.match(lit)
         if t:
-            out[record(t.group(1), t.group(2), stream, lit[t.end():], name in STD_FORMAT_CALLEES)] += 1
+            out[record(t.group(1) or t.group(3) or t.group(4), t.group(2), stream, lit[t.end():], name in STD_FORMAT_CALLEES)] += 1
     return out
 
 
@@ -139,30 +143,73 @@ def census():
     return out
 
 
-PY_TAG = re.compile(r"\\?\[([A-Z][A-Z0-9_]{2,})(?:\s+v(?:\\d|\d)[+*]?)?\\?\]")
+#: A tag inside a Python string: `[TAG`, `\[TAG` (a regex), with or without the closing bracket and version (`"[VISUAL_CAPTURE" in log`).
+PY_TAG = re.compile(r"\\?\[([A-Z][A-Z0-9_]{2,})(?=[\s\]\\]|$)")
+#: Calls and names through which a harness file READS a log line. A tag that only appears in print()/emit()/write() is not consumed.
+CONSUMER_CALLS = frozenset({"compile", "search", "match", "fullmatch", "findall", "finditer", "sub", "split", "startswith", "endswith", "find", "rfind",
+                            "index", "count"})
+CONSUMER_NAMES = re.compile(r"PATTERN|PREFIX|MARKER|TAG|NEEDLE|_RE\b|REGEX|SIGNATURE|KEYWORD|CANAR", re.I)
+#: Files that quote tags as sample data or emit them: never consumers.
+NOT_CONSUMERS = ("tools/tidy/", "tools/log_tag_census.py", "tools/log_identity.py", "tools/test_log_tag_census.py", "tools/test_log_identity.py")
+
+
+def _strings(node):
+    for n in ast.walk(node):
+        if isinstance(n, ast.Constant) and isinstance(n.value, str):
+            yield n.value
+
+
+def consumed_in_source(text: str) -> set:
+    """Tags one Python source reads, found on the syntax tree so a regex continued over lines or an adjacent-literal pattern is seen whole.
+
+    Consumed means: a string argument of a search/match/startswith/... call; a string compared with `in`, `not in` or `==`; a string held by a module-level
+    constant whose name says pattern/prefix/marker/needle/canary, or any module-level tuple/list/set of strings that start with `[`."""
+    try:
+        tree = ast.parse(text)
+    except (SyntaxError, ValueError):
+        return set()
+    found = set()
+
+    def take(strings):
+        for s in strings:
+            found.update(PY_TAG.findall(s))
+            found.update(p for p in PLAIN_TAGS if p in s)
+
+    for n in ast.walk(tree):
+        if isinstance(n, ast.Call):
+            f = n.func
+            if (f.attr if isinstance(f, ast.Attribute) else getattr(f, "id", "")) in CONSUMER_CALLS:
+                for a in list(n.args) + [k.value for k in n.keywords]:
+                    take(_strings(a))
+        elif isinstance(n, ast.Compare) and any(isinstance(o, (ast.In, ast.NotIn, ast.Eq)) for o in n.ops):
+            take(_strings(n))
+    for n in tree.body:
+        if isinstance(n, (ast.Assign, ast.AnnAssign)) and n.value is not None:
+            targets = n.targets if isinstance(n, ast.Assign) else [n.target]
+            strings = list(_strings(n.value))
+            named = any(CONSUMER_NAMES.search(getattr(t, "id", "")) for t in targets)
+            listed = isinstance(n.value, (ast.Tuple, ast.List, ast.Set)) and strings and all(s.startswith("[") for s in strings)
+            if named or listed:
+                take(strings)
+    return found
 
 
 def consumed_tags():
-    """Tags the Python parsers and checkers mention inside a regex or comparison, sorted."""
+    """Tags the Python parsers and checkers read (see consumed_in_source), sorted."""
     tags = set()
     for f in tracked((".py",)):
-        if not f.startswith(("scripts/", "tools/")):
-            continue
-        # tests and the tidy/census tools quote tags as sample data; they are not consumers of the engine's log
-        if f.startswith(("tools/tidy/", "tools/log_tag_census.py", "tools/log_identity.py", "tools/test_log_tag_census.py",
-                         "tools/test_log_identity.py")):
+        if not f.startswith(("scripts/", "tools/")) or f.startswith(NOT_CONSUMERS) or os.path.basename(f).startswith("test_"):
             continue
         with open(os.path.join(ROOT, f), encoding="utf-8", errors="replace") as fh:
-            for ln in fh:
-                if re.search(r"re\.|grep|startswith|findall|\bin (?:line|text|out)|search|match", ln):
-                    tags.update(m.group(1) for m in PY_TAG.finditer(ln))
+            tags |= consumed_in_source(fh.read())
     return sorted(tags)
 
 
 def to_json(counter, consumed):
     rows = [{"tag": t, "ver": v, "stream": s, "keys": list(k), "count": n} for (t, v, s, k), n in sorted(counter.items())]
     return {"about": "Frozen by tools/log_tag_census.py --write. Emitters are (tag, version, stream, key order) with a count; "
-                     "consumed_tags are the tags Python parsers/checkers mention.", "emitters": rows, "consumed_tags": consumed}
+                     "consumed_tags are the tags Python parsers/checkers read; plain_tags are the non-[UPPER vN] lines among them.", "emitters": rows,
+            "consumed_tags": consumed, "plain_tags": list(PLAIN_TAGS)}
 
 
 def diff(counter, baseline):

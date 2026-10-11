@@ -26,23 +26,41 @@ EXCLUDED_FILES = ("*crashbundle*", "*gameos_debugging*", "*/err.cpp", "*/err.h",
 _BRACKET_TAG = re.compile(r"\[([A-Z][A-Z0-9_]*)(?: v\d+)?\]")      # the same shape the log_tag_census recognises, anywhere in the literal
 BASELINE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "tests", "unit", "log_tag_baseline.json")
 _consumed = None
+_plain = None
+
+
+def _baseline() -> dict:
+    with open(BASELINE, encoding="utf-8") as fh:
+        return json.load(fh)
 
 
 def consumed_tags() -> frozenset:
-    """Tags a Python parser or checker mentions (tests/unit/log_tag_baseline.json, written by tools/log_tag_census.py --write)."""
+    """Tags a Python parser or checker reads (tests/unit/log_tag_baseline.json, written by tools/log_tag_census.py --write)."""
     global _consumed
     if _consumed is None:
-        with open(BASELINE, encoding="utf-8") as fh:
-            _consumed = frozenset(json.load(fh)["consumed_tags"])
+        _consumed = frozenset(_baseline()["consumed_tags"])
     return _consumed
+
+
+def plain_tags() -> frozenset:
+    """Lines a harness reads that are not `[UPPER vN]` shaped (VEG_SUMMARY, `[SHADER ERROR]`, ...); all of them are consumed."""
+    global _plain
+    if _plain is None:
+        _plain = frozenset(_baseline().get("plain_tags", []))
+    return _plain
+
+
+def tags_of(literal: str) -> set:
+    """Every tag name a format literal carries, bracketed or plain."""
+    return set(_BRACKET_TAG.findall(literal)) | {p for p in plain_tags() if p in literal}
 
 
 def tag_class(literal: str) -> str:
     """"untagged", "unconsumed" or "consumed" for a format literal."""
-    tags = set(_BRACKET_TAG.findall(literal))
+    tags = tags_of(literal)
     if not tags:
         return "untagged"
-    return "consumed" if tags & consumed_tags() else "unconsumed"
+    return "consumed" if tags & (consumed_tags() | plain_tags()) else "unconsumed"
 
 
 def is_excluded(path: str) -> bool:
@@ -81,7 +99,7 @@ def _convert_call(text: str, call, classes=("untagged",)):
     if cls not in classes:
         raise pb.Bail("tagged line: " + cls)
     only = os.environ.get("MC2_PRINTF_LOG_TAG")
-    if only and cls != "untagged" and only not in set(_BRACKET_TAG.findall(lit)):
+    if only and cls != "untagged" and only not in tags_of(lit):
         raise pb.Bail("tagged line: another tag")
     new_fmt, wrapped, specs = pb.translate_format(lit, rest)
     shown_old, shown_new = lit, new_fmt

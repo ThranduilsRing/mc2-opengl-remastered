@@ -69,3 +69,24 @@ def test_braces_in_a_printf_format_are_literal_so_their_keys_survive_the_convers
     new = pl.convert(src, "x.cpp", classes=("unconsumed",))[0]
     assert "{{gameplay=" in new
     assert old == census(new) == {("TERRAIN_RUNTIME", 1, "stdout", ("side", "samples", "gameplay", "visual")): 1}
+
+
+def test_consumed_tags_are_read_from_the_syntax_tree_not_one_line():
+    src = (
+        'import re\n'
+        'A = re.compile(\n    r"\[AIMED_FIRE v1\] "\n    r"x=(\d+)")\n'                      # a pattern continued over lines
+        'if "[VISUAL_CAPTURE" in logtxt: pass\n'                                              # no closing bracket, a membership test
+        'REQUIRED_CANARIES = ["[VK_SCENE_GL_DRAW_CANARY v1]", "[VK_X_CANARY v1]"]\n'            # a module-level list of tags
+        'm = re.search(r"VEG_SUMMARY\s+n=", t)\n'                                              # a bare leading word
+        'print("[ONLY_PRINTED v1] hello")\n'                                                  # emitted by the harness itself: not a consumer
+        'x.write("[ONLY_WRITTEN v1]")\n'
+    )
+    got = lc.consumed_in_source(src)
+    assert {"AIMED_FIRE", "VISUAL_CAPTURE", "VK_SCENE_GL_DRAW_CANARY", "VK_X_CANARY", "VEG_SUMMARY"} <= got
+    assert not ({"ONLY_PRINTED", "ONLY_WRITTEN"} & got)
+
+
+def test_plain_tags_are_emitters_in_the_census():
+    c = lc.census_of_text('void f(){ mc2::fmt::print_err("VEG_SUMMARY instance_count={:d}\\n", 1); mc2::fmt::print_out("[SHADER ERROR] CompileShader: {}\\n", s); }\n')
+    assert ("VEG_SUMMARY", -1, "stderr", ("instance_count",)) in c
+    assert ("SHADER ERROR", -1, "stdout", ()) in c

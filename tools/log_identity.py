@@ -7,6 +7,10 @@ WHY: the printf -> std::format conversions (C++23 step 3) must not change what t
 so a byte diff is useless, but a changed spelling, key order, padding of a string or a lost line shows up as a shape that appears on one side only.
 
   py -3 tools/log_identity.py tests/smoke/artifacts/<before> tests/smoke/artifacts/<after> [--mission mc2_03]
+
+WHAT IT PROVES, AND WHAT IT DOES NOT: line spellings, key order, the set of lines and the set of tags of the lines that the two runs print. It masks every
+number, so a changed sign, width, precision or hex case is invisible here; the format corpus (tests/unit/printf_corpus*.inc) proves the numbers. It compares
+sets, not counts, ignores a log file present only after, and most tags never fire on mc2_03/mc2_24. Both proofs are needed.
 """
 from __future__ import annotations
 
@@ -21,7 +25,7 @@ _NUM = re.compile(r"(?<![A-Za-z_\d])(?:0x[0-9a-fA-F]+|[0-9A-F]{16}\b|-?\d+(?:\.\
 _TAG = re.compile(r"^\s*\[([A-Z][A-Z0-9_]*)(?: v\d+)?\]")
 #: Lines that differ between two runs of the SAME executable, so they say nothing about a conversion: the build stamp and the per-frame block-set
 #: trace. (The frame-2 [TerrainLOD v1] DIAG plane dump used to be here; it printed uninitialised camera matrices and was repaired in 47a9623ed.)
-NOISE = re.compile(r"\[BUILD_FINGERPRINT v1\]|\[INSTR v1\] enabled:|^\s*\[BlockSet\]")
+NOISE = re.compile(r"\[BUILD_FINGERPRINT v1\]|^\s*\[BlockSet\]")
 
 
 def shape(line: str) -> str:

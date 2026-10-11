@@ -1,5 +1,5 @@
 {
- "about": "Frozen by tools/log_tag_census.py --write. Emitters are (tag, version, stream, key order) with a count; consumed_tags are the tags Python parsers/checkers mention.",
+ "about": "Frozen by tools/log_tag_census.py --write. Emitters are (tag, version, stream, key order) with a count; consumed_tags are the tags Python parsers/checkers read; plain_tags are the non-[UPPER vN] lines among them.",
  "emitters": [
   {
    "tag": "ABL",
@@ -6809,6 +6809,19 @@
    "count": 2
   },
   {
+   "tag": "ORDER_LIVENESS_SUMMARY",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "issued_move",
+    "moved",
+    "refused",
+    "stalled",
+    "verdict"
+   ],
+   "count": 1
+  },
+  {
    "tag": "OVERLAY_CEMENT_ADOPT",
    "ver": 1,
    "stream": "stdout",
@@ -8519,6 +8532,22 @@
    "stream": "stdout",
    "keys": [],
    "count": 2
+  },
+  {
+   "tag": "SHADER ERROR",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 2
+  },
+  {
+   "tag": "SHADER ERROR",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "id"
+   ],
+   "count": 1
   },
   {
    "tag": "SHADOWFRUSTUM",
@@ -10731,6 +10760,16 @@
    "count": 1
   },
   {
+   "tag": "TerrainLOD parity",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "legacy",
+    "chunk"
+   ],
+   "count": 1
+  },
+  {
    "tag": "UI_AMBIENT_GUARD",
    "ver": -1,
    "stream": "stderr",
@@ -10833,6 +10872,17 @@
     "rej_overlay",
     "rej_slope",
     "passed"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VEG_SUMMARY",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "instance_count",
+    "draw_calls",
+    "flush_reason"
    ],
    "count": 1
   },
@@ -12698,37 +12748,77 @@
   }
  ],
  "consumed_tags": [
+  "AIMED_FIRE",
   "APPEAR_AUDIT",
   "ASSET_LOAD",
   "ASSET_SCALE",
+  "BRAIN_ENGAGE",
+  "BRAIN_FREEZE_TRACE",
+  "BRAIN_PATROL_KICK",
+  "BUILD_FINGERPRINT",
+  "CAMERA_PARK",
   "CONFIG",
   "CRASHBUNDLE",
   "DEPLOY_COHERENCE",
-  "DEPLOY_FINGERPRINT",
-  "DEPLOY_STALENESS",
+  "DEPLOY_GUARD",
   "DESTROY",
+  "DISK_GUARD",
   "ESMOKE",
   "FASTPATH_DROP",
   "GLP",
   "GL_ERROR",
   "GPUPROPS",
+  "GPU_CULL",
+  "HEALTH",
   "HEARTBEAT",
   "INSTR",
+  "ISO_DEPLOY",
+  "LINK_GUARD",
+  "MARAUDER",
+  "MECH_MATERIAL_GPU",
   "MOVER",
   "MOVER_COHERENCE",
+  "OBJBATCHER",
+  "ORDER_FIXTURE",
+  "ORDER_LIVENESS_SUMMARY",
   "PERF",
   "PIPELINE_BIND",
   "QUADSETUP_SKIP",
   "RENDER_SNAPSHOT",
+  "SHADER",
+  "SHADER ERROR",
+  "SHADER_SCHEMA",
   "SIMID",
   "SMOKE",
   "SOAK",
   "SPLIT_PATH_PARITY",
+  "TERRAIN_INDIRECT",
   "TEXLOAD",
+  "TEX_RESOLVE",
   "TGL_POOL",
   "TIMING",
-  "VERIFY",
+  "TerrainLOD parity",
+  "VEG_SUMMARY",
+  "VFX_ORACLE_TUBE",
+  "VISUAL_CAPTURE",
+  "VK_MECH_TIER1",
+  "VK_POST_FOG_NATIVE",
+  "VK_POST_HZB_NATIVE",
+  "VK_POST_SCREENFX_NATIVE",
+  "VK_POST_SSAO_NATIVE",
   "VK_PRESENT",
-  "VK_TERRAIN_TIER1"
+  "VK_PROP_COLOR_TIER1",
+  "VK_SCENE_GL_DRAW_CANARY",
+  "VK_SCREENSHADOW_GL_CANARY",
+  "VK_SHADOW_INTEROP",
+  "VK_SHARED_SCENE",
+  "VK_TERRAIN_TIER1",
+  "VK_WATER_TIER1"
+ ],
+ "plain_tags": [
+  "VEG_SUMMARY",
+  "ORDER_LIVENESS_SUMMARY",
+  "TerrainLOD parity",
+  "SHADER ERROR"
  ]
 }
