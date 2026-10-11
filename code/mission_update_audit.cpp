@@ -124,14 +124,11 @@ namespace {
 				}
 			}
 
-			printf("[MOVER v2] id=%ld name=%s team=%ld pos=%.1f,%.1f,%.1f "
-				"hp=%.2f pilot=%s order=%ld/%s target=%ld "
-				"brain=%ld mstate=%ld pgoal=%.1f,%.1f,%.1f pstep=%ld/%ld pcost=%ld "
-				"tgtpos=%.1f,%.1f,%.1f\n",
-				partId, name, team, pos.x, pos.y, pos.z,
-				hpFrac, pilotName, orderVal, orderName, targetId,
-				brainState, moveState, pgoal.x, pgoal.y, pgoal.z,
-				pCurStep, pNumSteps, pCost,
+			mc2::fmt::print_out("[MOVER v2] id={:d} name={} team={:d} pos={:.1f},{:.1f},{:.1f} hp={:.2f} pilot={} order={:d}/{} target={:d} brain={:d} mstate={:d} pgoal={:.1f},{:.1f},{:.1f} pstep={:d}/{:d} pcost={:d} tgtpos={:.1f},{:.1f},{:.1f}\n",
+				mc2::fmt::as_i32(partId), mc2::fmt::safe(name), mc2::fmt::as_i32(team), pos.x, pos.y, pos.z,
+				hpFrac, mc2::fmt::safe(pilotName), mc2::fmt::as_i32(orderVal), mc2::fmt::safe(orderName), mc2::fmt::as_i32(targetId),
+				mc2::fmt::as_i32(brainState), mc2::fmt::as_i32(moveState), pgoal.x, pgoal.y, pgoal.z,
+				mc2::fmt::as_i32(pCurStep), mc2::fmt::as_i32(pNumSteps), mc2::fmt::as_i32(pCost),
 				tgtPos.x, tgtPos.y, tgtPos.z);
 			++emitted;
 		}
