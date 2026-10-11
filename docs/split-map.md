@@ -30,6 +30,16 @@ Split commit: `d9f3d13b6`.
 | `gos_mech_batcher_geometry.cpp` | GpuMechBatcher: mech type / LOD registration, the shared vertex buffer upload, normal recomputation and geometry finalise. |
 | `gos_mech_batcher_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
+## `GameOS/gameos/gos_particle_bridge.cpp`
+
+Split commit: `f0521b300`.
+
+| Piece | What it holds |
+|---|---|
+| `gos_particle_bridge.cpp` | keeps the billboard state, init, the particle flush and the VFX tuning accessors |
+| `gos_particle_bridge_tube.cpp` | GPU particle bridge: the MC2_VFX_ORACLE_TUBE ribbon bridge: ribbon program / buffers, gos_tube_ribbon_flush, enqueue and the deferred flush. |
+| `gos_particle_bridge_internal.h` | shared include bundle, extern globals and declarations of the pieces |
+
 ## `GameOS/gameos/gos_postprocess.cpp`
 
 | Piece | What it holds |
@@ -103,6 +113,18 @@ Split commit: `f15cb970d`.
 | `vulkan_terrain_island_run.cpp` | VK terrain island: the extern C entry points: enabled / ready / prepare, the frame UBO and light-pool staging, and the per-frame run. |
 | `vulkan_terrain_island_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
+## `GameOS/gameos/vulkan_water_island.cpp`
+
+Split commit: `bc6deb13f`.
+
+| Piece | What it holds |
+|---|---|
+| `vulkan_water_island.cpp` | keeps the health / interop counters, the env gates, setFallback / vlog / load_spv, the buffer and descriptor helpers, submit_once and the health / enabled / destroy entry points |
+| `vulkan_water_island_images.cpp` | VK water island: the HDRI environment and shore height / mask texture imports. |
+| `vulkan_water_island_init.cpp` | VK water island: init_island: the shared-device borrow, the GBuffer / depth images, buffers, render pass and pipeline. |
+| `vulkan_water_island_run.cpp` | VK water island: mc2_vk_water_island_run: the per-frame feed staging, draw and fence handling. |
+| `vulkan_water_island_internal.h` | shared include bundle, extern globals and declarations of the pieces |
+
 ## `GuiRuntime/GraphicsOptionsWindow.cpp`
 
 | Piece | What it holds |
@@ -112,6 +134,16 @@ Split commit: `f15cb970d`.
 | `GraphicsOptionsWindow_passes.cpp` | Graphics options window: draw-packet, render-pass and G-buffer sections. |
 | `GraphicsOptionsWindow_terrain.cpp` | Graphics options window: terrain, static-prop and water tuning sections. |
 | `GraphicsOptionsWindow_internal.h` | shared include bundle, extern globals and declarations of the pieces |
+
+## `GuiRuntime/GuiRuntime.cpp`
+
+Split commit: `101de6cec`.
+
+| Piece | What it holds |
+|---|---|
+| `GuiRuntime.cpp` | keeps the ImGui lifecycle (init, new frame, render, shutdown), the viewport / dock handling and the font loading |
+| `GuiRuntime_draw.cpp` | GuiRuntime: IsReadyForUiText and the DrawUi* / CalcUiTextWrapLines / DrawUiEditBox immediate-mode draw API. |
+| `GuiRuntime_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
 ## `code/ablmc2.cpp`
 
@@ -330,6 +362,17 @@ Split commit: `be79c6ead`.
 | `EditorObjectMgr_render.cpp` | EditorObjectMgr: per-frame update and render, building appearance lookup/priming and static-prop registration. |
 | `EditorObjectMgr_select.cpp` | EditorObjectMgr: selection handling and forest editing. |
 | `EditorObjectMgr_internal.h` | shared include bundle, extern globals and declarations of the pieces |
+
+## `editor/EditorObjects.cpp`
+
+Split commit: `e7312b22b`.
+
+| Piece | What it holds |
+|---|---|
+| `EditorObjects.cpp` | keeps the EditorObject base class and NavMarker |
+| `EditorObjects_pilot.cpp` | Editor objects: DropZone, Brain and Pilot construction, copy, save / load and pilot initialisation (and the pilot data-loss warning). |
+| `EditorObjects_unit.cpp` | Editor objects: Unit: construction, copy, save / load, colours and the brain patrol import. |
+| `EditorObjects_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
 ## `editor/Objective.cpp`
 

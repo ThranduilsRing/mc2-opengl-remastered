@@ -200,10 +200,39 @@ def check_macros(old, new_by_file, header_name):
     return f
 
 
+# A namespace-scope statement `Type name [= init];` with no storage keyword: a definition with external linkage (a header would define it in every piece).
+_GLOBAL_DEF = re.compile(rb"^(?:[\w:]+(?:<[^;=]*>)?[\s\*&]+)+\**&?\w+(?:\[[^\]]*\])*\s*(?:=[^;]*)?;$")
+_NOT_A_VARIABLE = re.compile(rb"^(?:extern|static|inline|constexpr|const|typedef|using|struct|class|enum|union|template|friend|namespace|return|public|private|protected)\b")
+
+
+def blank_block_comments(lines):
+    """The lines with /* ... */ text removed (state carried across lines), so commented-out code is not scanned."""
+    out, inside = [], False
+    for l in lines:
+        res, i = b"", 0
+        while i < len(l):
+            if inside:
+                j = l.find(b"*/", i)
+                if j < 0:
+                    i = len(l)
+                else:
+                    inside, i = False, j + 2
+            else:
+                j = l.find(b"/*", i)
+                if j < 0:
+                    res += l[i:]
+                    i = len(l)
+                else:
+                    res += l[i:j]
+                    inside, i = True, j + 2
+        out.append(res)
+    return out
+
+
 def check_header(header_lines, allow):
     f = []
     okv = set(allow.get("header_vars", []))
-    for i, l in top_level(header_lines):
+    for i, l in top_level(blank_block_comments(header_lines)):
         code = strip_code(l).strip()
         if not code or code.startswith(b"#"):
             continue
@@ -219,6 +248,8 @@ def check_header(header_lines, allow):
             f.append(("header", "non-inline static variable in the internal header (one copy per piece): %s" % code[:100].decode("utf-8", "replace")))
         elif re.match(rb"inline\b", code) and b"const" not in code and not code.startswith(b"inline namespace"):
             f.append(("header", "mutable inline variable in the internal header (use inline constexpr or list it in header_vars): %s" % code[:100].decode("utf-8", "replace")))
+        elif _GLOBAL_DEF.match(code) and not _NOT_A_VARIABLE.match(code):
+            f.append(("header", "global variable DEFINED in the internal header (every piece would define it; declare it extern here and define it in one piece, or list it in header_vars): %s" % code[:100].decode("utf-8", "replace")))
     return f
 
 

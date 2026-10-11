@@ -7,19 +7,20 @@ Read ORCHESTRATOR-HANDOFF.md Ground rules first. Whole-tier census: appendix of 
 - 1 abldbug 1319->753 dd946d83d | 2 genactor 1297->730 0196b20c5 | 3 logisticsmissioninfo 1316->511 dc3a26c8a | 4 logisticsvariant 1221->551 aa9130de3
 - 5 cevfx 1217->669 2d6c73efc | 6 mechbayscreen 1176->325 b43d4b40c | 7 group 1102->253 f0d37de6c | 8 team 1077->543 be79c6ead
 - 9 ablxstd 1071->239 6292520c3 | 10 mlr_i_tmesh 1206->427 27cd40e3b | 11 multplyr 1204->403 78da1679d | 12 logistics 1002->437 9af8c3f04
+- 13 gos_particle_bridge 1443->871 f0521b300 (prep e143d1f58) | 14 vulkan_water_island 1428->336 bc6deb13f (prep b9c6e015d) | 15 GuiRuntime 1365->894 101de6cec (prep fe54fffb0) | 16 EditorObjects 1368->273 e7312b22b (prep 8ad0b2a1b)
 - userinput.cpp 1036->649: deleted the twelve unreferenced cursor UV tables (821775678; recovery 76a3e3d91).
-- Tooling: capture_ab.py, split_cpp.py (--stage-dir/--install with a verified marker, GROUP_WRAP), post_split.py, tier_census.py, split_verify 'static' check
-  (file-static / anonymous / named-namespace static function called from another piece).
-- Tier1 5/5 at 055dacab9, aa9130de3, be79c6ead; and 69a0d5450 (after splits 9-12 + the deletion): 5/5 (147 / 84 / 105 / 132 / 123 fps).
+- Tooling: capture_ab.py, split_cpp.py (--stage-dir/--install with a verified marker, GROUP_WRAP, HEADER_POST, GUARD), post_split.py, tier_census.py, split_verify
+  checks ('static' cross-piece calls incl. named namespaces; a global DEFINED in the header, also under #else), check-gated-layout-macros follows <stem>_internal.h.
+- Tier1 5/5 at 055dacab9, aa9130de3, be79c6ead, 69a0d5450; and e7312b22b (after splits 13-16): 5/5 (147 / 83 / 106 / 131 / 123 fps). Editor smoke 15/15 on e7312b22b.
 
 ## Next
-- cone_glow.cpp (1021) SKIPPED: the gate readers are interleaved with static helpers shared by the queue code (vis_gate_enabled <-> vis_job_a_armed ...), a clean
-  cut leaves a ~135-line piece. Not worth the linkage edits.
-- Left (census CHEAP, survey LEFT; do not touch): contact, ablscan, soundsys, estring, quad_draw, mlr_i_pmesh. PHASE files need a phase pass.
-- Census leftovers in code/ and mclib/ at 1000-1500 are pieces (PIECE) or LEFT; the tier in code/ and mclib/ is essentially done. GameOS / editor / GuiRuntime
-  CHEAP files from the survey (gos_particle_bridge, vulkan_water_island, GuiRuntime.cpp, EditorObjects) are the next real candidates, if the coordinator wants them.
-- Nice-to-have tooling (not built): (1) cfg generator from first/last function names, (2) split_cpp.py writing the CMake list edit and the allow-json skeleton,
-  (3) split_verify: a header (via an `#else`) that DEFINES a global (multplyr EventsToMissionResultsScreen link error) is not caught by check_header.
+- The survey's CHEAP list in GameOS / GuiRuntime / editor is done (particle_bridge, water_island, GuiRuntime, EditorObjects). cone_glow.cpp (1021) was SKIPPED
+  (gate readers interleaved with static helpers the queue code shares; a clean cut leaves a ~135-line piece).
+- Left (census CHEAP, survey LEFT; do not touch): contact, ablscan, soundsys, estring, quad_draw, mlr_i_pmesh. PHASE files need a phase pass, not a split.
+- Remaining census candidates (GameOS / editor / gui, not surveyed yet): see the appendix of size-tier-1000-survey.md; EditorInspector*, gameosmain*, mlrlightmap* are off limits.
+- Nice-to-have tooling (not built): (1) cfg generator from first/last function names, (2) split_cpp.py writing the CMake list edit and the allow-json skeleton.
+- Prep-commit pattern for namespace-heavy files (water island, GuiRuntime, particle bridge): rename/re-open the anonymous namespace at piece boundaries, move
+  cross-piece helpers to `inline` in the header or give them external linkage, then split with GUARD / GROUP_WRAP / HEADER_MOVES; split_verify finds what is left.
 
 ## Recipe per split
 1. `git grep -n '<orig>.cpp' -- '*CMakeLists.txt' '*.cmake'`; write a cfg (.claude/l2cfg/*_cfg.py as models; allow json via $SPLIT_ALLOW_DIR) and stage:

@@ -149,3 +149,18 @@ def test_static_function_inside_a_named_namespace_called_from_another_piece_is_f
                    "x_b.cpp": "namespace ns {\nbool use() { return gate() && open(); }\n}\n"})
     f = sv.check_static_calls(p, "x_internal.h", {})
     assert [m.split()[1] for _, m in f] == ["gate"], f
+
+
+def test_global_defined_in_the_header_even_inside_an_else_branch_is_flagged():
+    h = ("#ifndef M_INTERNAL_H\n#define M_INTERNAL_H\n#ifdef FEAT\nextern bool seen;\n#else\nbool seen = false;\n#endif\n"
+         "extern int e;\nconst int k = 3;\nstruct Foo;\nvoid f(int x);\ntypedef int T;\nusing U = int;\nint counter;\n#endif // M_INTERNAL_H\n")
+    f = sv.check_header(sv.lines_of(h.encode()), {})
+    flagged = sorted(m.split(": ", 1)[-1] for _, m in f)
+    assert flagged == ["bool seen = false;", "int counter;"], flagged
+    assert sv.check_header(sv.lines_of(h.encode()), {"header_vars": ["seen", "counter"]}) == []
+
+
+def test_commented_out_definitions_in_the_header_are_not_flagged():
+    h = "#ifndef M_INTERNAL_H\n#define M_INTERNAL_H\n/*\nint hidden = 0;\nint hidden2;\n*/\nint real; /* tail */\n#endif // M_INTERNAL_H\n"
+    f = sv.check_header(sv.lines_of(h.encode()), {})
+    assert [m.split(": ", 1)[-1] for _, m in f] == ["int real;"], f

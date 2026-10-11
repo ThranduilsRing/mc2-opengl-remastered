@@ -1,0 +1,270 @@
+// VK water island: mc2_vk_water_island_run: the per-frame feed staging, draw and fence handling.
+// Declared in the class headers; shared names in vulkan_water_island_internal.h.
+#include "vulkan_water_island_internal.h"
+
+#ifdef MC2_VULKAN_ISLAND
+
+
+// Per-frame entry. Inputs (all from the GL side, at water-render time):
+//   sceneColorTex/sceneDepthTex — GL scene MainColor + depth textures (w x h).
+//   mvp16 — the 16 raw floats GL uploads (glUniformMatrix4fv GL_FALSE) for u_worldToClipGL.
+//   thinRecords/thinCount — the CPU-staged per-frame thin-record array (48B each).
+//   recipes/recipeCount — mission-static recipe array (64B each; uploaded once).
+//   vsP/fsP — the packed uniform params (LOCKSTEP with water_geom.{vert,frag}).
+// Returns 1 if the VK water pass rendered+composited this frame; 0 = fell back
+// (caller must then run the GL water draw, i.e. treat 0 as "not handled").
+extern "C" int mc2_vk_water_island_run(
+    unsigned int sceneColorTex, unsigned int sceneDepthTex, int w, int h,
+    const void* thinRecords, unsigned int thinCount,
+    const void* recipes, unsigned int recipeCount,
+    const void* vsParams, const void* fsParams,
+    unsigned int hdriGlTex) {
+    if (!waterTier1Requested()) return 0;
+    if (thinCount == 0 || recipeCount == 0 || w <= 0 || h <= 0) return 0;
+    ZoneScopedN("VKIsl.Water.Run");   // VK-ISLAND-TRACY-1 per-frame island total (CPU)
+    (void)sceneColorTex;
+    (void)sceneDepthTex;
+
+    using clk = std::chrono::steady_clock;
+    auto usSince = [](clk::time_point t0){ return std::chrono::duration<double, std::micro>(clk::now() - t0).count(); };
+    const clk::time_point tTotal0 = clk::now();
+    const bool perf = waterPerfGateRequested();
+    // Fine-grained sub-step timers (only meaningful when `perf`; cheap to always fill).
+    double us_stage = 0.0;      // recipe/thin/UBO memcpy staging (steps 1-3)
+    double us_depth_readback=0.0; // glGetTexImage(DEPTH) GL->CPU stall (step 5)
+    double us_depth_stage = 0.0;  // memcpy depth scratch -> VK staging (step 5)
+    double us_record = 0.0;     // command-buffer record (step 7)
+    double us_submit = 0.0;     // vkQueueSubmit (step 8)
+    double us_sem_wait = 0.0;   // glInteropWaitFromVk (step 8)
+    double us_fence_wait = 0.0; // vkWaitForFences inline stall (step 8)
+    double us_composite = 0.0;  // GL composite draw (step 9)
+
+    // Lazy init / rebuild on size change.
+    if (g_island && (g_island->w != w || g_island->h != h)) {
+        destroy_island(g_island); delete g_island; g_island = nullptr;
+    }
+    if (!g_island) {
+        g_island = new WaterIsland();
+        if (!init_island(g_island, w, h)) {
+            vlog("init failed (%s) — GL fallback.", g_health.fallbackReason);
+            destroy_island(g_island); delete g_island; g_island = nullptr;
+            return 0;
+        }
+    }
+    WaterIsland* s = g_island;
+    // VK-OWNERSHIP-GAP-FIX (item-4 correctness): direct-chain sets useInterop=false
+    // (init:640) but the old guard '|| !s->useInterop' bailed here, so under the strict
+    // umbrella water returned 0 and GL silently drew water into the VK-owned GBuffer
+    // (used_vulkan=0). Enter the native path when direct-chain OR hybrid interop is armed.
+    if (s->disabled || !s->inited) return 0;  // VK-RUNG8-ITEM5: direct-chain-native only
+
+    // RUNG-6.5: COPY-ONCE HDRI import (or 1x1 dummy) — the FS statically uses
+    // binding 2, so it must be valid before the first draw. Re-runs only if the
+    // GL HDRI texture id changes (e.g. late HDRI load: first frames import the
+    // dummy at glTex=0, then the real texture once ready). Safe to update the
+    // descriptor here: ensure_hdri device-idles before its descriptor update
+    // (VK-WATER-FENCE-DEFER-1 — the old "previous frame's fence was waited
+    // inline" guarantee is gone under the deferred retire).
+    if (!ensure_hdri(s, hdriGlTex)) {
+        setFallback("hdri_binding_setup_failed"); s->disabled = true; return 0;
+    }
+
+    // VK-PARITY-WATER-SHORE-1: shore height/mask copy-once import (binding 3/4).
+    if (!ensure_shore(s)) {
+        setFallback("shore_binding_setup_failed"); s->disabled = true; return 0;
+    }
+
+    // Snapshot forbidden COLOR counters (prove none fire on the interop path).
+    const unsigned long f0a = g_forbidden.vkCmdCopyBufferToImage;
+    const unsigned long f0b = g_forbidden.vkCmdCopyImageToBuffer;
+    const unsigned long f0c = g_forbidden.glGetTexImage;
+    const unsigned long f0d = g_forbidden.glTexSubImage2D;
+
+    // VK-RUNG8-ITEM5: direct-chain-native only (the trailing non-tier1 path is dead).
+    if (!s->tier1) return 0;
+
+    // VK-WATER-FENCE-DEFER-1 (cluster-A pilot): begin the shared-slot frame BEFORE
+    // staging. The slot-fence wait inside beginFrame IS the deferred retire of the
+    // submit that last used this parity slot (normally an earlier island / last
+    // frame — near-free by now), and it protects everything indexed [par] below:
+    // staging buffers, descriptor set, command buffer. The inline post-submit wait
+    // this replaces is kept only under the MC2_VK_WATER_FENCE_DEFER=0 killswitch.
+    const clk::time_point tFence0 = clk::now();
+    VkFrameSync fsC{};
+    { ZoneScopedN("VKIsl.Water.FenceWait");   // VK-ISLAND-TRACY-1: deferred retire of the parity slot
+      fsC = vkImageResourceBeginFrame(s->sColorRes); }
+    us_fence_wait = usSince(tFence0);
+    const uint32_t par = fsC.parity & 1u;
+
+    const clk::time_point tStage0 = clk::now();
+    {
+    ZoneScopedN("VKIsl.Water.Feed");   // VK-ISLAND-TRACY-1: recipe/thin/UBO staging (steps 1-3)
+    // ---- 1) Upload recipe SSBO once (mission-static). ----
+    if (!s->recipeUploaded) {
+        const VkDeviceSize need = (VkDeviceSize)recipeCount * 64;
+        if (need > s->recipeBytes) {
+            vkDeviceWaitIdle(s->device);
+            vmaDestroyBuffer(s->allocator, s->recipeBuf, s->recipeAlloc);
+            if (!make_buffer(s, need, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &s->recipeBuf, &s->recipeAlloc)) { s->disabled = true; return 0; }
+            s->recipeBytes = need;
+            write_descriptors(s);
+        }
+        void* p = nullptr;
+        if (vmaMapMemory(s->allocator, s->recipeAlloc, &p) == VK_SUCCESS) {
+            std::memcpy(p, recipes, (size_t)recipeCount * 64);
+            vmaUnmapMemory(s->allocator, s->recipeAlloc);
+        }
+        s->recipeUploaded = true;
+        g_health.recipeCount = recipeCount;
+    }
+
+    // ---- 2) Upload the per-frame thin records into slot `par` (CPU-staged). ----
+    const VkDeviceSize thinBytes = (VkDeviceSize)thinCount * 48;
+    if (!ensure_thin_capacity(s, par, thinBytes)) { s->disabled = true; return 0; }
+    {
+        void* p = nullptr;
+        if (vmaMapMemory(s->allocator, s->thinAlloc[par], &p) == VK_SUCCESS) {
+            std::memcpy(p, thinRecords, (size_t)thinBytes);
+            vmaUnmapMemory(s->allocator, s->thinAlloc[par]);
+        }
+    }
+    g_health.thinRecords = thinCount;
+
+    // ---- 3) Upload slot `par`'s UBOs. ----
+    {
+        void* p = nullptr;
+        if (vmaMapMemory(s->allocator, s->vsUboAlloc[par], &p) == VK_SUCCESS) {
+            WaterVsParams vsLocal;
+            std::memcpy(&vsLocal, vsParams, sizeof(WaterVsParams));
+            // Shore mode 3: flat water plane in the VS only when the hi-res height sidecar
+            // is really imported (mirrors GL u_shoreFlat = mode==3 && shTex != 0).
+            vsLocal.p3[1] = (((int)(((const WaterFsParams*)fsParams)->f4[0] + 0.5f) == 3) && s->shHReal) ? 1.0f : 0.0f;
+            std::memcpy(p, &vsLocal, sizeof(WaterVsParams)); vmaUnmapMemory(s->allocator, s->vsUboAlloc[par]);
+        }
+        if (vmaMapMemory(s->allocator, s->fsUboAlloc[par], &p) == VK_SUCCESS) {
+            WaterFsParams fsLocal;
+            std::memcpy(&fsLocal, fsParams, sizeof(WaterFsParams));
+            // RUNG-6.5 fail-soft: if the real HDRI bytes aren't imported (dummy
+            // bound), force u_waterHdriLod (f2.w, offset 60) to -1 so the FS
+            // takes the SH-L2 fallback — same semantics as GL !isHdriReady().
+            if (!s->hdriRealImported) fsLocal.f2[3] = -1.0f;
+            // VK-PARITY-WATER-SHORE-1: GL sets u_hasShoreHeight = (mode==2 && tex)
+            // and u_hasShoreMask = (mode>=1 && tex); the island owns the textures.
+            {
+                const int shMode = (int)(fsLocal.f4[0] + 0.5f);
+                fsLocal.f4[1] = (shMode >= 2 && s->shHReal) ? 1.0f : 0.0f;
+                fsLocal.f4[2] = (shMode >= 1 && s->shMReal) ? 1.0f : 0.0f;
+            }
+            std::memcpy(p, &fsLocal, sizeof(WaterFsParams));
+            vmaUnmapMemory(s->allocator, s->fsUboAlloc[par]);
+        }
+    }
+    }   // VK-ISLAND-TRACY-1: close VKIsl.Water.Feed
+
+    // ============================ RUNG 6 TIER-1 PATH ============================
+    // In-place co-write into the SHARED scene GBuffer. No color/depth import, no
+    // composite. Frame-sync protocol COPIED from vulkan_terrain_island.cpp:2495-2603,
+    // with the beginFrame hoisted above staging (VK-WATER-FENCE-DEFER-1).
+    {
+        us_stage = usSince(tStage0);
+        g_health.copyColorInUs = 0.0;
+        g_health.copyDepthInUs = 0.0;
+
+        VkCommandBuffer cb = s->cbuf[par];
+
+        const clk::time_point tRender0 = clk::now();
+        {
+        ZoneScopedN("VKIsl.Water.Record");   // VK-ISLAND-TRACY-1: command-buffer record
+        vkResetCommandBuffer(cb, 0);
+        VkCommandBufferBeginInfo bi{};
+        bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
+
+        // All attachments LOAD -> clear values ignored (array must still cover them).
+        VkClearValue clears[3]{};
+        VkRenderPassBeginInfo rbi{};
+        rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        rbi.renderPass = s->rpass; rbi.framebuffer = s->fb;
+        rbi.renderArea = {{0, 0}, {(uint32_t)w, (uint32_t)h}};
+        rbi.clearValueCount = 3; rbi.pClearValues = clears;
+        vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
+        vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe);
+        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout, 0, 1, &s->set[par], 0, nullptr);
+        vkCmdDraw(cb, thinCount * 6u, 1, 0, 0);
+        vkCmdEndRenderPass(cb);
+        if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
+        }   // VK-ISLAND-TRACY-1: close VKIsl.Water.Record
+        us_record = usSince(tRender0);
+
+        // VK-RUNG8-ITEM5: direct-chain-native submit — waits/signals NO GL<->VK
+        // semaphores (shared GBuffer stays Vulkan-owned); color fence orders CPU.
+        VkSubmitInfo si{};
+        si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        si.waitSemaphoreCount = 0; si.pWaitSemaphores = nullptr; si.pWaitDstStageMask = nullptr;
+        si.commandBufferCount = 1; si.pCommandBuffers = &cb;
+        si.signalSemaphoreCount = 0; si.pSignalSemaphores = nullptr;
+        const clk::time_point tSubmit0 = clk::now();
+        { ZoneScopedN("VKIsl.Water.Submit");   // VK-ISLAND-TRACY-1: vkQueueSubmit
+          if (vkQueueSubmit(s->queue, 1, &si, fsC.fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; } }
+        us_submit = usSince(tSubmit0);
+
+        us_sem_wait = 0.0;
+
+        // VK-WATER-FENCE-DEFER-1: the inline retire wait is GONE — the submit's
+        // fence (the shared parity-slot fence) is waited at the slot's next
+        // vkImageResourceBeginFrame, i.e. the deferred retire that beginFrame at
+        // the top of this function already timed into us_fence_wait. Everything
+        // this frame's submit uses is per-parity ([par]) or static, so nothing is
+        // rewritten before that wait. GPU-side ordering against the downstream
+        // post/composite passes never depended on this CPU wait (their command
+        // buffers' entry barriers cover earlier submission-order work).
+        // Killswitch MC2_VK_WATER_FENCE_DEFER=0 restores the inline wait.
+        if (!waterFenceDeferEnabled()) {
+            ZoneScopedN("VKIsl.Water.InlineFenceWait");   // VK-ISLAND-TRACY-1: killswitch-only inline retire
+            const clk::time_point tInline0 = clk::now();
+            if (vkWaitForFences(s->device, 1, &fsC.fence, VK_TRUE, 5ull*1000*1000*1000) != VK_SUCCESS) {
+                setFallback("fence_timeout"); s->disabled = true; return 0;
+            }
+            us_fence_wait = usSince(tInline0);
+        }
+        g_health.drawUs = usSince(tRender0);
+        g_health.colorOutUs = 0.0;   // no composite in tier1
+
+        // HARD assert: no COLOR-side readback/copy fired (tier1 must be zero-copy on
+        // color AND depth — there is no expected depth-in either).
+        const bool tier1ReadbackFired =
+            (g_forbidden.vkCmdCopyBufferToImage != f0a) || (g_forbidden.vkCmdCopyImageToBuffer != f0b) ||
+            (g_forbidden.glGetTexImage != f0c) || (g_forbidden.glTexSubImage2D != f0d);
+        if (tier1ReadbackFired) {
+            vlog("FATAL: a COLOR-side readback/copy fired on the tier1 co-write path — "
+                 "zero-copy invariant violated; failing frame + disabling.");
+            setFallback("interop_did_readback"); s->disabled = true; return 0;
+        }
+
+        g_health.vkDraws = 1;
+        ++g_health.usedVulkan;
+        // VK-RUNG8-ITEM5: never interop (direct-chain-native only).
+        g_health.totalUs = usSince(tTotal0);
+        static bool s_tier1FirstOk = false;
+        if (!s_tier1FirstOk) {
+            vlog("first TIER-1 in-place water GBuffer co-write: thin=%u recipes=%u "
+                 "(color0 premult-over blend, normal untouched (writemask 0, GL a=0 parity), "
+                 "shared depth GEQUAL test+write; no composite, no depth readback).",
+                 thinCount, recipeCount);
+            s_tier1FirstOk = true;
+        }
+        if (perf) {
+            std::fprintf(stderr,
+                "[VK_WATER_PERF] tier1=1 thin=%u recipes=%u stage_us=%.1f record_us=%.1f "
+                "submit_us=%.1f sem_wait_us=%.1f fence_wait_us=%.1f island_total_us=%.1f\n",
+                thinCount, recipeCount, us_stage, us_record, us_submit, us_sem_wait,
+                us_fence_wait, g_health.totalUs);
+            std::fflush(stderr);
+        }
+        return 1;
+    }
+    return 0;
+}
+
+#endif // MC2_VULKAN_ISLAND

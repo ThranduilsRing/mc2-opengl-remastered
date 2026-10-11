@@ -31,7 +31,7 @@ REGISTRY = [
     # RenderCore/gpu_abi/Gpu*FrameUBO.h generates both the C++ offset asserts and the GLSL
     # block (tools/gpu_abi_gen.py --check).
     # RUNG-6.5: water island FS params (grew for the reflection port).
-    ("waterfs", "GameOS/gameos/vulkan_water_island.cpp", "WaterFsParams",
+    ("waterfs", "GameOS/gameos/vulkan_water_island_internal.h", "WaterFsParams",
      "shaders/vulkan/water_geom.frag", "WaterFsParams"),
     # RUNG-8.1 (VK-POST-FOG-NATIVE-1): the native fog pair reuses the subgraph's
     # shaders verbatim; its UBO PODs must stay byte-identical to those blocks.
@@ -52,7 +52,7 @@ REGISTRY = [
      "shaders/vulkan/shoreline.frag", "ShorelineFxParams"),
     # M2 (consistency audit): UBO mirrors that previously had neither static_asserts
     # nor a registry row.
-    ("watervs", "GameOS/gameos/vulkan_water_island.cpp", "WaterVsParams",
+    ("watervs", "GameOS/gameos/vulkan_water_island_internal.h", "WaterVsParams",
      "shaders/vulkan/water_geom.vert", "WaterVsParams"),
     ("vfxvs", "GameOS/gameos/vulkan_vfx_island.cpp", "VfxVsParams",
      "shaders/vulkan/vfx_particle.vert", "VfxVsParams"),
