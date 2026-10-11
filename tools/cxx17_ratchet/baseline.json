@@ -58,7 +58,7 @@
    "LG09": 2033,
    "LG10": 40,
    "LG11": 102,
-   "LG12a": 194,
+   "LG12a": 192,
    "LG12b": 30,
    "LG13": 331,
    "LG14": 62,
@@ -150,7 +150,7 @@
    "LG09": 2353,
    "LG10": 20,
    "LG11": 101,
-   "LG12a": 110,
+   "LG12a": 106,
    "LG12b": 349,
    "LG13": 1184,
    "LG14": 135,
@@ -196,7 +196,7 @@
    "LG09": 2195,
    "LG10": 32,
    "LG11": 67,
-   "LG12a": 231,
+   "LG12a": 229,
    "LG12b": 245,
    "LG13": 1293,
    "LG14": 122,
@@ -357,7 +357,6 @@
    "LG05": 4,
    "LG06": 11,
    "LG09": 4,
-   "LG12a": 1,
    "LG17": 1
   },
   "GameOS/gameos/gameos_graphics.cpp": {
@@ -860,8 +859,7 @@
    "LG13": 8
   },
   "GameOS/gameos/gos_terrain_lod_chunk.cpp": {
-   "LG09": 4,
-   "LG12a": 1
+   "LG09": 4
   },
   "GameOS/gameos/gos_terrain_lod_chunk.h": {
    "LG17": 2
@@ -2222,7 +2220,7 @@
    "LG03": 8,
    "LG06": 4,
    "LG09": 10,
-   "LG12a": 5
+   "LG12a": 4
   },
   "code/logisticsdata_inventory.cpp": {
    "LG03": 7,
@@ -2496,7 +2494,6 @@
    "LG03": 2,
    "LG05": 2,
    "LG09": 22,
-   "LG12a": 1,
    "LG17": 1
   },
   "code/mechlistbox.h": {
@@ -3134,14 +3131,12 @@
   },
   "code/unitprofile_fit.cpp": {
    "LG06": 6,
-   "LG09": 1,
-   "LG12a": 1
+   "LG09": 1
   },
   "code/warrior.cpp": {
    "LG03": 17,
    "LG06": 1,
-   "LG09": 24,
-   "LG12a": 1
+   "LG09": 24
   },
   "code/warrior.h": {
    "LG02": 34,
@@ -5054,7 +5049,7 @@
    "LG03": 6,
    "LG09": 69,
    "LG11": 9,
-   "LG12a": 2
+   "LG12a": 1
   },
   "mclib/terrain_internal.h": {
    "LG13": 1,
@@ -5081,8 +5076,7 @@
   },
   "mclib/terrain_update.cpp": {
    "LG09": 16,
-   "LG10": 2,
-   "LG12a": 1
+   "LG10": 2
   },
   "mclib/terrtxm.cpp": {
    "LG01": 21,
@@ -5356,7 +5350,7 @@
    "LG20": 2
   }
  },
- "head": "d32e12d8e",
+ "head": "abb8fcb5d",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
