@@ -138,8 +138,7 @@ void installAtexitSummary() {
 void emitTiming(const char* eventName) {
     if (!g_state.enabled) return;
     double ms = elapsedMsSince(g_startupT0);
-    std::fprintf(stdout,
-        "[TIMING v1] event=%s elapsed_ms=%.1f\n", eventName, ms);
+    mc2::fmt::print_out("[TIMING v1] event={} elapsed_ms={:.1f}\n", mc2::fmt::safe(eventName), ms);
     std::fflush(stdout);
 }
 
