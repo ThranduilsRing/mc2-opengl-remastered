@@ -21,5 +21,6 @@
   "tools/gate_codemod.py"
  ],
  "_scripts_reason": "Reviewed: check-render-contract-gbuffer1.allowlist cites the file in a comment; check-vk-umbrella-readers.py reads MC2_VK_WATER_TIER1 in waterTier1Requested, which stays in vulkan_water_island.cpp; tools/check_ubo_layout.py now reads WaterFsParams / WaterVsParams from vulkan_water_island_internal.h (the std140 mirrors moved into the include bundle in the prep commit); tools/gate_codemod.py is a one-shot target list (lane 1 owns it).",
- "_includes_reason": "The include bundle moved verbatim into the header with its own #define lines in front of the includes that read them."
+ "_includes_reason": "The include bundle moved verbatim into the header with its own #define lines in front of the includes that read them.",
+ "split_commit": "bc6deb13f"
 }

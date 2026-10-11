@@ -32,6 +32,8 @@ Split commit: `d9f3d13b6`.
 
 ## `GameOS/gameos/gos_particle_bridge.cpp`
 
+Split commit: `f0521b300`.
+
 | Piece | What it holds |
 |---|---|
 | `gos_particle_bridge.cpp` | keeps the billboard state, init, the particle flush and the VFX tuning accessors |
@@ -113,6 +115,8 @@ Split commit: `f15cb970d`.
 
 ## `GameOS/gameos/vulkan_water_island.cpp`
 
+Split commit: `bc6deb13f`.
+
 | Piece | What it holds |
 |---|---|
 | `vulkan_water_island.cpp` | keeps the health / interop counters, the env gates, setFallback / vlog / load_spv, the buffer and descriptor helpers, submit_once and the health / enabled / destroy entry points |
@@ -132,6 +136,8 @@ Split commit: `f15cb970d`.
 | `GraphicsOptionsWindow_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
 ## `GuiRuntime/GuiRuntime.cpp`
+
+Split commit: `101de6cec`.
 
 | Piece | What it holds |
 |---|---|
@@ -358,6 +364,8 @@ Split commit: `be79c6ead`.
 | `EditorObjectMgr_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
 ## `editor/EditorObjects.cpp`
+
+Split commit: `e7312b22b`.
 
 | Piece | What it holds |
 |---|---|

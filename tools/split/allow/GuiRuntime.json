@@ -15,5 +15,6 @@
   "tools/gate_codemod.py"
  ],
  "_scripts_reason": "Reviewed: gate_default_classifier.py cites the file in a comment; tools/gate_codemod.py is a one-shot target list (lane 1 owns it).",
- "_includes_reason": "The include bundle moved verbatim into the header, keeping its own NOMINMAX define in front of the Windows includes."
+ "_includes_reason": "The include bundle moved verbatim into the header, keeping its own NOMINMAX define in front of the Windows includes.",
+ "split_commit": "101de6cec"
 }
