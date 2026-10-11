@@ -61,7 +61,7 @@ bool						SensorSystemManager::enemyInLOS = true;
 extern float scenarioTime;
 extern UserHeapPtr missionHeap;
 
-#define	VISUAL_CONTACT_FLAG	0x8000
+constexpr int VISUAL_CONTACT_FLAG = 0x8000;
 
 //***************************************************************************
 // CONTACT INFO class
@@ -516,10 +516,10 @@ void SensorSystem::updateContacts (void) {
 }
 
 //---------------------------------------------------------------------------
-#define CONTACT_TYPE1	0
-#define CONTACT_TYPE2	1
-#define CONTACT_TYPE3	2
-#define CONTACT_TYPE4	3
+constexpr int CONTACT_TYPE1 = 0;
+constexpr int CONTACT_TYPE2 = 1;
+constexpr int CONTACT_TYPE3 = 2;
+constexpr int CONTACT_TYPE4 = 3;
 
 void SensorSystem::updateScan (bool forceUpdate) {
 

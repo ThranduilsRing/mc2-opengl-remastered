@@ -914,7 +914,7 @@ extern long srObjtUpd;
 #endif
 
 
-#define JUMP_FX		454
+constexpr int JUMP_FX = 454;
 
 void BattleMech::createJumpFX (void) {
 

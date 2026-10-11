@@ -285,8 +285,8 @@ void MissionInterfaceManager::armHoverTarget (void)
 	s_hoverSettleFrames = 4; // give the live world a few frames before the first pick
 }
 
-#define TACMAP_ID		0
-#define FLASH_JUMPERS	31798
+constexpr int TACMAP_ID = 0;
+constexpr int FLASH_JUMPERS = 31798;
 bool MissionInterfaceManager::startAnimation(long buttonId,bool isButton,bool isPressed,float timeToScroll,long numFlashes)
 {
 	if (animationRunning)

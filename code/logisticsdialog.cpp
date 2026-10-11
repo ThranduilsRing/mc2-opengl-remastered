@@ -28,8 +28,8 @@ LogisticsLegalDialog* LogisticsLegalDialog::s_instance = NULL;
 
 extern long SaveGameVersionNumber;
 
-#define DELETE_BUTTON 40
-#define MAP_STATIC 10
+constexpr int DELETE_BUTTON = 40;
+constexpr int MAP_STATIC = 10;
 
 // Keys for the v2 mcl_sm.fit page (LogisticsSaveDialog).
 static const char* const kSvEditKey =

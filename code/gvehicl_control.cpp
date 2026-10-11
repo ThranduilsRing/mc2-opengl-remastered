@@ -55,7 +55,7 @@ float GroundVehicle::getStatusRating (void) {
 	return(rating);
 }
 
-#define VEHICLEPILOT_ID		638
+constexpr int VEHICLEPILOT_ID = 638;
 void GroundVehicle::createVehiclePilot (void)
 {
 	//We are ALREADY a vehicle pilot, stop breeding.

@@ -12,9 +12,9 @@
 
 ChatWindow* ChatWindow::s_instance = nullptr;
 
-#define MP_CHAT_HELPTOGGLE	300
-#define MP_CHAT_EXPAND		301
-#define MP_CHAT_TEAMONLY	302
+constexpr int MP_CHAT_HELPTOGGLE = 300;
+constexpr int MP_CHAT_EXPAND = 301;
+constexpr int MP_CHAT_TEAMONLY = 302;
 
 ChatWindow::ChatWindow(  )
 {

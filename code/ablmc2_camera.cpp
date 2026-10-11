@@ -829,7 +829,7 @@ void execRequestTarget (void) {
 	}
 }
 
-#define	MAX_SHELTERS	10
+constexpr int MAX_SHELTERS = 10;
 
 void execRequestShelter (void) {
 

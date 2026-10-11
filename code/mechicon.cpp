@@ -152,7 +152,7 @@ aFont* ForceGroupIcon::gosFontHandle = nullptr;
 
 int ForceGroupIcon::curScreenWidth = 800;
 
-#define ICON_REALSIZE 256
+constexpr int ICON_REALSIZE = 256;
 
 ForceGroupIcon::ForceGroupIcon(  )
 {

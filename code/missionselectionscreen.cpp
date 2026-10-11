@@ -15,11 +15,11 @@ MissionSelectionScreen.cpp			: Implementation of the MissionSelectionScreen comp
 #include"mc2movie.h"
 #include"gamesound.h"
 
-#define VIDEO_RECT 7
-#define MAP_RECT 3
-#define MSG_FIRST_MISSION 100
-#define LB_RECT 4
-#define RP_TEXT 4
+constexpr int VIDEO_RECT = 7;
+constexpr int MAP_RECT = 3;
+constexpr int MSG_FIRST_MISSION = 100;
+constexpr int LB_RECT = 4;
+constexpr int RP_TEXT = 4;
 
 MissionSelectionScreen::MissionSelectionScreen(  )
 {

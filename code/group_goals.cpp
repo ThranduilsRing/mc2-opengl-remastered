@@ -128,7 +128,7 @@ void MoverGroup::sortMovers (long numMoversInGroup, MoverPtr* moverList, Stuff::
 
 //---------------------------------------------------------------------------
 
-#define	GOALMAP_DIM	61
+constexpr int GOALMAP_DIM = 61;
 
 long MoverGroup::calcMoveGoals (Stuff::Vector3D goal, long numMovers, Stuff::Vector3D* goalList) {
 
