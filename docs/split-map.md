@@ -111,6 +111,16 @@ Split commit: `f15cb970d`.
 | `vulkan_terrain_island_run.cpp` | VK terrain island: the extern C entry points: enabled / ready / prepare, the frame UBO and light-pool staging, and the per-frame run. |
 | `vulkan_terrain_island_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
+## `GameOS/gameos/vulkan_water_island.cpp`
+
+| Piece | What it holds |
+|---|---|
+| `vulkan_water_island.cpp` | keeps the health / interop counters, the env gates, setFallback / vlog / load_spv, the buffer and descriptor helpers, submit_once and the health / enabled / destroy entry points |
+| `vulkan_water_island_images.cpp` | VK water island: the HDRI environment and shore height / mask texture imports. |
+| `vulkan_water_island_init.cpp` | VK water island: init_island: the shared-device borrow, the GBuffer / depth images, buffers, render pass and pipeline. |
+| `vulkan_water_island_run.cpp` | VK water island: mc2_vk_water_island_run: the per-frame feed staging, draw and fence handling. |
+| `vulkan_water_island_internal.h` | shared include bundle, extern globals and declarations of the pieces |
+
 ## `GuiRuntime/GraphicsOptionsWindow.cpp`
 
 | Piece | What it holds |

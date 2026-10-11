@@ -1,0 +1,25 @@
+{
+ "base": "b9c6e015d",
+ "src": "GameOS/gameos/vulkan_water_island.cpp",
+ "stem": "vulkan_water_island",
+ "add": [
+  "#ifdef MC2_VULKAN_ISLAND",
+  "#endif // MC2_VULKAN_ISLAND",
+  "namespace vk_water_detail {",
+  "} // namespace vk_water_detail"
+ ],
+ "includes": [
+  "volk.h",
+  "vk_mem_alloc.h",
+  "vulkan_shared_scene_color.h",
+  "vulkan_shared_scene_depth.h"
+ ],
+ "scripts": [
+  "scripts/check-render-contract-gbuffer1.allowlist",
+  "scripts/check-vk-umbrella-readers.py",
+  "tools/check_ubo_layout.py",
+  "tools/gate_codemod.py"
+ ],
+ "_scripts_reason": "Reviewed: check-render-contract-gbuffer1.allowlist cites the file in a comment; check-vk-umbrella-readers.py reads MC2_VK_WATER_TIER1 in waterTier1Requested, which stays in vulkan_water_island.cpp; tools/check_ubo_layout.py now reads WaterFsParams / WaterVsParams from vulkan_water_island_internal.h (the std140 mirrors moved into the include bundle in the prep commit); tools/gate_codemod.py is a one-shot target list (lane 1 owns it).",
+ "_includes_reason": "The include bundle moved verbatim into the header with its own #define lines in front of the includes that read them."
+}

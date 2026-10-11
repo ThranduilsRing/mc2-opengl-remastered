@@ -8,7 +8,7 @@ Usage: py -3 tools/split/split_cpp.py CONFIG.py [--stage-dir DIR]   (writes <ste
        A config reads its allow json as os.path.join(os.environ.get("SPLIT_ALLOW_DIR", "tools/split/allow"), "<stem>.json"); a <stem>.json in DIR is installed to tools/split/allow/.
 Config names: SRC, STEM, INCLUDE_RAW=(first,last) 1-based raw lines copied into the header, PREAMBLE_END (first post-preamble line),
 KEEP_FROM (first preamble line the core keeps), GROUPS=[(name,[(a,b)...])] with a 'core' group, DOC={name:text},
-PREAMBLE_MOVES={group:[(a,b)...]} (preamble line ranges moved to the top of a group file), GROUP_WRAP={group:(open_line, close_line)} (the group file wraps its code in a namespace the core opens), HEADER_EXTRA=[lines], BANNER=[lines].
+PREAMBLE_MOVES={group:[(a,b)...]} (preamble line ranges moved to the top of a group file), GROUP_WRAP={group:(open_line, close_line)} (the group file wraps its code in a namespace the core opens), GUARD="MACRO" (the header, the core and every piece are wrapped in #ifdef MACRO), HEADER_EXTRA=[lines], BANNER=[lines].
 Note: the header gets a prototype for EVERY free function defined in a piece; prune the ones no other piece calls (the cxx17 LG06 ratchet counts each const char* declaration).
 Optional: HEADER_NAME (default <stem>_internal.h) and HEADER2_NAME + HEADER2_RAW=(first,last) (a second header holding those raw lines, included at the end of the first; both names end in _internal.h), NO_PROTOS=True (no prototypes are generated: the config declares what the pieces share in HEADER_EXTRA, e.g. when the shared functions sit in namespaces), EXTERN_SKIP=[names] (preamble variables whose generated extern would be wrong, e.g. brace-initialised objects: the config declares them in HEADER_EXTRA), PROTO_SKIP=(names) (functions defined in a piece that need no header prototype, e.g. anonymous-namespace helpers), CORE_ONLY=[(a,b)...] (bundle lines kept out of the header and emitted into the core file: a header that DEFINES variables may be included by one TU only), BASE_REV / BASE_SRC (git rev and path holding the original, default HEAD and SRC) and ALLOW (see split_verify.py) drive the fail-closed checks that run
 after the pieces are written; any finding exits 1 and the caller must not install the .new file. OUT (output dir, default the source's directory), HEADER_PRE_MOVES / HEADER_MOVES=[(a,b)...] (1-based line ranges whose units move verbatim into the
@@ -98,7 +98,8 @@ def moved_group(n):
 # ---- header ---------------------------------------------------------------------------------------------
 H1 = getattr(C, "HEADER_NAME", C.STEM + "_internal.h")
 G = os.path.splitext(H1)[0].upper() + "_H"
-hdr = list(C.BANNER) + ["#ifndef " + G, "#define " + G, ""]
+GUARD = getattr(C, "GUARD", None)        # a macro the whole translation unit depends on: the header and every piece compile to nothing without it
+hdr = list(C.BANNER) + ["#ifndef " + G, "#define " + G, ""] + (["#ifdef " + GUARD, ""] if GUARD else [])
 a, b = C.INCLUDE_RAW
 # include groups are copied verbatim: some guards skip a header that no longer exists, so they must stay guards
 CORE_ONLY = getattr(C, "CORE_ONLY", [])
@@ -193,6 +194,8 @@ if protos:
     hdr.append("")
 if hasattr(C, "HEADER2_NAME"):
     hdr += ["// Second shared header: the class definitions that no other piece may redefine.", '#include "%s"' % C.HEADER2_NAME, ""]
+if GUARD:
+    hdr += ["#endif // " + GUARD, ""]
 hdr.append("#endif // " + G)
 hdr.append("")
 open(os.path.join(WOUT, H1), "wb").write("\r\n".join(hdr).encode("utf-8"))
@@ -240,7 +243,9 @@ for u, c in core_pre:
 core_head = b"\n".join(raw[0:C.INCLUDE_RAW[0] - 1]).rstrip() + b"\r\n\r\n#include \"%s\"\r\n\r\n" % H1.encode()
 if CORE_ONLY:
     core_head += b"\n".join(b"\n".join(raw[x - 1:y]) for x, y in CORE_ONLY) + b"\n\n"
-open(NEW_PATH, "wb").write(core_head + b"\n".join(core_keep) + b"\n" + b"\n".join(bodies["core"]) + b"\n")
+_g0 = ("#ifdef %s\r\n\r\n" % GUARD).encode() if GUARD else b""
+_g1 = ("\r\n#endif // %s\r\n" % GUARD).encode() if GUARD else b""
+open(NEW_PATH, "wb").write(core_head + _g0 + b"\n".join(core_keep) + b"\n" + b"\n".join(bodies["core"]) + b"\n" + _g1)
 for g, _ in C.GROUPS:
     if g == "core":
         continue
@@ -251,7 +256,7 @@ for g, _ in C.GROUPS:
     body = b"\n".join(bodies[g]) + b"\n"
     if wrap:
         body = wrap[0].encode() + b"\r\n\r\n" + body + b"\r\n" + wrap[1].encode() + b"\r\n"
-    open(os.path.join(WOUT, "%s_%s.cpp" % (C.STEM, g)), "wb").write(head + pm + body)
+    open(os.path.join(WOUT, "%s_%s.cpp" % (C.STEM, g)), "wb").write(head + _g0 + pm + body + _g1)
 print("externs", len(seen), "protos", len(protos))
 for g, _ in C.GROUPS:
     print(g, sum(c.count(b"\n") + 1 for c in bodies[g]))
