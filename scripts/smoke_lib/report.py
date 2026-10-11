@@ -103,6 +103,8 @@ def render_json(rows: list[Row], *, tier: str, profile: str,
                 "p1low_fps": r.summary.perf.p1low_fps,
                 "mission_ready_ms": r.summary.mission_ready_ms,
                 "destroys_delta": r.destroys_delta,
+                "simid_frames": r.summary.simid_frames,
+                "simid_chain": r.summary.simid_chain,
             }
             for r in rows
         ],
