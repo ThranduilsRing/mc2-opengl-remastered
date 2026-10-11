@@ -47,11 +47,11 @@ class GameCamera : public Camera
 		
 	public:
 	
-		virtual void init (void)
+		void init (void) override
 		{
 			Camera::init();
-			targetObject = NULL;
-			compass = NULL;
+			targetObject = nullptr;
+			compass = nullptr;
 			lastShadowLightPitch = 0.0f;
 
 			DWORD szData = sizeof(drawCompass);
@@ -69,31 +69,31 @@ class GameCamera : public Camera
 
 		void destroy (void);
 
-		virtual void render (void);
-		virtual long activate (void);
+		void render (void) override;
+		long activate (void) override;
 		
-		virtual long update (void);
-		virtual void moveLeft(float amount)
+		long update (void) override;
+		void moveLeft(float amount) override
 		{
-			targetObject = NULL;
+			targetObject = nullptr;
 			Camera::moveLeft(amount);
 		}
 		
-		virtual void moveRight(float amount)
+		void moveRight(float amount) override
 		{
-			targetObject = NULL;
+			targetObject = nullptr;
 			Camera::moveRight(amount);
 		}
 		
-		virtual void moveUp(float amount)
+		void moveUp(float amount) override
 		{
-			targetObject = NULL;
+			targetObject = nullptr;
 			Camera::moveUp(amount);
 		}
 		
-		virtual void moveDown(float amount)
+		void moveDown(float amount) override
 		{
-			targetObject = NULL;
+			targetObject = nullptr;
 			Camera::moveDown(amount);
 		}
 			
@@ -117,16 +117,16 @@ class GameCamera : public Camera
 		// (setPosition(targetObject->getPosition())) cannot re-capture the
 		// camera after a parked pose. Base clears lookTargetObject + all
 		// goals/velocity.
-		virtual void freezeScriptedCameraForCapture (void) override
+		void freezeScriptedCameraForCapture (void) override
 		{
 			Camera::freezeScriptedCameraForCapture();
-			targetObject = NULL;
+			targetObject = nullptr;
 		}
 
-		virtual void allTight (void)
+		void allTight (void) override
 		{
 			long i=0;
-			GameObjectPtr mvt = NULL;
+			GameObjectPtr mvt = nullptr;
 			while (i<ObjectManager->getNumGoodMovers())
 			{
 				mvt = ObjectManager->getGoodMover(i);

@@ -1542,9 +1542,9 @@ class MechWarrior {
 			return(moveOrders.speedThrottle);
 		}
 
-		long setMoveGoal (unsigned long type, Stuff::Vector3D* location, GameObjectPtr obj = NULL);
+		long setMoveGoal (unsigned long type, Stuff::Vector3D* location, GameObjectPtr obj = nullptr);
 
-		unsigned long getMoveGoal (Stuff::Vector3D* location = NULL, GameObjectPtr* obj = NULL);
+		unsigned long getMoveGoal (Stuff::Vector3D* location = nullptr, GameObjectPtr* obj = nullptr);
 
 		bool getMoveGlobalGoal (Stuff::Vector3D& location) {
 			if (moveOrders.pathType != MOVEPATH_UNDEFINED) {
@@ -1682,7 +1682,7 @@ class MechWarrior {
 
 		float getMoveDistanceLeft (void);
 
-		bool isJumping (Stuff::Vector3D* jumpGoal = NULL);
+		bool isJumping (Stuff::Vector3D* jumpGoal = nullptr);
 
 		void setWillHelp (bool setting) {
 			willHelp = setting;
@@ -1897,9 +1897,9 @@ class MechWarrior {
 
 		//--------------------
 		// Command/Observation
-		long executeTacticalOrder (TacticalOrderPtr order = NULL);
+		long executeTacticalOrder (TacticalOrderPtr order = nullptr);
 
-		long calcWeaponsStatus (GameObjectPtr target, int* weaponList, Stuff::Vector3D* targetPoint = NULL);
+		long calcWeaponsStatus (GameObjectPtr target, int* weaponList, Stuff::Vector3D* targetPoint = nullptr);
 
 		void printWeaponsStatus (char* s);
 
@@ -2115,7 +2115,7 @@ class MechWarrior {
 
 		void setDebugString (long stringNum, char* s) {
 			if ((stringNum > -1) && (stringNum < NUM_PILOT_DEBUG_STRINGS)) {
-				if (s == NULL) {
+				if (s == nullptr) {
 					debugStrings[stringNum][0] = '\0';
                 } else {
 					strncpy(debugStrings[stringNum], s, MAXLEN_PILOT_DEBUG_STRING - 1);
@@ -2127,7 +2127,7 @@ class MechWarrior {
 		{
 			if ((stringNum > -1) && (stringNum < NUM_PILOT_DEBUG_STRINGS))
 				return(debugStrings[stringNum]);
-			return(NULL);
+			return(nullptr);
 		}
 
 		long calcTacOrder (long goalAction,

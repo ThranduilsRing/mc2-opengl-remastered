@@ -20,15 +20,18 @@ HEAD, (d) a follow-up commit of exactly the tightened baseline files.
 
 Exit codes: 0 merged (or lane already contained); 2 bad ref; 3 merge already in progress or
 unmerged paths; 4 dirty overlap / staged changes; 5 merge failed or conflicts outside the
-regenerable set (merge aborted); 6 a ratchet failed (merge commit stays).
+regenerable set (merge aborted, the lane's untracked files removed; a "file in use" failure waits up to 10 min for
+build-alltargets/.tidy.lock to clear and retries once); 6 a ratchet failed (merge commit stays).
 Final line: MERGED <sha> (+<follow-up sha>) files=<n> ratchets=OK/FAIL overlap=0
 """
 from __future__ import annotations
 
 import argparse
 import os
+import re
 import subprocess
 import sys
+import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(HERE, "..", "scripts"))
@@ -138,17 +141,66 @@ def tip_subject(root: str, sha: str) -> str:
     return git_out(root, "log", "-1", "--format=%s", sha)
 
 
-def do_merge(root: str, sha: str, message: str) -> None:
-    """Merge --no-ff; auto-resolve regenerable conflicts to the lane's side, abort on anything else."""
-    r = git(root, "merge", "--no-ff", "-m", message, "-m", TRAILER, sha)
-    if r.returncode == 0:
-        return
+#: git's wording when a file in the worktree cannot be replaced because another process holds it (a tidy build, a running game).
+TRANSIENT = re.compile(r"unable to unlink|unable to create file|permission denied|cannot unlink|invalid argument|being used by another",
+                       re.IGNORECASE)
+TIDY_LOCK = os.path.join("build-alltargets", ".tidy.lock")
+
+
+def abort_and_clean(root: str, lane_files) -> list[str]:
+    """Undo a failed merge: abort it if it started, then delete the UNTRACKED files the lane introduced.
+
+    WHY: a merge that dies part-way (a file in the worktree is locked) leaves the lane's new files written but untracked, and the retry then
+    refuses them as dirty overlap. Only untracked paths that are in the lane's change set are removed; any other untracked file is kept."""
+    if merge_in_progress(root):
+        git(root, "merge", "--abort")
+    lane = set(lane_files)
+    removed = []
+    for xy, path in status_entries(root):
+        if xy == "??" and path in lane:
+            try:
+                os.remove(os.path.join(root, path))
+                removed.append(path)
+            except OSError:
+                pass
+    return removed
+
+
+def wait_for_lock(lock_path: str, wait_s: float, sleep=time.sleep, clock=time.monotonic) -> bool:
+    """True when `lock_path` existed and has cleared within wait_s; False when there was nothing to wait for or it never cleared."""
+    if not os.path.exists(lock_path):
+        return False
+    deadline = clock() + wait_s
+    while os.path.exists(lock_path):
+        if clock() >= deadline:
+            return False
+        sleep(10)
+    return True
+
+
+def do_merge(root: str, sha: str, message: str, lane_files=(), lock_path: str | None = None, lock_wait_s: float = 600,
+             sleep=time.sleep, clock=time.monotonic) -> None:
+    """Merge --no-ff; auto-resolve regenerable conflicts to the lane's side, abort on anything else.
+
+    A failure that is not a conflict is cleaned up (see abort_and_clean). When git says a file could not be replaced and a tidy run holds
+    the build tree, wait up to lock_wait_s for its lock to clear and retry once."""
+    lock_path = lock_path or os.path.join(root, TIDY_LOCK)
+    for attempt in (1, 2):
+        r = git(root, "merge", "--no-ff", "-m", message, "-m", TRAILER, sha)
+        if r.returncode == 0:
+            return
+        if merge_in_progress(root):
+            break
+        removed = abort_and_clean(root, lane_files)
+        note = ("; removed the lane's untracked files: " + ", ".join(removed)) if removed else ""
+        if attempt == 1 and TRANSIENT.search(r.stdout) and wait_for_lock(lock_path, lock_wait_s, sleep, clock):
+            print("lane_merge: a file was in use and the tidy lock has cleared; retrying the merge once", file=sys.stderr)
+            continue
+        raise Stop(5, "merge failed before it started" + note + ":\n" + r.stdout.strip())
     conflicted = lines(git(root, "diff", "--name-only", "--diff-filter=U").stdout)
-    if not merge_in_progress(root):
-        raise Stop(5, "merge failed before it started:\n" + r.stdout.strip())
     foreign = [p for p in conflicted if p not in REGENERABLE]
     if foreign or not conflicted:
-        git(root, "merge", "--abort")
+        abort_and_clean(root, lane_files)
         what = foreign or ["(merge failed without conflicts)"]
         raise Stop(5, "conflicts outside the regenerable set; merge aborted:\n  " + "\n  ".join(what)
                    + ("" if foreign else "\n" + r.stdout.strip()))
@@ -156,11 +208,11 @@ def do_merge(root: str, sha: str, message: str) -> None:
         c = git(root, "checkout", "--theirs", "--", p)
         a = git(root, "add", "--", p) if c.returncode == 0 else c
         if c.returncode != 0 or a.returncode != 0:
-            git(root, "merge", "--abort")
+            abort_and_clean(root, lane_files)
             raise Stop(5, f"could not take the lane's {p}; merge aborted: {(c.stdout + a.stdout).strip()}")
     c = git(root, "commit", "-m", message, "-m", TRAILER)
     if c.returncode != 0:
-        git(root, "merge", "--abort")
+        abort_and_clean(root, lane_files)
         raise Stop(5, "merge commit failed; merge aborted: " + c.stdout.strip())
 
 
@@ -238,7 +290,7 @@ def main(argv: list[str] | None = None) -> int:
             raise Stop(4, "lane files are also dirty in the worktree; no merge attempted:\n  "
                        + "\n  ".join(p["overlap"]))
         pre_dirty = {path for _, path in status_entries(root)}
-        do_merge(root, p["sha"], message)
+        do_merge(root, p["sha"], message, lane_files=p["lane_files"])
         merge_sha = git_out(root, "rev-parse", "--short=9", "HEAD")
         results = run_ratchets(root, tools_dir)
         follow = commit_tightened(root, pre_dirty)

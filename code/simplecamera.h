@@ -29,9 +29,9 @@ public:
 
 	void setObject( const char* fileName, long type, long base = 0xffff7e00, long highlight = 0xffff7e00, long h2 = 0xffbcbcbc );
 
-	virtual void render();
+	void render() override;
 	virtual void render(long xOffset, long yOffset);
-	virtual long update();
+	long update() override;
 
 	// PREVIEW-FBO-FIXED-800x600-1: opt a defs/ImGui page's use of this camera into
 	// rendering the mech preview into a fixed 800x600 offscreen texture instead
@@ -69,7 +69,7 @@ public:
     void popContext() {
 		gosASSERT(false == bContextNotSet);
         eye = oldCam;
-        oldCam = NULL;
+        oldCam = nullptr;
         bContextNotSet = true;
     }
 

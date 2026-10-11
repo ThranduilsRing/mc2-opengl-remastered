@@ -12,7 +12,7 @@
 #define DTACORDR_H
 
 class TacticalOrder;
-typedef TacticalOrder* TacticalOrderPtr;
+using TacticalOrderPtr = TacticalOrder*;
 
 #endif
 
