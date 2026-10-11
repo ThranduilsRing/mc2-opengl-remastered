@@ -424,6 +424,7 @@ set(SOURCES
     "code/weapon_presentation_proof.cpp"
     "code/tacordr.cpp"
     "code/team.cpp"
+    "code/team_los.cpp"
     "code/terrobj.cpp"
     "code/turret.cpp"
     "code/brain_special_dispatch.cpp"

@@ -262,6 +262,14 @@ Split commit: `708c5e445`.
 | `objmgr_update.cpp` | GameObjectManager: GameObjectManager::update with its GOM_UPDATE_COST spans, in-view conflation probe, GPU-cull record and static-skip gates. |
 | `objmgr_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
+## `code/team.cpp`
+
+| Piece | What it holds |
+|---|---|
+| `team.cpp` | keeps team setup, the roster and contact queries, target orders, the seen-radius marking and save / load |
+| `team_los.cpp` | Team: teamLineOfSight and the Team::lineOfSight overloads (the cell-walk and the world-position entry). |
+| `team_internal.h` | shared include bundle, extern globals and declarations of the pieces |
+
 ## `code/weaponbolt.cpp`
 
 | Piece | What it holds |
