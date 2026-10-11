@@ -320,12 +320,11 @@ void shutdown() {
 
 void dumpCountersTo(FILE* out) {
     const State& st = state();
-    std::fprintf(out,
-        "[ASSET_SCALE v1] counters entries=%u dupes=%u bad_lines=%u "
-        "lookups=%u unknown=%u oob=%u clamped=%u trace=%d\n",
-        st.cManifestEntries, st.cManifestDupes, st.cManifestBadLines,
-        st.cFactorLookups, st.cUnknownAsset, st.cOobBlit, st.cClampedRects,
-        st.traceEnabled ? 1 : 0);
+    mc2::fmt::print(out,
+        "[ASSET_SCALE v1] counters entries={:d} dupes={:d} bad_lines={:d} lookups={:d} unknown={:d} oob={:d} clamped={:d} trace={:d}\n",
+        mc2::fmt::as_u32(st.cManifestEntries), mc2::fmt::as_u32(st.cManifestDupes), mc2::fmt::as_u32(st.cManifestBadLines),
+        mc2::fmt::as_u32(st.cFactorLookups), mc2::fmt::as_u32(st.cUnknownAsset), mc2::fmt::as_u32(st.cOobBlit), mc2::fmt::as_u32(st.cClampedRects),
+        mc2::fmt::as_i32(st.traceEnabled ? 1 : 0));
 }
 
 Vec2 factorFor(const AssetKey& k, uint32_t actualW, uint32_t actualH,
