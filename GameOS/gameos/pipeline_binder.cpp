@@ -14,6 +14,7 @@
 #include <cstdlib>
 #include <cstring>
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 namespace pipeline_binder {
 
@@ -200,9 +201,8 @@ void applyPipeline(const RenderCore::PipelineDesc& desc, const char* dbgName) {
             desc.blend == RenderCore::BlendMode::AdditiveOneOne      ? "AdditiveOneOne" :
             desc.blend == RenderCore::BlendMode::AdditiveSrcAlphaOne ? "AdditiveSrcAlphaOne" :
             desc.blend == RenderCore::BlendMode::Multiply            ? "Multiply" : "?";
-        std::fprintf(stderr,
-            "[PIPELINE_BIND] %s depth=%s cull=%s frontFace=%s polygonOffset=%s blend=%s\n",
-            dbgName, df, cm, ff, desc.polygonOffsetEnable ? "true" : "false", bm);
+        mc2::fmt::print_err("[PIPELINE_BIND] {} depth={} cull={} frontFace={} polygonOffset={} blend={}\n",
+            mc2::fmt::safe(dbgName), mc2::fmt::safe(df), mc2::fmt::safe(cm), mc2::fmt::safe(ff), mc2::fmt::safe(desc.polygonOffsetEnable ? "true" : "false"), mc2::fmt::safe(bm));
         std::fflush(stderr);
     }
 }
