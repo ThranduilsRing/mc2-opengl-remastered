@@ -13,7 +13,7 @@
 
 //---------------------------------------------------------------------------
 
-#define	MAX_WEAPONS_PER_MOVER				32
+inline constexpr int MAX_WEAPONS_PER_MOVER = 32;
 
 enum {
 	REFIT_VEHICLE,
