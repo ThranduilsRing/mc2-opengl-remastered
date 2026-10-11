@@ -115,7 +115,7 @@ long Radio::init (char *fileName, unsigned long heapSize, char *movie)
 	return(NO_ERR);
 }
 		
-#define NO_PLAY			-1
+constexpr int NO_PLAY = -1;
 //------------------------------------------------------------------------------------------
 long Radio::playMessage (RadioMessageType msgType)
 {

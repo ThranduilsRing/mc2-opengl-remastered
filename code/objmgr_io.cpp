@@ -4,9 +4,9 @@
 
 
 //---------------------------------------------------------------------------
-#define	MAX_TERRAIN_OBJECTS		3000
+constexpr int MAX_TERRAIN_OBJECTS = 3000;
 
-#define OLD_FILE_SIZE	2200
+constexpr int OLD_FILE_SIZE = 2200;
 
 void GameObjectManager::countTerrainObjects (PacketFile* terrainFile, long firstHandle) 
 {

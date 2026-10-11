@@ -13,7 +13,7 @@ MPStats.cpp			: Implementation of the MPStats component.
 #include"mechbayscreen.h"
 #include"logisticsdialog.h"
 
-#define MP_STATS_SAVE	400
+constexpr int MP_STATS_SAVE = 400;
 
 
 MPStats::MPStats(  )

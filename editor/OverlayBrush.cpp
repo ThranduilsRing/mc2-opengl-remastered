@@ -84,10 +84,10 @@ static int numberOfOverlayTypes(int mask) {
 static int ConnectivityMaskToIndexOffsetMapping[16] =
 {6, 13, 12, 5, 11, 0, 4, 10, 14, 2, 1, 7, 3, 8, 9, 6 };
 
-#define IOM_UP 1
-#define IOM_RIGHT 2
-#define IOM_DOWN 4
-#define IOM_LEFT 8
+constexpr int IOM_UP = 1;
+constexpr int IOM_RIGHT = 2;
+constexpr int IOM_DOWN = 4;
+constexpr int IOM_LEFT = 8;
 static int IndexOffsetToConnectivityMaskMapping[15] =
 {
 	IOM_UP | IOM_DOWN,
@@ -113,14 +113,14 @@ static int IndexOffsetToConnectivityMaskMapping[15] =
 static int TransitionConnectivityMaskToIndexOffsetMapping[81] =
 {-1 ,-1 ,-1 ,-1 ,-1 , 5 ,-1 , 8 ,-1 ,-1 ,-1 , 2 ,-1 ,-1 , 30 , 6 , 18 , 22 ,-1 , 0 ,-1 , 9 , 32 , 13 ,-1 , 24 ,-1 ,-1 ,-1 , 11 ,-1 ,-1 , 17 , 3 , 35 , 27 ,-1 ,-1 , 34 ,-1 ,-1 , 37 , 31 , 38 , 46 , 7 , 28 , 15 , 19 , 39 , 49 , 23 , 47 , 43 ,-1 , 4 ,-1 , 1 , 29 , 21 ,-1 , 12 ,-1 , 10 , 16 , 26 , 33 , 36 , 45 , 14 , 48 , 42 ,-1 , 20 ,-1 , 25 , 44 , 41 ,-1 , 40 ,-1};
 
-#define TIOM_UP1 1
-#define TIOM_RIGHT1 3
-#define TIOM_DOWN1 9
-#define TIOM_LEFT1 27
-#define TIOM_UP2 2
-#define TIOM_RIGHT2 6
-#define TIOM_DOWN2 18
-#define TIOM_LEFT2 54
+constexpr int TIOM_UP1 = 1;
+constexpr int TIOM_RIGHT1 = 3;
+constexpr int TIOM_DOWN1 = 9;
+constexpr int TIOM_LEFT1 = 27;
+constexpr int TIOM_UP2 = 2;
+constexpr int TIOM_RIGHT2 = 6;
+constexpr int TIOM_DOWN2 = 18;
+constexpr int TIOM_LEFT2 = 54;
 static int TransitionIndexOffsetToConnectivityMaskMapping[50] =
 {
 	TIOM_UP1 + TIOM_DOWN2, // 0

@@ -76,13 +76,13 @@ PilotReviewScreen* PilotReviewScreen::instance = nullptr;
 extern float frameLength;
 
 #define RP_TEXTID	3
-#define HELP_TEXTID	2
+constexpr int HELP_TEXTID = 2;
 #define NAME_TEXTID 0
 #define WEIGHT_TEXTID	2
 #define ARMOR_TEXTID	3
 #define SPEED_TEXTID	4
 #define JUMP_TEXTID		5
-#define APPEARTIME		.5f
+constexpr float APPEARTIME = .5f;
 #define CHECK_BUTTON 200
 
 

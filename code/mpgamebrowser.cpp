@@ -26,10 +26,10 @@ static const int FIRST_BUTTON_ID = 1000010;
 static const int OK_BUTTON_ID = 1000001;
 static const int CANCEL_BUTTON_ID = 1000002;
 
-#define SORT_ORDER_NAME	200
-#define SORT_ORDER_PLAYERS	201
-#define SORT_ORDER_MAP	202
-#define SORT_ORDER_PING	203
+constexpr int SORT_ORDER_NAME = 200;
+constexpr int SORT_ORDER_PLAYERS = 201;
+constexpr int SORT_ORDER_MAP = 202;
+constexpr int SORT_ORDER_PING = 203;
 
 extern CPrefs prefs;
 

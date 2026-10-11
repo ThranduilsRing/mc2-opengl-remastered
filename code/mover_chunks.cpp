@@ -10,19 +10,19 @@ inline MoverPtr getMoverFromHandle (long handle) {
 }
 
 
-#define	MOVECHUNK_CELLPOS_BITS		9
-#define	MOVECHUNK_NUMSTEPS_BITS		2
-#define	MOVECHUNK_RUN_BITS			1
-#define	MOVECHUNK_MOVING_BITS		1
-#define	MOVECHUNK_STEP_BITS			3
+constexpr int MOVECHUNK_CELLPOS_BITS = 9;
+constexpr int MOVECHUNK_NUMSTEPS_BITS = 2;
+constexpr int MOVECHUNK_RUN_BITS = 1;
+constexpr int MOVECHUNK_MOVING_BITS = 1;
+constexpr int MOVECHUNK_STEP_BITS = 3;
 
-#define	MOVECHUNK_CELLPOS_MASK		0x000001FF
-#define MOVECHUNK_NUMSTEPS_MASK		0x00000003
-#define	MOVECHUNK_RUN_MASK			0x00000001
-#define	MOVECHUNK_MOVING_MASK		0x00000001
-#define	MOVECHUNK_STEP_MASK			0x00000007
+constexpr int MOVECHUNK_CELLPOS_MASK = 0x000001FF;
+constexpr int MOVECHUNK_NUMSTEPS_MASK = 0x00000003;
+constexpr int MOVECHUNK_RUN_MASK = 0x00000001;
+constexpr int MOVECHUNK_MOVING_MASK = 0x00000001;
+constexpr int MOVECHUNK_STEP_MASK = 0x00000007;
 
-#define	MOVECHUNK_NUM_STEPS			3
+constexpr int MOVECHUNK_NUM_STEPS = 3;
 
 void* MoveChunk::operator new (size_t ourSize) {
 

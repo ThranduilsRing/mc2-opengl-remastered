@@ -15,12 +15,12 @@ mpprefs.cpp			: Implementation of the mpprefs component.ef
 #include"gamesound.h"
 #include"chatwindow.h"
 
-#define MP_PREFS_BASE	200
-#define MP_PREFS_STRIPE	201
-#define FIRST_COLOR_RECT	3
-#define LAST_COLOR_RECT	34
-#define BASE_RECT	35
-#define STRIPE_RECT	36
+constexpr int MP_PREFS_BASE = 200;
+constexpr int MP_PREFS_STRIPE = 201;
+constexpr int FIRST_COLOR_RECT = 3;
+constexpr int LAST_COLOR_RECT = 34;
+constexpr int BASE_RECT = 35;
+constexpr int STRIPE_RECT = 36;
 
 MPPrefs* MPPrefs::s_instance = nullptr;
 

@@ -56,37 +56,37 @@ CPrefs originalSettings;
 
 extern SoundSystem *sndSystem;
 
-#define MSB_TAB0 200
-#define MSB_TAB1 201
-#define MSB_TAB2 202
-#define MSB_TAB3 203
+constexpr int MSB_TAB0 = 200;
+constexpr int MSB_TAB1 = 201;
+constexpr int MSB_TAB2 = 202;
+constexpr int MSB_TAB3 = 203;
 
-#define MSG_NEAR 101
-#define MSG_FAR	102
-#define MSG_TAB	312
+constexpr int MSG_NEAR = 101;
+constexpr int MSG_FAR = 102;
+constexpr int MSG_TAB = 312;
 
-#define MSG_TERRAIN_DETAIL	301
-#define MSG_PILOT_VIDS	302
-#define MSG_OBJECT_DETAIL	303
-#define MSG_SHADOWS		304
-#define MSG_NON_WEAPON	305
-#define MSG_LOCAL_SHADOWS	306
-#define MSG_ASYNC_MOUSE		307
-#define MSG_HARDWARE_RASTERIZER 308
-#define MSG_RESET	309
+constexpr int MSG_TERRAIN_DETAIL = 301;
+constexpr int MSG_PILOT_VIDS = 302;
+constexpr int MSG_OBJECT_DETAIL = 303;
+constexpr int MSG_SHADOWS = 304;
+constexpr int MSG_NON_WEAPON = 305;
+constexpr int MSG_LOCAL_SHADOWS = 306;
+constexpr int MSG_ASYNC_MOUSE = 307;
+constexpr int MSG_HARDWARE_RASTERIZER = 308;
+constexpr int MSG_RESET = 309;
 
-#define MSG_GREEN	400
-#define MSG_REGULAR	401
-#define MSG_VETERAN	402
-#define MSG_ELITE	403
+constexpr int MSG_GREEN = 400;
+constexpr int MSG_REGULAR = 401;
+constexpr int MSG_VETERAN = 402;
+constexpr int MSG_ELITE = 403;
 
-#define MSG_BASE	404
-#define MSG_ACCENT	405
+constexpr int MSG_BASE = 404;
+constexpr int MSG_ACCENT = 405;
 
-#define MSG_UNLIMITED_AMMO	406
-#define MSG_LEFT_CLICK		407
-#define MSG_SAVE_TRANSCRIPT	408
-#define MSG_TUTORIALS		409
+constexpr int MSG_UNLIMITED_AMMO = 406;
+constexpr int MSG_LEFT_CLICK = 407;
+constexpr int MSG_SAVE_TRANSCRIPT = 408;
+constexpr int MSG_TUTORIALS = 409;
 
 #define CTRL	0x10000000
 #define SHIFT	0x01000000

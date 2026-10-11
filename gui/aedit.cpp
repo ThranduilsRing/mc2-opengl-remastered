@@ -18,8 +18,8 @@ aEdit.cpp			: Implementation of the aEdit component of the GUI library.
 #include "../resource.h"
 #include "../GameOS/gameos/gos_profiler.h"
 
-#define ENTRY_MAX_CHARS 1000
-#define ENTRY_MARGIN 4.f
+constexpr int ENTRY_MAX_CHARS = 1000;
+constexpr float ENTRY_MARGIN = 4.f;
 #define HalfColorValue(color) (((color >> 1) & 0x007f0000) | ((color >> 1) & 0x00007f00) | ((color >> 1) & 0x0000007f))
 
 static long acp = 0;

@@ -138,8 +138,8 @@ extern int32_t	    numLibrariesLoaded;
 extern int32_t	    NumExecutions;
 int32_t				CallStackLevel = 0;
 
-#define	MAX_PROFILE_LINELEN		128
-#define MAX_PROFILE_LINES		256
+constexpr int MAX_PROFILE_LINELEN = 128;
+constexpr int MAX_PROFILE_LINES = 256;
 
 long NumProfileLogLines = 0;
 int TotalProfileLogLines = 0;
