@@ -32,8 +32,10 @@ def has_site(text):
     return bool(SITE.search(_NOISE.sub(" ", text)))
 
 
-def _rewrite_site(text, name="typedef-aggregates"):
-    return rts.rewriter(name).rewrite(text) != text
+def _rewrite_site(text, name="typedef-aggregates", path=""):
+    transform = rts.rewriter(name)
+    new = transform.rewrite(text, path) if getattr(transform, "PATH_AWARE", False) else transform.rewrite(text)
+    return new != text
 
 
 def tracked_cpp(dirs):
@@ -56,7 +58,7 @@ def pick(dirs, count, tree=rts.DEFAULT_TREE, done=(), any_tu=False, rewrite=None
         path = os.path.join(rts.ROOT, rel)
         with open(path, encoding="utf-8", errors="replace") as fh:
             text = fh.read()
-            if any_tu or (_rewrite_site(text, rewrite) if rewrite else has_site(text)):
+            if any_tu or (_rewrite_site(text, rewrite, rel) if rewrite else has_site(text)):
                 cands.append((os.path.getsize(path), rel))
     cands.sort()
     return [rel for _sz, rel in cands[:count]]

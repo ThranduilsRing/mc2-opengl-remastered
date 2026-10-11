@@ -125,4 +125,40 @@ TEST_CASE("float conversions agree with printf for the engine's usual specs")
 	}
 }
 
+TEST_CASE("print writes exactly what fprintf wrote, to the stream it was given")
+{
+	std::FILE* a = std::tmpfile();
+	std::FILE* b = std::tmpfile();
+	REQUIRE(a != nullptr);
+	REQUIRE(b != nullptr);
+	std::fprintf(a, "[%s] %d|%5.2f|%-6s|\n", "x", 42, 3.14159, "ab");
+	mc2::fmt::print(b, "[{}] {:d}|{:5.2f}|{:<6}|\n", "x", mc2::fmt::as_i32(42), 3.14159, "ab");
+	char ta[128] = {}, tb[128] = {};
+	std::rewind(a);
+	std::rewind(b);
+	const size_t na = std::fread(ta, 1, sizeof ta - 1, a);
+	const size_t nb = std::fread(tb, 1, sizeof tb - 1, b);
+	CHECK(na == nb);
+	CHECK(std::strcmp(ta, tb) == 0);
+	std::fclose(a);
+	std::fclose(b);
+}
+
+TEST_CASE("print is one write of arbitrary length and leaves an empty format alone")
+{
+	std::FILE* f = std::tmpfile();
+	REQUIRE(f != nullptr);
+	const std::string big(5000, 'z');
+	mc2::fmt::print(f, "{}", big.c_str());
+	mc2::fmt::print(f, "");
+	mc2::fmt::print(f, "{}", "tail");
+	std::rewind(f);
+	std::string got(5100, '\0');
+	const size_t n = std::fread(got.data(), 1, got.size(), f);
+	CHECK(n == 5004);
+	CHECK(got.compare(0, 5000, big) == 0);
+	CHECK(got.compare(5000, 4, "tail") == 0);
+	std::fclose(f);
+}
+
 }  // TEST_SUITE

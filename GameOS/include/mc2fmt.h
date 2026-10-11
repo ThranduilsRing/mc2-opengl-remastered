@@ -13,8 +13,10 @@
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
+#include <cstdio>
 #include <format>
 #include <iterator>
+#include <string>
 #include <type_traits>
 #include <utility>
 
@@ -62,5 +64,21 @@ template <size_t N, class... A>
 int to_buf(char (&buf)[N], std::format_string<A...> f, A&&... a) noexcept {
     return to_buf_n(buf, N, f, std::forward<A>(a)...);
 }
+
+// printf to a stream, as one fwrite of the formatted text. The stream is whatever FILE* the call site used, so the MC2_LOG-unset redirect of
+// stdout/stderr to NUL and the call site's own fflush() keep working; nothing is added to the text (no level, no newline, no prefix).
+// Not for crash or allocator paths: the text is built in a thread_local std::string.
+template <class... A>
+void print(std::FILE* f, std::format_string<A...> fmt, A&&... a) noexcept {
+    try {
+        thread_local std::string buf;
+        buf.clear();
+        std::vformat_to(std::back_inserter(buf), fmt.get(), std::make_format_args(a...));
+        std::fwrite(buf.data(), 1, buf.size(), f);
+    } catch (...) {
+    }
+}
+template <class... A> void print_err(std::format_string<A...> fmt, A&&... a) noexcept { print(stderr, fmt, std::forward<A>(a)...); }
+template <class... A> void print_out(std::format_string<A...> fmt, A&&... a) noexcept { print(stdout, fmt, std::forward<A>(a)...); }
 
 }  // namespace mc2::fmt

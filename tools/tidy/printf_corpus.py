@@ -22,6 +22,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import printf_buffers as pb  # noqa: E402
+import printf_log as pl  # noqa: E402
 
 ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
@@ -71,7 +72,8 @@ def add(files, base: str):
     recs = {(r["old"], r["new"]): r for r in load()}
     added = 0
     for f in files:
-        _new, records, _left = pb.convert(base_text(f, base), assume_array=True)
+        text = base_text(f, base)
+        records = pb.convert(text, assume_array=True)[1] + pl.convert(text, f)[1]
         for r in records:
             key = (r["old"], r["new"])
             specs = [{k: s[k] for k in ("conv", "length", "wrap", "cls")} for s in r["specs"]]

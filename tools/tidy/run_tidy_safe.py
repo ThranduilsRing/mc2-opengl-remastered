@@ -311,10 +311,10 @@ def run(args, tidy=None, build=None) -> int:
     return 1 if reverted else 0
 
 
-REWRITERS = ("typedef-aggregates", "null-tokens", "printf-buffers")
+REWRITERS = ("typedef-aggregates", "null-tokens", "printf-buffers", "printf-log")
 #: Rewriters that change what the program prints or stores by design; their proof is "it compiles" here and the byte-level proof is the
 #: format corpus plus the log comparison (tools/tidy/printf_corpus.py, .claude/cleanup/cxx23-step3-logging-plan.md), not object identity.
-COMPILE_ONLY = ("printf-buffers",)
+COMPILE_ONLY = ("printf-buffers", "printf-log")
 
 
 def rewriter(name: str):
@@ -332,7 +332,7 @@ def rewrite_hook(name: str):
         path = os.path.join(ROOT, rel)
         with open(path, encoding="utf-8", errors="surrogateescape", newline="") as fh:
             src = fh.read()
-        new = transform.rewrite(src)
+        new = transform.rewrite(src, rel) if getattr(transform, "PATH_AWARE", False) else transform.rewrite(src)
         if new != src:
             with open(path, "w", encoding="utf-8", errors="surrogateescape", newline="") as fh:
                 fh.write(new)
