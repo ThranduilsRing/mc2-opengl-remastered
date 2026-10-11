@@ -558,6 +558,8 @@ set(SOURCES
     "code/chatwindow.cpp"
     "code/mpstats.cpp"
     "code/multplyr.cpp"
+    "code/multplyr_send.cpp"
+    "code/multplyr_handle.cpp"
     "code/mc2movie.cpp"
     "code/mc2video.cpp"
     )

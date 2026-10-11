@@ -257,6 +257,15 @@ Split commit: `1af09dd12`.
 | `missiongui_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 | `missiongui_shared_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
+## `code/multplyr.cpp`
+
+| Piece | What it holds |
+|---|---|
+| `multplyr.cpp` | keeps the networking entry points, the message packet types and the session / colour setup |
+| `multplyr_handle.cpp` | MultiPlayer: the handle* message handlers, message processing and the mission status / rank calculation. |
+| `multplyr_send.cpp` | MultiPlayer: the player list, mover / turret rosters, world and weapon-hit chunk adders and the send* methods. |
+| `multplyr_internal.h` | shared include bundle, extern globals and declarations of the pieces |
+
 ## `code/objmgr.cpp`
 
 Split commit: `708c5e445`.
