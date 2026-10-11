@@ -1,0 +1,432 @@
+// MechBayScreen: mech selection, removal, setMech, drag handling and the deployment-team helpers.
+// Declared in the class headers; shared names in mechbayscreen_internal.h.
+#include "mechbayscreen_internal.h"
+
+
+// Mirror a populated weapon/component ComponentListBox into a defs-page GuiList,
+// preserving the per-item range colours (short=olive, medium=blue, long=red,
+// components=gold).  So the Mech Loadout box renders through the ImGui defs layer
+// instead of the legacy gos list, which composites UNDER the defs page and is
+// occluded by its frame art.  (Local copy of the same helper in mechlopedia.cpp,
+// which lives in an anonymous namespace and so isn't linkable across TUs.)
+namespace {
+void syncWeaponLoadout( LogisticsScreen* screen, ComponentListBox& box, const char* listKey )
+{
+	std::vector<std::string>  items;
+	std::vector<unsigned int> colors;
+	for ( int i = 0; i < box.GetItemCount(); i++ )
+	{
+		aTextListItem* pItem = (aTextListItem*)box.GetItem( i );
+		if ( pItem )
+		{
+			items.push_back( pItem->getText() );
+			colors.push_back( (unsigned int)pItem->getColor() );
+		}
+	}
+	screen->setDefsListItems( listKey, items );
+	screen->setDefsListItemColors( listKey, colors );
+}
+} // namespace
+
+void MechBayScreen::addSelectedMech()
+{
+	if ( mechListBox.getCurrentMech() )
+	{
+		if ( !LogisticsData::instance->canAddMechToForceGroup( mechListBox.getCurrentMech() ) )
+			return;
+
+		if ( NO_ERR != LogisticsData::instance->addMechToForceGroup( mechListBox.getCurrentMech(),
+			forceGroupCount + 1 ) )
+		{
+			// its already in the force group, add probably called 2x'2
+			return;
+		}
+
+		if ( forceGroupCount > 11 )
+			return;
+
+		unselectDeploymentTeam();
+		forceGroupCount++;
+		reinitMechs();
+
+		addWeightAmount = pCurMech->getMaxWeight();
+		addWeightAnim.begin();
+		removeWeightAnim.end();
+
+		bool bFound = 0;
+		for ( int i = 0; i < mechListBox.GetItemCount(); i++ )
+		{
+			if ( LogisticsData::instance->canAddMechToForceGroup( 
+				((MechListBoxItem*)mechListBox.GetItem( i ))->getMech() ) )
+			{
+				bFound = true;
+			}
+		}
+
+		if ( !bFound ) // select first thing in FG
+		{
+			selectFirstFGItem();
+			mechListBox.SelectItem( -1 );
+		}
+	}
+
+}
+
+void MechBayScreen::removeSelectedMech()
+{
+    int i = 0;
+	for (i = 0; i < ICON_COUNT; i++ )
+	{
+		if ( pIcons[i].isSelected() )
+		{
+			LogisticsMech* pMech = pIcons[i].getMech();
+			if ( !pMech )
+				return;
+			if ( 0 == LogisticsData::instance->getVariantsInInventory( pMech->getVariant(), 0 ) )
+			{
+				MechListBoxItem* item = new MechListBoxItem( pMech, 0 );
+				mechListBox.AddItem( item );
+			}
+
+			LogisticsData::instance->removeMechFromForceGroup( pMech, true );	
+			
+			forceGroupCount--;
+			removeWeightAmount = pMech->getMaxWeight();
+			removeWeightAnim.begin();
+			addWeightAnim.end();
+			if ( i >= forceGroupCount )
+			{
+				if ( !selectFirstFGItem() )
+				{
+					selectFirstViableLBMech();
+				}
+			}
+			else
+				pIcons[i].select( true );
+			break;
+		}
+	}
+	
+	for ( ; i < ICON_COUNT - 1; i++ )
+	{
+		LogisticsData::instance->removeMechFromForceGroup(pIcons[i+1].getMech(), false);		
+		LogisticsData::instance->addMechToForceGroup(pIcons[i+1].getMech(), i+1);
+	}
+
+	reinitMechs();
+
+	if ( !forceGroupCount )
+		selectFirstViableLBMech();
+
+
+}
+
+
+void MechBayScreen::end()
+{
+	mechCamera->setMech( nullptr );
+}
+
+void MechBayScreen::setMech( LogisticsMech* pMech,  bool bCommandFromLB )
+{
+
+	if ( pMech == pCurMech || status != RUNNING)
+		return;
+
+	pCurMech = pMech;
+	if ( pMech )
+	{
+		loadoutListBox.setMech( pMech->getVariant() );
+
+		EString fileName = pMech->getFileName();
+		int index = fileName.Find( '.' );
+		fileName = fileName.Left( index );
+		index = fileName.ReverseFind( PATH_SEPARATOR_AS_CHAR );
+		fileName = fileName.Right( fileName.Length() - index - 1 );
+		mechCamera->setMech( fileName, prefs.baseColor, prefs.highlightColor, prefs.highlightColor );
+		mechCamera->setScale( pMech->getVariant()->getChassis()->getScale() );
+	}
+	else
+		loadoutListBox.setMech( nullptr );
+
+	if ( bCommandFromLB ) // clicked on a disabled mech
+	{
+		unselectDeploymentTeam();
+		mechListBox.SelectItem( -1 );
+	}
+
+	if ( pCurMech )
+	{
+		char tmpStr[256];
+
+		// update current text
+		char str[64];
+
+		// weight
+		cLoadString( IDS_MB_MECH_WEIGHT, tmpStr, 63 );
+		sprintf( str, tmpStr, pCurMech->getMaxWeight(), pCurMech->getMechClass() );
+		textObjects[7].setText( str );
+		setDefsElementText( "game.mcl_mb_layout.text.mech_info_tonnage", str );
+
+		// firing range (getOptimalRangeString returns a string-table ID)
+		uint32_t tmpColor;
+		int rangeID = pCurMech->getVariant()->getOptimalRangeString( tmpColor );
+		textObjects[14].setText( rangeID );
+		textObjects[14].setColor( tmpColor );
+		char rangeBuf[128];
+		cLoadString( rangeID, rangeBuf, sizeof( rangeBuf ) - 1 );
+		setDefsElementText( "game.mcl_mb_layout.text.mech_info_range_text", rangeBuf );
+
+		// armor
+		int armor = pCurMech->getArmor();
+		sprintf( str, "%ld", armor );
+		textObjects[8].setText( str );
+		setDefsElementText( "game.mcl_mb_layout.text.mech_info_armor", str );
+		attributeMeters[0].setValue( armor/MAX_ARMOR_RANGE );
+
+		// speed
+		int speed = pCurMech->getDisplaySpeed();
+		sprintf( str, "%ld", speed );
+		textObjects[9].setText( str );
+		setDefsElementText( "game.mcl_mb_layout.text.mech_info_speed", str );
+		attributeMeters[1].setValue( pCurMech->getSpeed()/MAX_SPEED_RANGE );
+
+
+		// jump
+		int jumpRange = pCurMech->getJumpRange();
+		sprintf( str, "%ld", jumpRange * 25 );
+		textObjects[10].setText( str );
+		setDefsElementText( "game.mcl_mb_layout.text.mech_info_jump_dist", str );
+		attributeMeters[2].setValue( jumpRange * 25 / MAX_JUMP_RANGE );
+
+		// chassis name is a string-table ID; variant name is an EString.
+		textObjects[11].setText( pCurMech->getChassisName() );
+		char chassisBuf[128];
+		cLoadString( pCurMech->getChassisName(), chassisBuf, sizeof( chassisBuf ) - 1 );
+		setDefsElementText( "game.mcl_mb_layout.text.mech_name_header", chassisBuf );
+		textObjects[12].setText( pCurMech->getName() );
+		setDefsElementText( "game.mcl_mb_layout.text.variant_name_header", (const char*)pCurMech->getName() );
+	}
+	else
+	{
+		textObjects[7].setText( "" );
+		textObjects[8].setText( "" );
+		textObjects[9].setText( "" );
+		textObjects[10].setText( "" );
+		textObjects[11].setText( "" );
+		textObjects[12].setText( "" );
+		textObjects[14].setText( "" );
+		setDefsElementText( "game.mcl_mb_layout.text.mech_info_tonnage", "" );
+		setDefsElementText( "game.mcl_mb_layout.text.mech_info_armor", "" );
+		setDefsElementText( "game.mcl_mb_layout.text.mech_info_speed", "" );
+		setDefsElementText( "game.mcl_mb_layout.text.mech_info_jump_dist", "" );
+		setDefsElementText( "game.mcl_mb_layout.text.mech_name_header", "" );
+		setDefsElementText( "game.mcl_mb_layout.text.variant_name_header", "" );
+		setDefsElementText( "game.mcl_mb_layout.text.mech_info_range_text", "" );
+		for ( int i = 0; i < 3; i++ )
+		{
+			attributeMeters[i].setValue(0);
+		}
+
+	}
+
+	// Mirror the (legacy, occluded) loadout list into the defs GuiList so it renders
+	// on the ImGui layer.  loadoutListBox was populated above via setMech(); an empty
+	// box (pMech == NULL) pushes an empty list, clearing the defs display.
+	syncWeaponLoadout( this, loadoutListBox, "game.mcl_mb_layout.list.loadout" );
+}
+
+void MechBayScreen::beginDrag( LogisticsMech* pMech )
+{	
+	if ( pDragMech || status != RUNNING )
+		return;
+
+	if ( !pMech )
+		return;
+
+
+	// need to set the uv's of the mech icon
+	MechListBox::initIcon( pMech, dragIcon );
+
+	dragIcon.moveTo( userInput->getMouseX() - dragIcon.width() / 2, 
+			userInput->getMouseY() - dragIcon.height() / 2 );
+
+
+	pDragMech = pMech;
+
+	// figure out where the mech came from 
+	if ( mechListBox.pointInside( userInput->getMouseDragX(), userInput->getMouseDragY() ) )
+	{
+		if ( pMech->getForceGroup() )
+		{
+			pMech = LogisticsData::instance->getMechWithoutForceGroup( pMech );
+		}
+		pDragMech = pMech;
+
+
+		if ( !LogisticsData::instance->canAddMechToForceGroup( pMech ) )
+		{
+			pDragMech = nullptr;
+			return;
+		}
+
+		LogisticsData::instance->addMechToForceGroup( pMech, forceGroupCount+1 );
+		dragLeft = 0;
+		
+	}
+	else
+	{
+		for ( int i = 0; i < ICON_COUNT; i++ )
+		{
+			if ( pIcons[i].pointInside( userInput->getMouseDragX(), userInput->getMouseDragY() ) )
+			{
+				forceGroupCount--;
+
+				// select the next one
+				if ( i == forceGroupCount && forceGroupCount )
+				{
+					pIcons[i].select( 0 );
+					pIcons[0].select( true );
+				}
+				else if ( !forceGroupCount) 
+					pIcons[i].select( 0 );
+				
+				for ( ; i < ICON_COUNT - 1; i++ )
+				{		
+					LogisticsData::instance->removeMechFromForceGroup( pIcons[i+1].getMech(), false );
+					LogisticsData::instance->addMechToForceGroup( pIcons[i+1].getMech(), i+1 );
+					pIcons[i].setMech( pIcons[i+1].getMech() );
+					pIcons[i].setPilot( pIcons[i+1].getPilot() );
+				}
+
+				if ( i < ICON_COUNT )
+				{
+					pIcons[i].setMech( nullptr );
+					pIcons[i].setPilot( nullptr );
+				}
+
+
+				break;
+			}
+
+		}
+		dragLeft = 1;
+	}
+	
+}
+
+void MechBayScreen::reinitMechs()
+{
+	
+	int count = 0;
+
+	
+	int maxUnits = 12;
+
+	if ( MPlayer )
+	{
+		long playerCount;
+		MPlayer->getPlayers( playerCount );
+		if ( playerCount )
+			maxUnits = MAX_MULTIPLAYER_MECHS_IN_LOGISTICS/playerCount;
+
+		if ( maxUnits > 12 )
+			maxUnits = 12;
+	}
+
+	for ( int j = 0; j < ICON_COUNT_Y; j++ )
+	{
+		for ( int i = 0; i < ICON_COUNT_X; i++ )
+		{
+			pIcons[count].setMech( nullptr );
+			if ( count >= maxUnits )
+				pIcons[count].disable( true );
+			else
+				pIcons[count].disable( 0 );
+
+			count++;
+		}
+	}
+
+
+	forceGroupCount = 0;
+
+	// initialize both the inventory and icon lists
+	EList< LogisticsMech*, LogisticsMech* > mechList;
+	LogisticsData::instance->getInventory( mechList );
+	
+	
+	for ( EList< LogisticsMech*, LogisticsMech* >::EIterator iter = mechList.Begin();
+		!iter.IsDone(); iter++ )
+		{
+			if ( (*iter)->getForceGroup() )
+			{
+				long FG = (*iter)->getForceGroup();
+
+				if ( FG <= maxUnits )
+				{
+				
+					pIcons[FG-1].setMech( (*iter) );
+					pIcons[FG-1].setPilot( (*iter)->getPilot() );
+					forceGroupCount++;
+				}
+				else 
+					(*iter)->setForceGroup( 0 );
+				
+			}
+		}
+}
+
+void	MechBayScreen::unselectDeploymentTeam()
+{
+	int count = 0;
+	for ( int j = 0; j < ICON_COUNT_Y; j++ )
+	{
+		for ( int i = 0; i < ICON_COUNT_X; i++ )
+		{
+			pIcons[count].select( 0 );
+			count++;
+		}
+	}
+}
+
+bool	MechBayScreen::selectFirstFGItem()
+{
+	bool bRetVal = false;
+	for ( int i = 0; i < ICON_COUNT_X * ICON_COUNT_Y; i++ )
+	{
+		if ( pIcons[i].getMech() && !bRetVal )
+		{
+			pIcons[i].select( true );
+			bRetVal = true;
+		}
+		else
+			pIcons[i].select( false );
+	}
+
+	return bRetVal;
+}
+bool	MechBayScreen::selectFirstViableLBMech()
+{
+	for ( int i = 0; i < mechListBox.GetItemCount(); i++ )
+	{
+		if ( mechListBox.GetItem( i )->getState() != aListItem::DISABLED )
+		{
+			mechListBox.SelectItem( i );
+			return true;
+		}
+	}
+
+	return 0;
+}
+
+LogisticsMech* MechBayScreen::getFGSelMech()
+{
+	for ( int i = 0; i < ICON_COUNT_X * ICON_COUNT_Y; i++ )
+	{
+		if ( pIcons[i].getMech() && pIcons[i].isSelected()  )
+			return pIcons[i].getMech();
+	}
+
+	return nullptr;
+}

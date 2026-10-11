@@ -534,6 +534,8 @@ set(SOURCES
     "code/logisticsvariant_stats.cpp"
     "code/mainmenu.cpp"
     "code/mechbayscreen.cpp"
+    "code/mechbayscreen_update.cpp"
+    "code/mechbayscreen_mechs.cpp"
     "code/mechlabscreen.cpp"
     "code/mechlistbox.cpp"
     "code/mechlopedia.cpp"

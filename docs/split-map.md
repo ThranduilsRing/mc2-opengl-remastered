@@ -186,6 +186,15 @@ Split commit: `009e31493`.
 | `logisticsvariant_stats.cpp` | LogisticsVariant: the variant stat getters, component placement checks and lookups, save, and the LogisticsVehicle setup. |
 | `logisticsvariant_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
+## `code/mechbayscreen.cpp`
+
+| Piece | What it holds |
+|---|---|
+| `mechbayscreen.cpp` | keeps construction, init, begin and render |
+| `mechbayscreen_mechs.cpp` | MechBayScreen: mech selection, removal, setMech, drag handling and the deployment-team helpers. |
+| `mechbayscreen_update.cpp` | MechBayScreen: the weight meter, the per-frame update and the message handler. |
+| `mechbayscreen_internal.h` | shared include bundle, extern globals and declarations of the pieces |
+
 ## `code/mechcmd2.cpp`
 
 | Piece | What it holds |
