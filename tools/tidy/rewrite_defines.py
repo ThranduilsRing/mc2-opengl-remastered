@@ -431,31 +431,49 @@ def cmd_census(a):
     return 0
 
 
-def plan_batches(files, sites, uses, includers, args, dirty):
-    """Eligible sites grouped by file -> [(rel, [sites], objs)] in batch order: .cpp-local first, then headers by including-object count."""
+def plan_batches(files, sites, uses, includers, args, dirty, skips=None):
+    """Eligible sites grouped by file -> [(rel, [sites], objs)] in batch order: .cpp-local first, then headers by including-object count.
+    `skips`, when a list, receives (rel, kind, detail, site count) for every file with eligible sites that is NOT planned (tools/tidy/check_batch_allowed.py prints them):
+    kind is excluded / dirty / never-touch / scope / tainted (detail: the tainted objects it includes) / no-objects / too-many-includers."""
     by_file = collections.defaultdict(list)
     tus = overload_sensitive_tus()
+    barred = {}
     for s in sites:
-        if s.reasons or rts.is_excluded(s.path) or s.path in dirty or never_touch(s.path, tus):
+        if s.reasons:
+            continue
+        why = "excluded" if rts.is_excluded(s.path) else "dirty" if s.path in dirty else "never-touch" if never_touch(s.path, tus) else None
+        if why:
+            barred.setdefault(s.path, [why, 0])[1] += 1
             continue
         by_file[s.path].append(s)
+    if skips is not None:
+        skips.extend((rel, why, "", n) for rel, (why, n) in barred.items())
     out = []
     for rel, ss in by_file.items():
         if rel.lower().endswith(SRC_EXT):
             if args.scope == "header":
+                if skips is not None:
+                    skips.append((rel, "scope", "a .cpp file, scope is header", len(ss)))
                 continue
             objs = {args.s2t[rel]} if rel in args.s2t else set()
             ss = [s for s in ss if all(u[0] == rel for u in uses[s.name])]          # used only inside this file
         else:
             if args.scope == "cpp":
+                if skips is not None:
+                    skips.append((rel, "scope", "a header, scope is cpp", len(ss)))
                 continue
             objs = includers.get(rel, set())
             src_objs = {args.s2t.get(u[0]) for s in ss for u in uses[s.name] if u[0].lower().endswith(SRC_EXT)}
             ss = [s for s in ss if all(u[0] == rel or not u[0].lower().endswith(SRC_EXT) or args.s2t.get(u[0]) in objs for u in uses[s.name])]
         if objs & args.taint:
+            if skips is not None:
+                skips.append((rel, "tainted", ",".join(sorted(objs & args.taint)), len(ss)))
             continue
         if ss and objs and (rel.lower().endswith(SRC_EXT) or len(objs) <= args.max_header_includers):
             out.append((len(objs), rel, ss, objs))
+        elif ss and skips is not None:
+            skips.append((rel, "no-objects", "no including object in the tree", len(ss)) if not objs else
+                         (rel, "too-many-includers", "%d objects (limit %d)" % (len(objs), args.max_header_includers), len(ss)))
     out.sort(key=lambda x: (not x[1].lower().endswith(SRC_EXT), x[0], x[1]))
     return out
 
