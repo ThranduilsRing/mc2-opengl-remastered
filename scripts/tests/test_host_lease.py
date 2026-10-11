@@ -64,8 +64,8 @@ def test_times_out(lease):
 
 def test_reentry_does_not_see_its_own_games_as_foreign(lease, monkeypatch):
     monkeypatch.delenv("MC2_CURSOR_GUARD_OFF", raising=False)
-    monkeypatch.setattr(host_lease.cursor_guard, "guard_off", lambda: False)
+    monkeypatch.setattr(host_lease.win_input, "guard_off", lambda: False)
     host_lease.acquire("t", scan=lambda: [], log=lambda m: None)
-    monkeypatch.setattr(host_lease.cursor_guard, "find_foreign_game_pids", lambda **k: [(1, "mc2.exe")])
+    monkeypatch.setattr(host_lease.win_input, "find_foreign_game_pids", lambda **k: [(1, "mc2.exe")])
     host_lease.ensure_held("again")        # must return without scanning or waiting
     assert host_lease.holds()

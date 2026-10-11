@@ -15,13 +15,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-# VERIFY-INTEGRITY-3: this harness launches mc2.exe for up to `secs` (default
-# 300s) and previously set NEITHER MC2_SMOKE_MODE nor MC2_NO_CURSOR_GRAB, so the
-# game clamped and re-centred the user's pointer for the whole soak. Belt and
-# braces, matching scripts/smoke_lib/runner.py: the env gate stops NEW binaries
-# grabbing at all, and CursorGuard defends from outside the process so OLDER
-# deploys (this script targets v0.4d-rc1 by default) are covered too.
-from smoke_lib.cursor_guard import CursorGuard  # noqa: E402
+# MC2_SMOKE_MODE + MC2_NO_CURSOR_GRAB (set below) stop the game grabbing the pointer; nofocus.spawn refuses an exe too old to honour them.
 from smoke_lib import nofocus  # noqa: E402
 # Computer-agnostic: override with MC2_DEPLOY_DIR env; literal is a last-resort dev fallback.
 DEFAULT_DEPLOY = os.environ.get("MC2_DEPLOY_DIR", r"A:/Games/mc2-opengl/mc2-win64-v0.4")
@@ -66,15 +60,12 @@ def main():
     })
     crash_before = newest_crash(deploy)
     with open(outp, "w") as fo, open(errp, "w") as fe:
-        # Guard STARTS BEFORE Popen so its anchor is the user's real position
-        # and any foreign clamp is reported rather than silently adopted.
-        with CursorGuard():
-            p = nofocus.spawn([exe], cwd=deploy, stdout=fo, stderr=fe, env=env)
-            try:
-                p.wait(timeout=secs)
-                exited = True
-            except subprocess.TimeoutExpired:
-                p.kill(); exited = False
+        p = nofocus.spawn([exe], cwd=deploy, stdout=fo, stderr=fe, env=env)
+        try:
+            p.wait(timeout=secs)
+            exited = True
+        except subprocess.TimeoutExpired:
+            p.kill(); exited = False
 
     out = Path(outp).read_text(errors="replace")
     err = Path(errp).read_text(errors="replace")

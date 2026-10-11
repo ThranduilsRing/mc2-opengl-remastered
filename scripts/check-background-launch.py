@@ -52,7 +52,7 @@ only defence that scales is making the two populations declare themselves.
     hand-rolled subprocess.Popen with its own env dict.
 
   RULE 11 -- one guarded pointer write. The only code that may name
-    SetCursorPos is `set_cursor_pos` in scripts/smoke_lib/cursor_guard.py, and
+    SetCursorPos is `set_cursor_pos` in scripts/smoke_lib/win_input.py, and
     that function must consult `user_is_active()` before it. Every other pointer
     move (nofocus, game_auto, the capture park/restore, the watchdog) funnels
     through it, so a user at the keyboard is never fought for the mouse (owner
@@ -62,7 +62,7 @@ only defence that scales is making the two populations declare themselves.
   RULE 12 -- tests never drive the real pointer. A file under tests/,
     scripts/tests/ or tools/ that builds a CursorGuard, parks the cursor or names
     ClipCursor must sit under a conftest.py (or itself) that sets
-    MC2_CURSOR_GUARD_OFF=1, which makes smoke_lib.cursor_guard issue no win32
+    MC2_CURSOR_GUARD_OFF=1, which makes smoke_lib.win_input issue no win32
     call. A test suite that ran the real guard took the owner's mouse in 5-10 s
     bursts (2026-10-10).
 
@@ -238,7 +238,7 @@ OFFSCREEN_ENV_NAMES = ("OFFSCREEN_ENV", "nofocus.OFFSCREEN_ENV")
 #: Only these may touch focus/cursor Win32 directly -- cursor policy is their job.
 CURSOR_POLICY_FILES = {
     "scripts/smoke_lib/nofocus.py",
-    "scripts/smoke_lib/cursor_guard.py",
+    "scripts/smoke_lib/win_input.py",
     # This checker names the forbidden APIs as string constants.
     "scripts/check-background-launch.py",
     # game_auto.py IS the synthetic-input driver. Its mouse_event calls are
@@ -263,7 +263,7 @@ ENV_FORCE_POLICIES = {"scripts/smoke_lib/runner.py"}
 FORCED_MINIMUM = ("MC2_WINDOWED", "MC2_NO_CURSOR_GRAB", "MC2_WINDOW_OFFSCREEN")
 
 #: RULE 11: the single function allowed to name the pointer-write API.
-CURSOR_WRITE_OWNER = "scripts/smoke_lib/cursor_guard.py"
+CURSOR_WRITE_OWNER = "scripts/smoke_lib/win_input.py"
 CURSOR_WRITE_FUNC = "set_cursor_pos"
 CURSOR_WRITE_API = "SetCursorPos"
 CURSOR_WRITE_GUARD = "user_is_active"
@@ -702,7 +702,7 @@ def check(root: Path = ROOT, use_git: bool = True, allow=None):
             sites_by_file[r] = collect_sites(tree)
             texts[r] = src
 
-        # ---- RULE 11: SetCursorPos only inside cursor_guard.set_cursor_pos, after the idle check ----
+        # ---- RULE 11: SetCursorPos only inside win_input.set_cursor_pos, after the idle check ----
         if r != "scripts/check-background-launch.py":
             problems.extend(cursor_write_problems(r, tree))
 
@@ -1171,7 +1171,7 @@ _SELFTEST_FILES = {
         "import ctypes\n"
         "def park():\n"
         "    ctypes.windll.user32.SetCursorPos(1, 1)\n"),
-    "scripts/smoke_lib/cursor_guard.py": (
+    "scripts/smoke_lib/win_input.py": (
         "def user_is_active():\n"
         "    return False\n"
         "def set_cursor_pos(pos):\n"
@@ -1274,7 +1274,7 @@ def selftest() -> int:
                "python wrapper taking an exe path is not an engine launch")
         expect(flagged("scripts/raw_cursor.py", "SetCursorPos outside"),
                "SetCursorPos in an ordinary module FAILS (RULE 11)")
-        expect(flagged("scripts/smoke_lib/cursor_guard.py", "SetCursorPos outside"),
+        expect(flagged("scripts/smoke_lib/win_input.py", "SetCursorPos outside"),
                "set_cursor_pos without the user_is_active() check FAILS (RULE 11)")
         guarded = ("def user_is_active():\n    return False\n"
                    "def set_cursor_pos(pos):\n    if user_is_active():\n        return False\n"
@@ -1426,7 +1426,7 @@ def cursor_write_problems(rel: str, tree: ast.AST) -> list:
         if allowed and allowed[0] < node.lineno <= allowed[1]:
             continue
         out.append(f"{rel}:{node.lineno}: {name} outside {CURSOR_WRITE_OWNER}:{CURSOR_WRITE_FUNC}() "
-                   f"(after its {CURSOR_WRITE_GUARD}() check). Call cursor_guard.set_cursor_pos() "
+                   f"(after its {CURSOR_WRITE_GUARD}() check). Call win_input.set_cursor_pos() "
                    f"so a user at the keyboard is never fought for the mouse.")
     return out
 

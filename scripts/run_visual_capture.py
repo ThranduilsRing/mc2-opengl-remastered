@@ -89,8 +89,6 @@ def _reap_active() -> None:
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 import manifest_schema as ms  # noqa: E402
-# CURSOR-STEAL-HARNESS-GUARD-1: single shared implementation of cursor policy.
-from smoke_lib.cursor_guard import CursorGuard, park_cursor_if_edge  # noqa: E402
 # BACKGROUND-SMOKE-1: no agent capture may take focus / fullscreen / the cursor.
 from smoke_lib import nofocus  # noqa: E402
 from smoke_lib import exe_guard  # noqa: E402
@@ -130,60 +128,16 @@ def _kill_existing_mc2() -> None:
 
 
 def _save_cursor() -> None:
-    """WATER-VISUAL-GATE-1: snapshot the desktop cursor once so we can restore it."""
-    global _ORIG_CURSOR
-    if os.name != "nt" or _ORIG_CURSOR is not None:
-        return
-    try:
-        from smoke_lib import cursor_guard
-        _ORIG_CURSOR = cursor_guard.get_cursor_pos()   # None when guarded off or headless
-    except Exception as e:
-        print(f"[viscap] WARN save cursor: {e}", file=sys.stderr)
+    """No-op: the harness no longer moves the pointer, so there is nothing to put back."""
 
 
 def _restore_cursor() -> None:
-    """Restore the cursor to where it was before the sweep parked it."""
-    if os.name != "nt" or _ORIG_CURSOR is None:
-        return
-    try:
-        # BACKGROUND-SMOKE-1: restoring the user's OWN anchor is the one
-        # sanctioned pointer move (restoring=True); everything else is a no-op.
-        nofocus.set_cursor_pos(_ORIG_CURSOR[0], _ORIG_CURSOR[1], restoring=True)
-    except Exception as e:
-        print(f"[viscap] WARN restore cursor: {e}", file=sys.stderr)
+    """No-op (see _save_cursor)."""
 
 
 def park_cursor_center() -> None:
-    """Keep the OS cursor out of MC2's edge-scroll bands.
-
-    LOAD-BEARING for determinism: the MC2 RTS camera edge-scrolls whenever the
-    desktop cursor sits at a screen edge -- regardless of window focus or
-    whether mc2.exe is foreground/minimized (memory: smoke_autonomous_run_pattern
-    fact #2). The bookmark sweep re-applies the pose each settle frame, but
-    edge-scroll adds a per-frame camera delta on top, so an un-parked cursor
-    makes wide/high-altitude framings drift nondeterministically.
-
-    CURSOR-STEAL-HARNESS-GUARD-1: this used to slam the pointer to screen centre
-    unconditionally, on every launch AND every poll iteration -- which is the
-    "the harness stole my cursor while it launched" symptom the user reported.
-    It now delegates to `cursor_guard.park_cursor_if_edge()`, which moves the
-    pointer ONLY when it actually sits inside a scroll band (see the trigger
-    quoted in cursor_guard.py from missiongui.cpp:5206). A pointer resting
-    mid-screen provably cannot drive edge-scroll, so it is left alone and
-    determinism is unaffected. No-op off-Windows.
-    """
-    if os.name != "nt":
-        return
-    _save_cursor()  # WATER-VISUAL-GATE-1: snapshot once before the first park
-    try:
-        outcome = park_cursor_if_edge(engine_suppressed=True)  # child always runs MC2_SMOKE_MODE=1
-    except Exception as e:
-        print(f"[viscap] WARN park cursor: {e}", file=sys.stderr)
-        return
-    global _PARK_OUTCOME_SEEN
-    if outcome != _PARK_OUTCOME_SEEN:
-        _PARK_OUTCOME_SEEN = outcome
-        print(f"[viscap] cursor park: {outcome}", file=sys.stderr)
+    """No-op. The capture child runs MC2_SMOKE_MODE=1, in which the engine ignores the real pointer (no edge scroll, no grab); the harness
+    never moves a person's pointer. Kept as a name because the poll loop calls it."""
 
 
 def _disk_guard_advisory(path, need_gb: float, label: str) -> None:
@@ -360,17 +314,11 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
     # contributes nothing to the capture and the drawable keeps its full size.
     # small_window=False: MC2_WIDTH/HEIGHT stay unset because goldens are graded
     # at options.cfg ResolutionX/Y (check-capture-resolution.py).
-    #
-    # CursorGuard (exe-independent): older deploy exes still ClipCursor()/warp;
-    # the guard releases the clamp and restores the user's pointer on every exit
-    # path. Its stop() is in the `finally` below.
-    _guard = CursorGuard().start()
     try:
         proc = nofocus.spawn(proc_args, stdout=log_fp, stderr=subprocess.STDOUT,
                              cwd=str(exe.parent), env=env,
                              show_window=show_window, small_window=False)
         _ACTIVE.append(proc)  # HARNESS-ISOLATION-1: track for own-only reap
-        _guard.set_owner_pid(proc.pid)
 
         # Poll for all expected PNGs, or process exit, or timeout. Re-park the
         # cursor every iteration so it stays pinned center through the ENTIRE sweep
@@ -423,7 +371,7 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
         print(f"[viscap] capture {'complete, early exit' if done_early else 'ended'}"
               f" after {time.time() - t0:.1f}s (budget {duration}s)")
     finally:
-        _guard.stop()
+        log_fp.flush()
     log_fp.close()
 
     # Collect results per bookmark.

@@ -42,8 +42,7 @@
   "scripts/check-mover-registry-coherence.sh",
   "scripts/counter-honesty-allowlist.txt",
   "scripts/gate-defaults-allowlist.txt",
-  "scripts/run_visual_capture.py",
-  "scripts/smoke_lib/cursor_guard.py"
+  "scripts/run_visual_capture.py"
  ],
  "_scripts_reason": "Reviewed: each names code/missiongui.cpp for code that stays in the core file (select-all isOnGUI count, #42b hover guard, s_stage limiter, edge-scroll comments, MC2_RENDER_BACKEND note); the moved UI-command chain is not pinned by any of them."
 }

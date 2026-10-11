@@ -40,12 +40,6 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-# VERIFY-INTEGRITY-3 / CURSOR-STEAL-HARNESS-GUARD-1: shared cursor policy
-# (conditional park + guaranteed restore) instead of a bare pyautogui.moveTo.
-from smoke_lib.cursor_guard import (  # noqa: E402
-    park_cursor_if_edge,
-    restore_parked_cursor,
-)
 # BACKGROUND-SMOKE-1: single chokepoint for non-activating launch + guarded focus.
 from smoke_lib import nofocus  # noqa: E402
 
@@ -106,25 +100,7 @@ TRACKED_FLAGS = (
 
 
 def park_mouse_center() -> None:
-    """Conditional cursor park -- VERIFY-INTEGRITY-3.
-
-    WAS: an unconditional `pyautogui.moveTo(centre)` with NO restore, called
-    three times per capture. Because capture_baseline is also exposed as an MCP
-    tool (`run_capture_baseline`), that stole the user's pointer on every
-    invocation, whether or not the pointer could actually drive edge-scroll.
-
-    NOW: delegates to the shared policy in `smoke_lib/cursor_guard.py` (same
-    module used by run_visual_capture / camera_sweep_smoke / smoke runner):
-      * the pointer is left ALONE when it is already outside the edge-scroll
-        band, or when the engine gate MC2_VISUAL_DIFF_CAPTURE already disables
-        edge-scroll, so the common case is now zero theft;
-      * the pre-park position is snapshotted once and put back by
-        `restore_parked_cursor()`, wired to `finally` + `atexit` in main().
-    """
-    outcome = park_cursor_if_edge(reason="capture_baseline")
-    if outcome == "parked":
-        print("[baseline] cursor was in an edge-scroll band; parked "
-              "(will be restored on exit)", file=sys.stderr)
+    """No-op. capture_baseline is also an MCP tool; the smoke-mode engine ignores the real pointer, and a harness must never move a person's pointer."""
 
 
 def bring_mc2_foreground() -> bool:
@@ -553,12 +529,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    # VERIFY-INTEGRITY-3: the pointer goes back where the user left it even on
-    # crash, exception, or Ctrl-C. atexit covers interpreter teardown paths that
-    # `finally` alone misses; restore_parked_cursor() is idempotent and a no-op
-    # when nothing was ever parked.
-    atexit.register(restore_parked_cursor)
-    try:
-        sys.exit(main())
-    finally:
-        restore_parked_cursor()
+    sys.exit(main())

@@ -13,7 +13,6 @@ from pathlib import Path
 from typing import List, Optional
 
 from . import nofocus
-from .cursor_guard import CursorGuard
 from .gates import GateConfig, Verdict, evaluate
 from .logparse import LogSummary, parse_log
 
@@ -78,8 +77,8 @@ FORCED_ENV: dict = {
     # Engine-side cursor-theft suppression (gos_CursorControlSuppressed,
     # f0c07b87). MC2_SMOKE_MODE already implies it, but set it explicitly so
     # the intent survives if the smoke-mode implication is ever narrowed.
-    # NOTE: this only works on exes built AFTER f0c07b87 -- the harness-side
-    # CursorGuard below is what covers older deploy lanes.
+    # NOTE: this only works on exes built AFTER f0c07b87; nofocus.spawn refuses
+    # any older exe (exe_guard.check_exe, MIN_COMMIT), so no exe here lacks it.
     "MC2_NO_CURSOR_GRAB": "1",
     # BACKGROUND-SMOKE-1: never take the display fullscreen. Without this the
     # engine inherits options.cfg FullScreen=TRUE and a tier1 smoke covers the
@@ -185,7 +184,7 @@ def known_gate_names() -> "frozenset | None":
 def unregistered_ambient(environ: dict, env_extra: "dict | None" = None) -> dict:
     """Ambient MC2_* variables that are not gates: {name: value}.
 
-    These are harness-only knobs (cursor_guard, nofocus, isolation, run_smoke require-flags) that Python reads
+    These are harness-only knobs (win_input, nofocus, run_smoke require-flags) that Python reads
     from its own environment, or typos. The engine runs under MC2_CONFIG_STRICT=1, where an unknown MC2_* name is
     fatal, so the runner does not forward them. A name this run sets itself (env_extra, FORCED_ENV, SOFT_ENV) is
     never dropped: a typo THERE must still fail at startup.
@@ -275,24 +274,11 @@ def run_one(cfg: RunConfig) -> RunResult:
     # t0 must be captured BEFORE spawning the reader thread so both the reader
     # and the main loop share the same monotonic reference point.
     t0 = time.monotonic()
-    # CURSOR-STEAL-HARNESS-GUARD-1: exe-independent protection for the user's
-    # pointer. Older deploy-lane exes (predating f0c07b87) still ClipCursor()
-    # and warp to the window centre every frame; an engine-side fix cannot
-    # reach a binary built before it. The guard releases the clamp on a timer
-    # and snaps the pointer back whenever the game moves it, then restores the
-    # anchor in the finally below (and via atexit if we are hard-killed).
-    # Inert on non-win32 / headless, or with MC2_NO_CURSOR_GUARD=1.
-    cursor_guard = CursorGuard().start()
-    try:
-        # small_window=False: smoke grades perf/pixels at options.cfg size, so
-        # the 640x480 MC2_WIDTH/HEIGHT default must not be injected here.
-        proc = nofocus.spawn(argv, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                             env=env, text=True, bufsize=1, cwd=exe_dir,
-                             show_window=show_window, small_window=False)
-        cursor_guard.set_owner_pid(proc.pid)
-    except BaseException:
-        cursor_guard.stop()
-        raise
+    # small_window=False: smoke grades perf/pixels at options.cfg size, so
+    # the 640x480 MC2_WIDTH/HEIGHT default must not be injected here.
+    proc = nofocus.spawn(argv, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                         env=env, text=True, bufsize=1, cwd=exe_dir,
+                         show_window=show_window, small_window=False)
 
     # Stream lines and record per-line wallclock so freeze detection can use
     # runner walltime rather than engine-emitted elapsed_ms (which is mission-
@@ -337,11 +323,6 @@ def run_one(cfg: RunConfig) -> RunResult:
             proc.wait(timeout=2)
         # Drain any remaining items so the reader thread can unblock and exit.
         reader.join(timeout=2)
-        # Release the clamp and put the pointer back on the user's anchor. Runs
-        # on every exit path -- normal EOF, walltime kill, or an exception out
-        # of the read loop. (atexit is only the last-resort net for a hard kill
-        # of the harness itself.)
-        cursor_guard.stop()
     walltime = time.monotonic() - t0
     stdout = "\n".join(lines)
 
