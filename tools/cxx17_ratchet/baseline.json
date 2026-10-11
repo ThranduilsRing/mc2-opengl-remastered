@@ -150,7 +150,7 @@
    "LG09": 2353,
    "LG10": 20,
    "LG11": 101,
-   "LG12a": 127,
+   "LG12a": 122,
    "LG12b": 349,
    "LG13": 1184,
    "LG14": 135,
@@ -2194,8 +2194,7 @@
   "code/logistics.cpp": {
    "LG03": 11,
    "LG06": 1,
-   "LG09": 1,
-   "LG12a": 1
+   "LG09": 1
   },
   "code/logistics.h": {
    "LG06": 2,
@@ -2566,7 +2565,6 @@
    "LG03": 11,
    "LG04": 2,
    "LG09": 21,
-   "LG12a": 2,
    "LG13": 2
   },
   "code/mission_internal.h": {
@@ -2689,7 +2687,6 @@
   "code/missionresults.cpp": {
    "LG03": 6,
    "LG06": 1,
-   "LG12a": 2,
    "LG12b": 1
   },
   "code/missionresults.h": {
@@ -5382,7 +5379,7 @@
    "LG20": 2
   }
  },
- "head": "f5b5db133",
+ "head": "577e3a35a",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
