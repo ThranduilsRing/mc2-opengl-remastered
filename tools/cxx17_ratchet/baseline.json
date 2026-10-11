@@ -152,7 +152,7 @@
    "LG11": 101,
    "LG12a": 220,
    "LG12b": 790,
-   "LG13": 912,
+   "LG13": 759,
    "LG14": 135,
    "LG15": 0,
    "LG16": 7,
@@ -198,7 +198,7 @@
    "LG11": 67,
    "LG12a": 449,
    "LG12b": 563,
-   "LG13": 1210,
+   "LG13": 1200,
    "LG14": 122,
    "LG15": 0,
    "LG16": 156,
@@ -1754,8 +1754,7 @@
    "LG12b": 1
   },
   "code/attributemeter.h": {
-   "LG06": 1,
-   "LG13": 3
+   "LG06": 1
   },
   "code/bldng.cpp": {
    "LG01": 3,
@@ -1768,7 +1767,7 @@
    "LG01": 4,
    "LG02": 2,
    "LG09": 6,
-   "LG13": 5,
+   "LG13": 4,
    "LG14": 1
   },
   "code/brain_archetype.h": {
@@ -2173,8 +2172,7 @@
   },
   "code/group.h": {
    "LG01": 3,
-   "LG02": 2,
-   "LG13": 5
+   "LG02": 2
   },
   "code/group_goals.cpp": {
    "LG01": 1,
@@ -2197,7 +2195,6 @@
    "LG01": 2,
    "LG02": 4,
    "LG09": 1,
-   "LG13": 15,
    "LG14": 3
   },
   "code/gvehicl_control.cpp": {
@@ -2304,8 +2301,7 @@
    "LG12a": 2
   },
   "code/logistics.h": {
-   "LG06": 2,
-   "LG13": 5
+   "LG06": 2
   },
   "code/logistics_begin.cpp": {
    "LG03": 1,
@@ -2385,9 +2381,6 @@
    "LG06": 6,
    "LG17": 1
   },
-  "code/logisticserrors.h": {
-   "LG13": 32
-  },
   "code/logisticsmech.cpp": {
    "LG12b": 1,
    "LG17": 1
@@ -2411,8 +2404,7 @@
    "LG12b": 9
   },
   "code/logisticsmissioninfo.h": {
-   "LG06": 8,
-   "LG13": 1
+   "LG06": 8
   },
   "code/logisticsmissioninfo_progress.cpp": {
    "LG03": 2,
@@ -2433,7 +2425,6 @@
    "LG12b": 6
   },
   "code/logisticspilot.h": {
-   "LG13": 1,
    "LG14": 1
   },
   "code/logisticspilotlistbox.cpp": {
@@ -2503,7 +2494,7 @@
    "LG01": 4,
    "LG02": 7,
    "LG09": 1,
-   "LG13": 73,
+   "LG13": 16,
    "LG14": 6
   },
   "code/mech_brain_runtime.h": {
@@ -2558,9 +2549,6 @@
   "code/mechbayscreen.cpp": {
    "LG03": 5,
    "LG09": 3
-  },
-  "code/mechbayscreen.h": {
-   "LG13": 11
   },
   "code/mechbayscreen_mechs.cpp": {
    "LG03": 1,
@@ -2639,7 +2627,6 @@
    "LG17": 1
   },
   "code/mechlistbox.h": {
-   "LG13": 1,
    "LG17": 1
   },
   "code/mechlopedia.cpp": {
@@ -2667,7 +2654,7 @@
    "LG02": 5,
    "LG06": 4,
    "LG09": 2,
-   "LG13": 34,
+   "LG13": 21,
    "LG14": 1
   },
   "code/mission2.cpp": {
@@ -2759,7 +2746,6 @@
    "LG02": 2,
    "LG05": 2,
    "LG06": 2,
-   "LG13": 1,
    "LG14": 1
   },
   "code/missiongui_cursor.cpp": {
@@ -2884,9 +2870,6 @@
   "code/mover_init.cpp": {
    "LG03": 2,
    "LG12b": 1
-  },
-  "code/mover_internal.h": {
-   "LG13": 1
   },
   "code/mover_misc.cpp": {
    "LG05": 2,
@@ -3131,9 +3114,6 @@
    "LG05": 1,
    "LG09": 8
   },
-  "code/radio.h": {
-   "LG13": 2
-  },
   "code/salvagemecharea.cpp": {
    "LG03": 29,
    "LG05": 1,
@@ -3233,7 +3213,6 @@
    "LG01": 5,
    "LG02": 2,
    "LG09": 2,
-   "LG13": 1,
    "LG14": 1
   },
   "code/trigger.cpp": {
@@ -3254,7 +3233,7 @@
   "code/turret.h": {
    "LG02": 1,
    "LG09": 3,
-   "LG13": 6,
+   "LG13": 4,
    "LG17": 1
   },
   "code/ui_profile.h": {
@@ -3369,8 +3348,7 @@
   "code/weaponbolt.h": {
    "LG01": 10,
    "LG02": 1,
-   "LG09": 7,
-   "LG13": 1
+   "LG09": 7
   },
   "code/weaponbolt_render.cpp": {
    "LG09": 32,
@@ -3620,7 +3598,7 @@
   },
   "mclib/bdactor_internal.h": {
    "LG06": 7,
-   "LG13": 3
+   "LG13": 2
   },
   "mclib/bdactor_lightbake.cpp": {
    "LG09": 4
@@ -4042,8 +4020,7 @@
   },
   "mclib/gamelog.h": {
    "LG01": 1,
-   "LG06": 2,
-   "LG13": 4
+   "LG06": 2
   },
   "mclib/genactor.cpp": {
    "LG01": 4,
@@ -4779,7 +4756,7 @@
    "LG12b": 3
   },
   "mclib/msl_internal.h": {
-   "LG13": 3
+   "LG13": 1
   },
   "mclib/msl_load.cpp": {
    "LG01": 14,
@@ -5421,7 +5398,6 @@
    "LG17": 6
   },
   "mclib/tgl_internal.h": {
-   "LG13": 3,
    "LG14": 1
   },
   "mclib/tgl_load_guard.cpp": {
@@ -5626,7 +5602,7 @@
    "LG20": 2
   }
  },
- "head": "3a181227a",
+ "head": "8aa5e975d",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
