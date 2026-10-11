@@ -1,6 +1,7 @@
 // EditorObjectMgr: save/load of buildings, mechs, forests and drop zones.
 // Declared in the class headers; shared names in EditorObjectMgr_internal.h.
 #include "EditorObjectMgr_internal.h"
+#include "mc2fmt.h"
 
 
 bool EditorObjectMgr::save( PacketFile& PakFile, int whichPacket )
@@ -481,7 +482,8 @@ bool		EditorObjectMgr::saveMechs( FitIniFile& file )
 			EditorObjMgrTrace("EditorObjectMgr::saveMechs: armName has no .fit: '%s' (skipping ARM warrior relationship)", armName);
 		} else {
 			*fitExt = '_';
-			sprintf(fitExt+1, "warrior%02d", counter);
+			// the bound is what is left of armName[512] after the '_' that replaced ".fit"
+			mc2::fmt::to_buf_n(fitExt + 1, sizeof(armName) - static_cast<size_t>(fitExt + 1 - armName), "warrior{:02d}", mc2::fmt::as_i32(counter));
 			mapAsset->AddRelationship("warrior", armName);
 		}
 
