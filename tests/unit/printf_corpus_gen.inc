@@ -233,7 +233,7 @@ TEST_CASE("printf corpus 0013:      weapon = (%03d)%s, hitLocation = (%d)%s, dam
 	}
 }
 
-TEST_CASE("printf corpus 0014:     %d: objClass %d (%d)\\n")
+TEST_CASE("printf corpus 0014:     %d: objClass %d (%d)n")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -251,7 +251,7 @@ TEST_CASE("printf corpus 0014:     %d: objClass %d (%d)\\n")
 	}
 }
 
-TEST_CASE("printf corpus 0015:     There are %d terrain objects in this tile.\\n")
+TEST_CASE("printf corpus 0015:     There are %d terrain objects in this tile.n")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -421,7 +421,7 @@ TEST_CASE("printf corpus 0022:   [id=%ld name=%s class=%s team=%ld cmdr=%ld pos=
 	}
 }
 
-TEST_CASE("printf corpus 0023:   [id=%ld name=%s pos=(%.1f,%.1f,%.1f) hp=%.3f%s]\\n [maybe-null]")
+TEST_CASE("printf corpus 0023:   [id=%ld name=%s pos=(%.1f,%.1f,%.1f) hp=%.3f%s]n [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -470,7 +470,7 @@ TEST_CASE("printf corpus 0024:   [id=%ld type=%s class=%s pos=(%.1f,%.1f,%.1f) g
 	}
 }
 
-TEST_CASE("printf corpus 0025:   \\'cap_alt\\': %.3f,\\n")
+TEST_CASE("printf corpus 0025:   cap_alt: %.3f,n")
 {
 	for (int row = 0; row < 12; ++row) {
 		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
@@ -486,7 +486,7 @@ TEST_CASE("printf corpus 0025:   \\'cap_alt\\': %.3f,\\n")
 	}
 }
 
-TEST_CASE("printf corpus 0026:   \\'cap_pos\\': [%.3f, %.3f, %.3f],\\n")
+TEST_CASE("printf corpus 0026:   cap_pos: [%.3f, %.3f, %.3f],n")
 {
 	for (int row = 0; row < 12; ++row) {
 		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
@@ -504,7 +504,7 @@ TEST_CASE("printf corpus 0026:   \\'cap_pos\\': [%.3f, %.3f, %.3f],\\n")
 	}
 }
 
-TEST_CASE("printf corpus 0027:   \\'cap_proj\\': %.3f,\\n")
+TEST_CASE("printf corpus 0027:   cap_proj: %.3f,n")
 {
 	for (int row = 0; row < 12; ++row) {
 		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
@@ -520,7 +520,7 @@ TEST_CASE("printf corpus 0027:   \\'cap_proj\\': %.3f,\\n")
 	}
 }
 
-TEST_CASE("printf corpus 0028:   \\'cap_rot\\': %.3f,\\n")
+TEST_CASE("printf corpus 0028:   cap_rot: %.3f,n")
 {
 	for (int row = 0; row < 12; ++row) {
 		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
@@ -536,7 +536,7 @@ TEST_CASE("printf corpus 0028:   \\'cap_rot\\': %.3f,\\n")
 	}
 }
 
-TEST_CASE("printf corpus 0029:   \\'frame\\': %u,\\n")
+TEST_CASE("printf corpus 0029:   frame: %u,n")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -552,7 +552,7 @@ TEST_CASE("printf corpus 0029:   \\'frame\\': %u,\\n")
 	}
 }
 
-TEST_CASE("printf corpus 0030:   \\'height\\': %d,\\n")
+TEST_CASE("printf corpus 0030:   height: %d,n")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -568,7 +568,7 @@ TEST_CASE("printf corpus 0030:   \\'height\\': %d,\\n")
 	}
 }
 
-TEST_CASE("printf corpus 0031:   \\'seed\\': %u,\\n")
+TEST_CASE("printf corpus 0031:   seed: %u,n")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -584,7 +584,7 @@ TEST_CASE("printf corpus 0031:   \\'seed\\': %u,\\n")
 	}
 }
 
-TEST_CASE("printf corpus 0032:   \\'sim_frame\\': %ld,\\n")
+TEST_CASE("printf corpus 0032:   sim_frame: %ld,n")
 {
 	for (int row = 0; row < 12; ++row) {
 		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -600,7 +600,7 @@ TEST_CASE("printf corpus 0032:   \\'sim_frame\\': %ld,\\n")
 	}
 }
 
-TEST_CASE("printf corpus 0033:   \\'sim_identity\\': {\\n    \\'schema\\': \\'SIM_IDENTITY_V%u\\',\\n [maybe-null]")
+TEST_CASE("printf corpus 0033:   sim_identity: {n    schema: SIM_IDENTITY_V%u,n    digest: %s,n    di [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -625,7 +625,7 @@ TEST_CASE("printf corpus 0033:   \\'sim_identity\\': {\\n    \\'schema\\': \\'SI
 	}
 }
 
-TEST_CASE("printf corpus 0034:   \\'trigger_frame\\': %ld,\\n")
+TEST_CASE("printf corpus 0034:   trigger_frame: %ld,n")
 {
 	for (int row = 0; row < 12; ++row) {
 		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -641,7 +641,7 @@ TEST_CASE("printf corpus 0034:   \\'trigger_frame\\': %ld,\\n")
 	}
 }
 
-TEST_CASE("printf corpus 0035:   \\'width\\': %d,\\n")
+TEST_CASE("printf corpus 0035:   width: %d,n")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -738,7 +738,7 @@ TEST_CASE("printf corpus 0039:   baked: recipe=%d lightDataIndex=<none> (registr
 	}
 }
 
-TEST_CASE("printf corpus 0040:   buildings=%ld turrets=%ld animatable=%ld animStartInvalidated=%lu\\n")
+TEST_CASE("printf corpus 0040:   buildings=%ld turrets=%ld animatable=%ld animStartInvalidated=%lun")
 {
 	for (int row = 0; row < 12; ++row) {
 		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -877,7 +877,7 @@ TEST_CASE("printf corpus 0045:   id=%ld name=%s class=%s pos=(%.2f,%.2f,%.2f) hp
 	}
 }
 
-TEST_CASE("printf corpus 0046:   lightPitch=%.2f lightYaw=%.2f isNight=%d nightFactor=%.3f\\n  ambien")
+TEST_CASE("printf corpus 0046:   lightPitch=%.2f lightYaw=%.2f isNight=%d nightFactor=%.3fn  ambient=")
 {
 	for (int row = 0; row < 12; ++row) {
 		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
@@ -905,7 +905,7 @@ TEST_CASE("printf corpus 0046:   lightPitch=%.2f lightYaw=%.2f isNight=%d nightF
 	}
 }
 
-TEST_CASE("printf corpus 0047:   mover: team=%ld cmdr=%ld gui=%d selected=%d typeHandle=%ld pilot=%s\ [maybe-null]")
+TEST_CASE("printf corpus 0047:   mover: team=%ld cmdr=%ld gui=%d selected=%d typeHandle=%ld pilot=%sn [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -926,7 +926,7 @@ TEST_CASE("printf corpus 0047:   mover: team=%ld cmdr=%ld gui=%d selected=%d typ
 	}
 }
 
-TEST_CASE("printf corpus 0048:   obj: id=%ld z=%.4f objAboveGround=%.4f\\n")
+TEST_CASE("printf corpus 0048:   obj: id=%ld z=%.4f objAboveGround=%.4fn")
 {
 	for (int row = 0; row < 12; ++row) {
 		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -944,7 +944,7 @@ TEST_CASE("printf corpus 0048:   obj: id=%ld z=%.4f objAboveGround=%.4f\\n")
 	}
 }
 
-TEST_CASE("printf corpus 0049:   objectives: status=%d\\n")
+TEST_CASE("printf corpus 0049:   objectives: status=%dn")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -983,7 +983,7 @@ TEST_CASE("printf corpus 0050:   path: verdict=%s class=0x%02lx type=%s appearNu
 	}
 }
 
-TEST_CASE("printf corpus 0051:   pose: obj=(%.3f,%.3f,%.3f) screen=(%.1f,%.1f,%.3f,%.3f)\\n")
+TEST_CASE("printf corpus 0051:   pose: obj=(%.3f,%.3f,%.3f) screen=(%.1f,%.1f,%.3f,%.3f)n")
 {
 	for (int row = 0; row < 12; ++row) {
 		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
@@ -1027,7 +1027,7 @@ TEST_CASE("printf corpus 0052:   recipe: idx=%d baked=(%.3f,%.3f,%.3f) recipeTer
 	}
 }
 
-TEST_CASE("printf corpus 0053:   recipe: shape=%s baked=(%.3f,%.3f,%.3f) recipeDrift=%.4f\\n [maybe-null]")
+TEST_CASE("printf corpus 0053:   recipe: shape=%s baked=(%.3f,%.3f,%.3f) recipeDrift=%.4fn [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -1063,7 +1063,7 @@ TEST_CASE("printf corpus 0054:   recipe: shape=%s baked=<unreadable> recipeDrift
 	}
 }
 
-TEST_CASE("printf corpus 0055:   src: class=%s(0x%02lx) feed=%s srcListCount=%lu gathered=%d\\n [maybe-null]")
+TEST_CASE("printf corpus 0055:   src: class=%s(0x%02lx) feed=%s srcListCount=%lu gathered=%dn [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -1083,7 +1083,7 @@ TEST_CASE("printf corpus 0055:   src: class=%s(0x%02lx) feed=%s srcListCount=%lu
 	}
 }
 
-TEST_CASE("printf corpus 0056:   staticBldgPass: drew=%d types=%d instances=%d draws=%d\\n")
+TEST_CASE("printf corpus 0056:   staticBldgPass: drew=%d types=%d instances=%d draws=%dn")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -1655,7 +1655,7 @@ TEST_CASE("printf corpus 0088: ##hud_tab_chrome_%d")
 	}
 }
 
-TEST_CASE("printf corpus 0089: #define MC2_SHADOW_CSM 1\\n#define MC2_SHADOW_CSM_MAX %d\\n")
+TEST_CASE("printf corpus 0089: #define MC2_SHADOW_CSM 1n#define MC2_SHADOW_CSM_MAX %dn")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -1671,7 +1671,7 @@ TEST_CASE("printf corpus 0089: #define MC2_SHADOW_CSM 1\\n#define MC2_SHADOW_CSM
 	}
 }
 
-TEST_CASE("printf corpus 0090: #define MC2_SHADOW_DIST_FADE_WU %.1f\\n#define MC2_SHADOW_DIST_FADE_MA")
+TEST_CASE("printf corpus 0090: #define MC2_SHADOW_DIST_FADE_WU %.1fn#define MC2_SHADOW_DIST_FADE_MAX_")
 {
 	for (int row = 0; row < 12; ++row) {
 		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
@@ -1691,7 +1691,7 @@ TEST_CASE("printf corpus 0090: #define MC2_SHADOW_DIST_FADE_WU %.1f\\n#define MC
 	}
 }
 
-TEST_CASE("printf corpus 0091: #define MC2_SHADOW_MIN_SUN_SIN %.8f\\n")
+TEST_CASE("printf corpus 0091: #define MC2_SHADOW_MIN_SUN_SIN %.8fn")
 {
 	for (int row = 0; row < 12; ++row) {
 		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
@@ -1707,7 +1707,7 @@ TEST_CASE("printf corpus 0091: #define MC2_SHADOW_MIN_SUN_SIN %.8f\\n")
 	}
 }
 
-TEST_CASE("printf corpus 0092: #line %zu // %s\\n [maybe-null]")
+TEST_CASE("printf corpus 0092: #line %zu // %sn [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		size_t v0 = static_cast<size_t>(kEdgeU64[(row + 0) % std::size(kEdgeU64)]);
@@ -2160,7 +2160,7 @@ TEST_CASE("printf corpus 0118: %f %f %f %f %f %f")
 	}
 }
 
-TEST_CASE("printf corpus 0119: %f,%f,%f,%f,%f,%f\\n")
+TEST_CASE("printf corpus 0119: %f,%f,%f,%f,%f,%fn")
 {
 	for (int row = 0; row < 12; ++row) {
 		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
@@ -2433,7 +2433,7 @@ TEST_CASE("printf corpus 0134: %s %d [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0135: %s (%.2f)  cannot fire for unknown reason.\\n [maybe-null]")
+TEST_CASE("printf corpus 0135: %s (%.2f)  cannot fire for unknown reason.n [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -2450,7 +2450,7 @@ TEST_CASE("printf corpus 0135: %s (%.2f)  cannot fire for unknown reason.\\n [ma
 	}
 }
 
-TEST_CASE("printf corpus 0136: %s (%.2f) has a destroyed target.\\n [maybe-null]")
+TEST_CASE("printf corpus 0136: %s (%.2f) has a destroyed target.n [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -2467,7 +2467,7 @@ TEST_CASE("printf corpus 0136: %s (%.2f) has a destroyed target.\\n [maybe-null]
 	}
 }
 
-TEST_CASE("printf corpus 0137: %s (%.2f) has a disabled target.\\n [maybe-null]")
+TEST_CASE("printf corpus 0137: %s (%.2f) has a disabled target.n [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -2484,7 +2484,7 @@ TEST_CASE("printf corpus 0137: %s (%.2f) has a disabled target.\\n [maybe-null]"
 	}
 }
 
-TEST_CASE("printf corpus 0138: %s (%.2f) has no attack target.\\n [maybe-null]")
+TEST_CASE("printf corpus 0138: %s (%.2f) has no attack target.n [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -2524,7 +2524,7 @@ TEST_CASE("printf corpus 0139: %s (%.2f) has no shot: %d !ready, %d !ammo, %d !i
 	}
 }
 
-TEST_CASE("printf corpus 0140: %s (%.2f) has no target.\\n [maybe-null]")
+TEST_CASE("printf corpus 0140: %s (%.2f) has no target.n [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -2541,7 +2541,7 @@ TEST_CASE("printf corpus 0140: %s (%.2f) has no target.\\n [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0141: %s (%.2f) out of range.\\n [maybe-null]")
+TEST_CASE("printf corpus 0141: %s (%.2f) out of range.n [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -2558,7 +2558,7 @@ TEST_CASE("printf corpus 0141: %s (%.2f) out of range.\\n [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0142: %s (%ld)\\n [maybe-null]")
+TEST_CASE("printf corpus 0142: %s (%ld)n [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -2686,7 +2686,7 @@ TEST_CASE("printf corpus 0148: %s IS:%3.1f(%02d) AR:%3.1f(%02d) %s [maybe-null]"
 	}
 }
 
-TEST_CASE("printf corpus 0149: %s \\r\\n [maybe-null]")
+TEST_CASE("printf corpus 0149: %s rn [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -3031,7 +3031,7 @@ TEST_CASE("printf corpus 0168: %s's (%.2f) vehicle cannot fire now. [maybe-null]
 	}
 }
 
-TEST_CASE("printf corpus 0169: %s's (%.2f) vehicle cannot fire now.\\n [maybe-null]")
+TEST_CASE("printf corpus 0169: %s's (%.2f) vehicle cannot fire now.n [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -3313,7 +3313,7 @@ TEST_CASE("printf corpus 0185: %sCell%d [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0186: %sRandom_Maps\\\\ [maybe-null]")
+TEST_CASE("printf corpus 0186: %sRandom_Maps [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -3363,7 +3363,7 @@ TEST_CASE("printf corpus 0188: %s[%d] [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0189: %s\\\\crash.txt [maybe-null]")
+TEST_CASE("printf corpus 0189: %scrash.txt [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -3379,7 +3379,7 @@ TEST_CASE("printf corpus 0189: %s\\\\crash.txt [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0190: %s\\\\crashes [maybe-null]")
+TEST_CASE("printf corpus 0190: %scrashes [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -3395,7 +3395,7 @@ TEST_CASE("printf corpus 0190: %s\\\\crashes [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0191: %s\\\\last_trace.txt [maybe-null]")
+TEST_CASE("printf corpus 0191: %slast_trace.txt [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -3411,7 +3411,7 @@ TEST_CASE("printf corpus 0191: %s\\\\last_trace.txt [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0192: %s\\\\minidump.dmp [maybe-null]")
+TEST_CASE("printf corpus 0192: %sminidump.dmp [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -3427,7 +3427,7 @@ TEST_CASE("printf corpus 0192: %s\\\\minidump.dmp [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0193: %s\\\\profile.json [maybe-null]")
+TEST_CASE("printf corpus 0193: %sprofile.json [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -3443,7 +3443,7 @@ TEST_CASE("printf corpus 0193: %s\\\\profile.json [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0194: %s\\n [maybe-null]")
+TEST_CASE("printf corpus 0194: %sn [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -3459,7 +3459,7 @@ TEST_CASE("printf corpus 0194: %s\\n [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0195: %s\\n      {\\'id\\':%d,\\'team\\':%d,\\'vd\\':\\'%s\\',\\'pos\\':[%.4 [maybe-null]")
+TEST_CASE("printf corpus 0195: %sn      {id:%d,team:%d,vd:%s,pos:[%.4f,%.4f,%.4f],rot:%.4f,hp:%.5f,ge [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -3590,7 +3590,7 @@ TEST_CASE("printf corpus 0201: %u")
 	}
 }
 
-TEST_CASE("printf corpus 0202: %u,%u,%u,%d,%s,0x%02X\\n [maybe-null]")
+TEST_CASE("printf corpus 0202: %u,%u,%u,%d,%s,0x%02Xn [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -3721,7 +3721,7 @@ TEST_CASE("printf corpus 0209: *")
 	}
 }
 
-TEST_CASE("printf corpus 0210: *NODE_NAME \\'%s\\' [maybe-null]")
+TEST_CASE("printf corpus 0210: *NODE_NAME %s [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -3951,7 +3951,7 @@ TEST_CASE("printf corpus 0223: ABL FATAL: [%d] %s [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0224: ABL RUNTIME ERROR %s [line %d] - (type %d) %s\\n [maybe-null]")
+TEST_CASE("printf corpus 0224: ABL RUNTIME ERROR %s [line %d] - (type %d) %sn [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -3985,7 +3985,7 @@ TEST_CASE("printf corpus 0225: ARRAY")
 	}
 }
 
-TEST_CASE("printf corpus 0226: ASSERT:  [%d] \\'%s\\' [maybe-null]")
+TEST_CASE("printf corpus 0226: ASSERT:  [%d] %s [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -4665,7 +4665,7 @@ TEST_CASE("printf corpus 0268: EXIT (%d) %s:%s [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0269: FATAL:  [%d] \\'%s\\' [maybe-null]")
+TEST_CASE("printf corpus 0269: FATAL:  [%d] %s [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -4682,7 +4682,7 @@ TEST_CASE("printf corpus 0269: FATAL:  [%d] \\'%s\\' [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0270: FETCH: (%d) %s [%d] - %s = %s\\n [maybe-null]")
+TEST_CASE("printf corpus 0270: FETCH: (%d) %s [%d] - %s = %sn [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -4702,7 +4702,7 @@ TEST_CASE("printf corpus 0270: FETCH: (%d) %s [%d] - %s = %s\\n [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0271: FETCH: (%d) %s [%d] - %s[#] = %s\\n [maybe-null]")
+TEST_CASE("printf corpus 0271: FETCH: (%d) %s [%d] - %s[#] = %sn [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -4920,7 +4920,7 @@ TEST_CASE("printf corpus 0283: Gesture: %d, Frame: %f, SGoal: %d, OGoal: %d, Rot
 	}
 }
 
-TEST_CASE("printf corpus 0284: Goal = (%d, %d)\\n")
+TEST_CASE("printf corpus 0284: Goal = (%d, %d)n")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -4988,7 +4988,7 @@ TEST_CASE("printf corpus 0287: HIT BP: (%d) %s [%d] [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0288: Handle: 0x%08X  idx %u / gen %u\\n")
+TEST_CASE("printf corpus 0288: Handle: 0x%08X  idx %u / gen %un")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -5098,7 +5098,7 @@ TEST_CASE("printf corpus 0293: INFO = %s(%c%c) %d(W%d) [%d, %d] (%.4f, %.4f, %.4
 	}
 }
 
-TEST_CASE("printf corpus 0294: INFO = %s(%c%c) %d(W%d) [%d, %d] (%.4f, %.4f, %.4f) #Pth=%d(%d)\\n [maybe-null]")
+TEST_CASE("printf corpus 0294: INFO = %s(%c%c) %d(W%d) [%d, %d] (%.4f, %.4f, %.4f) #Pth=%d(%d)n [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -5189,7 +5189,7 @@ TEST_CASE("printf corpus 0298: Item:%ld")
 	}
 }
 
-TEST_CASE("printf corpus 0299: Jumping to [%d, %d]\\n")
+TEST_CASE("printf corpus 0299: Jumping to [%d, %d]n")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -5222,7 +5222,7 @@ TEST_CASE("printf corpus 0300: Key%ld")
 	}
 }
 
-TEST_CASE("printf corpus 0301: Kind: %s\\n [maybe-null]")
+TEST_CASE("printf corpus 0301: Kind: %sn [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -5351,7 +5351,7 @@ TEST_CASE("printf corpus 0308: Made in Function : %s [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0309: MatIdx: %u  albedo: %u  normal: %u  mrTex: %u  emit: %u\\nflags: 0x%08")
+TEST_CASE("printf corpus 0309: MatIdx: %u  albedo: %u  normal: %u  mrTex: %u  emit: %unflags: 0x%08X ")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -5426,7 +5426,7 @@ TEST_CASE("printf corpus 0312: Medal%ld")
 	}
 }
 
-TEST_CASE("printf corpus 0313: Mesh: 0x%08X  Mat: 0x%08X  LOD: %u  Pipeline: %u\\nDrawPacket: %u  Pat")
+TEST_CASE("printf corpus 0313: Mesh: 0x%08X  Mat: 0x%08X  LOD: %u  Pipeline: %unDrawPacket: %u  PathR")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -5502,7 +5502,7 @@ TEST_CASE("printf corpus 0316: MoveMap.calcPath: Cannot find movemap node [%d, %
 	}
 }
 
-TEST_CASE("printf corpus 0317: MoveMap.calcPath: Cannot find movemap node [%d, %d] for change\\n")
+TEST_CASE("printf corpus 0317: MoveMap.calcPath: Cannot find movemap node [%d, %d] for changen")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -5553,7 +5553,7 @@ TEST_CASE("printf corpus 0319: Mover = %s (%d) [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0320: Mover = %s (%d)\\n [maybe-null]")
+TEST_CASE("printf corpus 0320: Mover = %s (%d)n [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -5570,7 +5570,7 @@ TEST_CASE("printf corpus 0320: Mover = %s (%d)\\n [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0321: Mover Obj Cell Pos = [%d, %d]\\n")
+TEST_CASE("printf corpus 0321: Mover Obj Cell Pos = [%d, %d]n")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -5587,7 +5587,7 @@ TEST_CASE("printf corpus 0321: Mover Obj Cell Pos = [%d, %d]\\n")
 	}
 }
 
-TEST_CASE("printf corpus 0322: Mover World Pos = (%.4f, %.4f, %.4f)\\n")
+TEST_CASE("printf corpus 0322: Mover World Pos = (%.4f, %.4f, %.4f)n")
 {
 	for (int row = 0; row < 12; ++row) {
 		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
@@ -5636,7 +5636,7 @@ TEST_CASE("printf corpus 0324: NONE")
 	}
 }
 
-TEST_CASE("printf corpus 0325: New Longest Path: %d steps (Max = %d)\\n\\n")
+TEST_CASE("printf corpus 0325: New Longest Path: %d steps (Max = %d)nn")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -5691,7 +5691,7 @@ TEST_CASE("printf corpus 0327: OOB at cell (%d,%d): rect=(%d,%d,%d,%d) actual=%u
 	}
 }
 
-TEST_CASE("printf corpus 0328: ObjID raw: 0x%08X  valid: %s%s%s\\n [maybe-null]")
+TEST_CASE("printf corpus 0328: ObjID raw: 0x%08X  valid: %s%s%sn [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -5742,7 +5742,7 @@ TEST_CASE("printf corpus 0330: OrangeAnimation%ld")
 	}
 }
 
-TEST_CASE("printf corpus 0331: PRINT:  \\'%s\\' [maybe-null]")
+TEST_CASE("printf corpus 0331: PRINT:  %s [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -5957,7 +5957,7 @@ TEST_CASE("printf corpus 0343: RUNTIME ERROR:  [%d] %s [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0344: RecipeIdx: %d  Shape: %s\\n [maybe-null]")
+TEST_CASE("printf corpus 0344: RecipeIdx: %d  Shape: %sn [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -6087,7 +6087,7 @@ TEST_CASE("printf corpus 0351: SQUAD %d")
 	}
 }
 
-TEST_CASE("printf corpus 0352: STORE: (%d) %s [%d] -> %s = %s\\n [maybe-null]")
+TEST_CASE("printf corpus 0352: STORE: (%d) %s [%d] -> %s = %sn [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -6107,7 +6107,7 @@ TEST_CASE("printf corpus 0352: STORE: (%d) %s [%d] -> %s = %s\\n [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0353: STORE: (%d) %s [%d] -> %s[#] = %s\\n [maybe-null]")
+TEST_CASE("printf corpus 0353: STORE: (%d) %s [%d] -> %s[#] = %sn [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -6127,7 +6127,7 @@ TEST_CASE("printf corpus 0353: STORE: (%d) %s [%d] -> %s[#] = %s\\n [maybe-null]
 	}
 }
 
-TEST_CASE("printf corpus 0354: SYNTAX ERROR %s [line %d] - (type %d) %s \\'%s\\'\\n [maybe-null]")
+TEST_CASE("printf corpus 0354: SYNTAX ERROR %s [line %d] - (type %d) %s %sn [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -6228,7 +6228,7 @@ TEST_CASE("printf corpus 0359: Squad%d")
 	}
 }
 
-TEST_CASE("printf corpus 0360: Start = (%d, %d)\\n")
+TEST_CASE("printf corpus 0360: Start = (%d, %d)n")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -6434,7 +6434,7 @@ TEST_CASE("printf corpus 0371: Texture %s is not 24bit or 32bit, 32x32, 64x64, 1
 	}
 }
 
-TEST_CASE("printf corpus 0372: Time = %.6f\\n\\n")
+TEST_CASE("printf corpus 0372: Time = %.6fnn")
 {
 	for (int row = 0; row < 12; ++row) {
 		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
@@ -6548,7 +6548,7 @@ TEST_CASE("printf corpus 0378: Variant%ld")
 	}
 }
 
-TEST_CASE("printf corpus 0379: Variant: %s  Name: %s\\nClass: %s  TeamID: %ld  Pilot: %s\\nStatus: %s [maybe-null]")
+TEST_CASE("printf corpus 0379: Variant: %s  Name: %snClass: %s  TeamID: %ld  Pilot: %snStatus: %s%s%s [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -6624,7 +6624,7 @@ TEST_CASE("printf corpus 0382: Warrior%ld")
 	}
 }
 
-TEST_CASE("printf corpus 0383: Way too many syntax errors. ABL aborted.\\n")
+TEST_CASE("printf corpus 0383: Way too many syntax errors. ABL aborted.n")
 {
 	for (int row = 0; row < 12; ++row) {
 		char a[160], b[160], c[8], d[8];
@@ -6687,7 +6687,7 @@ TEST_CASE("printf corpus 0386: Weapon_%02d")
 	}
 }
 
-TEST_CASE("printf corpus 0387: World: (%.1f, %.1f, %.1f)\\n")
+TEST_CASE("printf corpus 0387: World: (%.1f, %.1f, %.1f)n")
 {
 	for (int row = 0; row < 12; ++row) {
 		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
@@ -7436,7 +7436,7 @@ TEST_CASE("printf corpus 0426: [MATERIAL_GPU v4] ERROR materialIdx sidecar size 
 	}
 }
 
-TEST_CASE("printf corpus 0427: [MATERIAL_GPU v4] GL ERROR after bind (real): 0x%x\\n")
+TEST_CASE("printf corpus 0427: [MATERIAL_GPU v4] GL ERROR after bind (real): 0x%xn")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -7452,7 +7452,7 @@ TEST_CASE("printf corpus 0427: [MATERIAL_GPU v4] GL ERROR after bind (real): 0x%
 	}
 }
 
-TEST_CASE("printf corpus 0428: [MATERIAL_GPU v4] GL ERROR after sample uniform: 0x%x\\n")
+TEST_CASE("printf corpus 0428: [MATERIAL_GPU v4] GL ERROR after sample uniform: 0x%xn")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -7521,7 +7521,7 @@ TEST_CASE("printf corpus 0431: [MATERIAL_GPU v4] enabled=%d sample=%d binding=5 
 	}
 }
 
-TEST_CASE("printf corpus 0432: [MATERIAL_GPU v4] event=compare emitted=%u mismatches=%d\\n")
+TEST_CASE("printf corpus 0432: [MATERIAL_GPU v4] event=compare emitted=%u mismatches=%dn")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -7538,7 +7538,7 @@ TEST_CASE("printf corpus 0432: [MATERIAL_GPU v4] event=compare emitted=%u mismat
 	}
 }
 
-TEST_CASE("printf corpus 0433: [MATERIAL_GPU v4] event=entry_material_idx emitted=%u mismatches=%d\\n")
+TEST_CASE("printf corpus 0433: [MATERIAL_GPU v4] event=entry_material_idx emitted=%u mismatches=%dn")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -7555,7 +7555,7 @@ TEST_CASE("printf corpus 0433: [MATERIAL_GPU v4] event=entry_material_idx emitte
 	}
 }
 
-TEST_CASE("printf corpus 0434: [MATERIAL_GPU v4] event=sample_mode enabled=0 reason=%s\\n [maybe-null]")
+TEST_CASE("printf corpus 0434: [MATERIAL_GPU v4] event=sample_mode enabled=0 reason=%sn [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -7571,7 +7571,7 @@ TEST_CASE("printf corpus 0434: [MATERIAL_GPU v4] event=sample_mode enabled=0 rea
 	}
 }
 
-TEST_CASE("printf corpus 0435: [MATERIAL_GPU v4] event=sample_mode enabled=1 loc=%d\\n")
+TEST_CASE("printf corpus 0435: [MATERIAL_GPU v4] event=sample_mode enabled=1 loc=%dn")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -7605,7 +7605,7 @@ TEST_CASE("printf corpus 0436: [MATERIAL_GPU v4] event=table_upload materials=%z
 	}
 }
 
-TEST_CASE("printf corpus 0437: [MATERIAL_GPU v4] event=unload materials=%zu bytes=%zu\\n")
+TEST_CASE("printf corpus 0437: [MATERIAL_GPU v4] event=unload materials=%zu bytes=%zun")
 {
 	for (int row = 0; row < 12; ++row) {
 		size_t v0 = static_cast<size_t>(kEdgeU64[(row + 0) % std::size(kEdgeU64)]);
@@ -7641,7 +7641,7 @@ TEST_CASE("printf corpus 0438: [MECH_MATERIAL_GPU v1] MISMATCH dc=%u materialIdx
 	}
 }
 
-TEST_CASE("printf corpus 0439: [MECH_MATERIAL_GPU v1] event=compare frame=%u mechs=%u mismatches=%d\\")
+TEST_CASE("printf corpus 0439: [MECH_MATERIAL_GPU v1] event=compare frame=%u mechs=%u mismatches=%dn")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -7659,7 +7659,7 @@ TEST_CASE("printf corpus 0439: [MECH_MATERIAL_GPU v1] event=compare frame=%u mec
 	}
 }
 
-TEST_CASE("printf corpus 0440: [MECH_MATERIAL_GPU v1] event=table_link materials=%u\\n")
+TEST_CASE("printf corpus 0440: [MECH_MATERIAL_GPU v1] event=table_link materials=%un")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -8066,7 +8066,7 @@ TEST_CASE("printf corpus 0461: [VERIFY]%s %s:%d (%s) %s [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0462: \\'%c\\'")
+TEST_CASE("printf corpus 0462: %c")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeCHR[(row + 0) % std::size(kEdgeCHR)]);
@@ -8082,7 +8082,7 @@ TEST_CASE("printf corpus 0462: \\'%c\\'")
 	}
 }
 
-TEST_CASE("printf corpus 0463: \\'%s\\' [maybe-null]")
+TEST_CASE("printf corpus 0463: %s [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -8098,7 +8098,7 @@ TEST_CASE("printf corpus 0463: \\'%s\\' [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0464: \\\\u%04x")
+TEST_CASE("printf corpus 0464: u%04x")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -8114,7 +8114,7 @@ TEST_CASE("printf corpus 0464: \\\\u%04x")
 	}
 }
 
-TEST_CASE("printf corpus 0465: \\n    ]\\n  }")
+TEST_CASE("printf corpus 0465: n    ]n  }")
 {
 	for (int row = 0; row < 12; ++row) {
 		char a[160], b[160], c[8], d[8];
@@ -8129,7 +8129,7 @@ TEST_CASE("printf corpus 0465: \\n    ]\\n  }")
 	}
 }
 
-TEST_CASE("printf corpus 0466: \\nNum Total Lines = %d\\n")
+TEST_CASE("printf corpus 0466: nNum Total Lines = %dn")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -8145,7 +8145,7 @@ TEST_CASE("printf corpus 0466: \\nNum Total Lines = %d\\n")
 	}
 }
 
-TEST_CASE("printf corpus 0467: \\nmover = %s (%d)\\n [maybe-null]")
+TEST_CASE("printf corpus 0467: nmover = %s (%d)n [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -8162,7 +8162,7 @@ TEST_CASE("printf corpus 0467: \\nmover = %s (%d)\\n [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0468: \\r\\n")
+TEST_CASE("printf corpus 0468: rn")
 {
 	for (int row = 0; row < 12; ++row) {
 		char a[160], b[160], c[8], d[8];
@@ -8177,7 +8177,7 @@ TEST_CASE("printf corpus 0468: \\r\\n")
 	}
 }
 
-TEST_CASE("printf corpus 0469: \\r\\n[%s]\\r\\n [maybe-null]")
+TEST_CASE("printf corpus 0469: rn[%s]rn [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -8263,7 +8263,7 @@ TEST_CASE("printf corpus 0473: b %s [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0474: b %s = %s\\r\\n [literal,maybe-null]")
+TEST_CASE("printf corpus 0474: b %s = %srn [literal,maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -8316,7 +8316,7 @@ TEST_CASE("printf corpus 0476: bldg=%d dyn=%d staticPassDrew=%d")
 	}
 }
 
-TEST_CASE("printf corpus 0477: bodyState = %d\\n")
+TEST_CASE("printf corpus 0477: bodyState = %dn")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -8435,7 +8435,7 @@ TEST_CASE("printf corpus 0483: c %s [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0484: c %s = %d\\r\\n [maybe-null]")
+TEST_CASE("printf corpus 0484: c %s = %drn [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -8749,7 +8749,7 @@ TEST_CASE("printf corpus 0502: cur step = [%d, %d], area = %d")
 	}
 }
 
-TEST_CASE("printf corpus 0503: data = %x\\n")
+TEST_CASE("printf corpus 0503: data = %xn")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -8891,7 +8891,7 @@ TEST_CASE("printf corpus 0511: detail=tac_order code=%d origin=%d")
 	}
 }
 
-TEST_CASE("printf corpus 0512: ejectOrderGiven = %c\\n")
+TEST_CASE("printf corpus 0512: ejectOrderGiven = %cn")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeCHR[(row + 0) % std::size(kEdgeCHR)]);
@@ -8923,7 +8923,7 @@ TEST_CASE("printf corpus 0513: f %s [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0514: f %s = %f\\r\\n [maybe-null]")
+TEST_CASE("printf corpus 0514: f %s = %frn [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -9113,7 +9113,7 @@ TEST_CASE("printf corpus 0524: int=%d")
 	}
 }
 
-TEST_CASE("printf corpus 0525: jumpOrder = %c\\n")
+TEST_CASE("printf corpus 0525: jumpOrder = %cn")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeCHR[(row + 0) % std::size(kEdgeCHR)]);
@@ -9145,7 +9145,7 @@ TEST_CASE("printf corpus 0526: l %s [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0527: l %s = %d\\r\\n [maybe-null]")
+TEST_CASE("printf corpus 0527: l %s = %drn [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -9278,7 +9278,7 @@ TEST_CASE("printf corpus 0534: mcl_mc_%ldby%ld_selection.tga")
 	}
 }
 
-TEST_CASE("printf corpus 0535: moving = %c\\n")
+TEST_CASE("printf corpus 0535: moving = %cn")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeCHR[(row + 0) % std::size(kEdgeCHR)]);
@@ -9309,7 +9309,7 @@ TEST_CASE("printf corpus 0536: no current target")
 	}
 }
 
-TEST_CASE("printf corpus 0537: numSteps = %d\\n")
+TEST_CASE("printf corpus 0537: numSteps = %dn")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -9341,7 +9341,7 @@ TEST_CASE("printf corpus 0538: path calc: %.4f")
 	}
 }
 
-TEST_CASE("printf corpus 0539: path calc: %.4f\\n")
+TEST_CASE("printf corpus 0539: path calc: %.4fn")
 {
 	for (int row = 0; row < 12; ++row) {
 		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
@@ -9374,7 +9374,7 @@ TEST_CASE("printf corpus 0540: pilot = (%d)%s [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0541: pktIdx,firstIndex,idxCount,baseVertex,pipeline,matFlags\\n")
+TEST_CASE("printf corpus 0541: pktIdx,firstIndex,idxCount,baseVertex,pipeline,matFlagsn")
 {
 	for (int row = 0; row < 12; ++row) {
 		char a[160], b[160], c[8], d[8];
@@ -9473,7 +9473,7 @@ TEST_CASE("printf corpus 0545: probe=(%.1f,%.1f) roundtrip=(%.2f,%.2f) box=%d,%d
 	}
 }
 
-TEST_CASE("printf corpus 0546: py -3 tools\\\\terrain_gen\\\\terrain_gen.py \\'%s\\' --out terrain_ge [maybe-null]")
+TEST_CASE("printf corpus 0546: py -3 toolsterrain_genterrain_gen.py %s --out terrain_gen_out [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -9561,7 +9561,7 @@ TEST_CASE("printf corpus 0550: rgb=%u,%u,%u srcFrame=%lu")
 	}
 }
 
-TEST_CASE("printf corpus 0551: run = %c\\n")
+TEST_CASE("printf corpus 0551: run = %cn")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeCHR[(row + 0) % std::size(kEdgeCHR)]);
@@ -9593,7 +9593,7 @@ TEST_CASE("printf corpus 0552: s %s [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0553: s %s = %d\\r\\n [maybe-null]")
+TEST_CASE("printf corpus 0553: s %s = %drn [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -9694,7 +9694,7 @@ TEST_CASE("printf corpus 0558: st %s [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0559: st %s = \\'%s\\'\\r\\n [maybe-null]")
+TEST_CASE("printf corpus 0559: st %s = %srn [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -9711,7 +9711,7 @@ TEST_CASE("printf corpus 0559: st %s = \\'%s\\'\\r\\n [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0560: stepPos[%d] = (%d, %d)\\n")
+TEST_CASE("printf corpus 0560: stepPos[%d] = (%d, %d)n")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -9729,7 +9729,7 @@ TEST_CASE("printf corpus 0560: stepPos[%d] = (%d, %d)\\n")
 	}
 }
 
-TEST_CASE("printf corpus 0561: stepRelPos = %d, %d, %d\\n")
+TEST_CASE("printf corpus 0561: stepRelPos = %d, %d, %dn")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -9765,7 +9765,7 @@ TEST_CASE("printf corpus 0562: sun altitude=%.1f%s isNight=%d (DIRECTION only --
 	}
 }
 
-TEST_CASE("printf corpus 0563: target = %s (%d)\\n [maybe-null]")
+TEST_CASE("printf corpus 0563: target = %s (%d)n [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -9782,7 +9782,7 @@ TEST_CASE("printf corpus 0563: target = %s (%d)\\n [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0564: target = NONE\\n")
+TEST_CASE("printf corpus 0564: target = NONEn")
 {
 	for (int row = 0; row < 12; ++row) {
 		char a[160], b[160], c[8], d[8];
@@ -9797,7 +9797,7 @@ TEST_CASE("printf corpus 0564: target = NONE\\n")
 	}
 }
 
-TEST_CASE("printf corpus 0565: target = objClass %d (%d)\\n")
+TEST_CASE("printf corpus 0565: target = objClass %d (%d)n")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -9814,7 +9814,7 @@ TEST_CASE("printf corpus 0565: target = objClass %d (%d)\\n")
 	}
 }
 
-TEST_CASE("printf corpus 0566: target point = (%f, %f, %f)\\n")
+TEST_CASE("printf corpus 0566: target point = (%f, %f, %f)n")
 {
 	for (int row = 0; row < 12; ++row) {
 		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
@@ -9832,7 +9832,7 @@ TEST_CASE("printf corpus 0566: target point = (%f, %f, %f)\\n")
 	}
 }
 
-TEST_CASE("printf corpus 0567: targetBlockOrTrainNumber = %d\\n")
+TEST_CASE("printf corpus 0567: targetBlockOrTrainNumber = %dn")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -9848,7 +9848,7 @@ TEST_CASE("printf corpus 0567: targetBlockOrTrainNumber = %d\\n")
 	}
 }
 
-TEST_CASE("printf corpus 0568: targetCellRC = (%d, %d)\\n")
+TEST_CASE("printf corpus 0568: targetCellRC = (%d, %d)n")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -9865,7 +9865,7 @@ TEST_CASE("printf corpus 0568: targetCellRC = (%d, %d)\\n")
 	}
 }
 
-TEST_CASE("printf corpus 0569: targetId = %d\\n")
+TEST_CASE("printf corpus 0569: targetId = %dn")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -9881,7 +9881,7 @@ TEST_CASE("printf corpus 0569: targetId = %d\\n")
 	}
 }
 
-TEST_CASE("printf corpus 0570: targetItemNumber = %d\\n")
+TEST_CASE("printf corpus 0570: targetItemNumber = %dn")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -9897,7 +9897,7 @@ TEST_CASE("printf corpus 0570: targetItemNumber = %d\\n")
 	}
 }
 
-TEST_CASE("printf corpus 0571: targetType = %d\\n")
+TEST_CASE("printf corpus 0571: targetType = %dn")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -9913,7 +9913,7 @@ TEST_CASE("printf corpus 0571: targetType = %d\\n")
 	}
 }
 
-TEST_CASE("printf corpus 0572: targetVertexOrCarNumber = %d\\n")
+TEST_CASE("printf corpus 0572: targetVertexOrCarNumber = %dn")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -10001,7 +10001,7 @@ TEST_CASE("printf corpus 0576: terrainZ=%.4f%s [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0577: terrain_gen_out\\\\%s.burnin.tga [maybe-null]")
+TEST_CASE("printf corpus 0577: terrain_gen_out%s.burnin.tga [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -10017,7 +10017,7 @@ TEST_CASE("printf corpus 0577: terrain_gen_out\\\\%s.burnin.tga [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0578: terrain_gen_out\\\\%s.elev.r32 [maybe-null]")
+TEST_CASE("printf corpus 0578: terrain_gen_out%s.elev.r32 [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -10033,7 +10033,7 @@ TEST_CASE("printf corpus 0578: terrain_gen_out\\\\%s.elev.r32 [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0579: terrain_gen_out\\\\%s.recipe.json [maybe-null]")
+TEST_CASE("printf corpus 0579: terrain_gen_out%s.recipe.json [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -10116,7 +10116,7 @@ TEST_CASE("printf corpus 0583: type %d: [%u, %u) of %u total")
 	}
 }
 
-TEST_CASE("printf corpus 0584: typeId,firstPacket,packetCount,alphaClass\\n%u,%u,%u,%s [maybe-null]")
+TEST_CASE("printf corpus 0584: typeId,firstPacket,packetCount,alphaClassn%u,%u,%u,%s [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -10151,7 +10151,7 @@ TEST_CASE("printf corpus 0585: uc %s [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0586: uc %s = %d\\r\\n [maybe-null]")
+TEST_CASE("printf corpus 0586: uc %s = %drn [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -10217,7 +10217,7 @@ TEST_CASE("printf corpus 0589: ul %s [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0590: ul %s = %d\\r\\n [maybe-null]")
+TEST_CASE("printf corpus 0590: ul %s = %drn [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -10265,7 +10265,7 @@ TEST_CASE("printf corpus 0592: us %s [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0593: us %s = %d\\r\\n [maybe-null]")
+TEST_CASE("printf corpus 0593: us %s = %drn [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -10393,7 +10393,7 @@ TEST_CASE("printf corpus 0600: warrior%02d")
 	}
 }
 
-TEST_CASE("printf corpus 0601: {\\'batch\\':%d,\\'workers\\':%d,\\'handles\\':%d,\\'chunks\\':%d,\\'p")
+TEST_CASE("printf corpus 0601: {batch:%d,workers:%d,handles:%d,chunks:%d,prepass_us:%.1f}")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -10413,7 +10413,7 @@ TEST_CASE("printf corpus 0601: {\\'batch\\':%d,\\'workers\\':%d,\\'handles\\':%d
 	}
 }
 
-TEST_CASE("printf corpus 0602: {\\'ev\\':\\'firegate\\',\\'wid\\':%lu,\\'widx\\':%ld,\\'site\\':\\'%s [maybe-null]")
+TEST_CASE("printf corpus 0602: {ev:firegate,wid:%lu,widx:%ld,site:%s} [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned long v0 = static_cast<unsigned long>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -10431,7 +10431,7 @@ TEST_CASE("printf corpus 0602: {\\'ev\\':\\'firegate\\',\\'wid\\':%lu,\\'widx\\'
 	}
 }
 
-TEST_CASE("printf corpus 0603: {\\'ev\\':\\'hit\\',\\'a_wid\\':%u,\\'a_team\\':%ld,\\'t_wid\\':%lu,\\")
+TEST_CASE("printf corpus 0603: {ev:hit,a_wid:%u,a_team:%ld,t_wid:%lu,t_team:%ld,dmg:%.1f,loc:%d}")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -10452,7 +10452,7 @@ TEST_CASE("printf corpus 0603: {\\'ev\\':\\'hit\\',\\'a_wid\\':%u,\\'a_team\\':%
 	}
 }
 
-TEST_CASE("printf corpus 0604: {\\'ev\\':\\'nofire\\',\\'wid\\':%ld,\\'tgt_wid\\':%ld,\\'ord\\':%d,\\")
+TEST_CASE("printf corpus 0604: {ev:nofire,wid:%ld,tgt_wid:%ld,ord:%d,result:%ld,rd:%ld,am:%ld,rn:%ld,")
 {
 	for (int row = 0; row < 12; ++row) {
 		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -10479,7 +10479,7 @@ TEST_CASE("printf corpus 0604: {\\'ev\\':\\'nofire\\',\\'wid\\':%ld,\\'tgt_wid\\
 	}
 }
 
-TEST_CASE("printf corpus 0605: {\\'event\\':\\'UNSTABLE\\',\\'recipe\\':%d,\\'was\\':%u,\\'now\\':%u,")
+TEST_CASE("printf corpus 0605: {event:UNSTABLE,recipe:%d,was:%u,now:%u,S:%u}")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -10498,7 +10498,7 @@ TEST_CASE("printf corpus 0605: {\\'event\\':\\'UNSTABLE\\',\\'recipe\\':%d,\\'wa
 	}
 }
 
-TEST_CASE("printf corpus 0606: {\\'event\\':\\'advanced_twice_same_frame\\',\\'ptr\\':\\'%p\\',\\'ges")
+TEST_CASE("printf corpus 0606: {event:advanced_twice_same_frame,ptr:%p,gesture:%d,frame:%u,frameInc:%")
 {
 	for (int row = 0; row < 12; ++row) {
 		void* v0 = kEdgePTR[(row + 0) % std::size(kEdgePTR)];
@@ -10519,7 +10519,7 @@ TEST_CASE("printf corpus 0606: {\\'event\\':\\'advanced_twice_same_frame\\',\\'p
 	}
 }
 
-TEST_CASE("printf corpus 0607: {\\'event\\':\\'bom_stripped\\',\\'path\\':\\'%s\\'} [maybe-null]")
+TEST_CASE("printf corpus 0607: {event:bom_stripped,path:%s} [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -10535,7 +10535,7 @@ TEST_CASE("printf corpus 0607: {\\'event\\':\\'bom_stripped\\',\\'path\\':\\'%s\
 	}
 }
 
-TEST_CASE("printf corpus 0608: {\\'event\\':\\'c1b_cull_ok\\',\\'c2_readback\\':%d}")
+TEST_CASE("printf corpus 0608: {event:c1b_cull_ok,c2_readback:%d}")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -10551,7 +10551,7 @@ TEST_CASE("printf corpus 0608: {\\'event\\':\\'c1b_cull_ok\\',\\'c2_readback\\':
 	}
 }
 
-TEST_CASE("printf corpus 0609: {\\'event\\':\\'compute_selftest\\',\\'result\\':\\'ok\\',\\'maxActors")
+TEST_CASE("printf corpus 0609: {event:compute_selftest,result:ok,maxActors:%u,debugSsboBytes:%lld}")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -10568,7 +10568,7 @@ TEST_CASE("printf corpus 0609: {\\'event\\':\\'compute_selftest\\',\\'result\\':
 	}
 }
 
-TEST_CASE("printf corpus 0610: {\\'event\\':\\'coverage\\',\\'recipes_tracked\\':%zu,\\'max_index\\':")
+TEST_CASE("printf corpus 0610: {event:coverage,recipes_tracked:%zu,max_index:%u,S:%u,out_of_prefix:%l")
 {
 	for (int row = 0; row < 12; ++row) {
 		size_t v0 = static_cast<size_t>(kEdgeU64[(row + 0) % std::size(kEdgeU64)]);
@@ -10587,7 +10587,7 @@ TEST_CASE("printf corpus 0610: {\\'event\\':\\'coverage\\',\\'recipes_tracked\\'
 	}
 }
 
-TEST_CASE("printf corpus 0611: {\\'event\\':\\'draw_health\\',\\'flush_called\\':true,\\'instances\\'")
+TEST_CASE("printf corpus 0611: {event:draw_health,flush_called:true,instances:%u,terrain_blocks:%d,lo")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -10607,7 +10607,7 @@ TEST_CASE("printf corpus 0611: {\\'event\\':\\'draw_health\\',\\'flush_called\\'
 	}
 }
 
-TEST_CASE("printf corpus 0612: {\\'event\\':\\'enabled\\',\\'mode\\':\\'%s\\'} [maybe-null]")
+TEST_CASE("printf corpus 0612: {event:enabled,mode:%s} [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -10623,7 +10623,7 @@ TEST_CASE("printf corpus 0612: {\\'event\\':\\'enabled\\',\\'mode\\':\\'%s\\'} [
 	}
 }
 
-TEST_CASE("printf corpus 0613: {\\'event\\':\\'first\\',\\'recipe\\':%d,\\'index\\':%u,\\'S\\':%u,\\'")
+TEST_CASE("printf corpus 0613: {event:first,recipe:%d,index:%u,S:%u,inPrefix:%d}")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -10642,7 +10642,7 @@ TEST_CASE("printf corpus 0613: {\\'event\\':\\'first\\',\\'recipe\\':%d,\\'index
 	}
 }
 
-TEST_CASE("printf corpus 0614: {\\'event\\':\\'gl_probe\\',\\'version_major\\':%d,\\'version_minor\\' [maybe-null]")
+TEST_CASE("printf corpus 0614: {event:gl_probe,version_major:%d,version_minor:%d,compute:%s} [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -10660,7 +10660,7 @@ TEST_CASE("printf corpus 0614: {\\'event\\':\\'gl_probe\\',\\'version_major\\':%
 	}
 }
 
-TEST_CASE("printf corpus 0615: {\\'event\\':\\'placement_health\\',\\'cells_total\\':%d,\\'reject_oob")
+TEST_CASE("printf corpus 0615: {event:placement_health,cells_total:%d,reject_oob:%d,reject_terrain_ty")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -10683,7 +10683,7 @@ TEST_CASE("printf corpus 0615: {\\'event\\':\\'placement_health\\',\\'cells_tota
 	}
 }
 
-TEST_CASE("printf corpus 0616: {\\'event\\':\\'readback_init\\',\\'maxActors\\':%u,\\'slotBytes\\':%z")
+TEST_CASE("printf corpus 0616: {event:readback_init,maxActors:%u,slotBytes:%zu,totalBytes:%lld,ssboAl")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -10704,7 +10704,7 @@ TEST_CASE("printf corpus 0616: {\\'event\\':\\'readback_init\\',\\'maxActors\\':
 	}
 }
 
-TEST_CASE("printf corpus 0617: {\\'event\\':\\'readback_selftest\\',\\'pass\\':%d,\\'fail\\':%d}")
+TEST_CASE("printf corpus 0617: {event:readback_selftest,pass:%d,fail:%d}")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -10721,7 +10721,7 @@ TEST_CASE("printf corpus 0617: {\\'event\\':\\'readback_selftest\\',\\'pass\\':%
 	}
 }
 
-TEST_CASE("printf corpus 0618: {\\'event\\':\\'substrate_init\\',\\'maxActors\\':%u,\\'slotBytes\\':%")
+TEST_CASE("printf corpus 0618: {event:substrate_init,maxActors:%u,slotBytes:%zu,totalBytes:%lld,bindi")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -10740,7 +10740,7 @@ TEST_CASE("printf corpus 0618: {\\'event\\':\\'substrate_init\\',\\'maxActors\\'
 	}
 }
 
-TEST_CASE("printf corpus 0619: {\\'event\\':\\'summary\\',\\'frame\\':%u,\\'window_frames\\':%d,\\'le")
+TEST_CASE("printf corpus 0619: {event:summary,frame:%u,window_frames:%d,leaves:%lld,ranges:%lld,submi")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);
@@ -10778,7 +10778,7 @@ TEST_CASE("printf corpus 0619: {\\'event\\':\\'summary\\',\\'frame\\':%u,\\'wind
 	}
 }
 
-TEST_CASE("printf corpus 0620: {\\'gl_vendor\\':\\'%s\\',\\'gl_renderer\\':\\'%s\\',\\'gl_version\\': [maybe-null]")
+TEST_CASE("printf corpus 0620: {gl_vendor:%s,gl_renderer:%s,gl_version:%s,glsl_version:%s} [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -10797,7 +10797,7 @@ TEST_CASE("printf corpus 0620: {\\'gl_vendor\\':\\'%s\\',\\'gl_renderer\\':\\'%s
 	}
 }
 
-TEST_CASE("printf corpus 0621: {\\'line\\':\\'%s\\'} [maybe-null]")
+TEST_CASE("printf corpus 0621: {line:%s} [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -10813,7 +10813,7 @@ TEST_CASE("printf corpus 0621: {\\'line\\':\\'%s\\'} [maybe-null]")
 	}
 }
 
-TEST_CASE("printf corpus 0622: {\\'multiplier\\':%.2f}")
+TEST_CASE("printf corpus 0622: {multiplier:%.2f}")
 {
 	for (int row = 0; row < 12; ++row) {
 		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
@@ -10829,7 +10829,7 @@ TEST_CASE("printf corpus 0622: {\\'multiplier\\':%.2f}")
 	}
 }
 
-TEST_CASE("printf corpus 0623: {\\'pass\\':\\'%s\\',\\'ran\\':%s,\\'fbo\\':%u,\\'viewport\\':[%d,%d,% [maybe-null]")
+TEST_CASE("printf corpus 0623: {pass:%s,ran:%s,fbo:%u,viewport:[%d,%d,%d,%d],depthTest:%s,depthMask:% [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -10859,7 +10859,7 @@ TEST_CASE("printf corpus 0623: {\\'pass\\':\\'%s\\',\\'ran\\':%s,\\'fbo\\':%u,\\
 	}
 }
 
-TEST_CASE("printf corpus 0624: {\\'site\\':\\'cull\\',\\'name\\':\\'%s\\',\\'on_gui\\':%d,\\'type_cla [maybe-null]")
+TEST_CASE("printf corpus 0624: {site:cull,name:%s,on_gui:%d,type_class:%d,move_type:%d,cmd_match:%d,i [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -10882,7 +10882,7 @@ TEST_CASE("printf corpus 0624: {\\'site\\':\\'cull\\',\\'name\\':\\'%s\\',\\'on_
 	}
 }
 
-TEST_CASE("printf corpus 0625: {\\'site\\':\\'doAttack\\',\\'stale_wid\\':%d,\\'behind\\':%d,\\'far_c")
+TEST_CASE("printf corpus 0625: {site:doAttack,stale_wid:%d,behind:%d,far_cursor:%d,target_screen:[%.1")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -10912,7 +10912,7 @@ TEST_CASE("printf corpus 0625: {\\'site\\':\\'doAttack\\',\\'stale_wid\\':%d,\\'
 	}
 }
 
-TEST_CASE("printf corpus 0626: {\\'site\\':\\'fallback_fill\\',\\'filename\\':\\'%s\\',\\'texname\\': [maybe-null]")
+TEST_CASE("printf corpus 0626: {site:fallback_fill,filename:%s,texname:%s,w:%d,h:%d} [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -10931,7 +10931,7 @@ TEST_CASE("printf corpus 0626: {\\'site\\':\\'fallback_fill\\',\\'filename\\':\\
 	}
 }
 
-TEST_CASE("printf corpus 0627: {\\'site\\':\\'handleTacticalOrder\\',\\'order\\':%llu,\\'targetWID\\'")
+TEST_CASE("printf corpus 0627: {site:handleTacticalOrder,order:%llu,targetWID:%d,stale_wid:%d,range:%")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned long long v0 = static_cast<unsigned long long>(kEdgeU64[(row + 0) % std::size(kEdgeU64)]);
@@ -10954,7 +10954,7 @@ TEST_CASE("printf corpus 0627: {\\'site\\':\\'handleTacticalOrder\\',\\'order\\'
 	}
 }
 
-TEST_CASE("printf corpus 0628: {\\'site\\':\\'map_half_extent\\',\\'value\\':%.1f,\\'guard_fail\\':%d")
+TEST_CASE("printf corpus 0628: {site:map_half_extent,value:%.1f,guard_fail:%d}")
 {
 	for (int row = 0; row < 12; ++row) {
 		double v0 = static_cast<double>(kEdgeDBL[(row + 0) % std::size(kEdgeDBL)]);
@@ -10971,7 +10971,7 @@ TEST_CASE("printf corpus 0628: {\\'site\\':\\'map_half_extent\\',\\'value\\':%.1
 	}
 }
 
-TEST_CASE("printf corpus 0629: {\\'site\\':\\'mech_lost\\',\\'variant\\':\\'%s\\'} [maybe-null]")
+TEST_CASE("printf corpus 0629: {site:mech_lost,variant:%s} [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -10987,7 +10987,7 @@ TEST_CASE("printf corpus 0629: {\\'site\\':\\'mech_lost\\',\\'variant\\':\\'%s\\
 	}
 }
 
-TEST_CASE("printf corpus 0630: {\\'site\\':\\'pick_rect\\',\\'behind_corners\\':%d,\\'pos\\':[%.1f,%.")
+TEST_CASE("printf corpus 0630: {site:pick_rect,behind_corners:%d,pos:[%.1f,%.1f,%.1f],rect:[%ld,%ld,%")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -11010,7 +11010,7 @@ TEST_CASE("printf corpus 0630: {\\'site\\':\\'pick_rect\\',\\'behind_corners\\':
 	}
 }
 
-TEST_CASE("printf corpus 0631: {\\'site\\':\\'resolve\\',\\'name\\':\\'%s\\',\\'pilot\\':\\'%s\\',\\' [maybe-null]")
+TEST_CASE("printf corpus 0631: {site:resolve,name:%s,pilot:%s,variant:%s,mech_found:%d,pilot_found:%d [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
 		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
@@ -11031,7 +11031,7 @@ TEST_CASE("printf corpus 0631: {\\'site\\':\\'resolve\\',\\'name\\':\\'%s\\',\\'
 	}
 }
 
-TEST_CASE("printf corpus 0632: {\\'site\\':\\'update_target\\',\\'mouse\\':[%ld,%ld],\\'target_screen")
+TEST_CASE("printf corpus 0632: {site:update_target,mouse:[%ld,%ld],target_screen:[%.1f,%.1f],w:%.4f,b")
 {
 	for (int row = 0; row < 12; ++row) {
 		long v0 = static_cast<long>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -11055,7 +11055,7 @@ TEST_CASE("printf corpus 0632: {\\'site\\':\\'update_target\\',\\'mouse\\':[%ld,
 	}
 }
 
-TEST_CASE("printf corpus 0633: {\\'v\\':%d}")
+TEST_CASE("printf corpus 0633: {v:%d}")
 {
 	for (int row = 0; row < 12; ++row) {
 		int v0 = static_cast<int>(kEdgeI32[(row + 0) % std::size(kEdgeI32)]);
@@ -11071,7 +11071,7 @@ TEST_CASE("printf corpus 0633: {\\'v\\':%d}")
 	}
 }
 
-TEST_CASE("printf corpus 0634: {\\'visibleTerrainChunks\\':%u,\\'staticPropBatches\\':%u,\\'mechBatch")
+TEST_CASE("printf corpus 0634: {visibleTerrainChunks:%u,staticPropBatches:%u,mechBatchInstances:%u,vf")
 {
 	for (int row = 0; row < 12; ++row) {
 		unsigned v0 = static_cast<unsigned>(kEdgeU32[(row + 0) % std::size(kEdgeU32)]);

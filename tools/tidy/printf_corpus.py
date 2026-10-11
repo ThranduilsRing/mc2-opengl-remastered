@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import os
 import subprocess
 import sys
@@ -117,7 +118,7 @@ def emit(records) -> str:
             new_args.append(f"mc2::fmt::{wrap}(v{i})" if wrap else f"v{i}")
         old_call = ", ".join([cpp_string(r["old"])] + old_args)
         new_call = ", ".join([cpp_string(r["new"])] + new_args)
-        title = r["old"].replace("\\", "\\\\").replace('"', "'")[:70]
+        title = re.sub(r'[\\"]', "", r["old"])[:70]          # no backslash or quote: cutting at 70 characters must not leave half an escape
         note = (" [%s]" % ",".join(sorted(set(classes)))) if classes else ""
         lines += [
             f'TEST_CASE("printf corpus {n:04d}: {title}{note}")',
