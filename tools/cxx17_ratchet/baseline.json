@@ -152,7 +152,7 @@
    "LG11": 101,
    "LG12a": 220,
    "LG12b": 790,
-   "LG13": 1076,
+   "LG13": 930,
    "LG14": 135,
    "LG15": 0,
    "LG16": 7,
@@ -198,7 +198,7 @@
    "LG11": 67,
    "LG12a": 449,
    "LG12b": 563,
-   "LG13": 1293,
+   "LG13": 1291,
    "LG14": 122,
    "LG15": 0,
    "LG16": 156,
@@ -2855,9 +2855,6 @@
   "code/modder_finding.h": {
    "LG06": 1
   },
-  "code/movemgr.cpp": {
-   "LG13": 1
-  },
   "code/movemgr.h": {
    "LG02": 3
   },
@@ -2885,8 +2882,7 @@
   "code/mover_chunks.cpp": {
    "LG01": 8,
    "LG09": 4,
-   "LG12b": 10,
-   "LG13": 11
+   "LG12b": 10
   },
   "code/mover_combat.cpp": {
    "LG01": 1,
@@ -2915,8 +2911,7 @@
    "LG16": 2
   },
   "code/mover_path.cpp": {
-   "LG09": 9,
-   "LG13": 1
+   "LG09": 9
   },
   "code/mpconnectiontype.cpp": {
    "LG05": 1,
@@ -2929,7 +2924,7 @@
    "LG06": 2,
    "LG09": 3,
    "LG12b": 3,
-   "LG13": 5
+   "LG13": 1
   },
   "code/mpgamebrowser.h": {
    "LG06": 2
@@ -2964,7 +2959,7 @@
    "LG06": 8,
    "LG09": 10,
    "LG12b": 25,
-   "LG13": 28
+   "LG13": 1
   },
   "code/mpparameterscreen.h": {
    "LG06": 8,
@@ -2977,7 +2972,6 @@
    "LG09": 7,
    "LG11": 2,
    "LG12b": 4,
-   "LG13": 6,
    "LG17": 2
   },
   "code/mpprefs.h": {
@@ -3001,8 +2995,7 @@
    "LG06": 1,
    "LG09": 8,
    "LG11": 1,
-   "LG12b": 17,
-   "LG13": 1
+   "LG12b": 17
   },
   "code/mpstats.h": {
    "LG06": 1
@@ -3051,8 +3044,7 @@
    "LG06": 1,
    "LG09": 44,
    "LG12a": 2,
-   "LG12b": 2,
-   "LG13": 8
+   "LG12b": 2
   },
   "code/objmgr.h": {
    "LG01": 1,
@@ -3068,8 +3060,7 @@
    "LG06": 1,
    "LG09": 46,
    "LG12a": 3,
-   "LG12b": 1,
-   "LG13": 2
+   "LG12b": 1
   },
   "code/objmgr_misc.cpp": {
    "LG01": 1,
@@ -3109,7 +3100,7 @@
    "LG09": 34,
    "LG12a": 1,
    "LG12b": 5,
-   "LG13": 30,
+   "LG13": 4,
    "LG16": 1
   },
   "code/optionsarea.h": {
@@ -3135,14 +3126,13 @@
   "code/pilotreadyscreen.cpp": {
    "LG03": 5,
    "LG09": 8,
-   "LG12b": 10,
-   "LG13": 3
+   "LG12b": 10
   },
   "code/pilotreviewarea.cpp": {
    "LG03": 93,
    "LG09": 7,
    "LG12b": 20,
-   "LG13": 9
+   "LG13": 7
   },
   "code/prefs.cpp": {
    "LG03": 4,
@@ -3162,8 +3152,7 @@
    "LG01": 2,
    "LG03": 6,
    "LG05": 1,
-   "LG09": 8,
-   "LG13": 1
+   "LG09": 8
   },
   "code/radio.h": {
    "LG13": 2
@@ -3174,7 +3163,7 @@
    "LG09": 10,
    "LG12a": 1,
    "LG12b": 8,
-   "LG13": 9
+   "LG13": 7
   },
   "code/saveload.cpp": {
    "LG01": 5,
@@ -3221,8 +3210,7 @@
   "code/tacordr.cpp": {
    "LG01": 2,
    "LG09": 57,
-   "LG12b": 10,
-   "LG13": 46
+   "LG12b": 10
   },
   "code/tacordr.h": {
    "LG02": 16,
@@ -3253,8 +3241,7 @@
   "code/team_los.cpp": {
    "LG01": 4,
    "LG03": 4,
-   "LG09": 4,
-   "LG13": 1
+   "LG09": 4
   },
   "code/terrobj.cpp": {
    "LG01": 4,
@@ -3263,7 +3250,7 @@
    "LG09": 34,
    "LG12a": 2,
    "LG12b": 9,
-   "LG13": 4
+   "LG13": 1
   },
   "code/terrobj.h": {
    "LG01": 5,
@@ -3285,7 +3272,6 @@
    "LG03": 3,
    "LG09": 47,
    "LG12b": 17,
-   "LG13": 1,
    "LG17": 1
   },
   "code/turret.h": {
@@ -3480,7 +3466,6 @@
    "LG11": 1,
    "LG12a": 1,
    "LG12b": 18,
-   "LG13": 2,
    "LG17": 4
   },
   "mclib/ablenv.h": {
@@ -5690,7 +5675,7 @@
    "LG20": 2
   }
  },
- "head": "b2e18ac9e",
+ "head": "15f309252",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
