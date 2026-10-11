@@ -32,7 +32,7 @@ TRAILER = "Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 FX_TOOL = "out/tools/mc2fx/mc2fx.exe"
 STOCK_FX = "A:/Games/mc2-opengl/mc2-win64-v0.4/data/effects/mc2.fx"
 
-_SUMMARY = re.compile(r"run_tidy_safe: (\d+) proven identical, (\d+) reverted, (\d+) skipped")
+_SUMMARY = re.compile(r"run_tidy_safe: (\d+) proven (?:identical|compiling), (\d+) reverted, (\d+) skipped")
 _TOTAL = re.compile(r"^TOTAL\s+(\d+)\s+(\d+)", re.M)
 
 

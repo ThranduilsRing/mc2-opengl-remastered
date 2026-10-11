@@ -1,0 +1,128 @@
+// tests/unit/test_mc2fmt.cpp -- mc2fmt.h: snprintf-compatible to_buf / to_buf_n and the printf-argument helpers.
+// Each case pins a behaviour the mechanical printf -> std::format conversion relies on.
+
+#include "doctest.h"
+
+#include "mc2fmt.h"
+
+#include <cstdio>
+#include <cstring>
+#include <string>
+
+TEST_SUITE("mc2fmt")
+{
+
+TEST_CASE("to_buf matches snprintf for a fitting result")
+{
+	char a[32], b[32];
+	const int na = std::snprintf(a, sizeof a, "%02d:%02d|%s", 7, 5, "ab");
+	const int nb = mc2::fmt::to_buf(b, "{:02d}:{:02d}|{}", 7, 5, "ab");
+	CHECK(na == nb);
+	CHECK(std::strcmp(a, b) == 0);
+}
+
+TEST_CASE("truncation: cap-1 characters, NUL terminated, would-be length returned")
+{
+	char a[8], b[8];
+	const int na = std::snprintf(a, sizeof a, "%s", "0123456789");
+	const int nb = mc2::fmt::to_buf(b, "{}", "0123456789");
+	CHECK(na == 10);
+	CHECK(nb == 10);
+	CHECK(std::strcmp(a, "0123456") == 0);
+	CHECK(std::strcmp(b, "0123456") == 0);
+}
+
+TEST_CASE("exact fit and one past")
+{
+	char b[6];
+	CHECK(mc2::fmt::to_buf(b, "{}", "abcde") == 5);
+	CHECK(std::strcmp(b, "abcde") == 0);
+	CHECK(mc2::fmt::to_buf(b, "{}", "abcdef") == 6);
+	CHECK(std::strcmp(b, "abcde") == 0);
+}
+
+TEST_CASE("cap 1 writes only the NUL; cap 0 writes nothing and still returns the length")
+{
+	char b[4] = {'x', 'x', 'x', 'x'};
+	CHECK(mc2::fmt::to_buf_n(b, 1, "{}", "abc") == 3);
+	CHECK(b[0] == '\0');
+	CHECK(b[1] == 'x');
+	char c[2] = {'y', 'y'};
+	CHECK(mc2::fmt::to_buf_n(c, 0, "{}", "abc") == 3);
+	CHECK(c[0] == 'y');
+}
+
+TEST_CASE("the bound is the array extent: sprintf into a small array cannot overrun")
+{
+	struct S { char small[4]; char guard[4]; } s = {{}, {'G', 'G', 'G', 'G'}};
+	mc2::fmt::to_buf(s.small, "{}", "this is far too long");
+	CHECK(std::memcmp(s.guard, "GGGG", 4) == 0);
+	CHECK(std::strcmp(s.small, "thi") == 0);
+}
+
+TEST_CASE("safe() prints (null) where printf does, and leaves real strings alone")
+{
+	char a[16], b[16];
+	std::snprintf(a, sizeof a, "%s", static_cast<const char*>(nullptr));
+	mc2::fmt::to_buf(b, "{}", mc2::fmt::safe(nullptr));
+	CHECK(std::strcmp(a, b) == 0);
+	CHECK(std::strcmp(b, "(null)") == 0);
+	std::string s("text");
+	mc2::fmt::to_buf(b, "{}", mc2::fmt::safe(s.c_str()));
+	CHECK(std::strcmp(b, "text") == 0);
+}
+
+TEST_CASE("%u of a negative int reinterprets, as printf does")
+{
+	char a[24], b[24];
+	const int v = -1;
+	std::snprintf(a, sizeof a, "%u|%x|%X|%o", v, v, v, v);
+	mc2::fmt::to_buf(b, "{:d}|{:x}|{:X}|{:o}", mc2::fmt::as_u32(v), mc2::fmt::as_u32(v), mc2::fmt::as_u32(v), mc2::fmt::as_u32(v));
+	CHECK(std::strcmp(a, b) == 0);
+}
+
+TEST_CASE("%ld is 32-bit on Windows, %lld and %zu are 64-bit")
+{
+	char a[64], b[64];
+	const long l = -123456;
+	const long long ll = 123456789012345LL;
+	const size_t z = 42;
+	std::snprintf(a, sizeof a, "%ld|%lld|%zu", l, ll, z);
+	mc2::fmt::to_buf(b, "{:d}|{:d}|{:d}", mc2::fmt::as_i32(l), mc2::fmt::as_i64(ll), mc2::fmt::as_size(z));
+	CHECK(std::strcmp(a, b) == 0);
+}
+
+TEST_CASE("%p is 16 upper-case hex digits without 0x on the MSVC CRT")
+{
+	char a[40], b[40];
+	int x = 0;
+	void* p = &x;
+	std::snprintf(a, sizeof a, "%p", p);
+	mc2::fmt::to_buf(b, "{:016X}", mc2::fmt::as_ptr(p));
+	CHECK(std::strcmp(a, b) == 0);
+	std::snprintf(a, sizeof a, "%p", static_cast<void*>(nullptr));
+	mc2::fmt::to_buf(b, "{:016X}", mc2::fmt::as_ptr(static_cast<void*>(nullptr)));
+	CHECK(std::strcmp(a, b) == 0);
+}
+
+TEST_CASE("%c prints the low byte")
+{
+	char a[8], b[8];
+	std::snprintf(a, sizeof a, "[%c]", 65);
+	mc2::fmt::to_buf(b, "[{:c}]", mc2::fmt::as_char(65));
+	CHECK(std::strcmp(a, b) == 0);
+}
+
+TEST_CASE("float conversions agree with printf for the engine's usual specs")
+{
+	const double vals[] = {0.0, -0.0, 1.0, -2.5, 3.14159265358979, 1e-7, 123456789.125, 1e22};
+	for (double v : vals) {
+		char a[64], b[64];
+		std::snprintf(a, sizeof a, "%f|%.2f|%8.3f|%e|%g", v, v, v, v, v);
+		mc2::fmt::to_buf(b, "{:f}|{:.2f}|{:8.3f}|{:e}|{:g}", v, v, v, v, v);
+		INFO("value " << v);
+		CHECK(std::strcmp(a, b) == 0);
+	}
+}
+
+}  // TEST_SUITE

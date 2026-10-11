@@ -89,6 +89,8 @@ add_executable(mc2_tests
     test_infowindow_model.cpp  # HUD-IMGUI slice D: info-window component aggregation kernel (offline)
     test_terrain_material.cpp  # TERRAIN-MATERIAL-SINGLE-SOURCE: terrain type -> material table (type 20 = Concrete)
     test_mc2log.cpp         # LOGGING-FACADE-P0: mc2::log facade (level gate, vformat fail-soft, MC2_EVENT bytes, MC2_LOG spec)
+    test_mc2fmt.cpp         # STEP3-LOGGING-B0: mc2fmt.h to_buf/to_buf_n/safe/as_* vs snprintf (offline)
+    test_printf_corpus.cpp  # STEP3-LOGGING-B0: generated format corpus, printf vs mc2::fmt::to_buf byte equality
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/utils/mc2log.cpp  # LOGGING-FACADE-P0: leaf TU (no engine deps)
 
     # MINIMAL-VIABLE-HARNESS-1: malloc-backed heap + GameOS-global shim.

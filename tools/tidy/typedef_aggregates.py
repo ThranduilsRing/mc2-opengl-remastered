@@ -61,6 +61,26 @@ def _matching_brace(text: str, open_at: int, dead) -> int:
     return -1
 
 
+def _matching_paren(text: str, open_at: int, dead) -> int:
+    """Index of the `)` that closes the `(` at open_at, or -1 (comments, strings and character literals are skipped)."""
+    depth, i, n, k = 0, open_at, len(text), 0
+    while i < n:
+        while k < len(dead) and dead[k][1] <= i:
+            k += 1
+        if k < len(dead) and dead[k][0] <= i < dead[k][1]:
+            i = dead[k][1]
+            continue
+        c = text[i]
+        if c == "(":
+            depth += 1
+        elif c == ")":
+            depth -= 1
+            if depth == 0:
+                return i
+        i += 1
+    return -1
+
+
 def _in(dead, pos: int) -> bool:
     return any(a <= pos < b for a, b in dead)
 

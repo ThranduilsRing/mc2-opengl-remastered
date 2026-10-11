@@ -226,7 +226,8 @@ def run(args, tidy=None, build=None) -> int:
         print("run_tidy_safe: nothing to do")
         return 0
 
-    before, problems = objhash.hash_files(ROOT, tree, kept, tool="run_tidy_safe")
+    compile_only = getattr(args, "rewrite", None) in COMPILE_ONLY
+    before, problems = ({"files": {}}, []) if compile_only else objhash.hash_files(ROOT, tree, kept, tool="run_tidy_safe")
     for pr in problems:
         print("run_tidy_safe: " + pr, file=sys.stderr)
     if problems:
@@ -292,6 +293,9 @@ def run(args, tidy=None, build=None) -> int:
 
     proven = []
     for rel in sorted(changed):
+        if compile_only:
+            proven.append(rel)
+            continue
         lines, _bad = objhash.compare_files({**before, "files": {rel: before["files"][rel]}})
         if lines and all(ln.startswith("OK") for ln in lines):
             proven.append(rel)
@@ -300,14 +304,17 @@ def run(args, tidy=None, build=None) -> int:
             reverted.append((rel, "; ".join(lines)))
     for rel, why in reverted:
         print(f"REVERT {rel}  {why}")
-    print(f"run_tidy_safe: {len(proven)} proven identical, {len(reverted)} reverted, {len(skipped)} skipped")
+    print(f"run_tidy_safe: {len(proven)} proven {'compiling' if compile_only else 'identical'}, {len(reverted)} reverted, {len(skipped)} skipped")
     if proven:
         print("kept (commit by pathspec): " + " ".join(proven))
         print("then: py -3 tools/cxx17_ratchet/cxx17_ratchet.py --check --tighten")
     return 1 if reverted else 0
 
 
-REWRITERS = ("typedef-aggregates", "null-tokens")
+REWRITERS = ("typedef-aggregates", "null-tokens", "printf-buffers")
+#: Rewriters that change what the program prints or stores by design; their proof is "it compiles" here and the byte-level proof is the
+#: format corpus plus the log comparison (tools/tidy/printf_corpus.py, .claude/cleanup/cxx23-step3-logging-plan.md), not object identity.
+COMPILE_ONLY = ("printf-buffers",)
 
 
 def rewriter(name: str):
