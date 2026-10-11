@@ -24,7 +24,7 @@ def test_stderr_stdout_and_a_file_stream():
 
 
 def test_tagged_lines_are_left_for_b5_and_b6():
-    for lit in ('[PERF v1] avg_fps=%f' + NL, '[HEARTBEAT] frames=%d' + NL, 'WARN [GPUPROPS] failed to compile' + NL):
+    for lit in ('[B2] right=%d' + NL, '[GL] id=%d' + NL, '[PERF v1] avg_fps=%f' + NL, '[HEARTBEAT] frames=%d' + NL, 'WARN [GPUPROPS] failed to compile' + NL):
         src = '#include <a.h>\nvoid f(){ fprintf(stderr, "' + lit + '", x); }\n'
         out, recs, left = conv(src)
         assert out == src and not recs and "tagged" in left[0][1], lit

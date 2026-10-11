@@ -20,7 +20,7 @@ FUNCS = {"printf", "fprintf"}
 PATH_AWARE = True      # rewrite(text, path): EXCLUDED_FILES need the path
 #: Crash handlers, assert/STOP paths and allocator internals must not allocate or recurse into themselves while printing.
 EXCLUDED_FILES = ("*crashbundle*", "*gameos_debugging*", "*/err.cpp", "*/err.h", "*heap*", "*errorhandler*", "*/memorymanager*", "*seh*")
-_BRACKET_TAG = re.compile(r"\[[A-Z][A-Z0-9_]{2,}(?: v\d+)?\]")
+_BRACKET_TAG = re.compile(r"\[[A-Z][A-Z0-9_]*(?: v\d+)?\]")      # the same shape the log_tag_census recognises, anywhere in the literal
 
 
 def is_excluded(path: str) -> bool:
