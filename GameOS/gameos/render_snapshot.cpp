@@ -280,8 +280,7 @@ RenderSnapshot ExtractRenderSnapshot()
                 snap.frameArena.allocArray<ExtractedStaticProp>(n, "ExtractedStaticProp");
             if (!propSpan.data && n > 0u) {
                 snap.arenaOverflow = true;
-                std::fprintf(stderr,
-                    "[RENDER_SNAPSHOT] WARNING: arena overflow allocating %u ExtractedStaticProp (clean)\n", n);
+                mc2::fmt::print_err("[RENDER_SNAPSHOT] WARNING: arena overflow allocating {:d} ExtractedStaticProp (clean)\n", mc2::fmt::as_u32(n));
             } else {
                 if (n) std::memcpy(propSpan.data, s_spRowCache.data(),
                                    static_cast<size_t>(n) * sizeof(ExtractedStaticProp));
@@ -349,9 +348,8 @@ RenderSnapshot ExtractRenderSnapshot()
         ExtractedStaticProp* propBuf = propSpan.data;
         if (!propBuf && aliveCount > 0) {
             snap.arenaOverflow = true;
-            std::fprintf(stderr,
-                "[RENDER_SNAPSHOT] WARNING: arena overflow allocating %u ExtractedStaticProp\n",
-                aliveCount);
+            mc2::fmt::print_err("[RENDER_SNAPSHOT] WARNING: arena overflow allocating {:d} ExtractedStaticProp\n",
+                mc2::fmt::as_u32(aliveCount));
             // Leave staticProps empty; counters remain zero.
         } else {
             uint32_t writeIdx       = 0;

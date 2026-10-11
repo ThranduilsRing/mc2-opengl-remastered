@@ -248,9 +248,8 @@ void GpuStaticPropBatcher::dispatchV6(const RenderSnapshot* snap, std::vector<Re
                 if (s_snapCullEnabled) {
                     if (!s_spBuildCollisionLoggedOnce) {
                         s_spBuildCollisionLoggedOnce = true;
-                        std::fprintf(stderr,
-                            "[RENDER_SNAPSHOT v3] frame=%u disabled — MC2_SNAP_CULL collision\n",
-                            s_v6TotalFrameCount);
+                        mc2::fmt::print_err("[RENDER_SNAPSHOT v3] frame={:d} disabled — MC2_SNAP_CULL collision\n",
+                            mc2::fmt::as_u32(s_v6TotalFrameCount));
                     }
                     ++s_spBuildFallback;
                 }
@@ -411,14 +410,11 @@ void GpuStaticPropBatcher::dispatchV6(const RenderSnapshot* snap, std::vector<Re
                     ++s_spBuildFallback;
                     if (!s_spBuildFirstFallbackLogged) {
                         s_spBuildFirstFallbackLogged = true;
-                        std::fprintf(stderr,
-                            "[RENDER_SNAPSHOT v3] frame=%u first-fallback"
-                            " attempted=1 count_mismatch=%u pkt_mismatch=%u"
-                            " meta_mismatch=%u fallback=1\n",
-                            s_v6TotalFrameCount,
-                            s_spBuildCountMismatch,
-                            s_spBuildPacketMismatch,
-                            s_spBuildMetaMismatch);
+                        mc2::fmt::print_err("[RENDER_SNAPSHOT v3] frame={:d} first-fallback attempted=1 count_mismatch={:d} pkt_mismatch={:d} meta_mismatch={:d} fallback=1\n",
+                            mc2::fmt::as_u32(s_v6TotalFrameCount),
+                            mc2::fmt::as_u32(s_spBuildCountMismatch),
+                            mc2::fmt::as_u32(s_spBuildPacketMismatch),
+                            mc2::fmt::as_u32(s_spBuildMetaMismatch));
                     }
                 }
             }
@@ -561,17 +557,14 @@ void GpuStaticPropBatcher::dispatchV6(const RenderSnapshot* snap, std::vector<Re
                                ? 1 : 0;
                 mc2::fmt::print_err("[DRAW_PACKET_V6] frame={:d} event=dispatch_summary slots_considered={:d} draws_issued={:d} zero_instance_skips={:d} sorted_oob={:d} packet_oob={:d} type_oob={:d} lockstep_violations={:d} gl_errors={:d} ok={:d}\n", mc2::fmt::as_u32(s_v6TotalFrameCount), mc2::fmt::as_u32(slotsConsidered), mc2::fmt::as_u32(s_v6FrameDrawsIssued), mc2::fmt::as_u32(s_v6FrameZeroInstSkips), mc2::fmt::as_u32(s_v6FrameSortedOob), mc2::fmt::as_u32(s_v6FramePacketOob), mc2::fmt::as_u32(s_v6FrameTypeOob), mc2::fmt::as_u32(s_v6FrameLockstepViolations), mc2::fmt::as_u32(s_v6FrameGlErrors), mc2::fmt::as_i32(ok));
                 if (s_snapshotBuildEnabled) {
-                    std::fprintf(stderr,
-                        "[RENDER_SNAPSHOT v3] frame=%u"
-                        " attempted=%u count_mismatch=%u pkt_mismatch=%u"
-                        " meta_mismatch=%u fallback=%u using_snapshot=%d\n",
-                        s_v6TotalFrameCount,
-                        s_spBuildAttempted,
-                        s_spBuildCountMismatch,
-                        s_spBuildPacketMismatch,
-                        s_spBuildMetaMismatch,
-                        s_spBuildFallback,
-                        useSnapshot ? 1 : 0);
+                    mc2::fmt::print_err("[RENDER_SNAPSHOT v3] frame={:d} attempted={:d} count_mismatch={:d} pkt_mismatch={:d} meta_mismatch={:d} fallback={:d} using_snapshot={:d}\n",
+                        mc2::fmt::as_u32(s_v6TotalFrameCount),
+                        mc2::fmt::as_u32(s_spBuildAttempted),
+                        mc2::fmt::as_u32(s_spBuildCountMismatch),
+                        mc2::fmt::as_u32(s_spBuildPacketMismatch),
+                        mc2::fmt::as_u32(s_spBuildMetaMismatch),
+                        mc2::fmt::as_u32(s_spBuildFallback),
+                        mc2::fmt::as_i32(useSnapshot ? 1 : 0));
                 }
             }
 
