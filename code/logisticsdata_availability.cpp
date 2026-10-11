@@ -418,8 +418,7 @@ void LogisticsData::appendAvailability(const char* pFileName, bool* availableArr
 		// purchase-file misses are visible in the field.
 		if ( mc2::gate::get<"MC2_LOG_LOGISTICS">() )
 		{
-			printf( "[LOGISTICS] appendAvailability: open FAILED '%s' -- purchase file skipped\n",
-			        pFileName ? pFileName : "(null)" );
+			mc2::fmt::print_out("[LOGISTICS] appendAvailability: open FAILED '{}' -- purchase file skipped\n", mc2::fmt::safe(pFileName ? pFileName : "(null)"));
 			fflush( stdout );
 		}
 		return;

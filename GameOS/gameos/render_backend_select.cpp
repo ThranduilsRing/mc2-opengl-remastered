@@ -12,6 +12,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include "mc2fmt.h"
 
 // VK-FAILSOFT-DISARM-1: defined in mclib/tgl.cpp (data-tool-link home, same as
 // g_mc2FrameCounter); set below by forceGLFallback, read by
@@ -40,7 +41,7 @@ RenderBackend resolveOnce() {
     }
     if (std::strcmp(env, "vulkan") == 0 || std::strcmp(env, "VULKAN") == 0 ||
         std::strcmp(env, "vk") == 0) {
-        std::printf("[RENDER_BACKEND] MC2_RENDER_BACKEND=%s -> Vulkan backend selected.\n", env);
+        mc2::fmt::print_out("[RENDER_BACKEND] MC2_RENDER_BACKEND={} -> Vulkan backend selected.\n", mc2::fmt::safe(env));
         std::fflush(stdout);
         return RenderBackend::Vulkan;
     }
@@ -67,8 +68,7 @@ const char* renderBackendName(RenderBackend b) {
 
 void forceGLFallback(const char* reason) {
     if (!s_forceGL) {
-        std::printf("[RENDER_BACKEND] fail-soft: forcing GL for the session (reason: %s).\n",
-                    reason ? reason : "(unspecified)");
+        mc2::fmt::print_out("[RENDER_BACKEND] fail-soft: forcing GL for the session (reason: {}).\n", mc2::fmt::safe(reason ? reason : "(unspecified)"));
         std::fflush(stdout);
     }
     s_forceGL = true;

@@ -324,8 +324,7 @@ bool loadBuildingPbrFromSidecar(BldgAppearanceType* type, const char* sidecarPat
 		}
 	}
 	type->buildingPbrEnabled = true;
-	fprintf(stderr, "[BUILDING_PBR] loaded sidecar=%s normal=%s orm=%s\n",
-	        sidecarPath, normalFull.c_str(), ormFull.c_str());
+	mc2::fmt::print_err("[BUILDING_PBR] loaded sidecar={} normal={} orm={}\n", mc2::fmt::safe(sidecarPath), normalFull.c_str(), ormFull.c_str());
 	fflush(stderr);
 	return true;
 }
@@ -463,8 +462,7 @@ void LoadOverrideRenderShapeTextures(TG_TypeMultiShape* rs)
 			rs->SetTextureAlpha(i, alpha);
 			if (mc2::gate::get<"MC2_MODOVERRIDE_TRACE">())
 			{
-				fprintf(stderr, "[MODOVERRIDE_TEX] slot=%ld name='%s' -> gosHandle=%lu alpha=%d\n",
-				        i, txmName, (unsigned long)gosTextureHandle, (int)alpha);
+				mc2::fmt::print_err("[MODOVERRIDE_TEX] slot={:d} name='{}' -> gosHandle={:d} alpha={:d}\n", mc2::fmt::as_i32(i), mc2::fmt::safe(txmName), mc2::fmt::as_u32((unsigned long)gosTextureHandle), mc2::fmt::as_i32((int)alpha));
 				fflush(stderr);
 			}
 		}
@@ -473,8 +471,7 @@ void LoadOverrideRenderShapeTextures(TG_TypeMultiShape* rs)
 			rs->SetTextureHandle(i, 0xffffffff);
 			if (mc2::gate::get<"MC2_MODOVERRIDE_TRACE">())
 			{
-				fprintf(stderr, "[MODOVERRIDE_TEX] slot=%ld name='%s' NOT FOUND (path=%s)\n",
-				        i, txmName, (const char*)textureName);
+				mc2::fmt::print_err("[MODOVERRIDE_TEX] slot={:d} name='{}' NOT FOUND (path={})\n", mc2::fmt::as_i32(i), mc2::fmt::safe(txmName), mc2::fmt::safe((const char*)textureName));
 				fflush(stderr);
 			}
 		}

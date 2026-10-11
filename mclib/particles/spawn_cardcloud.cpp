@@ -48,6 +48,7 @@
 
 #include <string>
 #include <unordered_set>
+#include "mc2fmt.h"
 
 namespace mc2 {
 namespace particles {
@@ -129,13 +130,7 @@ void SpawnCardCloud(const gosFX::CardCloud__Specification* spec,
         const char* specNameC = static_cast<const char*>(spec->m_name);
         std::string specName(specNameC ? specNameC : "<null>");
         if (s_probed.insert(specName).second) {
-            std::fprintf(stderr,
-                "[SPAWN_PROBE] spec=%s mlrHandle=%u renderState=0x%08x permMask=0x%08x deltaMask=0x%08x\n",
-                specName.c_str(),
-                mlrTexHandle,
-                mut_spec->m_state.GetRenderStateFlags(),
-                mut_spec->m_state.GetRenderPermissionMask(),
-                mut_spec->m_state.GetRenderDeltaMask());
+            mc2::fmt::print_err("[SPAWN_PROBE] spec={} mlrHandle={:d} renderState=0x{:08x} permMask=0x{:08x} deltaMask=0x{:08x}\n", specName.c_str(), mc2::fmt::as_u32(mlrTexHandle), mc2::fmt::as_u32(mut_spec->m_state.GetRenderStateFlags()), mc2::fmt::as_u32(mut_spec->m_state.GetRenderPermissionMask()), mc2::fmt::as_u32(mut_spec->m_state.GetRenderDeltaMask()));
         }
     }
 

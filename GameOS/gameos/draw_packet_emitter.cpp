@@ -56,9 +56,7 @@ DrawPacketEmitStats emitStaticPropDrawPackets(const RenderSnapshot&          sna
     // Guard against sparse or corrupt typeId values.
     static constexpr uint32_t kMaxAllowedTypeId = 65535u;
     if (maxTypeId > kMaxAllowedTypeId) {
-        std::fprintf(stderr,
-            "[DRAW_PACKET v1] ERROR: maxTypeId=%u exceeds cap %u; aborting\n",
-            maxTypeId, kMaxAllowedTypeId);
+        mc2::fmt::print_err("[DRAW_PACKET v1] ERROR: maxTypeId={:d} exceeds cap {:d}; aborting\n", mc2::fmt::as_u32(maxTypeId), mc2::fmt::as_u32(kMaxAllowedTypeId));
         return stats;
     }
 
@@ -83,10 +81,7 @@ DrawPacketEmitStats emitStaticPropDrawPackets(const RenderSnapshot&          sna
             typeToMatIdx[tid] = prop.materialIdx;
         } else if (typeToMatIdx[tid] != prop.materialIdx) {
             ++stats.materialMismatches;
-            if (s_dpWarn) std::fprintf(stderr,
-                "[DRAW_PACKET v1] WARNING: typeId=%u materialIdx mismatch "
-                "(%u vs %u)\n",
-                tid, typeToMatIdx[tid], prop.materialIdx);
+            if (s_dpWarn) mc2::fmt::print_err("[DRAW_PACKET v1] WARNING: typeId={:d} materialIdx mismatch ({:d} vs {:d})\n", mc2::fmt::as_u32(tid), mc2::fmt::as_u32(typeToMatIdx[tid]), mc2::fmt::as_u32(prop.materialIdx));
         }
     }
 
@@ -129,8 +124,7 @@ DrawPacketEmitStats emitStaticPropDrawPackets(const RenderSnapshot&          sna
         // The emit correctly aborts regardless; gate the print behind the warn flag so it
         // doesn't spam the player console once-per-frame on the post-mission screens.
         if (s_dpWarn)
-            std::fprintf(stderr,
-                "[DRAW_PACKET v1] ERROR: type table empty; emit aborted\n");
+            mc2::fmt::print_err("[DRAW_PACKET v1] ERROR: type table empty; emit aborted\n");
         return stats;
     }
 
@@ -141,9 +135,7 @@ DrawPacketEmitStats emitStaticPropDrawPackets(const RenderSnapshot&          sna
         // A mismatch indicates a populate bug and makes the candidate's typeId wrong.
         if (desc.typeId != i) {
             ++stats.invalidRanges;
-            if (s_dpWarn) std::fprintf(stderr,
-                "[DRAW_PACKET v1] WARNING: type table row mismatch row=%u typeId=%u\n",
-                i, desc.typeId);
+            if (s_dpWarn) mc2::fmt::print_err("[DRAW_PACKET v1] WARNING: type table row mismatch row={:d} typeId={:d}\n", mc2::fmt::as_u32(i), mc2::fmt::as_u32(desc.typeId));
             continue;
         }
 
@@ -157,17 +149,13 @@ DrawPacketEmitStats emitStaticPropDrawPackets(const RenderSnapshot&          sna
         // packetCount==0 means a malformed slot; log and skip.
         if (desc.packetCount == 0u) {
             ++stats.skippedRanges;
-            if (s_dpWarn) std::fprintf(stderr,
-                "[DRAW_PACKET v1] WARNING: typeId=%u skipped (packetCount=0)\n", tid);
+            if (s_dpWarn) mc2::fmt::print_err("[DRAW_PACKET v1] WARNING: typeId={:d} skipped (packetCount=0)\n", mc2::fmt::as_u32(tid));
             continue;
         }
         // Overflow guard on firstPacket + packetCount arithmetic.
         if (desc.firstPacket > UINT32_MAX - desc.packetCount) {
             ++stats.skippedRanges;
-            if (s_dpWarn) std::fprintf(stderr,
-                "[DRAW_PACKET v1] WARNING: typeId=%u packet range overflow "
-                "(firstPacket=%u packetCount=%u)\n",
-                tid, desc.firstPacket, desc.packetCount);
+            if (s_dpWarn) mc2::fmt::print_err("[DRAW_PACKET v1] WARNING: typeId={:d} packet range overflow (firstPacket={:d} packetCount={:d})\n", mc2::fmt::as_u32(tid), mc2::fmt::as_u32(desc.firstPacket), mc2::fmt::as_u32(desc.packetCount));
             continue;
         }
 
@@ -212,8 +200,7 @@ DrawPacketEmitStats emitStaticPropDrawPackets(const RenderSnapshot&          sna
             uint32_t packetMatFlags = 0u;
             RenderCore::PipelineId packetPipelineId = RenderCore::PipelineId::Invalid;
             if (!batcher_getPacketMaterialFlags(pi, &packetMatFlags)) {
-                std::fprintf(stderr,
-                    "[DRAW_PACKET v2] batcher_getPacketMaterialFlags OOB pi=%u\n", pi);
+                mc2::fmt::print_err("[DRAW_PACKET v2] batcher_getPacketMaterialFlags OOB pi={:d}\n", mc2::fmt::as_u32(pi));
                 packetMatFlags = 0u;
             } else {
                 const bool alpha = (packetMatFlags & STATIC_PROP_FLAG_ALPHA_TEST) != 0;

@@ -1,6 +1,7 @@
 // MC_TextureManager: SPFLUSH cost accumulators and the TXMMGR_BOUNDS exhaustion counters.
 // Declared in the class headers; shared names in txmmgr_internal.h.
 #include "txmmgr_internal.h"
+#include "mc2fmt.h"
 
 // [SPFLUSH_COST_SPLIT v1] — txmmgr-side RDTSC accumulator.
 // Measures the batcher_prepareBaseInstanceTable() + bucket-upload span each
@@ -49,8 +50,7 @@ struct TxmmgrBoundsDump {
         const unsigned long long c = g_txmmgr_add_vertices_overflow_prevented.load();
         const unsigned long long d = g_txmmgr_add_shape_overflow_prevented.load();
         if (a | b | c | d)
-            fprintf(stderr, "[TXMMGR_BOUNDS v1] SUMMARY vertex_block_exhausted=%llu block_exhausted=%llu "
-                    "add_vertices_overflow_prevented=%llu add_shape_overflow_prevented=%llu\n", a, b, c, d);
+            mc2::fmt::print_err("[TXMMGR_BOUNDS v1] SUMMARY vertex_block_exhausted={:d} block_exhausted={:d} add_vertices_overflow_prevented={:d} add_shape_overflow_prevented={:d}\n", mc2::fmt::as_u64(a), mc2::fmt::as_u64(b), mc2::fmt::as_u64(c), mc2::fmt::as_u64(d));
     }
 };
 TxmmgrBoundsDump s_txmmgrBoundsDump;

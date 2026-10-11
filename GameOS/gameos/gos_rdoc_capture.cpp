@@ -90,16 +90,7 @@ std::string expandCaptureTemplate(const char* raw) {
 
     if (out.find('{') != std::string::npos ||
         out.find('}') != std::string::npos) {
-        std::fprintf(stderr,
-            "[RDOC v1] event=capture_path_unexpanded FATAL\n"
-            "[RDOC v1]   MC2_RDC_CAPTURE_PATH='%s'\n"
-            "[RDOC v1]   after expansion    ='%s'\n"
-            "[RDOC v1]   unexpanded placeholder(s) remain. Supported tokens are\n"
-            "[RDOC v1]   {mission} and {frame}; {mission} additionally needs\n"
-            "[RDOC v1]   --mission <stem> (smoke mode) or MC2_RDC_MISSION set.\n"
-            "[RDOC v1]   Refusing to write a ~1 GB capture under a name that\n"
-            "[RDOC v1]   cannot be attributed to a mission or a frame.\n",
-            raw, out.c_str());
+        mc2::fmt::print_err("[RDOC v1] event=capture_path_unexpanded FATAL\n[RDOC v1]   MC2_RDC_CAPTURE_PATH='{}'\n[RDOC v1]   after expansion    ='{}'\n[RDOC v1]   unexpanded placeholder(s) remain. Supported tokens are\n[RDOC v1]   {{mission}} and {{frame}}; {{mission}} additionally needs\n[RDOC v1]   --mission <stem> (smoke mode) or MC2_RDC_MISSION set.\n[RDOC v1]   Refusing to write a ~1 GB capture under a name that\n[RDOC v1]   cannot be attributed to a mission or a frame.\n", mc2::fmt::safe(raw), out.c_str());
         std::fflush(stderr);
         std::exit(5);
     }
@@ -140,9 +131,7 @@ void resolveApiOnce() {
         mod = LoadLibraryA("renderdoc.dll");
     }
     if (!mod) {
-        std::fprintf(stderr,
-            "[RDOC v1] event=api_unavailable reason=renderdoc_dll_not_found "
-            "hint=launch_under_renderdoccmd_capture\n");
+        mc2::fmt::print_err("[RDOC v1] event=api_unavailable reason=renderdoc_dll_not_found hint=launch_under_renderdoccmd_capture\n");
         std::fflush(stderr);
         return;
     }
@@ -152,8 +141,7 @@ void resolveApiOnce() {
     void* mod = dlopen("librenderdoc.so", RTLD_NOW | RTLD_NOLOAD);
     if (!mod) mod = dlopen("librenderdoc.so", RTLD_NOW);
     if (!mod) {
-        std::fprintf(stderr,
-            "[RDOC v1] event=api_unavailable reason=librenderdoc_not_found\n");
+        mc2::fmt::print_err("[RDOC v1] event=api_unavailable reason=librenderdoc_not_found\n");
         std::fflush(stderr);
         return;
     }
@@ -161,16 +149,14 @@ void resolveApiOnce() {
         dlsym(mod, "RENDERDOC_GetAPI"));
 #endif
     if (!get_api) {
-        std::fprintf(stderr,
-            "[RDOC v1] event=api_unavailable reason=GetAPI_missing\n");
+        mc2::fmt::print_err("[RDOC v1] event=api_unavailable reason=GetAPI_missing\n");
         std::fflush(stderr);
         return;
     }
     void* p = nullptr;
     int ok = get_api(eRENDERDOC_API_Version_1_5_0, &p);
     if (ok != 1 || !p) {
-        std::fprintf(stderr,
-            "[RDOC v1] event=api_unavailable reason=GetAPI_returned_%d\n", ok);
+        mc2::fmt::print_err("[RDOC v1] event=api_unavailable reason=GetAPI_returned_{:d}\n", mc2::fmt::as_i32(ok));
         std::fflush(stderr);
         return;
     }
@@ -180,18 +166,13 @@ void resolveApiOnce() {
     // set no template and RenderDoc's own default applies.
     if (!s_state.capturePath.empty()) {
         s_state.api->SetCaptureFilePathTemplate(s_state.capturePath.c_str());
-        std::fprintf(stderr,
-            "[RDOC v1] event=capture_path template='%s'\n",
-            s_state.capturePath.c_str());
+        mc2::fmt::print_err("[RDOC v1] event=capture_path template='{}'\n", s_state.capturePath.c_str());
         std::fflush(stderr);
     }
 
     int major = 0, minor = 0, patch = 0;
     s_state.api->GetAPIVersion(&major, &minor, &patch);
-    std::fprintf(stderr,
-        "[RDOC v1] event=api_resolved version=%d.%d.%d capture_frame=%d "
-        "exit_after=%d\n",
-        major, minor, patch, s_state.captureFrame, s_state.exitAfter ? 1 : 0);
+    mc2::fmt::print_err("[RDOC v1] event=api_resolved version={:d}.{:d}.{:d} capture_frame={:d} exit_after={:d}\n", mc2::fmt::as_i32(major), mc2::fmt::as_i32(minor), mc2::fmt::as_i32(patch), mc2::fmt::as_i32(s_state.captureFrame), mc2::fmt::as_i32(s_state.exitAfter ? 1 : 0));
     std::fflush(stderr);
 }
 
@@ -215,9 +196,7 @@ void onFrameTick() {
             s_state.introObserved      = true;
             s_state.introCompleteFrame = s_state.localFrame;
             s_state.phase              = Phase::Armed;
-            std::fprintf(stderr,
-                "[RDOC v1] event=intro_armed local_frame=%d\n",
-                s_state.localFrame);
+            mc2::fmt::print_err("[RDOC v1] event=intro_armed local_frame={:d}\n", mc2::fmt::as_i32(s_state.localFrame));
             std::fflush(stderr);
         }
         ++s_state.localFrame;
@@ -233,9 +212,7 @@ void onFrameTick() {
         s_state.api->TriggerCapture();
         s_state.phase       = Phase::Triggered;
         s_state.triggeredAt = s_state.localFrame;
-        std::fprintf(stderr,
-            "[RDOC v1] event=trigger_capture local_frame=%d since_arm=%d\n",
-            s_state.localFrame, sinceArm);
+        mc2::fmt::print_err("[RDOC v1] event=trigger_capture local_frame={:d} since_arm={:d}\n", mc2::fmt::as_i32(s_state.localFrame), mc2::fmt::as_i32(sinceArm));
         std::fflush(stderr);
     } else if (s_state.phase == Phase::Triggered &&
                s_state.localFrame >= s_state.triggeredAt + 2) {
@@ -252,9 +229,7 @@ void onFrameTick() {
         }
     } else if (s_state.phase == Phase::Armed &&
                sinceArm > s_state.captureFrame + mc2::gate::get<"MC2_RDC_MAX_WAIT">()) {
-        std::fprintf(stderr,
-            "[RDOC v1] event=capture_timeout local_frame=%d\n",
-            s_state.localFrame);
+        mc2::fmt::print_err("[RDOC v1] event=capture_timeout local_frame={:d}\n", mc2::fmt::as_i32(s_state.localFrame));
         std::fflush(stderr);
         s_state.phase = Phase::Done;
         if (s_state.exitAfter) std::exit(4);

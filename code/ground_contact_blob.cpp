@@ -42,6 +42,7 @@
 #include <cstdlib>
 #include <cstdio>
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 namespace {
 
@@ -166,9 +167,7 @@ void renderGroundContactBlobs(void)
     }
 
     if (pushed > 0 && s_blobLogCount < 8) {
-        std::fprintf(stderr,
-            "[GROUND_CONTACT_BLOB] event=submit count=%d radius=%.1f alpha=%.2f\n",
-            pushed, kBlobRadius, ambientCoupledAlpha());
+        mc2::fmt::print_err("[GROUND_CONTACT_BLOB] event=submit count={:d} radius={:.1f} alpha={:.2f}\n", mc2::fmt::as_i32(pushed), kBlobRadius, ambientCoupledAlpha());
         std::fflush(stderr);
         ++s_blobLogCount;
     }

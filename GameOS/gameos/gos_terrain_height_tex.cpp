@@ -18,6 +18,7 @@
 
 #include "../../RenderCore/RenderResourceRegistry.h"
 #include "Gates/gate.h"   // typed gate registry
+#include "mc2fmt.h"
 
 namespace {
 
@@ -110,9 +111,7 @@ void __stdcall gos_uploadTerrainHeightTex(
     if (!blocks || side <= 0 || postcompVertexStride <= 0
         || elevationOffset < 0
         || elevationOffset + (int)sizeof(float) > postcompVertexStride) {
-        fprintf(stderr, "[TERRAIN_HEIGHT_TEX] skip upload "
-                "side=%d stride=%d elevOff=%d blocks=%p\n",
-                side, postcompVertexStride, elevationOffset, blocks);
+        mc2::fmt::print_err("[TERRAIN_HEIGHT_TEX] skip upload side={:d} stride={:d} elevOff={:d} blocks={:016X}\n", mc2::fmt::as_i32(side), mc2::fmt::as_i32(postcompVertexStride), mc2::fmt::as_i32(elevationOffset), mc2::fmt::as_ptr(blocks));
         return;
     }
 
@@ -199,12 +198,7 @@ void __stdcall gos_uploadTerrainHeightTex(
     g_mapTopLeftX         = mapTopLeftX;
     g_mapTopLeftY         = mapTopLeftY;
 
-    fprintf(stderr,
-        "[TERRAIN_HEIGHT_TEX] uploaded handle=%u sourceSide=%d factor=%dx "
-        "renderSide=%d wuPerSample=%.2f topLeft=(%.1f,%.1f) bytes=%zu\n",
-        (unsigned)g_handle, g_sourceSide, g_resampleFactor,
-        g_side, g_worldUnitsPerVertex, g_mapTopLeftX, g_mapTopLeftY,
-        uploadCount * sizeof(float));
+    mc2::fmt::print_err("[TERRAIN_HEIGHT_TEX] uploaded handle={:d} sourceSide={:d} factor={:d}x renderSide={:d} wuPerSample={:.2f} topLeft=({:.1f},{:.1f}) bytes={:d}\n", mc2::fmt::as_u32((unsigned)g_handle), mc2::fmt::as_i32(g_sourceSide), mc2::fmt::as_i32(g_resampleFactor), mc2::fmt::as_i32(g_side), g_worldUnitsPerVertex, g_mapTopLeftX, g_mapTopLeftY, mc2::fmt::as_size(uploadCount * sizeof(float)));
 
     {
         RenderCore::RenderResourceDesc d;

@@ -5,6 +5,7 @@
 // binary; only the non-exportable dedicated allocation survives.
 
 #include "vk_image_resource.h"
+#include "mc2fmt.h"
 
 #ifdef MC2_VULKAN_ISLAND
 
@@ -21,7 +22,7 @@ void ilog(const char* fmt, ...) {
     va_list ap; va_start(ap, fmt);
     std::vsnprintf(buf, sizeof(buf), fmt, ap);
     va_end(ap);
-    std::printf("[VK_IMAGE_RESOURCE] %s\n", buf);
+    mc2::fmt::print_out("[VK_IMAGE_RESOURCE] {}\n", mc2::fmt::safe(buf));
     std::fflush(stdout);
 }
 

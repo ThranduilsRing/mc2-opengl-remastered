@@ -80,7 +80,7 @@ static void initEnv()
     s_envOn = mc2::gate::get<"MC2_FRAME_PASS_STATS">();
     s_inited = true;
     if (s_envOn) {
-        std::printf("[FRAME_PASS_STATS v1] armed every=%d\n", emitEvery());
+        mc2::fmt::print_out("[FRAME_PASS_STATS v1] armed every={:d}\n", mc2::fmt::as_i32(emitEvery()));
         std::fflush(stdout);
     }
 }

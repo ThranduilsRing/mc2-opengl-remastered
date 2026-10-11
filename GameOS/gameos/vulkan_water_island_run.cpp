@@ -1,6 +1,7 @@
 // VK water island: mc2_vk_water_island_run: the per-frame feed staging, draw and fence handling.
 // Declared in the class headers; shared names in vulkan_water_island_internal.h.
 #include "vulkan_water_island_internal.h"
+#include "mc2fmt.h"
 
 #ifdef MC2_VULKAN_ISLAND
 
@@ -255,11 +256,7 @@ extern "C" int mc2_vk_water_island_run(
             s_tier1FirstOk = true;
         }
         if (perf) {
-            std::fprintf(stderr,
-                "[VK_WATER_PERF] tier1=1 thin=%u recipes=%u stage_us=%.1f record_us=%.1f "
-                "submit_us=%.1f sem_wait_us=%.1f fence_wait_us=%.1f island_total_us=%.1f\n",
-                thinCount, recipeCount, us_stage, us_record, us_submit, us_sem_wait,
-                us_fence_wait, g_health.totalUs);
+            mc2::fmt::print_err("[VK_WATER_PERF] tier1=1 thin={:d} recipes={:d} stage_us={:.1f} record_us={:.1f} submit_us={:.1f} sem_wait_us={:.1f} fence_wait_us={:.1f} island_total_us={:.1f}\n", mc2::fmt::as_u32(thinCount), mc2::fmt::as_u32(recipeCount), us_stage, us_record, us_submit, us_sem_wait, us_fence_wait, g_health.totalUs);
             std::fflush(stderr);
         }
         return 1;

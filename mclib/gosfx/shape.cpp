@@ -12,6 +12,7 @@
 #include <unordered_set>
 #include <cstdint>
 #include <cstdio>
+#include "mc2fmt.h"
 
 // VFX mesh bridge ABI (implemented in GameOS/gameos/gos_vfx_mesh_bridge.cpp).
 // Mirrors the struct layout in gos_vfx_mesh_bridge.h; redeclared here so this
@@ -527,12 +528,7 @@ void gosFX::Shape::Draw(DrawInfo *info)
 				if (logOn && !g_shp_firstHarvest)
 				{
 					g_shp_firstHarvest = true;
-					std::fprintf(stderr,
-						"[VFX_MESH v1] event=FIRST_HARVEST(shape) meshId=%llu prims=%d "
-						"verts=%u indices=%u tex=%u blend=%s scale=%.3f\n",
-						(unsigned long long)meshId, numPrim,
-						up.vertexCount, up.indexCount, firstTexHandle,
-						blendMode == 1 ? "additive" : "alpha", (double)m_scale);
+					mc2::fmt::print_err("[VFX_MESH v1] event=FIRST_HARVEST(shape) meshId={:d} prims={:d} verts={:d} indices={:d} tex={:d} blend={} scale={:.3f}\n", mc2::fmt::as_u64((unsigned long long)meshId), mc2::fmt::as_i32(numPrim), mc2::fmt::as_u32(up.vertexCount), mc2::fmt::as_u32(up.indexCount), mc2::fmt::as_u32(firstTexHandle), mc2::fmt::safe(blendMode == 1 ? "additive" : "alpha"), (double)m_scale);
 					std::fflush(stderr);
 				}
 			}
@@ -562,13 +558,7 @@ void gosFX::Shape::Draw(DrawInfo *info)
 		static unsigned long long s_calls = 0;
 		if ((++s_calls % 240ull) == 0ull)
 		{
-			std::fprintf(stderr,
-				"[VFX_MESH v1] event=summary(shape) calls=%llu submitted=%llu "
-				"fallback=%llu unsupported=%llu missingMesh=%llu missingMat=%llu "
-				"drawCalls=%llu meshesCached=%u\n",
-				s_calls, g_shp_submitted, g_shp_fallback, g_shp_unsupported,
-				g_shp_missingMesh, g_shp_missingMat, g_shp_drawCalls,
-				(unsigned)g_uploadedShapeIds.size());
+			mc2::fmt::print_err("[VFX_MESH v1] event=summary(shape) calls={:d} submitted={:d} fallback={:d} unsupported={:d} missingMesh={:d} missingMat={:d} drawCalls={:d} meshesCached={:d}\n", mc2::fmt::as_u64(s_calls), mc2::fmt::as_u64(g_shp_submitted), mc2::fmt::as_u64(g_shp_fallback), mc2::fmt::as_u64(g_shp_unsupported), mc2::fmt::as_u64(g_shp_missingMesh), mc2::fmt::as_u64(g_shp_missingMat), mc2::fmt::as_u64(g_shp_drawCalls), mc2::fmt::as_u32((unsigned)g_uploadedShapeIds.size()));
 			std::fflush(stderr);
 		}
 	}

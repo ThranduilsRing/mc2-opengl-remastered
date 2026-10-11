@@ -29,6 +29,7 @@
 #include "../resource.h"
 #include"gameos.hpp"
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 // Frame-rate averaging globals referenced by mechcmd2.cpp.
 // Defined here to keep them co-located with the movie subsystem.
@@ -87,17 +88,17 @@ void MC2Movie::init (const char *MC2Name, RECT mRect, bool useWaveFile)
         // byte-identical (skip preserved).
         static const bool s_bootVideo = mc2::gate::get<"MC2_BOOT_VIDEO">();
         if (!s_bootVideo) {
-            printf("[VIDEO] init: smoke mode active, skipping movie '%s'\n", shortName);
+            mc2::fmt::print_out("[VIDEO] init: smoke mode active, skipping movie '{}'\n", mc2::fmt::safe(shortName));
             stillPlaying  = false;
             m_sessionDone = true;
             return;
         }
-        printf("[BOOT_VIDEO] smoke-mode movie skip overridden for '%s'\n", shortName);
+        mc2::fmt::print_out("[BOOT_VIDEO] smoke-mode movie skip overridden for '{}'\n", mc2::fmt::safe(shortName));
         fflush(stdout);
     }
 
     if (!g_ffmpegAvailable) {
-        printf("[VIDEO] init: FFmpeg unavailable, skipping movie '%s'\n", shortName);
+        mc2::fmt::print_out("[VIDEO] init: FFmpeg unavailable, skipping movie '{}'\n", mc2::fmt::safe(shortName));
         stillPlaying  = false;
         m_sessionDone = true;
         return;
@@ -127,13 +128,11 @@ void MC2Movie::init (const char *MC2Name, RECT mRect, bool useWaveFile)
         m_session = video_open(p, &r);
         if (m_session) {
             stillPlaying = true;
-            printf("[VIDEO] init: opened %s (%dx%d, fps=%.2f, audio=%d)\n",
-                   resolvedPath, r.srcW, r.srcH, r.fps, (int)r.hasAudio);
+            mc2::fmt::print_out("[VIDEO] init: opened {} ({:d}x{:d}, fps={:.2f}, audio={:d})\n", mc2::fmt::safe(resolvedPath), mc2::fmt::as_i32(r.srcW), mc2::fmt::as_i32(r.srcH), r.fps, mc2::fmt::as_i32((int)r.hasAudio));
             return;
         }
 
-        printf("[VIDEO] init: open failed for '%s' (idx=%d), trying next candidate\n",
-               resolvedPath, candidateIndex);
+        mc2::fmt::print_out("[VIDEO] init: open failed for '{}' (idx={:d}), trying next candidate\n", mc2::fmt::safe(resolvedPath), mc2::fmt::as_i32(candidateIndex));
     }
 
     // All candidates exhausted.

@@ -9,6 +9,7 @@
 #include <cstdlib>
 #include <array>
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 // ---------------------------------------------------------------------------
 // Globals (extern-declared in mc2_hitch_trace.h)
@@ -37,8 +38,7 @@ struct HitchInit {
         if (g_mc2HitchEnabled) {
             const double v = mc2::gate::get<"MC2_HITCH_MS">();   // row default 0 = keep the built-in threshold
             if (v > 0.0) s_thresholdMs = v;
-            fprintf(stderr,
-                "[HITCH_INIT] enabled threshold=%.1fms\n", s_thresholdMs);
+            mc2::fmt::print_err("[HITCH_INIT] enabled threshold={:.1f}ms\n", s_thresholdMs);
             fflush(stderr);
         }
         // GPU-UPDATE-BUFFER-COUNTER-1: independent default-OFF gate. OR-in the
@@ -47,7 +47,7 @@ struct HitchInit {
         g_mc2GpuBufCounter = mc2::gate::get<"MC2_GPUBUF_COUNTER">();
         g_mc2GpuBufAccumOn = g_mc2HitchEnabled || g_mc2GpuBufCounter;
         if (g_mc2GpuBufCounter) {
-            fprintf(stderr, "[GPUBUF_INIT] enabled (per-frame orphan counter)\n");
+            mc2::fmt::print_err("[GPUBUF_INIT] enabled (per-frame orphan counter)\n");
             fflush(stderr);
         }
     }
@@ -87,14 +87,7 @@ void EndFrame(uint32_t frame, double dtMs) {
             totCalls += a.gpuBufOrphanCalls[i];
             totBytes += a.gpuBufOrphanBytes[i];
         }
-        fprintf(stderr,
-            "[GPUBUF v1] frame=%u orphan_calls=%u orphan_bytes=%llu"
-            " by_owner=gos_UpdateBuffer:%u/%llu,hud:%u/%llu,light:%u/%llu,sp_shadow:%u/%llu\n",
-            frame, totCalls, (unsigned long long)totBytes,
-            a.gpuBufOrphanCalls[gos], (unsigned long long)a.gpuBufOrphanBytes[gos],
-            a.gpuBufOrphanCalls[hud], (unsigned long long)a.gpuBufOrphanBytes[hud],
-            a.gpuBufOrphanCalls[lit], (unsigned long long)a.gpuBufOrphanBytes[lit],
-            a.gpuBufOrphanCalls[sps], (unsigned long long)a.gpuBufOrphanBytes[sps]);
+        mc2::fmt::print_err("[GPUBUF v1] frame={:d} orphan_calls={:d} orphan_bytes={:d} by_owner=gos_UpdateBuffer:{:d}/{:d},hud:{:d}/{:d},light:{:d}/{:d},sp_shadow:{:d}/{:d}\n", mc2::fmt::as_u32(frame), mc2::fmt::as_u32(totCalls), mc2::fmt::as_u64((unsigned long long)totBytes), mc2::fmt::as_u32(a.gpuBufOrphanCalls[gos]), mc2::fmt::as_u64((unsigned long long)a.gpuBufOrphanBytes[gos]), mc2::fmt::as_u32(a.gpuBufOrphanCalls[hud]), mc2::fmt::as_u64((unsigned long long)a.gpuBufOrphanBytes[hud]), mc2::fmt::as_u32(a.gpuBufOrphanCalls[lit]), mc2::fmt::as_u64((unsigned long long)a.gpuBufOrphanBytes[lit]), mc2::fmt::as_u32(a.gpuBufOrphanCalls[sps]), mc2::fmt::as_u64((unsigned long long)a.gpuBufOrphanBytes[sps]));
         fflush(stderr);
     }
 
@@ -124,38 +117,20 @@ void EndFrame(uint32_t frame, double dtMs) {
 
     // Detail line: terrain solid dispatch.
     if (a.terrainSolidMs > 0.0 || a.terrainBinds || a.terrainUploads || a.terrainTexImageCalls) {
-        fprintf(stderr,
-            "[HITCH_TERRAIN_TEX] quadSetupTexturesMs=%.2f binds=%u uploads=%u texImageCalls=%u\n",
-            a.terrainSolidMs, a.terrainBinds, a.terrainUploads, a.terrainTexImageCalls);
+        mc2::fmt::print_err("[HITCH_TERRAIN_TEX] quadSetupTexturesMs={:.2f} binds={:d} uploads={:d} texImageCalls={:d}\n", a.terrainSolidMs, mc2::fmt::as_u32(a.terrainBinds), mc2::fmt::as_u32(a.terrainUploads), mc2::fmt::as_u32(a.terrainTexImageCalls));
     }
 
     // Detail line: static-prop flush.
     if (a.staticFlushMs > 0.0 || a.staticRecords) {
-        fprintf(stderr,
-            "[HITCH_STATIC_FLUSH] flushMs=%.2f records=%u draws=%u"
-            " bufferBytes=%llu realloc=%u map=%u subData=%u\n",
-            a.staticFlushMs, a.staticRecords, a.staticDrawCmds,
-            (unsigned long long)a.staticBufferBytes,
-            a.staticRealloc, a.glMapBufferCalls, a.glBufferSubDataCalls); // glMapBufferCalls = global approx; staticMap reserved
+        mc2::fmt::print_err("[HITCH_STATIC_FLUSH] flushMs={:.2f} records={:d} draws={:d} bufferBytes={:d} realloc={:d} map={:d} subData={:d}\n", a.staticFlushMs, mc2::fmt::as_u32(a.staticRecords), mc2::fmt::as_u32(a.staticDrawCmds), mc2::fmt::as_u64((unsigned long long)a.staticBufferBytes), mc2::fmt::as_u32(a.staticRealloc), mc2::fmt::as_u32(a.glMapBufferCalls), mc2::fmt::as_u32(a.glBufferSubDataCalls)); // glMapBufferCalls = global approx; staticMap reserved
     }
 
     // Detail line: water.
     if (a.waterCalled) {
-        fprintf(stderr,
-            "[HITCH_WATER] called=%u waterPresent=%u earlyOut=%u glCalls=%u\n",
-            (unsigned)a.waterCalled, (unsigned)a.waterPresent,
-            (unsigned)a.waterEarlyOut, a.waterGlCalls);
+        mc2::fmt::print_err("[HITCH_WATER] called={:d} waterPresent={:d} earlyOut={:d} glCalls={:d}\n", mc2::fmt::as_u32((unsigned)a.waterCalled), mc2::fmt::as_u32((unsigned)a.waterPresent), mc2::fmt::as_u32((unsigned)a.waterEarlyOut), mc2::fmt::as_u32(a.waterGlCalls));
         // H1b detail — only when water actually ran with measurable time
         if (a.waterMs > 0.5) {
-            fprintf(stderr,
-                "[HITCH_WATER_DETAIL] waterMs=%.2f guards=%.2f recipe=%.2f"
-                " buildWindow=%.2f upload=%.2f dispatch=%.2f"
-                " recipes=%u window=%u narrow=%u recipeUploaded=%u\n",
-                a.waterMs,
-                a.waterGuardsMs, a.waterRecipeMs,
-                a.waterBuildWindowMs, a.waterUploadMs, a.waterDispatchMs,
-                a.waterRecipeCount, a.waterWindowCount,
-                a.waterNarrowCount, a.waterRecipeUploaded);
+            mc2::fmt::print_err("[HITCH_WATER_DETAIL] waterMs={:.2f} guards={:.2f} recipe={:.2f} buildWindow={:.2f} upload={:.2f} dispatch={:.2f} recipes={:d} window={:d} narrow={:d} recipeUploaded={:d}\n", a.waterMs, a.waterGuardsMs, a.waterRecipeMs, a.waterBuildWindowMs, a.waterUploadMs, a.waterDispatchMs, mc2::fmt::as_u32(a.waterRecipeCount), mc2::fmt::as_u32(a.waterWindowCount), mc2::fmt::as_u32(a.waterNarrowCount), mc2::fmt::as_u32(a.waterRecipeUploaded));
         }
     }
 
@@ -184,13 +159,7 @@ void EndFrame(uint32_t frame, double dtMs) {
         const double h1aKnown = a.terrainSolidMs + a.staticFlushMs + a.staticSnapshotMs + a.waterMs;
         const double phaseTotal = a.phaseLogicMs + a.phaseRenderMs + a.phasePresentMs + a.phaseCapMs;
         const double unknown = (dtMs > phaseTotal + h1aKnown) ? (dtMs - phaseTotal - h1aKnown) : 0.0;
-        fprintf(stderr,
-            "[HITCH_PHASE] frame=%u dt=%.2f"
-            " logic=%.2f render=%.2f present=%.2f cap=%.2f"
-            " h1aKnown=%.2f unknown=%.2f\n",
-            frame, dtMs,
-            a.phaseLogicMs, a.phaseRenderMs, a.phasePresentMs, a.phaseCapMs,
-            h1aKnown, unknown);
+        mc2::fmt::print_err("[HITCH_PHASE] frame={:d} dt={:.2f} logic={:.2f} render={:.2f} present={:.2f} cap={:.2f} h1aKnown={:.2f} unknown={:.2f}\n", mc2::fmt::as_u32(frame), dtMs, a.phaseLogicMs, a.phaseRenderMs, a.phasePresentMs, a.phaseCapMs, h1aKnown, unknown);
     }
 
     fflush(stderr);

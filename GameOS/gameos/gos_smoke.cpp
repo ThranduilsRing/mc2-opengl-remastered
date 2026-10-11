@@ -17,6 +17,7 @@
 #include <SDL2/SDL.h>
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
+#include "mc2fmt.h"
 
 namespace {
 SmokeMode::State g_state;
@@ -55,8 +56,7 @@ void parseArgs(int argc, char** argv) {
     // read via fixedTimestepEnabled() (single cached bool) on hot paths.
     g_state.fixedTimestep = mc2::gate::get<"MC2_SMOKE_FIXED_TIMESTEP">();
     if (g_state.fixedTimestep) {
-        std::fprintf(stderr,
-            "[SMOKE_FIXED_TIMESTEP v1] dt_ms=33.333 fps=30\n");
+        mc2::fmt::print_err("[SMOKE_FIXED_TIMESTEP v1] dt_ms=33.333 fps=30\n");
         std::fflush(stderr);
     }
 
@@ -291,9 +291,7 @@ void fixedTimestepOnSimFrame(double scenarioTimeSeconds) {
     ++g_fixedSimFrame;
     if (g_fixedSimFrame == 60 || g_fixedSimFrame == 120 ||
         g_fixedSimFrame == 180) {
-        std::fprintf(stderr,
-            "[SMOKE_CLOCK_PROBE v1] frame=%u scenarioTime=%.6f\n",
-            (unsigned)g_fixedSimFrame, scenarioTimeSeconds);
+        mc2::fmt::print_err("[SMOKE_CLOCK_PROBE v1] frame={:d} scenarioTime={:.6f}\n", mc2::fmt::as_u32((unsigned)g_fixedSimFrame), scenarioTimeSeconds);
         std::fflush(stderr);
     }
 }

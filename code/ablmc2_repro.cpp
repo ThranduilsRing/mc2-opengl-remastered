@@ -2,6 +2,7 @@
 // Declared in ablmc2_internal.h; registered, in order, by initABL in ablmc2.cpp.
 #include "ablmc2_internal.h"
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 
 static void runAblArgGuardRepro2A(void);
@@ -16,7 +17,7 @@ void runAblArgGuardRepro(void) {
     if (!mc2::gate::get<"MC2_ABL_ARG_GUARD_REPRO">())
         return;
 
-    printf("[ABL_REPRO] ABL-BAD-NATIVE-ARG-REPRO-1 starting\n");
+    mc2::fmt::print_out("[ABL_REPRO] ABL-BAD-NATIVE-ARG-REPRO-1 starting\n");
     fflush(stdout);
 
     // Simulate what ABLi_popRealPtr returns when tos->address == NULL.
@@ -24,14 +25,14 @@ void runAblArgGuardRepro(void) {
     //   (float*)(&((StackItemPtr)NULL)->real) == (float*)NULL == nullptr.
     float* relPos = nullptr;
 
-    printf("[ABL_REPRO] relPos from simulated null tos->address = %p\n", (void*)relPos);
+    mc2::fmt::print_out("[ABL_REPRO] relPos from simulated null tos->address = {:016X}\n", mc2::fmt::as_ptr((void*)relPos));
     fflush(stdout);
 
     // ---- GUARD PATH (MC2_ABL_ARG_GUARD=1) ----
     if (s_ablArgGuard && !relPos) {
         // Mirrors execGetRelativePositionToObject guard lines exactly.
         abl_arg_guard_log("execGetRelativePositionToObject[REPRO]", "relPos");
-        printf("[ABL_REPRO] guard fired -- no crash -- PASS\n");
+        mc2::fmt::print_out("[ABL_REPRO] guard fired -- no crash -- PASS\n");
         fflush(stdout);
         // Also run the 2A sibling repro (Point-variant pos + relPos cases).
         runAblArgGuardRepro2A();
@@ -46,7 +47,7 @@ void runAblArgGuardRepro(void) {
     volatile float* vp = relPos;
     vp[0] = 1.0f;  // writes to 0x0 -> access violation
     // Unreachable:
-    printf("[ABL_REPRO] survived null write -- UNEXPECTED (optimizer elided?)\n");
+    mc2::fmt::print_out("[ABL_REPRO] survived null write -- UNEXPECTED (optimizer elided?)\n");
     fflush(stdout);
 }
 
@@ -56,7 +57,7 @@ static void runAblArgGuardRepro2A(void) {
     if (!mc2::gate::get<"MC2_ABL_ARG_GUARD_REPRO">())
         return;
 
-    printf("[ABL_REPRO_2A] execGetRelativePositionToPoint sibling repro starting\n");
+    mc2::fmt::print_out("[ABL_REPRO_2A] execGetRelativePositionToPoint sibling repro starting\n");
     fflush(stdout);
 
     // --- Case 1: null pos (the READ input) ---
@@ -64,14 +65,14 @@ static void runAblArgGuardRepro2A(void) {
         float* pos = nullptr;
         float* relPos_valid = (float*)0x1; // irrelevant — pos guard fires first
         (void)relPos_valid;
-        printf("[ABL_REPRO_2A] case1: pos=NULL relPos_valid=%p\n", (void*)relPos_valid);
+        mc2::fmt::print_out("[ABL_REPRO_2A] case1: pos=NULL relPos_valid={:016X}\n", mc2::fmt::as_ptr((void*)relPos_valid));
         fflush(stdout);
         if (s_ablArgGuard && !pos) {
             abl_arg_guard_log("execGetRelativePositionToPoint[REPRO2A-pos]", "pos");
-            printf("[ABL_REPRO_2A] case1 guard fired -- no crash -- PASS\n");
+            mc2::fmt::print_out("[ABL_REPRO_2A] case1 guard fired -- no crash -- PASS\n");
             fflush(stdout);
         } else {
-            printf("[ABL_REPRO_2A] case1 guard OFF -- about to read pos[0] -> WILL CRASH\n");
+            mc2::fmt::print_out("[ABL_REPRO_2A] case1 guard OFF -- about to read pos[0] -> WILL CRASH\n");
             fflush(stdout);
             volatile float* vp = pos;
             (void)vp[0]; // read from 0x0 -> access violation
@@ -85,14 +86,14 @@ static void runAblArgGuardRepro2A(void) {
         float dummy[3] = {1.0f, 2.0f, 0.0f};
         float* pos_valid = dummy;
         float* relPos = nullptr;
-        printf("[ABL_REPRO_2A] case2: pos_valid=%p relPos=NULL\n", (void*)pos_valid);
+        mc2::fmt::print_out("[ABL_REPRO_2A] case2: pos_valid={:016X} relPos=NULL\n", mc2::fmt::as_ptr((void*)pos_valid));
         fflush(stdout);
         if (s_ablArgGuard && !relPos) {
             abl_arg_guard_log("execGetRelativePositionToPoint[REPRO2A-relPos]", "relPos");
-            printf("[ABL_REPRO_2A] case2 guard fired -- no crash -- PASS\n");
+            mc2::fmt::print_out("[ABL_REPRO_2A] case2 guard fired -- no crash -- PASS\n");
             fflush(stdout);
         } else {
-            printf("[ABL_REPRO_2A] case2 guard OFF -- about to write relPos[0] -> WILL CRASH\n");
+            mc2::fmt::print_out("[ABL_REPRO_2A] case2 guard OFF -- about to write relPos[0] -> WILL CRASH\n");
             fflush(stdout);
             volatile float* vp = relPos;
             vp[0] = 1.0f; // write to 0x0 -> access violation
@@ -101,6 +102,6 @@ static void runAblArgGuardRepro2A(void) {
         }
     }
 
-    printf("[ABL_REPRO_2A] done\n");
+    mc2::fmt::print_out("[ABL_REPRO_2A] done\n");
     fflush(stdout);
 }

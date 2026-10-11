@@ -120,8 +120,7 @@ void emitWindow()
         // No slot harvested this window (GPU results never became available).
         // Heartbeat so silence is diagnosable (ENV-gated only), then reset.
         if (s_envOn) {
-            std::printf("[RENDER_PASS_TIME v1] frame=%lu n=0 dropped=%u\n",
-                s_frameNo, s_dropped);
+            mc2::fmt::print_out("[RENDER_PASS_TIME v1] frame={:d} n=0 dropped={:d}\n", mc2::fmt::as_u32(s_frameNo), mc2::fmt::as_u32(s_dropped));
             std::fflush(stdout);
         }
         s_dropped = 0;
@@ -158,8 +157,7 @@ static void initEnv()
     s_envOn = mc2::gate::get<"MC2_RENDER_PASS_TIME">();
     s_inited = true;
     if (s_envOn) {
-        std::printf("[RENDER_PASS_TIME v1] armed every=%d ring=%d\n",
-            emitEvery(), kRing);
+        mc2::fmt::print_out("[RENDER_PASS_TIME v1] armed every={:d} ring={:d}\n", mc2::fmt::as_i32(emitEvery()), mc2::fmt::as_i32(kRing));
         std::fflush(stdout);
     }
 }

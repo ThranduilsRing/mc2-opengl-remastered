@@ -28,6 +28,7 @@
 #include <unordered_map>
 #include <vector>
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 // terrainMVP — same world->GL-clip matrix the particle bridge and terrain use
 // (row-major direct upload, GL_FALSE; see memory/terrain_mvp_gl_false.md).
@@ -117,14 +118,12 @@ void ensureInitialized() {
             kPrefix);
         if (!s_prog || !s_prog->shp_) {
             s_initFailed = true;
-            std::fprintf(stderr,
-                "[VFX_MESH v1] event=prog_compile_fail — bridge disabled\n");
+            mc2::fmt::print_err("[VFX_MESH v1] event=prog_compile_fail — bridge disabled\n");
             std::fflush(stderr);
             s_prog = nullptr;
             return;
         }
-        std::fprintf(stderr, "[VFX_MESH v1] event=prog_compiled prog=%u\n",
-                     (unsigned)s_prog->shp_);
+        mc2::fmt::print_err("[VFX_MESH v1] event=prog_compiled prog={:d}\n", mc2::fmt::as_u32((unsigned)s_prog->shp_));
         std::fflush(stderr);
         s_loc_worldToClipGL = glGetUniformLocation(s_prog->shp_, "u_worldToClipGL");
         s_loc_modelToWorld  = glGetUniformLocation(s_prog->shp_, "u_modelToWorld");
@@ -192,11 +191,7 @@ bool uploadMesh(const GosVfxMeshUpload& up, CachedMesh& out) {
 void maybeDumpSummary() {
     if (!logEnabled()) return;
     if ((g_flushCalls % 240ull) != 0ull) return;
-    std::fprintf(stderr,
-        "[VFX_MESH v1] event=summary flushCalls=%llu instancesSubmitted=%llu "
-        "drawsIssued=%llu missingTexture=%llu meshesUploaded=%u\n",
-        g_flushCalls, g_instancesSubmitted, g_drawsIssued, g_missingTexture,
-        (unsigned)s_meshCache.size());
+    mc2::fmt::print_err("[VFX_MESH v1] event=summary flushCalls={:d} instancesSubmitted={:d} drawsIssued={:d} missingTexture={:d} meshesUploaded={:d}\n", mc2::fmt::as_u64(g_flushCalls), mc2::fmt::as_u64(g_instancesSubmitted), mc2::fmt::as_u64(g_drawsIssued), mc2::fmt::as_u64(g_missingTexture), mc2::fmt::as_u32((unsigned)s_meshCache.size()));
     std::fflush(stderr);
 }
 
@@ -226,11 +221,7 @@ extern "C" void gos_vfx_mesh_flush(const GosVfxMeshUpload*   uploads,
         if (uploadMesh(up, cm)) {
             s_meshCache.emplace(up.meshId, cm);
             if (logEnabled()) {
-                std::fprintf(stderr,
-                    "[VFX_MESH v1] event=mesh_upload meshId=%llu verts=%u indices=%u "
-                    "cacheSize=%u\n",
-                    (unsigned long long)up.meshId, up.vertexCount, up.indexCount,
-                    (unsigned)s_meshCache.size());
+                mc2::fmt::print_err("[VFX_MESH v1] event=mesh_upload meshId={:d} verts={:d} indices={:d} cacheSize={:d}\n", mc2::fmt::as_u64((unsigned long long)up.meshId), mc2::fmt::as_u32(up.vertexCount), mc2::fmt::as_u32(up.indexCount), mc2::fmt::as_u32((unsigned)s_meshCache.size()));
                 std::fflush(stderr);
             }
         }
@@ -238,9 +229,7 @@ extern "C" void gos_vfx_mesh_flush(const GosVfxMeshUpload*   uploads,
 
     if (logEnabled() && !g_firstHarvestLogged) {
         g_firstHarvestLogged = true;
-        std::fprintf(stderr,
-            "[VFX_MESH v1] event=FIRST_HARVEST instances=%u uploads=%u\n",
-            numInstances, numUploads);
+        mc2::fmt::print_err("[VFX_MESH v1] event=FIRST_HARVEST instances={:d} uploads={:d}\n", mc2::fmt::as_u32(numInstances), mc2::fmt::as_u32(numUploads));
         std::fflush(stderr);
     }
 

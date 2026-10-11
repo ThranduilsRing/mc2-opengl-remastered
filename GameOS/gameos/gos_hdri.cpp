@@ -17,6 +17,7 @@
 // HDRI-BC6H-1: BC6H sidecar upload via KtxLoader (GL-free loader, BC6H blocks).
 #include "../../RenderCore/KtxLoader.h"
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 // HDRI-SKY Item 2: scan a decoded equirect RGBA-float buffer for the dominant
 // above-horizon light source and return its GL-equirect azimuth (radians).
@@ -178,11 +179,7 @@ GLuint loadHdriTexture(const char* path,
                         tex = 0;
                         // Fall through to tinyexr below.
                     } else {
-                        std::fprintf(stderr,
-                            "[HDRI_SKY] bc6h: ON (default) sidecar=%s w=%d h=%d "
-                            "glIF=0x%x bytes=%zu tex=%u\n",
-                            sidecarPath, img.width, img.height,
-                            (unsigned)glIF, mip0Bytes, (unsigned)tex);
+                        mc2::fmt::print_err("[HDRI_SKY] bc6h: ON (default) sidecar={} w={:d} h={:d} glIF=0x{:x} bytes={:d} tex={:d}\n", mc2::fmt::safe(sidecarPath), mc2::fmt::as_i32(img.width), mc2::fmt::as_i32(img.height), mc2::fmt::as_u32((unsigned)glIF), mc2::fmt::as_size(mip0Bytes), mc2::fmt::as_u32((unsigned)tex));
 
                         // Sun scan: still load the EXR briefly to find the sun.
                         if (outSunAzGL) {

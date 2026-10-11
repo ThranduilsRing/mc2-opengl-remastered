@@ -39,6 +39,7 @@
 #include<cstdlib>
 #include<cstdio>
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 //---------------------------------------------------------------------------
 // static Globals
@@ -267,9 +268,7 @@ AppearanceTypePtr AppearanceTypeList::getAppearance (unsigned long apprNum, cons
 		if (g_loadRaceTrace && g_loadRaceApprNull < 50)
 		{
 			g_loadRaceApprNull++;
-			std::printf("[LOADRACE] getAppearance NULL: reason=class0 apprNum=0x%08lx "
-				"appearFile=%p(%s)\n", apprNum, (const void*)appearFile,
-				appearFile ? appearFile : "<null>");
+			mc2::fmt::print_out("[LOADRACE] getAppearance NULL: reason=class0 apprNum=0x{:08x} appearFile={:016X}({})\n", mc2::fmt::as_u32(apprNum), mc2::fmt::as_ptr((const void*)appearFile), mc2::fmt::safe(appearFile ? appearFile : "<null>"));
 			std::fflush(stdout);
 		}
 		return(nullptr);
@@ -282,8 +281,7 @@ AppearanceTypePtr AppearanceTypeList::getAppearance (unsigned long apprNum, cons
 		if (g_loadRaceTrace && g_loadRaceApprNull < 50)
 		{
 			g_loadRaceApprNull++;
-			std::printf("[LOADRACE] getAppearance NULL: reason=appearFileNull "
-				"apprNum=0x%08lx class=%ld\n", apprNum, appearanceClass);
+			mc2::fmt::print_out("[LOADRACE] getAppearance NULL: reason=appearFileNull apprNum=0x{:08x} class={:d}\n", mc2::fmt::as_u32(apprNum), mc2::fmt::as_i32(appearanceClass));
 			std::fflush(stdout);
 		}
 		return nullptr;

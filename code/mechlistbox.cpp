@@ -204,13 +204,7 @@ MechListBoxItem::MechListBoxItem( LogisticsMech* pRefMech, long count )
 		cLoadString( pMech->getChassisName(), chassisBuf, sizeof(chassisBuf) );
 		FILE* mechListLog = fopen("logistics_debug.log", "a");
 		if ( mechListLog ) {
-			fprintf( mechListLog,
-				"[MECHLIST] item chassisNameID=%ld chassisText='%s' variantName='%s' cost=%ld weight=%.0f\n",
-				pMech->getChassisName(),
-				chassisBuf,
-				(const char*)pMech->getName(),
-				pMech->getCost(),
-				pMech->getMaxWeight() );
+			mc2::fmt::print(mechListLog, "[MECHLIST] item chassisNameID={:d} chassisText='{}' variantName='{}' cost={:d} weight={:.0f}\n", mc2::fmt::as_i32(pMech->getChassisName()), mc2::fmt::safe(chassisBuf), mc2::fmt::safe((const char*)pMech->getName()), mc2::fmt::as_i32(pMech->getCost()), pMech->getMaxWeight());
 			fflush( mechListLog );
 			fclose( mechListLog );
 		}

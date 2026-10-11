@@ -141,12 +141,7 @@ static void emit_window_stats() {
     bool over = (projP95 / 1000) > BUDGET_US;
     int64_t winEnd = s_windowStartFrame + static_cast<int64_t>(nFrames) - 1;
 
-    std::fprintf(stderr,
-        "[CPU_PROJ v1] window=%lld..%lld worst-case-camera=%s\n"
-        "  projection_total           p50=%.1fus p95=%.1fus max=%.1fus  budget=%lldus status=%s\n",
-        (long long)s_windowStartFrame, (long long)winEnd, WORST_CASE_LABEL,
-        ns_to_us(projP50), ns_to_us(projP95), ns_to_us(projMax),
-        (long long)BUDGET_US, over ? "OVER" : "PASS");
+    mc2::fmt::print_err("[CPU_PROJ v1] window={:d}..{:d} worst-case-camera={}\n  projection_total           p50={:.1f}us p95={:.1f}us max={:.1f}us  budget={:d}us status={}\n", mc2::fmt::as_i64((long long)s_windowStartFrame), mc2::fmt::as_i64((long long)winEnd), mc2::fmt::safe(WORST_CASE_LABEL), ns_to_us(projP50), ns_to_us(projP95), ns_to_us(projMax), mc2::fmt::as_i64((long long)BUDGET_US), mc2::fmt::safe(over ? "OVER" : "PASS"));
 
     for (int b = 0; b < BUCKET_COUNT; ++b) {
         std::vector<int64_t> tmpA(s_winNs[b]);
@@ -273,8 +268,7 @@ void hard_reset(const char* reason) {
     s_windowStartFrame = 0;
     s_winNumber        = 0;
     s_finalStatsEmitted = false;
-    std::fprintf(stderr, "[CPU_PROJ v1] hard_reset reason=%s\n",
-                 reason ? reason : "(none)");
+    mc2::fmt::print_err("[CPU_PROJ v1] hard_reset reason={}\n", mc2::fmt::safe(reason ? reason : "(none)"));
 }
 
 void final_stats(const char* reason) {

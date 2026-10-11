@@ -293,7 +293,7 @@ void LogisticsData::initPilots()
 	// the campaign/compat roster won over base stock.
 	if ( mc2::gate::get<"MC2_LOG_PILOTS">() )
 	{
-		printf("[PILOTS] loaded=%d roster=%s\n", (int)pilots.Count(), pilotPath);
+		mc2::fmt::print_out("[PILOTS] loaded={:d} roster={}\n", mc2::fmt::as_i32((int)pilots.Count()), mc2::fmt::safe(pilotPath));
 		fflush(stdout);
 	}
 }
@@ -416,8 +416,7 @@ void LogisticsData::initVariants()
 		{
 			if ( FILE* f = fopen("preview_debug.log","a") )
 			{
-				fprintf(f,"[ENCYCLO] initVariants row=%ld mech=%s readResult=%ld scale=%.3f\n",
-					i, variantFileName, scaleReadResult, scale);
+				mc2::fmt::print(f, "[ENCYCLO] initVariants row={:d} mech={} readResult={:d} scale={:.3f}\n", mc2::fmt::as_i32(i), mc2::fmt::safe(variantFileName), mc2::fmt::as_i32(scaleReadResult), scale);
 				fclose(f);
 			}
 		}

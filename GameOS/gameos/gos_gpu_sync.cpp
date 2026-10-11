@@ -8,6 +8,7 @@
 #include <set>
 #include <string>
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 namespace {
 
@@ -101,7 +102,7 @@ int gpuSsboOffsetAlignment() {
     if (s_align == 0) {
         glGetIntegerv(GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, &s_align);
         if (s_align < 16) s_align = 256;  // sane fallback (NVIDIA = 256, AMD ~32)
-        std::fprintf(stderr, "[GPU_ALIGN] SSBO_OFFSET_ALIGNMENT=%d\n", (int)s_align);
+        mc2::fmt::print_err("[GPU_ALIGN] SSBO_OFFSET_ALIGNMENT={:d}\n", mc2::fmt::as_i32((int)s_align));
     }
     return (int)s_align;
 }
@@ -110,14 +111,12 @@ void gpuBindSsboRange(unsigned int index, unsigned int buffer,
                       long long offset, long long size, const char* tag) {
     const char* t = tag ? tag : "(none)";
     if (buffer == 0) {
-        std::fprintf(stderr, "[GPU_ALIGN] FATAL: gpuBindSsboRange tag=%s buffer=0 "
-                     "(zero object -- forgot to create/upload?)\n", t);
+        mc2::fmt::print_err("[GPU_ALIGN] FATAL: gpuBindSsboRange tag={} buffer=0 (zero object -- forgot to create/upload?)\n", mc2::fmt::safe(t));
         std::fflush(stderr);
         if (contractAssertEnabled()) std::abort();
     }
     if (size <= 0) {
-        std::fprintf(stderr, "[GPU_ALIGN] FATAL: gpuBindSsboRange tag=%s size=%lld "
-                     "(zero or negative size -- nothing to bind)\n", t, size);
+        mc2::fmt::print_err("[GPU_ALIGN] FATAL: gpuBindSsboRange tag={} size={:d} (zero or negative size -- nothing to bind)\n", mc2::fmt::safe(t), mc2::fmt::as_i64(size));
         std::fflush(stderr);
         if (contractAssertEnabled()) std::abort();
     }
@@ -126,10 +125,7 @@ void gpuBindSsboRange(unsigned int index, unsigned int buffer,
         static std::set<std::string> s_seen;
         const std::string key = t;
         if (s_seen.insert(key).second) {
-            std::fprintf(stderr,
-                "[GPU_ALIGN] MISALIGNED tag=%s offset=%lld align=%lld "
-                "(remainder=%lld) -- glBindBufferRange will fail on NVIDIA\n",
-                t, offset, a, offset % a);
+            mc2::fmt::print_err("[GPU_ALIGN] MISALIGNED tag={} offset={:d} align={:d} (remainder={:d}) -- glBindBufferRange will fail on NVIDIA\n", mc2::fmt::safe(t), mc2::fmt::as_i64(offset), mc2::fmt::as_i64(a), mc2::fmt::as_i64(offset % a));
             std::fflush(stderr);
         }
         if (contractAssertEnabled()) std::abort();
@@ -156,9 +152,7 @@ void gpuSyncBarrier(GpuProducer producer, GpuConsumer consumer, const char* tag)
         static std::set<std::string> s_seen;  // once-per-tag, no per-frame spam
         const std::string key = tag ? tag : "(none)";
         if (s_seen.insert(key).second) {
-            std::fprintf(stderr,
-                "[GPU_SYNC] tag=%s producer=%d consumer=%d bits=0x%x\n",
-                key.c_str(), (int)producer, (int)consumer, (unsigned)bits);
+            mc2::fmt::print_err("[GPU_SYNC] tag={} producer={:d} consumer={:d} bits=0x{:x}\n", key.c_str(), mc2::fmt::as_i32((int)producer), mc2::fmt::as_i32((int)consumer), mc2::fmt::as_u32((unsigned)bits));
         }
     }
 }

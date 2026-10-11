@@ -11,11 +11,12 @@
 #include <utility>
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"
+#include "mc2fmt.h"
 
 using nlohmann::json;
 
 static void animLogDrop(const char* why, const std::string& key) {
-    fprintf(stderr, "[ANIMOVERRIDE] dropped '%s': %s\n", key.c_str(), why);
+    mc2::fmt::print_err("[ANIMOVERRIDE] dropped '{}': {}\n", key.c_str(), mc2::fmt::safe(why));
     fflush(stderr);
 }
 
@@ -60,11 +61,11 @@ static std::vector<AnimOverrideRecord> animParseManifest(
     json root;
     try { in >> root; }
     catch (const std::exception& e) {
-        fprintf(stderr, "[ANIMOVERRIDE] parse error in %s: %s\n", manifestPath.c_str(), e.what());
+        mc2::fmt::print_err("[ANIMOVERRIDE] parse error in {}: {}\n", manifestPath.c_str(), mc2::fmt::safe(e.what()));
         return out;
     }
     if (!root.is_object() || !root.contains("overrides") || !root["overrides"].is_array()) {
-        fprintf(stderr, "[ANIMOVERRIDE] %s: missing 'overrides' array\n", manifestPath.c_str());
+        mc2::fmt::print_err("[ANIMOVERRIDE] {}: missing 'overrides' array\n", manifestPath.c_str());
         return out;
     }
 
@@ -157,7 +158,7 @@ AnimOverrideRegistry& AnimOverrideRegistry::instance() {
     std::call_once(once, []{
         int base = g.loadFromFile("data/anim_overrides/anims.json", "data/anim_overrides");
         if (base > 0) {
-            fprintf(stderr, "[ANIMOVERRIDE] base registry: %d override(s)\n", base);
+            mc2::fmt::print_err("[ANIMOVERRIDE] base registry: {:d} override(s)\n", mc2::fmt::as_i32(base));
             fflush(stderr);
         }
         const std::string activeModStr = mc2::gate::str<"MC2_ACTIVE_MOD">();
@@ -171,8 +172,7 @@ AnimOverrideRegistry& AnimOverrideRegistry::instance() {
             if (probe.is_open()) {
                 probe.close();
                 int n = g.mergeFromFile(modManifest, modDir);
-                fprintf(stderr, "[ANIMOVERRIDE] mod '%s': %d override(s) merged (total %d)\n",
-                        activeMod, n, g.count());
+                mc2::fmt::print_err("[ANIMOVERRIDE] mod '{}': {:d} override(s) merged (total {:d})\n", mc2::fmt::safe(activeMod), mc2::fmt::as_i32(n), mc2::fmt::as_i32(g.count()));
                 fflush(stderr);
             }
         }

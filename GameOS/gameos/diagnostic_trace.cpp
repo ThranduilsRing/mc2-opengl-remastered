@@ -15,6 +15,7 @@
 #include <string>
 #include <sstream>
 #include <unordered_set>
+#include "mc2fmt.h"
 
 namespace {
 
@@ -114,7 +115,7 @@ bool parseTagsEnv(std::unordered_set<std::string>& outTags, bool& outDisabled) {
         if (!tag.empty()) {
             // Warn if unknown tag (to stderr, since file may not be open yet)
             if (knownTags().find(tag) == knownTags().end()) {
-                fprintf(stderr, "[MC2_DIAG] WARNING: unknown tag in MC2_DIAG_TAGS: %s\n", tag.c_str());
+                mc2::fmt::print_err("[MC2_DIAG] WARNING: unknown tag in MC2_DIAG_TAGS: {}\n", tag.c_str());
             }
             outTags.insert(tag);
         }
@@ -169,8 +170,7 @@ void init(const char* sessionId, int pid) {
     std::error_code ec;
     std::filesystem::create_directories(path.parent_path(), ec);
     if (ec) {
-        fprintf(stderr, "[MC2_DIAG] WARNING: cannot create dir %s: %s\n",
-                path.parent_path().string().c_str(), ec.message().c_str());
+        mc2::fmt::print_err("[MC2_DIAG] WARNING: cannot create dir {}: {}\n", path.parent_path().string().c_str(), ec.message().c_str());
         s.disabled = true;
         return;
     }
@@ -191,8 +191,7 @@ void init(const char* sessionId, int pid) {
         s.file = fopen(path.string().c_str(), "ab");
     }
     if (!s.file) {
-        fprintf(stderr, "[MC2_DIAG] WARNING: cannot open trace file %s\n",
-                path.string().c_str());
+        mc2::fmt::print_err("[MC2_DIAG] WARNING: cannot open trace file {}\n", path.string().c_str());
         s.disabled = true;
         return;
     }

@@ -19,6 +19,7 @@
 #include <cstring>
 
 #include <GL/glew.h>
+#include "mc2fmt.h"
 
 #if defined(_MSC_VER)
 #  include <intrin.h>
@@ -83,9 +84,7 @@ bool Init(int32_t mapSide) {
     if (!s_masterOn) return true;  // not an error; feature is just off
 
     if (mapSide > kMaxMapSide) {
-        fprintf(stderr,
-            "[MASK_DISPATCH v1] event=init_fail reason=oversized_map mapSide=%d max=%d\n",
-            (int)mapSide, (int)kMaxMapSide);
+        mc2::fmt::print_err("[MASK_DISPATCH v1] event=init_fail reason=oversized_map mapSide={:d} max={:d}\n", mc2::fmt::as_i32((int)mapSide), mc2::fmt::as_i32((int)kMaxMapSide));
         fflush(stderr);
         s_initDone = false;
         return false;
