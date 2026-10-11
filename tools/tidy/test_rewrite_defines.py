@@ -72,3 +72,10 @@ def test_taint_names_come_from_the_revert_reason():
     why = "6 of 144 includers differ or fail to compile (CMakeFiles/mc2.dir/code/infowindow.cpp.obj, out/editor/CMakeFiles/EditRel.dir/Editor.cpp.obj)"
     assert rd.taint_from_reasons([("code/mover.h", why)]) == {"CMakeFiles/mc2.dir/code/infowindow.cpp.obj", "out/editor/CMakeFiles/EditRel.dir/Editor.cpp.obj"}
     assert rd.taint_from_reasons([("x.h", "kept set failed its final build")]) == set()
+
+
+def test_string_constants_are_refused_unless_asked_for():
+    s, _ = run({"a.cpp": '#define NAME "x"\nconst char* p = NAME;\n'})
+    assert "string-literal-codegen-differs" in s["NAME"].reasons
+    sites, _ = rd.analyse({"a.cpp": '#define NAME "x"\nconst char* p = NAME;\n'}, allow_strings=True)
+    assert sites[0].reasons == []

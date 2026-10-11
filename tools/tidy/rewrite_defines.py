@@ -150,7 +150,7 @@ def _scopes(bl_lines):
     return out
 
 
-def analyse(files: dict, c_side_headers=frozenset(), other_idents=frozenset(), tracked_cxx=()):
+def analyse(files: dict, c_side_headers=frozenset(), other_idents=frozenset(), tracked_cxx=(), allow_strings=False):
     """files: {path: text} of the C++ files in scope. -> (sites, {name: [(path, line, ctx)]}). A site's `reasons` list is empty when it is eligible."""
     sites, uses, defs, undefs = [], collections.defaultdict(list), collections.defaultdict(int), set()
     parsed = {}
@@ -219,6 +219,8 @@ def analyse(files: dict, c_side_headers=frozenset(), other_idents=frozenset(), t
             r.append("reserved-name")
         if os.path.basename(s.path) in c_side_headers:
             r.append("included-from-c-side")
+        if s.type == "const char*" and not allow_strings:
+            r.append("string-literal-codegen-differs")     # a constexpr pointer is loaded where the literal was addressed: the proof always fails (artlry.cpp)
         if s.type == "const char*" and any("string-concat" in c or "sizeof-like" in c for _, _, c in uses[s.name]):
             r.append("string-used-as-literal")
         for _, _, c in uses[s.name]:
