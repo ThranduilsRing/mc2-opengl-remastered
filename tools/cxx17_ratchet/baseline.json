@@ -152,7 +152,7 @@
    "LG11": 101,
    "LG12a": 220,
    "LG12b": 790,
-   "LG13": 917,
+   "LG13": 912,
    "LG14": 135,
    "LG15": 0,
    "LG16": 7,
@@ -198,7 +198,7 @@
    "LG11": 67,
    "LG12a": 449,
    "LG12b": 563,
-   "LG13": 1226,
+   "LG13": 1210,
    "LG14": 122,
    "LG15": 0,
    "LG16": 156,
@@ -1916,7 +1916,7 @@
    "LG12b": 10
   },
   "code/controlgui_internal.h": {
-   "LG13": 2
+   "LG13": 1
   },
   "code/controlgui_objectives.cpp": {
    "LG06": 3,
@@ -2203,9 +2203,6 @@
   "code/gvehicl_control.cpp": {
    "LG09": 1
   },
-  "code/gvehicl_internal.h": {
-   "LG13": 1
-  },
   "code/gvehicl_move.cpp": {
    "LG09": 2
   },
@@ -2406,9 +2403,6 @@
    "LG09": 5,
    "LG12a": 1,
    "LG12b": 1
-  },
-  "code/logisticsmechicon.h": {
-   "LG13": 1
   },
   "code/logisticsmissioninfo.cpp": {
    "LG03": 6,
@@ -2702,7 +2696,7 @@
    "LG06": 1,
    "LG12a": 1,
    "LG12b": 1,
-   "LG13": 2
+   "LG13": 1
   },
   "code/mission_movers.cpp": {
    "LG01": 2,
@@ -3037,9 +3031,6 @@
    "LG02": 4,
    "LG06": 1,
    "LG13": 26
-  },
-  "code/objmgr_internal.h": {
-   "LG13": 1
   },
   "code/objmgr_io.cpp": {
    "LG03": 15,
@@ -3719,7 +3710,7 @@
    "LG13": 1
   },
   "mclib/camera_internal.h": {
-   "LG13": 9
+   "LG13": 2
   },
   "mclib/camera_matrix.cpp": {
    "LG09": 17,
@@ -4346,7 +4337,7 @@
   },
   "mclib/mech3d_internal.h": {
    "LG12a": 1,
-   "LG13": 5
+   "LG13": 2
   },
   "mclib/mech3d_render.cpp": {
    "LG03": 2,
@@ -4738,7 +4729,7 @@
   },
   "mclib/move_internal.h": {
    "LG12b": 2,
-   "LG13": 3,
+   "LG13": 1,
    "LG14": 1,
    "LG16": 4
   },
@@ -4937,7 +4928,7 @@
    "LG12a": 7
   },
   "mclib/quad_internal.h": {
-   "LG13": 4
+   "LG13": 1
   },
   "mclib/quad_lines.cpp": {
    "LG16": 1
@@ -5313,7 +5304,6 @@
    "LG12b": 10
   },
   "mclib/terrain_internal.h": {
-   "LG13": 1,
    "LG17": 1
   },
   "mclib/terrain_raycast.cpp": {
@@ -5636,7 +5626,7 @@
    "LG20": 2
   }
  },
- "head": "f90d911f2",
+ "head": "3a181227a",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
