@@ -1,6 +1,7 @@
 // gos_terrain_lod_chunk: terrain material albedo texture array: setters from terrain_material_lib.cpp and the lazy BC7 array load.
 // Declared in the class headers; shared names in gos_terrain_lod_chunk_internal.h.
 #include "gos_terrain_lod_chunk_internal.h"
+#include "mc2fmt.h"
 
 
 // ---------------------------------------------------------------------------
@@ -51,12 +52,12 @@ float s_matAlbedoStrengthJson = -1.0f;
 void gos_SetTerrainMatAlbedoStrength(float s) { s_matAlbedoStrengthJson = s; }
 void gos_SetTerrainMatAlbedoTextureRoot(const char* root) {
     if (!root) { s_matAlbedoTextureRoot[0] = '\0'; return; }
-    snprintf(s_matAlbedoTextureRoot, sizeof(s_matAlbedoTextureRoot), "%s", root);
+    mc2::fmt::to_buf(s_matAlbedoTextureRoot, "{}", mc2::fmt::safe(root));
 }
 void gos_SetTerrainMatAlbedoLayerPath(int layer, const char* path) {
     if (layer < 0 || layer >= kMatAlbedoLayerCount) return;
     if (!path) { s_matAlbedoLayerPath[layer][0] = '\0'; return; }
-    snprintf(s_matAlbedoLayerPath[layer], sizeof(s_matAlbedoLayerPath[layer]), "%s", path);
+    mc2::fmt::to_buf_n(s_matAlbedoLayerPath[layer], sizeof(s_matAlbedoLayerPath[layer]), "{}", mc2::fmt::safe(path));
 }
 int gos_GetTerrainMatAlbedoLayerIndex(const char* channelName) {
     if (!channelName) return -1;
@@ -117,14 +118,13 @@ void tglc_EnsureMatAlbedoArrayLoaded()
     for (int i = 0; i < kMatAlbedoLayerCount; ++i) {
         char path[1024];
         if (s_matAlbedoLayerPath[i][0] != '\0') {
-            snprintf(path, sizeof(path), "%s", s_matAlbedoLayerPath[i]);
+            mc2::fmt::to_buf(path, "{}", mc2::fmt::safe(s_matAlbedoLayerPath[i]));
         } else {
             const char* root = (s_matAlbedoTextureRoot[0] != '\0')
                              ? s_matAlbedoTextureRoot : "data/terrain_layers/";
             const size_t rl = strlen(root);
             const bool needSlash = (rl > 0 && root[rl - 1] != '/' && root[rl - 1] != '\\');
-            snprintf(path, sizeof(path), "%s%s%s_albedo.ktx2",
-                     root, needSlash ? "/" : "", kMatAlbedoChannelNames[i]);
+            mc2::fmt::to_buf(path, "{}{}{}_albedo.ktx2", mc2::fmt::safe(root), mc2::fmt::safe(needSlash ? "/" : ""), mc2::fmt::safe(kMatAlbedoChannelNames[i]));
         }
         if (!RenderCore::ktxLoadRgba8(path, imgs[i])) {
             printf("[TERRAIN_MAT_TEX] layer %d (%s): load FAILED '%s' -- albedo array disabled\n",

@@ -12,6 +12,7 @@
 #include "gos_crashbundle.h"
 #include "Gates/gate.h"
 #include "build_fingerprint.h"  // MC2_BUILD_GIT_SHA (real macro; MC2_BUILD_HASH never defined)
+#include "mc2fmt.h"
 
 #ifndef _WIN32
 extern "C" void crashbundle_init(void) {}
@@ -148,8 +149,7 @@ static void build_crash_folder(void)
 
     // <exe_dir>/crashes
     char crashes_root[MAX_PATH];
-    _snprintf_s(crashes_root, _countof(crashes_root), _TRUNCATE,
-                "%s\\crashes", g_cfg.exe_dir);
+    mc2::fmt::to_buf_n(crashes_root, _countof(crashes_root), "{}\\crashes", mc2::fmt::safe(g_cfg.exe_dir));
     CreateDirectoryA(crashes_root, nullptr); // OK if exists
 
     _snprintf_s(g_crash_folderA, _countof(g_crash_folderA), _TRUNCATE,
@@ -162,16 +162,14 @@ static void build_crash_folder(void)
     MultiByteToWideChar(CP_ACP, 0, g_crash_folderA, -1,
                         g_crash_folderW, MAX_PATH);
 
-    _snprintf_s(g_crash_txtA, _countof(g_crash_txtA), _TRUNCATE,
-                "%s\\crash.txt", g_crash_folderA);
+    mc2::fmt::to_buf_n(g_crash_txtA, _countof(g_crash_txtA), "{}\\crash.txt", mc2::fmt::safe(g_crash_folderA));
 }
 
 // Writes the minidump
 static void write_minidump(EXCEPTION_POINTERS* ep)
 {
     char path[MAX_PATH];
-    _snprintf_s(path, _countof(path), _TRUNCATE,
-                "%s\\minidump.dmp", g_crash_folderA);
+    mc2::fmt::to_buf_n(path, _countof(path), "{}\\minidump.dmp", mc2::fmt::safe(g_crash_folderA));
     HANDLE h = CreateFileA(path, GENERIC_WRITE, 0, nullptr,
                            CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
     if (h == INVALID_HANDLE_VALUE) return;
@@ -190,8 +188,7 @@ static void write_minidump(EXCEPTION_POINTERS* ep)
 static void write_ring_snapshot(void)
 {
     char path[MAX_PATH];
-    _snprintf_s(path, _countof(path), _TRUNCATE,
-                "%s\\last_trace.txt", g_crash_folderA);
+    mc2::fmt::to_buf_n(path, _countof(path), "{}\\last_trace.txt", mc2::fmt::safe(g_crash_folderA));
     HANDLE h = CreateFileA(path, GENERIC_WRITE, 0, nullptr,
                            CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
     if (h == INVALID_HANDLE_VALUE) return;
@@ -232,8 +229,7 @@ static void safe_copy_mission_name(char* dst, size_t cap)
 static void write_profile_json(void)
 {
     char path[MAX_PATH];
-    _snprintf_s(path, _countof(path), _TRUNCATE,
-                "%s\\profile.json", g_crash_folderA);
+    mc2::fmt::to_buf_n(path, _countof(path), "{}\\profile.json", mc2::fmt::safe(g_crash_folderA));
 
     const char* build = MC2_BUILD_GIT_SHA;
 

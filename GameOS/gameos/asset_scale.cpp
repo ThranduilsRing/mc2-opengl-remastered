@@ -12,6 +12,7 @@
 #include <unordered_set>
 #include <utility>
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 namespace AssetScale {
 
@@ -227,9 +228,7 @@ bool runOneScale(uint32_t nominalSize, uint32_t actualSize, const char* tag,
             if (r.x < 0 || r.y < 0 ||
                 (uint32_t)(r.x + r.w) > actualSize ||
                 (uint32_t)(r.y + r.h) > actualSize) {
-                std::snprintf(detailBuf, detailLen,
-                    "OOB at cell (%d,%d): rect=(%d,%d,%d,%d) actual=%u",
-                    x, y, r.x, r.y, r.w, r.h, actualSize);
+                mc2::fmt::to_buf_n(detailBuf, detailLen, "OOB at cell ({:d},{:d}): rect=({:d},{:d},{:d},{:d}) actual={:d}", mc2::fmt::as_i32(x), mc2::fmt::as_i32(y), mc2::fmt::as_i32(r.x), mc2::fmt::as_i32(r.y), mc2::fmt::as_i32(r.w), mc2::fmt::as_i32(r.h), mc2::fmt::as_u32(actualSize));
                 return false;
             }
             // Adjacent-cell overlap <= 1px (intentional seam protection).
@@ -240,11 +239,7 @@ bool runOneScale(uint32_t nominalSize, uint32_t actualSize, const char* tag,
                     (float)nominalCell, (float)nominalCell, "selftest");
                 int overlap = (r.x + r.w) - rNext.x;
                 if (overlap < 0 || overlap > 1) {
-                    std::snprintf(detailBuf, detailLen,
-                        "X overlap %d at cell (%d,%d): rect=(%d,%d,%d,%d) "
-                        "next=(%d,%d,%d,%d)",
-                        overlap, x, y, r.x, r.y, r.w, r.h,
-                        rNext.x, rNext.y, rNext.w, rNext.h);
+                    mc2::fmt::to_buf_n(detailBuf, detailLen, "X overlap {:d} at cell ({:d},{:d}): rect=({:d},{:d},{:d},{:d}) next=({:d},{:d},{:d},{:d})", mc2::fmt::as_i32(overlap), mc2::fmt::as_i32(x), mc2::fmt::as_i32(y), mc2::fmt::as_i32(r.x), mc2::fmt::as_i32(r.y), mc2::fmt::as_i32(r.w), mc2::fmt::as_i32(r.h), mc2::fmt::as_i32(rNext.x), mc2::fmt::as_i32(rNext.y), mc2::fmt::as_i32(rNext.w), mc2::fmt::as_i32(rNext.h));
                     return false;
                 }
             }

@@ -1,6 +1,7 @@
 // gameos_graphics: text breaking and drawing, the HUD batch flush and the text C API.
 // Declared in the class headers; shared names in gameos_graphics_material_internal.h.
 #include "gameos_graphics_material_internal.h"
+#include "mc2fmt.h"
 
 
 static int get_next_break(const char* text) {
@@ -565,10 +566,7 @@ void gosRenderer::flushHUDBatch()
             if (rbw <= 0 || rbh <= 0 || rbx < 0 || rby < 0 ||
                 rbx + rbw > Environment.drawableWidth ||
                 rby + rbh > Environment.drawableHeight) {
-                snprintf(resDetail, sizeof(resDetail),
-                         "box=%d,%d %dx%d drawable=%dx%d",
-                         rbx, rby, rbw, rbh,
-                         Environment.drawableWidth, Environment.drawableHeight);
+                mc2::fmt::to_buf(resDetail, "box={:d},{:d} {:d}x{:d} drawable={:d}x{:d}", mc2::fmt::as_i32(rbx), mc2::fmt::as_i32(rby), mc2::fmt::as_i32(rbw), mc2::fmt::as_i32(rbh), mc2::fmt::as_i32(Environment.drawableWidth), mc2::fmt::as_i32(Environment.drawableHeight));
                 mc2res::violation("hud_canvas_bounds", resDetail);
             } else {
                 const float rdw = (float)Environment.drawableWidth;
@@ -603,12 +601,7 @@ void gosRenderer::flushHUDBatch()
                     gos_HudInverseMousePoint(px, py);
                     if (fabsf(px - probePts[rp][0]) > 0.5f ||
                         fabsf(py - probePts[rp][1]) > 0.5f) {
-                        snprintf(resDetail, sizeof(resDetail),
-                                 "probe=(%.1f,%.1f) roundtrip=(%.2f,%.2f) "
-                                 "box=%d,%d %dx%d scale=%.3f",
-                                 (double)probePts[rp][0], (double)probePts[rp][1],
-                                 (double)px, (double)py,
-                                 rbx, rby, rbw, rbh, (double)gos_GetHudScale());
+                        mc2::fmt::to_buf(resDetail, "probe=({:.1f},{:.1f}) roundtrip=({:.2f},{:.2f}) box={:d},{:d} {:d}x{:d} scale={:.3f}", (double)probePts[rp][0], (double)probePts[rp][1], (double)px, (double)py, mc2::fmt::as_i32(rbx), mc2::fmt::as_i32(rby), mc2::fmt::as_i32(rbw), mc2::fmt::as_i32(rbh), (double)gos_GetHudScale());
                         mc2res::violation("hud_roundtrip", resDetail);
                     }
                 }

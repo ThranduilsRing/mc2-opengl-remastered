@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include <cstdint>
 #include <GL/glew.h>
+#include "mc2fmt.h"
 
 static ValidateConfig s_config = {};
 static ValidateTelemetry s_telemetry = {};
@@ -97,7 +98,7 @@ void validateWriteResults(int viewportW, int viewportH) {
     GLenum err;
     while ((err = glGetError()) != GL_NO_ERROR) {
         char buf[64];
-        snprintf(buf, sizeof(buf), "GL_ERROR: 0x%04X", err);
+        mc2::fmt::to_buf(buf, "GL_ERROR: 0x{:04X}", mc2::fmt::as_u32(err));
         s_telemetry.glErrors.push_back(buf);
         s_telemetry.exitCode = 1;
     }
@@ -219,11 +220,7 @@ void drainGLErrors(const char* pass) {
             // If we're exiting a suppression window, emit a summary line first.
             if (st.inSuppression && st.suppressedCount > 0) {
                 char _cbbuf[256];
-                snprintf(_cbbuf, sizeof(_cbbuf),
-                    "[GL_ERROR v1] pass=%s suppressed elapsed_frames=%u count_in_window=%u",
-                    st.name,
-                    (unsigned)(g_mc2FrameCounter - st.lastPrintFrame),
-                    (unsigned)st.suppressedCount);
+                mc2::fmt::to_buf(_cbbuf, "[GL_ERROR v1] pass={} suppressed elapsed_frames={:d} count_in_window={:d}", mc2::fmt::safe(st.name), mc2::fmt::as_u32((unsigned)(g_mc2FrameCounter - st.lastPrintFrame)), mc2::fmt::as_u32((unsigned)st.suppressedCount));
                 puts(_cbbuf);
                 crashbundle_append(_cbbuf);
                 fflush(stdout);
@@ -233,10 +230,7 @@ void drainGLErrors(const char* pass) {
 
             {
                 char _cbbuf[256];
-                snprintf(_cbbuf, sizeof(_cbbuf),
-                    "[GL_ERROR v1] frame=%u pass=%s code=%s(0x%04X) mono_count=%llu",
-                    g_mc2FrameCounter, st.name, glErrorName(err), (unsigned)err,
-                    (unsigned long long)st.monoCount);
+                mc2::fmt::to_buf(_cbbuf, "[GL_ERROR v1] frame={:d} pass={} code={}(0x{:04X}) mono_count={:d}", mc2::fmt::as_u32(g_mc2FrameCounter), mc2::fmt::safe(st.name), mc2::fmt::safe(glErrorName(err)), mc2::fmt::as_u32((unsigned)err), mc2::fmt::as_u64((unsigned long long)st.monoCount));
                 puts(_cbbuf);
                 crashbundle_append(_cbbuf);
             }

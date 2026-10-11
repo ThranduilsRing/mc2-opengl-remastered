@@ -29,6 +29,7 @@
 #include <cstdlib>   // std::getenv, std::atoi
 #include <cstdio>    // fprintf, snprintf
 #include <cmath>     // sinf, fmodf, fabsf
+#include "mc2fmt.h"
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -391,22 +392,7 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
     // Structured VEG_HEALTH JSONL placement event (MCP-queryable).
     {
         char dataJson[512];
-        snprintf(dataJson, sizeof(dataJson),
-            "{"
-            "\"event\":\"placement_health\","
-            "\"cells_total\":%d,"
-            "\"reject_oob\":%d,"
-            "\"reject_terrain_type\":%d,"
-            "\"reject_water\":%d,"
-            "\"reject_density\":%d,"
-            "\"reject_overlay\":%d,"
-            "\"instances_generated\":%u,"
-            "\"max_instances\":%d,"
-            "\"classifier\":\"terrain_type\""
-            "}",
-            diagCellsTotal,
-            diagOOB, diagHard, diagWater, diagNotGreen, diagOverlay,
-            instCount, maxInst);
+        mc2::fmt::to_buf(dataJson, "{{\"event\":\"placement_health\",\"cells_total\":{:d},\"reject_oob\":{:d},\"reject_terrain_type\":{:d},\"reject_water\":{:d},\"reject_density\":{:d},\"reject_overlay\":{:d},\"instances_generated\":{:d},\"max_instances\":{:d},\"classifier\":\"terrain_type\"}}", mc2::fmt::as_i32(diagCellsTotal), mc2::fmt::as_i32(diagOOB), mc2::fmt::as_i32(diagHard), mc2::fmt::as_i32(diagWater), mc2::fmt::as_i32(diagNotGreen), mc2::fmt::as_i32(diagOverlay), mc2::fmt::as_u32(instCount), mc2::fmt::as_i32(maxInst));
         mc2_diag::writeEvent("VEGETATION", 1, 0, dataJson);
     }
 
@@ -497,18 +483,7 @@ void GameAdapters::Vegetation::flush(const float* terrainLightDir_4f, float time
     static int s_flushCallCount = 0;
     if (++s_flushCallCount == 1 && mc2_diag::tagEnabled("VEGETATION")) {
         char dataJson[512];
-        snprintf(dataJson, sizeof(dataJson),
-            "{"
-            "\"event\":\"draw_health\","
-            "\"flush_called\":true,"
-            "\"instances\":%u,"
-            "\"terrain_blocks\":%d,"
-            "\"lod0_blocks\":%d,"
-            "\"lod1_blocks\":%d,"
-            "\"culled_blocks\":%d"
-            "}",
-            GosVegetation::instanceCount(),
-            blockCount, diagLod0, diagLod1, diagCulled);
+        mc2::fmt::to_buf(dataJson, "{{\"event\":\"draw_health\",\"flush_called\":true,\"instances\":{:d},\"terrain_blocks\":{:d},\"lod0_blocks\":{:d},\"lod1_blocks\":{:d},\"culled_blocks\":{:d}}}", mc2::fmt::as_u32(GosVegetation::instanceCount()), mc2::fmt::as_i32(blockCount), mc2::fmt::as_i32(diagLod0), mc2::fmt::as_i32(diagLod1), mc2::fmt::as_i32(diagCulled));
         mc2_diag::writeEvent("VEGETATION", 1, 0, dataJson);
     }
 

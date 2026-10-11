@@ -4,6 +4,7 @@
 
 
 #include "gos_postprocess_internal.h"
+#include "mc2fmt.h"
 
 
 
@@ -349,25 +350,14 @@ void gosPostProcess::init(int w, int h)
     std::string screenShadowPrefix = "#version 430\n";
     if (mc2ShadowCsmEnabled()) {
         char csmDef[64];
-        snprintf(csmDef, sizeof(csmDef),
-                 "#define MC2_SHADOW_CSM 1\n#define MC2_SHADOW_CSM_MAX %d\n",
-                 mc2ShadowCsmCount());
+        mc2::fmt::to_buf(csmDef, "#define MC2_SHADOW_CSM 1\n#define MC2_SHADOW_CSM_MAX {:d}\n", mc2::fmt::as_i32(mc2ShadowCsmCount()));
         screenShadowPrefix += csmDef;
     }
     // SHADOW-DIST-FADE-1: object/prop receivers get the same distance-scaled
     // dynamic-shadow penumbra + fade as the terrain paths (lockstep).
     if (mc2ShadowDistFadeWu() > 0.0f) {
         char fadeDef[240];
-        snprintf(fadeDef, sizeof(fadeDef),
-                 "#define MC2_SHADOW_DIST_FADE_WU %.1f\n"
-                 "#define MC2_SHADOW_DIST_FADE_MAX_F %.2f\n"
-                 "#define MC2_SHADOW_FADE_CONT_F %d\n"
-                 "#define MC2_SHADOW_FADE_RAMP0_F %d\n"
-                 "#define MC2_SHADOW_ALT_SCALE_F %d\n",
-                 mc2ShadowDistFadeWu(), mc2ShadowDistFadeMax(),
-                     mc2ShadowFadeCont() ? 1 : 0,
-                     mc2ShadowFadeRamp0() ? 1 : 0,
-                     mc2ShadowAltScale() ? 1 : 0);
+        mc2::fmt::to_buf(fadeDef, "#define MC2_SHADOW_DIST_FADE_WU {:.1f}\n#define MC2_SHADOW_DIST_FADE_MAX_F {:.2f}\n#define MC2_SHADOW_FADE_CONT_F {:d}\n#define MC2_SHADOW_FADE_RAMP0_F {:d}\n#define MC2_SHADOW_ALT_SCALE_F {:d}\n", mc2ShadowDistFadeWu(), mc2ShadowDistFadeMax(), mc2::fmt::as_i32(mc2ShadowFadeCont() ? 1 : 0), mc2::fmt::as_i32(mc2ShadowFadeRamp0() ? 1 : 0), mc2::fmt::as_i32(mc2ShadowAltScale() ? 1 : 0));
         screenShadowPrefix += fadeDef;
     }
     screenShadowProg_ = glsl_program::makeProgram("shadow_screen",

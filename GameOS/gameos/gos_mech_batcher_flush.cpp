@@ -1,6 +1,7 @@
 // GpuMechBatcher: submitActor, the executor opaque-state apply and GpuMechBatcher::flush (one 970-line function).
 // Declared in the class headers; shared names in gos_mech_batcher_internal.h.
 #include "gos_mech_batcher_internal.h"
+#include "mc2fmt.h"
 
 
 // APPLY-STATE-MECHOPAQUE-1: file-static flag mirroring s_staticPropStateAppliedByExecutor.
@@ -422,9 +423,7 @@ void MechFlushFrame::buildMaterialTable() {
     ++s_mechMaterialGpuFrameCount;
     if (s_mechMaterialGpuFrameCount % 600 == 1) {
         char buf[96];
-        std::snprintf(buf, sizeof(buf),
-            "[MECH_MATERIAL_GPU v1] event=table_link materials=%u\n",
-            static_cast<uint32_t>(s_mechMaterialTable.size()));
+        mc2::fmt::to_buf(buf, "[MECH_MATERIAL_GPU v1] event=table_link materials={:d}\n", mc2::fmt::as_u32(static_cast<uint32_t>(s_mechMaterialTable.size())));
         MC2_DIAG_FPUTS(buf, stderr);
     }
 }
@@ -517,9 +516,7 @@ void MechFlushFrame::validateMaterialTable() {
             if (albedo != expected) {
                 if (mismatches < 10) {
                     char buf[128];
-                    std::snprintf(buf, sizeof(buf),
-                        "[MECH_MATERIAL_GPU v1] MISMATCH dc=%u materialIdx=%u albedo=%u expected=%u\n",
-                        i, mIdx, albedo, expected);
+                    mc2::fmt::to_buf(buf, "[MECH_MATERIAL_GPU v1] MISMATCH dc={:d} materialIdx={:d} albedo={:d} expected={:d}\n", mc2::fmt::as_u32(i), mc2::fmt::as_u32(mIdx), mc2::fmt::as_u32(albedo), mc2::fmt::as_u32(expected));
                     MC2_DIAG_FPUTS(buf, stderr);
                 }
                 ++mismatches;
@@ -527,11 +524,7 @@ void MechFlushFrame::validateMaterialTable() {
         }
         if (s_mechMaterialGpuFrameCount % 600 == 1) {
             char buf[128];
-            std::snprintf(buf, sizeof(buf),
-                "[MECH_MATERIAL_GPU v1] event=compare frame=%u mechs=%u mismatches=%d\n",
-                s_mechMaterialGpuFrameCount,
-                static_cast<uint32_t>(drawCalls.size()),
-                mismatches);
+            mc2::fmt::to_buf(buf, "[MECH_MATERIAL_GPU v1] event=compare frame={:d} mechs={:d} mismatches={:d}\n", mc2::fmt::as_u32(s_mechMaterialGpuFrameCount), mc2::fmt::as_u32(static_cast<uint32_t>(drawCalls.size())), mc2::fmt::as_i32(mismatches));
             MC2_DIAG_FPUTS(buf, stderr);
         }
     }

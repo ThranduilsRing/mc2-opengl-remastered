@@ -1,6 +1,7 @@
 // gosPostProcess: GL lost-draws query tracker (VK-GL-LOST-DRAWS-1) and the HZB readback probe.
 // Declared in the class headers; shared names in gos_postprocess_internal.h.
 #include "gos_postprocess_internal.h"
+#include "mc2fmt.h"
 
 
 // ---------------------------------------------------------------------------
@@ -453,9 +454,9 @@ void gosPostProcess::runHzbProbe()
     }
     if (logTick && objTested > 0) {
         char hist[256]; int n = 0;
-        n += snprintf(hist + n, sizeof(hist) - n, "[HZB_PROBE_LOD v1] selectedLod");
+        n += mc2::fmt::to_buf_n(hist + n, sizeof(hist) - n, "[HZB_PROBE_LOD v1] selectedLod");
         for (int L = 0; L < hzbMipCount_ && L < kHzbMaxLevels && n < (int)sizeof(hist) - 16; ++L)
-            if (lodHist[L]) n += snprintf(hist + n, sizeof(hist) - n, " L%d=%u", L, lodHist[L]);
+            if (lodHist[L]) n += mc2::fmt::to_buf_n(hist + n, sizeof(hist) - n, " L{:d}={:d}", mc2::fmt::as_i32(L), mc2::fmt::as_u32(lodHist[L]));
         fprintf(stderr, "%s\n", hist);
     }
     // Depth-gap margin sweep (safe-frame guarded candidates). guard@0.00000

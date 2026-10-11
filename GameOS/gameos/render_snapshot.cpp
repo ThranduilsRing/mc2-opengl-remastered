@@ -23,6 +23,7 @@
 #include <cstring>
 #include <vector>
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 // ---------------------------------------------------------------------------
 // Module-static ping-pong arenas (2 × 1 MiB in BSS, never freed).
@@ -148,7 +149,7 @@ static uint32_t BuildOracleRows(std::vector<ExtractedStaticProp>& out)
         cp.shapeName[0] = '\0';
         {
             const char* sn = GpuStaticPropRegistry::getRecipeShapeName(v.recipeIndex);
-            if (sn) std::snprintf(cp.shapeName, sizeof(cp.shapeName), "%s", sn);
+            if (sn) mc2::fmt::to_buf_n(cp.shapeName, sizeof(cp.shapeName), "{}", mc2::fmt::safe(sn));
         }
     }
     return static_cast<uint32_t>(out.size());
@@ -469,7 +470,7 @@ RenderSnapshot ExtractRenderSnapshot()
                 {
                     const char* sn = GpuStaticPropRegistry::getRecipeShapeName(v.recipeIndex);
                     if (sn) {
-                        std::snprintf(p.shapeName, sizeof(p.shapeName), "%s", sn);
+                        mc2::fmt::to_buf_n(p.shapeName, sizeof(p.shapeName), "{}", mc2::fmt::safe(sn));
                     }
                 }
 

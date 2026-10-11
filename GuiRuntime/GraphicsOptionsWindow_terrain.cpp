@@ -2,6 +2,7 @@
 // Declared in GraphicsOptionsWindow_internal.h.
 #include "GraphicsOptionsWindow_internal.h"
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 namespace GraphicsOptionsWindow {
 
@@ -91,9 +92,9 @@ void drawTerrainSection() {
 
         char heading[80];
         if (m.value < -0.5f)
-            snprintf(heading, sizeof(heading), "[-1]  %s", m.name);
+            mc2::fmt::to_buf(heading, "[-1]  {}", mc2::fmt::safe(m.name));
         else
-            snprintf(heading, sizeof(heading), "[%d]  %s", (int)(m.value + 0.5f), m.name);
+            mc2::fmt::to_buf(heading, "[{:d}]  {}", mc2::fmt::as_i32((int)(m.value + 0.5f)), mc2::fmt::safe(m.name));
 
         ImU32 headCol = active ? IM_COL32(120, 255, 120, 255)
                                : IM_COL32(230, 230, 230, 255);

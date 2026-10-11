@@ -1,6 +1,7 @@
 // VK terrain island: the extern C entry points: enabled / ready / prepare, the frame UBO and light-pool staging, and the per-frame run.
 // Declared in the class headers; shared names in vulkan_terrain_island_internal.h.
 #include "vulkan_terrain_island_internal.h"
+#include "mc2fmt.h"
 
 #ifdef MC2_VULKAN_ISLAND
 
@@ -226,7 +227,7 @@ void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
                      (int)feed.dynamicShadowSize);
         pm("TERRAIN UBO dynamicLightSpaceMatrix", u.dynamicLightSpaceMatrix, 16);
         for (int i = 0; i < 3; ++i) {
-            char tg[64]; std::snprintf(tg, sizeof(tg), "TERRAIN UBO csmCascadeMatrices[%d]", i);
+            char tg[64]; mc2::fmt::to_buf(tg, "TERRAIN UBO csmCascadeMatrices[{:d}]", mc2::fmt::as_i32(i));
             pm(tg, u.csmCascadeMatrices + i * 16, 16);
         }
         std::fflush(stderr);

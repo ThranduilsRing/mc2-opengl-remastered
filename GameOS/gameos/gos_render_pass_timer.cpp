@@ -10,6 +10,7 @@
 #include "gos_render_pass_timer.h"
 #include "gos_frame_pass_stats.h"
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 namespace gos_render_pass_timer {
 
@@ -131,16 +132,13 @@ void emitWindow()
     if (s_envOn) {
         char line[1024];
         int off = 0;
-        off += std::snprintf(line + off, sizeof(line) - off,
-            "[RENDER_PASS_TIME v1] frame=%lu n=%u gpu_total=%.2f",
-            s_frameNo, s_frames, s_sumTotalMs / (double)s_frames);
+        off += mc2::fmt::to_buf_n(line + off, sizeof(line) - off, "[RENDER_PASS_TIME v1] frame={:d} n={:d} gpu_total={:.2f}", mc2::fmt::as_u32(s_frameNo), mc2::fmt::as_u32(s_frames), s_sumTotalMs / (double)s_frames);
         for (int p = 0; p < Pass_Count; ++p) {
             if (!s_samples[p]) continue;   // pass never ran in window: key absent
-            off += std::snprintf(line + off, sizeof(line) - off, " %s=%.2f",
-                kPassKey[p], s_sumMs[p] / (double)s_frames);
+            off += mc2::fmt::to_buf_n(line + off, sizeof(line) - off, " {}={:.2f}", mc2::fmt::safe(kPassKey[p]), s_sumMs[p] / (double)s_frames);
         }
         if (s_dropped)
-            off += std::snprintf(line + off, sizeof(line) - off, " dropped=%u", s_dropped);
+            off += mc2::fmt::to_buf_n(line + off, sizeof(line) - off, " dropped={:d}", mc2::fmt::as_u32(s_dropped));
         std::printf("%s\n", line);
         std::fflush(stdout);
     }

@@ -1,6 +1,7 @@
 // GpuStaticPropBatcher: submit, submitMultiShape, the bucket upload, the V6 array build, the depth prepass and the executor apply-state hook.
 // Declared in the class headers; shared names in gos_static_prop_batcher_internal.h.
 #include "gos_static_prop_batcher_internal.h"
+#include "mc2fmt.h"
 
 
 bool GpuStaticPropBatcher::submit(TG_Shape* shape,
@@ -396,7 +397,7 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
             //   - the bare pointer (still useful for cross-referencing
             //     across log files / ts identity over a process lifetime)
             char addrBuf[32];
-            snprintf(addrBuf, sizeof(addrBuf), "%p", (const void*)ts);
+            mc2::fmt::to_buf(addrBuf, "{:016X}", mc2::fmt::as_ptr((const void*)ts));
             const std::string typeKey = addrBuf;  // dedup key — pointer-stable within one run
             auto& count = s_lateRegisterCounts[typeKey];
             // Stage 2.D.3: compute `allowed` for EVERY event so the per-event

@@ -18,6 +18,7 @@
 #endif
 
 #include "gos_crashbundle.h" // crashbundle_append (extern "C", ring buffer)
+#include "mc2fmt.h"
 
 // gameos.hpp declares this (game-specific STOP callback). Declared locally so
 // this TU stays independent of the monolithic gameos.hpp.
@@ -115,19 +116,14 @@ bool Fail(const char* file, int line, const char* cond, const char* fmt, ...)
     }
 
     char lineBuf[1024];
-    snprintf(lineBuf, sizeof(lineBuf), "[VERIFY]%s %s:%d (%s) %s",
-              (m == MODE_FATAL) ? " FATAL" : "",
-              basename_of(file ? file : "?"), line,
-              cond ? cond : "?", msg);
+    mc2::fmt::to_buf(lineBuf, "[VERIFY]{} {}:{:d} ({}) {}", mc2::fmt::safe((m == MODE_FATAL) ? " FATAL" : ""), mc2::fmt::safe(basename_of(file ? file : "?")), mc2::fmt::as_i32(line), mc2::fmt::safe(cond ? cond : "?"), mc2::fmt::safe(msg));
     lineBuf[sizeof(lineBuf) - 1] = '\0';
 
     if (m == MODE_FATAL || total <= kLogLineCap) {
         emit_line(lineBuf);
         if (m != MODE_FATAL && total == kLogLineCap) {
             char cap[128];
-            snprintf(cap, sizeof(cap),
-                      "[VERIFY] line cap (%ld) reached -- further fires "
-                      "counted but not printed", kLogLineCap);
+            mc2::fmt::to_buf(cap, "[VERIFY] line cap ({:d}) reached -- further fires counted but not printed", mc2::fmt::as_i32(kLogLineCap));
             cap[sizeof(cap) - 1] = '\0';
             emit_line(cap);
         }
@@ -170,11 +166,7 @@ void MissionSummary(const char* label)
 #endif
 
     char lineBuf[512];
-    snprintf(lineBuf, sizeof(lineBuf),
-              "[VERIFY] mission-end fires=%ld total=%ld mode=%s label=%s",
-              missionFires, totalFires,
-              (m == MODE_FATAL) ? "fatal" : "log",
-              label ? label : "(null)");
+    mc2::fmt::to_buf(lineBuf, "[VERIFY] mission-end fires={:d} total={:d} mode={} label={}", mc2::fmt::as_i32(missionFires), mc2::fmt::as_i32(totalFires), mc2::fmt::safe((m == MODE_FATAL) ? "fatal" : "log"), mc2::fmt::safe(label ? label : "(null)"));
     lineBuf[sizeof(lineBuf) - 1] = '\0';
     emit_line(lineBuf);
 }

@@ -1,6 +1,7 @@
 // GpuStaticPropBatcher: loadProgramsIfNeeded, ring capacity, light-freshness gate and the late-register / submit telemetry.
 // Declared in the class headers; shared names in gos_static_prop_batcher_internal.h.
 #include "gos_static_prop_batcher_internal.h"
+#include "mc2fmt.h"
 
 
 namespace gos_static_prop_batcher_detail {
@@ -727,11 +728,9 @@ void accumulateMonotonicAndMaybeEmit(bool forceEmit) {
         // trap as submit_trees; refusing to repeat it here.
         const uint8_t popMask = GpuStaticPropRegistry::getPopulationsEverTagged();
         char popTagged[24];
-        std::snprintf(popTagged, sizeof(popTagged), "%s%s%s%s",
-                      (popMask & 1u) ? "B" : "", (popMask & 2u) ? "T" : "",
-                      (popMask & 4u) ? "G" : "", (popMask & 8u) ? "L" : "");
+        mc2::fmt::to_buf(popTagged, "{}{}{}{}", mc2::fmt::safe((popMask & 1u) ? "B" : ""), mc2::fmt::safe((popMask & 2u) ? "T" : ""), mc2::fmt::safe((popMask & 4u) ? "G" : ""), mc2::fmt::safe((popMask & 8u) ? "L" : ""));
         if (popTagged[0] == '\0') {
-            std::snprintf(popTagged, sizeof(popTagged), "NONE");
+            mc2::fmt::to_buf(popTagged, "NONE");
         }
 
         MC2_DIAGFE(stderr,

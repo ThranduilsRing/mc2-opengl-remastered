@@ -4,6 +4,7 @@
 
 
 #include "gos_terrain_lod_chunk_internal.h"
+#include "mc2fmt.h"
 
 
 
@@ -122,7 +123,7 @@ void mirrorTerrainUniforms(GLuint src, GLuint dst) {
                     float m[16]; GLint sl = (e==0)?sloc:glGetUniformLocation(src, name);
                     // For array elements re-resolve the indexed location.
                     if (size > 1) {
-                        char en[160]; std::snprintf(en, sizeof(en), "%s[%d]", name, e);
+                        char en[160]; mc2::fmt::to_buf(en, "{}[{:d}]", mc2::fmt::safe(name), mc2::fmt::as_i32(e));
                         sl = glGetUniformLocation(src, en);
                         GLint dl = glGetUniformLocation(dst, en);
                         if (sl < 0 || dl < 0) continue;
@@ -505,25 +506,14 @@ void gos_TerrainLodChunk_Init()
         prefix += mc2TerrainShadowSunDefine();
         if (mc2ShadowCsmEnabled()) {
             char csmDef[64];
-            snprintf(csmDef, sizeof(csmDef),
-                     "#define MC2_SHADOW_CSM 1\n#define MC2_SHADOW_CSM_MAX %d\n",
-                     mc2ShadowCsmCount());
+            mc2::fmt::to_buf(csmDef, "#define MC2_SHADOW_CSM 1\n#define MC2_SHADOW_CSM_MAX {:d}\n", mc2::fmt::as_i32(mc2ShadowCsmCount()));
             prefix += csmDef;
         }
         // SHADOW-DIST-FADE-1: distance-scaled dynamic-shadow penumbra + fade
         // (shadow.hglsl). Lockstep with the gameos_graphics.cpp inject sites.
         if (mc2ShadowDistFadeWu() > 0.0f) {
             char fadeDef[240];
-            snprintf(fadeDef, sizeof(fadeDef),
-                     "#define MC2_SHADOW_DIST_FADE_WU %.1f\n"
-                     "#define MC2_SHADOW_DIST_FADE_MAX_F %.2f\n"
-                     "#define MC2_SHADOW_FADE_CONT_F %d\n"
-                     "#define MC2_SHADOW_FADE_RAMP0_F %d\n"
-                     "#define MC2_SHADOW_ALT_SCALE_F %d\n",
-                     mc2ShadowDistFadeWu(), mc2ShadowDistFadeMax(),
-                     mc2ShadowFadeCont() ? 1 : 0,
-                     mc2ShadowFadeRamp0() ? 1 : 0,
-                     mc2ShadowAltScale() ? 1 : 0);
+            mc2::fmt::to_buf(fadeDef, "#define MC2_SHADOW_DIST_FADE_WU {:.1f}\n#define MC2_SHADOW_DIST_FADE_MAX_F {:.2f}\n#define MC2_SHADOW_FADE_CONT_F {:d}\n#define MC2_SHADOW_FADE_RAMP0_F {:d}\n#define MC2_SHADOW_ALT_SCALE_F {:d}\n", mc2ShadowDistFadeWu(), mc2ShadowDistFadeMax(), mc2::fmt::as_i32(mc2ShadowFadeCont() ? 1 : 0), mc2::fmt::as_i32(mc2ShadowFadeRamp0() ? 1 : 0), mc2::fmt::as_i32(mc2ShadowAltScale() ? 1 : 0));
             prefix += fadeDef;
         }
         glsl_program* prog = glsl_program::makeProgram(

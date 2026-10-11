@@ -46,14 +46,23 @@ EVENT_MACROS = {"MC2_EVENT": "stderr", "MC2_EVENT_OUT": "stdout", "MC2_EVENT_NOV
 LOG_MACROS = {"log_debug", "log_info", "log_warning", "log_error"}
 
 TAG = re.compile(r"^\s*\[([A-Z][A-Z0-9_]*)(?: v(\d+))?\]")
-KEY = re.compile(r"(?<![\w{])([A-Za-z_][\w.]*)=")
+KEY = re.compile(r"(?<![\w\x01])([A-Za-z_][\w.]*)=")
+# A printf conversion and a std::format replacement field are the same thing for the census: a placeholder. Without this a key whose NAME is a
+# placeholder (`%s=%u` becoming `{}={:d}`) would look like a different key list after a conversion.
+_PLACEHOLDER = re.compile(r"%%|\{\{|\}\}|%[-+ #0-9.*]*(?:hh|h|ll|l|z|j|t|L|I64|I32)?[A-Za-z]|\{[^{}]*\}")
+_LITERAL = {"%%": "%", "{{": "{", "}}": "}"}
 _NAME_RE = "|".join(sorted(list(PRINTF_LIKE) + list(EVENT_MACROS) + sorted(LOG_MACROS) + ["SPEW"], key=len, reverse=True))
 _EVENT_TMPL = re.compile(r'event\s*<\s*"([A-Z][A-Z0-9_]*)"\s*,\s*(-?\d+)\s*>\s*\(\s*(?:::)?(?:mc2::log::)?Stream::(Err|Out|Dbg)\s*,\s*((?:"(?:\\.|[^"\\\n])*"\s*)+)')
 
 
+def normalise(literal: str) -> str:
+    """The format literal with every conversion/replacement field replaced by one placeholder character and escaped braces/percents unescaped."""
+    return _PLACEHOLDER.sub(lambda m: _LITERAL.get(m.group(0), "\x01"), literal)
+
+
 def keys_of(literal: str):
-    """Key names in order of appearance in a format literal (`key=` tokens), ignoring braces and printf conversions."""
-    return KEY.findall(literal)
+    """Key names in order of appearance in a format literal (`key=` tokens), placeholders ignored."""
+    return KEY.findall(normalise(literal))
 
 
 def record(tag, ver, stream, literal):

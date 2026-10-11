@@ -95,6 +95,7 @@ extern "C" {
 #include "../../code/sim_identity.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
+#include "mc2fmt.h"
 
 // Global-scope game-quit flag (code/mechcmd2.cpp etc.); the mission main loop polls it
 // and calls gos_TerminateApplication(). Declared here so MC2_VISUAL_CAPTURE_EXIT_AFTER
@@ -300,8 +301,8 @@ void write_sidecar(const std::string& jsonPath, const std::string& mission,
     buf += "  \"mission\": \""; esc.clear(); json_escape(mission, esc); buf += esc; buf += "\",\n";
     buf += "  \"label\": \""; esc.clear(); json_escape(label, esc); buf += esc; buf += "\",\n";
     char num[64];
-    snprintf(num, sizeof(num), "  \"frame\": %u,\n", frame); buf += num;
-    snprintf(num, sizeof(num), "  \"trigger_frame\": %ld,\n", triggerFrame); buf += num;
+    mc2::fmt::to_buf(num, "  \"frame\": {:d},\n", mc2::fmt::as_u32(frame)); buf += num;
+    mc2::fmt::to_buf(num, "  \"trigger_frame\": {:d},\n", mc2::fmt::as_i32(triggerFrame)); buf += num;
     // CAPTURE-DETERMINISM-1: `frame` above is the RENDER frame counter
     // (g_mc2FrameCounter, gameosmain.cpp) -- the counter the sweep triggers on.
     // The SIM advances on a separate counter (g_fixedSimFrame, advanced only on
@@ -311,15 +312,13 @@ void write_sidecar(const std::string& jsonPath, const std::string& mission,
     // sim steps, i.e. genuinely different sim states, while every other field
     // here matches. Record it so that divergence is visible in the artifact
     // instead of being invisible behind a matching `frame` + `deterministic`.
-    snprintf(num, sizeof(num), "  \"sim_frame\": %ld,\n",
-             (long)(SmokeMode::fixedClockSeconds() * 30.0 + 0.5)); buf += num;
+    mc2::fmt::to_buf(num, "  \"sim_frame\": {:d},\n", mc2::fmt::as_i32((long)(SmokeMode::fixedClockSeconds() * 30.0 + 0.5))); buf += num;
     buf += "  \"deterministic\": "; buf += (deterministic ? "true" : "false"); buf += ",\n";
-    snprintf(num, sizeof(num), "  \"seed\": %u,\n",
-             (unsigned)SmokeMode::state().seed); buf += num;
+    mc2::fmt::to_buf(num, "  \"seed\": {:d},\n", mc2::fmt::as_u32((unsigned)SmokeMode::state().seed)); buf += num;
     buf += "  \"preset\": \""; esc.clear();
     json_escape(SmokeMode::state().profile, esc); buf += esc; buf += "\",\n";
-    snprintf(num, sizeof(num), "  \"width\": %d,\n", w); buf += num;
-    snprintf(num, sizeof(num), "  \"height\": %d,\n", h); buf += num;
+    mc2::fmt::to_buf(num, "  \"width\": {:d},\n", mc2::fmt::as_i32(w)); buf += num;
+    mc2::fmt::to_buf(num, "  \"height\": {:d},\n", mc2::fmt::as_i32(h)); buf += num;
     buf += "  \"readback_source\": \""; buf += g_readbackSource; buf += "\",\n";
     // VK-FIRST-BOOKMARK-POSE-1: record the ACTUAL camera pose the JUST-RENDERED
     // frame used (stashed at the rendered_pose_matches point, BEFORE the per-settle
@@ -328,12 +327,10 @@ void write_sidecar(const std::string& jsonPath, const std::string& mission,
     // lacked (it only carried the bookmark LABEL, not where the camera really was):
     // it machine-verifies bookmark #1 captured at its named pose rather than the
     // scripted intro pose.
-    snprintf(num, sizeof(num),
-             "  \"cap_pos\": [%.3f, %.3f, %.3f],\n",
-             g_renderedPos.x, g_renderedPos.y, g_renderedPos.z); buf += num;
-    snprintf(num, sizeof(num), "  \"cap_proj\": %.3f,\n", g_renderedProj); buf += num;
-    snprintf(num, sizeof(num), "  \"cap_rot\": %.3f,\n", g_renderedRot); buf += num;
-    snprintf(num, sizeof(num), "  \"cap_alt\": %.3f,\n", g_renderedAlt); buf += num;
+    mc2::fmt::to_buf(num, "  \"cap_pos\": [{:.3f}, {:.3f}, {:.3f}],\n", g_renderedPos.x, g_renderedPos.y, g_renderedPos.z); buf += num;
+    mc2::fmt::to_buf(num, "  \"cap_proj\": {:.3f},\n", g_renderedProj); buf += num;
+    mc2::fmt::to_buf(num, "  \"cap_rot\": {:.3f},\n", g_renderedRot); buf += num;
+    mc2::fmt::to_buf(num, "  \"cap_alt\": {:.3f},\n", g_renderedAlt); buf += num;
     buf += "  \"gate_env\": [";
     for (size_t i = 0; i < gateEnv.size(); ++i) {
         if (i) buf += ", ";
@@ -736,7 +733,7 @@ void onPostRenderFrame(unsigned int frame, int sceneW, int sceneH) {
     }
     if (capActive && (long)frame >= trigger) {
         char base[256];
-        snprintf(base, sizeof(base), "%s_frame%u", mission.c_str(), frame);
+        mc2::fmt::to_buf(base, "{}_frame{:d}", mission.c_str(), mc2::fmt::as_u32(frame));
         capture_to(g_cap.dir, base, mission, "frame", frame, sceneW, sceneH,
                    g_cap.frame, /*deterministic=*/false);
         g_cap.done = true;
@@ -884,8 +881,7 @@ void onPostRenderFrame(unsigned int frame, int sceneW, int sceneH) {
                 c = '_';
         }
         char base[256];
-        snprintf(base, sizeof(base), "%s_%s",
-                 g_replay.mission.c_str(), safeName.c_str());
+        mc2::fmt::to_buf(base, "{}_{}", g_replay.mission.c_str(), safeName.c_str());
         capture_to(g_replay.dir, base, g_replay.mission, bm.name,
                    frame, sceneW, sceneH,
                    g_replay.triggerFrame, deterministic);

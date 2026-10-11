@@ -1,6 +1,7 @@
 // gos_terrain_indirect: dense recipe storage, recipe slot build/flush, colormap atlas and cement catalog atlas upload.
 // Declared in the class headers; shared names in gos_terrain_indirect_internal.h.
 #include "gos_terrain_indirect_internal.h"
+#include "mc2fmt.h"
 
 
 // ---------------------------------------------------------------------------
@@ -723,12 +724,12 @@ void BuildCementCatalogAtlas() {
         const char* dumpPfx = dumpPfxStr.c_str();
         if (dumpPfx[0]) {
             char pathBuf[1024];
-            snprintf(pathBuf, sizeof(pathBuf), "%s.rgba", dumpPfx);
+            mc2::fmt::to_buf(pathBuf, "{}.rgba", mc2::fmt::safe(dumpPfx));
             if (FILE* f = fopen(pathBuf, "wb")) {
                 fwrite(atlasBuf.data(), 4, atlasBuf.size(), f);
                 fclose(f);
             }
-            snprintf(pathBuf, sizeof(pathBuf), "%s.csv", dumpPfx);
+            mc2::fmt::to_buf(pathBuf, "{}.csv", mc2::fmt::safe(dumpPfx));
             if (FILE* f = fopen(pathBuf, "w")) {
                 fprintf(f, "cell,slot,is_alpha,grid_side,tile_px,atlas_px\n");
                 for (int k = 0; k < N; ++k) {

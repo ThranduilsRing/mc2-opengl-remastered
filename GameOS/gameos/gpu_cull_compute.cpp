@@ -34,6 +34,7 @@
 #include <vector>
 #include "diagnostic_trace.h"
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 // ---------------------------------------------------------------------------
 // Trace macro (env-gated, default off)
@@ -298,7 +299,7 @@ static GLuint build_cull_program(const std::string* preambles, int nPreambles,
     // Debug: dump concatenated source to file for inspection.
     if (mc2::gate::get<"MC2_GPU_CULL_DUMP_SHADER">()) {
         char fname[64];
-        snprintf(fname, sizeof(fname), "shader_dump_%s.glsl", debugName ? debugName : "unknown");
+        mc2::fmt::to_buf(fname, "shader_dump_{}.glsl", mc2::fmt::safe(debugName ? debugName : "unknown"));
         if (FILE* dumpf = fopen(fname, "w")) {
             for (int k = 0; k < (int)srcStrs.size(); ++k)
                 fputs(srcStrs[k], dumpf);
@@ -341,10 +342,7 @@ bool compute_init() {
     fflush(stdout);
     if (mc2_diag::tagEnabled("GPU_CULL")) {
         char diag_buf[128];
-        snprintf(diag_buf, sizeof(diag_buf),
-            "{\"event\":\"gl_probe\",\"version_major\":%d,\"version_minor\":%d,"
-            "\"compute\":\"%s\"}",
-            glMaj, glMin, computeOk ? "ok" : "fail");
+        mc2::fmt::to_buf(diag_buf, "{{\"event\":\"gl_probe\",\"version_major\":{:d},\"version_minor\":{:d},\"compute\":\"{}\"}}", mc2::fmt::as_i32(glMaj), mc2::fmt::as_i32(glMin), mc2::fmt::safe(computeOk ? "ok" : "fail"));
         mc2_diag::writeEvent("GPU_CULL", 1, 0, diag_buf);
     }
     if (!computeOk) {
@@ -395,8 +393,7 @@ bool compute_init() {
             fflush(stdout);
             if (mc2_diag::tagEnabled("GPU_CULL")) {
                 char diag_buf[64];
-                snprintf(diag_buf, sizeof(diag_buf),
-                    "{\"event\":\"c1b_cull_ok\",\"c2_readback\":%d}", (int)(nPreambles >= 2));
+                mc2::fmt::to_buf(diag_buf, "{{\"event\":\"c1b_cull_ok\",\"c2_readback\":{:d}}}", mc2::fmt::as_i32((int)(nPreambles >= 2)));
                 mc2_diag::writeEvent("GPU_CULL", 1, 0, diag_buf);
             }
         }
@@ -493,10 +490,7 @@ bool compute_init() {
     fflush(stdout);
     if (mc2_diag::tagEnabled("GPU_CULL")) {
         char diag_buf[128];
-        snprintf(diag_buf, sizeof(diag_buf),
-            "{\"event\":\"compute_selftest\",\"result\":\"ok\","
-            "\"maxActors\":%u,\"debugSsboBytes\":%lld}",
-            s_maxActors, (long long)debugSsboBytes);
+        mc2::fmt::to_buf(diag_buf, "{{\"event\":\"compute_selftest\",\"result\":\"ok\",\"maxActors\":{:d},\"debugSsboBytes\":{:d}}}", mc2::fmt::as_u32(s_maxActors), mc2::fmt::as_i64((long long)debugSsboBytes));
         mc2_diag::writeEvent("GPU_CULL", 1, 0, diag_buf);
     }
     return true;

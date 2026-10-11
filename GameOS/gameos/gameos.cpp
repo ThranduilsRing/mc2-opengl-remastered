@@ -33,6 +33,7 @@
 #include "det_rng.h"          // DETERMINISTIC-RNG-1: GL-free LCG kernel
 #include "diagnostic_trace.h" // DETERMINISTIC-RNG-1: optional "RNG" JSONL trace
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 void __stdcall AddDebuggerMenuItem(char const*, bool (__stdcall *)(), void (__stdcall *)(), bool (__stdcall *)(), DWORD (__stdcall *)(char const*, DWORD))
@@ -313,7 +314,7 @@ int __stdcall gos_rand()
 #ifdef MC2_RNG_TRACE
         if (mc2_diag::tagEnabled("RNG")) {
             char buf[48];
-            snprintf(buf, sizeof(buf), "{\"v\":%d}", result);
+            mc2::fmt::to_buf(buf, "{{\"v\":{:d}}}", mc2::fmt::as_i32(result));
             mc2_diag::writeEvent("RNG", 1, 0, buf);
         }
 #endif
@@ -557,7 +558,7 @@ void __stdcall gos_LoadDataFromRegistry( const char* keyName, void* pData, DWORD
 
     const char* config_dir = getenv("XDG_CONFIG_HOME");
     if(config_dir == nullptr) {
-        sprintf(cfg_dir, "%s/%s", home_dir, g_user_base_config_dir);
+        mc2::fmt::to_buf(cfg_dir, "{}/{}", mc2::fmt::safe(home_dir), mc2::fmt::safe(g_user_base_config_dir));
     } else {
         strncpy(cfg_dir, config_dir, 1023);
         cfg_dir[cfg_dir_size-1] = '\0';

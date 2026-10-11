@@ -22,13 +22,24 @@ def test_explicit_size_keeps_the_size_and_uses_to_buf_n():
     assert 'mc2::fmt::to_buf_n(buf, 256, "<{}>", mc2::fmt::safe(p));' in out
 
 
-def test_sprintf_gets_the_array_bound():
-    out, _, _ = conv('#include <a.h>\nvoid f(){ sprintf(date, "%02d/%02d/%04d", d, m, y); }\n')
+def test_sprintf_gets_the_array_bound_only_when_the_array_is_visible():
+    out, _, _ = conv('#include <a.h>\nvoid f(){ char date[16]; sprintf(date, "%02d/%02d/%04d", d, m, y); }\n')
     assert 'mc2::fmt::to_buf(date, "{:02d}/{:02d}/{:04d}"' in out
+    src = '#include <a.h>\nvoid f(){ char* date = new char[16]; sprintf(date, "%d", d); }\n'
+    assert conv(src)[0] == src and "visible char array" in conv(src)[2][0][1]
+    src = '#include <a.h>\nvoid f(char date[16]){ sprintf(date, "%d", d); }\n'          # a parameter array is a pointer
+    assert conv(src)[0] == src
+    src = '#include <a.h>\nchar date[16];\nvoid f(){ char* date = p; sprintf(date, "%d", d); }\n'     # shadowed by a pointer
+    assert conv(src)[0] == src
+
+
+def test_sizeof_of_a_non_array_keeps_the_size_in_to_buf_n():
+    out, _, _ = conv('#include <a.h>\nvoid f(char* b){ snprintf(b, sizeof(b), "%d", v); }\n')
+    assert 'mc2::fmt::to_buf_n(b, sizeof(b), "{:d}", mc2::fmt::as_i32(v));' in out
 
 
 def test_snprintf_s_truncate_statement_form_only():
-    out, _, _ = conv('#include <a.h>\nvoid f(){ _snprintf_s(n, sizeof(n), _TRUNCATE, "%ld", v); int k = _snprintf_s(n, 8, _TRUNCATE, "%d", v); }\n')
+    out, _, _ = conv('#include <a.h>\nvoid f(){ char n[8]; _snprintf_s(n, sizeof(n), _TRUNCATE, "%ld", v); int k = _snprintf_s(n, 8, _TRUNCATE, "%d", v); }\n')
     assert 'mc2::fmt::to_buf(n, "{:d}", mc2::fmt::as_i32(v));' in out
     assert "int k = _snprintf_s" in out                      # value used: left alone
 
@@ -83,3 +94,10 @@ def test_idempotent():
 def test_float_default_precision_and_wrong_type_args_are_compiler_findings_not_casts():
     out, _, _ = conv('#include <a.h>\nvoid f(){ snprintf(b, 64, "%f|%e|%g", x, y, z); }\n')
     assert '"{:f}|{:e}|{:g}", x, y, z)' in out         # no cast: an int passed to %f must fail to compile
+
+
+def test_include_precedes_the_first_converted_call_even_when_more_includes_follow_the_code():
+    src = '#include <a.h>\nvoid f(){ snprintf(b, 8, "%d", v); }\n#include "late.cpp"\n'
+    out, _, _ = conv(src)
+    assert out.index('#include "mc2fmt.h"') < out.index("void f()") and out.count("mc2fmt.h") == 1
+    assert conv('void f(){ snprintf(b, 8, "%d", v); }\n#include "late.cpp"\n')[0] == 'void f(){ snprintf(b, 8, "%d", v); }\n#include "late.cpp"\n'

@@ -146,6 +146,22 @@ def translate_format(lit: str, args: list):
     return "".join(out), wrapped, specs
 
 
+def array_declared(text: str, name: str, pos: int) -> bool:
+    """True when the nearest declaration of `name` before `pos` is `char name[...]` of a local, member or file-scope array (not a parameter,
+    whose array type decays to a pointer). Textual, so it only ever answers True when it can see the declaration."""
+    if not re.fullmatch(r"[A-Za-z_]\w*", name):
+        return False
+    last = None
+    for m in re.finditer(r"\b(?:unsigned\s+|signed\s+)?char\s+(?:\w+\s+)*" + re.escape(name) + r"\s*\[[^\]]*\]\s*([;={,)])", text[:pos]):
+        last = m
+    if last is None or last.group(1) in (",", ")"):
+        return False
+    ptr = None
+    for m in re.finditer(r"\b(?:const\s+)?(?:unsigned\s+|signed\s+)?char\s*\*+\s*(?:const\s+)?" + re.escape(name) + r"\b", text[:pos]):
+        ptr = m
+    return ptr is None or ptr.start() < last.start()
+
+
 def _convert_call(text: str, call):
     """-> (replacement text, record) for one call, or raises Bail."""
     args = [call.arg_text(text, i) for i in range(len(call.args))]
@@ -173,8 +189,13 @@ def _convert_call(text: str, call):
     if lit is None:
         raise Bail("format is not a string literal")
     new_fmt, wrapped, specs = translate_format(lit, rest)
-    if size is not None and re.fullmatch(r"sizeof\s*\(?\s*%s\s*\)?" % re.escape(dest.strip()), size.strip()):
+    is_array = array_declared(text, dest.strip(), call.start)
+    if size is not None and re.fullmatch(r"sizeof\s*\(?\s*%s\s*\)?" % re.escape(dest.strip()), size.strip()) and is_array:
         size = None             # the bound is the array's own extent
+    if size is None and not is_array:
+        if name != "sprintf":
+            raise Bail("internal: size lost")
+        raise Bail("sprintf destination is not a visible char array")
     if size is None:
         call_text = f"mc2::fmt::to_buf({dest}, \"{new_fmt}\"" + "".join(", " + w for w in wrapped) + ")"
     else:
@@ -182,10 +203,13 @@ def _convert_call(text: str, call):
     return call_text, {"func": name, "old": lit, "new": new_fmt, "specs": specs}
 
 
-def _include_insertion_point(text: str):
-    """Offset to insert `#include "mc2fmt.h"`: after the last top-level #include, or None when the file has none."""
+def _include_insertion_point(text: str, before: int):
+    """Offset to insert `#include "mc2fmt.h"`: after the last top-level #include that precedes offset `before` (the first converted call),
+    or None when there is none. A file may include more headers (even .cpp pieces) after code; those come too late."""
     depth, last = 0, None
     for m in re.finditer(r"^[ \t]*#[ \t]*(if|ifdef|ifndef|endif|include)\b[^\n]*\n?", text, re.M):
+        if m.start() >= before:
+            break
         kind = m.group(1)
         if kind in ("if", "ifdef", "ifndef"):
             depth += 1
@@ -215,7 +239,7 @@ def convert(text: str):
     for a, b, r in sorted(edits, reverse=True):
         out = out[:a] + r + out[b:]
     if "mc2fmt.h" not in out:
-        at = _include_insertion_point(out)
+        at = _include_insertion_point(out, min(a for a, _b, _r in edits))
         if at is None:
             return text, [], left + [(0, "no #include to anchor mc2fmt.h on")]
         nl = "\r\n" if "\r\n" in out[:at + 2] or "\r\n" in out[:2000] else "\n"

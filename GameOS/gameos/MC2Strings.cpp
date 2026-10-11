@@ -33,6 +33,7 @@
 #include <vector>
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
+#include "mc2fmt.h"
 
 // Forward-declare mod file enumeration from mclib/file.cpp.
 // MC2Strings must not pull in all of file.h; this thin seam is intentional.
@@ -791,7 +792,7 @@ namespace
 #ifdef _MSC_VER
         _snprintf_s(buffer, 256, _TRUNCATE, "<missing-string:%s:%s>", prefix ? prefix : "unknown", value ? value : "");
 #else
-        snprintf(buffer, 256, "<missing-string:%s:%s>", prefix ? prefix : "unknown", value ? value : "");
+        mc2::fmt::to_buf_n(buffer, 256, "<missing-string:{}:{}>", mc2::fmt::safe(prefix ? prefix : "unknown"), mc2::fmt::safe(value ? value : ""));
 #endif
 
         buffer[255] = 0;
@@ -804,7 +805,7 @@ namespace
 #ifdef _MSC_VER
         _snprintf_s(number, sizeof(number), _TRUNCATE, "%ld", value);
 #else
-        snprintf(number, sizeof(number), "%ld", value);
+        mc2::fmt::to_buf(number, "{:d}", mc2::fmt::as_i32(value));
 #endif
         if ( mc2::gate::get<"MC2_LOG_STRINGS">() )
         {
@@ -984,10 +985,10 @@ namespace MC2Strings
         char command[32] = {0};
 #ifdef _MSC_VER
         _snprintf_s(menu, sizeof(menu), _TRUNCATE, "%u", menuId);
-        _snprintf_s(command, sizeof(command), _TRUNCATE, "%u", commandId);
+        mc2::fmt::to_buf(command, "{:d}", mc2::fmt::as_u32(commandId));
 #else
-        snprintf(menu, sizeof(menu), "%u", menuId);
-        snprintf(command, sizeof(command), "%u", commandId);
+        mc2::fmt::to_buf(menu, "{:d}", mc2::fmt::as_u32(menuId));
+        mc2::fmt::to_buf(command, "{:d}", mc2::fmt::as_u32(commandId));
 #endif
         return GetMenuText(menu, command);
     }

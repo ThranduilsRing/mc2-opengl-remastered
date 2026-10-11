@@ -9,6 +9,7 @@
 #include <cstdio>
 #include <cassert>
 #include <cstring>
+#include "mc2fmt.h"
 
 namespace logging {
 
@@ -26,9 +27,9 @@ void logmsg(eLogCategory lc, const char* file, int line, const char* fmt, ...)
 
 // to support jump to error
 #ifdef PLATFORM_WINDOWS
-	sprintf(text, "%s(%d): %s: ", file, line, msgs[lc]);
+	mc2::fmt::to_buf(text, "{}({:d}): {}: ", mc2::fmt::safe(file), mc2::fmt::as_i32(line), mc2::fmt::safe(msgs[lc]));
 #else
-	sprintf(text, "%s:%d: %s: ", file, line, msgs[lc]);
+	mc2::fmt::to_buf(text, "{}:{:d}: {}: ", mc2::fmt::safe(file), mc2::fmt::as_i32(line), mc2::fmt::safe(msgs[lc]));
 #endif
 	size_t hdr_len = strlen(text);
 

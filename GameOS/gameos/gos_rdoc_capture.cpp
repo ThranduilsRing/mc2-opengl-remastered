@@ -11,6 +11,7 @@
 #include <string>
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
+#include "mc2fmt.h"
 
 #if defined(_WIN32)
 #  ifndef WIN32_LEAN_AND_MEAN
@@ -84,7 +85,7 @@ std::string expandCaptureTemplate(const char* raw) {
     if (!mission.empty()) replaceAll("{mission}", mission);
 
     char frameBuf[32];
-    std::snprintf(frameBuf, sizeof(frameBuf), "%d", s_state.captureFrame);
+    mc2::fmt::to_buf(frameBuf, "{:d}", mc2::fmt::as_i32(s_state.captureFrame));
     replaceAll("{frame}", frameBuf);
 
     if (out.find('{') != std::string::npos ||

@@ -1,6 +1,7 @@
 // GpuStaticPropRegistry: the persistent-store rebuild and the post-loop phases of flush() -- store reinject, the
 // diagnostic summaries and the cull-record version bump. The orchestrator is in gos_static_prop_registry.cpp.
 #include "gos_static_prop_registry_internal.h"
+#include "mc2fmt.h"
 
 namespace GpuStaticPropRegistry {
 
@@ -255,31 +256,7 @@ void flushSpflushWindow() {
             fflush(stderr);
             if (mc2_diag::tagEnabled("SPFLUSH_COST_SPLIT")) {
                 char diag_buf[2048];
-                snprintf(diag_buf, sizeof(diag_buf),
-                    "{\"event\":\"summary\",\"frame\":%u,\"window_frames\":%d,"
-                    "\"leaves\":%lld,\"ranges\":%lld,"
-                    "\"submit_loop_ns\":%lld,\"inst_build_ns\":%lld,"
-                    "\"map_lookup_ns\":%lld,\"color_fill_ns\":%lld,"
-                    "\"actor_record_ns\":%lld,\"world_to_block_ns\":%lld,"
-                    "\"substrate_append_ns\":%lld,\"baseinstance_upload_ns\":%lld,"
-                    "\"cached_total_ns\":%lld,\"cached_submit_ns\":%lld,\"cached_records_ns\":%lld,"
-                    "\"win_cache_builds\":%lld,\"win_cache_hits\":%lld,"
-                    "\"win_invalidates\":%llu,\"win_registrations\":%llu,"
-                    "\"win_recipe_rebuilds\":%llu,"
-                    "\"tot_invalidates\":%llu,\"tot_registrations\":%llu,"
-                    "\"tot_recipe_rebuilds\":%llu}",
-                    g_mc2FrameCounter, s_spflushWindowFrames,
-                    leaves_pf, ranges_pf,
-                    cyc2ns(s_w_submit_loop_total_cyc), cyc2ns(s_w_inst_build_cyc),
-                    cyc2ns(map_lookup_cyc), cyc2ns(color_fill_cyc),
-                    cyc2ns(s_w_actor_record_build_cyc), cyc2ns(s_w_world_to_block_idx_cyc),
-                    cyc2ns(s_w_substrate_append_cyc), cyc2ns(bi_upload_cyc),
-                    cyc2ns(s_w_cached_total_cyc), cyc2ns(s_w_cached_submit_cyc),
-                    cyc2ns(s_w_cached_records_cyc),
-                    static_cast<long long>(s_win_cache_builds / static_cast<unsigned long long>(s_spflushWindowFrames)),
-                    static_cast<long long>(s_win_cache_hits   / static_cast<unsigned long long>(s_spflushWindowFrames)),
-                    s_win_invalidates, s_win_registrations, win_recipe_rebuilds,
-                    s_total_invalidates, s_total_registrations, tot_recipe_rebuilds);
+                mc2::fmt::to_buf(diag_buf, "{{\"event\":\"summary\",\"frame\":{:d},\"window_frames\":{:d},\"leaves\":{:d},\"ranges\":{:d},\"submit_loop_ns\":{:d},\"inst_build_ns\":{:d},\"map_lookup_ns\":{:d},\"color_fill_ns\":{:d},\"actor_record_ns\":{:d},\"world_to_block_ns\":{:d},\"substrate_append_ns\":{:d},\"baseinstance_upload_ns\":{:d},\"cached_total_ns\":{:d},\"cached_submit_ns\":{:d},\"cached_records_ns\":{:d},\"win_cache_builds\":{:d},\"win_cache_hits\":{:d},\"win_invalidates\":{:d},\"win_registrations\":{:d},\"win_recipe_rebuilds\":{:d},\"tot_invalidates\":{:d},\"tot_registrations\":{:d},\"tot_recipe_rebuilds\":{:d}}}", mc2::fmt::as_u32(g_mc2FrameCounter), mc2::fmt::as_i32(s_spflushWindowFrames), mc2::fmt::as_i64(leaves_pf), mc2::fmt::as_i64(ranges_pf), mc2::fmt::as_i64(cyc2ns(s_w_submit_loop_total_cyc)), mc2::fmt::as_i64(cyc2ns(s_w_inst_build_cyc)), mc2::fmt::as_i64(cyc2ns(map_lookup_cyc)), mc2::fmt::as_i64(cyc2ns(color_fill_cyc)), mc2::fmt::as_i64(cyc2ns(s_w_actor_record_build_cyc)), mc2::fmt::as_i64(cyc2ns(s_w_world_to_block_idx_cyc)), mc2::fmt::as_i64(cyc2ns(s_w_substrate_append_cyc)), mc2::fmt::as_i64(cyc2ns(bi_upload_cyc)), mc2::fmt::as_i64(cyc2ns(s_w_cached_total_cyc)), mc2::fmt::as_i64(cyc2ns(s_w_cached_submit_cyc)), mc2::fmt::as_i64(cyc2ns(s_w_cached_records_cyc)), mc2::fmt::as_i64(static_cast<long long>(s_win_cache_builds / static_cast<unsigned long long>(s_spflushWindowFrames))), mc2::fmt::as_i64(static_cast<long long>(s_win_cache_hits   / static_cast<unsigned long long>(s_spflushWindowFrames))), mc2::fmt::as_u64(s_win_invalidates), mc2::fmt::as_u64(s_win_registrations), mc2::fmt::as_u64(win_recipe_rebuilds), mc2::fmt::as_u64(s_total_invalidates), mc2::fmt::as_u64(s_total_registrations), mc2::fmt::as_u64(tot_recipe_rebuilds));
                 mc2_diag::writeEvent("SPFLUSH_COST_SPLIT", 1, g_mc2FrameCounter, diag_buf);
             }
             // Reset window accumulators.

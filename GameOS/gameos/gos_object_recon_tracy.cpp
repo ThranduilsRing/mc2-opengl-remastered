@@ -26,6 +26,7 @@
 #include <cstdlib>
 #include <cstring>
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 extern "C" void crashbundle_append(const char* line); // mclib/tgl.cpp helper
 
@@ -66,23 +67,7 @@ namespace {
 
     void emitLine(const char* tag, uint32_t frame, const Counters& c) {
         char buf[1024];
-        std::snprintf(buf, sizeof(buf),
-            "[OBJECT_RECON v1] %s=%u "
-            "bldg_update={ns:%llu,calls:%llu} "
-            "tree_update={ns:%llu,calls:%llu} "
-            "generic_update={ns:%llu,calls:%llu} "
-            "mShape={ns:%llu,calls:%llu} "
-            "shape={ns:%llu,calls:%llu,"
-            "alloc:%llu,xform:%llu,vlight:%llu,flight:%llu,emit:%llu}",
-            tag, (unsigned)frame,
-            (unsigned long long)c.bldg_update_ns,    (unsigned long long)c.bldg_update_calls,
-            (unsigned long long)c.tree_update_ns,    (unsigned long long)c.tree_update_calls,
-            (unsigned long long)c.generic_update_ns, (unsigned long long)c.generic_update_calls,
-            (unsigned long long)c.mShape_total_ns,   (unsigned long long)c.mShape_calls,
-            (unsigned long long)c.shape_total_ns,    (unsigned long long)c.shape_calls,
-            (unsigned long long)c.shape_alloc_ns,    (unsigned long long)c.shape_xform_ns,
-            (unsigned long long)c.shape_vlight_ns,   (unsigned long long)c.shape_flight_ns,
-            (unsigned long long)c.shape_emit_ns);
+        mc2::fmt::to_buf(buf, "[OBJECT_RECON v1] {}={:d} bldg_update={{ns:{:d},calls:{:d}}} tree_update={{ns:{:d},calls:{:d}}} generic_update={{ns:{:d},calls:{:d}}} mShape={{ns:{:d},calls:{:d}}} shape={{ns:{:d},calls:{:d},alloc:{:d},xform:{:d},vlight:{:d},flight:{:d},emit:{:d}}}", mc2::fmt::safe(tag), mc2::fmt::as_u32((unsigned)frame), mc2::fmt::as_u64((unsigned long long)c.bldg_update_ns), mc2::fmt::as_u64((unsigned long long)c.bldg_update_calls), mc2::fmt::as_u64((unsigned long long)c.tree_update_ns), mc2::fmt::as_u64((unsigned long long)c.tree_update_calls), mc2::fmt::as_u64((unsigned long long)c.generic_update_ns), mc2::fmt::as_u64((unsigned long long)c.generic_update_calls), mc2::fmt::as_u64((unsigned long long)c.mShape_total_ns), mc2::fmt::as_u64((unsigned long long)c.mShape_calls), mc2::fmt::as_u64((unsigned long long)c.shape_total_ns), mc2::fmt::as_u64((unsigned long long)c.shape_calls), mc2::fmt::as_u64((unsigned long long)c.shape_alloc_ns), mc2::fmt::as_u64((unsigned long long)c.shape_xform_ns), mc2::fmt::as_u64((unsigned long long)c.shape_vlight_ns), mc2::fmt::as_u64((unsigned long long)c.shape_flight_ns), mc2::fmt::as_u64((unsigned long long)c.shape_emit_ns));
         std::puts(buf);
         crashbundle_append(buf);
         std::fflush(stdout);

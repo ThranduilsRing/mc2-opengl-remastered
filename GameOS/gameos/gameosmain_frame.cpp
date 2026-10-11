@@ -1,6 +1,7 @@
 // main: the per-frame helpers -- draw-packet emit, the screenshot oracle, the load-race probes, the camera park and the swap.
 // The orchestrator is in gameosmain.cpp.
 #include "gameosmain_internal.h"
+#include "mc2fmt.h"
 
 
 // Throttle while the window is invisible, then run the game logic and the event pumps.
@@ -865,10 +866,7 @@ void frameSwapWindow(graphics::RenderWindowHandle win) {
                 if (s_hb_last_ms == 0) s_hb_last_ms = now_ms;
                 if (now_ms - s_hb_last_ms >= 1000) {
                     char _cbbuf[192];
-                    snprintf(_cbbuf, sizeof(_cbbuf),
-                        "[HEARTBEAT] frames=%d elapsed_ms=%llu fps=%.1f",
-                        s_hb_frame, (unsigned long long)(now_ms - s_hb_last_ms),
-                        (double)s_hb_frame * 1000.0 / (double)(now_ms - s_hb_last_ms));
+                    mc2::fmt::to_buf(_cbbuf, "[HEARTBEAT] frames={:d} elapsed_ms={:d} fps={:.1f}", mc2::fmt::as_i32(s_hb_frame), mc2::fmt::as_u64((unsigned long long)(now_ms - s_hb_last_ms)), (double)s_hb_frame * 1000.0 / (double)(now_ms - s_hb_last_ms));
                     fprintf(stderr, "%s\n", _cbbuf);
                     crashbundle_append(_cbbuf);
                     fflush(stderr);

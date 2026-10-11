@@ -1,6 +1,7 @@
 // gameos_graphics: terrain uniform binding for the patch stream, the lighting debug view and the terrain, lighting, night and material setters and getters.
 // Declared in the class headers; shared names in gameos_graphics_material_internal.h.
 #include "gameos_graphics_material_internal.h"
+#include "mc2fmt.h"
 
 
 // TERRAIN-MATERIAL-LIB-1: default OFF. Drives u_useMaterialLib (chunk-path
@@ -197,9 +198,7 @@ void gosRenderer::terrainBindUniformsForPatchStream(gosRenderMaterial* material)
             if (s_magentaTrace && halfExt != s_lastHalfExt && mc2_diag::tagEnabled("OVERLAY_MAGENTA")) {
                 s_lastHalfExt = halfExt;
                 char _mg_buf[160];
-                snprintf(_mg_buf, sizeof(_mg_buf),
-                         "{\"site\":\"map_half_extent\",\"value\":%.1f,\"guard_fail\":%d}",
-                         halfExt, (halfExt <= 0.0f) ? 1 : 0);
+                mc2::fmt::to_buf(_mg_buf, "{{\"site\":\"map_half_extent\",\"value\":{:.1f},\"guard_fail\":{:d}}}", halfExt, mc2::fmt::as_i32((halfExt <= 0.0f) ? 1 : 0));
                 mc2_diag::writeEvent("OVERLAY_MAGENTA", 1, 0, _mg_buf);
             }
         }

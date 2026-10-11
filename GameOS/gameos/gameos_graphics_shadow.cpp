@@ -1,6 +1,7 @@
 // gameos_graphics: shadow-pass state tracing, the static and dynamic shadow passes, gos_SetupObjectShadows and the shadow wrappers.
 // Declared in the class headers; shared names in gameos_graphics_material_internal.h.
 #include "gameos_graphics_material_internal.h"
+#include "mc2fmt.h"
 
 //
 // Trace is gated on MC2_SHADOW_STATE_TRACE=1: default OFF = zero lines, and the
@@ -123,7 +124,7 @@ static void traceShadowPass(const char* passName,
     if (includeBldgCounts) {
         int t=0,i=0,d=0;
         gos_GetStaticBuildingShadowCounts(t, i, d);
-        snprintf(bldg, sizeof(bldg), " bldg=%d/%d/%d(types/inst/draws)", t, i, d);
+        mc2::fmt::to_buf(bldg, " bldg={:d}/{:d}/{:d}(types/inst/draws)", mc2::fmt::as_i32(t), mc2::fmt::as_i32(i), mc2::fmt::as_i32(d));
     }
     fprintf(stderr,
         "[SHADOW_STATE v1] pass=%s fbo=%d vp=%d,%d,%d,%d clearDepth=%g "

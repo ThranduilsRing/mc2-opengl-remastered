@@ -5,6 +5,7 @@
 
 
 #include "gameos_graphics_material_internal.h"
+#include "mc2fmt.h"
 
 
 
@@ -113,8 +114,7 @@ std::string mc2TerrainShadowSunDefine() {
     const float deg = mc2ShadowMinSunAltDeg();
     if (deg <= 0.0f) return std::string();
     char buf[80];
-    snprintf(buf, sizeof(buf), "#define MC2_SHADOW_MIN_SUN_SIN %.8f\n",
-             (double)sinf(deg * 0.01745329252f));
+    mc2::fmt::to_buf(buf, "#define MC2_SHADOW_MIN_SUN_SIN {:.8f}\n", (double)sinf(deg * 0.01745329252f));
     return std::string(buf);
 }
 
@@ -125,9 +125,9 @@ Mc2ShadowFadeKnobs mc2ShadowFadeKnobs() {
     Mc2ShadowFadeKnobs k{};
     char buf[64];
     if (mc2ShadowDistFadeWu() > 0.0f) {
-        snprintf(buf, sizeof(buf), "%.1f", (double)mc2ShadowDistFadeWu());
+        mc2::fmt::to_buf(buf, "{:.1f}", (double)mc2ShadowDistFadeWu());
         k.distFadeWu = (float)atof(buf);
-        snprintf(buf, sizeof(buf), "%.2f", (double)mc2ShadowDistFadeMax());
+        mc2::fmt::to_buf(buf, "{:.2f}", (double)mc2ShadowDistFadeMax());
         k.distFadeMax = (float)atof(buf);
         k.flags |= mc2ShadowFadeCont()  ? 1 : 0;
         k.flags |= mc2ShadowFadeRamp0() ? 2 : 0;
@@ -136,7 +136,7 @@ Mc2ShadowFadeKnobs mc2ShadowFadeKnobs() {
     if (mc2TerrainShadowGuardClampedSun()) {
         const float deg = mc2ShadowMinSunAltDeg();
         if (deg > 0.0f) {
-            snprintf(buf, sizeof(buf), "%.8f", (double)sinf(deg * 0.01745329252f));
+            mc2::fmt::to_buf(buf, "{:.8f}", (double)sinf(deg * 0.01745329252f));
             k.minSunSin = (float)atof(buf);
         }
     }
@@ -634,25 +634,14 @@ void gosRenderer::init() {
         std::string overlayPrefix = "#version 430\n";
         if (mc2ShadowCsmEnabled()) {
             char csmDef[64];
-            snprintf(csmDef, sizeof(csmDef),
-                     "#define MC2_SHADOW_CSM 1\n#define MC2_SHADOW_CSM_MAX %d\n",
-                     mc2ShadowCsmCount());
+            mc2::fmt::to_buf(csmDef, "#define MC2_SHADOW_CSM 1\n#define MC2_SHADOW_CSM_MAX {:d}\n", mc2::fmt::as_i32(mc2ShadowCsmCount()));
             overlayPrefix.append(csmDef);
         }
         // SHADOW-DIST-FADE-1: same define the terrain/material sites inject
         // (overlay + decal receive dynamic shadows too -- keep in lockstep).
         if (mc2ShadowDistFadeWu() > 0.0f) {
             char fadeDef[240];
-            snprintf(fadeDef, sizeof(fadeDef),
-                     "#define MC2_SHADOW_DIST_FADE_WU %.1f\n"
-                     "#define MC2_SHADOW_DIST_FADE_MAX_F %.2f\n"
-                         "#define MC2_SHADOW_FADE_CONT_F %d\n"
-                     "#define MC2_SHADOW_FADE_RAMP0_F %d\n"
-                     "#define MC2_SHADOW_ALT_SCALE_F %d\n",
-                     mc2ShadowDistFadeWu(), mc2ShadowDistFadeMax(),
-                     mc2ShadowFadeCont() ? 1 : 0,
-                     mc2ShadowFadeRamp0() ? 1 : 0,
-                     mc2ShadowAltScale() ? 1 : 0);
+            mc2::fmt::to_buf(fadeDef, "#define MC2_SHADOW_DIST_FADE_WU {:.1f}\n#define MC2_SHADOW_DIST_FADE_MAX_F {:.2f}\n#define MC2_SHADOW_FADE_CONT_F {:d}\n#define MC2_SHADOW_FADE_RAMP0_F {:d}\n#define MC2_SHADOW_ALT_SCALE_F {:d}\n", mc2ShadowDistFadeWu(), mc2ShadowDistFadeMax(), mc2::fmt::as_i32(mc2ShadowFadeCont() ? 1 : 0), mc2::fmt::as_i32(mc2ShadowFadeRamp0() ? 1 : 0), mc2::fmt::as_i32(mc2ShadowAltScale() ? 1 : 0));
             overlayPrefix.append(fadeDef);
         }
         overlayPrefix.append(mc2TerrainShadowSunDefine());   // TERRAIN-SHADOW-GUARD-1
@@ -811,14 +800,14 @@ static void mc2AuditDiagSink(const char* line) {
         unsigned char c = (unsigned char)*p;
         if (c == '"' || c == '\\') { esc[o++] = '\\'; esc[o++] = (char)c; }
         else if (c < 0x20) {
-            o += (size_t)snprintf(esc + o, sizeof(esc) - o, "\\u%04x", (unsigned)c);
+            o += (size_t)mc2::fmt::to_buf_n(esc + o, sizeof(esc) - o, "\\u{:04x}", mc2::fmt::as_u32((unsigned)c));
         } else {
             esc[o++] = (char)c;
         }
     }
     esc[o] = '\0';
     char buf[1200];
-    snprintf(buf, sizeof(buf), "{\"line\":\"%s\"}", esc);
+    mc2::fmt::to_buf(buf, "{{\"line\":\"{}\"}}", mc2::fmt::safe(esc));
     mc2_diag::writeEvent("AUDIT", 1, 0, buf);
 }
 
@@ -859,15 +848,7 @@ void gos_CreateRenderer(graphics::RenderContextHandle ctx_h, graphics::RenderWin
         const char* version  = reinterpret_cast<const char*>(glGetString(GL_VERSION));
         const char* glsl     = reinterpret_cast<const char*>(glGetString(GL_SHADING_LANGUAGE_VERSION));
         char buf[1024];
-        snprintf(buf, sizeof(buf),
-            "{\"gl_vendor\":\"%s\","
-            "\"gl_renderer\":\"%s\","
-            "\"gl_version\":\"%s\","
-            "\"glsl_version\":\"%s\"}",
-            vendor   ? vendor   : "<unavailable>",
-            renderer ? renderer : "<unavailable>",
-            version  ? version  : "<unavailable>",
-            glsl     ? glsl     : "<unavailable>");
+        mc2::fmt::to_buf(buf, "{{\"gl_vendor\":\"{}\",\"gl_renderer\":\"{}\",\"gl_version\":\"{}\",\"glsl_version\":\"{}\"}}", mc2::fmt::safe(vendor   ? vendor   : "<unavailable>"), mc2::fmt::safe(renderer ? renderer : "<unavailable>"), mc2::fmt::safe(version  ? version  : "<unavailable>"), mc2::fmt::safe(glsl     ? glsl     : "<unavailable>"));
         mc2_diag::writeEvent("DEVICE", 1, 0, buf);
     }
 }

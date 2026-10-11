@@ -6762,7 +6762,6 @@
    "ver": 1,
    "stream": "buffer",
    "keys": [
-    "s",
     "bldg_update",
     "tree_update",
     "generic_update",
@@ -10258,10 +10257,7 @@
    "stream": "stdout",
    "keys": [
     "side",
-    "samples",
-    "visual",
-    "material",
-    "water"
+    "samples"
    ],
    "count": 1
   },

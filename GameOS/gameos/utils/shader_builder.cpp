@@ -23,6 +23,7 @@
 #include "utils/file_utils.h"
 #include "gos_profiler.h"
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 
 std::map<std::string, glsl_shader*> glsl_shader::s_shaders[glsl_shader::NUM_SHADER_TYPES];
@@ -220,8 +221,7 @@ const char* glsl_load(const char* fname, size_t* out_size = nullptr)
         size -= 3;
         fprintf(stderr, "[shader_builder] WARN: stripped UTF-8 BOM from %s\n", fname);
         char evJson[512];
-        snprintf(evJson, sizeof(evJson),
-            "{\"event\":\"bom_stripped\",\"path\":\"%s\"}", fname);
+        mc2::fmt::to_buf(evJson, "{{\"event\":\"bom_stripped\",\"path\":\"{}\"}}", mc2::fmt::safe(fname));
         mc2_diag::writeEvent("SHADER_COMPILE", 1, 0, evJson);
     }
 
@@ -278,7 +278,7 @@ size_t get_num_lines(const char* text)
 void append_line_directive(std::string& code, size_t line, const char* fname)
 {
     char buf[512];
-    snprintf(buf, sizeof(buf), "#line %zu // %s\n", line, fname);
+    mc2::fmt::to_buf(buf, "#line {:d} // {}\n", mc2::fmt::as_size(line), mc2::fmt::safe(fname));
     buf[510] = '\n'; // just in case our snprintf'ed line will be more than 512
     code.append(buf);
 }
@@ -656,13 +656,13 @@ glsl_shader* glsl_shader::makeShader(Shader_t stype, const char* fname, const ch
     glsl_shader* pshader = new glsl_shader();
 
     char unique_id[256] = {0};
-    snprintf(unique_id, 256, "%s_%p", fname, pshader);
+    mc2::fmt::to_buf_n(unique_id, 256, "{}_{:016X}", mc2::fmt::safe(fname), mc2::fmt::as_ptr(pshader));
     std::string uid = &unique_id[0];
 
 #define DUMP_SHADER_PREPROCESSED_FILES 1
 #if DUMP_SHADER_PREPROCESSED_FILES
     char dump_name[256] = {0};
-    snprintf(dump_name, 256, "./dump/%s.glsl", uid.c_str());
+    mc2::fmt::to_buf_n(dump_name, 256, "./dump/{}.glsl", uid.c_str());
     FILE* f = fopen(dump_name, "w");
     if(f) {
         fwrite(shader_source.c_str(), shader_source.size(), 1, f);

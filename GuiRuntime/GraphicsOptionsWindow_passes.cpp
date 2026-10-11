@@ -2,6 +2,7 @@
 // Declared in GraphicsOptionsWindow_internal.h.
 #include "GraphicsOptionsWindow_internal.h"
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 namespace GraphicsOptionsWindow {
 
@@ -22,7 +23,7 @@ void drawDrawPacketsSection() {
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted("Frame");
         ImGui::TableSetColumnIndex(1);
-        snprintf(buf, sizeof(buf), "%llu", (unsigned long long)g_dpSnapshot.frame);
+        mc2::fmt::to_buf(buf, "{:d}", mc2::fmt::as_u64((unsigned long long)g_dpSnapshot.frame));
         ImGui::TextUnformatted(buf);
 
         ImGui::TableNextRow();
@@ -30,7 +31,7 @@ void drawDrawPacketsSection() {
         ImGui::TableSetColumnIndex(1);
         {
             const bool ok = (g_dpSnapshot.emitted == g_dpSnapshot.expected);
-            snprintf(buf, sizeof(buf), "%u", g_dpSnapshot.emitted);
+            mc2::fmt::to_buf(buf, "{:d}", mc2::fmt::as_u32(g_dpSnapshot.emitted));
             ImGui::TextColored(ok ? ImVec4(0.3f,1.f,0.3f,1.f)
                                   : ImVec4(1.f,0.3f,0.3f,1.f), "%s", buf);
         }
@@ -38,7 +39,7 @@ void drawDrawPacketsSection() {
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted("Expected");
         ImGui::TableSetColumnIndex(1);
-        snprintf(buf, sizeof(buf), "%u", g_dpSnapshot.expected);
+        mc2::fmt::to_buf(buf, "{:d}", mc2::fmt::as_u32(g_dpSnapshot.expected));
         ImGui::TextUnformatted(buf);
 
         ImGui::EndTable();
@@ -54,14 +55,14 @@ void drawDrawPacketsSection() {
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted("Distinct types");
         ImGui::TableSetColumnIndex(1);
-        snprintf(buf, sizeof(buf), "%u", g_dpSnapshot.distinctTypes);
+        mc2::fmt::to_buf(buf, "{:d}", mc2::fmt::as_u32(g_dpSnapshot.distinctTypes));
         ImGui::TextUnformatted(buf);
 
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted("Invalid ranges");
         ImGui::TableSetColumnIndex(1);
         if (g_dpSnapshot.invalidRanges > 0) {
-            snprintf(buf, sizeof(buf), "%u", g_dpSnapshot.invalidRanges);
+            mc2::fmt::to_buf(buf, "{:d}", mc2::fmt::as_u32(g_dpSnapshot.invalidRanges));
             ImGui::TextColored(ImVec4(1.f,0.3f,0.3f,1.f), "%s", buf);
         } else {
             ImGui::TextUnformatted("0");
@@ -78,14 +79,14 @@ void drawDrawPacketsSection() {
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0); ImGui::TextDisabled("Skipped ranges");
         ImGui::TableSetColumnIndex(1);
-        snprintf(buf, sizeof(buf), "%u", g_dpSnapshot.skippedRanges);
+        mc2::fmt::to_buf(buf, "{:d}", mc2::fmt::as_u32(g_dpSnapshot.skippedRanges));
         ImGui::TextDisabled("%s", buf);
 
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0); ImGui::TextDisabled("Mat mismatches");
         ImGui::TableSetColumnIndex(1);
         if (g_dpSnapshot.materialMismatches > 0) {
-            snprintf(buf, sizeof(buf), "%u", g_dpSnapshot.materialMismatches);
+            mc2::fmt::to_buf(buf, "{:d}", mc2::fmt::as_u32(g_dpSnapshot.materialMismatches));
             ImGui::TextColored(ImVec4(1.f,0.8f,0.3f,1.f), "%s", buf);
         } else {
             ImGui::TextDisabled("0");
@@ -125,13 +126,13 @@ void drawDrawPacketsSection() {
             ImGui::TableNextRow();
             ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted("firstPacket");
             ImGui::TableSetColumnIndex(1);
-            snprintf(buf, sizeof(buf), "%u", desc.firstPacket);
+            mc2::fmt::to_buf(buf, "{:d}", mc2::fmt::as_u32(desc.firstPacket));
             ImGui::TextUnformatted(buf);
 
             ImGui::TableNextRow();
             ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted("packetCount");
             ImGui::TableSetColumnIndex(1);
-            snprintf(buf, sizeof(buf), "%u", desc.packetCount);
+            mc2::fmt::to_buf(buf, "{:d}", mc2::fmt::as_u32(desc.packetCount));
             ImGui::TextUnformatted(buf);
 
             ImGui::TableNextRow();
@@ -141,7 +142,7 @@ void drawDrawPacketsSection() {
                 case 0:  ImGui::TextUnformatted("OPAQUE");     break;
                 case 1:  ImGui::TextUnformatted("ALPHA_TEST"); break;
                 default:
-                    snprintf(buf, sizeof(buf), "?(%u)", desc.alphaClass);
+                    mc2::fmt::to_buf(buf, "?({:d})", mc2::fmt::as_u32(desc.alphaClass));
                     ImGui::TextColored(ImVec4(1.f,0.8f,0.3f,1.f), "%s", buf);
                     break;
             }
@@ -156,9 +157,7 @@ void drawDrawPacketsSection() {
         if (ImGui::SmallButton("Copy CSV##dp")) {
             const char* alphaStr = desc.alphaClass == 0 ? "OPAQUE"
                                  : desc.alphaClass == 1 ? "ALPHA_TEST" : "?";
-            snprintf(buf, sizeof(buf),
-                "typeId,firstPacket,packetCount,alphaClass\n%u,%u,%u,%s",
-                (uint32_t)s_selTypeId, desc.firstPacket, desc.packetCount, alphaStr);
+            mc2::fmt::to_buf(buf, "typeId,firstPacket,packetCount,alphaClass\n{:d},{:d},{:d},{}", mc2::fmt::as_u32((uint32_t)s_selTypeId), mc2::fmt::as_u32(desc.firstPacket), mc2::fmt::as_u32(desc.packetCount), mc2::fmt::safe(alphaStr));
             ImGui::SetClipboardText(buf);
         }
         if (ImGui::IsItemHovered())
@@ -190,11 +189,7 @@ void drawDrawPacketsSection() {
                     IM_COL32(110, 110, 110, 255));
         ImGui::Dummy(ImVec2(availW, barH));
 
-        snprintf(buf, sizeof(buf), "type %d: [%u, %u) of %u total",
-            s_selTypeId,
-            descOk ? desc.firstPacket : 0u,
-            descOk ? (desc.firstPacket + desc.packetCount) : 0u,
-            total);
+        mc2::fmt::to_buf(buf, "type {:d}: [{:d}, {:d}) of {:d} total", mc2::fmt::as_i32(s_selTypeId), mc2::fmt::as_u32(descOk ? desc.firstPacket : 0u), mc2::fmt::as_u32(descOk ? (desc.firstPacket + desc.packetCount) : 0u), mc2::fmt::as_u32(total));
         ImGui::TextDisabled("%s", buf);
     }
 
@@ -224,7 +219,7 @@ void drawDrawPacketsSection() {
                 ImGui::TableNextRow();
                 ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted("Instances (vis)");
                 ImGui::TableSetColumnIndex(1);
-                snprintf(buf, sizeof(buf), "%u", sel.instanceCount);
+                mc2::fmt::to_buf(buf, "{:d}", mc2::fmt::as_u32(sel.instanceCount));
                 ImGui::TextUnformatted(buf);
 
                 ImGui::TableNextRow();
@@ -233,7 +228,7 @@ void drawDrawPacketsSection() {
                 if (sel.materialIdx == 0xFFFFFFFFu)
                     ImGui::TextDisabled("(sentinel)");
                 else {
-                    snprintf(buf, sizeof(buf), "%u", sel.materialIdx);
+                    mc2::fmt::to_buf(buf, "{:d}", mc2::fmt::as_u32(sel.materialIdx));
                     ImGui::TextUnformatted(buf);
                 }
 
@@ -244,7 +239,7 @@ void drawDrawPacketsSection() {
                     case 0:  ImGui::TextUnformatted("OPAQUE");      break;
                     case 1:  ImGui::TextUnformatted("ALPHA_TEST");  break;
                     default:
-                        snprintf(buf, sizeof(buf), "?(%u)", sel.alphaClass);
+                        mc2::fmt::to_buf(buf, "?({:d})", mc2::fmt::as_u32(sel.alphaClass));
                         ImGui::TextColored(ImVec4(1.f, 0.8f, 0.3f, 1.f), "%s", buf);
                         break;
                 }
@@ -252,7 +247,7 @@ void drawDrawPacketsSection() {
                 ImGui::TableNextRow();
                 ImGui::TableSetColumnIndex(0); ImGui::TextUnformatted("packetCount");
                 ImGui::TableSetColumnIndex(1);
-                snprintf(buf, sizeof(buf), "%u", sel.packetCount);
+                mc2::fmt::to_buf(buf, "{:d}", mc2::fmt::as_u32(sel.packetCount));
                 ImGui::TextUnformatted(buf);
 
                 ImGui::EndTable();
@@ -278,19 +273,19 @@ void drawDrawPacketsSection() {
                         ImGui::TableNextRow();
 
                         ImGui::TableSetColumnIndex(0);
-                        snprintf(buf, sizeof(buf), "%u", row.globalPacketIdx);
+                        mc2::fmt::to_buf(buf, "{:d}", mc2::fmt::as_u32(row.globalPacketIdx));
                         ImGui::TextUnformatted(buf);
 
                         ImGui::TableSetColumnIndex(1);
-                        snprintf(buf, sizeof(buf), "%u", row.firstIndex);
+                        mc2::fmt::to_buf(buf, "{:d}", mc2::fmt::as_u32(row.firstIndex));
                         ImGui::TextUnformatted(buf);
 
                         ImGui::TableSetColumnIndex(2);
-                        snprintf(buf, sizeof(buf), "%u", row.indexCount);
+                        mc2::fmt::to_buf(buf, "{:d}", mc2::fmt::as_u32(row.indexCount));
                         ImGui::TextUnformatted(buf);
 
                         ImGui::TableSetColumnIndex(3);
-                        snprintf(buf, sizeof(buf), "%d", row.baseVertex);
+                        mc2::fmt::to_buf(buf, "{:d}", mc2::fmt::as_i32(row.baseVertex));
                         ImGui::TextUnformatted(buf);
 
                         ImGui::TableSetColumnIndex(4);
@@ -299,13 +294,13 @@ void drawDrawPacketsSection() {
                             case 1:  ImGui::TextUnformatted("opaque");    break;
                             case 2:  ImGui::TextUnformatted("alpha_test"); break;
                             default:
-                                snprintf(buf, sizeof(buf), "?(%u)", row.pipelineId);
+                                mc2::fmt::to_buf(buf, "?({:d})", mc2::fmt::as_u32(row.pipelineId));
                                 ImGui::TextColored(ImVec4(1.f, 0.8f, 0.3f, 1.f), "%s", buf);
                                 break;
                         }
 
                         ImGui::TableSetColumnIndex(5);
-                        snprintf(buf, sizeof(buf), "0x%02X", row.materialFlags);
+                        mc2::fmt::to_buf(buf, "0x{:02X}", mc2::fmt::as_u32(row.materialFlags));
                         ImGui::TextUnformatted(buf);
 
                         ImGui::TableSetColumnIndex(6);
@@ -319,20 +314,15 @@ void drawDrawPacketsSection() {
             }
 
             if (ImGui::SmallButton("Copy CSV##selp")) {
-                int n = snprintf(buf, sizeof(buf),
-                    "pktIdx,firstIndex,idxCount,baseVertex,pipeline,matFlags\n");
+                int n = mc2::fmt::to_buf(buf, "pktIdx,firstIndex,idxCount,baseVertex,pipeline,matFlags\n");
                 ImGui::SetClipboardText(buf);
                 char cbuf[1024]; int cn = 0;
-                cn += snprintf(cbuf+cn, sizeof(cbuf)-cn,
-                    "pktIdx,firstIndex,idxCount,baseVertex,pipeline,matFlags\n");
+                cn += mc2::fmt::to_buf_n(cbuf+cn, sizeof(cbuf)-cn, "pktIdx,firstIndex,idxCount,baseVertex,pipeline,matFlags\n");
                 for (uint32_t r = 0; r < sel.rowCount && cn < (int)sizeof(cbuf)-80; ++r) {
                     const DrawPacketPropRow& row = sel.rows[r];
                     const char* plName = row.pipelineId == 1 ? "opaque"
                                        : row.pipelineId == 2 ? "alpha_test" : "invalid";
-                    cn += snprintf(cbuf+cn, sizeof(cbuf)-cn,
-                        "%u,%u,%u,%d,%s,0x%02X\n",
-                        row.globalPacketIdx, row.firstIndex, row.indexCount,
-                        row.baseVertex, plName, row.materialFlags);
+                    cn += mc2::fmt::to_buf_n(cbuf+cn, sizeof(cbuf)-cn, "{:d},{:d},{:d},{:d},{},0x{:02X}\n", mc2::fmt::as_u32(row.globalPacketIdx), mc2::fmt::as_u32(row.firstIndex), mc2::fmt::as_u32(row.indexCount), mc2::fmt::as_i32(row.baseVertex), mc2::fmt::safe(plName), mc2::fmt::as_u32(row.materialFlags));
                 }
                 ImGui::SetClipboardText(cbuf);
                 (void)n;
