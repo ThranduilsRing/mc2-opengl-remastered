@@ -48,8 +48,8 @@
 #ifndef BCDEC_HEADER_INCLUDED
 #define BCDEC_HEADER_INCLUDED
 
-#define BCDEC_VERSION_MAJOR 0
-#define BCDEC_VERSION_MINOR 98
+inline constexpr int BCDEC_VERSION_MAJOR = 0;
+inline constexpr int BCDEC_VERSION_MINOR = 98;
 
 /* if BCDEC_STATIC causes problems, try defining BCDECDEF to 'inline' or 'static inline' */
 #ifndef BCDECDEF

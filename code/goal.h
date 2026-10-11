@@ -9,11 +9,11 @@
 #include"dgameobj.h"
 #include"move.h"
 
-#define	MAX_GATES					30
-#define	MAX_MOVEGATES_CONTROLLED	10
-#define	MAX_MOVEGATES_PER_ROOM		4
-#define	MAX_OBJECTS_PER_ROOM		10
-#define	MAX_CONTROLLED_OBJECTS		200
+inline constexpr int MAX_GATES = 30;
+inline constexpr int MAX_MOVEGATES_CONTROLLED = 10;
+inline constexpr int MAX_MOVEGATES_PER_ROOM = 4;
+inline constexpr int MAX_OBJECTS_PER_ROOM = 10;
+inline constexpr int MAX_CONTROLLED_OBJECTS = 200;
 
 typedef enum {
 	GOAL_NONE,

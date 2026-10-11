@@ -18,16 +18,16 @@
 
 #define DW_TIMEOUT_VALUE	20000
 #define DW_MUTEX_TIMEOUT    DW_TIMEOUT_VALUE / 2
-#define DW_NOTIFY_TIMEOUT   120000 // 2 minutes
-#define DW_MAX_ASSERT_CCH   1024
+inline constexpr int DW_NOTIFY_TIMEOUT = 120000; // 2 minutes
+inline constexpr int DW_MAX_ASSERT_CCH = 1024;
 #define DW_MAX_PATH         260
-#define DW_APPNAME_LENGTH	56
+inline constexpr int DW_APPNAME_LENGTH = 56;
 #define DW_MAX_SERVERNAME   DW_MAX_PATH
-#define DW_MAX_ERROR_CWC    260 // must be at least max_path
-#define DW_MAX_REGSUBPATH   200
-#define DW_CMDLINE_RESPONSE "DwResponse="
+inline constexpr int DW_MAX_ERROR_CWC = 260; // must be at least max_path
+inline constexpr int DW_MAX_REGSUBPATH = 200;
+inline constexpr const char* DW_CMDLINE_RESPONSE = "DwResponse=";
 
-#define DW_WHISTLER_EVENTLOG_SOURCE "Application Error"
+inline constexpr const char* DW_WHISTLER_EVENTLOG_SOURCE = "Application Error";
 
 // the following are the fields that can be specified in a manifest file to 
 // launch DW in a file based reporting mode

@@ -17,22 +17,22 @@
 
 //----------------------------------------------------------------------------------
 // Macro Definitions
-#define			BASE_RAIN_UPDATE_TIME			30.0f
-#define			BASE_RAIN_HEIGHT				500.0f
-#define			BASE_RAIN_LENGTH				10.0f
-#define			BASE_RAIN_VEL					300.0f
-#define			BASE_RAIN_TILT					10.0f
-#define			BASE_RAIN_LIGHT_RATE			0.01f
-#define			BASE_RAIN_RANDOM_POS_FACTOR		500.0f
-#define			BASE_RAIN_RANDOM_HGT_FACTOR		250.0f
-#define			BASE_RAIN_RANDOM_VEL_FACTOR		10.0f
-#define			BASE_RAIN_RANDOM_LEN_FACTOR		10.0f
+inline constexpr float BASE_RAIN_UPDATE_TIME = 30.0f;
+inline constexpr float BASE_RAIN_HEIGHT = 500.0f;
+inline constexpr float BASE_RAIN_LENGTH = 10.0f;
+inline constexpr float BASE_RAIN_VEL = 300.0f;
+inline constexpr float BASE_RAIN_TILT = 10.0f;
+inline constexpr float BASE_RAIN_LIGHT_RATE = 0.01f;
+inline constexpr float BASE_RAIN_RANDOM_POS_FACTOR = 500.0f;
+inline constexpr float BASE_RAIN_RANDOM_HGT_FACTOR = 250.0f;
+inline constexpr float BASE_RAIN_RANDOM_VEL_FACTOR = 10.0f;
+inline constexpr float BASE_RAIN_RANDOM_LEN_FACTOR = 10.0f;
 
-#define			BASE_LIGHTENING_CHANCE			0.03f
-#define			BASE_LIGHTENING_FALLOFF			400.0f
-#define 		BASE_LIGHTENING_FLASH_AGAIN		2.0f
-#define			BASE_LIGHTENING_FLASH_CHECK		1.0f
-#define			BASE_THUNDER_RANDOM_START		5.0f
+inline constexpr float BASE_LIGHTENING_CHANCE = 0.03f;
+inline constexpr float BASE_LIGHTENING_FALLOFF = 400.0f;
+inline constexpr float BASE_LIGHTENING_FLASH_AGAIN = 2.0f;
+inline constexpr float BASE_LIGHTENING_FLASH_CHECK = 1.0f;
+inline constexpr float BASE_THUNDER_RANDOM_START = 5.0f;
 //----------------------------------------------------------------------------------
 // Struct Definitions
 typedef struct _RainDrops
