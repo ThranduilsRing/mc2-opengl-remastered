@@ -454,8 +454,9 @@ char* __stdcall gos_GetFormattedTime( WORD Hour/*=-1*/, WORD Minute/*=-1*/, WORD
         Second = 0;
     }
 
-    char* date = new char[16];
-    sprintf(date, "%02d:%02d:%02d", Hour, Minute, Second);
+    constexpr size_t kTimeBytes = 16;
+    char* date = new char[kTimeBytes];
+    mc2::fmt::to_buf_n(date, kTimeBytes, "{:02d}:{:02d}:{:02d}", mc2::fmt::as_i32(Hour), mc2::fmt::as_i32(Minute), mc2::fmt::as_i32(Second));
     return date;
 }
 
