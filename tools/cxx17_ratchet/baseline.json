@@ -58,7 +58,7 @@
    "LG09": 2039,
    "LG10": 40,
    "LG11": 102,
-   "LG12a": 238,
+   "LG12a": 235,
    "LG12b": 31,
    "LG13": 331,
    "LG14": 63,
@@ -494,14 +494,14 @@
   },
   "GameOS/gameos/gameosmain_frame.cpp": {
    "LG09": 20,
-   "LG12a": 6
+   "LG12a": 4
   },
   "GameOS/gameos/gameosmain_init.cpp": {
    "LG02": 1,
    "LG06": 1,
    "LG09": 7,
    "LG11": 4,
-   "LG12a": 4
+   "LG12a": 3
   },
   "GameOS/gameos/gos_cardcloud_sim.cpp": {
    "LG03": 6,
@@ -5382,7 +5382,7 @@
    "LG20": 2
   }
  },
- "head": "f2afcc17c",
+ "head": "0f6197229",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
