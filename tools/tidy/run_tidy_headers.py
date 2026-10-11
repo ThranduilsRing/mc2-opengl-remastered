@@ -112,12 +112,16 @@ def read_bytes(rel: str) -> bytes:
 class Proof:
     """Applies a subset of the proposed header edits to the tree and compares every affected object with its pre-edit digest."""
 
-    def __init__(self, tree_abs, includers, orig, edited, jobs):
+    def __init__(self, tree_abs, includers, orig, edited, jobs, sources=None):
         self.tree_abs, self.includers, self.orig, self.edited, self.jobs = tree_abs, includers, orig, edited, jobs
+        self.sources = sources or {}          # object target -> repo-relative source, for the nondeterminism check
         self.headers = sorted(edited)
         self.objs = sorted({o for h in self.headers for o in includers[h]})
         self.on_disk = dict(orig)
         self.before = {}
+        self.noisy = set()                    # objects that differ between two compiles of identical input
+        self.deterministic = set()            # objects already checked and found stable
+        self.verified = None                  # (frozenset of applied headers) of the last probe that built clean
 
     def baseline(self) -> int:
         rc, _ = rts.ninja_objects_targets(self.tree_abs, self.objs, self.jobs)
@@ -140,12 +144,36 @@ class Proof:
         rc, failed = rts.ninja_objects_targets(self.tree_abs, self.objs, self.jobs)
         bad = {f.replace("\\", "/") for f in failed}
         for o in self.objs:
-            if o in bad:
+            if o in bad or o in self.noisy:
                 continue
             now = objhash.obj_digest(os.path.join(self.tree_abs, o))
             if now is None or now["code_sha256"] != self.before[o]["code_sha256"]:
                 bad.add(o)
         return bad
+
+    def find_noisy(self, bad) -> set:
+        """-> the objects in `bad` that compile to different bytes from the same input (an embedded timestamp, an address, ...).
+
+        Each is recompiled twice with its source touched and nothing else changed. A compile failure is not noise. Such an object proves
+        nothing about any header, so it is left out of the comparison instead of reverting every header it includes."""
+        noisy = set()
+        for o in sorted(bad):
+            src = self.sources.get(o)
+            if not src or o in self.deterministic:
+                continue
+            digests = []
+            for _ in range(2):
+                os.utime(os.path.join(ROOT, src), None)
+                rc, failed = rts.ninja_objects_targets(self.tree_abs, [o], self.jobs)
+                if failed:
+                    break
+                d = objhash.obj_digest(os.path.join(self.tree_abs, o))
+                digests.append(d and d["code_sha256"])
+            if len(digests) == 2 and digests[0] != digests[1]:
+                noisy.add(o)
+            elif len(digests) == 2:
+                self.deterministic.add(o)
+        return noisy
 
     def solve(self):
         """Keep every header whose including objects are all identical; bisect the suspects of a failure. -> (kept, [(header, why)])."""
@@ -155,7 +183,16 @@ class Proof:
             t0 = time.monotonic()
             self.apply(set(keep) | set(trial))
             bad = self.bad_objects()
+            if bad:
+                found = self.find_noisy(bad)
+                if found:
+                    self.noisy |= found
+                    for o in sorted(found):
+                        print(f"  NOISY {o}: compiles to different bytes from identical input; ignored", flush=True)
+                    bad = self.bad_objects()
             print(f"  probe {len(trial)} header(s): {len(bad)} differing/failing object(s), {time.monotonic() - t0:.0f} s", flush=True)
+            if not bad:
+                self.verified = frozenset(set(keep) | set(trial))
             return bad
 
         def go(trial):
@@ -178,7 +215,8 @@ class Proof:
 
         go(list(self.headers))
         self.apply(set(keep))
-        final_bad = self.bad_objects()
+        # The last clean probe already built exactly this state, so a full set that passed at once needs no second build.
+        final_bad = set() if self.verified == frozenset(keep) else self.bad_objects()
         if final_bad:      # the accepted headers interact; nothing is kept
             rejected += [(h, "kept set failed its final build") for h in keep]
             keep = []
@@ -297,7 +335,7 @@ def run_batch(args):
         print("run_tidy_headers: no rewrites needed")
         return 0, False
 
-    proof = Proof(tree_abs, includers, orig, edited, args.build_jobs)
+    proof = Proof(tree_abs, includers, orig, edited, args.build_jobs, sources=t2s)
     if proof.baseline():
         print("run_tidy_headers: the base build of the proof set failed; refusing to edit", file=sys.stderr)
         return 2, False

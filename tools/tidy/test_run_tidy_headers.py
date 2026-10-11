@@ -81,3 +81,38 @@ def test_lane_files_are_excluded():
         assert rts.is_excluded("mclib/some_lane_file.cpp") and not rts.is_excluded("mclib/other.cpp")
     finally:
         rts.LANE_FILES.clear()
+
+
+class _NoisyProof(_FakeProof):
+    """o_noise differs on every compile whenever a header it includes is edited; find_noisy is the only thing that can clear it."""
+
+    def bad_objects(self):
+        edited = any(self.on_disk[h] == self.edited[h] for h in self.headers)
+        return ({"o_noise"} if edited else set()) - self.noisy
+
+    def find_noisy(self, bad):
+        return {o for o in bad if o == "o_noise"}
+
+
+def test_a_nondeterministic_object_does_not_revert_the_headers_it_includes(tmp_path, monkeypatch):
+    monkeypatch.setattr(rth, "ROOT", str(tmp_path))
+    includers = {"a.h": {"o1", "o_noise"}, "b.h": {"o2", "o_noise"}}
+    for h in includers:
+        (tmp_path / h).write_bytes(b"old\n")
+    proof = _NoisyProof(str(tmp_path), includers, {h: b"old\n" for h in includers}, {h: b"new\n" for h in includers}, 1)
+    # without the detector both headers would be rejected; o1/o2 are clean, so only o_noise "differs"
+    kept, rejected = proof.solve()
+    assert sorted(kept) == ["a.h", "b.h"] and not rejected and "o_noise" in proof.noisy
+
+
+def test_a_full_set_that_passes_is_built_once(tmp_path, monkeypatch):
+    monkeypatch.setattr(rth, "ROOT", str(tmp_path))
+    includers = {"a.h": {"o1"}, "b.h": {"o2"}}
+    for h in includers:
+        (tmp_path / h).write_bytes(b"old\n")
+    proof = _FakeProof(str(tmp_path), includers, {h: b"old\n" for h in includers}, {h: b"new\n" for h in includers}, 1)
+    builds = []
+    real = proof.bad_objects
+    proof.bad_objects = lambda: builds.append(1) or real()
+    kept, rejected = proof.solve()
+    assert sorted(kept) == ["a.h", "b.h"] and not rejected and len(builds) == 1
