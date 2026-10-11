@@ -9,6 +9,7 @@ OptionsScreenWrapper.cpp			: Implementation of the OptionsScreenWrapper componen
 #include"optionsscreenwrapper.h"
 #include"mclib.h"
 #include"optionsarea.h"
+#include "mc2fmt.h"
 
 
 OptionsScreenWrapper::OptionsScreenWrapper()
@@ -39,7 +40,7 @@ void OptionsScreenWrapper::begin()
 		if ( NO_ERR != file.open( path ) )
 		{
 			char error[256];
-			sprintf( error, "couldn't open file %s", path );
+			mc2::fmt::to_buf(error, "couldn't open file {}", mc2::fmt::safe(path));
 			Assert( 0, 0, error );
 			return;
 		}

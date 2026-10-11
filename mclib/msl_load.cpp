@@ -1,6 +1,7 @@
 // Multi shape layer: TG_TypeMultiShape loading: binary copy, ASE import, texture setup, save and destroy, with the asset-load audit events.
 // Declared in the class headers; shared names in msl_internal.h.
 #include "msl_internal.h"
+#include "mc2fmt.h"
 
 
 //-------------------------------------------------------------------------------
@@ -66,7 +67,7 @@ long TG_TypeMultiShape::LoadBinaryCopy (const char *fileName)
 		if (numTextures)
 		{
 			listOfTextures = (TG_TexturePtr)TG_Shape::tglHeap->Malloc(sizeof(TG_Texture) * numTextures);
-			gosASSERT(listOfTextures != NULL);
+			gosASSERT(listOfTextures != nullptr);
 		
 			binFile.read((MemoryPtr)listOfTextures,sizeof(TG_Texture) * numTextures);
 		}
@@ -77,7 +78,7 @@ long TG_TypeMultiShape::LoadBinaryCopy (const char *fileName)
 	
 		//listOfShapes
 		listOfTypeShapes = (TG_TypeNodePtr *)TG_Shape::tglHeap->Malloc(sizeof(TG_TypeNodePtr) * numTG_TypeShapes);
-		gosASSERT(listOfTypeShapes != NULL);
+		gosASSERT(listOfTypeShapes != nullptr);
 	
 		memset(listOfTypeShapes,0,sizeof(TG_TypeNodePtr) * numTG_TypeShapes);
 	
@@ -116,8 +117,8 @@ long TG_TypeMultiShape::LoadBinaryCopy (const char *fileName)
 				// (Mech3DAppearanceType::init) will see failure and leave
 				// the mech without an appearance rather than crashing the
 				// mechbay.
-				printf("[MSL] unknown nodeType=%d at index %ld/%ld — aborting load of this shape\n",
-					nodeType, i, (long)numTG_TypeShapes); fflush(stdout);
+				mc2::fmt::print_out("[MSL] unknown nodeType={:d} at index {:d}/{:d} — aborting load of this shape\n",
+					mc2::fmt::as_i32(nodeType), mc2::fmt::as_i32(i), mc2::fmt::as_i32((long)numTG_TypeShapes)); fflush(stdout);
 				aborted = true;
 				break;
 			}
@@ -210,12 +211,12 @@ long TG_TypeMultiShape::LoadBinaryCopy (const char *fileName)
 void TG_TypeMultiShape::AllocateImportedShapes(int numShapes)
 {
 	gosASSERT(numShapes > 0);
-	gosASSERT(listOfTypeShapes == NULL);  // freshly init()'d multi-shape
+	gosASSERT(listOfTypeShapes == nullptr);  // freshly init()'d multi-shape
 
 	numTG_TypeShapes = numShapes;
 	listOfTypeShapes = (TG_TypeNodePtr *)TG_Shape::tglHeap->Malloc(
 		sizeof(TG_TypeNodePtr) * numTG_TypeShapes);
-	gosASSERT(listOfTypeShapes != NULL);
+	gosASSERT(listOfTypeShapes != nullptr);
 	memset(listOfTypeShapes, 0, sizeof(TG_TypeNodePtr) * numTG_TypeShapes);
 
 	// Construct empty TG_TypeShape per slot — caller fills via
@@ -232,7 +233,7 @@ void TG_TypeMultiShape::SetImportedTextures(DWORD count,
                                             const char* const* names,
                                             const bool* alphas)
 {
-	gosASSERT(listOfTextures == NULL);  // freshly init()'d multi-shape
+	gosASSERT(listOfTextures == nullptr);  // freshly init()'d multi-shape
 
 	numTextures = count;
 	if (numTextures == 0)
@@ -243,7 +244,7 @@ void TG_TypeMultiShape::SetImportedTextures(DWORD count,
 
 	listOfTextures = (TG_TexturePtr)TG_Shape::tglHeap->Malloc(
 		sizeof(TG_Texture) * numTextures);
-	gosASSERT(listOfTextures != NULL);
+	gosASSERT(listOfTextures != nullptr);
 	memset(listOfTextures, 0, sizeof(TG_Texture) * numTextures);
 
 	for (DWORD i = 0; i < numTextures; i++)
@@ -409,7 +410,7 @@ void TG_TypeMultiShape::destroy (void)
 	if (shapeName)
 	{
 		free(shapeName);
-		shapeName = NULL;
+		shapeName = nullptr;
 	}
 #endif
 }	
@@ -548,7 +549,7 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 		//---------------------------------------
 		// Create Buffer to read entire file into
 		BYTE *aseContents = (BYTE *)malloc(aseFileSize+1);
-		gosASSERT(aseContents != NULL);
+		gosASSERT(aseContents != nullptr);
 	
 		//---------------------------------------
 		// Open File and read it and close it
@@ -621,7 +622,7 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 				//NOT SUPPORTED YET!  Multiple Textures per building!
 				// Support NOW!  Must have trees!
 				textureData = strstr(textureData,ASE_SUBMATERIAL_COUNT);
-				gosASSERT(textureData != NULL);
+				gosASSERT(textureData != nullptr);
 	
 				textureData += strlen(ASE_SUBMATERIAL_COUNT);
 				GetNumberData(textureData,numberData);
@@ -644,7 +645,7 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 		{
 			numTextures *= 2;
 			listOfTextures = (TG_TexturePtr)TG_Shape::tglHeap->Malloc(sizeof(TG_Texture) * numTextures);
-			gosASSERT(listOfTextures != NULL);
+			gosASSERT(listOfTextures != nullptr);
 			memset(listOfTextures,0x0,sizeof(TG_Texture) * numTextures);
 
 			char *txmData = (char *)aseContents;
@@ -656,7 +657,7 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
                 // sebi: looks like if there is only one texture then ASE_MATERIAL_BITMAP_ID has no index
 				// anyway original code is incorrect, because it passes i but has no format specifier for it
 				//sprintf(textId,"%s",ASE_MATERIAL_BITMAP_ID,i);
-				sprintf(textId, "%s", ASE_MATERIAL_BITMAP_ID);
+				mc2::fmt::to_buf(textId, "{}", mc2::fmt::safe(ASE_MATERIAL_BITMAP_ID));
 		
 				char *txmTemp = txmData;
 				txmData = strstr(txmData,textId);
@@ -723,7 +724,7 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 				GetTextureName(i,txmName,256);
 		
 				char texturePath[1024];
-				sprintf(texturePath,"%s%d" PATH_SEPARATOR ,tglPath,ObjectTextureSize);
+				mc2::fmt::to_buf(texturePath, "{}{:d}" PATH_SEPARATOR "", mc2::fmt::safe(tglPath), mc2::fmt::as_i32(ObjectTextureSize));
 			
 				FullPathFileName textureName;
 				textureName.init(texturePath,txmName,"");
@@ -760,7 +761,7 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 			// Check if NodeName is handle_ or WORLD.  These are bad!
 			// Do not count them!
 			aseScan = strstr(aseScan,ASE_NODE_NAME);
-			gosASSERT(aseScan != NULL);								//Node must have a NAME, right?
+			gosASSERT(aseScan != nullptr);								//Node must have a NAME, right?
 			aseScan += strlen(ASE_NODE_NAME)+1;
 	
 			char chkWord[512];
@@ -776,7 +777,7 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 		}
 	
 		listOfTypeShapes = (TG_TypeNodePtr *)TG_Shape::tglHeap->Malloc(sizeof(TG_TypeNodePtr) * (numTG_TypeShapes+1));
-		gosASSERT(listOfTypeShapes != NULL);
+		gosASSERT(listOfTypeShapes != nullptr);
 	
 		memset(listOfTypeShapes,0,sizeof(TG_TypeNodePtr) * (numTG_TypeShapes+1));
 	
@@ -809,7 +810,7 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 				// Check if NodeName is handle_ or WORLD.  These are bad!
 				// Do not count them!
 				aseScan = strstr(aseScan,ASE_NODE_NAME);
-				gosASSERT(aseScan != NULL);								//Node must have a NAME, right?
+				gosASSERT(aseScan != nullptr);								//Node must have a NAME, right?
 				aseScan += strlen(ASE_NODE_NAME)+1;
 	
 				char chkWord[512];
@@ -835,7 +836,7 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 				// Do not count them!
 				char *scanStart = aseScan;
 				scanStart = strstr(scanStart,ASE_NODE_NAME);
-				gosASSERT(scanStart != NULL);								//Node must have a NAME, right?
+				gosASSERT(scanStart != nullptr);								//Node must have a NAME, right?
 				scanStart += strlen(ASE_NODE_NAME)+1;
 	
 				char chkWord[512];

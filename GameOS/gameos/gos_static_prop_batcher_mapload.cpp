@@ -1,6 +1,7 @@
 // GpuStaticPropBatcher: StaticPropViewToShaderMode, onMapLoad, setMissionForIbl, onMapUnload, registerType and registerMultiShape.
 // Declared in the class headers; shared names in gos_static_prop_batcher_internal.h.
 #include "gos_static_prop_batcher_internal.h"
+#include "mc2fmt.h"
 
 
 // ---------------------------------------------------------------------------
@@ -240,9 +241,7 @@ void GpuStaticPropBatcher::onMapUnload() {
         const size_t byteSize =
             s_materialGpuTable.size() * sizeof(RenderCore::MaterialGpu);
         char buf[96];
-        std::snprintf(buf, sizeof(buf),
-                      "[MATERIAL_GPU v4] event=unload materials=%zu bytes=%zu\n",
-                      s_materialGpuTable.size(), byteSize);
+        mc2::fmt::to_buf(buf, "[MATERIAL_GPU v4] event=unload materials={:d} bytes={:d}\n", mc2::fmt::as_size(s_materialGpuTable.size()), mc2::fmt::as_size(byteSize));
         MC2_DIAG_FPUTS(buf, stderr);
         GLuint local = static_cast<GLuint>(s_materialGpuSsbo.backendHandle);
         glDeleteBuffers(1, &local);
@@ -295,8 +294,7 @@ void GpuStaticPropBatcher::registerType(TG_TypeShape* typeShape, TG_TypeMultiSha
     if (s_geometryFinalized) {
         // Layer B: register-after-finalize is a bug in the map-load walk.
         if (!s_failedTypes[typeShape]) {
-            std::fprintf(stderr, "[GPUPROPS] late registerType for %p -- "
-                         "CPU-fallback for this type\n", (void*)typeShape);
+            mc2::fmt::print_err("[GPUPROPS] late registerType for {:016X} -- CPU-fallback for this type\n", mc2::fmt::as_ptr((void*)typeShape));
             s_failedTypes[typeShape] = true;
         }
         if (s_gpuPropsTrace) ++g_regLateDrop[g_lightProbeSetupPath & 3];
@@ -441,8 +439,7 @@ void GpuStaticPropBatcher::registerType(TG_TypeShape* typeShape, TG_TypeMultiSha
         static int s_seamRegLogged = 0;
         if (mc2::gate::get<"MC2_MODOVERRIDE_TRACE">() && s_seamRegLogged < 400) {
             ++s_seamRegLogged;
-            fprintf(stderr, "[SEAMPROBE] sample=first400 registerType src=%p typeID=%u numTris=%u numVerts=%u finalized=%d\n",
-                (void*)typeShape, newTypeID, numTris, numVerts, (int)s_geometryFinalized);
+            mc2::fmt::print_err("[SEAMPROBE] sample=first400 registerType src={:016X} typeID={:d} numTris={:d} numVerts={:d} finalized={:d}\n", mc2::fmt::as_ptr((void*)typeShape), mc2::fmt::as_u32(newTypeID), mc2::fmt::as_u32(numTris), mc2::fmt::as_u32(numVerts), mc2::fmt::as_i32((int)s_geometryFinalized));
             fflush(stderr);
         }
     }

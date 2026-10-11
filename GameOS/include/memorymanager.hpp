@@ -42,8 +42,7 @@ const int MemoryEndMarker=0x7fb1deaf;			// Placed at the end of allocations in _
 //
 // Information block for all blocks in pools with < 256 bytes
 //
-typedef struct
-{
+struct SMALLPOOLBLOCK {
 #ifdef LAB_ONLY
 	BYTE			Size;						// Size of block (note pools are always <64K)
 #endif
@@ -51,13 +50,12 @@ typedef struct
 	DOUBLE			dTimeStamp;					// at what time was the block alloc'd
 	DWORD			pContext[0];				// we'll allocate the right size based on gMemoryStackWalkLevel
 #endif
-} SMALLPOOLBLOCK;
+};
 
 //
 // Information block for all blocks in pools with >= 256 bytes
 //
-typedef struct
-{
+struct POOLBLOCK {
 #ifdef LAB_ONLY
 	WORD			Size;						// Size of block (note pools are always <64K)
 #endif
@@ -65,13 +63,12 @@ typedef struct
 	DOUBLE			dTimeStamp;					// at what time was the block alloc'd
 	DWORD			pContext[0];				// we'll allocate the right size based on gMemoryStackWalkLevel
 #endif
-} POOLBLOCK;
+};
 
 //
 // Header for large blocks or blocks before memory manager inited.
 //
-typedef struct _LARGEBLOCK
-{
+struct _LARGEBLOCK {
 	DWORD				Size;					// Size of block (note can be any size)
 	_LARGEBLOCKHEADER*	pLast;					// Pointer to previous large memory block
 	_LARGEBLOCKHEADER*	pNext;					// Pointer to next large memory block
@@ -80,22 +77,22 @@ typedef struct _LARGEBLOCK
 	DOUBLE				dTimeStamp;				// at what time was the block alloc'd
 	DWORD				pContext[0];			// we'll allocate the right size based on gMemoryStackWalkLevel
 #endif
-} LARGEBLOCK;
+};
+using LARGEBLOCK = _LARGEBLOCK;
 
 //
 // Structure placed directly BEFORE each memory block
 //
-typedef struct _LARGEBLOCKHEADER
-{
+struct _LARGEBLOCKHEADER {
 	LARGEBLOCK*		pLargeBlockInfo;
 	BYTE			LargeMagicNumber;			// Magic_LargeBlock or Magic_BeforeInit
-} LARGEBLOCKHEADER;
+};
+using LARGEBLOCKHEADER = _LARGEBLOCKHEADER;
 
 //
 // Structure used to hold information about 'pools' of memory blocks
 //
-typedef struct _MEMORYPOOL
-{
+struct _MEMORYPOOL {
 	DWORD				HeapTag;				// Tag so that memory is easily spotted in VM viewers
 	_MEMORYPOOL*		pLast;					// Points to the last heap of the SAME block size
 	_MEMORYPOOL*		pNext;					// Points to the next heap of the SAME block size
@@ -109,7 +106,8 @@ typedef struct _MEMORYPOOL
 	WORD				AllocCount[16];			// Number of blocks allocated in each 4K page (when 0, block can be decommitted)
 	WORD				FreeBlockPtr;			// Next available block in FreeBlockStack
 	WORD				FreeBlockStack[0];		// Free block offsets (from base of pool - pointer to header byte before allocation)
-} MEMORYPOOL;
+};
+using MEMORYPOOL = _MEMORYPOOL;
 
 //
 // Used to hold GameOS level heap information

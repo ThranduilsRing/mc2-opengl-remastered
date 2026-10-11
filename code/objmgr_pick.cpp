@@ -1,6 +1,7 @@
 // GameObjectManager: object / mover lookup by id, cell and mouse, and the terrain-object pick.
 // Declared in the class headers; shared names in objmgr_internal.h.
 #include "objmgr_internal.h"
+#include "mc2fmt.h"
 
 
 //---------------------------------------------------------------------------
@@ -284,10 +285,7 @@ static bool projectPickCandidateRect(BldgAppearance* ba,
 		if (s_cursorTargetTrace && mc2_diag::tagEnabled("CURSOR_TARGET"))
 		{
 			char _ct_buf[256];
-			snprintf(_ct_buf, sizeof(_ct_buf),
-			         "{\"site\":\"pick_rect\",\"behind_corners\":%d,\"pos\":[%.1f,%.1f,%.1f],\"rect\":[%ld,%ld,%ld,%ld]}",
-			         behindCount, position.x, position.y, position.z,
-			         outMinX, outMinY, outMaxX, outMaxY);
+			mc2::fmt::to_buf(_ct_buf, "{{\"site\":\"pick_rect\",\"behind_corners\":{:d},\"pos\":[{:.1f},{:.1f},{:.1f}],\"rect\":[{:d},{:d},{:d},{:d}]}}", mc2::fmt::as_i32(behindCount), position.x, position.y, position.z, mc2::fmt::as_i32(outMinX), mc2::fmt::as_i32(outMinY), mc2::fmt::as_i32(outMaxX), mc2::fmt::as_i32(outMaxY));
 			mc2_diag::writeEvent("CURSOR_TARGET", 1, 0, _ct_buf);
 		}
 	}
@@ -489,10 +487,7 @@ namespace {
 	static bool s_pkAtexit=false;
 	static void pkEmit() {
 		if (!s_pickRecon) return;
-		std::printf("[PICK_RECON v1] event=shutdown calls=%llu candidates=%llu inRect=%llu "
-			"rectProj=%llu total_ms=%.1f avg_us=%.1f max_us=%.1f max_candidates_call=%llu\n",
-			s_pkCalls, s_pkCandidates, s_pkInRect, s_pkRectProj, (double)s_pkNs/1e6,
-			s_pkCalls?(double)s_pkNs/s_pkCalls/1000.0:0.0, (double)s_pkMaxNs/1000.0, s_pkMaxCand);
+		mc2::fmt::print_out("[PICK_RECON v1] event=shutdown calls={:d} candidates={:d} inRect={:d} rectProj={:d} total_ms={:.1f} avg_us={:.1f} max_us={:.1f} max_candidates_call={:d}\n", mc2::fmt::as_u64(s_pkCalls), mc2::fmt::as_u64(s_pkCandidates), mc2::fmt::as_u64(s_pkInRect), mc2::fmt::as_u64(s_pkRectProj), (double)s_pkNs/1e6, s_pkCalls?(double)s_pkNs/s_pkCalls/1000.0:0.0, (double)s_pkMaxNs/1000.0, mc2::fmt::as_u64(s_pkMaxCand));
 		std::fflush(stdout);
 	}
 	struct PkTimer {

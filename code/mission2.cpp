@@ -119,7 +119,7 @@ void Mission::initBareMinimum()
 	if ( !appearanceTypeList )
 	{
 		appearanceTypeList = new AppearanceTypeList;
-		gosASSERT(appearanceTypeList != NULL);
+		gosASSERT(appearanceTypeList != nullptr);
 		appearanceTypeList->init(spriteHeapSize);
 		gosASSERT(result == NO_ERR);
 

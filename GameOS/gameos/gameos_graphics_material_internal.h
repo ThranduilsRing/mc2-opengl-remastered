@@ -9,6 +9,8 @@
 
 #include <vector>
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
+#include "utils/mc2log.h"
+#include "mc2fmt.h"
 #include <memory>   // VK-HUD-MIRRORCOPY-1: shared_ptr rgba mirror
 #include <map>
 #include <algorithm>
@@ -415,7 +417,7 @@ class gosRenderMaterial {
             }
 
             if(!pmat->program_) {
-                SPEW(("SHADERS", "Failed to create %s material\n", shader));
+                MC2_LOG(Shader, Debug, "Failed to create {} material", mc2::fmt::safe(shader));
                 printf("[TESS] FAILED to create shader: %s\n", shader);
                 delete pmat;
                 return nullptr;

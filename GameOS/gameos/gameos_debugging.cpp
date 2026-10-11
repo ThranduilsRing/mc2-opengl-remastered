@@ -10,6 +10,7 @@
 #include <cassert>
 #include <cstring>
 #include "utils/string_utils.h"
+#include "mc2fmt.h"
 
 #ifdef _DEBUG
 static int enter_debugger = 1;
@@ -38,7 +39,7 @@ static void logmsg(const char* header, const char* fmt, va_list ap)
 
     size_t header_len = strlen(header);
 
-    sprintf(text, "%s: ", header);
+    mc2::fmt::to_buf(text, "{}: ", mc2::fmt::safe(header));
 	vsnprintf(text + header_len, MAX_LOG_LINE - header_len - 1, fmt, ap);
 
 	size_t len = strlen(text);

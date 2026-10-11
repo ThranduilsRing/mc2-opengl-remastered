@@ -29,6 +29,7 @@
 #include <cstring>
 #include "diagnostic_trace.h"
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 // Env-gated trace macro.
 static const bool s_readbackTrace = mc2::gate::get<"MC2_GPU_CULL_READBACK_TRACE">();
@@ -288,12 +289,7 @@ bool readback_init(uint32_t maxActors) {
     fflush(stdout);
     if (mc2_diag::tagEnabled("GPU_CULL")) {
         char diag_buf[256];
-        snprintf(diag_buf, sizeof(diag_buf),
-            "{\"event\":\"readback_init\",\"maxActors\":%u,\"slotBytes\":%zu,"
-            "\"totalBytes\":%lld,\"ssboAlignment\":%d,\"binding\":%u,"
-            "\"forceNotReady\":%d,\"dual_buf\":1}",
-            maxActors, s_slotBytes, (long long)totalBytes,
-            ssboAlignment, READBACK_SSBO_BINDING, (int)s_forceNotReady);
+        mc2::fmt::to_buf(diag_buf, "{{\"event\":\"readback_init\",\"maxActors\":{:d},\"slotBytes\":{:d},\"totalBytes\":{:d},\"ssboAlignment\":{:d},\"binding\":{:d},\"forceNotReady\":{:d},\"dual_buf\":1}}", mc2::fmt::as_u32(maxActors), mc2::fmt::as_size(s_slotBytes), mc2::fmt::as_i64((long long)totalBytes), mc2::fmt::as_i32(ssboAlignment), mc2::fmt::as_u32(READBACK_SSBO_BINDING), mc2::fmt::as_i32((int)s_forceNotReady));
         mc2_diag::writeEvent("GPU_CULL", 1, 0, diag_buf);
     }
 
@@ -667,8 +663,7 @@ void readback_selftest() {
     fflush(stdout);
     if (mc2_diag::tagEnabled("GPU_CULL")) {
         char diag_buf[64];
-        snprintf(diag_buf, sizeof(diag_buf),
-            "{\"event\":\"readback_selftest\",\"pass\":%d,\"fail\":%d}", pass, fail);
+        mc2::fmt::to_buf(diag_buf, "{{\"event\":\"readback_selftest\",\"pass\":{:d},\"fail\":{:d}}}", mc2::fmt::as_i32(pass), mc2::fmt::as_i32(fail));
         mc2_diag::writeEvent("GPU_CULL", 1, 0, diag_buf);
     }
 

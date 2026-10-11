@@ -34,6 +34,7 @@ extern "C" {
 #include <libswresample/swresample.h>
 }
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 //-----------------------------------------------------------------------------
 // Availability gate
@@ -154,10 +155,10 @@ bool resolveVideoCandidate(const char* shortName, bool preferUpscaled,
     int viableSoFar = 0;
     auto tryEmit = [&](const Slot& s) -> bool {
         char tmp[1024];
-        snprintf(tmp, sizeof(tmp), "%s%s%s", moviePath, shortName, s.ext);
+        mc2::fmt::to_buf(tmp, "{}{}{}", mc2::fmt::safe(moviePath), mc2::fmt::safe(shortName), mc2::fmt::safe(s.ext));
         if (s.looseRequired && !fileExists(tmp)) return false;
         if (viableSoFar == index) {
-            snprintf(outPath, outPathSize, "%s", tmp);
+            mc2::fmt::to_buf_n(outPath, outPathSize, "{}", mc2::fmt::safe(tmp));
             VIDEO_TRACE("resolver: viable idx=%d ext=%s path=%s%s",
                         index, s.ext,
                         s.looseRequired ? "" : "(FST) ", outPath);
@@ -249,7 +250,7 @@ static bool tryStartSidecarWAV(const char* waveShortName)
 {
     if (!soundSystem || !waveShortName || !waveShortName[0]) return false;
     char wavPath[1024];
-    snprintf(wavPath, sizeof(wavPath), "%s%s.wav", soundPath, waveShortName);
+    mc2::fmt::to_buf(wavPath, "{}{}.wav", mc2::fmt::safe(soundPath), mc2::fmt::safe(waveShortName));
     if (!fileExists(wavPath)) return false;
     long r = reinterpret_cast<SoundSystem*>(soundSystem)->playDigitalStream(waveShortName);
     return (r == 0L);  // 0 == NO_ERR (project-wide constant)

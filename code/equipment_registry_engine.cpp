@@ -22,13 +22,14 @@
 #include "modder_finding.h"   // MODDER-FIRST-ERROR-SURFACE-1: shared context format
 #include "platform_str.h"     // S_stricmp (EQUIP-ADD-FILL-1 def-leaf filter)
 #include "logisticsscreen.h"  // EQUIP-ADD-UI-NAME-1 (S3): gEquipmentUiTextHook
+#include "mc2fmt.h"
 
 namespace {
 // One consistent emit for generated-equipment problems. Only reachable when
 // MC2_EQUIPMENT_DEFINITION_SOURCE=generated (caller gates first) -> stock
 // gate-OFF runs never print.
 void reportEquipSourceFinding(const ModderFinding& f) {
-    printf("[EQUIP-SOURCE=generated] %s\n", formatModderFinding(f).c_str());
+    mc2::fmt::print_out("[EQUIP-SOURCE=generated] {}\n", formatModderFinding(f).c_str());
 }
 } // namespace
 
@@ -110,20 +111,18 @@ void buildAndDumpEquipmentRegistryIfEnabled() {
     size_t n = buildEquipmentRegistryFromMasterList();
     const EquipmentRegistry& reg = g_equipmentRegistry;
 
-    printf("[EQUIPMENT-REGISTRY-FACADE-1] populated: entries=%zu  withLegacyMasterId=%zu  enabled=%zu  defaultOff=%zu\n",
-           n, reg.withLegacyMasterIdCount(), reg.enabledCount(), reg.disabledCount());
+    mc2::fmt::print_out("[EQUIPMENT-REGISTRY-FACADE-1] populated: entries={:d}  withLegacyMasterId={:d}  enabled={:d}  defaultOff={:d}\n", mc2::fmt::as_size(n), mc2::fmt::as_size(reg.withLegacyMasterIdCount()), mc2::fmt::as_size(reg.enabledCount()), mc2::fmt::as_size(reg.disabledCount()));
 
     // A few sample ordinal->core:id pairs (first enabled entries) so we can
     // eyeball that ids match the converter's core:<slug> output.
     int shown = 0;
     for (const auto& e : reg.entries()) {
         if (!e.enabled) continue;
-        printf("[EQUIPMENT-REGISTRY-FACADE-1]   sample %ld -> %s\n",
-               e.legacyMasterId, e.qualifiedId.c_str());
+        mc2::fmt::print_out("[EQUIPMENT-REGISTRY-FACADE-1]   sample {:d} -> {}\n", mc2::fmt::as_i32(e.legacyMasterId), e.qualifiedId.c_str());
         if (++shown >= 8) break;
     }
     if (shown == 0)
-        printf("[EQUIPMENT-REGISTRY-FACADE-1]   (no enabled entries -- masterList not loaded?)\n");
+        mc2::fmt::print_out("[EQUIPMENT-REGISTRY-FACADE-1]   (no enabled entries -- masterList not loaded?)\n");
 }
 
 // ---------------------------------------------------------------------------
@@ -203,8 +202,7 @@ size_t overlayGeneratedEquipmentStatsIfEnabled() {
         std::string slug = qid.substr(qid.find(':') + 1);
 
         char path[256];
-        std::snprintf(path, sizeof(path), "%s%s/equipmentdef.fit",
-                      kGeneratedEquipmentRoot, slug.c_str());
+        mc2::fmt::to_buf(path, "{}{}/equipmentdef.fit", mc2::fmt::safe(kGeneratedEquipmentRoot), slug.c_str());
         if (!fileExists(path))               // no generated def -> keep legacy
             continue;
 
@@ -237,8 +235,8 @@ size_t overlayGeneratedEquipmentStatsIfEnabled() {
         if (genLegacyId != ord) {
             // The overlay key mismatched: the def claims a DIFFERENT legacy row.
             char expectedBuf[16], actualBuf[16];
-            std::snprintf(expectedBuf, sizeof(expectedBuf), "%ld", ord);
-            std::snprintf(actualBuf, sizeof(actualBuf), "%ld", genLegacyId);
+            mc2::fmt::to_buf_n(expectedBuf, sizeof(expectedBuf), "{:d}", mc2::fmt::as_i32(ord));
+            mc2::fmt::to_buf_n(actualBuf, sizeof(actualBuf), "{:d}", mc2::fmt::as_i32(genLegacyId));
             ModderFinding f;
             f.message  = "generated equipment def LegacyMasterId does not match this compbas row";
             f.source   = "generated"; f.file = path; f.id = qid;
@@ -290,19 +288,12 @@ size_t overlayGeneratedEquipmentStatsIfEnabled() {
             (!gs.hasAmmoMasterId|| gs.ammoMasterId == legAmmo);
 
         if (logged < 12) {
-            printf("[EQUIP-SOURCE=generated] core:%s masterID=%ld "
-                   "damage=%.1f heat=%.1f recycle=%.2f range=%ld cv=%.1f ammo=%ld "
-                   "from generated (match-legacy=%s)\n",
-                   slug.c_str(), ord,
-                   mc.getWeaponDamage(), mc.getWeaponHeat(), mc.getWeaponRecycleTime(),
-                   mc.getWeaponRange(), mc.getCV(), (long)mc.getWeaponAmmoMasterId(),
-                   match ? "YES" : "NO");
+            mc2::fmt::print_out("[EQUIP-SOURCE=generated] core:{} masterID={:d} damage={:.1f} heat={:.1f} recycle={:.2f} range={:d} cv={:.1f} ammo={:d} from generated (match-legacy={})\n", slug.c_str(), mc2::fmt::as_i32(ord), mc.getWeaponDamage(), mc.getWeaponHeat(), mc.getWeaponRecycleTime(), mc2::fmt::as_i32(mc.getWeaponRange()), mc.getCV(), mc2::fmt::as_i32((long)mc.getWeaponAmmoMasterId()), mc2::fmt::safe(match ? "YES" : "NO"));
             ++logged;
         }
     }
 
-    printf("[EQUIP-SOURCE=generated] overlay complete: rows_overlaid=%zu "
-           "(rows with no generated def kept legacy)\n", overlaid);
+    mc2::fmt::print_out("[EQUIP-SOURCE=generated] overlay complete: rows_overlaid={:d} (rows with no generated def kept legacy)\n", mc2::fmt::as_size(overlaid));
     return overlaid;
 }
 
@@ -373,8 +364,8 @@ size_t applyEquipmentEnableWireIfEnabled(bool* available, long availableCount) {
         if (gen.readIdLong("LegacyMasterId", genLegacyId) != NO_ERR ||
             genLegacyId != e.legacyMasterId) {
             char expectedBuf[16], actualBuf[16];
-            std::snprintf(expectedBuf, sizeof(expectedBuf), "%ld", e.legacyMasterId);
-            std::snprintf(actualBuf, sizeof(actualBuf), "%ld", genLegacyId);
+            mc2::fmt::to_buf_n(expectedBuf, sizeof(expectedBuf), "{:d}", mc2::fmt::as_i32(e.legacyMasterId));
+            mc2::fmt::to_buf_n(actualBuf, sizeof(actualBuf), "{:d}", mc2::fmt::as_i32(genLegacyId));
             ModderFinding f;
             f.message  = "equipment def declares Enabled but its LegacyMasterId does not match this compbas row";
             f.source   = "enable-wire"; f.file = path; f.id = e.qualifiedId;
@@ -382,7 +373,7 @@ size_t applyEquipmentEnableWireIfEnabled(bool* available, long availableCount) {
             f.expected = expectedBuf;
             f.actual   = actualBuf;
             f.fallback = "purchase availability unchanged for this row";
-            printf("[EQUIP-ENABLE-WIRE-1] %s\n", formatModderFinding(f).c_str());
+            mc2::fmt::print_out("[EQUIP-ENABLE-WIRE-1] {}\n", formatModderFinding(f).c_str());
             continue;
         }
 
@@ -393,14 +384,12 @@ size_t applyEquipmentEnableWireIfEnabled(bool* available, long availableCount) {
         if (!available[e.legacyMasterId]) {
             available[e.legacyMasterId] = true;
             ++forced;
-            printf("[EQUIP-ENABLE-WIRE-1] enabled %s (masterID=%ld) for purchase (def %s)\n",
-                   e.qualifiedId.c_str(), e.legacyMasterId, path);
+            mc2::fmt::print_out("[EQUIP-ENABLE-WIRE-1] enabled {} (masterID={:d}) for purchase (def {})\n", e.qualifiedId.c_str(), mc2::fmt::as_i32(e.legacyMasterId), mc2::fmt::safe(path));
         }
     }
 
     if (forced > 0)
-        printf("[EQUIP-ENABLE-WIRE-1] enable wire forced %zu component(s) available\n",
-               forced);
+        mc2::fmt::print_out("[EQUIP-ENABLE-WIRE-1] enable wire forced {:d} component(s) available\n", mc2::fmt::as_size(forced));
     return forced;
 }
 
@@ -436,7 +425,7 @@ void collectEquipDefPath(const char* absPath, void* userData) {
 }
 
 void reportAddFinding(const ModderFinding& f) {
-    printf("[EQUIP-ADD] %s\n", formatModderFinding(f).c_str());
+    mc2::fmt::print_out("[EQUIP-ADD] {}\n", formatModderFinding(f).c_str());
 }
 } // namespace
 
@@ -512,7 +501,7 @@ size_t applyEquipmentAddFillIfEnabled(float baseSensorRange) {
             f.source = "add-fill"; f.file = defPath; f.id = qid;
             f.field  = "LegacyMasterId";
             char ordBuf[16];
-            std::snprintf(ordBuf, sizeof(ordBuf), "%ld", ord);
+            mc2::fmt::to_buf(ordBuf, "{:d}", mc2::fmt::as_i32(ord));
             switch (d) {
                 case EQADD_SKIP_NO_ORDINAL:
                     f.message  = "ADD def carries no explicit LegacyMasterId (no auto-assign; ids must be explicit)";
@@ -637,15 +626,10 @@ size_t applyEquipmentAddFillIfEnabled(float baseSensorRange) {
         g_addFillQualifiedIds[ord] = qid;
         ++filled;
 
-        printf("[EQUIP-ADD] filled ordinal=%ld id=%s name=\"%s\" form=%d "
-               "damage=%.2f heat=%.2f recycle=%.2f range=%d cv=%.2f ammo=%ld (def %s)\n",
-               ord, qid.c_str(), rf.displayName.c_str(), rf.formOrdinal,
-               rf.damage, rf.heat, rf.recycle, rf.rangeOrdinal, rf.combatValue,
-               rf.ammoMasterId, defPath.c_str());
+        mc2::fmt::print_out("[EQUIP-ADD] filled ordinal={:d} id={} name=\"{}\" form={:d} damage={:.2f} heat={:.2f} recycle={:.2f} range={:d} cv={:.2f} ammo={:d} (def {})\n", mc2::fmt::as_i32(ord), qid.c_str(), rf.displayName.c_str(), mc2::fmt::as_i32(rf.formOrdinal), rf.damage, rf.heat, rf.recycle, mc2::fmt::as_i32(rf.rangeOrdinal), rf.combatValue, mc2::fmt::as_i32(rf.ammoMasterId), defPath.c_str());
     }
 
     if (filled > 0)
-        printf("[EQUIP-ADD] add-fill complete: rows_filled=%zu (of %zu def(s) scanned)\n",
-               filled, defPaths.size());
+        mc2::fmt::print_out("[EQUIP-ADD] add-fill complete: rows_filled={:d} (of {:d} def(s) scanned)\n", mc2::fmt::as_size(filled), mc2::fmt::as_size(defPaths.size()));
     return filled;
 }

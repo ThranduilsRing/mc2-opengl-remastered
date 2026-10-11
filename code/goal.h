@@ -15,22 +15,22 @@ inline constexpr int MAX_MOVEGATES_PER_ROOM = 4;
 inline constexpr int MAX_OBJECTS_PER_ROOM = 10;
 inline constexpr int MAX_CONTROLLED_OBJECTS = 200;
 
-typedef enum {
+enum GoalType {
 	GOAL_NONE,
 	GOAL_OBJECT,
 	GOAL_REGION,
 	NUM_GOAL_TYPES
-} GoalType;
+};
 
-typedef enum {
+enum GoalLinkType {
 	GOAL_LINK_NONE,
 	GOAL_LINK_MOVE,
 	GOAL_LINK_CONTROLS,
 	GOAL_LINK_CONTROLLED,
 	NUM_GOAL_LINK_TYPES
-} GoalLinkType;
+};
 
-typedef union {
+union GoalInfo {
 	struct {
 		unsigned long		WID;
 	} object;
@@ -40,16 +40,17 @@ typedef union {
 		short				maxRow;
 		short				maxCol;
 	} region;
-} GoalInfo;
+};
 
-typedef struct _GoalLink {
+struct _GoalLink {
 	GoalObjectPtr			goalObject;
 	GoalLinkType			type;
 	long					cost;
 	struct _GoalLink*		next;
-} GoalLink;
+};
+using GoalLink = _GoalLink;
 
-typedef struct _GoalPathFindInfo {
+struct _GoalPathFindInfo {
 	long					cost;
 	long					parent;
 	long					fromIndex;
@@ -57,7 +58,8 @@ typedef struct _GoalPathFindInfo {
 	long					g;
 	long					hPrime;
 	long					fPrime;
-} GoalPathFindInfo;
+};
+using GoalPathFindInfo = _GoalPathFindInfo;
 
 typedef GoalLink* GoalLinkPtr;
 

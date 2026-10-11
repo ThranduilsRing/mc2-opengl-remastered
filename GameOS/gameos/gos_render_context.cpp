@@ -12,6 +12,7 @@
 #include <GL/glew.h>    // glClipControl, GLEW_ARB_clip_control, GLEW_VERSION_4_5
 #include <stdio.h>
 #include <stdlib.h>     // abort
+#include "mc2fmt.h"
 
 void InitializeRenderContextConventions(RenderHostKind host)
 {
@@ -44,10 +45,10 @@ void InitializeRenderContextConventions(RenderHostKind host)
     // Plan: docs/superpowers/plans/2026-05-06-clip-control-adoption.md
     if (GLEW_ARB_clip_control || GLEW_VERSION_4_5) {
         glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
-        printf("[RENDER-CTX] host=%s clip_control=enabled origin=lower_left depth=zero_to_one depth_func=gequal\n", hostName);
+        mc2::fmt::print_out("[RENDER-CTX] host={} clip_control=enabled origin=lower_left depth=zero_to_one depth_func=gequal\n", mc2::fmt::safe(hostName));
         fflush(stdout);
     } else {
-        printf("[RENDER-CTX] host=%s clip_control=unsupported fatal=1\n", hostName);
+        mc2::fmt::print_out("[RENDER-CTX] host={} clip_control=unsupported fatal=1\n", mc2::fmt::safe(hostName));
         fflush(stdout);
         gosASSERT(false);
         abort();

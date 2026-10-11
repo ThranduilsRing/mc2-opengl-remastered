@@ -1,6 +1,7 @@
 // gos_terrain_indirect: cement and concrete classification, transition masks and PopulateRecipeCementWords.
 // Declared in the class headers; shared names in gos_terrain_indirect_internal.h.
 #include "gos_terrain_indirect_internal.h"
+#include "mc2fmt.h"
 
 
 // ---------------------------------------------------------------------------
@@ -903,11 +904,7 @@ void PopulateRecipeCementWords() {
     // census denominator for direct comparison.
     // AUDIT-TRUTH-1: opt-in only -- MC2_TERRAIN_LOD_CHUNK_DIAG bit 524288.
     if (s_pavementGapDiag) {
-        printf("[CEMENT_PAVEMENT_GAP v1] event=census mission=%s paved_overlay=%ld "
-               "paved_no_cement=%ld any_overlay=%ld cement_total=%ld\n",
-               (::missionName[0] ? ::missionName : "unknown"), pavedOverlayTiles,
-               pavedOverlayNoCement, anyOverlayTiles,
-               transitionQuadCount + transitionDroppedNoLayer + transitionDroppedNoMask);
+        mc2::fmt::print_out("[CEMENT_PAVEMENT_GAP v1] event=census mission={} paved_overlay={:d} paved_no_cement={:d} any_overlay={:d} cement_total={:d}\n", mc2::fmt::safe((::missionName[0] ? ::missionName : "unknown")), mc2::fmt::as_i32(pavedOverlayTiles), mc2::fmt::as_i32(pavedOverlayNoCement), mc2::fmt::as_i32(anyOverlayTiles), mc2::fmt::as_i32(transitionQuadCount + transitionDroppedNoLayer + transitionDroppedNoMask));
     }
     fflush(stdout);
 
@@ -1005,13 +1002,7 @@ void PopulateRecipeCementWords() {
         }
         static const bool s_adoptTrace = mc2::gate::get<"MC2_TERRAIN_INDIRECT_TRACE">();
         if (s_adoptTrace) {
-            printf("[OVERLAY_CEMENT_ADOPT v1] event=authored_art_marked mission=%s "
-                   "tiles=%ld paved_subset=%ld overlay_id_subset=%ld "
-                   "art_saved_vs_paved=%ld art_saved_vs_overlay_id=%ld\n",
-                   (::missionName[0] ? ::missionName : "unknown"),
-                   authoredArtMarked, pavedSubset, overlayIdSubset,
-                   authoredArtMarked - pavedSubset,
-                   authoredArtMarked - overlayIdSubset);
+            mc2::fmt::print_out("[OVERLAY_CEMENT_ADOPT v1] event=authored_art_marked mission={} tiles={:d} paved_subset={:d} overlay_id_subset={:d} art_saved_vs_paved={:d} art_saved_vs_overlay_id={:d}\n", mc2::fmt::safe((::missionName[0] ? ::missionName : "unknown")), mc2::fmt::as_i32(authoredArtMarked), mc2::fmt::as_i32(pavedSubset), mc2::fmt::as_i32(overlayIdSubset), mc2::fmt::as_i32(authoredArtMarked - pavedSubset), mc2::fmt::as_i32(authoredArtMarked - overlayIdSubset));
             fflush(stdout);
         }
     }
@@ -1062,11 +1053,7 @@ void PopulateRecipeCementWords() {
             memcpy(&g_denseRecipes[vn]._wp3, &word, 4);
             g_denseRecipeDirty[vn] = true;
         }
-        printf("[PAVED_OVERLAY_CLASS v1] event=applied mission=%s mode=%d "
-               "flat_baked=%ld albedo_baked=%ld global_layer=%d\n",
-               (::missionName[0] ? ::missionName : "unknown"), mode,
-               pavedFlatBaked, pavedAlbedoBaked,
-               (globalCementLayer == 0xFFFFu) ? -1 : (int)globalCementLayer);
+        mc2::fmt::print_out("[PAVED_OVERLAY_CLASS v1] event=applied mission={} mode={:d} flat_baked={:d} albedo_baked={:d} global_layer={:d}\n", mc2::fmt::safe((::missionName[0] ? ::missionName : "unknown")), mc2::fmt::as_i32(mode), mc2::fmt::as_i32(pavedFlatBaked), mc2::fmt::as_i32(pavedAlbedoBaked), mc2::fmt::as_i32((globalCementLayer == 0xFFFFu) ? -1 : (int)globalCementLayer));
         fflush(stdout);
     }
 
@@ -1147,8 +1134,7 @@ void PopulateRecipeCementWords() {
             g_denseRecipeDirty[vn] = true;
             ++runwayFeatheredTiles;
         }
-        printf("[RUNWAY_EDGE_BLEND] event=edge_mask_baked feathered_solid_tiles=%ld\n",
-               runwayFeatheredTiles);
+        mc2::fmt::print_out("[RUNWAY_EDGE_BLEND] event=edge_mask_baked feathered_solid_tiles={:d}\n", mc2::fmt::as_i32(runwayFeatheredTiles));
         fflush(stdout);
     }
 

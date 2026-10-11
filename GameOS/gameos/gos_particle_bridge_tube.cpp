@@ -1,6 +1,7 @@
 // GPU particle bridge: the MC2_VFX_ORACLE_TUBE ribbon bridge: ribbon program / buffers, gos_tube_ribbon_flush, enqueue and the deferred flush.
 // Declared in the class headers; shared names in gos_particle_bridge_internal.h.
 #include "gos_particle_bridge_internal.h"
+#include "mc2fmt.h"
 
 
 // ── MC2_VFX_ORACLE_TUBE slice 1: ribbon mesh bridge state ─────────────────
@@ -402,9 +403,7 @@ extern "C" void gos_tube_ribbon_flush_deferred(void) {
         static bool s_banner = false;
         if (!s_banner) {
             s_banner = true;
-            std::fprintf(stderr,
-                "[VFX_ORACLE_TUBE deferred] enabled=1 queue=%u\n",
-                (unsigned)s_ribbonQueue.size());
+            mc2::fmt::print_err("[VFX_ORACLE_TUBE deferred] enabled=1 queue={:d}\n", mc2::fmt::as_u32((unsigned)s_ribbonQueue.size()));
             std::fflush(stderr);
         }
     }
@@ -498,10 +497,7 @@ extern "C" void gos_tube_ribbon_flush_deferred(void) {
         glEndQuery(GL_SAMPLES_PASSED);
         GLuint covSamples = 0;
         glGetQueryObjectuiv(s_tubeCoverageQuery, GL_QUERY_RESULT, &covSamples);
-        std::fprintf(stderr,
-            "[VFX_ORACLE_TUBE coverage] ribbons=%u samples=%u fbo=%d sceneDrawBufs=%d\n",
-            (unsigned)s_ribbonQueue.size(), covSamples, (int)covFbo,
-            guardDrawBufs.savedCount());
+        mc2::fmt::print_err("[VFX_ORACLE_TUBE coverage] ribbons={:d} samples={:d} fbo={:d} sceneDrawBufs={:d}\n", mc2::fmt::as_u32((unsigned)s_ribbonQueue.size()), mc2::fmt::as_u32(covSamples), mc2::fmt::as_i32((int)covFbo), mc2::fmt::as_i32(guardDrawBufs.savedCount()));
         std::fflush(stderr);
     }
 
@@ -530,11 +526,7 @@ extern "C" void gos_tube_ribbon_flush_deferred(void) {
             s_tubeStats.uploadBytes + (unsigned long long)s_tubeStats.posVerts * 4ull;
         const unsigned long long saved =
             s_tubeStats.baselineBytes - s_tubeStats.uploadBytes;
-        std::fprintf(stderr,
-            "[VFX_TUBE_UPLOAD_STATS] records=%u posVerts=%u uploadBytes=%llu "
-            "baselineBytes=%llu savedBytes=%llu heapAllocs=%llu\n",
-            s_tubeStats.records, s_tubeStats.posVerts, s_tubeStats.uploadBytes,
-            s_tubeStats.baselineBytes, saved, s_tubeStats.heapAllocs);
+        mc2::fmt::print_err("[VFX_TUBE_UPLOAD_STATS] records={:d} posVerts={:d} uploadBytes={:d} baselineBytes={:d} savedBytes={:d} heapAllocs={:d}\n", mc2::fmt::as_u32(s_tubeStats.records), mc2::fmt::as_u32(s_tubeStats.posVerts), mc2::fmt::as_u64(s_tubeStats.uploadBytes), mc2::fmt::as_u64(s_tubeStats.baselineBytes), mc2::fmt::as_u64(saved), mc2::fmt::as_u64(s_tubeStats.heapAllocs));
         std::fflush(stderr);
     }
 

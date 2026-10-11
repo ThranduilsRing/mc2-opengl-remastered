@@ -9,7 +9,7 @@
    "key": "box_decal",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_postprocess.cpp:405",
+   "source": "GameOS/gameos/gos_postprocess.cpp:394",
    "stages": {
     "frag": "shaders/box_decal.frag",
     "vert": "shaders/box_decal.vert"
@@ -346,7 +346,7 @@
    "optional_groups_on": [],
    "prefix": "#version 430\n",
    "raw_note": "loaded as plain text (no engine include flattening)",
-   "source": "GameOS/gameos/gos_cardcloud_sim.cpp:76",
+   "source": "GameOS/gameos/gos_cardcloud_sim.cpp:77",
    "stages": {
     "comp": "shaders/cardcloud_sim.comp"
    }
@@ -358,7 +358,7 @@
    "key": "cloud",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_postprocess.cpp:378",
+   "source": "GameOS/gameos/gos_postprocess.cpp:367",
    "stages": {
     "frag": "shaders/cloud.frag",
     "vert": "shaders/postprocess.vert"
@@ -386,7 +386,7 @@
    "key": "debug_prim",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/debug_renderer.cpp:58",
+   "source": "GameOS/gameos/debug_renderer.cpp:59",
    "stages": {
     "frag": "shaders/debug_prim.frag",
     "vert": "shaders/debug_prim.vert"
@@ -399,7 +399,7 @@
    "key": "decal",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gameos_graphics.cpp:662",
+   "source": "GameOS/gameos/gameos_graphics.cpp:630",
    "stages": {
     "frag": "shaders/decal.frag",
     "vert": "shaders/terrain_overlay.vert"
@@ -425,7 +425,7 @@
     "call:mc2TerrainShadowSunDefine()"
    ],
    "prefix": "#version 430\n#define MC2_SHADOW_CSM 1\n#define MC2_SHADOW_CSM_MAX 3\n#define MC2_SHADOW_DIST_FADE_WU 1.5\n#define MC2_SHADOW_DIST_FADE_MAX_F 1.50\n#define MC2_SHADOW_FADE_CONT_F 1\n#define MC2_SHADOW_FADE_RAMP0_F 1\n#define MC2_SHADOW_ALT_SCALE_F 1\n#define MC2_SHADOW_MIN_SUN_SIN 1.50000000\n",
-   "source": "GameOS/gameos/gameos_graphics.cpp:662",
+   "source": "GameOS/gameos/gameos_graphics.cpp:630",
    "stages": {
     "frag": "shaders/decal.frag",
     "vert": "shaders/terrain_overlay.vert"
@@ -443,7 +443,7 @@
     "if (mc2ShadowCsmEnabled())"
    ],
    "prefix": "#version 430\n#define MC2_SHADOW_CSM 1\n#define MC2_SHADOW_CSM_MAX 3\n",
-   "source": "GameOS/gameos/gameos_graphics.cpp:662",
+   "source": "GameOS/gameos/gameos_graphics.cpp:630",
    "stages": {
     "frag": "shaders/decal.frag",
     "vert": "shaders/terrain_overlay.vert"
@@ -464,7 +464,7 @@
     "if (mc2ShadowDistFadeWu() > 0.0f)"
    ],
    "prefix": "#version 430\n#define MC2_SHADOW_DIST_FADE_WU 1.5\n#define MC2_SHADOW_DIST_FADE_MAX_F 1.50\n#define MC2_SHADOW_FADE_CONT_F 1\n#define MC2_SHADOW_FADE_RAMP0_F 1\n#define MC2_SHADOW_ALT_SCALE_F 1\n",
-   "source": "GameOS/gameos/gameos_graphics.cpp:662",
+   "source": "GameOS/gameos/gameos_graphics.cpp:630",
    "stages": {
     "frag": "shaders/decal.frag",
     "vert": "shaders/terrain_overlay.vert"
@@ -481,7 +481,7 @@
     "call:mc2TerrainShadowSunDefine()"
    ],
    "prefix": "#version 430\n#define MC2_SHADOW_MIN_SUN_SIN 1.50000000\n",
-   "source": "GameOS/gameos/gameos_graphics.cpp:662",
+   "source": "GameOS/gameos/gameos_graphics.cpp:630",
    "stages": {
     "frag": "shaders/decal.frag",
     "vert": "shaders/terrain_overlay.vert"
@@ -494,7 +494,7 @@
    "key": "edge_fog",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_postprocess.cpp:564",
+   "source": "GameOS/gameos/gos_postprocess.cpp:543",
    "stages": {
     "frag": "shaders/edge_fog.frag",
     "vert": "shaders/postprocess.vert"
@@ -507,7 +507,7 @@
    "key": "fog_oob",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_postprocess.cpp:545",
+   "source": "GameOS/gameos/gos_postprocess.cpp:524",
    "stages": {
     "frag": "shaders/fog_oob.frag",
     "vert": "shaders/postprocess.vert"
@@ -535,7 +535,7 @@
    "key": "gos_terrain_mask_solid",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gameos_graphics.cpp:561",
+   "source": "GameOS/gameos/gameos_graphics.cpp:546",
    "stages": {
     "frag": "shaders/gos_terrain.frag",
     "vert": "shaders/gos_terrain_mask_solid.vert"
@@ -552,7 +552,7 @@
     "call:mc2TerrainShadowSunDefine()"
    ],
    "prefix": "#version 430\n#define MC2_SHADOW_MIN_SUN_SIN 1.50000000\n",
-   "source": "GameOS/gameos/gameos_graphics.cpp:561",
+   "source": "GameOS/gameos/gameos_graphics.cpp:546",
    "stages": {
     "frag": "shaders/gos_terrain.frag",
     "vert": "shaders/gos_terrain_mask_solid.vert"
@@ -569,7 +569,7 @@
     "if (mc2ShadowStaticBandFixV2Enabled())"
    ],
    "prefix": "#version 430\n#define MC2_SHADOW_STATIC_BANDFIX_V2 1\n",
-   "source": "GameOS/gameos/gameos_graphics.cpp:561",
+   "source": "GameOS/gameos/gameos_graphics.cpp:546",
    "stages": {
     "frag": "shaders/gos_terrain.frag",
     "vert": "shaders/gos_terrain_mask_solid.vert"
@@ -586,7 +586,7 @@
     "if (mc2ShadowStaticBandFixEnabled())"
    ],
    "prefix": "#version 430\n#define MC2_SHADOW_STATIC_BANDFIX 1\n",
-   "source": "GameOS/gameos/gameos_graphics.cpp:561",
+   "source": "GameOS/gameos/gameos_graphics.cpp:546",
    "stages": {
     "frag": "shaders/gos_terrain.frag",
     "vert": "shaders/gos_terrain_mask_solid.vert"
@@ -609,7 +609,7 @@
     "call:mc2TerrainShadowSunDefine()"
    ],
    "prefix": "#version 430\n#define TERRAIN_NORMAL_ARRAY\n#define MC2_SHADOW_STATIC_BANDFIX 1\n#define MC2_SHADOW_STATIC_BANDFIX_V2 1\n#define MC2_SHADOW_MIN_SUN_SIN 1.50000000\n",
-   "source": "GameOS/gameos/gameos_graphics.cpp:561",
+   "source": "GameOS/gameos/gameos_graphics.cpp:546",
    "stages": {
     "frag": "shaders/gos_terrain.frag",
     "vert": "shaders/gos_terrain_mask_solid.vert"
@@ -626,7 +626,7 @@
     "if (terrainNormalArrayEnabled())"
    ],
    "prefix": "#version 430\n#define TERRAIN_NORMAL_ARRAY\n",
-   "source": "GameOS/gameos/gameos_graphics.cpp:561",
+   "source": "GameOS/gameos/gameos_graphics.cpp:546",
    "stages": {
     "frag": "shaders/gos_terrain.frag",
     "vert": "shaders/gos_terrain_mask_solid.vert"
@@ -639,7 +639,7 @@
    "key": "gos_terrain_mask_water",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gameos_graphics.cpp:581",
+   "source": "GameOS/gameos/gameos_graphics.cpp:564",
    "stages": {
     "frag": "shaders/gos_tex_vertex.frag",
     "vert": "shaders/gos_terrain_mask_water.vert"
@@ -652,7 +652,7 @@
    "key": "gos_terrain_mine_static",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gameos_graphics.cpp:534",
+   "source": "GameOS/gameos/gameos_graphics.cpp:521",
    "stages": {
     "frag": "shaders/gos_terrain_mine_static.frag",
     "vert": "shaders/gos_terrain_mine_static.vert"
@@ -665,7 +665,7 @@
    "key": "gos_terrain_surface",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gameos_graphics.cpp:515",
+   "source": "GameOS/gameos/gameos_graphics.cpp:502",
    "stages": {
     "frag": "shaders/gos_terrain.frag",
     "vert": "shaders/gos_terrain_surface.vert"
@@ -682,7 +682,7 @@
     "call:mc2TerrainShadowSunDefine()"
    ],
    "prefix": "#version 430\n#define MC2_SHADOW_MIN_SUN_SIN 1.50000000\n",
-   "source": "GameOS/gameos/gameos_graphics.cpp:515",
+   "source": "GameOS/gameos/gameos_graphics.cpp:502",
    "stages": {
     "frag": "shaders/gos_terrain.frag",
     "vert": "shaders/gos_terrain_surface.vert"
@@ -699,7 +699,7 @@
     "if (mc2ShadowStaticBandFixV2Enabled())"
    ],
    "prefix": "#version 430\n#define MC2_SHADOW_STATIC_BANDFIX_V2 1\n",
-   "source": "GameOS/gameos/gameos_graphics.cpp:515",
+   "source": "GameOS/gameos/gameos_graphics.cpp:502",
    "stages": {
     "frag": "shaders/gos_terrain.frag",
     "vert": "shaders/gos_terrain_surface.vert"
@@ -716,7 +716,7 @@
     "if (mc2ShadowStaticBandFixEnabled())"
    ],
    "prefix": "#version 430\n#define MC2_SHADOW_STATIC_BANDFIX 1\n",
-   "source": "GameOS/gameos/gameos_graphics.cpp:515",
+   "source": "GameOS/gameos/gameos_graphics.cpp:502",
    "stages": {
     "frag": "shaders/gos_terrain.frag",
     "vert": "shaders/gos_terrain_surface.vert"
@@ -739,7 +739,7 @@
     "call:mc2TerrainShadowSunDefine()"
    ],
    "prefix": "#version 430\n#define TERRAIN_NORMAL_ARRAY\n#define MC2_SHADOW_STATIC_BANDFIX 1\n#define MC2_SHADOW_STATIC_BANDFIX_V2 1\n#define MC2_SHADOW_MIN_SUN_SIN 1.50000000\n",
-   "source": "GameOS/gameos/gameos_graphics.cpp:515",
+   "source": "GameOS/gameos/gameos_graphics.cpp:502",
    "stages": {
     "frag": "shaders/gos_terrain.frag",
     "vert": "shaders/gos_terrain_surface.vert"
@@ -756,7 +756,7 @@
     "if (terrainNormalArrayEnabled())"
    ],
    "prefix": "#version 430\n#define TERRAIN_NORMAL_ARRAY\n",
-   "source": "GameOS/gameos/gameos_graphics.cpp:515",
+   "source": "GameOS/gameos/gameos_graphics.cpp:502",
    "stages": {
     "frag": "shaders/gos_terrain.frag",
     "vert": "shaders/gos_terrain_surface.vert"
@@ -769,7 +769,7 @@
    "key": "gos_terrain_thin",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gameos_graphics.cpp:484",
+   "source": "GameOS/gameos/gameos_graphics.cpp:473",
    "stages": {
     "frag": "shaders/gos_terrain.frag",
     "vert": "shaders/gos_terrain_thin.vert"
@@ -786,7 +786,7 @@
     "call:mc2TerrainShadowSunDefine()"
    ],
    "prefix": "#version 430\n#define MC2_SHADOW_MIN_SUN_SIN 1.50000000\n",
-   "source": "GameOS/gameos/gameos_graphics.cpp:484",
+   "source": "GameOS/gameos/gameos_graphics.cpp:473",
    "stages": {
     "frag": "shaders/gos_terrain.frag",
     "vert": "shaders/gos_terrain_thin.vert"
@@ -803,7 +803,7 @@
     "if (mc2ShadowStaticBandFixV2Enabled())"
    ],
    "prefix": "#version 430\n#define MC2_SHADOW_STATIC_BANDFIX_V2 1\n",
-   "source": "GameOS/gameos/gameos_graphics.cpp:484",
+   "source": "GameOS/gameos/gameos_graphics.cpp:473",
    "stages": {
     "frag": "shaders/gos_terrain.frag",
     "vert": "shaders/gos_terrain_thin.vert"
@@ -820,7 +820,7 @@
     "if (mc2ShadowStaticBandFixEnabled())"
    ],
    "prefix": "#version 430\n#define MC2_SHADOW_STATIC_BANDFIX 1\n",
-   "source": "GameOS/gameos/gameos_graphics.cpp:484",
+   "source": "GameOS/gameos/gameos_graphics.cpp:473",
    "stages": {
     "frag": "shaders/gos_terrain.frag",
     "vert": "shaders/gos_terrain_thin.vert"
@@ -843,7 +843,7 @@
     "call:mc2TerrainShadowSunDefine()"
    ],
    "prefix": "#version 430\n#define TERRAIN_NORMAL_ARRAY\n#define MC2_SHADOW_STATIC_BANDFIX 1\n#define MC2_SHADOW_STATIC_BANDFIX_V2 1\n#define MC2_SHADOW_MIN_SUN_SIN 1.50000000\n",
-   "source": "GameOS/gameos/gameos_graphics.cpp:484",
+   "source": "GameOS/gameos/gameos_graphics.cpp:473",
    "stages": {
     "frag": "shaders/gos_terrain.frag",
     "vert": "shaders/gos_terrain_thin.vert"
@@ -860,7 +860,7 @@
     "if (terrainNormalArrayEnabled())"
    ],
    "prefix": "#version 430\n#define TERRAIN_NORMAL_ARRAY\n",
-   "source": "GameOS/gameos/gameos_graphics.cpp:484",
+   "source": "GameOS/gameos/gameos_graphics.cpp:473",
    "stages": {
     "frag": "shaders/gos_terrain.frag",
     "vert": "shaders/gos_terrain_thin.vert"
@@ -873,7 +873,7 @@
    "key": "gos_terrain_water_fast",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gameos_graphics.cpp:601",
+   "source": "GameOS/gameos/gameos_graphics.cpp:582",
    "stages": {
     "frag": "shaders/gos_tex_vertex.frag",
     "vert": "shaders/gos_terrain_water_fast.vert"
@@ -886,7 +886,7 @@
    "key": "gos_terrain_water_mdi",
    "optional_groups_on": [],
    "prefix": "#version 430\n#extension GL_ARB_shader_draw_parameters : require\n",
-   "source": "GameOS/gameos/gameos_graphics_water.cpp:302",
+   "source": "GameOS/gameos/gameos_graphics_water.cpp:303",
    "stages": {
     "frag": "shaders/gos_terrain_water_mdi.frag",
     "vert": "shaders/gos_terrain_water_fast_mdi.vert"
@@ -2691,7 +2691,7 @@
    "key": "gpu_cull#C1a#READBACK{READBACK_SSBO_BINDING=14,GPU_CULL_C2_READBACK}",
    "optional_groups_on": [],
    "prefix": "#version 430\n#define READBACK_SSBO_BINDING 14\n#define GPU_CULL_C2_READBACK 1\n",
-   "source": "GameOS/gameos/gpu_cull_compute.cpp:248",
+   "source": "GameOS/gameos/gpu_cull_compute.cpp:249",
    "splice": {
     "file": "shaders/gpu_cull_predicate.glsl",
     "include_line": "#include <gpu_cull_predicate.glsl>"
@@ -2709,7 +2709,7 @@
    "key": "gpu_cull#C1a{READBACK_SSBO_BINDING=14}",
    "optional_groups_on": [],
    "prefix": "#version 430\n#define READBACK_SSBO_BINDING 14\n",
-   "source": "GameOS/gameos/gpu_cull_compute.cpp:248",
+   "source": "GameOS/gameos/gpu_cull_compute.cpp:249",
    "splice": {
     "file": "shaders/gpu_cull_predicate.glsl",
     "include_line": "#include <gpu_cull_predicate.glsl>"
@@ -2729,7 +2729,7 @@
    "key": "gpu_cull#C1b#READBACK{READBACK_SSBO_BINDING=14,GPU_CULL_C1B_INDIRECT,GPU_CULL_C2_READBACK}",
    "optional_groups_on": [],
    "prefix": "#version 430\n#define READBACK_SSBO_BINDING 14\n#define GPU_CULL_C1B_INDIRECT 1\n#define GPU_CULL_C2_READBACK 1\n",
-   "source": "GameOS/gameos/gpu_cull_compute.cpp:248",
+   "source": "GameOS/gameos/gpu_cull_compute.cpp:249",
    "splice": {
     "file": "shaders/gpu_cull_predicate.glsl",
     "include_line": "#include <gpu_cull_predicate.glsl>"
@@ -2748,7 +2748,7 @@
    "key": "gpu_cull#C1b{READBACK_SSBO_BINDING=14,GPU_CULL_C1B_INDIRECT}",
    "optional_groups_on": [],
    "prefix": "#version 430\n#define READBACK_SSBO_BINDING 14\n#define GPU_CULL_C1B_INDIRECT 1\n",
-   "source": "GameOS/gameos/gpu_cull_compute.cpp:248",
+   "source": "GameOS/gameos/gpu_cull_compute.cpp:249",
    "splice": {
     "file": "shaders/gpu_cull_predicate.glsl",
     "include_line": "#include <gpu_cull_predicate.glsl>"
@@ -2764,7 +2764,7 @@
    "key": "gpu_cull_block_rollup",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gpu_cull_compute.cpp:419",
+   "source": "GameOS/gameos/gpu_cull_compute.cpp:416",
    "stages": {
     "comp": "shaders/gpu_cull_block_rollup.comp"
    }
@@ -2776,7 +2776,7 @@
    "key": "gpu_cull_patch",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gpu_cull_compute.cpp:408",
+   "source": "GameOS/gameos/gpu_cull_compute.cpp:405",
    "stages": {
     "comp": "shaders/gpu_cull_patch.comp"
    }
@@ -2788,7 +2788,7 @@
    "key": "gpu_driven_cmd_patch",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_terrain_water_stream.cpp:1523",
+   "source": "GameOS/gameos/gos_terrain_water_stream.cpp:1467",
    "stages": {
     "comp": "shaders/gpu_driven_cmd_patch.comp"
    }
@@ -2800,7 +2800,7 @@
    "key": "gpu_driven_terrain_solid",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_terrain_indirect_compute.cpp:13",
+   "source": "GameOS/gameos/gos_terrain_indirect_compute.cpp:14",
    "stages": {
     "comp": "shaders/gpu_driven_terrain_solid.comp"
    }
@@ -2812,7 +2812,7 @@
    "key": "gpu_driven_water",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_terrain_water_stream.cpp:1521",
+   "source": "GameOS/gameos/gos_terrain_water_stream.cpp:1465",
    "stages": {
     "comp": "shaders/gpu_driven_water.comp"
    }
@@ -2837,7 +2837,7 @@
    "key": "hdri_skybox_stencil_tag",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_postprocess_skybox.cpp:250",
+   "source": "GameOS/gameos/gos_postprocess_skybox.cpp:251",
    "stages": {
     "frag": "shaders/hdri_skybox_stencil_tag.frag",
     "vert": "shaders/hdri_skybox.vert"
@@ -2850,7 +2850,7 @@
    "key": "hzb_reduce",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_postprocess.cpp:623",
+   "source": "GameOS/gameos/gos_postprocess.cpp:601",
    "stages": {
     "frag": "shaders/hzb_reduce.frag",
     "vert": "shaders/postprocess.vert"
@@ -2867,7 +2867,7 @@
    "optional_groups_on": [],
    "prefix": "#version 430\n#define LIGHTGRID_STAGE 0\n#define LIGHTGRID_MAX_LIGHTS 32\n",
    "raw_note": "loaded as plain text (no engine include flattening)",
-   "source": "GameOS/gameos/gos_lightgrid_build.cpp:112",
+   "source": "GameOS/gameos/gos_lightgrid_build.cpp:113",
    "stages": {
     "comp": "shaders/lightgrid_build.comp"
    }
@@ -2883,7 +2883,7 @@
    "optional_groups_on": [],
    "prefix": "#version 430\n#define LIGHTGRID_STAGE 1\n#define LIGHTGRID_MAX_LIGHTS 32\n",
    "raw_note": "loaded as plain text (no engine include flattening)",
-   "source": "GameOS/gameos/gos_lightgrid_build.cpp:112",
+   "source": "GameOS/gameos/gos_lightgrid_build.cpp:113",
    "stages": {
     "comp": "shaders/lightgrid_build.comp"
    }
@@ -2897,7 +2897,7 @@
    "key": "mech{IMPORTED_MECH_MATERIAL}",
    "optional_groups_on": [],
    "prefix": "#version 430\n#define MC2_IMPORTED_MECH_MATERIAL 1\n",
-   "source": "GameOS/gameos/gos_mech_batcher.cpp:524",
+   "source": "GameOS/gameos/gos_mech_batcher.cpp:523",
    "stages": {
     "frag": "shaders/mech.frag",
     "vert": "shaders/mech.vert"
@@ -2915,7 +2915,7 @@
     "if (RenderWorld::IsObjectIdBufferEnabled())"
    ],
    "prefix": "#version 430\n#define MC2_OBJECT_ID_BUFFER 1\n#define MC2_IMPORTED_MECH_MATERIAL 1\n",
-   "source": "GameOS/gameos/gos_mech_batcher.cpp:524",
+   "source": "GameOS/gameos/gos_mech_batcher.cpp:523",
    "stages": {
     "frag": "shaders/mech.frag",
     "vert": "shaders/mech.vert"
@@ -2935,7 +2935,7 @@
     "if (s_mechViewUniforms)"
    ],
    "prefix": "#version 430\n#define MC2_OBJECT_ID_BUFFER 1\n#define MC2_USE_VIEW_UNIFORMS 1\n#define MC2_IMPORTED_MECH_MATERIAL 1\n",
-   "source": "GameOS/gameos/gos_mech_batcher.cpp:524",
+   "source": "GameOS/gameos/gos_mech_batcher.cpp:523",
    "stages": {
     "frag": "shaders/mech.frag",
     "vert": "shaders/mech.vert"
@@ -2953,7 +2953,7 @@
     "if (s_mechViewUniforms)"
    ],
    "prefix": "#version 430\n#define MC2_USE_VIEW_UNIFORMS 1\n#define MC2_IMPORTED_MECH_MATERIAL 1\n",
-   "source": "GameOS/gameos/gos_mech_batcher.cpp:524",
+   "source": "GameOS/gameos/gos_mech_batcher.cpp:523",
    "stages": {
     "frag": "shaders/mech.frag",
     "vert": "shaders/mech.vert"
@@ -2966,7 +2966,7 @@
    "key": "particle_billboard",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_particle_bridge.cpp:244",
+   "source": "GameOS/gameos/gos_particle_bridge.cpp:245",
    "stages": {
     "frag": "shaders/particle_billboard.frag",
     "vert": "shaders/particle_billboard.vert"
@@ -3073,7 +3073,7 @@
    "key": "shadow_depth",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_postprocess_shadow.cpp:92",
+   "source": "GameOS/gameos/gos_postprocess_shadow.cpp:93",
    "stages": {
     "frag": "shaders/shadow_depth.frag",
     "vert": "shaders/shadow_depth.vert"
@@ -3270,7 +3270,7 @@
    "key": "shadow_screen",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_postprocess.cpp:373",
+   "source": "GameOS/gameos/gos_postprocess.cpp:362",
    "stages": {
     "frag": "shaders/shadow_screen.frag",
     "vert": "shaders/postprocess.vert"
@@ -3294,7 +3294,7 @@
     "if (mc2ShadowDistFadeWu() > 0.0f)"
    ],
    "prefix": "#version 430\n#define MC2_SHADOW_CSM 1\n#define MC2_SHADOW_CSM_MAX 3\n#define MC2_SHADOW_DIST_FADE_WU 1.5\n#define MC2_SHADOW_DIST_FADE_MAX_F 1.50\n#define MC2_SHADOW_FADE_CONT_F 1\n#define MC2_SHADOW_FADE_RAMP0_F 1\n#define MC2_SHADOW_ALT_SCALE_F 1\n",
-   "source": "GameOS/gameos/gos_postprocess.cpp:373",
+   "source": "GameOS/gameos/gos_postprocess.cpp:362",
    "stages": {
     "frag": "shaders/shadow_screen.frag",
     "vert": "shaders/postprocess.vert"
@@ -3312,7 +3312,7 @@
     "if (mc2ShadowCsmEnabled())"
    ],
    "prefix": "#version 430\n#define MC2_SHADOW_CSM 1\n#define MC2_SHADOW_CSM_MAX 3\n",
-   "source": "GameOS/gameos/gos_postprocess.cpp:373",
+   "source": "GameOS/gameos/gos_postprocess.cpp:362",
    "stages": {
     "frag": "shaders/shadow_screen.frag",
     "vert": "shaders/postprocess.vert"
@@ -3333,7 +3333,7 @@
     "if (mc2ShadowDistFadeWu() > 0.0f)"
    ],
    "prefix": "#version 430\n#define MC2_SHADOW_DIST_FADE_WU 1.5\n#define MC2_SHADOW_DIST_FADE_MAX_F 1.50\n#define MC2_SHADOW_FADE_CONT_F 1\n#define MC2_SHADOW_FADE_RAMP0_F 1\n#define MC2_SHADOW_ALT_SCALE_F 1\n",
-   "source": "GameOS/gameos/gos_postprocess.cpp:373",
+   "source": "GameOS/gameos/gos_postprocess.cpp:362",
    "stages": {
     "frag": "shaders/shadow_screen.frag",
     "vert": "shaders/postprocess.vert"
@@ -3346,7 +3346,7 @@
    "key": "shadow_static_prop",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gameos_graphics.cpp:407",
+   "source": "GameOS/gameos/gameos_graphics.cpp:405",
    "stages": {
     "frag": "shaders/shadow_instanced.frag",
     "vert": "shaders/shadow_static_prop.vert"
@@ -3359,7 +3359,7 @@
    "key": "shadow_static_prop_alpha",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gameos_graphics.cpp:429",
+   "source": "GameOS/gameos/gameos_graphics.cpp:425",
    "stages": {
     "frag": "shaders/shadow_static_prop.frag",
     "vert": "shaders/shadow_static_prop.vert"
@@ -3374,7 +3374,7 @@
    "key": "shadow_static_prop_alpha_atlas{SHADOW_PROP_ATLAS}",
    "optional_groups_on": [],
    "prefix": "#version 430\n#define MC2_SHADOW_PROP_ATLAS 1\n",
-   "source": "GameOS/gameos/gameos_graphics.cpp:456",
+   "source": "GameOS/gameos/gameos_graphics.cpp:449",
    "stages": {
     "frag": "shaders/shadow_static_prop.frag",
     "vert": "shaders/shadow_static_prop.vert"
@@ -3576,7 +3576,7 @@
    "key": "shoreline",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_postprocess.cpp:383",
+   "source": "GameOS/gameos/gos_postprocess.cpp:372",
    "stages": {
     "frag": "shaders/shoreline.frag",
     "vert": "shaders/postprocess.vert"
@@ -3602,7 +3602,7 @@
    "key": "ssao",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_postprocess.cpp:389",
+   "source": "GameOS/gameos/gos_postprocess.cpp:378",
    "stages": {
     "frag": "shaders/ssao.frag",
     "vert": "shaders/postprocess.vert"
@@ -3615,7 +3615,7 @@
    "key": "ssao_apply",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_postprocess.cpp:393",
+   "source": "GameOS/gameos/gos_postprocess.cpp:382",
    "stages": {
     "frag": "shaders/ssao_apply.frag",
     "vert": "shaders/postprocess.vert"
@@ -3628,7 +3628,7 @@
    "key": "ssao_blur",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_postprocess.cpp:398",
+   "source": "GameOS/gameos/gos_postprocess.cpp:387",
    "stages": {
     "frag": "shaders/ssao_blur.frag",
     "vert": "shaders/postprocess.vert"
@@ -3641,7 +3641,7 @@
    "key": "static_prop",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:88",
+   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:85",
    "stages": {
     "frag": "shaders/static_prop.frag",
     "vert": "shaders/static_prop.vert"
@@ -3663,7 +3663,7 @@
     "if (s_ormSlotsEnabled)"
    ],
    "prefix": "#version 430\n#extension GL_ARB_shader_draw_parameters : require\n#define MC2_COALESCE 1\n#define MC2_OBJECT_ID_BUFFER 1\n#define MC2_USE_VIEW_UNIFORMS 1\n#define MC2_STATICPROP_PBR_SLOTS 1\n",
-   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:196",
+   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:186",
    "stages": {
     "frag": "shaders/static_prop.frag",
     "vert": "shaders/static_prop.vert"
@@ -3681,7 +3681,7 @@
     "if (RenderWorld::IsObjectIdBufferEnabled())"
    ],
    "prefix": "#version 430\n#extension GL_ARB_shader_draw_parameters : require\n#define MC2_COALESCE 1\n#define MC2_OBJECT_ID_BUFFER 1\n",
-   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:196",
+   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:186",
    "stages": {
     "frag": "shaders/static_prop.frag",
     "vert": "shaders/static_prop.vert"
@@ -3699,7 +3699,7 @@
     "if (s_ormSlotsEnabled)"
    ],
    "prefix": "#version 430\n#extension GL_ARB_shader_draw_parameters : require\n#define MC2_COALESCE 1\n#define MC2_STATICPROP_PBR_SLOTS 1\n",
-   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:196",
+   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:186",
    "stages": {
     "frag": "shaders/static_prop.frag",
     "vert": "shaders/static_prop.vert"
@@ -3717,7 +3717,7 @@
     "if (s_viewUniformsShaderEnabled)"
    ],
    "prefix": "#version 430\n#extension GL_ARB_shader_draw_parameters : require\n#define MC2_COALESCE 1\n#define MC2_USE_VIEW_UNIFORMS 1\n",
-   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:196",
+   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:186",
    "stages": {
     "frag": "shaders/static_prop.frag",
     "vert": "shaders/static_prop.vert"
@@ -3732,7 +3732,7 @@
    "key": "static_prop_coalesce{COALESCE}",
    "optional_groups_on": [],
    "prefix": "#version 430\n#extension GL_ARB_shader_draw_parameters : require\n#define MC2_COALESCE 1\n",
-   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:196",
+   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:186",
    "stages": {
     "frag": "shaders/static_prop.frag",
     "vert": "shaders/static_prop.vert"
@@ -3745,7 +3745,7 @@
    "key": "static_prop_depth",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:347",
+   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:334",
    "stages": {
     "frag": "shaders/static_prop_depth.frag",
     "vert": "shaders/static_prop.vert"
@@ -3767,7 +3767,7 @@
     "if (s_ormSlotsEnabled)"
    ],
    "prefix": "#version 430\n#extension GL_ARB_shader_draw_parameters : require\n#define MC2_COALESCE 1\n#define MC2_OBJECT_ID_BUFFER 1\n#define MC2_USE_VIEW_UNIFORMS 1\n#define MC2_STATICPROP_PBR_SLOTS 1\n",
-   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:347",
+   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:334",
    "stages": {
     "frag": "shaders/static_prop_depth.frag",
     "vert": "shaders/static_prop.vert"
@@ -3785,7 +3785,7 @@
     "if (RenderWorld::IsObjectIdBufferEnabled())"
    ],
    "prefix": "#version 430\n#extension GL_ARB_shader_draw_parameters : require\n#define MC2_COALESCE 1\n#define MC2_OBJECT_ID_BUFFER 1\n",
-   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:347",
+   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:334",
    "stages": {
     "frag": "shaders/static_prop_depth.frag",
     "vert": "shaders/static_prop.vert"
@@ -3803,7 +3803,7 @@
     "if (s_ormSlotsEnabled)"
    ],
    "prefix": "#version 430\n#extension GL_ARB_shader_draw_parameters : require\n#define MC2_COALESCE 1\n#define MC2_STATICPROP_PBR_SLOTS 1\n",
-   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:347",
+   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:334",
    "stages": {
     "frag": "shaders/static_prop_depth.frag",
     "vert": "shaders/static_prop.vert"
@@ -3821,7 +3821,7 @@
     "if (s_viewUniformsShaderEnabled)"
    ],
    "prefix": "#version 430\n#extension GL_ARB_shader_draw_parameters : require\n#define MC2_COALESCE 1\n#define MC2_USE_VIEW_UNIFORMS 1\n",
-   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:347",
+   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:334",
    "stages": {
     "frag": "shaders/static_prop_depth.frag",
     "vert": "shaders/static_prop.vert"
@@ -3836,7 +3836,7 @@
    "key": "static_prop_depth{COALESCE}",
    "optional_groups_on": [],
    "prefix": "#version 430\n#extension GL_ARB_shader_draw_parameters : require\n#define MC2_COALESCE 1\n",
-   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:347",
+   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:334",
    "stages": {
     "frag": "shaders/static_prop_depth.frag",
     "vert": "shaders/static_prop.vert"
@@ -3857,7 +3857,7 @@
     "if (s_ormSlotsEnabled)"
    ],
    "prefix": "#version 430\n#define MC2_OBJECT_ID_BUFFER 1\n#define MC2_USE_VIEW_UNIFORMS 1\n#define MC2_STATICPROP_PBR_SLOTS 1\n",
-   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:347",
+   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:334",
    "stages": {
     "frag": "shaders/static_prop_depth.frag",
     "vert": "shaders/static_prop.vert"
@@ -3874,7 +3874,7 @@
     "if (RenderWorld::IsObjectIdBufferEnabled())"
    ],
    "prefix": "#version 430\n#define MC2_OBJECT_ID_BUFFER 1\n",
-   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:347",
+   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:334",
    "stages": {
     "frag": "shaders/static_prop_depth.frag",
     "vert": "shaders/static_prop.vert"
@@ -3891,7 +3891,7 @@
     "if (s_ormSlotsEnabled)"
    ],
    "prefix": "#version 430\n#define MC2_STATICPROP_PBR_SLOTS 1\n",
-   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:347",
+   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:334",
    "stages": {
     "frag": "shaders/static_prop_depth.frag",
     "vert": "shaders/static_prop.vert"
@@ -3908,7 +3908,7 @@
     "if (s_viewUniformsShaderEnabled)"
    ],
    "prefix": "#version 430\n#define MC2_USE_VIEW_UNIFORMS 1\n",
-   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:347",
+   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:334",
    "stages": {
     "frag": "shaders/static_prop_depth.frag",
     "vert": "shaders/static_prop.vert"
@@ -3929,7 +3929,7 @@
     "if (s_ormSlotsEnabled)"
    ],
    "prefix": "#version 430\n#define MC2_OBJECT_ID_BUFFER 1\n#define MC2_USE_VIEW_UNIFORMS 1\n#define MC2_STATICPROP_PBR_SLOTS 1\n",
-   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:88",
+   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:85",
    "stages": {
     "frag": "shaders/static_prop.frag",
     "vert": "shaders/static_prop.vert"
@@ -3946,7 +3946,7 @@
     "if (RenderWorld::IsObjectIdBufferEnabled())"
    ],
    "prefix": "#version 430\n#define MC2_OBJECT_ID_BUFFER 1\n",
-   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:88",
+   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:85",
    "stages": {
     "frag": "shaders/static_prop.frag",
     "vert": "shaders/static_prop.vert"
@@ -3963,7 +3963,7 @@
     "if (s_ormSlotsEnabled)"
    ],
    "prefix": "#version 430\n#define MC2_STATICPROP_PBR_SLOTS 1\n",
-   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:88",
+   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:85",
    "stages": {
     "frag": "shaders/static_prop.frag",
     "vert": "shaders/static_prop.vert"
@@ -3980,7 +3980,7 @@
     "if (s_viewUniformsShaderEnabled)"
    ],
    "prefix": "#version 430\n#define MC2_USE_VIEW_UNIFORMS 1\n",
-   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:88",
+   "source": "GameOS/gameos/gos_static_prop_batcher_program.cpp:85",
    "stages": {
     "frag": "shaders/static_prop.frag",
     "vert": "shaders/static_prop.vert"
@@ -4010,7 +4010,7 @@
    "key": "terrain_lod_chunk",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_terrain_lod_chunk.cpp:529",
+   "source": "GameOS/gameos/gos_terrain_lod_chunk.cpp:517",
    "stages": {
     "frag": "shaders/terrain_lod_chunk.frag",
     "vert": "shaders/terrain_lod_chunk.vert"
@@ -4029,7 +4029,7 @@
     "if (mc2ShadowCsmEnabled())"
    ],
    "prefix": "#version 430\n#define MC2_SHADOW_CSM 1\n#define MC2_SHADOW_CSM_MAX 3\n#define TERRAIN_TESS\n",
-   "source": "GameOS/gameos/gos_terrain_lod_chunk.cpp:680",
+   "source": "GameOS/gameos/gos_terrain_lod_chunk.cpp:663",
    "stages": {
     "frag": "shaders/terrain_lod_chunk.frag",
     "tesc": "shaders/terrain_lod_chunk.tesc",
@@ -4053,7 +4053,7 @@
     "if (mc2ShadowDistFadeWu() > 0.0f)"
    ],
    "prefix": "#version 430\n#define MC2_SHADOW_DIST_FADE_WU 1.5\n#define MC2_SHADOW_DIST_FADE_MAX_F 1.50\n#define MC2_SHADOW_FADE_CONT_F 1\n#define MC2_SHADOW_FADE_RAMP0_F 1\n#define MC2_SHADOW_ALT_SCALE_F 1\n#define TERRAIN_TESS\n",
-   "source": "GameOS/gameos/gos_terrain_lod_chunk.cpp:680",
+   "source": "GameOS/gameos/gos_terrain_lod_chunk.cpp:663",
    "stages": {
     "frag": "shaders/terrain_lod_chunk.frag",
     "tesc": "shaders/terrain_lod_chunk.tesc",
@@ -4073,7 +4073,7 @@
     "call:mc2TerrainShadowSunDefine()"
    ],
    "prefix": "#version 430\n#define MC2_SHADOW_MIN_SUN_SIN 1.50000000\n#define TERRAIN_TESS\n",
-   "source": "GameOS/gameos/gos_terrain_lod_chunk.cpp:680",
+   "source": "GameOS/gameos/gos_terrain_lod_chunk.cpp:663",
    "stages": {
     "frag": "shaders/terrain_lod_chunk.frag",
     "tesc": "shaders/terrain_lod_chunk.tesc",
@@ -4104,7 +4104,7 @@
     "if (mc2ShadowDistFadeWu() > 0.0f)"
    ],
    "prefix": "#version 430\n#define MC2_SHADOW_STATIC_BANDFIX_V2 1\n#define MC2_SHADOW_MIN_SUN_SIN 1.50000000\n#define MC2_SHADOW_CSM 1\n#define MC2_SHADOW_CSM_MAX 3\n#define MC2_SHADOW_DIST_FADE_WU 1.5\n#define MC2_SHADOW_DIST_FADE_MAX_F 1.50\n#define MC2_SHADOW_FADE_CONT_F 1\n#define MC2_SHADOW_FADE_RAMP0_F 1\n#define MC2_SHADOW_ALT_SCALE_F 1\n#define TERRAIN_TESS\n",
-   "source": "GameOS/gameos/gos_terrain_lod_chunk.cpp:680",
+   "source": "GameOS/gameos/gos_terrain_lod_chunk.cpp:663",
    "stages": {
     "frag": "shaders/terrain_lod_chunk.frag",
     "tesc": "shaders/terrain_lod_chunk.tesc",
@@ -4124,7 +4124,7 @@
     "if (mc2ShadowStaticBandFixV2Enabled())"
    ],
    "prefix": "#version 430\n#define MC2_SHADOW_STATIC_BANDFIX_V2 1\n#define TERRAIN_TESS\n",
-   "source": "GameOS/gameos/gos_terrain_lod_chunk.cpp:680",
+   "source": "GameOS/gameos/gos_terrain_lod_chunk.cpp:663",
    "stages": {
     "frag": "shaders/terrain_lod_chunk.frag",
     "tesc": "shaders/terrain_lod_chunk.tesc",
@@ -4141,7 +4141,7 @@
    "key": "terrain_lod_chunk_tess{TERRAIN_TESS}",
    "optional_groups_on": [],
    "prefix": "#version 430\n#define TERRAIN_TESS\n",
-   "source": "GameOS/gameos/gos_terrain_lod_chunk.cpp:680",
+   "source": "GameOS/gameos/gos_terrain_lod_chunk.cpp:663",
    "stages": {
     "frag": "shaders/terrain_lod_chunk.frag",
     "tesc": "shaders/terrain_lod_chunk.tesc",
@@ -4161,7 +4161,7 @@
     "if (mc2ShadowCsmEnabled())"
    ],
    "prefix": "#version 430\n#define MC2_SHADOW_CSM 1\n#define MC2_SHADOW_CSM_MAX 3\n",
-   "source": "GameOS/gameos/gos_terrain_lod_chunk.cpp:529",
+   "source": "GameOS/gameos/gos_terrain_lod_chunk.cpp:517",
    "stages": {
     "frag": "shaders/terrain_lod_chunk.frag",
     "vert": "shaders/terrain_lod_chunk.vert"
@@ -4182,7 +4182,7 @@
     "if (mc2ShadowDistFadeWu() > 0.0f)"
    ],
    "prefix": "#version 430\n#define MC2_SHADOW_DIST_FADE_WU 1.5\n#define MC2_SHADOW_DIST_FADE_MAX_F 1.50\n#define MC2_SHADOW_FADE_CONT_F 1\n#define MC2_SHADOW_FADE_RAMP0_F 1\n#define MC2_SHADOW_ALT_SCALE_F 1\n",
-   "source": "GameOS/gameos/gos_terrain_lod_chunk.cpp:529",
+   "source": "GameOS/gameos/gos_terrain_lod_chunk.cpp:517",
    "stages": {
     "frag": "shaders/terrain_lod_chunk.frag",
     "vert": "shaders/terrain_lod_chunk.vert"
@@ -4199,7 +4199,7 @@
     "call:mc2TerrainShadowSunDefine()"
    ],
    "prefix": "#version 430\n#define MC2_SHADOW_MIN_SUN_SIN 1.50000000\n",
-   "source": "GameOS/gameos/gos_terrain_lod_chunk.cpp:529",
+   "source": "GameOS/gameos/gos_terrain_lod_chunk.cpp:517",
    "stages": {
     "frag": "shaders/terrain_lod_chunk.frag",
     "vert": "shaders/terrain_lod_chunk.vert"
@@ -4227,7 +4227,7 @@
     "if (mc2ShadowDistFadeWu() > 0.0f)"
    ],
    "prefix": "#version 430\n#define MC2_SHADOW_STATIC_BANDFIX_V2 1\n#define MC2_SHADOW_MIN_SUN_SIN 1.50000000\n#define MC2_SHADOW_CSM 1\n#define MC2_SHADOW_CSM_MAX 3\n#define MC2_SHADOW_DIST_FADE_WU 1.5\n#define MC2_SHADOW_DIST_FADE_MAX_F 1.50\n#define MC2_SHADOW_FADE_CONT_F 1\n#define MC2_SHADOW_FADE_RAMP0_F 1\n#define MC2_SHADOW_ALT_SCALE_F 1\n",
-   "source": "GameOS/gameos/gos_terrain_lod_chunk.cpp:529",
+   "source": "GameOS/gameos/gos_terrain_lod_chunk.cpp:517",
    "stages": {
     "frag": "shaders/terrain_lod_chunk.frag",
     "vert": "shaders/terrain_lod_chunk.vert"
@@ -4244,7 +4244,7 @@
     "if (mc2ShadowStaticBandFixV2Enabled())"
    ],
    "prefix": "#version 430\n#define MC2_SHADOW_STATIC_BANDFIX_V2 1\n",
-   "source": "GameOS/gameos/gos_terrain_lod_chunk.cpp:529",
+   "source": "GameOS/gameos/gos_terrain_lod_chunk.cpp:517",
    "stages": {
     "frag": "shaders/terrain_lod_chunk.frag",
     "vert": "shaders/terrain_lod_chunk.vert"
@@ -4257,7 +4257,7 @@
    "key": "terrain_overlay",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gameos_graphics.cpp:659",
+   "source": "GameOS/gameos/gameos_graphics.cpp:627",
    "stages": {
     "frag": "shaders/terrain_overlay.frag",
     "vert": "shaders/terrain_overlay.vert"
@@ -4283,7 +4283,7 @@
     "call:mc2TerrainShadowSunDefine()"
    ],
    "prefix": "#version 430\n#define MC2_SHADOW_CSM 1\n#define MC2_SHADOW_CSM_MAX 3\n#define MC2_SHADOW_DIST_FADE_WU 1.5\n#define MC2_SHADOW_DIST_FADE_MAX_F 1.50\n#define MC2_SHADOW_FADE_CONT_F 1\n#define MC2_SHADOW_FADE_RAMP0_F 1\n#define MC2_SHADOW_ALT_SCALE_F 1\n#define MC2_SHADOW_MIN_SUN_SIN 1.50000000\n",
-   "source": "GameOS/gameos/gameos_graphics.cpp:659",
+   "source": "GameOS/gameos/gameos_graphics.cpp:627",
    "stages": {
     "frag": "shaders/terrain_overlay.frag",
     "vert": "shaders/terrain_overlay.vert"
@@ -4301,7 +4301,7 @@
     "if (mc2ShadowCsmEnabled())"
    ],
    "prefix": "#version 430\n#define MC2_SHADOW_CSM 1\n#define MC2_SHADOW_CSM_MAX 3\n",
-   "source": "GameOS/gameos/gameos_graphics.cpp:659",
+   "source": "GameOS/gameos/gameos_graphics.cpp:627",
    "stages": {
     "frag": "shaders/terrain_overlay.frag",
     "vert": "shaders/terrain_overlay.vert"
@@ -4322,7 +4322,7 @@
     "if (mc2ShadowDistFadeWu() > 0.0f)"
    ],
    "prefix": "#version 430\n#define MC2_SHADOW_DIST_FADE_WU 1.5\n#define MC2_SHADOW_DIST_FADE_MAX_F 1.50\n#define MC2_SHADOW_FADE_CONT_F 1\n#define MC2_SHADOW_FADE_RAMP0_F 1\n#define MC2_SHADOW_ALT_SCALE_F 1\n",
-   "source": "GameOS/gameos/gameos_graphics.cpp:659",
+   "source": "GameOS/gameos/gameos_graphics.cpp:627",
    "stages": {
     "frag": "shaders/terrain_overlay.frag",
     "vert": "shaders/terrain_overlay.vert"
@@ -4339,7 +4339,7 @@
     "call:mc2TerrainShadowSunDefine()"
    ],
    "prefix": "#version 430\n#define MC2_SHADOW_MIN_SUN_SIN 1.50000000\n",
-   "source": "GameOS/gameos/gameos_graphics.cpp:659",
+   "source": "GameOS/gameos/gameos_graphics.cpp:627",
    "stages": {
     "frag": "shaders/terrain_overlay.frag",
     "vert": "shaders/terrain_overlay.vert"
@@ -4352,7 +4352,7 @@
    "key": "tube_ribbon",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_particle_bridge_tube.cpp:61",
+   "source": "GameOS/gameos/gos_particle_bridge_tube.cpp:62",
    "stages": {
     "frag": "shaders/tube_ribbon.frag",
     "vert": "shaders/tube_ribbon.vert"
@@ -4365,7 +4365,7 @@
    "key": "vegetation_card",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_vegetation.cpp:136",
+   "source": "GameOS/gameos/gos_vegetation.cpp:137",
    "stages": {
     "frag": "shaders/gos_vegetation_card.frag",
     "vert": "shaders/gos_vegetation_card.vert"
@@ -4378,7 +4378,7 @@
    "key": "vfx_mesh",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_vfx_mesh_bridge.cpp:113",
+   "source": "GameOS/gameos/gos_vfx_mesh_bridge.cpp:114",
    "stages": {
     "frag": "shaders/vfx_mesh.frag",
     "vert": "shaders/vfx_mesh.vert"

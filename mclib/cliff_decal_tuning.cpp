@@ -11,6 +11,7 @@
 #include <cstdlib>
 #include <cstdio>
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 namespace CliffDecalTuning {
 
@@ -175,13 +176,7 @@ void cliffDecal_setKnobsAndApply(float scale, float offset, float lateral,
 
 void cliffDecal_logValues() {
     seedKnobsFromEnv();
-    std::fprintf(stderr,
-        "[TERRAIN_DECAL v1] tuned knobs: "
-        "MC2_TERRAIN_DECAL_SCALE=%.4f MC2_TERRAIN_DECAL_OFFSET=%.2f "
-        "MC2_TERRAIN_DECAL_LATERAL=%.2f MC2_TERRAIN_DECAL_LIFT=%.2f "
-        "MC2_TERRAIN_DECAL_YAW=%.2f MC2_TERRAIN_DECAL_PITCH=%.2f\n",
-        s_knobs.scale, s_knobs.offset, s_knobs.lateral, s_knobs.lift, s_knobs.yawDeg,
-        s_knobs.pitchDeg);
+    mc2::fmt::print_err("[TERRAIN_DECAL v1] tuned knobs: MC2_TERRAIN_DECAL_SCALE={:.4f} MC2_TERRAIN_DECAL_OFFSET={:.2f} MC2_TERRAIN_DECAL_LATERAL={:.2f} MC2_TERRAIN_DECAL_LIFT={:.2f} MC2_TERRAIN_DECAL_YAW={:.2f} MC2_TERRAIN_DECAL_PITCH={:.2f}\n", s_knobs.scale, s_knobs.offset, s_knobs.lateral, s_knobs.lift, s_knobs.yawDeg, s_knobs.pitchDeg);
     std::fflush(stderr);
 }
 

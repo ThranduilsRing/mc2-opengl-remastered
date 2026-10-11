@@ -34,6 +34,7 @@
 #include "RenderCore/terrain_subpass_contract.h"   // dominantTerrainPathLive / terrainPathsThatDrew
 #include "RenderCore/top_level_pass_executor.h"    // SAME-ORDER-EXECUTOR-VALIDATE-1 descriptor table
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 namespace render_contract {
 
@@ -473,9 +474,7 @@ static bool s_assertEnabled = false;
 static void fatalContractViolation(const char* passName, const char* hint,
                                    const char* msg)
 {
-    fprintf(stderr,
-        "[RENDER_CONTRACT_ASSERT] FATAL pass=%s hint=%s: %s\n",
-        passName, hint ? hint : "?", msg);
+    mc2::fmt::print_err("[RENDER_CONTRACT_ASSERT] FATAL pass={} hint={}: {}\n", mc2::fmt::safe(passName), mc2::fmt::safe(hint ? hint : "?"), mc2::fmt::safe(msg));
     fflush(stderr);
     std::abort();
 }
@@ -489,7 +488,7 @@ static void checkDrawBuffer(GLenum query, bool required,
     glGetIntegerv(query, &buf);
     if (buf == GL_NONE) {
         char msg[128];
-        std::snprintf(msg, sizeof(msg), "%s required but draw buffer is GL_NONE", slotName);
+        mc2::fmt::to_buf(msg, "{} required but draw buffer is GL_NONE", mc2::fmt::safe(slotName));
         fatalContractViolation(passName, hint, msg);
     }
 }
@@ -569,7 +568,7 @@ RenderCore::RenderPassId toRenderPassId(PassIdentity id) {
 void initRenderContractAssert() {
     s_assertEnabled = mc2::gate::get<"MC2_RENDER_CONTRACT_ASSERT">();
     if (s_assertEnabled)
-        fprintf(stderr, "[RENDER_CONTRACT v2] assert mode ACTIVE\n");
+        mc2::fmt::print_err("[RENDER_CONTRACT v2] assert mode ACTIVE\n");
 }
 
 void assertPassContract(PassIdentity id, const char* hint) {
@@ -653,8 +652,7 @@ bool          s_telemetryEverEmitted[16]   = {};
 void initRenderPassTelemetry() {
     s_telemetryEnabled = mc2::gate::get<"MC2_RENDER_PASS_TELEMETRY">();
     if (s_telemetryEnabled) {
-        printf("[RENDER_PASS v1] telemetry ACTIVE (sample every %u frames)\n",
-               (unsigned)kTelemetryFrameInterval);
+        mc2::fmt::print_out("[RENDER_PASS v1] telemetry ACTIVE (sample every {:d} frames)\n", mc2::fmt::as_u32((unsigned)kTelemetryFrameInterval));
         fflush(stdout);
     }
 }
@@ -773,12 +771,7 @@ void dryrunFrameBoundary() {
         static unsigned s_logged = 0;
         if (s_logged < 32u) {
             ++s_logged;
-            fprintf(stderr,
-                "[FRAMEGRAPH_DRYRUN] frame=%lu fired=%d unobserved=%d outOfOrder=%d "
-                "firstOOO=%u terrainMutex=%d latchMiss=%d\n",
-                g_dryrunFrames, rep.firedCount, rep.unobservedCount, rep.outOfOrderCount,
-                (unsigned)rep.firstOutOfOrderPass,
-                (int)rep.terrainMutexViolation, (int)rep.terrainLatchMissActive);
+            mc2::fmt::print_err("[FRAMEGRAPH_DRYRUN] frame={:d} fired={:d} unobserved={:d} outOfOrder={:d} firstOOO={:d} terrainMutex={:d} latchMiss={:d}\n", mc2::fmt::as_u32(g_dryrunFrames), mc2::fmt::as_i32(rep.firedCount), mc2::fmt::as_i32(rep.unobservedCount), mc2::fmt::as_i32(rep.outOfOrderCount), mc2::fmt::as_u32((unsigned)rep.firstOutOfOrderPass), mc2::fmt::as_i32((int)rep.terrainMutexViolation), mc2::fmt::as_i32((int)rep.terrainLatchMissActive));
             fflush(stderr);
         }
     }
@@ -823,10 +816,7 @@ void noteRenderPass(PassIdentity id, const char* callerHint) {
         if (buf != GL_NONE) ++drawBuffers;
     }
 
-    printf("[RENDER_PASS v1] frame=%llu pass=%s fbo=%d viewport=%d,%d,%d,%d drawbuffers=%d phase=begin hint=%s\n",
-           (unsigned long long)s_telemetryFrame, passIdentityName(id), (int)fbo,
-           (int)vp[0], (int)vp[1], (int)vp[2], (int)vp[3], drawBuffers,
-           callerHint ? callerHint : "?");
+    mc2::fmt::print_out("[RENDER_PASS v1] frame={:d} pass={} fbo={:d} viewport={:d},{:d},{:d},{:d} drawbuffers={:d} phase=begin hint={}\n", mc2::fmt::as_u64((unsigned long long)s_telemetryFrame), mc2::fmt::safe(passIdentityName(id)), mc2::fmt::as_i32((int)fbo), mc2::fmt::as_i32((int)vp[0]), mc2::fmt::as_i32((int)vp[1]), mc2::fmt::as_i32((int)vp[2]), mc2::fmt::as_i32((int)vp[3]), mc2::fmt::as_i32(drawBuffers), mc2::fmt::safe(callerHint ? callerHint : "?"));
     fflush(stdout);
 }
 
@@ -1032,11 +1022,7 @@ void ambientProbeAtPassBegin(RenderCore::RenderPassId id) {
                 static unsigned s_vpLogged = 0;
                 if (s_vpLogged < 32u) {
                     ++s_vpLogged;
-                    fprintf(stderr,
-                        "[VIEWPORT_PROBE] phase=begin pass=\"%s\" vpMiss=1 "
-                        "(decl vp=%d | live vp=%d) [observe-only]\n",
-                        decl->note ? decl->note : "?",
-                        (int)decl->viewport, (int)vpLive.viewport);
+                    mc2::fmt::print_err("[VIEWPORT_PROBE] phase=begin pass=\"{}\" vpMiss=1 (decl vp={:d} | live vp={:d}) [observe-only]\n", mc2::fmt::safe(decl->note ? decl->note : "?"), mc2::fmt::as_i32((int)decl->viewport), mc2::fmt::as_i32((int)vpLive.viewport));
                     fflush(stderr);
                 }
                 // Intentionally NO abort() — observe-only.
@@ -1048,13 +1034,7 @@ void ambientProbeAtPassBegin(RenderCore::RenderPassId id) {
             static unsigned s_logged = 0;
             if (s_logged < 32u) {
                 ++s_logged;
-                fprintf(stderr,
-                    "[AMBIENT_GUARD] phase=begin pass=\"%s\" cmMiss=%d dfMiss=%d dwMiss=%d "
-                    "(decl cm=%d df=%d dw=%d | live cm=%d df=%d dw=%d)\n",
-                    decl->note ? decl->note : "?",
-                    (int)mm.colorMask, (int)mm.depthFunc, (int)mm.depthWrite,
-                    (int)decl->colorMaskOnEntry, (int)decl->depthFunc, (int)decl->depthWrite,
-                    (int)live.colorMask, (int)live.depthFunc, (int)live.depthWrite);
+                mc2::fmt::print_err("[AMBIENT_GUARD] phase=begin pass=\"{}\" cmMiss={:d} dfMiss={:d} dwMiss={:d} (decl cm={:d} df={:d} dw={:d} | live cm={:d} df={:d} dw={:d})\n", mc2::fmt::safe(decl->note ? decl->note : "?"), mc2::fmt::as_i32((int)mm.colorMask), mc2::fmt::as_i32((int)mm.depthFunc), mc2::fmt::as_i32((int)mm.depthWrite), mc2::fmt::as_i32((int)decl->colorMaskOnEntry), mc2::fmt::as_i32((int)decl->depthFunc), mc2::fmt::as_i32((int)decl->depthWrite), mc2::fmt::as_i32((int)live.colorMask), mc2::fmt::as_i32((int)live.depthFunc), mc2::fmt::as_i32((int)live.depthWrite));
                 fflush(stderr);
             }
             if (s_fatal) abort();
@@ -1078,9 +1058,7 @@ void ambientProbeAtPassBegin(RenderCore::RenderPassId id) {
             static unsigned s_fboLogged = 0;
             if (s_fboLogged < 32u) {
                 ++s_fboLogged;
-                fprintf(stderr,
-                    "[FBO_GUARD] phase=begin passId=%u declTarget=%u actualTarget=%u boundFbo=%d\n",
-                    (unsigned)id, (unsigned)fboDecl, (unsigned)actual, (int)bound);
+                mc2::fmt::print_err("[FBO_GUARD] phase=begin passId={:d} declTarget={:d} actualTarget={:d} boundFbo={:d}\n", mc2::fmt::as_u32((unsigned)id), mc2::fmt::as_u32((unsigned)fboDecl), mc2::fmt::as_u32((unsigned)actual), mc2::fmt::as_i32((int)bound));
                 fflush(stderr);
             }
             if (s_fatal) abort();
@@ -1220,16 +1198,7 @@ extern "C" void mc2_ui_pass_check_ambient() {
         static unsigned s_uiLogged = 0;
         if (s_uiLogged < 32u) {
             ++s_uiLogged;
-            fprintf(stderr,
-                "[UI_AMBIENT_GUARD] phase=begin pass=\"UI\" cmMiss=%d dfMiss=%d blMiss=%d "
-                "dwMiss=%d vpMiss=%d (decl cm=%d df=%d bl=%d dw=%d vp=%d | live cm=%d df=%d "
-                "bl=%d dw=%d vp=%d) [observe-only]\n",
-                (int)mm.colorMask, (int)mm.depthFunc, (int)mm.blend,
-                (int)mm.depthWrite, (int)mm.viewport,
-                (int)decl->colorMaskOnEntry, (int)decl->depthFunc, (int)decl->blend,
-                (int)decl->depthWrite, (int)decl->viewport,
-                (int)live.colorMask, (int)live.depthFunc, (int)live.blend,
-                (int)live.depthWrite, (int)live.viewport);
+            mc2::fmt::print_err("[UI_AMBIENT_GUARD] phase=begin pass=\"UI\" cmMiss={:d} dfMiss={:d} blMiss={:d} dwMiss={:d} vpMiss={:d} (decl cm={:d} df={:d} bl={:d} dw={:d} vp={:d} | live cm={:d} df={:d} bl={:d} dw={:d} vp={:d}) [observe-only]\n", mc2::fmt::as_i32((int)mm.colorMask), mc2::fmt::as_i32((int)mm.depthFunc), mc2::fmt::as_i32((int)mm.blend), mc2::fmt::as_i32((int)mm.depthWrite), mc2::fmt::as_i32((int)mm.viewport), mc2::fmt::as_i32((int)decl->colorMaskOnEntry), mc2::fmt::as_i32((int)decl->depthFunc), mc2::fmt::as_i32((int)decl->blend), mc2::fmt::as_i32((int)decl->depthWrite), mc2::fmt::as_i32((int)decl->viewport), mc2::fmt::as_i32((int)live.colorMask), mc2::fmt::as_i32((int)live.depthFunc), mc2::fmt::as_i32((int)live.blend), mc2::fmt::as_i32((int)live.depthWrite), mc2::fmt::as_i32((int)live.viewport));
             fflush(stderr);
         }
         // Intentionally NO abort() — observe-only until verified 0 across all tier1.
@@ -1248,9 +1217,7 @@ void beginPass(RenderCore::RenderPassId id) {
         if (r == RenderCore::RenderResourceId::Unknown) break;
         if (!isResourceWritten(r)) {
             ++s_frame.violationCount;
-            fprintf(stderr,
-                "[RENDER_PASS_ORDER v3] VIOLATION: pass %s reads %s but no writer seen this frame\n",
-                c->name, resourceName(r));
+            mc2::fmt::print_err("[RENDER_PASS_ORDER v3] VIOLATION: pass {} reads {} but no writer seen this frame\n", mc2::fmt::safe(c->name), mc2::fmt::safe(resourceName(r)));
         }
     }
 }
@@ -1283,17 +1250,15 @@ void endPass(RenderCore::RenderPassId id) {
     if (!s_frame.telEnabled) return;
     if (s_frame.telemetryTick % kPassOrderTelemetryInterval != 0) return;
 
-    fprintf(stderr, "[RENDER_PASS_TELEMETRY v3] pass=%s", c->name);
+    mc2::fmt::print_err("[RENDER_PASS_TELEMETRY v3] pass={}", mc2::fmt::safe(c->name));
     for (int i = 0; i < readCount; ++i) {
-        fprintf(stderr, " read=%s:%s",
-            resourceName(c->reads[i]),
-            readOk[i] ? "ok" : "MISSING");
+        mc2::fmt::print_err(" read={}:{}", mc2::fmt::safe(resourceName(c->reads[i])), mc2::fmt::safe(readOk[i] ? "ok" : "MISSING"));
     }
     for (int i = 0; i < 4; ++i) {
         if (c->writes[i] == RenderCore::RenderResourceId::Unknown) break;
-        fprintf(stderr, " write=%s", resourceName(c->writes[i]));
+        mc2::fmt::print_err(" write={}", mc2::fmt::safe(resourceName(c->writes[i])));
     }
-    fprintf(stderr, "\n");
+    mc2::fmt::print_err("\n");
 }
 
 uint32_t getFrameViolationCount() {
@@ -1334,9 +1299,8 @@ static inline bool passScopeActive() {
 static void passScopeViolation(const char* what, PassIdentity id, const char* hint) {
     ++s_scope.violationCount;
     if (!s_scope.assertEnabled) return;   // TRACE-only run: track silently, no verdict noise
-    fprintf(stderr,
-        "[RENDER_PASS_CONTRACT v1] VIOLATION(%s) pass=%s hint=%s depth=%d\n",
-        what, passIdentityName(id), hint ? hint : "?", s_scope.depth);
+    mc2::fmt::print_err("[RENDER_PASS_CONTRACT v1] VIOLATION({}) pass={} hint={} depth={:d}\n",
+        mc2::fmt::safe(what), mc2::fmt::safe(passIdentityName(id)), mc2::fmt::safe(hint ? hint : "?"), mc2::fmt::as_i32(s_scope.depth));
     fflush(stderr);
 }
 
@@ -1348,8 +1312,7 @@ void initRenderPassScope() {
     s_scope.depth         = 0;
     s_scope.overflowed    = false;
     if (passScopeActive()) {
-        fprintf(stderr, "[RENDER_PASS_CONTRACT v1] scope tracking ACTIVE (trace=%d assert=%d)\n",
-                s_scope.traceEnabled ? 1 : 0, s_scope.assertEnabled ? 1 : 0);
+        mc2::fmt::print_err("[RENDER_PASS_CONTRACT v1] scope tracking ACTIVE (trace={:d} assert={:d})\n", mc2::fmt::as_i32(s_scope.traceEnabled ? 1 : 0), mc2::fmt::as_i32(s_scope.assertEnabled ? 1 : 0));
         fflush(stderr);
     }
 }
@@ -1364,8 +1327,7 @@ void beginPassScope(PassIdentity id, const char* hint) {
         return;   // refuse to push past the cap; do not corrupt the stack
     }
     if (s_scope.traceEnabled) {
-        fprintf(stderr, "[RENDER_PASS_CONTRACT v1] BEGIN depth=%d pass=%s hint=%s\n",
-                s_scope.depth, passIdentityName(id), hint ? hint : "?");
+        mc2::fmt::print_err("[RENDER_PASS_CONTRACT v1] BEGIN depth={:d} pass={} hint={}\n", mc2::fmt::as_i32(s_scope.depth), mc2::fmt::safe(passIdentityName(id)), mc2::fmt::safe(hint ? hint : "?"));
         fflush(stderr);
     }
     s_scope.stack[s_scope.depth].id   = id;
@@ -1383,11 +1345,7 @@ void endPassScope(PassIdentity id, const char* hint) {
     if (top.id != id) {
         // Owner mismatch: closing a pass that is not the innermost open scope.
         if (s_scope.assertEnabled) {
-            fprintf(stderr,
-                "[RENDER_PASS_CONTRACT v1] VIOLATION(owner-mismatch) end=%s hint=%s "
-                "but innermost open=%s (openedBy=%s) depth=%d\n",
-                passIdentityName(id), hint ? hint : "?",
-                passIdentityName(top.id), top.hint ? top.hint : "?", s_scope.depth);
+            mc2::fmt::print_err("[RENDER_PASS_CONTRACT v1] VIOLATION(owner-mismatch) end={} hint={} but innermost open={} (openedBy={}) depth={:d}\n", mc2::fmt::safe(passIdentityName(id)), mc2::fmt::safe(hint ? hint : "?"), mc2::fmt::safe(passIdentityName(top.id)), mc2::fmt::safe(top.hint ? top.hint : "?"), mc2::fmt::as_i32(s_scope.depth));
             fflush(stderr);
         }
         ++s_scope.violationCount;
@@ -1395,8 +1353,7 @@ void endPassScope(PassIdentity id, const char* hint) {
     }
     --s_scope.depth;
     if (s_scope.traceEnabled) {
-        fprintf(stderr, "[RENDER_PASS_CONTRACT v1] END   depth=%d pass=%s hint=%s\n",
-                s_scope.depth, passIdentityName(id), hint ? hint : "?");
+        mc2::fmt::print_err("[RENDER_PASS_CONTRACT v1] END   depth={:d} pass={} hint={}\n", mc2::fmt::as_i32(s_scope.depth), mc2::fmt::safe(passIdentityName(id)), mc2::fmt::safe(hint ? hint : "?"));
         fflush(stderr);
     }
 }
@@ -1481,12 +1438,7 @@ void executorOwnBeginTopLevel(PassIdentity passId, const char* callerHint) {
             if (mm.any()) {
                 ++g_topLevelFailures;
                 if (g_topLevelFailures <= kMaxTopLevelFailureLog)
-                    fprintf(stderr,
-                        "[EXECUTOR_TOPLEVEL v1] BEGIN FAIL ambient pass=%s hint=%s "
-                        "cmMiss=%d dfMiss=%d dwMiss=%d failures=%lu\n",
-                        c->note, callerHint ? callerHint : "?",
-                        (int)mm.colorMask, (int)mm.depthFunc, (int)mm.depthWrite,
-                        g_topLevelFailures);
+                    mc2::fmt::print_err("[EXECUTOR_TOPLEVEL v1] BEGIN FAIL ambient pass={} hint={} cmMiss={:d} dfMiss={:d} dwMiss={:d} failures={:d}\n", mc2::fmt::safe(c->note), mc2::fmt::safe(callerHint ? callerHint : "?"), mc2::fmt::as_i32((int)mm.colorMask), mc2::fmt::as_i32((int)mm.depthFunc), mc2::fmt::as_i32((int)mm.depthWrite), mc2::fmt::as_u32(g_topLevelFailures));
             }
         }
     }
@@ -1503,12 +1455,7 @@ void executorOwnBeginTopLevel(PassIdentity passId, const char* callerHint) {
             if (RenderCore::framegraph::fboMismatch(fboDecl, actual)) {
                 ++g_topLevelFailures;
                 if (g_topLevelFailures <= kMaxTopLevelFailureLog)
-                    fprintf(stderr,
-                        "[EXECUTOR_TOPLEVEL v1] BEGIN FAIL fbo pass=%s hint=%s "
-                        "declFbo=%u actualFbo=%u boundFbo=%d failures=%lu\n",
-                        c->note, callerHint ? callerHint : "?",
-                        (unsigned)fboDecl, (unsigned)actual, (int)bound,
-                        g_topLevelFailures);
+                    mc2::fmt::print_err("[EXECUTOR_TOPLEVEL v1] BEGIN FAIL fbo pass={} hint={} declFbo={:d} actualFbo={:d} boundFbo={:d} failures={:d}\n", mc2::fmt::safe(c->note), mc2::fmt::safe(callerHint ? callerHint : "?"), mc2::fmt::as_u32((unsigned)fboDecl), mc2::fmt::as_u32((unsigned)actual), mc2::fmt::as_i32((int)bound), mc2::fmt::as_u32(g_topLevelFailures));
             }
         }
     }
@@ -1531,11 +1478,7 @@ void executorOwnEndTopLevel(PassIdentity passId, const char* callerHint) {
         if (err != GL_NO_ERROR) {
             ++g_topLevelFailures;
             if (g_topLevelFailures <= kMaxTopLevelFailureLog)
-                fprintf(stderr,
-                    "[EXECUTOR_TOPLEVEL v1] END FAIL glGetError pass=%s hint=%s "
-                    "err=0x%x failures=%lu\n",
-                    c->note, callerHint ? callerHint : "?",
-                    (unsigned)err, g_topLevelFailures);
+                mc2::fmt::print_err("[EXECUTOR_TOPLEVEL v1] END FAIL glGetError pass={} hint={} err=0x{:x} failures={:d}\n", mc2::fmt::safe(c->note), mc2::fmt::safe(callerHint ? callerHint : "?"), mc2::fmt::as_u32((unsigned)err), mc2::fmt::as_u32(g_topLevelFailures));
             // Clear the error state so downstream code doesn't trip on our sample.
             while (glGetError() != GL_NO_ERROR) {}
         }
@@ -1553,12 +1496,7 @@ void executorOwnEndTopLevel(PassIdentity passId, const char* callerHint) {
             if (RenderCore::framegraph::fboMismatch(fboDecl, actual)) {
                 ++g_topLevelFailures;
                 if (g_topLevelFailures <= kMaxTopLevelFailureLog)
-                    fprintf(stderr,
-                        "[EXECUTOR_TOPLEVEL v1] END FAIL fbo pass=%s hint=%s "
-                        "declFbo=%u actualFbo=%u boundFbo=%d failures=%lu\n",
-                        c->note, callerHint ? callerHint : "?",
-                        (unsigned)fboDecl, (unsigned)actual, (int)bound,
-                        g_topLevelFailures);
+                    mc2::fmt::print_err("[EXECUTOR_TOPLEVEL v1] END FAIL fbo pass={} hint={} declFbo={:d} actualFbo={:d} boundFbo={:d} failures={:d}\n", mc2::fmt::safe(c->note), mc2::fmt::safe(callerHint ? callerHint : "?"), mc2::fmt::as_u32((unsigned)fboDecl), mc2::fmt::as_u32((unsigned)actual), mc2::fmt::as_i32((int)bound), mc2::fmt::as_u32(g_topLevelFailures));
             }
         }
     }

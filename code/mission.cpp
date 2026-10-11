@@ -11,6 +11,7 @@
 //----------------------------------------------------------------------------------
 
 #include "mission_internal.h"
+#include "mc2fmt.h"
 
 
 static float simSpeedClamp(float v)
@@ -35,8 +36,7 @@ void simSpeedSetMultiplier(float v)
 {
 	const float prev = simSpeedGetMultiplier();
 	s_simSpeedRuntime = simSpeedClamp(v);
-	fprintf(stderr, "[SIM-SPEED v1] multiplier=%.2f (was %.2f)\n",
-		(double)s_simSpeedRuntime, (double)prev);
+	mc2::fmt::print_err("[SIM-SPEED v1] multiplier={:.2f} (was {:.2f})\n", (double)s_simSpeedRuntime, (double)prev);
 	fflush(stderr);
 }
 
@@ -937,7 +937,7 @@ long Mission::setObjectiveTimer (long objectiveNum, float timeLeft)
 	//------------
 	// Add Timer.
 	TimerPtr timer = timerManager->getTimer(timerNumber);
-	gosASSERT(timer != NULL);
+	gosASSERT(timer != nullptr);
 	timer->setTimer(timeLeft);
 
 	return(NO_ERR);
@@ -952,7 +952,7 @@ float Mission::checkObjectiveTimer (long objectiveNum)
 	unsigned long timeLeft = 0;
 
 	TimerPtr timer = timerManager->getTimer(timerNumber);
-	gosASSERT(timer != NULL);
+	gosASSERT(timer != nullptr);
 
 	timeLeft = timer->getCurrentTime();
 	

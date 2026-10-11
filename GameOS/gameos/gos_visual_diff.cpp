@@ -24,6 +24,7 @@
 #include <cstdlib>
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
+#include "mc2fmt.h"
 
 namespace VisualDiff {
 
@@ -50,22 +51,16 @@ void doCapture(int viewportW, int viewportH) {
     const std::string outPathText = mc2::gate::str<"MC2_VISUAL_DIFF_OUT">();   // "" when unset or empty
     const char* outPath = outPathText.c_str();
     if (!outPath[0]) {
-        fprintf(stderr,
-                "[VISUAL_DIFF v1] event=capture_skipped reason=no_out_path\n");
+        mc2::fmt::print_err("[VISUAL_DIFF v1] event=capture_skipped reason=no_out_path\n");
         fflush(stderr);
         return;
     }
     bool ok = gos::screenshot::writeTGA(outPath, viewportW, viewportH);
     if (ok) {
         const std::string mission = mc2::gate::str<"MC2_VISUAL_DIFF_MISSION">();
-        fprintf(stderr,
-                "[VISUAL_DIFF v1] event=capture_done out=%s w=%d h=%d mission=%s\n",
-                outPath, viewportW, viewportH,
-                mc2::gate::isSet<"MC2_VISUAL_DIFF_MISSION">() ? mission.c_str() : "(unset)");
+        mc2::fmt::print_err("[VISUAL_DIFF v1] event=capture_done out={} w={:d} h={:d} mission={}\n", mc2::fmt::safe(outPath), mc2::fmt::as_i32(viewportW), mc2::fmt::as_i32(viewportH), mc2::fmt::safe(mc2::gate::isSet<"MC2_VISUAL_DIFF_MISSION">() ? mission.c_str() : "(unset)"));
     } else {
-        fprintf(stderr,
-                "[VISUAL_DIFF v1] event=capture_failed reason=write_tga out=%s\n",
-                outPath);
+        mc2::fmt::print_err("[VISUAL_DIFF v1] event=capture_failed reason=write_tga out={}\n", mc2::fmt::safe(outPath));
     }
     fflush(stderr);
 }
@@ -98,10 +93,7 @@ void onFrameTick(int viewportW, int viewportH) {
                               ? (int)mc2::gate::get<"MC2_VISUAL_DIFF_MAX_FRAMES">() : s_state.frameN + 60;
         s_state.paramsResolved = true;
         const std::string mission = mc2::gate::str<"MC2_VISUAL_DIFF_MISSION">();
-        fprintf(stderr,
-                "[VISUAL_DIFF v1] event=capture_armed mission=%s frameN=%d maxFrames=%d\n",
-                mc2::gate::isSet<"MC2_VISUAL_DIFF_MISSION">() ? mission.c_str() : "(unset)",
-                s_state.frameN, s_state.maxFrames);
+        mc2::fmt::print_err("[VISUAL_DIFF v1] event=capture_armed mission={} frameN={:d} maxFrames={:d}\n", mc2::fmt::safe(mc2::gate::isSet<"MC2_VISUAL_DIFF_MISSION">() ? mission.c_str() : "(unset)"), mc2::fmt::as_i32(s_state.frameN), mc2::fmt::as_i32(s_state.maxFrames));
         fflush(stderr);
     }
 
@@ -118,9 +110,7 @@ void onFrameTick(int viewportW, int viewportH) {
         if (gos_terrain_indirect::WasEverFrameSolidArmed()) {
             s_state.introCompleteObserved = true;
             s_state.introCompleteFrame    = s_state.localFrame;
-            fprintf(stderr,
-                    "[VISUAL_DIFF v1] event=intro_pan_complete_observed local_frame=%d\n",
-                    s_state.localFrame);
+            mc2::fmt::print_err("[VISUAL_DIFF v1] event=intro_pan_complete_observed local_frame={:d}\n", mc2::fmt::as_i32(s_state.localFrame));
             fflush(stderr);
         }
         return;
@@ -130,9 +120,7 @@ void onFrameTick(int viewportW, int viewportH) {
 
     // Timeout — exit cleanly with code 4 so the Python harness can distinguish.
     if (framesSinceStart > s_state.maxFrames) {
-        fprintf(stderr,
-                "[VISUAL_DIFF v1] event=capture_timeout frames_since_start=%d max_frames=%d\n",
-                framesSinceStart, s_state.maxFrames);
+        mc2::fmt::print_err("[VISUAL_DIFF v1] event=capture_timeout frames_since_start={:d} max_frames={:d}\n", mc2::fmt::as_i32(framesSinceStart), mc2::fmt::as_i32(s_state.maxFrames));
         fflush(stderr);
         fflush(stdout);
         exit(4);

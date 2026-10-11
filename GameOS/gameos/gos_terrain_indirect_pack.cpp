@@ -1,6 +1,7 @@
 // gos_terrain_indirect: thin-record packer, indirect-command builder, handle LUT and solid quad window SSBO.
 // Declared in the class headers; shared names in gos_terrain_indirect_internal.h.
 #include "gos_terrain_indirect_internal.h"
+#include "mc2fmt.h"
 
 
 // ---------------------------------------------------------------------------
@@ -275,8 +276,7 @@ int PackThinRecordsForFrame() {
         static bool s_loggedDemote = false;
         if (!s_loggedDemote) {
             s_loggedDemote = true;
-            printf("[TERRAIN_INDIRECT v1] event=cpu_pack_demoted "
-                   "path=stock_solid gate=MC2_TERRAIN_INDIRECT_CPU_FALLBACK\n");
+            mc2::fmt::print_out("[TERRAIN_INDIRECT v1] event=cpu_pack_demoted path=stock_solid gate=MC2_TERRAIN_INDIRECT_CPU_FALLBACK\n");
             fflush(stdout);
         }
         return 0;  // no records this frame — indirect pipeline disarms
@@ -500,10 +500,7 @@ int PackThinRecordsForFrame() {
         static uint32_t s_frameCount = 0;
         ++s_frameCount;
         if (traceOn() && (s_frameCount % 60u == 0u)) {
-            printf("[CEMENT_FRAME v1] frame=%u packed_total=%u cement_mapped=%u concrete_all_corners=%u\n",
-                   (unsigned)s_frameCount, (unsigned)packed,
-                   (unsigned)g_cementMappedThisFrame,
-                   (unsigned)g_concreteAllCornersThisFrame);
+            mc2::fmt::print_out("[CEMENT_FRAME v1] frame={:d} packed_total={:d} cement_mapped={:d} concrete_all_corners={:d}\n", mc2::fmt::as_u32((unsigned)s_frameCount), mc2::fmt::as_u32((unsigned)packed), mc2::fmt::as_u32((unsigned)g_cementMappedThisFrame), mc2::fmt::as_u32((unsigned)g_concreteAllCornersThisFrame));
             fflush(stdout);
         }
     }
@@ -735,19 +732,11 @@ uint32_t BuildSolidQuadWindowSSBO(int* outUseWindow) {
         s_parityTotDrop += dropped;
 
         if (frame < 64) {
-            fprintf(stderr,
-                "[TERRAIN_SOLID_WINDOW v1] event=frame frame=%d window=%u "
-                "ref_visible=%u dropped=%u\n",
-                frame, windowCount, (unsigned)refVisible,
-                (unsigned)dropped);
+            mc2::fmt::print_err("[TERRAIN_SOLID_WINDOW v1] event=frame frame={:d} window={:d} ref_visible={:d} dropped={:d}\n", mc2::fmt::as_i32(frame), mc2::fmt::as_u32(windowCount), mc2::fmt::as_u32((unsigned)refVisible), mc2::fmt::as_u32((unsigned)dropped));
             fflush(stderr);
         }
         if (frame > 0 && (frame % 600) == 0) {
-            fprintf(stderr,
-                "[TERRAIN_SOLID_WINDOW v1] event=summary frames=%u "
-                "max_window=%u total_dropped=%llu\n",
-                (unsigned)frame, s_parityMaxWin,
-                (unsigned long long)s_parityTotDrop);
+            mc2::fmt::print_err("[TERRAIN_SOLID_WINDOW v1] event=summary frames={:d} max_window={:d} total_dropped={:d}\n", mc2::fmt::as_u32((unsigned)frame), mc2::fmt::as_u32(s_parityMaxWin), mc2::fmt::as_u64((unsigned long long)s_parityTotDrop));
             fflush(stderr);
         }
         // CRITICAL-1: catastrophic-axis tripwire — gated unconditional stderr,
@@ -756,10 +745,7 @@ uint32_t BuildSolidQuadWindowSSBO(int* outUseWindow) {
         // assert() compiles to a no-op and a dropped visible quad would pass
         // silently.  fprintf always fires regardless of NDEBUG.
         if (dropped) {
-            fprintf(stderr,
-                "[TERRAIN_SOLID_WINDOW v1] event=catastrophic dropped=%llu "
-                "frame=%d\n",
-                (unsigned long long)dropped, frame);
+            mc2::fmt::print_err("[TERRAIN_SOLID_WINDOW v1] event=catastrophic dropped={:d} frame={:d}\n", mc2::fmt::as_u64((unsigned long long)dropped), mc2::fmt::as_i32(frame));
             fflush(stderr);
         }
         (void)dropped;

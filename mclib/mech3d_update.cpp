@@ -2,6 +2,8 @@
 // Declared in the class headers; shared names in mech3d_internal.h.
 #include "mech3d_internal.h"
 #include "../RenderCore/axis_convert.h"
+#include "mc2fmt.h"
+#include "anim_freeze.h"
 
 long Mech3DAppearance::update (bool animate) 
 {
@@ -14,7 +16,7 @@ long Mech3DAppearance::update (bool animate)
 		if (result != NO_ERR)
 		{
 			delete logFile;
-			logFile = NULL;
+			logFile = nullptr;
 		}
 	}
 #endif
@@ -298,7 +300,7 @@ long Mech3DAppearance::update (bool animate)
 					// LOS-triggered call would silently tick the gait -- precisely
 					// the run-to-run pose drift this feature exists to remove.
 					const bool _captureFroze = (mc2CaptureGaitFreezeActive() != 0) ||
-					                           (mc2FreezeMoversActive() != 0);
+					                           (mc2FreezeMoversActive() != 0) || mc2::animationsFrozen();
 					if (!_alreadyAdvanced && !_captureFroze)
 					{
 						if (inReverse)
@@ -337,10 +339,7 @@ long Mech3DAppearance::update (bool animate)
 								if (mc2_diag::tagEnabled("ANIM_CADENCE"))
 								{
 									char _ac_buf[256];
-									snprintf(_ac_buf, sizeof(_ac_buf),
-									         "{\"event\":\"advanced_twice_same_frame\",\"ptr\":\"%p\",\"gesture\":%d,\"frame\":%u,\"frameInc\":%.4f,\"doubles\":%llu,\"advances\":%llu}",
-									         (void*)this, (int)currentGestureId, _ac_frame, frameInc,
-									         (unsigned long long)s_ac_doubles, (unsigned long long)s_ac_advances);
+									mc2::fmt::to_buf(_ac_buf, "{{\"event\":\"advanced_twice_same_frame\",\"ptr\":\"{:016X}\",\"gesture\":{:d},\"frame\":{:d},\"frameInc\":{:.4f},\"doubles\":{:d},\"advances\":{:d}}}", mc2::fmt::as_ptr((void*)this), mc2::fmt::as_i32((int)currentGestureId), mc2::fmt::as_u32(_ac_frame), frameInc, mc2::fmt::as_u64((unsigned long long)s_ac_doubles), mc2::fmt::as_u64((unsigned long long)s_ac_advances));
 									mc2_diag::writeEvent("ANIM_CADENCE", 1, (uint64_t)_ac_frame, _ac_buf);
 								}
 							}
@@ -406,7 +405,7 @@ long Mech3DAppearance::update (bool animate)
 	if (logFile && (inDebugMoveMode))
 	{
 		char msg[1024];
-		sprintf(msg,"Gesture: %d, Frame: %f, SGoal: %d, OGoal: %d, Rot: %f",currentGestureId,currentFrame,currentStateGoal,oldStateGoal,rotation);
+		mc2::fmt::to_buf(msg, "Gesture: {:d}, Frame: {:f}, SGoal: {:d}, OGoal: {:d}, Rot: {:f}", mc2::fmt::as_i32(currentGestureId), currentFrame, mc2::fmt::as_i32(currentStateGoal), mc2::fmt::as_i32(oldStateGoal), rotation);
 		logFile->writeLine(msg);
 	}
 #endif
@@ -693,7 +692,7 @@ void Mech3DAppearance::blowLeftArm (void)
 		if (gosEffectSpec)
 		{
 			leftShoulderBoom = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-			gosASSERT(leftShoulderBoom != NULL);
+			gosASSERT(leftShoulderBoom != nullptr);
 			
 			MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
 		}
@@ -709,7 +708,7 @@ void Mech3DAppearance::blowLeftArm (void)
 		if (gosEffectSpec)
 		{
 			leftArmSmoke = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-			gosASSERT(leftArmSmoke != NULL);
+			gosASSERT(leftArmSmoke != nullptr);
 		
 			MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
 		}
@@ -808,7 +807,7 @@ void Mech3DAppearance::blowRightArm (void)
 		if (gosEffectSpec)
 		{
 			rightShoulderBoom = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-			gosASSERT(rightShoulderBoom != NULL);
+			gosASSERT(rightShoulderBoom != nullptr);
 		
 			MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
 		}
@@ -824,7 +823,7 @@ void Mech3DAppearance::blowRightArm (void)
 		if (gosEffectSpec)
 		{
 			rightArmSmoke = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-			gosASSERT(rightArmSmoke != NULL);
+			gosASSERT(rightArmSmoke != nullptr);
 		
 			MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
 		}
@@ -925,7 +924,7 @@ void Mech3DAppearance::startSmoking (long smokeLvl)
 			if (gosEffectSpec)
 			{
 				criticalSmoke = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-				gosASSERT(criticalSmoke != NULL);
+				gosASSERT(criticalSmoke != nullptr);
 				
   				MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
 			}
@@ -944,7 +943,7 @@ void Mech3DAppearance::startSmoking (long smokeLvl)
 			if (gosEffectSpec)
 			{
 				smokeEffect = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-				gosASSERT(smokeEffect != NULL);
+				gosASSERT(smokeEffect != nullptr);
 				
   				MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
 			}
@@ -1006,7 +1005,7 @@ void Mech3DAppearance::startWaterWake (void)
 			if (gosEffectSpec)
 			{
 				waterWake = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-				gosASSERT(waterWake != NULL);
+				gosASSERT(waterWake != nullptr);
 				
   				MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
 			}
@@ -1068,7 +1067,7 @@ void Mech3DAppearance::playEjection (void)
 			if (gosEffectSpec)
 			{
 				helicopterDustCloud = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-				gosASSERT(helicopterDustCloud != NULL);
+				gosASSERT(helicopterDustCloud != nullptr);
 				
   				MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
 			}

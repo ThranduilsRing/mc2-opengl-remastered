@@ -37,6 +37,7 @@
 #include"../GameOS/gameos/gos_terrain_indirect.h"
 #include"../GameOS/gameos/gos_terrain_surface.h"  // PR-1: continuous-surface regen on recipe rebuild
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 //---------------------------------------------------------------------------
 // c'tors for postCompVertex
@@ -254,7 +255,7 @@ void MapData::buildTerrainFaceCache (volatile float* progress, float progressRan
 	if (!terrainFaceCache)
 	{
 		terrainFaceCache = (WorldQuadTerrainCacheEntry*)Terrain::terrainHeap->Malloc(sizeof(WorldQuadTerrainCacheEntry) * cacheCount);
-		gosASSERT(terrainFaceCache != NULL);
+		gosASSERT(terrainFaceCache != nullptr);
 	}
 
 	for (long i = 0; i < cacheCount; ++i)
@@ -1130,7 +1131,7 @@ void MapData::makeLists (VertexPtr vertexList, long &numVerts, TerrainQuadPtr qu
 				currentVertex->vertexNum = topLeftX + (topLeftY * Terrain::realVerticesMapSide);
 			}
 
-			gosASSERT(Pvertex != NULL);
+			gosASSERT(Pvertex != nullptr);
 			currentVertex->pVertex = Pvertex;
 			
 			//------------------------------------------------
@@ -1353,11 +1354,7 @@ void MapData::renderStaticTerrainShadowFullMap (WORD* idxArray, unsigned long te
 
 	if (mc2::gate::get<"MC2_DEBUG_SHADOW_STATIC">()) {
 		const float ext = float(HALF) * WUPV;
-		fprintf(stderr,
-			"[SHADOWSTATIC v1] event=fullmap_build builds=1 RV=%ld quads=%lu "
-			"tris=%lu verts=%lu bboxXY=[-%.0f..%.0f] mapHalfWorld=%.0f "
-			"maxChunkVerts=%lu\n",
-			RV, quads, quads * 2u, quads * 6u, ext, ext, ext, maxChunkVerts);
+		mc2::fmt::print_err("[SHADOWSTATIC v1] event=fullmap_build builds=1 RV={:d} quads={:d} tris={:d} verts={:d} bboxXY=[-{:.0f}..{:.0f}] mapHalfWorld={:.0f} maxChunkVerts={:d}\n", mc2::fmt::as_i32(RV), mc2::fmt::as_u32(quads), mc2::fmt::as_u32(quads * 2u), mc2::fmt::as_u32(quads * 6u), ext, ext, ext, mc2::fmt::as_u32(maxChunkVerts));
 	}
 }
 
@@ -2557,7 +2554,7 @@ float MapData::terrainElevation (const Stuff::Vector3D &position)
 					if (a > s_maxAbs) s_maxAbs = a;
 					s_count++;
 					if (s_count % 50000 == 0)
-						printf("[COLORMAP_PROBE] samples=%ld maxDispMag=%.4f wu\n", s_count, s_maxAbs);
+						mc2::fmt::print_out("[COLORMAP_PROBE] samples={:d} maxDispMag={:.4f} wu\n", mc2::fmt::as_i32(s_count), s_maxAbs);
 				}
 			}
 		}

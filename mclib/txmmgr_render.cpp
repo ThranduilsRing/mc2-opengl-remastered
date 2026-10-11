@@ -1,6 +1,7 @@
 // MC_TextureManager::renderLists orchestrator, the RENDERLISTS cost spans and the shadow-shape list.
 // The phases it runs live in txmmgr_render_{phases,passes,overlays}.cpp; shared names in txmmgr_render_internal.h.
 #include "txmmgr_render_internal.h"
+#include "mc2fmt.h"
 
 // [RENDERLISTS_COST v1] — TXMMGR-PERF-EASYWINS-1 coarse per-phase CPU cost
 // split of MC_TextureManager::renderLists(). Smoke-visible complement of the
@@ -30,21 +31,18 @@ TotalSpan::~TotalSpan() {
     const double wf = static_cast<double>(s_frames);
     double phaseSumUs = 0.0;
     char line[1400]; int off = 0;
-    off += snprintf(line + off, sizeof(line) - off,
-        "[RENDERLISTS_COST v1] event=summary frames=%d nodes=%ld hw_nodes=%ld",
-        s_frames, nodes_, hwNodes_);
+    off += mc2::fmt::to_buf_n(line + off, sizeof(line) - off, "[RENDERLISTS_COST v1] event=summary frames={:d} nodes={:d} hw_nodes={:d}", mc2::fmt::as_i32(s_frames), mc2::fmt::as_i32(nodes_), mc2::fmt::as_i32(hwNodes_));
     for (int p = 0; p < kPhaseCount; ++p) {
         const double us = static_cast<double>(s_ns[p]) / 1000.0 / wf;
         if (p != kTotal) phaseSumUs += us;
         if (off < static_cast<int>(sizeof(line)))
-            off += snprintf(line + off, sizeof(line) - off,
-                            " %s_us=%.1f", kName[p], us);
+            off += mc2::fmt::to_buf_n(line + off, sizeof(line) - off, " {}_us={:.1f}", mc2::fmt::safe(kName[p]), us);
     }
     const double selfUs =
         static_cast<double>(s_ns[kTotal]) / 1000.0 / wf - phaseSumUs;
     if (off < static_cast<int>(sizeof(line)))
-        snprintf(line + off, sizeof(line) - off, " self_us=%.1f", selfUs);
-    fprintf(stderr, "%s\n", line);
+        mc2::fmt::to_buf_n(line + off, sizeof(line) - off, " self_us={:.1f}", selfUs);
+    mc2::fmt::print_err("{}\n", mc2::fmt::safe(line));
     fflush(stderr);
     memset(s_ns, 0, sizeof(s_ns));
     s_frames = 0;

@@ -1,6 +1,7 @@
 // ABL debugger: the statement / value printers, the execution trace hooks, showValue, assignVariable and the module-instance listing.
 // Declared in the class headers; shared names in abldbug_internal.h.
 #include "abldbug_internal.h"
+#include "mc2fmt.h"
 
 
 //---------------------------------------------------------------------------
@@ -296,7 +297,7 @@ long Debugger::traceStatementExecution (void) {
 	// Do we have a breakpoint on this line?
 	if (breakPointManager) {
 		if (breakPointManager->isBreakPoint(execLineNumber)) {
-			sprintf(message, "HIT BP: (%d) %s [%d]", module->getId(), module->getName(), execLineNumber);
+			mc2::fmt::to_buf(message, "HIT BP: ({:d}) {} [{:d}]", mc2::fmt::as_i32(module->getId()), mc2::fmt::safe(module->getName()), mc2::fmt::as_i32(execLineNumber));
 			print(message);
 			halt = true;
 		}
@@ -322,7 +323,7 @@ long Debugger::traceStatementExecution (void) {
 long Debugger::traceRoutineEntry (SymTableNodePtr idPtr) {
 
 	if (traceEntry) {
-		sprintf(message, "ENTER (%d) %s:%s", module->getId(), module->getName(), idPtr->name);
+		mc2::fmt::to_buf(message, "ENTER ({:d}) {}:{}", mc2::fmt::as_i32(module->getId()), mc2::fmt::safe(module->getName()), mc2::fmt::safe(idPtr->name));
 		print(message);
 	}
 
@@ -334,7 +335,7 @@ long Debugger::traceRoutineEntry (SymTableNodePtr idPtr) {
 long Debugger::traceRoutineExit (SymTableNodePtr idPtr) {
 
 	if (traceExit) {
-		sprintf(message, "EXIT (%d) %s:%s", module->getId(), module->getName(), idPtr->name);
+		mc2::fmt::to_buf(message, "EXIT ({:d}) {}:{}", mc2::fmt::as_i32(module->getId()), mc2::fmt::safe(module->getName()), mc2::fmt::safe(idPtr->name));
 		print(message);
 	}
 
@@ -359,11 +360,11 @@ long Debugger::traceDataStore (SymTableNodePtr id, TypePtr idType, StackItemPtr 
 		char valString[255];
 		sprintDataValue(valString, target, targetType);
 		if (idType->form == FRM_ARRAY)
-			sprintf(message, "STORE: (%d) %s [%d] -> %s[#] = %s\n", module->getId(), module->getName(), execLineNumber, id->name, valString);
+			mc2::fmt::to_buf(message, "STORE: ({:d}) {} [{:d}] -> {}[#] = {}\n", mc2::fmt::as_i32(module->getId()), mc2::fmt::safe(module->getName()), mc2::fmt::as_i32(execLineNumber), mc2::fmt::safe(id->name), mc2::fmt::safe(valString));
 		//else if (idType->form == FRM_RECORD)
 		//	sprintf(message, "STORE AT LINE %d - %s.# = %s\n", execLineNumber, id->name, valString);
 		else
-			sprintf(message, "STORE: (%d) %s [%d] -> %s = %s\n", module->getId(), module->getName(), execLineNumber, id->name, valString);
+			mc2::fmt::to_buf(message, "STORE: ({:d}) {} [{:d}] -> {} = {}\n", mc2::fmt::as_i32(module->getId()), mc2::fmt::safe(module->getName()), mc2::fmt::as_i32(execLineNumber), mc2::fmt::safe(id->name), mc2::fmt::safe(valString));
 		print(message);
 		if (((WatchPtr)id->info)->breakOnStore)
 			debugMode();
@@ -381,11 +382,11 @@ long Debugger::traceDataFetch (SymTableNodePtr id, TypePtr idType, StackItemPtr 
 		char valString[255];
 		sprintDataValue(valString, data, idType);
 		if (idTypePtr->form == FRM_ARRAY)
-			sprintf(message, "FETCH: (%d) %s [%d] - %s[#] = %s\n", module->getId(), module->getName(), execLineNumber, id->name, valString);
+			mc2::fmt::to_buf(message, "FETCH: ({:d}) {} [{:d}] - {}[#] = {}\n", mc2::fmt::as_i32(module->getId()), mc2::fmt::safe(module->getName()), mc2::fmt::as_i32(execLineNumber), mc2::fmt::safe(id->name), mc2::fmt::safe(valString));
 		//else if (idTypePtr->form == FRM_RECORD)
 		//	sprintf(message, "STORE AT LINE %d - %s.# = %s\n", id->name, valString);
 		else
-			sprintf(message, "FETCH: (%d) %s [%d] - %s = %s\n", module->getId(), module->getName(), execLineNumber, id->name, valString);
+			mc2::fmt::to_buf(message, "FETCH: ({:d}) {} [{:d}] - {} = {}\n", mc2::fmt::as_i32(module->getId()), mc2::fmt::safe(module->getName()), mc2::fmt::as_i32(execLineNumber), mc2::fmt::safe(id->name), mc2::fmt::safe(valString));
 		print(message);
 		if (((WatchPtr)id->info)->breakOnFetch)
 			debugMode();
@@ -448,7 +449,7 @@ void Debugger::assignVariable (void) {
 	else if (curToken == TKN_IDENTIFIER) {
 		//----------------------------------
 		// Parse the assignment statement...
-		SymTableNodePtr idPtr = NULL;
+		SymTableNodePtr idPtr = nullptr;
 		searchAndFindAllSymTables(idPtr);
 		assigmentStatement(idPtr);
 		if (errorCount > 0)
@@ -477,9 +478,9 @@ void Debugger::displayModuleInstanceRegistry (void) {
 
 	char buffer1[200], buffer2[40];
 	for (long i = 0; i < ((NumModuleInstances + 1) / 2); i++) {
-		sprintf(buffer1, "(%02d) %-20s ", ModuleInstanceRegistry[i * 2]->getId(), ModuleInstanceRegistry[i * 2]->getName());
+		mc2::fmt::to_buf(buffer1, "({:02d}) {:<20} ", mc2::fmt::as_i32(ModuleInstanceRegistry[i * 2]->getId()), mc2::fmt::safe(ModuleInstanceRegistry[i * 2]->getName()));
 		if ((i * 2 + 1) < NumModuleInstances) {
-			sprintf(buffer2, "(%02d) %-20s ", ModuleInstanceRegistry[i * 2 + 1]->getId(), ModuleInstanceRegistry[i * 2 + 1]->getName());
+			mc2::fmt::to_buf(buffer2, "({:02d}) {:<20} ", mc2::fmt::as_i32(ModuleInstanceRegistry[i * 2 + 1]->getId()), mc2::fmt::safe(ModuleInstanceRegistry[i * 2 + 1]->getName()));
 			strcat(buffer1, buffer2);
 		}
 		print(buffer1);

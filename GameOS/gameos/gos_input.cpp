@@ -2,6 +2,7 @@
 #include <string.h> // memset
 #include <assert.h>
 #include "gos_input.h"
+#include "mc2fmt.h"
 
 #ifdef PLATFORM_WINDOWS
 #include <windows.h>   // GetAsyncKeyState, GetSystemMetrics, SM_SWAPBUTTON
@@ -148,7 +149,7 @@ void updateMouseState() {
         if (::GetAsyncKeyState(VK_XBUTTON2) & 0x8000) button_state |= SDL_BUTTON(SDL_BUTTON_X2);
     }
 #else
-    Uint32 button_state = SDL_GetMouseState(NULL, NULL);
+    Uint32 button_state = SDL_GetMouseState(nullptr, nullptr);
 #endif
 
     // Gate ImGui-captured clicks out of game input — EXCEPT when a game modal (pause
@@ -174,9 +175,9 @@ void updateMouseState() {
         }
 #if 0
         if(mi->button_state_[idx] == KS_PRESSED)
-            printf("%d pressed\n", idx);
+            mc2::fmt::print_out("{:d} pressed\n", mc2::fmt::as_i32(idx));
         if(mi->button_state_[idx] == KS_RELEASED)
-            printf("%d released\n", idx);
+            mc2::fmt::print_out("{:d} released\n", mc2::fmt::as_i32(idx));
 #endif
     }
 }
@@ -218,7 +219,7 @@ void updateKeyboardState() {
 
 #if 0
         if(ls == KS_PRESSED || ls==KS_RELEASED) {
-            printf("key: %d %s\n", i, ls==KS_PRESSED ? "PRESSED" : "RELEASED");
+            mc2::fmt::print_out("key: {:d} {}\n", mc2::fmt::as_i32(i), mc2::fmt::safe(ls==KS_PRESSED ? "PRESSED" : "RELEASED"));
         }
 #endif
 

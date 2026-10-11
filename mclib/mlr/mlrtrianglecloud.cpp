@@ -476,7 +476,7 @@ int
 
 				srcPolygon.flags |= 1;
 
-				srcPolygon.texCoords = NULL;
+				srcPolygon.texCoords = nullptr;
 
 				srcPolygon.length = 3;
 

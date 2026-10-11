@@ -21,6 +21,7 @@
 #include <cstdlib>
 #include <cstdio>    // std::fprintf (gated min/max age summary)
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 namespace mc2 {
 namespace particles {
@@ -55,9 +56,7 @@ float resolveSampleAge(float callerAge) {
         if (age < s_min) s_min = age;
         if (age > s_max) s_max = age;
         if ((++s_count % 2000ull) == 0ull) {
-            std::fprintf(stderr,
-                "[VFX_AGE_SAMPLE v1] resolved=%llu min=%.3f max=%.3f fallback=%llu\n",
-                s_count, (double)s_min, (double)s_max, s_fallback);
+            mc2::fmt::print_err("[VFX_AGE_SAMPLE v1] resolved={:d} min={:.3f} max={:.3f} fallback={:d}\n", mc2::fmt::as_u64(s_count), (double)s_min, (double)s_max, mc2::fmt::as_u64(s_fallback));
             std::fflush(stderr);
             s_min = 2.0f; s_max = -1.0f;   // reset window so spread tracks over time
         }

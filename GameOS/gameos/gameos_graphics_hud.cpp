@@ -1,6 +1,8 @@
 // gameos_graphics: text breaking and drawing, the HUD batch flush and the text C API.
 // Declared in the class headers; shared names in gameos_graphics_material_internal.h.
 #include "gameos_graphics_material_internal.h"
+#include "mc2fmt.h"
+#include "utils/mc2log.h"
 
 
 static int get_next_break(const char* text) {
@@ -237,7 +239,7 @@ void gosRenderer::drawText(const char* text) {
             ? s_hud_scale_exempt : (s_hud_canvas_exempt_mode != 0);
             hudBatch_.push_back(std::move(call));
         } else if (hudFlushed_) {
-            SPEW(("GRAPHICS", "[HUD] Late drawText discarded (after flushHUDBatch)\n"));
+            MC2_LOG(Render, Debug, "[HUD] Late drawText discarded (after flushHUDBatch)");
         }
         text_->rewind();
         return;
@@ -457,10 +459,7 @@ void gosRenderer::flushHUDBatch()
                     ++nv;
                 }
             if (FILE* hf = fopen("preview_debug.log", "a")) {
-                fprintf(hf,"[HUDSCALE] active=%d scale=%.2f rendererWH=%dx%d batch=%zu verts=%zu "
-                       "vertY=[%.0f..%.0f] vertXmax=%.0f band=%.0f\n",
-                    (int)s_hud_scale_active, scale, width_, height_,
-                    hudBatch_.size(), nv, ymin, ymax, xmax, (float)height_ * 0.60f);
+                mc2::fmt::print(hf, "[HUDSCALE] active={:d} scale={:.2f} rendererWH={:d}x{:d} batch={:d} verts={:d} vertY=[{:.0f}..{:.0f}] vertXmax={:.0f} band={:.0f}\n", mc2::fmt::as_i32((int)s_hud_scale_active), scale, mc2::fmt::as_i32(width_), mc2::fmt::as_i32(height_), mc2::fmt::as_size(hudBatch_.size()), mc2::fmt::as_size(nv), ymin, ymax, xmax, (float)height_ * 0.60f);
                 fclose(hf);
             }
         }
@@ -498,8 +497,7 @@ void gosRenderer::flushHUDBatch()
                 for (const HudDrawCall& c : hudBatch_)
                     if (!c.vertices.empty() && !c.scaleExempt) { sampleY = c.vertices[0].y; break; }
                 if (FILE* hf = fopen("preview_debug.log", "a")) {
-                    fprintf(hf,"[HUDSCALE] apply sw=%.0f sh=%.0f band=%.0f scaled=%d skipBand=%d skipExempt=%d firstVertYafter=%.0f\n",
-                        sw, sh, bottomBand, scaled, skippedBand, skippedExempt, sampleY);
+                    mc2::fmt::print(hf, "[HUDSCALE] apply sw={:.0f} sh={:.0f} band={:.0f} scaled={:d} skipBand={:d} skipExempt={:d} firstVertYafter={:.0f}\n", sw, sh, bottomBand, mc2::fmt::as_i32(scaled), mc2::fmt::as_i32(skippedBand), mc2::fmt::as_i32(skippedExempt), sampleY);
                     fclose(hf);
                 }
             }
@@ -565,10 +563,7 @@ void gosRenderer::flushHUDBatch()
             if (rbw <= 0 || rbh <= 0 || rbx < 0 || rby < 0 ||
                 rbx + rbw > Environment.drawableWidth ||
                 rby + rbh > Environment.drawableHeight) {
-                snprintf(resDetail, sizeof(resDetail),
-                         "box=%d,%d %dx%d drawable=%dx%d",
-                         rbx, rby, rbw, rbh,
-                         Environment.drawableWidth, Environment.drawableHeight);
+                mc2::fmt::to_buf(resDetail, "box={:d},{:d} {:d}x{:d} drawable={:d}x{:d}", mc2::fmt::as_i32(rbx), mc2::fmt::as_i32(rby), mc2::fmt::as_i32(rbw), mc2::fmt::as_i32(rbh), mc2::fmt::as_i32(Environment.drawableWidth), mc2::fmt::as_i32(Environment.drawableHeight));
                 mc2res::violation("hud_canvas_bounds", resDetail);
             } else {
                 const float rdw = (float)Environment.drawableWidth;
@@ -603,12 +598,7 @@ void gosRenderer::flushHUDBatch()
                     gos_HudInverseMousePoint(px, py);
                     if (fabsf(px - probePts[rp][0]) > 0.5f ||
                         fabsf(py - probePts[rp][1]) > 0.5f) {
-                        snprintf(resDetail, sizeof(resDetail),
-                                 "probe=(%.1f,%.1f) roundtrip=(%.2f,%.2f) "
-                                 "box=%d,%d %dx%d scale=%.3f",
-                                 (double)probePts[rp][0], (double)probePts[rp][1],
-                                 (double)px, (double)py,
-                                 rbx, rby, rbw, rbh, (double)gos_GetHudScale());
+                        mc2::fmt::to_buf(resDetail, "probe=({:.1f},{:.1f}) roundtrip=({:.2f},{:.2f}) box={:d},{:d} {:d}x{:d} scale={:.3f}", (double)probePts[rp][0], (double)probePts[rp][1], (double)px, (double)py, mc2::fmt::as_i32(rbx), mc2::fmt::as_i32(rby), mc2::fmt::as_i32(rbw), mc2::fmt::as_i32(rbh), (double)gos_GetHudScale());
                         mc2res::violation("hud_roundtrip", resDetail);
                     }
                 }
@@ -650,13 +640,7 @@ void gosRenderer::flushHUDBatch()
         static unsigned s_hudMeasureFrames = 0;
         ++s_hudMeasureFrames;
         if (s_hudMeasureFrames <= 10 || (s_hudMeasureFrames % 120) == 0) {
-            std::fprintf(stderr,
-                "[VK_HUD_AUDIT v1] frame=%u calls=%u quads=%u lines=%u tris=%u text=%u "
-                "textured=%u vertices=%u alpha0=%u alpha1=%u alpha2=%u alpha3=%u\n",
-                s_hudMeasureFrames, (unsigned)hudBatch_.size(),
-                calls[0], calls[1], calls[2], calls[3],
-                textured, totalVertices,
-                alphaModes[0], alphaModes[1], alphaModes[2], alphaModes[3]);
+            mc2::fmt::print_err("[VK_HUD_AUDIT v1] frame={:d} calls={:d} quads={:d} lines={:d} tris={:d} text={:d} textured={:d} vertices={:d} alpha0={:d} alpha1={:d} alpha2={:d} alpha3={:d}\n", mc2::fmt::as_u32(s_hudMeasureFrames), mc2::fmt::as_u32((unsigned)hudBatch_.size()), mc2::fmt::as_u32(calls[0]), mc2::fmt::as_u32(calls[1]), mc2::fmt::as_u32(calls[2]), mc2::fmt::as_u32(calls[3]), mc2::fmt::as_u32(textured), mc2::fmt::as_u32(totalVertices), mc2::fmt::as_u32(alphaModes[0]), mc2::fmt::as_u32(alphaModes[1]), mc2::fmt::as_u32(alphaModes[2]), mc2::fmt::as_u32(alphaModes[3]));
         }
     }
 
@@ -745,13 +729,7 @@ void gosRenderer::flushHUDBatch()
             if (!drawRepresentable) {
                 static unsigned s_nativeHudDeclineLogs = 0;
                 if (s_nativeHudDeclineLogs < 16) {
-                    std::fprintf(stderr,
-                        "[VK_HUD_SKIP_DECLINE v1] kind=%u tex=%u gl=%u wh=%ux%u serial=%u rgba=%zu alpha=%u verts=%zu perDrawDecline=%d\n",
-                        draw.kind, draw.textureHandle, draw.glTextureId,
-                        draw.textureWidth, draw.textureHeight, draw.textureSerial,
-                        draw.textureRgba ? draw.textureRgba->size() : (size_t)0,
-                        draw.alphaMode, draw.vertices.size(),
-                        (int)s_hudPerDrawDecline);
+                    mc2::fmt::print_err("[VK_HUD_SKIP_DECLINE v1] kind={:d} tex={:d} gl={:d} wh={:d}x{:d} serial={:d} rgba={:d} alpha={:d} verts={:d} perDrawDecline={:d}\n", mc2::fmt::as_u32(draw.kind), mc2::fmt::as_u32(draw.textureHandle), mc2::fmt::as_u32(draw.glTextureId), mc2::fmt::as_u32(draw.textureWidth), mc2::fmt::as_u32(draw.textureHeight), mc2::fmt::as_u32(draw.textureSerial), mc2::fmt::as_size(draw.textureRgba ? draw.textureRgba->size() : (size_t)0), mc2::fmt::as_u32(draw.alphaMode), mc2::fmt::as_size(draw.vertices.size()), mc2::fmt::as_i32((int)s_hudPerDrawDecline));
                     ++s_nativeHudDeclineLogs;
                 }
             }
@@ -767,10 +745,7 @@ void gosRenderer::flushHUDBatch()
                 if (s_hudDumpLines < 400 && draw.textureHandle != 0 &&
                     draw.textureHandle != INVALID_TEXTURE_ID) {
                     ++s_hudDumpLines;
-                    std::fprintf(stderr, "[VK_HUD_DRAW_DUMP] batchseq=%u kind=%u handle=%u "
-                        "serial=%u wh=%ux%u verts=%zu\n", s_hudDumpLines,
-                        draw.kind, draw.textureHandle, draw.textureSerial,
-                        draw.textureWidth, draw.textureHeight, draw.vertices.size());
+                    mc2::fmt::print_err("[VK_HUD_DRAW_DUMP] batchseq={:d} kind={:d} handle={:d} serial={:d} wh={:d}x{:d} verts={:d}\n", mc2::fmt::as_u32(s_hudDumpLines), mc2::fmt::as_u32(draw.kind), mc2::fmt::as_u32(draw.textureHandle), mc2::fmt::as_u32(draw.textureSerial), mc2::fmt::as_u32(draw.textureWidth), mc2::fmt::as_u32(draw.textureHeight), mc2::fmt::as_size(draw.vertices.size()));
                 }
             }
             nativeDraws.push_back(std::move(draw));
@@ -795,9 +770,7 @@ void gosRenderer::flushHUDBatch()
         static unsigned s_nativeHudSkipFrames = 0;
         ++s_nativeHudSkipFrames;
         if (s_nativeHudSkipFrames <= 10 || (s_nativeHudSkipFrames % 120) == 0) {
-            std::fprintf(stderr,
-                "[VK_HUD_SKIP v1] frame=%u draws=%u reason=\"native_full_coverage\"\n",
-                s_nativeHudSkipFrames, (unsigned)hudBatch_.size());
+            mc2::fmt::print_err("[VK_HUD_SKIP v1] frame={:d} draws={:d} reason=\"native_full_coverage\"\n", mc2::fmt::as_u32(s_nativeHudSkipFrames), mc2::fmt::as_u32((unsigned)hudBatch_.size()));
         }
         hudFlushed_ = true;
         s_hud_scale_exempt = false;
@@ -866,7 +839,7 @@ void __stdcall gos_TextDraw( const char *Message, ... )
 {
 
 	if (!Message || !strlen(Message)) {
-        SPEW(("GRAPHICS", "Trying to draw zero legth string\n"));
+        MC2_LOG(Render, Debug, "Trying to draw zero legth string");
         return;
     }
 
@@ -952,7 +925,7 @@ void __stdcall gos_TextStringLength( DWORD* Width, DWORD* Height, const char *fm
     gosASSERT(Width && Height);
 
     if(!fmt) {
-        SPEW(("GRAPHICS", "No text to calculate length!"));
+        MC2_LOG(Render, Debug, "No text to calculate length!");
         *Width = 1;
         *Height = 1;
         return;

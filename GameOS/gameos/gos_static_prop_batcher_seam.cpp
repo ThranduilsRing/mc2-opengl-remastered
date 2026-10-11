@@ -1,6 +1,7 @@
 // GpuStaticPropBatcher: eligibility, persistent static instances, cached-instance submits, the batcher_* RenderCore seam accessors and the base-instance table.
 // Declared in the class headers; shared names in gos_static_prop_batcher_internal.h.
 #include "gos_static_prop_batcher_internal.h"
+#include "mc2fmt.h"
 
 
 // ---------------------------------------------------------------------------
@@ -254,7 +255,7 @@ void GpuStaticPropBatcher::reinjectPersistentStatic() {
     // reinjPos/reinjCount (VK color feed) assume ONE reinject per frame; flag cleared at frame end.
     { static bool s_warned = false;
       if (s_reinjectedThisFrame && !s_warned) { s_warned = true;
-          fprintf(stderr, "[PROP_REINJECT] WARNING reinjectPersistentStatic called twice in one frame; reinjPos/reinjCount guard invalid\n"); }
+          mc2::fmt::print_err("[PROP_REINJECT] WARNING reinjectPersistentStatic called twice in one frame; reinjPos/reinjCount guard invalid\n"); }
       s_reinjectedThisFrame = true; }
     for (auto& kv : s_persistentStaticStore) {
         const auto& block = kv.second;
@@ -518,7 +519,7 @@ static bool ensureStaticInstanceCapacity() {
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
         glDeleteBuffers(1, &s_staticInstanceSsbo);
         s_staticInstanceSsbo = 0;
-        std::fprintf(stderr, "[STATIC_POP_SPLIT] event=alloc_failed bytes=%zu\n", want);
+        mc2::fmt::print_err("[STATIC_POP_SPLIT] event=alloc_failed bytes={:d}\n", mc2::fmt::as_size(want));
         return false;
     }
     s_staticInstanceMap = MC2_GL_MapBufferRange(GL_SHADER_STORAGE_BUFFER, 0,
@@ -534,8 +535,7 @@ static void fillStaticInstanceBufferIfDirty() {
     size_t total = 0;
     for (auto& kv : s_persistentStaticStore) total += kv.second.size();
     if (total > static_cast<size_t>(s_globalInstanceCap)) {
-        std::fprintf(stderr, "[STATIC_POP_SPLIT] event=overflow total=%zu cap=%u\n",
-                     total, s_globalInstanceCap);
+        mc2::fmt::print_err("[STATIC_POP_SPLIT] event=overflow total={:d} cap={:d}\n", mc2::fmt::as_size(total), mc2::fmt::as_u32(s_globalInstanceCap));
         return;  // never write past the cap
     }
     if (!ensureStaticInstanceCapacity()) return;
@@ -613,10 +613,7 @@ static void rebuildStaticDrawCmdsIfDirty() {
         }
         uint64_t storeTotal = 0;
         for (auto& kv : s_persistentStaticStore) storeTotal += kv.second.size();
-        std::fprintf(stderr, "[STATIC_POP_SPLIT_CMD] pkts=%u nonZeroCmds=%u offCmds=%u "
-                     "maxBaseInst+count=%u storeTotal=%llu (maxEnd<=storeTotal expected)\n",
-                     pktCount, nonZero, s_alphaOffCmdCount, maxEnd,
-                     (unsigned long long)storeTotal);
+        mc2::fmt::print_err("[STATIC_POP_SPLIT_CMD] pkts={:d} nonZeroCmds={:d} offCmds={:d} maxBaseInst+count={:d} storeTotal={:d} (maxEnd<=storeTotal expected)\n", mc2::fmt::as_u32(pktCount), mc2::fmt::as_u32(nonZero), mc2::fmt::as_u32(s_alphaOffCmdCount), mc2::fmt::as_u32(maxEnd), mc2::fmt::as_u64((unsigned long long)storeTotal));
         std::fflush(stderr);
     }
 }
@@ -910,7 +907,7 @@ void batcher_buildCandidateLog() {
     if (!gate) return;
 
     if (s_typeDescTable.empty()) {
-        std::fprintf(stderr, "[DRAW_CAND v0] table_empty\n");
+        mc2::fmt::print_err("[DRAW_CAND v0] table_empty\n");
         return;
     }
 
@@ -929,21 +926,14 @@ void batcher_buildCandidateLog() {
             const uint32_t pktIdx = desc.firstPacket + p;
             if (pktIdx >= static_cast<uint32_t>(s_packets.size())) {
                 if (doDetail) {
-                    std::fprintf(stderr,
-                        "[DRAW_CAND v0 detail] typeId=%u pkt=%u BOUNDS_OVERFLOW\n",
-                        desc.typeId, p);
+                    mc2::fmt::print_err("[DRAW_CAND v0 detail] typeId={:d} pkt={:d} BOUNDS_OVERFLOW\n", mc2::fmt::as_u32(desc.typeId), mc2::fmt::as_u32(p));
                 }
                 ++boundsErrors;
                 continue;
             }
             if (doDetail) {
                 const GpuStaticPropPacket& pkt = s_packets[pktIdx];
-                std::fprintf(stderr,
-                    "[DRAW_CAND v0 detail] typeId=%u pkt=%u firstIndex=%u"
-                    " indexCount=%u baseVertex=%d alphaClass=%u\n",
-                    desc.typeId, p,
-                    pkt.firstIndex, pkt.indexCount, pkt.baseVertex,
-                    desc.alphaClass);
+                mc2::fmt::print_err("[DRAW_CAND v0 detail] typeId={:d} pkt={:d} firstIndex={:d} indexCount={:d} baseVertex={:d} alphaClass={:d}\n", mc2::fmt::as_u32(desc.typeId), mc2::fmt::as_u32(p), mc2::fmt::as_u32(pkt.firstIndex), mc2::fmt::as_u32(pkt.indexCount), mc2::fmt::as_i32(pkt.baseVertex), mc2::fmt::as_u32(desc.alphaClass));
             }
             ++emitted;
         }
@@ -953,10 +943,9 @@ void batcher_buildCandidateLog() {
     // Summary line emitted every frame.
     // OK gate: emitted==expected (all reachable packets walked), boundsErrors==0.
     // emptyTypes is informational; a type may be registered with no geometry.
-    std::fprintf(stderr,
-        "[DRAW_CAND v0] emitted=%u expected=%u emptyTypes=%u boundsErrors=%u%s\n",
-        emitted, expected, emptyTypes, boundsErrors,
-        (emitted == expected && boundsErrors == 0) ? " OK" : " MISMATCH");
+    mc2::fmt::print_err("[DRAW_CAND v0] emitted={:d} expected={:d} emptyTypes={:d} boundsErrors={:d}{}\n",
+        mc2::fmt::as_u32(emitted), mc2::fmt::as_u32(expected), mc2::fmt::as_u32(emptyTypes), mc2::fmt::as_u32(boundsErrors),
+        mc2::fmt::safe((emitted == expected && boundsErrors == 0) ? " OK" : " MISMATCH"));
 }
 
 // Saved slot-16 GL buffer object. Slot 16 is reserved to this feature.

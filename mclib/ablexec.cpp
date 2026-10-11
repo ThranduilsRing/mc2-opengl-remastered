@@ -10,6 +10,7 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
+#include "mc2fmt.h"
 
 #ifndef ABLGEN_H
 #include"ablgen.h"
@@ -643,7 +644,7 @@ void execute (SymTableNodePtr routineIdPtr) {
 		strcpy(SetStateDebugStr, "--");
 		while (NewStateSet) {
 			NumStateTransitions++;
-			sprintf(stateList[NumStateTransitions], "%s (%s)", CurModule->getState()->name, SetStateDebugStr);
+			mc2::fmt::to_buf(stateList[NumStateTransitions], "{} ({})", mc2::fmt::safe(CurModule->getState()->name), mc2::fmt::safe(SetStateDebugStr));
 			if (NumStateTransitions == 50) {
 				UserFile* userFile = UserFile::getNewFile();
 				char errStr[512];
@@ -662,7 +663,7 @@ void execute (SymTableNodePtr routineIdPtr) {
 						userFile->close();
 					}
 				}
-				sprintf(errStr, " ABL endless state loop in %s [%s:%s] ", ModuleRegistry[CurModule->getHandle()].fileName, CurModule->getState()->name, CurModule->getPrevState()->name);
+				mc2::fmt::to_buf(errStr, " ABL endless state loop in {} [{}:{}] ", mc2::fmt::safe(ModuleRegistry[CurModule->getHandle()].fileName), mc2::fmt::safe(CurModule->getState()->name), mc2::fmt::safe(CurModule->getPrevState()->name));
 				#if 0
 				ABL_Fatal(NumStateTransitions, errStr);
 				#else

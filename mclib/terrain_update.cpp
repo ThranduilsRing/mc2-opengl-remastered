@@ -1,6 +1,7 @@
 // Terrain: Terrain::update with the LOD chunk selection and morph factor helpers.
 // Declared in the class headers; shared names in terrain_internal.h.
 #include "terrain_internal.h"
+#include "mc2fmt.h"
 
 
 // Phase 7.5 diagnostic: streak counter for frames where LOD chunk is enabled
@@ -139,9 +140,7 @@ long Terrain::update (void)
 			if (TerrainRuntime::sampleMaterialId(pos)     != legMat)   ++mismMat;
 			if (TerrainRuntime::sampleWaterLevel(pos)     != legacyWater) ++mismWater;
 		}
-		printf("[TERRAIN_RUNTIME v1] parity self-test: side=%ld samples=%d "
-		       "mismatch{gameplay=%d visual=%d material=%d water=%d}\n",
-		       realVerticesMapSide, samples, mismGame, mismVis, mismMat, mismWater);
+		mc2::fmt::print_out("[TERRAIN_RUNTIME v1] parity self-test: side={:d} samples={:d} mismatch{{gameplay={:d} visual={:d} material={:d} water={:d}}}\n", mc2::fmt::as_i32(realVerticesMapSide), mc2::fmt::as_i32(samples), mc2::fmt::as_i32(mismGame), mc2::fmt::as_i32(mismVis), mc2::fmt::as_i32(mismMat), mc2::fmt::as_i32(mismWater));
 		fflush(stdout);
 		} // gate-enabled
 	} // one-shot
@@ -254,13 +253,9 @@ long Terrain::update (void)
 		if (!s_cullDiagDone && gCurrentFrame == 2) {
 			s_cullDiagDone = true;
 			const SuperchunkMeta& sc0 = s_superchunkMeta[0];
-			printf("[TerrainLOD v1] DIAG halfMap=%.1f worldUnitsMapSide=%.1f\n",
-				halfMap, worldUnitsMapSide);
-			printf("[TerrainLOD v1] DIAG cam=(%.1f,%.1f,%.1f)\n",
-				camOriginLod.x, camOriginLod.y, camOriginLod.z);
-			printf("[TerrainLOD v1] DIAG sc[0] AABB x=[%.1f,%.1f] y=[%.1f,%.1f] z=[%.1f,%.1f]\n",
-				sc0.worldMinX, sc0.worldMaxX, sc0.worldMinY, sc0.worldMaxY,
-				sc0.worldMinZ, sc0.worldMaxZ);
+			mc2::fmt::print_out("[TerrainLOD v1] DIAG halfMap={:.1f} worldUnitsMapSide={:.1f}\n", halfMap, worldUnitsMapSide);
+			mc2::fmt::print_out("[TerrainLOD v1] DIAG cam=({:.1f},{:.1f},{:.1f})\n", camOriginLod.x, camOriginLod.y, camOriginLod.z);
+			mc2::fmt::print_out("[TerrainLOD v1] DIAG sc[0] AABB x=[{:.1f},{:.1f}] y=[{:.1f},{:.1f}] z=[{:.1f},{:.1f}]\n", sc0.worldMinX, sc0.worldMaxX, sc0.worldMinY, sc0.worldMaxY, sc0.worldMinZ, sc0.worldMaxZ);
 			// Print all 6 planes with pass/fail for sc[0].
 			static const char* planeNames[6] = {"left","right","bottom","top","near","far"};
 			for (int p = 0; p < 6; p++) {
@@ -269,12 +264,9 @@ long Terrain::update (void)
 				float py = (b >= 0.0f) ? sc0.worldMaxY : sc0.worldMinY;
 				float pz = (c >= 0.0f) ? sc0.worldMaxZ : sc0.worldMinZ;
 				float dot = a*px + b*py + c*pz + d;
-				printf("[TerrainLOD v1] DIAG plane[%d]=%s (%.4f,%.4f,%.4f,%.4f) pv=(%.1f,%.1f,%.1f) dot=%.4f %s\n",
-					p, planeNames[p], a, b, c, d, px, py, pz, dot, dot>=0.0f?"PASS":"FAIL");
+				mc2::fmt::print_out("[TerrainLOD v1] DIAG plane[{:d}]={} ({:.4f},{:.4f},{:.4f},{:.4f}) pv=({:.1f},{:.1f},{:.1f}) dot={:.4f} {}\n", mc2::fmt::as_i32(p), mc2::fmt::safe(planeNames[p]), a, b, c, d, px, py, pz, dot, mc2::fmt::safe(dot>=0.0f?"PASS":"FAIL"));
 			}
-			printf("[TerrainLOD v1] DIAG noCull=%d superchunks=%d blocks=%d\n",
-				(int)s_noCull, s_superchunkSide * s_superchunkSide,
-				s_terrainChunkSide * s_terrainChunkSide);
+			mc2::fmt::print_out("[TerrainLOD v1] DIAG noCull={:d} superchunks={:d} blocks={:d}\n", mc2::fmt::as_i32((int)s_noCull), mc2::fmt::as_i32(s_superchunkSide * s_superchunkSide), mc2::fmt::as_i32(s_terrainChunkSide * s_terrainChunkSide));
 			fflush(stdout);
 
 			// --- 4-point vertex parity: legacy tileColToWorldCoord vs chunk formula ---
@@ -299,12 +291,7 @@ long Terrain::update (void)
 					float chkX = float(col) * 128.0f - halfMap;
 					float chkY = halfMap - float(row) * 128.0f;
 					float chkZ = blks[col + row * side].elevation;
-					printf("[TerrainLOD parity] sample[%d]=(%d,%d) "
-						   "legacy=(%.1f,%.1f,%.1f) chunk=(%.1f,%.1f,%.1f) %s\n",
-						   i, col, row,
-						   legX, legY, legZ,
-						   chkX, chkY, chkZ,
-						   (legX==chkX && legY==chkY && legZ==chkZ) ? "MATCH" : "MISMATCH");
+					mc2::fmt::print_out("[TerrainLOD parity] sample[{:d}]=({:d},{:d}) legacy=({:.1f},{:.1f},{:.1f}) chunk=({:.1f},{:.1f},{:.1f}) {}\n", mc2::fmt::as_i32(i), mc2::fmt::as_i32(col), mc2::fmt::as_i32(row), legX, legY, legZ, chkX, chkY, chkZ, mc2::fmt::safe((legX==chkX && legY==chkY && legZ==chkZ) ? "MATCH" : "MISMATCH"));
 				}
 				fflush(stdout);
 			}
@@ -315,11 +302,8 @@ long Terrain::update (void)
 		if (!s_cullDiag120Done && gCurrentFrame == 120) {
 			s_cullDiag120Done = true;
 			const SuperchunkMeta& sc0 = s_superchunkMeta[0];
-			printf("[TerrainLOD v1] DIAG120 cam=(%.1f,%.1f,%.1f)\n",
-				camOriginLod.x, camOriginLod.y, camOriginLod.z);
-			printf("[TerrainLOD v1] DIAG120 sc[0] AABB x=[%.1f,%.1f] y=[%.1f,%.1f] z=[%.1f,%.1f]\n",
-				sc0.worldMinX, sc0.worldMaxX, sc0.worldMinY, sc0.worldMaxY,
-				sc0.worldMinZ, sc0.worldMaxZ);
+			mc2::fmt::print_out("[TerrainLOD v1] DIAG120 cam=({:.1f},{:.1f},{:.1f})\n", camOriginLod.x, camOriginLod.y, camOriginLod.z);
+			mc2::fmt::print_out("[TerrainLOD v1] DIAG120 sc[0] AABB x=[{:.1f},{:.1f}] y=[{:.1f},{:.1f}] z=[{:.1f},{:.1f}]\n", sc0.worldMinX, sc0.worldMaxX, sc0.worldMinY, sc0.worldMaxY, sc0.worldMinZ, sc0.worldMaxZ);
 			for (int p = 0; p < 6; p++) {
 				float a = planes[p][0], b = planes[p][1], c = planes[p][2], d = planes[p][3];
 				float px2 = (a >= 0.0f) ? sc0.worldMaxX : sc0.worldMinX;
@@ -327,8 +311,7 @@ long Terrain::update (void)
 				float pz2 = (c >= 0.0f) ? sc0.worldMaxZ : sc0.worldMinZ;
 				float dot2 = a*px2 + b*py2 + c*pz2 + d;
 				static const char* pn[6] = {"left","right","bottom","top","near","far"};
-				printf("[TerrainLOD v1] DIAG120 plane[%d]=%s (%.4f,%.4f,%.4f,%.4f) dot=%.4f %s\n",
-					p, pn[p], a, b, c, d, dot2, dot2>=0.0f?"PASS":"FAIL");
+				mc2::fmt::print_out("[TerrainLOD v1] DIAG120 plane[{:d}]={} ({:.4f},{:.4f},{:.4f},{:.4f}) dot={:.4f} {}\n", mc2::fmt::as_i32(p), mc2::fmt::safe(pn[p]), a, b, c, d, dot2, mc2::fmt::safe(dot2>=0.0f?"PASS":"FAIL"));
 			}
 			// Center block AABB + per-plane test. sc[0] is top-left and may be
 			// legitimately off-screen. Center block is the better "should always pass"
@@ -342,9 +325,7 @@ long Terrain::update (void)
 			cbMx.y = cbHalfMap - float(cbm.originY) * 128.0f;
 			cbMn.y = cbHalfMap - float(cbm.originY + cbm.quadCountY) * 128.0f;
 			cbMn.z = -200.0f; cbMx.z = 2500.0f;
-			printf("[TerrainLOD v1] DIAG120 center block=(%d,%d) originXY=(%d,%d) AABB x=[%.1f,%.1f] y=[%.1f,%.1f]\n",
-				cbx, cby, cbm.originX, cbm.originY,
-				cbMn.x, cbMx.x, cbMn.y, cbMx.y);
+			mc2::fmt::print_out("[TerrainLOD v1] DIAG120 center block=({:d},{:d}) originXY=({:d},{:d}) AABB x=[{:.1f},{:.1f}] y=[{:.1f},{:.1f}]\n", mc2::fmt::as_i32(cbx), mc2::fmt::as_i32(cby), mc2::fmt::as_i32(cbm.originX), mc2::fmt::as_i32(cbm.originY), cbMn.x, cbMx.x, cbMn.y, cbMx.y);
 			static const char* pn2[6] = {"left","right","bottom","top","near","far"};
 			for (int p = 0; p < 6; p++) {
 				float a = planes[p][0], b = planes[p][1], c = planes[p][2], d = planes[p][3];
@@ -352,8 +333,7 @@ long Terrain::update (void)
 				float pyc = (b >= 0.0f) ? cbMx.y : cbMn.y;
 				float pzc = (c >= 0.0f) ? cbMx.z : cbMn.z;
 				float dotc = a*pxc + b*pyc + c*pzc + d;
-				printf("[TerrainLOD v1] DIAG120 center plane[%d]=%s dot=%.4f %s\n",
-					p, pn2[p], dotc, dotc>=0.0f?"PASS":"FAIL");
+				mc2::fmt::print_out("[TerrainLOD v1] DIAG120 center plane[{:d}]={} dot={:.4f} {}\n", mc2::fmt::as_i32(p), mc2::fmt::safe(pn2[p]), dotc, mc2::fmt::safe(dotc>=0.0f?"PASS":"FAIL"));
 			}
 			fflush(stdout);
 		}
@@ -700,10 +680,7 @@ long Terrain::update (void)
 			{
 				double totalArea = tierArea[0] + tierArea[1] + tierArea[2] + tierArea[3];
 				double inv = (totalArea > 0.0) ? (100.0 / totalArea) : 0.0;
-				printf("[ShadowTier] high=%d low=%d static=%d none=%d | "
-				       "area%% h=%.0f l=%.0f s=%.0f (of visible terrain area)\n",
-				       tierChunks[0], tierChunks[1], tierChunks[2], tierChunks[3],
-				       tierArea[0] * inv, tierArea[1] * inv, tierArea[2] * inv);
+				mc2::fmt::print_out("[ShadowTier] high={:d} low={:d} static={:d} none={:d} | area% h={:.0f} l={:.0f} s={:.0f} (of visible terrain area)\n", mc2::fmt::as_i32(tierChunks[0]), mc2::fmt::as_i32(tierChunks[1]), mc2::fmt::as_i32(tierChunks[2]), mc2::fmt::as_i32(tierChunks[3]), tierArea[0] * inv, tierArea[1] * inv, tierArea[2] * inv);
 				fflush(stdout);
 			}
 		}
@@ -725,11 +702,11 @@ long Terrain::update (void)
 				for (int by2 = 0; by2 < s_terrainChunkSide && pos < 200; ++by2)
 					for (int bx2 = 0; bx2 < s_terrainChunkSide && pos < 200; ++bx2)
 						if (blockMask & (1u << (by2 * s_terrainChunkSide + bx2)))
-							pos += snprintf(buf + pos, sizeof(buf) - pos, "(%d,%d)", bx2, by2);
+							pos += mc2::fmt::to_buf_n(buf + pos, sizeof(buf) - pos, "({:d},{:d})", mc2::fmt::as_i32(bx2), mc2::fmt::as_i32(by2));
 				buf[pos] = '\0';
 				// Camera east/north already computed above as eyeX/eyeY.
-				printf("[BlockSet] frame=%lu cmds=%d cam=(%.0f,%.0f) blocks=%s\n",
-					(unsigned long)gCurrentFrame, s_cmdCount, eyeX, eyeY, buf);
+				mc2::fmt::print_out("[BlockSet] frame={:d} cmds={:d} cam=({:.0f},{:.0f}) blocks={}\n",
+					mc2::fmt::as_u32((unsigned long)gCurrentFrame), mc2::fmt::as_i32(s_cmdCount), eyeX, eyeY, mc2::fmt::safe(buf));
 				fflush(stdout);
 			}
 		}
@@ -748,10 +725,7 @@ long Terrain::update (void)
 				        : (step == 10) ? 4 : 5;
 				lodCounts[lvl]++;
 			}
-			printf("[TerrainLOD v1] frame=%lu cmds=%d LOD0=%d LOD1=%d LOD2=%d LOD3=%d LOD4=%d LOD5=%d\n",
-			       (unsigned long)gCurrentFrame, s_cmdCount,
-			       lodCounts[0], lodCounts[1], lodCounts[2],
-			       lodCounts[3], lodCounts[4], lodCounts[5]);
+			mc2::fmt::print_out("[TerrainLOD v1] frame={:d} cmds={:d} LOD0={:d} LOD1={:d} LOD2={:d} LOD3={:d} LOD4={:d} LOD5={:d}\n", mc2::fmt::as_u32((unsigned long)gCurrentFrame), mc2::fmt::as_i32(s_cmdCount), mc2::fmt::as_i32(lodCounts[0]), mc2::fmt::as_i32(lodCounts[1]), mc2::fmt::as_i32(lodCounts[2]), mc2::fmt::as_i32(lodCounts[3]), mc2::fmt::as_i32(lodCounts[4]), mc2::fmt::as_i32(lodCounts[5]));
 			fflush(stdout);
 		}
 
@@ -763,9 +737,7 @@ long Terrain::update (void)
 			if (s_cmdCount > 0) s_wasNonZero = true;
 			if (s_cmdCount == 0 && s_wasNonZero && !s_firstZeroDone) {
 				s_firstZeroDone = true;
-				printf("[TerrainLOD v1] FIRST_ZERO frame=%lu cam=(%.1f,%.1f,%.1f)\n",
-					(unsigned long)gCurrentFrame,
-					camOriginLod.x, camOriginLod.y, camOriginLod.z);
+				mc2::fmt::print_out("[TerrainLOD v1] FIRST_ZERO frame={:d} cam=({:.1f},{:.1f},{:.1f})\n", mc2::fmt::as_u32((unsigned long)gCurrentFrame), camOriginLod.x, camOriginLod.y, camOriginLod.z);
 				static const char* pnz[6] = {"left","right","bottom","top","near","far"};
 				for (int p = 0; p < 6; p++) {
 					float a = planes[p][0], b = planes[p][1], c = planes[p][2], d = planes[p][3];
@@ -774,8 +746,7 @@ long Terrain::update (void)
 					float py = (b >= 0.0f) ? sc0.worldMaxY : sc0.worldMinY;
 					float pz = (c >= 0.0f) ? sc0.worldMaxZ : sc0.worldMinZ;
 					float dot = a*px + b*py + c*pz + d;
-					printf("[TerrainLOD v1] FIRST_ZERO plane[%d]=%s (%.4f,%.4f,%.4f,%.4f) dot=%.4f %s\n",
-						p, pnz[p], a, b, c, d, dot, dot >= 0.0f ? "PASS" : "FAIL");
+					mc2::fmt::print_out("[TerrainLOD v1] FIRST_ZERO plane[{:d}]={} ({:.4f},{:.4f},{:.4f},{:.4f}) dot={:.4f} {}\n", mc2::fmt::as_i32(p), mc2::fmt::safe(pnz[p]), a, b, c, d, dot, mc2::fmt::safe(dot >= 0.0f ? "PASS" : "FAIL"));
 				}
 				fflush(stdout);
 			}
@@ -788,8 +759,7 @@ long Terrain::update (void)
 			if (s_cmdCount == 0 && gCurrentFrame > 10) {
 				++s_lodZeroCmdFrames;
 				if (s_lodZeroCmdFrames == 60 || s_lodZeroCmdFrames % 300 == 0)
-					printf("[TerrainLOD v1] ERROR: enabled but zero draw commands (frame=%lu streak=%d)\n",
-					       (unsigned long)gCurrentFrame, s_lodZeroCmdFrames);
+					mc2::fmt::print_out("[TerrainLOD v1] ERROR: enabled but zero draw commands (frame={:d} streak={:d})\n", mc2::fmt::as_u32((unsigned long)gCurrentFrame), mc2::fmt::as_i32(s_lodZeroCmdFrames));
 			} else {
 				s_lodZeroCmdFrames = 0;
 			}

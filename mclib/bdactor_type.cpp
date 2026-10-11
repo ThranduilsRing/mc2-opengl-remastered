@@ -1,6 +1,7 @@
 // BldgAppearance / TreeAppearance: BldgAppearanceType and TreeAppearanceType init/destroy.
 // Declared in the class headers; shared names in bdactor_internal.h.
 #include "bdactor_internal.h"
+#include "mc2fmt.h"
 
 void BldgAppearanceType::init (const char * fileName)
 {
@@ -90,8 +91,8 @@ void BldgAppearanceType::init (const char * fileName)
 		{
 			char baseName[256];
 			char baseLODDist[256];
-			sprintf(baseName,"FileName%d",i);
-			sprintf(baseLODDist,"Distance%d",i);
+			mc2::fmt::to_buf(baseName, "FileName{:d}", mc2::fmt::as_i32(i));
+			mc2::fmt::to_buf(baseLODDist, "Distance{:d}", mc2::fmt::as_i32(i));
 
 			result = iniFile.readIdString(baseName,aseFileName,511);
 			if (result == NO_ERR)
@@ -104,7 +105,7 @@ void BldgAppearanceType::init (const char * fileName)
 				lodDistance[i] *= 5.0f;
 
 				bldgShape[i] = new TG_TypeMultiShape;
-				gosASSERT(bldgShape[i] != NULL);
+				gosASSERT(bldgShape[i] != nullptr);
 
 				if (i == 0 && importSourceBase[0]) {
 					loadBuildingImportSourceWithSidecarAxis(bldgShape[i], importSourceBase, &baseShapeLoadFailed); // ASSIMP-BLDG-IMPORT-1: opt-in GLB probe
@@ -136,7 +137,7 @@ void BldgAppearanceType::init (const char * fileName)
 	else
 	{
 		bldgShape[0] = new TG_TypeMultiShape;
-		gosASSERT(bldgShape[0] != NULL);
+		gosASSERT(bldgShape[0] != nullptr);
 
 		if (importSourceBase[0]) {
 			loadBuildingImportSourceWithSidecarAxis(bldgShape[0], importSourceBase, &baseShapeLoadFailed); // ASSIMP-BLDG-IMPORT-1: opt-in GLB probe
@@ -156,8 +157,7 @@ void BldgAppearanceType::init (const char * fileName)
 		FullPathFileName sidecarName;
 		sidecarName.init(tglPath, importSourceBase, ".mcasset.json");
 		if (!loadBuildingPbrFromSidecar(this, sidecarName)) {
-			fprintf(stderr, "[BUILDING_PBR] disabled for import '%s' sidecar=%s\n",
-			        importSourceBase, (const char*)sidecarName);
+			mc2::fmt::print_err("[BUILDING_PBR] disabled for import '{}' sidecar={}\n", mc2::fmt::safe(importSourceBase), mc2::fmt::safe((const char*)sidecarName));
 			fflush(stderr);
 		}
 	}
@@ -174,7 +174,7 @@ void BldgAppearanceType::init (const char * fileName)
 		// static-prop appearance name seen, so a manifest can target props actually
 		// present in a mission. No behavior change. MODEL-OVERRIDE Slice 3.
 		if (mc2::gate::get<"MC2_MODOVERRIDE_TRACE">())
-			fprintf(stderr, "[MODOVERRIDE_TRACE] staticProp '%s'\n", bldgBaseName);
+			mc2::fmt::print_err("[MODOVERRIDE_TRACE] staticProp '{}'\n", mc2::fmt::safe(bldgBaseName));
 		const ModelOverrideRecord* ov =
 			ModelOverrideRegistry::instance().resolve("staticProp", bldgBaseName);
 		if (ov)
@@ -182,9 +182,7 @@ void BldgAppearanceType::init (const char * fileName)
 #ifdef ENABLE_ASSIMP_IMPORTER
 			bldgRenderShape = new TG_TypeMultiShape;
 			char overridePath[1024];
-			snprintf(overridePath, sizeof(overridePath), "%s/%s",
-			         ov->manifestDir.c_str(),
-			         ov->sourceRelPath.c_str());
+			mc2::fmt::to_buf(overridePath, "{}/{}", ov->manifestDir.c_str(), ov->sourceRelPath.c_str());
 			// Guard the importer: Assimp may throw (DeadlyImportError). A throw
 			// here would leak the freshly-new'd render shape and unwind into
 			// non-exception-safe engine code, so collapse any throw to stock.
@@ -196,8 +194,8 @@ void BldgAppearanceType::init (const char * fileName)
 				if (r != 0 || bldgRenderShape->GetNumShapes() == 0)
 				{
 					delete bldgRenderShape; bldgRenderShape = nullptr;   // stock fallback
-					fprintf(stderr, "[MODOVERRIDE] staticProp '%s': import failed (%s), using stock render\n",
-					        bldgBaseName, overridePath);
+					mc2::fmt::print_err("[MODOVERRIDE] staticProp '{}': import failed ({}), using stock render\n",
+					        mc2::fmt::safe(bldgBaseName), mc2::fmt::safe(overridePath));
 					fflush(stderr);
 				}
 				else
@@ -205,21 +203,19 @@ void BldgAppearanceType::init (const char * fileName)
 					// MODEL-OVERRIDE texture binding: resolve importer-assigned
 					// texture names to GOS handles on the TYPE render shape.
 					LoadOverrideRenderShapeTextures(bldgRenderShape);
-					fprintf(stderr, "[MODOVERRIDE] staticProp '%s': render override applied (%s)\n",
-					        bldgBaseName, overridePath);
+					mc2::fmt::print_err("[MODOVERRIDE] staticProp '{}': render override applied ({})\n", mc2::fmt::safe(bldgBaseName), mc2::fmt::safe(overridePath));
 					fflush(stderr);
 					if (buildingPbrGateEnabled())
 					{
 						char sidecarPath[1024];
-						snprintf(sidecarPath, sizeof(sidecarPath), "%s", overridePath);
+						mc2::fmt::to_buf(sidecarPath, "{}", mc2::fmt::safe(overridePath));
 						char* dot = strrchr(sidecarPath, '.');
 						if (dot)
 							strcpy(dot, ".mcasset.json");
 						else
 							strncat(sidecarPath, ".mcasset.json", sizeof(sidecarPath) - strlen(sidecarPath) - 1);
 						if (!loadBuildingPbrFromSidecar(this, sidecarPath)) {
-							fprintf(stderr, "[BUILDING_PBR] disabled for '%s' sidecar=%s\n",
-							        bldgBaseName, sidecarPath);
+							mc2::fmt::print_err("[BUILDING_PBR] disabled for '{}' sidecar={}\n", mc2::fmt::safe(bldgBaseName), mc2::fmt::safe(sidecarPath));
 							fflush(stderr);
 						}
 					}
@@ -228,13 +224,12 @@ void BldgAppearanceType::init (const char * fileName)
 			catch (...)
 			{
 				delete bldgRenderShape; bldgRenderShape = nullptr;   // stock fallback
-				fprintf(stderr, "[MODOVERRIDE] staticProp '%s': import threw (%s), using stock render\n",
-				        bldgBaseName, overridePath);
+				mc2::fmt::print_err("[MODOVERRIDE] staticProp '{}': import threw ({}), using stock render\n",
+				        mc2::fmt::safe(bldgBaseName), mc2::fmt::safe(overridePath));
 				fflush(stderr);
 			}
 #else
-			fprintf(stderr, "[MODOVERRIDE] staticProp '%s': override resolved but importer disabled, using stock render\n",
-			        bldgBaseName);
+			mc2::fmt::print_err("[MODOVERRIDE] staticProp '{}': override resolved but importer disabled, using stock render\n", mc2::fmt::safe(bldgBaseName));
 			fflush(stderr);
 #endif
 		}
@@ -251,7 +246,7 @@ void BldgAppearanceType::init (const char * fileName)
 		dmgName.init(tglPath,aseFileName,".ase");
 	
 		bldgDmgShape = new TG_TypeMultiShape;
-		gosASSERT(bldgDmgShape != NULL);
+		gosASSERT(bldgDmgShape != nullptr);
 		bldgDmgShape->LoadTGMultiShapeFromASE(dmgName); // TGL-LOAD-EXEMPT(optional damage shape; GetNumShapes-checked delete-on-fail)
 
 		if (!bldgDmgShape->GetNumShapes())
@@ -279,7 +274,7 @@ void BldgAppearanceType::init (const char * fileName)
 				char txmName[1024];
 				bldgDmgShape->GetTextureName(i, txmName, 256);
 				char texturePath[1024];
-				sprintf(texturePath, "%s%d" PATH_SEPARATOR, tglPath, ObjectTextureSize);
+				mc2::fmt::to_buf(texturePath, "{}{:d}" PATH_SEPARATOR "", mc2::fmt::safe(tglPath), mc2::fmt::as_i32(ObjectTextureSize));
 				FullPathFileName textureName;
 				textureName.init(texturePath, txmName, "");
 				if (textureOrKtxSidecarExists(textureName))
@@ -332,7 +327,7 @@ void BldgAppearanceType::init (const char * fileName)
 	for (int i=0;i<MAX_BD_ANIMATIONS;i++)
 	{
 		char blockId[512];
-		sprintf(blockId,"Animation:%d",i);
+		mc2::fmt::to_buf(blockId, "Animation:{:d}", mc2::fmt::as_i32(i));
 		
 		result = iniFile.seekBlock(blockId);
 		if (result == NO_ERR)
@@ -363,7 +358,7 @@ void BldgAppearanceType::init (const char * fileName)
 			if (fileExists(animPath) || fileExists(otherPath))
 			{
 				bdAnimData[i] = new TG_AnimateShape;
-				gosASSERT(bdAnimData[i] != NULL);
+				gosASSERT(bdAnimData[i] != nullptr);
 	
 				// If this animation does not exist, it is not a problem!
 				// Building will simply freeze until animation is "over"
@@ -401,12 +396,12 @@ void BldgAppearanceType::init (const char * fileName)
 	if (result == NO_ERR)
 	{
 		nodeData = (NodeData *)AppearanceTypeList::appearanceHeap->Malloc(sizeof(NodeData)*(MAX_WEAPON_NODES));
-		gosASSERT(nodeData != NULL);
+		gosASSERT(nodeData != nullptr);
 		
 		for (int i=0;i<MAX_WEAPON_NODES;i++)
 		{
 			char blockId[512];
-			sprintf(blockId,"WeaponNodeId%d",i);
+			mc2::fmt::to_buf(blockId, "WeaponNodeId{:d}", mc2::fmt::as_i32(i));
 			
 			char weaponName[512];
 			result = iniFile.readIdString(blockId,weaponName,511);
@@ -416,7 +411,7 @@ void BldgAppearanceType::init (const char * fileName)
 			}
 			
 			nodeData[i].nodeId = (char *)AppearanceTypeList::appearanceHeap->Malloc(strlen(weaponName)+1);
-			gosASSERT(nodeData[i].nodeId != NULL);
+			gosASSERT(nodeData[i].nodeId != nullptr);
 				
 			strcpy(nodeData[i].nodeId,weaponName);
 			nodeData[i].weaponType = 0;
@@ -486,7 +481,7 @@ void BldgAppearanceType::destroy (void)
 
 void BldgAppearanceType::setAnimation (TG_MultiShapePtr shape, DWORD animationNum)
 {
-	gosASSERT(shape != NULL);
+	gosASSERT(shape != nullptr);
 	gosASSERT(animationNum != 0xffffffff);
 	gosASSERT(animationNum < MAX_BD_ANIMATIONS);
 
@@ -540,8 +535,8 @@ void TreeAppearanceType::init (const char * fileName)
 		{
 			char baseName[256];
 			char baseLODDist[256];
-			sprintf(baseName,"FileName%d",i);
-			sprintf(baseLODDist,"Distance%d",i);
+			mc2::fmt::to_buf(baseName, "FileName{:d}", mc2::fmt::as_i32(i));
+			mc2::fmt::to_buf(baseLODDist, "Distance{:d}", mc2::fmt::as_i32(i));
 
 			result = iniFile.readIdString(baseName,aseFileName,511);
 			if (result == NO_ERR)
@@ -554,7 +549,7 @@ void TreeAppearanceType::init (const char * fileName)
 				lodDistance[i] *= 5.0f;
 
 				treeShape[i] = new TG_TypeMultiShape;
-				gosASSERT(treeShape[i] != NULL);
+				gosASSERT(treeShape[i] != nullptr);
 
 				if (i == 0 && importSourceBase[0]) {
 					// META-FIX design B PART 1: REQUIRED slot — checked import.
@@ -590,7 +585,7 @@ void TreeAppearanceType::init (const char * fileName)
 	else
 	{
 		treeShape[0] = new TG_TypeMultiShape;
-		gosASSERT(treeShape[0] != NULL);
+		gosASSERT(treeShape[0] != nullptr);
 
 		if (importSourceBase[0]) {
 			// META-FIX design B PART 1: REQUIRED slot — checked import.
@@ -620,7 +615,7 @@ void TreeAppearanceType::init (const char * fileName)
 	{
 		// Env-gated discovery trace (see staticProp site). MODEL-OVERRIDE Slice 3.
 		if (mc2::gate::get<"MC2_MODOVERRIDE_TRACE">())
-			fprintf(stderr, "[MODOVERRIDE_TRACE] tree '%s'\n", treeBaseName);
+			mc2::fmt::print_err("[MODOVERRIDE_TRACE] tree '{}'\n", mc2::fmt::safe(treeBaseName));
 		const ModelOverrideRecord* ov =
 			ModelOverrideRegistry::instance().resolve("tree", treeBaseName);
 		if (ov)
@@ -631,9 +626,7 @@ void TreeAppearanceType::init (const char * fileName)
 			// getTreeRenderShape(any) → LOD0 → identical to pre-LOD behavior.
 			treeRenderShape[0] = new TG_TypeMultiShape;
 			char overridePath[1024];
-			snprintf(overridePath, sizeof(overridePath), "%s/%s",
-			         ov->manifestDir.c_str(),
-			         ov->sourceRelPath.c_str());
+			mc2::fmt::to_buf(overridePath, "{}/{}", ov->manifestDir.c_str(), ov->sourceRelPath.c_str());
 			// Guard the importer: Assimp may throw (DeadlyImportError). A throw
 			// here would leak the freshly-new'd render shape and unwind into
 			// non-exception-safe engine code, so collapse any throw to stock.
@@ -644,8 +637,7 @@ void TreeAppearanceType::init (const char * fileName)
 				{
 					delete treeRenderShape[0]; treeRenderShape[0] = nullptr;   // stock fallback
 					treeRenderShapeLodCount = 0;
-					fprintf(stderr, "[MODOVERRIDE] tree '%s': import failed (%s), using stock render\n",
-					        treeBaseName, overridePath);
+					mc2::fmt::print_err("[MODOVERRIDE] tree '{}': import failed ({}), using stock render\n", mc2::fmt::safe(treeBaseName), mc2::fmt::safe(overridePath));
 					fflush(stderr);
 				}
 				else
@@ -661,8 +653,7 @@ void TreeAppearanceType::init (const char * fileName)
 					// GPU batcher draws with the override's OWN textures.
 					LoadOverrideRenderShapeTextures(treeRenderShape[0]);
 					treeRenderShapeLodCount = 1;
-					fprintf(stderr, "[MODOVERRIDE] tree '%s': render override applied (%s)\n",
-					        treeBaseName, overridePath);
+					mc2::fmt::print_err("[MODOVERRIDE] tree '{}': render override applied ({})\n", mc2::fmt::safe(treeBaseName), mc2::fmt::safe(overridePath));
 					fflush(stderr);
 
 					// TREE-OVERRIDE-LOD-MVP Task 3: load each manifest lods[] entry
@@ -678,28 +669,23 @@ void TreeAppearanceType::init (const char * fileName)
 					{
 						const int li = lentry.lod;
 						if (li <= 0 || li >= MAX_LODS) {
-							fprintf(stderr, "[MODOVERRIDE] tree '%s': lod %d out of range, skipped\n",
-							        treeBaseName, li);
+							mc2::fmt::print_err("[MODOVERRIDE] tree '{}': lod {:d} out of range, skipped\n", mc2::fmt::safe(treeBaseName), mc2::fmt::as_i32(li));
 							fflush(stderr);
 							continue;
 						}
 						if (treeRenderShape[li]) {
-							fprintf(stderr, "[MODOVERRIDE] tree '%s': duplicate lod %d, skipped\n",
-							        treeBaseName, li);
+							mc2::fmt::print_err("[MODOVERRIDE] tree '{}': duplicate lod {:d}, skipped\n", mc2::fmt::safe(treeBaseName), mc2::fmt::as_i32(li));
 							fflush(stderr);
 							continue;
 						}
 						char lodPath[1024];
-						snprintf(lodPath, sizeof(lodPath), "%s/%s",
-						         ov->manifestDir.c_str(),
-						         lentry.sourceRelPath.c_str());
+						mc2::fmt::to_buf(lodPath, "{}/{}", ov->manifestDir.c_str(), lentry.sourceRelPath.c_str());
 						treeRenderShape[li] = new TG_TypeMultiShape;
 						try {
 							long lr = ImportGeometryFromFile(lodPath, treeRenderShape[li]);
 							if (lr != 0 || treeRenderShape[li]->GetNumShapes() == 0) {
 								delete treeRenderShape[li]; treeRenderShape[li] = nullptr;
-								fprintf(stderr, "[MODOVERRIDE] tree '%s': lod %d import failed (%s), dropped\n",
-								        treeBaseName, li, lodPath);
+								mc2::fmt::print_err("[MODOVERRIDE] tree '{}': lod {:d} import failed ({}), dropped\n", mc2::fmt::safe(treeBaseName), mc2::fmt::as_i32(li), mc2::fmt::safe(lodPath));
 								fflush(stderr);
 								continue;
 							}
@@ -708,14 +694,12 @@ void TreeAppearanceType::init (const char * fileName)
 							LoadOverrideRenderShapeTextures(treeRenderShape[li]);
 							if (li + 1 > treeRenderShapeLodCount)
 								treeRenderShapeLodCount = li + 1;
-							fprintf(stderr, "[MODOVERRIDE] tree '%s': lod %d applied (%s) lodCount=%ld\n",
-							        treeBaseName, li, lodPath, treeRenderShapeLodCount);
+							mc2::fmt::print_err("[MODOVERRIDE] tree '{}': lod {:d} applied ({}) lodCount={:d}\n", mc2::fmt::safe(treeBaseName), mc2::fmt::as_i32(li), mc2::fmt::safe(lodPath), mc2::fmt::as_i32(treeRenderShapeLodCount));
 							fflush(stderr);
 						}
 						catch (...) {
 							delete treeRenderShape[li]; treeRenderShape[li] = nullptr;
-							fprintf(stderr, "[MODOVERRIDE] tree '%s': lod %d import threw (%s), dropped\n",
-							        treeBaseName, li, lodPath);
+							mc2::fmt::print_err("[MODOVERRIDE] tree '{}': lod {:d} import threw ({}), dropped\n", mc2::fmt::safe(treeBaseName), mc2::fmt::as_i32(li), mc2::fmt::safe(lodPath));
 							fflush(stderr);
 						}
 					}
@@ -725,13 +709,11 @@ void TreeAppearanceType::init (const char * fileName)
 			{
 				delete treeRenderShape[0]; treeRenderShape[0] = nullptr;   // stock fallback
 				treeRenderShapeLodCount = 0;
-				fprintf(stderr, "[MODOVERRIDE] tree '%s': import threw (%s), using stock render\n",
-				        treeBaseName, overridePath);
+				mc2::fmt::print_err("[MODOVERRIDE] tree '{}': import threw ({}), using stock render\n", mc2::fmt::safe(treeBaseName), mc2::fmt::safe(overridePath));
 				fflush(stderr);
 			}
 #else
-			fprintf(stderr, "[MODOVERRIDE] tree '%s': override resolved but importer disabled, using stock render\n",
-			        treeBaseName);
+			mc2::fmt::print_err("[MODOVERRIDE] tree '{}': override resolved but importer disabled, using stock render\n", mc2::fmt::safe(treeBaseName));
 			fflush(stderr);
 #endif
 		}
@@ -748,7 +730,7 @@ void TreeAppearanceType::init (const char * fileName)
 		dmgName.init(tglPath,aseFileName,".ase");
 	
 		treeDmgShape = new TG_TypeMultiShape;
-		gosASSERT(treeDmgShape != NULL);
+		gosASSERT(treeDmgShape != nullptr);
 		treeDmgShape->LoadTGMultiShapeFromASE(dmgName); // TGL-LOAD-EXEMPT(optional damage shape; GetNumShapes-checked delete-on-fail)
 
 		if (!treeDmgShape->GetNumShapes())

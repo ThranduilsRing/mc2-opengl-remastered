@@ -1,6 +1,7 @@
 // Pathfinding: MoveMap::calcEscapePath, writeDebug and destroy.
 // Declared in the class headers; shared names in move_internal.h.
 #include "move_internal.h"
+#include "mc2fmt.h"
 
 
 long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, long* goalCell) {
@@ -45,7 +46,7 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 	// ON uses the ctx private queue + flag snapshot via solveOpen/solveJumpOnBlocked.
 	if (!ctx.isolated && !openList) {
 		openList = new PriorityQueue;
-		gosASSERT(openList != NULL);
+		gosASSERT(openList != nullptr);
 		openList->init(5000);
 	}
 	solveOpen = ctx.isolated ? ctx.pq() : openList;
@@ -90,7 +91,7 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 				writeDebug(pathDebugFile);
 				pathDebugFile->close();
 				delete pathDebugFile;
-				pathDebugFile = NULL;
+				pathDebugFile = nullptr;
 			}
 		#endif
 
@@ -175,7 +176,7 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 								long openIndex = solveOpen->find(succRow * MAX_MAPWIDTH + succCol);
 								if (!openIndex) {
 									char s[128];
-									sprintf(s, "MoveMap.calcEscapePath: Cannot find movemap node [%d, %d, %d, %d] for change\n", succRow, succCol, succRow * MAX_MAPWIDTH + succCol, dir);
+									mc2::fmt::to_buf(s, "MoveMap.calcEscapePath: Cannot find movemap node [{:d}, {:d}, {:d}, {:d}] for change\n", mc2::fmt::as_i32(succRow), mc2::fmt::as_i32(succCol), mc2::fmt::as_i32(succRow * MAX_MAPWIDTH + succCol), mc2::fmt::as_i32(dir));
 									gosASSERT(openIndex != 0);
 									}
 								else
@@ -218,7 +219,7 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 			writeDebug(pathDebugFile);
 			pathDebugFile->close();
 			delete pathDebugFile;
-			pathDebugFile = NULL;
+			pathDebugFile = nullptr;
 		}
 	#endif
 
@@ -252,13 +253,13 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 			File* pathDebugFile = new File;
 			pathDebugFile->create("longpath.dbg");
 			char s[512];
-			sprintf(s, "Path Too Long: %d steps (Max = %d) (please save longpath.dbg file:)", numCells, MAX_STEPS_PER_MOVEPATH);
+			mc2::fmt::to_buf(s, "Path Too Long: {:d} steps (Max = {:d}) (please save longpath.dbg file:)", mc2::fmt::as_i32(numCells), mc2::fmt::as_i32(MAX_STEPS_PER_MOVEPATH));
 			pathDebugFile->writeString(s);
 			pathDebugFile->writeString("\n\n");
 			writeDebug(pathDebugFile);
 			pathDebugFile->close();
 			delete pathDebugFile;
-			pathDebugFile = NULL;
+			pathDebugFile = nullptr;
 			gosASSERT(numCells <= MAX_STEPS_PER_MOVEPATH);
 		}
 #endif
@@ -273,12 +274,12 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 				File* pathDebugFile = new File;
 				pathDebugFile->create("longpath.dbg");
 				char s[512];
-				sprintf(s, "New Longest Path: %d steps (Max = %d)\n\n", numCells, MAX_STEPS_PER_MOVEPATH);
+				mc2::fmt::to_buf(s, "New Longest Path: {:d} steps (Max = {:d})\n\n", mc2::fmt::as_i32(numCells), mc2::fmt::as_i32(MAX_STEPS_PER_MOVEPATH));
 				pathDebugFile->writeString(s);
 				writeDebug(pathDebugFile);
 				pathDebugFile->close();
 				delete pathDebugFile;
-				pathDebugFile = NULL;
+				pathDebugFile = nullptr;
 			}
 #endif
 			path->target = target;
@@ -380,8 +381,8 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 			calcTime = float(calcStop.LowPart - calcStart.LowPart) / float(countsPerSecond.LowPart);
 			if (debugger && (scenarioTime > 0.0)) {
 				char s[50];
-				sprintf(s, "path calc: %.4f\n", calcTime);
-				OutputDebugString(s);
+				mc2::fmt::to_buf(s, "path calc: {:.4f}\n", calcTime);
+				mc2::fmt::debug_out(s);
 				debugger->print(s);
 			}
 		#endif
@@ -394,7 +395,7 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 		calcTime = float(calcStop.LowPart - calcStart.LowPart) / float(countsPerSecond.LowPart);
 		if (debugger && (scenarioTime > 0.0)) {
 			char s[50];
-			sprintf(s, "path calc: %.4f", calcTime);
+			mc2::fmt::to_buf(s, "path calc: {:.4f}", calcTime);
 			debugger->print(s);
 		}
 	#endif
@@ -405,11 +406,11 @@ long MoveMap::calcEscapePath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, l
 void MoveMap::writeDebug (File* debugFile) {
 
 	char outString[512];
-	sprintf(outString, "Time = %.6f\n\n", calcTime);
+	mc2::fmt::to_buf(outString, "Time = {:.6f}\n\n", calcTime);
 	debugFile->writeString(outString);
-	sprintf(outString, "Start = (%d, %d)\n", startR, startC);
+	mc2::fmt::to_buf(outString, "Start = ({:d}, {:d})\n", mc2::fmt::as_i32(startR), mc2::fmt::as_i32(startC));
 	debugFile->writeString(outString);
-	sprintf(outString, "Goal = (%d, %d)\n", goalR, goalC);
+	mc2::fmt::to_buf(outString, "Goal = ({:d}, {:d})\n", mc2::fmt::as_i32(goalR), mc2::fmt::as_i32(goalC));
 	debugFile->writeString(outString);
 	strcpy(outString, "\n");
 	debugFile->writeString(outString);
@@ -421,13 +422,13 @@ void MoveMap::writeDebug (File* debugFile) {
 		char numStr[10];
 		for (long c = 0; c < width; c++) {
 			if ((startR == r) && (startC == c))
-				sprintf(numStr, "S");
+				mc2::fmt::to_buf(numStr, "S");
 			else if (map[r * maxWidth + c].parent == -1)
-				sprintf(numStr, ".");
+				mc2::fmt::to_buf(numStr, ".");
 			else if (map[r * maxWidth + c].flags & MOVEFLAG_STEP)
-				sprintf(numStr, "X");
+				mc2::fmt::to_buf(numStr, "X");
 			else			
-				sprintf(numStr, "%d", map[r * maxWidth + c].parent);
+				mc2::fmt::to_buf(numStr, "{:d}", mc2::fmt::as_i32(map[r * maxWidth + c].parent));
 			strcat(outString, numStr);
 		}
 		strcat(outString, "\n");
@@ -442,15 +443,15 @@ void MoveMap::writeDebug (File* debugFile) {
 		char numStr[10];
 		for (long c = 0; c < width; c++) {
 			if ((goalR == r) && (goalC == c))
-				sprintf(numStr, "G");
+				mc2::fmt::to_buf(numStr, "G");
 			else if ((startR == r) && (startC == c))
-				sprintf(numStr, "S");
+				mc2::fmt::to_buf(numStr, "S");
 			else if (map[r * maxWidth + c].cost == clearCost)
-				sprintf(numStr, ".");
+				mc2::fmt::to_buf(numStr, ".");
 			else if (map[r * maxWidth + c].cost >= COST_BLOCKED)
-				sprintf(numStr, " ");
+				mc2::fmt::to_buf(numStr, " ");
 			else if (map[r * maxWidth + c].cost < 256)
-				sprintf(numStr, "%x", map[r * maxWidth + c].cost);
+				mc2::fmt::to_buf(numStr, "{:x}", mc2::fmt::as_u32(map[r * maxWidth + c].cost));
 			strcat(outString, numStr);
 		}
 		strcat(outString, "\n");
@@ -465,17 +466,17 @@ void MoveMap::writeDebug (File* debugFile) {
 		char numStr[10];
 		for (long c = 0; c < width; c++) {
 			if ((goalR == r) && (goalC == c))
-				sprintf(numStr, "G");
+				mc2::fmt::to_buf(numStr, "G");
 			else if ((startR == r) && (startC == c))
-				sprintf(numStr, "S");
+				mc2::fmt::to_buf(numStr, "S");
 			else if (map[r * maxWidth + c].flags & MOVEFLAG_STEP)
-				sprintf(numStr, "*");
+				mc2::fmt::to_buf(numStr, "*");
 			else if (map[r * maxWidth + c].cost == clearCost)
-				sprintf(numStr, ".");
+				mc2::fmt::to_buf(numStr, ".");
 			else if (map[r * maxWidth + c].cost >= COST_BLOCKED)
-				sprintf(numStr, " ");
+				mc2::fmt::to_buf(numStr, " ");
 			else			
-				sprintf(numStr, "%d", map[r * maxWidth + c].cost);
+				mc2::fmt::to_buf(numStr, "{:d}", mc2::fmt::as_i32(map[r * maxWidth + c].cost));
 			strcat(outString, numStr);
 		}
 		strcat(outString, "\n");

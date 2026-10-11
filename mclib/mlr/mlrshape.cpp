@@ -265,7 +265,7 @@ MLRShape::~MLRShape()
 	for(i=numPrimitives-1;i>=0;i--)
 	{
 		pt = allPrimitives[i];
-		allPrimitives[i] = NULL;
+		allPrimitives[i] = nullptr;
 
 		pt->DetachReference();
 
@@ -454,7 +454,7 @@ MLRPrimitiveBase*
 		allPrimitives[i] = allPrimitives[i+1];
 	}
 
-	allPrimitives[i] = NULL;
+	allPrimitives[i] = nullptr;
 
 	numPrimitives--;
 	p->DetachReference();
@@ -482,7 +482,7 @@ MLRPrimitiveBase*
 		allPrimitives[i] = allPrimitives[i+1];
 	}
 
-	allPrimitives[i] = NULL;
+	allPrimitives[i] = nullptr;
 
 	numPrimitives--;
 	p->DetachReference();

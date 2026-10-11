@@ -59,8 +59,8 @@ BOOL EditorTacMap::OnInitDialog()
 	// by Methuselas: the floating tacmap is intentionally 2x the legacy
 	// 128x128 packet image.  TGAWnd stretches the bitmap; input mapping must
 	// use this display size so clicks still land on the correct world point.
-	SetWindowPos( NULL, p.x, p.y + 32/*arbitrary*/,  (long)EDITOR_TACMAP_DISPLAY_SIZE, (long)EDITOR_TACMAP_DISPLAY_SIZE + borderSize, /*SWP_NOMOVE | */SWP_NOZORDER );
-	picture.SetWindowPos( NULL, 0, 0, (long)EDITOR_TACMAP_DISPLAY_SIZE, (long)EDITOR_TACMAP_DISPLAY_SIZE, SWP_NOZORDER );
+	SetWindowPos( nullptr, p.x, p.y + 32/*arbitrary*/,  (long)EDITOR_TACMAP_DISPLAY_SIZE, (long)EDITOR_TACMAP_DISPLAY_SIZE + borderSize, /*SWP_NOMOVE | */SWP_NOZORDER );
+	picture.SetWindowPos( nullptr, 0, 0, (long)EDITOR_TACMAP_DISPLAY_SIZE, (long)EDITOR_TACMAP_DISPLAY_SIZE, SWP_NOZORDER );
 	return TRUE;  // return TRUE unless you set the focus to a control
 	              // EXCEPTION: OCX Property Pages should return FALSE
 }
@@ -96,7 +96,7 @@ void EditorTacMap::OnTga()
 	EditorInterface::instance()->SafeRunGameOSLogic();
 
 	EditorInterface::instance()->syncScrollBars();
-	picture.InvalidateRect(NULL);
+	picture.InvalidateRect(nullptr);
 
 	EditorInterface::instance()->SetFocus();
 }

@@ -11,6 +11,7 @@
 #include<stdlib.h>
 #include<string.h>
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 #ifndef ABLGEN_H
 #include"ablgen.h"
@@ -382,11 +383,11 @@ TypePtr execDeclaredRoutineCall (SymTableNodePtr routineIdPtr, bool skipOrder) {
 
 		if (functionExecTime > ProfileLogFunctionTimeLimit) {
 			char s[512];
-			sprintf(s, "[%08d] ", NumExecutions);
+			mc2::fmt::to_buf(s, "[{:08d}] ", mc2::fmt::as_i32(NumExecutions));
 			for (long i = 0; i < CallStackLevel; i++)
 				strcat(s, " ");
 			char s1[512];
-			sprintf(s1, "%s (%ld)\n", routineIdPtr->name, functionExecTime);
+			mc2::fmt::to_buf(s1, "{} ({:d})\n", mc2::fmt::safe(routineIdPtr->name), mc2::fmt::as_i32(functionExecTime));
 			strcat(s, s1);
 			ABL_AddToProfileLog(s);
 		}
@@ -464,7 +465,7 @@ void execActualParams (SymTableNodePtr routineIdPtr) {
 				char* dest = (char*)ABLStackMallocCallback((size_t)size);
 				if (!dest) {
 					char err[255];
-					sprintf(err, " ABL: Unable to AblStackHeap->malloc actual array param in module %s)", CurModule->getName());
+					mc2::fmt::to_buf(err, " ABL: Unable to AblStackHeap->malloc actual array param in module {})", mc2::fmt::safe(CurModule->getName()));
 					ABL_Fatal(0, err);
 				}
 				char* savePtr = dest;

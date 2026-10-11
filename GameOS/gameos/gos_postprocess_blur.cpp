@@ -15,6 +15,7 @@
 #include <vector>
 #include <string>
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 namespace postprocess_blur {
 
@@ -298,8 +299,7 @@ void runParityCheck() {
 
     if (s_plant && !cpuOut.empty()) {
         cpuOut[0] = -123.0f;  // value the GPU can never produce
-        fprintf(stderr, "[POSTPROCESS_BLUR v1] PLANT: corrupted CPU texel 0 -> "
-                        "-123.0 (expecting a mismatch below)\n");
+        mc2::fmt::print_err("[POSTPROCESS_BLUR v1] PLANT: corrupted CPU texel 0 -> -123.0 (expecting a mismatch below)\n");
     }
 
     // GPU output lives in ping A (downsample -> blurH -> blurV ends in A). The

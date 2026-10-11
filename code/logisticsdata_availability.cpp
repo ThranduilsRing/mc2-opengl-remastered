@@ -1,6 +1,7 @@
 // LogisticsData: updateAvailability, the front-end state dump and the availability append.
 // Declared in the class headers; shared names in logisticsdata_internal.h.
 #include "logisticsdata_internal.h"
+#include "mc2fmt.h"
 
 
 long LogisticsData::updateAvailability()
@@ -90,7 +91,7 @@ long LogisticsData::updateAvailability()
 			available[i] = 1;
 		else
 		{
-			sprintf( tmp, "Component%ld", i );
+			mc2::fmt::to_buf(tmp, "Component{:d}", mc2::fmt::as_i32(i));
 			if ( NO_ERR != file.readIdLong( tmp, component ) )
 				break;
 
@@ -185,7 +186,7 @@ long LogisticsData::updateAvailability()
 	file.seekBlock( "Mechs" );
 	for (int i = 0; i < 255; i++ )
 	{
-		sprintf( tmp, "Mech%ld", i );
+		mc2::fmt::to_buf(tmp, "Mech{:d}", mc2::fmt::as_i32(i));
 		if ( NO_ERR != file.readIdString( tmp, chassisFileName, 254 ) )
 			break;
 		LOG_LOGISTICS_UA("updateAvailability: [Mechs] Mech%d='%s'", i, chassisFileName);
@@ -235,7 +236,7 @@ long LogisticsData::updateAvailability()
 	file.seekBlock( "Pilots" );
 	for (int i = 0; i < 255; i++ )
 	{
-		sprintf( tmp, "Pilot%ld", i );
+		mc2::fmt::to_buf(tmp, "Pilot{:d}", mc2::fmt::as_i32(i));
 		if ( NO_ERR != file.readIdString( tmp, pilotName, 254 ) )
 			break;
 
@@ -417,8 +418,7 @@ void LogisticsData::appendAvailability(const char* pFileName, bool* availableArr
 		// purchase-file misses are visible in the field.
 		if ( mc2::gate::get<"MC2_LOG_LOGISTICS">() )
 		{
-			printf( "[LOGISTICS] appendAvailability: open FAILED '%s' -- purchase file skipped\n",
-			        pFileName ? pFileName : "(null)" );
+			mc2::fmt::print_out("[LOGISTICS] appendAvailability: open FAILED '{}' -- purchase file skipped\n", mc2::fmt::safe(pFileName ? pFileName : "(null)"));
 			fflush( stdout );
 		}
 		return;
@@ -435,7 +435,7 @@ void LogisticsData::appendAvailability(const char* pFileName, bool* availableArr
 		for ( int i = 0; i < 255; i++ )
 		{
 			{
-				sprintf( tmp, "Component%ld", i );
+				mc2::fmt::to_buf(tmp, "Component{:d}", mc2::fmt::as_i32(i));
 				if ( NO_ERR != file.readIdLong( tmp, component ) )
 					break;
 
@@ -455,7 +455,7 @@ void LogisticsData::appendAvailability(const char* pFileName, bool* availableArr
 	file.seekBlock( "Pilots" );
 	for ( int i = 0; i < 255; i++ )
 	{
-		sprintf( tmp, "Pilot%ld", i );
+		mc2::fmt::to_buf(tmp, "Pilot{:d}", mc2::fmt::as_i32(i));
 		if ( NO_ERR != file.readIdString( tmp, pilotName, 254 ) )
 			break;
 
@@ -476,7 +476,7 @@ void LogisticsData::appendAvailability(const char* pFileName, bool* availableArr
 	char chassisFileName[256];
 	for (int i = 0; i < 255; i++ )
 	{
-		sprintf( tmp, "Mech%ld", i );
+		mc2::fmt::to_buf(tmp, "Mech{:d}", mc2::fmt::as_i32(i));
 		if ( NO_ERR != file.readIdString( tmp, chassisFileName, 255 ) )
 			break;
 

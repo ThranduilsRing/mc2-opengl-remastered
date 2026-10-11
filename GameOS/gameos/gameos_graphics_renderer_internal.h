@@ -505,7 +505,7 @@ class gosRenderer {
                     static bool s_warned = false;
                     if (!s_warned) {
                         s_warned = true;
-                        SPEW(("GRAPHICS", "buildTerrainNormalArray: slot %d is zero -- deferring build until slots 0-4 are set\n", i));
+                        MC2_LOG(Render, Debug, "buildTerrainNormalArray: slot {:d} is zero -- deferring build until slots 0-4 are set", mc2::fmt::as_i32(i));
                     }
                     return;
                 }

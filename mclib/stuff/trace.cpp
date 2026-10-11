@@ -255,7 +255,7 @@
 	//##########################################################################
 
 	TraceManager
-		*TraceManager::Instance = NULL;
+		*TraceManager::Instance = nullptr;
 
 	void
 		TraceManager::InitializeClass()
@@ -270,20 +270,20 @@
 	{
 		Unregister_Object(TraceManager::Instance);
 		delete TraceManager::Instance;
-		TraceManager::Instance = NULL;
+		TraceManager::Instance = nullptr;
 	}
 
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	//
 	TraceManager::TraceManager():
-		traceChain(NULL)
+		traceChain(nullptr)
 	{
 		sampleStart = 0.0;
 		actualSampleCount = 0;
 		ignoredSampleCount = 0;
 		traceCount = 0;
-		activeTraceLog = NULL;
-		allocatedTraceLog = NULL;
+		activeTraceLog = nullptr;
+		allocatedTraceLog = nullptr;
 		activeBits = 0;
 	}
 
@@ -301,7 +301,7 @@
 				Cast_Pointer(TraceSample*, allocatedTraceLog->GetPointer());
 			Unregister_Object(allocatedTraceLog);
 			delete allocatedTraceLog;
-			activeTraceLog = allocatedTraceLog = NULL;
+			activeTraceLog = allocatedTraceLog = nullptr;
 
 			Unregister_Pointer(samples);
 			delete[] samples;
@@ -327,7 +327,7 @@
 		ChainIteratorOf<Trace*> traces(&traceChain);
 		Trace *trace;
 
-		while ((trace = traces.ReadAndNext()) != NULL)
+		while ((trace = traces.ReadAndNext()) != nullptr)
 		{
 			Check_Object(trace);
 			SPEW((GROUP_STUFF_TRACE, "%s: +", trace->traceName));
@@ -345,7 +345,7 @@
 		ChainIteratorOf<Trace*> traces(&traceChain);
 		Trace *trace;
 
-		while ((trace = traces.ReadAndNext()) != NULL)
+		while ((trace = traces.ReadAndNext()) != nullptr)
 		{
 			Check_Object(trace);
 			trace->ResetTrace();
@@ -371,7 +371,7 @@
 		//
 		ChainIteratorOf<Trace*> traces(&traceChain);
 		Trace *trace;
-		while ((trace = traces.ReadAndNext()) != NULL)
+		while ((trace = traces.ReadAndNext()) != nullptr)
 		{
 			Check_Object(trace);
 			if (trace->traceType == Trace::BitType)
@@ -399,7 +399,7 @@
 			ChainIteratorOf<Trace*> traces(&traceChain);
 			Trace *trace;
 
-			while ((trace = traces.ReadAndNext()) != NULL)
+			while ((trace = traces.ReadAndNext()) != nullptr)
 			{
 				Check_Object(trace);
 				trace->StartTiming();
@@ -436,7 +436,7 @@
 				SPEW((GROUP_STUFF_TRACE, "TIMING ANALYSIS"));
 				SPEW((GROUP_STUFF_TRACE, "Sample length: %4fs", time));
 			}
-			while ((trace = traces.ReadAndNext()) != NULL)
+			while ((trace = traces.ReadAndNext()) != nullptr)
 			{
 				Check_Object(trace);
 
@@ -517,7 +517,7 @@
 					ChainIteratorOf<Trace*> traces(&traceChain);
 					Trace *trace;
 					int header_size = sizeof(int);
-					while ((trace = traces.ReadAndNext()) != NULL)
+					while ((trace = traces.ReadAndNext()) != nullptr)
 					{
 						header_size += 2*sizeof(int);
 						header_size += (strlen(trace->traceName)+4)&~3;
@@ -526,7 +526,7 @@
 					output << static_cast<int>(trace_count);
 
 					traces.First();
-					while ((trace = traces.ReadAndNext()) != NULL)
+					while ((trace = traces.ReadAndNext()) != nullptr)
 					{
 						int str_len = strlen(trace->traceName) + 1;
 						header_size = sizeof(int) + ((str_len+4)&~3);
@@ -560,7 +560,7 @@
 					Cast_Pointer(TraceSample*, allocatedTraceLog->GetPointer());
 				Unregister_Object(allocatedTraceLog);
 				delete allocatedTraceLog;
-				activeTraceLog = allocatedTraceLog = NULL;
+				activeTraceLog = allocatedTraceLog = nullptr;
 
 				Unregister_Pointer(samples);
 				delete[] samples;
@@ -610,7 +610,7 @@
 				sample->sampleTime = now;
 				sample->traceNumber = 0;
 				activeTraceLog->AdvancePointer(sample->sampleLength);
-				activeTraceLog = NULL;
+				activeTraceLog = nullptr;
 			}
 		}
 

@@ -34,6 +34,7 @@
 #include <vector>
 #include "diagnostic_trace.h"
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 // ---------------------------------------------------------------------------
 // Trace macro (env-gated, default off)
@@ -298,7 +299,7 @@ static GLuint build_cull_program(const std::string* preambles, int nPreambles,
     // Debug: dump concatenated source to file for inspection.
     if (mc2::gate::get<"MC2_GPU_CULL_DUMP_SHADER">()) {
         char fname[64];
-        snprintf(fname, sizeof(fname), "shader_dump_%s.glsl", debugName ? debugName : "unknown");
+        mc2::fmt::to_buf(fname, "shader_dump_{}.glsl", mc2::fmt::safe(debugName ? debugName : "unknown"));
         if (FILE* dumpf = fopen(fname, "w")) {
             for (int k = 0; k < (int)srcStrs.size(); ++k)
                 fputs(srcStrs[k], dumpf);
@@ -341,10 +342,7 @@ bool compute_init() {
     fflush(stdout);
     if (mc2_diag::tagEnabled("GPU_CULL")) {
         char diag_buf[128];
-        snprintf(diag_buf, sizeof(diag_buf),
-            "{\"event\":\"gl_probe\",\"version_major\":%d,\"version_minor\":%d,"
-            "\"compute\":\"%s\"}",
-            glMaj, glMin, computeOk ? "ok" : "fail");
+        mc2::fmt::to_buf(diag_buf, "{{\"event\":\"gl_probe\",\"version_major\":{:d},\"version_minor\":{:d},\"compute\":\"{}\"}}", mc2::fmt::as_i32(glMaj), mc2::fmt::as_i32(glMin), mc2::fmt::safe(computeOk ? "ok" : "fail"));
         mc2_diag::writeEvent("GPU_CULL", 1, 0, diag_buf);
     }
     if (!computeOk) {
@@ -395,8 +393,7 @@ bool compute_init() {
             fflush(stdout);
             if (mc2_diag::tagEnabled("GPU_CULL")) {
                 char diag_buf[64];
-                snprintf(diag_buf, sizeof(diag_buf),
-                    "{\"event\":\"c1b_cull_ok\",\"c2_readback\":%d}", (int)(nPreambles >= 2));
+                mc2::fmt::to_buf(diag_buf, "{{\"event\":\"c1b_cull_ok\",\"c2_readback\":{:d}}}", mc2::fmt::as_i32((int)(nPreambles >= 2)));
                 mc2_diag::writeEvent("GPU_CULL", 1, 0, diag_buf);
             }
         }
@@ -493,10 +490,7 @@ bool compute_init() {
     fflush(stdout);
     if (mc2_diag::tagEnabled("GPU_CULL")) {
         char diag_buf[128];
-        snprintf(diag_buf, sizeof(diag_buf),
-            "{\"event\":\"compute_selftest\",\"result\":\"ok\","
-            "\"maxActors\":%u,\"debugSsboBytes\":%lld}",
-            s_maxActors, (long long)debugSsboBytes);
+        mc2::fmt::to_buf(diag_buf, "{{\"event\":\"compute_selftest\",\"result\":\"ok\",\"maxActors\":{:d},\"debugSsboBytes\":{:d}}}", mc2::fmt::as_u32(s_maxActors), mc2::fmt::as_i64((long long)debugSsboBytes));
         mc2_diag::writeEvent("GPU_CULL", 1, 0, diag_buf);
     }
     return true;
@@ -952,9 +946,7 @@ void compute_dispatch() {
         bool changed = (memcmp(mvp, s_lastMvpCull, 64) != 0);
         if (changed) {
             memcpy(s_lastMvpCull, mvp, 64);
-            printf("[CULL_DIAG] MVP rows: [%.3f %.3f %.3f %.3f] [%.3f %.3f %.3f %.3f] [%.3f %.3f %.3f %.3f] [%.3f %.3f %.3f %.3f]\n",
-                   mvp[0],mvp[1],mvp[2],mvp[3], mvp[4],mvp[5],mvp[6],mvp[7],
-                   mvp[8],mvp[9],mvp[10],mvp[11], mvp[12],mvp[13],mvp[14],mvp[15]);
+            mc2::fmt::print_out("[CULL_DIAG] MVP rows: [{:.3f} {:.3f} {:.3f} {:.3f}] [{:.3f} {:.3f} {:.3f} {:.3f}] [{:.3f} {:.3f} {:.3f} {:.3f}] [{:.3f} {:.3f} {:.3f} {:.3f}]\n", mvp[0], mvp[1], mvp[2], mvp[3], mvp[4], mvp[5], mvp[6], mvp[7], mvp[8], mvp[9], mvp[10], mvp[11], mvp[12], mvp[13], mvp[14], mvp[15]);
             // Derive current slot index from byte offset/size.
             const uint32_t currSlot = (slotBytes > 0)
                 ? static_cast<uint32_t>(slotOffset / slotBytes) : 0u;
@@ -972,8 +964,7 @@ void compute_dispatch() {
                 const float bound = cw*(1.f+d);
                 bool pass = (cw>=1e-5f) && (cx>=-bound&&cx<=bound) && (cy>=-bound&&cy<=bound)
                          && (cz>=-d*cw&&cz<=bound);
-                printf("[CULL_DIAG] rec[0] world=(%.1f,%.1f,%.1f) r=%.1f clip=(%.2f,%.2f,%.2f,%.2f) norm=(%.2f,%.2f,%.2f,%.2f) frustum=%s\n",
-                       wx,wy,wz, recs[0].boundingRadius, cx/s,cy/s,cz/s,cw/s, cx,cy,cz,cw, pass?"PASS":"FAIL");
+                mc2::fmt::print_out("[CULL_DIAG] rec[0] world=({:.1f},{:.1f},{:.1f}) r={:.1f} clip=({:.2f},{:.2f},{:.2f},{:.2f}) norm=({:.2f},{:.2f},{:.2f},{:.2f}) frustum={}\n", wx, wy, wz, recs[0].boundingRadius, cx/s, cy/s, cz/s, cw/s, cx, cy, cz, cw, mc2::fmt::safe(pass?"PASS":"FAIL"));
             }
             fflush(stdout);
         }
@@ -1198,13 +1189,7 @@ void compute_dispatch() {
                         }
                     }
 
-                    printf("[GPU_CULL_CUTOFF_UPPERBOUND v2] types=%d pool=%u visible=%u "
-                           "omittedSlots=%u (%.1f%% of pool) typesCutoffPossible=%d "
-                           "emptyPoolButVisible=%d overflow=%u | worst type=%d pool=%u vis=%u omit=%u\n",
-                           typeCount, totalPool, totalVisible, totalOmitted,
-                           totalPool ? 100.0 * totalOmitted / totalPool : 0.0,
-                           typesCutoffPossible, typesEmptyPoolButVisible, overflow,
-                           worstType, worstPool, worstVis, worstOmit);
+                    mc2::fmt::print_out("[GPU_CULL_CUTOFF_UPPERBOUND v2] types={:d} pool={:d} visible={:d} omittedSlots={:d} ({:.1f}% of pool) typesCutoffPossible={:d} emptyPoolButVisible={:d} overflow={:d} | worst type={:d} pool={:d} vis={:d} omit={:d}\n", mc2::fmt::as_i32(typeCount), mc2::fmt::as_u32(totalPool), mc2::fmt::as_u32(totalVisible), mc2::fmt::as_u32(totalOmitted), totalPool ? 100.0 * totalOmitted / totalPool : 0.0, mc2::fmt::as_i32(typesCutoffPossible), mc2::fmt::as_i32(typesEmptyPoolButVisible), mc2::fmt::as_u32(overflow), mc2::fmt::as_i32(worstType), mc2::fmt::as_u32(worstPool), mc2::fmt::as_u32(worstVis), mc2::fmt::as_u32(worstOmit));
                     fflush(stdout);
                 }
             }

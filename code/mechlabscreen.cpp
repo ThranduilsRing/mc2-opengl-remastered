@@ -28,6 +28,7 @@ static bool cheatInfiniteMoney() { static const bool on = mc2::gate::get<"MC2_CH
 extern bool useUnlimitedAmmo;
 #include"prefs.h"
 #include"../GuiRuntime/GuiRuntime.h"
+#include "mc2fmt.h"
 
 MechLabScreen* MechLabScreen::s_instance = nullptr;
 LogisticsVariantDialog* MechLabScreen::saveDlg = nullptr;
@@ -142,7 +143,7 @@ int MechLabScreen::init( FitIniFile& file )
 	char blockName[64];
 	for ( int i = 0; i < MECH_LAB_ATTRIBUTE_METER_COUNT; i++ )
 	{
-		sprintf( blockName, "AttributeMeter%ld", i );
+		mc2::fmt::to_buf(blockName, "AttributeMeter{:d}", mc2::fmt::as_i32(i));
 		attributeMeters[i].init( &file, blockName );
 	}
 
@@ -180,7 +181,7 @@ int MechLabScreen::init( FitIniFile& file )
 	if ( NO_ERR != comboFile.open( path ) )
 	{
 		char errorStr[255];
-		sprintf( errorStr, "couldn't open file %s", (const char*)path );
+		mc2::fmt::to_buf(errorStr, "couldn't open file {}", mc2::fmt::safe((const char*)path));
 		Assert( 0, 0, errorStr );
 	}
 
@@ -210,7 +211,7 @@ int MechLabScreen::init( FitIniFile& file )
 	{
 		for ( int j = 0; j < 2; j++ )
 		{
-			sprintf( fileName, "mcl_mc_%ldby%ld_selection.tga", j+1, i+1 );
+			mc2::fmt::to_buf(fileName, "mcl_mc_{:d}by{:d}_selection.tga", mc2::fmt::as_i32(j+1), mc2::fmt::as_i32(i+1));
 			path.init( artPath, fileName, ".tga" );
 
 			if ( fileExists( path ) )
@@ -377,7 +378,7 @@ void MechLabScreen::begin()
 
 	// init CBills
 	char text[32];
-	sprintf( text, "%ld ", LogisticsData::instance->getCBills() );
+	mc2::fmt::to_buf(text, "{:d} ", mc2::fmt::as_i32(LogisticsData::instance->getCBills()));
 	textObjects[1].setText( text );
 	setDefsElementText( "game.mcl_mc.text.cbills_text", text );
 
@@ -636,7 +637,7 @@ void MechLabScreen::update()
 	updateArmorMeter();
 	
 	char text[64];
-	sprintf( text, "%.0lf ", costChange );
+	mc2::fmt::to_buf(text, "{:.0f} ", costChange);
 	textObjects[5].setText( text );
 	textObjects[5].setColor( color );
 
@@ -1086,9 +1087,9 @@ void MechLabScreen::updateHeatMeter()
 
 	char text[64];
 	if ( bShowDenom )
-		sprintf( text, "%ld/%ld", curHeat, maxHeat );
+		mc2::fmt::to_buf(text, "{:d}/{:d}", mc2::fmt::as_i32(curHeat), mc2::fmt::as_i32(maxHeat));
 	else
-		sprintf( text, "%ld/", curHeat );
+		mc2::fmt::to_buf(text, "{:d}/", mc2::fmt::as_i32(curHeat));
 
 	textObjects[12].setText( text );
 	attributeMeters[MECH_LAB_ATTRIBUTE_METER_COUNT-4].setValue( fCurHeat/(float)maxHeat );
@@ -1140,7 +1141,7 @@ void MechLabScreen::updateArmorMeter()
 	}
 
 	char text[64];
-	sprintf( text, "%ld/%ld", curarmor, maxarmor );
+	mc2::fmt::to_buf(text, "{:d}/{:d}", mc2::fmt::as_i32(curarmor), mc2::fmt::as_i32(maxarmor));
 	textObjects[11].setText( text );
 	attributeMeters[MECH_LAB_ATTRIBUTE_METER_COUNT-3].setValue( fCurarmor/(float)maxarmor );
 
@@ -1319,7 +1320,7 @@ void	MechLabScreen::setComponent( LogisticsComponent* pComponent, bool bMessageF
 
 			// set up jump range
 			attributeMeters[4].setValue(((float)pVariant->getMaxJumpRange() * 25.0f) / MAX_JUMP_RANGE );
-			sprintf( text, "%ld", pVariant->getMaxJumpRange() * 25);
+			mc2::fmt::to_buf(text, "{:d}", mc2::fmt::as_i32(pVariant->getMaxJumpRange() * 25));
 			textObjects[7].setText( text );
 			textObjects[7].setColor( 0xff005392 );
 			rects[16].setHelpID( IDS_HELP_PM_JUMP );
@@ -1329,7 +1330,7 @@ void	MechLabScreen::setComponent( LogisticsComponent* pComponent, bool bMessageF
 			attributeMeters[7].setValue(pCurComponent->getHeat()/LogisticsComponent::MAX_HEAT);
 			attributeMeters[7].showGUIWindow( true );
 			
-			sprintf( text, "%.1lf", pCurComponent->getHeat() );
+			mc2::fmt::to_buf(text, "{:.1f}", pCurComponent->getHeat());
 			textObjects[15].setText( text );
 			
 			textObjects[8].setText( "" );
@@ -1377,7 +1378,7 @@ void	MechLabScreen::setComponent( LogisticsComponent* pComponent, bool bMessageF
 			attributeMeters[8].setValue(pCurComponent->getDamage()/LogisticsComponent::MAX_HEAT);
 			attributeMeters[8].showGUIWindow( true );
 			
-			sprintf( text, "+%.1lf", pCurComponent->getDamage() );
+			mc2::fmt::to_buf(text, "+{:.1f}", pCurComponent->getDamage());
 			textObjects[16].setText( text );
 			textObjects[16].showGUIWindow( true );
 			
@@ -1405,7 +1406,7 @@ void	MechLabScreen::setComponent( LogisticsComponent* pComponent, bool bMessageF
 			// damage
 			statics[30].showGUIWindow( 0 );
 			
-			sprintf( text, "%.1lf", pCurComponent->getDamage() );
+			mc2::fmt::to_buf(text, "{:.1f}", pCurComponent->getDamage());
 			textObjects[7].setText( text );
 			textObjects[7].setColor( 0xff005392 );
 			textObjects[8].setText( "" );
@@ -1461,32 +1462,32 @@ void	MechLabScreen::setComponent( LogisticsComponent* pComponent, bool bMessageF
 
 			attributeMeters[0].showGUIWindow( true );
 			attributeMeters[0].setValue(pCurComponent->getDamage()/LogisticsComponent::MAX_DAMAGE);
-			sprintf( text, "%.1lf", pCurComponent->getDamage() );
+			mc2::fmt::to_buf(text, "{:.1f}", pCurComponent->getDamage());
 			textObjects[8].setText( text );
 			
 			if ( pCurComponent->getRecycleTime() )
 			{
 				attributeMeters[1].setValue((10.f/pCurComponent->getRecycleTime())/LogisticsComponent::MAX_RECYCLE);
-				sprintf( text, "%.1lf", 10.f/pCurComponent->getRecycleTime() );
+				mc2::fmt::to_buf(text, "{:.1f}", 10.f/pCurComponent->getRecycleTime());
 				textObjects[9].setText( text );
 			}
 			else
 			{
 				attributeMeters[1].setValue( 0.f );
-				sprintf( text, "%.1lf", 0.f );
+				mc2::fmt::to_buf(text, "{:.1f}", 0.f);
 				textObjects[9].setText( text );
 			}
 			
 
 			attributeMeters[2].setValue(pCurComponent->getHeat()/LogisticsComponent::MAX_HEAT);
-			sprintf( text, "%.1lf", pCurComponent->getHeat() );
+			mc2::fmt::to_buf(text, "{:.1f}", pCurComponent->getHeat());
 			textObjects[10].setText( text );
 
 			attributeMeters[7].showGUIWindow( false );
 
 			if ( !useUnlimitedAmmo )
 			{
-				sprintf( text, "%ld", pCurComponent->getAmmo() );
+				mc2::fmt::to_buf(text, "{:d}", mc2::fmt::as_i32(pCurComponent->getAmmo()));
 				textObjects[13].setText( text );
 				attributeMeters[3].setValue( ((float)pCurComponent->getAmmo())/164.f );
 			}

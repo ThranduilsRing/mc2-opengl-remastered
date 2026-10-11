@@ -115,7 +115,7 @@ void
 	Verify(*usedNrOfCards <= maxNrOf);
 	points = point_data;
 	colors = color_data;
-	Verify(texCoords != NULL);
+	Verify(texCoords != nullptr);
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

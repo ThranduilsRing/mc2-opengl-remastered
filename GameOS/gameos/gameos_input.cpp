@@ -13,6 +13,7 @@
 #include<stdio.h>
 #include<cstdlib>
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 // The one SDL window (owned by gos_render). Used to normalize the raw mouse by
 // the SAME coordinate space SDL delivers mouse-motion events in (window points),
@@ -263,14 +264,7 @@ void __stdcall gos_GetMouseInfo( float* pXPosition, float* pYPosition, int* pXDe
         if (dx*dx + dy*dy > 64.0f)
         {
             s_lastX = mi->x_; s_lastY = mi->y_;
-            printf("[MOUSE_RECON v1] raw=(%.0f,%.0f) logical=(%dx%d) drawable=(%dx%d) "
-                   "norm_logical=(%.3f,%.3f) norm_drawable=(%.3f,%.3f)\n",
-                   mi->x_, mi->y_,
-                   Environment.screenWidth, Environment.screenHeight,
-                   Environment.drawableWidth, Environment.drawableHeight,
-                   mi->x_ / w, mi->y_ / h,
-                   mi->x_ / (float)Environment.drawableWidth,
-                   mi->y_ / (float)Environment.drawableHeight);
+            mc2::fmt::print_out("[MOUSE_RECON v1] raw=({:.0f},{:.0f}) logical=({:d}x{:d}) drawable=({:d}x{:d}) norm_logical=({:.3f},{:.3f}) norm_drawable=({:.3f},{:.3f})\n", mi->x_, mi->y_, mc2::fmt::as_i32(Environment.screenWidth), mc2::fmt::as_i32(Environment.screenHeight), mc2::fmt::as_i32(Environment.drawableWidth), mc2::fmt::as_i32(Environment.drawableHeight), mi->x_ / w, mi->y_ / h, mi->x_ / (float)Environment.drawableWidth, mi->y_ / (float)Environment.drawableHeight);
         }
     }
 

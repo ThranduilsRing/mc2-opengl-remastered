@@ -2,14 +2,14 @@
 // Declared in the class headers; shared names in gos_static_prop_batcher_internal.h.
 #include "gos_static_prop_batcher_internal.h"
 #include "gos_static_prop_finalize_frame.h"
+#include "mc2fmt.h"
 
 
 
 // Log the texture tier, clear the per-packet side tables and load the programs.
 void GpuStaticPropBatcher::finalizePrologue() {
     // One-shot log: always emit so the log confirms which tier is active.
-    std::printf("[StaticPropBatcher] tex tier: %dpx (MC2_STATICPROP_TEX_TIER)"
-                " ktx=%s\n", texTier(), s_materialKtxEnabled ? "ON" : "OFF");
+    mc2::fmt::print_out("[StaticPropBatcher] tex tier: {:d}px (MC2_STATICPROP_TEX_TIER) ktx={}\n", mc2::fmt::as_i32(texTier()), mc2::fmt::safe(s_materialKtxEnabled ? "ON" : "OFF"));
     std::fflush(stdout);
 
     GpuStaticPropRegistry::staticPropRegistryClearMaterialCache();
@@ -119,14 +119,12 @@ void GpuStaticPropBatcher::uploadPerTypeAndPublish() {
                         break;
                     }
                 }
-                std::fprintf(stderr,
-                    "[GPUPROPS] fixture-light type: id=%zu name=%s rgb=0x%06lX\n",
-                    i, fname, (unsigned long)(pink & 0x00FFFFFFu));
+                mc2::fmt::print_err("[GPUPROPS] fixture-light type: id={:d} name={} rgb=0x{:06X}\n",
+                    mc2::fmt::as_size(i), mc2::fmt::safe(fname), mc2::fmt::as_u32((unsigned long)(pink & 0x00FFFFFFu)));
             }
         }
-        std::fprintf(stderr, "[GPUPROPS] fixture-lights: %u of %zu types classified"
-                             " as emissive fixtures (scale=%.2f)\n",
-                     s_fixtureTypeCount, s_types.size(), s_fixtureLightsScale);
+        mc2::fmt::print_err("[GPUPROPS] fixture-lights: {:d} of {:d} types classified as emissive fixtures (scale={:.2f})\n",
+                     mc2::fmt::as_u32(s_fixtureTypeCount), mc2::fmt::as_size(s_types.size()), s_fixtureLightsScale);
 
         // TIER2-EXCLUDED: dead-path
         glGenBuffers(1, &s_perTypeSsbo);
@@ -147,19 +145,15 @@ void GpuStaticPropBatcher::uploadPerTypeAndPublish() {
     s_stagingVbo.clear(); s_stagingVbo.shrink_to_fit();
     s_stagingIbo.clear(); s_stagingIbo.shrink_to_fit();
 
-    std::fprintf(stderr, "[GPUPROPS] finalize: %zu types, %zu packets\n",
-                 s_types.size(), s_packets.size());
+    mc2::fmt::print_err("[GPUPROPS] finalize: {:d} types, {:d} packets\n",
+                 mc2::fmt::as_size(s_types.size()), mc2::fmt::as_size(s_packets.size()));
 
     if (s_gpuPropsTrace) {
-        std::fprintf(stderr,
-            "[GPUPROPS v1] event=register_summary path=%d "
-            "regCalls[init=%u ims=%u splog=%u unk=%u] "
-            "lateDrops[init=%u ims=%u splog=%u unk=%u] "
-            "typeIndexSize=%zu\n",
-            g_lightProbeSetupPath,
-            g_regCall[1], g_regCall[2], g_regCall[3], g_regCall[0],
-            g_regLateDrop[1], g_regLateDrop[2], g_regLateDrop[3], g_regLateDrop[0],
-            s_typeIndex.size());
+        mc2::fmt::print_err("[GPUPROPS v1] event=register_summary path={:d} regCalls[init={:d} ims={:d} splog={:d} unk={:d}] lateDrops[init={:d} ims={:d} splog={:d} unk={:d}] typeIndexSize={:d}\n",
+            mc2::fmt::as_i32(g_lightProbeSetupPath),
+            mc2::fmt::as_u32(g_regCall[1]), mc2::fmt::as_u32(g_regCall[2]), mc2::fmt::as_u32(g_regCall[3]), mc2::fmt::as_u32(g_regCall[0]),
+            mc2::fmt::as_u32(g_regLateDrop[1]), mc2::fmt::as_u32(g_regLateDrop[2]), mc2::fmt::as_u32(g_regLateDrop[3]), mc2::fmt::as_u32(g_regLateDrop[0]),
+            mc2::fmt::as_size(s_typeIndex.size()));
     }
 
     s_geometryFinalized = true;
@@ -229,8 +223,8 @@ bool GpuStaticPropBatcher::layoutCoalesce(StaticPropFinalizeFrame& f) {
                 return true;
             }
             // Non-coalesce: conservative fallback — legacy draws it correctly regardless.
-            std::fprintf(stderr, "[DRAW_PACKET v1] WARNING: type=%u malformed src; alphaClass=0\n",
-                         typeID);
+            mc2::fmt::print_err("[DRAW_PACKET v1] WARNING: type={:d} malformed src; alphaClass=0\n",
+                         mc2::fmt::as_u32(typeID));
             type.alphaClass = 0u;
             continue;
         }
@@ -612,7 +606,7 @@ void GpuStaticPropBatcher::buildPerPacketDrawTables(StaticPropFinalizeFrame& f) 
                     inv.usageCount     = 0u;  // accumulated below
                     inv.metallicFactor  = m.metallicFactor;   // V-MATERIAL-PBR-1
                     inv.roughnessFactor = m.roughnessFactor;  // V-MATERIAL-PBR-1
-                    std::snprintf(inv.textureName, sizeof(inv.textureName), "(absent)");
+                    mc2::fmt::to_buf_n(inv.textureName, sizeof(inv.textureName), "(absent)");
                     if (globalPktIdx < s_packets.size()) {
                         const auto& pkt = s_packets[globalPktIdx];
                         if (pkt.owningTypeID < s_types.size()) {
@@ -625,13 +619,9 @@ void GpuStaticPropBatcher::buildPerPacketDrawTables(StaticPropFinalizeFrame& f) 
                                 if (mcTextureManager && nodeIdx != 0xFFFFFFFFu) {
                                     const char* nm = mcTextureManager->getTextureName(nodeIdx);
                                     if (nm && *nm) {
-                                        std::snprintf(inv.textureName,
-                                                      sizeof(inv.textureName),
-                                                      "%s", nm);
+                                        mc2::fmt::to_buf_n(inv.textureName, sizeof(inv.textureName), "{}", mc2::fmt::safe(nm));
                                     } else {
-                                        std::snprintf(inv.textureName,
-                                                      sizeof(inv.textureName),
-                                                      "(unnamed)");
+                                        mc2::fmt::to_buf_n(inv.textureName, sizeof(inv.textureName), "(unnamed)");
                                     }
                                     const DWORD w = mcTextureManager->getWidth(nodeIdx);
                                     if (w != 0xFFFFFFFFu) {
@@ -684,9 +674,7 @@ void GpuStaticPropBatcher::buildPerPacketDrawTables(StaticPropFinalizeFrame& f) 
                 const GLenum uploadErr = glGetError();  // sample THIS operation AFTER
                 if (uploadErr != GL_NO_ERROR) {
                     char buf[128];
-                    std::snprintf(buf, sizeof(buf),
-                                  "[MATERIAL_GPU v4] GL ERROR after upload: 0x%x — buffer deleted, sampling disabled\n",
-                                  uploadErr);
+                    mc2::fmt::to_buf(buf, "[MATERIAL_GPU v4] GL ERROR after upload: 0x{:x} — buffer deleted, sampling disabled\n", mc2::fmt::as_u32(uploadErr));
                     MC2_DIAG_FPUTS(buf, stderr);
                     // Delete the corrupt/incomplete buffer so s_materialGpuSsbo returns to 0.
                     // sampleOn checks s_materialGpuSsbo.backendHandle != 0, so this guarantees sampling is
@@ -720,10 +708,7 @@ void GpuStaticPropBatcher::buildPerPacketDrawTables(StaticPropFinalizeFrame& f) 
 
             {
                 char buf[160];
-                std::snprintf(buf, sizeof(buf),
-                              "[MATERIAL_GPU v4] event=table_upload"
-                              " materials=%zu bytes=%zu emitted=%u\n",
-                              s_materialGpuTable.size(), byteSize, emittedCount);
+                mc2::fmt::to_buf(buf, "[MATERIAL_GPU v4] event=table_upload materials={:d} bytes={:d} emitted={:d}\n", mc2::fmt::as_size(s_materialGpuTable.size()), mc2::fmt::as_size(byteSize), mc2::fmt::as_u32(emittedCount));
                 MC2_DIAG_FPUTS(buf, stderr);
             }
 
@@ -742,10 +727,7 @@ void GpuStaticPropBatcher::buildPerPacketDrawTables(StaticPropFinalizeFrame& f) 
                 if (albedo != expected) {
                     if (mismatches < 10) {  // first-10-only: throttle per-slot noise
                         char buf[128];
-                        std::snprintf(buf, sizeof(buf),
-                                      "[MATERIAL_GPU v4] MISMATCH slot=%u pkt=%u"
-                                      " materialIdx=%u albedoTex=%u expected=%u\n",
-                                      i, globalPktIdx, idx, albedo, expected);
+                        mc2::fmt::to_buf(buf, "[MATERIAL_GPU v4] MISMATCH slot={:d} pkt={:d} materialIdx={:d} albedoTex={:d} expected={:d}\n", mc2::fmt::as_u32(i), mc2::fmt::as_u32(globalPktIdx), mc2::fmt::as_u32(idx), mc2::fmt::as_u32(albedo), mc2::fmt::as_u32(expected));
                         MC2_DIAG_FPUTS(buf, stderr);
                     }
                     ++mismatches;
@@ -753,9 +735,7 @@ void GpuStaticPropBatcher::buildPerPacketDrawTables(StaticPropFinalizeFrame& f) 
             }
             {
                 char buf[96];
-                std::snprintf(buf, sizeof(buf),
-                              "[MATERIAL_GPU v4] event=compare emitted=%u mismatches=%d\n",
-                              emittedCount, mismatches);
+                mc2::fmt::to_buf(buf, "[MATERIAL_GPU v4] event=compare emitted={:d} mismatches={:d}\n", mc2::fmt::as_u32(emittedCount), mc2::fmt::as_i32(mismatches));
                 MC2_DIAG_FPUTS(buf, stderr);
             }
 
@@ -767,10 +747,7 @@ void GpuStaticPropBatcher::buildPerPacketDrawTables(StaticPropFinalizeFrame& f) 
 
             if (!s_materialGpuSidecarValid) {
                 char buf[128];
-                std::snprintf(buf, sizeof(buf),
-                              "[MATERIAL_GPU v4] ERROR materialIdx sidecar size mismatch"
-                              " emitted=%zu sidecar=%zu sample_forced=0\n",
-                              s_sortedPacketOrder.size(), s_packetMaterialIdx.size());
+                mc2::fmt::to_buf(buf, "[MATERIAL_GPU v4] ERROR materialIdx sidecar size mismatch emitted={:d} sidecar={:d} sample_forced=0\n", mc2::fmt::as_size(s_sortedPacketOrder.size()), mc2::fmt::as_size(s_packetMaterialIdx.size()));
                 MC2_DIAG_FPUTS(buf, stderr);
             }
         } // end s_materialGpuEnabled (sidecar)
@@ -810,11 +787,7 @@ void GpuStaticPropBatcher::buildPerPacketDrawTables(StaticPropFinalizeFrame& f) 
                 if (hasDrawCmd) ++typesWithDrawCmd;
                 else            ++typesDroppedNoLayer;
             }
-            std::fprintf(stderr,
-                "[EDITOR_STATIC_PRIME] typesWithGeom=%u typesWithDrawCmd=%u "
-                "typesDroppedNoLayer=%u alphaOffCmd=%u alphaOnCmd=%u\n",
-                typesWithGeom, typesWithDrawCmd, typesDroppedNoLayer,
-                s_alphaOffCmdCount, s_alphaOnCmdCount);
+            mc2::fmt::print_err("[EDITOR_STATIC_PRIME] typesWithGeom={:d} typesWithDrawCmd={:d} typesDroppedNoLayer={:d} alphaOffCmd={:d} alphaOnCmd={:d}\n", mc2::fmt::as_u32(typesWithGeom), mc2::fmt::as_u32(typesWithDrawCmd), mc2::fmt::as_u32(typesDroppedNoLayer), mc2::fmt::as_u32(s_alphaOffCmdCount), mc2::fmt::as_u32(s_alphaOnCmdCount));
             std::fflush(stderr);
         }
 
@@ -906,9 +879,7 @@ void GpuStaticPropBatcher::buildPerPacketDrawTables(StaticPropFinalizeFrame& f) 
                 }
             }
             char buf[96];
-            std::snprintf(buf, sizeof(buf),
-                          "[MATERIAL_GPU v4] event=entry_material_idx emitted=%u mismatches=%d\n",
-                          emittedCount2, entryMismatches);
+            mc2::fmt::to_buf(buf, "[MATERIAL_GPU v4] event=entry_material_idx emitted={:d} mismatches={:d}\n", mc2::fmt::as_u32(emittedCount2), mc2::fmt::as_i32(entryMismatches));
             MC2_DIAG_FPUTS(buf, stderr);
         }
 
@@ -943,11 +914,9 @@ bool GpuStaticPropBatcher::reportMaterialCacheAndBaseInstances(StaticPropFinaliz
     {
         GpuStaticPropRegistry::MaterialCacheStats mcs{};
         GpuStaticPropRegistry::staticPropGetMaterialCacheStats(&mcs);
-        std::fprintf(stderr,
-            "[GPUPROPS] material_cache cache_slots=%u tex_wired=%u mat_wired=%u "
-            "multi_packet=%u alpha_on_fallback=%u no_primary=%u\n",
-            mcs.cacheVectorSize, mcs.texWired, mcs.matWired,
-            mcs.multiPacket, mcs.alphaOnFallback, mcs.noPrimary);
+        mc2::fmt::print_err("[GPUPROPS] material_cache cache_slots={:d} tex_wired={:d} mat_wired={:d} multi_packet={:d} alpha_on_fallback={:d} no_primary={:d}\n",
+            mc2::fmt::as_u32(mcs.cacheVectorSize), mc2::fmt::as_u32(mcs.texWired), mc2::fmt::as_u32(mcs.matWired),
+            mc2::fmt::as_u32(mcs.multiPacket), mc2::fmt::as_u32(mcs.alphaOnFallback), mc2::fmt::as_u32(mcs.noPrimary));
     }
 
     // Slice 1 step group 3 — allocate base-instance table under !s_globalPoolLegacy.

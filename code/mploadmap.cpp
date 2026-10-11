@@ -14,6 +14,7 @@ MPLoadMap.cpp			: Implementation of the MPLoadMap component.
 #include "../resource.h"
 #include"platform_windows.h"
 #include"missionbriefingscreen.h"
+#include "mc2fmt.h"
 
 #ifndef GAMESOUND_H
 #include"gamesound.h"
@@ -94,7 +95,7 @@ void MPLoadMap::init(FitIniFile* file)
 		if ( NO_ERR != PNfile.open( path ) )
 		{
 			char error[256];
-			sprintf( error, "couldn't open file %s", path );
+			mc2::fmt::to_buf(error, "couldn't open file {}", mc2::fmt::safe(path));
 			Assert( 0, 0, error );
 			return;
 		}
@@ -151,7 +152,7 @@ void MPLoadMap::seedDialog( bool bSeedSingle )
 
 	// need to add items to the save game list
 	char findString[512];
-	sprintf(findString,"%s*.fit",missionPath);
+	mc2::fmt::to_buf(findString, "{}*.fit", mc2::fmt::safe(missionPath));
 
 
 	WIN32_FIND_DATA	findResult;
@@ -378,7 +379,7 @@ void MPLoadMap::seedFromCampaign()
 					for ( int i = 0; i < group+1; i++ )
 					{
 						char blockName[64];
-						sprintf( blockName,  "Group%ld", i );
+						mc2::fmt::to_buf(blockName, "Group{:d}", mc2::fmt::as_i32(i));
 						if ( NO_ERR == campaignFile.seekBlock( blockName ) )
 						{
 							long count = missions;
@@ -389,7 +390,7 @@ void MPLoadMap::seedFromCampaign()
 
 							for ( int j = 0; j < count; j++ )
 							{
-								sprintf( blockName, "Group%ldMission%ld", i, j );
+								mc2::fmt::to_buf(blockName, "Group{:d}Mission{:d}", mc2::fmt::as_i32(i), mc2::fmt::as_i32(j));
 								if ( NO_ERR == campaignFile.seekBlock( blockName ) )
 								{
 									char tmpFileName[255];
@@ -706,7 +707,7 @@ void MPLoadMap::getMapNameFromFile( const char* pFileName, char* missionName, lo
 	if ( NO_ERR != file.open( (const char*)path ) )
 	{
 		char errorStr[256];
-		sprintf( errorStr, "couldn't open file %s", (const char*)path );
+		mc2::fmt::to_buf(errorStr, "couldn't open file {}", mc2::fmt::safe((const char*)path));
 		Assert( 0, 0, errorStr );
 	}
 

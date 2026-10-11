@@ -244,7 +244,7 @@ long ByteFlag::init (unsigned long numRows, unsigned long numColumns, unsigned l
 
 	flagHeap = new HeapManager;
 	
-	gosASSERT(flagHeap != NULL);
+	gosASSERT(flagHeap != nullptr);
 		
 	long result = flagHeap->createHeap(totalRAM);
 	gosASSERT(result == NO_ERR);

@@ -44,6 +44,7 @@
 #include<stuff/stuff.hpp>
 #include<math.h>
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 //---------------------------------------------------------------------------
 UserInput *userInput = nullptr;
@@ -64,7 +65,7 @@ void MouseCursorData::initCursors (const char *cursorFileName)
 	char realHackName[1024];
 	strcpy(realHackName,cursorFileName);
 	if (Environment.screenWidth <= 800)
-		sprintf(realHackName,"%sa",cursorFileName);
+		mc2::fmt::to_buf(realHackName, "{}a", mc2::fmt::safe(cursorFileName));
 
 	FullPathFileName cursorName;
 	cursorName.init(artPath,realHackName,".fit");
@@ -103,7 +104,7 @@ void MouseCursorData::initCursors (const char *cursorFileName)
 	for (long i=0;i<numCursors;i++)
 	{
 		ZoneScopedN("MouseCursorData::initCursors cursor");
-		sprintf( blockName, "Cursor%ld", i );
+		mc2::fmt::to_buf(blockName, "Cursor{:d}", mc2::fmt::as_i32(i));
 		{
 			ZoneScopedN("MouseCursorData::initCursors staticInfo");
 			cursorInfos[i].init( cursorFile, blockName,0,0,0x1);
@@ -128,13 +129,9 @@ void MouseCursorData::initCursors (const char *cursorFileName)
 		FILE* f = fopen("cursor_debug.log", "a");
 		if (f)
 		{
-			fprintf(f, "[CURSOR] initCursors name='%s' realHack='%s' fitPath='%s' "
-			           "fitOpen=%ld numCursors=%ld screenW=%ld\n",
-			        cursorFileName, realHackName, (const char*)cursorName,
-			        openResult, numCursors, (long)Environment.screenWidth);
+			mc2::fmt::print(f, "[CURSOR] initCursors name='{}' realHack='{}' fitPath='{}' fitOpen={:d} numCursors={:d} screenW={:d}\n", mc2::fmt::safe(cursorFileName), mc2::fmt::safe(realHackName), mc2::fmt::safe((const char*)cursorName), mc2::fmt::as_i32(openResult), mc2::fmt::as_i32(numCursors), mc2::fmt::as_i32((long)Environment.screenWidth));
 			for (long s = 0; s < numCursors; s++)
-				fprintf(f, "[CURSOR]   cursor[%ld] texHandle=%lu texWidth=%lu\n",
-				        s, cursorInfos[s].textureHandle, cursorInfos[s].textureWidth);
+				mc2::fmt::print(f, "[CURSOR]   cursor[{:d}] texHandle={:d} texWidth={:d}\n", mc2::fmt::as_i32(s), mc2::fmt::as_u32(cursorInfos[s].textureHandle), mc2::fmt::as_u32(cursorInfos[s].textureWidth));
 			fflush(f);
 			fclose(f);
 		}
@@ -241,11 +238,7 @@ void UserInput::update (void)
 		if (ddx*ddx + ddy*ddy > 0.0001f)
 		{
 			s_lx = mouseXPosition; s_ly = mouseYPosition;
-			printf("[MOUSE_RECON_DS v1] norm=(%.3f,%.3f) viewMul=(%.1f,%.1f) "
-			       "finalPixel=(%ld,%ld)\n",
-			       mouseXPosition, mouseYPosition, viewMulX, viewMulY,
-			       float2long(mouseXPosition * viewMulX),
-			       float2long(mouseYPosition * viewMulY));
+			mc2::fmt::print_out("[MOUSE_RECON_DS v1] norm=({:.3f},{:.3f}) viewMul=({:.1f},{:.1f}) finalPixel=({:d},{:d})\n", mouseXPosition, mouseYPosition, viewMulX, viewMulY, mc2::fmt::as_i32(float2long(mouseXPosition * viewMulX)), mc2::fmt::as_i32(float2long(mouseYPosition * viewMulY)));
 		}
 	}
 
@@ -520,7 +513,7 @@ void UserInput::initMouseCursors (const char *mouseFile)
 		ZoneScopedN("UserInput::initMouseCursors alloc");
 		cursors = new MouseCursorData;
 	}
-	gosASSERT(cursors != NULL);
+	gosASSERT(cursors != nullptr);
 	
 	{
 		ZoneScopedN("UserInput::initMouseCursors initCursors");
@@ -565,11 +558,7 @@ void UserInput::render (void)						//Last thing rendered.  Draws Mouse.
 			long nc = cursors ? cursors->numCursors : -1;
 			long th = (cursors && mouseState >= 0 && mouseState < nc)
 			          ? cursors->cursorInfos[mouseState].textureHandle : -999;
-			fprintf(s_curLog,
-			        "[CURSOR] f=%d drawMouse=%d mouseState=%ld numCursors=%ld "
-			        "texHandle=%ld screenW=%ld\n",
-			        s_frame, (int)drawMouse, mouseState, nc, th,
-			        (long)Environment.screenWidth);
+			mc2::fmt::print(s_curLog, "[CURSOR] f={:d} drawMouse={:d} mouseState={:d} numCursors={:d} texHandle={:d} screenW={:d}\n", mc2::fmt::as_i32(s_frame), mc2::fmt::as_i32((int)drawMouse), mc2::fmt::as_i32(mouseState), mc2::fmt::as_i32(nc), mc2::fmt::as_i32(th), mc2::fmt::as_i32((long)Environment.screenWidth));
 			fflush(s_curLog);
 		}
 	}

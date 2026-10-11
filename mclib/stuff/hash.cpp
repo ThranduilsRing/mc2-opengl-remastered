@@ -119,7 +119,7 @@ void
 	// Verify that value has not been added
 	//-------------------------------------------------------------
 	//
-	Verify(HasUniqueEntries() ? (FindImplementation(value) == NULL) : (bool)true);
+	Verify(HasUniqueEntries() ? (FindImplementation(value) == nullptr) : (bool)true);
 
 	//
 	//-------------------------------------------------------------
@@ -439,7 +439,7 @@ void
 		if (vchainIterator != nullptr)
 		{
 			Check_Object(vchainIterator);
-			Verify(vchainIterator->GetCurrentPlug() != NULL);
+			Verify(vchainIterator->GetCurrentPlug() != nullptr);
 			return vchainIterator->GetCurrentPlug();
 		}
 	}

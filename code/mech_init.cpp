@@ -1,6 +1,7 @@
 // BattleMech: BattleMech::init (bool and FitIni variants), clear, status rating, setControl, weapon mount lookup, write.
 // Declared in the class headers; shared names in mech_internal.h.
 #include "mech_internal.h"
+#include "mc2fmt.h"
 
 
 void BattleMech::init (bool create) {
@@ -68,8 +69,8 @@ void BattleMech::init (bool create) {
 	pivotTurnRate = 0.0;
 
 #ifdef USE_JETS
-	jumpJets[0] = NULL;
-	jumpJets[1] = NULL;
+	jumpJets[0] = nullptr;
+	jumpJets[1] = nullptr;
 #endif
 
 	maxWeaponDamage = 0.0;
@@ -160,7 +161,7 @@ void BattleMech::init (bool create, ObjectTypePtr _type) {
 	    delete appearance;
 	}
 	appearance = new Mech3DAppearance;
-	gosASSERT(appearance != NULL);
+	gosASSERT(appearance != nullptr);
 
 	// The only kind of appearanceType the mechs currently know how
 	// to work with is a spriteTree.  Anything else is wrong.
@@ -515,7 +516,7 @@ long BattleMech::init (FitIniFile* mechFile) {
 	long curItem = 0;
 	while (curItem < numOther) {
 		char itemString[128];
-		sprintf(itemString, "Item:%d", curItem);
+		mc2::fmt::to_buf(itemString, "Item:{:d}", mc2::fmt::as_i32(curItem));
 		result = mechFile->seekBlock(itemString);
 		if (result != NO_ERR)
 			return(result);
@@ -545,7 +546,7 @@ long BattleMech::init (FitIniFile* mechFile) {
 
 	while (curItem < (numOther + numWeapons)) {
 		char itemString[128];
-		sprintf(itemString, "Item:%d", curItem);
+		mc2::fmt::to_buf(itemString, "Item:{:d}", mc2::fmt::as_i32(curItem));
 		result = mechFile->seekBlock(itemString);
 		if (result != NO_ERR)
 			return(result);
@@ -574,7 +575,7 @@ long BattleMech::init (FitIniFile* mechFile) {
 
 	while (curItem < (numOther + numWeapons + numAmmos)) {
 		char itemString[128];
-		sprintf(itemString, "Item:%d", curItem);
+		mc2::fmt::to_buf(itemString, "Item:{:d}", mc2::fmt::as_i32(curItem));
 		result = mechFile->seekBlock(itemString);
 		if (result != NO_ERR)
 			return(result);
@@ -654,7 +655,7 @@ long BattleMech::init (FitIniFile* mechFile) {
 		for (long curSpace = 0; curSpace < numSpaces; curSpace++)
 		{
 			char componentString[128];
-			sprintf(componentString, "Component:%d", curSpace);
+			mc2::fmt::to_buf(componentString, "Component:{:d}", mc2::fmt::as_i32(curSpace));
 			unsigned char spaceData[2];
 			result = mechFile->readIdUCharArray(componentString, spaceData, 2);
 
@@ -676,7 +677,7 @@ long BattleMech::init (FitIniFile* mechFile) {
 					continue;
 #ifdef _DEBUG
 			char msg[256];
-			sprintf(msg," Bad Mech Profile : %s ",mechFile->getFilename());
+			mc2::fmt::to_buf(msg, " Bad Mech Profile : {} ", mc2::fmt::safe(mechFile->getFilename()));
 			Assert(spaceData[0] < numOther+numWeapons+numAmmos,spaceData[0],msg);
 #endif
 				inventory[spaceData[0]].bodyLocation = curLocation;

@@ -7,6 +7,7 @@
 
 #include<cstdio>   // VFX-POINTCLOUD-ORACLE diagnostics
 #include<cmath>    // std::min / std::max fallback (also in gosfxheaders)
+#include "mc2fmt.h"
 
 //==========================================================================//
 // File:	 gosFX_PointCloud.cpp											//
@@ -561,12 +562,7 @@ void gosFX::PointCloud::Draw(DrawInfo *info)
 					// VFX-AGE-LIFETIME-UPLOAD-1: age range
 					const double ageLo = static_cast<double>(minAge);
 					const double ageHi = static_cast<double>(maxAge);
-					std::fprintf(stderr,
-						"[VFX_ORACLE v1] class=PointCloud FIRST_HARVEST spec=\"%s\" active=%d harvested=%d alpha=[%.3f,%.3f] size=4.0 spin=none atlas=none ageRange=[%.3f,%.3f]\n",
-						static_cast<const char*>(spec->m_name),
-						m_activeParticleCount, harvested,
-						static_cast<double>(minAlpha), static_cast<double>(maxAlpha),
-						ageLo, ageHi);
+					mc2::fmt::print_err("[VFX_ORACLE v1] class=PointCloud FIRST_HARVEST spec=\"{}\" active={:d} harvested={:d} alpha=[{:.3f},{:.3f}] size=4.0 spin=none atlas=none ageRange=[{:.3f},{:.3f}]\n", mc2::fmt::safe(static_cast<const char*>(spec->m_name)), mc2::fmt::as_i32(m_activeParticleCount), mc2::fmt::as_i32(harvested), static_cast<double>(minAlpha), static_cast<double>(maxAlpha), ageLo, ageHi);
 					std::fflush(stderr);
 				}
 				static unsigned long long s_calls = 0, s_harvTotal = 0;
@@ -574,10 +570,7 @@ void gosFX::PointCloud::Draw(DrawInfo *info)
 				if ((++s_calls % 240ull) == 0ull) {
 					const double aLo = (harvested > 0) ? static_cast<double>(minAlpha) : 0.0;
 					const double aHi = (harvested > 0) ? static_cast<double>(maxAlpha) : 0.0;
-					std::fprintf(stderr,
-						"[VFX_ORACLE v1] class=PointCloud calls=%llu active_this_call=%d harvested_this_call=%d emitted_this_call=%d harvestedTotal=%llu fallback=0 alpha_this_call=[%.3f,%.3f]\n",
-						s_calls, m_activeParticleCount, harvested, harvested,
-						s_harvTotal, aLo, aHi);
+					mc2::fmt::print_err("[VFX_ORACLE v1] class=PointCloud calls={:d} active_this_call={:d} harvested_this_call={:d} emitted_this_call={:d} harvestedTotal={:d} fallback=0 alpha_this_call=[{:.3f},{:.3f}]\n", mc2::fmt::as_u64(s_calls), mc2::fmt::as_i32(m_activeParticleCount), mc2::fmt::as_i32(harvested), mc2::fmt::as_i32(harvested), mc2::fmt::as_u64(s_harvTotal), aLo, aHi);
 					std::fflush(stderr);
 				}
 			}

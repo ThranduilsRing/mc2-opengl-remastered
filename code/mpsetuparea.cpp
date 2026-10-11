@@ -12,6 +12,7 @@ MPSetupArea.cpp			: Implementation of the MPSetupArea component.
 #include"inifile.h"
 #include"userinput.h"
 #include "../resource.h"
+#include "mc2fmt.h"
 
 #ifndef GAMESOUND_H
 #include"gamesound.h"
@@ -82,7 +83,7 @@ void MPSetupXScreen::init(FitIniFile* file)
 		if ( NO_ERR != PNfile.open( path ) )
 		{
 			char error[256];
-			sprintf( error, "couldn't open file %s", path );
+			mc2::fmt::to_buf(error, "couldn't open file {}", mc2::fmt::safe(path));
 			Assert( 0, 0, error );
 			return;
 		}
@@ -106,7 +107,7 @@ void MPSetupXScreen::init(FitIniFile* file)
 		if ( NO_ERR != PNfile.open( path ) )
 		{
 			char error[256];
-			sprintf( error, "couldn't open file %s", path );
+			mc2::fmt::to_buf(error, "couldn't open file {}", mc2::fmt::safe(path));
 			Assert( 0, 0, error );
 			return;
 		}
@@ -122,7 +123,7 @@ void MPSetupXScreen::init(FitIniFile* file)
 		if ( NO_ERR != PNfile.open( path ) )
 		{
 			char error[256];
-			sprintf( error, "couldn't open file %s", path );
+			mc2::fmt::to_buf(error, "couldn't open file {}", mc2::fmt::safe(path));
 			Assert( 0, 0, error );
 			return;
 		}

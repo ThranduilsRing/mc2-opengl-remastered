@@ -1,6 +1,7 @@
 // LogisticsData: the front-end data load (components, pilots, variants, vehicles), the smart-load gate and the mission availability queries.
 // Declared in the class headers; shared names in logisticsdata_internal.h.
 #include "logisticsdata_internal.h"
+#include "mc2fmt.h"
 
 
 // SMART-LOAD-1: defer mech-bay data (components/pilots/variants) until first mech-bay accessor.
@@ -230,8 +231,8 @@ void LogisticsData::appendEquipmentAddFillComponents()
 		{
 			// icon column is validated by the ADD pass, so this is unexpected --
 			// surface it rather than half-materializing the item.
-			printf( "[EQUIP-ADD] logistics consumer REJECTED synthesized row (id=%s ordinal=%ld) -- item absent from mechlab\n",
-					r.qualifiedId.c_str(), r.ordinal );
+			mc2::fmt::print_out( "[EQUIP-ADD] logistics consumer REJECTED synthesized row (id={} ordinal={:d}) -- item absent from mechlab\n",
+					r.qualifiedId.c_str(), mc2::fmt::as_i32(r.ordinal) );
 			components.DeleteTail();
 			continue;
 		}
@@ -245,8 +246,7 @@ void LogisticsData::appendEquipmentAddFillComponents()
 			tmp.setAmmo( MasterComponent::masterList[r.ammoMasterId].getAmmoPerTon() );
 		}
 
-		printf( "[EQUIP-ADD] mechlab row appended: id=%s ordinal=%ld name=\"%s\"\n",
-				r.qualifiedId.c_str(), r.ordinal, r.displayName.c_str() );
+		mc2::fmt::print_out("[EQUIP-ADD] mechlab row appended: id={} ordinal={:d} name=\"{}\"\n", r.qualifiedId.c_str(), mc2::fmt::as_i32(r.ordinal), r.displayName.c_str());
 	}
 }
 
@@ -293,7 +293,7 @@ void LogisticsData::initPilots()
 	// the campaign/compat roster won over base stock.
 	if ( mc2::gate::get<"MC2_LOG_PILOTS">() )
 	{
-		printf("[PILOTS] loaded=%d roster=%s\n", (int)pilots.Count(), pilotPath);
+		mc2::fmt::print_out("[PILOTS] loaded={:d} roster={}\n", mc2::fmt::as_i32((int)pilots.Count()), mc2::fmt::safe(pilotPath));
 		fflush(stdout);
 	}
 }
@@ -337,7 +337,7 @@ void LogisticsData::initVariants()
 	if ( NO_ERR !=pakFile.open( pakPath ) )
 	{
 		char errorStr[256];
-		sprintf( errorStr, "couldn't open file %s", (const char*)pakPath );
+		mc2::fmt::to_buf(errorStr, "couldn't open file {}", mc2::fmt::safe((const char*)pakPath));
 		Assert( 0, 0, errorStr );
 	}
 
@@ -416,8 +416,7 @@ void LogisticsData::initVariants()
 		{
 			if ( FILE* f = fopen("preview_debug.log","a") )
 			{
-				fprintf(f,"[ENCYCLO] initVariants row=%ld mech=%s readResult=%ld scale=%.3f\n",
-					i, variantFileName, scaleReadResult, scale);
+				mc2::fmt::print(f, "[ENCYCLO] initVariants row={:d} mech={} readResult={:d} scale={:.3f}\n", mc2::fmt::as_i32(i), mc2::fmt::safe(variantFileName), mc2::fmt::as_i32(scaleReadResult), scale);
 				fclose(f);
 			}
 		}

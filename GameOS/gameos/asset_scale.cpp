@@ -12,6 +12,7 @@
 #include <unordered_set>
 #include <utility>
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 namespace AssetScale {
 
@@ -227,9 +228,7 @@ bool runOneScale(uint32_t nominalSize, uint32_t actualSize, const char* tag,
             if (r.x < 0 || r.y < 0 ||
                 (uint32_t)(r.x + r.w) > actualSize ||
                 (uint32_t)(r.y + r.h) > actualSize) {
-                std::snprintf(detailBuf, detailLen,
-                    "OOB at cell (%d,%d): rect=(%d,%d,%d,%d) actual=%u",
-                    x, y, r.x, r.y, r.w, r.h, actualSize);
+                mc2::fmt::to_buf_n(detailBuf, detailLen, "OOB at cell ({:d},{:d}): rect=({:d},{:d},{:d},{:d}) actual={:d}", mc2::fmt::as_i32(x), mc2::fmt::as_i32(y), mc2::fmt::as_i32(r.x), mc2::fmt::as_i32(r.y), mc2::fmt::as_i32(r.w), mc2::fmt::as_i32(r.h), mc2::fmt::as_u32(actualSize));
                 return false;
             }
             // Adjacent-cell overlap <= 1px (intentional seam protection).
@@ -240,11 +239,7 @@ bool runOneScale(uint32_t nominalSize, uint32_t actualSize, const char* tag,
                     (float)nominalCell, (float)nominalCell, "selftest");
                 int overlap = (r.x + r.w) - rNext.x;
                 if (overlap < 0 || overlap > 1) {
-                    std::snprintf(detailBuf, detailLen,
-                        "X overlap %d at cell (%d,%d): rect=(%d,%d,%d,%d) "
-                        "next=(%d,%d,%d,%d)",
-                        overlap, x, y, r.x, r.y, r.w, r.h,
-                        rNext.x, rNext.y, rNext.w, rNext.h);
+                    mc2::fmt::to_buf_n(detailBuf, detailLen, "X overlap {:d} at cell ({:d},{:d}): rect=({:d},{:d},{:d},{:d}) next=({:d},{:d},{:d},{:d})", mc2::fmt::as_i32(overlap), mc2::fmt::as_i32(x), mc2::fmt::as_i32(y), mc2::fmt::as_i32(r.x), mc2::fmt::as_i32(r.y), mc2::fmt::as_i32(r.w), mc2::fmt::as_i32(r.h), mc2::fmt::as_i32(rNext.x), mc2::fmt::as_i32(rNext.y), mc2::fmt::as_i32(rNext.w), mc2::fmt::as_i32(rNext.h));
                     return false;
                 }
             }
@@ -325,12 +320,11 @@ void shutdown() {
 
 void dumpCountersTo(FILE* out) {
     const State& st = state();
-    std::fprintf(out,
-        "[ASSET_SCALE v1] counters entries=%u dupes=%u bad_lines=%u "
-        "lookups=%u unknown=%u oob=%u clamped=%u trace=%d\n",
-        st.cManifestEntries, st.cManifestDupes, st.cManifestBadLines,
-        st.cFactorLookups, st.cUnknownAsset, st.cOobBlit, st.cClampedRects,
-        st.traceEnabled ? 1 : 0);
+    mc2::fmt::print(out,
+        "[ASSET_SCALE v1] counters entries={:d} dupes={:d} bad_lines={:d} lookups={:d} unknown={:d} oob={:d} clamped={:d} trace={:d}\n",
+        mc2::fmt::as_u32(st.cManifestEntries), mc2::fmt::as_u32(st.cManifestDupes), mc2::fmt::as_u32(st.cManifestBadLines),
+        mc2::fmt::as_u32(st.cFactorLookups), mc2::fmt::as_u32(st.cUnknownAsset), mc2::fmt::as_u32(st.cOobBlit), mc2::fmt::as_u32(st.cClampedRects),
+        mc2::fmt::as_i32(st.traceEnabled ? 1 : 0));
 }
 
 Vec2 factorFor(const AssetKey& k, uint32_t actualW, uint32_t actualH,

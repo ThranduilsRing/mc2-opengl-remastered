@@ -1,6 +1,7 @@
 // Pathfinding: MoveMap::calcPath and calcPathJUMP.
 // Declared in the class headers; shared names in move_internal.h.
 #include "move_internal.h"
+#include "mc2fmt.h"
 
 
 
@@ -51,7 +52,7 @@ long MoveMap::calcPath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int* go
 		p.y = (Terrain::worldUnitsMapSide / 2) - ((float)(goalR) * Terrain::worldUnitsPerCell) - Terrain::worldUnitsPerCell / 2;
 		p.z = (float)0; // How do we get the elevation for this point? Do we care?
 		char msg[200];
-		sprintf(msg, " Bad Move Goal: %d [%d(%d), %d(%d)], (%.2f, %.2f, %.2f)", DebugMovePathType, goalR, height, goalC, width, p.x, p.y, p.z);
+		mc2::fmt::to_buf(msg, " Bad Move Goal: {:d} [{:d}({:d}), {:d}({:d})], ({:.2f}, {:.2f}, {:.2f})", mc2::fmt::as_i32(DebugMovePathType), mc2::fmt::as_i32(goalR), mc2::fmt::as_i32(height), mc2::fmt::as_i32(goalC), mc2::fmt::as_i32(width), p.x, p.y, p.z);
 	}
 
 	// Let's use their hPrime as a barrier for cutting off the search...
@@ -65,7 +66,7 @@ long MoveMap::calcPath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int* go
 	// solveJumpOnBlocked mirror the globals OFF (byte-identical) and the ctx ON.
 	if (!ctx.isolated && !openList) {
 		openList = new PriorityQueue;
-		gosASSERT(openList != NULL);
+		gosASSERT(openList != nullptr);
 		openList->init(5000);
 	}
 	solveOpen = ctx.isolated ? ctx.pq() : openList;
@@ -111,7 +112,7 @@ long MoveMap::calcPath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int* go
 				writeDebug(pathDebugFile);
 				pathDebugFile->close();
 				delete pathDebugFile;
-				pathDebugFile = NULL;
+				pathDebugFile = nullptr;
 			}
 		#endif
 
@@ -223,7 +224,7 @@ long MoveMap::calcPath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int* go
 								int openIndex = solveOpen->find(succCellIndex);
 								if (!openIndex) {
 									char s[128];
-									sprintf(s, "MoveMap.calcPath: Cannot find movemap node [%d, %d] for change\n", succCellIndex, dir);
+									mc2::fmt::to_buf(s, "MoveMap.calcPath: Cannot find movemap node [{:d}, {:d}] for change\n", mc2::fmt::as_i32(succCellIndex), mc2::fmt::as_i32(dir));
 									gosASSERT(openIndex != 0);
 									}
 								else
@@ -266,7 +267,7 @@ long MoveMap::calcPath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int* go
 			writeDebug(pathDebugFile);
 			pathDebugFile->close();
 			delete pathDebugFile;
-			pathDebugFile = NULL;
+			pathDebugFile = nullptr;
 		}
 	#endif
 	
@@ -326,13 +327,13 @@ long MoveMap::calcPath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int* go
 			File* pathDebugFile = new File;
 			pathDebugFile->create("longpath.dbg");
 			char s[512];
-			sprintf(s, "Path Too Long: %d steps (Max = %d) (please save longpath.dbg file:)", numCells, MAX_STEPS_PER_MOVEPATH);
+			mc2::fmt::to_buf(s, "Path Too Long: {:d} steps (Max = {:d}) (please save longpath.dbg file:)", mc2::fmt::as_i32(numCells), mc2::fmt::as_i32(MAX_STEPS_PER_MOVEPATH));
 			pathDebugFile->writeString(s);
 			pathDebugFile->writeString("\n\n");
 			writeDebug(pathDebugFile);
 			pathDebugFile->close();
 			delete pathDebugFile;
-			pathDebugFile = NULL;
+			pathDebugFile = nullptr;
 			gosASSERT(numCells <= MAX_STEPS_PER_MOVEPATH);
 		}
 		#endif
@@ -350,12 +351,12 @@ long MoveMap::calcPath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int* go
 				File* pathDebugFile = new File;
 				pathDebugFile->create("longpath.dbg");
 				char s[512];
-				sprintf(s, "New Longest Path: %d steps (Max = %d)\n\n", numCells, MAX_STEPS_PER_MOVEPATH);
+				mc2::fmt::to_buf(s, "New Longest Path: {:d} steps (Max = {:d})\n\n", mc2::fmt::as_i32(numCells), mc2::fmt::as_i32(MAX_STEPS_PER_MOVEPATH));
 				pathDebugFile->writeString(s);
 				writeDebug(pathDebugFile);
 				pathDebugFile->close();
 				delete pathDebugFile;
-				pathDebugFile = NULL;
+				pathDebugFile = nullptr;
 			}
 			#endif
 
@@ -475,8 +476,8 @@ long MoveMap::calcPath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int* go
 			calcTime = float(calcStop.LowPart - calcStart.LowPart) / float(countsPerSecond.LowPart);
 			if (debugger && (scenarioTime > 0.0)) {
 				char s[50];
-				sprintf(s, "path calc: %.4f\n", calcTime);
-				OutputDebugString(s);
+				mc2::fmt::to_buf(s, "path calc: {:.4f}\n", calcTime);
+				mc2::fmt::debug_out(s);
 				debugger->print(s);
 			}
 		#endif
@@ -494,7 +495,7 @@ long MoveMap::calcPath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int* go
 		calcTime = float(calcStop.LowPart - calcStart.LowPart) / float(countsPerSecond.LowPart);
 		if (debugger && (scenarioTime > 0.0)) {
 			char s[50];
-			sprintf(s, "path calc: %.4f", calcTime);
+			mc2::fmt::to_buf(s, "path calc: {:.4f}", calcTime);
 			debugger->print(s);
 		}
 	#endif
@@ -526,7 +527,7 @@ long MoveMap::calcPathJUMP (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int
 		p.y = (Terrain::worldUnitsMapSide / 2) - ((float)(goalR) * Terrain::worldUnitsPerCell) - Terrain::worldUnitsPerCell / 2;
 		p.z = (float)0; // How do we get the elevation for this point? Do we care?
 		char msg[200];
-		sprintf(msg, " Bad Move Goal: %d [%d(%d), %d(%d)], (%.2f, %.2f, %.2f)", DebugMovePathType, goalR, height, goalC, width, p.x, p.y, p.z);
+		mc2::fmt::to_buf(msg, " Bad Move Goal: {:d} [{:d}({:d}), {:d}({:d})], ({:.2f}, {:.2f}, {:.2f})", mc2::fmt::as_i32(DebugMovePathType), mc2::fmt::as_i32(goalR), mc2::fmt::as_i32(height), mc2::fmt::as_i32(goalC), mc2::fmt::as_i32(width), p.x, p.y, p.z);
 		gosASSERT((goalR >= 0) && (goalR < height) && (goalC >= 0) && (goalC < width));
 	}
 
@@ -536,7 +537,7 @@ long MoveMap::calcPathJUMP (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int
 	
 	if (!ctx.isolated && !openList) {
 		openList = new PriorityQueue;
-		gosASSERT(openList != NULL);
+		gosASSERT(openList != nullptr);
 		openList->init(5000);
 	}
 	solveOpen = ctx.isolated ? ctx.pq() : openList;
@@ -589,7 +590,7 @@ long MoveMap::calcPathJUMP (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int
 				writeDebug(pathDebugFile);
 				pathDebugFile->close();
 				delete pathDebugFile;
-				pathDebugFile = NULL;
+				pathDebugFile = nullptr;
 			}
 		#endif
 
@@ -676,7 +677,7 @@ long MoveMap::calcPathJUMP (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int
 								int openIndex = solveOpen->find(succRow * MAX_MAPWIDTH + succCol);
 								if (!openIndex) {
 									char s[128];
-									sprintf(s, "MoveMap.calcPath: Cannot find movemap node [%d, %d, %d, %d] for change\n", succRow, succCol, succRow * MAX_MAPWIDTH + succCol, dir);
+									mc2::fmt::to_buf(s, "MoveMap.calcPath: Cannot find movemap node [{:d}, {:d}, {:d}, {:d}] for change\n", mc2::fmt::as_i32(succRow), mc2::fmt::as_i32(succCol), mc2::fmt::as_i32(succRow * MAX_MAPWIDTH + succCol), mc2::fmt::as_i32(dir));
 									gosASSERT(openIndex != 0);
 									}
 								else
@@ -719,7 +720,7 @@ long MoveMap::calcPathJUMP (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int
 			writeDebug(pathDebugFile);
 			pathDebugFile->close();
 			delete pathDebugFile;
-			pathDebugFile = NULL;
+			pathDebugFile = nullptr;
 		}
 	#endif
 
@@ -751,13 +752,13 @@ long MoveMap::calcPathJUMP (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int
 			File* pathDebugFile = new File;
 			pathDebugFile->create("longpath.dbg");
 			char s[512];
-			sprintf(s, "Path Too Long: %d steps (Max = %d) (please save longpath.dbg file:)", numCells, MAX_STEPS_PER_MOVEPATH);
+			mc2::fmt::to_buf(s, "Path Too Long: {:d} steps (Max = {:d}) (please save longpath.dbg file:)", mc2::fmt::as_i32(numCells), mc2::fmt::as_i32(MAX_STEPS_PER_MOVEPATH));
 			pathDebugFile->writeString(s);
 			pathDebugFile->writeString("\n\n");
 			writeDebug(pathDebugFile);
 			pathDebugFile->close();
 			delete pathDebugFile;
-			pathDebugFile = NULL;
+			pathDebugFile = nullptr;
 			gosASSERT(numCells <= MAX_STEPS_PER_MOVEPATH);
 		}
 #endif
@@ -775,12 +776,12 @@ long MoveMap::calcPathJUMP (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int
 				File* pathDebugFile = new File;
 				pathDebugFile->create("longpath.dbg");
 				char s[512];
-				sprintf(s, "New Longest Path: %d steps (Max = %d)\n\n", numCells, MAX_STEPS_PER_MOVEPATH);
+				mc2::fmt::to_buf(s, "New Longest Path: {:d} steps (Max = {:d})\n\n", mc2::fmt::as_i32(numCells), mc2::fmt::as_i32(MAX_STEPS_PER_MOVEPATH));
 				pathDebugFile->writeString(s);
 				writeDebug(pathDebugFile);
 				pathDebugFile->close();
 				delete pathDebugFile;
-				pathDebugFile = NULL;
+				pathDebugFile = nullptr;
 			}
 #endif
 			path->target = target;
@@ -885,8 +886,8 @@ long MoveMap::calcPathJUMP (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int
 			calcTime = float(calcStop.LowPart - calcStart.LowPart) / float(countsPerSecond.LowPart);
 			if (debugger && (scenarioTime > 0.0)) {
 				char s[50];
-				sprintf(s, "path calc: %.4f\n", calcTime);
-				OutputDebugString(s);
+				mc2::fmt::to_buf(s, "path calc: {:.4f}\n", calcTime);
+				mc2::fmt::debug_out(s);
 				debugger->print(s);
 			}
 		#endif
@@ -899,7 +900,7 @@ long MoveMap::calcPathJUMP (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int
 		calcTime = float(calcStop.LowPart - calcStart.LowPart) / float(countsPerSecond.LowPart);
 		if (debugger && (scenarioTime > 0.0)) {
 			char s[50];
-			sprintf(s, "path calc: %.4f", calcTime);
+			mc2::fmt::to_buf(s, "path calc: {:.4f}", calcTime);
 			debugger->print(s);
 		}
 	#endif

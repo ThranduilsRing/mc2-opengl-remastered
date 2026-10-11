@@ -1,6 +1,7 @@
 // MC_TextureManager: texture load/save/copy and MC_TextureNode (KTX route-2 and compressed upload).
 // Declared in the class headers; shared names in txmmgr_internal.h.
 #include "txmmgr_internal.h"
+#include "mc2fmt.h"
 
 DWORD actualTextureSize = 0;
 DWORD compressedTextureSize = 0;
@@ -102,10 +103,10 @@ DWORD MC_TextureManager::textureFromMemory (DWORD *data, gos_TextureFormat key, 
 	{
 		ZoneScopedN("MC_TextureManager::textureFromMemory lzBuffers");
 		lzBuffer1 = (MemoryPtr)textureCacheHeap->Malloc(MAX_LZ_BUFFER_SIZE);
-		gosASSERT(lzBuffer1 != NULL);
+		gosASSERT(lzBuffer1 != nullptr);
 		
 		lzBuffer2 = (MemoryPtr)textureCacheHeap->Malloc(MAX_LZ_BUFFER_SIZE);
-		gosASSERT(lzBuffer2 != NULL);
+		gosASSERT(lzBuffer2 != nullptr);
 	}
 	
 	actualTextureSize += txmSize;
@@ -178,8 +179,8 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 		static const bool s_loadTrace = mc2::gate::get<"MC2_TEXMGR_LOAD_TRACE">();
 		if (s_loadTrace)
 		{
-			fprintf(stderr, "[TEXLOAD] uniq=%lu name=%s\n",
-				(unsigned long)uniqueInstance, textureFullPathName ? textureFullPathName : "<null>");
+			mc2::fmt::print_err("[TEXLOAD] uniq={:d} name={}\n",
+				mc2::fmt::as_u32((unsigned long)uniqueInstance), mc2::fmt::safe(textureFullPathName ? textureFullPathName : "<null>"));
 			fflush(stderr);
 		}
 	}
@@ -191,7 +192,7 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 			if (uniqueInstance == masterTextureNodes[i].uniqueInstance)
 			{
 				if (mc2::gate::get<"MC2_LOG_MECH_ICON">() && strstr(textureFullPathName, "mechicon"))
-					printf("[MECHICON] loadTexture CACHE-HIT id=%ld: %s\n", i, textureFullPathName);
+					mc2::fmt::print_out("[MECHICON] loadTexture CACHE-HIT id={:d}: {}\n", mc2::fmt::as_i32(i), mc2::fmt::safe(textureFullPathName));
 				masterTextureNodes[i].numUsers++;
 				return(i);							//Return the texture Node Id Now.
 			}
@@ -221,13 +222,13 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 	}
 
  	if (mc2::gate::get<"MC2_LOG_MECH_ICON">() && strstr(textureFullPathName, "mechicon"))
-		printf("[MECHICON] loadTexture FRESH id=%ld: %s\n", i, textureFullPathName);
+		mc2::fmt::print_out("[MECHICON] loadTexture FRESH id={:d}: {}\n", mc2::fmt::as_i32(i), mc2::fmt::safe(textureFullPathName));
 	// New Method.  Just store memory footprint of texture.
 	// DO NOT create GOS handle until we need it.
  	masterTextureNodes[i].gosTextureHandle = CACHED_OUT_HANDLE;
 	txmLeakNoteAlloc();  // [TXMMGR_TEXTURE_AUDIT v1] named loadTexture path
 	masterTextureNodes[i].nodeName = (char *)textureStringHeap->Malloc(strlen(textureFullPathName) + 1);
-	gosASSERT(masterTextureNodes[i].nodeName != NULL);
+	gosASSERT(masterTextureNodes[i].nodeName != nullptr);
 
 	strcpy(masterTextureNodes[i].nodeName,textureFullPathName);
 	masterTextureNodes[i].numUsers = 1;
@@ -302,7 +303,7 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 				}
 				else
 					masterTextureNodes[i].gosTextureHandle = 0;
-				printf("[TEXMGR_KTX_PRIMARY] %s -> RGBA8 %dx%d (ktx2 CPU decode)\n", sidecar, kw, kh); fflush(stdout);
+				mc2::fmt::print_out("[TEXMGR_KTX_PRIMARY] {} -> RGBA8 {:d}x{:d} (ktx2 CPU decode)\n", mc2::fmt::safe(sidecar), mc2::fmt::as_i32(kw), mc2::fmt::as_i32(kh)); fflush(stdout);
 				return(i);
 			}
 		}
@@ -324,11 +325,7 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 				textureFile.read(hdr, sizeof(hdr));
 				textureFile.seek(0);
 			}
-			fprintf(f,"[PREVIEW-LOAD] open=%ld size=%ld disk=%d name=%s tgaType=%u dims=%ux%u bpp=%u\n",
-				textureFileOpenResult, fsz,
-				((textureFileOpenResult == NO_ERR) ? textureFile.isLoadedFromDisk() : -1),
-				textureFullPathName,
-				hdr[2], hdr[12] | (hdr[13]<<8), hdr[14] | (hdr[15]<<8), hdr[16]);
+			mc2::fmt::print(f, "[PREVIEW-LOAD] open={:d} size={:d} disk={:d} name={} tgaType={:d} dims={:d}x{:d} bpp={:d}\n", mc2::fmt::as_i32(textureFileOpenResult), mc2::fmt::as_i32(fsz), mc2::fmt::as_i32(((textureFileOpenResult == NO_ERR) ? textureFile.isLoadedFromDisk() : -1)), mc2::fmt::safe(textureFullPathName), mc2::fmt::as_u32(hdr[2]), mc2::fmt::as_u32(hdr[12] | (hdr[13]<<8)), mc2::fmt::as_u32(hdr[14] | (hdr[15]<<8)), mc2::fmt::as_u32(hdr[16]));
 			fclose(f);
 		}
 	}
@@ -365,10 +362,10 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 	{
 		ZoneScopedN("MC_TextureManager::loadTexture lzBuffers");
 		lzBuffer1 = (MemoryPtr)textureCacheHeap->Malloc(MAX_LZ_BUFFER_SIZE);
-		gosASSERT(lzBuffer1 != NULL);
+		gosASSERT(lzBuffer1 != nullptr);
 		
 		lzBuffer2 = (MemoryPtr)textureCacheHeap->Malloc(MAX_LZ_BUFFER_SIZE);
-		gosASSERT(lzBuffer2 != NULL);
+		gosASSERT(lzBuffer2 != nullptr);
 	}
 
 	//Try reading the RAW data out of the fastFile.
@@ -478,9 +475,9 @@ long MC_TextureManager::refreshTexturesByName (const char *substring, long &skip
 		if (!lzBuffer1)
 		{
 			lzBuffer1 = (MemoryPtr)textureCacheHeap->Malloc(MAX_LZ_BUFFER_SIZE);
-			gosASSERT(lzBuffer1 != NULL);
+			gosASSERT(lzBuffer1 != nullptr);
 			lzBuffer2 = (MemoryPtr)textureCacheHeap->Malloc(MAX_LZ_BUFFER_SIZE);
-			gosASSERT(lzBuffer2 != NULL);
+			gosASSERT(lzBuffer2 != nullptr);
 		}
 
 		textureFile.read(lzBuffer1, txmSize);
@@ -662,10 +659,7 @@ DWORD MC_TextureNode::get_gosTextureHandle (void)	//If texture is not in VidRAM,
 		{
 			{
 				char _cbbuf[256];
-				snprintf(_cbbuf, sizeof(_cbbuf),
-					"[TXM] zero-width texture node: nodeName=%s handle=%u lzCompSize=%u",
-					nodeName ? nodeName : "<null>",
-					(unsigned)gosTextureHandle, (unsigned)lzCompSize);
+				mc2::fmt::to_buf(_cbbuf, "[TXM] zero-width texture node: nodeName={} handle={:d} lzCompSize={:d}", mc2::fmt::safe(nodeName ? nodeName : "<null>"), mc2::fmt::as_u32((unsigned)gosTextureHandle), mc2::fmt::as_u32((unsigned)lzCompSize));
 				puts(_cbbuf); fflush(stdout); crashbundle_append(_cbbuf);
 			}
 			PAUSE(("txmmgr: Textur has zero width!"));
@@ -751,7 +745,7 @@ DWORD MC_TextureNode::get_gosTextureHandle (void)	//If texture is not in VidRAM,
 						if (!s_warnedNoBptc)
 						{
 							s_warnedNoBptc = true;
-							printf("[TEXMGR_BC7] skip: GLEW_ARB_texture_compression_bptc unsupported; compressed upload disabled\n");
+							mc2::fmt::print_out("[TEXMGR_BC7] skip: GLEW_ARB_texture_compression_bptc unsupported; compressed upload disabled\n");
 						}
 					}
 					else
@@ -803,17 +797,16 @@ DWORD MC_TextureNode::get_gosTextureHandle (void)	//If texture is not in VidRAM,
 									{
 										gosTextureHandle = h;
 										uploadedCompressed = true;
-										printf("[TEXMGR_BC7] loaded name=%s %dx%d fmt=0x%x bytes=%zu\n",
-											nodeName, img.width, img.height, (unsigned)glIF, mip0Bytes);
+										mc2::fmt::print_out("[TEXMGR_BC7] loaded name={} {:d}x{:d} fmt=0x{:x} bytes={:d}\n", mc2::fmt::safe(nodeName), mc2::fmt::as_i32(img.width), mc2::fmt::as_i32(img.height), mc2::fmt::as_u32((unsigned)glIF), mc2::fmt::as_size(mip0Bytes));
 									}
 									else
 									{
-										printf("[TEXMGR_BC7] upload failed name=%s; fallthrough RGBA8\n", nodeName);
+										mc2::fmt::print_out("[TEXMGR_BC7] upload failed name={}; fallthrough RGBA8\n", mc2::fmt::safe(nodeName));
 									}
 								}
 								else
 								{
-									printf("[TEXMGR_BC7] sidecar not BC7/loadable name=%s; fallthrough RGBA8\n", sidecar);
+									mc2::fmt::print_out("[TEXMGR_BC7] sidecar not BC7/loadable name={}; fallthrough RGBA8\n", mc2::fmt::safe(sidecar));
 								}
 							}
 						}

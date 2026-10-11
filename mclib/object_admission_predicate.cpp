@@ -8,6 +8,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include "mc2fmt.h"
 
 namespace {
 
@@ -28,7 +29,7 @@ void objectAdmissionPredicate_init() {
         s_mode = ObjectAdmissionPredicateMode::Modern;  // default
     }
     s_initialized = true;
-    std::printf("[INSTR v1] object_admission_mode=%s\n", modeLabel(s_mode));
+    mc2::fmt::print_out("[INSTR v1] object_admission_mode={}\n", mc2::fmt::safe(modeLabel(s_mode)));
     std::fflush(stdout);
 }
 
@@ -57,7 +58,7 @@ void effectAdmissionPredicate_init() {
         s_effectMode = EffectAdmissionPredicateMode::Modern;  // default
     }
     s_effectInitialized = true;
-    std::printf("[INSTR v1] effect_admission_mode=%s\n", effectModeLabel(s_effectMode));
+    mc2::fmt::print_out("[INSTR v1] effect_admission_mode={}\n", mc2::fmt::safe(effectModeLabel(s_effectMode)));
     std::fflush(stdout);
 }
 
@@ -356,10 +357,7 @@ int objectAdmissionPredicate_selftest() {
         bool actual = clipSpaceFrustumAdmit(rawClip);
         const char* result = (actual == expected) ? "pass" : "fail";
         if (actual != expected) ++fails;
-        std::printf("[OBJECT_ADMISSION v1] event=selftest_%s case=%s expected=%d actual=%d "
-                    "rawClip=(%.3f,%.3f,%.3f,%.3f)\n",
-                    result, name, expected ? 1 : 0, actual ? 1 : 0,
-                    rawClip.x, rawClip.y, rawClip.z, rawClip.w);
+        mc2::fmt::print_out("[OBJECT_ADMISSION v1] event=selftest_{} case={} expected={:d} actual={:d} rawClip=({:.3f},{:.3f},{:.3f},{:.3f})\n", mc2::fmt::safe(result), mc2::fmt::safe(name), mc2::fmt::as_i32(expected ? 1 : 0), mc2::fmt::as_i32(actual ? 1 : 0), rawClip.x, rawClip.y, rawClip.z, rawClip.w);
     };
 
     // Center of frustum, w=1, point fully inside.

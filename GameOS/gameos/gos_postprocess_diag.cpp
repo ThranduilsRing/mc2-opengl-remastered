@@ -1,6 +1,7 @@
 // gosPostProcess: GL lost-draws query tracker (VK-GL-LOST-DRAWS-1) and the HZB readback probe.
 // Declared in the class headers; shared names in gos_postprocess_internal.h.
 #include "gos_postprocess_internal.h"
+#include "mc2fmt.h"
 
 
 // ---------------------------------------------------------------------------
@@ -54,8 +55,7 @@ void lostEmit(bool final_)
         ++groups;
         if (kv.second > 0) line += " " + kv.first + "=" + std::to_string(kv.second);
     }
-    std::fprintf(stderr, "[VK_GL_LOST_DRAWS v1] frame=%llu final=%d%s total_groups=%u\n",
-                 s_lostFrame, final_ ? 1 : 0, line.c_str(), groups);
+    mc2::fmt::print_err("[VK_GL_LOST_DRAWS v1] frame={:d} final={:d}{} total_groups={:d}\n", mc2::fmt::as_u64(s_lostFrame), mc2::fmt::as_i32(final_ ? 1 : 0), line.c_str(), mc2::fmt::as_u32(groups));
     std::fflush(stderr);
 }
 bool lostWanted()
@@ -438,50 +438,27 @@ void gosPostProcess::runHzbProbe()
     // Log object readiness counters on the tick OR on any unsafe (discontinuity)
     // frame, so camera snaps are always visible in the trace.
     if (logTick || unsafeForCull) {
-        fprintf(stderr,
-            "[HZB_PROBE_OBJ v2] staticProps active=%u scanned=%u tested=%u "
-            "wouldKeep=%u wouldCullRaw=%u wouldCullGuarded=%u "
-            "skippedCameraDiscont=%u nearClippedKeep=%u offscreen=%u "
-            "invalidRect=%u Lmin=%d cameraDiscontinuity=%d fwdAngleDeg=%.1f "
-            "posDelta=%.1f discontFramesCumulative=%llu unsafeForCull=%d "
-            "neverAppliedToDraws=1\n",
-            objActive, objScanned, objTested, objWouldKeep, objWouldCullRaw,
-            objWouldCullGuarded, objSkippedCameraDiscont, objNearClippedKeep,
-            objOffscreen, objInvalidRect, Lmin, unsafeForCull ? 1 : 0,
-            camFwdAngleDeg, camPosDelta,
-            (unsigned long long)hzbCamDiscontinuityFrames_, unsafeForCull ? 1 : 0);
+        mc2::fmt::print_err("[HZB_PROBE_OBJ v2] staticProps active={:d} scanned={:d} tested={:d} wouldKeep={:d} wouldCullRaw={:d} wouldCullGuarded={:d} skippedCameraDiscont={:d} nearClippedKeep={:d} offscreen={:d} invalidRect={:d} Lmin={:d} cameraDiscontinuity={:d} fwdAngleDeg={:.1f} posDelta={:.1f} discontFramesCumulative={:d} unsafeForCull={:d} neverAppliedToDraws=1\n", mc2::fmt::as_u32(objActive), mc2::fmt::as_u32(objScanned), mc2::fmt::as_u32(objTested), mc2::fmt::as_u32(objWouldKeep), mc2::fmt::as_u32(objWouldCullRaw), mc2::fmt::as_u32(objWouldCullGuarded), mc2::fmt::as_u32(objSkippedCameraDiscont), mc2::fmt::as_u32(objNearClippedKeep), mc2::fmt::as_u32(objOffscreen), mc2::fmt::as_u32(objInvalidRect), mc2::fmt::as_i32(Lmin), mc2::fmt::as_i32(unsafeForCull ? 1 : 0), camFwdAngleDeg, camPosDelta, mc2::fmt::as_u64((unsigned long long)hzbCamDiscontinuityFrames_), mc2::fmt::as_i32(unsafeForCull ? 1 : 0));
     }
     if (logTick && objTested > 0) {
         char hist[256]; int n = 0;
-        n += snprintf(hist + n, sizeof(hist) - n, "[HZB_PROBE_LOD v1] selectedLod");
+        n += mc2::fmt::to_buf_n(hist + n, sizeof(hist) - n, "[HZB_PROBE_LOD v1] selectedLod");
         for (int L = 0; L < hzbMipCount_ && L < kHzbMaxLevels && n < (int)sizeof(hist) - 16; ++L)
-            if (lodHist[L]) n += snprintf(hist + n, sizeof(hist) - n, " L%d=%u", L, lodHist[L]);
-        fprintf(stderr, "%s\n", hist);
+            if (lodHist[L]) n += mc2::fmt::to_buf_n(hist + n, sizeof(hist) - n, " L{:d}={:d}", mc2::fmt::as_i32(L), mc2::fmt::as_u32(lodHist[L]));
+        mc2::fmt::print_err("{}\n", mc2::fmt::safe(hist));
     }
     // Depth-gap margin sweep (safe-frame guarded candidates). guard@0.00000
     // equals wouldCullGuarded by gap<0; higher margins show how many survive a
     // more conservative gap<-margin requirement.
     if (logTick && objTested > 0) {
-        fprintf(stderr,
-            "[HZB_PROBE_MARGIN v1] guardCull@{0=%u,5e-5=%u,1e-4=%u,2.5e-4=%u,"
-            "5e-4=%u,1e-3=%u} minGap=%.6f maxGap=%.6f closestToZeroNegGap=%.6f "
-            "numMarginal(-1e-4<gap<0)=%u neverAppliedToDraws=1\n",
-            objWouldCullAtMargin[0], objWouldCullAtMargin[1], objWouldCullAtMargin[2],
-            objWouldCullAtMargin[3], objWouldCullAtMargin[4], objWouldCullAtMargin[5],
-            (minGap <= 1e8f ? minGap : 0.0f),
-            (maxGap >= -1e8f ? maxGap : 0.0f),
-            (closestToZeroNegGap >= -1e8f ? closestToZeroNegGap : 0.0f),
-            numMarginalCandidates);
+        mc2::fmt::print_err("[HZB_PROBE_MARGIN v1] guardCull@{{0={:d},5e-5={:d},1e-4={:d},2.5e-4={:d},5e-4={:d},1e-3={:d}}} minGap={:.6f} maxGap={:.6f} closestToZeroNegGap={:.6f} numMarginal(-1e-4<gap<0)={:d} neverAppliedToDraws=1\n", mc2::fmt::as_u32(objWouldCullAtMargin[0]), mc2::fmt::as_u32(objWouldCullAtMargin[1]), mc2::fmt::as_u32(objWouldCullAtMargin[2]), mc2::fmt::as_u32(objWouldCullAtMargin[3]), mc2::fmt::as_u32(objWouldCullAtMargin[4]), mc2::fmt::as_u32(objWouldCullAtMargin[5]), (minGap <= 1e8f ? minGap : 0.0f), (maxGap >= -1e8f ? maxGap : 0.0f), (closestToZeroNegGap >= -1e8f ? closestToZeroNegGap : 0.0f), mc2::fmt::as_u32(numMarginalCandidates));
     }
     // Bounded sample of guarded would-cull candidates CLOSEST to zero (safe
     // frames only) -- the highest false-positive risk to eyeball.
     if (logTick && candCount > 0) {
         for (int i = 0; i < candCount; ++i) {
             const CullCand& c = cand[i];
-            fprintf(stderr,
-                "[HZB_PROBE_CULLCAND v1] idx=%d rectUV=(%.3f,%.3f,%.3f,%.3f) "
-                "objClosest=%.5f hzbMin=%.5f gap=%.6f L=%d neverAppliedToDraws=1\n",
-                c.idx, c.r0, c.r1, c.r2, c.r3, c.closest, c.hmin, c.gap, c.lod);
+            mc2::fmt::print_err("[HZB_PROBE_CULLCAND v1] idx={:d} rectUV=({:.3f},{:.3f},{:.3f},{:.3f}) objClosest={:.5f} hzbMin={:.5f} gap={:.6f} L={:d} neverAppliedToDraws=1\n", mc2::fmt::as_i32(c.idx), c.r0, c.r1, c.r2, c.r3, c.closest, c.hmin, c.gap, mc2::fmt::as_i32(c.lod));
         }
     }
 }

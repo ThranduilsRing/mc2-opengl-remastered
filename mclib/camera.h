@@ -398,6 +398,18 @@ class Camera
 
 			position.Zero();
 
+			// The matrix members have empty default constructors, so until the first calculateProjectionConstants() they held whatever
+			// the allocation held. Terrain LOD runs before the camera's first update and read them through cacheFrustumPlanes(): NaN
+			// planes in one run, zeros in the next (the frame-2 [TerrainLOD v1] DIAG plane lines). Start from identity and zero planes.
+			cameraOrigin.BuildIdentity();
+			worldToCameraMatrix.BuildIdentity();
+			cameraToClip.BuildIdentity();
+			cameraToClipGL.BuildIdentity();
+			worldToClip.BuildIdentity();
+			clipToWorld.BuildIdentity();
+			for (auto& plane : cachedFrustumPlanes_)
+				plane[0] = plane[1] = plane[2] = plane[3] = 0.0f;
+
 			ready = active = FALSE;
 
 			cameraClass = INVALID_CAMERA;

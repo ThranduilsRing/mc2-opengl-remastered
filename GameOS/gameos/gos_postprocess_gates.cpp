@@ -1,6 +1,7 @@
 // gosPostProcess: gate readers for the shared-scene, Vulkan tier-1 and shadow knobs, scene placeholder textures, and the skybox-fog and screen-shadow canary gates.
 // Declared in the class headers; shared names in gos_postprocess_internal.h.
 #include "gos_postprocess_internal.h"
+#include "mc2fmt.h"
 
 
 // MC2_POSTPROCESS_BACKEND selects the backend of every routed region: "vk" (or "vulkan") asks for the
@@ -140,10 +141,7 @@ void mc2VkStaticShadowMapDeprecationNote()
 {
     static const bool s_once = [] {
         if (mc2::gate::get<"MC2_VK_STATIC_SHADOW_MAP">())
-            std::fprintf(stderr, "[VK_SHARED_STATIC_SHADOW] MC2_VK_STATIC_SHADOW_MAP is "
-                                 "deprecated and now a no-op (VK-RUNG8-ITEM6): the VK static-"
-                                 "shadow import substrate was deleted; static shadow uses the "
-                                 "plain GL GL_DEPTH_COMPONENT24 path.\n");
+            mc2::fmt::print_err("[VK_SHARED_STATIC_SHADOW] MC2_VK_STATIC_SHADOW_MAP is deprecated and now a no-op (VK-RUNG8-ITEM6): the VK static-shadow import substrate was deleted; static shadow uses the plain GL GL_DEPTH_COMPONENT24 path.\n");
         return true;
     }();
     (void)s_once;

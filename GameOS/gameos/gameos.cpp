@@ -33,6 +33,8 @@
 #include "det_rng.h"          // DETERMINISTIC-RNG-1: GL-free LCG kernel
 #include "diagnostic_trace.h" // DETERMINISTIC-RNG-1: optional "RNG" JSONL trace
 #include "Gates/gate.h"
+#include "mc2fmt.h"
+#include "utils/mc2log.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 void __stdcall AddDebuggerMenuItem(char const*, bool (__stdcall *)(), void (__stdcall *)(), bool (__stdcall *)(), DWORD (__stdcall *)(char const*, DWORD))
@@ -82,7 +84,7 @@ static void mc2_log_exit_caller(const char* fn)
     if (!s_trace && s_once) return;   // always log first; repeats only if env set
     s_once = true;
 
-    fprintf(stderr, "[EXIT] %s called. Stack:\n", fn);
+    mc2::fmt::print_err("[EXIT] {} called. Stack:\n", mc2::fmt::safe(fn));
     HANDLE proc = GetCurrentProcess();
     SymSetOptions(SYMOPT_LOAD_LINES | SYMOPT_DEFERRED_LOADS | SYMOPT_UNDNAME);
     static bool s_sym_initialized = false;
@@ -105,7 +107,7 @@ static void mc2_log_exit_caller(const char* fn)
         if (SymGetLineFromAddr64(proc, (DWORD64)frames[i], &dispL, &line)) {
             fileName = line.FileName; lineNum = line.LineNumber;
         }
-        fprintf(stderr, "  #%02d  %s  (%s:%u)\n", i, symName, fileName, lineNum);
+        mc2::fmt::print_err("  #{:02d}  {}  ({}:{:d})\n", mc2::fmt::as_i32(i), mc2::fmt::safe(symName), mc2::fmt::safe(fileName), mc2::fmt::as_u32(lineNum));
     }
     fflush(stderr);
 }
@@ -313,7 +315,7 @@ int __stdcall gos_rand()
 #ifdef MC2_RNG_TRACE
         if (mc2_diag::tagEnabled("RNG")) {
             char buf[48];
-            snprintf(buf, sizeof(buf), "{\"v\":%d}", result);
+            mc2::fmt::to_buf(buf, "{{\"v\":{:d}}}", mc2::fmt::as_i32(result));
             mc2_diag::writeEvent("RNG", 1, 0, buf);
         }
 #endif
@@ -407,8 +409,9 @@ char* __stdcall gos_GetFormattedDate( bool Verbose, WORD Year/*=-1*/, WORD Month
 
     if(!Verbose)
     {
-        char* date = new char[16];
-        sprintf(date, "%02d/%02d/%04d", Day, Month, Year);
+        constexpr size_t kDateBytes = 16;
+        char* date = new char[kDateBytes];
+        mc2::fmt::to_buf_n(date, kDateBytes, "{:02d}/{:02d}/{:04d}", mc2::fmt::as_i32(Day), mc2::fmt::as_i32(Month), mc2::fmt::as_i32(Year));
         return date;
     }
 
@@ -452,8 +455,9 @@ char* __stdcall gos_GetFormattedTime( WORD Hour/*=-1*/, WORD Minute/*=-1*/, WORD
         Second = 0;
     }
 
-    char* date = new char[16];
-    sprintf(date, "%02d:%02d:%02d", Hour, Minute, Second);
+    constexpr size_t kTimeBytes = 16;
+    char* date = new char[kTimeBytes];
+    mc2::fmt::to_buf_n(date, kTimeBytes, "{:02d}:{:02d}:{:02d}", mc2::fmt::as_i32(Hour), mc2::fmt::as_i32(Minute), mc2::fmt::as_i32(Second));
     return date;
 }
 
@@ -475,7 +479,7 @@ __int64 __stdcall gos_GetDriveFreeSpace( char* Path )
 #ifndef PLATFORM_WINDOWS
     struct statvfs s;
     if(-1 == statvfs(Path, &s)) {
-        SPEW(("statvfs: %s\n", strerror(errno)));
+        MC2_LOG(Core, Debug, "statvfs: {}", mc2::fmt::safe(strerror(errno)));
         return 0;
     }
 
@@ -506,20 +510,12 @@ __int64 __stdcall gos_GetDriveFreeSpace( char* Path )
 		// to remove. The fallback answers for the WRONG VOLUME, so the line
 		// has to survive to stderr.
 		const DWORD err = GetLastError();
-		fprintf(stderr,
-		        "[DISK_GUARD] gos_GetDriveFreeSpace: GetDiskFreeSpaceEx failed "
-		        "for '%s' (err %lu); falling back to CURRENT DRIVE -- the "
-		        "figure below may describe a different volume\n",
-		        Path ? Path : "(null)", (unsigned long)err);
+		mc2::fmt::print_err("[DISK_GUARD] gos_GetDriveFreeSpace: GetDiskFreeSpaceEx failed for '{}' (err {:d}); falling back to CURRENT DRIVE -- the figure below may describe a different volume\n", mc2::fmt::safe(Path ? Path : "(null)"), mc2::fmt::as_u32((unsigned long)err));
 		fflush(stderr);
 		freeBytesAvailable.QuadPart = 0;
 		if (!GetDiskFreeSpaceEx(nullptr, &freeBytesAvailable, nullptr, nullptr))
 		{
-			fprintf(stderr,
-			        "[DISK_GUARD] gos_GetDriveFreeSpace: current-drive fallback "
-			        "also failed (err %lu); returning 0 so callers take the "
-			        "out-of-space branch\n",
-			        (unsigned long)GetLastError());
+			mc2::fmt::print_err("[DISK_GUARD] gos_GetDriveFreeSpace: current-drive fallback also failed (err {:d}); returning 0 so callers take the out-of-space branch\n", mc2::fmt::as_u32((unsigned long)GetLastError()));
 			fflush(stderr);
 			return 0;
 		}
@@ -547,7 +543,7 @@ void __stdcall gos_LoadDataFromRegistry( const char* keyName, void* pData, DWORD
     const char* home_dir = getenv("HOME");
     if(home_dir == nullptr)
     {
-        SPEW(("gos_LoadDataFromRegistry", "home directory is not set\n"));
+        MC2_LOG(Io, Debug, "gos_Registry: home directory is not set");
         *szData = 0;
         return;
     }
@@ -557,7 +553,7 @@ void __stdcall gos_LoadDataFromRegistry( const char* keyName, void* pData, DWORD
 
     const char* config_dir = getenv("XDG_CONFIG_HOME");
     if(config_dir == nullptr) {
-        sprintf(cfg_dir, "%s/%s", home_dir, g_user_base_config_dir);
+        mc2::fmt::to_buf(cfg_dir, "{}/{}", mc2::fmt::safe(home_dir), mc2::fmt::safe(g_user_base_config_dir));
     } else {
         strncpy(cfg_dir, config_dir, 1023);
         cfg_dir[cfg_dir_size-1] = '\0';
@@ -565,19 +561,20 @@ void __stdcall gos_LoadDataFromRegistry( const char* keyName, void* pData, DWORD
 
     struct stat st;
     if(-1 == stat(cfg_dir, &st)) {
-        SPEW(("stat: %s\n", strerror(errno)));
+        MC2_LOG(Core, Debug, "stat: {}", mc2::fmt::safe(strerror(errno)));
         *szData = 0;
         return;
     }
     if(!S_ISDIR(st.st_mode)) {
-        SPEW(("REG", "gos_LoadDataFromRegistry: %s is not directory\n", cfg_dir));
+        MC2_LOG(Core, Debug, "gos_LoadDataFromRegistry: {} is not directory", mc2::fmt::safe(cfg_dir));
         *szData = 0;
         return;
     }
 
     // 1 + 1 =  for \0 and /
-    char* mc2_conf_dir = new char[strlen(cfg_dir) + strlen(g_user_config_dir) + 1 + 1];
-    sprintf(mc2_conf_dir, "%s/%s", cfg_dir, g_user_config_dir);
+    const size_t confDirBytes = strlen(cfg_dir) + strlen(g_user_config_dir) + 1 + 1;
+    char* mc2_conf_dir = new char[confDirBytes];
+    mc2::fmt::to_buf_n(mc2_conf_dir, confDirBytes, "{}/{}", cfg_dir, g_user_config_dir);
 
     // if directory does not exist create it
 #ifndef PLATFORM_WINDOWS
@@ -589,15 +586,16 @@ void __stdcall gos_LoadDataFromRegistry( const char* keyName, void* pData, DWORD
 #else
         if(-1 == mkdir(mc2_conf_dir, permissions)) {
 #endif
-            SPEW(("stat: %s\n", strerror(errno)));
+            MC2_LOG(Core, Debug, "stat: {}", mc2::fmt::safe(strerror(errno)));
             *szData = 0;
             delete[] mc2_conf_dir;
             return;
         }
     }
 
-    char* reg_file = new char[strlen(mc2_conf_dir) + 1 + strlen(g_user_reg_file) + 1];
-    sprintf(reg_file, "%s/%s", mc2_conf_dir, g_user_reg_file);
+    const size_t regFileBytes = strlen(mc2_conf_dir) + 1 + strlen(g_user_reg_file) + 1;
+    char* reg_file = new char[regFileBytes];
+    mc2::fmt::to_buf_n(reg_file, regFileBytes, "{}/{}", mc2_conf_dir, g_user_reg_file);
 
     // check if reg file exists
     if(-1 == stat(reg_file, &st)) {
@@ -633,24 +631,24 @@ bool __stdcall gos_GetUserDataDirectory(char* user_dir, const int len)
 	CoTaskMemFree(homeDir);
 #else
     const char* home_dir = getenv("HOME");
-    if(home_dir == NULL)
+    if(home_dir == nullptr)
     {
-        SPEW(("gos_GetUserDataDirectory", "home directory is not set\n"));
+        MC2_LOG(Io, Debug, "gos_Registry: home directory is not set");
         return false;
     }
 
     const char* config_dir = getenv("XDG_CONFIG_HOME");
-    if(config_dir != NULL) {
+    if(config_dir != nullptr) {
         strncpy(cfg_dir, config_dir, cfg_dir_size-1);
         cfg_dir[cfg_dir_size-1] = '\0';
 
         if(-1 == stat(cfg_dir, &st)) {
-            SPEW(("stat: %s\n", strerror(errno)));
+            MC2_LOG(Core, Debug, "stat: {}", mc2::fmt::safe(strerror(errno)));
             return false;
         }
 
         if(!S_ISDIR(st.st_mode)) {
-            SPEW(("SAVELOAD", "gos_GetUserDataDirectory: %s is not directory\n", cfg_dir));
+            MC2_LOG(Io, Debug, "gos_GetUserDataDirectory: {} is not directory", mc2::fmt::safe(cfg_dir));
             return false;
         }
     } else {
@@ -660,8 +658,9 @@ bool __stdcall gos_GetUserDataDirectory(char* user_dir, const int len)
 #endif
 
     // 1 + 1 =  for \0 and /
-    char* mc2_conf_dir = new char[strlen(cfg_dir) + strlen(g_user_config_dir) + 1 + 1];
-    sprintf(mc2_conf_dir, "%s/%s", cfg_dir, g_user_config_dir);
+    const size_t confDirBytes = strlen(cfg_dir) + strlen(g_user_config_dir) + 1 + 1;
+    char* mc2_conf_dir = new char[confDirBytes];
+    mc2::fmt::to_buf_n(mc2_conf_dir, confDirBytes, "{}/{}", cfg_dir, g_user_config_dir);
 
     // if directory does not exist create it
 #ifndef PLATFORM_WINDOWS
@@ -674,7 +673,7 @@ bool __stdcall gos_GetUserDataDirectory(char* user_dir, const int len)
 #else
         if(-1 == mkdir(mc2_conf_dir, permissions)) {
 #endif
-            SPEW(("stat: %s\n", strerror(errno)));
+            MC2_LOG(Core, Debug, "stat: {}", mc2::fmt::safe(strerror(errno)));
             delete[] mc2_conf_dir;
             return false;
         }

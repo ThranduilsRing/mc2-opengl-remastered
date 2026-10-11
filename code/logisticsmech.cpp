@@ -9,6 +9,7 @@ LogisticsMech.cpp			: Implementation of the LogisticsMech component.
 #include"logisticsmech.h"
 #include"logisticsdata.h"
 #include"inifile.h"
+#include "mc2fmt.h"
 
 LogisticsMech::LogisticsMech( LogisticsVariant* pVar, int Count ) : pVariant( pVar )
 {
@@ -46,7 +47,7 @@ void LogisticsMech::setVariant( LogisticsVariant* pVar )
 long LogisticsMech::save( FitIniFile& file, long counter )
 {
 	char tmp[256];
-	sprintf( tmp, "Inventory%ld", counter );
+	mc2::fmt::to_buf(tmp, "Inventory{:d}", mc2::fmt::as_i32(counter));
 
 	file.writeBlock( tmp );
 

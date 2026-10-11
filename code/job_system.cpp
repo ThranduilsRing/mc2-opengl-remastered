@@ -22,6 +22,7 @@
 #include <thread>
 #include <vector>
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 // ===========================================================================
 //  LEGACY FRAME-JOBS-1 API  (verbatim behavior — do not change the OFF path)
@@ -119,7 +120,7 @@ void frameJobsInit() {
     g_workersCount.store(nw, std::memory_order_relaxed);
 
     if (g_touchEnabled && g_trace) {
-        printf("FRAME_JOBS_TOUCH: enabled workers=%d batch=%d\n", nw, g_batch);
+        mc2::fmt::print_out("FRAME_JOBS_TOUCH: enabled workers={:d} batch={:d}\n", mc2::fmt::as_i32(nw), mc2::fmt::as_i32(g_batch));
     }
 }
 

@@ -10,6 +10,7 @@
 
 #include "tgl_internal.h"
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 //-------------------------------------------------------------------------------
 // Statics
@@ -138,17 +139,7 @@ namespace {
 	{
 		if (!p || p->nullCountThisFrame == 0) return;
 		char _cbbuf[512];
-		snprintf(_cbbuf, sizeof(_cbbuf),
-			"[TGL_POOL v1] frame=%u pool=%s nulls=%u first_caller=%s shape=%p req=%u high_water=%u/%u mono_total=%llu",
-			(unsigned)g_mc2FrameCounter,
-			poolLabel,
-			(unsigned)p->nullCountThisFrame,
-			p->firstNullSnapshot.caller ? p->firstNullSnapshot.caller : "?",
-			p->firstNullSnapshot.shape,
-			(unsigned)p->firstNullSnapshot.numRequested,
-			(unsigned)p->firstNullSnapshot.numUsed_at_failure,
-			(unsigned)p->firstNullSnapshot.totalCapacity,
-			(unsigned long long)p->nullCountMonotonic);
+		mc2::fmt::to_buf(_cbbuf, "[TGL_POOL v1] frame={:d} pool={} nulls={:d} first_caller={} shape={:016X} req={:d} high_water={:d}/{:d} mono_total={:d}", mc2::fmt::as_u32((unsigned)g_mc2FrameCounter), mc2::fmt::safe(poolLabel), mc2::fmt::as_u32((unsigned)p->nullCountThisFrame), mc2::fmt::safe(p->firstNullSnapshot.caller ? p->firstNullSnapshot.caller : "?"), mc2::fmt::as_ptr(p->firstNullSnapshot.shape), mc2::fmt::as_u32((unsigned)p->firstNullSnapshot.numRequested), mc2::fmt::as_u32((unsigned)p->firstNullSnapshot.numUsed_at_failure), mc2::fmt::as_u32((unsigned)p->firstNullSnapshot.totalCapacity), mc2::fmt::as_u64((unsigned long long)p->nullCountMonotonic));
 		puts(_cbbuf);
 		crashbundle_append(_cbbuf);
 	}
@@ -186,9 +177,7 @@ void drainTglPoolStats (void)
 		const unsigned long long tM = monoOf(trianglePool);
 		if ((vM | cM | fM | sM | tM) != 0ULL) {
 			char _cbbuf[384];
-			snprintf(_cbbuf, sizeof(_cbbuf),
-				"[TGL_POOL v1] summary mono_total={vertex:%llu, color:%llu, face:%llu, shadow:%llu, triangle:%llu} since=process_start",
-				vM, cM, fM, sM, tM);
+			mc2::fmt::to_buf(_cbbuf, "[TGL_POOL v1] summary mono_total={{vertex:{:d}, color:{:d}, face:{:d}, shadow:{:d}, triangle:{:d}}} since=process_start", mc2::fmt::as_u64(vM), mc2::fmt::as_u64(cM), mc2::fmt::as_u64(fM), mc2::fmt::as_u64(sM), mc2::fmt::as_u64(tM));
 			puts(_cbbuf);
 			crashbundle_append(_cbbuf);
 			fflush(stdout);
@@ -213,22 +202,14 @@ void drainTglPoolStatsOnShutdown (void)
 	if (mcTextureManager)
 	{
 		char _txmbuf[128];
-		snprintf(_txmbuf, sizeof(_txmbuf),
-			"[TXM v1] event=process_exit peak_textures=%ld/%d",
-			mcTextureManager->getPeakUsedTextures(), MAX_MC2_GOS_TEXTURES);
+		mc2::fmt::to_buf(_txmbuf, "[TXM v1] event=process_exit peak_textures={:d}/{:d}", mc2::fmt::as_i32(mcTextureManager->getPeakUsedTextures()), mc2::fmt::as_i32(MAX_MC2_GOS_TEXTURES));
 		MC2_DIAG_PUTS(_txmbuf);
 		crashbundle_append(_txmbuf);
 	}
 
 	{
 		char _cbbuf[384];
-		snprintf(_cbbuf, sizeof(_cbbuf),
-			"[TGL_POOL v1] summary mono_total={vertex:%llu, color:%llu, face:%llu, shadow:%llu, triangle:%llu} since=process_start (shutdown)",
-			monoOf(vertexPool),
-			monoOf(colorPool),
-			monoOf(facePool),
-			monoOf(shadowPool),
-			monoOf(trianglePool));
+		mc2::fmt::to_buf(_cbbuf, "[TGL_POOL v1] summary mono_total={{vertex:{:d}, color:{:d}, face:{:d}, shadow:{:d}, triangle:{:d}}} since=process_start (shutdown)", mc2::fmt::as_u64(monoOf(vertexPool)), mc2::fmt::as_u64(monoOf(colorPool)), mc2::fmt::as_u64(monoOf(facePool)), mc2::fmt::as_u64(monoOf(shadowPool)), mc2::fmt::as_u64(monoOf(trianglePool)));
 		puts(_cbbuf);
 		crashbundle_append(_cbbuf);
 	}
@@ -268,15 +249,11 @@ void logTglPoolPeaks (const char* context)
 		if (p.cap > 0)
 		{
 			unsigned pct = (unsigned)(((unsigned long long)p.peak * 100u) / p.cap);
-			snprintf(_cbbuf, sizeof(_cbbuf),
-				"[TGL_POOL v1] event=%s pool=%-8s peak=%u/%u pct=%u%%",
-				context, p.name, (unsigned)p.peak, (unsigned)p.cap, pct);
+			mc2::fmt::to_buf(_cbbuf, "[TGL_POOL v1] event={} pool={:<8} peak={:d}/{:d} pct={:d}%", mc2::fmt::safe(context), mc2::fmt::safe(p.name), mc2::fmt::as_u32((unsigned)p.peak), mc2::fmt::as_u32((unsigned)p.cap), mc2::fmt::as_u32(pct));
 		}
 		else
 		{
-			snprintf(_cbbuf, sizeof(_cbbuf),
-				"[TGL_POOL v1] event=%s pool=%-8s peak=%u/? pct=?%%",
-				context, p.name, (unsigned)p.peak);
+			mc2::fmt::to_buf(_cbbuf, "[TGL_POOL v1] event={} pool={:<8} peak={:d}/? pct=?%", mc2::fmt::safe(context), mc2::fmt::safe(p.name), mc2::fmt::as_u32((unsigned)p.peak));
 		}
 		puts(_cbbuf);
 		crashbundle_append(_cbbuf);

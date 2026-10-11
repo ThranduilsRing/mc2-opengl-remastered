@@ -7,6 +7,7 @@ LogisticsMissionInfo.cpp			: Implementation of the LogisticsMissionInfo componen
 \*************************************************************************************************/
 
 #include "logisticsmissioninfo_internal.h"
+#include "mc2fmt.h"
 
 
 
@@ -121,7 +122,7 @@ long LogisticsMissionInfo::init( FitIniFile& file )
 	{
 		groups[i].numberToBeCompleted = -1; // initialize
 
-		sprintf( blockName, "Group%ld", i );
+		mc2::fmt::to_buf(blockName, "Group{:d}", mc2::fmt::as_i32(i));
 		if ( NO_ERR != file.seekBlock( blockName ) )
 		{
 			Assert( 0, i, "couldn't find this group in the campaign file" );
@@ -144,7 +145,7 @@ long LogisticsMissionInfo::init( FitIniFile& file )
 		if ( NO_ERR != file.readIdString( "Video", tmp, 255 ) )
 		{
 			char errorStr[256];
-			sprintf( errorStr, "couldn't find the video for operation %ld", i );
+			mc2::fmt::to_buf(errorStr, "couldn't find the video for operation {:d}", mc2::fmt::as_i32(i));
 			Assert( 0, 0, errorStr );
 			
 		}
@@ -172,7 +173,7 @@ long LogisticsMissionInfo::init( FitIniFile& file )
 		{
 			MissionInfo* pInfo = new MissionInfo;
 
-			sprintf( blockName, "Group%ldMission%ld", i, j );
+			mc2::fmt::to_buf(blockName, "Group{:d}Mission{:d}", mc2::fmt::as_i32(i), mc2::fmt::as_i32(j));
 			if ( NO_ERR == file.seekBlock( blockName ) )
 			{
 				char fileName[1024];
@@ -198,7 +199,7 @@ long LogisticsMissionInfo::init( FitIniFile& file )
 				if ( NO_ERR != missionFile.open( (char*)(const char*)path ) )
 				{
 					char errorStr[256];
-					sprintf( errorStr, "couldn't open file %s", fileName );
+					mc2::fmt::to_buf(errorStr, "couldn't open file {}", mc2::fmt::safe(fileName));
 					Assert( 0, 0, errorStr );
 					continue;
 				}
@@ -346,7 +347,7 @@ long LogisticsMissionInfo::load( FitIniFile& file )
 	if ( NO_ERR != campaignFile.open( fileName ) )
 	{
 		char errorStr[256];
-		sprintf( errorStr, "couldn't find file %s", path );
+		mc2::fmt::to_buf(errorStr, "couldn't find file {}", mc2::fmt::safe(path));
 		return -1;
 	}
 
@@ -384,7 +385,7 @@ long LogisticsMissionInfo::load( FitIniFile& file )
 	for ( int i = 0; i < count; i++ )
 	{
 		long cnt = 0;
-		sprintf( header, "Mission%ld", i );
+		mc2::fmt::to_buf(header, "Mission{:d}", mc2::fmt::as_i32(i));
 		file.readIdLong( header, cnt );
 
 		MissionInfo* pInfo = pGroup->infos[(unsigned long)cnt];
@@ -427,7 +428,7 @@ long LogisticsMissionInfo::load( FitIniFile& file )
 		int i = 0;
 		while( true )
 		{
-			sprintf( header, "File%ld", i );
+			mc2::fmt::to_buf(header, "File{:d}", mc2::fmt::as_i32(i));
 			char tmp[256];
 
 			if ( NO_ERR == file.readIdString( header, tmp, 255 ) )
@@ -485,7 +486,7 @@ void LogisticsMissionInfo::save( FitIniFile& file )
 		{
 			if ( (*iter)->completed )
 			{
-				sprintf( header, "Mission%ld", count );
+				mc2::fmt::to_buf(header, "Mission{:d}", mc2::fmt::as_i32(count));
 				file.writeIdLong( header, curMission );
 				count++;
 			}
@@ -499,7 +500,7 @@ void LogisticsMissionInfo::save( FitIniFile& file )
 	int i = 0;
 	for ( FILE_LIST::EIterator fIter = additionalPurchaseFiles.Begin(); !fIter.IsDone(); fIter++ )
 	{
-		sprintf( header, "File%ld", i );
+		mc2::fmt::to_buf(header, "File{:d}", mc2::fmt::as_i32(i));
 
 		file.writeIdString( header, (*fIter) );
 		i++;

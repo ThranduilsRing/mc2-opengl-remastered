@@ -10,6 +10,7 @@
 //===========================================================================//
 
 #include "gos_particle_bridge_internal.h"
+#include "mc2fmt.h"
 
 
 // VAO rebind helper (memory/projectz_overlay_findings.md trap #4) — AMD
@@ -248,15 +249,12 @@ void ensureInitialized() {
             kPrefix);
         if (!s_prog || !s_prog->shp_) {
             s_initFailed = true;
-            std::fprintf(stderr,
-                         "[GPU_PARTICLES v1] event=prog_compile_fail — bridge disabled\n");
+            mc2::fmt::print_err("[GPU_PARTICLES v1] event=prog_compile_fail — bridge disabled\n");
             std::fflush(stderr);
             s_prog = nullptr;
             return;
         }
-        std::fprintf(stderr,
-                     "[GPU_PARTICLES v1] event=prog_compiled prog=%u\n",
-                     (unsigned)s_prog->shp_);
+        mc2::fmt::print_err("[GPU_PARTICLES v1] event=prog_compiled prog={:d}\n", mc2::fmt::as_u32((unsigned)s_prog->shp_));
         std::fflush(stderr);
 
         // P0-4: cache uniform locations now that the program is linked.
@@ -305,8 +303,7 @@ void ensureInitialized() {
         s_loc_vfxAmbientColor = glGetUniformLocation(s_prog->shp_, "u_vfxAmbientColor");
         if (s_loc_cameraRight < 0 || s_loc_cameraUp < 0) {
             if (groupLogEnabled())
-                std::fprintf(stderr, "[B2] gos_particle_bridge: uniform locations missing — right=%d up=%d\n",
-                             s_loc_cameraRight, s_loc_cameraUp);
+                mc2::fmt::print_err("[B2] gos_particle_bridge: uniform locations missing — right={:d} up={:d}\n", mc2::fmt::as_i32(s_loc_cameraRight), mc2::fmt::as_i32(s_loc_cameraUp));
         }
     }
 }
@@ -369,7 +366,7 @@ extern "C" void gos_particle_bridge_flush(const mc2::particles::GpuParticle* rec
         static bool s_failLogEmitted = false;
         if (!s_failLogEmitted) {
             s_failLogEmitted = true;
-            std::fprintf(stderr, "[GOSFX_GPU v1] ERROR init_failed\n");
+            mc2::fmt::print_err("[GOSFX_GPU v1] ERROR init_failed\n");
             std::fflush(stderr);
         }
         return;
@@ -423,9 +420,7 @@ extern "C" void gos_particle_bridge_flush(const mc2::particles::GpuParticle* rec
         static bool s_bannerEmitted = false;
         if (!s_bannerEmitted) {
             s_bannerEmitted = true;
-            std::fprintf(stderr,
-                         "[GOSFX_GPU v1] enabled=1 sprites=%u draws=%u textures=%u blendMode=straight\n",
-                         count, numGroups, numGroups);
+            mc2::fmt::print_err("[GOSFX_GPU v1] enabled=1 sprites={:d} draws={:d} textures={:d} blendMode=straight\n", mc2::fmt::as_u32(count), mc2::fmt::as_u32(numGroups), mc2::fmt::as_u32(numGroups));
             std::fflush(stderr);
         }
     }
@@ -438,10 +433,7 @@ extern "C" void gos_particle_bridge_flush(const mc2::particles::GpuParticle* rec
             s_uvDumpDone = true;
             for (unsigned gi = 0; gi < numGroups; ++gi) {
                 const mc2::particles::GroupInfo& g = groups[gi];
-                std::fprintf(stderr,
-                    "[GOSFX_GPU v1] group %u: tex=%u uv=(%.2f,%.2f)+(%.2f,%.2f) count=%u blend=%s\n",
-                    gi, g.handle, g.u0, g.v0, g.us, g.vs, g.count,
-                    g.blendMode == 1 ? "additive" : "alpha");
+                mc2::fmt::print_err("[GOSFX_GPU v1] group {:d}: tex={:d} uv=({:.2f},{:.2f})+({:.2f},{:.2f}) count={:d} blend={}\n", mc2::fmt::as_u32(gi), mc2::fmt::as_u32(g.handle), g.u0, g.v0, g.us, g.vs, mc2::fmt::as_u32(g.count), mc2::fmt::safe(g.blendMode == 1 ? "additive" : "alpha"));
             }
             std::fflush(stderr);
         }
@@ -453,7 +445,7 @@ extern "C" void gos_particle_bridge_flush(const mc2::particles::GpuParticle* rec
         static bool warned = false;
         if (!warned) {
             if (groupLogEnabled())
-                std::fprintf(stderr, "[B2] gos_particle_bridge: flush without gos_SetActiveCamera; using last-known basis\n");
+                mc2::fmt::print_err("[B2] gos_particle_bridge: flush without gos_SetActiveCamera; using last-known basis\n");
             warned = true;
         }
     }
@@ -670,8 +662,7 @@ extern "C" void gos_particle_bridge_flush(const mc2::particles::GpuParticle* rec
             glDrawArrays(GL_TRIANGLES, 0, (GLsizei)(count * 6u));
         } else {
             if (groupLogEnabled()) {
-                std::fprintf(stderr,
-                    "[GOSFX_GPU v1] ERROR missing_texture handle=%u\n", gosHandle);
+                mc2::fmt::print_err("[GOSFX_GPU v1] ERROR missing_texture handle={:d}\n", mc2::fmt::as_u32(gosHandle));
                 std::fflush(stderr);
             }
         }
@@ -696,8 +687,7 @@ extern "C" void gos_particle_bridge_flush(const mc2::particles::GpuParticle* rec
                         static bool s_b2DebtWarned = false;
                         if (!s_b2DebtWarned) {
                             s_b2DebtWarned = true;
-                            std::fprintf(stderr,
-                                "[GOSFX_GPU v1] NOTE handle=0 groups present (B2 debt: point/shard/tube emitters not yet texture-wired)\n");
+                            mc2::fmt::print_err("[GOSFX_GPU v1] NOTE handle=0 groups present (B2 debt: point/shard/tube emitters not yet texture-wired)\n");
                             std::fflush(stderr);
                         }
                     }
@@ -708,8 +698,7 @@ extern "C" void gos_particle_bridge_flush(const mc2::particles::GpuParticle* rec
                     if (groupLogEnabled()) {
                         static std::unordered_set<uint32_t> s_loggedMissingHandles;
                         if (s_loggedMissingHandles.insert(grp.handle).second) {
-                            std::fprintf(stderr,
-                                "[GOSFX_GPU v1] ERROR missing_texture handle=%u\n", grp.handle);
+                            mc2::fmt::print_err("[GOSFX_GPU v1] ERROR missing_texture handle={:d}\n", mc2::fmt::as_u32(grp.handle));
                             std::fflush(stderr);
                         }
                     }

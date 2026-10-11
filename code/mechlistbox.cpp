@@ -27,6 +27,7 @@ MechListBox.cpp			: Implementation of the MechListBox component.
 // are read at first use rather than in a namespace-scope initializer.
 static bool cheatInfiniteMoney() { static const bool on = mc2::gate::get<"MC2_CHEAT_INFINITE_MONEY">(); return on; }
 #include"txmmgr.h"
+#include "mc2fmt.h"
 
 MechListBoxItem* MechListBoxItem::s_templateItem = nullptr;
 
@@ -133,7 +134,7 @@ int MechListBox::init()
 	if ( NO_ERR != file.open( path ) )
 	{
 		char errorStr[256];
-		sprintf( errorStr, "couldn't open file %s", path );
+		mc2::fmt::to_buf(errorStr, "couldn't open file {}", mc2::fmt::safe(path));
 		Assert( 0, 0, errorStr );
 		return -1;
 	}
@@ -182,11 +183,11 @@ MechListBoxItem::MechListBoxItem( LogisticsMech* pRefMech, long count )
 	chassisName.setText( pMech->getChassisName() );
 	
 	char text[32];
-	sprintf( text, "%ld", pMech->getCost() );
+	mc2::fmt::to_buf(text, "{:d}", mc2::fmt::as_i32(pMech->getCost()));
 	costText.setText( text );
 
 	mechCount = LogisticsData::instance->getVariantsInInventory( pRefMech->getVariant(), bIncludeForceGroup );
-	sprintf( text, "%ld", mechCount );
+	mc2::fmt::to_buf(text, "{:d}", mc2::fmt::as_i32(mechCount));
 	countText.setText( text );
 
 
@@ -194,7 +195,7 @@ MechListBoxItem::MechListBoxItem( LogisticsMech* pRefMech, long count )
 
 	variantName.setText( pMech->getName() );
 	
-	sprintf( text, "%.0lf", pMech->getMaxWeight() );
+	mc2::fmt::to_buf(text, "{:.0f}", pMech->getMaxWeight());
 	weightText.setText( text );
 
 	// ---- MC2_LOG_LOGISTICS mech-list item diagnostic (env-gated, no behavior change) ----
@@ -203,13 +204,7 @@ MechListBoxItem::MechListBoxItem( LogisticsMech* pRefMech, long count )
 		cLoadString( pMech->getChassisName(), chassisBuf, sizeof(chassisBuf) );
 		FILE* mechListLog = fopen("logistics_debug.log", "a");
 		if ( mechListLog ) {
-			fprintf( mechListLog,
-				"[MECHLIST] item chassisNameID=%ld chassisText='%s' variantName='%s' cost=%ld weight=%.0f\n",
-				pMech->getChassisName(),
-				chassisBuf,
-				(const char*)pMech->getName(),
-				pMech->getCost(),
-				pMech->getMaxWeight() );
+			mc2::fmt::print(mechListLog, "[MECHLIST] item chassisNameID={:d} chassisText='{}' variantName='{}' cost={:d} weight={:.0f}\n", mc2::fmt::as_i32(pMech->getChassisName()), mc2::fmt::safe(chassisBuf), mc2::fmt::safe((const char*)pMech->getName()), mc2::fmt::as_i32(pMech->getCost()), pMech->getMaxWeight());
 			fflush( mechListLog );
 			fclose( mechListLog );
 		}
@@ -282,9 +277,9 @@ void MechListBoxItem::init( FitIniFile& file )
 		char blockName[64];
 		for ( int i = 0; i < 4; i++ )
 		{
-			sprintf( blockName, "OrangeAnimation%ld", i );
+			mc2::fmt::to_buf(blockName, "OrangeAnimation{:d}", mc2::fmt::as_i32(i));
 			s_templateItem->animations[1][i].init( &file, blockName );
-			sprintf( blockName, "Animation%ld", i );
+			mc2::fmt::to_buf(blockName, "Animation{:d}", mc2::fmt::as_i32(i));
 			s_templateItem->animations[0][i].init( &file, blockName );
 		}
 		
@@ -353,7 +348,7 @@ void MechListBoxItem::update()
 	{
 		animTime = .0001f;
 	}
-	sprintf( text, "%ld", mechCount );
+	mc2::fmt::to_buf(text, "{:d}", mc2::fmt::as_i32(mechCount));
 	countText.setText( text );
 	if ( animTime )
 	{
@@ -555,10 +550,8 @@ void MechListBox::initIcon( LogisticsMech* pMech, aObject& mechIcon )
 		// getChassisName() returns a long string-table id, not a char* -- using it
 		// with %s dereferences the id value and crashes (READ at the id). Log the
 		// variant name (an EString) for the %s field instead.
-		printf("[mechicon-list] mech=%s iconIndex=%ld cols=%ld row=%ld col=%ld "
-		       "widgetW=%.0f widgetH=%.0f u=[%.1f,%.1f] v=[%.1f,%.1f] "
-		       "fileWidth=%.0f fileHeight=%.0f uvX=[%.3f,%.3f] uvY=[%.3f,%.3f]\n",
-		       (const char*)pMech->getName(), index, cols, yIndex, xIndex,
+		mc2::fmt::print_out("[mechicon-list] mech={} iconIndex={:d} cols={:d} row={:d} col={:d} widgetW={:.0f} widgetH={:.0f} u=[{:.1f},{:.1f}] v=[{:.1f},{:.1f}] fileWidth={:.0f} fileHeight={:.0f} uvX=[{:.3f},{:.3f}] uvY=[{:.3f},{:.3f}]\n",
+		       mc2::fmt::safe((const char*)pMech->getName()), mc2::fmt::as_i32(index), mc2::fmt::as_i32(cols), mc2::fmt::as_i32(yIndex), mc2::fmt::as_i32(xIndex),
 		       width, height,
 		       u, u2, v, v2,
 		       fileW, fileH, u/fileW, u2/fileW, v/fileH, v2/fileH);

@@ -1,6 +1,7 @@
 // Camera: screen-to-world projection: the ground-plane and terrain approximations and inverseProject.
 // Declared in the class headers; shared names in camera_internal.h.
 #include "camera_internal.h"
+#include "mc2fmt.h"
 
 
 //---------------------------------------------------------------------------
@@ -90,14 +91,7 @@ static unsigned long parityReport (Stuff::Vector2DOf<long> &screenPos,
 		dWorld = (d2 > 0.0f) ? sqrtf(d2) : 0.0f;
 	}
 
-	std::printf("[PICK_PARITY] screen=(%ld,%ld)  "
-	            "raycast=(%.3f,%.3f,%.3f) cell=(%ld,%ld)  "
-	            "legacy=(%.3f,%.3f,%.3f) cell=(%ld,%ld)  "
-	            "dWorld=%.4f  raycastHit=%d\n",
-	            (long)screenPos.x, (long)screenPos.y,
-	            raycastPt.x, raycastPt.y, raycastPt.z, rcTileC, rcTileR,
-	            point.x, point.y, point.z, legacyTileC, legacyTileR,
-	            dWorld, raycastHit ? 1 : 0);
+	mc2::fmt::print_out("[PICK_PARITY] screen=({:d},{:d})  raycast=({:.3f},{:.3f},{:.3f}) cell=({:d},{:d})  legacy=({:.3f},{:.3f},{:.3f}) cell=({:d},{:d})  dWorld={:.4f}  raycastHit={:d}\n", mc2::fmt::as_i32((long)screenPos.x), mc2::fmt::as_i32((long)screenPos.y), raycastPt.x, raycastPt.y, raycastPt.z, mc2::fmt::as_i32(rcTileC), mc2::fmt::as_i32(rcTileR), point.x, point.y, point.z, mc2::fmt::as_i32(legacyTileC), mc2::fmt::as_i32(legacyTileR), dWorld, mc2::fmt::as_i32(raycastHit ? 1 : 0));
 	std::fflush(stdout);
 
 	// Preserve flag-on return behavior: raycast wins when it hit.
@@ -397,8 +391,7 @@ unsigned long Camera::inverseProject (Stuff::Vector2DOf<long> &screenPos, Stuff:
 		if (s_vplPickTrace && !s_announced)
 		{
 			s_announced = true;
-			std::printf("[VPL_PICK v1] event=repoint_active "
-			            "path=frustum_aabb+forward_proj_refine\n");
+			mc2::fmt::print_out("[VPL_PICK v1] event=repoint_active path=frustum_aabb+forward_proj_refine\n");
 		}
 	}
 
@@ -526,10 +519,7 @@ unsigned long Camera::inverseProject (Stuff::Vector2DOf<long> &screenPos, Stuff:
 			}
 		}
 		if (s_capTrace)
-			fprintf(stderr, "[PICK_CAP] mode=lowcam numTiles=%lu admitted=%ld "
-				"contained=%ld cursor=(%ld,%ld) hit=%d\n",
-				numTiles, admitted, contained,
-				(long)screenPos.x, (long)screenPos.y, closestTile ? 1 : 0);
+			mc2::fmt::print_err("[PICK_CAP] mode=lowcam numTiles={:d} admitted={:d} contained={:d} cursor=({:d},{:d}) hit={:d}\n", mc2::fmt::as_u32(numTiles), mc2::fmt::as_i32(admitted), mc2::fmt::as_i32(contained), mc2::fmt::as_i32((long)screenPos.x), mc2::fmt::as_i32((long)screenPos.y), mc2::fmt::as_i32(closestTile ? 1 : 0));
 	}
 	else
 	{
@@ -790,11 +780,7 @@ unsigned long Camera::inverseProject (Stuff::Vector2DOf<long> &screenPos, Stuff:
 					for ( long column = 0; column < side; column++ )
 						for ( long row = 0; row < side; row++ )
 							sampleVertex(row, column, bfDis, bfRow, bfCol);
-					fprintf(stderr, "[PICK_FALLBACK] parity=%s coarse=(%d,%d) brute=(%d,%d) "
-						"coarse_dsq=%.1f brute_dsq=%.1f cursor=(%ld,%ld)\n",
-						(bfRow == closeRow && bfCol == closeCol) ? "ok" : "DIFF",
-						closeRow, closeCol, bfRow, bfCol, dis, bfDis,
-						(long)screenPos.x, (long)screenPos.y);
+					mc2::fmt::print_err("[PICK_FALLBACK] parity={} coarse=({:d},{:d}) brute=({:d},{:d}) coarse_dsq={:.1f} brute_dsq={:.1f} cursor=({:d},{:d})\n", mc2::fmt::safe((bfRow == closeRow && bfCol == closeCol) ? "ok" : "DIFF"), mc2::fmt::as_i32(closeRow), mc2::fmt::as_i32(closeCol), mc2::fmt::as_i32(bfRow), mc2::fmt::as_i32(bfCol), dis, bfDis, mc2::fmt::as_i32((long)screenPos.x), mc2::fmt::as_i32((long)screenPos.y));
 					// Keep the brute-force answer on divergence (trace mode only).
 					if (bfDis < dis) { dis = bfDis; closeRow = bfRow; closeCol = bfCol; }
 				}

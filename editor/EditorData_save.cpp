@@ -381,7 +381,7 @@ bool EditorData::save( const char* fileName, bool quickSave )
 
 	if (!armProvider)
 	{
-		CoInitialize(NULL);
+		CoInitialize(nullptr);
 		// by Methuselas: keep Editor provider identity on the Editor-owned
 		// SemVer lane instead of the legacy engine stamp.
 		armProvider = CreateProviderEngine("MC2Editor", (char*)EditorVersion_GetSemVer());
@@ -446,7 +446,7 @@ bool EditorData::save( const char* fileName, bool quickSave )
 	if (!quickSave && moveRebuildOk)
 	{
 		EditorDataTrace("EditorData::save: before MOVE_saveData(NULL): GameMap=%p", (void*)GameMap);
-		movePacketCount = MOVE_saveData(NULL);
+		movePacketCount = MOVE_saveData(nullptr);
 		EditorDataTrace("EditorData::save: MOVE_saveData(NULL) count=%lu", (unsigned long)movePacketCount);
 	}
 	else if (!quickSave)
@@ -541,7 +541,7 @@ bool EditorData::save( const char* fileName, bool quickSave )
 			if (land->colorMapName)
 				strcpy(name2,land->colorMapName);
 			else
-				_splitpath(fileName,NULL,NULL,name2,NULL);
+				_splitpath(fileName,nullptr,nullptr,name2,nullptr);
 			land->terrainTextures2->saveDetailTexture(name2);
 			DetailTextureNeedsSaving(false);
 		}
@@ -555,7 +555,7 @@ bool EditorData::save( const char* fileName, bool quickSave )
 			if (land->colorMapName)
 				strcpy(name2,land->colorMapName);
 			else
-				_splitpath(fileName,NULL,NULL,name2,NULL);
+				_splitpath(fileName,nullptr,nullptr,name2,nullptr);
 			land->terrainTextures2->saveWaterTexture(name2);
 			WaterTextureNeedsSaving(false);
 		}
@@ -569,7 +569,7 @@ bool EditorData::save( const char* fileName, bool quickSave )
 			if (land->colorMapName)
 				strcpy(name2,land->colorMapName);
 			else
-				_splitpath(fileName,NULL,NULL,name2,NULL);
+				_splitpath(fileName,nullptr,nullptr,name2,nullptr);
 			land->terrainTextures2->saveWaterDetail(name2);
 			WaterDetailTextureNeedsSaving(false);
 		}
@@ -737,8 +737,8 @@ bool EditorData::save( const char* fileName, bool quickSave )
 	EditorDataTrace("EditorData::save: mapAssetPtr->Close()");
 	// ARM
 	mapAssetPtr->Close();
-	mapAssetPtr = NULL;
-	mapAsset = NULL;
+	mapAssetPtr = nullptr;
+	mapAsset = nullptr;
 
 	if (initializedCOM)
 	{
@@ -750,7 +750,7 @@ bool EditorData::save( const char* fileName, bool quickSave )
 
 	EditorInterface::instance()->undoMgr.NoteThatASaveHasJustOccurred();
 
-	PlaySound("SystemDefault",NULL,SND_ASYNC);
+	PlaySound("SystemDefault",nullptr,SND_ASYNC);
 
 	EditorInterface::instance()->UnsetBusyMode();
 

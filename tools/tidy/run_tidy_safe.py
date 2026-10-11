@@ -226,7 +226,8 @@ def run(args, tidy=None, build=None) -> int:
         print("run_tidy_safe: nothing to do")
         return 0
 
-    before, problems = objhash.hash_files(ROOT, tree, kept, tool="run_tidy_safe")
+    compile_only = getattr(args, "rewrite", None) in COMPILE_ONLY
+    before, problems = ({"files": {}}, []) if compile_only else objhash.hash_files(ROOT, tree, kept, tool="run_tidy_safe")
     for pr in problems:
         print("run_tidy_safe: " + pr, file=sys.stderr)
     if problems:
@@ -292,6 +293,9 @@ def run(args, tidy=None, build=None) -> int:
 
     proven = []
     for rel in sorted(changed):
+        if compile_only:
+            proven.append(rel)
+            continue
         lines, _bad = objhash.compare_files({**before, "files": {rel: before["files"][rel]}})
         if lines and all(ln.startswith("OK") for ln in lines):
             proven.append(rel)
@@ -300,11 +304,40 @@ def run(args, tidy=None, build=None) -> int:
             reverted.append((rel, "; ".join(lines)))
     for rel, why in reverted:
         print(f"REVERT {rel}  {why}")
-    print(f"run_tidy_safe: {len(proven)} proven identical, {len(reverted)} reverted, {len(skipped)} skipped")
+    print(f"run_tidy_safe: {len(proven)} proven {'compiling' if compile_only else 'identical'}, {len(reverted)} reverted, {len(skipped)} skipped")
     if proven:
         print("kept (commit by pathspec): " + " ".join(proven))
         print("then: py -3 tools/cxx17_ratchet/cxx17_ratchet.py --check --tighten")
     return 1 if reverted else 0
+
+
+REWRITERS = ("typedef-aggregates", "null-tokens", "printf-buffers", "printf-log", "printf-log-tagged", "printf-log-parsed")
+#: Rewriters that change what the program prints or stores by design; their proof is "it compiles" here and the byte-level proof is the
+#: format corpus plus the log comparison (tools/tidy/printf_corpus.py, .claude/cleanup/cxx23-step3-logging-plan.md), not object identity.
+COMPILE_ONLY = ("printf-buffers", "printf-log", "printf-log-tagged", "printf-log-parsed")
+
+
+def rewriter(name: str):
+    """The text transform module for a --rewrite name."""
+    import importlib
+    return importlib.import_module(name.replace("-", "_"))
+
+
+def rewrite_hook(name: str):
+    """A stand-in for the clang-tidy call: apply the named text transform to the file the command line ends with."""
+    transform = rewriter(name)
+
+    def hook(cmd):
+        rel = cmd[-1]
+        path = os.path.join(ROOT, rel)
+        with open(path, encoding="utf-8", errors="surrogateescape", newline="") as fh:
+            src = fh.read()
+        new = transform.rewrite(src, rel) if getattr(transform, "PATH_AWARE", False) else transform.rewrite(src)
+        if new != src:
+            with open(path, "w", encoding="utf-8", errors="surrogateescape", newline="") as fh:
+                fh.write(new)
+        return subprocess.CompletedProcess(cmd, 0, "", "")
+    return hook
 
 
 def main(argv=None) -> int:
@@ -318,6 +351,8 @@ def main(argv=None) -> int:
     ap.add_argument("--dry-run", action="store_true", help="show the would-be diff, keep nothing")
     ap.add_argument("--checks", help="comma-separated clang-tidy checks to run instead of the whole safe set "
                                      "(each must be in SAFE_CHECKS), e.g. modernize-use-override")
+    ap.add_argument("--rewrite", choices=REWRITERS,
+                    help="apply this text transform instead of clang-tidy (same objhash proof, same per-TU revert)")
     ap.add_argument("--list-excluded", action="store_true")
     add_lane_args(ap)
     args = ap.parse_args(argv)
@@ -331,7 +366,7 @@ def main(argv=None) -> int:
     tree_abs = os.path.abspath(os.path.join(ROOT, args.tree)) if not os.path.isabs(args.tree) else args.tree
     try:
         with tidy_lock.TidyLock(tree_abs):
-            return run(args)
+            return run(args, tidy=rewrite_hook(args.rewrite) if args.rewrite else None)
     except tidy_lock.TidyBusy as e:
         print(f"run_tidy_safe: {e}", file=sys.stderr)
         return 3

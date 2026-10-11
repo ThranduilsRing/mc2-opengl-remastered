@@ -45,7 +45,7 @@ BOOL EditorInterface::OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message)
 		if (m_hBusyCursor) {
 			::SetCursor(m_hBusyCursor);
 		} else {
-			::SetCursor(LoadCursor(NULL, IDC_WAIT));
+			::SetCursor(LoadCursor(nullptr, IDC_WAIT));
 		}
 	}
 	else if ( hCursor )
@@ -63,7 +63,7 @@ BOOL EditorInterface::PreCreateWindow(CREATESTRUCT& cs)
 	
       cs.lpszClass = AfxRegisterWndClass(
             CS_DBLCLKS | CS_HREDRAW | CS_VREDRAW | CS_OWNDC, // CS_OWNDC required for OpenGL pixel format
-            NULL,
+            nullptr,
             (HBRUSH) (COLOR_WINDOW + 1));         
 	
 	return CWnd ::PreCreateWindow(cs);
@@ -78,7 +78,7 @@ void EditorInterface::OnKeyUp(UINT nChar, UINT nRepCnt, UINT nFlags)
 		selecting = prevSelecting;
 		painting = prevPainting;
 		dragging = prevDragging;
-		prevBrush = NULL;
+		prevBrush = nullptr;
 		prevSelecting = false;
 		prevPainting = false;
 		prevDragging = false;
@@ -265,7 +265,7 @@ void EditorInterface::initTacMap()
 	// We go through all the damned trouble to save it every time!
 	// This takes a LONG time.
 	// -fs
-	BYTE* pData = NULL;
+	BYTE* pData = nullptr;
 	long size = 0;
 	
 	FullPathFileName mPath;
@@ -292,7 +292,7 @@ void EditorInterface::initTacMap()
 	
 	tacMap.SetData( pData, size );
 	free( pData );
-	pData = NULL;
+	pData = nullptr;
 	tacMap.Invalidate(FALSE);  // async/coalesced — avoid synchronous per-event minimap repaint storm
 }
 
@@ -317,7 +317,7 @@ void EditorInterface::OnLButtonDblClk(UINT nFlags, CPoint point)
 	int dblX = (int)point.x, dblY = (int)point.y;
 	EditorRttClientToViewport( dblX, dblY );
 	EditorObject* pObject = EditorInterface_PickObjectAtScreenPoint(dblX, dblY);
-	if (NULL != pObject)
+	if (nullptr != pObject)
 	{
 		bool toggle = false;
 		EditorInterface_SelectObjectAtScreenPoint(dblX, dblY, toggle);
@@ -340,14 +340,14 @@ void EditorInterface::OnPaint()
 	if (bFirstLoad) {
 		if (!bThisIsInitialized) {
 			if (!m_hSplashBitMap) {
-				m_hSplashBitMap = (HBITMAP)LoadImage(NULL, "esplash.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+				m_hSplashBitMap = (HBITMAP)LoadImage(nullptr, "esplash.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
 			}
 			if (m_hSplashBitMap) {
 				CRect rcClient;
 				GetClientRect(rcClient);
 
 				BITMAP bm_struct;
-				CBitmap* pbmOld = NULL;
+				CBitmap* pbmOld = nullptr;
 				CDC dcMem;
 				dcMem.CreateCompatibleDC(&dc);
 				{
@@ -416,9 +416,9 @@ bool EditorInterface::SafeRunGameOSLogic()
 	// terrain is loaded yet — the dialog needs GL frames to draw itself.
 #ifdef MC2_IMGUI
 	const bool needRender = bThisIsInitialized &&
-	                        ((NULL != land) || MapGeneratorDialog::IsOpen());
+	                        ((nullptr != land) || MapGeneratorDialog::IsOpen());
 #else
-	const bool needRender = bThisIsInitialized && (NULL != land);
+	const bool needRender = bThisIsInitialized && (nullptr != land);
 #endif
 	if (needRender)
 	{

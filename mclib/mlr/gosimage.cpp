@@ -3,6 +3,7 @@
 //===========================================================================//
 
 #include"mlrheaders.hpp"
+#include "mc2fmt.h"
 
 //#############################################################################
 //############################    GOSImage    ###############################
@@ -29,7 +30,7 @@ GOSImage::GOSImage( DWORD iHandle ) : Plug (DefaultData)
 {
 	char str[20];
 
-	sprintf(str, "image%03d", iHandle);
+	mc2::fmt::to_buf(str, "image{:03d}", mc2::fmt::as_i32(iHandle));
 
 	imageName = str;
 

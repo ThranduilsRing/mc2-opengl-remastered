@@ -15,6 +15,7 @@
 #include "mech_texname_derive.h"  // GLB-TEXNAME-DERIVE-EXTRACT-1 pure name rules
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"
+#include "mc2fmt.h"
 
 #ifdef ENABLE_ASSIMP_IMPORTER
 
@@ -458,7 +459,7 @@ long ImportShapeFromMesh(const aiScene* scene, unsigned meshIdx,
 		sizeof(TG_TypeVertex) * mesh->mNumVertices);
 	TG_TypeTrianglePtr tris = (TG_TypeTrianglePtr)TG_Shape::tglHeap->Malloc(
 		sizeof(TG_TypeTriangle) * mesh->mNumFaces);
-	gosASSERT(verts != NULL && tris != NULL);
+	gosASSERT(verts != nullptr && tris != nullptr);
 	memset(verts, 0, sizeof(TG_TypeVertex) * mesh->mNumVertices);
 	memset(tris,  0, sizeof(TG_TypeTriangle) * mesh->mNumFaces);
 
@@ -597,7 +598,7 @@ long PopulateMergedSkinnedShape(const aiScene* scene, TG_TypeMultiShape* out, Sk
 
 	TG_TypeVertexPtr verts = (TG_TypeVertexPtr)TG_Shape::tglHeap->Malloc(sizeof(TG_TypeVertex) * totalV);
 	TG_TypeTrianglePtr tris = (TG_TypeTrianglePtr)TG_Shape::tglHeap->Malloc(sizeof(TG_TypeTriangle) * totalT);
-	gosASSERT(verts != NULL && tris != NULL);
+	gosASSERT(verts != nullptr && tris != nullptr);
 	memset(verts, 0, sizeof(TG_TypeVertex) * totalV);
 	memset(tris, 0, sizeof(TG_TypeTriangle) * totalT);
 
@@ -917,8 +918,7 @@ void LoadMechPackage(const char* glbPath, std::map<std::string, std::string>& ou
     std::string side = (dot != std::string::npos ? p.substr(0, dot) : p) + ".package.json";
     FILE* f = fopen(side.c_str(), "rb");
     if (!f) {
-        fprintf(stderr, "[MECH_IMPORT] no node manifest '%s' (firepoints -> legacy/origin)\n",
-                side.c_str());
+        mc2::fmt::print_err("[MECH_IMPORT] no node manifest '{}' (firepoints -> legacy/origin)\n", side.c_str());
         return;
     }
     std::string buf;
@@ -970,8 +970,7 @@ void LoadMechPackage(const char* glbPath, std::map<std::string, std::string>& ou
             }
         }
     }
-    fprintf(stderr, "[MECH_IMPORT] package '%s': %zu nodes, ao='%s' normal='%s'\n",
-            side.c_str(), out.size(), aoOut.c_str(), normalOut.c_str());
+    mc2::fmt::print_err("[MECH_IMPORT] package '{}': {:d} nodes, ao='{}' normal='{}'\n", side.c_str(), mc2::fmt::as_size(out.size()), aoOut.c_str(), normalOut.c_str());
 }
 
 // Keep a dedicated parse alive for the runtime re-bake: the import's own Importer
@@ -1155,7 +1154,7 @@ bool mc2mechanim::GetImportedNodeWorld(const void* actorKey, const void* typeKey
     for (ImportedAnimEntry& e : g_importedAnims) {
         if ((const void*)e.multi != typeKey) continue;
         if (e.nodeManifest.empty()) {
-            if (diag) { static int w=0; if (w++<8) fprintf(stderr, "[NODE-DIAG] '%s': manifest EMPTY\n", mc2Name); }
+            if (diag) { static int w=0; if (w++<8) mc2::fmt::print_err("[NODE-DIAG] '{}': manifest EMPTY\n", mc2::fmt::safe(mc2Name)); }
             return false;
         }
         auto mit = e.nodeManifest.find(mc2Name);
@@ -1169,7 +1168,7 @@ bool mc2mechanim::GetImportedNodeWorld(const void* actorKey, const void* typeKey
         if (mit == e.nodeManifest.end()) {
             static int s_warnName = 0;
             if (s_warnName++ < 8)
-                fprintf(stderr, "[MECH_IMPORT] node '%s' not in manifest (-> legacy)\n", mc2Name);
+                mc2::fmt::print_err("[MECH_IMPORT] node '{}' not in manifest (-> legacy)\n", mc2::fmt::safe(mc2Name));
             return false;
         }
         int idx = -1;
@@ -1178,8 +1177,7 @@ bool mc2mechanim::GetImportedNodeWorld(const void* actorKey, const void* typeKey
         if (idx < 0) {
             static int s_warnJoint = 0;
             if (s_warnJoint++ < 8)
-                fprintf(stderr, "[MECH_IMPORT] node '%s' joint '%s' absent (-> legacy)\n",
-                        mc2Name, mit->second.c_str());
+                mc2::fmt::print_err("[MECH_IMPORT] node '{}' joint '{}' absent (-> legacy)\n", mc2::fmt::safe(mc2Name), mit->second.c_str());
             return false;
         }
         ActorAnimState* s = nullptr;
@@ -1187,9 +1185,7 @@ bool mc2mechanim::GetImportedNodeWorld(const void* actorKey, const void* typeKey
         if (ait != e.actors.end()) s = &ait->second;
         else if (!e.cpuState.lastGlobals.empty()) s = &e.cpuState;  // CPU lockstep fallback
         if (!s || idx >= (int)s->lastGlobals.size()) {
-            if (diag) { static int w=0; if (w++<8) fprintf(stderr,
-                "[NODE-DIAG] '%s' joint '%s' idx=%d: no actor state / lastGlobals empty (actors=%zu)\n",
-                mc2Name, mit->second.c_str(), idx, e.actors.size()); }
+            if (diag) { static int w=0; if (w++<8) mc2::fmt::print_err("[NODE-DIAG] '{}' joint '{}' idx={:d}: no actor state / lastGlobals empty (actors={:d})\n", mc2::fmt::safe(mc2Name), mit->second.c_str(), mc2::fmt::as_i32(idx), mc2::fmt::as_size(e.actors.size())); }
             return false;
         }
         // F = Msw * (AS1 * C_i); its translation (gx,gy,gz) = F[3],F[7],F[11] — the
@@ -1212,14 +1208,10 @@ bool mc2mechanim::GetImportedNodeWorld(const void* actorKey, const void* typeKey
         outXYZ[0] = -gx;   // result.x = -entries[3]
         outXYZ[1] =  gz;   // result.y =  entries[11]
         outXYZ[2] =  gy;   // result.z =  entries[7]  (world elevation)
-        if (diag) { static int w=0; if (w++<16) fprintf(stderr,
-            "[NODE-DIAG] '%s'->'%s' OK world=(%.1f,%.1f,%.1f) lift=%.2f\n",
-            mc2Name, mit->second.c_str(), outXYZ[0], outXYZ[1], outXYZ[2], s->gpuLift); }
+        if (diag) { static int w=0; if (w++<16) mc2::fmt::print_err("[NODE-DIAG] '{}'->'{}' OK world=({:.1f},{:.1f},{:.1f}) lift={:.2f}\n", mc2::fmt::safe(mc2Name), mit->second.c_str(), outXYZ[0], outXYZ[1], outXYZ[2], s->gpuLift); }
         return true;
     }
-    if (diag) { static int w=0; if (w++<8) fprintf(stderr,
-        "[NODE-DIAG] '%s': no imported entry matched typeKey=%p (registered=%zu)\n",
-        mc2Name, typeKey, g_importedAnims.size()); }
+    if (diag) { static int w=0; if (w++<8) mc2::fmt::print_err("[NODE-DIAG] '{}': no imported entry matched typeKey={:016X} (registered={:d})\n", mc2::fmt::safe(mc2Name), mc2::fmt::as_ptr(typeKey), mc2::fmt::as_size(g_importedAnims.size())); }
     return false;
 }
 
@@ -1496,14 +1488,13 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
 				double sum = 0.0;
 				for (const auto& b : bake.rest) for (int k = 0; k < 16; ++k) sum += b.m[k];
 				const char* clipLabel = bake.forcedClip.empty() ? "rest" : bake.forcedClip.c_str();
-				fprintf(bf, "{\n  \"clip\": \"%s\",\n  \"frame\": %d,\n  \"boneCount\": %zu,\n  \"checksum\": %.6f,\n  \"bones\": [\n",
-				        clipLabel, bake.forcedFrame, bake.names.size(), sum);
+				mc2::fmt::print(bf, "{{\n  \"clip\": \"{}\",\n  \"frame\": {:d},\n  \"boneCount\": {:d},\n  \"checksum\": {:.6f},\n  \"bones\": [\n", mc2::fmt::safe(clipLabel), mc2::fmt::as_i32(bake.forcedFrame), mc2::fmt::as_size(bake.names.size()), sum);
 				for (size_t i = 0; i < bake.names.size(); ++i) {
-					fprintf(bf, "    {\"index\": %zu, \"name\": \"%s\", \"m\": [", i, bake.names[i].c_str());
-					for (int k = 0; k < 16; ++k) fprintf(bf, "%s%.6f", k ? ", " : "", bake.rest[i].m[k]);
-					fprintf(bf, "]}%s\n", i + 1 < bake.names.size() ? "," : "");
+					mc2::fmt::print(bf, "    {{\"index\": {:d}, \"name\": \"{}\", \"m\": [", mc2::fmt::as_size(i), bake.names[i].c_str());
+					for (int k = 0; k < 16; ++k) mc2::fmt::print(bf, "{}{:.6f}", mc2::fmt::safe(k ? ", " : ""), bake.rest[i].m[k]);
+					mc2::fmt::print(bf, "]}}{}\n", mc2::fmt::safe(i + 1 < bake.names.size() ? "," : ""));
 				}
-				fprintf(bf, "  ]\n}\n");
+				mc2::fmt::print(bf, "  ]\n}}\n");
 				fclose(bf);
 				MECH_SKEL_TRACE("bone dump -> %s (boneCount=%zu checksum=%.6f)",
 				                dumpPath, bake.names.size(), sum);

@@ -1,6 +1,7 @@
 // MechBayScreen: mech selection, removal, setMech, drag handling and the deployment-team helpers.
 // Declared in the class headers; shared names in mechbayscreen_internal.h.
 #include "mechbayscreen_internal.h"
+#include "mc2fmt.h"
 
 
 // Mirror a populated weapon/component ComponentListBox into a defs-page GuiList,
@@ -179,14 +180,14 @@ void MechBayScreen::setMech( LogisticsMech* pMech,  bool bCommandFromLB )
 
 		// armor
 		int armor = pCurMech->getArmor();
-		sprintf( str, "%ld", armor );
+		mc2::fmt::to_buf(str, "{:d}", mc2::fmt::as_i32(armor));
 		textObjects[8].setText( str );
 		setDefsElementText( "game.mcl_mb_layout.text.mech_info_armor", str );
 		attributeMeters[0].setValue( armor/MAX_ARMOR_RANGE );
 
 		// speed
 		int speed = pCurMech->getDisplaySpeed();
-		sprintf( str, "%ld", speed );
+		mc2::fmt::to_buf(str, "{:d}", mc2::fmt::as_i32(speed));
 		textObjects[9].setText( str );
 		setDefsElementText( "game.mcl_mb_layout.text.mech_info_speed", str );
 		attributeMeters[1].setValue( pCurMech->getSpeed()/MAX_SPEED_RANGE );
@@ -194,7 +195,7 @@ void MechBayScreen::setMech( LogisticsMech* pMech,  bool bCommandFromLB )
 
 		// jump
 		int jumpRange = pCurMech->getJumpRange();
-		sprintf( str, "%ld", jumpRange * 25 );
+		mc2::fmt::to_buf(str, "{:d}", mc2::fmt::as_i32(jumpRange * 25));
 		textObjects[10].setText( str );
 		setDefsElementText( "game.mcl_mb_layout.text.mech_info_jump_dist", str );
 		attributeMeters[2].setValue( jumpRange * 25 / MAX_JUMP_RANGE );

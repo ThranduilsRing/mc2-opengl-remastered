@@ -162,7 +162,7 @@ class ArtilleryType : public ObjectType {
 
 //***************************************************************************
 
-typedef union _ArtilleryInfo {
+union _ArtilleryInfo {
 	struct {
 		float				timeToImpact;		//Time until strike goes off.
 		float				timeToLaunch;		//Time until strike is launched (and unmoveable).
@@ -173,7 +173,8 @@ typedef union _ArtilleryInfo {
 		char				timeString[5];
 		uint32_t            explosionOffFlags;
 	} strike;
-} ArtilleryInfo;
+};
+using ArtilleryInfo = _ArtilleryInfo;
 
 typedef struct _ArtilleryData : public GameObjectData
 {

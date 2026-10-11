@@ -3,6 +3,8 @@
 // initABL holds the single ordered ABLi_addFunction list. Registration order is state (each routine's key is
 // its position in a fixed table), so the list stays in this one file; the exec* bodies live in ablmc2_<domain>.cpp.
 #include "ablmc2_internal.h"
+#include "mc2fmt.h"
+#include "../GameOS/gameos/utils/mc2log.h"
 
 
 MoverGroupPtr			CurGroup = nullptr;
@@ -79,7 +81,7 @@ long ablFileCreateCB (void** file, const char* fName) {
 		Fatal(0, " unable to create ABL file");
 	if (((FilePtr)*file)->create(fName) != NO_ERR) {
 		char s[256];
-		sprintf(s, " ABL.ablFileOpenCB: unable to create file [%s] ", fName);
+		mc2::fmt::to_buf(s, " ABL.ablFileOpenCB: unable to create file [{}] ", mc2::fmt::safe(fName));
 		Fatal(0, s);
 	}
 	return(NO_ERR);
@@ -169,9 +171,7 @@ long ablFileWriteStringCB (void* file, const char* buffer) {
 void ablDebuggerPrintCallback (const char* s) {
 
 	//ABLDebuggerOut->print(s);
-	char msg[1024];
-	sprintf(msg, "%s\n", s);
-	SPEW((0,msg));
+	MC2_LOG(Core, Debug, "{}", mc2::fmt::safe(s));
 }
 
 void ablDebugPrintCallback (const char* s) {
@@ -225,43 +225,40 @@ extern GameObjectPtr LastCoreAttackTarget;
 void ablEndlessStateCallback (UserFile* log) {
 
 	char s[256];
-	sprintf(s, "Mover = %s (%d)", CurWarrior->getVehicle()->getName(), CurWarrior->getVehicle()->getPartId());
+	mc2::fmt::to_buf(s, "Mover = {} ({:d})", mc2::fmt::safe(CurWarrior->getVehicle()->getName()), mc2::fmt::as_i32(CurWarrior->getVehicle()->getPartId()));
 	log->write(s);
-	sprintf(s, "     Status = %d", CurWarrior->getVehicle()->getStatus());
+	mc2::fmt::to_buf(s, "     Status = {:d}", mc2::fmt::as_i32(CurWarrior->getVehicle()->getStatus()));
 	log->write(s);
-	sprintf(s, "     NumWeapons = %d", CurWarrior->getVehicle()->numWeapons);
+	mc2::fmt::to_buf(s, "     NumWeapons = {:d}", mc2::fmt::as_i32(CurWarrior->getVehicle()->numWeapons));
 	log->write(s);
-	sprintf(s, "     NumFunctionalWeapons = %d", CurWarrior->getVehicle()->numFunctionalWeapons);
+	mc2::fmt::to_buf(s, "     NumFunctionalWeapons = {:d}", mc2::fmt::as_i32(CurWarrior->getVehicle()->numFunctionalWeapons));
 	log->write(s);
-	sprintf(s, "     TacOrder = ");
+	mc2::fmt::to_buf(s, "     TacOrder = ");
 	CurWarrior->getCurTacOrder()->debugString(CurWarrior, &s[16]);
 	log->write(s);
 	log->write(" ");
 	if (LastCoreAttackTarget) {
-		sprintf(s, "Target = %s (%d)", LastCoreAttackTarget->getName(), LastCoreAttackTarget->getPartId());
+		mc2::fmt::to_buf(s, "Target = {} ({:d})", mc2::fmt::safe(LastCoreAttackTarget->getName()), mc2::fmt::as_i32(LastCoreAttackTarget->getPartId()));
 		log->write(s);
 		Stuff::Vector3D pos;
 		pos = LastCoreAttackTarget->getPosition();
-		sprintf(s, "Target Position = (%.3f, %.3f, %.3f) [%d, %d]",
-			pos.x, pos.y, pos.z,
-			LastCoreAttackTarget->cellPositionRow,
-			LastCoreAttackTarget->cellPositionCol);
+		mc2::fmt::to_buf(s, "Target Position = ({:.3f}, {:.3f}, {:.3f}) [{:d}, {:d}]", pos.x, pos.y, pos.z, mc2::fmt::as_i32(LastCoreAttackTarget->cellPositionRow), mc2::fmt::as_i32(LastCoreAttackTarget->cellPositionCol));
 		log->write(s);
-		sprintf(s, "     Status = %d", LastCoreAttackTarget->getStatus());
+		mc2::fmt::to_buf(s, "     Status = {:d}", mc2::fmt::as_i32(LastCoreAttackTarget->getStatus()));
 		log->write(s);
 		if (LastCoreAttackTarget->isMover()) {
 			MoverPtr mover = (MoverPtr)LastCoreAttackTarget;
-			sprintf(s, "     NumWeapons = %d", mover->numWeapons);
+			mc2::fmt::to_buf(s, "     NumWeapons = {:d}", mc2::fmt::as_i32(mover->numWeapons));
 			log->write(s);
-			sprintf(s, "     NumFunctionalWeapons = %d", mover->numFunctionalWeapons);
+			mc2::fmt::to_buf(s, "     NumFunctionalWeapons = {:d}", mc2::fmt::as_i32(mover->numFunctionalWeapons));
 			log->write(s);
-			sprintf(s, "     TacOrder = ");
+			mc2::fmt::to_buf(s, "     TacOrder = ");
 			mover->getPilot()->getCurTacOrder()->debugString(CurWarrior, &s[16]);
 			log->write(s);
 		}
 		}
 	else {
-		sprintf(s, "Target = NULL");
+		mc2::fmt::to_buf(s, "Target = NULL");
 		log->write(s);
 	}
 }
@@ -269,9 +266,7 @@ void ablEndlessStateCallback (UserFile* log) {
 static void logAblFunctionTableCapacity (void)
 {
 	char _cbbuf[128];
-	snprintf(_cbbuf, sizeof(_cbbuf),
-		"[ABL v1] event=functions_registered count=%ld/%d",
-		NumStandardFunctions, MAX_STANDARD_FUNCTIONS);
+	mc2::fmt::to_buf(_cbbuf, "[ABL v1] event=functions_registered count={:d}/{:d}", mc2::fmt::as_i32(NumStandardFunctions), mc2::fmt::as_i32(MAX_STANDARD_FUNCTIONS));
 	MC2_DIAG_PUTS(_cbbuf);
 	crashbundle_append(_cbbuf);
 	fflush(stdout);

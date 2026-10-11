@@ -1,0 +1,92 @@
+"""log_tag_census: reading tagged log lines out of calls, including continuation lines, and the equality a conversion must keep."""
+import os
+import sys
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+sys.path.insert(0, os.path.join(HERE, "tidy"))
+import log_tag_census as lc  # noqa: E402
+import printf_buffers as pb  # noqa: E402
+
+
+def census(src):
+    return dict(lc.census_of_text(src))
+
+
+def test_fprintf_with_the_format_on_a_continuation_line():
+    src = 'void f(){ fprintf(stderr,\n    "[PERF v1] avg_fps=%.1f p50_ms=%.2f "\n    "samples=%zu\\n", a, b, c); }\n'
+    assert census(src) == {("PERF", 1, "stderr", ("avg_fps", "p50_ms", "samples")): 1}
+
+
+def test_unversioned_tag_and_stdout():
+    assert census('void f(){ printf("[HEARTBEAT] frames=%d elapsed_ms=%llu\\n", a, b); }') == {("HEARTBEAT", -1, "stdout", ("frames", "elapsed_ms")): 1}
+
+
+def test_event_macros_and_the_facade_template():
+    src = ('void f(){ MC2_EVENT(Terrain, "WATER_PARITY", 1, "event=a frame={} n={}", x, y);\n'
+           ' MC2_EVENT_OUT(Core, "SMOKE", 1, "event=summary result={}", r);\n'
+           ' mc2::log::event<"PERF", 1>(mc2::log::Stream::Out, "avg_fps={:.1f}", v); }')
+    assert census(src) == {("WATER_PARITY", 1, "stderr", ("event", "frame", "n")): 1, ("SMOKE", 1, "stdout", ("event", "result")): 1,
+                           ("PERF", 1, "stdout", ("avg_fps",)): 1}
+
+
+def test_a_converted_buffer_call_yields_the_same_record_as_the_snprintf_it_replaced():
+    src = '#include <cstdio>\nvoid f(){ char b[64]; snprintf(b, sizeof(b), "[HEARTBEAT] frames=%d elapsed_ms=%d", a, c); }\n'
+    new, recs, _ = pb.convert(src)
+    assert recs and "mc2::fmt::to_buf" in new
+    assert census(src) == census(new) == {("HEARTBEAT", -1, "buffer", ("frames", "elapsed_ms")): 1}
+
+
+def test_untagged_lines_and_non_literal_formats_are_not_records():
+    assert census('void f(){ printf("hello %d\\n", a); fprintf(stderr, fmt, a); }') == {}
+
+
+def test_diff_reports_a_changed_key_order_and_a_missing_emitter():
+    base = {"emitters": [{"tag": "A", "ver": 1, "stream": "stderr", "keys": ["x", "y"], "count": 1}]}
+    now = lc.collections.Counter({("A", 1, "stderr", ("y", "x")): 1})
+    d = lc.diff(now, base)
+    assert len(d) == 2 and any("baseline 1, now 0" in x for x in d) and any("baseline 0, now 1" in x for x in d)
+
+
+def test_the_frozen_baseline_matches_the_tree():
+    assert lc.main(["--check"]) == 0
+
+
+def test_a_converted_log_call_yields_the_same_record_as_the_printf_it_replaced():
+    import printf_log as pl
+    src = '#include <cstdio>\nvoid f(){ fprintf(stderr, "[PERF v1] avg_fps=%.1f samples=%d\\n", a, n); printf("[HEARTBEAT] frames=%d\\n", n); fprintf(fp, "[X v1] k=%d\\n", n); }\n'
+    new, recs, left = pl.convert(src, "x.cpp", classes=("untagged", "unconsumed", "consumed"))
+    assert len(recs) == 3 and "mc2::fmt::print_err(" in new and "mc2::fmt::print_out(" in new and "mc2::fmt::print(fp," in new
+    assert census(src) == census(new) == {("PERF", 1, "stderr", ("avg_fps", "samples")): 1, ("HEARTBEAT", -1, "stdout", ("frames",)): 1,
+                                          ("X", 1, "file", ("k",)): 1}
+
+
+def test_braces_in_a_printf_format_are_literal_so_their_keys_survive_the_conversion():
+    import printf_log as pl
+    bs = chr(92)
+    src = ('#include <cstdio>\nvoid f(){ printf("[TERRAIN_RUNTIME v1] side=%ld samples=%d "\n  "mismatch{gameplay=%d visual=%d}' + bs + 'n", a, b, c, d); }\n')
+    old = census(src)
+    new = pl.convert(src, "x.cpp", classes=("unconsumed",))[0]
+    assert "{{gameplay=" in new
+    assert old == census(new) == {("TERRAIN_RUNTIME", 1, "stdout", ("side", "samples", "gameplay", "visual")): 1}
+
+
+def test_consumed_tags_are_read_from_the_syntax_tree_not_one_line():
+    src = (
+        'import re\n'
+        'A = re.compile(\n    r"\[AIMED_FIRE v1\] "\n    r"x=(\d+)")\n'                      # a pattern continued over lines
+        'if "[VISUAL_CAPTURE" in logtxt: pass\n'                                              # no closing bracket, a membership test
+        'REQUIRED_CANARIES = ["[VK_SCENE_GL_DRAW_CANARY v1]", "[VK_X_CANARY v1]"]\n'            # a module-level list of tags
+        'm = re.search(r"VEG_SUMMARY\s+n=", t)\n'                                              # a bare leading word
+        'print("[ONLY_PRINTED v1] hello")\n'                                                  # emitted by the harness itself: not a consumer
+        'x.write("[ONLY_WRITTEN v1]")\n'
+    )
+    got = lc.consumed_in_source(src)
+    assert {"AIMED_FIRE", "VISUAL_CAPTURE", "VK_SCENE_GL_DRAW_CANARY", "VK_X_CANARY", "VEG_SUMMARY"} <= got
+    assert not ({"ONLY_PRINTED", "ONLY_WRITTEN"} & got)
+
+
+def test_plain_tags_are_emitters_in_the_census():
+    c = lc.census_of_text('void f(){ mc2::fmt::print_err("VEG_SUMMARY instance_count={:d}\\n", 1); mc2::fmt::print_out("[SHADER ERROR] CompileShader: {}\\n", s); }\n')
+    assert ("VEG_SUMMARY", -1, "stderr", ("instance_count",)) in c
+    assert ("SHADER ERROR", -1, "stdout", ()) in c

@@ -996,6 +996,7 @@ L(Lead0Kill, "MC2_SMART_LOAD", Bool, true, "code", "", "SMART-LOAD startup/missi
 L(Presence, "MC2_SMART_LOAD_TRACE", Bool, false, "code", "", "", verified),
 L(Lead0, "MC2_SMOKE_ACTIVE", Bool, false, "editor", "", "Editor smoke forwards --smoke-active to the playtest child.", passthrough | verified),
 L(Presence, "MC2_SMOKE_FIXED_TIMESTEP", Bool, false, "gameos", "", "S9D deterministic clock.", passthrough | verified),
+L(Lead0, "MC2_SMOKE_FREEZE_ANIM", Bool, false, "mclib", "", "Freeze mech gait and building animation frames (capture and SIMID determinism).", passthrough | verified),
 L(Presence, "MC2_SMOKE_MODE", Bool, false, "gameos", "", "", passthrough | verified),
 P("MC2_SMOKE_PERF_SAMPLES", Int, 0, "gameos", "", "", verified),  // default not derivable from the tree
 G("MC2_SMOKE_SEED", String, "", "gameos", "", "", passthrough | verified),  // default not derivable from the tree

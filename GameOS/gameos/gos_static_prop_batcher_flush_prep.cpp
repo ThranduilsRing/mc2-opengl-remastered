@@ -3,6 +3,7 @@
 #include "gos_static_prop_batcher_internal.h"
 #include "mdi_submit.h"                          // MDI-SUBMISSION-SCAFFOLD-1: flush issues the indirect draws
 #include "gos_static_prop_flush_frame.h"
+#include "mc2fmt.h"
 
 
 // Emit the candidate log and read back / reset the parity output buffer.
@@ -302,12 +303,7 @@ void GpuStaticPropBatcher::logInstDiagPath() {
         static bool s_pathLogged = false;
         if (s_instDiag && !s_pathLogged) {
             s_pathLogged = true;
-            fprintf(stderr,
-                "[INSTDIAG] PATH coalesceEnabled=%d globalPoolLegacy=%d instanceCapacity=%u "
-                "frameSlot=%u typeRanges=%zu\n",
-                (int)IsCoalesceEnabled(), (int)s_globalPoolLegacy,
-                (unsigned)s_instanceCapacity, (unsigned)s_frameSlot,
-                s_typeRanges.size());
+            mc2::fmt::print_err("[INSTDIAG] PATH coalesceEnabled={:d} globalPoolLegacy={:d} instanceCapacity={:d} frameSlot={:d} typeRanges={:d}\n", mc2::fmt::as_i32((int)IsCoalesceEnabled()), mc2::fmt::as_i32((int)s_globalPoolLegacy), mc2::fmt::as_u32((unsigned)s_instanceCapacity), mc2::fmt::as_u32((unsigned)s_frameSlot), mc2::fmt::as_size(s_typeRanges.size()));
             fflush(stderr);
         }
     }
@@ -645,8 +641,7 @@ void GpuStaticPropBatcher::bindPerDrawAndMaterial() {
             const GLenum bindErr = glGetError();
             if (bindErr != GL_NO_ERROR) {
                 char buf[96];
-                std::snprintf(buf, sizeof(buf),
-                              "[MATERIAL_GPU v4] GL ERROR after bind (real): 0x%x\n", bindErr);
+                mc2::fmt::to_buf(buf, "[MATERIAL_GPU v4] GL ERROR after bind (real): 0x{:x}\n", mc2::fmt::as_u32(bindErr));
                 MC2_DIAG_FPUTS(buf, stderr);
             }
         }
@@ -666,9 +661,7 @@ void GpuStaticPropBatcher::bindPerDrawAndMaterial() {
             const GLenum uniformErr = glGetError();  // sample AFTER
             if (uniformErr != GL_NO_ERROR) {
                 char buf[96];
-                std::snprintf(buf, sizeof(buf),
-                              "[MATERIAL_GPU v4] GL ERROR after sample uniform: 0x%x\n",
-                              uniformErr);
+                mc2::fmt::to_buf(buf, "[MATERIAL_GPU v4] GL ERROR after sample uniform: 0x{:x}\n", mc2::fmt::as_u32(uniformErr));
                 MC2_DIAG_FPUTS(buf, stderr);
             }
         }
@@ -705,13 +698,9 @@ void GpuStaticPropBatcher::bindPerDrawAndMaterial() {
             char buf[96];
             if (sampleOn) {
                 // sampleOn=true guarantees loc >= 0, so loc is always valid here.
-                std::snprintf(buf, sizeof(buf),
-                              "[MATERIAL_GPU v4] event=sample_mode enabled=1 loc=%d\n",
-                              s_locsCoalesce.materialGpuSample);
+                mc2::fmt::to_buf(buf, "[MATERIAL_GPU v4] event=sample_mode enabled=1 loc={:d}\n", mc2::fmt::as_i32(s_locsCoalesce.materialGpuSample));
             } else {
-                std::snprintf(buf, sizeof(buf),
-                              "[MATERIAL_GPU v4] event=sample_mode enabled=0 reason=%s\n",
-                              reason);
+                mc2::fmt::to_buf(buf, "[MATERIAL_GPU v4] event=sample_mode enabled=0 reason={}\n", mc2::fmt::safe(reason));
             }
             MC2_DIAG_FPUTS(buf, stderr);
         }

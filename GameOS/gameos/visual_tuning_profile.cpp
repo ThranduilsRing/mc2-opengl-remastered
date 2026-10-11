@@ -11,6 +11,7 @@
 #include <cstring>
 #include <string>
 #include <map>
+#include "mc2fmt.h"
 
 // Renderer function forward declarations.
 // Definitions in gameos_graphics.cpp / gos_postprocess.cpp / gos_particle_bridge.cpp.
@@ -252,7 +253,7 @@ static void applyKey(const char* key, float val, int& count) {
         static std::map<std::string,bool> s_warned;
         if (!s_warned[key]) {
             s_warned[key] = true;
-            fprintf(stderr, "[VisualTuning] unknown key '%s' -- ignored\n", key);
+            mc2::fmt::print_err("[VisualTuning] unknown key '{}' -- ignored\n", mc2::fmt::safe(key));
         }
     }
 }
@@ -260,30 +261,30 @@ static void applyKey(const char* key, float val, int& count) {
 static void writeJsonFloatObj(FILE* f, const std::map<std::string,float>& obj, int depth) {
     const char* inner = (depth == 1) ? "    " : "      ";
     const char* close = (depth == 1) ? "  "   : "    ";
-    fprintf(f, "{\n");
+    mc2::fmt::print(f, "{{\n");
     bool first = true;
     for (auto& kv : obj) {
-        if (!first) fprintf(f, ",\n");
+        if (!first) mc2::fmt::print(f, ",\n");
         first = false;
-        fprintf(f, "%s\"%s\": %g", inner, kv.first.c_str(), kv.second);
+        mc2::fmt::print(f, "{}\"{}\": {:g}", mc2::fmt::safe(inner), kv.first.c_str(), kv.second);
     }
-    fprintf(f, "\n%s}", close);
+    mc2::fmt::print(f, "\n{}}}", mc2::fmt::safe(close));
 }
 
 static void writeJson(FILE* f,
                       const std::map<std::string,float>& defs,
                       const std::map<std::string, std::map<std::string,float>>& missions) {
-    fprintf(f, "{\n  \"defaults\": ");
+    mc2::fmt::print(f, "{{\n  \"defaults\": ");
     writeJsonFloatObj(f, defs, 1);
-    fprintf(f, ",\n  \"missions\": {\n");
+    mc2::fmt::print(f, ",\n  \"missions\": {{\n");
     bool firstM = true;
     for (auto& mkv : missions) {
-        if (!firstM) fprintf(f, ",\n");
+        if (!firstM) mc2::fmt::print(f, ",\n");
         firstM = false;
-        fprintf(f, "    \"%s\": ", mkv.first.c_str());
+        mc2::fmt::print(f, "    \"{}\": ", mkv.first.c_str());
         writeJsonFloatObj(f, mkv.second, 2);
     }
-    fprintf(f, "\n  }\n}\n");
+    mc2::fmt::print(f, "\n  }}\n}}\n");
 }
 
 } // namespace
@@ -327,8 +328,7 @@ void visualTuning_applyProfile(const char* missionName) {
     }
 
     s_appliedKeys = count;
-    fprintf(stderr, "[VisualTuning] mission='%s' applied %d keys from '%s'\n",
-            missionName ? missionName : "(none)", count, path);
+    mc2::fmt::print_err("[VisualTuning] mission='{}' applied {:d} keys from '{}'\n", mc2::fmt::safe(missionName ? missionName : "(none)"), mc2::fmt::as_i32(count), mc2::fmt::safe(path));
 }
 
 const char* visualTuning_getProfilePath()     { return s_profilePath; }
@@ -395,7 +395,7 @@ bool visualTuning_saveCurrentToMission() {
 
     FILE* out = fopen(s_profilePath, "w");
     if (!out) {
-        fprintf(stderr, "[VisualTuning] cannot write '%s'\n", s_profilePath);
+        mc2::fmt::print_err("[VisualTuning] cannot write '{}'\n", mc2::fmt::safe(s_profilePath));
         return false;
     }
     writeJson(out, defs, missions);
@@ -404,7 +404,6 @@ bool visualTuning_saveCurrentToMission() {
     // Keep state consistent: next Reset to Profile will re-apply what we just saved.
     s_hasFile    = true;
     s_appliedKeys = (int)current.size();
-    fprintf(stderr, "[VisualTuning] saved %d keys for mission '%s' to '%s'\n",
-            (int)current.size(), s_activeMission, s_profilePath);
+    mc2::fmt::print_err("[VisualTuning] saved {:d} keys for mission '{}' to '{}'\n", mc2::fmt::as_i32((int)current.size()), mc2::fmt::safe(s_activeMission), mc2::fmt::safe(s_profilePath));
     return true;
 }

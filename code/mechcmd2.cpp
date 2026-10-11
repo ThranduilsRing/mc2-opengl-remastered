@@ -9,6 +9,8 @@
 #include "mechcmd2_internal.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
+#include "mc2fmt.h"
+#include "../GameOS/gameos/utils/mc2log.h"
 
 #ifndef VERSION_H
 #include"version.h"
@@ -210,11 +212,11 @@ void __stdcall InitializeGameEngine()
 	// time via cmake/GenerateBuildFingerprint.cmake; asserted by
 	// scripts/run_smoke.py to catch stale-exe deploys. Do not reformat: the
 	// harness parses this exact "[BUILD_FINGERPRINT v1]" line.
-	printf("[BUILD_FINGERPRINT v1] sha=%s dirty=%d branch=%s built=%s src=%s\n",
-		MC2_BUILD_GIT_SHA, MC2_BUILD_GIT_DIRTY, MC2_BUILD_GIT_BRANCH,
-		MC2_BUILD_TIME_ISO, MC2_BUILD_SRC_WORKTREE);
+	mc2::fmt::print_out("[BUILD_FINGERPRINT v1] sha={} dirty={:d} branch={} built={} src={}\n",
+		mc2::fmt::safe(MC2_BUILD_GIT_SHA), mc2::fmt::as_i32(MC2_BUILD_GIT_DIRTY), mc2::fmt::safe(MC2_BUILD_GIT_BRANCH),
+		mc2::fmt::safe(MC2_BUILD_TIME_ISO), mc2::fmt::safe(MC2_BUILD_SRC_WORKTREE));
 #if MC2_BUILD_GIT_DIRTY
-	printf("[BUILD_FINGERPRINT v1] WARNING: BUILT-FROM-DIRTY-TREE\n");
+	mc2::fmt::print_out("[BUILD_FINGERPRINT v1] WARNING: BUILT-FROM-DIRTY-TREE\n");
 #endif
 	fflush(stdout);
     // sebi WTF? do we ned to do it for InitDW?
@@ -226,15 +228,15 @@ void __stdcall InitializeGameEngine()
 	#ifdef _WIN64
 		gosResourceHandle = gos_OpenResourceDLL("mc2res_64.dll", nullptr, 0);
 	#else
-		gosResourceHandle = gos_OpenResourceDLL("mc2res_32.dll", NULL, 0);
+		gosResourceHandle = gos_OpenResourceDLL("mc2res_32.dll", nullptr, 0);
 	#endif
 #else
-	gosResourceHandle = gos_OpenResourceDLL("./libmc2res.so", NULL, 0);
+	gosResourceHandle = gos_OpenResourceDLL("./libmc2res.so", nullptr, 0);
 #endif
 	}
 
 	if(!gosResourceHandle) {
-        fprintf(stderr, "Error loading ResourseDLL (mc2res)\n");
+        mc2::fmt::print_err("Error loading ResourseDLL (mc2res)\n");
 	}
 
 	//Check for enough SwapFile Space FIRST!!!
@@ -307,7 +309,7 @@ void __stdcall InitializeGameEngine()
 		memset( &dev, 0, sizeof ( DEVMODE ) );
 		dev.dmSize = sizeof( DEVMODE );
 		dev.dmSpecVersion = DM_SPECVERSION;
-		EnumDisplaySettings( NULL, ENUM_CURRENT_SETTINGS, &dev );
+		EnumDisplaySettings( nullptr, ENUM_CURRENT_SETTINGS, &dev );
 
 		if ((dev.dmPelsWidth > 1024) || (dev.dmPelsHeight > 768) || (dev.dmBitsPerPel > 16))
 		{
@@ -333,9 +335,7 @@ void __stdcall InitializeGameEngine()
 		if (SmokeMode::state().enabled) {
 			SmokeMode::emitFailSummary("sniffer_would_run",
 				"init_pre_sniffer");
-			fprintf(stderr,
-				"[SMOKE v1] sniffer branch reached; options.cfg not found at CWD. "
-				"Is the runner spawning from the install directory?\n");
+			mc2::fmt::print_err("[SMOKE v1] sniffer branch reached; options.cfg not found at CWD. Is the runner spawning from the install directory?\n");
 			fflush(stderr);
 			std::exit(5);
 		}
@@ -413,13 +413,13 @@ void __stdcall InitializeGameEngine()
 		{
 			ZoneScopedN("InitializeGameEngine heaps");
 			globalHeapList = new HeapList;
-			gosASSERT(globalHeapList != NULL);
+			gosASSERT(globalHeapList != nullptr);
 		
 			globalHeapList->init();
 			globalHeapList->update();		//Run Instrumentation into GOS Debugger Screen
 		
 			systemHeap = new UserHeap;
-			gosASSERT(systemHeap != NULL);
+			gosASSERT(systemHeap != nullptr);
 		
 			systemHeap->init(systemHeapSize,"SYSTEM");
 		}
@@ -498,13 +498,13 @@ void __stdcall InitializeGameEngine()
                 // sebi: get user dependent savegame directory
                 char userDataDir[1024] = {0};
                 if(!gos_GetUserDataDirectory(userDataDir, sizeof(userDataDir))) {
-				    SPEW(("PATHS", "Failed to get user data directory"));
+				    MC2_LOG(Io, Debug, "Failed to get user data directory");
                     gos_TerminateApplication();
                 }
     
                 S_snprintf(savePath, sizeof(savePath), "%s" PATH_SEPARATOR "%s" PATH_SEPARATOR, userDataDir, "savegame" );
 
-                SPEW(("SAVELOAD", savePath));
+                MC2_LOG(Io, Debug, "{}", mc2::fmt::safe(savePath));
 
 	
 				result = systemFile->readIdString("spritePath",spritePath,79);
@@ -568,7 +568,7 @@ void __stdcall InitializeGameEngine()
 					int fileNum = 0;
 					char fastFileId[10];
 					char fileName[100];
-					sprintf(fastFileId,"File%d",fileNum);
+					mc2::fmt::to_buf(fastFileId, "File{:d}", mc2::fmt::as_i32(fileNum));
 		
 					while (systemFile->readIdString(fastFileId,fileName,99) == NO_ERR)
 					{
@@ -577,7 +577,7 @@ void __stdcall InitializeGameEngine()
 							STOP(("Unable to startup fastfiles.  Probably an old one in the directory!!"));
 	
 						fileNum++;
-						sprintf(fastFileId,"File%d",fileNum);
+						mc2::fmt::to_buf(fastFileId, "File{:d}", mc2::fmt::as_i32(fileNum));
 					}
 				}
 			}
@@ -1065,7 +1065,7 @@ void __stdcall InitializeGameEngine()
 		// Start the GUI Heap.
 		{ ZoneScopedN("InitializeGameEngine guiHeap");
 		guiHeap = new UserHeap;
-		gosASSERT(guiHeap != NULL);
+		gosASSERT(guiHeap != nullptr);
 		
 		guiHeap->init(guiHeapSize,"GUI");
 		}

@@ -21,6 +21,7 @@
 #include "../GameOS/include/gameos.hpp"
 #include "../RenderWorld/ScreenPick.h"  // ScreenPickContext, screenPickCompute
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 //----------------------------------------------------------------------
 // screenToFboPixel -- pure coord transform.
@@ -202,8 +203,7 @@ void RunGameplayPickSelfTest()
     // "PASS step=all" meaning two different things depending on
     // substrate state, refuse to run with substrate off.
     if (!RenderWorld::IsObjectIdBufferEnabled()) {
-        std::fprintf(stderr,
-            "[GAMEPLAY_PICK_SELFTEST v1] result=SKIP reason=substrate_off\n");
+        mc2::fmt::print_err("[GAMEPLAY_PICK_SELFTEST v1] result=SKIP reason=substrate_off\n");
         return;
     }
 
@@ -215,9 +215,7 @@ void RunGameplayPickSelfTest()
         req.shiftDn = false;
         GameplayPickResult r = tryGameplayPick(req);
         if (r.outcome != Outcome::skipped) {
-            std::fprintf(stderr,
-                "[GAMEPLAY_PICK_SELFTEST v1] result=FAIL step=1 expected=skipped actual=%s\n",
-                selftestOutcomeName(r.outcome));
+            mc2::fmt::print_err("[GAMEPLAY_PICK_SELFTEST v1] result=FAIL step=1 expected=skipped actual={}\n", mc2::fmt::safe(selftestOutcomeName(r.outcome)));
             return;
         }
     }
@@ -228,9 +226,7 @@ void RunGameplayPickSelfTest()
         req.leftClicked = false;
         GameplayPickResult r = tryGameplayPick(req);
         if (r.outcome != Outcome::skipped) {
-            std::fprintf(stderr,
-                "[GAMEPLAY_PICK_SELFTEST v1] result=FAIL step=2 expected=skipped actual=%s\n",
-                selftestOutcomeName(r.outcome));
+            mc2::fmt::print_err("[GAMEPLAY_PICK_SELFTEST v1] result=FAIL step=2 expected=skipped actual={}\n", mc2::fmt::safe(selftestOutcomeName(r.outcome)));
             return;
         }
     }
@@ -241,9 +237,7 @@ void RunGameplayPickSelfTest()
         req.bGui = true;
         GameplayPickResult r = tryGameplayPick(req);
         if (r.outcome != Outcome::skipped) {
-            std::fprintf(stderr,
-                "[GAMEPLAY_PICK_SELFTEST v1] result=FAIL step=3 expected=skipped actual=%s\n",
-                selftestOutcomeName(r.outcome));
+            mc2::fmt::print_err("[GAMEPLAY_PICK_SELFTEST v1] result=FAIL step=3 expected=skipped actual={}\n", mc2::fmt::safe(selftestOutcomeName(r.outcome)));
             return;
         }
     }
@@ -254,9 +248,7 @@ void RunGameplayPickSelfTest()
         req.bLeftDouble = true;
         GameplayPickResult r = tryGameplayPick(req);
         if (r.outcome != Outcome::skipped) {
-            std::fprintf(stderr,
-                "[GAMEPLAY_PICK_SELFTEST v1] result=FAIL step=4 expected=skipped actual=%s\n",
-                selftestOutcomeName(r.outcome));
+            mc2::fmt::print_err("[GAMEPLAY_PICK_SELFTEST v1] result=FAIL step=4 expected=skipped actual={}\n", mc2::fmt::safe(selftestOutcomeName(r.outcome)));
             return;
         }
     }
@@ -267,9 +259,7 @@ void RunGameplayPickSelfTest()
         req.moverSelectedThisFrame = true;
         GameplayPickResult r = tryGameplayPick(req);
         if (r.outcome != Outcome::gated) {
-            std::fprintf(stderr,
-                "[GAMEPLAY_PICK_SELFTEST v1] result=FAIL step=5 expected=gated actual=%s\n",
-                selftestOutcomeName(r.outcome));
+            mc2::fmt::print_err("[GAMEPLAY_PICK_SELFTEST v1] result=FAIL step=5 expected=gated actual={}\n", mc2::fmt::safe(selftestOutcomeName(r.outcome)));
             return;
         }
     }
@@ -280,9 +270,7 @@ void RunGameplayPickSelfTest()
         req.mouseX = -1;
         GameplayPickResult r = tryGameplayPick(req);
         if (r.outcome != Outcome::skipped) {
-            std::fprintf(stderr,
-                "[GAMEPLAY_PICK_SELFTEST v1] result=FAIL step=6 expected=skipped actual=%s\n",
-                selftestOutcomeName(r.outcome));
+            mc2::fmt::print_err("[GAMEPLAY_PICK_SELFTEST v1] result=FAIL step=6 expected=skipped actual={}\n", mc2::fmt::safe(selftestOutcomeName(r.outcome)));
             return;
         }
     }
@@ -293,9 +281,7 @@ void RunGameplayPickSelfTest()
         req.mouseY = 100000;  // larger than any plausible vMulY
         GameplayPickResult r = tryGameplayPick(req);
         if (r.outcome != Outcome::skipped) {
-            std::fprintf(stderr,
-                "[GAMEPLAY_PICK_SELFTEST v1] result=FAIL step=7 expected=skipped actual=%s\n",
-                selftestOutcomeName(r.outcome));
+            mc2::fmt::print_err("[GAMEPLAY_PICK_SELFTEST v1] result=FAIL step=7 expected=skipped actual={}\n", mc2::fmt::safe(selftestOutcomeName(r.outcome)));
             return;
         }
     }
@@ -313,13 +299,10 @@ void RunGameplayPickSelfTest()
         GameplayPickRequest req = selftestCleanRequest();
         GameplayPickResult r = tryGameplayPick(req);
         if (r.outcome != Outcome::miss && r.outcome != Outcome::hit) {
-            std::fprintf(stderr,
-                "[GAMEPLAY_PICK_SELFTEST v1] result=FAIL step=8 expected=miss actual=%s\n",
-                selftestOutcomeName(r.outcome));
+            mc2::fmt::print_err("[GAMEPLAY_PICK_SELFTEST v1] result=FAIL step=8 expected=miss actual={}\n", mc2::fmt::safe(selftestOutcomeName(r.outcome)));
             return;
         }
     }
 
-    std::fprintf(stderr,
-        "[GAMEPLAY_PICK_SELFTEST v1] result=PASS step=all\n");
+    mc2::fmt::print_err("[GAMEPLAY_PICK_SELFTEST v1] result=PASS step=all\n");
 }

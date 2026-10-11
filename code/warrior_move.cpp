@@ -1,6 +1,7 @@
 // MechWarrior: move goals and waypoint paths, path calculation and the movement decision tree.
 // Declared in the class headers; shared names in warrior_internal.h.
 #include "warrior_internal.h"
+#include "mc2fmt.h"
 
 
 long MechWarrior::setMoveGoal (unsigned long type, Stuff::Vector3D* location, GameObjectPtr obj) {
@@ -512,7 +513,7 @@ long MechWarrior::calcMovePath (long selectionIndex, unsigned long moveParams) {
 				startTime = GetCycles();
 				if (GlobalMap::logEnabled) {
 					static char s[256];
-					sprintf(s, "[%.2f] calcPath: [%05d]%s", scenarioTime, myVehicle->getPartId(), myVehicle->getName());
+					mc2::fmt::to_buf(s, "[{:.2f}] calcPath: [{:05d}]{}", scenarioTime, mc2::fmt::as_i32(myVehicle->getPartId()), mc2::fmt::safe(myVehicle->getName()));
 					GlobalMap::writeLog(s);
 				}
 				numSteps = GlobalMoveMap[myVehicle->getMoveLevel()]->calcPath(startArea,

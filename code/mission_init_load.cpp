@@ -2,6 +2,7 @@
 // terrain objects, commanders, the HUD and the geometry finalize. The first half and the orchestrator are in mission_init.cpp.
 #include "mission_internal.h"
 #include "mission_init_frame.h"
+#include "mc2fmt.h"
 
 
 // Read the warrior count and set up the brain-load counters.
@@ -46,7 +47,7 @@ void Mission::loadWarriors(MissionInitFrame& f) {
 		for (long i = 1; i <= numWarriors; i++)
 		{
 			char warriorName[12];
-			sprintf(warriorName,"Warrior%d",i);
+			mc2::fmt::to_buf(warriorName, "Warrior{:d}", mc2::fmt::as_i32(i));
 			
 			result = missionFile->seekBlock(warriorName);
 			Assert(result == NO_ERR, i, " Could not find Warrior Number Block ");
@@ -126,8 +127,8 @@ void Mission::loadWarriors(MissionInitFrame& f) {
 				else
 				{
 					soakBrainsFailed++;
-					printf("[SOAK] WARN abl brain load failed name=%s errors=%ld\n",
-						moduleName, (long)numErrors);
+					mc2::fmt::print_out("[SOAK] WARN abl brain load failed name={} errors={:d}\n",
+						mc2::fmt::safe(moduleName), mc2::fmt::as_i32((long)numErrors));
 				}
 
 #ifdef _DEBUG
@@ -145,8 +146,8 @@ void Mission::soakAutowinCheck(MissionInitFrame& f) {
 	auto& soakBrainsLoaded = f.soakBrainsLoaded; auto& soakBrainsFailed = f.soakBrainsFailed;
 	if (mc2::gate::get<"MC2_SOAK_AUTOWIN">() || soakBrainsFailed > 0)
 	{
-		printf("[SOAK] abl mission brains loaded=%ld failed=%ld\n",
-			soakBrainsLoaded, soakBrainsFailed);
+		mc2::fmt::print_out("[SOAK] abl mission brains loaded={:d} failed={:d}\n",
+			mc2::fmt::as_i32(soakBrainsLoaded), mc2::fmt::as_i32(soakBrainsFailed));
 		fflush(stdout);
 	}
 }
@@ -318,8 +319,7 @@ void Mission::loadMissionFitOpord(MissionInitFrame& f) {
 							rt->guardHold = true; ++mfOther; break;
 					}
 				}
-				std::fprintf(stderr, "[MISSIONFIT_OPORD] parsed %d Brain{} record(s): patrol=%d guard=%d sentry=%d escort=%d other=%d\n",
-					mfN, mfPatrol, mfGuard, mfSentry, mfEscort, mfOther);
+				mc2::fmt::print_err("[MISSIONFIT_OPORD] parsed {:d} Brain{{}} record(s): patrol={:d} guard={:d} sentry={:d} escort={:d} other={:d}\n", mc2::fmt::as_i32(mfN), mc2::fmt::as_i32(mfPatrol), mc2::fmt::as_i32(mfGuard), mc2::fmt::as_i32(mfSentry), mc2::fmt::as_i32(mfEscort), mc2::fmt::as_i32(mfOther));
 				if (mfBrains) free(mfBrains);
 				free(mfBuf);
 			}
@@ -338,8 +338,8 @@ void Mission::loadBrainRuntime(MissionInitFrame& f) {
 	if (mc2::gate::get<"MC2_BRAIN_RUNTIME">()) {
 		char aiFitName[256];
 		// missionName is the raw name like "mc2_01"; missionPath is "data/missions/".
-		std::snprintf(aiFitName, sizeof(aiFitName), "%s%s_ai.fit", missionPath, missionName);
-		std::fprintf(stderr, "[BRAIN_RT] mission load: MC2_BRAIN_RUNTIME=1 mission=%s seeking %s\n", missionName, aiFitName);
+		mc2::fmt::to_buf(aiFitName, "{}{}_ai.fit", mc2::fmt::safe(missionPath), mc2::fmt::safe(missionName));
+		mc2::fmt::print_err("[BRAIN_RT] mission load: MC2_BRAIN_RUNTIME=1 mission={} seeking {}\n", mc2::fmt::safe(missionName), mc2::fmt::safe(aiFitName));
 		std::fflush(stderr);
 		FitIniFile* aiFit = new FitIniFile;
 		if (aiFit && aiFit->open(aiFitName) == NO_ERR) {
@@ -364,15 +364,11 @@ void Mission::loadBrainRuntime(MissionInitFrame& f) {
 							}
 							// setBrainRuntimeMode allocates brainRuntime if needed + sets mode.
 							w->setBrainRuntimeMode(fitMode);
-							std::fprintf(stderr, "[BRAIN_RT] FIT load warriorIdx=%d unitRef=%s mode=%s\n",
-								warriorIdx,
-								unitRefBuf,
-								MechBrainRuntime::modeString(fitMode));
+							mc2::fmt::print_err("[BRAIN_RT] FIT load warriorIdx={:d} unitRef={} mode={}\n", mc2::fmt::as_i32(warriorIdx), mc2::fmt::safe(unitRefBuf), mc2::fmt::safe(MechBrainRuntime::modeString(fitMode)));
 							std::fflush(stderr);
 						}
 					} else {
-						std::fprintf(stderr, "[BRAIN_RT] WARNING: _ai.fit Brain block unitRef=%s idx=%d out of range [1..%lu]\n",
-							unitRefBuf, warriorIdx, (unsigned long)numWarriors);
+						mc2::fmt::print_err("[BRAIN_RT] WARNING: _ai.fit Brain block unitRef={} idx={:d} out of range [1..{:d}]\n", mc2::fmt::safe(unitRefBuf), mc2::fmt::as_i32(warriorIdx), mc2::fmt::as_u32((unsigned long)numWarriors));
 					}
 				}
 			}
@@ -405,7 +401,7 @@ void Mission::loadTacticWeights(MissionInitFrame& f) {
 	// uses uniform weights via the all-zero branch in applyPilotModulation).
 	if (mc2::gate::get<"MC2_TACTIC_WEIGHTS">()) {
 		char tacFitName[256];
-		std::snprintf(tacFitName, sizeof(tacFitName), "%s%s_ai.fit", missionPath, missionName);
+		mc2::fmt::to_buf(tacFitName, "{}{}_ai.fit", mc2::fmt::safe(missionPath), mc2::fmt::safe(missionName));
 		FitIniFile* tacFit = new FitIniFile;
 		if (tacFit && tacFit->open(tacFitName) == NO_ERR) {
 			if (tacFit->seekBlock("Tactics") == NO_ERR) {
@@ -451,8 +447,7 @@ void Mission::loadTacticWeights(MissionInitFrame& f) {
 						}
 					}
 				}
-				std::fprintf(stderr, "[BRAIN_TACTIC_SELECT] [Tactics] loaded from %s: %d warriors weighted\n",
-				             tacFitName, loadCount);
+				mc2::fmt::print_err("[BRAIN_TACTIC_SELECT] [Tactics] loaded from {}: {:d} warriors weighted\n", mc2::fmt::safe(tacFitName), mc2::fmt::as_i32(loadCount));
 				std::fflush(stderr);
 			}
 			tacFit->close();
@@ -493,11 +488,11 @@ void Mission::loadBrainDispatch(MissionInitFrame& f) {
 		}
 
 		if (fsmTodoOn && !dispatchOn) {
-			std::fprintf(stderr, "[BRAIN_DISPATCH_FSM_TODO] WARN: MC2_BRAIN_DISPATCH_FSM_TODO=1 requires MC2_BRAIN_DISPATCH=1 — inert\n");
+			mc2::fmt::print_err("[BRAIN_DISPATCH_FSM_TODO] WARN: MC2_BRAIN_DISPATCH_FSM_TODO=1 requires MC2_BRAIN_DISPATCH=1 — inert\n");
 			std::fflush(stderr);
 		}
 		if (dispatchVarOn && !dispatchOn) {
-			std::fprintf(stderr, "[BRAIN_DISPATCH_VAR] WARNING: MC2_BRAIN_DISPATCH_VAR=1 requires MC2_BRAIN_DISPATCH=1 -- var handling is INERT\n");
+			mc2::fmt::print_err("[BRAIN_DISPATCH_VAR] WARNING: MC2_BRAIN_DISPATCH_VAR=1 requires MC2_BRAIN_DISPATCH=1 -- var handling is INERT\n");
 			std::fflush(stderr);
 		}
 
@@ -508,8 +503,7 @@ void Mission::loadBrainDispatch(MissionInitFrame& f) {
 			const std::string specialFitText = mc2::gate::str<"MC2_BRAIN_SPECIAL_FIT">();   // "" when unset or empty
 			const char* specialFitName = specialFitText.empty() ? missionName : specialFitText.c_str();
 
-			std::fprintf(stderr, "[BRAIN_DISPATCH] mission load: MC2_BRAIN_DISPATCH=1 mission=%s special_fit=%s\n",
-			             missionName, specialFitName);
+			mc2::fmt::print_err("[BRAIN_DISPATCH] mission load: MC2_BRAIN_DISPATCH=1 mission={} special_fit={}\n", mc2::fmt::safe(missionName), mc2::fmt::safe(specialFitName));
 			std::fflush(stderr);
 
 			// 1A/1B: per-warrior verb parse (only for warriors with brainRuntime allocated).
@@ -555,9 +549,8 @@ void Mission::loadBrainDispatch(MissionInitFrame& f) {
 
 				// Summary line (always emitted when FSM_TODO gate is on, even if count=0).
 				// wid=-1 signals mission-level (no specific warrior context).
-				std::fprintf(stderr,
-					"[BRAIN_DISPATCH_FSM_TODO] mission=%s wid=-1 stateDefs=%d transitions=%d otherTodos=%d\n",
-					missionName, nStateDef, nTrans + nTransBack, nOther);
+				mc2::fmt::print_err("[BRAIN_DISPATCH_FSM_TODO] mission={} wid=-1 stateDefs={:d} transitions={:d} otherTodos={:d}\n",
+					mc2::fmt::safe(missionName), mc2::fmt::as_i32(nStateDef), mc2::fmt::as_i32(nTrans + nTransBack), mc2::fmt::as_i32(nOther));
 				std::fflush(stderr);
 
 				// Detail lines: STATE_DEF, TRANS, TRANS_BACK, STATE_END only.
@@ -565,25 +558,19 @@ void Mission::loadBrainDispatch(MissionInitFrame& f) {
 				for (const FsmTodoEntry& e : tmpBody.fsmTodos) {
 					switch (e.kind) {
 						case FsmTodoKind::STATE_DEF:
-							std::fprintf(stderr,
-								"[BRAIN_DISPATCH_FSM_TODO] kind=STATE_DEF name=%s wid=-1\n",
-								e.name.c_str());
+							mc2::fmt::print_err("[BRAIN_DISPATCH_FSM_TODO] kind=STATE_DEF name={} wid=-1\n", e.name.c_str());
 							std::fflush(stderr);
 							break;
 						case FsmTodoKind::STATE_END:
-							std::fprintf(stderr,
-								"[BRAIN_DISPATCH_FSM_TODO] kind=STATE_END wid=-1\n");
+							mc2::fmt::print_err("[BRAIN_DISPATCH_FSM_TODO] kind=STATE_END wid=-1\n");
 							std::fflush(stderr);
 							break;
 						case FsmTodoKind::TRANS:
-							std::fprintf(stderr,
-								"[BRAIN_DISPATCH_FSM_TODO] kind=TRANS target=%s wid=-1\n",
-								e.name.c_str());
+							mc2::fmt::print_err("[BRAIN_DISPATCH_FSM_TODO] kind=TRANS target={} wid=-1\n", e.name.c_str());
 							std::fflush(stderr);
 							break;
 						case FsmTodoKind::TRANS_BACK:
-							std::fprintf(stderr,
-								"[BRAIN_DISPATCH_FSM_TODO] kind=TRANS_BACK wid=-1\n");
+							mc2::fmt::print_err("[BRAIN_DISPATCH_FSM_TODO] kind=TRANS_BACK wid=-1\n");
 							std::fflush(stderr);
 							break;
 						case FsmTodoKind::OTHER_TODO:
@@ -660,7 +647,7 @@ void Mission::initPartsLoad(long loadType, long dropZoneID, Stuff::Vector3D* dro
 
 		for (int i = 1; i < long(numParts + 1); i++) {
 			char partName[12];
-			sprintf(partName,"Part%d",i);
+			mc2::fmt::to_buf(partName, "Part{:d}", mc2::fmt::as_i32(i));
 
 			result = missionFile->seekBlock(partName);
 			// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1):
@@ -711,7 +698,7 @@ void Mission::initPartsLoad(long loadType, long dropZoneID, Stuff::Vector3D* dro
 		if (result == NO_ERR)
 			for (long i = 0; i < numSquads; i++) {
 				char s[128];
-				sprintf(s, "Squad%d", i);
+				mc2::fmt::to_buf(s, "Squad{:d}", mc2::fmt::as_i32(i));
 				unsigned long alternate = -1;
 				result = missionFile->readIdULong(s, alternate);
 				if (result == NO_ERR)
@@ -724,7 +711,7 @@ void Mission::initPartsLoad(long loadType, long dropZoneID, Stuff::Vector3D* dro
 		for (int i = 1; i < long(numParts + 1); i++)
 		{
 			char partName[12];
-			sprintf(partName,"Part%d",i);
+			mc2::fmt::to_buf(partName, "Part{:d}", mc2::fmt::as_i32(i));
 			
 			result = missionFile->seekBlock(partName);
 			// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1):
@@ -765,7 +752,7 @@ void Mission::initPartsLoad(long loadType, long dropZoneID, Stuff::Vector3D* dro
 				// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
 				MC2_VERIFY(result == NO_ERR, "Mission::init: [%s] missing Pilot (alternate)", partName);
 
-				sprintf(partName, "Part%d", partId);
+				mc2::fmt::to_buf(partName, "Part{:d}", mc2::fmt::as_i32(partId));
 				result = missionFile->seekBlock(partName);
 				// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
 				MC2_VERIFY(result == NO_ERR, "Mission::init: alternate part block [%s] missing", partName);
@@ -997,8 +984,7 @@ void Mission::initGpuAndLighting() {
 	gos_ResetStaticShadowPriming();
 	mc_ResetTerrainShadowPrimed();
 	if (mc2::gate::get<"MC2_DECOR_SHADOW_TRACE">()) {
-		printf("[DECOR_SHADOW v1] event=mission_reset_priming frame=%u\n",
-		       g_mc2FrameCounter); fflush(stdout);
+		mc2::fmt::print_out("[DECOR_SHADOW v1] event=mission_reset_priming frame={:d}\n", mc2::fmt::as_u32(g_mc2FrameCounter)); fflush(stdout);
 	}
 }
 
@@ -1153,7 +1139,7 @@ void Mission::initCommanders(char (*commandersToLoad)[3], MissionInitFrame& f) {
 		if (!MC2_VERIFY_BOUNDS(ctlCommander, MAX_COMMANDERS, "Mission::init commander-groups commandersToLoad"))
 			continue;
 
-		sprintf(headingStr, "Commander%dGroup:%d", curCommanderId, numGroups);
+		mc2::fmt::to_buf(headingStr, "Commander{:d}Group:{:d}", mc2::fmt::as_i32(curCommanderId), mc2::fmt::as_i32(numGroups));
 		result = missionFile->seekBlock(headingStr);
 		// A group block exists for this commander -> the loop below WILL deref the
 		// slot. Verify it was created before entering (matches the original's
@@ -1179,7 +1165,7 @@ void Mission::initCommanders(char (*commandersToLoad)[3], MissionInitFrame& f) {
 			}
 			
 			numGroups++;
-			sprintf(headingStr, "Commander%dGroup:%d", curCommanderId, numGroups);
+			mc2::fmt::to_buf(headingStr, "Commander{:d}Group:{:d}", mc2::fmt::as_i32(curCommanderId), mc2::fmt::as_i32(numGroups));
 			result = missionFile->seekBlock(headingStr);
 		}
 	}

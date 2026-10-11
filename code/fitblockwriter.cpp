@@ -5,6 +5,7 @@
 
 #include <cstdio>
 #include <fstream>
+#include "mc2fmt.h"
 
 void FitBlockWriter::appendIndent() {
     for (size_t i = 0; i < m_stack.size(); ++i)
@@ -46,7 +47,7 @@ void FitBlockWriter::writeToken(const std::string& key, const std::string& token
 
 void FitBlockWriter::writeLong(const std::string& key, long v) {
     char buf[32];
-    std::snprintf(buf, sizeof(buf), "%ld", v);
+    mc2::fmt::to_buf(buf, "{:d}", mc2::fmt::as_i32(v));
     writeToken(key, buf);
 }
 

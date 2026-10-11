@@ -3,6 +3,7 @@
 #include "gos_static_prop_batcher_internal.h"
 #include "gos_static_prop_flush_frame.h"
 #include "mdi_submit.h"                          // MDI-SUBMISSION-SCAFFOLD-1: flush issues the indirect draws
+#include "mc2fmt.h"
 
 
 // [RENDER_CONTRACT:Pass=StaticProp id=GpuStaticPropBatcher_flush]
@@ -308,12 +309,7 @@ void GpuStaticPropBatcher::legacyDrawLoop(StaticPropFlushFrame& f) {
                                     * sizeof(GpuStaticPropInstance);
                 const float* mm = reinterpret_cast<const float*>(base + midOff);
                 const bool z0 = (m0[0]==0.0f && m0[3]==0.0f && m0[7]==0.0f && m0[11]==0.0f);
-                fprintf(stderr,
-                    "[INSTDIAG] sample=first40 typeID=%u slot=%u instByteOff=%zu count=%u byteSize=%zu "
-                    "drawData0_rawXYZ=(%.1f,%.1f,%.1f) zero0=%d midXYZ=(%.1f,%.1f,%.1f)\n",
-                    typeID, (unsigned)s_frameSlot, (size_t)r.instanceByteOffset,
-                    r.instanceCount, (size_t)r.instanceByteSize,
-                    -m0[3], m0[11], m0[7], (int)z0, -mm[3], mm[11], mm[7]);
+                mc2::fmt::print_err("[INSTDIAG] sample=first40 typeID={:d} slot={:d} instByteOff={:d} count={:d} byteSize={:d} drawData0_rawXYZ=({:.1f},{:.1f},{:.1f}) zero0={:d} midXYZ=({:.1f},{:.1f},{:.1f})\n", mc2::fmt::as_u32(typeID), mc2::fmt::as_u32((unsigned)s_frameSlot), mc2::fmt::as_size((size_t)r.instanceByteOffset), mc2::fmt::as_u32(r.instanceCount), mc2::fmt::as_size((size_t)r.instanceByteSize), -m0[3], m0[11], m0[7], mc2::fmt::as_i32((int)z0), -mm[3], mm[11], mm[7]);
                 fflush(stderr);
             }
         }
@@ -516,8 +512,7 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
                 const int m = mc2::gate::get<"MC2_GPU_PROPS_DEBUG_MODE">();
                 if (m >= 0 && m <= 8) {
                     debugAddrMode_ = m;
-                    std::fprintf(stderr,
-                        "[LODBUG v1] event=debug_mode_env_override mode=%d\n", m);
+                    mc2::fmt::print_err("[LODBUG v1] event=debug_mode_env_override mode={:d}\n", mc2::fmt::as_i32(m));
                     std::fflush(stderr);
                 }
             }
@@ -655,11 +650,7 @@ void GpuStaticPropBatcher::flush(const RenderSnapshot* snap) {
                 static_cast<double>(s_btf_ns_coalesce_write) / s_btf_calls / 1000.0;
             const double mean_draw_us =
                 static_cast<double>(s_btf_ns_coalesce_draw) / s_btf_calls / 1000.0;
-            std::fprintf(stderr,
-                "[BTF_TIMING v1] calls=%llu mean_total_us=%.2f "
-                "mean_coalesce_write_us=%.2f mean_drawpath_us=%.2f\n",
-                (unsigned long long)s_btf_calls,
-                mean_total_us, mean_write_us, mean_draw_us);
+            mc2::fmt::print_err("[BTF_TIMING v1] calls={:d} mean_total_us={:.2f} mean_coalesce_write_us={:.2f} mean_drawpath_us={:.2f}\n", mc2::fmt::as_u64((unsigned long long)s_btf_calls), mean_total_us, mean_write_us, mean_draw_us);
             std::fflush(stderr);
         }
     }

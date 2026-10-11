@@ -31,7 +31,7 @@ long MechHitSectionTable[NUM_ATTACKSOURCES] = {
 };
 
 #ifdef USEHEAT
-HeatEffectEntryPtr HeatEffectTable = NULL;
+HeatEffectEntryPtr HeatEffectTable = nullptr;
 long			   NumHeatLevels = 0;
 #endif
 
@@ -226,7 +226,7 @@ GameObjectPtr BadGuy = nullptr;
 
 //#define USE_MECHDEBUGFILE
 #ifdef USE_MECHDEBUGFILE
-UserFile* MechDebugFile = NULL;
+UserFile* MechDebugFile = nullptr;
 #endif
 
 extern bool ShowMovers;

@@ -29,6 +29,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstdint>
+#include "mc2fmt.h"
 
 namespace {
 
@@ -203,8 +204,7 @@ BattleMech* findMechByHandle(RenderCore::RenderObjectHandle h) {
 void RunMechPickSelfTest() {
     if (!mc2::gate::get<"MC2_MECH_PICK_SELFTEST">()) return;
     if (!RenderWorld::IsObjectIdBufferEnabled()) {
-        std::fprintf(stderr,
-            "[MECH_PICK_SELFTEST v1] result=SKIP reason=substrate_off\n");
+        mc2::fmt::print_err("[MECH_PICK_SELFTEST v1] result=SKIP reason=substrate_off\n");
         return;
     }
     // External-review m2: sample live-mech count BEFORE the synthetic
@@ -218,14 +218,12 @@ void RunMechPickSelfTest() {
     desc.debugCookie   = 0u;
     RenderCore::RenderObjectHandle h = RenderWorld::registerMech(desc);
     if (!h.isValid()) {
-        std::fprintf(stderr,
-            "[MECH_PICK_SELFTEST v1] result=FAIL step=1 reason=register_failed\n");
+        mc2::fmt::print_err("[MECH_PICK_SELFTEST v1] result=FAIL step=1 reason=register_failed\n");
         return;
     }
     // Step 2: scan with invalid handle -> nullptr.
     if (GameAdapters::Mech::findMechByHandle(RenderCore::RenderObjectHandle::invalid()) != nullptr) {
-        std::fprintf(stderr,
-            "[MECH_PICK_SELFTEST v1] result=FAIL step=2 reason=invalid_returned_nonnull\n");
+        mc2::fmt::print_err("[MECH_PICK_SELFTEST v1] result=FAIL step=2 reason=invalid_returned_nonnull\n");
         RenderWorld::destroyMech(h);
         return;
     }
@@ -237,8 +235,7 @@ void RunMechPickSelfTest() {
         // the bits. (Init-time should never hit this path.)
         Mech3DAppearance* app = static_cast<Mech3DAppearance*>(found->getAppearance());
         if (app == nullptr || app->getRenderWorldHandle().raw() != h.raw()) {
-            std::fprintf(stderr,
-                "[MECH_PICK_SELFTEST v1] result=FAIL step=3 reason=scan_bits_mismatch\n");
+            mc2::fmt::print_err("[MECH_PICK_SELFTEST v1] result=FAIL step=3 reason=scan_bits_mismatch\n");
             RenderWorld::destroyMech(h);
             return;
         }
@@ -251,14 +248,9 @@ void RunMechPickSelfTest() {
     // and the slot leaked (would compound across init-time invocations).
     const uint64_t mechsAliveAfter = RenderWorld::getMechsAliveCount();
     if (mechsAliveAfter != mechsAliveBefore) {
-        std::fprintf(stderr,
-            "[MECH_PICK_SELFTEST v1] result=FAIL step=5 reason=live_count_drift "
-            "before=%llu after=%llu\n",
-            (unsigned long long)mechsAliveBefore,
-            (unsigned long long)mechsAliveAfter);
+        mc2::fmt::print_err("[MECH_PICK_SELFTEST v1] result=FAIL step=5 reason=live_count_drift before={:d} after={:d}\n", mc2::fmt::as_u64((unsigned long long)mechsAliveBefore), mc2::fmt::as_u64((unsigned long long)mechsAliveAfter));
         return; // do not emit PASS
     }
 
-    std::fprintf(stderr,
-        "[MECH_PICK_SELFTEST v1] result=PASS step=all\n");
+    mc2::fmt::print_err("[MECH_PICK_SELFTEST v1] result=PASS step=all\n");
 }

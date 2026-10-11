@@ -1,6 +1,7 @@
 // EditorInspector: the Object Inspector section drawers drawImGui calls -- renderer features, copy-all, render explain,
 // the per-kind panels, the pass sections and the material and gate tables. The orchestrator is in EditorInspector.cpp.
 #include "EditorInspector_internal.h"
+#include "mc2fmt.h"
 
 namespace EditorInspector {
 
@@ -132,39 +133,18 @@ void drawCopyAll(const RenderWorld::LookupResult& lk) {
     if (ImGui::Button("Copy All")) {
         char buf[3072];
         int  n = 0;
-        n += std::snprintf(buf+n, sizeof(buf)-n,
-            "ObjID raw: 0x%08X  valid: %s%s%s\n",
-            lk.rawObjectId, lk.isValid ? "yes" : "no",
-            (!lk.isValid && lk.lookupFailReason) ? "  reason: " : "",
-            (!lk.isValid && lk.lookupFailReason) ? lk.lookupFailReason : "");
-        n += std::snprintf(buf+n, sizeof(buf)-n, "Kind: %s\n", pickKindName(s_selection.pickKind));
-        n += std::snprintf(buf+n, sizeof(buf)-n,
-            "Handle: 0x%08X  idx %u / gen %u\n",
-            s_selection.handle.raw(),
-            s_selection.handle.index(), s_selection.handle.generation());
+        n += mc2::fmt::to_buf_n(buf+n, sizeof(buf)-n, "ObjID raw: 0x{:08X}  valid: {}{}{}\n", mc2::fmt::as_u32(lk.rawObjectId), mc2::fmt::safe(lk.isValid ? "yes" : "no"), mc2::fmt::safe((!lk.isValid && lk.lookupFailReason) ? "  reason: " : ""), mc2::fmt::safe((!lk.isValid && lk.lookupFailReason) ? lk.lookupFailReason : ""));
+        n += mc2::fmt::to_buf_n(buf+n, sizeof(buf)-n, "Kind: {}\n", mc2::fmt::safe(pickKindName(s_selection.pickKind)));
+        n += mc2::fmt::to_buf_n(buf+n, sizeof(buf)-n, "Handle: 0x{:08X}  idx {:d} / gen {:d}\n", mc2::fmt::as_u32(s_selection.handle.raw()), mc2::fmt::as_u32(s_selection.handle.index()), mc2::fmt::as_u32(s_selection.handle.generation()));
         if (lk.worldPosValid)
-            n += std::snprintf(buf+n, sizeof(buf)-n,
-                "World: (%.1f, %.1f, %.1f)\n", lk.worldX, lk.worldY, lk.worldZ);
-        n += std::snprintf(buf+n, sizeof(buf)-n,
-            "Mesh: 0x%08X  Mat: 0x%08X  LOD: %u  Pipeline: %u\n"
-            "DrawPacket: %u  PathReason: 0x%08X  GameObjID: %u\n",
-            lk.meshHandleBits, lk.materialHandleBits,
-            static_cast<unsigned>(lk.lodLevel), static_cast<unsigned>(lk.pipelineId),
-            lk.drawPacketIndex, lk.pathReasonCode, lk.gameObjectId);
+            n += mc2::fmt::to_buf_n(buf+n, sizeof(buf)-n, "World: ({:.1f}, {:.1f}, {:.1f})\n", lk.worldX, lk.worldY, lk.worldZ);
+        n += mc2::fmt::to_buf_n(buf+n, sizeof(buf)-n, "Mesh: 0x{:08X}  Mat: 0x{:08X}  LOD: {:d}  Pipeline: {:d}\nDrawPacket: {:d}  PathReason: 0x{:08X}  GameObjID: {:d}\n", mc2::fmt::as_u32(lk.meshHandleBits), mc2::fmt::as_u32(lk.materialHandleBits), mc2::fmt::as_u32(static_cast<unsigned>(lk.lodLevel)), mc2::fmt::as_u32(static_cast<unsigned>(lk.pipelineId)), mc2::fmt::as_u32(lk.drawPacketIndex), mc2::fmt::as_u32(lk.pathReasonCode), mc2::fmt::as_u32(lk.gameObjectId));
         if (s_selection.kind == RenderWorld::RenderObjectKind::StaticProp
                 && s_staticPropData.populated) {
-            n += std::snprintf(buf+n, sizeof(buf)-n,
-                "RecipeIdx: %d  Shape: %s\n",
-                s_staticPropData.recipeIndex,
-                s_staticPropData.shapeName[0] ? s_staticPropData.shapeName : "(unknown)");
+            n += mc2::fmt::to_buf_n(buf+n, sizeof(buf)-n, "RecipeIdx: {:d}  Shape: {}\n", mc2::fmt::as_i32(s_staticPropData.recipeIndex), mc2::fmt::safe(s_staticPropData.shapeName[0] ? s_staticPropData.shapeName : "(unknown)"));
             if (s_staticPropData.materialGpuPopulated) {
                 const auto& mg = s_staticPropData.materialGpu;
-                n += std::snprintf(buf+n, sizeof(buf)-n,
-                    "MatIdx: %u  albedo: %u  normal: %u  mrTex: %u  emit: %u\n"
-                    "flags: 0x%08X  baseColor: %.3f  metallic: %.3f  rough: %.3f\n",
-                    s_staticPropData.materialIdx,
-                    mg.albedoTex, mg.normalTex, mg.metallicRoughnessTex, mg.emissiveTex,
-                    mg.flags, mg.baseColorFactor, mg.metallicFactor, mg.roughnessFactor);
+                n += mc2::fmt::to_buf_n(buf+n, sizeof(buf)-n, "MatIdx: {:d}  albedo: {:d}  normal: {:d}  mrTex: {:d}  emit: {:d}\nflags: 0x{:08X}  baseColor: {:.3f}  metallic: {:.3f}  rough: {:.3f}\n", mc2::fmt::as_u32(s_staticPropData.materialIdx), mc2::fmt::as_u32(mg.albedoTex), mc2::fmt::as_u32(mg.normalTex), mc2::fmt::as_u32(mg.metallicRoughnessTex), mc2::fmt::as_u32(mg.emissiveTex), mc2::fmt::as_u32(mg.flags), mg.baseColorFactor, mg.metallicFactor, mg.roughnessFactor);
             }
         }
         if (s_selection.kind == RenderWorld::RenderObjectKind::Mech
@@ -177,23 +157,8 @@ void drawCopyAll(const RenderWorld::LookupResult& lk) {
                             ? s_mechData.chassisClass : 0;
             const int csi = (s_mechData.conStat >= 0 && s_mechData.conStat < 6)
                             ? s_mechData.conStat : 0;
-            n += std::snprintf(buf+n, sizeof(buf)-n,
-                "Variant: %s  Name: %s\n"
-                "Class: %s  TeamID: %ld  Pilot: %s\n"
-                "Status: %s%s%s\n"
-                "Sensor: %s\n"
-                "Armor: %.0f / %.0f  Structure: %.0f / %.0f\n",
-                s_mechData.variantName[0] ? s_mechData.variantName : "(none)",
-                s_mechData.longName[0]    ? s_mechData.longName    : "(none)",
-                cnames[ci], s_mechData.teamId,
-                s_mechData.pilotName[0]   ? s_mechData.pilotName   : "(none)",
-                s_mechData.destroyed ? "DESTROYED " : "",
-                s_mechData.disabled  ? "disabled "  : "",
-                (!s_mechData.destroyed && !s_mechData.disabled && !s_mechData.crippled)
-                    ? "OK" : (s_mechData.crippled ? "crippled" : ""),
-                snames[csi],
-                s_mechData.totalCurArmor, s_mechData.totalMaxArmor,
-                s_mechData.totalCurStr,   s_mechData.totalMaxStr);
+            n += mc2::fmt::to_buf_n(buf+n, sizeof(buf)-n, "Variant: {}  Name: {}\nClass: {}  TeamID: {:d}  Pilot: {}\nStatus: {}{}{}\nSensor: {}\nArmor: {:.0f} / {:.0f}  Structure: {:.0f} / {:.0f}\n", mc2::fmt::safe(s_mechData.variantName[0] ? s_mechData.variantName : "(none)"), mc2::fmt::safe(s_mechData.longName[0]    ? s_mechData.longName    : "(none)"), mc2::fmt::safe(cnames[ci]), mc2::fmt::as_i32(s_mechData.teamId), mc2::fmt::safe(s_mechData.pilotName[0]   ? s_mechData.pilotName   : "(none)"), mc2::fmt::safe(s_mechData.destroyed ? "DESTROYED " : ""), mc2::fmt::safe(s_mechData.disabled  ? "disabled "  : ""), mc2::fmt::safe((!s_mechData.destroyed && !s_mechData.disabled && !s_mechData.crippled)
+                    ? "OK" : (s_mechData.crippled ? "crippled" : "")), mc2::fmt::safe(snames[csi]), s_mechData.totalCurArmor, s_mechData.totalMaxArmor, s_mechData.totalCurStr, s_mechData.totalMaxStr);
         }
         ImGui::SetClipboardText(buf);
     }
@@ -243,10 +208,10 @@ void drawRenderExplain(const RenderWorld::LookupResult& lk) {
                     : static_cast<uint32_t>(lk.pipelineId);
                 char pipeBuf[48];
                 switch (pipeId) {
-                    case 0:  std::snprintf(pipeBuf, sizeof(pipeBuf), "(unknown)"); break;
-                    case 1:  std::snprintf(pipeBuf, sizeof(pipeBuf), "StaticPropOpaque (1)"); break;
-                    case 2:  std::snprintf(pipeBuf, sizeof(pipeBuf), "StaticPropAlphaTest (2)"); break;
-                    default: std::snprintf(pipeBuf, sizeof(pipeBuf), "?(%u)", pipeId); break;
+                    case 0:  mc2::fmt::to_buf(pipeBuf, "(unknown)"); break;
+                    case 1:  mc2::fmt::to_buf(pipeBuf, "StaticPropOpaque (1)"); break;
+                    case 2:  mc2::fmt::to_buf(pipeBuf, "StaticPropAlphaTest (2)"); break;
+                    default: mc2::fmt::to_buf(pipeBuf, "?({:d})", mc2::fmt::as_u32(pipeId)); break;
                 }
                 ImGui::Text("  pipeline       %s", pipeBuf);
             }
@@ -263,12 +228,7 @@ void drawRenderExplain(const RenderWorld::LookupResult& lk) {
                                       && (layer >= 0)
                                       && rs.rows[0].materialMatchesLegacy;
                 char matBuf[128];
-                std::snprintf(matBuf, sizeof(matBuf),
-                    "MaterialGpu  idx %u  albedo %u  layer %d  %s",
-                    s_staticPropData.materialIdx,
-                    s_staticPropData.materialGpu.albedoTex,
-                    layer,
-                    matchOk ? "OK" : "(mismatch)");
+                mc2::fmt::to_buf(matBuf, "MaterialGpu  idx {:d}  albedo {:d}  layer {:d}  {}", mc2::fmt::as_u32(s_staticPropData.materialIdx), mc2::fmt::as_u32(s_staticPropData.materialGpu.albedoTex), mc2::fmt::as_i32(layer), mc2::fmt::safe(matchOk ? "OK" : "(mismatch)"));
                 ImGui::Text("  material       %s", matBuf);
             } else if (s_selection.kind == RenderWorld::RenderObjectKind::StaticProp) {
                 ImGui::TextDisabled("  material       (no GPU material data)");
@@ -460,22 +420,22 @@ void drawRenderSpine() {
                     ImGui::TableSetColumnIndex(1); ImGui::TextUnformatted(v);
                 };
 
-                std::snprintf(buf, sizeof(buf), "%u", rs.typeId);
+                mc2::fmt::to_buf(buf, "{:d}", mc2::fmt::as_u32(rs.typeId));
                 row2("typeId", buf);
                 if (ImGui::IsItemHovered())
                     ImGui::SetTooltip("Batcher type slot (0..typeCount-1). Groups all\n"
                                       "instances that share geometry + pipeline.");
 
-                std::snprintf(buf, sizeof(buf), "%d", rs.recipeIndex);
+                mc2::fmt::to_buf(buf, "{:d}", mc2::fmt::as_i32(rs.recipeIndex));
                 row2("recipeIndex", buf);
                 if (ImGui::IsItemHovered())
                     ImGui::SetTooltip("Static-prop recipe/type index — NOT the\n"
                                       "RenderWorld instance slot (Handle idx).\n"
                                       "Multiple Handle slots share one recipeIndex.");
 
-                std::snprintf(buf, sizeof(buf), "%u", rs.packetCount);
+                mc2::fmt::to_buf(buf, "{:d}", mc2::fmt::as_u32(rs.packetCount));
                 row2("packetCount", buf);
-                std::snprintf(buf, sizeof(buf), "%u", rs.instanceCount);
+                mc2::fmt::to_buf(buf, "{:d}", mc2::fmt::as_u32(rs.instanceCount));
                 row2("instances", buf);
                 if (ImGui::IsItemHovered())
                     ImGui::SetTooltip("Visible instances of this typeId this frame\n"
@@ -492,7 +452,7 @@ void drawRenderSpine() {
                 if (rs.materialIdx == 0xFFFFFFFFu)
                     ImGui::TextDisabled("(sentinel)");
                 else {
-                    std::snprintf(buf, sizeof(buf), "%u", rs.materialIdx);
+                    mc2::fmt::to_buf(buf, "{:d}", mc2::fmt::as_u32(rs.materialIdx));
                     ImGui::TextUnformatted(buf);
                 }
 
@@ -521,7 +481,7 @@ void drawRenderSpine() {
                         ImGui::TableNextRow();
 
                         ImGui::TableSetColumnIndex(0);
-                        std::snprintf(buf, sizeof(buf), "%u", pr.globalPacketIdx);
+                        mc2::fmt::to_buf(buf, "{:d}", mc2::fmt::as_u32(pr.globalPacketIdx));
                         ImGui::TextUnformatted(buf);
                         if (ImGui::IsItemHovered())
                             ImGui::SetTooltip("Global packet index in batcher sorted array.\n"
@@ -533,7 +493,7 @@ void drawRenderSpine() {
                             case 1:  ImGui::TextUnformatted("opaque");    break;
                             case 2:  ImGui::TextColored(ImVec4(1.f,0.85f,0.3f,1.f), "alpha_test"); break;
                             default:
-                                std::snprintf(buf, sizeof(buf), "?(%u)", pr.pipelineId);
+                                mc2::fmt::to_buf(buf, "?({:d})", mc2::fmt::as_u32(pr.pipelineId));
                                 ImGui::TextColored(ImVec4(1.f,0.5f,0.3f,1.f), "%s", buf);
                                 break;
                         }
@@ -542,7 +502,7 @@ void drawRenderSpine() {
                         if (rs.materialIdx == 0xFFFFFFFFu)
                             ImGui::TextDisabled("--");
                         else {
-                            std::snprintf(buf, sizeof(buf), "%u", rs.materialIdx);
+                            mc2::fmt::to_buf(buf, "{:d}", mc2::fmt::as_u32(rs.materialIdx));
                             ImGui::TextUnformatted(buf);
                         }
 
@@ -550,7 +510,7 @@ void drawRenderSpine() {
                         if (pr.albedoTex == 0xFFFFFFFFu)
                             ImGui::TextDisabled("--");
                         else {
-                            std::snprintf(buf, sizeof(buf), "%u", pr.albedoTex);
+                            mc2::fmt::to_buf(buf, "{:d}", mc2::fmt::as_u32(pr.albedoTex));
                             ImGui::TextUnformatted(buf);
                         }
 
@@ -558,7 +518,7 @@ void drawRenderSpine() {
                         if (pr.texArrayLayer < 0)
                             ImGui::TextDisabled("--");
                         else {
-                            std::snprintf(buf, sizeof(buf), "%d", pr.texArrayLayer);
+                            mc2::fmt::to_buf(buf, "{:d}", mc2::fmt::as_i32(pr.texArrayLayer));
                             ImGui::TextUnformatted(buf);
                         }
 
@@ -571,7 +531,7 @@ void drawRenderSpine() {
                             ImGui::TextColored(ImVec4(1.f,0.4f,0.3f,1.f), "DIFF");
 
                         ImGui::TableSetColumnIndex(6);
-                        std::snprintf(buf, sizeof(buf), "%d", pr.baseVertex);
+                        mc2::fmt::to_buf(buf, "{:d}", mc2::fmt::as_i32(pr.baseVertex));
                         ImGui::TextUnformatted(buf);
 
                         ImGui::TableSetColumnIndex(7);
@@ -1171,8 +1131,8 @@ void drawMaterialRwLookup(const RenderWorld::LookupResult& lk) {
                     s_staticPropData.materialIdx, s_staticPropData.materialGen);
                 ImGui::Separator();
                 auto texLabel = [](uint32_t t, char* b, size_t n) {
-                    if (t == 0xFFFFFFFFu) std::snprintf(b, n, "(absent)");
-                    else std::snprintf(b, n, "%u", t);
+                    if (t == 0xFFFFFFFFu) mc2::fmt::to_buf_n(b, n, "(absent)");
+                    else mc2::fmt::to_buf_n(b, n, "{:d}", mc2::fmt::as_u32(t));
                 };
                 char tb[24];
                 texLabel(mg.albedoTex, tb, sizeof(tb));

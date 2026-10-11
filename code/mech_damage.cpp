@@ -1,6 +1,7 @@
 // BattleMech: inventory hits, critical hits, status/move chunks and handleWeaponHit.
 // Declared in the class headers; shared names in mech_internal.h.
 #include "mech_internal.h"
+#include "mc2fmt.h"
 
 
 bool BattleMech::hitInventoryItem (long itemIndex, bool setupOnly) {
@@ -517,11 +518,7 @@ long BattleMech::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayC
 		char _cbf[192];
 		// ISSUE-9 S3: "loc" = resolved hit location (mech body index; 0 = head)
 		// so called-shot location distribution is measurable headlessly.
-		snprintf(_cbf, sizeof(_cbf),
-			"{\"ev\":\"hit\",\"a_wid\":%u,\"a_team\":%ld,\"t_wid\":%lu,\"t_team\":%ld,\"dmg\":%.1f,\"loc\":%d}",
-			(unsigned)shotInfo->attackerWID, _cbAtk ? _cbAtk->getTeamId() : -1L,
-			getWatchID(false), getTeamId(), (double)shotInfo->damage,
-			(int)shotInfo->hitLocation);
+		mc2::fmt::to_buf(_cbf, "{{\"ev\":\"hit\",\"a_wid\":{:d},\"a_team\":{:d},\"t_wid\":{:d},\"t_team\":{:d},\"dmg\":{:.1f},\"loc\":{:d}}}", mc2::fmt::as_u32((unsigned)shotInfo->attackerWID), mc2::fmt::as_i32(_cbAtk ? _cbAtk->getTeamId() : -1L), mc2::fmt::as_u32(getWatchID(false)), mc2::fmt::as_i32(getTeamId()), (double)shotInfo->damage, mc2::fmt::as_i32((int)shotInfo->hitLocation));
 		mc2_diag::writeEvent("COMBAT", 1, 0, _cbf);
 	}
 
@@ -566,7 +563,7 @@ long BattleMech::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayC
 		
 					if (CombatLog) {
 						char s[1024];
-						sprintf(s, "[%.2f] mech.destroyed HWH: [%05d]%s", scenarioTime, getPartId(), getName());
+						mc2::fmt::to_buf(s, "[{:.2f}] mech.destroyed HWH: [{:05d}]{}", scenarioTime, mc2::fmt::as_i32(getPartId()), mc2::fmt::safe(getName()));
 						CombatLog->write(s);
 						CombatLog->write(" ");
 					}
@@ -589,7 +586,7 @@ long BattleMech::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayC
 	#endif
 			if (CombatLog) {
 				char s[1024];
-				sprintf(s, "[%.2f] helicopter.destroyed: [%05d]%s", scenarioTime, getPartId(), getName());
+				mc2::fmt::to_buf(s, "[{:.2f}] helicopter.destroyed: [{:05d}]{}", scenarioTime, mc2::fmt::as_i32(getPartId()), mc2::fmt::safe(getName()));
 				CombatLog->write(s);
 				CombatLog->write(" ");
 			}

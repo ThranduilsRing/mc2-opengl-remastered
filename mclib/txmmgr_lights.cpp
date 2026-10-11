@@ -1,6 +1,7 @@
 // MC_TextureManager: baked static light slots, light-data dedup and the LIGHTBAKE / LIGHTBRIDGE gates.
 // Declared in the class headers; shared names in txmmgr_internal.h.
 #include "txmmgr_internal.h"
+#include "mc2fmt.h"
 
 // PERF FIX 2026-05-07: hash-based dedup map. The previous linear-scan
 // implementation walked all existing entries doing 900-byte memcmp per
@@ -196,13 +197,7 @@ namespace {
 
         if (s_lbEnabled && hadData) {
             char buf[512];
-            std::snprintf(buf, sizeof(buf),
-                "[LIGHTBRIDGE v1] frame=%u populate={ns:%llu,calls:%llu,"
-                "tmpl_hit:%llu,tmpl_miss:%llu,no_actor_light:%llu}",
-                (unsigned)frame,
-                (unsigned long long)s_lbFrameNs,  (unsigned long long)s_lbFrameCalls,
-                (unsigned long long)s_lbFrameHit, (unsigned long long)s_lbFrameMiss,
-                (unsigned long long)s_lbFrameNo);
+            mc2::fmt::to_buf(buf, "[LIGHTBRIDGE v1] frame={:d} populate={{ns:{:d},calls:{:d},tmpl_hit:{:d},tmpl_miss:{:d},no_actor_light:{:d}}}", mc2::fmt::as_u32((unsigned)frame), mc2::fmt::as_u64((unsigned long long)s_lbFrameNs), mc2::fmt::as_u64((unsigned long long)s_lbFrameCalls), mc2::fmt::as_u64((unsigned long long)s_lbFrameHit), mc2::fmt::as_u64((unsigned long long)s_lbFrameMiss), mc2::fmt::as_u64((unsigned long long)s_lbFrameNo));
             MC2_DIAG_PUTS(buf); crashbundle_append(buf); std::fflush(stdout);
         }
 
@@ -213,16 +208,7 @@ namespace {
 
         if (frame > 0 && (frame % 600) == 0 && s_lbMonoCalls != 0) {
             char buf[512];
-            std::snprintf(buf, sizeof(buf),
-                "[LIGHTBRIDGE v1] summary=%u populate={ns:%llu,calls:%llu,"
-                "tmpl_hit:%llu,tmpl_miss:%llu,no_actor_light:%llu} "
-                "ns_per_call=%llu first_data_frame=%u",
-                (unsigned)frame,
-                (unsigned long long)s_lbMonoNs,  (unsigned long long)s_lbMonoCalls,
-                (unsigned long long)s_lbMonoHit, (unsigned long long)s_lbMonoMiss,
-                (unsigned long long)s_lbMonoNo,
-                (unsigned long long)(s_lbMonoCalls ? s_lbMonoNs / s_lbMonoCalls : 0),
-                (unsigned)s_lbFirstDataFrame);
+            mc2::fmt::to_buf(buf, "[LIGHTBRIDGE v1] summary={:d} populate={{ns:{:d},calls:{:d},tmpl_hit:{:d},tmpl_miss:{:d},no_actor_light:{:d}}} ns_per_call={:d} first_data_frame={:d}", mc2::fmt::as_u32((unsigned)frame), mc2::fmt::as_u64((unsigned long long)s_lbMonoNs), mc2::fmt::as_u64((unsigned long long)s_lbMonoCalls), mc2::fmt::as_u64((unsigned long long)s_lbMonoHit), mc2::fmt::as_u64((unsigned long long)s_lbMonoMiss), mc2::fmt::as_u64((unsigned long long)s_lbMonoNo), mc2::fmt::as_u64((unsigned long long)(s_lbMonoCalls ? s_lbMonoNs / s_lbMonoCalls : 0)), mc2::fmt::as_u32((unsigned)s_lbFirstDataFrame));
             MC2_DIAG_PUTS(buf); crashbundle_append(buf); std::fflush(stdout);
         }
     }
@@ -305,9 +291,7 @@ namespace {
         std::fflush(stdout);
         if (mc2_diag::tagEnabled("LIGHTBAKE_PROOF")) {
             char diag_buf[128];
-            snprintf(diag_buf, sizeof(diag_buf),
-                "{\"event\":\"enabled\",\"mode\":\"%s\"}",
-                s_bakeEnabled ? "bake" : "passthrough");
+            mc2::fmt::to_buf(diag_buf, "{{\"event\":\"enabled\",\"mode\":\"{}\"}}", mc2::fmt::safe(s_bakeEnabled ? "bake" : "passthrough"));
             mc2_diag::writeEvent("LIGHTBAKE_PROOF", 1, 0, diag_buf);
         }
     }
@@ -386,47 +370,32 @@ void mc2LightBakeStabilityObserve(int32_t recipeIndex, uint32_t lightDataIndex)
         if (lightDataIndex > s_lbMaxIndex) s_lbMaxIndex = lightDataIndex;
         if (lightDataIndex >= S)           ++s_lbOutOfPrefix;   // counted for ALL recipes
         if (s_lbFirstSeenIndex.size() <= 32) {
-            std::fprintf(stderr,
-                "[LIGHTBAKE-PROOF v1] event=first recipe=%d index=%u S=%u inPrefix=%d\n",
-                recipeIndex, lightDataIndex, S, (lightDataIndex < S) ? 1 : 0);
+            mc2::fmt::print_err("[LIGHTBAKE-PROOF v1] event=first recipe={:d} index={:d} S={:d} inPrefix={:d}\n", mc2::fmt::as_i32(recipeIndex), mc2::fmt::as_u32(lightDataIndex), mc2::fmt::as_u32(S), mc2::fmt::as_i32((lightDataIndex < S) ? 1 : 0));
             std::fflush(stderr);
             if (mc2_diag::tagEnabled("LIGHTBAKE_PROOF")) {
                 char diag_buf[128];
-                snprintf(diag_buf, sizeof(diag_buf),
-                    "{\"event\":\"first\",\"recipe\":%d,\"index\":%u,\"S\":%u,\"inPrefix\":%d}",
-                    recipeIndex, lightDataIndex, S, (lightDataIndex < S) ? 1 : 0);
+                mc2::fmt::to_buf(diag_buf, "{{\"event\":\"first\",\"recipe\":{:d},\"index\":{:d},\"S\":{:d},\"inPrefix\":{:d}}}", mc2::fmt::as_i32(recipeIndex), mc2::fmt::as_u32(lightDataIndex), mc2::fmt::as_u32(S), mc2::fmt::as_i32((lightDataIndex < S) ? 1 : 0));
                 mc2_diag::writeEvent("LIGHTBAKE_PROOF", 1, 0, diag_buf);
             }
         }
         // Aggregate coverage so recipes beyond the 32 log-cap are accounted for.
         if ((s_lbFirstSeenIndex.size() % 256u) == 0u) {
-            std::fprintf(stderr,
-                "[LIGHTBAKE-PROOF v1] event=coverage recipes_tracked=%zu max_index=%u S=%u out_of_prefix=%llu\n",
-                s_lbFirstSeenIndex.size(), s_lbMaxIndex, S,
-                (unsigned long long)s_lbOutOfPrefix);
+            mc2::fmt::print_err("[LIGHTBAKE-PROOF v1] event=coverage recipes_tracked={:d} max_index={:d} S={:d} out_of_prefix={:d}\n", mc2::fmt::as_size(s_lbFirstSeenIndex.size()), mc2::fmt::as_u32(s_lbMaxIndex), mc2::fmt::as_u32(S), mc2::fmt::as_u64((unsigned long long)s_lbOutOfPrefix));
             std::fflush(stderr);
             if (mc2_diag::tagEnabled("LIGHTBAKE_PROOF")) {
                 char diag_buf[192];
-                snprintf(diag_buf, sizeof(diag_buf),
-                    "{\"event\":\"coverage\",\"recipes_tracked\":%zu,\"max_index\":%u,"
-                    "\"S\":%u,\"out_of_prefix\":%llu}",
-                    s_lbFirstSeenIndex.size(), s_lbMaxIndex, S,
-                    (unsigned long long)s_lbOutOfPrefix);
+                mc2::fmt::to_buf(diag_buf, "{{\"event\":\"coverage\",\"recipes_tracked\":{:d},\"max_index\":{:d},\"S\":{:d},\"out_of_prefix\":{:d}}}", mc2::fmt::as_size(s_lbFirstSeenIndex.size()), mc2::fmt::as_u32(s_lbMaxIndex), mc2::fmt::as_u32(S), mc2::fmt::as_u64((unsigned long long)s_lbOutOfPrefix));
                 mc2_diag::writeEvent("LIGHTBAKE_PROOF", 1, 0, diag_buf);
             }
         }
     } else if (it->second != lightDataIndex) {
         ++s_lbStabilityViolations;   // detection runs for ALL recipes (uncapped)
         if (s_lbStabilityViolations <= 32) {
-            std::fprintf(stderr,
-                "[LIGHTBAKE-PROOF v1] event=UNSTABLE recipe=%d was=%u now=%u S=%u\n",
-                recipeIndex, it->second, lightDataIndex, S);
+            mc2::fmt::print_err("[LIGHTBAKE-PROOF v1] event=UNSTABLE recipe={:d} was={:d} now={:d} S={:d}\n", mc2::fmt::as_i32(recipeIndex), mc2::fmt::as_u32(it->second), mc2::fmt::as_u32(lightDataIndex), mc2::fmt::as_u32(S));
             std::fflush(stderr);
             if (mc2_diag::tagEnabled("LIGHTBAKE_PROOF")) {
                 char diag_buf[128];
-                snprintf(diag_buf, sizeof(diag_buf),
-                    "{\"event\":\"UNSTABLE\",\"recipe\":%d,\"was\":%u,\"now\":%u,\"S\":%u}",
-                    recipeIndex, it->second, lightDataIndex, S);
+                mc2::fmt::to_buf(diag_buf, "{{\"event\":\"UNSTABLE\",\"recipe\":{:d},\"was\":{:d},\"now\":{:d},\"S\":{:d}}}", mc2::fmt::as_i32(recipeIndex), mc2::fmt::as_u32(it->second), mc2::fmt::as_u32(lightDataIndex), mc2::fmt::as_u32(S));
                 mc2_diag::writeEvent("LIGHTBAKE_PROOF", 1, 0, diag_buf);
             }
         }
@@ -845,11 +814,7 @@ void mc2LightBakeParityCheck(int32_t recipeIndex,
     const bool match = (leafHash == slotHash);
     if (!match) ++s_lbParityMismatch;
     if (s_lbParityChecks <= 32 || !match) {
-        std::fprintf(stderr,
-            "[LIGHTBAKE-PROOF v1] event=slot_write_integrity recipe=%d leafHash=%016llx slotHash=%016llx "
-            "match=%d pos=(%.1f,%.1f,%.1f) appr=%s\n",
-            recipeIndex, (unsigned long long)leafHash, (unsigned long long)slotHash,
-            match ? 1 : 0, wx, wy, wz, appearance ? appearance : "?");
+        mc2::fmt::print_err("[LIGHTBAKE-PROOF v1] event=slot_write_integrity recipe={:d} leafHash={:016x} slotHash={:016x} match={:d} pos=({:.1f},{:.1f},{:.1f}) appr={}\n", mc2::fmt::as_i32(recipeIndex), mc2::fmt::as_u64((unsigned long long)leafHash), mc2::fmt::as_u64((unsigned long long)slotHash), mc2::fmt::as_i32(match ? 1 : 0), wx, wy, wz, mc2::fmt::safe(appearance ? appearance : "?"));
         std::fflush(stderr);
     }
 }

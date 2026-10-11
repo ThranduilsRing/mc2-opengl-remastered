@@ -10,6 +10,7 @@
 #include "gos_frame_pass_stats.h"
 #include "gos_render_pass_timer.h"
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 namespace gos_frame_pass_stats {
 
@@ -58,21 +59,14 @@ void emitLine(unsigned long frameNo)
 {
     char line[2048];
     int off = 0;
-    off += std::snprintf(line + off, sizeof(line) - off,
-        "[FRAME_PASS_STATS v1] frame=%lu chunks=%u spBatches=%u mechInst=%u vfx=%u",
-        frameNo, s_lastAgg.visibleTerrainChunks, s_lastAgg.staticPropBatches,
-        s_lastAgg.mechBatchInstances, s_lastAgg.vfxCount);
+    off += mc2::fmt::to_buf_n(line + off, sizeof(line) - off, "[FRAME_PASS_STATS v1] frame={:d} chunks={:d} spBatches={:d} mechInst={:d} vfx={:d}", mc2::fmt::as_u32(frameNo), mc2::fmt::as_u32(s_lastAgg.visibleTerrainChunks), mc2::fmt::as_u32(s_lastAgg.staticPropBatches), mc2::fmt::as_u32(s_lastAgg.mechBatchInstances), mc2::fmt::as_u32(s_lastAgg.vfxCount));
     for (int p = 0; p < Pass_Count; ++p) {
         const PassRow& r = s_last[p];
         if (!r.ran) continue;   // pass never ran this frame: key absent
-        off += std::snprintf(line + off, sizeof(line) - off,
-            " %s{fbo=%u vp=%dx%d dt=%d dm=%d bl=%d cull=%d draws=%u inst=%u}",
-            kPassKey[p], r.fbo, r.viewport[2], r.viewport[3],
-            r.depthTest ? 1 : 0, r.depthMask ? 1 : 0, r.blend ? 1 : 0,
-            r.cull ? 1 : 0, r.drawCount, r.instanceCount);
+        off += mc2::fmt::to_buf_n(line + off, sizeof(line) - off, " {}{{fbo={:d} vp={:d}x{:d} dt={:d} dm={:d} bl={:d} cull={:d} draws={:d} inst={:d}}}", mc2::fmt::safe(kPassKey[p]), mc2::fmt::as_u32(r.fbo), mc2::fmt::as_i32(r.viewport[2]), mc2::fmt::as_i32(r.viewport[3]), mc2::fmt::as_i32(r.depthTest ? 1 : 0), mc2::fmt::as_i32(r.depthMask ? 1 : 0), mc2::fmt::as_i32(r.blend ? 1 : 0), mc2::fmt::as_i32(r.cull ? 1 : 0), mc2::fmt::as_u32(r.drawCount), mc2::fmt::as_u32(r.instanceCount));
         if (off >= (int)sizeof(line) - 96) break;   // guard truncation
     }
-    std::printf("%s\n", line);
+    mc2::fmt::print_out("{}\n", mc2::fmt::safe(line));
     std::fflush(stdout);
 }
 
@@ -86,7 +80,7 @@ static void initEnv()
     s_envOn = mc2::gate::get<"MC2_FRAME_PASS_STATS">();
     s_inited = true;
     if (s_envOn) {
-        std::printf("[FRAME_PASS_STATS v1] armed every=%d\n", emitEvery());
+        mc2::fmt::print_out("[FRAME_PASS_STATS v1] armed every={:d}\n", mc2::fmt::as_i32(emitEvery()));
         std::fflush(stdout);
     }
 }

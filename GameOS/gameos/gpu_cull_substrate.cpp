@@ -8,6 +8,7 @@
 #include "gos_profiler.h"        // Tracy ZoneScopedN
 #include "diagnostic_trace.h"
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 // MC2_GPU_CULL_SUBSTRATE_TRACE=1 — verbose per-frame lifecycle prints.
 // Default off; the 600-frame summary + first-flush banner emit unconditionally.
@@ -178,10 +179,7 @@ void substrate_init(uint32_t maxActors) {
     fflush(stdout);
     if (mc2_diag::tagEnabled("GPU_CULL")) {
         char diag_buf[256];
-        snprintf(diag_buf, sizeof(diag_buf),
-            "{\"event\":\"substrate_init\",\"maxActors\":%u,\"slotBytes\":%zu,"
-            "\"totalBytes\":%lld,\"binding\":%u}",
-            maxActors, s_slotBytes, (long long)totalBytes, SUBSTRATE_SSBO_BINDING);
+        mc2::fmt::to_buf(diag_buf, "{{\"event\":\"substrate_init\",\"maxActors\":{:d},\"slotBytes\":{:d},\"totalBytes\":{:d},\"binding\":{:d}}}", mc2::fmt::as_u32(maxActors), mc2::fmt::as_size(s_slotBytes), mc2::fmt::as_i64((long long)totalBytes), mc2::fmt::as_u32(SUBSTRATE_SSBO_BINDING));
         mc2_diag::writeEvent("GPU_CULL", 1, 0, diag_buf);
     }
 }

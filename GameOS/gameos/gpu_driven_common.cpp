@@ -25,6 +25,7 @@
 
 #include "utils/shader_builder.h"  // load_shader — engine #include resolver
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 namespace gpu_driven {
 
@@ -86,7 +87,7 @@ static GLuint gpu_driven_compile_compute_shader(const char** strings, int count)
         if (logLen > 0) {
             char* log = new char[logLen];
             glGetShaderInfoLog(sh, logLen, nullptr, log);
-            fprintf(stderr, "[GPU_DRIVEN v1] compute shader compile error:\n%s\n", log);
+            mc2::fmt::print_err("[GPU_DRIVEN v1] compute shader compile error:\n{}\n", mc2::fmt::safe(log));
             fflush(stderr);
             delete[] log;
         }
@@ -109,7 +110,7 @@ static GLuint gpu_driven_link_compute_program(GLuint shader) {
         if (logLen > 0) {
             char* log = new char[logLen];
             glGetProgramInfoLog(prog, logLen, nullptr, log);
-            fprintf(stderr, "[GPU_DRIVEN v1] compute program link error:\n%s\n", log);
+            mc2::fmt::print_err("[GPU_DRIVEN v1] compute program link error:\n{}\n", mc2::fmt::safe(log));
             fflush(stderr);
             delete[] log;
         }
@@ -134,7 +135,7 @@ GLuint gpu_driven::BuildComputeProgramFromFile(
     std::string resolvedSource;
     std::vector<std::string> includes;
     if (!load_shader(fname, resolvedSource, includes)) {
-        fprintf(stderr, "[GPU_DRIVEN v1] %s source load/parse failed: %s\n", debugName, fname);
+        mc2::fmt::print_err("[GPU_DRIVEN v1] {} source load/parse failed: {}\n", mc2::fmt::safe(debugName), mc2::fmt::safe(fname));
         fflush(stderr);
         return 0;
     }
@@ -148,14 +149,14 @@ GLuint gpu_driven::BuildComputeProgramFromFile(
 
     GLuint sh = gpu_driven_compile_compute_shader(srcStrs.data(), (int)srcStrs.size());
     if (!sh) {
-        fprintf(stderr, "[GPU_DRIVEN v1] %s compile failed\n", debugName);
+        mc2::fmt::print_err("[GPU_DRIVEN v1] {} compile failed\n", mc2::fmt::safe(debugName));
         fflush(stderr);
         return 0;
     }
     GLuint prog = gpu_driven_link_compute_program(sh);
     glDeleteShader(sh);
     if (!prog) {
-        fprintf(stderr, "[GPU_DRIVEN v1] %s link failed\n", debugName);
+        mc2::fmt::print_err("[GPU_DRIVEN v1] {} link failed\n", mc2::fmt::safe(debugName));
         fflush(stderr);
     }
     return prog;

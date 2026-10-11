@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in mechcmd2_internal.h.
 #include "mechcmd2_internal.h"
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 
 void __stdcall UpdateRenderers()
@@ -529,7 +530,7 @@ void __stdcall DoGameLogic()
 						SmokeMode::markMissionReady();
 						s_missionReadyMarked = true;
 						if (mc2::gate::get<"MC2_FRAMECAP_TRACE">()) {
-							fprintf(stderr, "[FRAMECAP] markMissionReady fired (mission active)\n");
+							mc2::fmt::print_err("[FRAMECAP] markMissionReady fired (mission active)\n");
 							fflush(stderr);
 						}
 					}
@@ -682,7 +683,7 @@ void __stdcall DoGameLogic()
 					if (sniffData)
 					{
 						char sniff[2048];
-						sprintf(sniff,"%f,%f,%f,%f,%f,%f\n",trisPerSecond[0],ProcessorSpeed,trisPerSecond[1],trisPerSecond[2],trisPerSecond[3],trisPerSecond[4]);
+						mc2::fmt::to_buf(sniff, "{:f},{:f},{:f},{:f},{:f},{:f}\n", trisPerSecond[0], ProcessorSpeed, trisPerSecond[1], trisPerSecond[2], trisPerSecond[3], trisPerSecond[4]);
 
 						fputs(sniff,sniffData);
 						fclose(sniffData);

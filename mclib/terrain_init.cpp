@@ -1,6 +1,7 @@
 // Terrain: Terrain::init (mission terrain load), the block / mover list helpers it uses.
 // Declared in the class headers; shared names in terrain_internal.h.
 #include "terrain_internal.h"
+#include "mc2fmt.h"
 
 
 //---------------------------------------------------------------------------
@@ -38,7 +39,7 @@ void Terrain::initTerrainHeap(volatile float& percent, float percentRange) {
 	{
 		ZoneScopedN("Terrain::init terrainHeap");
 		terrainHeap = new UserHeap;
-		gosASSERT(terrainHeap != NULL);
+		gosASSERT(terrainHeap != nullptr);
 		terrainHeap->init(terrainHeapSize,"TERRAIN");
 	}
 
@@ -117,20 +118,20 @@ void Terrain::initObjBlockLists(volatile float& percent, float percentRange) {
 	
 	numObjBlocks = numberBlocks;
 	objBlockInfo = (ObjBlockInfo *)terrainHeap->Malloc(sizeof(ObjBlockInfo)*numObjBlocks);
-	gosASSERT(objBlockInfo != NULL);
+	gosASSERT(objBlockInfo != nullptr);
 	
 	memset(objBlockInfo,0,sizeof(ObjBlockInfo)*numObjBlocks);
 	
 	objVertexActive = (bool *)terrainHeap->Malloc(sizeof(bool) * realVerticesMapSide * realVerticesMapSide);
-	gosASSERT(objVertexActive != NULL);
+	gosASSERT(objVertexActive != nullptr);
 	
 	memset(objVertexActive,0,sizeof(bool)*numObjBlocks);
 	
 	moverBlockList = (long *)terrainHeap->Malloc(sizeof(long) * numberBlocks);
-	gosASSERT(moverBlockList != NULL);
+	gosASSERT(moverBlockList != nullptr);
 	
 	usedBlockList = (long *)terrainHeap->Malloc(sizeof(long) * numberBlocks);
-	gosASSERT(usedBlockList != NULL);
+	gosASSERT(usedBlockList != nullptr);
 	
 	clearList();
 	clearMoverList();
@@ -189,10 +190,10 @@ void Terrain::lodAllocMeta() {
 	s_drawCmds       = (TerrainDrawCommand*)terrainHeap->Malloc(sizeof(TerrainDrawCommand)  * nBlocks);
 	s_skirtDepths    = new float[nBlocks];
 
-	gosASSERT(s_blockMeta      != NULL);
-	gosASSERT(s_superchunkMeta != NULL);
-	gosASSERT(s_drawCmds       != NULL);
-	gosASSERT(s_skirtDepths    != NULL);
+	gosASSERT(s_blockMeta      != nullptr);
+	gosASSERT(s_superchunkMeta != nullptr);
+	gosASSERT(s_drawCmds       != nullptr);
+	gosASSERT(s_skirtDepths    != nullptr);
 
 	memset(s_blockMeta,      0, sizeof(TerrainBlockMeta)   * nBlocks);
 	memset(s_superchunkMeta, 0, sizeof(SuperchunkMeta)      * nSuperchunks);
@@ -204,8 +205,8 @@ void Terrain::lodAllocMeta() {
 
 	// Phase 7.5 diagnostic: startup banner — unmistakable confirmation the
 	// chunk renderer is active on this launch.
-	printf("[TerrainLOD v1] ENABLED chunks=%d x=%d ssbo=binding23 drawPath=chunk\n",
-	       s_terrainChunkSide * s_terrainChunkSide, s_terrainChunkSide);
+	mc2::fmt::print_out("[TerrainLOD v1] ENABLED chunks={:d} x={:d} ssbo=binding23 drawPath=chunk\n",
+	       mc2::fmt::as_i32(s_terrainChunkSide * s_terrainChunkSide), mc2::fmt::as_i32(s_terrainChunkSide));
 	fflush(stdout);
 
 	// Initialize per-block metadata.
@@ -287,14 +288,12 @@ void Terrain::lodControlMap() {
 				strncpy(stem, slash ? slash + 1 : nm, sizeof(stem) - 1);
 				stem[sizeof(stem) - 1] = '\0';
 				if (char* dot = strrchr(stem, '.')) *dot = '\0';
-				snprintf(cmPath, sizeof(cmPath),
-				         "data/missions/%s.beauty/control_map.png", stem);
+				mc2::fmt::to_buf(cmPath, "data/missions/{}.beauty/control_map.png", mc2::fmt::safe(stem));
 			}
 			FILE* cf = fopen(cmPath, "rb");
 			if (!cf)
 			{
-				printf("[TERRAIN_CONTROLMAP v1] sidecar NOT FOUND path=%s (gate on, mapSide=%d)"
-				       " -- passthrough (legacy classifier)\n", cmPath, mapSide);
+				mc2::fmt::print_out("[TERRAIN_CONTROLMAP v1] sidecar NOT FOUND path={} (gate on, mapSide={:d}) -- passthrough (legacy classifier)\n", mc2::fmt::safe(cmPath), mc2::fmt::as_i32(mapSide));
 				fflush(stdout);
 			}
 			else
@@ -305,7 +304,7 @@ void Terrain::lodControlMap() {
 				if (cFileSize <= 0)
 				{
 					fclose(cf);
-					printf("[TERRAIN_CONTROLMAP v1] EMPTY FILE path=%s\n", cmPath);
+					mc2::fmt::print_out("[TERRAIN_CONTROLMAP v1] EMPTY FILE path={}\n", mc2::fmt::safe(cmPath));
 					fflush(stdout);
 				}
 				else
@@ -315,8 +314,7 @@ void Terrain::lodControlMap() {
 					fclose(cf);
 					if (rd != (size_t)cFileSize)
 					{
-						printf("[TERRAIN_CONTROLMAP v1] READ FAIL path=%s read=%zu want=%ld\n",
-						       cmPath, rd, cFileSize);
+						mc2::fmt::print_out("[TERRAIN_CONTROLMAP v1] READ FAIL path={} read={:d} want={:d}\n", mc2::fmt::safe(cmPath), mc2::fmt::as_size(rd), mc2::fmt::as_i32(cFileSize));
 						fflush(stdout);
 					}
 					else
@@ -326,21 +324,19 @@ void Terrain::lodControlMap() {
 							pngBytes.data(), (int)cFileSize, &pw, &ph);
 						if (!rgba)
 						{
-							printf("[TERRAIN_CONTROLMAP v1] PNG DECODE FAILED path=%s\n", cmPath);
+							mc2::fmt::print_out("[TERRAIN_CONTROLMAP v1] PNG DECODE FAILED path={}\n", mc2::fmt::safe(cmPath));
 							fflush(stdout);
 						}
 						else if (pw != mapSide || ph != mapSide)
 						{
-							printf("[TERRAIN_CONTROLMAP v1] SIZE MISMATCH path=%s got=%dx%d want=%dx%d"
-							       " -- passthrough (legacy classifier)\n",
-							       cmPath, pw, ph, mapSide, mapSide);
+							mc2::fmt::print_out("[TERRAIN_CONTROLMAP v1] SIZE MISMATCH path={} got={:d}x{:d} want={:d}x{:d} -- passthrough (legacy classifier)\n", mc2::fmt::safe(cmPath), mc2::fmt::as_i32(pw), mc2::fmt::as_i32(ph), mc2::fmt::as_i32(mapSide), mc2::fmt::as_i32(mapSide));
 							fflush(stdout);
 							ControlMapPng_FreePixels(rgba);
 						}
 						else
 						{
 							gos_TerrainLodChunk_UploadControlMap(rgba, mapSide);
-							printf("[TERRAIN_CONTROLMAP v1] LOADED path=%s side=%d\n", cmPath, mapSide);
+							mc2::fmt::print_out("[TERRAIN_CONTROLMAP v1] LOADED path={} side={:d}\n", mc2::fmt::safe(cmPath), mc2::fmt::as_i32(mapSide));
 							fflush(stdout);
 							ControlMapPng_FreePixels(rgba);
 						}
@@ -388,14 +384,12 @@ void Terrain::lodOverlayV2() {
 				strncpy(stem, slash ? slash + 1 : nm, sizeof(stem) - 1);
 				stem[sizeof(stem) - 1] = '\0';
 				if (char* dot = strrchr(stem, '.')) *dot = '\0';
-				snprintf(ovPath, sizeof(ovPath),
-				         "data/missions/%s.beauty/overlay_v2.png", stem);
+				mc2::fmt::to_buf(ovPath, "data/missions/{}.beauty/overlay_v2.png", mc2::fmt::safe(stem));
 			}
 			FILE* of = fopen(ovPath, "rb");
 			if (!of)
 			{
-				printf("[TERRAIN_OVERLAY_V2 v1] sidecar NOT FOUND path=%s (gate on)"
-				       " -- passthrough (legacy cement-word + overlay pass)\n", ovPath);
+				mc2::fmt::print_out("[TERRAIN_OVERLAY_V2 v1] sidecar NOT FOUND path={} (gate on) -- passthrough (legacy cement-word + overlay pass)\n", mc2::fmt::safe(ovPath));
 				fflush(stdout);
 			}
 			else
@@ -406,7 +400,7 @@ void Terrain::lodOverlayV2() {
 				if (oFileSize <= 0)
 				{
 					fclose(of);
-					printf("[TERRAIN_OVERLAY_V2 v1] EMPTY FILE path=%s\n", ovPath);
+					mc2::fmt::print_out("[TERRAIN_OVERLAY_V2 v1] EMPTY FILE path={}\n", mc2::fmt::safe(ovPath));
 					fflush(stdout);
 				}
 				else
@@ -416,8 +410,7 @@ void Terrain::lodOverlayV2() {
 					fclose(of);
 					if (rd != (size_t)oFileSize)
 					{
-						printf("[TERRAIN_OVERLAY_V2 v1] READ FAIL path=%s read=%zu want=%ld\n",
-						       ovPath, rd, oFileSize);
+						mc2::fmt::print_out("[TERRAIN_OVERLAY_V2 v1] READ FAIL path={} read={:d} want={:d}\n", mc2::fmt::safe(ovPath), mc2::fmt::as_size(rd), mc2::fmt::as_i32(oFileSize));
 						fflush(stdout);
 					}
 					else
@@ -427,7 +420,7 @@ void Terrain::lodOverlayV2() {
 							pngBytes.data(), (int)oFileSize, &ow, &oh);
 						if (!orgba)
 						{
-							printf("[TERRAIN_OVERLAY_V2 v1] PNG DECODE FAILED path=%s\n", ovPath);
+							mc2::fmt::print_out("[TERRAIN_OVERLAY_V2 v1] PNG DECODE FAILED path={}\n", mc2::fmt::safe(ovPath));
 							fflush(stdout);
 						}
 						else
@@ -443,7 +436,7 @@ void Terrain::lodOverlayV2() {
 							float bTLX = -halfMapOv, bTLY = halfMapOv;
 							float bSizeX = 2.0f * halfMapOv, bSizeY = 2.0f * halfMapOv;
 							char boundsPath[620];
-							snprintf(boundsPath, sizeof(boundsPath), "%s", ovPath);
+							mc2::fmt::to_buf(boundsPath, "{}", mc2::fmt::safe(ovPath));
 							size_t plen = strlen(boundsPath);
 							if (plen > 4 && strcmp(boundsPath + plen - 4, ".png") == 0)
 								boundsPath[plen - 4] = '\0';
@@ -455,16 +448,14 @@ void Terrain::lodOverlayV2() {
 								if (fscanf(bf, "%f %f %f %f", &bx, &by, &bw, &bh) == 4)
 								{
 									bTLX = bx; bTLY = by; bSizeX = bw; bSizeY = bh;
-									printf("[TERRAIN_OVERLAY_V2 v1] bounds override path=%s (%.1f,%.1f,%.1f,%.1f)\n",
-									       boundsPath, bTLX, bTLY, bSizeX, bSizeY);
+									mc2::fmt::print_out("[TERRAIN_OVERLAY_V2 v1] bounds override path={} ({:.1f},{:.1f},{:.1f},{:.1f})\n", mc2::fmt::safe(boundsPath), bTLX, bTLY, bSizeX, bSizeY);
 									fflush(stdout);
 								}
 								fclose(bf);
 							}
 							gos_TerrainLodChunk_UploadOverlaySidecar(orgba, ow, oh,
 							                                          bTLX, bTLY, bSizeX, bSizeY);
-							printf("[TERRAIN_OVERLAY_V2 v1] LOADED path=%s size=%dx%d bounds=(%.1f,%.1f,%.1f,%.1f)\n",
-							       ovPath, ow, oh, bTLX, bTLY, bSizeX, bSizeY);
+							mc2::fmt::print_out("[TERRAIN_OVERLAY_V2 v1] LOADED path={} size={:d}x{:d} bounds=({:.1f},{:.1f},{:.1f},{:.1f})\n", mc2::fmt::safe(ovPath), mc2::fmt::as_i32(ow), mc2::fmt::as_i32(oh), bTLX, bTLY, bSizeX, bSizeY);
 							fflush(stdout);
 							ControlMapPng_FreePixels(orgba);
 						}
@@ -527,8 +518,7 @@ void Terrain::lodShorelineMask() {
 				strncpy(stem, slash ? slash + 1 : nm, sizeof(stem) - 1);
 				stem[sizeof(stem) - 1] = '\0';
 				if (char* dot = strrchr(stem, '.')) *dot = '\0';
-				snprintf(slPath, sizeof(slPath),
-				         "data/missions/%s.beauty/shoreline_mask.png", stem);
+				mc2::fmt::to_buf(slPath, "data/missions/{}.beauty/shoreline_mask.png", mc2::fmt::safe(stem));
 			}
 			FILE* sf = fopen(slPath, "rb");
 			if (!sf)
@@ -542,8 +532,7 @@ void Terrain::lodShorelineMask() {
 				// one of them is default-OFF. The only loader a default launch
 				// actually reaches was the only silent one. Raw printf now, so
 				// "gate on but doing nothing" is visible without opting in.
-				printf("[TERRAIN_SHORELINE v1] sidecar NOT FOUND path=%s (gate on)"
-				       " -- pure elevation bands, no mask modulator\n", slPath);
+				mc2::fmt::print_out("[TERRAIN_SHORELINE v1] sidecar NOT FOUND path={} (gate on) -- pure elevation bands, no mask modulator\n", mc2::fmt::safe(slPath));
 				fflush(stdout);
 			}
 			else
@@ -554,7 +543,7 @@ void Terrain::lodShorelineMask() {
 				if (sFileSize <= 0)
 				{
 					fclose(sf);
-					printf("[TERRAIN_SHORELINE v1] EMPTY FILE path=%s\n", slPath);
+					mc2::fmt::print_out("[TERRAIN_SHORELINE v1] EMPTY FILE path={}\n", mc2::fmt::safe(slPath));
 					fflush(stdout);
 				}
 				else
@@ -564,8 +553,7 @@ void Terrain::lodShorelineMask() {
 					fclose(sf);
 					if (rd != (size_t)sFileSize)
 					{
-						printf("[TERRAIN_SHORELINE v1] READ FAIL path=%s read=%zu want=%ld\n",
-						       slPath, rd, sFileSize);
+						mc2::fmt::print_out("[TERRAIN_SHORELINE v1] READ FAIL path={} read={:d} want={:d}\n", mc2::fmt::safe(slPath), mc2::fmt::as_size(rd), mc2::fmt::as_i32(sFileSize));
 						fflush(stdout);
 					}
 					else
@@ -575,7 +563,7 @@ void Terrain::lodShorelineMask() {
 							pngBytes.data(), (int)sFileSize, &sw, &sh);
 						if (!srgba)
 						{
-							printf("[TERRAIN_SHORELINE v1] PNG DECODE FAILED path=%s\n", slPath);
+							mc2::fmt::print_out("[TERRAIN_SHORELINE v1] PNG DECODE FAILED path={}\n", mc2::fmt::safe(slPath));
 							fflush(stdout);
 						}
 						else
@@ -587,7 +575,7 @@ void Terrain::lodShorelineMask() {
 							float sTLX = -halfMapSl, sTLY = halfMapSl;
 							float sSizeX = 2.0f * halfMapSl, sSizeY = 2.0f * halfMapSl;
 							char sBoundsPath[620];
-							snprintf(sBoundsPath, sizeof(sBoundsPath), "%s", slPath);
+							mc2::fmt::to_buf(sBoundsPath, "{}", mc2::fmt::safe(slPath));
 							size_t splen = strlen(sBoundsPath);
 							if (splen > 4 && strcmp(sBoundsPath + splen - 4, ".png") == 0)
 								sBoundsPath[splen - 4] = '\0';
@@ -654,15 +642,12 @@ void Terrain::lodWaterShore() {
 				strncpy(stem, slash ? slash + 1 : nm, sizeof(stem) - 1);
 				stem[sizeof(stem) - 1] = '\0';
 				if (char* dot = strrchr(stem, '.')) *dot = '\0';
-				snprintf(wsPath, sizeof(wsPath),
-				         "data/missions/%s.beauty/visual_height_4x.r32", stem);
+				mc2::fmt::to_buf(wsPath, "data/missions/{}.beauty/visual_height_4x.r32", mc2::fmt::safe(stem));
 			}
 			FILE* wf = fopen(wsPath, "rb");  // path-audit: loose-only
 			if (!wf)
 			{
-				printf("[WATER_SHORE_EDGE v1] hi-res height NOT FOUND path=%s "
-				       "(mode 2 requested) -- water shore falls back to mask mode\n",
-				       wsPath);
+				mc2::fmt::print_out("[WATER_SHORE_EDGE v1] hi-res height NOT FOUND path={} (mode 2 requested) -- water shore falls back to mask mode\n", mc2::fmt::safe(wsPath));
 				fflush(stdout);
 			}
 			else
@@ -673,9 +658,7 @@ void Terrain::lodWaterShore() {
 				const size_t wsWant = (size_t)WV * (size_t)WV * sizeof(float);
 				if ((size_t)wsz != wsWant)
 				{
-					printf("[WATER_SHORE_EDGE v1] SIZE MISMATCH path=%s got=%ld "
-					       "want=%zu (V=%d mapSide=%d) -- ignored\n",
-					       wsPath, wsz, wsWant, WV, wsMapSide);
+					mc2::fmt::print_out("[WATER_SHORE_EDGE v1] SIZE MISMATCH path={} got={:d} want={:d} (V={:d} mapSide={:d}) -- ignored\n", mc2::fmt::safe(wsPath), mc2::fmt::as_i32(wsz), mc2::fmt::as_size(wsWant), mc2::fmt::as_i32(WV), mc2::fmt::as_i32(wsMapSide));
 					fflush(stdout);
 					fclose(wf);
 				}
@@ -686,8 +669,7 @@ void Terrain::lodWaterShore() {
 					fclose(wf);
 					if (rd != wsh.size())
 					{
-						printf("[WATER_SHORE_EDGE v1] READ FAIL path=%s read=%zu want=%zu\n",
-						       wsPath, rd, wsh.size());
+						mc2::fmt::print_out("[WATER_SHORE_EDGE v1] READ FAIL path={} read={:d} want={:d}\n", mc2::fmt::safe(wsPath), mc2::fmt::as_size(rd), mc2::fmt::as_size(wsh.size()));
 						fflush(stdout);
 					}
 					else
@@ -746,14 +728,12 @@ void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 				strncpy(stem, slash ? slash + 1 : nm, sizeof(stem) - 1);
 				stem[sizeof(stem) - 1] = '\0';
 				if (char* dot = strrchr(stem, '.')) *dot = '\0';
-				snprintf(vhPath, sizeof(vhPath),
-				         "data/missions/%s.beauty/visual_height_4x.r32", stem);
+				mc2::fmt::to_buf(vhPath, "data/missions/{}.beauty/visual_height_4x.r32", mc2::fmt::safe(stem));
 			}
 			FILE* vf = fopen(vhPath, "rb");
 			if (!vf)
 			{
-				printf("[VISUAL_HEIGHT v1] bake NOT FOUND path=%s (gate on, V=%d mapSide=%d)\n",
-				       vhPath, V, mapSide);
+				mc2::fmt::print_out("[VISUAL_HEIGHT v1] bake NOT FOUND path={} (gate on, V={:d} mapSide={:d})\n", mc2::fmt::safe(vhPath), mc2::fmt::as_i32(V), mc2::fmt::as_i32(mapSide));
 				fflush(stdout);
 			}
 			else
@@ -764,8 +744,7 @@ void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 				const size_t want = (size_t)V * (size_t)V * sizeof(float);
 				if ((size_t)vsz != want)
 				{
-					printf("[VISUAL_HEIGHT v1] SIZE MISMATCH path=%s got=%ld want=%zu (V=%d mapSide=%d)\n",
-					       vhPath, vsz, want, V, mapSide);
+					mc2::fmt::print_out("[VISUAL_HEIGHT v1] SIZE MISMATCH path={} got={:d} want={:d} (V={:d} mapSide={:d})\n", mc2::fmt::safe(vhPath), mc2::fmt::as_i32(vsz), mc2::fmt::as_size(want), mc2::fmt::as_i32(V), mc2::fmt::as_i32(mapSide));
 					fflush(stdout);
 					fclose(vf);
 				}
@@ -776,8 +755,7 @@ void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 					fclose(vf);
 					if (rd != vh.size())
 					{
-						printf("[VISUAL_HEIGHT v1] READ FAIL path=%s read=%zu want=%zu\n",
-						       vhPath, rd, vh.size());
+						mc2::fmt::print_out("[VISUAL_HEIGHT v1] READ FAIL path={} read={:d} want={:d}\n", mc2::fmt::safe(vhPath), mc2::fmt::as_size(rd), mc2::fmt::as_size(vh.size()));
 						fflush(stdout);
 					}
 					else
@@ -800,8 +778,7 @@ void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 							if (mSlash)
 							{
 								size_t dirLen = (size_t)(mSlash + 1 - mipPath);
-								snprintf(mipPath + dirLen, sizeof(mipPath) - dirLen,
-								         "visual_height_mips.r32");
+								mc2::fmt::to_buf_n(mipPath + dirLen, sizeof(mipPath) - dirLen, "visual_height_mips.r32");
 								FILE* mf = fopen(mipPath, "rb");
 								if (mf)
 								{
@@ -819,9 +796,7 @@ void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 									}
 									else
 									{
-										printf("[VISUAL_HEIGHT v1] mips SIZE MISMATCH path=%s "
-										       "got=%ld want=%zu (5 x %d^2 floats) -- ignored\n",
-										       mipPath, msz, mipWant, mapSide);
+										mc2::fmt::print_out("[VISUAL_HEIGHT v1] mips SIZE MISMATCH path={} got={:d} want={:d} (5 x {:d}^2 floats) -- ignored\n", mc2::fmt::safe(mipPath), mc2::fmt::as_i32(msz), mc2::fmt::as_size(mipWant), mc2::fmt::as_i32(mapSide));
 										fflush(stdout);
 									}
 									// TERRAIN-LOD-GEOMORPH-1 STALENESS GUARD
@@ -879,13 +854,7 @@ void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 										}
 										if (viol > 0)
 										{
-											printf("[VISUAL_HEIGHT v1] mips STALE path=%s "
-											       "(mip < fine corner, worst deficit "
-											       "%.2f wu) -- built from a DIFFERENT "
-											       "fine bake; DROPPING mips, coarse "
-											       "bands fall back to legacy S2. "
-											       "Regenerate the .beauty bake.\n",
-											       mipPath, worstDeficit);
+											mc2::fmt::print_out("[VISUAL_HEIGHT v1] mips STALE path={} (mip < fine corner, worst deficit {:.2f} wu) -- built from a DIFFERENT fine bake; DROPPING mips, coarse bands fall back to legacy S2. Regenerate the .beauty bake.\n", mc2::fmt::safe(mipPath), worstDeficit);
 											fflush(stdout);
 											vmips.clear();
 										}
@@ -931,15 +900,8 @@ void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 						const double meanAbs = cnt ? sumAbs / (double)cnt : 0.0;
 						const double frac5  = cnt ? (100.0 * (double)moved5  / (double)cnt) : 0.0;
 						const double frac50 = cnt ? (100.0 * (double)moved50 / (double)cnt) : 0.0;
-						printf("[VISUAL_HEIGHT v1] LOADED path=%s V=%d mapSide=%d bytes=%zu "
-						       "(Stage 2: geometry %s when MC2_TERRAIN_VISUAL_DISPLACE on)\n",
-						       vhPath, V, mapSide, want,
-						       displaceOn ? "DISPLACED" : "will displace");
-						printf("[VISUAL_HEIGHT v1] displacement-amplitude vs coarse grid: "
-						       "max=%.1fwu mean=%.2fwu moved>5wu=%.1f%% moved>50wu=%.2f%% "
-						       "(vertex spacing=128wu; if mean<~5wu the reshape is near-invisible "
-						       "-- re-bake with visual_heightfield.py --reshape)\n",
-						       maxAbs, meanAbs, frac5, frac50);
+						mc2::fmt::print_out("[VISUAL_HEIGHT v1] LOADED path={} V={:d} mapSide={:d} bytes={:d} (Stage 2: geometry {} when MC2_TERRAIN_VISUAL_DISPLACE on)\n", mc2::fmt::safe(vhPath), mc2::fmt::as_i32(V), mc2::fmt::as_i32(mapSide), mc2::fmt::as_size(want), mc2::fmt::safe(displaceOn ? "DISPLACED" : "will displace"));
+						mc2::fmt::print_out("[VISUAL_HEIGHT v1] displacement-amplitude vs coarse grid: max={:.1f}wu mean={:.2f}wu moved>5wu={:.1f}% moved>50wu={:.2f}% (vertex spacing=128wu; if mean<~5wu the reshape is near-invisible -- re-bake with visual_heightfield.py --reshape)\n", maxAbs, meanAbs, frac5, frac50);
 						fflush(stdout);
 
 						// TERRAIN-REAUTH-UNPIN-1 Half B: near-object displacement
@@ -958,14 +920,12 @@ void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 							if (s_objfadeGate)
 							{
 								char dampPath[600];
-								snprintf(dampPath, sizeof(dampPath), "%s", vhPath);
+								mc2::fmt::to_buf(dampPath, "{}", mc2::fmt::safe(vhPath));
 								char* bs2 = strrchr(dampPath, '\\');
 								char* fs2 = strrchr(dampPath, '/');
 								char* slash2 = (fs2 > bs2) ? fs2 : bs2;
 								if (slash2)
-									snprintf(slash2 + 1,
-									         sizeof(dampPath) - (size_t)(slash2 + 1 - dampPath),
-									         "visual_damp.r32");
+									mc2::fmt::to_buf_n(slash2 + 1, sizeof(dampPath) - (size_t)(slash2 + 1 - dampPath), "visual_damp.r32");
 								std::vector<float> damp((size_t)mapSide * (size_t)mapSide, 1.0f);
 								bool haveSidecar = false;
 								if (FILE* df = fopen(dampPath, "rb"))
@@ -982,16 +942,13 @@ void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 									fclose(df);
 									if (!haveSidecar)
 									{
-										printf("[VISUAL_DAMP v1] SIZE/READ MISMATCH path=%s got=%ld "
-										       "want=%zu -- movers-only fade\n",
-										       dampPath, dsz, damp.size() * sizeof(float));
+										mc2::fmt::print_out("[VISUAL_DAMP v1] SIZE/READ MISMATCH path={} got={:d} want={:d} -- movers-only fade\n", mc2::fmt::safe(dampPath), mc2::fmt::as_i32(dsz), mc2::fmt::as_size(damp.size() * sizeof(float)));
 										std::fill(damp.begin(), damp.end(), 1.0f);
 									}
 								}
 								else
 								{
-									printf("[VISUAL_DAMP v1] sidecar NOT FOUND path=%s "
-									       "-- movers-only fade\n", dampPath);
+									mc2::fmt::print_out("[VISUAL_DAMP v1] sidecar NOT FOUND path={} -- movers-only fade\n", mc2::fmt::safe(dampPath));
 								}
 								gos_TerrainLodChunk_UploadVisualDampStatic(damp.data(), mapSide);
 								// Grounding-drift evidence (the objfade acceptance
@@ -1022,12 +979,7 @@ void Terrain::lodVisualHeight(TerrainLodInitFrame& lf) {
 								};
 								const double innerP99 = p99(inner);
 								const double annP99 = p99(annulus);
-								printf("[VISUAL_DAMP v1] %s side=%d objfade drift-near-objects: "
-								       "inner(damp==0) cells=%zu p99=%.3fwu max=%.3fwu (must be ~0) "
-								       "fade-annulus cells=%zu p99=%.2fwu\n",
-								       haveSidecar ? "LOADED" : "ALL-ONES (no sidecar)",
-								       mapSide, inner.size(), innerP99, innerMax,
-								       annulus.size(), annP99);
+								mc2::fmt::print_out("[VISUAL_DAMP v1] {} side={:d} objfade drift-near-objects: inner(damp==0) cells={:d} p99={:.3f}wu max={:.3f}wu (must be ~0) fade-annulus cells={:d} p99={:.2f}wu\n", mc2::fmt::safe(haveSidecar ? "LOADED" : "ALL-ONES (no sidecar)"), mc2::fmt::as_i32(mapSide), mc2::fmt::as_size(inner.size()), innerP99, innerMax, mc2::fmt::as_size(annulus.size()), annP99);
 								fflush(stdout);
 							}
 						}
@@ -1067,14 +1019,14 @@ void Terrain::initVertexQuadLists(unsigned long visibleVertices) {
 	// Create the VertexList
 	numberVertices = 0;
 	vertexList = (VertexPtr)terrainHeap->Malloc(sizeof(Vertex) * visibleVertices * visibleVertices);
-	gosASSERT(vertexList != NULL);
+	gosASSERT(vertexList != nullptr);
 	memset(vertexList,0,sizeof(Vertex) * visibleVertices * visibleVertices);
 
 	//----------------------------------------------------------------------
 	// Create the QuadList
 	numberQuads = 0;
 	quadList = (TerrainQuadPtr)terrainHeap->Malloc(sizeof(TerrainQuad) * visibleVertices * visibleVertices);
-	gosASSERT(quadList != NULL);
+	gosASSERT(quadList != nullptr);
 	memset(quadList,0,sizeof(TerrainQuad) * visibleVertices * visibleVertices);
 
 	//-------------------------------------------------------------------

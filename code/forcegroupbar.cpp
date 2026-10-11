@@ -22,6 +22,7 @@ ForceGroupBar.cpp			: Implementation of the ForceGroupBar component.
 #include"warrior.h"   // pilot order state for the squad status indicator
 #include"tacordr.h"
 #include "mc2_dialog.h"
+#include "mc2fmt.h"
 
 // Squad status: one short word for a mech's current activity, and a rank so a
 // squad card can show the highest-priority member status.
@@ -383,7 +384,7 @@ int ForceGroupBar::renderOverviewSquadCards( Camera* eye, float alpha,
 		if ( font )
 		{
 			char title[24];
-			if ( cards[i].fg >= 0 ) sprintf( title, "SQUAD %d", cards[i].fg );
+			if ( cards[i].fg >= 0 ) mc2::fmt::to_buf(title, "SQUAD {:d}", mc2::fmt::as_i32(cards[i].fg));
 			else { const char* nm = icons[cards[i].mem[0]]->unit->getName(); strncpy( title, nm ? nm : "UNIT", 20 ); title[20] = 0; }
 			gos_TextSetAttributes( font, aBits | 0x00eaf6ff, 1.0f, false, true, false, false );
 			gos_TextSetPosition( (int)( l + pad ), (int)( t + 2 ) );

@@ -10,6 +10,7 @@
 #include"mclib.h"
 #include"asystem.h"
 #include "../GuiRuntime/GuiRuntime.h"
+#include "mc2fmt.h"
 
 extern long helpTextID;
 extern long helpTextHeaderID;
@@ -150,7 +151,7 @@ void AttributeMeter::init( FitIniFile* file, const char* headerName )
 	if ( NO_ERR != file->seekBlock( headerName ) )
 	{
 		char errorTxt[256];
-		sprintf( errorTxt, "couldn't find block %s in file %s", headerName, file->getFilename() );
+		mc2::fmt::to_buf(errorTxt, "couldn't find block {} in file {}", mc2::fmt::safe(headerName), mc2::fmt::safe(file->getFilename()));
 		Assert( 0, 0, errorTxt );
 		return;
 	}

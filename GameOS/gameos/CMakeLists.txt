@@ -132,7 +132,6 @@ set(SOURCES ${SOURCES}
     utils/gl_utils.cpp
     utils/gl_render_constants.cpp
     utils/Image.cpp
-    utils/logging.cpp
     utils/mc2log.cpp
     utils/shader_builder.cpp
     utils/vec.cpp
@@ -298,6 +297,7 @@ include_directories("${CMAKE_SOURCE_DIR}")
 include_directories("${CMAKE_SOURCE_DIR}/3rdparty/tinyexr")
 
 add_library(gameos ${SOURCES})
+mc2_enable_pch(gameos)
 # KtxLoader.cpp lives in rendercore (STATIC) and is called from
 # gos_static_prop_batcher.cpp. Make the dependency explicit so CMake
 # orders the link correctly and gameos_editor gets the same resolution.

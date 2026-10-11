@@ -12,6 +12,7 @@
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include "mc2fmt.h"
 
 namespace {
 
@@ -34,7 +35,7 @@ onceSets()
 void mc2AuditLine(const char* line)
 {
     if (!line) return;
-    printf("%s\n", line);
+    mc2::fmt::print_out("{}\n", mc2::fmt::safe(line));
     fflush(stdout);
     if (g_sink) g_sink(line);
 }

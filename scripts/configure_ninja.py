@@ -41,7 +41,10 @@ def configure(root, tree=DEFAULT_TREE):
     root = root.replace("\\", "/")
     args = [find_cmake(), "-S", root, "-B", f"{root}/{tree}", "-G", "Ninja",
             f"-DCMAKE_MAKE_PROGRAM={NINJA}", "-DCMAKE_BUILD_TYPE=RelWithDebInfo",
-            "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"] + cache_args(root)
+            "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON",
+            # Precompiled std-library header (cmake/pch/): about 30 % less compile time for gameos, mclib and mc2. Only this dev tree
+            # turns it on; the clang-tidy / proof tree (tools/build_all_targets.py) keeps it off because clang cannot read an MSVC .pch.
+            "-DMC2_PCH=ON"] + cache_args(root)
     rc = under_vcvars(subprocess.list2cmdline(args))
     if rc:
         sys.exit(f"configure_ninja: cmake configure failed (rc={rc})")

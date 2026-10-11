@@ -9,6 +9,7 @@
 //===========================================================================//
 
 #include "genactor_internal.h"
+#include "mc2fmt.h"
 
 
 //-----------------------------------------------------------------------------
@@ -20,7 +21,7 @@ void GenericAppearanceType::init (const char * fileName)
 	//----------------------------------------------
 	// Base shape.  In stand Pose by default.
 	genShape = new TG_TypeMultiShape;
-	gosASSERT(genShape != NULL);
+	gosASSERT(genShape != nullptr);
 
 	FullPathFileName iniName;
 	iniName.init(tglPath,fileName,".ini");
@@ -82,7 +83,7 @@ void GenericAppearanceType::init (const char * fileName)
 		dmgName.init(tglPath,aseFileName,".ase");
 	
 		genDmgShape = new TG_TypeMultiShape;
-		gosASSERT(genDmgShape != NULL);
+		gosASSERT(genDmgShape != nullptr);
 		genDmgShape->LoadTGMultiShapeFromASE(dmgName); // TGL-LOAD-EXEMPT(optional damage shape; GetNumShapes-checked delete-on-fail)
 
 		if (!genDmgShape->GetNumShapes())
@@ -104,7 +105,7 @@ void GenericAppearanceType::init (const char * fileName)
 	for (int i=0;i<MAX_GEN_ANIMATIONS;i++)
 	{
 		char blockId[512];
-		sprintf(blockId,"Animation:%d",i);
+		mc2::fmt::to_buf(blockId, "Animation:{:d}", mc2::fmt::as_i32(i));
 		
 		result = iniFile.seekBlock(blockId);
 		if (result == NO_ERR)
@@ -137,7 +138,7 @@ void GenericAppearanceType::init (const char * fileName)
 			if (fileExists(animPath) || fileExists(otherPath))
 			{
 				genAnimData[i] = new TG_AnimateShape;
-				gosASSERT(genAnimData[i] != NULL);
+				gosASSERT(genAnimData[i] != nullptr);
 	
 				//--------------------------------------------------------
 				// If this animation does not exist, it is not a problem!
@@ -189,7 +190,7 @@ void GenericAppearanceType::destroy (void)
 //-----------------------------------------------------------------------------
 void GenericAppearanceType::setAnimation (TG_MultiShapePtr shape, DWORD animationNum)
 {
-	gosASSERT(shape != NULL);
+	gosASSERT(shape != nullptr);
 	gosASSERT(animationNum != 0xffffffff);
 	gosASSERT(animationNum < MAX_GEN_ANIMATIONS);
 
@@ -253,7 +254,7 @@ void GenericAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 				genShape->GetTextureName(i,txmName,256);
 
 			char texturePath[1024];
-			sprintf(texturePath,"%s%d" PATH_SEPARATOR, tglPath, ObjectTextureSize);
+			mc2::fmt::to_buf(texturePath, "{}{:d}" PATH_SEPARATOR "", mc2::fmt::safe(tglPath), mc2::fmt::as_i32(ObjectTextureSize));
 	
 			FullPathFileName textureName;
 			textureName.init(texturePath,txmName,"");
@@ -365,7 +366,7 @@ void GenericAppearance::setObjStatus (long oStatus)
 					genShape->GetTextureName(i,txmName,256);
 					
 					char texturePath[1024];
-					sprintf(texturePath,"%s%d" PATH_SEPARATOR, tglPath, ObjectTextureSize);
+					mc2::fmt::to_buf(texturePath, "{}{:d}" PATH_SEPARATOR "", mc2::fmt::safe(tglPath), mc2::fmt::as_i32(ObjectTextureSize));
 			
 					FullPathFileName textureName;
 					textureName.init(texturePath,txmName,"");
@@ -453,7 +454,7 @@ void GenericAppearance::setObjectParameters (const Stuff::Vector3D &pos, float R
 }
 
 //-----------------------------------------------------------------------------
-void GenericAppearance::changeSkyToSkyNum (char *txmName, char *newName)
+void GenericAppearance::changeSkyToSkyNum (char *txmName, char *newName, size_t newNameBytes)
 {
 	if (S_strnicmp(txmName,"sky",3) != 0)
 	{
@@ -462,7 +463,7 @@ void GenericAppearance::changeSkyToSkyNum (char *txmName, char *newName)
 	else
 	{
 		strcpy(newName,"Sky");
-		sprintf(newName,"Sky%02d%s",skyNumber,&txmName[3]);
+		mc2::fmt::to_buf_n(newName, newNameBytes, "Sky{:02d}{}", mc2::fmt::as_i32(skyNumber), &txmName[3]);
 	}
 	
 	return;
@@ -483,12 +484,12 @@ void GenericAppearance::setSkyNumber (long skyNum)
 			genShape->GetTextureName(i,txmName,256);
 
 		char texturePath[1024];
-		sprintf(texturePath,"%s%d" PATH_SEPARATOR, tglPath, ObjectTextureSize);
+		mc2::fmt::to_buf(texturePath, "{}{:d}" PATH_SEPARATOR "", mc2::fmt::safe(tglPath), mc2::fmt::as_i32(ObjectTextureSize));
 
 		//Make txmName into a SKY%02d texture and load it!!
 		skyNumber = skyNum;
 		
-		changeSkyToSkyNum(txmName,newName);
+		changeSkyToSkyNum(txmName,newName,sizeof(newName));
 		
 		FullPathFileName textureName;
 		textureName.init(texturePath,newName,"");

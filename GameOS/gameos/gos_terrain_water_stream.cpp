@@ -51,6 +51,7 @@ extern int mc2WaterBiasLegacy();
 
 #include "../../RenderCore/GpuBufferOwner.h"  // WATER-REGISTRY-0: MDI water buffer owner records (L7.4 prep)
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 // [WATER_DEPTHPROBE v1] cross-TU Probe-8 fingerprint accessors (terrain-solid
 // side). Paired per-frame against the water-upload MVP fingerprint to
@@ -405,8 +406,7 @@ void Build() {
     // coordinates derived from map indices via mapdata.cpp:1123-1124.
     if (!Terrain::mapData) {
         if (DebugOn()) {
-            fprintf(stderr,
-                    "[WATER_STREAM v1] event=build_skipped reason=no_mapdata\n");
+            mc2::fmt::print_err("[WATER_STREAM v1] event=build_skipped reason=no_mapdata\n");
             fflush(stderr);
         }
         return;
@@ -415,8 +415,7 @@ void Build() {
     const PostcompVertexPtr blocks = Terrain::mapData->getBlocks();
     if (!blocks) {
         if (DebugOn()) {
-            fprintf(stderr,
-                    "[WATER_STREAM v1] event=build_skipped reason=no_blocks\n");
+            mc2::fmt::print_err("[WATER_STREAM v1] event=build_skipped reason=no_blocks\n");
             fflush(stderr);
         }
         return;
@@ -547,24 +546,13 @@ void Build() {
                 if (thick < tmin) tmin = thick;
                 if (thick > tmax) tmax = thick;
             }
-            fprintf(stderr,
-                    "[WATER_MAT v1] event=summary recipes=%zu thickness_min=%.3f "
-                    "thickness_max=%.3f waterElevation=%.3f\n",
-                    g_recipes.size(), (double)tmin, (double)tmax,
-                    (double)Terrain::waterElevation);
+            mc2::fmt::print_err("[WATER_MAT v1] event=summary recipes={:d} thickness_min={:.3f} thickness_max={:.3f} waterElevation={:.3f}\n", mc2::fmt::as_size(g_recipes.size()), (double)tmin, (double)tmax, (double)Terrain::waterElevation);
             fflush(stderr);
         }
     }
 
     if (DebugOn()) {
-        fprintf(stderr,
-                "[WATER_STREAM v1] event=build_done recipes=%zu "
-                "candidates_walked=%ld waterElevation=%.3f has_terrainTextures2=%d "
-                "mapSide=%ld halfSide=%ld wupv=%.3f\n",
-                g_recipes.size(), candidates,
-                (double)Terrain::waterElevation,
-                has_terrainTextures2 ? 1 : 0,
-                mapSide, halfSide, (double)wupv);
+        mc2::fmt::print_err("[WATER_STREAM v1] event=build_done recipes={:d} candidates_walked={:d} waterElevation={:.3f} has_terrainTextures2={:d} mapSide={:d} halfSide={:d} wupv={:.3f}\n", mc2::fmt::as_size(g_recipes.size()), mc2::fmt::as_i32(candidates), (double)Terrain::waterElevation, mc2::fmt::as_i32(has_terrainTextures2 ? 1 : 0), mc2::fmt::as_i32(mapSide), mc2::fmt::as_i32(halfSide), (double)wupv);
         // Dump several recipes spread across the map to spot uniformity bugs.
         const size_t n = g_recipes.size();
         const size_t dumps[] = { 0, n/8, n/4, n/2, n*3/4, n-1 };
@@ -572,14 +560,7 @@ void Build() {
             if (dumps[di] >= n) continue;
             const WaterRecipe& r = g_recipes[dumps[di]];
             const bool uniform_elev = (r.v0e == r.v1e && r.v1e == r.v2e && r.v2e == r.v3e);
-            fprintf(stderr,
-                    "[WATER_STREAM v1] event=recipe[%zu] elev=(%.1f,%.1f,%.1f,%.1f) %s "
-                    "v0=(%.0f,%.0f) v3=(%.0f,%.0f) quadIdx=%u\n",
-                    dumps[di],
-                    (double)r.v0e,(double)r.v1e,(double)r.v2e,(double)r.v3e,
-                    uniform_elev ? "[UNIFORM]" : "[VARIED]",
-                    (double)r.v0x,(double)r.v0y,(double)r.v3x,(double)r.v3y,
-                    r.quadIdx);
+            mc2::fmt::print_err("[WATER_STREAM v1] event=recipe[{:d}] elev=({:.1f},{:.1f},{:.1f},{:.1f}) {} v0=({:.0f},{:.0f}) v3=({:.0f},{:.0f}) quadIdx={:d}\n", mc2::fmt::as_size(dumps[di]), (double)r.v0e, (double)r.v1e, (double)r.v2e, (double)r.v3e, mc2::fmt::safe(uniform_elev ? "[UNIFORM]" : "[VARIED]"), (double)r.v0x, (double)r.v0y, (double)r.v3x, (double)r.v3y, mc2::fmt::as_u32(r.quadIdx));
         }
         fflush(stderr);
     }
@@ -634,10 +615,7 @@ unsigned int EnsureRecipeBufferUploaded() {
     g_recipeBufferUploadedCount = (uint32_t)g_recipes.size();
 
     if (DebugOn()) {
-        fprintf(stderr,
-                "[WATER_STREAM v1] event=recipe_upload bytes=%lld records=%u buf=%u\n",
-                (long long)bytes, g_recipeBufferUploadedCount,
-                (unsigned)g_recipeBuffer);
+        mc2::fmt::print_err("[WATER_STREAM v1] event=recipe_upload bytes={:d} records={:d} buf={:d}\n", mc2::fmt::as_i64((long long)bytes), mc2::fmt::as_u32(g_recipeBufferUploadedCount), mc2::fmt::as_u32((unsigned)g_recipeBuffer));
         fflush(stderr);
     }
 
@@ -676,13 +654,7 @@ uint32_t UploadAndBindThinRecords(bool forceFullWalk) {
     g_uploadSummaryNarrowQuads   += narrow ? narrowN : 0;
     g_uploadSummaryFullWalkQuads += narrow ? 0 : (uint64_t)total;
     if (++g_uploadSummaryFrames >= 600) {
-        fprintf(stderr,
-                "[WATER_FAST v1] event=upload_summary frames=%u "
-                "narrowed=%llu full_walk=%llu narrow_enabled=%d\n",
-                g_uploadSummaryFrames,
-                (unsigned long long)g_uploadSummaryNarrowQuads,
-                (unsigned long long)g_uploadSummaryFullWalkQuads,
-                narrow ? 1 : 0);
+        mc2::fmt::print_err("[WATER_FAST v1] event=upload_summary frames={:d} narrowed={:d} full_walk={:d} narrow_enabled={:d}\n", mc2::fmt::as_u32(g_uploadSummaryFrames), mc2::fmt::as_u64((unsigned long long)g_uploadSummaryNarrowQuads), mc2::fmt::as_u64((unsigned long long)g_uploadSummaryFullWalkQuads), mc2::fmt::as_i32(narrow ? 1 : 0));
         fflush(stderr);
         g_uploadSummaryFrames = 0;
         g_uploadSummaryNarrowQuads = 0;
@@ -831,14 +803,7 @@ uint32_t UploadAndBindThinRecords(bool forceFullWalk) {
         const bool disappeared = (waterHandleCount > 0 && thinCountNow == 0);
         const bool recovered = (s_haveLast && s_lastThin == 0 && thinCountNow > 0);
         if (disappeared || recovered || !s_haveLast) {
-            fprintf(stderr,
-                    "[WATER_STREAM v1] event=thin_summary total_quads=%ld "
-                    "water_handles=%u thin=%u pz_valid=%u recipe_miss=%u "
-                    "pz_drop=%u state=%s prev_water_handles=%u prev_thin=%u\n",
-                    total, waterHandleCount, thinCountNow, pzValidCount,
-                    recipeMissCount, pzDropCount,
-                    disappeared ? "disappeared" : (recovered ? "recovered" : "initial"),
-                    s_lastWaterHandles, s_lastThin);
+            mc2::fmt::print_err("[WATER_STREAM v1] event=thin_summary total_quads={:d} water_handles={:d} thin={:d} pz_valid={:d} recipe_miss={:d} pz_drop={:d} state={} prev_water_handles={:d} prev_thin={:d}\n", mc2::fmt::as_i32(total), mc2::fmt::as_u32(waterHandleCount), mc2::fmt::as_u32(thinCountNow), mc2::fmt::as_u32(pzValidCount), mc2::fmt::as_u32(recipeMissCount), mc2::fmt::as_u32(pzDropCount), mc2::fmt::safe(disappeared ? "disappeared" : (recovered ? "recovered" : "initial")), mc2::fmt::as_u32(s_lastWaterHandles), mc2::fmt::as_u32(s_lastThin));
             fflush(stderr);
         }
         s_haveLast = true;
@@ -902,9 +867,7 @@ uint32_t UploadAndBindThinRecords(bool forceFullWalk) {
         static uint32_t s_diagFrameCounter = 0;
         if (++s_diagFrameCounter >= 1200 && s_diagFramesPrinted < 5) {
             ++s_diagFramesPrinted;
-            fprintf(stderr,
-                    "[WATER_STREAM v1] event=thin_upload records=%u pz_valid=%u\n",
-                    thinCount, pzValidCount);
+            mc2::fmt::print_err("[WATER_STREAM v1] event=thin_upload records={:d} pz_valid={:d}\n", mc2::fmt::as_u32(thinCount), mc2::fmt::as_u32(pzValidCount));
             fflush(stderr);
         }
     }
@@ -987,12 +950,7 @@ inline void printMismatch(MismatchPrintBudget& budget,
 {
     if (!budget.canPrint()) return;
     budget.note();
-    fprintf(stderr,
-            "[WATER_PARITY v1] event=mismatch frame=%llu quad=%u layer=%s "
-            "tri=%u vert=%u field=%s legacy=0x%08x fast=0x%08x\n",
-            (unsigned long long)frame, (unsigned)quadIdx,
-            layer, (unsigned)tri, (unsigned)vert,
-            field, (unsigned)legacyBits, (unsigned)fastBits);
+    mc2::fmt::print_err("[WATER_PARITY v1] event=mismatch frame={:d} quad={:d} layer={} tri={:d} vert={:d} field={} legacy=0x{:08x} fast=0x{:08x}\n", mc2::fmt::as_u64((unsigned long long)frame), mc2::fmt::as_u32((unsigned)quadIdx), mc2::fmt::safe(layer), mc2::fmt::as_u32((unsigned)tri), mc2::fmt::as_u32((unsigned)vert), mc2::fmt::safe(field), mc2::fmt::as_u32((unsigned)legacyBits), mc2::fmt::as_u32((unsigned)fastBits));
     fflush(stderr);
 }
 
@@ -1005,12 +963,7 @@ inline void printFieldMismatch(MismatchPrintBudget& budget,
 {
     if (!budget.canPrint()) return;
     budget.note();
-    fprintf(stderr,
-            "[WATER_PARITY v1] event=mismatch frame=%llu quad=%u scope=%s "
-            "corner=%u field=%s legacy=0x%08x fast=0x%08x\n",
-            (unsigned long long)frame, (unsigned)quadIdx,
-            scope, (unsigned)cornerIdx, field,
-            (unsigned)legacyBits, (unsigned)fastBits);
+    mc2::fmt::print_err("[WATER_PARITY v1] event=mismatch frame={:d} quad={:d} scope={} corner={:d} field={} legacy=0x{:08x} fast=0x{:08x}\n", mc2::fmt::as_u64((unsigned long long)frame), mc2::fmt::as_u32((unsigned)quadIdx), mc2::fmt::safe(scope), mc2::fmt::as_u32((unsigned)cornerIdx), mc2::fmt::safe(field), mc2::fmt::as_u32((unsigned)legacyBits), mc2::fmt::as_u32((unsigned)fastBits));
     fflush(stderr);
 }
 
@@ -1028,11 +981,7 @@ void CheckParityFrame(const ParityFrameUniforms& u) {
         s_parityEnabled = mc2::gate::get<"MC2_RENDER_WATER_PARITY_CHECK">();
         s_parityEnabledKnown = true;
         if (s_parityEnabled) {
-            fprintf(stderr,
-                    "[WATER_PARITY v1] event=enabled note=silent_on_pass "
-                    "scope=stock_tier1_only print_budget=%u summary_every=%llu\n",
-                    (unsigned)kMaxMismatchPrintsPerFrame,
-                    (unsigned long long)kSummaryEveryFrames);
+            mc2::fmt::print_err("[WATER_PARITY v1] event=enabled note=silent_on_pass scope=stock_tier1_only print_budget={:d} summary_every={:d}\n", mc2::fmt::as_u32((unsigned)kMaxMismatchPrintsPerFrame), mc2::fmt::as_u64((unsigned long long)kSummaryEveryFrames));
             fflush(stderr);
         }
     }
@@ -1388,12 +1337,7 @@ void CheckParityFrame(const ParityFrameUniforms& u) {
     if (budget.printed > 0) s_parityMismatchTotal += budget.printed;
 
     if ((frame % kSummaryEveryFrames) == 0) {
-        fprintf(stderr,
-                "[WATER_PARITY v1] event=summary frames=%llu "
-                "quads_checked=%llu total_mismatches=%llu\n",
-                (unsigned long long)frame,
-                (unsigned long long)s_parityQuadsChecked,
-                (unsigned long long)s_parityMismatchTotal);
+        mc2::fmt::print_err("[WATER_PARITY v1] event=summary frames={:d} quads_checked={:d} total_mismatches={:d}\n", mc2::fmt::as_u64((unsigned long long)frame), mc2::fmt::as_u64((unsigned long long)s_parityQuadsChecked), mc2::fmt::as_u64((unsigned long long)s_parityMismatchTotal));
         fflush(stderr);
     }
 }
@@ -1573,7 +1517,7 @@ bool ComputeDispatchAndBindThinRecords(float frameCos) {
         const GLuint lightSsbo = gos_terrain_lighting::GetOutputSsbo();
         if (lightSsbo == 0) {
             if (!s_warnedLightSsbo) {
-                printf("[GPU_DRIVEN_WATER v1] event=warn msg=lighting_ssbo_not_ready frame=deferred_to_cpu\n");
+                mc2::fmt::print_out("[GPU_DRIVEN_WATER v1] event=warn msg=lighting_ssbo_not_ready frame=deferred_to_cpu\n");
                 fflush(stdout);
                 s_warnedLightSsbo = true;
             }
@@ -1687,7 +1631,7 @@ bool ComputeDispatchAndBindThinRecords(float frameCos) {
     const float spikeShoreExt  = EffShoreExt(MapData::alphaDepth);
 
     if (locWindowCount < 0) {
-        fprintf(stderr, "[GPU_DRIVEN_WATER v1] event=warn msg=u_windowCount_not_found\n");
+        mc2::fmt::print_err("[GPU_DRIVEN_WATER v1] event=warn msg=u_windowCount_not_found\n");
         fflush(stderr);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, 0);
         glUseProgram(0);
@@ -1697,7 +1641,7 @@ bool ComputeDispatchAndBindThinRecords(float frameCos) {
     glUniform1i(locWindowCount, (int)dispatchCount);   // 1B: full recipe count when authoritative
 
     if (locMaxThin < 0) {
-        fprintf(stderr, "[GPU_DRIVEN_WATER v1] event=warn msg=u_maxThinRecords_not_found\n");
+        mc2::fmt::print_err("[GPU_DRIVEN_WATER v1] event=warn msg=u_maxThinRecords_not_found\n");
         fflush(stderr);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, 0);
         glUseProgram(0);
@@ -1707,7 +1651,7 @@ bool ComputeDispatchAndBindThinRecords(float frameCos) {
     glUniform1i(locMaxThin, (int)maxThinRecords);
 
     if (locWaterElev < 0) {
-        fprintf(stderr, "[GPU_DRIVEN_WATER v1] event=warn msg=u_waterElevation_not_found\n");
+        mc2::fmt::print_err("[GPU_DRIVEN_WATER v1] event=warn msg=u_waterElevation_not_found\n");
         fflush(stderr);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, 0);
         glUseProgram(0);
@@ -1725,7 +1669,7 @@ bool ComputeDispatchAndBindThinRecords(float frameCos) {
     if (locBiasLegacy >= 0) glUniform1i(locBiasLegacy, mc2WaterBiasLegacy());
 
     if (locMapSide < 0) {
-        fprintf(stderr, "[GPU_DRIVEN_WATER v1] event=warn msg=u_mapSide_not_found\n");
+        mc2::fmt::print_err("[GPU_DRIVEN_WATER v1] event=warn msg=u_mapSide_not_found\n");
         fflush(stderr);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, 0);
         glUseProgram(0);
@@ -1737,7 +1681,7 @@ bool ComputeDispatchAndBindThinRecords(float frameCos) {
     if (locMVP < 0) {
         // Uniform not found in shader — dispatching with a zeroed MVP would
         // produce a fully-culled or garbage cull pass. Abort instead.
-        fprintf(stderr, "[GPU_DRIVEN_WATER v1] event=warn msg=u_terrainMVP_not_found\n");
+        mc2::fmt::print_err("[GPU_DRIVEN_WATER v1] event=warn msg=u_terrainMVP_not_found\n");
         fflush(stderr);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, 0);  // unbind stale thin slot
         glUseProgram(0);
@@ -1826,17 +1770,7 @@ bool ComputeDispatchAndBindThinRecords(float frameCos) {
                     !armed
                     || (f > 120 && (f <= 128 || moved || (f % 240 == 0)));
                 if (emit) {
-                    printf("[WATER_DEPTHPROBE v2] event=mvp_pair wframe=%llu "
-                           "armed=%d wstream_ready=%d recipe_count=%u "
-                           "water_fp=%08x terrain_solid_fp=%08x "
-                           "livecam_fp=%08x equal=%d w_eq_livecam=%d "
-                           "moved=%d terrain_solid_frameidx=%llu "
-                           "w_mvp0=%.6f\n",
-                           (unsigned long long)f, armed ? 1 : 0,
-                           wready ? 1 : 0, (unsigned)rc, wfp, tfp, lcfp,
-                           (wfp == tfp) ? 1 : 0, (wfp == lcfp) ? 1 : 0,
-                           moved ? 1 : 0, (unsigned long long)tfi,
-                           (double)mvp[0]);
+                    mc2::fmt::print_out("[WATER_DEPTHPROBE v2] event=mvp_pair wframe={:d} armed={:d} wstream_ready={:d} recipe_count={:d} water_fp={:08x} terrain_solid_fp={:08x} livecam_fp={:08x} equal={:d} w_eq_livecam={:d} moved={:d} terrain_solid_frameidx={:d} w_mvp0={:.6f}\n", mc2::fmt::as_u64((unsigned long long)f), mc2::fmt::as_i32(armed ? 1 : 0), mc2::fmt::as_i32(wready ? 1 : 0), mc2::fmt::as_u32((unsigned)rc), mc2::fmt::as_u32(wfp), mc2::fmt::as_u32(tfp), mc2::fmt::as_u32(lcfp), mc2::fmt::as_i32((wfp == tfp) ? 1 : 0), mc2::fmt::as_i32((wfp == lcfp) ? 1 : 0), mc2::fmt::as_i32(moved ? 1 : 0), mc2::fmt::as_u64((unsigned long long)tfi), (double)mvp[0]);
                     fflush(stdout);
                 }
                 s_prevWfp = wfp;
@@ -1895,23 +1829,14 @@ bool ComputeDispatchAndBindThinRecords(float frameCos) {
                 // Invariant A: armed-frame tripwire (trivially-true; A==0 => mid-frame
                 // terrain_mvp_ mutation regression).
                 if (armed2) {
-                    printf("[WATER_RENDERPROBE v1] event=invA wframe=%llu "
-                           "water_fp=%08x terrain_dispatch_fp=%08x equal=%d "
-                           "terrain_dispatch_frameidx=%llu\n",
-                           (unsigned long long)f2, wfp2, tfp2,
-                           (wfp2 == tfp2) ? 1 : 0,
-                           (unsigned long long)tfi2);
+                    mc2::fmt::print_out("[WATER_RENDERPROBE v1] event=invA wframe={:d} water_fp={:08x} terrain_dispatch_fp={:08x} equal={:d} terrain_dispatch_frameidx={:d}\n", mc2::fmt::as_u64((unsigned long long)f2), mc2::fmt::as_u32(wfp2), mc2::fmt::as_u32(tfp2), mc2::fmt::as_i32((wfp2 == tfp2) ? 1 : 0), mc2::fmt::as_u64((unsigned long long)tfi2));
                     fflush(stdout);
                 }
                 // Invariant B: first arming-transition frame only, printed once.
                 if (s_rpPrevArmed != -1 && s_rpPrevArmed != armedI
                     && !s_rpInvBLatched) {
                     const uint32_t srcFp = armed2 ? tfp2 : lcfp2;
-                    printf("[WATER_RENDERPROBE v1] event=invB_transition wframe=%llu "
-                           "armed=%d prev_armed=%d water_fp=%08x terrain_src_fp=%08x "
-                           "equal=%d terrain_dispatch_frameidx=%llu\n",
-                           (unsigned long long)f2, armedI, s_rpPrevArmed, wfp2, srcFp,
-                           (wfp2 == srcFp) ? 1 : 0, (unsigned long long)tfi2);
+                    mc2::fmt::print_out("[WATER_RENDERPROBE v1] event=invB_transition wframe={:d} armed={:d} prev_armed={:d} water_fp={:08x} terrain_src_fp={:08x} equal={:d} terrain_dispatch_frameidx={:d}\n", mc2::fmt::as_u64((unsigned long long)f2), mc2::fmt::as_i32(armedI), mc2::fmt::as_i32(s_rpPrevArmed), mc2::fmt::as_u32(wfp2), mc2::fmt::as_u32(srcFp), mc2::fmt::as_i32((wfp2 == srcFp) ? 1 : 0), mc2::fmt::as_u64((unsigned long long)tfi2));
                     fflush(stdout);
                     s_rpInvBLatched = true;
                 }
@@ -2029,10 +1954,7 @@ bool ComputeDispatchAndBindThinRecords(float frameCos) {
             s_sumCand += (double)nsCand / 1000.0; s_sumSpike += (double)nsSpike / 1000.0; s_n++;
             s_lastRecipe = recipeCount; s_lastCand = windowCount; s_lastFrOut = frOut;
             if (s_n >= 600u) {
-                printf("[WATER_FULL_RECIPE_SPIKE v1] recipeCount=%u candidateCount=%u "
-                       "candidateGpuUs=%.1f fullRecipeGpuUs=%.1f deltaUs=%.1f fullRecipeOut=%u (mean/600)\n",
-                       s_lastRecipe, s_lastCand, s_sumCand / (double)s_n, s_sumSpike / (double)s_n,
-                       (s_sumSpike - s_sumCand) / (double)s_n, s_lastFrOut);
+                mc2::fmt::print_out("[WATER_FULL_RECIPE_SPIKE v1] recipeCount={:d} candidateCount={:d} candidateGpuUs={:.1f} fullRecipeGpuUs={:.1f} deltaUs={:.1f} fullRecipeOut={:d} (mean/600)\n", mc2::fmt::as_u32(s_lastRecipe), mc2::fmt::as_u32(s_lastCand), s_sumCand / (double)s_n, s_sumSpike / (double)s_n, (s_sumSpike - s_sumCand) / (double)s_n, mc2::fmt::as_u32(s_lastFrOut));
                 fflush(stdout);
                 s_sumCand = 0.0; s_sumSpike = 0.0; s_n = 0u;
             }
@@ -2082,11 +2004,7 @@ bool ComputeDispatchAndBindThinRecords(float frameCos) {
                         ++fieldMismatch;
                 }
                 const uint32_t onlyCand = (candCount > shared) ? (candCount - shared) : 0u;
-                printf("[WATER_FULL_RECIPE_PARITY v1] candCount=%u fullRecipeCount=%u "
-                       "shared=%u onlyCandidate=%u onlyFullRecipe=%u fieldMismatch=%u "
-                       "setMatch=%d\n",
-                       candCount, frCount, shared, onlyCand, onlyFr, fieldMismatch,
-                       (onlyCand == 0u && onlyFr == 0u && fieldMismatch == 0u) ? 1 : 0);
+                mc2::fmt::print_out("[WATER_FULL_RECIPE_PARITY v1] candCount={:d} fullRecipeCount={:d} shared={:d} onlyCandidate={:d} onlyFullRecipe={:d} fieldMismatch={:d} setMatch={:d}\n", mc2::fmt::as_u32(candCount), mc2::fmt::as_u32(frCount), mc2::fmt::as_u32(shared), mc2::fmt::as_u32(onlyCand), mc2::fmt::as_u32(onlyFr), mc2::fmt::as_u32(fieldMismatch), mc2::fmt::as_i32((onlyCand == 0u && onlyFr == 0u && fieldMismatch == 0u) ? 1 : 0));
                 fflush(stdout);
             }
         }
@@ -2232,10 +2150,7 @@ void ComputeDispatchParity_Check() {
             // GPU record not in CPU output
             if (budget.canPrint()) {
                 budget.note();
-                fprintf(stderr,
-                        "[GPU_DRIVEN_WATER_PARITY v1] event=mismatch "
-                        "frame=%llu recipe=%u gpu_only=1\n",
-                        (unsigned long long)s_gpuParityFrames, (unsigned)gpuIdx);
+                mc2::fmt::print_err("[GPU_DRIVEN_WATER_PARITY v1] event=mismatch frame={:d} recipe={:d} gpu_only=1\n", mc2::fmt::as_u64((unsigned long long)s_gpuParityFrames), mc2::fmt::as_u32((unsigned)gpuIdx));
                 fflush(stderr);
             }
             ++frameMismatches;
@@ -2244,10 +2159,7 @@ void ComputeDispatchParity_Check() {
             // CPU record not in GPU output
             if (budget.canPrint()) {
                 budget.note();
-                fprintf(stderr,
-                        "[GPU_DRIVEN_WATER_PARITY v1] event=mismatch "
-                        "frame=%llu recipe=%u cpu_only=1\n",
-                        (unsigned long long)s_gpuParityFrames, (unsigned)cpuIdx);
+                mc2::fmt::print_err("[GPU_DRIVEN_WATER_PARITY v1] event=mismatch frame={:d} recipe={:d} cpu_only=1\n", mc2::fmt::as_u64((unsigned long long)s_gpuParityFrames), mc2::fmt::as_u32((unsigned)cpuIdx));
                 fflush(stderr);
             }
             ++frameMismatches;
@@ -2262,11 +2174,7 @@ void ComputeDispatchParity_Check() {
                 ++frameMismatches;
                 if (budget.canPrint()) {
                     budget.note();
-                    fprintf(stderr,
-                            "[GPU_DRIVEN_WATER_PARITY v1] event=mismatch "
-                            "frame=%llu recipe=%u field=flags gpu=0x%x cpu=0x%x\n",
-                            (unsigned long long)s_gpuParityFrames,
-                            (unsigned)gpuIdx, (unsigned)g.flags, (unsigned)c.flags);
+                    mc2::fmt::print_err("[GPU_DRIVEN_WATER_PARITY v1] event=mismatch frame={:d} recipe={:d} field=flags gpu=0x{:x} cpu=0x{:x}\n", mc2::fmt::as_u64((unsigned long long)s_gpuParityFrames), mc2::fmt::as_u32((unsigned)gpuIdx), mc2::fmt::as_u32((unsigned)g.flags), mc2::fmt::as_u32((unsigned)c.flags));
                     fflush(stderr);
                 }
             }
@@ -2275,15 +2183,7 @@ void ComputeDispatchParity_Check() {
                 ++frameMismatches;
                 if (budget.canPrint()) {
                     budget.note();
-                    fprintf(stderr,
-                            "[GPU_DRIVEN_WATER_PARITY v1] event=mismatch "
-                            "frame=%llu recipe=%u field=lightRGB "
-                            "gpu=[0x%x,0x%x,0x%x,0x%x] cpu=[0x%x,0x%x,0x%x,0x%x]\n",
-                            (unsigned long long)s_gpuParityFrames, (unsigned)gpuIdx,
-                            (unsigned)g.lightRGB0, (unsigned)g.lightRGB1,
-                            (unsigned)g.lightRGB2, (unsigned)g.lightRGB3,
-                            (unsigned)c.lightRGB0, (unsigned)c.lightRGB1,
-                            (unsigned)c.lightRGB2, (unsigned)c.lightRGB3);
+                    mc2::fmt::print_err("[GPU_DRIVEN_WATER_PARITY v1] event=mismatch frame={:d} recipe={:d} field=lightRGB gpu=[0x{:x},0x{:x},0x{:x},0x{:x}] cpu=[0x{:x},0x{:x},0x{:x},0x{:x}]\n", mc2::fmt::as_u64((unsigned long long)s_gpuParityFrames), mc2::fmt::as_u32((unsigned)gpuIdx), mc2::fmt::as_u32((unsigned)g.lightRGB0), mc2::fmt::as_u32((unsigned)g.lightRGB1), mc2::fmt::as_u32((unsigned)g.lightRGB2), mc2::fmt::as_u32((unsigned)g.lightRGB3), mc2::fmt::as_u32((unsigned)c.lightRGB0), mc2::fmt::as_u32((unsigned)c.lightRGB1), mc2::fmt::as_u32((unsigned)c.lightRGB2), mc2::fmt::as_u32((unsigned)c.lightRGB3));
                     fflush(stderr);
                 }
             }
@@ -2292,15 +2192,7 @@ void ComputeDispatchParity_Check() {
                 ++frameMismatches;
                 if (budget.canPrint()) {
                     budget.note();
-                    fprintf(stderr,
-                            "[GPU_DRIVEN_WATER_PARITY v1] event=mismatch "
-                            "frame=%llu recipe=%u field=fogRGB "
-                            "gpu=[0x%x,0x%x,0x%x,0x%x] cpu=[0x%x,0x%x,0x%x,0x%x]\n",
-                            (unsigned long long)s_gpuParityFrames, (unsigned)gpuIdx,
-                            (unsigned)g.fogRGB0, (unsigned)g.fogRGB1,
-                            (unsigned)g.fogRGB2, (unsigned)g.fogRGB3,
-                            (unsigned)c.fogRGB0, (unsigned)c.fogRGB1,
-                            (unsigned)c.fogRGB2, (unsigned)c.fogRGB3);
+                    mc2::fmt::print_err("[GPU_DRIVEN_WATER_PARITY v1] event=mismatch frame={:d} recipe={:d} field=fogRGB gpu=[0x{:x},0x{:x},0x{:x},0x{:x}] cpu=[0x{:x},0x{:x},0x{:x},0x{:x}]\n", mc2::fmt::as_u64((unsigned long long)s_gpuParityFrames), mc2::fmt::as_u32((unsigned)gpuIdx), mc2::fmt::as_u32((unsigned)g.fogRGB0), mc2::fmt::as_u32((unsigned)g.fogRGB1), mc2::fmt::as_u32((unsigned)g.fogRGB2), mc2::fmt::as_u32((unsigned)g.fogRGB3), mc2::fmt::as_u32((unsigned)c.fogRGB0), mc2::fmt::as_u32((unsigned)c.fogRGB1), mc2::fmt::as_u32((unsigned)c.fogRGB2), mc2::fmt::as_u32((unsigned)c.fogRGB3));
                     fflush(stderr);
                 }
             }
@@ -2312,12 +2204,7 @@ void ComputeDispatchParity_Check() {
     s_gpuParityMismatches += frameMismatches;
 
     if (s_gpuParityFrames % kSummaryEveryFrames == 0) {
-        fprintf(stderr,
-                "[GPU_DRIVEN_WATER_PARITY v1] event=summary "
-                "frames=%llu quads_checked=%llu total_mismatches=%llu\n",
-                (unsigned long long)s_gpuParityFrames,
-                (unsigned long long)s_gpuParityQuads,
-                (unsigned long long)s_gpuParityMismatches);
+        mc2::fmt::print_err("[GPU_DRIVEN_WATER_PARITY v1] event=summary frames={:d} quads_checked={:d} total_mismatches={:d}\n", mc2::fmt::as_u64((unsigned long long)s_gpuParityFrames), mc2::fmt::as_u64((unsigned long long)s_gpuParityQuads), mc2::fmt::as_u64((unsigned long long)s_gpuParityMismatches));
         fflush(stderr);
     }
 }
@@ -2339,10 +2226,7 @@ void EndThinRingFrameFence() {
     }
     g_thinFences[g_thinSlot] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
     if (ThinRingTraceOn()) {
-        fprintf(stderr,
-            "WATER_THINRING: frame=%llu slot=%u bytes=%u waited=%d wait_result=0x%x fence_created=1\n",
-            (unsigned long long)g_thinTraceFrame, g_thinTraceSlot, g_thinTraceBytes,
-            g_thinTraceWaited, g_thinTraceWaitResult);
+        mc2::fmt::print_err("WATER_THINRING: frame={:d} slot={:d} bytes={:d} waited={:d} wait_result=0x{:x} fence_created=1\n", mc2::fmt::as_u64((unsigned long long)g_thinTraceFrame), mc2::fmt::as_u32(g_thinTraceSlot), mc2::fmt::as_u32(g_thinTraceBytes), mc2::fmt::as_i32(g_thinTraceWaited), mc2::fmt::as_u32(g_thinTraceWaitResult));
         fflush(stderr);
         ++g_thinTraceFrame;
     }
@@ -2442,12 +2326,7 @@ void ReleaseGlResources() {
     g_quadWindowStaging.shrink_to_fit();
 
     if (s_parityEnabled) {
-        fprintf(stderr,
-                "[WATER_PARITY v1] event=summary frames=%llu "
-                "quads_checked=%llu total_mismatches=%llu reason=shutdown\n",
-                (unsigned long long)s_parityFrameCounter,
-                (unsigned long long)s_parityQuadsChecked,
-                (unsigned long long)s_parityMismatchTotal);
+        mc2::fmt::print_err("[WATER_PARITY v1] event=summary frames={:d} quads_checked={:d} total_mismatches={:d} reason=shutdown\n", mc2::fmt::as_u64((unsigned long long)s_parityFrameCounter), mc2::fmt::as_u64((unsigned long long)s_parityQuadsChecked), mc2::fmt::as_u64((unsigned long long)s_parityMismatchTotal));
         fflush(stderr);
     }
 }

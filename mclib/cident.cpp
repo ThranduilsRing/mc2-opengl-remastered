@@ -60,7 +60,7 @@ void FullPathFileName::init (const char * dir_path, const char * name, const cha
 
 
 	fullName = (char *)systemHeap->Malloc(total_length);
-	gosASSERT(fullName != NULL);
+	gosASSERT(fullName != nullptr);
 	fullName[0] = 0;
 
 	if ( strstr( name, dir_path ) != name )

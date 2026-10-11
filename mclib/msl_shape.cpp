@@ -1,6 +1,7 @@
 // Multi shape layer: TG_MultiShape texture handles, node rotation and position queries, light list, render, shadows, detach and child tests.
 // Declared in the class headers; shared names in msl_internal.h.
 #include "msl_internal.h"
+#include "mc2fmt.h"
 
 
 //-------------------------------------------------------------------------------
@@ -32,7 +33,7 @@ long TG_TypeMultiShape::GetTextureName (DWORD textureNum, char *tName, long name
 	_splitpath(listOfTextures[textureNum].textureName,nullptr,nullptr,baseName,extension);
 
 	char basePath[1024];
-	sprintf(basePath,"%s%s",baseName,extension);
+	mc2::fmt::to_buf(basePath, "{}{}", mc2::fmt::safe(baseName), mc2::fmt::safe(extension));
 
 	if (nameLength < (strlen(basePath)+1))
 		return static_cast<long>(strlen(basePath)+1);
@@ -84,10 +85,7 @@ long TG_TypeMultiShape::SetTextureHandle (DWORD textureNum, DWORD gosTextureHand
 		const bool firstWindow = (s_eventCount < 32);
 		const bool sample = ((s_eventCount & 0xFF) == 0);  // 1/256
 		if (s_verbose || firstWindow || sample) {
-			printf("[TEX_LIFECYCLE v1] event=recache_multi multiType=%p texNum=%lu nodeIdx=0x%08lx numTex=%ld total=%u\n",
-			       (void*)this, (unsigned long)textureNum,
-			       (unsigned long)gosTextureHandle, (long)numTextures,
-			       s_eventCount);
+			mc2::fmt::print_out("[TEX_LIFECYCLE v1] event=recache_multi multiType={:016X} texNum={:d} nodeIdx=0x{:08x} numTex={:d} total={:d}\n", mc2::fmt::as_ptr((void*)this), mc2::fmt::as_u32((unsigned long)textureNum), mc2::fmt::as_u32((unsigned long)gosTextureHandle), mc2::fmt::as_i32((long)numTextures), mc2::fmt::as_u32(s_eventCount));
 			fflush(stdout);
 		}
 		++s_eventCount;
@@ -458,7 +456,7 @@ TG_MultiShapePtr TG_MultiShape::Detach (const char *nodeName)
 	resultShape->numTG_Shapes = curShape;
 	
 	resultShape->listOfShapes = (TG_ShapeRecPtr)TG_Shape::tglHeap->Malloc(sizeof(TG_ShapeRec) * curShape);
-	gosASSERT(resultShape->listOfShapes != NULL);
+	gosASSERT(resultShape->listOfShapes != nullptr);
 
 	memset(resultShape->listOfShapes,0,sizeof(TG_ShapeRec) * curShape);
 
@@ -502,7 +500,7 @@ TG_MultiShapePtr TG_MultiShape::Detach (const char *nodeName)
  	//-------------------------------------------------------------
 	// Rebuild the currentShape heirarchy to reflect removed things
 	TG_ShapeRecPtr newListOfShapes = (TG_ShapeRecPtr)TG_Shape::tglHeap->Malloc(sizeof(TG_ShapeRec) * (numTG_Shapes - curShape));
-	gosASSERT(newListOfShapes != NULL);
+	gosASSERT(newListOfShapes != nullptr);
 
 	memset(newListOfShapes,0,sizeof(TG_ShapeRec) * (numTG_Shapes - curShape));
 	

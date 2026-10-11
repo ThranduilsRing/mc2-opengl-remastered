@@ -3,6 +3,7 @@
 #include "gvactor_internal.h"
 #include "Gates/gate.h"
 #include "../RenderCore/axis_convert.h"
+#include "mc2fmt.h"
 
 
 // Slice GV-shadow-skip (2026-05-09): skip gvShadowShape->TransformMultiShape
@@ -252,11 +253,7 @@ void GVAppearance::updateGeometry (void)
 			if (s_spotDiagGvEnabled) {
 				++s_spotDiagGvCalls;
 				if ((s_spotDiagGvCalls % 600) == 0) {
-					std::fprintf(stderr,
-						"[SPOT_DIAG v1] event=registration_summary class=gv "
-						"calls=%lu actors_first_hit=%lu lights_registered=%lu overflows=%lu\n",
-						s_spotDiagGvCalls, s_spotDiagGvActors,
-						s_spotDiagGvRegistered, s_spotDiagGvOverflows);
+					mc2::fmt::print_err("[SPOT_DIAG v1] event=registration_summary class=gv calls={:d} actors_first_hit={:d} lights_registered={:d} overflows={:d}\n", mc2::fmt::as_u32(s_spotDiagGvCalls), mc2::fmt::as_u32(s_spotDiagGvActors), mc2::fmt::as_u32(s_spotDiagGvRegistered), mc2::fmt::as_u32(s_spotDiagGvOverflows));
 					std::fflush(stderr);
 				}
 			}
@@ -785,7 +782,7 @@ void GVAppearance::startWaterWake (void)
 			if (gosEffectSpec)
 			{
 				waterWake = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-				gosASSERT(waterWake != NULL);
+				gosASSERT(waterWake != nullptr);
 				
   				MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
 			}
@@ -848,7 +845,7 @@ void GVAppearance::startActivity (long effectId, bool loop)
 			if (gosEffectSpec)
 			{
 				activity = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-				gosASSERT(activity != NULL);
+				gosASSERT(activity != nullptr);
 				
   				MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
 			}

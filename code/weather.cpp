@@ -164,7 +164,7 @@ void Weather::init (DWORD maxDrops, float startingRain, float brChance, float lt
 	if (maxDrops)
 	{
 		rainDrops = (RainDrops *)systemHeap->Malloc(sizeof(RainDrops) * maxDrops);
-		gosASSERT(rainDrops != NULL);
+		gosASSERT(rainDrops != nullptr);
 		
 		for (long i=0;i<totalRainDrops;i++)
 			rainDrops[i].init();

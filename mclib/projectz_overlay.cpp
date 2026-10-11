@@ -19,6 +19,7 @@ extern void gos_RendererRebindVAO();
 #include <math.h>
 #include <float.h>
 #include <string.h>
+#include "mc2fmt.h"
 
 //--------------------------------------------------------------------
 // Public state.
@@ -101,7 +102,7 @@ void projectz_overlay_advance() {
     if (g_pzOverlayMode != PZ_OVERLAY_OFF) {
         g_pzTrace = true;
     }
-    fprintf(stderr, "[PROJECTZ overlay] mode=%s\n", s_modeNames[g_pzOverlayMode]);
+    mc2::fmt::print_err("[PROJECTZ overlay] mode={}\n", mc2::fmt::safe(s_modeNames[g_pzOverlayMode]));
     fflush(stderr);
 }
 
@@ -215,8 +216,7 @@ void projectz_overlay_render(int viewportW, int viewportH) {
         static bool s_firstEntry = true;
         if (s_firstEntry) {
             s_firstEntry = false;
-            fprintf(stderr, "[PROJECTZ overlay] first render entry: mode=%s triCount=%d\n",
-                    s_modeNames[g_pzOverlayMode], s_triCount);
+            mc2::fmt::print_err("[PROJECTZ overlay] first render entry: mode={} triCount={:d}\n", mc2::fmt::safe(s_modeNames[g_pzOverlayMode]), mc2::fmt::as_i32(s_triCount));
             fflush(stderr);
         }
     }
@@ -280,9 +280,7 @@ void projectz_overlay_render(int viewportW, int viewportH) {
     if (s_dropped > 0) {
         static uint32_t s_lastDroppedReport = 0;
         if (s_dropped != s_lastDroppedReport) {
-            fprintf(stderr,
-                "[PROJECTZ overlay] dropped %u triangles this frame (cap=%d)\n",
-                s_dropped, MAX_TRIS);
+            mc2::fmt::print_err("[PROJECTZ overlay] dropped {:d} triangles this frame (cap={:d})\n", mc2::fmt::as_u32(s_dropped), mc2::fmt::as_i32(MAX_TRIS));
             s_lastDroppedReport = s_dropped;
         }
     }
@@ -293,11 +291,7 @@ void projectz_overlay_render(int viewportW, int viewportH) {
         static int s_throttle = 0;
         if (++s_throttle >= 60) {
             s_throttle = 0;
-            fprintf(stderr,
-                "[PROJECTZ overlay] %s | green=%u yellow=%u orange=%u red=%u purple=%u\n",
-                s_modeNames[g_pzOverlayMode],
-                s_bucketCount[0], s_bucketCount[1], s_bucketCount[2],
-                s_bucketCount[3], s_bucketCount[4]);
+            mc2::fmt::print_err("[PROJECTZ overlay] {} | green={:d} yellow={:d} orange={:d} red={:d} purple={:d}\n", mc2::fmt::safe(s_modeNames[g_pzOverlayMode]), mc2::fmt::as_u32(s_bucketCount[0]), mc2::fmt::as_u32(s_bucketCount[1]), mc2::fmt::as_u32(s_bucketCount[2]), mc2::fmt::as_u32(s_bucketCount[3]), mc2::fmt::as_u32(s_bucketCount[4]));
         }
     }
 

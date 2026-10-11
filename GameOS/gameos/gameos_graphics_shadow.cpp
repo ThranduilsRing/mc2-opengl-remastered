@@ -1,6 +1,7 @@
 // gameos_graphics: shadow-pass state tracing, the static and dynamic shadow passes, gos_SetupObjectShadows and the shadow wrappers.
 // Declared in the class headers; shared names in gameos_graphics_material_internal.h.
 #include "gameos_graphics_material_internal.h"
+#include "mc2fmt.h"
 
 //
 // Trace is gated on MC2_SHADOW_STATE_TRACE=1: default OFF = zero lines, and the
@@ -123,24 +124,9 @@ static void traceShadowPass(const char* passName,
     if (includeBldgCounts) {
         int t=0,i=0,d=0;
         gos_GetStaticBuildingShadowCounts(t, i, d);
-        snprintf(bldg, sizeof(bldg), " bldg=%d/%d/%d(types/inst/draws)", t, i, d);
+        mc2::fmt::to_buf(bldg, " bldg={:d}/{:d}/{:d}(types/inst/draws)", mc2::fmt::as_i32(t), mc2::fmt::as_i32(i), mc2::fmt::as_i32(d));
     }
-    fprintf(stderr,
-        "[SHADOW_STATE v1] pass=%s fbo=%d vp=%d,%d,%d,%d clearDepth=%g "
-        "depthTest=%d depthFunc=%s depthMask=%d colorMask=%d%d%d%d "
-        "cull=%s/%s/%s clipOrigin=0x%X clipDepth=0x%X restored=%d%s\n",
-        passName, pass.fbo,
-        pass.viewport[0], pass.viewport[1], pass.viewport[2], pass.viewport[3],
-        (double)pass.clearDepth,
-        pass.depthTest ? 1 : 0, depthFuncName(pass.depthFunc),
-        pass.depthMask ? 1 : 0,
-        pass.colorMask[0]?1:0, pass.colorMask[1]?1:0,
-        pass.colorMask[2]?1:0, pass.colorMask[3]?1:0,
-        pass.cullEnabled ? "on" : "off",
-        pass.cullFace == GL_FRONT ? "front" : "back",
-        pass.frontFace == GL_CW ? "CW" : "CCW",
-        (unsigned)pass.clipOrigin, (unsigned)pass.clipDepth,
-        restored ? 1 : 0, bldg);
+    mc2::fmt::print_err("[SHADOW_STATE v1] pass={} fbo={:d} vp={:d},{:d},{:d},{:d} clearDepth={:g} depthTest={:d} depthFunc={} depthMask={:d} colorMask={:d}{:d}{:d}{:d} cull={}/{}/{} clipOrigin=0x{:X} clipDepth=0x{:X} restored={:d}{}\n", mc2::fmt::safe(passName), mc2::fmt::as_i32(pass.fbo), mc2::fmt::as_i32(pass.viewport[0]), mc2::fmt::as_i32(pass.viewport[1]), mc2::fmt::as_i32(pass.viewport[2]), mc2::fmt::as_i32(pass.viewport[3]), (double)pass.clearDepth, mc2::fmt::as_i32(pass.depthTest ? 1 : 0), mc2::fmt::safe(depthFuncName(pass.depthFunc)), mc2::fmt::as_i32(pass.depthMask ? 1 : 0), mc2::fmt::as_i32(pass.colorMask[0]?1:0), mc2::fmt::as_i32(pass.colorMask[1]?1:0), mc2::fmt::as_i32(pass.colorMask[2]?1:0), mc2::fmt::as_i32(pass.colorMask[3]?1:0), mc2::fmt::safe(pass.cullEnabled ? "on" : "off"), mc2::fmt::safe(pass.cullFace == GL_FRONT ? "front" : "back"), mc2::fmt::safe(pass.frontFace == GL_CW ? "CW" : "CCW"), mc2::fmt::as_u32((unsigned)pass.clipOrigin), mc2::fmt::as_u32((unsigned)pass.clipDepth), mc2::fmt::as_i32(restored ? 1 : 0), mc2::fmt::safe(bldg));
     fflush(stderr);
 }
 }  // namespace

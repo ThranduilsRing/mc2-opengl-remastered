@@ -1,6 +1,7 @@
 // MissionInterfaceManager: attack, jump, guard, aim, air-strike, camera, zoom, rotate and draw-toggle commands, plus move, patrol and force-group orders.
 // Declared in the class headers; shared names in missiongui_shared_internal.h.
 #include "missiongui_shared_internal.h"
+#include "mc2fmt.h"
 
 
 void MissionInterfaceManager::doAttack()
@@ -42,16 +43,7 @@ void MissionInterfaceManager::doAttack()
 			if (_tg_staleWID || _tg_behind || _tg_far)
 			{
 				char _tg_buf[384];
-				snprintf(_tg_buf, sizeof(_tg_buf),
-				         "{\"site\":\"doAttack\",\"stale_wid\":%d,\"behind\":%d,\"far_cursor\":%d,"
-				         "\"target_screen\":[%.1f,%.1f],\"w\":%.4f,\"mouse\":[%ld,%ld],\"dist_sq\":%.0f,"
-				         "\"is_mover\":%d,\"watch_id\":%d,"
-				         "\"totals\":{\"orders\":%llu,\"stale_wid\":%llu,\"behind\":%llu,\"far\":%llu}}",
-				         _tg_staleWID?1:0, _tg_behind?1:0, _tg_far?1:0,
-				         _tg_sp.x, _tg_sp.y, _tg_sp.w, (long)mouseX, (long)mouseY, _tg_distSq,
-				         target->isMover()?1:0, (int)target->getWatchID(),
-				         (unsigned long long)s_tg_orders, (unsigned long long)s_tg_staleWID,
-				         (unsigned long long)s_tg_behind, (unsigned long long)s_tg_far);
+				mc2::fmt::to_buf(_tg_buf, "{{\"site\":\"doAttack\",\"stale_wid\":{:d},\"behind\":{:d},\"far_cursor\":{:d},\"target_screen\":[{:.1f},{:.1f}],\"w\":{:.4f},\"mouse\":[{:d},{:d}],\"dist_sq\":{:.0f},\"is_mover\":{:d},\"watch_id\":{:d},\"totals\":{{\"orders\":{:d},\"stale_wid\":{:d},\"behind\":{:d},\"far\":{:d}}}}}", mc2::fmt::as_i32(_tg_staleWID?1:0), mc2::fmt::as_i32(_tg_behind?1:0), mc2::fmt::as_i32(_tg_far?1:0), _tg_sp.x, _tg_sp.y, _tg_sp.w, mc2::fmt::as_i32((long)mouseX), mc2::fmt::as_i32((long)mouseY), _tg_distSq, mc2::fmt::as_i32(target->isMover()?1:0), mc2::fmt::as_i32((int)target->getWatchID()), mc2::fmt::as_u64((unsigned long long)s_tg_orders), mc2::fmt::as_u64((unsigned long long)s_tg_staleWID), mc2::fmt::as_u64((unsigned long long)s_tg_behind), mc2::fmt::as_u64((unsigned long long)s_tg_far));
 				mc2_diag::writeEvent("TARGETING", 1, 0, _tg_buf);
 			}
 		}

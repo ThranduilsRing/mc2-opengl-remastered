@@ -10,6 +10,7 @@
 
 #include "utils/shader_builder.h"  // glsl_program::makeProgram
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 // Forward-declare the scene viewproj getter (defined in gameos_graphics.cpp).
 // Upload with the same transpose convention as the existing terrain MVP upload sites.
@@ -52,7 +53,7 @@ static void init_once() {
     if (s_initialized) return;
     s_initialized = true;
 
-    fprintf(stderr, "[DEBUGDRAW v1] event=init enabled=1\n");
+    mc2::fmt::print_err("[DEBUGDRAW v1] event=init enabled=1\n");
 
     // Load shader (no #version in files; prefix injected here per project rule)
     s_program = glsl_program::makeProgram(
@@ -62,7 +63,7 @@ static void init_once() {
         "#version 430\n"
     );
     if (!s_program) {
-        fprintf(stderr, "[DEBUGDRAW v1] event=shader_fail -- debug draw disabled\n");
+        mc2::fmt::print_err("[DEBUGDRAW v1] event=shader_fail -- debug draw disabled\n");
         s_enabled = false;
         return;
     }
@@ -75,7 +76,7 @@ static void init_once() {
 
     s_mvpLoc = glGetUniformLocation(s_programId, "uMVP");
     if (s_mvpLoc < 0) {
-        fprintf(stderr, "[DEBUGDRAW v1] event=uniform_missing name=uMVP -- debug draw disabled\n");
+        mc2::fmt::print_err("[DEBUGDRAW v1] event=uniform_missing name=uMVP -- debug draw disabled\n");
         s_enabled = false;
         return;
     }
@@ -296,8 +297,7 @@ void flushWorldPrims() {
     // Truncate to capacity
     if (s_verts.size() > static_cast<size_t>(kVertCapacity)) {
         if (!s_capWarnedOnce) {
-            fprintf(stderr, "[DEBUGDRAW v1] event=vert_cap_exceeded cap=%d requested=%d\n",
-                    kVertCapacity, (int)s_verts.size());
+            mc2::fmt::print_err("[DEBUGDRAW v1] event=vert_cap_exceeded cap={:d} requested={:d}\n", mc2::fmt::as_i32(kVertCapacity), mc2::fmt::as_i32((int)s_verts.size()));
             s_capWarnedOnce = true;
         }
         s_verts.resize(kVertCapacity);
@@ -384,10 +384,7 @@ void flushWorldPrims() {
         glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &chkVAO);
         glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &chkVBO);
         if (chkProg != prevProg || chkVAO != prevVAO || chkVBO != prevVBO) {
-            fprintf(stderr,
-                "[DEBUGDRAW v1] event=restore_mismatch "
-                "prog exp=%d got=%d  vao exp=%d got=%d  vbo exp=%d got=%d\n",
-                prevProg, chkProg, prevVAO, chkVAO, prevVBO, chkVBO);
+            mc2::fmt::print_err("[DEBUGDRAW v1] event=restore_mismatch prog exp={:d} got={:d}  vao exp={:d} got={:d}  vbo exp={:d} got={:d}\n", mc2::fmt::as_i32(prevProg), mc2::fmt::as_i32(chkProg), mc2::fmt::as_i32(prevVAO), mc2::fmt::as_i32(chkVAO), mc2::fmt::as_i32(prevVBO), mc2::fmt::as_i32(chkVBO));
             s_restoreWarnedOnce = true;
         }
     }
@@ -397,10 +394,7 @@ void flushWorldPrims() {
         GLint chkDrawBuf0 = GL_NONE;
         glGetIntegerv(GL_DRAW_BUFFER0, &chkDrawBuf0);
         if (chkDrawBuf0 != drawBuf0Was) {
-            fprintf(stderr,
-                "[DEBUGDRAW v1] event=drawbuf_mismatch "
-                "expected=0x%X got=0x%X\n",
-                (unsigned)drawBuf0Was, (unsigned)chkDrawBuf0);
+            mc2::fmt::print_err("[DEBUGDRAW v1] event=drawbuf_mismatch expected=0x{:X} got=0x{:X}\n", mc2::fmt::as_u32((unsigned)drawBuf0Was), mc2::fmt::as_u32((unsigned)chkDrawBuf0));
             s_drawBufWarnedOnce = true;
         }
     }

@@ -362,7 +362,7 @@ void __stdcall GetGameOSEnvironment(const char* CommandLine )
 	result=RegOpenKey(HKEY_CURRENT_USER,GAME_REG_KEY,&hKey);
 	if( ERROR_SUCCESS==result )
 	{
-		result=RegQueryValueEx(hKey,"FIRSTRUN",NULL,NULL,(PBYTE)pData,&szData);
+		result=RegQueryValueEx(hKey,"FIRSTRUN",nullptr,nullptr,(PBYTE)pData,&szData);
 		if ((result == ERROR_SUCCESS) && pData[0])
 		{
 			if (fileExists("options.cfg") && !SnifferMode)

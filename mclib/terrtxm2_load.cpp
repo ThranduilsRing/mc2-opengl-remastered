@@ -1,6 +1,7 @@
 // TerrainColorMap: getScaledColorMap and TerrainColorMap::init(fileName): the mission colormap load.
 // Declared in the class headers; shared names in terrtxm2_internal.h.
 #include "terrtxm2_internal.h"
+#include "mc2fmt.h"
 
 
 //---------------------------------------------------------------------------
@@ -23,7 +24,7 @@ void TerrainColorMap::getScaledColorMap (MemoryPtr bfr, long dWidth)
 		colorMapName.init(texturePath,fileName,".tga");
 		
 		char newName[1024];
-		sprintf(newName,"%s.burnin",fileName);
+		mc2::fmt::to_buf(newName, "{}.burnin", mc2::fmt::safe(fileName));
 	
 		FullPathFileName burnInName;
 		burnInName.init(texturePath,newName,".tga");
@@ -44,7 +45,7 @@ void TerrainColorMap::getScaledColorMap (MemoryPtr bfr, long dWidth)
 		}
 			
 		MemoryPtr tgaFileImage = (MemoryPtr)malloc(colorMapFile.fileSize());
-		gosASSERT(tgaFileImage != NULL);
+		gosASSERT(tgaFileImage != nullptr);
 		
 		colorMapFile.read(tgaFileImage,colorMapFile.fileSize());
 		
@@ -60,7 +61,7 @@ void TerrainColorMap::getScaledColorMap (MemoryPtr bfr, long dWidth)
 			//-----------------------------------------------------------------
 			// Check if 24 or 32 bit.  If 24, do the necessary stuff to it.
 			ColorMap = (MemoryPtr)colorMapRAMHeap->Malloc(colorMapInfo.width * colorMapInfo.width * sizeof(DWORD));
-			gosASSERT(ColorMap != NULL);
+			gosASSERT(ColorMap != nullptr);
 			
 			if (colorMapInfo.pixel_depth == 24)
 			{
@@ -165,7 +166,7 @@ long TerrainColorMap::init (char *fileName)
 		// Detail texture is named same as colormap with .detail in name.
 		// if no file exists, no texture drawn.
 		char dName[1024];
-		sprintf(dName,"%s.detail",fileName);
+		mc2::fmt::to_buf(dName, "{}.detail", mc2::fmt::safe(fileName));
 		
 		FullPathFileName detailFile;
 		detailFile.init(texturePath,dName,".tga");
@@ -174,7 +175,7 @@ long TerrainColorMap::init (char *fileName)
 		{
 			/* If a detail texture doesn't exist for this mission, use the default detail texture.*/
 			detailFile.destroy();
-			sprintf(dName,"defaults" PATH_SEPARATOR "default_detail");
+			mc2::fmt::to_buf(dName, "defaults" PATH_SEPARATOR "default_detail");
 			detailFile.init(texturePath,dName,".tga");
 		}
 		if (fileExists(detailFile))		//Otherwise, its already 0xffffffff!!
@@ -188,7 +189,7 @@ long TerrainColorMap::init (char *fileName)
 		//Ok, now load up the water texture.
 		// Water texture is named the same as the colormap with .water in name.
 		// If no file exists, no texture drawn!!
-		sprintf(dName,"%s.water",fileName);
+		mc2::fmt::to_buf(dName, "{}.water", mc2::fmt::safe(fileName));
 		
 		FullPathFileName waterFile;
 		waterFile.init(texturePath,dName,".tga");
@@ -197,7 +198,7 @@ long TerrainColorMap::init (char *fileName)
 		{
 			/* If a water texture doesn't exist for this mission, use the default water texture.*/
 			waterFile.destroy();
-			sprintf(dName,"defaults" PATH_SEPARATOR "default_water");
+			mc2::fmt::to_buf(dName, "defaults" PATH_SEPARATOR "default_water");
 			waterFile.init(texturePath,dName,".tga");
 		}
 		if (fileExists(waterFile))
@@ -213,23 +214,23 @@ long TerrainColorMap::init (char *fileName)
 		// Where 0000 is the frame number of the animation for the water detail.
 		// If the first frame does not exist, no texture is drawn!!
 		char waterDetailBaseName[1024];
-		sprintf(waterDetailBaseName,"%s.water",fileName);
+		mc2::fmt::to_buf(waterDetailBaseName, "{}.water", mc2::fmt::safe(fileName));
 		{
-			sprintf(dName,"%s%04d",waterDetailBaseName,0);
+			mc2::fmt::to_buf(dName, "{}{:04d}", mc2::fmt::safe(waterDetailBaseName), mc2::fmt::as_i32(0));
 			
 			FullPathFileName waterFile;
 			waterFile.init(texturePath,dName,".tga");
 			
 			if (!fileExists(waterFile))
 			{
-				sprintf(waterDetailBaseName,"defaults" PATH_SEPARATOR "default_water");
+				mc2::fmt::to_buf(waterDetailBaseName, "defaults" PATH_SEPARATOR "default_water");
 			}
 		}
 		for (long i=0;i<MAX_WATER_DETAIL_TEXTURES;i++)
 		{
 			waterDetailNodeIndex[i] = 0xffffffff;
 		}
-		sprintf(dName,"%s%04d",waterDetailBaseName,0);
+		mc2::fmt::to_buf(dName, "{}{:04d}", mc2::fmt::safe(waterDetailBaseName), mc2::fmt::as_i32(0));
 		waterFile.init(texturePath,dName,".tga");
 		{ ZoneScopedN("TerrainColorMap::init waterDetailTextures"); resetWaterDetailTextures((const char *)waterFile); }
 
@@ -263,7 +264,7 @@ long TerrainColorMap::init (char *fileName)
 		colorMapName.init(texturePath,fileName,".tga");
 		
 		char newName[1024];
-		sprintf(newName,"%s.burnin",fileName);
+		mc2::fmt::to_buf(newName, "{}.burnin", mc2::fmt::safe(fileName));
 	
 		FullPathFileName burnInName;
 		burnInName.init(texturePath,newName,".tga");
@@ -291,16 +292,15 @@ long TerrainColorMap::init (char *fileName)
 				STOP(("Color Map is %d pixels wide which is not even divisible by %d",jpgColorMapWidth,COLOR_MAP_TEXTURE_SIZE));
 
 			if (skipColormapTiles()) {
-				printf("[COLORMAP] skip %ld^2 tile GL upload (%ldx%ld) [COLORMAP-TILES-RETIRE-1]\n",
-				       (long)numTexturesAcross, jpgColorMapWidth, jpgColorMapWidth);
+				mc2::fmt::print_out("[COLORMAP] skip {:d}^2 tile GL upload ({:d}x{:d}) [COLORMAP-TILES-RETIRE-1]\n", mc2::fmt::as_i32((long)numTexturesAcross), mc2::fmt::as_i32(jpgColorMapWidth), mc2::fmt::as_i32(jpgColorMapWidth));
 				numTextures = 0;
 			} else {
 				numTextures *= numTextures;
 				textures = (ColorMapTextures *)colorMapHeap->Malloc(sizeof(ColorMapTextures) * numTextures);
-				gosASSERT(textures != NULL);
+				gosASSERT(textures != nullptr);
 
 				txmRAM = (ColorMapRAM *)colorMapRAMHeap->Malloc(sizeof(ColorMapRAM) * numTextures);
-				gosASSERT(txmRAM != NULL);
+				gosASSERT(txmRAM != nullptr);
 
 				//Now, divide up the color map into separate COLOR_MAP_TEXTURE_SIZE textures.
 				// and hand the data to the textureManager.
@@ -311,7 +311,7 @@ long TerrainColorMap::init (char *fileName)
 						{
 							ZoneScopedN("TerrainColorMap::init jpgColorMap tileAlloc");
 							txmRAM[i].ourRAM = (MemoryPtr)colorMapRAMHeap->Malloc(sizeof(DWORD) * COLOR_MAP_TEXTURE_SIZE * COLOR_MAP_TEXTURE_SIZE);
-							gosASSERT(txmRAM[i].ourRAM != NULL);
+							gosASSERT(txmRAM[i].ourRAM != nullptr);
 						}
 						{
 							ZoneScopedN("TerrainColorMap::init jpgColorMap tileExtract");
@@ -335,10 +335,10 @@ long TerrainColorMap::init (char *fileName)
 				if (cpuColorMap) { free(cpuColorMap); cpuColorMap = nullptr; }
 				long pixels = jpgColorMapWidth * jpgColorMapWidth;
 				cpuColorMap = (unsigned char*)malloc(pixels * 4);
-				gosASSERT(cpuColorMap != NULL);
+				gosASSERT(cpuColorMap != nullptr);
 				cpuColorMapSize = jpgColorMapWidth;
 				memcpy(cpuColorMap, ColorMap, pixels * 4);
-				printf("[COLORMAP] retained colormap on CPU (%ldx%ld) [jpg]\n", jpgColorMapWidth, jpgColorMapWidth);
+				mc2::fmt::print_out("[COLORMAP] retained colormap on CPU ({:d}x{:d}) [jpg]\n", mc2::fmt::as_i32(jpgColorMapWidth), mc2::fmt::as_i32(jpgColorMapWidth));
 			}
 			// ColorMap is colorMapRAMHeap-allocated -> normal cleanup path (usedJPG stays false).
 		}
@@ -364,7 +364,7 @@ long TerrainColorMap::init (char *fileName)
 
 				ZoneScopedN("TerrainColorMap::init colorMap read");
 				tgaFileImage = (MemoryPtr)malloc(colorMapFile.fileSize());
-				gosASSERT(tgaFileImage != NULL);
+				gosASSERT(tgaFileImage != nullptr);
 				colorMapFile.read(tgaFileImage,colorMapFile.fileSize());
 			}
 
@@ -381,7 +381,7 @@ long TerrainColorMap::init (char *fileName)
 				// Check if 24 or 32 bit.  If 24, do the necessary stuff to it.
 				long cmapBytes = (long)colorMapInfo.width * (long)colorMapInfo.width * (long)sizeof(DWORD);
 				ColorMap = (MemoryPtr)colorMapRAMHeap->Malloc(cmapBytes);
-				gosASSERT(ColorMap != NULL);
+				gosASSERT(ColorMap != nullptr);
 
 				{ ZoneScopedN("TerrainColorMap::init colorMap decode");
 				if (colorMapInfo.pixel_depth == 24)
@@ -443,16 +443,15 @@ long TerrainColorMap::init (char *fileName)
 				}
 
 				if (skipColormapTiles()) {
-					printf("[COLORMAP] skip %ld^2 tile GL upload (%dx%d) [COLORMAP-TILES-RETIRE-1]\n",
-					       (long)numTexturesAcross, colorMapInfo.width, colorMapInfo.width);
+					mc2::fmt::print_out("[COLORMAP] skip {:d}^2 tile GL upload ({:d}x{:d}) [COLORMAP-TILES-RETIRE-1]\n", mc2::fmt::as_i32((long)numTexturesAcross), mc2::fmt::as_i32(colorMapInfo.width), mc2::fmt::as_i32(colorMapInfo.width));
 					numTextures = 0;
 				} else {
 					numTextures *= numTextures;
 					textures = (ColorMapTextures *)colorMapHeap->Malloc(sizeof(ColorMapTextures) * numTextures);
-					gosASSERT(textures != NULL);
+					gosASSERT(textures != nullptr);
 
 					txmRAM = (ColorMapRAM *)colorMapRAMHeap->Malloc(sizeof(ColorMapRAM) * numTextures);
-					gosASSERT(txmRAM != NULL);
+					gosASSERT(txmRAM != nullptr);
 
 					//Now, divide up the color map into separate COLOR_MAP_TEXTURE_SIZE textures.
 					// and hand the data to the textureManager.
@@ -464,7 +463,7 @@ long TerrainColorMap::init (char *fileName)
 							{
 								ZoneScopedN("TerrainColorMap::init colorMap tileAlloc");
 								txmRAM[i].ourRAM = (MemoryPtr)colorMapRAMHeap->Malloc(sizeof(DWORD) * COLOR_MAP_TEXTURE_SIZE * COLOR_MAP_TEXTURE_SIZE);
-								gosASSERT(txmRAM[i].ourRAM != NULL);
+								gosASSERT(txmRAM[i].ourRAM != nullptr);
 							}
 							{
 								ZoneScopedN("TerrainColorMap::init colorMap tileExtract");
@@ -494,10 +493,10 @@ long TerrainColorMap::init (char *fileName)
 				if (cpuColorMap) { free(cpuColorMap); cpuColorMap = nullptr; }
 				long pixels = (long)colorMapInfo.width * (long)colorMapInfo.width;
 				cpuColorMap = (unsigned char*)malloc(pixels * 4);
-				gosASSERT(cpuColorMap != NULL);
+				gosASSERT(cpuColorMap != nullptr);
 				cpuColorMapSize = colorMapInfo.width;
 				memcpy(cpuColorMap, ColorMap, pixels * 4);
-				printf("[COLORMAP] retained colormap on CPU (%dx%d)\n", colorMapInfo.width, colorMapInfo.width);
+				mc2::fmt::print_out("[COLORMAP] retained colormap on CPU ({:d}x{:d})\n", mc2::fmt::as_i32(colorMapInfo.width), mc2::fmt::as_i32(colorMapInfo.width));
 			}
 		}
 	}
@@ -506,14 +505,14 @@ long TerrainColorMap::init (char *fileName)
 	ktx2ColormapPath[0] = '\0';
 	if (cpuColorMap && useKtx2Colormap()) {
 		char ktx2Name[1024];
-		snprintf(ktx2Name, sizeof(ktx2Name), "%s.burnin", fileName);
+		mc2::fmt::to_buf(ktx2Name, "{}.burnin", mc2::fmt::safe(fileName));
 		FullPathFileName ktx2Path;
 		ktx2Path.init(texturePath, ktx2Name, ".ktx2");
 		FILE* probe = std::fopen((const char*)ktx2Path, "rb");
 		if (probe) {
 			fclose(probe);
-			snprintf(ktx2ColormapPath, sizeof(ktx2ColormapPath), "%s", (const char*)ktx2Path);
-			printf("[COLORMAP] COLORMAP-BC7-KTX2-1: found sidecar %s\n", ktx2ColormapPath);
+			mc2::fmt::to_buf_n(ktx2ColormapPath, sizeof(ktx2ColormapPath), "{}", mc2::fmt::safe((const char*)ktx2Path));
+			mc2::fmt::print_out("[COLORMAP] COLORMAP-BC7-KTX2-1: found sidecar {}\n", mc2::fmt::safe(ktx2ColormapPath));
 		}
 	}
 
@@ -556,7 +555,7 @@ long TerrainColorMap::init (char *fileName)
 		char *nmFileName = Terrain::colorMapName ? Terrain::colorMapName : Terrain::terrainName;
 		if (!nmFileName) nmFileName = fileName;
 		char nmName[1024];
-		sprintf(nmName, "%s.normalmap", nmFileName);
+		mc2::fmt::to_buf(nmName, "{}.normalmap", mc2::fmt::safe(nmFileName));
 		FullPathFileName normalMapPath;
 		normalMapPath.init(texturePath, nmName, ".tga");
 
@@ -748,7 +747,7 @@ long TerrainColorMap::init (char *fileName)
 	}
 
 	// Load terrain material texture arrays (4 PBR material sets)
-	printf("[SPLATTING] starting material array load\n");
+	mc2::fmt::print_out("[SPLATTING] starting material array load\n");
 	{
 		ZoneScopedN("TerrainColorMap::init materialArrays");
 		const char* normalNames[9] = {
@@ -768,9 +767,9 @@ long TerrainColorMap::init (char *fileName)
 		{
 			FullPathFileName nmPath;
 			nmPath.init(texturePath, normalNames[mat], ".tga");
-			printf("[SPLATTING] checking: %s\n", (const char*)nmPath);
+			mc2::fmt::print_out("[SPLATTING] checking: {}\n", mc2::fmt::safe((const char*)nmPath));
 			if (!fileExists(nmPath)) {
-				printf("[SPLATTING] NOT FOUND: %s%s\n", (const char*)nmPath, mat >= 4 ? " (optional slot skipped)" : "");
+				mc2::fmt::print_out("[SPLATTING] NOT FOUND: {}{}\n", mc2::fmt::safe((const char*)nmPath), mc2::fmt::safe(mat >= 4 ? " (optional slot skipped)" : ""));
 				// mat4+ are optional — missing file leaves the slot empty but doesn't fail the load.
 				if (mat >= 4) continue;
 				allLoaded = false; break;
@@ -844,15 +843,15 @@ long TerrainColorMap::init (char *fileName)
 		}
 
 		if (allLoaded) {
-			printf("[SPLATTING] all loaded OK, width=%d, creating individual textures\n", arrayWidth);
+			mc2::fmt::print_out("[SPLATTING] all loaded OK, width={:d}, creating individual textures\n", mc2::fmt::as_i32(arrayWidth));
 			for (int i = 0; i < 9; i++) {
 				if (!normalLayers[i]) continue;  // optional slot absent
 				unsigned int nmId = gos_CreateTerrainNormalTexture(normalLayers[i], arrayWidth);
-				printf("[SPLATTING] matNormal%d GL id=%u\n", i, nmId);
+				mc2::fmt::print_out("[SPLATTING] matNormal{:d} GL id={:d}\n", mc2::fmt::as_i32(i), mc2::fmt::as_u32(nmId));
 				gos_SetTerrainMaterialNormal(i, nmId);
 			}
 		} else {
-			printf("[SPLATTING] FAILED to load all material textures\n");
+			mc2::fmt::print_out("[SPLATTING] FAILED to load all material textures\n");
 		}
 
 		// Retain CPU copy of matNormal2 alpha for terrain elevation displacement
@@ -860,13 +859,13 @@ long TerrainColorMap::init (char *fileName)
 			if (cpuDispAlpha) { free(cpuDispAlpha); cpuDispAlpha = nullptr; }
 			long pixels = (long)arrayWidth * (long)arrayWidth;
 			cpuDispAlpha = (unsigned char*)malloc(pixels);
-			gosASSERT(cpuDispAlpha != NULL);
+			gosASSERT(cpuDispAlpha != nullptr);
 			cpuDispAlphaSize = arrayWidth;
 			const unsigned char* src = normalLayers[2];
 			for (long i = 0; i < pixels; i++) {
 				cpuDispAlpha[i] = src[i * 4 + 3]; // alpha channel (RGBA layout)
 			}
-			printf("[SPLATTING] retained matNormal2 alpha on CPU (%dx%d)\n", arrayWidth, arrayWidth);
+			mc2::fmt::print_out("[SPLATTING] retained matNormal2 alpha on CPU ({:d}x{:d})\n", mc2::fmt::as_i32(arrayWidth), mc2::fmt::as_i32(arrayWidth));
 		}
 
 		for (int i = 0; i < 9; i++) {

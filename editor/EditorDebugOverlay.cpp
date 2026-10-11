@@ -58,7 +58,7 @@ namespace
 
 	bool terrainLoaded()
 	{
-		return ( land != NULL && Terrain::realVerticesMapSide > 1 );
+		return ( land != nullptr && Terrain::realVerticesMapSide > 1 );
 	}
 
 	// World height for a grid sample at (wx, wy).
@@ -230,7 +230,7 @@ namespace
 		s_probe.side        = side;
 		s_probe.expectVerts = n;
 		s_probe.waterElev   = Terrain::waterElevation;
-		s_probe.hasColormap = ( land->terrainTextures2 != NULL );
+		s_probe.hasColormap = ( land->terrainTextures2 != nullptr );
 		s_probe.recipeReady = gos_terrain_indirect::IsDenseRecipeReady();
 		s_probe.atlasTex    = gos_terrain_indirect_getAtlasGLTex();
 		s_probe.chunkPath   = mc2TerrainLodChunkEnabled();

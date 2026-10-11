@@ -1,6 +1,7 @@
 // gos_terrain_lod_chunk: gos_TerrainLodChunk_SubmitDrawCommands, the uniform mirroring it uses and the eager draw tuning caches.
 // Declared in the class headers; shared names in gos_terrain_lod_chunk_internal.h.
 #include "gos_terrain_lod_chunk_internal.h"
+#include "mc2fmt.h"
 
 // TERRAIN-VISUAL-HEIGHT-S2-ALLLOD: per-LOD-band displaced-chunk counters, reset
 // and logged once per submit alongside [TerrainLOD v1] so acceptance has hard
@@ -215,9 +216,7 @@ void TerrainLodSubmitFrame::bindProgramAndVisualHeight(const float* mvp) {
         static bool s_geoLogged = false;
         if (!s_geoLogged && visualDisplaceActive) {
             s_geoLogged = true;
-            printf("[GEOMORPH v1] active=%d mipFloats=%d kill=%d locMips=%d locMorph=%d locLodStep=%d\n",
-                   geomorphActive ? 1 : 0, s_visualMipFloats, s_geomorphKill ? 1 : 0,
-                   (int)s_locGeomorphMips, (int)s_locMorphFactor, (int)s_locLodStep);
+            mc2::fmt::print_out("[GEOMORPH v1] active={:d} mipFloats={:d} kill={:d} locMips={:d} locMorph={:d} locLodStep={:d}\n", mc2::fmt::as_i32(geomorphActive ? 1 : 0), mc2::fmt::as_i32(s_visualMipFloats), mc2::fmt::as_i32(s_geomorphKill ? 1 : 0), mc2::fmt::as_i32((int)s_locGeomorphMips), mc2::fmt::as_i32((int)s_locMorphFactor), mc2::fmt::as_i32((int)s_locLodStep));
             fflush(stdout);
         }
     }
@@ -841,14 +840,7 @@ static void uploadTerrainTuning() {
                 gos_GetNightState(&isNight, &nf);
                 float lx = 0.0f, ly = 0.0f, lz = 0.0f;
                 gos_GetTerrainLightDir(&lx, &ly, &lz);
-                fprintf(stderr,
-                        "[TERRAIN_AMBIENT_FLOOR v2] floor=%.3f dayGate=%.4f "
-                        "raw_dayGate=%.4f night_floor=%.4f night_env_set=%d "
-                        "floor_env_set=%d "
-                        "runtime_isNight=%d runtime_nightFactor=%.3f runtime_lightDirZ=%.4f\n",
-                        s_amb, dayGate, rawDayGate, s_nightGateFloor,
-                        s_nightEnvSet ? 1 : 0, s_ambEnvSet ? 1 : 0,
-                        isNight ? 1 : 0, nf, lz);
+                mc2::fmt::print_err("[TERRAIN_AMBIENT_FLOOR v2] floor={:.3f} dayGate={:.4f} raw_dayGate={:.4f} night_floor={:.4f} night_env_set={:d} floor_env_set={:d} runtime_isNight={:d} runtime_nightFactor={:.3f} runtime_lightDirZ={:.4f}\n", s_amb, dayGate, rawDayGate, s_nightGateFloor, mc2::fmt::as_i32(s_nightEnvSet ? 1 : 0), mc2::fmt::as_i32(s_ambEnvSet ? 1 : 0), mc2::fmt::as_i32(isNight ? 1 : 0), nf, lz);
                 fflush(stderr);
             }
         }
@@ -946,7 +938,7 @@ static void noteFirstSubmit(int count) {
         static bool s_firstSubmit = true;
         s_submitZeroStreak = 0;  // reset on any non-zero submit
         if (s_firstSubmit && count > 0) {
-            printf("[TerrainLOD v1] FIRST SUBMIT: %d draw commands queued\n", count);
+            mc2::fmt::print_out("[TerrainLOD v1] FIRST SUBMIT: {:d} draw commands queued\n", mc2::fmt::as_i32(count));
             fflush(stdout);
             s_firstSubmit = false;
         }
@@ -957,7 +949,7 @@ static void noteFirstSubmit(int count) {
 void TerrainLodSubmitFrame::countSubmitAndPrepVk(int count, const float* mvp, int& s_submitCount) {
     ++s_submitCount;
     if (s_submitCount % 600 == 0) {
-        printf("[TerrainLOD submit] count=%d cmds=%d\n", s_submitCount, count);
+        mc2::fmt::print_out("[TerrainLOD submit] count={:d} cmds={:d}\n", mc2::fmt::as_i32(s_submitCount), mc2::fmt::as_i32(count));
         fflush(stdout);
     }
 
@@ -991,8 +983,7 @@ void TerrainLodSubmitFrame::countSubmitAndPrepVk(int count, const float* mvp, in
     s_vkTerrainActive = s_vkTerrainEnabled && s_vkTerrainReady;
     static bool s_vkTerrainFailSoftLogged = false;
     if (s_vkTerrainEnabled && !s_vkTerrainActive && !s_vkTerrainFailSoftLogged) {
-        fprintf(stderr, "[VK_TERRAIN_ISLAND] FAIL-SOFT: gate ON but island not ready this "
-                        "frame -> GL draws LOD0 (no hole). Will retry birth/heal via run().\n");
+        mc2::fmt::print_err("[VK_TERRAIN_ISLAND] FAIL-SOFT: gate ON but island not ready this frame -> GL draws LOD0 (no hole). Will retry birth/heal via run().\n");
         fflush(stderr);
         s_vkTerrainFailSoftLogged = true;
     }
@@ -1258,9 +1249,7 @@ void TerrainLodSubmitFrame::drawChunks(int count, const TerrainDrawCommand* cmds
         static unsigned long s_visFrame = 0;
         ++s_visFrame;
         if (s_visFrame <= 60 || (s_visFrame % 180) == 0) {
-            printf("[TerrainLOD] visualDisplace band-counts LOD0=%d LOD1=%d LOD2=%d LOD3=%d LOD4=%d LOD5=%d\n",
-                   s_visualDisplacedCounts[0], s_visualDisplacedCounts[1], s_visualDisplacedCounts[2],
-                   s_visualDisplacedCounts[3], s_visualDisplacedCounts[4], s_visualDisplacedCounts[5]);
+            mc2::fmt::print_out("[TerrainLOD] visualDisplace band-counts LOD0={:d} LOD1={:d} LOD2={:d} LOD3={:d} LOD4={:d} LOD5={:d}\n", mc2::fmt::as_i32(s_visualDisplacedCounts[0]), mc2::fmt::as_i32(s_visualDisplacedCounts[1]), mc2::fmt::as_i32(s_visualDisplacedCounts[2]), mc2::fmt::as_i32(s_visualDisplacedCounts[3]), mc2::fmt::as_i32(s_visualDisplacedCounts[4]), mc2::fmt::as_i32(s_visualDisplacedCounts[5]));
             fflush(stdout);
         }
     }
@@ -1273,21 +1262,7 @@ void TerrainLodSubmitFrame::auditAndMarkDrawn(const unsigned int* edgeStitch) {
         static unsigned long s_auditFrame = 0;
         ++s_auditFrame;
         if (s_auditFrame <= 60 || (s_auditFrame % 180) == 0) {
-            fprintf(stderr,
-                    "[VK_TERRAIN_GL_FALLBACK_AUDIT v1] frame=%lu total=%d captured=%d "
-                    "gl_fallback=%d inactive=%d band=%d displace=%d edge_stitch=%d "
-                    "captured_stitch=%d other=%d skirt_edges=%d\n",
-                    s_auditFrame,
-                    s_vkTerrainGlAudit.total,
-                    s_vkTerrainGlAudit.captured,
-                    s_vkTerrainGlAudit.glFallback,
-                    s_vkTerrainGlAudit.inactive,
-                    s_vkTerrainGlAudit.band,
-                    s_vkTerrainGlAudit.displace,
-                    s_vkTerrainGlAudit.edgeStitch,
-                    s_vkTerrainGlAudit.capturedStitched,
-                    s_vkTerrainGlAudit.other,
-                    s_vkTerrainGlAudit.skirtEdges);
+            mc2::fmt::print_err("[VK_TERRAIN_GL_FALLBACK_AUDIT v1] frame={:d} total={:d} captured={:d} gl_fallback={:d} inactive={:d} band={:d} displace={:d} edge_stitch={:d} captured_stitch={:d} other={:d} skirt_edges={:d}\n", mc2::fmt::as_u32(s_auditFrame), mc2::fmt::as_i32(s_vkTerrainGlAudit.total), mc2::fmt::as_i32(s_vkTerrainGlAudit.captured), mc2::fmt::as_i32(s_vkTerrainGlAudit.glFallback), mc2::fmt::as_i32(s_vkTerrainGlAudit.inactive), mc2::fmt::as_i32(s_vkTerrainGlAudit.band), mc2::fmt::as_i32(s_vkTerrainGlAudit.displace), mc2::fmt::as_i32(s_vkTerrainGlAudit.edgeStitch), mc2::fmt::as_i32(s_vkTerrainGlAudit.capturedStitched), mc2::fmt::as_i32(s_vkTerrainGlAudit.other), mc2::fmt::as_i32(s_vkTerrainGlAudit.skirtEdges));
             fflush(stderr);
         }
     }
@@ -1388,9 +1363,7 @@ void TerrainLodSubmitFrame::submitVkIsland(int& s_submitCount) {
         for (const auto& p : s_vkTerrainPatches) {
             if (p.lodStep == 1) ++cnt1; else ++cntCoarse;
         }
-        printf("[VK_TERRAIN_ALL_LODS] submit=%d feedValid=%d active=%d allLods=%d vkPatches=%zu lodStep1=%d coarse(lodStep>1)=%d\n",
-                s_submitCount, s_vkTerrainFeedValid ? 1 : 0, s_vkTerrainActive ? 1 : 0,
-                mc2_vk_terrain_all_lods_enabled(), s_vkTerrainPatches.size(), cnt1, cntCoarse);
+        mc2::fmt::print_out("[VK_TERRAIN_ALL_LODS] submit={:d} feedValid={:d} active={:d} allLods={:d} vkPatches={:d} lodStep1={:d} coarse(lodStep>1)={:d}\n", mc2::fmt::as_i32(s_submitCount), mc2::fmt::as_i32(s_vkTerrainFeedValid ? 1 : 0), mc2::fmt::as_i32(s_vkTerrainActive ? 1 : 0), mc2::fmt::as_i32(mc2_vk_terrain_all_lods_enabled()), mc2::fmt::as_size(s_vkTerrainPatches.size()), mc2::fmt::as_i32(cnt1), mc2::fmt::as_i32(cntCoarse));
         fflush(stdout);
     }
 
@@ -1406,9 +1379,7 @@ void TerrainLodSubmitFrame::submitVkIsland(int& s_submitCount) {
                 // will be 0 next frame and GL resumes drawing LOD0 (self-heal).
                 static bool s_gapLogged = false;
                 if (!s_gapLogged) {
-                    fprintf(stderr, "[VK_TERRAIN_ISLAND] FAIL-SOFT: run()==0 AFTER LOD0-skip "
-                                    "-> 1-frame LOD0 gap this frame; island latched off, GL "
-                                    "resumes LOD0 next frame (self-heal).\n");
+                    mc2::fmt::print_err("[VK_TERRAIN_ISLAND] FAIL-SOFT: run()==0 AFTER LOD0-skip -> 1-frame LOD0 gap this frame; island latched off, GL resumes LOD0 next frame (self-heal).\n");
                     fflush(stderr);
                     s_gapLogged = true;
                 }
@@ -1472,8 +1443,7 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
         if (!mvp) {
             ++s_mvpNullCount;
             if (s_mvpNullCount <= 5 || s_mvpNullCount % 300 == 0)
-                printf("[TerrainLOD submit] mvp=NULL bail count=%d (count=%d)\n",
-                    s_mvpNullCount, count);
+                mc2::fmt::print_out("[TerrainLOD submit] mvp=NULL bail count={:d} (count={:d})\n", mc2::fmt::as_i32(s_mvpNullCount), mc2::fmt::as_i32(count));
             return;
         }
     }

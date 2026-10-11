@@ -16,6 +16,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 // <climits> not needed: UINT32_MAX comes from <cstdint> already included via draw_packet_emitter.h
 
 // Global debug snapshot — written each frame by gameosmain, read by ImGui panel.
@@ -55,9 +56,7 @@ DrawPacketEmitStats emitStaticPropDrawPackets(const RenderSnapshot&          sna
     // Guard against sparse or corrupt typeId values.
     static constexpr uint32_t kMaxAllowedTypeId = 65535u;
     if (maxTypeId > kMaxAllowedTypeId) {
-        std::fprintf(stderr,
-            "[DRAW_PACKET v1] ERROR: maxTypeId=%u exceeds cap %u; aborting\n",
-            maxTypeId, kMaxAllowedTypeId);
+        mc2::fmt::print_err("[DRAW_PACKET v1] ERROR: maxTypeId={:d} exceeds cap {:d}; aborting\n", mc2::fmt::as_u32(maxTypeId), mc2::fmt::as_u32(kMaxAllowedTypeId));
         return stats;
     }
 
@@ -82,10 +81,7 @@ DrawPacketEmitStats emitStaticPropDrawPackets(const RenderSnapshot&          sna
             typeToMatIdx[tid] = prop.materialIdx;
         } else if (typeToMatIdx[tid] != prop.materialIdx) {
             ++stats.materialMismatches;
-            if (s_dpWarn) std::fprintf(stderr,
-                "[DRAW_PACKET v1] WARNING: typeId=%u materialIdx mismatch "
-                "(%u vs %u)\n",
-                tid, typeToMatIdx[tid], prop.materialIdx);
+            if (s_dpWarn) mc2::fmt::print_err("[DRAW_PACKET v1] WARNING: typeId={:d} materialIdx mismatch ({:d} vs {:d})\n", mc2::fmt::as_u32(tid), mc2::fmt::as_u32(typeToMatIdx[tid]), mc2::fmt::as_u32(prop.materialIdx));
         }
     }
 
@@ -128,8 +124,7 @@ DrawPacketEmitStats emitStaticPropDrawPackets(const RenderSnapshot&          sna
         // The emit correctly aborts regardless; gate the print behind the warn flag so it
         // doesn't spam the player console once-per-frame on the post-mission screens.
         if (s_dpWarn)
-            std::fprintf(stderr,
-                "[DRAW_PACKET v1] ERROR: type table empty; emit aborted\n");
+            mc2::fmt::print_err("[DRAW_PACKET v1] ERROR: type table empty; emit aborted\n");
         return stats;
     }
 
@@ -140,9 +135,7 @@ DrawPacketEmitStats emitStaticPropDrawPackets(const RenderSnapshot&          sna
         // A mismatch indicates a populate bug and makes the candidate's typeId wrong.
         if (desc.typeId != i) {
             ++stats.invalidRanges;
-            if (s_dpWarn) std::fprintf(stderr,
-                "[DRAW_PACKET v1] WARNING: type table row mismatch row=%u typeId=%u\n",
-                i, desc.typeId);
+            if (s_dpWarn) mc2::fmt::print_err("[DRAW_PACKET v1] WARNING: type table row mismatch row={:d} typeId={:d}\n", mc2::fmt::as_u32(i), mc2::fmt::as_u32(desc.typeId));
             continue;
         }
 
@@ -156,17 +149,13 @@ DrawPacketEmitStats emitStaticPropDrawPackets(const RenderSnapshot&          sna
         // packetCount==0 means a malformed slot; log and skip.
         if (desc.packetCount == 0u) {
             ++stats.skippedRanges;
-            if (s_dpWarn) std::fprintf(stderr,
-                "[DRAW_PACKET v1] WARNING: typeId=%u skipped (packetCount=0)\n", tid);
+            if (s_dpWarn) mc2::fmt::print_err("[DRAW_PACKET v1] WARNING: typeId={:d} skipped (packetCount=0)\n", mc2::fmt::as_u32(tid));
             continue;
         }
         // Overflow guard on firstPacket + packetCount arithmetic.
         if (desc.firstPacket > UINT32_MAX - desc.packetCount) {
             ++stats.skippedRanges;
-            if (s_dpWarn) std::fprintf(stderr,
-                "[DRAW_PACKET v1] WARNING: typeId=%u packet range overflow "
-                "(firstPacket=%u packetCount=%u)\n",
-                tid, desc.firstPacket, desc.packetCount);
+            if (s_dpWarn) mc2::fmt::print_err("[DRAW_PACKET v1] WARNING: typeId={:d} packet range overflow (firstPacket={:d} packetCount={:d})\n", mc2::fmt::as_u32(tid), mc2::fmt::as_u32(desc.firstPacket), mc2::fmt::as_u32(desc.packetCount));
             continue;
         }
 
@@ -211,8 +200,7 @@ DrawPacketEmitStats emitStaticPropDrawPackets(const RenderSnapshot&          sna
             uint32_t packetMatFlags = 0u;
             RenderCore::PipelineId packetPipelineId = RenderCore::PipelineId::Invalid;
             if (!batcher_getPacketMaterialFlags(pi, &packetMatFlags)) {
-                std::fprintf(stderr,
-                    "[DRAW_PACKET v2] batcher_getPacketMaterialFlags OOB pi=%u\n", pi);
+                mc2::fmt::print_err("[DRAW_PACKET v2] batcher_getPacketMaterialFlags OOB pi={:d}\n", mc2::fmt::as_u32(pi));
                 packetMatFlags = 0u;
             } else {
                 const bool alpha = (packetMatFlags & STATIC_PROP_FLAG_ALPHA_TEST) != 0;
@@ -294,24 +282,15 @@ DrawPacketCompareResult comparePacketsToLegacy(
                     ++r.geomMismatch;
                     if (s_verboseEnabled) {
                         if (c.firstIndex != bFirstIdx)
-                            std::fprintf(stderr,
-                                "[DRAW_PACKET_COMPARE detail] typeId=%u globalIdx=%u"
-                                " check=firstIndex cand=%u batcher=%u\n",
-                                c.typeId, c.globalPacketIdx, c.firstIndex, bFirstIdx);
+                            mc2::fmt::print_err("[DRAW_PACKET_COMPARE detail] typeId={:d} globalIdx={:d} check=firstIndex cand={:d} batcher={:d}\n", mc2::fmt::as_u32(c.typeId), mc2::fmt::as_u32(c.globalPacketIdx), mc2::fmt::as_u32(c.firstIndex), mc2::fmt::as_u32(bFirstIdx));
                         if (c.indexCount != bIdxCount)
-                            std::fprintf(stderr,
-                                "[DRAW_PACKET_COMPARE detail] typeId=%u globalIdx=%u"
-                                " check=indexCount cand=%u batcher=%u\n",
-                                c.typeId, c.globalPacketIdx, c.indexCount, bIdxCount);
+                            mc2::fmt::print_err("[DRAW_PACKET_COMPARE detail] typeId={:d} globalIdx={:d} check=indexCount cand={:d} batcher={:d}\n", mc2::fmt::as_u32(c.typeId), mc2::fmt::as_u32(c.globalPacketIdx), mc2::fmt::as_u32(c.indexCount), mc2::fmt::as_u32(bIdxCount));
                     }
                 }
                 if (c.typeId != bOwnType) {
                     ++r.typeMismatch;
                     if (s_verboseEnabled)
-                        std::fprintf(stderr,
-                            "[DRAW_PACKET_COMPARE detail] typeId=%u globalIdx=%u"
-                            " check=owningType cand=%u batcher=%u\n",
-                            c.typeId, c.globalPacketIdx, c.typeId, bOwnType);
+                        mc2::fmt::print_err("[DRAW_PACKET_COMPARE detail] typeId={:d} globalIdx={:d} check=owningType cand={:d} batcher={:d}\n", mc2::fmt::as_u32(c.typeId), mc2::fmt::as_u32(c.globalPacketIdx), mc2::fmt::as_u32(c.typeId), mc2::fmt::as_u32(bOwnType));
                 }
             }
             // if batcher_getPacketDrawInfo returns false: globalPacketIdx was valid at
@@ -329,24 +308,17 @@ DrawPacketCompareResult comparePacketsToLegacy(
             if (pipelineIsAlpha != flagsIsAlpha) {
                 ++r.alphaMismatch;
                 if (s_verboseEnabled)
-                    std::fprintf(stderr,
-                        "[DRAW_PACKET_COMPARE detail] typeId=%u globalIdx=%u"
-                        " check=alpha pipelineId=%u flags=0x%08x\n",
-                        c.typeId, c.globalPacketIdx,
-                        static_cast<uint32_t>(id), c.cachedMaterialFlags);
+                    mc2::fmt::print_err("[DRAW_PACKET_COMPARE detail] typeId={:d} globalIdx={:d} check=alpha pipelineId={:d} flags=0x{:08x}\n", mc2::fmt::as_u32(c.typeId), mc2::fmt::as_u32(c.globalPacketIdx), mc2::fmt::as_u32(static_cast<uint32_t>(id)), mc2::fmt::as_u32(c.cachedMaterialFlags));
             }
         }
     }
 
     // One summary line per frame — schema v1.
     // INCREMENT TAG if fields are added/removed in future slices.
-    std::fprintf(stderr,
-        "[DRAW_PACKET_COMPARE v1] frame=%u packets=%u"
-        " pipeline_invalid=%u pipeline_oob=%u"
-        " geom_mismatch=%u type_mismatch=%u alpha_mismatch=%u\n",
-        frameIndex, r.packets,
-        r.pipelineInvalid, r.pipelineOob,
-        r.geomMismatch, r.typeMismatch, r.alphaMismatch);
+    mc2::fmt::print_err("[DRAW_PACKET_COMPARE v1] frame={:d} packets={:d} pipeline_invalid={:d} pipeline_oob={:d} geom_mismatch={:d} type_mismatch={:d} alpha_mismatch={:d}\n",
+        mc2::fmt::as_u32(frameIndex), mc2::fmt::as_u32(r.packets),
+        mc2::fmt::as_u32(r.pipelineInvalid), mc2::fmt::as_u32(r.pipelineOob),
+        mc2::fmt::as_u32(r.geomMismatch), mc2::fmt::as_u32(r.typeMismatch), mc2::fmt::as_u32(r.alphaMismatch));
 
     return r;
 }

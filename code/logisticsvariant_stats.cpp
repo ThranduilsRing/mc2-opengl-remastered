@@ -1,6 +1,7 @@
 // LogisticsVariant: the variant stat getters, component placement checks and lookups, save, and the LogisticsVehicle setup.
 // Declared in the class headers; shared names in logisticsvariant_internal.h.
 #include "logisticsvariant_internal.h"
+#include "mc2fmt.h"
 
 
 // Next discrete move-speed class up the 5/10/15/19/23/27/31/35 ladder.
@@ -410,7 +411,7 @@ long LogisticsVariant::save( FitIniFile& file, long counter )
 {
 	char tmp[256];
 	char tmp2[256];
-	sprintf( tmp, "Variant%ld", counter );
+	mc2::fmt::to_buf(tmp, "Variant{:d}", mc2::fmt::as_i32(counter));
 	file.writeBlock( tmp );
 	
 	file.writeIdString( "Chassis", chassis->fileName );
@@ -419,7 +420,7 @@ long LogisticsVariant::save( FitIniFile& file, long counter )
 
 	for ( int i = 0; i < componentCount; i++ )
 	{
-		sprintf( tmp, "Component%ld", i );
+		mc2::fmt::to_buf(tmp, "Component{:d}", mc2::fmt::as_i32(i));
 		file.writeIdLong(tmp, components[i].component->getID() );
 		
 		strcpy( tmp2, tmp );
@@ -622,7 +623,7 @@ void LogisticsVehicle::init( FitIniFile& file )
 	char blockName[256];
 	for (int i = 4; i < 4 + pts; i++ )
 	{
-		sprintf( blockName, "Item:%ld", i );
+		mc2::fmt::to_buf(blockName, "Item:{:d}", mc2::fmt::as_i32(i));
 		if ( NO_ERR == file.seekBlock( blockName ) )
 		{
 			

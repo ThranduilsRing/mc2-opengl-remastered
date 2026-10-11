@@ -25,6 +25,7 @@
 #include "RenderCore/RenderPassContract.h"
 #include "Gates/gate_cold.h"  // invalidate(): a typed gate re-parses after _putenv_s
 #include "../../mclib/txmmgr.h"  // texture_refresh: mcTextureManager->refreshTexturesByName
+#include "mc2fmt.h"
 
 namespace gos_dev_shell {
 
@@ -152,7 +153,7 @@ bool initSocket()
 {
     WSADATA wsa;
     if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
-        fprintf(stderr, "[DEV_SHELL] WSAStartup failed (%d); shell disabled, game continues\n", WSAGetLastError());
+        mc2::fmt::print_err("[DEV_SHELL] WSAStartup failed ({:d}); shell disabled, game continues\n", mc2::fmt::as_i32(WSAGetLastError()));
         return false;
     }
     int port = 9877;
@@ -162,7 +163,7 @@ bool initSocket()
     }
     s_listen = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (s_listen == INVALID_SOCKET) {
-        fprintf(stderr, "[DEV_SHELL] socket() failed (%d); shell disabled, game continues\n", WSAGetLastError());
+        mc2::fmt::print_err("[DEV_SHELL] socket() failed ({:d}); shell disabled, game continues\n", mc2::fmt::as_i32(WSAGetLastError()));
         return false;
     }
     sockaddr_in addr = {};
@@ -172,15 +173,14 @@ bool initSocket()
     addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
     if (bind(s_listen, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) == SOCKET_ERROR
         || listen(s_listen, 1) == SOCKET_ERROR) {
-        fprintf(stderr, "[DEV_SHELL] bind/listen 127.0.0.1:%d failed (%d); shell disabled, game continues\n",
-                port, WSAGetLastError());
+        mc2::fmt::print_err("[DEV_SHELL] bind/listen 127.0.0.1:{:d} failed ({:d}); shell disabled, game continues\n", mc2::fmt::as_i32(port), mc2::fmt::as_i32(WSAGetLastError()));
         closesocket(s_listen);
         s_listen = INVALID_SOCKET;
         return false;
     }
     u_long nonblock = 1;
     ioctlsocket(s_listen, FIONBIO, &nonblock);
-    fprintf(stderr, "[DEV_SHELL v1] listening on 127.0.0.1:%d\n", port);
+    mc2::fmt::print_err("[DEV_SHELL v1] listening on 127.0.0.1:{:d}\n", mc2::fmt::as_i32(port));
     fflush(stderr);
     return true;
 }
@@ -408,31 +408,14 @@ std::string cmdFramegraph(const std::string& req)
         const auto tp = static_cast<gos_render_pass_timer::Pass>(i);
         if (i) runtime += ',';
         char buf[320];
-        snprintf(buf, sizeof(buf),
-            "{\"pass\":\"%s\",\"ran\":%s,\"fbo\":%u,"
-            "\"viewport\":[%d,%d,%d,%d],"
-            "\"depthTest\":%s,\"depthMask\":%s,\"blend\":%s,\"cull\":%s,"
-            "\"drawCount\":%u,\"instanceCount\":%u,"
-            "\"gpu_ms\":%.3f,\"gpu_sampled\":%s}",
-            gos_frame_pass_stats::PassKey(i),
-            row.ran ? "true" : "false", row.fbo,
-            row.viewport[0], row.viewport[1], row.viewport[2], row.viewport[3],
-            row.depthTest ? "true" : "false", row.depthMask ? "true" : "false",
-            row.blend ? "true" : "false", row.cull ? "true" : "false",
-            row.drawCount, row.instanceCount,
-            gos_render_pass_timer::LastMs(tp),
-            gos_render_pass_timer::HasSample(tp) ? "true" : "false");
+        mc2::fmt::to_buf(buf, "{{\"pass\":\"{}\",\"ran\":{},\"fbo\":{:d},\"viewport\":[{:d},{:d},{:d},{:d}],\"depthTest\":{},\"depthMask\":{},\"blend\":{},\"cull\":{},\"drawCount\":{:d},\"instanceCount\":{:d},\"gpu_ms\":{:.3f},\"gpu_sampled\":{}}}", mc2::fmt::safe(gos_frame_pass_stats::PassKey(i)), mc2::fmt::safe(row.ran ? "true" : "false"), mc2::fmt::as_u32(row.fbo), mc2::fmt::as_i32(row.viewport[0]), mc2::fmt::as_i32(row.viewport[1]), mc2::fmt::as_i32(row.viewport[2]), mc2::fmt::as_i32(row.viewport[3]), mc2::fmt::safe(row.depthTest ? "true" : "false"), mc2::fmt::safe(row.depthMask ? "true" : "false"), mc2::fmt::safe(row.blend ? "true" : "false"), mc2::fmt::safe(row.cull ? "true" : "false"), mc2::fmt::as_u32(row.drawCount), mc2::fmt::as_u32(row.instanceCount), gos_render_pass_timer::LastMs(tp), mc2::fmt::safe(gos_render_pass_timer::HasSample(tp) ? "true" : "false"));
         runtime += buf;
     }
     runtime += ']';
 
     const auto& agg = gos_frame_pass_stats::GetFrameAggregates();
     char aggBuf[192];
-    snprintf(aggBuf, sizeof(aggBuf),
-        "{\"visibleTerrainChunks\":%u,\"staticPropBatches\":%u,"
-        "\"mechBatchInstances\":%u,\"vfxCount\":%u}",
-        agg.visibleTerrainChunks, agg.staticPropBatches,
-        agg.mechBatchInstances, agg.vfxCount);
+    mc2::fmt::to_buf(aggBuf, "{{\"visibleTerrainChunks\":{:d},\"staticPropBatches\":{:d},\"mechBatchInstances\":{:d},\"vfxCount\":{:d}}}", mc2::fmt::as_u32(agg.visibleTerrainChunks), mc2::fmt::as_u32(agg.staticPropBatches), mc2::fmt::as_u32(agg.mechBatchInstances), mc2::fmt::as_u32(agg.vfxCount));
 
     std::string data = "{\"collectors\":{\"pass_stats\":";
     data += gos_frame_pass_stats::Enabled() ? "true" : "false";
@@ -494,7 +477,7 @@ bool pollCommands(uint32_t frame)
         if (n > 0) {
             s_recvBuf.append(buf, static_cast<size_t>(n));
             if (s_recvBuf.size() > kMaxRequestBytes) {
-                fprintf(stderr, "[DEV_SHELL] oversized request (>%zu bytes); dropping connection\n", kMaxRequestBytes);
+                mc2::fmt::print_err("[DEV_SHELL] oversized request (>{:d} bytes); dropping connection\n", mc2::fmt::as_size(kMaxRequestBytes));
                 closeClient();
                 return false;
             }
@@ -561,7 +544,7 @@ void capturePendingScreenshot(uint32_t frame)
     s_lastShotResult = ok
         ? "wrote " + path + " (" + std::to_string(w) + "x" + std::to_string(h) + ", frame " + std::to_string(frame) + ")"
         : "failed: writeTGA " + path;
-    fprintf(stderr, "[DEV_SHELL] screenshot: %s\n", s_lastShotResult.c_str());
+    mc2::fmt::print_err("[DEV_SHELL] screenshot: {}\n", s_lastShotResult.c_str());
 }
 
 #endif  // _WIN32

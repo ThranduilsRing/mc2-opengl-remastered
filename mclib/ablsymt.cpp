@@ -11,6 +11,7 @@
 #include<stdlib.h>
 #include<string.h>
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 #ifndef ABLGEN_H
 #include"ablgen.h"
@@ -599,7 +600,7 @@ void enterStandardRoutine (const char* name, long routineKey, bool isOrder, cons
 					break;
 				default: {
 					char err[255];
-					sprintf(err, " ABL.enterStandardRoutine: bad param type (%c) for (%s)", paramList[i], name);
+					mc2::fmt::to_buf(err, " ABL.enterStandardRoutine: bad param type ({:c}) for ({})", mc2::fmt::as_char(paramList[i]), mc2::fmt::safe(name));
 					ABL_Fatal(0, err);
 				}
 			}
@@ -622,7 +623,7 @@ void enterStandardRoutine (const char* name, long routineKey, bool isOrder, cons
 				break;
 			default: {
 				char err[255];
-				sprintf(err, " ABL.enterStandardRoutine: bad return type for (%s)", name);
+				mc2::fmt::to_buf(err, " ABL.enterStandardRoutine: bad return type for ({})", mc2::fmt::safe(name));
 				ABL_Fatal(0, err);
 			}
 		}

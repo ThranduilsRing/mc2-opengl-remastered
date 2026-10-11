@@ -49,6 +49,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <vector>
+#include "mc2fmt.h"
 
 namespace {
 
@@ -191,23 +192,7 @@ extern "C" int mc2SimIdentityWriteJson(char* buf, int cap,
 	mc2_sim_identity::toHex16(strict, hs);
 
 	int n = 0;
-	int w = snprintf(buf + n, (size_t)(cap - n),
-		"  \"sim_identity\": {\n"
-		"    \"schema\": \"SIM_IDENTITY_V%u\",\n"
-		"    \"digest\": \"%s\",\n"
-		"    \"digest_visual\": \"%s\",\n"
-		"    \"digest_strict\": \"%s\",\n"
-		"    \"mover_count\": %d,\n"
-		"    \"truncated\": false,\n"
-		"    \"scenario_time\": %.3f,\n"
-		"    \"sim_frame\": %ld,\n"
-		"    \"quantum\": { \"pos\": %.9g, \"ang\": %.9g, \"frac\": %.9g },\n"
-		"    \"movers\": [",
-		mc2_sim_identity::kSchemaVersion, hg, hv, hs,
-		(int)recs.size(), scenarioTimeNow, simFrame,
-		(double)mc2_sim_identity::kPosQuantum,
-		(double)mc2_sim_identity::kAngQuantum,
-		(double)mc2_sim_identity::kFracQuantum);
+	int w = mc2::fmt::to_buf_n(buf + n, (size_t)(cap - n), "  \"sim_identity\": {{\n    \"schema\": \"SIM_IDENTITY_V{:d}\",\n    \"digest\": \"{}\",\n    \"digest_visual\": \"{}\",\n    \"digest_strict\": \"{}\",\n    \"mover_count\": {:d},\n    \"truncated\": false,\n    \"scenario_time\": {:.3f},\n    \"sim_frame\": {:d},\n    \"quantum\": {{ \"pos\": {:.9g}, \"ang\": {:.9g}, \"frac\": {:.9g} }},\n    \"movers\": [", mc2::fmt::as_u32(mc2_sim_identity::kSchemaVersion), mc2::fmt::safe(hg), mc2::fmt::safe(hv), mc2::fmt::safe(hs), mc2::fmt::as_i32((int)recs.size()), scenarioTimeNow, mc2::fmt::as_i32(simFrame), (double)mc2_sim_identity::kPosQuantum, (double)mc2_sim_identity::kAngQuantum, (double)mc2_sim_identity::kFracQuantum);
 	if (w < 0 || w >= cap - n) { buf[0] = '\0'; return 0; }
 	n += w;
 
@@ -219,15 +204,7 @@ extern "C" int mc2SimIdentityWriteJson(char* buf, int cap,
 		// TRUE delta beside the quantum. Without them a quantum-boundary
 		// straddle and a real divergence are indistinguishable -- both would
 		// arrive as nothing but "the digests differ".
-		w = snprintf(buf + n, (size_t)(cap - n),
-			"%s\n      {\"id\":%d,\"team\":%d,\"vd\":\"%s\","
-			"\"pos\":[%.4f,%.4f,%.4f],\"rot\":%.4f,\"hp\":%.5f,"
-			"\"gesture\":%d,\"anim\":%d,\"status\":%d,"
-			"\"target\":%d,\"brain\":%d,\"mstate\":%d,\"pstep\":%d,\"psteps\":%d}",
-			i ? "," : "", r.id, r.team, hm,
-			r.px, r.py, r.pz, r.rot, r.hp,
-			r.gesture, r.animFrame, r.status,
-			r.target, r.brainState, r.moveState, r.pathStep, r.pathSteps);
+		w = mc2::fmt::to_buf_n(buf + n, (size_t)(cap - n), "{}\n      {{\"id\":{:d},\"team\":{:d},\"vd\":\"{}\",\"pos\":[{:.4f},{:.4f},{:.4f}],\"rot\":{:.4f},\"hp\":{:.5f},\"gesture\":{:d},\"anim\":{:d},\"status\":{:d},\"target\":{:d},\"brain\":{:d},\"mstate\":{:d},\"pstep\":{:d},\"psteps\":{:d}}}", mc2::fmt::safe(i ? "," : ""), mc2::fmt::as_i32(r.id), mc2::fmt::as_i32(r.team), mc2::fmt::safe(hm), r.px, r.py, r.pz, r.rot, r.hp, mc2::fmt::as_i32(r.gesture), mc2::fmt::as_i32(r.animFrame), mc2::fmt::as_i32(r.status), mc2::fmt::as_i32(r.target), mc2::fmt::as_i32(r.brainState), mc2::fmt::as_i32(r.moveState), mc2::fmt::as_i32(r.pathStep), mc2::fmt::as_i32(r.pathSteps));
 		if (w < 0 || w >= cap - n) {
 			// Ran out of room mid-array. Emitting a half-written array would
 			// hand the comparator a truncated population that hashes fine --
@@ -238,7 +215,7 @@ extern "C" int mc2SimIdentityWriteJson(char* buf, int cap,
 		n += w;
 	}
 
-	w = snprintf(buf + n, (size_t)(cap - n), "\n    ]\n  }");
+	w = mc2::fmt::to_buf_n(buf + n, (size_t)(cap - n), "\n    ]\n  }}");
 	if (w < 0 || w >= cap - n) { buf[0] = '\0'; return 0; }
 	n += w;
 	return n;
@@ -269,20 +246,15 @@ extern "C" void mc2SimIdentityTraceFrame(double scenarioTimeNow, long simFrame) 
 
 	// Fixed-arity, fixed-width: two runs' logs diff cleanly and the first
 	// differing line IS the first divergent sim frame.
-	printf("[SIMID v1] simframe=%ld t=%.3f n=%d graded=%s visual=%s strict=%s\n",
-	       simFrame, scenarioTimeNow, (int)recs.size(), hg, hv, hs);
+	mc2::fmt::print_out("[SIMID v1] simframe={:d} t={:.3f} n={:d} graded={} visual={} strict={}\n",
+	       mc2::fmt::as_i32(simFrame), scenarioTimeNow, mc2::fmt::as_i32((int)recs.size()), mc2::fmt::safe(hg), mc2::fmt::safe(hv), mc2::fmt::safe(hs));
 
 	if (simIdentityTraceDetail()) {
 		for (size_t i = 0; i < recs.size(); ++i) {
 			const MoverRecord& r = recs[i];
 			char hm[17];
 			mc2_sim_identity::toHex16(mc2_sim_identity::digestMoverVisual(r), hm);
-			printf("[SIMID v1 mover] simframe=%ld id=%d vd=%s "
-			       "pos=%.4f,%.4f,%.4f rot=%.4f hp=%.5f gesture=%d anim=%d "
-			       "status=%d target=%d brain=%d mstate=%d pstep=%d/%d\n",
-			       simFrame, r.id, hm, r.px, r.py, r.pz, r.rot, r.hp,
-			       r.gesture, r.animFrame, r.status, r.target,
-			       r.brainState, r.moveState, r.pathStep, r.pathSteps);
+			mc2::fmt::print_out("[SIMID v1 mover] simframe={:d} id={:d} vd={} pos={:.4f},{:.4f},{:.4f} rot={:.4f} hp={:.5f} gesture={:d} anim={:d} status={:d} target={:d} brain={:d} mstate={:d} pstep={:d}/{:d}\n", mc2::fmt::as_i32(simFrame), mc2::fmt::as_i32(r.id), mc2::fmt::safe(hm), r.px, r.py, r.pz, r.rot, r.hp, mc2::fmt::as_i32(r.gesture), mc2::fmt::as_i32(r.animFrame), mc2::fmt::as_i32(r.status), mc2::fmt::as_i32(r.target), mc2::fmt::as_i32(r.brainState), mc2::fmt::as_i32(r.moveState), mc2::fmt::as_i32(r.pathStep), mc2::fmt::as_i32(r.pathSteps));
 		}
 	}
 	fflush(stdout);

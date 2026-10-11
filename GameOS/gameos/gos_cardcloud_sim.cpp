@@ -34,6 +34,7 @@
 #include <cmath>
 #include <vector>
 #include <string>
+#include "mc2fmt.h"
 
 namespace {
 
@@ -76,8 +77,7 @@ void buildProgramIfNeeded() {
     char* src = loadTextFile("shaders/cardcloud_sim.comp");
     if (!src) {
         s_progFailed = true;
-        std::fprintf(stderr,
-            "[VFX_GPU_SIM v2] event=shader_load_fail source_missing=shaders/cardcloud_sim.comp\n");
+        mc2::fmt::print_err("[VFX_GPU_SIM v2] event=shader_load_fail source_missing=shaders/cardcloud_sim.comp\n");
         std::fflush(stderr);
         return;
     }
@@ -91,7 +91,7 @@ void buildProgramIfNeeded() {
     if (!ok) {
         GLint n = 0; glGetShaderiv(sh, GL_INFO_LOG_LENGTH, &n);
         if (n > 0) { char* log = new char[n]; glGetShaderInfoLog(sh, n, nullptr, log);
-            std::fprintf(stderr, "[VFX_GPU_SIM v2] compute compile error:\n%s\n", log); delete[] log; }
+            mc2::fmt::print_err("[VFX_GPU_SIM v2] compute compile error:\n{}\n", mc2::fmt::safe(log)); delete[] log; }
         glDeleteShader(sh); s_progFailed = true; std::fflush(stderr); return;
     }
     GLuint prog = glCreateProgram();
@@ -102,14 +102,13 @@ void buildProgramIfNeeded() {
     if (!linked) {
         GLint n = 0; glGetProgramiv(prog, GL_INFO_LOG_LENGTH, &n);
         if (n > 0) { char* log = new char[n]; glGetProgramInfoLog(prog, n, nullptr, log);
-            std::fprintf(stderr, "[VFX_GPU_SIM v2] compute link error:\n%s\n", log); delete[] log; }
+            mc2::fmt::print_err("[VFX_GPU_SIM v2] compute link error:\n{}\n", mc2::fmt::safe(log)); delete[] log; }
         glDeleteProgram(prog); s_progFailed = true; std::fflush(stderr); return;
     }
     s_program   = prog;
     s_loc_dt    = glGetUniformLocation(prog, "u_dt");
     s_loc_count = glGetUniformLocation(prog, "u_count");
-    std::fprintf(stderr, "[VFX_GPU_SIM v2] event=compute_ready prog=%u recordBytes=%u\n",
-                 (unsigned)prog, (unsigned)sizeof(mc2::particles::CardCloudSimParticle));
+    mc2::fmt::print_err("[VFX_GPU_SIM v2] event=compute_ready prog={:d} recordBytes={:d}\n", mc2::fmt::as_u32((unsigned)prog), mc2::fmt::as_u32((unsigned)sizeof(mc2::particles::CardCloudSimParticle)));
     std::fflush(stderr);
 }
 
@@ -190,15 +189,11 @@ extern "C" void gos_cardcloud_sim_flush(void)
         static unsigned long long s_dispCalls = 0;
         if (!s_dispFirst) {
             s_dispFirst = true;
-            std::fprintf(stderr,
-                "[VFX_GPU_SIM v2] class=CardCloud DISPATCH instances=%u count=%u groups=%u (compute path live)\n",
-                s_frameInstances, n, (unsigned)groups);
+            mc2::fmt::print_err("[VFX_GPU_SIM v2] class=CardCloud DISPATCH instances={:d} count={:d} groups={:d} (compute path live)\n", mc2::fmt::as_u32(s_frameInstances), mc2::fmt::as_u32(n), mc2::fmt::as_u32((unsigned)groups));
             std::fflush(stderr);
         }
         if ((++s_dispCalls % 600ull) == 0ull) {
-            std::fprintf(stderr,
-                "[VFX_GPU_SIM v2] class=CardCloud dispatched=%llu lastCount=%u\n",
-                s_dispCalls, n);
+            mc2::fmt::print_err("[VFX_GPU_SIM v2] class=CardCloud dispatched={:d} lastCount={:d}\n", mc2::fmt::as_u64(s_dispCalls), mc2::fmt::as_u32(n));
             std::fflush(stderr);
         }
     }
@@ -247,18 +242,11 @@ extern "C" void gos_cardcloud_sim_flush(void)
         static unsigned long long s_calls = 0;
         if (!s_first) {
             s_first = true;
-            std::fprintf(stderr,
-                "[VFX_GPU_SIM v2] class=CardCloud FIRST_DISPATCH instances=%u count=%u groups=%u\n",
-                s_frameInstances, n, (unsigned)groups);
+            mc2::fmt::print_err("[VFX_GPU_SIM v2] class=CardCloud FIRST_DISPATCH instances={:d} count={:d} groups={:d}\n", mc2::fmt::as_u32(s_frameInstances), mc2::fmt::as_u32(n), mc2::fmt::as_u32((unsigned)groups));
             std::fflush(stderr);
         }
         if ((++s_calls % 120ull) == 0ull) {
-            std::fprintf(stderr,
-                "[VFX_GPU_SIM v2] class=CardCloud calls=%llu instances=%u count=%u groups=%u "
-                "cpuActiveSum=%u compared=%u aliveGPU=%u aliveRef=%u "
-                "maxAgeError=%.3e maxPosError=%.3e dt=%.5f compareStatus=pipeline-validate(GPU==CPUref)\n",
-                s_calls, s_frameInstances, n, (unsigned)groups, s_frameCpuActiveSum,
-                compared, aliveGpu, aliveRef, maxAgeErr, maxPosErr, (double)kValidationDt);
+            mc2::fmt::print_err("[VFX_GPU_SIM v2] class=CardCloud calls={:d} instances={:d} count={:d} groups={:d} cpuActiveSum={:d} compared={:d} aliveGPU={:d} aliveRef={:d} maxAgeError={:.3e} maxPosError={:.3e} dt={:.5f} compareStatus=pipeline-validate(GPU==CPUref)\n", mc2::fmt::as_u64(s_calls), mc2::fmt::as_u32(s_frameInstances), mc2::fmt::as_u32(n), mc2::fmt::as_u32((unsigned)groups), mc2::fmt::as_u32(s_frameCpuActiveSum), mc2::fmt::as_u32(compared), mc2::fmt::as_u32(aliveGpu), mc2::fmt::as_u32(aliveRef), maxAgeErr, maxPosErr, (double)kValidationDt);
             std::fflush(stderr);
         }
     }

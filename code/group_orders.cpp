@@ -1,6 +1,7 @@
 // MoverGroup: handleTacticalOrder, the order* wrappers and the mate-event handlers.
 // Declared in the class headers; shared names in group_internal.h.
 #include "group_internal.h"
+#include "mc2fmt.h"
 
 
 //---------------------------------------------------------------------------
@@ -146,7 +147,7 @@ Fatal(0, "Need to support jumpGoalList (and goalList) for MOVETO as well in mc2 
 
 		default: {
 			char s[256];
-			sprintf(s, "Unit::handleTacticalOrder->Bad TacOrder Code (%d)", tacOrder.code);
+			mc2::fmt::to_buf(s, "Unit::handleTacticalOrder->Bad TacOrder Code ({:d})", mc2::fmt::as_i32(tacOrder.code));
 			Assert(false, tacOrder.code, s);
 			return(1);
 			}

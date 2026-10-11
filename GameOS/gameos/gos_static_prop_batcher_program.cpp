@@ -1,6 +1,7 @@
 // GpuStaticPropBatcher: loadProgramsIfNeeded, ring capacity, light-freshness gate and the late-register / submit telemetry.
 // Declared in the class headers; shared names in gos_static_prop_batcher_internal.h.
 #include "gos_static_prop_batcher_internal.h"
+#include "mc2fmt.h"
 
 
 namespace gos_static_prop_batcher_detail {
@@ -8,12 +9,11 @@ namespace gos_static_prop_batcher_detail {
 
 void loadProgramsIfNeeded() {
     if (s_programLoadTried) return;
-    std::fprintf(stderr, "[GPUPROPS-DIAG] loadProgramsIfNeeded ENTER\n");
+    mc2::fmt::print_err("[GPUPROPS-DIAG] loadProgramsIfNeeded ENTER\n");
     const char* glv   = (const char*)glGetString(GL_VERSION);
     const char* glslv = (const char*)glGetString(GL_SHADING_LANGUAGE_VERSION);
-    std::fprintf(stderr, "[GPUPROPS-DIAG] GL_VERSION=%s\n", glv ? glv : "(null)");
-    std::fprintf(stderr, "[GPUPROPS-DIAG] GL_SHADING_LANGUAGE_VERSION=%s\n",
-                 glslv ? glslv : "(null)");
+    mc2::fmt::print_err("[GPUPROPS-DIAG] GL_VERSION={}\n", mc2::fmt::safe(glv ? glv : "(null)"));
+    mc2::fmt::print_err("[GPUPROPS-DIAG] GL_SHADING_LANGUAGE_VERSION={}\n", mc2::fmt::safe(glslv ? glslv : "(null)"));
     s_programLoadTried = true;
 
     // Plan v3.8 Step 7.2 — env decision + extension probe MUST land between
@@ -31,10 +31,7 @@ void loadProgramsIfNeeded() {
     if (s_coalesceForceDisarm == CoalesceForceDisarm::NoExtension) {
         s_hasShaderDrawParams = false;
     }
-    std::fprintf(stderr, "[GPUPROPS-DIAG] coalesceEnvDisabled=%d hasShaderDrawParams=%d "
-                 "forceDisarm=%d\n",
-                 (int)s_coalesceEnvDisabled, (int)s_hasShaderDrawParams,
-                 (int)s_coalesceForceDisarm);
+    mc2::fmt::print_err("[GPUPROPS-DIAG] coalesceEnvDisabled={:d} hasShaderDrawParams={:d} forceDisarm={:d}\n", mc2::fmt::as_i32((int)s_coalesceEnvDisabled), mc2::fmt::as_i32((int)s_hasShaderDrawParams), mc2::fmt::as_i32((int)s_coalesceForceDisarm));
 
     // makeProgram() is the project's shader loader (see gos_postprocess.cpp
     // for existing usage). Pass the "#version 430\n" prefix explicitly — the
@@ -91,10 +88,7 @@ void loadProgramsIfNeeded() {
         "shaders/static_prop.frag",
         legacyPrefix.c_str());
     if (!s_staticPropProgramObj || !s_staticPropProgramObj->is_valid()) {
-        std::fprintf(stderr,
-            "[GPUPROPS] failed to compile/link static_prop shader pair — "
-            "GPU path disabled for this session; all static props will "
-            "CPU-fallback via submit()==false\n");
+        mc2::fmt::print_err("[GPUPROPS] failed to compile/link static_prop shader pair — GPU path disabled for this session; all static props will CPU-fallback via submit()==false\n");
         s_staticPropProgramObj = nullptr;
         s_staticPropProgram    = 0;
         s_programLoadFailed    = true;
@@ -124,11 +118,7 @@ void loadProgramsIfNeeded() {
     s_loc_u_parityWrite        = glGetUniformLocation(s_staticPropProgram, "u_parityWrite");
     s_loc_u_parityVertsPerType = glGetUniformLocation(s_staticPropProgram, "u_parityVertsPerType");
     s_loc_u_parityBaseVertex   = glGetUniformLocation(s_staticPropProgram, "u_parityBaseVertex");
-    std::fprintf(stderr, "[GPUPROPS-DIAG] loadProgramsIfNeeded OK prog=%u "
-                 "loc_parityWrite=%d loc_parityVertsPerType=%d loc_parityBaseVertex=%d\n",
-                 s_staticPropProgram,
-                 s_loc_u_parityWrite, s_loc_u_parityVertsPerType,
-                 s_loc_u_parityBaseVertex);
+    mc2::fmt::print_err("[GPUPROPS-DIAG] loadProgramsIfNeeded OK prog={:d} loc_parityWrite={:d} loc_parityVertsPerType={:d} loc_parityBaseVertex={:d}\n", mc2::fmt::as_u32(s_staticPropProgram), mc2::fmt::as_i32(s_loc_u_parityWrite), mc2::fmt::as_i32(s_loc_u_parityVertsPerType), mc2::fmt::as_i32(s_loc_u_parityBaseVertex));
 
     // Plan v3.8 Step 7.4 — populate s_locsLegacy. GLSL string literals are
     // mixed-prefix (terrainMVP has NO u_ prefix; the rest do); reproduce
@@ -287,10 +277,7 @@ void loadProgramsIfNeeded() {
                 glUniform1i(s_locsCoalesce.ormTexArr, static_cast<GLint>(kOrmTexUnit));
                 glUseProgram(0);
             }
-            std::fprintf(stderr, "[GPUPROPS-DIAG] static_prop_coalesce program=%u "
-                         "loc_drawIDBase=%d loc_texArr=%d\n",
-                         s_staticPropProgramCoalesce,
-                         s_locsCoalesce.drawIDBase, s_locsCoalesce.texArr);
+            mc2::fmt::print_err("[GPUPROPS-DIAG] static_prop_coalesce program={:d} loc_drawIDBase={:d} loc_texArr={:d}\n", mc2::fmt::as_u32(s_staticPropProgramCoalesce), mc2::fmt::as_i32(s_locsCoalesce.drawIDBase), mc2::fmt::as_i32(s_locsCoalesce.texArr));
 
             // v1: coalesce path is active — overwrite PipelineRegistry with
             // the coalesce program so applyPipeline() binds the right handle.
@@ -313,9 +300,7 @@ void loadProgramsIfNeeded() {
             // instead, but the simpler check here is that
             // s_staticPropProgramCoalesce stays 0 and IsCoalesceEnabled
             // catches it on every frame.
-            std::fprintf(stderr, "[GPUPROPS] failed to compile/link "
-                         "static_prop_coalesce — coalesce path disabled "
-                         "for this session; legacy path unaffected\n");
+            mc2::fmt::print_err("[GPUPROPS] failed to compile/link static_prop_coalesce — coalesce path disabled for this session; legacy path unaffected\n");
             s_staticPropProgramCoalesce = 0;
         }
     }
@@ -383,18 +368,9 @@ void loadProgramsIfNeeded() {
                     glUseProgram(0);
                 }
             }
-            std::fprintf(stderr, "[GPUPROPS-DIAG] static_prop_depth program=%u "
-                         "variant=%s loc_drawIDBase=%d loc_materialGpuSample=%d "
-                         "loc_debugAddrMode=%d\n",
-                         s_staticPropDepthProgram,
-                         depthUsesCoalesce ? "coalesce" : "legacy",
-                         s_locsDepthCoalesce.drawIDBase,
-                         s_locsDepthCoalesce.materialGpuSample,
-                         s_locsDepthCoalesce.debugAddrMode);
+            mc2::fmt::print_err("[GPUPROPS-DIAG] static_prop_depth program={:d} variant={} loc_drawIDBase={:d} loc_materialGpuSample={:d} loc_debugAddrMode={:d}\n", mc2::fmt::as_u32(s_staticPropDepthProgram), mc2::fmt::safe(depthUsesCoalesce ? "coalesce" : "legacy"), mc2::fmt::as_i32(s_locsDepthCoalesce.drawIDBase), mc2::fmt::as_i32(s_locsDepthCoalesce.materialGpuSample), mc2::fmt::as_i32(s_locsDepthCoalesce.debugAddrMode));
         } else {
-            std::fprintf(stderr,
-                "[GPUPROPS] static_prop_depth program failed to compile/link — "
-                "depth-prepass disabled this session (color path unaffected)\n");
+            mc2::fmt::print_err("[GPUPROPS] static_prop_depth program failed to compile/link — depth-prepass disabled this session (color path unaffected)\n");
             s_staticPropDepthProgram = 0;   // flushDepthPrepass() must no-op when 0
         }
     }
@@ -528,7 +504,7 @@ void ensureRingCapacity(size_t neededInstances, size_t neededColorEntries) {
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
     if (!s_instanceMap || !s_colorMap) {
-        std::fprintf(stderr, "[GPUPROPS] persistent map failed; disabling GPU path\n");
+        mc2::fmt::print_err("[GPUPROPS] persistent map failed; disabling GPU path\n");
         s_fatalRegistrationFailure = true;
     }
 }
@@ -634,9 +610,8 @@ void emitSubmitTypeHistDump(std::string_view trigger) {
     if (!s_submitTypeHistEnabled) return;
     // Build a typeID → name lookup by walking s_typeIndex once. n is ≤ a few
     // hundred types; quadratic walk is trivial for a 3-dump cadence.
-    std::fprintf(stderr,
-        "[SUBMIT_TYPEHIST v1] trigger=%s calls=%llu non-zero buckets:\n",
-        std::string(trigger).c_str(), (unsigned long long)s_submitTypeHistCalls);
+    mc2::fmt::print_err("[SUBMIT_TYPEHIST v1] trigger={} calls={:d} non-zero buckets:\n",
+        std::string(trigger).c_str(), mc2::fmt::as_u64((unsigned long long)s_submitTypeHistCalls));
     for (size_t t = 0; t < s_submitTypeHist.size(); ++t) {
         if (s_submitTypeHist[t] > 0) {
             const char* name = "<unknown>";
@@ -662,11 +637,7 @@ void emitSubmitTypeHistDump(std::string_view trigger) {
                     indices += s_packets[ty.firstPacket + p].indexCount;
                 }
             }
-            std::fprintf(stderr,
-                "[SUBMIT_TYPEHIST v1] typeID=%zu name=%s count=%llu alphaClass=%u packets=%u verts=%u indices=%u\n",
-                t, (name && *name) ? name : "<empty>",
-                (unsigned long long)s_submitTypeHist[t],
-                aClass, packets, vertCount, indices);
+            mc2::fmt::print_err("[SUBMIT_TYPEHIST v1] typeID={:d} name={} count={:d} alphaClass={:d} packets={:d} verts={:d} indices={:d}\n", mc2::fmt::as_size(t), mc2::fmt::safe((name && *name) ? name : "<empty>"), mc2::fmt::as_u64((unsigned long long)s_submitTypeHist[t]), mc2::fmt::as_u32(aClass), mc2::fmt::as_u32(packets), mc2::fmt::as_u32(vertCount), mc2::fmt::as_u32(indices));
         }
     }
     std::fflush(stderr);
@@ -727,11 +698,9 @@ void accumulateMonotonicAndMaybeEmit(bool forceEmit) {
         // trap as submit_trees; refusing to repeat it here.
         const uint8_t popMask = GpuStaticPropRegistry::getPopulationsEverTagged();
         char popTagged[24];
-        std::snprintf(popTagged, sizeof(popTagged), "%s%s%s%s",
-                      (popMask & 1u) ? "B" : "", (popMask & 2u) ? "T" : "",
-                      (popMask & 4u) ? "G" : "", (popMask & 8u) ? "L" : "");
+        mc2::fmt::to_buf(popTagged, "{}{}{}{}", mc2::fmt::safe((popMask & 1u) ? "B" : ""), mc2::fmt::safe((popMask & 2u) ? "T" : ""), mc2::fmt::safe((popMask & 4u) ? "G" : ""), mc2::fmt::safe((popMask & 8u) ? "L" : ""));
         if (popTagged[0] == '\0') {
-            std::snprintf(popTagged, sizeof(popTagged), "NONE");
+            mc2::fmt::to_buf(popTagged, "NONE");
         }
 
         MC2_DIAGFE(stderr,
@@ -805,12 +774,7 @@ void accumulateMonotonicAndMaybeEmit(bool forceEmit) {
     // zero static-prop draws contain spotlight-tagged packets). Demoted, not
     // deleted, per the Debug Instrumentation Rule.
     if (s_spotlightRealTrace && periodic) {
-        std::fprintf(stderr,
-               "[SPOTLIGHT_REAL_TRACE v1] event=summary site=static_prop_batcher "
-               "frames=%llu window_spotlight_submits=%llu mono_spotlight_submits=%llu\n",
-               (unsigned long long)s_counters.frame_count,
-               (unsigned long long)s_spotlightReal_window,
-               (unsigned long long)s_spotlightReal_mono);
+        mc2::fmt::print_err("[SPOTLIGHT_REAL_TRACE v1] event=summary site=static_prop_batcher frames={:d} window_spotlight_submits={:d} mono_spotlight_submits={:d}\n", mc2::fmt::as_u64((unsigned long long)s_counters.frame_count), mc2::fmt::as_u64((unsigned long long)s_spotlightReal_window), mc2::fmt::as_u64((unsigned long long)s_spotlightReal_mono));
         std::fflush(stderr);
     }
     if (periodic) {

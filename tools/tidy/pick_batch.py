@@ -32,6 +32,12 @@ def has_site(text):
     return bool(SITE.search(_NOISE.sub(" ", text)))
 
 
+def _rewrite_site(text, name="typedef-aggregates", path=""):
+    transform = rts.rewriter(name)
+    new = transform.rewrite(text, path) if getattr(transform, "PATH_AWARE", False) else transform.rewrite(text)
+    return new != text
+
+
 def tracked_cpp(dirs):
     out = subprocess.run(["git", "-C", rts.ROOT, "ls-files"] + [d.rstrip("/") + "/**/*.cpp" for d in dirs] +
                          [d.rstrip("/") + "/*.cpp" for d in dirs], capture_output=True, text=True,
@@ -39,7 +45,7 @@ def tracked_cpp(dirs):
     return sorted(set(out.split()))
 
 
-def pick(dirs, count, tree=rts.DEFAULT_TREE, done=(), any_tu=False):
+def pick(dirs, count, tree=rts.DEFAULT_TREE, done=(), any_tu=False, rewrite=None):
     in_db = rts.load_compile_db(os.path.join(rts.ROOT, tree))
     dirty = rts.dirty_files()
     cands = []
@@ -51,7 +57,8 @@ def pick(dirs, count, tree=rts.DEFAULT_TREE, done=(), any_tu=False):
             continue
         path = os.path.join(rts.ROOT, rel)
         with open(path, encoding="utf-8", errors="replace") as fh:
-            if any_tu or has_site(fh.read()):
+            text = fh.read()
+            if any_tu or (_rewrite_site(text, rewrite, rel) if rewrite else has_site(text)):
                 cands.append((os.path.getsize(path), rel))
     cands.sort()
     return [rel for _sz, rel in cands[:count]]
@@ -65,12 +72,13 @@ def main(argv=None) -> int:
     ap.add_argument("--any", action="store_true", help="do not require a NULL/typedef site (for checks such as use-override)")
     ap.add_argument("--done", help="file listing TUs already run (one per line); they are skipped, and the picked ones are appended. "
                                    "A site tidy cannot rewrite (a function-pointer typedef, a NULL in a macro) would otherwise be picked forever.")
+    ap.add_argument("--rewrite", choices=rts.REWRITERS, help="pick files this text transform would change")
     args = ap.parse_args(argv)
     done = set()
     if args.done and os.path.exists(args.done):
         with open(args.done, encoding="utf-8") as fh:
             done = {ln.strip() for ln in fh if ln.strip()}
-    picked = pick(args.dir, args.count, args.tree, done, args.any)
+    picked = pick(args.dir, args.count, args.tree, done, args.any, args.rewrite)
     for rel in picked:
         print(rel)
     if args.done:

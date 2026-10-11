@@ -1,6 +1,7 @@
 // main: the start-up helpers -- DPI awareness, the launcher hand-off and launcher_env.json, the instrumentation banner,
 // the pre-window resolution and the Vulkan backend bring-up. The orchestrator is in gameosmain.cpp.
 #include "gameosmain_internal.h"
+#include "mc2fmt.h"
 
 
 // Opt the process into per-monitor DPI awareness unless MC2_DPI_UNAWARE is set.
@@ -18,7 +19,7 @@ void initDpiAwareness() {
             typedef BOOL (WINAPI *SetDpiCtxFn)(void*);
             HMODULE u32 = LoadLibraryA("user32.dll");
             SetDpiCtxFn setCtx = u32
-                ? (SetDpiCtxFn)GetProcAddress(u32, "SetProcessDpiAwarenessContext") : NULL;
+                ? (SetDpiCtxFn)GetProcAddress(u32, "SetProcessDpiAwarenessContext") : nullptr;
             // DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 == (HANDLE)-4
             if (!setCtx || !setCtx((void*)-4))
                 SetProcessDPIAware();
@@ -46,7 +47,7 @@ bool initLauncherBootstrap() {
             gos_WindowOffscreenRequested() || gos_CursorControlSuppressed();
         if (!fromLauncher && !automation) {
             char exePath[MAX_PATH] = {0};
-            DWORD n = GetModuleFileNameA(NULL, exePath, MAX_PATH);
+            DWORD n = GetModuleFileNameA(nullptr, exePath, MAX_PATH);
             if (n > 0 && n < MAX_PATH) {
                 char dir[MAX_PATH];
                 strncpy(dir, exePath, MAX_PATH); dir[MAX_PATH-1] = '\0';
@@ -54,12 +55,12 @@ bool initLauncherBootstrap() {
                 if (!slash) slash = strrchr(dir, '/');
                 if (slash) *(slash + 1) = '\0'; else dir[0] = '\0';
                 char launcher[MAX_PATH];
-                _snprintf(launcher, sizeof(launcher), "%smc2-launcher.exe", dir);
+                mc2::fmt::to_buf(launcher, "{}mc2-launcher.exe", mc2::fmt::safe(dir));
                 launcher[sizeof(launcher)-1] = '\0';
                 STARTUPINFOA si = {}; si.cb = sizeof(si);
                 PROCESS_INFORMATION pi = {};
-                if (CreateProcessA(launcher, NULL, NULL, NULL, FALSE, 0, NULL,
-                                   dir[0] ? dir : NULL, &si, &pi)) {
+                if (CreateProcessA(launcher, nullptr, nullptr, nullptr, FALSE, 0, nullptr,
+                                   dir[0] ? dir : nullptr, &si, &pi)) {
                     CloseHandle(pi.hThread);
                     CloseHandle(pi.hProcess);
                     return true;  // launcher will relaunch us with MC2_LAUNCHED=1
@@ -94,7 +95,7 @@ void initLauncherEnv() {
         if (noLauncher && !fromLauncher && !jsOff) {
             char exePath[MAX_PATH] = {0};
             char jsonPath[MAX_PATH] = {0};
-            DWORD n = GetModuleFileNameA(NULL, exePath, MAX_PATH);
+            DWORD n = GetModuleFileNameA(nullptr, exePath, MAX_PATH);
             if (n > 0 && n < MAX_PATH) {
                 strncpy(jsonPath, exePath, MAX_PATH); jsonPath[MAX_PATH-1] = '\0';
                 char* slash = strrchr(jsonPath, '\\');
@@ -102,7 +103,7 @@ void initLauncherEnv() {
                 if (slash) *(slash + 1) = '\0'; else jsonPath[0] = '\0';
                 strncat(jsonPath, "launcher_env.json", MAX_PATH - strlen(jsonPath) - 1);
             }
-            FILE* jf = jsonPath[0] ? fopen(jsonPath, "rb") : NULL;
+            FILE* jf = jsonPath[0] ? fopen(jsonPath, "rb") : nullptr;
             if (jf) {
                 // launcher_env.json is a small flat string map (<1 KB today);
                 // 64 KB bound keeps a corrupt/hostile file from ballooning.
@@ -112,7 +113,7 @@ void initLauncherEnv() {
                 jbuf[got] = '\0';
                 int applied = 0, shellWins = 0;
                 const char* p = jbuf;
-                while ((p = strstr(p, "\"MC2_")) != NULL) {
+                while ((p = strstr(p, "\"MC2_")) != nullptr) {
                     const char* keyStart = p + 1;
                     const char* keyEnd = strchr(keyStart, '"');
                     if (!keyEnd) break;
@@ -141,9 +142,7 @@ void initLauncherEnv() {
                 // console stays quiet.
                 mc2::gate::invalidateAll();   // the loop above putenv'd: re-read before asking about MC2_LOG
                 if (mc2::gate::isSet<"MC2_LOG">()) {
-                    fprintf(stderr,
-                        "[LAUNCHER_ENV v1] applied=%d shell_override=%d src=%s\n",
-                        applied, shellWins, jsonPath);
+                    mc2::fmt::print_err("[LAUNCHER_ENV v1] applied={:d} shell_override={:d} src={}\n", mc2::fmt::as_i32(applied), mc2::fmt::as_i32(shellWins), mc2::fmt::safe(jsonPath));
                 }
             }
         }
@@ -212,32 +211,7 @@ void initInstrBanner() {
         // water-projection-skip slice attempt; removed when the slice
         // closed — premise invalidated by Stage 0 M3 audit.)
         char _cbbuf[1024];
-        snprintf(_cbbuf, sizeof(_cbbuf),
-            "[INSTR v1] enabled: tgl_pool=%d destroy=%d gl_error_print=%d "
-            "smoke=%d water_fp=%d water_parity=%d vp_fast=%d vp_parity=%d "
-            "terrain_indirect=%d terrain_indirect_parity=%d terrain_indirect_mine=%d "
-            "terrain_indirect_overlay=%d terrain_indirect_overlay_parity=%d "
-            "gpu_objects=%d obj_recon_tracy=%d "
-            "static_update_trace=%d static_update_skip=%d "
-            "static_prop_registry=%d "
-            "gpu_cull_substrate=%d gpu_cull_aabb_parity=%d "
-            "shader_hot_reload=%d "
-            "reverse_z_trace=%d "
-            "terrain_surface_trace=%d "
-            "camera_motion=1 "
-            "build=%s",
-            tgl ? 1 : 0, destr ? 1 : 0, glprint ? 1 : 0, smoke ? 1 : 0,
-            waterFp ? 1 : 0, waterPc ? 1 : 0, vpFast ? 1 : 0, vpPar ? 1 : 0,
-            tInd ? 1 : 0, tIndP ? 1 : 0, tIndM ? 1 : 0,
-            tIndO ? 1 : 0, tIndOP ? 1 : 0,
-            gpuObj ? 1 : 0, objRecon ? 1 : 0,
-            suTrace ? 1 : 0, suSkip ? 1 : 0,
-            GpuStaticPropRegistry::isEnabled() ? 1 : 0,
-            gpuCullSubstrate ? 1 : 0, gpuCullParity ? 1 : 0,
-            shrHR ? 1 : 0,
-            revZ ? 1 : 0,
-            tSurfTrc ? 1 : 0,
-            build);
+        mc2::fmt::to_buf(_cbbuf, "[INSTR v1] enabled: tgl_pool={:d} destroy={:d} gl_error_print={:d} smoke={:d} water_fp={:d} water_parity={:d} vp_fast={:d} vp_parity={:d} terrain_indirect={:d} terrain_indirect_parity={:d} terrain_indirect_mine={:d} terrain_indirect_overlay={:d} terrain_indirect_overlay_parity={:d} gpu_objects={:d} obj_recon_tracy={:d} static_update_trace={:d} static_update_skip={:d} static_prop_registry={:d} gpu_cull_substrate={:d} gpu_cull_aabb_parity={:d} shader_hot_reload={:d} reverse_z_trace={:d} terrain_surface_trace={:d} camera_motion=1 build={}", mc2::fmt::as_i32(tgl ? 1 : 0), mc2::fmt::as_i32(destr ? 1 : 0), mc2::fmt::as_i32(glprint ? 1 : 0), mc2::fmt::as_i32(smoke ? 1 : 0), mc2::fmt::as_i32(waterFp ? 1 : 0), mc2::fmt::as_i32(waterPc ? 1 : 0), mc2::fmt::as_i32(vpFast ? 1 : 0), mc2::fmt::as_i32(vpPar ? 1 : 0), mc2::fmt::as_i32(tInd ? 1 : 0), mc2::fmt::as_i32(tIndP ? 1 : 0), mc2::fmt::as_i32(tIndM ? 1 : 0), mc2::fmt::as_i32(tIndO ? 1 : 0), mc2::fmt::as_i32(tIndOP ? 1 : 0), mc2::fmt::as_i32(gpuObj ? 1 : 0), mc2::fmt::as_i32(objRecon ? 1 : 0), mc2::fmt::as_i32(suTrace ? 1 : 0), mc2::fmt::as_i32(suSkip ? 1 : 0), mc2::fmt::as_i32(GpuStaticPropRegistry::isEnabled() ? 1 : 0), mc2::fmt::as_i32(gpuCullSubstrate ? 1 : 0), mc2::fmt::as_i32(gpuCullParity ? 1 : 0), mc2::fmt::as_i32(shrHR ? 1 : 0), mc2::fmt::as_i32(revZ ? 1 : 0), mc2::fmt::as_i32(tSurfTrc ? 1 : 0), mc2::fmt::safe(build));
         puts(_cbbuf);
         crashbundle_append(_cbbuf);
 
@@ -250,9 +224,7 @@ void initInstrBanner() {
             const bool matGpuOn = mc2::gate::get<"MC2_MATERIAL_GPU">();
             const bool matSampleOn = mc2::gate::get<"MC2_MATERIAL_GPU_SAMPLE">();
             char buf[96];
-            std::snprintf(buf, sizeof(buf),
-                          "[MATERIAL_GPU v4] enabled=%d sample=%d binding=5 (default-ON; MC2_MATERIAL_GPU=0 disables)\n",
-                          (int)matGpuOn, (int)matSampleOn);
+            mc2::fmt::to_buf(buf, "[MATERIAL_GPU v4] enabled={:d} sample={:d} binding=5 (default-ON; MC2_MATERIAL_GPU=0 disables)\n", mc2::fmt::as_i32((int)matGpuOn), mc2::fmt::as_i32((int)matSampleOn));
             MC2_DIAG_FPUTS(buf, stderr);
         }
 
@@ -278,15 +250,13 @@ void initInstrBanner() {
         if (mc2::gate::get<"MC2_STATIC_PROP_BAKE_SELFTEST">()) {
             // Stub: full self-test wired in Task 5 after buildRecipeFromShape
             // has callers and a registered type to test against.
-            fprintf(stderr, "[STATIC_PROP_BAKE v1] event=selftest_stub note=full_test_wired_task5\n");
+            mc2::fmt::print_err("[STATIC_PROP_BAKE v1] event=selftest_stub note=full_test_wired_task5\n");
             fflush(stderr);
         }
 
         if (g_pzTrace) {
             char _pzbuf[256];
-            snprintf(_pzbuf, sizeof(_pzbuf),
-                "[PROJECTZ v1] enabled: trace=%d heatmap=%d summary=%d guard_px=%d",
-                g_pzDoTrace ? 1 : 0, g_pzDoHeatmap ? 1 : 0, g_pzDoSummary ? 1 : 0, g_pzGuardPx);
+            mc2::fmt::to_buf(_pzbuf, "[PROJECTZ v1] enabled: trace={:d} heatmap={:d} summary={:d} guard_px={:d}", mc2::fmt::as_i32(g_pzDoTrace ? 1 : 0), mc2::fmt::as_i32(g_pzDoHeatmap ? 1 : 0), mc2::fmt::as_i32(g_pzDoSummary ? 1 : 0), mc2::fmt::as_i32(g_pzGuardPx));
             puts(_pzbuf);
         }
     }
@@ -397,20 +367,16 @@ void initResolutionFromConfig() {
                 if (foundH > 0) Environment.screenHeight = foundH;
                 if (foundFS)    Environment.fullScreen   = fullscreenVal ? 1 : 0;
 
-                printf("[RESOLUTION] Pre-window: %dx%d fullscreen=%d (from options.cfg)\n",
-                       Environment.screenWidth, Environment.screenHeight,
-                       Environment.fullScreen);
+                mc2::fmt::print_out("[RESOLUTION] Pre-window: {:d}x{:d} fullscreen={:d} (from options.cfg)\n", mc2::fmt::as_i32(Environment.screenWidth), mc2::fmt::as_i32(Environment.screenHeight), mc2::fmt::as_i32(Environment.fullScreen));
             }
             else
             {
-                printf("[RESOLUTION] Pre-window: %dx%d (options.cfg not found, using defaults)\n",
-                       Environment.screenWidth, Environment.screenHeight);
+                mc2::fmt::print_out("[RESOLUTION] Pre-window: {:d}x{:d} (options.cfg not found, using defaults)\n", mc2::fmt::as_i32(Environment.screenWidth), mc2::fmt::as_i32(Environment.screenHeight));
             }
         }
         else
         {
-            printf("[RESOLUTION] Pre-window: %dx%d (from MC2_WIDTH/MC2_HEIGHT env)\n",
-                   Environment.screenWidth, Environment.screenHeight);
+            mc2::fmt::print_out("[RESOLUTION] Pre-window: {:d}x{:d} (from MC2_WIDTH/MC2_HEIGHT env)\n", mc2::fmt::as_i32(Environment.screenWidth), mc2::fmt::as_i32(Environment.screenHeight));
         }
     }
 }
@@ -480,9 +446,7 @@ void initVulkanBackend(graphics::RenderWindowHandle win, int w, int h) {
                 // for context/device-level failures only (handled above).
                 const std::string& fr = vkpres.health().fallback_reason;
                 g_vkPresentInitDeferred = true;
-                printf("[VK_PRESENT] init deferred: %s -- will retry from the "
-                       "frame loop (session stays VK; present-level failures "
-                       "never force GL).\n", fr.c_str());
+                mc2::fmt::print_out("[VK_PRESENT] init deferred: {} -- will retry from the frame loop (session stays VK; present-level failures never force GL).\n", fr.c_str());
                 fflush(stdout);
             }
         }

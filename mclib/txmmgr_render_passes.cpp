@@ -2,6 +2,7 @@
 // and mechs, terrain overlay / decal batches).
 
 #include "txmmgr_render_internal.h"
+#include "mc2fmt.h"
 
 void MC_TextureManager::renderListsDynamicShadowPass (void)
 {
@@ -219,10 +220,7 @@ void MC_TextureManager::renderListsDynamicShadowPass (void)
 									++dbgN;
 									const float ndcx = (cw != 0.0f) ? cx / cw : 0.0f;
 									const float ndcy = (cw != 0.0f) ? cy / cw : 0.0f;
-									fprintf(stderr,
-										"[SHADOW_CULL_DBG] world=(%.1f,%.1f,%.1f) "
-										"clipW=%.3f ndc=(%.3f,%.3f) keep=%d\n",
-										wx, wy, wz, cw, ndcx, ndcy, keep ? 1 : 0);
+									mc2::fmt::print_err("[SHADOW_CULL_DBG] world=({:.1f},{:.1f},{:.1f}) clipW={:.3f} ndc=({:.3f},{:.3f}) keep={:d}\n", wx, wy, wz, cw, ndcx, ndcy, mc2::fmt::as_i32(keep ? 1 : 0));
 									fflush(stderr);
 								}
 								if (keep) s_culledDynPropInsts.push_back(inst);
@@ -239,9 +237,7 @@ void MC_TextureManager::renderListsDynamicShadowPass (void)
 								const size_t total = s_dynPropInsts.size();
 								const size_t kept  = s_culledDynPropInsts.size();
 								const float pct = total ? (100.0f * (float)(total - kept) / (float)total) : 0.0f;
-								fprintf(stderr,
-									"[SHADOW_CULL] casters %zu -> %zu (%.0f%% culled, margin=%.2f)\n",
-									total, kept, pct, s_cullMargin);
+								mc2::fmt::print_err("[SHADOW_CULL] casters {:d} -> {:d} ({:.0f}% culled, margin={:.2f})\n", mc2::fmt::as_size(total), mc2::fmt::as_size(kept), pct, s_cullMargin);
 								fflush(stderr);
 							}
 						}
@@ -349,8 +345,7 @@ void MC_TextureManager::renderListsDynamicShadowPass (void)
 					if (!s_csmLogged) {
 						s_csmLogged = true;
 						const size_t nCasters = csmCasterSet ? csmCasterSet->size() : 0;
-						fprintf(stderr, "[CSM] layers=%d casters_per_layer=%zu\n",
-						        csmN, nCasters);
+						mc2::fmt::print_err("[CSM] layers={:d} casters_per_layer={:d}\n", mc2::fmt::as_i32(csmN), mc2::fmt::as_size(nCasters));
 						fflush(stderr);
 					}
 #ifdef MC2_VULKAN_ISLAND
@@ -440,14 +435,9 @@ void MC_TextureManager::renderListsTerrainSolid ([[maybe_unused]] const RenderLi
 				{
 					g_loadRaceTerrainFirstResidentFrame = (long)g_mc2FrameCounter;
 					if (chunkPath)
-						std::printf("[LOADRACE] terrain first fully-resident frame=%ld "
-							"(chunk path: atlas_frame=%ld arm_frame=%ld)\n",
-							g_loadRaceTerrainFirstResidentFrame,
-							g_loadRaceAtlasFirstFrame, g_loadRaceArmFirstFrame);
+						mc2::fmt::print_out("[LOADRACE] terrain first fully-resident frame={:d} (chunk path: atlas_frame={:d} arm_frame={:d})\n", mc2::fmt::as_i32(g_loadRaceTerrainFirstResidentFrame), mc2::fmt::as_i32(g_loadRaceAtlasFirstFrame), mc2::fmt::as_i32(g_loadRaceArmFirstFrame));
 					else
-						std::printf("[LOADRACE] terrain first fully-resident frame=%ld "
-							"(terrainNodes=%ld)\n",
-							g_loadRaceTerrainFirstResidentFrame, terrTotal);
+						mc2::fmt::print_out("[LOADRACE] terrain first fully-resident frame={:d} (terrainNodes={:d})\n", mc2::fmt::as_i32(g_loadRaceTerrainFirstResidentFrame), mc2::fmt::as_i32(terrTotal));
 					std::fflush(stdout);
 				}
 			}
@@ -496,13 +486,8 @@ void MC_TextureManager::renderListsTerrainSolid ([[maybe_unused]] const RenderLi
 				GLint cullMode = 0, frontFace = 0;
 				glGetIntegerv(GL_CULL_FACE_MODE, &cullMode);
 				glGetIntegerv(GL_FRONT_FACE, &frontFace);
-				std::fprintf(stderr,
-					"[TERRAIN_CULL_PROBE] path=dispatch frame=%d cull=%s cullMode=%s frontFace=%s\n",
-					s_cullProbeFrames,
-					cullOn ? "ENABLED" : "disabled",
-					cullMode == GL_BACK ? "BACK" : cullMode == GL_FRONT ? "FRONT" :
-						cullMode == GL_FRONT_AND_BACK ? "FRONT_AND_BACK" : "?",
-					frontFace == GL_CCW ? "CCW" : frontFace == GL_CW ? "CW" : "?");
+				mc2::fmt::print_err("[TERRAIN_CULL_PROBE] path=dispatch frame={:d} cull={} cullMode={} frontFace={}\n", mc2::fmt::as_i32(s_cullProbeFrames), mc2::fmt::safe(cullOn ? "ENABLED" : "disabled"), mc2::fmt::safe(cullMode == GL_BACK ? "BACK" : cullMode == GL_FRONT ? "FRONT" :
+						cullMode == GL_FRONT_AND_BACK ? "FRONT_AND_BACK" : "?"), mc2::fmt::safe(frontFace == GL_CCW ? "CCW" : frontFace == GL_CW ? "CW" : "?"));
 				std::fflush(stderr);
 			}
 		}
@@ -756,12 +741,7 @@ void MC_TextureManager::renderListsGpuStaticProps (void)
 							glGetNamedBufferSubData(bktBuf, 0, (nBkts + 1u) * sizeof(uint32_t), allBkt.data());
 							for (uint32_t b = 0; b < nBkts; ++b) bktTotal += allBkt[b];
 						}
-						printf("[DIAG] %s subRec=%u | bkt0=%u bkt1=%u bkt2=%u bkt3=%u bktTOTAL=%u | inst0=%u | mvp[0..3]=[%.3f %.3f %.3f %.3f]\n",
-							mvpChanged ? "MOVE  " : "STATIC",
-							subRec,
-							bkt[0], bkt[1], bkt[2], bkt[3], bktTotal, inst0,
-							mvp ? mvp[0] : 0.f, mvp ? mvp[1] : 0.f,
-							mvp ? mvp[2] : 0.f, mvp ? mvp[3] : 0.f);
+						mc2::fmt::print_out("[DIAG] {} subRec={:d} | bkt0={:d} bkt1={:d} bkt2={:d} bkt3={:d} bktTOTAL={:d} | inst0={:d} | mvp[0..3]=[{:.3f} {:.3f} {:.3f} {:.3f}]\n", mc2::fmt::safe(mvpChanged ? "MOVE  " : "STATIC"), mc2::fmt::as_u32(subRec), mc2::fmt::as_u32(bkt[0]), mc2::fmt::as_u32(bkt[1]), mc2::fmt::as_u32(bkt[2]), mc2::fmt::as_u32(bkt[3]), mc2::fmt::as_u32(bktTotal), mc2::fmt::as_u32(inst0), mvp ? mvp[0] : 0.f, mvp ? mvp[1] : 0.f, mvp ? mvp[2] : 0.f, mvp ? mvp[3] : 0.f);
 						fflush(stdout);
 					}
 				}

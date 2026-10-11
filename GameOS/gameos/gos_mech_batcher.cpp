@@ -1,6 +1,7 @@
 // GameOS/gameos/gos_mech_batcher.cpp — GPU mech batcher, Slice A.
 
 #include "gos_mech_batcher_internal.h"
+#include "mc2fmt.h"
 
 
 // MECH_RING_FRAMES must equal STATIC_PROP_RING_FRAMES so the parity SSBO
@@ -78,9 +79,7 @@ bool vkMechGateOn() {
         // under the VK mech island; the GL readback fallback is deleted). The name is still parsed so old
         // command lines do not hit unknown-variable behavior; setting it prints a one-line note.
         if (mc2::gate::get<"MC2_VK_MECH_FEED_NATIVE">())
-            std::fprintf(stderr, "[VK_MECH_FEED] MC2_VK_MECH_FEED_NATIVE is deprecated "
-                                 "and now a no-op: native CPU feed is always used under "
-                                 "the VK mech island (GL readback fallback deleted).\n");
+            mc2::fmt::print_err("[VK_MECH_FEED] MC2_VK_MECH_FEED_NATIVE is deprecated and now a no-op: native CPU feed is always used under the VK mech island (GL readback fallback deleted).\n");
     }
     return state == 1;
 }
@@ -556,9 +555,7 @@ void loadProgramsIfNeeded() {
         // (gos_mech_batcher.cpp:1376-1382). Pure metadata; no GL change.
         RenderCore::recordPipelineVertexLayout(RenderCore::PipelineId::MechOpaque,
                                                RenderCore::VertexLayoutId::MechGpuVertex48B);
-        fprintf(stderr, "[PIPELINE_VARIANT] pipeline=MechOpaque glProgram=%u key=%s vertexLayout=%s\n",
-                s_mechProgram, pkVariant.c_str(),
-                RenderCore::vertexLayoutName(RenderCore::VertexLayoutId::MechGpuVertex48B));
+        mc2::fmt::print_err("[PIPELINE_VARIANT] pipeline=MechOpaque glProgram={:d} key={} vertexLayout={}\n", mc2::fmt::as_u32(s_mechProgram), pkVariant.c_str(), mc2::fmt::safe(RenderCore::vertexLayoutName(RenderCore::VertexLayoutId::MechGpuVertex48B)));
         fflush(stderr);
     }
 
@@ -583,9 +580,7 @@ void loadProgramsIfNeeded() {
     if (mc2::gate::get<"MC2_LIGHTSSBO_TRACE">()) {
         GLint maxSsbo = 0;
         glGetIntegerv(GL_MAX_SHADER_STORAGE_BLOCK_SIZE, &maxSsbo);
-        std::fprintf(stderr,
-            "[LIGHTSSBO v1] event=mech_ssbo_check max_ssbo_block=%d (no 64-slot cap)\n",
-            maxSsbo);
+        mc2::fmt::print_err("[LIGHTSSBO v1] event=mech_ssbo_check max_ssbo_block={:d} (no 64-slot cap)\n", mc2::fmt::as_i32(maxSsbo));
     }
 
     auto loc = [&](const char* name) {
@@ -653,10 +648,7 @@ void loadProgramsIfNeeded() {
         if (vuBlockIdx != GL_INVALID_INDEX)
             glGetActiveUniformBlockiv(s_mechProgram, vuBlockIdx,
                                       GL_UNIFORM_BLOCK_BINDING, &vuBind);
-        std::fprintf(stderr,
-            "[MECH_VU_DIAG v1] event=block_verify prog=%u vu_block_idx=%u "
-            "binding=%d (expect 3) loc_u_worldToClipGL=%d\n",
-            s_mechProgram, vuBlockIdx, vuBind, s_loc_terrainMVP);
+        mc2::fmt::print_err("[MECH_VU_DIAG v1] event=block_verify prog={:d} vu_block_idx={:d} binding={:d} (expect 3) loc_u_worldToClipGL={:d}\n", mc2::fmt::as_u32(s_mechProgram), mc2::fmt::as_u32(vuBlockIdx), mc2::fmt::as_i32(vuBind), mc2::fmt::as_i32(s_loc_terrainMVP));
     }
 
     MC2_DIAGFE(stderr, "[MECHBATCHER v1] event=shader_ok prog=%u\n", s_mechProgram);

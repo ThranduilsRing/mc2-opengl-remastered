@@ -9,11 +9,12 @@
 #include <utility>
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"
+#include "mc2fmt.h"
 
 using nlohmann::json;
 
 static void logDrop(const char* why, const std::string& key) {
-    fprintf(stderr, "[MODOVERRIDE] dropped '%s': %s\n", key.c_str(), why);
+    mc2::fmt::print_err("[MODOVERRIDE] dropped '{}': {}\n", key.c_str(), mc2::fmt::safe(why));
     fflush(stderr);
 }
 
@@ -56,11 +57,11 @@ static std::vector<ModelOverrideRecord> parseManifest(
     json root;
     try { in >> root; }
     catch (const std::exception& e) {
-        fprintf(stderr, "[MODOVERRIDE] parse error in %s: %s\n", manifestPath.c_str(), e.what());
+        mc2::fmt::print_err("[MODOVERRIDE] parse error in {}: {}\n", manifestPath.c_str(), mc2::fmt::safe(e.what()));
         return out;
     }
     if (!root.is_object() || !root.contains("overrides") || !root["overrides"].is_array()) {
-        fprintf(stderr, "[MODOVERRIDE] %s: missing 'overrides' array\n", manifestPath.c_str());
+        mc2::fmt::print_err("[MODOVERRIDE] {}: missing 'overrides' array\n", manifestPath.c_str());
         return out;
     }
 
@@ -194,7 +195,7 @@ ModelOverrideRegistry& ModelOverrideRegistry::instance() {
     std::call_once(once, []{
         // Always load base registry first.
         int base = g.loadFromFile("data/model_overrides/models.json", "data/model_overrides");
-        fprintf(stderr, "[MODOVERRIDE] base registry: %d override(s)\n", base);
+        mc2::fmt::print_err("[MODOVERRIDE] base registry: {:d} override(s)\n", mc2::fmt::as_i32(base));
         fflush(stderr);
 
         // Additive mod merge: mod entries WIN on dup key (mod overrides base).
@@ -213,11 +214,10 @@ ModelOverrideRegistry& ModelOverrideRegistry::instance() {
             if (probe.is_open()) {
                 probe.close();
                 int n = g.mergeFromFile(modManifest, modDir);
-                fprintf(stderr, "[MODOVERRIDE] mod '%s': %d override(s) merged (total %d)\n",
-                        activeMod, n, g.count());
+                mc2::fmt::print_err("[MODOVERRIDE] mod '{}': {:d} override(s) merged (total {:d})\n", mc2::fmt::safe(activeMod), mc2::fmt::as_i32(n), mc2::fmt::as_i32(g.count()));
                 fflush(stderr);
             } else {
-                fprintf(stderr, "[MODOVERRIDE] mod '%s' has no models.json; base only\n", activeMod);
+                mc2::fmt::print_err("[MODOVERRIDE] mod '{}' has no models.json; base only\n", mc2::fmt::safe(activeMod));
                 fflush(stderr);
             }
         }

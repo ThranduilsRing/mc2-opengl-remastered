@@ -1,6 +1,8 @@
 // ControlGui: button, static and rect initialisation from the .fit files and resolution swap.
 // Declared in the class headers; shared names in controlgui_internal.h.
 #include "controlgui_internal.h"
+#include "mc2fmt.h"
+#include "../GameOS/gameos/utils/mc2log.h"
 
 
 void ControlButton::initButtons( FitIniFile& buttonFile, long buttonCount, ControlButton* Buttons, ButtonData* Data, const char* str, aFont* font )
@@ -10,7 +12,7 @@ void ControlButton::initButtons( FitIniFile& buttonFile, long buttonCount, Contr
 	for ( int i = 0; i < buttonCount; ++i )
 	{
 		ZoneScopedN("ControlButton::initButtons button");
-		sprintf( path, "%s%ld", str, i );
+		mc2::fmt::to_buf(path, "{}{:d}", mc2::fmt::safe(str), mc2::fmt::as_i32(i));
 		Data[i].textureHandle = 0;
 
 		long result;
@@ -21,7 +23,7 @@ void ControlButton::initButtons( FitIniFile& buttonFile, long buttonCount, Contr
 		if ( result != NO_ERR )
 		{
 			char errorStr[256];
-			sprintf(  errorStr, "couldn't find button %s", path );
+			mc2::fmt::to_buf(errorStr, "couldn't find button {}", mc2::fmt::safe(path));
 			Assert( 0, 0, errorStr );
 			continue;
 		}
@@ -215,7 +217,7 @@ void ControlGui::initStatics( FitIniFile& file )
 	{
 		ZoneScopedN("ControlGui::initStatics static");
 		char buffer[32];
-		sprintf( buffer, "Static%ld", i );
+		mc2::fmt::to_buf(buffer, "Static{:d}", mc2::fmt::as_i32(i));
 
 		staticInfos[i].init( file, buffer ,hiResOffsetX, hiResOffsetY);
 	}
@@ -282,7 +284,7 @@ void ControlGui::initStatics( FitIniFile& file )
 	i = 0;
 	for (; i < objectiveInfoCount; i++ )
 	{
-		sprintf( blockName, "ObjStatic%ld", i );
+		mc2::fmt::to_buf(blockName, "ObjStatic{:d}", mc2::fmt::as_i32(i));
 		objectiveInfos[i].init( file, blockName );
 	}
 
@@ -326,7 +328,7 @@ void ControlGui::initStatics( FitIniFile& file )
 		videoInfos = new StaticInfo[videoInfoCount];
 		for ( i = 0; i < videoInfoCount; i++ )
 		{
-			sprintf( blockName, "VideoStatic%ld", i );
+			mc2::fmt::to_buf(blockName, "VideoStatic{:d}", mc2::fmt::as_i32(i));
 			videoInfos[i].init( file, blockName );
 		}
 	}
@@ -349,7 +351,7 @@ void ControlGui::initStatics( FitIniFile& file )
 			timerInfos = new StaticInfo[timerInfoCount];
 			for ( i = 0; i < timerInfoCount; i++ )
 			{
-				sprintf( blockName, "TimerStatic%ld", i ); 
+				mc2::fmt::to_buf(blockName, "TimerStatic{:d}", mc2::fmt::as_i32(i)); 
 				timerInfos[i].init( file, blockName, hiResOffsetX, hiResOffsetY );
 			}
 		}
@@ -364,7 +366,7 @@ void ControlGui::initStatics( FitIniFile& file )
 			missionStatusInfos = new StaticInfo[missionStatusInfoCount ];
 			for ( i = 0; i < missionStatusInfoCount; i++ )
 			{
-				sprintf( blockName, "ResultsStatic%ld", i );
+				mc2::fmt::to_buf(blockName, "ResultsStatic{:d}", mc2::fmt::as_i32(i));
 				missionStatusInfos[i].init( file, blockName );
 
 			}
@@ -438,7 +440,7 @@ void ControlGui::initRects( FitIniFile& file )
 		for ( int i = 0; i < rectCount; i++ )
 		{
 			ZoneScopedN("ControlGui::initRects rect");
-			sprintf( buffer, "Rect%ld", i );
+			mc2::fmt::to_buf(buffer, "Rect{:d}", mc2::fmt::as_i32(i));
 			if ( NO_ERR != file.seekBlock( buffer ) )
 			{
 				Assert( 0, i, "couldn't find the rect block" );
@@ -501,14 +503,14 @@ void ControlGui::swapResolutions( int resolutionX, int resolutionY )
 			if ( fallbackWidths[fi] >= resolutionX )
 				continue; // only try LOWER (or equal-lower) candidates
 			char fallbackName[32];
-			sprintf( fallbackName, "buttonlayout%d.fit", fallbackWidths[fi] );
+			mc2::fmt::to_buf(fallbackName, "buttonlayout{:d}.fit", mc2::fmt::as_i32(fallbackWidths[fi]));
 			char fallbackPath[256];
 			strcpy( fallbackPath, artPath );
 			strcat( fallbackPath, fallbackName );
 			if ( NO_ERR == buttonFile.open( fallbackPath ) )
 			{
-				SPEW(( 0, "controlgui: buttonlayout%d.fit missing, fell back to %s\n",
-				       resolutionX, fallbackName ));
+				MC2_LOG(Core, Debug, "controlgui: buttonlayout{:d}.fit missing, fell back to {}",
+				       mc2::fmt::as_i32(resolutionX), mc2::fmt::safe(fallbackName));
 				strcpy( path, fallbackPath );
 				strcpy( fileName, fallbackName );
 				opened = true;
@@ -518,7 +520,7 @@ void ControlGui::swapResolutions( int resolutionX, int resolutionY )
 		if ( !opened )
 		{
 			char error[256];
-			sprintf( error, "couldn't find the file %s (no fallback found)", path );
+			mc2::fmt::to_buf(error, "couldn't find the file {} (no fallback found)", mc2::fmt::safe(path));
 			Assert( 0, 0, error );
 		}
 	}

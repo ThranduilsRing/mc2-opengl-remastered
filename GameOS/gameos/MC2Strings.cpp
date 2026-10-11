@@ -33,6 +33,7 @@
 #include <vector>
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
+#include "mc2fmt.h"
 
 // Forward-declare mod file enumeration from mclib/file.cpp.
 // MC2Strings must not pull in all of file.h; this thin seam is intentional.
@@ -119,7 +120,7 @@ namespace
 #endif
         if (fp)
         {
-            std::fprintf(fp, "%s\n", line);
+            mc2::fmt::print(fp, "{}\n", mc2::fmt::safe(line));
             std::fclose(fp);
         }
     }
@@ -791,7 +792,7 @@ namespace
 #ifdef _MSC_VER
         _snprintf_s(buffer, 256, _TRUNCATE, "<missing-string:%s:%s>", prefix ? prefix : "unknown", value ? value : "");
 #else
-        snprintf(buffer, 256, "<missing-string:%s:%s>", prefix ? prefix : "unknown", value ? value : "");
+        mc2::fmt::to_buf_n(buffer, 256, "<missing-string:{}:{}>", mc2::fmt::safe(prefix ? prefix : "unknown"), mc2::fmt::safe(value ? value : ""));
 #endif
 
         buffer[255] = 0;
@@ -804,11 +805,11 @@ namespace
 #ifdef _MSC_VER
         _snprintf_s(number, sizeof(number), _TRUNCATE, "%ld", value);
 #else
-        snprintf(number, sizeof(number), "%ld", value);
+        mc2::fmt::to_buf(number, "{:d}", mc2::fmt::as_i32(value));
 #endif
         if ( mc2::gate::get<"MC2_LOG_STRINGS">() )
         {
-            printf("[strings] missing prefix='%s' id=%ld\n", prefix ? prefix : "null", value);
+            mc2::fmt::print_out("[strings] missing prefix='{}' id={:d}\n", mc2::fmt::safe(prefix ? prefix : "null"), mc2::fmt::as_i32(value));
             fflush(stdout);
         }
         return MissingMarker(prefix, number);
@@ -833,7 +834,7 @@ namespace MC2Strings
 #endif
         if (fp)
         {
-            std::fprintf(fp, "MC2 data/defs string trace start\n");
+            mc2::fmt::print(fp, "MC2 data/defs string trace start\n");
             std::fclose(fp);
         }
 
@@ -984,10 +985,10 @@ namespace MC2Strings
         char command[32] = {0};
 #ifdef _MSC_VER
         _snprintf_s(menu, sizeof(menu), _TRUNCATE, "%u", menuId);
-        _snprintf_s(command, sizeof(command), _TRUNCATE, "%u", commandId);
+        mc2::fmt::to_buf(command, "{:d}", mc2::fmt::as_u32(commandId));
 #else
-        snprintf(menu, sizeof(menu), "%u", menuId);
-        snprintf(command, sizeof(command), "%u", commandId);
+        mc2::fmt::to_buf(menu, "{:d}", mc2::fmt::as_u32(menuId));
+        mc2::fmt::to_buf(command, "{:d}", mc2::fmt::as_u32(commandId));
 #endif
         return GetMenuText(menu, command);
     }
@@ -1065,10 +1066,7 @@ namespace MC2Strings
         State().loaded = !State().byKey.empty();
 
         if (mc2::gate::get<"MC2_LOG_STRINGS">()) {
-            printf("[strings] LoadModFits prefix=%s keys=%u legacyAliases=%u\n",
-                   prefix.c_str(),
-                   (unsigned)State().byKey.size(),
-                   (unsigned)State().keyByLegacyAlias.size());
+            mc2::fmt::print_out("[strings] LoadModFits prefix={} keys={:d} legacyAliases={:d}\n", prefix.c_str(), mc2::fmt::as_u32((unsigned)State().byKey.size()), mc2::fmt::as_u32((unsigned)State().keyByLegacyAlias.size()));
             fflush(stdout);
         }
     }

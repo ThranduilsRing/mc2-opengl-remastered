@@ -13,6 +13,7 @@
 #include <mutex>
 #include <string>
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 namespace mc2 {
 namespace fx_trace {
@@ -51,18 +52,14 @@ std::mutex g_init_mutex;
 // dependency rule (fx_trace never includes gosfx/mlr/particles) preserved.
 void dump_class_table(const ClassMap& tbl) {
     if (tbl.empty()) {
-        std::fprintf(stderr, "[FX_TRACE v1] class: (empty)\n");
+        mc2::fmt::print_err("[FX_TRACE v1] class: (empty)\n");
         return;
     }
     unsigned long long total = 0;
     for (const auto& kv : tbl) total += kv.second.count;
-    std::fprintf(stderr, "[FX_TRACE v1] class total=%llu unique=%zu\n",
-                 total, tbl.size());
+    mc2::fmt::print_err("[FX_TRACE v1] class total={:d} unique={:d}\n", mc2::fmt::as_u64(total), mc2::fmt::as_size(tbl.size()));
     for (const auto& kv : tbl) {
-        std::fprintf(stderr,
-                     "[FX_TRACE v1] class id=%u count=%llu first_name=%s\n",
-                     kv.first, kv.second.count,
-                     kv.second.first_seen_name.empty()
+        mc2::fmt::print_err("[FX_TRACE v1] class id={:d} count={:d} first_name={}\n", mc2::fmt::as_u32(kv.first), mc2::fmt::as_u64(kv.second.count), kv.second.first_seen_name.empty()
                          ? "(none)"
                          : kv.second.first_seen_name.c_str());
     }
@@ -70,16 +67,14 @@ void dump_class_table(const ClassMap& tbl) {
 
 void dump_table(const char* label, const CounterMap& tbl) {
     if (tbl.empty()) {
-        std::fprintf(stderr, "[FX_TRACE v1] %s: (empty)\n", label);
+        mc2::fmt::print_err("[FX_TRACE v1] {}: (empty)\n", mc2::fmt::safe(label));
         return;
     }
     unsigned long long total = 0;
     for (const auto& kv : tbl) total += kv.second;
-    std::fprintf(stderr, "[FX_TRACE v1] %s total=%llu unique=%zu\n",
-                 label, total, tbl.size());
+    mc2::fmt::print_err("[FX_TRACE v1] {} total={:d} unique={:d}\n", mc2::fmt::safe(label), mc2::fmt::as_u64(total), mc2::fmt::as_size(tbl.size()));
     for (const auto& kv : tbl) {
-        std::fprintf(stderr, "[FX_TRACE v1] %s name=%s count=%llu\n",
-                     label, kv.first.c_str(), kv.second);
+        mc2::fmt::print_err("[FX_TRACE v1] {} name={} count={:d}\n", mc2::fmt::safe(label), kv.first.c_str(), mc2::fmt::as_u64(kv.second));
     }
 }
 
@@ -99,8 +94,8 @@ void initialize_locked() {
     }
     g_enabled_initialized = true;
     if (g_enabled_value) {
-        std::fprintf(stderr, "[INSTR v1] enabled: fx_trace\n");
-        std::fprintf(stderr, "[FX_TRACE v1] counters: spawn/draw/mlr_enqueue\n");
+        mc2::fmt::print_err("[INSTR v1] enabled: fx_trace\n");
+        mc2::fmt::print_err("[FX_TRACE v1] counters: spawn/draw/mlr_enqueue\n");
     }
 }
 
@@ -151,13 +146,12 @@ void record_class(unsigned int class_id, const char* name) {
 void dump_and_reset(const char* reason) {
     if (!g_tables) return;
     std::lock_guard<std::mutex> lock(g_tables->m);
-    std::fprintf(stderr, "[FX_TRACE v1] === dump (%s) ===\n",
-                 reason ? reason : "?");
+    mc2::fmt::print_err("[FX_TRACE v1] === dump ({}) ===\n", mc2::fmt::safe(reason ? reason : "?"));
     dump_table("spawn", g_tables->spawn);
     dump_table("draw", g_tables->draw);
     dump_table("mlr_enqueue", g_tables->mlr_enqueue);
     dump_class_table(g_tables->per_class);
-    std::fprintf(stderr, "[FX_TRACE v1] === end dump ===\n");
+    mc2::fmt::print_err("[FX_TRACE v1] === end dump ===\n");
     g_tables->spawn.clear();
     g_tables->draw.clear();
     g_tables->mlr_enqueue.clear();

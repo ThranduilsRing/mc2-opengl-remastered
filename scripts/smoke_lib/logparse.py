@@ -2,6 +2,7 @@
 """Parse mc2.exe smoke-mode stdout+stderr into a structured summary."""
 from __future__ import annotations
 
+import hashlib
 import re
 from dataclasses import dataclass, field
 from typing import Optional
@@ -29,11 +30,10 @@ SHADER_ERROR_PATTERNS = (
     re.compile(r"Shader filename:.*failed to load shader", re.I),
     re.compile(r"shader.*compile.*fail", re.I),
     re.compile(r"GLSL link.*failed", re.I),
-    # GL: shader_builder.cpp CompileShader/LinkProgram log "[SHADER ERROR] ..."
-    # (the pattern above missed "CompileShader: ERROR: ...": a static_prop.frag
-    # compile failure once passed tier1 5/5 with every static prop missing).
+    # GL: shader_builder.cpp reports EVERY error as "[SHADER ERROR] ..." (its SHADER_LOG_ERROR macro; CompileShader/LinkProgram also print
+    # the token to stdout). The pattern above missed "CompileShader: ERROR: ...": a static_prop.frag compile failure once passed tier1 5/5
+    # with every static prop missing. test_logparse.py reads the macro, so the producer and this pattern cannot drift apart.
     re.compile(r"\[SHADER ERROR\]"),
-    re.compile(r"shader_builder\.cpp\(\d+\)\s*:\s*ERROR", re.I),
     re.compile(r"\[GPUPROPS\] failed to compile"),
     # VK islands: pipeline / shader-module creation failure (fail-soft in the
     # engine, so the run would otherwise pass with the island silently off).
@@ -171,6 +171,10 @@ class LogSummary:
     # META-FIX INFRA-3: per-bucket marker counts (bucket -> hit count) for
     # every registered MARKER_BUCKETS row. Empty dict when no marker fired.
     marker_counts: dict = field(default_factory=dict)
+    # Sim determinism: how many `[SIMID v1] simframe=` lines the engine printed (MC2_SIM_IDENTITY_TRACE) and a short digest of all of them.
+    # Two runs under MC2_SMOKE_FIXED_TIMESTEP + MC2_DETERMINISTIC_RNG must carry the same chain over their common frames (tools/sim_determinism.py).
+    simid_frames: int = 0
+    simid_chain: Optional[str] = None
 
 
 def parse_log(text: str,
@@ -184,6 +188,7 @@ def parse_log(text: str,
     summary-level walltime parameter.
     """
     s = LogSummary()
+    simid = hashlib.sha256()
     in_play_phase = False
 
     lines = text.splitlines()
@@ -191,6 +196,9 @@ def parse_log(text: str,
         line_wall = line_wallclocks[idx] if line_wallclocks and idx < len(line_wallclocks) else None
         if "[INSTR v1] enabled:" in line:
             s.instr_banner_seen = True
+        if line.startswith("[SIMID v1] simframe="):
+            simid.update(line.rstrip().encode("utf-8", "replace"))
+            s.simid_frames += 1
         if "[SMOKE v1] event=banner" in line:
             s.smoke_banner_seen = True
         if "[SMOKE v1] event=mission_resolve" in line:
@@ -260,4 +268,6 @@ def parse_log(text: str,
                 samples=int(m.group("samples")),
             )
 
+    if s.simid_frames:
+        s.simid_chain = simid.hexdigest()[:16]
     return s

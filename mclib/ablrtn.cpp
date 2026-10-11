@@ -13,6 +13,7 @@
 #include"platform_str.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"
+#include "mc2fmt.h"
 
 #ifndef ABLGEN_H
 #include"ablgen.h"
@@ -558,7 +559,7 @@ profile = true;
 		const char* reproPath = reproStr.c_str();
 		long reproErrors = 0;
 		long reproLines = 0;
-		fprintf(stderr, "[ABL_COMPILE_FATAL_REPRO] file=%s\n", reproPath);
+		mc2::fmt::print_err("[ABL_COMPILE_FATAL_REPRO] file={}\n", mc2::fmt::safe(reproPath));
 		fflush(stderr);
 		ABLi_preProcess(reproPath, &reproErrors, &reproLines);
 	}
@@ -567,11 +568,11 @@ profile = true;
 	ABLFile* aFile = new ABLFile;
 	aFile->create("ablFile.txt");
 	aFile->writeString("Testing writeString");
-	aFile->writeByte(NULL);
+	aFile->writeByte(nullptr);
 	aFile->writeInt(100);
 	aFile->close();
 	delete aFile;
-	aFile = NULL;
+	aFile = nullptr;
 
 	unsigned char s[100];
 	ABLFile* bFile = new ABLFile;
@@ -580,7 +581,7 @@ profile = true;
 	int32_t val = bFile->readInt();
 	bFile->close();
 	delete bFile;
-	bFile = NULL;
+	bFile = nullptr;
 #endif
 }
 
@@ -668,9 +669,7 @@ int32_t ABLi_preProcess (const char* sourceFileName, long* numErrors, long* numL
 	// line and exit cleanly so the failure is diagnosable instead of an opaque AV.
 	if (moduleIdPtr == nullptr)
 	{
-		fprintf(stderr,
-			"[PLAYTEST] FATAL: missing or invalid ABL file '%s' -- cannot preprocess module.\n",
-			source_fn ? source_fn : "(null)");
+		mc2::fmt::print_err("[PLAYTEST] FATAL: missing or invalid ABL file '{}' -- cannot preprocess module.\n", mc2::fmt::safe(source_fn ? source_fn : "(null)"));
 		fflush(stderr);
 		closeSourceFile();
 		if (source_fn)
@@ -816,15 +815,10 @@ int32_t ABLi_preProcess (const char* sourceFileName, long* numErrors, long* numL
 		static const bool s_compileFatal = mc2::gate::get<"MC2_ABL_COMPILE_FATAL">();
 		if (errorCount > 0 && s_compileFatal && !ablSkipErroredModulesEnabled()) {
 			char fatalMsg[512];
-			snprintf(fatalMsg, sizeof(fatalMsg),
-				"[ABL_COMPILE_FATAL] file=%s syntaxErrors=%ld -- refusing to load a module that "
-				"failed to compile (partial bytecode corrupts the ABL VM later; docs/asan-follow-ups.md #3). "
-				"Fix the script, or set MC2_ABL_SKIP_ERRORED_MODULES=1 (load mission, never execute "
-				"errored brains) or MC2_ABL_COMPILE_FATAL=0 (legacy execute-anyway).",
-				ModuleRegistry[NumModulesRegistered].fileName, errorCount);
-			fprintf(stderr, "%s\n", fatalMsg);
+			mc2::fmt::to_buf(fatalMsg, "[ABL_COMPILE_FATAL] file={} syntaxErrors={:d} -- refusing to load a module that failed to compile (partial bytecode corrupts the ABL VM later; docs/asan-follow-ups.md #3). Fix the script, or set MC2_ABL_SKIP_ERRORED_MODULES=1 (load mission, never execute errored brains) or MC2_ABL_COMPILE_FATAL=0 (legacy execute-anyway).", mc2::fmt::safe(ModuleRegistry[NumModulesRegistered].fileName), mc2::fmt::as_i32(errorCount));
+			mc2::fmt::print_err("{}\n", mc2::fmt::safe(fatalMsg));
 			fflush(stderr);
-			printf("%s\n", fatalMsg);
+			mc2::fmt::print_out("{}\n", mc2::fmt::safe(fatalMsg));
 			fflush(stdout);
 			exit(1);
 		}
@@ -1772,7 +1766,7 @@ void transState (SymTableNodePtr newState) {
 	if (CurFSM) {
 		CurFSM->setPrevState(CurFSM->getState());
 		CurFSM->setState(newState);
-		sprintf(SetStateDebugStr, "%s:%s, line %d", CurModule->getFileName(), newState->name, execLineNumber);
+		mc2::fmt::to_buf(SetStateDebugStr, "{}:{}, line {:d}", mc2::fmt::safe(CurModule->getFileName()), mc2::fmt::safe(newState->name), mc2::fmt::as_i32(execLineNumber));
 		NewStateSet = true;
 	}
 }

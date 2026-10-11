@@ -1,0 +1,12831 @@
+{
+ "about": "Frozen by tools/log_tag_census.py --write. Emitters are (tag, version, stream, key order) with a count; consumed_tags are the tags Python parsers/checkers read; plain_tags are the non-[UPPER vN] lines among them.",
+ "emitters": [
+  {
+   "tag": "ABL",
+   "ver": 1,
+   "stream": "buffer",
+   "keys": [
+    "event",
+    "count"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ABL_ARG_GUARD",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "func",
+    "param",
+    "module",
+    "file",
+    "line"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ABL_BAD_CB",
+   "ver": -1,
+   "stream": "buffer",
+   "keys": [
+    "key",
+    "val",
+    "module",
+    "line"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ABL_COMPILE_FATAL",
+   "ver": -1,
+   "stream": "buffer",
+   "keys": [
+    "file",
+    "syntaxErrors",
+    "MC2_ABL_SKIP_ERRORED_MODULES",
+    "MC2_ABL_COMPILE_FATAL"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ABL_COMPILE_FATAL_REPRO",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "file"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ABL_CORE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 2
+  },
+  {
+   "tag": "ABL_CORE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "errors"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ABL_REPRO",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 5
+  },
+  {
+   "tag": "ABL_REPRO_2A",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 8
+  },
+  {
+   "tag": "ABL_REPRO_2A",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "pos",
+    "relPos_valid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ABL_REPRO_2A",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "pos_valid",
+    "relPos"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ABL_SOFTFAIL",
+   "ver": -1,
+   "stream": "buffer",
+   "keys": [
+    "func",
+    "module",
+    "file",
+    "line",
+    "errCode"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ABL_SOFTFAIL",
+   "ver": -1,
+   "stream": "buffer",
+   "keys": [
+    "key",
+    "func",
+    "module",
+    "file",
+    "line",
+    "errCode"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ADJUDICATION_POSE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "pos",
+    "proj",
+    "rot",
+    "alt"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "AIMED_FIRE",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "wid",
+    "tgt_wid",
+    "dist",
+    "res"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "AMBIENT_GUARD",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "phase",
+    "pass",
+    "cmMiss",
+    "dfMiss",
+    "dwMiss",
+    "cm",
+    "df",
+    "dw",
+    "cm",
+    "df",
+    "dw"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ANIMOVERRIDE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 5
+  },
+  {
+   "tag": "ASSET_SCALE",
+   "ver": 1,
+   "stream": "file",
+   "keys": [
+    "entries",
+    "dupes",
+    "bad_lines",
+    "lookups",
+    "unknown",
+    "oob",
+    "clamped",
+    "trace"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "B2",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "B2",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "right",
+    "up"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BEACON_DIAG",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "shape",
+    "shapes",
+    "walked",
+    "billboards",
+    "untransformed",
+    "clipped",
+    "emitted",
+    "peak",
+    "radius"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BEAUTY_HEATMAP",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "deltaSide",
+    "terrainSide",
+    "delta"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BEAUTY_HEATMAP",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "side",
+    "changed",
+    "projected_fail",
+    "drawn",
+    "maxAbs"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BLDG_DIAG",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "calls",
+    "staticNow",
+    "notreg",
+    "notelig",
+    "other",
+    "lightidxUM",
+    "markVis",
+    "dynSubmit"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BLDG_REG_DIAG",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "sample",
+    "appearType",
+    "numShapes",
+    "total",
+    "processMe_skip",
+    "helper_skip",
+    "unreg_skip",
+    "added"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BLKIDX",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "src",
+    "blockIdx",
+    "z_excluded"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "BLKIDX",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "src",
+    "wx",
+    "wy",
+    "wz",
+    "helper",
+    "cpu",
+    "match"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "BOOKMARK_SAVE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 2
+  },
+  {
+   "tag": "BOOKMARK_SAVE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "mission",
+    "pos",
+    "rot",
+    "proj",
+    "alt"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BOOT_INFO",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "teamId"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BOOT_OBJ",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "BOOT_OBJ_COMPLETE",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "BOOT_TIMER",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "m_timeLimit",
+    "secs"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BOOT_VIDEO",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_ALIAS_REG",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_ALIAS_REG",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "alias",
+    "canonical"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_CLEARMOVE_NO_QUEUE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "wid",
+    "MC2_BRAIN_INTENT_QUEUE"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_COMMIT_PHASE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "committed"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_DISPATCH",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_DISPATCH",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "MC2_BRAIN_DISPATCH",
+    "mission",
+    "special_fit"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_DISPATCH",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "MC2_BRAIN_DISPATCH_APPLY",
+    "MC2_BRAIN_DISPATCH"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_DISPATCH",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "depth",
+    "verb",
+    "wid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_DISPATCH",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "index"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "BRAIN_DISPATCH",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "verb",
+    "wid"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "BRAIN_DISPATCH_APPLY",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "verb",
+    "effect",
+    "pos",
+    "wid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_DISPATCH_APPLY",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "verb",
+    "effect",
+    "targetWID",
+    "wid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_DISPATCH_APPLY",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "verb",
+    "effect",
+    "wid"
+   ],
+   "count": 4
+  },
+  {
+   "tag": "BRAIN_DISPATCH_ATTACK_BAD_WID",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "wid",
+    "reason",
+    "wid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_DISPATCH_ATTACK_BAD_WID",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "wid",
+    "wid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_DISPATCH_ATTACK_FRIENDLY",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "wid",
+    "wid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_DISPATCH_ATTACK_PARSE_FAIL",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "verb",
+    "wid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_DISPATCH_ATTACK_SELF",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "wid",
+    "wid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_DISPATCH_CALL",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "MC2_BRAIN_DISPATCH_CALL",
+    "MC2_BRAIN_DISPATCH"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_DISPATCH_CALL",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "from",
+    "to",
+    "depth",
+    "wid"
+   ],
+   "count": 3
+  },
+  {
+   "tag": "BRAIN_DISPATCH_CALL_CYCLE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "from",
+    "to",
+    "depth",
+    "wid"
+   ],
+   "count": 3
+  },
+  {
+   "tag": "BRAIN_DISPATCH_CALL_DEPTH",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "depth",
+    "max",
+    "wid"
+   ],
+   "count": 3
+  },
+  {
+   "tag": "BRAIN_DISPATCH_CALL_UNKNOWN",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "from",
+    "target",
+    "depth",
+    "wid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_DISPATCH_CALL_UNKNOWN",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "from",
+    "target",
+    "wid"
+   ],
+   "count": 5
+  },
+  {
+   "tag": "BRAIN_DISPATCH_FSM_TODO",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_DISPATCH_FSM_TODO",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "MC2_BRAIN_DISPATCH_FSM_TODO",
+    "MC2_BRAIN_DISPATCH"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_DISPATCH_FSM_TODO",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "kind",
+    "name",
+    "wid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_DISPATCH_FSM_TODO",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "kind",
+    "target",
+    "wid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_DISPATCH_FSM_TODO",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "kind",
+    "wid"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "BRAIN_DISPATCH_FSM_TODO",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "mission",
+    "wid",
+    "stateDefs",
+    "transitions",
+    "otherTodos"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_DISPATCH_MOVETO_NAN",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "x",
+    "y",
+    "z",
+    "wid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_DISPATCH_MOVETO_PARSE_FAIL",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "verb",
+    "wid"
+   ],
+   "count": 3
+  },
+  {
+   "tag": "BRAIN_DISPATCH_RAW",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 7
+  },
+  {
+   "tag": "BRAIN_DISPATCH_TARGETPRIORITY_PARSE_FAIL",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "verb",
+    "wid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_DISPATCH_UNKNOWN",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "depth",
+    "verb",
+    "wid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_DISPATCH_UNKNOWN",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "verb",
+    "wid"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "BRAIN_DISPATCH_VAR",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "MC2_BRAIN_DISPATCH_VAR",
+    "MC2_BRAIN_DISPATCH"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "BRAIN_DISPATCH_VAR_GET",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "key",
+    "value",
+    "scope",
+    "wid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_DISPATCH_VAR_GET_MISSION_TRACE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "key",
+    "wid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_DISPATCH_VAR_PARSE_FAIL",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "verb",
+    "wid"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "BRAIN_DISPATCH_VAR_PARSE_FAIL",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "verb",
+    "wid",
+    "depth"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_DISPATCH_VAR_SET",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "key",
+    "value",
+    "scope",
+    "wid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_DISPATCH_VAR_SET",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "wid",
+    "key"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_DISPATCH_VAR_SET_FULL",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "wid",
+    "key",
+    "cap"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_DISPATCH_VAR_SET_MISSION_TRACE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "key",
+    "value",
+    "wid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_ENGAGE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "target",
+    "tick",
+    "wid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_ENGAGE_CLEAR",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "wid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_ENGAGE_NO_QUEUE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "wid",
+    "MC2_BRAIN_INTENT_QUEUE"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_ESCORT_MOVE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "wid",
+    "to",
+    "d"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_FIXED_TICK",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "hz",
+    "period",
+    "trace"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_FIXED_TICK",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "tick",
+    "simTime",
+    "ranThisFrame"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_FLOW_FIRED_OVERFLOW",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "idx",
+    "cap"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_FLOW_STOP",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "idx",
+    "wid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_FLOW_WAIT_ARM",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "idx",
+    "sec",
+    "deadline",
+    "now",
+    "wid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_FLOW_WAIT_DONE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "idx",
+    "deadline",
+    "now",
+    "wid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_FLOW_WAIT_OVERFLOW",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "idx",
+    "cap",
+    "wid"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "BRAIN_FLOW_WAIT_PARSE_FAIL",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "verb",
+    "wid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_FLOW_WAIT_UNTIL_DONE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "idx",
+    "key",
+    "val",
+    "wid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_FLOW_WAIT_UNTIL_GATED",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "idx",
+    "key",
+    "want",
+    "cur",
+    "wid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_FLOW_WAIT_UNTIL_PARSE_FAIL",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "verb",
+    "wid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_FREEZE_TRACE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "wid",
+    "brainState",
+    "curTacOrder.code",
+    "movePath.numSteps",
+    "moveState",
+    "hasBrain",
+    "orderState",
+    "mainGoal",
+    "goalWID",
+    "genOrder",
+    "pos",
+    "lastMoveErr"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_FSM_INSTATE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "state",
+    "match",
+    "wid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_FSM_NOTINSTATE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "state",
+    "match",
+    "wid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_FSM_SETSTATE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "from",
+    "to",
+    "wid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_FSM_SETSTATEIF",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "MC2_BRAIN_DISPATCH_VAR"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_FSM_SETSTATEIF",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "var",
+    "cur",
+    "want",
+    "match",
+    "from",
+    "to",
+    "wid"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "BRAIN_FSM_SETSTATEIF",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "var",
+    "cur",
+    "want",
+    "match",
+    "wid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_FSM_SETSTATEPREV",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "now",
+    "wid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_INTENT_COMMIT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "verb",
+    "order",
+    "pos",
+    "tick",
+    "wid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_INTENT_COMMIT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "verb",
+    "order",
+    "slot",
+    "type",
+    "tick",
+    "wid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_INTENT_COMMIT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "verb",
+    "order",
+    "targetWID",
+    "tick",
+    "wid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_INTENT_COMMIT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "verb",
+    "order",
+    "tick",
+    "wid"
+   ],
+   "count": 5
+  },
+  {
+   "tag": "BRAIN_INTENT_COMMIT_UNKNOWN",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "order",
+    "tick",
+    "wid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_INTENT_EMIT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "verb",
+    "order",
+    "pos",
+    "tick",
+    "wid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_INTENT_EMIT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "verb",
+    "order",
+    "slot",
+    "type",
+    "p1",
+    "p2",
+    "crit",
+    "tick",
+    "wid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_INTENT_EMIT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "verb",
+    "order",
+    "targetWID",
+    "tick",
+    "wid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_INTENT_EMIT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "verb",
+    "order",
+    "tick",
+    "wid"
+   ],
+   "count": 5
+  },
+  {
+   "tag": "BRAIN_INTENT_EMIT_OVERFLOW",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "wid",
+    "order",
+    "cap"
+   ],
+   "count": 3
+  },
+  {
+   "tag": "BRAIN_OPORD_PROGRESS",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "wid",
+    "slot",
+    "type"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_PATROL_ACTIVE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "index",
+    "count",
+    "wid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_PATROL_ADVANCE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "from",
+    "to",
+    "wid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_PATROL_DONE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "wid"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "BRAIN_PATROL_EMIT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "index",
+    "pos",
+    "tick",
+    "wid"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "BRAIN_PATROL_KICK",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "index",
+    "pos",
+    "tick",
+    "wid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_PATROL_NAN",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "wp",
+    "x",
+    "y",
+    "z",
+    "wid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_PATROL_NO_QUEUE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "index",
+    "wid",
+    "MC2_BRAIN_INTENT_QUEUE"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "BRAIN_PATROL_NO_QUEUE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "wid",
+    "MC2_BRAIN_INTENT_QUEUE"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_PATROL_PARSE_FAIL",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "count",
+    "parseOk",
+    "wid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_PATROL_PARSE_FAIL",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "wid"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "BRAIN_PATROL_START",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "count",
+    "loop",
+    "wid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_REQUEST_HELP",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "wid",
+    "called",
+    "radius",
+    "target"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_RETURN_POST",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "wid",
+    "d"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_RT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "MC2_BRAIN_RUNTIME",
+    "MC2_BRAIN_TASKQ"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_RT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "MC2_BRAIN_RUNTIME",
+    "mission"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_RT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "MC2_BRAIN_RUNTIME_APPLY",
+    "MC2_BRAIN_RUNTIME"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_RT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "unitRef",
+    "idx"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_RT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "warriorIdx",
+    "unitRef",
+    "mode"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_RT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "wid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_RT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "wid",
+    "mode"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_SCOPE_GLOBAL",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_SCOPE_GLOBAL",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "merged",
+    "shadowed",
+    "index"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_SCOPE_GLOBAL_SHADOWED",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "key"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_SENTRY_WAKE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "wid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_TACTIC_B",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "tactic",
+    "wid"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "BRAIN_TACTIC_SELECT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_TACTIC_SELECT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "wid",
+    "tick",
+    "tactic"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_TARGETPRIORITY_NO_QUEUE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "wid",
+    "MC2_BRAIN_INTENT_QUEUE"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_VARIANTOF",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_VARIANTOF",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "child",
+    "parent",
+    "inherited"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_VARIANTOF_CYCLE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "child",
+    "parent"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_VARIANTOF_DEPTH",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "child",
+    "depth",
+    "max"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_VARIANTOF_EMPTY",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "child",
+    "parent"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_VARIANTOF_OVERRIDE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "child",
+    "parent"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_VARIANTOF_UNKNOWN",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "child",
+    "parent"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_VAR_MISSION",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "MC2_BRAIN_VAR_MISSION",
+    "MC2_BRAIN_DISPATCH_VAR"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_VAR_MISSION_CONFLICT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "key",
+    "wid",
+    "prevWid",
+    "tick"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_VAR_MISSION_GET",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "key",
+    "val",
+    "wid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_VAR_MISSION_RESET",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_VAR_MISSION_SET",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "key",
+    "val",
+    "wid",
+    "tick"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BRAIN_VAR_MISSION_SET_FULL",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "key",
+    "wid",
+    "cap"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BTF_TIMING",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "calls",
+    "mean_total_us",
+    "mean_coalesce_write_us",
+    "mean_drawpath_us"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BUCKET_CENSUS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "gated_on",
+    "killswitch"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BUCKET_CENSUS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "kind",
+    "frames",
+    "raw_avg",
+    "raw_max",
+    "unique_avg",
+    "unique_max",
+    "canon_avg",
+    "canon_max",
+    "legacy_avg",
+    "legacy_max",
+    "sentinel_avg"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BUCKET_CENSUS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "kind",
+    "frames",
+    "raw_min",
+    "raw_avg",
+    "raw_max",
+    "unique_min",
+    "unique_avg",
+    "unique_max",
+    "canon_min",
+    "canon_avg",
+    "canon_max",
+    "legacy_min",
+    "legacy_avg",
+    "legacy_max",
+    "sentinel_avg"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BUCKET_CENSUS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "frame",
+    "raw",
+    "unique",
+    "sentinel",
+    "canon_nosort",
+    "legacy"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BUCKET_ORDER",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "sample",
+    "uploadCall",
+    "types",
+    "static_only",
+    "dynamic_only",
+    "mixed",
+    "mixed_static_first",
+    "mixed_dynamic_first"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BUILDING_PBR",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "sidecar"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "BUILDING_PBR",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "sidecar",
+    "normal",
+    "orm"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BUILDING_PBR_TRACE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "shape",
+    "ib",
+    "vb"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BUILDING_PBR_TRACE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "shape",
+    "lv",
+    "lc",
+    "lsv",
+    "lt",
+    "lvf",
+    "lvs",
+    "last",
+    "turn"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BUILDING_PBR_TRACE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "shape",
+    "spot",
+    "window",
+    "alpha",
+    "alphaValue",
+    "localTex"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BUILDING_PBR_TRACE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "shape",
+    "texNode",
+    "localTex",
+    "visible"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BUILDING_PBR_TRACE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "shape",
+    "verts",
+    "visible",
+    "last",
+    "turn"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BUILDING_PBR_TRACE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "vb",
+    "ib",
+    "tex",
+    "normal",
+    "orm",
+    "ssbo",
+    "light"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BUILD_FINGERPRINT",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "BUILD_FINGERPRINT",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "sha",
+    "dirty",
+    "branch",
+    "built",
+    "src"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BURNIN_JPG",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "name"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "BURNIN_JPG",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "name",
+    "reason"
+   ],
+   "count": 6
+  },
+  {
+   "tag": "CAMERA_PARK",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "frame",
+    "pos",
+    "rot",
+    "proj",
+    "alt"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "CEMENT_DIAG",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "nonzero",
+    "firstVn",
+    "firstWp3",
+    "sizeof_recipe",
+    "wp3_offset"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "CEMENT_DIAG",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "mission",
+    "total_cement",
+    "base",
+    "transitions",
+    "nextAvailable",
+    "firstTransition"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "CEMENT_DIAG",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "slot",
+    "nodeIdx",
+    "isBase",
+    "firstTransition",
+    "nextAvailable"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "CEMENT_FRAME",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "frame",
+    "packed_total",
+    "cement_mapped",
+    "concrete_all_corners"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "CEMENT_PAVEMENT_GAP",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "mission",
+    "paved_overlay",
+    "paved_no_cement",
+    "any_overlay",
+    "cement_total"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "CLUSTER_DEPTH_PYRAMID",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "COLORMAP",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 12
+  },
+  {
+   "tag": "COLORMAP",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "fmt",
+    "bytes",
+    "gltex"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "COLORMAP_PROBE",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "samples",
+    "maxDispMag"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "CONE_AIM_DIAG",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "shape",
+    "node",
+    "apexMC2",
+    "aimMC2",
+    "lenLocal",
+    "coneLen",
+    "axisLocal",
+    "flip"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "CONE_LEAF",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "type",
+    "leaf",
+    "node",
+    "isSpot",
+    "isWin",
+    "lightsOut"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "CONE_QUEUE_DIAG",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "shape",
+    "node",
+    "apexMC2",
+    "rgb",
+    "alphaPeak",
+    "nightFactor"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "CONE_SPILL",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "apex",
+    "aim",
+    "coneLen",
+    "spill",
+    "clamped",
+    "hit",
+    "old",
+    "new",
+    "horizErr",
+    "coupling",
+    "poolKept"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "CONE_SPILL_REACH",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "lights",
+    "k",
+    "nodeId",
+    "haveAim",
+    "coneLen"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "CONE_VIS_GATE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "shape",
+    "node",
+    "lastTurnTransformed",
+    "turn",
+    "rejects"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "CONFIG",
+   "ver": 1,
+   "stream": "buffer",
+   "keys": [
+    "fatal",
+    "unregistered",
+    "badvalue",
+    "MC2_CONFIG_STRICT"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "CONFIG",
+   "ver": 1,
+   "stream": "buffer",
+   "keys": [
+    "total",
+    "set",
+    "nondefault",
+    "unregistered",
+    "badvalue",
+    "premain_stale",
+    "badvalue_unverified"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "CONTACT",
+   "ver": 1,
+   "stream": "buffer",
+   "keys": [
+    "event",
+    "team",
+    "numSensors",
+    "max"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "CPU_PROJ",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "reason"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "CPU_PROJ",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "window",
+    "camera",
+    "p50",
+    "p95",
+    "max",
+    "budget",
+    "status"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "CRASH",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 2
+  },
+  {
+   "tag": "CRASH",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "code",
+    "flags",
+    "addr"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "CRASHBUNDLE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "CSM",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "layers",
+    "casters_per_layer"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "CSM",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "nearLayers",
+    "arraySize",
+    "fullMapSize",
+    "separate"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "CULL_DIAG",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "CULL_DIAG",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "world",
+    "r",
+    "clip",
+    "norm",
+    "frustum"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "CURSOR",
+   "ver": -1,
+   "stream": "file",
+   "keys": [
+    "f",
+    "drawMouse",
+    "mouseState",
+    "numCursors",
+    "texHandle",
+    "screenW"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "CURSOR",
+   "ver": -1,
+   "stream": "file",
+   "keys": [
+    "name",
+    "realHack",
+    "fitPath",
+    "fitOpen",
+    "numCursors",
+    "screenW"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "CURSOR",
+   "ver": -1,
+   "stream": "file",
+   "keys": [
+    "startMode",
+    "drawMouse"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "CURSOR",
+   "ver": -1,
+   "stream": "file",
+   "keys": [
+    "texHandle",
+    "texWidth"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "CURSOR_GUARD",
+   "ver": -1,
+   "stream": "log",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "CURSOR_GUARD",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 2
+  },
+  {
+   "tag": "DEBUGDRAW",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "DEBUGDRAW",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "cap",
+    "requested"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "DEBUGDRAW",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "enabled"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "DEBUGDRAW",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "exp",
+    "got",
+    "exp",
+    "got",
+    "exp",
+    "got"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "DEBUGDRAW",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "expected",
+    "got"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "DEBUGDRAW",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "name"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "DEBUG_VIEW",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "view",
+    "lighting",
+    "mech",
+    "vfx",
+    "propMat"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "DECOR_SHADOW",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "frame"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "DEPTHBIAS_CALIB",
+   "ver": 2,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "pz",
+    "clipw"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "DEPTHBIAS_CALIB",
+   "ver": 2,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "validN",
+    "clipwMin",
+    "clipwAvg",
+    "clipwMax"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "DEPTH_TRANSITION",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "kind",
+    "f",
+    "maxMvpDelta",
+    "z_terr",
+    "z_cpuw",
+    "z_gpuw",
+    "z_decal",
+    "dz_cpuw",
+    "dz_gpuw",
+    "dz_decal",
+    "cpuw_fresh",
+    "cpuw_any",
+    "cpuw_stamp",
+    "cpuw_stamp_delta",
+    "decal_ok",
+    "decal_z_approx"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "DESTROY",
+   "ver": 1,
+   "stream": "buffer",
+   "keys": [
+    "frame",
+    "obj",
+    "kind",
+    "reason",
+    "file",
+    "line",
+    "exists_was",
+    "in_view",
+    "can_be_seen",
+    "block_active",
+    "frames_since_active",
+    "last_update_ret"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "DET_RNG",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "mission",
+    "reseed",
+    "MC2_DETERMINISTIC_RNG"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "DEVHOTKEY",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "killed"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "DEV_SHELL",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 5
+  },
+  {
+   "tag": "DEV_SHELL",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "DIAG",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "subRec",
+    "bkt0",
+    "bkt1",
+    "bkt2",
+    "bkt3",
+    "bktTOTAL",
+    "inst0"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "DIALOG_SUPPRESSED",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "title",
+    "result",
+    "text"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "DISK_GUARD",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 2
+  },
+  {
+   "tag": "DRAWBUF",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "set",
+    "attachments"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "DRAW_CAND",
+   "ver": 0,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "DRAW_CAND",
+   "ver": 0,
+   "stream": "stderr",
+   "keys": [
+    "emitted",
+    "expected",
+    "emptyTypes",
+    "boundsErrors"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "DRAW_PACKET",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "DRAW_PACKET",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "frame",
+    "emitted",
+    "expected",
+    "old_expected",
+    "distinct_types",
+    "static_props",
+    "invalid",
+    "skipped",
+    "mat_mismatch",
+    "overflow",
+    "retired"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "DRAW_PACKET",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "maxTypeId"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "DRAW_PACKET",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "overflow",
+    "invalidRanges",
+    "skippedRanges",
+    "old_expected",
+    "new_expected",
+    "materialMismatches"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "DRAW_PACKET",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "row",
+    "typeId"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "DRAW_PACKET",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "type",
+    "alphaClass"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "DRAW_PACKET",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "typeId"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "DRAW_PACKET",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "typeId",
+    "firstPacket",
+    "packetCount"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "DRAW_PACKET",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "typeId",
+    "packetCount"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "DRAW_PACKET",
+   "ver": 2,
+   "stream": "stderr",
+   "keys": [
+    "pi"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "DRAW_PACKET",
+   "ver": 3,
+   "stream": "stderr",
+   "keys": [
+    "frame",
+    "input",
+    "emitted",
+    "invalid_pipeline",
+    "pipeline_oor",
+    "invalid_index",
+    "invalid_instance",
+    "overflow",
+    "object_sentinel",
+    "light_sentinel",
+    "sorted_packet_cap"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "DRAW_PACKET",
+   "ver": 3,
+   "stream": "stderr",
+   "keys": [
+    "totalPackets",
+    "kMaxPackets"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "DRAW_PACKET_COMPARE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "frame",
+    "packets",
+    "pipeline_invalid",
+    "pipeline_oob",
+    "geom_mismatch",
+    "type_mismatch",
+    "alpha_mismatch"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "DRAW_PACKET_V5",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "frame",
+    "err"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "DRAW_PACKET_V5",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "reason"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "DRAW_PACKET_V5",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "reason",
+    "loc"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "DRAW_PACKET_V5",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "slot",
+    "reason"
+   ],
+   "count": 4
+  },
+  {
+   "tag": "DRAW_PACKET_V5",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "slots",
+    "ext_supported",
+    "drawid_loc"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "DRAW_PACKET_V5",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "frame",
+    "event",
+    "slots_considered",
+    "draws_issued",
+    "zero_instance_skips",
+    "sorted_oob",
+    "packet_oob",
+    "type_oob",
+    "base_instance_missing",
+    "gl_errors",
+    "ok"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "DRAW_PACKET_V5",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "slot",
+    "type",
+    "inst",
+    "base_inst",
+    "draw_id_base"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "DRAW_PACKET_V6",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "frame",
+    "err"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "DRAW_PACKET_V6",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "reason"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "DRAW_PACKET_V6",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "slots",
+    "alpha_off",
+    "alpha_on",
+    "ext_supported",
+    "drawid_loc",
+    "default"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "DRAW_PACKET_V6",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "frame",
+    "event",
+    "slot",
+    "field",
+    "expected",
+    "got"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "DRAW_PACKET_V6",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "frame",
+    "event",
+    "slots_considered",
+    "draws_issued",
+    "zero_instance_skips",
+    "sorted_oob",
+    "packet_oob",
+    "type_oob",
+    "lockstep_violations",
+    "gl_errors",
+    "ok"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "DRAW_PACKET_V6",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "slot",
+    "pkt",
+    "type",
+    "group",
+    "inst",
+    "base",
+    "drawID",
+    "first",
+    "count",
+    "baseV"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "EDITOR_BEAUTY_AUTOAPPLY",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "EDITOR_CLI",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "blocking",
+    "warning",
+    "info",
+    "units_warn"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "EDITOR_CLI",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "child_exit"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "EDITOR_CLI",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "count",
+    "cursor"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "EDITOR_CLI",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "count",
+    "selected",
+    "units",
+    "buildings",
+    "navmarkers",
+    "dropzones",
+    "forests"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "EDITOR_CLI",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "frames"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "EDITOR_CLI",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "groups",
+    "activated"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "EDITOR_CLI",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "loaded",
+    "count",
+    "path"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "EDITOR_CLI",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "mission",
+    "frames",
+    "exit_on_load_fail"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "EDITOR_CLI",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "mission",
+    "newmap"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "EDITOR_CLI",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "ok"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "EDITOR_CLI",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "ok",
+    "path"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "EDITOR_CLI",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "selected",
+    "type"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "EDITOR_CLI",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "setup",
+    "applied",
+    "undo"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "EDITOR_CLI",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "setup",
+    "survived"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "EDITOR_CLI",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "size",
+    "terrain"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "EDITOR_CLI",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "status"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "EDITOR_STATIC_PREWARM",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "attempted",
+    "baked",
+    "remaining",
+    "done"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "EDITOR_STATIC_PRIME",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "typesWithGeom",
+    "typesWithDrawCmd",
+    "typesDroppedNoLayer",
+    "alphaOffCmd",
+    "alphaOnCmd"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "EDITOR_UPDATE",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "ENCYCLO",
+   "ver": -1,
+   "stream": "file",
+   "keys": [
+    "chassisScale",
+    "file"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ENCYCLO",
+   "ver": -1,
+   "stream": "file",
+   "keys": [
+    "row",
+    "mech",
+    "readResult",
+    "scale"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ENCYCLO",
+   "ver": -1,
+   "stream": "file",
+   "keys": [
+    "text",
+    "lookup",
+    "variant"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ENCYCLO",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "screen",
+    "legacyItems",
+    "mirrorOk"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ESMOKE",
+   "ver": 1,
+   "stream": "buffer",
+   "keys": [
+    "event",
+    "caption",
+    "text"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ESMOKE",
+   "ver": 1,
+   "stream": "buffer",
+   "keys": [
+    "event",
+    "how",
+    "clean_exit",
+    "frames",
+    "autoload",
+    "gen_map",
+    "foliage_smoke",
+    "foliage_count",
+    "saved",
+    "outliner_count",
+    "outliner_selected",
+    "inspector_selected",
+    "inspector_type",
+    "validate_blocking",
+    "validate_warning",
+    "validate_info",
+    "validate_units_warn",
+    "inspector_edit_applied",
+    "inspector_edit_undo",
+    "asset_groups",
+    "asset_activated",
+    "menu_vis0",
+    "menu_vis1",
+    "menu_vis2",
+    "menu_clear",
+    "menu_reload",
+    "place_oob_survived"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ESMOKE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "exit",
+    "log",
+    "mod"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ESMOKE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "exit",
+    "log",
+    "mod",
+    "status"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "EXECUTOR",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "island"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "EXECUTOR",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "island",
+    "check",
+    "owned",
+    "failures"
+   ],
+   "count": 3
+  },
+  {
+   "tag": "EXECUTOR",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "island",
+    "postcond",
+    "activeUnit",
+    "owned",
+    "failures"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "EXECUTOR",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "island",
+    "postcond",
+    "bound",
+    "owned",
+    "failures"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "EXECUTOR",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "island",
+    "postcond",
+    "err",
+    "owned",
+    "failures"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "EXECUTOR",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "island",
+    "postcond",
+    "owned",
+    "failures"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "EXECUTOR",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "island",
+    "sceneHasTerrain_"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "EXECUTOR_TOPLEVEL",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "pass",
+    "hint",
+    "cmMiss",
+    "dfMiss",
+    "dwMiss",
+    "failures"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "EXECUTOR_TOPLEVEL",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "pass",
+    "hint",
+    "declFbo",
+    "actualFbo",
+    "boundFbo",
+    "failures"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "EXECUTOR_TOPLEVEL",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "pass",
+    "hint",
+    "err",
+    "failures"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "EXIT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "FASTPATH_DROP",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "frame",
+    "transition",
+    "reason",
+    "chunk",
+    "water",
+    "solid",
+    "overlay",
+    "editor"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "FBO_GUARD",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "phase",
+    "passId",
+    "declTarget",
+    "actualTarget",
+    "boundFbo"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "FRAMECAP",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "FRAMECAP",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "inMission",
+    "cap"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "FRAMECAP",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "MC2_FPS_CAP",
+    "vsync",
+    "menu",
+    "mission"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "FRAMECTX",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "count"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "FRAMEGRAPH_DRYRUN",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "frame",
+    "fired",
+    "unobserved",
+    "outOfOrder",
+    "firstOOO",
+    "terrainMutex",
+    "latchMiss"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "FRAME_PASS_STATS",
+   "ver": 1,
+   "stream": "buffer",
+   "keys": [
+    "frame",
+    "chunks",
+    "spBatches",
+    "mechInst",
+    "vfx"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "FRAME_PASS_STATS",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "every"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "FRAME_PLAN",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "phase",
+    "pass",
+    "path",
+    "draws",
+    "pipeline"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "FULLBAKE_DIAG",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "calls",
+    "gpuEligible",
+    "else_hier",
+    "else_FULLBAKE",
+    "dualemit_full",
+    "ptspot_consumed",
+    "ptspot_zerodir"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "FXDEF",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 4
+  },
+  {
+   "tag": "FX_COST",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "frames",
+    "fx_execute_cyc",
+    "fx_execute_calls",
+    "particlecloud_execute_cyc",
+    "particlecloud_execute_calls",
+    "spinningcloud_animate_particle_cyc",
+    "spinningcloud_animate_particle_calls",
+    "tube_animate_profile_cyc",
+    "tube_animate_profile_calls",
+    "tube_bridge_flush_cyc",
+    "tube_bridge_flush_calls",
+    "particle_bridge_flush_cyc",
+    "particle_bridge_flush_calls",
+    "fx_forces_cyc",
+    "fx_forces_calls",
+    "fx_integrate_cyc",
+    "fx_integrate_calls",
+    "fx_birth_death_cyc",
+    "fx_birth_death_calls"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "FX_FORCE_SPAWN",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "mech",
+    "wid",
+    "weapons",
+    "pos",
+    "scenarioTime"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "FX_TRACE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 5
+  },
+  {
+   "tag": "FX_TRACE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "id",
+    "count",
+    "first_name"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "FX_TRACE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "name",
+    "count"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "FX_TRACE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "total",
+    "unique"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "GAMEPLAY_PICK_SELFTEST",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "result",
+    "reason"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GAMEPLAY_PICK_SELFTEST",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "result",
+    "step"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GAMEPLAY_PICK_SELFTEST",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "result",
+    "step",
+    "expected",
+    "actual"
+   ],
+   "count": 8
+  },
+  {
+   "tag": "GEOMORPH",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "active",
+    "mipFloats",
+    "kill",
+    "locMips",
+    "locMorph",
+    "locLodStep"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GEOM_PHASE_SPIKE",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "frame",
+    "total_us",
+    "culprit",
+    "culprit_us",
+    "numberQuads",
+    "numObjBlocks"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GEOM_PHASE_SPLIT",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "frames"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GL",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "id"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GL",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "max_texture_size",
+    "max_ssbo_block",
+    "max_combined_texture_units"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "GLSTATEGUARD",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "slot"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GL_DEBUG",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "MC2_GL_DEBUG"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "GL_ERROR",
+   "ver": 1,
+   "stream": "buffer",
+   "keys": [
+    "frame",
+    "pass",
+    "code",
+    "mono_count"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GL_ERROR",
+   "ver": 1,
+   "stream": "buffer",
+   "keys": [
+    "pass",
+    "elapsed_frames",
+    "count_in_window"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GOM_UPDATE_COST",
+   "ver": 1,
+   "stream": "buffer",
+   "keys": [
+    "event",
+    "frames"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GOSFX_CHILD",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "reason",
+    "frames",
+    "creates",
+    "destroys",
+    "delta",
+    "max_alive",
+    "peak_rss"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GOSFX_GPU",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "GOSFX_GPU",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "enabled",
+    "sprites",
+    "draws",
+    "textures",
+    "blendMode"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GOSFX_GPU",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "handle"
+   ],
+   "count": 3
+  },
+  {
+   "tag": "GOSFX_GPU",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "tex",
+    "uv",
+    "count",
+    "blend"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GOSFX_HEAP",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "frame",
+    "rss",
+    "pagefile",
+    "peakRss",
+    "creates",
+    "destroys",
+    "delta",
+    "alive",
+    "max_alive"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GOS_MATERIALS",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 8
+  },
+  {
+   "tag": "GOS_MATERIALS",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "MC2_MATERIAL_GPU"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GOS_MATERIALS",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "MC2_MECH_SURFACE_MATERIAL"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "GOS_MATERIALS",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "normalTex",
+    "ormTex",
+    "flags"
+   ],
+   "count": 3
+  },
+  {
+   "tag": "GOS_MATERIALS",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "ssbo"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "GOS_MATERIALS",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "tex"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GOS_MATERIALS",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "tex",
+    "fmt"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GOS_MATERIALS",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "tex",
+    "rough",
+    "metal"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GPU",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 10
+  },
+  {
+   "tag": "GPUBUF",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "tag"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GPUBUF",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "tag",
+    "frames",
+    "vcap",
+    "vstride",
+    "icap",
+    "istride"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GPUBUF",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "tag",
+    "slot"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GPUBUF",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "frame",
+    "orphan_calls",
+    "orphan_bytes",
+    "by_owner"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GPUBUF",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "tag",
+    "kind",
+    "frames",
+    "vbBytes",
+    "ibBytes",
+    "liveFences"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GPUBUF_INIT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "GPUPROPS",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 8
+  },
+  {
+   "tag": "GPUPROPS",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "MC2_VIEW_UNIFORMS"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GPUPROPS",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "cache_slots",
+    "tex_wired",
+    "mat_wired",
+    "multi_packet",
+    "alpha_on_fallback",
+    "no_primary"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GPUPROPS",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "id",
+    "name",
+    "rgb"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GPUPROPS",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "scale"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GPUPROPS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "path",
+    "init",
+    "ims",
+    "splog",
+    "unk",
+    "init",
+    "ims",
+    "splog",
+    "unk",
+    "typeIndexSize"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GPUPROPS_HIST",
+   "ver": 2,
+   "stream": "stderr",
+   "keys": [
+    "textured",
+    "alpha_on",
+    "no_primary",
+    "textured",
+    "alpha_on",
+    "no_primary",
+    "total"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GPUPROPS_REG",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "total",
+    "shown"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GPUPROPS_REG",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "typeID",
+    "ptr",
+    "nodeId",
+    "vertexCount"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GPU_ALIGN",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "SSBO_OFFSET_ALIGNMENT"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GPU_ALIGN",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "tag",
+    "buffer"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GPU_ALIGN",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "tag",
+    "offset",
+    "align",
+    "remainder"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GPU_ALIGN",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "tag",
+    "size"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GPU_CULL_CUTOFF_UPPERBOUND",
+   "ver": 2,
+   "stream": "stdout",
+   "keys": [
+    "types",
+    "pool",
+    "visible",
+    "omittedSlots",
+    "typesCutoffPossible",
+    "emptyPoolButVisible",
+    "overflow",
+    "type",
+    "pool",
+    "vis",
+    "omit"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GPU_CULL_FROZEN_ORDER_ORACLE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "S",
+    "placed",
+    "outOfRange",
+    "checked",
+    "posMismatch"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GPU_DRIVEN",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 5
+  },
+  {
+   "tag": "GPU_DRIVEN_WATER",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "msg"
+   ],
+   "count": 5
+  },
+  {
+   "tag": "GPU_DRIVEN_WATER",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "msg",
+    "frame"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GPU_DRIVEN_WATER_PARITY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "frame",
+    "recipe",
+    "cpu_only"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GPU_DRIVEN_WATER_PARITY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "frame",
+    "recipe",
+    "field",
+    "gpu",
+    "cpu"
+   ],
+   "count": 3
+  },
+  {
+   "tag": "GPU_DRIVEN_WATER_PARITY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "frame",
+    "recipe",
+    "gpu_only"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GPU_DRIVEN_WATER_PARITY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "frames",
+    "quads_checked",
+    "total_mismatches"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GPU_PARTICLES",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GPU_PARTICLES",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "budget"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GPU_PARTICLES",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "emit_total",
+    "flush_total",
+    "nonempty_flush_total",
+    "records_flushed_total",
+    "records_per_flush_max",
+    "trail_spawn",
+    "trail_head"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GPU_PARTICLES",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "prog"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GPU_PARTICLES",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "records",
+    "groups"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GPU_PICK_HOVER",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "attempts",
+    "mech_hits",
+    "non_mech_fallback",
+    "cpu_fallback"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GPU_PICK_HOVER",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "kind",
+    "handle",
+    "idx",
+    "mech",
+    "screen",
+    "gl"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GPU_PICK_HOVER",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "kind",
+    "screen"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GPU_PICK_PARITY",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "delta_wu",
+    "hist_xy_wu"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GPU_PICK_PARITY",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "mission",
+    "sites",
+    "compared",
+    "gpu_invalid",
+    "buffer_unavailable",
+    "background_px",
+    "over_2wu"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GPU_PICK_PARITY",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "invalid_reasons"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GPU_PICK_PARITY",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "mission",
+    "center_px",
+    "gl",
+    "cpu",
+    "gpu",
+    "dxy",
+    "dz"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GPU_PICK_PARITY",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "mission",
+    "compared",
+    "invalid",
+    "background_px",
+    "delta_wu",
+    "hist_xy_wu"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GPU_PICK_PARITY",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "site",
+    "mission",
+    "screen",
+    "gl",
+    "cpu",
+    "gpu",
+    "dxy",
+    "dz"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GPU_PICK_PARITY",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "timing_us",
+    "cpu_samples",
+    "gpu_samples"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GPU_SYNC",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "tag",
+    "producer",
+    "consumer"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GPU_SYNC",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "tag",
+    "producer",
+    "consumer",
+    "bits"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GROUND_CONTACT_BLOB",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "count",
+    "radius",
+    "alpha"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GUARD_FORWARD",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "class",
+    "total",
+    "agree",
+    "differ_both_valid",
+    "forwarded_sentinel_only",
+    "validated_sentinel_only",
+    "both_sentinel",
+    "would_change"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "HAZE_PARITY",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "frames",
+    "max_abs_delta",
+    "violations"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "HDRI_SKY",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "sidecar",
+    "w",
+    "h",
+    "glIF",
+    "bytes",
+    "tex"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "HDRI_SUN_SYNC",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "valid",
+    "antiSolarAz",
+    "sunAzGL",
+    "skyYaw"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "HEARTBEAT",
+   "ver": -1,
+   "stream": "buffer",
+   "keys": [
+    "frames",
+    "elapsed_ms",
+    "fps"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "HITCH",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "frame",
+    "dt",
+    "terrainSolid",
+    "staticFlush",
+    "staticSnapshot",
+    "water",
+    "glBufData",
+    "glBufBytes",
+    "glBufSubData",
+    "glBufSubBytes",
+    "glMapBuf",
+    "glTexImage",
+    "glTexImageBytes",
+    "glBindTex",
+    "glUseProgram",
+    "glWaitSync",
+    "sig",
+    "to",
+    "glFence",
+    "glFinish",
+    "glFlush"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "HITCH_GL",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "glBufferData",
+    "glBufferDataBytes",
+    "glBufferSubData",
+    "glBufferSubDataBytes",
+    "glMapBuffer",
+    "glTexImage",
+    "glTexImageBytes",
+    "glTexSubImage",
+    "glTexSubImageBytes",
+    "glBindTexture",
+    "glUseProgram",
+    "glClientWaitSync",
+    "sig",
+    "to",
+    "glFenceSync",
+    "glFinish",
+    "glFlush"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "HITCH_INIT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "threshold"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "HITCH_PHASE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "frame",
+    "dt",
+    "logic",
+    "render",
+    "present",
+    "cap",
+    "h1aKnown",
+    "unknown"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "HITCH_STATIC_FLUSH",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "flushMs",
+    "records",
+    "draws",
+    "bufferBytes",
+    "realloc",
+    "map",
+    "subData"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "HITCH_TERRAIN_TEX",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "quadSetupTexturesMs",
+    "binds",
+    "uploads",
+    "texImageCalls"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "HITCH_WATER",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "called",
+    "waterPresent",
+    "earlyOut",
+    "glCalls"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "HITCH_WATER_DETAIL",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "waterMs",
+    "guards",
+    "recipe",
+    "buildWindow",
+    "upload",
+    "dispatch",
+    "recipes",
+    "window",
+    "narrow",
+    "recipeUploaded"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "HUD",
+   "ver": -1,
+   "stream": "log",
+   "keys": [],
+   "count": 5
+  },
+  {
+   "tag": "HUDSCALE",
+   "ver": -1,
+   "stream": "file",
+   "keys": [
+    "active",
+    "scale",
+    "rendererWH",
+    "batch",
+    "verts",
+    "vertY",
+    "vertXmax",
+    "band"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "HUDSCALE",
+   "ver": -1,
+   "stream": "file",
+   "keys": [
+    "sw",
+    "sh",
+    "band",
+    "scaled",
+    "skipBand",
+    "skipExempt",
+    "firstVertYafter"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "HZB_BUILD",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "HZB_BUILD",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "mips",
+    "count"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "HZB_CAM",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "eyeX",
+    "eyeY",
+    "lookX",
+    "lookY",
+    "rot",
+    "angle"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "HZB_PROBE_CULLCAND",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "idx",
+    "rectUV",
+    "objClosest",
+    "hzbMin",
+    "gap",
+    "L",
+    "neverAppliedToDraws"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "HZB_PROBE_LOD",
+   "ver": 1,
+   "stream": "buffer",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "HZB_PROBE_MARGIN",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "minGap",
+    "maxGap",
+    "closestToZeroNegGap",
+    "neverAppliedToDraws"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "HZB_PROBE_OBJ",
+   "ver": 2,
+   "stream": "stderr",
+   "keys": [
+    "active",
+    "scanned",
+    "tested",
+    "wouldKeep",
+    "wouldCullRaw",
+    "wouldCullGuarded",
+    "skippedCameraDiscont",
+    "nearClippedKeep",
+    "offscreen",
+    "invalidRect",
+    "Lmin",
+    "cameraDiscontinuity",
+    "fwdAngleDeg",
+    "posDelta",
+    "discontFramesCumulative",
+    "unsafeForCull",
+    "neverAppliedToDraws"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "HZB_VIEW_DUMP",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 3
+  },
+  {
+   "tag": "HZB_VIEW_DUMP",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "X",
+    "Y",
+    "Z",
+    "ROT",
+    "ANGLE",
+    "ALT"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "HZB_VIEW_FILE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "HZB_VIEW_FILE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "X",
+    "Y",
+    "Z",
+    "ROT",
+    "ANGLE",
+    "ALT"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "HZB_VIEW_FILE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "n"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "IFACE_PERF",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "frames",
+    "invProj_walks",
+    "invProj_cacheHits"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "IMGUI_FONT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "family"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "IMGUI_FONT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "family",
+    "file"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "INSTDIAG",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "coalesceEnabled",
+    "globalPoolLegacy",
+    "instanceCapacity",
+    "frameSlot",
+    "typeRanges"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "INSTDIAG",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "sample",
+    "typeID",
+    "slot",
+    "instByteOff",
+    "count",
+    "byteSize",
+    "drawData0_rawXYZ",
+    "zero0",
+    "midXYZ"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "INSTR",
+   "ver": 1,
+   "stream": "buffer",
+   "keys": [
+    "tgl_pool",
+    "destroy",
+    "gl_error_print",
+    "smoke",
+    "water_fp",
+    "water_parity",
+    "vp_fast",
+    "vp_parity",
+    "terrain_indirect",
+    "terrain_indirect_parity",
+    "terrain_indirect_mine",
+    "terrain_indirect_overlay",
+    "terrain_indirect_overlay_parity",
+    "gpu_objects",
+    "obj_recon_tracy",
+    "static_update_trace",
+    "static_update_skip",
+    "static_prop_registry",
+    "gpu_cull_substrate",
+    "gpu_cull_aabb_parity",
+    "shader_hot_reload",
+    "reverse_z_trace",
+    "terrain_surface_trace",
+    "camera_motion",
+    "build"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "INSTR",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 2
+  },
+  {
+   "tag": "INSTR",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "budget"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "INSTR",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "disabled"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "INSTR",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "log"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "INSTR",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "effect_admission_mode"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "INSTR",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "object_admission_mode"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "INSTR",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "parallel_shader_compile"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "INTRO_MOVIE",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "frame",
+    "esc",
+    "spc",
+    "lmouse"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "INVIEW_CONFLATION",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "actor_frames",
+    "render_vs_sim",
+    "render_vs_ai",
+    "sim_vs_ai",
+    "render_vs_life",
+    "sim_vs_life",
+    "life_vs_ai",
+    "movers",
+    "statics",
+    "mover_render_vs_ai",
+    "hysteresis_N"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "JOBS",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "KTX2_MIP",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 2
+  },
+  {
+   "tag": "KTX_SIDECAR",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "node",
+    "srcName",
+    "path",
+    "load",
+    "ktxDims",
+    "glDims",
+    "match"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LAUNCHER_ENV",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "applied",
+    "shell_override",
+    "src"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LEAFDIAG",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "sample",
+    "regIdx",
+    "typeID",
+    "count",
+    "cachedBlob",
+    "freshLight",
+    "storedLight",
+    "leaf0_rawXYZ",
+    "leaf0Zero",
+    "midZero"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LIGHTBRIDGE",
+   "ver": 1,
+   "stream": "buffer",
+   "keys": [
+    "frame",
+    "populate"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LIGHTBRIDGE",
+   "ver": 1,
+   "stream": "buffer",
+   "keys": [
+    "summary",
+    "populate",
+    "ns_per_call",
+    "first_data_frame"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LIGHTGRID_BUILD",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "LIGHTROW_FRESHNESS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "mechType",
+    "index",
+    "liveRowCount",
+    "currentFrame"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LIGHTROW_FRESHNESS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "mechType",
+    "lod",
+    "staleIndex",
+    "cachedFrame",
+    "currentFrame",
+    "stale_so_far"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LIGHTSLOT",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "static_prop_instances",
+    "override_tree_types",
+    "registered_recipes",
+    "unique_light_slots",
+    "dedup_hits",
+    "baked_slots",
+    "per_instance_distinct",
+    "table_count",
+    "lod_bake_count",
+    "lod_distinct_slots"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LIGHTSSBO",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "binding",
+    "bytes"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LIGHTSSBO",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "binding",
+    "capBytes",
+    "liveBytes",
+    "prefix"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LIGHTSSBO",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "max_ssbo_block"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LIGHTSSBO",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "old",
+    "new"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LIGHTSSBO",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "oldCap",
+    "newCap",
+    "liveBytes",
+    "prefix"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LIGHTSSBO",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "submitted",
+    "maxIdx"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LIGHTSSBO",
+   "ver": 2,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "prefixDirty",
+    "prefix",
+    "suffix"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LIGHTSSBO",
+   "ver": 2,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "total",
+    "prefix"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LIGHTSSBO",
+   "ver": 2,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "total",
+    "prefix",
+    "dirty"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LIGHTSSBO",
+   "ver": 3,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "prefix",
+    "cap",
+    "dirty"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LIGHT_CLAMP_FIXTURE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "LIGHT_CLAMP_PROBE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "LIGHT_CLAMP_PROBE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "water",
+    "exceeds_16"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LIGHT_COST_SPLIT",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "frames",
+    "c2_cyc_per_frame",
+    "c2_calls_per_frame",
+    "c6_cyc_per_frame",
+    "c6_calls_per_frame",
+    "c5_cyc_per_frame",
+    "c5_calls_per_frame"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LIGHT_POOL_DUMP",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "frame_tick",
+    "isNight",
+    "nTerrainLights"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LIGHT_POOL_DUMP",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "idx",
+    "slot",
+    "type",
+    "active",
+    "ownerEnabled",
+    "pos",
+    "argb",
+    "far",
+    "class",
+    "owner",
+    "packed"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LIGHT_ROW_CENSUS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "type",
+    "seen",
+    "src",
+    "up",
+    "maxSrcAbs",
+    "falloff",
+    "fix"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LIGHT_ROW_PURE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "checked",
+    "mismatched"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LIGHT_ROW_PURE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "sample",
+    "class",
+    "legacyLights",
+    "pureLights"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LIGHT_UPLOAD_STATS",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "frames",
+    "uploadBytes",
+    "baselineBytes",
+    "savedBytes"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LINEAR_AUDIT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "framebuffer_srgb",
+    "scene_color_internalformat",
+    "verdict"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LINKUP",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "part",
+    "name"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LINKUP",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "part",
+    "name",
+    "status",
+    "onGUI",
+    "los",
+    "pos"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LOADRACE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "frame",
+    "gltex",
+    "scenarioTime"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LOADRACE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "frame",
+    "scenarioTime",
+    "atlasTex",
+    "nodeIds"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LOADRACE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "scenarioTime",
+    "frame"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "LOADRACE",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "frame",
+    "atlas_frame",
+    "arm_frame"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LOADRACE",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "frame",
+    "terrainNodes"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LOADRACE",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "name",
+    "apprNum",
+    "mechType",
+    "shape0",
+    "obj",
+    "actorHandle"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LOADRACE",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "reason",
+    "apprNum",
+    "appearFile"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LOADRACE",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "reason",
+    "apprNum",
+    "class"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LOAD_PHASES",
+   "ver": 1,
+   "stream": "buffer",
+   "keys": [
+    "total"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LODBUG",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "mode"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LOGISTICS",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 2
+  },
+  {
+   "tag": "M2D_PZ_PARITY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "checked",
+    "mismatches"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "M2D_PZ_PARITY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "mechanism",
+    "scope_assert",
+    "Environment.Renderer",
+    "emit_cap",
+    "note"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "M2D_PZ_PARITY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "n",
+    "pzc_new",
+    "pzc_old",
+    "pzTri_new",
+    "pzTri_old",
+    "pzNeeded",
+    "uvMode"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MASK_DISPATCH",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "reason",
+    "mapSide",
+    "max"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MASK_SOLID",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "MC2_TERRAIN_MASK_DISPATCH"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MASK_SOLID",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "prog"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MASK_WATER",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "MC2_TERRAIN_MASK_DISPATCH"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MASK_WATER",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "prog"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MATERIAL_GPU",
+   "ver": 4,
+   "stream": "buffer",
+   "keys": [],
+   "count": 3
+  },
+  {
+   "tag": "MATERIAL_GPU",
+   "ver": 4,
+   "stream": "buffer",
+   "keys": [
+    "emitted",
+    "sidecar",
+    "sample_forced"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MATERIAL_GPU",
+   "ver": 4,
+   "stream": "buffer",
+   "keys": [
+    "enabled",
+    "sample",
+    "binding",
+    "MC2_MATERIAL_GPU"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MATERIAL_GPU",
+   "ver": 4,
+   "stream": "buffer",
+   "keys": [
+    "event",
+    "emitted",
+    "mismatches"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "MATERIAL_GPU",
+   "ver": 4,
+   "stream": "buffer",
+   "keys": [
+    "event",
+    "enabled",
+    "loc"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MATERIAL_GPU",
+   "ver": 4,
+   "stream": "buffer",
+   "keys": [
+    "event",
+    "enabled",
+    "reason"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MATERIAL_GPU",
+   "ver": 4,
+   "stream": "buffer",
+   "keys": [
+    "event",
+    "materials",
+    "bytes"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MATERIAL_GPU",
+   "ver": 4,
+   "stream": "buffer",
+   "keys": [
+    "event",
+    "materials",
+    "bytes",
+    "emitted"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MATERIAL_GPU",
+   "ver": 4,
+   "stream": "buffer",
+   "keys": [
+    "slot",
+    "pkt",
+    "materialIdx",
+    "albedoTex",
+    "expected"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MC2_DIAG",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 3
+  },
+  {
+   "tag": "MC2_GL_DEBUG_FATAL",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "severity",
+    "source",
+    "type",
+    "id"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MDI_SUBMIT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "pass",
+    "drawKind",
+    "commands",
+    "producer",
+    "indirectBuffer",
+    "fallback"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MEASURE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "MECHICON",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 3
+  },
+  {
+   "tag": "MECHICON",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "id"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "MECHLIST",
+   "ver": -1,
+   "stream": "file",
+   "keys": [
+    "chassisNameID",
+    "chassisText",
+    "variantName",
+    "cost",
+    "weight"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MECHLOD",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "actor",
+    "old_lod",
+    "new_lod"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MECHREG",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "type",
+    "lod",
+    "nodeIdx",
+    "name"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MECHREG",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "type",
+    "lod",
+    "numBones"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MECHRESTORE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "frame",
+    "actor",
+    "type",
+    "lod",
+    "submitted",
+    "cullSkip",
+    "lateReg",
+    "finalized",
+    "status",
+    "inView"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MECHRESTORE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "frame",
+    "actor",
+    "type",
+    "status"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MECHRESTORE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "phase",
+    "maxActors"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MECHRESTORE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "phase",
+    "mechFinalized",
+    "appearanceListNull"
+   ],
+   "count": 3
+  },
+  {
+   "tag": "MECHRESTORE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "type",
+    "lod",
+    "result",
+    "finalized"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MECHRESTORE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "type",
+    "lod",
+    "result",
+    "finalized",
+    "numBones"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MECHRESTORE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "type",
+    "restored_lod",
+    "status_restored",
+    "status_now"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MECHRESTORE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "types",
+    "lateAdded",
+    "rebuilt"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MECH_IMPORT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 5
+  },
+  {
+   "tag": "MECH_IMPORT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "MC2_MECH_IMPORT_GPU",
+    "MC2_GPU_MECHS"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MECH_IMPORT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "ao",
+    "normal"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MECH_IMPORT_GPU",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "lod",
+    "verts"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MECH_LOAD",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "mechType"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MECH_MATERIAL_GPU",
+   "ver": 1,
+   "stream": "buffer",
+   "keys": [
+    "dc",
+    "materialIdx",
+    "albedo",
+    "expected"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MECH_MATERIAL_GPU",
+   "ver": 1,
+   "stream": "buffer",
+   "keys": [
+    "event",
+    "frame",
+    "mechs",
+    "mismatches"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MECH_MATERIAL_GPU",
+   "ver": 1,
+   "stream": "buffer",
+   "keys": [
+    "event",
+    "materials"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MECH_PICK_SELFTEST",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "result",
+    "reason"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MECH_PICK_SELFTEST",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "result",
+    "step"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MECH_PICK_SELFTEST",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "result",
+    "step",
+    "reason"
+   ],
+   "count": 3
+  },
+  {
+   "tag": "MECH_PICK_SELFTEST",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "result",
+    "step",
+    "reason",
+    "before",
+    "after"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MECH_PREVIEW",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "gpu_submit",
+    "cpu_draw",
+    "depth"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MECH_SKEL",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "MECH_VU_DIAG",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "prog",
+    "vu_block_idx",
+    "binding",
+    "loc_u_worldToClipGL"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MECH_VU_DIAG",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "frame",
+    "submits",
+    "binding3_ubo",
+    "max_diff_vs_terrainMVP",
+    "ubo_row0",
+    "mvp_row0"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MENU_CANARY",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "skip_intro"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MIF_SPLIT",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "frames",
+    "invProj_walks",
+    "invProj_cacheHits"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MINE_AB",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "frame",
+    "legacy",
+    "grid",
+    "onlyLegacy",
+    "onlyGrid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MINE_STATIC",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "MC2_TERRAIN_INDIRECT_MINE"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MINE_STATIC",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "prog"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MISSION",
+   "ver": -1,
+   "stream": "buffer",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "MISSION",
+   "ver": -1,
+   "stream": "buffer",
+   "keys": [
+    "size"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MISSION",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "moveSide",
+    "terrainVtx"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MISSION",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "t",
+    "phase"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "MISSIONFIT_OPORD",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "MISSIONFIT_OPORD",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "patrol",
+    "guard",
+    "sentry",
+    "escort",
+    "other"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MISSION_SPLIT",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "frames"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MODE",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "gl_debug",
+    "vsync",
+    "tracy"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "MODOVERRIDE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 18
+  },
+  {
+   "tag": "MODOVERRIDE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "lodCount"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MODOVERRIDE_TEX",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "slot",
+    "name",
+    "gosHandle",
+    "alpha"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MODOVERRIDE_TEX",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "slot",
+    "name",
+    "path"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MODOVERRIDE_TRACE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 2
+  },
+  {
+   "tag": "MODOVERRIDE_TRACE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "name",
+    "renderShape",
+    "numShapes",
+    "leaf0",
+    "leaf1"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MODOVERRIDE_TRACE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "name",
+    "renderShape",
+    "numShapes",
+    "leaf0",
+    "leaf1",
+    "lodCount"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MOUSE_RECON",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "raw",
+    "logical",
+    "drawable",
+    "norm_logical",
+    "norm_drawable"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MOUSE_RECON_DS",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "norm",
+    "viewMul",
+    "finalPixel"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MOVER",
+   "ver": 2,
+   "stream": "stdout",
+   "keys": [
+    "id",
+    "name",
+    "team",
+    "pos",
+    "hp",
+    "pilot",
+    "order",
+    "target",
+    "brain",
+    "mstate",
+    "pgoal",
+    "pstep",
+    "pcost",
+    "tgtpos"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MOVE_BD",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 7
+  },
+  {
+   "tag": "MOVE_BD",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "h",
+    "w",
+    "mapData",
+    "specials"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MOVE_BD",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "map"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MOVE_BD",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "numOffMap"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MOVE_CHUNK_SHADOW",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "call",
+    "start",
+    "goal",
+    "cell_nodes",
+    "cell_path_len",
+    "popped_box",
+    "path_box",
+    "chunk_size",
+    "overflow_chunks",
+    "rect0_same",
+    "rect0_nodes",
+    "rect1_same",
+    "rect1_nodes",
+    "rect2_same",
+    "rect2_nodes"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MOVE_CHUNK_SHADOW",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "sampled_calls",
+    "inside0",
+    "inside1",
+    "inside2",
+    "max_overflow_chunks",
+    "sum_popped_box",
+    "sum_path_box",
+    "sum_nodes",
+    "sum_path_len",
+    "worst_call_nodes",
+    "worst_call_overflow",
+    "chunk_size",
+    "node_threshold"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MOVE_PATH_CACHE_BURST",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "frame",
+    "key",
+    "nodes_repeated",
+    "would_saved",
+    "path_match",
+    "mover_diverged",
+    "frame_gap"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MOVE_PATH_CACHE_SHADOW",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "calls",
+    "would_hits",
+    "would_hit_rate_pct",
+    "nodes_total",
+    "nodes_saved",
+    "max_burst_saved",
+    "same_path_hits",
+    "path_mismatch",
+    "mover_here_touched",
+    "mover_here_diverged",
+    "max_frame_gap",
+    "node_threshold",
+    "cache_size"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MOVE_REBUILD",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "MOVE_REBUILD",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "GameMap"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MOVE_REBUILD",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "land",
+    "vertexSide",
+    "cellSide",
+    "moveSide"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MOVE_REBUILD",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "moveSide",
+    "specials"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MOVE_RECON",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "MOVE_RECON",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "frames",
+    "movers_total",
+    "ctrl_ns",
+    "pathlock_ns",
+    "astar_local_ns",
+    "astar_global_ns",
+    "calcMovePath_calls",
+    "astar_local_calls",
+    "astar_global_calls",
+    "setPathlock_calls",
+    "getPathlock_calls",
+    "offmap_noops",
+    "max_ctrl_ns",
+    "max_pathlock_ns",
+    "max_astar_local_ns",
+    "max_astar_global_ns",
+    "ag_prologue_ns",
+    "ag_search_ns",
+    "ag_nodesPopped",
+    "ag_gatesScanned",
+    "ag_numDoors",
+    "ag_numAreas",
+    "ag_max_prologue_ns",
+    "ag_max_search_ns",
+    "al_nodesPopped",
+    "al_maxNodes",
+    "al_goalFound",
+    "al_goalMissed"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MOVE_RECON",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "frame",
+    "movers",
+    "ctrl_ns",
+    "pathlock_ns",
+    "astar_local_ns",
+    "astar_global_ns",
+    "calcMovePath_calls",
+    "offmap_noops"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MSL",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "MSL",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "nodeType"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "NIGHT_FOG_DIM",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "enabled",
+    "scale"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "OBJECT_ADMISSION",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "case",
+    "expected",
+    "actual",
+    "rawClip"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "OBJECT_ADMISSION",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "fails"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "OBJECT_ID_SELFTEST",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "mode",
+    "result",
+    "reason"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "OBJECT_ID_SELFTEST",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "mode",
+    "result",
+    "sampled",
+    "valid_hits",
+    "invalid_hits"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "OBJECT_PARITY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "bytes_per_slot",
+    "ring_frames",
+    "total_bytes",
+    "handle"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "OBJECT_PARITY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "count"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "OBJECT_PARITY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "frame",
+    "actor",
+    "tri",
+    "corner",
+    "cpu",
+    "gpu"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "OBJECT_PARITY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "frame",
+    "compared",
+    "passed",
+    "mismatched"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "OBJECT_PARITY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "frame",
+    "typeId",
+    "inst",
+    "vert",
+    "cpu",
+    "gpu"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "OBJECT_PARITY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "frames",
+    "vertices_written",
+    "readback_bytes",
+    "mismatches",
+    "slot_overflows",
+    "compared",
+    "passed",
+    "mismatched",
+    "parity_skipped_allowed_late_reg",
+    "parity_unexpected_late_reg",
+    "parity_compared_actors"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "OBJECT_PARITY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "mode"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "OBJECT_PARITY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "mode",
+    "shape",
+    "pool_size",
+    "cursor"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "OBJECT_PARITY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "slot",
+    "types_snapshotted",
+    "types_ranged"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "OBJECT_PARITY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "type",
+    "cursor",
+    "need",
+    "avail"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "OBJECT_PARITY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "type",
+    "need",
+    "budget"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "OBJECT_PARITY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "type",
+    "snap_verts",
+    "range_verts"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "OBJECT_RECON",
+   "ver": 1,
+   "stream": "buffer",
+   "keys": [
+    "bldg_update",
+    "tree_update",
+    "generic_update",
+    "mShape",
+    "shape"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "OBJECT_RECON",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "note"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "OBJ_MVP",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "count"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "OMNI",
+   "ver": -1,
+   "stream": "buffer",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "ORDER_FIXTURE",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "kind",
+    "wid",
+    "tgt",
+    "t"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "ORDER_LIVENESS_SUMMARY",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "issued_move",
+    "moved",
+    "refused",
+    "stalled",
+    "verdict"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "OVERLAY_CEMENT_ADOPT",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "mission",
+    "tiles",
+    "paved_subset",
+    "overlay_id_subset",
+    "art_saved_vs_paved",
+    "art_saved_vs_overlay_id"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "OVERLAY_TEXTURE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "batch",
+    "texHandle",
+    "fallback_bound",
+    "texture",
+    "reason"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "OVERLAY_TEXTURE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "tick",
+    "pushes",
+    "resolved",
+    "resolve_failed",
+    "bound_zero_prevented",
+    "fallback_bound"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "OVERLAY_TILE_HIRES",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "MC2_OVERLAY_TILE_HIRES"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "OVERLAY_TILE_HIRES",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "path",
+    "hits",
+    "misses"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "OVERLAY_TILE_HIRES",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "tileEdge",
+    "dir"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PARITY_DIAG",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "typeId",
+    "inst",
+    "vert",
+    "aRGBLight_tag",
+    "computed_argb"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PARITY_DIAG",
+   "ver": 2,
+   "stream": "stderr",
+   "keys": [
+    "aRGB",
+    "ambR",
+    "ambG",
+    "ambB"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PARITY_DIAG",
+   "ver": 2,
+   "stream": "stderr",
+   "keys": [
+    "aRGB",
+    "lightDir",
+    "cosine"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PARITY_DIAG",
+   "ver": 2,
+   "stream": "stderr",
+   "keys": [
+    "iLight",
+    "type",
+    "aRGB",
+    "dir",
+    "color"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PARITY_DIAG",
+   "ver": 2,
+   "stream": "stderr",
+   "keys": [
+    "numLights"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PARITY_DIAG",
+   "ver": 2,
+   "stream": "stderr",
+   "keys": [
+    "redFinal",
+    "greenFinal",
+    "blueFinal"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PARITY_DIAG",
+   "ver": 2,
+   "stream": "stderr",
+   "keys": [
+    "vertex",
+    "normalShape",
+    "s_numLights"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PARTICLE_FLUSH_STALL",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "path",
+    "calls",
+    "avg_us",
+    "max_us"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PATCH_STREAM",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "bytes",
+    "max_recipes"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PATCH_STREAM",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "bytes_per_slot",
+    "slots"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "PATCH_STREAM",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "reason"
+   ],
+   "count": 4
+  },
+  {
+   "tag": "PATCH_STREAM",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "slot",
+    "key",
+    "cached",
+    "incoming"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PATCH_STREAM",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "slot",
+    "kind",
+    "count",
+    "cap"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "PATROL",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "brain",
+    "unitPos",
+    "wp0",
+    "wpN",
+    "loop"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PATROL",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "rc",
+    "warriorPath",
+    "brain"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PAVED_OVERLAY_CLASS",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "mission",
+    "mode",
+    "flat_baked",
+    "albedo_baked",
+    "global_layer"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PERF",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "avg_fps",
+    "p50_ms",
+    "p99_ms",
+    "p1low_fps",
+    "peak_ms",
+    "samples"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PERSIST_BUCKET_COMPARE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "checks",
+    "mismatches",
+    "stored"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PERSIST_BUCKET_COMPARE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "sample",
+    "event",
+    "stored",
+    "expect",
+    "dirty"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PHOTO",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "key",
+    "path",
+    "node",
+    "gos",
+    "gl",
+    "texWH",
+    "uvXYWH",
+    "uv",
+    "rect"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PICKW",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "drawable",
+    "screenRes",
+    "glViewport"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PICK_CAP",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "mode",
+    "numTiles",
+    "admitted",
+    "contained",
+    "cursor",
+    "hit"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PICK_FALLBACK",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "parity",
+    "coarse",
+    "brute",
+    "coarse_dsq",
+    "brute_dsq",
+    "cursor"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PICK_PARITY",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "screen",
+    "raycast",
+    "cell",
+    "legacy",
+    "cell",
+    "dWorld",
+    "raycastHit"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PICK_RECON",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "calls",
+    "candidates",
+    "inRect",
+    "rectProj",
+    "total_ms",
+    "avg_us",
+    "max_us",
+    "max_candidates_call"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PILOTS",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "loaded",
+    "roster"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PIPELINE_BIND",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "depth",
+    "cull",
+    "frontFace",
+    "polygonOffset",
+    "blend"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PIPELINE_VARIANT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "pipeline",
+    "glProgram",
+    "key",
+    "vertexLayout"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PLAYTEST",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "POSTPROCESS_BLUR",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "PREVIEW",
+   "ver": -1,
+   "stream": "file",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "PREVIEW",
+   "ver": -1,
+   "stream": "file",
+   "keys": [
+    "argb"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PREVIEW",
+   "ver": -1,
+   "stream": "file",
+   "keys": [
+    "bounds",
+    "viewMul",
+    "off",
+    "scale",
+    "Alt",
+    "mechPos"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PREVIEW",
+   "ver": -1,
+   "stream": "file",
+   "keys": [
+    "cameraToClip"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PREVIEW",
+   "ver": -1,
+   "stream": "file",
+   "keys": [
+    "count",
+    "isHUD",
+    "curFbo"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PREVIEW",
+   "ver": -1,
+   "stream": "file",
+   "keys": [
+    "fbo",
+    "depthTest",
+    "depthMask",
+    "cullFace",
+    "frontFace",
+    "cullMode",
+    "vp",
+    "globalScaleFactor",
+    "bounds"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PREVIEW",
+   "ver": -1,
+   "stream": "file",
+   "keys": [
+    "fboAfterBegin"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PREVIEW",
+   "ver": -1,
+   "stream": "file",
+   "keys": [
+    "glErr",
+    "nonBgCount",
+    "bbox"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PREVIEW",
+   "ver": -1,
+   "stream": "file",
+   "keys": [
+    "mechShape"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PREVIEW",
+   "ver": -1,
+   "stream": "file",
+   "keys": [
+    "pObject",
+    "bIsComponent"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PREVIEW",
+   "ver": -1,
+   "stream": "file",
+   "keys": [
+    "screenW",
+    "screenH",
+    "sx",
+    "sy",
+    "bounds"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PREVIEW",
+   "ver": -1,
+   "stream": "file",
+   "keys": [
+    "shouldRender",
+    "visible",
+    "mechShape",
+    "currentLOD"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PREVIEW",
+   "ver": -1,
+   "stream": "file",
+   "keys": [
+    "tex",
+    "panel",
+    "uv",
+    "readyForUi"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PREVIEW",
+   "ver": -1,
+   "stream": "file",
+   "keys": [
+    "viewMul",
+    "viewAdd",
+    "EnvScreen",
+    "bounds"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PREVIEW",
+   "ver": -1,
+   "stream": "file",
+   "keys": [
+    "z"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PROJECTED_DECALS",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "enabled",
+    "MC2_PROJECTED_DECALS"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PROJECTZ",
+   "ver": 1,
+   "stream": "buffer",
+   "keys": [
+    "trace",
+    "heatmap",
+    "summary",
+    "guard_px"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PROJECTZ",
+   "ver": 1,
+   "stream": "file",
+   "keys": [
+    "callsiteId",
+    "file",
+    "line",
+    "cat",
+    "branch",
+    "point",
+    "signedW",
+    "legacyRhw",
+    "trueSignedRhw",
+    "rawClip",
+    "screen",
+    "legacyAccepted",
+    "legacyRect",
+    "legacyRectFinite",
+    "homogClip",
+    "rectSignedW",
+    "rectNearFar",
+    "rectGuard",
+    "homogClipFull",
+    "consumes_z"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PROJECTZ",
+   "ver": 1,
+   "stream": "file",
+   "keys": [
+    "callsiteId",
+    "quad",
+    "cluster",
+    "file",
+    "line",
+    "v0.legacy",
+    "v1.legacy",
+    "v2.legacy",
+    "trianglePolicy_any",
+    "trianglePolicy_all",
+    "trianglePolicy_majority",
+    "currentSubmitted",
+    "containsLegacyRejectedVertex",
+    "screenAreaPixels"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PROJECTZ",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "PROJECTZ",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "MC2_PROJECTZ_TRACE",
+    "SUMMARY"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PROJECTZ",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "frames"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PROPROW",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "ri",
+    "type",
+    "tname",
+    "alpha",
+    "leaves",
+    "name",
+    "ldi",
+    "baked",
+    "nL",
+    "amb",
+    "sun",
+    "pos"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PROP_LIGHT_PROBE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "lightingReady",
+    "haveLightFeed",
+    "tier1",
+    "wantLighting",
+    "wantMaterial",
+    "materialReady",
+    "iblShStrength",
+    "iblSh0",
+    "lightDataCpuBytes",
+    "terrainSun"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PROP_LIGHT_VERTEX_PROBE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "PROP_LIGHT_VERTEX_PROBE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "idx",
+    "numLights",
+    "ambient",
+    "sunColor",
+    "sunFound"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PROP_MIP_PROBE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "tag",
+    "glTexArray",
+    "w",
+    "h",
+    "layers",
+    "glTexMaxLevel",
+    "vkComputedMips",
+    "vkSamplerMaxLod"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PROP_REINJECT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "QUADSETUP_SKIP",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "fullyArmed",
+    "skip",
+    "quadsSkipped",
+    "waterCandidates",
+    "pickingCarveout"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "RDOC",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "MC2_RDC_CAPTURE_PATH"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "RDOC",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "local_frame"
+   ],
+   "count": 3
+  },
+  {
+   "tag": "RDOC",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "local_frame",
+    "since_arm"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "RDOC",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "reason"
+   ],
+   "count": 3
+  },
+  {
+   "tag": "RDOC",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "reason",
+    "hint"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "RDOC",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "template"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "RDOC",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "version",
+    "capture_frame",
+    "exit_after"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "RECT_CORRIDOR_SHADOW",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "calls",
+    "full_nodes",
+    "rect0_same",
+    "rect0_nodes",
+    "rect0_reduct_pct",
+    "fallback0",
+    "rect1_same",
+    "rect1_nodes",
+    "rect1_reduct_pct",
+    "fallback1",
+    "rect2_same",
+    "rect2_nodes",
+    "rect2_reduct_pct",
+    "fallback2",
+    "max_node_reduction_pct_pad1"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "REGFLUSH_DIAG",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "calls",
+    "ranges_seen",
+    "tombstone",
+    "stale_frame",
+    "stale_after_drawn",
+    "drawn",
+    "leaves_appended",
+    "liveSize",
+    "mean_us"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "REGFLUSH_GUARD2",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "typeID",
+    "regIdx",
+    "streak",
+    "currentFrame",
+    "cachedFrame",
+    "staleTotalForType"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "REGFLUSH_GUARD2",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "persistent_vanish",
+    "stale_types",
+    "worst_typeID",
+    "worst_stale_total",
+    "live_streaks"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "REGFLUSH_MULTI",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "sample",
+    "regIdx",
+    "count",
+    "firstTypeID",
+    "multi"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "REGFLUSH_TYPEHIST",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "REGFLUSH_TYPEHIST",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "typeID",
+    "count"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "RENDERER_FEATURES",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "env"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "RENDERER_FEATURES",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "gl",
+    "ssbo",
+    "tess",
+    "compute",
+    "indirect",
+    "bindless",
+    "clipctrl",
+    "dsa",
+    "max_color_attach",
+    "max_ssbo_bind",
+    "max_tess_level"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "RENDERLISTS_COST",
+   "ver": 1,
+   "stream": "buffer",
+   "keys": [
+    "event",
+    "frames",
+    "nodes",
+    "hw_nodes"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "RENDER_BACKEND",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "RENDER_BACKEND",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "MC2_RENDER_BACKEND"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "RENDER_CONTRACT",
+   "ver": 2,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "RENDER_CONTRACT_ASSERT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "pass",
+    "hint"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "RENDER_PASS",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "RENDER_PASS",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "frame",
+    "pass",
+    "fbo",
+    "viewport",
+    "drawbuffers",
+    "phase",
+    "hint"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "RENDER_PASS_CONTRACT",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "depth",
+    "pass",
+    "hint"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "RENDER_PASS_CONTRACT",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "end",
+    "hint",
+    "open",
+    "openedBy",
+    "depth"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "RENDER_PASS_CONTRACT",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "pass",
+    "hint",
+    "depth"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "RENDER_PASS_CONTRACT",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "trace",
+    "assert"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "RENDER_PASS_ORDER",
+   "ver": 3,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "RENDER_PASS_TELEMETRY",
+   "ver": 3,
+   "stream": "stderr",
+   "keys": [
+    "pass"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "RENDER_PASS_TIME",
+   "ver": 1,
+   "stream": "buffer",
+   "keys": [
+    "frame",
+    "n",
+    "gpu_total"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "RENDER_PASS_TIME",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "every",
+    "ring"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "RENDER_PASS_TIME",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "frame",
+    "n",
+    "dropped"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "RENDER_PATH",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "key",
+    "isOverride",
+    "path",
+    "pools"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "RENDER_SNAPSHOT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 2
+  },
+  {
+   "tag": "RENDER_SNAPSHOT",
+   "ver": 3,
+   "stream": "stderr",
+   "keys": [
+    "frame"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "RENDER_SNAPSHOT",
+   "ver": 3,
+   "stream": "stderr",
+   "keys": [
+    "frame",
+    "attempted",
+    "count_mismatch",
+    "pkt_mismatch",
+    "meta_mismatch",
+    "fallback"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "RENDER_SNAPSHOT",
+   "ver": 3,
+   "stream": "stderr",
+   "keys": [
+    "frame",
+    "attempted",
+    "count_mismatch",
+    "pkt_mismatch",
+    "meta_mismatch",
+    "fallback",
+    "using_snapshot"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "RENDER_STATES",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "idx",
+    "cur",
+    "ren"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "RENDER_WORLD_SELFTEST",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "result",
+    "step"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "RENDER_WORLD_SELFTEST",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "result",
+    "step",
+    "reason"
+   ],
+   "count": 9
+  },
+  {
+   "tag": "RESOLUTION",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 2
+  },
+  {
+   "tag": "RESOLUTION",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "fullscreen"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "RESOLVE_PROBE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "groups",
+    "staging"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "RESOLVE_PROBE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "handle"
+   ],
+   "count": 3
+  },
+  {
+   "tag": "RESOLVE_PROBE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "handle",
+    "img",
+    "isLoaded",
+    "gosHandle"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "RES_DIAG",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "origin",
+    "size"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "RES_DIAG",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "resizable",
+    "windowed_env",
+    "windowed_hint"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "RES_DIAG",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "sceneFBO",
+    "screenWidth",
+    "drawable"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "REVERSE_Z",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "n",
+    "mode",
+    "near",
+    "far",
+    "FF",
+    "B",
+    "ndcZ_near",
+    "ndcZ_far"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "RING",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "frame",
+    "slot",
+    "fence",
+    "wait",
+    "wait_us",
+    "mvpFp"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "RING",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "frame",
+    "slot",
+    "fence",
+    "wait",
+    "wait_us",
+    "prev_visible",
+    "near_w",
+    "peak",
+    "peakNearW",
+    "mvpFp"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "RING_CMDFIELDS",
+   "ver": 1,
+   "stream": "file",
+   "keys": [
+    "count",
+    "inst",
+    "first",
+    "base",
+    "bad_count"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "RING_CMDFIELDS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "count",
+    "inst",
+    "first",
+    "base",
+    "bad_count"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "RING_MVP_DELTA",
+   "ver": 1,
+   "stream": "file",
+   "keys": [
+    "bridge_frame",
+    "dispatch_frame",
+    "dispatch_fp",
+    "draw_fp",
+    "count"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "RING_MVP_DELTA",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "bridge_frame",
+    "dispatch_frame",
+    "dispatch_fp",
+    "draw_fp",
+    "count"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "RUNWAY_EDGE_BLEND",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "feathered_solid_tiles"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SALVAGE",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "SAVELOAD",
+   "ver": -1,
+   "stream": "file",
+   "keys": [
+    "op",
+    "file",
+    "mission"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SCENE_LIGHTING",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "frame"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SCENE_LIGHTING",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "frame",
+    "sun_cam",
+    "sun_terrain",
+    "shadow",
+    "dtheta_cam_terrain",
+    "sun_rgb",
+    "intensity",
+    "ambient_rgb",
+    "worldLights",
+    "active",
+    "sky",
+    "ibl_sh",
+    "sun_match",
+    "cum_sun_mismatch"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SCREENSHOT",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "frame"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "SEAMPROBE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "name",
+    "batchSize",
+    "regIdx",
+    "firstTypeID"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SEAMPROBE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "name",
+    "leaf",
+    "child",
+    "node"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SEAMPROBE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "name",
+    "leaf",
+    "child",
+    "node",
+    "typeID"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SEAMPROBE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "name",
+    "lod",
+    "batchSize",
+    "regIdx",
+    "firstTypeID"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SEAMPROBE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "name",
+    "lod",
+    "leaf",
+    "child",
+    "node"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SEAMPROBE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "name",
+    "lod",
+    "leaf",
+    "child",
+    "node",
+    "typeID"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SEAMPROBE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "name",
+    "reason"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SEAMPROBE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "name",
+    "registered",
+    "hasShape",
+    "enabled",
+    "eligible",
+    "renderShape"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SEAMPROBE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "name",
+    "registered",
+    "hasShape",
+    "enabled",
+    "renderShape"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SEAMPROBE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "sample",
+    "layer",
+    "type",
+    "pkt",
+    "nodeIdx",
+    "gosHandle",
+    "glTexId",
+    "W",
+    "H",
+    "override",
+    "uniques"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SEAMPROBE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "sample",
+    "name",
+    "isnow",
+    "reg",
+    "shapeMatch",
+    "needBake",
+    "elig",
+    "recipeIdx",
+    "spin",
+    "drawFlash",
+    "destructFX",
+    "activity",
+    "activity1",
+    "animState"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SEAMPROBE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "sample",
+    "regIdx",
+    "firstTypeID",
+    "count",
+    "extentRadius",
+    "rootCtr"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SEAMPROBE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "sample",
+    "src",
+    "typeID",
+    "numTris",
+    "numVerts",
+    "finalized"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SEAMPROBE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "type",
+    "pkt",
+    "layer",
+    "group"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SEAMPROBE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "typeID",
+    "src",
+    "packetCount",
+    "vertexCount",
+    "hasRange",
+    "instanceCount"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SHADER",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 2
+  },
+  {
+   "tag": "SHADER ERROR",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 2
+  },
+  {
+   "tag": "SHADER ERROR",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "id"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SHADOWFRUSTUM",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "n",
+    "sunDirIn",
+    "sunDirNorm",
+    "mapHalfExtent",
+    "near",
+    "far",
+    "coversWorldXY"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SHADOWSTATIC",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "builds",
+    "RV",
+    "quads",
+    "tris",
+    "verts",
+    "bboxXY",
+    "mapHalfWorld",
+    "maxChunkVerts"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SHADOWZRANGE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "cascade",
+    "ndcZ",
+    "inRange"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SHADOWZRANGE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "pt",
+    "world",
+    "clipZ",
+    "clipW",
+    "ndcZ",
+    "inRange"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "SHADOW_CULL",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "margin"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SHADOW_CULL_DBG",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "world",
+    "clipW",
+    "ndc",
+    "keep"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SHADOW_DEBUG",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "MC2_SHADOW_DEBUG_MODE"
+   ],
+   "count": 3
+  },
+  {
+   "tag": "SHADOW_DIAG",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "finalized",
+    "vao",
+    "isVao",
+    "ssbo",
+    "isBuf",
+    "elemBind",
+    "prog",
+    "link",
+    "errPre",
+    "typeRanges",
+    "types",
+    "packets"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SHADOW_DIAG",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "type",
+    "byteOff",
+    "byteSize",
+    "instCnt",
+    "firstPkt",
+    "pktCnt",
+    "pktIdx",
+    "idxCnt",
+    "firstIdx",
+    "baseV",
+    "errPre"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SHADOW_DYN_PROP",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "recipes_in",
+    "types",
+    "inst",
+    "draws"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SHADOW_FRUSTUM_DIAG",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "focusCenter",
+    "focusWorld",
+    "focusXYDist",
+    "nearSpread",
+    "farSpread"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SHADOW_FRUSTUM_DIAG",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "frame",
+    "sunDir",
+    "lightAABB",
+    "worldCenter",
+    "fitRadius",
+    "orig",
+    "xyRadius",
+    "mapClampR",
+    "texelWU",
+    "orthoWH",
+    "validCorners",
+    "mapSize"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SHADOW_MECH",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "SHADOW_MECH",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "prog"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SHADOW_STATE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "pass",
+    "fbo",
+    "vp",
+    "clearDepth",
+    "depthTest",
+    "depthFunc",
+    "depthMask",
+    "colorMask",
+    "cull",
+    "clipOrigin",
+    "clipDepth",
+    "restored"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SHADOW_STATIC_BLDG",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "recipes_in",
+    "types",
+    "inst",
+    "draws"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SHADOW_STATIC_BLDG_REBAKE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "recipeIndex"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SHADOW_STATIC_BLDG_REBAKE_TEST",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "frame",
+    "buildingIndex"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SHADOW_STATIC_BLDG_TXM",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "prepass"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SHADOW_STATIC_BLDG_TXM",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "prepass",
+    "instances"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SHADOW_STATIC_PROP",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 3
+  },
+  {
+   "tag": "SHADOW_STATIC_PROP",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "prog"
+   ],
+   "count": 3
+  },
+  {
+   "tag": "SHAPE_C",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "checks",
+    "mismatches"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SHAPE_C",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "site",
+    "tileR",
+    "tileC",
+    "inline",
+    "cached"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SIMID",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "simframe",
+    "t",
+    "n",
+    "graded",
+    "visual",
+    "strict"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SMOKE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "SMOKE",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "mode",
+    "mission",
+    "profile",
+    "duration",
+    "seed"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SMOKE",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "result",
+    "duration_actual_ms",
+    "frames"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SMOKE",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "result",
+    "reason",
+    "stage"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "SMOKE",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "result",
+    "reason",
+    "stage",
+    "detail"
+   ],
+   "count": 3
+  },
+  {
+   "tag": "SMOKE",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "stem",
+    "source"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SMOKE_CLOCK_PROBE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "frame",
+    "scenarioTime"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SMOKE_FIXED_TIMESTEP",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "dt_ms",
+    "fps"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SNAPSHOT_BRIDGE_COMPARE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "path",
+    "frame",
+    "regGen",
+    "cullVer",
+    "rowCount",
+    "oracleCount",
+    "rowCountMismatch",
+    "immutableMismatch",
+    "hasCullMismatch"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SOAK",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 3
+  },
+  {
+   "tag": "SOAK",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "brain",
+    "loaded"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SOAK",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "deployed",
+    "distinct",
+    "pilots",
+    "fromSalvage",
+    "fromBuy",
+    "salvageCands",
+    "buyCands",
+    "missionNum"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SOAK",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "items",
+    "first"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SOAK",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "killed",
+    "first"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SOAK",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "loaded",
+    "failed"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SOAK",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "mech",
+    "tons",
+    "pilot",
+    "deployed",
+    "maxDrop",
+    "pool"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SOAK",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "mission",
+    "stage"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SOAK",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "mission",
+    "t"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SOAK",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "name",
+    "errors"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SOAK",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "name",
+    "present"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SOAK",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "name",
+    "variant",
+    "pilot"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SOAK",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "pilot",
+    "rankBefore",
+    "rankAfter",
+    "ok"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SOAK",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "reason",
+    "pool",
+    "maxDrop"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SOAK",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "screen"
+   ],
+   "count": 4
+  },
+  {
+   "tag": "SOAK",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "screen",
+    "ok",
+    "items"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "SOAK",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "screen",
+    "ok",
+    "reason"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SOAK",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "slot",
+    "mech"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "SOAK",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "slot",
+    "mech",
+    "tons",
+    "src"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SOAK",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "slot",
+    "variant"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "SOAK",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "variant"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SPAWN_PROBE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "spec",
+    "mlrHandle",
+    "renderState",
+    "permMask",
+    "deltaMask"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SPFLUSH_CACHED_COMPARE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "checked",
+    "mismatches"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SPFLUSH_CACHED_COMPARE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "sample",
+    "event",
+    "recipe",
+    "field",
+    "cached_light",
+    "legacy_light"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SPFLUSH_CACHED_COMPARE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "sample",
+    "event",
+    "recipe",
+    "field",
+    "hash_cached",
+    "hash_legacy"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SPFLUSH_COST_SPLIT",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "frames",
+    "leaves",
+    "ranges",
+    "submit_loop_ns",
+    "inst_build_ns",
+    "map_lookup_ns",
+    "color_fill_ns",
+    "actor_record_ns",
+    "world_to_block_ns",
+    "substrate_append_ns",
+    "baseinstance_upload_ns",
+    "total_ns",
+    "submit_ns",
+    "records_ns",
+    "builds_pf",
+    "hits_pf",
+    "invalidates",
+    "registrations",
+    "rebuilds",
+    "light_writes",
+    "invalidates",
+    "registrations",
+    "rebuilds",
+    "light_writes"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SPIRV",
+   "ver": -1,
+   "stream": "log",
+   "keys": [],
+   "count": 8
+  },
+  {
+   "tag": "SPIRV",
+   "ver": -1,
+   "stream": "log",
+   "keys": [
+    "key"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SPLATTING",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 5
+  },
+  {
+   "tag": "SPLATTING",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "id"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SPLATTING",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "width"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SPOTLIGHT_REAL_TRACE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "site",
+    "frames",
+    "window_spotlight_submits",
+    "mono_spotlight_submits"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SPOT_DIAG",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "calls",
+    "avg_active_per_shape",
+    "avg_inactive_per_shape",
+    "avg_point_active_per_shape"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SPOT_DIAG",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "class",
+    "calls",
+    "actors_first_hit",
+    "lights_registered",
+    "overflows"
+   ],
+   "count": 3
+  },
+  {
+   "tag": "SPOT_DIAG",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "frame",
+    "slot",
+    "src",
+    "active",
+    "pos"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SPOT_DIAG",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "frames",
+    "point_slots_seen",
+    "active_true_pct",
+    "active_false_pct",
+    "samples"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SSAO",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "MC2_SSAO_BLUR",
+    "aoRadius",
+    "aoRadius",
+    "MC2_SSAO_RADIUS"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "STABLE_LIGHT_SKIP",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "MC2_STABLE_LIGHT_SKIP"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "STABLE_LIGHT_SKIP",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "armed",
+    "eligible",
+    "skip",
+    "emit",
+    "miss_notRegistered",
+    "miss_noValidLight",
+    "miss_envGen",
+    "miss_needsFullBake",
+    "miss_invalidLightIdx"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "STATICPROP_BC7",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "group",
+    "buckets",
+    "total_bytes"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "STATICPROP_BC7",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "group",
+    "dims",
+    "layers",
+    "format",
+    "bytes"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "STATICPROP_BC7",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "group",
+    "dims",
+    "layers",
+    "format",
+    "levels",
+    "srcVkFormat",
+    "bytes"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "STATICPROP_BC7",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "group",
+    "dims",
+    "reason"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "STATICPROP_BC7",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "group",
+    "layers",
+    "dims",
+    "levels",
+    "internalformat",
+    "bytes"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "STATICPROP_BC7",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "group",
+    "reason"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "STATICPROP_BC7",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "group",
+    "srcVkFormat"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "STATICPROP_ORM",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "group",
+    "dims",
+    "layers",
+    "format",
+    "levels",
+    "realMaps"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "STATICPROP_ORM",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "group",
+    "dims",
+    "layers",
+    "format",
+    "realMaps"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "STATICPROP_ORM",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "layer",
+    "group",
+    "sidecar",
+    "reason",
+    "got",
+    "want"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "STATICPROP_ORM_PROBE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "group",
+    "layer",
+    "dims",
+    "src",
+    "sidecar"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "STATIC_LIGHT_ROW",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "class",
+    "regIdx",
+    "typeID",
+    "leaves",
+    "lightIdx",
+    "numLights",
+    "tableCount",
+    "rngLightIdx",
+    "multiCache"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "STATIC_LIGHT_ROW",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "frame",
+    "sentinel",
+    "out_of_range",
+    "empty_row",
+    "bad_leaves"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "STATIC_LIGHT_ZERO",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "frame",
+    "aliveProps",
+    "zeroLightSlots",
+    "eager"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "STATIC_NATURAL_SKIP",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "frame",
+    "eligible",
+    "natural",
+    "skipped",
+    "falling",
+    "justCreated",
+    "miss_notStaticNow",
+    "miss_static_unregistered",
+    "miss_static_shape",
+    "miss_static_fullBake",
+    "miss_static_other",
+    "miss_unreg_treeAppr",
+    "miss_unreg_bldgAppr",
+    "miss_unreg_otherAppr",
+    "miss_unreg_objTree",
+    "miss_unreg_objTerrain",
+    "miss_unreg_objBuilding",
+    "miss_unreg_objOther",
+    "miss_special",
+    "miss_alarm",
+    "miss_lookout",
+    "miss_sensor",
+    "miss_power",
+    "miss_control",
+    "miss_mechBay",
+    "miss_falling",
+    "miss_justCreated",
+    "nonNatural",
+    "unknown",
+    "updated",
+    "bldg_candidates",
+    "bldg_skipped",
+    "bldg_miss_notStaticNow"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "STATIC_POP_SPLIT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "bytes"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "STATIC_POP_SPLIT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "total",
+    "cap"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "STATIC_POP_SPLIT_CMD",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "pkts",
+    "nonZeroCmds",
+    "offCmds",
+    "count",
+    "storeTotal"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "STATIC_PROP",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "STATIC_PROP_BAKE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "note"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "STATIC_PROP_REGISTRY",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "typeID",
+    "regIdx",
+    "currentFrame",
+    "cachedFrame"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "STATIC_PROP_REGISTRY",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "typeID"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "STATIC_REG_HEALTH",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "unreg_rank",
+    "type",
+    "count"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "STATIC_REG_INVALID",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "kind",
+    "reason",
+    "regIdx",
+    "actor"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "STATIC_UPDATE",
+   "ver": 1,
+   "stream": "buffer",
+   "keys": [
+    "frame",
+    "seen",
+    "run",
+    "skip",
+    "dyn_falling",
+    "dyn_other",
+    "delta_seen",
+    "delta_run",
+    "delta_skip"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SUBMIT_TYPEHIST",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "trigger",
+    "calls"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SUBMIT_TYPEHIST",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "typeID",
+    "name",
+    "count",
+    "alphaClass",
+    "packets",
+    "verts",
+    "indices"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TACMAP",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 2
+  },
+  {
+   "tag": "TACMAP",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "buildingCount",
+    "size"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TERRAIN",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "resultTexture",
+    "max",
+    "posX",
+    "posY",
+    "txmX",
+    "txmY"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TERRAIN_AMBIENT_FLOOR",
+   "ver": 2,
+   "stream": "stderr",
+   "keys": [
+    "floor",
+    "dayGate",
+    "raw_dayGate",
+    "night_floor",
+    "night_env_set",
+    "floor_env_set",
+    "runtime_isNight",
+    "runtime_nightFactor",
+    "runtime_lightDirZ"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TERRAIN_CONTROLMAP",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "TERRAIN_CONTROLMAP",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "handle",
+    "side",
+    "bytes"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TERRAIN_CONTROLMAP",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "path"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "TERRAIN_CONTROLMAP",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "path",
+    "got",
+    "want"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TERRAIN_CONTROLMAP",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "path",
+    "mapSide"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TERRAIN_CONTROLMAP",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "path",
+    "read",
+    "want"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TERRAIN_CONTROLMAP",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "path",
+    "side"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TERRAIN_CULL_PROBE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "path",
+    "frame",
+    "cull",
+    "cullMode",
+    "frontFace"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TERRAIN_DECAL",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "MC2_TERRAIN_DECAL_SCALE",
+    "MC2_TERRAIN_DECAL_OFFSET",
+    "MC2_TERRAIN_DECAL_LATERAL",
+    "MC2_TERRAIN_DECAL_LIFT",
+    "MC2_TERRAIN_DECAL_YAW",
+    "MC2_TERRAIN_DECAL_PITCH"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TERRAIN_DECAL",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "name",
+    "pos",
+    "scale",
+    "offset",
+    "lateral",
+    "lift",
+    "yaw"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TERRAIN_DRAWPASS",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "reason"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TERRAIN_HEIGHT_TEX",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "handle",
+    "sourceSide",
+    "factor",
+    "renderSide",
+    "wuPerSample",
+    "topLeft",
+    "bytes"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TERRAIN_HEIGHT_TEX",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "side",
+    "stride",
+    "elevOff",
+    "blocks"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TERRAIN_INDIRECT",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "reason"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TERRAIN_INDIRECT",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "cells",
+    "verts",
+    "vbo_gl"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TERRAIN_INDIRECT",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "mineSlot",
+    "blownSlot",
+    "gltex",
+    "dim"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TERRAIN_INDIRECT",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "path",
+    "armed",
+    "gate",
+    "note"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TERRAIN_INDIRECT",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "path",
+    "gate"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TERRAIN_INDIRECT",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "reason",
+    "mine",
+    "blown"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TERRAIN_LIGHTING_PARITY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "frame",
+    "vertex",
+    "field",
+    "legacy",
+    "gpu"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TERRAIN_LIGHTING_PARITY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "frames",
+    "verts_checked",
+    "total_mismatches"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TERRAIN_MASK_UPLOAD_STATS",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "bytes",
+    "orphans",
+    "totalBytes"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TERRAIN_MAT_TEX",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 5
+  },
+  {
+   "tag": "TERRAIN_MAT_TEX",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "levels"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TERRAIN_MAT_TEX",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "levels",
+    "vram",
+    "tex"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TERRAIN_MAT_TEX",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "mips"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TERRAIN_MAT_TEX",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "mips",
+    "mips"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TERRAIN_MAT_TEX",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "vkFormat"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TERRAIN_OVERLAY",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "reason",
+    "verts"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TERRAIN_OVERLAY",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "tile",
+    "world",
+    "type",
+    "off",
+    "cement",
+    "alpha",
+    "ovHandle",
+    "terrHandle"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TERRAIN_OVERLAY",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "tileR",
+    "tileC",
+    "mapSide",
+    "half",
+    "wupv",
+    "elev_identical",
+    "c0",
+    "c1",
+    "c2",
+    "c3",
+    "elev_raw"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TERRAIN_OVERLAY",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "tris"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TERRAIN_OVERLAY",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "tris",
+    "verts",
+    "ranges",
+    "vbo_gl"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TERRAIN_OVERLAY",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "vbo_gl",
+    "kept"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TERRAIN_OVERLAY_V2",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "TERRAIN_OVERLAY_V2",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "handle",
+    "w",
+    "h",
+    "bytes",
+    "bounds"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TERRAIN_OVERLAY_V2",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "path"
+   ],
+   "count": 4
+  },
+  {
+   "tag": "TERRAIN_OVERLAY_V2",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "path",
+    "read",
+    "want"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TERRAIN_OVERLAY_V2",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "path",
+    "size",
+    "bounds"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TERRAIN_RUNTIME",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "side",
+    "samples",
+    "gameplay",
+    "visual",
+    "material",
+    "water"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TERRAIN_SHORELINE",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "path"
+   ],
+   "count": 3
+  },
+  {
+   "tag": "TERRAIN_SHORELINE",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "path",
+    "read",
+    "want"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TERRAIN_SOLID_WINDOW",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "dropped",
+    "frame"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TERRAIN_SOLID_WINDOW",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "frame",
+    "window",
+    "ref_visible",
+    "dropped"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TERRAIN_SOLID_WINDOW",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "frames",
+    "max_window",
+    "total_dropped"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TESS",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 4
+  },
+  {
+   "tag": "TESS",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "MC2_TERRAIN_TESS"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TESS",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "TCS",
+    "TES"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TESS",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "capacity",
+    "vb"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TESS",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "id",
+    "size"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TEXLOAD",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "uniq",
+    "name"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TEXMGR_BC7",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "TEXMGR_BC7",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "name"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "TEXMGR_BC7",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "name",
+    "fmt",
+    "bytes"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TEXMGR_BC7",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "name",
+    "fmt",
+    "err"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TEXMGR_KTX_PRIMARY",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "TEX_LIFECYCLE",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "multiType",
+    "texNum",
+    "nodeIdx",
+    "numTex",
+    "total"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TEX_LIFECYCLE",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "totalPinCalls",
+    "totalUnpinCalls",
+    "leakedPins"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TGL_POOL",
+   "ver": 1,
+   "stream": "buffer",
+   "keys": [
+    "event",
+    "pool",
+    "peak",
+    "pct"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "TGL_POOL",
+   "ver": 1,
+   "stream": "buffer",
+   "keys": [
+    "frame",
+    "pool",
+    "nulls",
+    "first_caller",
+    "shape",
+    "req",
+    "high_water",
+    "mono_total"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TGL_POOL",
+   "ver": 1,
+   "stream": "buffer",
+   "keys": [
+    "mono_total",
+    "since"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "THIN_DEBUG",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "frame",
+    "fast",
+    "legacy",
+    "fail_active",
+    "fail_thin",
+    "fail_ready",
+    "fail_over",
+    "fail_handle0",
+    "fail_overlay",
+    "fail_water"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "THIN_DEBUG",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "proj_row0",
+    "proj_row1",
+    "tmvp_diag"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "THIN_TERRAIN",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "THIN_TERRAIN",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "prog"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TILE_CENSUS",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "terr",
+    "tex",
+    "ov",
+    "cement",
+    "alpha",
+    "n",
+    "bbox"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TIME",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "t",
+    "phase"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TIMING",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "elapsed_ms"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TOBJPARITY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "samples",
+    "violations"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TOBJSPLIT",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "frames",
+    "angular_cyc_per_frame",
+    "proj_cyc_per_frame",
+    "update_cyc_per_frame"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TOMBDIAG",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "sample",
+    "frame",
+    "regIdx",
+    "count",
+    "multi",
+    "typeID"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TRACY",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 2
+  },
+  {
+   "tag": "TREE_REG_DIAG",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "sample",
+    "appearType",
+    "lod",
+    "numShapes",
+    "total",
+    "pm_skip",
+    "h_skip",
+    "unreg_skip",
+    "added"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TUBE_PROFILE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "spec",
+    "type",
+    "activeMax",
+    "maxProf"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TXM",
+   "ver": -1,
+   "stream": "buffer",
+   "keys": [
+    "nodeName",
+    "handle",
+    "lzCompSize"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TXM",
+   "ver": 1,
+   "stream": "buffer",
+   "keys": [
+    "event",
+    "peak_textures"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "TXMMGR_BOUNDS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "need",
+    "cur",
+    "total"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "TXMMGR_BOUNDS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "vertex_block_exhausted",
+    "block_exhausted",
+    "add_vertices_overflow_prevented",
+    "add_shape_overflow_prevented"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TXMMGR_FLUSH",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "mission_index",
+    "before_flush_used",
+    "freed_count",
+    "kept_neverflush_count",
+    "kept_other_count",
+    "after_flush_used"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TXMMGR_SURVIVOR",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "mission_index",
+    "rank",
+    "count",
+    "key"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TXMMGR_TEXTURE_AUDIT",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "mission_index",
+    "total_nodes_used",
+    "neverflush_nodes",
+    "flushable_nodes",
+    "gos_handles_live",
+    "allocated_this_mission",
+    "released_on_flush",
+    "survived_flush",
+    "anonymous_nodes",
+    "from_memory_nodes"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "TerrainLOD parity",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "legacy",
+    "chunk"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "UI_AMBIENT_GUARD",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "phase",
+    "pass",
+    "cmMiss",
+    "dfMiss",
+    "blMiss",
+    "dwMiss",
+    "vpMiss",
+    "cm",
+    "df",
+    "bl",
+    "dw",
+    "vp",
+    "cm",
+    "df",
+    "bl",
+    "dw",
+    "vp"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "UI_DEFS",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "VANISH_PROBE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "frame",
+    "inst",
+    "world",
+    "clip",
+    "w",
+    "ndc",
+    "inFrustum"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VANISH_PROBE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "frame",
+    "storeCount",
+    "sampled",
+    "inFrustum"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VEG",
+   "ver": 3,
+   "stream": "file",
+   "keys": [
+    "cells_total",
+    "oob",
+    "terrain_type_reject",
+    "water",
+    "density",
+    "overlay",
+    "instances",
+    "max",
+    "mapSpan",
+    "waterElev",
+    "elevRange"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VEG",
+   "ver": 3,
+   "stream": "file",
+   "keys": [
+    "row",
+    "col",
+    "F",
+    "S",
+    "H"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VEG",
+   "ver": 3,
+   "stream": "file",
+   "keys": [
+    "tried",
+    "rej_water",
+    "rej_hard",
+    "rej_none_fringe",
+    "rej_overlay",
+    "rej_slope",
+    "passed"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VEG_SUMMARY",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "instance_count",
+    "draw_calls",
+    "flush_reason"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VERIFY",
+   "ver": -1,
+   "stream": "buffer",
+   "keys": [],
+   "count": 2
+  },
+  {
+   "tag": "VERIFY",
+   "ver": -1,
+   "stream": "buffer",
+   "keys": [
+    "fires",
+    "total",
+    "mode",
+    "label"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VERIFY",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "MC2_VERIFY_MODE"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VFX_AGE_SAMPLE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "resolved",
+    "min",
+    "max",
+    "fallback"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VFX_GPU_SIM",
+   "ver": 2,
+   "stream": "stderr",
+   "keys": [],
+   "count": 2
+  },
+  {
+   "tag": "VFX_GPU_SIM",
+   "ver": 2,
+   "stream": "stderr",
+   "keys": [
+    "class",
+    "calls",
+    "instances",
+    "count",
+    "groups",
+    "cpuActiveSum",
+    "compared",
+    "aliveGPU",
+    "aliveRef",
+    "maxAgeError",
+    "maxPosError",
+    "dt",
+    "compareStatus",
+    "GPU"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VFX_GPU_SIM",
+   "ver": 2,
+   "stream": "stderr",
+   "keys": [
+    "class",
+    "dispatched",
+    "lastCount"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VFX_GPU_SIM",
+   "ver": 2,
+   "stream": "stderr",
+   "keys": [
+    "class",
+    "instances",
+    "count",
+    "groups"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "VFX_GPU_SIM",
+   "ver": 2,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "prog",
+    "recordBytes"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VFX_GPU_SIM",
+   "ver": 2,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "source_missing"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VFX_MESH",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VFX_MESH",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "calls",
+    "submitted",
+    "fallback",
+    "unsupported",
+    "missingMesh",
+    "missingMat",
+    "drawCalls",
+    "meshesCached"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VFX_MESH",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "flushCalls",
+    "instancesSubmitted",
+    "drawsIssued",
+    "missingTexture",
+    "meshesUploaded"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VFX_MESH",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "instances",
+    "uploads"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VFX_MESH",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "meshId",
+    "prims",
+    "verts",
+    "indices",
+    "tex",
+    "blend",
+    "scale"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VFX_MESH",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "meshId",
+    "verts",
+    "indices",
+    "cacheSize"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VFX_MESH",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "prog"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VFX_ORACLE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "class",
+    "calls",
+    "active_this_call",
+    "harvested_this_call",
+    "emitted_this_call",
+    "harvestedTotal",
+    "fallback",
+    "alpha_this_call"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VFX_ORACLE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "class",
+    "calls",
+    "active_this_call",
+    "harvested_this_call",
+    "emitted_this_call",
+    "harvestedTotal",
+    "fallback",
+    "alpha_this_call",
+    "age_this_call"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "VFX_ORACLE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "class",
+    "spec",
+    "active",
+    "harvested",
+    "alpha",
+    "size",
+    "spin",
+    "atlas",
+    "ageRange"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VFX_ORACLE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "class",
+    "spec",
+    "active",
+    "harvested",
+    "alpha",
+    "uvRect",
+    "atlasColumns",
+    "sizeRange",
+    "spinRange",
+    "ageRange"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VFX_ORACLE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "class",
+    "spec",
+    "animated",
+    "active",
+    "harvested",
+    "alpha",
+    "atlasColumns",
+    "frameRange",
+    "sizeRange",
+    "spinRange",
+    "ageRange"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VFX_ORACLE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "class",
+    "spec",
+    "animated",
+    "atlasColumns",
+    "sizeRange",
+    "uvRect",
+    "alpha",
+    "ageRange"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VFX_TUBE_UPLOAD_STATS",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "records",
+    "posVerts",
+    "uploadBytes",
+    "baselineBytes",
+    "savedBytes",
+    "heapAllocs"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VIDEO",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 3
+  },
+  {
+   "tag": "VIDEO",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "fps",
+    "audio"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VIDEO",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "idx"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VIEWPORT_PROBE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "phase",
+    "pass",
+    "vpMiss",
+    "vp",
+    "vp"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VISUAL_CAPTURE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 6
+  },
+  {
+   "tag": "VISUAL_CAPTURE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "frame",
+    "dir"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VISUAL_CAPTURE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "src"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VISUAL_DAMP",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "VISUAL_DAMP",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "binding",
+    "side",
+    "bytes"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VISUAL_DAMP",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "path"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VISUAL_DAMP",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "path",
+    "got",
+    "want"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VISUAL_DAMP",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "side",
+    "damp",
+    "cells",
+    "p99",
+    "max",
+    "cells",
+    "p99"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VISUAL_DIFF",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "frames_since_start",
+    "max_frames"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VISUAL_DIFF",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "local_frame"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VISUAL_DIFF",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "mission",
+    "frameN",
+    "maxFrames"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VISUAL_DIFF",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "out",
+    "w",
+    "h",
+    "mission"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VISUAL_DIFF",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "reason"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VISUAL_DIFF",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "reason",
+    "out"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VISUAL_HEIGHT",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "VISUAL_HEIGHT",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "binding",
+    "V",
+    "bytes",
+    "first",
+    "geomorphMips"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VISUAL_HEIGHT",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "max",
+    "mean",
+    "spacing"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VISUAL_HEIGHT",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "path"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VISUAL_HEIGHT",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "path",
+    "V",
+    "mapSide"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VISUAL_HEIGHT",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "path",
+    "V",
+    "mapSide",
+    "bytes"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VISUAL_HEIGHT",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "path",
+    "got",
+    "want"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VISUAL_HEIGHT",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "path",
+    "got",
+    "want",
+    "V",
+    "mapSide"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VISUAL_HEIGHT",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "path",
+    "read",
+    "want"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_ENGINE_CONTEXT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "VK_ENGINE_CONTEXT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "created",
+    "attempted",
+    "device_name",
+    "validation_enabled",
+    "validation_errors",
+    "fallback_reason"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_ENGINE_CONTEXT_VALIDATION",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 2
+  },
+  {
+   "tag": "VK_FEED_DUMP",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "VK_GL_LOST_DRAWS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "frame",
+    "final",
+    "total_groups"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_HUD_AUDIT",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "frame",
+    "calls",
+    "quads",
+    "lines",
+    "tris",
+    "text",
+    "textured",
+    "vertices",
+    "alpha0",
+    "alpha1",
+    "alpha2",
+    "alpha3"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_HUD_DRAW_DUMP",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "batchseq",
+    "kind",
+    "handle",
+    "serial",
+    "wh",
+    "verts"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_HUD_MIRROR",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "id"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_HUD_MIRROR",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "id",
+    "err"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_HUD_SKIP",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "frame",
+    "draws",
+    "reason"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_HUD_SKIP_DECLINE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "kind",
+    "tex",
+    "gl",
+    "wh",
+    "serial",
+    "rgba",
+    "alpha",
+    "verts",
+    "perDrawDecline"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_IMAGE_RESOURCE",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "VK_IMGUI",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "requested",
+    "used_vulkan",
+    "direct_present_armed",
+    "fallback_reason"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_IMGUI",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "requested",
+    "used_vulkan",
+    "fallback_reason"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_LIGHTFEED_DEDUP",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "VK_LIGHTFEED_DEDUP",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "MC2_VK_LIGHTFEED_DEDUP"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_LIGHTFEED_DEDUP",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "sharedHits",
+    "fallbacks",
+    "frame"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_MECH_FEED",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "VK_MECH_ISLAND",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "seq",
+    "vk_instances",
+    "runs"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_MECH_PERF",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "tier1",
+    "inst",
+    "bones",
+    "runs",
+    "stage_us",
+    "record_submit_us",
+    "fence_wait_us",
+    "island_total_us"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_PICK_PROBE",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "VERDICT"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_PICK_PROBE",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "backend",
+    "res"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_PICK_PROBE",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "backend",
+    "res",
+    "aimCenter",
+    "pick",
+    "target",
+    "picked"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_PICK_PROBE",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "backend",
+    "res",
+    "canvas",
+    "drawable",
+    "raw",
+    "pick",
+    "err",
+    "oldBugWouldGive"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_PRESENT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "VK_PRESENT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "created",
+    "attempted",
+    "present_frames",
+    "resize_count",
+    "resize_recreate_ok",
+    "resize_recreate_retries",
+    "resize_recreate_failsoft",
+    "validation_errors",
+    "extent",
+    "present_mode",
+    "readback_changed",
+    "last_checksum",
+    "direct_fbo_requests",
+    "direct_fbo_grants",
+    "copy1_blit_frames",
+    "copy1_skip_frames",
+    "gl_handoff_skip_frames",
+    "tail_hook_frames",
+    "composite_vk_frames",
+    "shadow_debug_vk_frames",
+    "hud_vk_queued_frames",
+    "hud_vk_consumed_frames",
+    "hud_vk_draws_last",
+    "hud_vk_textured_last",
+    "hud_vk_serialized_last",
+    "hud_vk_color_frames",
+    "hud_vk_color_draws_last",
+    "hud_vk_textured_frames",
+    "hud_vk_textured_draws_last",
+    "hud_vk_texture_uploads",
+    "imgui_vk_ready",
+    "imgui_vk_frames",
+    "last_direct_fbo",
+    "composite_wait_us_last",
+    "composite_wait_us_avg",
+    "composite_wait_samples",
+    "fallback_reason"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_PRESENT",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 3
+  },
+  {
+   "tag": "VK_PRESENT_DUMP_PPM",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "VK_PROPS_PERF",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "tier1",
+    "inst",
+    "type_runs",
+    "stage_us",
+    "record_submit_us",
+    "fence_wait_us",
+    "island_total_us"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_SCENE_GL_DRAW_CANARY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "tag",
+    "any_samples",
+    "draws"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_SCENE_GL_PRODUCER_QUERY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "any_samples",
+    "frame_sceneFBO"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_SCREENSHADOW_GL_CANARY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "any_samples",
+    "sceneFBO",
+    "csm",
+    "debug"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_SHADOW_MATRIX",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 5
+  },
+  {
+   "tag": "VK_SHADOW_MATRIX",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "csmEnabled",
+    "csmCount",
+    "enableDynShadows",
+    "csmDepthSpan",
+    "csmFullMapTexelWorld",
+    "csmCascadeTexelWorld",
+    "feed.csmArraySize",
+    "feed.csmFullMapSize",
+    "feed.dynShadowSize"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_SHADOW_MATRIX",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "map",
+    "side"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_SHADOW_MATRIX",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "map",
+    "side",
+    "dim",
+    "min",
+    "max",
+    "bbox"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_SHADOW_MATRIX",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "ok"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_SHADOW_MATRIX",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "tick",
+    "csmN",
+    "dynSize",
+    "arrSize",
+    "fullSize",
+    "fullTexelWorld"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_SHARED_SCENE_COLOR",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "placeholder_tex"
+   ],
+   "count": 3
+  },
+  {
+   "tag": "VK_SHARED_SCENE_COLOR",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "reason"
+   ],
+   "count": 3
+  },
+  {
+   "tag": "VK_SHARED_SCENE_COLOR",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "VK_SHARED_SCENE_DEPTH",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "placeholder_tex"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_SHARED_SCENE_DEPTH",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "reason"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_SHARED_SCENE_DEPTH",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "VK_SHARED_SCENE_STRICT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "slot",
+    "reason"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_SHARED_STATIC_SHADOW",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "VK_TERRAIN_ALL_LODS",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "submit",
+    "feedValid",
+    "active",
+    "allLods",
+    "vkPatches",
+    "lodStep1"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_TERRAIN_COPY_STATS",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "copies_ms",
+    "static_us",
+    "dyn_us",
+    "csm_us",
+    "staticGen",
+    "shadowReady",
+    "dynReady",
+    "dynDirect",
+    "csmArrayReady",
+    "csmArrayDirect",
+    "csmFullMapReady",
+    "csmFullMapDirect"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_TERRAIN_GL_FALLBACK_AUDIT",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "frame",
+    "total",
+    "captured",
+    "gl_fallback",
+    "inactive",
+    "band",
+    "displace",
+    "edge_stitch",
+    "captured_stitch",
+    "other",
+    "skirt_edges"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_TERRAIN_ISLAND",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 2
+  },
+  {
+   "tag": "VK_TERRAIN_LODFADE_DIAG",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "lodFadeEnabled",
+    "detailEnabled",
+    "lightingEnabled"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_TERRAIN_PERF",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "tier1",
+    "patches",
+    "stage_us",
+    "record_submit_us",
+    "fence_wait_us",
+    "island_total_us"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_VFX_TAIL",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "kind",
+    "nverts",
+    "argb0",
+    "canvas",
+    "bbox",
+    "w",
+    "h",
+    "alpha"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_VFX_TRACE",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "path",
+    "culled",
+    "view",
+    "v0",
+    "v1",
+    "v2",
+    "argb0"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_VFX_TRACE",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "path",
+    "view",
+    "v0",
+    "v1",
+    "v2",
+    "argb0",
+    "tex"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_VFX_TRACE",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "route",
+    "wrap",
+    "numWeapons",
+    "liveWeapons",
+    "numCarnage",
+    "numArtillery"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_WATER_PERF",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "thin_readback_us",
+    "thin"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_WATER_PERF",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "tier1",
+    "thin",
+    "recipes",
+    "stage_us",
+    "record_us",
+    "submit_us",
+    "sem_wait_us",
+    "fence_wait_us",
+    "island_total_us"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VPL_CULL",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "reason"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VPL_PICK",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "path"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VPL_REDUCE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "reason"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VSYNC",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "MC2_VSYNC"
+   ],
+   "count": 3
+  },
+  {
+   "tag": "WATCHDOG",
+   "ver": -1,
+   "stream": "buffer",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "WATCHID_BOUND",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "cap"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "WATCHID_LOAD",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "a",
+    "b"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "WATER_ASPECT_DIAG",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "proj",
+    "aspect",
+    "viewport",
+    "aspect",
+    "stretchX"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "WATER_DEBUG",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "frame",
+    "total",
+    "handle_valid",
+    "detail_eligible",
+    "elapsed_us"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "WATER_DEPTHPROBE",
+   "ver": 2,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "wframe",
+    "armed",
+    "wstream_ready",
+    "recipe_count",
+    "water_fp",
+    "terrain_solid_fp",
+    "livecam_fp",
+    "equal",
+    "w_eq_livecam",
+    "moved",
+    "terrain_solid_frameidx",
+    "w_mvp0"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "WATER_FAST",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "MC2_RENDER_WATER_FASTPATH"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "WATER_FAST",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "prog"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "WATER_FAST",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "err",
+    "verts"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "WATER_FAST",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "frame",
+    "recipeCount",
+    "elapsed_us"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "WATER_FAST",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "frames",
+    "narrowed",
+    "full_walk",
+    "narrow_enabled"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "WATER_FAST",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "prog",
+    "recipeBuf",
+    "thin",
+    "baseGosH",
+    "baseGLTex",
+    "detailGosH",
+    "detailGLTex",
+    "VAO",
+    "FBO",
+    "viewport",
+    "depthTest",
+    "cullFace",
+    "depthFunc"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "WATER_FAST",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "waterElevation",
+    "alphaDepth",
+    "alphaEdgeByte",
+    "alphaMiddleByte",
+    "alphaDeepByte"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "WATER_FULL_RECIPE_PARITY",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "candCount",
+    "fullRecipeCount",
+    "shared",
+    "onlyCandidate",
+    "onlyFullRecipe",
+    "fieldMismatch",
+    "setMatch"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "WATER_FULL_RECIPE_SPIKE",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "recipeCount",
+    "candidateCount",
+    "candidateGpuUs",
+    "fullRecipeGpuUs",
+    "deltaUs",
+    "fullRecipeOut"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "WATER_GATE",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "fastPath",
+    "armed",
+    "streamReady",
+    "recipes",
+    "tex2",
+    "introLegacy",
+    "sig"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "WATER_LEGACY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "total",
+    "handle_valid",
+    "detail_eligible",
+    "state",
+    "prev_handle_valid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "WATER_MAT",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "recipes",
+    "thickness_min",
+    "thickness_max",
+    "waterElevation"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "WATER_PARITY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "frame",
+    "quad",
+    "layer",
+    "tri",
+    "vert",
+    "field",
+    "legacy",
+    "fast"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "WATER_PARITY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "frame",
+    "quad",
+    "scope",
+    "corner",
+    "field",
+    "legacy",
+    "fast"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "WATER_PARITY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "frames",
+    "quads_checked",
+    "total_mismatches"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "WATER_PARITY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "frames",
+    "quads_checked",
+    "total_mismatches",
+    "reason"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "WATER_PARITY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "note",
+    "scope",
+    "print_budget",
+    "summary_every"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "WATER_REFL_RT",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "frame",
+    "gate",
+    "fbo",
+    "dims",
+    "drew",
+    "mirrored_cmd_count"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "WATER_REFL_RT",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "frame",
+    "gate",
+    "fbo",
+    "dims",
+    "drew",
+    "mirrored_cmd_count",
+    "coverage",
+    "alpha_cov",
+    "max_luma",
+    "avg_luma",
+    "gl_err"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "WATER_RENDERPROBE",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "wframe",
+    "armed",
+    "prev_armed",
+    "water_fp",
+    "terrain_src_fp",
+    "equal",
+    "terrain_dispatch_frameidx"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "WATER_RENDERPROBE",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "wframe",
+    "water_fp",
+    "terrain_dispatch_fp",
+    "equal",
+    "terrain_dispatch_frameidx"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "WATER_S6",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "armedSkip"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "WATER_S6COST",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "frames",
+    "mean",
+    "min",
+    "max"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "WATER_SHORE_EDGE",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "path"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "WATER_SHORE_EDGE",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "path",
+    "got",
+    "want",
+    "V",
+    "mapSide"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "WATER_SHORE_EDGE",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "path",
+    "read",
+    "want"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "WATER_STREAM",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "bytes",
+    "records",
+    "buf"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "WATER_STREAM",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "elev",
+    "v0",
+    "v3",
+    "quadIdx"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "WATER_STREAM",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "reason"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "WATER_STREAM",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "recipes",
+    "candidates_walked",
+    "waterElevation",
+    "has_terrainTextures2",
+    "mapSide",
+    "halfSide",
+    "wupv"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "WATER_STREAM",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "records",
+    "pz_valid"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "WATER_STREAM",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "total_quads",
+    "water_handles",
+    "thin",
+    "pz_valid",
+    "recipe_miss",
+    "pz_drop",
+    "state",
+    "prev_water_handles",
+    "prev_thin"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "WINDOW",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "drawable",
+    "logical"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "XFORM_PARITY_FATAL",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "frame",
+    "max_diff",
+    "MC2_XFORM_PARITY_FATAL"
+   ],
+   "count": 1
+  }
+ ],
+ "consumed_tags": [
+  "AIMED_FIRE",
+  "APPEAR_AUDIT",
+  "ASSET_LOAD",
+  "ASSET_SCALE",
+  "BRAIN_ENGAGE",
+  "BRAIN_FREEZE_TRACE",
+  "BRAIN_PATROL_KICK",
+  "BUILD_FINGERPRINT",
+  "CAMERA_PARK",
+  "CONFIG",
+  "CRASHBUNDLE",
+  "DEPLOY_COHERENCE",
+  "DEPLOY_GUARD",
+  "DESTROY",
+  "DISK_GUARD",
+  "ESMOKE",
+  "FASTPATH_DROP",
+  "GLP",
+  "GL_ERROR",
+  "GPUPROPS",
+  "GPU_CULL",
+  "HEALTH",
+  "HEARTBEAT",
+  "INSTR",
+  "ISO_DEPLOY",
+  "LINK_GUARD",
+  "MARAUDER",
+  "MECH_MATERIAL_GPU",
+  "MOVER",
+  "MOVER_COHERENCE",
+  "OBJBATCHER",
+  "ORDER_FIXTURE",
+  "ORDER_LIVENESS_SUMMARY",
+  "PERF",
+  "PIPELINE_BIND",
+  "QUADSETUP_SKIP",
+  "RENDER_SNAPSHOT",
+  "SHADER",
+  "SHADER ERROR",
+  "SHADER_SCHEMA",
+  "SIMID",
+  "SMOKE",
+  "SOAK",
+  "SPLIT_PATH_PARITY",
+  "TERRAIN_INDIRECT",
+  "TEXLOAD",
+  "TEX_RESOLVE",
+  "TGL_POOL",
+  "TIMING",
+  "TerrainLOD parity",
+  "VEG_SUMMARY",
+  "VFX_ORACLE_TUBE",
+  "VISUAL_CAPTURE",
+  "VK_MECH_TIER1",
+  "VK_POST_FOG_NATIVE",
+  "VK_POST_HZB_NATIVE",
+  "VK_POST_SCREENFX_NATIVE",
+  "VK_POST_SSAO_NATIVE",
+  "VK_PRESENT",
+  "VK_PROP_COLOR_TIER1",
+  "VK_SCENE_GL_DRAW_CANARY",
+  "VK_SCREENSHADOW_GL_CANARY",
+  "VK_SHADOW_INTEROP",
+  "VK_SHARED_SCENE",
+  "VK_TERRAIN_TIER1",
+  "VK_WATER_TIER1"
+ ],
+ "plain_tags": [
+  "VEG_SUMMARY",
+  "ORDER_LIVENESS_SUMMARY",
+  "TerrainLOD parity",
+  "SHADER ERROR"
+ ]
+}

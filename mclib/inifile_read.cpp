@@ -1,6 +1,7 @@
 // FitIniFile: seekBlock and the scalar readId* readers, readIdString and getIdStringLength.
 // Declared in the class headers; shared names in inifile_internal.h.
 #include "inifile_internal.h"
+#include "mc2fmt.h"
 
 
 //---------------------------------------------------------------------------
@@ -53,7 +54,7 @@ long FitIniFile::readIdFloat (const char *varName, float &value)
 	
 	//------------------------
 	// Put prefix on varName.
-	sprintf(searchString,"f %s",varName);
+	mc2::fmt::to_buf(searchString, "f {}", mc2::fmt::safe(varName));
 	
 	//--------------------------------
 	// Search line by line for varName
@@ -106,7 +107,7 @@ long FitIniFile::readIdDouble (const char *varName, double &value)
 	
 	//------------------------
 	// Put prefix on varName.
-	sprintf(searchString,"f %s",varName);
+	mc2::fmt::to_buf(searchString, "f {}", mc2::fmt::safe(varName));
 	
 	//--------------------------------
 	// Search line by line for varName
@@ -167,7 +168,7 @@ long FitIniFile::readIdLong (const char *varName, long &value)
 	
 	//------------------------
 	// Put prefix on varName.
-	sprintf(searchString,"l %s",varName);
+	mc2::fmt::to_buf(searchString, "l {}", mc2::fmt::safe(varName));
 	
 	//--------------------------------
 	// Search line by line for varName
@@ -220,7 +221,7 @@ long FitIniFile::readIdBoolean (const char *varName, bool &value)
 	
 	//------------------------
 	// Put prefix on varName.
-	sprintf(searchString,"b %s",varName);
+	mc2::fmt::to_buf(searchString, "b {}", mc2::fmt::safe(varName));
 	
 	//--------------------------------
 	// Search line by line for varName
@@ -273,7 +274,7 @@ long FitIniFile::readIdShort (const char *varName, short &value)
 	
 	//------------------------
 	// Put prefix on varName.
-	sprintf(searchString,"s %s",varName);
+	mc2::fmt::to_buf(searchString, "s {}", mc2::fmt::safe(varName));
 	
 	//--------------------------------
 	// Search line by line for varName
@@ -326,7 +327,7 @@ long FitIniFile::readIdChar (const char *varName, char &value)
 	
 	//------------------------
 	// Put prefix on varName.
-	sprintf(searchString,"c %s",varName);
+	mc2::fmt::to_buf(searchString, "c {}", mc2::fmt::safe(varName));
 	
 	//--------------------------------
 	// Search line by line for varName
@@ -387,7 +388,7 @@ long FitIniFile::readIdULong (const char *varName, uint64_t &value)
 	
 	//------------------------
 	// Put prefix on varName.
-	sprintf(searchString,"ul %s",varName);
+	mc2::fmt::to_buf(searchString, "ul {}", mc2::fmt::safe(varName));
 	
 	//--------------------------------
 	// Search line by line for varName
@@ -442,7 +443,7 @@ long FitIniFile::readIdUShort (const char *varName, unsigned short &value)
 	
 	//------------------------
 	// Put prefix on varName.
-	sprintf(searchString,"us %s",varName);
+	mc2::fmt::to_buf(searchString, "us {}", mc2::fmt::safe(varName));
 	
 	//--------------------------------
 	// Search line by line for varName
@@ -495,7 +496,7 @@ long FitIniFile::readIdUChar (const char *varName, unsigned char &value)
 	
 	//------------------------
 	// Put prefix on varName.
-	sprintf(searchString,"uc %s",varName);
+	mc2::fmt::to_buf(searchString, "uc {}", mc2::fmt::safe(varName));
 	
 	//--------------------------------
 	// Search line by line for varName
@@ -583,7 +584,7 @@ long FitIniFile::readIdString (const char *varName, char *result, unsigned long 
 	
 	//------------------------
 	// Put prefix on varName.
-	sprintf(searchString,"st %s",varName);
+	mc2::fmt::to_buf(searchString, "st {}", mc2::fmt::safe(varName));
 	
 	//--------------------------------
 	// Search line by line for varName
@@ -666,7 +667,7 @@ long FitIniFile::getIdStringLength (const char *varName)
 	
 	//------------------------
 	// Put prefix on varName.
-	sprintf(searchString,"st %s",varName);
+	mc2::fmt::to_buf(searchString, "st {}", mc2::fmt::safe(varName));
 	
 	//--------------------------------
 	// Search line by line for varName

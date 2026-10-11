@@ -18,6 +18,7 @@
 #include <errno.h>
 
 #include "platform_io.h" // will be removed
+#include "mc2fmt.h"
 
 gosFileStream::gosFileStream( const char *FileName, gosEnum_FileWriteStatus fwstatus )
 {
@@ -49,7 +50,7 @@ gosFileStream::gosFileStream( const char *FileName, gosEnum_FileWriteStatus fwst
     if(!m_hFile)
     {
         int err = errno; // save errno from being possible overwritten by sprintf
-        fprintf(stderr, "gosFileStream: failed to open file: %s : %s\n", m_Filename, strerror(err));
+        mc2::fmt::print_err("gosFileStream: failed to open file: {} : {}\n", mc2::fmt::safe(m_Filename), mc2::fmt::safe(strerror(err)));
         STOP(("Failed to open file"));
     }
 }

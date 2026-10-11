@@ -6,6 +6,7 @@
 
 #include <cstdio>
 #include <GL/glew.h>
+#include "mc2fmt.h"
 
 namespace gos { namespace screenshot {
 
@@ -23,7 +24,7 @@ bool writeTGA(const char* path, int w, int h) {
 
     FILE* f = fopen(path, "wb");
     if (!f) {
-        fprintf(stderr, "VALIDATE: Failed to write screenshot to %s\n", path);
+        mc2::fmt::print_err("VALIDATE: Failed to write screenshot to {}\n", mc2::fmt::safe(path));
         delete[] pixels;
         return false;
     }
@@ -42,7 +43,7 @@ bool writeTGA(const char* path, int w, int h) {
     fclose(f);
     delete[] pixels;
 
-    fprintf(stderr, "VALIDATE: Screenshot saved to %s (%dx%d)\n", path, w, h);
+    mc2::fmt::print_err("VALIDATE: Screenshot saved to {} ({:d}x{:d})\n", mc2::fmt::safe(path), mc2::fmt::as_i32(w), mc2::fmt::as_i32(h));
     return true;
 }
 

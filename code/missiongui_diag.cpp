@@ -1,6 +1,7 @@
 // MissionInterfaceManager: MC2_MIF_SPLIT / MC2_IFACE_COST_SPLIT phase timing and the GPU-ground-pick parity oracle.
 // Declared in the class headers; shared names in missiongui_shared_internal.h.
 #include "missiongui_shared_internal.h"
+#include "mc2fmt.h"
 
 
 // ---- MC2_MIF_SPLIT: split MissionInterfaceManager::update() (the 1K 43.9ms) --
@@ -35,12 +36,10 @@ namespace missiongui_detail {
 	static bool s_mfAtexit=false;
 	static void mfEmit() {
 		if (!s_mfOn) return;
-		std::printf("[MIF_SPLIT v1] event=shutdown frames=%llu invProj_walks=%llu invProj_cacheHits=%llu",
-			s_mfFrames, s_mfInvWalks, s_mfInvHits);
+		mc2::fmt::print_out("[MIF_SPLIT v1] event=shutdown frames={:d} invProj_walks={:d} invProj_cacheHits={:d}", mc2::fmt::as_u64(s_mfFrames), mc2::fmt::as_u64(s_mfInvWalks), mc2::fmt::as_u64(s_mfInvHits));
 		for (int i=0;i<MF_COUNT;i++)
-			std::printf(" %s={avg_us:%.1f,max_us:%.1f}", s_mfNames[i],
-				s_mfFrames?(double)s_mfSum[i]/s_mfFrames/1000.0:0.0, (double)s_mfMax[i]/1000.0);
-		std::printf("\n"); std::fflush(stdout);
+			mc2::fmt::print_out(" {}={{avg_us:{:.1f},max_us:{:.1f}}}", mc2::fmt::safe(s_mfNames[i]), s_mfFrames?(double)s_mfSum[i]/s_mfFrames/1000.0:0.0, (double)s_mfMax[i]/1000.0);
+		mc2::fmt::print_out("\n"); std::fflush(stdout);
 	}
 	// One [IFACE_PERF v1] line per window (or partial window at mission end).
 	void mfEmitWindow(std::string_view event) {
@@ -48,9 +47,8 @@ namespace missiongui_detail {
 		std::printf("[IFACE_PERF v1] event=%.*s frames=%llu invProj_walks=%llu invProj_cacheHits=%llu",
 			static_cast<int>(event.size()), event.data(), s_mfWinFrames, s_mfWinWalks, s_mfWinHits);
 		for (int i=0;i<MF_COUNT;i++)
-			std::printf(" %s={avg_us:%.1f,max_us:%.1f}", s_mfNames[i],
-				(double)s_mfWinSum[i]/s_mfWinFrames/1000.0, (double)s_mfWinMax[i]/1000.0);
-		std::printf("\n"); std::fflush(stdout);
+			mc2::fmt::print_out(" {}={{avg_us:{:.1f},max_us:{:.1f}}}", mc2::fmt::safe(s_mfNames[i]), (double)s_mfWinSum[i]/s_mfWinFrames/1000.0, (double)s_mfWinMax[i]/1000.0);
+		mc2::fmt::print_out("\n"); std::fflush(stdout);
 		for (int i=0;i<MF_COUNT;i++) { s_mfWinSum[i]=0; s_mfWinMax[i]=0; }
 		s_mfWinFrames=0; s_mfWinWalks=0; s_mfWinHits=0;
 	}
@@ -128,34 +126,14 @@ namespace missiongui_detail {
 		const double gpuAvg = s_gpGpuSamples ? (double)s_gpGpuNs/s_gpGpuSamples/1000.0 : 0.0;
 		const double dAvg   = s_gpCompared ? s_gpDeltaSum/(double)s_gpCompared : 0.0;
 		const double dzAvg  = s_gpCompared ? s_gpDeltaZSum/(double)s_gpCompared : 0.0;
-		std::fprintf(stderr,
-			"[GPU_PICK_PARITY] event=shutdown mission=%s sites=%llu compared=%llu "
-			"gpu_invalid=%llu buffer_unavailable=%llu background_px=%llu over_2wu=%llu\n",
-			s_gpMissionTag, s_gpSites, s_gpCompared, s_gpGpuInvalid,
-			s_gpFbUnavail, s_gpBg, s_gpOver2wu);
-		std::fprintf(stderr,
-			"[GPU_PICK_PARITY] invalid_reasons={stale_gen:%llu,slot_dead:%llu,no_depth:%llu}\n",
-			s_gpStaleGen, s_gpSlotDead, s_gpNoDepth);
-		std::fprintf(stderr,
-			"[GPU_PICK_PARITY] delta_wu={xy_avg:%.3f,xy_max:%.3f,z_avg:%.3f,z_max:%.3f} "
-			"hist_xy_wu=[<=0.5:%llu,<=1:%llu,<=2:%llu,<=5:%llu,<=20:%llu,>20:%llu]\n",
-			dAvg, s_gpDeltaMax, dzAvg, s_gpDeltaZMax,
-			s_gpHist[0], s_gpHist[1], s_gpHist[2], s_gpHist[3], s_gpHist[4], s_gpHist[5]);
-		std::fprintf(stderr,
-			"[GPU_PICK_PARITY] timing_us={cpu_invproj_avg:%.1f,cpu_invproj_max:%.1f,"
-			"gpu_readback_avg:%.1f,gpu_readback_max:%.1f} cpu_samples=%llu gpu_samples=%llu\n",
-			cpuAvg, (double)s_gpCpuMaxNs/1000.0, gpuAvg, (double)s_gpGpuMaxNs/1000.0,
-			s_gpCpuSamples, s_gpGpuSamples);
+		mc2::fmt::print_err("[GPU_PICK_PARITY] event=shutdown mission={} sites={:d} compared={:d} gpu_invalid={:d} buffer_unavailable={:d} background_px={:d} over_2wu={:d}\n", mc2::fmt::safe(s_gpMissionTag), mc2::fmt::as_u64(s_gpSites), mc2::fmt::as_u64(s_gpCompared), mc2::fmt::as_u64(s_gpGpuInvalid), mc2::fmt::as_u64(s_gpFbUnavail), mc2::fmt::as_u64(s_gpBg), mc2::fmt::as_u64(s_gpOver2wu));
+		mc2::fmt::print_err("[GPU_PICK_PARITY] invalid_reasons={{stale_gen:{:d},slot_dead:{:d},no_depth:{:d}}}\n", mc2::fmt::as_u64(s_gpStaleGen), mc2::fmt::as_u64(s_gpSlotDead), mc2::fmt::as_u64(s_gpNoDepth));
+		mc2::fmt::print_err("[GPU_PICK_PARITY] delta_wu={{xy_avg:{:.3f},xy_max:{:.3f},z_avg:{:.3f},z_max:{:.3f}}} hist_xy_wu=[<=0.5:{:d},<=1:{:d},<=2:{:d},<=5:{:d},<=20:{:d},>20:{:d}]\n", dAvg, s_gpDeltaMax, dzAvg, s_gpDeltaZMax, mc2::fmt::as_u64(s_gpHist[0]), mc2::fmt::as_u64(s_gpHist[1]), mc2::fmt::as_u64(s_gpHist[2]), mc2::fmt::as_u64(s_gpHist[3]), mc2::fmt::as_u64(s_gpHist[4]), mc2::fmt::as_u64(s_gpHist[5]));
+		mc2::fmt::print_err("[GPU_PICK_PARITY] timing_us={{cpu_invproj_avg:{:.1f},cpu_invproj_max:{:.1f},gpu_readback_avg:{:.1f},gpu_readback_max:{:.1f}}} cpu_samples={:d} gpu_samples={:d}\n", cpuAvg, (double)s_gpCpuMaxNs/1000.0, gpuAvg, (double)s_gpGpuMaxNs/1000.0, mc2::fmt::as_u64(s_gpCpuSamples), mc2::fmt::as_u64(s_gpGpuSamples));
 		if (s_gpCenter) {
 			const double cdAvg  = s_gpcCompared ? s_gpcDeltaSum/(double)s_gpcCompared : 0.0;
 			const double cdzAvg = s_gpcCompared ? s_gpcDeltaZSum/(double)s_gpcCompared : 0.0;
-			std::fprintf(stderr,
-				"[GPU_PICK_PARITY] center_probe mission=%s compared=%llu invalid=%llu background_px=%llu "
-				"delta_wu={xy_avg:%.3f,xy_max:%.3f,z_avg:%.3f,z_max:%.3f} "
-				"hist_xy_wu=[<=0.5:%llu,<=1:%llu,<=2:%llu,<=5:%llu,<=20:%llu,>20:%llu]\n",
-				s_gpMissionTag, s_gpcCompared, s_gpcInvalid, s_gpcBg,
-				cdAvg, s_gpcDeltaMax, cdzAvg, s_gpcDeltaZMax,
-				s_gpcHist[0], s_gpcHist[1], s_gpcHist[2], s_gpcHist[3], s_gpcHist[4], s_gpcHist[5]);
+			mc2::fmt::print_err("[GPU_PICK_PARITY] center_probe mission={} compared={:d} invalid={:d} background_px={:d} delta_wu={{xy_avg:{:.3f},xy_max:{:.3f},z_avg:{:.3f},z_max:{:.3f}}} hist_xy_wu=[<=0.5:{:d},<=1:{:d},<=2:{:d},<=5:{:d},<=20:{:d},>20:{:d}]\n", mc2::fmt::safe(s_gpMissionTag), mc2::fmt::as_u64(s_gpcCompared), mc2::fmt::as_u64(s_gpcInvalid), mc2::fmt::as_u64(s_gpcBg), cdAvg, s_gpcDeltaMax, cdzAvg, s_gpcDeltaZMax, mc2::fmt::as_u64(s_gpcHist[0]), mc2::fmt::as_u64(s_gpcHist[1]), mc2::fmt::as_u64(s_gpcHist[2]), mc2::fmt::as_u64(s_gpcHist[3]), mc2::fmt::as_u64(s_gpcHist[4]), mc2::fmt::as_u64(s_gpcHist[5]));
 		}
 		std::fflush(stderr);
 	}
@@ -195,11 +173,7 @@ namespace missiongui_detail {
 		        : dHoriz <= 5.0 ? 3 : dHoriz <= 20.0 ? 4 : 5;
 		++s_gpcHist[b];
 		if (dHoriz > 2.0) {
-			std::fprintf(stderr,
-				"[GPU_PICK_PARITY] center_over_2wu mission=%s center_px=(%d,%d) gl=(%d,%d) "
-				"cpu=(%.1f,%.1f,%.1f) gpu=(%.1f,%.1f,%.1f) dxy=%.2f dz=%.2f\n",
-				s_gpMissionTag, cxPix, cyPix, ctx.glX, ctx.glY,
-				ccx, ccy, ccz, res.worldX, res.worldY, res.worldZ, dHoriz, dVert);
+			mc2::fmt::print_err("[GPU_PICK_PARITY] center_over_2wu mission={} center_px=({:d},{:d}) gl=({:d},{:d}) cpu=({:.1f},{:.1f},{:.1f}) gpu=({:.1f},{:.1f},{:.1f}) dxy={:.2f} dz={:.2f}\n", mc2::fmt::safe(s_gpMissionTag), mc2::fmt::as_i32(cxPix), mc2::fmt::as_i32(cyPix), mc2::fmt::as_i32(ctx.glX), mc2::fmt::as_i32(ctx.glY), ccx, ccy, ccz, res.worldX, res.worldY, res.worldZ, dHoriz, dVert);
 		}
 	}
 	// Called at each ground-pick site. cpuNs = measured CPU inverseProject cost

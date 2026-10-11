@@ -199,7 +199,7 @@ void Editor::init( char* loader )
 					}
 					else
 					{
-					CFileDialog fileDlg( 1,  "pak", NULL, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT | OFN_NOCHANGEDIR, szPAKFilter );
+					CFileDialog fileDlg( 1,  "pak", nullptr, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT | OFN_NOCHANGEDIR, szPAKFilter );
 					// When a Mod Project is open, default to <root>\data\missions; else unchanged.
 					{ const char* pd = EditorModProject::SaveDirOverride();
 					  fileDlg.m_ofn.lpstrInitialDir = pd ? pd : missionPath; }
@@ -250,7 +250,7 @@ void Editor::init( char* loader )
 		if ( !land )
 		{
 			land = new Terrain( );
-						land->init( 0, (PacketFile*)NULL, EDITOR_VISIBLE_VERTICES, crap, 100  );
+						land->init( 0, (PacketFile*)nullptr, EDITOR_VISIBLE_VERTICES, crap, 100  );
 		}
 	}
 
@@ -282,7 +282,7 @@ void Editor::init( char* loader )
 	}
 	}
 
-	PlaySound("SystemDefault",NULL,SND_ASYNC);
+	PlaySound("SystemDefault",nullptr,SND_ASYNC);
 }
 
 
@@ -307,7 +307,7 @@ void Editor::destroy (void)
 
 	if ( eye )
 		delete eye;
-	eye = NULL;
+	eye = nullptr;
 	EditorShutdownTrace("[EDITOR_SHUTDOWN] phase=Editor_destroy_exit");
 }
 
@@ -316,7 +316,7 @@ void Editor::resaveAll (void)
 	if ( !eye )
 		eye = new EditorCamera;
 
-	CoInitialize(NULL);
+	CoInitialize(nullptr);
 	// by Methuselas: EditorInterface joins the Editor-owned SemVer lane;
 	// do not reintroduce the legacy provider identity here.
 	armProvider = CreateProviderEngine("MC2Editor", (char*)EditorVersion_GetSemVer());
@@ -445,7 +445,7 @@ void Editor::resaveAll (void)
 		if ((findResult.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0)
 		{
 			char baseName[1024];
-			_splitpath(findResult.cFileName,NULL,NULL,baseName,NULL);
+			_splitpath(findResult.cFileName,nullptr,nullptr,baseName,nullptr);
 			
 			FullPathFileName pakName;
 			pakName.init(missionPath,baseName,".pak");
@@ -624,15 +624,15 @@ EditorInterface::EditorInterface()
 {
 	bThisIsInitialized = false;
 	painting = false;
-	curBrush = NULL;
+	curBrush = nullptr;
 	selecting = true;
 	realRotation = 0.0;
 	currentBrushID = IDS_SELECT;
 	currentBrushMenuID = ID_OTHER_SELECT;
 
-	m_pDragObject = NULL;
+	m_pDragObject = nullptr;
 	m_dragObjMoved = false;
-	m_pDragAction = NULL;
+	m_pDragAction = nullptr;
 	m_dragStartX = 0;
 	m_dragStartY = 0;
 	m_dragStartWorld.x = m_dragStartWorld.y = m_dragStartWorld.z = 0.0f;
@@ -651,7 +651,7 @@ EditorInterface::EditorInterface()
 
 	smoothRadius = 2;
 	dragging = false;
-	prevBrush = NULL;
+	prevBrush = nullptr;
 	prevSelecting = false;
 	highlighted = false;
 	prevPainting = false;
@@ -666,12 +666,12 @@ EditorInterface::EditorInterface()
 	hCursor = 0;
 
 	bObjectSelectOnlyMode = false;
-	menus = NULL;
+	menus = nullptr;
 	menusAllocatedCount = 0;
 	m_hAccelTable = LoadAccelerators(AfxGetInstanceHandle(), MAKEINTRESOURCE(IDR_ACCELERATOR1));
 
-	m_hSplashBitMap = NULL;
-	m_hBusyCursor = NULL;
+	m_hSplashBitMap = nullptr;
+	m_hBusyCursor = nullptr;
 	m_AppIsBusy = 0;
 	m_bInRunGameOSLogicCall = false;
 	rightDrag = 0;
@@ -687,13 +687,13 @@ EditorInterface::~EditorInterface()
 		/*this is done here because m_hBusyCursor is sometimes used before EditorInterface
 		is "initialized" and after it is "terminated" */
 		DestroyCursor(m_hBusyCursor);
-		m_hBusyCursor = NULL;
+		m_hBusyCursor = nullptr;
 	}
 	if (m_hSplashBitMap) {
 		DeleteObject(m_hSplashBitMap);
-		m_hSplashBitMap = NULL;
+		m_hSplashBitMap = nullptr;
 	}
-	s_instance = NULL;
+	s_instance = nullptr;
 }
 
 void EditorInterface::terminate()
@@ -704,7 +704,7 @@ void EditorInterface::terminate()
 		EditorShutdownTrace("[EDITOR_SHUTDOWN] phase=terminate_enter menus=%p menusAllocatedCount=%d", menus, menusAllocatedCount);
 
 		if ( curBrush )
-			delete curBrush; curBrush = NULL;
+			delete curBrush; curBrush = nullptr;
 
 		// EDITOR-EXIT-CRASH-1 (#2): menus is NULL whenever addBuildingsToNewMenu()
 		// was skipped (init() only calls it when land != NULL — the map-generator
@@ -717,11 +717,11 @@ void EditorInterface::terminate()
 		{
 			for ( int i = 0; i < menusAllocatedCount; ++i )
 			{
-				delete menus[i]; menus[i] = NULL;
+				delete menus[i]; menus[i] = nullptr;
 			}
 
 			free( menus );
-			menus = NULL;
+			menus = nullptr;
 		}
 		menusAllocatedCount = 0;
 		EditorShutdownTrace("[EDITOR_SHUTDOWN] phase=terminate_menus_freed");
@@ -967,7 +967,7 @@ void EditorInterface::handleNewMenuMessage( long specificMessage )
 
 	if (EditorInterface::instance()->ObjectSelectOnlyMode())
 	{
-		PlaySound("SystemDefault",NULL,SND_ASYNC);
+		PlaySound("SystemDefault",nullptr,SND_ASYNC);
 		return;
 	}
 
@@ -1262,7 +1262,7 @@ int EditorInterface::NewGeneratedMission()
 	{
 		tacMap.UpdateMap();
 		syncScrollBars();
-		PlaySound("SystemDefault",NULL,SND_ASYNC);
+		PlaySound("SystemDefault",nullptr,SND_ASYNC);
 	}
 	return true;
 }
@@ -1274,7 +1274,7 @@ int EditorInterface::FileOpen()
 		return false;
 	}
 
-	CFileDialog fileDlg( 1,  "pak", NULL, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT | OFN_NOCHANGEDIR, szPAKFilter );
+	CFileDialog fileDlg( 1,  "pak", nullptr, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT | OFN_NOCHANGEDIR, szPAKFilter );
 	// When a Mod Project is open, default to <root>\data\missions; else unchanged.
 	{ const char* pd = EditorModProject::SaveDirOverride();
 	  fileDlg.m_ofn.lpstrInitialDir = pd ? pd : missionPath; }
@@ -1286,7 +1286,7 @@ int EditorInterface::FileOpen()
 		EditorData::initTerrainFromPCV( pFile );
 		tacMap.UpdateMap();
 		syncScrollBars();
-		PlaySound("SystemDefault",NULL,SND_ASYNC);
+		PlaySound("SystemDefault",nullptr,SND_ASYNC);
 		UnsetBusyMode();
 	}
 
@@ -1303,6 +1303,6 @@ void EditorInterface::OpenMissionByPath( const char* pakPath )
 	EditorData::initTerrainFromPCV( pakPath );
 	tacMap.UpdateMap();
 	syncScrollBars();
-	PlaySound("SystemDefault",NULL,SND_ASYNC);
+	PlaySound("SystemDefault",nullptr,SND_ASYNC);
 	UnsetBusyMode();
 }

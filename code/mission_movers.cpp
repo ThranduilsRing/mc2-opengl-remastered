@@ -1,6 +1,7 @@
 // Mission: createPartObject, addMover, removeMover, tradeMover, drop zones and gate queries.
 // Declared in the class headers; shared names in mission_internal.h.
 #include "mission_internal.h"
+#include "mc2fmt.h"
 
 
 
@@ -177,7 +178,7 @@ long Mission::addMover (MoverInitData* moverSpec) {
 	pilotFullFileName.init(warriorPath, moverSpec->pilotFileName, ".fit");
 			
 	FitIniFile* pilotFile = new FitIniFile;
-	gosASSERT(pilotFile != NULL);
+	gosASSERT(pilotFile != nullptr);
 		
 	long result = pilotFile->open(pilotFullFileName);
 	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1):
@@ -532,7 +533,7 @@ bool Mission::calcComplexDropZones (char* missionName, char dropZoneCID[MAX_MC_P
 	missionFileName.init(missionPath,missionName,".fit");
 
 	FitIniFile* missionFile = new FitIniFile;
-	gosASSERT(missionFile != NULL);
+	gosASSERT(missionFile != nullptr);
 	
 	long result = missionFile->open(missionFileName);
 	if (result != NO_ERR)
@@ -555,7 +556,7 @@ bool Mission::calcComplexDropZones (char* missionName, char dropZoneCID[MAX_MC_P
 	if (numParts)
 		for (long i = 1; i < long(numParts + 1); i++) {
 			char partName[12];
-			sprintf(partName,"Part%d",i);
+			mc2::fmt::to_buf(partName, "Part{:d}", mc2::fmt::as_i32(i));
 			
 			result = missionFile->seekBlock(partName);
 			gosASSERT(result == NO_ERR);

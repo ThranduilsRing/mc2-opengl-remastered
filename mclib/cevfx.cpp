@@ -271,7 +271,7 @@ long mechCmdr1PaletteLookup[256];
 //---------------------------------------------------------------------------
 void VFXShapeElement::init (MemoryPtr _shape, long _x, long _y, long frame, bool rev, unsigned long *fTable, float _z, float tZ)
 {
-	gosASSERT(_shape != NULL);
+	gosASSERT(_shape != nullptr);
 
 	long i=0;
 	while (shapeTable[i] != nullptr)

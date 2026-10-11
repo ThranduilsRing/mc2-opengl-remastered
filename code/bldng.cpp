@@ -101,6 +101,7 @@ extern float scenarioTime;
 //#ifndef SOUNDS_H
 #include"sounds.h"
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 //#endif
 
 extern long DefaultPilotId;
@@ -1266,13 +1267,13 @@ void Building::init (bool create, ObjectTypePtr objType) {
 		if (!buildingAppearanceType)
 		{
 			char msg[1024];
-			sprintf(msg,"No Building Appearance Named %s",appearName);
+			mc2::fmt::to_buf(msg, "No Building Appearance Named {}", mc2::fmt::safe(appearName));
 			Fatal(0,msg);
 		}
 	}
 	  
    	appearance = new BldgAppearance;
-	gosASSERT(appearance != NULL);
+	gosASSERT(appearance != nullptr);
 
 	//--------------------------------------------------------------
 	// The only appearance type for buildings is MLR_APPEARANCE.
@@ -1528,7 +1529,7 @@ long Building::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayChu
 
 #if 0
 				if (type->marksImpassableWhenDestroyed) 
-					appearance->markMoveMap(true,NULL);
+					appearance->markMoveMap(true,nullptr);
 #endif
 
 				appearance->markLOS(true);
@@ -1553,12 +1554,12 @@ long Building::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayChu
 				else	//We want the buildings remaining shape to correctly calc LOS and Impassability
 				{
 					appearance->markLOS();
-					appearance->markMoveMap(false,NULL);	//Then, use the destroyed shape to mark impassable
+					appearance->markMoveMap(false,nullptr);	//Then, use the destroyed shape to mark impassable
 				}
 #endif							
 				if (CombatLog) {
 					char s[1024];
-					sprintf(s, "[%.2f] building.destroyed: [%05d]%s", scenarioTime, this->getPartId(), this->getName());
+					mc2::fmt::to_buf(s, "[{:.2f}] building.destroyed: [{:05d}]{}", scenarioTime, mc2::fmt::as_i32(this->getPartId()), mc2::fmt::safe(this->getName()));
 					CombatLog->write(s);
 					CombatLog->write(" ");
 				}

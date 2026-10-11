@@ -15,6 +15,7 @@
 #include"../resource.h"
 #include"mechicon.h"
 #include"objmgr.h"
+#include "mc2fmt.h"
 
 char	LogisticsPilot::skillTexts[NUM_SPECIALTY_SKILLS][255] = {0};
 extern const char* SpecialtySkillsTable[NUM_SPECIALTY_SKILLS];
@@ -72,7 +73,7 @@ int LogisticsPilot::init( char* pilotFileName )
 	if ( NO_ERR != pilotFile.open( path ) )
 	{
 		char errorString[256];
-		sprintf( errorString, "Couldn't open file %s", (const char*)fileName);
+		mc2::fmt::to_buf(errorString, "Couldn't open file {}", mc2::fmt::safe((const char*)fileName));
 		Assert( 0, 0, errorString );
 		return -1;
 	}
@@ -169,7 +170,7 @@ int	LogisticsPilot::getNumberMissions() const
 long LogisticsPilot::save( FitIniFile& file, long which )
 {
 	char tmp[256];
-	sprintf( tmp, "Pilot%ld", which );
+	mc2::fmt::to_buf(tmp, "Pilot{:d}", mc2::fmt::as_i32(which));
 	file.writeBlock( tmp );
 
 	file.writeIdString( "FileName", fileName );
@@ -187,13 +188,13 @@ long LogisticsPilot::save( FitIniFile& file, long which )
 	char buffer[64];
 	for ( int i = 0; i < MAX_MEDAL; i++ )
 	{
-		sprintf( buffer, "Medal%ld", i );
+		mc2::fmt::to_buf(buffer, "Medal{:d}", mc2::fmt::as_i32(i));
 		file.writeIdBoolean( buffer, medals[i] );
 	}
 
 	for (int i = 0; i < NUM_SPECIALTY_SKILLS; i++ )
 	{
-		sprintf( buffer, "SpecialtySkill%ld", i );
+		mc2::fmt::to_buf(buffer, "SpecialtySkill{:d}", mc2::fmt::as_i32(i));
 		file.writeIdBoolean( buffer, specialtySkills[i] );
 	}
 
@@ -224,13 +225,13 @@ long LogisticsPilot::load( FitIniFile& file )
 	char buffer[64];
 	for ( int i = 0; i < MAX_MEDAL; i++ )
 	{
-		sprintf( buffer, "Medal%ld", i );
+		mc2::fmt::to_buf(buffer, "Medal{:d}", mc2::fmt::as_i32(i));
 		file.readIdBoolean( buffer, medals[i] );
 	}
 
 	for (int i = 0; i < NUM_SPECIALTY_SKILLS; i++ )
 	{
-		sprintf( buffer, "SpecialtySkill%ld", i );
+		mc2::fmt::to_buf(buffer, "SpecialtySkill{:d}", mc2::fmt::as_i32(i));
 		file.readIdBoolean( buffer, specialtySkills[i] );
 	}
 

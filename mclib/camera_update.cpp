@@ -1,6 +1,7 @@
 // Camera: the camera goal updates, Camera::update and render.
 // Declared in the class headers; shared names in camera_internal.h.
 #include "camera_internal.h"
+#include "mc2fmt.h"
 
 
 
@@ -493,14 +494,11 @@ long Camera::update (void)
 					{
 						s_camTraceFile = fopen("cam_smooth_trace.csv", "w");
 						if (s_camTraceFile)
-							fprintf(s_camTraceFile, "frame,dt_ms,px,py,rot,alt,dpos,drot\n");
+							mc2::fmt::print(s_camTraceFile, "frame,dt_ms,px,py,rot,alt,dpos,drot\n");
 					}
 					if (s_camTraceFile)
 					{
-						fprintf(s_camTraceFile, "%u,%.3f,%.2f,%.2f,%.3f,%.2f,%.4f,%.4f\n",
-							s_motionFrames, frameLength * 1000.0f,
-							position.x, position.y, cameraRotation, cameraAltitude,
-							dPos, dRot);
+						mc2::fmt::print(s_camTraceFile, "{:d},{:.3f},{:.2f},{:.2f},{:.3f},{:.2f},{:.4f},{:.4f}\n", mc2::fmt::as_u32(s_motionFrames), frameLength * 1000.0f, position.x, position.y, cameraRotation, cameraAltitude, dPos, dRot);
 						fflush(s_camTraceFile);
 					}
 				}

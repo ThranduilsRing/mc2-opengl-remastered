@@ -7,13 +7,15 @@
 
 #include "gameos.hpp"
 #include "gos_font.h"
+#include "utils/mc2log.h"
+#include "mc2fmt.h"
 
 bool gos_load_glyphs(const char* glyphFile, gosGlyphInfo& gi)
 {
     FILE* glyph_info = fopen(glyphFile, "rb");
     if(!glyph_info) {
         int last_err = errno;
-        SPEW(("fopen: %s\n", strerror(last_err)));
+        MC2_LOG(Core, Debug, "fopen: {}", mc2::fmt::safe(strerror(last_err)));
         return false;
     }
 
@@ -36,9 +38,8 @@ bool gos_load_glyphs(const char* glyphFile, gosGlyphInfo& gi)
         if(got == 0) {
             // EOF or read error — bail rather than spin forever on a
             // truncated/corrupt .glyph file.
-            SPEW(("gos_load_glyphs: short read on %s, expected %u "
-                  "glyphs, got %u\n",
-                  glyphFile, gi.num_glyphs_, (uint32_t)num_structs_read));
+            MC2_LOG(Core, Debug, "gos_load_glyphs: short read on {}, expected {:d} glyphs, got {:d}",
+                  mc2::fmt::safe(glyphFile), mc2::fmt::as_u32(gi.num_glyphs_), mc2::fmt::as_u32((uint32_t)num_structs_read));
             fclose(glyph_info);
             delete[] gi.glyphs_;
             gi.glyphs_ = nullptr;
@@ -64,9 +65,8 @@ bool gos_load_glyphs(const char* glyphFile, gosGlyphInfo& gi)
         int32_t shifted_u = (int32_t)g.u + g.minx;
         int32_t shifted_v = (int32_t)g.v + ((int32_t)gi.font_ascent_ - g.maxy);
         if(shifted_u < 0 || shifted_v < 0) {
-            SPEW(("glyph pre-fold underflow in %s at idx %u "
-                  "(u=%u minx=%d v=%u maxy=%d ascent=%u); clamping to 0\n",
-                  glyphFile, i, g.u, g.minx, g.v, g.maxy, gi.font_ascent_));
+            MC2_LOG(Core, Debug, "glyph pre-fold underflow in {} at idx {:d} (u={:d} minx={:d} v={:d} maxy={:d} ascent={:d}); clamping to 0",
+                  mc2::fmt::safe(glyphFile), mc2::fmt::as_u32(i), mc2::fmt::as_u32(g.u), mc2::fmt::as_i32(g.minx), mc2::fmt::as_u32(g.v), mc2::fmt::as_i32(g.maxy), mc2::fmt::as_u32(gi.font_ascent_));
             if(shifted_u < 0) shifted_u = 0;
             if(shifted_v < 0) shifted_v = 0;
         }
@@ -255,19 +255,19 @@ bool parse_v4(FILE* f, gosGlyphInfo& gi, gosD3FAtlas& atlas)
     if(!read_bytes(f, cC, 256))          return false;
 
     if(iTextureCount != 1) {
-        SPEW(("d3f", "d3f v4 with iTextureCount=%d not supported (need 1)\n",
-              iTextureCount));
+        MC2_LOG(Assets, Debug, "d3f v4 with iTextureCount={:d} not supported (need 1)",
+              mc2::fmt::as_i32(iTextureCount));
         return false;
     }
     if(dwFontHeight == 0 || dwFontHeight > D3F_MAX_ATLAS_DIM) {
-        SPEW(("d3f", "d3f v4 implausible dwFontHeight=%u\n", dwFontHeight));
+        MC2_LOG(Assets, Debug, "d3f v4 implausible dwFontHeight={:d}", mc2::fmt::as_u32(dwFontHeight));
         return false;
     }
 
     uint32_t dwSize = 0;
     if(!read_u32(f, &dwSize))                  return false;
     if(dwSize == 0 || dwSize > D3F_MAX_ATLAS_DIM) {
-        SPEW(("d3f", "d3f v4 implausible atlas dim=%u\n", dwSize));
+        MC2_LOG(Assets, Debug, "d3f v4 implausible atlas dim={:d}", mc2::fmt::as_u32(dwSize));
         return false;
     }
 
@@ -329,8 +329,8 @@ bool parse_v1(FILE* f, gosGlyphInfo& gi, gosD3FAtlas& atlas)
        dwHeight == 0 || dwHeight > D3F_MAX_ATLAS_DIM ||
        dwFontHeight == 0 || dwFontHeight > dwHeight)
     {
-        SPEW(("d3f", "d3f v1 implausible header w=%u h=%u fh=%u\n",
-              dwWidth, dwHeight, dwFontHeight));
+        MC2_LOG(Assets, Debug, "d3f v1 implausible header w={:d} h={:d} fh={:d}",
+              mc2::fmt::as_u32(dwWidth), mc2::fmt::as_u32(dwHeight), mc2::fmt::as_u32(dwFontHeight));
         return false;
     }
 
@@ -420,7 +420,7 @@ bool gos_load_d3f(const char* d3fFile, gosGlyphInfo& gi, gosD3FAtlas& atlas)
     } else if(sig == D3F_SIG_V1) {
         ok = parse_v1(f, gi, atlas);
     } else {
-        SPEW(("d3f", "d3f: unrecognized signature 0x%08x in %s\n", sig, d3fFile));
+        MC2_LOG(Assets, Debug, "d3f: unrecognized signature 0x{:08x} in {}", mc2::fmt::as_u32(sig), mc2::fmt::safe(d3fFile));
     }
 
     fclose(f);

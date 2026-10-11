@@ -811,6 +811,7 @@ fi
 # is precisely where a lie hides. Exemptions live in
 # scripts/gate-defaults-allowlist.txt and each one MUST carry a real reason.
 run_check "gate_default_agreement"          "py -3 scripts/check-gate-default-agreement.py --quiet"
+run_check "log_tag_census"                 "py -3 tools/log_tag_census.py --check"
 run_check "gate_default_agreement_selftest" "py -3 scripts/check-gate-default-agreement.py --selftest"
 run_check "gate_classifier_selftest"        "py -3 scripts/gate_default_classifier.py --selftest"
 # GATE-READER-CONFLICTS-1 (typed-gate-registry G0, 2026-10-09): the row above proves a gate's
@@ -1336,6 +1337,9 @@ run_check "beauty_sidecars_selftest" "py -3 scripts/check-beauty-sidecars.py --s
 # Read-only, no build, sub-second.
 run_check "stock_mission_data"          "py -3 scripts/check-stock-mission-data.py --no-data --quiet"
 run_check "stock_mission_data_selftest" "py -3 scripts/check-stock-mission-data.py --selftest"
+# STEP-3.5 (2026-10-11): the comparator behind "SIMID unchanged" -- two runs of one mission under the determinism gates must agree frame by frame.
+# The selftest is offline; the live proof is `py -3 tools/sim_determinism.py run mc2_03 --baseline` (launches the game twice; run it at the program boundaries).
+run_check "sim_determinism"             "py -3 tools/sim_determinism.py selftest"
 
 # CAPTURE-PROVENANCE-TRUTH-1: a capture manifest must name the BINARY it
 # measured, not the worktree the tool happened to run from. `identity.git.commit`

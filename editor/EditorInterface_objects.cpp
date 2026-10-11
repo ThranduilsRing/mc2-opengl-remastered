@@ -35,7 +35,7 @@ void EditorInterface::rotateSelectedObjects( int direction )
 	}
 
 	undoMgr.AddAction(pAction);
-	pAction = NULL;
+	pAction = nullptr;
 }
 
 // Frame the camera on the current selection. Recenters the camera's ground
@@ -110,7 +110,7 @@ void EditorInterface::rotateSelectedObjectsDegrees( float deg )
 	}
 
 	undoMgr.AddAction(pAction);
-	pAction = NULL;
+	pAction = nullptr;
 }
 
 // Editable Inspector v1 transform. Reuses ModifyBuildingAction exactly like the

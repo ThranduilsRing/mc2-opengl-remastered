@@ -20,6 +20,7 @@
 #include <cstring>                        // strncpy (chassis stem copy)
 #include <cctype>                         // tolower (UNIT-SOURCE-FLIP-SWITCH-1)
 #include "modder_finding.h"              // MODDER-FIRST-ERROR-SURFACE-1: shared context format
+#include "mc2fmt.h"
 
 void populateProfileFromFit(FitIniFile& fit, UnitProfile& p) {
     // Optional, additive (grant-only, never clears). Stock .fits have no
@@ -114,7 +115,7 @@ void lowerCopy(char* dst, unsigned long cap, const char* src) {
 // Only reachable when MC2_UNIT_DEFINITION_SOURCE=generated (callers gate first),
 // so stock gate-OFF runs never print.
 void reportUnitSourceFinding(const ModderFinding& f) {
-    printf("[UNIT-SOURCE=generated] %s\n", formatModderFinding(f).c_str());
+    mc2::fmt::print_out("[UNIT-SOURCE=generated] {}\n", formatModderFinding(f).c_str());
 }
 } // namespace
 
@@ -129,7 +130,7 @@ bool sourceGeneratedChassisFacets(const char* chassisStem, UnitProfile& p,
     lowerCopy(stem, sizeof(stem), chassisStem);
 
     char path[256];
-    std::snprintf(path, sizeof(path), "%s%s/chassisdef.fit", kGeneratedUnitsRoot, stem);
+    mc2::fmt::to_buf(path, "{}{}/chassisdef.fit", mc2::fmt::safe(kGeneratedUnitsRoot), mc2::fmt::safe(stem));
 
     // Absent generated def -> legacy default stands (partial coverage is safe).
     if (!fileExists(path))
@@ -197,9 +198,7 @@ bool sourceGeneratedChassisFacets(const char* chassisStem, UnitProfile& p,
         // The shadow-compare (roster GREEN 63/63) proved generated facet VALUES ==
         // legacy-derived, so sourcing here is behavior-identical: match-legacy=YES.
         const char* label = (typeName && typeName[0]) ? typeName : stem;
-        printf("[UNIT-SOURCE=generated] core:%s loco/dmg from generated "
-               "(loco=%s dmg=%s type=%s match-legacy=YES)\n",
-               stem, locoOk ? loco : "<legacy>", dmgOk ? dmg : "<legacy>", label);
+        mc2::fmt::print_out("[UNIT-SOURCE=generated] core:{} loco/dmg from generated (loco={} dmg={} type={} match-legacy=YES)\n", mc2::fmt::safe(stem), mc2::fmt::safe(locoOk ? loco : "<legacy>"), mc2::fmt::safe(dmgOk ? dmg : "<legacy>"), mc2::fmt::safe(label));
     }
     return locoOk || dmgOk;
 }
@@ -217,7 +216,7 @@ bool sourceGeneratedVariantJump(const char* chassisStem, const char* variantName
     mc2GeneratedVariantSlug(variantName, 0, slug, sizeof(slug));
 
     char path[256];
-    std::snprintf(path, sizeof(path), "%s%s/%s/unit.fit", kGeneratedUnitsRoot, stem, slug);
+    mc2::fmt::to_buf(path, "{}{}/{}/unit.fit", mc2::fmt::safe(kGeneratedUnitsRoot), mc2::fmt::safe(stem), mc2::fmt::safe(slug));
     if (!fileExists(path))
         return false;
 
@@ -256,8 +255,7 @@ bool sourceGeneratedVariantJump(const char* chassisStem, const char* variantName
         return false;
     }
     *jumpOut = jump;
-    printf("[UNIT-SOURCE=generated] core:%s_%s jump=%s from generated "
-           "(match-legacy=YES)\n", stem, slug, jump ? "TRUE" : "FALSE");
+    mc2::fmt::print_out("[UNIT-SOURCE=generated] core:{}_{} jump={} from generated (match-legacy=YES)\n", mc2::fmt::safe(stem), mc2::fmt::safe(slug), mc2::fmt::safe(jump ? "TRUE" : "FALSE"));
     return true;
 }
 
@@ -290,8 +288,8 @@ void validateAndReportUnitProfile(const UnitProfile& profile, const char* typeNa
     const char* label = (typeName && typeName[0]) ? typeName : "<unknown>";
     for (const UnitProfileFinding& f : findings) {
         // Report-only: describe the incoherence in modder terms; do not reject.
-        printf("[UnitDefinition:VALIDATE] %s: %s (reason=%d)\n",
-               label, f.message, static_cast<int>(f.code));
+        mc2::fmt::print_out("[UnitDefinition:VALIDATE] {}: {} (reason={:d})\n",
+               mc2::fmt::safe(label), mc2::fmt::safe(f.message), mc2::fmt::as_i32(static_cast<int>(f.code)));
     }
 }
 

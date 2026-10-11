@@ -1,6 +1,7 @@
 // gosPostProcess: gosPostProcess teardown, resize, scene/post FBO creation and destruction, and the particle/VFX scene copies.
 // Declared in the class headers; shared names in gos_postprocess_internal.h.
 #include "gos_postprocess_internal.h"
+#include "mc2fmt.h"
 
 
 static bool mc2VkSharedSceneStrictEnabled()
@@ -21,11 +22,7 @@ void mc2VkSharedSceneStrictFallback(const char* slot, const char* reason)
 {
     if (!mc2VkSharedSceneStrictEnabled())
         return;
-    std::fprintf(stderr,
-                 "[VK_SHARED_SCENE_STRICT] abort slot=%s reason=%s "
-                 "(VK shared-GBuffer declined to pure GL)\n",
-                 slot ? slot : "unknown",
-                 reason ? reason : "unknown");
+    mc2::fmt::print_err("[VK_SHARED_SCENE_STRICT] abort slot={} reason={} (VK shared-GBuffer declined to pure GL)\n", mc2::fmt::safe(slot ? slot : "unknown"), mc2::fmt::safe(reason ? reason : "unknown"));
     std::fflush(stderr);
     std::abort();
 }
@@ -193,13 +190,10 @@ void gosPostProcess::createFBOs(int w, int h)
             sceneColorShared = true;
             glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
                                    GL_TEXTURE_2D, sceneColorTex_, 0);
-            fprintf(stderr, "[VK_SHARED_SCENE_COLOR] color active "
-                            "placeholder_tex=%u %dx%d (VK-only MRT0)\n",
-                    (unsigned)sceneColorTex_, w, h);
+            mc2::fmt::print_err("[VK_SHARED_SCENE_COLOR] color active placeholder_tex={:d} {:d}x{:d} (VK-only MRT0)\n", mc2::fmt::as_u32((unsigned)sceneColorTex_), mc2::fmt::as_i32(w), mc2::fmt::as_i32(h));
         } else {
             sharedSceneColor_ = nullptr;
-            fprintf(stderr, "[VK_SHARED_SCENE_COLOR] color declined reason=%s "
-                            "(pure GL RGBA16F)\n", reason ? reason : "unknown");
+            mc2::fmt::print_err("[VK_SHARED_SCENE_COLOR] color declined reason={} (pure GL RGBA16F)\n", mc2::fmt::safe(reason ? reason : "unknown"));
             mc2VkSharedSceneStrictFallback("color", reason);
         }
     }
@@ -227,14 +221,9 @@ void gosPostProcess::createFBOs(int w, int h)
             GLint sceneFmt = 0;  // sceneColorTex_ is still bound to GL_TEXTURE_2D here
             glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, &sceneFmt);
             GLboolean fbSrgb = glIsEnabled(GL_FRAMEBUFFER_SRGB);
-            fprintf(stderr,
-                "[LINEAR_AUDIT] event=color_pipeline_probe framebuffer_srgb=%d "
-                "scene_color_internalformat=0x%04X (0x881A=GL_RGBA16F) "
-                "verdict=%s\n",
-                (int)fbSrgb, (unsigned)sceneFmt,
-                (fbSrgb == GL_FALSE)
+            mc2::fmt::print_err("[LINEAR_AUDIT] event=color_pipeline_probe framebuffer_srgb={:d} scene_color_internalformat=0x{:04X} (0x881A=GL_RGBA16F) verdict={}\n", mc2::fmt::as_i32((int)fbSrgb), mc2::fmt::as_u32((unsigned)sceneFmt), mc2::fmt::safe((fbSrgb == GL_FALSE)
                   ? "GAMMA_SPACE_MATH:no_FRAMEBUFFER_SRGB->shader_lighting_in_sRGB_space->linear_correctness_required_before_PBR"
-                  : "FRAMEBUFFER_SRGB_ON:GL_auto_encodes->verify_shader_inputs_decoded_to_linear");
+                  : "FRAMEBUFFER_SRGB_ON:GL_auto_encodes->verify_shader_inputs_decoded_to_linear"));
             fflush(stderr);
         }
     }
@@ -262,14 +251,10 @@ void gosPostProcess::createFBOs(int w, int h)
             sceneDepthShared = true;
             glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT,
                                    GL_TEXTURE_2D, sceneDepthTex_, 0);
-            fprintf(stderr, "[VK_SHARED_SCENE_DEPTH] active "
-                            "placeholder_tex=%u %dx%d (VK-only depth)\n",
-                    (unsigned)sceneDepthTex_, w, h);
+            mc2::fmt::print_err("[VK_SHARED_SCENE_DEPTH] active placeholder_tex={:d} {:d}x{:d} (VK-only depth)\n", mc2::fmt::as_u32((unsigned)sceneDepthTex_), mc2::fmt::as_i32(w), mc2::fmt::as_i32(h));
         } else {
             sharedSceneDepth_ = nullptr;
-            fprintf(stderr, "[VK_SHARED_SCENE_DEPTH] declined reason=%s "
-                            "(pure GL GL_DEPTH24_STENCIL8)\n",
-                    reason ? reason : "unknown");
+            mc2::fmt::print_err("[VK_SHARED_SCENE_DEPTH] declined reason={} (pure GL GL_DEPTH24_STENCIL8)\n", mc2::fmt::safe(reason ? reason : "unknown"));
             mc2VkSharedSceneStrictFallback("depth", reason);
         }
     }
@@ -328,13 +313,10 @@ void gosPostProcess::createFBOs(int w, int h)
             sceneNormalShared = true;
             glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1,
                                    GL_TEXTURE_2D, sceneNormalTex_, 0);
-            fprintf(stderr, "[VK_SHARED_SCENE_COLOR] normal active "
-                            "placeholder_tex=%u %dx%d (VK-only MRT1)\n",
-                    (unsigned)sceneNormalTex_, w, h);
+            mc2::fmt::print_err("[VK_SHARED_SCENE_COLOR] normal active placeholder_tex={:d} {:d}x{:d} (VK-only MRT1)\n", mc2::fmt::as_u32((unsigned)sceneNormalTex_), mc2::fmt::as_i32(w), mc2::fmt::as_i32(h));
         } else {
             sharedSceneNormal_ = nullptr;
-            fprintf(stderr, "[VK_SHARED_SCENE_COLOR] normal declined reason=%s "
-                            "(pure GL RGBA16F)\n", reason ? reason : "unknown");
+            mc2::fmt::print_err("[VK_SHARED_SCENE_COLOR] normal declined reason={} (pure GL RGBA16F)\n", mc2::fmt::safe(reason ? reason : "unknown"));
             mc2VkSharedSceneStrictFallback("normal", reason);
         }
     }
@@ -371,13 +353,10 @@ void gosPostProcess::createFBOs(int w, int h)
                 sceneObjectIdShared = true;
                 glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2,
                                        GL_TEXTURE_2D, sceneObjectIdTex_, 0);
-                fprintf(stderr, "[VK_SHARED_SCENE_COLOR] objectId active "
-                                "placeholder_tex=%u %dx%d (VK-only MRT2)\n",
-                        (unsigned)sceneObjectIdTex_, w, h);
+                mc2::fmt::print_err("[VK_SHARED_SCENE_COLOR] objectId active placeholder_tex={:d} {:d}x{:d} (VK-only MRT2)\n", mc2::fmt::as_u32((unsigned)sceneObjectIdTex_), mc2::fmt::as_i32(w), mc2::fmt::as_i32(h));
             } else {
                 sharedSceneObjectId_ = nullptr;
-                fprintf(stderr, "[VK_SHARED_SCENE_COLOR] objectId declined reason=%s "
-                                "(pure GL_R32UI)\n", reason ? reason : "unknown");
+                mc2::fmt::print_err("[VK_SHARED_SCENE_COLOR] objectId declined reason={} (pure GL_R32UI)\n", mc2::fmt::safe(reason ? reason : "unknown"));
                 mc2VkSharedSceneStrictFallback("objectId", reason);
             }
         }
@@ -405,7 +384,7 @@ void gosPostProcess::createFBOs(int w, int h)
 
     GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
     if (status != GL_FRAMEBUFFER_COMPLETE) {
-        fprintf(stderr, "gosPostProcess: scene FBO incomplete (0x%x)\n", status);
+        mc2::fmt::print_err("gosPostProcess: scene FBO incomplete (0x{:x})\n", mc2::fmt::as_u32(status));
     }
 
     // REGISTER-MAIN-DEPTH-RESOURCE: publish the full-res scene depth as the
@@ -494,7 +473,7 @@ void gosPostProcess::createFBOs(int w, int h)
 
         GLenum aoStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
         if (aoStatus != GL_FRAMEBUFFER_COMPLETE)
-            fprintf(stderr, "gosPostProcess: SSAO FBO incomplete (0x%x)\n", aoStatus);
+            mc2::fmt::print_err("gosPostProcess: SSAO FBO incomplete (0x{:x})\n", mc2::fmt::as_u32(aoStatus));
 
         // REGISTRY-POSTPROCESS-FBO-1: publish the half-res AO target (observe-only).
         RenderCore::RenderResourceDesc d;
@@ -528,7 +507,7 @@ void gosPostProcess::createFBOs(int w, int h)
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, ssaoBlurTex_, 0);
         GLenum aoBlurStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
         if (aoBlurStatus != GL_FRAMEBUFFER_COMPLETE)
-            fprintf(stderr, "gosPostProcess: SSAO blur FBO incomplete (0x%x)\n", aoBlurStatus);
+            mc2::fmt::print_err("gosPostProcess: SSAO blur FBO incomplete (0x{:x})\n", mc2::fmt::as_u32(aoBlurStatus));
     }
 
     // --- WATER-REFLECTION-RESOURCE-1: quarter-res reflection target ---
@@ -567,7 +546,7 @@ void gosPostProcess::createFBOs(int w, int h)
 
         GLenum wrStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
         if (wrStatus != GL_FRAMEBUFFER_COMPLETE)
-            fprintf(stderr, "gosPostProcess: water reflection FBO incomplete (0x%x)\n", wrStatus);
+            mc2::fmt::print_err("gosPostProcess: water reflection FBO incomplete (0x{:x})\n", mc2::fmt::as_u32(wrStatus));
 
         // Register descriptors (descriptive; this owner keeps the GL lifetime).
         RenderCore::RenderResourceDesc cdesc;

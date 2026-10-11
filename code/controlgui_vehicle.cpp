@@ -1,6 +1,7 @@
 // ControlGui: the vehicle tab: update, render, click handling and the vehicle command state.
 // Declared in the class headers; shared names in controlgui_internal.h.
 #include "controlgui_internal.h"
+#include "mc2fmt.h"
 
 
 void ControlGui::updateVehicleTab(int mouseX, int mouseY, bool bLOS )
@@ -169,7 +170,7 @@ void ControlGui::renderVehicleTab()
 			long right = float2long(vehicleButtons[i].location[2].x);
 			long bottom = float2long(vehicleButtons[i].location[2].y + 30 + TEXT_SKIP);
 
-			sprintf( buffer, "%ld", vehicleCosts[i] );
+			mc2::fmt::to_buf(buffer, "{:d}", mc2::fmt::as_i32(vehicleCosts[i]));
 			vehicleFont.render( buffer, left, top, right - left, bottom - top, color, 0, 2 );
 		}
 	}

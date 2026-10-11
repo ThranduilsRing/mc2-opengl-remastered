@@ -71,7 +71,7 @@ def target_to_source(tree_abs):
 HEADER_SITE = pick_batch.SITE
 
 
-def candidate_headers(dirs, includers, dirty):
+def candidate_headers(dirs, includers, dirty, rewrite=None):
     """Tracked headers under `dirs` with a rewritable site, not excluded or dirty, that some object includes."""
     out = subprocess.run(["git", "-C", ROOT, "ls-files"] + [d.rstrip("/") + "/" for d in dirs], capture_output=True, text=True,
                          **console_child.child_kwargs(redirected=True)).stdout.split()
@@ -80,7 +80,8 @@ def candidate_headers(dirs, includers, dirty):
         if not rel.lower().endswith((".h", ".hpp", ".inl")) or rts.is_excluded(rel) or rel in dirty or rel not in includers:
             continue
         with open(os.path.join(ROOT, rel), encoding="utf-8", errors="replace") as fh:
-            if pick_batch.has_site(fh.read()):
+            text = fh.read()
+            if pick_batch._rewrite_site(text, rewrite) if rewrite else pick_batch.has_site(text):
                 cands.append((len(includers[rel]), os.path.getsize(os.path.join(ROOT, rel)), rel))
     cands.sort()
     return cands
@@ -111,12 +112,16 @@ def read_bytes(rel: str) -> bytes:
 class Proof:
     """Applies a subset of the proposed header edits to the tree and compares every affected object with its pre-edit digest."""
 
-    def __init__(self, tree_abs, includers, orig, edited, jobs):
+    def __init__(self, tree_abs, includers, orig, edited, jobs, sources=None):
         self.tree_abs, self.includers, self.orig, self.edited, self.jobs = tree_abs, includers, orig, edited, jobs
+        self.sources = sources or {}          # object target -> repo-relative source, for the nondeterminism check
         self.headers = sorted(edited)
         self.objs = sorted({o for h in self.headers for o in includers[h]})
         self.on_disk = dict(orig)
         self.before = {}
+        self.noisy = set()                    # objects that differ between two compiles of identical input
+        self.deterministic = set()            # objects already checked and found stable
+        self.verified = None                  # (frozenset of applied headers) of the last probe that built clean
 
     def baseline(self) -> int:
         rc, _ = rts.ninja_objects_targets(self.tree_abs, self.objs, self.jobs)
@@ -139,12 +144,36 @@ class Proof:
         rc, failed = rts.ninja_objects_targets(self.tree_abs, self.objs, self.jobs)
         bad = {f.replace("\\", "/") for f in failed}
         for o in self.objs:
-            if o in bad:
+            if o in bad or o in self.noisy:
                 continue
             now = objhash.obj_digest(os.path.join(self.tree_abs, o))
             if now is None or now["code_sha256"] != self.before[o]["code_sha256"]:
                 bad.add(o)
         return bad
+
+    def find_noisy(self, bad) -> set:
+        """-> the objects in `bad` that compile to different bytes from the same input (an embedded timestamp, an address, ...).
+
+        Each is recompiled twice with its source touched and nothing else changed. A compile failure is not noise. Such an object proves
+        nothing about any header, so it is left out of the comparison instead of reverting every header it includes."""
+        noisy = set()
+        for o in sorted(bad):
+            src = self.sources.get(o)
+            if not src or o in self.deterministic:
+                continue
+            digests = []
+            for _ in range(2):
+                os.utime(os.path.join(ROOT, src), None)
+                rc, failed = rts.ninja_objects_targets(self.tree_abs, [o], self.jobs)
+                if failed:
+                    break
+                d = objhash.obj_digest(os.path.join(self.tree_abs, o))
+                digests.append(d and d["code_sha256"])
+            if len(digests) == 2 and digests[0] != digests[1]:
+                noisy.add(o)
+            elif len(digests) == 2:
+                self.deterministic.add(o)
+        return noisy
 
     def solve(self):
         """Keep every header whose including objects are all identical; bisect the suspects of a failure. -> (kept, [(header, why)])."""
@@ -154,7 +183,16 @@ class Proof:
             t0 = time.monotonic()
             self.apply(set(keep) | set(trial))
             bad = self.bad_objects()
+            if bad:
+                found = self.find_noisy(bad)
+                if found:
+                    self.noisy |= found
+                    for o in sorted(found):
+                        print(f"  NOISY {o}: compiles to different bytes from identical input; ignored", flush=True)
+                    bad = self.bad_objects()
             print(f"  probe {len(trial)} header(s): {len(bad)} differing/failing object(s), {time.monotonic() - t0:.0f} s", flush=True)
+            if not bad:
+                self.verified = frozenset(set(keep) | set(trial))
             return bad
 
         def go(trial):
@@ -177,7 +215,8 @@ class Proof:
 
         go(list(self.headers))
         self.apply(set(keep))
-        final_bad = self.bad_objects()
+        # The last clean probe already built exactly this state, so a full set that passed at once needs no second build.
+        final_bad = set() if self.verified == frozenset(keep) else self.bad_objects()
         if final_bad:      # the accepted headers interact; nothing is kept
             rejected += [(h, "kept set failed its final build") for h in keep]
             keep = []
@@ -204,6 +243,7 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--stop-after-batch", action="store_true",
                     help="do not run a batch: ask the tool that holds this tree's lock to exit after its current batch (the stop "
                          "request is the file <tree>/.tidy.stop)")
+    ap.add_argument("--rewrite", choices=rts.REWRITERS, help="apply this text transform to each header instead of running clang-tidy")
     rts.add_lane_args(ap)
     return ap
 
@@ -223,7 +263,7 @@ def run_batch(args):
         headers = [h.replace("\\", "/") for h in args.headers]
     else:
         headers, union = [], set()
-        for n, _sz, rel in candidate_headers(args.dir, includers, dirty):
+        for n, _sz, rel in candidate_headers(args.dir, includers, dirty, args.rewrite):
             if rel in done or len(includers[rel]) > args.max_header_includers:
                 continue
             new_union = union | includers[rel]
@@ -258,6 +298,14 @@ def run_batch(args):
     for h in headers:
         # clang-tidy applies no fix-its from a TU it cannot parse (MSVC-only constructs), so try the including TUs smallest first until
         # one rewrites the header (or none does).
+        if args.rewrite:
+            rts.rewrite_hook(args.rewrite)(["rewrite", h])
+            if read_bytes(h) != orig[h]:
+                edited[h] = read_bytes(h)
+                with open(os.path.join(ROOT, h), "wb") as fh:
+                    fh.write(orig[h])
+                os.utime(os.path.join(ROOT, h), ns=(mtimes[h], mtimes[h]))
+            continue
         checks = checks_for(orig[h].decode("utf-8", errors="replace"))
         tus = sorted((os.path.getsize(os.path.join(ROOT, t2s[o])), t2s[o]) for o in includers.get(h, ()) if o in t2s
                      and not rts.is_excluded(t2s[o]) and t2s[o].lower().endswith((".cpp", ".cc", ".cxx")))
@@ -287,7 +335,7 @@ def run_batch(args):
         print("run_tidy_headers: no rewrites needed")
         return 0, False
 
-    proof = Proof(tree_abs, includers, orig, edited, args.build_jobs)
+    proof = Proof(tree_abs, includers, orig, edited, args.build_jobs, sources=t2s)
     if proof.baseline():
         print("run_tidy_headers: the base build of the proof set failed; refusing to edit", file=sys.stderr)
         return 2, False

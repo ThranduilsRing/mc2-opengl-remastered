@@ -16,6 +16,7 @@
 #include "mc2_hitch_trace.h"
 #include "gos_profiler.h"  // ZoneScopedN (VK-ISLAND-TRACY-1 zones)
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 // MC2_GPUBUF_LIGHT_GROWONCE gate (moved with the cluster).
 static bool gosLightGrowOnceEnabled() {
@@ -181,10 +182,7 @@ static bool gos_LightDataSsbo_UploadGrowOnce(const void* data, size_t bytes,
 		// Periodic window dump (every 300 accounted calls ≈ 300 frames). savedBytes =
 		// prefixSkipped = the immutable-prefix bytes NOT re-shipped this window.
 		if (s_lightUploadStats.frames >= 300) {
-			std::fprintf(stderr,
-			    "[LIGHT_UPLOAD_STATS] frames=%u uploadBytes=%llu baselineBytes=%llu savedBytes=%llu\n",
-			    s_lightUploadStats.frames, s_lightUploadStats.uploadBytes,
-			    s_lightUploadStats.baselineBytes, s_lightUploadStats.prefixSkipped);
+			mc2::fmt::print_err("[LIGHT_UPLOAD_STATS] frames={:d} uploadBytes={:d} baselineBytes={:d} savedBytes={:d}\n", mc2::fmt::as_u32(s_lightUploadStats.frames), mc2::fmt::as_u64(s_lightUploadStats.uploadBytes), mc2::fmt::as_u64(s_lightUploadStats.baselineBytes), mc2::fmt::as_u64(s_lightUploadStats.prefixSkipped));
 			std::fflush(stderr);
 			s_lightUploadStats = LightUploadStats{};  // reset window
 		}
@@ -300,8 +298,7 @@ void __stdcall gos_LightDataSsbo_Upload(const void* data, size_t bytes)
 		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 		registerLightDataSsbo(s_lightDataSsboBytes);  // LIGHTDATA-SSBO-OWNER-1: register at create (legacy path)
 		if (s_lightSsboTrace) {
-			std::fprintf(stderr, "[LIGHTSSBO v1] event=enabled binding=%d bytes=%zu\n",
-			             LIGHT_DATA_SSBO_BINDING, bytes);
+			mc2::fmt::print_err("[LIGHTSSBO v1] event=enabled binding={:d} bytes={:d}\n", mc2::fmt::as_i32(LIGHT_DATA_SSBO_BINDING), mc2::fmt::as_size(bytes));
 			std::fflush(stderr);
 		}
 		return;
@@ -361,9 +358,7 @@ void __stdcall gos_LightDataSsbo_UploadSplit(const void* data, size_t prefixByte
 		// Prior behavior re-shipped the full range every steady-state frame here.
 		gos_LightDataSsbo_UploadGrowOnce(data, totalBytes, prefixBytes, prefixDirty);
 		if (s_lightSsboTrace) {
-			std::fprintf(stderr,
-			    "[LIGHTSSBO v2] event=growonce_split_prefixaware total=%zu prefix=%zu dirty=%d\n",
-			    totalBytes, prefixBytes, prefixDirty ? 1 : 0);
+			mc2::fmt::print_err("[LIGHTSSBO v2] event=growonce_split_prefixaware total={:d} prefix={:d} dirty={:d}\n", mc2::fmt::as_size(totalBytes), mc2::fmt::as_size(prefixBytes), mc2::fmt::as_i32(prefixDirty ? 1 : 0));
 			std::fflush(stderr);
 		}
 		return;
@@ -379,8 +374,7 @@ void __stdcall gos_LightDataSsbo_UploadSplit(const void* data, size_t prefixByte
 		// refresh on the next gated frame (cheap; grow frames are rare).
 		s_lightPrefixStashLive = 0;
 		if (s_lightSsboTrace) {
-			std::fprintf(stderr, "[LIGHTSSBO v2] event=full_on_grow total=%zu prefix=%zu\n",
-			             totalBytes, prefixBytes);
+			mc2::fmt::print_err("[LIGHTSSBO v2] event=full_on_grow total={:d} prefix={:d}\n", mc2::fmt::as_size(totalBytes), mc2::fmt::as_size(prefixBytes));
 			std::fflush(stderr);
 		}
 		return;
@@ -454,8 +448,8 @@ void __stdcall gos_LightDataSsbo_UploadSplit(const void* data, size_t prefixByte
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 	if (s_lightSsboTrace) {
 		// prefixDirty is always treated as true post-orphan; log what was requested
-		std::fprintf(stderr, "[LIGHTSSBO v2] event=split_orphan prefixDirty=%d prefix=%zu suffix=%zu\n",
-		             prefixDirty ? 1 : 0, prefixBytes, totalBytes - prefixBytes);
+		mc2::fmt::print_err("[LIGHTSSBO v2] event=split_orphan prefixDirty={:d} prefix={:d} suffix={:d}\n",
+		             mc2::fmt::as_i32(prefixDirty ? 1 : 0), mc2::fmt::as_size(prefixBytes), mc2::fmt::as_size(totalBytes - prefixBytes));
 		std::fflush(stderr);
 	}
 }

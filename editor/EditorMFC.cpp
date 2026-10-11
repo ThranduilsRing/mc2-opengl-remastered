@@ -165,7 +165,7 @@ bool         g_cliSmokeWorkDone   = false;
 // visibility/count at each step into the [ESMOKE v1] summary for the runner to
 // verify. Implies -smoke-foliage (so there is foliage loaded to toggle first).
 bool         g_cliSmokeFoliageMenu = false;
-void*        g_smokeMainHwnd       = NULL;   // HWND (typed void* -- declared before windows.h)
+void*        g_smokeMainHwnd       = nullptr;   // HWND (typed void* -- declared before windows.h)
 int          g_menuVis0 = -1, g_menuVis1 = -1, g_menuVis2 = -1;   // visibility across two toggles
 int          g_menuClearCount = -1;          // Count() after Clear (expect 0)
 int          g_menuReloadCount = -1;         // Count() after Generate/reload (expect >0)
@@ -273,7 +273,7 @@ static void s_cli_parse(const char* cmd)
 	for (size_t i = 0; i < argv.size(); ++i)
 	{
 		const char* tok = argv[i].c_str();
-		const char* rest = NULL;
+		const char* rest = nullptr;
 
 		if (s_cli_flag_match(tok, "-mission", "--mission"))
 		{
@@ -420,7 +420,7 @@ static void s_cli_parse(const char* cmd)
 // configurations; declare the symbol directly to avoid the dependency.
 void __stdcall InitGameOS(HINSTANCE hInstance, HWND hWindow, char* commandLine);
 
-static EditorInterface* g_editorInterfaceWindow = NULL;
+static EditorInterface* g_editorInterfaceWindow = nullptr;
 
 
 BEGIN_MESSAGE_MAP(EditorMFCApp, CWinApp)
@@ -430,7 +430,7 @@ END_MESSAGE_MAP()
 
 EditorMFCApp::EditorMFCApp()
 	: m_bPendingInitGameOS(false)
-	, m_hEditorWnd(NULL)
+	, m_hEditorWnd(nullptr)
 {
 }
 
@@ -518,7 +518,7 @@ BOOL EditorMFCApp::InitInstance()
 	if (g_cliExitAfterSec > 0)
 	{
 		EarlyTrace("InitInstance: starting smoke driver thread");
-		::CreateThread(NULL, 0, s_smoke_thread, NULL, 0, NULL);
+		::CreateThread(nullptr, 0, s_smoke_thread, nullptr, 0, nullptr);
 	}
 
 #ifdef _AFXDLL
@@ -535,11 +535,11 @@ BOOL EditorMFCApp::InitInstance()
 
 	// Create the real MFC frame first.  The EditorInterface view is normally
 	// constructed from MainFrame::OnCreate; if that route fails, create one here.
-	if (!pFrame->LoadFrame(IDR_EDITOR_MENU, WS_OVERLAPPEDWINDOW | FWS_ADDTOTITLE, NULL, NULL))
+	if (!pFrame->LoadFrame(IDR_EDITOR_MENU, WS_OVERLAPPEDWINDOW | FWS_ADDTOTITLE, nullptr, nullptr))
 	{
 		EarlyTrace("InitInstance: LoadFrame FAILED");
 		delete pFrame;
-		m_pMainWnd = NULL;
+		m_pMainWnd = nullptr;
 		return FALSE;
 	}
 	EarlyTrace("InitInstance: LoadFrame OK");
@@ -553,7 +553,7 @@ BOOL EditorMFCApp::InitInstance()
 
 	// Make sure the frame has a native MFC menu.  Some remastered startup paths
 	// leave the frame alive but without a menu attached, which hides the editor UI.
-	if (pFrame->GetMenu() == NULL)
+	if (pFrame->GetMenu() == nullptr)
 	{
 		CMenu* pMenu = new CMenu;
 		if (pMenu->LoadMenu(IDR_EDITOR_MENU))
@@ -583,17 +583,17 @@ BOOL EditorMFCApp::InitInstance()
 
 		g_editorInterfaceWindow = new EditorInterface;
 		if (!g_editorInterfaceWindow->Create(
-			NULL,
+			nullptr,
 			_T("EditorInterface"),
 			WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN,
 			clientRect,
 			pFrame,
 			AFX_IDW_PANE_FIRST,
-			NULL))
+			nullptr))
 		{
 			EarlyTrace("InitInstance: fallback EditorInterface Create FAILED");
 			delete g_editorInterfaceWindow;
-			g_editorInterfaceWindow = NULL;
+			g_editorInterfaceWindow = nullptr;
 		}
 		else
 		{
@@ -613,7 +613,7 @@ BOOL EditorMFCApp::InitInstance()
 	pFrame->UpdateWindow();
 	pFrame->DrawMenuBar();
 
-	HWND editorWnd = NULL;
+	HWND editorWnd = nullptr;
 	editorInterface = EditorInterface::instance();
 	if (editorInterface && editorInterface->GetSafeHwnd())
 	{
@@ -1084,12 +1084,12 @@ BOOL EditorMFCApp::OnIdle(LONG lCount)
 		// The 3D viewport is an embedded child window.  The old foreground-window
 		// check only repainted when the MFC frame itself was foreground, which
 		// starves the viewport when focus is inside a child/control.
-		::InvalidateRect(pEditor->m_hWnd, NULL, FALSE);
+		::InvalidateRect(pEditor->m_hWnd, nullptr, FALSE);
 	}
 
 	// Capture the main frame HWND on the main thread so the smoke driver thread can
 	// PostMessage WM_COMMAND foliage-menu commands to it (-smoke-foliage-menu).
-	if (g_cliSmokeFoliageMenu && g_smokeMainHwnd == NULL && AfxGetMainWnd())
+	if (g_cliSmokeFoliageMenu && g_smokeMainHwnd == nullptr && AfxGetMainWnd())
 		g_smokeMainHwnd = AfxGetMainWnd()->GetSafeHwnd();
 
 	// -playtest END-TO-END SMOKE driver (main thread). Runs once the auto-load
@@ -1200,8 +1200,8 @@ int EditorMFCApp::ExitInstance()
 			EditorInterface window, so we recreate the window here. The editor window
 			may not be referenced after this function is executed, but this is not the correct
 			place for the EditorInterface window to be destroyed. */
-			EditorInterface::instance()->Create(NULL, NULL, AFX_WS_DEFAULT_VIEW | WS_VSCROLL | WS_HSCROLL,
-				CRect(0, 0, 0, 0), m_pMainWnd, AFX_IDW_PANE_FIRST, NULL);
+			EditorInterface::instance()->Create(nullptr, nullptr, AFX_WS_DEFAULT_VIEW | WS_VSCROLL | WS_HSCROLL,
+				CRect(0, 0, 0, 0), m_pMainWnd, AFX_IDW_PANE_FIRST, nullptr);
 		}
 	}
 

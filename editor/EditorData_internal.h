@@ -36,7 +36,7 @@
 
 // From multplyr.h
 // Can't include because of redefinition of MissionSettings struct
-typedef enum {
+enum MissionType {
 	MISSION_TYPE_ELIMINATION,
 	MISSION_TYPE_KING_OF_THE_HILL,
 	MISSION_TYPE_CAPTURE_BASE,
@@ -45,7 +45,7 @@ typedef enum {
 	MISSION_TYPE_LAST_MAN_ON_THE_HILL,
 	MISSION_TYPE_OTHER,
 	NUM_MISSION_TYPES
-} MissionType;
+};
 
 #pragma warning( disable:4201 )
 #include "mmsystem.h"

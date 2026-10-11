@@ -13,6 +13,7 @@
 #include"platform_windows.h" /*only for declaration of DeleteFile() */
 
 #include "terrtxm2_internal.h"
+#include "mc2fmt.h"
 
 
 bool forceShadowBurnIn = false;
@@ -298,8 +299,7 @@ DWORD TerrainColorMap::resolveTextureHandle (VertexPtr vMin, VertexPtr vMax, Ter
 			long maxTex = (long)(numTexturesAcross * numTexturesAcross);
 			if (resultTexture < 0 || resultTexture >= maxTex)
 			{
-				fprintf(stderr, "[TERRAIN] OOB! resultTexture=%ld max=%ld posX=%f posY=%f txmX=%ld txmY=%ld\n",
-					resultTexture, maxTex, posX, posY, txmNumX, txmNumY);
+				mc2::fmt::print_err("[TERRAIN] OOB! resultTexture={:d} max={:d} posX={:f} posY={:f} txmX={:d} txmY={:d}\n", mc2::fmt::as_i32(resultTexture), mc2::fmt::as_i32(maxTex), posX, posY, mc2::fmt::as_i32(txmNumX), mc2::fmt::as_i32(txmNumY));
 				fflush(stderr);
 				uvData->minU = uvData->minV = uvData->maxU = uvData->maxV = 0.0f;
 				return 0;
@@ -341,7 +341,7 @@ DWORD TerrainColorMap::getTextureHandle (VertexPtr vMin, VertexPtr vMax, Terrain
 long TerrainColorMap::saveDetailTexture(const char *fileName)
 {
 	char dName[1024];
-	sprintf(dName,"%s.detail",fileName);
+	mc2::fmt::to_buf(dName, "{}.detail", mc2::fmt::safe(fileName));
 	FullPathFileName detailFile;
 	detailFile.init(texturePath,dName,".tga");
 	return mcTextureManager->saveTexture(detailTextureNodeIndex, detailFile);
@@ -350,7 +350,7 @@ long TerrainColorMap::saveDetailTexture(const char *fileName)
 long TerrainColorMap::saveWaterTexture(const char *fileName)
 {
 	char dName[1024];
-	sprintf(dName,"%s.water",fileName);
+	mc2::fmt::to_buf(dName, "{}.water", mc2::fmt::safe(fileName));
 	FullPathFileName waterFile;
 	waterFile.init(texturePath,dName,".tga");
 	return mcTextureManager->saveTexture(waterTextureNodeIndex, waterFile);
@@ -363,7 +363,7 @@ long TerrainColorMap::saveWaterDetail(const char *fileName)
 	for (i = 0; i < getWaterDetailNumFrames(); i++)
 	{
 		char dName[1024];
-		sprintf(dName,"%s.water%04d",fileName, i);
+		mc2::fmt::to_buf(dName, "{}.water{:04d}", mc2::fmt::safe(fileName), mc2::fmt::as_i32(i));
 		FullPathFileName waterDetailFile;
 		waterDetailFile.init(texturePath,dName,".tga");
 		long lResult = mcTextureManager->saveTexture(waterDetailNodeIndex[i], waterDetailFile);
@@ -375,7 +375,7 @@ long TerrainColorMap::saveWaterDetail(const char *fileName)
 	for (i = getWaterDetailNumFrames(); i < MAX_WATER_DETAIL_TEXTURES; i++)
 	{
 		char dName[1024];
-		sprintf(dName,"%s.water%04d",fileName, i);
+		mc2::fmt::to_buf(dName, "{}.water{:04d}", mc2::fmt::safe(fileName), mc2::fmt::as_i32(i));
 		FullPathFileName waterDetailFile;
 		waterDetailFile.init(texturePath,dName,".tga");
 		File textureFile;

@@ -95,6 +95,7 @@ extern "C" {
 #include "../../code/sim_identity.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
+#include "mc2fmt.h"
 
 // Global-scope game-quit flag (code/mechcmd2.cpp etc.); the mission main loop polls it
 // and calls gos_TerminateApplication(). Declared here so MC2_VISUAL_CAPTURE_EXIT_AFTER
@@ -205,7 +206,7 @@ bool write_png_rgb(const char* path, int w, int h,
 
     FILE* f = fopen(path, "wb");
     if (!f) {
-        fprintf(stderr, "[VISUAL_CAPTURE v1] ERROR fopen %s\n", path);
+        mc2::fmt::print_err("[VISUAL_CAPTURE v1] ERROR fopen {}\n", mc2::fmt::safe(path));
         return false;
     }
     fwrite(out.data(), 1, out.size(), f);
@@ -224,8 +225,7 @@ bool read_scene_rgb(int w, int h, std::vector<unsigned char>& rgbTopDown) {
     glReadPixels(0, 0, w, h, GL_RGB, GL_UNSIGNED_BYTE, bottomUp.data());
     GLenum err = glGetError();
     if (err != GL_NO_ERROR) {
-        fprintf(stderr, "[VISUAL_CAPTURE v1] ERROR glReadPixels 0x%04X "
-                "(%dx%d) -- skipping PNG\n", (unsigned)err, w, h);
+        mc2::fmt::print_err("[VISUAL_CAPTURE v1] ERROR glReadPixels 0x{:04X} ({:d}x{:d}) -- skipping PNG\n", mc2::fmt::as_u32((unsigned)err), mc2::fmt::as_i32(w), mc2::fmt::as_i32(h));
         return false;   // do NOT write a garbage PNG
     }
     rgbTopDown.resize((size_t)w * h * 3);
@@ -284,7 +284,7 @@ void write_sidecar(const std::string& jsonPath, const std::string& mission,
                    int w, int h, long triggerFrame, bool deterministic) {
     FILE* f = fopen(jsonPath.c_str(), "wb");
     if (!f) {
-        fprintf(stderr, "[VISUAL_CAPTURE v1] ERROR fopen %s\n", jsonPath.c_str());
+        mc2::fmt::print_err("[VISUAL_CAPTURE v1] ERROR fopen {}\n", jsonPath.c_str());
         return;
     }
     std::vector<std::string> gateEnv;
@@ -300,8 +300,8 @@ void write_sidecar(const std::string& jsonPath, const std::string& mission,
     buf += "  \"mission\": \""; esc.clear(); json_escape(mission, esc); buf += esc; buf += "\",\n";
     buf += "  \"label\": \""; esc.clear(); json_escape(label, esc); buf += esc; buf += "\",\n";
     char num[64];
-    snprintf(num, sizeof(num), "  \"frame\": %u,\n", frame); buf += num;
-    snprintf(num, sizeof(num), "  \"trigger_frame\": %ld,\n", triggerFrame); buf += num;
+    mc2::fmt::to_buf(num, "  \"frame\": {:d},\n", mc2::fmt::as_u32(frame)); buf += num;
+    mc2::fmt::to_buf(num, "  \"trigger_frame\": {:d},\n", mc2::fmt::as_i32(triggerFrame)); buf += num;
     // CAPTURE-DETERMINISM-1: `frame` above is the RENDER frame counter
     // (g_mc2FrameCounter, gameosmain.cpp) -- the counter the sweep triggers on.
     // The SIM advances on a separate counter (g_fixedSimFrame, advanced only on
@@ -311,15 +311,13 @@ void write_sidecar(const std::string& jsonPath, const std::string& mission,
     // sim steps, i.e. genuinely different sim states, while every other field
     // here matches. Record it so that divergence is visible in the artifact
     // instead of being invisible behind a matching `frame` + `deterministic`.
-    snprintf(num, sizeof(num), "  \"sim_frame\": %ld,\n",
-             (long)(SmokeMode::fixedClockSeconds() * 30.0 + 0.5)); buf += num;
+    mc2::fmt::to_buf(num, "  \"sim_frame\": {:d},\n", mc2::fmt::as_i32((long)(SmokeMode::fixedClockSeconds() * 30.0 + 0.5))); buf += num;
     buf += "  \"deterministic\": "; buf += (deterministic ? "true" : "false"); buf += ",\n";
-    snprintf(num, sizeof(num), "  \"seed\": %u,\n",
-             (unsigned)SmokeMode::state().seed); buf += num;
+    mc2::fmt::to_buf(num, "  \"seed\": {:d},\n", mc2::fmt::as_u32((unsigned)SmokeMode::state().seed)); buf += num;
     buf += "  \"preset\": \""; esc.clear();
     json_escape(SmokeMode::state().profile, esc); buf += esc; buf += "\",\n";
-    snprintf(num, sizeof(num), "  \"width\": %d,\n", w); buf += num;
-    snprintf(num, sizeof(num), "  \"height\": %d,\n", h); buf += num;
+    mc2::fmt::to_buf(num, "  \"width\": {:d},\n", mc2::fmt::as_i32(w)); buf += num;
+    mc2::fmt::to_buf(num, "  \"height\": {:d},\n", mc2::fmt::as_i32(h)); buf += num;
     buf += "  \"readback_source\": \""; buf += g_readbackSource; buf += "\",\n";
     // VK-FIRST-BOOKMARK-POSE-1: record the ACTUAL camera pose the JUST-RENDERED
     // frame used (stashed at the rendered_pose_matches point, BEFORE the per-settle
@@ -328,12 +326,10 @@ void write_sidecar(const std::string& jsonPath, const std::string& mission,
     // lacked (it only carried the bookmark LABEL, not where the camera really was):
     // it machine-verifies bookmark #1 captured at its named pose rather than the
     // scripted intro pose.
-    snprintf(num, sizeof(num),
-             "  \"cap_pos\": [%.3f, %.3f, %.3f],\n",
-             g_renderedPos.x, g_renderedPos.y, g_renderedPos.z); buf += num;
-    snprintf(num, sizeof(num), "  \"cap_proj\": %.3f,\n", g_renderedProj); buf += num;
-    snprintf(num, sizeof(num), "  \"cap_rot\": %.3f,\n", g_renderedRot); buf += num;
-    snprintf(num, sizeof(num), "  \"cap_alt\": %.3f,\n", g_renderedAlt); buf += num;
+    mc2::fmt::to_buf(num, "  \"cap_pos\": [{:.3f}, {:.3f}, {:.3f}],\n", g_renderedPos.x, g_renderedPos.y, g_renderedPos.z); buf += num;
+    mc2::fmt::to_buf(num, "  \"cap_proj\": {:.3f},\n", g_renderedProj); buf += num;
+    mc2::fmt::to_buf(num, "  \"cap_rot\": {:.3f},\n", g_renderedRot); buf += num;
+    mc2::fmt::to_buf(num, "  \"cap_alt\": {:.3f},\n", g_renderedAlt); buf += num;
     buf += "  \"gate_env\": [";
     for (size_t i = 0; i < gateEnv.size(); ++i) {
         if (i) buf += ", ";
@@ -390,8 +386,7 @@ void capture_to(const std::string& dir, const std::string& base,
         g_vkReq.pending = true;
         g_vkReq.png = png;
         g_vkReq.w = w; g_vkReq.h = h;
-        fprintf(stderr, "[VISUAL_CAPTURE v1] VK readback requested %s (%dx%d)\n",
-                png.c_str(), w, h);
+        mc2::fmt::print_err("[VISUAL_CAPTURE v1] VK readback requested {} ({:d}x{:d})\n", png.c_str(), mc2::fmt::as_i32(w), mc2::fmt::as_i32(h));
         return;
     }
     g_readbackSource = "gl_fbo";
@@ -400,7 +395,7 @@ void capture_to(const std::string& dir, const std::string& base,
     if (write_png_rgb(png.c_str(), w, h, rgb)) {
         write_sidecar(js, mission, label, frame, w, h,
                       triggerFrame, deterministic);
-        fprintf(stderr, "[VISUAL_CAPTURE v1] wrote %s (%dx%d)\n", png.c_str(), w, h);
+        mc2::fmt::print_err("[VISUAL_CAPTURE v1] wrote {} ({:d}x{:d})\n", png.c_str(), mc2::fmt::as_i32(w), mc2::fmt::as_i32(h));
         fflush(stderr);
     }
 }
@@ -560,8 +555,7 @@ void parse_capture_cfg() {
     static bool initLineDone = false;
     if (!initLineDone && g_cap.frame >= 0 && g_cap.dir) {
         initLineDone = true;
-        fprintf(stderr, "[VISUAL_CAPTURE v1] init frame=%ld dir=%s\n",
-                g_cap.frame, g_cap.dir);
+        mc2::fmt::print_err("[VISUAL_CAPTURE v1] init frame={:d} dir={}\n", mc2::fmt::as_i32(g_cap.frame), mc2::fmt::safe(g_cap.dir));
     }
 }
 
@@ -577,10 +571,7 @@ void parse_replay_cfg() {
     // (default 120). Both runs trigger the freeze+sweep at the same frame so
     // scenarioTime is frozen at an identical value across runs.
     if (mc2::gate::isSet<"MC2_VISUAL_CAPTURE_FRAME">()) { long t = captureFrameEnv(); if (t >= 0) g_replay.triggerFrame = t; }
-    fprintf(stderr, "[VISUAL_CAPTURE v1.5] bookmark-replay init path=%s settle=%d "
-            "triggerFrame=%ld dir=%s\n",
-            g_replay.path, g_replay.settleFrames, g_replay.triggerFrame,
-            g_replay.dir.c_str());
+    mc2::fmt::print_err("[VISUAL_CAPTURE v1.5] bookmark-replay init path={} settle={:d} triggerFrame={:d} dir={}\n", mc2::fmt::safe(g_replay.path), mc2::fmt::as_i32(g_replay.settleFrames), mc2::fmt::as_i32(g_replay.triggerFrame), g_replay.dir.c_str());
 }
 
 void apply_bookmark(const Bookmark& b) {
@@ -736,7 +727,7 @@ void onPostRenderFrame(unsigned int frame, int sceneW, int sceneH) {
     }
     if (capActive && (long)frame >= trigger) {
         char base[256];
-        snprintf(base, sizeof(base), "%s_frame%u", mission.c_str(), frame);
+        mc2::fmt::to_buf(base, "{}_frame{:d}", mission.c_str(), mc2::fmt::as_u32(frame));
         capture_to(g_cap.dir, base, mission, "frame", frame, sceneW, sceneH,
                    g_cap.frame, /*deterministic=*/false);
         g_cap.done = true;
@@ -748,15 +739,12 @@ void onPostRenderFrame(unsigned int frame, int sceneW, int sceneH) {
             g_replay.loaded = true;
             std::string fileMission;
             if (!load_bookmarks(g_replay.path, fileMission, g_replay.marks)) {
-                fprintf(stderr,
-                        "[VISUAL_CAPTURE v1.5] bookmark load FAILED path=%s\n",
-                        g_replay.path);
+                mc2::fmt::print_err("[VISUAL_CAPTURE v1.5] bookmark load FAILED path={}\n", mc2::fmt::safe(g_replay.path));
                 g_replay.finished = true;
                 return;
             }
             g_replay.mission = fileMission.empty() ? mission : fileMission;
-            fprintf(stderr, "[VISUAL_CAPTURE v1.5] loaded %zu bookmarks (mission=%s)\n",
-                    g_replay.marks.size(), g_replay.mission.c_str());
+            mc2::fmt::print_err("[VISUAL_CAPTURE v1.5] loaded {:d} bookmarks (mission={})\n", mc2::fmt::as_size(g_replay.marks.size()), g_replay.mission.c_str());
         }
 
         // Wait for the deterministic trigger frame. Determinism does NOT come
@@ -787,14 +775,11 @@ void onPostRenderFrame(unsigned int frame, int sceneW, int sceneH) {
                 g_replay.savePos = eye->getPosition();
                 g_replay.saveRot = eye->getRotation();
                 g_replay.saveAlt = eye->cameraAltitude;   // public member
-                fprintf(stderr, "[ADJUDICATION_POSE v1] pos=%.3f,%.3f,%.3f "
-                        "rot(proj=%.3f,rot=%.3f) alt=%.3f\n",
+                mc2::fmt::print_err("[ADJUDICATION_POSE v1] pos={:.3f},{:.3f},{:.3f} rot(proj={:.3f},rot={:.3f}) alt={:.3f}\n",
                         g_replay.savePos.x, g_replay.savePos.y, g_replay.savePos.z,
                         g_replay.saveRot.x, g_replay.saveRot.y, g_replay.saveAlt);
             }
-            fprintf(stderr, "[VISUAL_CAPTURE v1.5] sweep triggered frame=%u "
-                    "(triggerFrame=%ld) sim frozen, pauseState=%d\n",
-                    frame, g_replay.triggerFrame, g_replay.savePauseState);
+            mc2::fmt::print_err("[VISUAL_CAPTURE v1.5] sweep triggered frame={:d} (triggerFrame={:d}) sim frozen, pauseState={:d}\n", mc2::fmt::as_u32(frame), mc2::fmt::as_i32(g_replay.triggerFrame), mc2::fmt::as_i32(g_replay.savePauseState));
         }
 
         if (g_replay.idx >= g_replay.marks.size()) {
@@ -804,8 +789,7 @@ void onPostRenderFrame(unsigned int frame, int sceneW, int sceneH) {
             if (g_replay.pauseStateSaved)
                 mc2VisualCaptureRestorePauseState(g_replay.savePauseState);
             g_replay.finished = true;
-            fprintf(stderr, "[VISUAL_CAPTURE v1.5] sweep complete, camera + "
-                    "pause-state restored\n");
+            mc2::fmt::print_err("[VISUAL_CAPTURE v1.5] sweep complete, camera + pause-state restored\n");
             // VK-NOINTEROP-STRICT-REVIEW: opt-in clean shutdown after the sweep so the
             // VK island destroy lines (forbidden_* counters) + the final [VK_PRESENT]
             // logHealth are emitted to the capture log. Without this the harness kills
@@ -816,8 +800,7 @@ void onPostRenderFrame(unsigned int frame, int sceneW, int sceneH) {
             // teardown (gameosmain.cpp mc2_vk_*_island_destroy). Off by default.
             if (mc2::gate::get<"MC2_VISUAL_CAPTURE_EXIT_AFTER">()) {
                 ::quitGame = true;
-                fprintf(stderr, "[VISUAL_CAPTURE v1.5] MC2_VISUAL_CAPTURE_EXIT_AFTER=1 "
-                        "-> requesting clean shutdown (quitGame=true)\n");
+                mc2::fmt::print_err("[VISUAL_CAPTURE v1.5] MC2_VISUAL_CAPTURE_EXIT_AFTER=1 -> requesting clean shutdown (quitGame=true)\n");
             }
             return;
         }
@@ -858,16 +841,12 @@ void onPostRenderFrame(unsigned int frame, int sceneW, int sceneH) {
         // (bounded) so the re-applied+frozen pose gets a fresh render first.
         if (!renderedOk && g_replay.extendCount < kMaxPoseExtend) {
             if (g_replay.extendCount == 0)
-                fprintf(stderr, "[VISUAL_CAPTURE v1.5] bookmark '%s' rendered pose "
-                        "off-bookmark; extending settle (pose-verify guard)\n",
-                        g_replay.marks[g_replay.idx].name.c_str());
+                mc2::fmt::print_err("[VISUAL_CAPTURE v1.5] bookmark '{}' rendered pose off-bookmark; extending settle (pose-verify guard)\n", g_replay.marks[g_replay.idx].name.c_str());
             ++g_replay.extendCount;
             return;
         }
         if (!renderedOk)
-            fprintf(stderr, "[VISUAL_CAPTURE v1.5] WARN bookmark '%s' still off-pose "
-                    "after %d extend frames -- capturing anyway\n",
-                    g_replay.marks[g_replay.idx].name.c_str(), kMaxPoseExtend);
+            mc2::fmt::print_err("[VISUAL_CAPTURE v1.5] WARN bookmark '{}' still off-pose after {:d} extend frames -- capturing anyway\n", g_replay.marks[g_replay.idx].name.c_str(), mc2::fmt::as_i32(kMaxPoseExtend));
         // Settled: capture this bookmark. The capture is byte-stable ONLY when
         // the deterministic clock (S9D sim + S9E shader, MC2_SMOKE_FIXED_TIMESTEP)
         // is engaged; without it the sweep freeze holds scenarioTime constant
@@ -884,8 +863,7 @@ void onPostRenderFrame(unsigned int frame, int sceneW, int sceneH) {
                 c = '_';
         }
         char base[256];
-        snprintf(base, sizeof(base), "%s_%s",
-                 g_replay.mission.c_str(), safeName.c_str());
+        mc2::fmt::to_buf(base, "{}_{}", g_replay.mission.c_str(), safeName.c_str());
         capture_to(g_replay.dir, base, g_replay.mission, bm.name,
                    frame, sceneW, sceneH,
                    g_replay.triggerFrame, deterministic);
@@ -922,8 +900,7 @@ void cameraParkTick(unsigned int frame)
         Stuff::Vector3D rot; rot.x = pv[3]; rot.y = pv[2]; rot.z = pv[4];
         eye->setRotation(rot);
         eye->freezeScriptedCameraForCapture();
-        fprintf(stderr, "[CAMERA_PARK v1] frame=%u pos=%.0f,%.0f rot=%.0f proj=%.0f alt=%.0f\n",
-                frame, pv[0], pv[1], pv[2], pv[3], pv[4]);
+        mc2::fmt::print_err("[CAMERA_PARK v1] frame={:d} pos={:.0f},{:.0f} rot={:.0f} proj={:.0f} alt={:.0f}\n", mc2::fmt::as_u32(frame), pv[0], pv[1], pv[2], pv[3], pv[4]);
     }
 }
 
@@ -943,8 +920,7 @@ void vkCaptureDeliver(unsigned int w, unsigned int h, const unsigned char* rgba)
     g_vkReq.pending = false;
     if (!rgba || w == 0 || h == 0) return;
     if ((int)w != g_vkReq.w || (int)h != g_vkReq.h)
-        fprintf(stderr, "[VISUAL_CAPTURE v1] WARN VK present %ux%u != requested %dx%d "
-                "(PNG uses present size)\n", w, h, g_vkReq.w, g_vkReq.h);
+        mc2::fmt::print_err("[VISUAL_CAPTURE v1] WARN VK present {:d}x{:d} != requested {:d}x{:d} (PNG uses present size)\n", mc2::fmt::as_u32(w), mc2::fmt::as_u32(h), mc2::fmt::as_i32(g_vkReq.w), mc2::fmt::as_i32(g_vkReq.h));
     // sharedImg rows are bottom-up (GL orientation); PNG wants top-down.
     std::vector<unsigned char> rgb((size_t)w * h * 3);
     for (unsigned y = 0; y < h; ++y) {
@@ -957,8 +933,7 @@ void vkCaptureDeliver(unsigned int w, unsigned int h, const unsigned char* rgba)
         }
     }
     if (write_png_rgb(g_vkReq.png.c_str(), (int)w, (int)h, rgb)) {
-        fprintf(stderr, "[VISUAL_CAPTURE v1] wrote %s (%ux%u) src=vk_present\n",
-                g_vkReq.png.c_str(), w, h);
+        mc2::fmt::print_err("[VISUAL_CAPTURE v1] wrote {} ({:d}x{:d}) src=vk_present\n", g_vkReq.png.c_str(), mc2::fmt::as_u32(w), mc2::fmt::as_u32(h));
         fflush(stderr);
     }
 }

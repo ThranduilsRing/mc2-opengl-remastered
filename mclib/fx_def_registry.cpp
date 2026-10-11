@@ -21,6 +21,7 @@
 #include <utility>
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"
+#include "mc2fmt.h"
 
 using nlohmann::json;
 
@@ -29,7 +30,7 @@ namespace mc2fxdefs {
 namespace {
 
 void fxdefLog(const char* why, const std::string& key) {
-    fprintf(stderr, "[FXDEF] %s: %s\n", why, key.c_str());
+    mc2::fmt::print_err("[FXDEF] {}: {}\n", mc2::fmt::safe(why), key.c_str());
     fflush(stderr);
 }
 
@@ -337,8 +338,7 @@ int EffectDefRegistry::applyAll(mc2::particles::SpecLibrary* lib) const {
 
         if (touchedThis) {
             ++applied;
-            fprintf(stderr, "[FXDEF] applied overlay to '%s' (from %s)\n",
-                    def.effectNameRaw.c_str(), def.sourcePath.c_str());
+            mc2::fmt::print_err("[FXDEF] applied overlay to '{}' (from {})\n", def.effectNameRaw.c_str(), def.sourcePath.c_str());
             fflush(stderr);
         }
     }
@@ -351,7 +351,7 @@ EffectDefRegistry& EffectDefRegistry::instance() {
     std::call_once(once, [] {
         int base = g.loadFromDir("data/effects/defs");
         if (base > 0) {
-            fprintf(stderr, "[FXDEF] base registry: %d def(s)\n", base);
+            mc2::fmt::print_err("[FXDEF] base registry: {:d} def(s)\n", mc2::fmt::as_i32(base));
             fflush(stderr);
         }
         const std::string activeModStr = mc2::gate::str<"MC2_ACTIVE_MOD">();
@@ -361,8 +361,7 @@ EffectDefRegistry& EffectDefRegistry::instance() {
             std::error_code ec;
             if (std::filesystem::is_directory(modDir, ec)) {
                 int n = g.mergeFromDir(modDir);
-                fprintf(stderr, "[FXDEF] mod '%s': %d def(s) merged (total %d)\n",
-                        activeMod, n, g.count());
+                mc2::fmt::print_err("[FXDEF] mod '{}': {:d} def(s) merged (total {:d})\n", mc2::fmt::safe(activeMod), mc2::fmt::as_i32(n), mc2::fmt::as_i32(g.count()));
                 fflush(stderr);
             }
         }

@@ -17,6 +17,7 @@
 #include <SDL2/SDL.h>
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
+#include "mc2fmt.h"
 
 namespace {
 SmokeMode::State g_state;
@@ -55,8 +56,7 @@ void parseArgs(int argc, char** argv) {
     // read via fixedTimestepEnabled() (single cached bool) on hot paths.
     g_state.fixedTimestep = mc2::gate::get<"MC2_SMOKE_FIXED_TIMESTEP">();
     if (g_state.fixedTimestep) {
-        std::fprintf(stderr,
-            "[SMOKE_FIXED_TIMESTEP v1] dt_ms=33.333 fps=30\n");
+        mc2::fmt::print_err("[SMOKE_FIXED_TIMESTEP v1] dt_ms=33.333 fps=30\n");
         std::fflush(stderr);
     }
 
@@ -70,9 +70,7 @@ void parseArgs(int argc, char** argv) {
     // [[noreturn]] on lambdas requires C++23; use a local static function instead.
     struct ParseArgsFail {
         [[noreturn]] static void missingValue(const char* flag) {
-            std::fprintf(stdout,
-                "[SMOKE v1] event=summary result=fail reason=argv_error "
-                "stage=parseArgs detail=\"%s requires value\"\n", flag);
+            mc2::fmt::print_out("[SMOKE v1] event=summary result=fail reason=argv_error stage=parseArgs detail=\"{} requires value\"\n", mc2::fmt::safe(flag));
             std::fflush(stdout);
             std::exit(2);
         }
@@ -103,26 +101,21 @@ void parseArgs(int argc, char** argv) {
     }
 
     if (g_state.enabled && g_state.mission.empty()) {
-        std::fprintf(stdout,
-            "[SMOKE v1] event=summary result=fail reason=argv_error "
-            "stage=parseArgs detail=\"--mission required when MC2_SMOKE_MODE is set\"\n");
+        mc2::fmt::print_out("[SMOKE v1] event=summary result=fail reason=argv_error stage=parseArgs detail=\"--mission required when MC2_SMOKE_MODE is set\"\n");
         std::fflush(stdout);
         std::exit(2);
     }
     if (!g_state.enabled && !g_state.mission.empty()) {
         // Smoke args without env -- refuse.
-        std::fprintf(stdout,
-            "[SMOKE v1] event=summary result=fail reason=argv_error "
-            "stage=parseArgs detail=\"--mission requires MC2_SMOKE_MODE to be set\"\n");
+        mc2::fmt::print_out("[SMOKE v1] event=summary result=fail reason=argv_error stage=parseArgs detail=\"--mission requires MC2_SMOKE_MODE to be set\"\n");
         std::fflush(stdout);
         std::exit(2);
     }
     if (g_state.enabled) {
-        std::fprintf(stdout,
-            "[SMOKE v1] event=banner mode=%s mission=%s profile=%s duration=%d seed=0x%x\n",
-            g_state.active ? "active" : "passive",
+        mc2::fmt::print_out("[SMOKE v1] event=banner mode={} mission={} profile={} duration={:d} seed=0x{:x}\n",
+            mc2::fmt::safe(g_state.active ? "active" : "passive"),
             g_state.mission.c_str(), g_state.profile.c_str(),
-            g_state.durationSec, g_state.seed);
+            mc2::fmt::as_i32(g_state.durationSec), mc2::fmt::as_u32(g_state.seed));
         std::fflush(stdout);
     }
 }
@@ -134,8 +127,7 @@ void installAtexitSummary() {
         if (g_summaryEmitted.load()) return;
         // Best-effort: if we reach atexit without an explicit summary, we
         // assume something failed after parseArgs but before emitCleanSummary.
-        std::fprintf(stdout,
-            "[SMOKE v1] event=summary result=fail reason=early_exit stage=atexit\n");
+        mc2::fmt::print_out("[SMOKE v1] event=summary result=fail reason=early_exit stage=atexit\n");
         std::fflush(stdout);
     });
 }
@@ -143,8 +135,7 @@ void installAtexitSummary() {
 void emitTiming(const char* eventName) {
     if (!g_state.enabled) return;
     double ms = elapsedMsSince(g_startupT0);
-    std::fprintf(stdout,
-        "[TIMING v1] event=%s elapsed_ms=%.1f\n", eventName, ms);
+    mc2::fmt::print_out("[TIMING v1] event={} elapsed_ms={:.1f}\n", mc2::fmt::safe(eventName), ms);
     std::fflush(stdout);
 }
 
@@ -200,28 +191,25 @@ void emitCleanSummary() {
     double avgFps = (avgMs > 0.0) ? 1000.0 / avgMs : 0.0;
     double p1LowFps = (pct(99.0) > 0.0) ? 1000.0 / pct(99.0) : 0.0;
 
-    std::fprintf(stdout,
-        "[PERF v1] avg_fps=%.1f p50_ms=%.2f p99_ms=%.2f p1low_fps=%.1f peak_ms=%.2f samples=%zu\n",
-        avgFps, p50, p99, p1LowFps, peak, samples.size());
+    mc2::fmt::print_out("[PERF v1] avg_fps={:.1f} p50_ms={:.2f} p99_ms={:.2f} p1low_fps={:.1f} peak_ms={:.2f} samples={:d}\n",
+        avgFps, p50, p99, p1LowFps, peak, mc2::fmt::as_size(samples.size()));
 
     double actualMs = elapsedMsSince(g_missionReadyT ? g_missionReadyT : g_startupT0);
     // Fault counters OMITTED intentionally — the runner is the authoritative
     // source; it counts [GL_ERROR v1]/[TGL_POOL v1]/[ASSET_SCALE v1]/[DESTROY v1]
     // lines from the stream. Embedding engine-side counts would create a
     // second source of truth with drift potential.
-    std::fprintf(stdout,
-        "[SMOKE v1] event=summary result=pass duration_actual_ms=%.1f frames=%zu\n",
-        actualMs, g_frameCount);
+    mc2::fmt::print_out("[SMOKE v1] event=summary result=pass duration_actual_ms={:.1f} frames={:d}\n",
+        actualMs, mc2::fmt::as_size(g_frameCount));
     std::fflush(stdout);
 }
 
 void emitFailSummary(const char* reason, const char* stage) {
     if (!g_state.enabled) return;
     if (g_summaryEmitted.exchange(true)) return;
-    std::fprintf(stdout,
-        "[SMOKE v1] event=summary result=fail reason=%s stage=%s\n",
-        reason ? reason : "unknown",
-        stage  ? stage  : "unknown");
+    mc2::fmt::print_out("[SMOKE v1] event=summary result=fail reason={} stage={}\n",
+        mc2::fmt::safe(reason ? reason : "unknown"),
+        mc2::fmt::safe(stage  ? stage  : "unknown"));
     std::fflush(stdout);
 }
 
@@ -242,9 +230,8 @@ bool resolveMissionPaths() {
         source = "loose";
     }
 
-    std::fprintf(stdout,
-        "[SMOKE v1] event=mission_resolve stem=%s source=%s\n",
-        g_state.mission.c_str(), source);
+    mc2::fmt::print_out("[SMOKE v1] event=mission_resolve stem={} source={}\n",
+        g_state.mission.c_str(), mc2::fmt::safe(source));
     std::fflush(stdout);
     return true;
 }
@@ -291,9 +278,7 @@ void fixedTimestepOnSimFrame(double scenarioTimeSeconds) {
     ++g_fixedSimFrame;
     if (g_fixedSimFrame == 60 || g_fixedSimFrame == 120 ||
         g_fixedSimFrame == 180) {
-        std::fprintf(stderr,
-            "[SMOKE_CLOCK_PROBE v1] frame=%u scenarioTime=%.6f\n",
-            (unsigned)g_fixedSimFrame, scenarioTimeSeconds);
+        mc2::fmt::print_err("[SMOKE_CLOCK_PROBE v1] frame={:d} scenarioTime={:.6f}\n", mc2::fmt::as_u32((unsigned)g_fixedSimFrame), scenarioTimeSeconds);
         std::fflush(stderr);
     }
 }

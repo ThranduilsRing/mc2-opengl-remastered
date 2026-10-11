@@ -16,6 +16,7 @@
 #include"logisticspilotlistbox.h"
 #include"gamesound.h"
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 LogisticsMechIcon*	LogisticsMechIcon::s_pTemplateIcon = nullptr;
 
@@ -96,7 +97,7 @@ int LogisticsMechIcon::init( FitIniFile& file )
 		char blockName[64];
 		for ( int i = 0; i < ICON_ANIM_COUNT; i++ )
 		{
-			sprintf( blockName, "Animation%ld", i );
+			mc2::fmt::to_buf(blockName, "Animation{:d}", mc2::fmt::as_i32(i));
 			s_pTemplateIcon->animations[i].init( &file, blockName );
 		}
 	}
@@ -173,13 +174,7 @@ void LogisticsMechIcon::setMech( LogisticsMech* pNewMech )
 
 		if ( mc2::gate::get<"MC2_LOG_MECH_ICON">() )
 		{
-			printf("[mechicon-logi] mech=ID:%ld iconIndex=%ld cols=%ld row=%ld col=%ld "
-			       "widgetW=%.0f widgetH=%.0f u=[%.1f,%.1f] v=[%.1f,%.1f] "
-			       "fileWidth=%.0f fileHeight=%.0f uvX=[%.3f,%.3f] uvY=[%.3f,%.3f]\n",
-			       pMech->getChassisName(), index, cols, yIndex, xIndex,
-			       width, height,
-			       u, u2, v, v2,
-			       fileW, fileH, u/fileW, u2/fileW, v/fileH, v2/fileH);
+			mc2::fmt::print_out("[mechicon-logi] mech=ID:{:d} iconIndex={:d} cols={:d} row={:d} col={:d} widgetW={:.0f} widgetH={:.0f} u=[{:.1f},{:.1f}] v=[{:.1f},{:.1f}] fileWidth={:.0f} fileHeight={:.0f} uvX=[{:.3f},{:.3f}] uvY=[{:.3f},{:.3f}]\n", mc2::fmt::as_i32(pMech->getChassisName()), mc2::fmt::as_i32(index), mc2::fmt::as_i32(cols), mc2::fmt::as_i32(yIndex), mc2::fmt::as_i32(xIndex), width, height, u, u2, v, v2, fileW, fileH, u/fileW, u2/fileW, v/fileH, v2/fileH);
 			fflush(stdout);
 		}
 

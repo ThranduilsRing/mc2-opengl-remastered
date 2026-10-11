@@ -1,6 +1,7 @@
 // BldgAppearance / TreeAppearance: stable-light-skip, lightbridge and touch-entry diagnostics, light-slot cardinality trace, prop light-latch diag.
 // Declared in the class headers; shared names in bdactor_internal.h.
 #include "bdactor_internal.h"
+#include "mc2fmt.h"
 
 // [LIGHTBAKE-PROOF v1] A/B parity trace (defined in mclib/txmmgr.cpp). File-scope
 // declaration — never declared inside a function body. Proves the baked permanent
@@ -73,19 +74,7 @@ static void flushStableLightSkipDiag(uint32_t completedFrame)
     if (!(completedFrame < 5 || (completedFrame % 60u) == 0u))
         return;
 
-    std::fprintf(stderr,
-        "[STABLE_LIGHT_SKIP] armed=%llu eligible=%llu skip=%llu emit=%llu "
-        "miss_notRegistered=%llu miss_noValidLight=%llu miss_envGen=%llu "
-        "miss_needsFullBake=%llu miss_invalidLightIdx=%llu\n",
-        (unsigned long long)s_stableLightSkipDiag.armed,
-        (unsigned long long)s_stableLightSkipDiag.eligible,
-        (unsigned long long)s_stableLightSkipDiag.skip,
-        (unsigned long long)s_stableLightSkipDiag.emit,
-        (unsigned long long)s_stableLightSkipDiag.miss_notRegistered,
-        (unsigned long long)s_stableLightSkipDiag.miss_noValidLight,
-        (unsigned long long)s_stableLightSkipDiag.miss_envGen,
-        (unsigned long long)s_stableLightSkipDiag.miss_needsFullBake,
-        (unsigned long long)s_stableLightSkipDiag.miss_invalidLightIdx);
+    mc2::fmt::print_err("[STABLE_LIGHT_SKIP] armed={:d} eligible={:d} skip={:d} emit={:d} miss_notRegistered={:d} miss_noValidLight={:d} miss_envGen={:d} miss_needsFullBake={:d} miss_invalidLightIdx={:d}\n", mc2::fmt::as_u64((unsigned long long)s_stableLightSkipDiag.armed), mc2::fmt::as_u64((unsigned long long)s_stableLightSkipDiag.eligible), mc2::fmt::as_u64((unsigned long long)s_stableLightSkipDiag.skip), mc2::fmt::as_u64((unsigned long long)s_stableLightSkipDiag.emit), mc2::fmt::as_u64((unsigned long long)s_stableLightSkipDiag.miss_notRegistered), mc2::fmt::as_u64((unsigned long long)s_stableLightSkipDiag.miss_noValidLight), mc2::fmt::as_u64((unsigned long long)s_stableLightSkipDiag.miss_envGen), mc2::fmt::as_u64((unsigned long long)s_stableLightSkipDiag.miss_needsFullBake), mc2::fmt::as_u64((unsigned long long)s_stableLightSkipDiag.miss_invalidLightIdx));
     std::fflush(stderr);
 }
 
@@ -100,8 +89,7 @@ static void noteStableLightSkipFrame(uint32_t frame)
         if (!s_stableLightSkipDiag.envPrinted) {
             const char* v = mc2::gate::isNonEmpty<"MC2_STABLE_LIGHT_SKIP">()
                 ? (mc2::gate::get<"MC2_STABLE_LIGHT_SKIP">() ? "1" : "0") : nullptr;
-            std::fprintf(stderr, "[STABLE_LIGHT_SKIP] MC2_STABLE_LIGHT_SKIP=%s\n",
-                v ? v : "(unset)");
+            mc2::fmt::print_err("[STABLE_LIGHT_SKIP] MC2_STABLE_LIGHT_SKIP={}\n", mc2::fmt::safe(v ? v : "(unset)"));
             std::fflush(stderr);
             s_stableLightSkipDiag.envPrinted = true;
         }
@@ -210,23 +198,9 @@ static LightbridgeStableSkipDiag s_lbssDiag;
 
 static void lbssDiagPrint(const LightbridgeStableSkipDiag& d)
 {
-    fprintf(stderr,
-        "LIGHTBRIDGE_STABLE_SKIP: enabled=%d armed=%llu eligible=%llu taken=%llu "
-        "blocked_invalid_index=%llu blocked_generation_mismatch=%llu blocked_no_eligible=%llu "
-        "static_prefix_count=%u\n",
-        (int)mc2LightbridgeStableSkipEnabled(),  // references file-scope fn, not anon-ns
-        (unsigned long long)d.b_armed,
-        (unsigned long long)d.b_eligible,
-        (unsigned long long)d.b_taken,
-        (unsigned long long)d.b_blk_idx,
-        (unsigned long long)d.b_blk_gen,
-        (unsigned long long)d.b_blk_noelig,
-        mc2StaticLightHighWater());
-    fprintf(stderr,
-        "LIGHTBRIDGE_TREE_STABLE_SKIP: total=%llu taken=%llu blocked_invalid_index=%llu\n",
-        (unsigned long long)d.t_total,
-        (unsigned long long)d.t_taken,
-        (unsigned long long)d.t_blk_idx);
+    mc2::fmt::print_err("LIGHTBRIDGE_STABLE_SKIP: enabled={:d} armed={:d} eligible={:d} taken={:d} blocked_invalid_index={:d} blocked_generation_mismatch={:d} blocked_no_eligible={:d} static_prefix_count={:d}\n", mc2::fmt::as_i32((int)mc2LightbridgeStableSkipEnabled()), mc2::fmt::as_u64(// references file-scope fn, not anon-ns
+        (unsigned long long)d.b_armed), mc2::fmt::as_u64((unsigned long long)d.b_eligible), mc2::fmt::as_u64((unsigned long long)d.b_taken), mc2::fmt::as_u64((unsigned long long)d.b_blk_idx), mc2::fmt::as_u64((unsigned long long)d.b_blk_gen), mc2::fmt::as_u64((unsigned long long)d.b_blk_noelig), mc2::fmt::as_u32(mc2StaticLightHighWater()));
+    mc2::fmt::print_err("LIGHTBRIDGE_TREE_STABLE_SKIP: total={:d} taken={:d} blocked_invalid_index={:d}\n", mc2::fmt::as_u64((unsigned long long)d.t_total), mc2::fmt::as_u64((unsigned long long)d.t_taken), mc2::fmt::as_u64((unsigned long long)d.t_blk_idx));
     fflush(stderr);
 }
 
@@ -279,13 +253,8 @@ void touchEntryDiagRollFrame(uint32_t frame)
     if (!mc2FrameJobsTouchDiagEnabled()) return;
     if (frame == s_touchEntryDiag.frame) return;
     if (s_touchEntryDiag.frame != 0xFFFFFFFFu && (s_touchEntryDiag.frame % 300u) == 0u) {
-        fprintf(stderr,
-            "FRAME_JOBS_TOUCH_ENTRY: serial_commit_hits=%llu legacy_skipped=%llu "
-            "double_touch_prevented=%llu legacy_ran_nosplit=%llu\n",
-            (unsigned long long)s_touchEntryDiag.serial_commit_hits,
-            (unsigned long long)s_touchEntryDiag.legacy_skipped,
-            (unsigned long long)s_touchEntryDiag.legacy_skipped,  // same as legacy_skipped
-            (unsigned long long)s_touchEntryDiag.legacy_ran_nosplit);
+        mc2::fmt::print_err("FRAME_JOBS_TOUCH_ENTRY: serial_commit_hits={:d} legacy_skipped={:d} double_touch_prevented={:d} legacy_ran_nosplit={:d}\n", mc2::fmt::as_u64((unsigned long long)s_touchEntryDiag.serial_commit_hits), mc2::fmt::as_u64((unsigned long long)s_touchEntryDiag.legacy_skipped), mc2::fmt::as_u64((unsigned long long)s_touchEntryDiag.legacy_skipped), mc2::fmt::as_u64(// same as legacy_skipped
+            (unsigned long long)s_touchEntryDiag.legacy_ran_nosplit));
         fflush(stderr);
     }
     s_touchEntryDiag = TouchEntryDiag{};
@@ -377,15 +346,7 @@ namespace mc2_lightslot_trace {
         const uint32_t B = mc2LightSlotBakedHighWater();
         const size_t   U = s_distinctSlots.size();   // distinct slots attributable to static-prop instances
         const size_t   D = s_distinctSlots.size();   // per-instance distinct (same set — see report)
-        std::printf(
-            "[LIGHTSLOT v1] static_prop_instances=%llu override_tree_types=%zu "
-            "registered_recipes=%u unique_light_slots=%zu dedup_hits=%llu "
-            "baked_slots=%u per_instance_distinct=%zu table_count=%u "
-            "lod_bake_count=%llu lod_distinct_slots=%zu\n",
-            (unsigned long long)s_instances, s_types.size(),
-            B /* R ~= baked recipe high-water */, U,
-            (unsigned long long)H, B, D, mc2LightSlotTableCount(),
-            (unsigned long long)s_lodBakeCount, s_lodDistinctSlots.size());
+        mc2::fmt::print_out("[LIGHTSLOT v1] static_prop_instances={:d} override_tree_types={:d} registered_recipes={:d} unique_light_slots={:d} dedup_hits={:d} baked_slots={:d} per_instance_distinct={:d} table_count={:d} lod_bake_count={:d} lod_distinct_slots={:d}\n", mc2::fmt::as_u64((unsigned long long)s_instances), mc2::fmt::as_size(s_types.size()), mc2::fmt::as_u32(B /* R ~= baked recipe high-water */), mc2::fmt::as_size(U), mc2::fmt::as_u64((unsigned long long)H), mc2::fmt::as_u32(B), mc2::fmt::as_size(D), mc2::fmt::as_u32(mc2LightSlotTableCount()), mc2::fmt::as_u64((unsigned long long)s_lodBakeCount), mc2::fmt::as_size(s_lodDistinctSlots.size()));
         std::fflush(stdout);
         s_emitted = true;
     }

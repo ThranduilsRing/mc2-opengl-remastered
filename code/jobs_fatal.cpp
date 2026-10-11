@@ -21,6 +21,7 @@
 #include <thread>
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
+#include "mc2fmt.h"
 
 namespace {
 
@@ -66,7 +67,7 @@ void appendTrace(const char* tag, const char* condOrTag,
         std::fclose(f);
     }
     // Also mirror to stderr so it is visible without the trace file too.
-    std::fprintf(stderr, "[JOBS] %s %s (%s:%d)\n", tag, condOrTag, file, line);
+    mc2::fmt::print_err("[JOBS] {} {} ({}:{:d})\n", mc2::fmt::safe(tag), mc2::fmt::safe(condOrTag), mc2::fmt::safe(file), mc2::fmt::as_i32(line));
 }
 
 } // namespace

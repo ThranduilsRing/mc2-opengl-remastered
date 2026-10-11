@@ -12,6 +12,7 @@
 // Include files
 
 #include "inifile_internal.h"
+#include "mc2fmt.h"
 
 //#else
 //#include<assert.h>
@@ -149,7 +150,7 @@ long FitIniFile::afterOpen (void)
 	// FITini Header and position to Write Start.
 	if (fileMode == CREATE && parent == nullptr)
 	{
-		sprintf(line,"%s \r\n",fitIniHeader);
+		mc2::fmt::to_buf(line, "{} \r\n", mc2::fmt::safe(fitIniHeader));
 		write((MemoryPtr)line,strlen(line));
 
 		totalBlocks = 0;
@@ -172,7 +173,7 @@ long FitIniFile::afterOpen (void)
 		// Allocate RAM for the BlockInfoNodes.  Check if system Heap is available
 		fileBlocks = (IniBlockNode *)systemHeap->Malloc(sizeof(IniBlockNode) * totalBlocks);
 		
-		gosASSERT(fileBlocks != NULL);
+		gosASSERT(fileBlocks != nullptr);
 
 		memset(fileBlocks,0,sizeof(IniBlockNode) * totalBlocks);
 		
@@ -203,7 +204,7 @@ long FitIniFile::afterOpen (void)
 			if (line[count] == '\n' || line[count] == '\0')
 			{
 				char error[256];
-				snprintf( error, sizeof(error), "couldn't resolve block %s in file %s", line, getFilename() );
+				mc2::fmt::to_buf(error, "couldn't resolve block {} in file {}", mc2::fmt::safe(line), mc2::fmt::safe(getFilename()));
 				Assert( 0, 0, error );
 				return SYNTAX_ERROR;
 			}
@@ -234,7 +235,7 @@ void FitIniFile::atClose (void)
 	if (fileMode == CREATE)
 	{
 		seek(0,SEEK_END);
-		sprintf(line,"%s \r\n",fitIniFooter);
+		mc2::fmt::to_buf(line, "{} \r\n", mc2::fmt::safe(fitIniFooter));
 		write((MemoryPtr)line,strlen(line));
 	}
 
@@ -638,7 +639,7 @@ char testChar = 0;
 long FitIniFile::floatToText (char *result, float num, unsigned long bufLen)
 {
 	char temp[250];
-	sprintf(temp,"%.4f",num);
+	mc2::fmt::to_buf(temp, "{:.4f}", num);
 
 	unsigned long numLength = static_cast<unsigned long>(strlen(temp));
 	if (numLength >= bufLen)
@@ -654,7 +655,7 @@ long FitIniFile::floatToText (char *result, float num, unsigned long bufLen)
 long FitIniFile::longToTextDec (char *result, long num, unsigned long bufLen)
 {
 	char temp[250];
-	sprintf(temp,"%d",num);
+	mc2::fmt::to_buf(temp, "{:d}", mc2::fmt::as_i32(num));
 
 	unsigned long numLength = static_cast<unsigned long>(strlen(temp));
 	if (numLength >= bufLen)
@@ -670,7 +671,7 @@ long FitIniFile::longToTextDec (char *result, long num, unsigned long bufLen)
 long FitIniFile::longToTextHex (char *result, long num, unsigned long bufLen)
 {
 	char temp[250];
-	sprintf(temp,"0x%x",num);
+	mc2::fmt::to_buf(temp, "0x{:x}", mc2::fmt::as_u32(num));
 
 	unsigned long numLength = static_cast<unsigned long>(strlen(temp));
 	if (numLength >= bufLen)
@@ -686,7 +687,7 @@ long FitIniFile::longToTextHex (char *result, long num, unsigned long bufLen)
 long FitIniFile::shortToTextDec (char *result, short num, unsigned long bufLen)
 {
 	char temp[250];
-	sprintf(temp,"%d",num);
+	mc2::fmt::to_buf(temp, "{:d}", mc2::fmt::as_i32(num));
 
 	unsigned long numLength = static_cast<unsigned long>(strlen(temp));
 	if (numLength >= bufLen)
@@ -702,7 +703,7 @@ long FitIniFile::shortToTextDec (char *result, short num, unsigned long bufLen)
 long FitIniFile::shortToTextHex (char *result, short num, unsigned long bufLen)
 {
 	char temp[250];
-	sprintf(temp,"0x%x",num);
+	mc2::fmt::to_buf(temp, "0x{:x}", mc2::fmt::as_u32(num));
 
 	unsigned long numLength = static_cast<unsigned long>(strlen(temp));
 	if (numLength >= bufLen)
@@ -718,7 +719,7 @@ long FitIniFile::shortToTextHex (char *result, short num, unsigned long bufLen)
 long FitIniFile::byteToTextDec (char *result, byte num, unsigned long bufLen)
 {
 	char temp[250];
-	sprintf(temp,"%d",num);
+	mc2::fmt::to_buf(temp, "{:d}", mc2::fmt::as_i32(num));
 
 	unsigned long numLength = static_cast<unsigned long>(strlen(temp));
 	if (numLength >= bufLen)
@@ -734,7 +735,7 @@ long FitIniFile::byteToTextDec (char *result, byte num, unsigned long bufLen)
 long FitIniFile::byteToTextHex (char *result, byte num, unsigned long bufLen)
 {
 	char temp[250];
-	sprintf(temp,"0x%x",num);
+	mc2::fmt::to_buf(temp, "0x{:x}", mc2::fmt::as_u32(num));
 
 	unsigned long numLength = static_cast<unsigned long>(strlen(temp));
 	if (numLength >= bufLen)
@@ -820,7 +821,7 @@ void FitIniFile::close (void)
 long FitIniFile::writeBlock (const char *blockId)
 {
 	char thisLine[255];
-	sprintf(thisLine,"\r\n[%s]\r\n",blockId);
+	mc2::fmt::to_buf(thisLine, "\r\n[{}]\r\n", mc2::fmt::safe(blockId));
 	
 	long result = write((MemoryPtr)thisLine,strlen(thisLine));
 	return(result);
@@ -830,7 +831,7 @@ long FitIniFile::writeBlock (const char *blockId)
 long FitIniFile::writeIdFloat (const char *varName, float value)
 {
 	char thisLine[255];
-	sprintf(thisLine,"f %s = %f\r\n",varName,value);
+	mc2::fmt::to_buf(thisLine, "f {} = {:f}\r\n", mc2::fmt::safe(varName), value);
 	
 	long result = write((MemoryPtr)thisLine,strlen(thisLine));
 	return(result);
@@ -841,9 +842,9 @@ long FitIniFile::writeIdBoolean (const char *varName, bool value)
 {
 	char thisLine[255];
 	if (value)
-		sprintf(thisLine,"b %s = %s\r\n",varName,"TRUE");
+		mc2::fmt::to_buf(thisLine, "b {} = {}\r\n", mc2::fmt::safe(varName), "TRUE");
 	else
-		sprintf(thisLine,"b %s = %s\r\n",varName,"FALSE");
+		mc2::fmt::to_buf(thisLine, "b {} = {}\r\n", mc2::fmt::safe(varName), "FALSE");
 	
 	long result = write((MemoryPtr)thisLine,strlen(thisLine));
 	return(result);
@@ -853,7 +854,7 @@ long FitIniFile::writeIdBoolean (const char *varName, bool value)
 long FitIniFile::writeIdLong (const char *varName, long value)
 {
 	char thisLine[255];
-	sprintf(thisLine,"l %s = %d\r\n",varName,value);
+	mc2::fmt::to_buf(thisLine, "l {} = {:d}\r\n", mc2::fmt::safe(varName), mc2::fmt::as_i32(value));
 	
 	long result = write((MemoryPtr)thisLine,strlen(thisLine));
 	return(result);
@@ -863,7 +864,7 @@ long FitIniFile::writeIdLong (const char *varName, long value)
 long FitIniFile::writeIdShort (const char *varName, short value)
 {
 	char thisLine[255];
-	sprintf(thisLine,"s %s = %d\r\n",varName,value);
+	mc2::fmt::to_buf(thisLine, "s {} = {:d}\r\n", mc2::fmt::safe(varName), mc2::fmt::as_i32(value));
 	
 	long result = write((MemoryPtr)thisLine,strlen(thisLine));
 	return(result);
@@ -873,7 +874,7 @@ long FitIniFile::writeIdShort (const char *varName, short value)
 long FitIniFile::writeIdChar (const char *varName, char value)
 {
 	char thisLine[255];
-	sprintf(thisLine,"c %s = %d\r\n",varName,value);
+	mc2::fmt::to_buf(thisLine, "c {} = {:d}\r\n", mc2::fmt::safe(varName), mc2::fmt::as_i32(value));
 	
 	long result = write((MemoryPtr)thisLine,strlen(thisLine));
 	return(result);
@@ -883,7 +884,7 @@ long FitIniFile::writeIdChar (const char *varName, char value)
 long FitIniFile::writeIdULong (const char *varName, unsigned long value)
 {
 	char thisLine[255];
-	sprintf(thisLine,"ul %s = %d\r\n",varName,value);
+	mc2::fmt::to_buf(thisLine, "ul {} = {:d}\r\n", mc2::fmt::safe(varName), mc2::fmt::as_i32(value));
 	
 	long result = write((MemoryPtr)thisLine,strlen(thisLine));
 	return(result);
@@ -893,7 +894,7 @@ long FitIniFile::writeIdULong (const char *varName, unsigned long value)
 long FitIniFile::writeIdUShort (const char *varName, unsigned short value)
 {
 	char thisLine[255];
-	sprintf(thisLine,"us %s = %d\r\n",varName,value);
+	mc2::fmt::to_buf(thisLine, "us {} = {:d}\r\n", mc2::fmt::safe(varName), mc2::fmt::as_i32(value));
 	
 	long result = write((MemoryPtr)thisLine,strlen(thisLine));
 	return(result);
@@ -903,7 +904,7 @@ long FitIniFile::writeIdUShort (const char *varName, unsigned short value)
 long FitIniFile::writeIdUChar (const char *varName, unsigned char value)
 {
 	char thisLine[255];
-	sprintf(thisLine,"uc %s = %d\r\n",varName,value);
+	mc2::fmt::to_buf(thisLine, "uc {} = {:d}\r\n", mc2::fmt::safe(varName), mc2::fmt::as_i32(value));
 	
 	long result = write((MemoryPtr)thisLine,strlen(thisLine));
 	return(result);
@@ -920,7 +921,7 @@ long FitIniFile::writeIdString (const char *varName, const char *result)
 	if (strlen(result) >= 4000)
 		PAUSE(("String passed to WriteIdString is longer then 4000 characters"));
 
-	sprintf(thisLine,"st %s = \"%s\"\r\n",varName,result);
+	mc2::fmt::to_buf(thisLine, "st {} = \"{}\"\r\n", mc2::fmt::safe(varName), mc2::fmt::safe(result));
 	
 	long bytesWritten = write((MemoryPtr)thisLine,strlen(thisLine));
 	return(bytesWritten);
@@ -930,16 +931,16 @@ long FitIniFile::writeIdString (const char *varName, const char *result)
 long FitIniFile::writeIdUShortArray (const char *varName, unsigned short *array, unsigned long numElements)
 {
 	char thisLine[255];
-	sprintf(thisLine,"us[%d] %s = %d,",numElements,varName,array[0]);
+	mc2::fmt::to_buf(thisLine, "us[{:d}] {} = {:d},", mc2::fmt::as_i32(numElements), mc2::fmt::safe(varName), mc2::fmt::as_i32(array[0]));
 	
 	long bytesWritten = write((MemoryPtr)thisLine,strlen(thisLine));
 
 	for (long i=1;i<(long)numElements;i++)
 	{
-		sprintf(thisLine,"%d,",array[i]);
+		mc2::fmt::to_buf(thisLine, "{:d},", mc2::fmt::as_i32(array[i]));
 		bytesWritten += write((MemoryPtr)thisLine,strlen(thisLine));
 	}
-	sprintf(thisLine,"\r\n");
+	mc2::fmt::to_buf(thisLine, "\r\n");
 	bytesWritten += write((MemoryPtr)thisLine,strlen(thisLine));
 
 	return (bytesWritten);
@@ -949,16 +950,16 @@ long FitIniFile::writeIdUShortArray (const char *varName, unsigned short *array,
 long FitIniFile::writeIdLongArray (const char *varName, long *array, unsigned long numElements)
 {
 	char thisLine[255];
-	sprintf(thisLine,"l[%d] %s = %d,",numElements,varName,array[0]);
+	mc2::fmt::to_buf(thisLine, "l[{:d}] {} = {:d},", mc2::fmt::as_i32(numElements), mc2::fmt::safe(varName), mc2::fmt::as_i32(array[0]));
 	
 	long bytesWritten = write((MemoryPtr)thisLine,strlen(thisLine));
 
 	for (long i=1;i<(long)numElements;i++)
 	{
-		sprintf(thisLine,"%d,",array[i]);
+		mc2::fmt::to_buf(thisLine, "{:d},", mc2::fmt::as_i32(array[i]));
 		bytesWritten += write((MemoryPtr)thisLine,strlen(thisLine));
 	}
-	sprintf(thisLine,"\r\n");
+	mc2::fmt::to_buf(thisLine, "\r\n");
 	bytesWritten += write((MemoryPtr)thisLine,strlen(thisLine));
 
 	return (bytesWritten);
@@ -968,16 +969,16 @@ long FitIniFile::writeIdLongArray (const char *varName, long *array, unsigned lo
 long FitIniFile::writeIdFloatArray (const char *varName, float *array, unsigned long numElements)
 {
 	char thisLine[255];
-	sprintf(thisLine,"f[%d] %s = %.2f,",numElements,varName,array[0]);
+	mc2::fmt::to_buf(thisLine, "f[{:d}] {} = {:.2f},", mc2::fmt::as_i32(numElements), mc2::fmt::safe(varName), array[0]);
 	
 	long bytesWritten = write((MemoryPtr)thisLine,strlen(thisLine));
 
 	for (long i=1;i<(long)numElements;i++)
 	{
-		sprintf(thisLine," %.2f,",array[i]);
+		mc2::fmt::to_buf(thisLine, " {:.2f},", array[i]);
 		bytesWritten += write((MemoryPtr)thisLine,strlen(thisLine));
 	}
-	sprintf(thisLine,"\r\n");
+	mc2::fmt::to_buf(thisLine, "\r\n");
 	bytesWritten += write((MemoryPtr)thisLine,strlen(thisLine));
 
 	return (bytesWritten);
@@ -987,16 +988,16 @@ long FitIniFile::writeIdFloatArray (const char *varName, float *array, unsigned 
 long FitIniFile::writeIdUCharArray (const char *varName, unsigned char *array, unsigned long numElements)
 {
 	char thisLine[255];
-	sprintf(thisLine,"uc[%d] %s = %d,",numElements,varName,array[0]);
+	mc2::fmt::to_buf(thisLine, "uc[{:d}] {} = {:d},", mc2::fmt::as_i32(numElements), mc2::fmt::safe(varName), mc2::fmt::as_i32(array[0]));
 	
 	long bytesWritten = write((MemoryPtr)thisLine,strlen(thisLine));
 
 	for (long i=1;i<(long)numElements;i++)
 	{
-		sprintf(thisLine," %d,",array[i]);
+		mc2::fmt::to_buf(thisLine, " {:d},", mc2::fmt::as_i32(array[i]));
 		bytesWritten += write((MemoryPtr)thisLine,strlen(thisLine));
 	}
-	sprintf(thisLine,"\r\n");
+	mc2::fmt::to_buf(thisLine, "\r\n");
 	bytesWritten += write((MemoryPtr)thisLine,strlen(thisLine));
 
 	return (bytesWritten);

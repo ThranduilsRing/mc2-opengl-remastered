@@ -39,6 +39,7 @@
 #include<cstdlib>
 #include<cstdio>
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 //---------------------------------------------------------------------------
 // static Globals
@@ -241,7 +242,7 @@ void AppearanceType::destroy (void)
 void AppearanceTypeList::init (unsigned long heapSize)
 {
 	appearanceHeap = new UserHeap;
-	gosASSERT(appearanceHeap != NULL);
+	gosASSERT(appearanceHeap != nullptr);
 
 	appearanceHeap->init(heapSize,"APPEAR");
 
@@ -267,9 +268,7 @@ AppearanceTypePtr AppearanceTypeList::getAppearance (unsigned long apprNum, cons
 		if (g_loadRaceTrace && g_loadRaceApprNull < 50)
 		{
 			g_loadRaceApprNull++;
-			std::printf("[LOADRACE] getAppearance NULL: reason=class0 apprNum=0x%08lx "
-				"appearFile=%p(%s)\n", apprNum, (const void*)appearFile,
-				appearFile ? appearFile : "<null>");
+			mc2::fmt::print_out("[LOADRACE] getAppearance NULL: reason=class0 apprNum=0x{:08x} appearFile={:016X}({})\n", mc2::fmt::as_u32(apprNum), mc2::fmt::as_ptr((const void*)appearFile), mc2::fmt::safe(appearFile ? appearFile : "<null>"));
 			std::fflush(stdout);
 		}
 		return(nullptr);
@@ -282,8 +281,7 @@ AppearanceTypePtr AppearanceTypeList::getAppearance (unsigned long apprNum, cons
 		if (g_loadRaceTrace && g_loadRaceApprNull < 50)
 		{
 			g_loadRaceApprNull++;
-			std::printf("[LOADRACE] getAppearance NULL: reason=appearFileNull "
-				"apprNum=0x%08lx class=%ld\n", apprNum, appearanceClass);
+			mc2::fmt::print_out("[LOADRACE] getAppearance NULL: reason=appearFileNull apprNum=0x{:08x} class={:d}\n", mc2::fmt::as_u32(apprNum), mc2::fmt::as_i32(appearanceClass));
 			std::fflush(stdout);
 		}
 		return nullptr;
@@ -311,7 +309,7 @@ AppearanceTypePtr AppearanceTypeList::getAppearance (unsigned long apprNum, cons
 			case MECH_TYPE:
 			{
 				appearanceType = new Mech3DAppearanceType;
-				gosASSERT(appearanceType != NULL);
+				gosASSERT(appearanceType != nullptr);
 
 				appearanceType->appearanceNum = apprNum;
 				appearanceType->init(appearFile);
@@ -338,7 +336,7 @@ AppearanceTypePtr AppearanceTypeList::getAppearance (unsigned long apprNum, cons
 			case GV_TYPE:
 			{
 				appearanceType = new GVAppearanceType;
-				gosASSERT(appearanceType != NULL);
+				gosASSERT(appearanceType != nullptr);
 
 				appearanceType->appearanceNum = apprNum;
 				appearanceType->init(appearFile);
@@ -365,7 +363,7 @@ AppearanceTypePtr AppearanceTypeList::getAppearance (unsigned long apprNum, cons
 			case TREED_TYPE:
 			{
 				appearanceType = new TreeAppearanceType;
-				gosASSERT(appearanceType != NULL);
+				gosASSERT(appearanceType != nullptr);
 
 				appearanceType->appearanceNum = apprNum;
 				appearanceType->init(appearFile);
@@ -392,7 +390,7 @@ AppearanceTypePtr AppearanceTypeList::getAppearance (unsigned long apprNum, cons
 			case GENERIC_APPR_TYPE:
 			{
 				appearanceType = new GenericAppearanceType;
-				gosASSERT(appearanceType != NULL);
+				gosASSERT(appearanceType != nullptr);
 
 				appearanceType->appearanceNum = apprNum;
 				appearanceType->init(appearFile);
@@ -419,7 +417,7 @@ AppearanceTypePtr AppearanceTypeList::getAppearance (unsigned long apprNum, cons
 			case BLDG_TYPE:
 			{
 				appearanceType = new BldgAppearanceType;
-				gosASSERT(appearanceType != NULL);
+				gosASSERT(appearanceType != nullptr);
 
 				appearanceType->appearanceNum = apprNum;
 				appearanceType->init(appearFile);

@@ -29,6 +29,7 @@
 #include <cstdlib>   // std::getenv, std::atoi
 #include <cstdio>    // fprintf, snprintf
 #include <cmath>     // sinf, fmodf, fabsf
+#include "mc2fmt.h"
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -391,22 +392,7 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
     // Structured VEG_HEALTH JSONL placement event (MCP-queryable).
     {
         char dataJson[512];
-        snprintf(dataJson, sizeof(dataJson),
-            "{"
-            "\"event\":\"placement_health\","
-            "\"cells_total\":%d,"
-            "\"reject_oob\":%d,"
-            "\"reject_terrain_type\":%d,"
-            "\"reject_water\":%d,"
-            "\"reject_density\":%d,"
-            "\"reject_overlay\":%d,"
-            "\"instances_generated\":%u,"
-            "\"max_instances\":%d,"
-            "\"classifier\":\"terrain_type\""
-            "}",
-            diagCellsTotal,
-            diagOOB, diagHard, diagWater, diagNotGreen, diagOverlay,
-            instCount, maxInst);
+        mc2::fmt::to_buf(dataJson, "{{\"event\":\"placement_health\",\"cells_total\":{:d},\"reject_oob\":{:d},\"reject_terrain_type\":{:d},\"reject_water\":{:d},\"reject_density\":{:d},\"reject_overlay\":{:d},\"instances_generated\":{:d},\"max_instances\":{:d},\"classifier\":\"terrain_type\"}}", mc2::fmt::as_i32(diagCellsTotal), mc2::fmt::as_i32(diagOOB), mc2::fmt::as_i32(diagHard), mc2::fmt::as_i32(diagWater), mc2::fmt::as_i32(diagNotGreen), mc2::fmt::as_i32(diagOverlay), mc2::fmt::as_u32(instCount), mc2::fmt::as_i32(maxInst));
         mc2_diag::writeEvent("VEGETATION", 1, 0, dataJson);
     }
 
@@ -429,22 +415,10 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
 
     // Also write to a file so we can read it without console access.
     if (FILE* diagF = fopen("veg_diag.txt", "w")) {
-        fprintf(diagF,
-            "[VEG v3] placement_health cells_total=%d oob=%d terrain_type_reject=%d "
-            "water=%d density=%d overlay=%d instances=%u max=%d mapSpan=%.0f "
-            "waterElev=%.2f elevRange=%.2f..%.2f\n",
-            diagCellsTotal, diagOOB, diagHard,
-            diagWater, diagNotGreen, diagOverlay,
-            instCount, maxInst, static_cast<double>(mapSpan),
-            static_cast<double>(Terrain::waterElevation),
-            static_cast<double>(elevMin), static_cast<double>(elevMax));
-        fprintf(diagF,
-            "[VEG v3] per_inst tried=%d rej_water=%d rej_hard=%d "
-            "rej_none_fringe=%d rej_overlay=%d rej_slope=%d passed=%u\n",
-            instTriedTotal, instRejWater, instRejHard,
-            instRejNoneFringe, instRejOverlay, instRejSlope, instCount);
+        mc2::fmt::print(diagF, "[VEG v3] placement_health cells_total={:d} oob={:d} terrain_type_reject={:d} water={:d} density={:d} overlay={:d} instances={:d} max={:d} mapSpan={:.0f} waterElev={:.2f} elevRange={:.2f}..{:.2f}\n", mc2::fmt::as_i32(diagCellsTotal), mc2::fmt::as_i32(diagOOB), mc2::fmt::as_i32(diagHard), mc2::fmt::as_i32(diagWater), mc2::fmt::as_i32(diagNotGreen), mc2::fmt::as_i32(diagOverlay), mc2::fmt::as_u32(instCount), mc2::fmt::as_i32(maxInst), static_cast<double>(mapSpan), static_cast<double>(Terrain::waterElevation), static_cast<double>(elevMin), static_cast<double>(elevMax));
+        mc2::fmt::print(diagF, "[VEG v3] per_inst tried={:d} rej_water={:d} rej_hard={:d} rej_none_fringe={:d} rej_overlay={:d} rej_slope={:d} passed={:d}\n", mc2::fmt::as_i32(instTriedTotal), mc2::fmt::as_i32(instRejWater), mc2::fmt::as_i32(instRejHard), mc2::fmt::as_i32(instRejNoneFringe), mc2::fmt::as_i32(instRejOverlay), mc2::fmt::as_i32(instRejSlope), mc2::fmt::as_u32(instCount));
         // 5x5 terrain-type classification grid (rows: N..S, cols: W..E).
-        fprintf(diagF, "[VEG v3] terrain_type_class_grid 5x5 (row=N..S col=W..E): F=full S=sparse H=hard\n");
+        mc2::fmt::print(diagF, "[VEG v3] terrain_type_class_grid 5x5 (row=N..S col=W..E): F=full S=sparse H=hard\n");
         for (int gr = 0; gr < 5; ++gr) {
             const float gy = originY - mapSpan * ((gr + 0.5f) / 5.0f);
             for (int gc = 0; gc < 5; ++gc) {
@@ -459,8 +433,7 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
                 }
                 const char cls = (gvd == VegDensity::kFull) ? 'F'
                                : (gvd == VegDensity::kSparse) ? 'S' : 'H';
-                fprintf(diagF, "  [%d,%d] class=%c elev=%.1f\n", gr, gc, cls,
-                        static_cast<double>(ge));
+                mc2::fmt::print(diagF, "  [{:d},{:d}] class={:c} elev={:.1f}\n", mc2::fmt::as_i32(gr), mc2::fmt::as_i32(gc), mc2::fmt::as_char(cls), static_cast<double>(ge));
             }
         }
         fclose(diagF);
@@ -497,18 +470,7 @@ void GameAdapters::Vegetation::flush(const float* terrainLightDir_4f, float time
     static int s_flushCallCount = 0;
     if (++s_flushCallCount == 1 && mc2_diag::tagEnabled("VEGETATION")) {
         char dataJson[512];
-        snprintf(dataJson, sizeof(dataJson),
-            "{"
-            "\"event\":\"draw_health\","
-            "\"flush_called\":true,"
-            "\"instances\":%u,"
-            "\"terrain_blocks\":%d,"
-            "\"lod0_blocks\":%d,"
-            "\"lod1_blocks\":%d,"
-            "\"culled_blocks\":%d"
-            "}",
-            GosVegetation::instanceCount(),
-            blockCount, diagLod0, diagLod1, diagCulled);
+        mc2::fmt::to_buf(dataJson, "{{\"event\":\"draw_health\",\"flush_called\":true,\"instances\":{:d},\"terrain_blocks\":{:d},\"lod0_blocks\":{:d},\"lod1_blocks\":{:d},\"culled_blocks\":{:d}}}", mc2::fmt::as_u32(GosVegetation::instanceCount()), mc2::fmt::as_i32(blockCount), mc2::fmt::as_i32(diagLod0), mc2::fmt::as_i32(diagLod1), mc2::fmt::as_i32(diagCulled));
         mc2_diag::writeEvent("VEGETATION", 1, 0, dataJson);
     }
 

@@ -16,6 +16,7 @@ ComponentListBox.cpp			: Implementation of the ComponentListBox component.
 #include"mechlabscreen.h"
 #include"gamesound.h"
 #include"logisticserrors.h"
+#include "mc2fmt.h"
 
 ComponentListItem* ComponentListItem::s_templateItem = nullptr;
 
@@ -39,9 +40,9 @@ ComponentListItem::ComponentListItem( LogisticsComponent* pComp )
 	{
 		name.setText( pComponent->getName() );
 		char numericText[32];
-		sprintf( numericText, "%ld", pComponent->getCost() );
+		mc2::fmt::to_buf(numericText, "{:d}", mc2::fmt::as_i32(pComponent->getCost()));
 		costText.setText(  numericText  );
-		sprintf( numericText, "%.0lf", pComponent->getHeat() );
+		mc2::fmt::to_buf(numericText, "{:.0f}", pComponent->getHeat());
 		heatText.setText( numericText );
 
 		int sizeX = pComponent->getComponentWidth();
@@ -110,7 +111,7 @@ int ComponentListItem::init( FitIniFile& file )
 		char animName[COMP_ANIMATION_COUNT][32];
 		for ( int i = 0; i < COMP_ANIMATION_COUNT; i++ )
 		{
-			sprintf( animName[i], "Animation%ld", i );
+			mc2::fmt::to_buf(animName[i], "Animation{:d}", mc2::fmt::as_i32(i));
 			s_templateItem->animations[i].init( &file, animName[i] );
 		
 		}

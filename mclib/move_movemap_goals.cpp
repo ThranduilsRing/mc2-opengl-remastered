@@ -21,17 +21,17 @@ void MoveMap::init (long maxW, long maxH) {
 	height = maxHeight = maxH;
 	long mapByteSize = sizeof(MoveMapNode) * maxWidth * maxHeight;
 	map = (MoveMapNodePtr)systemHeap->Malloc(mapByteSize);
-	gosASSERT(map != NULL);
+	gosASSERT(map != nullptr);
 
 	mapRowStartTable = (int*)systemHeap->Malloc(maxHeight * sizeof(int));
-	gosASSERT(mapRowStartTable != NULL);
+	gosASSERT(mapRowStartTable != nullptr);
 	for (long r = 0; r < maxHeight; r++)
 		mapRowStartTable[r] = r * maxWidth;
 
 	mapRowTable = (int*)systemHeap->Malloc(maxHeight * maxWidth * sizeof(int));
-	gosASSERT(mapRowTable != NULL);
+	gosASSERT(mapRowTable != nullptr);
 	mapColTable = (int*)systemHeap->Malloc(maxHeight * maxWidth * sizeof(int));
-	gosASSERT(mapColTable != NULL);
+	gosASSERT(mapColTable != nullptr);
 	for (int r = 0; r < maxHeight; r++)
 		for (int c = 0; c < maxWidth; c++) {
 			int index = mapRowStartTable[r] + c;

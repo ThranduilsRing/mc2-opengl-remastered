@@ -21,6 +21,7 @@
 #include <vector>
 #include <string>
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 namespace lightgrid_build {
 
@@ -375,8 +376,7 @@ void runParityCheck(const float* invVP, int sceneW, int sceneH,
         // disagree with the GPU.
         cpuMask[(size_t)pt * kMaxLights + 0] ^= 1;
         cpuCount[pt] += (cpuMask[(size_t)pt * kMaxLights + 0] ? 1 : -1);
-        fprintf(stderr, "[LIGHTGRID_BUILD v1] PLANT: corrupted CPU tile %d "
-                        "membership set (expecting a mismatch below)\n", pt);
+        mc2::fmt::print_err("[LIGHTGRID_BUILD v1] PLANT: corrupted CPU tile {:d} membership set (expecting a mismatch below)\n", mc2::fmt::as_i32(pt));
     }
 
     // --- Compare GPU grid vs CPU reference (count + membership set). ----------

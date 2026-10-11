@@ -16,6 +16,7 @@
 #include "Gates/gate.h"
 #include "gos_visual_capture.h"   // VK-VISUAL-CAPTURE-1
 #include "Gates/gate_cold.h"   // gate::get<>() and str<>()
+#include "mc2fmt.h"
 
 #if defined(MC2_VULKAN) && defined(MC2_VULKAN_ISLAND)
 
@@ -56,11 +57,11 @@ namespace mc2vk {
 namespace {
 
 void plog(const char* fmt, ...) {
-    std::fprintf(stderr, "[VK_PRESENT] ");
+    mc2::fmt::print_err("[VK_PRESENT] ");
     va_list ap; va_start(ap, fmt);
     std::vfprintf(stderr, fmt, ap);
     va_end(ap);
-    std::fprintf(stderr, "\n");
+    mc2::fmt::print_err("\n");
     std::fflush(stderr);
 }
 
@@ -1553,10 +1554,7 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
                         xmn=v.x<xmn?v.x:xmn; xmx=v.x>xmx?v.x:xmx;
                         ymn=v.y<ymn?v.y:ymn; ymx=v.y>ymx?v.y:ymx;
                     }
-                    std::fprintf(stderr, "[VK_VFX_TAIL] kind=%u nverts=%zu argb0=%08X canvas=%ux%u "
-                        "bbox=[%.1f,%.1f]-[%.1f,%.1f] w=%.2f h=%.2f alpha=%u\n",
-                        (unsigned)d.kind, d.vertices.size(), (unsigned)d.vertices[0].argb, s.hudCanvasW, s.hudCanvasH,
-                        xmn,ymn,xmx,ymx, xmx-xmn, ymx-ymn, d.alphaMode);
+                    mc2::fmt::print_err("[VK_VFX_TAIL] kind={:d} nverts={:d} argb0={:08X} canvas={:d}x{:d} bbox=[{:.1f},{:.1f}]-[{:.1f},{:.1f}] w={:.2f} h={:.2f} alpha={:d}\n", mc2::fmt::as_u32((unsigned)d.kind), mc2::fmt::as_size(d.vertices.size()), mc2::fmt::as_u32((unsigned)d.vertices[0].argb), mc2::fmt::as_u32(s.hudCanvasW), mc2::fmt::as_u32(s.hudCanvasH), xmn, ymn, xmx, ymx, xmx-xmn, ymx-ymn, mc2::fmt::as_u32(d.alphaMode));
                 }
             }
         }
@@ -2587,7 +2585,7 @@ void EnginePresentVk::verifyReadbackContent() {
         if (ppmPath) {
             FILE* pf = fopen(ppmPath, "wb");
             if (pf) {
-                fprintf(pf, "P6\n%u %u\n255\n", rw, rh);
+                mc2::fmt::print(pf, "P6\n{:d} {:d}\n255\n", mc2::fmt::as_u32(rw), mc2::fmt::as_u32(rh));
                 std::vector<unsigned char> rgb((size_t)rw * rh * 3u);
                 for (size_t i = 0, o = 0; i < (size_t)rw * rh; ++i) {
                     rgb[o++] = px[i * 4 + 0];
@@ -2597,7 +2595,7 @@ void EnginePresentVk::verifyReadbackContent() {
                 fwrite(rgb.data(), 1, rgb.size(), pf);
                 fclose(pf);
                 s_ppmDone = true;
-                fprintf(stderr, "[VK_PRESENT_DUMP_PPM] wrote %s (%ux%u)\n", ppmPath, rw, rh);
+                mc2::fmt::print_err("[VK_PRESENT_DUMP_PPM] wrote {} ({:d}x{:d})\n", mc2::fmt::safe(ppmPath), mc2::fmt::as_u32(rw), mc2::fmt::as_u32(rh));
                 fflush(stderr);
             }
         }
@@ -2694,47 +2692,32 @@ void EnginePresentVk::destroy() {
 }
 
 void EnginePresentVk::logHealth() const {
-    std::fprintf(stderr,
-        "[VK_PRESENT] created=%d attempted=%d present_frames=%u resize_count=%u "
-        "resize_recreate_ok=%u resize_recreate_retries=%u resize_recreate_failsoft=%u "
-        "validation_errors=%u extent=%ux%u present_mode=%s readback_changed=%d "
-        "last_checksum=0x%llx direct_fbo_requests=%u direct_fbo_grants=%u "
-        "copy1_blit_frames=%u copy1_skip_frames=%u gl_handoff_skip_frames=%u "
-        "tail_hook_frames=%u "
-        "composite_vk_frames=%u shadow_debug_vk_frames=%u "
-        "hud_vk_queued_frames=%u hud_vk_consumed_frames=%u "
-        "hud_vk_draws_last=%u hud_vk_textured_last=%u hud_vk_serialized_last=%u "
-        "hud_vk_color_frames=%u hud_vk_color_draws_last=%u "
-        "hud_vk_textured_frames=%u hud_vk_textured_draws_last=%u hud_vk_texture_uploads=%u "
-        "imgui_vk_ready=%d imgui_vk_frames=%u "
-        "last_direct_fbo=%u "
-        "composite_wait_us_last=%.1f composite_wait_us_avg=%.1f composite_wait_samples=%u "
-        "fallback_reason=\"%s\"\n",
-        health_.created ? 1 : 0, health_.attempted ? 1 : 0,
-        health_.present_frames, health_.resize_count,
-        health_.resize_recreate_ok, health_.resize_recreate_retries,
-        health_.resize_recreate_failsoft, health_.validation_errors,
-        health_.extent_w, health_.extent_h,
+    mc2::fmt::print_err("[VK_PRESENT] created={:d} attempted={:d} present_frames={:d} resize_count={:d} resize_recreate_ok={:d} resize_recreate_retries={:d} resize_recreate_failsoft={:d} validation_errors={:d} extent={:d}x{:d} present_mode={} readback_changed={:d} last_checksum=0x{:x} direct_fbo_requests={:d} direct_fbo_grants={:d} copy1_blit_frames={:d} copy1_skip_frames={:d} gl_handoff_skip_frames={:d} tail_hook_frames={:d} composite_vk_frames={:d} shadow_debug_vk_frames={:d} hud_vk_queued_frames={:d} hud_vk_consumed_frames={:d} hud_vk_draws_last={:d} hud_vk_textured_last={:d} hud_vk_serialized_last={:d} hud_vk_color_frames={:d} hud_vk_color_draws_last={:d} hud_vk_textured_frames={:d} hud_vk_textured_draws_last={:d} hud_vk_texture_uploads={:d} imgui_vk_ready={:d} imgui_vk_frames={:d} last_direct_fbo={:d} composite_wait_us_last={:.1f} composite_wait_us_avg={:.1f} composite_wait_samples={:d} fallback_reason=\"{}\"\n",
+        mc2::fmt::as_i32(health_.created ? 1 : 0), mc2::fmt::as_i32(health_.attempted ? 1 : 0),
+        mc2::fmt::as_u32(health_.present_frames), mc2::fmt::as_u32(health_.resize_count),
+        mc2::fmt::as_u32(health_.resize_recreate_ok), mc2::fmt::as_u32(health_.resize_recreate_retries),
+        mc2::fmt::as_u32(health_.resize_recreate_failsoft), mc2::fmt::as_u32(health_.validation_errors),
+        mc2::fmt::as_u32(health_.extent_w), mc2::fmt::as_u32(health_.extent_h),
         health_.present_mode_name.empty() ? "?" : health_.present_mode_name.c_str(),
-        health_.readback_changed ? 1 : 0,
-        (unsigned long long)health_.last_readback_checksum,
-        health_.direct_fbo_requests, health_.direct_fbo_grants,
-        health_.copy1_blit_frames, health_.copy1_skip_frames,
-        health_.gl_handoff_skip_frames,
-        health_.tail_hook_frames,
-        health_.composite_vk_frames, health_.shadow_debug_vk_frames,
-        health_.hud_vk_queued_frames, health_.hud_vk_consumed_frames,
-        health_.hud_vk_draws_last, health_.hud_vk_textured_last,
-        health_.hud_vk_serialized_last,
-        health_.hud_vk_color_frames, health_.hud_vk_color_draws_last,
-        health_.hud_vk_textured_frames, health_.hud_vk_textured_draws_last,
-        health_.hud_vk_texture_uploads,
-        health_.imgui_vk_ready ? 1 : 0, health_.imgui_vk_frames,
-        health_.last_direct_fbo,
+        mc2::fmt::as_i32(health_.readback_changed ? 1 : 0),
+        mc2::fmt::as_u64((unsigned long long)health_.last_readback_checksum),
+        mc2::fmt::as_u32(health_.direct_fbo_requests), mc2::fmt::as_u32(health_.direct_fbo_grants),
+        mc2::fmt::as_u32(health_.copy1_blit_frames), mc2::fmt::as_u32(health_.copy1_skip_frames),
+        mc2::fmt::as_u32(health_.gl_handoff_skip_frames),
+        mc2::fmt::as_u32(health_.tail_hook_frames),
+        mc2::fmt::as_u32(health_.composite_vk_frames), mc2::fmt::as_u32(health_.shadow_debug_vk_frames),
+        mc2::fmt::as_u32(health_.hud_vk_queued_frames), mc2::fmt::as_u32(health_.hud_vk_consumed_frames),
+        mc2::fmt::as_u32(health_.hud_vk_draws_last), mc2::fmt::as_u32(health_.hud_vk_textured_last),
+        mc2::fmt::as_u32(health_.hud_vk_serialized_last),
+        mc2::fmt::as_u32(health_.hud_vk_color_frames), mc2::fmt::as_u32(health_.hud_vk_color_draws_last),
+        mc2::fmt::as_u32(health_.hud_vk_textured_frames), mc2::fmt::as_u32(health_.hud_vk_textured_draws_last),
+        mc2::fmt::as_u32(health_.hud_vk_texture_uploads),
+        mc2::fmt::as_i32(health_.imgui_vk_ready ? 1 : 0), mc2::fmt::as_u32(health_.imgui_vk_frames),
+        mc2::fmt::as_u32(health_.last_direct_fbo),
         health_.composite_wait_us_last,
         health_.composite_wait_samples
             ? health_.composite_wait_us_accum / (double)health_.composite_wait_samples : 0.0,
-        health_.composite_wait_samples,
+        mc2::fmt::as_u32(health_.composite_wait_samples),
         health_.fallback_reason.empty() ? "" : health_.fallback_reason.c_str());
     std::fflush(stderr);
 }

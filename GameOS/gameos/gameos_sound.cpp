@@ -4,6 +4,8 @@
 #include <vector>
 #include <algorithm>
 #include "utils/vec.h"
+#include "mc2fmt.h"
+#include "utils/mc2log.h"
 
 static const DWORD INVALID_AUDIO_ID = -1;
 static const DWORD MAX_VOLUME = 254;
@@ -144,11 +146,7 @@ bool SoundEngine::init(int frequency, bool b_fmt_16_bit, bool b_fmt_signed, bool
         int audio_buffers = chunksize_;
 
         Mix_QuerySpec(&audio_rate, &audio_format, &audio_channels);             
-        printf("Opened audio at %d Hz %d bit %s (%s), %d bytes audio buffer\n", audio_rate,
-                (audio_format&0xFF),                                                
-                (audio_channels > 2) ? "surround" : (audio_channels > 1) ? "stereo" : "mono",
-                (audio_format&0x1000) ? "Big-Endian" : "Little-Endian",                                
-                audio_buffers);  
+        mc2::fmt::print_out("Opened audio at {:d} Hz {:d} bit {} ({}), {:d} bytes audio buffer\n", mc2::fmt::as_i32(audio_rate), mc2::fmt::as_i32((audio_format&0xFF)), mc2::fmt::safe((audio_channels > 2) ? "surround" : (audio_channels > 1) ? "stereo" : "mono"), mc2::fmt::safe((audio_format&0x1000) ? "Big-Endian" : "Little-Endian"), mc2::fmt::as_i32(audio_buffers));  
     }
 
     int num_allocated_chanels = Mix_AllocateChannels(NUM_CHANNELS);
@@ -245,9 +243,9 @@ void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_Reso
         SDL_AudioSpec spec;
         SDL_AudioSpec* pspec;
         pspec = SDL_LoadWAV(file_name, &spec, &databuf, &src_datasize);
-        if(pspec == NULL) {
+        if(pspec == nullptr) {
             PAUSE(("gosAudio_CreateResource: Failed to load %s, %s\n", file_name, SDL_GetError()));
-            *hgosaudio = NULL;
+            *hgosaudio = nullptr;
             return;
         }
 
@@ -257,16 +255,16 @@ void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_Reso
 
         switch(spec.format)
         {
-            case AUDIO_U8: printf("audio_u8\n"); break;
-            case AUDIO_S8: printf("audio_s8\n"); break;
-            case AUDIO_S16LSB: printf("audio_u16lsb\n"); break;
-            case AUDIO_U16LSB: printf("AUDIO_s16lsb\n"); break;
+            case AUDIO_U8: mc2::fmt::print_out("audio_u8\n"); break;
+            case AUDIO_S8: mc2::fmt::print_out("audio_s8\n"); break;
+            case AUDIO_S16LSB: mc2::fmt::print_out("audio_u16lsb\n"); break;
+            case AUDIO_U16LSB: mc2::fmt::print_out("AUDIO_s16lsb\n"); break;
             default: STOP(("Unsupported audio format\n"));
         }
 #else
         chunk = Mix_LoadWAV(file_name);
         if(nullptr == chunk) {
-            SPEW(("AUDIO", "gosAudio_CreateResource: Failed to load %s, %s\n", file_name, Mix_GetError()));
+            MC2_LOG(Audio, Debug, "gosAudio_CreateResource: Failed to load {}, {}", mc2::fmt::safe(file_name), mc2::fmt::safe(Mix_GetError()));
             *hgosaudio = nullptr;
             return;
         }
@@ -341,7 +339,7 @@ void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_Reso
 		// for some reason len_cvt may be less than required :-/
         gosASSERT(cvt.len_cvt <= (int)audio_data_size);
 		if(cvt.len_cvt < (int)audio_data_size)
-            SPEW(("AUDIO", "cvt.len_cvt != audio_data_len %d != %d\n", cvt.len_cvt, audio_data_size));
+            MC2_LOG(Audio, Debug, "cvt.len_cvt != audio_data_len {:d} != {:d}", mc2::fmt::as_i32(cvt.len_cvt), mc2::fmt::as_i32(audio_data_size));
 		if (cvt.len_cvt < (int)audio_data_size)
 			audio_data_size = cvt.len_cvt;
 

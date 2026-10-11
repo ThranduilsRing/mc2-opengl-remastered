@@ -23,6 +23,8 @@ struct DDSURFACEDESC2 {
 #include"mission.h"
 #include"gamesound.h"
 #include "Gates/gate.h"
+#include "mc2fmt.h"
+#include "../GameOS/gameos/utils/mc2log.h"
 float loadProgress = 0.0f;
 
 long LoadScreen::xProgressLoc = 0;
@@ -138,7 +140,7 @@ void LoadScreenWrapper::changeRes()
 
     if(b_search_for_best_resolution) {
         int min_pos_dist = 10000;
-        SPEW(("GRAPHICS", "Not native resolution, selecting closest matching resolution for loading screens"));
+        MC2_LOG(Render, Debug, "Not native resolution, selecting closest matching resolution for loading screens");
         for(int i=0;i<sizeof(resolutions)/sizeof(resolutions[0]);++i) {
             int dst = resolutions[i] - prefs.resolutionX;
             if(dst >=0 && dst < min_pos_dist) {
@@ -151,7 +153,7 @@ void LoadScreenWrapper::changeRes()
     //
 
 	char fileName[256];
-	sprintf( fileName, "mcl_loadingscreen" );
+	mc2::fmt::to_buf(fileName, "mcl_loadingscreen");
 
 	if ( Appendix )
 		strcat( fileName, Appendix );
@@ -173,13 +175,13 @@ void LoadScreenWrapper::changeRes()
 		for ( int fi = suitable_res - 1; fi >= 0; fi-- )
 		{
 			char fbName[256];
-			sprintf( fbName, "mcl_loadingscreen%s", str_resolutions[fi] );
+			mc2::fmt::to_buf(fbName, "mcl_loadingscreen{}", mc2::fmt::safe(str_resolutions[fi]));
 			FullPathFileName fbPath;
 			fbPath.init( artPath, fbName, ".fit" );
 			if ( NO_ERR == outFile.open( (const char*)fbPath ) )
 			{
-				SPEW(( "GRAPHICS", "loadscreen: %s missing, fell back to %s.fit\n",
-				       fileName, fbName ));
+				MC2_LOG(Render, Debug, "loadscreen: {} missing, fell back to {}.fit",
+				       mc2::fmt::safe(fileName), mc2::fmt::safe(fbName));
 				// fbName is stack-local; copy into fileName so resolvedLoadScreen stays valid.
 				strncpy( fileName, fbName, sizeof(fileName) - 1 );
 				fileName[sizeof(fileName) - 1] = '\0';
@@ -190,7 +192,7 @@ void LoadScreenWrapper::changeRes()
 		if ( !opened )
 		{
 			char error[256];
-			sprintf( error, "couldn't open file %s (no fallback found)", (const char*)path );
+			mc2::fmt::to_buf(error, "couldn't open file {} (no fallback found)", mc2::fmt::safe((const char*)path));
 			Assert( 0, 0, error );
 			return;
 		}
@@ -248,7 +250,7 @@ void LoadScreen::changeRes( FitIniFile& outFile )
 		if ( NO_ERR != tgaFile.open( path ) )
 		{
 			char error[256];
-			sprintf( error, "couldn't open file %s", (const char*)path );
+			mc2::fmt::to_buf(error, "couldn't open file {}", mc2::fmt::safe((const char*)path));
 			Assert( 0, 0, error );
 			return;
 		}
@@ -264,7 +266,7 @@ void LoadScreen::changeRes( FitIniFile& outFile )
 		if ( NO_ERR != tgaFile.open( path ) )
 		{
 			char error[256];
-			sprintf( error, "couldn't open file %s", (const char*)path );
+			mc2::fmt::to_buf(error, "couldn't open file {}", mc2::fmt::safe((const char*)path));
 			Assert( 0, 0, error );
 			return;
 		}
@@ -289,7 +291,7 @@ void LoadScreen::changeRes( FitIniFile& outFile )
 		if ( NO_ERR != tgaFile.open( path ) )
 		{
 			char error[256];
-			sprintf( error, "couldn't open file %s", (const char*)path );
+			mc2::fmt::to_buf(error, "couldn't open file {}", mc2::fmt::safe((const char*)path));
 			Assert( 0, 0, error );
 			return;
 		}
@@ -456,7 +458,7 @@ void LoadScreen::init(FitIniFile& file, DWORD neverFlush)
 		animIndices = new int[animObjectsCount];
 		for ( int i= 0; i < animObjectsCount; i++ )
 		{
-			sprintf( blockName, "AnimObject%d", i );
+			mc2::fmt::to_buf(blockName, "AnimObject{:d}", mc2::fmt::as_i32(i));
 			file.seekBlock( blockName );
 			file.readIdString( "AnimationOut", blockName, 255 );
 			if ( strstr( blockName, "2" ) )
@@ -586,7 +588,7 @@ void ProgressTimer(	RECT& WinRect,DDSURFACEDESC2& mouseSurfaceDesc )
 		{
 			if ( FILE* f = fopen("preview_debug.log","a") )
 			{
-				fprintf(f,"[LOAD-BANNER] ProgressTimer draw loadProgress=%.1f\n", loadProgress);
+				mc2::fmt::print(f, "[LOAD-BANNER] ProgressTimer draw loadProgress={:.1f}\n", loadProgress);
 				fclose(f);
 			}
 		}

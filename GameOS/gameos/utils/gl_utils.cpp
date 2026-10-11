@@ -10,6 +10,7 @@
 #include "utils/gl_render_constants.h"
 #include "utils/Image.h"
 #include "../mc2_hitch_trace.h"  // GPU-UPDATE-BUFFER-COUNTER-1: MC2_GL_BufferData_Owner (after GL/glew.h)
+#include "mc2fmt.h"
 
 uint32_t vec4_to_uint32(const vec4& v) {
 
@@ -313,7 +314,7 @@ void getTextureData(const Texture& t, int lod, unsigned char* poutdata, TexForma
         // compressed data as uncompressed — caller must not lock compressed textures.
         static int s_compressedReadCount = 0;
         if (++s_compressedReadCount <= 3)
-            printf("[GL] getTextureData: skip compressed texture id=%u (call %d)\n", t.id, s_compressedReadCount);
+            mc2::fmt::print_out("[GL] getTextureData: skip compressed texture id={:d} (call {:d})\n", mc2::fmt::as_u32(t.id), mc2::fmt::as_i32(s_compressedReadCount));
         return;
     }
 

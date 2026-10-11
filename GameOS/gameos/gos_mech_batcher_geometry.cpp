@@ -1,6 +1,7 @@
 // GpuMechBatcher: mech type / LOD registration, the shared vertex buffer upload, normal recomputation and geometry finalise.
 // Declared in the class headers; shared names in gos_mech_batcher_internal.h.
 #include "gos_mech_batcher_internal.h"
+#include "mc2fmt.h"
 
 
 // ---------------------------------------------------------------------------
@@ -124,9 +125,7 @@ void GpuMechBatcher::registerTypeLod(const Mech3DAppearanceType* mechType, int l
             "[MECHBATCHER v1] event=late_register type=%p lod=%d (staged_pending)\n",
             (void*)mechType, lod);
         if (s_mechRestoreTrace)
-            std::fprintf(stderr,
-                "[MECHRESTORE v1] event=register type=%p lod=%d result=staged_pending finalized=1\n",
-                (void*)mechType, lod);
+            mc2::fmt::print_err("[MECHRESTORE v1] event=register type={:016X} lod={:d} result=staged_pending finalized=1\n", mc2::fmt::as_ptr((void*)mechType), mc2::fmt::as_i32(lod));
         s_pendingLateTypes = true;
         ++s_lateStagedCount;
         // fall through -- stage like a normal pre-finalize registration
@@ -157,24 +156,20 @@ void GpuMechBatcher::registerTypeLod(const Mech3DAppearanceType* mechType, int l
 
     static const bool s_nodeTrace = mc2::gate::get<"MC2_MECH_NODE_TRACE">();
     if (s_nodeTrace) {
-        std::fprintf(stderr, "[MECHREG v1] event=register type=%p lod=%d numBones=%d\n",
-                     (void*)mechType, lod, numNodes);
+        mc2::fmt::print_err("[MECHREG v1] event=register type={:016X} lod={:d} numBones={:d}\n", mc2::fmt::as_ptr((void*)mechType), mc2::fmt::as_i32(lod), mc2::fmt::as_i32(numNodes));
     }
 
     const uint32_t typeLodIdx = (uint32_t)s_typeLodRecords.size();
     s_typeLodIndex[key] = typeLodIdx;
     if (s_mechRestoreTrace)
-        std::fprintf(stderr,
-            "[MECHRESTORE v1] event=register type=%p lod=%d result=registered finalized=0 numBones=%d\n",
-            (void*)mechType, lod, numNodes);
+        mc2::fmt::print_err("[MECHRESTORE v1] event=register type={:016X} lod={:d} result=registered finalized=0 numBones={:d}\n", mc2::fmt::as_ptr((void*)mechType), mc2::fmt::as_i32(lod), mc2::fmt::as_i32(numNodes));
 
     GpuMechTypeLodRecord rec{};
     rec.firstBoneIndex = 0;
     rec.numBones       = importGpu ? (uint32_t)importJointCount : (uint32_t)numNodes;
     rec.importedGpuType = importGpu ? (const void*)typeMulti : nullptr;
     if (importGpu)
-        std::fprintf(stderr, "[MECH_IMPORT_GPU] registerTypeLod lod=%d numBones %d->%d verts=%d\n",
-                     lod, numNodes, importJointCount, importNumVerts);
+        mc2::fmt::print_err("[MECH_IMPORT_GPU] registerTypeLod lod={:d} numBones {:d}->{:d} verts={:d}\n", mc2::fmt::as_i32(lod), mc2::fmt::as_i32(numNodes), mc2::fmt::as_i32(importJointCount), mc2::fmt::as_i32(importNumVerts));
     rec.firstPacket    = (uint32_t)s_packets.size();
     rec.packetCount    = 0;
     rec.vertexCount    = 0;
@@ -197,9 +192,7 @@ void GpuMechBatcher::registerTypeLod(const Mech3DAppearanceType* mechType, int l
         const char* nodeName = tnode->getNodeId();
         if (nodeName && S_strnicmp(nodeName, "SpotLight_", 10) == 0) {
             if (s_nodeTrace) {
-                std::fprintf(stderr,
-                    "[MECHREG v1] event=skip_spotlight type=%p lod=%d nodeIdx=%d name=%s\n",
-                    (void*)mechType, lod, nodeIdx, nodeName);
+                mc2::fmt::print_err("[MECHREG v1] event=skip_spotlight type={:016X} lod={:d} nodeIdx={:d} name={}\n", mc2::fmt::as_ptr((void*)mechType), mc2::fmt::as_i32(lod), mc2::fmt::as_i32(nodeIdx), mc2::fmt::safe(nodeName));
             }
             // [SPOTLIGHT_REAL_TRACE v1] T0.2 (a) — record SpotLight_ TypeNode
             // observed at recipe build. Tracks max across LODs since each
@@ -593,7 +586,5 @@ void GpuMechBatcher::finalizePending() {
         "[MECHBATCHER v1] event=finalize_pending types=%zu lateAdded=%u rebuilt=%d\n",
         s_typeLodRecords.size(), lateAdded, s_geometryFinalized ? 1 : 0);
     if (mc2::gate::get<"MC2_MECH_RESTORE_TRACE">())
-        std::fprintf(stderr,
-            "[MECHRESTORE v1] event=finalize_pending types=%zu lateAdded=%u rebuilt=%d\n",
-            s_typeLodRecords.size(), lateAdded, s_geometryFinalized ? 1 : 0);
+        mc2::fmt::print_err("[MECHRESTORE v1] event=finalize_pending types={:d} lateAdded={:d} rebuilt={:d}\n", mc2::fmt::as_size(s_typeLodRecords.size()), mc2::fmt::as_u32(lateAdded), mc2::fmt::as_i32(s_geometryFinalized ? 1 : 0));
 }

@@ -7,6 +7,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <SDL2/SDL_loadso.h>
+#include "mc2fmt.h"
 
 #ifdef PLATFORM_WINDOWS
 static void* DL_Open(const char* name) {
@@ -96,7 +97,7 @@ HSTRRES __stdcall gos_OpenResourceDLL(char const* FileName, const char** strings
             return pstrres;
         }
 
-        fprintf(stderr, "[MC2Strings] catalog empty, falling back to legacy DLL: %s\n", FileName);
+        mc2::fmt::print_err("[MC2Strings] catalog empty, falling back to legacy DLL: {}\n", mc2::fmt::safe(FileName));
     }
 
 	DL_GetError();
@@ -105,7 +106,7 @@ HSTRRES __stdcall gos_OpenResourceDLL(char const* FileName, const char** strings
     module = DL_Open(FileName);
     gosASSERT(module);
     if (!module) {
-        fprintf(stderr, "Couldn't open resourse dll: %s\n", DL_GetError());
+        mc2::fmt::print_err("Couldn't open resourse dll: {}\n", mc2::fmt::safe(DL_GetError()));
         return nullptr;
     }
 
@@ -114,14 +115,14 @@ HSTRRES __stdcall gos_OpenResourceDLL(char const* FileName, const char** strings
     /* Get symbol */
     fptr = (get_string_by_id_fptr)DL_LoadFunction(module, "getStringById");
     if ((error = DL_GetError())) {
-        fprintf(stderr, "Couldn't load function getStringById in %s (not exported?): %s\n", FileName, error);
+        mc2::fmt::print_err("Couldn't load function getStringById in {} (not exported?): {}\n", mc2::fmt::safe(FileName), mc2::fmt::safe(error));
         return nullptr;
     }
 
     init_string_resources_fptr init_fptr;
     init_fptr = (init_string_resources_fptr)DL_LoadFunction(module, "initStringResources");
     if ((error = DL_GetError())) {
-        fprintf(stderr, "Couldn't load function initStringResources in %s (not exported?): %s\n", FileName, error);
+        mc2::fmt::print_err("Couldn't load function initStringResources in {} (not exported?): {}\n", mc2::fmt::safe(FileName), mc2::fmt::safe(error));
         return nullptr;
     }
     init_fptr();
@@ -156,7 +157,7 @@ void __stdcall gos_CloseResourceDLL(HSTRRES handle)
     const char *error;
     free_fptr = (free_string_resources_fptr)DL_LoadFunction(pstrres->module, "freeStringResources");
     if ((error = DL_GetError())) {
-        fprintf(stderr, "Couldn't find hello: %s\n", error);
+        mc2::fmt::print_err("Couldn't find hello: {}\n", mc2::fmt::safe(error));
     } else {
         free_fptr();
     }
@@ -192,7 +193,7 @@ const char* __stdcall gos_GetResourceString(HSTRRES handle, DWORD id)
     const char* str = pstrres->getStringByIdFptr(id);
 
     if(nullptr == str) {
-        fprintf(stderr, "Requested string id: %d not found, return missing marker\n", id);
+        mc2::fmt::print_err("Requested string id: {:d} not found, return missing marker\n", mc2::fmt::as_i32(id));
         return MC2Strings::MissingResourceId(id);
     }
     return str;

@@ -1,6 +1,7 @@
 // MechBayScreen: the weight meter, the per-frame update and the message handler.
 // Declared in the class headers; shared names in mechbayscreen_internal.h.
 #include "mechbayscreen_internal.h"
+#include "mc2fmt.h"
 
 
 void MechBayScreen::drawWeightMeter(long xOffset, long yOffset)
@@ -128,7 +129,7 @@ void MechBayScreen::update()
 	char str[64];
 
 	// RP
-	sprintf( str, "%ld ", LogisticsData::instance->getCBills() );
+	mc2::fmt::to_buf(str, "{:d} ", mc2::fmt::as_i32(LogisticsData::instance->getCBills()));
 	textObjects[1].setText( str );
 	setDefsElementText( "game.mcl_mb_layout.text.cbills_text", str );
 

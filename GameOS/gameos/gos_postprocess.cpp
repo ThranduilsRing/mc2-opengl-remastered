@@ -4,6 +4,7 @@
 
 
 #include "gos_postprocess_internal.h"
+#include "mc2fmt.h"
 
 
 
@@ -19,7 +20,7 @@ void setSceneDrawBuffers(SceneDrawBufferMode mode,
         // chokepoint so the frame trace shows which set is live per pass (catches a
         // pass running under the wrong inherited set). Gated by the frame-plan gate.
         if (render_frame_plan::traceEnabled()) {
-            std::fprintf(stderr, "[DRAWBUF] set=SingleColor0 attachments={0}\n");
+            mc2::fmt::print_err("[DRAWBUF] set=SingleColor0 attachments={{0}}\n");
             std::fflush(stderr);
         }
         return;
@@ -40,8 +41,7 @@ void setSceneDrawBuffers(SceneDrawBufferMode mode,
         glDrawBuffers(2, bufs);
     }
     if (render_frame_plan::traceEnabled()) {
-        std::fprintf(stderr, "[DRAWBUF] set=MainSceneMRT attachments={0,1%s}\n",
-                     oid ? ",2" : "");
+        mc2::fmt::print_err("[DRAWBUF] set=MainSceneMRT attachments={{0,1{}}}\n", mc2::fmt::safe(oid ? ",2" : ""));
         std::fflush(stderr);
     }
 }
@@ -288,13 +288,13 @@ void gosPostProcess::init(int w, int h)
     );
 
     if (!compositeProg_ || !compositeProg_->is_valid()) {
-        fprintf(stderr, "gosPostProcess: failed to compile postprocess shader\n");
+        mc2::fmt::print_err("gosPostProcess: failed to compile postprocess shader\n");
     }
 
     skyboxProg_ = glsl_program::makeProgram("skybox",
         "shaders/skybox.vert", "shaders/skybox.frag", kShaderPrefix);
     if (!skyboxProg_ || !skyboxProg_->is_valid())
-        fprintf(stderr, "gosPostProcess: failed to compile skybox shader\n");
+        mc2::fmt::print_err("gosPostProcess: failed to compile skybox shader\n");
 
     // HDRI-SKY-1 init. Gate read once; default enabled unless env var == "0".
     {
@@ -342,70 +342,59 @@ void gosPostProcess::init(int w, int h)
     shadowDebugProg_ = glsl_program::makeProgram("shadow_debug",
         "shaders/postprocess.vert", "shaders/shadow_debug.frag", shadowDebugPrefix.c_str());
     if (!shadowDebugProg_ || !shadowDebugProg_->is_valid())
-        fprintf(stderr, "gosPostProcess: failed to compile shadow_debug shader\n");
+        mc2::fmt::print_err("gosPostProcess: failed to compile shadow_debug shader\n");
 
     // Item 1: shadow_screen.frag #includes shadow.hglsl -> inject MC2_SHADOW_CSM
     // when ON so it compiles the array-sampler dynamic-shadow variant.
     std::string screenShadowPrefix = "#version 430\n";
     if (mc2ShadowCsmEnabled()) {
         char csmDef[64];
-        snprintf(csmDef, sizeof(csmDef),
-                 "#define MC2_SHADOW_CSM 1\n#define MC2_SHADOW_CSM_MAX %d\n",
-                 mc2ShadowCsmCount());
+        mc2::fmt::to_buf(csmDef, "#define MC2_SHADOW_CSM 1\n#define MC2_SHADOW_CSM_MAX {:d}\n", mc2::fmt::as_i32(mc2ShadowCsmCount()));
         screenShadowPrefix += csmDef;
     }
     // SHADOW-DIST-FADE-1: object/prop receivers get the same distance-scaled
     // dynamic-shadow penumbra + fade as the terrain paths (lockstep).
     if (mc2ShadowDistFadeWu() > 0.0f) {
         char fadeDef[240];
-        snprintf(fadeDef, sizeof(fadeDef),
-                 "#define MC2_SHADOW_DIST_FADE_WU %.1f\n"
-                 "#define MC2_SHADOW_DIST_FADE_MAX_F %.2f\n"
-                 "#define MC2_SHADOW_FADE_CONT_F %d\n"
-                 "#define MC2_SHADOW_FADE_RAMP0_F %d\n"
-                 "#define MC2_SHADOW_ALT_SCALE_F %d\n",
-                 mc2ShadowDistFadeWu(), mc2ShadowDistFadeMax(),
-                     mc2ShadowFadeCont() ? 1 : 0,
-                     mc2ShadowFadeRamp0() ? 1 : 0,
-                     mc2ShadowAltScale() ? 1 : 0);
+        mc2::fmt::to_buf(fadeDef, "#define MC2_SHADOW_DIST_FADE_WU {:.1f}\n#define MC2_SHADOW_DIST_FADE_MAX_F {:.2f}\n#define MC2_SHADOW_FADE_CONT_F {:d}\n#define MC2_SHADOW_FADE_RAMP0_F {:d}\n#define MC2_SHADOW_ALT_SCALE_F {:d}\n", mc2ShadowDistFadeWu(), mc2ShadowDistFadeMax(), mc2::fmt::as_i32(mc2ShadowFadeCont() ? 1 : 0), mc2::fmt::as_i32(mc2ShadowFadeRamp0() ? 1 : 0), mc2::fmt::as_i32(mc2ShadowAltScale() ? 1 : 0));
         screenShadowPrefix += fadeDef;
     }
     screenShadowProg_ = glsl_program::makeProgram("shadow_screen",
         "shaders/postprocess.vert", "shaders/shadow_screen.frag", screenShadowPrefix.c_str());
     if (!screenShadowProg_ || !screenShadowProg_->is_valid())
-        fprintf(stderr, "gosPostProcess: failed to compile shadow_screen shader\n");
+        mc2::fmt::print_err("gosPostProcess: failed to compile shadow_screen shader\n");
 
     cloudProg_ = glsl_program::makeProgram("cloud",
         "shaders/postprocess.vert", "shaders/cloud.frag", kShaderPrefix);
     if (!cloudProg_ || !cloudProg_->is_valid())
-        fprintf(stderr, "gosPostProcess: failed to compile cloud shader\n");
+        mc2::fmt::print_err("gosPostProcess: failed to compile cloud shader\n");
 
     shorelineProg_ = glsl_program::makeProgram("shoreline",
         "shaders/postprocess.vert", "shaders/shoreline.frag", kShaderPrefix);
     if (!shorelineProg_ || !shorelineProg_->is_valid())
-        fprintf(stderr, "gosPostProcess: failed to compile shoreline shader\n");
+        mc2::fmt::print_err("gosPostProcess: failed to compile shoreline shader\n");
 
     // SSAO-GTAO-LITE-MVP-1 (Track V) shaders.
     ssaoProg_ = glsl_program::makeProgram("ssao",
         "shaders/postprocess.vert", "shaders/ssao.frag", kShaderPrefix);
     if (!ssaoProg_ || !ssaoProg_->is_valid())
-        fprintf(stderr, "gosPostProcess: failed to compile ssao shader\n");
+        mc2::fmt::print_err("gosPostProcess: failed to compile ssao shader\n");
     ssaoApplyProg_ = glsl_program::makeProgram("ssao_apply",
         "shaders/postprocess.vert", "shaders/ssao_apply.frag", kShaderPrefix);
     if (!ssaoApplyProg_ || !ssaoApplyProg_->is_valid())
-        fprintf(stderr, "gosPostProcess: failed to compile ssao_apply shader\n");
+        mc2::fmt::print_err("gosPostProcess: failed to compile ssao_apply shader\n");
     // SSAO-BLUR-1: depth-aware bilateral blur (run separably H then V).
     ssaoBlurProg_ = glsl_program::makeProgram("ssao_blur",
         "shaders/postprocess.vert", "shaders/ssao_blur.frag", kShaderPrefix);
     if (!ssaoBlurProg_ || !ssaoBlurProg_->is_valid())
-        fprintf(stderr, "gosPostProcess: failed to compile ssao_blur shader\n");
+        mc2::fmt::print_err("gosPostProcess: failed to compile ssao_blur shader\n");
 
     // BT2018-BOX-DECAL-1: screen-space box-decal program. Its OWN vert (cube volume),
     // not postprocess.vert. Default-OFF gate resolved once from env (SSAO style).
     boxDecalProg_ = glsl_program::makeProgram("box_decal",
         "shaders/box_decal.vert", "shaders/box_decal.frag", kShaderPrefix);
     if (!boxDecalProg_ || !boxDecalProg_->is_valid())
-        fprintf(stderr, "gosPostProcess: failed to compile box_decal shader\n");
+        mc2::fmt::print_err("gosPostProcess: failed to compile box_decal shader\n");
     {
         const char* e = mc2::gate::raw<"MC2_BOX_DECAL">();   // echoed as typed
         boxDecalEnabled_ = mc2::gate::get<"MC2_BOX_DECAL">();
@@ -415,8 +404,7 @@ void gosPostProcess::init(int w, int h)
         // pass is fed by the dynamic_decal_ring impact slots instead of the v1 test box.
         const char* pd = mc2::gate::raw<"MC2_PROJECTED_DECALS">();   // echoed as typed
         projectedDecalsEnabled_ = mc2::gate::get<"MC2_PROJECTED_DECALS">();
-        std::fprintf(stderr, "[PROJECTED_DECALS] enabled=%d (MC2_PROJECTED_DECALS=%s)\n",
-                     projectedDecalsEnabled_ ? 1 : 0, pd ? pd : "(unset)");
+        mc2::fmt::print_err("[PROJECTED_DECALS] enabled={:d} (MC2_PROJECTED_DECALS={})\n", mc2::fmt::as_i32(projectedDecalsEnabled_ ? 1 : 0), mc2::fmt::safe(pd ? pd : "(unset)"));
     }
 
     // SSAO gate + debug, resolved once from env. Default OFF -> runSSAO()
@@ -477,16 +465,7 @@ void gosPostProcess::init(int w, int h)
                      ssaoBlurEnabled_ ? 1 : 0, aoBlurDepthSigma_);
         // The one combination that is known-bad rather than merely untuned.
         if (ssaoEnabled_ && !ssaoBlurEnabled_ && !radiusOverridden && aoRadius_ > 3.0f) {
-            std::fprintf(stderr,
-                "[SSAO v1] WARNING: MC2_SSAO_BLUR=0 with the SSAO-BLUR-1 retuned "
-                "aoRadius=%.2f. This pairing NEVER shipped: the 16-sample "
-                "stochastic estimator's noise scales with radius and nothing is "
-                "denoising it, so expect speckle on flat unoccluded faces. This is "
-                "NOT the pre-SSAO-BLUR-1 chain -- that also had aoRadius=3.0. For "
-                "the historical chain set MC2_SSAO_RADIUS=3 as well (note it "
-                "measures 0.0000%% occlusion, i.e. AO effectively off); to A/B the "
-                "blur alone, keep this radius and ignore this warning.\n",
-                aoRadius_);
+            mc2::fmt::print_err("[SSAO v1] WARNING: MC2_SSAO_BLUR=0 with the SSAO-BLUR-1 retuned aoRadius={:.2f}. This pairing NEVER shipped: the 16-sample stochastic estimator's noise scales with radius and nothing is denoising it, so expect speckle on flat unoccluded faces. This is NOT the pre-SSAO-BLUR-1 chain -- that also had aoRadius=3.0. For the historical chain set MC2_SSAO_RADIUS=3 as well (note it measures 0.0000% occlusion, i.e. AO effectively off); to A/B the blur alone, keep this radius and ignore this warning.\n", aoRadius_);
         }
     }
 
@@ -545,7 +524,7 @@ void gosPostProcess::init(int w, int h)
         fogOobProg_ = glsl_program::makeProgram("fog_oob",
             "shaders/postprocess.vert", "shaders/fog_oob.frag", kShaderPrefix);
         if (!fogOobProg_ || !fogOobProg_->is_valid())
-            std::fprintf(stderr, "gosPostProcess: failed to compile fog_oob shader\n");
+            mc2::fmt::print_err("gosPostProcess: failed to compile fog_oob shader\n");
         fogOobEnabled_ = mc2::gate::get<"MC2_OOB_FOG">()
                       && fogOobProg_ && fogOobProg_->is_valid();
         if (mc2::gate::isSet<"MC2_OOB_FOG_COLOR">()) {
@@ -564,7 +543,7 @@ void gosPostProcess::init(int w, int h)
         edgeFogProg_ = glsl_program::makeProgram("edge_fog",
             "shaders/postprocess.vert", "shaders/edge_fog.frag", kShaderPrefix);
         if (!edgeFogProg_ || !edgeFogProg_->is_valid())
-            std::fprintf(stderr, "gosPostProcess: failed to compile edge_fog shader\n");
+            mc2::fmt::print_err("gosPostProcess: failed to compile edge_fog shader\n");
         edgeFogEnabled_ = mc2::gate::get<"MC2_EDGE_FOG">()
                        && edgeFogProg_ && edgeFogProg_->is_valid();
         if (mc2::gate::isSet<"MC2_EDGE_FOG_START">())  edgeFogStart_  = mc2::gate::get<"MC2_EDGE_FOG_START">();
@@ -585,8 +564,7 @@ void gosPostProcess::init(int w, int h)
             if (s < 0.0f) s = 0.0f;
             nightFogDimScale_ = s;
         }
-        std::fprintf(stderr, "[NIGHT_FOG_DIM] enabled=%d scale=%.3f\n",
-            nightFogDimEnabled_ ? 1 : 0, nightFogDimScale_);
+        mc2::fmt::print_err("[NIGHT_FOG_DIM] enabled={:d} scale={:.3f}\n", mc2::fmt::as_i32(nightFogDimEnabled_ ? 1 : 0), nightFogDimScale_);
     }
 
     // FOG-HORIZON-CLAMP-1: elevation profile shared by OOB + edge fog. Rides the
@@ -623,7 +601,7 @@ void gosPostProcess::init(int w, int h)
     hzbReduceProg_ = glsl_program::makeProgram("hzb_reduce",
         "shaders/postprocess.vert", "shaders/hzb_reduce.frag", kShaderPrefix);
     if (!hzbReduceProg_ || !hzbReduceProg_->is_valid())
-        fprintf(stderr, "gosPostProcess: failed to compile hzb_reduce shader\n");
+        mc2::fmt::print_err("gosPostProcess: failed to compile hzb_reduce shader\n");
     {
         // HZB-OCCLUSION-PROBE-1 gate (diagnostic only; requires the build gate).
         const char* probeEnv = mc2::gate::raw<"MC2_HZB_PROBE">();   // echoed as typed
@@ -643,13 +621,13 @@ void gosPostProcess::init(int w, int h)
             if (sdEnv[0] == '1' || (sdEnv[0] == 's' && sdEnv[1] == 't')) {
                 showShadowDebug_ = true;
                 shadowDebugMode_ = 0;
-                std::fprintf(stderr, "[SHADOW_DEBUG] MC2_SHADOW_DEBUG_MODE=static (mode 0)\n");
+                mc2::fmt::print_err("[SHADOW_DEBUG] MC2_SHADOW_DEBUG_MODE=static (mode 0)\n");
             } else if (sdEnv[0] == '2' || sdEnv[0] == 'd') {
                 showShadowDebug_ = true;
                 shadowDebugMode_ = 1;
-                std::fprintf(stderr, "[SHADOW_DEBUG] MC2_SHADOW_DEBUG_MODE=dynamic (mode 1)\n");
+                mc2::fmt::print_err("[SHADOW_DEBUG] MC2_SHADOW_DEBUG_MODE=dynamic (mode 1)\n");
             } else {
-                std::fprintf(stderr, "[SHADOW_DEBUG] MC2_SHADOW_DEBUG_MODE=%s (unrecognized, using OFF)\n", sdEnv);
+                mc2::fmt::print_err("[SHADOW_DEBUG] MC2_SHADOW_DEBUG_MODE={} (unrecognized, using OFF)\n", mc2::fmt::safe(sdEnv));
             }
         }
     }
@@ -799,12 +777,7 @@ void gosPostProcess::beginScene()
     static bool s_resDiagDone = false;
     if (s_resDiag && !s_resDiagDone) {
         s_resDiagDone = true;
-        fprintf(stderr,
-            "[RES_DIAG v1] sceneFBO=%dx%d  screenWidth=%dx%d (HUD canvas)  "
-            "drawable=%dx%d (native)\n",
-            width_, height_,
-            Environment.screenWidth, Environment.screenHeight,
-            Environment.drawableWidth, Environment.drawableHeight);
+        mc2::fmt::print_err("[RES_DIAG v1] sceneFBO={:d}x{:d}  screenWidth={:d}x{:d} (HUD canvas)  drawable={:d}x{:d} (native)\n", mc2::fmt::as_i32(width_), mc2::fmt::as_i32(height_), mc2::fmt::as_i32(Environment.screenWidth), mc2::fmt::as_i32(Environment.screenHeight), mc2::fmt::as_i32(Environment.drawableWidth), mc2::fmt::as_i32(Environment.drawableHeight));
         fflush(stderr);
     }
 }
@@ -826,9 +799,7 @@ void gosPostProcess::endScene()
         glEndQuery(GL_ANY_SAMPLES_PASSED);
         GLuint anySamples = 0;
         glGetQueryObjectuiv(sceneGlProducerQuery_, GL_QUERY_RESULT, &anySamples);
-        std::fprintf(stderr,
-            "[VK_SCENE_GL_PRODUCER_QUERY v1] any_samples=%u frame_sceneFBO=%u\n",
-            (unsigned)anySamples, (unsigned)sceneFBO_);
+        mc2::fmt::print_err("[VK_SCENE_GL_PRODUCER_QUERY v1] any_samples={:d} frame_sceneFBO={:d}\n", mc2::fmt::as_u32((unsigned)anySamples), mc2::fmt::as_u32((unsigned)sceneFBO_));
         sceneGlProducerQueryActive_ = false;
     }
 

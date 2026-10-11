@@ -164,6 +164,7 @@ extern "C" void mc2_render_backend_mech_region_health(
 #include <windows.h>
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
+#include "mc2fmt.h"
 
 extern char missionName[1024];
 // Per-mission asset globals — set by game layer (code/logmain.cpp, code/gamecam.cpp,
@@ -1191,7 +1192,7 @@ void maybeWriteRenderState(const RenderSnapshot& snap) {
     if (s_historyEnabled) {
         static uint32_t s_historySlot = 0u;
         char name[32];
-        snprintf(name, sizeof(name), "history_%u.json", s_historySlot);
+        mc2::fmt::to_buf(name, "history_{:d}.json", mc2::fmt::as_u32(s_historySlot));
         writeFile(dir / name, json);
         s_historySlot = (s_historySlot + 1u) % kHistorySlots;
     }

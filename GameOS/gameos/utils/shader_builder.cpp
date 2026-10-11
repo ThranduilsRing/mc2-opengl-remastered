@@ -16,13 +16,18 @@
 #include "diagnostic_trace.h"
 #include "gos_validate.h"
 #include "utils/stream.h"
-#include "utils/logging.h"
+#include "utils/mc2log.h"
 #include "utils/gl_utils.h"
 #include "utils/shader_builder.h"
 #include "utils/timing.h"
 #include "utils/file_utils.h"
 #include "gos_profiler.h"
 #include "Gates/gate.h"
+#include "mc2fmt.h"
+
+// Every error this file reports starts with the token scripts/smoke_lib/logparse.py counts as a shader failure, so a bad uniform type or a
+// duplicate program name fails a smoke run the way a compile error does.
+#define SHADER_LOG_ERROR(...) MC2_LOG(Shader, Error, "[SHADER ERROR] " __VA_ARGS__)
 
 
 std::map<std::string, glsl_shader*> glsl_shader::s_shaders[glsl_shader::NUM_SHADER_TYPES];
@@ -114,13 +119,13 @@ bool get_shader_error_status(GLuint shader, GLenum status_type, std::string* out
 
         glGetShaderInfoLog(shader, len, &len2, buf);
         if(len2!=0) {
-            log_error("CompileShader: %s\n", buf);
-            printf("[SHADER ERROR] CompileShader: %s\n", buf);
+            SHADER_LOG_ERROR("CompileShader: {}", mc2::fmt::safe(buf));
+            mc2::fmt::print_out("[SHADER ERROR] CompileShader: {}\n", mc2::fmt::safe(buf));
             fflush(stdout);
             validateRecordShaderError(buf);
             if (out_log) *out_log = buf;
         } else {
-            printf("[SHADER ERROR] CompileShader: driver reported FAIL with empty info log (GL id=%u)\n", shader);
+            mc2::fmt::print_out("[SHADER ERROR] CompileShader: driver reported FAIL with empty info log (GL id={:d})\n", mc2::fmt::as_u32(shader));
             fflush(stdout);
         }
 		delete[] buf;
@@ -145,8 +150,8 @@ bool get_program_error_status(GLuint program, GLenum status_type, std::string* o
 
         glGetProgramInfoLog(program, len, &len2, buf);
         if(len2!=0) {
-            log_error("LinkProgram: %s\n", buf);
-            printf("[SHADER ERROR] LinkProgram: %s\n", buf);
+            SHADER_LOG_ERROR("LinkProgram: {}", mc2::fmt::safe(buf));
+            mc2::fmt::print_out("[SHADER ERROR] LinkProgram: {}\n", mc2::fmt::safe(buf));
             fflush(stdout);
             validateRecordShaderError(buf);
             if (out_log) *out_log = buf;
@@ -194,7 +199,7 @@ const char* glsl_load(const char* fname, size_t* out_size = nullptr)
     stream* pstream = stream::makeFileStream();
     if(0 != pstream->open(fname,"rb"))
     {
-        log_error("Can't open %s \n", fname);
+        SHADER_LOG_ERROR("Can't open {} ", mc2::fmt::safe(fname));
         delete pstream;
         return 0;
     }
@@ -218,10 +223,9 @@ const char* glsl_load(const char* fname, size_t* out_size = nullptr)
         static_cast<unsigned char>(pdata[2]) == 0xBF) {
         memmove(pdata, pdata + 3, size - 3 + 1); // +1 = null terminator
         size -= 3;
-        fprintf(stderr, "[shader_builder] WARN: stripped UTF-8 BOM from %s\n", fname);
+        mc2::fmt::print_err("[shader_builder] WARN: stripped UTF-8 BOM from {}\n", mc2::fmt::safe(fname));
         char evJson[512];
-        snprintf(evJson, sizeof(evJson),
-            "{\"event\":\"bom_stripped\",\"path\":\"%s\"}", fname);
+        mc2::fmt::to_buf(evJson, "{{\"event\":\"bom_stripped\",\"path\":\"{}\"}}", mc2::fmt::safe(fname));
         mc2_diag::writeEvent("SHADER_COMPILE", 1, 0, evJson);
     }
 
@@ -278,7 +282,7 @@ size_t get_num_lines(const char* text)
 void append_line_directive(std::string& code, size_t line, const char* fname)
 {
     char buf[512];
-    snprintf(buf, sizeof(buf), "#line %zu // %s\n", line, fname);
+    mc2::fmt::to_buf(buf, "#line {:d} // {}\n", mc2::fmt::as_size(line), mc2::fmt::safe(fname));
     buf[510] = '\n'; // just in case our snprintf'ed line will be more than 512
     code.append(buf);
 }
@@ -372,7 +376,7 @@ bool load_shader(const char* fname, std::string& shader_source, std::vector<std:
 
     if(!parse_includes(fname, psource, includes, shader_source))
     {
-		log_error("Shader filename: %s: failed to parse includes\n", fname);
+		SHADER_LOG_ERROR("Shader filename: {}: failed to parse includes", mc2::fmt::safe(fname));
         delete[] psource;
         return false;
     }
@@ -396,7 +400,7 @@ bool compile_shader(GLenum shader, const char** strings, size_t count, std::stri
 	GLenum err = glGetError();
 	if(err != GL_NO_ERROR)
 	{
-		log_error("OpenGL Error: %s\n", ogl_get_error_code_str(err));
+		SHADER_LOG_ERROR("OpenGL Error: {}", mc2::fmt::safe(ogl_get_error_code_str(err)));
 	}
 
     bool error = get_shader_error_status(shader, GL_COMPILE_STATUS, out_log);
@@ -579,41 +583,41 @@ bool trySpirvSpecialize(GLuint shader, const char* fname, const char* prefix)
     const auto& idx = spirvIndex();
     auto it = idx.find(key);
     if (it == idx.end()) {
-        log_info("[SPIRV] no artifact for variant key '%s' (%s); GLSL fallback\n",
-                 key.c_str(), fname);
+        MC2_LOG_DBG(Shader, Info, "[SPIRV] no artifact for variant key '{}' ({}); GLSL fallback",
+                 key.c_str(), mc2::fmt::safe(fname));
         return false;
     }
     const std::string artifact = it->second;
     const std::string spvPath = "shaders/spv/" + artifact;
     std::ifstream in(spvPath, std::ios::binary | std::ios::ate);
     if (!in) {
-        log_info("[SPIRV] artifact missing %s; GLSL fallback\n", spvPath.c_str());
+        MC2_LOG_DBG(Shader, Info, "[SPIRV] artifact missing {}; GLSL fallback", spvPath.c_str());
         return false;
     }
     std::streamsize sz = in.tellg();
     in.seekg(0);
     std::vector<char> blob(sz > 0 ? (size_t)sz : 0);
     if (sz <= 0 || !in.read(blob.data(), sz)) {
-        log_error("[SPIRV] failed to read %s; GLSL fallback\n", spvPath.c_str());
+        SHADER_LOG_ERROR("[SPIRV] failed to read {}; GLSL fallback", spvPath.c_str());
         return false;
     }
 
     while (glGetError() != GL_NO_ERROR) { /* drain */ }
     glShaderBinary(1, &shader, GL_SHADER_BINARY_FORMAT_SPIR_V, blob.data(), (GLsizei)sz);
     if (glGetError() != GL_NO_ERROR) {
-        if (spirvFatal()) { log_error("[SPIRV] FATAL glShaderBinary %s\n", spvPath.c_str()); assert(false); }
-        log_error("[SPIRV] glShaderBinary rejected %s; GLSL fallback\n", spvPath.c_str());
+        if (spirvFatal()) { SHADER_LOG_ERROR("[SPIRV] FATAL glShaderBinary {}", spvPath.c_str()); assert(false); }
+        SHADER_LOG_ERROR("[SPIRV] glShaderBinary rejected {}; GLSL fallback", spvPath.c_str());
         return false;
     }
     glSpecializeShader(shader, "main", 0, nullptr, nullptr);
     GLint ok = GL_FALSE;
     glGetShaderiv(shader, GL_COMPILE_STATUS, &ok);
     if (glGetError() != GL_NO_ERROR || ok != GL_TRUE) {
-        if (spirvFatal()) { log_error("[SPIRV] FATAL specialize %s\n", spvPath.c_str()); assert(false); }
-        log_error("[SPIRV] glSpecializeShader failed %s; GLSL fallback\n", spvPath.c_str());
+        if (spirvFatal()) { SHADER_LOG_ERROR("[SPIRV] FATAL specialize {}", spvPath.c_str()); assert(false); }
+        SHADER_LOG_ERROR("[SPIRV] glSpecializeShader failed {}; GLSL fallback", spvPath.c_str());
         return false;
     }
-    log_info("[SPIRV] loaded %s key='%s' (specialized \"main\")\n",
+    MC2_LOG_DBG(Shader, Info, "[SPIRV] loaded {} key='{}' (specialized \"main\")",
              artifact.c_str(), key.c_str());
     if (mc2_diag::tagEnabled("SHADER_COMPILE")) {
         std::ostringstream data;
@@ -645,24 +649,24 @@ glsl_shader* glsl_shader::makeShader(Shader_t stype, const char* fname, const ch
     ZoneScopedN("Shader.LoadSource");
     if(!load_shader(fname, shader_source, shader_includes))
     {
-		log_error("Shader filename: %s, failed to load shader\n", fname);
+		SHADER_LOG_ERROR("Shader filename: {}, failed to load shader", mc2::fmt::safe(fname));
         return nullptr;
     }
     }
 
-    log_info("Loading shader: %s\n", fname);
+    MC2_LOG_DBG(Shader, Info, "Loading shader: {}", mc2::fmt::safe(fname));
 
 
     glsl_shader* pshader = new glsl_shader();
 
     char unique_id[256] = {0};
-    snprintf(unique_id, 256, "%s_%p", fname, pshader);
+    mc2::fmt::to_buf_n(unique_id, 256, "{}_{:016X}", mc2::fmt::safe(fname), mc2::fmt::as_ptr(pshader));
     std::string uid = &unique_id[0];
 
 #define DUMP_SHADER_PREPROCESSED_FILES 1
 #if DUMP_SHADER_PREPROCESSED_FILES
     char dump_name[256] = {0};
-    snprintf(dump_name, 256, "./dump/%s.glsl", uid.c_str());
+    mc2::fmt::to_buf_n(dump_name, 256, "./dump/{}.glsl", uid.c_str());
     FILE* f = fopen(dump_name, "w");
     if(f) {
         fwrite(shader_source.c_str(), shader_source.size(), 1, f);
@@ -718,7 +722,7 @@ glsl_shader* glsl_shader::makeShader(Shader_t stype, const char* fname, const ch
             GLsizei actualLen = 0;
             glGetShaderInfoLog(shader, warnLen, &actualLen, warnBuf);
             if (actualLen > 0) {
-                printf("[SHADER WARN] compile %s:\n%s\n", fname, warnBuf);
+                mc2::fmt::print_out("[SHADER WARN] compile {}:\n{}\n", mc2::fmt::safe(fname), mc2::fmt::safe(warnBuf));
                 fflush(stdout);
             }
             delete[] warnBuf;
@@ -740,7 +744,7 @@ glsl_shader* glsl_shader::makeShader(Shader_t stype, const char* fname, const ch
 
     if(s_shaders[stype].count(uid))
 	{
-        log_error("Duplicate shader name: %s\n", fname);
+        SHADER_LOG_ERROR("Duplicate shader name: {}", mc2::fmt::safe(fname));
         delete pshader;
         return nullptr;
 
@@ -776,7 +780,7 @@ bool glsl_shader::reload(const char* prefix)
 
     if(!load_shader(fname_.c_str(), shader_source, shader_includes))
     {
-		log_error("Shader filename: %s, failed to load shader\n", fname_.c_str());
+		SHADER_LOG_ERROR("Shader filename: {}, failed to load shader", fname_.c_str());
         return false;
     }
 	
@@ -840,7 +844,7 @@ void parse_uniforms(GLuint pprogram, glsl_program::UniArr_t* puniforms, glsl_pro
 				"sampler_1d", "sampler_2d", "sampler_3d", "sampler_cube", "sampler_1d_shadow", "sampler_2d_shadow"
 			};
 
-			log_info("name: %s type: %s\n", buf, typeNames[psampler->type_]);
+			MC2_LOG_DBG(Shader, Info, "name: {} type: {}", mc2::fmt::safe(buf), mc2::fmt::safe(typeNames[psampler->type_]));
 
 			psamplers->insert(std::make_pair(psampler->name_, psampler));
 
@@ -852,7 +856,7 @@ void parse_uniforms(GLuint pprogram, glsl_program::UniArr_t* puniforms, glsl_pro
 			psampler->index_ = glGetUniformLocation(pprogram, buf);
 			psampler->name_ = buf;
 			psampler->type_ = SAMPLER_2D;  // synthetic; bind path is identical to 2D
-			log_info("name: %s type: sampler_2d_array\n", buf);
+			MC2_LOG_DBG(Shader, Info, "name: {} type: sampler_2d_array", mc2::fmt::safe(buf));
 			psamplers->insert(std::make_pair(psampler->name_, psampler));
 			continue;
 		}
@@ -861,7 +865,7 @@ void parse_uniforms(GLuint pprogram, glsl_program::UniArr_t* puniforms, glsl_pro
 		// GL_INT_SAMPLER_2D (0x8DCA) / GL_UNSIGNED_INT_SAMPLER_2D (0x8DD2),
 		// OUTSIDE the float-sampler range handled above. They previously fell
 		// through to the default constant-uniform path -> garbage type_ ->
-		// constantSizes[]/typeNames[] OOB read -> crash in log_info (EXACTLY the
+		// constantSizes[]/typeNames[] OOB read -> crash in the log call (EXACTLY the
 		// GL_SAMPLER_2D_ARRAY crash class documented above). Treat them as
 		// samplers; the bind path (glActiveTexture+glBindTexture /
 		// glProgramUniform1i via setInt) is type-agnostic.
@@ -871,8 +875,8 @@ void parse_uniforms(GLuint pprogram, glsl_program::UniArr_t* puniforms, glsl_pro
 			psampler->index_ = glGetUniformLocation(pprogram, buf);
 			psampler->name_ = buf;
 			psampler->type_ = SAMPLER_2D;  // synthetic; integer-sampler 2D bind path
-			log_info("name: %s type: %s\n", buf,
-			         (type == GL_INT_SAMPLER_2D) ? "isampler_2d" : "usampler_2d");
+			MC2_LOG_DBG(Shader, Info, "name: {} type: {}", mc2::fmt::safe(buf),
+			         mc2::fmt::safe((type == GL_INT_SAMPLER_2D) ? "isampler_2d" : "usampler_2d"));
 			psamplers->insert(std::make_pair(psampler->name_, psampler));
 			continue;
 		}
@@ -905,8 +909,8 @@ void parse_uniforms(GLuint pprogram, glsl_program::UniArr_t* puniforms, glsl_pro
                 if (ct < CONSTANT_VEC2 || ct > CONSTANT_MAT4) {
                     // Unknown type (e.g. uint arrays, double, image units).
                     // Bridge sets these via direct glUniform calls; skip caching.
-                    log_info("name: %s type: unknown (GL type=0x%x, skipped)\n",
-                             buf, (unsigned)type);
+                    MC2_LOG_DBG(Shader, Info, "name: {} type: unknown (GL type=0x{:x}, skipped)",
+                             mc2::fmt::safe(buf), mc2::fmt::as_u32((unsigned)type));
                     delete puni;
                     continue;
                 }
@@ -925,7 +929,7 @@ void parse_uniforms(GLuint pprogram, glsl_program::UniArr_t* puniforms, glsl_pro
             "float", "int  ", "vec2 ", "vec3 ", "vec4 ", "ivec2", "ivec3", "ivec4",
             "bool ", "bvec2", "bvec3", "bvec4", "mat2 ", "mat3 ", "mat4 "
         };
-        log_info("name: %s type: %s  num_el: %d\n", buf, typeNames[puni->type_], puni->num_el_);
+        MC2_LOG_DBG(Shader, Info, "name: {} type: {}  num_el: {:d}", mc2::fmt::safe(buf), mc2::fmt::safe(typeNames[puni->type_]), mc2::fmt::as_i32(puni->num_el_));
 
         puniforms->insert( std::make_pair(puni->name_, puni) );
     }
@@ -983,7 +987,7 @@ glsl_program* glsl_program::makeProgram2(const char* name, const char* vp, const
 
     if(s_programs.count(name))
     {
-        log_error("Program with this name (%s) already exists\n", name);
+        SHADER_LOG_ERROR("Program with this name ({}) already exists", mc2::fmt::safe(name));
         return 0;
     }
 
@@ -1002,7 +1006,7 @@ glsl_program* glsl_program::makeProgram2(const char* name, const char* vp, const
     // program -> would fail to link). Composite pilot has only vert+frag.
     if(spirvPilot && (!vsh || (fp && !fsh)))
     {
-        log_error("[SPIRV] pilot program %s: a stage failed SPIR-V; rebuilding all stages GLSL\n", name);
+        SHADER_LOG_ERROR("[SPIRV] pilot program {}: a stage failed SPIR-V; rebuilding all stages GLSL", mc2::fmt::safe(name));
         if(vsh) glsl_shader::deleteShader(vsh);
         if(fsh) glsl_shader::deleteShader(fsh);
         vsh = fsh = 0;
@@ -1055,7 +1059,7 @@ glsl_program* glsl_program::makeProgram2(const char* name, const char* vp, const
 		if( GL_NO_ERROR != glGetError())
 		{
 	        glDeleteProgram(shp);
-			log_error("glAttachShader: error during attaching %s\n", pipeline[i]->fname_.c_str());
+			SHADER_LOG_ERROR("glAttachShader: error during attaching {}", pipeline[i]->fname_.c_str());
 			return 0;
 		}
 	}
@@ -1064,8 +1068,8 @@ glsl_program* glsl_program::makeProgram2(const char* name, const char* vp, const
 	GLenum err = glGetError();
 	if(err != GL_NO_ERROR)
 	{
-		log_error("Shader name: %s\n", name);
-		log_error("OpenGL Error: %s\n", ogl_get_error_code_str(err));
+		SHADER_LOG_ERROR("Shader name: {}", mc2::fmt::safe(name));
+		SHADER_LOG_ERROR("OpenGL Error: {}", mc2::fmt::safe(ogl_get_error_code_str(err)));
 	}
 
 	if(count)
@@ -1076,8 +1080,8 @@ glsl_program* glsl_program::makeProgram2(const char* name, const char* vp, const
 	err = glGetError();
 	if(err != GL_NO_ERROR)
 	{
-		log_error("Shader name: %s\n", name);
-		log_error("OpenGL Error: %s\n", ogl_get_error_code_str(err));
+		SHADER_LOG_ERROR("Shader name: {}", mc2::fmt::safe(name));
+		SHADER_LOG_ERROR("OpenGL Error: {}", mc2::fmt::safe(ogl_get_error_code_str(err)));
 	}
 
     { ZoneScopedN("Shader.LinkProgram"); glLinkProgram(shp); }
@@ -1085,8 +1089,8 @@ glsl_program* glsl_program::makeProgram2(const char* name, const char* vp, const
 	err = glGetError();
 	if(err != GL_NO_ERROR)
 	{
-		log_error("Shader name: %s\n", name);
-		log_error("OpenGL Error: %s\n", ogl_get_error_code_str(err));
+		SHADER_LOG_ERROR("Shader name: {}", mc2::fmt::safe(name));
+		SHADER_LOG_ERROR("OpenGL Error: {}", mc2::fmt::safe(ogl_get_error_code_str(err)));
 	}
 
 	CHECK_GL_ERROR
@@ -1112,7 +1116,7 @@ glsl_program* glsl_program::makeProgram2(const char* name, const char* vp, const
             GLsizei actualLen = 0;
             glGetProgramInfoLog(shp, warnLen, &actualLen, warnBuf);
             if (actualLen > 0) {
-                printf("[SHADER WARN] link '%s':\n%s\n", name, warnBuf);
+                mc2::fmt::print_out("[SHADER WARN] link '{}':\n{}\n", mc2::fmt::safe(name), mc2::fmt::safe(warnBuf));
                 fflush(stdout);
             }
             delete[] warnBuf;
@@ -1203,7 +1207,7 @@ void glsl_program::apply()
             } else {
                 uniformFuncs[puni->type_](puni->index_, puni->num_el_, (float *) puni->data_);
                 if(GL_INVALID_OPERATION == glGetError())
-                    log_error("Error setting variable\n");
+                    SHADER_LOG_ERROR("Error setting variable");
             }
             puni->is_dirty_ = false;
         }
@@ -1231,7 +1235,7 @@ bool glsl_program::reload()
         if (!pipeline[i]) continue;
         std::string src;
         if (!load_shader(pipeline[i]->fname_.c_str(), src, newIncludes[i])) {
-            log_error("Shader reload: failed to load %s\n", pipeline[i]->fname_.c_str());
+            SHADER_LOG_ERROR("Shader reload: failed to load {}", pipeline[i]->fname_.c_str());
             reload_log_ = "failed to load " + pipeline[i]->fname_;
             compileOk = false;
             break;
@@ -1254,7 +1258,7 @@ bool glsl_program::reload()
             mc2_diag::writeEvent("SHADER_COMPILE", 1, 0, data.str().c_str());
         }
         for (int i = 0; i < 5; ++i) if (newShaders[i]) glDeleteShader(newShaders[i]);
-        printf("[SHADER] reload failed (compile); keeping previous program\n");
+        mc2::fmt::print_out("[SHADER] reload failed (compile); keeping previous program\n");
         return false;
     }
 
@@ -1279,7 +1283,7 @@ bool glsl_program::reload()
         }
         glDeleteProgram(newProg);
         reload_log_ = "link: " + (reloadLinkLog.empty() ? std::string("failed (empty info log)") : reloadLinkLog);
-        printf("[SHADER] reload failed (link); keeping previous program\n");
+        mc2::fmt::print_out("[SHADER] reload failed (link); keeping previous program\n");
         return false;
     }
 
@@ -1328,7 +1332,7 @@ bool glsl_program::setFloat(const char* name, const float v)
         return false; // optimized out, silent
     if(it->second->type_ != CONSTANT_FLOAT)
     {
-        log_error("Type mismatch: %s\n", name);
+        SHADER_LOG_ERROR("Type mismatch: {}", mc2::fmt::safe(name));
         return false;
     }
     memcpy(it->second->data_, &v, constantSizes[it->second->type_] * it->second->num_el_);
@@ -1342,7 +1346,7 @@ bool glsl_program::setFloat2(const char* name, const float v[2])
         return false;
     if(it->second->type_ != CONSTANT_VEC2)
     {
-        log_error("Type mismatch: %s\n", name);
+        SHADER_LOG_ERROR("Type mismatch: {}", mc2::fmt::safe(name));
         return false;
     }
     memcpy(it->second->data_, v, constantSizes[it->second->type_] * it->second->num_el_);
@@ -1356,7 +1360,7 @@ bool glsl_program::setFloat3(const char* name, const float v[3])
         return false;
     if(it->second->type_ != CONSTANT_VEC3)
     {
-        log_error("Type mismatch: %s\n", name);
+        SHADER_LOG_ERROR("Type mismatch: {}", mc2::fmt::safe(name));
         return false;
     }
     memcpy(it->second->data_, v, constantSizes[it->second->type_] * it->second->num_el_);
@@ -1371,7 +1375,7 @@ bool glsl_program::setFloat4(const std::string& name, const float v[4])
         return false;
     if(it->second->type_ != CONSTANT_VEC4)
     {
-        log_error("Type mismatch: %s\n", name.c_str());
+        SHADER_LOG_ERROR("Type mismatch: {}", name.c_str());
         return false;
     }
     memcpy(it->second->data_, v, constantSizes[it->second->type_] * it->second->num_el_);
@@ -1392,7 +1396,7 @@ bool glsl_program::setInt(const char* name, const int v)
     {
         if(it->second->type_ != CONSTANT_INT)
         {
-            log_error("Type mismatch: %s\n", name);
+            SHADER_LOG_ERROR("Type mismatch: {}", mc2::fmt::safe(name));
             return false;
         }
         memcpy(it->second->data_, &v, constantSizes[it->second->type_] * it->second->num_el_);
@@ -1419,7 +1423,7 @@ bool glsl_program::setInt2(const char* name, const int v[2])
         return false;
     if(it->second->type_ != CONSTANT_IVEC2)
     {
-        log_error("Type mismatch: %s\n", name);
+        SHADER_LOG_ERROR("Type mismatch: {}", mc2::fmt::safe(name));
         return false;
     }
     memcpy(it->second->data_, v, constantSizes[it->second->type_] * it->second->num_el_);
@@ -1433,7 +1437,7 @@ bool glsl_program::setInt3(const char* name, const int v[3])
         return false;
     if(it->second->type_ != CONSTANT_IVEC3)
     {
-        log_error("Type mismatch: %s\n", name);
+        SHADER_LOG_ERROR("Type mismatch: {}", mc2::fmt::safe(name));
         return false;
     }
     memcpy(it->second->data_, v, constantSizes[it->second->type_] * it->second->num_el_);
@@ -1447,7 +1451,7 @@ bool glsl_program::setInt4(const char* name, const int v[4])
         return false;
     if(it->second->type_ != CONSTANT_IVEC4)
     {
-        log_error("Type mismatch: %s\n", name);
+        SHADER_LOG_ERROR("Type mismatch: {}", mc2::fmt::safe(name));
         return false;
     }
     memcpy(it->second->data_, v, constantSizes[it->second->type_] * it->second->num_el_);
@@ -1462,7 +1466,7 @@ bool glsl_program::setMat2(const char* name, const float v[4])
         return false;
     if(it->second->type_ != CONSTANT_MAT2)
     {
-        log_error("Type mismatch: %s\n", name);
+        SHADER_LOG_ERROR("Type mismatch: {}", mc2::fmt::safe(name));
         return false;
     }
     memcpy(it->second->data_, v, constantSizes[it->second->type_] * it->second->num_el_);
@@ -1476,7 +1480,7 @@ bool glsl_program::setMat3(const char* name, const float v[9])
         return false;
     if(it->second->type_ != CONSTANT_MAT3)
     {
-        log_error("Type mismatch: %s\n", name);
+        SHADER_LOG_ERROR("Type mismatch: {}", mc2::fmt::safe(name));
         return false;
     }
     memcpy(it->second->data_, v, constantSizes[it->second->type_] * it->second->num_el_);
@@ -1490,7 +1494,7 @@ bool glsl_program::setMat4(const char* name, const float v[16])
         return false;
     if(it->second->type_ != CONSTANT_MAT4)
     {
-        log_error("Type mismatch: %s\n", name);
+        SHADER_LOG_ERROR("Type mismatch: {}", mc2::fmt::safe(name));
         return false;
     }
     memcpy(it->second->data_, v, constantSizes[it->second->type_] * it->second->num_el_);
@@ -1505,7 +1509,7 @@ bool glsl_program::setMat4(const std::string& name , const float v[16])
         return false;
     if(it->second->type_ != CONSTANT_MAT4)
     {
-        log_error("Type mismatch: %s\n", name.c_str());
+        SHADER_LOG_ERROR("Type mismatch: {}", name.c_str());
         return false;
     }
     memcpy(it->second->data_, v, constantSizes[it->second->type_] * it->second->num_el_);

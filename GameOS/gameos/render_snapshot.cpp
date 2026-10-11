@@ -23,6 +23,7 @@
 #include <cstring>
 #include <vector>
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 // ---------------------------------------------------------------------------
 // Module-static ping-pong arenas (2 × 1 MiB in BSS, never freed).
@@ -148,7 +149,7 @@ static uint32_t BuildOracleRows(std::vector<ExtractedStaticProp>& out)
         cp.shapeName[0] = '\0';
         {
             const char* sn = GpuStaticPropRegistry::getRecipeShapeName(v.recipeIndex);
-            if (sn) std::snprintf(cp.shapeName, sizeof(cp.shapeName), "%s", sn);
+            if (sn) mc2::fmt::to_buf_n(cp.shapeName, sizeof(cp.shapeName), "{}", mc2::fmt::safe(sn));
         }
     }
     return static_cast<uint32_t>(out.size());
@@ -187,15 +188,7 @@ static void CompareOracleAndLog(const ExtractedStaticProp* out, uint32_t outCoun
         }
         if (L.hasCullRecord != C.hasCullRecord) ++hasCullMismatch;
     }
-    std::fprintf(stderr,
-        "[SNAPSHOT_BRIDGE_COMPARE v1] path=%s frame=%llu regGen=%llu cullVer=%llu"
-        " rowCount=%u oracleCount=%u rowCountMismatch=%u immutableMismatch=%u hasCullMismatch=%u\n",
-        tag,
-        static_cast<unsigned long long>(frameIndex),
-        static_cast<unsigned long long>(regGen),
-        static_cast<unsigned long long>(cullGen),
-        outCount, oracleCount,
-        rowCountMismatch, immutableMismatch, hasCullMismatch);
+    mc2::fmt::print_err("[SNAPSHOT_BRIDGE_COMPARE v1] path={} frame={:d} regGen={:d} cullVer={:d} rowCount={:d} oracleCount={:d} rowCountMismatch={:d} immutableMismatch={:d} hasCullMismatch={:d}\n", mc2::fmt::safe(tag), mc2::fmt::as_u64(static_cast<unsigned long long>(frameIndex)), mc2::fmt::as_u64(static_cast<unsigned long long>(regGen)), mc2::fmt::as_u64(static_cast<unsigned long long>(cullGen)), mc2::fmt::as_u32(outCount), mc2::fmt::as_u32(oracleCount), mc2::fmt::as_u32(rowCountMismatch), mc2::fmt::as_u32(immutableMismatch), mc2::fmt::as_u32(hasCullMismatch));
     std::fflush(stderr);
 }
 
@@ -287,8 +280,7 @@ RenderSnapshot ExtractRenderSnapshot()
                 snap.frameArena.allocArray<ExtractedStaticProp>(n, "ExtractedStaticProp");
             if (!propSpan.data && n > 0u) {
                 snap.arenaOverflow = true;
-                std::fprintf(stderr,
-                    "[RENDER_SNAPSHOT] WARNING: arena overflow allocating %u ExtractedStaticProp (clean)\n", n);
+                mc2::fmt::print_err("[RENDER_SNAPSHOT] WARNING: arena overflow allocating {:d} ExtractedStaticProp (clean)\n", mc2::fmt::as_u32(n));
             } else {
                 if (n) std::memcpy(propSpan.data, s_spRowCache.data(),
                                    static_cast<size_t>(n) * sizeof(ExtractedStaticProp));
@@ -356,9 +348,8 @@ RenderSnapshot ExtractRenderSnapshot()
         ExtractedStaticProp* propBuf = propSpan.data;
         if (!propBuf && aliveCount > 0) {
             snap.arenaOverflow = true;
-            std::fprintf(stderr,
-                "[RENDER_SNAPSHOT] WARNING: arena overflow allocating %u ExtractedStaticProp\n",
-                aliveCount);
+            mc2::fmt::print_err("[RENDER_SNAPSHOT] WARNING: arena overflow allocating {:d} ExtractedStaticProp\n",
+                mc2::fmt::as_u32(aliveCount));
             // Leave staticProps empty; counters remain zero.
         } else {
             uint32_t writeIdx       = 0;
@@ -469,7 +460,7 @@ RenderSnapshot ExtractRenderSnapshot()
                 {
                     const char* sn = GpuStaticPropRegistry::getRecipeShapeName(v.recipeIndex);
                     if (sn) {
-                        std::snprintf(p.shapeName, sizeof(p.shapeName), "%s", sn);
+                        mc2::fmt::to_buf_n(p.shapeName, sizeof(p.shapeName), "{}", mc2::fmt::safe(sn));
                     }
                 }
 
@@ -664,89 +655,8 @@ RenderSnapshot ExtractRenderSnapshot()
     // -----------------------------------------------------------------------
     static const bool s_logEnabled = mc2::gate::get<"MC2_RENDER_SNAPSHOT_LOG">();
     if (s_logEnabled) {
-        std::fprintf(stderr,
-            "[RENDER_SNAPSHOT v3+mech-extract] frame=%llu mechs=%u static_props=%u lights=%u "
-            "bytes=%zu overflow=%d ok=%u\n"
-            "  sp_fail=%u sp_sentinel_mat=%u sp_sentinel_cull=%u sizeof_static_prop=%zu\n"
-            "  sp_tex_wired=%u sp_tex_sentinel=%u sp_mat_wired=%u sp_mat_sentinel=%u\n"
-            "  sp_primary_alpha_on=%u sp_multi_packet=%u\n"
-            "  sp_cull_submitted=%u sp_cull_missing=%u sp_has_bounds=%u\n"
-            "  sp_alpha_on=%u sp_has_shape_name=%u\n"
-            "  sp_packet_ranges_ok=%u sp_packet_ranges_invalid=%u\n"
-            "  sp_packets=%u sp_packet_invalid=%u\n"
-            "  visibility_static_props=%u sp_vis_delta=%d\n"
-            "  [v2.3 compare] snapshot_count=%u live_count=%u count_mismatch=%u\n"
-            "  sorted_slot_mismatch=%u global_packet_mismatch=%u pipeline_mismatch=%u\n"
-            "  material_idx_mismatch=%u instance_count_mismatch=%u tex_layer_mismatch=%u\n"
-            "  [v2.3 snap_cull] skipped=%u active=%u slot_mismatch=%u\n"
-            "  [v3 build] attempted=%u count_mismatch=%u pkt_mismatch=%u"
-            " meta_mismatch=%u fallback=%u\n"
-            "  [v3 arena] used=%zu high_water=%zu allocs=%u overflow=%u"
-            " mechArenaBytes=%zu mechRows=%u\n"
-            "  [mech-extract] gate=%d snapshot=%u mat_valid=%u mat_sentinel=%u"
-            " count_mismatch=%u handle_mismatch=%u objectid_mismatch=%u"
-            " tex_mismatch=%u mat_mismatch=%u\n",
-            static_cast<unsigned long long>(snap.frameIndex),
-            static_cast<uint32_t>(snap.mechs.size()),
-            static_cast<uint32_t>(snap.staticProps.size()),
-            static_cast<uint32_t>(snap.lights.size()),
-            snap.frameArena.stats().usedBytes,
-            snap.arenaOverflow ? 1 : 0,
-            snap.ok,
-            snap.staticPropValidationFail,
-            snap.staticPropSentinelMat,
-            snap.staticPropSentinelCull,
-            sizeof(ExtractedStaticProp),
-            snap.staticPropTexWired,
-            snap.staticPropTexSentinel,
-            snap.staticPropMatWired,
-            snap.staticPropMatSentinel,
-            snap.staticPropPrimaryAlphaOn,
-            snap.staticPropMultiPacket,
-            snap.staticPropCullSubmitted,
-            snap.staticPropCullMissing,
-            snap.staticPropHasBounds,
-            snap.staticPropAlphaOn,
-            snap.staticPropHasShapeName,
-            snap.staticPropPacketRangesOk,
-            snap.staticPropPacketRangesFail,
-            snap.staticPropPacketCount,
-            snap.staticPropPacketInvalid,
-            visibilityStaticPropsCount,
-            static_cast<int32_t>(snap.staticProps.size()) -
-                static_cast<int32_t>(visibilityStaticPropsCount),
-            snap.spCompareSnapshotCount,
-            snap.spCompareLiveCount,
-            snap.spCountMismatch,
-            snap.spSortedSlotMismatch,
-            snap.spGlobalPacketMismatch,
-            snap.spPipelineMismatch,
-            snap.spMaterialIdxMismatch,
-            snap.spInstanceCountMismatch,
-            snap.spTexLayerMismatch,
-            snap.spSnapCullSkipped,
-            snap.spSnapCullActive,
-            snap.spSnapCullSlotMismatch,
-            snap.spBuildAttempted,
-            snap.spBuildCountMismatch,
-            snap.spBuildPacketMismatch,
-            snap.spBuildMetaMismatch,
-            snap.spBuildFallback,
-            snap.frameArena.stats().usedBytes,
-            snap.frameArena.stats().highWaterBytes,
-            snap.frameArena.stats().allocCount,
-            snap.frameArena.stats().overflowCount,
-            snap.mechPackets.count * sizeof(ExtractedMechPacket),
-            static_cast<uint32_t>(snap.mechPackets.count),
-            s_mechExtractEnabled ? 1 : 0,
-            snap.mechSnapshotCount,
-            snap.mechMatValid,
-            snap.mechMatSentinel,
-            snap.mechCountMismatch,
-            snap.mechHandleMismatch,
-            snap.mechObjectIdMismatch,
-            snap.mechTexHandleMismatch,
-            snap.mechMaterialIdxMismatch);
+        mc2::fmt::print_err("[RENDER_SNAPSHOT v3+mech-extract] frame={:d} mechs={:d} static_props={:d} lights={:d} bytes={:d} overflow={:d} ok={:d}\n  sp_fail={:d} sp_sentinel_mat={:d} sp_sentinel_cull={:d} sizeof_static_prop={:d}\n  sp_tex_wired={:d} sp_tex_sentinel={:d} sp_mat_wired={:d} sp_mat_sentinel={:d}\n  sp_primary_alpha_on={:d} sp_multi_packet={:d}\n  sp_cull_submitted={:d} sp_cull_missing={:d} sp_has_bounds={:d}\n  sp_alpha_on={:d} sp_has_shape_name={:d}\n  sp_packet_ranges_ok={:d} sp_packet_ranges_invalid={:d}\n  sp_packets={:d} sp_packet_invalid={:d}\n  visibility_static_props={:d} sp_vis_delta={:d}\n  [v2.3 compare] snapshot_count={:d} live_count={:d} count_mismatch={:d}\n  sorted_slot_mismatch={:d} global_packet_mismatch={:d} pipeline_mismatch={:d}\n  material_idx_mismatch={:d} instance_count_mismatch={:d} tex_layer_mismatch={:d}\n  [v2.3 snap_cull] skipped={:d} active={:d} slot_mismatch={:d}\n  [v3 build] attempted={:d} count_mismatch={:d} pkt_mismatch={:d} meta_mismatch={:d} fallback={:d}\n  [v3 arena] used={:d} high_water={:d} allocs={:d} overflow={:d} mechArenaBytes={:d} mechRows={:d}\n  [mech-extract] gate={:d} snapshot={:d} mat_valid={:d} mat_sentinel={:d} count_mismatch={:d} handle_mismatch={:d} objectid_mismatch={:d} tex_mismatch={:d} mat_mismatch={:d}\n", mc2::fmt::as_u64(static_cast<unsigned long long>(snap.frameIndex)), mc2::fmt::as_u32(static_cast<uint32_t>(snap.mechs.size())), mc2::fmt::as_u32(static_cast<uint32_t>(snap.staticProps.size())), mc2::fmt::as_u32(static_cast<uint32_t>(snap.lights.size())), mc2::fmt::as_size(snap.frameArena.stats().usedBytes), mc2::fmt::as_i32(snap.arenaOverflow ? 1 : 0), mc2::fmt::as_u32(snap.ok), mc2::fmt::as_u32(snap.staticPropValidationFail), mc2::fmt::as_u32(snap.staticPropSentinelMat), mc2::fmt::as_u32(snap.staticPropSentinelCull), mc2::fmt::as_size(sizeof(ExtractedStaticProp)), mc2::fmt::as_u32(snap.staticPropTexWired), mc2::fmt::as_u32(snap.staticPropTexSentinel), mc2::fmt::as_u32(snap.staticPropMatWired), mc2::fmt::as_u32(snap.staticPropMatSentinel), mc2::fmt::as_u32(snap.staticPropPrimaryAlphaOn), mc2::fmt::as_u32(snap.staticPropMultiPacket), mc2::fmt::as_u32(snap.staticPropCullSubmitted), mc2::fmt::as_u32(snap.staticPropCullMissing), mc2::fmt::as_u32(snap.staticPropHasBounds), mc2::fmt::as_u32(snap.staticPropAlphaOn), mc2::fmt::as_u32(snap.staticPropHasShapeName), mc2::fmt::as_u32(snap.staticPropPacketRangesOk), mc2::fmt::as_u32(snap.staticPropPacketRangesFail), mc2::fmt::as_u32(snap.staticPropPacketCount), mc2::fmt::as_u32(snap.staticPropPacketInvalid), mc2::fmt::as_u32(visibilityStaticPropsCount), mc2::fmt::as_i32(static_cast<int32_t>(snap.staticProps.size()) -
+                static_cast<int32_t>(visibilityStaticPropsCount)), mc2::fmt::as_u32(snap.spCompareSnapshotCount), mc2::fmt::as_u32(snap.spCompareLiveCount), mc2::fmt::as_u32(snap.spCountMismatch), mc2::fmt::as_u32(snap.spSortedSlotMismatch), mc2::fmt::as_u32(snap.spGlobalPacketMismatch), mc2::fmt::as_u32(snap.spPipelineMismatch), mc2::fmt::as_u32(snap.spMaterialIdxMismatch), mc2::fmt::as_u32(snap.spInstanceCountMismatch), mc2::fmt::as_u32(snap.spTexLayerMismatch), mc2::fmt::as_u32(snap.spSnapCullSkipped), mc2::fmt::as_u32(snap.spSnapCullActive), mc2::fmt::as_u32(snap.spSnapCullSlotMismatch), mc2::fmt::as_u32(snap.spBuildAttempted), mc2::fmt::as_u32(snap.spBuildCountMismatch), mc2::fmt::as_u32(snap.spBuildPacketMismatch), mc2::fmt::as_u32(snap.spBuildMetaMismatch), mc2::fmt::as_u32(snap.spBuildFallback), mc2::fmt::as_size(snap.frameArena.stats().usedBytes), mc2::fmt::as_size(snap.frameArena.stats().highWaterBytes), mc2::fmt::as_u32(snap.frameArena.stats().allocCount), mc2::fmt::as_u32(snap.frameArena.stats().overflowCount), mc2::fmt::as_size(snap.mechPackets.count * sizeof(ExtractedMechPacket)), mc2::fmt::as_u32(static_cast<uint32_t>(snap.mechPackets.count)), mc2::fmt::as_i32(s_mechExtractEnabled ? 1 : 0), mc2::fmt::as_u32(snap.mechSnapshotCount), mc2::fmt::as_u32(snap.mechMatValid), mc2::fmt::as_u32(snap.mechMatSentinel), mc2::fmt::as_u32(snap.mechCountMismatch), mc2::fmt::as_u32(snap.mechHandleMismatch), mc2::fmt::as_u32(snap.mechObjectIdMismatch), mc2::fmt::as_u32(snap.mechTexHandleMismatch), mc2::fmt::as_u32(snap.mechMaterialIdxMismatch));
     }
 
     // v2.3: store for getLastRenderSnapshot() before returning.

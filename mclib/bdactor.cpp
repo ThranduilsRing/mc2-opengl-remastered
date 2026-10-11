@@ -10,6 +10,7 @@
 
 #include "bdactor_internal.h"
 #include "../RenderCore/axis_convert.h"
+#include "mc2fmt.h"
 
 // File-scope gate: one gate read per TU, process-start-constant, shared across
 // BldgAppearance::recalcBounds and TreeAppearance::recalcBounds. Matches the
@@ -126,9 +127,7 @@ void bdLogStaticRegInvalid(const char* kind, int reason, int regIdx, const char*
 	static const char* const kReason[] = {
 		"Submitted", "NotRegistered", "MissingRange", "Tombstoned", "InvalidRecipe" };
 	const char* rn = (reason >= 0 && reason < 5) ? kReason[reason] : "?";
-	fprintf(stderr, "[STATIC_REG_INVALID] kind=%s reason=%s regIdx=%d actor=%s "
-	                "(falling back to legacy re-bake)\n",
-	        kind, rn, regIdx, name ? name : "(null)");
+	mc2::fmt::print_err("[STATIC_REG_INVALID] kind={} reason={} regIdx={:d} actor={} (falling back to legacy re-bake)\n", mc2::fmt::safe(kind), mc2::fmt::safe(rn), mc2::fmt::as_i32(regIdx), mc2::fmt::safe(name ? name : "(null)"));
 	fflush(stderr);
 }
 
@@ -315,7 +314,7 @@ void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 			bldgShape->GetTextureName(i,txmName,256);
 
 			char texturePath[1024];
-			sprintf(texturePath,"%s%d" PATH_SEPARATOR,tglPath,ObjectTextureSize);
+			mc2::fmt::to_buf(texturePath, "{}{:d}" PATH_SEPARATOR "", mc2::fmt::safe(tglPath), mc2::fmt::as_i32(ObjectTextureSize));
 	
 			FullPathFileName textureName;
 			textureName.init(texturePath,txmName,"");
@@ -409,11 +408,11 @@ void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
  		if (appearType->numWeaponNodes)
 		{
 			nodeUsed = (long *)AppearanceTypeList::appearanceHeap->Malloc(sizeof(long) * appearType->numWeaponNodes);
-			gosASSERT(nodeUsed != NULL);
+			gosASSERT(nodeUsed != nullptr);
 			memset(nodeUsed,0,sizeof(long) * appearType->numWeaponNodes);
 			
 			nodeRecycle = (float *)AppearanceTypeList::appearanceHeap->Malloc(sizeof(float) * appearType->numWeaponNodes);
-			gosASSERT(nodeRecycle != NULL);
+			gosASSERT(nodeRecycle != nullptr);
 			
 			for (long i=0;i<appearType->numWeaponNodes;i++)
 				nodeRecycle[i] = 0.0f;
@@ -542,7 +541,7 @@ void BldgAppearance::setObjStatus (long oStatus)
 				bldgShape->GetTextureName(i,txmName,256);
 	
 				char texturePath[1024];
-				sprintf(texturePath,"%s%d" PATH_SEPARATOR,tglPath,ObjectTextureSize);
+				mc2::fmt::to_buf(texturePath, "{}{:d}" PATH_SEPARATOR "", mc2::fmt::safe(tglPath), mc2::fmt::as_i32(ObjectTextureSize));
 		
 				FullPathFileName textureName;
 				textureName.init(texturePath,txmName,"");
@@ -843,7 +842,7 @@ bool BldgAppearance::playDestruction (void)
 		if (gosEffectSpec)
 		{
 			destructFX = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-			gosASSERT(destructFX != NULL);
+			gosASSERT(destructFX != nullptr);
 		
 			MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
 		

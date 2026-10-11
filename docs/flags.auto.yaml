@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 1139
+gate_count: 1140
 registry_entry_count: 354
-verified_count: 1132
+verified_count: 1133
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -5419,6 +5419,14 @@ flags:
     rule: Presence
     owner: gameos
     doc: "S9D deterministic clock."
+    smoke_passthrough: true
+    verified: true
+  - name: MC2_SMOKE_FREEZE_ANIM
+    kind: Bool
+    default: false
+    rule: Lead0
+    owner: mclib
+    doc: "Freeze mech gait and building animation frames (capture and SIMID determinism)."
     smoke_passthrough: true
     verified: true
   - name: MC2_SMOKE_MODE

@@ -186,7 +186,7 @@ class GenericAppearance : public ObjectAppearance
 			return appearType;
 		}
 
-		void changeSkyToSkyNum (char *txmName, char *newName);
+		void changeSkyToSkyNum (char *txmName, char *newName, size_t newNameBytes);
 		
 		GenericAppearance (void)
 		{

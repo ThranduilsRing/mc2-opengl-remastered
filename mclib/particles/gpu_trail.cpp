@@ -32,6 +32,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 static constexpr uint16_t kMissileSmokeTexId = 41;
 static constexpr uint16_t kPpcBoltTexId      = 33;  // MLR handle 33 = lozenge/flare atlas (energy-bolt)
@@ -104,17 +105,10 @@ void GpuTrailEmitter::Spawn(GpuTrailKind kind,
         static bool probed = false;
         if (!probed) {
             if (mc2::gate::get<"MC2_GPU_PARTICLES_LOG">()) {
-                std::fprintf(stderr,
-                    "[B2 TRAIL_PROBE] first spawn: kind=%u prev=(%.2f,%.2f,%.2f) cur=(%.2f,%.2f,%.2f) deltaT=%.4f len=%.3f\n",
-                    (unsigned)kind,
-                    prev_world.x, prev_world.y, prev_world.z,
-                    cur_world.x, cur_world.y, cur_world.z,
-                    deltaT,
-                    std::sqrt(
+                mc2::fmt::print_err("[B2 TRAIL_PROBE] first spawn: kind={:d} prev=({:.2f},{:.2f},{:.2f}) cur=({:.2f},{:.2f},{:.2f}) deltaT={:.4f} len={:.3f}\n", mc2::fmt::as_u32((unsigned)kind), prev_world.x, prev_world.y, prev_world.z, cur_world.x, cur_world.y, cur_world.z, deltaT, std::sqrt(
                         (cur_world.x - prev_world.x)*(cur_world.x - prev_world.x) +
                         (cur_world.y - prev_world.y)*(cur_world.y - prev_world.y) +
-                        (cur_world.z - prev_world.z)*(cur_world.z - prev_world.z))
-                );
+                        (cur_world.z - prev_world.z)*(cur_world.z - prev_world.z)));
                 std::fflush(stderr);
             }
             probed = true;

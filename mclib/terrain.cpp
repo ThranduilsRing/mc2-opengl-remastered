@@ -12,6 +12,7 @@
 // Include Files
 
 #include "terrain_internal.h"
+#include "mc2fmt.h"
 
 
 //---------------------------------------------------------------------------
@@ -62,9 +63,7 @@ bool mc2TerrainLodChunkEnabled()
 	static const bool s_on = []() {
 		const bool off = !mc2::gate::get<"MC2_TERRAIN_LOD_CHUNK">();
 		if (off)
-			printf("[8Z_VESTIGIAL] MC2_TERRAIN_LOD_CHUNK=0 opt-out is increasingly vestigial:"
-			       " slimReduce deleted (8z-A3), ACTIVE_AB/SOLID_AB retired (8z-A1)."
-			       " The chunk-OFF path retains makeLists but has no production renderer.\n");
+			mc2::fmt::print_out("[8Z_VESTIGIAL] MC2_TERRAIN_LOD_CHUNK=0 opt-out is increasingly vestigial: slimReduce deleted (8z-A3), ACTIVE_AB/SOLID_AB retired (8z-A1). The chunk-OFF path retains makeLists but has no production renderer.\n");
 		return !off;   // default ON; "0" = off
 	}();
 	return s_on;
@@ -302,31 +301,31 @@ void Terrain::initMapCellArrays (void)
 	if (!tileRowToWorldCoord)
 	{
 		tileRowToWorldCoord = (float *)terrainHeap->Malloc(sizeof(float) * realVerticesMapSide);
-		gosASSERT(tileRowToWorldCoord != NULL);
+		gosASSERT(tileRowToWorldCoord != nullptr);
 	}
 
 	if (!tileColToWorldCoord)
 	{
 		tileColToWorldCoord = (float *)terrainHeap->Malloc(sizeof(float) * realVerticesMapSide); 
-		gosASSERT(tileColToWorldCoord != NULL);
+		gosASSERT(tileColToWorldCoord != nullptr);
 	}
 
 	if (!cellToWorldCoord)
 	{
 		cellToWorldCoord = (float *)terrainHeap->Malloc(sizeof(float) * MAPCELL_DIM); 
-		gosASSERT(cellToWorldCoord != NULL);
+		gosASSERT(cellToWorldCoord != nullptr);
 	}
 
 	if (!cellColToWorldCoord)
 	{
 		cellColToWorldCoord = (float *)terrainHeap->Malloc(sizeof(float) * realVerticesMapSide * MAPCELL_DIM); 
-		gosASSERT(cellColToWorldCoord != NULL);
+		gosASSERT(cellColToWorldCoord != nullptr);
 	}
 
 	if (!cellRowToWorldCoord)
 	{
 		cellRowToWorldCoord = (float *)terrainHeap->Malloc(sizeof(float) * realVerticesMapSide * MAPCELL_DIM); 
-		gosASSERT(cellRowToWorldCoord != NULL);
+		gosASSERT(cellRowToWorldCoord != nullptr);
 	}
 
 	long i=0;
@@ -443,14 +442,14 @@ void Terrain::resetVisibleVertices (long maxVisibleVertices)
 	// Create the VertexList
 	numberVertices = 0;
 	vertexList = (VertexPtr)terrainHeap->Malloc(sizeof(Vertex) * visibleVerticesPerSide * visibleVerticesPerSide);
-	gosASSERT(vertexList != NULL);
+	gosASSERT(vertexList != nullptr);
 	memset(vertexList,0,sizeof(Vertex) * visibleVerticesPerSide * visibleVerticesPerSide);
 
 	//----------------------------------------------------------------------
 	// Create the QuadList
 	numberQuads = 0;
 	quadList = (TerrainQuadPtr)terrainHeap->Malloc(sizeof(TerrainQuad) * visibleVerticesPerSide * visibleVerticesPerSide);
-	gosASSERT(quadList != NULL);
+	gosASSERT(quadList != nullptr);
 	memset(quadList,0,sizeof(TerrainQuad) * visibleVerticesPerSide * visibleVerticesPerSide);
 
 	

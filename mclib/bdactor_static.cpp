@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in bdactor_internal.h.
 #include "bdactor_internal.h"
 #include "../RenderCore/axis_convert.h"
+#include "mc2fmt.h"
 
 // BLDG-TYPE-ANIM-GATE-FIX-1 kill-switch.
 // Unset/1 = new: idle animatable-type buildings eligible for static path.
@@ -119,10 +120,10 @@ void BldgAppearance::registerStatic() {
 	const bool seamProbe = (mc2::gate::get<"MC2_MODOVERRIDE_TRACE">())
 		&& appearType && appearType->bldgRenderShape;
 	if (seamProbe)
-		fprintf(stderr, "[SEAMPROBE] bldg registerStatic ENTER name=%s registered=%d hasShape=%d enabled=%d eligible=%d renderShape=%p\n",
-			appearType->name, (int)staticReg.registered, (int)(bldgShape!=nullptr),
-			(int)GpuStaticPropRegistry::isEnabled(), (int)isStaticEligible(),
-			(void*)appearType->bldgRenderShape), fflush(stderr);
+		mc2::fmt::print_err("[SEAMPROBE] bldg registerStatic ENTER name={} registered={:d} hasShape={:d} enabled={:d} eligible={:d} renderShape={:016X}\n",
+			mc2::fmt::safe(appearType->name), mc2::fmt::as_i32((int)staticReg.registered), mc2::fmt::as_i32((int)(bldgShape!=nullptr)),
+			mc2::fmt::as_i32((int)GpuStaticPropRegistry::isEnabled()), mc2::fmt::as_i32((int)isStaticEligible()),
+			mc2::fmt::as_ptr((void*)appearType->bldgRenderShape)), fflush(stderr);
 	if (staticReg.registered) {
 		return;
 	}
@@ -133,7 +134,7 @@ void BldgAppearance::registerStatic() {
 		return;
 	}
 	if (!isStaticEligible()) {
-		if (seamProbe) fprintf(stderr, "[SEAMPROBE] bldg registerStatic ABORT name=%s reason=!isStaticEligible\n", appearType->name), fflush(stderr);
+		if (seamProbe) mc2::fmt::print_err("[SEAMPROBE] bldg registerStatic ABORT name={} reason=!isStaticEligible\n", mc2::fmt::safe(appearType->name)), fflush(stderr);
 		return;
 	}
 
@@ -154,19 +155,13 @@ void BldgAppearance::registerStatic() {
 	// Full MeshCapability bits come once the engine reads the cooked manifest.json (later
 	// integration); for now we log what the seam knows. Schema-grep: \[RENDER_PATH v[0-9]+\].
 	if (mc2::gate::get<"MC2_RENDER_PATH">()) {
-		fprintf(stderr, "[RENDER_PATH v1] key=staticprop:%s isOverride=%d path=%s pools=%s\n",
-		        appearType->name, _regIsOverride ? 1 : 0,
-		        _regIsOverride ? "override_multidraw" : "legacy_static",
-		        gos_StaticPropLegacyInstancePools() ? "legacy" : "skipped");
+		mc2::fmt::print_err("[RENDER_PATH v1] key=staticprop:{} isOverride={:d} path={} pools={}\n", mc2::fmt::safe(appearType->name), mc2::fmt::as_i32(_regIsOverride ? 1 : 0), mc2::fmt::safe(_regIsOverride ? "override_multidraw" : "legacy_static"), mc2::fmt::safe(gos_StaticPropLegacyInstancePools() ? "legacy" : "skipped"));
 		fflush(stderr);
 	}
 
 	if (mc2::gate::get<"MC2_MODOVERRIDE_TRACE">() && appearType->bldgRenderShape) {
 		TG_TypeMultiShape* rs = appearType->bldgRenderShape;
-		fprintf(stderr, "[MODOVERRIDE_TRACE] bldg registerStatic name=%s renderShape=%p numShapes=%ld leaf0=%p leaf1=%p finalized_guess(typeNodes_above)\n",
-		        appearType->name, (void*)rs, rs->GetNumShapes(),
-		        rs->GetNumShapes() > 0 ? (void*)rs->GetTypeNode(0) : nullptr,
-		        rs->GetNumShapes() > 1 ? (void*)rs->GetTypeNode(1) : nullptr);
+		mc2::fmt::print_err("[MODOVERRIDE_TRACE] bldg registerStatic name={} renderShape={:016X} numShapes={:d} leaf0={:016X} leaf1={:016X} finalized_guess(typeNodes_above)\n", mc2::fmt::safe(appearType->name), mc2::fmt::as_ptr((void*)rs), mc2::fmt::as_i32(rs->GetNumShapes()), mc2::fmt::as_ptr(rs->GetNumShapes() > 0 ? (void*)rs->GetTypeNode(0) : nullptr), mc2::fmt::as_ptr(rs->GetNumShapes() > 1 ? (void*)rs->GetTypeNode(1) : nullptr));
 		fflush(stderr);
 	}
 
@@ -229,9 +224,8 @@ void BldgAppearance::registerStatic() {
 		useCliffWallFrame = true;
 		if (mc2::gate::get<"MC2_TERRAIN_DECAL_TRACE">()) {
 			const CliffDecalTuning::Knobs& k = CliffDecalTuning::knobs();
-			fprintf(stderr, "[TERRAIN_DECAL v1] CLIFF_WALL name=%s pos=(%.1f,%.1f) "
-			        "scale=%.3f offset=%.1f lateral=%.1f lift=%.1f yaw=%.1f\n",
-			        appearType->name, position.x, position.y,
+			mc2::fmt::print_err("[TERRAIN_DECAL v1] CLIFF_WALL name={} pos=({:.1f},{:.1f}) scale={:.3f} offset={:.1f} lateral={:.1f} lift={:.1f} yaw={:.1f}\n",
+			        mc2::fmt::safe(appearType->name), position.x, position.y,
 			        k.scale, k.offset, k.lateral, k.lift, k.yawDeg),
 			    fflush(stderr);
 		}
@@ -272,11 +266,7 @@ void BldgAppearance::registerStatic() {
 		// 'Spotlight_TurretCon') DO get isSpot=1 and ARE skipped below — the intended
 		// GHOST-CONE-RECIPE-SKIP-1 target. See .claude/DEFERRED-BATCH-8C-STATUS.md.
 		if (mc2::gate::get<"MC2_CONE_LEAF_DUMP">()) {
-			fprintf(stderr, "[CONE_LEAF] type=%s leaf=%d node='%s' isSpot=%d isWin=%d lightsOut=%d\n",
-			        appearType ? appearType->name : "?", i,
-			        child->getNodeName() ? child->getNodeName() : "(null)",
-			        (int)child->GetIsSpotlight(), (int)child->GetIsWindow(),
-			        (int)child->GetLightsOut());
+			mc2::fmt::print_err("[CONE_LEAF] type={} leaf={:d} node='{}' isSpot={:d} isWin={:d} lightsOut={:d}\n", mc2::fmt::safe(appearType ? appearType->name : "?"), mc2::fmt::as_i32(i), mc2::fmt::safe(child->getNodeName() ? child->getNodeName() : "(null)"), mc2::fmt::as_i32((int)child->GetIsSpotlight()), mc2::fmt::as_i32((int)child->GetIsWindow()), mc2::fmt::as_i32((int)child->GetLightsOut()));
 			fflush(stderr);
 		}
 		// GHOST-CONE-RECIPE-SKIP-1 (batch-7 items 4+5): SpotLight_ cone leaves
@@ -349,13 +339,13 @@ void BldgAppearance::registerStatic() {
 				flags, &inst)) {
 			++diag_skip_unreg;
 			if (seamProbe)
-				fprintf(stderr, "[SEAMPROBE] bldg buildRecipe MISS name=%s leaf=%d child=%p node=%s (override type not in s_typeIndex) -> ABORT\n",
-					appearType->name, i, (void*)child, child->getNodeName()), fflush(stderr);
+				mc2::fmt::print_err("[SEAMPROBE] bldg buildRecipe MISS name={} leaf={:d} child={:016X} node={} (override type not in s_typeIndex) -> ABORT\n",
+					mc2::fmt::safe(appearType->name), mc2::fmt::as_i32(i), mc2::fmt::as_ptr((void*)child), mc2::fmt::safe(child->getNodeName())), fflush(stderr);
 			return;  // unregistered type — abort; first-render fallback covers it
 		}
 		if (seamProbe)
-			fprintf(stderr, "[SEAMPROBE] bldg buildRecipe HIT name=%s leaf=%d child=%p node=%s typeID=%u\n",
-				appearType->name, i, (void*)child, child->getNodeName(), inst.typeID), fflush(stderr);
+			mc2::fmt::print_err("[SEAMPROBE] bldg buildRecipe HIT name={} leaf={:d} child={:016X} node={} typeID={:d}\n",
+				mc2::fmt::safe(appearType->name), mc2::fmt::as_i32(i), mc2::fmt::as_ptr((void*)child), mc2::fmt::safe(child->getNodeName()), mc2::fmt::as_u32(inst.typeID)), fflush(stderr);
 		// EDITOR-STATIC-RECIPE-FROM-TYPE-1: the recipe is built from the INSTANCE
 		// bldgShape (a CreateFrom copy, bdactor.cpp). For a building placed at
 		// runtime in the editor, that copy's leaf child->myType registers AFTER the
@@ -393,12 +383,7 @@ void BldgAppearance::registerStatic() {
 		static int s_loggedCount = 0;
 		if (s_trace && s_loggedCount < 80) {
 			++s_loggedCount;
-			fprintf(stderr,
-				"[BLDG_REG_DIAG v1] sample=first80 appearType=%s numShapes=%d total=%d processMe_skip=%d "
-				"helper_skip=%d unreg_skip=%d added=%d\n",
-				(appearType ? appearType->name : "<null>"),
-				numShapes, diag_total, diag_skip_processMe, diag_skip_helper,
-				diag_skip_unreg, diag_added);
+			mc2::fmt::print_err("[BLDG_REG_DIAG v1] sample=first80 appearType={} numShapes={:d} total={:d} processMe_skip={:d} helper_skip={:d} unreg_skip={:d} added={:d}\n", mc2::fmt::safe((appearType ? appearType->name : "<null>")), mc2::fmt::as_i32(numShapes), mc2::fmt::as_i32(diag_total), mc2::fmt::as_i32(diag_skip_processMe), mc2::fmt::as_i32(diag_skip_helper), mc2::fmt::as_i32(diag_skip_unreg), mc2::fmt::as_i32(diag_added));
 			fflush(stderr);
 		}
 		(void)diag_total; (void)diag_skip_processMe; (void)diag_skip_helper;
@@ -412,9 +397,9 @@ void BldgAppearance::registerStatic() {
 	(void)GameAdapters::StaticProp::syncStaticProp(
 		bldgShape, batch.data(), batch.size(), &regIdx);
 	if (seamProbe)
-		fprintf(stderr, "[SEAMPROBE] bldg syncStaticProp name=%s batchSize=%zu regIdx=%d firstTypeID=%u\n",
-			appearType->name, batch.size(), (int)regIdx,
-			batch.empty()?0xFFFFFFFFu:batch[0].typeID), fflush(stderr);
+		mc2::fmt::print_err("[SEAMPROBE] bldg syncStaticProp name={} batchSize={:d} regIdx={:d} firstTypeID={:d}\n",
+			mc2::fmt::safe(appearType->name), mc2::fmt::as_size(batch.size()), mc2::fmt::as_i32((int)regIdx),
+			mc2::fmt::as_u32(batch.empty()?0xFFFFFFFFu:batch[0].typeID)), fflush(stderr);
 	if (regIdx >= 0) {
 		staticReg.registered  = true;
 		staticReg.shape       = bldgShape;
@@ -764,17 +749,7 @@ void BldgAppearance::touchSerialCommit()
 			const int64_t rLG   = g_spr_rejLightGenMismatch.exchange(0, std::memory_order_relaxed);
 			const int64_t rNFB  = g_spr_rejNeedsFullBake.exchange(0, std::memory_order_relaxed);
 			const int64_t rNSh  = g_spr_rejNoShape.exchange(0, std::memory_order_relaxed);
-			printf("STATIC_PROXY_RECON: ph2_calls=%lld bldg=%lld tree=%lld"
-			       " proxy_candidate=%lld(%.1f%%)"
-			       " rej_no_static_reg=%lld rej_bad_light_idx=%lld"
-			       " rej_no_valid_light=%lld rej_light_gen_mismatch=%lld"
-			       " rej_needs_full_bake=%lld rej_no_shape=%lld\n",
-			       (long long)ph2, (long long)bldg, (long long)tree,
-			       (long long)proxy,
-			       ph2 > 0 ? (proxy * 100.0 / ph2) : 0.0,
-			       (long long)rNS, (long long)rBL,
-			       (long long)rNVL, (long long)rLG,
-			       (long long)rNFB, (long long)rNSh);
+			mc2::fmt::print_out("STATIC_PROXY_RECON: ph2_calls={:d} bldg={:d} tree={:d} proxy_candidate={:d}({:.1f}%) rej_no_static_reg={:d} rej_bad_light_idx={:d} rej_no_valid_light={:d} rej_light_gen_mismatch={:d} rej_needs_full_bake={:d} rej_no_shape={:d}\n", mc2::fmt::as_i64((long long)ph2), mc2::fmt::as_i64((long long)bldg), mc2::fmt::as_i64((long long)tree), mc2::fmt::as_i64((long long)proxy), ph2 > 0 ? (proxy * 100.0 / ph2) : 0.0, mc2::fmt::as_i64((long long)rNS), mc2::fmt::as_i64((long long)rBL), mc2::fmt::as_i64((long long)rNVL), mc2::fmt::as_i64((long long)rLG), mc2::fmt::as_i64((long long)rNFB), mc2::fmt::as_i64((long long)rNSh));
 
 			// STATIC-REGISTRY-COVERAGE-RECON-1: print sub-breakdown when gate is on.
 			if (s_regCovEnabled) {
@@ -784,14 +759,7 @@ void BldgAppearance::touchSerialCommit()
 				const int64_t rcNBT = g_rc_notInBakeTable.exchange(0, std::memory_order_relaxed);
 				const int64_t rcEY  = g_rc_isStaticEligibleYes.exchange(0, std::memory_order_relaxed);
 				const int64_t rcEN  = g_rc_isStaticEligibleNo.exchange(0, std::memory_order_relaxed);
-				printf("STATIC_REG_COVERAGE: total_rej_no_static_reg=%lld"
-				       " sub: never_registered=%lld no_recipe=%lld"
-				       " bake_not_enabled=%lld not_in_bake_table=%lld"
-				       " is_static_eligible_yes=%lld is_static_eligible_no=%lld\n",
-				       (long long)rNS,
-				       (long long)rcNR, (long long)rcNRp,
-				       (long long)rcBN, (long long)rcNBT,
-				       (long long)rcEY, (long long)rcEN);
+				mc2::fmt::print_out("STATIC_REG_COVERAGE: total_rej_no_static_reg={:d} sub: never_registered={:d} no_recipe={:d} bake_not_enabled={:d} not_in_bake_table={:d} is_static_eligible_yes={:d} is_static_eligible_no={:d}\n", mc2::fmt::as_i64((long long)rNS), mc2::fmt::as_i64((long long)rcNR), mc2::fmt::as_i64((long long)rcNRp), mc2::fmt::as_i64((long long)rcBN), mc2::fmt::as_i64((long long)rcNBT), mc2::fmt::as_i64((long long)rcEY), mc2::fmt::as_i64((long long)rcEN));
 				// Top-20 shape names from never_registered bucket.
 				{
 					std::lock_guard<std::mutex> lk(g_rc_shapeMu);
@@ -805,14 +773,14 @@ void BldgAppearance::touchSerialCommit()
 						          [](const std::pair<int,std::string>& a, const std::pair<int,std::string>& b){
 						              return a.first > b.first;
 						          });
-						printf("STATIC_REG_COVERAGE: top_shapes(name:count):");
+						mc2::fmt::print_out("STATIC_REG_COVERAGE: top_shapes(name:count):");
 						int shown = 0;
 						for (auto& p : sorted) {
 							if (shown >= 20) break;
-							printf(" %s:%d", p.second.c_str(), p.first);
+							mc2::fmt::print_out(" {}:{:d}", p.second.c_str(), mc2::fmt::as_i32(p.first));
 							++shown;
 						}
-						printf("\n");
+						mc2::fmt::print_out("\n");
 						g_rc_shapeNames.clear();
 					}
 				}
@@ -911,9 +879,7 @@ void bldgTriggerStaticShadowRebakeIfArmed(bool wasRegistered, int32_t recipeInde
 	static const bool s_rebakeTrace = mc2::gate::is<"MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE", "2">();
 	gos_ResetStaticLightMatrix();
 	if (s_rebakeTrace) {
-		fprintf(stderr,
-			"[SHADOW_STATIC_BLDG_REBAKE v1] event=%s recipeIndex=%d\n",
-			reason, recipeIndex);
+		mc2::fmt::print_err("[SHADOW_STATIC_BLDG_REBAKE v1] event={} recipeIndex={:d}\n", mc2::fmt::safe(reason), mc2::fmt::as_i32(recipeIndex));
 		fflush(stderr);
 	}
 }

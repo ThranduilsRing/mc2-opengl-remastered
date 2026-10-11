@@ -264,7 +264,7 @@ ObjectAppearance* EditorObjectMgr::getAppearance( EditorObjectMgr::Building* pBu
 	if ( !appearanceTypeList )
 	{
 		appearanceTypeList = new AppearanceTypeList;
-		gosASSERT(appearanceTypeList != NULL);
+		gosASSERT(appearanceTypeList != nullptr);
 		
 		appearanceTypeList->init(81920000);   // 10x the real engine's spriteHeapSize (8192000); editor edits many appearances/forests
 	}
@@ -322,7 +322,7 @@ void EditorObjectMgr::primeAllBuildingAppearanceTypes()
 	if (!appearanceTypeList)
 	{
 		appearanceTypeList = new AppearanceTypeList;
-		gosASSERT(appearanceTypeList != NULL);
+		gosASSERT(appearanceTypeList != nullptr);
 		appearanceTypeList->init(2048000);
 	}
 

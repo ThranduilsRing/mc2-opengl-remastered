@@ -12,6 +12,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 #if defined(_WIN32)
 #  define WIN32_LEAN_AND_MEAN
 #  include <windows.h>
@@ -34,10 +35,7 @@ namespace {
         long long creates  = g_effectCreates.load();
         long long destroys = g_effectDestroys.load();
         long long peak     = g_effectAlivePeak.load();
-        std::fprintf(stderr,
-            "[GOSFX_CHILD v1] event=summary reason=%s frames=%lld creates=%lld destroys=%lld delta=%lld max_alive=%lld peak_rss=%lldKB\n",
-            reason, g_diagFrameCount, creates, destroys,
-            creates - destroys, peak, g_diagHeapPeakBytes / 1024);
+        mc2::fmt::print_err("[GOSFX_CHILD v1] event=summary reason={} frames={:d} creates={:d} destroys={:d} delta={:d} max_alive={:d} peak_rss={:d}KB\n", mc2::fmt::safe(reason), mc2::fmt::as_i64(g_diagFrameCount), mc2::fmt::as_i64(creates), mc2::fmt::as_i64(destroys), mc2::fmt::as_i64(creates - destroys), mc2::fmt::as_i64(peak), mc2::fmt::as_i64(g_diagHeapPeakBytes / 1024));
     }
 
     void diag_init_if_needed() {
@@ -47,7 +45,7 @@ namespace {
         if (g_diagEnabled && !g_diagAtexitRegistered) {
             g_diagAtexitRegistered = true;
             std::atexit([](){ emit_diag_summary("atexit"); });
-            std::fprintf(stderr, "[INSTR v1] enabled: GOSFX_HEAP + GOSFX_CHILD counters (C16)\n");
+            mc2::fmt::print_err("[INSTR v1] enabled: GOSFX_HEAP + GOSFX_CHILD counters (C16)\n");
         }
     }
 }
@@ -76,12 +74,7 @@ namespace gosFX {
         long long destroys = g_effectDestroys.load();
         long long alive    = g_effectAliveNow.load();
         long long peak     = g_effectAlivePeak.load();
-        std::fprintf(stderr,
-            "[GOSFX_HEAP v1] frame=%lld rss=%lldKB pagefile=%lldKB peakRss=%lldKB "
-            "[GOSFX_CHILD v1] creates=%lld destroys=%lld delta=%lld alive=%lld max_alive=%lld\n",
-            g_diagFrameCount, workingSet / 1024, pagefile / 1024,
-            g_diagHeapPeakBytes / 1024,
-            creates, destroys, creates - destroys, alive, peak);
+        mc2::fmt::print_err("[GOSFX_HEAP v1] frame={:d} rss={:d}KB pagefile={:d}KB peakRss={:d}KB [GOSFX_CHILD v1] creates={:d} destroys={:d} delta={:d} alive={:d} max_alive={:d}\n", mc2::fmt::as_i64(g_diagFrameCount), mc2::fmt::as_i64(workingSet / 1024), mc2::fmt::as_i64(pagefile / 1024), mc2::fmt::as_i64(g_diagHeapPeakBytes / 1024), mc2::fmt::as_i64(creates), mc2::fmt::as_i64(destroys), mc2::fmt::as_i64(creates - destroys), mc2::fmt::as_i64(alive), mc2::fmt::as_i64(peak));
     }
 }
 
@@ -854,7 +847,7 @@ bool gosFX::Effect::HasFinished()
 	//-----------------------------------------------
 	//
 	Stuff::ChainIteratorOf<gosFX::Effect*> children(&m_children);
-	return children.GetCurrent() == NULL;
+	return children.GetCurrent() == nullptr;
 }
 
 //#############################################################################

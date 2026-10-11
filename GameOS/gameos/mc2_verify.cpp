@@ -18,6 +18,7 @@
 #endif
 
 #include "gos_crashbundle.h" // crashbundle_append (extern "C", ring buffer)
+#include "mc2fmt.h"
 
 // gameos.hpp declares this (game-specific STOP callback). Declared locally so
 // this TU stays independent of the monolithic gameos.hpp.
@@ -46,8 +47,7 @@ int resolve_mode()
     if (strcasecmp(v, "fatal") == 0) return MODE_FATAL;
     if (strcasecmp(v, "log") == 0)   return MODE_LOG;
 #endif
-    std::fprintf(stderr,
-                 "[VERIFY] unknown MC2_VERIFY_MODE='%s' -- defaulting to log\n", v);
+    mc2::fmt::print_err("[VERIFY] unknown MC2_VERIFY_MODE='{}' -- defaulting to log\n", mc2::fmt::safe(v));
     return MODE_LOG;
 }
 
@@ -82,11 +82,11 @@ const char* basename_of(const char* file)
 
 void emit_line(const char* line)
 {
-    std::fprintf(stderr, "%s\n", line);
+    mc2::fmt::print_err("{}\n", mc2::fmt::safe(line));
     std::fflush(stderr);
 #ifdef _WIN32
-    OutputDebugStringA(line);
-    OutputDebugStringA("\n");
+    mc2::fmt::debug_out(line);
+    mc2::fmt::debug_out("\n");
 #endif
     crashbundle_append(line);
 }
@@ -115,19 +115,14 @@ bool Fail(const char* file, int line, const char* cond, const char* fmt, ...)
     }
 
     char lineBuf[1024];
-    snprintf(lineBuf, sizeof(lineBuf), "[VERIFY]%s %s:%d (%s) %s",
-              (m == MODE_FATAL) ? " FATAL" : "",
-              basename_of(file ? file : "?"), line,
-              cond ? cond : "?", msg);
+    mc2::fmt::to_buf(lineBuf, "[VERIFY]{} {}:{:d} ({}) {}", mc2::fmt::safe((m == MODE_FATAL) ? " FATAL" : ""), mc2::fmt::safe(basename_of(file ? file : "?")), mc2::fmt::as_i32(line), mc2::fmt::safe(cond ? cond : "?"), mc2::fmt::safe(msg));
     lineBuf[sizeof(lineBuf) - 1] = '\0';
 
     if (m == MODE_FATAL || total <= kLogLineCap) {
         emit_line(lineBuf);
         if (m != MODE_FATAL && total == kLogLineCap) {
             char cap[128];
-            snprintf(cap, sizeof(cap),
-                      "[VERIFY] line cap (%ld) reached -- further fires "
-                      "counted but not printed", kLogLineCap);
+            mc2::fmt::to_buf(cap, "[VERIFY] line cap ({:d}) reached -- further fires counted but not printed", mc2::fmt::as_i32(kLogLineCap));
             cap[sizeof(cap) - 1] = '\0';
             emit_line(cap);
         }
@@ -170,11 +165,7 @@ void MissionSummary(const char* label)
 #endif
 
     char lineBuf[512];
-    snprintf(lineBuf, sizeof(lineBuf),
-              "[VERIFY] mission-end fires=%ld total=%ld mode=%s label=%s",
-              missionFires, totalFires,
-              (m == MODE_FATAL) ? "fatal" : "log",
-              label ? label : "(null)");
+    mc2::fmt::to_buf(lineBuf, "[VERIFY] mission-end fires={:d} total={:d} mode={} label={}", mc2::fmt::as_i32(missionFires), mc2::fmt::as_i32(totalFires), mc2::fmt::safe((m == MODE_FATAL) ? "fatal" : "log"), mc2::fmt::safe(label ? label : "(null)"));
     lineBuf[sizeof(lineBuf) - 1] = '\0';
     emit_line(lineBuf);
 }

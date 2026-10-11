@@ -9,6 +9,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 namespace mc2 {
 namespace mlr_gate {
@@ -36,7 +37,7 @@ bool compute_disabled() {
         // Explicit env override always wins.
         disabled = mc2::gate::get<"MC2_DISABLE_GOSFX">();
     }
-    std::fprintf(stderr, "[INSTR v1] enabled: mlr_gate disabled=%d\n", disabled ? 1 : 0);
+    mc2::fmt::print_err("[INSTR v1] enabled: mlr_gate disabled={:d}\n", mc2::fmt::as_i32(disabled ? 1 : 0));
     return disabled;
 }
 } // namespace

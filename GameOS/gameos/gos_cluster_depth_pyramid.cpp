@@ -15,6 +15,7 @@
 #include <vector>
 #include <string>
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 namespace cluster_depth_pyramid {
 
@@ -189,8 +190,7 @@ void runParityCheck(GLuint sceneDepthTex, int width, int height) {
     // mismatch. Proves the checker is capable of reporting FAIL.
     if (s_plant && !cpuMin.empty()) {
         cpuMin[0] = -123.0f;  // a value the GPU can never produce
-        fprintf(stderr, "[CLUSTER_DEPTH_PYRAMID v1] PLANT: corrupted CPU tile 0 "
-                        "min -> -123.0 (expecting a mismatch below)\n");
+        mc2::fmt::print_err("[CLUSTER_DEPTH_PYRAMID v1] PLANT: corrupted CPU tile 0 min -> -123.0 (expecting a mismatch below)\n");
     }
 
     // --- GPU image readback (RG32F: R=min, G=max). --------------------------

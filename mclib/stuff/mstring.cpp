@@ -118,7 +118,7 @@ void
 	MStringRepresentation::TestInstance() const
 {
 #if 0
-	if (stringLength > 0 || stringText != NULL)
+	if (stringLength > 0 || stringText != nullptr)
 	{
 		Check_Pointer(stringText);
 		size_t str_len = strlen(stringText);

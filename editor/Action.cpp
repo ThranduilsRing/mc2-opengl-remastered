@@ -25,7 +25,7 @@
 #include "TerrTxm.h"
 #include "EditorData.h"
 
-ActionUndoMgr* ActionUndoMgr::instance = NULL;
+ActionUndoMgr* ActionUndoMgr::instance = nullptr;
 
 ActionUndoMgr::ActionUndoMgr()
 {
@@ -78,7 +78,7 @@ void ActionUndoMgr::EmptyUndoList()
 
 const char* ActionUndoMgr::GetRedoString()
 {
-    const char* strRet = NULL;
+    const char* strRet = nullptr;
 
     if ( HaveRedo() )
     {
@@ -93,7 +93,7 @@ const char* ActionUndoMgr::GetRedoString()
 
 const char* ActionUndoMgr::GetUndoString()
 {
-    const char* strRet = NULL;
+    const char* strRet = nullptr;
 
     if ( HaveUndo() )
     {
@@ -316,7 +316,7 @@ ModifyBuildingAction::EditorAppearanceSnapshot::EditorAppearanceSnapshot()
     pilotNameID = 0;
     pilotName[0] = 0;
     paintScheme = 0;
-    fadeTable = NULL;
+    fadeTable = nullptr;
 }
 
 ModifyBuildingAction::EditorAppearanceSnapshot::EditorAppearanceSnapshot(const ObjectAppearance& src)

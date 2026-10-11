@@ -1,6 +1,7 @@
 // LogisticsMissionInfo: available / current mission lists, mission selection and completion.
 // Declared in the class headers; shared names in logisticsmissioninfo_internal.h.
 #include "logisticsmissioninfo_internal.h"
+#include "mc2fmt.h"
 
 
 long LogisticsMissionInfo::getAvailableMissions( const char** missions, int& numberOfEm )
@@ -94,7 +95,7 @@ long LogisticsMissionInfo::setNextMission( const char* missionName )
 			if ( NO_ERR != missionFile.open( (char*)(const char*)path ) )
 			{
 				char errorStr[256];
-				sprintf( errorStr, "couldn't open file %s", missionName );
+				mc2::fmt::to_buf(errorStr, "couldn't open file {}", mc2::fmt::safe(missionName));
 				Assert( 0, 0, errorStr );
 				return -1;
 			}
@@ -248,7 +249,7 @@ void LogisticsMissionInfo::setSingleMission( const char* missionFileName )
 	if ( NO_ERR != missionFile.open( (char*)(const char*)path ) )
 	{
 		char errorStr[256];
-		sprintf( errorStr, "couldn't open file %s", missionName );
+		mc2::fmt::to_buf(errorStr, "couldn't open file {}", mc2::fmt::safe(missionName));
 		Assert( 0, 0, errorStr );
 		return;
 	}

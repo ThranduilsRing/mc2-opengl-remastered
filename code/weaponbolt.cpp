@@ -9,6 +9,7 @@
 //===========================================================================//
 
 #include "weaponbolt_internal.h"
+#include "mc2fmt.h"
 
 
 //---------------------------------------------------------------------------
@@ -472,7 +473,7 @@ void WeaponBolt::init (bool create, ObjectTypePtr _type)
 			if (gosEffectSpec)
 			{
 				gosEffect = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-				gosASSERT(gosEffect != NULL);
+				gosASSERT(gosEffect != nullptr);
 
 				MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
 
@@ -492,7 +493,7 @@ void WeaponBolt::init (bool create, ObjectTypePtr _type)
 			if (gosEffectSpec)
 			{
 				muzzleEffect = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-				gosASSERT(muzzleEffect != NULL);
+				gosASSERT(muzzleEffect != nullptr);
 				
 				MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
 			
@@ -512,7 +513,7 @@ void WeaponBolt::init (bool create, ObjectTypePtr _type)
 			if (gosEffectSpec)
 			{
 				hitEffect = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-				gosASSERT(hitEffect != NULL);
+				gosASSERT(hitEffect != nullptr);
 			
 				MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
 			
@@ -532,7 +533,7 @@ void WeaponBolt::init (bool create, ObjectTypePtr _type)
 			if (gosEffectSpec)
 			{
 				missEffect = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-				gosASSERT(missEffect != NULL);
+				gosASSERT(missEffect != nullptr);
 			
 				MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
 			
@@ -553,7 +554,7 @@ void WeaponBolt::init (bool create, ObjectTypePtr _type)
 			if (gosEffectSpec)
 			{
 				waterMissEffect = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-				gosASSERT(waterMissEffect != NULL);
+				gosASSERT(waterMissEffect != nullptr);
 			
 				MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
 			
@@ -572,7 +573,7 @@ void WeaponBolt::init (bool create, ObjectTypePtr _type)
 	if (((WeaponBoltTypePtr)_type)->textureName && S_stricmp(((WeaponBoltTypePtr)_type)->textureName,"NONE") != 0)
 	{
 		char tPath[1024];
-		sprintf(tPath,"%s128" PATH_SEPARATOR, tglPath);
+		mc2::fmt::to_buf(tPath, "{}128" PATH_SEPARATOR "", mc2::fmt::safe(tglPath));
 
 		FullPathFileName textureName;
 		textureName.init(tPath,((WeaponBoltTypePtr)_type)->textureName,".tga");

@@ -8,6 +8,7 @@
 #include "../mclib/camera.h"
 #include "../mclib/appear.h"   // DRAW_BARS (maskWorldBars)
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 TacticalOverview g_tacticalOverview;
 
@@ -81,7 +82,7 @@ void TacticalOverview::advance(float dt) {
     if (before != state_.t() && mc2::gate::get<"MC2_TACTICAL_OVERVIEW_DEBUG">()) {
         char buf[96];
         sprintf_s(buf, sizeof(buf), "[TacOverview] t=%.3f iconA=%.3f", state_.t(), state_.iconAlpha());
-        OutputDebugStringA(buf);
+        mc2::fmt::debug_out(buf);
     }
 }
 

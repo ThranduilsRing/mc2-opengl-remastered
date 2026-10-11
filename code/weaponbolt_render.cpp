@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in weaponbolt_internal.h.
 #include "weaponbolt_internal.h"
 #include "../RenderCore/axis_convert.h"
+#include "mc2fmt.h"
 
 
 // VK-FIELD-VFX-2 (2026-07-11): under the field VK umbrella the DEFAULT bolt path
@@ -172,12 +173,7 @@ void WeaponBolt::render (void)
 					(lq1Vertices[1].x < eye->viewAddX) || (lq1Vertices[1].y < eye->viewAddY) ||
 					(lq1Vertices[2].x > eye->viewMulX) || (lq1Vertices[2].y > eye->viewMulY) ||
 					(lq1Vertices[2].x < eye->viewAddX) || (lq1Vertices[2].y < eye->viewAddY);
-				printf("[VK_VFX_TRACE] bolt(laser) path=%s culled=%d view=[%.0f..%.0f,%.0f..%.0f] "
-					"v0=(%.0f,%.0f) v1=(%.0f,%.0f) v2=(%.0f,%.0f) argb0=%08X\n",
-					useImmediate ? "IMMEDIATE" : "addVertices", (int)culled,
-					eye->viewAddX, eye->viewMulX, eye->viewAddY, eye->viewMulY,
-					lq1Vertices[0].x, lq1Vertices[0].y, lq1Vertices[1].x, lq1Vertices[1].y,
-					lq1Vertices[2].x, lq1Vertices[2].y, (unsigned)lq1Vertices[0].argb);
+				mc2::fmt::print_out("[VK_VFX_TRACE] bolt(laser) path={} culled={:d} view=[{:.0f}..{:.0f},{:.0f}..{:.0f}] v0=({:.0f},{:.0f}) v1=({:.0f},{:.0f}) v2=({:.0f},{:.0f}) argb0={:08X}\n", mc2::fmt::safe(useImmediate ? "IMMEDIATE" : "addVertices"), mc2::fmt::as_i32((int)culled), eye->viewAddX, eye->viewMulX, eye->viewAddY, eye->viewMulY, lq1Vertices[0].x, lq1Vertices[0].y, lq1Vertices[1].x, lq1Vertices[1].y, lq1Vertices[2].x, lq1Vertices[2].y, mc2::fmt::as_u32((unsigned)lq1Vertices[0].argb));
 				fflush(stdout);
 			}
 
@@ -466,14 +462,7 @@ void WeaponBolt::render (void)
 			lq4Vertices[2].argb		= alphaMode + ((WeaponBoltTypePtr)getObjectType())->middleRGB;
 
 			if (vfxTrace) {
-				printf("[VK_VFX_TRACE] beam path=%s view=[%.0f..%.0f,%.0f..%.0f] "
-					"v0=(%.0f,%.0f,z%.3f) v1=(%.0f,%.0f,z%.3f) v2=(%.0f,%.0f,z%.3f) argb0=%08X tex=%u\n",
-					useImmediate ? "IMMEDIATE" : "addVertices",
-					eye->viewAddX, eye->viewMulX, eye->viewAddY, eye->viewMulY,
-					lq1Vertices[0].x, lq1Vertices[0].y, lq1Vertices[0].z,
-					lq1Vertices[1].x, lq1Vertices[1].y, lq1Vertices[1].z,
-					lq1Vertices[2].x, lq1Vertices[2].y, lq1Vertices[2].z,
-					(unsigned)lq1Vertices[0].argb, (unsigned)gosTextureHandle);
+				mc2::fmt::print_out("[VK_VFX_TRACE] beam path={} view=[{:.0f}..{:.0f},{:.0f}..{:.0f}] v0=({:.0f},{:.0f},z{:.3f}) v1=({:.0f},{:.0f},z{:.3f}) v2=({:.0f},{:.0f},z{:.3f}) argb0={:08X} tex={:d}\n", mc2::fmt::safe(useImmediate ? "IMMEDIATE" : "addVertices"), eye->viewAddX, eye->viewMulX, eye->viewAddY, eye->viewMulY, lq1Vertices[0].x, lq1Vertices[0].y, lq1Vertices[0].z, lq1Vertices[1].x, lq1Vertices[1].y, lq1Vertices[1].z, lq1Vertices[2].x, lq1Vertices[2].y, lq1Vertices[2].z, mc2::fmt::as_u32((unsigned)lq1Vertices[0].argb), mc2::fmt::as_u32((unsigned)gosTextureHandle));
 				fflush(stdout);
 			}
 

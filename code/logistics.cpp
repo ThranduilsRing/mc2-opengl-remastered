@@ -10,6 +10,7 @@
 //----------------------------------------------------------------------------------
 
 #include "logistics_internal.h"
+#include "mc2fmt.h"
 
 void DEBUGWINS_print (const char* s, long window = 0);
 
@@ -46,8 +47,7 @@ void Logistics::start (long startMode)
 	if ( mc2::gate::get<"MC2_LOG_CURSOR">() )
 	{
 		FILE* f = fopen("cursor_debug.log", "a");
-		if (f) { fprintf(f, "[CURSOR] Logistics::start startMode=%ld drawMouse=%d\n",
-		                 startMode, (int)UserInput::drawMouse); fflush(f); fclose(f); }
+		if (f) { mc2::fmt::print(f, "[CURSOR] Logistics::start startMode={:d} drawMouse={:d}\n", mc2::fmt::as_i32(startMode), mc2::fmt::as_i32((int)UserInput::drawMouse)); fflush(f); fclose(f); }
 	}
 
 	// FIX (DEE / old-MC2X no-intro-video flow): loadscreen turns the mouse cursor OFF
@@ -100,7 +100,7 @@ void Logistics::start (long startMode)
 					// run ends and the parent sees the process exit.
 					if ( mc2::gate::get<"MC2_SOAK_AUTOWIN">() )
 					{
-						printf("[SOAK] campaign-complete -- terminating\n");
+						mc2::fmt::print_out("[SOAK] campaign-complete -- terminating\n");
 						fflush(stdout);
 						mission->destroy();
 						gos_TerminateApplication();

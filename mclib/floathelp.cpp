@@ -32,7 +32,7 @@ FloatHelp*	FloatHelp::floatHelps = nullptr;			//POinters to all of them.
 void FloatHelp::init (long maxHelps)
 {
 	floatHelps = (FloatHelp *)systemHeap->Malloc(sizeof(FloatHelp) * MAX_FLOAT_HELPS);
-	gosASSERT(floatHelps != NULL);
+	gosASSERT(floatHelps != nullptr);
 	
 	FloatHelp *tmp = floatHelps;
 	for (long i=0;i<MAX_FLOAT_HELPS;i++,tmp++)

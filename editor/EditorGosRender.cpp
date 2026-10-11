@@ -30,16 +30,17 @@ extern bool g_imguiInitialized;
 #include <SDL2/SDL_syswm.h>
 #include <GL/glew.h>
 #include <GL/gl.h>
-#include "utils/logging.h"
+#include "utils/mc2log.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
+#include "mc2fmt.h"
 
 // FIXME: think how to make it better when different parts need window
-SDL_Window* g_sdl_window = NULL;
+SDL_Window* g_sdl_window = nullptr;
 
 #ifdef PLATFORM_WINDOWS
-static HWND g_editor_parent_hwnd = NULL;
-static HWND g_editor_child_hwnd = NULL;
+static HWND g_editor_parent_hwnd = nullptr;
+static HWND g_editor_child_hwnd = nullptr;
 
 // by Methuselas: the OpenGL child HWND sits on top of the MFC editor client
 // area, so Windows delivers mouse button/drag messages to the child first.
@@ -224,12 +225,12 @@ void set_editor_parent_window(void* hwnd)
 static HWND get_sdl_hwnd(SDL_Window* window)
 {
     if (!window)
-        return NULL;
+        return nullptr;
 
     SDL_SysWMinfo wmInfo;
     SDL_VERSION(&wmInfo.version);
     if (!SDL_GetWindowWMInfo(window, &wmInfo))
-        return NULL;
+        return nullptr;
 
     return wmInfo.info.win.window;
 }
@@ -337,7 +338,7 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
     (void)windowed_hint;
 	int i, j, m, n;
 	SDL_DisplayMode fullscreen_mode;
-    SDL_Window* window = NULL; 
+    SDL_Window* window = nullptr; 
 
     if (VERBOSE_VIDEO) {
         n = SDL_GetNumVideoDrivers();
@@ -365,12 +366,12 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
     if ((SDL_WasInit(0) & SDL_INIT_VIDEO) == 0) {
         if (SDL_InitSubSystem(SDL_INIT_VIDEO | SDL_INIT_EVENTS) != 0) {
             fprintf(stderr, "Couldn't initialize SDL video/events: %s\n", SDL_GetError());
-            return NULL;
+            return nullptr;
         }
     } else if ((SDL_WasInit(0) & SDL_INIT_EVENTS) == 0) {
         if (SDL_InitSubSystem(SDL_INIT_EVENTS) != 0) {
             fprintf(stderr, "Couldn't initialize SDL events: %s\n", SDL_GetError());
-            return NULL;
+            return nullptr;
         }
     } else {
     }
@@ -533,7 +534,7 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
         if (!g_editor_parent_hwnd || !::IsWindow(g_editor_parent_hwnd))
         {
             fprintf(stderr, "EditorGosRender::create_window: no valid parent HWND\n");
-            return NULL;
+            return nullptr;
         }
 
         // Register a minimal window class with CS_OWNDC (required for OpenGL).
@@ -551,13 +552,13 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
             // forward mouse messages so MFC EditorInterface keeps ownership of
             // camera rotation, painting, selection, and capture behavior.
             wc.lpfnWndProc   = EditorGLChildWndProc;
-            wc.hInstance     = ::GetModuleHandleW(NULL);
+            wc.hInstance     = ::GetModuleHandleW(nullptr);
             wc.lpszClassName = s_glClassName;
             ATOM a = ::RegisterClassExW(&wc);
             if (a == 0 && ::GetLastError() != ERROR_CLASS_ALREADY_EXISTS)
             {
                 fprintf(stderr, "EditorGosRender::create_window: RegisterClassEx failed\n");
-                return NULL;
+                return nullptr;
             }
             s_classRegistered = true;
         }
@@ -575,15 +576,15 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
             WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN,
             0, 0, childW, childH,
             g_editor_parent_hwnd,
-            NULL,
-            ::GetModuleHandleW(NULL),
-            NULL);
+            nullptr,
+            ::GetModuleHandleW(nullptr),
+            nullptr);
 
 
         if (!glHwnd)
         {
             fprintf(stderr, "EditorGosRender::create_window: CreateWindowEx GL child failed\n");
-            return NULL;
+            return nullptr;
         }
 
         g_editor_child_hwnd = glHwnd;
@@ -594,7 +595,7 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
         // so SDL_GL_CreateContext fails silently with no error string.
         // Call it explicitly before SDL_CreateWindowFrom so the WGL extension chain is
         // bootstrapped. NULL = use the default OpenGL library (opengl32.dll).
-        if (SDL_GL_LoadLibrary(NULL) < 0)
+        if (SDL_GL_LoadLibrary(nullptr) < 0)
         {
             // Non-fatal: SDL may already have the library loaded; proceed anyway.
         }
@@ -612,8 +613,8 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
         {
             fprintf(stderr, "SDL_CreateWindowFrom failed: %s\n", SDL_GetError());
             ::DestroyWindow(glHwnd);
-            g_editor_child_hwnd = NULL;
-            return NULL;
+            g_editor_child_hwnd = nullptr;
+            return nullptr;
         }
 
         // SDL_CreateWindowFrom does not call SDL_VideoInit internally; the subsystem
@@ -634,7 +635,7 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
                 SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, windowFlags);
         if (!window) {
             fprintf(stderr, "Couldn't create window: %s\n", SDL_GetError());
-            return NULL;
+            return nullptr;
         }
         SDL_GetWindowSize(window, &width, &height);
     }
@@ -726,13 +727,13 @@ RenderContextHandle init_render_context(RenderWindowHandle render_window)
 
     if (!g_editor_child_hwnd || !::IsWindow(g_editor_child_hwnd))
     {
-        return NULL;
+        return nullptr;
     }
 
     HDC hdc = ::GetDC(g_editor_child_hwnd);
     if (!hdc)
     {
-        return NULL;
+        return nullptr;
     }
 
     // Step 1: pick and set a pixel format using the classic (non-ARB) path.
@@ -751,13 +752,13 @@ RenderContextHandle init_render_context(RenderWindowHandle render_window)
     if (fmt == 0)
     {
         ::ReleaseDC(g_editor_child_hwnd, hdc);
-        return NULL;
+        return nullptr;
     }
 
     if (!::SetPixelFormat(hdc, fmt, &pfd))
     {
         ::ReleaseDC(g_editor_child_hwnd, hdc);
-        return NULL;
+        return nullptr;
     }
 
     // Step 2: create a legacy GL 1.x context so we can query wglCreateContextAttribsARB.
@@ -765,14 +766,14 @@ RenderContextHandle init_render_context(RenderWindowHandle render_window)
     if (!legacyCtx)
     {
         ::ReleaseDC(g_editor_child_hwnd, hdc);
-        return NULL;
+        return nullptr;
     }
 
     if (!::wglMakeCurrent(hdc, legacyCtx))
     {
         ::wglDeleteContext(legacyCtx);
         ::ReleaseDC(g_editor_child_hwnd, hdc);
-        return NULL;
+        return nullptr;
     }
 
     // Step 3: load wglCreateContextAttribsARB and wglChoosePixelFormatARB through
@@ -782,7 +783,7 @@ RenderContextHandle init_render_context(RenderWindowHandle render_window)
         (PFNWGLCREATECONTEXTATTRIBSARBPROC)::wglGetProcAddress("wglCreateContextAttribsARB");
 
 
-    HGLRC coreCtx = NULL;
+    HGLRC coreCtx = nullptr;
     if (wglCreateContextAttribsARB)
     {
         const int attribs[] = {
@@ -792,25 +793,25 @@ RenderContextHandle init_render_context(RenderWindowHandle render_window)
             0x2094, 0,          // WGL_CONTEXT_FLAGS_ARB = 0 (set bit 1 for debug)
             0
         };
-        coreCtx = wglCreateContextAttribsARB(hdc, NULL, attribs);
+        coreCtx = wglCreateContextAttribsARB(hdc, nullptr, attribs);
     }
 
     // Detach legacy context; we use coreCtx (or fall back to legacyCtx) from here.
-    ::wglMakeCurrent(NULL, NULL);
+    ::wglMakeCurrent(nullptr, nullptr);
     ::wglDeleteContext(legacyCtx);
 
-    HGLRC finalCtx = coreCtx ? coreCtx : NULL;
+    HGLRC finalCtx = coreCtx ? coreCtx : nullptr;
     if (!finalCtx)
     {
         ::ReleaseDC(g_editor_child_hwnd, hdc);
-        return NULL;
+        return nullptr;
     }
 
     if (!::wglMakeCurrent(hdc, finalCtx))
     {
         ::wglDeleteContext(finalCtx);
         ::ReleaseDC(g_editor_child_hwnd, hdc);
-        return NULL;
+        return nullptr;
     }
 
     typedef BOOL (WINAPI* PFNWGLSWAPINTERVALEXTPROC)(int);
@@ -847,7 +848,7 @@ RenderContextHandle init_render_context(RenderWindowHandle render_window)
     printf("[TRACY] on-demand mode -- profiler listening on TCP 8086, no capture until a GUI attaches.\n");
 
     RenderContext* rc = new RenderContext();
-    rc->glcontext_    = NULL;   // not used on Windows editor path
+    rc->glcontext_    = nullptr;   // not used on Windows editor path
     rc->render_window_ = render_window;
     rc->wglContext_   = finalCtx;
     rc->wglDC_        = hdc;    // keep the DC alive; released in destroy_render_context
@@ -858,11 +859,11 @@ RenderContextHandle init_render_context(RenderWindowHandle render_window)
     SDL_GLContext glcontext = SDL_GL_CreateContext(rw->window_);
     if (!glcontext) {
         fprintf(stderr, "SDL_GL_CreateContext(): %s\n", SDL_GetError());
-        return NULL;
+        return nullptr;
     }
     if (SDL_GL_MakeCurrent(rw->window_, glcontext) < 0) {
         SDL_GL_DeleteContext(glcontext);
-        return NULL;
+        return nullptr;
     }
     const bool vsync_on = mc2::gate::get<"MC2_VSYNC">();
     SDL_GL_SetSwapInterval(vsync_on ? 1 : 0);
@@ -889,14 +890,14 @@ void destroy_render_context(RenderContextHandle rc_handle)
 #ifdef PLATFORM_WINDOWS
     if (rc->wglContext_)
     {
-        ::wglMakeCurrent(NULL, NULL);
+        ::wglMakeCurrent(nullptr, nullptr);
         ::wglDeleteContext(rc->wglContext_);
-        rc->wglContext_ = NULL;
+        rc->wglContext_ = nullptr;
     }
     if (rc->wglDC_ && g_editor_child_hwnd)
     {
         ::ReleaseDC(g_editor_child_hwnd, rc->wglDC_);
-        rc->wglDC_ = NULL;
+        rc->wglDC_ = nullptr;
     }
 #else
     SDL_GL_DeleteContext(rc->glcontext_);
@@ -956,7 +957,7 @@ bool set_window_fullscreen(RenderWindowHandle rw_handle, bool fullscreen)
     Uint32 flags = fullscreen ? /*SDL_WINDOW_FULLSCREEN*/ SDL_WINDOW_FULLSCREEN_DESKTOP : 0;
     
     if(0 != SDL_SetWindowFullscreen(rw->window_, flags)) {
-        log_error("SDL_SetWindowFullscreen: %s\n", SDL_GetError());
+        MC2_LOG(Editor, Error, "SDL_SetWindowFullscreen: {}", mc2::fmt::safe(SDL_GetError()));
         return false;
     }
 
@@ -977,8 +978,8 @@ bool is_mode_supported(int width, int height, int bpp) {
 
     SDL_DisplayMode returned;
     
-    if(NULL == SDL_GetClosestDisplayMode(displayIndex, &desired, &returned)) {
-        log_error("resize_window: %s\n", SDL_GetError());
+    if(nullptr == SDL_GetClosestDisplayMode(displayIndex, &desired, &returned)) {
+        MC2_LOG(Editor, Error, "resize_window: {}", mc2::fmt::safe(SDL_GetError()));
         return false;
     }
 
@@ -1014,7 +1015,7 @@ bool get_desktop_display_mode(int display_index, int* width, int* height, int* b
 
     SDL_DisplayMode dm;
     if (SDL_GetDesktopDisplayMode(display_index, &dm) != 0) {
-        log_error("SDL_GetDesktopDisplayMode failed: %s", SDL_GetError());
+        MC2_LOG(Editor, Error, "SDL_GetDesktopDisplayMode failed: {}", mc2::fmt::safe(SDL_GetError()));
         return false;
     }
 
@@ -1031,7 +1032,7 @@ bool get_display_mode_by_index(int display_index, int mode_index, int* width, in
 
     SDL_DisplayMode dm;
     if (SDL_GetDisplayMode(display_index, mode_index, &dm) != 0) {
-        log_error("SDL_GetDisplayMode failed: %s", SDL_GetError());
+        MC2_LOG(Editor, Error, "SDL_GetDisplayMode failed: {}", mc2::fmt::safe(SDL_GetError()));
         return false;
     }
 
@@ -1066,7 +1067,7 @@ void destroy_window(RenderWindowHandle rw_handle)
     SDL_DestroyWindow(rw->window_);
     delete rw;
 
-    g_sdl_window = NULL;
+    g_sdl_window = nullptr;
 #ifdef PLATFORM_WINDOWS
     // Destroy the Win32 GL child HWND we created in create_window.
     // SDL_DestroyWindow on a SDL_CreateWindowFrom window does NOT destroy the
@@ -1075,7 +1076,7 @@ void destroy_window(RenderWindowHandle rw_handle)
     {
         ::DestroyWindow(g_editor_child_hwnd);
     }
-    g_editor_child_hwnd = NULL;
+    g_editor_child_hwnd = nullptr;
 #endif
 }
 

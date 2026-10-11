@@ -1,6 +1,7 @@
 // Mission: the runtime-bridge mover.state emitter and the mover-registry coherence audit that Mission::update calls
 // once per frame. Declared in mission_internal.h.
 #include "mission_internal.h"
+#include "mc2fmt.h"
 
 //----------------------------------------------------------------------------------
 // MC2_BRIDGE_MOVER_STATE -- runtime-bridge v0 (mover.state over stdout).
@@ -62,7 +63,7 @@ namespace {
 		const long kCap = 64;
 		long total = ObjectManager->getNumMovers();
 		long emitted = 0;
-		printf("[MOVER v2 begin] t=%.1f count=%ld\n", scenarioTimeNow, total);
+		mc2::fmt::print_out("[MOVER v2 begin] t={:.1f} count={:d}\n", scenarioTimeNow, mc2::fmt::as_i32(total));
 		for (long i = 0; i < total && emitted < kCap; ++i) {
 			MoverPtr mover = ObjectManager->getMover(i);
 			if (!mover)
@@ -123,14 +124,11 @@ namespace {
 				}
 			}
 
-			printf("[MOVER v2] id=%ld name=%s team=%ld pos=%.1f,%.1f,%.1f "
-				"hp=%.2f pilot=%s order=%ld/%s target=%ld "
-				"brain=%ld mstate=%ld pgoal=%.1f,%.1f,%.1f pstep=%ld/%ld pcost=%ld "
-				"tgtpos=%.1f,%.1f,%.1f\n",
-				partId, name, team, pos.x, pos.y, pos.z,
-				hpFrac, pilotName, orderVal, orderName, targetId,
-				brainState, moveState, pgoal.x, pgoal.y, pgoal.z,
-				pCurStep, pNumSteps, pCost,
+			mc2::fmt::print_out("[MOVER v2] id={:d} name={} team={:d} pos={:.1f},{:.1f},{:.1f} hp={:.2f} pilot={} order={:d}/{} target={:d} brain={:d} mstate={:d} pgoal={:.1f},{:.1f},{:.1f} pstep={:d}/{:d} pcost={:d} tgtpos={:.1f},{:.1f},{:.1f}\n",
+				mc2::fmt::as_i32(partId), mc2::fmt::safe(name), mc2::fmt::as_i32(team), pos.x, pos.y, pos.z,
+				hpFrac, mc2::fmt::safe(pilotName), mc2::fmt::as_i32(orderVal), mc2::fmt::safe(orderName), mc2::fmt::as_i32(targetId),
+				mc2::fmt::as_i32(brainState), mc2::fmt::as_i32(moveState), pgoal.x, pgoal.y, pgoal.z,
+				mc2::fmt::as_i32(pCurStep), mc2::fmt::as_i32(pNumSteps), mc2::fmt::as_i32(pCost),
 				tgtPos.x, tgtPos.y, tgtPos.z);
 			++emitted;
 		}
@@ -264,8 +262,7 @@ namespace {
 					TacticalOrderPtr order = pilot->getCurTacOrder();
 					if (order && order->code != TACTICAL_ORDER_NONE) {
 						char det[96];
-						sprintf(det, "detail=tac_order code=%d origin=%d",
-							(int)order->code, (int)order->origin);
+						mc2::fmt::to_buf(det, "detail=tac_order code={:d} origin={:d}", mc2::fmt::as_i32((int)order->code), mc2::fmt::as_i32((int)order->origin));
 						if (order->origin == ORDER_ORIGIN_PLAYER)
 							cohEmit(true, "I2", partId, name,
 								COH_I2_ORDER, det);

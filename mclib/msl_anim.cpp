@@ -1,6 +1,7 @@
 // Multi shape layer: TG_AnimateShape and _TG_Animation: binary load / save, ASE animation import and animation state.
 // Declared in the class headers; shared names in msl_internal.h.
 #include "msl_internal.h"
+#include "mc2fmt.h"
 
 
 //-------------------------------------------------------------------------------
@@ -94,7 +95,7 @@ long TG_AnimateShape::LoadBinaryCopy (const char *fileName)
 		if (count)
 		{
 			listOfAnimation = (TG_AnimationPtr)TG_Shape::tglHeap->Malloc(sizeof(TG_Animation) * count);
-			gosASSERT(listOfAnimation != NULL);
+			gosASSERT(listOfAnimation != nullptr);
  			
 			for (long i=0;i<count;i++)
 				listOfAnimation[i].LoadBinaryCopy(&binFile);
@@ -245,7 +246,7 @@ long TG_AnimateShape::LoadTGMultiShapeAnimationFromASE (const char *fileName, TG
 		//---------------------------------------
 		// Create Buffer to read entire file into
 		BYTE *aseContents = (BYTE *)malloc(aseFileSize+1);
-		gosASSERT(aseContents != NULL);
+		gosASSERT(aseContents != nullptr);
 	
 		//---------------------------------------
 		// Open File and read it and close it
@@ -271,7 +272,7 @@ long TG_AnimateShape::LoadTGMultiShapeAnimationFromASE (const char *fileName, TG
 		// Get first frame of animation from header
 		long firstFrame, lastFrame;
 		char *frameId = strstr((char *)aseContents,ASE_ANIM_FIRST_FRAME);
-		gosASSERT(frameId != NULL);
+		gosASSERT(frameId != nullptr);
 		frameId += strlen(ASE_ANIM_FIRST_FRAME)+1;
 	
 		char numData[512];
@@ -279,7 +280,7 @@ long TG_AnimateShape::LoadTGMultiShapeAnimationFromASE (const char *fileName, TG
 		firstFrame = atol(numData);
 	
 		frameId = strstr((char *)aseContents,ASE_ANIM_LAST_FRAME);
-		gosASSERT(frameId != NULL);
+		gosASSERT(frameId != nullptr);
 	
 		frameId += strlen(ASE_ANIM_LAST_FRAME)+1;
 	
@@ -295,7 +296,7 @@ long TG_AnimateShape::LoadTGMultiShapeAnimationFromASE (const char *fileName, TG
 		long numFrames = (lastFrame - firstFrame) + 1;
 	
 		frameId = strstr((char *)aseContents,ASE_ANIM_FRAME_SPEED);
-		gosASSERT(frameId != NULL);
+		gosASSERT(frameId != nullptr);
 	
 		frameId += strlen(ASE_ANIM_FRAME_SPEED)+1;
 	
@@ -303,7 +304,7 @@ long TG_AnimateShape::LoadTGMultiShapeAnimationFromASE (const char *fileName, TG
 		float frameRate = (float)atof(numData);
 	
 		frameId = strstr((char *)aseContents,ASE_ANIM_TICKS_FRAME);
-		gosASSERT(frameId != NULL);
+		gosASSERT(frameId != nullptr);
 	
 		frameId += strlen(ASE_ANIM_TICKS_FRAME)+1;
 	
@@ -314,7 +315,7 @@ long TG_AnimateShape::LoadTGMultiShapeAnimationFromASE (const char *fileName, TG
 		// For each TG_Shape in MultiShape passed in, find any and all animation Data
 		count = shape->GetNumShapes();
 		listOfAnimation = (TG_AnimationPtr)TG_Shape::tglHeap->Malloc(sizeof(TG_Animation) * shape->GetNumShapes());
-		gosASSERT(listOfAnimation != NULL);
+		gosASSERT(listOfAnimation != nullptr);
 	
 		//----------------------------------------------------------------------------
 		// Scan the Nodes.
@@ -323,13 +324,13 @@ long TG_AnimateShape::LoadTGMultiShapeAnimationFromASE (const char *fileName, TG
 		for (long i=0;i<count;i++)
 		{
 			char *nodeId = shape->GetNodeId(i);
-			gosASSERT(nodeId != NULL);
+			gosASSERT(nodeId != nullptr);
 		
 			char *animScan = (char *)aseContents;
 			animScan = strstr(animScan,ASE_ANIMATION);
 	
 			char nodeName[512];
-			sprintf(nodeName,"*NODE_NAME \"%s\"",nodeId);
+			mc2::fmt::to_buf(nodeName, "*NODE_NAME \"{}\"", mc2::fmt::safe(nodeId));
 			while (animScan != nullptr)
 			{
 				animScan += strlen(ASE_ANIMATION)+1;
@@ -413,7 +414,7 @@ long TG_AnimateShape::LoadTGMultiShapeAnimationFromASE (const char *fileName, TG
 						for (long j=0;j<listOfAnimation[i].numFrames;j++)
 						{
 							char *scanData;
-							sprintf(nodeName,"%s %d",ASE_ANIM_POS_SAMPLE,(int)timeStamp);
+							mc2::fmt::to_buf(nodeName, "{} {:d}", mc2::fmt::safe(ASE_ANIM_POS_SAMPLE), mc2::fmt::as_i32((int)timeStamp));
 							scanData = strstr(LineData,nodeName);
 		
 							if (scanData)
@@ -469,7 +470,7 @@ long TG_AnimateShape::LoadTGMultiShapeAnimationFromASE (const char *fileName, TG
 						//-----------------------------------------------------------
 						// We have rotational data at least.  Store everything off.
 						listOfAnimation[i].quat = (Stuff::UnitQuaternion *)TG_Shape::tglHeap->Malloc(sizeof(Stuff::UnitQuaternion) * numFrames);
-						gosASSERT(listOfAnimation[i].quat != NULL);
+						gosASSERT(listOfAnimation[i].quat != nullptr);
 		
 						//-------------------------------------------
 						// Setup basic variables.  May do this twice.
@@ -485,7 +486,7 @@ long TG_AnimateShape::LoadTGMultiShapeAnimationFromASE (const char *fileName, TG
 						for (long j=0;j<listOfAnimation[i].numFrames;j++)
 						{
 							char *scanData;
-							sprintf(nodeName,"%s %d",ASE_ANIM_ROT_SAMPLE,(int)timeStamp);
+							mc2::fmt::to_buf(nodeName, "{} {:d}", mc2::fmt::safe(ASE_ANIM_ROT_SAMPLE), mc2::fmt::as_i32((int)timeStamp));
 							scanData = strstr(LineData,nodeName);
 		
 							Stuff::UnitQuaternion thisFrame;

@@ -4,6 +4,7 @@
 #include <cstring>
 #include <cstdio>
 #include <cctype>
+#include "mc2fmt.h"
 bool mc2UnitProfileDataEnabled() {
     static const bool s = mc2::gate::get<"MC2_UNIT_PROFILE_DATA">();
     return s;
@@ -41,7 +42,7 @@ const char* mc2GeneratedVariantSlug(const char* variantName, int index,
         --n;
     out[n] = '\0';
     if (n == 0) {                     // empty -> "v<index>"
-        std::snprintf(out, cap, "v%d", index);
+        mc2::fmt::to_buf_n(out, cap, "v{:d}", mc2::fmt::as_i32(index));
     }
     return out;
 }

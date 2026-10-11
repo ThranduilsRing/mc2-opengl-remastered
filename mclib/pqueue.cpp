@@ -33,7 +33,7 @@ int PriorityQueue::init (int max, int keyMinValue) {
 	//-------------------------
 	// Create the queue list...
 	pqList = (PQNode*)systemHeap->Malloc(sizeof(PQNode) * (max + 2));
-	gosASSERT (pqList != NULL);
+	gosASSERT (pqList != nullptr);
 
 	//----------------------------------------------------------------------
 	// Note that two additional nodes are added, as the first and last nodes

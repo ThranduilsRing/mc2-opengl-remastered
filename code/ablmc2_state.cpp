@@ -973,7 +973,7 @@ void execOrderLoadElementals (void) {
 	ABLi_popInteger();
 
 #ifdef USE_ELEMENTALS
-	GameObjectPtr carrior = NULL;
+	GameObjectPtr carrior = nullptr;
 	if (CurObject && CurObject->getObjectClass() == ELEMENTAL)
 		carrier = getObject(carrierID);
 
@@ -1016,7 +1016,7 @@ void execAddPrisoner (void) {
 			prisoner = scenario->getWarrior(i);
 			if (prisoner && prisoner->getIndex() == prisonerID)
 				break;
-			prisoner = NULL;
+			prisoner = nullptr;
 		}
 		if (prisoner)
 		{
@@ -1025,7 +1025,7 @@ void execAddPrisoner (void) {
 			BuildingPtr bPrison = (BuildingPtr) prison;
 				
 				for (i=0; i<MAX_PRISONERS; i++)
-					if (bPrison->prisoners[i] == NULL)
+					if (bPrison->prisoners[i] == nullptr)
 					{
 						bPrison->prisoners[i] = prisoner;
 						result = 0;
@@ -1036,7 +1036,7 @@ void execAddPrisoner (void) {
 			TreeBuildingPtr tPrison = (TreeBuildingPtr) prison;
 				
 				for (i=0; i<MAX_PRISONERS; i++)
-					if (tPrison->prisoners[i] == NULL)
+					if (tPrison->prisoners[i] == nullptr)
 					{
 						tPrison->prisoners[i] = prisoner;
 						result = 0;
