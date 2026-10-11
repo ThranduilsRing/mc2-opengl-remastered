@@ -11,9 +11,9 @@
 #ifndef EDITOR_VERSION_H
 #define EDITOR_VERSION_H
 
-#define EDITOR_VERSION_MAJOR 0
-#define EDITOR_VERSION_MINOR 14
-#define EDITOR_VERSION_PATCH 0
+inline constexpr int EDITOR_VERSION_MAJOR = 0;
+inline constexpr int EDITOR_VERSION_MINOR = 14;
+inline constexpr int EDITOR_VERSION_PATCH = 0;
 
 #define EDITOR_VERSION_PRERELEASE "editor"
 #define EDITOR_VERSION_BUILD ""

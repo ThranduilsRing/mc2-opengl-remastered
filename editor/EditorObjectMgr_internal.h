@@ -109,7 +109,7 @@
 #include "../GameAdapters/MechRenderAdapter.h"
 using namespace Microsoft::Xna::Arm;
 
-#define TREE_GROUP 1
+inline constexpr int TREE_GROUP = 1;
 
 // Globals defined in EditorObjectMgr.cpp (or elsewhere in the engine) that the split pieces share.
 extern HSTRRES gameResourceHandle;

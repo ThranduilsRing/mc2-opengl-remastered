@@ -67,10 +67,10 @@ struct ObjectiveUiRow
 
 
 #define LAST_VEHICLE MAX_VEHICLE - LARGE_AIRSTRIKE
-#define OBJECTVE_MOVE_COUNT 2
-#define RESULTS_MOVE_COUNT 3
-#define MAX_CHAT_COUNT 5
-#define RPTOTAL_CALLOUT	21185
+inline constexpr int OBJECTVE_MOVE_COUNT = 2;
+inline constexpr int RESULTS_MOVE_COUNT = 3;
+inline constexpr int MAX_CHAT_COUNT = 5;
+inline constexpr int RPTOTAL_CALLOUT = 21185;
 /**************************************************************************************************
 CLASS DESCRIPTION
 ControlGui:

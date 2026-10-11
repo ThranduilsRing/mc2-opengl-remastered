@@ -16,7 +16,7 @@
 //
 #include <string.h>
 
-#define MAX_DESC_LENGTH 256
+inline constexpr int MAX_DESC_LENGTH = 256;
 
 class ActionUndoMgr;
 class Action;

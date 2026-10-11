@@ -32,7 +32,7 @@ static const int GAME_MAX_PLAYERS = 8;
 // camera-windowed vertexList/quadList, which is why MC2_TERRAIN_INDIRECT=0
 // and MC2_TERRAIN_CULL_WIDE=1 did not expand the visible region (the upstream
 // camera-window iterator at mapdata.cpp:1114-1117 caps both paths).
-#define EDITOR_VISIBLE_VERTICES			500
+inline constexpr int EDITOR_VISIBLE_VERTICES = 500;
 
 namespace Microsoft
 {

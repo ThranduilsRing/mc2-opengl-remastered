@@ -11,41 +11,41 @@
 #define IDS_OK                          1007
 #define IDS_YES                         1008
 #define IDS_NO                          1009
-#define IDS_MIN                         1010
-#define IDS_MAX                         1011
-#define IDS_ASSIGN_HEIGHTS              1012
-#define IDS_NEW                         1100
-#define IDS_OPEN                        1108
-#define IDS_FILENAME                    1109
-#define IDS_FILE                        10000
-#define IDS_FILENEW                     10001
-#define IDS_FILEOPEN                    10002
-#define IDS_FILE_SAVE                   10003
+inline constexpr int IDS_MIN = 1010;
+inline constexpr int IDS_MAX = 1011;
+inline constexpr int IDS_ASSIGN_HEIGHTS = 1012;
+inline constexpr int IDS_NEW = 1100;
+inline constexpr int IDS_OPEN = 1108;
+inline constexpr int IDS_FILENAME = 1109;
+inline constexpr int IDS_FILE = 10000;
+inline constexpr int IDS_FILENEW = 10001;
+inline constexpr int IDS_FILEOPEN = 10002;
+inline constexpr int IDS_FILE_SAVE = 10003;
 #define IDS_SAVE_CAMERAS                10004
-#define IDS_QUIT                        10005
-#define IDS_EDIT                        10006
-#define IDS_QUIT3                       10006
-#define IDS_CUT                         10007
-#define IDS_EDIT2                       10007
-#define IDS_EDIT_UNDO                   10007
-#define IDS_COPY                        10008
-#define IDS_CUT2                        10008
-#define IDS_EDIT_REDO                   10008
-#define IDS_PASTE                       10009
-#define IDS_COPY2                       10009
-#define IDS_VIEW                        10010
-#define IDS_PASTE2                      10010
-#define IDS_VIEW2                       10011
-#define IDS_OVERLAYS                    10012
+inline constexpr int IDS_QUIT = 10005;
+inline constexpr int IDS_EDIT = 10006;
+inline constexpr int IDS_QUIT3 = 10006;
+inline constexpr int IDS_CUT = 10007;
+inline constexpr int IDS_EDIT2 = 10007;
+inline constexpr int IDS_EDIT_UNDO = 10007;
+inline constexpr int IDS_COPY = 10008;
+inline constexpr int IDS_CUT2 = 10008;
+inline constexpr int IDS_EDIT_REDO = 10008;
+inline constexpr int IDS_PASTE = 10009;
+inline constexpr int IDS_COPY2 = 10009;
+inline constexpr int IDS_VIEW = 10010;
+inline constexpr int IDS_PASTE2 = 10010;
+inline constexpr int IDS_VIEW2 = 10011;
+inline constexpr int IDS_OVERLAYS = 10012;
 #define IDS_TERRAINS                    10013
 #define IDS_BUILDINGS                   10014
-#define IDS_OTHER                       10015
-#define IDS_ERASE                       10050
-#define IDS_NEW_HEIGHTS                 10051
+inline constexpr int IDS_OTHER = 10015;
+inline constexpr int IDS_ERASE = 10050;
+inline constexpr int IDS_NEW_HEIGHTS = 10051;
 #define IDS_SELECT                      10052
-#define IDS_SELECT_AREA                 10053
+inline constexpr int IDS_SELECT_AREA = 10053;
 #define IDS_FLATTEN                     10054
-#define IDS_DROPZ                       10099
+inline constexpr int IDS_DROPZ = 10099;
 #define IDS_GROUPS                      10100
 #define IDS_GROUP1                      10101
 #define IDS_GROUP2                      10102
@@ -71,36 +71,36 @@
 #define IDS_PAVED_ROAD                  10501
 #define IDS_ROUGH                       10502
 #define IDS_BLUEWATER                   10504
-#define IDS_SWAMPWATER                  10504
+inline constexpr int IDS_SWAMPWATER = 10504;
 #define IDS_GREENWATER                  10505
-#define IDS_OCEANWATER                  10505
+inline constexpr int IDS_OCEANWATER = 10505;
 #define IDS_MUD                         10506
 #define IDS_MOSS                        10507
-#define IDS_DIRT2                       10507
+inline constexpr int IDS_DIRT2 = 10507;
 #define IDS_DIRT                        10508
-#define IDS_FORESTFLOOR1                10508
+inline constexpr int IDS_FORESTFLOOR1 = 10508;
 #define IDS_ASH                         10509
-#define IDS_FOREST_FLOOR2               10509
+inline constexpr int IDS_FOREST_FLOOR2 = 10509;
 #define IDS_MOUNTAIN                    10510
-#define IDS_FOREST3                     10510
+inline constexpr int IDS_FOREST3 = 10510;
 #define IDS_TUNDRA                      10511
-#define IDS_MUDFLAT                     10511
+inline constexpr int IDS_MUDFLAT = 10511;
 #define IDS_GRASS                       10512
-#define IDS_FORESTFLOOR4                10512
+inline constexpr int IDS_FORESTFLOOR4 = 10512;
 #define IDS_CONCRETE                    10513
 #define IDS_FORESTFLOOR                 10513
-#define IDS_MUDDY_SHORE                 10513
+inline constexpr int IDS_MUDDY_SHORE = 10513;
 #define IDS_CLIFF                       10514
-#define IDS_CEMENT                      10514
-#define IDS_SANDY_DIRT                  10515
-#define IDS_SLIMY                       10516
-#define IDS_CEMENT2                     10517
-#define IDS_CEMENT3                     10518
-#define IDS_CEMENT4                     10519
-#define IDS_CEMENT5                     10520
-#define IDS_CEMENT6                     10521
-#define IDS_CEMENT7                     10522
-#define IDS_CEMENT8                     10523
+inline constexpr int IDS_CEMENT = 10514;
+inline constexpr int IDS_SANDY_DIRT = 10515;
+inline constexpr int IDS_SLIMY = 10516;
+inline constexpr int IDS_CEMENT2 = 10517;
+inline constexpr int IDS_CEMENT3 = 10518;
+inline constexpr int IDS_CEMENT4 = 10519;
+inline constexpr int IDS_CEMENT5 = 10520;
+inline constexpr int IDS_CEMENT6 = 10521;
+inline constexpr int IDS_CEMENT7 = 10522;
+inline constexpr int IDS_CEMENT8 = 10523;
 #define IDS_SAVE_CAMERA_FAIL            10600
 #define IDS_NO_VERTEX_SEL               10601
 #define IDS_ASSIGN_ELEVATION            10602
@@ -111,12 +111,12 @@
 #define IDS_MUST_HAVE_PLAYER            10607
 #define IDS_NEED_ENEMY                  10608
 #define IDS_CANT_SAVE                   10609
-#define IDS_DISTANCE                    10610
-#define IDS_METERS                      10611
+inline constexpr int IDS_DISTANCE = 10610;
+inline constexpr int IDS_METERS = 10611;
 #define IDS_UNTITLED                    10612
 #define IDS_CAPTION                     10613
 #define IDS_COULDNT_OPEN                10614
-#define IDS_MISSION_TIME_LIMIT          10615
+inline constexpr int IDS_MISSION_TIME_LIMIT = 10615;
 #define IDS_IN_SECONDS                  10616
 #define IDS_NO_NEUTRAL_MOVERS           10617
 #define IDS_WARNING                     10618
