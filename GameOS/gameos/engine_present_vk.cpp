@@ -1554,10 +1554,7 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
                         xmn=v.x<xmn?v.x:xmn; xmx=v.x>xmx?v.x:xmx;
                         ymn=v.y<ymn?v.y:ymn; ymx=v.y>ymx?v.y:ymx;
                     }
-                    std::fprintf(stderr, "[VK_VFX_TAIL] kind=%u nverts=%zu argb0=%08X canvas=%ux%u "
-                        "bbox=[%.1f,%.1f]-[%.1f,%.1f] w=%.2f h=%.2f alpha=%u\n",
-                        (unsigned)d.kind, d.vertices.size(), (unsigned)d.vertices[0].argb, s.hudCanvasW, s.hudCanvasH,
-                        xmn,ymn,xmx,ymx, xmx-xmn, ymx-ymn, d.alphaMode);
+                    mc2::fmt::print_err("[VK_VFX_TAIL] kind={:d} nverts={:d} argb0={:08X} canvas={:d}x{:d} bbox=[{:.1f},{:.1f}]-[{:.1f},{:.1f}] w={:.2f} h={:.2f} alpha={:d}\n", mc2::fmt::as_u32((unsigned)d.kind), mc2::fmt::as_size(d.vertices.size()), mc2::fmt::as_u32((unsigned)d.vertices[0].argb), mc2::fmt::as_u32(s.hudCanvasW), mc2::fmt::as_u32(s.hudCanvasH), xmn, ymn, xmx, ymx, xmx-xmn, ymx-ymn, mc2::fmt::as_u32(d.alphaMode));
                 }
             }
         }
@@ -2598,7 +2595,7 @@ void EnginePresentVk::verifyReadbackContent() {
                 fwrite(rgb.data(), 1, rgb.size(), pf);
                 fclose(pf);
                 s_ppmDone = true;
-                fprintf(stderr, "[VK_PRESENT_DUMP_PPM] wrote %s (%ux%u)\n", ppmPath, rw, rh);
+                mc2::fmt::print_err("[VK_PRESENT_DUMP_PPM] wrote {} ({:d}x{:d})\n", mc2::fmt::safe(ppmPath), mc2::fmt::as_u32(rw), mc2::fmt::as_u32(rh));
                 fflush(stderr);
             }
         }

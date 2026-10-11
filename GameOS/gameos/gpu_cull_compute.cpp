@@ -946,9 +946,7 @@ void compute_dispatch() {
         bool changed = (memcmp(mvp, s_lastMvpCull, 64) != 0);
         if (changed) {
             memcpy(s_lastMvpCull, mvp, 64);
-            printf("[CULL_DIAG] MVP rows: [%.3f %.3f %.3f %.3f] [%.3f %.3f %.3f %.3f] [%.3f %.3f %.3f %.3f] [%.3f %.3f %.3f %.3f]\n",
-                   mvp[0],mvp[1],mvp[2],mvp[3], mvp[4],mvp[5],mvp[6],mvp[7],
-                   mvp[8],mvp[9],mvp[10],mvp[11], mvp[12],mvp[13],mvp[14],mvp[15]);
+            mc2::fmt::print_out("[CULL_DIAG] MVP rows: [{:.3f} {:.3f} {:.3f} {:.3f}] [{:.3f} {:.3f} {:.3f} {:.3f}] [{:.3f} {:.3f} {:.3f} {:.3f}] [{:.3f} {:.3f} {:.3f} {:.3f}]\n", mvp[0], mvp[1], mvp[2], mvp[3], mvp[4], mvp[5], mvp[6], mvp[7], mvp[8], mvp[9], mvp[10], mvp[11], mvp[12], mvp[13], mvp[14], mvp[15]);
             // Derive current slot index from byte offset/size.
             const uint32_t currSlot = (slotBytes > 0)
                 ? static_cast<uint32_t>(slotOffset / slotBytes) : 0u;
@@ -966,8 +964,7 @@ void compute_dispatch() {
                 const float bound = cw*(1.f+d);
                 bool pass = (cw>=1e-5f) && (cx>=-bound&&cx<=bound) && (cy>=-bound&&cy<=bound)
                          && (cz>=-d*cw&&cz<=bound);
-                printf("[CULL_DIAG] rec[0] world=(%.1f,%.1f,%.1f) r=%.1f clip=(%.2f,%.2f,%.2f,%.2f) norm=(%.2f,%.2f,%.2f,%.2f) frustum=%s\n",
-                       wx,wy,wz, recs[0].boundingRadius, cx/s,cy/s,cz/s,cw/s, cx,cy,cz,cw, pass?"PASS":"FAIL");
+                mc2::fmt::print_out("[CULL_DIAG] rec[0] world=({:.1f},{:.1f},{:.1f}) r={:.1f} clip=({:.2f},{:.2f},{:.2f},{:.2f}) norm=({:.2f},{:.2f},{:.2f},{:.2f}) frustum={}\n", wx, wy, wz, recs[0].boundingRadius, cx/s, cy/s, cz/s, cw/s, cx, cy, cz, cw, mc2::fmt::safe(pass?"PASS":"FAIL"));
             }
             fflush(stdout);
         }
@@ -1192,13 +1189,7 @@ void compute_dispatch() {
                         }
                     }
 
-                    printf("[GPU_CULL_CUTOFF_UPPERBOUND v2] types=%d pool=%u visible=%u "
-                           "omittedSlots=%u (%.1f%% of pool) typesCutoffPossible=%d "
-                           "emptyPoolButVisible=%d overflow=%u | worst type=%d pool=%u vis=%u omit=%u\n",
-                           typeCount, totalPool, totalVisible, totalOmitted,
-                           totalPool ? 100.0 * totalOmitted / totalPool : 0.0,
-                           typesCutoffPossible, typesEmptyPoolButVisible, overflow,
-                           worstType, worstPool, worstVis, worstOmit);
+                    mc2::fmt::print_out("[GPU_CULL_CUTOFF_UPPERBOUND v2] types={:d} pool={:d} visible={:d} omittedSlots={:d} ({:.1f}% of pool) typesCutoffPossible={:d} emptyPoolButVisible={:d} overflow={:d} | worst type={:d} pool={:d} vis={:d} omit={:d}\n", mc2::fmt::as_i32(typeCount), mc2::fmt::as_u32(totalPool), mc2::fmt::as_u32(totalVisible), mc2::fmt::as_u32(totalOmitted), totalPool ? 100.0 * totalOmitted / totalPool : 0.0, mc2::fmt::as_i32(typesCutoffPossible), mc2::fmt::as_i32(typesEmptyPoolButVisible), mc2::fmt::as_u32(overflow), mc2::fmt::as_i32(worstType), mc2::fmt::as_u32(worstPool), mc2::fmt::as_u32(worstVis), mc2::fmt::as_u32(worstOmit));
                     fflush(stdout);
                 }
             }

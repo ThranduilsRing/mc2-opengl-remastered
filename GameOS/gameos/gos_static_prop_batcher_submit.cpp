@@ -196,16 +196,8 @@ bool GpuStaticPropBatcher::submit(TG_Shape* shape,
                 long by = (long)(my * Terrain::oneOverVerticesBlockSide);
                 long cpuBlk = bx + (by * Terrain::blocksMapSide);
                 long helperBlk = Terrain::worldToBlockIdx(pwx, pwy);
-                fprintf(stderr,
-                    "[BLKIDX v1] event=geom_check src=batcher"
-                    " wx=%.1f wy=%.1f wz=%.1f helper=%ld cpu=%ld"
-                    " match=%d\n",
-                    pwx, pwy, rec.worldCenter[2],
-                    helperBlk, cpuBlk, (helperBlk == cpuBlk) ? 1 : 0);
-                fprintf(stderr,
-                    "[BLKIDX v1] event=zero_verify src=batcher"
-                    " blockIdx=%u z_excluded=1\n",
-                    rec.blockIdx);
+                mc2::fmt::print_err("[BLKIDX v1] event=geom_check src=batcher wx={:.1f} wy={:.1f} wz={:.1f} helper={:d} cpu={:d} match={:d}\n", pwx, pwy, rec.worldCenter[2], mc2::fmt::as_i32(helperBlk), mc2::fmt::as_i32(cpuBlk), mc2::fmt::as_i32((helperBlk == cpuBlk) ? 1 : 0));
+                mc2::fmt::print_err("[BLKIDX v1] event=zero_verify src=batcher blockIdx={:d} z_excluded=1\n", mc2::fmt::as_u32(rec.blockIdx));
                 fflush(stderr);
             }
         }
@@ -257,12 +249,7 @@ bool GpuStaticPropBatcher::submit(TG_Shape* shape,
                 const DWORD vi = typeShape->listOfTypeTriangles[j].Vertices[c];
                 perVertexARGB[j * 3u + c] = shape->listOfVertices[vi].argb;
                 if (doTrace82 && (j * 3u + c) < 20u) {
-                    std::fprintf(stderr,
-                        "[PARITY_DIAG v1] typeId=82 inst=first vert=%u "
-                        "aRGBLight_tag=0x%08X computed_argb=0x%08X\n",
-                        (unsigned)(j * 3u + c),
-                        (unsigned)typeShape->listOfTypeVertices[vi].aRGBLight,
-                        (unsigned)shape->listOfVertices[vi].argb);
+                    mc2::fmt::print_err("[PARITY_DIAG v1] typeId=82 inst=first vert={:d} aRGBLight_tag=0x{:08X} computed_argb=0x{:08X}\n", mc2::fmt::as_u32((unsigned)(j * 3u + c)), mc2::fmt::as_u32((unsigned)typeShape->listOfTypeVertices[vi].aRGBLight), mc2::fmt::as_u32((unsigned)shape->listOfVertices[vi].argb));
                     std::fflush(stderr);
                 }
             }
@@ -454,18 +441,12 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
                     const size_t total = s_types.size();
                     // 2026-05-10 diag: bumped 30 -> 600 to surface buildings.
                     const size_t cap = total < 600 ? total : 600;
-                    std::fprintf(stderr,
-                        "[GPUPROPS_REG] event=registered_dump total=%zu shown=%zu\n",
-                        total, cap);
+                    mc2::fmt::print_err("[GPUPROPS_REG] event=registered_dump total={:d} shown={:d}\n", mc2::fmt::as_size(total), mc2::fmt::as_size(cap));
                     for (size_t k = 0; k < cap; ++k) {
                         const TG_TypeShape* rt = s_types[k].source;
                         const char* rnode = nullptr;
                         if (rt) rnode = const_cast<TG_TypeShape*>(rt)->getNodeId();
-                        std::fprintf(stderr,
-                            "[GPUPROPS_REG] entry typeID=%zu ptr=%p nodeId=%s vertexCount=%u\n",
-                            k, (const void*)rt,
-                            (rnode && rnode[0]) ? rnode : "<unnamed>",
-                            s_types[k].vertexCount);
+                        mc2::fmt::print_err("[GPUPROPS_REG] entry typeID={:d} ptr={:016X} nodeId={} vertexCount={:d}\n", mc2::fmt::as_size(k), mc2::fmt::as_ptr((const void*)rt), mc2::fmt::safe((rnode && rnode[0]) ? rnode : "<unnamed>"), mc2::fmt::as_u32(s_types[k].vertexCount));
                     }
                     std::fflush(stderr);
                 }
@@ -891,10 +872,7 @@ bool uploadAllBucketsIfNeeded() {
                 else if (hs)  ++sOnly;
                 else if (hd)  ++dOnly;
             }
-            std::fprintf(stderr,
-                "[BUCKET_ORDER v1] sample=first16_every60calls uploadCall=%llu types=%zu static_only=%u dynamic_only=%u mixed=%u "
-                "mixed_static_first=%u mixed_dynamic_first=%u\n",
-                (unsigned long long)s_botCall, s_bucketsByType.size(), sOnly, dOnly, mixed, mixSF, mixDF);
+            mc2::fmt::print_err("[BUCKET_ORDER v1] sample=first16_every60calls uploadCall={:d} types={:d} static_only={:d} dynamic_only={:d} mixed={:d} mixed_static_first={:d} mixed_dynamic_first={:d}\n", mc2::fmt::as_u64((unsigned long long)s_botCall), mc2::fmt::as_size(s_bucketsByType.size()), mc2::fmt::as_u32(sOnly), mc2::fmt::as_u32(dOnly), mc2::fmt::as_u32(mixed), mc2::fmt::as_u32(mixSF), mc2::fmt::as_u32(mixDF));
             std::fflush(stderr);
         }
     }
@@ -977,10 +955,7 @@ uint32_t buildLiveV6Arrays(
 
     // --- Lockstep validator (ALL checks before any glDraw) ---
     if (outPackets.size() != outMeta.size()) {
-        std::fprintf(stderr,
-            "[DRAW_PACKET_V6] frame=%u event=lockstep_violation"
-            " slot=- field=array_size expected=%zu got=%zu\n",
-            s_v6TotalFrameCount, outMeta.size(), outPackets.size());
+        mc2::fmt::print_err("[DRAW_PACKET_V6] frame={:d} event=lockstep_violation slot=- field=array_size expected={:d} got={:d}\n", mc2::fmt::as_u32(s_v6TotalFrameCount), mc2::fmt::as_size(outMeta.size()), mc2::fmt::as_size(outPackets.size()));
         ++lockstepViolations;
     }
 
@@ -1018,10 +993,7 @@ uint32_t buildLiveV6Arrays(
         V6_CHECK(instanceCount,  outMeta[i].instanceCount, outPackets[i].instanceCount)
 #undef V6_CHECK
         if (outMeta[i].baseVertex != p.baseVertex) {
-            std::fprintf(stderr,
-                "[DRAW_PACKET_V6] frame=%u event=lockstep_violation slot=%u"
-                " field=baseVertex expected=%d got=%d\n",
-                s_v6TotalFrameCount, i, p.baseVertex, outMeta[i].baseVertex);
+            mc2::fmt::print_err("[DRAW_PACKET_V6] frame={:d} event=lockstep_violation slot={:d} field=baseVertex expected={:d} got={:d}\n", mc2::fmt::as_u32(s_v6TotalFrameCount), mc2::fmt::as_u32(i), mc2::fmt::as_i32(p.baseVertex), mc2::fmt::as_i32(outMeta[i].baseVertex));
             ++lockstepViolations;
         }
     }

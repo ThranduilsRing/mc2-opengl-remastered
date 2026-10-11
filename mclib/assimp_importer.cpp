@@ -918,8 +918,7 @@ void LoadMechPackage(const char* glbPath, std::map<std::string, std::string>& ou
     std::string side = (dot != std::string::npos ? p.substr(0, dot) : p) + ".package.json";
     FILE* f = fopen(side.c_str(), "rb");
     if (!f) {
-        fprintf(stderr, "[MECH_IMPORT] no node manifest '%s' (firepoints -> legacy/origin)\n",
-                side.c_str());
+        mc2::fmt::print_err("[MECH_IMPORT] no node manifest '{}' (firepoints -> legacy/origin)\n", side.c_str());
         return;
     }
     std::string buf;
@@ -971,8 +970,7 @@ void LoadMechPackage(const char* glbPath, std::map<std::string, std::string>& ou
             }
         }
     }
-    fprintf(stderr, "[MECH_IMPORT] package '%s': %zu nodes, ao='%s' normal='%s'\n",
-            side.c_str(), out.size(), aoOut.c_str(), normalOut.c_str());
+    mc2::fmt::print_err("[MECH_IMPORT] package '{}': {:d} nodes, ao='{}' normal='{}'\n", side.c_str(), mc2::fmt::as_size(out.size()), aoOut.c_str(), normalOut.c_str());
 }
 
 // Keep a dedicated parse alive for the runtime re-bake: the import's own Importer
@@ -1170,7 +1168,7 @@ bool mc2mechanim::GetImportedNodeWorld(const void* actorKey, const void* typeKey
         if (mit == e.nodeManifest.end()) {
             static int s_warnName = 0;
             if (s_warnName++ < 8)
-                fprintf(stderr, "[MECH_IMPORT] node '%s' not in manifest (-> legacy)\n", mc2Name);
+                mc2::fmt::print_err("[MECH_IMPORT] node '{}' not in manifest (-> legacy)\n", mc2::fmt::safe(mc2Name));
             return false;
         }
         int idx = -1;
@@ -1179,8 +1177,7 @@ bool mc2mechanim::GetImportedNodeWorld(const void* actorKey, const void* typeKey
         if (idx < 0) {
             static int s_warnJoint = 0;
             if (s_warnJoint++ < 8)
-                fprintf(stderr, "[MECH_IMPORT] node '%s' joint '%s' absent (-> legacy)\n",
-                        mc2Name, mit->second.c_str());
+                mc2::fmt::print_err("[MECH_IMPORT] node '{}' joint '{}' absent (-> legacy)\n", mc2::fmt::safe(mc2Name), mit->second.c_str());
             return false;
         }
         ActorAnimState* s = nullptr;
