@@ -478,6 +478,11 @@ def plan_batches(files, sites, uses, includers, args, dirty, skips=None):
     return out
 
 
+def restrict_plan(plan, done, only=()):
+    """The planned files minus the done ledger; with `only` (--only), just those files: one named header per run, no ledger of everything else needed."""
+    return [p for p in plan if p[1] not in done and (not only or p[1] in only)]
+
+
 class FastProof(proof_ext.LayoutMixin, rth.Proof):
     """Proof whose bisect probes rebuild only the objects the first full probe found bad (a wide header makes every probe a rebuild of the whole tree);
     solve_fast() then verifies the kept set with a full build and re-bisects it if that finds more."""
@@ -558,7 +563,7 @@ def cmd_run(a):
     a.taint = load_taint(a.taint_file)
     batches = 0
     while True:
-        plan = [p for p in plan_batches(files, sites, uses, includers, a, dirty) if p[1] not in done]
+        plan = restrict_plan(plan_batches(files, sites, uses, includers, a, dirty), done, a.only)
         picked, objs = [], set()
         for n, rel, ss, o in plan:
             if picked and (len(objs | o) > a.max_objs):
@@ -674,6 +679,7 @@ def main(argv=None) -> int:
     r.add_argument("--ignore-digest-file", default=None, help="objects (names as in the tree) that must compile but whose digest is not compared: a TU where any new inline variable "
                    "makes MSVC drop unreferenced static const data (editor/MapGeneratorDialog.cpp, the stb_image tables), a semantic no-op the digest cannot tell from a change")
     r.add_argument("--taint-file", default=None, help="ledger of objects that differed for a harmless edit; headers they include are skipped (appended to after a revert)")
+    r.add_argument("--only", action="append", default=[], metavar="FILE", help="batch only this file (repeatable); every other candidate is left alone")
     r.add_argument("--no-alone-fallback", action="store_true", help="do not re-prove the headers a multi-header batch rejected one by one (default: each is re-run alone and kept if it passes alone)")
     r.add_argument("--skip-dirty-in", default="A:/Games/mc2-main", help="the other builder lane's worktree: its dirty files are never touched")
     r.add_argument("--commit", action="store_true")

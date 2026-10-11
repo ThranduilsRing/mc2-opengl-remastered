@@ -46,3 +46,10 @@ def test_planning_without_a_skip_list_is_unchanged():
     sites = [sites_for("code/one.h", "WIDGET_ONE")]
     plan = rd.plan_batches({}, sites, {"WIDGET_ONE": []}, {"code/one.h": {"t/ok.obj"}}, args, set())
     assert [(p[0], p[1]) for p in plan] == [(1, "code/one.h")]
+
+
+def test_only_restricts_the_plan_to_the_named_files():
+    plan = [(1, "a.h", [1], {"o"}), (2, "b.h", [2], {"o"}), (3, "c.h", [3], {"o"})]
+    assert [p[1] for p in rd.restrict_plan(plan, set())] == ["a.h", "b.h", "c.h"]
+    assert [p[1] for p in rd.restrict_plan(plan, {"b.h"}, ["b.h", "c.h"])] == ["c.h"]
+    assert rd.restrict_plan(plan, set(), ["zzz.h"]) == []
