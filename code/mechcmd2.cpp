@@ -212,11 +212,13 @@ void __stdcall InitializeGameEngine()
 	// time via cmake/GenerateBuildFingerprint.cmake; asserted by
 	// scripts/run_smoke.py to catch stale-exe deploys. Do not reformat: the
 	// harness parses this exact "[BUILD_FINGERPRINT v1]" line.
-	mc2::fmt::print_out("[BUILD_FINGERPRINT v1] sha={} dirty={:d} branch={} built={} src={}\n",
-		mc2::fmt::safe(MC2_BUILD_GIT_SHA), mc2::fmt::as_i32(MC2_BUILD_GIT_DIRTY), mc2::fmt::safe(MC2_BUILD_GIT_BRANCH),
-		mc2::fmt::safe(MC2_BUILD_TIME_ISO), mc2::fmt::safe(MC2_BUILD_SRC_WORKTREE));
+	// Stays a printf: scripts/exe_fingerprint.py reads this format string and the operands pushed for it out of the exe image (captures
+	// identify the exe that made them without launching it), so the literal's bytes and the call shape are a binary contract.
+	printf("[BUILD_FINGERPRINT v1] sha=%s dirty=%d branch=%s built=%s src=%s\n",
+		MC2_BUILD_GIT_SHA, MC2_BUILD_GIT_DIRTY, MC2_BUILD_GIT_BRANCH,
+		MC2_BUILD_TIME_ISO, MC2_BUILD_SRC_WORKTREE);
 #if MC2_BUILD_GIT_DIRTY
-	mc2::fmt::print_out("[BUILD_FINGERPRINT v1] WARNING: BUILT-FROM-DIRTY-TREE\n");
+	printf("[BUILD_FINGERPRINT v1] WARNING: BUILT-FROM-DIRTY-TREE\n");
 #endif
 	fflush(stdout);
     // sebi WTF? do we ned to do it for InitDW?

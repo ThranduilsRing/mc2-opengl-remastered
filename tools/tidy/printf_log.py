@@ -20,6 +20,8 @@ import cxx_calls
 import printf_buffers as pb
 
 FUNCS = {"printf", "fprintf"}
+#: Lines whose format string is read out of the compiled exe by a script, not out of a log: the literal's bytes and the call shape are a binary contract.
+BINARY_READ_TAGS = ("[BUILD_FINGERPRINT v1]",)
 PATH_AWARE = True      # rewrite(text, path): EXCLUDED_FILES need the path
 #: Crash handlers, assert/STOP paths and allocator internals must not allocate or recurse into themselves while printing.
 EXCLUDED_FILES = ("*crashbundle*", "*gameos_debugging*", "*/err.cpp", "*/err.h", "*heap*", "*errorhandler*", "*/memorymanager*", "*seh*")
@@ -92,6 +94,8 @@ def _convert_call(text: str, call, classes=("untagged",)):
     lit = cxx_calls.string_literal_parts(fmt, pb.MACROS)
     if lit is None:
         raise pb.Bail("format is not a string literal")
+    if any(t in lit for t in BINARY_READ_TAGS):
+        raise pb.Bail("line read out of the exe image (scripts/exe_fingerprint.py)")
     cls = tag_class(lit)
     if cls not in classes:
         raise pb.Bail("tagged line: " + cls)

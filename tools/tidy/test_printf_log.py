@@ -59,3 +59,9 @@ def test_tag_classes_follow_the_consumed_list_and_one_tag_can_be_selected(monkey
     assert [r["old"] for r in recs] == ["[PERF v1] a=%d" + NL]
     monkeypatch.setenv("MC2_PRINTF_LOG_TAG", "OTHER")
     assert pl.convert(src, "", classes=("consumed",))[1] == []
+
+
+def test_a_line_read_out_of_the_exe_image_is_never_converted():
+    src = '#include <a.h>\nvoid f(){ printf("[BUILD_FINGERPRINT v1] sha=%s' + NL + '", s); }\n'
+    out, recs, left = conv(src)
+    assert out == src and not recs and "exe image" in left[0][1]
