@@ -1,39 +1,39 @@
 <!-- doc-status: current | reviewed:2026-10-11 -->
 # Lane 1 state (builder on A:/Games/mc2-main, branch claude/nifty-mendeleev). Hand-over file for the next agent; keep current at every report.
 
-HEAD: `git log -1`. Board 166/166, tier1 5/5 after the B6 loop. Ratchet: LG01 693, LG02 691, LG12a 593 (from 1295), LG12b 625 (from 1497). Nothing uncommitted. Never pushed.
+HEAD: `git log -1`. Ratchet at efa0a7732: LG12a 409 (from 593 at the start of this session; +2 = the BUILD_FINGERPRINT printf banner, a binary contract), LG12b 624, LG03 2397, LG13 1758. Nothing uncommitted except this file and the step 4 plan. Never pushed. Session cap: stop by about 13:00 on 2026-10-11.
 
-## Done (newest first)
-- Step 3 LG12a: B4 untagged, B5 tags no parser mentions, B6 parsed tags one run each (ASSET_SCALE, TEXLOAD, PIPELINE_BIND, MOVER, RENDER_SNAPSHOT, VK_PRESENT, INSTR, GPUPROPS, SOAK, SMOKE, TIMING, PERF).
-- Step 3 LG12b B0-B3c; frustum-plane repair 47a9623ed; PCH 395a37af0; header phase; typedef-aggregates / null-tokens / printf rewriters; lock, kill_build_tree, host lease tools.
+## Done this session (newest first)
+- BUILD_FINGERPRINT banner restored to printf (capture_provenance went red: exe_fingerprint.py reads the literal from the exe image; the rewriter now refuses it). `lane_merge` verify builds in `build-merge/` + `build-merge-tests/` (MC2_NINJA_TREE, MC2_UNIT_BUILD_DIR).
+- Step 3.5 (a)-(e): `tools/sim_determinism.py` + row `sim_determinism` (SIMID chain in report.json); `MC2_SMOKE_FREEZE_ANIM` (capture_ab sets it); `tools/saveload_roundtrip.py` + row; `<cmath>` first in the 50 overload TUs; `lane_merge` builds and doctests (exit 7); `cursor_guard.py` deleted for `smoke_lib/win_input.py`.
+- Step 3 review fixes F1-F8, apply_edit (`tools/dev/apply_edit.py`), logging.h retired (59 calls, `SHADER_LOG_ERROR`, logparse pair), `print` returns printf's value, `debug_out`, 40 SPEW sites to `MC2_LOG(cat, Debug)`, tidy batches 15-18 (value-used, tagged, parsed tags), unsigned `%.Nx` rule.
 
-## What remains, exactly (ledger: `.claude/cleanup/step3-lg12b-ledger.md`; plan: `cxx23-step3-logging-plan.md`)
-LG12a 593: (1) 88 calls whose value is used; (2) SPEW ~180, OutputDebugString ~19, puts/fputs: other entry points (facade P3); (3) 16 headers with no #include for mc2fmt.h; (4) 11 `%.Nd` in gos_render.cpp, 4 `%t`, 3 `%*d`, 1 `%S`, 4 runtime formats (gameosmain_frame.cpp); (5) crash/assert/allocator files excluded on purpose (gos_crashbundle, gameos_debugging, memorymanager/heap, err); (6) lane-2 files: terrain_geometry.cpp (parsed tags FASTPATH_DROP, QUADSETUP_SKIP), projectz_trace.cpp, terrtxm2_internal.h.
-LG12b 625: (1) 53+10 in lane-2 files (mechlopedia, logisticsdialog, pilotreviewarea, mpparameterscreen, mpstats, mainmenu, tacordr, ...); (2) ~37 runtime-supplied formats (stay on snprintf/vsnprintf); (3) 27 ABL-debugger `char* dest` buffers (abldbug.cpp, abldbug_print.cpp); (4) 5 in warrior_target.cpp (needs `printWeaponsStatus(char*, size_t)` in warrior.h, a lane-2 file; only caller mover_diag.cpp has `char ts[50]`); (5) 8 headers without an include; (6) 4 `_snprintf_s` + 1 `_snprintf` with the result used (MC2Strings.cpp, gos_crashbundle.cpp); (7) 2 `%.Nd`, 1 `%*d`, 1 `%p` with modifiers.
+## FINDINGS the next owner of each area must know (both have a spawned task chip)
+1. mc2_10 is NOT run-to-run deterministic: `py -3 tools/sim_determinism.py run mc2_10 --duration 30`. First divergence at sim frame about 1085 (t 36 s), mover 710 gets `target=84159` in one run and stays `-1` in the other; not animation (FREEZE_ANIM on), not jobs (MC2_FRAME_JOBS=0). mc2_03, mc2_16 (with `MC2_FIXTURE_ORDER_LIVENESS=1`), mc2_24 are identical.
+2. Save/load is lossy: `py -3 tools/saveload_roundtrip.py run`. After a quickload moving units lose gesture (walk becomes stand) and path step in frame 0, and the digests drift apart after about 60 frames (11 movers differ in position by frame 300). Quicksave fixture: `MC2_BOOT_QUICKSAVE_AT/LOAD_AT` are RENDER frames; mc2_03 never fires them (intro), use mc2_16 or mc2_01.
+3. `<cmath>` in the 50 TUs: graded and visual digests unchanged on 1755 frames of mc2_03, strict digest differs from frame 1396 (float bits only). `sim_determinism --baseline` compares the visible chain; strict is a note.
+
+4. Tier2 (24 missions, 120 s each, exe cc4aaf6a9): 17 PASS. mc2_11/12/13/16/22/24 fail asset_load_fail (the 0.4 install lacks data/tgl/jaegermech.ase and similar: data, not code). mc2_15 fails crash_silent EVERY time (log just ends after frame 1200+, no crash bundle; bisect needed). Also: quickloading an old save crashed in GameObjectManager::Load (objmgr_io.cpp:1143; crash bundle copied to the scratchpad `l1_crash_stale_save`).
+Chips spawned for 1, 2 and 4 (determinism, save/load fidelity, mc2_15 + old-save crash).
 
 ## Next steps, in order
-1. NEXT COMMIT: the `GameOS/gameos/utils/logging.h` + `scripts/smoke_lib/logparse.py:36` pair, one commit with both sides. logmsg prefixes `file(line): ERROR` and logparse.py:36 matches `shader_builder\.cpp\(\d+\)\s*:\s*ERROR` as a shader-failure bucket; migrate the 56 `log_*` calls in 6 files to the facade and change producer and pattern together, proof = logparse tests + log_identity + board.
-2. After lane 2 merges its step 2 batches: rerun the rewriters on the lane-2 files (`printf-buffers`; `printf-log`; `MC2_PRINTF_LOG_TAG=FASTPATH_DROP` then `QUADSETUP_SKIP` with `--rewrite printf-log-parsed`, dir mclib).
-3. Hand work from the ledger: the lists above (value-used calls, ABL debugger capacities, headers, `%.Nd`).
-4. Facade P3: SPEW shim, OutputDebugString sink. Header tidy remainder (LG01/LG02: heavy headers) stays. Tier1 every sixth batch.
+1. Tier3 (9 mod missions) is BLOCKED: the 0.4 install has no mods (TangoMaster, DarkRain, MCO-ClanEagle dirs missing; 7 env_mission_not_found, 2 mission_load_fail). Install the mod set (tools/mod_install, `project-mod-compat-targets`) into a smoke install, then `py -3 scripts/run_smoke.py --tier tier3 --deploy <name> --continue` before step 4 B3.
+2. Step 4 plan awaits the Opus design review (`cxx23-step4-ownership-plan.md`, section 10 = meta-review E state). B0 needs finding 1 and 2 closed.
+3. Lane-2 files after its next merge: `MC2_PRINTF_LOG_TAG=FASTPATH_DROP` and `QUADSETUP_SKIP` through `--rewrite printf-log-parsed` on mclib; mclib SPEW (98) and `SPEWALWAYS` (3) wait for mc2log to be a library the standalone tools link (plan section 9.4).
+4. Remaining LG12a: puts/fputs, mclib SPEW, `%t`/`%*d`/runtime formats; LG12b ledger items in `step3-lg12b-ledger.md`.
 
 ## The printf pipeline (tools/tidy/tidy_batch.py)
 `py -3 tools/tidy/tidy_batch.py --dir <d> [--dir ...] --count 50 --batches N --first-number K --rewrite printf-buffers|printf-log|printf-log-tagged|printf-log-parsed --corpus --log-identity --done <ledger file>`
-- `--proof auto|objhash|compile` (auto = compile for the printf rewriters), `--corpus` records the converted format pairs and regenerates the doctest, `--log-identity` builds+deploys HEAD and compares mc2_03/mc2_24 logs before and after by line shape. MC2_PRINTF_LOG_TAG=NAME limits printf-log-parsed to one tag. It refuses a dirty tracked worktree and fails a batch whose ratchet tighten is refused.
-- A failed batch leaves its edits in the worktree: `git checkout -- .`, fix the cause, and drop that batch's files from the `--done` ledger (the driver has no --resume: `head -n -<picked> ledger > tmp && mv tmp ledger`).
-- The failure detail shows only the last lines of the build output: rerun `py -3 tools/build_all_targets.py --keep-going -j6` (or `cmake --build build64-tests ...`) to see the real compiler error.
+- `MC2_PRINTF_LOG_TAG=A,B` limits printf-log-parsed to those tags. `--log-identity` builds+deploys HEAD and compares mc2_03/mc2_24 logs by line SHAPE (numbers masked; the corpus proves numbers). A failed batch leaves edits: `git checkout -- .`, drop its files from the ledger.
+- Census/consumers: `tools/log_tag_census.py` (`consumed_tags()` reads the syntax tree; `plain_tags` for VEG_SUMMARY etc.). The MC2_LOG family is in the census as stream `log`.
 
 ## Rules
-- Commit by explicit pathspec; message ends `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`. Never push; never touch lane 2 (A:/Games/mc2-lane2, claude/lane2-s3) or the golden mc2-win64-v0.4c.
-- Launches background-only: `scripts/run_smoke.py ... --deploy 0.4`; build `scripts/ninja_build.py`, deploy `scripts/deploy_payload.py --target game --ninja` (without --ninja it deploys the stale build64 exe). The exe must be built from a COMMITTED tree (fingerprint).
-- One tidy tool per tree (build-alltargets/.tidy.lock); never kill cl/ninja by image name (tools/kill_build_tree.py); lane-2 files are excluded automatically (--exclude-lane). Comments say WHAT and WHY, never HOW. No emojis.
+- Commit by explicit pathspec; message ends `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`. The Bash hook blocks any command line containing `git commit` followed LATER by a token like `--duration` or `-nan` (it reads it as `-a`): keep `git commit` in its own call and keep option-like words out of messages (use `-F file`).
+- Commit BEFORE build+deploy (fingerprint). Launches only `scripts/run_smoke.py ... --deploy 0.4` or the tools above; run_smoke caps `--duration` at 30 (tier2 uses 120). Never kill cl/ninja by name (`tools/kill_build_tree.py`). Never touch lane 2 or `code/multplyr*`.
+- Never contort code for a ratchet: rewrite the baseline with the reason.
+- The source-text board checkers read the COMMITTED tree: after a code commit run the full board; `scripts/extract_gl_shader_variants.py` regenerates `gl_shader_variants.json` when line numbers move.
 
 ## Tool quirks
-- Heredocs and `python -` mangle backslashes (`\\` becomes `\`, `\n` in a string becomes a real newline): any script with a backslash goes through the Write tool to a file, then `python file`. Same for `sed` expressions with backslashes.
-- A bare `bash` outside the Bash tool can resolve to WSL bash; use the Bash tool (Git Bash) or C:/Program Files/Git/bin/bash.exe. Windows paths work in python; `/tmp` is not the same place for bash and python.
-- Source-text board checkers read the COMMITTED tree and have no --worktree mode (`cxx17_ratchet` does: pass `--worktree`): check-beauty-sidecars, extract_gl_shader_variants / check-gl-shader-variants, check-gate-echo-reads, log_tag_census parse C++ text, so a printf conversion can break them after the commit; expect that for any new spelling and run the board before trusting a batch. Regenerate the variants JSON with `py -3 scripts/extract_gl_shader_variants.py` (only source line numbers move).
-- `.gitignore` has `*.cmake`: a new cmake file (cmake/pch/pch_skip.cmake) needs `git add -f`, and a plain pathspec `git add` of a list that contains one aborts the whole add.
-- `run_in_background` plus `&` inside the command detaches a process that outlives the call; use run_in_background alone and block on the output or lock file. Bash waits cap at 10 min: loop `for i in $(seq 1 55); do ...; sleep 10; done`.
-- Ratchet TOTAL row columns misalign under awk: read `counts` per dir from tools/cxx17_ratchet/baseline.json. objhash cannot prove printf conversions (proof = compile + corpus doctest + census + log_identity). tools/build_contract_harnesses.py hides compile errors.
-- Converters rebuild calls with `Call.rebuild` (original line layout survives; a collapsed call once put two std::max on a line and tripped LG10). New rewriter checklist: module in tools/tidy, entry in run_tidy_safe.REWRITERS (+ COMPILE_ONLY), test file, board checkers taught the new spelling. The corpus .inc is compiled with /bigobj; its titles carry no backslash or quote.
-- Locations: step3-lg12b-ledger.md, cxx23-step3-logging-plan.md, tier1-flake-log.md, legacy-subsystem-audit.md (section D: 50 TUs where math overload visibility changes arithmetic), this file.
+- Heredocs and `python -` mangle backslashes (`\\n` arrives as `\n`, a real newline): write scripts and JSON with the Write tool, or use `tools/dev/apply_edit.py` with a JSON file written by Write. `/tmp` differs between bash and python; use the scratchpad.
+- `git add` of a path ignored by `.gitignore` (`*.cmake`) needs `-f`. A pathspec commit cannot name a staged deletion; commit with an exact index instead.
+- Adding a gate: edit `Gates/gate_table.cpp` (doc <= 160 chars), `py -3 tools/gate_gen.py --sync-verified`.
