@@ -144,11 +144,11 @@ class BreakPointManager {
 
 //---------------------------------------------------------------------------
 
-#define	WATCH_STORE_OFF		1
-#define	WATCH_STORE_ON		2
-#define	WATCH_FETCH_OFF		4
-#define	WATCH_FETCH_ON		8
-#define	WATCH_BREAK			16
+inline constexpr int WATCH_STORE_OFF = 1;
+inline constexpr int WATCH_STORE_ON = 2;
+inline constexpr int WATCH_FETCH_OFF = 4;
+inline constexpr int WATCH_FETCH_ON = 8;
+inline constexpr int WATCH_BREAK = 16;
 
 class Debugger {
 

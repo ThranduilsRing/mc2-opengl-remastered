@@ -39,7 +39,7 @@
 #define NO_ERR						0
 #endif
 
-#define MAX_BD_ANIMATIONS			10
+inline constexpr int MAX_BD_ANIMATIONS = 10;
 //***********************************************************************
 //
 // BldgAppearanceType
