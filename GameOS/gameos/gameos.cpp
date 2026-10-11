@@ -600,8 +600,9 @@ void __stdcall gos_LoadDataFromRegistry( const char* keyName, void* pData, DWORD
         }
     }
 
-    char* reg_file = new char[strlen(mc2_conf_dir) + 1 + strlen(g_user_reg_file) + 1];
-    sprintf(reg_file, "%s/%s", mc2_conf_dir, g_user_reg_file);
+    const size_t regFileBytes = strlen(mc2_conf_dir) + 1 + strlen(g_user_reg_file) + 1;
+    char* reg_file = new char[regFileBytes];
+    mc2::fmt::to_buf_n(reg_file, regFileBytes, "{}/{}", mc2_conf_dir, g_user_reg_file);
 
     // check if reg file exists
     if(-1 == stat(reg_file, &st)) {
