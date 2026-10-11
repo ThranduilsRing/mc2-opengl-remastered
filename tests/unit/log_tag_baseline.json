@@ -10257,7 +10257,11 @@
    "stream": "stdout",
    "keys": [
     "side",
-    "samples"
+    "samples",
+    "gameplay",
+    "visual",
+    "material",
+    "water"
    ],
    "count": 1
   },
@@ -12697,6 +12701,7 @@
   "APPEAR_AUDIT",
   "ASSET_LOAD",
   "ASSET_SCALE",
+  "BUILD_FINGERPRINT",
   "CONFIG",
   "CRASHBUNDLE",
   "DEPLOY_COHERENCE",
@@ -12720,6 +12725,7 @@
   "SMOKE",
   "SOAK",
   "SPLIT_PATH_PARITY",
+  "TERRAIN_RUNTIME",
   "TEXLOAD",
   "TGL_POOL",
   "TIMING",

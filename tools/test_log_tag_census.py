@@ -59,3 +59,13 @@ def test_a_converted_log_call_yields_the_same_record_as_the_printf_it_replaced()
     assert len(recs) == 3 and "mc2::fmt::print_err(" in new and "mc2::fmt::print_out(" in new and "mc2::fmt::print(fp," in new
     assert census(src) == census(new) == {("PERF", 1, "stderr", ("avg_fps", "samples")): 1, ("HEARTBEAT", -1, "stdout", ("frames",)): 1,
                                           ("X", 1, "file", ("k",)): 1}
+
+
+def test_braces_in_a_printf_format_are_literal_so_their_keys_survive_the_conversion():
+    import printf_log as pl
+    bs = chr(92)
+    src = ('#include <cstdio>\nvoid f(){ printf("[TERRAIN_RUNTIME v1] side=%ld samples=%d "\n  "mismatch{gameplay=%d visual=%d}' + bs + 'n", a, b, c, d); }\n')
+    old = census(src)
+    new = pl.convert(src, "x.cpp", classes=("unconsumed",))[0]
+    assert "{{gameplay=" in new
+    assert old == census(new) == {("TERRAIN_RUNTIME", 1, "stdout", ("side", "samples", "gameplay", "visual")): 1}

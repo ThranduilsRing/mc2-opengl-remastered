@@ -50,24 +50,31 @@ TAG = re.compile(r"^\s*\[([A-Z][A-Z0-9_]*)(?: v(\d+))?\]")
 KEY = re.compile(r"(?<![\w\x01])([A-Za-z_][\w.]*)=")
 # A printf conversion and a std::format replacement field are the same thing for the census: a placeholder. Without this a key whose NAME is a
 # placeholder (`%s=%u` becoming `{}={:d}`) would look like a different key list after a conversion.
-_PLACEHOLDER = re.compile(r"%%|\{\{|\}\}|%[-+ #0-9.*]*(?:hh|h|ll|l|z|j|t|L|I64|I32)?[A-Za-z]|\{[^{}]*\}")
+_PRINTF_FIELD = re.compile(r"%%|%[-+ #0-9.*]*(?:hh|h|ll|l|z|j|t|L|I64|I32)?[A-Za-z]")
+_STD_FIELD = re.compile(r"\{\{|\}\}|\{[^{}]*\}")
 _LITERAL = {"%%": "%", "{{": "{", "}}": "}"}
+#: callees whose format is a std::format string; every other format in the census is a printf one (a `{` in it is just a brace)
+STD_FORMAT_CALLEES = {"to_buf", "to_buf_n", "print_err", "print_out", "print"}
 _NAME_RE = "|".join(sorted(list(PRINTF_LIKE) + list(EVENT_MACROS) + sorted(LOG_MACROS) + ["SPEW"], key=len, reverse=True))
 _EVENT_TMPL = re.compile(r'event\s*<\s*"([A-Z][A-Z0-9_]*)"\s*,\s*(-?\d+)\s*>\s*\(\s*(?:::)?(?:mc2::log::)?Stream::(Err|Out|Dbg)\s*,\s*((?:"(?:\\.|[^"\\\n])*"\s*)+)')
 
 
-def normalise(literal: str) -> str:
-    """The format literal with every conversion/replacement field replaced by one placeholder character and escaped braces/percents unescaped."""
-    return _PLACEHOLDER.sub(lambda m: _LITERAL.get(m.group(0), "\x01"), literal)
+def normalise(literal: str, std: bool = False) -> str:
+    """The format literal with every conversion/replacement field replaced by one placeholder character and escaped braces/percents unescaped.
+
+    `std` selects the dialect: a std::format string has {} fields and {{ }} escapes (a % is a plain character); a printf string has %-conversions
+    (and a { is a plain character, e.g. `mismatch{gameplay=%d}`)."""
+    return (_STD_FIELD if std else _PRINTF_FIELD).sub(lambda m: _LITERAL.get(m.group(0), "\x01") if not std else
+                                                      _LITERAL.get(m.group(0), "\x01"), literal)
 
 
-def keys_of(literal: str):
+def keys_of(literal: str, std: bool = False):
     """Key names in order of appearance in a format literal (`key=` tokens), placeholders ignored."""
-    return KEY.findall(normalise(literal))
+    return KEY.findall(normalise(literal, std))
 
 
-def record(tag, ver, stream, literal):
-    return (tag, -1 if ver is None else int(ver), stream, tuple(keys_of(literal)))
+def record(tag, ver, stream, literal, std: bool = False):
+    return (tag, -1 if ver is None else int(ver), stream, tuple(keys_of(literal, std)))
 
 
 def stream_of(callee: str, call, text: str):
@@ -85,7 +92,7 @@ def census_of_text(text: str):
         return out
     for m in _EVENT_TMPL.finditer(text):
         lit = cxx_calls.string_literal_parts(m.group(4)) or ""
-        out[record(m.group(1), m.group(2), {"Err": "stderr", "Out": "stdout", "Dbg": "debugger"}[m.group(3)], lit)] += 1
+        out[record(m.group(1), m.group(2), {"Err": "stderr", "Out": "stdout", "Dbg": "debugger"}[m.group(3)], lit, True)] += 1
     names = set(PRINTF_LIKE) | set(EVENT_MACROS) | LOG_MACROS | {"SPEW"}
     for call in cxx_calls.find_calls(text, names, ("std::", "mc2::fmt::")):
         name = call.name
@@ -96,7 +103,7 @@ def census_of_text(text: str):
             ver = call.arg_text(text, 2).strip()
             lit = cxx_calls.string_literal_parts(call.arg_text(text, 3)) or ""
             if tag:
-                out[(tag, -1 if ver.startswith("-") or not ver.lstrip("-").isdigit() else int(ver), EVENT_MACROS[name], tuple(keys_of(lit)))] += 1
+                out[(tag, -1 if ver.startswith("-") or not ver.lstrip("-").isdigit() else int(ver), EVENT_MACROS[name], tuple(keys_of(lit, True)))] += 1
             continue
         if name in PRINTF_LIKE:
             idx = PRINTF_LIKE[name][1]
@@ -114,7 +121,7 @@ def census_of_text(text: str):
             continue
         t = TAG.match(lit)
         if t:
-            out[record(t.group(1), t.group(2), stream, lit[t.end():])] += 1
+            out[record(t.group(1), t.group(2), stream, lit[t.end():], name in STD_FORMAT_CALLEES)] += 1
     return out
 
 
