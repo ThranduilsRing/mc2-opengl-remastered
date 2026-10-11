@@ -32,6 +32,8 @@ ENUM_HEAD = re.compile(r"\benum\b(?!\s+(?:class|struct)\b)\s+([A-Za-z_]\w*)\s*(:
 TYPEDEF_ENUM = re.compile(r"\btypedef\s+enum\b")
 INT_MAX = 0x7FFFFFFF
 ARITH_BEFORE = re.compile(r"[-+*/%|&^~<>\[\(]\s*$")
+QUALIFIER = re.compile(r"(?:[A-Za-z_]\w*\s*::\s*)+$")
+SKIP_FILE = os.path.join(HERE, "enum_skip.txt")
 ARITH_AFTER = re.compile(r"^\s*(?:[-+*/%|&^<>\]]|\+\+|--|==\s*\d|!=\s*\d)")
 
 
@@ -125,6 +127,7 @@ def analyse(files: dict, c_side_headers=frozenset(), other_idents=frozenset()):
             for path, ln, left, right in uses[n]:
                 if path == e.path and e.line <= ln <= e.close_line:
                     continue                                            # inside its own body
+                left = QUALIFIER.sub("", left)                              # `Cls::NAME`: the operator sits left of the qualifier
                 if ARITH_BEFORE.search(left) and not re.search(r"[A-Za-z_]\s*\(\s*$|,\s*$|\{\s*$|\(\s*$|=\s*$|return\s*$|case\s*$", left):
                     r.append("arithmetic-or-index-use")
                 elif ARITH_AFTER.match(right):
@@ -162,10 +165,19 @@ def load_world():
 def cmd_census(a):
     paths, files, enums, uses = load_world()
     c = collections.Counter(e.reasons[0] if e.reasons else "CANDIDATE" for e in enums)
-    print("named unscoped enums with a body: %d  candidates: %d" % (len(enums), c["CANDIDATE"]))
+    skip = load_skip(SKIP_FILE)
+    print("named unscoped enums with a body: %d  candidates: %d  (of which %d on the skip ledger)" % (len(enums), c["CANDIDATE"], sum(1 for e in enums if not e.reasons and e.name in skip)))
     for r, n in c.most_common():
         print("  %4d  %s" % (n, r))
     return 0
+
+
+def load_skip(path):
+    """Enum names a compile probe or a design decision keeps unscoped (first token of each non-comment line of tools/tidy/enum_skip.txt)."""
+    if not path or not os.path.exists(path):
+        return set()
+    with open(path, encoding="utf-8") as fh:
+        return {l.split()[0] for l in fh if l.strip() and not l.lstrip().startswith("#")}
 
 
 def cmd_run(a):
@@ -180,6 +192,7 @@ def cmd_run(a):
     a.s2t = {v: k for k, v in rth.target_to_source(tree_abs).items()}
     a.taint = rd.load_taint(a.taint_file)
     done = {l.strip() for l in open(a.done, encoding="utf-8")} if a.done and os.path.exists(a.done) else set()
+    skip = load_skip(a.skip_enums)
     batches = 0
     while True:
         paths, files, enums, uses = load_world()
@@ -187,7 +200,7 @@ def cmd_run(a):
         by_file = collections.defaultdict(list)
         tus = rd.overload_sensitive_tus()
         for e in enums:
-            if not e.reasons and not rts.is_excluded(e.path) and e.path not in dirty and e.path not in done and not rd.never_touch(e.path, tus):
+            if not e.reasons and e.name not in skip and not rts.is_excluded(e.path) and e.path not in dirty and e.path not in done and not rd.never_touch(e.path, tus):
                 by_file[e.path].append(e)
         plan = []
         for rel, es in by_file.items():
@@ -265,6 +278,7 @@ def main(argv=None) -> int:
     r.add_argument("--done")
     r.add_argument("--relaxed-proof", metavar="REASON", default=None, help="canonical_obj digests instead of plain objhash; the reason goes into the commit message")
     r.add_argument("--taint-file")
+    r.add_argument("--skip-enums", default=SKIP_FILE, help="ledger of enum names that stay unscoped (default tools/tidy/enum_skip.txt)")
     r.add_argument("--skip-dirty-in", default="A:/Games/mc2-main")
     r.add_argument("--commit", action="store_true")
     r.add_argument("--loop", action="store_true")

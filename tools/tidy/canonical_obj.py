@@ -16,29 +16,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, ".."))
 import objhash  # noqa: E402
 
-NUL4 = b"\0\0\0\0"
-
-
-def symbol_table(raw):
-    """-> {symbol table index: (name, section number, storage class, value)}; aux records occupy an index, as in the COFF relocation entries."""
-    if raw[:4] == b"\x00\x00\xff\xff" and len(raw) >= 56 and struct.unpack_from("<H", raw, 4)[0] >= 2:
-        _n, symptr, nsym = struct.unpack_from("<III", raw, 44)
-        symsz, fmt = 20, "<8sIiHBB"
-    else:
-        _m, _n, _ts, symptr, nsym, _o, _c = struct.unpack_from("<HHIIIHH", raw, 0)
-        symsz, fmt = 18, "<8sIhHBB"
-    strtab = symptr + nsym * symsz
-    out, i = {}, 0
-    while i < nsym:
-        nm_raw, val, secno, _typ, cls, naux = struct.unpack_from(fmt, raw, symptr + i * symsz)
-        if nm_raw[:4] == NUL4:
-            off = struct.unpack_from("<I", nm_raw, 4)[0]
-            name = raw[strtab + off:raw.index(b"\0", strtab + off)].decode("latin-1")
-        else:
-            name = nm_raw.split(b"\0", 1)[0].decode("latin-1")
-        out[i] = (name, secno, cls, val)
-        i += 1 + naux
-    return out
+symbol_table = objhash.symbol_table
 
 
 BLIND = (".data", ".bss")

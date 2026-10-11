@@ -16,6 +16,10 @@ a warning.
   py -3 tools/objhash.py hash BUILD_DIR src.cpp ... > before.json
   ... edit, rebuild ...
   py -3 tools/objhash.py compare before.json
+
+--per-symbol (opt-in, never the default) is a strengthening for objects whose static data is laid out in another order: when a .data / .bss section differs
+but the symbol set, every non-data section and every static's bytes and relocation targets are identical by NAME, the object is reported LAYOUT-ONLY instead of
+changed. `hash --per-symbol` records what that needs; `diff A.obj B.obj` classifies two objects (IDENTICAL, LAYOUT-ONLY, ORDER-ONLY, DIFF).
 """
 from __future__ import annotations
 
@@ -131,8 +135,125 @@ def parse_coff(b):
         return None
 
 
-def obj_digest(path):
-    """Behavioural digest of an object file; see the module docstring for what is excluded."""
+_NUL4 = b"\0\0\0\0"
+
+
+def symbol_table(raw):
+    """-> {symbol table index: (name, section number, storage class, value)}; aux records occupy an index, as in the COFF relocation entries."""
+    if raw[:4] == b"\x00\x00\xff\xff" and len(raw) >= 56 and struct.unpack_from("<H", raw, 4)[0] >= 2:
+        _n, symptr, nsym = struct.unpack_from("<III", raw, 44)
+        symsz, fmt = 20, "<8sIiHBB"
+    else:
+        _m, _n, _ts, symptr, nsym, _o, _c = struct.unpack_from("<HHIIIHH", raw, 0)
+        symsz, fmt = 18, "<8sIhHBB"
+    strtab = symptr + nsym * symsz
+    out, i = {}, 0
+    while i < nsym:
+        nm_raw, val, secno, _typ, cls, naux = struct.unpack_from(fmt, raw, symptr + i * symsz)
+        if nm_raw[:4] == _NUL4:
+            off = struct.unpack_from("<I", nm_raw, 4)[0]
+            name = raw[strtab + off:raw.index(b"\0", strtab + off)].decode("latin-1")
+        else:
+            name = nm_raw.split(b"\0", 1)[0].decode("latin-1")
+        out[i] = (name, secno, cls, val)
+        i += 1 + naux
+    return out
+
+
+#: Sections whose symbols are laid out by the compiler in an order that is not behaviour (static data of one translation unit).
+LAYOUT_SECTIONS = (".data", ".bss")
+
+
+def _reloc_labels(rel, table, sec_label):
+    """Relocations as (offset, target, type) where the target is the symbol NAME (a section symbol: the content label of the section it names), not its table index."""
+    out = []
+    for addr, idx, typ in struct.iter_unpack("<IIH", rel[:len(rel) - len(rel) % 10]):
+        name, secno, cls, _v = table.get(idx, ("#%d" % idx, 0, 0, 0))
+        label = ("SECSYM:" + sec_label.get(secno, name)) if cls == 3 and name.startswith(".") else _mask_symbol(name)
+        out.append((addr, label, typ))
+    return out
+
+
+def persym_digest(raw):
+    """Name-keyed digest of a COFF object, or None when it does not parse.
+
+    WHAT: {symset: hash of the (name, type, class, section) set without offsets, sections: {section name: hash of the multiset of that name's
+    sections with relocations read by target name}, data: {".data": {symbol: hash(bytes, relocations by name)}, ".bss": {symbol: ""}}}.
+    WHY: the compiler may lay the file-scope statics of one translation unit out in another order after an unrelated edit; every .data / .bss section
+    hash and every symbol-table index then moves although no symbol, no byte of any symbol and no relocation target changed. Per-symbol bytes stop at the
+    next symbol's offset and drop trailing zeros (alignment padding). A .bss symbol has no bytes in an object file and its size is not recorded:
+    .bss is compared by symbol set only."""
+    parsed = parse_coff(raw)
+    if not parsed:
+        return None
+    _fmt, secs, syms = parsed
+    table = symbol_table(raw)
+    sec_label = {k + 1: (nm if nm in LAYOUT_SECTIONS else _h(nm, str(chars), str(rawsz), data))
+                 for k, (nm, chars, rawsz, data, _rel) in enumerate(secs)}
+    by_sec = {}
+    for name, secno, cls, val in table.values():
+        if secno > 0 and cls in (2, 3) and secs[secno - 1][0] in LAYOUT_SECTIONS and not name.startswith("."):
+            by_sec.setdefault(secno, []).append((val, name))
+    sections, data_syms = {}, {nm: {} for nm in LAYOUT_SECTIONS}
+    for k, (nm, chars, rawsz, data, rel) in enumerate(secs):
+        if nm.startswith(_NONCODE_SECTIONS):
+            continue
+        labels = _reloc_labels(rel, table, sec_label)
+        if nm in LAYOUT_SECTIONS:
+            members = sorted(by_sec.get(k + 1, []))
+            for i, (v, name) in enumerate(members):
+                if nm == ".bss":
+                    data_syms[nm][name] = ""
+                    continue
+                end = next((w for w, _n in members[i + 1:] if w > v), len(data))
+                mine = sorted((a - v, lab, t) for a, lab, t in labels if v <= a < end)
+                data_syms[nm][name] = _h(name, data[v:end].rstrip(bytes(1)), repr(mine))
+            continue
+        if nm.startswith(".rdata"):
+            data = _mask_fingerprint(data)
+        sections.setdefault(nm, []).append(_h(nm, str(chars), str(rawsz), data, repr(sorted(labels))))
+    return {"symset": _h(*sorted(_mask_symbol("%s|%d|%d|%s" % (s[0], s[2], s[3], s[4]))
+                                  for s in syms if not s[4].startswith(_DBG_PREFIX))),
+            "sections": {nm: _h(*sorted(hs)) for nm, hs in sections.items()},
+            "data": data_syms}
+
+
+def persym_diff(a, b):
+    """Reasons two persym_digest results differ; an empty list means the symbol set, every non-layout section and every static's bytes are identical."""
+    out = []
+    if a["symset"] != b["symset"]:
+        out.append("symbol set")
+    for nm in sorted(set(a["sections"]) | set(b["sections"])):
+        if a["sections"].get(nm) != b["sections"].get(nm):
+            out.append("section %s" % nm)
+    for nm in LAYOUT_SECTIONS:
+        sa, sb = a["data"].get(nm, {}), b["data"].get(nm, {})
+        for name in sorted(set(sa) | set(sb)):
+            if sa.get(name) != sb.get(name):
+                out.append("%s symbol %s (%s)" % (nm, name, "only before" if name not in sb else "only after" if name not in sa else "bytes"))
+    return out
+
+
+def classify(plain_a, plain_b, ps_a, ps_b):
+    """-> (IDENTICAL | LAYOUT-ONLY | ORDER-ONLY | DIFF, reasons).
+    IDENTICAL: the plain digests agree. LAYOUT-ONLY: a .data / .bss section differs but the symbol set and every symbol's bytes agree (name-keyed).
+    ORDER-ONLY: only symbol-table / relocation index order differs. Neither of the last two is identical; DIFF carries the first reasons."""
+    if plain_a["code_sha256"] == plain_b["code_sha256"]:
+        return "IDENTICAL", []
+    if not ps_a or not ps_b:
+        return "DIFF", ["no per-symbol record"]
+    reasons = persym_diff(ps_a, ps_b)
+    if reasons:
+        return "DIFF", reasons
+    differing = set(k for k in set(plain_a["sections"]) | set(plain_b["sections"]) if plain_a["sections"].get(k) != plain_b["sections"].get(k))
+    layout = sorted(k for k in differing if k.split(":", 1)[-1] in LAYOUT_SECTIONS)
+    if layout:
+        return "LAYOUT-ONLY", layout
+    return "ORDER-ONLY", sorted(differing)[:6]
+
+
+def obj_digest(path, per_symbol=False):
+    """Behavioural digest of an object file; see the module docstring for what is excluded. `per_symbol` adds the name-keyed record used by the LAYOUT-ONLY fallback."""
     raw = read_bytes(path)
     if raw is None:
         return None
@@ -141,6 +262,8 @@ def obj_digest(path):
     if not parsed:
         info.update(format="raw", code_sha256=info["raw_sha256"], sections={})
         return info
+    if per_symbol:
+        info["persym"] = persym_digest(raw)
     fmt, secs, syms = parsed
     sec_hashes = {}
     for k, (nm, chars, rawsz, data, rel) in enumerate(secs):
@@ -181,8 +304,8 @@ def stamp(path):
     return os.stat(path).st_mtime_ns
 
 
-def hash_files(repo, build_dir, rels, tool="objhash", warn_fn=None):
-    """-> (document, problems[str]). `warn_fn(repo, rel)` returns a warning string or None."""
+def hash_files(repo, build_dir, rels, tool="objhash", warn_fn=None, per_symbol=False):
+    """-> (document, problems[str]). `warn_fn(repo, rel)` returns a warning string or None. `per_symbol` records the name-keyed digest `compare --per-symbol` needs."""
     doc = {"tool": tool, "version": 1,
            "created": datetime.datetime.now().isoformat(timespec="seconds"),
            "repo": repo.replace("\\", "/"), "build_dir": os.path.abspath(build_dir).replace("\\", "/"),
@@ -212,14 +335,15 @@ def hash_files(repo, build_dir, rels, tool="objhash", warn_fn=None):
                 problems.append("%s: %s is older than the source - not a base build" % (rel, o))
                 ent["status"] = "error"
                 ent["reason"] = "object older than source"
-            d = obj_digest(o)
+            d = obj_digest(o, per_symbol=True) if per_symbol else obj_digest(o)
             d.update(path=o.replace("\\", "/"), mtime_ns=stamp(o))
             ent["objs"].append(d)
     return doc, problems
 
 
-def compare_files(before):
-    """-> (report lines, number of failures) for a document produced by hash_files."""
+def compare_files(before, per_symbol=False):
+    """-> (report lines, number of failures) for a document produced by hash_files.
+    With `per_symbol` an object whose plain digest differs is classified by name (see `classify`): LAYOUT-ONLY is not a failure, it is reported as its own line."""
     repo = before.get("repo") or ROOT
     out, bad = [], 0
     for rel, ent in sorted(before["files"].items()):
@@ -252,6 +376,18 @@ def compare_files(before):
                 continue
             diff = sorted(k for k in set(o["sections"]) | set(now["sections"])
                           if o["sections"].get(k) != now["sections"].get(k))
+            if per_symbol:
+                verdict, why = classify(o, now, o.get("persym"), persym_digest(read_bytes(p)))
+                if verdict == "LAYOUT-ONLY":
+                    out.append("LAYOUT-ONLY  %s  %s layout reordered; symbol set and every symbol's bytes identical (%s)" % (rel, ", ".join(why), os.path.basename(p)))
+                    continue
+                if verdict == "ORDER-ONLY":
+                    out.append("FAIL  %s  symbol/relocation index order only (per-symbol identical, no .data/.bss reorder): %s" % (rel, ", ".join(why)))
+                    bad += 1
+                    continue
+                out.append("FAIL  %s  per-symbol: %s" % (rel, "; ".join(why[:6]) + (" ..." if len(why) > 6 else "")))
+                bad += 1
+                continue
             detail = "sections differ: %s%s" % (", ".join(diff[:6]), " ..." if len(diff) > 6 else "")
             if warn:
                 out.append("WARN  %s  %s; %s" % (rel, detail, warn))
@@ -268,22 +404,37 @@ def main(argv=None):
     h.add_argument("build_dir")
     h.add_argument("paths", nargs="+")
     h.add_argument("--repo", default=ROOT)
+    h.add_argument("--per-symbol", action="store_true", help="also record the name-keyed digest that compare --per-symbol needs")
     c = sub.add_parser("compare", help="compare rebuilt objects with a saved digest")
     c.add_argument("before")
+    c.add_argument("--per-symbol", action="store_true",
+                   help="report LAYOUT-ONLY (not a failure) when a .data/.bss section differs but the symbol set and every symbol's bytes are identical")
+    d = sub.add_parser("diff", help="classify two object files: IDENTICAL, LAYOUT-ONLY, ORDER-ONLY or DIFF (exit 0 for the first two)")
+    d.add_argument("a")
+    d.add_argument("b")
     args = ap.parse_args(argv)
     if args.cmd == "hash":
         repo = os.path.abspath(args.repo)
         rels = [os.path.relpath(os.path.abspath(p), repo).replace("\\", "/") for p in args.paths]
-        doc, problems = hash_files(repo, args.build_dir, rels)
+        doc, problems = hash_files(repo, args.build_dir, rels, per_symbol=args.per_symbol)
         json.dump(doc, sys.stdout, indent=1, sort_keys=True)
         sys.stdout.write("\n")
         for pr in problems:
             print("objhash: " + pr, file=sys.stderr)
         return 2 if problems else 0
+    if args.cmd == "diff":
+        da, db = obj_digest(args.a, per_symbol=True), obj_digest(args.b, per_symbol=True)
+        if da is None or db is None:
+            print("objhash: unreadable object", file=sys.stderr)
+            return 2
+        verdict, why = classify(da, db, da.get("persym"), db.get("persym"))
+        print("%s %s" % (verdict, "; ".join(why[:8])))
+        return 0 if verdict in ("IDENTICAL", "LAYOUT-ONLY") else 1
     with open(args.before, "r", encoding="utf-8") as fh:
-        lines, bad = compare_files(json.load(fh))
+        lines, bad = compare_files(json.load(fh), per_symbol=args.per_symbol)
     print("\n".join(lines))
-    print("objhash: object compare, %d problem(s)" % bad)
+    layout = sum(1 for ln in lines if ln.startswith("LAYOUT-ONLY"))
+    print("objhash: object compare, %d problem(s)%s" % (bad, ", %d layout-only" % layout if layout else ""))
     return 1 if bad else 0
 
 

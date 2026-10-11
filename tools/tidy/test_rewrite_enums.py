@@ -39,3 +39,19 @@ def test_refusals_typedef_twice_shared_enumerators_and_large_values():
     e = run(files)
     assert "T1" not in e and "name-defined-twice" in e["Dup"].reasons and "enumerator-name-shared" in e["Sh1"].reasons
     assert "needs-unscoped-underlying-type" in e["Big"].reasons and e["BigFixed"].reasons == []
+
+
+def test_a_qualified_enumerator_in_arithmetic_or_an_int_compare_is_refused():
+    files = {"a.h": "struct D { enum P { P_A, P_COUNT }; };\nenum Q { Q_A, Q_B };\n",
+             "a.cpp": "void f(int i, int n) { for (int k = 0; k < D::P_COUNT; ++k) {} if (n >= D::P_COUNT) {} }\n"
+                      "void g(Q q) { switch (q) { case Q_A: break; } if (q == ::Q_B) {} }\n"}
+    e = run(files)
+    assert "arithmetic-or-index-use" in e["P"].reasons and e["Q"].reasons == []
+
+
+def test_the_skip_ledger_lists_names_and_ignores_comments(tmp_path):
+    f = tmp_path / "skip.txt"
+    f.write_text("# header\nFoo  reason one\n\nBar\tx y\n", encoding="utf-8")
+    assert re_.load_skip(str(f)) == {"Foo", "Bar"} and re_.load_skip(str(tmp_path / "none.txt")) == set()
+    shipped = [l for l in open(re_.SKIP_FILE, encoding="utf-8") if l.strip() and not l.lstrip().startswith("#")]
+    assert shipped and all(len(l.split()) >= 2 for l in shipped)                  # every ledger line carries its reason

@@ -1,0 +1,25 @@
+# Enums that stay unscoped (LG14), one per line: NAME  reason. Evidence: a compile probe of every census candidate (all 59 rewritten at once, game + editor + tools built, 2026-10-11)
+# and the design note .claude/cleanup/cxx23-step2-enums-note.md. rewrite_enums.py never offers a name listed here.
+gos_AlphaMode            int API: every value goes through gos_SetRenderState(state, int)
+gos_FilterMode           int API: gos_SetRenderState(state, int)
+gos_TextureAddressMode   int API: gos_SetRenderState(state, int)
+gos_ShadeAddressMode     int API: gos_SetRenderState(state, int)
+gos_CullMode             int API: gos_SetRenderState(state, int)
+gos_MutitextureModes     int API: gos_SetRenderState(state, int)
+gos_CompareMode          stored into uint32_t render-state words
+gos_StencilFunctions     stored into uint32_t render-state words
+DeathCause               int API: GroundVehicle::disable(unsigned long) and the mech / vehicle callers
+CgPhase                  int API: CgScope(int) constructor
+LOGISTICS_COMPONENT_LOCATION  serialized: FitIniFile::writeIdLong
+MARKER_TYPES             assigned to an int member of the objective record
+RadioNoise               stored in a uint32_t radio message field
+ComponentFormOrdinal     int formOrdinal field and int case labels
+SamplerType              array index and cast from GL sampler constants
+SpecialtySkillType       indexes the skill arrays
+SORT_ORDERS              int case labels
+EPreset                  int comparisons and indexing through the qualified name
+CameraClass              returned as long
+LegacyGestureId          int initializer lists (AnimFallbackChain)
+GpuActorCategory         mirrored by shaders/gpu_cull.comp
+GpuActorFlags            mirrored by shaders/gpu_cull.comp, OR-ed into a uint32_t record
+TerrainMaterialProfile   stored in an int, constants mirrored in terrain_common.hglsl
