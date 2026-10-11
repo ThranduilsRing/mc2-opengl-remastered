@@ -139,8 +139,8 @@
    "LG20": 0
   },
   "code": {
-   "LG01": 321,
-   "LG02": 226,
+   "LG01": 299,
+   "LG02": 224,
    "LG03": 957,
    "LG04": 21,
    "LG05": 204,
@@ -1837,8 +1837,6 @@
    "LG13": 1
   },
   "code/collsn.h": {
-   "LG01": 6,
-   "LG02": 1,
    "LG13": 1
   },
   "code/comndr.cpp": {
@@ -1999,9 +1997,6 @@
    "LG13": 1,
    "LG14": 2
   },
-  "code/dtacordr.h": {
-   "LG02": 1
-  },
   "code/dteam.h": {
    "LG02": 3,
    "LG13": 3,
@@ -2094,9 +2089,6 @@
    "LG13": 1,
    "LG17": 2,
    "LG18": 2
-  },
-  "code/gamecam.h": {
-   "LG01": 8
   },
   "code/gameobj.cpp": {
    "LG01": 18,
@@ -3215,7 +3207,6 @@
    "LG12a": 9
   },
   "code/simplecamera.h": {
-   "LG01": 1,
    "LG06": 5
   },
   "code/simplecomponentlistbox.cpp": {
@@ -3340,7 +3331,6 @@
    "LG12b": 14
   },
   "code/warrior.h": {
-   "LG01": 7,
    "LG02": 34,
    "LG04": 1,
    "LG05": 3,
@@ -5694,7 +5684,7 @@
    "LG20": 2
   }
  },
- "head": "d9ad8f21c",
+ "head": "608d71478",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
