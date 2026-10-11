@@ -3,6 +3,7 @@
 #include "bdactor_internal.h"
 #include "../RenderCore/axis_convert.h"
 #include "mc2fmt.h"
+#include "anim_freeze.h"
 
 // T1.15 SpotLight_ illumination diagnostic — registration probe (bldg class).
 // Env-gated per Debug Instrumentation Rule. First-hit is always-on (one stderr
@@ -566,7 +567,11 @@ long BldgAppearance::update (bool animate)
 		{
 			if (!setFirstFrame)		//DO NOT ANIMATE ON FIRST FRAME!  Wait a bit!
 			{
-				if (isReversed)
+				if (mc2::animationsFrozen())
+				{
+					// MC2_SMOKE_FREEZE_ANIM: the frame stays where it is
+				}
+				else if (isReversed)
 					currentFrame -= frameInc;
 				else
 					currentFrame += frameInc;

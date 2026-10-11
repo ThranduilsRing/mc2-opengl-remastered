@@ -3,6 +3,7 @@
 #include "mech3d_internal.h"
 #include "../RenderCore/axis_convert.h"
 #include "mc2fmt.h"
+#include "anim_freeze.h"
 
 long Mech3DAppearance::update (bool animate) 
 {
@@ -299,7 +300,7 @@ long Mech3DAppearance::update (bool animate)
 					// LOS-triggered call would silently tick the gait -- precisely
 					// the run-to-run pose drift this feature exists to remove.
 					const bool _captureFroze = (mc2CaptureGaitFreezeActive() != 0) ||
-					                           (mc2FreezeMoversActive() != 0);
+					                           (mc2FreezeMoversActive() != 0) || mc2::animationsFrozen();
 					if (!_alreadyAdvanced && !_captureFroze)
 					{
 						if (inReverse)

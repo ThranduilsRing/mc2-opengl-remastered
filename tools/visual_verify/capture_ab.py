@@ -63,9 +63,11 @@ def compare(root: str, before: str, after: str, bookmarks: list[str]) -> list[st
     return out
 
 
-def run_capture(install: str, out_dir: str, bookmarks: str, vulkan: bool) -> int:
+def run_capture(install: str, out_dir: str, bookmarks: str, vulkan: bool, freeze_anim: bool = True) -> int:
     cmd = [sys.executable, os.path.join(HERE, "capture.py"), "--install", install, "--bookmarks", bookmarks,
            "--out", out_dir, "--clean"]
+    if freeze_anim:
+        cmd += ["--env", "MC2_SMOKE_FREEZE_ANIM=1"]      # no animation-phase noise in the A/B (needs an exe built with the gate, on BOTH sets)
     if vulkan:
         cmd += ["--env", "MC2_RENDER_BACKEND=vulkan"]
     env = dict(os.environ, MC2_CURSOR_NO_PARK="1")
@@ -81,6 +83,7 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("--tag", required=True)
     c.add_argument("--root", default=DEFAULT_ROOT)
     c.add_argument("--bookmarks", default=DEFAULT_BOOKMARKS)
+    c.add_argument("--keep-anim", action="store_true", help="do NOT set MC2_SMOKE_FREEZE_ANIM=1 (animations then carry phase noise between sets)")
     d = sub.add_parser("compare")
     d.add_argument("--before", required=True)
     d.add_argument("--after", required=True)
@@ -93,7 +96,7 @@ def main(argv: list[str] | None = None) -> int:
     os.makedirs(args.root, exist_ok=True)
     rc = 0
     for name, vk in ((f"{args.tag}1-gl", False), (f"{args.tag}2-gl", False), (f"{args.tag}-vk", True)):
-        rc = run_capture(args.install, os.path.join(args.root, name), args.bookmarks, vk) or rc
+        rc = run_capture(args.install, os.path.join(args.root, name), args.bookmarks, vk, not args.keep_anim) or rc
     return rc
 
 

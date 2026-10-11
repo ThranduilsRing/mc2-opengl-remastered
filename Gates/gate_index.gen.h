@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 1139;
+inline constexpr std::size_t kGateCount = 1140;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_3DVIEW_DIAG", Kind::Bool, Rule::Presence, {}},
@@ -707,6 +707,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_SMART_LOAD_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_SMOKE_ACTIVE", Kind::Bool, Rule::Lead0, {}},
     {"MC2_SMOKE_FIXED_TIMESTEP", Kind::Bool, Rule::Presence, {}},
+    {"MC2_SMOKE_FREEZE_ANIM", Kind::Bool, Rule::Lead0, {}},
     {"MC2_SMOKE_MODE", Kind::Bool, Rule::Presence, {}},
     {"MC2_SMOKE_PERF_SAMPLES", Kind::Int, Rule::Prefix, {}},
     {"MC2_SMOKE_SEED", Kind::String, Rule::Std, {}},
