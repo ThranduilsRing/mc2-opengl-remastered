@@ -50,7 +50,8 @@ def arg_class_of_s(expr: str) -> str:
     e = expr.strip()
     if cxx_calls.string_literal_parts(e) is not None:
         return "literal"
-    if re.search(r"\.c_str\(\)$", e) or re.search(r"(?:\.|->)Data\(\)$", e) or re.fullmatch(r"std::string\(.*\)\.c_str\(\)", e):
+    # EString::Data() is NOT here: the shared empty buffer returns a null pointer, which printf printed as (null) and std::format would dereference.
+    if re.search(r"\.c_str\(\)$", e) or re.fullmatch(r"std::string\(.*\)\.c_str\(\)", e):
         return "nonnull-accessor"
     return "maybe-null"
 

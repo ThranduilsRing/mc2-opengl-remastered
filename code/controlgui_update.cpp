@@ -108,7 +108,7 @@ void ControlGui::update( bool bPaused, bool bLOS )
 					if ( !pObjective->IsActive() || pObjective->IsHiddenTrigger() )
 						continue;
 					pObjective->Status( OS_SUCCESSFUL );
-					mc2::fmt::print_out("[BOOT_OBJ_COMPLETE] objective '{}' -> OS_SUCCESSFUL (frame {:d})\n", pObjective->LocalizedDescription().Data(), mc2::fmt::as_u32((unsigned)g_mc2FrameCounter));
+					mc2::fmt::print_out("[BOOT_OBJ_COMPLETE] objective '{}' -> OS_SUCCESSFUL (frame {:d})\n", mc2::fmt::safe(pObjective->LocalizedDescription().Data()), mc2::fmt::as_u32((unsigned)g_mc2FrameCounter));
 					fflush(stdout);
 					break;
 				}

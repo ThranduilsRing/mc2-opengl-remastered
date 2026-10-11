@@ -9051,18 +9051,18 @@ TEST_CASE("printf corpus 0519: [BOOT_OBJ] startObjectives(1) (frame %u)n")
 	}
 }
 
-TEST_CASE("printf corpus 0520: [BOOT_OBJ_COMPLETE] objective '%s' -> OS_SUCCESSFUL (frame %u)n [nonnull-accessor]")
+TEST_CASE("printf corpus 0520: [BOOT_OBJ_COMPLETE] objective '%s' -> OS_SUCCESSFUL (frame %u)n [maybe-null]")
 {
 	for (int row = 0; row < 12; ++row) {
-		const char* v0 = kStrNonNull[(row + 0) % std::size(kStrNonNull)];
+		const char* v0 = kStrNull[(row + 0) % std::size(kStrNull)];
 		unsigned v1 = static_cast<unsigned>(kEdgeU32[(row + 1) % std::size(kEdgeU32)]);
 		char a[160], b[160], c[8], d[8];
 		const int na = std::snprintf(a, sizeof a, "[BOOT_OBJ_COMPLETE] objective '%s' -> OS_SUCCESSFUL (frame %u)\n", v0, v1);
-		const int nb = mc2::fmt::to_buf(b, "[BOOT_OBJ_COMPLETE] objective '{}' -> OS_SUCCESSFUL (frame {:d})\n", v0, mc2::fmt::as_u32(v1));
+		const int nb = mc2::fmt::to_buf(b, "[BOOT_OBJ_COMPLETE] objective '{}' -> OS_SUCCESSFUL (frame {:d})\n", mc2::fmt::safe(v0), mc2::fmt::as_u32(v1));
 		CHECK(na == nb);
 		CHECK(std::strcmp(a, b) == 0);
 		const int nc = std::snprintf(c, sizeof c, "[BOOT_OBJ_COMPLETE] objective '%s' -> OS_SUCCESSFUL (frame %u)\n", v0, v1);
-		const int nd = mc2::fmt::to_buf(d, "[BOOT_OBJ_COMPLETE] objective '{}' -> OS_SUCCESSFUL (frame {:d})\n", v0, mc2::fmt::as_u32(v1));
+		const int nd = mc2::fmt::to_buf(d, "[BOOT_OBJ_COMPLETE] objective '{}' -> OS_SUCCESSFUL (frame {:d})\n", mc2::fmt::safe(v0), mc2::fmt::as_u32(v1));
 		CHECK(nc == nd);
 		CHECK(std::strcmp(c, d) == 0);
 	}

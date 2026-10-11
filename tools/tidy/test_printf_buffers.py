@@ -128,3 +128,10 @@ def test_a_multi_line_call_keeps_its_argument_lines_so_two_max_calls_do_not_land
     out = conv(src)[0]
     assert "std::max(1, x)" in out and out.count("std::max") == 2
     assert not any(ln.count("std::max") >= 2 for ln in out.splitlines()), out
+
+
+def test_estring_data_is_maybe_null_and_gets_safe():
+    """EString::Data() returns null for the shared empty buffer; printf printed (null), std::format would dereference it."""
+    out, recs, _ = conv('#include <a.h>\nvoid f(){ snprintf(b, 8, "%s", s.Data()); snprintf(b, 8, "%s", p->Description().Data()); }\n')
+    assert out.count("mc2::fmt::safe(s.Data())") == 1 and out.count("mc2::fmt::safe(p->Description().Data())") == 1
+    assert [s["cls"] for r in recs for s in r["specs"]] == ["maybe-null", "maybe-null"]
