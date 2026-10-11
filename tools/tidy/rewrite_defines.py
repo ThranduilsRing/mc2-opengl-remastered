@@ -441,18 +441,23 @@ def cmd_run(a):
         paths, files, sites, uses = load_world()
 
 
-def commit(kept, n, nsites):
+def commit_paths(kept, subject, baseline_subject):
+    """Commit `kept` by pathspec, then run the cxx17 ratchet --check --tighten and commit the baseline when it moved."""
+    trailer = "\n\nCo-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
     subprocess.run(["git", "-C", ROOT, "add", "--"] + kept, check=True, **console_child.child_kwargs(redirected=True))
-    msg = "tidy(LG13): %d #define literal constant(s) -> inline constexpr in %d file(s) (objhash identical over every including object)\n\nCo-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>" % (nsites, len(kept))
-    subprocess.run(["git", "-C", ROOT, "commit", "-q", "-m", msg, "--"] + kept, check=True, **console_child.child_kwargs(redirected=True))
+    subprocess.run(["git", "-C", ROOT, "commit", "-q", "-m", subject + trailer, "--"] + kept, check=True, **console_child.child_kwargs(redirected=True))
     r = subprocess.run([sys.executable, os.path.join(ROOT, "tools", "cxx17_ratchet", "cxx17_ratchet.py"), "--check", "--tighten"], cwd=ROOT,
                        capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
     print((r.stdout.strip().splitlines() or [""])[-1])
     base = "tools/cxx17_ratchet/baseline.json"
     if rts.git("status", "--porcelain", "--", base).strip():
         subprocess.run(["git", "-C", ROOT, "add", "--", base], check=True, **console_child.child_kwargs(redirected=True))
-        subprocess.run(["git", "-C", ROOT, "commit", "-q", "-m", "cxx17 ratchet baseline tightened after LG13 batch\n\nCo-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>", "--", base],
-                       check=True, **console_child.child_kwargs(redirected=True))
+        subprocess.run(["git", "-C", ROOT, "commit", "-q", "-m", baseline_subject + trailer, "--", base], check=True, **console_child.child_kwargs(redirected=True))
+
+
+def commit(kept, n, nsites):
+    commit_paths(kept, "tidy(LG13): %d #define literal constant(s) -> inline constexpr in %d file(s) (objhash identical over every including object)" % (nsites, len(kept)),
+                 "cxx17 ratchet baseline tightened after LG13 batch")
 
 
 def main(argv=None) -> int:
