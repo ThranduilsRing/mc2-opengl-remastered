@@ -8,7 +8,9 @@
 
 #include <cstdint>
 #include <cstdio>
+#include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 using namespace mc2_saved_objects;
@@ -50,7 +52,7 @@ SaveImage makeSave(const std::vector<int>& slotClasses, uint32_t prefix = 7) {
 	return img;
 }
 
-const char* check(const SaveImage& img) {
+std::optional<std::string_view> check(const SaveImage& img) {
 	return checkRun(img.counts, sizes(), img.headerIndex, static_cast<uint32_t>(img.packets.size()),
 	                [&img](uint32_t i) { return img.packets[i]; });
 }
@@ -60,7 +62,7 @@ const char* check(const SaveImage& img) {
 TEST_CASE("saved objects: a sound run passes") {
 	const SaveImage img = makeSave({ kTerrain, kTerrain, kBuilding, kTurret, kMech, kMech, kVehicle, kBolt });
 	CHECK(plausibleHeader(img.counts));
-	CHECK(check(img) == nullptr);
+	CHECK_FALSE(check(img).has_value());
 }
 
 TEST_CASE("saved objects: an older build's record size is refused, not read") {
@@ -69,51 +71,51 @@ TEST_CASE("saved objects: an older build's record size is refused, not read") {
 	for (uint32_t& p : img.packets)
 		if (p == 103)
 			p = 99;
-	const char* why = check(img);
-	REQUIRE(why != nullptr);
-	CHECK(std::string(why) == "unknown_record_size");
+	const auto why = check(img);
+	REQUIRE(why.has_value());
+	CHECK((*why == "unknown_record_size"));
 }
 
 TEST_CASE("saved objects: a class missing from the run is a count mismatch") {
 	SaveImage img = makeSave({ kBuilding, kTurret, kMech });
 	--img.counts.byClass[kTurret];     // the header says a mech where the run holds a turret
 	++img.counts.byClass[kMech];
-	const char* why = check(img);
-	REQUIRE(why != nullptr);
-	CHECK(std::string(why) == "object_count_mismatch");
+	const auto why = check(img);
+	REQUIRE(why.has_value());
+	CHECK((*why == "object_count_mismatch"));
 }
 
 TEST_CASE("saved objects: a base record in a slot is refused") {
 	SaveImage img = makeSave({ kBuilding, kMech });
 	img.packets[img.headerIndex + 2] = sizes().pureMover;
-	const char* why = check(img);
-	REQUIRE(why != nullptr);
-	CHECK(std::string(why) == "base_record_saved");
+	const auto why = check(img);
+	REQUIRE(why.has_value());
+	CHECK((*why == "base_record_saved"));
 }
 
 TEST_CASE("saved objects: a file cut short is refused") {
 	SaveImage img = makeSave({ kBuilding, kTurret, kMech });
 	img.packets.resize(img.packets.size() - 3);
-	const char* why = check(img);
-	REQUIRE(why != nullptr);
-	CHECK(std::string(why) == "truncated");
+	const auto why = check(img);
+	REQUIRE(why.has_value());
+	CHECK((*why == "truncated"));
 }
 
 TEST_CASE("saved objects: the watch table must have one id per slot") {
 	SaveImage img = makeSave({ kBuilding, kMech });
 	img.packets[img.packets.size() - 2] = 13;
-	const char* why = check(img);
-	REQUIRE(why != nullptr);
-	CHECK(std::string(why) == "bad_watch_table");
+	const auto why = check(img);
+	REQUIRE(why.has_value());
+	CHECK((*why == "bad_watch_table"));
 }
 
 TEST_CASE("saved objects: classes the loader has no branch for are refused") {
 	SaveImage img = makeSave({ kBuilding, kMech });
 	img.counts.lights = 1;
-	CHECK(std::string(check(img)) == "unsupported_object_class");
+	CHECK((check(img) == "unsupported_object_class"));
 	img.counts.lights = 0;
 	img.counts.elementals = 2;
-	CHECK(std::string(check(img)) == "unsupported_object_class");
+	CHECK((check(img) == "unsupported_object_class"));
 }
 
 TEST_CASE("saved objects: implausible headers are not candidates") {
@@ -132,9 +134,11 @@ TEST_CASE("saved objects: the first matching class wins, base records are named"
 	RecordSizes r = sizes();
 	CHECK(classOfSize(r, 101) == kTerrain);
 	CHECK(classOfSize(r, 109) == kBolt);
-	CHECK(classOfSize(r, 50) == -2);
-	CHECK(classOfSize(r, 51) == -2);
-	CHECK(classOfSize(r, 7) == -1);
+	CHECK(isBaseRecord(r, 50));
+	CHECK(isBaseRecord(r, 51));
+	CHECK_FALSE(isBaseRecord(r, 101));
+	CHECK_FALSE(classOfSize(r, 50).has_value());
+	CHECK_FALSE(classOfSize(r, 7).has_value());
 	r.byClass[kGate] = r.byClass[kTurret];      // two classes of one size: the loader's order decides
 	CHECK(classOfSize(r, 103) == kTurret);
 }
@@ -172,14 +176,14 @@ TEST_CASE("saved objects: sizes read back from a real PacketFile drive the check
 		auto sizeAt = [&in](uint32_t i) { in.seekPacket(static_cast<int>(i)); return static_cast<uint32_t>(in.getPacketSize()); };
 		const uint32_t numPackets = static_cast<uint32_t>(in.getNumPackets());
 		CHECK(sizeAt(2) == 0u);
-		CHECK(checkRun(h, r, 1, numPackets, sizeAt) == nullptr);
+		CHECK_FALSE(checkRun(h, r, 1, numPackets, sizeAt).has_value());
 
 		HeaderCounts wrong = h;
 		--wrong.byClass[kTurret];
 		++wrong.byClass[kMech];
-		const char* why = checkRun(wrong, r, 1, numPackets, sizeAt);
-		REQUIRE(why != nullptr);
-		CHECK(std::string(why) == "object_count_mismatch");
+		const auto why = checkRun(wrong, r, 1, numPackets, sizeAt);
+		REQUIRE(why.has_value());
+		CHECK((*why == "object_count_mismatch"));
 		in.close();
 	}
 	remove(path.c_str());

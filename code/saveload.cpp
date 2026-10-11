@@ -516,8 +516,8 @@ bool Mission::openSaveFile(MissionLoadFrame& f) {
 
 	// A save written by another build can hold object records this build cannot read. Refuse it here, while
 	// the running mission is still intact.
-	if (const char* why = GameObjectManager::checkSavedObjects(&loadFile)) {
-		mc2::fmt::print_err("[SAVE v1] event=reject reason={} file={}\n", mc2::fmt::safe(why), mc2::fmt::safe(loadFileName));
+	if (const auto why = GameObjectManager::checkSavedObjects(&loadFile)) {
+		mc2::fmt::print_err("[SAVE v1] event=reject reason={} file={}\n", *why, mc2::fmt::safe(loadFileName));
 		char msg[2048];
 		cLoadString(IDS_QUICKSAVE_VERSION_WRONG,msg,2047);
 		PAUSE((msg));

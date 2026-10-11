@@ -14,14 +14,22 @@
 #define SAVED_OBJECTS_CHECK_H
 
 #include <cstdint>
+#include <optional>
+#include <string_view>
 
 namespace mc2_saved_objects {
 
 // Order matters: the loader tests the sizes in this order and the first match wins.
-enum ObjectClass : int {
-	kTerrain, kBuilding, kTurret, kGate, kArtillery, kCarnage, kMech, kVehicle, kBolt,
-	kClassCount
-};
+constexpr int kTerrain = 0;
+constexpr int kBuilding = 1;
+constexpr int kTurret = 2;
+constexpr int kGate = 3;
+constexpr int kArtillery = 4;
+constexpr int kCarnage = 5;
+constexpr int kMech = 6;
+constexpr int kVehicle = 7;
+constexpr int kBolt = 8;
+constexpr int kClassCount = 9;
 
 // sizeof() of each packed object record of the running build, plus the two base records that must
 // never be saved on their own.
@@ -62,26 +70,28 @@ inline bool plausibleHeader(const HeaderCounts& h)
 	return total > 0 && total < kMaxSlots;
 }
 
-// The class of a packet of `size` bytes, -1 for an unrecognised size, -2 for a base record.
-inline int classOfSize(const RecordSizes& r, uint32_t size)
+// A packet of this size is a base record, which must never be saved on its own.
+inline bool isBaseRecord(const RecordSizes& r, uint32_t size)
 {
-	if (size == r.pureObject || size == r.pureMover)
-		return -2;
+	return size == r.pureObject || size == r.pureMover;
+}
+
+// The class of a packet of `size` bytes, if one owns that size.
+inline std::optional<int> classOfSize(const RecordSizes& r, uint32_t size)
+{
 	for (int c = 0; c < kClassCount; ++c)
 		if (size == r.byClass[c])
 			return c;
-	return -1;
+	return std::nullopt;
 }
 
 // Check the run that follows the header at packet `headerIndex`: slots 0..maxObjects, then the watch
-// table of maxObjects+1 ids. `sizeAt(i)` is the byte size of packet i. -> nullptr when the run is
-// sound, else a short reason tag. `badPacket` receives the offending packet index (or -1).
+// table of maxObjects+1 ids. `sizeAt(i)` is the byte size of packet i. -> nothing when the run is
+// sound, else a short reason tag.
 template <class SizeAt>
-inline const char* checkRun(const HeaderCounts& h, const RecordSizes& r, uint32_t headerIndex,
-                            uint32_t numPackets, SizeAt sizeAt, int64_t* badPacket = nullptr)
+inline std::optional<std::string_view> checkRun(const HeaderCounts& h, const RecordSizes& r, uint32_t headerIndex,
+                                               uint32_t numPackets, SizeAt sizeAt)
 {
-	if (badPacket)
-		*badPacket = -1;
 	if (h.elementals != 0 || h.lights != 0)
 		return "unsupported_object_class";
 	const int64_t slots = slotCount(h) + 1;
@@ -94,18 +104,12 @@ inline const char* checkRun(const HeaderCounts& h, const RecordSizes& r, uint32_
 		const uint32_t size = sizeAt(static_cast<uint32_t>(first + i));
 		if (size == 0)
 			continue;
-		const int c = classOfSize(r, size);
-		if (c == -2) {
-			if (badPacket)
-				*badPacket = first + i;
+		if (isBaseRecord(r, size))
 			return "base_record_saved";
-		}
-		if (c < 0) {
-			if (badPacket)
-				*badPacket = first + i;
+		const std::optional<int> c = classOfSize(r, size);
+		if (!c)
 			return "unknown_record_size";
-		}
-		++seen[c];
+		++seen[*c];
 	}
 	for (int c = 0; c < kClassCount; ++c)
 		if (seen[c] != h.byClass[c])
@@ -113,7 +117,7 @@ inline const char* checkRun(const HeaderCounts& h, const RecordSizes& r, uint32_
 
 	if (sizeAt(static_cast<uint32_t>(first + slots)) != static_cast<uint32_t>(sizeof(int32_t) * slots))
 		return "bad_watch_table";
-	return nullptr;
+	return std::nullopt;
 }
 
 } // namespace mc2_saved_objects

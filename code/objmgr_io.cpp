@@ -646,7 +646,7 @@ ObjectTypePtr GameObjectManager::savedObjectType (long typeNum, long slot)
 }
 
 //-------------------------------------------------------------------
-const char* GameObjectManager::checkSavedObjects (PacketFilePtr file, long* headerPacket)
+std::optional<std::string_view> GameObjectManager::checkSavedObjects (PacketFilePtr file, long* headerPacket)
 {
 	using namespace mc2_saved_objects;
 	RecordSizes sizes = {};
@@ -665,18 +665,18 @@ const char* GameObjectManager::checkSavedObjects (PacketFilePtr file, long* head
 	const long resume = file->getCurrentPacket();
 	const long numPackets = file->getNumPackets();
 	auto sizeAt = [file](uint32_t packet) -> uint32_t {
-		file->seekPacket((int)packet);
-		return (uint32_t)file->getPacketSize();
+		file->seekPacket(static_cast<int>(packet));
+		return static_cast<uint32_t>(file->getPacketSize());
 	};
 
 	// The header's position depends on how many packets the earlier sections wrote, so look for it by size
 	// and by the run it describes.
-	const char* verdict = "no_object_manager_header";
+	std::optional<std::string_view> verdict = "no_object_manager_header";
 	for (long p = 0; p < numPackets; ++p) {
-		if (sizeAt((uint32_t)p) != sizeof(ObjectManagerData))
+		if (sizeAt(static_cast<uint32_t>(p)) != sizeof(ObjectManagerData))
 			continue;
 		ObjectManagerData data;
-		file->readPacket((int)p, (MemoryPtr)&data);
+		file->readPacket(static_cast<int>(p), reinterpret_cast<MemoryPtr>(&data));
 		HeaderCounts h = {};
 		h.byClass[kTerrain] = data.numTerrainObjects;
 		h.byClass[kBuilding] = data.numBuildings;
@@ -691,16 +691,16 @@ const char* GameObjectManager::checkSavedObjects (PacketFilePtr file, long* head
 		h.lights = data.numLights;
 		if (!plausibleHeader(h))
 			continue;
-		const char* why = checkRun(h, sizes, (uint32_t)p, (uint32_t)numPackets, sizeAt);
+		const std::optional<std::string_view> why = checkRun(h, sizes, static_cast<uint32_t>(p), static_cast<uint32_t>(numPackets), sizeAt);
 		if (!why) {
 			if (headerPacket)
 				*headerPacket = p;
-			verdict = nullptr;
+			verdict = std::nullopt;
 			break;
 		}
 		verdict = why;
 	}
-	file->seekPacket((int)resume);
+	file->seekPacket(static_cast<int>(resume));
 	return verdict;
 }
 
@@ -1134,7 +1134,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 		{
 			// checkSavedObjects refuses such a file before the mission is torn down; this keeps the loader from
 			// re-reading the same packet if one gets here anyway.
-			mc2::fmt::print_err("[SAVE v1] event=object_skipped reason=unknown_record_size slot={:d} packet={:d} size={:d}\n", mc2::fmt::as_i32(i), mc2::fmt::as_i32(packetNum), mc2::fmt::as_i32((int)packetSize));
+			mc2::fmt::print_err("[SAVE v1] event=object_skipped reason=unknown_record_size slot={:d} packet={:d} size={:d}\n", mc2::fmt::as_i32(i), mc2::fmt::as_i32(packetNum), mc2::fmt::as_i32(static_cast<int>(packetSize)));
 			packetNum++;
 		}
 	}

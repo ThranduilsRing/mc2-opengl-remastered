@@ -8274,6 +8274,42 @@
    "count": 1
   },
   {
+   "tag": "SAVE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "reason",
+    "file"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SAVE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "reason",
+    "slot",
+    "packet",
+    "size"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SAVE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "reason",
+    "slot",
+    "type"
+   ],
+   "count": 1
+  },
+  {
    "tag": "SAVELOAD",
    "ver": -1,
    "stream": "file",
