@@ -6,6 +6,7 @@
 #include "mc2fmt.h"
 
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <string>
 
@@ -159,6 +160,31 @@ TEST_CASE("print is one write of arbitrary length and leaves an empty format alo
 	CHECK(got.compare(0, 5000, big) == 0);
 	CHECK(got.compare(5000, 4, "tail") == 0);
 	std::fclose(f);
+}
+
+namespace {
+// Runs after the main thread's thread_local objects are destroyed. A wrong byte, or a crash, ends the test binary with status 3 / a fault.
+void printAtExit()
+{
+	char got[32] = {};
+	if (std::FILE* f = std::tmpfile()) {
+		mc2::fmt::print(f, "exit:{:d}", mc2::fmt::as_i32(7));
+		std::rewind(f);
+		std::fread(got, 1, sizeof got - 1, f);
+		std::fclose(f);
+	}
+	if (std::strcmp(got, "exit:7") != 0)
+		std::_Exit(3);
+}
+}  // namespace
+
+TEST_CASE("print works from an atexit handler: its buffer outlives the thread_local destructors")
+{
+	std::FILE* f = std::tmpfile();
+	REQUIRE(f != nullptr);
+	mc2::fmt::print(f, "{}", "warm the main thread's buffer");
+	std::fclose(f);
+	CHECK(std::atexit(printAtExit) == 0);
 }
 
 }  // TEST_SUITE

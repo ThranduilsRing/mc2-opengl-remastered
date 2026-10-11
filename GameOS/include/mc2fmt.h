@@ -67,11 +67,20 @@ int to_buf(char (&buf)[N], std::format_string<A...> f, A&&... a) noexcept {
 
 // printf to a stream, as one fwrite of the formatted text. The stream is whatever FILE* the call site used, so the MC2_LOG-unset redirect of
 // stdout/stderr to NUL and the call site's own fflush() keep working; nothing is added to the text (no level, no newline, no prefix).
-// Not for crash or allocator paths: the text is built in a thread_local std::string.
+// Not for crash or allocator paths: the text is built in a per-thread std::string.
+namespace detail {
+// Never destroyed: handlers registered with atexit run after the main thread's thread_local objects are gone, and several of them print
+// summary lines the smoke gates read. A leaked pointer per thread is the price of printing safely at exit.
+inline std::string& scratch() {
+    thread_local std::string* const buf = new std::string;
+    return *buf;
+}
+}  // namespace detail
+
 template <class... A>
 void print(std::FILE* f, std::format_string<A...> fmt, A&&... a) noexcept {
     try {
-        thread_local std::string buf;
+        std::string& buf = detail::scratch();
         buf.clear();
         std::vformat_to(std::back_inserter(buf), fmt.get(), std::make_format_args(a...));
         std::fwrite(buf.data(), 1, buf.size(), f);

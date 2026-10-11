@@ -122,7 +122,8 @@ void tickFrame() noexcept;
 uint64_t frameNumber() noexcept;
 
 namespace detail {
-inline std::string& tlBuf() { thread_local std::string b; return b; }
+// Never destroyed, so a log line written from an atexit handler does not touch a destroyed thread_local.
+inline std::string& tlBuf() { thread_local std::string* const b = new std::string; return *b; }
 
 inline void reportFormatError(Cat c, Level l, Stream s, std::string_view tmpl, std::string_view what,
                               const std::source_location& loc) noexcept {

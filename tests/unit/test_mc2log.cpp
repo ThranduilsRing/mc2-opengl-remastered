@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <string>
 
@@ -36,6 +37,24 @@ struct Capture {
 };
 
 void resetSpec() { mc2::log::setSpec("*:info"); }
+
+// Runs after the main thread's thread_local objects are destroyed. A wrong byte, or a crash, ends the test binary with status 3 / a fault.
+void logAtExit()
+{
+    char got[32] = {};
+    if (std::FILE* f = std::tmpfile()) {
+        mc2::log::setSpec("*:info");
+        mc2::log::setStreamOverrideForTest(mc2::log::Stream::Err, f);
+        MC2_LOG(Core, Error, "exit:{}", 7);
+        std::fflush(f);
+        std::rewind(f);
+        std::fread(got, 1, sizeof got - 1, f);
+        mc2::log::setStreamOverrideForTest(mc2::log::Stream::Err, nullptr);
+        std::fclose(f);
+    }
+    if (std::strcmp(got, "exit:7\n") != 0)
+        std::_Exit(3);
+}
 
 }  // namespace
 
@@ -83,6 +102,13 @@ TEST_CASE("mc2log: ONCE and EVERY gate before evaluating args") {
     MC2_LOG_TOPIC(Core, "nope", Info, "z {}", ++e2);
     CHECK(e2 == 0);
     resetSpec();
+}
+
+TEST_CASE("mc2log: a line logged from an atexit handler uses a buffer that outlives the thread_local destructors") {
+    resetSpec();
+    Capture c(mc2::log::Stream::Err);
+    MC2_LOG(Core, Error, "warm the main thread's buffer");
+    CHECK(std::atexit(logAtExit) == 0);
 }
 
 TEST_CASE("mc2log: brace escaping and plain text") {
