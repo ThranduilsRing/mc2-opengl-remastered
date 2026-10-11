@@ -119,3 +119,12 @@ def test_path_separator_macro_is_carried_through_and_put_back():
 def test_other_macros_in_a_format_still_bail():
     src = '#include <a.h>\nvoid f(){ sprintf(p, "a" OTHER "%d", n); }\n'
     assert conv(src)[0] == src
+
+
+def test_a_multi_line_call_keeps_its_argument_lines_so_two_max_calls_do_not_land_on_one_line():
+    nl = chr(10)
+    src = ("#include <a.h>" + nl + "void f(){ char b[64]; snprintf(b, sizeof(b)," + nl + '    "%d/%d",' + nl + "    std::max(1, x)," + nl
+           + "    std::max(1, y)); }" + nl)
+    out = conv(src)[0]
+    assert "std::max(1, x)" in out and out.count("std::max") == 2
+    assert not any(ln.count("std::max") >= 2 for ln in out.splitlines()), out

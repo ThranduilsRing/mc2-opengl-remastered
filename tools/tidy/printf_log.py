@@ -88,9 +88,9 @@ def _convert_call(text: str, call, classes=("untagged",)):
     for macro, ch in pb.MACROS.items():
         new_fmt = new_fmt.replace(ch, '" ' + macro + ' "')
         shown_old, shown_new = shown_old.replace(ch, "/"), shown_new.replace(ch, "/")
-    head = f"mc2::fmt::{fn}(" + (f"{stream}, " if stream else "")
-    return head + f'"{new_fmt}"' + "".join(", " + w for w in wrapped) + ")", \
-        {"func": call.name, "old": shown_old, "new": shown_new, "specs": specs}
+    fmt_at = 0 if call.name == "printf" else 1
+    pieces = ([(0, stream)] if stream else []) + [(fmt_at, f'"{new_fmt}"')] + [(fmt_at + 1 + k, w) for k, w in enumerate(wrapped)]
+    return call.rebuild(text, f"mc2::fmt::{fn}", pieces), {"func": call.name, "old": shown_old, "new": shown_new, "specs": specs}
 
 
 def convert(text: str, path: str = "", classes=("untagged",)):

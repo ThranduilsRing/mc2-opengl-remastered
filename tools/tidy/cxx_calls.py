@@ -26,6 +26,26 @@ class Call:
         a, b = self.args[i]
         return text[a:b]
 
+    def gap(self, text: str, i: int) -> str:
+        """The whitespace (and comments) between the separator before argument i and the argument itself: ' ' or a newline plus indentation."""
+        start = self.open_paren + 1 if i == 0 else self.args[i - 1][1]
+        chunk = text[start:self.args[i][0]]
+        return chunk[chunk.index(",") + 1:] if i else chunk
+
+    def tail(self, text: str) -> str:
+        """The whitespace between the last argument and the closing parenthesis."""
+        return text[self.args[-1][1]:self.end - 1]
+
+    def rebuild(self, text: str, callee: str, pieces) -> str:
+        """`callee(piece, piece, ...)` where each piece is (original argument index, new text) and keeps the whitespace that preceded that
+        argument, so a call that spanned several lines still does (and `std::max` twice on a line does not appear from nowhere)."""
+        out = [callee, "("]
+        for n, (idx, piece) in enumerate(pieces):
+            out.append(("," if n else "") + self.gap(text, idx if n else 0) + piece)    # the first piece takes the place of the first argument
+        out.append(self.tail(text))
+        out.append(")")
+        return "".join(out)
+
 
 _DEAD = re.compile(
     r"//[^\n]*"                              # line comment

@@ -44,7 +44,7 @@ BOOLSTATE_ALLOWED = {
 }
 # Gates/ defines the readers; the ratchet cares about their callers.
 DEFINING_DIR = "Gates/"
-PRINT_FAMILY_RX = re.compile(r"^(?:std::)?(?:printf|fprintf|snprintf|MC2_DIAGFE|MC2_EVENT)$")
+PRINT_FAMILY_RX = re.compile(r"^(?:(?:std::)?(?:printf|fprintf|snprintf|MC2_DIAGFE|MC2_EVENT)|mc2::fmt::(?:print|print_err|print_out|to_buf|to_buf_n))$")
 # the gate name inside the quotes is blanked by blank(), so match any (blank) literal
 RAW_RX = re.compile(r"\braw\s*<\s*\"[^\"]*\"\s*>\s*\(\s*\)")
 RAW_LOCAL_RX = re.compile(r"\bconst\s+char\s*\*\s*(\w+)\s*=\s*(?:mc2::)?(?:gate::)?raw\s*<")
@@ -187,6 +187,7 @@ def selftest() -> int:
             print("[gate-echo-reads] selftest FAIL: " + name)
 
     expect("raw in printf", "code/a.cpp", 'fprintf(stderr, "%s", mc2::gate::raw<"MC2_A">());', False)
+    expect("raw in mc2::fmt::print_err", "code/a.cpp", 'mc2::fmt::print_err("{}", mc2::gate::raw<"MC2_A">());', False)
     expect("raw continuation line", "code/a.cpp",
            'MC2_DIAGFE(stderr, "x %s",\n   mc2::gate::raw<"MC2_A">() ? mc2::gate::raw<"MC2_A">() : "(unset)");', False)
     expect("raw echo local", "code/a.cpp",

@@ -37,3 +37,11 @@ def test_string_literal_parts_refuses_anything_but_literals():
     assert cc.string_literal_parts('"a" PRId64 "b"') is None
     assert cc.string_literal_parts("fmt") is None
     assert cc.string_literal_parts('L"wide"') is None
+
+
+def test_rebuild_keeps_the_layout_of_a_multi_line_call():
+    nl = chr(10)
+    t = "void f(){ snprintf(buf," + nl + "    sizeof(buf)," + nl + '    "%d %d",' + nl + "    std::max(1, a), std::max(1, b));" + nl + "}"
+    c = next(cc.find_calls(t, {"snprintf"}))
+    out = c.rebuild(t, "mc2::fmt::to_buf", [(0, "buf"), (2, '"{:d} {:d}"'), (3, "A"), (4, "B")])
+    assert out == "mc2::fmt::to_buf(buf," + nl + '    "{:d} {:d}",' + nl + "    A, B)"

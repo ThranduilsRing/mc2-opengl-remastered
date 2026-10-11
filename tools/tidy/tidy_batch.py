@@ -185,7 +185,10 @@ def one_batch(args, number: int, runner=run):
                                       "--report", "--worktree"]).stdout)
         sha = _git_util.commit_paths(ROOT, kept, commit_message(number, summary, totals, args.rewrite,
                                                                  "compile" if compile_proof else "objhash", args.corpus), TRAILER)
-        runner([sys.executable, os.path.join(ROOT, "tools", "cxx17_ratchet", "cxx17_ratchet.py"), "--check", "--tighten"])
+        ratchet = runner([sys.executable, os.path.join(ROOT, "tools", "cxx17_ratchet", "cxx17_ratchet.py"), "--check", "--tighten"])
+        if ratchet.returncode:
+            return "failed", f"committed {sha}, but the cxx17 ratchet reports an increase (a conversion made a legacy idiom visible):\n" \
+                             + "\n".join(ratchet.stdout.splitlines()[:8])
         if "tools/cxx17_ratchet/baseline.json" in _git_util.dirty_paths(ROOT, tracked_only=True):
             sha += " + " + _git_util.commit_paths(ROOT, ["tools/cxx17_ratchet/baseline.json"],
                                                   f"cxx17 ratchet baseline tightened after tidy batch {number}", TRAILER)

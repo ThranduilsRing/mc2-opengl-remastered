@@ -203,10 +203,10 @@ def _convert_call(text: str, call, assume_array: bool = False):
         if name != "sprintf":
             raise Bail("internal: size lost")
         raise Bail("sprintf destination is not a visible char array")
-    if size is None:
-        call_text = f"mc2::fmt::to_buf({dest}, \"{new_fmt}\"" + "".join(", " + w for w in wrapped) + ")"
-    else:
-        call_text = f"mc2::fmt::to_buf_n({dest}, {size}, \"{new_fmt}\"" + "".join(", " + w for w in wrapped) + ")"
+    fmt_at = {"sprintf": 1, "snprintf": 2, "_snprintf": 2, "_snprintf_s": 3}[name]
+    pieces = [(0, dest)] + ([(1, size)] if size is not None else []) + [(fmt_at, f'"{new_fmt}"')]
+    pieces += [(fmt_at + 1 + k, w) for k, w in enumerate(wrapped)]
+    call_text = call.rebuild(text, "mc2::fmt::to_buf" if size is None else "mc2::fmt::to_buf_n", pieces)
     return call_text, {"func": name, "old": shown_old, "new": shown_new, "specs": specs}
 
 

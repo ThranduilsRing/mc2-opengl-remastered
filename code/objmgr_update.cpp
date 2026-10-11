@@ -651,7 +651,8 @@ void GameObjectManager::updateFrameJobsPrepass(int& frameJobsPrePassCount) {
 
 			if (frameJobsTrace()) {
 				mc2::fmt::print_out("FRAME_JOBS_TOUCH: enabled=1 split=yes candidates={:d} worker_submitted={:d} serial_commits={:d} worker_resubmit_calls={:d} skipped_not_split_safe={:d}\n", mc2::fmt::as_i32(candidates), mc2::fmt::as_i32(worker_submitted), mc2::fmt::as_i32(serial_commits), mc2::fmt::as_i32(worker_resubmit_calls), mc2::fmt::as_i32(skipped_not_split_safe));
-				mc2::fmt::print_out("FRAME_JOBS_TOUCH_PERF: worker_us={:.1f} serial_commit_us={:.1f} avg_worker_us_per_object={:.3f} avg_serial_commit_us_per_object={:.3f}\n", worker_us, commit_us, worker_us / std::max(1, worker_submitted), commit_us / std::max(1, serial_commits));
+				mc2::fmt::print_out("FRAME_JOBS_TOUCH_PERF: worker_us={:.1f} serial_commit_us={:.1f} avg_worker_us_per_object={:.3f} avg_serial_commit_us_per_object={:.3f}\n", worker_us, commit_us, worker_us / std::max(1, worker_submitted),
+					commit_us / std::max(1, serial_commits));
 			}
 		}
 		// ── end FRAME-JOBS-2D pre-pass ───────────────────────────────────────────────
