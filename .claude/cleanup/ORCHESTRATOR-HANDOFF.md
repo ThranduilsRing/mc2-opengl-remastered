@@ -63,7 +63,7 @@ RESUME HERE: read this file, then `lane1-state.md` / `lane2-state.md`, then the 
 6. Codebase-wide comment pass = later, cheap OpenRouter agents, outside the main program.
 7. Commit trailer model name: no preference.
 8. Gate amnesty target stays < 30.
-Step 4 decision points (ownership plan) remain open until the plan is reviewed.
+Step 4 decision points ANSWERED 2026-10-11: no external modder tools on the C++ surface; .fx parsed by their own parsers; ALLOC_STATS proof builds only; multiplayer drifts as a named exception (compile out behind a CMake option if a batch needs it; redesign later); SortList gets an explicit total order.
 
 ## Pointers
 - Log: `.claude/cleanup/HANDOFF-LOG.md`. Reviews: `meta-review-2026-10-11.md` (ordering, proof gaps, step 4/5 bar), `opus-modernization-review.md` + `opus-consistency-review.md` (roadmap S1–S5, D1–D11), `cxx23-step3-review.md`, `legacy-deletions-review.md`, `legacy-subsystem-audit.md`, `split-batch-review-2026-10-10.md`, `typed-gate-registry-g*-review.md`, `tier1-flake-log.md`.
