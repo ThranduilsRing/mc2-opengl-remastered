@@ -1598,6 +1598,9 @@ bool WeaponHitChunk::valid (long from) {
 void* GameObject::operator new (size_t ourSize) {
 
 	void* result = ObjectTypeManager::objectCache->Malloc(ourSize);
+	// Save files copy whole member arrays of an object, so bytes no constructor sets must be defined: zero.
+	if (result)
+		memset(result, 0, ourSize);
 	return(result);
 }
 
