@@ -384,6 +384,8 @@ set(SOURCES
     "code/goal.cpp"
     "code/ground_contact_blob.cpp"
     "code/group.cpp"
+    "code/group_goals.cpp"
+    "code/group_orders.cpp"
     "code/gvehicl.cpp"
     "code/gvehicl_control.cpp"
     "code/gvehicl_move.cpp"

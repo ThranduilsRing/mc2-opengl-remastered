@@ -144,6 +144,15 @@ Split commit: `217255c68`.
 | `controlgui_vehicle.cpp` | ControlGui: the vehicle tab: update, render, click handling and the vehicle command state. |
 | `controlgui_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
+## `code/group.cpp`
+
+| Piece | What it holds |
+|---|---|
+| `group.cpp` | keeps the group membership and selection methods and the copy / init |
+| `group_goals.cpp` | MoverGroup: the move / jump goal-cell searches (calcMoveGoals, calcJumpGoals, sortMovers) and their spiral tables. |
+| `group_orders.cpp` | MoverGroup: handleTacticalOrder, the order* wrappers and the mate-event handlers. |
+| `group_internal.h` | shared include bundle, extern globals and declarations of the pieces |
+
 ## `code/gvehicl.cpp`
 
 | Piece | What it holds |
