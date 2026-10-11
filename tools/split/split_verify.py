@@ -251,23 +251,25 @@ def check_inline_calls(new_by_file, header_name, allow):
 
 
 def static_functions(lines):
-    """Names of the functions a piece defines with internal linkage: `static` at namespace scope, or any function inside an anonymous namespace."""
+    """Names of the functions a piece defines with internal linkage: `static` at namespace scope (any nesting of namespaces), or any function inside an anonymous namespace."""
     rx = re.compile(rb"\s*(?:[\w:<>\*&,]+\s+)+\**&?(\w+)\s*\([^;]*$")
-    names, depth, anon_depths = set(), 0, []
+    names, depth, spaces = set(), 0, []     # spaces: (depth the namespace was opened at, anonymous?)
     for l in lines:
         code = strip_code(l)
         st = code.strip()
-        top = depth == 0 or (anon_depths and depth == anon_depths[-1] + 1)
-        if top and not st.startswith((b"#", b"return", b"//", b"namespace")):
+        scope = spaces[-1][0] + 1 if spaces else 0
+        anon = any(a for _, a in spaces)
+        if depth == scope and not st.startswith((b"#", b"return", b"//", b"namespace")):
             m = rx.match(code)
-            if m and (re.match(rb"\s*static\b", code) and depth == 0 or (anon_depths and depth == anon_depths[-1] + 1)):
+            if m and (re.match(rb"\s*static\b", code) or anon):
                 if b";" not in code.split(b"(")[0] and not code.rstrip().endswith(b";"):
                     names.add(m.group(1).decode())
-        if re.match(rb"\s*namespace\s*\{", code):
-            anon_depths.append(depth)
+        mn = re.match(rb"\s*namespace\b\s*(\w*(?:::\w+)*)\s*\{", code)
+        if mn:
+            spaces.append((depth, not mn.group(1)))
         depth += code.count(b"{") - code.count(b"}")
-        while anon_depths and depth <= anon_depths[-1]:
-            anon_depths.pop()
+        while spaces and depth <= spaces[-1][0]:
+            spaces.pop()
         if depth < 0:
             depth = 0
     return names

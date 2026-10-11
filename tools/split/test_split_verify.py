@@ -142,3 +142,10 @@ def test_static_function_check_runs_inside_verify():
            "code/m_b.cpp": '#include "m_internal.h"\nint b() { return h(2); }\n',
            "code/m_internal.h": "#ifndef M_INTERNAL_H\n#define M_INTERNAL_H\n#endif // M_INTERNAL_H\n"}
     assert "static" in kinds(run(old, new))
+
+
+def test_static_function_inside_a_named_namespace_called_from_another_piece_is_flagged():
+    p = _pieces(**{"x.cpp": "namespace ns {\nstatic bool gate()\n{\n\treturn true;\n}\nbool open()\n{\n\treturn true;\n}\n}\n",
+                   "x_b.cpp": "namespace ns {\nbool use() { return gate() && open(); }\n}\n"})
+    f = sv.check_static_calls(p, "x_internal.h", {})
+    assert [m.split()[1] for _, m in f] == ["gate"], f
