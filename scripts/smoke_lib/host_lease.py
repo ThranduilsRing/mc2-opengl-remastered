@@ -153,7 +153,7 @@ def acquire(label: str, *, wait: bool = True, timeout_s: Optional[float] = None,
             raise HostLeaseBusy(f"gave up after {timeout_s:.0f} s: {why}")
         if clock() - last_report >= REPORT_EVERY_S:
             last_report = clock()
-            log(f"[host-lease] waiting: {why}")
+            log(f"[host-lease] waiting: {why}; giving up in {max(0, int(deadline - clock()))} s")
         sleep(POLL_S)
 
 

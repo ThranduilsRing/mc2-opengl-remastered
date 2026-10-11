@@ -612,7 +612,7 @@ def main():
                     metavar="NAME",
                     help="request a specific deploy folder by short name "
                          "(0.4 / 0.4c / 0.4d-rc1 / 0.5.0 / 0.5-testing); "
-                         "error if that folder is busy and not stale")
+                         "waits (see --wait-timeout) while another run holds it")
     ap.add_argument("--no-lease", action="store_true",
                     help="OWNER ONLY (requires MC2_OWNER_NO_LEASE=1): skip the "
                          "deploy-folder lease system entirely. Agents never use "
@@ -780,13 +780,18 @@ def main():
             _intended_test = "missions:" + ",".join(_missions)
         else:
             _intended_test = "adhoc"
+        # A folder another run holds is waited for (visible countdown, same bound as the host game lease); --no-wait fails at once.
+        _lease_wait_s = 0.0 if args.no_wait else (
+            args.wait_timeout if args.wait_timeout is not None
+            else float(os.environ.get("MC2_HOST_LEASE_TIMEOUT") or 3600.0))
         try:
             if args.deploy:
-                # --deploy <name>: named folder, must exist and not be busy
+                # --deploy <name>: named folder, must exist; waits while another run holds it
                 _lease_folder = _deploy_lease.auto_acquire(
                     explicit_folder=None,
                     deploy_name=args.deploy,
                     intended_test=_intended_test,
+                    wait_s=_lease_wait_s,
                 )
                 args.exe = str(
                     (Path(_lease_folder) / "mc2.exe").resolve()
@@ -797,6 +802,7 @@ def main():
                     explicit_folder=_explicit_exe,
                     deploy_name=None,
                     intended_test=_intended_test,
+                    wait_s=_lease_wait_s,
                 )
                 # args.exe unchanged — caller specified exact exe
             else:

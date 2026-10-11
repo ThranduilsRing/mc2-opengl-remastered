@@ -325,18 +325,37 @@ def touch_lease(folder: str) -> None:
             _write_registry(reg)
 
 
+def _acquire_waiting(folder: str, intended_test: Optional[str], what: str, wait_s: float) -> None:
+    """Take the lease for `folder`; while a live lease holds it, wait up to `wait_s` seconds (visible countdown) before raising the busy LeaseError."""
+    from . import bounded_wait
+    last: list = []
+
+    def ready() -> str:
+        try:
+            with _registry_lock():
+                _acquire_locked(folder, intended_test)
+            return ""
+        except LeaseError as exc:
+            last[:] = [exc]
+            return str(exc)
+
+    if not bounded_wait.wait_until(ready, what, wait_s):
+        raise last[0]
+
+
 def auto_acquire(
     explicit_folder: Optional[str] = None,
     deploy_name: Optional[str] = None,
     intended_test: Optional[str] = None,
+    wait_s: float = 0.0,
 ) -> str:
     """Auto-select and acquire a deploy folder (atomic — whole selection is
     performed under a single registry lock, so no two sessions can pick the
     same free folder).
 
     Priority:
-      1. deploy_name: use that named folder (error if busy+fresh).
-      2. explicit_folder: lease the folder that --exe points into.
+      1. deploy_name: use that named folder (error if busy+fresh, after waiting up to `wait_s` seconds for the holder).
+      2. explicit_folder: lease the folder that --exe points into (same wait).
       3. Otherwise: walk DEPLOY_FOLDERS in preference order, skip missing,
          skip busy+fresh, take first free/stale.
     """
@@ -351,16 +370,14 @@ def auto_acquire(
             raise LeaseError(
                 f"--deploy {deploy_name}: folder not found or missing mc2.exe: {folder}"
             )
-        with _registry_lock():
-            _acquire_locked(folder, intended_test)
-            _log(f"[LEASE] acquired {deploy_name} (--deploy)")
+        _acquire_waiting(folder, intended_test, f"deploy folder {deploy_name}", wait_s)
+        _log(f"[LEASE] acquired {deploy_name} (--deploy)")
         return folder
 
     if explicit_folder is not None:
         folder = str(Path(explicit_folder).resolve().parent)
-        with _registry_lock():
-            _acquire_locked(folder, intended_test)
-            _log(f"[LEASE] acquired {_short_name(folder)} (--exe)")
+        _acquire_waiting(folder, intended_test, f"deploy folder {_short_name(folder)}", wait_s)
+        _log(f"[LEASE] acquired {_short_name(folder)} (--exe)")
         return folder
 
     # Auto-select — LRU ORDER (least-recently-used folder picked first):

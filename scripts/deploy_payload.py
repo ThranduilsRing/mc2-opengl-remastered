@@ -680,12 +680,29 @@ def _check_running_processes(target_exe_resolved, exe_name):
     return ""
 
 
-def check_locks(target_dir, exe_name):
+#: How long a deploy waits for a game running from its target folder to exit (another lane's smoke run, usually). MC2_DEPLOY_WAIT_S overrides.
+DEFAULT_DEPLOY_WAIT_S = 900.0
+
+
+def check_locks(target_dir, exe_name, wait_s=0.0):
     target_exe = os.path.join(target_dir, exe_name)
     target_exe_resolved = os.path.normcase(os.path.abspath(target_exe))
 
-    # Step 1: path-aware running-process check (psutil / wmic).
+    # Step 1: path-aware running-process check (psutil / wmic). A game running from this folder is waited for (bounded, visible countdown): it is
+    # normally a smoke run that ends by itself; this script never ends it.
     err = _check_running_processes(target_exe_resolved, exe_name)
+    if err and wait_s > 0:
+        try:
+            from smoke_lib import bounded_wait
+        except ImportError:
+            from scripts.smoke_lib import bounded_wait
+
+        def still_running():
+            lines = _check_running_processes(target_exe_resolved, exe_name).splitlines()
+            return " ".join(s.strip() for s in lines[:2]) if lines else ""
+
+        bounded_wait.wait_until(still_running, f"deploy into {target_dir}", wait_s)
+        err = _check_running_processes(target_exe_resolved, exe_name)
     if err:
         fail(
             f"{err}\n"
@@ -1274,6 +1291,9 @@ def main():
     ap.add_argument("--exe-name", default=None,
                     help="exe filename (default mc2.exe, or the preset's exe "
                     "with --target)")
+    ap.add_argument("--wait", type=float, default=None, metavar="SECONDS",
+                    help="how long to wait for a game running from the target folder to exit before refusing (default %d, or MC2_DEPLOY_WAIT_S; "
+                         "0 refuses at once)" % DEFAULT_DEPLOY_WAIT_S)
     ap.add_argument("--ninja", action="store_true",
                     help="use the Ninja single-config dev tree (build64-ninja/, "
                     "configured by scripts/configure_ninja.py) instead of the VS "
@@ -1362,7 +1382,8 @@ def main():
     log(f"build dir:   {build_dir}")
     log(f"target:      {target}")
 
-    check_locks(target, exe_name)
+    wait_s = args.wait if args.wait is not None else float(os.environ.get("MC2_DEPLOY_WAIT_S") or DEFAULT_DEPLOY_WAIT_S)
+    check_locks(target, exe_name, wait_s)
     check_exe_fresh(os.path.join(build_dir, exe_name), build_dir, args.allow_stale_exe,
                     build64_root=args.build64_root)
 
