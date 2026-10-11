@@ -66,7 +66,7 @@ inline int EMessageBox(int MessageID, int CaptionID,DWORD dwS )
 	else
 	{
 		/*note: this messagebox will not be modal wrt the application*/
-		return ::MessageBoxA( NULL, buffer, bufferCaption, dwS );
+		return ::MessageBoxA( nullptr, buffer, bufferCaption, dwS );
 	}
 
 }

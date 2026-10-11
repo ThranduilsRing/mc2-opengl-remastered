@@ -110,14 +110,14 @@ class gosRenderer {
                 std::find_if(fontList_.begin(), fontList_.end(), eq);
             if(it != fontList_.end())
                 return *it;
-            return NULL;
+            return nullptr;
         }
 
         gosTexture* getTexture(DWORD texture_id) {
             // TODO: return default texture
             if(texture_id == INVALID_TEXTURE_ID) {
                 gosASSERT(0 && "Should not be requested");
-                return NULL;
+                return nullptr;
             }
             gosASSERT(textureList_.size() > texture_id);
             gosASSERT(textureList_[texture_id] != 0);
@@ -743,8 +743,8 @@ class gosRenderer {
         std::vector<gosBuffer*> bufferList_;
         std::vector<gosVertexDeclaration*> vertexDeclarationList_;
         std::vector<gosRenderMaterial*> materialList_;
-		typedef std::map<uint32_t, gosRenderMaterial*> MaterialDBValue_t;
-		typedef std::map<std::string, MaterialDBValue_t> MaterialDB_t;
+		using MaterialDBValue_t = std::map<uint32_t, gosRenderMaterial*>;
+		using MaterialDB_t = std::map<std::string, MaterialDBValue_t>;
         MaterialDB_t materialDB_;
 
         DWORD reqWidth;

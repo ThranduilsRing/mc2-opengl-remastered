@@ -18,7 +18,7 @@ class ViewConditionOrActionDlg : public CDialog
 {
 // Construction
 public:
-	ViewConditionOrActionDlg(CWnd* pParent = NULL);   // standard constructor
+	ViewConditionOrActionDlg(CWnd* pParent = nullptr);   // standard constructor
 
 // Dialog Data
 	//{{AFX_DATA(ViewConditionOrActionDlg)
@@ -31,7 +31,7 @@ public:
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(ViewConditionOrActionDlg)
 	protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
+	void DoDataExchange(CDataExchange* pDX) override;    // DDX/DDV support
 	//}}AFX_VIRTUAL
 
 // Implementation

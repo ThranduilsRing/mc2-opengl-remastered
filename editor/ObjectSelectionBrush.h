@@ -16,19 +16,19 @@ ObjectSelectionBrush.h	: Interface for the ObjectSelectionBrush component.
 class ActionPaintTile;
 class EditorObject;
 
-typedef EList <EditorObject *, EditorObject *> EditorObjectPointerList;
+using EditorObjectPointerList = EList <EditorObject *, EditorObject *>;
 
 class ObjectSelectionBrush: public Brush
 {
 	public:
 
 		ObjectSelectionBrush();
-		virtual ~ObjectSelectionBrush();
-		virtual bool beginPaint();
-		virtual Action* endPaint();
-		virtual bool paint( Stuff::Vector3D& worldPos, int screenX, int screenY );
-		virtual bool canPaint( Stuff::Vector3D& worldPos, int screenX, int screenY, int flags ) { return true; } 
-		virtual void render( int screenX, int screenY );
+		~ObjectSelectionBrush() override;
+		bool beginPaint() override;
+		Action* endPaint() override;
+		bool paint( Stuff::Vector3D& worldPos, int screenX, int screenY ) override;
+		bool canPaint( Stuff::Vector3D& worldPos, int screenX, int screenY, int flags ) override { return true; } 
+		void render( int screenX, int screenY ) override;
 		EditorObjectPointerList selectedObjectPointerList();
 
 	private:

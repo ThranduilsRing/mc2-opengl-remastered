@@ -18,7 +18,7 @@ class TilingFactorsDialog : public CDialog
 {
 // Construction
 public:
-	TilingFactorsDialog(CWnd* pParent = NULL);   // standard constructor
+	TilingFactorsDialog(CWnd* pParent = nullptr);   // standard constructor
 
 // Dialog Data
 	//{{AFX_DATA(TilingFactorsDialog)
@@ -33,7 +33,7 @@ public:
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(TilingFactorsDialog)
 	protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
+	void DoDataExchange(CDataExchange* pDX) override;    // DDX/DDV support
 	//}}AFX_VIRTUAL
 
 // Implementation

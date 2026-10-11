@@ -92,16 +92,16 @@ class gosTexture {
                 filename_ = new char[strlen(fname)+1];
                 strcpy(filename_, fname);
             } else {
-                filename_ = 0;
+                filename_ = nullptr;
             }
-            texname_ = NULL;
+            texname_ = nullptr;
 
             hints_ = hints;
 
-            plocked_area_ = NULL;
+            plocked_area_ = nullptr;
 
             size_ = 0;
-            pcompdata_ = NULL;
+            pcompdata_ = nullptr;
             if(size) {
                 size_ = size;
                 pcompdata_ = new BYTE[size];
@@ -123,15 +123,15 @@ class gosTexture {
                 texname_ = new char[strlen(texname)+1];
                 strcpy(texname_, texname);
             } else {
-                texname_ = 0;
+                texname_ = nullptr;
             }
-            filename_ = NULL;
+            filename_ = nullptr;
             hints_ = hints;
 
-            plocked_area_ = NULL;
+            plocked_area_ = nullptr;
 
             size_ = 0;
-            pcompdata_ = NULL;
+            pcompdata_ = nullptr;
             tex_.w = w;
             tex_.h = h;
 
@@ -154,13 +154,13 @@ class gosTexture {
                 texname_ = new char[strlen(name)+1];
                 strcpy(texname_, name);
             } else {
-                texname_ = 0;
+                texname_ = nullptr;
             }
-            filename_ = NULL;
+            filename_ = nullptr;
             hints_ = 0;
-            plocked_area_ = NULL;
+            plocked_area_ = nullptr;
             size_ = 0;
-            pcompdata_ = NULL;
+            pcompdata_ = nullptr;
             tex_ = prebuilt;
             is_locked_ = false;
             is_from_memory_ = true;
@@ -355,7 +355,7 @@ class gosTexture {
             }
 
             delete[] plocked_area_;
-            plocked_area_ = NULL;
+            plocked_area_ = nullptr;
 
             is_locked_ = false;
         }
@@ -416,7 +416,7 @@ class gosFont {
 
     private:
         static uint32_t destroy(gosFont* font);
-        gosFont():font_name_(0), font_id_(0), tex_id_(0), ref_count_(1) {};
+        gosFont():font_name_(nullptr), font_id_(nullptr), tex_id_(0), ref_count_(1) {};
         ~gosFont();
 
         char* font_name_;

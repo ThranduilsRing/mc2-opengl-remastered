@@ -18,7 +18,7 @@ class PlayerSettingsDlg : public CDialog
 {
 // Construction
 public:
-	PlayerSettingsDlg(CWnd* pParent = NULL);   // standard constructor
+	PlayerSettingsDlg(CWnd* pParent = nullptr);   // standard constructor
 
 // Dialog Data
 	//{{AFX_DATA(PlayerSettingsDlg)
@@ -35,7 +35,7 @@ public:
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(PlayerSettingsDlg)
 	protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
+	void DoDataExchange(CDataExchange* pDX) override;    // DDX/DDV support
 	//}}AFX_VIRTUAL
 
 // Implementation
@@ -43,7 +43,7 @@ protected:
 
 	// Generated message map functions
 	//{{AFX_MSG(PlayerSettingsDlg)
-	virtual BOOL OnInitDialog();
+	BOOL OnInitDialog() override;
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };

@@ -18,7 +18,7 @@ class TextMessageDlg : public CDialog
 {
 // Construction
 public:
-	TextMessageDlg(CWnd* pParent = NULL);   // standard constructor
+	TextMessageDlg(CWnd* pParent = nullptr);   // standard constructor
 
 // Dialog Data
 	//{{AFX_DATA(TextMessageDlg)
@@ -31,7 +31,7 @@ public:
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(TextMessageDlg)
 	protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
+	void DoDataExchange(CDataExchange* pDX) override;    // DDX/DDV support
 	//}}AFX_VIRTUAL
 
 // Implementation
