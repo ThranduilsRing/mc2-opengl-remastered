@@ -246,8 +246,8 @@ extern "C" void mc2SimIdentityTraceFrame(double scenarioTimeNow, long simFrame) 
 
 	// Fixed-arity, fixed-width: two runs' logs diff cleanly and the first
 	// differing line IS the first divergent sim frame.
-	printf("[SIMID v1] simframe=%ld t=%.3f n=%d graded=%s visual=%s strict=%s\n",
-	       simFrame, scenarioTimeNow, (int)recs.size(), hg, hv, hs);
+	mc2::fmt::print_out("[SIMID v1] simframe={:d} t={:.3f} n={:d} graded={} visual={} strict={}\n",
+	       mc2::fmt::as_i32(simFrame), scenarioTimeNow, mc2::fmt::as_i32((int)recs.size()), mc2::fmt::safe(hg), mc2::fmt::safe(hv), mc2::fmt::safe(hs));
 
 	if (simIdentityTraceDetail()) {
 		for (size_t i = 0; i < recs.size(); ++i) {

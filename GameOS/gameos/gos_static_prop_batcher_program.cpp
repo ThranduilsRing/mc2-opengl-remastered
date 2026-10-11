@@ -300,9 +300,7 @@ void loadProgramsIfNeeded() {
             // instead, but the simpler check here is that
             // s_staticPropProgramCoalesce stays 0 and IsCoalesceEnabled
             // catches it on every frame.
-            std::fprintf(stderr, "[GPUPROPS] failed to compile/link "
-                         "static_prop_coalesce — coalesce path disabled "
-                         "for this session; legacy path unaffected\n");
+            mc2::fmt::print_err("[GPUPROPS] failed to compile/link static_prop_coalesce — coalesce path disabled for this session; legacy path unaffected\n");
             s_staticPropProgramCoalesce = 0;
         }
     }

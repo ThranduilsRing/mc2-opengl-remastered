@@ -107,9 +107,7 @@ void parseArgs(int argc, char** argv) {
     }
     if (!g_state.enabled && !g_state.mission.empty()) {
         // Smoke args without env -- refuse.
-        std::fprintf(stdout,
-            "[SMOKE v1] event=summary result=fail reason=argv_error "
-            "stage=parseArgs detail=\"--mission requires MC2_SMOKE_MODE to be set\"\n");
+        mc2::fmt::print_out("[SMOKE v1] event=summary result=fail reason=argv_error stage=parseArgs detail=\"--mission requires MC2_SMOKE_MODE to be set\"\n");
         std::fflush(stdout);
         std::exit(2);
     }
@@ -129,8 +127,7 @@ void installAtexitSummary() {
         if (g_summaryEmitted.load()) return;
         // Best-effort: if we reach atexit without an explicit summary, we
         // assume something failed after parseArgs but before emitCleanSummary.
-        std::fprintf(stdout,
-            "[SMOKE v1] event=summary result=fail reason=early_exit stage=atexit\n");
+        mc2::fmt::print_out("[SMOKE v1] event=summary result=fail reason=early_exit stage=atexit\n");
         std::fflush(stdout);
     });
 }
@@ -202,9 +199,8 @@ void emitCleanSummary() {
     // source; it counts [GL_ERROR v1]/[TGL_POOL v1]/[ASSET_SCALE v1]/[DESTROY v1]
     // lines from the stream. Embedding engine-side counts would create a
     // second source of truth with drift potential.
-    std::fprintf(stdout,
-        "[SMOKE v1] event=summary result=pass duration_actual_ms=%.1f frames=%zu\n",
-        actualMs, g_frameCount);
+    mc2::fmt::print_out("[SMOKE v1] event=summary result=pass duration_actual_ms={:.1f} frames={:d}\n",
+        actualMs, mc2::fmt::as_size(g_frameCount));
     std::fflush(stdout);
 }
 
