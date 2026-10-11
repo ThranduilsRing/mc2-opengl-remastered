@@ -28,9 +28,9 @@ RULE: SKIP when the value is used as arithmetic, an array index, a case label of
 - Never-touch (rule, not compile): ProcType (mechcmd2_internal.h), MissionType (EditorData_internal.h), NETMESSAGETYPE (multplyr.h), FileClass (file.h), FilterMode / TextureWrapMode / WireFrameMode (mlr), WriteStatus / SeekType (stuff).
 - The other 110 census refusals stay as they are: arithmetic-or-index 66, named outside C++ 20, defined twice 19, declarator after body 3, enumerator name shared 2.
 
-## Findings about the tool (to fix before the first batch; none of it touches a proof default)
-1. The token census misses qualified uses (`Cls::PRESET_COUNT` has `::` on its left), so it over-reports candidates (EPreset); the compile proof catches it, a batch only wastes a bisect. Fix: strip the qualifier before the left-context test.
-2. `rewrite_enums.py` works per FILE: equipment_registry.h holds one failing enum (ComponentFormOrdinal) next to two clean ones, so the whole file would be reverted. Add `--skip-enums` (a ledger of enum names) and exclude the 22 compile-fail names from `rewrite_text`.
+## Findings about the tool (1 and 2 fixed in 38e5a1dd9; none of it touches a proof default)
+1. The token census misses qualified uses (`Cls::PRESET_COUNT` has `::` on its left), so it over-reports candidates (EPreset); the compile proof catches it, a batch only wastes a bisect. Fixed: the qualifier is stripped before the left-context test (census 68 -> 65 candidates).
+2. `rewrite_enums.py` works per FILE: equipment_registry.h holds one failing enum (ComponentFormOrdinal) next to two clean ones, so the whole file would be reverted. Fixed: `tools/tidy/enum_skip.txt` (name + reason, 23 lines) is read by `run` and `census`, `--skip-enums` overrides it.
 3. The probe built the game, editor and tools, not the standalone harnesses and `mc2_tests`; the batch's `build_all_targets.py` stage 3 covers them (ActorState and EquipmentReasonCode are only reachable from them).
 4. Elaborated `enum Name x;` on a scoped enum (gameos.hpp: `enum gosVideo_Command vc`) compiles on MSVC; it is a portability point for the deferred GameOS group only.
 5. Serialization: a scan of the 36 compile-clean enums found no `write*` / `Save*` / packet call next to a variable of these types; the layout is unchanged anyway (same underlying type, objhash identical), and the `saveload_roundtrip` row runs after each batch.

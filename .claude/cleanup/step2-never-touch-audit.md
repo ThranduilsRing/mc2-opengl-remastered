@@ -45,3 +45,12 @@ was compared with its HEAD build using plain objhash.
 
 ## 3. Never-touch files in the strict commits (kept by ruling)
 8+6+11+6+9+4+1 file edits listed per commit in git (`git show --name-only <sha>`); the never-touch rule applies from 2026-10-11 on and is enforced by `NEVER_TOUCH` in rewrite_defines.py / rewrite_enums.py.
+
+## 4. Last LG13 batch of the second lane-2 session (2026-10-11, strict plain objhash, `--tree build-alltargets`)
+- `code/unitdesg.h` (52 sites, 155 including objects): REVERTED by the proof, nothing kept. Cause 1 (fixed in 23de3aeda): `MC2_VERIFY_BOUNDS(i, MAX_COMMANDERS)` wraps `MC2_VERIFY`, whose `#cond` sees the
+  macro-EXPANDED text, so the failure-message literal in mission_init.cpp.obj / mission_init_load.cpp.obj changed from the value to the name (symbol set, .rdata, .text differ). `rewrite_defines.py` now refuses a constant named
+  in the arguments of such a wrapper (`stringized-by-wrapper-macro`); direct stringizers keep the raw name and stay eligible.
+- Second run (51 sites): 154 of 155 objects identical; `controlgui.cpp.obj` differs only by its `.data` / `.bss` layout (`objhash.py diff` = LAYOUT-ONLY, symbol set and every symbol's bytes identical). The strict proof refuses it; accepting
+  LAYOUT-ONLY in the rewriters' Proof is a proof-mode change and is NOT made by the lane. Decision for the orchestrator: an opt-in `--layout-only-ok` flag (never a default), or leave `unitdesg.h` as macros.
+- Everything else the rewriter still lists is a wide header (30 files, about 660 sites, 334-1,080 including objects: mclib/move.h 137, sounds.h 207, userinput.h 64, mech3d.h 37, weaponfx.h 31, dbasegui.h 30, vfx.h 19, inifile.h 15, gameos.hpp 15,
+  txmmgr.h 14, ...): needs the same proof-mode decision, because `editor/MapGeneratorDialog.cpp.obj` drops its stb_image tables under any header edit (see section 3 of the plan).
