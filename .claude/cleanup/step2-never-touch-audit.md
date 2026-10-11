@@ -54,3 +54,13 @@ was compared with its HEAD build using plain objhash.
   LAYOUT-ONLY in the rewriters' Proof is a proof-mode change and is NOT made by the lane. Decision for the orchestrator: an opt-in `--layout-only-ok` flag (never a default), or leave `unitdesg.h` as macros.
 - Everything else the rewriter still lists is a wide header (30 files, about 660 sites, 334-1,080 including objects: mclib/move.h 137, sounds.h 207, userinput.h 64, mech3d.h 37, weaponfx.h 31, dbasegui.h 30, vfx.h 19, inifile.h 15, gameos.hpp 15,
   txmmgr.h 14, ...): needs the same proof-mode decision, because `editor/MapGeneratorDialog.cpp.obj` drops its stb_image tables under any header edit (see section 3 of the plan).
+
+## 5. Rulings of 2026-10-11 applied (strict plain objhash; `--layout-only-ok` and `--vs-gate` are opt-in flags of `rewrite_defines.py` / `rewrite_enums.py`, defaults unchanged)
+- LG14: 18 enums converted in 4 commits (929ecc662 cab34b9e2 edb92d936 b31a71d36), every including object of the Ninja trees AND of tests/unit + the harness trees IDENTICAL; details in `cxx23-step2-enums-note.md`.
+- LG13 `code/unitdesg.h` (51 sites, 155 objects): kept in 69b935d96 with `--layout-only-ok`; the commit message names the two LAYOUT-ONLY objects: `CMakeFiles/mc2.dir/code/controlgui.cpp.obj`, `CMakeFiles/mc2.dir/code/mover.cpp.obj`.
+- LG13 wide headers (30 files + 7 platform_win*/actor.h with no includer): NOT converted. A 5-header batch (genactor, gvactor, move, weaponfx, debugging) reverted all five on ONE object, `editor/SingleValueDlg.cpp.obj`, which is ORDER-ONLY
+  (every section and symbol identical by name; only symbol-table / relocation indices shifted); a 1-site header (`dident.h`) does the same, so ORDER-ONLY on editor TUs is inherent to adding any inline variable to a wide header.
+  A scan with all 37 headers edited at once (build-alltargets, 1,522 objects): 1,397 IDENTICAL, 82 LAYOUT-ONLY, 35 ORDER-ONLY (32 editor / MLR / gameos objects), 8 DIFF. Of the DIFFs: `MapGeneratorDialog.cpp.obj` (the stb_image tables dropped)
+  is caused by 12 headers individually (gameos.hpp, daprtype, dbasegui, inifile, mech3d, move, sounds, terrain, txmmgr, userinput, vfx, weaponfx); `mechcmd2.cpp.obj` differs only with the full set together (no single culprit);
+  `gos_crashbundle`, `gos_visual_capture`, `gameos_graphics` (x2 each: game and editor) have no culprit header (zero or one edited header reaches them: build noise). So the wide headers need TWO more rulings: ORDER-ONLY acceptance
+  (a pure index shift) and the MapGeneratorDialog class (`--ignore-digest-file`, a compile-must-pass object whose unreferenced stb tables vanish). The lane applied neither.
