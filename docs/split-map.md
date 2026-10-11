@@ -146,6 +146,8 @@ Split commit: `217255c68`.
 
 ## `code/group.cpp`
 
+Split commit: `f0d37de6c`.
+
 | Piece | What it holds |
 |---|---|
 | `group.cpp` | keeps the group membership and selection methods and the copy / init |
@@ -180,6 +182,8 @@ Split commit: `009e31493`.
 
 ## `code/logisticsmissioninfo.cpp`
 
+Split commit: `dc3a26c8a`.
+
 | Piece | What it holds |
 |---|---|
 | `logisticsmissioninfo.cpp` | keeps construction, the campaign file parse, load and save |
@@ -189,6 +193,8 @@ Split commit: `009e31493`.
 
 ## `code/logisticsvariant.cpp`
 
+Split commit: `aa9130de3`.
+
 | Piece | What it holds |
 |---|---|
 | `logisticsvariant.cpp` | keeps LogisticsChassis and the LogisticsVariant construction, init and addComponent |
@@ -196,6 +202,8 @@ Split commit: `009e31493`.
 | `logisticsvariant_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
 ## `code/mechbayscreen.cpp`
+
+Split commit: `b43d4b40c`.
 
 | Piece | What it holds |
 |---|---|
@@ -263,6 +271,8 @@ Split commit: `708c5e445`.
 | `objmgr_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
 ## `code/team.cpp`
+
+Split commit: `be79c6ead`.
 
 | Piece | What it holds |
 |---|---|
@@ -363,6 +373,8 @@ Split commit: `f4c986566`.
 | `camera_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
 ## `mclib/cevfx.cpp`
+
+Split commit: `2d6c73efc`.
 
 | Piece | What it holds |
 |---|---|
