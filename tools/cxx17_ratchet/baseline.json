@@ -106,7 +106,7 @@
    "LG11": 0,
    "LG12a": 2,
    "LG12b": 0,
-   "LG13": 9,
+   "LG13": 7,
    "LG14": 2,
    "LG15": 0,
    "LG16": 0,
@@ -152,7 +152,7 @@
    "LG11": 101,
    "LG12a": 220,
    "LG12b": 790,
-   "LG13": 759,
+   "LG13": 736,
    "LG14": 135,
    "LG15": 0,
    "LG16": 7,
@@ -198,7 +198,7 @@
    "LG11": 67,
    "LG12a": 449,
    "LG12b": 563,
-   "LG13": 1200,
+   "LG13": 1193,
    "LG14": 122,
    "LG15": 0,
    "LG16": 156,
@@ -1626,7 +1626,7 @@
   "RenderCore/bcdec.h": {
    "LG02": 2,
    "LG09": 31,
-   "LG13": 9,
+   "LG13": 7,
    "LG17": 2,
    "LG18": 1
   },
@@ -2163,7 +2163,6 @@
   "code/goal.h": {
    "LG02": 6,
    "LG04": 1,
-   "LG13": 5,
    "LG14": 2
   },
   "code/ground_contact_blob.cpp": {
@@ -3301,7 +3300,6 @@
   },
   "code/warrior_internal.h": {
    "LG02": 1,
-   "LG13": 3,
    "LG14": 2
   },
   "code/warrior_move.cpp": {
@@ -3363,8 +3361,7 @@
    "LG09": 2
   },
   "code/weather.h": {
-   "LG02": 1,
-   "LG13": 15
+   "LG02": 1
   },
   "editor/EditorGosRender.cpp": {
    "LG20": 2
@@ -4781,7 +4778,7 @@
   },
   "mclib/msodw.h": {
    "LG02": 1,
-   "LG13": 28,
+   "LG13": 21,
    "LG14": 5
   },
   "mclib/mstates.h": {
@@ -5602,7 +5599,7 @@
    "LG20": 2
   }
  },
- "head": "8aa5e975d",
+ "head": "3a899cf80",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
