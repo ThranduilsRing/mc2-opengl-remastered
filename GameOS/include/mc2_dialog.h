@@ -28,5 +28,5 @@ inline int mc2MessageBox(const char* text, const char* title, unsigned type, int
         std::fflush(stderr);
         return unattendedResult;
     }
-    return MessageBox(NULL, text, title, type);
+    return MessageBox(nullptr, text, title, type);
 }

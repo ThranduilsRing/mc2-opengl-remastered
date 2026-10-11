@@ -80,8 +80,8 @@ public:
 	// embedded GL child window.  Some catalog/preview paths can carry an object
 	// before its appearance is fully populated, so callers must be able to test
 	// for a missing appearance instead of crashing inside this accessor.
-	ObjectAppearance* appearance() { return appearInfo ? appearInfo->appearance : 0; }
-	const ObjectAppearance* appearance() const { return appearInfo ? appearInfo->appearance : 0; }
+	ObjectAppearance* appearance() { return appearInfo ? appearInfo->appearance : nullptr; }
+	const ObjectAppearance* appearance() const { return appearInfo ? appearInfo->appearance : nullptr; }
 
 	long				getForestID() const { return forestId; }
 	void				setForestID( int newID ) { forestId = newID; }
@@ -98,7 +98,7 @@ protected:
 
 		void *operator new (size_t mySize)
 		{
-			void *result = NULL;
+			void *result = nullptr;
 			result = systemHeap->Malloc(mySize);
 			
 			return(result);
@@ -134,7 +134,7 @@ class Pilot
 
 public:
 
-	Pilot(){info = 0; rawProfile[0] = 0;}
+	Pilot(){info = nullptr; rawProfile[0] = 0;}
 
 	static void initPilots();
 
@@ -194,8 +194,8 @@ public:
 	Brain (void)
 	{
 		numStaticVars = numCells = 0;
-		cellNum = cellType = NULL;
-		cellData = NULL;
+		cellNum = cellType = nullptr;
+		cellData = nullptr;
 		
 		brainName[0] = 0;
 	}
@@ -207,8 +207,8 @@ public:
 		free(cellData);
 		
 		numStaticVars = numCells = 0;
-		cellNum = cellType = NULL;
-		cellData = NULL;
+		cellNum = cellType = nullptr;
+		cellData = nullptr;
 		
 		brainName[0] = 0;
 	}
@@ -235,19 +235,19 @@ public:
 	Unit( int alignment );
 	Unit( const Unit& src );
 	Unit& operator=( const Unit& src );
-	virtual ~Unit();
-	virtual void CastAndCopy(const EditorObject &master);
-	virtual EditorObject *Clone() { return(new Unit(*this)); }
+	~Unit() override;
+	void CastAndCopy(const EditorObject &master) override;
+	EditorObject *Clone() override { return(new Unit(*this)); }
 
 	void setLanceInfo( int newLance, int index ){ lance = newLance; lanceIndex = index; }
 	void getLanceInfo( int &newLance, int &index ){ newLance = lance; index = lanceIndex; }
-	virtual int			getType() const { return GV_TYPE; }	
+	int			getType() const override { return GV_TYPE; }	
 
 	unsigned long getSquad() const { return squad; }
 	void setSquad(unsigned long newSquad);
 
-	virtual bool save( FitIniFile* file, int warriorNumber );
-	virtual bool load( FitIniFile* file, int warriorNumber );
+	bool save( FitIniFile* file, int warriorNumber ) override;
+	bool load( FitIniFile* file, int warriorNumber ) override;
 
 	void getColors( unsigned long& base, unsigned long& color1, unsigned long& color2 ) const;
 	void setColors( unsigned long base, unsigned long color1, unsigned long color2 );
@@ -338,9 +338,9 @@ public:
 
 	DropZone( const Stuff::Vector3D& position, int alignment, bool bVTol );
 	DropZone& operator=( const DropZone& src ) { bVTol = src.bVTol; EditorObject::operator=( src ); return *this; }
-	virtual void CastAndCopy(const EditorObject &master);
-	virtual EditorObject *Clone() { return(new DropZone(*this)); }
-	virtual bool save( FitIniFile* file, int number );
+	void CastAndCopy(const EditorObject &master) override;
+	EditorObject *Clone() override { return(new DropZone(*this)); }
+	bool save( FitIniFile* file, int number ) override;
 	
 	bool isVTol() { return bVTol; }
 	
@@ -354,8 +354,8 @@ class NavMarker : public EditorObject
 	public:
 
 		NavMarker();
-		virtual EditorObject *Clone() { return(new NavMarker(*this)); }
-		virtual bool save( FitIniFile* file, int number );
+		EditorObject *Clone() override { return(new NavMarker(*this)); }
+		bool save( FitIniFile* file, int number ) override;
 
 };
 

@@ -24,17 +24,17 @@ class OverlayBrush: public Brush
 		{ 
 			type = (Overlays)Type;
 			offset = Offset; 
-			pAction = NULL; 
+			pAction = nullptr; 
 		}
-		virtual ~OverlayBrush(){}	
+		~OverlayBrush() override{}	
 
-		virtual void render( int ScreenMousex, int ScreenMouseY ){} // need to figure this out
+		void render( int ScreenMousex, int ScreenMouseY ) override{} // need to figure this out
 
 		virtual bool canPaint( Stuff::Vector3D&, int screenX, int screenY, int& flags ){ return true; }
-		virtual bool paint( Stuff::Vector3D& worldPos, int screenX, int screenY );
+		bool paint( Stuff::Vector3D& worldPos, int screenX, int screenY ) override;
 
-		bool beginPaint(); // not doing anything yet
-		Action* endPaint();
+		bool beginPaint() override; // not doing anything yet
+		Action* endPaint() override;
 
 	private:
 

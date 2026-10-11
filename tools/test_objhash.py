@@ -83,3 +83,21 @@ def test_digest_masks_the_build_fingerprint_literal_in_rdata(tmp_path):
     c.write_bytes(make_obj(rdata=b"jello" + lit_clean))                    # a real data change
     da, db, dc = (objhash.obj_digest(str(p)) for p in (a, b, c))
     assert da["code_sha256"] == db["code_sha256"] != dc["code_sha256"]
+
+
+def test_date_and_time_literals_are_masked_but_other_strings_are_not():
+    a = b"build: \x00Oct 10 2026\x0019:41:07\x00tail"
+    b = b"build: \x00Nov  3 2027\x0003:02:59\x00tail"
+    assert objhash._mask_fingerprint(a) == objhash._mask_fingerprint(b)
+    assert objhash._mask_fingerprint(a) != objhash._mask_fingerprint(a.replace(b"build", b"built"))
+    assert len(objhash._mask_fingerprint(a)) == len(a)
+
+
+def test_date_and_time_string_symbols_mask_hash_and_text():
+    a = "??_C@_0M@BBCJAGCC@Oct?510?52026@|1|0|0|x"
+    b = "??_C@_0M@AAAAAAAA@Oct?510?52026@|1|0|0|x"
+    assert objhash._mask_symbol(a) == objhash._mask_symbol(b)
+    t1, t2 = "??_C@_08BAGEGGNC@20?303?350@", "??_C@_08AAAAAAAA@20?303?350@"
+    assert objhash._mask_symbol(t1) == objhash._mask_symbol(t2)
+    other = "??_C@_05ABCDEFGH@hello@"
+    assert objhash._mask_symbol(other) == other             # an ordinary literal keeps its hash

@@ -26,7 +26,7 @@
 class EditorTacMap : public CDialog
 {
 public:
-	EditorTacMap(CWnd* pParent = NULL);   // standard constructor
+	EditorTacMap(CWnd* pParent = nullptr);   // standard constructor
 
 	//{{AFX_DATA(EditorTacMap)
 	enum { IDD = IDD_TACMAP };
@@ -37,19 +37,19 @@ public:
 	void UpdateMap( ){ picture.refreshBmp(); }
 
 	void ReleaseFocus();
-	virtual void OnCancel() { ReleaseFocus(); }
+	void OnCancel() override { ReleaseFocus(); }
 	virtual void OnOk() { ReleaseFocus(); }
 
 	//{{AFX_VIRTUAL(EditorTacMap)
 	protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
-	virtual LRESULT WindowProc(UINT message, WPARAM wParam, LPARAM lParam);
+	void DoDataExchange(CDataExchange* pDX) override;    // DDX/DDV support
+	LRESULT WindowProc(UINT message, WPARAM wParam, LPARAM lParam) override;
 	//}}AFX_VIRTUAL
 
 protected:
 
 	//{{AFX_MSG(EditorTacMap)
-	virtual BOOL OnInitDialog();
+	BOOL OnInitDialog() override;
 	afx_msg void OnTga();
 	afx_msg BOOL OnEraseBkgnd(CDC* pDC);
 	//}}AFX_MSG

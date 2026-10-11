@@ -26,14 +26,14 @@ class DamageBrush: public Brush
 {
 	public:
 	
-	DamageBrush(bool bDamage ){ damage = bDamage; pAction = NULL; }
-	virtual ~DamageBrush(){}
-	virtual bool beginPaint();
-	virtual Action* endPaint();
-	virtual bool paint( Stuff::Vector3D& worldPos, int screenX, int screenY  );
-	virtual bool canPaint( Stuff::Vector3D& worldPos, int screenX, int screenY, int flags ); 
-	virtual bool canPaintSelection( );
-	virtual Action* applyToSelection();
+	DamageBrush(bool bDamage ){ damage = bDamage; pAction = nullptr; }
+	~DamageBrush() override{}
+	bool beginPaint() override;
+	Action* endPaint() override;
+	bool paint( Stuff::Vector3D& worldPos, int screenX, int screenY  ) override;
+	bool canPaint( Stuff::Vector3D& worldPos, int screenX, int screenY, int flags ) override; 
+	bool canPaintSelection( ) override;
+	Action* applyToSelection() override;
 	bool	damage;
 
 	private:

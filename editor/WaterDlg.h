@@ -18,7 +18,7 @@ class WaterDlg : public CDialog
 {
 // Construction
 public:
-	WaterDlg(CWnd* pParent = NULL);   // standard constructor
+	WaterDlg(CWnd* pParent = nullptr);   // standard constructor
 
 // Dialog Data
 	//{{AFX_DATA(WaterDlg)
@@ -38,7 +38,7 @@ public:
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(WaterDlg)
 	protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
+	void DoDataExchange(CDataExchange* pDX) override;    // DDX/DDV support
 	//}}AFX_VIRTUAL
 
 // Implementation
@@ -46,8 +46,8 @@ protected:
 
 	// Generated message map functions
 	//{{AFX_MSG(WaterDlg)
-	virtual BOOL OnInitDialog();
-	virtual void OnOK();
+	BOOL OnInitDialog() override;
+	void OnOK() override;
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };

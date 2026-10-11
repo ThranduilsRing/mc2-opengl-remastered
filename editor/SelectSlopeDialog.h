@@ -18,7 +18,7 @@ class SelectSlopeDialog : public CDialog
 {
 // Construction
 public:
-	SelectSlopeDialog(CWnd* pParent = NULL);   // standard constructor
+	SelectSlopeDialog(CWnd* pParent = nullptr);   // standard constructor
 
 // Dialog Data
 	//{{AFX_DATA(SelectSlopeDialog)
@@ -32,7 +32,7 @@ public:
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(SelectSlopeDialog)
 	protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
+	void DoDataExchange(CDataExchange* pDX) override;    // DDX/DDV support
 	//}}AFX_VIRTUAL
 
 // Implementation

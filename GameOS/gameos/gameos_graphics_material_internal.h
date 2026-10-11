@@ -204,7 +204,7 @@ class gosVertexDeclaration {
 	gosVERTEX_FORMAT_RECORD* vf_;
 	uint32_t count_;
 
-	gosVertexDeclaration() :vf_(0), count_(0) {}
+	gosVertexDeclaration() :vf_(nullptr), count_(0) {}
 public:
 
 	static gosVertexDeclaration* create(gosVERTEX_FORMAT_RECORD* vf, int count)
@@ -418,7 +418,7 @@ class gosRenderMaterial {
                 SPEW(("SHADERS", "Failed to create %s material\n", shader));
                 printf("[TESS] FAILED to create shader: %s\n", shader);
                 delete pmat;
-                return NULL;
+                return nullptr;
             }
 
             pmat->name_ = new char[strlen(shader) + 1];
@@ -443,11 +443,11 @@ class gosRenderMaterial {
             gosASSERT(pmat);
             if(pmat->program_) {
                 glsl_program::deleteProgram(pmat->name_);
-                pmat->program_ = 0;
+                pmat->program_ = nullptr;
             }
 
             delete[] pmat->name_;
-            pmat->name_ = 0;
+            pmat->name_ = nullptr;
         }
 
         void checkReload()
@@ -467,7 +467,7 @@ class gosRenderMaterial {
 
             gosASSERT(pos_loc >= 0);
             glEnableVertexAttribArray(pos_loc);
-            glVertexAttribPointer(pos_loc, 4, GL_FLOAT, GL_FALSE, stride, (void*)0);
+            glVertexAttribPointer(pos_loc, 4, GL_FLOAT, GL_FALSE, stride, (void*)nullptr);
 
             if(color_loc != -1) {
                 glEnableVertexAttribArray(color_loc);
@@ -550,8 +550,8 @@ class gosRenderMaterial {
 
     private:
         gosRenderMaterial():
-            program_(NULL)
-            , name_(NULL)
+            program_(nullptr)
+            , name_(nullptr)
             , pos_loc(-1)
             , color_loc(-1)
             , spec_color_and_fog_loc(-1)
@@ -584,18 +584,18 @@ class gosRenderMaterial {
 
 class gosMesh {
     public:
-        typedef WORD INDEX_TYPE;
+        using INDEX_TYPE = WORD;
 
         static gosMesh* makeMesh(gosPRIMITIVETYPE prim_type, int vertex_capacity, int index_capacity = 0) {
-            GLuint vb = makeBuffer(GL_ARRAY_BUFFER, 0, sizeof(gos_VERTEX)*vertex_capacity, GL_DYNAMIC_DRAW);
+            GLuint vb = makeBuffer(GL_ARRAY_BUFFER, nullptr, sizeof(gos_VERTEX)*vertex_capacity, GL_DYNAMIC_DRAW);
             if(!vb)
-                return NULL;
+                return nullptr;
 
             GLuint ib = 0;
             if(index_capacity > 0) {
-                ib = makeBuffer(GL_ELEMENT_ARRAY_BUFFER, 0, sizeof(INDEX_TYPE)*index_capacity, GL_DYNAMIC_DRAW);
+                ib = makeBuffer(GL_ELEMENT_ARRAY_BUFFER, nullptr, sizeof(INDEX_TYPE)*index_capacity, GL_DYNAMIC_DRAW);
                 if(!ib)
-                    return NULL;
+                    return nullptr;
             }
 
             gosMesh* mesh = new gosMesh(prim_type, vertex_capacity, index_capacity);
@@ -703,8 +703,8 @@ class gosMesh {
             , index_capacity_(index_capacity)
             , num_vertices_(0)
             , num_indices_(0)
-            , pvertex_data_(NULL)    
-            , pindex_data_(NULL)    
+            , pvertex_data_(nullptr)    
+            , pindex_data_(nullptr)    
             , prim_type_(prim_type)
             , vb_(-1)
             ,ib_(-1)

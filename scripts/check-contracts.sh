@@ -83,6 +83,11 @@ while [ $# -gt 0 ]; do
     _ARGS+=("$1"); shift
 done
 set -- ${_ARGS[@]+"${_ARGS[@]}"}
+# Named presets for --rows (the regex form still works for anything else).
+case "$ROWS_RE" in
+    split) ROWS_RE="cxx17_ratchet|dup_lines|gate_gen|file_size|split_path|split_map|background_launch|scripts_tests" ;;
+    tidy)  ROWS_RE="cxx17_ratchet|file_size|background_launch|tools_tests" ;;
+esac
 for arg in "$@"; do
     case "$arg" in
         --quiet|-q) QUIET=1 ;;
@@ -90,7 +95,11 @@ for arg in "$@"; do
         --serial) JOBS=1 ;;
         -j[0-9]*) JOBS="${arg#-j}" ;;
         --jobs=*) JOBS="${arg#--jobs=}" ;;
-        --rows=*) ROWS_RE="${arg#--rows=}" ;;
+        --rows=*) ROWS_RE="${arg#--rows=}"
+                  case "$ROWS_RE" in
+                      split) ROWS_RE="cxx17_ratchet|dup_lines|gate_gen|file_size|split_path|split_map|background_launch|scripts_tests" ;;
+                      tidy)  ROWS_RE="cxx17_ratchet|file_size|background_launch|tools_tests" ;;
+                  esac ;;
         # Internal. Registers synthetic rows instead of the real board so the
         # selftest can grade what the REAL runners render. Not for humans.
         --selftest-render) SELFTEST_RENDER=1 ;;
@@ -98,6 +107,8 @@ for arg in "$@"; do
             echo "Usage: bash $0 [--quiet] [--selftest] [--serial | -jN | --jobs=N] [--rows REGEX]"
             echo "  --rows REGEX  run only rows whose label matches (ERE, unanchored), e.g. --rows 'ratchet|dup_lines'."
             echo "                A PARTIAL board: it is for iterating mid-batch, never a substitute for the full board."
+            echo "  --rows split  the file-split rows (cxx17_ratchet dup_lines gate_gen file_size split_path split_map background_launch scripts_tests)"
+            echo "  --rows tidy   the tidy-batch rows (cxx17_ratchet file_size background_launch tools_tests)"
             echo "  Rows run in parallel by default (CONTRACTS_JOBS / -jN size the pool,"
             echo "  --serial = old behaviour). Rows that build, launch or write shared"
             echo "  files are detected (_is_serial_row) and run alone after the pool."

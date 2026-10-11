@@ -164,7 +164,8 @@ class Proof:
             keep.extend(h for h in trial if h not in suspects)   # every object including them was identical
             if len(suspects) == 1:
                 h = suspects[0]
-                rejected.append((h, f"{len(self.includers[h] & bad)} of {len(self.includers[h])} includers differ or fail to compile"))
+                names = ", ".join(sorted(self.includers[h] & bad)[:3])
+                rejected.append((h, f"{len(self.includers[h] & bad)} of {len(self.includers[h])} includers differ or fail to compile ({names})"))
                 return
             mid = len(suspects) // 2
             go(suspects[:mid])

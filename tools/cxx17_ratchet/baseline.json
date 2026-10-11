@@ -47,8 +47,8 @@
    "LG20": 0
   },
   "GameOS": {
-   "LG01": 66,
-   "LG02": 208,
+   "LG01": 46,
+   "LG02": 204,
    "LG03": 301,
    "LG04": 6,
    "LG05": 119,
@@ -412,7 +412,6 @@
    "LG17": 2
   },
   "GameOS/gameos/gameos_graphics_internal.h": {
-   "LG01": 10,
    "LG03": 9,
    "LG06": 5,
    "LG09": 7,
@@ -424,8 +423,6 @@
    "LG13": 1
   },
   "GameOS/gameos/gameos_graphics_material_internal.h": {
-   "LG01": 7,
-   "LG02": 1,
    "LG03": 22,
    "LG06": 4,
    "LG09": 5,
@@ -448,8 +445,7 @@
    "LG10": 1
   },
   "GameOS/gameos/gameos_graphics_renderer_internal.h": {
-   "LG01": 2,
-   "LG02": 3,
+   "LG02": 1,
    "LG03": 1,
    "LG06": 3,
    "LG09": 8,
@@ -963,9 +959,6 @@
    "LG09": 9,
    "LG12a": 1
   },
-  "GameOS/gameos/gos_terrain_mask_dispatch.h": {
-   "LG02": 1
-  },
   "GameOS/gameos/gos_terrain_patch_stream.cpp": {
    "LG08": 4,
    "LG09": 22
@@ -1416,7 +1409,6 @@
    "LG18": 1
   },
   "GameOS/include/mc2_dialog.h": {
-   "LG01": 1,
    "LG06": 1
   },
   "GameOS/include/mc2_verify.h": {
@@ -2173,18 +2165,21 @@
    "LG09": 4,
    "LG10": 2
   },
-  "code/group.cpp": {
-   "LG01": 1,
-   "LG03": 1,
-   "LG09": 2,
-   "LG12b": 3,
-   "LG13": 3,
-   "LG16": 4
-  },
   "code/group.h": {
    "LG01": 3,
    "LG02": 2,
    "LG13": 5
+  },
+  "code/group_goals.cpp": {
+   "LG01": 1,
+   "LG03": 1,
+   "LG09": 2,
+   "LG12b": 2,
+   "LG13": 3,
+   "LG16": 4
+  },
+  "code/group_orders.cpp": {
+   "LG12b": 1
   },
   "code/gvehicl.cpp": {
    "LG03": 3,
@@ -2302,14 +2297,19 @@
    "LG06": 3
   },
   "code/logistics.cpp": {
-   "LG03": 12,
-   "LG06": 3,
-   "LG09": 14,
+   "LG03": 11,
+   "LG06": 1,
+   "LG09": 1,
    "LG12a": 2
   },
   "code/logistics.h": {
    "LG06": 2,
    "LG13": 5
+  },
+  "code/logistics_begin.cpp": {
+   "LG03": 1,
+   "LG06": 2,
+   "LG09": 13
   },
   "code/logistics_csv.h": {
    "LG09": 2
@@ -2408,15 +2408,26 @@
    "LG13": 1
   },
   "code/logisticsmissioninfo.cpp": {
-   "LG03": 11,
-   "LG05": 26,
-   "LG06": 7,
-   "LG09": 4,
-   "LG12b": 11
+   "LG03": 6,
+   "LG05": 3,
+   "LG09": 2,
+   "LG12b": 9
   },
   "code/logisticsmissioninfo.h": {
    "LG06": 8,
    "LG13": 1
+  },
+  "code/logisticsmissioninfo_progress.cpp": {
+   "LG03": 2,
+   "LG05": 5,
+   "LG06": 3,
+   "LG09": 2,
+   "LG12b": 2
+  },
+  "code/logisticsmissioninfo_query.cpp": {
+   "LG03": 3,
+   "LG05": 18,
+   "LG06": 4
   },
   "code/logisticspilot.cpp": {
    "LG03": 4,
@@ -2438,16 +2449,21 @@
   },
   "code/logisticsvariant.cpp": {
    "LG03": 2,
-   "LG05": 8,
-   "LG06": 1,
-   "LG09": 10,
+   "LG05": 4,
+   "LG09": 7,
    "LG12a": 1,
-   "LG12b": 5
+   "LG12b": 2
   },
   "code/logisticsvariant.h": {
    "LG06": 1,
    "LG09": 2,
    "LG14": 1
+  },
+  "code/logisticsvariant_stats.cpp": {
+   "LG05": 4,
+   "LG06": 1,
+   "LG09": 3,
+   "LG12b": 3
   },
   "code/mainmenu.cpp": {
    "LG03": 9,
@@ -2549,14 +2565,22 @@
    "LG12b": 1
   },
   "code/mechbayscreen.cpp": {
-   "LG03": 8,
-   "LG05": 1,
-   "LG06": 1,
-   "LG09": 7,
-   "LG12b": 6
+   "LG03": 5,
+   "LG09": 3
   },
   "code/mechbayscreen.h": {
    "LG13": 11
+  },
+  "code/mechbayscreen_mechs.cpp": {
+   "LG03": 1,
+   "LG05": 1,
+   "LG06": 1,
+   "LG09": 4,
+   "LG12b": 4
+  },
+  "code/mechbayscreen_update.cpp": {
+   "LG03": 2,
+   "LG12b": 2
   },
   "code/mechclass.h": {
    "LG02": 3,
@@ -2986,9 +3010,7 @@
    "LG06": 1
   },
   "code/multplyr.cpp": {
-   "LG06": 4,
-   "LG13": 1,
-   "LG17": 2
+   "LG06": 2
   },
   "code/multplyr.h": {
    "LG01": 3,
@@ -2996,6 +3018,16 @@
    "LG06": 3,
    "LG13": 33,
    "LG14": 7,
+   "LG17": 2
+  },
+  "code/multplyr_handle.cpp": {
+   "LG06": 1
+  },
+  "code/multplyr_internal.h": {
+   "LG13": 1
+  },
+  "code/multplyr_send.cpp": {
+   "LG06": 1,
    "LG17": 2
   },
   "code/object_walk_trace.h": {
@@ -3215,13 +3247,17 @@
    "LG09": 1
   },
   "code/team.cpp": {
-   "LG01": 4,
-   "LG03": 5,
-   "LG09": 14,
-   "LG13": 1
+   "LG03": 1,
+   "LG09": 10
   },
   "code/team.h": {
    "LG02": 3
+  },
+  "code/team_los.cpp": {
+   "LG01": 4,
+   "LG03": 4,
+   "LG09": 4,
+   "LG13": 1
   },
   "code/terrobj.cpp": {
    "LG01": 4,
@@ -3417,11 +3453,10 @@
    "LG17": 3
   },
   "mclib/abldbug.cpp": {
-   "LG01": 2,
+   "LG01": 1,
    "LG06": 2,
-   "LG09": 35,
-   "LG11": 1,
-   "LG12b": 37,
+   "LG09": 13,
+   "LG12b": 8,
    "LG17": 1
   },
   "mclib/abldbug.h": {
@@ -3431,6 +3466,12 @@
    "LG13": 5,
    "LG14": 1,
    "LG17": 1
+  },
+  "mclib/abldbug_print.cpp": {
+   "LG01": 1,
+   "LG09": 22,
+   "LG11": 1,
+   "LG12b": 29
   },
   "mclib/abldecl.cpp": {
    "LG09": 5
@@ -3540,9 +3581,16 @@
   },
   "mclib/ablxstd.cpp": {
    "LG04": 2,
-   "LG09": 44,
+   "LG09": 5,
    "LG12a": 2,
-   "LG12b": 27
+   "LG12b": 5
+  },
+  "mclib/ablxstd_stack.cpp": {
+   "LG09": 13
+  },
+  "mclib/ablxstd_std.cpp": {
+   "LG09": 26,
+   "LG12b": 22
   },
   "mclib/ablxstmt.cpp": {
    "LG09": 9,
@@ -4049,17 +4097,21 @@
    "LG13": 4
   },
   "mclib/genactor.cpp": {
-   "LG01": 16,
-   "LG03": 8,
+   "LG01": 4,
+   "LG03": 7,
    "LG06": 1,
    "LG09": 1,
-   "LG12b": 5,
-   "LG13": 1
+   "LG12b": 5
   },
   "mclib/genactor.h": {
    "LG01": 4,
    "LG06": 1,
    "LG13": 2
+  },
+  "mclib/genactor_frame.cpp": {
+   "LG01": 12,
+   "LG03": 1,
+   "LG13": 1
   },
   "mclib/gosfx/card.cpp": {
    "LG03": 6,
@@ -4491,13 +4543,22 @@
    "LG13": 2
   },
   "mclib/mlr/mlr_i_tmesh.cpp": {
-   "LG03": 15,
-   "LG09": 4,
-   "LG12a": 19,
-   "LG13": 2
+   "LG03": 5,
+   "LG09": 3,
+   "LG13": 1
   },
   "mclib/mlr/mlr_i_tmesh.hpp": {
    "LG13": 2
+  },
+  "mclib/mlr/mlr_i_tmesh_cast.cpp": {
+   "LG03": 10,
+   "LG09": 1
+  },
+  "mclib/mlr/mlr_i_tmesh_internal.h": {
+   "LG13": 1
+  },
+  "mclib/mlr/mlr_i_tmesh_light.cpp": {
+   "LG12a": 19
   },
   "mclib/mlr/mlrambientlight.cpp": {
    "LG03": 2
@@ -5633,7 +5694,7 @@
    "LG20": 2
   }
  },
- "head": "eb772b8d1",
+ "head": "d9ad8f21c",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

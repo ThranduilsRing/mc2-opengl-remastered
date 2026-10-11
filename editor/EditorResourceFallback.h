@@ -118,10 +118,10 @@ static inline const char* EditorFallbackResourceString(long resourceID)
         }
     }
 
-    return NULL;
+    return nullptr;
 }
 
-static inline void EditorSafeLoadString(long resourceID, char* buffer, long bufferLength, void* /*resourceHandle*/ = 0)
+static inline void EditorSafeLoadString(long resourceID, char* buffer, long bufferLength, void* /*resourceHandle*/ = nullptr)
 {
     if (!buffer || bufferLength <= 0)
         return;

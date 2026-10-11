@@ -18,7 +18,7 @@ class CBooleanFlagIsSetDialog : public CDialog
 {
 // Construction
 public:
-	CBooleanFlagIsSetDialog(CWnd* pParent = NULL);   // standard constructor
+	CBooleanFlagIsSetDialog(CWnd* pParent = nullptr);   // standard constructor
 
 // Dialog Data
 	//{{AFX_DATA(CBooleanFlagIsSetDialog)
@@ -32,7 +32,7 @@ public:
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CBooleanFlagIsSetDialog)
 	protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
+	void DoDataExchange(CDataExchange* pDX) override;    // DDX/DDV support
 	//}}AFX_VIRTUAL
 
 // Implementation

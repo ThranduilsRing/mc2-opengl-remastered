@@ -19,15 +19,15 @@ private:
 public:
 	PointerSelectObjectDlg();
 	PointerSelectObjectDlg(int x, int y);
-	virtual ~PointerSelectObjectDlg();
+	~PointerSelectObjectDlg() override;
 
-	BOOL OnCommand(WPARAM wParam, LPARAM lParam); // called by child controls to inform of an event
-	virtual BOOL OnWndMsg( UINT message, WPARAM wParam, LPARAM lParam, LRESULT* pResult );
-	BOOL OnInitDialog();
+	BOOL OnCommand(WPARAM wParam, LPARAM lParam) override; // called by child controls to inform of an event
+	BOOL OnWndMsg( UINT message, WPARAM wParam, LPARAM lParam, LRESULT* pResult ) override;
+	BOOL OnInitDialog() override;
 	UINT OnNcHitTest( CPoint point );
 
 private:
-	typedef CDialog inherited;
+	using inherited = CDialog;
 
 	// suppressing these
 	//inline PointerSelectObjectDlg();

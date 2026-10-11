@@ -20,7 +20,7 @@ class ResourceStringSelectionDlg : public CDialog
 {
 // Construction
 public:
-	ResourceStringSelectionDlg(CWnd* pParent = NULL);   // standard constructor
+	ResourceStringSelectionDlg(CWnd* pParent = nullptr);   // standard constructor
 
 	int m_BottomOfIDRange;
 	int m_TopOfIDRange;
@@ -37,7 +37,7 @@ public:
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(ResourceStringSelectionDlg)
 	protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
+	void DoDataExchange(CDataExchange* pDX) override;    // DDX/DDV support
 	//}}AFX_VIRTUAL
 
 // Implementation
@@ -48,8 +48,8 @@ protected:
 
 	// Generated message map functions
 	//{{AFX_MSG(ResourceStringSelectionDlg)
-	virtual BOOL OnInitDialog();
-	virtual void OnOK();
+	BOOL OnInitDialog() override;
+	void OnOK() override;
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };

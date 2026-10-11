@@ -18,7 +18,7 @@ class SelectTerrainTypeDlg : public CDialog
 {
 // Construction
 public:
-	SelectTerrainTypeDlg(CWnd* pParent = NULL);   // standard constructor
+	SelectTerrainTypeDlg(CWnd* pParent = nullptr);   // standard constructor
 
 // Dialog Data
 	//{{AFX_DATA(SelectTerrainTypeDlg)
@@ -34,7 +34,7 @@ public:
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(SelectTerrainTypeDlg)
 	protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
+	void DoDataExchange(CDataExchange* pDX) override;    // DDX/DDV support
 	//}}AFX_VIRTUAL
 
 // Implementation
@@ -42,8 +42,8 @@ protected:
 
 	// Generated message map functions
 	//{{AFX_MSG(SelectTerrainTypeDlg)
-	virtual BOOL OnInitDialog();
-	virtual void OnOK();
+	BOOL OnInitDialog() override;
+	void OnOK() override;
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };

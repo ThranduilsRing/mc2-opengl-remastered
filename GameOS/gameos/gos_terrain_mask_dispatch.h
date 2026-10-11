@@ -7,7 +7,7 @@
 #include <cstdint>
 
 class TerrainQuad;
-typedef TerrainQuad* TerrainQuadPtr;
+using TerrainQuadPtr = TerrainQuad*;
 
 namespace gos_terrain_mask_dispatch {
 
