@@ -198,7 +198,7 @@
    "LG11": 67,
    "LG12a": 212,
    "LG12b": 245,
-   "LG13": 589,
+   "LG13": 539,
    "LG14": 120,
    "LG15": 0,
    "LG16": 156,
@@ -3357,8 +3357,7 @@
    "LG09": 3
   },
   "mclib/bitflag.h": {
-   "LG01": 4,
-   "LG13": 3
+   "LG01": 4
   },
   "mclib/burnin_jpeg_decode.cpp": {
    "LG17": 1
@@ -3507,7 +3506,7 @@
    "LG13": 1
   },
   "mclib/dbasegui.h": {
-   "LG13": 63
+   "LG13": 33
   },
   "mclib/dbitflag.h": {
    "LG02": 2
@@ -4874,7 +4873,7 @@
   "mclib/terrain.h": {
    "LG01": 1,
    "LG02": 2,
-   "LG13": 21,
+   "LG13": 11,
    "LG14": 2
   },
   "mclib/terrain_geometry.cpp": {
@@ -4924,7 +4923,7 @@
    "LG05": 1,
    "LG06": 4,
    "LG09": 8,
-   "LG13": 10
+   "LG13": 5
   },
   "mclib/terrtxm2.cpp": {
    "LG03": 2,
@@ -4940,7 +4939,7 @@
    "LG05": 1,
    "LG06": 10,
    "LG09": 2,
-   "LG13": 3
+   "LG13": 1
   },
   "mclib/terrtxm2_bake.cpp": {
    "LG03": 4,
@@ -5171,7 +5170,7 @@
    "LG20": 2
   }
  },
- "head": "51e4ae3aa",
+ "head": "06e2957c9",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
