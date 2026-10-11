@@ -79,3 +79,16 @@ def test_string_constants_are_refused_unless_asked_for():
     assert "string-literal-codegen-differs" in s["NAME"].reasons
     sites, _ = rd.analyse({"a.cpp": '#define NAME "x"\nconst char* p = NAME;\n'}, allow_strings=True)
     assert sites[0].reasons == []
+
+
+def test_never_touch_list_covers_the_step4_files_and_the_overload_sensitive_tus():
+    tus = {"code/artlry.cpp"}
+    for rel in ("mclib/estring.cpp", "mclib/stuff/vector3d.hpp", "mclib/mlr/mlr.hpp", "mclib/gosfx/fcurve.cpp", "mclib/file.h", "mclib/packet.cpp", "mclib/abldbug.h",
+                "code/multplyr.cpp", "code/dmultplyr.h", "code/team_internal.h", "mclib/heap.h"):
+        assert rd.never_touch(rel, tus), rel
+    assert rd.never_touch("code/artlry.cpp", tus)
+    assert not rd.never_touch("code/chatwindow.cpp", tus) and not rd.never_touch("mclib/timing.h", tus)
+
+
+def test_the_audit_doc_yields_fifty_overload_sensitive_tus():
+    assert len(rd.overload_sensitive_tus()) == 50

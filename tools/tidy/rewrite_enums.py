@@ -172,8 +172,10 @@ def cmd_run(a):
     sys.stdout.reconfigure(line_buffering=True)
     tree_abs = os.path.join(rts.ROOT, a.tree)
     rts.apply_lane_args(a)
-    if not a.strict_proof:
+    a.proof_mode = "plain objhash (strict)"
+    if a.relaxed_proof:
         canonical_obj.install()
+        a.proof_mode = "canonical_obj (symbol / section order and .data / .bss layout blind): " + a.relaxed_proof
     includers = rth.includer_map(tree_abs)
     a.s2t = {v: k for k, v in rth.target_to_source(tree_abs).items()}
     a.taint = rd.load_taint(a.taint_file)
@@ -183,8 +185,9 @@ def cmd_run(a):
         paths, files, enums, uses = load_world()
         dirty = rts.dirty_files() | rd.other_worktree_dirty(a.skip_dirty_in)
         by_file = collections.defaultdict(list)
+        tus = rd.overload_sensitive_tus()
         for e in enums:
-            if not e.reasons and not rts.is_excluded(e.path) and e.path not in dirty and e.path not in done:
+            if not e.reasons and not rts.is_excluded(e.path) and e.path not in dirty and e.path not in done and not rd.never_touch(e.path, tus):
                 by_file[e.path].append(e)
         plan = []
         for rel, es in by_file.items():
@@ -242,7 +245,7 @@ def cmd_run(a):
         print("BATCH %d result: kept %d file(s) / %d enum(s), reverted %d file(s), %d object(s) proven identical" % (
             batches, len(kept), kept_enums, len(rejected), len({o for r in kept for o in inc[r]})))
         if kept and a.commit:
-            rd.commit_paths(kept, "tidy(LG14): %d unscoped enum(s) -> enum class + using enum in %d file(s) (objhash identical over every including object)" % (kept_enums, len(kept)),
+            rd.commit_paths(kept, "tidy(LG14): %d unscoped enum(s) -> enum class + using enum in %d file(s) (every including object identical)\n\nProof: %s" % (kept_enums, len(kept), a.proof_mode),
                             "cxx17 ratchet baseline tightened after LG14 batch")
         if not a.loop or (a.max_batches and batches >= a.max_batches) or (not kept and not rejected):
             return 1 if rejected else 0
@@ -260,7 +263,7 @@ def main(argv=None) -> int:
     r.add_argument("--max-header-includers", type=int, default=150)
     r.add_argument("--build-jobs", type=int, default=6)
     r.add_argument("--done")
-    r.add_argument("--strict-proof", action="store_true", help="plain objhash digests instead of tools/tidy/canonical_obj.py")
+    r.add_argument("--relaxed-proof", metavar="REASON", default=None, help="canonical_obj digests instead of plain objhash; the reason goes into the commit message")
     r.add_argument("--taint-file")
     r.add_argument("--skip-dirty-in", default="A:/Games/mc2-main")
     r.add_argument("--commit", action="store_true")

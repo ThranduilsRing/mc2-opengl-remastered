@@ -4,7 +4,7 @@
 WHAT: finds object-like defines of one integer / float / string literal (suffixes honoured), keeps only those whose macro is used purely as a value (no #if / #ifdef /
 #undef / #include, no use inside another #define, no token pasting or stringizing, no sizeof of a string, no __asm file, defined exactly once in the repo, not named in a
 script, cmake, resource or shader file, not in a header a C / .rc / .asm file includes, at namespace scope, not an include guard), rewrites each in place (a .cpp-local
-define becomes `constexpr`, a header define `inline constexpr`), rebuilds every object that includes the file and compares it with tools/tidy/canonical_obj.py (objhash digests that ignore symbol and section order; --strict-proof uses plain objhash). A file whose
+define becomes `constexpr`, a header define `inline constexpr`), rebuilds every object that includes the file and compares it with tools/objhash.py (plain digests; --relaxed-proof REASON switches to the order / layout-blind tools/tidy/canonical_obj.py and records the reason in the commit message). The never-touch list (NEVER_TOUCH plus the audit's overload-sensitive TUs) is never rewritten. A file whose
 includers are not all identical is bisected out and reverted (the same Proof as tools/tidy/run_tidy_headers.py).
 WHY: a macro has no type, no scope and no debugger value; a typed constant does, and the rewrite is a no-op for the compiled code when the proof says so.
 
@@ -41,6 +41,28 @@ CXX_EXT = (".cpp", ".cc", ".cxx", ".h", ".hpp", ".hxx", ".inl")
 SRC_EXT = (".cpp", ".cc", ".cxx")
 C_SIDE_EXT = (".c", ".rc", ".rc2", ".asm", ".inc", ".glsl", ".hglsl", ".vert", ".frag", ".comp", ".tesc", ".tese", ".def")
 NAME_SCAN_EXT = C_SIDE_EXT + (".py", ".cmake", ".json", ".hlsl")
+#: Files a later step deletes or redesigns (coordinator ruling 2026-10-11): never rewritten here. Every *_internal.h moves again in step 4; the 50
+#: overload-sensitive TUs are the PCH sqrt list of .claude/cleanup/legacy-subsystem-audit.md section D.
+NEVER_TOUCH = ("mclib/estring*", "mclib/elist*", "mclib/heap*", "mclib/stuff/*", "mclib/mlr/*", "mclib/gosfx/*", "mclib/memorystream*", "mclib/file*", "mclib/packet*",
+               "mclib/fastfile*", "mclib/abl*", "code/multplyr*", "code/dmultplyr.h", "*_internal.h")
+
+
+def overload_sensitive_tus():
+    """The 50 TUs of the audit's section D, read from the doc so the list is not copied here."""
+    for root in (ROOT, "A:/Games/mc2-main"):
+        p = os.path.join(root, ".claude", "cleanup", "legacy-subsystem-audit.md")
+        if os.path.exists(p):
+            for line in open(p, encoding="utf-8", errors="replace"):
+                if line.startswith("**TUs whose arithmetic"):
+                    return set(re.findall(r"`((?:code|mclib)/[\w./]+\.cpp)`", line))
+    sys.exit("rewrite_defines: the audit doc with the overload-sensitive TU list was not found")
+
+
+def never_touch(rel, tus=None):
+    import fnmatch
+    return any(fnmatch.fnmatch(rel, p) for p in NEVER_TOUCH) or rel in (tus if tus is not None else overload_sensitive_tus())
+
+
 GUARD_SUFFIX = ("_H", "_H_", "_HPP", "__", "_INCLUDED", "_DEFINED")
 
 DEFINE = re.compile(r"^(\s*#\s*define\s+)([A-Za-z_]\w*)(\s+)(.+?)\s*$")
@@ -351,8 +373,9 @@ def cmd_census(a):
 def plan_batches(files, sites, uses, includers, args, dirty):
     """Eligible sites grouped by file -> [(rel, [sites], objs)] in batch order: .cpp-local first, then headers by including-object count."""
     by_file = collections.defaultdict(list)
+    tus = overload_sensitive_tus()
     for s in sites:
-        if s.reasons or rts.is_excluded(s.path) or s.path in dirty:
+        if s.reasons or rts.is_excluded(s.path) or s.path in dirty or never_touch(s.path, tus):
             continue
         by_file[s.path].append(s)
     out = []
@@ -436,8 +459,10 @@ def cmd_run(a):
     sys.stdout.reconfigure(line_buffering=True)
     tree_abs = os.path.join(ROOT, a.tree)
     rts.apply_lane_args(a)
-    if not a.strict_proof:
+    a.proof_mode = "plain objhash (strict)"
+    if a.relaxed_proof:
         canonical_obj.install()
+        a.proof_mode = "canonical_obj (symbol / section order and .data / .bss layout blind): " + a.relaxed_proof
     includers = rth.includer_map(tree_abs)
     t2s = rth.target_to_source(tree_abs)
     a.s2t = {v: k for k, v in t2s.items()}
@@ -497,7 +522,7 @@ def cmd_run(a):
         print("BATCH %d result: kept %d file(s) / %d site(s), reverted %d file(s), %d object(s) proven identical" % (
             batches, len(kept), kept_sites, len(rejected), len({o for r in kept for o in inc[r]})))
         if kept and a.commit:
-            commit(kept, batches, kept_sites)
+            commit(kept, batches, kept_sites, a.proof_mode)
         if not a.loop or (a.max_batches and batches >= a.max_batches) or not kept and not rejected:
             return 1 if rejected else 0
         paths, files, sites, uses = load_world()
@@ -517,8 +542,8 @@ def commit_paths(kept, subject, baseline_subject):
         subprocess.run(["git", "-C", ROOT, "commit", "-q", "-m", baseline_subject + trailer, "--", base], check=True, **console_child.child_kwargs(redirected=True))
 
 
-def commit(kept, n, nsites):
-    commit_paths(kept, "tidy(LG13): %d #define literal constant(s) -> inline constexpr in %d file(s) (objhash identical over every including object)" % (nsites, len(kept)),
+def commit(kept, n, nsites, proof_mode="plain objhash (strict)"):
+    commit_paths(kept, "tidy(LG13): %d #define literal constant(s) -> inline constexpr in %d file(s) (every including object identical)\n\nProof: %s" % (nsites, len(kept), proof_mode),
                  "cxx17 ratchet baseline tightened after LG13 batch")
 
 
@@ -535,7 +560,8 @@ def main(argv=None) -> int:
     r.add_argument("--max-header-includers", type=int, default=200)
     r.add_argument("--build-jobs", type=int, default=6)
     r.add_argument("--done", help="ledger of files already tried (skipped; picked ones are appended)")
-    r.add_argument("--strict-proof", action="store_true", help="compare with plain tools/objhash.py digests (symbol / section order sensitive) instead of tools/tidy/canonical_obj.py")
+    r.add_argument("--relaxed-proof", metavar="REASON", default=None, help="compare with tools/tidy/canonical_obj.py (blind to symbol / section order and .data / .bss layout) instead of the default "
+                   "plain tools/objhash.py digests; the reason goes into the commit message")
     r.add_argument("--slow-bisect", action="store_true", help="every bisect probe rebuilds the whole proof set (default: only the objects the first probe found bad, then a full verification)")
     r.add_argument("--ignore-digest-file", default=None, help="objects (names as in the tree) that must compile but whose digest is not compared: a TU where any new inline variable "
                    "makes MSVC drop unreferenced static const data (editor/MapGeneratorDialog.cpp, the stb_image tables), a semantic no-op the digest cannot tell from a change")
