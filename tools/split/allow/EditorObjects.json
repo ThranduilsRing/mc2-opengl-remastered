@@ -1,0 +1,12 @@
+{
+ "base": "8ad0b2a1b",
+ "src": "editor/EditorObjects.cpp",
+ "stem": "EditorObjects",
+ "scripts": [
+  "scripts/tests/test_fingerprint.py",
+  "tools/brain_missionfit_oporbd_test/main.cpp",
+  "tools/comment_guard_restores.json",
+  "tools/gate_codemod.py"
+ ],
+ "_scripts_reason": "Reviewed: test_fingerprint.py uses the path as test data, brain_missionfit_oporbd_test/main.cpp cites Unit::importPatrolFromBrainIfNeeded in comments, comment_guard_restores.json is the historical record of restored comment blocks (no checker reads it by file), tools/gate_codemod.py is a one-shot target list (lane 1 owns it)."
+}

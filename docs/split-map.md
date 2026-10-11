@@ -357,6 +357,15 @@ Split commit: `be79c6ead`.
 | `EditorObjectMgr_select.cpp` | EditorObjectMgr: selection handling and forest editing. |
 | `EditorObjectMgr_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
+## `editor/EditorObjects.cpp`
+
+| Piece | What it holds |
+|---|---|
+| `EditorObjects.cpp` | keeps the EditorObject base class and NavMarker |
+| `EditorObjects_pilot.cpp` | Editor objects: DropZone, Brain and Pilot construction, copy, save / load and pilot initialisation (and the pilot data-loss warning). |
+| `EditorObjects_unit.cpp` | Editor objects: Unit: construction, copy, save / load, colours and the brain patrol import. |
+| `EditorObjects_internal.h` | shared include bundle, extern globals and declarations of the pieces |
+
 ## `editor/Objective.cpp`
 
 | Piece | What it holds |
