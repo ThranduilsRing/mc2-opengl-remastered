@@ -45,7 +45,7 @@ namespace {
         if (g_diagEnabled && !g_diagAtexitRegistered) {
             g_diagAtexitRegistered = true;
             std::atexit([](){ emit_diag_summary("atexit"); });
-            std::fprintf(stderr, "[INSTR v1] enabled: GOSFX_HEAP + GOSFX_CHILD counters (C16)\n");
+            mc2::fmt::print_err("[INSTR v1] enabled: GOSFX_HEAP + GOSFX_CHILD counters (C16)\n");
         }
     }
 }

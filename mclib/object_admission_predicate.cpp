@@ -29,7 +29,7 @@ void objectAdmissionPredicate_init() {
         s_mode = ObjectAdmissionPredicateMode::Modern;  // default
     }
     s_initialized = true;
-    std::printf("[INSTR v1] object_admission_mode=%s\n", modeLabel(s_mode));
+    mc2::fmt::print_out("[INSTR v1] object_admission_mode={}\n", mc2::fmt::safe(modeLabel(s_mode)));
     std::fflush(stdout);
 }
 
@@ -58,7 +58,7 @@ void effectAdmissionPredicate_init() {
         s_effectMode = EffectAdmissionPredicateMode::Modern;  // default
     }
     s_effectInitialized = true;
-    std::printf("[INSTR v1] effect_admission_mode=%s\n", effectModeLabel(s_effectMode));
+    mc2::fmt::print_out("[INSTR v1] effect_admission_mode={}\n", mc2::fmt::safe(effectModeLabel(s_effectMode)));
     std::fflush(stdout);
 }
 

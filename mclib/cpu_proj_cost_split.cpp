@@ -193,9 +193,8 @@ void init_from_env() {
 
     if (mc2::gate::get<"MC2_CPU_PROJ_COST_SPLIT">()) {
         g_cpuProjEnabled = true;
-        std::fprintf(stderr,
-            "[INSTR v1] enabled: CPU_PROJ_COST_SPLIT (spec v4, budget=%lldus)\n",
-            (long long)BUDGET_US);
+        mc2::fmt::print_err("[INSTR v1] enabled: CPU_PROJ_COST_SPLIT (spec v4, budget={:d}us)\n",
+            mc2::fmt::as_i64((long long)BUDGET_US));
     } else {
         g_cpuProjEnabled = false;
         mc2::fmt::print_err("[CPU_PROJ v1 disabled] set MC2_CPU_PROJ_COST_SPLIT=1 to enable\n");

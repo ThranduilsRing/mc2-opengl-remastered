@@ -94,7 +94,7 @@ void initialize_locked() {
     }
     g_enabled_initialized = true;
     if (g_enabled_value) {
-        std::fprintf(stderr, "[INSTR v1] enabled: fx_trace\n");
+        mc2::fmt::print_err("[INSTR v1] enabled: fx_trace\n");
         mc2::fmt::print_err("[FX_TRACE v1] counters: spawn/draw/mlr_enqueue\n");
     }
 }

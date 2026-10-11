@@ -78,8 +78,8 @@ void initialize_env() {
     g_enabled_value = mc2::gate::get<"MC2_GPU_PARTICLES">();   // default OFF -> legacy CPU/MLR FX
     g_enabled_initialized = true;
     if (g_enabled_value) {
-        std::fprintf(stderr, "[INSTR v1] enabled: gpu_particles log=%d\n",
-                     (int)g_log_value);
+        mc2::fmt::print_err("[INSTR v1] enabled: gpu_particles log={:d}\n",
+                     mc2::fmt::as_i32((int)g_log_value));
         std::fflush(stderr);
         if (!g_atexit_registered) {
             std::atexit(dump_summary);
