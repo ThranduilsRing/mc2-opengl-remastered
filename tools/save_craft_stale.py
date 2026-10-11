@@ -53,7 +53,7 @@ def write(path, pk, with_checksum):
         off = head + len(body)
         table.append((typ << TYPE_SHIFT) + off)
         body += raw
-    out = bytearray(struct.pack('<II', 0, head + len(body)))
+    out = bytearray(struct.pack("<II", 0, head))
     out += struct.pack('<%dI' % n, *table)
     out += body
     first = (sum(out[4:]) & 0xFFFFFFFF) if with_checksum else 0xFEEDFACE

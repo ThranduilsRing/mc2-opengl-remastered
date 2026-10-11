@@ -1342,6 +1342,8 @@ run_check "stock_mission_data_selftest" "py -3 scripts/check-stock-mission-data.
 run_check "sim_determinism"             "py -3 tools/sim_determinism.py selftest"
 # The save/load round trip (tools/saveload_roundtrip.py run) launches the game; this row proves its analysis. Live result at 2026-10-11: FAILS (see lane1-state).
 run_check "saveload_roundtrip"          "py -3 tools/saveload_roundtrip.py selftest"
+run_check "save_inspect"                "py -3 tools/save_inspect.py selftest"
+run_check "savegame_backup"             "py -3 tools/savegame_backup.py selftest"
 
 # CAPTURE-PROVENANCE-TRUTH-1: a capture manifest must name the BINARY it
 # measured, not the worktree the tool happened to run from. `identity.git.commit`
