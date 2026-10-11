@@ -76,7 +76,7 @@ static ImGuiContext* s_imguiContext = nullptr;
 
 static std::vector<std::function<void()>> s_postRenderFns;
 
-namespace {
+namespace gui_runtime_detail {
 
 bool s_frameActive = false;
 bool s_useSDL2Backend = false;   // false when initialised via InitEditorOpenGLOnly
@@ -104,13 +104,13 @@ static bool traceEnabled()
     return mc2::gate::get<"MC2_UI_DEFS_TRACE">();
 }
 
-static std::string lower(std::string v)
+inline std::string lower(std::string v)
 {
     std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
     return v;
 }
 
-static std::string canonicalFamily(const char* family)
+inline std::string canonicalFamily(const char* family)
 {
     const std::string f = lower(family ? family : "");
     if (f.find("agency") != std::string::npos) {
@@ -199,7 +199,7 @@ static std::filesystem::path resolveFontFile(const char* filename)
     return std::filesystem::path();
 }
 
-static int normalizeSize(int size)
+inline int normalizeSize(int size)
 {
     if (size <= 0)
         return 16;
@@ -210,7 +210,7 @@ static int normalizeSize(int size)
     return size;
 }
 
-static std::string fontKey(const std::string& family, int size)
+inline std::string fontKey(const std::string& family, int size)
 {
     return family + ":" + std::to_string(size);
 }
@@ -249,7 +249,7 @@ static void loadUiFonts(ImGuiIO& io)
     loadFontFamily(io, "liberation_sans_narrow",fileForFamily("liberation_sans_narrow"));
 }
 
-static ImFont* findUiFont(const char* family, int requestedSize)
+inline ImFont* findUiFont(const char* family, int requestedSize)
 {
     if (!g_imguiInitialized || !ImGui::GetCurrentContext())
         return nullptr;
@@ -274,7 +274,7 @@ static ImFont* findUiFont(const char* family, int requestedSize)
     return ImGui::GetFont();
 }
 
-static ImU32 argbToImU32(std::uint32_t argb)
+inline ImU32 argbToImU32(std::uint32_t argb)
 {
     return IM_COL32((argb >> 16) & 0xff, (argb >> 8) & 0xff, argb & 0xff, (argb >> 24) & 0xff);
 }
@@ -283,18 +283,19 @@ static ImU32 argbToImU32(std::uint32_t argb)
 // commonly use void*.  Keep the UI image path source-compatible with both
 // without pulling in backend-specific casts at call sites.
 template <typename T>
-static typename std::enable_if<std::is_pointer<T>::value, T>::type makeImTextureID(unsigned int glTextureName)
+inline typename std::enable_if<std::is_pointer<T>::value, T>::type makeImTextureID(unsigned int glTextureName)
 {
     return reinterpret_cast<T>(static_cast<intptr_t>(glTextureName));
 }
 
 template <typename T>
-static typename std::enable_if<!std::is_pointer<T>::value, T>::type makeImTextureID(unsigned int glTextureName)
+inline typename std::enable_if<!std::is_pointer<T>::value, T>::type makeImTextureID(unsigned int glTextureName)
 {
     return static_cast<T>(glTextureName);
 }
 
-} // namespace
+} // namespace gui_runtime_detail
+using namespace gui_runtime_detail;
 
 // Editor-mode flag (see header). Default false == GAME: no editor dockspace, so
 // ImGui windows float. The editor sets it true before Init().
