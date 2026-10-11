@@ -148,6 +148,10 @@ def consumed_tags():
     for f in tracked((".py",)):
         if not f.startswith(("scripts/", "tools/")):
             continue
+        # tests and the tidy/census tools quote tags as sample data; they are not consumers of the engine's log
+        if f.startswith(("tools/tidy/", "tools/log_tag_census.py", "tools/log_identity.py", "tools/test_log_tag_census.py",
+                         "tools/test_log_identity.py")):
+            continue
         with open(os.path.join(ROOT, f), encoding="utf-8", errors="replace") as fh:
             for ln in fh:
                 if re.search(r"re\.|grep|startswith|findall|\bin (?:line|text|out)|search|match", ln):
