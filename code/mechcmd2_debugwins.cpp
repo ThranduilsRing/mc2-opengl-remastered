@@ -7,7 +7,7 @@
 
 void DEBUGWINS_init (void) {
 
-	sprintf(DebugStatusBarString, "DEBUG Status Bar: GLENNBA");
+	mc2::fmt::to_buf(DebugStatusBarString, "DEBUG Status Bar: GLENNBA");
 
 	DebugWindow[0] = new GameDebugWindow;
 	DebugWindow[0]->init();

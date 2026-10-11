@@ -71,7 +71,7 @@ def add(files, base: str):
     recs = {(r["old"], r["new"]): r for r in load()}
     added = 0
     for f in files:
-        _new, records, _left = pb.convert(base_text(f, base))
+        _new, records, _left = pb.convert(base_text(f, base), assume_array=True)
         for r in records:
             key = (r["old"], r["new"])
             specs = [{k: s[k] for k in ("conv", "length", "wrap", "cls")} for s in r["specs"]]

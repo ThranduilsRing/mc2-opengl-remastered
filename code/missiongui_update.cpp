@@ -870,14 +870,7 @@ void MissionInterfaceManager::update (void)
 	
 	int row, col;
 	land->worldToCell(wPos, row, col);
-	sprintf(DebugStatusBarString, "TIME: %06d, MOUSE: [%d, %d] %d,%d,%d (%.2f, %.2f, %.2f), PATHMGR: %02d(%02d)",
-		(long)scenarioTime,
-		row, col,
-		GlobalMoveMap[0] ? GlobalMoveMap[0]->calcArea(row, col) : -1,
-		GlobalMoveMap[1] ? GlobalMoveMap[1]->calcArea(row, col) : -1,
-		GlobalMoveMap[2] ? GlobalMoveMap[2]->calcArea(row, col) : -1,
-		wPos.x, wPos.y, wPos.z,
-		PathManager->numPaths, PathManager->peakPaths);
+	mc2::fmt::to_buf(DebugStatusBarString, "TIME: {:06d}, MOUSE: [{:d}, {:d}] {:d},{:d},{:d} ({:.2f}, {:.2f}, {:.2f}), PATHMGR: {:02d}({:02d})", mc2::fmt::as_i32((long)scenarioTime), mc2::fmt::as_i32(row), mc2::fmt::as_i32(col), mc2::fmt::as_i32(GlobalMoveMap[0] ? GlobalMoveMap[0]->calcArea(row, col) : -1), mc2::fmt::as_i32(GlobalMoveMap[1] ? GlobalMoveMap[1]->calcArea(row, col) : -1), mc2::fmt::as_i32(GlobalMoveMap[2] ? GlobalMoveMap[2]->calcArea(row, col) : -1), wPos.x, wPos.y, wPos.z, mc2::fmt::as_i32(PathManager->numPaths), mc2::fmt::as_i32(PathManager->peakPaths));
 	if (MPlayer) {
 		char mpStr[256];
 		if (MPlayer->isServer())

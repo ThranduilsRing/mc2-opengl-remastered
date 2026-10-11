@@ -1,6 +1,7 @@
 // EditorData: terrain creation from PCV/TGA/generated recipes, height edits and the scaled colour map.
 // Declared in the class headers; shared names in EditorData_internal.h.
 #include "EditorData_internal.h"
+#include "mc2fmt.h"
 
 
 static void EditorDataWarmTerrain(const char* where)
@@ -991,8 +992,8 @@ bool EditorData::generateMission( int mapSize, int terrain, unsigned long seed )
 
 	// Place the burnin colormap where terrtxm2 looks (data\textures\<name>.burnin.tga).
 	char srcBurnin[512], dstBurnin[512];
-	sprintf( srcBurnin, "terrain_gen_out\\%s.burnin.tga", mapName );
-	sprintf( dstBurnin, "%s%s.burnin.tga", texturePath, mapName );
+	mc2::fmt::to_buf(srcBurnin, "terrain_gen_out\\{}.burnin.tga", mc2::fmt::safe(mapName));
+	mc2::fmt::to_buf(dstBurnin, "{}{}.burnin.tga", mc2::fmt::safe(texturePath), mc2::fmt::safe(mapName));
 	SetFileAttributes( dstBurnin, FILE_ATTRIBUTE_NORMAL );
 	if ( !CopyFile( srcBurnin, dstBurnin, FALSE ) )
 		EditorDataTrace( "generateMission: WARNING CopyFile burnin %s -> %s failed", srcBurnin, dstBurnin );
@@ -1014,8 +1015,8 @@ bool EditorData::generateFromDialogParams( int mapSizeIndex, const char* biome )
 
 	// Copy the burnin colormap to where terrtxm2 looks (data\textures\<name>.burnin.tga).
 	char srcBurnin[512], dstBurnin[512];
-	sprintf( srcBurnin, "terrain_gen_out\\%s.burnin.tga", mapName );
-	sprintf( dstBurnin, "%s%s.burnin.tga", texturePath, mapName );
+	mc2::fmt::to_buf(srcBurnin, "terrain_gen_out\\{}.burnin.tga", mc2::fmt::safe(mapName));
+	mc2::fmt::to_buf(dstBurnin, "{}{}.burnin.tga", mc2::fmt::safe(texturePath), mc2::fmt::safe(mapName));
 	SetFileAttributes( dstBurnin, FILE_ATTRIBUTE_NORMAL );
 	if ( !CopyFile( srcBurnin, dstBurnin, FALSE ) )
 		EditorDataTrace( "generateFromDialogParams: WARNING CopyFile burnin %s -> %s failed", srcBurnin, dstBurnin );

@@ -644,7 +644,7 @@ void execute (SymTableNodePtr routineIdPtr) {
 		strcpy(SetStateDebugStr, "--");
 		while (NewStateSet) {
 			NumStateTransitions++;
-			sprintf(stateList[NumStateTransitions], "%s (%s)", CurModule->getState()->name, SetStateDebugStr);
+			mc2::fmt::to_buf(stateList[NumStateTransitions], "{} ({})", mc2::fmt::safe(CurModule->getState()->name), mc2::fmt::safe(SetStateDebugStr));
 			if (NumStateTransitions == 50) {
 				UserFile* userFile = UserFile::getNewFile();
 				char errStr[512];

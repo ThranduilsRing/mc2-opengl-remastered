@@ -101,3 +101,10 @@ def test_include_precedes_the_first_converted_call_even_when_more_includes_follo
     out, _, _ = conv(src)
     assert out.index('#include "mc2fmt.h"') < out.index("void f()") and out.count("mc2fmt.h") == 1
     assert conv('void f(){ snprintf(b, 8, "%d", v); }\n#include "late.cpp"\n')[0] == 'void f(){ snprintf(b, 8, "%d", v); }\n#include "late.cpp"\n'
+
+
+def test_assume_array_and_only_lines_for_the_per_site_trial():
+    src = '#include <a.h>\nvoid f(){\n sprintf(a->name, "%d", x);\n sprintf(p, "%d", y);\n}\n'
+    assert conv(src)[0] == src                                                    # no visible array: both refused by default
+    out, recs, _ = pb.convert(src, assume_array=True, only_lines={3})
+    assert 'mc2::fmt::to_buf(a->name, "{:d}", mc2::fmt::as_i32(x));' in out and "sprintf(p," in out and len(recs) == 1

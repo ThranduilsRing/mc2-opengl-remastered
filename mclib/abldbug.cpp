@@ -8,6 +8,7 @@
 //***************************************************************************
 
 #include "abldbug_internal.h"
+#include "mc2fmt.h"
 
 //extern SymTableNodePtr	CurRoutineIdPtr;
 
@@ -657,10 +658,7 @@ void Debugger::processCommand (long commandId, char* strParam1, int numParam1, A
 			print(message);
 			ModuleInfo moduleInfo;
 			debugModule->getInfo(&moduleInfo);
-			sprintf(message, "%d static vars, %d bytes, %d largest",
-					moduleInfo.numStaticVars,
-					moduleInfo.totalSizeStaticVars,
-					moduleInfo.largestStaticVar.size);
+			mc2::fmt::to_buf(message, "{:d} static vars, {:d} bytes, {:d} largest", mc2::fmt::as_i32(moduleInfo.numStaticVars), mc2::fmt::as_i32(moduleInfo.totalSizeStaticVars), mc2::fmt::as_i32(moduleInfo.largestStaticVar.size));
 			print(message);
 			}
 			break;

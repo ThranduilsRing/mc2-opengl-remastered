@@ -297,7 +297,7 @@ long Debugger::traceStatementExecution (void) {
 	// Do we have a breakpoint on this line?
 	if (breakPointManager) {
 		if (breakPointManager->isBreakPoint(execLineNumber)) {
-			sprintf(message, "HIT BP: (%d) %s [%d]", module->getId(), module->getName(), execLineNumber);
+			mc2::fmt::to_buf(message, "HIT BP: ({:d}) {} [{:d}]", mc2::fmt::as_i32(module->getId()), mc2::fmt::safe(module->getName()), mc2::fmt::as_i32(execLineNumber));
 			print(message);
 			halt = true;
 		}
@@ -323,7 +323,7 @@ long Debugger::traceStatementExecution (void) {
 long Debugger::traceRoutineEntry (SymTableNodePtr idPtr) {
 
 	if (traceEntry) {
-		sprintf(message, "ENTER (%d) %s:%s", module->getId(), module->getName(), idPtr->name);
+		mc2::fmt::to_buf(message, "ENTER ({:d}) {}:{}", mc2::fmt::as_i32(module->getId()), mc2::fmt::safe(module->getName()), mc2::fmt::safe(idPtr->name));
 		print(message);
 	}
 
@@ -335,7 +335,7 @@ long Debugger::traceRoutineEntry (SymTableNodePtr idPtr) {
 long Debugger::traceRoutineExit (SymTableNodePtr idPtr) {
 
 	if (traceExit) {
-		sprintf(message, "EXIT (%d) %s:%s", module->getId(), module->getName(), idPtr->name);
+		mc2::fmt::to_buf(message, "EXIT ({:d}) {}:{}", mc2::fmt::as_i32(module->getId()), mc2::fmt::safe(module->getName()), mc2::fmt::safe(idPtr->name));
 		print(message);
 	}
 
@@ -478,9 +478,9 @@ void Debugger::displayModuleInstanceRegistry (void) {
 
 	char buffer1[200], buffer2[40];
 	for (long i = 0; i < ((NumModuleInstances + 1) / 2); i++) {
-		sprintf(buffer1, "(%02d) %-20s ", ModuleInstanceRegistry[i * 2]->getId(), ModuleInstanceRegistry[i * 2]->getName());
+		mc2::fmt::to_buf(buffer1, "({:02d}) {:<20} ", mc2::fmt::as_i32(ModuleInstanceRegistry[i * 2]->getId()), mc2::fmt::safe(ModuleInstanceRegistry[i * 2]->getName()));
 		if ((i * 2 + 1) < NumModuleInstances) {
-			sprintf(buffer2, "(%02d) %-20s ", ModuleInstanceRegistry[i * 2 + 1]->getId(), ModuleInstanceRegistry[i * 2 + 1]->getName());
+			mc2::fmt::to_buf(buffer2, "({:02d}) {:<20} ", mc2::fmt::as_i32(ModuleInstanceRegistry[i * 2 + 1]->getId()), mc2::fmt::safe(ModuleInstanceRegistry[i * 2 + 1]->getName()));
 			strcat(buffer1, buffer2);
 		}
 		print(buffer1);

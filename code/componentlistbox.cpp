@@ -111,7 +111,7 @@ int ComponentListItem::init( FitIniFile& file )
 		char animName[COMP_ANIMATION_COUNT][32];
 		for ( int i = 0; i < COMP_ANIMATION_COUNT; i++ )
 		{
-			sprintf( animName[i], "Animation%ld", i );
+			mc2::fmt::to_buf(animName[i], "Animation{:d}", mc2::fmt::as_i32(i));
 			s_templateItem->animations[i].init( &file, animName[i] );
 		
 		}

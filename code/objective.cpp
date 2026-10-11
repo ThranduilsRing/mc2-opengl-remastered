@@ -1722,9 +1722,9 @@ bool CObjective::Read( FitIniFile* missionFile, int objectiveNum, int version, i
 	{
 		m_displayMarker = NUMERIC;
 		if ( m_priority == 1)
-			sprintf( m_markerText, "%ld", MarkerNum );
+			mc2::fmt::to_buf(m_markerText, "{:d}", mc2::fmt::as_i32(MarkerNum));
 		else
-			sprintf( m_markerText, "%c", secondary );
+			mc2::fmt::to_buf(m_markerText, "{:c}", mc2::fmt::as_char(secondary));
 	}
 	result = sReadIdFloat(missionFile, "MarkerX", m_markerX);
 	result = sReadIdFloat(missionFile, "MarkerY", m_markerY);

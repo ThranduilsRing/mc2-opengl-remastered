@@ -1,6 +1,7 @@
 // Mover: Mover::loadGameSystem, set, init and release.
 // Declared in mover.h; shared names in mover_internal.h.
 #include "mover_internal.h"
+#include "mc2fmt.h"
 
 
 
@@ -502,7 +503,7 @@ void Mover::init (bool create) {
 #ifdef USE_STRING_RESOURCES
 		cLoadString(thisInstance,IDS_LOSTPLAYER+languageOffset,netPlayerName,254);
 #else
-		sprintf(netPlayerName, "%s", "NEED STRING RESOURCES");
+		mc2::fmt::to_buf(netPlayerName, "{}", "NEED STRING RESOURCES");
 #endif
 		}
 	else

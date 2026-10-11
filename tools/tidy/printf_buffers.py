@@ -162,7 +162,7 @@ def array_declared(text: str, name: str, pos: int) -> bool:
     return ptr is None or ptr.start() < last.start()
 
 
-def _convert_call(text: str, call):
+def _convert_call(text: str, call, assume_array: bool = False):
     """-> (replacement text, record) for one call, or raises Bail."""
     args = [call.arg_text(text, i) for i in range(len(call.args))]
     name = call.name
@@ -189,7 +189,7 @@ def _convert_call(text: str, call):
     if lit is None:
         raise Bail("format is not a string literal")
     new_fmt, wrapped, specs = translate_format(lit, rest)
-    is_array = array_declared(text, dest.strip(), call.start)
+    is_array = assume_array or array_declared(text, dest.strip(), call.start)
     if size is not None and re.fullmatch(r"sizeof\s*\(?\s*%s\s*\)?" % re.escape(dest.strip()), size.strip()) and is_array:
         size = None             # the bound is the array's own extent
     if size is None and not is_array:
@@ -220,13 +220,18 @@ def _include_insertion_point(text: str, before: int):
     return last
 
 
-def convert(text: str):
-    """-> (new text, records of converted calls, [(approx line, reason)] for calls left alone)."""
+def convert(text: str, assume_array: bool = False, only_lines=None):
+    """-> (new text, records of converted calls, [(approx line, reason)] for calls left alone).
+
+    assume_array: treat every sprintf destination as an array and let the compiler judge (to_buf does not accept a pointer), for the
+    per-site trial in printf_sites.py. only_lines: convert only the calls that start on these (1-based, original) lines."""
     edits, records, left = [], [], []
     for call in cxx_calls.find_calls(text, FUNCS):
         line = text.count("\n", 0, call.start) + 1
+        if only_lines is not None and line not in only_lines:
+            continue
         try:
-            repl, rec = _convert_call(text, call)
+            repl, rec = _convert_call(text, call, assume_array)
         except Bail as e:
             left.append((line, str(e)))
             continue
