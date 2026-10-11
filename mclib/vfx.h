@@ -89,56 +89,56 @@ typedef signed   long  FIXED30;   // 2:30 fixed-VFX_POINT type [-1.999,+1.999]
 
 #endif
 
-#define GIF_SCRATCH_SIZE 20526L   // Temp memory req'd for GIF decompression
+inline constexpr long GIF_SCRATCH_SIZE = 20526L;   // Temp memory req'd for GIF decompression
 
-#define S_BLACK			264
+inline constexpr int S_BLACK = 264;
 //
 // VFX_map_polygon() flags
 //
 
-#define MP_XLAT      0x0001       // Use lookaside table (speed loss = ~9%)
-#define MP_XP        0x0002       // Enable transparency (speed loss = ~6%)
+inline constexpr int MP_XLAT = 0x0001;       // Use lookaside table (speed loss = ~9%)
+inline constexpr int MP_XP = 0x0002;       // Enable transparency (speed loss = ~6%)
 
 //
 // VFX_shape_transform() flags
 //
 
-#define ST_XLAT      0x0001       // Use shape_lookaside() table
-#define ST_REUSE     0x0002       // Use buffer contents from prior call
+inline constexpr int ST_XLAT = 0x0001;       // Use shape_lookaside() table
+inline constexpr int ST_REUSE = 0x0002;       // Use buffer contents from prior call
 
 //
 // VFX_line_draw() modes
 //  
 
-#define LD_DRAW      0
-#define LD_TRANSLATE 1
-#define LD_EXECUTE   2
+inline constexpr int LD_DRAW = 0;
+inline constexpr int LD_TRANSLATE = 1;
+inline constexpr int LD_EXECUTE = 2;
 
 //
 // VFX_pane_scroll() modes
 //
 
-#define PS_NOWRAP    0
-#define PS_WRAP      1
+inline constexpr int PS_NOWRAP = 0;
+inline constexpr int PS_WRAP = 1;
 
-#define NO_COLOR -1
+inline constexpr int NO_COLOR = -1;
 
 //
 // VFX_shape_visible_rectangle() mirror values
 //
 
-#define VR_NO_MIRROR 0
-#define VR_X_MIRROR  1
-#define VR_Y_MIRROR  2
-#define VR_XY_MIRROR 3
+inline constexpr int VR_NO_MIRROR = 0;
+inline constexpr int VR_X_MIRROR = 1;
+inline constexpr int VR_Y_MIRROR = 2;
+inline constexpr int VR_XY_MIRROR = 3;
 
 //
 // PANE_LIST.flags values
 //
 
-#define PL_FREE      0            // Free and available for assignment
-#define PL_VALID     1            // Assigned; to be refreshed
-#define PL_CONTAINED 2            // Contained within another pane; don't refresh
+inline constexpr int PL_FREE = 0;            // Free and available for assignment
+inline constexpr int PL_VALID = 1;            // Assigned; to be refreshed
+inline constexpr int PL_CONTAINED = 2;            // Contained within another pane; don't refresh
 
 //
 // VFX data structures
