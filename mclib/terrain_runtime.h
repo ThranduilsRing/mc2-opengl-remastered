@@ -23,7 +23,7 @@ namespace Stuff { class Vector3D; }
 
 namespace TerrainRuntime
 {
-	enum FeatureMask
+	enum class FeatureMask
 	{
 		FM_Cliff = 0,      // slope-derived (live approximation)
 		FM_Shoreline,      // elevation-vs-water band (live approximation)
@@ -31,6 +31,7 @@ namespace TerrainRuntime
 		FM_ForestSuppress, // STUB(0) — future vegetation-suppress mask
 		FM_Count
 	};
+	using enum FeatureMask;
 
 	// Gameplay-authoritative surface height. == land->getTerrainElevation(pos).
 	float sampleGameplayHeight(const Stuff::Vector3D& worldPos);
