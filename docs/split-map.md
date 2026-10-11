@@ -336,6 +336,14 @@ Split commit: `f4c986566`.
 | `camera_update.cpp` | Camera: the camera goal updates, Camera::update and render. |
 | `camera_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
+## `mclib/cevfx.cpp`
+
+| Piece | What it holds |
+|---|---|
+| `cevfx.cpp` | keeps the VFX shape element (VFXElement, VFXShapeElement) and the palette lookup tables |
+| `cevfx_polys.cpp` | VFX elements: TextureElement and the PolygonQuad / PolygonTri / TexturedPolygonQuad / TexturedPolygonTri elements. |
+| `cevfx_internal.h` | shared include bundle, extern globals and declarations of the pieces |
+
 ## `mclib/genactor.cpp`
 
 Split commit: `0196b20c5`.
