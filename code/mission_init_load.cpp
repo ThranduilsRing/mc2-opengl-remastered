@@ -127,8 +127,8 @@ void Mission::loadWarriors(MissionInitFrame& f) {
 				else
 				{
 					soakBrainsFailed++;
-					printf("[SOAK] WARN abl brain load failed name=%s errors=%ld\n",
-						moduleName, (long)numErrors);
+					mc2::fmt::print_out("[SOAK] WARN abl brain load failed name={} errors={:d}\n",
+						mc2::fmt::safe(moduleName), mc2::fmt::as_i32((long)numErrors));
 				}
 
 #ifdef _DEBUG
@@ -146,8 +146,8 @@ void Mission::soakAutowinCheck(MissionInitFrame& f) {
 	auto& soakBrainsLoaded = f.soakBrainsLoaded; auto& soakBrainsFailed = f.soakBrainsFailed;
 	if (mc2::gate::get<"MC2_SOAK_AUTOWIN">() || soakBrainsFailed > 0)
 	{
-		printf("[SOAK] abl mission brains loaded=%ld failed=%ld\n",
-			soakBrainsLoaded, soakBrainsFailed);
+		mc2::fmt::print_out("[SOAK] abl mission brains loaded={:d} failed={:d}\n",
+			mc2::fmt::as_i32(soakBrainsLoaded), mc2::fmt::as_i32(soakBrainsFailed));
 		fflush(stdout);
 	}
 }

@@ -100,7 +100,7 @@ void Logistics::start (long startMode)
 					// run ends and the parent sees the process exit.
 					if ( mc2::gate::get<"MC2_SOAK_AUTOWIN">() )
 					{
-						printf("[SOAK] campaign-complete -- terminating\n");
+						mc2::fmt::print_out("[SOAK] campaign-complete -- terminating\n");
 						fflush(stdout);
 						mission->destroy();
 						gos_TerminateApplication();

@@ -162,13 +162,13 @@ void MissionResults::update()
 			s_soakResultsDwell = 0.0f;
 			if ( pSalvageScreen && !pSalvageScreen->donePressed() )
 			{
-				printf("[SOAK] results dismiss screen=salvage\n");
+				mc2::fmt::print_out("[SOAK] results dismiss screen=salvage\n");
 				fflush(stdout);
 				pSalvageScreen->handleMessage( 101, 101 );
 			}
 			else if ( pPilotScreen )
 			{
-				printf("[SOAK] results dismiss screen=pilot\n");
+				mc2::fmt::print_out("[SOAK] results dismiss screen=pilot\n");
 				fflush(stdout);
 				bPilotStarted = true; // salvage normally sets this on its Done
 				pPilotScreen->handleMessage( aMSG_DONE, aMSG_DONE );
