@@ -28,8 +28,12 @@ import save_craft_stale as scs  # noqa: E402
 
 #: Packet storage types in the PacketFile table: 0 raw, 4 zlib, 7 unwritten slot.
 NUL = scs.NUL
-#: Record class by payload byte size (code/save_layout_guard.h pins these; the object loader dispatches on them).
-RECORD_SIZES = {}
+#: Record class by payload byte size. code/save_layout_guard.h pins these numbers in the build (tools/test_save_inspect.py compares the two); the object
+#: loader dispatches on them. StackItem is not a packet and is not listed.
+RECORD_SIZES = {372: "GameObjectData", 3288: "MoverData", 720: "TerrainObjectData", 756: "BuildingData", 820: "TurretData", 760: "GateData",
+                432: "ArtilleryData", 396: "CarnageData", 3992: "MechData", 3424: "GroundVehicleData", 580: "WeaponBoltData",
+                60: "ObjectManagerData", 40: "StaticMechWarriorData", 19864: "MechWarriorData", 80: "TeamStaticData", 488: "TeamData",
+                8: "StaticCommanderData", 1288: "CommanderData"}
 #: A run of this many written packets of one kind is split so a digest mismatch still points into the run.
 CHUNK = 256
 
@@ -159,6 +163,7 @@ def selftest() -> int:
     expect(not res["equal"] and res["first"][:2] == (2, 7) and res["differing"] == 2, "the first differing packet and offset are named")
     expect("packet 2" in " ".join(describe(res)), "describe names the first packet")
     old = dict(RECORD_SIZES)
+    RECORD_SIZES.clear()
     RECORD_SIZES[40] = "Rec40"
     try:
         res = compare(base, mod)
