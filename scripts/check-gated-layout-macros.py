@@ -225,6 +225,23 @@ def parse_macro_target_defs(cmake_text):
 # repo's actual layout, and always include the linked mc2/editor umbrella.
 # ---------------------------------------------------------------------------
 
+def _split_internal_text(dirpath, txt, depth=0):
+    """Text of the `<stem>_internal.h` headers a translation unit includes from its own directory: a split unit keeps its include bundle there,
+    so the units' real includes would otherwise be invisible to the textual scan."""
+    out = ""
+    if depth > 1:
+        return out
+    for m in re.finditer(r'#\s*include\s*"([\w.\-]+_internal\.h)"', txt):
+        fp = os.path.join(dirpath, m.group(1))
+        try:
+            with open(fp, "r", encoding="utf-8", errors="replace") as f:
+                inner = f.read()
+        except OSError:
+            continue
+        out += inner + _split_internal_text(dirpath, inner, depth + 1)
+    return out
+
+
 def includers_of(header_rel):
     """Return list of .cpp paths that #include the header (basename match)."""
     base = os.path.basename(header_rel)
@@ -247,6 +264,7 @@ def includers_of(header_rel):
                         txt = f.read()
                 except OSError:
                     continue
+                txt += _split_internal_text(dirpath, txt)
                 if re.search(r'#\s*include\s*[<"][^">]*%s[">]' % re.escape(base), txt):
                     hits.append(rel(fp))
     return sorted(set(hits))
