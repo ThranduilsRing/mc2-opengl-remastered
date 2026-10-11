@@ -943,13 +943,13 @@ void BldgAppearance::startActivity (long effectId, bool loop)
 			if (gosEffectSpec)
 			{
 				activity = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-				gosASSERT(activity != NULL);
+				gosASSERT(activity != nullptr);
 				
 				Stuff::Vector3D testPos = getNodeNamePosition("activity_node1");
 				if (testPos != position)
 				{
 					activity1 = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-					gosASSERT(activity1 != NULL);
+					gosASSERT(activity1 != nullptr);
 				}
 
   				MidLevelRenderer::MLRTexturePool::Instance->LoadImages();

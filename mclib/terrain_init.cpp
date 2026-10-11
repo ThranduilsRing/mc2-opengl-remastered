@@ -38,7 +38,7 @@ void Terrain::initTerrainHeap(volatile float& percent, float percentRange) {
 	{
 		ZoneScopedN("Terrain::init terrainHeap");
 		terrainHeap = new UserHeap;
-		gosASSERT(terrainHeap != NULL);
+		gosASSERT(terrainHeap != nullptr);
 		terrainHeap->init(terrainHeapSize,"TERRAIN");
 	}
 
@@ -117,20 +117,20 @@ void Terrain::initObjBlockLists(volatile float& percent, float percentRange) {
 	
 	numObjBlocks = numberBlocks;
 	objBlockInfo = (ObjBlockInfo *)terrainHeap->Malloc(sizeof(ObjBlockInfo)*numObjBlocks);
-	gosASSERT(objBlockInfo != NULL);
+	gosASSERT(objBlockInfo != nullptr);
 	
 	memset(objBlockInfo,0,sizeof(ObjBlockInfo)*numObjBlocks);
 	
 	objVertexActive = (bool *)terrainHeap->Malloc(sizeof(bool) * realVerticesMapSide * realVerticesMapSide);
-	gosASSERT(objVertexActive != NULL);
+	gosASSERT(objVertexActive != nullptr);
 	
 	memset(objVertexActive,0,sizeof(bool)*numObjBlocks);
 	
 	moverBlockList = (long *)terrainHeap->Malloc(sizeof(long) * numberBlocks);
-	gosASSERT(moverBlockList != NULL);
+	gosASSERT(moverBlockList != nullptr);
 	
 	usedBlockList = (long *)terrainHeap->Malloc(sizeof(long) * numberBlocks);
-	gosASSERT(usedBlockList != NULL);
+	gosASSERT(usedBlockList != nullptr);
 	
 	clearList();
 	clearMoverList();
@@ -189,10 +189,10 @@ void Terrain::lodAllocMeta() {
 	s_drawCmds       = (TerrainDrawCommand*)terrainHeap->Malloc(sizeof(TerrainDrawCommand)  * nBlocks);
 	s_skirtDepths    = new float[nBlocks];
 
-	gosASSERT(s_blockMeta      != NULL);
-	gosASSERT(s_superchunkMeta != NULL);
-	gosASSERT(s_drawCmds       != NULL);
-	gosASSERT(s_skirtDepths    != NULL);
+	gosASSERT(s_blockMeta      != nullptr);
+	gosASSERT(s_superchunkMeta != nullptr);
+	gosASSERT(s_drawCmds       != nullptr);
+	gosASSERT(s_skirtDepths    != nullptr);
 
 	memset(s_blockMeta,      0, sizeof(TerrainBlockMeta)   * nBlocks);
 	memset(s_superchunkMeta, 0, sizeof(SuperchunkMeta)      * nSuperchunks);
@@ -1067,14 +1067,14 @@ void Terrain::initVertexQuadLists(unsigned long visibleVertices) {
 	// Create the VertexList
 	numberVertices = 0;
 	vertexList = (VertexPtr)terrainHeap->Malloc(sizeof(Vertex) * visibleVertices * visibleVertices);
-	gosASSERT(vertexList != NULL);
+	gosASSERT(vertexList != nullptr);
 	memset(vertexList,0,sizeof(Vertex) * visibleVertices * visibleVertices);
 
 	//----------------------------------------------------------------------
 	// Create the QuadList
 	numberQuads = 0;
 	quadList = (TerrainQuadPtr)terrainHeap->Malloc(sizeof(TerrainQuad) * visibleVertices * visibleVertices);
-	gosASSERT(quadList != NULL);
+	gosASSERT(quadList != nullptr);
 	memset(quadList,0,sizeof(TerrainQuad) * visibleVertices * visibleVertices);
 
 	//-------------------------------------------------------------------

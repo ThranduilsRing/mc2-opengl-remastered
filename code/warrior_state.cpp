@@ -9,7 +9,7 @@ BldgAppearance* MechWarrior::getWayPointMarker( const Stuff::Vector3D& pos, cons
 	AppearanceTypePtr buildingAppearanceType = appearanceTypeList->getAppearance(appearanceType, name );
 
 	BldgAppearance* appearance = new BldgAppearance;
-	gosASSERT(appearance != NULL);
+	gosASSERT(appearance != nullptr);
 
 	// The only appearance type for buildings is MLR_APPEARANCE.
 	gosASSERT(buildingAppearanceType->getAppearanceClass() == BLDG_TYPE);
@@ -501,7 +501,7 @@ long MechWarrior::calcTacOrder (long goalAction,
 void MechWarrior::initGoalManager (long poolSize) {
 
 	goalManager = new GoalManager;
-	gosASSERT(goalManager != NULL);
+	gosASSERT(goalManager != nullptr);
 	goalManager->setup(poolSize);
 	goalManager->build();
 

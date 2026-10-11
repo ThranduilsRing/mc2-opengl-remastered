@@ -1272,7 +1272,7 @@ void Building::init (bool create, ObjectTypePtr objType) {
 	}
 	  
    	appearance = new BldgAppearance;
-	gosASSERT(appearance != NULL);
+	gosASSERT(appearance != nullptr);
 
 	//--------------------------------------------------------------
 	// The only appearance type for buildings is MLR_APPEARANCE.
@@ -1528,7 +1528,7 @@ long Building::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayChu
 
 #if 0
 				if (type->marksImpassableWhenDestroyed) 
-					appearance->markMoveMap(true,NULL);
+					appearance->markMoveMap(true,nullptr);
 #endif
 
 				appearance->markLOS(true);
@@ -1553,7 +1553,7 @@ long Building::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayChu
 				else	//We want the buildings remaining shape to correctly calc LOS and Impassability
 				{
 					appearance->markLOS();
-					appearance->markMoveMap(false,NULL);	//Then, use the destroyed shape to mark impassable
+					appearance->markMoveMap(false,nullptr);	//Then, use the destroyed shape to mark impassable
 				}
 #endif							
 				if (CombatLog) {

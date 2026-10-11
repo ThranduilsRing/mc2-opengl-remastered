@@ -567,11 +567,11 @@ profile = true;
 	ABLFile* aFile = new ABLFile;
 	aFile->create("ablFile.txt");
 	aFile->writeString("Testing writeString");
-	aFile->writeByte(NULL);
+	aFile->writeByte(nullptr);
 	aFile->writeInt(100);
 	aFile->close();
 	delete aFile;
-	aFile = NULL;
+	aFile = nullptr;
 
 	unsigned char s[100];
 	ABLFile* bFile = new ABLFile;
@@ -580,7 +580,7 @@ profile = true;
 	int32_t val = bFile->readInt();
 	bFile->close();
 	delete bFile;
-	bFile = NULL;
+	bFile = nullptr;
 #endif
 }
 

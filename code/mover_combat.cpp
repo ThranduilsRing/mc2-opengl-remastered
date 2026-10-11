@@ -228,7 +228,7 @@ void Mover::loadPilot (const char* pilotFileName, const char* brainFileName, Log
 	pilotFullFileName.init(warriorPath, pilotFileName, ".fit");
 			
 	FitIniFile* pilotFile = new FitIniFile;
-	gosASSERT(pilotFile != NULL);
+	gosASSERT(pilotFile != nullptr);
 		
 	long result = pilotFile->open(pilotFullFileName);
 	gosASSERT(result == NO_ERR);

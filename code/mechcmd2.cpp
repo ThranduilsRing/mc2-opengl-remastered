@@ -226,10 +226,10 @@ void __stdcall InitializeGameEngine()
 	#ifdef _WIN64
 		gosResourceHandle = gos_OpenResourceDLL("mc2res_64.dll", nullptr, 0);
 	#else
-		gosResourceHandle = gos_OpenResourceDLL("mc2res_32.dll", NULL, 0);
+		gosResourceHandle = gos_OpenResourceDLL("mc2res_32.dll", nullptr, 0);
 	#endif
 #else
-	gosResourceHandle = gos_OpenResourceDLL("./libmc2res.so", NULL, 0);
+	gosResourceHandle = gos_OpenResourceDLL("./libmc2res.so", nullptr, 0);
 #endif
 	}
 
@@ -307,7 +307,7 @@ void __stdcall InitializeGameEngine()
 		memset( &dev, 0, sizeof ( DEVMODE ) );
 		dev.dmSize = sizeof( DEVMODE );
 		dev.dmSpecVersion = DM_SPECVERSION;
-		EnumDisplaySettings( NULL, ENUM_CURRENT_SETTINGS, &dev );
+		EnumDisplaySettings( nullptr, ENUM_CURRENT_SETTINGS, &dev );
 
 		if ((dev.dmPelsWidth > 1024) || (dev.dmPelsHeight > 768) || (dev.dmBitsPerPel > 16))
 		{
@@ -413,13 +413,13 @@ void __stdcall InitializeGameEngine()
 		{
 			ZoneScopedN("InitializeGameEngine heaps");
 			globalHeapList = new HeapList;
-			gosASSERT(globalHeapList != NULL);
+			gosASSERT(globalHeapList != nullptr);
 		
 			globalHeapList->init();
 			globalHeapList->update();		//Run Instrumentation into GOS Debugger Screen
 		
 			systemHeap = new UserHeap;
-			gosASSERT(systemHeap != NULL);
+			gosASSERT(systemHeap != nullptr);
 		
 			systemHeap->init(systemHeapSize,"SYSTEM");
 		}
@@ -1065,7 +1065,7 @@ void __stdcall InitializeGameEngine()
 		// Start the GUI Heap.
 		{ ZoneScopedN("InitializeGameEngine guiHeap");
 		guiHeap = new UserHeap;
-		gosASSERT(guiHeap != NULL);
+		gosASSERT(guiHeap != nullptr);
 		
 		guiHeap->init(guiHeapSize,"GUI");
 		}

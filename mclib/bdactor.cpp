@@ -409,11 +409,11 @@ void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
  		if (appearType->numWeaponNodes)
 		{
 			nodeUsed = (long *)AppearanceTypeList::appearanceHeap->Malloc(sizeof(long) * appearType->numWeaponNodes);
-			gosASSERT(nodeUsed != NULL);
+			gosASSERT(nodeUsed != nullptr);
 			memset(nodeUsed,0,sizeof(long) * appearType->numWeaponNodes);
 			
 			nodeRecycle = (float *)AppearanceTypeList::appearanceHeap->Malloc(sizeof(float) * appearType->numWeaponNodes);
-			gosASSERT(nodeRecycle != NULL);
+			gosASSERT(nodeRecycle != nullptr);
 			
 			for (long i=0;i<appearType->numWeaponNodes;i++)
 				nodeRecycle[i] = 0.0f;
@@ -843,7 +843,7 @@ bool BldgAppearance::playDestruction (void)
 		if (gosEffectSpec)
 		{
 			destructFX = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-			gosASSERT(destructFX != NULL);
+			gosASSERT(destructFX != nullptr);
 		
 			MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
 		

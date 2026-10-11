@@ -254,7 +254,7 @@ void MapData::buildTerrainFaceCache (volatile float* progress, float progressRan
 	if (!terrainFaceCache)
 	{
 		terrainFaceCache = (WorldQuadTerrainCacheEntry*)Terrain::terrainHeap->Malloc(sizeof(WorldQuadTerrainCacheEntry) * cacheCount);
-		gosASSERT(terrainFaceCache != NULL);
+		gosASSERT(terrainFaceCache != nullptr);
 	}
 
 	for (long i = 0; i < cacheCount; ++i)
@@ -1130,7 +1130,7 @@ void MapData::makeLists (VertexPtr vertexList, long &numVerts, TerrainQuadPtr qu
 				currentVertex->vertexNum = topLeftX + (topLeftY * Terrain::realVerticesMapSide);
 			}
 
-			gosASSERT(Pvertex != NULL);
+			gosASSERT(Pvertex != nullptr);
 			currentVertex->pVertex = Pvertex;
 			
 			//------------------------------------------------

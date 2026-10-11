@@ -43,10 +43,10 @@ void EditorShutdownTrace(const char* fmt, ...)
 
 IProviderEngine * armProvider;
 
-CameraPtr eye = NULL;
+CameraPtr eye = nullptr;
 long lightState = 0;
 bool s_bSensorMapEnabled = false;
-EditorInterface* EditorInterface::s_instance = NULL;
+EditorInterface* EditorInterface::s_instance = nullptr;
 
 void EditorInterface::handleKeyDown( int Key )
 {
@@ -79,7 +79,7 @@ void EditorInterface::handleKeyDown( int Key )
 	}
 	
 	BuildingBrush* rotBB = ( currentBrushID >= IDS_OBJECT_200 && currentBrushID <= IDS_OBJECT_200 + 600 )
-		? dynamic_cast<BuildingBrush*>(curBrush) : NULL;   // ScatterBrush is in range but not a BuildingBrush
+		? dynamic_cast<BuildingBrush*>(curBrush) : nullptr;   // ScatterBrush is in range but not a BuildingBrush
 	if ( rotBB )
 	{
 		if (Key == KEY_LBRACKET)
@@ -225,7 +225,7 @@ void EditorInterface::handleKeyDown( int Key )
 		const EditorObject* pInfo = (*it);
 		// EDITOR-CRASH-HARDENING-1: appearance() can be NULL; guard before ->position
 		// (mirror sibling readout ~line 1975).
-		const ObjectAppearance* pAppearance = pInfo ? pInfo->appearance() : NULL;
+		const ObjectAppearance* pAppearance = pInfo ? pInfo->appearance() : nullptr;
 		if ( pAppearance )
 		{
 			Stuff::Point3D eyePosition(eye->getCameraOrigin());
@@ -270,7 +270,7 @@ void EditorInterface::updateCameraInput()
 	{
 		bool imguiMouse = false;
 #ifdef MC2_IMGUI
-		imguiMouse = ( ImGui::GetCurrentContext() != NULL ) && ImGui::GetIO().WantCaptureMouse;
+		imguiMouse = ( ImGui::GetCurrentContext() != nullptr ) && ImGui::GetIO().WantCaptureMouse;
 #endif
 		if ( !imguiMouse )
 		{
@@ -355,7 +355,7 @@ void EditorInterface::KillCurBrush()
 		delete curBrush;
 	}
 
-	curBrush = NULL;
+	curBrush = nullptr;
 
 	selecting = false;
 
@@ -463,11 +463,11 @@ int EditorInterface::PaintTerrain( int type )
 int EditorInterface::SaveAs()
 {
 	int retVal = IDOK;
-	CFileDialog	fileDlg( 0,  "pak", NULL, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT | OFN_NOCHANGEDIR, szPAKFilter );
+	CFileDialog	fileDlg( 0,  "pak", nullptr, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT | OFN_NOCHANGEDIR, szPAKFilter );
 
 	{
 		/* if the mission directory doesn't exist, we attempt to create it */
-		int curDirStrSize = GetCurrentDirectory(0, NULL);
+		int curDirStrSize = GetCurrentDirectory(0, nullptr);
 		TCHAR *curDirStr = (TCHAR *)gos_Malloc(curDirStrSize);
 		GetCurrentDirectory(curDirStrSize, curDirStr);
 		BOOL result = SetCurrentDirectory(missionPath);
@@ -477,10 +477,10 @@ int EditorInterface::SaveAs()
 		if (0 == result)
 		{
 			gosASSERT(false);
-			CreateDirectory(missionPath, NULL);
-			CreateDirectory(warriorPath, NULL);
-			CreateDirectory(terrainPath, NULL);
-			CreateDirectory(texturePath, NULL);
+			CreateDirectory(missionPath, nullptr);
+			CreateDirectory(warriorPath, nullptr);
+			CreateDirectory(terrainPath, nullptr);
+			CreateDirectory(texturePath, nullptr);
 		}
 	}
 
@@ -505,10 +505,10 @@ int EditorInterface::SaveAs()
 		//	-Water Detail Maps (texturePath)
 		char name[1024];
 		char name2[1024];
-		_splitpath(pFile,NULL,NULL,name2,NULL);
+		_splitpath(pFile,nullptr,nullptr,name2,nullptr);
 
 		if (EditorData::instance->getMapName())
-			_splitpath(EditorData::instance->getMapName(),NULL,NULL,name,NULL);
+			_splitpath(EditorData::instance->getMapName(),nullptr,nullptr,name,nullptr);
 		else
 			strcpy(name,name2);
 		
@@ -807,7 +807,7 @@ void EditorInterface::update()
 		if ( applied )
 		{
 			tacMap.UpdateMap();
-			PlaySound("SystemDefault", NULL, SND_ASYNC);
+			PlaySound("SystemDefault", nullptr, SND_ASYNC);
 		}
 	}
 #endif
@@ -876,7 +876,7 @@ void EditorInterface::update()
 					initTacMap();
 				}
 				tacMap.UpdateMap();
-				PlaySound("SystemDefault", NULL, SND_ASYNC);
+				PlaySound("SystemDefault", nullptr, SND_ASYNC);
 			}
 			return;
 		}
@@ -1262,7 +1262,7 @@ int EditorInterface::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	// mouse isn't moving — e.g. wheel-zoom, edge-scroll with a still cursor, or an
 	// MFC modal scrollbar-drag loop (WM_TIMER is still dispatched in those loops).
 	// ~120 Hz. SafeRunGameOSLogic self-guards reentrancy and renderer-not-ready.
-	SetTimer(kRenderTimerId, 8, NULL);
+	SetTimer(kRenderTimerId, 8, nullptr);
 
 	return 0;
 }

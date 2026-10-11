@@ -612,7 +612,7 @@ bool EditorData::reassignHeightsFromTGA( const char* fileName, int min, int max 
 	tgaFile.seek(0);
 
 	MemoryPtr tgaData = (MemoryPtr)systemHeap->Malloc(tgaFile.fileSize());
-	gosASSERT(tgaData != NULL);
+	gosASSERT(tgaData != nullptr);
 
 	result = tgaFile.read(tgaData,tgaFile.fileSize());
 
@@ -632,7 +632,7 @@ bool EditorData::reassignHeightsFromTGA( const char* fileName, int min, int max 
 	gosASSERT( header->width == header->height );
 	gosASSERT( !(header->width % 20) );
 
-	BYTE* pTmp = NULL;
+	BYTE* pTmp = nullptr;
 
 	float mapMin = 255.;
 	float mapMax = 0.;
@@ -744,7 +744,7 @@ bool CreateScaledColorMap(long mapWidth, char *localColorMapName, MemoryPtr tmpR
 	}
 
 	int jpgW = 0, jpgH = 0;
-	unsigned char* decodedRGB = NULL;
+	unsigned char* decodedRGB = nullptr;
 	if (tmpRAM && fileSize > 0)
 		decodedRGB = BurninJpeg_DecodeRGB((const unsigned char*)tmpRAM, (int)fileSize, &jpgW, &jpgH);
 
@@ -963,7 +963,7 @@ bool EditorData::generateMission( int mapSize, int terrain, unsigned long seed )
 
 	const char* mapName = "genmap";
 
-	CreateDirectory( "terrain_gen_out", NULL );
+	CreateDirectory( "terrain_gen_out", nullptr );
 
 	char recipePath[512];
 	sprintf( recipePath, "terrain_gen_out\\%s.recipe.json", mapName );
@@ -1056,7 +1056,7 @@ bool EditorData::initTerrainFromTGA( int mapSize, int min, int max, int terrain 
 	EditorDataTrace("EditorData::initTerrainFromTGA: Terrain new land=%p", land);
 	volatile float crap = 0;
 	EditorDataTrace("EditorData::initTerrainFromTGA: before land->init");
-	land->init( mapWidth, NULL, EDITOR_VISIBLE_VERTICES, crap, 100 );
+	land->init( mapWidth, nullptr, EDITOR_VISIBLE_VERTICES, crap, 100 );
 	EditorDataTrace("EditorData::initTerrainFromTGA: after land->init realVerticesMapSide=%ld terrainTextures2=%p", land->realVerticesMapSide, land->terrainTextures2);
 	land->setUserSettings( min, max, terrain );
 	EditorDataTrace("EditorData::initTerrainFromTGA: after setUserSettings");
@@ -1068,9 +1068,9 @@ bool EditorData::initTerrainFromTGA( int mapSize, int min, int max, int terrain 
 	// is skipped. mapName is set to newmap by the else-branch so Save prompts.
 	if ( s_genColormapName[0] && !land->terrainTextures2 )
 	{
-		CreateDirectory(missionPath, NULL);
-		CreateDirectory(terrainPath, NULL);
-		CreateDirectory(texturePath, NULL);
+		CreateDirectory(missionPath, nullptr);
+		CreateDirectory(terrainPath, nullptr);
+		CreateDirectory(texturePath, nullptr);
 		land->terrainTextures2 = new TerrainColorMap;
 		land->terrainName = (char *)gos_Malloc( strlen( s_genColormapName ) + 1 );
 		strcpy( land->terrainName, s_genColormapName );
@@ -1105,10 +1105,10 @@ bool EditorData::initTerrainFromTGA( int mapSize, int min, int max, int terrain 
 			localColorMapName.init(texturePath,name2,".tga");
 			
 			SetFileAttributes(localColorMapName,FILE_ATTRIBUTE_NORMAL);
-			CreateDirectory(missionPath, NULL);
-			CreateDirectory(warriorPath, NULL);
-			CreateDirectory(terrainPath, NULL);
-			CreateDirectory(texturePath, NULL);
+			CreateDirectory(missionPath, nullptr);
+			CreateDirectory(warriorPath, nullptr);
+			CreateDirectory(terrainPath, nullptr);
+			CreateDirectory(texturePath, nullptr);
 
 			//Maps are in the fastfiles.  Dork.
 			//CopyFile(tgaColorMapName,localColorMapName,false);
@@ -1230,10 +1230,10 @@ bool EditorData::initTerrainFromTGA( int mapSize, int min, int max, int terrain 
 		// Just set up the terrain/map name so the rest of the pipeline works.
 		EditorDataTrace("EditorData::initTerrainFromTGA: terrainTextures2 already set by Terrain::init, setting up map name");
 		
-		CreateDirectory(missionPath, NULL);
-		CreateDirectory(warriorPath, NULL);
-		CreateDirectory(terrainPath, NULL);
-		CreateDirectory(texturePath, NULL);
+		CreateDirectory(missionPath, nullptr);
+		CreateDirectory(warriorPath, nullptr);
+		CreateDirectory(terrainPath, nullptr);
+		CreateDirectory(texturePath, nullptr);
 
 		const char* name2 = "newMap";
 		if (!land->terrainName)
@@ -1321,7 +1321,7 @@ bool EditorData::initTerrainFromTGA( int mapSize, int min, int max, int terrain 
 	{
 		long waterCount = 0;
 		long dryCount = 0;
-		PostcompVertexPtr vertices = Terrain::mapData ? Terrain::mapData->getData() : NULL;
+		PostcompVertexPtr vertices = Terrain::mapData ? Terrain::mapData->getData() : nullptr;
 		if (vertices)
 		{
 			const long vertexCount = land->realVerticesMapSide * land->realVerticesMapSide;

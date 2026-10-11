@@ -458,7 +458,7 @@ long ImportShapeFromMesh(const aiScene* scene, unsigned meshIdx,
 		sizeof(TG_TypeVertex) * mesh->mNumVertices);
 	TG_TypeTrianglePtr tris = (TG_TypeTrianglePtr)TG_Shape::tglHeap->Malloc(
 		sizeof(TG_TypeTriangle) * mesh->mNumFaces);
-	gosASSERT(verts != NULL && tris != NULL);
+	gosASSERT(verts != nullptr && tris != nullptr);
 	memset(verts, 0, sizeof(TG_TypeVertex) * mesh->mNumVertices);
 	memset(tris,  0, sizeof(TG_TypeTriangle) * mesh->mNumFaces);
 
@@ -597,7 +597,7 @@ long PopulateMergedSkinnedShape(const aiScene* scene, TG_TypeMultiShape* out, Sk
 
 	TG_TypeVertexPtr verts = (TG_TypeVertexPtr)TG_Shape::tglHeap->Malloc(sizeof(TG_TypeVertex) * totalV);
 	TG_TypeTrianglePtr tris = (TG_TypeTrianglePtr)TG_Shape::tglHeap->Malloc(sizeof(TG_TypeTriangle) * totalT);
-	gosASSERT(verts != NULL && tris != NULL);
+	gosASSERT(verts != nullptr && tris != nullptr);
 	memset(verts, 0, sizeof(TG_TypeVertex) * totalV);
 	memset(tris, 0, sizeof(TG_TypeTriangle) * totalT);
 

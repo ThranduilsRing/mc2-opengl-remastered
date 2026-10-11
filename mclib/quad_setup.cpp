@@ -502,10 +502,10 @@ void TerrainQuad::setupTextures (void)
 			long rowCol = vertices[0]->posTile;
 			long tileR = rowCol >> 16;
 			long tileC = rowCol & 0x0000ffff;
-			const MapData::WorldQuadTerrainCacheEntry* cachedEntry = NULL;
+			const MapData::WorldQuadTerrainCacheEntry* cachedEntry = nullptr;
 			{
 				CostSplitCacheResidentScope _csRes;
-				cachedEntry = Terrain::mapData ? Terrain::mapData->getTerrainFaceCacheEntry(tileR, tileC) : NULL;
+				cachedEntry = Terrain::mapData ? Terrain::mapData->getTerrainFaceCacheEntry(tileR, tileC) : nullptr;
 				if (cachedEntry && cachedEntry->isValid())
 				{
 					Terrain::mapData->ensureTerrainFaceCacheEntryResident(*cachedEntry, false);

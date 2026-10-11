@@ -16,8 +16,8 @@
 #include "Gates/gate_cold.h"   // raw<>()
 
 // FIXME: think how to make it better when different parts need window
-SDL_Window* g_sdl_window = NULL;
-static SDL_GLContext g_sdl_glcontext = NULL;
+SDL_Window* g_sdl_window = nullptr;
+static SDL_GLContext g_sdl_glcontext = nullptr;
 static bool g_mouse_grabbed = false;
 
 // GPU-VENDOR-DETECT-1: -1 = not yet probed, 0 = not NVIDIA, 1 = NVIDIA.
@@ -109,7 +109,7 @@ static void apply_mouse_grab(SDL_Window* window, bool grabbed)
     // Release only a clip that lies on OUR window: ClipCursor(NULL) would also drop
     // a clip another application (a game the user is playing) legitimately holds.
     if (!grabbed && ourWindowHoldsClip(window)) {
-        if (!ClipCursor(NULL)) {
+        if (!ClipCursor(nullptr)) {
             log_error("ClipCursor release failed: %lu\n", (unsigned long)GetLastError());
         }
     }
@@ -165,12 +165,12 @@ static void apply_mouse_grab(SDL_Window* window, bool grabbed)
     // That outcome is never acceptable, whatever code path asked for it, so this
     // refuses on geometry alone. It is the backstop for a future path that
     // reaches here without consulting gos_CursorCaptureForbidden().
-    if (MonitorFromRect(&clip_rect, MONITOR_DEFAULTTONULL) == NULL) {
+    if (MonitorFromRect(&clip_rect, MONITOR_DEFAULTTONULL) == nullptr) {
         log_error("[CURSOR_GUARD] refusing ClipCursor to a rect on no monitor "
                   "(%ld,%ld)-(%ld,%ld) -- releasing instead.\n",
                   (long)clip_rect.left, (long)clip_rect.top,
                   (long)clip_rect.right, (long)clip_rect.bottom);
-        ClipCursor(NULL);
+        ClipCursor(nullptr);
         return;
     }
 
@@ -318,7 +318,7 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
 {
 	int i, j, m, n;
 	SDL_DisplayMode fullscreen_mode;
-    SDL_Window* window = NULL;
+    SDL_Window* window = nullptr;
 
     // DPI-AWARE-1 (field-caught 2026-07-18): per-monitor-v2 DPI awareness is
     // declared as the FIRST statement of main() (gameosmain.cpp) — it must
@@ -348,7 +348,7 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
     // initialize using 0 videodriver
     if (SDL_VideoInit(nullptr) < 0) {
         fprintf(stderr, "Couldn't initialize video driver: %s\n", SDL_GetError());
-        return NULL;
+        return nullptr;
     }
     if (VERBOSE_VIDEO) {
         fprintf(stderr, "Video driver: %s\n", SDL_GetCurrentVideoDriver());
@@ -562,16 +562,16 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
 
         if (!window) {
             fprintf(stderr, "Couldn't create window: %s\n", SDL_GetError());
-            return NULL;
+            return nullptr;
         }
         SDL_GetWindowSize(window, &width, &height);
 
         // NULL to use window width and height and display refresh rate
         // only need to set mode if wanted fullscreen
-        if (SDL_SetWindowDisplayMode(window, NULL) < 0) {
+        if (SDL_SetWindowDisplayMode(window, nullptr) < 0) {
             fprintf(stderr, "Can't set up display mode: %s\n", SDL_GetError());
             SDL_DestroyWindow(window);
-            return NULL;
+            return nullptr;
         }
 
         // NOFOCUS-HARDEN-1: re-assert the origin immediately before the ONLY
@@ -640,12 +640,12 @@ RenderContextHandle init_render_context(RenderWindowHandle render_window)
     SDL_GLContext glcontext = SDL_GL_CreateContext(rw->window_);
     if (!glcontext ) {
         fprintf(stderr, "SDL_GL_CreateContext(): %s\n", SDL_GetError());
-        return NULL;
+        return nullptr;
     }
 
     if (SDL_GL_MakeCurrent(rw->window_, glcontext) < 0) {
         SDL_GL_DeleteContext(glcontext);
-        return NULL;
+        return nullptr;
     } 
 
     // MC2_VSYNC: "1" forces vsync on, "0" or unset leaves it off.
@@ -816,7 +816,7 @@ void destroy_render_context(RenderContextHandle rc_handle)
     assert(rc);
 
     SDL_GL_DeleteContext(rc->glcontext_);
-    g_sdl_glcontext = NULL;
+    g_sdl_glcontext = nullptr;
     delete rc;
 }
 
@@ -899,7 +899,7 @@ bool is_mode_supported(int width, int height, int bpp) {
 
     SDL_DisplayMode returned;
     
-    if(NULL == SDL_GetClosestDisplayMode(displayIndex, &desired, &returned)) {
+    if(nullptr == SDL_GetClosestDisplayMode(displayIndex, &desired, &returned)) {
         log_error("resize_window: %s\n", SDL_GetError());
         return false;
     }
@@ -994,7 +994,7 @@ void destroy_window(RenderWindowHandle rw_handle)
     SDL_DestroyWindow(rw->window_);
     delete rw;
 
-    g_sdl_window = NULL;
+    g_sdl_window = nullptr;
 }
 
 //==============================================================================

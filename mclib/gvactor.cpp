@@ -104,7 +104,7 @@ void GVAppearanceType::init (const char * fileName)
 				//----------------------------------------------
 				// Base LOD shape.  In stand Pose by default.
 				gvShape[i] = new TG_TypeMultiShape;
-				gosASSERT(gvShape[i] != NULL);
+				gosASSERT(gvShape[i] != nullptr);
 
 				if (i == 0 && importSourceBase[0]) {
 					// META-FIX design B PART 1: REQUIRED slot — checked import.
@@ -135,7 +135,7 @@ void GVAppearanceType::init (const char * fileName)
 		//----------------------------------------------
 		// Base shape.  In stand Pose by default.
 		gvShape[0] = new TG_TypeMultiShape;
-		gosASSERT(gvShape[0] != NULL);
+		gosASSERT(gvShape[0] != nullptr);
 
 		if (importSourceBase[0]) {
 			// META-FIX design B PART 1: REQUIRED slot — checked import.
@@ -157,7 +157,7 @@ void GVAppearanceType::init (const char * fileName)
 		//----------------------------------------------
 		// Base Shadow shape.
 		gvShadowShape = new TG_TypeMultiShape;
-		gosASSERT(gvShadowShape != NULL);
+		gosASSERT(gvShadowShape != nullptr);
 	
 		FullPathFileName gvName;
 		gvName.init(tglPath,aseFileName,".ase");
@@ -176,7 +176,7 @@ void GVAppearanceType::init (const char * fileName)
 		dmgName.init(tglPath,aseFileName,".ase");
 	
 		gvDmgShape = new TG_TypeMultiShape;
-		gosASSERT(gvDmgShape != NULL);
+		gosASSERT(gvDmgShape != nullptr);
 		gvDmgShape->LoadTGMultiShapeFromASE(dmgName); // TGL-LOAD-EXEMPT(optional damage shape; GetNumShapes-checked delete-on-fail)
 
 		if (!gvDmgShape->GetNumShapes())
@@ -242,7 +242,7 @@ void GVAppearanceType::init (const char * fileName)
 			if (fileExists(animPath) || fileExists(otherPath))
 			{
 				gvAnimData[i] = new TG_AnimateShape;
-				gosASSERT(gvAnimData[i] != NULL);
+				gosASSERT(gvAnimData[i] != nullptr);
 	
 				//--------------------------------------------------------
 				// If this animation does not exist, it is not a problem!
@@ -279,7 +279,7 @@ void GVAppearanceType::init (const char * fileName)
 	numFootNodes = MAX_FOOT_NODES;
 		
 	nodeData = (NodeData *)AppearanceTypeList::appearanceHeap->Malloc(sizeof(NodeData)*(numWeaponNodes+numSmokeNodes+numFootNodes));
-	gosASSERT(nodeData != NULL);
+	gosASSERT(nodeData != nullptr);
 	memset(nodeData,0,sizeof(NodeData)*(numWeaponNodes+numSmokeNodes+numFootNodes));
 		
 	for (int i=1;i<=numSmokeNodes;i++)
@@ -288,7 +288,7 @@ void GVAppearanceType::init (const char * fileName)
 		sprintf(blockId,"Smoke_%02d",i);
 			
 		nodeData[i-1].nodeId = (char *)AppearanceTypeList::appearanceHeap->Malloc(strlen(blockId)+1); 
-		gosASSERT(nodeData[i-1].nodeId != NULL);
+		gosASSERT(nodeData[i-1].nodeId != nullptr);
 			
 		strcpy(nodeData[i-1].nodeId,blockId);
 		nodeData[i-1].weaponType = MECH3D_WEAPONTYPE_NONE;
@@ -300,7 +300,7 @@ void GVAppearanceType::init (const char * fileName)
 		sprintf(blockId,"Weapon_%02d",i);
 		
 		nodeData[(i-1)+numSmokeNodes].nodeId = (char *)AppearanceTypeList::appearanceHeap->Malloc(strlen(blockId)+1);
-		gosASSERT(nodeData[(i-1)+numSmokeNodes].nodeId != NULL);
+		gosASSERT(nodeData[(i-1)+numSmokeNodes].nodeId != nullptr);
 		
 		strcpy(nodeData[(i-1)+numSmokeNodes].nodeId,blockId);
 		nodeData[(i-1)+numSmokeNodes].weaponType = MECH3D_WEAPONTYPE_ANY;
@@ -313,7 +313,7 @@ void GVAppearanceType::init (const char * fileName)
 		sprintf(blockId,"FootNode_%02d",i);
 			
 		nodeData[(i-1)+numSmokeNodes+numWeaponNodes].nodeId = (char *)AppearanceTypeList::appearanceHeap->Malloc(strlen(blockId)+1);       
-		gosASSERT(nodeData[(i-1)+numSmokeNodes+numWeaponNodes].nodeId != NULL);
+		gosASSERT(nodeData[(i-1)+numSmokeNodes+numWeaponNodes].nodeId != nullptr);
 			
 		strcpy(nodeData[(i-1)+numSmokeNodes+numWeaponNodes].nodeId,blockId);
 		nodeData[(i-1)+numSmokeNodes+numWeaponNodes].weaponType = MECH3D_WEAPONTYPE_NONE;
@@ -327,7 +327,7 @@ void GVAppearanceType::init (const char * fileName)
 		sensorName.init(tglPath,"circularcontact",".ase");
 	
 		SensorCircleShape = new TG_TypeMultiShape;
-		gosASSERT(SensorCircleShape != NULL);
+		gosASSERT(SensorCircleShape != nullptr);
 
 		// META-FIX design B PART 1: REQUIRED static (sensor contact art).
 		tglLoadShapeChecked(SensorCircleShape, sensorName,
@@ -340,7 +340,7 @@ void GVAppearanceType::init (const char * fileName)
 		sensorName.init(tglPath,"trianglecontact",".ase");
 	
 		SensorTriangleShape = new TG_TypeMultiShape;
-		gosASSERT(SensorCircleShape != NULL);
+		gosASSERT(SensorCircleShape != nullptr);
 
 		tglLoadShapeChecked(SensorTriangleShape, sensorName,
 			"gvactor.sensor_triangle", nullptr);
@@ -395,7 +395,7 @@ void GVAppearanceType::destroy (void)
 //-----------------------------------------------------------------------------
 void GVAppearanceType::setAnimation (TG_MultiShapePtr shape, DWORD animationNum)
 {
-	gosASSERT(shape != NULL);
+	gosASSERT(shape != nullptr);
 	gosASSERT(animationNum != 0xffffffff);
 	gosASSERT(animationNum < MAX_GV_ANIMATIONS);
 
@@ -997,11 +997,11 @@ void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
  		if (appearType->numWeaponNodes)
 		{
 			nodeUsed = (long *)AppearanceTypeList::appearanceHeap->Malloc(sizeof(long) * appearType->numWeaponNodes);
-			gosASSERT(nodeUsed != NULL);
+			gosASSERT(nodeUsed != nullptr);
 			memset(nodeUsed,0,sizeof(long) * appearType->numWeaponNodes);
 			
 			nodeRecycle = (float *)AppearanceTypeList::appearanceHeap->Malloc(sizeof(float) * appearType->numWeaponNodes);
-			gosASSERT(nodeRecycle != NULL);
+			gosASSERT(nodeRecycle != nullptr);
 			
 			for (long i=0;i<appearType->numWeaponNodes;i++)
 				nodeRecycle[i] = 0.0f;
@@ -1023,7 +1023,7 @@ void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 					if (gosEffectSpec)
 					{
 						dustCloud = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-						gosASSERT(dustCloud != NULL);
+						gosASSERT(dustCloud != nullptr);
 
 						MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
 					}

@@ -1062,7 +1062,7 @@ void EditorInterface::renderMissionToolsImGui()
 	{
 		char editorExe[MAX_PATH] = {0};
 		FILETIME editorFT{};
-		if (haveGameFT && GetModuleFileNameA(NULL, editorExe, MAX_PATH) > 0 &&
+		if (haveGameFT && GetModuleFileNameA(nullptr, editorExe, MAX_PATH) > 0 &&
 		    fileWriteTime(editorExe, &editorFT))
 		{
 			gameExeStale = (CompareFileTime(&gameExeFT, &editorFT) < 0);
@@ -1121,12 +1121,12 @@ void EditorInterface::renderMissionToolsImGui()
 
 			// mods/<id>/.modproject/playtest/<ts>/  (create each level; ignore EEXIST).
 			char dir[1024];
-			snprintf(dir, sizeof(dir), "mods");                                      CreateDirectoryA(dir, NULL);
-			snprintf(dir, sizeof(dir), "mods/%s", modSnap.c_str());                  CreateDirectoryA(dir, NULL);
-			snprintf(dir, sizeof(dir), "mods/%s/.modproject", modSnap.c_str());      CreateDirectoryA(dir, NULL);
-			snprintf(dir, sizeof(dir), "mods/%s/.modproject/playtest", modSnap.c_str()); CreateDirectoryA(dir, NULL);
+			snprintf(dir, sizeof(dir), "mods");                                      CreateDirectoryA(dir, nullptr);
+			snprintf(dir, sizeof(dir), "mods/%s", modSnap.c_str());                  CreateDirectoryA(dir, nullptr);
+			snprintf(dir, sizeof(dir), "mods/%s/.modproject", modSnap.c_str());      CreateDirectoryA(dir, nullptr);
+			snprintf(dir, sizeof(dir), "mods/%s/.modproject/playtest", modSnap.c_str()); CreateDirectoryA(dir, nullptr);
 			snprintf(dir, sizeof(dir), "mods/%s/.modproject/playtest/%s", modSnap.c_str(), ts);
-			CreateDirectoryA(dir, NULL);
+			CreateDirectoryA(dir, nullptr);
 
 			// Persist the captured stdout/stderr tail next to the json.
 			char logPath[1100];
@@ -1197,9 +1197,9 @@ void EditorInterface::renderMissionToolsImGui()
 		snprintf(destDir, sizeof(destDir), "%s/%s/missions", s_modsRoot, s_modName);
 
 		char lvl[900];
-		snprintf(lvl, sizeof(lvl), "%s", s_modsRoot);                         CreateDirectoryA(lvl, NULL);
-		snprintf(lvl, sizeof(lvl), "%s/%s", s_modsRoot, s_modName);           CreateDirectoryA(lvl, NULL);
-		CreateDirectoryA(destDir, NULL);
+		snprintf(lvl, sizeof(lvl), "%s", s_modsRoot);                         CreateDirectoryA(lvl, nullptr);
+		snprintf(lvl, sizeof(lvl), "%s/%s", s_modsRoot, s_modName);           CreateDirectoryA(lvl, nullptr);
+		CreateDirectoryA(destDir, nullptr);
 
 		const char* exts[] = { ".pak", ".fit", ".burnin.jpg", ".foliage.json" };
 		int copied = 0;
@@ -1233,7 +1233,7 @@ void EditorInterface::renderMissionToolsImGui() {}
 void EditorInterface::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar) 
 {
 	
-	if (pScrollBar != NULL && pScrollBar->SendChildNotifyLastMsg())
+	if (pScrollBar != nullptr && pScrollBar->SendChildNotifyLastMsg())
 		return;     // eat it
 
 	// ignore scroll bar msgs from other controls

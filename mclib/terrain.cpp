@@ -302,31 +302,31 @@ void Terrain::initMapCellArrays (void)
 	if (!tileRowToWorldCoord)
 	{
 		tileRowToWorldCoord = (float *)terrainHeap->Malloc(sizeof(float) * realVerticesMapSide);
-		gosASSERT(tileRowToWorldCoord != NULL);
+		gosASSERT(tileRowToWorldCoord != nullptr);
 	}
 
 	if (!tileColToWorldCoord)
 	{
 		tileColToWorldCoord = (float *)terrainHeap->Malloc(sizeof(float) * realVerticesMapSide); 
-		gosASSERT(tileColToWorldCoord != NULL);
+		gosASSERT(tileColToWorldCoord != nullptr);
 	}
 
 	if (!cellToWorldCoord)
 	{
 		cellToWorldCoord = (float *)terrainHeap->Malloc(sizeof(float) * MAPCELL_DIM); 
-		gosASSERT(cellToWorldCoord != NULL);
+		gosASSERT(cellToWorldCoord != nullptr);
 	}
 
 	if (!cellColToWorldCoord)
 	{
 		cellColToWorldCoord = (float *)terrainHeap->Malloc(sizeof(float) * realVerticesMapSide * MAPCELL_DIM); 
-		gosASSERT(cellColToWorldCoord != NULL);
+		gosASSERT(cellColToWorldCoord != nullptr);
 	}
 
 	if (!cellRowToWorldCoord)
 	{
 		cellRowToWorldCoord = (float *)terrainHeap->Malloc(sizeof(float) * realVerticesMapSide * MAPCELL_DIM); 
-		gosASSERT(cellRowToWorldCoord != NULL);
+		gosASSERT(cellRowToWorldCoord != nullptr);
 	}
 
 	long i=0;
@@ -443,14 +443,14 @@ void Terrain::resetVisibleVertices (long maxVisibleVertices)
 	// Create the VertexList
 	numberVertices = 0;
 	vertexList = (VertexPtr)terrainHeap->Malloc(sizeof(Vertex) * visibleVerticesPerSide * visibleVerticesPerSide);
-	gosASSERT(vertexList != NULL);
+	gosASSERT(vertexList != nullptr);
 	memset(vertexList,0,sizeof(Vertex) * visibleVerticesPerSide * visibleVerticesPerSide);
 
 	//----------------------------------------------------------------------
 	// Create the QuadList
 	numberQuads = 0;
 	quadList = (TerrainQuadPtr)terrainHeap->Malloc(sizeof(TerrainQuad) * visibleVerticesPerSide * visibleVerticesPerSide);
-	gosASSERT(quadList != NULL);
+	gosASSERT(quadList != nullptr);
 	memset(quadList,0,sizeof(TerrainQuad) * visibleVerticesPerSide * visibleVerticesPerSide);
 
 	

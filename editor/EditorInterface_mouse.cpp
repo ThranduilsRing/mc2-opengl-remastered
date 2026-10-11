@@ -388,7 +388,7 @@ void EditorInterface::handleMouseMove( int PosX, int PosY )
 		EditorObjectMgr::EDITOR_OBJECT_LIST selectedObjectsList = EditorObjectMgr::instance()->getSelectedObjectList();
 		EditorObjectMgr::EDITOR_OBJECT_LIST::EIterator it = selectedObjectsList.Begin();
 		const EditorObject* pInfo = (*it);
-		const ObjectAppearance* pAppearance = pInfo ? pInfo->appearance() : NULL;
+		const ObjectAppearance* pAppearance = pInfo ? pInfo->appearance() : nullptr;
 		if ( pAppearance )
 		{
 			// by Methuselas: selected-object distance is updated during mouse move,
@@ -421,8 +421,8 @@ void EditorInterface::notifyObjectDeleted( const EditorObject* pObj )
 	if ( m_pDragObject == pObj )
 	{
 		delete m_pDragAction;
-		m_pDragAction = NULL;
-		m_pDragObject = NULL;
+		m_pDragAction = nullptr;
+		m_pDragObject = nullptr;
 		m_dragObjMoved = false;
 	}
 }
@@ -440,8 +440,8 @@ void EditorInterface::handleLeftButtonUp( int PosX, int PosY )
 			undoMgr.AddAction( m_pDragAction );
 		else
 			delete m_pDragAction;
-		m_pDragAction = NULL;
-		m_pDragObject = NULL;
+		m_pDragAction = nullptr;
+		m_pDragObject = nullptr;
 		m_dragObjMoved = false;
 		tacMap.Invalidate(FALSE);  // async/coalesced — avoid synchronous per-event minimap repaint storm
 		return;
@@ -497,7 +497,7 @@ static bool EditorInterface_GpuPickEnabled()
 static EditorObject* EditorInterface_PickObjectAtScreenPoint_CPU(int screenX, int screenY)
 {
 	if (!EditorObjectMgr::instance())
-		return NULL;
+		return nullptr;
 
 	return EditorObjectMgr::instance()->getObjectAtScreenPosition(screenX, screenY);
 }
@@ -506,7 +506,7 @@ EditorObject* EditorInterface_PickObjectAtScreenPoint(int screenX, int screenY)
 {
 	EditorObjectMgr* mgr = EditorObjectMgr::instance();
 	if (!mgr)
-		return NULL;
+		return nullptr;
 
 	// ---- PRIMARY: GPU ObjectID readback via the single EditorBridge seam ----
 	// EditorBridge::pickAt() owns the screen->FBO coord transform + glReadPixels
@@ -549,7 +549,7 @@ EditorObject* EditorInterface_PickObjectAtScreenPoint(int screenX, int screenY)
 				// static-prop registry artifact. Mech/unit hits (Kind::Mech below)
 				// carry stable per-instance handle bits and are NOT cross-checked.
 				EditorObject* cpuObj = mgr->getObjectAtScreenPosition(screenX, screenY);
-				if (cpuObj == NULL || cpuObj == obj)
+				if (cpuObj == nullptr || cpuObj == obj)
 					return obj;            // unique-type / GPU object is under cursor
 				return cpuObj;             // same-type duplicate -> CPU instance wins
 			}
@@ -974,7 +974,7 @@ BOOL EditorInterface::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
 		const EditorObject* pInfo = (*it);
 		// EDITOR-CRASH-HARDENING-1: appearance() can be NULL; guard before ->position
 		// (mirror sibling readout ~line 1975).
-		const ObjectAppearance* pAppearance = pInfo ? pInfo->appearance() : NULL;
+		const ObjectAppearance* pAppearance = pInfo ? pInfo->appearance() : nullptr;
 		if ( pAppearance )
 		{
 			Stuff::Point3D eyePosition(eye->getCameraOrigin());

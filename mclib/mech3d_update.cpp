@@ -14,7 +14,7 @@ long Mech3DAppearance::update (bool animate)
 		if (result != NO_ERR)
 		{
 			delete logFile;
-			logFile = NULL;
+			logFile = nullptr;
 		}
 	}
 #endif
@@ -693,7 +693,7 @@ void Mech3DAppearance::blowLeftArm (void)
 		if (gosEffectSpec)
 		{
 			leftShoulderBoom = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-			gosASSERT(leftShoulderBoom != NULL);
+			gosASSERT(leftShoulderBoom != nullptr);
 			
 			MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
 		}
@@ -709,7 +709,7 @@ void Mech3DAppearance::blowLeftArm (void)
 		if (gosEffectSpec)
 		{
 			leftArmSmoke = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-			gosASSERT(leftArmSmoke != NULL);
+			gosASSERT(leftArmSmoke != nullptr);
 		
 			MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
 		}
@@ -808,7 +808,7 @@ void Mech3DAppearance::blowRightArm (void)
 		if (gosEffectSpec)
 		{
 			rightShoulderBoom = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-			gosASSERT(rightShoulderBoom != NULL);
+			gosASSERT(rightShoulderBoom != nullptr);
 		
 			MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
 		}
@@ -824,7 +824,7 @@ void Mech3DAppearance::blowRightArm (void)
 		if (gosEffectSpec)
 		{
 			rightArmSmoke = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-			gosASSERT(rightArmSmoke != NULL);
+			gosASSERT(rightArmSmoke != nullptr);
 		
 			MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
 		}
@@ -925,7 +925,7 @@ void Mech3DAppearance::startSmoking (long smokeLvl)
 			if (gosEffectSpec)
 			{
 				criticalSmoke = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-				gosASSERT(criticalSmoke != NULL);
+				gosASSERT(criticalSmoke != nullptr);
 				
   				MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
 			}
@@ -944,7 +944,7 @@ void Mech3DAppearance::startSmoking (long smokeLvl)
 			if (gosEffectSpec)
 			{
 				smokeEffect = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-				gosASSERT(smokeEffect != NULL);
+				gosASSERT(smokeEffect != nullptr);
 				
   				MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
 			}
@@ -1006,7 +1006,7 @@ void Mech3DAppearance::startWaterWake (void)
 			if (gosEffectSpec)
 			{
 				waterWake = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-				gosASSERT(waterWake != NULL);
+				gosASSERT(waterWake != nullptr);
 				
   				MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
 			}
@@ -1068,7 +1068,7 @@ void Mech3DAppearance::playEjection (void)
 			if (gosEffectSpec)
 			{
 				helicopterDustCloud = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-				gosASSERT(helicopterDustCloud != NULL);
+				gosASSERT(helicopterDustCloud != nullptr);
 				
   				MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
 			}

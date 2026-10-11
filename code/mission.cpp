@@ -937,7 +937,7 @@ long Mission::setObjectiveTimer (long objectiveNum, float timeLeft)
 	//------------
 	// Add Timer.
 	TimerPtr timer = timerManager->getTimer(timerNumber);
-	gosASSERT(timer != NULL);
+	gosASSERT(timer != nullptr);
 	timer->setTimer(timeLeft);
 
 	return(NO_ERR);
@@ -952,7 +952,7 @@ float Mission::checkObjectiveTimer (long objectiveNum)
 	unsigned long timeLeft = 0;
 
 	TimerPtr timer = timerManager->getTimer(timerNumber);
-	gosASSERT(timer != NULL);
+	gosASSERT(timer != nullptr);
 
 	timeLeft = timer->getCurrentTime();
 	
