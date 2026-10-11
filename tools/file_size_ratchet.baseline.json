@@ -54,7 +54,7 @@
   "mclib/gosfx/fcurve.cpp": 1923,
   "mclib/gosfx/tube.cpp": 1528,
   "mclib/mapdata.cpp": 2633,
-  "mclib/mlr/mlrlightmap.cpp": 1599,
+  "mclib/mlr/mlrlightmap.cpp": 1648,
   "mclib/mlr/mlrprimitiveclipping.hpp": 1722,
   "mclib/mlr/mlrtriangleclipping.hpp": 2112,
   "mclib/move.h": 1822,
@@ -64,7 +64,7 @@
   "mclib/tgl.h": 1702,
   "shaders/terrain_lod_chunk.frag": 2412
  },
- "head": "77a6a7f21",
+ "head": "1e2fa987d",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -73,16 +73,16 @@
    "max_lines": 523
   },
   "GameOS": {
-   "files": 318,
+   "files": 324,
    "files_over_1500": 8,
    "files_over_3000": 1,
    "max_lines": 3753
   },
   "GuiRuntime": {
-   "files": 12,
+   "files": 14,
    "files_over_1500": 0,
    "files_over_3000": 0,
-   "max_lines": 1365
+   "max_lines": 1239
   },
   "RenderCore": {
    "files": 55,
@@ -97,13 +97,13 @@
    "max_lines": 1159
   },
   "code": {
-   "files": 368,
+   "files": 386,
    "files_over_1500": 22,
    "files_over_3000": 0,
    "max_lines": 2772
   },
   "editor": {
-   "files": 225,
+   "files": 228,
    "files_over_1500": 1,
    "files_over_3000": 0,
    "max_lines": 1502
@@ -115,7 +115,7 @@
    "max_lines": 1513
   },
   "mclib": {
-   "files": 590,
+   "files": 602,
    "files_over_1500": 16,
    "files_over_3000": 0,
    "max_lines": 2685
@@ -254,7 +254,7 @@
   }
  ],
  "total": {
-  "files": 1779,
+  "files": 1820,
   "files_over_1500": 50,
   "files_over_3000": 1,
   "max_lines": 3753
