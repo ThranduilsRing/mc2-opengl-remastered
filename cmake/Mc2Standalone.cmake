@@ -27,6 +27,11 @@ if(MSVC AND MC2_CXX_STANDARD EQUAL 23)
     set(CMAKE_CXX23_EXTENSION_COMPILE_OPTION "-std:c++23preview")
 endif()
 
+# mc2fmt.h (GameOS/include, header-only) is what the printf-to-format conversions of mclib/ and code/ sources include; every standalone project that
+# compiles an engine source needs it on its include path, not only the ones that already pull in gameos.hpp.
+get_filename_component(_mc2_standalone_root "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
+include_directories("${_mc2_standalone_root}/GameOS/include")
+
 # Link the gate registry (Gates/, STATIC lib mc2_gate) into a standalone target. Linking it
 # before any source reads a gate proves the LNK2019 class absent: a project that compiles an
 # engine file calling gate::get<> already carries the definitions.
