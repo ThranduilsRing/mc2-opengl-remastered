@@ -66,3 +66,9 @@ def test_asm_files_and_crlf():
     src = "#define K 3\r\nint a = K;\r\n"
     s, _ = run({"a.cpp": src})
     assert rd.rewrite_text(src, [s["K"]], "inline constexpr") == "inline constexpr int K = 3;\r\nint a = K;\r\n"
+
+
+def test_taint_names_come_from_the_revert_reason():
+    why = "6 of 144 includers differ or fail to compile (CMakeFiles/mc2.dir/code/infowindow.cpp.obj, out/editor/CMakeFiles/EditRel.dir/Editor.cpp.obj)"
+    assert rd.taint_from_reasons([("code/mover.h", why)]) == {"CMakeFiles/mc2.dir/code/infowindow.cpp.obj", "out/editor/CMakeFiles/EditRel.dir/Editor.cpp.obj"}
+    assert rd.taint_from_reasons([("x.h", "kept set failed its final build")]) == set()

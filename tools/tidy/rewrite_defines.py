@@ -305,6 +305,21 @@ def load_world():
     return paths, files, sites, uses
 
 
+def load_taint(path):
+    return {l.strip() for l in open(path, encoding="utf-8") if l.strip()} if path and os.path.exists(path) else set()
+
+
+def taint_from_reasons(rejected):
+    """Object names a reverted header's reason lists: those objects differed for a harmless edit (a data-layout shuffle after a new
+    symbol), so a header that those objects include is not worth proving in a big batch."""
+    out = set()
+    for _rel, why in rejected:
+        m = re.search(r"\(([^)]*)\)\s*$", why)
+        if m:
+            out.update(x.strip() for x in m.group(1).split(",") if x.strip().endswith(".obj"))
+    return out
+
+
 def other_worktree_dirty(path):
     if not path or not os.path.isdir(path):
         return set()
@@ -350,6 +365,8 @@ def plan_batches(files, sites, uses, includers, args, dirty):
             objs = includers.get(rel, set())
             src_objs = {args.s2t.get(u[0]) for s in ss for u in uses[s.name] if u[0].lower().endswith(SRC_EXT)}
             ss = [s for s in ss if all(u[0] == rel or not u[0].lower().endswith(SRC_EXT) or args.s2t.get(u[0]) in objs for u in uses[s.name])]
+        if objs & args.taint:
+            continue
         if ss and objs and (rel.lower().endswith(SRC_EXT) or len(objs) <= args.max_header_includers):
             out.append((len(objs), rel, ss, objs))
     out.sort(key=lambda x: (not x[1].lower().endswith(SRC_EXT), x[0], x[1]))
@@ -368,6 +385,7 @@ def cmd_run(a):
     done = set()
     if a.done and os.path.exists(a.done):
         done = {l.strip() for l in open(a.done, encoding="utf-8") if l.strip()}
+    a.taint = load_taint(a.taint_file)
     batches = 0
     while True:
         plan = [p for p in plan_batches(files, sites, uses, includers, a, dirty) if p[1] not in done]
@@ -408,6 +426,11 @@ def cmd_run(a):
         for rel, why in rejected:
             rts.restore_file(rel, mtimes[rel])
             print("REVERT %s  %s" % (rel, why))
+        new_taint = taint_from_reasons(rejected) - a.taint
+        if new_taint and a.taint_file:
+            a.taint |= new_taint
+            with open(a.taint_file, "a", encoding="utf-8", newline="\n") as fh:
+                fh.writelines(o + "\n" for o in sorted(new_taint))
         kept_sites = sum(len(ss) for rel, ss, _ in picked if rel in kept)
         print("BATCH %d result: kept %d file(s) / %d site(s), reverted %d file(s), %d object(s) proven identical" % (
             batches, len(kept), kept_sites, len(rejected), len({o for r in kept for o in inc[r]})))
@@ -445,6 +468,7 @@ def main(argv=None) -> int:
     r.add_argument("--max-header-includers", type=int, default=200)
     r.add_argument("--build-jobs", type=int, default=6)
     r.add_argument("--done", help="ledger of files already tried (skipped; picked ones are appended)")
+    r.add_argument("--taint-file", default=None, help="ledger of objects that differed for a harmless edit; headers they include are skipped (appended to after a revert)")
     r.add_argument("--skip-dirty-in", default="A:/Games/mc2-main", help="the other builder lane's worktree: its dirty files are never touched")
     r.add_argument("--commit", action="store_true")
     r.add_argument("--loop", action="store_true")
