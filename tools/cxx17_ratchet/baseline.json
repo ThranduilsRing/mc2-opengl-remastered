@@ -198,7 +198,7 @@
    "LG11": 67,
    "LG12a": 212,
    "LG12b": 245,
-   "LG13": 951,
+   "LG13": 726,
    "LG14": 120,
    "LG15": 0,
    "LG16": 156,
@@ -3423,8 +3423,7 @@
    "LG13": 4
   },
   "mclib/cevfx.h": {
-   "LG01": 7,
-   "LG13": 1
+   "LG01": 7
   },
   "mclib/cident.cpp": {
    "LG06": 2,
@@ -3481,7 +3480,6 @@
    "LG01": 6,
    "LG02": 3,
    "LG06": 1,
-   "LG13": 3,
    "LG14": 1
   },
   "mclib/csvfile.cpp": {
@@ -4439,8 +4437,7 @@
    "LG17": 1
   },
   "mclib/objectappearance.h": {
-   "LG02": 1,
-   "LG13": 7
+   "LG02": 1
   },
   "mclib/objstatus.h": {
    "LG02": 1,
@@ -4587,9 +4584,6 @@
    "LG01": 1,
    "LG02": 2
   },
-  "mclib/sounds.h": {
-   "LG13": 207
-  },
   "mclib/soundsys.cpp": {
    "LG01": 9,
    "LG03": 8,
@@ -4603,7 +4597,7 @@
   "mclib/soundsys.h": {
    "LG01": 10,
    "LG06": 3,
-   "LG13": 11,
+   "LG13": 4,
    "LG17": 1
   },
   "mclib/spotlight_diag.cpp": {
@@ -5181,7 +5175,7 @@
    "LG20": 2
   }
  },
- "head": "04f05bb87",
+ "head": "cc8a4ab2d",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
