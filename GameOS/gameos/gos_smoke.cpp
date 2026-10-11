@@ -194,9 +194,8 @@ void emitCleanSummary() {
     double avgFps = (avgMs > 0.0) ? 1000.0 / avgMs : 0.0;
     double p1LowFps = (pct(99.0) > 0.0) ? 1000.0 / pct(99.0) : 0.0;
 
-    std::fprintf(stdout,
-        "[PERF v1] avg_fps=%.1f p50_ms=%.2f p99_ms=%.2f p1low_fps=%.1f peak_ms=%.2f samples=%zu\n",
-        avgFps, p50, p99, p1LowFps, peak, samples.size());
+    mc2::fmt::print_out("[PERF v1] avg_fps={:.1f} p50_ms={:.2f} p99_ms={:.2f} p1low_fps={:.1f} peak_ms={:.2f} samples={:d}\n",
+        avgFps, p50, p99, p1LowFps, peak, mc2::fmt::as_size(samples.size()));
 
     double actualMs = elapsedMsSince(g_missionReadyT ? g_missionReadyT : g_startupT0);
     // Fault counters OMITTED intentionally — the runner is the authoritative
