@@ -123,9 +123,9 @@ def emit(records) -> str:
         lines += [
             f'TEST_CASE("printf corpus {n:04d}: {title}{note}")',
             "{",
-            "\tfor (int row = 0; row < 12; ++row) {",
+            "\tfor (int row = 0; row < 16; ++row) {",
             *[f"\t\t{d}" for d in decls],
-            "\t\tchar a[160], b[160], c[8], d[8];",
+            "\t\tchar a[4096], b[4096], c[8], d[8];",       # long rows (VK_PRESENT, MOVER, GPUPROPS summaries) are compared in full, not to byte 159
             f"\t\tconst int na = std::snprintf(a, sizeof a, {old_call});",
             f"\t\tconst int nb = mc2::fmt::to_buf(b, {new_call});",
             "\t\tCHECK(na == nb);",

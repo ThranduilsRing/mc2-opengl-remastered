@@ -135,3 +135,9 @@ def test_estring_data_is_maybe_null_and_gets_safe():
     out, recs, _ = conv('#include <a.h>\nvoid f(){ snprintf(b, 8, "%s", s.Data()); snprintf(b, 8, "%s", p->Description().Data()); }\n')
     assert out.count("mc2::fmt::safe(s.Data())") == 1 and out.count("mc2::fmt::safe(p->Description().Data())") == 1
     assert [s["cls"] for r in recs for s in r["specs"]] == ["maybe-null", "maybe-null"]
+
+
+def test_char_with_width_aligns_like_printf():
+    """std::format left-aligns a char by default; printf right-aligns unless the minus flag is given."""
+    new, _wrapped, _specs = pb.translate_format("%5c|%-5c|%c", ["a", "b", "c"])
+    assert new == "{:>5c}|{:<5c}|{:c}"

@@ -133,6 +133,8 @@ def translate_format(lit: str, args: list):
         else:
             if left:
                 s += "<"
+            elif conv == "c" and w:
+                s += ">"           # a char is left-aligned by default in std::format, right-aligned by printf
             s += sign
             if zero:
                 s += "0"
