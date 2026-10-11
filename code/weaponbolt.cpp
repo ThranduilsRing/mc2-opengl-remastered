@@ -472,7 +472,7 @@ void WeaponBolt::init (bool create, ObjectTypePtr _type)
 			if (gosEffectSpec)
 			{
 				gosEffect = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-				gosASSERT(gosEffect != NULL);
+				gosASSERT(gosEffect != nullptr);
 
 				MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
 
@@ -492,7 +492,7 @@ void WeaponBolt::init (bool create, ObjectTypePtr _type)
 			if (gosEffectSpec)
 			{
 				muzzleEffect = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-				gosASSERT(muzzleEffect != NULL);
+				gosASSERT(muzzleEffect != nullptr);
 				
 				MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
 			
@@ -512,7 +512,7 @@ void WeaponBolt::init (bool create, ObjectTypePtr _type)
 			if (gosEffectSpec)
 			{
 				hitEffect = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-				gosASSERT(hitEffect != NULL);
+				gosASSERT(hitEffect != nullptr);
 			
 				MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
 			
@@ -532,7 +532,7 @@ void WeaponBolt::init (bool create, ObjectTypePtr _type)
 			if (gosEffectSpec)
 			{
 				missEffect = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-				gosASSERT(missEffect != NULL);
+				gosASSERT(missEffect != nullptr);
 			
 				MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
 			
@@ -553,7 +553,7 @@ void WeaponBolt::init (bool create, ObjectTypePtr _type)
 			if (gosEffectSpec)
 			{
 				waterMissEffect = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-				gosASSERT(waterMissEffect != NULL);
+				gosASSERT(waterMissEffect != nullptr);
 			
 				MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
 			

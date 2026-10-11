@@ -14,7 +14,7 @@
 long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 {
 	char *nodeName = strstr((char *)aseBuffer,ASE_NODE_NAME);
-	gosASSERT(nodeName != NULL);
+	gosASSERT(nodeName != nullptr);
 
 	char nodeString[1024];
 	nodeName += strlen(ASE_NODE_NAME)+1;
@@ -52,7 +52,7 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 	}
 
 	nodeName = strstr((char *)aseBuffer,ASE_NODE_POS);
-	gosASSERT(nodeName != NULL);
+	gosASSERT(nodeName != nullptr);
 
 	nodeName += strlen(ASE_NODE_POS)+1;
 
@@ -70,7 +70,7 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 	nodeCenter.y = (float)atof(numData);
 
 	char *vertexCount = strstr((char *)aseBuffer,ASE_NUM_VERTEX);
-	gosASSERT(vertexCount != NULL);
+	gosASSERT(vertexCount != nullptr);
 	
 	//sebi: ORIG BUG FIX
 	//vertexCount += strlen(ASE_NUM_FACE)+1;
@@ -88,19 +88,19 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 	}
 
 	char *faceCount = strstr((char *)aseBuffer,ASE_NUM_FACE);
-	gosASSERT(faceCount != NULL);
+	gosASSERT(faceCount != nullptr);
 		
 	faceCount += strlen(ASE_NUM_FACE)+1;
 	numTypeTriangles = atol(faceCount);
 	gosASSERT(numTypeTriangles != 0);
 
 	listOfTypeVertices = (TG_TypeVertexPtr)TG_Shape::tglHeap->Malloc(sizeof(TG_TypeVertex) * numTypeVertices);
-	gosASSERT(listOfTypeVertices != NULL);
+	gosASSERT(listOfTypeVertices != nullptr);
 
 	memset(listOfTypeVertices,0xff,sizeof(TG_TypeVertex) * numTypeVertices);
 
 	int *vertexNormalCount = (int*)TG_Shape::tglHeap->Malloc(sizeof(int) * numTypeVertices);
-	gosASSERT(vertexNormalCount != NULL);
+	gosASSERT(vertexNormalCount != nullptr);
 
 	memset(vertexNormalCount,0,sizeof(int) * numTypeVertices);
 
@@ -112,7 +112,7 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 		sprintf(vertexID,"%s% 5d",ASE_MESH_VERTEX_ID,i);
 
 		char *vertexData = strstr((char *)aseBuffer,vertexID);
-		gosASSERT(vertexData != NULL);
+		gosASSERT(vertexData != nullptr);
 			
 		vertexData += strlen(vertexID)+1;
 
@@ -145,7 +145,7 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 	}
 
 	listOfTypeTriangles = (TG_TypeTrianglePtr)TG_Shape::tglHeap->Malloc(sizeof(TG_TypeTriangle) * numTypeTriangles);
-	gosASSERT(listOfTypeTriangles != NULL);
+	gosASSERT(listOfTypeTriangles != nullptr);
 
 	memset(listOfTypeTriangles,0xff,sizeof(TG_TypeTriangle) * numTypeTriangles);
 
@@ -157,22 +157,22 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 		sprintf(faceId,"%s% 5d:",ASE_MESH_FACE_ID,i);
 
 		char *faceData = strstr((char *)aseBuffer,faceId);
-		gosASSERT(faceData != NULL);
+		gosASSERT(faceData != nullptr);
 
 		faceData = strstr(faceData,"A:");
-		gosASSERT(faceData != NULL);
+		gosASSERT(faceData != nullptr);
 			
 		GetNumberData(faceData,numberData);
 		listOfTypeTriangles[i].Vertices[0] = atol(numberData);
 
 		faceData = strstr(faceData,"B:");
-		gosASSERT(faceData != NULL);
+		gosASSERT(faceData != nullptr);
 
 		GetNumberData(faceData,numberData);
 		listOfTypeTriangles[i].Vertices[1] = atol(numberData);
 
 		faceData = strstr(faceData,"C:");
-		gosASSERT(faceData != NULL);
+		gosASSERT(faceData != nullptr);
 	
 		GetNumberData(faceData,numberData);
 		listOfTypeTriangles[i].Vertices[2] = atol(numberData);
@@ -183,7 +183,7 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 		{
 			//Must parse MATLID to find material ID.
 			faceData = strstr(faceData,ASE_FACE_MATERIAL_ID);
-			gosASSERT(faceData != NULL);
+			gosASSERT(faceData != nullptr);
 
 			faceData += strlen(ASE_FACE_MATERIAL_ID)+1;
 
@@ -213,7 +213,7 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 			sprintf(faceId,"%s %d",ASE_MESH_TFACE_ID,i);
 	
 			faceData = strstr(faceData,faceId);
-			gosASSERT(faceData != NULL);
+			gosASSERT(faceData != nullptr);
 	
 			faceData += strlen(faceId);
 				
@@ -231,12 +231,12 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 			sprintf(faceId,"%s",ASE_NUM_TVERTEX);
 	
 			faceData = strstr((char *)aseBuffer,faceId);
-			gosASSERT(faceData != NULL);
+			gosASSERT(faceData != nullptr);
 	
 			sprintf(faceId,"%s %d",ASE_MESH_TVERT_ID,(int)tVFaces.x);
 	
 			faceData = strstr(faceData,faceId);
-			gosASSERT(faceData != NULL);
+			gosASSERT(faceData != nullptr);
 	
 			faceData += strlen(faceId);
 				
@@ -269,12 +269,12 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 			sprintf(faceId,"%s",ASE_NUM_TVERTEX);
 	
 			faceData = strstr((char *)aseBuffer,faceId);
-			gosASSERT(faceData != NULL);
+			gosASSERT(faceData != nullptr);
 	
 			sprintf(faceId,"%s %d",ASE_MESH_TVERT_ID,(int)tVFaces.y);
 	
 			faceData = strstr(faceData,faceId);
-			gosASSERT(faceData != NULL);
+			gosASSERT(faceData != nullptr);
 	
 			faceData += strlen(faceId);
 				
@@ -305,12 +305,12 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 			sprintf(faceId,"%s",ASE_NUM_TVERTEX);
 	
 			faceData = strstr((char *)aseBuffer,faceId);
-			gosASSERT(faceData != NULL);
+			gosASSERT(faceData != nullptr);
 	
 			sprintf(faceId,"%s %d",ASE_MESH_TVERT_ID,(int)tVFaces.z);
 	
 			faceData = strstr(faceData,faceId);
-			gosASSERT(faceData != NULL);
+			gosASSERT(faceData != nullptr);
 	
 			faceData += strlen(faceId);
 				
@@ -354,7 +354,7 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 		faceData = strstr((char *)aseBuffer,faceId);
 		if (faceData)
 		{
-			gosASSERT(faceData != NULL);
+			gosASSERT(faceData != nullptr);
 
 			faceData += strlen(faceId);
 			GetNumberData(faceData,numberData);
@@ -364,7 +364,7 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 			sprintf(faceId,"%s %d",ASE_MESH_CFACE_ID,i);
 
 			faceData = strstr(faceData,faceId);
-			gosASSERT(faceData != NULL);
+			gosASSERT(faceData != nullptr);
 
 			faceData += strlen(faceId);
 				
@@ -382,12 +382,12 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 			sprintf(faceId,"%s",ASE_NUM_CVERTEX);
 
 			faceData = strstr((char *)aseBuffer,faceId);
-			gosASSERT(faceData != NULL);
+			gosASSERT(faceData != nullptr);
 
 			sprintf(faceId,"%s %d",ASE_MESH_VERTCOL_ID,(int)cVFaces.x);
 
 			faceData = strstr(faceData,faceId);
-			gosASSERT(faceData != NULL);
+			gosASSERT(faceData != nullptr);
 
 			faceData += strlen(faceId);
 				
@@ -413,12 +413,12 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 			sprintf(faceId,"%s",ASE_NUM_CVERTEX);
 
 			faceData = strstr((char *)aseBuffer,faceId);
-			gosASSERT(faceData != NULL);
+			gosASSERT(faceData != nullptr);
 
 			sprintf(faceId,"%s %d",ASE_MESH_VERTCOL_ID,(int)cVFaces.y);
 
 			faceData = strstr(faceData,faceId);
-			gosASSERT(faceData != NULL);
+			gosASSERT(faceData != nullptr);
 
 			faceData += strlen(faceId);
 				
@@ -444,12 +444,12 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 			sprintf(faceId,"%s",ASE_NUM_CVERTEX);
 
 			faceData = strstr((char *)aseBuffer,faceId);
-			gosASSERT(faceData != NULL);
+			gosASSERT(faceData != nullptr);
 
 			sprintf(faceId,"%s %d",ASE_MESH_VERTCOL_ID,(int)cVFaces.z);
 
 			faceData = strstr(faceData,faceId);
-			gosASSERT(faceData != NULL);
+			gosASSERT(faceData != nullptr);
 
 			faceData += strlen(faceId);
 				
@@ -482,7 +482,7 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 
 		sprintf(faceId,"%s %d",ASE_FACE_NORMAL_ID,i);
 		faceData = strstr((char *)aseBuffer,faceId);
-		gosASSERT(faceData != NULL);		
+		gosASSERT(faceData != nullptr);		
 
 		faceData += strlen(faceId);
 			
@@ -597,7 +597,7 @@ int TG_TypeShape::LoadTGShapeFromASE (const char *fileName)
 	gosASSERT(aseFileSize > 0);
 
 	BYTE *aseContents = (BYTE *)TG_Shape::tglHeap->Malloc(aseFileSize);
-	gosASSERT(aseContents != NULL);
+	gosASSERT(aseContents != nullptr);
 
 	HGOSFILE aseFile;
 	gos_OpenFile(&aseFile,fileName,READONLY);
@@ -647,7 +647,7 @@ int TG_TypeShape::LoadTGShapeFromASE (const char *fileName)
 			//NOT SUPPORTED YET!  Multiple Textures per building!
 			// Support NOW!  Must have trees!
 			textureData = strstr(textureData,ASE_SUBMATERIAL_COUNT);
-			gosASSERT(textureData != NULL);
+			gosASSERT(textureData != nullptr);
 
 			textureData += strlen(ASE_SUBMATERIAL_COUNT);
 			GetNumberData(textureData,numberData);
@@ -659,7 +659,7 @@ int TG_TypeShape::LoadTGShapeFromASE (const char *fileName)
 	}
 
 	listOfTextures = (TG_TinyTexturePtr)TG_Shape::tglHeap->Malloc(sizeof(TG_TinyTexture) * numTextures);
-	gosASSERT(listOfTextures != NULL);
+	gosASSERT(listOfTextures != nullptr);
 
 	memset(listOfTextures,0x0,sizeof(TG_TinyTexture) * numTextures);
 
@@ -692,7 +692,7 @@ void TG_TypeShape::CreateListOfTextures (TG_TexturePtr list, DWORD numTxms)
 	if (numTextures)
 	{
 		listOfTextures = (TG_TinyTexturePtr)TG_Shape::tglHeap->Malloc(sizeof(TG_TinyTexture) * numTextures);
-		gosASSERT(listOfTextures != NULL);
+		gosASSERT(listOfTextures != nullptr);
    
 	   for (long i=0;i<numTextures;i++)
 	   {

@@ -18,7 +18,7 @@ void initDpiAwareness() {
             typedef BOOL (WINAPI *SetDpiCtxFn)(void*);
             HMODULE u32 = LoadLibraryA("user32.dll");
             SetDpiCtxFn setCtx = u32
-                ? (SetDpiCtxFn)GetProcAddress(u32, "SetProcessDpiAwarenessContext") : NULL;
+                ? (SetDpiCtxFn)GetProcAddress(u32, "SetProcessDpiAwarenessContext") : nullptr;
             // DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 == (HANDLE)-4
             if (!setCtx || !setCtx((void*)-4))
                 SetProcessDPIAware();
@@ -46,7 +46,7 @@ bool initLauncherBootstrap() {
             gos_WindowOffscreenRequested() || gos_CursorControlSuppressed();
         if (!fromLauncher && !automation) {
             char exePath[MAX_PATH] = {0};
-            DWORD n = GetModuleFileNameA(NULL, exePath, MAX_PATH);
+            DWORD n = GetModuleFileNameA(nullptr, exePath, MAX_PATH);
             if (n > 0 && n < MAX_PATH) {
                 char dir[MAX_PATH];
                 strncpy(dir, exePath, MAX_PATH); dir[MAX_PATH-1] = '\0';
@@ -58,8 +58,8 @@ bool initLauncherBootstrap() {
                 launcher[sizeof(launcher)-1] = '\0';
                 STARTUPINFOA si = {}; si.cb = sizeof(si);
                 PROCESS_INFORMATION pi = {};
-                if (CreateProcessA(launcher, NULL, NULL, NULL, FALSE, 0, NULL,
-                                   dir[0] ? dir : NULL, &si, &pi)) {
+                if (CreateProcessA(launcher, nullptr, nullptr, nullptr, FALSE, 0, nullptr,
+                                   dir[0] ? dir : nullptr, &si, &pi)) {
                     CloseHandle(pi.hThread);
                     CloseHandle(pi.hProcess);
                     return true;  // launcher will relaunch us with MC2_LAUNCHED=1
@@ -94,7 +94,7 @@ void initLauncherEnv() {
         if (noLauncher && !fromLauncher && !jsOff) {
             char exePath[MAX_PATH] = {0};
             char jsonPath[MAX_PATH] = {0};
-            DWORD n = GetModuleFileNameA(NULL, exePath, MAX_PATH);
+            DWORD n = GetModuleFileNameA(nullptr, exePath, MAX_PATH);
             if (n > 0 && n < MAX_PATH) {
                 strncpy(jsonPath, exePath, MAX_PATH); jsonPath[MAX_PATH-1] = '\0';
                 char* slash = strrchr(jsonPath, '\\');
@@ -102,7 +102,7 @@ void initLauncherEnv() {
                 if (slash) *(slash + 1) = '\0'; else jsonPath[0] = '\0';
                 strncat(jsonPath, "launcher_env.json", MAX_PATH - strlen(jsonPath) - 1);
             }
-            FILE* jf = jsonPath[0] ? fopen(jsonPath, "rb") : NULL;
+            FILE* jf = jsonPath[0] ? fopen(jsonPath, "rb") : nullptr;
             if (jf) {
                 // launcher_env.json is a small flat string map (<1 KB today);
                 // 64 KB bound keeps a corrupt/hostile file from ballooning.
@@ -112,7 +112,7 @@ void initLauncherEnv() {
                 jbuf[got] = '\0';
                 int applied = 0, shellWins = 0;
                 const char* p = jbuf;
-                while ((p = strstr(p, "\"MC2_")) != NULL) {
+                while ((p = strstr(p, "\"MC2_")) != nullptr) {
                     const char* keyStart = p + 1;
                     const char* keyEnd = strchr(keyStart, '"');
                     if (!keyEnd) break;

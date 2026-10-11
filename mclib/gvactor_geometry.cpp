@@ -718,7 +718,7 @@ bool GVAppearance::playDestruction (void)
 		if (gosEffectSpec)
 		{
 			destructFX = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-			gosASSERT(destructFX != NULL);
+			gosASSERT(destructFX != nullptr);
 		
 			MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
 		

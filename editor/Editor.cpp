@@ -277,13 +277,13 @@ void InitializeGameEngine()
 	}
 
 	globalHeapList = new HeapList;
-	gosASSERT(globalHeapList != NULL);
+	gosASSERT(globalHeapList != nullptr);
 
 	globalHeapList->init();
 		globalHeapList->update();		//Run Instrumentation into GOS Debugger Screen
 
 	systemHeap = new UserHeap;
-	gosASSERT(systemHeap != NULL);
+	gosASSERT(systemHeap != nullptr);
 
 	systemHeap->init(systemHeapSize,"SYSTEM");
 

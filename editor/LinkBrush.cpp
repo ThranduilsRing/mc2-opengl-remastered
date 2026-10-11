@@ -39,7 +39,7 @@ LinkBrush::LinkBrush( bool Link )
 {
 	parentPos.x = parentPos.y = -1;
 	bLink = Link;
-	parent = NULL;
+	parent = nullptr;
 }
 
 LinkBrush::~LinkBrush()
@@ -63,7 +63,7 @@ Action* LinkBrush::endPaint()
 	else
 		delete pAction;
 
-	return NULL;
+	return nullptr;
 }
 
 bool LinkBrush::paint( Stuff::Vector3D& worldPos, int screenX, int screenY )
@@ -312,7 +312,7 @@ bool LinkBrush::unPaint( Stuff::Vector3D& pos, int XPos, int yPos )
 
 			EditorObjectMgr::instance()->deleteLink( pLink );
 
-			parent = NULL;
+			parent = nullptr;
 			parentPos.x = parentPos.y = 0;
 
 			return true;

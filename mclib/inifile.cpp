@@ -172,7 +172,7 @@ long FitIniFile::afterOpen (void)
 		// Allocate RAM for the BlockInfoNodes.  Check if system Heap is available
 		fileBlocks = (IniBlockNode *)systemHeap->Malloc(sizeof(IniBlockNode) * totalBlocks);
 		
-		gosASSERT(fileBlocks != NULL);
+		gosASSERT(fileBlocks != nullptr);
 
 		memset(fileBlocks,0,sizeof(IniBlockNode) * totalBlocks);
 		

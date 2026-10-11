@@ -104,7 +104,7 @@ void BldgAppearanceType::init (const char * fileName)
 				lodDistance[i] *= 5.0f;
 
 				bldgShape[i] = new TG_TypeMultiShape;
-				gosASSERT(bldgShape[i] != NULL);
+				gosASSERT(bldgShape[i] != nullptr);
 
 				if (i == 0 && importSourceBase[0]) {
 					loadBuildingImportSourceWithSidecarAxis(bldgShape[i], importSourceBase, &baseShapeLoadFailed); // ASSIMP-BLDG-IMPORT-1: opt-in GLB probe
@@ -136,7 +136,7 @@ void BldgAppearanceType::init (const char * fileName)
 	else
 	{
 		bldgShape[0] = new TG_TypeMultiShape;
-		gosASSERT(bldgShape[0] != NULL);
+		gosASSERT(bldgShape[0] != nullptr);
 
 		if (importSourceBase[0]) {
 			loadBuildingImportSourceWithSidecarAxis(bldgShape[0], importSourceBase, &baseShapeLoadFailed); // ASSIMP-BLDG-IMPORT-1: opt-in GLB probe
@@ -251,7 +251,7 @@ void BldgAppearanceType::init (const char * fileName)
 		dmgName.init(tglPath,aseFileName,".ase");
 	
 		bldgDmgShape = new TG_TypeMultiShape;
-		gosASSERT(bldgDmgShape != NULL);
+		gosASSERT(bldgDmgShape != nullptr);
 		bldgDmgShape->LoadTGMultiShapeFromASE(dmgName); // TGL-LOAD-EXEMPT(optional damage shape; GetNumShapes-checked delete-on-fail)
 
 		if (!bldgDmgShape->GetNumShapes())
@@ -363,7 +363,7 @@ void BldgAppearanceType::init (const char * fileName)
 			if (fileExists(animPath) || fileExists(otherPath))
 			{
 				bdAnimData[i] = new TG_AnimateShape;
-				gosASSERT(bdAnimData[i] != NULL);
+				gosASSERT(bdAnimData[i] != nullptr);
 	
 				// If this animation does not exist, it is not a problem!
 				// Building will simply freeze until animation is "over"
@@ -401,7 +401,7 @@ void BldgAppearanceType::init (const char * fileName)
 	if (result == NO_ERR)
 	{
 		nodeData = (NodeData *)AppearanceTypeList::appearanceHeap->Malloc(sizeof(NodeData)*(MAX_WEAPON_NODES));
-		gosASSERT(nodeData != NULL);
+		gosASSERT(nodeData != nullptr);
 		
 		for (int i=0;i<MAX_WEAPON_NODES;i++)
 		{
@@ -416,7 +416,7 @@ void BldgAppearanceType::init (const char * fileName)
 			}
 			
 			nodeData[i].nodeId = (char *)AppearanceTypeList::appearanceHeap->Malloc(strlen(weaponName)+1);
-			gosASSERT(nodeData[i].nodeId != NULL);
+			gosASSERT(nodeData[i].nodeId != nullptr);
 				
 			strcpy(nodeData[i].nodeId,weaponName);
 			nodeData[i].weaponType = 0;
@@ -486,7 +486,7 @@ void BldgAppearanceType::destroy (void)
 
 void BldgAppearanceType::setAnimation (TG_MultiShapePtr shape, DWORD animationNum)
 {
-	gosASSERT(shape != NULL);
+	gosASSERT(shape != nullptr);
 	gosASSERT(animationNum != 0xffffffff);
 	gosASSERT(animationNum < MAX_BD_ANIMATIONS);
 
@@ -554,7 +554,7 @@ void TreeAppearanceType::init (const char * fileName)
 				lodDistance[i] *= 5.0f;
 
 				treeShape[i] = new TG_TypeMultiShape;
-				gosASSERT(treeShape[i] != NULL);
+				gosASSERT(treeShape[i] != nullptr);
 
 				if (i == 0 && importSourceBase[0]) {
 					// META-FIX design B PART 1: REQUIRED slot — checked import.
@@ -590,7 +590,7 @@ void TreeAppearanceType::init (const char * fileName)
 	else
 	{
 		treeShape[0] = new TG_TypeMultiShape;
-		gosASSERT(treeShape[0] != NULL);
+		gosASSERT(treeShape[0] != nullptr);
 
 		if (importSourceBase[0]) {
 			// META-FIX design B PART 1: REQUIRED slot — checked import.
@@ -748,7 +748,7 @@ void TreeAppearanceType::init (const char * fileName)
 		dmgName.init(tglPath,aseFileName,".ase");
 	
 		treeDmgShape = new TG_TypeMultiShape;
-		gosASSERT(treeDmgShape != NULL);
+		gosASSERT(treeDmgShape != nullptr);
 		treeDmgShape->LoadTGMultiShapeFromASE(dmgName); // TGL-LOAD-EXEMPT(optional damage shape; GetNumShapes-checked delete-on-fail)
 
 		if (!treeDmgShape->GetNumShapes())

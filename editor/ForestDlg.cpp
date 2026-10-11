@@ -114,7 +114,7 @@ void ForestDlg::OnSave()
 	{
 		return;
 	}
-	CFileDialog dlg( 0, "fit", NULL, OFN_OVERWRITEPROMPT | OFN_NOCHANGEDIR, szFITFilter, this );
+	CFileDialog dlg( 0, "fit", nullptr, OFN_OVERWRITEPROMPT | OFN_NOCHANGEDIR, szFITFilter, this );
 	dlg.m_ofn.lpstrInitialDir = terrainPath;
 	int retVal = dlg.DoModal();
 	if ( IDOK == retVal )
@@ -285,7 +285,7 @@ BOOL ForestDlg::OnInitDialog()
 	}
 
 	char tmp[256];
-	_splitpath( forest.getFileName(), NULL, NULL, tmp, 0 );
+	_splitpath( forest.getFileName(), nullptr, nullptr, tmp, 0 );
 
 	if (0 != strcmp("", tmp))
 	{
@@ -297,7 +297,7 @@ BOOL ForestDlg::OnInitDialog()
 
 void ForestDlg::OnLoad() 
 {
-	CFileDialog dlg( TRUE, "fit", NULL, OFN_NOCHANGEDIR | OFN_FILEMUSTEXIST, szFITFilter, this );
+	CFileDialog dlg( TRUE, "fit", nullptr, OFN_NOCHANGEDIR | OFN_FILEMUSTEXIST, szFITFilter, this );
 	dlg.m_ofn.lpstrInitialDir = terrainPath;
 
 

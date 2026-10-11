@@ -854,7 +854,7 @@ bool gosFX::Effect::HasFinished()
 	//-----------------------------------------------
 	//
 	Stuff::ChainIteratorOf<gosFX::Effect*> children(&m_children);
-	return children.GetCurrent() == NULL;
+	return children.GetCurrent() == nullptr;
 }
 
 //#############################################################################

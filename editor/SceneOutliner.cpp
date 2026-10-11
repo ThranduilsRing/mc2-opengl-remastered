@@ -53,7 +53,7 @@ static void outlinerGatherForests(std::vector<Forest*>& out)
         return;
 
     long count = 0;
-    mgr->getForests(NULL, count);   // first call: count <- forests.Count()
+    mgr->getForests(nullptr, count);   // first call: count <- forests.Count()
     if (count <= 0)
         return;
 
@@ -121,7 +121,7 @@ static void outlinerFrameOnDoubleClick()
 // Build a readable, pointer-safe row label into buf.
 static void outlinerLabelForObject(const EditorObject* obj, char* buf, size_t bufLen)
 {
-    const char* name = obj ? obj->getDisplayName() : NULL;
+    const char* name = obj ? obj->getDisplayName() : nullptr;
     if (!name || !name[0])
         name = "(unnamed)";
 
@@ -331,7 +331,7 @@ void SceneOutliner::Draw()
             for (size_t i = 0; i < forests.size(); ++i)
             {
                 Forest* f = forests[i];
-                const char* name = f ? f->getName() : NULL;
+                const char* name = f ? f->getName() : nullptr;
                 char label[160];
                 std::snprintf(label, sizeof(label), "%s (forest %ld)",
                               (name && name[0]) ? name : "(unnamed)",

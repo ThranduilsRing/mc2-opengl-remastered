@@ -44,7 +44,7 @@ void TerrainColorMap::getScaledColorMap (MemoryPtr bfr, long dWidth)
 		}
 			
 		MemoryPtr tgaFileImage = (MemoryPtr)malloc(colorMapFile.fileSize());
-		gosASSERT(tgaFileImage != NULL);
+		gosASSERT(tgaFileImage != nullptr);
 		
 		colorMapFile.read(tgaFileImage,colorMapFile.fileSize());
 		
@@ -60,7 +60,7 @@ void TerrainColorMap::getScaledColorMap (MemoryPtr bfr, long dWidth)
 			//-----------------------------------------------------------------
 			// Check if 24 or 32 bit.  If 24, do the necessary stuff to it.
 			ColorMap = (MemoryPtr)colorMapRAMHeap->Malloc(colorMapInfo.width * colorMapInfo.width * sizeof(DWORD));
-			gosASSERT(ColorMap != NULL);
+			gosASSERT(ColorMap != nullptr);
 			
 			if (colorMapInfo.pixel_depth == 24)
 			{
@@ -297,10 +297,10 @@ long TerrainColorMap::init (char *fileName)
 			} else {
 				numTextures *= numTextures;
 				textures = (ColorMapTextures *)colorMapHeap->Malloc(sizeof(ColorMapTextures) * numTextures);
-				gosASSERT(textures != NULL);
+				gosASSERT(textures != nullptr);
 
 				txmRAM = (ColorMapRAM *)colorMapRAMHeap->Malloc(sizeof(ColorMapRAM) * numTextures);
-				gosASSERT(txmRAM != NULL);
+				gosASSERT(txmRAM != nullptr);
 
 				//Now, divide up the color map into separate COLOR_MAP_TEXTURE_SIZE textures.
 				// and hand the data to the textureManager.
@@ -311,7 +311,7 @@ long TerrainColorMap::init (char *fileName)
 						{
 							ZoneScopedN("TerrainColorMap::init jpgColorMap tileAlloc");
 							txmRAM[i].ourRAM = (MemoryPtr)colorMapRAMHeap->Malloc(sizeof(DWORD) * COLOR_MAP_TEXTURE_SIZE * COLOR_MAP_TEXTURE_SIZE);
-							gosASSERT(txmRAM[i].ourRAM != NULL);
+							gosASSERT(txmRAM[i].ourRAM != nullptr);
 						}
 						{
 							ZoneScopedN("TerrainColorMap::init jpgColorMap tileExtract");
@@ -335,7 +335,7 @@ long TerrainColorMap::init (char *fileName)
 				if (cpuColorMap) { free(cpuColorMap); cpuColorMap = nullptr; }
 				long pixels = jpgColorMapWidth * jpgColorMapWidth;
 				cpuColorMap = (unsigned char*)malloc(pixels * 4);
-				gosASSERT(cpuColorMap != NULL);
+				gosASSERT(cpuColorMap != nullptr);
 				cpuColorMapSize = jpgColorMapWidth;
 				memcpy(cpuColorMap, ColorMap, pixels * 4);
 				printf("[COLORMAP] retained colormap on CPU (%ldx%ld) [jpg]\n", jpgColorMapWidth, jpgColorMapWidth);
@@ -364,7 +364,7 @@ long TerrainColorMap::init (char *fileName)
 
 				ZoneScopedN("TerrainColorMap::init colorMap read");
 				tgaFileImage = (MemoryPtr)malloc(colorMapFile.fileSize());
-				gosASSERT(tgaFileImage != NULL);
+				gosASSERT(tgaFileImage != nullptr);
 				colorMapFile.read(tgaFileImage,colorMapFile.fileSize());
 			}
 
@@ -381,7 +381,7 @@ long TerrainColorMap::init (char *fileName)
 				// Check if 24 or 32 bit.  If 24, do the necessary stuff to it.
 				long cmapBytes = (long)colorMapInfo.width * (long)colorMapInfo.width * (long)sizeof(DWORD);
 				ColorMap = (MemoryPtr)colorMapRAMHeap->Malloc(cmapBytes);
-				gosASSERT(ColorMap != NULL);
+				gosASSERT(ColorMap != nullptr);
 
 				{ ZoneScopedN("TerrainColorMap::init colorMap decode");
 				if (colorMapInfo.pixel_depth == 24)
@@ -449,10 +449,10 @@ long TerrainColorMap::init (char *fileName)
 				} else {
 					numTextures *= numTextures;
 					textures = (ColorMapTextures *)colorMapHeap->Malloc(sizeof(ColorMapTextures) * numTextures);
-					gosASSERT(textures != NULL);
+					gosASSERT(textures != nullptr);
 
 					txmRAM = (ColorMapRAM *)colorMapRAMHeap->Malloc(sizeof(ColorMapRAM) * numTextures);
-					gosASSERT(txmRAM != NULL);
+					gosASSERT(txmRAM != nullptr);
 
 					//Now, divide up the color map into separate COLOR_MAP_TEXTURE_SIZE textures.
 					// and hand the data to the textureManager.
@@ -464,7 +464,7 @@ long TerrainColorMap::init (char *fileName)
 							{
 								ZoneScopedN("TerrainColorMap::init colorMap tileAlloc");
 								txmRAM[i].ourRAM = (MemoryPtr)colorMapRAMHeap->Malloc(sizeof(DWORD) * COLOR_MAP_TEXTURE_SIZE * COLOR_MAP_TEXTURE_SIZE);
-								gosASSERT(txmRAM[i].ourRAM != NULL);
+								gosASSERT(txmRAM[i].ourRAM != nullptr);
 							}
 							{
 								ZoneScopedN("TerrainColorMap::init colorMap tileExtract");
@@ -494,7 +494,7 @@ long TerrainColorMap::init (char *fileName)
 				if (cpuColorMap) { free(cpuColorMap); cpuColorMap = nullptr; }
 				long pixels = (long)colorMapInfo.width * (long)colorMapInfo.width;
 				cpuColorMap = (unsigned char*)malloc(pixels * 4);
-				gosASSERT(cpuColorMap != NULL);
+				gosASSERT(cpuColorMap != nullptr);
 				cpuColorMapSize = colorMapInfo.width;
 				memcpy(cpuColorMap, ColorMap, pixels * 4);
 				printf("[COLORMAP] retained colormap on CPU (%dx%d)\n", colorMapInfo.width, colorMapInfo.width);
@@ -860,7 +860,7 @@ long TerrainColorMap::init (char *fileName)
 			if (cpuDispAlpha) { free(cpuDispAlpha); cpuDispAlpha = nullptr; }
 			long pixels = (long)arrayWidth * (long)arrayWidth;
 			cpuDispAlpha = (unsigned char*)malloc(pixels);
-			gosASSERT(cpuDispAlpha != NULL);
+			gosASSERT(cpuDispAlpha != nullptr);
 			cpuDispAlphaSize = arrayWidth;
 			const unsigned char* src = normalLayers[2];
 			for (long i = 0; i < pixels; i++) {

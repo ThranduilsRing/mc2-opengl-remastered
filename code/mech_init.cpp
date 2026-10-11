@@ -68,8 +68,8 @@ void BattleMech::init (bool create) {
 	pivotTurnRate = 0.0;
 
 #ifdef USE_JETS
-	jumpJets[0] = NULL;
-	jumpJets[1] = NULL;
+	jumpJets[0] = nullptr;
+	jumpJets[1] = nullptr;
 #endif
 
 	maxWeaponDamage = 0.0;
@@ -160,7 +160,7 @@ void BattleMech::init (bool create, ObjectTypePtr _type) {
 	    delete appearance;
 	}
 	appearance = new Mech3DAppearance;
-	gosASSERT(appearance != NULL);
+	gosASSERT(appearance != nullptr);
 
 	// The only kind of appearanceType the mechs currently know how
 	// to work with is a spriteTree.  Anything else is wrong.

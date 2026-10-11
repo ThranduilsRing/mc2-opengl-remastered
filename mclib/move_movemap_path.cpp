@@ -65,7 +65,7 @@ long MoveMap::calcPath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int* go
 	// solveJumpOnBlocked mirror the globals OFF (byte-identical) and the ctx ON.
 	if (!ctx.isolated && !openList) {
 		openList = new PriorityQueue;
-		gosASSERT(openList != NULL);
+		gosASSERT(openList != nullptr);
 		openList->init(5000);
 	}
 	solveOpen = ctx.isolated ? ctx.pq() : openList;
@@ -111,7 +111,7 @@ long MoveMap::calcPath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int* go
 				writeDebug(pathDebugFile);
 				pathDebugFile->close();
 				delete pathDebugFile;
-				pathDebugFile = NULL;
+				pathDebugFile = nullptr;
 			}
 		#endif
 
@@ -266,7 +266,7 @@ long MoveMap::calcPath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int* go
 			writeDebug(pathDebugFile);
 			pathDebugFile->close();
 			delete pathDebugFile;
-			pathDebugFile = NULL;
+			pathDebugFile = nullptr;
 		}
 	#endif
 	
@@ -332,7 +332,7 @@ long MoveMap::calcPath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int* go
 			writeDebug(pathDebugFile);
 			pathDebugFile->close();
 			delete pathDebugFile;
-			pathDebugFile = NULL;
+			pathDebugFile = nullptr;
 			gosASSERT(numCells <= MAX_STEPS_PER_MOVEPATH);
 		}
 		#endif
@@ -355,7 +355,7 @@ long MoveMap::calcPath (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int* go
 				writeDebug(pathDebugFile);
 				pathDebugFile->close();
 				delete pathDebugFile;
-				pathDebugFile = NULL;
+				pathDebugFile = nullptr;
 			}
 			#endif
 
@@ -536,7 +536,7 @@ long MoveMap::calcPathJUMP (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int
 	
 	if (!ctx.isolated && !openList) {
 		openList = new PriorityQueue;
-		gosASSERT(openList != NULL);
+		gosASSERT(openList != nullptr);
 		openList->init(5000);
 	}
 	solveOpen = ctx.isolated ? ctx.pq() : openList;
@@ -589,7 +589,7 @@ long MoveMap::calcPathJUMP (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int
 				writeDebug(pathDebugFile);
 				pathDebugFile->close();
 				delete pathDebugFile;
-				pathDebugFile = NULL;
+				pathDebugFile = nullptr;
 			}
 		#endif
 
@@ -719,7 +719,7 @@ long MoveMap::calcPathJUMP (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int
 			writeDebug(pathDebugFile);
 			pathDebugFile->close();
 			delete pathDebugFile;
-			pathDebugFile = NULL;
+			pathDebugFile = nullptr;
 		}
 	#endif
 
@@ -757,7 +757,7 @@ long MoveMap::calcPathJUMP (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int
 			writeDebug(pathDebugFile);
 			pathDebugFile->close();
 			delete pathDebugFile;
-			pathDebugFile = NULL;
+			pathDebugFile = nullptr;
 			gosASSERT(numCells <= MAX_STEPS_PER_MOVEPATH);
 		}
 #endif
@@ -780,7 +780,7 @@ long MoveMap::calcPathJUMP (MovePathPtr path, Stuff::Vector3D* goalWorldPos, int
 				writeDebug(pathDebugFile);
 				pathDebugFile->close();
 				delete pathDebugFile;
-				pathDebugFile = NULL;
+				pathDebugFile = nullptr;
 			}
 #endif
 			path->target = target;

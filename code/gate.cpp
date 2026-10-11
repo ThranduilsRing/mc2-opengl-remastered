@@ -698,7 +698,7 @@ void Gate::init (bool create, ObjectTypePtr _type)
 	}
 	  
    	appearance = new BldgAppearance;
-	gosASSERT(appearance != NULL);
+	gosASSERT(appearance != nullptr);
 
 	//--------------------------------------------------------------
 	// The only appearance type for buildings is MLR_APPEARANCE.

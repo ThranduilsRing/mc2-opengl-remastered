@@ -20,7 +20,7 @@ void GenericAppearanceType::init (const char * fileName)
 	//----------------------------------------------
 	// Base shape.  In stand Pose by default.
 	genShape = new TG_TypeMultiShape;
-	gosASSERT(genShape != NULL);
+	gosASSERT(genShape != nullptr);
 
 	FullPathFileName iniName;
 	iniName.init(tglPath,fileName,".ini");
@@ -82,7 +82,7 @@ void GenericAppearanceType::init (const char * fileName)
 		dmgName.init(tglPath,aseFileName,".ase");
 	
 		genDmgShape = new TG_TypeMultiShape;
-		gosASSERT(genDmgShape != NULL);
+		gosASSERT(genDmgShape != nullptr);
 		genDmgShape->LoadTGMultiShapeFromASE(dmgName); // TGL-LOAD-EXEMPT(optional damage shape; GetNumShapes-checked delete-on-fail)
 
 		if (!genDmgShape->GetNumShapes())
@@ -137,7 +137,7 @@ void GenericAppearanceType::init (const char * fileName)
 			if (fileExists(animPath) || fileExists(otherPath))
 			{
 				genAnimData[i] = new TG_AnimateShape;
-				gosASSERT(genAnimData[i] != NULL);
+				gosASSERT(genAnimData[i] != nullptr);
 	
 				//--------------------------------------------------------
 				// If this animation does not exist, it is not a problem!
@@ -189,7 +189,7 @@ void GenericAppearanceType::destroy (void)
 //-----------------------------------------------------------------------------
 void GenericAppearanceType::setAnimation (TG_MultiShapePtr shape, DWORD animationNum)
 {
-	gosASSERT(shape != NULL);
+	gosASSERT(shape != nullptr);
 	gosASSERT(animationNum != 0xffffffff);
 	gosASSERT(animationNum < MAX_GEN_ANIMATIONS);
 

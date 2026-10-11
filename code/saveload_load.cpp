@@ -31,7 +31,7 @@ void Mission::loadAblAndManagers(MissionLoadFrame& f) {
 	gosASSERT(missionScriptHandle >= 0);
 	
 	missionBrain = new ABLModule;
-	gosASSERT(missionBrain != NULL);
+	gosASSERT(missionBrain != nullptr);
 		
 	missionBrain->init(missionScriptHandle);
 
@@ -39,7 +39,7 @@ void Mission::loadAblAndManagers(MissionLoadFrame& f) {
 	//MissionBrain->setStep(TRUE);
 
 	missionBrainParams = new ABLParam;
-	gosASSERT(missionBrainParams != NULL);
+	gosASSERT(missionBrainParams != nullptr);
 
 	missionBrainCallback = missionBrain->findFunction("handlemessage", TRUE);
 #endif
@@ -47,13 +47,13 @@ void Mission::loadAblAndManagers(MissionLoadFrame& f) {
 	//-----------------------------
 	// Init Trigger Area Manager...
 	Mover::triggerAreaMgr = new TriggerAreaManager;
-	if (Mover::triggerAreaMgr == NULL)
+	if (Mover::triggerAreaMgr == nullptr)
 		STOP(("Mission.Load: unable to init triggerAreaMgr "));
 
 	//-----------------------------------------
 	// Startup the Crater Manager.
 	craterManager = (CraterManagerPtr)missionHeap->Malloc(sizeof(CraterManager));
-	gosASSERT(craterManager != NULL);
+	gosASSERT(craterManager != nullptr);
 		
 	result = craterManager->init(1000,20479,"feet");
 	gosASSERT(result == NO_ERR);
@@ -83,7 +83,7 @@ void Mission::loadTerrain(MissionLoadFrame& f) {
 	gosASSERT( result == NO_ERR );
 
 	land = new Terrain;
-	gosASSERT(land != NULL);
+	gosASSERT(land != nullptr);
 
 	loadProgress = 15.0f;
 
@@ -207,7 +207,7 @@ void Mission::loadMissionScript(MissionLoadFrame& f) {
 	missionBrain->setName("Mission");
 
 	missionBrainParams = new ABLParam;
-	gosASSERT(missionBrainParams != NULL);
+	gosASSERT(missionBrainParams != nullptr);
 
 	missionBrainCallback = missionBrain->findFunction("handlemessage", TRUE);
 #endif
@@ -255,7 +255,7 @@ void Mission::loadParts(MissionLoadFrame& f) {
 		//-----------------------------------------------------
 		// Since we leave part 0 unused, malloc numParts + 1...
 		parts = (PartPtr)missionHeap->Malloc(sizeof(Part) * (numParts + 1));
-		gosASSERT(parts != NULL);
+		gosASSERT(parts != nullptr);
 		
 		memset(parts,0,sizeof(Part) * (numParts + 1));
 
@@ -379,7 +379,7 @@ void Mission::loadTeamsAndObjects(MissionLoadFrame& f) {
 	//-----------------------------------
 	// Setup the Sensor System Manager...
 	SensorManager = new SensorSystemManager;
-	Assert(SensorManager != NULL, 0, " Unable to init sensor system manager ");
+	Assert(SensorManager != nullptr, 0, " Unable to init sensor system manager ");
 	result = SensorManager->init(true);
 	Assert(result == NO_ERR, result, " could not start Sensor System Manager ");
 
@@ -401,7 +401,7 @@ void Mission::loadTeamsAndObjects(MissionLoadFrame& f) {
 				"[MECHRESTORE v1] event=saveload_phase phase=post_objmgr_load "
 				"mechFinalized=%d appearanceListNull=%d\n",
 				GpuMechBatcher::instance().isFinalized() ? 1 : 0,
-				(appearanceTypeList == NULL) ? 1 : 0);
+				(appearanceTypeList == nullptr) ? 1 : 0);
 	}
 
 	// Stage 0.5 §0 prereq (continued, Block B): gpu_cull substrate/compute/readback
@@ -490,7 +490,7 @@ void Mission::loadObjectivesCommanders(MissionLoadFrame& f) {
 
 	gameSystemFile->close();
 	delete gameSystemFile;
-	gameSystemFile = NULL;
+	gameSystemFile = nullptr;
 }
 
 // Create the weather and the camera.
@@ -507,7 +507,7 @@ void Mission::loadWeatherCamera(MissionLoadFrame& f) {
 	// Start the Camera and Lists
 	eye = new GameCamera;
 	eye->init();
-	gosASSERT(eye != NULL);
+	gosASSERT(eye != nullptr);
 
 	result = eye->init(&missionFile);
 	gosASSERT(result == NO_ERR);
@@ -526,7 +526,7 @@ void Mission::loadInterface(MissionLoadFrame& f) {
 	PilotIcon::s_pilotTextureHandle = 0;
 
 	missionInterface = new MissionInterfaceManager;
-	gosASSERT(missionInterface != NULL);
+	gosASSERT(missionInterface != nullptr);
 	
 	missionInterface->initTacMap( &pakFile, 2 );
 	
@@ -552,7 +552,7 @@ void Mission::loadInterface(MissionLoadFrame& f) {
 	if (tempSpecialAreaFootPrints) 
 	{
 		systemHeap->Free(tempSpecialAreaFootPrints);
-		tempSpecialAreaFootPrints = NULL;
+		tempSpecialAreaFootPrints = nullptr;
 		tempNumSpecialAreas = 0;
 	}
 
@@ -617,7 +617,7 @@ void Mission::loadActivateAndFinalize() {
 	eye->update();
 	loadProgress = 100.f;
 
-	DebugGameObject[0] = DebugGameObject[1] = DebugGameObject[2] = NULL;
+	DebugGameObject[0] = DebugGameObject[1] = DebugGameObject[2] = nullptr;
 
 	// VPL-deferred item 11 FIX (a): Mission::load is a parallel mission-
 	// setup path that never routes through Mission::init, so it skips
@@ -650,7 +650,7 @@ void Mission::loadActivateAndFinalize() {
 				"[MECHRESTORE v1] event=saveload_phase phase=post_finalize "
 				"mechFinalized=%d appearanceListNull=%d\n",
 				GpuMechBatcher::instance().isFinalized() ? 1 : 0,
-				(appearanceTypeList == NULL) ? 1 : 0);
+				(appearanceTypeList == nullptr) ? 1 : 0);
 	}
 }
 
@@ -666,7 +666,7 @@ void Mission::loadRestoreInput(MissionLoadFrame& f) {
 	// BLOCK THREAD WHILE THIS IS HAPPENING
 	mc2IsInDisplayBackBuffer = true;
 
-	AsynFunc = NULL;
+	AsynFunc = nullptr;
 	mc2UseAsyncMouse = turnOffAsyncMouse;
 	if ( !mc2UseAsyncMouse)
 		MouseTimerKill();

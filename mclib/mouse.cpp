@@ -151,10 +151,10 @@ void MouseTimerKill()
 	mc2MouseThreadStarted = false;		//Keep us from calling silly stuff during startup and shutdown if we exception
 	
 	free(mouseBuffer);
-	mouseBuffer = NULL;
+	mouseBuffer = nullptr;
 	
 	free(mc2MouseData);
-	mc2MouseData = NULL;
+	mc2MouseData = nullptr;
 #endif // LINUX_BUILD
 }
 
@@ -230,7 +230,7 @@ void CALLBACK MouseTimer(UINT wTimerID, UINT msg, DWORD dwUser, DWORD dw1, DWORD
 	{
 		//		-Lock Rect Cursor WAS in.
 		if (FrontBufferSurface)
-			lockResult = FrontBufferSurface->Lock(NULL,&mouseSurfaceDesc,DDLOCK_DONOTWAIT,NULL);
+			lockResult = FrontBufferSurface->Lock(nullptr,&mouseSurfaceDesc,DDLOCK_DONOTWAIT,nullptr);
 		else
 			lockResult = -1;
 
@@ -496,7 +496,7 @@ void CALLBACK MouseTimer(UINT wTimerID, UINT msg, DWORD dwUser, DWORD dw1, DWORD
 		
 		//Lock can wait because the above unlock might not have been done baking yet!
 		if (FrontBufferSurface)
-			lockResult = FrontBufferSurface->Lock(NULL,&mouseSurfaceDesc,DDLOCK_WAIT,NULL);
+			lockResult = FrontBufferSurface->Lock(nullptr,&mouseSurfaceDesc,DDLOCK_WAIT,nullptr);
 		else
 			lockResult = -1;
 

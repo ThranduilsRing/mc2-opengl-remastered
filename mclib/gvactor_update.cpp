@@ -785,7 +785,7 @@ void GVAppearance::startWaterWake (void)
 			if (gosEffectSpec)
 			{
 				waterWake = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-				gosASSERT(waterWake != NULL);
+				gosASSERT(waterWake != nullptr);
 				
   				MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
 			}
@@ -848,7 +848,7 @@ void GVAppearance::startActivity (long effectId, bool loop)
 			if (gosEffectSpec)
 			{
 				activity = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-				gosASSERT(activity != NULL);
+				gosASSERT(activity != nullptr);
 				
   				MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
 			}

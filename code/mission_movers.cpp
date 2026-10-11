@@ -177,7 +177,7 @@ long Mission::addMover (MoverInitData* moverSpec) {
 	pilotFullFileName.init(warriorPath, moverSpec->pilotFileName, ".fit");
 			
 	FitIniFile* pilotFile = new FitIniFile;
-	gosASSERT(pilotFile != NULL);
+	gosASSERT(pilotFile != nullptr);
 		
 	long result = pilotFile->open(pilotFullFileName);
 	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1):
@@ -532,7 +532,7 @@ bool Mission::calcComplexDropZones (char* missionName, char dropZoneCID[MAX_MC_P
 	missionFileName.init(missionPath,missionName,".fit");
 
 	FitIniFile* missionFile = new FitIniFile;
-	gosASSERT(missionFile != NULL);
+	gosASSERT(missionFile != nullptr);
 	
 	long result = missionFile->open(missionFileName);
 	if (result != NO_ERR)

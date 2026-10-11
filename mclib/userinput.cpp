@@ -520,7 +520,7 @@ void UserInput::initMouseCursors (const char *mouseFile)
 		ZoneScopedN("UserInput::initMouseCursors alloc");
 		cursors = new MouseCursorData;
 	}
-	gosASSERT(cursors != NULL);
+	gosASSERT(cursors != nullptr);
 	
 	{
 		ZoneScopedN("UserInput::initMouseCursors initCursors");

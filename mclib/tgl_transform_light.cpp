@@ -163,7 +163,7 @@ void TG_Shape::xformVertexLights(TG_TypeShapePtr theShape, long j, TgXformFrame&
 		{
 			for (long i=0;i<s_numLights;i++)
 			{
-				if ((s_listOfLights[i] != NULL) && (s_listOfLights[i]->active))
+				if ((s_listOfLights[i] != nullptr) && (s_listOfLights[i]->active))
 				{
 					DWORD startLight = s_listOfLights[i]->GetaRGB();
 					switch (s_listOfLights[i]->lightType)
@@ -584,7 +584,7 @@ void TG_Shape::xformFaceLight(TG_TypeShapePtr theShape, long j, TgXformFrame& f)
 	{
 		for (long i=0;i<s_numLights;i++)
 		{
-			if (s_listOfLights[i] != NULL)
+			if (s_listOfLights[i] != nullptr)
 			{
 				DWORD startVLight = s_listOfLights[i]->GetaRGB();
 				switch (s_listOfLights[i]->lightType)

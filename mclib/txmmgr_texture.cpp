@@ -102,10 +102,10 @@ DWORD MC_TextureManager::textureFromMemory (DWORD *data, gos_TextureFormat key, 
 	{
 		ZoneScopedN("MC_TextureManager::textureFromMemory lzBuffers");
 		lzBuffer1 = (MemoryPtr)textureCacheHeap->Malloc(MAX_LZ_BUFFER_SIZE);
-		gosASSERT(lzBuffer1 != NULL);
+		gosASSERT(lzBuffer1 != nullptr);
 		
 		lzBuffer2 = (MemoryPtr)textureCacheHeap->Malloc(MAX_LZ_BUFFER_SIZE);
-		gosASSERT(lzBuffer2 != NULL);
+		gosASSERT(lzBuffer2 != nullptr);
 	}
 	
 	actualTextureSize += txmSize;
@@ -227,7 +227,7 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
  	masterTextureNodes[i].gosTextureHandle = CACHED_OUT_HANDLE;
 	txmLeakNoteAlloc();  // [TXMMGR_TEXTURE_AUDIT v1] named loadTexture path
 	masterTextureNodes[i].nodeName = (char *)textureStringHeap->Malloc(strlen(textureFullPathName) + 1);
-	gosASSERT(masterTextureNodes[i].nodeName != NULL);
+	gosASSERT(masterTextureNodes[i].nodeName != nullptr);
 
 	strcpy(masterTextureNodes[i].nodeName,textureFullPathName);
 	masterTextureNodes[i].numUsers = 1;
@@ -365,10 +365,10 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 	{
 		ZoneScopedN("MC_TextureManager::loadTexture lzBuffers");
 		lzBuffer1 = (MemoryPtr)textureCacheHeap->Malloc(MAX_LZ_BUFFER_SIZE);
-		gosASSERT(lzBuffer1 != NULL);
+		gosASSERT(lzBuffer1 != nullptr);
 		
 		lzBuffer2 = (MemoryPtr)textureCacheHeap->Malloc(MAX_LZ_BUFFER_SIZE);
-		gosASSERT(lzBuffer2 != NULL);
+		gosASSERT(lzBuffer2 != nullptr);
 	}
 
 	//Try reading the RAW data out of the fastFile.
@@ -478,9 +478,9 @@ long MC_TextureManager::refreshTexturesByName (const char *substring, long &skip
 		if (!lzBuffer1)
 		{
 			lzBuffer1 = (MemoryPtr)textureCacheHeap->Malloc(MAX_LZ_BUFFER_SIZE);
-			gosASSERT(lzBuffer1 != NULL);
+			gosASSERT(lzBuffer1 != nullptr);
 			lzBuffer2 = (MemoryPtr)textureCacheHeap->Malloc(MAX_LZ_BUFFER_SIZE);
-			gosASSERT(lzBuffer2 != NULL);
+			gosASSERT(lzBuffer2 != nullptr);
 		}
 
 		textureFile.read(lzBuffer1, txmSize);

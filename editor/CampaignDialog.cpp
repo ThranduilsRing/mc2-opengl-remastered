@@ -232,7 +232,7 @@ int CCampaignDialog::SaveAs()
 					 _T("Campaign File (*.FIT)|*.FIT|"));
 	{
 		/* if the mission directory doesn't exist, we attempt to create it */
-		int curDirStrSize = GetCurrentDirectory(0, NULL);
+		int curDirStrSize = GetCurrentDirectory(0, nullptr);
 		TCHAR *curDirStr = new TCHAR[curDirStrSize];
 		GetCurrentDirectory(curDirStrSize, curDirStr);
 		BOOL result = SetCurrentDirectory(campaignPath);
@@ -240,7 +240,7 @@ int CCampaignDialog::SaveAs()
 		delete[] curDirStr; curDirStr = 0;
 
 		if (0 == result) {
-			CreateDirectory(campaignPath, NULL);
+			CreateDirectory(campaignPath, nullptr);
 		}
 	}
 	selectFileDialog.m_ofn.lpstrInitialDir = campaignPath;
