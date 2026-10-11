@@ -29,11 +29,11 @@
 #define NO_ERR		0
 #endif
 
-#define BLANK_TILE					(-1)
+inline constexpr int BLANK_TILE = -1;
 
-#define MC_MAX_TERRAIN_TXMS			3000
+inline constexpr int MC_MAX_TERRAIN_TXMS = 3000;
 
-#define MC_MASK_NUM					14
+inline constexpr int MC_MASK_NUM = 14;
 
 #define MC_MAX_MIP_LEVELS			1
 
@@ -60,8 +60,8 @@ extern long tileCacheReqs;
 extern long tileCacheHits;
 extern long tileCacheMiss;
 
-#define	MC2_TERRAIN_CEMENT_FLAG		0x00000001
-#define MC2_TERRAIN_ALPHA_FLAG		0x00000002
+inline constexpr int MC2_TERRAIN_CEMENT_FLAG = 0x00000001;
+inline constexpr int MC2_TERRAIN_ALPHA_FLAG = 0x00000002;
 
 //----------------------------------------------------
 struct TerrainTXM

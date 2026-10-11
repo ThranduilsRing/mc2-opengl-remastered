@@ -31,9 +31,9 @@
 #define NO_ERR		0
 #endif
 
-#define MAX_WATER_DETAIL_TEXTURES	256
+inline constexpr int MAX_WATER_DETAIL_TEXTURES = 256;
 
-#define TOTAL_COLORMAP_TYPES		5
+inline constexpr int TOTAL_COLORMAP_TYPES = 5;
 //---------------------------------------------------------------------------
 // Class Definitions
 typedef struct _ColorMapTextures

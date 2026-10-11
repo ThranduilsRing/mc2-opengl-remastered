@@ -29,38 +29,38 @@
 //--------------------------------------------------------------------------------------
 // Include Files
 //--------------------------------------------------------------------------------------
-#define gtINVALID			-1
-#define gtBACKGROUND		0
-#define gtBUTTON			1
-#define gtTEXT				2
-#define gtHOTTEXT			3
-#define gtEDIT				4
-#define gtCHECKBOX			5
-#define gtSPINNER			6
-#define gtLISTBOX			7
-#define gtTABCTRL			8
-#define gtDRAGOBJECT		9
-#define gtMENU				10
-#define gtDIALOG			11
+inline constexpr int gtINVALID = -1;
+inline constexpr int gtBACKGROUND = 0;
+inline constexpr int gtBUTTON = 1;
+inline constexpr int gtTEXT = 2;
+inline constexpr int gtHOTTEXT = 3;
+inline constexpr int gtEDIT = 4;
+inline constexpr int gtCHECKBOX = 5;
+inline constexpr int gtSPINNER = 6;
+inline constexpr int gtLISTBOX = 7;
+inline constexpr int gtTABCTRL = 8;
+inline constexpr int gtDRAGOBJECT = 9;
+inline constexpr int gtMENU = 10;
+inline constexpr int gtDIALOG = 11;
 
-#define aMSG_NOTHING		-1
-#define aMSG_MOUSE_OVER		0
-#define aMSG_BUTTON_DOWN	1
-#define aMSG_BUTTON_UP		2
-#define aMSG_BUTTON_GRAY	3
-#define aMSG_MOUSE_MOVE		4
-#define aMSG_SELCHANGE		5
-#define aMSG_CANCEL			6
-#define aMSG_OK				7
+inline constexpr int aMSG_NOTHING = -1;
+inline constexpr int aMSG_MOUSE_OVER = 0;
+inline constexpr int aMSG_BUTTON_DOWN = 1;
+inline constexpr int aMSG_BUTTON_UP = 2;
+inline constexpr int aMSG_BUTTON_GRAY = 3;
+inline constexpr int aMSG_MOUSE_MOVE = 4;
+inline constexpr int aMSG_SELCHANGE = 5;
+inline constexpr int aMSG_CANCEL = 6;
+inline constexpr int aMSG_OK = 7;
 
-#define aBTN_NEWCAMPAIGN	0
-#define aBTN_LOADMISSION	1
-#define aBTN_SAVEMISSION	2
-#define aBTN_MULTIPLAYER	3
-#define aBTN_PREFERENCES	4
-#define aBTN_OPENINGCIN		5
-#define aBTN_QUIT			6
-#define aBTN_RETURNGAME		7
+inline constexpr int aBTN_NEWCAMPAIGN = 0;
+inline constexpr int aBTN_LOADMISSION = 1;
+inline constexpr int aBTN_SAVEMISSION = 2;
+inline constexpr int aBTN_MULTIPLAYER = 3;
+inline constexpr int aBTN_PREFERENCES = 4;
+inline constexpr int aBTN_OPENINGCIN = 5;
+inline constexpr int aBTN_QUIT = 6;
+inline constexpr int aBTN_RETURNGAME = 7;
 
 // Status bar interface colors
 #define SD_YELLOW	((0x00) + (0xff<<8) + (0xff<<16) + (0xff<<24))
